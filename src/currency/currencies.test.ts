@@ -5,11 +5,14 @@ import { COUNTRIES } from '@/lib/countries'
 /**
  * Formatage monétaire et cohérence des devises.
  *
- * Deux règles de produit sont verrouillées ici. D'abord l'absence de conversion
- * de change : un même montant s'affiche tel quel dans toutes les devises, seuls
- * le formatage et le symbole changent. Ensuite la distinction XAF/XOF, qui a
- * été un arbitrage explicite : ce sont deux codes ISO distincts partageant le
- * nom « FCFA », et les confondre reviendrait à mal rattacher sept pays.
+ * Une règle de produit est verrouillée ici : l'absence de conversion de change.
+ * Un même montant s'affiche tel quel dans toutes les devises, seuls le formatage
+ * et le symbole changent.
+ *
+ * Les codes `XAF` et `XOF` ont depuis été fusionnés en un seul `CFA` — même nom
+ * d'usage, même parité, et rien à l'écran ne dépendait de la distinction. Les
+ * pays restent groupés par zone dans `lib/countries`, ce qui suffira à retrouver
+ * l'un ou l'autre le jour d'une intégration de paiement.
  */
 
 describe('formatage', () => {
@@ -27,16 +30,15 @@ describe('formatage', () => {
   it('place le symbole selon la convention de la devise', () => {
     // L'espace entre montant et symbole est elle aussi insécable : « 1 000 »
     // ne doit pas se retrouver séparé de « FCFA » en fin de ligne.
-    expect(formatMoney(1000, 'XAF', { round: true })).toBe('1\u202f000\u202fFCFA')
+    expect(formatMoney(1000, 'CFA', { round: true })).toBe('1\u202f000\u202fFCFA')
     // Le dollar suit `en-US` et sépare donc les milliers par une virgule, là
     // où le franc CFA et l'euro emploient une espace.
     expect(formatMoney(1000, 'USD', { round: true })).toBe('$\u202f1,000')
   })
 
-  it('n’ajoute pas de sous-unité aux francs CFA', () => {
+  it('n’ajoute pas de sous-unité au franc CFA', () => {
     // Le centime de franc CFA n'a pas cours.
-    expect(formatMoney(1500, 'XAF')).not.toContain(',')
-    expect(formatMoney(1500, 'XOF')).not.toContain(',')
+    expect(formatMoney(1500, 'CFA')).not.toContain(',')
   })
 
   it('conserve les sous-unités des devises qui en ont', () => {
@@ -50,31 +52,27 @@ describe('formatage', () => {
   it('sépare les milliers par une espace insécable étroite', () => {
     // Une espace ordinaire autoriserait une coupure de ligne au milieu d'un
     // montant, dans un tableau où les colonnes sont déjà serrées.
-    const rendu = formatMoney(1415000, 'XAF', { round: true })
+    const rendu = formatMoney(1415000, 'CFA', { round: true })
     expect(rendu).toContain('\u202f')
     expect(rendu).not.toMatch(/\d \d/)
   })
 })
 
-describe('XAF et XOF restent distincts', () => {
-  it('portent deux codes et deux libellés', () => {
-    expect(CURRENCY_DEFS.XAF.label).not.toBe(CURRENCY_DEFS.XOF.label)
-    expect(CURRENCY_DEFS.XAF.label).toContain('XAF')
-    expect(CURRENCY_DEFS.XOF.label).toContain('XOF')
+describe('franc CFA unifié', () => {
+  it('ne porte qu’un code, sans suffixe de zone', () => {
+    expect(CURRENCIES.filter((code) => CURRENCY_DEFS[code].symbol === 'FCFA')).toEqual(['CFA'])
+    expect(CURRENCY_DEFS.CFA.label).toBe('FCFA')
   })
 
-  it('couvrent des pays disjoints', () => {
-    const xaf = COUNTRIES.filter((c) => c.currency === 'XAF').map((c) => c.code)
-    const xof = COUNTRIES.filter((c) => c.currency === 'XOF').map((c) => c.code)
-
-    expect(xaf.length).toBeGreaterThan(0)
-    expect(xof.length).toBeGreaterThan(0)
-    expect(xaf.filter((code) => xof.includes(code))).toEqual([])
+  it('couvre les deux zones franc, de Douala à Dakar', () => {
+    // Le Cameroun relevait du XAF, le Sénégal du XOF : tous deux tombent
+    // désormais sur la même devise.
+    expect(COUNTRIES.find((c) => c.code === 'CM')?.currency).toBe('CFA')
+    expect(COUNTRIES.find((c) => c.code === 'SN')?.currency).toBe('CFA')
   })
 
-  it('rattache le Cameroun au XAF et le Sénégal au XOF', () => {
-    expect(COUNTRIES.find((c) => c.code === 'CM')?.currency).toBe('XAF')
-    expect(COUNTRIES.find((c) => c.code === 'SN')?.currency).toBe('XOF')
+  it('y rattache les quatorze pays des deux zones', () => {
+    expect(COUNTRIES.filter((c) => c.currency === 'CFA')).toHaveLength(14)
   })
 })
 

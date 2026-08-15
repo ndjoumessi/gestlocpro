@@ -631,7 +631,7 @@ export const en: Dictionary = {
       eyebrow: 'International',
       title: 'Built for more than one market',
       body:
-        '{currencies} currencies, {locales} interface languages, local dial codes and date formats. The CFA franc is handled properly: XAF and XOF are two distinct codes, not an alias.',
+        '{currencies} currencies, {locales} interface languages, local dial codes and date formats. The CFA franc covers both zones, from Douala to Dakar, with each country’s dial codes and conventions.',
       currencies: 'Supported currencies',
       languages: 'Interface languages',
       countries: '{count} countries offered at signup',

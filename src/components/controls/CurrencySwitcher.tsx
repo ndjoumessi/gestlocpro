@@ -13,10 +13,10 @@ export interface CurrencySwitcherProps {
 /**
  * Sélecteur de devise.
  *
- * La maquette faisait défiler les devises au clic. Avec cinq devises, atteindre
- * la dernière demande quatre clics et l'utilisateur ne voit jamais la liste :
- * on passe à un menu, qui laisse aussi la place au libellé complet de chaque
- * devise (« FCFA (XAF) » vs « FCFA (XOF) », que le seul symbole confondrait).
+ * La maquette faisait défiler les devises au clic. Atteindre la dernière
+ * demandait trois clics et l'utilisateur ne voyait jamais la liste : on passe à
+ * un menu, qui laisse aussi la place au libellé complet de chaque devise — le
+ * seul symbole confondrait le dollar canadien et l'américain.
  */
 export function CurrencySwitcher({ tone = 'light', className }: CurrencySwitcherProps) {
   const { currency, setCurrency, definition } = useCurrency()

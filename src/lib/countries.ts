@@ -15,29 +15,31 @@ export interface Country {
  * Pays proposés à l'inscription. Le pays pré-remplit la devise et la langue,
  * toutes deux modifiables ensuite.
  *
- * Les deux zones franc CFA sont distinctes : XAF (CEMAC) et XOF (UEMOA)
- * partagent le nom « FCFA » mais pas le code ISO ni la parité d'émission.
+ * Les deux zones franc — CEMAC et UEMOA — sont regroupées sous une seule devise
+ * `CFA` : même nom d'usage, même parité, et le produit n'affiche des montants
+ * qu'à titre indicatif. Le regroupement des pays est conservé ci-dessous, car il
+ * suffit à retrouver `XAF` ou `XOF` le jour où un paiement l'exigera.
  */
 export const COUNTRIES: Country[] = [
-  // --- Zone CEMAC (XAF) ---
-  { code: 'CM', dial: '+237', currency: 'XAF', locale: 'fr', nameFr: 'Cameroun', nameEn: 'Cameroon' },
-  { code: 'GA', dial: '+241', currency: 'XAF', locale: 'fr', nameFr: 'Gabon', nameEn: 'Gabon' },
+  // --- Zone CEMAC (anciennement XAF) ---
+  { code: 'CM', dial: '+237', currency: 'CFA', locale: 'fr', nameFr: 'Cameroun', nameEn: 'Cameroon' },
+  { code: 'GA', dial: '+241', currency: 'CFA', locale: 'fr', nameFr: 'Gabon', nameEn: 'Gabon' },
   // Qualifié : la République démocratique du Congo est un marché francophone
   // bien plus grand, et « Congo » seul ferait choisir la mauvaise entrée.
-  { code: 'CG', dial: '+242', currency: 'XAF', locale: 'fr', nameFr: 'Congo-Brazzaville', nameEn: 'Republic of the Congo' },
-  { code: 'TD', dial: '+235', currency: 'XAF', locale: 'fr', nameFr: 'Tchad', nameEn: 'Chad' },
-  { code: 'CF', dial: '+236', currency: 'XAF', locale: 'fr', nameFr: 'République centrafricaine', nameEn: 'Central African Republic' },
-  { code: 'GQ', dial: '+240', currency: 'XAF', locale: 'fr', nameFr: 'Guinée équatoriale', nameEn: 'Equatorial Guinea' },
+  { code: 'CG', dial: '+242', currency: 'CFA', locale: 'fr', nameFr: 'Congo-Brazzaville', nameEn: 'Republic of the Congo' },
+  { code: 'TD', dial: '+235', currency: 'CFA', locale: 'fr', nameFr: 'Tchad', nameEn: 'Chad' },
+  { code: 'CF', dial: '+236', currency: 'CFA', locale: 'fr', nameFr: 'République centrafricaine', nameEn: 'Central African Republic' },
+  { code: 'GQ', dial: '+240', currency: 'CFA', locale: 'fr', nameFr: 'Guinée équatoriale', nameEn: 'Equatorial Guinea' },
 
-  // --- Zone UEMOA (XOF) ---
-  { code: 'SN', dial: '+221', currency: 'XOF', locale: 'fr', nameFr: 'Sénégal', nameEn: 'Senegal' },
-  { code: 'CI', dial: '+225', currency: 'XOF', locale: 'fr', nameFr: "Côte d'Ivoire", nameEn: 'Ivory Coast' },
-  { code: 'BJ', dial: '+229', currency: 'XOF', locale: 'fr', nameFr: 'Bénin', nameEn: 'Benin' },
-  { code: 'BF', dial: '+226', currency: 'XOF', locale: 'fr', nameFr: 'Burkina Faso', nameEn: 'Burkina Faso' },
-  { code: 'ML', dial: '+223', currency: 'XOF', locale: 'fr', nameFr: 'Mali', nameEn: 'Mali' },
-  { code: 'TG', dial: '+228', currency: 'XOF', locale: 'fr', nameFr: 'Togo', nameEn: 'Togo' },
-  { code: 'NE', dial: '+227', currency: 'XOF', locale: 'fr', nameFr: 'Niger', nameEn: 'Niger' },
-  { code: 'GW', dial: '+245', currency: 'XOF', locale: 'fr', nameFr: 'Guinée-Bissau', nameEn: 'Guinea-Bissau' },
+  // --- Zone UEMOA (anciennement XOF) ---
+  { code: 'SN', dial: '+221', currency: 'CFA', locale: 'fr', nameFr: 'Sénégal', nameEn: 'Senegal' },
+  { code: 'CI', dial: '+225', currency: 'CFA', locale: 'fr', nameFr: "Côte d'Ivoire", nameEn: 'Ivory Coast' },
+  { code: 'BJ', dial: '+229', currency: 'CFA', locale: 'fr', nameFr: 'Bénin', nameEn: 'Benin' },
+  { code: 'BF', dial: '+226', currency: 'CFA', locale: 'fr', nameFr: 'Burkina Faso', nameEn: 'Burkina Faso' },
+  { code: 'ML', dial: '+223', currency: 'CFA', locale: 'fr', nameFr: 'Mali', nameEn: 'Mali' },
+  { code: 'TG', dial: '+228', currency: 'CFA', locale: 'fr', nameFr: 'Togo', nameEn: 'Togo' },
+  { code: 'NE', dial: '+227', currency: 'CFA', locale: 'fr', nameFr: 'Niger', nameEn: 'Niger' },
+  { code: 'GW', dial: '+245', currency: 'CFA', locale: 'fr', nameFr: 'Guinée-Bissau', nameEn: 'Guinea-Bissau' },
 
   // --- Zone euro ---
   { code: 'FR', dial: '+33', currency: 'EUR', locale: 'fr', nameFr: 'France', nameEn: 'France' },

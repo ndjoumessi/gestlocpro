@@ -138,7 +138,7 @@ export function KitchenSink() {
             <Badge tone="gold">Pro</Badge>
             <Badge tone="ok">Actif</Badge>
             <Badge tone="danger">3</Badge>
-            <Badge tone="dark">XAF</Badge>
+            <Badge tone="dark">FCFA</Badge>
             <DeltaBadge value={165000} />
             <DeltaBadge value={95000} invert />
             <DeltaBadge value={-8} suffix="pts" />

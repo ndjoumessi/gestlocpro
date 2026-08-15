@@ -22,9 +22,9 @@ describe('arrondi des francs CFA', () => {
   const positions = Array.from({ length: 60 }, (_, i) => i + 1)
 
   it('affiche le résultat exact de la formule sur l’Essentiel mensuel', () => {
-    expect(exactPlanPrice(essentiel, 'XAF', 'monthly', 12)).toBe(2400)
-    expect(planPrice(essentiel, 'XAF', 'monthly', 12)).toBe(2400)
-    expect(positions.filter((u) => priceIsRounded(essentiel, 'XAF', 'monthly', u))).toHaveLength(0)
+    expect(exactPlanPrice(essentiel, 'CFA', 'monthly', 12)).toBe(2400)
+    expect(planPrice(essentiel, 'CFA', 'monthly', 12)).toBe(2400)
+    expect(positions.filter((u) => priceIsRounded(essentiel, 'CFA', 'monthly', u))).toHaveLength(0)
   })
 
   /**
@@ -37,10 +37,10 @@ describe('arrondi des francs CFA', () => {
    * et la mention d'arrondi couvre l'écart.
    */
   it('décroche sur Pro, facteur 1,6 oblige', () => {
-    expect(positions.filter((u) => priceIsRounded(pro, 'XAF', 'monthly', u))).toHaveLength(48)
+    expect(positions.filter((u) => priceIsRounded(pro, 'CFA', 'monthly', u))).toHaveLength(48)
 
-    expect(exactPlanPrice(pro, 'XAF', 'monthly', 12)).toBe(3840)
-    expect(planPrice(pro, 'XAF', 'monthly', 12)).toBe(3800)
+    expect(exactPlanPrice(pro, 'CFA', 'monthly', 12)).toBe(3840)
+    expect(planPrice(pro, 'CFA', 'monthly', 12)).toBe(3800)
   })
 
   /**
@@ -53,20 +53,13 @@ describe('arrondi des francs CFA', () => {
    * nécessaire.
    */
   it('décroche en annuel, ce que la mention d’arrondi couvre', () => {
-    const decroche = positions.filter((u) => priceIsRounded(essentiel, 'XAF', 'yearly', u))
+    const decroche = positions.filter((u) => priceIsRounded(essentiel, 'CFA', 'yearly', u))
     expect(decroche.length).toBeGreaterThan(0)
 
-    expect(exactPlanPrice(essentiel, 'XAF', 'yearly', 1)).toBe(1040)
-    expect(planPrice(essentiel, 'XAF', 'yearly', 1)).toBe(1000)
+    expect(exactPlanPrice(essentiel, 'CFA', 'yearly', 1)).toBe(1040)
+    expect(planPrice(essentiel, 'CFA', 'yearly', 1)).toBe(1000)
   })
 
-  it('suit la même grille dans les deux zones franc CFA', () => {
-    for (const units of [1, 12, 60]) {
-      expect(planPrice(essentiel, 'XOF', 'monthly', units)).toBe(
-        planPrice(essentiel, 'XAF', 'monthly', units),
-      )
-    }
-  })
 })
 
 /**
@@ -82,7 +75,7 @@ describe('arrondi des francs CFA', () => {
  * intacts ceux de l'Essentiel, qui sont ceux qu'on lit en premier.
  */
 describe('facteur d’upgrade', () => {
-  const DEVISES = ['XAF', 'XOF', 'EUR', 'CAD', 'USD'] as const
+  const DEVISES = ['CFA', 'EUR', 'CAD', 'USD'] as const
 
   it('vaut 1,6 sur les deux composantes, dans toutes les devises', () => {
     for (const currency of DEVISES) {
@@ -121,8 +114,8 @@ describe('devises à sous-unité', () => {
 
 describe('paliers sur devis', () => {
   it('n’ont ni prix ni mention d’arrondi', () => {
-    expect(planPrice(cabinet, 'XAF', 'monthly', 12)).toBeNull()
-    expect(exactPlanPrice(cabinet, 'XAF', 'monthly', 12)).toBeNull()
-    expect(priceIsRounded(cabinet, 'XAF', 'monthly', 12)).toBe(false)
+    expect(planPrice(cabinet, 'CFA', 'monthly', 12)).toBeNull()
+    expect(exactPlanPrice(cabinet, 'CFA', 'monthly', 12)).toBeNull()
+    expect(priceIsRounded(cabinet, 'CFA', 'monthly', 12)).toBe(false)
   })
 })

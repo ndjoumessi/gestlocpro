@@ -75,10 +75,8 @@ export const PLANS: Plan[] = [
       // juste, et la formule affichée sous le prix se vérifie. Cela ne vaut que
       // pour le mensuel — voir `priceIsRounded`.
       //
-      // Les deux zones franc CFA suivent la même grille : les faire diverger
-      // ici créerait deux tarifs pour un même montant nominal.
-      base: { XAF: 1200, XOF: 1200, EUR: 4, CAD: 6, USD: 4 },
-      perUnit: { XAF: 100, XOF: 100, EUR: 0.5, CAD: 0.7, USD: 0.5 },
+      base: { CFA: 1200, EUR: 4, CAD: 6, USD: 4 },
+      perUnit: { CFA: 100, EUR: 0.5, CAD: 0.7, USD: 0.5 },
     },
   },
   {
@@ -100,8 +98,8 @@ export const PLANS: Plan[] = [
     // portait déjà sur 48 positions, le prix unitaire de 160 suffisant à le
     // produire.
     pricing: {
-      base: { XAF: 1920, XOF: 1920, EUR: 6.4, CAD: 9.6, USD: 6.4 },
-      perUnit: { XAF: 160, XOF: 160, EUR: 0.8, CAD: 1.12, USD: 0.8 },
+      base: { CFA: 1920, EUR: 6.4, CAD: 9.6, USD: 6.4 },
+      perUnit: { CFA: 160, EUR: 0.8, CAD: 1.12, USD: 0.8 },
     },
   },
   { id: 'cabinet', pricing: null },
@@ -152,9 +150,7 @@ export function planPrice(
   // Les francs CFA n'ont pas de sous-unité : on arrondit à la centaine, sans
   // quoi la formule produirait des montants comme « 3 062 FCFA », qui ne
   // ressemblent pas à un prix.
-  return currency === 'XAF' || currency === 'XOF'
-    ? Math.round(value / 100) * 100
-    : Math.round(value * 100) / 100
+  return currency === 'CFA' ? Math.round(value / 100) * 100 : Math.round(value * 100) / 100
 }
 
 /** Résultat brut de la formule, avant tout arrondi d'affichage. */

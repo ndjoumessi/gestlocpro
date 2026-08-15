@@ -1,7 +1,7 @@
 # GestLocPro — Plan de conception
 
 > **État : livré.** Les quatre étapes sont construites et vérifiées.
-> Décisions arbitrées : assistant d'inscription unique · XAF et XOF distincts ·
+> Décisions arbitrées : assistant d'inscription unique · franc CFA unifié ·
 > grille tarifaire à l'unité gérée. Voir §9 pour les défauts trouvés en cours
 > de route et §10 pour ce qui reste ouvert.
 
@@ -198,7 +198,7 @@ un code d'invitation à un propriétaire.
 | 3 | Marketing | Tous les textes sont inventés |
 | 4 | Témoignages | Placeholders **explicitement fictifs** — pas de faux logos ni de fausses citations attribuées |
 | 5 | Locataire | S'inscrit par code d'invitation, pas librement |
-| 6 | FCFA | XAF ≠ XOF (Sénégal, Côte d'Ivoire…) — à trancher |
+| 6 | FCFA | **Tranché** : XAF et XOF fusionnés en une devise `CFA` (§8) |
 | 7 | Relevés | Sous-section de « Paiements » dans la maquette → promue en page |
 | 8 | Ville | « DOUALA » en dur dans le fil d'Ariane → devient dynamique |
 | 9 | Dark mode | Hors périmètre (seule la sidebar est sombre dans la maquette) |
@@ -211,17 +211,17 @@ un code d'invitation à un propriétaire.
 
 | | Essentiel | **Pro** (populaire) | Cabinet |
 | --- | --- | --- | --- |
-| XAF / XOF | 1 200 + 100 /unité | 1 920 + 160 /unité | sur devis |
+| CFA | 1 200 + 100 /unité | 1 920 + 160 /unité | sur devis |
 | EUR | 4 € + 0,50 € /unité | 6,40 € + 0,80 € /unité | sur devis |
 | CAD | 6 $ + 0,70 $ /unité | 9,60 $ + 1,12 $ /unité | sur devis |
 | USD | 4 $ + 0,50 $ /unité | 6,40 $ + 0,80 $ /unité | sur devis |
 
-**Pro vaut 1,6 × Essentiel** sur l'abonnement, et sur le prix unitaire des
-devises à sous-unité : l'effort d'upgrade y est identique quelle que soit la
-taille du parc.
-
 En franc CFA, l'Essentiel est passé à **1 200 + 100 par unité** (auparavant
-1 250 + 125) et Pro à **1 920 + 160** (auparavant 2 000 + 200).
+1 250 + 125) et Pro à **1 920 + 160** (auparavant 2 000 + 200). Les deux zones,
+CEMAC et UEMOA, sont regroupées sous une seule devise `CFA` : même nom d'usage,
+même parité, et rien à l'écran ne dépendait de la distinction. Le code `CFA`
+n'existe pas en ISO 4217 — une intégration de paiement devra rétablir `XAF` et
+`XOF`, que le pays de l'utilisateur suffit à retrouver.
 
 **Le facteur 1,6 tient sur les deux composantes, dans toutes les devises.**
 L'effort d'upgrade est donc constant quelle que soit la taille du parc — c'est
@@ -366,8 +366,9 @@ coûte davantage — cohérent avec qui tire la valeur de la fonction.
 - **Le niveau du supplément de Pro** (60 %). C'est sa *proportionnalité* qui a
   été validée, pas son montant — celui-ci reste posé à dire d'expert.
 
-Pays initiaux : zone FCFA (Cameroun, Gabon, Congo, Tchad, RCA, Guinée éq. — XAF ;
-Sénégal, Côte d'Ivoire, Bénin, Burkina, Mali, Togo, Niger — XOF), France/Belgique/Luxembourg (EUR),
+Pays initiaux : zone FCFA (CEMAC — Cameroun, Gabon, Congo, Tchad, RCA, Guinée éq. ;
+UEMOA — Sénégal, Côte d'Ivoire, Bénin, Burkina, Mali, Togo, Niger, Guinée-Bissau),
+France/Belgique/Luxembourg (EUR),
 Canada (CAD), États-Unis (USD), + « Autre ». **22 pays** au total, dans
 [`src/lib/countries.ts`](../src/lib/countries.ts).
 
@@ -643,8 +644,9 @@ internationale) pour deux marchés secondaires.
 - **« Congo » désambiguïsé** en « Congo-Brazzaville » / « Republic of the
   Congo ». La RDC est un marché francophone bien plus grand : l'entrée non
   qualifiée aurait fait choisir le mauvais pays.
-- **UEMOA complétée** avec la Guinée-Bissau (`GW`, `+245`, XOF) : 8/8. La CEMAC
-  était déjà complète à 6/6.
+- **UEMOA complétée** avec la Guinée-Bissau (`GW`, `+245`) : 8/8. La CEMAC était
+  déjà complète à 6/6. Les deux zones ont depuis été regroupées sous une seule
+  devise `CFA` (§8), le groupement des pays étant conservé dans le code.
 - **Option « Autre pays »** épinglée en fin de liste. Elle ne pré-remplit rien —
   devise et langue restent au choix de l'utilisateur — plutôt que de bloquer
   l'inscription ou de forcer une déclaration de pays inexacte.
@@ -658,8 +660,7 @@ population est anglophone ; un bailleur québécois bascule en un clic.
 
 | Devise | Pays |
 | --- | --- |
-| XAF | 6 — CEMAC complète |
-| XOF | 8 — UEMOA complète |
+| CFA | 14 — CEMAC et UEMOA complètes |
 | EUR | 5 |
 | CAD | 1 |
 | USD | 1 |

@@ -9,7 +9,22 @@
  * ne sont donc pas concernés.
  */
 
-export const CURRENCIES = ['XAF', 'XOF', 'EUR', 'CAD', 'USD'] as const
+/**
+ * `CFA` couvre les deux zones franc, CEMAC et UEMOA.
+ *
+ * Elles portaient auparavant deux codes distincts, `XAF` et `XOF`. Ce sont bien
+ * deux monnaies séparées — un billet XAF n'a pas cours légal en zone UEMOA —
+ * mais elles partagent le nom « FCFA » et la même parité fixe avec l'euro
+ * (655,957). Le produit n'affichant que des montants, sans conversion ni
+ * paiement, la distinction ne changeait rien à l'écran sauf le suffixe du
+ * sélecteur.
+ *
+ * `CFA` n'est pas un code ISO 4217 : il n'existe pas de code commun aux deux
+ * zones. Une intégration comptable ou bancaire devra donc rétablir `XAF` et
+ * `XOF`, et le pays de l'utilisateur — déjà connu, voir `lib/countries` — suffit
+ * à retrouver lequel s'applique.
+ */
+export const CURRENCIES = ['CFA', 'EUR', 'CAD', 'USD'] as const
 
 export type CurrencyCode = (typeof CURRENCIES)[number]
 
@@ -28,19 +43,13 @@ export interface CurrencyDef {
 }
 
 export const CURRENCY_DEFS: Record<CurrencyCode, CurrencyDef> = {
-  XAF: {
-    code: 'XAF',
+  CFA: {
+    code: 'CFA',
     symbol: 'FCFA',
-    label: 'FCFA (XAF)',
-    locale: 'fr-CM',
-    decimals: 0,
-    position: 'after',
-  },
-  XOF: {
-    code: 'XOF',
-    symbol: 'FCFA',
-    label: 'FCFA (XOF)',
-    locale: 'fr-SN',
+    label: 'FCFA',
+    // La locale ne sert qu'au groupement des milliers, identique dans tous les
+    // français ; aucune des deux zones n'est donc privilégiée par ce choix.
+    locale: 'fr',
     decimals: 0,
     position: 'after',
   },
@@ -70,7 +79,7 @@ export const CURRENCY_DEFS: Record<CurrencyCode, CurrencyDef> = {
   },
 }
 
-export const DEFAULT_CURRENCY: CurrencyCode = 'XAF'
+export const DEFAULT_CURRENCY: CurrencyCode = 'CFA'
 
 export interface FormatMoneyOptions {
   /** Masque le symbole — utile quand une colonne le porte déjà en en-tête. */

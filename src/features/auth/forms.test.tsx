@@ -140,7 +140,8 @@ describe('inscription', () => {
     const pays = await screen.findByLabelText(/^pays/i)
     await user.selectOptions(pays, 'SN')
 
-    // Le Sénégal relève du XOF, distinct du XAF camerounais.
-    expect(screen.getByLabelText(/devise/i)).toHaveValue('XOF')
+    // Le Sénégal relevait du XOF et le Cameroun du XAF ; les deux zones franc
+    // sont désormais regroupées sous une seule devise.
+    expect(screen.getByLabelText(/devise/i)).toHaveValue('CFA')
   })
 })
