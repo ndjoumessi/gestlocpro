@@ -55,3 +55,18 @@ export function formatMonthShort(year: number, month: number, locale: Locale): s
     .format(new Date(year, month, 1))
     .replace('.', '')
 }
+
+/**
+ * Horodatage relatif : « il y a 2 heures » / « 2 hours ago ».
+ *
+ * `numeric: 'auto'` produit les formes idiomatiques quand elles existent —
+ * « hier » plutôt que « il y a 1 jour », « yesterday » plutôt que « 1 day ago ».
+ * C'est ce que l'on écrivait à la main dans les données, en français seulement.
+ */
+export function formatRelative(
+  value: number,
+  unit: Intl.RelativeTimeFormatUnit,
+  locale: Locale,
+): string {
+  return new Intl.RelativeTimeFormat(DATE_LOCALE[locale], { numeric: 'auto' }).format(value, unit)
+}

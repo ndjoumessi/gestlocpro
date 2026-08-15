@@ -7,7 +7,8 @@ import { Icon, type IconName } from '@/components/primitives/Icon'
 import { EmptyState } from '@/components/primitives/DataTable'
 import { cn } from '@/lib/cn'
 import { TenantScopeNote } from './TenantDashboard'
-import { useT } from '@/i18n/I18nProvider'
+import { useI18n, useT } from '@/i18n/I18nProvider'
+import { formatRelative } from '@/lib/dates'
 import { ALERTS, CURRENT_TENANT_UNIT, alertsForUnit, type Alert } from '@/data/portfolio'
 
 const KIND_ICON: Record<Alert['kind'], IconName> = {
@@ -25,6 +26,7 @@ const SEVERITY_TONE: Record<Alert['severity'], StatusTone> = {
 
 export function Alerts() {
   const t = useT()
+  const { locale } = useI18n()
   const { role } = useRole()
   const isTenant = role === 'tenant'
   // Une notification ne concernant pas son logement n'a pas à lui parvenir.
@@ -100,7 +102,9 @@ export function Alerts() {
                 <p className="mt-1 text-body-s text-muted">{alert.detail}</p>
               </div>
 
-              <span className="shrink-0 font-mono text-mono-label text-muted">{alert.at}</span>
+              <span className="shrink-0 font-mono text-mono-label text-muted">
+                {formatRelative(alert.at.value, alert.at.unit, locale)}
+              </span>
             </Card>
           ))}
         </div>

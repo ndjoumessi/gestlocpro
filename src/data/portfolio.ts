@@ -52,27 +52,32 @@ export const UNITS: Unit[] = [
   { id: 'C3', buildingId: 'des', label: 'C3', type: 'T2', surface: 60, rent: 125000, tenant: null, status: 'vacant' },
 ]
 
-/** Encaissements des 12 derniers mois, ventilés loyer / eau / électricité. */
+/**
+ * Encaissements des 12 derniers mois, ventilés loyer / eau / électricité.
+ * Les abréviations d'axe se calculent à l'affichage — voir `lib/dates`.
+ */
 export interface MonthlyCollection {
-  month: string
+  year: number
+  /** 0 = janvier. */
+  month: number
   rent: number
   water: number
   power: number
 }
 
 export const COLLECTIONS: MonthlyCollection[] = [
-  { month: 'sep', rent: 1010000, water: 62000, power: 48000 },
-  { month: 'oct', rent: 1085000, water: 58000, power: 51000 },
-  { month: 'nov', rent: 1040000, water: 61000, power: 46000 },
-  { month: 'dec', rent: 1120000, water: 66000, power: 58000 },
-  { month: 'jan', rent: 1150000, water: 71000, power: 62000 },
-  { month: 'fev', rent: 1095000, water: 64000, power: 54000 },
-  { month: 'mar', rent: 1180000, water: 69000, power: 57000 },
-  { month: 'avr', rent: 1240000, water: 74000, power: 61000 },
-  { month: 'mai', rent: 1205000, water: 70000, power: 59000 },
-  { month: 'juin', rent: 1290000, water: 78000, power: 66000 },
-  { month: 'juil', rent: 1250000, water: 72000, power: 63000 },
-  { month: 'aout', rent: 1040000, water: 68000, power: 55000 },
+  { year: 2025, month: 8, rent: 1010000, water: 62000, power: 48000 },
+  { year: 2025, month: 9, rent: 1085000, water: 58000, power: 51000 },
+  { year: 2025, month: 10, rent: 1040000, water: 61000, power: 46000 },
+  { year: 2025, month: 11, rent: 1120000, water: 66000, power: 58000 },
+  { year: 2026, month: 0, rent: 1150000, water: 71000, power: 62000 },
+  { year: 2026, month: 1, rent: 1095000, water: 64000, power: 54000 },
+  { year: 2026, month: 2, rent: 1180000, water: 69000, power: 57000 },
+  { year: 2026, month: 3, rent: 1240000, water: 74000, power: 61000 },
+  { year: 2026, month: 4, rent: 1205000, water: 70000, power: 59000 },
+  { year: 2026, month: 5, rent: 1290000, water: 78000, power: 66000 },
+  { year: 2026, month: 6, rent: 1250000, water: 72000, power: 63000 },
+  { year: 2026, month: 7, rent: 1040000, water: 68000, power: 55000 },
 ]
 
 export const KPIS = {
@@ -88,32 +93,6 @@ export const KPIS = {
   powerRebilled: 64,
 }
 
-/** Relevés de compteurs du mois. */
-export interface MeterReading {
-  unitId: string
-  waterPrevious: number
-  waterCurrent: number | null
-  powerPrevious: number
-  powerCurrent: number | null
-  readAt: string | null
-}
-
-export const READINGS: MeterReading[] = [
-  { unitId: 'A1', waterPrevious: 342, waterCurrent: 358, powerPrevious: 4120, powerCurrent: 4298, readAt: '20/08' },
-  { unitId: 'A2', waterPrevious: 289, waterCurrent: 301, powerPrevious: 3540, powerCurrent: 3671, readAt: '20/08' },
-  { unitId: 'A3', waterPrevious: 415, waterCurrent: 436, powerPrevious: 5210, powerCurrent: 5402, readAt: '20/08' },
-  { unitId: 'A4', waterPrevious: 502, waterCurrent: 529, powerPrevious: 6180, powerCurrent: 6455, readAt: '20/08' },
-  { unitId: 'A5', waterPrevious: 176, waterCurrent: null, powerPrevious: 2140, powerCurrent: null, readAt: null },
-  { unitId: 'B1', waterPrevious: 388, waterCurrent: 402, powerPrevious: 4870, powerCurrent: 5033, readAt: '19/08' },
-  { unitId: 'B2', waterPrevious: 356, waterCurrent: 371, powerPrevious: 4405, powerCurrent: 4560, readAt: '19/08' },
-  { unitId: 'B3', waterPrevious: 271, waterCurrent: 284, powerPrevious: 3290, powerCurrent: 3418, readAt: '19/08' },
-  { unitId: 'C1', waterPrevious: 611, waterCurrent: 644, powerPrevious: 7320, powerCurrent: 7640, readAt: '18/08' },
-  { unitId: 'C2', waterPrevious: 334, waterCurrent: null, powerPrevious: 4010, powerCurrent: null, readAt: null },
-]
-
-/** Tarifs unitaires de refacturation des charges. */
-export const UTILITY_RATES = { water: 520, power: 99 }
-
 /**
  * Date en valeurs machine. Les libellés se calculent à l'affichage selon la
  * langue de l'interface — voir `lib/dates`. Stocker « 12/08 » figeait le format
@@ -125,6 +104,32 @@ export interface DateParts {
   month: number
   day: number
 }
+
+/** Relevés de compteurs du mois. */
+export interface MeterReading {
+  unitId: string
+  waterPrevious: number
+  waterCurrent: number | null
+  powerPrevious: number
+  powerCurrent: number | null
+  readAt: DateParts | null
+}
+
+export const READINGS: MeterReading[] = [
+  { unitId: 'A1', waterPrevious: 342, waterCurrent: 358, powerPrevious: 4120, powerCurrent: 4298, readAt: { year: 2026, month: 7, day: 20 } },
+  { unitId: 'A2', waterPrevious: 289, waterCurrent: 301, powerPrevious: 3540, powerCurrent: 3671, readAt: { year: 2026, month: 7, day: 20 } },
+  { unitId: 'A3', waterPrevious: 415, waterCurrent: 436, powerPrevious: 5210, powerCurrent: 5402, readAt: { year: 2026, month: 7, day: 20 } },
+  { unitId: 'A4', waterPrevious: 502, waterCurrent: 529, powerPrevious: 6180, powerCurrent: 6455, readAt: { year: 2026, month: 7, day: 20 } },
+  { unitId: 'A5', waterPrevious: 176, waterCurrent: null, powerPrevious: 2140, powerCurrent: null, readAt: null },
+  { unitId: 'B1', waterPrevious: 388, waterCurrent: 402, powerPrevious: 4870, powerCurrent: 5033, readAt: { year: 2026, month: 7, day: 19 } },
+  { unitId: 'B2', waterPrevious: 356, waterCurrent: 371, powerPrevious: 4405, powerCurrent: 4560, readAt: { year: 2026, month: 7, day: 19 } },
+  { unitId: 'B3', waterPrevious: 271, waterCurrent: 284, powerPrevious: 3290, powerCurrent: 3418, readAt: { year: 2026, month: 7, day: 19 } },
+  { unitId: 'C1', waterPrevious: 611, waterCurrent: 644, powerPrevious: 7320, powerCurrent: 7640, readAt: { year: 2026, month: 7, day: 18 } },
+  { unitId: 'C2', waterPrevious: 334, waterCurrent: null, powerPrevious: 4010, powerCurrent: null, readAt: null },
+]
+
+/** Tarifs unitaires de refacturation des charges. */
+export const UTILITY_RATES = { water: 520, power: 99 }
 
 export interface WorkOrder {
   id: string
@@ -178,12 +183,18 @@ export const INSPECTIONS: Inspection[] = [
   { unitId: 'A5', kind: 'entry', date: { year: 2026, month: 1, day: 2 }, rooms: 2, issues: 1, signed: false },
 ]
 
+/** Horodatage relatif en valeurs machine, rendu par `formatRelative`. */
+export interface RelativeStamp {
+  value: number
+  unit: Intl.RelativeTimeFormatUnit
+}
+
 export interface Alert {
   id: string
   kind: 'payment' | 'work' | 'meter' | 'lease'
   title: string
   detail: string
-  at: string
+  at: RelativeStamp
   severity: 'high' | 'medium' | 'low'
   read: boolean
   /** Unité concernée. Sert au filtrage par rôle. */
@@ -191,13 +202,13 @@ export interface Alert {
 }
 
 export const ALERTS: Alert[] = [
-  { id: 'n1', kind: 'payment', title: 'Loyer A3 en retard de 24 jours', detail: 'Serge Mbarga · relance J+15 partie le 04/08', at: 'il y a 2 h', severity: 'high', read: false, unitId: 'A3' },
-  { id: 'n2', kind: 'work', title: 'Devis plomberie à arbitrer', detail: 'SIG-2026-042 · A3 · 45 000 proposés par le gestionnaire', at: 'il y a 5 h', severity: 'high', read: false, unitId: 'A3' },
-  { id: 'n3', kind: 'meter', title: '2 relevés manquants pour août', detail: 'A5 et C2 · à saisir avant la facturation', at: 'hier', severity: 'medium', read: true },
-  { id: 'n4', kind: 'lease', title: 'Bail B1 à renouveler dans 45 jours', detail: 'Jean-Paul Eboa · échéance au 30/09/2026', at: 'il y a 2 jours', severity: 'low', read: true, unitId: 'B1' },
-  { id: 'n5', kind: 'payment', title: 'Règlement partiel enregistré sur A5', detail: 'Aline Tchoumi · 40 000 sur 75 000', at: 'il y a 3 jours', severity: 'medium', read: true, unitId: 'A5' },
-  { id: 'n6', kind: 'work', title: 'Groupe de sécurité remplacé', detail: 'SIG-2026-036 · A1 · intervention terminée le 28/07', at: 'il y a 5 jours', severity: 'low', read: true, unitId: 'A1' },
-  { id: 'n7', kind: 'payment', title: 'Quittance d’août disponible', detail: 'A1 · règlement de 145 000 enregistré', at: 'il y a 6 jours', severity: 'low', read: true, unitId: 'A1' },
+  { id: 'n1', kind: 'payment', title: 'Loyer A3 en retard de 24 jours', detail: 'Serge Mbarga · relance J+15 partie le 04/08', at: { value: -2, unit: 'hour' }, severity: 'high', read: false, unitId: 'A3' },
+  { id: 'n2', kind: 'work', title: 'Devis plomberie à arbitrer', detail: 'SIG-2026-042 · A3 · 45 000 proposés par le gestionnaire', at: { value: -5, unit: 'hour' }, severity: 'high', read: false, unitId: 'A3' },
+  { id: 'n3', kind: 'meter', title: '2 relevés manquants pour août', detail: 'A5 et C2 · à saisir avant la facturation', at: { value: -1, unit: 'day' }, severity: 'medium', read: true },
+  { id: 'n4', kind: 'lease', title: 'Bail B1 à renouveler dans 45 jours', detail: 'Jean-Paul Eboa · échéance au 30/09/2026', at: { value: -2, unit: 'day' }, severity: 'low', read: true, unitId: 'B1' },
+  { id: 'n5', kind: 'payment', title: 'Règlement partiel enregistré sur A5', detail: 'Aline Tchoumi · 40 000 sur 75 000', at: { value: -3, unit: 'day' }, severity: 'medium', read: true, unitId: 'A5' },
+  { id: 'n6', kind: 'work', title: 'Groupe de sécurité remplacé', detail: 'SIG-2026-036 · A1 · intervention terminée le 28/07', at: { value: -5, unit: 'day' }, severity: 'low', read: true, unitId: 'A1' },
+  { id: 'n7', kind: 'payment', title: 'Quittance d’août disponible', detail: 'A1 · règlement de 145 000 enregistré', at: { value: -6, unit: 'day' }, severity: 'low', read: true, unitId: 'A1' },
 ]
 
 /**

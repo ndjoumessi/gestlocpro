@@ -6,7 +6,8 @@ import { Icon } from '@/components/primitives/Icon'
 import { Button } from '@/components/primitives/Button'
 import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
-import { useT } from '@/i18n/I18nProvider'
+import { useI18n, useT } from '@/i18n/I18nProvider'
+import { formatDayMonth } from '@/lib/dates'
 import { READINGS, UTILITY_RATES, unitById, type MeterReading } from '@/data/portfolio'
 
 /**
@@ -19,6 +20,7 @@ import { READINGS, UTILITY_RATES, unitById, type MeterReading } from '@/data/por
  */
 export function Meters() {
   const t = useT()
+  const { locale } = useI18n()
   const { money } = useCurrency()
   const { notify } = useToast()
 
@@ -165,7 +167,11 @@ export function Meters() {
             key: 'readAt',
             header: t('app.meters.readAt'),
             hideOnMobile: true,
-            render: (r) => <span className="numeric text-muted">{r.readAt ?? '—'}</span>,
+            render: (r) => (
+              <span className="numeric text-muted">
+                {r.readAt ? formatDayMonth(r.readAt.year, r.readAt.month, r.readAt.day, locale) : '—'}
+              </span>
+            ),
           },
         ]}
       />
