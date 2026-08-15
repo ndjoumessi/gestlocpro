@@ -84,14 +84,20 @@ export const PLANS: Plan[] = [
   {
     id: 'pro',
     popular: true,
-    // 1,6 x Essentiel sur l'abonnement, et sur le prix unitaire des devises à
-    // sous-unité. En franc CFA le prix unitaire de l'Essentiel est passé à 100 :
-    // le rapport y est donc de 2, et l'effort d'upgrade croît avec la taille du
-    // parc au lieu de rester constant. Écart assumé, à retrancher si l'on veut
-    // rétablir le facteur unique (prix unitaire Pro à 160).
+    // 1,6 x Essentiel sur le prix unitaire, dans toutes les devises : l'effort
+    // d'upgrade ne croît donc plus avec la taille du parc.
+    //
+    // En franc CFA, 160 n'est pas multiple de 100 : le total mensuel de Pro
+    // décroche à nouveau de sa formule, 48 positions du curseur sur 60. Les deux
+    // objectifs sont incompatibles à cette échelle de prix — pour qu'un prix
+    // unitaire et son 1,6 soient tous deux multiples de 100, il faudrait un
+    // multiple de 500. La mention d'arrondi couvre l'écart.
+    //
+    // L'abonnement, lui, garde un rapport de 1,667 (2 000 / 1 200) : le ramener
+    // à 1,6 demanderait 1 920, qui décrocherait à son tour.
     pricing: {
       base: { XAF: 2000, XOF: 2000, EUR: 6, CAD: 9, USD: 6 },
-      perUnit: { XAF: 200, XOF: 200, EUR: 0.8, CAD: 1.1, USD: 0.8 },
+      perUnit: { XAF: 160, XOF: 160, EUR: 0.8, CAD: 1.1, USD: 0.8 },
     },
   },
   { id: 'cabinet', pricing: null },

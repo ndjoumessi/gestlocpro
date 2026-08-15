@@ -211,7 +211,7 @@ un code d'invitation à un propriétaire.
 
 | | Essentiel | **Pro** (populaire) | Cabinet |
 | --- | --- | --- | --- |
-| XAF / XOF | 1 200 + 100 /unité | 2 000 + 200 /unité | sur devis |
+| XAF / XOF | 1 200 + 100 /unité | 2 000 + 160 /unité | sur devis |
 | EUR | 4 € + 0,50 € /unité | 6 € + 0,80 € /unité | sur devis |
 | CAD | 6 $ + 0,70 $ /unité | 9 $ + 1,10 $ /unité | sur devis |
 | USD | 4 $ + 0,50 $ /unité | 6 $ + 0,80 $ /unité | sur devis |
@@ -221,25 +221,28 @@ devises à sous-unité : l'effort d'upgrade y est identique quelle que soit la
 taille du parc.
 
 En franc CFA, l'Essentiel est passé à **1 200 + 100 par unité** (auparavant
-1 250 + 125). Deux effets, l'un voulu, l'autre à connaître.
+1 250 + 125) et Pro à **2 000 + 160** (auparavant 200).
 
-**Le mensuel tombe juste.** Base et prix unitaire étant multiples de 100, le
-total l'est aussi : la formule affichée sous le prix se vérifie désormais à
-chacune des 60 positions du curseur, contre 45 décrochages sur 60 avant.
+**Le facteur 1,6 tient sur le prix unitaire, dans toutes les devises.** L'effort
+d'upgrade ne croît donc pas avec la taille du parc — c'est l'objet du §
+« Ce que la validation a corrigé » ci-dessous.
 
-**L'annuel, lui, décroche — et c'est structurel.** La remise de 20 % revient à
-multiplier par 4/5 : pour qu'un montant reste multiple de 100 après l'opération,
-il doit être multiple de 125, donc de 500 pour l'être avant comme après. Aucun
-prix unitaire réaliste ne satisfait cela à toute taille de parc. La mention
-« Arrondi : la formule donne … » garde donc son emploi, sur la seule période
-annuelle. À noter que l'ancienne grille avait le défaut inverse : annuel exact,
-mensuel faux — et c'est le mensuel qu'on lit en premier.
+**L'arrondi ne peut pas disparaître partout.** Deux impossibilités arithmétiques,
+et non des réglages à trouver.
 
-**Le facteur unique Pro/Essentiel est rompu en franc CFA.** Le prix unitaire y
-passe d'un rapport 1,6 à 2 (200 contre 100), donc l'effort d'upgrade recroît avec
-la taille du parc — ce que le raisonnement ci-dessous cherchait précisément à
-corriger. Ramener le prix unitaire de Pro à **160** le rétablirait. Les devises à
-sous-unité conservent leur 1,6.
+- *Le facteur 1,6 contre la formule exacte.* Pour qu'un prix unitaire et son 1,6
+  soient tous deux multiples de 100, il faudrait un multiple de 500 — hors
+  d'échelle. L'Essentiel à 100 tombe juste, Pro à 160 décroche 48 fois sur 60 en
+  mensuel. On a choisi le facteur constant, la mention d'arrondi couvrant l'écart.
+- *La remise annuelle contre la formule exacte.* Multiplier par 4/5 conserve les
+  multiples de 100 seulement si le montant est multiple de 125, donc de 500 pour
+  l'être avant comme après. L'annuel décroche donc sur les deux paliers.
+
+Le mensuel de l'Essentiel — l'entrée de gamme, sur l'onglet par défaut — est le
+seul cas exact, et c'est celui que le prospect lit en premier.
+
+**Reste un rapport d'abonnement de 1,667** (2 000 / 1 200), et non 1,6 : le
+ramener demanderait 1 920, qui décrocherait à son tour. Non tranché.
 
 Annuel −20 %, 30 jours d'essai sur les paliers tarifés. Portail locataire inclus
 partout. Différenciateurs : relances automatiques, gestionnaires délégués,
@@ -340,11 +343,10 @@ prix unitaire : l'effort d'upgrade est **constant à +60 %** sur toute la plage.
 Contrepartie assumée : sous ~22 unités Pro coûte moins qu'avant, au-dessus il
 coûte davantage — cohérent avec qui tire la valeur de la fonction.
 
-> **Depuis, en franc CFA seulement**, l'Essentiel est passé à 1 200 + 100 par
-> unité, pour que la formule affichée se vérifie. Le facteur unique ne tient donc
-> plus sur le prix unitaire (rapport 2, non 1,6) et l'effort d'upgrade y recroît
-> avec la taille du parc — exactement ce que ce raisonnement cherchait à
-> corriger. Prix unitaire de Pro à 160 pour le rétablir. Voir §8.
+> **Depuis, en franc CFA**, la grille est 1 200 + 100 pour l'Essentiel et
+> 2 000 + 160 pour Pro. Le facteur 1,6 tient toujours sur le prix unitaire, donc
+> ce raisonnement reste valable. L'abonnement, lui, est à 1,667 et non 1,6. Voir
+> §8.
 
 ### Ce qui reste ouvert sur les tarifs
 

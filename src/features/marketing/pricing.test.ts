@@ -14,23 +14,39 @@ const cabinet = PLANS.find((p) => p.id === 'cabinet')!
  * 2 750 pour un prix affiché à 2 800. Le prospect qui posait le calcul trouvait
  * un écart inexpliqué — pire que de n'avoir rien affiché.
  *
- * Base et prix unitaire sont depuis alignés sur des multiples de 100, ce qui
- * règle le mensuel. L'annuel reste concerné, pour une raison structurelle
- * détaillée plus bas.
+ * L'Essentiel est depuis aligné sur des multiples de 100, ce qui règle son
+ * mensuel. Pro non, et l'annuel reste concerné partout : deux raisons
+ * structurelles, détaillées plus bas.
  */
 describe('arrondi des francs CFA', () => {
-  it('affiche le résultat exact de la formule en mensuel', () => {
-    expect(exactPlanPrice(essentiel, 'XAF', 'monthly', 12)).toBe(2400)
-    expect(planPrice(essentiel, 'XAF', 'monthly', 12)).toBe(2400)
-    expect(planPrice(pro, 'XAF', 'monthly', 12)).toBe(4400)
-  })
-
   const positions = Array.from({ length: 60 }, (_, i) => i + 1)
 
-  it('ne décroche jamais en mensuel, base et prix unitaire étant multiples de 100', () => {
-    for (const plan of [essentiel, pro]) {
-      expect(positions.filter((u) => priceIsRounded(plan, 'XAF', 'monthly', u))).toHaveLength(0)
-    }
+  it('affiche le résultat exact de la formule sur l’Essentiel mensuel', () => {
+    expect(exactPlanPrice(essentiel, 'XAF', 'monthly', 12)).toBe(2400)
+    expect(planPrice(essentiel, 'XAF', 'monthly', 12)).toBe(2400)
+    expect(positions.filter((u) => priceIsRounded(essentiel, 'XAF', 'monthly', u))).toHaveLength(0)
+  })
+
+  /**
+   * Pro décroche, parce que son prix unitaire vaut 1,6 fois celui de l'Essentiel
+   * — 160, qui n'est pas multiple de 100.
+   *
+   * Les deux objectifs sont incompatibles à cette échelle : pour qu'un prix
+   * unitaire et son 1,6 soient tous deux multiples de 100, il faudrait un
+   * multiple de 500. On a choisi le facteur d'upgrade constant plutôt que la
+   * formule exacte, et la mention d'arrondi couvre l'écart.
+   */
+  it('décroche sur Pro, prix unitaire de 160 oblige', () => {
+    expect(positions.filter((u) => priceIsRounded(pro, 'XAF', 'monthly', u))).toHaveLength(48)
+
+    expect(exactPlanPrice(pro, 'XAF', 'monthly', 12)).toBe(3920)
+    expect(planPrice(pro, 'XAF', 'monthly', 12)).toBe(3900)
+  })
+
+  it('garde un facteur d’upgrade constant sur le prix unitaire', () => {
+    // Ce que les 160 achètent : l'effort d'upgrade ne croît plus avec le parc.
+    expect(pro.pricing!.perUnit.XAF / essentiel.pricing!.perUnit.XAF).toBe(1.6)
+    expect(pro.pricing!.perUnit.EUR / essentiel.pricing!.perUnit.EUR).toBe(1.6)
   })
 
   /**
