@@ -523,6 +523,20 @@ export const en: Dictionary = {
     },
   },
 
+  notFound: {
+    code: 'Error 404',
+    title: 'This page does not exist',
+    body: 'The address you asked for matches no page in GestLocPro. It may have been mistyped, or the link that brought you here is out of date.',
+    attempted: 'Address requested',
+    home: 'Back to home',
+    demo: 'Open the demonstration',
+    signIn: 'Sign in',
+    appTitle: 'Screen not found',
+    appBody:
+      'This address matches no screen in the management space. The available screens are listed in the sidebar.',
+    appAction: 'Back to the dashboard',
+  },
+
   marketing: {
     nav: {
       features: 'Features',

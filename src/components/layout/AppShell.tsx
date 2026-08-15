@@ -313,10 +313,13 @@ function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
   const t = useT()
   const location = useLocation()
 
+  // Repli sur « Écran introuvable » et non sur le tableau de bord : toute
+  // adresse sans entrée de navigation rend le 404 interne, et annoncer le
+  // tableau de bord dans le fil situerait l'utilisateur là où il n'est pas.
   const crumb =
     [...SECTIONS.flatMap((s) => s.items), ...FOOTER_ITEMS].find(
       (item) => item.to === location.pathname,
-    )?.labelKey ?? 'nav.dashboard'
+    )?.labelKey ?? 'notFound.appTitle'
 
   return (
     <header

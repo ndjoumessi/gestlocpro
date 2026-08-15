@@ -530,6 +530,22 @@ export const fr = {
     },
   },
 
+  notFound: {
+    code: 'Erreur 404',
+    title: 'Cette page n’existe pas',
+    body: 'L’adresse demandée ne correspond à aucune page de GestLocPro. Elle a peut-être été mal recopiée, ou le lien qui vous a mené ici est périmé.',
+    // L'adresse fautive est affichée : sans elle, l'utilisateur ne peut ni
+    // corriger sa saisie ni signaler utilement le lien mort.
+    attempted: 'Adresse demandée',
+    home: 'Retour à l’accueil',
+    demo: 'Ouvrir la démonstration',
+    signIn: 'Se connecter',
+    appTitle: 'Écran introuvable',
+    appBody:
+      'Cette adresse ne correspond à aucun écran de l’espace de gestion. Les écrans disponibles sont listés dans la barre latérale.',
+    appAction: 'Revenir au tableau de bord',
+  },
+
   marketing: {
     nav: {
       features: 'Fonctionnalités',

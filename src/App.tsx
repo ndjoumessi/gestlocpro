@@ -7,6 +7,7 @@ import { ForgotPassword } from './routes/ForgotPassword'
 import { ResetPassword } from './routes/ResetPassword'
 import { SignUp } from './routes/SignUp'
 import { KitchenSink } from './routes/KitchenSink'
+import { NotFound, NotFoundInApp } from './routes/NotFound'
 import { AppShell, RoleGuard } from './components/layout/AppShell'
 import { Dashboard } from './features/dashboard/Dashboard'
 import { Portfolio } from './features/dashboard/Portfolio'
@@ -62,10 +63,16 @@ export function App() {
 
         <Route path="systeme" element={<SystemStates />} />
         <Route path="portail" element={<TenantPortal />} />
+
+        {/* Écran inconnu sous /app : la coque et sa barre latérale restent
+            affichées, puisqu'elles listent justement les écrans qui existent. */}
+        <Route path="*" element={<NotFoundInApp />} />
       </Route>
 
       <Route path="/kitchen-sink" element={<KitchenSink />} />
-      <Route path="*" element={<Landing />} />
+      {/* Rendait la landing : une adresse fautive passait alors pour la page
+          d'accueil, sans que rien ne signale l'erreur. */}
+      <Route path="*" element={<NotFound />} />
     </Routes>
   )
 }
