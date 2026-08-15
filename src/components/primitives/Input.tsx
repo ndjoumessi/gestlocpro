@@ -3,6 +3,7 @@ import { cn } from '@/lib/cn'
 import { controlClasses } from './Field'
 import { Icon, type IconName } from './Icon'
 import { useT } from '@/i18n/I18nProvider'
+import { scorePassword } from '@/features/auth/validation'
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   invalid?: boolean
@@ -142,14 +143,4 @@ export function PasswordStrength({ value }: { value: string }) {
       <span className={cn('text-mono-label font-mono font-medium', level.text)}>{level.label}</span>
     </div>
   )
-}
-
-/** 0 = faible, 3 = robuste. */
-export function scorePassword(value: string): 0 | 1 | 2 | 3 {
-  let score = 0
-  if (value.length >= 8) score++
-  if (value.length >= 12) score++
-  if (/[^a-zA-Z0-9]/.test(value) || (/[0-9]/.test(value) && /[a-z]/.test(value) && /[A-Z]/.test(value)))
-    score++
-  return Math.min(score, 3) as 0 | 1 | 2 | 3
 }

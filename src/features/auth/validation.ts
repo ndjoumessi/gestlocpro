@@ -46,17 +46,47 @@ export function validateInviteCode(value: string): FieldError {
   return INVITE.test(value.trim()) ? null : 'auth.errors.inviteInvalid'
 }
 
-/** Met en forme la saisie du code au fil de la frappe : loc1234abcd -> LOC-1234-ABCD */
+/**
+ * Met en forme la saisie du code au fil de la frappe : loc4a7b92cd -> LOC-4A7B-92CD
+ *
+ * La fonction se contente de **regrouper** ce que l'utilisateur a tapé, sans
+ * rien préfixer. Une version antérieure ajoutait « LOC- » d'office, puis
+ * reconsommait ce préfixe comme saisie au caractère suivant : taper le code
+ * lettre à lettre donnait « LOC-LOC4-A7B9 ». Le défaut n'apparaissait pas quand
+ * on posait la valeur entière d'un coup, ce qu'aucun utilisateur ne fait.
+ *
+ * Cette forme est idempotente — la réappliquer à son propre résultat ne change
+ * rien — ce qui est la propriété qui manquait.
+ */
 export function formatInviteCode(value: string): string {
-  const clean = value.toUpperCase().replace(/[^A-Z0-9]/g, '')
-  const body = clean.startsWith('LOC') ? clean.slice(3) : clean
-  const parts = ['LOC']
-  if (body.length) parts.push(body.slice(0, 4))
-  if (body.length > 4) parts.push(body.slice(4, 8))
-  return parts.join('-')
+  const clean = value
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+    .slice(0, 11)
+
+  return [clean.slice(0, 3), clean.slice(3, 7), clean.slice(7, 11)].filter(Boolean).join('-')
 }
 
 /** `true` si aucun champ n'est en erreur. */
 export function isClean(errors: Record<string, FieldError>): boolean {
   return Object.values(errors).every((error) => error === null)
+}
+
+/**
+ * Robustesse d'un mot de passe : 0 = faible, 3 = robuste.
+ *
+ * Vit ici et non dans le composant qui l'affiche : c'est une règle de
+ * validation, testable sans monter d'interface, et l'y laisser aurait fini par
+ * la faire diverger des autres règles du même formulaire.
+ */
+export function scorePassword(value: string): 0 | 1 | 2 | 3 {
+  let score = 0
+  if (value.length >= 8) score++
+  if (value.length >= 12) score++
+  if (
+    /[^a-zA-Z0-9]/.test(value) ||
+    (/[0-9]/.test(value) && /[a-z]/.test(value) && /[A-Z]/.test(value))
+  )
+    score++
+  return Math.min(score, 3) as 0 | 1 | 2 | 3
 }
