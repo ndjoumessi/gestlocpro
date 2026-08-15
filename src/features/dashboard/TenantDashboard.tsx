@@ -6,7 +6,8 @@ import { StatCard } from '@/components/primitives/Charts'
 import { PaymentStatusPill, StatusPill } from '@/components/primitives/StatusPill'
 import { EmptyState } from '@/components/primitives/DataTable'
 import { useCurrency } from '@/currency/CurrencyProvider'
-import { useT } from '@/i18n/I18nProvider'
+import { useI18n, useT } from '@/i18n/I18nProvider'
+import { formatDayMonth, formatMonthYear } from '@/lib/dates'
 import {
   CURRENT_TENANT_UNIT,
   TENANT_RECEIPTS,
@@ -28,6 +29,7 @@ import {
  */
 export function TenantDashboard() {
   const t = useT()
+  const { locale } = useI18n()
   const { money } = useCurrency()
 
   const unit = unitById(CURRENT_TENANT_UNIT)
@@ -97,11 +99,18 @@ export function TenantDashboard() {
 
           <ul className="divide-y divide-divider border-t border-divider">
             {TENANT_RECEIPTS.map((receipt) => (
-              <li key={receipt.period} className="flex flex-wrap items-center gap-3 px-4 py-3 sm:px-5">
-                <span className="min-w-0 flex-1 text-body font-medium">{receipt.period}</span>
+              <li
+                key={`${receipt.year}-${receipt.month}`}
+                className="flex flex-wrap items-center gap-3 px-4 py-3 sm:px-5"
+              >
+                <span className="min-w-0 flex-1 text-body font-medium">
+                  {formatMonthYear(receipt.year, receipt.month, locale)}
+                </span>
                 <span className="numeric text-body">{money(unit.rent, { round: true })}</span>
                 <span className="font-mono text-mono-label text-muted">
-                  {t('app.tenant.paidOn', { date: receipt.paidAt })}
+                  {t('app.tenant.paidOn', {
+                    date: formatDayMonth(receipt.year, receipt.month, receipt.paidDay, locale),
+                  })}
                 </span>
                 <Button variant="ghost" size="sm" icon="download">
                   {t('app.tenant.download')}

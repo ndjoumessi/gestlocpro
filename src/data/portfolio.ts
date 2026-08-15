@@ -216,14 +216,28 @@ export function alertsForUnit(unitId: string): Alert[] {
   return ALERTS.filter((alert) => alert.unitId === unitId)
 }
 
-/** Historique de quittances simulé pour l'espace locataire. */
-export const TENANT_RECEIPTS = [
-  { period: 'Août 2026', status: 'paid' as PaymentStatus, paidAt: '03/08' },
-  { period: 'Juillet 2026', status: 'paid' as PaymentStatus, paidAt: '02/07' },
-  { period: 'Juin 2026', status: 'paid' as PaymentStatus, paidAt: '05/06' },
-  { period: 'Mai 2026', status: 'paid' as PaymentStatus, paidAt: '04/05' },
-  { period: 'Avril 2026', status: 'paid' as PaymentStatus, paidAt: '02/04' },
-  { period: 'Mars 2026', status: 'paid' as PaymentStatus, paidAt: '06/03' },
+/**
+ * Historique de quittances simulé pour l'espace locataire.
+ *
+ * Les périodes sont stockées en valeurs machine — année et index de mois — et
+ * non en chaînes : un nom de mois est du formatage, pas du contenu, et doit
+ * suivre la langue de l'interface. Voir `lib/dates`.
+ */
+export interface Receipt {
+  year: number
+  /** 0 = janvier. */
+  month: number
+  paidDay: number
+  status: PaymentStatus
+}
+
+export const TENANT_RECEIPTS: Receipt[] = [
+  { year: 2026, month: 7, paidDay: 3, status: 'paid' },
+  { year: 2026, month: 6, paidDay: 2, status: 'paid' },
+  { year: 2026, month: 5, paidDay: 5, status: 'paid' },
+  { year: 2026, month: 4, paidDay: 4, status: 'paid' },
+  { year: 2026, month: 3, paidDay: 2, status: 'paid' },
+  { year: 2026, month: 2, paidDay: 6, status: 'paid' },
 ]
 
 export function unitById(id: string): Unit | undefined {
