@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { DEFAULT_LOCALE, LOCALES, resolveDateLocale, type Locale } from './locales'
+import { DATE_LOCALE, DEFAULT_LOCALE, LOCALES, resolveDateLocale, type Locale } from './locales'
 import { fr } from './fr'
 import { en } from './en'
 
@@ -103,8 +103,30 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const t = useCallback(
     (key: MessageKey, vars?: TranslateVars) => {
       const dictionary = DICTIONARIES[locale]
+
+      /**
+       * Accord en nombre.
+       *
+       * `t()` ne faisait que de l'interpolation : « {count} réserves » rendait
+       * « 1 réserves ». La règle du pluriel dépend de la langue — le français
+       * met au singulier à zéro (« 0 réserve »), l'anglais au pluriel
+       * (« 0 issues ») — donc on la délègue à `Intl.PluralRules` plutôt que de
+       * la coder à la main.
+       *
+       * Convention : une clé `x` peut porter des variantes `x_one`, `x_many`…
+       * La clé de base reste la forme par défaut, ce qui garde les appels
+       * existants valides et laisse le typage vérifier les chemins.
+       */
+      let template: string | undefined
+      if (typeof vars?.count === 'number') {
+        const category = new Intl.PluralRules(DATE_LOCALE[locale]).select(vars.count)
+        template =
+          resolve(dictionary, `${key}_${category}`) ?? resolve(fr, `${key}_${category}`)
+      }
+
       // Repli sur le français plutôt que d'afficher une clé brute à l'écran.
-      const template = resolve(dictionary, key) ?? resolve(fr, key)
+      template ??= resolve(dictionary, key) ?? resolve(fr, key)
+
       if (template === undefined) {
         if (import.meta.env.DEV) console.warn(`[i18n] clé manquante : ${key}`)
         return key
