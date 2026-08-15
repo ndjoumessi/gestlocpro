@@ -9,7 +9,9 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "lint:i18n": "node scripts/check-i18n.mjs",
-    "check": "tsc -b && oxlint && node scripts/check-i18n.mjs"
+    "check": "tsc -b && oxlint && node scripts/check-i18n.mjs && vitest run",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -18,14 +20,20 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.18",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.4",
     "@types/node": "^24.13.3",
     "@types/react": "^18.3.27",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^5.0.4",
+    "@vitest/coverage-v8": "^4.1.10",
+    "jsdom": "^29.1.1",
     "oxlint": "^1.75.0",
     "tailwindcss": "^4.1.18",
     "typescript": "~5.9.3",
-    "vite": "^7.1.14"
+    "vite": "^7.1.14",
+    "vitest": "^4.1.10"
   },
   "allowScripts": {
     "esbuild@0.28.2": true

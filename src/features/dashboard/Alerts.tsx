@@ -29,10 +29,29 @@ export function Alerts() {
   const d = useDates()
   const { role } = useRole()
   const isTenant = role === 'tenant'
-  // Une notification ne concernant pas son logement n'a pas à lui parvenir.
-  const [alerts, setAlerts] = useState(isTenant ? alertsForUnit(CURRENT_TENANT_UNIT) : ALERTS)
+
+  /**
+   * La liste se **dérive** du rôle à chaque rendu, elle ne s'y fige pas.
+   *
+   * Elle était initialisée dans un `useState` : l'initialiseur ne s'exécutant
+   * qu'au montage, basculer de profil sans changer d'écran laissait le
+   * locataire devant les notifications de tout le parc — les impayés de ses
+   * voisins compris. Le défaut échappait à toute vérification manuelle qui
+   * naviguait après la bascule, puisque naviguer remonte le composant.
+   *
+   * Seul l'état « lu » est conservé, sous forme d'identifiants : c'est la seule
+   * chose que l'écran modifie réellement.
+   */
+  const [readIds, setReadIds] = useState<Set<string>>(new Set())
+
+  const alerts = (isTenant ? alertsForUnit(CURRENT_TENANT_UNIT) : ALERTS).map((alert) => ({
+    ...alert,
+    read: alert.read || readIds.has(alert.id),
+  }))
 
   const unread = alerts.filter((alert) => !alert.read).length
+
+  const markAllRead = () => setReadIds(new Set(alerts.map((alert) => alert.id)))
 
   return (
     <>
@@ -44,7 +63,7 @@ export function Alerts() {
             <Button
               variant="secondary"
               icon="check"
-              onClick={() => setAlerts((list) => list.map((a) => ({ ...a, read: true })))}
+              onClick={markAllRead}
             >
               {t('app.alerts.markRead')}
             </Button>
