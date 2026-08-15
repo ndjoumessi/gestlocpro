@@ -215,17 +215,17 @@ un code d'invitation à un propriétaire.
 | CAD | 13 $ | 39 $ | sur devis |
 | USD | 9 $ | 29 $ | sur devis |
 
-Annuel −20 % (2 000 et 6 000 F). Portail et app locataire inclus dans tous les paliers.
+Annuel −20 % (2 000 et 6 000 FCFA). Portail et app locataire inclus dans tous les paliers.
 Différenciateurs : relances automatiques (manuelles en Essentiel), gestionnaires délégués (Pro+),
 export comptable, multi-sociétés.
 
 ### Ce que la validation a corrigé
 
-La grille initiale portait 4 900 et 14 900 F. Trois défauts l'ont fait tomber.
+La grille initiale portait 4 900 et 14 900 FCFA. Trois défauts l'ont fait tomber.
 
-**Le franc CFA est en parité fixe avec l'euro** (1 € = 655,957 F, XAF comme XOF).
+**Le franc CFA est en parité fixe avec l'euro** (1 € = 655,957 FCFA, XAF comme XOF).
 Il n'existe donc pas de prix FCFA « ancré indépendamment du taux du jour » —
-4 900 F *étaient* 7,47 €, mécaniquement. La justification inscrite dans le code
+4 900 FCFA *étaient* 7,47 €, mécaniquement. La justification inscrite dans le code
 affirmait le contraire.
 
 **Le bon dénominateur est le loyer encaissé**, pas le taux de change : c'est ce
@@ -236,12 +236,12 @@ faible.
 
 | Palier | Zone | Quittancé/mois | Avant | Après | Part du loyer |
 | --- | --- | --- | --- | --- | --- |
-| Essentiel | FCFA | 1 366 667 F | 4 900 | **2 500** | 0,359 % → **0,183 %** |
+| Essentiel | FCFA | 1 366 667 FCFA | 4 900 | **2 500** | 0,359 % → **0,183 %** |
 | | EUR | 7 000 € | 9 € | 9 € | 0,129 % |
-| Pro | FCFA | 6 833 333 F | 14 900 | **7 500** | 0,218 % → **0,110 %** |
+| Pro | FCFA | 6 833 333 FCFA | 14 900 | **7 500** | 0,218 % → **0,110 %** |
 | | EUR | 35 000 € | 29 € | 29 € | 0,083 % |
 
-L'écart passe de 2,8× à 1,4×. La parité stricte donnerait ~1 800 F, mais les
+L'écart passe de 2,8× à 1,4×. La parité stricte donnerait ~1 800 FCFA, mais les
 relances SMS et le support ont un coût réel par client sur ces marchés : le
 rapport résiduel le couvre.
 
@@ -256,7 +256,7 @@ juste (2 000 et 6 000).
 - **Le niveau absolu en zone euro** (9 € / 29 €) n'a pas été confronté à la
   concurrence : il reste une hypothèse.
 - **La frontière à 10 unités.** Passer de 10 à 11 unités triple la facture
-  (490 → 1 355 F l'unité). C'est inhérent à toute grille par paliers, mais
+  (490 → 1 355 FCFA l'unité). C'est inhérent à toute grille par paliers, mais
   10 unités est une taille de parc répandue : le mur tombe là où beaucoup de
   prospects se trouvent. Options si cela se confirme : déplacer la frontière,
   ou facturer les unités excédentaires à l'unité au-delà du palier.

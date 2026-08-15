@@ -12,15 +12,16 @@ import type { CurrencyCode } from '@/currency/currencies'
  *
  * Le calage se fait sur la **part du loyer encaissé**, pas sur le taux de
  * change : c'est le loyer que le produit administre, donc la valeur qu'il
- * délivre. Avec un loyer moyen de 136 667 F à Douala contre ~700 € pour un
+ * délivre. Avec un loyer moyen de 136 667 FCFA à Douala contre ~700 € pour un
  * bailleur privé européen, les montants ci-dessous représentent 0,18 % du
  * quittancé en zone FCFA contre 0,13 % en zone euro.
  *
- * Ils valaient auparavant 4 900 et 14 900 F, soit 0,36 % et 0,22 % : une remise
- * nominale de 17 % sur le prix affiché, mais une surtaxe de 2,8x rapportée au
- * chiffre d'affaires du bailleur — sur le marché au pouvoir d'achat le plus
- * faible. Le rapport restant (1,4x plutôt que la parité stricte, qui donnerait
- * ~1 800 F) couvre le coût réel des relances SMS et du support sur ces marchés.
+ * Ils valaient auparavant 4 900 et 14 900 FCFA, soit 0,36 % et 0,22 % : une
+ * remise nominale de 17 % sur le prix affiché, mais une surtaxe de 2,8x
+ * rapportée au chiffre d'affaires du bailleur — sur le marché au pouvoir
+ * d'achat le plus faible. Le rapport restant (1,4x plutôt que la parité
+ * stricte, qui donnerait ~1 800 FCFA) couvre le coût réel des relances SMS et
+ * du support sur ces marchés.
  *
  * Les montants tombent sur des coupures composables en espèces et en mobile
  * money (500 · 1 000 · 2 000 · 5 000 · 10 000). La terminaison en « 9 » des
