@@ -1,0 +1,131 @@
+import { useEffect, useRef, useState } from 'react'
+import { cn } from '@/lib/cn'
+import { useI18n } from '@/i18n/I18nProvider'
+import { useCurrency } from '@/currency/CurrencyProvider'
+import { CURRENCIES, CURRENCY_DEFS, type CurrencyCode } from '@/currency/currencies'
+import { Icon } from '@/components/primitives/Icon'
+
+export interface CurrencySwitcherProps {
+  tone?: 'light' | 'dark'
+  className?: string
+}
+
+/**
+ * Sélecteur de devise.
+ *
+ * La maquette faisait défiler les devises au clic. Avec cinq devises, atteindre
+ * la dernière demande quatre clics et l'utilisateur ne voit jamais la liste :
+ * on passe à un menu, qui laisse aussi la place au libellé complet de chaque
+ * devise (« FCFA (XAF) » vs « FCFA (XOF) », que le seul symbole confondrait).
+ */
+export function CurrencySwitcher({ tone = 'light', className }: CurrencySwitcherProps) {
+  const { currency, setCurrency, definition } = useCurrency()
+  const { t } = useI18n()
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+
+    const onPointerDown = (event: MouseEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpen(false)
+        buttonRef.current?.focus()
+      }
+    }
+
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
+
+  const select = (code: CurrencyCode) => {
+    setCurrency(code)
+    setOpen(false)
+    buttonRef.current?.focus()
+  }
+
+  return (
+    <div ref={containerRef} className={cn('relative shrink-0', className)}>
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        className={cn(
+          'inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3',
+          'text-body font-semibold transition-colors duration-150 ease-out',
+          tone === 'dark'
+            ? 'border-on-dark-border bg-on-dark-hover text-on-dark hover:bg-on-dark-active'
+            : 'border-border bg-surface text-ink hover:border-ink',
+        )}
+      >
+        {/* Le mot « Devise » disparaît sous sm : avec lui, le bouton, la
+            bascule de langue et l'avatar ne tenaient pas sur une ligne dans la
+            barre applicative d'un téléphone. Le libellé reste porté par
+            `aria-label` sur la liste. */}
+        <span
+          className={cn(
+            'eyebrow hidden sm:inline',
+            tone === 'dark' ? 'text-gold-on-dark' : 'text-gold-ink',
+          )}
+        >
+          {t('common.currency')}
+        </span>
+        <span className="sr-only">{t('common.currency')}</span>
+        <span>{definition.label}</span>
+        <Icon
+          name="chevronDown"
+          size={14}
+          className={cn('transition-transform duration-150', open && 'rotate-180')}
+        />
+      </button>
+
+      {open && (
+        <ul
+          role="listbox"
+          aria-label={t('common.currency')}
+          className={cn(
+            'animate-pop absolute right-0 mt-1.5 min-w-52 overflow-hidden rounded-md',
+            'border border-divider bg-surface p-1 shadow-e2',
+          )}
+          style={{ zIndex: 'var(--z-dropdown)' }}
+        >
+          {CURRENCIES.map((code) => {
+            const def = CURRENCY_DEFS[code]
+            const active = code === currency
+            return (
+              <li key={code}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={active}
+                  onClick={() => select(code)}
+                  className={cn(
+                    'flex min-h-11 w-full cursor-pointer items-center gap-2.5 rounded-sm px-2.5',
+                    'text-left text-body transition-colors duration-150',
+                    active ? 'bg-surface-sunken font-semibold text-ink' : 'text-ink hover:bg-surface-sunken',
+                  )}
+                >
+                  <span className="w-4 shrink-0 text-gold-ink">
+                    {active && <Icon name="check" size={14} strokeWidth={2.4} />}
+                  </span>
+                  <span className="flex-1">{def.label}</span>
+                  <span className="font-mono text-mono-label text-muted">{code}</span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </div>
+  )
+}

@@ -1,0 +1,165 @@
+import { useMemo, useState } from 'react'
+import { PageHeader } from '@/components/layout/AppShell'
+import { DataTable, EmptyState } from '@/components/primitives/DataTable'
+import { PaymentStatusPill, type PaymentStatus } from '@/components/primitives/StatusPill'
+import { StatCard } from '@/components/primitives/Charts'
+import { Button } from '@/components/primitives/Button'
+import { useToast } from '@/components/primitives/Toast'
+import { cn } from '@/lib/cn'
+import { useCurrency } from '@/currency/CurrencyProvider'
+import { useT } from '@/i18n/I18nProvider'
+import { KPIS, UNITS, type Unit } from '@/data/portfolio'
+import { RecordPaymentModal } from './RecordPaymentModal'
+
+/** Part réglée simulée, dérivée du statut. */
+function paidShare(unit: Unit): number {
+  if (unit.status === 'paid') return unit.rent
+  if (unit.status === 'partial') return Math.round(unit.rent * 0.53)
+  return 0
+}
+
+const FILTERS: (PaymentStatus | 'all')[] = ['all', 'paid', 'partial', 'overdue']
+
+export function Payments() {
+  const t = useT()
+  const { money } = useCurrency()
+  const { notify } = useToast()
+  const [filter, setFilter] = useState<PaymentStatus | 'all'>('all')
+  const [payOpen, setPayOpen] = useState(false)
+
+  const leases = useMemo(() => UNITS.filter((unit) => unit.status !== 'vacant'), [])
+  const rows = useMemo(
+    () => (filter === 'all' ? leases : leases.filter((unit) => unit.status === filter)),
+    [leases, filter],
+  )
+
+  return (
+    <>
+      <PageHeader
+        title={t('app.payments.title')}
+        description={t('app.payments.subtitle')}
+        actions={
+          <>
+            <Button variant="secondary" icon="download" onClick={() => notify(t('app.exported'))}>
+              {t('app.exportStatement')}
+            </Button>
+            <Button icon="plus" onClick={() => setPayOpen(true)}>
+              {t('app.recordPayment')}
+            </Button>
+          </>
+        }
+      />
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard label={t('app.dashboard.expected')} value={money(KPIS.expected, { round: true })} />
+        <StatCard
+          label={t('app.dashboard.recoveryCollected')}
+          value={money(KPIS.collected, { round: true })}
+        />
+        <StatCard
+          label={t('app.dashboard.recoveryLate')}
+          value={money(KPIS.late, { round: true })}
+        />
+      </div>
+
+      <div role="group" aria-label={t('app.portfolio.status')} className="mt-6 mb-4 flex flex-wrap gap-1.5">
+        {FILTERS.map((value) => {
+          const active = filter === value
+          const count =
+            value === 'all' ? leases.length : leases.filter((u) => u.status === value).length
+          return (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={active}
+              onClick={() => setFilter(value)}
+              className={cn(
+                'inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3.5',
+                'text-label font-semibold transition-colors duration-150',
+                active
+                  ? 'border-ink bg-ink text-on-dark'
+                  : 'border-border bg-surface text-muted hover:border-border-strong hover:text-ink',
+              )}
+            >
+              {value === 'all' ? t('app.payments.filterAll') : t(`status.${value}` as 'status.paid')}
+              <span className={cn('numeric text-mono-label', active ? 'text-gold' : 'text-muted')}>
+                {count}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      <DataTable<Unit>
+        caption={t('app.payments.title')}
+        rows={rows}
+        rowKey={(unit) => unit.id}
+        empty={
+          <EmptyState
+            icon="card"
+            title={t('app.system.emptyTitle')}
+            body={t('app.system.emptyBody')}
+            action={
+              <Button variant="secondary" onClick={() => setFilter('all')}>
+                {t('app.payments.filterAll')}
+              </Button>
+            }
+          />
+        }
+        columns={[
+          {
+            key: 'unit',
+            header: t('app.portfolio.unit'),
+            width: '5.5rem',
+            render: (unit) => <span className="numeric font-medium">{unit.id}</span>,
+          },
+          {
+            key: 'tenant',
+            header: t('app.portfolio.tenant'),
+            render: (unit) => unit.tenant,
+          },
+          {
+            key: 'due',
+            header: t('app.payments.due'),
+            numeric: true,
+            hideOnMobile: true,
+            render: (unit) => money(unit.rent, { round: true }),
+          },
+          {
+            key: 'paid',
+            header: t('app.payments.paid'),
+            numeric: true,
+            render: (unit) => money(paidShare(unit), { round: true }),
+          },
+          {
+            key: 'balance',
+            header: t('app.payments.balance'),
+            numeric: true,
+            render: (unit) => {
+              const balance = unit.rent - paidShare(unit)
+              return (
+                <span className={cn(balance > 0 ? 'font-medium text-danger' : 'text-muted')}>
+                  {money(balance, { round: true })}
+                </span>
+              )
+            },
+          },
+          {
+            key: 'status',
+            header: t('app.portfolio.status'),
+            render: (unit) => (
+              <div className="flex items-center gap-2">
+                <PaymentStatusPill status={unit.status} size="sm" />
+                {unit.overdueDays && (
+                  <span className="numeric text-mono-label text-muted">+{unit.overdueDays} j</span>
+                )}
+              </div>
+            ),
+          },
+        ]}
+      />
+
+      <RecordPaymentModal open={payOpen} onClose={() => setPayOpen(false)} />
+    </>
+  )
+}

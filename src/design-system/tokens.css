@@ -1,0 +1,384 @@
+/* ============================================================================
+   GestLocPro — Jetons de design
+   Source de vérité unique. Aucun hex en dur dans les composants.
+
+   Dérivé des maquettes GESLOC, avec trois corrections de contraste :
+     --muted     #6B7573 -> #5C6664   (4.33 -> 5.40 sur --paper)
+     --gold-ink  #A0722C -> #8A6218   (3.87 -> 4.98 sur --paper)
+     --gold-on-dark  #C58E3E -> #D2A055 (4.38 -> 5.33 sur --ink-2)
+   --gold (#C58E3E) reste l'accent de marque mais n'est jamais du texte sur
+   fond clair (2.87 sur blanc) : fond, bordure, icône, ou texte sur --ink.
+   ========================================================================= */
+
+@theme {
+  /* ---- Surfaces claires ------------------------------------------------ */
+  --color-canvas: #efebe2; /* fond application */
+  --color-paper: #f7f4ee; /* fond zone principale */
+  --color-surface: #ffffff; /* cartes */
+  --color-surface-sunken: #f2f0ea; /* zones creusées, en-têtes de table */
+  --color-surface-raised: #fbf9f4; /* survol de ligne, cartes secondaires */
+  --color-border: #e5dfd3;
+  --color-border-strong: #cbbfa6;
+  --color-divider: #e8e2d7;
+
+  /* ---- Encres ---------------------------------------------------------- */
+  --color-ink: #14201e; /* texte principal · 15.24 sur --paper */
+  --color-ink-2: #243733; /* surface sombre élevée, survol bouton sombre */
+  --color-ink-3: #3f4a48;
+  --color-muted: #5c6664; /* texte secondaire · 5.40 sur --paper */
+  --color-muted-soft: #6b7573; /* >=18px ou non-textuel uniquement */
+
+  /* ---- Or (marque) ----------------------------------------------------- */
+  --color-gold: #c58e3e; /* accent : fond, bordure, icône, texte sur --ink */
+  --color-gold-ink: #8a6218; /* liens et labels sur fond clair */
+  --color-gold-ink-hover: #7e571f;
+  --color-gold-on-dark: #d2a055; /* or sur --ink-2 */
+  --color-gold-tint: #fbf3e2;
+  --color-gold-tint-2: #f7ebd3;
+  --color-gold-border: #e9c68b;
+
+  /* ---- Statuts --------------------------------------------------------- */
+  --color-ok: #2c6a4e;
+  --color-ok-tint: #eaf2ec;
+  --color-ok-border: #dee8e1;
+
+  --color-warn: #8a6218;
+  --color-warn-tint: #fbf3e2;
+  --color-warn-border: #ead9b4;
+
+  --color-danger: #a63a2b;
+  --color-danger-strong: #7e2a1e;
+  --color-danger-tint: #faedea;
+  --color-danger-border: #e4b3aa;
+
+  --color-neutral: #5c6664;
+  --color-neutral-tint: #f2f0ea;
+  --color-neutral-border: #e5dfd3;
+
+  /* ---- Sur fond sombre ------------------------------------------------- */
+  --color-on-dark: #ffffff;
+  --color-on-dark-muted: rgba(255, 255, 255, 0.68);
+  /* La maquette utilisait 0.42, soit 4.02:1 sur --color-ink et 3.58:1 sur
+     --color-ink-2 : sous AA dans les deux cas. 0.58 passe sur les deux
+     surfaces sombres (6.42:1 et 5.37:1) en restant nettement en retrait. */
+  --color-on-dark-faint: rgba(255, 255, 255, 0.58);
+  --color-on-dark-hover: rgba(255, 255, 255, 0.07);
+  --color-on-dark-active: rgba(255, 255, 255, 0.14);
+  --color-on-dark-border: rgba(255, 255, 255, 0.1);
+
+  /* ---- Typographie ----------------------------------------------------- */
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-sans: 'Manrope', system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* Tailles d'affichage fluides.
+     En taille fixe, le titre du hero (56px) remplissait tout l'écran d'un
+     téléphone de 375px avant qu'un seul mot du sous-titre soit visible. Le
+     `clamp()` interpole entre la borne mobile et la borne bureau, sans point
+     de rupture ni recalcul en JavaScript. */
+  --text-display-xl: clamp(2.25rem, 1.4rem + 3.6vw, 3.5rem); /* 36 -> 56 */
+  --text-display-xl--line-height: 1.06;
+  --text-display-xl--letter-spacing: -0.02em;
+  --text-display-l: clamp(2rem, 1.5rem + 2.1vw, 2.875rem); /* 32 -> 46 */
+  --text-display-l--line-height: 1.08;
+  --text-display-l--letter-spacing: -0.015em;
+  --text-display-m: clamp(1.625rem, 1.35rem + 1.2vw, 2rem); /* 26 -> 32 */
+  --text-display-m--line-height: 1.15;
+  --text-display-m--letter-spacing: -0.01em;
+
+  --text-title-l: 1.25rem; /* 20 */
+  --text-title-l--line-height: 1.3;
+  --text-title-m: 1.0625rem; /* 17 */
+  --text-title-m--line-height: 1.35;
+
+  --text-body-l: 1rem; /* 16 — landing, inputs mobile */
+  --text-body-l--line-height: 1.6;
+  --text-body: 0.875rem; /* 14 — corps application */
+  --text-body--line-height: 1.55;
+  --text-body-s: 0.8125rem; /* 13 */
+  --text-body-s--line-height: 1.5;
+  --text-label: 0.75rem; /* 12 — plancher typographique */
+  --text-label--line-height: 1.4;
+
+  --text-mono-label: 0.6875rem; /* 11 — eyebrows, en-têtes de colonne */
+  --text-mono-label--line-height: 1.3;
+  --text-mono-label--letter-spacing: 0.08em;
+  --text-mono-data: 0.8125rem; /* 13 — cellules chiffrées */
+  --text-mono-data--line-height: 1.45;
+  --text-mono-kpi: 1.625rem; /* 26 — KPI */
+  --text-mono-kpi--line-height: 1;
+
+  /* ---- Rayons ---------------------------------------------------------- */
+  --radius-bar: 3px; /* barres de graphe */
+  --radius-sm: 6px;
+  --radius-md: 9px; /* boutons, inputs */
+  --radius-lg: 14px; /* cartes */
+  --radius-xl: 20px; /* panneaux, modales */
+  --radius-2xl: 28px; /* blocs hero */
+
+  /* ---- Élévation ------------------------------------------------------- */
+  --shadow-e1: 0 1px 2px rgba(20, 32, 30, 0.04), 0 6px 18px -12px rgba(20, 32, 30, 0.1);
+  --shadow-e2: 0 2px 6px rgba(20, 32, 30, 0.06), 0 12px 32px -16px rgba(20, 32, 30, 0.16);
+  --shadow-e3: 0 8px 24px rgba(20, 32, 30, 0.12), 0 32px 64px -24px rgba(20, 32, 30, 0.28);
+  --shadow-focus: 0 0 0 2px var(--color-paper), 0 0 0 4px var(--color-gold-ink);
+
+  /* ---- Mouvement ------------------------------------------------------- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+
+  /* ---- Empilement ------------------------------------------------------ */
+  --z-sticky: 20;
+  --z-dropdown: 40;
+  --z-overlay: 60;
+  --z-modal: 70;
+  --z-toast: 100;
+}
+
+/* ---- Durées (hors @theme : réutilisées en CSS brut) --------------------- */
+:root {
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --duration-slow: 300ms;
+}
+
+/* ============================================================================
+   Base
+   ========================================================================= */
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-body-l);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    touch-action: manipulation;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    margin: 0;
+  }
+
+  /* Chiffres alignés partout où le mono sert de police de données. */
+  .font-mono,
+  [class*='font-mono'] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--color-gold-ink);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Le focus sur fond sombre a besoin d'un anneau clair. */
+  .on-dark *:focus-visible {
+    outline-color: var(--color-gold-on-dark);
+  }
+
+  /* La bascule contextuelle sur fond sombre est définie hors couche, plus bas. */
+
+  ::selection {
+    background: var(--color-gold-tint-2);
+    color: var(--color-ink);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* ============================================================================
+   Bascule contextuelle sur fond sombre
+
+   Les jetons `--color-muted`, `--color-ink` et `--color-divider` sont réglés
+   pour les surfaces claires. Réutilisés tels quels dans un panneau sombre, le
+   texte secondaire tombe à 2.8:1. Plutôt que de corriger au cas par cas dans
+   chaque composant — ce qui finit toujours par s'oublier quelque part — on
+   redirige les jetons pour tout ce qui vit sous `.on-dark`.
+
+   Ces règles sont volontairement HORS `@layer` : le CSS non superposé l'emporte
+   sur toutes les couches, y compris `utilities` de Tailwind. Placées dans
+   `@layer base`, elles perdaient contre `.text-muted` malgré une spécificité
+   supérieure — l'ordre des couches prime sur la spécificité.
+
+   Le `:not([class*='bg-'])` est nécessaire, pas cosmétique : un bouton doré
+   posé dans un panneau sombre garde une surface CLAIRE, et son libellé doit
+   rester encre. Sans cette exclusion, la bascule repeignait ce libellé en
+   blanc — soit 2.87:1 sur l'or. Par convention Tailwind, tout élément qui
+   peint son propre fond porte une classe `bg-*` : on s'arrête donc à la
+   première surface rencontrée.
+   ========================================================================= */
+
+.on-dark .text-muted:not([class*='bg-']) {
+  color: var(--color-on-dark-muted);
+}
+.on-dark .text-ink:not([class*='bg-']) {
+  color: var(--color-on-dark);
+}
+.on-dark .text-gold-ink:not([class*='bg-']) {
+  color: var(--color-gold-on-dark);
+}
+.on-dark .border-divider:not([class*='bg-']),
+.on-dark .border-border:not([class*='bg-']) {
+  border-color: var(--color-on-dark-border);
+}
+
+/* ============================================================================
+   Animations
+   ========================================================================= */
+
+@keyframes gl-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes gl-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes gl-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes gl-grow-y {
+  from {
+    transform: scaleY(0.02);
+    opacity: 0.4;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes gl-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@keyframes gl-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@utility animate-rise {
+  animation: gl-rise var(--duration-slow) var(--ease-out) both;
+}
+
+@utility animate-pop {
+  animation: gl-pop var(--duration-base) var(--ease-out) both;
+}
+
+@utility animate-grow-x {
+  animation: gl-grow-x 700ms var(--ease-out) both;
+  transform-origin: left;
+}
+
+@utility animate-grow-y {
+  animation: gl-grow-y 600ms var(--ease-out) both;
+  transform-origin: bottom;
+}
+
+/* ============================================================================
+   Utilitaires de composition
+   ========================================================================= */
+
+/* Cible tactile de 44px sans changer la taille visuelle. */
+@utility tap-target {
+  position: relative;
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 50% 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+}
+
+@utility eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-label);
+  line-height: var(--text-mono-label--line-height);
+  letter-spacing: var(--text-mono-label--letter-spacing);
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+/* ----------------------------------------------------------------------------
+   Styles de type
+   Un rôle typographique = famille + taille + graisse + interlettrage en un
+   seul jeton. Les utilitaires `text-display-*` de Tailwind ne portent que la
+   taille : les employer seuls laissait les titres en sans-serif.
+   -------------------------------------------------------------------------- */
+
+@utility display-xl {
+  font-family: var(--font-display);
+  font-size: var(--text-display-xl);
+  line-height: var(--text-display-xl--line-height);
+  letter-spacing: var(--text-display-xl--letter-spacing);
+  font-weight: 600;
+}
+
+@utility display-l {
+  font-family: var(--font-display);
+  font-size: var(--text-display-l);
+  line-height: var(--text-display-l--line-height);
+  letter-spacing: var(--text-display-l--letter-spacing);
+  font-weight: 600;
+}
+
+@utility display-m {
+  font-family: var(--font-display);
+  font-size: var(--text-display-m);
+  line-height: var(--text-display-m--line-height);
+  letter-spacing: var(--text-display-m--letter-spacing);
+  font-weight: 600;
+}
+
+/* Chiffres de données : mono, alignés en colonne. */
+@utility numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}

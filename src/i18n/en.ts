@@ -1,0 +1,642 @@
+import type { Dictionary } from './fr'
+
+export const en: Dictionary = {
+  brand: {
+    name: 'GestLocPro',
+    tagline: 'Rental management, held like an estate',
+  },
+
+  common: {
+    back: 'Back',
+    next: 'Continue',
+    cancel: 'Cancel',
+    save: 'Save',
+    edit: 'Edit',
+    close: 'Close',
+    confirm: 'Confirm',
+    search: 'Search',
+    loading: 'Loading…',
+    required: 'required',
+    optional: 'optional',
+    currency: 'Currency',
+    language: 'Language',
+    country: 'Country',
+    email: 'Email address',
+    password: 'Password',
+    phone: 'Phone',
+    fullName: 'Full name',
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
+    selectPlaceholder: 'Select…',
+    perMonth: '/ month',
+    perYear: '/ year',
+    yes: 'Yes',
+    no: 'No',
+  },
+
+  status: {
+    paid: 'Paid',
+    partial: 'Partial',
+    overdue: 'Overdue',
+    vacant: 'Vacant',
+    pending: 'Pending',
+    done: 'Done',
+  },
+
+  roles: {
+    owner: {
+      name: 'Owner',
+      short: 'You hold the estate',
+      rights: 'Full read and write · settles deposits',
+      pitch:
+        'Consolidated portfolio view, deposit arbitration, and delegation of rights to a manager.',
+    },
+    manager: {
+      name: 'Delegated manager',
+      short: 'You run the portfolio day to day',
+      rights: 'Day-to-day operations · proposes, does not decide',
+      pitch:
+        'Collections, meter readings, inspections, works tracking. You propose, the owner decides.',
+    },
+    tenant: {
+      name: 'Tenant',
+      short: 'You occupy a unit',
+      rights: 'Their own data only',
+      pitch:
+        'Receipts, payment schedule, incident reporting and works tracking from your own space.',
+    },
+  },
+
+  nav: {
+    dashboard: 'Dashboard',
+    portfolio: 'Portfolio',
+    payments: 'Payments',
+    meters: 'Meter readings',
+    inspections: 'Inspections',
+    works: 'Works',
+    deposits: 'Deposits',
+    tenants: 'Tenants',
+    alerts: 'Reports',
+    onboarding: 'Onboarding & rights',
+    system: 'System states',
+    tenantPortal: 'Tenant portal (web)',
+    tenantApp: 'Tenant app',
+    sectionSteering: 'Steering',
+    sectionOperations: 'Operations',
+    sectionAdmin: 'Administration',
+    activeProfile: 'Active profile',
+    toggleNav: 'Collapse or expand navigation',
+    searchPlaceholder: 'Search a unit, a tenant…',
+  },
+
+  auth: {
+    signIn: 'Sign in',
+    signUp: 'Create account',
+    signUpFree: 'Start free',
+    logout: 'Sign out',
+    noAccount: 'No account yet?',
+    hasAccount: 'Already have an account?',
+    forgotPassword: 'Forgot your password?',
+
+    login: {
+      title: 'Good to see you again',
+      subtitle: 'Pick your portfolio back up.',
+      submit: 'Sign in',
+      remember: 'Stay signed in on this device',
+      success: 'Signed in — welcome back.',
+      demoNotice:
+        'Mockup: no real authentication. The form validates your input, then opens the dashboard.',
+    },
+
+    forgot: {
+      title: 'Reset your password',
+      subtitle:
+        'Enter your account email. We’ll send you a reset link valid for one hour.',
+      submit: 'Send the link',
+      backToLogin: 'Back to sign in',
+      sentTitle: 'Check your inbox',
+      sentBody:
+        'If an account exists for {email}, a reset link is on its way. Remember to check your spam folder.',
+      resend: 'Send it again',
+    },
+
+    strength: {
+      weak: 'Weak',
+      fair: 'Fair',
+      good: 'Good',
+      strong: 'Strong',
+    },
+
+    signup: {
+      title: 'Create your account',
+      stepOf: 'Step {current} of {total}',
+      steps: {
+        role: 'Your role',
+        identity: 'Your identity',
+        context: 'Your context',
+        review: 'Review',
+      },
+
+      roleTitle: 'Who are you?',
+      roleSubtitle:
+        'GestLocPro shows different things depending on your role. This choice sets your permissions, and stays changeable later.',
+
+      identityTitle: 'Your details',
+      identitySubtitle: 'They secure your account and let us send your receipts.',
+
+      contextTitle: 'Your context',
+      contextSubtitle:
+        'Your country pre-fills the currency and language of your space. You can change both.',
+
+      reviewTitle: 'Does this all look right?',
+      reviewSubtitle: 'One last check before we create your space.',
+
+      parkName: 'Name of your portfolio',
+      parkNameHint: 'Shown at the top of your space. E.g. “Bonamoussadi portfolio”.',
+      unitCount: 'Units under management',
+      unitCountHint: 'An estimate is enough — it guides which plan we suggest.',
+      management: 'How do you run things day to day?',
+      manageSolo: 'I manage on my own',
+      manageSoloHint: 'Owner and manager permissions on a single account.',
+      manageDelegate: 'I delegate to a manager',
+      manageDelegateHint: 'You invite a manager; they propose, you decide.',
+
+      company: 'Firm or company',
+      companyHint: 'Leave empty if you operate under your own name.',
+      ownerCode: 'Owner invitation code',
+      ownerCodeHint:
+        'The owner shares it from their space. Without a code, your request goes to them for approval.',
+      requestAccess: 'I have no code — send an access request',
+
+      inviteCode: 'Invitation code',
+      inviteCodeHint:
+        'You received it by SMS or email when your lease was signed. Format: LOC-XXXX-XXXX.',
+      tenantNotice:
+        'A tenant does not create a space alone: it is attached to an existing lease. Without a code, ask your manager for one.',
+
+      terms: 'I accept the terms of service and the privacy policy.',
+      termsError: 'You must accept the terms to create your account.',
+      newsletter: 'Send me product news (once a quarter, no data resale).',
+
+      submit: 'Create my space',
+      successTitle: 'Your space is ready',
+      successBody:
+        'Mockup: no account was actually created. Here is the {role} space as you would discover it.',
+      goToDashboard: 'Open the dashboard',
+
+      summaryRole: 'Role',
+      summaryName: 'Name',
+      summaryEmail: 'Email',
+      summaryPhone: 'Phone',
+      summaryCountry: 'Country',
+      summaryCurrency: 'Currency',
+      summaryLanguage: 'Language',
+    },
+
+    errors: {
+      nameRequired: 'Enter your full name.',
+      emailRequired: 'Enter your email address.',
+      emailInvalid: 'That address doesn’t look valid. Check the format: name@domain.com',
+      passwordRequired: 'Choose a password.',
+      passwordShort: 'Use at least 8 characters.',
+      phoneRequired: 'Enter a phone number.',
+      phoneInvalid: 'That number looks incomplete.',
+      parkNameRequired: 'Give your portfolio a name.',
+      inviteRequired: 'Enter your invitation code.',
+      inviteInvalid: 'Code not recognised. Expected format: LOC-XXXX-XXXX.',
+      credentials: 'Incorrect email or password.',
+      summaryTitle: 'Fix {count} item(s) before continuing',
+    },
+  },
+
+  app: {
+    period: 'Period',
+    exportStatement: 'Export statement',
+    recordPayment: 'Record a payment',
+    exported: 'Monthly statement exported (PDF + CSV)',
+    paymentSaved: 'Payment recorded · receipt sent',
+    roleNotice: 'You are viewing this space as {role}. Switch profile in the sidebar.',
+    demoBanner:
+      'Demonstration mockup: fictional data, no server contacted. Amounts display in {currency} with no exchange conversion.',
+
+    dashboard: {
+      titleOwner: 'Consolidated portfolio view',
+      titleManager: 'My management day',
+      titleTenant: 'My tenant space',
+      subtitle: '{buildings} buildings, {units} units · amounts in {currency}',
+      expected: 'Rent due',
+      collected: 'Collected this month',
+      outstanding: 'Outstanding arrears',
+      occupancy: 'Occupancy rate',
+      activeLeases: '{count} active leases · vs last month',
+      collectedShare: '{percent}% of what is owed',
+      overdueTenants: '{count} tenants · up to {days} days',
+      vacantUnits: '{count} vacant units',
+      chartTitle: 'Collections over 12 months',
+      chartNote:
+        'Amounts collected per month, split between rent, water and electricity. The current month is still open.',
+      recoveryTitle: 'Recovery this month',
+      recoveryCollected: 'Paid',
+      recoveryPartial: 'Partial',
+      recoveryLate: 'Overdue',
+      rebilled: 'Utilities re-billed',
+      decisionsTitle: 'Waiting on your decision',
+      decisionsEmpty: 'Nothing to arbitrate right now.',
+      scheduleTitle: 'Schedule',
+      breakdownTitle: 'Portfolio breakdown',
+      legendRent: 'Rent',
+      legendWater: 'Water',
+      legendPower: 'Electricity',
+    },
+
+    portfolio: {
+      title: 'Portfolio',
+      subtitle: 'Three buildings, twelve units. Status applies to the month shown.',
+      unit: 'Unit',
+      building: 'Building',
+      type: 'Type',
+      surface: 'Area',
+      rent: 'Rent',
+      tenant: 'Tenant',
+      status: 'Status',
+      noTenant: 'No tenant',
+      occupancy: '{occupied}/{total} occupied',
+      filterAll: 'All',
+      searchEmpty: 'No unit matches “{query}”.',
+      searchEmptyHint: 'Try a unit number, a tenant name or a district.',
+    },
+
+    payments: {
+      title: 'Payment tracking by period',
+      subtitle: 'Partial settlement is allowed: the balance carries to the next period.',
+      filterAll: 'All',
+      due: 'Due',
+      paid: 'Paid',
+      balance: 'Balance',
+      method: 'Method',
+      date: 'Date',
+      amount: 'Amount',
+      amountHint: 'Partial settlement is accepted.',
+      methodMobile: 'Mobile money',
+      methodCash: 'Cash',
+      methodTransfer: 'Bank transfer',
+      methodCheck: 'Cheque',
+      modalTitle: 'Record a payment',
+      modalDescription: 'The tenant will receive their receipt by email and SMS.',
+      selectUnit: 'Unit',
+      amountInvalid: 'Enter an amount greater than zero.',
+    },
+
+    meters: {
+      title: 'Meter readings',
+      subtitle:
+        'Indexes captured on site. Consumption is re-billed pro rata on the monthly receipt.',
+      water: 'Water',
+      power: 'Electricity',
+      previous: 'Previous index',
+      current: 'This month',
+      consumption: 'Consumption',
+      rebilled: 'Re-billed',
+      readAt: 'Read on',
+      missing: 'Reading missing',
+      missingCount: '{count} readings missing for this period',
+      missingHint: 'Monthly billing stays incomplete until they are captured.',
+      complete: 'All readings captured for this period.',
+      totalRebilled: 'Total re-billed',
+    },
+
+    inspections: {
+      title: 'Inspections',
+      subtitle: 'Move-in and move-out compared room by room, with timestamped photos.',
+      entry: 'Move-in',
+      exit: 'Move-out',
+      rooms: '{count} rooms',
+      issues: '{count} issues',
+      noIssues: 'No issues',
+      signed: 'Signed',
+      unsigned: 'Awaiting signature',
+      compare: 'Compare move-in and move-out',
+    },
+
+    works: {
+      title: 'Works & reports',
+      subtitle: 'The tenant reports, the manager quotes, the owner decides.',
+      reported: 'Reported',
+      quoted: 'Quoted',
+      approved: 'Approved',
+      done: 'Done',
+      urgent: 'Urgent',
+      noQuote: 'Not yet quoted',
+      approve: 'Approve quote',
+      approved_toast: 'Quote approved · the manager has been notified',
+      trade: 'Trade',
+    },
+
+    deposits: {
+      title: 'Deposits',
+      subtitle: 'Amount held, deductions justified, balance returned.',
+      held: 'Held',
+      settling: 'Being settled',
+      returned: 'Returned',
+      amountHeld: 'Held',
+      withheld: 'Withheld',
+      balance: 'To return',
+      totalHeld: 'Total held',
+    },
+
+    tenants: {
+      title: 'Tenants & leases',
+      subtitle: 'Every tenant is attached to a unit through an active lease.',
+      addTenant: 'Create a tenant record',
+      modalTitle: 'New tenant record',
+      modalDescription: 'An invitation code will be sent by SMS to activate their space.',
+      created: 'Tenant record created · invitation code sent by SMS',
+      since: 'Tenant since',
+      contact: 'Contact',
+    },
+
+    alerts: {
+      title: 'Reports & notifications',
+      subtitle: 'What the product detected or received, newest first.',
+      markRead: 'Mark all as read',
+      allRead: 'All notifications are read.',
+      unread: '{count} unread',
+      severityHigh: 'Priority',
+      severityMedium: 'To follow',
+      severityLow: 'For information',
+    },
+
+    onboarding: {
+      title: 'Onboarding & delegation of rights',
+      subtitle: 'Who can do what, and how to invite a manager or a tenant.',
+      delegateOn: 'Delegated management',
+      delegateOff: 'You manage alone',
+      delegateOnHint: 'The manager runs the portfolio daily and submits decisions to you.',
+      delegateOffHint: 'Owner and manager rights combined on your account.',
+      matrixTitle: 'Rights matrix',
+      capability: 'Action',
+      allowed: 'Allowed',
+      denied: 'Not allowed',
+      caps: {
+        viewAll: 'View the whole portfolio',
+        recordPayment: 'Record a payment',
+        readMeters: 'Capture meter readings',
+        quoteWorks: 'Quote works',
+        approveWorks: 'Approve a quote',
+        settleDeposit: 'Settle a deposit',
+        inviteTenant: 'Invite a tenant',
+        editPortfolio: 'Edit the portfolio',
+        ownData: 'View their own data',
+      },
+    },
+
+    system: {
+      title: 'System states',
+      subtitle: 'The states the interface must handle: loading, empty, error, offline.',
+      loading: 'Loading',
+      empty: 'Empty',
+      error: 'Error',
+      offline: 'Offline',
+      errorTitle: 'Could not load collections',
+      errorBody: 'The connection was interrupted. Your local data is intact.',
+      retry: 'Try again',
+      retried: 'Retried · data reloaded',
+      emptyTitle: 'No payment for this period',
+      emptyBody: 'As soon as a settlement is recorded, it appears here with its receipt.',
+      offlineTitle: 'Offline mode',
+      offlineBody:
+        'Readings and inspections captured now will sync when the network returns.',
+    },
+
+    portal: {
+      title: 'Tenant portal',
+      subtitle: 'What your tenant sees from their browser.',
+      space: 'My space',
+      myPayments: 'My payments',
+      myWorks: 'Works',
+      documents: 'Documents',
+      report: 'Report',
+      nextDue: 'Next due date',
+      myUnit: 'My home',
+      downloadReceipt: 'Download receipt',
+      reportIssue: 'Report an issue',
+      reportSent: 'Report sent to the manager and the owner',
+      category: 'Nature of the problem',
+      urgency: 'Urgency',
+      urgencyHigh: 'Blocking',
+      urgencyMedium: 'Disruptive',
+      urgencyLow: 'Can wait',
+      describe: 'Describe the problem',
+      describeHint: 'The manager receives your message and replies from this space.',
+    },
+  },
+
+  marketing: {
+    nav: {
+      features: 'Features',
+      roles: 'Who it’s for',
+      pricing: 'Pricing',
+      faq: 'Questions',
+      openMenu: 'Open menu',
+      closeMenu: 'Close menu',
+    },
+
+    hero: {
+      eyebrow: 'Multi-country rental management',
+      title: 'Your rental portfolio, held like an estate.',
+      subtitle:
+        'Rent, water, electricity, reminders, inspections and deposits in a single ledger. Your tenants follow their own situation; you keep the decisions.',
+      ctaPrimary: 'Create my space',
+      ctaSecondary: 'See the dashboard',
+      trust: 'No card required · 30-day trial · Cancel anytime',
+      settingsLabel: 'Your display preferences',
+    },
+
+    metrics: {
+      title: 'What the ledger keeps current',
+      collected: 'Collected this month',
+      occupancy: 'Occupancy rate',
+      overdue: 'Outstanding arrears',
+      reminders: 'Reminders sent',
+      note: 'Demonstration figures, sample portfolio of 12 units.',
+    },
+
+    value: {
+      eyebrow: 'The problem',
+      title: 'One notebook, two spreadsheets and a chat thread.',
+      body:
+        'That is how most private rental portfolios are run. Water readings go missing, reminders arrive too late, and nobody can find the move-in inspection three years on.',
+      afterTitle: 'With GestLocPro',
+      before: {
+        one: 'Meter readings written on paper, then copied out again.',
+        two: 'Arrears discovered at the end of the quarter.',
+        three: 'The move-out inspection argued from memory.',
+        four: 'Manager and owner working from two different versions.',
+      },
+      after: {
+        one: 'Readings captured on site, charges re-billed automatically.',
+        two: 'Arrears flagged on the due date, reminder out the next day.',
+        three: 'Move-in and move-out compared photo by photo, room by room.',
+        four: 'One ledger, distinct permissions, every action timestamped.',
+      },
+    },
+
+    features: {
+      eyebrow: 'Features',
+      title: 'What the product does',
+      subtitle: 'Six areas of rental management, handled end to end.',
+      rent: {
+        title: 'Rent tracking',
+        body: 'Schedule per lease, partial payments, a receipt generated on every settlement.',
+      },
+      utilities: {
+        title: 'Water and electricity',
+        body: 'Meter index per unit, consumption calculated, re-billed pro rata on the receipt.',
+      },
+      reminders: {
+        title: 'Automatic reminders',
+        body: 'SMS and email triggered at D+1, D+7, D+15. You set the tone, the product keeps the calendar.',
+      },
+      inspections: {
+        title: 'Inspections',
+        body: 'Move-in and move-out compared room by room, timestamped photos, costed against the deposit.',
+      },
+      works: {
+        title: 'Works and reports',
+        body: 'The tenant reports, the manager quotes, the owner decides. Every step is traced.',
+      },
+      deposits: {
+        title: 'Deposits',
+        body: 'Amount held, deductions justified, balance returned. The history stays visible to both sides.',
+      },
+    },
+
+    roles: {
+      eyebrow: 'Three roles',
+      title: 'Everyone sees what concerns them',
+      subtitle:
+        'One ledger, three readings. The manager proposes, the owner decides, the tenant consults.',
+      seeMore: 'What this role can do',
+    },
+
+    international: {
+      eyebrow: 'International',
+      title: 'Built for more than one market',
+      body:
+        'Five currencies, two interface languages, local dial codes and date formats. The CFA franc is handled properly: XAF and XOF are two distinct codes, not an alias.',
+      currencies: 'Supported currencies',
+      languages: 'Interface languages',
+      countries: '{count} countries offered at signup',
+    },
+
+    proof: {
+      eyebrow: 'Testimonials',
+      title: 'What our users say',
+      disclaimer:
+        'Illustrative testimonials — GestLocPro is under construction and these people are fictional.',
+      one: {
+        quote:
+          'Water readings were my end-of-month nightmare. They are captured on site now, and the re-billing lands on the receipt by itself.',
+        name: 'Fictional person',
+        role: 'Owner · 14 units',
+      },
+      two: {
+        quote:
+          'I propose, the owner decides. That split of permissions ended the misunderstandings about who had approved what.',
+        name: 'Fictional person',
+        role: 'Delegated manager · 3 buildings',
+      },
+      three: {
+        quote:
+          'I can see my schedule and my receipts without having to ask. My plumbing report was picked up within two days.',
+        name: 'Fictional person',
+        role: 'Tenant',
+      },
+    },
+
+    pricing: {
+      eyebrow: 'Pricing',
+      title: 'One price per unit under management',
+      subtitle:
+        'No commission on rent. The tenant portal and app are included in every plan.',
+      monthly: 'Monthly',
+      yearly: 'Yearly',
+      yearlySave: '−20%',
+      popular: 'Most chosen',
+      quote: 'On request',
+      cta: 'Get started',
+      ctaEnterprise: 'Contact us',
+      unitsUpTo: 'Up to {count} units',
+      unitsUnlimited: 'Unlimited units',
+      currencyNote:
+        'Prices anchored locally per currency, with no automatic exchange-rate conversion.',
+      essential: { name: 'Essential', pitch: 'A first building, kept properly.' },
+      pro: { name: 'Pro', pitch: 'An established portfolio, with delegation.' },
+      cabinet: { name: 'Firm', pitch: 'Several owners, several companies.' },
+      features: {
+        units: 'Units',
+        rent: 'Rent tracking and receipts',
+        meters: 'Water and electricity readings',
+        portal: 'Tenant portal and app',
+        reminders: 'Reminders',
+        remindersManual: 'Manual',
+        remindersAuto: 'Automatic',
+        managers: 'Delegated managers',
+        inspections: 'Photo inspections',
+        exports: 'Accounting export',
+        multiCompany: 'Multi-company',
+        support: 'Support',
+        supportEmail: 'By email',
+        supportPriority: 'Priority',
+        supportDedicated: 'Dedicated',
+      },
+    },
+
+    faq: {
+      eyebrow: 'Questions',
+      title: 'What people ask us',
+      one: {
+        q: 'Does GestLocPro convert currencies?',
+        a: 'No, deliberately. Each portfolio keeps its books in its own currency. The selector changes the display format, not the value: no exchange rate is applied to your amounts.',
+      },
+      two: {
+        q: 'Do my tenants need to create an account?',
+        a: 'They receive an invitation code when the lease is signed. That code attaches them to their unit — nobody can declare themselves a tenant of one of your units.',
+      },
+      three: {
+        q: 'Can I give my manager access without handing over everything?',
+        a: 'Yes. The manager runs day-to-day operations — collections, readings, works — while deposit arbitration and global editing stay with the owner.',
+      },
+      four: {
+        q: 'What happens if I leave?',
+        a: 'You export all of your data as CSV and PDF, receipts and inspections included. No forced retention period.',
+      },
+      five: {
+        q: 'Does it work offline?',
+        a: 'Meter readings and inspections are captured offline in the app, then sync when the network returns. That is the field use case.',
+      },
+    },
+
+    finalCta: {
+      title: 'Take your portfolio back in hand',
+      subtitle: 'Create your space in two minutes. No card required.',
+      cta: 'Create my space',
+      secondary: 'Browse the demo',
+    },
+
+    footer: {
+      product: 'Product',
+      company: 'Company',
+      legal: 'Legal',
+      about: 'About',
+      contact: 'Contact',
+      terms: 'Terms of service',
+      privacy: 'Privacy',
+      cookies: 'Cookies',
+      demo: 'Demo',
+      rights: '© {year} GestLocPro. Demonstration mockup.',
+      builtNote:
+        'This interface is a mockup: the data is fictional and no server is contacted.',
+    },
+  },
+}
