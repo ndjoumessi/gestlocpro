@@ -401,7 +401,7 @@ alignant le texte sur la construction, plutôt qu'en promettant de rattraper.
 
 | Promesse | Réalité mesurée | Correction |
 | --- | --- | --- |
-| « formats de date locaux » | `DATE_LOCALE` défini mais **jamais utilisé** ; toutes les dates en dur au format français | mention retirée |
+| « formats de date locaux » | `DATE_LOCALE` défini mais **jamais utilisé** ; toutes les dates en dur au format français | mention retirée, puis **rétablie** une fois le formatage branché (§14) |
 | « photos horodatées », « photo par photo » | **aucune photo** dans l'écran États des lieux | reformulé en « réserves relevées et horodatées » |
 | « hors ligne **dans l'application** » | **aucune application** : `nav.tenantApp` existe, aucune route ne la sert | question de FAQ remplacée par « Faut-il installer quelque chose ? », vraie |
 | « le portail **et l'application** locataire » (tarifs) | idem | « le portail locataire » |
@@ -463,6 +463,46 @@ aucun indicateur de parc, et les cinq écrans de gestion rendent leur état de
 refus. Les profils propriétaire et gestionnaire sont inchangés — 10 lignes de
 paiement, 12 unités au parc. Contraste, cibles tactiles et débordement
 horizontal : 0 défaut.
+
+---
+
+## 14. Formatage des dates
+
+`DATE_LOCALE` était défini depuis le premier commit sans être appelé nulle part.
+Toutes les dates du produit étaient des chaînes françaises figées, y compris
+dans l'interface anglaise — ce qui avait motivé le retrait de la promesse
+« formats de date locaux » de la landing (§11).
+
+Six séries ont été converties en valeurs machine, la présentation se calculant à
+l'affichage via `lib/dates` :
+
+| Série | Avant | FR | EN |
+| --- | --- | --- | --- |
+| Quittances | `'Août 2026'` | Août 2026 | August 2026 |
+| Travaux | `'12/08'` | 12/08 | 12/08 |
+| États des lieux | `'22/07/2026'` | 22/07/2026 | 22/07/2026 |
+| Relevés | `'20/08'` | 20/08 | 20/08 |
+| Axe du graphe | `'sep'`, `'fév'` | sept · févr | Sept · Feb |
+| Signalements | `'il y a 2 h'`, `'hier'` | il y a 2 heures · hier | 2 hours ago · yesterday |
+
+Les formats jour/mois ne changent pas entre les deux langues du produit : `fr-FR`
+et `en-GB` placent tous deux le jour en premier. Ce n'est pas du code inerte —
+la même date rend `08/12` sous `en-US`, et il suffirait de changer `DATE_LOCALE`
+là où il aurait fallu réécrire le jeu de données.
+
+`Intl.RelativeTimeFormat` en `numeric: 'auto'` a produit un gain inattendu :
+−2 jours donne « avant-hier » en français, plus idiomatique que le « il y a
+2 jours » qui avait été écrit à la main.
+
+### La promesse rétablie, mais reformulée
+
+Le texte de la landing ne reprend pas le libellé d'origine. « Formats de date
+locaux » laisserait entendre que le format suit le **pays** de l'utilisateur ;
+il suit sa **langue d'interface**. Un bailleur américain lit donc des dates
+jour-d'abord, `DATE_LOCALE.en` valant `en-GB`. La formulation retenue —
+« des dates au format de la langue choisie » — dit exactement ce que le produit
+fait. Rendre le format sensible au pays d'inscription reste possible et n'a pas
+été fait.
 
 ---
 
