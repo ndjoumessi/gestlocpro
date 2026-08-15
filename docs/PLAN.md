@@ -205,19 +205,61 @@ un code d'invitation à un propriétaire.
 
 ---
 
-## 8. Grille tarifaire proposée
+## 8. Grille tarifaire
 
 | | Essentiel | **Pro** (populaire) | Cabinet |
 | --- | --- | --- | --- |
 | Unités | ≤ 10 | ≤ 50 | illimité |
-| XAF | 4 900 /mois | 14 900 /mois | sur devis |
+| XAF / XOF | 2 500 /mois | 7 500 /mois | sur devis |
 | EUR | 9 € | 29 € | sur devis |
 | CAD | 13 $ | 39 $ | sur devis |
 | USD | 9 $ | 29 $ | sur devis |
 
-Annuel −20 %. Portail et app locataire inclus dans tous les paliers.
+Annuel −20 % (2 000 et 6 000 F). Portail et app locataire inclus dans tous les paliers.
 Différenciateurs : relances automatiques (manuelles en Essentiel), gestionnaires délégués (Pro+),
 export comptable, multi-sociétés.
+
+### Ce que la validation a corrigé
+
+La grille initiale portait 4 900 et 14 900 F. Trois défauts l'ont fait tomber.
+
+**Le franc CFA est en parité fixe avec l'euro** (1 € = 655,957 F, XAF comme XOF).
+Il n'existe donc pas de prix FCFA « ancré indépendamment du taux du jour » —
+4 900 F *étaient* 7,47 €, mécaniquement. La justification inscrite dans le code
+affirmait le contraire.
+
+**Le bon dénominateur est le loyer encaissé**, pas le taux de change : c'est ce
+que le produit administre. Sur cette mesure, l'ancienne grille faisait payer la
+zone FCFA **2,6 à 2,8× plus cher** que la zone euro — une remise nominale de
+17 % qui était en réalité une surtaxe, sur le marché au pouvoir d'achat le plus
+faible.
+
+| Palier | Zone | Quittancé/mois | Avant | Après | Part du loyer |
+| --- | --- | --- | --- | --- | --- |
+| Essentiel | FCFA | 1 366 667 F | 4 900 | **2 500** | 0,359 % → **0,183 %** |
+| | EUR | 7 000 € | 9 € | 9 € | 0,129 % |
+| Pro | FCFA | 6 833 333 F | 14 900 | **7 500** | 0,218 % → **0,110 %** |
+| | EUR | 35 000 € | 29 € | 29 € | 0,083 % |
+
+L'écart passe de 2,8× à 1,4×. La parité stricte donnerait ~1 800 F, mais les
+relances SMS et le support ont un coût réel par client sur ces marchés : le
+rapport résiduel le couvre.
+
+**Les points de prix suivaient une convention étrangère.** 4 900 et 14 900
+imitaient la terminaison en « 9 » occidentale. Les coupures FCFA sont
+500 / 1 000 / 2 000 / 5 000 / 10 000, et le mobile money favorise les montants
+composables — d'où 2 500 et 7 500, dont la remise annuelle tombe elle aussi
+juste (2 000 et 6 000).
+
+### Ce qui reste ouvert sur les tarifs
+
+- **Le niveau absolu en zone euro** (9 € / 29 €) n'a pas été confronté à la
+  concurrence : il reste une hypothèse.
+- **La frontière à 10 unités.** Passer de 10 à 11 unités triple la facture
+  (490 → 1 355 F l'unité). C'est inhérent à toute grille par paliers, mais
+  10 unités est une taille de parc répandue : le mur tombe là où beaucoup de
+  prospects se trouvent. Options si cela se confirme : déplacer la frontière,
+  ou facturer les unités excédentaires à l'unité au-delà du palier.
 
 Pays initiaux : zone FCFA (Cameroun, Gabon, Congo, Tchad, RCA, Guinée éq. — XAF ;
 Sénégal, Côte d'Ivoire, Bénin, Burkina, Mali, Togo, Niger — XOF), France/Belgique/Luxembourg (EUR),
@@ -279,6 +321,8 @@ passer un fond crème pour un fond sombre.
   l'utilisateur dans la FAQ et sous la grille tarifaire.
 - **Mode sombre complet hors périmètre.** Seules la barre latérale et certaines
   cartes sont sombres, comme dans la maquette.
-- **Contenus à valider :** grille tarifaire (§8), textes marketing, liste des
-  22 pays. Les témoignages sont des placeholders explicitement fictifs — pas de
-  logo d'entreprise réelle, pas de citation attribuée à une personne existante.
+- **Contenus à valider :** textes marketing et liste des 22 pays. Les
+  témoignages sont des placeholders explicitement fictifs — pas de logo
+  d'entreprise réelle, pas de citation attribuée à une personne existante.
+  La grille tarifaire a été validée et corrigée (§8) ; il y subsiste deux
+  points ouverts, le niveau absolu en zone euro et la frontière à 10 unités.

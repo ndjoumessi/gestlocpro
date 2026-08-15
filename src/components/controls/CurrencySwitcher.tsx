@@ -68,19 +68,22 @@ export function CurrencySwitcher({ tone = 'light', className }: CurrencySwitcher
             : 'border-border bg-surface text-ink hover:border-ink',
         )}
       >
-        {/* Le mot « Devise » disparaît sous sm : avec lui, le bouton, la
-            bascule de langue et l'avatar ne tenaient pas sur une ligne dans la
-            barre applicative d'un téléphone. Le libellé reste porté par
-            `aria-label` sur la liste. */}
+        {/* Le mot « Devise » est masqué visuellement sous sm : avec lui, le
+            bouton, la bascule de langue et l'avatar ne tenaient pas sur une
+            ligne dans la barre applicative d'un téléphone.
+            `sr-only sm:not-sr-only` plutôt que `hidden sm:inline` + un second
+            span `sr-only` : cette dernière combinaison laissait DEUX fois le
+            libellé dans l'arbre d'accessibilité au-dessus de sm, annoncé
+            « Devise Devise ». Ici l'élément est unique et change seulement de
+            visibilité. */}
         <span
           className={cn(
-            'eyebrow hidden sm:inline',
+            'eyebrow sr-only sm:not-sr-only',
             tone === 'dark' ? 'text-gold-on-dark' : 'text-gold-ink',
           )}
         >
           {t('common.currency')}
         </span>
-        <span className="sr-only">{t('common.currency')}</span>
         <span>{definition.label}</span>
         <Icon
           name="chevronDown"
