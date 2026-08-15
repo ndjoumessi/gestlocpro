@@ -86,7 +86,9 @@ export const PLANS: Plan[] = [
     popular: true,
     // 1,6 x Essentiel sur l'abonnement comme sur le prix unitaire, dans toutes
     // les devises : l'effort d'upgrade est constant, quelle que soit la taille
-    // du parc.
+    // du parc. L'Essentiel est l'ancre et Pro s'en déduit — d'où des montants
+    // moins ronds ici (6,40 € plutôt que 6 €), le prix d'entrée restant celui
+    // qu'on lit en premier.
     //
     // En franc CFA, ni 1 920 ni 160 ne sont multiples de 100 : le total mensuel
     // de Pro décroche donc de sa formule, 48 positions du curseur sur 60. Le
@@ -98,8 +100,8 @@ export const PLANS: Plan[] = [
     // portait déjà sur 48 positions, le prix unitaire de 160 suffisant à le
     // produire.
     pricing: {
-      base: { XAF: 1920, XOF: 1920, EUR: 6, CAD: 9, USD: 6 },
-      perUnit: { XAF: 160, XOF: 160, EUR: 0.8, CAD: 1.1, USD: 0.8 },
+      base: { XAF: 1920, XOF: 1920, EUR: 6.4, CAD: 9.6, USD: 6.4 },
+      perUnit: { XAF: 160, XOF: 160, EUR: 0.8, CAD: 1.12, USD: 0.8 },
     },
   },
   { id: 'cabinet', pricing: null },

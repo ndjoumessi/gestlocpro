@@ -75,16 +75,17 @@ describe('arrondi des francs CFA', () => {
  * composantes — l'appliquer au seul abonnement, ou au seul prix unitaire, ferait
  * varier l'écart Pro/Essentiel avec le nombre d'unités.
  *
- * Il n'est tenu qu'en franc CFA. Les autres devises portent un rapport de 1,5
- * sur l'abonnement (6 / 4 en euros et en dollars, 9 / 6 en dollars canadiens),
- * et le dollar canadien 1,571 sur le prix unitaire — écarts hérités du choix
- * d'ancrer chaque devise sur un prix rond plutôt que de convertir. Le corriger
- * changerait des prix affichés dans trois devises : décision produit, non
- * technique.
+ * L'Essentiel est l'ancre et Pro s'en déduit : les autres devises portaient un
+ * rapport de 1,5 sur l'abonnement (6 / 4) et le dollar canadien 1,571 sur le
+ * prix unitaire, écarts hérités de l'ancrage de chaque devise sur un prix rond.
+ * Les aligner a rendu les montants de Pro moins ronds — 6,40 € — et laissé
+ * intacts ceux de l'Essentiel, qui sont ceux qu'on lit en premier.
  */
 describe('facteur d’upgrade', () => {
-  it('vaut 1,6 sur les deux composantes en franc CFA', () => {
-    for (const currency of ['XAF', 'XOF'] as const) {
+  const DEVISES = ['XAF', 'XOF', 'EUR', 'CAD', 'USD'] as const
+
+  it('vaut 1,6 sur les deux composantes, dans toutes les devises', () => {
+    for (const currency of DEVISES) {
       expect(pro.pricing!.base[currency] / essentiel.pricing!.base[currency]).toBeCloseTo(1.6, 10)
       expect(pro.pricing!.perUnit[currency] / essentiel.pricing!.perUnit[currency]).toBeCloseTo(
         1.6,
@@ -93,21 +94,15 @@ describe('facteur d’upgrade', () => {
     }
   })
 
-  it('tient donc à toute taille de parc en franc CFA', () => {
-    for (const units of [1, 12, 60]) {
-      const ratio =
-        exactPlanPrice(pro, 'XAF', 'monthly', units)! /
-        exactPlanPrice(essentiel, 'XAF', 'monthly', units)!
-      expect(ratio).toBeCloseTo(1.6, 10)
+  it('tient donc à toute taille de parc, dans toutes les devises', () => {
+    for (const currency of DEVISES) {
+      for (const units of [1, 12, 60]) {
+        const ratio =
+          exactPlanPrice(pro, currency, 'monthly', units)! /
+          exactPlanPrice(essentiel, currency, 'monthly', units)!
+        expect(ratio).toBeCloseTo(1.6, 10)
+      }
     }
-  })
-
-  it('ne le tient pas dans les autres devises, ce qui reste à trancher', () => {
-    // Constaté plutôt que souhaité : le test tombera si la grille est alignée,
-    // et signalera qu'il faut mettre à jour le §8.
-    expect(pro.pricing!.base.EUR / essentiel.pricing!.base.EUR).toBeCloseTo(1.5, 10)
-    expect(pro.pricing!.base.CAD / essentiel.pricing!.base.CAD).toBeCloseTo(1.5, 10)
-    expect(pro.pricing!.perUnit.CAD / essentiel.pricing!.perUnit.CAD).toBeCloseTo(1.571, 3)
   })
 })
 

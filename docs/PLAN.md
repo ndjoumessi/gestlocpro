@@ -212,9 +212,9 @@ un code d'invitation à un propriétaire.
 | | Essentiel | **Pro** (populaire) | Cabinet |
 | --- | --- | --- | --- |
 | XAF / XOF | 1 200 + 100 /unité | 1 920 + 160 /unité | sur devis |
-| EUR | 4 € + 0,50 € /unité | 6 € + 0,80 € /unité | sur devis |
-| CAD | 6 $ + 0,70 $ /unité | 9 $ + 1,10 $ /unité | sur devis |
-| USD | 4 $ + 0,50 $ /unité | 6 $ + 0,80 $ /unité | sur devis |
+| EUR | 4 € + 0,50 € /unité | 6,40 € + 0,80 € /unité | sur devis |
+| CAD | 6 $ + 0,70 $ /unité | 9,60 $ + 1,12 $ /unité | sur devis |
+| USD | 4 $ + 0,50 $ /unité | 6,40 $ + 0,80 $ /unité | sur devis |
 
 **Pro vaut 1,6 × Essentiel** sur l'abonnement, et sur le prix unitaire des
 devises à sous-unité : l'effort d'upgrade y est identique quelle que soit la
@@ -223,15 +223,19 @@ taille du parc.
 En franc CFA, l'Essentiel est passé à **1 200 + 100 par unité** (auparavant
 1 250 + 125) et Pro à **1 920 + 160** (auparavant 2 000 + 200).
 
-**Le facteur 1,6 tient sur les deux composantes, en franc CFA.** L'effort
-d'upgrade y est donc constant quelle que soit la taille du parc — c'est l'objet
-du § « Ce que la validation a corrigé » ci-dessous.
+**Le facteur 1,6 tient sur les deux composantes, dans toutes les devises.**
+L'effort d'upgrade est donc constant quelle que soit la taille du parc — c'est
+l'objet du § « Ce que la validation a corrigé » ci-dessous.
 
-**Il ne tient pas dans les autres devises**, et ne l'a jamais tenu : l'abonnement
-y est à 1,5 (6 / 4 en euros comme en dollars, 9 / 6 en dollars canadiens), et le
-prix unitaire du dollar canadien à 1,571. Écarts hérités du choix d'ancrer chaque
-devise sur un prix rond plutôt que de convertir depuis le franc CFA. Les aligner
-changerait des prix affichés dans trois devises : **non tranché**.
+Il ne tenait auparavant qu'en franc CFA : l'abonnement était à 1,5 ailleurs
+(6 / 4 en euros comme en dollars, 9 / 6 en dollars canadiens) et le prix unitaire
+canadien à 1,571 — écarts hérités de l'ancrage de chaque devise sur un prix rond.
+
+**L'Essentiel est l'ancre, Pro s'en déduit.** Aligner a donc rendu les montants
+de Pro moins ronds (6,40 € au lieu de 6 €, 9,60 $ CA et 1,12 $ CA) et laissé
+intacts ceux de l'Essentiel — le prix d'entrée est celui qu'on lit en premier, et
+c'est lui qui doit rester lisible. Même règle qu'en franc CFA, où la base de Pro
+avait été déduite à 1 920.
 
 **L'arrondi ne peut pas disparaître partout.** Deux impossibilités arithmétiques,
 et non des réglages à trouver.
@@ -352,9 +356,8 @@ Contrepartie assumée : sous ~22 unités Pro coûte moins qu'avant, au-dessus il
 coûte davantage — cohérent avec qui tire la valeur de la fonction.
 
 > **Depuis, en franc CFA**, la grille est 1 200 + 100 pour l'Essentiel et
-> 1 920 + 160 pour Pro : le facteur 1,6 tient sur les deux composantes, et ce
-> raisonnement s'applique tel quel. Il ne tient pas dans les autres devises,
-> point resté ouvert. Voir §8.
+> 1 920 + 160 pour Pro. Le facteur 1,6 tient sur les deux composantes et dans
+> toutes les devises, donc ce raisonnement s'applique tel quel. Voir §8.
 
 ### Ce qui reste ouvert sur les tarifs
 
