@@ -23,6 +23,14 @@
  *
  * Ne pas laisser la copie dans `public/` : elle serait embarquée dans le build.
  *
+ * ATTENTION à l'onglet masqué. Si `document.visibilityState === 'hidden'` — cas
+ * d'un panneau de prévisualisation replié — les transitions CSS se figent en
+ * vol : la liste de classes est à jour mais le fond calculé reste à sa valeur
+ * d'avant. Un basculement de langue ou de thème produit alors de faux échecs,
+ * du texte clair paraissant posé sur un fond clair. Vérifier `visibilityState`
+ * avant de conclure, ou mesurer après un rechargement plutôt qu'après une
+ * bascule en page.
+ *
  * ATTENTION à la mesure du débordement horizontal : `documentElement.scrollWidth`
  * compte la largeur de mise en page des descendants d'un conteneur à défilement,
  * et signale donc un faux positif sur un tableau large logé dans un

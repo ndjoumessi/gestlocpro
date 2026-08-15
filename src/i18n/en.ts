@@ -307,7 +307,7 @@ export const en: Dictionary = {
 
     inspections: {
       title: 'Inspections',
-      subtitle: 'Move-in and move-out compared room by room, with timestamped photos.',
+      subtitle: 'Move-in and move-out compared room by room, issues costed against the deposit.',
       entry: 'Move-in',
       exit: 'Move-out',
       rooms: '{count} rooms',
@@ -476,7 +476,7 @@ export const en: Dictionary = {
       after: {
         one: 'Readings captured on site, charges re-billed automatically.',
         two: 'Arrears flagged on the due date, reminder out the next day.',
-        three: 'Move-in and move-out compared photo by photo, room by room.',
+        three: 'Move-in and move-out compared room by room, issue by issue.',
         four: 'One ledger, distinct permissions, every action timestamped.',
       },
     },
@@ -495,11 +495,11 @@ export const en: Dictionary = {
       },
       reminders: {
         title: 'Automatic reminders',
-        body: 'SMS and email triggered at D+1, D+7, D+15. You set the tone, the product keeps the calendar.',
+        body: 'SMS and email triggered at D+1, D+7, D+15. You set the tone, the product keeps the calendar. Automatic from the Pro plan up.',
       },
       inspections: {
         title: 'Inspections',
-        body: 'Move-in and move-out compared room by room, timestamped photos, costed against the deposit.',
+        body: 'Move-in and move-out compared room by room, issues recorded and timestamped, costed against the deposit.',
       },
       works: {
         title: 'Works and reports',
@@ -523,7 +523,7 @@ export const en: Dictionary = {
       eyebrow: 'International',
       title: 'Built for more than one market',
       body:
-        'Five currencies, two interface languages, local dial codes and date formats. The CFA franc is handled properly: XAF and XOF are two distinct codes, not an alias.',
+        '{currencies} currencies, {locales} interface languages and local dial codes. The CFA franc is handled properly: XAF and XOF are two distinct codes, not an alias.',
       currencies: 'Supported currencies',
       languages: 'Interface languages',
       countries: '{count} countries offered at signup',
@@ -558,12 +558,13 @@ export const en: Dictionary = {
       eyebrow: 'Pricing',
       title: 'One price per unit under management',
       subtitle:
-        'No commission on rent. The tenant portal and app are included in every plan.',
+        'No commission on rent. The tenant portal is included in every plan.',
       monthly: 'Monthly',
       yearly: 'Yearly',
       yearlySave: '−20%',
       popular: 'Most chosen',
       quote: 'On request',
+      trial: '30-day trial, no card required',
       cta: 'Get started',
       ctaEnterprise: 'Contact us',
       unitsUpTo: 'Up to {count} units',
@@ -577,12 +578,12 @@ export const en: Dictionary = {
         units: 'Units',
         rent: 'Rent tracking and receipts',
         meters: 'Water and electricity readings',
-        portal: 'Tenant portal and app',
+        portal: 'Tenant portal',
         reminders: 'Reminders',
         remindersManual: 'Manual',
         remindersAuto: 'Automatic',
         managers: 'Delegated managers',
-        inspections: 'Photo inspections',
+        inspections: 'Compared inspections',
         exports: 'Accounting export',
         multiCompany: 'Multi-company',
         support: 'Support',
@@ -612,8 +613,8 @@ export const en: Dictionary = {
         a: 'You export all of your data as CSV and PDF, receipts and inspections included. No forced retention period.',
       },
       five: {
-        q: 'Does it work offline?',
-        a: 'Meter readings and inspections are captured offline in the app, then sync when the network returns. That is the field use case.',
+        q: 'Is there anything to install?',
+        a: 'No. GestLocPro runs in a browser, on desktop as well as on a phone. Your tenants reach their space through a link received when the lease is signed, with nothing to install.',
       },
     },
 

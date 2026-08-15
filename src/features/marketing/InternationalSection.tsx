@@ -25,8 +25,15 @@ export function InternationalSection() {
             {t('marketing.international.eyebrow')}
           </p>
           <h2 className="display-m mt-3 text-balance">{t('marketing.international.title')}</h2>
+          {/* Le nombre de devises est injecté depuis CURRENCIES, comme le
+              nombre de pays juste en dessous : écrit en toutes lettres dans le
+              dictionnaire, il devenait faux en silence dès qu'on ajoutait une
+              devise. */}
           <p className="mt-4 text-body-l text-pretty text-muted">
-            {t('marketing.international.body')}
+            {t('marketing.international.body', {
+              currencies: CURRENCIES.length,
+              locales: LOCALES.length,
+            })}
           </p>
           <p className="mt-5 flex items-center gap-2 font-mono text-mono-label text-muted">
             <Icon name="check" size={14} className="text-ok" />

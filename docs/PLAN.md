@@ -321,8 +321,44 @@ passer un fond crème pour un fond sombre.
   l'utilisateur dans la FAQ et sous la grille tarifaire.
 - **Mode sombre complet hors périmètre.** Seules la barre latérale et certaines
   cartes sont sombres, comme dans la maquette.
-- **Contenus à valider :** textes marketing et liste des 22 pays. Les
-  témoignages sont des placeholders explicitement fictifs — pas de logo
-  d'entreprise réelle, pas de citation attribuée à une personne existante.
+- **Contenus à valider :** liste des 22 pays. Les témoignages sont des
+  placeholders explicitement fictifs — pas de logo d'entreprise réelle, pas de
+  citation attribuée à une personne existante.
   La grille tarifaire a été validée et corrigée (§8) ; il y subsiste deux
   points ouverts, le niveau absolu en zone euro et la frontière à 10 unités.
+  Les textes marketing ont été validés et corrigés (§11).
+
+---
+
+## 11. Validation des textes marketing
+
+La copie promettait trois choses que le produit ne fait pas. Corrigées en
+alignant le texte sur la construction, plutôt qu'en promettant de rattraper.
+
+| Promesse | Réalité mesurée | Correction |
+| --- | --- | --- |
+| « formats de date locaux » | `DATE_LOCALE` défini mais **jamais utilisé** ; toutes les dates en dur au format français | mention retirée |
+| « photos horodatées », « photo par photo » | **aucune photo** dans l'écran États des lieux | reformulé en « réserves relevées et horodatées » |
+| « hors ligne **dans l'application** » | **aucune application** : `nav.tenantApp` existe, aucune route ne la sert | question de FAQ remplacée par « Faut-il installer quelque chose ? », vraie |
+| « le portail **et l'application** locataire » (tarifs) | idem | « le portail locataire » |
+
+Trois autres défauts corrigés :
+
+- **Contradiction interne.** La carte « Relances automatiques » promettait
+  J+1 / J+7 / J+15 sans réserve, alors que la grille vend l'automatisation à
+  partir de Pro. La carte porte désormais « Automatiques à partir du palier Pro ».
+- **Engagement isolé.** « 30 jours d'essai » n'apparaissait que dans la ligne de
+  confiance du hero. Il figure maintenant sur chaque palier tarifé — pas sur
+  « Cabinet », qui passe par un devis.
+- **Prose fragile.** « Cinq devises, deux langues » était écrit en toutes
+  lettres. Les deux comptes sont interpolés depuis `CURRENCIES` et `LOCALES`,
+  comme l'était déjà le nombre de pays.
+
+FR et EN sont alignés : 123 clés de part et d'autre, aucune divergence sur les
+promesses chiffrées. Audit final : **0 échec de contraste dans les deux langues**.
+
+> Piège de mesure rencontré : dans un onglet masqué (`visibilityState === 'hidden'`),
+> les transitions CSS se figent en vol. Le fond calculé reste à sa valeur d'avant
+> bascule alors que les classes sont à jour, ce qui fabrique de faux échecs de
+> contraste après un changement de langue. Vérifier `visibilityState`, ou mesurer
+> après rechargement plutôt qu'après une bascule en page.

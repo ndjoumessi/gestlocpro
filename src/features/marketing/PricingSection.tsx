@@ -94,6 +94,18 @@ export function PricingSection() {
                     ? t('marketing.pricing.unitsUnlimited')
                     : t('marketing.pricing.unitsUpTo', { count: plan.units })}
                 </p>
+
+                {/* L'essai gratuit était annoncé dans la seule ligne de
+                    confiance du hero, sans trace ici. Un engagement de durée
+                    doit figurer là où l'on choisit son palier. Il ne s'affiche
+                    que sur les paliers tarifés : « Cabinet » passe par un
+                    devis, où la durée d'essai se négocie. */}
+                {price !== null && (
+                  <p className="mt-2 flex items-center gap-1.5 text-body-s text-ok">
+                    <Icon name="checkCircle" size={14} />
+                    {t('marketing.pricing.trial')}
+                  </p>
+                )}
               </div>
 
               <ul className="mt-5 flex flex-1 flex-col gap-3">

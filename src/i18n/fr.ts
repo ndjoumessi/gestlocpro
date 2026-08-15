@@ -312,7 +312,7 @@ export const fr = {
 
     inspections: {
       title: 'États des lieux',
-      subtitle: 'Entrée et sortie comparées pièce par pièce, avec photos horodatées.',
+      subtitle: 'Entrée et sortie comparées pièce par pièce, réserves chiffrées et imputées sur la caution.',
       entry: 'Entrée',
       exit: 'Sortie',
       rooms: '{count} pièces',
@@ -482,7 +482,7 @@ export const fr = {
       after: {
         one: 'Relevés saisis sur place, charges refacturées automatiquement.',
         two: 'Retard signalé à l’échéance, relance partie le lendemain.',
-        three: 'Entrée et sortie comparées photo par photo, pièce par pièce.',
+        three: 'Entrée et sortie comparées pièce par pièce, réserve par réserve.',
         four: 'Un seul registre, des droits distincts, chaque geste horodaté.',
       },
     },
@@ -501,11 +501,11 @@ export const fr = {
       },
       reminders: {
         title: 'Relances automatiques',
-        body: 'SMS et e-mail déclenchés à J+1, J+7, J+15. Vous fixez le ton, le produit tient le calendrier.',
+        body: 'SMS et e-mail déclenchés à J+1, J+7, J+15. Vous fixez le ton, le produit tient le calendrier. Automatiques à partir du palier Pro.',
       },
       inspections: {
         title: 'États des lieux',
-        body: 'Entrée et sortie comparées pièce par pièce, photos horodatées, imputation chiffrée sur la caution.',
+        body: 'Entrée et sortie comparées pièce par pièce, réserves relevées et horodatées, imputation chiffrée sur la caution.',
       },
       works: {
         title: 'Travaux et signalements',
@@ -529,7 +529,7 @@ export const fr = {
       eyebrow: 'International',
       title: 'Pensé pour plusieurs marchés',
       body:
-        'Cinq devises, deux langues d’interface, indicatifs téléphoniques et formats de date locaux. Le franc CFA est traité correctement : XAF et XOF sont deux codes distincts, pas un alias.',
+        '{currencies} devises, {locales} langues d’interface et les indicatifs téléphoniques locaux. Le franc CFA est traité correctement : XAF et XOF sont deux codes distincts, pas un alias.',
       currencies: 'Devises prises en charge',
       languages: 'Langues de l’interface',
       countries: '{count} pays proposés à l’inscription',
@@ -564,12 +564,13 @@ export const fr = {
       eyebrow: 'Tarifs',
       title: 'Un prix par unité gérée',
       subtitle:
-        'Pas de commission sur les loyers. Le portail et l’application locataire sont inclus dans tous les paliers.',
+        'Pas de commission sur les loyers. Le portail locataire est inclus dans tous les paliers.',
       monthly: 'Mensuel',
       yearly: 'Annuel',
       yearlySave: '−20 %',
       popular: 'Le plus choisi',
       quote: 'Sur devis',
+      trial: '30 jours d’essai, sans carte bancaire',
       cta: 'Commencer',
       ctaEnterprise: 'Nous contacter',
       unitsUpTo: 'Jusqu’à {count} unités',
@@ -583,12 +584,12 @@ export const fr = {
         units: 'Unités',
         rent: 'Suivi des loyers et quittances',
         meters: 'Relevés eau et électricité',
-        portal: 'Portail et app locataire',
+        portal: 'Portail locataire',
         reminders: 'Relances',
         remindersManual: 'Manuelles',
         remindersAuto: 'Automatiques',
         managers: 'Gestionnaires délégués',
-        inspections: 'États des lieux photo',
+        inspections: 'États des lieux comparés',
         exports: 'Export comptable',
         multiCompany: 'Multi-sociétés',
         support: 'Accompagnement',
@@ -618,8 +619,8 @@ export const fr = {
         a: 'Vous exportez l’intégralité de vos données en CSV et PDF, quittances et états des lieux compris. Aucune période de rétention forcée.',
       },
       five: {
-        q: 'Le produit fonctionne-t-il hors connexion ?',
-        a: 'La saisie des relevés et des états des lieux se fait hors ligne dans l’application, puis se synchronise au retour du réseau. C’est le cas d’usage sur le terrain.',
+        q: 'Faut-il installer quelque chose ?',
+        a: 'Non. GestLocPro s’utilise depuis un navigateur, sur ordinateur comme sur téléphone. Vos locataires accèdent à leur espace par un lien reçu à la signature du bail, sans rien installer.',
       },
     },
 
