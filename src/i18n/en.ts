@@ -125,6 +125,27 @@ export const en: Dictionary = {
       sentBody:
         'If an account exists for {email}, a reset link is on its way. Remember to check your spam folder.',
       resend: 'Send it again',
+      demoLinkNotice:
+        'Mockup: no email is sent. Here is the link it would have contained.',
+    },
+
+    reset: {
+      title: 'Choose a new password',
+      subtitle: 'It replaces the old one on every device you are signed in on.',
+      newPassword: 'New password',
+      confirm: 'Confirm the password',
+      confirmHint: 'Type it again, identically.',
+      submit: 'Save the password',
+      successTitle: 'Password changed',
+      successBody:
+        'You can sign in with your new password. Any other open sessions have been signed out.',
+      goToLogin: 'Sign in',
+      invalidTitle: 'This link is no longer valid',
+      invalidBody:
+        'A reset link expires after one hour and works only once. Request a new one.',
+      askAnother: 'Request a new link',
+      demoNotice:
+        'Mockup: no password is actually changed. The form validates your input, then shows the confirmation screen.',
     },
 
     strength: {
@@ -212,6 +233,8 @@ export const en: Dictionary = {
       inviteRequired: 'Enter your invitation code.',
       inviteInvalid: 'Code not recognised. Expected format: LOC-XXXX-XXXX.',
       credentials: 'Incorrect email or password.',
+      confirmRequired: 'Confirm your password.',
+      confirmMismatch: 'The two entries do not match.',
       summaryTitle: 'Fix {count} items before continuing',
       summaryTitle_one: 'Fix {count} item before continuing',
     },

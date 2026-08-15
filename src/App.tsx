@@ -4,6 +4,7 @@ import type { Role } from './features/auth/signupState'
 import { Landing } from './routes/Landing'
 import { Login } from './routes/Login'
 import { ForgotPassword } from './routes/ForgotPassword'
+import { ResetPassword } from './routes/ResetPassword'
 import { SignUp } from './routes/SignUp'
 import { KitchenSink } from './routes/KitchenSink'
 import { AppShell, RoleGuard } from './components/layout/AppShell'
@@ -41,6 +42,7 @@ export function App() {
       <Route path="/inscription/:role" element={<SignUp />} />
       <Route path="/connexion" element={<Login />} />
       <Route path="/mot-de-passe-oublie" element={<ForgotPassword />} />
+      <Route path="/reinitialiser" element={<ResetPassword />} />
 
       <Route path="/app" element={<AppShell />}>
         <Route index element={<Dashboard />} />

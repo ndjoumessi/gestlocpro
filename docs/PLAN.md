@@ -153,7 +153,7 @@ src/
 | `/tarifs` | `/inscription/:role` assistant | `/app/parc` |
 | `/fonctionnalites` | `/connexion` | `/app/paiements` |
 | | `/mot-de-passe-oublie` | `/app/releves` ← promu |
-| | `/reinitialiser` | `/app/etats-des-lieux` |
+| | `/reinitialiser?jeton=` | `/app/etats-des-lieux` |
 | | | `/app/travaux` · `/cautions` · `/locataires` |
 | | | `/app/signalements` · `/onboarding` · `/systeme` |
 | | | `/portail` · `/app/apercu-mobile` |

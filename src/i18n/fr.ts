@@ -130,6 +130,27 @@ export const fr = {
       sentBody:
         'Si un compte existe pour {email}, un lien de réinitialisation vient d’y être envoyé. Pensez à regarder dans les indésirables.',
       resend: 'Renvoyer le lien',
+      demoLinkNotice:
+        'Maquette : aucun e-mail n’est envoyé. Voici le lien qu’il aurait contenu.',
+    },
+
+    reset: {
+      title: 'Choisissez un nouveau mot de passe',
+      subtitle: 'Il remplacera l’ancien sur tous vos appareils connectés.',
+      newPassword: 'Nouveau mot de passe',
+      confirm: 'Confirmez le mot de passe',
+      confirmHint: 'Retapez-le à l’identique.',
+      submit: 'Enregistrer le mot de passe',
+      successTitle: 'Mot de passe modifié',
+      successBody:
+        'Vous pouvez vous connecter avec votre nouveau mot de passe. Les autres sessions ouvertes ont été déconnectées.',
+      goToLogin: 'Se connecter',
+      invalidTitle: 'Ce lien n’est plus valable',
+      invalidBody:
+        'Un lien de réinitialisation expire au bout d’une heure et ne sert qu’une fois. Demandez-en un nouveau.',
+      askAnother: 'Demander un nouveau lien',
+      demoNotice:
+        'Maquette : aucun mot de passe n’est réellement modifié. Le formulaire valide la saisie, puis affiche l’écran de confirmation.',
     },
 
     strength: {
@@ -217,6 +238,8 @@ export const fr = {
       inviteRequired: 'Saisissez votre code d’invitation.',
       inviteInvalid: 'Code non reconnu. Format attendu : LOC-XXXX-XXXX.',
       credentials: 'E-mail ou mot de passe incorrect.',
+      confirmRequired: 'Confirmez votre mot de passe.',
+      confirmMismatch: 'Les deux saisies ne correspondent pas.',
       summaryTitle: 'Corrigez {count} points avant de continuer',
       summaryTitle_one: 'Corrigez {count} point avant de continuer',
     },

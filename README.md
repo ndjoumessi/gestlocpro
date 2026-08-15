@@ -21,6 +21,7 @@ npm install && npm run dev
 | | `/inscription/:role` | `/app/parc` · `/paiements` · `/releves` |
 | | `/connexion` | `/app/etats-des-lieux` · `/travaux` · `/cautions` |
 | | `/mot-de-passe-oublie` | `/app/locataires` · `/signalements` · `/onboarding` |
+| | `/reinitialiser?jeton=` | |
 | | | `/app/systeme` · `/portail` |
 
 `/kitchen-sink` affiche chaque primitive du système de design dans ses états.

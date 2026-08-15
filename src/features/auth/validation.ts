@@ -28,6 +28,31 @@ export function validatePassword(value: string, { requireStrong = false } = {}):
   return null
 }
 
+/**
+ * Confirmation d'un mot de passe.
+ *
+ * Le message ne dit pas laquelle des deux saisies est fautive : elles sont
+ * masquées, l'utilisateur ne peut de toute façon comparer que ce qu'il retape.
+ */
+export function validatePasswordConfirmation(value: string, reference: string): FieldError {
+  if (!value) return 'auth.errors.confirmRequired'
+  return value === reference ? null : 'auth.errors.confirmMismatch'
+}
+
+/**
+ * Jeton de réinitialisation.
+ *
+ * Sans serveur, la validité se réduit à la forme : seize caractères
+ * hexadécimaux. Un jeton absent, tronqué ou raturé mène à l'écran « lien
+ * expiré » plutôt qu'à un formulaire qui échouerait à l'envoi.
+ */
+export function isValidResetToken(token: string | null): boolean {
+  return typeof token === 'string' && /^[0-9a-f]{16}$/.test(token)
+}
+
+/** Jeton de la démonstration, fixe pour que le parcours soit rejouable. */
+export const DEMO_RESET_TOKEN = 'a7f3c9e1b4d82056'
+
 export function validatePhone(value: string): FieldError {
   const digits = value.replace(/\D/g, '')
   if (!digits) return 'auth.errors.phoneRequired'

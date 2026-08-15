@@ -6,7 +6,7 @@ import { Field } from '@/components/primitives/Field'
 import { Input } from '@/components/primitives/Input'
 import { Icon } from '@/components/primitives/Icon'
 import { useT } from '@/i18n/I18nProvider'
-import { validateEmail, type FieldError } from '@/features/auth/validation'
+import { DEMO_RESET_TOKEN, validateEmail, type FieldError } from '@/features/auth/validation'
 
 export function ForgotPassword() {
   const t = useT()
@@ -55,6 +55,24 @@ export function ForgotPassword() {
           <Button variant="secondary" size="lg" fullWidth onClick={() => setSent(false)}>
             {t('auth.forgot.resend')}
           </Button>
+
+          {/* Sans service d'envoi, le lien promis resterait inatteignable et le
+              parcours s'arrêterait ici. On l'expose donc explicitement comme
+              artefact de maquette, plutôt que de laisser croire à un e-mail
+              parti quelque part. */}
+          <div className="rounded-md border border-gold-border bg-gold-tint px-3.5 py-3">
+            <p className="flex items-start gap-2 text-body-s text-gold-ink">
+              <Icon name="info" size={15} className="mt-0.5 shrink-0" />
+              {t('auth.forgot.demoLinkNotice')}
+            </p>
+            <Link
+              to={`/reinitialiser?jeton=${DEMO_RESET_TOKEN}`}
+              className="mt-2 inline-flex min-h-11 items-center gap-1.5 font-mono text-mono-label font-semibold text-gold-ink underline underline-offset-2 hover:text-gold-ink-hover"
+            >
+              /reinitialiser?jeton={DEMO_RESET_TOKEN}
+              <Icon name="arrowRight" size={14} />
+            </Link>
+          </div>
         </div>
       </AuthLayout>
     )
