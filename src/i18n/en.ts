@@ -376,6 +376,22 @@ export const en: Dictionary = {
       withheld: 'Withheld',
       balance: 'To return',
       totalHeld: 'Total held',
+      settle: 'Settle',
+      settleTitle: 'Settle the deposit',
+      settleDescription:
+        'The tenant receives the breakdown of deductions and the balance returned. They may dispute it.',
+      withheldAmount: 'Amount withheld',
+      withheldHint: 'Leave at zero to return the deposit in full.',
+      justification: 'Justification for the deductions',
+      justificationHint:
+        'It appears on the statement given to the tenant — cite the issues from the move-out inspection.',
+      balanceToReturn: 'Balance to return',
+      confirmSettle: 'Confirm settlement',
+      settled: 'Deposit settled · statement sent to the tenant',
+      errorTooHigh: 'The deduction cannot exceed the deposit held, {amount}.',
+      errorJustification: 'Justify the deduction: the tenant may dispute it.',
+      managerNotice:
+        'Only the owner settles deposits. You prepare the statement, they approve it.',
     },
 
     tenants: {

@@ -31,6 +31,12 @@
  * avant de conclure, ou mesurer après un rechargement plutôt qu'après une
  * bascule en page.
  *
+ * ATTENTION aussi à la mesure des CIBLES TACTILES dans un onglet masqué. Les
+ * modales s'ouvrent sur une animation `scale(0.96) -> scale(1)` qui reste figée
+ * à son état initial, et `getBoundingClientRect` renvoie les dimensions APRÈS
+ * transformation : un bouton de 44px se mesure alors à 42. Neutraliser
+ * l'animation avant de mesurer, ou mesurer hors modale.
+ *
  * ATTENTION à la mesure du débordement horizontal : `documentElement.scrollWidth`
  * compte la largeur de mise en page des descendants d'un conteneur à défilement,
  * et signale donc un faux positif sur un tableau large logé dans un

@@ -381,6 +381,22 @@ export const fr = {
       withheld: 'Retenu',
       balance: 'À restituer',
       totalHeld: 'Total consigné',
+      settle: 'Arbitrer',
+      settleTitle: 'Arbitrer la caution',
+      settleDescription:
+        'Le locataire reçoit le détail des retenues et le solde restitué. Il peut les contester.',
+      withheldAmount: 'Montant retenu',
+      withheldHint: 'Laissez à zéro pour restituer l’intégralité de la caution.',
+      justification: 'Justification des retenues',
+      justificationHint:
+        'Elle figure sur le décompte remis au locataire — citez les réserves de l’état des lieux de sortie.',
+      balanceToReturn: 'Solde à restituer',
+      confirmSettle: 'Valider l’arbitrage',
+      settled: 'Caution arbitrée · décompte envoyé au locataire',
+      errorTooHigh: 'La retenue ne peut pas dépasser la caution consignée, soit {amount}.',
+      errorJustification: 'Justifiez la retenue : le locataire peut la contester.',
+      managerNotice:
+        'Seul le propriétaire arbitre les cautions. Vous préparez le décompte, il le valide.',
     },
 
     tenants: {
