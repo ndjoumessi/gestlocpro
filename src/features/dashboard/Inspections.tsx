@@ -5,13 +5,13 @@ import { Badge } from '@/components/primitives/Badge'
 import { Icon } from '@/components/primitives/Icon'
 import { EmptyState } from '@/components/primitives/DataTable'
 import { TenantScopeNote } from './TenantDashboard'
-import { useI18n, useT } from '@/i18n/I18nProvider'
-import { formatFullDate } from '@/lib/dates'
+import { useT } from '@/i18n/I18nProvider'
+import { useDates } from '@/lib/useDates'
 import { CURRENT_TENANT_UNIT, INSPECTIONS, inspectionsForUnit, unitById } from '@/data/portfolio'
 
 export function Inspections() {
   const t = useT()
-  const { locale } = useI18n()
+  const d = useDates()
   const { role } = useRole()
   const isTenant = role === 'tenant'
   const source = isTenant ? inspectionsForUnit(CURRENT_TENANT_UNIT) : INSPECTIONS
@@ -75,7 +75,7 @@ export function Inspections() {
                         {t(`app.inspections.${inspection.kind}` as 'app.inspections.entry')}
                       </p>
                       <p className="font-mono text-mono-label text-muted">
-                        {formatFullDate(inspection.date.year, inspection.date.month, inspection.date.day, locale)}{' · '}
+                        {d.fullDate(inspection.date)}{' · '}
                         {t('app.inspections.rooms', { count: inspection.rooms })}
                       </p>
                     </div>

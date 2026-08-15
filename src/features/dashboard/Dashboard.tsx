@@ -9,15 +9,15 @@ import { Icon } from '@/components/primitives/Icon'
 import { DonutChart, ProgressBar, StackedBarChart, StatCard } from '@/components/primitives/Charts'
 import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
-import { useI18n, useT } from '@/i18n/I18nProvider'
-import { formatMonthShort } from '@/lib/dates'
+import { useT } from '@/i18n/I18nProvider'
+import { useDates } from '@/lib/useDates'
 import { BUILDINGS, COLLECTIONS, KPIS, UNITS, WORKS } from '@/data/portfolio'
 import { RecordPaymentModal } from './RecordPaymentModal'
 import { TenantDashboard } from './TenantDashboard'
 
 export function Dashboard() {
   const t = useT()
-  const { locale } = useI18n()
+  const d = useDates()
   const { role } = useRole()
   const { money, definition } = useCurrency()
   const { notify } = useToast()
@@ -110,7 +110,7 @@ export function Dashboard() {
               power: t('app.dashboard.legendPower'),
             }}
             bars={COLLECTIONS.map((month) => ({
-              label: formatMonthShort(month.year, month.month, locale),
+              label: d.monthShort(month),
               segments: [
                 { key: 'rent', value: month.rent },
                 { key: 'water', value: month.water },

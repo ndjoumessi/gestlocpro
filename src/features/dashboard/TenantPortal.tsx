@@ -10,9 +10,9 @@ import { Logo } from '@/components/primitives/Logo'
 import { useToast } from '@/components/primitives/Toast'
 import { cn } from '@/lib/cn'
 import { useCurrency } from '@/currency/CurrencyProvider'
-import { useI18n, useT } from '@/i18n/I18nProvider'
-import { formatDayMonth } from '@/lib/dates'
-import { UNITS, WORKS } from '@/data/portfolio'
+import { useT } from '@/i18n/I18nProvider'
+import { useDates } from '@/lib/useDates'
+import { TENANT_RECEIPTS, UNITS, WORKS } from '@/data/portfolio'
 
 const TABS = ['space', 'myPayments', 'myWorks', 'documents', 'report'] as const
 type Tab = (typeof TABS)[number]
@@ -24,7 +24,7 @@ type Tab = (typeof TABS)[number]
  */
 export function TenantPortal() {
   const t = useT()
-  const { locale } = useI18n()
+  const d = useDates()
   const { money } = useCurrency()
   const { notify } = useToast()
   const [tab, setTab] = useState<Tab>('space')
@@ -121,9 +121,14 @@ export function TenantPortal() {
             {tab === 'myPayments' && (
               <Card flush>
                 <ul className="divide-y divide-divider">
-                  {['Août 2026', 'Juillet 2026', 'Juin 2026', 'Mai 2026'].map((month) => (
-                    <li key={month} className="flex flex-wrap items-center gap-3 px-4 py-3">
-                      <span className="min-w-0 flex-1 text-body font-medium">{month}</span>
+                  {TENANT_RECEIPTS.slice(0, 4).map((receipt) => (
+                    <li
+                      key={`${receipt.year}-${receipt.month}`}
+                      className="flex flex-wrap items-center gap-3 px-4 py-3"
+                    >
+                      <span className="min-w-0 flex-1 text-body font-medium">
+                        {d.monthYear(receipt)}
+                      </span>
                       <span className="numeric text-body">{money(unit.rent, { round: true })}</span>
                       <StatusPill tone="ok" size="sm">
                         {t('status.paid')}
@@ -146,7 +151,7 @@ export function TenantPortal() {
                       <p className="text-body font-medium">{work.title}</p>
                       <p className="font-mono text-mono-label text-muted">
                         {work.id} ·{' '}
-                        {formatDayMonth(work.reportedAt.year, work.reportedAt.month, work.reportedAt.day, locale)}
+                        {d.dayMonth(work.reportedAt)}
                       </p>
                     </div>
                     <StatusPill tone={work.status === 'done' ? 'ok' : 'warn'} size="sm">

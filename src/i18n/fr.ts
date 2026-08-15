@@ -559,7 +559,7 @@ export const fr = {
       eyebrow: 'International',
       title: 'Pensé pour plusieurs marchés',
       body:
-        '{currencies} devises, {locales} langues d’interface, les indicatifs téléphoniques locaux et des dates au format de la langue choisie. Le franc CFA est traité correctement : XAF et XOF sont deux codes distincts, pas un alias.',
+        '{currencies} devises, {locales} langues d’interface, indicatifs téléphoniques et formats de date locaux. Le franc CFA est traité correctement : XAF et XOF sont deux codes distincts, pas un alias.',
       currencies: 'Devises prises en charge',
       languages: 'Langues de l’interface',
       countries: '{count} pays proposés à l’inscription',

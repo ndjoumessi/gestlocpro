@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { DEFAULT_LOCALE, LOCALES, type Locale } from './locales'
+import { DEFAULT_LOCALE, LOCALES, resolveDateLocale, type Locale } from './locales'
 import { fr } from './fr'
 import { en } from './en'
 
@@ -37,12 +37,22 @@ export type TranslateVars = Record<string, string | number>
 interface I18nContextValue {
   locale: Locale
   setLocale: (locale: Locale) => void
+  /**
+   * Code pays à deux lettres, choisi à l'inscription. Il ne sert qu'au
+   * formatage — dates, et plus tard nombres — et non à la traduction : la
+   * langue reste un choix distinct du pays.
+   */
+  region: string | null
+  setRegion: (region: string | null) => void
+  /** Étiquette BCP-47 dérivée de la langue et du pays. */
+  dateLocale: string
   t: (key: MessageKey, vars?: TranslateVars) => string
 }
 
 const I18nContext = createContext<I18nContextValue | null>(null)
 
 const STORAGE_KEY = 'gestlocpro.locale'
+const REGION_KEY = 'gestlocpro.region'
 
 function readStoredLocale(): Locale {
   if (typeof window === 'undefined') return DEFAULT_LOCALE
@@ -67,15 +77,28 @@ function interpolate(template: string, vars?: TranslateVars): string {
   )
 }
 
+function readStoredRegion(): string | null {
+  if (typeof window === 'undefined') return null
+  const stored = window.localStorage.getItem(REGION_KEY)
+  return stored && /^[A-Z]{2}$/.test(stored) ? stored : null
+}
+
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(readStoredLocale)
+  const [region, setRegionState] = useState<string | null>(readStoredRegion)
 
   useEffect(() => {
     document.documentElement.lang = locale
     window.localStorage.setItem(STORAGE_KEY, locale)
   }, [locale])
 
+  useEffect(() => {
+    if (region) window.localStorage.setItem(REGION_KEY, region)
+    else window.localStorage.removeItem(REGION_KEY)
+  }, [region])
+
   const setLocale = useCallback((next: Locale) => setLocaleState(next), [])
+  const setRegion = useCallback((next: string | null) => setRegionState(next), [])
 
   const t = useCallback(
     (key: MessageKey, vars?: TranslateVars) => {
@@ -91,7 +114,12 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     [locale],
   )
 
-  const value = useMemo(() => ({ locale, setLocale, t }), [locale, setLocale, t])
+  const dateLocale = resolveDateLocale(locale, region)
+
+  const value = useMemo(
+    () => ({ locale, setLocale, region, setRegion, dateLocale, t }),
+    [locale, setLocale, region, setRegion, dateLocale, t],
+  )
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
 }

@@ -494,15 +494,36 @@ là où il aurait fallu réécrire le jeu de données.
 −2 jours donne « avant-hier » en français, plus idiomatique que le « il y a
 2 jours » qui avait été écrit à la main.
 
-### La promesse rétablie, mais reformulée
+### Le format suit le pays, pas seulement la langue
 
-Le texte de la landing ne reprend pas le libellé d'origine. « Formats de date
-locaux » laisserait entendre que le format suit le **pays** de l'utilisateur ;
-il suit sa **langue d'interface**. Un bailleur américain lit donc des dates
-jour-d'abord, `DATE_LOCALE.en` valant `en-GB`. La formulation retenue —
-« des dates au format de la langue choisie » — dit exactement ce que le produit
-fait. Rendre le format sensible au pays d'inscription reste possible et n'a pas
-été fait.
+Première version : le formatage ne dépendait que de la langue, `DATE_LOCALE.en`
+valant `en-GB`. Un bailleur américain lisait donc des dates jour-d'abord, et la
+promesse « formats de date locaux » aurait été légèrement fausse — elle avait
+été reformulée en conséquence.
+
+Le pays d'inscription pilote désormais le formatage. `region` rejoint `locale`
+dans le provider i18n — c'est le même sujet — et `resolveDateLocale()` compose
+une étiquette BCP-47 complète. Sans pays connu (visiteur de la landing,
+inscription en « Autre pays »), on retombe sur le repli plutôt que d'inventer
+une région.
+
+| Pays / langue | Étiquette | État des lieux |
+| --- | --- | --- |
+| Cameroun / français | `fr-CM` | 22/07/2026 |
+| France / français | `fr-FR` | 22/07/2026 |
+| États-Unis / anglais | `en-US` | **07/22/2026** |
+| Canada / français | `fr-CA` | **2026-07-22** |
+
+Vérifié de bout en bout dans l'application, pas seulement sur `Intl` : mêmes
+données, rendu différent selon la région enregistrée.
+
+Un hook `useDates()` expose les formateurs liés à la langue et au pays courants.
+Les écrans appellent `d.dayMonth(work.reportedAt)` au lieu de reconstruire
+l'étiquette et d'éclater la date en trois arguments : un seul endroit connaît la
+résolution, donc un seul endroit à corriger.
+
+La landing reprend donc le libellé d'origine — « indicatifs téléphoniques et
+formats de date locaux » — qui est devenu exact.
 
 ---
 

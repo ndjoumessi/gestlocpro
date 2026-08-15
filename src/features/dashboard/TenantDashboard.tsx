@@ -6,8 +6,8 @@ import { StatCard } from '@/components/primitives/Charts'
 import { PaymentStatusPill, StatusPill } from '@/components/primitives/StatusPill'
 import { EmptyState } from '@/components/primitives/DataTable'
 import { useCurrency } from '@/currency/CurrencyProvider'
-import { useI18n, useT } from '@/i18n/I18nProvider'
-import { formatDayMonth, formatMonthYear } from '@/lib/dates'
+import { useT } from '@/i18n/I18nProvider'
+import { useDates } from '@/lib/useDates'
 import {
   CURRENT_TENANT_UNIT,
   TENANT_RECEIPTS,
@@ -29,7 +29,7 @@ import {
  */
 export function TenantDashboard() {
   const t = useT()
-  const { locale } = useI18n()
+  const d = useDates()
   const { money } = useCurrency()
 
   const unit = unitById(CURRENT_TENANT_UNIT)
@@ -104,12 +104,12 @@ export function TenantDashboard() {
                 className="flex flex-wrap items-center gap-3 px-4 py-3 sm:px-5"
               >
                 <span className="min-w-0 flex-1 text-body font-medium">
-                  {formatMonthYear(receipt.year, receipt.month, locale)}
+                  {d.monthYear(receipt)}
                 </span>
                 <span className="numeric text-body">{money(unit.rent, { round: true })}</span>
                 <span className="font-mono text-mono-label text-muted">
                   {t('app.tenant.paidOn', {
-                    date: formatDayMonth(receipt.year, receipt.month, receipt.paidDay, locale),
+                    date: d.dayMonth({ year: receipt.year, month: receipt.month, day: receipt.paidDay }),
                   })}
                 </span>
                 <Button variant="ghost" size="sm" icon="download">
@@ -136,7 +136,7 @@ export function TenantDashboard() {
                       <p className="text-body font-medium">{work.title}</p>
                       <p className="mt-0.5 font-mono text-mono-label text-muted">
                         {work.id} ·{' '}
-                        {formatDayMonth(work.reportedAt.year, work.reportedAt.month, work.reportedAt.day, locale)}
+                        {d.dayMonth(work.reportedAt)}
                       </p>
                     </div>
                   </li>

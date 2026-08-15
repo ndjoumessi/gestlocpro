@@ -54,7 +54,7 @@ type StepKey = (typeof STEP_KEYS)[number]
  */
 export function SignUp() {
   const t = useT()
-  const { locale, setLocale } = useI18n()
+  const { locale, setLocale, setRegion } = useI18n()
   const { currency, setCurrency } = useCurrency()
   const { role: roleSlug } = useParams()
 
@@ -332,6 +332,9 @@ export function SignUp() {
               // choix et on laisse devise et langue à l'utilisateur.
               if (code === OTHER_COUNTRY) {
                 patch({ country: code })
+                // Pas de pays connu : on efface la région pour retomber sur le
+                // repli de formatage plutôt que d'en inventer une.
+                setRegion(null)
                 return
               }
               const country = findCountry(code)
@@ -347,6 +350,9 @@ export function SignUp() {
               })
               setCurrency(country.currency)
               setLocale(country.locale)
+              // Le pays pilote aussi le format des dates : en-US rend 08/12
+              // quand en-GB rend 12/08, et fr-CA rend 2026-08-12.
+              setRegion(country.code)
             }}
             onCurrencyChange={(currency) => {
               patch({ currency })

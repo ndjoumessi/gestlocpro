@@ -8,8 +8,8 @@ import { useToast } from '@/components/primitives/Toast'
 import { EmptyState } from '@/components/primitives/DataTable'
 import { TenantScopeNote } from './TenantDashboard'
 import { useCurrency } from '@/currency/CurrencyProvider'
-import { useI18n, useT } from '@/i18n/I18nProvider'
-import { formatDayMonth } from '@/lib/dates'
+import { useT } from '@/i18n/I18nProvider'
+import { useDates } from '@/lib/useDates'
 import { CURRENT_TENANT_UNIT, WORKS, unitById, worksForUnit, type WorkOrder } from '@/data/portfolio'
 
 const STATUS_TONE: Record<WorkOrder['status'], StatusTone> = {
@@ -21,7 +21,7 @@ const STATUS_TONE: Record<WorkOrder['status'], StatusTone> = {
 
 export function Works() {
   const t = useT()
-  const { locale } = useI18n()
+  const d = useDates()
   const { money } = useCurrency()
   const { notify } = useToast()
   const { role } = useRole()
@@ -62,7 +62,7 @@ export function Works() {
                 </div>
                 <p className="mt-1 font-mono text-mono-label text-muted">
                   {work.id} · {work.unitId} {unit?.tenant ? `· ${unit.tenant}` : ''} · {work.trade} ·{' '}
-                  {formatDayMonth(work.reportedAt.year, work.reportedAt.month, work.reportedAt.day, locale)}
+                  {d.dayMonth(work.reportedAt)}
                 </p>
               </div>
 
