@@ -5,11 +5,13 @@ import { Badge } from '@/components/primitives/Badge'
 import { Icon } from '@/components/primitives/Icon'
 import { EmptyState } from '@/components/primitives/DataTable'
 import { TenantScopeNote } from './TenantDashboard'
-import { useT } from '@/i18n/I18nProvider'
+import { useI18n, useT } from '@/i18n/I18nProvider'
+import { formatFullDate } from '@/lib/dates'
 import { CURRENT_TENANT_UNIT, INSPECTIONS, inspectionsForUnit, unitById } from '@/data/portfolio'
 
 export function Inspections() {
   const t = useT()
+  const { locale } = useI18n()
   const { role } = useRole()
   const isTenant = role === 'tenant'
   const source = isTenant ? inspectionsForUnit(CURRENT_TENANT_UNIT) : INSPECTIONS
@@ -52,7 +54,7 @@ export function Inspections() {
               <div className="flex flex-col gap-2.5">
                 {inspections.map((inspection) => (
                   <div
-                    key={inspection.kind + inspection.date}
+                    key={`${inspection.kind}-${inspection.date.year}-${inspection.date.month}`}
                     className="flex items-center gap-3 rounded-md border border-divider bg-surface-sunken px-3.5 py-3"
                   >
                     <span
@@ -73,7 +75,8 @@ export function Inspections() {
                         {t(`app.inspections.${inspection.kind}` as 'app.inspections.entry')}
                       </p>
                       <p className="font-mono text-mono-label text-muted">
-                        {inspection.date} · {t('app.inspections.rooms', { count: inspection.rooms })}
+                        {formatFullDate(inspection.date.year, inspection.date.month, inspection.date.day, locale)}{' · '}
+                        {t('app.inspections.rooms', { count: inspection.rooms })}
                       </p>
                     </div>
 

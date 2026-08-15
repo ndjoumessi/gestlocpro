@@ -10,7 +10,8 @@ import { Logo } from '@/components/primitives/Logo'
 import { useToast } from '@/components/primitives/Toast'
 import { cn } from '@/lib/cn'
 import { useCurrency } from '@/currency/CurrencyProvider'
-import { useT } from '@/i18n/I18nProvider'
+import { useI18n, useT } from '@/i18n/I18nProvider'
+import { formatDayMonth } from '@/lib/dates'
 import { UNITS, WORKS } from '@/data/portfolio'
 
 const TABS = ['space', 'myPayments', 'myWorks', 'documents', 'report'] as const
@@ -23,6 +24,7 @@ type Tab = (typeof TABS)[number]
  */
 export function TenantPortal() {
   const t = useT()
+  const { locale } = useI18n()
   const { money } = useCurrency()
   const { notify } = useToast()
   const [tab, setTab] = useState<Tab>('space')
@@ -143,7 +145,8 @@ export function TenantPortal() {
                     <div className="min-w-0 flex-1">
                       <p className="text-body font-medium">{work.title}</p>
                       <p className="font-mono text-mono-label text-muted">
-                        {work.id} · {work.reportedAt}
+                        {work.id} ·{' '}
+                        {formatDayMonth(work.reportedAt.year, work.reportedAt.month, work.reportedAt.day, locale)}
                       </p>
                     </div>
                     <StatusPill tone={work.status === 'done' ? 'ok' : 'warn'} size="sm">

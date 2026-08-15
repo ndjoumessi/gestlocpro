@@ -135,7 +135,8 @@ export function TenantDashboard() {
                     <div className="min-w-0">
                       <p className="text-body font-medium">{work.title}</p>
                       <p className="mt-0.5 font-mono text-mono-label text-muted">
-                        {work.id} · {work.reportedAt}
+                        {work.id} ·{' '}
+                        {formatDayMonth(work.reportedAt.year, work.reportedAt.month, work.reportedAt.day, locale)}
                       </p>
                     </div>
                   </li>

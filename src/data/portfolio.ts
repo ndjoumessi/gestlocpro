@@ -114,6 +114,18 @@ export const READINGS: MeterReading[] = [
 /** Tarifs unitaires de refacturation des charges. */
 export const UTILITY_RATES = { water: 520, power: 99 }
 
+/**
+ * Date en valeurs machine. Les libellés se calculent à l'affichage selon la
+ * langue de l'interface — voir `lib/dates`. Stocker « 12/08 » figeait le format
+ * français jusque dans l'interface anglaise.
+ */
+export interface DateParts {
+  year: number
+  /** 0 = janvier. */
+  month: number
+  day: number
+}
+
 export interface WorkOrder {
   id: string
   unitId: string
@@ -121,16 +133,16 @@ export interface WorkOrder {
   trade: string
   status: 'reported' | 'quoted' | 'approved' | 'done'
   amount: number | null
-  reportedAt: string
+  reportedAt: DateParts
   urgent: boolean
 }
 
 export const WORKS: WorkOrder[] = [
-  { id: 'SIG-2026-042', unitId: 'A3', title: 'Fuite sous l’évier de la cuisine', trade: 'Plomberie', status: 'quoted', amount: 45000, reportedAt: '12/08', urgent: true },
-  { id: 'SIG-2026-041', unitId: 'B2', title: 'Disjoncteur qui saute au démarrage du chauffe-eau', trade: 'Électricité', status: 'approved', amount: 78000, reportedAt: '09/08', urgent: true },
-  { id: 'SIG-2026-039', unitId: 'C1', title: 'Peinture du séjour à reprendre', trade: 'Peinture', status: 'reported', amount: null, reportedAt: '05/08', urgent: false },
-  { id: 'SIG-2026-036', unitId: 'A1', title: 'Remplacement du groupe de sécurité', trade: 'Plomberie', status: 'done', amount: 32000, reportedAt: '28/07', urgent: false },
-  { id: 'SIG-2026-034', unitId: 'B4', title: 'Réfection complète avant relocation', trade: 'Multi-corps', status: 'approved', amount: 340000, reportedAt: '22/07', urgent: false },
+  { id: 'SIG-2026-042', unitId: 'A3', title: 'Fuite sous l’évier de la cuisine', trade: 'Plomberie', status: 'quoted', amount: 45000, reportedAt: { year: 2026, month: 7, day: 12 }, urgent: true },
+  { id: 'SIG-2026-041', unitId: 'B2', title: 'Disjoncteur qui saute au démarrage du chauffe-eau', trade: 'Électricité', status: 'approved', amount: 78000, reportedAt: { year: 2026, month: 7, day: 9 }, urgent: true },
+  { id: 'SIG-2026-039', unitId: 'C1', title: 'Peinture du séjour à reprendre', trade: 'Peinture', status: 'reported', amount: null, reportedAt: { year: 2026, month: 7, day: 5 }, urgent: false },
+  { id: 'SIG-2026-036', unitId: 'A1', title: 'Remplacement du groupe de sécurité', trade: 'Plomberie', status: 'done', amount: 32000, reportedAt: { year: 2026, month: 6, day: 28 }, urgent: false },
+  { id: 'SIG-2026-034', unitId: 'B4', title: 'Réfection complète avant relocation', trade: 'Multi-corps', status: 'approved', amount: 340000, reportedAt: { year: 2026, month: 6, day: 22 }, urgent: false },
 ]
 
 export interface Deposit {
@@ -152,18 +164,18 @@ export const DEPOSITS: Deposit[] = [
 export interface Inspection {
   unitId: string
   kind: 'entry' | 'exit'
-  date: string
+  date: DateParts
   rooms: number
   issues: number
   signed: boolean
 }
 
 export const INSPECTIONS: Inspection[] = [
-  { unitId: 'B4', kind: 'exit', date: '22/07/2026', rooms: 4, issues: 6, signed: true },
-  { unitId: 'B4', kind: 'entry', date: '01/09/2024', rooms: 4, issues: 1, signed: true },
-  { unitId: 'C3', kind: 'exit', date: '30/06/2026', rooms: 3, issues: 2, signed: true },
-  { unitId: 'A4', kind: 'entry', date: '15/03/2026', rooms: 5, issues: 0, signed: true },
-  { unitId: 'A5', kind: 'entry', date: '02/02/2026', rooms: 2, issues: 1, signed: false },
+  { unitId: 'B4', kind: 'exit', date: { year: 2026, month: 6, day: 22 }, rooms: 4, issues: 6, signed: true },
+  { unitId: 'B4', kind: 'entry', date: { year: 2024, month: 8, day: 1 }, rooms: 4, issues: 1, signed: true },
+  { unitId: 'C3', kind: 'exit', date: { year: 2026, month: 5, day: 30 }, rooms: 3, issues: 2, signed: true },
+  { unitId: 'A4', kind: 'entry', date: { year: 2026, month: 2, day: 15 }, rooms: 5, issues: 0, signed: true },
+  { unitId: 'A5', kind: 'entry', date: { year: 2026, month: 1, day: 2 }, rooms: 2, issues: 1, signed: false },
 ]
 
 export interface Alert {
