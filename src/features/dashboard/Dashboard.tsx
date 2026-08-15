@@ -12,6 +12,7 @@ import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { BUILDINGS, COLLECTIONS, KPIS, UNITS, WORKS } from '@/data/portfolio'
 import { RecordPaymentModal } from './RecordPaymentModal'
+import { TenantDashboard } from './TenantDashboard'
 
 export function Dashboard() {
   const t = useT()
@@ -19,6 +20,12 @@ export function Dashboard() {
   const { money, definition } = useCurrency()
   const { notify } = useToast()
   const [payOpen, setPayOpen] = useState(false)
+
+  // Le locataire n'a pas une version filtrée de cet écran : il en a un autre.
+  // Les indicateurs de parc — encaissé consolidé, taux d'occupation, impayés de
+  // tous les baux — n'ont aucun sens pour lui, et les afficher revenait à lui
+  // montrer la situation de ses voisins.
+  if (role === 'tenant') return <TenantDashboard />
 
   const occupied = UNITS.filter((unit) => unit.status !== 'vacant').length
   const vacant = UNITS.length - occupied

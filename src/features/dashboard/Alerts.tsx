@@ -1,13 +1,14 @@
 import { useState } from 'react'
-import { PageHeader } from '@/components/layout/AppShell'
+import { PageHeader, useRole } from '@/components/layout/AppShell'
 import { Card } from '@/components/primitives/Card'
 import { StatusPill, type StatusTone } from '@/components/primitives/StatusPill'
 import { Button } from '@/components/primitives/Button'
 import { Icon, type IconName } from '@/components/primitives/Icon'
 import { EmptyState } from '@/components/primitives/DataTable'
 import { cn } from '@/lib/cn'
+import { TenantScopeNote } from './TenantDashboard'
 import { useT } from '@/i18n/I18nProvider'
-import { ALERTS, type Alert } from '@/data/portfolio'
+import { ALERTS, CURRENT_TENANT_UNIT, alertsForUnit, type Alert } from '@/data/portfolio'
 
 const KIND_ICON: Record<Alert['kind'], IconName> = {
   payment: 'card',
@@ -24,7 +25,10 @@ const SEVERITY_TONE: Record<Alert['severity'], StatusTone> = {
 
 export function Alerts() {
   const t = useT()
-  const [alerts, setAlerts] = useState(ALERTS)
+  const { role } = useRole()
+  const isTenant = role === 'tenant'
+  // Une notification ne concernant pas son logement n'a pas à lui parvenir.
+  const [alerts, setAlerts] = useState(isTenant ? alertsForUnit(CURRENT_TENANT_UNIT) : ALERTS)
 
   const unread = alerts.filter((alert) => !alert.read).length
 
@@ -52,8 +56,10 @@ export function Alerts() {
         </p>
       )}
 
+      {isTenant && <TenantScopeNote />}
+
       {alerts.length === 0 ? (
-        <EmptyState icon="bell" title={t('app.alerts.allRead')} />
+        <EmptyState icon="bell" title={t('app.tenant.alertsEmpty')} />
       ) : (
         <div className="flex flex-col gap-3">
           {alerts.map((alert) => (

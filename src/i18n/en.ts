@@ -222,6 +222,33 @@ export const en: Dictionary = {
     demoBanner:
       'Demonstration mockup: fictional data, no server contacted. Amounts display in {currency} with no exchange conversion.',
 
+    tenant: {
+      title: 'My tenant space',
+      subtitle: 'Your home, your receipts and your reports.',
+      myUnit: 'My home',
+      nextDue: 'Next due date',
+      deposit: 'Deposit held',
+      consumption: 'My consumption this month',
+      lease: 'My lease',
+      receipts: 'My receipts',
+      receiptsEmpty: 'No receipts yet.',
+      paidOn: 'Paid on {date}',
+      download: 'Download',
+      myWorks: 'My ongoing works',
+      worksEmpty: 'No work in progress on your home.',
+      alertsEmpty: 'No notifications concerning you.',
+      inspectionsEmpty: 'No inspection recorded for your home.',
+      manager: 'Your manager',
+      managerName: 'Diane F.',
+      contactManager: 'Report an issue',
+      privacyNote:
+        'You only see data for your own home. Other tenants in the portfolio are not visible to you.',
+      restrictedTitle: 'Restricted access',
+      restricted: 'This screen is not available with the tenant profile.',
+      restrictedHint: 'Go back to your space to consult your own data.',
+      backToSpace: 'Back to my space',
+    },
+
     dashboard: {
       titleOwner: 'Consolidated portfolio view',
       titleManager: 'My management day',

@@ -174,14 +174,56 @@ export interface Alert {
   at: string
   severity: 'high' | 'medium' | 'low'
   read: boolean
+  /** Unité concernée. Sert au filtrage par rôle. */
+  unitId?: string
 }
 
 export const ALERTS: Alert[] = [
-  { id: 'n1', kind: 'payment', title: 'Loyer A3 en retard de 24 jours', detail: 'Serge Mbarga · relance J+15 partie le 04/08', at: 'il y a 2 h', severity: 'high', read: false },
-  { id: 'n2', kind: 'work', title: 'Devis plomberie à arbitrer', detail: 'SIG-2026-042 · A3 · 45 000 proposés par le gestionnaire', at: 'il y a 5 h', severity: 'high', read: false },
+  { id: 'n1', kind: 'payment', title: 'Loyer A3 en retard de 24 jours', detail: 'Serge Mbarga · relance J+15 partie le 04/08', at: 'il y a 2 h', severity: 'high', read: false, unitId: 'A3' },
+  { id: 'n2', kind: 'work', title: 'Devis plomberie à arbitrer', detail: 'SIG-2026-042 · A3 · 45 000 proposés par le gestionnaire', at: 'il y a 5 h', severity: 'high', read: false, unitId: 'A3' },
   { id: 'n3', kind: 'meter', title: '2 relevés manquants pour août', detail: 'A5 et C2 · à saisir avant la facturation', at: 'hier', severity: 'medium', read: true },
-  { id: 'n4', kind: 'lease', title: 'Bail B1 à renouveler dans 45 jours', detail: 'Jean-Paul Eboa · échéance au 30/09/2026', at: 'il y a 2 jours', severity: 'low', read: true },
-  { id: 'n5', kind: 'payment', title: 'Règlement partiel enregistré sur A5', detail: 'Aline Tchoumi · 40 000 sur 75 000', at: 'il y a 3 jours', severity: 'medium', read: true },
+  { id: 'n4', kind: 'lease', title: 'Bail B1 à renouveler dans 45 jours', detail: 'Jean-Paul Eboa · échéance au 30/09/2026', at: 'il y a 2 jours', severity: 'low', read: true, unitId: 'B1' },
+  { id: 'n5', kind: 'payment', title: 'Règlement partiel enregistré sur A5', detail: 'Aline Tchoumi · 40 000 sur 75 000', at: 'il y a 3 jours', severity: 'medium', read: true, unitId: 'A5' },
+  { id: 'n6', kind: 'work', title: 'Groupe de sécurité remplacé', detail: 'SIG-2026-036 · A1 · intervention terminée le 28/07', at: 'il y a 5 jours', severity: 'low', read: true, unitId: 'A1' },
+  { id: 'n7', kind: 'payment', title: 'Quittance d’août disponible', detail: 'A1 · règlement de 145 000 enregistré', at: 'il y a 6 jours', severity: 'low', read: true, unitId: 'A1' },
+]
+
+/**
+ * Locataire connecté dans la démonstration — le « Charles N. » du sélecteur de
+ * profil de la maquette. Tant qu'il n'y a pas d'authentification, cette
+ * constante tient lieu de session : c'est elle qui borne ce que le rôle
+ * locataire a le droit de voir.
+ */
+export const CURRENT_TENANT_UNIT = 'A1'
+
+export function worksForUnit(unitId: string): WorkOrder[] {
+  return WORKS.filter((work) => work.unitId === unitId)
+}
+
+export function inspectionsForUnit(unitId: string): Inspection[] {
+  return INSPECTIONS.filter((inspection) => inspection.unitId === unitId)
+}
+
+export function depositForUnit(unitId: string): Deposit | undefined {
+  return DEPOSITS.find((deposit) => deposit.unitId === unitId)
+}
+
+export function readingForUnit(unitId: string): MeterReading | undefined {
+  return READINGS.find((reading) => reading.unitId === unitId)
+}
+
+export function alertsForUnit(unitId: string): Alert[] {
+  return ALERTS.filter((alert) => alert.unitId === unitId)
+}
+
+/** Historique de quittances simulé pour l'espace locataire. */
+export const TENANT_RECEIPTS = [
+  { period: 'Août 2026', status: 'paid' as PaymentStatus, paidAt: '03/08' },
+  { period: 'Juillet 2026', status: 'paid' as PaymentStatus, paidAt: '02/07' },
+  { period: 'Juin 2026', status: 'paid' as PaymentStatus, paidAt: '05/06' },
+  { period: 'Mai 2026', status: 'paid' as PaymentStatus, paidAt: '04/05' },
+  { period: 'Avril 2026', status: 'paid' as PaymentStatus, paidAt: '02/04' },
+  { period: 'Mars 2026', status: 'paid' as PaymentStatus, paidAt: '06/03' },
 ]
 
 export function unitById(id: string): Unit | undefined {

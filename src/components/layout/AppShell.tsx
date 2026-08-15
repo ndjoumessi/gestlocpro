@@ -353,6 +353,27 @@ function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
   )
 }
 
+/**
+ * Réserve un écran à certains rôles.
+ *
+ * Retirer une entrée de la barre latérale ne protège rien : les routes restent
+ * atteignables à la main, et `/app/parc` affichait tout le parc à un locataire.
+ * Le garde s'appuie sur la même liste `roles` que la navigation, pour que les
+ * deux ne puissent pas diverger.
+ */
+export function RoleGuard({
+  allow,
+  children,
+  fallback,
+}: {
+  allow: Role[]
+  children: ReactNode
+  fallback: ReactNode
+}) {
+  const { role } = useRole()
+  return <>{allow.includes(role) ? children : fallback}</>
+}
+
 /** En-tête de page, commun à tous les écrans applicatifs. */
 export function PageHeader({
   title,

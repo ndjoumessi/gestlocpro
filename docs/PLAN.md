@@ -429,6 +429,43 @@ promesses chiffrées. Audit final : **0 échec de contraste dans les deux langue
 
 ---
 
+## 13. Vue locataire
+
+La bascule de profil filtrait la **navigation** mais pas le **contenu** : la
+barre latérale affichait « Ses propres données uniquement » pendant que le
+tableau de bord montrait 1 415 000 FCFA de loyers attendus, les impayés de
+quatre autres locataires et les dix lignes de paiement du parc. Les routes
+retirées du menu restaient par ailleurs atteignables à la main — `/app/parc`
+affichait tout le parc à un locataire.
+
+### Ce qui a été construit
+
+- **Un écran distinct**, pas une variante filtrée du tableau de bord. Un
+  locataire ne cherche ni taux d'occupation ni encaissé consolidé : il veut son
+  échéance, ses quittances, sa consommation, sa caution et l'état de ses
+  signalements. `CURRENT_TENANT_UNIT` tient lieu de session tant qu'il n'y a pas
+  d'authentification.
+- **Filtrage à la source** sur les écrans partagés — paiements, travaux, états
+  des lieux, signalements. Le filtre est posé sur les données et non sur
+  l'affichage, si bien que les compteurs d'onglets et les totaux se calculent
+  eux aussi sur le seul périmètre du locataire.
+- **Un garde de route** (`RoleGuard`) sur les cinq écrans de gestion, adossé à
+  la même liste de rôles que la barre latérale pour que navigation et accès ne
+  puissent pas diverger. Le refus est expliqué à l'écran plutôt que redirigé en
+  silence — une redirection muette passe pour un bug.
+- **La règle de confidentialité est dite**, pas seulement appliquée : un bandeau
+  rappelle au locataire qu'il ne voit que son logement.
+
+### Vérification
+
+Dix écrans parcourus en profil locataire : **zéro mention d'un autre locataire**,
+aucun indicateur de parc, et les cinq écrans de gestion rendent leur état de
+refus. Les profils propriétaire et gestionnaire sont inchangés — 10 lignes de
+paiement, 12 unités au parc. Contraste, cibles tactiles et débordement
+horizontal : 0 défaut.
+
+---
+
 ## 12. Validation de la liste des pays
 
 Deux erreurs de fait et quatre défauts. La liste passe de 22 à **21 pays**.

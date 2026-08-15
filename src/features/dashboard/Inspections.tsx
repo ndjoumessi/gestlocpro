@@ -1,17 +1,22 @@
-import { PageHeader } from '@/components/layout/AppShell'
+import { PageHeader, useRole } from '@/components/layout/AppShell'
 import { Card } from '@/components/primitives/Card'
 import { StatusPill } from '@/components/primitives/StatusPill'
 import { Badge } from '@/components/primitives/Badge'
 import { Icon } from '@/components/primitives/Icon'
+import { EmptyState } from '@/components/primitives/DataTable'
+import { TenantScopeNote } from './TenantDashboard'
 import { useT } from '@/i18n/I18nProvider'
-import { INSPECTIONS, unitById } from '@/data/portfolio'
+import { CURRENT_TENANT_UNIT, INSPECTIONS, inspectionsForUnit, unitById } from '@/data/portfolio'
 
 export function Inspections() {
   const t = useT()
+  const { role } = useRole()
+  const isTenant = role === 'tenant'
+  const source = isTenant ? inspectionsForUnit(CURRENT_TENANT_UNIT) : INSPECTIONS
 
   // Regroupé par unité : l'intérêt d'un état des lieux est la comparaison
   // entrée/sortie, pas la liste chronologique.
-  const byUnit = INSPECTIONS.reduce<Record<string, typeof INSPECTIONS>>((acc, inspection) => {
+  const byUnit = source.reduce<Record<string, typeof INSPECTIONS>>((acc, inspection) => {
     ;(acc[inspection.unitId] ??= []).push(inspection)
     return acc
   }, {})
@@ -20,6 +25,11 @@ export function Inspections() {
     <>
       <PageHeader title={t('app.inspections.title')} description={t('app.inspections.subtitle')} />
 
+      {isTenant && <TenantScopeNote />}
+
+      {Object.keys(byUnit).length === 0 ? (
+        <EmptyState icon="clipboard" title={t('app.tenant.inspectionsEmpty')} />
+      ) : (
       <div className="grid gap-4 lg:grid-cols-2">
         {Object.entries(byUnit).map(([unitId, inspections]) => {
           const unit = unitById(unitId)
@@ -89,6 +99,7 @@ export function Inspections() {
           )
         })}
       </div>
+      )}
     </>
   )
 }

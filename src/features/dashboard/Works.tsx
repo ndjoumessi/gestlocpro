@@ -5,9 +5,11 @@ import { Badge } from '@/components/primitives/Badge'
 import { Button } from '@/components/primitives/Button'
 import { Icon } from '@/components/primitives/Icon'
 import { useToast } from '@/components/primitives/Toast'
+import { EmptyState } from '@/components/primitives/DataTable'
+import { TenantScopeNote } from './TenantDashboard'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
-import { WORKS, unitById, type WorkOrder } from '@/data/portfolio'
+import { CURRENT_TENANT_UNIT, WORKS, unitById, worksForUnit, type WorkOrder } from '@/data/portfolio'
 
 const STATUS_TONE: Record<WorkOrder['status'], StatusTone> = {
   reported: 'neutral',
@@ -25,13 +27,21 @@ export function Works() {
   // Seul le propriétaire arbitre : le gestionnaire propose. C'est la règle de
   // délégation de la maquette, appliquée ici à l'affichage du bouton.
   const canApprove = role === 'owner'
+  const isTenant = role === 'tenant'
+  // Le locataire suit les interventions sur SON logement, pas celles du parc.
+  const works = isTenant ? worksForUnit(CURRENT_TENANT_UNIT) : WORKS
 
   return (
     <>
       <PageHeader title={t('app.works.title')} description={t('app.works.subtitle')} />
 
+      {isTenant && <TenantScopeNote />}
+
+      {works.length === 0 ? (
+        <EmptyState icon="wrench" title={t('app.tenant.worksEmpty')} />
+      ) : (
       <div className="flex flex-col gap-3">
-        {WORKS.map((work) => {
+        {works.map((work) => {
           const unit = unitById(work.unitId)
           return (
             <Card key={work.id} className="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -82,6 +92,7 @@ export function Works() {
           )
         })}
       </div>
+      )}
     </>
   )
 }

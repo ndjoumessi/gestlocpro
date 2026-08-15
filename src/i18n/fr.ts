@@ -227,6 +227,33 @@ export const fr = {
     demoBanner:
       'Maquette de démonstration : données fictives, aucun serveur contacté. Les montants s’affichent en {currency} sans conversion de change.',
 
+    tenant: {
+      title: 'Mon espace locataire',
+      subtitle: 'Votre logement, vos quittances et vos signalements.',
+      myUnit: 'Mon logement',
+      nextDue: 'Prochaine échéance',
+      deposit: 'Caution consignée',
+      consumption: 'Ma consommation du mois',
+      lease: 'Mon bail',
+      receipts: 'Mes quittances',
+      receiptsEmpty: 'Aucune quittance pour le moment.',
+      paidOn: 'Réglé le {date}',
+      download: 'Télécharger',
+      myWorks: 'Mes travaux en cours',
+      worksEmpty: 'Aucune intervention en cours sur votre logement.',
+      alertsEmpty: 'Aucune notification vous concernant.',
+      inspectionsEmpty: 'Aucun état des lieux enregistré pour votre logement.',
+      manager: 'Votre gestionnaire',
+      managerName: 'Diane F.',
+      contactManager: 'Signaler un incident',
+      privacyNote:
+        'Vous ne voyez que les données de votre logement. Les autres locataires du parc ne vous sont pas visibles.',
+      restrictedTitle: 'Accès restreint',
+      restricted: 'Cet écran n’est pas accessible avec le profil locataire.',
+      restrictedHint: 'Revenez à votre espace pour consulter vos propres données.',
+      backToSpace: 'Retour à mon espace',
+    },
+
     dashboard: {
       titleOwner: 'Vue consolidée du parc',
       titleManager: 'Ma journée de gestion',
