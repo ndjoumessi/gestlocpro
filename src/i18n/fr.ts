@@ -446,6 +446,8 @@ export const fr = {
       offlineTitle: 'Mode hors ligne',
       offlineBody:
         'Les relevés et états des lieux saisis maintenant seront synchronisés au retour du réseau.',
+      offlineNotice:
+        'Maquette : la synchronisation différée n’est pas implémentée. Cette carte montre l’état tel qu’il devra s’afficher le jour où elle le sera.',
     },
 
     portal: {

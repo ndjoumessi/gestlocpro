@@ -86,6 +86,16 @@ export function SystemStates() {
               <p className="mt-1 text-body-s text-warn">{t('app.system.offlineBody')}</p>
             </div>
           </div>
+
+          {/* Les trois autres cartes décrivent des états que l'interface sait
+              rendre. Celle-ci décrit en plus un comportement — la
+              synchronisation différée — qui n'existe pas encore. On le dit,
+              plutôt que de laisser la carte passer pour une fonctionnalité
+              livrée. */}
+          <p className="mt-3 flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body-s text-gold-ink">
+            <Icon name="info" size={15} className="mt-0.5 shrink-0" />
+            {t('app.system.offlineNotice')}
+          </p>
         </Card>
       </div>
     </>

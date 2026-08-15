@@ -440,6 +440,8 @@ export const en: Dictionary = {
       offlineTitle: 'Offline mode',
       offlineBody:
         'Readings and inspections captured now will sync when the network returns.',
+      offlineNotice:
+        'Mockup: deferred sync is not implemented. This card shows the state as it should appear once it is.',
     },
 
     portal: {
