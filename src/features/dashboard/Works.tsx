@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { PageHeader, useRole } from '@/components/layout/AppShell'
 import { Card } from '@/components/primitives/Card'
 import { StatusPill, type StatusTone } from '@/components/primitives/StatusPill'
@@ -30,8 +31,25 @@ export function Works() {
   // délégation de la maquette, appliquée ici à l'affichage du bouton.
   const canApprove = role === 'owner'
   const isTenant = role === 'tenant'
+
+  /**
+   * La liste passe en état local parce que valider un devis la modifie.
+   * Auparavant l'action se contentait d'une notification : le devis restait
+   * affiché « Devis proposé » après validation, et deux signaux se
+   * contredisaient — la notification disait que c'était fait, la carte disait
+   * que non. C'est la carte qu'on croit.
+   */
+  const [works, setWorks] = useState<WorkOrder[]>(WORKS)
+
   // Le locataire suit les interventions sur SON logement, pas celles du parc.
-  const works = isTenant ? worksForUnit(CURRENT_TENANT_UNIT) : WORKS
+  const visible = isTenant ? worksForUnit(CURRENT_TENANT_UNIT) : works
+
+  const approve = (id: string) => {
+    setWorks((list) =>
+      list.map((work) => (work.id === id ? { ...work, status: 'approved' } : work)),
+    )
+    notify(t('app.works.approved_toast'), { tone: 'ok' })
+  }
 
   return (
     <>
@@ -39,11 +57,11 @@ export function Works() {
 
       {isTenant && <TenantScopeNote />}
 
-      {works.length === 0 ? (
+      {visible.length === 0 ? (
         <EmptyState icon="wrench" title={t('app.tenant.worksEmpty')} />
       ) : (
       <div className="flex flex-col gap-3">
-        {works.map((work) => {
+        {visible.map((work) => {
           const unit = unitById(work.unitId)
           return (
             <Card key={work.id} className="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -84,7 +102,7 @@ export function Works() {
                 {work.status === 'quoted' && canApprove && (
                   <Button
                     size="sm"
-                    onClick={() => notify(t('app.works.approved_toast'), { tone: 'ok' })}
+                    onClick={() => approve(work.id)}
                   >
                     {t('app.works.approve')}
                   </Button>
