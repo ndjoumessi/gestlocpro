@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { cn } from '@/lib/cn'
 import { Section } from '@/components/layout/Section'
 import { Button } from '@/components/primitives/Button'
@@ -8,12 +8,21 @@ import { SegmentedControl } from '@/components/primitives/Choice'
 import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
-import { FEATURE_MATRIX, PLANS, planPrice, type FeatureValue } from './pricing'
+import {
+  FEATURE_MATRIX,
+  PLANS,
+  UNITS_DEFAULT,
+  UNITS_MAX,
+  UNITS_MIN,
+  planPrice,
+  type FeatureValue,
+} from './pricing'
 
 export function PricingSection() {
   const t = useT()
   const { currency, money } = useCurrency()
   const [period, setPeriod] = useState<'monthly' | 'yearly'>('monthly')
+  const [units, setUnits] = useState(UNITS_DEFAULT)
 
   return (
     <Section
@@ -23,7 +32,9 @@ export function PricingSection() {
       description={t('marketing.pricing.subtitle')}
       centered
     >
-      <div className="mb-10 flex flex-wrap items-center justify-center gap-3">
+      <UnitSlider units={units} onChange={setUnits} />
+
+      <div className="mt-8 mb-10 flex flex-wrap items-center justify-center gap-3">
         <SegmentedControl
           label={t('marketing.pricing.monthly')}
           value={period}
@@ -42,7 +53,7 @@ export function PricingSection() {
 
       <div className="grid items-start gap-4 lg:grid-cols-3">
         {PLANS.map((plan) => {
-          const price = planPrice(plan, currency, period)
+          const price = planPrice(plan, currency, period, units)
           const popular = plan.popular
 
           return (
@@ -69,15 +80,14 @@ export function PricingSection() {
               </p>
 
               <div className="mt-5 border-y border-divider py-5">
-                {price === null ? (
+                {price === null || !plan.pricing ? (
                   <p className="font-sans text-title-l font-semibold">
                     {t('marketing.pricing.quote')}
                   </p>
                 ) : (
                   <>
                     {/* Un prix rond s'affiche sans décimales : « 13 $ » plutôt
-                        que « 13,00 $ ». La remise annuelle, elle, tombe souvent
-                        juste (10,40 $) et garde les siennes. */}
+                        que « 13,00 $ ». */}
                     <p className="numeric text-[2.25rem] leading-none font-medium">
                       {money(price, { round: Number.isInteger(price) })}
                     </p>
@@ -85,21 +95,21 @@ export function PricingSection() {
                       {t('common.perMonth')}
                       {period === 'yearly' && ` · ${t('marketing.pricing.yearly').toLowerCase()}`}
                     </p>
+
+                    {/* La formule est affichée : le prix doit être vérifiable
+                        par le prospect, pas seulement constaté. */}
+                    <p className="mt-3 flex items-center gap-1.5 font-mono text-mono-label text-gold-ink">
+                      <Icon name="building" size={13} />
+                      {t('marketing.pricing.perUnitNote', {
+                        base: money(plan.pricing.base[currency], {
+                          round: Number.isInteger(plan.pricing.base[currency]),
+                        }),
+                        perUnit: money(plan.pricing.perUnit[currency]),
+                      })}
+                    </p>
                   </>
                 )}
 
-                <p className="mt-3 flex items-center gap-1.5 font-mono text-mono-label text-gold-ink">
-                  <Icon name="building" size={13} />
-                  {plan.units === 'unlimited'
-                    ? t('marketing.pricing.unitsUnlimited')
-                    : t('marketing.pricing.unitsUpTo', { count: plan.units })}
-                </p>
-
-                {/* L'essai gratuit était annoncé dans la seule ligne de
-                    confiance du hero, sans trace ici. Un engagement de durée
-                    doit figurer là où l'on choisit son palier. Il ne s'affiche
-                    que sur les paliers tarifés : « Cabinet » passe par un
-                    devis, où la durée d'essai se négocie. */}
                 {price !== null && (
                   <p className="mt-2 flex items-center gap-1.5 text-body-s text-ok">
                     <Icon name="checkCircle" size={14} />
@@ -133,6 +143,78 @@ export function PricingSection() {
         {t('marketing.pricing.currencyNote')}
       </p>
     </Section>
+  )
+}
+
+/**
+ * Sélecteur du nombre d'unités.
+ *
+ * Le prix se calcule à l'unité près : le prospect doit pouvoir lire SON prix,
+ * pas celui d'un palier dans lequel il devine se ranger. Un `input[type=range]`
+ * natif donne la navigation clavier par flèches et l'annonce de la valeur sans
+ * code supplémentaire ; `aria-valuetext` remplace le nombre nu par « 12 unités »
+ * à la lecture d'écran.
+ */
+function UnitSlider({ units, onChange }: { units: number; onChange: (n: number) => void }) {
+  const t = useT()
+  const id = useId()
+  const atMax = units >= UNITS_MAX
+  const progress = ((units - UNITS_MIN) / (UNITS_MAX - UNITS_MIN)) * 100
+
+  return (
+    <div className="mx-auto max-w-xl">
+      <label htmlFor={id} className="block text-label font-semibold text-ink">
+        {t('marketing.pricing.unitsSelector')}
+      </label>
+
+      <div className="mt-3 flex items-center gap-4">
+        <input
+          id={id}
+          type="range"
+          min={UNITS_MIN}
+          max={UNITS_MAX}
+          value={units}
+          onChange={(e) => onChange(Number(e.target.value))}
+          aria-valuetext={
+            atMax
+              ? t('marketing.pricing.unitsValueMax', { count: units })
+              : t('marketing.pricing.unitsValue', { count: units })
+          }
+          className={cn(
+            'h-11 min-w-0 flex-1 cursor-pointer appearance-none bg-transparent',
+            // La piste est peinte en dégradé dur : la portion parcourue en or,
+            // le reste en bordure. Deux préfixes, faute d'API commune.
+            '[&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:rounded-full',
+            '[&::-moz-range-track]:h-1.5 [&::-moz-range-track]:rounded-full',
+            '[&::-webkit-slider-thumb]:mt-[-7px] [&::-webkit-slider-thumb]:size-5',
+            '[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full',
+            '[&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-surface',
+            '[&::-webkit-slider-thumb]:bg-ink [&::-webkit-slider-thumb]:shadow-e1',
+            '[&::-moz-range-thumb]:size-5 [&::-moz-range-thumb]:rounded-full',
+            '[&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-surface',
+            '[&::-moz-range-thumb]:bg-ink',
+          )}
+          style={{
+            // Variable consommée par les deux pseudo-éléments de piste.
+            backgroundImage: `linear-gradient(to right, var(--color-gold) ${progress}%, var(--color-border) ${progress}%)`,
+            backgroundSize: '100% 6px',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+          }}
+        />
+
+        <output
+          htmlFor={id}
+          className="numeric w-24 shrink-0 text-right text-title-m font-semibold"
+        >
+          {atMax
+            ? t('marketing.pricing.unitsValueMax', { count: units })
+            : t('marketing.pricing.unitsValue', { count: units })}
+        </output>
+      </div>
+
+      <p className="mt-1 text-body-s text-muted">{t('marketing.pricing.unitsHint')}</p>
+    </div>
   )
 }
 

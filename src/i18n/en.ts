@@ -570,8 +570,11 @@ export const en: Dictionary = {
       trial: '30-day trial, no card required',
       cta: 'Get started',
       ctaEnterprise: 'Contact us',
-      unitsUpTo: 'Up to {count} units',
-      unitsUnlimited: 'Unlimited units',
+      unitsSelector: 'How many units do you manage?',
+      unitsValue: '{count} units',
+      unitsValueMax: '{count} units and up',
+      unitsHint: 'Drag to see the price for your portfolio.',
+      perUnitNote: '{base} + {perUnit} per unit',
       currencyNote:
         'Prices anchored locally per currency, with no automatic exchange-rate conversion.',
       essential: { name: 'Essential', pitch: 'A first building, kept properly.' },

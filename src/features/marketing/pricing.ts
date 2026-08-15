@@ -1,66 +1,83 @@
 import type { CurrencyCode } from '@/currency/currencies'
 
 /**
- * Grille tarifaire. Facturation à l'unité gérée, trois paliers.
+ * Grille tarifaire — abonnement + prix par unité gérée.
  *
- * Chaque devise porte son propre montant : ce ne sont pas des conversions d'un
- * prix de référence. Attention toutefois — le franc CFA est en **parité fixe**
- * avec l'euro (1 EUR = 655,957 XAF comme XOF, sans flottement) : un prix en
- * FCFA est donc mécaniquement un prix en euros, et prétendre l'avoir « ancré
- * indépendamment du taux du jour » n'aurait aucun sens. Seuls EUR, CAD et USD
- * sont réellement ancrés les uns par rapport aux autres.
+ * ── Pourquoi une formule et non des paliers d'unités ──────────────────────
+ * La grille précédente bornait chaque palier par un nombre d'unités : ≤10 puis
+ * ≤50. Elle produisait deux ruptures.
  *
- * Le calage se fait sur la **part du loyer encaissé**, pas sur le taux de
- * change : c'est le loyer que le produit administre, donc la valeur qu'il
- * délivre. Avec un loyer moyen de 136 667 FCFA à Douala contre ~700 € pour un
- * bailleur privé européen, les montants ci-dessous représentent 0,18 % du
- * quittancé en zone FCFA contre 0,13 % en zone euro.
+ * En haut, passer de 10 à 11 unités triplait la facture : le coût par unité
+ * bondissait de 250 à 682 FCFA, et il fallait atteindre 30 unités pour
+ * retrouver le coût unitaire qu'on avait à 10. Vingt unités de croissance pour
+ * revenir au point de départ.
  *
- * Ils valaient auparavant 4 900 et 14 900 FCFA, soit 0,36 % et 0,22 % : une
- * remise nominale de 17 % sur le prix affiché, mais une surtaxe de 2,8x
- * rapportée au chiffre d'affaires du bailleur — sur le marché au pouvoir
- * d'achat le plus faible. Le rapport restant (1,4x plutôt que la parité
- * stricte, qui donnerait ~1 800 FCFA) couvre le coût réel des relances SMS et
- * du support sur ces marchés.
+ * En bas — le défaut le plus grave, et le moins visible — le prix d'entrée
+ * était forfaitaire : un bailleur d'UNE unité payait autant qu'un bailleur de
+ * dix, soit 1,83 % de son loyer encaissé contre 0,18 %. Dix fois plus cher en
+ * proportion, sur le segment le plus nombreux de ces marchés.
  *
- * Les montants tombent sur des coupures composables en espèces et en mobile
- * money (500 · 1 000 · 2 000 · 5 000 · 10 000). La terminaison en « 9 » des
- * prix occidentaux n'a pas cours sur ces marchés.
+ * La formule supprime les deux ruptures : le coût par unité décroît de façon
+ * monotone sur toute la plage, et l'écart de traitement entre le client le
+ * plus lourdement facturé et le plus légèrement tombe de x16,7 à x9,2.
  *
- * HYPOTHÈSE PRODUIT restante : le niveau absolu des prix en zone euro, ainsi
- * que la frontière à 10 unités — passer de 10 à 11 unités triple la facture,
- * ce qui est inhérent aux paliers mais tombe sur une taille de parc répandue.
+ * ── Calage ────────────────────────────────────────────────────────────────
+ * Les coefficients d'Essentiel retombent exactement sur les prix précédents
+ * aux deux points d'ancrage : 2 500 FCFA à 10 unités, 7 500 à 50. Le
+ * repositionnement ne déplace donc pas le niveau de prix, il redistribue.
+ * Contrepartie assumée : le milieu de gamme paie nettement moins qu'avant
+ * (20 unités : 7 500 -> 3 750 FCFA). Ce segment subventionnait les gros parcs.
+ *
+ * ── HYPOTHÈSE restante ────────────────────────────────────────────────────
+ * Seule la courbe d'Essentiel a été validée sur données. Le supplément de Pro
+ * est un forfait de fonctionnalités (relances automatiques, gestionnaires
+ * délégués, export comptable) posé à dire d'expert, au même prix marginal par
+ * unité pour que le choix entre les deux paliers porte sur les fonctions et
+ * jamais sur la taille du parc. Ce supplément reste à confronter au marché.
  */
 export type PlanId = 'essential' | 'pro' | 'cabinet'
+
+export interface PlanPricing {
+  /** Abonnement mensuel, indépendant du nombre d'unités. */
+  base: Record<CurrencyCode, number>
+  /** Coût mensuel de chaque unité gérée. */
+  perUnit: Record<CurrencyCode, number>
+}
 
 export interface Plan {
   id: PlanId
   /** `null` = sur devis. */
-  monthly: Record<CurrencyCode, number> | null
-  units: number | 'unlimited'
+  pricing: PlanPricing | null
   popular?: boolean
 }
 
 export const PLANS: Plan[] = [
   {
     id: 'essential',
-    units: 10,
-    monthly: { XAF: 2500, XOF: 2500, EUR: 9, CAD: 13, USD: 9 },
+    pricing: {
+      base: { XAF: 1250, XOF: 1250, EUR: 4, CAD: 6, USD: 4 },
+      perUnit: { XAF: 125, XOF: 125, EUR: 0.5, CAD: 0.7, USD: 0.5 },
+    },
   },
   {
     id: 'pro',
-    units: 50,
     popular: true,
-    monthly: { XAF: 7500, XOF: 7500, EUR: 29, CAD: 39, USD: 29 },
+    pricing: {
+      base: { XAF: 3750, XOF: 3750, EUR: 12, CAD: 17, USD: 12 },
+      perUnit: { XAF: 125, XOF: 125, EUR: 0.5, CAD: 0.7, USD: 0.5 },
+    },
   },
-  {
-    id: 'cabinet',
-    units: 'unlimited',
-    monthly: null,
-  },
+  { id: 'cabinet', pricing: null },
 ]
 
-/** Remise appliquée au paiement annuel. */
+/** Bornes du sélecteur d'unités de la page tarifs. */
+export const UNITS_MIN = 1
+export const UNITS_MAX = 60
+export const UNITS_DEFAULT = 12
+
+/** Au-delà, on bascule sur un devis plutôt que d'extrapoler la formule. */
+export const UNITS_QUOTE_THRESHOLD = UNITS_MAX
+
 export const YEARLY_DISCOUNT = 0.2
 
 export type FeatureValue = boolean | 'manual' | 'auto' | 'email' | 'priority' | 'dedicated' | string
@@ -82,22 +99,25 @@ export const FEATURE_MATRIX: FeatureRow[] = [
   { key: 'support', values: { essential: 'email', pro: 'priority', cabinet: 'dedicated' } },
 ]
 
-/** Prix mensuel affiché, remise annuelle incluse le cas échéant. */
+/**
+ * Prix mensuel pour un parc donné, remise annuelle incluse le cas échéant.
+ * Renvoie `null` pour les paliers sur devis.
+ */
 export function planPrice(
   plan: Plan,
   currency: CurrencyCode,
   period: 'monthly' | 'yearly',
+  units: number,
 ): number | null {
-  if (!plan.monthly) return null
-  const base = plan.monthly[currency]
-  if (period === 'monthly') return base
+  if (!plan.pricing) return null
 
-  const discounted = base * (1 - YEARLY_DISCOUNT)
+  const raw = plan.pricing.base[currency] + plan.pricing.perUnit[currency] * units
+  const value = period === 'monthly' ? raw : raw * (1 - YEARLY_DISCOUNT)
+
   // Les francs CFA n'ont pas de sous-unité : on arrondit à la centaine, sans
-  // quoi la remise annuelle produirait des montants comme « 5 984 FCFA », qui
-  // ne ressemblent pas à un prix. Avec la grille actuelle la remise tombe
-  // juste : 2 500 -> 2 000 et 7 500 -> 6 000, deux coupures courantes.
+  // quoi la formule produirait des montants comme « 3 062 FCFA », qui ne
+  // ressemblent pas à un prix.
   return currency === 'XAF' || currency === 'XOF'
-    ? Math.round(discounted / 100) * 100
-    : Math.round(discounted * 100) / 100
+    ? Math.round(value / 100) * 100
+    : Math.round(value * 100) / 100
 }

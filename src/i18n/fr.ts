@@ -576,8 +576,11 @@ export const fr = {
       trial: '30 jours d’essai, sans carte bancaire',
       cta: 'Commencer',
       ctaEnterprise: 'Nous contacter',
-      unitsUpTo: 'Jusqu’à {count} unités',
-      unitsUnlimited: 'Unités illimitées',
+      unitsSelector: 'Combien d’unités gérez-vous ?',
+      unitsValue: '{count} unités',
+      unitsValueMax: '{count} unités et plus',
+      unitsHint: 'Faites glisser pour voir le prix de votre parc.',
+      perUnitNote: '{base} + {perUnit} par unité',
       currencyNote:
         'Prix ancrés localement par devise, sans conversion de change automatique.',
       essential: { name: 'Essentiel', pitch: 'Un premier immeuble à tenir proprement.' },

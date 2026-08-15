@@ -207,17 +207,22 @@ un code d'invitation à un propriétaire.
 
 ## 8. Grille tarifaire
 
+**Abonnement + prix par unité gérée**, sans palier d'unités.
+
 | | Essentiel | **Pro** (populaire) | Cabinet |
 | --- | --- | --- | --- |
-| Unités | ≤ 10 | ≤ 50 | illimité |
-| XAF / XOF | 2 500 /mois | 7 500 /mois | sur devis |
-| EUR | 9 € | 29 € | sur devis |
-| CAD | 13 $ | 39 $ | sur devis |
-| USD | 9 $ | 29 $ | sur devis |
+| XAF / XOF | 1 250 + 125 /unité | 3 750 + 125 /unité | sur devis |
+| EUR | 4 € + 0,50 € /unité | 12 € + 0,50 € /unité | sur devis |
+| CAD | 6 $ + 0,70 $ /unité | 17 $ + 0,70 $ /unité | sur devis |
+| USD | 4 $ + 0,50 $ /unité | 12 $ + 0,50 $ /unité | sur devis |
 
-Annuel −20 % (2 000 et 6 000 FCFA). Portail et app locataire inclus dans tous les paliers.
-Différenciateurs : relances automatiques (manuelles en Essentiel), gestionnaires délégués (Pro+),
-export comptable, multi-sociétés.
+Annuel −20 %, 30 jours d'essai sur les paliers tarifés. Portail locataire inclus
+partout. Différenciateurs : relances automatiques, gestionnaires délégués,
+export comptable, multi-sociétés — jamais la taille du parc.
+
+La page tarifs porte un curseur d'unités : le prospect lit **son** prix, pas
+celui d'un palier dans lequel il devine se ranger. La formule est affichée sous
+chaque montant, pour qu'il soit vérifiable et non seulement constaté.
 
 ### Ce que la validation a corrigé
 
@@ -251,15 +256,46 @@ imitaient la terminaison en « 9 » occidentale. Les coupures FCFA sont
 composables — d'où 2 500 et 7 500, dont la remise annuelle tombe elle aussi
 juste (2 000 et 6 000).
 
+### La frontière à 10 unités, validée puis supprimée
+
+Le point restait ouvert. L'analyse a montré **deux** ruptures, pas une.
+
+*En haut*, passer de 10 à 11 unités triplait la facture : 250 → 682 FCFA par
+unité, et il fallait atteindre **30 unités** pour retrouver le coût unitaire
+qu'on avait à 10. Vingt unités de croissance pour revenir au point de départ.
+
+*En bas* — défaut plus grave et jamais nommé — le prix d'entrée était
+forfaitaire : un bailleur d'**une** unité payait autant qu'un bailleur de dix,
+soit **1,83 % de son loyer encaissé contre 0,18 %**. Dix fois plus cher en
+proportion, sur le segment le plus nombreux de ces marchés.
+
+| Unités | Ancienne grille | Part du loyer | Formule | Part du loyer |
+| --- | --- | --- | --- | --- |
+| 1 | 2 500 FCFA | **1,83 %** | 1 375 FCFA | 1,01 % |
+| 10 | 2 500 FCFA | 0,18 % | 2 500 FCFA | 0,18 % *(inchangé)* |
+| 11 | 7 500 FCFA | **0,50 %** | 2 625 FCFA | 0,17 % |
+| 20 | 7 500 FCFA | 0,27 % | 3 750 FCFA | 0,14 % |
+| 50 | 7 500 FCFA | 0,11 % | 7 500 FCFA | 0,11 % *(inchangé)* |
+
+La formule retombe **exactement** sur les prix précédents aux deux points
+d'ancrage : le niveau de prix ne bouge pas, il se redistribue. Le coût par unité
+décroît de façon monotone sur toute la plage — aucune remontée — et l'écart de
+traitement entre le client le plus lourdement facturé et le plus légèrement
+passe de **×16,7 à ×9,2**.
+
+**Contrepartie assumée** : le milieu de gamme paie nettement moins qu'avant
+(20 unités : 7 500 → 3 750 FCFA, soit moitié moins). Ce segment subventionnait
+les gros parcs ; la formule met fin à ce transfert. C'était la vraie décision,
+pas la suppression de la falaise.
+
 ### Ce qui reste ouvert sur les tarifs
 
-- **Le niveau absolu en zone euro** (9 € / 29 €) n'a pas été confronté à la
+- **Le niveau absolu en zone euro** (9 € à 10 unités) n'a pas été confronté à la
   concurrence : il reste une hypothèse.
-- **La frontière à 10 unités.** Passer de 10 à 11 unités triple la facture
-  (490 → 1 355 FCFA l'unité). C'est inhérent à toute grille par paliers, mais
-  10 unités est une taille de parc répandue : le mur tombe là où beaucoup de
-  prospects se trouvent. Options si cela se confirme : déplacer la frontière,
-  ou facturer les unités excédentaires à l'unité au-delà du palier.
+- **Le supplément de Pro.** Seule la courbe d'Essentiel a été validée sur
+  données. Le +2 500 FCFA / +8 € de Pro est un forfait de fonctionnalités posé à
+  dire d'expert, au même prix marginal par unité pour que le choix entre paliers
+  porte sur les fonctions et jamais sur la taille du parc. À confronter au marché.
 
 Pays initiaux : zone FCFA (Cameroun, Gabon, Congo, Tchad, RCA, Guinée éq. — XAF ;
 Sénégal, Côte d'Ivoire, Bénin, Burkina, Mali, Togo, Niger — XOF), France/Belgique/Luxembourg (EUR),
