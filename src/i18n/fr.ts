@@ -32,6 +32,7 @@ export const fr = {
     email: 'Adresse e-mail',
     password: 'Mot de passe',
     phone: 'Téléphone',
+    dialCode: 'Indicatif téléphonique',
     fullName: 'Nom complet',
     showPassword: 'Afficher le mot de passe',
     hidePassword: 'Masquer le mot de passe',

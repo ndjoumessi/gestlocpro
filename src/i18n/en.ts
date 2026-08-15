@@ -27,6 +27,7 @@ export const en: Dictionary = {
     email: 'Email address',
     password: 'Password',
     phone: 'Phone',
+    dialCode: 'Dial code',
     fullName: 'Full name',
     showPassword: 'Show password',
     hidePassword: 'Hide password',

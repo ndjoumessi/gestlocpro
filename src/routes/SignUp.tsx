@@ -266,12 +266,19 @@ export function SignUp() {
               {(props) => (
                 <div className="flex gap-2">
                   {/* L'indicatif suit le pays choisi à l'étape suivante mais
-                      reste modifiable : on peut résider ailleurs que son parc. */}
+                      reste modifiable : on peut résider ailleurs que son parc.
+
+                      La largeur est portée par cette enveloppe et non par le
+                      `<select>` : `Select` applique déjà `w-full` sur l'élément
+                      interne, et deux utilitaires de largeur concurrents se
+                      départagent par l'ordre du CSS généré, pas par l'ordre des
+                      classes. Le champ tombait à 68px pour 52px de rembourrage,
+                      et « +237 » n'avait plus la place de s'afficher. */}
+                  <div className="w-28 shrink-0">
                   <Select
-                    aria-label="Indicatif"
+                    aria-label={t('common.dialCode')}
                     value={state.dial}
                     onChange={(e) => patch({ dial: e.target.value })}
-                    className="w-28 shrink-0"
                   >
                     {sortedDialCodes().map((dial) => (
                       <option key={dial} value={dial}>
@@ -279,6 +286,7 @@ export function SignUp() {
                       </option>
                     ))}
                   </Select>
+                  </div>
                   <Input
                     {...props}
                     name="phone"
