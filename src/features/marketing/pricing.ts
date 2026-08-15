@@ -28,12 +28,28 @@ import type { CurrencyCode } from '@/currency/currencies'
  * Contrepartie assumée : le milieu de gamme paie nettement moins qu'avant
  * (20 unités : 7 500 -> 3 750 FCFA). Ce segment subventionnait les gros parcs.
  *
+ * ── Pourquoi le supplément de Pro est proportionnel ───────────────────────
+ * Il a d'abord été posé en forfait : +2 500 FCFA, quel que soit le parc. Un
+ * forfait plat est un supplément régressif — il représentait +182 % du prix
+ * d'Essentiel à une unité contre +33 % à cinquante, soit un effort d'upgrade
+ * 5,5 fois plus lourd pour un petit parc. La décision de passer à Pro dépendait
+ * donc massivement de la taille, ce que la formule de base venait précisément
+ * de corriger.
+ *
+ * Pire, la valeur va dans l'autre sens. Le supplément achète surtout les
+ * relances automatiques : avec environ 30 % de baux en incident, un parc d'une
+ * unité a 0,3 locataire à relancer par mois, un parc de cinquante en a quinze.
+ * Le gros parc valorise le plus la fonction et la payait le moins cher.
+ *
+ * Pro vaut désormais 1,6 x Essentiel — même facteur sur l'abonnement et sur le
+ * prix unitaire. L'effort d'upgrade est constant à +60 % sur toute la plage, et
+ * le choix entre les deux paliers porte enfin sur les fonctions seules.
+ * Contrepartie assumée : sous ~22 unités Pro coûte moins qu'avant, au-dessus il
+ * coûte davantage.
+ *
  * ── HYPOTHÈSE restante ────────────────────────────────────────────────────
- * Seule la courbe d'Essentiel a été validée sur données. Le supplément de Pro
- * est un forfait de fonctionnalités (relances automatiques, gestionnaires
- * délégués, export comptable) posé à dire d'expert, au même prix marginal par
- * unité pour que le choix entre les deux paliers porte sur les fonctions et
- * jamais sur la taille du parc. Ce supplément reste à confronter au marché.
+ * Le NIVEAU du supplément (60 %) reste posé à dire d'expert : c'est sa
+ * proportionnalité qui a été validée, pas son montant. À confronter au marché.
  */
 export type PlanId = 'essential' | 'pro' | 'cabinet'
 
@@ -62,9 +78,10 @@ export const PLANS: Plan[] = [
   {
     id: 'pro',
     popular: true,
+    // 1,6 x Essentiel, sur l'abonnement comme sur le prix unitaire.
     pricing: {
-      base: { XAF: 3750, XOF: 3750, EUR: 12, CAD: 17, USD: 12 },
-      perUnit: { XAF: 125, XOF: 125, EUR: 0.5, CAD: 0.7, USD: 0.5 },
+      base: { XAF: 2000, XOF: 2000, EUR: 6, CAD: 9, USD: 6 },
+      perUnit: { XAF: 200, XOF: 200, EUR: 0.8, CAD: 1.1, USD: 0.8 },
     },
   },
   { id: 'cabinet', pricing: null },

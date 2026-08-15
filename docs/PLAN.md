@@ -211,10 +211,13 @@ un code d'invitation à un propriétaire.
 
 | | Essentiel | **Pro** (populaire) | Cabinet |
 | --- | --- | --- | --- |
-| XAF / XOF | 1 250 + 125 /unité | 3 750 + 125 /unité | sur devis |
-| EUR | 4 € + 0,50 € /unité | 12 € + 0,50 € /unité | sur devis |
-| CAD | 6 $ + 0,70 $ /unité | 17 $ + 0,70 $ /unité | sur devis |
-| USD | 4 $ + 0,50 $ /unité | 12 $ + 0,50 $ /unité | sur devis |
+| XAF / XOF | 1 250 + 125 /unité | 2 000 + 200 /unité | sur devis |
+| EUR | 4 € + 0,50 € /unité | 6 € + 0,80 € /unité | sur devis |
+| CAD | 6 $ + 0,70 $ /unité | 9 $ + 1,10 $ /unité | sur devis |
+| USD | 4 $ + 0,50 $ /unité | 6 $ + 0,80 $ /unité | sur devis |
+
+**Pro vaut 1,6 × Essentiel**, même facteur sur l'abonnement et sur le prix
+unitaire : l'effort d'upgrade est identique quelle que soit la taille du parc.
 
 Annuel −20 %, 30 jours d'essai sur les paliers tarifés. Portail locataire inclus
 partout. Différenciateurs : relances automatiques, gestionnaires délégués,
@@ -288,14 +291,39 @@ passe de **×16,7 à ×9,2**.
 les gros parcs ; la formule met fin à ce transfert. C'était la vraie décision,
 pas la suppression de la falaise.
 
+### Le supplément de Pro, validé puis rendu proportionnel
+
+Il était posé en forfait : +2 500 FCFA, quel que soit le parc. Or **un forfait
+plat est un supplément régressif**.
+
+| Unités | Essentiel | Pro forfaitaire | Effort d'upgrade |
+| --- | --- | --- | --- |
+| 1 | 1 375 FCFA | 3 875 FCFA | **+182 %** |
+| 10 | 2 500 FCFA | 5 000 FCFA | +100 % |
+| 20 | 3 750 FCFA | 6 250 FCFA | +67 % |
+| 50 | 7 500 FCFA | 10 000 FCFA | **+33 %** |
+
+Le même montant pesait **5,5 fois plus lourd** sur un petit parc. Le choix de
+palier dépendait donc de la taille — ce que la formule de base venait de
+corriger, réintroduit un cran plus loin.
+
+Et la valeur va dans l'autre sens. Le supplément achète surtout les relances
+automatiques : avec ~30 % de baux en incident, un parc d'une unité a **0,3
+locataire** à relancer par mois, un parc de cinquante en a **quinze**. Relancer
+quinze personnes à la main est pénible, en relancer un tiers ne l'est pas. Le
+gros parc valorisait le plus la fonction et la payait le moins cher.
+
+Pro vaut désormais **1,6 × Essentiel**, même facteur sur l'abonnement et sur le
+prix unitaire : l'effort d'upgrade est **constant à +60 %** sur toute la plage.
+Contrepartie assumée : sous ~22 unités Pro coûte moins qu'avant, au-dessus il
+coûte davantage — cohérent avec qui tire la valeur de la fonction.
+
 ### Ce qui reste ouvert sur les tarifs
 
 - **Le niveau absolu en zone euro** (9 € à 10 unités) n'a pas été confronté à la
   concurrence : il reste une hypothèse.
-- **Le supplément de Pro.** Seule la courbe d'Essentiel a été validée sur
-  données. Le +2 500 FCFA / +8 € de Pro est un forfait de fonctionnalités posé à
-  dire d'expert, au même prix marginal par unité pour que le choix entre paliers
-  porte sur les fonctions et jamais sur la taille du parc. À confronter au marché.
+- **Le niveau du supplément de Pro** (60 %). C'est sa *proportionnalité* qui a
+  été validée, pas son montant — celui-ci reste posé à dire d'expert.
 
 Pays initiaux : zone FCFA (Cameroun, Gabon, Congo, Tchad, RCA, Guinée éq. — XAF ;
 Sénégal, Côte d'Ivoire, Bénin, Burkina, Mali, Togo, Niger — XOF), France/Belgique/Luxembourg (EUR),
