@@ -26,6 +26,9 @@ export const fr = {
     currency: 'Devise',
     language: 'Langue',
     country: 'Pays',
+    countryOther: 'Autre pays',
+    countryOtherHint:
+      'Votre pays n’est pas encore listé : choisissez vous-même la devise et la langue de votre espace.',
     email: 'Adresse e-mail',
     password: 'Mot de passe',
     phone: 'Téléphone',

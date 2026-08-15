@@ -21,6 +21,9 @@ export const en: Dictionary = {
     currency: 'Currency',
     language: 'Language',
     country: 'Country',
+    countryOther: 'Other country',
+    countryOtherHint:
+      'Your country is not listed yet: choose the currency and language of your space yourself.',
     email: 'Email address',
     password: 'Password',
     phone: 'Phone',

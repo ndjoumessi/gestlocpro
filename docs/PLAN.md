@@ -321,9 +321,9 @@ passer un fond crème pour un fond sombre.
   l'utilisateur dans la FAQ et sous la grille tarifaire.
 - **Mode sombre complet hors périmètre.** Seules la barre latérale et certaines
   cartes sont sombres, comme dans la maquette.
-- **Contenus à valider :** liste des 22 pays. Les témoignages sont des
-  placeholders explicitement fictifs — pas de logo d'entreprise réelle, pas de
-  citation attribuée à une personne existante.
+- **Contenus validés.** Les témoignages restent des placeholders explicitement
+  fictifs — pas de logo d'entreprise réelle, pas de citation attribuée à une
+  personne existante. La liste des pays a été validée et corrigée (§12).
   La grille tarifaire a été validée et corrigée (§8) ; il y subsiste deux
   points ouverts, le niveau absolu en zone euro et la frontière à 10 unités.
   Les textes marketing ont été validés et corrigés (§11).
@@ -362,3 +362,54 @@ promesses chiffrées. Audit final : **0 échec de contraste dans les deux langue
 > bascule alors que les classes sont à jour, ce qui fabrique de faux échecs de
 > contraste après un changement de langue. Vérifier `visibilityState`, ou mesurer
 > après rechargement plutôt qu'après une bascule en page.
+
+---
+
+## 12. Validation de la liste des pays
+
+Deux erreurs de fait et quatre défauts. La liste passe de 22 à **21 pays**.
+
+### Deux devises fausses
+
+| Pays | Devise codée | Devise réelle | Décision |
+| --- | --- | --- | --- |
+| Maroc | `USD` | dirham marocain (MAD) | **retiré** |
+| Royaume-Uni | `USD` | livre sterling (GBP) | **retiré** |
+
+Les deux étaient rangés sous un commentaire « Autres marchés USD » qui actait
+l'erreur. Un bailleur marocain aurait vu son parc libellé en dollars. Ils
+reviendront le jour où MAD et GBP seront pris en charge — les ajouter
+maintenant aurait élargi le périmètre produit (sélecteur, formatage, section
+internationale) pour deux marchés secondaires.
+
+### Quatre autres corrections
+
+- **Ordre du menu d'indicatifs.** Le tri de chaînes plaçait `+32` après `+242` :
+  la Belgique et la France se retrouvaient derrière tous les indicatifs
+  africains à trois chiffres. `sortedDialCodes()` trie désormais sur l'entier —
+  `+1 +32 +33 +34 +221 … +245 +351 +352`.
+- **« Congo » désambiguïsé** en « Congo-Brazzaville » / « Republic of the
+  Congo ». La RDC est un marché francophone bien plus grand : l'entrée non
+  qualifiée aurait fait choisir le mauvais pays.
+- **UEMOA complétée** avec la Guinée-Bissau (`GW`, `+245`, XOF) : 8/8. La CEMAC
+  était déjà complète à 6/6.
+- **Option « Autre pays »** épinglée en fin de liste. Elle ne pré-remplit rien —
+  devise et langue restent au choix de l'utilisateur — plutôt que de bloquer
+  l'inscription ou de forcer une déclaration de pays inexacte.
+
+### Un choix révisé
+
+Le **Canada** passe de `fr` à `en` par défaut. Environ trois quarts de la
+population est anglophone ; un bailleur québécois bascule en un clic.
+
+### Couverture finale
+
+| Devise | Pays |
+| --- | --- |
+| XAF | 6 — CEMAC complète |
+| XOF | 8 — UEMOA complète |
+| EUR | 5 |
+| CAD | 1 |
+| USD | 1 |
+
+Plus l'entrée « Autre pays ». Aucune erreur de rattachement monétaire.

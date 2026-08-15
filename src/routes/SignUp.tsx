@@ -13,7 +13,13 @@ import { LOCALES, LOCALE_LABELS } from '@/i18n/locales'
 import type { Locale } from '@/i18n/locales'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { CURRENCIES, CURRENCY_DEFS, type CurrencyCode } from '@/currency/currencies'
-import { countryName, findCountry, sortedCountries } from '@/lib/countries'
+import {
+  OTHER_COUNTRY,
+  countryName,
+  findCountry,
+  sortedCountries,
+  sortedDialCodes,
+} from '@/lib/countries'
 import {
   formatInviteCode,
   validateEmail,
@@ -267,7 +273,7 @@ export function SignUp() {
                     onChange={(e) => patch({ dial: e.target.value })}
                     className="w-28 shrink-0"
                   >
-                    {[...new Set(sortedCountries(locale).map((c) => c.dial))].sort().map((dial) => (
+                    {sortedDialCodes().map((dial) => (
                       <option key={dial} value={dial}>
                         {dial}
                       </option>
@@ -322,6 +328,12 @@ export function SignUp() {
             errorFor={errorFor}
             blur={blur}
             onCountryChange={(code) => {
+              // « Autre » n'emporte aucun pré-remplissage : on enregistre le
+              // choix et on laisse devise et langue à l'utilisateur.
+              if (code === OTHER_COUNTRY) {
+                patch({ country: code })
+                return
+              }
               const country = findCountry(code)
               if (!country) return
               // Le pays pré-remplit devise, langue et indicatif — et les
@@ -404,7 +416,11 @@ function ContextStep({
   return (
     <div className="flex flex-col gap-6">
       <div className="grid gap-5 sm:grid-cols-3">
-        <Field label={t('common.country')} required>
+        <Field
+          label={t('common.country')}
+          required
+          hint={state.country === OTHER_COUNTRY ? t('common.countryOtherHint') : undefined}
+        >
           {(props) => (
             <Select
               {...props}
@@ -418,6 +434,10 @@ function ContextStep({
                   {countryName(country, locale)}
                 </option>
               ))}
+              {/* Épinglé en fin de liste plutôt qu'alphabétisé : ce n'est pas
+                  un pays, et il ne doit pas s'intercaler entre l'Autriche et
+                  la Belgique. */}
+              <option value={OTHER_COUNTRY}>{t('common.countryOther')}</option>
             </Select>
           )}
         </Field>
@@ -614,7 +634,15 @@ function ReviewStep({
     { label: t('auth.signup.summaryName'), value: state.name, step: 1 },
     { label: t('auth.signup.summaryEmail'), value: state.email, step: 1 },
     { label: t('auth.signup.summaryPhone'), value: `${state.dial} ${state.phone}`, step: 1 },
-    { label: t('auth.signup.summaryCountry'), value: country ? countryName(country, locale) : '—', step: 2 },
+    {
+      label: t('auth.signup.summaryCountry'),
+      value: country
+        ? countryName(country, locale)
+        : state.country === OTHER_COUNTRY
+          ? t('common.countryOther')
+          : '—',
+      step: 2,
+    },
     { label: t('auth.signup.summaryCurrency'), value: CURRENCY_DEFS[state.currency].label, step: 2 },
     { label: t('auth.signup.summaryLanguage'), value: LOCALE_LABELS[state.locale].long, step: 2 },
   ]

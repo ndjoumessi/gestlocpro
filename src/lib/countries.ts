@@ -22,7 +22,9 @@ export const COUNTRIES: Country[] = [
   // --- Zone CEMAC (XAF) ---
   { code: 'CM', dial: '+237', currency: 'XAF', locale: 'fr', nameFr: 'Cameroun', nameEn: 'Cameroon' },
   { code: 'GA', dial: '+241', currency: 'XAF', locale: 'fr', nameFr: 'Gabon', nameEn: 'Gabon' },
-  { code: 'CG', dial: '+242', currency: 'XAF', locale: 'fr', nameFr: 'Congo', nameEn: 'Congo' },
+  // Qualifié : la République démocratique du Congo est un marché francophone
+  // bien plus grand, et « Congo » seul ferait choisir la mauvaise entrée.
+  { code: 'CG', dial: '+242', currency: 'XAF', locale: 'fr', nameFr: 'Congo-Brazzaville', nameEn: 'Republic of the Congo' },
   { code: 'TD', dial: '+235', currency: 'XAF', locale: 'fr', nameFr: 'Tchad', nameEn: 'Chad' },
   { code: 'CF', dial: '+236', currency: 'XAF', locale: 'fr', nameFr: 'République centrafricaine', nameEn: 'Central African Republic' },
   { code: 'GQ', dial: '+240', currency: 'XAF', locale: 'fr', nameFr: 'Guinée équatoriale', nameEn: 'Equatorial Guinea' },
@@ -35,6 +37,7 @@ export const COUNTRIES: Country[] = [
   { code: 'ML', dial: '+223', currency: 'XOF', locale: 'fr', nameFr: 'Mali', nameEn: 'Mali' },
   { code: 'TG', dial: '+228', currency: 'XOF', locale: 'fr', nameFr: 'Togo', nameEn: 'Togo' },
   { code: 'NE', dial: '+227', currency: 'XOF', locale: 'fr', nameFr: 'Niger', nameEn: 'Niger' },
+  { code: 'GW', dial: '+245', currency: 'XOF', locale: 'fr', nameFr: 'Guinée-Bissau', nameEn: 'Guinea-Bissau' },
 
   // --- Zone euro ---
   { code: 'FR', dial: '+33', currency: 'EUR', locale: 'fr', nameFr: 'France', nameEn: 'France' },
@@ -44,15 +47,22 @@ export const COUNTRIES: Country[] = [
   { code: 'ES', dial: '+34', currency: 'EUR', locale: 'en', nameFr: 'Espagne', nameEn: 'Spain' },
 
   // --- Amérique du Nord ---
-  { code: 'CA', dial: '+1', currency: 'CAD', locale: 'fr', nameFr: 'Canada', nameEn: 'Canada' },
+  // Le Canada est réglé sur l'anglais : environ trois quarts de la population
+  // est anglophone. Un bailleur québécois bascule en un clic.
+  { code: 'CA', dial: '+1', currency: 'CAD', locale: 'en', nameFr: 'Canada', nameEn: 'Canada' },
   { code: 'US', dial: '+1', currency: 'USD', locale: 'en', nameFr: 'États-Unis', nameEn: 'United States' },
-
-  // --- Autres marchés USD ---
-  { code: 'MA', dial: '+212', currency: 'USD', locale: 'fr', nameFr: 'Maroc', nameEn: 'Morocco' },
-  { code: 'GB', dial: '+44', currency: 'USD', locale: 'en', nameFr: 'Royaume-Uni', nameEn: 'United Kingdom' },
 ]
 
 export const DEFAULT_COUNTRY = 'CM'
+
+/**
+ * Entrée « Autre », épinglée en fin de liste.
+ *
+ * Ce n'est pas un pays : elle ne pré-remplit rien. Un bailleur hors des pays
+ * listés choisit lui-même sa devise et sa langue, plutôt que d'être bloqué à
+ * l'inscription ou contraint de se déclarer dans un pays qui n'est pas le sien.
+ */
+export const OTHER_COUNTRY = 'OTHER'
 
 export function findCountry(code: string): Country | undefined {
   return COUNTRIES.find((c) => c.code === code)
@@ -66,5 +76,18 @@ export function countryName(country: Country, locale: Locale): string {
 export function sortedCountries(locale: Locale): Country[] {
   return [...COUNTRIES].sort((a, b) =>
     countryName(a, locale).localeCompare(countryName(b, locale), locale),
+  )
+}
+
+/**
+ * Indicatifs uniques, triés par valeur numérique.
+ *
+ * Un tri de chaînes plaçait « +32 » après « +242 » : la France et la Belgique
+ * se retrouvaient en fin de menu, derrière tous les indicatifs africains à
+ * trois chiffres. On trie sur l'entier.
+ */
+export function sortedDialCodes(): string[] {
+  return [...new Set(COUNTRIES.map((country) => country.dial))].sort(
+    (a, b) => Number(a.slice(1)) - Number(b.slice(1)),
   )
 }
