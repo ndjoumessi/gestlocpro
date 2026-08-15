@@ -10,7 +10,7 @@ import { TenantScopeNote } from './TenantDashboard'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
-import { CURRENT_TENANT_UNIT, unitById, type WorkOrder } from '@/data/portfolio'
+import { CURRENT_TENANT_UNIT, type WorkOrder } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 
 const STATUS_TONE: Record<WorkOrder['status'], StatusTone> = {
@@ -37,7 +37,7 @@ export function Works() {
    * doit disparaître de la carte « Ce qui demande une décision » du tableau de
    * bord, qui la réclamait encore.
    */
-  const { works, worksForUnit, approveWork } = usePortfolio()
+  const { works, worksForUnit, approveWork, unitById } = usePortfolio()
 
   // Le locataire suit les interventions sur SON logement, pas celles du parc.
   const visible = isTenant ? worksForUnit(CURRENT_TENANT_UNIT) : works

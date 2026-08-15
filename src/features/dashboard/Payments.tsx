@@ -8,7 +8,8 @@ import { useToast } from '@/components/primitives/Toast'
 import { cn } from '@/lib/cn'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
-import { CURRENT_TENANT_UNIT, KPIS, UNITS, type Unit } from '@/data/portfolio'
+import { CURRENT_TENANT_UNIT, KPIS, type Unit } from '@/data/portfolio'
+import { usePortfolio } from '@/data/PortfolioProvider'
 import { RecordPaymentModal } from './RecordPaymentModal'
 import { TenantScopeNote } from './TenantDashboard'
 
@@ -26,6 +27,7 @@ export function Payments() {
   const { money } = useCurrency()
   const { notify } = useToast()
   const { role } = useRole()
+  const { units } = usePortfolio()
   const isTenant = role === 'tenant'
   const [filter, setFilter] = useState<PaymentStatus | 'all'>('all')
   const [payOpen, setPayOpen] = useState(false)
@@ -35,11 +37,11 @@ export function Payments() {
   // les totaux se calculent eux aussi sur son seul périmètre.
   const leases = useMemo(
     () =>
-      UNITS.filter(
+      units.filter(
         (unit) =>
           unit.status !== 'vacant' && (role !== 'tenant' || unit.id === CURRENT_TENANT_UNIT),
       ),
-    [role],
+    [role, units],
   )
   const rows = useMemo(
     () => (filter === 'all' ? leases : leases.filter((unit) => unit.status === filter)),
@@ -158,8 +160,15 @@ export function Payments() {
             numeric: true,
             render: (unit) => {
               const balance = unit.rent - paidShare(unit)
+              // Un bail qui démarre affiche son loyer à venir, mais pas en
+              // rouge : ce n'est pas un impayé, c'est une échéance future.
+              const enRetard = unit.status === 'overdue' || unit.status === 'partial'
               return (
-                <span className={cn(balance > 0 ? 'font-medium text-danger' : 'text-muted')}>
+                <span
+                  className={cn(
+                    balance > 0 && enRetard ? 'font-medium text-danger' : 'text-muted',
+                  )}
+                >
                   {money(balance, { round: true })}
                 </span>
               )

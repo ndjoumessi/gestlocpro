@@ -6,22 +6,23 @@ import { Input, Select } from '@/components/primitives/Input'
 import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
-import { UNITS } from '@/data/portfolio'
+import { usePortfolio } from '@/data/PortfolioProvider'
 
 /** Saisie d'un encaissement. Le règlement partiel est admis par conception. */
 export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useT()
   const { definition } = useCurrency()
   const { notify } = useToast()
+  const { units } = usePortfolio()
 
-  const payable = UNITS.filter((unit) => unit.status !== 'vacant')
+  const payable = units.filter((unit) => unit.status !== 'vacant')
 
   const [unitId, setUnitId] = useState(payable[0]?.id ?? '')
   const [amount, setAmount] = useState('')
   const [method, setMethod] = useState('mobile')
   const [error, setError] = useState<string | null>(null)
 
-  const unit = UNITS.find((u) => u.id === unitId)
+  const unit = units.find((u) => u.id === unitId)
 
   const submit = () => {
     const parsed = Number(amount.replace(/[^\d.,]/g, '').replace(',', '.'))

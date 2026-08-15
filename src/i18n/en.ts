@@ -401,6 +401,7 @@ export const en: Dictionary = {
       modalTitle: 'New tenant record',
       modalDescription: 'An invitation code will be sent by SMS to activate their space.',
       created: 'Tenant record created · invitation code sent by SMS',
+      phoneHint: 'The invitation code will be sent there.',
       since: 'Tenant since',
       contact: 'Contact',
     },

@@ -261,10 +261,6 @@ export const TENANT_RECEIPTS: Receipt[] = [
   { year: 2026, month: 2, paidDay: 6, status: 'paid' },
 ]
 
-export function unitById(id: string): Unit | undefined {
-  return UNITS.find((unit) => unit.id === id)
-}
-
 export function buildingById(id: string): Building | undefined {
   return BUILDINGS.find((building) => building.id === id)
 }

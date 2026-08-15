@@ -8,7 +8,8 @@ import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
-import { READINGS, UTILITY_RATES, unitById, type MeterReading } from '@/data/portfolio'
+import { READINGS, UTILITY_RATES, type MeterReading } from '@/data/portfolio'
+import { usePortfolio } from '@/data/PortfolioProvider'
 
 /**
  * Relevé des compteurs.
@@ -23,6 +24,7 @@ export function Meters() {
   const d = useDates()
   const { money } = useCurrency()
   const { notify } = useToast()
+  const { unitById } = usePortfolio()
 
   const consumption = (reading: MeterReading) => ({
     water: reading.waterCurrent === null ? null : reading.waterCurrent - reading.waterPrevious,

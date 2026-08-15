@@ -8,17 +8,19 @@ import { Button } from '@/components/primitives/Button'
 import { cn } from '@/lib/cn'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
-import { BUILDINGS, UNITS, buildingById, type Unit } from '@/data/portfolio'
+import { BUILDINGS, buildingById, type Unit } from '@/data/portfolio'
+import { usePortfolio } from '@/data/PortfolioProvider'
 
 export function Portfolio() {
   const t = useT()
   const { money } = useCurrency()
+  const { units } = usePortfolio()
   const [query, setQuery] = useState('')
   const [building, setBuilding] = useState<string | 'all'>('all')
 
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase()
-    return UNITS.filter((unit) => {
+    return units.filter((unit) => {
       if (building !== 'all' && unit.buildingId !== building) return false
       if (!needle) return true
       const haystack = [
@@ -32,9 +34,9 @@ export function Portfolio() {
         .toLowerCase()
       return haystack.includes(needle)
     })
-  }, [query, building])
+  }, [query, building, units])
 
-  const occupied = UNITS.filter((u) => u.status !== 'vacant').length
+  const occupied = units.filter((u) => u.status !== 'vacant').length
 
   return (
     <>
@@ -51,9 +53,9 @@ export function Portfolio() {
         ))}
         <StatCard
           label={t('app.dashboard.occupancy')}
-          value={`${Math.round((occupied / UNITS.length) * 100)}`}
+          value={`${Math.round((occupied / units.length) * 100)}`}
           unit="%"
-          note={t('app.portfolio.occupancy', { occupied, total: UNITS.length })}
+          note={t('app.portfolio.occupancy', { occupied, total: units.length })}
         />
       </div>
 

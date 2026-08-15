@@ -553,12 +553,26 @@ l'une lisant la constante figée, l'autre l'état partagé — auraient fini par
 confondues. Les collections non modifiables (états des lieux, signalements)
 restent servies depuis le module.
 
+Les **unités** l'ont rejoint dans un second temps : créer une fiche locataire
+occupe une unité, ce qui déplace le taux d'occupation, la liste du parc et le
+suivi des paiements. Comme pour les travaux et les cautions, `unitById` a été
+retiré du module pour ne pas laisser deux homonymes divergents.
+
+### Le statut « En attente »
+
+Il existait dans le dictionnaire sans être employé nulle part. Un bail qui
+démarre le porte désormais : marquer un nouveau locataire *À jour* d'un loyer
+qu'il n'a pas encore payé fausserait les indicateurs d'encaissement, et le
+marquer *En retard* serait injuste. Son solde s'affiche donc en gris et non en
+rouge — c'est une échéance à venir, pas un impayé.
+
 ### Vérification
 
 | Geste | Effet vérifié |
 | --- | --- |
 | Valider le devis SIG-2026-042 | statut → *Validé*, bouton retiré, et le tableau de bord affiche « Rien à arbitrer pour le moment » |
 | Arbitrer la caution A3 avec 30 000 de retenue | ligne → *Restituée*, solde 200 000, et les totaux passent de 163 000 à 148 000 de retenu |
+| Créer la fiche d'Awa Diallo sur B4 | 11 lignes au lieu de 10, B4 passe *En attente*, les vacantes tombent de 2 à 1, l'occupation de 83 % à 92 %, et le parc comme les paiements suivent |
 
 ---
 

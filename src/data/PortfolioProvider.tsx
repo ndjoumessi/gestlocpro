@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
-import { DEPOSITS, WORKS, type Deposit, type WorkOrder } from './portfolio'
+import { DEPOSITS, UNITS, WORKS, type Deposit, type Unit, type WorkOrder } from './portfolio'
 
 /**
  * État partagé du parc.
@@ -15,19 +15,24 @@ import { DEPOSITS, WORKS, type Deposit, type WorkOrder } from './portfolio'
  * `AppShell`, pour que l'état survive à la navigation.
  */
 interface PortfolioContextValue {
+  units: Unit[]
   works: WorkOrder[]
   deposits: Deposit[]
   /** Le propriétaire valide un devis proposé par le gestionnaire. */
   approveWork: (id: string) => void
   /** Le propriétaire arbitre une caution : retenue et restitution du solde. */
   settleDeposit: (unitId: string, withheld: number) => void
+  /** Rattache un locataire à une unité vacante. Le bail démarre « en attente ». */
+  addTenant: (unitId: string, name: string) => void
   worksForUnit: (unitId: string) => WorkOrder[]
   depositForUnit: (unitId: string) => Deposit | undefined
+  unitById: (unitId: string) => Unit | undefined
 }
 
 const PortfolioContext = createContext<PortfolioContextValue | null>(null)
 
 export function PortfolioProvider({ children }: { children: ReactNode }) {
+  const [units, setUnits] = useState<Unit[]>(UNITS)
   const [works, setWorks] = useState<WorkOrder[]>(WORKS)
   const [deposits, setDeposits] = useState<Deposit[]>(DEPOSITS)
 
@@ -41,16 +46,28 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
+  const addTenant = useCallback((unitId: string, name: string) => {
+    setUnits((list) =>
+      // « En attente » et non « À jour » : le bail commence, la première
+      // quittance n'est pas encore due. Marquer le locataire à jour d'un loyer
+      // qu'il n'a pas payé fausserait les indicateurs d'encaissement.
+      list.map((u) => (u.id === unitId ? { ...u, tenant: name, status: 'pending' } : u)),
+    )
+  }, [])
+
   const value = useMemo<PortfolioContextValue>(
     () => ({
+      units,
       works,
       deposits,
       approveWork,
       settleDeposit,
+      addTenant,
       worksForUnit: (unitId) => works.filter((w) => w.unitId === unitId),
       depositForUnit: (unitId) => deposits.find((d) => d.unitId === unitId),
+      unitById: (unitId) => units.find((u) => u.id === unitId),
     }),
-    [works, deposits, approveWork, settleDeposit],
+    [units, works, deposits, approveWork, settleDeposit, addTenant],
   )
 
   return <PortfolioContext.Provider value={value}>{children}</PortfolioContext.Provider>

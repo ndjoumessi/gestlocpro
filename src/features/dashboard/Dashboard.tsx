@@ -11,7 +11,7 @@ import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
-import { BUILDINGS, COLLECTIONS, KPIS, UNITS } from '@/data/portfolio'
+import { BUILDINGS, COLLECTIONS, KPIS } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { RecordPaymentModal } from './RecordPaymentModal'
 import { TenantDashboard } from './TenantDashboard'
@@ -22,7 +22,7 @@ export function Dashboard() {
   const { role } = useRole()
   const { money, definition } = useCurrency()
   const { notify } = useToast()
-  const { works } = usePortfolio()
+  const { units, works } = usePortfolio()
   const [payOpen, setPayOpen] = useState(false)
 
   // Le locataire n'a pas une version filtrée de cet écran : il en a un autre.
@@ -31,11 +31,11 @@ export function Dashboard() {
   // montrer la situation de ses voisins.
   if (role === 'tenant') return <TenantDashboard />
 
-  const occupied = UNITS.filter((unit) => unit.status !== 'vacant').length
-  const vacant = UNITS.length - occupied
-  const occupancy = Math.round((occupied / UNITS.length) * 100)
+  const occupied = units.filter((unit) => unit.status !== 'vacant').length
+  const vacant = units.length - occupied
+  const occupancy = Math.round((occupied / units.length) * 100)
   const collectedShare = Math.round((KPIS.collected / KPIS.expected) * 100)
-  const overdue = UNITS.filter((unit) => unit.status === 'overdue')
+  const overdue = units.filter((unit) => unit.status === 'overdue')
   const maxOverdueDays = Math.max(...overdue.map((unit) => unit.overdueDays ?? 0))
 
   const title =
@@ -54,7 +54,7 @@ export function Dashboard() {
         title={title}
         description={t('app.dashboard.subtitle', {
           buildings: BUILDINGS.length,
-          units: UNITS.length,
+          units: units.length,
           currency: definition.label,
         })}
         actions={
@@ -192,7 +192,7 @@ export function Dashboard() {
         <Card>
           <CardHeader title={t('app.dashboard.scheduleTitle')} level={2} />
           <ul className="flex flex-col gap-3">
-            {UNITS.filter((unit) => unit.status !== 'paid' && unit.status !== 'vacant')
+            {units.filter((unit) => unit.status !== 'paid' && unit.status !== 'vacant')
               .slice(0, 4)
               .map((unit) => (
                 <li key={unit.id} className="flex items-center gap-3">

@@ -14,7 +14,6 @@ import {
   UTILITY_RATES,
   buildingById,
   readingForUnit,
-  unitById,
 } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 
@@ -30,7 +29,7 @@ export function TenantDashboard() {
   const t = useT()
   const d = useDates()
   const { money } = useCurrency()
-  const { worksForUnit, depositForUnit } = usePortfolio()
+  const { worksForUnit, depositForUnit, unitById } = usePortfolio()
 
   const unit = unitById(CURRENT_TENANT_UNIT)
   const building = unit ? buildingById(unit.buildingId) : undefined

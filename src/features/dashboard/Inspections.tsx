@@ -7,12 +7,14 @@ import { EmptyState } from '@/components/primitives/DataTable'
 import { TenantScopeNote } from './TenantDashboard'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
-import { CURRENT_TENANT_UNIT, INSPECTIONS, inspectionsForUnit, unitById } from '@/data/portfolio'
+import { CURRENT_TENANT_UNIT, INSPECTIONS, inspectionsForUnit } from '@/data/portfolio'
+import { usePortfolio } from '@/data/PortfolioProvider'
 
 export function Inspections() {
   const t = useT()
   const d = useDates()
   const { role } = useRole()
+  const { unitById } = usePortfolio()
   const isTenant = role === 'tenant'
   const source = isTenant ? inspectionsForUnit(CURRENT_TENANT_UNIT) : INSPECTIONS
 

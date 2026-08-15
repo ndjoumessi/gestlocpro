@@ -406,6 +406,7 @@ export const fr = {
       modalTitle: 'Nouvelle fiche locataire',
       modalDescription: 'Un code d’invitation lui sera envoyé par SMS pour activer son espace.',
       created: 'Fiche locataire créée · code d’invitation envoyé par SMS',
+      phoneHint: 'Le code d’invitation y sera envoyé.',
       since: 'Locataire depuis',
       contact: 'Contact',
     },

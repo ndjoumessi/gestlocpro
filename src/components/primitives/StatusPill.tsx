@@ -46,13 +46,15 @@ export function StatusPill({ tone, children, icon, size = 'md', className }: Sta
 }
 
 /** Statuts de paiement du domaine, traduits et tonalisés au même endroit. */
-export type PaymentStatus = 'paid' | 'partial' | 'overdue' | 'vacant'
+export type PaymentStatus = 'paid' | 'partial' | 'overdue' | 'vacant' | 'pending'
 
 const PAYMENT_TONES: Record<PaymentStatus, StatusTone> = {
   paid: 'ok',
   partial: 'warn',
   overdue: 'danger',
   vacant: 'neutral',
+  // Bail qui démarre : rien n'est encore dû, donc ni succès ni alerte.
+  pending: 'info',
 }
 
 export function PaymentStatusPill({
