@@ -253,7 +253,9 @@ function Sidebar({
         )}
         <IconButton
           icon="menu"
-          label={t('nav.toggleNav')}
+          // Dans le tiroir, ce bouton ferme ; dans la barre latérale de
+          // bureau, il replie. Deux actions, deux libellés.
+          label={dialogLabel ? t('nav.closeNav') : t('nav.toggleNav')}
           variant="onDark"
           onClick={onToggleRail}
           className={cn('ml-auto', railed && 'hidden')}
@@ -392,7 +394,7 @@ function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
     >
       <IconButton
         icon="menu"
-        label={t('nav.toggleNav')}
+        label={t('nav.openNav')}
         variant="secondary"
         onClick={onOpenDrawer}
         className="lg:hidden"

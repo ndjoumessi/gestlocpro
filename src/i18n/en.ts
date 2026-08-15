@@ -91,6 +91,8 @@ export const en: Dictionary = {
     sectionAdmin: 'Administration',
     activeProfile: 'Active profile',
     toggleNav: 'Collapse or expand navigation',
+    openNav: 'Open navigation',
+    closeNav: 'Close navigation',
     searchPlaceholder: 'Search a unit, a tenant…',
     primaryNav: 'Main navigation',
     breadcrumb: 'Breadcrumb',

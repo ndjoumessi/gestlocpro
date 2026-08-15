@@ -95,7 +95,13 @@ export const fr = {
     sectionOperations: 'Opérations',
     sectionAdmin: 'Administration',
     activeProfile: 'Profil actif',
+    // Trois boutons portaient ce libellé pour trois actions différentes.
+    // « Replier ou déplier » ne vaut que pour la barre latérale de bureau, qui
+    // bascule entre pleine largeur et rail ; le tiroir mobile, lui, s'ouvre
+    // depuis la barre supérieure et se ferme depuis son propre en-tête.
     toggleNav: 'Replier ou déplier la navigation',
+    openNav: 'Ouvrir la navigation',
+    closeNav: 'Fermer la navigation',
     searchPlaceholder: 'Rechercher un logement, un locataire…',
     primaryNav: 'Navigation principale',
     breadcrumb: 'Fil d’Ariane',

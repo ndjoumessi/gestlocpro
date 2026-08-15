@@ -29,17 +29,33 @@ function poserLargeur(large: boolean) {
   )
 }
 
-/**
- * Le bouton d'ouverture se cherche dans la barre supérieure : la barre latérale
- * de bureau porte le même libellé pour son bouton de repli. Elle est masquée en
- * mobile par une media query, que jsdom n'applique pas — les deux coexistent
- * donc ici. Le libellé partagé mériterait d'être distingué.
- */
-const ouvrir = () =>
-  within(screen.getByRole('banner')).getByRole('button', { name: /déplier la navigation/i })
+const ouvrir = () => screen.getByRole('button', { name: 'Ouvrir la navigation' })
 
 describe('tiroir de navigation', () => {
   beforeEach(() => poserLargeur(false))
+
+  /**
+   * Trois boutons portaient le libellé « Replier ou déplier la navigation »
+   * pour trois actions distinctes : replier la barre latérale de bureau, ouvrir
+   * le tiroir, le fermer. Une media query n'en montre jamais qu'un à la fois,
+   * donc rien ne cassait à l'usage — mais un utilisateur qui n'a que le libellé
+   * pour comprendre ce qu'un bouton fait était mal servi.
+   */
+  it('distingue ouvrir, fermer et replier', async () => {
+    const user = userEvent.setup()
+    renderApp('/app')
+
+    expect(screen.getByRole('button', { name: 'Ouvrir la navigation' })).toBeInTheDocument()
+    // Barre latérale de bureau : masquée en mobile, mais montée sous jsdom.
+    expect(
+      screen.getByRole('button', { name: 'Replier ou déplier la navigation' }),
+    ).toBeInTheDocument()
+
+    await user.click(ouvrir())
+    expect(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Fermer la navigation' }),
+    ).toBeInTheDocument()
+  })
 
   it('s’annonce comme fenêtre modale', async () => {
     const user = userEvent.setup()
