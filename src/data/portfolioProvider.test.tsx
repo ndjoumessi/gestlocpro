@@ -124,3 +124,57 @@ describe('création d’une fiche locataire', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 })
+
+/**
+ * Enregistrement local du parcours.
+ *
+ * Deux défauts sont passés sous les tests précédents et n'ont été vus qu'en
+ * navigateur : l'application écrivait dès l'ouverture, et le bouton d'effacement
+ * réécrivait aussitôt ce qu'il venait d'effacer. Tous deux tiennent à la même
+ * chose — savoir si l'état a réellement été modifié — d'où ces trois cas.
+ */
+describe('parcours enregistré', () => {
+  const CLE = 'gestlocpro.portfolio'
+
+  it('n’écrit rien tant que rien n’a été modifié', () => {
+    renderApp('/app/systeme')
+
+    expect(window.localStorage.getItem(CLE)).toBeNull()
+    // La carte explique le mécanisme dans tous les cas ; c'est le bouton qui
+    // n'a pas lieu d'être, puisqu'il n'y a rien à effacer.
+    expect(screen.getByText(/Rien n’a encore été modifié/)).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /repartir du jeu de démonstration/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('enregistre dès la première modification', async () => {
+    const user = userEvent.setup()
+    renderApp('/app/travaux')
+
+    await user.click(screen.getByRole('button', { name: /valider le devis/i }))
+
+    const enregistre = JSON.parse(window.localStorage.getItem(CLE) ?? 'null')
+    expect(enregistre.etat.works.find((w: { id: string }) => w.id === 'SIG-2026-042').status).toBe(
+      'approved',
+    )
+  })
+
+  it('efface sur demande, et n’enregistre pas de nouveau dans la foulée', async () => {
+    const user = userEvent.setup()
+    renderApp('/app/travaux')
+
+    await user.click(screen.getByRole('button', { name: /valider le devis/i }))
+    await allerA(/états du système/i)
+    await user.click(screen.getByRole('button', { name: /repartir du jeu de démonstration/i }))
+
+    expect(window.localStorage.getItem(CLE)).toBeNull()
+    expect(
+      screen.queryByRole('button', { name: /repartir du jeu de démonstration/i }),
+    ).not.toBeInTheDocument()
+
+    // Et le devis est bien redevenu à arbitrer.
+    await allerA(/^travaux/i)
+    expect(screen.getByRole('button', { name: /valider le devis/i })).toBeInTheDocument()
+  })
+})

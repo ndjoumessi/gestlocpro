@@ -494,6 +494,15 @@ export const fr = {
       offlineTitle: 'Mode hors ligne',
       offlineBody:
         'Les relevés et états des lieux saisis maintenant seront synchronisés au retour du réseau.',
+      persistence: 'Parcours enregistré',
+      persistenceIdle:
+        'Vos actions — devis validés, cautions arbitrées, fiches créées — sont enregistrées dans ce navigateur et survivent au rechargement. Rien n’a encore été modifié.',
+      persistenceDirty:
+        'Vos actions — devis validés, cautions arbitrées, fiches créées — sont enregistrées dans ce navigateur et survivent au rechargement.',
+      persistenceScope:
+        'Rien ne quitte votre machine : aucun serveur n’est contacté.',
+      reset: 'Repartir du jeu de démonstration',
+      resetDone: 'Démonstration réinitialisée',
       offlineNotice:
         'Maquette : la synchronisation différée n’est pas implémentée. Cette carte montre l’état tel qu’il devra s’afficher le jour où elle le sera.',
     },

@@ -488,6 +488,14 @@ export const en: Dictionary = {
       offlineTitle: 'Offline mode',
       offlineBody:
         'Readings and inspections captured now will sync when the network returns.',
+      persistence: 'Saved session',
+      persistenceIdle:
+        'Your actions — approved quotes, settled deposits, records created — are saved in this browser and survive a reload. Nothing has been changed yet.',
+      persistenceDirty:
+        'Your actions — approved quotes, settled deposits, records created — are saved in this browser and survive a reload.',
+      persistenceScope: 'Nothing leaves your machine: no server is contacted.',
+      reset: 'Start from the demonstration data',
+      resetDone: 'Demonstration reset',
       offlineNotice:
         'Mockup: deferred sync is not implemented. This card shows the state as it should appear once it is.',
     },

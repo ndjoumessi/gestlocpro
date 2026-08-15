@@ -5,6 +5,7 @@ import { Icon } from '@/components/primitives/Icon'
 import { EmptyState } from '@/components/primitives/DataTable'
 import { useToast } from '@/components/primitives/Toast'
 import { useT } from '@/i18n/I18nProvider'
+import { usePortfolio } from '@/data/PortfolioProvider'
 
 /**
  * Les quatre états que toute vue de données doit savoir rendre.
@@ -14,6 +15,7 @@ import { useT } from '@/i18n/I18nProvider'
 export function SystemStates() {
   const t = useT()
   const { notify } = useToast()
+  const { reset, hasChanges } = usePortfolio()
 
   return (
     <>
@@ -98,6 +100,35 @@ export function SystemStates() {
           </p>
         </Card>
       </div>
+
+      {/* La persistance est un comportement que l'utilisateur doit pouvoir
+          défaire. Sans ce bouton, une démonstration polluée par quelques clics
+          d'essai le resterait, et il faudrait vider le stockage à la main. */}
+      <Card className="mt-4">
+        <CardHeader
+          title={t('app.system.persistence')}
+          description={hasChanges ? t('app.system.persistenceDirty') : t('app.system.persistenceIdle')}
+          level={2}
+          action={
+            hasChanges ? (
+              <Button
+                variant="secondary"
+                icon="arrowRight"
+                onClick={() => {
+                  reset()
+                  notify(t('app.system.resetDone'), { tone: 'ok' })
+                }}
+              >
+                {t('app.system.reset')}
+              </Button>
+            ) : undefined
+          }
+        />
+        <p className="flex items-start gap-2 text-body-s text-muted">
+          <Icon name="shield" size={15} className="mt-0.5 shrink-0 text-ok" />
+          {t('app.system.persistenceScope')}
+        </p>
+      </Card>
     </>
   )
 }
