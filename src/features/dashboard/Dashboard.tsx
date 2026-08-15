@@ -11,7 +11,8 @@ import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
-import { BUILDINGS, COLLECTIONS, KPIS, UNITS, WORKS } from '@/data/portfolio'
+import { BUILDINGS, COLLECTIONS, KPIS, UNITS } from '@/data/portfolio'
+import { usePortfolio } from '@/data/PortfolioProvider'
 import { RecordPaymentModal } from './RecordPaymentModal'
 import { TenantDashboard } from './TenantDashboard'
 
@@ -21,6 +22,7 @@ export function Dashboard() {
   const { role } = useRole()
   const { money, definition } = useCurrency()
   const { notify } = useToast()
+  const { works } = usePortfolio()
   const [payOpen, setPayOpen] = useState(false)
 
   // Le locataire n'a pas une version filtrée de cet écran : il en a un autre.
@@ -44,7 +46,7 @@ export function Dashboard() {
         : t('app.dashboard.titleTenant')
 
   // Les arbitrages en attente : ce que le propriétaire doit trancher.
-  const decisions = WORKS.filter((work) => work.status === 'quoted')
+  const decisions = works.filter((work) => work.status === 'quoted')
 
   return (
     <>

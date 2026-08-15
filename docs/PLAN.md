@@ -527,6 +527,41 @@ formats de date locaux » — qui est devenu exact.
 
 ---
 
+## 15. État partagé du parc
+
+Chaque écran gardait sa propre copie des travaux et des cautions. Valider un
+devis sur l'écran Travaux laissait donc le tableau de bord réclamer la même
+décision dans sa carte « Ce qui demande une décision », et arbitrer une caution
+ne se voyait pas dans l'espace locataire.
+
+Le défaut est apparu par étapes, et l'ordre importe :
+
+1. Les actions se contentaient d'une notification. Rien ne changeait nulle part,
+   mais les écrans étaient cohérents entre eux.
+2. L'arbitrage des cautions a été rendu réel — l'écran Travaux est alors devenu
+   visiblement creux par comparaison.
+3. La validation des devis a été rendue réelle à son tour — le tableau de bord
+   est alors devenu le seul à ne pas suivre.
+
+`PortfolioProvider` tient la place qu'occuperait le serveur : une source,
+plusieurs lecteurs. Monté à la racine et non dans `AppShell`, pour que l'état
+survive à la navigation.
+
+Les sélecteurs `worksForUnit` et `depositForUnit` ont été **retirés** du module
+de données et ne vivent plus que dans le provider. Deux fonctions homonymes —
+l'une lisant la constante figée, l'autre l'état partagé — auraient fini par être
+confondues. Les collections non modifiables (états des lieux, signalements)
+restent servies depuis le module.
+
+### Vérification
+
+| Geste | Effet vérifié |
+| --- | --- |
+| Valider le devis SIG-2026-042 | statut → *Validé*, bouton retiré, et le tableau de bord affiche « Rien à arbitrer pour le moment » |
+| Arbitrer la caution A3 avec 30 000 de retenue | ligne → *Restituée*, solde 200 000, et les totaux passent de 163 000 à 148 000 de retenu |
+
+---
+
 ## 12. Validation de la liste des pays
 
 Deux erreurs de fait et quatre défauts. La liste passe de 22 à **21 pays**.

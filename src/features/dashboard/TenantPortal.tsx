@@ -12,7 +12,8 @@ import { cn } from '@/lib/cn'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
-import { TENANT_RECEIPTS, UNITS, WORKS } from '@/data/portfolio'
+import { TENANT_RECEIPTS, UNITS } from '@/data/portfolio'
+import { usePortfolio } from '@/data/PortfolioProvider'
 
 const TABS = ['space', 'myPayments', 'myWorks', 'documents', 'report'] as const
 type Tab = (typeof TABS)[number]
@@ -30,8 +31,10 @@ export function TenantPortal() {
   const [tab, setTab] = useState<Tab>('space')
   const [sent, setSent] = useState(false)
 
+  const { worksForUnit } = usePortfolio()
+
   const unit = UNITS.find((u) => u.id === 'A1')!
-  const myWorks = WORKS.filter((w) => w.unitId === 'A1')
+  const myWorks = worksForUnit('A1')
 
   return (
     <>

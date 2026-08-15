@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { PageHeader, useRole } from '@/components/layout/AppShell'
 import { Card } from '@/components/primitives/Card'
 import { StatusPill, type StatusTone } from '@/components/primitives/StatusPill'
@@ -11,7 +10,8 @@ import { TenantScopeNote } from './TenantDashboard'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
-import { CURRENT_TENANT_UNIT, WORKS, unitById, worksForUnit, type WorkOrder } from '@/data/portfolio'
+import { CURRENT_TENANT_UNIT, unitById, type WorkOrder } from '@/data/portfolio'
+import { usePortfolio } from '@/data/PortfolioProvider'
 
 const STATUS_TONE: Record<WorkOrder['status'], StatusTone> = {
   reported: 'neutral',
@@ -33,21 +33,17 @@ export function Works() {
   const isTenant = role === 'tenant'
 
   /**
-   * La liste passe en état local parce que valider un devis la modifie.
-   * Auparavant l'action se contentait d'une notification : le devis restait
-   * affiché « Devis proposé » après validation, et deux signaux se
-   * contredisaient — la notification disait que c'était fait, la carte disait
-   * que non. C'est la carte qu'on croit.
+   * Travaux et cautions vivent dans un état partagé : une décision prise ici
+   * doit disparaître de la carte « Ce qui demande une décision » du tableau de
+   * bord, qui la réclamait encore.
    */
-  const [works, setWorks] = useState<WorkOrder[]>(WORKS)
+  const { works, worksForUnit, approveWork } = usePortfolio()
 
   // Le locataire suit les interventions sur SON logement, pas celles du parc.
   const visible = isTenant ? worksForUnit(CURRENT_TENANT_UNIT) : works
 
   const approve = (id: string) => {
-    setWorks((list) =>
-      list.map((work) => (work.id === id ? { ...work, status: 'approved' } : work)),
-    )
+    approveWork(id)
     notify(t('app.works.approved_toast'), { tone: 'ok' })
   }
 

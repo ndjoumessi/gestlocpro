@@ -219,16 +219,14 @@ export const ALERTS: Alert[] = [
  */
 export const CURRENT_TENANT_UNIT = 'A1'
 
-export function worksForUnit(unitId: string): WorkOrder[] {
-  return WORKS.filter((work) => work.unitId === unitId)
-}
+/* Les sélecteurs sur les travaux et les cautions vivent dans
+   `PortfolioProvider` et non ici : ces deux collections sont modifiables, et
+   deux fonctions homonymes — l'une lisant la constante figée, l'autre l'état
+   partagé — auraient fini par être confondues. Les collections ci-dessous ne
+   changent pas, elles restent servies depuis le module. */
 
 export function inspectionsForUnit(unitId: string): Inspection[] {
   return INSPECTIONS.filter((inspection) => inspection.unitId === unitId)
-}
-
-export function depositForUnit(unitId: string): Deposit | undefined {
-  return DEPOSITS.find((deposit) => deposit.unitId === unitId)
 }
 
 export function readingForUnit(unitId: string): MeterReading | undefined {

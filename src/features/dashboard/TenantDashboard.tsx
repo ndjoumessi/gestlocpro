@@ -13,11 +13,10 @@ import {
   TENANT_RECEIPTS,
   UTILITY_RATES,
   buildingById,
-  depositForUnit,
   readingForUnit,
   unitById,
-  worksForUnit,
 } from '@/data/portfolio'
+import { usePortfolio } from '@/data/PortfolioProvider'
 
 /**
  * Espace locataire.
@@ -31,6 +30,7 @@ export function TenantDashboard() {
   const t = useT()
   const d = useDates()
   const { money } = useCurrency()
+  const { worksForUnit, depositForUnit } = usePortfolio()
 
   const unit = unitById(CURRENT_TENANT_UNIT)
   const building = unit ? buildingById(unit.buildingId) : undefined

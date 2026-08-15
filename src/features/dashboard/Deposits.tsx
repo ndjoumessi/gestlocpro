@@ -11,7 +11,8 @@ import { Icon } from '@/components/primitives/Icon'
 import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
-import { DEPOSITS, type Deposit } from '@/data/portfolio'
+import { type Deposit } from '@/data/portfolio'
+import { usePortfolio } from '@/data/PortfolioProvider'
 
 const TONE: Record<Deposit['status'], StatusTone> = {
   held: 'info',
@@ -25,9 +26,9 @@ export function Deposits() {
   const { role } = useRole()
   const { notify } = useToast()
 
-  // L'arbitrage modifie la liste : elle passe donc en état local. Sans backend,
-  // c'est la seule façon de montrer l'effet du geste plutôt que de le décrire.
-  const [deposits, setDeposits] = useState<Deposit[]>(DEPOSITS)
+  // Les cautions viennent de l'état partagé : arbitrer ici doit se voir dans
+  // l'espace locataire, qui affiche la caution consignée du bail.
+  const { deposits, settleDeposit } = usePortfolio()
   const [settling, setSettling] = useState<Deposit | null>(null)
 
   /**
@@ -42,9 +43,7 @@ export function Deposits() {
   const totalWithheld = deposits.reduce((sum, d) => sum + d.withheld, 0)
 
   const settle = (unitId: string, withheld: number) => {
-    setDeposits((list) =>
-      list.map((d) => (d.unitId === unitId ? { ...d, withheld, status: 'returned' } : d)),
-    )
+    settleDeposit(unitId, withheld)
     setSettling(null)
     notify(t('app.deposits.settled'), { tone: 'ok' })
   }
