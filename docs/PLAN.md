@@ -211,13 +211,35 @@ un code d'invitation à un propriétaire.
 
 | | Essentiel | **Pro** (populaire) | Cabinet |
 | --- | --- | --- | --- |
-| XAF / XOF | 1 250 + 125 /unité | 2 000 + 200 /unité | sur devis |
+| XAF / XOF | 1 200 + 100 /unité | 2 000 + 200 /unité | sur devis |
 | EUR | 4 € + 0,50 € /unité | 6 € + 0,80 € /unité | sur devis |
 | CAD | 6 $ + 0,70 $ /unité | 9 $ + 1,10 $ /unité | sur devis |
 | USD | 4 $ + 0,50 $ /unité | 6 $ + 0,80 $ /unité | sur devis |
 
-**Pro vaut 1,6 × Essentiel**, même facteur sur l'abonnement et sur le prix
-unitaire : l'effort d'upgrade est identique quelle que soit la taille du parc.
+**Pro vaut 1,6 × Essentiel** sur l'abonnement, et sur le prix unitaire des
+devises à sous-unité : l'effort d'upgrade y est identique quelle que soit la
+taille du parc.
+
+En franc CFA, l'Essentiel est passé à **1 200 + 100 par unité** (auparavant
+1 250 + 125). Deux effets, l'un voulu, l'autre à connaître.
+
+**Le mensuel tombe juste.** Base et prix unitaire étant multiples de 100, le
+total l'est aussi : la formule affichée sous le prix se vérifie désormais à
+chacune des 60 positions du curseur, contre 45 décrochages sur 60 avant.
+
+**L'annuel, lui, décroche — et c'est structurel.** La remise de 20 % revient à
+multiplier par 4/5 : pour qu'un montant reste multiple de 100 après l'opération,
+il doit être multiple de 125, donc de 500 pour l'être avant comme après. Aucun
+prix unitaire réaliste ne satisfait cela à toute taille de parc. La mention
+« Arrondi : la formule donne … » garde donc son emploi, sur la seule période
+annuelle. À noter que l'ancienne grille avait le défaut inverse : annuel exact,
+mensuel faux — et c'est le mensuel qu'on lit en premier.
+
+**Le facteur unique Pro/Essentiel est rompu en franc CFA.** Le prix unitaire y
+passe d'un rapport 1,6 à 2 (200 contre 100), donc l'effort d'upgrade recroît avec
+la taille du parc — ce que le raisonnement ci-dessous cherchait précisément à
+corriger. Ramener le prix unitaire de Pro à **160** le rétablirait. Les devises à
+sous-unité conservent leur 1,6.
 
 Annuel −20 %, 30 jours d'essai sur les paliers tarifés. Portail locataire inclus
 partout. Différenciateurs : relances automatiques, gestionnaires délégués,
@@ -317,6 +339,12 @@ Pro vaut désormais **1,6 × Essentiel**, même facteur sur l'abonnement et sur 
 prix unitaire : l'effort d'upgrade est **constant à +60 %** sur toute la plage.
 Contrepartie assumée : sous ~22 unités Pro coûte moins qu'avant, au-dessus il
 coûte davantage — cohérent avec qui tire la valeur de la fonction.
+
+> **Depuis, en franc CFA seulement**, l'Essentiel est passé à 1 200 + 100 par
+> unité, pour que la formule affichée se vérifie. Le facteur unique ne tient donc
+> plus sur le prix unitaire (rapport 2, non 1,6) et l'effort d'upgrade y recroît
+> avec la taille du parc — exactement ce que ce raisonnement cherchait à
+> corriger. Prix unitaire de Pro à 160 pour le rétablir. Voir §8.
 
 ### Ce qui reste ouvert sur les tarifs
 

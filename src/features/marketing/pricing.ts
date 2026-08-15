@@ -71,14 +71,24 @@ export const PLANS: Plan[] = [
   {
     id: 'essential',
     pricing: {
-      base: { XAF: 1250, XOF: 1250, EUR: 4, CAD: 6, USD: 4 },
-      perUnit: { XAF: 125, XOF: 125, EUR: 0.5, CAD: 0.7, USD: 0.5 },
+      // Base et prix unitaire multiples de 100 : le total mensuel tombe donc
+      // juste, et la formule affichée sous le prix se vérifie. Cela ne vaut que
+      // pour le mensuel — voir `priceIsRounded`.
+      //
+      // Les deux zones franc CFA suivent la même grille : les faire diverger
+      // ici créerait deux tarifs pour un même montant nominal.
+      base: { XAF: 1200, XOF: 1200, EUR: 4, CAD: 6, USD: 4 },
+      perUnit: { XAF: 100, XOF: 100, EUR: 0.5, CAD: 0.7, USD: 0.5 },
     },
   },
   {
     id: 'pro',
     popular: true,
-    // 1,6 x Essentiel, sur l'abonnement comme sur le prix unitaire.
+    // 1,6 x Essentiel sur l'abonnement, et sur le prix unitaire des devises à
+    // sous-unité. En franc CFA le prix unitaire de l'Essentiel est passé à 100 :
+    // le rapport y est donc de 2, et l'effort d'upgrade croît avec la taille du
+    // parc au lieu de rester constant. Écart assumé, à retrancher si l'on veut
+    // rétablir le facteur unique (prix unitaire Pro à 160).
     pricing: {
       base: { XAF: 2000, XOF: 2000, EUR: 6, CAD: 9, USD: 6 },
       perUnit: { XAF: 200, XOF: 200, EUR: 0.8, CAD: 1.1, USD: 0.8 },
@@ -154,10 +164,16 @@ export function exactPlanPrice(
  * `true` quand le montant affiché s'écarte de la formule affichée sous lui.
  *
  * La formule est là pour que le prix soit vérifiable ; l'arrondi à la centaine
- * la contredit une fois sur deux sur le palier Essentiel — 1 250 + 125 × 12 fait
- * 2 750, et l'on affiche 2 800. Le prospect qui pose le calcul trouvait donc un
- * écart inexpliqué, ce qui abîme la confiance plus sûrement que si l'on n'avait
- * rien affiché.
+ * la contredisait sans le dire, et le prospect qui posait le calcul trouvait un
+ * écart inexpliqué — pire que de n'avoir rien affiché.
+ *
+ * En franc CFA, base et prix unitaire sont désormais multiples de 100 : le
+ * **mensuel** tombe donc toujours juste. Le **annuel** non, et c'est structurel.
+ * La remise de 20 % revient à multiplier par 4/5 : pour qu'un montant reste
+ * multiple de 100 après cette opération, il doit être multiple de 125 — donc de
+ * 500 pour l'être avant et après. Aucun prix unitaire réaliste ne satisfait cela
+ * pour toute taille de parc. La mention d'arrondi garde donc son emploi, sur la
+ * seule période annuelle.
  *
  * La tolérance écarte le bruit de la virgule flottante : en euros, la remise
  * annuelle produit des valeurs comme 8.000000000000002, qui ne sont pas un

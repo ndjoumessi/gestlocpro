@@ -10,32 +10,52 @@ const cabinet = PLANS.find((p) => p.id === 'cabinet')!
  *
  * La formule est écrite sous chaque montant pour que le prix soit vérifiable et
  * non seulement constaté. L'arrondi à la centaine des francs CFA la contredisait
- * silencieusement : 1 250 + 125 × 12 fait 2 750, et l'on affichait 2 800. Le
- * prospect qui posait le calcul trouvait un écart inexpliqué — pire que de
- * n'avoir rien affiché.
+ * silencieusement : avec une base de 1 250 et 125 par unité, 12 unités donnaient
+ * 2 750 pour un prix affiché à 2 800. Le prospect qui posait le calcul trouvait
+ * un écart inexpliqué — pire que de n'avoir rien affiché.
+ *
+ * Base et prix unitaire sont depuis alignés sur des multiples de 100, ce qui
+ * règle le mensuel. L'annuel reste concerné, pour une raison structurelle
+ * détaillée plus bas.
  */
 describe('arrondi des francs CFA', () => {
-  it('arrondit à la centaine', () => {
-    expect(planPrice(essentiel, 'XAF', 'monthly', 12)).toBe(2800)
-    expect(exactPlanPrice(essentiel, 'XAF', 'monthly', 12)).toBe(2750)
-  })
-
-  it('signale l’écart quand il existe', () => {
-    expect(priceIsRounded(essentiel, 'XAF', 'monthly', 12)).toBe(true)
-  })
-
-  it('ne signale rien quand la formule tombe juste', () => {
-    // Les coefficients de Pro sont multiples de 100 : il ne décroche jamais.
+  it('affiche le résultat exact de la formule en mensuel', () => {
+    expect(exactPlanPrice(essentiel, 'XAF', 'monthly', 12)).toBe(2400)
+    expect(planPrice(essentiel, 'XAF', 'monthly', 12)).toBe(2400)
     expect(planPrice(pro, 'XAF', 'monthly', 12)).toBe(4400)
-    expect(priceIsRounded(pro, 'XAF', 'monthly', 12)).toBe(false)
   })
 
-  it('couvre les deux sens de l’arrondi', () => {
-    // Vers le haut à 4 unités (1 750 → 1 800), vers le bas à 3 (1 625 → 1 600).
-    expect(planPrice(essentiel, 'XAF', 'monthly', 4)).toBe(1800)
-    expect(planPrice(essentiel, 'XAF', 'monthly', 3)).toBe(1600)
-    expect(priceIsRounded(essentiel, 'XAF', 'monthly', 4)).toBe(true)
-    expect(priceIsRounded(essentiel, 'XAF', 'monthly', 3)).toBe(true)
+  const positions = Array.from({ length: 60 }, (_, i) => i + 1)
+
+  it('ne décroche jamais en mensuel, base et prix unitaire étant multiples de 100', () => {
+    for (const plan of [essentiel, pro]) {
+      expect(positions.filter((u) => priceIsRounded(plan, 'XAF', 'monthly', u))).toHaveLength(0)
+    }
+  })
+
+  /**
+   * L'annuel, lui, décroche — et c'est structurel, non un réglage à corriger.
+   *
+   * La remise de 20 % revient à multiplier par 4/5 : pour qu'un montant reste
+   * multiple de 100 après l'opération, il doit être multiple de 125, donc de 500
+   * pour l'être avant comme après. Aucun prix unitaire réaliste ne satisfait cela
+   * à toute taille de parc — c'est bien pourquoi la mention d'arrondi reste
+   * nécessaire.
+   */
+  it('décroche en annuel, ce que la mention d’arrondi couvre', () => {
+    const decroche = positions.filter((u) => priceIsRounded(essentiel, 'XAF', 'yearly', u))
+    expect(decroche.length).toBeGreaterThan(0)
+
+    expect(exactPlanPrice(essentiel, 'XAF', 'yearly', 1)).toBe(1040)
+    expect(planPrice(essentiel, 'XAF', 'yearly', 1)).toBe(1000)
+  })
+
+  it('suit la même grille dans les deux zones franc CFA', () => {
+    for (const units of [1, 12, 60]) {
+      expect(planPrice(essentiel, 'XOF', 'monthly', units)).toBe(
+        planPrice(essentiel, 'XAF', 'monthly', units),
+      )
+    }
   })
 })
 
