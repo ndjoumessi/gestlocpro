@@ -696,6 +696,10 @@ export const fr = {
       unitsValueMax_one: '{count} unité et plus',
       unitsHint: 'Faites glisser pour voir le prix de votre parc.',
       perUnitNote: '{base} + {perUnit} par unité',
+      // Le montant exact est donné plutôt que le seul mot « arrondi » : le
+      // prospect qui a posé le calcul retrouve son résultat, au lieu de rester
+      // avec un écart qu'on lui demande d'admettre.
+      roundingNote: 'Arrondi : la formule donne {exact}.',
       currencyNote:
         'Prix ancrés localement par devise, sans conversion de change automatique.',
       essential: { name: 'Essentiel', pitch: 'Un premier immeuble à tenir proprement.' },

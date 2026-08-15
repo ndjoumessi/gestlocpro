@@ -14,7 +14,9 @@ import {
   UNITS_DEFAULT,
   UNITS_MAX,
   UNITS_MIN,
+  exactPlanPrice,
   planPrice,
+  priceIsRounded,
   type FeatureValue,
 } from './pricing'
 
@@ -54,6 +56,7 @@ export function PricingSection() {
       <div className="grid items-start gap-4 lg:grid-cols-3">
         {PLANS.map((plan) => {
           const price = planPrice(plan, currency, period, units)
+          const exact = exactPlanPrice(plan, currency, period, units)
           const popular = plan.popular
 
           return (
@@ -107,6 +110,18 @@ export function PricingSection() {
                         perUnit: money(plan.pricing.perUnit[currency]),
                       })}
                     </p>
+
+                    {/* Signalé seulement quand l'écart existe : l'afficher sur
+                        chaque carte en ferait un bruit qu'on cesse de lire, et
+                        la mention perdrait justement sa valeur là où elle
+                        compte. */}
+                    {priceIsRounded(plan, currency, period, units) && (
+                      <p className="mt-1.5 text-body-s text-muted">
+                        {t('marketing.pricing.roundingNote', {
+                          exact: money(exact ?? 0, { round: Number.isInteger(exact) }),
+                        })}
+                      </p>
+                    )}
                   </>
                 )}
 

@@ -126,10 +126,8 @@ export function planPrice(
   period: 'monthly' | 'yearly',
   units: number,
 ): number | null {
-  if (!plan.pricing) return null
-
-  const raw = plan.pricing.base[currency] + plan.pricing.perUnit[currency] * units
-  const value = period === 'monthly' ? raw : raw * (1 - YEARLY_DISCOUNT)
+  const value = exactPlanPrice(plan, currency, period, units)
+  if (value === null) return null
 
   // Les francs CFA n'ont pas de sous-unité : on arrondit à la centaine, sans
   // quoi la formule produirait des montants comme « 3 062 FCFA », qui ne
@@ -137,4 +135,42 @@ export function planPrice(
   return currency === 'XAF' || currency === 'XOF'
     ? Math.round(value / 100) * 100
     : Math.round(value * 100) / 100
+}
+
+/** Résultat brut de la formule, avant tout arrondi d'affichage. */
+export function exactPlanPrice(
+  plan: Plan,
+  currency: CurrencyCode,
+  period: 'monthly' | 'yearly',
+  units: number,
+): number | null {
+  if (!plan.pricing) return null
+
+  const raw = plan.pricing.base[currency] + plan.pricing.perUnit[currency] * units
+  return period === 'monthly' ? raw : raw * (1 - YEARLY_DISCOUNT)
+}
+
+/**
+ * `true` quand le montant affiché s'écarte de la formule affichée sous lui.
+ *
+ * La formule est là pour que le prix soit vérifiable ; l'arrondi à la centaine
+ * la contredit une fois sur deux sur le palier Essentiel — 1 250 + 125 × 12 fait
+ * 2 750, et l'on affiche 2 800. Le prospect qui pose le calcul trouvait donc un
+ * écart inexpliqué, ce qui abîme la confiance plus sûrement que si l'on n'avait
+ * rien affiché.
+ *
+ * La tolérance écarte le bruit de la virgule flottante : en euros, la remise
+ * annuelle produit des valeurs comme 8.000000000000002, qui ne sont pas un
+ * arrondi visible et ne doivent donc rien déclencher.
+ */
+export function priceIsRounded(
+  plan: Plan,
+  currency: CurrencyCode,
+  period: 'monthly' | 'yearly',
+  units: number,
+): boolean {
+  const exact = exactPlanPrice(plan, currency, period, units)
+  const shown = planPrice(plan, currency, period, units)
+  if (exact === null || shown === null) return false
+  return Math.abs(shown - exact) > 0.005
 }

@@ -683,6 +683,7 @@ export const en: Dictionary = {
       unitsValueMax_one: '{count} unit and up',
       unitsHint: 'Drag to see the price for your portfolio.',
       perUnitNote: '{base} + {perUnit} per unit',
+      roundingNote: 'Rounded: the formula gives {exact}.',
       currencyNote:
         'Prices anchored locally per currency, with no automatic exchange-rate conversion.',
       essential: { name: 'Essential', pitch: 'A first building, kept properly.' },
