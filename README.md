@@ -50,6 +50,18 @@ src/
 - `--color-gold` (`#C58E3E`) est un accent de marque : fond, bordure, icône, ou
   texte sur fond sombre. **Jamais du texte sur fond clair** — 2.87:1 sur blanc.
 - Les clés i18n manquantes échouent à la compilation : `en.ts` est typé contre `fr.ts`.
+- **Aucune chaîne utilisateur en dur dans le JSX.** Le typage ne couvre pas
+  `aria-label="…"` ni `placeholder="…"` — `npm run lint:i18n` s'en charge.
+
+## Vérifications
+
+```bash
+npm run check      # types + lint + chaînes en dur
+npm run lint:i18n  # chaînes utilisateur écrites en dur uniquement
+```
+
+`npm run check` enchaîne `tsc`, `oxlint` et le garde-fou i18n. À brancher en
+intégration continue : le garde-fou sort en 1 quand il trouve quelque chose.
 
 ## Documentation
 

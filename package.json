@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint:i18n": "node scripts/check-i18n.mjs",
+    "check": "tsc -b && oxlint && node scripts/check-i18n.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

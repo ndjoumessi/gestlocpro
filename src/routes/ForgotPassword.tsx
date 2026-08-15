@@ -79,7 +79,7 @@ export function ForgotPassword() {
               type="email"
               icon="mail"
               autoComplete="email"
-              placeholder="nom@domaine.com"
+              placeholder={t('common.emailPlaceholder')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               onBlur={() => {

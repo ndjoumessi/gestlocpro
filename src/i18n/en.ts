@@ -28,6 +28,7 @@ export const en: Dictionary = {
     password: 'Password',
     phone: 'Phone',
     dialCode: 'Dial code',
+    emailPlaceholder: 'name@domain.com',
     fullName: 'Full name',
     showPassword: 'Show password',
     hidePassword: 'Hide password',
@@ -91,6 +92,8 @@ export const en: Dictionary = {
     activeProfile: 'Active profile',
     toggleNav: 'Collapse or expand navigation',
     searchPlaceholder: 'Search a unit, a tenant…',
+    primaryNav: 'Main navigation',
+    breadcrumb: 'Breadcrumb',
   },
 
   auth: {

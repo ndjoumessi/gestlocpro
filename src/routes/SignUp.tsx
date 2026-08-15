@@ -254,7 +254,7 @@ export function SignUp() {
                   type="email"
                   icon="mail"
                   autoComplete="email"
-                  placeholder="nom@domaine.com"
+                  placeholder={t('common.emailPlaceholder')}
                   value={state.email}
                   onChange={(e) => patch({ email: e.target.value })}
                   onBlur={blur('email', validateEmail(state.email))}

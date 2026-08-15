@@ -61,7 +61,7 @@ export function PublicHeader() {
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-5 py-3 sm:px-8">
           <Logo />
 
-          <nav aria-label="Navigation principale" className="ml-6 hidden items-center gap-1 lg:flex">
+          <nav aria-label={t('nav.primaryNav')} className="ml-6 hidden items-center gap-1 lg:flex">
             {SECTIONS.map((section) => (
               <a
                 key={section.id}
@@ -107,7 +107,7 @@ export function PublicHeader() {
           className="fixed inset-x-0 top-[65px] bottom-0 overflow-y-auto border-t border-border bg-paper lg:hidden"
           style={{ zIndex: 'var(--z-overlay)' }}
         >
-          <nav aria-label="Navigation principale" className="flex flex-col gap-1 p-5">
+          <nav aria-label={t('nav.primaryNav')} className="flex flex-col gap-1 p-5">
             {SECTIONS.map((section) => (
               <a
                 key={section.id}

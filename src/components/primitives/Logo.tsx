@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom'
 import { cn } from '@/lib/cn'
 
+/** Le nom de marque ne se traduit pas — il ne se recopie pas non plus. */
+const BRAND = 'GestLocPro'
+
 export interface LogoProps {
   tone?: 'light' | 'dark'
   /** Masque le mot-symbole — pour la barre latérale repliée. */
@@ -73,13 +76,13 @@ export function Logo({
     return (
       <span className={classes}>
         {content}
-        <span className="sr-only">GestLocPro</span>
+        <span className="sr-only">{BRAND}</span>
       </span>
     )
   }
 
   return (
-    <Link to={to} className={classes} aria-label="GestLocPro">
+    <Link to={to} className={classes} aria-label={BRAND}>
       {content}
     </Link>
   )

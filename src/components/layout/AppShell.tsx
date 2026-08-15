@@ -331,7 +331,7 @@ function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
         className="lg:hidden"
       />
 
-      <nav aria-label="Fil d’Ariane" className="hidden items-center gap-2 sm:flex">
+      <nav aria-label={t('nav.breadcrumb')} className="hidden items-center gap-2 sm:flex">
         <span className="eyebrow text-muted">Douala</span>
         <span aria-hidden="true" className="text-border-strong">
           /

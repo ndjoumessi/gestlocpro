@@ -33,6 +33,7 @@ export const fr = {
     password: 'Mot de passe',
     phone: 'Téléphone',
     dialCode: 'Indicatif téléphonique',
+    emailPlaceholder: 'nom@domaine.com',
     fullName: 'Nom complet',
     showPassword: 'Afficher le mot de passe',
     hidePassword: 'Masquer le mot de passe',
@@ -96,6 +97,8 @@ export const fr = {
     activeProfile: 'Profil actif',
     toggleNav: 'Replier ou déplier la navigation',
     searchPlaceholder: 'Rechercher un logement, un locataire…',
+    primaryNav: 'Navigation principale',
+    breadcrumb: 'Fil d’Ariane',
   },
 
   auth: {
