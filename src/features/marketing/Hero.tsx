@@ -50,11 +50,19 @@ export function Hero() {
 
           {/* Les sélecteurs sont dans le hero, pas seulement dans l'en-tête :
               c'est la promesse internationale, elle doit être manipulable
-              avant tout défilement. */}
-          <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-border pt-6">
+              avant tout défilement.
+
+              Les deux contrôles vivent dans leur propre rangée plutôt que de
+              partager un `flex-wrap` avec le libellé : sur un écran de 375px,
+              « Vos préférences d'affichage » consommait presque toute la
+              largeur et renvoyait la devise sur une troisième ligne. Le libellé
+              passe au-dessus sous `sm`, les deux sélecteurs restent ensemble. */}
+          <div className="mt-8 flex flex-col gap-3 border-t border-border pt-6 sm:flex-row sm:items-center">
             <span className="eyebrow text-muted">{t('marketing.hero.settingsLabel')}</span>
-            <LanguageSwitcher />
-            <CurrencySwitcher />
+            <div className="flex items-center gap-2">
+              <LanguageSwitcher />
+              <CurrencySwitcher />
+            </div>
           </div>
         </div>
 

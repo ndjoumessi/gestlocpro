@@ -108,6 +108,16 @@
   --text-mono-kpi: 1.625rem; /* 26 — KPI */
   --text-mono-kpi--line-height: 1;
 
+  /* ---- Tailles de contrôle --------------------------------------------- */
+  /* 44px : cible tactile minimale, hauteur d'un bouton ou d'un champ isolé. */
+  --size-control: 2.75rem;
+  /* 50px : hauteur d'un contrôle GROUPÉ, qui enveloppe des boutons de 44px
+     dans un cadre — 44 + 2×2px de rembourrage + 2×1px de bordure. Le
+     sélecteur de langue est de ce type ; le sélecteur de devise, qui vit
+     toujours à côté de lui, s'y aligne pour que les deux aient la même
+     assise. Sans ce jeton l'écart de 6px se voyait. */
+  --size-control-group: 3.125rem;
+
   /* ---- Rayons ---------------------------------------------------------- */
   --radius-bar: 3px; /* barres de graphe */
   --radius-sm: 6px;

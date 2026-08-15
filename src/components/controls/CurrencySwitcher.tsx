@@ -61,7 +61,9 @@ export function CurrencySwitcher({ tone = 'light', className }: CurrencySwitcher
         aria-expanded={open}
         aria-haspopup="listbox"
         className={cn(
-          'inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3',
+          // Hauteur alignée sur le sélecteur de langue, qui est un contrôle
+          // groupé et fait donc 50px et non 44. Voir --size-control-group.
+          'inline-flex min-h-(--size-control-group) cursor-pointer items-center gap-2 rounded-md border px-3',
           'text-body font-semibold transition-colors duration-150 ease-out',
           tone === 'dark'
             ? 'border-on-dark-border bg-on-dark-hover text-on-dark hover:bg-on-dark-active'
