@@ -213,8 +213,14 @@ export function DonutChart({
         </div>
       </div>
 
-      {/* La légende porte les valeurs : elle est aussi l'alternative textuelle. */}
-      <ul className="flex min-w-0 flex-1 flex-col gap-2.5">
+      {/* La légende porte les valeurs : elle est aussi l'alternative textuelle.
+          `min-w-52` donne son effet au `flex-wrap` du parent. Sans plancher, la
+          liste se comprimait indéfiniment au lieu de passer sous le donut, et
+          l'étiquette — seule à pouvoir rétrécir, le montant étant `shrink-0` —
+          était rabotée jusqu'à « P… » pour « Payé » sur écran étroit. Le seuil
+          couvre l'étiquette la plus longue et le montant le plus large ; au-delà,
+          la légende reste à côté du donut comme sur grand écran. */}
+      <ul className="flex min-w-52 flex-1 flex-col gap-2.5">
         {slices.map((slice) => (
           <li key={slice.key} className="flex items-center gap-2.5 text-body">
             <span

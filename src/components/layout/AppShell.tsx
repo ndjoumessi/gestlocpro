@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type Ref,
+} from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/cn'
 import { Logo } from '@/components/primitives/Logo'
@@ -86,20 +94,58 @@ export function AppShell() {
   const [role, setRole] = useState<Role>('owner')
   const [railed, setRailed] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const drawerRef = useRef<HTMLElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
 
   // La navigation mobile se referme au changement de page : sans cela, le
   // panneau reste ouvert par-dessus l'écran qu'on vient de demander.
   useEffect(() => setDrawerOpen(false), [location.pathname])
 
+  // Le tiroir n'existe qu'en deçà de `lg`. Sans cette fermeture, un passage en
+  // grand écran laisserait l'état ouvert : l'arrière-plan resterait neutralisé
+  // alors que plus rien ne le recouvre.
   useEffect(() => {
     if (!drawerOpen) return
+    const large = window.matchMedia('(min-width: 64rem)')
+    const onChange = () => large.matches && setDrawerOpen(false)
+    onChange()
+    large.addEventListener('change', onChange)
+    return () => large.removeEventListener('change', onChange)
+  }, [drawerOpen])
+
+  /**
+   * Le tiroir se comportait comme une fenêtre modale sans en avoir les
+   * obligations : le focus restait sur le bouton d'ouverture, et sept éléments
+   * de la page restaient atteignables au clavier derrière l'assombrissement.
+   * Un utilisateur au clavier tabulait donc dans du contenu qu'il ne voyait
+   * pas.
+   *
+   * `inert` sur le contenu retire d'un coup tout l'arrière-plan du parcours de
+   * tabulation — plus sûr qu'un piège à focus écrit à la main, qui doit
+   * énumérer les éléments focalisables et se trompe dès qu'un composant en
+   * ajoute un.
+   */
+  useEffect(() => {
+    if (!drawerOpen) return
+
+    const declencheur = document.activeElement as HTMLElement | null
+    const contenu = contentRef.current
     const previous = document.body.style.overflow
+
     document.body.style.overflow = 'hidden'
+    contenu?.setAttribute('inert', '')
+    drawerRef.current?.focus()
+
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setDrawerOpen(false)
     document.addEventListener('keydown', onKey)
+
     return () => {
       document.body.style.overflow = previous
+      contenu?.removeAttribute('inert')
       document.removeEventListener('keydown', onKey)
+      // Rendu au bouton d'ouverture : refermer ne doit pas laisser le focus
+      // retomber sur le corps de la page, d'où l'on repartirait du début.
+      declencheur?.focus()
     }
   }, [drawerOpen])
 
@@ -130,11 +176,13 @@ export function AppShell() {
               onToggleRail={() => setDrawerOpen(false)}
               className="fixed inset-y-0 left-0 flex w-72 lg:hidden"
               style={{ zIndex: 'var(--z-overlay)' }}
+              dialogLabel={t('nav.primaryNav')}
+              innerRef={drawerRef}
             />
           </>
         )}
 
-        <div className="flex min-w-0 flex-1 flex-col bg-paper">
+        <div ref={contentRef} className="flex min-w-0 flex-1 flex-col bg-paper">
           <Topbar onOpenDrawer={() => setDrawerOpen(true)} />
           <main id="main" className="animate-rise flex-1 px-5 py-6 sm:px-8 sm:py-8">
             <Outlet />
@@ -154,6 +202,8 @@ function Sidebar({
   onToggleRail,
   className,
   style,
+  dialogLabel,
+  innerRef,
 }: {
   role: Role
   setRole: (role: Role) => void
@@ -161,6 +211,13 @@ function Sidebar({
   onToggleRail: () => void
   className?: string
   style?: React.CSSProperties
+  /**
+   * Renseigné pour la variante tiroir. Elle assombrit la page et bloque le
+   * défilement : c'est une fenêtre modale, elle doit donc le dire aux
+   * technologies d'assistance et non seulement le paraître.
+   */
+  dialogLabel?: string
+  innerRef?: Ref<HTMLElement>
 }) {
   const t = useT()
   const wide = !railed
@@ -173,6 +230,13 @@ function Sidebar({
 
   return (
     <aside
+      ref={innerRef}
+      // `tabIndex={-1}` sans quoi le conteneur ne peut pas recevoir le focus à
+      // l'ouverture ; il reste hors du parcours de tabulation.
+      tabIndex={dialogLabel ? -1 : undefined}
+      role={dialogLabel ? 'dialog' : undefined}
+      aria-modal={dialogLabel ? true : undefined}
+      aria-label={dialogLabel}
       className={cn(
         'on-dark shrink-0 flex-col gap-4 overflow-y-auto bg-ink px-3 py-5 text-on-dark',
         'sticky top-0 h-dvh transition-[width] duration-200',
