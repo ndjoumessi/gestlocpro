@@ -28,25 +28,19 @@ describe('arrondi des francs CFA', () => {
   })
 
   /**
-   * Pro décroche, parce que son prix unitaire vaut 1,6 fois celui de l'Essentiel
-   * — 160, qui n'est pas multiple de 100.
+   * Pro décroche, parce que ses deux coefficients valent 1,6 fois ceux de
+   * l'Essentiel — 1 920 et 160, dont aucun n'est multiple de 100.
    *
-   * Les deux objectifs sont incompatibles à cette échelle : pour qu'un prix
-   * unitaire et son 1,6 soient tous deux multiples de 100, il faudrait un
-   * multiple de 500. On a choisi le facteur d'upgrade constant plutôt que la
-   * formule exacte, et la mention d'arrondi couvre l'écart.
+   * Les deux objectifs sont incompatibles à cette échelle : pour qu'un montant
+   * et son 1,6 soient tous deux multiples de 100, il faudrait un multiple de
+   * 500. On a choisi le facteur d'upgrade constant plutôt que la formule exacte,
+   * et la mention d'arrondi couvre l'écart.
    */
-  it('décroche sur Pro, prix unitaire de 160 oblige', () => {
+  it('décroche sur Pro, facteur 1,6 oblige', () => {
     expect(positions.filter((u) => priceIsRounded(pro, 'XAF', 'monthly', u))).toHaveLength(48)
 
-    expect(exactPlanPrice(pro, 'XAF', 'monthly', 12)).toBe(3920)
-    expect(planPrice(pro, 'XAF', 'monthly', 12)).toBe(3900)
-  })
-
-  it('garde un facteur d’upgrade constant sur le prix unitaire', () => {
-    // Ce que les 160 achètent : l'effort d'upgrade ne croît plus avec le parc.
-    expect(pro.pricing!.perUnit.XAF / essentiel.pricing!.perUnit.XAF).toBe(1.6)
-    expect(pro.pricing!.perUnit.EUR / essentiel.pricing!.perUnit.EUR).toBe(1.6)
+    expect(exactPlanPrice(pro, 'XAF', 'monthly', 12)).toBe(3840)
+    expect(planPrice(pro, 'XAF', 'monthly', 12)).toBe(3800)
   })
 
   /**
@@ -72,6 +66,48 @@ describe('arrondi des francs CFA', () => {
         planPrice(essentiel, 'XAF', 'monthly', units),
       )
     }
+  })
+})
+
+/**
+ * Ce que l'arrondi achète en échange : un effort d'upgrade identique quelle que
+ * soit la taille du parc. Le facteur doit pour cela valoir 1,6 sur les deux
+ * composantes — l'appliquer au seul abonnement, ou au seul prix unitaire, ferait
+ * varier l'écart Pro/Essentiel avec le nombre d'unités.
+ *
+ * Il n'est tenu qu'en franc CFA. Les autres devises portent un rapport de 1,5
+ * sur l'abonnement (6 / 4 en euros et en dollars, 9 / 6 en dollars canadiens),
+ * et le dollar canadien 1,571 sur le prix unitaire — écarts hérités du choix
+ * d'ancrer chaque devise sur un prix rond plutôt que de convertir. Le corriger
+ * changerait des prix affichés dans trois devises : décision produit, non
+ * technique.
+ */
+describe('facteur d’upgrade', () => {
+  it('vaut 1,6 sur les deux composantes en franc CFA', () => {
+    for (const currency of ['XAF', 'XOF'] as const) {
+      expect(pro.pricing!.base[currency] / essentiel.pricing!.base[currency]).toBeCloseTo(1.6, 10)
+      expect(pro.pricing!.perUnit[currency] / essentiel.pricing!.perUnit[currency]).toBeCloseTo(
+        1.6,
+        10,
+      )
+    }
+  })
+
+  it('tient donc à toute taille de parc en franc CFA', () => {
+    for (const units of [1, 12, 60]) {
+      const ratio =
+        exactPlanPrice(pro, 'XAF', 'monthly', units)! /
+        exactPlanPrice(essentiel, 'XAF', 'monthly', units)!
+      expect(ratio).toBeCloseTo(1.6, 10)
+    }
+  })
+
+  it('ne le tient pas dans les autres devises, ce qui reste à trancher', () => {
+    // Constaté plutôt que souhaité : le test tombera si la grille est alignée,
+    // et signalera qu'il faut mettre à jour le §8.
+    expect(pro.pricing!.base.EUR / essentiel.pricing!.base.EUR).toBeCloseTo(1.5, 10)
+    expect(pro.pricing!.base.CAD / essentiel.pricing!.base.CAD).toBeCloseTo(1.5, 10)
+    expect(pro.pricing!.perUnit.CAD / essentiel.pricing!.perUnit.CAD).toBeCloseTo(1.571, 3)
   })
 })
 

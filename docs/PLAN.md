@@ -211,7 +211,7 @@ un code d'invitation à un propriétaire.
 
 | | Essentiel | **Pro** (populaire) | Cabinet |
 | --- | --- | --- | --- |
-| XAF / XOF | 1 200 + 100 /unité | 2 000 + 160 /unité | sur devis |
+| XAF / XOF | 1 200 + 100 /unité | 1 920 + 160 /unité | sur devis |
 | EUR | 4 € + 0,50 € /unité | 6 € + 0,80 € /unité | sur devis |
 | CAD | 6 $ + 0,70 $ /unité | 9 $ + 1,10 $ /unité | sur devis |
 | USD | 4 $ + 0,50 $ /unité | 6 $ + 0,80 $ /unité | sur devis |
@@ -221,19 +221,26 @@ devises à sous-unité : l'effort d'upgrade y est identique quelle que soit la
 taille du parc.
 
 En franc CFA, l'Essentiel est passé à **1 200 + 100 par unité** (auparavant
-1 250 + 125) et Pro à **2 000 + 160** (auparavant 200).
+1 250 + 125) et Pro à **1 920 + 160** (auparavant 2 000 + 200).
 
-**Le facteur 1,6 tient sur le prix unitaire, dans toutes les devises.** L'effort
-d'upgrade ne croît donc pas avec la taille du parc — c'est l'objet du §
-« Ce que la validation a corrigé » ci-dessous.
+**Le facteur 1,6 tient sur les deux composantes, en franc CFA.** L'effort
+d'upgrade y est donc constant quelle que soit la taille du parc — c'est l'objet
+du § « Ce que la validation a corrigé » ci-dessous.
+
+**Il ne tient pas dans les autres devises**, et ne l'a jamais tenu : l'abonnement
+y est à 1,5 (6 / 4 en euros comme en dollars, 9 / 6 en dollars canadiens), et le
+prix unitaire du dollar canadien à 1,571. Écarts hérités du choix d'ancrer chaque
+devise sur un prix rond plutôt que de convertir depuis le franc CFA. Les aligner
+changerait des prix affichés dans trois devises : **non tranché**.
 
 **L'arrondi ne peut pas disparaître partout.** Deux impossibilités arithmétiques,
 et non des réglages à trouver.
 
-- *Le facteur 1,6 contre la formule exacte.* Pour qu'un prix unitaire et son 1,6
-  soient tous deux multiples de 100, il faudrait un multiple de 500 — hors
-  d'échelle. L'Essentiel à 100 tombe juste, Pro à 160 décroche 48 fois sur 60 en
-  mensuel. On a choisi le facteur constant, la mention d'arrondi couvrant l'écart.
+- *Le facteur 1,6 contre la formule exacte.* Pour qu'un montant et son 1,6 soient
+  tous deux multiples de 100, il faudrait un multiple de 500 — hors d'échelle.
+  L'Essentiel (1 200 + 100) tombe juste, Pro (1 920 + 160) décroche 48 fois sur
+  60 en mensuel. On a choisi le facteur constant, la mention d'arrondi couvrant
+  l'écart.
 - *La remise annuelle contre la formule exacte.* Multiplier par 4/5 conserve les
   multiples de 100 seulement si le montant est multiple de 125, donc de 500 pour
   l'être avant comme après. L'annuel décroche donc sur les deux paliers.
@@ -241,8 +248,9 @@ et non des réglages à trouver.
 Le mensuel de l'Essentiel — l'entrée de gamme, sur l'onglet par défaut — est le
 seul cas exact, et c'est celui que le prospect lit en premier.
 
-**Reste un rapport d'abonnement de 1,667** (2 000 / 1 200), et non 1,6 : le
-ramener demanderait 1 920, qui décrocherait à son tour. Non tranché.
+Le passage de la base Pro de 2 000 à 1 920 n'a rien coûté sur ce plan : le
+décrochage portait déjà sur 48 positions, le prix unitaire de 160 suffisant à le
+produire.
 
 Annuel −20 %, 30 jours d'essai sur les paliers tarifés. Portail locataire inclus
 partout. Différenciateurs : relances automatiques, gestionnaires délégués,
@@ -344,9 +352,9 @@ Contrepartie assumée : sous ~22 unités Pro coûte moins qu'avant, au-dessus il
 coûte davantage — cohérent avec qui tire la valeur de la fonction.
 
 > **Depuis, en franc CFA**, la grille est 1 200 + 100 pour l'Essentiel et
-> 2 000 + 160 pour Pro. Le facteur 1,6 tient toujours sur le prix unitaire, donc
-> ce raisonnement reste valable. L'abonnement, lui, est à 1,667 et non 1,6. Voir
-> §8.
+> 1 920 + 160 pour Pro : le facteur 1,6 tient sur les deux composantes, et ce
+> raisonnement s'applique tel quel. Il ne tient pas dans les autres devises,
+> point resté ouvert. Voir §8.
 
 ### Ce qui reste ouvert sur les tarifs
 
