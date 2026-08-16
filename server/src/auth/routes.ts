@@ -4,8 +4,31 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '../db.js'
 import { hashPassword, needsRehash, verifyPassword } from './password.js'
 import { fermerSession, lireSession, ouvrirSession } from './session.js'
+import { semerParcDemonstration } from '../parks/demo.js'
+import { Currency } from '@prisma/client'
 
 export const authRouter = Router()
+
+/**
+ * Devise de tenue des comptes, déduite du pays.
+ *
+ * `CFA` du client n'est pas un code ISO 4217 — le code client le dit lui-même —
+ * et il n'existe pas de code commun aux zones CEMAC et UEMOA. Le stockage
+ * tranche donc, et l'affichage les réunit sous « FCFA ». Le pays suffit à
+ * retrouver laquelle des deux s'applique, ce qui est précisément l'argument
+ * avancé le jour où les deux codes ont été fusionnés côté client.
+ */
+const UEMOA = new Set(['SN', 'CI', 'BJ', 'BF', 'ML', 'NE', 'TG', 'GW'])
+const CEMAC = new Set(['CM', 'GA', 'CG', 'TD', 'CF', 'GQ'])
+
+function deviseDuPays(code: string | undefined): Currency {
+  if (!code) return Currency.XAF
+  if (CEMAC.has(code)) return Currency.XAF
+  if (UEMOA.has(code)) return Currency.XOF
+  if (code === 'CA') return Currency.CAD
+  if (code === 'US') return Currency.USD
+  return Currency.EUR
+}
 
 /**
  * L'e-mail est normalisé **à l'entrée**, à un seul endroit.
@@ -49,6 +72,22 @@ const schemaInscription = z.object({
    */
   acceptTerms: z.literal(true),
   newsletterOptIn: z.boolean().default(false),
+  /**
+   * Nom du parc, collecté à l'étape « Votre contexte » de l'assistant et jeté
+   * jusqu'ici. Absent pour un gestionnaire ou un locataire, qui rejoignent le
+   * parc de quelqu'un d'autre.
+   */
+  parkName: z.string().trim().min(2).max(120).optional(),
+  /**
+   * Semer le parc de démonstration.
+   *
+   * Un parc vide est l'état exact d'un compte qui vient d'être créé, et tous
+   * les écrans savent l'afficher. Mais le produit se démontre, et un
+   * propriétaire qui découvre douze écrans vides n'apprend rien de ce qu'ils
+   * font. Le choix est donc explicite et porté par l'appelant, plutôt que caché
+   * dans le serveur.
+   */
+  seedDemo: z.boolean().default(false),
 })
 
 const schemaConnexion = z.object({
@@ -110,6 +149,40 @@ authRouter.post('/signup', async (req: Request, res: Response) => {
   if (!compte) {
     res.status(409).json({ error: 'email_taken' })
     return
+  }
+
+  /**
+   * Le parc et l'adhésion naissent avec le compte, en une seule transaction.
+   *
+   * Les créer séparément laisserait, au moindre échec, un compte sans parc :
+   * son porteur se connecterait sur une application où rien n'existe, et aucun
+   * écran ne saurait dire pourquoi.
+   */
+  if (donnees.parkName) {
+    const aujourdhui = new Date()
+    const periode = new Date(aujourdhui.getFullYear(), aujourdhui.getMonth(), 1)
+
+    await prisma.$transaction(async (tx) => {
+      const park = await tx.park.create({
+        data: {
+          name: donnees.parkName!,
+          countryCode: donnees.countryCode ?? 'CM',
+          // La devise appartient au parc, pas à la session : un loyer de Douala
+          // est en francs CFA quelle que soit la langue de qui le regarde.
+          currency: deviseDuPays(donnees.countryCode),
+          memberships: { create: { userId: compte.id, role: 'owner' } },
+        },
+      })
+
+      if (donnees.seedDemo) {
+        await semerParcDemonstration(tx, {
+          parkId: park.id,
+          proprietaireId: compte.id,
+          periode,
+          aujourdhui,
+        })
+      }
+    })
   }
 
   await ouvrirSession(res, compte.id, contexte(req))

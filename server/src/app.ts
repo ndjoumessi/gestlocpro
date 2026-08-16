@@ -3,6 +3,7 @@ import cookieParser from 'cookie-parser'
 import { ZodError } from 'zod'
 import { env } from './env.js'
 import { authRouter } from './auth/routes.js'
+import { parksRouter } from './parks/routes.js'
 
 /**
  * Application Express, séparée du démarrage du serveur.
@@ -54,6 +55,7 @@ export function createApp() {
   // principale verrue d'Express 4, et l'oublier une seule fois y laissait une
   // requête suspendue jusqu'au délai d'expiration du client.
   app.use('/api/auth', authRouter)
+  app.use('/api/parks', parksRouter)
 
   // 404 en JSON : le client parse toutes les réponses de l'API, et une page
   // HTML d'erreur produirait une exception de désérialisation qui masquerait
