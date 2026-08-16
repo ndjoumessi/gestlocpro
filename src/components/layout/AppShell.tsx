@@ -405,7 +405,18 @@ function Sidebar({
             })}
           </fieldset>
 
-          <p className="rounded-md bg-on-dark-hover px-2.5 py-2 font-mono text-mono-label leading-relaxed text-on-dark-muted">
+          {/*
+            Retrait de 14 px, et non 10 : c'est celui des noms de profil
+            au-dessus — 4 px de `p-1` sur le `fieldset`, plus 10 px sur chaque
+            étiquette. Avec 10 px, ce texte commençait quatre pixels plus à
+            gauche que ceux qu'il décrit, et l'œil lisait deux colonnes là où il
+            n'y en a qu'une. Un écart trop petit pour se nommer, assez grand
+            pour se voir.
+
+            Le texte fait deux lignes et touchait les deux bords : `py-2.5` lui
+            rend l'air que sa hauteur de ligne réclame.
+          */}
+          <p className="rounded-md bg-on-dark-hover px-3.5 py-2.5 font-mono text-mono-label leading-relaxed text-on-dark-muted">
             {t(`roles.${role}.rights` as 'roles.owner.rights')}
           </p>
         </div>
