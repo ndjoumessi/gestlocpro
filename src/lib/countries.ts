@@ -102,7 +102,21 @@ export function sortedCountries(locale: Locale): Country[] {
  * contrôlé se marqueraient toutes deux sélectionnées, et l'utilisateur verrait
  * son choix se déplacer sur l'autre pays.
  */
-export function dialOptions(locale: Locale): { dial: string; label: string }[] {
+/**
+ * Indicatifs, la zone d'usage EN TÊTE.
+ *
+ * L'ordre était purement alphabétique : le Cameroun — marché principal du
+ * produit — arrivait quatrième, derrière la Belgique et le Bénin, et un
+ * bailleur de Douala devait faire défiler pour trouver son propre pays. Un
+ * classement alphabétique paraît neutre ; il ne l'est que si l'on n'a aucune
+ * idée de qui utilise le produit.
+ *
+ * Les deux zones franc d'abord — ce sont les pays servis —, le reste ensuite,
+ * chaque groupe alphabétique. Le second groupe existe parce qu'un bailleur
+ * peut résider en France ou au Canada et louer à Douala : l'écarter serait le
+ * défaut inverse.
+ */
+export function dialOptions(locale: Locale): { dial: string; label: string; zone: 'cfa' | 'autre' }[] {
   const parIndicatif = new Map<string, string[]>()
 
   for (const country of COUNTRIES) {
@@ -111,10 +125,23 @@ export function dialOptions(locale: Locale): { dial: string; label: string }[] {
     parIndicatif.set(country.dial, noms)
   }
 
+  // Un indicatif appartient à la zone franc dès qu'un de ses pays s'y trouve :
+  // `+1` couvre le Canada et les États-Unis, jamais la zone CFA.
+  const zoneParIndicatif = new Map<string, 'cfa' | 'autre'>()
+  for (const country of COUNTRIES) {
+    const dansLaZone = country.currency === 'CFA'
+    const connue = zoneParIndicatif.get(country.dial)
+    zoneParIndicatif.set(country.dial, dansLaZone || connue === 'cfa' ? 'cfa' : 'autre')
+  }
+
   return [...parIndicatif.entries()]
     .map(([dial, noms]) => ({
       dial,
       label: `${noms.sort((a, b) => a.localeCompare(b, locale)).join(', ')} · ${dial}`,
+      zone: zoneParIndicatif.get(dial) ?? 'autre',
     }))
-    .sort((a, b) => a.label.localeCompare(b.label, locale))
+    .sort((a, b) => {
+      if (a.zone !== b.zone) return a.zone === 'cfa' ? -1 : 1
+      return a.label.localeCompare(b.label, locale)
+    })
 }

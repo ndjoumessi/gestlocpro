@@ -22,6 +22,8 @@ export const en: Dictionary = {
     currency: 'Currency',
     language: 'Language',
     country: 'Country',
+    dialZoneCfa: 'CFA franc zone',
+    dialZoneOther: 'Other countries',
     demoBadge: 'Demo',
     demoPark: 'Demo portfolio',
     emptyParkTitle: 'Your portfolio is still empty',
@@ -187,7 +189,7 @@ export const en: Dictionary = {
       roleSubtitle:
         'GestLocPro shows different things depending on your role. This choice sets your permissions, and stays changeable later.',
 
-      identityTitle: 'Your details',
+      identityTitle: 'Your identity',
       identitySubtitle: 'They secure your account and let us send your receipts.',
 
       contextTitle: 'Your context',

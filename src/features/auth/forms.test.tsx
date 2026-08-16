@@ -91,7 +91,7 @@ describe('inscription', () => {
 
   it('saute le choix de rôle quand l’URL le porte déjà', () => {
     renderApp('/inscription/proprietaire')
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Vos informations')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Votre identité')
   })
 
   it('met en forme le code d’invitation au fil de la frappe', async () => {

@@ -369,11 +369,27 @@ export function SignUp() {
                       value={state.dial}
                       onChange={(e) => patch({ dial: e.target.value })}
                     >
-                      {dialOptions(locale).map(({ dial, label }) => (
-                        <option key={dial} value={dial}>
-                          {label}
-                        </option>
-                      ))}
+                      {/* Deux groupes nommés plutôt qu'une liste continue : le
+                          nom du groupe dit POURQUOI ces pays sont en tête, ce
+                          qu'un simple ordre ne dit pas. Sans cela, un
+                          utilisateur croit à un classement arbitraire et
+                          cherche quand même le sien alphabétiquement. */}
+                      {(['cfa', 'autre'] as const).map((zone) => {
+                        const options = dialOptions(locale).filter((o) => o.zone === zone)
+                        if (options.length === 0) return null
+                        return (
+                          <optgroup
+                            key={zone}
+                            label={t(zone === 'cfa' ? 'common.dialZoneCfa' : 'common.dialZoneOther')}
+                          >
+                            {options.map(({ dial, label }) => (
+                              <option key={dial} value={dial}>
+                                {label}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )
+                      })}
                     </Select>
                   </div>
                   <Input

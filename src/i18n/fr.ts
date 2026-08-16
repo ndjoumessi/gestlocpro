@@ -29,6 +29,8 @@ export const fr = {
     currency: 'Devise',
     language: 'Langue',
     country: 'Pays',
+    dialZoneCfa: 'Zone franc CFA',
+    dialZoneOther: 'Autres pays',
     demoBadge: 'Démonstration',
     demoPark: 'Parc de démonstration',
     emptyParkTitle: 'Votre parc est encore vide',
@@ -201,7 +203,7 @@ export const fr = {
       roleSubtitle:
         'GestLocPro n’affiche pas la même chose selon votre rôle. Ce choix détermine vos droits, il reste modifiable ensuite.',
 
-      identityTitle: 'Vos informations',
+      identityTitle: 'Votre identité',
       identitySubtitle: 'Elles servent à sécuriser votre compte et à vous adresser vos quittances.',
 
       contextTitle: 'Votre contexte',

@@ -98,7 +98,14 @@ export function AuthLayout({
   )
 }
 
-/** Colonne de marque : bandeau sur mobile, panneau plein sur grand écran. */
+/**
+ * Colonne de marque : bandeau sur mobile, panneau plein sur grand écran.
+ *
+ * Ramenée de 42 % à 34 % de la largeur. L'argumentaire a fait son travail avant
+ * qu'on commence à saisir : à la deuxième étape, il occupait presque la moitié
+ * de l'écran pendant que le formulaire tenait dans une colonne étroite entourée
+ * de vide. Ce qui persuade au premier regard encombre au troisième champ.
+ */
 function BrandPanel() {
   const t = useT()
 
@@ -124,7 +131,7 @@ function BrandPanel() {
   ] as const
 
   return (
-    <div className="on-dark relative flex shrink-0 flex-col overflow-hidden bg-ink px-5 py-6 text-on-dark sm:px-8 lg:w-[42%] lg:max-w-xl lg:justify-between lg:py-10">
+    <div className="on-dark relative flex shrink-0 flex-col overflow-hidden bg-ink px-5 py-6 text-on-dark sm:px-8 lg:w-[34%] lg:max-w-md lg:justify-between lg:py-10">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -top-32 -left-24 size-[30rem] rounded-full opacity-20 blur-3xl"
