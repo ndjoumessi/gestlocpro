@@ -366,6 +366,18 @@ export function SignUp() {
                   <div className="w-44 shrink-0">
                     <Select
                       aria-label={t('common.dialCode')}
+                      /**
+                       * `tel-country-code` forme un COUPLE avec le
+                       * `tel-national` du champ voisin.
+                       *
+                       * Sans lui, le navigateur remplit le numéro et laisse
+                       * l'indicatif tel quel : un Camerounais dont le carnet
+                       * porte « 677 21 44 08 » se retrouve avec « +33 677 21 44
+                       * 08 », c'est-à-dire un numéro français qui n'existe pas.
+                       * Les deux champs ne se remplissent correctement que
+                       * nommés ensemble.
+                       */
+                      autoComplete="tel-country-code"
                       value={state.dial}
                       onChange={(e) => patch({ dial: e.target.value })}
                     >
