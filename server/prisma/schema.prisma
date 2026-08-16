@@ -1,0 +1,733 @@
+// Schéma de persistance de GestLocPro.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+// Ce que ce schéma corrige par rapport au modèle client
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Le modèle de `src/data/portfolio.ts` a été taillé pour une démonstration
+// mono-utilisateur tenue dans un onglet. Cinq de ses raccourcis ne survivent
+// pas au passage au serveur, et chacun se paie ici :
+//
+//   1. Aucune entité ne porte de propriétaire. Deux comptes sur le même
+//      navigateur partagent aujourd'hui le même parc. Tout se rattache
+//      désormais à un `Park`, directement ou par jointure.
+//   2. Un paiement est un événement, pas un champ. `Unit.status` confond
+//      « y a-t-il un bail ? » et « où en est l'échéance du mois ? ». La
+//      première est l'existence d'un `Lease` courant, la seconde un calcul sur
+//      `RentCharge` et `Payment`. L'énumération à cinq valeurs survit comme
+//      projection d'affichage, jamais comme colonne.
+//   3. Les noms en clair remplacent les relations : `Unit.tenant` et
+//      `Deposit.tenant` portent deux copies du même nom, déjà libres de
+//      diverger, et leur `null` ne veut pas dire la même chose dans les deux
+//      tables. Un `Tenant` est une personne, un `Lease` est une relation datée.
+//   4. Les identifiants sont lisibles par l'humain — `A1`, `SIG-2026-042`. Ils
+//      ne sont uniques que parce qu'il n'y a qu'un propriétaire. Clés `uuid`,
+//      et « A1 » devient un `label` unique par immeuble.
+//   5. Les compteurs sont stockés au lieu d'être comptés : `Building.occupied`
+//      se contredisait déjà avec l'écran Parc. Aucun compteur ici.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+// Deux conventions qui portent tout le reste
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// **L'argent est un entier d'unités mineures, plus une devise.** Jamais un
+// flottant : 0,1 + 0,2 ne vaut pas 0,3 en binaire, et une comptabilité qui
+// dérive d'un centime par ligne est indéfendable. La devise vit sur le `Park`
+// et non sur la session — le sélecteur de l'interface reste une préférence
+// d'affichage. `CFA` n'est pas un code ISO 4217, le code client le dit
+// lui-même : le stockage tranche `XAF` ou `XOF`, que le pays permet de
+// retrouver, et l'affichage les réunit sous « FCFA ».
+//
+// **Le temps est en `date` ou `timestamptz`, jamais en pièces détachées.** Le
+// client stockait `DateParts` avec un mois indexé à zéro — un artefact du
+// langage promu au rang de donnée — et `RelativeStamp { value: -2 }`, un
+// décalage figé qui n'a jamais vieilli. Le relatif se calcule à l'affichage,
+// comme `lib/dates` le fait déjà.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Identité et accès ───────────────────────────────────────────────────────
+
+/// Une personne, indépendamment de ses rôles.
+///
+/// L'inscription valide neuf champs puis les jette : le produit n'a aucun
+/// compte, et le sélecteur de profil de `AppShell` tient lieu
+/// d'authentification. C'est ici qu'une personne existe pour la première fois —
+/// condition pour qu'un même humain soit propriétaire d'un parc et locataire
+/// d'un autre, ce que le modèle actuel ne sait pas exprimer.
+model UserAccount {
+  id       String @id @default(uuid()) @db.Uuid
+  /// Identifiant de connexion. Comparé en minuscules : l'utilisateur qui
+  /// s'inscrit en « Sarah@... » et se connecte en « sarah@... » est la même
+  /// personne, et lui refuser l'accès serait incompréhensible.
+  email    String @unique
+  passwordHash String
+  fullName String
+  /// Normalisé E.164 (+237677214408). Le client fabriquait une chaîne
+  /// d'affichage en concaténant l'indicatif et les espaces — du formatage figé
+  /// dans la donnée, le défaut déjà corrigé pour les dates et les montants.
+  phoneE164 String?
+  /// ISO 3166-1 alpha-2. Pilote le format des dates via `resolveDateLocale`.
+  countryCode String? @db.Char(2)
+  locale   Locale @default(fr)
+  /// Préférence d'affichage de la personne, distincte de la devise du parc.
+  displayCurrency Currency?
+
+  /// Juridiquement la première chose à conserver, avec sa date. La case bloque
+  /// l'inscription et n'était enregistrée nulle part.
+  termsAcceptedAt DateTime
+  newsletterOptIn Boolean  @default(false)
+  emailVerifiedAt DateTime?
+  /// On désactive, on ne supprime pas : cette personne est citée par des baux,
+  /// des paiements et des décisions d'arbitrage.
+  disabledAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  sessions     Session[]
+  memberships  Membership[]
+  tenantProfile Tenant?
+  passwordResets PasswordReset[]
+  invitationsSent Invitation[]  @relation("InvitationIssuer")
+  auditEvents   AuditEvent[]
+  approvedWorks WorkOrder[]     @relation("WorkApprover")
+  settledDeposits Deposit[]     @relation("DepositSettler")
+  recordedPayments Payment[]    @relation("PaymentRecorder")
+  capturedReadings MeterReading[] @relation("ReadingCapturer")
+
+  @@index([disabledAt])
+}
+
+/// Session opaque. Seule l'empreinte du jeton est conservée.
+///
+/// Une fuite de cette table ne livre alors aucune session utilisable, comme une
+/// fuite des comptes ne livre aucun mot de passe. Voir `src/auth/token.ts` pour
+/// le raisonnement complet, et pourquoi ce n'est pas un JWT.
+model Session {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @db.Uuid
+  user         UserAccount @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// SHA-256 du jeton remis au client. Le jeton lui-même n'existe que dans le
+  /// cookie.
+  tokenHash    String   @unique
+  expiresAt    DateTime
+  /// Glissante : rafraîchie à chaque requête servie.
+  lastSeenAt   DateTime @default(now())
+  createdAt    DateTime @default(now())
+  revokedAt    DateTime?
+  userAgent    String?
+  ipAddress    String?
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// Jeton de réinitialisation de mot de passe, à usage unique.
+///
+/// Le parcours existe déjà côté client (`routes/ResetPassword.tsx`) avec un
+/// jeton de démonstration en dur. Un vrai jeton doit expirer et se consommer :
+/// sans cela, un lien retrouvé dans une boîte mail six mois plus tard ouvre
+/// encore le compte.
+model PasswordReset {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      UserAccount @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ─── Parc et appartenances ───────────────────────────────────────────────────
+
+/// Un parc immobilier : l'unité de possession et de cloisonnement.
+///
+/// Chaque requête porte un prédicat sur ce parc. C'est ce qui remplace le blob
+/// unique de `localStorage`, qui n'avait aucune identité.
+model Park {
+  id       String   @id @default(uuid()) @db.Uuid
+  name     String
+  countryCode String @db.Char(2)
+  /// Devise de tenue des comptes. Elle appartient au parc : un loyer de Douala
+  /// est en francs CFA, quelle que soit la langue de celui qui le regarde.
+  currency Currency
+  /// Politique de délégation. Lue aujourd'hui dans un `useState` local de
+  /// l'écran d'onboarding, alors qu'elle commande deux droits réels — valider
+  /// un devis, arbitrer une caution. Le serveur s'en sert pour autoriser.
+  delegation DelegationMode @default(delegate)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships Membership[]
+  buildings   Building[]
+  tenants     Tenant[]
+  invitations Invitation[]
+  tariffs     UtilityTariff[]
+  notifications Notification[]
+  auditEvents AuditEvent[]
+  /// Compteur de références lisibles, par année. Voir `WorkOrder.reference`.
+  workCounters WorkReferenceCounter[]
+}
+
+/// Rattachement d'une personne à un parc, avec son rôle.
+///
+/// Le rôle était un `useState<Role>('owner')` dans la coquille applicative : un
+/// attribut de l'écran, pas de quelqu'un. Il devient une relation, et c'est le
+/// serveur qui la lit — masquer un bouton ne protège rien.
+model Membership {
+  id      String @id @default(uuid()) @db.Uuid
+  userId  String @db.Uuid
+  user    UserAccount @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parkId  String @db.Uuid
+  park    Park   @relation(fields: [parkId], references: [id], onDelete: Cascade)
+  role    ParkRole
+  /// `requested` porte la « demande d'accès » du gestionnaire sans code : c'est
+  /// une décision en attente chez le propriétaire, pas un booléen de formulaire.
+  status  MembershipStatus @default(active)
+  /// Raison sociale du gestionnaire, collectée à l'inscription.
+  company String?
+  createdAt DateTime @default(now())
+
+  /// Une personne n'a qu'un rôle par parc : être à la fois propriétaire et
+  /// gestionnaire du même parc n'a pas de sens, et rendrait l'autorisation
+  /// ambiguë au lieu de la cumuler.
+  @@unique([userId, parkId])
+  @@index([parkId, role])
+}
+
+/// Invitation à rejoindre un parc — locataire ou gestionnaire.
+///
+/// Le produit affiche un format (`LOC-XXXX-XXXX`), annonce un canal (SMS) et
+/// promet que le propriétaire le communique. Rien ne les émet ni ne les
+/// consomme. Un code d'invitation est un secret porteur : usage unique et
+/// péremption ne sont pas optionnels.
+model Invitation {
+  id        String @id @default(uuid()) @db.Uuid
+  parkId    String @db.Uuid
+  park      Park   @relation(fields: [parkId], references: [id], onDelete: Cascade)
+  role      ParkRole
+  /// Seule l'empreinte est stockée, comme pour les sessions : le code lisible
+  /// part par SMS et n'est jamais relu depuis la base.
+  codeHash  String @unique
+  /// Quatre derniers caractères, pour que le propriétaire reconnaisse le code
+  /// qu'il a envoyé sans que la base permette de le rejouer.
+  codeHint  String
+  email     String?
+  phoneE164 String?
+  /// Renseigné quand l'invitation vise une unité précise (cas locataire).
+  unitId    String? @db.Uuid
+  unit      Unit?   @relation(fields: [unitId], references: [id], onDelete: SetNull)
+
+  issuedById String @db.Uuid
+  issuedBy   UserAccount @relation("InvitationIssuer", fields: [issuedById], references: [id])
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([parkId, role])
+  @@index([expiresAt])
+}
+
+// ─── Biens ───────────────────────────────────────────────────────────────────
+
+model Building {
+  id       String @id @default(uuid()) @db.Uuid
+  parkId   String @db.Uuid
+  park     Park   @relation(fields: [parkId], references: [id], onDelete: Cascade)
+  name     String
+  district String
+  /// Ni `units` ni `occupied` : ce sont des comptages, pas des colonnes. Les
+  /// deux se contredisaient déjà entre deux écrans du client.
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  units Unit[]
+
+  @@index([parkId])
+}
+
+model Unit {
+  id         String @id @default(uuid()) @db.Uuid
+  buildingId String @db.Uuid
+  building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  /// « A1 ». Lisible et affiché, mais jamais une clé : « A1 » existe dans
+  /// presque tous les immeubles du monde.
+  label      String
+  type       UnitType
+  /// Surface en m², entier — le centimètre carré n'a pas d'usage ici.
+  surfaceSqm Int
+  /// Loyer de référence en unités mineures. L'échéance réelle est figée sur
+  /// chaque `RentCharge` : changer le loyer ne doit pas réécrire le passé.
+  baseRentMinor Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  leases      Lease[]
+  readings    MeterReading[]
+  inspections Inspection[]
+  workOrders  WorkOrder[]
+  invitations Invitation[]
+
+  @@unique([buildingId, label])
+  @@index([buildingId])
+}
+
+// ─── Locataires et baux ──────────────────────────────────────────────────────
+
+/// Une personne qui loue. Distincte du compte : un locataire existe dès que le
+/// propriétaire crée sa fiche, avant même qu'il n'active son espace.
+model Tenant {
+  id      String @id @default(uuid()) @db.Uuid
+  parkId  String @db.Uuid
+  park    Park   @relation(fields: [parkId], references: [id], onDelete: Cascade)
+  fullName String
+  phoneE164 String?
+  email    String?
+  /// Renseigné quand l'invitation a été utilisée. Un locataire sans compte
+  /// reste un locataire : c'est l'état normal entre la création de sa fiche et
+  /// sa première connexion.
+  userId  String? @unique @db.Uuid
+  user    UserAccount? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  leases Lease[]
+
+  @@index([parkId])
+}
+
+/// Le bail : la relation datée entre une personne et une unité.
+///
+/// C'est lui qui répond à « l'unité est-elle occupée ? ». Le client répondait
+/// par `Unit.status === 'vacant'`, en mélangeant cette question avec l'état de
+/// l'échéance du mois.
+model Lease {
+  id        String @id @default(uuid()) @db.Uuid
+  unitId    String @db.Uuid
+  unit      Unit   @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  tenantId  String @db.Uuid
+  /// `NoAction` et non `Restrict`, pour une raison qui n'est pas cosmétique :
+  /// les deux refusent de supprimer un locataire cité par un bail — l'intention
+  /// —, mais `RESTRICT` est vérifié ligne à ligne, immédiatement, alors que
+  /// `NO ACTION` l'est en fin d'instruction. Supprimer un parc échouait donc :
+  /// la cascade vers `Tenant` se heurtait au bail avant que la cascade vers
+  /// `Unit` n'ait eu le temps de le supprimer. La protection demeure, elle
+  /// laisse simplement la cascade se dérouler d'abord.
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: NoAction)
+
+  startsOn  DateTime @db.Date
+  /// `null` tant que le bail court. C'est ce champ qui rend `Deposit` clé par
+  /// bail plutôt que par unité : la caution du locataire suivant écrasait
+  /// sinon celle de l'ancien, retenue et solde compris.
+  endsOn    DateTime? @db.Date
+  rentMinor Int
+  /// Jour d'échéance. `overdueDays` était écrit à la main dans le client — 24,
+  /// 9, 3 — et ne grandissait jamais. Il se calcule à partir d'ici.
+  dueDayOfMonth Int @default(5)
+  status    LeaseStatus @default(pending)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  charges     RentCharge[]
+  deposit     Deposit?
+  inspections Inspection[]
+
+  @@index([unitId, status])
+  @@index([tenantId])
+}
+
+/// Une échéance de loyer pour une période donnée.
+///
+/// C'est l'entité qui manquait le plus. Sans elle, l'écran Paiements
+/// **simulait** la part réglée d'un règlement partiel — 53 % du loyer — pendant
+/// qu'une alerte annonçait 40 000 pour le même versement : deux chiffres pour
+/// un seul fait, parce que le fait n'existait nulle part.
+model RentCharge {
+  id       String @id @default(uuid()) @db.Uuid
+  leaseId  String @db.Uuid
+  lease    Lease  @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  /// Premier jour de la période couverte. Une date, pas un couple
+  /// année/mois-indexé-à-zéro.
+  periodStart DateTime @db.Date
+  dueOn    DateTime @db.Date
+  rentMinor Int
+  /// Charges refacturées, figées à l'émission. Refacturer juillet au tarif
+  /// d'août est faux, et rien ne le signalerait.
+  utilitiesMinor Int @default(0)
+  createdAt DateTime @default(now())
+
+  payments Payment[]
+
+  @@unique([leaseId, periodStart])
+  @@index([dueOn])
+}
+
+model Payment {
+  id        String @id @default(uuid()) @db.Uuid
+  chargeId  String @db.Uuid
+  charge    RentCharge @relation(fields: [chargeId], references: [id], onDelete: Cascade)
+  amountMinor Int
+  method    PaymentMethod
+  paidOn    DateTime @db.Date
+  reference String?
+  note      String?
+  /// Qui a enregistré l'encaissement. Un versement en espèces sans auteur est
+  /// incontestable et donc indéfendable.
+  recordedById String @db.Uuid
+  recordedBy   UserAccount @relation("PaymentRecorder", fields: [recordedById], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([chargeId])
+  @@index([paidOn])
+}
+
+/// Caution, clé par **bail** et non par unité.
+model Deposit {
+  id       String @id @default(uuid()) @db.Uuid
+  leaseId  String @unique @db.Uuid
+  lease    Lease  @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  heldMinor     Int
+  withheldMinor Int @default(0)
+  /// La justification que la modale rend obligatoire dès qu'il y a une retenue
+  /// — « un décompte sans motif est indéfendable », dit son propre commentaire
+  /// — et que `settleDeposit` jetait. Le seul texte qui défendrait la décision
+  /// devant un locataire était le seul qu'on ne conservait pas.
+  withheldReason String?
+  status   DepositStatus @default(held)
+  settledAt DateTime?
+  settledById String? @db.Uuid
+  settledBy   UserAccount? @relation("DepositSettler", fields: [settledById], references: [id], onDelete: SetNull)
+  /// Distinct de `settledAt` : arbitrer n'est pas verser.
+  returnedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Terrain ─────────────────────────────────────────────────────────────────
+
+/// Un relevé porte un **index**, pour une unité, un fluide et une période.
+///
+/// Le client stockait un couple `previous`/`current` par unité : un instantané
+/// d'un mois, où `waterPrevious` était la copie d'une ligne qui aurait dû
+/// exister. La consommation et l'index précédent se dérivent d'ici.
+model MeterReading {
+  id       String @id @default(uuid()) @db.Uuid
+  unitId   String @db.Uuid
+  unit     Unit   @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  utility  Utility
+  periodStart DateTime @db.Date
+  /// Index au compteur. Entier : ni l'eau ni l'électricité ne se relèvent au
+  /// dixième sur ces compteurs.
+  indexValue Int
+  readAt   DateTime @db.Date
+  capturedById String? @db.Uuid
+  capturedBy   UserAccount? @relation("ReadingCapturer", fields: [capturedById], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+
+  @@unique([unitId, utility, periodStart])
+  @@index([periodStart])
+}
+
+/// Tarif de refacturation, daté et rattaché à un parc.
+///
+/// `UTILITY_RATES` était une constante globale. Un tarif change dans le temps,
+/// et une ancienne quittance doit rester explicable.
+model UtilityTariff {
+  id       String @id @default(uuid()) @db.Uuid
+  parkId   String @db.Uuid
+  park     Park   @relation(fields: [parkId], references: [id], onDelete: Cascade)
+  utility  Utility
+  /// Prix unitaire en unités mineures, par m³ ou par kWh.
+  unitPriceMinor Int
+  effectiveFrom DateTime @db.Date
+  createdAt DateTime @default(now())
+
+  @@unique([parkId, utility, effectiveFrom])
+}
+
+model Inspection {
+  id      String @id @default(uuid()) @db.Uuid
+  unitId  String @db.Uuid
+  unit    Unit   @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  /// Rattaché au bail : une sortie doit être attribuable au locataire qui part
+  /// — précisément la personne dont on arbitre la caution. Le client ne
+  /// rattachait l'état des lieux qu'à l'unité.
+  leaseId String? @db.Uuid
+  lease   Lease?  @relation(fields: [leaseId], references: [id], onDelete: SetNull)
+  kind    InspectionKind
+  performedOn DateTime @db.Date
+  rooms   Int
+  /// `signed: boolean` ne disait ni qui ni quand, alors que c'est le champ
+  /// qu'on oppose au locataire en cas de litige.
+  signedAt DateTime?
+  signedByName String?
+  createdAt DateTime @default(now())
+
+  findings InspectionFinding[]
+
+  @@index([unitId])
+}
+
+/// Une réserve constatée. Le client n'en comptait que le nombre — or c'est le
+/// détail des réserves qu'on chiffre contre la caution.
+model InspectionFinding {
+  id           String @id @default(uuid()) @db.Uuid
+  inspectionId String @db.Uuid
+  inspection   Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  room        String
+  description String
+  severity    FindingSeverity @default(minor)
+  /// Coût imputé, figé au moment de l'arbitrage.
+  costMinor   Int?
+
+  @@index([inspectionId])
+}
+
+// ─── Travaux ─────────────────────────────────────────────────────────────────
+
+model WorkOrder {
+  id      String @id @default(uuid()) @db.Uuid
+  unitId  String @db.Uuid
+  unit    Unit   @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  /// « SIG-2026-042 » : affichée, jamais référencée. Allouée par parc et par
+  /// année — voir `WorkReferenceCounter`.
+  reference String @unique
+  /// Texte libre, écrit par qui signale. Le client avait figé cinq clés de
+  /// démonstration ; son propre commentaire annonçait ce champ.
+  title       String
+  /// Déjà saisie et déjà validée dans le portail locataire — elle n'avait
+  /// simplement nulle part où aller.
+  description String?
+  trade   Trade
+  status  WorkStatus @default(reported)
+  /// Trois niveaux, comme le formulaire du portail. Le client n'avait qu'un
+  /// booléen `urgent`, plus pauvre que le formulaire qui l'alimente.
+  urgency Urgency @default(normal)
+  quotedAmountMinor Int?
+  /// Montant au moment de la validation. Un devis révisé après coup ne doit pas
+  /// réécrire ce qui a été engagé.
+  approvedAmountMinor Int?
+  approvedAt DateTime?
+  approvedById String? @db.Uuid
+  approvedBy   UserAccount? @relation("WorkApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  completedOn DateTime? @db.Date
+  reportedAt DateTime @default(now())
+  /// Renseigné quand le signalement vient du portail locataire.
+  reportedByTenantId String? @db.Uuid
+
+  @@index([unitId, status])
+}
+
+/// Alloue les références lisibles par parc et par année, sans balayer la table.
+///
+/// Une référence tirée d'un `count()` se duplique dès deux créations
+/// simultanées ; un compteur ligne à ligne, verrouillé par la transaction, ne
+/// le peut pas.
+model WorkReferenceCounter {
+  parkId String @db.Uuid
+  park   Park   @relation(fields: [parkId], references: [id], onDelete: Cascade)
+  year   Int
+  next   Int    @default(1)
+
+  @@id([parkId, year])
+}
+
+// ─── Notifications et traçabilité ────────────────────────────────────────────
+
+/// Message composé par le produit, en clé et en paramètres.
+///
+/// Les alertes du client portaient des phrases françaises complètes, chacune
+/// figeant en plus une date au format numérique, un montant sans devise et un
+/// pluriel concaténé. La correction faite côté client se poursuit ici : la base
+/// stocke la clé et les valeurs brutes, la langue est choisie à l'affichage.
+model Notification {
+  id      String @id @default(uuid()) @db.Uuid
+  parkId  String @db.Uuid
+  park    Park   @relation(fields: [parkId], references: [id], onDelete: Cascade)
+  kind    NotificationKind
+  messageKey String
+  /// Valeurs d'interpolation, brutes : un montant reste un nombre, une date
+  /// reste une date.
+  params  Json
+  severity NotificationSeverity @default(low)
+  /// Unité concernée, pour le cloisonnement du locataire.
+  unitId  String? @db.Uuid
+  /// Canal réellement emprunté. La grille tarifaire vend les relances
+  /// automatiques J+1/J+7/J+15 : sans trace d'envoi, le produit relancerait
+  /// deux fois le même locataire le même jour.
+  channel NotificationChannel @default(in_app)
+  sentAt  DateTime?
+  createdAt DateTime @default(now())
+
+  recipients NotificationRecipient[]
+
+  @@index([parkId, createdAt])
+}
+
+/// L'état « lu » appartient à un couple destinataire × notification.
+///
+/// Le client le tenait dans un `Set` de session, invisible de la barre latérale
+/// — la pastille annonçait « 2 » même après avoir tout marqué comme lu.
+model NotificationRecipient {
+  notificationId String @db.Uuid
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  userId String @db.Uuid
+  readAt DateTime?
+
+  @@id([notificationId, userId])
+  @@index([userId, readAt])
+}
+
+/// Piste d'audit des décisions engageantes.
+///
+/// Valider un devis engage une dépense ; arbitrer une caution retient l'argent
+/// de quelqu'un. Ces deux droits séparent le propriétaire du gestionnaire, et
+/// le client les appliquait par un `canApprove` qui masquait un bouton.
+model AuditEvent {
+  id      String @id @default(uuid()) @db.Uuid
+  parkId  String @db.Uuid
+  park    Park   @relation(fields: [parkId], references: [id], onDelete: Cascade)
+  actorId String? @db.Uuid
+  actor   UserAccount? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action  String
+  entity  String
+  entityId String @db.Uuid
+  /// Ce qui a changé, avant/après. `Json` et non des colonnes : la forme varie
+  /// selon l'action, et figer un schéma ici reviendrait à le refaire à chaque
+  /// nouvelle décision traçable.
+  payload Json?
+  createdAt DateTime @default(now())
+
+  @@index([parkId, createdAt])
+  @@index([entity, entityId])
+}
+
+// ─── Vocabulaires ────────────────────────────────────────────────────────────
+
+enum Locale {
+  fr
+  en
+}
+
+/// Codes ISO 4217. `CFA` du client se résout en `XAF` ou `XOF` selon le pays :
+/// il n'existe pas de code commun aux deux zones, et l'affichage les réunit
+/// sous « FCFA ».
+enum Currency {
+  XAF
+  XOF
+  EUR
+  CAD
+  USD
+}
+
+enum ParkRole {
+  owner
+  manager
+  tenant
+}
+
+enum MembershipStatus {
+  active
+  requested
+  revoked
+}
+
+enum DelegationMode {
+  solo
+  delegate
+}
+
+/// Typologie du logement. Notation française conservée comme clé — l'anglais la
+/// rend « Studio », « 1-bed »… — exactement comme côté client.
+enum UnitType {
+  T1
+  T2
+  T3
+  T4
+}
+
+enum LeaseStatus {
+  pending
+  active
+  ended
+}
+
+enum PaymentMethod {
+  mobile
+  cash
+  transfer
+  check
+}
+
+enum DepositStatus {
+  held
+  settling
+  returned
+}
+
+enum Utility {
+  water
+  power
+}
+
+enum InspectionKind {
+  entry
+  exit
+}
+
+enum FindingSeverity {
+  minor
+  major
+}
+
+enum Trade {
+  plumbing
+  power
+  painting
+  multi
+  lock
+  other
+}
+
+enum WorkStatus {
+  reported
+  quoted
+  approved
+  done
+}
+
+enum Urgency {
+  blocking
+  normal
+  low
+}
+
+enum NotificationKind {
+  payment
+  work
+  meter
+  lease
+}
+
+enum NotificationSeverity {
+  high
+  medium
+  low
+}
+
+enum NotificationChannel {
+  in_app
+  email
+  sms
+}

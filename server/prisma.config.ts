@@ -1,5 +1,16 @@
-import 'node:process'
 import { defineConfig } from 'prisma/config'
+
+/**
+ * Présence d'un fichier de configuration Prisma = plus de chargement
+ * automatique de `.env`. Le CLI le dit (« skipping environment variable
+ * loading ») mais l'échec qui suit parle d'une variable manquante, pas de la
+ * cause — on le charge donc ici, comme `src/env.ts` le fait pour le serveur.
+ */
+try {
+  process.loadEnvFile()
+} catch {
+  // Pas de `.env` : la plateforme fournit la configuration.
+}
 
 /**
  * Configuration Prisma.

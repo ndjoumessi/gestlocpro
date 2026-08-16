@@ -224,7 +224,16 @@ export function Dashboard() {
           <CardHeader title={t('app.dashboard.breakdownTitle')} level={2} />
           <ul className="flex flex-col gap-3">
             {BUILDINGS.map((building) => {
-              const rate = Math.round((building.occupied / building.units) * 100)
+              // Compté sur l'état vivant, comme l'écran Parc. Cette carte
+              // divisait encore `building.occupied / building.units`, deux
+              // compteurs figés dans la constante : rattacher un locataire
+              // faisait bouger le parc et pas cette liste. Un compteur se
+              // compte, il ne se stocke pas.
+              const inBuilding = units.filter((u) => u.buildingId === building.id)
+              const occupees = inBuilding.filter((u) => u.status !== 'vacant').length
+              const rate = inBuilding.length
+                ? Math.round((occupees / inBuilding.length) * 100)
+                : 0
               return (
                 <li key={building.id}>
                   <Link
@@ -244,7 +253,7 @@ export function Dashboard() {
                       size="sm"
                       icon={rate === 100 ? 'checkCircle' : 'info'}
                     >
-                      {building.occupied}/{building.units}
+                      {occupees}/{inBuilding.length}
                     </StatusPill>
                   </Link>
                 </li>
