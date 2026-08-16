@@ -1,4 +1,4 @@
-import { render, screen, type RenderResult } from '@testing-library/react'
+import { render, screen, within, type RenderResult } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { ReactElement } from 'react'
@@ -88,4 +88,4 @@ export async function switchRole(role: Role): Promise<void> {
   await user.click(target)
 }
 
-export { screen, userEvent }
+export { screen, userEvent, within }

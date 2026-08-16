@@ -35,6 +35,20 @@ interface PortfolioContextValue {
   settleDeposit: (unitId: string, withheld: number) => void
   /** Rattache un locataire à une unité vacante. Le bail démarre « en attente ». */
   addTenant: (unitId: string, name: string, phone: string) => void
+  /**
+   * Alertes marquées comme lues pendant la session.
+   *
+   * Cet état vivait dans l'écran des signalements, donc la pastille de la barre
+   * latérale ne pouvait pas le connaître : elle affichait « 2 » — une constante
+   * écrite en dur — même après que tout ait été marqué comme lu.
+   *
+   * Délibérément **non persisté**, contrairement aux unités, travaux et
+   * cautions : ce n'est pas de la donnée de parc mais l'état d'une session de
+   * lecture. L'enregistrer imposerait de faire évoluer le format pour quelque
+   * chose que l'utilisateur ne s'attend pas à retrouver au rechargement.
+   */
+  readAlertIds: string[]
+  markAlertsRead: (ids: string[]) => void
   /** Efface le parcours enregistré et remet le jeu de démonstration. */
   reset: () => void
   /** `true` si un parcours a été enregistré, donc s'il y a quelque chose à effacer. */
@@ -99,6 +113,11 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
+  const [readAlertIds, setReadAlertIds] = useState<string[]>([])
+  const markAlertsRead = useCallback((ids: string[]) => {
+    setReadAlertIds((current) => [...new Set([...current, ...ids])])
+  }, [])
+
   const reset = useCallback(() => {
     const initial = resetState()
     // Le témoin suit, sinon l'effet verrait un écart entre l'état chargé et
@@ -108,6 +127,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     setUnits(initial.units)
     setWorks(initial.works)
     setDeposits(initial.deposits)
+    setReadAlertIds([])
     setStored(false)
   }, [])
 
@@ -119,13 +139,26 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       approveWork,
       settleDeposit,
       addTenant,
+      readAlertIds,
+      markAlertsRead,
       reset,
       hasChanges: stored,
       worksForUnit: (unitId) => works.filter((w) => w.unitId === unitId),
       depositForUnit: (unitId) => deposits.find((d) => d.unitId === unitId),
       unitById: (unitId) => units.find((u) => u.id === unitId),
     }),
-    [units, works, deposits, approveWork, settleDeposit, addTenant, reset, stored],
+    [
+      units,
+      works,
+      deposits,
+      approveWork,
+      settleDeposit,
+      addTenant,
+      readAlertIds,
+      markAlertsRead,
+      reset,
+      stored,
+    ],
   )
 
   return <PortfolioContext.Provider value={value}>{children}</PortfolioContext.Provider>

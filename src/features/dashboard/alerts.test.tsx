@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen } from '@/test/render'
+import { renderApp, screen, userEvent, within } from '@/test/render'
 import { ALERTS } from '@/data/portfolio'
 
 /**
@@ -63,6 +63,24 @@ describe('messages d’alerte', () => {
     // était invisible à qui n'a pas l'image.
     renderApp('/app/signalements', { locale: 'en' })
     expect(screen.getAllByText('Meter reading').length).toBeGreaterThan(0)
+  })
+
+  /**
+   * La pastille de navigation comptait « 2 » — un littéral, jamais recalculé.
+   * L'état « lu » vivait dans l'écran, hors de portée de la barre latérale :
+   * tout marquer comme lu laissait le compteur annoncer un travail qui n'existe
+   * plus. Il est remonté dans le provider.
+   */
+  it('éteint la pastille de navigation quand tout est lu', async () => {
+    renderApp('/app/signalements', { locale: 'en' })
+    const nav = screen.getAllByRole('navigation')[0]
+
+    expect(within(nav).getByText('2')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: /Mark all as read/i }))
+
+    expect(within(nav).queryByText('2')).not.toBeInTheDocument()
+    expect(screen.getByText('All notifications are read.')).toBeInTheDocument()
   })
 
   it('ne laisse aucun message porter du français en anglais', () => {

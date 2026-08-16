@@ -1,5 +1,5 @@
-import { useState } from 'react'
 import { PageHeader, useRole } from '@/components/layout/AppShell'
+import { usePortfolio } from '@/data/PortfolioProvider'
 import { Card } from '@/components/primitives/Card'
 import { StatusPill, type StatusTone } from '@/components/primitives/StatusPill'
 import { Button } from '@/components/primitives/Button'
@@ -82,19 +82,20 @@ export function Alerts() {
    * voisins compris. Le défaut échappait à toute vérification manuelle qui
    * naviguait après la bascule, puisque naviguer remonte le composant.
    *
-   * Seul l'état « lu » est conservé, sous forme d'identifiants : c'est la seule
-   * chose que l'écran modifie réellement.
+   * Seul l'état « lu » est conservé, sous forme d'identifiants — et il vit
+   * désormais dans le provider et non ici : la pastille de la barre latérale
+   * doit compter les mêmes alertes que cet écran.
    */
-  const [readIds, setReadIds] = useState<Set<string>>(new Set())
+  const { readAlertIds, markAlertsRead } = usePortfolio()
 
   const alerts = (isTenant ? alertsForUnit(CURRENT_TENANT_UNIT) : ALERTS).map((alert) => ({
     ...alert,
-    read: alert.read || readIds.has(alert.id),
+    read: alert.read || readAlertIds.includes(alert.id),
   }))
 
   const unread = alerts.filter((alert) => !alert.read).length
 
-  const markAllRead = () => setReadIds(new Set(alerts.map((alert) => alert.id)))
+  const markAllRead = () => markAlertsRead(alerts.map((alert) => alert.id))
 
   return (
     <>

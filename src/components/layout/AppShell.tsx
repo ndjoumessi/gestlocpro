@@ -18,6 +18,8 @@ import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
 import { useT } from '@/i18n/I18nProvider'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import type { Role } from '@/features/auth/signupState'
+import { usePortfolio } from '@/data/PortfolioProvider'
+import { ALERTS, CURRENT_TENANT_UNIT, alertsForUnit } from '@/data/portfolio'
 
 /* -------------------------------------------------------------------------- */
 /* Rôle actif — pilote ce que la barre latérale montre et ce que les écrans
@@ -41,7 +43,15 @@ interface NavItem {
   to: string
   labelKey: string
   icon: IconName
-  badge?: { value: string; tone: 'danger' | 'onDark' }
+  /**
+   * Compteur dérivé de l'état, désigné par son nom et non par sa valeur.
+   *
+   * Les deux pastilles étaient des littéraux — `'3'` et `'2'`. Elles ne
+   * pouvaient donc jamais changer : marquer toutes les alertes comme lues
+   * laissait « 2 » dans la barre latérale, et encaisser un impayé laissait
+   * « 3 » à côté des paiements.
+   */
+  badge?: { count: 'overdue' | 'unreadAlerts'; tone: 'danger' | 'onDark' }
   /** Rôles auxquels l'entrée est proposée. */
   roles?: Role[]
 }
@@ -61,7 +71,7 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
         to: '/app/paiements',
         labelKey: 'nav.payments',
         icon: 'card',
-        badge: { value: '3', tone: 'danger' },
+        badge: { count: 'overdue', tone: 'danger' },
       },
       { to: '/app/releves', labelKey: 'nav.meters', icon: 'gauge', roles: ['owner', 'manager'] },
       { to: '/app/etats-des-lieux', labelKey: 'nav.inspections', icon: 'clipboard' },
@@ -77,7 +87,7 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
         to: '/app/signalements',
         labelKey: 'nav.alerts',
         icon: 'bell',
-        badge: { value: '2', tone: 'onDark' },
+        badge: { count: 'unreadAlerts', tone: 'onDark' },
       },
       { to: '/app/onboarding', labelKey: 'nav.onboarding', icon: 'info', roles: ['owner'] },
     ],
@@ -344,9 +354,28 @@ function Sidebar({
   )
 }
 
+/**
+ * Compteurs de navigation, dérivés de l'état partagé.
+ *
+ * Un compteur qui ne suit pas ce qu'il compte est pire qu'absent : il annonce
+ * un travail restant qui n'existe plus, et l'utilisateur qui le suit tombe sur
+ * un écran vide.
+ */
+function useNavCount(): (key: NonNullable<NavItem['badge']>['count']) => number {
+  const { units, readAlertIds } = usePortfolio()
+  const { role } = useRole()
+
+  return (key) => {
+    if (key === 'overdue') return units.filter((u) => u.status === 'overdue').length
+    const scope = role === 'tenant' ? alertsForUnit(CURRENT_TENANT_UNIT) : ALERTS
+    return scope.filter((a) => !a.read && !readAlertIds.includes(a.id)).length
+  }
+}
+
 function SidebarLink({ item, wide }: { item: NavItem; wide: boolean }) {
   const t = useT()
   const label = t(item.labelKey as 'nav.dashboard')
+  const count = useNavCount()
 
   return (
     <NavLink
@@ -368,7 +397,10 @@ function SidebarLink({ item, wide }: { item: NavItem; wide: boolean }) {
     >
       <Icon name={item.icon} size={17} />
       {wide && <span className="min-w-0 flex-1 truncate">{label}</span>}
-      {wide && item.badge && <Badge tone={item.badge.tone}>{item.badge.value}</Badge>}
+      {/* Une pastille à zéro disparaît : « 0 impayé » n'est pas une alerte. */}
+      {wide && item.badge && count(item.badge.count) > 0 && (
+        <Badge tone={item.badge.tone}>{count(item.badge.count)}</Badge>
+      )}
       {!wide && <span className="sr-only">{label}</span>}
     </NavLink>
   )
