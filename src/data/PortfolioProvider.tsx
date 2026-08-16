@@ -55,7 +55,16 @@ interface PortfolioContextValue {
    */
   settleDeposit: (unitId: string, withheld: number, reason?: string) => void
   /** Rattache un locataire à une unité vacante. Le bail démarre « en attente ». */
-  addTenant: (unitId: string, name: string, phone: string) => void
+  /**
+   * Rattache un locataire. `bail` porte les termes réels du contrat — début et
+   * loyer — quand ils diffèrent de « aujourd'hui » et du loyer de référence.
+   */
+  addTenant: (
+    unitId: string,
+    name: string,
+    phone: string,
+    bail?: { startsOn?: string; rentMinor?: number },
+  ) => void
   /** Crée un immeuble dans le parc. Sans parc serveur, il reste local. */
   addBuilding: (name: string, district: string) => void
   /** Crée un logement dans un immeuble. Vacant : aucun bail n'existe encore. */
@@ -357,10 +366,21 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [parkId, signalerEchec],
   )
 
-  const addTenant = useCallback((unitId: string, name: string, phone: string) => {
+  const addTenant = useCallback((
+    unitId: string,
+    name: string,
+    phone: string,
+    bail?: { startsOn?: string; rentMinor?: number },
+  ) => {
     if (parkId) {
       void api
-        .addTenant(parkId, { unitId, fullName: name, phoneE164: phone.replace(/\s/g, '') })
+        .addTenant(parkId, {
+          unitId,
+          fullName: name,
+          phoneE164: phone.replace(/\s/g, ''),
+          ...(bail?.startsOn ? { startsOn: bail.startsOn } : {}),
+          ...(bail?.rentMinor !== undefined ? { rentMinor: bail.rentMinor } : {}),
+        })
         .then(() => chargerParc(parkId))
         .then((parc) => {
           // On relit le parc plutôt que de deviner l'état résultant : le

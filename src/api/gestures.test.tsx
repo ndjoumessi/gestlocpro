@@ -303,3 +303,73 @@ describe('saisir un logement', () => {
     expect(serveur.appels.find((a) => a.chemin.endsWith('/units'))).toBeUndefined()
   })
 })
+
+describe('saisir les termes du bail', () => {
+  it('transmet la vraie date de début et le loyer du contrat', async () => {
+    /**
+     * Le cas de tout nouveau compte : déclarer des locataires DÉJÀ EN PLACE.
+     *
+     * La création posait systématiquement « aujourd'hui » et le loyer de
+     * référence du logement. L'ancienneté du bail et les impayés cumulés en
+     * découlaient donc faux dès la saisie — silencieusement, et pour toujours.
+     */
+    const charge = portefeuille()
+    charge.buildings[0]!.units[1]!.tenant = null
+    charge.buildings[0]!.units[1]!.status = 'vacant'
+    const serveur = installerFauxServeur()
+    serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: charge })
+    serveur.quand('POST', `/parks/${PARK}/tenants`, {
+      status: 201,
+      body: { lease: { id: 'bail', unitId: U2, status: 'pending' } },
+    })
+
+    const user = userEvent.setup()
+    renderApp('/app/locataires', { session: SESSION_AVEC_PARC })
+    await user.click(await screen.findByRole('button', { name: /créer une fiche locataire/i }))
+
+    await user.type(screen.getByLabelText(/nom complet/i), 'Awa Diallo')
+    await user.type(screen.getByLabelText(/^téléphone/i), '688401277')
+    await user.type(screen.getByLabelText(/début du bail/i), '2023-04-01')
+    await user.type(screen.getByLabelText(/loyer du bail/i), '120000')
+    await user.click(screen.getByRole('button', { name: /^enregistrer$/i }))
+
+    const appel = serveur.appels.find((a) => a.chemin.endsWith('/tenants'))
+    expect(appel?.corps).toEqual({
+      unitId: U2,
+      fullName: 'Awa Diallo',
+      phoneE164: '+237688401277',
+      // `AAAA-MM-JJ` : le serveur le lit en UTC, sinon la colonne `date`
+      // ramènerait le bail à la veille pour tout fuseau à l'est de Greenwich.
+      startsOn: '2023-04-01',
+      rentMinor: 120000,
+    })
+  })
+
+  it('n’envoie ni date ni loyer quand rien n’est saisi', async () => {
+    // Un vrai emménagement du jour n'a rien à renseigner : les champs restent
+    // facultatifs, et le serveur garde ses valeurs par défaut.
+    const charge = portefeuille()
+    charge.buildings[0]!.units[1]!.tenant = null
+    charge.buildings[0]!.units[1]!.status = 'vacant'
+    const serveur = installerFauxServeur()
+    serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: charge })
+    serveur.quand('POST', `/parks/${PARK}/tenants`, {
+      status: 201,
+      body: { lease: { id: 'bail', unitId: U2, status: 'pending' } },
+    })
+
+    const user = userEvent.setup()
+    renderApp('/app/locataires', { session: SESSION_AVEC_PARC })
+    await user.click(await screen.findByRole('button', { name: /créer une fiche locataire/i }))
+    await user.type(screen.getByLabelText(/nom complet/i), 'Awa Diallo')
+    await user.type(screen.getByLabelText(/^téléphone/i), '688401277')
+    await user.click(screen.getByRole('button', { name: /^enregistrer$/i }))
+
+    const corps = serveur.appels.find((a) => a.chemin.endsWith('/tenants'))?.corps as Record<
+      string,
+      unknown
+    >
+    expect('startsOn' in corps).toBe(false)
+    expect('rentMinor' in corps).toBe(false)
+  })
+})

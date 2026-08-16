@@ -638,3 +638,86 @@ describe('saisie des logements', () => {
     expect(res.status).toBe(404)
   })
 })
+
+describe('saisie du bail', () => {
+  async function parcAvecLogement(email: string) {
+    const { cookie } = await inscrire(email, { parkName: 'Parc' })
+    const parcs = await request(app).get('/api/parks').set('Cookie', cookie)
+    const parkId = parcs.body.parks[0].id
+    const immeuble = await request(app)
+      .post(`/api/parks/${parkId}/buildings`)
+      .set('Cookie', cookie)
+      .send({ name: 'Résidence Makepe', district: 'Makepe' })
+    const logement = await request(app)
+      .post(`/api/parks/${parkId}/buildings/${immeuble.body.building.id}/units`)
+      .set('Cookie', cookie)
+      .send({ label: 'A1', type: 'T3', surfaceSqm: 78, baseRentMinor: 145000 })
+    return { cookie, parkId, unitId: logement.body.unit.id as string }
+  }
+
+  it('retient la date de début saisie, sans la décaler d’un jour', async () => {
+    /**
+     * Le cas de TOUT nouveau compte : déclarer des locataires déjà en place.
+     *
+     * La route posait systématiquement la date du jour, donc l'ancienneté et
+     * les impayés cumulés étaient faux dès la saisie. Et la colonne est de type
+     * `date` : une date construite à minuit LOCAL recule d'un jour pour tout
+     * fuseau à l'est de Greenwich — un défaut qui ne se voit pas depuis Douala
+     * et se voit partout ailleurs.
+     */
+    const { cookie, parkId, unitId } = await parcAvecLogement('bail-date@example.com')
+
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/tenants`)
+      .set('Cookie', cookie)
+      .send({ unitId, fullName: 'Charles Ngassa', startsOn: '2023-04-01' })
+
+    expect(res.status, JSON.stringify(res.body)).toBe(201)
+    const bail = await prisma.lease.findUniqueOrThrow({ where: { id: res.body.lease.id } })
+    expect(bail.startsOn.toISOString().slice(0, 10)).toBe('2023-04-01')
+  })
+
+  it('retient le loyer du contrat quand il diffère du loyer de référence', async () => {
+    // Loyer négocié, ancien bail non revalorisé, meublé : le montant dû est
+    // celui du contrat. Le loyer de référence propose, il ne décide pas.
+    const { cookie, parkId, unitId } = await parcAvecLogement('bail-loyer@example.com')
+
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/tenants`)
+      .set('Cookie', cookie)
+      .send({ unitId, fullName: 'Mireille Fotso', rentMinor: 120000 })
+
+    const bail = await prisma.lease.findUniqueOrThrow({ where: { id: res.body.lease.id } })
+    expect(bail.rentMinor).toBe(120000)
+  })
+
+  it('retombe sur le loyer de référence et sur aujourd’hui quand rien n’est saisi', async () => {
+    // Un vrai emménagement du jour n'a rien à saisir : les deux champs restent
+    // facultatifs, et le comportement d'origine est préservé.
+    const { cookie, parkId, unitId } = await parcAvecLogement('bail-defaut@example.com')
+
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/tenants`)
+      .set('Cookie', cookie)
+      .send({ unitId, fullName: 'Serge Mbarga' })
+
+    const bail = await prisma.lease.findUniqueOrThrow({ where: { id: res.body.lease.id } })
+    expect(bail.rentMinor).toBe(145000)
+    // La colonne est de type `date` : elle tronque à minuit UTC. Comparer à
+    // « maintenant » échouerait toute la journée — on compare donc le JOUR,
+    // qui est ce que la colonne prétend porter.
+    expect(bail.startsOn.toISOString().slice(0, 10)).toBe(new Date().toISOString().slice(0, 10))
+  })
+
+  it('refuse une date mal formée en nommant le champ', async () => {
+    const { cookie, parkId, unitId } = await parcAvecLogement('bail-mauvaise@example.com')
+
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/tenants`)
+      .set('Cookie', cookie)
+      .send({ unitId, fullName: 'Aline Tchoumi', startsOn: '01/04/2023' })
+
+    expect(res.status).toBe(400)
+    expect(res.body.fields?.[0]?.path).toBe('startsOn')
+  })
+})

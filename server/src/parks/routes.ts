@@ -60,6 +60,30 @@ const schemaLocataire = z.object({
     .trim()
     .regex(/^\+[1-9]\d{6,14}$/, 'Numéro attendu au format international')
     .optional(),
+  /**
+   * Début du bail, et non « aujourd'hui ».
+   *
+   * La route posait systématiquement la date du jour. Un propriétaire qui
+   * déclare ses locataires DÉJÀ EN PLACE — le cas de tout nouveau compte —
+   * enregistrait donc de fausses dates, et l'ancienneté comme les impayés
+   * cumulés en découlaient faux. Le champ reste facultatif : un vrai
+   * emménagement du jour n'a rien à saisir.
+   *
+   * `YYYY-MM-DD` interprété en UTC : la colonne est de type `date`, et une
+   * date construite à minuit local recule d'un jour au passage.
+   */
+  startsOn: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date attendue au format AAAA-MM-JJ')
+    .optional(),
+  /**
+   * Loyer du bail, qui peut différer du loyer de référence du logement.
+   *
+   * Un loyer négocié, un ancien bail non revalorisé, un meublé : le montant
+   * réellement dû est celui du contrat. Le loyer de référence sert à proposer,
+   * pas à décider.
+   */
+  rentMinor: z.number().int().nonnegative().optional(),
 })
 
 parksRouter.use(exigerCompte)
@@ -640,8 +664,10 @@ parksRouter.post(
           data: {
             unitId: unite.id,
             tenantId: locataire.id,
-            startsOn: new Date(),
-            rentMinor: unite.baseRentMinor,
+            // La date saisie est lue en UTC, sinon la colonne `date` la
+            // ramène à la veille pour tout fuseau à l'est de Greenwich.
+            startsOn: corps.startsOn ? new Date(`${corps.startsOn}T00:00:00Z`) : new Date(),
+            rentMinor: corps.rentMinor ?? unite.baseRentMinor,
             // « En attente » et non « à jour » : le bail commence, la première
             // quittance n'est pas due. Marquer le locataire à jour d'un loyer
             // qu'il n'a pas payé fausserait les indicateurs d'encaissement.

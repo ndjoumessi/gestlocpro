@@ -159,6 +159,7 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
   const t = useT()
   const { locale } = useI18n()
   const { notify } = useToast()
+  const { parseAmount } = useCurrency()
   const { addTenant } = usePortfolio()
 
   const [name, setName] = useState('')
@@ -167,6 +168,8 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
   // pose un : un bailleur hors zone CFA créait une fiche dont le numéro ne
   // permettait pas d'envoyer le code promis par le libellé d'aide.
   const [dial, setDial] = useState('+237')
+  const [debut, setDebut] = useState('')
+  const [loyer, setLoyer] = useState('')
   const [unitId, setUnitId] = useState(vacant[0]?.id ?? '')
   const formRef = useRef<HTMLDivElement>(null)
   const [errors, setErrors] = useState<{ name: FieldError; phone: FieldError }>({
@@ -191,7 +194,19 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
       return
     }
 
-    addTenant(unitId, name.trim(), `${dial} ${phone.trim()}`)
+    /**
+     * Les termes du bail voyagent avec le locataire.
+     *
+     * La création posait toujours « aujourd'hui » et le loyer de référence. Un
+     * propriétaire qui déclare ses locataires DÉJÀ EN PLACE — le cas de tout
+     * nouveau compte — enregistrait donc de fausses dates, et l'ancienneté
+     * comme les impayés cumulés en découlaient faux.
+     */
+    const loyerLu = loyer.trim() ? parseAmount(loyer) : null
+    addTenant(unitId, name.trim(), `${dial} ${phone.trim()}`, {
+      ...(debut ? { startsOn: debut } : {}),
+      ...(loyerLu !== null ? { rentMinor: loyerLu } : {}),
+    })
     onClose()
     notify(t('app.tenants.created'), { tone: 'ok' })
   }
@@ -269,6 +284,31 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
             </div>
           )}
         </Field>
+
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field label={t('app.tenants.leaseStart')} hint={t('app.tenants.leaseStartHint')} optional>
+            {(props) => (
+              <Input
+                {...props}
+                name="leaseStart"
+                type="date"
+                value={debut}
+                onChange={(e) => setDebut(e.target.value)}
+              />
+            )}
+          </Field>
+          <Field label={t('app.tenants.leaseRent')} hint={t('app.tenants.leaseRentHint')} optional>
+            {(props) => (
+              <Input
+                {...props}
+                name="leaseRent"
+                inputMode="numeric"
+                value={loyer}
+                onChange={(e) => setLoyer(e.target.value)}
+              />
+            )}
+          </Field>
+        </div>
 
         <Field label={t('app.payments.selectUnit')} required>
           {(props) => (
