@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen } from '@/test/render'
+import { renderApp, screen, switchRole } from '@/test/render'
 import { UNITS, WORKS } from '@/data/portfolio'
 
 /**
@@ -133,6 +133,37 @@ describe('signalements de démonstration', () => {
       // Une clé, pas une phrase : ni espace ni ponctuation.
       expect(work.titleKey).toMatch(/^[a-zA-Z]+$/)
     }
+  })
+})
+
+/**
+ * Ce que le gestionnaire ne peut pas faire, et pourquoi.
+ *
+ * Valider un devis et arbitrer une caution sont les deux droits qui distinguent
+ * le propriétaire du gestionnaire — c'est la même règle de délégation, écrite
+ * dans la matrice des droits. L'écran des cautions expliquait déjà l'absence du
+ * bouton ; celui des travaux le faisait simplement disparaître, laissant deviner
+ * si l'action manquait par droit ou par défaut.
+ */
+describe('délégation expliquée au gestionnaire', () => {
+  it('dit pourquoi le gestionnaire ne valide pas un devis', async () => {
+    renderApp('/app/travaux', { locale: 'en' })
+    await switchRole('manager')
+    expect(screen.getByText(/Only the owner approves quotes/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Approve quote/i })).not.toBeInTheDocument()
+  })
+
+  it('laisse au propriétaire le bouton et non la note', async () => {
+    renderApp('/app/travaux', { locale: 'en' })
+    expect(screen.getAllByRole('button', { name: /Approve quote/i }).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/Only the owner approves quotes/)).not.toBeInTheDocument()
+  })
+
+  it('traite les deux droits de la même façon', async () => {
+    // La parité est le point : deux écrans, une seule règle.
+    renderApp('/app/cautions', { locale: 'en' })
+    await switchRole('manager')
+    expect(screen.getByText(/Only the owner settles deposits/)).toBeInTheDocument()
   })
 })
 

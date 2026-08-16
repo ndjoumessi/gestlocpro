@@ -440,6 +440,8 @@ export const fr = {
       approve: 'Valider le devis',
       approved_toast: 'Devis validé · le gestionnaire est prévenu',
       trade: 'Corps d’état',
+      managerNotice:
+        'Seul le propriétaire valide les devis. Vous les préparez, il tranche.',
       /**
        * Signalements du jeu de démonstration. Voir `WorkTitleKey` : dans le
        * produit réel ce champ porte la saisie du locataire et ne se traduit

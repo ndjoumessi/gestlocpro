@@ -28,7 +28,7 @@ export function Works() {
   const { role } = useRole()
 
   // Seul le propriétaire arbitre : le gestionnaire propose. C'est la règle de
-  // délégation de la maquette, appliquée ici à l'affichage du bouton.
+  // délégation, appliquée ici à l'affichage du bouton.
   const canApprove = role === 'owner'
   const isTenant = role === 'tenant'
 
@@ -52,6 +52,18 @@ export function Works() {
       <PageHeader title={t('app.works.title')} description={t('app.works.subtitle')} />
 
       {isTenant && <TenantScopeNote />}
+
+      {/* Le bouton de validation disparaissait sans un mot pour le
+          gestionnaire, alors qu'il voit les devis en attente : il lui restait à
+          deviner si l'action manquait par droit ou par défaut. L'écran des
+          cautions traite déjà le cas symétrique — les deux se répondent
+          maintenant, puisque c'est la même règle de délégation. */}
+      {role === 'manager' && works.some((work) => work.status === 'quoted') && (
+        <p className="mb-4 flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body-s text-gold-ink">
+          <Icon name="info" size={15} className="mt-0.5 shrink-0" />
+          {t('app.works.managerNotice')}
+        </p>
+      )}
 
       {visible.length === 0 ? (
         <EmptyState icon="wrench" title={t('app.tenant.worksEmpty')} />

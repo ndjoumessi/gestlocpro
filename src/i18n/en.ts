@@ -422,6 +422,7 @@ export const en: Dictionary = {
       approve: 'Approve quote',
       approved_toast: 'Quote approved · the manager has been notified',
       trade: 'Trade',
+      managerNotice: 'Only the owner approves quotes. You prepare them, they decide.',
       /**
        * Signalements du jeu de démonstration. Voir `WorkTitleKey` : dans le
        * produit réel ce champ porte la saisie du locataire et ne se traduit
