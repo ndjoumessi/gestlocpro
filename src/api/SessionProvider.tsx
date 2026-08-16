@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { effacerStockage, ecrireStockage, lireStockage } from '@/lib/stockage'
 import { ApiError, NetworkError, api, type AdhesionApi, type CompteApi, type DemandeInscription } from './client'
 
 /**
@@ -91,14 +92,12 @@ export function SessionProvider({
 }) {
   const [etat, setEtat] = useState<EtatSession>(
     etatInitial ??
-      (typeof window !== 'undefined' && window.sessionStorage.getItem(CLE_DEMO) === '1'
-        ? { statut: 'demo' }
-        : { statut: 'inconnu' }),
+      (lireStockage('session', CLE_DEMO) === '1' ? { statut: 'demo' } : { statut: 'inconnu' }),
   )
   const [horsLigne, setHorsLigne] = useState(false)
 
   const entrerEnDemo = useCallback(() => {
-    window.sessionStorage.setItem(CLE_DEMO, '1')
+    ecrireStockage('session', CLE_DEMO, '1')
     setEtat({ statut: 'demo' })
   }, [])
 
@@ -108,7 +107,7 @@ export function SessionProvider({
       // Un vrai compte l'emporte toujours sur une visite de démonstration : la
       // trace de l'onglet est effacée, sans quoi le bandeau resterait affiché
       // au-dessus des vraies données du propriétaire.
-      window.sessionStorage.removeItem(CLE_DEMO)
+      effacerStockage('session', CLE_DEMO)
       setEtat({ statut: 'connecte', compte: user, adhesions: memberships })
       setHorsLigne(false)
     } catch (err) {
@@ -130,7 +129,7 @@ export function SessionProvider({
          * le renverrait à la connexion au premier rechargement, en plein
          * milieu de la visite qu'on lui a promise.
          */
-        const enDemo = window.sessionStorage.getItem(CLE_DEMO) === '1'
+        const enDemo = lireStockage('session', CLE_DEMO) === '1'
         setEtat(enDemo ? { statut: 'demo' } : { statut: 'anonyme' })
         setHorsLigne(false)
         return
@@ -171,7 +170,7 @@ export function SessionProvider({
       // Même si l'appel échoue, l'interface repasse en anonyme : refuser de
       // déconnecter quelqu'un parce que le réseau a lâché est le mauvais sens
       // de l'erreur.
-      window.sessionStorage.removeItem(CLE_DEMO)
+      effacerStockage('session', CLE_DEMO)
       setEtat({ statut: 'anonyme' })
     }
   }, [])

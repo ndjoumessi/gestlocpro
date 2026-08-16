@@ -1,3 +1,4 @@
+import { effacerStockage, ecrireStockage, lireStockage } from '@/lib/stockage'
 import {
   createContext,
   useCallback,
@@ -56,7 +57,7 @@ const REGION_KEY = 'gestlocpro.region'
 
 function readStoredLocale(): Locale {
   if (typeof window === 'undefined') return DEFAULT_LOCALE
-  const stored = window.localStorage.getItem(STORAGE_KEY)
+  const stored = lireStockage('local', STORAGE_KEY)
   if (stored && (LOCALES as readonly string[]).includes(stored)) return stored as Locale
 
   const browser = window.navigator.language.slice(0, 2)
@@ -79,7 +80,7 @@ function interpolate(template: string, vars?: TranslateVars): string {
 
 function readStoredRegion(): string | null {
   if (typeof window === 'undefined') return null
-  const stored = window.localStorage.getItem(REGION_KEY)
+  const stored = lireStockage('local', REGION_KEY)
   return stored && /^[A-Z]{2}$/.test(stored) ? stored : null
 }
 
@@ -89,12 +90,12 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.lang = locale
-    window.localStorage.setItem(STORAGE_KEY, locale)
+    ecrireStockage('local', STORAGE_KEY, locale)
   }, [locale])
 
   useEffect(() => {
-    if (region) window.localStorage.setItem(REGION_KEY, region)
-    else window.localStorage.removeItem(REGION_KEY)
+    if (region) ecrireStockage('local', REGION_KEY, region)
+    else effacerStockage('local', REGION_KEY)
   }, [region])
 
   const setLocale = useCallback((next: Locale) => setLocaleState(next), [])
