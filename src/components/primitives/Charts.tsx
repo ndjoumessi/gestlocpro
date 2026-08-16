@@ -55,7 +55,7 @@ export function StackedBarChart({
   targetLabel?: string
   openPeriodNote?: string
 }) {
-  const { money, moneyCompact } = useCurrency()
+  const { money } = useCurrency()
   const t = useT()
   const titleId = useId()
 
@@ -143,8 +143,17 @@ export function StackedBarChart({
               className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-gold"
               style={{ bottom: `${(target / max) * 100}%` }}
             >
+              {/* Le montant EXACT, et non sa forme compacte.
+                  « 1,4 M » côtoyait « 1 397 000 FCFA » sur la même vue : les
+                  deux disent le même chiffre, mais leur voisinage invite à les
+                  comparer — et l'arrondi fait douter de celui qui ne l'est
+                  pas.
+
+                  C'était le dernier appelant de `moneyCompact` : la forme
+                  compacte n'a plus d'emploi dans le produit. Elle reste
+                  exportée et testée, à décider. */}
               <span className="absolute -top-4 left-0 font-mono text-mono-label tracking-wider text-gold-ink uppercase">
-                {targetLabel} · {moneyCompact(target)}
+                {targetLabel} · {money(target, { round: true })}
               </span>
             </div>
           )}

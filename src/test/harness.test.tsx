@@ -22,7 +22,11 @@ describe('harnais de test', () => {
     // 1 397 000 : la somme des loyers des dix unités occupées. Ce test
     // attendait 1 415 000 — la valeur écrite à la main dans `KPIS`, qui ne se
     // recoupait avec rien. Le chiffre change parce qu'il devient vrai.
-    expect(screen.getByText(/1 397 000/)).toBeInTheDocument()
+    // Deux occurrences, et c'est voulu : la tuile « loyers attendus » et la
+    // ligne d'objectif du graphique portent le même montant EXACT. Elle
+    // affichait « 1,4 M » — le même chiffre arrondi, à côté du chiffre juste,
+    // ce qui invitait à les comparer et faisait douter du second.
+    expect(screen.getAllByText(/1 397 000/).length).toBe(2)
   })
 
   it('bascule le profil actif', async () => {
