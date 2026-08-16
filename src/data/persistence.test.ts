@@ -39,6 +39,28 @@ describe('lecture et écriture', () => {
 })
 
 describe('enregistrement abîmé', () => {
+  it('écarte un enregistrement dont le modèle a changé', () => {
+    // Cas réel : le corps de métier est passé de la chaîne en clair
+    // (« Plomberie ») à une clé de traduction (`plumbing`). Un enregistrement
+    // de version 1 rendait `app.trades.Plomberie` à l'écran — la clé
+    // introuvable, affichée telle quelle. C'est ce que l'incrément protège.
+    window.localStorage.setItem(
+      CLE,
+      JSON.stringify({
+        version: 1,
+        etat: {
+          units: [{ id: 'A1' }],
+          works: [{ id: 'X', trade: 'Plomberie' }],
+          deposits: [{ unitId: 'A1' }],
+        },
+      }),
+    )
+
+    const charge = loadState()
+    expect(charge.works.every((w) => /^[a-z]+$/.test(w.trade))).toBe(true)
+    expect(charge.units).toEqual(UNITS)
+  })
+
   it('écarte une version périmée', () => {
     // Le jeu de démonstration a changé plusieurs fois pendant la construction —
     // dates en chaînes figées, puis en valeurs machine, statut « en attente »

@@ -530,6 +530,17 @@ export const fr = {
         'La synchronisation différée n’est pas encore implémentée. Cette carte montre l’état tel qu’il s’affichera le jour où elle le sera.',
     },
 
+    // Vocabulaire partagé par les travaux et les signalements du portail :
+    // les deux nommaient « Plomberie » et « Électricité » chacun de leur côté.
+    trades: {
+      plumbing: 'Plomberie',
+      power: 'Électricité',
+      painting: 'Peinture',
+      multi: 'Multi-corps',
+      lock: 'Serrurerie',
+      other: 'Autre',
+    },
+
     portal: {
       title: 'Portail locataire',
       subtitle: 'Ce que voit votre locataire depuis son navigateur.',
@@ -552,12 +563,6 @@ export const fr = {
       reportIssue: 'Signaler un incident',
       reportSent: 'Signalement envoyé au gestionnaire et au propriétaire',
       category: 'Nature du problème',
-      // Les quatre options étaient écrites en dur dans le JSX : un locataire
-      // en anglais voyait un menu français.
-      categoryPlumbing: 'Plomberie',
-      categoryPower: 'Électricité',
-      categoryLock: 'Serrurerie',
-      categoryOther: 'Autre',
       urgency: 'Urgence',
       urgencyHigh: 'Bloquant',
       urgencyMedium: 'Gênant',

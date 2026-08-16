@@ -21,8 +21,13 @@ import { DEPOSITS, UNITS, WORKS, type Deposit, type Unit, type WorkOrder } from 
  * périmées — par exemple des unités sans le statut « en attente », ou des dates
  * encore stockées en chaînes françaises figées. Le jeu de démonstration a changé
  * plusieurs fois pendant la construction ; il changera encore.
+ *
+ * Version 2 : le corps de métier d'un travail est passé de la chaîne en clair
+ * (« Plomberie ») à une clé de traduction (`plumbing`). Sans incrément, un
+ * enregistrement de version 1 rendait `app.trades.Plomberie` à l'écran — la
+ * clé introuvable, affichée telle quelle.
  */
-const VERSION = 1
+const VERSION = 2
 const CLE = 'gestlocpro.portfolio'
 
 export interface EtatPersiste {

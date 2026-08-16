@@ -131,11 +131,23 @@ export const READINGS: MeterReading[] = [
 /** Tarifs unitaires de refacturation des charges. */
 export const UTILITY_RATES = { water: 520, power: 99 }
 
+/** Vocabulaire des corps de métier, partagé avec les signalements du portail. */
+export type TradeKey = 'plumbing' | 'power' | 'painting' | 'multi' | 'lock' | 'other'
+
 export interface WorkOrder {
   id: string
   unitId: string
   title: string
-  trade: string
+  /**
+   * Corps de métier, en clé et non en clair.
+   *
+   * C'était une chaîne libre — « Plomberie », « Électricité » — donc du
+   * français figé dans la donnée, qui s'affichait tel quel dans l'interface
+   * anglaise. Un corps de métier n'est pas un nom propre comme « Serge
+   * Mbarga » ou « Résidence Bonamoussadi » : c'est un vocabulaire fermé que le
+   * produit définit, donc il se traduit.
+   */
+  trade: TradeKey
   status: 'reported' | 'quoted' | 'approved' | 'done'
   amount: number | null
   reportedAt: DateParts
@@ -143,11 +155,11 @@ export interface WorkOrder {
 }
 
 export const WORKS: WorkOrder[] = [
-  { id: 'SIG-2026-042', unitId: 'A3', title: 'Fuite sous l’évier de la cuisine', trade: 'Plomberie', status: 'quoted', amount: 45000, reportedAt: { year: 2026, month: 7, day: 12 }, urgent: true },
-  { id: 'SIG-2026-041', unitId: 'B2', title: 'Disjoncteur qui saute au démarrage du chauffe-eau', trade: 'Électricité', status: 'approved', amount: 78000, reportedAt: { year: 2026, month: 7, day: 9 }, urgent: true },
-  { id: 'SIG-2026-039', unitId: 'C1', title: 'Peinture du séjour à reprendre', trade: 'Peinture', status: 'reported', amount: null, reportedAt: { year: 2026, month: 7, day: 5 }, urgent: false },
-  { id: 'SIG-2026-036', unitId: 'A1', title: 'Remplacement du groupe de sécurité', trade: 'Plomberie', status: 'done', amount: 32000, reportedAt: { year: 2026, month: 6, day: 28 }, urgent: false },
-  { id: 'SIG-2026-034', unitId: 'B4', title: 'Réfection complète avant relocation', trade: 'Multi-corps', status: 'approved', amount: 340000, reportedAt: { year: 2026, month: 6, day: 22 }, urgent: false },
+  { id: 'SIG-2026-042', unitId: 'A3', title: 'Fuite sous l’évier de la cuisine', trade: 'plumbing', status: 'quoted', amount: 45000, reportedAt: { year: 2026, month: 7, day: 12 }, urgent: true },
+  { id: 'SIG-2026-041', unitId: 'B2', title: 'Disjoncteur qui saute au démarrage du chauffe-eau', trade: 'power', status: 'approved', amount: 78000, reportedAt: { year: 2026, month: 7, day: 9 }, urgent: true },
+  { id: 'SIG-2026-039', unitId: 'C1', title: 'Peinture du séjour à reprendre', trade: 'painting', status: 'reported', amount: null, reportedAt: { year: 2026, month: 7, day: 5 }, urgent: false },
+  { id: 'SIG-2026-036', unitId: 'A1', title: 'Remplacement du groupe de sécurité', trade: 'plumbing', status: 'done', amount: 32000, reportedAt: { year: 2026, month: 6, day: 28 }, urgent: false },
+  { id: 'SIG-2026-034', unitId: 'B4', title: 'Réfection complète avant relocation', trade: 'multi', status: 'approved', amount: 340000, reportedAt: { year: 2026, month: 6, day: 22 }, urgent: false },
 ]
 
 export interface Deposit {

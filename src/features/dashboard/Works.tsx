@@ -75,7 +75,8 @@ export function Works() {
                   {work.urgent && <Badge tone="danger">{t('app.works.urgent')}</Badge>}
                 </div>
                 <p className="mt-1 font-mono text-mono-label text-muted">
-                  {work.id} · {work.unitId} {unit?.tenant ? `· ${unit.tenant}` : ''} · {work.trade} ·{' '}
+                  {work.id} · {work.unitId} {unit?.tenant ? `· ${unit.tenant}` : ''} ·{' '}
+                  {t(`app.trades.${work.trade}` as 'app.trades.plumbing')} ·{' '}
                   {d.dayMonth(work.reportedAt)}
                 </p>
               </div>

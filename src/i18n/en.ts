@@ -511,6 +511,15 @@ export const en: Dictionary = {
         'Deferred sync is not implemented yet. This card shows the state as it will appear once it is.',
     },
 
+    trades: {
+      plumbing: 'Plumbing',
+      power: 'Electricity',
+      painting: 'Painting',
+      multi: 'Multi-trade',
+      lock: 'Locks',
+      other: 'Other',
+    },
+
     portal: {
       title: 'Tenant portal',
       subtitle: 'What your tenant sees from their browser.',
@@ -530,10 +539,6 @@ export const en: Dictionary = {
       reportIssue: 'Report an issue',
       reportSent: 'Report sent to the manager and the owner',
       category: 'Nature of the problem',
-      categoryPlumbing: 'Plumbing',
-      categoryPower: 'Electricity',
-      categoryLock: 'Locks',
-      categoryOther: 'Other',
       urgency: 'Urgency',
       urgencyHigh: 'Blocking',
       urgencyMedium: 'Disruptive',
