@@ -3,10 +3,9 @@
  *
  * Aucune conversion de change n'est appliquée : un montant du jeu de données
  * est affiché tel quel, avec le formatage et le symbole de la devise choisie.
- * C'est le comportement de la maquette d'origine, assumé et signalé à
- * l'utilisateur par `MoneyBasisNote`. Les tarifs de la landing, eux, sont
- * ancrés indépendamment par devise (voir `features/marketing/pricing.ts`) et
- * ne sont donc pas concernés.
+ * C'est un parti pris assumé, signalé à l'utilisateur par `MoneyBasisNote`.
+ * Les tarifs de la landing, eux, sont ancrés indépendamment par devise (voir
+ * `features/marketing/pricing.ts`) et ne sont donc pas concernés.
  */
 
 /**

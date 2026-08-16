@@ -1,8 +1,5 @@
 import { Link } from 'react-router-dom'
 import { Logo } from '@/components/primitives/Logo'
-import { LanguageSwitcher } from '@/components/controls/LanguageSwitcher'
-import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
-import { Icon } from '@/components/primitives/Icon'
 import { useT } from '@/i18n/I18nProvider'
 
 const COLUMNS = [
@@ -41,11 +38,9 @@ export function PublicFooter() {
           <div className="max-w-sm">
             <Logo tone="dark" />
             <p className="mt-4 text-body text-on-dark-muted">{t('brand.tagline')}.</p>
-
-            <div className="mt-6 flex flex-wrap items-center gap-2">
-              <LanguageSwitcher tone="dark" />
-              <CurrencySwitcher tone="dark" />
-            </div>
+            {/* Les sélecteurs de langue et de devise étaient ici aussi —
+                quatrième copie sur la page. L'en-tête est collant : il reste
+                atteignable depuis le pied de page sans remonter. */}
           </div>
 
           {COLUMNS.map((column) => (
@@ -72,10 +67,6 @@ export function PublicFooter() {
         <div className="mt-12 flex flex-col gap-4 border-t border-on-dark-border pt-6 sm:flex-row sm:items-center sm:justify-between">
           <p className="font-mono text-mono-label text-on-dark-faint">
             {t('marketing.footer.rights', { year: new Date().getFullYear() })}
-          </p>
-          <p className="flex items-start gap-2 text-body-s text-on-dark-muted sm:max-w-md">
-            <Icon name="info" size={15} className="mt-0.5 text-gold" />
-            {t('marketing.footer.builtNote')}
           </p>
         </div>
       </div>

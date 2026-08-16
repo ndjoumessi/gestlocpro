@@ -122,12 +122,21 @@ export interface FeatureRow {
   values: Record<PlanId, FeatureValue>
 }
 
+/**
+ * Ce qui DIFFÈRE d'un palier à l'autre — et rien d'autre.
+ *
+ * La matrice portait quatre lignes cochées à l'identique sur les trois paliers :
+ * suivi des loyers, relevés d'eau et d'électricité, portail locataire, états
+ * des lieux. Elles n'aidaient personne à choisir, et redisaient mot pour mot la
+ * grille des fonctionnalités située plus haut sur la même page. Le prospect
+ * lisait douze coches dont quatre ne portaient aucune information.
+ *
+ * Elles sont désormais résumées en une phrase au-dessus de la liste — voir
+ * `marketing.pricing.allIncluded` — et la matrice ne garde que les cinq lignes
+ * qui départagent réellement.
+ */
 export const FEATURE_MATRIX: FeatureRow[] = [
-  { key: 'rent', values: { essential: true, pro: true, cabinet: true } },
-  { key: 'meters', values: { essential: true, pro: true, cabinet: true } },
-  { key: 'portal', values: { essential: true, pro: true, cabinet: true } },
   { key: 'reminders', values: { essential: 'manual', pro: 'auto', cabinet: 'auto' } },
-  { key: 'inspections', values: { essential: true, pro: true, cabinet: true } },
   { key: 'managers', values: { essential: false, pro: '3', cabinet: 'illimité' } },
   { key: 'exports', values: { essential: false, pro: true, cabinet: true } },
   { key: 'multiCompany', values: { essential: false, pro: false, cabinet: true } },

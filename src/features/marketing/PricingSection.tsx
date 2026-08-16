@@ -126,14 +126,26 @@ export function PricingSection() {
                 )}
 
                 {price !== null && (
-                  <p className="mt-2 flex items-center gap-1.5 text-body-s text-ok">
+                  <p className="mt-2 flex items-center gap-1.5 text-body-s text-muted">
                     <Icon name="checkCircle" size={14} />
                     {t('marketing.pricing.trial')}
                   </p>
                 )}
               </div>
 
-              <ul className="mt-5 flex flex-1 flex-col gap-3">
+              {/* Le socle commun est énoncé une fois, en prose, plutôt que
+                  répété en quatre coches identiques sur chaque carte. */}
+              <p className="mt-5 flex items-start gap-2 text-body-s text-pretty text-muted">
+                <Icon
+                  name="check"
+                  size={14}
+                  strokeWidth={2.2}
+                  className="mt-0.5 shrink-0 text-gold-ink"
+                />
+                {t('marketing.pricing.allIncluded')}
+              </p>
+
+              <ul className="mt-5 flex flex-1 flex-col gap-3 border-t border-divider pt-5">
                 {FEATURE_MATRIX.map((row) => (
                   <FeatureLine key={row.key} featureKey={row.key} value={row.values[plan.id]} />
                 ))}
@@ -249,12 +261,15 @@ function FeatureLine({ featureKey, value }: { featureKey: string; value: Feature
 
   return (
     <li className={cn('flex items-start gap-2.5 text-body', !included && 'text-muted')}>
-      {/* Inclus / non inclus repose sur la forme de l'icône, pas sur sa couleur. */}
+      {/* Inclus / non inclus repose sur la forme de l'icône, pas sur sa
+          couleur — ce qui rend le passage au monochrome sans conséquence pour
+          la compréhension. Le vert a laissé place à l'encre : le style retenu
+          n'admet qu'un seul accent, et sur cette page c'est l'or. */}
       <Icon
         name={included ? 'check' : 'close'}
         size={16}
         strokeWidth={included ? 2.2 : 1.7}
-        className={cn('mt-0.5 shrink-0', included ? 'text-ok' : 'text-muted')}
+        className={cn('mt-0.5 shrink-0', included ? 'text-ink' : 'text-muted-soft')}
       />
       <span className={cn(!included && 'line-through decoration-border-strong')}>
         {label}

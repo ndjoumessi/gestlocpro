@@ -5,7 +5,6 @@ import { ValueProps } from '@/features/marketing/ValueProps'
 import { FeatureGrid } from '@/features/marketing/FeatureGrid'
 import { RolesSection } from '@/features/marketing/RolesSection'
 import { InternationalSection } from '@/features/marketing/InternationalSection'
-import { Testimonials } from '@/features/marketing/Testimonials'
 import { PricingSection } from '@/features/marketing/PricingSection'
 import { Faq } from '@/features/marketing/Faq'
 import { FinalCta } from '@/features/marketing/FinalCta'
@@ -19,9 +18,7 @@ export function Landing() {
         <ValueProps />
         <FeatureGrid />
         <RolesSection />
-        <InternationalSection />
-        <Testimonials />
-        <PricingSection />
+        <InternationalSection />        <PricingSection />
         <Faq />
         <FinalCta />
       </main>

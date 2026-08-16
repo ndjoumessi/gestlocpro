@@ -37,6 +37,35 @@
   --color-gold-tint-2: #f7ebd3;
   --color-gold-border: #e9c68b;
 
+  /* ---- Teintes de données ---------------------------------------------- */
+  /* Une série de graphique n'est pas un aplat décoratif : elle porte
+     l'information, et doit donc tenir 3:1 contre le fond de la carte. L'or de
+     marque `--color-gold` n'y arrive pas — 2,87:1 sur blanc — et servait
+     pourtant de série « eau ». D'où cette échelle distincte, dont chaque
+     teinte a été mesurée sur blanc ET sur `--color-ink`, les deux fonds sur
+     lesquels un graphique s'affiche.
+
+     Les CLARTÉS sont volontairement étagées, et non seulement les teintes :
+     1, 7, 13, 18, 26, 28 %. Un premier jeu accrochait le seuil de contraste
+     mais plaçait deux séries à la même clarté — indiscernables en niveaux de
+     gris comme pour une bonne partie des daltonismes. La couleur ne porte de
+     toute façon jamais l'information seule : chaque série garde son libellé
+     dans la légende et dans l'infobulle. */
+  --color-data-1: #14201e; /* L  1 % — 16,73:1 sur blanc */
+  --color-data-2: #5b4a2a; /* L  7 % —  8,54:1 */
+  --color-data-3: #8a5a3b; /* L 13 % —  5,82:1 */
+  --color-data-4: #4a7f86; /* L 18 % —  4,50:1 */
+  --color-data-5: #9d8a52; /* L 26 % —  3,39:1 */
+  --color-data-6: #899485; /* L 28 % —  3,16:1 */
+
+  /* Contreparties pour les graphiques posés sur fond sombre. */
+  --color-data-1-on-dark: #f7f4ee;
+  --color-data-2-on-dark: #d2a055;
+  --color-data-3-on-dark: #c99a7f;
+  --color-data-4-on-dark: #8fc0c8;
+  --color-data-5-on-dark: #c4b89b;
+  --color-data-6-on-dark: #a8bca6;
+
   /* ---- Statuts --------------------------------------------------------- */
   --color-ok: #2c6a4e;
   --color-ok-tint: #eaf2ec;
@@ -67,8 +96,8 @@
   --color-on-dark-border: rgba(255, 255, 255, 0.1);
 
   /* ---- Typographie ----------------------------------------------------- */
-  --font-display: 'Cormorant Garamond', Georgia, serif;
-  --font-sans: 'Manrope', system-ui, -apple-system, sans-serif;
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 
   /* Tailles d'affichage fluides.
@@ -76,15 +105,34 @@
      téléphone de 375px avant qu'un seul mot du sous-titre soit visible. Le
      `clamp()` interpole entre la borne mobile et la borne bureau, sans point
      de rupture ni recalcul en JavaScript. */
-  --text-display-xl: clamp(2.25rem, 1.4rem + 3.6vw, 3.5rem); /* 36 -> 56 */
-  --text-display-xl--line-height: 1.06;
-  --text-display-xl--letter-spacing: -0.02em;
-  --text-display-l: clamp(2rem, 1.5rem + 2.1vw, 2.875rem); /* 32 -> 46 */
-  --text-display-l--line-height: 1.08;
-  --text-display-l--letter-spacing: -0.015em;
-  --text-display-m: clamp(1.625rem, 1.35rem + 1.2vw, 2rem); /* 26 -> 32 */
-  --text-display-m--line-height: 1.15;
-  --text-display-m--letter-spacing: -0.01em;
+  /* Le référentiel prescrit `clamp(3rem, 10vw, 12rem)` et la graisse 900. La
+     graisse est tenue ; la taille, non.
+
+     136px donnaient une phrase de six mots haute de trois lignes pleines, qui
+     repoussait le reste du hero sous la ligne de flottaison et creusait un vide
+     entre le titre et la première information utile. 96px gardent la
+     déclaration et lui rendent une place dans une page. C'est l'écart entre un
+     site d'agence — la cible réelle de ce style — et une page produit, où le
+     titre doit céder le pas au bout de trois secondes. */
+  --text-display-xl: clamp(2.75rem, 1rem + 6.4vw, 6rem); /* 44 -> 96 */
+  --text-display-xl--line-height: 0.98;
+  --text-display-xl--letter-spacing: -0.04em;
+  --text-display-l: clamp(2.25rem, 1.4rem + 4vw, 4rem); /* 36 -> 64 */
+  --text-display-l--line-height: 1;
+  --text-display-l--letter-spacing: -0.035em;
+
+  /* Titre de page applicative.
+     `display-l` sert la landing, où le titre EST le message. Sur un écran
+     d'exploitation il l'écrasait : « Vue consolidée du parc » en 64px pesait
+     plus lourd que les quatre indicateurs qu'il surplombe, alors que c'est la
+     donnée qu'on vient lire. Même famille, même resserrement — un cran plus
+     bas, et la hiérarchie se remet à l'endroit. */
+  --text-display-app: clamp(1.875rem, 1.4rem + 1.8vw, 2.5rem); /* 30 -> 40 */
+  --text-display-app--line-height: 1.1;
+  --text-display-app--letter-spacing: -0.025em;
+  --text-display-m: clamp(2rem, 1.3rem + 3vw, 3.25rem); /* 32 -> 52 */
+  --text-display-m--line-height: 1.04;
+  --text-display-m--letter-spacing: -0.03em;
 
   --text-title-l: 1.25rem; /* 20 */
   --text-title-l--line-height: 1.3;
@@ -368,7 +416,10 @@
   font-size: var(--text-display-xl);
   line-height: var(--text-display-xl--line-height);
   letter-spacing: var(--text-display-xl--letter-spacing);
-  font-weight: 600;
+  /* 900 : la graisse que le style prescrit. Playfair Display la porte, et
+     c'est elle qui fait tenir la déclaration à cette échelle — en 600 le
+     titre paraissait simplement grand. */
+  font-weight: 900;
 }
 
 @utility display-l {
@@ -376,7 +427,16 @@
   font-size: var(--text-display-l);
   line-height: var(--text-display-l--line-height);
   letter-spacing: var(--text-display-l--letter-spacing);
-  font-weight: 600;
+  font-weight: 800;
+}
+
+/* Titre de page applicative — voir `--text-display-app`. */
+@utility display-app {
+  font-family: var(--font-display);
+  font-size: var(--text-display-app);
+  line-height: var(--text-display-app--line-height);
+  letter-spacing: var(--text-display-app--letter-spacing);
+  font-weight: 700;
 }
 
 @utility display-m {
@@ -384,7 +444,7 @@
   font-size: var(--text-display-m);
   line-height: var(--text-display-m--line-height);
   letter-spacing: var(--text-display-m--letter-spacing);
-  font-weight: 600;
+  font-weight: 800;
 }
 
 /* Chiffres de données : mono, alignés en colonne. */

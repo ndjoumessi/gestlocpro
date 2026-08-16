@@ -3,127 +3,74 @@ import { Icon } from '@/components/primitives/Icon'
 import { CURRENCIES, CURRENCY_DEFS } from '@/currency/currencies'
 import { COUNTRIES } from '@/lib/countries'
 import { LOCALES, LOCALE_LABELS } from '@/i18n/locales'
-import { useCurrency } from '@/currency/CurrencyProvider'
-import { useI18n } from '@/i18n/I18nProvider'
-import { cn } from '@/lib/cn'
+import { useT } from '@/i18n/I18nProvider'
 
 /**
- * Section internationale. Les jetons ne sont pas décoratifs : cliquer une
- * devise ou une langue l'applique à toute la page, ce qui démontre la
- * promesse au lieu de l'énoncer.
+ * Portée internationale, énoncée en chiffres.
+ *
+ * La section portait deux cartes de sélection — devises et langues, chacune
+ * cliquable. C'était la troisième copie des mêmes contrôles sur une seule page,
+ * après l'en-tête et le hero, et le pied de page en tenait une quatrième.
+ * Quatre moyens de faire la même chose n'en font pas une promesse plus forte :
+ * ils diluent l'endroit où l'on sait la trouver. L'en-tête est collant, donc
+ * toujours accessible ; c'est lui qui garde la fonction.
+ *
+ * Ce qui reste est ce que les contrôles ne disaient pas : **combien**. Les
+ * trois nombres sont dérivés du code — pas écrits à la main — et les listes
+ * qui suivent nomment ce qui est couvert, sans prétendre être des boutons.
  */
 export function InternationalSection() {
-  const { t, locale, setLocale } = useI18n()
-  const { currency, setCurrency } = useCurrency()
+  const t = useT()
+
+  const facts = [
+    { key: 'currencies', value: CURRENCIES.length, detail: CURRENCIES.map((c) => CURRENCY_DEFS[c].label) },
+    { key: 'languages', value: LOCALES.length, detail: LOCALES.map((l) => LOCALE_LABELS[l].long) },
+    { key: 'countries', value: COUNTRIES.length, detail: [] },
+  ] as const
 
   return (
-    <Section id="international" tone="paper">
-      <div className="grid items-start gap-10 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
-        <div>
-          <p className="eyebrow flex items-center gap-2 text-gold-ink">
-            <Icon name="globe" size={14} />
-            {t('marketing.international.eyebrow')}
-          </p>
-          <h2 className="display-m mt-3 text-balance">{t('marketing.international.title')}</h2>
-          {/* Le nombre de devises est injecté depuis CURRENCIES, comme le
-              nombre de pays juste en dessous : écrit en toutes lettres dans le
-              dictionnaire, il devenait faux en silence dès qu'on ajoutait une
-              devise. */}
-          <p className="mt-4 text-body-l text-pretty text-muted">
-            {t('marketing.international.body', {
-              currencies: CURRENCIES.length,
-              locales: LOCALES.length,
-            })}
-          </p>
-          <p className="mt-5 flex items-center gap-2 font-mono text-mono-label text-muted">
-            <Icon name="check" size={14} className="text-ok" />
-            {t('marketing.international.countries', { count: COUNTRIES.length })}
-          </p>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="rounded-lg border border-divider bg-surface p-5 shadow-e1">
-            <h3 className="eyebrow font-sans text-muted">
-              {t('marketing.international.currencies')}
-            </h3>
-            <ul className="mt-4 flex flex-col gap-1.5">
-              {CURRENCIES.map((code) => {
-                const active = code === currency
-                return (
-                  <li key={code}>
-                    <button
-                      type="button"
-                      onClick={() => setCurrency(code)}
-                      aria-pressed={active}
-                      className={cn(
-                        'flex min-h-11 w-full cursor-pointer items-center gap-2.5 rounded-md px-3',
-                        'text-left text-body transition-colors duration-150',
-                        active
-                          ? 'bg-ink font-semibold text-on-dark'
-                          : 'text-ink hover:bg-surface-sunken',
-                      )}
-                    >
-                      <span className={cn('w-4 shrink-0', active ? 'text-gold' : 'text-transparent')}>
-                        <Icon name="check" size={14} strokeWidth={2.4} />
-                      </span>
-                      <span className="flex-1">{CURRENCY_DEFS[code].label}</span>
-                      <span
-                        className={cn(
-                          'font-mono text-mono-label',
-                          active ? 'text-on-dark-faint' : 'text-muted',
-                        )}
-                      >
-                        {code}
-                      </span>
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
+    <Section
+      id="international"
+      tone="paper"
+      eyebrow={t('marketing.international.eyebrow')}
+      title={t('marketing.international.title')}
+      // Les nombres viennent de `CURRENCIES` et `LOCALES` : écrits en toutes
+      // lettres dans le dictionnaire, ils devenaient faux en silence dès qu'on
+      // ajoutait une devise.
+      description={t('marketing.international.body', {
+        currencies: CURRENCIES.length,
+        locales: LOCALES.length,
+      })}
+    >
+      {/* Trois chiffres en cartes, sur la même grille que le reste de la page.
+          Posés à même le fond, ils flottaient dans une moitié de section vide,
+          et le contraste d'échelle entre le nombre et son libellé ne suffisait
+          pas à les rattacher les uns aux autres. */}
+      <dl className="grid gap-5 sm:grid-cols-3">
+        {facts.map((fact) => (
+          <div
+            key={fact.key}
+            className="rounded-xl border border-divider bg-surface p-7 shadow-e1 sm:p-8"
+          >
+            <dt className="eyebrow flex items-center gap-2 text-muted">
+              <Icon name="globe" size={13} className="text-gold-ink" />
+              {t(`marketing.international.${fact.key}` as 'marketing.international.currencies')}
+            </dt>
+            <dd className="m-0">
+              <p className="numeric mt-4 text-[2.75rem] leading-none font-medium">{fact.value}</p>
+              {fact.detail.length > 0 && (
+                <ul className="mt-5 flex flex-wrap gap-x-4 gap-y-1.5 border-t border-divider pt-4">
+                  {fact.detail.map((label) => (
+                    <li key={label} className="text-body-s text-muted">
+                      {label}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </dd>
           </div>
-
-          <div className="rounded-lg border border-divider bg-surface p-5 shadow-e1">
-            <h3 className="eyebrow font-sans text-muted">
-              {t('marketing.international.languages')}
-            </h3>
-            <ul className="mt-4 flex flex-col gap-1.5">
-              {LOCALES.map((code) => {
-                const active = code === locale
-                return (
-                  <li key={code}>
-                    <button
-                      type="button"
-                      onClick={() => setLocale(code)}
-                      aria-pressed={active}
-                      lang={code}
-                      className={cn(
-                        'flex min-h-11 w-full cursor-pointer items-center gap-2.5 rounded-md px-3',
-                        'text-left text-body transition-colors duration-150',
-                        active
-                          ? 'bg-ink font-semibold text-on-dark'
-                          : 'text-ink hover:bg-surface-sunken',
-                      )}
-                    >
-                      <span className={cn('w-4 shrink-0', active ? 'text-gold' : 'text-transparent')}>
-                        <Icon name="check" size={14} strokeWidth={2.4} />
-                      </span>
-                      <span className="flex-1">{LOCALE_LABELS[code].long}</span>
-                      <span
-                        className={cn(
-                          'font-mono text-mono-label',
-                          active ? 'text-on-dark-faint' : 'text-muted',
-                        )}
-                      >
-                        {LOCALE_LABELS[code].short}
-                      </span>
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
-        </div>
-      </div>
+        ))}
+      </dl>
     </Section>
   )
 }

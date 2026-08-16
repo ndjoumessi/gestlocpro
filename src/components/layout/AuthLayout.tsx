@@ -50,7 +50,11 @@ export function AuthLayout({ title, subtitle, children, footer, wide, above }: A
           <div className={cn('w-full', wide ? 'max-w-3xl' : 'max-w-md')}>
             {above}
 
-            <h1 className="display-m text-balance">{title}</h1>
+            {/* `display-app` et non `display-m` : un formulaire est une tâche,
+                pas une déclaration. À 52px, « Content de vous revoir »
+                disputait l'attention aux champs qu'il surplombe. Le panneau de
+                marque à gauche garde le grand corps — c'est lui qui parle. */}
+            <h1 className="display-app text-balance">{title}</h1>
             {subtitle && <p className="mt-3 text-body-l text-pretty text-muted">{subtitle}</p>}
 
             <div className="mt-8">{children}</div>
@@ -103,9 +107,6 @@ function BrandPanel() {
         </ul>
       </div>
 
-      <p className="relative mt-6 hidden font-mono text-mono-label text-on-dark-faint lg:block">
-        {t('marketing.footer.builtNote')}
-      </p>
     </div>
   )
 }

@@ -207,7 +207,10 @@ export function SegmentedControl<T extends string>({
               <span
                 className={cn(
                   'rounded-full px-1.5 py-0.5 font-mono text-mono-label',
-                  active ? 'bg-gold text-ink' : 'bg-ok-tint text-ok',
+                  // La pastille de remise suit l'accent unique. Elle était en
+                  // vert de succès, seule tache de couleur restante sur la
+                  // landing une fois les autres neutralisées.
+                  active ? 'bg-gold text-ink' : 'bg-gold-tint text-gold-ink',
                 )}
               >
                 {option.badge}

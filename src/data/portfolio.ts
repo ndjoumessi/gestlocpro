@@ -212,8 +212,8 @@ export const ALERTS: Alert[] = [
 ]
 
 /**
- * Locataire connecté dans la démonstration — le « Charles N. » du sélecteur de
- * profil de la maquette. Tant qu'il n'y a pas d'authentification, cette
+ * Locataire connecté — le « Charles N. » du sélecteur de profil.
+ * Tant qu'il n'y a pas d'authentification, cette
  * constante tient lieu de session : c'est elle qui borne ce que le rôle
  * locataire a le droit de voir.
  */

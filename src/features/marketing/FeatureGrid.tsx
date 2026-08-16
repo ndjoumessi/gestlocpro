@@ -1,3 +1,4 @@
+import { cn } from '@/lib/cn'
 import { Section } from '@/components/layout/Section'
 import { Icon, type IconName } from '@/components/primitives/Icon'
 import { useT } from '@/i18n/I18nProvider'
@@ -21,20 +22,39 @@ export function FeatureGrid() {
       title={t('marketing.features.title')}
       description={t('marketing.features.subtitle')}
     >
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Les cartes reviennent, mais construites.
+          Une passe précédente les avait réduites à un filet, au nom de
+          « elements minimal ». Six blocs de texte flottants ne se comparent
+          pas : sans surface, l'œil ne sait plus où commence et où finit une
+          fonctionnalité, et la page se lit comme un document. La surface est
+          ici une aide à la lecture, pas un ornement.
+          Ce qui a changé par rapport à la version d'origine : le rembourrage
+          passe de 24 à 32px, l'élévation est plus discrète au repos, et le
+          survol soulève la carte au lieu de seulement changer sa bordure. */}
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {FEATURES.map(({ key, icon }) => (
           <article
             key={key}
-            className="group rounded-lg border border-divider bg-surface p-6 shadow-e1 transition-[border-color,box-shadow] duration-200 hover:border-border-strong hover:shadow-e2"
+            className={cn(
+              'group rounded-xl border border-divider bg-surface p-7 sm:p-8',
+              'shadow-e1 transition-[transform,box-shadow,border-color] duration-200 ease-out',
+              'hover:-translate-y-1 hover:border-border-strong hover:shadow-e2',
+            )}
           >
-            <span className="flex size-11 items-center justify-center rounded-md bg-gold-tint text-gold-ink transition-colors duration-200 group-hover:bg-ink group-hover:text-gold">
-              <Icon name={icon} size={20} />
+            <span
+              className={cn(
+                'flex size-12 items-center justify-center rounded-lg',
+                'bg-gold-tint text-gold-ink transition-colors duration-200',
+                'group-hover:bg-ink group-hover:text-gold',
+              )}
+            >
+              <Icon name={icon} size={22} />
             </span>
 
-            <h3 className="mt-5 font-sans text-title-m font-semibold">
+            <h3 className="mt-6 font-sans text-title-l font-semibold text-balance">
               {t(`marketing.features.${key}.title` as 'marketing.features.rent.title')}
             </h3>
-            <p className="mt-2 text-body text-pretty text-muted">
+            <p className="mt-3 text-body text-pretty text-muted">
               {t(`marketing.features.${key}.body` as 'marketing.features.rent.body')}
             </p>
           </article>

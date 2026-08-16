@@ -45,7 +45,8 @@ export function Login() {
     }
 
     setSubmitting(true)
-    // Maquette : latence simulée pour montrer l'état de chargement du bouton.
+    // Latence simulée tant que l'appel réseau n'est pas branché : elle montre
+    // l'état de chargement du bouton, qui existera de toute façon.
     window.setTimeout(() => {
       setSubmitting(false)
       notify(t('auth.login.success'), { tone: 'ok' })

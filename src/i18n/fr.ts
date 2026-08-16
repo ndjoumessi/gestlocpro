@@ -123,7 +123,7 @@ export const fr = {
       remember: 'Rester connecté sur cet appareil',
       success: 'Connexion réussie — bienvenue.',
       demoNotice:
-        'Maquette : aucune authentification réelle. Le formulaire valide la saisie puis vous ouvre le tableau de bord.',
+        'L’authentification n’est pas encore branchée : le formulaire valide la saisie, puis ouvre le tableau de bord.',
     },
 
     forgot: {
@@ -137,7 +137,7 @@ export const fr = {
         'Si un compte existe pour {email}, un lien de réinitialisation vient d’y être envoyé. Pensez à regarder dans les indésirables.',
       resend: 'Renvoyer le lien',
       demoLinkNotice:
-        'Maquette : aucun e-mail n’est envoyé. Voici le lien qu’il aurait contenu.',
+        'L’envoi d’e-mail n’est pas encore branché. Voici le lien qu’il contiendra.',
     },
 
     reset: {
@@ -156,7 +156,7 @@ export const fr = {
         'Un lien de réinitialisation expire au bout d’une heure et ne sert qu’une fois. Demandez-en un nouveau.',
       askAnother: 'Demander un nouveau lien',
       demoNotice:
-        'Maquette : aucun mot de passe n’est réellement modifié. Le formulaire valide la saisie, puis affiche l’écran de confirmation.',
+        'L’enregistrement n’est pas encore branché : le formulaire valide la saisie, puis affiche l’écran de confirmation.',
     },
 
     strength: {
@@ -220,7 +220,7 @@ export const fr = {
       submit: 'Créer mon espace',
       successTitle: 'Votre espace est prêt',
       successBody:
-        'Maquette : aucun compte n’a réellement été créé. Voici l’espace {role} tel que vous le découvririez.',
+        'La création de compte n’est pas encore branchée. Voici l’espace {role} tel que vous le découvrirez.',
       goToDashboard: 'Ouvrir le tableau de bord',
 
       summaryRole: 'Rôle',
@@ -259,7 +259,7 @@ export const fr = {
     paymentSaved: 'Paiement enregistré · quittance envoyée',
     roleNotice: 'Vous consultez l’espace en tant que {role}. Changez de profil dans la barre latérale.',
     demoBanner:
-      'Maquette de démonstration : données fictives, aucun serveur contacté. Les montants s’affichent en {currency} sans conversion de change.',
+      'Les montants s’affichent en {currency} sans conversion de change.',
 
     tenant: {
       title: 'Mon espace locataire',
@@ -307,6 +307,9 @@ export const fr = {
       chartTitle: 'Encaissements sur 12 mois',
       chartNote:
         'Montants encaissés par mois, ventilés entre loyer, eau et électricité. Le mois en cours est encore ouvert.',
+      // Portée dans l'infobulle de la dernière colonne : sans elle, le creux
+      // du mois courant se lit comme une chute d'encaissement.
+      openMonth: 'Mois en cours, encore ouvert.',
       recoveryTitle: 'Recouvrement du mois',
       recoveryCollected: 'Payé',
       recoveryPartial: 'Partiel',
@@ -510,7 +513,7 @@ export const fr = {
       reset: 'Repartir du jeu de démonstration',
       resetDone: 'Démonstration réinitialisée',
       offlineNotice:
-        'Maquette : la synchronisation différée n’est pas implémentée. Cette carte montre l’état tel qu’il devra s’afficher le jour où elle le sera.',
+        'La synchronisation différée n’est pas encore implémentée. Cette carte montre l’état tel qu’il s’affichera le jour où elle le sera.',
     },
 
     portal: {
@@ -570,7 +573,6 @@ export const fr = {
       ctaPrimary: 'Créer mon espace',
       ctaSecondary: 'Voir le tableau de bord',
       trust: 'Sans carte bancaire · 30 jours d’essai · Résiliable à tout moment',
-      settingsLabel: 'Vos préférences d’affichage',
     },
 
     metrics: {
@@ -587,18 +589,11 @@ export const fr = {
       title: 'Un carnet, deux tableurs et un fil de discussion.',
       body:
         'C’est ainsi que se gère l’essentiel du parc locatif privé. Les relevés d’eau se perdent, les relances arrivent trop tard, et personne ne retrouve l’état des lieux d’entrée trois ans après.',
-      afterTitle: 'Avec GestLocPro',
       before: {
         one: 'Les relevés de compteurs se notent sur papier puis se recopient.',
         two: 'Les retards se découvrent en fin de trimestre.',
         three: 'L’état des lieux de sortie se discute de mémoire.',
         four: 'Le gestionnaire et le propriétaire travaillent sur deux versions.',
-      },
-      after: {
-        one: 'Relevés saisis sur place, charges refacturées automatiquement.',
-        two: 'Retard signalé à l’échéance, relance partie le lendemain.',
-        three: 'Entrée et sortie comparées pièce par pièce, réserve par réserve.',
-        four: 'Un seul registre, des droits distincts, chaque geste horodaté.',
       },
     },
 
@@ -647,40 +642,15 @@ export const fr = {
         '{currencies} devises, {locales} langues d’interface, indicatifs téléphoniques et formats de date locaux. Le franc CFA couvre les deux zones, de Douala à Dakar, avec les indicatifs et les usages de chaque pays.',
       currencies: 'Devises prises en charge',
       languages: 'Langues de l’interface',
-      countries: '{count} pays proposés à l’inscription',
-      countries_one: '{count} pays proposé à l’inscription',
+      countries: 'Pays proposés à l’inscription',
     },
 
-    proof: {
-      eyebrow: 'Témoignages',
-      title: 'Ce qu’en disent nos utilisateurs',
-      disclaimer:
-        'Témoignages illustratifs — GestLocPro est en construction et ces personnes sont fictives.',
-      one: {
-        quote:
-          'Les relevés d’eau étaient mon cauchemar de fin de mois. Ils se saisissent maintenant sur place, et la refacturation tombe toute seule sur la quittance.',
-        name: 'Personne fictive',
-        role: 'Propriétaire · 14 unités',
-      },
-      two: {
-        quote:
-          'Je propose, le propriétaire arbitre. Ce partage des droits a mis fin aux malentendus sur qui avait validé quoi.',
-        name: 'Personne fictive',
-        role: 'Gestionnaire délégué · 3 immeubles',
-      },
-      three: {
-        quote:
-          'Je vois mon échéancier et mes quittances sans avoir à réclamer. Mon signalement de plomberie a été pris en charge en deux jours.',
-        name: 'Personne fictive',
-        role: 'Locataire',
-      },
-    },
 
     pricing: {
       eyebrow: 'Tarifs',
       title: 'Un prix par unité gérée',
       subtitle:
-        'Pas de commission sur les loyers. Le portail locataire est inclus dans tous les paliers.',
+        'Pas de commission sur les loyers, jamais. Vous payez l’abonnement et les unités que vous gérez.',
       monthly: 'Mensuel',
       yearly: 'Annuel',
       yearlySave: '−20 %',
@@ -705,6 +675,10 @@ export const fr = {
       essential: { name: 'Essentiel', pitch: 'Un premier immeuble à tenir proprement.' },
       pro: { name: 'Pro', pitch: 'Un parc constitué, avec de la délégation.' },
       cabinet: { name: 'Cabinet', pitch: 'Plusieurs propriétaires, plusieurs sociétés.' },
+      // Résume les quatre lignes retirées de la matrice, cochées à
+      // l'identique sur les trois paliers.
+      allIncluded:
+        'Inclus partout : suivi des loyers et quittances, relevés d’eau et d’électricité, états des lieux comparés, portail locataire.',
       features: {
         units: 'Unités',
         rent: 'Suivi des loyers et quittances',
@@ -766,9 +740,7 @@ export const fr = {
       privacy: 'Confidentialité',
       cookies: 'Cookies',
       demo: 'Démonstration',
-      rights: '© {year} GestLocPro. Maquette de démonstration.',
-      builtNote:
-        'Cette interface est une maquette : les données sont fictives et aucun serveur n’est contacté.',
+      rights: '© {year} GestLocPro.',
     },
   },
 } as const

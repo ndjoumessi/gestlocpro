@@ -141,8 +141,10 @@ export function Dashboard() {
               {
                 key: 'partial',
                 label: t('app.dashboard.recoveryPartial'),
+                // `--color-warn` et non `--color-gold` : l'or de marque ne
+                // tient que 2,87:1 sur blanc, sous le seuil d'une donnée.
                 value: KPIS.partial,
-                color: 'var(--color-gold)',
+                color: 'var(--color-warn)',
               },
               {
                 key: 'late',

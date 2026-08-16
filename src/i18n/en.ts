@@ -114,7 +114,7 @@ export const en: Dictionary = {
       remember: 'Stay signed in on this device',
       success: 'Signed in — welcome back.',
       demoNotice:
-        'Mockup: no real authentication. The form validates your input, then opens the dashboard.',
+        'Authentication is not wired up yet: the form validates your input, then opens the dashboard.',
     },
 
     forgot: {
@@ -128,7 +128,7 @@ export const en: Dictionary = {
         'If an account exists for {email}, a reset link is on its way. Remember to check your spam folder.',
       resend: 'Send it again',
       demoLinkNotice:
-        'Mockup: no email is sent. Here is the link it would have contained.',
+        'Email sending is not wired up yet. Here is the link it will contain.',
     },
 
     reset: {
@@ -147,7 +147,7 @@ export const en: Dictionary = {
         'A reset link expires after one hour and works only once. Request a new one.',
       askAnother: 'Request a new link',
       demoNotice:
-        'Mockup: no password is actually changed. The form validates your input, then shows the confirmation screen.',
+        'Saving is not wired up yet: the form validates your input, then shows the confirmation screen.',
     },
 
     strength: {
@@ -211,7 +211,7 @@ export const en: Dictionary = {
       submit: 'Create my space',
       successTitle: 'Your space is ready',
       successBody:
-        'Mockup: no account was actually created. Here is the {role} space as you would discover it.',
+        'Account creation is not wired up yet. Here is the {role} space as you will discover it.',
       goToDashboard: 'Open the dashboard',
 
       summaryRole: 'Role',
@@ -250,7 +250,7 @@ export const en: Dictionary = {
     paymentSaved: 'Payment recorded · receipt sent',
     roleNotice: 'You are viewing this space as {role}. Switch profile in the sidebar.',
     demoBanner:
-      'Demonstration mockup: fictional data, no server contacted. Amounts display in {currency} with no exchange conversion.',
+      'Amounts display in {currency} with no exchange conversion.',
 
     tenant: {
       title: 'My tenant space',
@@ -298,6 +298,7 @@ export const en: Dictionary = {
       chartTitle: 'Collections over 12 months',
       chartNote:
         'Amounts collected per month, split between rent, water and electricity. The current month is still open.',
+      openMonth: 'Current month, still open.',
       recoveryTitle: 'Recovery this month',
       recoveryCollected: 'Paid',
       recoveryPartial: 'Partial',
@@ -499,7 +500,7 @@ export const en: Dictionary = {
       reset: 'Start from the demonstration data',
       resetDone: 'Demonstration reset',
       offlineNotice:
-        'Mockup: deferred sync is not implemented. This card shows the state as it should appear once it is.',
+        'Deferred sync is not implemented yet. This card shows the state as it will appear once it is.',
     },
 
     portal: {
@@ -557,7 +558,6 @@ export const en: Dictionary = {
       ctaPrimary: 'Create my space',
       ctaSecondary: 'See the dashboard',
       trust: 'No card required · 30-day trial · Cancel anytime',
-      settingsLabel: 'Your display preferences',
     },
 
     metrics: {
@@ -574,18 +574,11 @@ export const en: Dictionary = {
       title: 'One notebook, two spreadsheets and a chat thread.',
       body:
         'That is how most private rental portfolios are run. Water readings go missing, reminders arrive too late, and nobody can find the move-in inspection three years on.',
-      afterTitle: 'With GestLocPro',
       before: {
         one: 'Meter readings written on paper, then copied out again.',
         two: 'Arrears discovered at the end of the quarter.',
         three: 'The move-out inspection argued from memory.',
         four: 'Manager and owner working from two different versions.',
-      },
-      after: {
-        one: 'Readings captured on site, charges re-billed automatically.',
-        two: 'Arrears flagged on the due date, reminder out the next day.',
-        three: 'Move-in and move-out compared room by room, issue by issue.',
-        four: 'One ledger, distinct permissions, every action timestamped.',
       },
     },
 
@@ -634,40 +627,15 @@ export const en: Dictionary = {
         '{currencies} currencies, {locales} interface languages, local dial codes and date formats. The CFA franc covers both zones, from Douala to Dakar, with each country’s dial codes and conventions.',
       currencies: 'Supported currencies',
       languages: 'Interface languages',
-      countries: '{count} countries offered at signup',
-      countries_one: '{count} country offered at signup',
+      countries: 'Countries offered at signup',
     },
 
-    proof: {
-      eyebrow: 'Testimonials',
-      title: 'What our users say',
-      disclaimer:
-        'Illustrative testimonials — GestLocPro is under construction and these people are fictional.',
-      one: {
-        quote:
-          'Water readings were my end-of-month nightmare. They are captured on site now, and the re-billing lands on the receipt by itself.',
-        name: 'Fictional person',
-        role: 'Owner · 14 units',
-      },
-      two: {
-        quote:
-          'I propose, the owner decides. That split of permissions ended the misunderstandings about who had approved what.',
-        name: 'Fictional person',
-        role: 'Delegated manager · 3 buildings',
-      },
-      three: {
-        quote:
-          'I can see my schedule and my receipts without having to ask. My plumbing report was picked up within two days.',
-        name: 'Fictional person',
-        role: 'Tenant',
-      },
-    },
 
     pricing: {
       eyebrow: 'Pricing',
       title: 'One price per unit under management',
       subtitle:
-        'No commission on rent. The tenant portal is included in every plan.',
+        'No commission on rent, ever. You pay the subscription and the units you manage.',
       monthly: 'Monthly',
       yearly: 'Yearly',
       yearlySave: '−20%',
@@ -689,6 +657,8 @@ export const en: Dictionary = {
       essential: { name: 'Essential', pitch: 'A first building, kept properly.' },
       pro: { name: 'Pro', pitch: 'An established portfolio, with delegation.' },
       cabinet: { name: 'Firm', pitch: 'Several owners, several companies.' },
+      allIncluded:
+        'Included in every plan: rent and receipt tracking, water and electricity readings, compared inspections, tenant portal.',
       features: {
         units: 'Units',
         rent: 'Rent tracking and receipts',
@@ -750,9 +720,7 @@ export const en: Dictionary = {
       privacy: 'Privacy',
       cookies: 'Cookies',
       demo: 'Demo',
-      rights: '© {year} GestLocPro. Demonstration mockup.',
-      builtNote:
-        'This interface is a mockup: the data is fictional and no server is contacted.',
+      rights: '© {year} GestLocPro.',
     },
   },
 }
