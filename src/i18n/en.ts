@@ -624,6 +624,12 @@ export const en: Dictionary = {
       capability: 'Action',
       allowed: 'Allowed',
       denied: 'Not allowed',
+      families: {
+        build: 'Build the portfolio',
+        operate: 'Run it day to day',
+        arbitrate: 'Decide what commits money',
+        consult: 'View',
+      },
       caps: {
         viewAll: 'View the whole portfolio',
         addBuilding: 'Add a building',

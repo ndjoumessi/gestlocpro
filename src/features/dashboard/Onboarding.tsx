@@ -7,32 +7,64 @@ import { useT } from '@/i18n/I18nProvider'
 import type { Role } from '@/features/auth/signupState'
 
 /** Droits par rôle. `false` = action refusée. */
-const MATRIX: { key: string; owner: boolean; manager: boolean; tenant: boolean }[] = [
-  { key: 'viewAll', owner: true, manager: true, tenant: false },
-  /**
-   * Les trois gestes ajoutés en constituant le parc.
-   *
-   * Leurs droits ne sont pas décidés ici : ils RECOPIENT ce que le serveur
-   * impose — `exigerRole('owner', 'manager')` sur les trois routes. Une matrice
-   * qui annoncerait autre chose que ce que l'API applique serait une brochure,
-   * et c'est l'écran qui aurait tort.
-   *
-   * Déclarer un immeuble ou un logement relève de l'exploitation quotidienne,
-   * que le gestionnaire délégué assure. Ce qui lui reste fermé — valider un
-   * devis, arbitrer une caution — sont les deux gestes qui engagent l'argent du
-   * propriétaire.
-   */
-  { key: 'addBuilding', owner: true, manager: true, tenant: false },
-  { key: 'addUnit', owner: true, manager: true, tenant: false },
-  { key: 'issueReceipt', owner: true, manager: true, tenant: false },
-  { key: 'ownData', owner: true, manager: true, tenant: true },
-  { key: 'recordPayment', owner: true, manager: true, tenant: false },
-  { key: 'readMeters', owner: true, manager: true, tenant: false },
-  { key: 'quoteWorks', owner: true, manager: true, tenant: false },
-  { key: 'approveWorks', owner: true, manager: false, tenant: false },
-  { key: 'settleDeposit', owner: true, manager: false, tenant: false },
-  { key: 'inviteTenant', owner: true, manager: true, tenant: false },
-  { key: 'editPortfolio', owner: true, manager: false, tenant: false },
+/**
+ * Les droits, groupés par FAMILLE.
+ *
+ * À douze lignes, un tableau à plat cesse de se lire d'un coup : on cherche
+ * une action au lieu de comprendre une règle. Le groupement rend la règle
+ * visible avant les cases — constituer, exploiter, arbitrer, consulter — et
+ * c'est cette progression qui explique la délégation.
+ *
+ * L'ordre n'est pas décoratif : il suit la vie d'un parc. On le constitue
+ * d'abord, on l'exploite ensuite, on arbitre ce qui engage l'argent, et
+ * chacun consulte ce qui le regarde.
+ *
+ * Les droits eux-mêmes RECOPIENT ce que le serveur impose. Une matrice qui
+ * annoncerait autre chose que ce que l'API applique serait une brochure.
+ */
+const FAMILLES: {
+  key: string
+  rows: { key: string; owner: boolean; manager: boolean; tenant: boolean }[]
+}[] = [
+  {
+    key: 'build',
+    rows: [
+      { key: 'addBuilding', owner: true, manager: true, tenant: false },
+      { key: 'addUnit', owner: true, manager: true, tenant: false },
+      { key: 'inviteTenant', owner: true, manager: true, tenant: false },
+      { key: 'editPortfolio', owner: true, manager: false, tenant: false },
+    ],
+  },
+  {
+    key: 'operate',
+    rows: [
+      { key: 'recordPayment', owner: true, manager: true, tenant: false },
+      { key: 'issueReceipt', owner: true, manager: true, tenant: false },
+      { key: 'readMeters', owner: true, manager: true, tenant: false },
+      { key: 'quoteWorks', owner: true, manager: true, tenant: false },
+    ],
+  },
+  {
+    /**
+     * Les deux seuls gestes fermés au gestionnaire délégué.
+     *
+     * Leur famille porte leur raison d'être : ils engagent l'argent du
+     * propriétaire. Les isoler vaut mieux que de laisser le lecteur repérer
+     * deux croix perdues au milieu de douze lignes.
+     */
+    key: 'arbitrate',
+    rows: [
+      { key: 'approveWorks', owner: true, manager: false, tenant: false },
+      { key: 'settleDeposit', owner: true, manager: false, tenant: false },
+    ],
+  },
+  {
+    key: 'consult',
+    rows: [
+      { key: 'viewAll', owner: true, manager: true, tenant: false },
+      { key: 'ownData', owner: true, manager: true, tenant: true },
+    ],
+  },
 ]
 
 const ROLES: Role[] = ['owner', 'manager', 'tenant']
@@ -128,8 +160,21 @@ export function Onboarding() {
               </tr>
             </thead>
 
-            <tbody>
-              {MATRIX.map((row) => {
+            {FAMILLES.map((famille) => (
+            <tbody key={famille.key}>
+              {/* Un `<tbody>` par famille, et son intitulé en ligne d'en-tête :
+                  le groupement est ainsi porté par la STRUCTURE du tableau, et
+                  non par un simple espacement qu'un lecteur d'écran ignorerait. */}
+              <tr className="border-y border-divider bg-surface-sunken">
+                <th
+                  scope="colgroup"
+                  colSpan={ROLES.length + 1}
+                  className="eyebrow px-4 py-2 text-left font-normal text-muted"
+                >
+                  {t(`app.onboarding.families.${famille.key}` as 'app.onboarding.families.build')}
+                </th>
+              </tr>
+              {famille.rows.map((row) => {
                 // En gestion non déléguée, le propriétaire cumule les droits du
                 // gestionnaire : la colonne « Gestionnaire » perd son sens.
                 const managerAllowed = mode === 'delegate' ? row.manager : false
@@ -160,6 +205,7 @@ export function Onboarding() {
                 )
               })}
             </tbody>
+            ))}
           </table>
         </div>
       </Card>

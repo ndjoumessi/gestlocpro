@@ -671,6 +671,12 @@ export const fr = {
       capability: 'Action',
       allowed: 'Autorisé',
       denied: 'Non autorisé',
+      families: {
+        build: 'Constituer le parc',
+        operate: 'Exploiter au quotidien',
+        arbitrate: 'Arbitrer ce qui engage l’argent',
+        consult: 'Consulter',
+      },
       caps: {
         viewAll: 'Consulter tout le parc',
         addBuilding: 'Déclarer un immeuble',

@@ -26,6 +26,30 @@ describe('matrice des droits', () => {
     }
   })
 
+  it('groupe les droits par famille, dans l’ordre de la vie d’un parc', async () => {
+    /**
+     * À douze lignes, un tableau à plat cesse de se lire d'un coup : on cherche
+     * une action au lieu de comprendre une règle.
+     *
+     * L'ordre n'est pas décoratif — constituer, exploiter, arbitrer, consulter
+     * suit la vie d'un parc. Et le groupement est porté par la STRUCTURE du
+     * tableau, un `<tbody>` et un en-tête `colgroup` par famille, plutôt que par
+     * un espacement qu'un lecteur d'écran ignorerait.
+     */
+    renderApp('/app/prise-en-main')
+    await screen.findByRole('heading', { level: 1, name: /prise en main/i })
+
+    const familles = Array.from(document.querySelectorAll('th[scope="colgroup"]')).map((e) =>
+      e.textContent?.trim(),
+    )
+    expect(familles).toEqual([
+      'Constituer le parc',
+      'Exploiter au quotidien',
+      'Arbitrer ce qui engage l’argent',
+      'Consulter',
+    ])
+  })
+
   it('réserve au propriétaire les deux gestes qui engagent son argent', async () => {
     /**
      * Valider un devis et arbitrer une caution restent fermés au gestionnaire
