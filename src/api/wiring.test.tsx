@@ -122,6 +122,54 @@ describe('inscription', () => {
     // Le couple indicatif + numéro est recomposé en E.164, la seule forme qui
     // se lise sans ambiguïté.
     expect(corps.phoneE164).toBe('+237677889900')
+    // Le sixième champ, et le seul qui manquait encore : ce test en vérifiait
+    // cinq et laissait passer celui-là. Sans lui, le compte se créait sans
+    // parc, et l'application affichait le jeu de démonstration — un
+    // propriétaire ne pouvait pas distinguer « mon parc est vide » de « mon
+    // parc n'existe pas ».
+    expect(corps.parkName).toBe('Parc Bonamoussadi')
+    // Le pays par défaut est un vrai code ISO, pas la sentinelle.
+    expect(corps.countryCode).toBe('CM')
+  })
+
+  it('omet le pays quand il n’est pas dans la liste, au lieu d’envoyer la sentinelle', async () => {
+    /**
+     * Le défaut qui a fait échouer la première inscription en production.
+     *
+     * `OTHER` signifie « mon pays n'est pas proposé » : c'est une valeur
+     * d'interface, pas un code ISO 3166-1. Envoyée telle quelle, elle butait
+     * sur `length(2)` et le serveur répondait 400 — mais l'écran n'annonçait
+     * qu'une « erreur inattendue », sans nommer le champ. L'utilisateur ne
+     * pouvait ni comprendre ni corriger.
+     */
+    const serveur = installerFauxServeur()
+    serveur.quand('POST', '/auth/signup', { status: 201, body: { user: COMPTE_FICTIF } })
+    serveur.quand('GET', '/auth/me', { status: 200, body: { user: COMPTE_FICTIF, memberships: [] } })
+
+    const user = userEvent.setup()
+    renderApp('/inscription/proprietaire')
+    await user.type(screen.getByLabelText(/nom complet/i), 'Arsène Nkomo')
+    await user.type(screen.getByLabelText(/adresse e-mail/i), 'arsene@example.com')
+    await user.type(screen.getByLabelText(/^téléphone/i), '677889900')
+    await user.type(screen.getByLabelText(/^Mot de passe/), 'Bonamoussadi2026!')
+    await user.click(screen.getByRole('button', { name: /continuer/i }))
+
+    // Le pays se choisit à l'étape « contexte », avec le nom du parc.
+    await user.selectOptions(await screen.findByLabelText(/^pays/i), 'OTHER')
+    await user.type(screen.getByLabelText(/nom de votre parc/i), 'Parc Bonamoussadi')
+    await user.click(screen.getByRole('button', { name: /continuer/i }))
+    await screen.findByRole('heading', { name: /tout est correct/i })
+    await user.click(screen.getByLabelText(/j’accepte les conditions/i))
+    await user.click(screen.getByRole('button', { name: /créer mon espace/i }))
+
+    const corps = serveur.appels.find((a) => a.chemin === '/auth/signup')?.corps as Record<
+      string,
+      unknown
+    >
+    expect(corps).toBeDefined()
+    // Absent, et non `null` ni `'OTHER'` : le champ est facultatif côté
+    // serveur, et un pays inconnu est une absence de pays.
+    expect('countryCode' in corps).toBe(false)
   })
 
   it('ramène à l’étape où le champ existe quand l’adresse est prise', async () => {

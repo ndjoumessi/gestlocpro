@@ -128,10 +128,27 @@ export function SignUp() {
         ...(state.phone.trim()
           ? { phoneE164: `${state.dial}${state.phone.replace(/\D/g, '')}` }
           : {}),
-        ...(state.country ? { countryCode: state.country } : {}),
+        // `OTHER` est une sentinelle d'interface — « mon pays n'est pas dans la
+        // liste » — et non un code ISO 3166-1. L'envoyer faisait échouer
+        // l'inscription sur `length(2)`, et l'écran n'annonçait qu'une « erreur
+        // inattendue » : le seul champ fautif était celui dont on ne parlait
+        // pas. Un pays inconnu est une absence de pays, pas un pays nommé
+        // « OTHER ».
+        ...(state.country && state.country !== OTHER_COUNTRY
+          ? { countryCode: state.country }
+          : {}),
         locale,
         acceptTerms: true,
         newsletterOptIn: state.newsletter,
+        // Le nom du parc était saisi, validé, puis affiché au récapitulatif —
+        // et jeté à l'envoi. Le compte se créait sans parc, et le propriétaire
+        // arrivait sur une application qui lui montrait le jeu de
+        // démonstration : rien ne signalait que son parc n'existait pas.
+        // Seul un propriétaire en fonde un ; les autres rejoignent celui d'un
+        // tiers par invitation.
+        ...(state.role === 'owner' && state.parkName.trim()
+          ? { parkName: state.parkName.trim() }
+          : {}),
       })
       setDone(true)
     } catch (err) {
