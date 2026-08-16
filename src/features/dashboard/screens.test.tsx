@@ -57,6 +57,41 @@ describe('relevés de compteurs', () => {
   })
 })
 
+/**
+ * Le groupement des milliers suit la **devise**, non la langue de l'interface.
+ *
+ * Décision de produit, prise explicitement : « 45 000 FCFA » garde son espace
+ * insécable étroite dans l'interface anglaise. Le franc CFA est une monnaie de
+ * zone francophone, et son écriture usuelle ne change pas parce que le lecteur
+ * a choisi l'anglais — au contraire d'une date, qui est du formatage pur.
+ *
+ * Ce test existe pour que la règle ne passe pas pour un oubli : sans lui, elle
+ * ressemble à un défaut d'i18n et quelqu'un la « corrigera ».
+ */
+describe('groupement monétaire', () => {
+  // L'espace du rendu est insécable ÉTROITE (U+202F) et non ordinaire : c'est
+  // elle qui empêche un montant de se couper en fin de cellule. L'écrire en
+  // échappement plutôt qu'en caractère invisible évite un test qui échoue sans
+  // qu'on voie pourquoi.
+  const FINE = '\u202f'
+
+  // La cellule découpe le montant en plusieurs nœuds selon la colonne, d'où
+  // l'assertion sur le texte de la page plutôt que sur un élément : ce que la
+  // règle affirme est bien « ce rendu apparaît à l'écran », pas « il occupe tel
+  // élément ».
+  const texte = () => document.body.textContent ?? ''
+
+  it('suit la devise et non la langue de l’interface', () => {
+    renderApp('/app/paiements', { locale: 'en', currency: 'CFA' })
+    expect(texte()).toContain(`145${FINE}000${FINE}FCFA`)
+  })
+
+  it('change bien avec la devise, à langue égale', () => {
+    renderApp('/app/paiements', { locale: 'en', currency: 'USD' })
+    expect(texte()).toContain(`$${FINE}145,000`)
+  })
+})
+
 describe('locataires', () => {
   it('conserve le téléphone demandé au lieu de le jeter', () => {
     // Le formulaire réclamait un numéro en promettant d'y envoyer le code
