@@ -619,6 +619,12 @@ export const fr = {
       },
     },
 
+    offline: {
+      title: 'Serveur injoignable',
+      body:
+        'Votre session est peut-être toujours valable : ce n’est pas une déconnexion. Vérifiez votre connexion, puis rechargez la page.',
+    },
+
     system: {
       title: 'États du système',
       subtitle:

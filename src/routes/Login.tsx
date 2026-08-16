@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { AuthLayout } from '@/components/layout/AuthLayout'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
@@ -17,6 +17,20 @@ export function Login() {
   const navigate = useNavigate()
   const { notify } = useToast()
   const { connecter } = useSession()
+  const location = useLocation()
+
+  /**
+   * L'adresse voulue, ou le tableau de bord.
+   *
+   * Elle est validée avant d'être suivie : une valeur d'état de navigation
+   * vient du client, et rediriger vers ce qu'elle contient ouvrirait une
+   * redirection ouverte — un lien vers `/connexion` portant un état pointant
+   * sur un site tiers renverrait l'utilisateur dehors juste après qu'il ait
+   * saisi son mot de passe. On n'accepte donc qu'un chemin interne.
+   */
+  const demandee = (location.state as { from?: unknown } | null)?.from
+  const destination =
+    typeof demandee === 'string' && /^\/app(?:[/?]|$)/.test(demandee) ? demandee : '/app'
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -54,7 +68,18 @@ export function Login() {
     try {
       await connecter(email, password)
       notify(t('auth.login.success'), { tone: 'ok' })
-      navigate('/app')
+      /**
+       * Retour à l'adresse demandée, posée par la barrière d'accès.
+       *
+       * Sans elle, quelqu'un qui ouvre un lien vers `/app/cautions` atterrit
+       * sur le tableau de bord et doit refaire le chemin — sur un lien reçu
+       * par message, il ne sait même pas où il allait.
+       *
+       * `replace` : la page de connexion sort de l'historique. Le bouton
+       * « retour » du navigateur y ramènerait sinon un utilisateur désormais
+       * authentifié, devant un formulaire qui n'a plus lieu d'être.
+       */
+      navigate(destination, { replace: true })
     } catch (err) {
       /**
        * L'échec porte sur le FORMULAIRE, pas sur un champ.

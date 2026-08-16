@@ -7,10 +7,30 @@ import { I18nProvider } from '@/i18n/I18nProvider'
 import { CurrencyProvider } from '@/currency/CurrencyProvider'
 import { ToastProvider } from '@/components/primitives/Toast'
 import { PortfolioProvider } from '@/data/PortfolioProvider'
-import { SessionProvider } from '@/api/SessionProvider'
+import { SessionProvider, type EtatSession } from '@/api/SessionProvider'
+import { COMPTE_FICTIF } from './api'
 import type { Role } from '@/features/auth/signupState'
 import type { Locale } from '@/i18n/locales'
 import type { CurrencyCode } from '@/currency/currencies'
+
+/** Session par défaut des tests : voir `test/api` pour le choix d'un état résolu. */
+export const SESSION_CONNECTEE: EtatSession = {
+  statut: 'connecte',
+  compte: COMPTE_FICTIF,
+  adhesions: [],
+}
+
+export const SESSION_ANONYME: EtatSession = { statut: 'anonyme' }
+
+export interface PreferencesTest {
+  locale?: Locale
+  currency?: CurrencyCode
+  region?: string
+  /** État de session au montage. Par défaut : connecté. */
+  session?: EtatSession
+  /** État de navigation de la route de départ, comme le poserait `RequireAuth`. */
+  state?: unknown
+}
 
 /**
  * Rend l'application entière sur une route donnée.
@@ -24,9 +44,22 @@ import type { CurrencyCode } from '@/currency/currencies'
  * `MemoryRouter` remplace `BrowserRouter` : pas d'URL réelle à manipuler, et
  * la route de départ se déclare en argument.
  */
+/**
+ * Sépare le chemin de sa chaîne de requête.
+ *
+ * `MemoryRouter` accepte une chaîne — qu'il analyse — ou un objet, qu'il prend
+ * tel quel. Passer `{ pathname: '/reinitialiser?jeton=abc' }` range donc la
+ * requête DANS le chemin, et `useSearchParams` ne voit plus rien : huit tests
+ * du parcours de réinitialisation tombaient sur un « lien expiré ».
+ */
+function decouper(route: string): { pathname: string; search: string } {
+  const [pathname = '/', search = ''] = route.split('?')
+  return { pathname, search: search ? `?${search}` : '' }
+}
+
 export function renderApp(
   route = '/',
-  preferences: { locale?: Locale; currency?: CurrencyCode; region?: string } = {},
+  preferences: PreferencesTest = {},
 ): RenderResult {
   // Les préférences sont lues depuis `localStorage` au premier rendu : il faut
   // donc les poser avant de monter, pas après.
@@ -40,11 +73,11 @@ export function renderApp(
   if (preferences.region) window.localStorage.setItem('gestlocpro.region', preferences.region)
 
   return render(
-    <MemoryRouter initialEntries={[route]}>
+    <MemoryRouter initialEntries={[{ ...decouper(route), state: preferences.state ?? null }]}>
       <I18nProvider>
         <CurrencyProvider>
           <ToastProvider>
-            <SessionProvider>
+            <SessionProvider etatInitial={preferences.session ?? SESSION_CONNECTEE}>
               <PortfolioProvider>
                 <App />
               </PortfolioProvider>
@@ -59,7 +92,7 @@ export function renderApp(
 /** Rend un composant isolé avec les mêmes providers, sans routeur d'application. */
 export function renderWithProviders(
   ui: ReactElement,
-  preferences: { locale?: Locale; currency?: CurrencyCode; region?: string } = {},
+  preferences: PreferencesTest = {},
 ): RenderResult {
   window.localStorage.setItem('gestlocpro.locale', preferences.locale ?? 'fr')
   if (preferences.currency) window.localStorage.setItem('gestlocpro.currency', preferences.currency)
@@ -70,7 +103,7 @@ export function renderWithProviders(
       <I18nProvider>
         <CurrencyProvider>
           <ToastProvider>
-            <SessionProvider>
+            <SessionProvider etatInitial={preferences.session ?? SESSION_CONNECTEE}>
               <PortfolioProvider>{ui}</PortfolioProvider>
             </SessionProvider>
           </ToastProvider>

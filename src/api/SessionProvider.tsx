@@ -50,8 +50,27 @@ interface SessionContextValue {
 
 const SessionContext = createContext<SessionContextValue | null>(null)
 
-export function SessionProvider({ children }: { children: ReactNode }) {
-  const [etat, setEtat] = useState<EtatSession>({ statut: 'inconnu' })
+export function SessionProvider({
+  children,
+  etatInitial,
+}: {
+  children: ReactNode
+  /**
+   * État de départ, au lieu d'interroger le serveur.
+   *
+   * Couture réservée aux tests, et elle est nécessaire plutôt que commode : en
+   * production le premier rendu vaut forcément `inconnu`, puisque la réponse
+   * n'est pas encore arrivée. Sous test, cela obligerait chacun des deux cent
+   * cinquante cas à attendre la résolution d'une promesse avant de regarder
+   * l'écran qu'il examine — pour une propriété qu'aucun d'eux ne teste.
+   *
+   * Le chemin réel n'est pas contourné pour autant : la connexion, la
+   * déconnexion et la barrière d'accès passent tous par de vrais appels dans
+   * `wiring.test.tsx` et `RequireAuth.test.tsx`.
+   */
+  etatInitial?: EtatSession
+}) {
+  const [etat, setEtat] = useState<EtatSession>(etatInitial ?? { statut: 'inconnu' })
   const [horsLigne, setHorsLigne] = useState(false)
 
   const rafraichir = useCallback(async () => {
@@ -81,8 +100,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    // Un état fourni est déjà résolu : réinterroger le serveur l'écraserait
+    // aussitôt, et la couture ne servirait à rien.
+    if (etatInitial) return
     void rafraichir()
-  }, [rafraichir])
+  }, [etatInitial, rafraichir])
 
   const connecter = useCallback(
     async (email: string, motDePasse: string) => {

@@ -576,6 +576,12 @@ export const en: Dictionary = {
       },
     },
 
+    offline: {
+      title: 'Server unreachable',
+      body:
+        'Your session may still be valid — this is not a sign-out. Check your connection, then reload the page.',
+    },
+
     system: {
       title: 'System states',
       subtitle: 'The states the interface must handle: loading, empty, error, offline.',

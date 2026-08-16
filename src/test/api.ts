@@ -10,9 +10,22 @@ import { vi } from 'vitest'
  * unitaire, c'est un test d'intégration déguisé, et il tombe sur la machine de
  * quelqu'un d'autre.
  *
- * Le défaut par défaut est **anonyme** : c'est l'état d'un visiteur, et c'est
- * ce que la quasi-totalité des cas suppose implicitement.
+ * L'état par défaut est **authentifié**, et ce choix mérite d'être expliqué :
+ * l'immense majorité des cas montent un écran de `/app`, désormais gardé par
+ * `RequireAuth`. Un défaut anonyme les redirigerait tous vers la connexion, et
+ * soixante-seize tests parleraient d'un formulaire au lieu de l'écran qu'ils
+ * examinent. Les rares cas qui ont besoin d'un visiteur le demandent.
  */
+
+/** Compte fictif renvoyé par les routes d'authentification. */
+export const COMPTE_FICTIF = {
+  id: '00000000-0000-4000-8000-000000000001',
+  email: 'sarah@example.com',
+  fullName: 'Sarah Ngassa',
+  locale: 'fr' as const,
+  countryCode: 'CM',
+  phoneE164: '+237677214408',
+}
 
 export interface FauxServeur {
   /** Programme la réponse d'une route, une fois ou durablement. */
@@ -21,12 +34,19 @@ export interface FauxServeur {
   appels: { methode: string; chemin: string; corps: unknown }[]
 }
 
-export function installerFauxServeur(): FauxServeur {
+export function installerFauxServeur(
+  options: { authentifie?: boolean } = {},
+): FauxServeur {
+  const { authentifie = true } = options
   const routes = new Map<string, { status: number; body?: unknown }>()
   const appels: FauxServeur['appels'] = []
 
-  // Anonyme par défaut : `/auth/me` répond 401, comme pour un visiteur.
-  routes.set('GET /auth/me', { status: 401, body: { error: 'unauthenticated' } })
+  routes.set(
+    'GET /auth/me',
+    authentifie
+      ? { status: 200, body: { user: COMPTE_FICTIF, memberships: [] } }
+      : { status: 401, body: { error: 'unauthenticated' } },
+  )
 
   vi.stubGlobal(
     'fetch',
@@ -59,14 +79,4 @@ export function installerFauxServeur(): FauxServeur {
     quand: (methode, chemin, reponse) => routes.set(`${methode.toUpperCase()} ${chemin}`, reponse),
     appels,
   }
-}
-
-/** Compte fictif renvoyé par les routes d'authentification. */
-export const COMPTE_FICTIF = {
-  id: '00000000-0000-4000-8000-000000000001',
-  email: 'sarah@example.com',
-  fullName: 'Sarah Ngassa',
-  locale: 'fr' as const,
-  countryCode: 'CM',
-  phoneE164: '+237677214408',
 }

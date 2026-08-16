@@ -9,6 +9,7 @@ import { SignUp } from './routes/SignUp'
 import { KitchenSink } from './routes/KitchenSink'
 import { NotFound, NotFoundInApp } from './routes/NotFound'
 import { AppShell, RoleGuard } from './components/layout/AppShell'
+import { RequireAuth } from './api/RequireAuth'
 import { Dashboard } from './features/dashboard/Dashboard'
 import { Portfolio } from './features/dashboard/Portfolio'
 import { Payments } from './features/dashboard/Payments'
@@ -45,7 +46,18 @@ export function App() {
       <Route path="/mot-de-passe-oublie" element={<ForgotPassword />} />
       <Route path="/reinitialiser" element={<ResetPassword />} />
 
-      <Route path="/app" element={<AppShell />}>
+      {/* La barrière enveloppe la coquille elle-même : la poser sur chaque
+          écran laisserait la barre latérale s'afficher avant la redirection, et
+          un visiteur verrait un instant la navigation d'un parc qui n'est pas
+          le sien. */}
+      <Route
+        path="/app"
+        element={
+          <RequireAuth>
+            <AppShell />
+          </RequireAuth>
+        }
+      >
         <Route index element={<Dashboard />} />
         {/* Écrans partagés : chacun applique son propre filtrage par rôle. */}
         <Route path="paiements" element={<Payments />} />
