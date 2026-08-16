@@ -1,0 +1,38 @@
+# Base de données de développement.
+#
+# Le produit tourne jusqu'ici entièrement dans le navigateur : l'état vit dans
+# `localStorage`, ce qui suffit à démontrer mais ne survit ni au changement de
+# poste ni au partage entre deux utilisateurs. Ce conteneur est la première
+# pierre du passage à une persistance réelle.
+#
+#   docker compose up -d     démarre la base
+#   docker compose down      l'arrête, en gardant les données
+#   docker compose down -v   l'arrête et EFFACE le volume
+#
+# Le port 5433 et non 5432 : une installation locale de PostgreSQL occupe
+# souvent le port par défaut, et le conflit se manifeste par une erreur de
+# connexion difficile à rattacher à sa cause.
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: gestlocpro-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gestlocpro
+      POSTGRES_PASSWORD: gestlocpro
+      POSTGRES_DB: gestlocpro
+    ports:
+      - '5433:5432'
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      # `pg_isready` seul rend la main avant que la base ne soit réellement
+      # ouverte aux connexions : on interroge donc la base nommée.
+      test: ['CMD-SHELL', 'pg_isready -U gestlocpro -d gestlocpro']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  db-data:
