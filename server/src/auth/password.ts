@@ -1,7 +1,25 @@
-import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto'
-import { promisify } from 'node:util'
+import { randomBytes, scrypt, timingSafeEqual, type ScryptOptions } from 'node:crypto'
 
-const scryptAsync = promisify(scrypt)
+/**
+ * `scrypt` en promesse, écrit à la main.
+ *
+ * `promisify` ne retient que la surcharge à trois arguments : passer des
+ * options — indispensable ici, `maxmem` par défaut étant sous le besoin — ne
+ * type plus. Un `as` masquerait le problème en laissant croire à une
+ * vérification qui n'a pas lieu ; six lignes explicites valent mieux.
+ */
+function scryptAsync(
+  motDePasse: string,
+  sel: Buffer,
+  longueur: number,
+  options: ScryptOptions,
+): Promise<Buffer> {
+  return new Promise((resoudre, rejeter) => {
+    scrypt(motDePasse, sel, longueur, options, (err, derivee) =>
+      err ? rejeter(err) : resoudre(derivee),
+    )
+  })
+}
 
 /**
  * Hachage des mots de passe.
@@ -54,7 +72,7 @@ export async function hashPassword(plain: string): Promise<string> {
     r: R,
     p: P,
     maxmem: MAXMEM,
-  })) as Buffer
+  }))
 
   return [ALGO, N, R, P, sel.toString('base64url'), derivee.toString('base64url')].join('$')
 }
@@ -102,7 +120,7 @@ export async function verifyPassword(plain: string, stored: string): Promise<boo
       r,
       p,
       maxmem: MAXMEM,
-    })) as Buffer
+    }))
   } catch {
     // Paramètres hors bornes dans l'enregistrement : illisible, donc refusé.
     return false

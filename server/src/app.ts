@@ -2,6 +2,7 @@ import express, { type ErrorRequestHandler, type Request, type Response } from '
 import cookieParser from 'cookie-parser'
 import { ZodError } from 'zod'
 import { env } from './env.js'
+import { authRouter } from './auth/routes.js'
 
 /**
  * Application Express, séparée du démarrage du serveur.
@@ -47,6 +48,12 @@ export function createApp() {
   app.get('/api/health', (_req: Request, res: Response) => {
     res.json({ ok: true })
   })
+
+  // Express 5 transmet lui-même les rejets de promesse au gestionnaire
+  // d'erreurs : pas besoin d'envelopper chaque route asynchrone. C'était la
+  // principale verrue d'Express 4, et l'oublier une seule fois y laissait une
+  // requête suspendue jusqu'au délai d'expiration du client.
+  app.use('/api/auth', authRouter)
 
   // 404 en JSON : le client parse toutes les réponses de l'API, et une page
   // HTML d'erreur produirait une exception de désérialisation qui masquerait
