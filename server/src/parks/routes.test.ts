@@ -1033,3 +1033,80 @@ describe('codes d’invitation', () => {
     expect(res.status).toBe(400)
   })
 })
+
+describe('envoi du code par SMS', () => {
+  it('n’annonce PAS un envoi quand aucun fournisseur n’est configuré', async () => {
+    /**
+     * Le cœur de la couture.
+     *
+     * L'adaptateur de journal n'envoie rien et le DIT — il rend `false`. Rendre
+     * `true` aurait été plus simple et aurait produit exactement le mensonge
+     * qu'on retire partout ailleurs : un succès affiché que rien ne recouvre.
+     */
+    const { cookie } = await inscrire('sansfournisseur@example.com', { parkName: 'Parc' })
+    const parcs = await request(app).get('/api/parks').set('Cookie', cookie)
+
+    const res = await request(app)
+      .post(`/api/parks/${parcs.body.parks[0].id}/invitations`)
+      .set('Cookie', cookie)
+      .send({ role: 'tenant', phoneE164: '+237677214408' })
+
+    expect(res.status).toBe(201)
+    expect(res.body.envoye).toBe(false)
+    // Et le code reste rendu : c'est lui qui compte, l'envoi n'est qu'un
+    // confort.
+    expect(res.body.code).toMatch(/^LOC-/)
+  })
+
+  it('émet quand même le code si l’envoi échoue', async () => {
+    // Un code reste valable même si le SMS ne part pas : le propriétaire peut
+    // le dicter. Refuser l'invitation perdrait le code au lieu de sauver le
+    // message.
+    const { remplacerMessagerie } = await import('../messagerie/messagerie.js')
+    const restaurer = remplacerMessagerie({
+      envoyerSms: async () => {
+        throw new Error('fournisseur injoignable')
+      },
+    })
+    try {
+      const { cookie } = await inscrire('panne@example.com', { parkName: 'Parc' })
+      const parcs = await request(app).get('/api/parks').set('Cookie', cookie)
+      const res = await request(app)
+        .post(`/api/parks/${parcs.body.parks[0].id}/invitations`)
+        .set('Cookie', cookie)
+        .send({ role: 'tenant', phoneE164: '+237677214408' })
+
+      expect(res.status, JSON.stringify(res.body)).toBe(201)
+      expect(res.body.envoye).toBe(false)
+      expect(res.body.code).toMatch(/^LOC-/)
+    } finally {
+      restaurer()
+    }
+  })
+
+  it('annonce l’envoi quand un fournisseur le confirme', async () => {
+    const { remplacerMessagerie } = await import('../messagerie/messagerie.js')
+    const envoyes: string[] = []
+    const restaurer = remplacerMessagerie({
+      envoyerSms: async (destinataire, texte) => {
+        envoyes.push(`${destinataire}|${texte}`)
+        return true
+      },
+    })
+    try {
+      const { cookie } = await inscrire('fournisseur@example.com', { parkName: 'Parc' })
+      const parcs = await request(app).get('/api/parks').set('Cookie', cookie)
+      const res = await request(app)
+        .post(`/api/parks/${parcs.body.parks[0].id}/invitations`)
+        .set('Cookie', cookie)
+        .send({ role: 'tenant', phoneE164: '+237677214408' })
+
+      expect(res.body.envoye).toBe(true)
+      expect(envoyes).toHaveLength(1)
+      // Le message porte le code : c'est tout son objet.
+      expect(envoyes[0]).toContain(res.body.code)
+    } finally {
+      restaurer()
+    }
+  })
+})

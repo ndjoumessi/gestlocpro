@@ -551,6 +551,8 @@ export const en: Dictionary = {
       codeTitle: 'Invitation code',
       codeOnce:
         'Write it down now: it cannot be read again, not even by you. If lost, issue another one.',
+      sentBySms: 'Sent by SMS to the number given.',
+      notSent: 'No SMS was sent: pass the code on yourself.',
       expires: 'Valid for 14 days.',
       copy: 'Copy',
       copied: 'Code copied',

@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from 'express'
 import { z } from 'zod'
 import { prisma } from '../db.js'
 import { creerCode, expirationInvitation } from './invitations.js'
+import { laMessagerie } from '../messagerie/messagerie.js'
 import { exigerAppartenance, exigerCompte, exigerRole, unitesVisibles } from '../auth/guards.js'
 
 export const parksRouter = Router()
@@ -907,9 +908,41 @@ parksRouter.post(
       select: { id: true, role: true, codeHint: true, expiresAt: true },
     })
 
+    /**
+     * Tentative d'envoi, dont l'échec ne fait PAS échouer l'émission.
+     *
+     * Le code reste valable même si le SMS ne part pas : le propriétaire peut
+     * le dicter. Refuser l'invitation parce que l'envoi a échoué perdrait le
+     * code au lieu de sauver le message.
+     *
+     * `envoye` est rendu au client pour qu'il dise la vérité : « envoyé par
+     * SMS » quand c'est vrai, « transmettez-le vous-même » sinon. Tant
+     * qu'aucun fournisseur n'est configuré, c'est toujours le second.
+     */
+    let envoye = false
+    if (corps.phoneE164) {
+      try {
+        envoye = await laMessagerie().envoyerSms(
+          corps.phoneE164,
+          `GestLocPro — votre code d'invitation : ${code.clair}`,
+        )
+      } catch (err) {
+        /**
+         * Un fournisseur qui LÈVE ne doit pas emporter l'invitation.
+         *
+         * Le contrat de la couture dit « jamais d'exception », mais un contrat
+         * ne contraint que ceux qui le lisent : un adaptateur tiers, une panne
+         * réseau, un jeton expiré lèveront un jour. Sans cette garde,
+         * l'émission rendait 500 et le code — déjà écrit en base — était perdu
+         * pour tout le monde.
+         */
+        console.error('envoi du code impossible', err)
+      }
+    }
+
     // Le code clair voyage UNE fois, dans cette réponse. Il ne sera plus jamais
     // lisible : c'est au propriétaire de le transmettre.
-    res.status(201).json({ invitation, code: code.clair })
+    res.status(201).json({ invitation, code: code.clair, envoye })
   },
 )
 

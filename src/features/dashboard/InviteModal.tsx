@@ -30,10 +30,12 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
   const [role, setRole] = useState<'tenant' | 'manager'>('tenant')
   const [unitId, setUnitId] = useState(vacants[0]?.id ?? '')
   const [code, setCode] = useState<string | null>(null)
+  const [envoye, setEnvoye] = useState(false)
   const [envoi, setEnvoi] = useState(false)
 
   const fermer = () => {
     setCode(null)
+    setEnvoye(false)
     setEnvoi(false)
     onClose()
   }
@@ -42,14 +44,17 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
     if (!parkId) return
     setEnvoi(true)
     void api
-      .issueInvitation<{ code: string }>(parkId, {
+      .issueInvitation<{ code: string; envoye: boolean }>(parkId, {
         role,
         // L'unité n'accompagne qu'une invitation de LOCATAIRE : un gestionnaire
         // opère tout le parc, et lui en attacher une laisserait croire à un
         // périmètre qui n'existe pas.
         ...(role === 'tenant' && unitId ? { unitId } : {}),
       })
-      .then(({ code: emis }) => setCode(emis))
+      .then(({ code: emis, envoye: parti }) => {
+        setCode(emis)
+        setEnvoye(parti)
+      })
       .catch(() => notify(t('common.actionFailed'), { tone: 'danger' }))
       .finally(() => setEnvoi(false))
   }
@@ -82,7 +87,13 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
           <p className="numeric rounded-md bg-surface-sunken px-4 py-4 text-center text-h3 tracking-wider select-all">
             {code}
           </p>
-          <p className="text-body-s text-muted">{t('app.invite.expires')}</p>
+          {/* Ce que l'écran dit de l'envoi vient du SERVEUR, jamais d'une
+              supposition. Tant qu'aucun fournisseur n'est configuré, il dit
+              qu'aucun SMS n'est parti — annoncer un envoi qui n'a pas eu lieu
+              est le mensonge que ce produit a passé la journée à retirer. */}
+          <p className="text-body-s text-muted">
+            {envoye ? t('app.invite.sentBySms') : t('app.invite.notSent')} {t('app.invite.expires')}
+          </p>
           <Button
             variant="secondary"
             icon="clipboard"

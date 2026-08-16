@@ -638,7 +638,13 @@ describe('inviter à rejoindre le parc', () => {
     serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: portefeuille() })
     serveur.quand('POST', `/parks/${PARK}/invitations`, {
       status: 201,
-      body: { invitation: { id: 'i1', role: 'tenant', codeHint: '92CD' }, code: 'LOC-4A7B-92CD' },
+      body: {
+        invitation: { id: 'i1', role: 'tenant', codeHint: '92CD' },
+        code: 'LOC-4A7B-92CD',
+        // Aucun fournisseur configuré : le serveur le dit, l'écran doit le
+        // répéter au lieu d'annoncer un envoi.
+        envoye: false,
+      },
     })
 
     const user = userEvent.setup()
@@ -648,6 +654,30 @@ describe('inviter à rejoindre le parc', () => {
 
     expect(await screen.findByText('LOC-4A7B-92CD')).toBeInTheDocument()
     expect(screen.getByText(/n’est plus lisible ensuite/i)).toBeInTheDocument()
+    // Et surtout : l'écran n'annonce PAS un envoi qui n'a pas eu lieu.
+    expect(screen.getByText(/transmettez le code vous-même/i)).toBeInTheDocument()
+    expect(screen.queryByText(/envoyé par sms/i)).not.toBeInTheDocument()
+  })
+
+  it('annonce l’envoi seulement quand le serveur le confirme', async () => {
+    const serveur = installerFauxServeur()
+    serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: portefeuille() })
+    serveur.quand('POST', `/parks/${PARK}/invitations`, {
+      status: 201,
+      body: {
+        invitation: { id: 'i3', role: 'tenant', codeHint: '92CD' },
+        code: 'LOC-4A7B-92CD',
+        envoye: true,
+      },
+    })
+
+    const user = userEvent.setup()
+    renderApp('/app/locataires', { session: SESSION_AVEC_PARC })
+    await user.click(await screen.findByRole('button', { name: /inviter par code/i }))
+    await user.click(screen.getByRole('button', { name: /émettre le code/i }))
+
+    expect(await screen.findByText(/envoyé par sms/i)).toBeInTheDocument()
+    expect(screen.queryByText(/transmettez le code vous-même/i)).not.toBeInTheDocument()
   })
 
   it('n’attache pas de logement à une invitation de gestionnaire', async () => {

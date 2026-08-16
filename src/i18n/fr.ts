@@ -596,6 +596,8 @@ export const fr = {
       codeTitle: 'Code d’invitation',
       codeOnce:
         'Notez-le maintenant : il n’est plus lisible ensuite, même par vous. En cas de perte, émettez-en un autre.',
+      sentBySms: 'Envoyé par SMS au numéro indiqué.',
+      notSent: 'Aucun SMS n’a été envoyé : transmettez le code vous-même.',
       expires: 'Valable 14 jours.',
       copy: 'Copier',
       copied: 'Code copié',
