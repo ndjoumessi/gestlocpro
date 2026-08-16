@@ -363,3 +363,97 @@ describe('droits d’arbitrage', () => {
     expect(res.body).toEqual({ error: 'unit_already_leased' })
   })
 })
+
+/**
+ * Relevés, états des lieux et notifications.
+ *
+ * Ils voyagent dans la même réponse que le parc, pour la raison déjà retenue :
+ * des collections qui arrivent séparément afficheraient un parc à jour à côté
+ * de relevés périmés. Et le cloisonnement du locataire vaut pour eux comme
+ * pour le reste — c'est ce que ces cas vérifient.
+ */
+describe('terrain et notifications', () => {
+  let parkId: string
+  let proprio: string
+
+  beforeEach(async () => {
+    const p = await inscrire('proprio@example.com', {
+      parkName: 'Parc Bonamoussadi',
+      countryCode: 'CM',
+      seedDemo: true,
+    })
+    proprio = p.cookie
+    const parcs = await request(app).get('/api/parks').set('Cookie', proprio)
+    parkId = parcs.body.parks[0].id
+  })
+
+  const pf = (c: string) => request(app).get(`/api/parks/${parkId}/portfolio`).set('Cookie', c)
+
+  it('rend un index par unité ET par fluide', async () => {
+    // Le client stockait un couple `previous`/`current` par unité : un
+    // instantané, où l'index précédent était la copie d'une ligne qui aurait dû
+    // exister. Ici une ligne par (unité, fluide, période) porte l'index, et la
+    // consommation s'en dérive.
+    const res = await pf(proprio)
+    const eau = res.body.readings.filter((r: { utility: string }) => r.utility === 'water')
+    const elec = res.body.readings.filter((r: { utility: string }) => r.utility === 'power')
+
+    // Huit unités relevées sur dix : A5 et C2 ne le sont pas.
+    expect(eau).toHaveLength(8)
+    expect(elec).toHaveLength(8)
+  })
+
+  it('rend les états des lieux avec le compte de réserves et la signature', async () => {
+    const res = await pf(proprio)
+    expect(res.body.inspections.length).toBeGreaterThan(0)
+    const nonSigne = res.body.inspections.find((i: { signedAt: string | null }) => i.signedAt === null)
+    // `signed: boolean` ne disait ni qui ni quand : c'est pourtant le champ
+    // qu'on oppose au locataire en cas de litige.
+    expect(nonSigne).toBeDefined()
+    expect(res.body.inspections.some((i: { issues: number }) => i.issues > 0)).toBe(true)
+  })
+
+  it('rend les notifications en clé et paramètres, jamais en phrases', async () => {
+    const res = await pf(proprio)
+    expect(res.body.notifications).toHaveLength(7)
+    const retard = res.body.notifications.find(
+      (n: { messageKey: string }) => n.messageKey === 'rentOverdue',
+    )
+    expect(retard.params.count).toBe(24)
+    // Aucune phrase dans la donnée : le client en portait sept, chacune figeant
+    // en plus une date au format numérique et un pluriel concaténé.
+    expect(JSON.stringify(res.body.notifications)).not.toContain('en retard de')
+  })
+
+  it('porte l’état « lu » par destinataire', async () => {
+    // Le client le tenait dans un `Set` de session, invisible de la barre
+    // latérale : la pastille annonçait « 2 » même après tout avoir marqué lu.
+    const res = await pf(proprio)
+    expect(res.body.notifications.filter((n: { read: boolean }) => !n.read)).toHaveLength(2)
+  })
+
+  it('borne le locataire sur ses seules unités, terrain compris', async () => {
+    const locataire = await inscrire('charles@example.com')
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'charles@example.com' },
+    })
+    await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'tenant' } })
+    await prisma.tenant.updateMany({
+      where: { parkId, fullName: 'Charles Ngassa' },
+      data: { userId: compte.id },
+    })
+
+    const res = await pf(locataire.cookie)
+    const sonUnite = res.body.buildings.flatMap((b: { units: { id: string }[] }) => b.units)[0].id
+
+    // Un fluide par relevé, une seule unité : deux lignes.
+    expect(res.body.readings).toHaveLength(2)
+    expect(res.body.readings.every((r: { unitId: string }) => r.unitId === sonUnite)).toBe(true)
+    expect(res.body.inspections.every((i: { unitId: string }) => i.unitId === sonUnite)).toBe(true)
+    // Une notification sans unité — « 2 relevés manquants » — ne le regarde
+    // pas : elle s'adresse à qui gère le parc.
+    expect(
+      res.body.notifications.every((n: { unitId: string | null }) => n.unitId === sonUnite),
+    ).toBe(true)
+  })
+})

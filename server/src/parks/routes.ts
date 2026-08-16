@@ -182,7 +182,7 @@ parksRouter.get(
     const idsVisibles = visibles?.map((u) => u.id)
     const filtreUnite = idsVisibles ? { in: idsVisibles } : undefined
 
-    const [travaux, cautions] = await Promise.all([
+    const [travaux, cautions, releves, etatsDesLieux, notifications] = await Promise.all([
       prisma.workOrder.findMany({
         where: { unit: { building: { parkId } }, ...(filtreUnite ? { unitId: filtreUnite } : {}) },
         orderBy: { reportedAt: 'desc' },
@@ -215,10 +215,73 @@ parksRouter.get(
           },
         },
       }),
+      prisma.meterReading.findMany({
+        where: { unit: { building: { parkId } }, ...(filtreUnite ? { unitId: filtreUnite } : {}) },
+        orderBy: [{ periodStart: 'desc' }, { unitId: 'asc' }],
+        select: { id: true, unitId: true, utility: true, periodStart: true, indexValue: true, readAt: true },
+      }),
+      prisma.inspection.findMany({
+        where: { unit: { building: { parkId } }, ...(filtreUnite ? { unitId: filtreUnite } : {}) },
+        orderBy: { performedOn: 'asc' },
+        select: {
+          id: true,
+          unitId: true,
+          kind: true,
+          performedOn: true,
+          rooms: true,
+          signedAt: true,
+          _count: { select: { findings: true } },
+        },
+      }),
+      prisma.notification.findMany({
+        where: {
+          parkId,
+          // Le locataire ne reçoit que ce qui concerne SES unités. Une
+          // notification sans unité — un relevé manquant sur le parc — ne le
+          // regarde pas : elle s'adresse à qui gère.
+          ...(idsVisibles ? { unitId: { in: idsVisibles } } : {}),
+        },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          kind: true,
+          messageKey: true,
+          params: true,
+          severity: true,
+          unitId: true,
+          createdAt: true,
+          recipients: { where: { userId: req.compteId! }, select: { readAt: true } },
+        },
+      }),
     ])
 
     res.json({
       buildings,
+      readings: releves,
+      inspections: etatsDesLieux.map((i) => ({
+        id: i.id,
+        unitId: i.unitId,
+        kind: i.kind,
+        performedOn: i.performedOn,
+        rooms: i.rooms,
+        // Le compte des réserves plutôt que leur détail : c'est ce que l'écran
+        // affiche, et le détail n'a pas encore d'écran pour le montrer.
+        issues: i._count.findings,
+        signedAt: i.signedAt,
+      })),
+      notifications: notifications.map((n) => ({
+        id: n.id,
+        kind: n.kind,
+        messageKey: n.messageKey,
+        params: n.params,
+        severity: n.severity,
+        unitId: n.unitId,
+        createdAt: n.createdAt,
+        // L'état « lu » appartient au couple destinataire × notification : le
+        // client le tenait dans un `Set` de session, invisible de la barre
+        // latérale — la pastille annonçait « 2 » même après tout avoir lu.
+        read: n.recipients[0]?.readAt !== null && n.recipients[0]?.readAt !== undefined,
+      })),
       works: travaux,
       deposits: cautions.map((d) => ({
         id: d.id,

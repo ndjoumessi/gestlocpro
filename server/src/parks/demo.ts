@@ -98,6 +98,47 @@ const TRAVAUX: {
   { unite: 'B4', title: 'Réfection complète avant relocation', trade: 'multi', status: 'approved', urgency: 'normal', montant: 340000, jours: 56 },
 ]
 
+/** Index de compteurs du mois, par unité. `null` = relevé non fait. */
+const RELEVES: { unite: string; eauPrec: number; eau: number | null; elecPrec: number; elec: number | null; jours: number | null }[] = [
+  { unite: 'A1', eauPrec: 342, eau: 358, elecPrec: 4120, elec: 4298, jours: 4 },
+  { unite: 'A2', eauPrec: 289, eau: 301, elecPrec: 3540, elec: 3671, jours: 4 },
+  { unite: 'A3', eauPrec: 415, eau: 436, elecPrec: 5210, elec: 5402, jours: 4 },
+  { unite: 'A4', eauPrec: 502, eau: 529, elecPrec: 6180, elec: 6455, jours: 4 },
+  { unite: 'A5', eauPrec: 176, eau: null, elecPrec: 2140, elec: null, jours: null },
+  { unite: 'B1', eauPrec: 388, eau: 402, elecPrec: 4870, elec: 5033, jours: 5 },
+  { unite: 'B2', eauPrec: 356, eau: 371, elecPrec: 4405, elec: 4560, jours: 5 },
+  { unite: 'B3', eauPrec: 271, eau: 284, elecPrec: 3290, elec: 3418, jours: 5 },
+  { unite: 'C1', eauPrec: 611, eau: 644, elecPrec: 7320, elec: 7640, jours: 6 },
+  { unite: 'C2', eauPrec: 334, eau: null, elecPrec: 4010, elec: null, jours: null },
+]
+
+const ETATS_DES_LIEUX: { unite: string; kind: 'entry' | 'exit'; jours: number; rooms: number; issues: number; signe: boolean }[] = [
+  { unite: 'A1', kind: 'entry', jours: 800, rooms: 4, issues: 2, signe: true },
+  { unite: 'B4', kind: 'entry', jours: 720, rooms: 4, issues: 1, signe: true },
+  { unite: 'B4', kind: 'exit', jours: 55, rooms: 4, issues: 6, signe: true },
+  { unite: 'C3', kind: 'exit', jours: 78, rooms: 3, issues: 2, signe: true },
+  { unite: 'A4', kind: 'entry', jours: 180, rooms: 5, issues: 0, signe: true },
+  { unite: 'A5', kind: 'entry', jours: 225, rooms: 2, issues: 1, signe: false },
+]
+
+/**
+ * Notifications, en clé de message et paramètres bruts.
+ *
+ * Rien n'est pré-formaté : les montants sont des nombres et les dates des
+ * dates. Le client portait des phrases françaises complètes, chacune figeant en
+ * plus une date au format numérique et un pluriel concaténé — le défaut se
+ * répéterait ici si la base stockait du texte.
+ */
+const NOTIFICATIONS: { kind: 'payment' | 'work' | 'meter' | 'lease'; messageKey: string; unite?: string; severity: 'high' | 'medium' | 'low'; lu: boolean; heures: number; params: Record<string, unknown> }[] = [
+  { kind: 'payment', messageKey: 'rentOverdue', unite: 'A3', severity: 'high', lu: false, heures: 2, params: { count: 24 } },
+  { kind: 'work', messageKey: 'quotePending', unite: 'A3', severity: 'high', lu: false, heures: 5, params: { amount: 45000 } },
+  { kind: 'meter', messageKey: 'metersMissing', severity: 'medium', lu: true, heures: 24, params: { count: 2 } },
+  { kind: 'lease', messageKey: 'leaseRenewal', unite: 'B1', severity: 'low', lu: true, heures: 48, params: { count: 45 } },
+  { kind: 'payment', messageKey: 'partialPayment', unite: 'A5', severity: 'medium', lu: true, heures: 72, params: { amount: 40000, total: 75000 } },
+  { kind: 'work', messageKey: 'workDone', unite: 'A1', severity: 'low', lu: true, heures: 120, params: {} },
+  { kind: 'payment', messageKey: 'receiptAvailable', unite: 'A1', severity: 'low', lu: true, heures: 144, params: { amount: 145000 } },
+]
+
 /** Décale une date d'un nombre de jours, sans toucher à l'original. */
 function moins(jours: number, depuis: Date): Date {
   const d = new Date(depuis)
@@ -223,6 +264,68 @@ export async function semerParcDemonstration(
         approvedById: w.status === 'approved' || w.status === 'done' ? proprietaireId : null,
         completedOn: w.status === 'done' ? moins(w.jours - 5, aujourdhui) : null,
         reportedAt: moins(w.jours, aujourdhui),
+      },
+    })
+  }
+
+  for (const r of RELEVES) {
+    const unitId = unites.get(r.unite)
+    if (!unitId) continue
+    // Une ligne par (unité, fluide, période) portant l'INDEX : la consommation
+    // et l'index précédent s'en dérivent. Le client stockait un couple
+    // `previous`/`current`, donc la copie d'une ligne qui devrait exister.
+    for (const [utility, valeur] of [['water', r.eau], ['power', r.elec]] as const) {
+      if (valeur === null) continue
+      await tx.meterReading.create({
+        data: {
+          unitId,
+          utility,
+          periodStart: periode,
+          indexValue: valeur,
+          readAt: moins(r.jours ?? 0, aujourdhui),
+          capturedById: proprietaireId,
+        },
+      })
+    }
+  }
+
+  for (const e of ETATS_DES_LIEUX) {
+    const unitId = unites.get(e.unite)
+    if (!unitId) continue
+    await tx.inspection.create({
+      data: {
+        unitId,
+        kind: e.kind,
+        performedOn: moins(e.jours, aujourdhui),
+        rooms: e.rooms,
+        // `signed: boolean` ne disait ni qui ni quand, alors que c'est le champ
+        // qu'on oppose au locataire en cas de litige.
+        signedAt: e.signe ? moins(e.jours, aujourdhui) : null,
+        findings: {
+          create: Array.from({ length: e.issues }, (_, i) => ({
+            room: `Pièce ${i + 1}`,
+            description: 'Réserve constatée à l’état des lieux',
+            severity: i === 0 ? 'major' : 'minor',
+          })),
+        },
+      },
+    })
+  }
+
+  for (const n of NOTIFICATIONS) {
+    const unitId = n.unite ? unites.get(n.unite) : undefined
+    await tx.notification.create({
+      data: {
+        parkId,
+        kind: n.kind,
+        messageKey: n.messageKey,
+        params: n.params as object,
+        severity: n.severity,
+        unitId: unitId ?? null,
+        recipients: {
+          create: { userId: proprietaireId, readAt: n.lu ? moins(0, aujourdhui) : null },
+        },
+        createdAt: new Date(aujourdhui.getTime() - n.heures * 3600_000),
       },
     })
   }
