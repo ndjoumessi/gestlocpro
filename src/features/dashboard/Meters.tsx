@@ -4,9 +4,9 @@ import { StatCard } from '@/components/primitives/Charts'
 import { StatusPill } from '@/components/primitives/StatusPill'
 import { Icon } from '@/components/primitives/Icon'
 import { Button } from '@/components/primitives/Button'
-import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
+import { useCsvExport } from '@/lib/useCsvExport'
 import { useDates } from '@/lib/useDates'
 import { useNumbers } from '@/lib/numbers'
 import { READINGS, UTILITY_RATES, type MeterReading } from '@/data/portfolio'
@@ -25,7 +25,7 @@ export function Meters() {
   const d = useDates()
   const n = useNumbers()
   const { money } = useCurrency()
-  const { notify } = useToast()
+  const exportCsv = useCsvExport()
   const { unitById } = usePortfolio()
 
   const consumption = (reading: MeterReading) => ({
@@ -48,7 +48,46 @@ export function Meters() {
         title={t('app.meters.title')}
         description={t('app.meters.subtitle')}
         actions={
-          <Button variant="secondary" icon="download" onClick={() => notify(t('app.exported'))}>
+          <Button
+            variant="secondary"
+            icon="download"
+            onClick={() =>
+              exportCsv({
+                name: t('app.files.meters'),
+                headers: [
+                  t('app.portfolio.unit'),
+                  t('app.portfolio.tenant'),
+                  `${t('app.meters.water')} · ${t('app.meters.previous')}`,
+                  `${t('app.meters.water')} · ${t('app.meters.current')}`,
+                  `${t('app.meters.water')} · ${t('app.meters.consumption')} (m³)`,
+                  `${t('app.meters.power')} · ${t('app.meters.previous')}`,
+                  `${t('app.meters.power')} · ${t('app.meters.current')}`,
+                  `${t('app.meters.power')} · ${t('app.meters.consumption')} (kWh)`,
+                  t('app.meters.rebilled'),
+                  t('app.meters.readAt'),
+                ],
+                rows: READINGS.map((r) => {
+                  const c = consumption(r)
+                  const amount = rebilled(r)
+                  // Un relevé manquant laisse la cellule VIDE plutôt que le
+                  // tiret de l'écran : « — » se compte comme une valeur dans un
+                  // tableur, le vide se filtre.
+                  return [
+                    r.unitId,
+                    unitById(r.unitId)?.tenant ?? t('app.portfolio.noTenant'),
+                    n.integer(r.waterPrevious),
+                    r.waterCurrent === null ? null : n.integer(r.waterCurrent),
+                    c.water === null ? null : n.integer(c.water),
+                    n.integer(r.powerPrevious),
+                    r.powerCurrent === null ? null : n.integer(r.powerCurrent),
+                    c.power === null ? null : n.integer(c.power),
+                    amount === null ? t('app.meters.missing') : money(amount, { round: true }),
+                    r.readAt ? d.fullDate(r.readAt) : null,
+                  ]
+                }),
+              })
+            }
+          >
             {t('app.exportStatement')}
           </Button>
         }

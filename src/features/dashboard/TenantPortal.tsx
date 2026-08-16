@@ -14,9 +14,30 @@ import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
 import { TENANT_RECEIPTS, UNITS, buildingById } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
+import { useReceiptExport } from './receiptExport'
 
 const TABS = ['space', 'myPayments', 'myWorks', 'documents', 'report'] as const
 type Tab = (typeof TABS)[number]
+
+/**
+ * Documents du portail.
+ *
+ * Les quatre lignes portaient chacune un bouton « Télécharger » sans `onClick`.
+ * Trois d'entre elles n'ont aucun fichier derrière : le produit ne sait ni
+ * déposer un bail signé, ni générer un état des lieux, ni recevoir une
+ * attestation d'assurance. Leur fabriquer un CSV aurait remplacé un bouton mort
+ * par un faux document, ce qui est pire — on affiche donc l'état réel de la
+ * case, et le bouton revient le jour où le dépôt de fichiers existe.
+ *
+ * La quittance du mois, elle, a bien une donnée derrière : c'est la même que
+ * celle de l'onglet « Mes paiements », et elle se télécharge.
+ */
+const DOCUMENTS = [
+  { key: 'app.portal.docLease', backed: false },
+  { key: 'app.portal.docInspection', backed: false },
+  { key: 'app.portal.docReceipt', backed: true },
+  { key: 'app.portal.docInsurance', backed: false },
+] as const
 
 /**
  * Portail locataire, présenté dans un cadre de navigateur : c'est une
@@ -28,6 +49,7 @@ export function TenantPortal() {
   const d = useDates()
   const { money } = useCurrency()
   const { notify } = useToast()
+  const downloadReceipt = useReceiptExport()
   const [tab, setTab] = useState<Tab>('space')
   const [sent, setSent] = useState(false)
   const [description, setDescription] = useState('')
@@ -141,7 +163,12 @@ export function TenantPortal() {
                       <StatusPill tone="ok" size="sm">
                         {t('status.paid')}
                       </StatusPill>
-                      <Button variant="ghost" size="sm" icon="download">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon="download"
+                        onClick={() => downloadReceipt(unit, receipt)}
+                      >
                         {t('app.portal.downloadReceipt')}
                       </Button>
                     </li>
@@ -173,22 +200,25 @@ export function TenantPortal() {
             {tab === 'documents' && (
               <Card flush>
                 <ul className="divide-y divide-divider">
-                  {(
-                    [
-                      'app.portal.docLease',
-                      'app.portal.docInspection',
-                      'app.portal.docReceipt',
-                      'app.portal.docInsurance',
-                    ] as const
-                  ).map((key) => t(key)).map(
-                    (doc) => (
-                      <li key={doc} className="flex items-center gap-3 px-4 py-3">
-                        <Icon name="file" size={17} className="shrink-0 text-muted" />
-                        <span className="min-w-0 flex-1 truncate text-body">{doc}</span>
-                        <Button variant="ghost" size="sm" icon="download" aria-label={doc} />
-                      </li>
-                    ),
-                  )}
+                  {DOCUMENTS.map(({ key, backed }) => (
+                    <li key={key} className="flex items-center gap-3 px-4 py-3">
+                      <Icon name="file" size={17} className="shrink-0 text-muted" />
+                      <span className="min-w-0 flex-1 truncate text-body">{t(key)}</span>
+                      {backed ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          icon="download"
+                          aria-label={t('app.portal.downloadReceipt')}
+                          onClick={() => downloadReceipt(unit, TENANT_RECEIPTS[0])}
+                        />
+                      ) : (
+                        <span className="shrink-0 font-mono text-mono-label text-muted">
+                          {t('app.portal.docUnavailable')}
+                        </span>
+                      )}
+                    </li>
+                  ))}
                 </ul>
               </Card>
             )}

@@ -4,10 +4,11 @@ import { DataTable, EmptyState } from '@/components/primitives/DataTable'
 import { PaymentStatusPill, type PaymentStatus } from '@/components/primitives/StatusPill'
 import { StatCard } from '@/components/primitives/Charts'
 import { Button } from '@/components/primitives/Button'
-import { useToast } from '@/components/primitives/Toast'
 import { cn } from '@/lib/cn'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
+import { useNumbers } from '@/lib/numbers'
+import { useCsvExport } from '@/lib/useCsvExport'
 import { CURRENT_TENANT_UNIT, KPIS, type Unit } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { RecordPaymentModal } from './RecordPaymentModal'
@@ -24,8 +25,9 @@ const FILTERS: (PaymentStatus | 'all')[] = ['all', 'paid', 'partial', 'overdue']
 
 export function Payments() {
   const t = useT()
+  const n = useNumbers()
   const { money } = useCurrency()
-  const { notify } = useToast()
+  const exportCsv = useCsvExport()
   const { role } = useRole()
   const { units } = usePortfolio()
   const isTenant = role === 'tenant'
@@ -55,7 +57,42 @@ export function Payments() {
         description={t('app.payments.subtitle')}
         actions={
           <>
-            <Button variant="secondary" icon="download" onClick={() => notify(t('app.exported'))}>
+            {/* L'export part de `rows` et non de `units` : le filtre de statut
+                et le périmètre du locataire sont déjà posés dessus. Exporter la
+                source aurait sorti du fichier ce que l'écran refuse de montrer
+                — y compris les baux des voisins, pour un locataire. */}
+            <Button
+              variant="secondary"
+              icon="download"
+              onClick={() =>
+                exportCsv({
+                  // Le filtre actif est dit par le nom du fichier : deux exports
+                  // successifs d'un même mois ne se recouvrent pas en silence.
+                  name:
+                    filter === 'all'
+                      ? t('app.files.payments')
+                      : [t('app.files.payments'), t(`status.${filter}` as 'status.paid')],
+                  headers: [
+                    t('app.portfolio.unit'),
+                    t('app.portfolio.tenant'),
+                    t('app.payments.due'),
+                    t('app.payments.paid'),
+                    t('app.payments.balance'),
+                    t('app.portfolio.status'),
+                    t('app.payments.lateDays'),
+                  ],
+                  rows: rows.map((unit) => [
+                    unit.id,
+                    unit.tenant ?? t('app.portfolio.noTenant'),
+                    money(unit.rent, { round: true }),
+                    money(paidShare(unit), { round: true }),
+                    money(unit.rent - paidShare(unit), { round: true }),
+                    t(`status.${unit.status}` as 'status.paid'),
+                    unit.overdueDays ? n.integer(unit.overdueDays) : null,
+                  ]),
+                })
+              }
+            >
               {t('app.exportStatement')}
             </Button>
             {/* Enregistrer un encaissement est un geste de gestion : le

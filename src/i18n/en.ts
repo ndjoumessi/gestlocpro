@@ -252,9 +252,18 @@ export const en: Dictionary = {
 
   app: {
     period: 'Period',
+    total: 'Total',
     exportStatement: 'Export statement',
     recordPayment: 'Record a payment',
-    exported: 'Monthly statement exported (PDF + CSV)',
+    exported: 'Statement exported as CSV · {file}',
+    receiptDownloaded: 'Receipt downloaded · {file}',
+
+    files: {
+      payments: 'payments',
+      collections: 'collections',
+      meters: 'meter-readings',
+      receipt: 'receipt',
+    },
     paymentSaved: 'Payment recorded · receipt sent',
     roleNotice: 'You are viewing this space as {role}. Switch profile in the sidebar.',
     demoBanner:
@@ -373,6 +382,7 @@ export const en: Dictionary = {
       amountInvalid: 'Enter an amount greater than zero.',
       dueAmount: 'Due: {amount}',
       overdueDays: '+{days} d',
+      lateDays: 'Days late',
     },
 
     meters: {
@@ -608,6 +618,7 @@ export const en: Dictionary = {
       docInspection: 'Move-in inspection',
       docReceipt: 'This month’s receipt',
       docInsurance: 'Insurance certificate',
+      docUnavailable: 'No document uploaded',
       myPayments: 'My payments',
       myWorks: 'Works',
       documents: 'Documents',

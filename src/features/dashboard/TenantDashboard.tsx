@@ -16,6 +16,7 @@ import {
   readingForUnit,
 } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
+import { useReceiptExport } from './receiptExport'
 
 /**
  * Espace locataire.
@@ -29,6 +30,7 @@ export function TenantDashboard() {
   const t = useT()
   const d = useDates()
   const { money } = useCurrency()
+  const downloadReceipt = useReceiptExport()
   const { worksForUnit, depositForUnit, unitById } = usePortfolio()
 
   const unit = unitById(CURRENT_TENANT_UNIT)
@@ -111,7 +113,16 @@ export function TenantDashboard() {
                     date: d.dayMonth({ year: receipt.year, month: receipt.month, day: receipt.paidDay }),
                   })}
                 </span>
-                <Button variant="ghost" size="sm" icon="download">
+                {/* Six boutons sans `onClick` : le clic ne produisait rien,
+                    pas même un toast, et le locataire pouvait s'y reprendre à
+                    trois fois avant de conclure que son navigateur bloquait
+                    quelque chose. */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon="download"
+                  onClick={() => downloadReceipt(unit, receipt)}
+                >
                   {t('app.tenant.download')}
                 </Button>
               </li>

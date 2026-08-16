@@ -7,9 +7,9 @@ import { DeltaBadge } from '@/components/primitives/Badge'
 import { PaymentStatusPill, StatusPill } from '@/components/primitives/StatusPill'
 import { Icon } from '@/components/primitives/Icon'
 import { DonutChart, ProgressBar, StackedBarChart, StatCard } from '@/components/primitives/Charts'
-import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
+import { useCsvExport } from '@/lib/useCsvExport'
 import { useDates } from '@/lib/useDates'
 import { BUILDINGS, COLLECTIONS, KPIS } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
@@ -21,7 +21,7 @@ export function Dashboard() {
   const d = useDates()
   const { role } = useRole()
   const { money, definition } = useCurrency()
-  const { notify } = useToast()
+  const exportCsv = useCsvExport()
   const { units, works } = usePortfolio()
   const [payOpen, setPayOpen] = useState(false)
 
@@ -59,7 +59,31 @@ export function Dashboard() {
         })}
         actions={
           <>
-            <Button variant="secondary" icon="download" onClick={() => notify(t('app.exported'))}>
+            {/* Le tableau de bord exporte ce que porte son graphique : les
+                douze mois d'encaissements, ventilés comme la légende. */}
+            <Button
+              variant="secondary"
+              icon="download"
+              onClick={() =>
+                exportCsv({
+                  name: t('app.files.collections'),
+                  headers: [
+                    t('app.period'),
+                    t('app.dashboard.legendRent'),
+                    t('app.dashboard.legendWater'),
+                    t('app.dashboard.legendPower'),
+                    t('app.total'),
+                  ],
+                  rows: COLLECTIONS.map((month) => [
+                    d.monthYear(month),
+                    money(month.rent, { round: true }),
+                    money(month.water, { round: true }),
+                    money(month.power, { round: true }),
+                    money(month.rent + month.water + month.power, { round: true }),
+                  ]),
+                })
+              }
+            >
               {t('app.exportStatement')}
             </Button>
             <Button icon="plus" onClick={() => setPayOpen(true)}>

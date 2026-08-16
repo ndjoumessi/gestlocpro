@@ -267,9 +267,32 @@ export const fr = {
 
   app: {
     period: 'Période',
+    total: 'Total',
     exportStatement: 'Exporter le relevé',
     recordPayment: 'Enregistrer un paiement',
-    exported: 'Relevé du mois exporté (PDF + CSV)',
+    /**
+     * Le message annonçait « (PDF + CSV) » et ne produisait aucun des deux.
+     * Le PDF demanderait une dépendance de rendu entière ; le CSV, lui, est
+     * réellement fabriqué — on n'annonce donc plus que lui, nom de fichier
+     * compris, faute de quoi l'utilisateur cherche dans ses téléchargements
+     * un fichier dont il ignore le nom.
+     */
+    exported: 'Relevé exporté en CSV · {file}',
+    receiptDownloaded: 'Quittance téléchargée · {file}',
+
+    /**
+     * Segments de noms de fichiers.
+     *
+     * Ce sont des libellés vus par l'utilisateur, dans son dossier de
+     * téléchargements : ils se traduisent comme le reste. `csvFilename` les
+     * réduit à une forme sûre — accents, espaces et ponctuation compris.
+     */
+    files: {
+      payments: 'paiements',
+      collections: 'encaissements',
+      meters: 'releves-compteurs',
+      receipt: 'quittance',
+    },
     paymentSaved: 'Paiement enregistré · quittance envoyée',
     roleNotice: 'Vous consultez l’espace en tant que {role}. Changez de profil dans la barre latérale.',
     demoBanner:
@@ -391,6 +414,9 @@ export const fr = {
       amountInvalid: 'Saisissez un montant supérieur à zéro.',
       dueAmount: 'Dû : {amount}',
       overdueDays: '+{days} j',
+      // En-tête de colonne de l'export : « +24 j » est une abréviation
+      // d'affichage, illisible en tête d'une colonne de tableur.
+      lateDays: 'Jours de retard',
     },
 
     meters: {
@@ -637,6 +663,13 @@ export const fr = {
       docInspection: 'État des lieux d’entrée',
       docReceipt: 'Quittance du mois',
       docInsurance: 'Attestation d’assurance',
+      /**
+       * Trois de ces quatre documents n'existent nulle part dans le produit :
+       * aucun dépôt de fichier ne les crée. Leur bouton « Télécharger » ne
+       * pouvait donc rien produire d'autre qu'un faux — mieux vaut dire que
+       * la case est vide que fabriquer un fichier vide.
+       */
+      docUnavailable: 'Aucun document déposé',
       myPayments: 'Mes paiements',
       myWorks: 'Travaux',
       documents: 'Documents',
