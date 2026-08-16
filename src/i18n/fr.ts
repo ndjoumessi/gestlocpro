@@ -582,6 +582,23 @@ export const fr = {
         'Seul le propriétaire arbitre les cautions. Vous préparez le décompte, il le valide.',
     },
 
+    invite: {
+      button: 'Inviter',
+      title: 'Inviter à rejoindre le parc',
+      description: 'Le code s’affiche une seule fois. Transmettez-le à la personne concernée.',
+      role: 'Rôle invité',
+      roleTenant: 'Locataire',
+      roleManager: 'Gestionnaire délégué',
+      unit: 'Logement concerné',
+      unitHint: 'Le locataire rejoindra ce logement.',
+      issue: 'Émettre le code',
+      codeTitle: 'Code d’invitation',
+      codeOnce:
+        'Notez-le maintenant : il n’est plus lisible ensuite, même par vous. En cas de perte, émettez-en un autre.',
+      expires: 'Valable 14 jours.',
+      copy: 'Copier',
+      copied: 'Code copié',
+    },
     tenants: {
       title: 'Locataires et baux',
       subtitle: 'Chaque locataire est rattaché à une unité par un bail actif.',

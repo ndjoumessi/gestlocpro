@@ -537,6 +537,23 @@ export const en: Dictionary = {
         'Only the owner settles deposits. You prepare the statement, they approve it.',
     },
 
+    invite: {
+      button: 'Invite',
+      title: 'Invite someone to the portfolio',
+      description: 'The code is shown once. Pass it on to the person concerned.',
+      role: 'Invited role',
+      roleTenant: 'Tenant',
+      roleManager: 'Delegated manager',
+      unit: 'Unit concerned',
+      unitHint: 'The tenant will join this unit.',
+      issue: 'Issue the code',
+      codeTitle: 'Invitation code',
+      codeOnce:
+        'Write it down now: it cannot be read again, not even by you. If lost, issue another one.',
+      expires: 'Valid for 14 days.',
+      copy: 'Copy',
+      copied: 'Code copied',
+    },
     tenants: {
       title: 'Tenants and leases',
       subtitle: 'Every tenant is attached to a unit through an active lease.',

@@ -625,3 +625,52 @@ describe('émettre une quittance', () => {
     expect(await screen.findByText(/rien à attester/i)).toBeInTheDocument()
   })
 })
+
+describe('inviter à rejoindre le parc', () => {
+  it('émet le code et l’affiche, en disant qu’il ne sera plus lisible', async () => {
+    /**
+     * Le code n'est lisible QU'UNE FOIS : seule son empreinte est conservée
+     * côté serveur, et personne — pas même le propriétaire — ne peut le relire.
+     * Laisser croire qu'on le retrouvera dans une liste ferait perdre l'accès à
+     * un locataire qui n'aurait pas noté.
+     */
+    const serveur = installerFauxServeur()
+    serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: portefeuille() })
+    serveur.quand('POST', `/parks/${PARK}/invitations`, {
+      status: 201,
+      body: { invitation: { id: 'i1', role: 'tenant', codeHint: '92CD' }, code: 'LOC-4A7B-92CD' },
+    })
+
+    const user = userEvent.setup()
+    renderApp('/app/locataires', { session: SESSION_AVEC_PARC })
+    await user.click(await screen.findByRole('button', { name: /^inviter$/i }))
+    await user.click(screen.getByRole('button', { name: /émettre le code/i }))
+
+    expect(await screen.findByText('LOC-4A7B-92CD')).toBeInTheDocument()
+    expect(screen.getByText(/n’est plus lisible ensuite/i)).toBeInTheDocument()
+  })
+
+  it('n’attache pas de logement à une invitation de gestionnaire', async () => {
+    // Un gestionnaire opère tout le parc : lui attacher une unité laisserait
+    // croire à un périmètre qui n'existe pas.
+    const serveur = installerFauxServeur()
+    serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: portefeuille() })
+    serveur.quand('POST', `/parks/${PARK}/invitations`, {
+      status: 201,
+      body: { invitation: { id: 'i2', role: 'manager', codeHint: 'ZZZZ' }, code: 'GES-AAAA-ZZZZ' },
+    })
+
+    const user = userEvent.setup()
+    renderApp('/app/locataires', { session: SESSION_AVEC_PARC })
+    await user.click(await screen.findByRole('button', { name: /^inviter$/i }))
+    await user.selectOptions(screen.getByLabelText(/rôle invité/i), 'manager')
+    await user.click(screen.getByRole('button', { name: /émettre le code/i }))
+
+    const corps = serveur.appels.find((a) => a.chemin.endsWith('/invitations'))?.corps as Record<
+      string,
+      unknown
+    >
+    expect(corps.role).toBe('manager')
+    expect('unitId' in corps).toBe(false)
+  })
+})

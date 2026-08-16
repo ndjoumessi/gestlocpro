@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { PageHeader } from '@/components/layout/AppShell'
+import { InviteModal } from './InviteModal'
 import { Icon } from '@/components/primitives/Icon'
 import { DataTable } from '@/components/primitives/DataTable'
 import { PaymentStatusPill } from '@/components/primitives/StatusPill'
@@ -21,6 +22,7 @@ export function Tenants() {
   const n = useNumbers()
   const { money } = useCurrency()
   const [open, setOpen] = useState(false)
+  const [inviteOuverte, setInviteOuverte] = useState(false)
 
   // Unités partagées : rattacher un locataire doit se voir ici, dans le parc
   // immobilier et dans le taux d'occupation du tableau de bord.
@@ -35,11 +37,21 @@ export function Tenants() {
         title={t('app.tenants.title')}
         description={t('app.tenants.subtitle')}
         actions={
-          <Button icon="plus" onClick={() => setOpen(true)} disabled={vacant.length === 0}>
-            {t('app.tenants.addTenant')}
-          </Button>
+          <>
+            {/* L'invitation n'exige PAS de logement vacant : on peut inviter un
+                gestionnaire, ou un locataire dont le bail se prépare. La lier à
+                la disponibilité aurait bloqué les deux. */}
+            <Button variant="secondary" icon="users" onClick={() => setInviteOuverte(true)}>
+              {t('app.invite.button')}
+            </Button>
+            <Button icon="plus" onClick={() => setOpen(true)} disabled={vacant.length === 0}>
+              {t('app.tenants.addTenant')}
+            </Button>
+          </>
         }
       />
+
+      {inviteOuverte && <InviteModal open onClose={() => setInviteOuverte(false)} />}
 
       {/* Un bouton grisé sans motif laisse deviner. Quand tout est loué, il
           n'y a rien à quoi rattacher un locataire — on le dit. */}

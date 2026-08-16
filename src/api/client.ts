@@ -180,6 +180,11 @@ export const api = {
   addBuilding: <T>(parkId: string, corps: { name: string; district: string }) =>
     requete<T>(`/parks/${parkId}/buildings`, { method: 'POST', body: JSON.stringify(corps) }),
 
+  issueInvitation: <T>(
+    parkId: string,
+    corps: { role: 'tenant' | 'manager'; unitId?: string },
+  ) => requete<T>(`/parks/${parkId}/invitations`, { method: 'POST', body: JSON.stringify(corps) }),
+
   issueReceipt: <T>(parkId: string, corps: { unitId: string; periodStart: string }) =>
     requete<T>(`/parks/${parkId}/receipts`, { method: 'POST', body: JSON.stringify(corps) }),
 

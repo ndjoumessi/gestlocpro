@@ -1,0 +1,140 @@
+import { useState } from 'react'
+import { Modal } from '@/components/primitives/Modal'
+import { Button } from '@/components/primitives/Button'
+import { Field } from '@/components/primitives/Field'
+import { Select } from '@/components/primitives/Input'
+import { useToast } from '@/components/primitives/Toast'
+import { useT } from '@/i18n/I18nProvider'
+import { usePortfolio } from '@/data/PortfolioProvider'
+import { useSession } from '@/api/SessionProvider'
+import { api } from '@/api/client'
+
+/**
+ * Émission d'un code d'invitation.
+ *
+ * Le code n'est lisible QU'UNE FOIS, et l'écran doit le dire avant de le
+ * montrer. Seule son empreinte est conservée côté serveur : une sauvegarde ou
+ * un journal ne donnent accès à aucun parc, et personne — pas même le
+ * propriétaire — ne peut le relire. Laisser croire qu'on le retrouvera dans une
+ * liste ferait perdre l'accès à un locataire qui n'aurait pas noté.
+ */
+export function InviteModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const t = useT()
+  const { notify } = useToast()
+  const { units } = usePortfolio()
+  const { etat } = useSession()
+  const parkId = etat.statut === 'connecte' ? (etat.adhesions[0]?.parkId ?? null) : null
+
+  const vacants = units.filter((u) => !u.tenant)
+
+  const [role, setRole] = useState<'tenant' | 'manager'>('tenant')
+  const [unitId, setUnitId] = useState(vacants[0]?.id ?? '')
+  const [code, setCode] = useState<string | null>(null)
+  const [envoi, setEnvoi] = useState(false)
+
+  const fermer = () => {
+    setCode(null)
+    setEnvoi(false)
+    onClose()
+  }
+
+  const emettre = () => {
+    if (!parkId) return
+    setEnvoi(true)
+    void api
+      .issueInvitation<{ code: string }>(parkId, {
+        role,
+        // L'unité n'accompagne qu'une invitation de LOCATAIRE : un gestionnaire
+        // opère tout le parc, et lui en attacher une laisserait croire à un
+        // périmètre qui n'existe pas.
+        ...(role === 'tenant' && unitId ? { unitId } : {}),
+      })
+      .then(({ code: emis }) => setCode(emis))
+      .catch(() => notify(t('common.actionFailed'), { tone: 'danger' }))
+      .finally(() => setEnvoi(false))
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={fermer}
+      title={code ? t('app.invite.codeTitle') : t('app.invite.title')}
+      description={code ? t('app.invite.codeOnce') : t('app.invite.description')}
+      footer={
+        code ? (
+          <Button onClick={fermer}>{t('common.close')}</Button>
+        ) : (
+          <>
+            <Button variant="secondary" onClick={fermer}>
+              {t('common.cancel')}
+            </Button>
+            <Button onClick={emettre} loading={envoi}>
+              {t('app.invite.issue')}
+            </Button>
+          </>
+        )
+      }
+    >
+      {code ? (
+        <div className="flex flex-col gap-4">
+          {/* Le code en gros, en chiffres tabulaires : il se recopie à la main
+              et se dicte au téléphone. */}
+          <p className="numeric rounded-md bg-surface-sunken px-4 py-4 text-center text-h3 tracking-wider select-all">
+            {code}
+          </p>
+          <p className="text-body-s text-muted">{t('app.invite.expires')}</p>
+          <Button
+            variant="secondary"
+            icon="clipboard"
+            onClick={() => {
+              // `select-all` sur le code couvre déjà le cas où l'écriture dans
+              // le presse-papiers est refusée — navigation privée, permission
+              // absente : l'utilisateur peut toujours le sélectionner d'un clic.
+              void navigator.clipboard
+                ?.writeText(code)
+                .then(() => notify(t('app.invite.copied'), { tone: 'ok' }))
+                .catch(() => {})
+            }}
+          >
+            {t('app.invite.copy')}
+          </Button>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-5">
+          <Field label={t('app.invite.role')} required>
+            {(props) => (
+              <Select
+                {...props}
+                name="role"
+                value={role}
+                onChange={(e) => setRole(e.target.value as 'tenant' | 'manager')}
+              >
+                <option value="tenant">{t('app.invite.roleTenant')}</option>
+                <option value="manager">{t('app.invite.roleManager')}</option>
+              </Select>
+            )}
+          </Field>
+
+          {role === 'tenant' && vacants.length > 0 && (
+            <Field label={t('app.invite.unit')} hint={t('app.invite.unitHint')} optional>
+              {(props) => (
+                <Select
+                  {...props}
+                  name="unitId"
+                  value={unitId}
+                  onChange={(e) => setUnitId(e.target.value)}
+                >
+                  {vacants.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.label}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
+          )}
+        </div>
+      )}
+    </Modal>
+  )
+}
