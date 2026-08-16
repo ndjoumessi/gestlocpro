@@ -104,7 +104,7 @@ export const fr = {
     deposits: 'Cautions',
     tenants: 'Locataires',
     alerts: 'Signalements',
-    onboarding: 'Onboarding et droits',
+    onboarding: 'Prise en main et droits',
     system: 'États du système',
     tenantPortal: 'Portail locataire (web)',
     tenantApp: 'App locataire',
@@ -655,7 +655,7 @@ export const fr = {
     },
 
     onboarding: {
-      title: 'Onboarding et délégation des droits',
+      title: 'Prise en main et délégation des droits',
       // La seconde proposition promettait d'inviter depuis cet écran, qui n'en
       // porte ni bouton ni lien.
       subtitle: 'Qui peut faire quoi, selon la façon dont vous gérez le parc.',

@@ -98,7 +98,7 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
         icon: 'bell',
         badge: { count: 'unreadAlerts', tone: 'onDark' },
       },
-      { to: 'onboarding', labelKey: 'nav.onboarding', icon: 'info', roles: ['owner'] },
+      { to: 'prise-en-main', labelKey: 'nav.onboarding', icon: 'info', roles: ['owner'] },
     ],
   },
 ]

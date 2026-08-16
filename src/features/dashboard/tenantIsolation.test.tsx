@@ -37,7 +37,7 @@ const ECRANS_INTERDITS = [
   ['/app/releves', 'relevés'],
   ['/app/cautions', 'cautions'],
   ['/app/locataires', 'locataires'],
-  ['/app/onboarding', 'onboarding'],
+  ['/app/prise-en-main', 'onboarding'],
 ] as const
 
 describe('cloisonnement du locataire', () => {

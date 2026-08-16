@@ -211,13 +211,13 @@ describe('signalement du portail', () => {
  */
 describe('délégation des droits', () => {
   it('montre d’emblée un gestionnaire qui a des droits', () => {
-    renderApp('/app/onboarding', { locale: 'en' })
+    renderApp('/app/prise-en-main', { locale: 'en' })
     const row = screen.getByRole('row', { name: /Record a payment/ })
     expect(within(row).getAllByText('Allowed').length).toBe(2)
   })
 
   it('refuse au gestionnaire exactement les deux droits d’arbitrage', () => {
-    renderApp('/app/onboarding', { locale: 'en' })
+    renderApp('/app/prise-en-main', { locale: 'en' })
     for (const action of ['Approve a quote', 'Settle a deposit']) {
       const row = screen.getByRole('row', { name: new RegExp(action) })
       // Le propriétaire seul : une autorisation sur les trois colonnes.
@@ -226,7 +226,7 @@ describe('délégation des droits', () => {
   })
 
   it('ne promet pas d’inviter depuis un écran sans invitation', () => {
-    renderApp('/app/onboarding', { locale: 'en' })
+    renderApp('/app/prise-en-main', { locale: 'en' })
     expect(screen.queryByText(/how to invite/i)).not.toBeInTheDocument()
   })
 })

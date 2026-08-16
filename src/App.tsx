@@ -57,7 +57,7 @@ function ecransDeLApplication() {
       <Route path="releves" element={<Restricted allow={['owner', 'manager']}><Meters /></Restricted>} />
       <Route path="cautions" element={<Restricted allow={['owner', 'manager']}><Deposits /></Restricted>} />
       <Route path="locataires" element={<Restricted allow={['owner', 'manager']}><Tenants /></Restricted>} />
-      <Route path="onboarding" element={<Restricted allow={['owner']}><Onboarding /></Restricted>} />
+      <Route path="prise-en-main" element={<Restricted allow={['owner']}><Onboarding /></Restricted>} />
 
       <Route path="systeme" element={<SystemStates />} />
       <Route path="portail" element={<TenantPortal />} />
