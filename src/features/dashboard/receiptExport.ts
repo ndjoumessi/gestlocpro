@@ -1,8 +1,7 @@
 import { useCallback } from 'react'
-import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { isoMonth } from '@/lib/csv'
-import { useCsvExport } from '@/lib/useCsvExport'
+import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
 import { useDates } from '@/lib/useDates'
 import { buildingById, type Receipt, type Unit } from '@/data/portfolio'
 
@@ -23,8 +22,8 @@ import { buildingById, type Receipt, type Unit } from '@/data/portfolio'
 export function useReceiptExport() {
   const t = useT()
   const d = useDates()
-  const { money } = useCurrency()
   const exportCsv = useCsvExport()
+  const csvMoney = useCsvMoney()
 
   return useCallback(
     (unit: Unit, receipt: Receipt): string =>
@@ -40,7 +39,7 @@ export function useReceiptExport() {
           t('app.portfolio.unit'),
           t('app.portfolio.building'),
           t('app.portfolio.tenant'),
-          t('app.payments.amount'),
+          csvMoney.header(t('app.payments.amount')),
           t('app.payments.date'),
           t('app.portfolio.status'),
         ],
@@ -50,13 +49,13 @@ export function useReceiptExport() {
             unit.id,
             buildingById(unit.buildingId)?.name ?? null,
             unit.tenant ?? t('app.portfolio.noTenant'),
-            money(unit.rent),
+            csvMoney.amount(unit.rent),
             d.fullDate({ year: receipt.year, month: receipt.month, day: receipt.paidDay }),
             t(`status.${receipt.status}` as 'status.paid'),
           ],
         ],
         notice: 'app.receiptDownloaded',
       }),
-    [d, exportCsv, money, t],
+    [csvMoney, d, exportCsv, t],
   )
 }

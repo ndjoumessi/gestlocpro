@@ -6,7 +6,7 @@ import { Icon } from '@/components/primitives/Icon'
 import { Button } from '@/components/primitives/Button'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
-import { useCsvExport } from '@/lib/useCsvExport'
+import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
 import { useDates } from '@/lib/useDates'
 import { useNumbers } from '@/lib/numbers'
 import { READINGS, UTILITY_RATES, type MeterReading } from '@/data/portfolio'
@@ -26,6 +26,7 @@ export function Meters() {
   const n = useNumbers()
   const { money } = useCurrency()
   const exportCsv = useCsvExport()
+  const csvMoney = useCsvMoney()
   const { unitById } = usePortfolio()
 
   const consumption = (reading: MeterReading) => ({
@@ -63,7 +64,7 @@ export function Meters() {
                   `${t('app.meters.power')} · ${t('app.meters.previous')}`,
                   `${t('app.meters.power')} · ${t('app.meters.current')}`,
                   `${t('app.meters.power')} · ${t('app.meters.consumption')} (kWh)`,
-                  t('app.meters.rebilled'),
+                  csvMoney.header(t('app.meters.rebilled')),
                   t('app.meters.readAt'),
                 ],
                 rows: READINGS.map((r) => {
@@ -72,16 +73,19 @@ export function Meters() {
                   // Un relevé manquant laisse la cellule VIDE plutôt que le
                   // tiret de l'écran : « — » se compte comme une valeur dans un
                   // tableur, le vide se filtre.
+                  // Index et consommations sortent en nombres bruts et non par
+                  // `n.integer` : le groupement des milliers est fait pour
+                  // l'œil, et il coupe « 4 120 » en deux colonnes à l'import.
                   return [
                     r.unitId,
                     unitById(r.unitId)?.tenant ?? t('app.portfolio.noTenant'),
-                    n.integer(r.waterPrevious),
-                    r.waterCurrent === null ? null : n.integer(r.waterCurrent),
-                    c.water === null ? null : n.integer(c.water),
-                    n.integer(r.powerPrevious),
-                    r.powerCurrent === null ? null : n.integer(r.powerCurrent),
-                    c.power === null ? null : n.integer(c.power),
-                    amount === null ? t('app.meters.missing') : money(amount, { round: true }),
+                    r.waterPrevious,
+                    r.waterCurrent,
+                    c.water,
+                    r.powerPrevious,
+                    r.powerCurrent,
+                    c.power,
+                    amount === null ? null : csvMoney.amount(amount),
                     r.readAt ? d.fullDate(r.readAt) : null,
                   ]
                 }),

@@ -3,6 +3,7 @@ import {
   UTF8_BOM,
   csvDelimiter,
   csvFilename,
+  csvNumber,
   escapeCsvField,
   isoDay,
   isoMonth,
@@ -138,6 +139,67 @@ describe('séparateur selon la langue', () => {
     // arrive sur une seule colonne.
     expect(csvDelimiter('fr')).toBe(';')
     expect(csvDelimiter('en')).toBe(',')
+  })
+})
+
+/**
+ * Montants calculables.
+ *
+ * Les cellules portaient `formatMoney` — « 145 000 FCFA », espace insécable
+ * étroite et suffixe compris. Le fichier montrait exactement ce que montrait
+ * l'écran, ce qui était la consigne, et il était **inutilisable pour ce à quoi
+ * sert un CSV** : aucun tableur ne somme une colonne de texte.
+ */
+describe('nombres destinés au tableur', () => {
+  it('n’émet aucun séparateur de milliers', () => {
+    // L'espace qui embellit à l'écran coupe le nombre en deux à l'import.
+    expect(csvNumber(1415000, 'fr')).toBe('1415000')
+    expect(csvNumber(1415000, 'en')).toBe('1415000')
+  })
+
+  it('accorde le séparateur décimal au séparateur de colonnes', () => {
+    // Les deux vont ensemble : un fichier français est délimité par des
+    // points-virgules PARCE QUE la virgule y est décimale. Émettre « 1450.5 »
+    // dans un fichier français produirait une date ou du texte.
+    expect(csvNumber(1450.5, 'fr', 2)).toBe('1450,50')
+    expect(csvNumber(1450.5, 'en', 2)).toBe('1450.50')
+    expect(csvDelimiter('fr')).toBe(';')
+    expect(csvDelimiter('en')).toBe(',')
+  })
+
+  it('respecte le nombre de décimales de la devise', () => {
+    // Le franc CFA n'a pas de centime : « 145000,00 » y serait un faux
+    // renseignement, pas une précision.
+    expect(csvNumber(145000, 'fr', 0)).toBe('145000')
+    expect(csvNumber(145000, 'fr', 2)).toBe('145000,00')
+  })
+
+  it('reste tel quel une fois échappé', () => {
+    // Le nombre ne doit être ni cité ni neutralisé : citer « 1450,50 » dans un
+    // fichier français le rendrait textuel, et l'on retomberait sur le défaut
+    // d'origine par un autre chemin.
+    expect(escapeCsvField(csvNumber(145000, 'en', 2), ',')).toBe('145000.00')
+    // En français, la virgule décimale n'est PAS le séparateur de colonnes,
+    // mais elle figure dans `MUST_QUOTE` : la citation est alors légitime et
+    // les tableurs la lisent toujours comme un nombre.
+    expect(escapeCsvField(csvNumber(1450.5, 'fr', 2), ';')).toBe('"1450,50"')
+  })
+
+  it('garde le signe d’un montant négatif', () => {
+    // Une retenue de caution est négative, et ce n'est pas une formule. Sans
+    // l'exemption, la garde anti-formule la préfixerait d'une apostrophe et la
+    // rendrait textuelle — le défaut même que cette colonne corrige, revenu par
+    // la couche d'échappement.
+    expect(escapeCsvField(csvNumber(-45000, 'fr'), ';')).toBe('-45000')
+    expect(escapeCsvField(csvNumber(-1450.5, 'fr', 2), ';')).toBe('"-1450,50"')
+  })
+
+  it('n’exempte que les nombres, pas ce qui leur ressemble', () => {
+    // L'exemption est le point faible potentiel : elle doit être assez étroite
+    // pour qu'aucune expression ne s'y glisse.
+    for (const hostile of ['-1+1', '-45000;=cmd', '=1+1', '+1', '@SUM(A1)', '-1e9)']) {
+      expect(escapeCsvField(hostile, ';')).toContain("'")
+    }
   })
 })
 

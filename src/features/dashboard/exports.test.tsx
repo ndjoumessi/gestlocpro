@@ -55,7 +55,11 @@ describe('export des paiements', () => {
     const file = await exporter(/Exporter le relevé/)
     const [entetes, ...lignes] = file.text.replace(UTF8_BOM, '').trim().split('\r\n')
 
-    expect(entetes).toBe('Unité;Locataire;Dû;Réglé;Solde;Statut;Jours de retard')
+    // La devise est nommée une fois par colonne, pas mille fois dans les
+    // cellules : c'est ce qui rend la colonne sommable par un tableur.
+    expect(entetes).toBe(
+      'Unité;Locataire;Dû (FCFA);Réglé (FCFA);Solde (FCFA);Statut;Jours de retard',
+    )
     // Dix baux : les deux unités vacantes du parc n'en sont pas.
     expect(lignes).toHaveLength(UNITS.filter((u) => u.status !== 'vacant').length)
     expect(file.text).toContain('Charles Ngassa')
@@ -114,7 +118,9 @@ describe('export selon la langue', () => {
     const file = await exporter(/Export statement/)
     const [entetes] = file.text.replace(UTF8_BOM, '').split('\r\n')
 
-    expect(entetes).toBe('Unit,Tenant,Due,Paid,Balance,Status,Days late')
+    expect(entetes).toBe(
+      'Unit,Tenant,Due (FCFA),Paid (FCFA),Balance (FCFA),Status,Days late',
+    )
     expect(file.name).toMatch(/^gestlocpro-payments-/)
   })
 
@@ -143,8 +149,18 @@ describe('export des relevés de compteurs', () => {
     // A1 : 342 → 358 d'eau, soit 16 m³, et 4 120 → 4 298 kWh, soit 178.
     expect(lignes[1]).toContain('16')
     expect(lignes[1]).toContain('178')
-    // A5 n'a pas été relevée : la cellule dit le manque au lieu de l'inventer.
-    expect(file.text).toContain('Relevé manquant')
+    /**
+     * A5 n'a pas été relevée : la cellule reste VIDE.
+     *
+     * Elle portait « Relevé manquant ». C'était juste tant que la colonne était
+     * du texte ; elle porte maintenant un montant calculable, et un mot au
+     * milieu d'une colonne de nombres la rend non sommable — le défaut même
+     * qu'on corrige. Le manque reste lisible : les trois cellules de
+     * consommation de la ligne sont vides elles aussi.
+     */
+    expect(file.text).not.toContain('Relevé manquant')
+    const ligneA5 = lignes.find((l) => l.startsWith('A5'))
+    expect(ligneA5).toBe('A5;Aline Tchoumi;176;;;2140;;;;')
   })
 })
 
@@ -157,7 +173,7 @@ describe('export du tableau de bord', () => {
     const lignes = file.text.replace(UTF8_BOM, '').trim().split('\r\n')
 
     expect(file.name).toMatch(/^gestlocpro-encaissements-/)
-    expect(lignes[0]).toBe('Période;Loyer;Eau;Électricité;Total')
+    expect(lignes[0]).toBe('Période;Loyer (FCFA);Eau (FCFA);Électricité (FCFA);Total (FCFA)')
     expect(lignes).toHaveLength(13)
   })
 })

@@ -7,8 +7,7 @@ import { Button } from '@/components/primitives/Button'
 import { cn } from '@/lib/cn'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
-import { useNumbers } from '@/lib/numbers'
-import { useCsvExport } from '@/lib/useCsvExport'
+import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
 import { CURRENT_TENANT_UNIT, KPIS, type Unit } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { RecordPaymentModal } from './RecordPaymentModal'
@@ -25,9 +24,9 @@ const FILTERS: (PaymentStatus | 'all')[] = ['all', 'paid', 'partial', 'overdue']
 
 export function Payments() {
   const t = useT()
-  const n = useNumbers()
   const { money } = useCurrency()
   const exportCsv = useCsvExport()
+  const csvMoney = useCsvMoney()
   const { role } = useRole()
   const { units } = usePortfolio()
   const isTenant = role === 'tenant'
@@ -75,20 +74,22 @@ export function Payments() {
                   headers: [
                     t('app.portfolio.unit'),
                     t('app.portfolio.tenant'),
-                    t('app.payments.due'),
-                    t('app.payments.paid'),
-                    t('app.payments.balance'),
+                    csvMoney.header(t('app.payments.due')),
+                    csvMoney.header(t('app.payments.paid')),
+                    csvMoney.header(t('app.payments.balance')),
                     t('app.portfolio.status'),
                     t('app.payments.lateDays'),
                   ],
                   rows: rows.map((unit) => [
                     unit.id,
                     unit.tenant ?? t('app.portfolio.noTenant'),
-                    money(unit.rent, { round: true }),
-                    money(paidShare(unit), { round: true }),
-                    money(unit.rent - paidShare(unit), { round: true }),
+                    csvMoney.amount(unit.rent),
+                    csvMoney.amount(paidShare(unit)),
+                    csvMoney.amount(unit.rent - paidShare(unit)),
                     t(`status.${unit.status}` as 'status.paid'),
-                    unit.overdueDays ? n.integer(unit.overdueDays) : null,
+                    // Un nombre de jours n'est pas de l'argent, mais il se
+                    // calcule aussi : groupé, il deviendrait du texte.
+                    unit.overdueDays ?? null,
                   ]),
                 })
               }

@@ -1,7 +1,8 @@
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useToast } from '@/components/primitives/Toast'
 import { useI18n, type MessageKey } from '@/i18n/I18nProvider'
-import { csvDelimiter, csvFilename, isoDay, serializeCsv, type CsvCell } from './csv'
+import { useCurrency } from '@/currency/CurrencyProvider'
+import { csvDelimiter, csvFilename, csvNumber, isoDay, serializeCsv, type CsvCell } from './csv'
 import { downloadTextFile } from './download'
 
 /**
@@ -28,6 +29,29 @@ export interface CsvExportRequest {
   rows: readonly (readonly CsvCell[])[]
   /** Message du toast. Reçoit le nom du fichier en `{file}`. */
   notice?: MessageKey
+}
+
+/**
+ * Montants d'un CSV : la cellule porte un nombre, l'en-tête porte la devise.
+ *
+ * Séparer les deux est ce qui rend le fichier calculable. Mettre la devise dans
+ * chaque cellule — « 145 000 FCFA » — la répète mille fois et interdit la somme
+ * ; la mettre en en-tête la dit une fois, à l'endroit où elle vaut pour toute
+ * la colonne. C'est aussi ce que fait n'importe quel export comptable.
+ */
+export function useCsvMoney() {
+  const { locale } = useI18n()
+  const { definition } = useCurrency()
+
+  return useMemo(
+    () => ({
+      /** Montant calculable : sans groupement ni symbole. */
+      amount: (value: number): string => csvNumber(value, locale, definition.decimals),
+      /** En-tête portant la devise : « Loyer (FCFA) ». */
+      header: (label: string): string => `${label} (${definition.label})`,
+    }),
+    [locale, definition],
+  )
 }
 
 /** Rend une fonction d'export : sérialise, télécharge, puis annonce. */

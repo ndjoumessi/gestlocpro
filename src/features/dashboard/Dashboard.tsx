@@ -9,7 +9,7 @@ import { Icon } from '@/components/primitives/Icon'
 import { DonutChart, ProgressBar, StackedBarChart, StatCard } from '@/components/primitives/Charts'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
-import { useCsvExport } from '@/lib/useCsvExport'
+import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
 import { useDates } from '@/lib/useDates'
 import { BUILDINGS, COLLECTIONS, KPIS } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
@@ -22,6 +22,7 @@ export function Dashboard() {
   const { role } = useRole()
   const { money, definition } = useCurrency()
   const exportCsv = useCsvExport()
+  const csvMoney = useCsvMoney()
   const { units, works } = usePortfolio()
   const [payOpen, setPayOpen] = useState(false)
 
@@ -67,19 +68,22 @@ export function Dashboard() {
               onClick={() =>
                 exportCsv({
                   name: t('app.files.collections'),
+                  // Les montants sortent en nombres, la devise est nommée une
+                  // fois par en-tête : un tableur doit pouvoir sommer la
+                  // colonne, ce que « 1 010 000 FCFA » interdit.
                   headers: [
                     t('app.period'),
-                    t('app.dashboard.legendRent'),
-                    t('app.dashboard.legendWater'),
-                    t('app.dashboard.legendPower'),
-                    t('app.total'),
+                    csvMoney.header(t('app.dashboard.legendRent')),
+                    csvMoney.header(t('app.dashboard.legendWater')),
+                    csvMoney.header(t('app.dashboard.legendPower')),
+                    csvMoney.header(t('app.total')),
                   ],
                   rows: COLLECTIONS.map((month) => [
                     d.monthYear(month),
-                    money(month.rent, { round: true }),
-                    money(month.water, { round: true }),
-                    money(month.power, { round: true }),
-                    money(month.rent + month.water + month.power, { round: true }),
+                    csvMoney.amount(month.rent),
+                    csvMoney.amount(month.water),
+                    csvMoney.amount(month.power),
+                    csvMoney.amount(month.rent + month.water + month.power),
                   ]),
                 })
               }

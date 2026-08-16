@@ -65,6 +65,21 @@ const EOL = '\r\n'
 const FORMULA_PREFIX = /^[=+\-@\t\r]/
 
 /**
+ * Un nombre écrit en toutes lettres n'est pas une formule.
+ *
+ * `-45000` et `-1450,50` commencent par un tiret et déclenchent donc la règle
+ * ci-dessus — qui les préfixerait d'une apostrophe et les rendrait textuels.
+ * C'est le défaut même que la colonne numérique corrige, revenu par la couche
+ * d'échappement : une retenue de caution, toujours négative, redeviendrait
+ * insommable.
+ *
+ * L'exemption est **étroite à dessein** : elle ne couvre qu'un nombre entier ou
+ * décimal, signe compris et rien d'autre. `-1+1` reste une expression, et
+ * `-45000;=cmd` aussi.
+ */
+const NOMBRE_SEUL = /^-?\d+(?:[.,]\d+)?$/
+
+/**
  * Caractères qui obligent à citer le champ.
  *
  * Les **deux** séparateurs y figurent, pas seulement celui du fichier : un
@@ -91,7 +106,8 @@ export function escapeCsvField(value: CsvCell, delimiter: CsvDelimiter = ';'): s
   if (value === null || value === undefined) return ''
 
   const text = typeof value === 'number' ? String(value) : value
-  const guarded = typeof value !== 'number' && FORMULA_PREFIX.test(text) ? `'${text}` : text
+  const estNombre = typeof value === 'number' || NOMBRE_SEUL.test(text)
+  const guarded = !estNombre && FORMULA_PREFIX.test(text) ? `'${text}` : text
 
   // Un champ neutralisé est toujours cité : l'apostrophe de protection doit
   // arriver telle quelle jusqu'au tableur, sans dépendre de son analyseur.
@@ -118,6 +134,33 @@ export function serializeCsv(
 
   // Fin de ligne finale : certains outils avalent la dernière ligne sans elle.
   return (bom ? UTF8_BOM : '') + (body ? body + EOL : '')
+}
+
+/**
+ * Nombre destiné à être **calculé** par le tableur.
+ *
+ * Les montants passaient par `formatMoney`, pour que le fichier montre ce que
+ * montre l'écran. La règle était mauvaise : `145 000 FCFA` est du texte, avec
+ * une espace insécable étroite et un suffixe. Excel ne sait pas en faire la
+ * somme, et un fichier dont l'unique raison d'être est d'être ouvert dans un
+ * tableur devient inutilisable pour ce à quoi il sert.
+ *
+ * Deux règles, et elles sont liées :
+ *
+ *  1. **aucun groupement des milliers** — l'espace ou la virgule qui embellit à
+ *     l'écran coupe le nombre en deux à l'import ;
+ *  2. **le séparateur décimal suit la langue**, comme le séparateur de
+ *     colonnes. Les deux vont ensemble : un tableur configuré en français lit
+ *     la virgule comme décimale, ce qui est précisément la raison pour laquelle
+ *     le fichier français est délimité par des points-virgules. Émettre
+ *     `1450.5` dans un fichier français produirait une date ou du texte.
+ *
+ * La devise ne figure pas dans la cellule : elle est constante sur tout le
+ * fichier et se nomme une fois, en en-tête de colonne.
+ */
+export function csvNumber(value: number, locale: Locale, decimals = 0): string {
+  const fixe = value.toFixed(decimals)
+  return locale === 'fr' ? fixe.replace('.', ',') : fixe
 }
 
 /** Jour au format ISO, en heure locale : `2026-08-16`. */
