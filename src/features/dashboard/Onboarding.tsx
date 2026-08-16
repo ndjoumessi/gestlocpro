@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { cn } from '@/lib/cn'
 import { PageHeader } from '@/components/layout/AppShell'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { RadioCards } from '@/components/primitives/Choice'
@@ -148,15 +149,41 @@ export function Onboarding() {
                 <th scope="col" className="eyebrow px-4 py-3 text-left font-normal text-muted">
                   {t('app.onboarding.capability')}
                 </th>
-                {ROLES.map((role) => (
-                  <th
-                    key={role}
-                    scope="col"
-                    className="eyebrow px-4 py-3 text-center font-normal whitespace-nowrap text-muted"
-                  >
-                    {t(`roles.${role}.name` as 'roles.owner.name')}
-                  </th>
-                ))}
+                {ROLES.map((role) => {
+                  /**
+                   * En gestion seule, la colonne du gestionnaire est neutralisée
+                   * plutôt que remplie de refus.
+                   *
+                   * Douze croix identiques occupaient un tiers du tableau pour
+                   * ne transmettre qu'une seule information — « ce rôle n'existe
+                   * pas dans votre configuration » — et elles étaient ambiguës :
+                   * on pouvait les lire « votre gestionnaire n'a pas ce droit »
+                   * alors qu'elles disent « vous n'avez pas de gestionnaire ».
+                   *
+                   * La colonne reste affichée : elle montre ce que la
+                   * délégation rendrait possible. C'est un argument, pas une
+                   * liste de refus — et le retirer priverait de cette
+                   * comparaison le propriétaire qui hésite encore.
+                   */
+                  const inactive = role === 'manager' && mode !== 'delegate'
+                  return (
+                    <th
+                      key={role}
+                      scope="col"
+                      className={cn(
+                        'eyebrow px-4 py-3 text-center font-normal whitespace-nowrap',
+                        inactive ? 'text-muted/60' : 'text-muted',
+                      )}
+                    >
+                      {t(`roles.${role}.name` as 'roles.owner.name')}
+                      {inactive && (
+                        <span className="mt-0.5 block text-mono-label normal-case">
+                          {t('app.onboarding.managerOff')}
+                        </span>
+                      )}
+                    </th>
+                  )
+                })}
               </tr>
             </thead>
 
@@ -187,20 +214,45 @@ export function Onboarding() {
                     >
                       {t(`app.onboarding.caps.${row.key}` as 'app.onboarding.caps.viewAll')}
                     </th>
-                    {[row.owner, managerAllowed, row.tenant].map((allowed, index) => (
-                      <td key={index} className="px-4 py-3 text-center">
-                        {/* Forme + libellé caché : la cellule reste lisible
-                            sans distinguer les couleurs. */}
-                        <Icon
-                          name={allowed ? 'checkCircle' : 'close'}
-                          size={17}
-                          className={allowed ? 'inline text-ok' : 'inline text-muted'}
-                        />
-                        <span className="sr-only">
-                          {allowed ? t('app.onboarding.allowed') : t('app.onboarding.denied')}
-                        </span>
-                      </td>
-                    ))}
+                    {[row.owner, managerAllowed, row.tenant].map((allowed, index) => {
+                      /**
+                       * La colonne du gestionnaire inactive porte un tiret, pas
+                       * une croix.
+                       *
+                       * Une croix répond « non » à une question qui ne se pose
+                       * pas : il n'y a pas de gestionnaire à qui refuser quoi
+                       * que ce soit. Le tiret dit « sans objet », et le libellé
+                       * caché le dit en toutes lettres à qui écoute la page.
+                       */
+                      const sansObjet = index === 1 && mode !== 'delegate'
+                      return (
+                        <td
+                          key={index}
+                          className={cn('px-4 py-3 text-center', sansObjet && 'opacity-45')}
+                        >
+                          {sansObjet ? (
+                            <span aria-hidden="true" className="text-muted">
+                              —
+                            </span>
+                          ) : (
+                            /* Forme + libellé caché : la cellule reste lisible
+                               sans distinguer les couleurs. */
+                            <Icon
+                              name={allowed ? 'checkCircle' : 'close'}
+                              size={17}
+                              className={allowed ? 'inline text-ok' : 'inline text-muted'}
+                            />
+                          )}
+                          <span className="sr-only">
+                            {sansObjet
+                              ? t('app.onboarding.managerOff')
+                              : allowed
+                                ? t('app.onboarding.allowed')
+                                : t('app.onboarding.denied')}
+                          </span>
+                        </td>
+                      )
+                    })}
                   </tr>
                 )
               })}
@@ -208,6 +260,16 @@ export function Onboarding() {
             ))}
           </table>
         </div>
+
+        {/* La note remplace douze refus par une phrase, et transforme la
+            colonne en argument : voici ce que la délégation rendrait possible.
+            Elle ne s'affiche qu'en gestion seule — la répéter en gestion
+            déléguée serait du bruit. */}
+        {mode !== 'delegate' && (
+          <p className="border-t border-divider px-4 py-3 text-body-s text-muted sm:px-5">
+            {t('app.onboarding.managerOffNote')}
+          </p>
+        )}
       </Card>
     </>
   )

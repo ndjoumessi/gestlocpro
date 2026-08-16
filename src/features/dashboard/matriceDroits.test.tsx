@@ -50,6 +50,37 @@ describe('matrice des droits', () => {
     ])
   })
 
+  it('en gestion seule, neutralise la colonne du gestionnaire au lieu de la remplir de refus', async () => {
+    /**
+     * Douze croix identiques occupaient un tiers du tableau pour ne transmettre
+     * qu'une seule information — « ce rôle n'existe pas dans votre
+     * configuration » — et elles étaient ambiguës : on pouvait les lire « votre
+     * gestionnaire n'a pas ce droit » alors qu'elles disent « vous n'avez pas
+     * de gestionnaire ».
+     *
+     * La colonne reste affichée, parce qu'elle montre ce que la délégation
+     * rendrait possible. La retirer priverait de cette comparaison le
+     * propriétaire qui hésite.
+     */
+    const user = userEvent.setup()
+    renderApp('/app/prise-en-main')
+    await screen.findByRole('heading', { level: 1, name: /prise en main/i })
+    await user.click(screen.getByRole('radio', { name: /vous gérez seul/i }))
+
+    // Plus un seul « Non autorisé » dans la colonne du gestionnaire : le tiret
+    // dit « sans objet », et le libellé caché le dit à qui écoute la page.
+    const gestionnaire = Array.from(document.querySelectorAll('tbody tr'))
+      .filter((tr) => tr.querySelector('th[scope="row"]'))
+      .map((tr) => tr.querySelectorAll('td')[1]?.textContent?.trim())
+    // Chaque cellule porte le tiret visible ET le libellé caché : l'un pour
+    // l'œil, l'autre pour qui écoute la page.
+    expect(gestionnaire).toHaveLength(12)
+    expect(new Set(gestionnaire)).toEqual(new Set(['—non activé']))
+
+    // Et la note remplace les douze refus par une phrase qui ouvre une porte.
+    expect(screen.getByText(/activez la gestion déléguée/i)).toBeInTheDocument()
+  })
+
   it('réserve au propriétaire les deux gestes qui engagent son argent', async () => {
     /**
      * Valider un devis et arbitrer une caution restent fermés au gestionnaire

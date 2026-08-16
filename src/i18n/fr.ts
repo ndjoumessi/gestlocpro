@@ -671,6 +671,9 @@ export const fr = {
       capability: 'Action',
       allowed: 'Autorisé',
       denied: 'Non autorisé',
+      managerOff: 'non activé',
+      managerOffNote:
+        'Activez la gestion déléguée ci-dessus pour accorder ces droits à un gestionnaire.',
       families: {
         build: 'Constituer le parc',
         operate: 'Exploiter au quotidien',

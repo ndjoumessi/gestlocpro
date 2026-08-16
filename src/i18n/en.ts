@@ -624,6 +624,9 @@ export const en: Dictionary = {
       capability: 'Action',
       allowed: 'Allowed',
       denied: 'Not allowed',
+      managerOff: 'not enabled',
+      managerOffNote:
+        'Turn on delegated management above to grant these rights to a manager.',
       families: {
         build: 'Build the portfolio',
         operate: 'Run it day to day',
