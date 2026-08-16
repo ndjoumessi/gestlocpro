@@ -452,6 +452,8 @@ export const fr = {
       date: 'Date',
       period: 'Période couverte',
       periodHint: 'Le mois que ce versement règle — pas forcément le mois où il est reçu.',
+      paidOn: 'Date du versement',
+      paidOnHint: 'Quand l’argent a été reçu. Distincte du mois qu’il règle.',
       amount: 'Montant',
       amountHint: 'Un règlement partiel est accepté.',
       methodMobile: 'Mobile money',

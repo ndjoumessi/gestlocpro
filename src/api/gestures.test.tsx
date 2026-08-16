@@ -433,4 +433,40 @@ describe('enregistrer un encaissement', () => {
     >
     expect(corps.periodStart).toBe('2026-07-01')
   })
+
+  it('distingue la date du versement du mois qu’il règle', async () => {
+    /**
+     * Deux dates, deux rôles. La période dit ce que le versement RÈGLE ; la
+     * date dit QUAND il est arrivé. Les confondre en perd une — et c'est la
+     * date de réception qui fait foi devant un locataire qui conteste un
+     * retard.
+     */
+    const serveur = installerFauxServeur()
+    serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: portefeuille() })
+    serveur.quand('POST', `/parks/${PARK}/payments`, {
+      status: 201,
+      body: { payment: { id: 'p1', amountMinor: 115000, method: 'mobile', paidOn: '2026-08-02' } },
+    })
+
+    const user = userEvent.setup()
+    renderApp('/app', { session: SESSION_AVEC_PARC })
+    await user.click(await screen.findByRole('button', { name: /enregistrer un paiement/i }))
+
+    const mois = screen.getByLabelText(/période couverte/i)
+    await user.clear(mois)
+    await user.type(mois, '2026-07')
+    const jour = screen.getByLabelText(/date du versement/i)
+    await user.clear(jour)
+    await user.type(jour, '2026-08-02')
+    await user.type(screen.getByLabelText(/montant/i), '115000')
+    await user.click(screen.getByRole('button', { name: /^enregistrer$/i }))
+
+    const corps = serveur.appels.find((a) => a.chemin.endsWith('/payments'))?.corps as Record<
+      string,
+      unknown
+    >
+    // Juillet est réglé, le 2 août.
+    expect(corps.periodStart).toBe('2026-07-01')
+    expect(corps.paidOn).toBe('2026-08-02')
+  })
 })

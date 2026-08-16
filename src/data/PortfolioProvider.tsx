@@ -75,7 +75,7 @@ interface PortfolioContextValue {
    */
   recordPayment: (
     unitId: string,
-    versement: { periodStart: string; amountMinor: number; method: string },
+    versement: { periodStart: string; amountMinor: number; method: string; paidOn?: string },
   ) => void
   /** Crée un logement dans un immeuble. Vacant : aucun bail n'existe encore. */
   addUnit: (
@@ -336,7 +336,12 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const recordPayment = useCallback(
     (
       unitId: string,
-      versement: { periodStart: string; amountMinor: number; method: string },
+      versement: {
+        periodStart: string
+        amountMinor: number
+        method: string
+        paidOn?: string
+      },
     ) => {
       const local = () =>
         setUnits((liste) =>

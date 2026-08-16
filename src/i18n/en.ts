@@ -411,6 +411,8 @@ export const en: Dictionary = {
       date: 'Date',
       period: 'Period covered',
       periodHint: 'The month this payment settles — not necessarily the month it is received.',
+      paidOn: 'Payment date',
+      paidOnHint: 'When the money was received. Distinct from the month it settles.',
       amount: 'Amount',
       amountHint: 'Partial settlement is accepted.',
       methodMobile: 'Mobile money',

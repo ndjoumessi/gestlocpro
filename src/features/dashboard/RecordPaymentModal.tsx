@@ -30,6 +30,15 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
    * un seul versement.
    */
   const [periode, setPeriode] = useState(() => new Date().toISOString().slice(0, 7))
+  /**
+   * Jour où l'argent a été reçu, `AAAA-MM-JJ`.
+   *
+   * Distincte de la période : le 2 août, on reçoit le loyer de juillet. La
+   * période dit ce que le versement RÈGLE ; cette date dit QUAND il est
+   * arrivé. Les confondre, c'est perdre l'une des deux — et c'est la date de
+   * réception qui fait foi devant un locataire qui conteste un retard.
+   */
+  const [verseLe, setVerseLe] = useState(() => new Date().toISOString().slice(0, 10))
   const [error, setError] = useState<string | null>(null)
 
   const unit = units.find((u) => u.id === unitId)
@@ -54,7 +63,12 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
      * plus fréquent ; imputer sur un autre mois — un versement d'août qui
      * couvre juillet — reste à offrir, et le serveur le sait déjà faire.
      */
-    recordPayment(unitId, { periodStart: `${periode}-01`, amountMinor: parsed, method })
+    recordPayment(unitId, {
+      periodStart: `${periode}-01`,
+      amountMinor: parsed,
+      method,
+      ...(verseLe ? { paidOn: verseLe } : {}),
+    })
 
     onClose()
     notify(t('app.paymentSaved'), { tone: 'ok' })
@@ -97,6 +111,18 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
               type="month"
               value={periode}
               onChange={(e) => setPeriode(e.target.value)}
+            />
+          )}
+        </Field>
+
+        <Field label={t('app.payments.paidOn')} hint={t('app.payments.paidOnHint')} required>
+          {(props) => (
+            <Input
+              {...props}
+              name="paidOn"
+              type="date"
+              value={verseLe}
+              onChange={(e) => setVerseLe(e.target.value)}
             />
           )}
         </Field>
