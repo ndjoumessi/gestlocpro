@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { renderApp, screen } from '@/test/render'
-import { UNITS } from '@/data/portfolio'
+import { UNITS, WORKS } from '@/data/portfolio'
 
 /**
  * Défauts relevés écran par écran en basculant l'interface en anglais.
@@ -104,6 +104,35 @@ describe('locataires', () => {
     renderApp('/app/locataires', { locale: 'en' })
     expect(screen.getByRole('columnheader', { name: 'Contact' })).toBeInTheDocument()
     expect(screen.getByText('+237 6 77 21 44 08')).toBeInTheDocument()
+  })
+})
+
+/**
+ * Intitulés des signalements du jeu de démonstration.
+ *
+ * La distinction que ces tests gardent : le champ porte la saisie du locataire
+ * dans le produit réel — et une saisie ne se traduit jamais —, mais ces cinq
+ * lignes ne sont la saisie de personne. Les laisser en français montrait du
+ * français dans la démonstration anglaise ; les écrire en anglais aurait
+ * produit le défaut en miroir.
+ */
+describe('signalements de démonstration', () => {
+  it('suit la langue de l’interface', () => {
+    renderApp('/app/travaux', { locale: 'en' })
+    expect(screen.getByText('Leak under the kitchen sink')).toBeInTheDocument()
+  })
+
+  it('reste correct en français, et non anglais en miroir', () => {
+    renderApp('/app/travaux')
+    expect(screen.getByText('Fuite sous l’évier de la cuisine')).toBeInTheDocument()
+  })
+
+  it('ne laisse aucune phrase dans la donnée', () => {
+    for (const work of WORKS) {
+      expect(work).not.toHaveProperty('title')
+      // Une clé, pas une phrase : ni espace ni ponctuation.
+      expect(work.titleKey).toMatch(/^[a-zA-Z]+$/)
+    }
   })
 })
 

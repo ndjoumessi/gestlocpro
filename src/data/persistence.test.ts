@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { hasStoredState, loadState, resetState, saveState } from './persistence'
-import { DEPOSITS, UNITS } from './portfolio'
+import { DEPOSITS, UNITS, WORKS } from './portfolio'
 
 const CLE = 'gestlocpro.portfolio'
 
@@ -109,6 +109,26 @@ describe('enregistrement abîmé', () => {
     const etat = { ...loadState(), units: UNITS.map((u) => ({ ...u, type: 'T3' as const })) }
     saveState(etat)
     expect(loadState().units.every((u) => u.type === 'T3')).toBe(true)
+  })
+
+  it('écarte un enregistrement où l’intitulé d’un signalement était une phrase', () => {
+    // Les intitulés du jeu de démonstration sont passés de la phrase en clair
+    // à une clé, et le champ a changé de nom. Un enregistrement de version 4
+    // rendrait un intitulé vide, `titleKey` étant absent.
+    window.localStorage.setItem(
+      CLE,
+      JSON.stringify({
+        version: 4,
+        etat: {
+          units: [{ id: 'A1', phone: '+237 6 77 21 44 08' }],
+          works: [{ id: 'X', trade: 'plumbing', title: 'Fuite sous l’évier de la cuisine' }],
+          deposits: [{ unitId: 'A1' }],
+        },
+      }),
+    )
+
+    expect(loadState().works).toEqual(WORKS)
+    expect(loadState().works.every((w) => typeof w.titleKey === 'string')).toBe(true)
   })
 
   it('écarte une version périmée', () => {

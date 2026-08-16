@@ -153,7 +153,7 @@ export function TenantPortal() {
                   <Card key={work.id} className="flex items-center gap-3">
                     <Icon name="wrench" size={18} className="shrink-0 text-muted" />
                     <div className="min-w-0 flex-1">
-                      <p className="text-body font-medium">{work.title}</p>
+                      <p className="text-body font-medium">{t(`app.works.samples.${work.titleKey}` as 'app.works.samples.sinkLeak')}</p>
                       <p className="font-mono text-mono-label text-muted">
                         {work.id} ·{' '}
                         {d.dayMonth(work.reportedAt)}

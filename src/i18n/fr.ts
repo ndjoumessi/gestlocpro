@@ -440,6 +440,18 @@ export const fr = {
       approve: 'Valider le devis',
       approved_toast: 'Devis validé · le gestionnaire est prévenu',
       trade: 'Corps d’état',
+      /**
+       * Signalements du jeu de démonstration. Voir `WorkTitleKey` : dans le
+       * produit réel ce champ porte la saisie du locataire et ne se traduit
+       * pas — ces cinq lignes ne sont la saisie de personne.
+       */
+      samples: {
+        sinkLeak: 'Fuite sous l’évier de la cuisine',
+        waterHeaterBreaker: 'Disjoncteur qui saute au démarrage du chauffe-eau',
+        livingRoomPaint: 'Peinture du séjour à reprendre',
+        safetyValve: 'Remplacement du groupe de sécurité',
+        fullRefurbishment: 'Réfection complète avant relocation',
+      },
     },
 
     deposits: {

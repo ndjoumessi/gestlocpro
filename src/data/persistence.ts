@@ -41,8 +41,13 @@ import { DEPOSITS, UNITS, WORKS, type Deposit, type Unit, type WorkOrder } from 
  * incrément. Les valeurs `T1`…`T4` sont inchangées ; seul le type TypeScript
  * s'est resserré, et `formeValide` ne l'inspecte pas. Ce qui compte ici est la
  * forme des données enregistrées, pas celle du code qui les lit.
+ *
+ * Version 5 : l'intitulé d'un signalement du jeu de démonstration est passé de
+ * la phrase en clair (« Fuite sous l'évier de la cuisine ») à une clé
+ * (`sinkLeak`), et le champ a changé de nom — `title` devient `titleKey`. Un
+ * enregistrement antérieur rendrait un intitulé vide, la clé étant introuvable.
  */
-const VERSION = 4
+const VERSION = 5
 const CLE = 'gestlocpro.portfolio'
 
 export interface EtatPersiste {

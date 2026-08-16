@@ -132,7 +132,7 @@ export function TenantDashboard() {
                       <Icon name="wrench" size={15} />
                     </span>
                     <div className="min-w-0">
-                      <p className="text-body font-medium">{work.title}</p>
+                      <p className="text-body font-medium">{t(`app.works.samples.${work.titleKey}` as 'app.works.samples.sinkLeak')}</p>
                       <p className="mt-0.5 font-mono text-mono-label text-muted">
                         {work.id} ·{' '}
                         {d.dayMonth(work.reportedAt)}

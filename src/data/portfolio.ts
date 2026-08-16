@@ -158,10 +158,37 @@ export const UTILITY_RATES = { water: 520, power: 99 }
 /** Vocabulaire des corps de métier, partagé avec les signalements du portail. */
 export type TradeKey = 'plumbing' | 'power' | 'painting' | 'multi' | 'lock' | 'other'
 
+/**
+ * Intitulés des signalements du jeu de démonstration.
+ *
+ * **Ce n'est pas une exception à la règle sur la saisie utilisateur, c'est une
+ * distinction de nature.** Dans le produit réel, l'intitulé d'un signalement
+ * est écrit par le locataire : il ne se traduit pas, au même titre que « Serge
+ * Mbarga » ou « Résidence Bonamoussadi ». Traduire la saisie de quelqu'un est
+ * toujours faux.
+ *
+ * Mais ces cinq lignes ne sont la saisie de personne : c'est du contenu
+ * d'exemple, écrit par le produit pour se démontrer. Sa raison d'être est
+ * d'illustrer l'écran, donc il suit la langue de celui qui regarde — sans quoi
+ * la démonstration anglaise montre du français, et l'inverse si on les écrit
+ * en anglais.
+ *
+ * Le champ reste donc typé comme une clé **tant que les données sont un jeu de
+ * démonstration**. Le jour où un formulaire crée de vrais signalements, il
+ * redeviendra une chaîne libre, et ce sera correct.
+ */
+export type WorkTitleKey =
+  | 'sinkLeak'
+  | 'waterHeaterBreaker'
+  | 'livingRoomPaint'
+  | 'safetyValve'
+  | 'fullRefurbishment'
+
 export interface WorkOrder {
   id: string
   unitId: string
-  title: string
+  /** Voir `WorkTitleKey` : clé de démonstration, chaîne libre dans le produit réel. */
+  titleKey: WorkTitleKey
   /**
    * Corps de métier, en clé et non en clair.
    *
@@ -179,11 +206,11 @@ export interface WorkOrder {
 }
 
 export const WORKS: WorkOrder[] = [
-  { id: 'SIG-2026-042', unitId: 'A3', title: 'Fuite sous l’évier de la cuisine', trade: 'plumbing', status: 'quoted', amount: 45000, reportedAt: { year: 2026, month: 7, day: 12 }, urgent: true },
-  { id: 'SIG-2026-041', unitId: 'B2', title: 'Disjoncteur qui saute au démarrage du chauffe-eau', trade: 'power', status: 'approved', amount: 78000, reportedAt: { year: 2026, month: 7, day: 9 }, urgent: true },
-  { id: 'SIG-2026-039', unitId: 'C1', title: 'Peinture du séjour à reprendre', trade: 'painting', status: 'reported', amount: null, reportedAt: { year: 2026, month: 7, day: 5 }, urgent: false },
-  { id: 'SIG-2026-036', unitId: 'A1', title: 'Remplacement du groupe de sécurité', trade: 'plumbing', status: 'done', amount: 32000, reportedAt: { year: 2026, month: 6, day: 28 }, urgent: false },
-  { id: 'SIG-2026-034', unitId: 'B4', title: 'Réfection complète avant relocation', trade: 'multi', status: 'approved', amount: 340000, reportedAt: { year: 2026, month: 6, day: 22 }, urgent: false },
+  { id: 'SIG-2026-042', unitId: 'A3', titleKey: 'sinkLeak', trade: 'plumbing', status: 'quoted', amount: 45000, reportedAt: { year: 2026, month: 7, day: 12 }, urgent: true },
+  { id: 'SIG-2026-041', unitId: 'B2', titleKey: 'waterHeaterBreaker', trade: 'power', status: 'approved', amount: 78000, reportedAt: { year: 2026, month: 7, day: 9 }, urgent: true },
+  { id: 'SIG-2026-039', unitId: 'C1', titleKey: 'livingRoomPaint', trade: 'painting', status: 'reported', amount: null, reportedAt: { year: 2026, month: 7, day: 5 }, urgent: false },
+  { id: 'SIG-2026-036', unitId: 'A1', titleKey: 'safetyValve', trade: 'plumbing', status: 'done', amount: 32000, reportedAt: { year: 2026, month: 6, day: 28 }, urgent: false },
+  { id: 'SIG-2026-034', unitId: 'B4', titleKey: 'fullRefurbishment', trade: 'multi', status: 'approved', amount: 340000, reportedAt: { year: 2026, month: 6, day: 22 }, urgent: false },
 ]
 
 export interface Deposit {

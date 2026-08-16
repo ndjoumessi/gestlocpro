@@ -422,6 +422,18 @@ export const en: Dictionary = {
       approve: 'Approve quote',
       approved_toast: 'Quote approved · the manager has been notified',
       trade: 'Trade',
+      /**
+       * Signalements du jeu de démonstration. Voir `WorkTitleKey` : dans le
+       * produit réel ce champ porte la saisie du locataire et ne se traduit
+       * pas — ces cinq lignes ne sont la saisie de personne.
+       */
+      samples: {
+        sinkLeak: 'Leak under the kitchen sink',
+        waterHeaterBreaker: 'Breaker trips when the water heater starts',
+        livingRoomPaint: 'Living room paint needs redoing',
+        safetyValve: 'Safety valve replacement',
+        fullRefurbishment: 'Full refurbishment before reletting',
+      },
     },
 
     deposits: {

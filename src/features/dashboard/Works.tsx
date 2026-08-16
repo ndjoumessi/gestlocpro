@@ -71,7 +71,7 @@ export function Works() {
 
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="font-sans text-title-m font-semibold">{work.title}</h2>
+                  <h2 className="font-sans text-title-m font-semibold">{t(`app.works.samples.${work.titleKey}` as 'app.works.samples.sinkLeak')}</h2>
                   {work.urgent && <Badge tone="danger">{t('app.works.urgent')}</Badge>}
                 </div>
                 <p className="mt-1 font-mono text-mono-label text-muted">
