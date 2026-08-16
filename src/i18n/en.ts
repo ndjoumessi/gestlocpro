@@ -24,6 +24,10 @@ export const en: Dictionary = {
     country: 'Country',
     demoBadge: 'Demo',
     demoPark: 'Demo portfolio',
+    emptyParkTitle: 'Your portfolio is still empty',
+    emptyParkBody:
+      'Indicators, collections and reminders will appear here as soon as your portfolio holds units. Adding buildings is not open yet: we are working on it.',
+    emptyParkDemo: 'See what a full portfolio looks like',
     newVersion: 'A new version of GestLocPro is available.',
     newVersionReload: 'Reload',
     actionRefused: 'The server refused this action. Nothing was saved.',

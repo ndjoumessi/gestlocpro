@@ -31,6 +31,10 @@ export const fr = {
     country: 'Pays',
     demoBadge: 'Démonstration',
     demoPark: 'Parc de démonstration',
+    emptyParkTitle: 'Votre parc est encore vide',
+    emptyParkBody:
+      'Les indicateurs, les encaissements et les relances apparaîtront ici dès que votre parc portera des logements. La saisie des immeubles n’est pas encore ouverte : nous la préparons.',
+    emptyParkDemo: 'Voir ce que donne un parc rempli',
     newVersion: 'Une nouvelle version de GestLocPro est disponible.',
     newVersionReload: 'Recharger',
     actionRefused: 'Le serveur a refusé cette action. Rien n’a été enregistré.',

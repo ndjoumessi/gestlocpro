@@ -7,6 +7,7 @@ import { Button } from '@/components/primitives/Button'
 import { PaymentStatusPill, StatusPill } from '@/components/primitives/StatusPill'
 import { Icon } from '@/components/primitives/Icon'
 import { DonutChart, ProgressBar, StackedBarChart, StatCard } from '@/components/primitives/Charts'
+import { EmptyState } from '@/components/primitives/DataTable'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
@@ -51,6 +52,17 @@ export function Dashboard() {
   // Les arbitrages en attente : ce que le propriétaire doit trancher.
   const decisions = works.filter((work) => work.status === 'quoted')
 
+  /**
+   * Un parc sans aucun logement.
+   *
+   * C'est l'état EXACT d'un compte qui vient d'être créé, et il durait :
+   * l'écran offrait « Exporter le relevé » et « Enregistrer un paiement »,
+   * deux gestes impossibles — il n'y a ni relevé à sortir, ni bail sur lequel
+   * imputer quoi que ce soit. Un écran vide qui propose deux actions
+   * impraticables décourage plus qu'un écran vide qui n'en propose aucune.
+   */
+  const parcVide = units.length === 0
+
   return (
     <>
       <PageHeader
@@ -61,6 +73,7 @@ export function Dashboard() {
           currency: definition.label,
         })}
         actions={
+          parcVide ? null : (
           <>
             {/* Le tableau de bord exporte ce que porte son graphique : les
                 douze mois d'encaissements, ventilés comme la légende. */}
@@ -96,9 +109,34 @@ export function Dashboard() {
               {t('app.recordPayment')}
             </Button>
           </>
+          )
         }
       />
 
+      {/*
+        L'état vide REMPLACE les indicateurs, il ne s'y ajoute pas.
+        Quatre cartes à zéro, un graphique plat et un échéancier vide donnent
+        l'impression d'un produit en panne. Rien n'est en panne : le parc est
+        neuf, et il faut le dire avec des mots plutôt qu'avec douze zéros.
+
+        Le texte ne promet pas de bouton « ajouter un immeuble » : la saisie des
+        immeubles n'existe pas encore dans le produit. Annoncer ici un geste
+        qu'aucun écran ne permet serait exactement le mensonge que nous avons
+        passé la journée à retirer.
+      */}
+      {parcVide ? (
+        <EmptyState
+          icon="building"
+          title={t('common.emptyParkTitle')}
+          body={t('common.emptyParkBody')}
+          action={
+            <Button variant="secondary" to="/demo" icon="grid">
+              {t('common.emptyParkDemo')}
+            </Button>
+          }
+        />
+      ) : (
+      <>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label={t('app.dashboard.expected')}
@@ -297,7 +335,12 @@ export function Dashboard() {
           </ul>
         </Card>
       </div>
+      </>
+      )}
 
+      {/* La modale reste montée : elle n'est atteignable que par un bouton qui
+          disparaît sur un parc vide, et la démonter ici la ferait ressusciter
+          au premier logement ajouté sans que rien ne le justifie. */}
       <RecordPaymentModal open={payOpen} onClose={() => setPayOpen(false)} />
     </>
   )

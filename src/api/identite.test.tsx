@@ -81,3 +81,43 @@ describe('identité affichée dans la coquille', () => {
     expect(screen.queryByText(/Résidence Makepe/)).not.toBeInTheDocument()
   })
 })
+
+describe('parc vide, tableau de bord d’un compte neuf', () => {
+  it('n’offre PAS d’exporter un relevé ni d’enregistrer un paiement', async () => {
+    /**
+     * L'état exact d'un compte qui vient d'être créé.
+     *
+     * L'écran proposait « Exporter le relevé » et « Enregistrer un paiement » —
+     * deux gestes impossibles : il n'y a ni relevé à sortir, ni bail sur lequel
+     * imputer quoi que ce soit. Un écran vide qui offre deux actions
+     * impraticables décourage plus qu'un écran vide qui n'en offre aucune.
+     */
+    const serveur = installerFauxServeur({ authentifie: true })
+    serveur.quand('GET', `/parks/${SESSION_REELLE.statut === 'connecte' ? SESSION_REELLE.adhesions[0]!.parkId : ''}/portfolio`, {
+      status: 200,
+      body: { collections: [], buildings: [], works: [], deposits: [], readings: [], inspections: [], notifications: [] },
+    })
+
+    renderApp('/app', { session: SESSION_REELLE })
+    await screen.findByRole('heading', { level: 1, name: /vue consolidée/i })
+
+    expect(await screen.findByText(/votre parc est encore vide/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /exporter le relevé/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /enregistrer un paiement/i })).not.toBeInTheDocument()
+  })
+
+  it('ne promet pas un geste que le produit ne permet pas', async () => {
+    // Aucun écran ne permet aujourd'hui d'ajouter un immeuble : ni bouton, ni
+    // modale, ni route serveur. Annoncer « Ajouter un immeuble » ici serait le
+    // mensonge que cette journée a passé son temps à retirer.
+    const serveur = installerFauxServeur({ authentifie: true })
+    serveur.quand('GET', `/parks/${SESSION_REELLE.statut === 'connecte' ? SESSION_REELLE.adhesions[0]!.parkId : ''}/portfolio`, {
+      status: 200,
+      body: { collections: [], buildings: [], works: [], deposits: [], readings: [], inspections: [], notifications: [] },
+    })
+
+    renderApp('/app', { session: SESSION_REELLE })
+    await screen.findByText(/votre parc est encore vide/i)
+    expect(screen.queryByText(/ajouter un immeuble/i)).not.toBeInTheDocument()
+  })
+})
