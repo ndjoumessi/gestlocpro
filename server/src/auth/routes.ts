@@ -1,5 +1,7 @@
 import { Router, type Request, type Response } from 'express'
 import { z } from 'zod'
+import { empreinteJeton } from './token.js'
+import { normaliserCode } from '../parks/invitations.js'
 import { Prisma } from '@prisma/client'
 import { prisma } from '../db.js'
 import { hashPassword, needsRehash, verifyPassword } from './password.js'
@@ -78,6 +80,15 @@ const schemaInscription = z.object({
    * parc de quelqu'un d'autre.
    */
   parkName: z.string().trim().min(2).max(120).optional(),
+  /**
+   * Code d'invitation, pour rejoindre le parc de quelqu'un d'autre.
+   *
+   * Exclusif de `parkName` : on fonde un parc OU on en rejoint un. Les deux
+   * ensemble n'ont pas de sens, et laisser passer la combinaison créerait un
+   * propriétaire d'un parc vide qui est aussi locataire ailleurs — un état que
+   * rien dans l'interface ne sait montrer.
+   */
+  invitationCode: z.string().trim().min(4).max(40).optional(),
   /**
    * Semer le parc de démonstration.
    *
@@ -158,7 +169,43 @@ authRouter.post('/signup', async (req: Request, res: Response) => {
    * son porteur se connecterait sur une application où rien n'existe, et aucun
    * écran ne saurait dire pourquoi.
    */
-  if (donnees.parkName) {
+  /**
+   * Rejoindre un parc par invitation.
+   *
+   * Traité AVANT la création d'un parc, et exclusif d'elle. Le rôle vient de
+   * l'invitation, jamais de la saisie : quelqu'un qui poste `role: 'owner'`
+   * n'obtient rien de plus que ce que le propriétaire lui a accordé.
+   *
+   * Un code invalide, expiré, révoqué ou déjà accepté rend le MÊME refus. Les
+   * distinguer dirait à qui essaie des codes au hasard lesquels ont existé.
+   */
+  if (donnees.invitationCode) {
+    const invitation = await prisma.invitation.findUnique({
+      where: { codeHash: empreinteJeton(normaliserCode(donnees.invitationCode)) },
+      select: { id: true, parkId: true, role: true, expiresAt: true, acceptedAt: true, revokedAt: true },
+    })
+
+    const maintenant = new Date()
+    const utilisable =
+      invitation && !invitation.acceptedAt && !invitation.revokedAt && invitation.expiresAt > maintenant
+
+    if (!utilisable) {
+      res.status(400).json({ error: 'invitation_invalid' })
+      return
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.membership.create({
+        data: { userId: compte.id, parkId: invitation.parkId, role: invitation.role },
+      })
+      // Marquée acceptée dans la MÊME transaction : sans cela, deux inscriptions
+      // simultanées avec le même code créeraient deux adhésions.
+      await tx.invitation.update({
+        where: { id: invitation.id, acceptedAt: null },
+        data: { acceptedAt: maintenant },
+      })
+    })
+  } else if (donnees.parkName) {
     const aujourdhui = new Date()
     // En UTC : une colonne `date` est tronquée en UTC, et un premier du mois
     // construit en heure locale s'y enregistre comme le dernier du mois d'avant.

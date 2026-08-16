@@ -931,3 +931,105 @@ describe('émission des quittances', () => {
     expect(res.status).toBe(404)
   })
 })
+
+describe('codes d’invitation', () => {
+  async function parcAvecCode(email: string, role: 'tenant' | 'manager' = 'manager') {
+    const { cookie } = await inscrire(email, { parkName: 'Parc' })
+    const parcs = await request(app).get('/api/parks').set('Cookie', cookie)
+    const parkId = parcs.body.parks[0].id
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/invitations`)
+      .set('Cookie', cookie)
+      .send({ role })
+    return { cookie, parkId, code: res.body.code as string, res }
+  }
+
+  it('émet un code lisible, et n’en garde que l’empreinte', async () => {
+    /**
+     * Le modèle décrivait ces codes depuis l'origine et rien ne les écrivait :
+     * l'assistant d'inscription en réclamait un, le validait, et il n'existait
+     * aucun code valide à saisir.
+     */
+    const { code, res, parkId } = await parcAvecCode('emetteur@example.com')
+
+    expect(res.status, JSON.stringify(res.body)).toBe(201)
+    expect(code).toMatch(/^GES-[A-Z2-9]{4}-[A-Z2-9]{4}$/)
+
+    const enBase = await prisma.invitation.findFirstOrThrow({ where: { parkId } })
+    // Le code clair n'est stocké NULLE PART : une sauvegarde ou un journal ne
+    // donnent accès à aucun parc.
+    expect(enBase.codeHash).not.toBe(code)
+    expect(JSON.stringify(enBase)).not.toContain(code)
+    // L'indice suffit à reconnaître le code envoyé, pas à le rejouer.
+    expect(code.endsWith(enBase.codeHint)).toBe(true)
+  })
+
+  it('fait rejoindre le parc avec le rôle de l’INVITATION, pas celui saisi', async () => {
+    // Quelqu'un qui poste `role: 'owner'` n'obtient rien de plus que ce que le
+    // propriétaire lui a accordé.
+    const { parkId, code } = await parcAvecCode('inviteur@example.com', 'manager')
+
+    const rejoint = await request(app).post('/api/auth/signup').send({
+      email: 'invite@example.com',
+      password: MDP,
+      fullName: 'Diane Fotso',
+      acceptTerms: true,
+      invitationCode: code,
+      role: 'owner',
+    })
+    expect(rejoint.status, JSON.stringify(rejoint.body)).toBe(201)
+
+    const adhesion = await prisma.membership.findFirstOrThrow({
+      where: { parkId, user: { email: 'invite@example.com' } },
+    })
+    expect(adhesion.role).toBe('manager')
+  })
+
+  it('tolère la casse et les espaces, jamais le contenu', async () => {
+    // Un code se recopie à la main : « ges-4a7b 92cd » est le même code.
+    const { code } = await parcAvecCode('casse@example.com')
+    const res = await request(app).post('/api/auth/signup').send({
+      email: 'casse-invite@example.com',
+      password: MDP,
+      fullName: 'Test Casse',
+      acceptTerms: true,
+      invitationCode: ` ${code.toLowerCase()} `,
+    })
+    expect(res.status).toBe(201)
+  })
+
+  it('refuse un code déjà accepté, et de la même façon qu’un code inexistant', async () => {
+    /**
+     * Le même refus pour tous les cas — invalide, expiré, révoqué, déjà
+     * accepté. Les distinguer dirait à qui essaie des codes au hasard lesquels
+     * ont existé.
+     */
+    const { code } = await parcAvecCode('rejoue@example.com')
+    await request(app).post('/api/auth/signup').send({
+      email: 'premier@example.com', password: MDP, fullName: 'Premier', acceptTerms: true, invitationCode: code,
+    })
+
+    const second = await request(app).post('/api/auth/signup').send({
+      email: 'second@example.com', password: MDP, fullName: 'Second', acceptTerms: true, invitationCode: code,
+    })
+    const inexistant = await request(app).post('/api/auth/signup').send({
+      email: 'tiers@example.com', password: MDP, fullName: 'Tiers', acceptTerms: true, invitationCode: 'GES-ZZZZ-ZZZZ',
+    })
+
+    expect(second.status).toBe(400)
+    expect(second.body).toEqual(inexistant.body)
+  })
+
+  it('refuse un code expiré', async () => {
+    const { code, parkId } = await parcAvecCode('perime@example.com')
+    await prisma.invitation.updateMany({
+      where: { parkId },
+      data: { expiresAt: new Date(Date.now() - 1000) },
+    })
+
+    const res = await request(app).post('/api/auth/signup').send({
+      email: 'tard@example.com', password: MDP, fullName: 'Tard', acceptTerms: true, invitationCode: code,
+    })
+    expect(res.status).toBe(400)
+  })
+})

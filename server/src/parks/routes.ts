@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from 'express'
 import { z } from 'zod'
 import { prisma } from '../db.js'
+import { creerCode, expirationInvitation } from './invitations.js'
 import { exigerAppartenance, exigerCompte, exigerRole, unitesVisibles } from '../auth/guards.js'
 
 export const parksRouter = Router()
@@ -81,6 +82,24 @@ const schemaEncaissement = z.object({
 const schemaQuittance = z.object({
   unitId: z.string().uuid(),
   periodStart: z.string().regex(/^\d{4}-\d{2}-01$/, 'Période attendue au format AAAA-MM-01'),
+})
+
+/**
+ * Émission d'une invitation.
+ *
+ * L'unité n'a de sens que pour un locataire : on invite quelqu'un DANS un
+ * logement. Un gestionnaire opère tout le parc, et lui attacher une unité
+ * laisserait croire à un périmètre qui n'existe pas.
+ */
+const schemaInvitation = z.object({
+  role: z.enum(['tenant', 'manager']),
+  unitId: z.string().uuid().optional(),
+  email: z.string().email().optional(),
+  phoneE164: z
+    .string()
+    .trim()
+    .regex(/^\+[1-9]\d{6,14}$/, 'Numéro attendu au format international')
+    .optional(),
 })
 
 const schemaLocataire = z.object({
@@ -836,6 +855,61 @@ parksRouter.post(
     })
 
     res.status(201).json({ document })
+  },
+)
+
+/**
+ * Émet un code d'invitation pour rejoindre le parc.
+ *
+ * Le modèle décrivait ces codes depuis l'origine et rien ne les écrivait :
+ * l'assistant d'inscription en réclamait un, le validait, et il n'existait
+ * aucun code valide à saisir. La promesse était complète, la mécanique absente.
+ *
+ * Le code CLAIR n'est rendu qu'ici, une seule fois. Il n'est jamais relu depuis
+ * la base — seule son empreinte y est stockée — de sorte qu'une sauvegarde, un
+ * journal ou une copie de développement ne donnent accès à aucun parc. Le
+ * propriétaire qui le perd en émet un autre ; c'est le bon coût.
+ */
+parksRouter.post(
+  '/:parkId/invitations',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const corps = schemaInvitation.parse(req.body)
+
+    if (corps.unitId) {
+      // L'unité doit appartenir au parc : sans cette vérification, un
+      // identifiant deviné rattacherait un locataire au logement d'un autre.
+      const unite = await prisma.unit.findFirst({
+        where: { id: corps.unitId, building: { parkId } },
+        select: { id: true },
+      })
+      if (!unite) {
+        res.status(404).json({ error: 'not_found' })
+        return
+      }
+    }
+
+    const code = creerCode(corps.role)
+    const invitation = await prisma.invitation.create({
+      data: {
+        parkId,
+        role: corps.role,
+        codeHash: code.hash,
+        codeHint: code.indice,
+        ...(corps.email ? { email: corps.email } : {}),
+        ...(corps.phoneE164 ? { phoneE164: corps.phoneE164 } : {}),
+        ...(corps.unitId ? { unitId: corps.unitId } : {}),
+        issuedById: req.compteId!,
+        expiresAt: expirationInvitation(new Date()),
+      },
+      select: { id: true, role: true, codeHint: true, expiresAt: true },
+    })
+
+    // Le code clair voyage UNE fois, dans cette réponse. Il ne sera plus jamais
+    // lisible : c'est au propriétaire de le transmettre.
+    res.status(201).json({ invitation, code: code.clair })
   },
 )
 
