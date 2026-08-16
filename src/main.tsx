@@ -8,6 +8,7 @@ import { CurrencyProvider } from './currency/CurrencyProvider'
 import { ToastProvider } from './components/primitives/Toast'
 import { PortfolioProvider } from './data/PortfolioProvider'
 import { SessionProvider } from './api/SessionProvider'
+import { BandeauVersion } from './components/feedback/BandeauVersion'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -20,6 +21,10 @@ createRoot(document.getElementById('root')!).render(
             <SessionProvider>
               <PortfolioProvider>
                 <App />
+                {/* Hors de `<App />` : l'avertissement vaut sur TOUTE page, y
+                    compris l'accueil et l'inscription — c'est précisément là
+                    qu'un code périmé a fait perdre le plus de temps. */}
+                <BandeauVersion />
               </PortfolioProvider>
             </SessionProvider>
           </ToastProvider>

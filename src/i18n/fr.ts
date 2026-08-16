@@ -31,6 +31,8 @@ export const fr = {
     country: 'Pays',
     demoBadge: 'Démonstration',
     demoPark: 'Parc de démonstration',
+    newVersion: 'Une nouvelle version de GestLocPro est disponible.',
+    newVersionReload: 'Recharger',
     actionRefused: 'Le serveur a refusé cette action. Rien n’a été enregistré.',
     actionFailed: 'Action impossible pour l’instant. Rien n’a été enregistré.',
     demoNotice:

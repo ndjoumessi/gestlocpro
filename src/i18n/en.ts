@@ -24,6 +24,8 @@ export const en: Dictionary = {
     country: 'Country',
     demoBadge: 'Demo',
     demoPark: 'Demo portfolio',
+    newVersion: 'A new version of GestLocPro is available.',
+    newVersionReload: 'Reload',
     actionRefused: 'The server refused this action. Nothing was saved.',
     actionFailed: 'This action failed for now. Nothing was saved.',
     demoNotice:

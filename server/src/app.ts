@@ -2,7 +2,7 @@ import express, { type ErrorRequestHandler, type Request, type Response } from '
 import cookieParser from 'cookie-parser'
 import { ZodError } from 'zod'
 import { join } from 'node:path'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { env } from './env.js'
 import { authRouter } from './auth/routes.js'
@@ -24,6 +24,30 @@ import { parksRouter } from './parks/routes.js'
  */
 const CLIENT_DIST =
   process.env.CLIENT_DIST ?? fileURLToPath(new URL('../../../dist', import.meta.url))
+
+/**
+ * Nom du paquet JavaScript servi, lu dans `index.html`.
+ *
+ * Vite hache ce nom d'après le contenu : il change à chaque construction qui
+ * change quelque chose, et à aucune autre. C'est donc une version exacte, que
+ * personne n'a à tenir à jour.
+ *
+ * Le fichier est relu à chaque appel plutôt que mémorisé : un conteneur vit
+ * plus longtemps qu'un déploiement dans certaines dispositions, et une valeur
+ * figée au démarrage finirait par annoncer une version qui n'est plus servie —
+ * l'inverse exact du service rendu. La lecture coûte une poignée de
+ * microsecondes, et l'appel est rare.
+ */
+function paquetServi(): string | null {
+  try {
+    const html = readFileSync(join(CLIENT_DIST, 'index.html'), 'utf8')
+    return /assets\/(index-[A-Za-z0-9_-]+\.js)/.exec(html)?.[1] ?? null
+  } catch {
+    // Pas de client construit — développement, ou déploiement incomplet. Le
+    // client saura qu'il n'y a rien à comparer.
+    return null
+  }
+}
 
 /**
  * Application Express, séparée du démarrage du serveur.
@@ -132,6 +156,25 @@ export function createApp() {
       return
     }
     res.json({ ok: true })
+  })
+
+  /**
+   * Version servie, pour que le client sache qu'il est périmé.
+   *
+   * Une application React ne recharge pas son code en naviguant : un onglet
+   * ouvert avant un déploiement garde le sien indéfiniment. Plusieurs échanges
+   * ont été perdus aujourd'hui à cause de cela — un défaut corrigé et déployé
+   * restait présent à l'écran, et le rechargement forcé n'était demandé qu'après
+   * coup, quand la confusion s'était déjà installée.
+   *
+   * La version est le NOM du paquet servi, que Vite hache d'après son contenu.
+   * Rien à incrémenter, rien à oublier de mettre à jour : deux constructions
+   * identiques portent le même nom, deux constructions différentes non. Un
+   * numéro tenu à la main aurait fini par mentir.
+   */
+  app.get('/api/version', (_req: Request, res: Response) => {
+    res.set('Cache-Control', 'no-store')
+    res.json({ paquet: paquetServi() })
   })
 
   // Express 5 transmet lui-même les rejets de promesse au gestionnaire
