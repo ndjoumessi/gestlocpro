@@ -2,10 +2,28 @@ import express, { type ErrorRequestHandler, type Request, type Response } from '
 import cookieParser from 'cookie-parser'
 import { ZodError } from 'zod'
 import { join } from 'node:path'
+import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { env } from './env.js'
 import { authRouter } from './auth/routes.js'
 import { parksRouter } from './parks/routes.js'
+
+/**
+ * Répertoire du client construit.
+ *
+ * Compilé, ce fichier vit dans `server/dist/src/` : trois niveaux à remonter
+ * pour atteindre le `dist/` du client, à la racine du dépôt. `CLIENT_DIST`
+ * permet de le dire autrement si la disposition change — un chemin relatif
+ * calculé sur la sortie de compilation est exact tant que personne ne touche à
+ * `outDir`, et silencieusement faux ensuite.
+ *
+ * Défini ici, hors de la branche de production, parce que DEUX choses en
+ * dépendent : le service des fichiers et le contrôle de santé. Les laisser
+ * calculer chacun le leur, c'est se ménager le jour où l'un vérifie un
+ * répertoire que l'autre ne sert pas.
+ */
+const CLIENT_DIST =
+  process.env.CLIENT_DIST ?? fileURLToPath(new URL('../../../dist', import.meta.url))
 
 /**
  * Application Express, séparée du démarrage du serveur.
@@ -87,7 +105,32 @@ export function createApp() {
     next()
   })
 
+  /**
+   * Santé : ce que le déploiement doit RÉELLEMENT fournir.
+   *
+   * L'ancienne version répondait `{ ok: true }` dès que le processus écoutait.
+   * Un déploiement a donc été déclaré `SUCCESS` alors que le client avait
+   * disparu de l'image : l'API répondait, la page d'accueil rendait 500, et
+   * rien ne le signalait. « Le serveur répond » avait été pris pour « le site
+   * fonctionne ».
+   *
+   * Un contrôle de santé qui ne couvre qu'une moitié du produit fait pire que
+   * ne rien contrôler : il donne le feu vert. On vérifie donc aussi la présence
+   * du client — la seule chose que ce serveur promet et qui peut manquer sans
+   * l'empêcher de démarrer.
+   *
+   * En développement, le client est servi par Vite : il n'y a rien à vérifier
+   * ici, et l'exiger ferait échouer un environnement parfaitement sain.
+   */
   app.get('/api/health', (_req: Request, res: Response) => {
+    if (env.NODE_ENV !== 'production') {
+      res.json({ ok: true })
+      return
+    }
+    if (!existsSync(join(CLIENT_DIST, 'index.html'))) {
+      res.status(503).json({ ok: false, error: 'client_absent' })
+      return
+    }
     res.json({ ok: true })
   })
 
@@ -116,22 +159,13 @@ export function createApp() {
    * annonçait cette disposition ; la voici.
    */
   if (env.NODE_ENV === 'production') {
-    /**
-     * Compilé, ce fichier vit dans `server/dist/src/` : trois niveaux à
-     * remonter pour atteindre le `dist/` du client, à la racine du dépôt.
-     * `CLIENT_DIST` permet de le dire autrement si la disposition change —
-     * un chemin relatif calculé sur la sortie de compilation est exact tant
-     * que personne ne touche à `outDir`, et silencieusement faux ensuite.
-     */
-    const client =
-      process.env.CLIENT_DIST ?? fileURLToPath(new URL('../../../dist', import.meta.url))
-    app.use(express.static(client, { maxAge: '1h', index: false }))
+    app.use(express.static(CLIENT_DIST, { maxAge: '1h', index: false }))
 
     // Toute autre adresse rend `index.html` : le routage est côté client, et un
     // rechargement sur `/app/cautions` doit ouvrir l'application, pas un 404.
     // Placé APRÈS l'API, donc `/api/inconnu` rend bien du JSON.
     app.get(/.*/, (_req: Request, res: Response) => {
-      res.sendFile(join(client, 'index.html'))
+      res.sendFile(join(CLIENT_DIST, 'index.html'))
     })
   } else {
     app.use((_req: Request, res: Response) => {
