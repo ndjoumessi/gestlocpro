@@ -1,4 +1,9 @@
-import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react'
+import {
+  forwardRef,
+  type AnchorHTMLAttributes,
+  type ButtonHTMLAttributes,
+  type ReactNode,
+} from 'react'
 import { Link } from 'react-router-dom'
 import { cn } from '@/lib/cn'
 import { Icon, type IconName } from './Icon'
@@ -91,9 +96,39 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 
   const shared = classes({ variant, size, fullWidth, disabled: isDisabled, className })
 
+  /**
+   * Les branches « lien » transmettent AUSSI les propriétés restantes.
+   *
+   * Elles les jetaient silencieusement : un `<Button to="…" onClick={…}>`
+   * ignorait son gestionnaire, et un `aria-label` posé par l'appelant
+   * disparaissait sans erreur ni avertissement. Un composant partagé qui trahit
+   * ses appelants en silence est le pire des trois — il n'échoue pas, il ment.
+   *
+   * Le type restant décrit un `<button>` : quelques attributs n'ont pas de sens
+   * sur une ancre. La conversion est donc explicite et bornée à ce point, plutôt
+   * que de dupliquer la signature du composant pour trois branches.
+   */
+  const reste = props as unknown as AnchorHTMLAttributes<HTMLAnchorElement>
+
+  /**
+   * Un lien désactivé perd sa DESTINATION, et pas seulement son apparence.
+   *
+   * `aria-disabled` seul annonce l'état aux technologies d'assistance et ne
+   * change rien au comportement : l'ancre restait cliquable, focalisable et
+   * activable au clavier. Sans `href`, elle sort du parcours de tabulation et
+   * ne navigue plus — ce que « désactivé » veut dire.
+   */
+  if ((to || href) && isDisabled) {
+    return (
+      <span className={shared} aria-disabled="true" {...reste}>
+        {content}
+      </span>
+    )
+  }
+
   if (to) {
     return (
-      <Link to={to} className={shared} aria-disabled={isDisabled || undefined}>
+      <Link to={to} className={shared} {...reste}>
         {content}
       </Link>
     )
@@ -101,7 +136,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 
   if (href) {
     return (
-      <a href={href} className={shared} aria-disabled={isDisabled || undefined}>
+      <a href={href} className={shared} {...reste}>
         {content}
       </a>
     )
