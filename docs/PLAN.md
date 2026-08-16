@@ -6,12 +6,13 @@
 > de route et §10 pour ce qui reste ouvert.
 
 
-> Établi à partir des maquettes `GESLOC Mockup FR/EN (offline).html` (décodées : React 18 + tokens inline)
-> et du skill `ui-ux-pro-max` (règles UX/A11Y ; palette générique écartée au profit de la marque existante).
+> Établi à partir de la charte GESLOC et des écrans de référence fournis au départ
+> (React 18, jetons en ligne), et du skill `ui-ux-pro-max` (règles UX/A11Y ;
+> palette générique écartée au profit de la marque existante).
 
 ---
 
-## 1. Ce que les maquettes contiennent réellement
+## 1. Ce que la conception d'origine contenait réellement
 
 Palette effective extraite du code (au-delà des 4 couleurs annoncées) :
 
@@ -34,9 +35,10 @@ Rôles : `proprio` `gest` `loc`. Devises : `FCFA` `Euro` `CAD` `USD`.
 
 ## 2. Corrections d'accessibilité (ratios vérifiés)
 
-Trois défauts mesurés dans la maquette actuelle. Le système de design les corrige.
+Trois défauts mesurés dans la palette de marque telle que fournie. Le système de
+design les corrige.
 
-| Token | Maquette | Ratio | Remplacement | Nouveau ratio |
+| Token | Valeur d'origine | Ratio | Remplacement | Nouveau ratio |
 | --- | --- | --- | --- | --- |
 | Texte secondaire | `#6B7573` sur `#F7F4EE` | **4.33** ✗ | `#5C6664` | **5.40** ✓ |
 | Lien / label doré | `#A0722C` sur `#F7F4EE` | **3.87** ✗ | `#8A6218` | **4.98** ✓ |
@@ -45,7 +47,7 @@ Trois défauts mesurés dans la maquette actuelle. Le système de design les cor
 `#C58E3E` reste l'accent de marque, mais **jamais en texte sur fond clair** (2.87 sur blanc).
 Il sert en fond, bordure, icône, et en texte sur `#14201E` (5.83 ✓).
 
-Quatrième correction : la maquette descend à `9.5px` / `10px` sur les labels mono.
+Quatrième correction : la conception d'origine descendait à `9.5px` / `10px` sur les labels mono.
 Plancher relevé à **12px**, corps dashboard **14px**, corps landing/mobile **16px** (évite l'auto-zoom iOS).
 
 ---
@@ -165,12 +167,12 @@ src/
 **Choix de rôle en amont, puis un seul assistant adaptatif** (pas trois formulaires séparés).
 
 1. **`/inscription`** — 3 `RadioCard` : Propriétaire · Gestionnaire délégué · Locataire.
-   Chaque carte dit ce que le rôle peut faire (repris de `roleRights` dans la maquette).
+   Chaque carte dit ce que le rôle peut faire (repris de `roleRights`).
 2. **Identité** — nom, email, téléphone avec indicatif, mot de passe (toggle + jauge).
 3. **Contexte** — pays → **pré-remplit devise et langue** (modifiables). Puis, selon le rôle :
    - *Propriétaire* : nom du parc, nombre d'unités (fourchette), « je gère seul » vs « je délègue ».
    - *Gestionnaire* : code d'invitation propriétaire **ou** demande d'accès + société.
-   - *Locataire* : **code d'invitation** (dans la maquette il arrive par SMS avec la fiche locataire).
+   - *Locataire* : **code d'invitation** (émis par SMS à la création de sa fiche).
 4. **Récapitulatif** + acceptation CGU.
 
 *Pourquoi :* les trois rôles partagent ~80 % des champs ; trois formulaires dupliqueraient validation
@@ -193,15 +195,15 @@ un code d'invitation à un propriétaire.
 
 | # | Sujet | Hypothèse |
 | --- | --- | --- |
-| 1 | A11Y | 3 tokens de la maquette modifiés + plancher typographique relevé (§2) |
+| 1 | A11Y | 3 jetons de marque modifiés + plancher typographique relevé (§2) |
 | 2 | Tarifs | Par unité gérée/mois, 3 paliers, prix ancrés par devise (§8) |
 | 3 | Marketing | Tous les textes sont inventés |
 | 4 | Témoignages | Placeholders **explicitement fictifs** — pas de faux logos ni de fausses citations attribuées |
 | 5 | Locataire | S'inscrit par code d'invitation, pas librement |
 | 6 | FCFA | **Tranché** : XAF et XOF fusionnés en une devise `CFA` (§8) |
-| 7 | Relevés | Sous-section de « Paiements » dans la maquette → promue en page |
+| 7 | Relevés | Sous-section de « Paiements » à l'origine → promue en page |
 | 8 | Ville | « DOUALA » en dur dans le fil d'Ariane → devient dynamique |
-| 9 | Dark mode | Hors périmètre (seule la sidebar est sombre dans la maquette) |
+| 9 | Dark mode | Hors périmètre (seule la barre latérale est sombre) |
 
 ---
 
@@ -382,7 +384,7 @@ navigateur a fait apparaître six défauts réels. Tous corrigés.
 | # | Défaut | Mesure | Correction |
 | --- | --- | --- | --- |
 | 1 | 14 cibles tactiles sous 44 px | bascule FR/EN à 36×35, œil du mot de passe à 40 | portées à 44 minimum |
-| 2 | `--color-on-dark-faint` repris de la maquette | 4.02:1 sur `--ink`, **3.58** sur `--ink-2` | opacité 0.42 → **0.58** |
+| 2 | `--color-on-dark-faint` à son opacité d'origine | 4.02:1 sur `--ink`, **3.58** sur `--ink-2` | opacité 0.42 → **0.58** |
 | 3 | Titre du hero en 56 px fixe | remplissait un écran de 375 px | échelle d'affichage en `clamp()` |
 | 4 | Barres du graphe invisibles | hauteur en % contre un parent de hauteur automatique | zone de tracé en `flex-1` de hauteur définie |
 | 5 | Table alternative `sr-only` | 347 px de large, invisible mais dans le flux | `sr-only` déplacé sur un `<div>` englobant |
@@ -423,10 +425,10 @@ passer un fond crème pour un fond sombre.
   aucune requête réseau n'est émise. Les latences (700–800 ms) sont simulées
   pour montrer les états de chargement.
 - **Pas de conversion de change.** Un montant s'affiche tel quel dans la devise
-  choisie. C'est le comportement de la maquette, assumé et expliqué à
-  l'utilisateur dans la FAQ et sous la grille tarifaire.
+  choisie. C'est un parti pris assumé, expliqué à l'utilisateur dans la FAQ et
+  sous la grille tarifaire.
 - **Mode sombre complet hors périmètre.** Seules la barre latérale et certaines
-  cartes sont sombres, comme dans la maquette.
+  cartes sont sombres.
 - **Contenus validés.** Les témoignages restent des placeholders explicitement
   fictifs — pas de logo d'entreprise réelle, pas de citation attribuée à une
   personne existante. La liste des pays a été validée et corrigée (§12).

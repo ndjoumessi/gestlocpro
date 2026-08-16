@@ -4,8 +4,9 @@ Application SaaS de gestion locative — immeubles, unités, locataires, paiemen
 relevés de compteurs, états des lieux, travaux et cautions. Multi-devises et
 bilingue FR/EN.
 
-Maquette fonctionnelle : aucun backend n'est connecté, les formulaires
-fonctionnent en état React local.
+Front-end complet, sans backend : aucune requête réseau n'est émise, les
+formulaires valident et changent d'état en local. Le parcours est enregistré
+dans le navigateur pour survivre à un rechargement.
 
 ## Démarrer
 
