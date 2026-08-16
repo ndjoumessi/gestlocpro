@@ -343,8 +343,12 @@ export const fr = {
       collected: 'Encaissé ce mois',
       outstanding: 'Impayés cumulés',
       occupancy: 'Taux d’occupation',
-      activeLeases: '{count} baux actifs · vs mois précédent',
-      activeLeases_one: '{count} bail actif · vs mois précédent',
+      // « vs mois précédent » accompagnait un écart mensuel qui a disparu :
+      // il supposait un historique que le produit n'a pas, et l'indicateur
+      // n'aurait jamais varié. La mention le suit, sans quoi elle renvoie à un
+      // chiffre absent.
+      activeLeases: '{count} baux actifs',
+      activeLeases_one: '{count} bail actif',
       collectedShare: '{percent} % du dû',
       overdueTenants: '{count} locataires · jusqu’à {days} jours',
       overdueTenants_one: '{count} locataire · jusqu’à {days} jours',
