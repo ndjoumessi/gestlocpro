@@ -37,6 +37,15 @@ const ATTRIBUTES = ['aria-label', 'placeholder', 'title', 'alt', 'aria-descripti
 const EXEMPT_FILES = ['src/routes/KitchenSink.tsx']
 
 /**
+ * Répertoires exemptés du contrôle sur le TEXTE des éléments.
+ *
+ * `i18n` contient les dictionnaires eux-mêmes. `data` porte le jeu de
+ * démonstration — « Résidence Bonamoussadi », « Serge Mbarga » : des données,
+ * pas des libellés d'interface, et elles ne se traduisent pas.
+ */
+const EXEMPT_TEXT_DIRS = ['src/i18n/', 'src/data/']
+
+/**
  * Valeurs littérales sans portée linguistique : ponctuation, nombres, codes
  * couleur, et **masques de format** du type `LOC-4A7B-92CD` ou `PROP-0000-0000`.
  *
@@ -45,6 +54,24 @@ const EXEMPT_FILES = ['src/routes/KitchenSink.tsx']
  * volontairement strict — « Indicatif » ou « nom@domaine.com » ne passent pas.
  */
 const HARMLESS = /^(\s*|[-–—·|/\\]+|\d+|#[0-9a-fA-F]{3,8}|[^a-z\s]+)$/
+
+/**
+ * Texte français resté dans le JSX.
+ *
+ * Le contrôle des attributs ne voyait pas `<th scope="col">Période</th>` : la
+ * chaîne est le contenu d'un élément, pas la valeur d'un attribut. Elle a donc
+ * traversé toute la construction et se prononçait en français au milieu d'une
+ * table anglaise — dans un `sr-only`, donc invisible à l'œil.
+ *
+ * Le critère est l'ACCENT. Une chaîne d'interface française en porte presque
+ * toujours un, l'anglais quasi jamais : c'est le signal le plus fiable pour un
+ * coût de faux positifs très bas, là où reconnaître « du français » en général
+ * demanderait un dictionnaire.
+ *
+ * Le motif exige au moins trois caractères de mot autour, pour ne pas se
+ * déclencher sur une entité isolée ou un fragment de code.
+ */
+const TEXTE_ACCENTUE = />\s*([^<>{}\n]*[àâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ][^<>{}\n]*)\s*</g
 
 async function* walk(dir) {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
@@ -64,6 +91,19 @@ for await (const file of walk(SRC)) {
   const lines = source.split('\n')
 
   lines.forEach((line, index) => {
+    // Les lignes de commentaire sont écartées : un bloc JSDoc qui décrit un
+    // composant contient du français par nature, et « `<Link>` interne à la
+    // place d'un `<button>` » ressemble à du texte entre chevrons.
+    const commentaire = /^\s*(\*|\/\/|\/\*)/.test(line)
+
+    if (!commentaire && !EXEMPT_TEXT_DIRS.some((dir) => rel.startsWith(dir))) {
+      for (const match of line.matchAll(TEXTE_ACCENTUE)) {
+        const value = match[1].trim()
+        if (value.length < 3 || HARMLESS.test(value)) continue
+        findings.push({ file: rel, line: index + 1, attribute: 'texte', value })
+      }
+    }
+
     for (const attribute of ATTRIBUTES) {
       // Ne repère que les valeurs entre guillemets : `aria-label={t('…')}` et
       // `aria-label={label}` passent, puisque la chaîne vient d'ailleurs.

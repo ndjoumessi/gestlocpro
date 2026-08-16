@@ -200,10 +200,10 @@ export function TenantPortal() {
                       <Field label={t('app.portal.category')} required>
                         {(props) => (
                           <Select {...props} defaultValue="plumbing">
-                            <option value="plumbing">Plomberie</option>
-                            <option value="power">Électricité</option>
-                            <option value="lock">Serrurerie</option>
-                            <option value="other">Autre</option>
+                            <option value="plumbing">{t('app.portal.categoryPlumbing')}</option>
+                            <option value="power">{t('app.portal.categoryPower')}</option>
+                            <option value="lock">{t('app.portal.categoryLock')}</option>
+                            <option value="other">{t('app.portal.categoryOther')}</option>
                           </Select>
                         )}
                       </Field>

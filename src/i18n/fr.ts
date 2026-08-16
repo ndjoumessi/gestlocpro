@@ -41,6 +41,7 @@ export const fr = {
     showPassword: 'Afficher le mot de passe',
     hidePassword: 'Masquer le mot de passe',
     selectPlaceholder: 'Sélectionner…',
+    period: 'Période',
     perMonth: '/ mois',
     perYear: '/ an',
     yes: 'Oui',
@@ -543,6 +544,12 @@ export const fr = {
       reportIssue: 'Signaler un incident',
       reportSent: 'Signalement envoyé au gestionnaire et au propriétaire',
       category: 'Nature du problème',
+      // Les quatre options étaient écrites en dur dans le JSX : un locataire
+      // en anglais voyait un menu français.
+      categoryPlumbing: 'Plomberie',
+      categoryPower: 'Électricité',
+      categoryLock: 'Serrurerie',
+      categoryOther: 'Autre',
       urgency: 'Urgence',
       urgencyHigh: 'Bloquant',
       urgencyMedium: 'Gênant',

@@ -1,6 +1,7 @@
 import { useId, useMemo, useState, type ReactNode } from 'react'
 import { cn } from '@/lib/cn'
 import { useCurrency } from '@/currency/CurrencyProvider'
+import { useT } from '@/i18n/I18nProvider'
 
 /**
  * Graphes maison, en DOM et en SVG.
@@ -55,6 +56,7 @@ export function StackedBarChart({
   openPeriodNote?: string
 }) {
   const { money, moneyCompact } = useCurrency()
+  const t = useT()
   const titleId = useId()
 
   /** Séries masquées depuis la légende. */
@@ -251,7 +253,7 @@ export function StackedBarChart({
           <caption id={titleId}>{caption}</caption>
           <thead>
             <tr>
-              <th scope="col">Période</th>
+              <th scope="col">{t('common.period')}</th>
               {seriesKeys.map((key) => (
                 <th key={key} scope="col">
                   {seriesLabels[key]}
