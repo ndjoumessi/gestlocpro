@@ -175,3 +175,51 @@ describe('inscription', () => {
     expect(screen.getByText('arsene@example.com')).toBeInTheDocument()
   })
 })
+
+/**
+ * Issue vers l'accueil.
+ *
+ * Les quatre pages d'authentification étaient un cul-de-sac sur ordinateur :
+ * le lien de retour portait `lg:hidden` et le logo n'était pas cliquable. On y
+ * entrait depuis la landing sans pouvoir y revenir autrement que par le bouton
+ * du navigateur.
+ *
+ * jsdom n'applique pas les media queries, donc le lien y était visible même
+ * avant la correction — c'est pourquoi le défaut a tenu. Ce test vérifie donc
+ * ce que jsdom PEUT établir : que les deux issues existent, et que leur
+ * libellé ne se confond pas avec le retour d'étape de l'inscription.
+ */
+describe('retour à l’accueil depuis l’authentification', () => {
+  it.each(['/connexion', '/inscription', '/mot-de-passe-oublie'])(
+    '%s offre un lien vers l’accueil et un logo cliquable',
+    (route) => {
+      renderApp(route)
+
+      const versAccueil = screen
+        .getAllByRole('link')
+        .filter((a) => a.getAttribute('href') === '/')
+
+      // Deux issues : le lien libellé, et le logo par convention.
+      expect(versAccueil.length).toBeGreaterThanOrEqual(2)
+      expect(
+        screen.getByRole('link', { name: /retour à l’accueil/i }),
+      ).toBeInTheDocument()
+    },
+  )
+
+  it('ne confond pas le retour d’étape avec le retour à l’accueil', async () => {
+    const user = userEvent.setup()
+    renderApp('/inscription/proprietaire')
+
+    await user.type(screen.getByLabelText(/nom complet/i), 'Arsène Nkomo')
+    await user.type(screen.getByLabelText(/adresse e-mail/i), 'arsene@example.com')
+    await user.type(screen.getByLabelText(/^téléphone/i), '677889900')
+    await user.type(screen.getByLabelText(/^Mot de passe/), 'Bonamoussadi2026!')
+    await user.click(screen.getByRole('button', { name: /continuer/i }))
+
+    // « Retour » ramène à l'étape précédente, « Retour à l'accueil » quitte le
+    // parcours. Deux destinations, deux libellés.
+    expect(await screen.findByRole('button', { name: 'Retour' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /retour à l’accueil/i })).toHaveAttribute('href', '/')
+  })
+})

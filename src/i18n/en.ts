@@ -8,6 +8,7 @@ export const en: Dictionary = {
 
   common: {
     back: 'Back',
+    backToHome: 'Back to home',
     next: 'Continue',
     cancel: 'Cancel',
     save: 'Save',

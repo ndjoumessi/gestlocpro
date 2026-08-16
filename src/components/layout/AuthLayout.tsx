@@ -32,12 +32,25 @@ export function AuthLayout({ title, subtitle, children, footer, wide, above }: A
 
       <div className="flex min-w-0 flex-1 flex-col bg-canvas">
         <header className="flex items-center gap-3 px-5 py-4 sm:px-8">
+          {/* Ce lien portait `lg:hidden` : sur ordinateur, il n'existait pas.
+              Et le logo du panneau de marque n'était pas cliquable. Les pages
+              d'authentification étaient donc un cul-de-sac — on y entrait
+              depuis la landing sans pouvoir y revenir autrement que par le
+              bouton du navigateur.
+
+              Il est maintenant visible partout. Le logo renvoie lui aussi à
+              l'accueil, par convention, mais il vit dans le panneau sombre à
+              l'autre bout de l'écran : l'issue doit être dans la colonne où se
+              trouve le formulaire, pas à côté.
+
+              `backToHome` et non `back` : dans l'inscription, « Retour » ramène
+              à l'étape précédente. Deux destinations, deux libellés. */}
           <Link
             to="/"
-            className="inline-flex min-h-11 items-center gap-2 text-body font-medium text-muted no-underline transition-colors duration-150 hover:text-ink lg:hidden"
+            className="-ml-2 inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-body font-medium text-muted no-underline transition-colors duration-150 hover:bg-surface-sunken hover:text-ink"
           >
             <Icon name="chevronLeft" size={16} />
-            {t('common.back')}
+            {t('common.backToHome')}
           </Link>
 
           <div className="ml-auto flex items-center gap-2">
@@ -89,7 +102,10 @@ function BrandPanel() {
       />
 
       <div className="relative">
-        <Logo tone="dark" size="md" />
+        {/* Le logo ramène à l'accueil : c'est la convention, et elle vaut à
+            toutes les tailles — sur mobile, ce bandeau est la seule partie du
+            panneau de marque qui reste visible. */}
+        <Logo tone="dark" size="md" to="/" />
       </div>
 
       {/* Argumentaire réservé au grand écran : sur mobile il repousserait le

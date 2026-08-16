@@ -13,6 +13,9 @@ export const fr = {
 
   common: {
     back: 'Retour',
+    // Distincte de `back` : dans l'inscription, « Retour » ramène à l'étape
+    // précédente. Deux destinations ne peuvent pas partager un libellé.
+    backToHome: 'Retour à l’accueil',
     next: 'Continuer',
     cancel: 'Annuler',
     save: 'Enregistrer',
