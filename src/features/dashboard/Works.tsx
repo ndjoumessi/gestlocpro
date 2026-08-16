@@ -10,7 +10,7 @@ import { TenantScopeNote } from './TenantDashboard'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
-import { CURRENT_TENANT_UNIT, type WorkOrder } from '@/data/portfolio'
+import { type WorkOrder } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { workTitle } from '@/data/workTitle'
 
@@ -38,10 +38,12 @@ export function Works() {
    * doit disparaître de la carte « Ce qui demande une décision » du tableau de
    * bord, qui la réclamait encore.
    */
-  const { works, worksForUnit, approveWork, unitById } = usePortfolio()
+  const { works, approveWork, unitById, isMine } = usePortfolio()
 
   // Le locataire suit les interventions sur SON logement, pas celles du parc.
-  const visible = isTenant ? worksForUnit(CURRENT_TENANT_UNIT) : works
+  // Le périmètre vient du provider, qui le tient du serveur : le client ne
+  // connaît plus « son » unité par une constante.
+  const visible = isTenant ? works.filter((w) => isMine(w.unitId)) : works
 
   const approve = (id: string) => {
     approveWork(id)

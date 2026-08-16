@@ -364,7 +364,7 @@ export const ALERTS: Alert[] = [
  * constante tient lieu de session : c'est elle qui borne ce que le rôle
  * locataire a le droit de voir.
  */
-export const CURRENT_TENANT_UNIT = 'A1'
+export const DEMO_TENANT_UNIT = 'A1'
 
 /* Les sélecteurs sur les travaux et les cautions vivent dans
    `PortfolioProvider` et non ici : ces deux collections sont modifiables, et

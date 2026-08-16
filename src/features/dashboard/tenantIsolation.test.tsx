@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { renderApp, screen, switchRole } from '@/test/render'
-import { CURRENT_TENANT_UNIT, UNITS } from '@/data/portfolio'
+import { DEMO_TENANT_UNIT, UNITS } from '@/data/portfolio'
 
 /**
  * Cloisonnement du rôle locataire.
@@ -19,7 +19,7 @@ import { CURRENT_TENANT_UNIT, UNITS } from '@/data/portfolio'
 
 /** Tous les locataires du parc sauf celui qui est connecté. */
 const AUTRES_LOCATAIRES = UNITS.filter(
-  (unit) => unit.tenant !== null && unit.id !== CURRENT_TENANT_UNIT,
+  (unit) => unit.tenant !== null && unit.id !== DEMO_TENANT_UNIT,
 ).map((unit) => unit.tenant as string)
 
 /** Écrans que la barre latérale propose au locataire. */
@@ -92,7 +92,7 @@ describe('cloisonnement du locataire', () => {
     const lignes = screen.getAllByRole('row')
     // Une ligne d'en-tête plus une seule ligne de données.
     expect(lignes).toHaveLength(2)
-    expect(lignes[1]).toHaveTextContent(CURRENT_TENANT_UNIT)
+    expect(lignes[1]).toHaveTextContent(DEMO_TENANT_UNIT)
   })
 
   it('laisse le propriétaire et le gestionnaire voir tout le parc', async () => {

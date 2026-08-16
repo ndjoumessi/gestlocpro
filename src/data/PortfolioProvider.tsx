@@ -8,7 +8,11 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { type Deposit, type Unit, type WorkOrder } from './portfolio'
+import { DEMO_TENANT_UNIT, type Deposit, type Unit, type WorkOrder } from './portfolio'
+import { chargerParc, type Immeuble } from './apiPortfolio'
+import { BUILDINGS as IMMEUBLES_DEMO } from './portfolio'
+import { api } from '@/api/client'
+import { useSession } from '@/api/SessionProvider'
 import { hasStoredState, loadState, resetState, saveState } from './persistence'
 
 /**
@@ -53,6 +57,35 @@ interface PortfolioContextValue {
   reset: () => void
   /** `true` si un parcours a été enregistré, donc s'il y a quelque chose à effacer. */
   hasChanges: boolean
+  /**
+   * Unités du compte connecté, quand il est locataire.
+   *
+   * Remplace `CURRENT_TENANT_UNIT`, une constante `'A1'` qui tenait lieu de
+   * session. Elle rendait trois cas ordinaires inexprimables — un locataire de
+   * deux unités, un locataire parti qui consulte ses quittances, une personne
+   * locataire ici et propriétaire ailleurs — et, plus grave, elle serait
+   * devenue introuvable le jour où l'identifiant est un `uuid` : l'écran se
+   * serait vidé sans la moindre erreur.
+   *
+   * En mode serveur, la liste se DÉDUIT des unités reçues : l'API ne rend au
+   * locataire que ses baux, le périmètre est donc déjà calculé là où il ne peut
+   * pas être contourné.
+   */
+  tenantUnitIds: string[]
+  /**
+   * Immeubles du parc.
+   *
+   * Ils venaient d'une constante de module pendant que les unités venaient du
+   * serveur : les identifiants ne se correspondaient plus, donc les cartes
+   * d'occupation affichaient « 0/0 » et la colonne « Immeuble » restait vide.
+   * Rien n'échouait — les deux sources se croisaient sans se rencontrer.
+   */
+  buildings: Immeuble[]
+  buildingById: (id: string) => Immeuble | undefined
+  /** `true` si cette unité relève du compte connecté. */
+  isMine: (unitId: string) => boolean
+  /** `true` quand les données viennent du serveur et non du jeu local. */
+  fromApi: boolean
   worksForUnit: (unitId: string) => WorkOrder[]
   depositForUnit: (unitId: string) => Deposit | undefined
   unitById: (unitId: string) => Unit | undefined
@@ -61,11 +94,47 @@ interface PortfolioContextValue {
 const PortfolioContext = createContext<PortfolioContextValue | null>(null)
 
 export function PortfolioProvider({ children }: { children: ReactNode }) {
+  /**
+   * Deux sources, et une seule à la fois.
+   *
+   * Sans parc — visiteur, ou compte qui n'a rejoint aucun parc — le jeu de
+   * démonstration reste servi depuis le module, exactement comme avant. Avec un
+   * parc, tout vient du serveur.
+   *
+   * Le mélange serait le pire des trois : des unités réelles à côté de
+   * cautions de démonstration, sans que rien à l'écran ne dise laquelle est
+   * laquelle.
+   */
+  const { etat } = useSession()
+  const parkId = etat.statut === 'connecte' ? (etat.adhesions[0]?.parkId ?? null) : null
+  const role = etat.statut === 'connecte' ? (etat.adhesions[0]?.role ?? null) : null
+
   const initial = loadState()
   const [units, setUnits] = useState<Unit[]>(initial.units)
   const [works, setWorks] = useState<WorkOrder[]>(initial.works)
   const [deposits, setDeposits] = useState<Deposit[]>(initial.deposits)
   const [stored, setStored] = useState(hasStoredState)
+  const [fromApi, setFromApi] = useState(false)
+  const [buildings, setBuildings] = useState<Immeuble[]>(IMMEUBLES_DEMO)
+
+  useEffect(() => {
+    if (!parkId) return
+    let annule = false
+    void chargerParc(parkId).then((parc) => {
+      // Une réponse qui arrive après un changement de parc écraserait le
+      // nouveau par l'ancien : la garde est indispensable, et le défaut ne se
+      // reproduirait qu'au ralenti du réseau réel.
+      if (annule) return
+      setBuildings(parc.buildings)
+      setUnits(parc.units)
+      setWorks(parc.works)
+      setDeposits(parc.deposits)
+      setFromApi(true)
+    })
+    return () => {
+      annule = true
+    }
+  }, [parkId])
 
   /**
    * Enregistré à chaque changement d'état plutôt qu'à chaque geste : un seul
@@ -94,24 +163,90 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     setStored(true)
   }, [units, works, deposits])
 
-  const approveWork = useCallback((id: string) => {
-    setWorks((list) => list.map((w) => (w.id === id ? { ...w, status: 'approved' } : w)))
-  }, [])
+  /**
+   * Les mutations écrivent d'abord au serveur, puis rejouent la réponse.
+   *
+   * L'inverse — poser l'état localement puis appeler — donnerait une interface
+   * qui affiche un devis validé que le serveur a refusé. Le refus existe
+   * vraiment : c'est le droit du seul propriétaire, et il est vérifié là-bas.
+   */
+  const approveWork = useCallback(
+    (id: string) => {
+      if (!parkId) {
+        setWorks((list) => list.map((w) => (w.id === id ? { ...w, status: 'approved' } : w)))
+        return
+      }
+      void api
+        .approveWork<{ work: { id: string; status: WorkOrder['status'] } }>(parkId, id)
+        .then(({ work }) => {
+          setWorks((list) => list.map((w) => (w.id === work.id ? { ...w, status: work.status } : w)))
+        })
+    },
+    [parkId],
+  )
 
-  const settleDeposit = useCallback((unitId: string, withheld: number) => {
-    setDeposits((list) =>
-      list.map((d) => (d.unitId === unitId ? { ...d, withheld, status: 'returned' } : d)),
-    )
-  }, [])
+  const settleDeposit = useCallback(
+    (unitId: string, withheld: number, reason?: string) => {
+      const local = () =>
+        setDeposits((list) =>
+          list.map((d) => (d.unitId === unitId ? { ...d, withheld, status: 'returned' } : d)),
+        )
+      const caution = deposits.find((d) => d.unitId === unitId)
+      // Sans identifiant serveur, la caution vient du jeu local.
+      if (!parkId || !caution?.id) {
+        local()
+        return
+      }
+      void api
+        .settleDeposit(parkId, caution.id, {
+          withheldMinor: withheld,
+          ...(reason ? { reason } : {}),
+        })
+        .then(local)
+    },
+    [parkId, deposits],
+  )
 
   const addTenant = useCallback((unitId: string, name: string, phone: string) => {
+    if (parkId) {
+      void api
+        .addTenant(parkId, { unitId, fullName: name, phoneE164: phone.replace(/\s/g, '') })
+        .then(() => chargerParc(parkId))
+        .then((parc) => {
+          // On relit le parc plutôt que de deviner l'état résultant : le
+          // serveur décide du statut du bail, et deux calculs de la même chose
+          // finissent toujours par diverger.
+          setUnits(parc.units)
+          setWorks(parc.works)
+          setDeposits(parc.deposits)
+        })
+      return
+    }
     setUnits((list) =>
       // « En attente » et non « À jour » : le bail commence, la première
       // quittance n'est pas encore due. Marquer le locataire à jour d'un loyer
       // qu'il n'a pas payé fausserait les indicateurs d'encaissement.
       list.map((u) => (u.id === unitId ? { ...u, tenant: name, phone, status: 'pending' } : u)),
     )
-  }, [])
+  }, [parkId])
+
+  /**
+   * Périmètre du locataire.
+   *
+   * En mode serveur il se DÉDUIT : l'API ne rend au locataire que les unités de
+   * ses baux, donc tout ce qui est chargé lui appartient. Le client n'a plus à
+   * connaître son unité — c'est le serveur qui l'a bornée, là où l'on ne peut
+   * pas contourner la règle.
+   */
+  const tenantUnitIds = useMemo(
+    () =>
+      fromApi
+        ? role === 'tenant'
+          ? units.map((u) => u.id)
+          : []
+        : [DEMO_TENANT_UNIT],
+    [fromApi, role, units],
+  )
 
   const [readAlertIds, setReadAlertIds] = useState<string[]>([])
   const markAlertsRead = useCallback((ids: string[]) => {
@@ -143,6 +278,11 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       markAlertsRead,
       reset,
       hasChanges: stored,
+      fromApi,
+      buildings,
+      buildingById: (id: string) => buildings.find((b) => b.id === id),
+      tenantUnitIds,
+      isMine: (unitId: string) => tenantUnitIds.includes(unitId),
       worksForUnit: (unitId) => works.filter((w) => w.unitId === unitId),
       depositForUnit: (unitId) => deposits.find((d) => d.unitId === unitId),
       unitById: (unitId) => units.find((u) => u.id === unitId),

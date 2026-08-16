@@ -11,7 +11,7 @@ import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
 import { useDates } from '@/lib/useDates'
-import { BUILDINGS, COLLECTIONS, KPIS } from '@/data/portfolio'
+import { COLLECTIONS, KPIS } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { workTitle } from '@/data/workTitle'
 import { RecordPaymentModal } from './RecordPaymentModal'
@@ -24,7 +24,7 @@ export function Dashboard() {
   const { money, definition } = useCurrency()
   const exportCsv = useCsvExport()
   const csvMoney = useCsvMoney()
-  const { units, works, unitById } = usePortfolio()
+  const { units, works, unitById, buildings: BUILDINGS } = usePortfolio()
   const [payOpen, setPayOpen] = useState(false)
 
   // Le locataire n'a pas une version filtrée de cet écran : il en a un autre.

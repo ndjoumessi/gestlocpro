@@ -8,8 +8,8 @@ import { EmptyState } from '@/components/primitives/DataTable'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
+import { useNumbers } from '@/lib/numbers'
 import {
-  CURRENT_TENANT_UNIT,
   TENANT_RECEIPTS,
   UTILITY_RATES,
   buildingById,
@@ -32,13 +32,20 @@ export function TenantDashboard() {
   const d = useDates()
   const { money } = useCurrency()
   const downloadReceipt = useReceiptExport()
-  const { worksForUnit, depositForUnit, unitById } = usePortfolio()
+  const { worksForUnit, depositForUnit, unitById, tenantUnitIds } = usePortfolio()
 
-  const unit = unitById(CURRENT_TENANT_UNIT)
+  /**
+   * Cet écran est mono-unité par conception : un locataire y voit SON logement.
+   * Il prend donc la première de ses unités, et c'est une limite assumée — le
+   * modèle en autorise plusieurs, l'écran n'en montre qu'une.
+   */
+  const monUnite = tenantUnitIds[0] ?? ''
+
+  const unit = unitById(monUnite)
   const building = unit ? buildingById(unit.buildingId) : undefined
-  const deposit = depositForUnit(CURRENT_TENANT_UNIT)
-  const reading = readingForUnit(CURRENT_TENANT_UNIT)
-  const works = worksForUnit(CURRENT_TENANT_UNIT)
+  const deposit = depositForUnit(monUnite)
+  const reading = readingForUnit(monUnite)
+  const works = worksForUnit(monUnite)
   const openWorks = works.filter((work) => work.status !== 'done')
 
   if (!unit) return null
@@ -226,13 +233,16 @@ export function TenantRestricted() {
 /** Bandeau réutilisable rappelant le périmètre du locataire. */
 export function TenantScopeNote() {
   const t = useT()
-  // `CURRENT_TENANT_UNIT` tient lieu de session : c'est un identifiant
-  // technique, donc il sert à retrouver l'unité, pas à être lu.
-  const { unitById } = usePortfolio()
+  // Le périmètre vient du provider, qui le tient du serveur. Les identifiants
+  // sont techniques : ils servent à retrouver les unités, jamais à être lus —
+  // d'où le passage par le libellé.
+  const { unitById, tenantUnitIds } = usePortfolio()
+  const n = useNumbers()
+  const libelles = tenantUnitIds.map((id) => unitById(id)?.label).filter(Boolean) as string[]
   return (
     <p className="mb-4 flex items-start gap-2 rounded-md border border-ok-border bg-ok-tint px-3.5 py-2.5 text-body-s text-ok">
       <StatusPill tone="ok" size="sm" icon="shield">
-        {unitById(CURRENT_TENANT_UNIT)?.label}
+        {n.list(libelles)}
       </StatusPill>
       {t('app.tenant.privacyNote')}
     </p>

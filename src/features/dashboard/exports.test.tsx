@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { renderApp, screen, switchRole, userEvent, within } from '@/test/render'
 import { captureDownloads } from '@/test/downloads'
 import { UTF8_BOM } from '@/lib/csv'
-import { CURRENT_TENANT_UNIT, UNITS } from '@/data/portfolio'
+import { DEMO_TENANT_UNIT, UNITS } from '@/data/portfolio'
 
 /**
  * Les contrôles d'export produisent réellement un fichier.
@@ -90,8 +90,8 @@ describe('export des paiements', () => {
     const lignes = file.text.replace(UTF8_BOM, '').trim().split('\r\n').slice(1)
 
     expect(lignes).toHaveLength(1)
-    expect(lignes[0].startsWith(CURRENT_TENANT_UNIT)).toBe(true)
-    for (const autre of UNITS.filter((u) => u.tenant && u.id !== CURRENT_TENANT_UNIT)) {
+    expect(lignes[0].startsWith(DEMO_TENANT_UNIT)).toBe(true)
+    for (const autre of UNITS.filter((u) => u.tenant && u.id !== DEMO_TENANT_UNIT)) {
       expect(file.text).not.toContain(autre.tenant as string)
     }
   })

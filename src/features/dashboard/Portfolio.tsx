@@ -8,13 +8,13 @@ import { Button } from '@/components/primitives/Button'
 import { cn } from '@/lib/cn'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
-import { BUILDINGS, buildingById, type Unit } from '@/data/portfolio'
+import { type Unit } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 
 export function Portfolio() {
   const t = useT()
   const { money } = useCurrency()
-  const { units } = usePortfolio()
+  const { units, buildings: BUILDINGS, buildingById } = usePortfolio()
   const [query, setQuery] = useState('')
   const [building, setBuilding] = useState<string | 'all'>('all')
 

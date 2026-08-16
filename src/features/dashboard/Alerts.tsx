@@ -11,7 +11,7 @@ import { useT, type TranslateVars } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
 import { useNumbers } from '@/lib/numbers'
 import { useCurrency } from '@/currency/CurrencyProvider'
-import { ALERTS, CURRENT_TENANT_UNIT, alertsForUnit, type Alert } from '@/data/portfolio'
+import { ALERTS, type Alert } from '@/data/portfolio'
 
 const KIND_ICON: Record<Alert['kind'], IconName> = {
   payment: 'card',
@@ -86,9 +86,9 @@ export function Alerts() {
    * désormais dans le provider et non ici : la pastille de la barre latérale
    * doit compter les mêmes alertes que cet écran.
    */
-  const { readAlertIds, markAlertsRead } = usePortfolio()
+  const { readAlertIds, markAlertsRead, isMine } = usePortfolio()
 
-  const alerts = (isTenant ? alertsForUnit(CURRENT_TENANT_UNIT) : ALERTS).map((alert) => ({
+  const alerts = (isTenant ? ALERTS.filter((a) => a.unitId && isMine(a.unitId)) : ALERTS).map((alert) => ({
     ...alert,
     read: alert.read || readAlertIds.includes(alert.id),
   }))

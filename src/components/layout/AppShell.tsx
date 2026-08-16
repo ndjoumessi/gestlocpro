@@ -19,7 +19,7 @@ import { useT } from '@/i18n/I18nProvider'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import type { Role } from '@/features/auth/signupState'
 import { usePortfolio } from '@/data/PortfolioProvider'
-import { ALERTS, CURRENT_TENANT_UNIT, alertsForUnit } from '@/data/portfolio'
+import { ALERTS } from '@/data/portfolio'
 
 /* -------------------------------------------------------------------------- */
 /* Rôle actif — pilote ce que la barre latérale montre et ce que les écrans
@@ -362,12 +362,12 @@ function Sidebar({
  * un écran vide.
  */
 function useNavCount(): (key: NonNullable<NavItem['badge']>['count']) => number {
-  const { units, readAlertIds } = usePortfolio()
+  const { units, readAlertIds, isMine } = usePortfolio()
   const { role } = useRole()
 
   return (key) => {
     if (key === 'overdue') return units.filter((u) => u.status === 'overdue').length
-    const scope = role === 'tenant' ? alertsForUnit(CURRENT_TENANT_UNIT) : ALERTS
+    const scope = role === 'tenant' ? ALERTS.filter((a) => a.unitId && isMine(a.unitId)) : ALERTS
     return scope.filter((a) => !a.read && !readAlertIds.includes(a.id)).length
   }
 }

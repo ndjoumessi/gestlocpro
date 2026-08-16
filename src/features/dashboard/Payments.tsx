@@ -8,7 +8,7 @@ import { cn } from '@/lib/cn'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
-import { CURRENT_TENANT_UNIT, KPIS, type Unit } from '@/data/portfolio'
+import { KPIS, type Unit } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { RecordPaymentModal } from './RecordPaymentModal'
 import { TenantScopeNote } from './TenantDashboard'
@@ -28,7 +28,7 @@ export function Payments() {
   const exportCsv = useCsvExport()
   const csvMoney = useCsvMoney()
   const { role } = useRole()
-  const { units } = usePortfolio()
+  const { units, isMine } = usePortfolio()
   const isTenant = role === 'tenant'
   const [filter, setFilter] = useState<PaymentStatus | 'all'>('all')
   const [payOpen, setPayOpen] = useState(false)
@@ -40,9 +40,9 @@ export function Payments() {
     () =>
       units.filter(
         (unit) =>
-          unit.status !== 'vacant' && (role !== 'tenant' || unit.id === CURRENT_TENANT_UNIT),
+          unit.status !== 'vacant' && (role !== 'tenant' || isMine(unit.id)),
       ),
-    [role, units],
+    [role, units, isMine],
   )
   const rows = useMemo(
     () => (filter === 'all' ? leases : leases.filter((unit) => unit.status === filter)),

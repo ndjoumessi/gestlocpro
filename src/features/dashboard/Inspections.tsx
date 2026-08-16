@@ -7,16 +7,16 @@ import { EmptyState } from '@/components/primitives/DataTable'
 import { TenantScopeNote } from './TenantDashboard'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
-import { CURRENT_TENANT_UNIT, INSPECTIONS, inspectionsForUnit } from '@/data/portfolio'
+import { INSPECTIONS } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 
 export function Inspections() {
   const t = useT()
   const d = useDates()
   const { role } = useRole()
-  const { unitById } = usePortfolio()
+  const { unitById, isMine } = usePortfolio()
   const isTenant = role === 'tenant'
-  const source = isTenant ? inspectionsForUnit(CURRENT_TENANT_UNIT) : INSPECTIONS
+  const source = isTenant ? INSPECTIONS.filter((i) => isMine(i.unitId)) : INSPECTIONS
 
   // Regroupé par unité : l'intérêt d'un état des lieux est la comparaison
   // entrée/sortie, pas la liste chronologique.
