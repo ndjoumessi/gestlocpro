@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, switchRole, userEvent } from '@/test/render'
+import { renderApp, screen, switchRole, userEvent, within } from '@/test/render'
 import { UNITS, WORKS } from '@/data/portfolio'
 
 /**
@@ -198,6 +198,36 @@ describe('signalement du portail', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Report' }))
 
     expect(screen.getAllByText(/Report sent to the manager/).length).toBeGreaterThan(0)
+  })
+})
+
+/**
+ * Matrice des droits.
+ *
+ * Le mode par défaut doit montrer le parc tel qu'il est démontré — délégué,
+ * puisque le sélecteur de profil porte un gestionnaire et que deux écrans lui
+ * adressent une note. En mode `solo`, la colonne « Gestionnaire » est
+ * entièrement barrée et l'écran n'enseigne plus rien.
+ */
+describe('délégation des droits', () => {
+  it('montre d’emblée un gestionnaire qui a des droits', () => {
+    renderApp('/app/onboarding', { locale: 'en' })
+    const row = screen.getByRole('row', { name: /Record a payment/ })
+    expect(within(row).getAllByText('Allowed').length).toBe(2)
+  })
+
+  it('refuse au gestionnaire exactement les deux droits d’arbitrage', () => {
+    renderApp('/app/onboarding', { locale: 'en' })
+    for (const action of ['Approve a quote', 'Settle a deposit']) {
+      const row = screen.getByRole('row', { name: new RegExp(action) })
+      // Le propriétaire seul : une autorisation sur les trois colonnes.
+      expect(within(row).getAllByText('Allowed').length).toBe(1)
+    }
+  })
+
+  it('ne promet pas d’inviter depuis un écran sans invitation', () => {
+    renderApp('/app/onboarding', { locale: 'en' })
+    expect(screen.queryByText(/how to invite/i)).not.toBeInTheDocument()
   })
 })
 

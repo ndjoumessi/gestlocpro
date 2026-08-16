@@ -24,17 +24,28 @@ const ROLES: Role[] = ['owner', 'manager', 'tenant']
 export function Onboarding() {
   const t = useT()
   /**
-   * Le défaut suit celui de l'inscription (`initialSignupState`), qui vaut
-   * `solo`. Il valait `delegate` : un propriétaire ayant répondu « je gère
-   * seul » arrivait sur un écran affichant l'inverse de sa réponse.
+   * Le défaut suit l'état du parc démontré, qui **est** délégué : le sélecteur
+   * de profil porte « Gestionnaire délégué · Diane F. », et deux écrans lui
+   * adressent une note expliquant ce qu'il ne peut pas décider.
    *
-   * L'aligner ne fait que supprimer la contradiction par défaut — la réponse
-   * réelle reste hors de portée. `SignupState` vit dans le parcours
-   * d'inscription, n'est ni partagé ni enregistré, et le produit n'a pas encore
-   * d'authentification pour le rattacher à un compte. Le jour où ce lien
-   * existera, c'est ici qu'il se branche.
+   * Il avait un temps été aligné sur le défaut du formulaire d'inscription
+   * (`solo`), pour éviter qu'un propriétaire ayant répondu « je gère seul » ne
+   * voie l'inverse de sa réponse. C'était se tromper de contradiction : cette
+   * réponse n'est jamais transmise — `SignupState` vit dans le parcours
+   * d'inscription, n'est ni partagé ni enregistré, et il n'y a pas encore
+   * d'authentification pour le rattacher à un compte. Le désaccord corrigé
+   * était donc hypothétique, tandis que le coût était réel : en mode `solo`,
+   * la colonne « Gestionnaire » est entièrement barrée, et un écran intitulé
+   * « délégation des droits » n'enseigne plus rien à qui l'ouvre.
+   *
+   * En mode délégué, les deux seules lignes refusées au gestionnaire sont
+   * valider un devis et arbitrer une caution — précisément la règle appliquée
+   * dans `Works` et `Deposits`. C'est ce que l'écran doit montrer d'emblée.
+   *
+   * Le jour où la réponse d'inscription sera réellement portée jusqu'ici,
+   * c'est cette ligne qui la lira.
    */
-  const [mode, setMode] = useState<'solo' | 'delegate'>('solo')
+  const [mode, setMode] = useState<'solo' | 'delegate'>('delegate')
 
   return (
     <>
