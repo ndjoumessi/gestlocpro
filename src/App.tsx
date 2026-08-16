@@ -34,6 +34,41 @@ function Restricted({ allow, children }: { allow: Role[]; children: ReactNode })
   )
 }
 
+/**
+ * Les écrans de l'application, montés sous DEUX adresses.
+ *
+ * `/app` pour un vrai espace, `/demo` pour la démonstration. Une seule
+ * définition : deux listes de routes finiraient par diverger, et la
+ * démonstration cesserait silencieusement de montrer ce que le produit fait.
+ */
+function ecransDeLApplication() {
+  return (
+    <>
+      <Route index element={<Dashboard />} />
+      {/* Écrans partagés : chacun applique son propre filtrage par rôle. */}
+      <Route path="paiements" element={<Payments />} />
+      <Route path="etats-des-lieux" element={<Inspections />} />
+      <Route path="travaux" element={<Works />} />
+      <Route path="signalements" element={<Alerts />} />
+
+      {/* Écrans de gestion : la même liste de rôles que dans la barre
+          latérale, pour que navigation et accès ne divergent pas. */}
+      <Route path="parc" element={<Restricted allow={['owner', 'manager']}><Portfolio /></Restricted>} />
+      <Route path="releves" element={<Restricted allow={['owner', 'manager']}><Meters /></Restricted>} />
+      <Route path="cautions" element={<Restricted allow={['owner', 'manager']}><Deposits /></Restricted>} />
+      <Route path="locataires" element={<Restricted allow={['owner', 'manager']}><Tenants /></Restricted>} />
+      <Route path="onboarding" element={<Restricted allow={['owner']}><Onboarding /></Restricted>} />
+
+      <Route path="systeme" element={<SystemStates />} />
+      <Route path="portail" element={<TenantPortal />} />
+
+      {/* Écran inconnu sous /app : la coque et sa barre latérale restent
+          affichées, puisqu'elles listent justement les écrans qui existent. */}
+      <Route path="*" element={<NotFoundInApp />} />
+    </>
+  )
+}
+
 export function App() {
   return (
     <Routes>
@@ -44,9 +79,6 @@ export function App() {
           de rôle est alors sautée, mais reste atteignable par « Retour ». */}
       <Route path="/inscription/:role" element={<SignUp />} />
       <Route path="/connexion" element={<Login />} />
-      {/* Entrée dans la démonstration : marque la visite puis renvoie vers
-          `/app`, que la barrière laisse alors passer sans compte. */}
-      <Route path="/demo" element={<Demo />} />
       <Route path="/mot-de-passe-oublie" element={<ForgotPassword />} />
       <Route path="/reinitialiser" element={<ResetPassword />} />
 
@@ -62,27 +94,15 @@ export function App() {
           </RequireAuth>
         }
       >
-        <Route index element={<Dashboard />} />
-        {/* Écrans partagés : chacun applique son propre filtrage par rôle. */}
-        <Route path="paiements" element={<Payments />} />
-        <Route path="etats-des-lieux" element={<Inspections />} />
-        <Route path="travaux" element={<Works />} />
-        <Route path="signalements" element={<Alerts />} />
+        {ecransDeLApplication()}
+      </Route>
 
-        {/* Écrans de gestion : la même liste de rôles que dans la barre
-            latérale, pour que navigation et accès ne divergent pas. */}
-        <Route path="parc" element={<Restricted allow={['owner', 'manager']}><Portfolio /></Restricted>} />
-        <Route path="releves" element={<Restricted allow={['owner', 'manager']}><Meters /></Restricted>} />
-        <Route path="cautions" element={<Restricted allow={['owner', 'manager']}><Deposits /></Restricted>} />
-        <Route path="locataires" element={<Restricted allow={['owner', 'manager']}><Tenants /></Restricted>} />
-        <Route path="onboarding" element={<Restricted allow={['owner']}><Onboarding /></Restricted>} />
-
-        <Route path="systeme" element={<SystemStates />} />
-        <Route path="portail" element={<TenantPortal />} />
-
-        {/* Écran inconnu sous /app : la coque et sa barre latérale restent
-            affichées, puisqu'elles listent justement les écrans qui existent. */}
-        <Route path="*" element={<NotFoundInApp />} />
+      {/* La démonstration porte sa propre adresse.
+          Elle a d'abord vécu sous `/app`, signalée par un bandeau — et l'auteur
+          du produit l'a prise deux fois pour son espace dans la même
+          après-midi. Un avertissement se lit ; une adresse se regarde. */}
+      <Route path="/demo" element={<Demo />}>
+        {ecransDeLApplication()}
       </Route>
 
       <Route path="/kitchen-sink" element={<KitchenSink />} />

@@ -1,4 +1,5 @@
 import { PageHeader } from '@/components/layout/AppShell'
+import { lien, useBase } from '@/lib/base'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
 import { Icon } from '@/components/primitives/Icon'
@@ -27,6 +28,7 @@ import { useReceiptExport } from './receiptExport'
  * données proviennent de sa seule unité — le parc n'est jamais interrogé.
  */
 export function TenantDashboard() {
+  const base = useBase()
   const t = useT()
   const d = useDates()
   const { money } = useCurrency()
@@ -60,7 +62,7 @@ export function TenantDashboard() {
         title={t('app.tenant.title')}
         description={t('app.tenant.subtitle')}
         actions={
-          <Button icon="bell" to="/app/signalements">
+          <Button icon="bell" to={lien(base, 'signalements')}>
             {t('app.tenant.contactManager')}
           </Button>
         }
@@ -160,7 +162,7 @@ export function TenantDashboard() {
                 ))}
               </ul>
             )}
-            <Button variant="ghost" to="/app/travaux" iconAfter="chevronRight" className="mt-4 -ml-3.5">
+            <Button variant="ghost" to={lien(base, 'travaux')} iconAfter="chevronRight" className="mt-4 -ml-3.5">
               {t('nav.works')}
             </Button>
           </Card>
@@ -181,7 +183,7 @@ export function TenantDashboard() {
                 </p>
               </div>
             </div>
-            <Button variant="gold" to="/app/signalements" className="mt-4" fullWidth>
+            <Button variant="gold" to={lien(base, 'signalements')} className="mt-4" fullWidth>
               {t('app.tenant.contactManager')}
             </Button>
           </Card>
@@ -208,6 +210,7 @@ export function TenantDashboard() {
  * silence — une redirection muette passe pour un bug.
  */
 export function TenantRestricted() {
+  const base = useBase()
   const t = useT()
 
   return (
@@ -220,7 +223,7 @@ export function TenantRestricted() {
         title={t('app.tenant.restricted')}
         body={t('app.tenant.restrictedHint')}
         action={
-          <Button to="/app" icon="chevronLeft">
+          <Button to={base} icon="chevronLeft">
             {t('app.tenant.backToSpace')}
           </Button>
         }

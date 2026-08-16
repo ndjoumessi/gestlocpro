@@ -58,10 +58,9 @@ describe('parcourir la démonstration', () => {
     // dans le même document, et la requête trouverait deux tableaux de bord.
     cleanup()
 
-    // Second montage, comme après un rechargement : l'adresse `/app` est
-    // demandée directement, sans repasser par `/demo`.
+    // Second montage, comme après un rechargement de `/demo`.
     installerFauxServeur({ authentifie: false })
-    renderApp('/app', { session: null })
+    renderApp('/demo', { session: null })
     expect(await screen.findByRole('heading', { level: 1, name: /vue consolidée/i })).toBeInTheDocument()
   })
 
@@ -73,6 +72,32 @@ describe('parcourir la démonstration', () => {
     renderApp('/app/cautions', { session: SESSION_ANONYME })
     expect(await screen.findByText(/content de vous revoir/i)).toBeInTheDocument()
     expect(screen.queryByRole('heading', { level: 1, name: /cautions/i })).not.toBeInTheDocument()
+  })
+
+  it('refuse /app à une visite de démonstration', async () => {
+    /**
+     * L'adresse ne doit jamais mentir dans l'autre sens non plus.
+     *
+     * Tant que la démonstration passait la barrière, l'application s'affichait
+     * sous `/app` avec des données fictives : l'adresse annonçait un espace
+     * réel, le contenu y ressemblait, et seul un bandeau disait le contraire.
+     * L'auteur du produit s'y est trompé deux fois.
+     */
+    installerFauxServeur({ authentifie: false })
+    renderApp('/app', { session: { statut: 'demo' } })
+
+    expect(await screen.findByText(/content de vous revoir/i)).toBeInTheDocument()
+    expect(screen.queryByText(/sont fictifs/i)).not.toBeInTheDocument()
+  })
+
+  it('garde l’adresse /demo, qui est le signe le plus lisible', async () => {
+    // Le bandeau se lit ; l'adresse se regarde. C'est la seule différence que
+    // l'on constate sans avoir rien à lire.
+    installerFauxServeur({ authentifie: false })
+    renderApp('/demo/cautions', { session: { statut: 'demo' } })
+
+    expect(await screen.findByRole('heading', { level: 1, name: /cautions/i })).toBeInTheDocument()
+    expect(await screen.findByText(/sont fictifs/i)).toBeInTheDocument()
   })
 
   it('ne montre pas le bandeau à un compte réel', async () => {

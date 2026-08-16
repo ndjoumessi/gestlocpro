@@ -20,6 +20,7 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import type { Role } from '@/features/auth/signupState'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { useSession } from '@/api/SessionProvider'
+import { lien, useBase } from '@/lib/base'
 
 
 /* -------------------------------------------------------------------------- */
@@ -41,6 +42,13 @@ export function useRole() {
 /* -------------------------------------------------------------------------- */
 
 interface NavItem {
+  /**
+   * Chemin RELATIF à la base — `'parc'`, et `''` pour le tableau de bord.
+   *
+   * Absolu auparavant (`/app/parc`), il enfermait la navigation dans une seule
+   * adresse : la démonstration ne pouvait pas vivre ailleurs sans que chaque
+   * lien la ramène dans l'espace réel.
+   */
   to: string
   labelKey: string
   icon: IconName
@@ -61,43 +69,43 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
   {
     headingKey: 'nav.sectionSteering',
     items: [
-      { to: '/app', labelKey: 'nav.dashboard', icon: 'grid' },
-      { to: '/app/parc', labelKey: 'nav.portfolio', icon: 'building', roles: ['owner', 'manager'] },
+      { to: '', labelKey: 'nav.dashboard', icon: 'grid' },
+      { to: 'parc', labelKey: 'nav.portfolio', icon: 'building', roles: ['owner', 'manager'] },
     ],
   },
   {
     headingKey: 'nav.sectionOperations',
     items: [
       {
-        to: '/app/paiements',
+        to: 'paiements',
         labelKey: 'nav.payments',
         icon: 'card',
         badge: { count: 'overdue', tone: 'danger' },
       },
-      { to: '/app/releves', labelKey: 'nav.meters', icon: 'gauge', roles: ['owner', 'manager'] },
-      { to: '/app/etats-des-lieux', labelKey: 'nav.inspections', icon: 'clipboard' },
-      { to: '/app/travaux', labelKey: 'nav.works', icon: 'wrench' },
-      { to: '/app/cautions', labelKey: 'nav.deposits', icon: 'shield', roles: ['owner', 'manager'] },
+      { to: 'releves', labelKey: 'nav.meters', icon: 'gauge', roles: ['owner', 'manager'] },
+      { to: 'etats-des-lieux', labelKey: 'nav.inspections', icon: 'clipboard' },
+      { to: 'travaux', labelKey: 'nav.works', icon: 'wrench' },
+      { to: 'cautions', labelKey: 'nav.deposits', icon: 'shield', roles: ['owner', 'manager'] },
     ],
   },
   {
     headingKey: 'nav.sectionAdmin',
     items: [
-      { to: '/app/locataires', labelKey: 'nav.tenants', icon: 'users', roles: ['owner', 'manager'] },
+      { to: 'locataires', labelKey: 'nav.tenants', icon: 'users', roles: ['owner', 'manager'] },
       {
-        to: '/app/signalements',
+        to: 'signalements',
         labelKey: 'nav.alerts',
         icon: 'bell',
         badge: { count: 'unreadAlerts', tone: 'onDark' },
       },
-      { to: '/app/onboarding', labelKey: 'nav.onboarding', icon: 'info', roles: ['owner'] },
+      { to: 'onboarding', labelKey: 'nav.onboarding', icon: 'info', roles: ['owner'] },
     ],
   },
 ]
 
 const FOOTER_ITEMS: NavItem[] = [
-  { to: '/app/portail', labelKey: 'nav.tenantPortal', icon: 'monitor' },
-  { to: '/app/systeme', labelKey: 'nav.system', icon: 'layers' },
+  { to: 'portail', labelKey: 'nav.tenantPortal', icon: 'monitor' },
+  { to: 'systeme', labelKey: 'nav.system', icon: 'layers' },
 ]
 
 /**
@@ -304,6 +312,7 @@ function Sidebar({
 }) {
   const t = useT()
   const wide = !railed
+  const base = useBase()
 
   const { parc, nom, demo } = useIdentite()
 
@@ -344,9 +353,9 @@ function Sidebar({
     >
       <div className="flex items-center gap-2 px-1.5">
         {wide ? (
-          <Logo tone="dark" caption={parc ?? undefined} to="/app" />
+          <Logo tone="dark" caption={parc ?? undefined} to={base} />
         ) : (
-          <Logo tone="dark" markOnly to="/app" />
+          <Logo tone="dark" markOnly to={base} />
         )}
         <IconButton
           icon="menu"
@@ -462,13 +471,16 @@ function SidebarLink({ item, wide }: { item: NavItem; wide: boolean }) {
   const t = useT()
   const label = t(item.labelKey as 'nav.dashboard')
   const count = useNavCount()
+  const base = useBase()
 
   return (
     <NavLink
-      to={item.to}
-      // `end` sur /app seulement : sinon le tableau de bord resterait actif
-      // sur toutes les sous-routes.
-      end={item.to === '/app'}
+      to={lien(base, item.to)}
+      // `end` sur le tableau de bord seulement : sinon il resterait actif sur
+      // toutes les sous-routes. Le chemin étant relatif, la comparaison porte
+      // désormais sur la chaîne vide et non sur `/app` — elle vaut donc pour
+      // les deux adresses.
+      end={item.to === ''}
       title={wide ? undefined : label}
       className={({ isActive }) =>
         cn(
@@ -497,6 +509,7 @@ function SidebarLink({ item, wide }: { item: NavItem; wide: boolean }) {
 function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
   const t = useT()
   const location = useLocation()
+  const base = useBase()
   const { parc } = useIdentite()
 
   // Repli sur « Écran introuvable » et non sur le tableau de bord : toute
@@ -504,7 +517,7 @@ function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
   // tableau de bord dans le fil situerait l'utilisateur là où il n'est pas.
   const crumb =
     [...SECTIONS.flatMap((s) => s.items), ...FOOTER_ITEMS].find(
-      (item) => item.to === location.pathname,
+      (item) => lien(base, item.to) === location.pathname,
     )?.labelKey ?? 'notFound.appTitle'
 
   return (

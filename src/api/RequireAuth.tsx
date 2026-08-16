@@ -29,23 +29,18 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   }
 
   /**
-   * La démonstration passe.
+   * La démonstration NE passe PAS ici — elle a son adresse.
    *
-   * La page d'accueil promet « Parcourir la démonstration » sans compte, et
-   * cette barrière l'a longtemps démentie : le visiteur atterrissait sur une
-   * page de connexion intitulée « Content de vous revoir », alors qu'il n'était
-   * jamais venu. Une promesse commerciale que le produit contredit vaut moins
-   * que pas de promesse du tout.
+   * Elle a d'abord traversé cette barrière, et l'application s'affichait alors
+   * sous `/app` avec des données fictives. L'auteur du produit s'y est trompé
+   * deux fois dans la même après-midi : l'adresse annonçait son espace, le
+   * contenu ressemblait à son espace, seul un bandeau disait le contraire.
    *
-   * Aucun droit n'est accordé pour autant : le serveur ne connaît pas cet état
-   * et refuse toute requête authentifiée. Les données affichées sont le jeu de
-   * démonstration, qui n'appartient à personne.
+   * `/app` signifie donc « un vrai compte », sans exception. Un visiteur en
+   * démonstration qui atteint cette adresse est renvoyé à la connexion comme
+   * n'importe quel anonyme — ce qu'il est.
    */
-  if (etat.statut === 'demo') {
-    return <>{children}</>
-  }
-
-  if (etat.statut === 'anonyme') {
+  if (etat.statut === 'anonyme' || etat.statut === 'demo') {
     /**
      * L'adresse demandée voyage dans l'état de navigation.
      *

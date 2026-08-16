@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { lien, useBase } from '@/lib/base'
 import { Link } from 'react-router-dom'
 import { PageHeader, useRole } from '@/components/layout/AppShell'
 import { Card, CardHeader } from '@/components/primitives/Card'
@@ -17,6 +18,7 @@ import { RecordPaymentModal } from './RecordPaymentModal'
 import { TenantDashboard } from './TenantDashboard'
 
 export function Dashboard() {
+  const base = useBase()
   const t = useT()
   const d = useDates()
   const { role } = useRole()
@@ -223,7 +225,7 @@ export function Dashboard() {
               ))}
             </ul>
           )}
-          <Button variant="ghost" to="/app/travaux" iconAfter="chevronRight" className="mt-4 -ml-3.5">
+          <Button variant="ghost" to={lien(base, 'travaux')} iconAfter="chevronRight" className="mt-4 -ml-3.5">
             {t('nav.works')}
           </Button>
         </Card>
@@ -245,7 +247,7 @@ export function Dashboard() {
           </ul>
           <Button
             variant="ghost"
-            to="/app/paiements"
+            to={lien(base, 'paiements')}
             iconAfter="chevronRight"
             className="mt-4 -ml-3.5"
           >
@@ -270,7 +272,7 @@ export function Dashboard() {
               return (
                 <li key={building.id}>
                   <Link
-                    to="/app/parc"
+                    to={lien(base, 'parc')}
                     className="flex items-center gap-3 rounded-md py-1 no-underline"
                   >
                     <span className="min-w-0 flex-1">
