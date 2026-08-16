@@ -34,6 +34,30 @@ export function Modal({
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const openerRef = useRef<Element | null>(null)
+
+  /**
+   * `onClose` retenu dans une référence, et NON dans les dépendances.
+   *
+   * L'effet ci-dessous ouvre la modale : il masque le défilement, place le
+   * focus sur le premier champ, et — au nettoyage — le rend au bouton
+   * d'ouverture. Le lier à l'identité de `onClose` le faisait rejouer à chaque
+   * fois qu'un appelant recréait sa fonction, c'est-à-dire à chaque rendu pour
+   * une fonction écrite en ligne.
+   *
+   * Conséquence observée, et coûteuse à trouver : un champ contrôlé n'acceptait
+   * QU'UN caractère. La première frappe changeait l'état, le rendu recréait
+   * `onClose`, l'effet se nettoyait et **rendait le focus au bouton
+   * d'ouverture** — les frappes suivantes partaient dans le vide. Un champ non
+   * contrôlé, lui, ne déclenchait aucun rendu et fonctionnait parfaitement :
+   * c'est ce contraste qui a fini par désigner le coupable.
+   *
+   * La modale des locataires y échappait par chance : son `onClose` vient du
+   * parent, qui ne se rend pas pendant la saisie. Une correction chez
+   * l'appelant n'aurait donc protégé que lui, et le prochain appelant serait
+   * retombé dedans.
+   */
+  const fermetureRef = useRef(onClose)
+  fermetureRef.current = onClose
   const t = useT()
 
   const focusables = useCallback(() => {
@@ -62,7 +86,7 @@ export function Modal({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.stopPropagation()
-        onClose()
+        fermetureRef.current()
         return
       }
       if (event.key !== 'Tab') return
@@ -91,7 +115,7 @@ export function Modal({
       document.body.style.overflow = previousOverflow
       ;(openerRef.current as HTMLElement | null)?.focus?.()
     }
-  }, [open, onClose, focusables])
+  }, [open, focusables])
 
   if (!open) return null
 
