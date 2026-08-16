@@ -5,6 +5,7 @@ import { Stepper } from '@/features/auth/Stepper'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
 import { Input, PasswordInput, PasswordStrength, Select } from '@/components/primitives/Input'
+import { Combobox } from '@/components/primitives/Combobox'
 import { Checkbox, RadioCards } from '@/components/primitives/Choice'
 import { Icon } from '@/components/primitives/Icon'
 import { Card } from '@/components/primitives/Card'
@@ -364,45 +365,22 @@ export function SignUp() {
                       pays avant l'indicatif, et « Cameroun · +237 » ne tient
                       pas dans la largeur d'un nombre à quatre caractères. */}
                   <div className="w-44 shrink-0">
-                    <Select
+                    <Combobox
                       aria-label={t('common.dialCode')}
-                      /**
-                       * `tel-country-code` forme un COUPLE avec le
-                       * `tel-national` du champ voisin.
-                       *
-                       * Sans lui, le navigateur remplit le numéro et laisse
-                       * l'indicatif tel quel : un Camerounais dont le carnet
-                       * porte « 677 21 44 08 » se retrouve avec « +33 677 21 44
-                       * 08 », c'est-à-dire un numéro français qui n'existe pas.
-                       * Les deux champs ne se remplissent correctement que
-                       * nommés ensemble.
-                       */
                       autoComplete="tel-country-code"
+                      /**
+                       * Deux cent cinquante indicatifs : un menu déroulant
+                       * n'est plus parcourable. Taper « cam » ou « 237 » mène
+                       * au Cameroun.
+                       */
+                      options={dialOptions(locale).map(({ dial, label, zone }) => ({
+                        value: dial,
+                        label,
+                        groupe: t(zone === 'cfa' ? 'common.dialZoneCfa' : 'common.dialZoneOther'),
+                      }))}
                       value={state.dial}
-                      onChange={(e) => patch({ dial: e.target.value })}
-                    >
-                      {/* Deux groupes nommés plutôt qu'une liste continue : le
-                          nom du groupe dit POURQUOI ces pays sont en tête, ce
-                          qu'un simple ordre ne dit pas. Sans cela, un
-                          utilisateur croit à un classement arbitraire et
-                          cherche quand même le sien alphabétiquement. */}
-                      {(['cfa', 'autre'] as const).map((zone) => {
-                        const options = dialOptions(locale).filter((o) => o.zone === zone)
-                        if (options.length === 0) return null
-                        return (
-                          <optgroup
-                            key={zone}
-                            label={t(zone === 'cfa' ? 'common.dialZoneCfa' : 'common.dialZoneOther')}
-                          >
-                            {options.map(({ dial, label }) => (
-                              <option key={dial} value={dial}>
-                                {label}
-                              </option>
-                            ))}
-                          </optgroup>
-                        )
-                      })}
-                    </Select>
+                      onChange={(dial: string) => patch({ dial })}
+                    />
                   </div>
                   <Input
                     {...props}
