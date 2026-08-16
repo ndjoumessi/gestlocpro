@@ -319,12 +319,15 @@ export const fr = {
       vacantUnits: '{count} unités vacantes',
       vacantUnits_one: '{count} unité vacante',
       chartTitle: 'Encaissements sur 12 mois',
+      chartTableCaption:
+        'Chiffres mensuels derrière le graphique, ventilés en loyer, eau et électricité.',
       chartNote:
         'Montants encaissés par mois, ventilés entre loyer, eau et électricité. Le mois en cours est encore ouvert.',
       // Portée dans l'infobulle de la dernière colonne : sans elle, le creux
       // du mois courant se lit comme une chute d'encaissement.
       openMonth: 'Mois en cours, encore ouvert.',
       recoveryTitle: 'Recouvrement du mois',
+      recoveryTableCaption: 'Montants derrière le graphique, ventilés par statut de règlement.',
       recoveryCollected: 'Payé',
       recoveryPartial: 'Partiel',
       recoveryLate: 'En retard',

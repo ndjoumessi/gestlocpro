@@ -102,8 +102,12 @@ export function Dashboard() {
       <div className="mt-4 grid gap-4 xl:grid-cols-[1.6fr_1fr]">
         <Card>
           <CardHeader title={t('app.dashboard.chartTitle')} level={2} />
+          {/* La légende répétait le titre visible : un lecteur d'écran
+              entendait « Collections over 12 months » deux fois de suite. Elle
+              porte maintenant ce que le titre ne dit pas — la nature du
+              tableau, qui est l'équivalent textuel du graphique. */}
           <StackedBarChart
-            caption={t('app.dashboard.chartTitle')}
+            caption={t('app.dashboard.chartTableCaption')}
             target={KPIS.expected}
             targetLabel={t('app.dashboard.expected')}
             seriesLabels={{
@@ -128,7 +132,7 @@ export function Dashboard() {
         <Card>
           <CardHeader title={t('app.dashboard.recoveryTitle')} level={2} />
           <DonutChart
-            caption={t('app.dashboard.recoveryTitle')}
+            caption={t('app.dashboard.recoveryTableCaption')}
             centerValue={`${collectedShare} %`}
             centerLabel={t('app.dashboard.recoveryCollected')}
             slices={[

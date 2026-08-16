@@ -304,10 +304,12 @@ export const en: Dictionary = {
       vacantUnits: '{count} vacant units',
       vacantUnits_one: '{count} vacant unit',
       chartTitle: 'Collections over 12 months',
+      chartTableCaption: 'Monthly figures behind the chart, split by rent, water and electricity.',
       chartNote:
         'Amounts collected per month, split between rent, water and electricity. The current month is still open.',
       openMonth: 'Current month, still open.',
       recoveryTitle: 'Recovery this month',
+      recoveryTableCaption: 'Amounts behind the chart, split by payment status.',
       recoveryCollected: 'Paid',
       recoveryPartial: 'Partial',
       recoveryLate: 'Overdue',
