@@ -7,6 +7,7 @@ import { I18nProvider } from './i18n/I18nProvider'
 import { CurrencyProvider } from './currency/CurrencyProvider'
 import { ToastProvider } from './components/primitives/Toast'
 import { PortfolioProvider } from './data/PortfolioProvider'
+import { SessionProvider } from './api/SessionProvider'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -14,9 +15,13 @@ createRoot(document.getElementById('root')!).render(
       <I18nProvider>
         <CurrencyProvider>
           <ToastProvider>
-            <PortfolioProvider>
-              <App />
-            </PortfolioProvider>
+            {/* Au-dessus du parc : celui-ci lira à terme les données du compte
+                connecté, là où il sert encore un jeu de démonstration commun. */}
+            <SessionProvider>
+              <PortfolioProvider>
+                <App />
+              </PortfolioProvider>
+            </SessionProvider>
           </ToastProvider>
         </CurrencyProvider>
       </I18nProvider>

@@ -126,8 +126,12 @@ export const fr = {
       submit: 'Se connecter',
       remember: 'Rester connecté sur cet appareil',
       success: 'Connexion réussie — bienvenue.',
-      demoNotice:
-        'L’authentification n’est pas encore branchée : le formulaire valide la saisie, puis ouvre le tableau de bord.',
+      // Un seul message pour « compte inconnu » et « mot de passe faux » : les
+      // distinguer ferait du formulaire un oracle d'existence de comptes, et
+      // l'API refuse déjà de le dire.
+      errorCredentials: 'Adresse e-mail ou mot de passe incorrect.',
+      errorOffline: 'Le serveur est injoignable. Vérifiez votre connexion et réessayez.',
+      errorUnexpected: 'La connexion a échoué. Réessayez dans un instant.',
     },
 
     forgot: {
@@ -219,6 +223,11 @@ export const fr = {
 
       terms: 'J’accepte les conditions générales et la politique de confidentialité.',
       termsError: 'Vous devez accepter les conditions pour créer votre compte.',
+      // Posée sur le champ e-mail, à l'étape « Vos informations » : l'afficher
+      // sur le récapitulatif la mettrait là où le champ n'existe pas.
+      emailTaken: 'Un compte existe déjà avec cette adresse. Connectez-vous, ou utilisez-en une autre.',
+      errorOffline: 'Le serveur est injoignable. Vos réponses sont conservées : réessayez.',
+      errorUnexpected: 'La création du compte a échoué. Vos réponses sont conservées : réessayez.',
       newsletter: 'Recevoir les nouveautés produit (une fois par trimestre, sans revente de données).',
 
       submit: 'Créer mon espace',

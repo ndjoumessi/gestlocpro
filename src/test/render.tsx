@@ -7,6 +7,7 @@ import { I18nProvider } from '@/i18n/I18nProvider'
 import { CurrencyProvider } from '@/currency/CurrencyProvider'
 import { ToastProvider } from '@/components/primitives/Toast'
 import { PortfolioProvider } from '@/data/PortfolioProvider'
+import { SessionProvider } from '@/api/SessionProvider'
 import type { Role } from '@/features/auth/signupState'
 import type { Locale } from '@/i18n/locales'
 import type { CurrencyCode } from '@/currency/currencies'
@@ -43,9 +44,11 @@ export function renderApp(
       <I18nProvider>
         <CurrencyProvider>
           <ToastProvider>
-            <PortfolioProvider>
-              <App />
-            </PortfolioProvider>
+            <SessionProvider>
+              <PortfolioProvider>
+                <App />
+              </PortfolioProvider>
+            </SessionProvider>
           </ToastProvider>
         </CurrencyProvider>
       </I18nProvider>
@@ -67,7 +70,9 @@ export function renderWithProviders(
       <I18nProvider>
         <CurrencyProvider>
           <ToastProvider>
-            <PortfolioProvider>{ui}</PortfolioProvider>
+            <SessionProvider>
+              <PortfolioProvider>{ui}</PortfolioProvider>
+            </SessionProvider>
           </ToastProvider>
         </CurrencyProvider>
       </I18nProvider>

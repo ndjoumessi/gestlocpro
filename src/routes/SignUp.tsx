@@ -8,7 +8,9 @@ import { Input, PasswordInput, PasswordStrength, Select } from '@/components/pri
 import { Checkbox, RadioCards } from '@/components/primitives/Choice'
 import { Icon } from '@/components/primitives/Icon'
 import { Card } from '@/components/primitives/Card'
-import { useI18n, useT } from '@/i18n/I18nProvider'
+import { useI18n, useT, type MessageKey } from '@/i18n/I18nProvider'
+import { ApiError, NetworkError } from '@/api/client'
+import { useSession } from '@/api/SessionProvider'
 import { LOCALES, LOCALE_LABELS } from '@/i18n/locales'
 import type { Locale } from '@/i18n/locales'
 import { useCurrency } from '@/currency/CurrencyProvider'
@@ -56,6 +58,7 @@ export function SignUp() {
   const t = useT()
   const { locale, setLocale, setRegion } = useI18n()
   const { currency, setCurrency } = useCurrency()
+  const { inscrire } = useSession()
   const { role: roleSlug } = useParams()
 
   const presetRole = roleSlug ? (SLUG_TO_ROLE[roleSlug] ?? null) : null
@@ -68,6 +71,8 @@ export function SignUp() {
   const [touched, setTouched] = useState<Record<string, boolean>>({})
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
+  /** Échec de l'appel, distinct des erreurs de saisie champ par champ. */
+  const [echec, setEchec] = useState<MessageKey | null>(null)
 
   const step: StepKey = STEP_KEYS[stepIndex]
   const patch = (values: Partial<SignupState>) => setState((s) => ({ ...s, ...values }))
@@ -103,6 +108,55 @@ export function SignUp() {
     return { terms: state.terms ? null : 'auth.signup.termsError' }
   }
 
+  /**
+   * Crée réellement le compte.
+   *
+   * L'assistant validait neuf champs puis faisait `setDone(true)` : le mot de
+   * passe, l'acceptation des conditions, le pays, la langue, le nom du parc —
+   * tout était jeté à la dernière étape. Le succès affiché ne recouvrait rien.
+   */
+  const creerLeCompte = async () => {
+    setSubmitting(true)
+    setEchec(null)
+    try {
+      await inscrire({
+        email: state.email.trim(),
+        password: state.password,
+        fullName: state.name.trim(),
+        // Le couple indicatif + numéro devient un E.164 unique : c'est la forme
+        // que le serveur exige, et la seule qui se compose sans ambiguïté.
+        ...(state.phone.trim()
+          ? { phoneE164: `${state.dial}${state.phone.replace(/\D/g, '')}` }
+          : {}),
+        ...(state.country ? { countryCode: state.country } : {}),
+        locale,
+        acceptTerms: true,
+        newsletterOptIn: state.newsletter,
+      })
+      setDone(true)
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        /**
+         * L'adresse est déjà prise : on ramène à l'étape « Vos informations ».
+         *
+         * Afficher l'erreur sur le récapitulatif la poserait là où le champ
+         * n'existe pas — l'utilisateur lirait le problème sans pouvoir le
+         * corriger, et devrait deviner qu'il faut revenir en arrière.
+         */
+        setErrors((s) => ({ ...s, email: 'auth.signup.emailTaken' }))
+        setTouched((s) => ({ ...s, email: true }))
+        setStepIndex(STEP_KEYS.indexOf('identity'))
+        window.scrollTo({ top: 0 })
+        return
+      }
+      setEchec(
+        err instanceof NetworkError ? 'auth.signup.errorOffline' : 'auth.signup.errorUnexpected',
+      )
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const goNext = () => {
     if (step === 'role' && !state.role) return
 
@@ -117,11 +171,7 @@ export function SignUp() {
     }
 
     if (step === 'review') {
-      setSubmitting(true)
-      window.setTimeout(() => {
-        setSubmitting(false)
-        setDone(true)
-      }, 800)
+      void creerLeCompte()
       return
     }
 
@@ -375,6 +425,19 @@ export function SignUp() {
 
         {step === 'review' && (
           <ReviewStep state={state} errorFor={errorFor} patch={patch} onEdit={setStepIndex} />
+        )}
+
+        {/* Annoncé et non seulement affiché : sans `role="alert"`, un
+            utilisateur de lecteur d'écran entend la fin du chargement du bouton
+            et rien d'autre — l'assistant semble n'avoir rien fait. */}
+        {echec && (
+          <p
+            role="alert"
+            className="flex items-start gap-2 rounded-md border border-danger-border bg-danger-tint px-3.5 py-3 text-body-s text-danger"
+          >
+            <Icon name="alert" size={15} className="mt-0.5 shrink-0" />
+            {t(echec)}
+          </p>
         )}
 
         <div className="flex flex-col-reverse gap-3 border-t border-border pt-6 sm:flex-row sm:justify-between">

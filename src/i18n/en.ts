@@ -115,8 +115,9 @@ export const en: Dictionary = {
       submit: 'Sign in',
       remember: 'Stay signed in on this device',
       success: 'Signed in — welcome back.',
-      demoNotice:
-        'Authentication is not wired up yet: the form validates your input, then opens the dashboard.',
+      errorCredentials: 'Incorrect email address or password.',
+      errorOffline: 'The server is unreachable. Check your connection and try again.',
+      errorUnexpected: 'Sign-in failed. Try again in a moment.',
     },
 
     forgot: {
@@ -208,6 +209,9 @@ export const en: Dictionary = {
 
       terms: 'I accept the terms of service and the privacy policy.',
       termsError: 'You must accept the terms to create your account.',
+      emailTaken: 'An account already exists for this address. Sign in, or use another one.',
+      errorOffline: 'The server is unreachable. Your answers are kept: try again.',
+      errorUnexpected: 'Account creation failed. Your answers are kept: try again.',
       newsletter: 'Send me product news (once a quarter, no data resale).',
 
       submit: 'Create my space',
