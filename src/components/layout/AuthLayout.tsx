@@ -6,9 +6,16 @@ import { Icon } from '@/components/primitives/Icon'
 import { LanguageSwitcher } from '@/components/controls/LanguageSwitcher'
 import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
 import { useT } from '@/i18n/I18nProvider'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
 export interface AuthLayoutProps {
   title: string
+  /**
+   * Titre de l'onglet, quand celui de la page ne suffit pas à situer.
+   * L'assistant d'inscription s'en sert : son `title` est celui de l'étape
+   * courante — « Vos informations » seul ne dit pas qu'on crée un compte.
+   */
+  documentTitle?: string
   subtitle?: string
   children: ReactNode
   /** Pied de carte : lien vers l'autre parcours. */
@@ -23,8 +30,17 @@ export interface AuthLayoutProps {
  * Gabarit des pages d'authentification : deux colonnes sur grand écran,
  * une seule sur mobile où le panneau de marque passe en simple bandeau.
  */
-export function AuthLayout({ title, subtitle, children, footer, wide, above }: AuthLayoutProps) {
+export function AuthLayout({
+  title,
+  documentTitle,
+  subtitle,
+  children,
+  footer,
+  wide,
+  above,
+}: AuthLayoutProps) {
   const t = useT()
+  useDocumentTitle(documentTitle ?? title)
 
   return (
     <div className="flex min-h-dvh flex-col lg:flex-row">

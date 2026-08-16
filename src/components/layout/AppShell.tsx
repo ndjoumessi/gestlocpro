@@ -16,6 +16,7 @@ import { IconButton } from '@/components/primitives/Button'
 import { LanguageSwitcher } from '@/components/controls/LanguageSwitcher'
 import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
 import { useT } from '@/i18n/I18nProvider'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import type { Role } from '@/features/auth/signupState'
 
 /* -------------------------------------------------------------------------- */
@@ -453,6 +454,11 @@ export function PageHeader({
   description?: ReactNode
   actions?: ReactNode
 }) {
+  // Chaque écran applicatif nomme son onglet. Les douze portaient le titre
+  // statique de la landing : deux onglets ouverts côte à côte, un signet ou une
+  // entrée d'historique ne permettaient pas de les distinguer.
+  useDocumentTitle(title)
+
   return (
     <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">

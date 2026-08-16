@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { AuthLayout } from '@/components/layout/AuthLayout'
 import { Stepper } from '@/features/auth/Stepper'
@@ -77,12 +77,6 @@ export function SignUp() {
     [t],
   )
 
-  // Le titre de la page change à chaque étape : sans cela, un utilisateur de
-  // lecteur d'écran ne perçoit pas le changement de contexte.
-  useEffect(() => {
-    document.title = `${steps[stepIndex]} — ${t('auth.signup.title')} · GestLocPro`
-  }, [stepIndex, steps, t])
-
   /** Erreurs de l'étape courante. */
   function validateStep(current: StepKey): Record<string, FieldError> {
     if (current === 'role') {
@@ -156,6 +150,9 @@ export function SignUp() {
   return (
     <AuthLayout
       wide
+      // L'étape seule ne situe pas : « Vos informations » peut être n'importe
+      // quel formulaire. Le titre d'onglet nomme le parcours.
+      documentTitle={`${steps[stepIndex]} — ${t('auth.signup.title')}`}
       title={
         step === 'role'
           ? t('auth.signup.roleTitle')
