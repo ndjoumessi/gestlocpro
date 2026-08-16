@@ -9,6 +9,22 @@ import type { Role } from '@/features/auth/signupState'
 /** Droits par rôle. `false` = action refusée. */
 const MATRIX: { key: string; owner: boolean; manager: boolean; tenant: boolean }[] = [
   { key: 'viewAll', owner: true, manager: true, tenant: false },
+  /**
+   * Les trois gestes ajoutés en constituant le parc.
+   *
+   * Leurs droits ne sont pas décidés ici : ils RECOPIENT ce que le serveur
+   * impose — `exigerRole('owner', 'manager')` sur les trois routes. Une matrice
+   * qui annoncerait autre chose que ce que l'API applique serait une brochure,
+   * et c'est l'écran qui aurait tort.
+   *
+   * Déclarer un immeuble ou un logement relève de l'exploitation quotidienne,
+   * que le gestionnaire délégué assure. Ce qui lui reste fermé — valider un
+   * devis, arbitrer une caution — sont les deux gestes qui engagent l'argent du
+   * propriétaire.
+   */
+  { key: 'addBuilding', owner: true, manager: true, tenant: false },
+  { key: 'addUnit', owner: true, manager: true, tenant: false },
+  { key: 'issueReceipt', owner: true, manager: true, tenant: false },
   { key: 'ownData', owner: true, manager: true, tenant: true },
   { key: 'recordPayment', owner: true, manager: true, tenant: false },
   { key: 'readMeters', owner: true, manager: true, tenant: false },

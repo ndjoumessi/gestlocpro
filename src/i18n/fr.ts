@@ -673,6 +673,9 @@ export const fr = {
       denied: 'Non autorisé',
       caps: {
         viewAll: 'Consulter tout le parc',
+        addBuilding: 'Déclarer un immeuble',
+        addUnit: 'Déclarer un logement',
+        issueReceipt: 'Émettre une quittance',
         recordPayment: 'Enregistrer un paiement',
         readMeters: 'Saisir les relevés',
         quoteWorks: 'Chiffrer des travaux',

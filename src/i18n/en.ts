@@ -626,6 +626,9 @@ export const en: Dictionary = {
       denied: 'Not allowed',
       caps: {
         viewAll: 'View the whole portfolio',
+        addBuilding: 'Add a building',
+        addUnit: 'Add a unit',
+        issueReceipt: 'Issue a receipt',
         recordPayment: 'Record a payment',
         readMeters: 'Capture meter readings',
         quoteWorks: 'Quote works',
