@@ -160,7 +160,9 @@ authRouter.post('/signup', async (req: Request, res: Response) => {
    */
   if (donnees.parkName) {
     const aujourdhui = new Date()
-    const periode = new Date(aujourdhui.getFullYear(), aujourdhui.getMonth(), 1)
+    // En UTC : une colonne `date` est tronquée en UTC, et un premier du mois
+    // construit en heure locale s'y enregistre comme le dernier du mois d'avant.
+    const periode = new Date(Date.UTC(aujourdhui.getUTCFullYear(), aujourdhui.getUTCMonth(), 1))
 
     await prisma.$transaction(async (tx) => {
       const park = await tx.park.create({

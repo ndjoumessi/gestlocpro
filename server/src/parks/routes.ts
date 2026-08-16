@@ -182,7 +182,7 @@ parksRouter.get(
     const idsVisibles = visibles?.map((u) => u.id)
     const filtreUnite = idsVisibles ? { in: idsVisibles } : undefined
 
-    const [travaux, cautions, releves, etatsDesLieux, notifications] = await Promise.all([
+    const [travaux, cautions, releves, etatsDesLieux, notifications, echeances] = await Promise.all([
       prisma.workOrder.findMany({
         where: { unit: { building: { parkId } }, ...(filtreUnite ? { unitId: filtreUnite } : {}) },
         orderBy: { reportedAt: 'desc' },
@@ -253,9 +253,59 @@ parksRouter.get(
           recipients: { where: { userId: req.compteId! }, select: { readAt: true } },
         },
       }),
+      /**
+       * Encaissements par période, calculés sur les échéances du parc.
+       *
+       * `COLLECTIONS` était une constante de douze mois côté client, cohérente
+       * en elle-même et reliée à rien : la ligne d'objectif du graphique
+       * annonçait « 1,4 M » quand la somme des loyers vaut 1 397 000.
+       */
+      prisma.rentCharge.findMany({
+        where: {
+          lease: { unit: { building: { parkId } }, ...(filtreUnite ? { unitId: filtreUnite } : {}) },
+        },
+        select: {
+          periodStart: true,
+          rentMinor: true,
+          waterMinor: true,
+          powerMinor: true,
+          payments: { select: { amountMinor: true } },
+        },
+      }),
     ])
 
+    /**
+     * Le mois porte ce qui a été ENCAISSÉ, non ce qui était dû.
+     *
+     * Un graphique d'encaissements qui afficherait les loyers appelés serait
+     * plat : c'est l'écart entre l'appelé et le reçu qui a un sens, et c'est
+     * lui que la dernière barre montre.
+     */
+    const parPeriode = new Map<string, { year: number; month: number; rent: number; water: number; power: number }>()
+    for (const e of echeances) {
+      const cle = `${e.periodStart.getFullYear()}-${e.periodStart.getMonth()}`
+      const ligne = parPeriode.get(cle) ?? {
+        year: e.periodStart.getFullYear(),
+        month: e.periodStart.getMonth(),
+        rent: 0,
+        water: 0,
+        power: 0,
+      }
+      const verse = e.payments.reduce((s, p) => s + p.amountMinor, 0)
+      // Le versement solde d'abord le loyer, puis les charges : c'est l'ordre
+      // d'imputation usuel, et un règlement partiel doit se voir sur le loyer.
+      const surLoyer = Math.min(verse, e.rentMinor)
+      const reste = verse - surLoyer
+      ligne.rent += surLoyer
+      ligne.water += Math.min(reste, e.waterMinor)
+      ligne.power += Math.max(0, Math.min(reste - e.waterMinor, e.powerMinor))
+      parPeriode.set(cle, ligne)
+    }
+
     res.json({
+      collections: [...parPeriode.values()].sort(
+        (a, b) => a.year - b.year || a.month - b.month,
+      ),
       buildings,
       /**
        * L'index précédent est DÉRIVÉ de la période antérieure.

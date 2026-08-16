@@ -211,30 +211,62 @@ export async function semerParcDemonstration(
     }
 
     /**
-     * L'échéance est datée depuis le retard voulu, et non l'inverse.
+     * Douze mois d'historique, et non la seule échéance courante.
      *
-     * Le client stockait `overdueDays: 24`, un nombre figé qui ne grandissait
-     * jamais — et recopié dans le texte d'une alerte, donc à deux endroits sans
-     * lien. Ici la seule donnée est la date d'échéance ; le retard s'en déduit,
-     * et il vieillit tout seul.
+     * `COLLECTIONS` était une constante de douze mois côté client : trois
+     * séries cohérentes entre elles et reliées à aucun encaissement. La ligne
+     * d'objectif du graphique annonçait « 1,4 M » quand la somme des loyers
+     * vaut 1 397 000 — deux chiffres voisins, jamais rapprochés.
+     *
+     * Les mois passés sont soldés ; seul le mois courant porte les impayés et
+     * le règlement partiel. C'est ce qui rend l'histogramme lisible : une
+     * dernière barre plus basse que les autres, pour une raison qu'on peut
+     * ouvrir et vérifier ligne à ligne.
      */
-    const dueOn = u.retard ? moins(u.retard, aujourdhui) : new Date(periode)
-    if (!u.retard) dueOn.setDate(5)
+    for (let recul = 11; recul >= 0; recul--) {
+      /**
+       * Premier du mois en UTC, et non en heure locale.
+       *
+       * Une colonne `date` est tronquée en UTC : `new Date(2025, 8, 1)` sur un
+       * fuseau à l'est de Greenwich vaut le 31 août 22 h UTC, donc s'enregistre
+       * « 2025-08-31 ». Tout l'axe du graphique reculait d'un mois — septembre
+       * s'affichait « août » — sans qu'aucune valeur soit fausse.
+       */
+      const debut = new Date(Date.UTC(periode.getUTCFullYear(), periode.getUTCMonth() - recul, 1))
+      const courant = recul === 0
 
-    const echeance = await tx.rentCharge.create({
-      data: { leaseId: bail.id, periodStart: periode, dueOn, rentMinor: u.loyer },
-    })
+      // Les charges varient d'un mois sur l'autre — un parc dont l'eau coûte
+      // exactement la même chose douze fois de suite ne ressemble à rien.
+      const eau = Math.round(u.loyer * 0.045 * (1 + ((recul % 5) - 2) * 0.06))
+      const elec = Math.round(u.loyer * 0.036 * (1 + ((recul % 4) - 1.5) * 0.08))
 
-    if (u.regle) {
-      await tx.payment.create({
+      const dueOn = courant && u.retard ? moins(u.retard, aujourdhui) : new Date(debut)
+      if (!(courant && u.retard)) dueOn.setUTCDate(5)
+
+      const echeance = await tx.rentCharge.create({
         data: {
-          chargeId: echeance.id,
-          amountMinor: u.regle,
-          method: 'mobile',
-          paidOn: moins(3, aujourdhui),
-          recordedById: proprietaireId,
+          leaseId: bail.id,
+          periodStart: debut,
+          dueOn,
+          rentMinor: u.loyer,
+          waterMinor: eau,
+          powerMinor: elec,
         },
       })
+
+      // Un mois passé est réglé ; le mois courant suit le cas de l'unité.
+      const verse = courant ? u.regle : u.loyer + eau + elec
+      if (verse) {
+        await tx.payment.create({
+          data: {
+            chargeId: echeance.id,
+            amountMinor: verse,
+            method: 'mobile',
+            paidOn: courant ? moins(3, aujourdhui) : new Date(Date.UTC(debut.getUTCFullYear(), debut.getUTCMonth(), 7)),
+            recordedById: proprietaireId,
+          },
+        })
+      }
     }
   }
 

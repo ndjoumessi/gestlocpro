@@ -364,7 +364,12 @@ model RentCharge {
   rentMinor Int
   /// Charges refacturées, figées à l'émission. Refacturer juillet au tarif
   /// d'août est faux, et rien ne le signalerait.
-  utilitiesMinor Int @default(0)
+  ///
+  /// Ventilées par fluide : l'histogramme du tableau de bord empile loyer, eau
+  /// et électricité. Un total unique obligerait l'écran à inventer la
+  /// répartition — ce que faisait la constante `COLLECTIONS`.
+  waterMinor Int @default(0)
+  powerMinor Int @default(0)
   createdAt DateTime @default(now())
 
   payments Payment[]

@@ -10,7 +10,6 @@ import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
 import { useDates } from '@/lib/useDates'
-import { COLLECTIONS } from '@/data/portfolio'
 import { computeKpis } from '@/data/kpis'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { workTitle } from '@/data/workTitle'
@@ -24,7 +23,7 @@ export function Dashboard() {
   const { money, definition } = useCurrency()
   const exportCsv = useCsvExport()
   const csvMoney = useCsvMoney()
-  const { units, works, unitById, buildings: BUILDINGS, readings } = usePortfolio()
+  const { units, works, unitById, buildings: BUILDINGS, readings, collections: COLLECTIONS } = usePortfolio()
   const [payOpen, setPayOpen] = useState(false)
 
   // Le locataire n'a pas une version filtrée de cet écran : il en a un autre.

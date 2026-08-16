@@ -7,6 +7,7 @@ import type {
   Deposit,
   Inspection,
   MeterReading,
+  MonthlyCollection,
   TradeKey,
   Unit,
   UnitTypeKey,
@@ -57,6 +58,7 @@ interface PortefeuilleApi {
     approvedAmountMinor: number | null
     reportedAt: string
   }[]
+  collections: { year: number; month: number; rent: number; water: number; power: number }[]
   readings: {
     unitId: string
     utility: 'water' | 'power'
@@ -107,6 +109,7 @@ export interface ParcCharge {
   readings: MeterReading[]
   inspections: Inspection[]
   alerts: Alert[]
+  collections: MonthlyCollection[]
   /**
    * Versement réellement encaissé, par unité.
    *
@@ -231,6 +234,10 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
       read: n.read,
       ...(n.unitId ? { unitId: n.unitId } : {}),
     })),
+    // Le serveur rend déjà la forme attendue : mois indexé à zéro et montants
+    // entiers. Rien à convertir, ce qui est le signe que les deux modèles se
+    // sont rapprochés.
+    collections: data.collections,
     paidByUnit,
   }
 }

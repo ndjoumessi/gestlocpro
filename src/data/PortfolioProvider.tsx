@@ -13,11 +13,13 @@ import { chargerParc, type Immeuble } from './apiPortfolio'
 import {
   ALERTS as ALERTS_DEMO,
   BUILDINGS as IMMEUBLES_DEMO,
+  COLLECTIONS as COLLECTIONS_DEMO,
   INSPECTIONS as INSPECTIONS_DEMO,
   READINGS as READINGS_DEMO,
   type Alert,
   type Inspection,
   type MeterReading,
+  type MonthlyCollection,
 } from './portfolio'
 import { api } from '@/api/client'
 import { useSession } from '@/api/SessionProvider'
@@ -94,6 +96,7 @@ interface PortfolioContextValue {
   readings: MeterReading[]
   inspections: Inspection[]
   alerts: Alert[]
+  collections: MonthlyCollection[]
   readingForUnit: (unitId: string) => MeterReading | undefined
   /** `true` si cette unité relève du compte connecté. */
   isMine: (unitId: string) => boolean
@@ -132,6 +135,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const [readings, setReadings] = useState<MeterReading[]>(READINGS_DEMO)
   const [inspections, setInspections] = useState<Inspection[]>(INSPECTIONS_DEMO)
   const [alerts, setAlerts] = useState<Alert[]>(ALERTS_DEMO)
+  const [collections, setCollections] = useState<MonthlyCollection[]>(COLLECTIONS_DEMO)
 
   useEffect(() => {
     if (!parkId) return
@@ -145,6 +149,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       setReadings(parc.readings)
       setInspections(parc.inspections)
       setAlerts(parc.alerts)
+      setCollections(parc.collections)
       setUnits(parc.units)
       setWorks(parc.works)
       setDeposits(parc.deposits)
@@ -303,6 +308,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       readings,
       inspections,
       alerts,
+      collections,
       readingForUnit: (unitId) => readings.find((r) => r.unitId === unitId),
       tenantUnitIds,
       isMine: (unitId: string) => tenantUnitIds.includes(unitId),
