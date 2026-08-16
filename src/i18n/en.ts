@@ -409,6 +409,8 @@ export const en: Dictionary = {
       balance: 'Balance',
       method: 'Method',
       date: 'Date',
+      period: 'Period covered',
+      periodHint: 'The month this payment settles — not necessarily the month it is received.',
       amount: 'Amount',
       amountHint: 'Partial settlement is accepted.',
       methodMobile: 'Mobile money',

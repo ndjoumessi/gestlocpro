@@ -20,6 +20,16 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
   const [unitId, setUnitId] = useState(payable[0]?.id ?? '')
   const [amount, setAmount] = useState('')
   const [method, setMethod] = useState('mobile')
+  /**
+   * Mois réglé par ce versement, `AAAA-MM`.
+   *
+   * Pré-rempli au mois courant — le cas de loin le plus fréquent — mais
+   * modifiable, parce que le cas qui compte est l'autre : un versement reçu le
+   * 2 août qui règle juillet. Sans ce champ, juillet restait impayé et août
+   * apparaissait soldé d'un loyer qu'il n'avait pas reçu. Deux mois faux pour
+   * un seul versement.
+   */
+  const [periode, setPeriode] = useState(() => new Date().toISOString().slice(0, 7))
   const [error, setError] = useState<string | null>(null)
 
   const unit = units.find((u) => u.id === unitId)
@@ -44,9 +54,7 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
      * plus fréquent ; imputer sur un autre mois — un versement d'août qui
      * couvre juillet — reste à offrir, et le serveur le sait déjà faire.
      */
-    const maintenant = new Date()
-    const periodStart = `${maintenant.getUTCFullYear()}-${String(maintenant.getUTCMonth() + 1).padStart(2, '0')}-01`
-    recordPayment(unitId, { periodStart, amountMinor: parsed, method })
+    recordPayment(unitId, { periodStart: `${periode}-01`, amountMinor: parsed, method })
 
     onClose()
     notify(t('app.paymentSaved'), { tone: 'ok' })
@@ -78,6 +86,18 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
                 </option>
               ))}
             </Select>
+          )}
+        </Field>
+
+        <Field label={t('app.payments.period')} hint={t('app.payments.periodHint')} required>
+          {(props) => (
+            <Input
+              {...props}
+              name="period"
+              type="month"
+              value={periode}
+              onChange={(e) => setPeriode(e.target.value)}
+            />
           )}
         </Field>
 

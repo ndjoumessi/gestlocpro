@@ -450,6 +450,8 @@ export const fr = {
       balance: 'Solde',
       method: 'Moyen',
       date: 'Date',
+      period: 'Période couverte',
+      periodHint: 'Le mois que ce versement règle — pas forcément le mois où il est reçu.',
       amount: 'Montant',
       amountHint: 'Un règlement partiel est accepté.',
       methodMobile: 'Mobile money',

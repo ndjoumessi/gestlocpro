@@ -403,4 +403,34 @@ describe('enregistrer un encaissement', () => {
     // et ce qui évite qu'un versement crée une échéance à cheval.
     expect(String(corps.periodStart)).toMatch(/^\d{4}-\d{2}-01$/)
   })
+
+  it('impute sur le mois CHOISI, et non sur celui du versement', async () => {
+    /**
+     * Le cas qui justifie le champ : un versement reçu en août qui règle
+     * juillet. Sans lui, juillet restait impayé et août apparaissait soldé d'un
+     * loyer qu'il n'avait pas reçu — deux mois faux pour un seul versement.
+     */
+    const serveur = installerFauxServeur()
+    serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: portefeuille() })
+    serveur.quand('POST', `/parks/${PARK}/payments`, {
+      status: 201,
+      body: { payment: { id: 'p1', amountMinor: 115000, method: 'mobile', paidOn: '2026-08-16' } },
+    })
+
+    const user = userEvent.setup()
+    renderApp('/app', { session: SESSION_AVEC_PARC })
+    await user.click(await screen.findByRole('button', { name: /enregistrer un paiement/i }))
+
+    const mois = screen.getByLabelText(/période couverte/i)
+    await user.clear(mois)
+    await user.type(mois, '2026-07')
+    await user.type(screen.getByLabelText(/montant/i), '115000')
+    await user.click(screen.getByRole('button', { name: /^enregistrer$/i }))
+
+    const corps = serveur.appels.find((a) => a.chemin.endsWith('/payments'))?.corps as Record<
+      string,
+      unknown
+    >
+    expect(corps.periodStart).toBe('2026-07-01')
+  })
 })
