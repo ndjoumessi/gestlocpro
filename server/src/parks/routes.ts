@@ -77,6 +77,12 @@ const schemaEncaissement = z.object({
   reference: z.string().trim().max(80).optional(),
 })
 
+/** Émission d'un document pour une période donnée. */
+const schemaQuittance = z.object({
+  unitId: z.string().uuid(),
+  periodStart: z.string().regex(/^\d{4}-\d{2}-01$/, 'Période attendue au format AAAA-MM-01'),
+})
+
 const schemaLocataire = z.object({
   unitId: z.string().uuid(),
   fullName: z.string().trim().min(2).max(120),
@@ -729,6 +735,107 @@ parksRouter.post(
     })
 
     res.status(201).json({ payment: paiement })
+  },
+)
+
+/**
+ * Émet une quittance — ou un reçu — pour une période.
+ *
+ * Un document qui ATTESTE, et c'est ce qui le distingue de tous les écrans du
+ * produit. Une quittance vaut preuve pour le locataire : un bailleur ne peut
+ * pas la reprendre, et l'émettre pour un mois non soldé est une faute.
+ *
+ * D'où la règle qui gouverne tout le reste : **quittance seulement si la
+ * période est intégralement soldée**. En deçà, on émet un REÇU, qui n'atteste
+ * que le montant reçu. Confondre les deux ferait signer au bailleur une preuve
+ * de paiement qu'il n'a pas reçu.
+ *
+ * Les montants sont ceux de la base, jamais recalculés à partir d'un état
+ * d'écran : c'est la seule façon qu'un document réémis en octobre rende
+ * exactement celui de juillet.
+ */
+parksRouter.post(
+  '/:parkId/receipts',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const corps = schemaQuittance.parse(req.body)
+    const debut = new Date(`${corps.periodStart}T00:00:00Z`)
+
+    const echeance = await prisma.rentCharge.findFirst({
+      where: {
+        periodStart: debut,
+        lease: { unitId: corps.unitId, unit: { building: { parkId } } },
+      },
+      include: {
+        payments: {
+          select: { amountMinor: true, method: true, paidOn: true, reference: true },
+          orderBy: { paidOn: 'asc' },
+        },
+        lease: {
+          select: {
+            rentMinor: true,
+            tenant: { select: { fullName: true } },
+            unit: { select: { label: true, building: { select: { name: true, district: true } } } },
+          },
+        },
+      },
+    })
+    if (!echeance) {
+      // Aucune échéance pour cette période : il n'y a rien à attester. On ne
+      // fabrique pas un document vide, qui laisserait croire à un mois traité.
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const du = echeance.rentMinor + echeance.waterMinor + echeance.powerMinor
+    const encaisse = echeance.payments.reduce((total, p) => total + p.amountMinor, 0)
+    // Le solde peut être négatif — un trop-perçu. On le rend tel quel : le
+    // ramener à zéro effacerait une avance que le locataire pourra réclamer.
+    const solde = du - encaisse
+
+    const document = {
+      kind: solde <= 0 ? ('quittance' as const) : ('recu' as const),
+      periodStart: corps.periodStart,
+      tenant: echeance.lease.tenant.fullName,
+      unit: echeance.lease.unit.label,
+      building: echeance.lease.unit.building.name,
+      district: echeance.lease.unit.building.district,
+      rentMinor: echeance.rentMinor,
+      waterMinor: echeance.waterMinor,
+      powerMinor: echeance.powerMinor,
+      dueMinor: du,
+      paidMinor: encaisse,
+      balanceMinor: solde,
+      payments: echeance.payments.map((p) => ({
+        amountMinor: p.amountMinor,
+        method: p.method,
+        paidOn: p.paidOn.toISOString().slice(0, 10),
+        reference: p.reference,
+      })),
+    }
+
+    /**
+     * L'émission est tracée.
+     *
+     * Elle sert le jour où un locataire dit « je n'ai jamais reçu ma quittance
+     * de mars » : la trace dit qui l'a émise et quand. Elle n'empêche pas la
+     * réémission — un document perdu doit pouvoir être refait — elle la
+     * consigne.
+     */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'receipt.issued',
+        entity: 'RentCharge',
+        entityId: echeance.id,
+        payload: { kind: document.kind, periodStart: corps.periodStart, paidMinor: encaisse },
+      },
+    })
+
+    res.status(201).json({ document })
   },
 )
 

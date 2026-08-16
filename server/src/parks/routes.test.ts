@@ -823,3 +823,111 @@ describe('encaissements', () => {
     expect(res.status).toBe(404)
   })
 })
+
+describe('émission des quittances', () => {
+  async function parcPaye(email: string, montant: number) {
+    const { cookie } = await inscrire(email, { parkName: 'Parc' })
+    const parcs = await request(app).get('/api/parks').set('Cookie', cookie)
+    const parkId = parcs.body.parks[0].id
+    const immeuble = await request(app)
+      .post(`/api/parks/${parkId}/buildings`)
+      .set('Cookie', cookie)
+      .send({ name: 'Résidence Makepe', district: 'Makepe' })
+    const logement = await request(app)
+      .post(`/api/parks/${parkId}/buildings/${immeuble.body.building.id}/units`)
+      .set('Cookie', cookie)
+      .send({ label: 'A1', type: 'T3', surfaceSqm: 78, baseRentMinor: 145000 })
+    const unitId = logement.body.unit.id as string
+    await request(app)
+      .post(`/api/parks/${parkId}/tenants`)
+      .set('Cookie', cookie)
+      .send({ unitId, fullName: 'Charles Ngassa', startsOn: '2026-01-01', rentMinor: 145000 })
+    if (montant > 0) {
+      await request(app)
+        .post(`/api/parks/${parkId}/payments`)
+        .set('Cookie', cookie)
+        .send({ unitId, periodStart: '2026-07-01', amountMinor: montant, method: 'mobile' })
+    }
+    return { cookie, parkId, unitId }
+  }
+
+  it('émet une QUITTANCE quand la période est intégralement soldée', async () => {
+    const { cookie, parkId, unitId } = await parcPaye('quittance@example.com', 145000)
+
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/receipts`)
+      .set('Cookie', cookie)
+      .send({ unitId, periodStart: '2026-07-01' })
+
+    expect(res.status, JSON.stringify(res.body)).toBe(201)
+    expect(res.body.document).toMatchObject({
+      kind: 'quittance',
+      tenant: 'Charles Ngassa',
+      unit: 'A1',
+      dueMinor: 145000,
+      paidMinor: 145000,
+      balanceMinor: 0,
+    })
+  })
+
+  it('émet un REÇU, et non une quittance, sur un règlement partiel', async () => {
+    /**
+     * La règle qui gouverne tout le reste.
+     *
+     * Une quittance vaut preuve : le bailleur ne peut pas la reprendre.
+     * L'émettre pour un mois non soldé lui ferait signer une preuve de paiement
+     * qu'il n'a pas reçu. Le reçu, lui, n'atteste que le montant reçu.
+     */
+    const { cookie, parkId, unitId } = await parcPaye('recu@example.com', 60000)
+
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/receipts`)
+      .set('Cookie', cookie)
+      .send({ unitId, periodStart: '2026-07-01' })
+
+    expect(res.body.document.kind).toBe('recu')
+    expect(res.body.document.paidMinor).toBe(60000)
+    expect(res.body.document.balanceMinor).toBe(85000)
+  })
+
+  it('rend un solde NÉGATIF sur un trop-perçu, sans le ramener à zéro', async () => {
+    // Le ramener à zéro effacerait une avance que le locataire pourra réclamer.
+    const { cookie, parkId, unitId } = await parcPaye('avance@example.com', 200000)
+
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/receipts`)
+      .set('Cookie', cookie)
+      .send({ unitId, periodStart: '2026-07-01' })
+
+    expect(res.body.document.kind).toBe('quittance')
+    expect(res.body.document.balanceMinor).toBe(-55000)
+  })
+
+  it('trace l’émission, avec son auteur', async () => {
+    // Sert le jour où un locataire dit « je n'ai jamais reçu ma quittance de
+    // mars ». La trace n'empêche pas la réémission : elle la consigne.
+    const { cookie, parkId, unitId } = await parcPaye('trace@example.com', 145000)
+    await request(app)
+      .post(`/api/parks/${parkId}/receipts`)
+      .set('Cookie', cookie)
+      .send({ unitId, periodStart: '2026-07-01' })
+
+    const trace = await prisma.auditEvent.findFirstOrThrow({
+      where: { parkId, action: 'receipt.issued' },
+    })
+    expect(trace.actorId).not.toBeNull()
+    expect(trace.payload).toMatchObject({ kind: 'quittance', periodStart: '2026-07-01' })
+  })
+
+  it('refuse d’inventer un document pour une période sans échéance', async () => {
+    // Un document vide laisserait croire à un mois traité.
+    const { cookie, parkId, unitId } = await parcPaye('vide@example.com', 0)
+
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/receipts`)
+      .set('Cookie', cookie)
+      .send({ unitId, periodStart: '2026-03-01' })
+
+    expect(res.status).toBe(404)
+  })
+})
