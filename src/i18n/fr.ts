@@ -104,7 +104,7 @@ export const fr = {
     deposits: 'Cautions',
     tenants: 'Locataires',
     alerts: 'Signalements',
-    onboarding: 'Onboarding & droits',
+    onboarding: 'Onboarding et droits',
     system: 'États du système',
     tenantPortal: 'Portail locataire (web)',
     tenantApp: 'App locataire',
@@ -525,7 +525,7 @@ export const fr = {
     },
 
     works: {
-      title: 'Travaux & signalements',
+      title: 'Travaux et signalements',
       subtitle: 'Le locataire signale, le gestionnaire chiffre, le propriétaire arbitre.',
       reported: 'Signalé',
       quoted: 'Devis proposé',
@@ -583,7 +583,7 @@ export const fr = {
     },
 
     tenants: {
-      title: 'Locataires & baux',
+      title: 'Locataires et baux',
       subtitle: 'Chaque locataire est rattaché à une unité par un bail actif.',
       addTenant: 'Créer une fiche locataire',
       leaseStart: 'Début du bail',
@@ -603,7 +603,7 @@ export const fr = {
     },
 
     alerts: {
-      title: 'Signalements & notifications',
+      title: 'Signalements et notifications',
       subtitle: 'Ce que le produit a détecté ou reçu, du plus récent au plus ancien.',
       markRead: 'Tout marquer comme lu',
       allRead: 'Toutes les notifications sont lues.',
@@ -655,7 +655,7 @@ export const fr = {
     },
 
     onboarding: {
-      title: 'Onboarding & délégation des droits',
+      title: 'Onboarding et délégation des droits',
       // La seconde proposition promettait d'inviter depuis cet écran, qui n'en
       // porte ni bouton ni lien.
       subtitle: 'Qui peut faire quoi, selon la façon dont vous gérez le parc.',

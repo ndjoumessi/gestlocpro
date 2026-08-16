@@ -97,7 +97,7 @@ export const en: Dictionary = {
     deposits: 'Deposits',
     tenants: 'Tenants',
     alerts: 'Reports',
-    onboarding: 'Onboarding & rights',
+    onboarding: 'Onboarding and rights',
     system: 'System states',
     tenantPortal: 'Tenant portal (web)',
     tenantApp: 'Tenant app',
@@ -482,7 +482,7 @@ export const en: Dictionary = {
     },
 
     works: {
-      title: 'Works & reports',
+      title: 'Works and reports',
       subtitle: 'The tenant reports, the manager quotes, the owner decides.',
       reported: 'Reported',
       quoted: 'Quoted',
@@ -538,7 +538,7 @@ export const en: Dictionary = {
     },
 
     tenants: {
-      title: 'Tenants & leases',
+      title: 'Tenants and leases',
       subtitle: 'Every tenant is attached to a unit through an active lease.',
       addTenant: 'Create a tenant record',
       leaseStart: 'Lease start',
@@ -557,7 +557,7 @@ export const en: Dictionary = {
     },
 
     alerts: {
-      title: 'Reports & notifications',
+      title: 'Reports and notifications',
       subtitle: 'What the product detected or received, newest first.',
       markRead: 'Mark all as read',
       allRead: 'All notifications are read.',
@@ -609,7 +609,7 @@ export const en: Dictionary = {
     },
 
     onboarding: {
-      title: 'Onboarding & delegation of rights',
+      title: 'Onboarding and delegation of rights',
       // La seconde proposition promettait d'inviter un gestionnaire ou un
       // locataire depuis cet écran. Il n'en porte ni bouton ni lien.
       subtitle: 'Who can do what, depending on how you run the portfolio.',
