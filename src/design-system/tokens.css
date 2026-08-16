@@ -98,7 +98,26 @@
   /* ---- Typographie ----------------------------------------------------- */
   --font-display: 'Playfair Display', Georgia, serif;
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  /**
+   * Monospace SYSTÈME, et non une famille téléchargée.
+   *
+   * IBM Plex Mono portait un dessin très marqué — chiffres étroits, accents
+   * anguleux, `l` à empattement — qui attirait l'œil sur des libellés qui ne
+   * demandent qu'à être lus : intitulés de colonne, périmètres de rôle,
+   * indicatifs. Une police de données doit se faire oublier ; celle-ci se
+   * remarquait.
+   *
+   * La pile système rend la police monospace native de chaque plateforme —
+   * SF Mono, Cascadia, DejaVu. Elles sont sobres, dessinées pour la lecture
+   * prolongée, et déjà présentes : une famille de moins à télécharger, donc
+   * un texte affiché plus tôt.
+   *
+   * Les chiffres tabulaires ne dépendent pas de la famille mais de
+   * `font-variant-numeric`, posé plus bas : l'alignement des montants est
+   * conservé.
+   */
+  --font-mono:
+    ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
 
   /* Tailles d'affichage fluides.
      En taille fixe, le titre du hero (56px) remplissait tout l'écran d'un
