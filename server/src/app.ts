@@ -1,6 +1,8 @@
 import express, { type ErrorRequestHandler, type Request, type Response } from 'express'
 import cookieParser from 'cookie-parser'
 import { ZodError } from 'zod'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { env } from './env.js'
 import { authRouter } from './auth/routes.js'
 import { parksRouter } from './parks/routes.js'
@@ -57,12 +59,46 @@ export function createApp() {
   app.use('/api/auth', authRouter)
   app.use('/api/parks', parksRouter)
 
-  // 404 en JSON : le client parse toutes les réponses de l'API, et une page
+  // 404 en JSON pour l'API : le client parse toutes ses réponses, et une page
   // HTML d'erreur produirait une exception de désérialisation qui masquerait
   // la vraie cause — une route mal orthographiée.
-  app.use((_req: Request, res: Response) => {
+  app.use('/api', (_req: Request, res: Response) => {
     res.status(404).json({ error: 'not_found' })
   })
+
+  /**
+   * Le client est servi par CE serveur en production.
+   *
+   * Ce n'est pas une commodité de déploiement : c'est la condition pour que le
+   * cookie de session reste **de première partie**. Deux domaines distincts en
+   * feraient un cookie tiers, que Safari bloque déjà et que Chrome s'apprête à
+   * bloquer — l'authentification marcherait en développement, derrière le
+   * mandataire Vite, et nulle part ailleurs. Le commentaire de `vite.config.ts`
+   * annonçait cette disposition ; la voici.
+   */
+  if (env.NODE_ENV === 'production') {
+    /**
+     * Compilé, ce fichier vit dans `server/dist/src/` : trois niveaux à
+     * remonter pour atteindre le `dist/` du client, à la racine du dépôt.
+     * `CLIENT_DIST` permet de le dire autrement si la disposition change —
+     * un chemin relatif calculé sur la sortie de compilation est exact tant
+     * que personne ne touche à `outDir`, et silencieusement faux ensuite.
+     */
+    const client =
+      process.env.CLIENT_DIST ?? fileURLToPath(new URL('../../../dist', import.meta.url))
+    app.use(express.static(client, { maxAge: '1h', index: false }))
+
+    // Toute autre adresse rend `index.html` : le routage est côté client, et un
+    // rechargement sur `/app/cautions` doit ouvrir l'application, pas un 404.
+    // Placé APRÈS l'API, donc `/api/inconnu` rend bien du JSON.
+    app.get(/.*/, (_req: Request, res: Response) => {
+      res.sendFile(join(client, 'index.html'))
+    })
+  } else {
+    app.use((_req: Request, res: Response) => {
+      res.status(404).json({ error: 'not_found' })
+    })
+  }
 
   const erreurs: ErrorRequestHandler = (err, _req, res, _next) => {
     if (err instanceof ZodError) {
