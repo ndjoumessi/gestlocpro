@@ -165,17 +165,39 @@ describe('indicatifs téléphoniques', () => {
     // toutes deux sélectionnées, et le choix semblerait sauter d'un pays à
     // l'autre.
     expect(partages).toHaveLength(1)
-    expect(partages[0].label).toBe('Canada, États-Unis · +1')
+    /**
+     * Les pays SERVIS en tête, puis les autres, puis une ellipse.
+     *
+     * `+1` couvre vingt-cinq territoires. Classés alphabétiquement, la ligne
+     * commençait par « Anguilla » et enterrait le Canada et les États-Unis,
+     * seuls reconnaissables par qui cherche. Un regroupement doit montrer ce
+     * qui IDENTIFIE l'indicatif, pas ce qui vient en premier dans l'alphabet.
+     */
+    expect(partages[0].label).toBe('Canada, États-Unis, Anguilla… · +1')
   })
 
   it('couvre tous les indicatifs du catalogue, sans doublon', () => {
     const options = dialOptions('fr')
-    const attendus = new Set(COUNTRIES.map((c) => c.dial))
-    expect(options).toHaveLength(attendus.size)
+    // La liste couvre désormais le MONDE : tout indicatif du catalogue servi
+    // doit s'y trouver, et aucun ne doit apparaître deux fois — deux options de
+    // même valeur dans un `<select>` contrôlé se marqueraient toutes deux
+    // sélectionnées.
+    for (const pays of COUNTRIES) {
+      expect(options.some((o) => o.dial === pays.dial), pays.code).toBe(true)
+    }
     expect(new Set(options.map((o) => o.dial)).size).toBe(options.length)
+    expect(options.length).toBeGreaterThan(100)
   })
 
   it('suit la langue', () => {
-    expect(dialOptions('en').find((o) => o.dial === '+225')?.label).toBe('Ivory Coast · +225')
+    /**
+     * L'Allemagne et non la Côte d'Ivoire : le CLDR nomme cette dernière
+     * « Côte d'Ivoire » DANS LES DEUX LANGUES — c'est son nom officiel, et
+     * « Ivory Coast » que nous écrivions à la main était un usage, pas une
+     * traduction. Éprouver la langue sur un pays où elle ne change rien
+     * n'aurait rien gardé.
+     */
+    expect(dialOptions('fr').find((o) => o.dial === '+49')?.label).toContain('Allemagne')
+    expect(dialOptions('en').find((o) => o.dial === '+49')?.label).toContain('Germany')
   })
 })

@@ -1,3 +1,4 @@
+import { CODES_PAYS, INDICATIFS, nomDuPays } from './indicatifs'
 import type { CurrencyCode } from '@/currency/currencies'
 import type { Locale } from '@/i18n/locales'
 
@@ -117,31 +118,62 @@ export function sortedCountries(locale: Locale): Country[] {
  * défaut inverse.
  */
 export function dialOptions(locale: Locale): { dial: string; label: string; zone: 'cfa' | 'autre' }[] {
-  const parIndicatif = new Map<string, string[]>()
+  /**
+   * La liste couvre désormais TOUS les pays, pas les vingt-deux servis.
+   *
+   * Un bailleur peut résider n'importe où et louer à Douala. La liste courte
+   * l'obligeait à choisir un pays qui n'était pas le sien — donc à enregistrer
+   * un numéro faux, que personne ne pourrait appeler.
+   *
+   * Les pays de la zone franc restent en tête : ils forment le marché servi, et
+   * les y chercher alphabétiquement parmi deux cent cinquante entrées serait
+   * absurde. Le reste du monde suit, par ordre alphabétique du nom traduit.
+   */
+  const servis = new Set(COUNTRIES.map((c) => c.dial))
+  const mondial = CODES_PAYS.map((code) => ({
+    code,
+    dial: INDICATIFS[code]!,
+    nom: nomDuPays(code, locale),
+  }))
 
-  for (const country of COUNTRIES) {
-    const noms = parIndicatif.get(country.dial) ?? []
-    noms.push(countryName(country, locale))
-    parIndicatif.set(country.dial, noms)
+  /**
+   * Les pays SERVIS remontent en tête de leur indicatif.
+   *
+   * `+1` couvre vingt-cinq territoires : classés alphabétiquement, la ligne
+   * commençait par « Anguilla, Antigua-et-Barbuda, Bahamas… » et enterrait le
+   * Canada et les États-Unis, seuls reconnaissables par qui cherche. Un
+   * regroupement doit montrer ce qui identifie l'indicatif, pas ce qui vient en
+   * premier dans l'alphabet.
+   */
+  const codesServis = new Set(COUNTRIES.map((c) => c.code))
+  const parIndicatifMondial = new Map<string, { nom: string; servi: boolean }[]>()
+  for (const pays of mondial) {
+    const noms = parIndicatifMondial.get(pays.dial) ?? []
+    noms.push({ nom: pays.nom, servi: codesServis.has(pays.code) })
+    parIndicatifMondial.set(pays.dial, noms)
   }
 
-  // Un indicatif appartient à la zone franc dès qu'un de ses pays s'y trouve :
-  // `+1` couvre le Canada et les États-Unis, jamais la zone CFA.
-  const zoneParIndicatif = new Map<string, 'cfa' | 'autre'>()
-  for (const country of COUNTRIES) {
-    const dansLaZone = country.currency === 'CFA'
-    const connue = zoneParIndicatif.get(country.dial)
-    zoneParIndicatif.set(country.dial, dansLaZone || connue === 'cfa' ? 'cfa' : 'autre')
-  }
-
-  return [...parIndicatif.entries()]
+  return [...parIndicatifMondial.entries()]
     .map(([dial, noms]) => ({
       dial,
-      label: `${noms.sort((a, b) => a.localeCompare(b, locale)).join(', ')} · ${dial}`,
-      zone: zoneParIndicatif.get(dial) ?? 'autre',
+      // Au-delà de trois pays partageant un indicatif, on tronque : « +1 »
+      // couvre vingt-cinq territoires, et les énumérer rendrait la ligne
+      // illisible sans aider personne à se reconnaître.
+      label: `${noms
+        .sort((a, b) => {
+          if (a.servi !== b.servi) return a.servi ? -1 : 1
+          return a.nom.localeCompare(b.nom, locale)
+        })
+        .slice(0, 3)
+        .map((n) => n.nom)
+        .join(', ')}${noms.length > 3 ? '…' : ''} · ${dial}`,
+      zone: (servis.has(dial) && COUNTRIES.some((c) => c.dial === dial && c.currency === 'CFA')
+        ? 'cfa'
+        : 'autre') as 'cfa' | 'autre',
     }))
     .sort((a, b) => {
       if (a.zone !== b.zone) return a.zone === 'cfa' ? -1 : 1
       return a.label.localeCompare(b.label, locale)
     })
 }
+
