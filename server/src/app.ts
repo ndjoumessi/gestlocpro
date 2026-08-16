@@ -66,9 +66,23 @@ export function createApp() {
   app.use('/api', (req: Request, res: Response, next) => {
     if (req.path === '/health') return next()
     const debut = process.hrtime.bigint()
+    /**
+     * Le chemin est retenu MAINTENANT, et non dans le rappel de fin.
+     *
+     * Express réécrit `req.url` à chaque routeur imbriqué pour le rendre
+     * relatif au point de montage, et ne le restaure pas toujours à l'identique
+     * selon le chemin suivi. Le lire après coup donnait deux formes fausses et
+     * contradictoires pour deux routes voisines — `/api/api/auth/signup` et
+     * `/api/me`. Un journal dont les chemins mentent est pire que pas de
+     * journal : il oriente la recherche au mauvais endroit.
+     *
+     * La chaîne de requête est retirée : rien ne la lit ici, et elle est le
+     * premier endroit où une donnée personnelle s'égare dans un journal.
+     */
+    const chemin = req.originalUrl.split('?')[0]
     res.on('finish', () => {
       const ms = Number(process.hrtime.bigint() - debut) / 1e6
-      console.log(`${req.method} /api${req.path} → ${res.statusCode} (${ms.toFixed(0)} ms)`)
+      console.log(`${req.method} ${chemin} → ${res.statusCode} (${ms.toFixed(0)} ms)`)
     })
     next()
   })
