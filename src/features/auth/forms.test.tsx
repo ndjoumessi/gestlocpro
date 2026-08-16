@@ -144,4 +144,34 @@ describe('inscription', () => {
     // sont désormais regroupées sous une seule devise.
     expect(screen.getByLabelText(/devise/i)).toHaveValue('CFA')
   })
+  /**
+   * Le récapitulatif taisait les réponses propres au rôle.
+   *
+   * L'écran annonce « dernière vérification avant la création de votre
+   * espace » et n'affichait ni le nom du parc, ni le nombre d'unités, ni le
+   * mode de gestion — trois réponses saisies à l'écran précédent. Le nom du
+   * parc est de surcroît ce qui s'affichera en tête de l'espace créé : c'est
+   * la ligne qu'on veut relire avant de valider.
+   */
+  it('récapitule aussi les réponses propres au rôle', async () => {
+    const user = userEvent.setup()
+    renderApp('/inscription/proprietaire')
+
+    await user.type(screen.getByLabelText(/nom complet/i), 'Arsène Nkomo')
+    await user.type(screen.getByLabelText(/adresse e-mail/i), 'arsene@example.com')
+    await user.type(screen.getByLabelText(/^téléphone/i), '677889900')
+    await user.type(screen.getByLabelText(/^Mot de passe/), 'Bonamoussadi2026!')
+    await user.click(screen.getByRole('button', { name: /continuer/i }))
+
+    await user.type(await screen.findByLabelText(/nom de votre parc/i), 'Parc Bonamoussadi')
+    await user.click(screen.getByRole('button', { name: /continuer/i }))
+
+    const recap = await screen.findByRole('heading', { name: /tout est correct/i })
+    expect(recap).toBeInTheDocument()
+
+    expect(screen.getByText('Parc Bonamoussadi')).toBeInTheDocument()
+    expect(screen.getByText('Je gère seul')).toBeInTheDocument()
+    // Et les réponses des étapes précédentes restent présentes.
+    expect(screen.getByText('arsene@example.com')).toBeInTheDocument()
+  })
 })

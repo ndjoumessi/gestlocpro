@@ -661,6 +661,39 @@ function ReviewStep({
     { label: t('auth.signup.summaryLanguage'), value: LOCALE_LABELS[state.locale].long, step: 2 },
   ]
 
+  /**
+   * Les réponses propres au rôle manquaient au récapitulatif.
+   *
+   * L'écran annonce « dernière vérification avant la création de votre
+   * espace », et taisait pourtant trois des réponses saisies juste avant : le
+   * nom du parc, le nombre d'unités et le mode de gestion pour un
+   * propriétaire, le cabinet et le code pour un gestionnaire, le code
+   * d'invitation pour un locataire. Une vérification qui omet ce qu'on vient
+   * de taper n'en est pas une — et c'est le nom du parc qui s'affichera en
+   * tête de l'espace.
+   */
+  if (state.role === 'owner') {
+    rows.push(
+      { label: t('auth.signup.parkName'), value: state.parkName, step: 2 },
+      { label: t('auth.signup.unitCount'), value: state.unitCount, step: 2 },
+      {
+        label: t('auth.signup.management'),
+        value:
+          state.delegates === 'delegate'
+            ? t('auth.signup.manageDelegate')
+            : t('auth.signup.manageSolo'),
+        step: 2,
+      },
+    )
+  } else if (state.role === 'manager') {
+    rows.push(
+      { label: t('auth.signup.company'), value: state.company, step: 2 },
+      { label: t('auth.signup.ownerCode'), value: state.ownerCode, step: 2 },
+    )
+  } else if (state.role === 'tenant') {
+    rows.push({ label: t('auth.signup.inviteCode'), value: state.inviteCode, step: 2 })
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <Card flush className="overflow-hidden">

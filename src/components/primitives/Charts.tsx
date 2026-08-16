@@ -141,7 +141,7 @@ export function StackedBarChart({
               className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-gold"
               style={{ bottom: `${(target / max) * 100}%` }}
             >
-              <span className="absolute -top-4 left-0 font-mono text-[9px] tracking-wider text-gold-ink uppercase">
+              <span className="absolute -top-4 left-0 font-mono text-mono-label tracking-wider text-gold-ink uppercase">
                 {targetLabel} · {moneyCompact(target)}
               </span>
             </div>
@@ -226,7 +226,7 @@ export function StackedBarChart({
             <span
               key={bar.label}
               className={cn(
-                'min-w-0 flex-1 truncate text-center font-mono text-[9px] tracking-wide uppercase',
+                'min-w-0 flex-1 truncate text-center font-mono text-mono-label tracking-wide uppercase',
                 'transition-colors duration-150',
                 active === index ? 'text-ink' : 'text-muted',
                 // Douze étiquettes ne tiennent pas sur un téléphone : on en
@@ -417,7 +417,7 @@ export function MiniBarChart({
       <div className="mt-3 flex min-h-5 items-baseline justify-between gap-3">
         <span
           aria-hidden="true"
-          className="font-mono text-[9px] tracking-wide text-muted uppercase"
+          className="font-mono text-mono-label tracking-wide text-muted uppercase"
         >
           {bars[0]?.label}
         </span>
@@ -428,7 +428,7 @@ export function MiniBarChart({
         >
           {active !== null && (
             <>
-              <span className="font-mono text-[9px] tracking-wide text-muted uppercase">
+              <span className="font-mono text-mono-label tracking-wide text-muted uppercase">
                 {bars[active].label}
               </span>{' '}
               <span className="numeric">{money(bars[active].value, { round: true })}</span>
@@ -438,7 +438,7 @@ export function MiniBarChart({
 
         <span
           aria-hidden="true"
-          className="font-mono text-[9px] tracking-wide text-muted uppercase"
+          className="font-mono text-mono-label tracking-wide text-muted uppercase"
         >
           {bars[bars.length - 1]?.label}
         </span>
@@ -534,7 +534,7 @@ export function DonutChart({
           <span className="numeric text-title-l font-medium">
             {shown ? `${Math.round(shown.fraction * 100)} %` : centerValue}
           </span>
-          <span className="max-w-[6rem] font-mono text-[9px] tracking-wide text-muted uppercase">
+          <span className="max-w-[6rem] font-mono text-mono-label tracking-wide text-muted uppercase">
             {shown ? shown.slice.label : centerLabel}
           </span>
         </div>
