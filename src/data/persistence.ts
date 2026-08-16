@@ -26,8 +26,12 @@ import { DEPOSITS, UNITS, WORKS, type Deposit, type Unit, type WorkOrder } from 
  * (« Plomberie ») à une clé de traduction (`plumbing`). Sans incrément, un
  * enregistrement de version 1 rendait `app.trades.Plomberie` à l'écran — la
  * clé introuvable, affichée telle quelle.
+ *
+ * Version 3 : le locataire d'une caution vaut `null` quand il est parti, là où
+ * le champ portait « Ancien locataire » en clair. Un enregistrement antérieur
+ * ferait réapparaître ce français dans une interface anglaise.
  */
-const VERSION = 2
+const VERSION = 3
 const CLE = 'gestlocpro.portfolio'
 
 export interface EtatPersiste {

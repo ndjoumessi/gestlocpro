@@ -427,6 +427,8 @@ export const fr = {
     deposits: {
       title: 'Cautions',
       subtitle: 'Montant consigné, retenues justifiées, solde restitué.',
+      // Affiché quand la caution n'est plus rattachée à personne.
+      formerTenant: 'Ancien locataire',
       held: 'Consignée',
       settling: 'En cours d’arbitrage',
       returned: 'Restituée',

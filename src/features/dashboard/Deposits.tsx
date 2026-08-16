@@ -74,7 +74,7 @@ export function Deposits() {
         <DataTable<Deposit>
           caption={t('app.deposits.title')}
           rows={deposits}
-          rowKey={(d) => d.unitId + d.tenant}
+          rowKey={(d) => d.unitId}
           columns={[
             {
               key: 'unit',
@@ -82,7 +82,11 @@ export function Deposits() {
               width: '5.5rem',
               render: (d) => <span className="numeric font-medium">{d.unitId}</span>,
             },
-            { key: 'tenant', header: t('app.portfolio.tenant'), render: (d) => d.tenant },
+            {
+              key: 'tenant',
+              header: t('app.portfolio.tenant'),
+              render: (d) => d.tenant ?? t('app.deposits.formerTenant'),
+            },
             {
               key: 'held',
               header: t('app.deposits.amountHeld'),
@@ -198,7 +202,9 @@ function SettleModal({
       <div className="flex flex-col gap-5">
         <div className="flex items-center gap-3 rounded-md border border-divider bg-surface-sunken px-4 py-3">
           <span className="numeric text-title-m font-medium">{deposit.unitId}</span>
-          <span className="min-w-0 flex-1 truncate text-body text-muted">{deposit.tenant}</span>
+          <span className="min-w-0 flex-1 truncate text-body text-muted">
+            {deposit.tenant ?? t('app.deposits.formerTenant')}
+          </span>
           <span className="numeric text-body font-medium">
             {money(deposit.held, { round: true })}
           </span>

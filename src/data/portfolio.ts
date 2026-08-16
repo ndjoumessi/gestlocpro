@@ -164,7 +164,16 @@ export const WORKS: WorkOrder[] = [
 
 export interface Deposit {
   unitId: string
-  tenant: string
+  /**
+   * `null` quand le locataire est parti.
+   *
+   * Le champ portait « Ancien locataire » en clair, donc du français figé dans
+   * la donnée — et surtout deux natures dans un seul champ : un nom propre pour
+   * les uns, un libellé de produit pour les autres. `null` dit ce qui est
+   * réellement le cas — aucune personne rattachée — et laisse l'interface le
+   * nommer dans sa langue.
+   */
+  tenant: string | null
   held: number
   withheld: number
   status: 'held' | 'settling' | 'returned'
@@ -174,8 +183,8 @@ export const DEPOSITS: Deposit[] = [
   { unitId: 'A1', tenant: 'Charles Ngassa', held: 290000, withheld: 0, status: 'held' },
   { unitId: 'A2', tenant: 'Mireille Fotso', held: 220000, withheld: 0, status: 'held' },
   { unitId: 'A3', tenant: 'Serge Mbarga', held: 230000, withheld: 45000, status: 'settling' },
-  { unitId: 'B4', tenant: 'Ancien locataire', held: 236000, withheld: 118000, status: 'settling' },
-  { unitId: 'C3', tenant: 'Ancien locataire', held: 250000, withheld: 0, status: 'returned' },
+  { unitId: 'B4', tenant: null, held: 236000, withheld: 118000, status: 'settling' },
+  { unitId: 'C3', tenant: null, held: 250000, withheld: 0, status: 'returned' },
 ]
 
 export interface Inspection {

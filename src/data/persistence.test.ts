@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { hasStoredState, loadState, resetState, saveState } from './persistence'
-import { UNITS } from './portfolio'
+import { DEPOSITS, UNITS } from './portfolio'
 
 const CLE = 'gestlocpro.portfolio'
 
@@ -59,6 +59,25 @@ describe('enregistrement abîmé', () => {
     const charge = loadState()
     expect(charge.works.every((w) => /^[a-z]+$/.test(w.trade))).toBe(true)
     expect(charge.units).toEqual(UNITS)
+  })
+
+  it('écarte un enregistrement où le locataire parti portait un libellé français', () => {
+    // Le champ valait « Ancien locataire » en clair ; il vaut `null` depuis.
+    // Un enregistrement antérieur ferait réapparaître ce français dans une
+    // interface anglaise.
+    window.localStorage.setItem(
+      CLE,
+      JSON.stringify({
+        version: 2,
+        etat: {
+          units: [{ id: 'A1' }],
+          works: [{ id: 'X', trade: 'plumbing' }],
+          deposits: [{ unitId: 'B4', tenant: 'Ancien locataire' }],
+        },
+      }),
+    )
+
+    expect(loadState().deposits).toEqual(DEPOSITS)
   })
 
   it('écarte une version périmée', () => {

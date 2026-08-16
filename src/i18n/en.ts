@@ -410,6 +410,7 @@ export const en: Dictionary = {
     deposits: {
       title: 'Deposits',
       subtitle: 'Amount held, deductions justified, balance returned.',
+      formerTenant: 'Former tenant',
       held: 'Held',
       settling: 'Being settled',
       returned: 'Returned',
