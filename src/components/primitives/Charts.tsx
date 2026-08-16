@@ -147,11 +147,7 @@ export function StackedBarChart({
                   « 1,4 M » côtoyait « 1 397 000 FCFA » sur la même vue : les
                   deux disent le même chiffre, mais leur voisinage invite à les
                   comparer — et l'arrondi fait douter de celui qui ne l'est
-                  pas.
-
-                  C'était le dernier appelant de `moneyCompact` : la forme
-                  compacte n'a plus d'emploi dans le produit. Elle reste
-                  exportée et testée, à décider. */}
+                  pas. */}
               <span className="absolute -top-4 left-0 font-mono text-mono-label tracking-wider text-gold-ink uppercase">
                 {targetLabel} · {money(target, { round: true })}
               </span>

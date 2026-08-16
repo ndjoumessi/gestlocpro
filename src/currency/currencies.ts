@@ -153,12 +153,3 @@ export function parseMoney(input: string, currency: CurrencyCode): number | null
   const value = Number(cleaned)
   return Number.isFinite(value) ? value : null
 }
-
-/** Variante compacte pour les axes de graphe : 1 415 000 -> 1,4 M */
-export function formatMoneyCompact(amount: number, currency: CurrencyCode): string {
-  const def = CURRENCY_DEFS[currency]
-  return new Intl.NumberFormat(def.locale, {
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  }).format(amount)
-}
