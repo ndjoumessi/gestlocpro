@@ -1,0 +1,25 @@
+# Ce que `COPY . .` ne doit PAS emporter.
+#
+# Les `node_modules` de la machine de développement écraseraient ceux que
+# l'image vient d'installer — arbres compilés pour macOS, moteurs Prisma pour
+# la mauvaise plateforme. La panne se manifesterait au démarrage, loin de sa
+# cause.
+node_modules
+server/node_modules
+
+# Sorties de construction : l'image les refait. Les copier ferait servir un
+# `dist/` d'hier sans que rien ne le signale.
+dist
+server/dist
+
+# Secrets locaux. `.env` porte l'URL de la base de développement et le secret de
+# session ; il n'a rien à faire dans une image que l'on pousse.
+.env
+.env.*
+!.env.example
+
+.git
+.github
+*.log
+coverage
+.DS_Store
