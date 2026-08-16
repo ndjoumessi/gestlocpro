@@ -24,7 +24,9 @@ export function Portfolio() {
       if (building !== 'all' && unit.buildingId !== building) return false
       if (!needle) return true
       const haystack = [
-        unit.id,
+        // Le libellé et non l'identifiant : c'est « A1 » que l'utilisateur voit
+        // dans la colonne et retape ici, pas l'uuid que servira l'API.
+        unit.label,
         // La typologie est cherchée sur son libellé traduit et non sur la clé :
         // un anglophone qui voit « 2-bed » à l'écran tape « bed », pas « T3 ».
         t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1'),
@@ -136,7 +138,7 @@ export function Portfolio() {
             key: 'unit',
             header: t('app.portfolio.unit'),
             width: '5.5rem',
-            render: (unit) => <span className="numeric font-medium">{unit.id}</span>,
+            render: (unit) => <span className="numeric font-medium">{unit.label}</span>,
           },
           {
             key: 'building',

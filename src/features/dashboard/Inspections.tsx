@@ -54,8 +54,11 @@ export function Inspections() {
             <Card key={unitId}>
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
+                  {/* Le regroupement se fait sur l'identifiant technique, mais
+                      c'est le libellé de l'unité qui se lit dans le titre. */}
                   <h2 className="font-sans text-title-m font-semibold">
-                    {unitId} · {unit && t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')}
+                    {unit?.label ?? unitId} ·{' '}
+                    {unit && t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')}
                   </h2>
                   <p className="font-mono text-mono-label text-muted">
                     {unit?.tenant ?? t('app.portfolio.noTenant')}

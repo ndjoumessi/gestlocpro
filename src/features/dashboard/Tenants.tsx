@@ -79,7 +79,7 @@ export function Tenants() {
             header: t('app.portfolio.unit'),
             render: (unit) => (
               <span className="numeric">
-                {unit.id}
+                {unit.label}
                 <span className="ml-2 text-mono-label text-muted">
                   {buildingById(unit.buildingId)?.district}
                 </span>
@@ -137,7 +137,7 @@ export function Tenants() {
         <p className="mt-4 text-body-s text-muted">
           {t('app.tenants.vacantList', {
             count: vacant.length,
-            units: n.list(vacant.map((unit) => unit.id)),
+            units: n.list(vacant.map((unit) => unit.label)),
           })}
         </p>
       )}
@@ -279,8 +279,10 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
               onChange={(e) => setUnitId(e.target.value)}
             >
               {vacant.map((unit) => (
+                // La valeur reste l'identifiant technique — c'est elle qui part
+                // à `addTenant` puis au serveur ; seul le texte lu est le libellé.
                 <option key={unit.id} value={unit.id}>
-                  {unit.id} — {t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')} ·{' '}
+                  {unit.label} — {t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')} ·{' '}
                   {buildingById(unit.buildingId)?.district}
                 </option>
               ))}

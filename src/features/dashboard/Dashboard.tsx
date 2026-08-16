@@ -13,6 +13,7 @@ import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
 import { useDates } from '@/lib/useDates'
 import { BUILDINGS, COLLECTIONS, KPIS } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
+import { workTitle } from '@/data/workTitle'
 import { RecordPaymentModal } from './RecordPaymentModal'
 import { TenantDashboard } from './TenantDashboard'
 
@@ -23,7 +24,7 @@ export function Dashboard() {
   const { money, definition } = useCurrency()
   const exportCsv = useCsvExport()
   const csvMoney = useCsvMoney()
-  const { units, works } = usePortfolio()
+  const { units, works, unitById } = usePortfolio()
   const [payOpen, setPayOpen] = useState(false)
 
   // Le locataire n'a pas une version filtrée de cet écran : il en a un autre.
@@ -208,9 +209,17 @@ export function Dashboard() {
                     <Icon name="wrench" size={15} />
                   </span>
                   <div className="min-w-0">
-                    <p className="text-body font-medium">{t(`app.works.samples.${work.titleKey}` as 'app.works.samples.sinkLeak')}</p>
+                    {/* Deux natures d'intitulé cohabitent : une clé pour le jeu
+                        de démonstration, un texte libre dès que le locataire
+                        l'écrit. Sans ce point de passage, l'écran rendrait
+                        `app.works.samples.undefined` — un défaut qui compile. */}
+                    <p className="text-body font-medium">{workTitle(work, t)}</p>
                     <p className="mt-0.5 font-mono text-mono-label text-muted">
-                      {work.unitId} · {work.id} ·{' '}
+                      {/* Un signalement ne porte que l'identifiant technique de
+                          l'unité : le libellé se relit depuis le parc. Afficher
+                          `work.unitId` montrerait un uuid le jour où les données
+                          viendront du serveur. */}
+                      {unitById(work.unitId)?.label} · {work.id} ·{' '}
                       {work.amount ? money(work.amount, { round: true }) : t('app.works.noQuote')}
                     </p>
                   </div>
@@ -230,7 +239,7 @@ export function Dashboard() {
               .slice(0, 4)
               .map((unit) => (
                 <li key={unit.id} className="flex items-center gap-3">
-                  <span className="numeric w-9 shrink-0 text-body-s font-medium">{unit.id}</span>
+                  <span className="numeric w-9 shrink-0 text-body-s font-medium">{unit.label}</span>
                   <span className="min-w-0 flex-1 truncate text-body-s text-muted">
                     {unit.tenant}
                   </span>

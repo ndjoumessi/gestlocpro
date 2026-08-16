@@ -12,6 +12,7 @@ import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
 import { CURRENT_TENANT_UNIT, type WorkOrder } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
+import { workTitle } from '@/data/workTitle'
 
 const STATUS_TONE: Record<WorkOrder['status'], StatusTone> = {
   reported: 'neutral',
@@ -83,11 +84,14 @@ export function Works() {
 
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="font-sans text-title-m font-semibold">{t(`app.works.samples.${work.titleKey}` as 'app.works.samples.sinkLeak')}</h2>
+                  <h2 className="font-sans text-title-m font-semibold">{workTitle(work, t)}</h2>
                   {work.urgent && <Badge tone="danger">{t('app.works.urgent')}</Badge>}
                 </div>
                 <p className="mt-1 font-mono text-mono-label text-muted">
-                  {work.id} · {work.unitId} {unit?.tenant ? `· ${unit.tenant}` : ''} ·{' '}
+                  {/* `work.id` est une référence de signalement, pas une unité :
+                      il reste tel quel. `work.unitId`, lui, est l'identifiant
+                      technique de l'unité — c'est son libellé qui se lit. */}
+                  {work.id} · {unit?.label} {unit?.tenant ? `· ${unit.tenant}` : ''} ·{' '}
                   {t(`app.trades.${work.trade}` as 'app.trades.plumbing')} ·{' '}
                   {d.dayMonth(work.reportedAt)}
                 </p>

@@ -16,6 +16,7 @@ import {
   readingForUnit,
 } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
+import { workTitle } from '@/data/workTitle'
 import { useReceiptExport } from './receiptExport'
 
 /**
@@ -62,7 +63,7 @@ export function TenantDashboard() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label={t('app.tenant.myUnit')}
-          value={unit.id}
+          value={unit.label}
           unit={t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')}
           note={`${unit.surface} m² · ${building?.name ?? ''}`}
         />
@@ -143,7 +144,7 @@ export function TenantDashboard() {
                       <Icon name="wrench" size={15} />
                     </span>
                     <div className="min-w-0">
-                      <p className="text-body font-medium">{t(`app.works.samples.${work.titleKey}` as 'app.works.samples.sinkLeak')}</p>
+                      <p className="text-body font-medium">{workTitle(work, t)}</p>
                       <p className="mt-0.5 font-mono text-mono-label text-muted">
                         {work.id} ·{' '}
                         {d.dayMonth(work.reportedAt)}
@@ -225,10 +226,13 @@ export function TenantRestricted() {
 /** Bandeau réutilisable rappelant le périmètre du locataire. */
 export function TenantScopeNote() {
   const t = useT()
+  // `CURRENT_TENANT_UNIT` tient lieu de session : c'est un identifiant
+  // technique, donc il sert à retrouver l'unité, pas à être lu.
+  const { unitById } = usePortfolio()
   return (
     <p className="mb-4 flex items-start gap-2 rounded-md border border-ok-border bg-ok-tint px-3.5 py-2.5 text-body-s text-ok">
       <StatusPill tone="ok" size="sm" icon="shield">
-        {CURRENT_TENANT_UNIT}
+        {unitById(CURRENT_TENANT_UNIT)?.label}
       </StatusPill>
       {t('app.tenant.privacyNote')}
     </p>

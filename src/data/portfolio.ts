@@ -186,8 +186,23 @@ export type WorkTitleKey =
 export interface WorkOrder {
   id: string
   unitId: string
-  /** Voir `WorkTitleKey` : clé de démonstration, chaîne libre dans le produit réel. */
-  titleKey: WorkTitleKey
+  /**
+   * Intitulé du jeu de démonstration, en clé — voir `WorkTitleKey`.
+   *
+   * Absent dès que la donnée vient du serveur : elle porte alors un `title`
+   * écrit par le locataire, et une saisie ne se traduit pas.
+   */
+  titleKey?: WorkTitleKey
+  /**
+   * Intitulé libre, tel que saisi.
+   *
+   * Les deux champs coexistent parce que les deux natures coexistent, et c'est
+   * la seule façon honnête de le dire : un jeu de démonstration servi en deux
+   * langues a besoin d'une clé, une saisie d'utilisateur n'en a pas. Les écrans
+   * rendent `title` s'il existe, sinon la clé traduite — jamais l'inverse, et
+   * jamais les deux.
+   */
+  title?: string
   /**
    * Corps de métier, en clé et non en clair.
    *
@@ -213,6 +228,15 @@ export const WORKS: WorkOrder[] = [
 ]
 
 export interface Deposit {
+  /**
+   * Identifiant serveur, absent du jeu de démonstration.
+   *
+   * Une caution est clé par **bail** côté serveur, et non par unité : celle du
+   * locataire suivant écraserait sinon celle de l'ancien, retenue et solde
+   * compris. Le client la désigne encore par son unité, ce qui suffit tant
+   * qu'une unité n'a qu'un bail — mais l'arbitrage a besoin de la vraie clé.
+   */
+  id?: string
   unitId: string
   /**
    * `null` quand le locataire est parti.

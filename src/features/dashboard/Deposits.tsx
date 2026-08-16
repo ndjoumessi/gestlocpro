@@ -28,7 +28,7 @@ export function Deposits() {
 
   // Les cautions viennent de l'état partagé : arbitrer ici doit se voir dans
   // l'espace locataire, qui affiche la caution consignée du bail.
-  const { deposits, settleDeposit } = usePortfolio()
+  const { deposits, settleDeposit, unitById } = usePortfolio()
   const [settling, setSettling] = useState<Deposit | null>(null)
 
   /**
@@ -80,7 +80,13 @@ export function Deposits() {
               key: 'unit',
               header: t('app.portfolio.unit'),
               width: '5.5rem',
-              render: (d) => <span className="numeric font-medium">{d.unitId}</span>,
+              // `unitId` est l'identifiant technique — un `uuid` une fois les
+              // données servies par l'API. C'est le libellé qui s'affiche.
+              render: (d) => (
+                <span className="numeric font-medium">
+                  {unitById(d.unitId)?.label ?? d.unitId}
+                </span>
+              ),
             },
             {
               key: 'tenant',
@@ -161,6 +167,7 @@ function SettleModal({
 }) {
   const t = useT()
   const { money, parseAmount } = useCurrency()
+  const { unitById } = usePortfolio()
 
   const [withheld, setWithheld] = useState(String(deposit.withheld || ''))
   const [reason, setReason] = useState('')
@@ -203,7 +210,9 @@ function SettleModal({
     >
       <div className="flex flex-col gap-5">
         <div className="flex items-center gap-3 rounded-md border border-divider bg-surface-sunken px-4 py-3">
-          <span className="numeric text-title-m font-medium">{deposit.unitId}</span>
+          <span className="numeric text-title-m font-medium">
+            {unitById(deposit.unitId)?.label ?? deposit.unitId}
+          </span>
           <span className="min-w-0 flex-1 truncate text-body text-muted">
             {deposit.tenant ?? t('app.deposits.formerTenant')}
           </span>

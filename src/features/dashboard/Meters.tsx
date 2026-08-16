@@ -29,6 +29,21 @@ export function Meters() {
   const csvMoney = useCsvMoney()
   const { unitById } = usePortfolio()
 
+  /**
+   * Libellé affichable d'une unité.
+   *
+   * Un relevé ne porte que l'identifiant technique de l'unité. Celui-ci vaut
+   * « A1 » dans le jeu de démonstration, mais deviendra un `uuid` dès que les
+   * données viendront du serveur : tout ce qui va sous les yeux — colonne,
+   * export, alerte — passe donc par le `label`.
+   *
+   * Aucun repli sur l'identifiant : une unité introuvable laisse la cellule
+   * vide, et le manque se voit. Se replier dessus réintroduirait exactement
+   * l'uuid que ce détour supprime, au seul endroit où personne ne le
+   * chercherait.
+   */
+  const unitLabel = (unitId: string) => unitById(unitId)?.label ?? ''
+
   const consumption = (reading: MeterReading) => ({
     water: reading.waterCurrent === null ? null : reading.waterCurrent - reading.waterPrevious,
     power: reading.powerCurrent === null ? null : reading.powerCurrent - reading.powerPrevious,
@@ -77,7 +92,7 @@ export function Meters() {
                   // `n.integer` : le groupement des milliers est fait pour
                   // l'œil, et il coupe « 4 120 » en deux colonnes à l'import.
                   return [
-                    r.unitId,
+                    unitLabel(r.unitId),
                     unitById(r.unitId)?.tenant ?? t('app.portfolio.noTenant'),
                     r.waterPrevious,
                     r.waterCurrent,
@@ -140,7 +155,7 @@ export function Meters() {
           </p>
           {missing.length > 0 && (
             <p className="mt-0.5 text-body-s">
-              {t('app.meters.missingHint')} — {n.list(missing.map((r) => r.unitId))}
+              {t('app.meters.missingHint')} — {n.list(missing.map((r) => unitLabel(r.unitId)))}
             </p>
           )}
         </div>
@@ -157,7 +172,7 @@ export function Meters() {
             width: '5.5rem',
             render: (r) => (
               <div>
-                <span className="numeric font-medium">{r.unitId}</span>
+                <span className="numeric font-medium">{unitLabel(r.unitId)}</span>
                 <span className="block truncate text-body-s text-muted sm:hidden">
                   {unitById(r.unitId)?.tenant}
                 </span>

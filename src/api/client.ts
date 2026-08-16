@@ -140,4 +140,34 @@ export const api = {
   me: () => requete<SessionApi>('/auth/me'),
 
   health: () => requete<{ ok: boolean }>('/health'),
+
+  // ─── Parc ──────────────────────────────────────────────────────────────────
+
+  /**
+   * Le parc entier en une seule réponse.
+   *
+   * Trois requêtes séparées arriveraient dans un ordre indéterminé, et
+   * l'interface montrerait un parc à jour à côté de cautions périmées le temps
+   * que la dernière revienne. `loadState()` rendait déjà un état cohérent d'un
+   * bloc, et c'est ce qu'il faut conserver.
+   */
+  portfolio: <T>(parkId: string) => requete<T>(`/parks/${parkId}/portfolio`),
+
+  approveWork: <T>(parkId: string, workId: string) =>
+    requete<T>(`/parks/${parkId}/works/${workId}/approve`, { method: 'PATCH' }),
+
+  settleDeposit: <T>(
+    parkId: string,
+    depositId: string,
+    corps: { withheldMinor: number; reason?: string },
+  ) =>
+    requete<T>(`/parks/${parkId}/deposits/${depositId}/settle`, {
+      method: 'PATCH',
+      body: JSON.stringify(corps),
+    }),
+
+  addTenant: <T>(
+    parkId: string,
+    corps: { unitId: string; fullName: string; phoneE164?: string },
+  ) => requete<T>(`/parks/${parkId}/tenants`, { method: 'POST', body: JSON.stringify(corps) }),
 }

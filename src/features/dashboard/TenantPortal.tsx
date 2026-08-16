@@ -14,6 +14,7 @@ import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
 import { TENANT_RECEIPTS, UNITS, buildingById } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
+import { workTitle } from '@/data/workTitle'
 import { useReceiptExport } from './receiptExport'
 
 const TABS = ['space', 'myPayments', 'myWorks', 'documents', 'report'] as const
@@ -125,7 +126,7 @@ export function TenantPortal() {
                 <Card>
                   <p className="eyebrow text-muted">{t('app.portal.myUnit')}</p>
                   <p className="mt-2 font-sans text-title-l font-semibold">
-                    {unit.id} · {t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')}
+                    {unit.label} · {t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')}
                   </p>
                   {/* Le nom de l'immeuble était écrit en dur : il restait
                       « Résidence Bonamoussadi » quelle que soit l'unité. */}
@@ -183,7 +184,7 @@ export function TenantPortal() {
                   <Card key={work.id} className="flex items-center gap-3">
                     <Icon name="wrench" size={18} className="shrink-0 text-muted" />
                     <div className="min-w-0 flex-1">
-                      <p className="text-body font-medium">{t(`app.works.samples.${work.titleKey}` as 'app.works.samples.sinkLeak')}</p>
+                      <p className="text-body font-medium">{workTitle(work, t)}</p>
                       <p className="font-mono text-mono-label text-muted">
                         {work.id} ·{' '}
                         {d.dayMonth(work.reportedAt)}

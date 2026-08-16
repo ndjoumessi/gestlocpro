@@ -30,7 +30,9 @@ export function useReceiptExport() {
       exportCsv({
         // L'unité entre dans le nom : un locataire qui télécharge six mois de
         // quittances doit pouvoir les distinguer dans son dossier.
-        name: [t('app.files.receipt'), unit.id],
+        // Le libellé et non l'identifiant : sinon le locataire
+        // télécharge « quittance-3f7a91c2-….csv ».
+        name: [t('app.files.receipt'), unit.label],
         // Le mois de la quittance, et non le jour du téléchargement : c'est la
         // période qui identifie le document.
         stamp: isoMonth(receipt),
@@ -46,7 +48,7 @@ export function useReceiptExport() {
         rows: [
           [
             d.monthYear(receipt),
-            unit.id,
+            unit.label,
             buildingById(unit.buildingId)?.name ?? null,
             unit.tenant ?? t('app.portfolio.noTenant'),
             csvMoney.amount(unit.rent),

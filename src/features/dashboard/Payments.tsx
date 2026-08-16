@@ -81,7 +81,9 @@ export function Payments() {
                     t('app.payments.lateDays'),
                   ],
                   rows: rows.map((unit) => [
-                    unit.id,
+                    // Le libellé, pas l'identifiant technique : un fichier de
+                    // suivi qui listerait des uuid serait inexploitable.
+                    unit.label,
                     unit.tenant ?? t('app.portfolio.noTenant'),
                     csvMoney.amount(unit.rent),
                     csvMoney.amount(paidShare(unit)),
@@ -172,7 +174,7 @@ export function Payments() {
             key: 'unit',
             header: t('app.portfolio.unit'),
             width: '5.5rem',
-            render: (unit) => <span className="numeric font-medium">{unit.id}</span>,
+            render: (unit) => <span className="numeric font-medium">{unit.label}</span>,
           },
           {
             key: 'tenant',
