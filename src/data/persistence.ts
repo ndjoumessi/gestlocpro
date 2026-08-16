@@ -58,21 +58,74 @@ export interface EtatPersiste {
 
 const ETAT_INITIAL: EtatPersiste = { units: UNITS, works: WORKS, deposits: DEPOSITS }
 
-/** Vérifie grossièrement qu'un objet lu a bien la forme attendue. */
+/**
+ * Champs dont les écrans ont RÉELLEMENT besoin, par collection.
+ *
+ * La vérification ne portait que sur « c'est un tableau non vide ». Elle a
+ * laissé passer un enregistrement où les unités n'avaient pas de `buildingId` :
+ * l'écran du parc affichait « Trois immeubles, douze unités » en titre et
+ * `0/0` dans chacune des trois cartes, puisque aucune unité ne se rattachait à
+ * son immeuble. Deux chiffres qui se contredisent sur le même écran, sans que
+ * rien ne signale un état corrompu.
+ *
+ * On nomme donc les champs qui portent les liens et les libellés — ceux dont
+ * l'absence produit un écran faux plutôt qu'un écran vide. Le reste n'est pas
+ * inspecté : ce garde doit rester bon marché, et un enregistrement dont ces
+ * clés sont présentes est réparable, pas trompeur.
+ */
+const CHAMPS_REQUIS = {
+  units: ['id', 'buildingId', 'label', 'status'],
+  works: ['id', 'unitId', 'status'],
+  deposits: ['unitId', 'status'],
+} as const
+
+function collectionValide(valeur: unknown, champs: readonly string[]): boolean {
+  if (!Array.isArray(valeur)) return false
+  // Une collection vide signale un enregistrement corrompu plutôt qu'un parc
+  // réellement vidé : rien dans l'interface ne permet de supprimer une unité.
+  if (valeur.length === 0) return false
+  return valeur.every(
+    (element) =>
+      !!element &&
+      typeof element === 'object' &&
+      champs.every((champ) => champ in (element as Record<string, unknown>)),
+  )
+}
+
+/** Vérifie qu'un objet lu a bien la forme attendue, champs porteurs compris. */
 function formeValide(valeur: unknown): valeur is EtatPersiste {
   if (!valeur || typeof valeur !== 'object') return false
   const etat = valeur as Partial<EtatPersiste>
   return (
-    Array.isArray(etat.units) &&
-    Array.isArray(etat.works) &&
-    Array.isArray(etat.deposits) &&
-    // Une collection vide signale un enregistrement corrompu plutôt qu'un parc
-    // réellement vidé : rien dans l'interface ne permet de supprimer une unité.
-    etat.units.length > 0 &&
-    etat.works.length > 0 &&
-    etat.deposits.length > 0
+    collectionValide(etat.units, CHAMPS_REQUIS.units) &&
+    collectionValide(etat.works, CHAMPS_REQUIS.works) &&
+    collectionValide(etat.deposits, CHAMPS_REQUIS.deposits)
   )
 }
+
+/**
+ * Signature de la forme enregistrée : les clés effectivement présentes.
+ *
+ * Exportée pour un seul usage — le test qui la compare à une valeur figée à
+ * côté de `VERSION`. Rien dans le code de production ne l'appelle.
+ *
+ * C'est le garde qui manquait : la discipline « incrémenter `VERSION` dès que
+ * la forme change » n'était écrite que dans un commentaire, et un commentaire
+ * n'arrête personne. Le jour où on l'oublie, les utilisateurs relisent un état
+ * périmé et l'écran ment.
+ */
+export function signatureDeLaForme(etat: EtatPersiste = ETAT_INITIAL): Record<string, string[]> {
+  const cles = (liste: readonly unknown[]) =>
+    [...new Set(liste.flatMap((e) => Object.keys(e as object)))].sort()
+  return {
+    units: cles(etat.units),
+    works: cles(etat.works),
+    deposits: cles(etat.deposits),
+  }
+}
+
+/** Exportée pour le même test, qui doit pouvoir dire de quelle version il parle. */
+export const VERSION_STOCKAGE = VERSION
 
 /**
  * Relit l'état enregistré, ou rend l'état initial.
