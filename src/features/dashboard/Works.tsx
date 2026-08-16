@@ -93,7 +93,7 @@ export function Works() {
                   {/* `work.id` est une référence de signalement, pas une unité :
                       il reste tel quel. `work.unitId`, lui, est l'identifiant
                       technique de l'unité — c'est son libellé qui se lit. */}
-                  {work.id} · {unit?.label} {unit?.tenant ? `· ${unit.tenant}` : ''} ·{' '}
+                  {work.reference ?? work.id} · {unit?.label} {unit?.tenant ? `· ${unit.tenant}` : ''} ·{' '}
                   {t(`app.trades.${work.trade}` as 'app.trades.plumbing')} ·{' '}
                   {d.dayMonth(work.reportedAt)}
                 </p>

@@ -148,7 +148,13 @@ export function StackedBarChart({
                   deux disent le même chiffre, mais leur voisinage invite à les
                   comparer — et l'arrondi fait douter de celui qui ne l'est
                   pas. */}
-              <span className="absolute -top-4 left-0 font-mono text-mono-label tracking-wider text-gold-ink uppercase">
+              {/* Fond opaque et léger retrait : le libellé porte maintenant le
+                  montant exact, donc il occupe 41 % de la largeur du graphique
+                  au lieu des 15 % de sa forme compacte — et il court sur les
+                  barres, en doré sur fond sombre. Le fond le rend lisible quelle
+                  que soit la hauteur des barres, ce qu'un simple déplacement ne
+                  garantirait pas : elles changent avec les données. */}
+              <span className="absolute -top-2.5 left-0 rounded-sm bg-surface px-1.5 py-0.5 font-mono text-mono-label tracking-wider text-gold-ink uppercase">
                 {targetLabel} · {money(target, { round: true })}
               </span>
             </div>

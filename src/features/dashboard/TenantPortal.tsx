@@ -186,7 +186,7 @@ export function TenantPortal() {
                     <div className="min-w-0 flex-1">
                       <p className="text-body font-medium">{workTitle(work, t)}</p>
                       <p className="font-mono text-mono-label text-muted">
-                        {work.id} ·{' '}
+                        {work.reference ?? work.id} ·{' '}
                         {d.dayMonth(work.reportedAt)}
                       </p>
                     </div>

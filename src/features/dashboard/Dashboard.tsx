@@ -215,7 +215,7 @@ export function Dashboard() {
                           l'unité : le libellé se relit depuis le parc. Afficher
                           `work.unitId` montrerait un uuid le jour où les données
                           viendront du serveur. */}
-                      {unitById(work.unitId)?.label} · {work.id} ·{' '}
+                      {unitById(work.unitId)?.label} · {work.reference ?? work.id} ·{' '}
                       {work.amount ? money(work.amount, { round: true }) : t('app.works.noQuote')}
                     </p>
                   </div>

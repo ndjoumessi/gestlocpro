@@ -163,6 +163,7 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
     units,
     works: data.works.map((w) => ({
       id: w.id,
+      reference: w.reference,
       unitId: w.unitId,
       // Un intitulé libre, écrit par qui signale : pas de clé de traduction ici
       // — traduire la saisie de quelqu'un est toujours faux.

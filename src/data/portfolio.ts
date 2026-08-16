@@ -195,6 +195,15 @@ export type WorkTitleKey =
 
 export interface WorkOrder {
   id: string
+  /**
+   * Référence lisible — « SIG-2026-042 ». Absente du jeu de démonstration, où
+   * `id` la portait déjà.
+   *
+   * Même distinction que `Unit.id` et `Unit.label`, et même piège : tant que
+   * les deux coïncident, rien ne se voit. Venue du serveur, `id` est un `uuid`,
+   * et l'écran affichait « aaa63f51-0283-4ffb-b981-… » à la place.
+   */
+  reference?: string
   unitId: string
   /**
    * Intitulé du jeu de démonstration, en clé — voir `WorkTitleKey`.
