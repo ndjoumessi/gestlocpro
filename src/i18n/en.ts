@@ -24,6 +24,8 @@ export const en: Dictionary = {
     country: 'Country',
     demoBadge: 'Demo',
     demoPark: 'Demo portfolio',
+    actionRefused: 'The server refused this action. Nothing was saved.',
+    actionFailed: 'This action failed for now. Nothing was saved.',
     demoNotice:
       'You are browsing a demo: these buildings, tenants and amounts are fictional.',
     demoCta: 'Create my space',

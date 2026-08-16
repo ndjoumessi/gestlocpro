@@ -96,6 +96,13 @@ describe('valider un devis', () => {
     await screen.findByText(/SIG-2026-001/)
     await user.click(screen.getByRole('button', { name: /valider le devis/i }))
 
+    // ET on le DIT. Le test précédent se contentait de vérifier que l'écran ne
+    // mentait pas ; il ne vérifiait pas qu'il parlait. La promesse rejetée
+    // partait sans capture : le gestionnaire cliquait, et rien — ni succès, ni
+    // refus. Un geste sans réponse se répète, puis se conclut par « le bouton
+    // ne fait rien ».
+    expect(await screen.findByText(/le serveur a refusé cette action/i)).toBeInTheDocument()
+
     // Le devis reste à arbitrer, et le bouton reste offert.
     expect(await screen.findByText('Devis proposé')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /valider le devis/i })).toBeInTheDocument()

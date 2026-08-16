@@ -21,7 +21,9 @@ import {
   type MeterReading,
   type MonthlyCollection,
 } from './portfolio'
-import { api } from '@/api/client'
+import { ApiError, api } from '@/api/client'
+import { useToast } from '@/components/primitives/Toast'
+import { useT } from '@/i18n/I18nProvider'
 import { useSession } from '@/api/SessionProvider'
 import { hasStoredState, loadState, resetState, saveState } from './persistence'
 
@@ -115,6 +117,35 @@ interface PortfolioContextValue {
 const PortfolioContext = createContext<PortfolioContextValue | null>(null)
 
 export function PortfolioProvider({ children }: { children: ReactNode }) {
+  const { notify } = useToast()
+  const t = useT()
+
+  /**
+   * Ce que devient un refus du serveur.
+   *
+   * Les trois mutations faisaient `void api….then(…)` sans capture : un 403 ou
+   * un 404 partait en promesse rejetée, et l'écran ne changeait pas d'un pixel.
+   * Un gestionnaire qui n'a pas le droit de valider un devis cliquait, et rien
+   * — ni succès, ni refus. C'est exactement ce qui a fait passer le bouton
+   * d'inscription pour inerte, au même moment, pour une autre raison.
+   *
+   * On distingue le refus de la panne : « le serveur a dit non » et « le
+   * serveur n'a pas répondu » n'appellent pas le même geste. Les confondre
+   * produit « une erreur est survenue », qui n'aide personne.
+   *
+   * Et l'on affirme ce qu'on sait : rien n'a été enregistré. C'est la question
+   * que se pose l'utilisateur, et la seule à laquelle on puisse répondre avec
+   * certitude — l'état local n'a pas été touché.
+   */
+  const signalerEchec = useCallback(
+    (err: unknown) => {
+      notify(t(err instanceof ApiError ? 'common.actionRefused' : 'common.actionFailed'), {
+        tone: 'danger',
+      })
+    },
+    [notify, t],
+  )
+
   /**
    * Deux sources, et une seule à la fois.
    *
@@ -160,10 +191,26 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       setDeposits(parc.deposits)
       setFromApi(true)
     })
+      /**
+       * Le chargement du parc peut échouer, lui aussi.
+       *
+       * Sans capture, un 404 — parc supprimé, adhésion périmée — devenait une
+       * promesse rejetée : l'écran gardait le jeu de démonstration, et
+       * l'utilisateur regardait des données qui n'étaient pas les siennes sans
+       * que rien ne le dise. `fromApi` reste faux, ce qui est exact : ces
+       * données ne viennent pas du serveur.
+       *
+       * Silencieux si la requête a été annulée : changer de parc en cours de
+       * chargement n'est pas une panne.
+       */
+      .catch((err: unknown) => {
+        if (annule) return
+        signalerEchec(err)
+      })
     return () => {
       annule = true
     }
-  }, [parkId])
+  }, [parkId, signalerEchec])
 
   /**
    * Enregistré à chaque changement d'état plutôt qu'à chaque geste : un seul
@@ -210,8 +257,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         .then(({ work }) => {
           setWorks((list) => list.map((w) => (w.id === work.id ? { ...w, status: work.status } : w)))
         })
+        .catch(signalerEchec)
     },
-    [parkId],
+    [parkId, signalerEchec],
   )
 
   const settleDeposit = useCallback(
@@ -232,8 +280,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           ...(reason ? { reason } : {}),
         })
         .then(local)
+        .catch(signalerEchec)
     },
-    [parkId, deposits],
+    [parkId, deposits, signalerEchec],
   )
 
   const addTenant = useCallback((unitId: string, name: string, phone: string) => {
@@ -249,6 +298,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           setWorks(parc.works)
           setDeposits(parc.deposits)
         })
+        .catch(signalerEchec)
       return
     }
     setUnits((list) =>
@@ -257,7 +307,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       // qu'il n'a pas payé fausserait les indicateurs d'encaissement.
       list.map((u) => (u.id === unitId ? { ...u, tenant: name, phone, status: 'pending' } : u)),
     )
-  }, [parkId])
+  }, [parkId, signalerEchec])
 
   /**
    * Périmètre du locataire.

@@ -124,7 +124,13 @@ describe('inscription', () => {
     await user.type(await screen.findByLabelText(/code d’invitation/i), 'loc12')
     await user.click(screen.getByRole('button', { name: /continuer/i }))
 
-    expect(screen.getByRole('alert')).toHaveTextContent('LOC-XXXX-XXXX')
+    // Deux annonces, et c'est voulu : à côté du champ ET au bord du bouton.
+    // On ne sait pas laquelle des deux zones l'utilisateur regarde — c'est ce
+    // doute qui a fait passer un bouton pour inerte lors de la création du
+    // premier compte du produit.
+    const alertes = screen.getAllByRole('alert')
+    expect(alertes.length).toBeGreaterThanOrEqual(2)
+    for (const alerte of alertes) expect(alerte).toHaveTextContent('LOC-XXXX-XXXX')
   })
 
   it('laisse le pays pré-remplir la devise et la langue', async () => {

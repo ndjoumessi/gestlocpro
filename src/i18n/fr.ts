@@ -31,6 +31,8 @@ export const fr = {
     country: 'Pays',
     demoBadge: 'Démonstration',
     demoPark: 'Parc de démonstration',
+    actionRefused: 'Le serveur a refusé cette action. Rien n’a été enregistré.',
+    actionFailed: 'Action impossible pour l’instant. Rien n’a été enregistré.',
     demoNotice:
       'Vous parcourez une démonstration : ces immeubles, ces locataires et ces montants sont fictifs.',
     demoCta: 'Créer mon espace',
