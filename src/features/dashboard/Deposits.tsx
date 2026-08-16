@@ -42,8 +42,11 @@ export function Deposits() {
   const totalHeld = deposits.reduce((sum, d) => sum + d.held, 0)
   const totalWithheld = deposits.reduce((sum, d) => sum + d.withheld, 0)
 
-  const settle = (unitId: string, withheld: number) => {
-    settleDeposit(unitId, withheld)
+  const settle = (unitId: string, withheld: number, reason?: string) => {
+    // La justification traverse jusqu'au serveur, qui l'exige dès qu'il y a une
+    // retenue. Elle était saisie, rendue obligatoire par la modale — « un
+    // décompte sans motif est indéfendable » — et perdue une ligne plus bas.
+    settleDeposit(unitId, withheld, reason)
     setSettling(null)
     notify(t('app.deposits.settled'), { tone: 'ok' })
   }
@@ -163,7 +166,7 @@ function SettleModal({
 }: {
   deposit: Deposit
   onClose: () => void
-  onConfirm: (unitId: string, withheld: number) => void
+  onConfirm: (unitId: string, withheld: number, reason?: string) => void
 }) {
   const t = useT()
   const { money, parseAmount } = useCurrency()
@@ -190,7 +193,7 @@ function SettleModal({
     }
     setErrors(next)
     if (Object.keys(next).length > 0) return
-    onConfirm(deposit.unitId, parsed)
+    onConfirm(deposit.unitId, parsed, reason.trim() || undefined)
   }
 
   return (

@@ -20,21 +20,47 @@ import type { EtatSession } from './SessionProvider'
  * JAMAIS s'afficher — un filet, pas une assertion de contenu.
  */
 
-const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
+export const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
 
-const PARK = '11111111-2222-4333-8444-555555555555'
+export const PARK = '11111111-2222-4333-8444-555555555555'
 const IMMEUBLE = 'aaaaaaaa-2222-4333-8444-555555555555'
-const U1 = 'bbbbbbbb-2222-4333-8444-555555555555'
-const U2 = 'cccccccc-2222-4333-8444-555555555555'
+export const U1 = 'bbbbbbbb-2222-4333-8444-555555555555'
+export const U2 = 'cccccccc-2222-4333-8444-555555555555'
 
-const SESSION_AVEC_PARC: EtatSession = {
+export const SESSION_AVEC_PARC: EtatSession = {
   statut: 'connecte',
   compte: COMPTE_FICTIF,
   adhesions: [{ parkId: PARK, role: 'owner', parkName: 'Parc de test', currency: 'XAF' }],
 }
 
 /** Charge à la forme du serveur : tout identifiant y est un `uuid`. */
-function portefeuille() {
+/** Forme de la charge, assez lâche pour qu'un test la modifie librement. */
+interface ChargeApi {
+  collections: { year: number; month: number; rent: number; water: number; power: number }[]
+  buildings: {
+    id: string
+    name: string
+    district: string
+    units: {
+      id: string
+      label: string
+      type: string
+      surfaceSqm: number
+      rentMinor: number
+      tenant: { id: string; fullName: string; phoneE164: string | null } | null
+      status: string
+      paidMinor: number
+      overdueDays: number | null
+    }[]
+  }[]
+  works: Record<string, unknown>[]
+  deposits: Record<string, unknown>[]
+  readings: Record<string, unknown>[]
+  inspections: Record<string, unknown>[]
+  notifications: Record<string, unknown>[]
+}
+
+export function portefeuille(): ChargeApi {
   return {
     collections: [{ year: 2026, month: 7, rent: 255000, water: 9000, power: 7000 }],
     buildings: [

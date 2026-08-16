@@ -46,7 +46,12 @@ interface PortfolioContextValue {
   /** Le propriétaire valide un devis proposé par le gestionnaire. */
   approveWork: (id: string) => void
   /** Le propriétaire arbitre une caution : retenue et restitution du solde. */
-  settleDeposit: (unitId: string, withheld: number) => void
+  /**
+   * Arbitre une caution. La justification traverse jusqu'au serveur, qui
+   * l'exige dès qu'il y a une retenue — elle était saisie, rendue obligatoire
+   * par la modale, et perdue avant l'appel.
+   */
+  settleDeposit: (unitId: string, withheld: number, reason?: string) => void
   /** Rattache un locataire à une unité vacante. Le bail démarre « en attente ». */
   addTenant: (unitId: string, name: string, phone: string) => void
   /**
