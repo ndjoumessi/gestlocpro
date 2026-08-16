@@ -49,7 +49,7 @@ export function TenantPortal() {
             ))}
           </span>
           <span className="numeric truncate rounded-md bg-surface-sunken px-3 py-1 text-mono-label text-muted">
-            portail.gestlocpro.com/mon-espace
+            {t('app.portal.demoUrl')}
           </span>
         </div>
 
@@ -168,7 +168,14 @@ export function TenantPortal() {
             {tab === 'documents' && (
               <Card flush>
                 <ul className="divide-y divide-divider">
-                  {['Bail signé', 'État des lieux d’entrée', 'Quittance août 2026', 'Attestation d’assurance'].map(
+                  {(
+                    [
+                      'app.portal.docLease',
+                      'app.portal.docInspection',
+                      'app.portal.docReceipt',
+                      'app.portal.docInsurance',
+                    ] as const
+                  ).map((key) => t(key)).map(
                     (doc) => (
                       <li key={doc} className="flex items-center gap-3 px-4 py-3">
                         <Icon name="file" size={17} className="shrink-0 text-muted" />

@@ -73,6 +73,23 @@ const HARMLESS = /^(\s*|[-–—·|/\\]+|\d+|#[0-9a-fA-F]{3,8}|[^a-z\s]+)$/
  */
 const TEXTE_ACCENTUE = />\s*([^<>{}\n]*[àâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ][^<>{}\n]*)\s*</g
 
+/**
+ * Ce que ce garde-fou NE couvre PAS : les littéraux de chaîne.
+ *
+ * Les quatre noms de documents du portail locataire vivaient dans un tableau
+ * JS — `['Bail signé', 'État des lieux d'entrée', …]` — donc ni dans un
+ * attribut ni entre chevrons. Ils s'affichaient en français dans l'interface
+ * anglaise, et seule une inspection en navigateur les a trouvés.
+ *
+ * Une tentative de les détecter par le même critère d'accent a produit 114
+ * signalements pour deux vrais défauts : noms de tests en français, apostrophes
+ * typographiques prises pour des délimiteurs, texte de commentaires. Un
+ * garde-fou à ce taux de bruit se fait désactiver — ce qui est pire que son
+ * absence. Le faire correctement demanderait d'analyser l'arbre syntaxique et
+ * de ne retenir que les chaînes atteignant le rendu, pas une expression
+ * régulière.
+ */
+
 async function* walk(dir) {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name)
@@ -102,6 +119,7 @@ for await (const file of walk(SRC)) {
         if (value.length < 3 || HARMLESS.test(value)) continue
         findings.push({ file: rel, line: index + 1, attribute: 'texte', value })
       }
+
     }
 
     for (const attribute of ATTRIBUTES) {
