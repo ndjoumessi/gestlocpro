@@ -721,3 +721,105 @@ describe('saisie du bail', () => {
     expect(res.body.fields?.[0]?.path).toBe('startsOn')
   })
 })
+
+describe('encaissements', () => {
+  async function parcAvecBail(email: string) {
+    const { cookie } = await inscrire(email, { parkName: 'Parc' })
+    const parcs = await request(app).get('/api/parks').set('Cookie', cookie)
+    const parkId = parcs.body.parks[0].id
+    const immeuble = await request(app)
+      .post(`/api/parks/${parkId}/buildings`)
+      .set('Cookie', cookie)
+      .send({ name: 'Résidence Makepe', district: 'Makepe' })
+    const logement = await request(app)
+      .post(`/api/parks/${parkId}/buildings/${immeuble.body.building.id}/units`)
+      .set('Cookie', cookie)
+      .send({ label: 'A1', type: 'T3', surfaceSqm: 78, baseRentMinor: 145000 })
+    const unitId = logement.body.unit.id as string
+    await request(app)
+      .post(`/api/parks/${parkId}/tenants`)
+      .set('Cookie', cookie)
+      .send({ unitId, fullName: 'Charles Ngassa', startsOn: '2026-01-01', rentMinor: 145000 })
+    return { cookie, parkId, unitId }
+  }
+
+  it('enregistre le versement et crée l’échéance de la période', async () => {
+    /**
+     * L'écran affichait « Paiement enregistré · quittance envoyée » sans rien
+     * écrire nulle part. C'est le mensonge le plus coûteux d'un logiciel de
+     * gestion : le gestionnaire repart en croyant l'argent tracé, et l'impayé
+     * réapparaît le mois suivant sans qu'on sache si le locataire a payé.
+     */
+    const { cookie, parkId, unitId } = await parcAvecBail('encaissement@example.com')
+
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/payments`)
+      .set('Cookie', cookie)
+      .send({ unitId, periodStart: '2026-07-01', amountMinor: 145000, method: 'mobile' })
+
+    expect(res.status, JSON.stringify(res.body)).toBe(201)
+    const charge = await prisma.rentCharge.findFirstOrThrow({
+      where: { periodStart: new Date('2026-07-01T00:00:00Z') },
+      include: { payments: true },
+    })
+    // Loyer FIGÉ du bail : refacturer juillet au tarif d'août est faux.
+    expect(charge.rentMinor).toBe(145000)
+    expect(charge.payments).toHaveLength(1)
+    expect(charge.payments[0]!.amountMinor).toBe(145000)
+  })
+
+  it('admet un versement partiel, et les cumule sur la même période', async () => {
+    // Payer ce qu'on peut, quand on peut, est le cas COURANT. Interdire le
+    // partiel forcerait à ne rien enregistrer, donc à perdre la trace.
+    const { cookie, parkId, unitId } = await parcAvecBail('partiel@example.com')
+    const corps = { unitId, periodStart: '2026-07-01', method: 'cash' as const }
+
+    await request(app).post(`/api/parks/${parkId}/payments`).set('Cookie', cookie).send({ ...corps, amountMinor: 40000 })
+    await request(app).post(`/api/parks/${parkId}/payments`).set('Cookie', cookie).send({ ...corps, amountMinor: 60000 })
+
+    const charge = await prisma.rentCharge.findFirstOrThrow({
+      where: { periodStart: new Date('2026-07-01T00:00:00Z') },
+      include: { payments: true },
+    })
+    // UNE échéance, deux versements : la période n'est pas dupliquée.
+    expect(charge.payments).toHaveLength(2)
+    expect(charge.payments.reduce((t, p) => t + p.amountMinor, 0)).toBe(100000)
+  })
+
+  it('impute sur la période SAISIE, et non sur le mois du versement', async () => {
+    // Un versement du 2 août peut couvrir juillet. Deviner la période
+    // produirait des mois soldés à tort et des impayés fantômes.
+    const { cookie, parkId, unitId } = await parcAvecBail('periode@example.com')
+
+    await request(app)
+      .post(`/api/parks/${parkId}/payments`)
+      .set('Cookie', cookie)
+      .send({ unitId, periodStart: '2026-07-01', amountMinor: 145000, method: 'transfer', paidOn: '2026-08-02' })
+
+    const charge = await prisma.rentCharge.findFirstOrThrow({
+      where: { periodStart: new Date('2026-07-01T00:00:00Z') },
+      include: { payments: true },
+    })
+    expect(charge.payments[0]!.paidOn.toISOString().slice(0, 10)).toBe('2026-08-02')
+  })
+
+  it('refuse un montant nul ou négatif', async () => {
+    const { cookie, parkId, unitId } = await parcAvecBail('montant@example.com')
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/payments`)
+      .set('Cookie', cookie)
+      .send({ unitId, periodStart: '2026-07-01', amountMinor: 0, method: 'cash' })
+    expect(res.status).toBe(400)
+    expect(res.body.fields?.[0]?.path).toBe('amountMinor')
+  })
+
+  it('refuse un logement d’un autre parc, en 404', async () => {
+    const { cookie, parkId } = await parcAvecBail('ici@example.com')
+    const { unitId: ailleurs } = await parcAvecBail('la-bas@example.com')
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/payments`)
+      .set('Cookie', cookie)
+      .send({ unitId: ailleurs, periodStart: '2026-07-01', amountMinor: 1000, method: 'cash' })
+    expect(res.status).toBe(404)
+  })
+})

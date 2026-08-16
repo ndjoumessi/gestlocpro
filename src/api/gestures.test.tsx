@@ -373,3 +373,34 @@ describe('saisir les termes du bail', () => {
     expect('rentMinor' in corps).toBe(false)
   })
 })
+
+describe('enregistrer un encaissement', () => {
+  it('écrit vraiment au serveur, au lieu d’annoncer un succès vide', async () => {
+    /**
+     * La modale affichait « Paiement enregistré · quittance envoyée » et
+     * n'écrivait NULLE PART. C'est le mensonge le plus coûteux d'un logiciel de
+     * gestion : le gestionnaire repart en croyant l'argent tracé, et l'impayé
+     * réapparaît le mois suivant sans qu'on puisse dire si le locataire a payé.
+     */
+    const serveur = installerFauxServeur()
+    serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: portefeuille() })
+    serveur.quand('POST', `/parks/${PARK}/payments`, {
+      status: 201,
+      body: { payment: { id: 'p1', amountMinor: 115000, method: 'mobile', paidOn: '2026-08-16' } },
+    })
+
+    const user = userEvent.setup()
+    renderApp('/app', { session: SESSION_AVEC_PARC })
+    await user.click(await screen.findByRole('button', { name: /enregistrer un paiement/i }))
+    await user.type(screen.getByLabelText(/montant/i), '115000')
+    await user.click(screen.getByRole('button', { name: /^enregistrer$/i }))
+
+    const appel = serveur.appels.find((a) => a.chemin.endsWith('/payments'))
+    expect(appel?.methode).toBe('POST')
+    const corps = appel?.corps as Record<string, unknown>
+    expect(corps.amountMinor).toBe(115000)
+    // La période est le premier jour d'un mois : c'est ce que le serveur exige,
+    // et ce qui évite qu'un versement crée une échéance à cheval.
+    expect(String(corps.periodStart)).toMatch(/^\d{4}-\d{2}-01$/)
+  })
+})

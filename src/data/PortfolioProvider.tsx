@@ -67,6 +67,16 @@ interface PortfolioContextValue {
   ) => void
   /** Crée un immeuble dans le parc. Sans parc serveur, il reste local. */
   addBuilding: (name: string, district: string) => void
+  /**
+   * Enregistre un encaissement sur une période.
+   *
+   * La modale affichait « Paiement enregistré · quittance envoyée » sans rien
+   * écrire nulle part — le mensonge le plus coûteux d'un logiciel de gestion.
+   */
+  recordPayment: (
+    unitId: string,
+    versement: { periodStart: string; amountMinor: number; method: string },
+  ) => void
   /** Crée un logement dans un immeuble. Vacant : aucun bail n'existe encore. */
   addUnit: (
     buildingId: string,
@@ -323,6 +333,39 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [parkId, signalerEchec],
   )
 
+  const recordPayment = useCallback(
+    (
+      unitId: string,
+      versement: { periodStart: string; amountMinor: number; method: string },
+    ) => {
+      const local = () =>
+        setUnits((liste) =>
+          liste.map((u) => {
+            if (u.id !== unitId) return u
+            const paid = u.paid + versement.amountMinor
+            return {
+              ...u,
+              paid,
+              // Le statut se dérive du montant : « à jour » n'est vrai que si
+              // la totalité du loyer est couverte. Le poser à « payé » dès le
+              // premier versement ferait disparaître un impayé réel.
+              status: paid >= u.rent ? 'paid' : 'partial',
+            }
+          }),
+        )
+
+      if (!parkId) {
+        local()
+        return
+      }
+      void api
+        .recordPayment(parkId, { unitId, ...versement })
+        .then(local)
+        .catch(signalerEchec)
+    },
+    [parkId, signalerEchec],
+  )
+
   const addUnit = useCallback(
     (
       buildingId: string,
@@ -447,6 +490,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       addTenant,
       addBuilding,
       addUnit,
+      recordPayment,
       readAlertIds,
       markAlertsRead,
       reset,
@@ -498,6 +542,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       addTenant,
       addBuilding,
       addUnit,
+      recordPayment,
       readAlertIds,
       markAlertsRead,
       reset,

@@ -180,6 +180,17 @@ export const api = {
   addBuilding: <T>(parkId: string, corps: { name: string; district: string }) =>
     requete<T>(`/parks/${parkId}/buildings`, { method: 'POST', body: JSON.stringify(corps) }),
 
+  recordPayment: <T>(
+    parkId: string,
+    corps: {
+      unitId: string
+      periodStart: string
+      amountMinor: number
+      method: string
+      paidOn?: string
+    },
+  ) => requete<T>(`/parks/${parkId}/payments`, { method: 'POST', body: JSON.stringify(corps) }),
+
   addUnit: <T>(
     parkId: string,
     buildingId: string,

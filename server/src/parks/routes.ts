@@ -52,6 +52,31 @@ const schemaLogement = z.object({
   baseRentMinor: z.number().int().nonnegative(),
 })
 
+/**
+ * Un encaissement, imputé sur une PÉRIODE et non sur un logement.
+ *
+ * Le montant peut être partiel — c'est le cas courant et non l'exception : on
+ * paie ce qu'on peut, quand on peut. Interdire le partiel forcerait le
+ * gestionnaire à ne rien enregistrer, donc à perdre la trace du versement.
+ *
+ * Le paiement ne se déduit PAS du mois en cours : un versement enregistré le 2
+ * août peut couvrir juillet. Deviner la période produirait des mois soldés à
+ * tort et des impayés fantômes.
+ */
+const schemaEncaissement = z.object({
+  unitId: z.string().uuid(),
+  /** Premier jour de la période couverte, `AAAA-MM-01`. */
+  periodStart: z.string().regex(/^\d{4}-\d{2}-01$/, 'Période attendue au format AAAA-MM-01'),
+  amountMinor: z.number().int().positive('Un encaissement est strictement positif'),
+  method: z.enum(['mobile', 'cash', 'transfer', 'check']),
+  /** Date du versement. Par défaut aujourd'hui. */
+  paidOn: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date attendue au format AAAA-MM-JJ')
+    .optional(),
+  reference: z.string().trim().max(80).optional(),
+})
+
 const schemaLocataire = z.object({
   unitId: z.string().uuid(),
   fullName: z.string().trim().min(2).max(120),
@@ -634,6 +659,76 @@ parksRouter.post(
     })
 
     res.status(201).json({ unit: logement })
+  },
+)
+
+/**
+ * Enregistre un encaissement sur la période d'un logement.
+ *
+ * L'écran affichait « Paiement enregistré · quittance envoyée » sans rien
+ * écrire nulle part. C'est le mensonge le plus coûteux d'un logiciel de
+ * gestion : le gestionnaire repart en croyant l'argent tracé, et l'impayé
+ * réapparaît le mois suivant sans qu'on sache si le locataire a payé.
+ *
+ * L'échéance est créée si elle n'existe pas, au loyer FIGÉ du bail — pas au
+ * loyer courant du logement : refacturer juillet au tarif d'août est faux, et
+ * rien ne le signalerait.
+ */
+parksRouter.post(
+  '/:parkId/payments',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const corps = schemaEncaissement.parse(req.body)
+
+    const bail = await prisma.lease.findFirst({
+      where: { unitId: corps.unitId, unit: { building: { parkId } }, status: { not: 'ended' } },
+      select: { id: true, rentMinor: true },
+      orderBy: { startsOn: 'desc' },
+    })
+    if (!bail) {
+      // Ni bail ni logement dans ce parc : on ne distingue pas les deux cas,
+      // pour ne rien confirmer à qui aurait deviné un identifiant.
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const debut = new Date(`${corps.periodStart}T00:00:00Z`)
+
+    const paiement = await prisma.$transaction(async (tx) => {
+      const echeance = await tx.rentCharge.upsert({
+        where: { leaseId_periodStart: { leaseId: bail.id, periodStart: debut } },
+        // L'échéance existante n'est jamais réécrite : son loyer a été figé à
+        // l'émission, et l'encaissement ne doit pas le corriger après coup.
+        update: {},
+        create: {
+          leaseId: bail.id,
+          periodStart: debut,
+          // Échéance au premier du mois couvert, faute de règle contractuelle
+          // saisie — c'est l'usage, et c'est révisable sans réécrire l'histoire.
+          dueOn: debut,
+          rentMinor: bail.rentMinor,
+        },
+        select: { id: true },
+      })
+
+      return tx.payment.create({
+        data: {
+          chargeId: echeance.id,
+          amountMinor: corps.amountMinor,
+          method: corps.method,
+          paidOn: corps.paidOn ? new Date(`${corps.paidOn}T00:00:00Z`) : new Date(),
+          ...(corps.reference ? { reference: corps.reference } : {}),
+          // Un versement en espèces sans auteur est incontestable, donc
+          // indéfendable. Le schéma l'exige déjà ; la route le fournit.
+          recordedById: req.compteId!,
+        },
+        select: { id: true, amountMinor: true, method: true, paidOn: true },
+      })
+    })
+
+    res.status(201).json({ payment: paiement })
   },
 )
 

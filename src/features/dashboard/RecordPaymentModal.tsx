@@ -13,7 +13,7 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
   const t = useT()
   const { money, parseAmount } = useCurrency()
   const { notify } = useToast()
-  const { units } = usePortfolio()
+  const { units, recordPayment } = usePortfolio()
 
   const payable = units.filter((unit) => unit.status !== 'vacant')
 
@@ -31,6 +31,23 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
       return
     }
     setError(null)
+
+    /**
+     * Le versement part RÉELLEMENT au serveur.
+     *
+     * Cette modale affichait « Paiement enregistré · quittance envoyée » et
+     * n'écrivait nulle part. C'est le mensonge le plus coûteux d'un logiciel de
+     * gestion : le gestionnaire repart en croyant l'argent tracé, et l'impayé
+     * réapparaît le mois suivant sans qu'on puisse dire si le locataire a payé.
+     *
+     * La période est le mois COURANT, premier jour. C'est le cas de loin le
+     * plus fréquent ; imputer sur un autre mois — un versement d'août qui
+     * couvre juillet — reste à offrir, et le serveur le sait déjà faire.
+     */
+    const maintenant = new Date()
+    const periodStart = `${maintenant.getUTCFullYear()}-${String(maintenant.getUTCMonth() + 1).padStart(2, '0')}-01`
+    recordPayment(unitId, { periodStart, amountMinor: parsed, method })
+
     onClose()
     notify(t('app.paymentSaved'), { tone: 'ok' })
     setAmount('')
