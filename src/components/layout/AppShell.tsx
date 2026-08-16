@@ -100,6 +100,42 @@ const FOOTER_ITEMS: NavItem[] = [
   { to: '/app/systeme', labelKey: 'nav.system', icon: 'layers' },
 ]
 
+/**
+ * Qui regarde, et quel parc.
+ *
+ * Ces deux informations étaient écrites en dur dans la coquille : « Parc
+ * Arsène N. · Douala » sous le logo, « Arsène N. » dans le sélecteur de profil,
+ * « Douala » dans le fil d'Ariane. Elles s'affichaient donc **aussi pour un
+ * compte réel** — un propriétaire découvrait son espace au nom et à la ville de
+ * quelqu'un d'autre, et ne pouvait plus le distinguer de la démonstration,
+ * puisque les deux annonçaient la même identité.
+ *
+ * Le garde des identifiants techniques ne pouvait pas le voir : il cherche des
+ * `uuid`, et « Arsène N. » n'en est pas un. C'est la même famille de défaut —
+ * une constante de démonstration qui survit au branchement des vraies données —
+ * mais elle passe sous un filet à mailles trop larges.
+ *
+ * La ville a disparu plutôt que d'être devinée : le modèle ne la porte pas, et
+ * en inventer une est exactement ce qui a produit ce défaut.
+ */
+function useIdentite(): { parc: string | null; nom: string | null; demo: boolean } {
+  const { etat, estDemo } = useSession()
+  const t = useT()
+
+  if (estDemo) return { parc: t('common.demoPark'), nom: null, demo: true }
+  if (etat.statut === 'connecte') {
+    return {
+      // Première adhésion : un compte multi-parcs choisira le sien le jour où
+      // le produit saura en gérer plusieurs. Afficher un nom faux en attendant
+      // serait le défaut qu'on corrige ici.
+      parc: etat.adhesions[0]?.parkName ?? null,
+      nom: etat.compte.fullName,
+      demo: false,
+    }
+  }
+  return { parc: null, nom: null, demo: false }
+}
+
 export function AppShell() {
   const t = useT()
   const location = useLocation()
@@ -269,11 +305,25 @@ function Sidebar({
   const t = useT()
   const wide = !railed
 
-  const profiles: { value: Role; name: string }[] = [
-    { value: 'owner', name: `${t('roles.owner.name')} · Arsène N.` },
-    { value: 'manager', name: `${t('roles.manager.name')} · Diane F.` },
-    { value: 'tenant', name: `${t('roles.tenant.name')} · Charles N.` },
-  ]
+  const { parc, nom, demo } = useIdentite()
+
+  /**
+   * Le sélecteur change le point de vue de CELUI QUI REGARDE : c'est donc son
+   * nom qui doit y figurer, pas celui d'un personnage. En démonstration, les
+   * trois personnages restent — ils sont le propos.
+   */
+  const profiles: { value: Role; name: string }[] = demo
+    ? [
+        { value: 'owner', name: `${t('roles.owner.name')} · Arsène N.` },
+        { value: 'manager', name: `${t('roles.manager.name')} · Diane F.` },
+        { value: 'tenant', name: `${t('roles.tenant.name')} · Charles N.` },
+      ]
+    : (['owner', 'manager', 'tenant'] as const).map((value) => ({
+        value,
+        name: nom
+          ? `${t(`roles.${value}.name` as 'roles.owner.name')} · ${nom}`
+          : t(`roles.${value}.name` as 'roles.owner.name'),
+      }))
 
   return (
     <aside
@@ -294,7 +344,7 @@ function Sidebar({
     >
       <div className="flex items-center gap-2 px-1.5">
         {wide ? (
-          <Logo tone="dark" caption="Parc Arsène N. · Douala" to="/app" />
+          <Logo tone="dark" caption={parc ?? undefined} to="/app" />
         ) : (
           <Logo tone="dark" markOnly to="/app" />
         )}
@@ -447,6 +497,7 @@ function SidebarLink({ item, wide }: { item: NavItem; wide: boolean }) {
 function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
   const t = useT()
   const location = useLocation()
+  const { parc } = useIdentite()
 
   // Repli sur « Écran introuvable » et non sur le tableau de bord : toute
   // adresse sans entrée de navigation rend le 404 interne, et annoncer le
@@ -470,10 +521,17 @@ function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
       />
 
       <nav aria-label={t('nav.breadcrumb')} className="hidden items-center gap-2 sm:flex">
-        <span className="eyebrow text-muted">Douala</span>
-        <span aria-hidden="true" className="text-border-strong">
-          /
-        </span>
+        {/* Le fil d'Ariane annonçait « Douala » à tout le monde. Il porte
+            désormais le nom du parc — et rien du tout tant qu'il n'y en a pas,
+            plutôt qu'une ville inventée. */}
+        {parc && (
+          <>
+            <span className="eyebrow text-muted">{parc}</span>
+            <span aria-hidden="true" className="text-border-strong">
+              /
+            </span>
+          </>
+        )}
         <span className="eyebrow text-ink">{t(crumb as 'nav.dashboard')}</span>
       </nav>
 

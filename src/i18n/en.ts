@@ -23,6 +23,7 @@ export const en: Dictionary = {
     language: 'Language',
     country: 'Country',
     demoBadge: 'Demo',
+    demoPark: 'Demo portfolio',
     demoNotice:
       'You are browsing a demo: these buildings, tenants and amounts are fictional.',
     demoCta: 'Create my space',

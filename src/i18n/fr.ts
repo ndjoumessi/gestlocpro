@@ -30,6 +30,7 @@ export const fr = {
     language: 'Langue',
     country: 'Pays',
     demoBadge: 'Démonstration',
+    demoPark: 'Parc de démonstration',
     demoNotice:
       'Vous parcourez une démonstration : ces immeubles, ces locataires et ces montants sont fictifs.',
     demoCta: 'Créer mon espace',
