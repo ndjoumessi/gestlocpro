@@ -48,6 +48,31 @@ export function createApp() {
     next()
   })
 
+  /**
+   * Journal des appels d'API : méthode, chemin, statut, durée.
+   *
+   * Son absence a coûté cher. Une inscription échouait en production et les
+   * journaux ne portaient que le démarrage : impossible de distinguer « la
+   * requête est refusée » de « la requête n'arrive jamais » — deux causes
+   * opposées, l'une dans le serveur, l'autre hors de lui. Faute de pouvoir
+   * trancher, on interroge l'utilisateur, ce qui est la mauvaise façon de
+   * chercher.
+   *
+   * Ni corps ni en-têtes : une inscription porte un mot de passe, une session
+   * porte un jeton. Le chemin et le statut suffisent à situer une panne, et
+   * n'exposent rien. Le chemin de santé est écarté — Railway l'appelle sans
+   * cesse et noierait le reste.
+   */
+  app.use('/api', (req: Request, res: Response, next) => {
+    if (req.path === '/health') return next()
+    const debut = process.hrtime.bigint()
+    res.on('finish', () => {
+      const ms = Number(process.hrtime.bigint() - debut) / 1e6
+      console.log(`${req.method} /api${req.path} → ${res.statusCode} (${ms.toFixed(0)} ms)`)
+    })
+    next()
+  })
+
   app.get('/api/health', (_req: Request, res: Response) => {
     res.json({ ok: true })
   })
