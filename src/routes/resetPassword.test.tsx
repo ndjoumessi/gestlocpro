@@ -107,7 +107,7 @@ describe('continuité du parcours', () => {
     await user.click(screen.getByRole('button', { name: /envoyer le lien/i }))
     await screen.findByRole('heading', { level: 1, name: /Vérifiez votre boîte mail/ })
 
-    // Sans service d'envoi, le lien est exposé comme artefact de maquette :
+    // Sans service d'envoi, le lien est exposé comme artefact de démonstration :
     // c'est ce qui rend le parcours parcourable de bout en bout.
     await user.click(screen.getByRole('link', { name: /reinitialiser/i }))
 

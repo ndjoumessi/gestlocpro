@@ -2,7 +2,7 @@
    GestLocPro — Jetons de design
    Source de vérité unique. Aucun hex en dur dans les composants.
 
-   Dérivé des maquettes GESLOC, avec trois corrections de contraste :
+   La palette de marque porte trois corrections de contraste :
      --muted     #6B7573 -> #5C6664   (4.33 -> 5.40 sur --paper)
      --gold-ink  #A0722C -> #8A6218   (3.87 -> 4.98 sur --paper)
      --gold-on-dark  #C58E3E -> #D2A055 (4.38 -> 5.33 sur --ink-2)
@@ -87,8 +87,8 @@
   /* ---- Sur fond sombre ------------------------------------------------- */
   --color-on-dark: #ffffff;
   --color-on-dark-muted: rgba(255, 255, 255, 0.68);
-  /* La maquette utilisait 0.42, soit 4.02:1 sur --color-ink et 3.58:1 sur
-     --color-ink-2 : sous AA dans les deux cas. 0.58 passe sur les deux
+  /* L'opacité de marque valait 0.42, soit 4.02:1 sur --color-ink et 3.58:1
+     sur --color-ink-2 : sous AA dans les deux cas. 0.58 passe sur les deux
      surfaces sombres (6.42:1 et 5.37:1) en restant nettement en retrait. */
   --color-on-dark-faint: rgba(255, 255, 255, 0.58);
   --color-on-dark-hover: rgba(255, 255, 255, 0.07);

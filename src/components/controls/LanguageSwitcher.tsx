@@ -9,7 +9,7 @@ export interface LanguageSwitcherProps {
 }
 
 /**
- * Bascule FR/EN, reprise de la maquette.
+ * Bascule FR/EN.
  * Deux langues seulement : un segmenté vaut mieux qu'un menu déroulant —
  * un clic au lieu de deux, et l'état courant est lisible sans l'ouvrir.
  */

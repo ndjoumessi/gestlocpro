@@ -1,8 +1,7 @@
 import type { PaymentStatus } from '@/components/primitives/StatusPill'
 
 /**
- * Jeu de démonstration, repris du parc de la maquette : 3 immeubles,
- * 12 unités, 12 mois d'historique.
+ * Jeu de démonstration : 3 immeubles, 12 unités, 12 mois d'historique.
  *
  * Les montants sont exprimés dans une unité neutre : ils s'affichent tels
  * quels dans la devise choisie, sans conversion — voir `currency/currencies`.

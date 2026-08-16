@@ -23,7 +23,7 @@ import { ALERTS, CURRENT_TENANT_UNIT, alertsForUnit } from '@/data/portfolio'
 
 /* -------------------------------------------------------------------------- */
 /* Rôle actif — pilote ce que la barre latérale montre et ce que les écrans
-   autorisent. Repris du sélecteur de profil de la maquette.                   */
+   autorisent.                                                                 */
 /* -------------------------------------------------------------------------- */
 
 interface RoleContextValue {

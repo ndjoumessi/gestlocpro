@@ -13,10 +13,10 @@ export interface CurrencySwitcherProps {
 /**
  * Sélecteur de devise.
  *
- * La maquette faisait défiler les devises au clic. Atteindre la dernière
- * demandait trois clics et l'utilisateur ne voyait jamais la liste : on passe à
- * un menu, qui laisse aussi la place au libellé complet de chaque devise — le
- * seul symbole confondrait le dollar canadien et l'américain.
+ * Un menu, et non un bouton qui fait défiler les devises au clic : cette
+ * seconde forme demandait trois clics pour atteindre la dernière, sans jamais
+ * montrer la liste. Le menu laisse aussi la place au libellé complet de chaque
+ * devise — le seul symbole confondrait le dollar canadien et l'américain.
  */
 export function CurrencySwitcher({ tone = 'light', className }: CurrencySwitcherProps) {
   const { currency, setCurrency, definition } = useCurrency()

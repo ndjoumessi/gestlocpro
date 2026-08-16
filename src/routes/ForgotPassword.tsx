@@ -58,8 +58,8 @@ export function ForgotPassword() {
 
           {/* Sans service d'envoi, le lien promis resterait inatteignable et le
               parcours s'arrêterait ici. On l'expose donc explicitement comme
-              artefact de maquette, plutôt que de laisser croire à un e-mail
-              parti quelque part. */}
+              artefact de démonstration, plutôt que de laisser croire à un
+              e-mail parti quelque part. */}
           <div className="rounded-md border border-gold-border bg-gold-tint px-3.5 py-3">
             <p className="flex items-start gap-2 text-body-s text-gold-ink">
               <Icon name="info" size={15} className="mt-0.5 shrink-0" />

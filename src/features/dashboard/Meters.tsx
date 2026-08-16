@@ -15,10 +15,10 @@ import { usePortfolio } from '@/data/PortfolioProvider'
 /**
  * Relevé des compteurs.
  *
- * La maquette d'origine noyait cet écran dans « Paiements ». Il est promu en
- * page à part entière : c'est le geste de terrain le plus fréquent du
- * gestionnaire, et un relevé manquant bloque la facturation du mois — ce qui
- * mérite d'être visible sans avoir à faire défiler un autre écran.
+ * Écran à part entière, et non une section de « Paiements » où il était
+ * d'abord logé : c'est le geste de terrain le plus fréquent du gestionnaire,
+ * et un relevé manquant bloque la facturation du mois — ce qui mérite d'être
+ * visible sans avoir à faire défiler un autre écran.
  */
 export function Meters() {
   const t = useT()
