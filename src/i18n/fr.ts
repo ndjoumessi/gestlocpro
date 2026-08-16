@@ -688,7 +688,7 @@ export const fr = {
         approveWorks: 'Valider un devis',
         settleDeposit: 'Arbitrer une caution',
         inviteTenant: 'Inviter un locataire',
-        editPortfolio: 'Modifier le parc',
+        editPortfolio: 'Renommer ou supprimer',
         ownData: 'Consulter ses propres données',
       },
     },

@@ -641,7 +641,7 @@ export const en: Dictionary = {
         approveWorks: 'Approve a quote',
         settleDeposit: 'Settle a deposit',
         inviteTenant: 'Invite a tenant',
-        editPortfolio: 'Edit the portfolio',
+        editPortfolio: 'Rename or delete',
         ownData: 'View their own data',
       },
     },

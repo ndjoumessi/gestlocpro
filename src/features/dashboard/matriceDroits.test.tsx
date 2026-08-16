@@ -94,5 +94,16 @@ describe('matrice des droits', () => {
     expect(roles(ligne(/déclarer un logement/i))[1]).toBe('Autorisé')
     // Et le propriétaire, lui, peut tout : première colonne.
     expect(roles(ligne(/valider un devis/i))[0]).toBe('Autorisé')
+
+    /**
+     * Trois lignes voisines, deux droits différents.
+     *
+     * Déclarer, c'est AJOUTER — le gestionnaire le fait. Renommer ou supprimer,
+     * c'est toucher à ce qui existe et à l'historique qui s'y rattache : cela
+     * reste au propriétaire. La nuance tenait autrefois dans le seul mot
+     * « Modifier », que rien ne distinguait de « Déclarer » à la lecture.
+     */
+    expect(roles(ligne(/déclarer un immeuble/i))[1]).toBe('Autorisé')
+    expect(roles(ligne(/renommer ou supprimer/i))[1]).toBe('Non autorisé')
   })
 })
