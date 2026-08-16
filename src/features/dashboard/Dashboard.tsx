@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { PageHeader, useRole } from '@/components/layout/AppShell'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
-import { DeltaBadge } from '@/components/primitives/Badge'
 import { PaymentStatusPill, StatusPill } from '@/components/primitives/StatusPill'
 import { Icon } from '@/components/primitives/Icon'
 import { DonutChart, ProgressBar, StackedBarChart, StatCard } from '@/components/primitives/Charts'
@@ -11,7 +10,8 @@ import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
 import { useDates } from '@/lib/useDates'
-import { COLLECTIONS, KPIS } from '@/data/portfolio'
+import { COLLECTIONS } from '@/data/portfolio'
+import { computeKpis } from '@/data/kpis'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { workTitle } from '@/data/workTitle'
 import { RecordPaymentModal } from './RecordPaymentModal'
@@ -24,7 +24,7 @@ export function Dashboard() {
   const { money, definition } = useCurrency()
   const exportCsv = useCsvExport()
   const csvMoney = useCsvMoney()
-  const { units, works, unitById, buildings: BUILDINGS } = usePortfolio()
+  const { units, works, unitById, buildings: BUILDINGS, readings } = usePortfolio()
   const [payOpen, setPayOpen] = useState(false)
 
   // Le locataire n'a pas une version filtrée de cet écran : il en a un autre.
@@ -33,12 +33,12 @@ export function Dashboard() {
   // montrer la situation de ses voisins.
   if (role === 'tenant') return <TenantDashboard />
 
-  const occupied = units.filter((unit) => unit.status !== 'vacant').length
-  const vacant = units.length - occupied
-  const occupancy = Math.round((occupied / units.length) * 100)
-  const collectedShare = Math.round((KPIS.collected / KPIS.expected) * 100)
+  // Les indicateurs se calculent sur le parc servi, quel qu'il soit. Ils
+  // étaient une constante qui ne se recoupait avec rien.
+  const kpis = computeKpis(units, readings)
+  const { expected, collected, outstanding, occupied, vacant, occupancy, maxOverdueDays } = kpis
+  const collectedShare = expected === 0 ? 0 : Math.round((collected / expected) * 100)
   const overdue = units.filter((unit) => unit.status === 'overdue')
-  const maxOverdueDays = Math.max(...overdue.map((unit) => unit.overdueDays ?? 0))
 
   const title =
     role === 'owner'
@@ -101,19 +101,17 @@ export function Dashboard() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label={t('app.dashboard.expected')}
-          value={money(KPIS.expected, { round: true })}
-          delta={<DeltaBadge value={KPIS.expectedDelta} />}
+          value={money(expected, { round: true })}
           note={t('app.dashboard.activeLeases', { count: occupied })}
         />
         <StatCard
           label={t('app.dashboard.collected')}
-          value={money(KPIS.collected, { round: true })}
+          value={money(collected, { round: true })}
           note={t('app.dashboard.collectedShare', { percent: collectedShare })}
         />
         <StatCard
           label={t('app.dashboard.outstanding')}
-          value={money(KPIS.outstanding, { round: true })}
-          delta={<DeltaBadge value={KPIS.outstandingDelta} invert />}
+          value={money(outstanding, { round: true })}
           note={t('app.dashboard.overdueTenants', {
             count: overdue.length,
             days: maxOverdueDays,
@@ -123,7 +121,6 @@ export function Dashboard() {
           label={t('app.dashboard.occupancy')}
           value={`${occupancy}`}
           unit="%"
-          delta={<DeltaBadge value={KPIS.occupancyDelta} suffix="pts" />}
           note={t('app.dashboard.vacantUnits', { count: vacant })}
         />
       </div>
@@ -137,7 +134,7 @@ export function Dashboard() {
               tableau, qui est l'équivalent textuel du graphique. */}
           <StackedBarChart
             caption={t('app.dashboard.chartTableCaption')}
-            target={KPIS.expected}
+            target={expected}
             targetLabel={t('app.dashboard.expected')}
             seriesLabels={{
               rent: t('app.dashboard.legendRent'),
@@ -168,7 +165,7 @@ export function Dashboard() {
               {
                 key: 'paid',
                 label: t('app.dashboard.recoveryCollected'),
-                value: KPIS.collected,
+                value: collected,
                 color: 'var(--color-ok)',
               },
               {
@@ -176,13 +173,13 @@ export function Dashboard() {
                 label: t('app.dashboard.recoveryPartial'),
                 // `--color-warn` et non `--color-gold` : l'or de marque ne
                 // tient que 2,87:1 sur blanc, sous le seuil d'une donnée.
-                value: KPIS.partial,
+                value: kpis.partial,
                 color: 'var(--color-warn)',
               },
               {
                 key: 'late',
                 label: t('app.dashboard.recoveryLate'),
-                value: KPIS.late,
+                value: kpis.late,
                 color: 'var(--color-danger)',
               },
             ]}
@@ -190,8 +187,8 @@ export function Dashboard() {
 
           <div className="mt-6 flex flex-col gap-3 border-t border-divider pt-5">
             <p className="eyebrow text-muted">{t('app.dashboard.rebilled')}</p>
-            <ProgressBar label={t('app.dashboard.legendWater')} value={KPIS.waterRebilled} />
-            <ProgressBar label={t('app.dashboard.legendPower')} value={KPIS.powerRebilled} />
+            <ProgressBar label={t('app.dashboard.legendWater')} value={kpis.waterRebilled} />
+            <ProgressBar label={t('app.dashboard.legendPower')} value={kpis.powerRebilled} />
           </div>
         </Card>
       </div>

@@ -19,7 +19,10 @@ describe('harnais de test', () => {
 
   it('honore la devise passée en préférence', () => {
     renderApp('/app', { currency: 'EUR' })
-    expect(screen.getByText(/1 415 000/)).toBeInTheDocument()
+    // 1 397 000 : la somme des loyers des dix unités occupées. Ce test
+    // attendait 1 415 000 — la valeur écrite à la main dans `KPIS`, qui ne se
+    // recoupait avec rien. Le chiffre change parce qu'il devient vrai.
+    expect(screen.getByText(/1 397 000/)).toBeInTheDocument()
   })
 
   it('bascule le profil actif', async () => {

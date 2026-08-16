@@ -8,17 +8,11 @@ import { cn } from '@/lib/cn'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
-import { KPIS, type Unit } from '@/data/portfolio'
+import { type Unit } from '@/data/portfolio'
+import { computeKpis } from '@/data/kpis'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { RecordPaymentModal } from './RecordPaymentModal'
 import { TenantScopeNote } from './TenantDashboard'
-
-/** Part réglée simulée, dérivée du statut. */
-function paidShare(unit: Unit): number {
-  if (unit.status === 'paid') return unit.rent
-  if (unit.status === 'partial') return Math.round(unit.rent * 0.53)
-  return 0
-}
 
 const FILTERS: (PaymentStatus | 'all')[] = ['all', 'paid', 'partial', 'overdue']
 
@@ -28,7 +22,7 @@ export function Payments() {
   const exportCsv = useCsvExport()
   const csvMoney = useCsvMoney()
   const { role } = useRole()
-  const { units, isMine } = usePortfolio()
+  const { units, isMine, readings } = usePortfolio()
   const isTenant = role === 'tenant'
   const [filter, setFilter] = useState<PaymentStatus | 'all'>('all')
   const [payOpen, setPayOpen] = useState(false)
@@ -44,6 +38,8 @@ export function Payments() {
       ),
     [role, units, isMine],
   )
+  const kpis = computeKpis(leases, readings)
+
   const rows = useMemo(
     () => (filter === 'all' ? leases : leases.filter((unit) => unit.status === filter)),
     [leases, filter],
@@ -86,8 +82,8 @@ export function Payments() {
                     unit.label,
                     unit.tenant ?? t('app.portfolio.noTenant'),
                     csvMoney.amount(unit.rent),
-                    csvMoney.amount(paidShare(unit)),
-                    csvMoney.amount(unit.rent - paidShare(unit)),
+                    csvMoney.amount(unit.paid),
+                    csvMoney.amount(unit.rent - unit.paid),
                     t(`status.${unit.status}` as 'status.paid'),
                     // Un nombre de jours n'est pas de l'argent, mais il se
                     // calcule aussi : groupé, il deviendrait du texte.
@@ -113,14 +109,14 @@ export function Payments() {
         <TenantScopeNote />
       ) : (
         <div className="grid gap-4 sm:grid-cols-3">
-          <StatCard label={t('app.dashboard.expected')} value={money(KPIS.expected, { round: true })} />
+          <StatCard label={t('app.dashboard.expected')} value={money(kpis.expected, { round: true })} />
           <StatCard
             label={t('app.dashboard.recoveryCollected')}
-            value={money(KPIS.collected, { round: true })}
+            value={money(kpis.collected, { round: true })}
           />
           <StatCard
             label={t('app.dashboard.recoveryLate')}
-            value={money(KPIS.late, { round: true })}
+            value={money(kpis.late, { round: true })}
           />
         </div>
       )}
@@ -192,14 +188,14 @@ export function Payments() {
             key: 'paid',
             header: t('app.payments.paid'),
             numeric: true,
-            render: (unit) => money(paidShare(unit), { round: true }),
+            render: (unit) => money(unit.paid, { round: true }),
           },
           {
             key: 'balance',
             header: t('app.payments.balance'),
             numeric: true,
             render: (unit) => {
-              const balance = unit.rent - paidShare(unit)
+              const balance = unit.rent - unit.paid
               // Un bail qui démarre affiche son loyer à venir, mais pas en
               // rouge : ce n'est pas un impayé, c'est une échéance future.
               const enRetard = unit.status === 'overdue' || unit.status === 'partial'
