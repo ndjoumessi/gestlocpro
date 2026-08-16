@@ -183,7 +183,25 @@ export function SignUp() {
 
     const firstBad = Object.entries(next).find(([, error]) => error !== null)
     if (firstBad) {
-      document.querySelector<HTMLElement>(`[name="${firstBad[0]}"]`)?.focus()
+      /**
+       * Le refus doit se lire LÀ OÙ L'ON VIENT DE CLIQUER.
+       *
+       * Le message existait déjà — « Vous devez accepter les conditions » —
+       * mais uniquement à côté de la case, cent cinquante pixels au-dessus du
+       * bouton. Le regard reste où le doigt a cliqué : l'utilisateur conclut
+       * que le bouton ne fait rien, et il n'a pas tort de le conclure, puisque
+       * rien ne change dans la zone qu'il observe.
+       *
+       * C'est arrivé pour de vrai, sur le premier compte du produit. Un bouton
+       * principal qui paraît inerte est la pire des pannes : il n'y a rien à
+       * lire, donc rien à corriger.
+       */
+      const champ = document.querySelector<HTMLElement>(`[name="${firstBad[0]}"]`)
+      // `scrollIntoView` n'existe pas sous jsdom : l'appel est facultatif pour
+      // que les tests n'aient pas à simuler une capacité du navigateur.
+      champ?.scrollIntoView?.({ block: 'center' })
+      champ?.focus()
+      setEchec(firstBad[1])
       return
     }
 
@@ -191,6 +209,10 @@ export function SignUp() {
       void creerLeCompte()
       return
     }
+
+    // Le message disparaît quand on avance : le garder afficherait le reproche
+    // d'une étape précédente au-dessus d'un formulaire déjà corrigé.
+    setEchec(null)
 
     setStepIndex((i) => i + 1)
     window.scrollTo({ top: 0 })

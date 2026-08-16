@@ -203,3 +203,43 @@ describe('inscription', () => {
     expect(screen.queryByText(/votre espace est prêt/i)).not.toBeInTheDocument()
   })
 })
+
+describe('un refus doit se lire là où l’on vient de cliquer', () => {
+  it('annonce la case des conditions à côté du bouton, et non seulement à côté de la case', async () => {
+    /**
+     * Le défaut qui a bloqué la création du premier compte du produit.
+     *
+     * Le message existait — « Vous devez accepter les conditions » — mais
+     * uniquement à côté de la case, cent cinquante pixels au-dessus du bouton.
+     * Le regard reste où le doigt a cliqué : l'utilisateur conclut que le
+     * bouton ne fait rien, et il a raison de le conclure, puisque rien ne
+     * change dans la zone qu'il observe.
+     */
+    const serveur = installerFauxServeur()
+    serveur.quand('POST', '/auth/signup', { status: 201, body: { user: COMPTE_FICTIF } })
+
+    const user = userEvent.setup()
+    renderApp('/inscription/proprietaire')
+    await user.type(screen.getByLabelText(/nom complet/i), 'Arsène Nkomo')
+    await user.type(screen.getByLabelText(/adresse e-mail/i), 'arsene@example.com')
+    await user.type(screen.getByLabelText(/^téléphone/i), '677889900')
+    await user.type(screen.getByLabelText(/^Mot de passe/), 'Bonamoussadi2026!')
+    await user.click(screen.getByRole('button', { name: /continuer/i }))
+    await user.type(await screen.findByLabelText(/nom de votre parc/i), 'Parc Bonamoussadi')
+    await user.click(screen.getByRole('button', { name: /continuer/i }))
+    await screen.findByRole('heading', { name: /tout est correct/i })
+
+    // La case reste DÉCOCHÉE, et on clique quand même.
+    await user.click(screen.getByRole('button', { name: /créer mon espace/i }))
+
+    // Deux annonces : celle de la case, et celle qui borde le bouton. Le
+    // message doit exister aux deux endroits, parce qu'on ne sait pas lequel
+    // des deux l'utilisateur regarde.
+    const alertes = await screen.findAllByRole('alert')
+    expect(alertes.length).toBeGreaterThanOrEqual(2)
+    expect(alertes.every((a) => /accepter les conditions/i.test(a.textContent ?? ''))).toBe(true)
+
+    // Et rien n'est parti au serveur : le refus est bien un refus.
+    expect(serveur.appels.find((a) => a.chemin === '/auth/signup')).toBeUndefined()
+  })
+})
