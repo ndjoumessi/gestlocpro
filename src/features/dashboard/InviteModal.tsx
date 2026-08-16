@@ -115,8 +115,14 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
             )}
           </Field>
 
+          {/* Ni `required` ni `optional` sur le logement.
+              « Facultatif » invitait à passer outre, alors que l'omettre a une
+              vraie conséquence : le locataire rejoint le parc sans bail. Et le
+              marquer requis serait faux — on peut légitimement inviter d'abord
+              et rattacher ensuite. L'aide porte la conséquence, ce qu'aucune
+              étiquette ne sait dire. */}
           {role === 'tenant' && vacants.length > 0 && (
-            <Field label={t('app.invite.unit')} hint={t('app.invite.unitHint')} optional>
+            <Field label={t('app.invite.unit')} hint={t('app.invite.unitHint')}>
               {(props) => (
                 <Select
                   {...props}

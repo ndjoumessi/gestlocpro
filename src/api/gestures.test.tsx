@@ -643,7 +643,7 @@ describe('inviter à rejoindre le parc', () => {
 
     const user = userEvent.setup()
     renderApp('/app/locataires', { session: SESSION_AVEC_PARC })
-    await user.click(await screen.findByRole('button', { name: /^inviter$/i }))
+    await user.click(await screen.findByRole('button', { name: /inviter par code/i }))
     await user.click(screen.getByRole('button', { name: /émettre le code/i }))
 
     expect(await screen.findByText('LOC-4A7B-92CD')).toBeInTheDocument()
@@ -662,7 +662,7 @@ describe('inviter à rejoindre le parc', () => {
 
     const user = userEvent.setup()
     renderApp('/app/locataires', { session: SESSION_AVEC_PARC })
-    await user.click(await screen.findByRole('button', { name: /^inviter$/i }))
+    await user.click(await screen.findByRole('button', { name: /inviter par code/i }))
     await user.selectOptions(screen.getByLabelText(/rôle invité/i), 'manager')
     await user.click(screen.getByRole('button', { name: /émettre le code/i }))
 

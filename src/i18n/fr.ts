@@ -583,14 +583,15 @@ export const fr = {
     },
 
     invite: {
-      button: 'Inviter',
+      button: 'Inviter par code',
       title: 'Inviter à rejoindre le parc',
       description: 'Le code s’affiche une seule fois. Transmettez-le à la personne concernée.',
       role: 'Rôle invité',
       roleTenant: 'Locataire',
       roleManager: 'Gestionnaire délégué',
       unit: 'Logement concerné',
-      unitHint: 'Le locataire rejoindra ce logement.',
+      unitHint:
+        'Le locataire rejoindra ce logement. Sans logement, il rejoint le parc sans bail — vous l’y rattacherez ensuite.',
       issue: 'Émettre le code',
       codeTitle: 'Code d’invitation',
       codeOnce:

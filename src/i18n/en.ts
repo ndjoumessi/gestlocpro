@@ -538,14 +538,15 @@ export const en: Dictionary = {
     },
 
     invite: {
-      button: 'Invite',
+      button: 'Invite by code',
       title: 'Invite someone to the portfolio',
       description: 'The code is shown once. Pass it on to the person concerned.',
       role: 'Invited role',
       roleTenant: 'Tenant',
       roleManager: 'Delegated manager',
       unit: 'Unit concerned',
-      unitHint: 'The tenant will join this unit.',
+      unitHint:
+        'The tenant will join this unit. Without one, they join the portfolio with no lease — you will attach them afterwards.',
       issue: 'Issue the code',
       codeTitle: 'Invitation code',
       codeOnce:
