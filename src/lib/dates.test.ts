@@ -69,9 +69,29 @@ describe('mois et jour', () => {
     expect(formatMonthShort(2026, 1, 'en-GB')).toBe('Feb')
   })
 
-  it('inverse jour et mois entre Royaume-Uni et États-Unis', () => {
-    expect(formatDayMonth(2026, 6, 22, 'en-GB')).toBe('22/07')
-    expect(formatDayMonth(2026, 6, 22, 'en-US')).toBe('07/22')
+  /**
+   * Le format était numérique — « 22/07 » ici, « 07/22 » là. Il suivait la
+   * convention du pays, mais un couple de nombres sans année est
+   * indéchiffrable sans connaître cette convention : rien à l'écran ne dit au
+   * lecteur laquelle s'applique.
+   *
+   * Le mois abrégé lève le doute, et l'ORDRE reste celui du pays — c'est ce que
+   * ce test vérifie, plutôt que la seule présence du nom de mois.
+   */
+  it('nomme le mois et garde l’ordre du pays', () => {
+    expect(formatDayMonth(2026, 6, 22, 'en-GB')).toBe('22 Jul')
+    expect(formatDayMonth(2026, 6, 22, 'en-US')).toBe('Jul 22')
+    expect(formatDayMonth(2026, 6, 22, 'fr-FR')).toBe('22 juil.')
+  })
+
+  it('ne peut plus se lire à l’envers d’un pays à l’autre', () => {
+    // « 03/08 » valait le 3 août pour l'un et le 8 mars pour l'autre. Les deux
+    // rendus portent maintenant le même mois, quel que soit l'ordre.
+    const cm = formatDayMonth(2026, 7, 3, 'en-CM')
+    const us = formatDayMonth(2026, 7, 3, 'en-US')
+    expect(cm).toContain('Aug')
+    expect(us).toContain('Aug')
+    expect(cm).not.toBe(us)
   })
 })
 

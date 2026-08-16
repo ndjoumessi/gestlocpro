@@ -23,9 +23,21 @@ export function formatMonthYear(year: number, month: number, tag: string): strin
   return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
-/** Jour et mois seuls : « 12/08 » en France, « 08/12 » aux États-Unis. */
+/**
+ * Jour et mois seuls, le mois en toutes lettres abrégées.
+ *
+ * Le format était numérique — « 03/08 ». Il suivait bien la convention du pays,
+ * mais un couple de nombres sans année est **indéchiffrable sans connaître
+ * cette convention** : « 03/08 » est le 3 août pour un lecteur de `en-CM` et le
+ * 8 mars pour un lecteur de `en-US`, et rien à l'écran ne dit lequel s'applique.
+ * Le lecteur devrait deviner d'où vient la page.
+ *
+ * Le mois abrégé lève l'ambiguïté sans coûter de place — « 3 Aug », « Aug 3 »,
+ * « 3 août » — et `Intl` continue de placer les éléments dans l'ordre du pays.
+ * Le doute disparaît, la sensibilité régionale demeure.
+ */
 export function formatDayMonth(year: number, month: number, day: number, tag: string): string {
-  return new Intl.DateTimeFormat(tag, { day: '2-digit', month: '2-digit' }).format(
+  return new Intl.DateTimeFormat(tag, { day: 'numeric', month: 'short' }).format(
     new Date(year, month, day),
   )
 }
