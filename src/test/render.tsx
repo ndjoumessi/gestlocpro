@@ -26,8 +26,16 @@ export interface PreferencesTest {
   locale?: Locale
   currency?: CurrencyCode
   region?: string
-  /** État de session au montage. Par défaut : connecté. */
-  session?: EtatSession
+  /**
+   * État de session au montage. Par défaut : connecté.
+   *
+   * `null` demande à ne fournir AUCUN état initial : le fournisseur résout
+   * alors la session comme en production — trace de démonstration, appel à
+   * `/auth/me`, bascule en anonyme. Les rares tests qui éprouvent cette
+   * résolution elle-même en ont besoin ; les autres seraient ralentis pour une
+   * propriété qu'ils ne testent pas.
+   */
+  session?: EtatSession | null
   /** État de navigation de la route de départ, comme le poserait `RequireAuth`. */
   state?: unknown
 }
@@ -77,7 +85,7 @@ export function renderApp(
       <I18nProvider>
         <CurrencyProvider>
           <ToastProvider>
-            <SessionProvider etatInitial={preferences.session ?? SESSION_CONNECTEE}>
+            <SessionProvider etatInitial={preferences.session === null ? undefined : (preferences.session ?? SESSION_CONNECTEE)}>
               <PortfolioProvider>
                 <App />
               </PortfolioProvider>
@@ -103,7 +111,7 @@ export function renderWithProviders(
       <I18nProvider>
         <CurrencyProvider>
           <ToastProvider>
-            <SessionProvider etatInitial={preferences.session ?? SESSION_CONNECTEE}>
+            <SessionProvider etatInitial={preferences.session === null ? undefined : (preferences.session ?? SESSION_CONNECTEE)}>
               <PortfolioProvider>{ui}</PortfolioProvider>
             </SessionProvider>
           </ToastProvider>

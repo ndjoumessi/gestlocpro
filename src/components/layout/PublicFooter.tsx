@@ -8,7 +8,7 @@ const COLUMNS = [
     links: [
       { label: 'marketing.nav.features', to: '/#features' },
       { label: 'marketing.nav.pricing', to: '/#pricing' },
-      { label: 'marketing.footer.demo', to: '/app' },
+      { label: 'marketing.footer.demo', to: '/demo' },
     ],
   },
   {

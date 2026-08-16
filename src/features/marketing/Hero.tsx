@@ -43,7 +43,7 @@ export function Hero() {
               <Button size="lg" to="/inscription" iconAfter="arrowRight">
                 {t('marketing.hero.ctaPrimary')}
               </Button>
-              <Button size="lg" variant="secondary" to="/app" icon="grid">
+              <Button size="lg" variant="secondary" to="/demo" icon="grid">
                 {t('marketing.hero.ctaSecondary')}
               </Button>
             </div>

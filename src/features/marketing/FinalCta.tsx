@@ -20,7 +20,7 @@ export function FinalCta() {
           <Button size="lg" variant="gold" to="/inscription" iconAfter="arrowRight">
             {t('marketing.finalCta.cta')}
           </Button>
-          <Button size="lg" variant="onDark" to="/app">
+          <Button size="lg" variant="onDark" to="/demo">
             {t('marketing.finalCta.secondary')}
           </Button>
         </div>

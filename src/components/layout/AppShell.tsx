@@ -12,13 +12,14 @@ import { cn } from '@/lib/cn'
 import { Logo } from '@/components/primitives/Logo'
 import { Icon, type IconName } from '@/components/primitives/Icon'
 import { Badge } from '@/components/primitives/Badge'
-import { IconButton } from '@/components/primitives/Button'
+import { Button, IconButton } from '@/components/primitives/Button'
 import { LanguageSwitcher } from '@/components/controls/LanguageSwitcher'
 import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
 import { useT } from '@/i18n/I18nProvider'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import type { Role } from '@/features/auth/signupState'
 import { usePortfolio } from '@/data/PortfolioProvider'
+import { useSession } from '@/api/SessionProvider'
 
 
 /* -------------------------------------------------------------------------- */
@@ -195,12 +196,47 @@ export function AppShell() {
 
         <div ref={contentRef} className="flex min-w-0 flex-1 flex-col bg-paper">
           <Topbar onOpenDrawer={() => setDrawerOpen(true)} />
+          <BandeauDemo />
           <main id="main" className="animate-rise flex-1 px-5 py-6 sm:px-8 sm:py-8">
             <Outlet />
           </main>
         </div>
       </div>
     </RoleContext.Provider>
+  )
+}
+
+/**
+ * Bandeau de démonstration.
+ *
+ * Sans lui, un visiteur lirait « 1 397 000 FCFA de loyers attendus » et
+ * « 24 jours de retard » comme des faits. Ce sont des inventions cohérentes —
+ * c'est bien leur intérêt, et c'est exactement ce qui les rend trompeuses si
+ * rien ne les désigne.
+ *
+ * Il est posé sous la barre supérieure et non en surimpression : un bandeau
+ * flottant se refermerait, ou masquerait une ligne de tableau. Celui-ci occupe
+ * sa place et ne se ferme pas — la visite entière est une démonstration, pas
+ * une notification.
+ */
+function BandeauDemo() {
+  const { estDemo } = useSession()
+  const t = useT()
+  if (!estDemo) return null
+
+  return (
+    <div
+      role="status"
+      className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-amber-200 bg-amber-50 px-5 py-2.5 text-sm text-amber-900 sm:px-8"
+    >
+      <span className="rounded-full bg-amber-200 px-2 py-0.5 text-xs font-semibold tracking-wide uppercase">
+        {t('common.demoBadge')}
+      </span>
+      <span className="min-w-0 flex-1">{t('common.demoNotice')}</span>
+      <Button size="sm" to="/inscription/proprietaire" iconAfter="arrowRight">
+        {t('common.demoCta')}
+      </Button>
+    </div>
   )
 }
 

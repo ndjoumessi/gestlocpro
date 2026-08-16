@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import type { Role } from './features/auth/signupState'
 import { Landing } from './routes/Landing'
+import { Demo } from './routes/Demo'
 import { Login } from './routes/Login'
 import { ForgotPassword } from './routes/ForgotPassword'
 import { ResetPassword } from './routes/ResetPassword'
@@ -43,6 +44,9 @@ export function App() {
           de rôle est alors sautée, mais reste atteignable par « Retour ». */}
       <Route path="/inscription/:role" element={<SignUp />} />
       <Route path="/connexion" element={<Login />} />
+      {/* Entrée dans la démonstration : marque la visite puis renvoie vers
+          `/app`, que la barrière laisse alors passer sans compte. */}
+      <Route path="/demo" element={<Demo />} />
       <Route path="/mot-de-passe-oublie" element={<ForgotPassword />} />
       <Route path="/reinitialiser" element={<ResetPassword />} />
 

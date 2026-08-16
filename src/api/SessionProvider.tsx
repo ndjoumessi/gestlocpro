@@ -34,7 +34,22 @@ import { ApiError, NetworkError, api, type AdhesionApi, type CompteApi, type Dem
 export type EtatSession =
   | { statut: 'inconnu' }
   | { statut: 'anonyme' }
+  | { statut: 'demo' }
   | { statut: 'connecte'; compte: CompteApi; adhesions: AdhesionApi[] }
+
+/**
+ * Clé de la visite en démonstration, conservée le temps de l'onglet.
+ *
+ * `sessionStorage` et non `localStorage` : une démonstration est une visite,
+ * pas une préférence. La retrouver trois jours plus tard en ouvrant le produit
+ * qu'on a fini par acheter serait absurde, et masquerait ses vraies données
+ * derrière un bandeau.
+ *
+ * Elle ne porte aucun droit — le serveur ne la voit jamais et refuserait de
+ * toute façon. Elle ne décide que d'une chose : afficher le jeu de
+ * démonstration au lieu de rediriger vers la connexion.
+ */
+const CLE_DEMO = 'gestlocpro.demo'
 
 interface SessionContextValue {
   etat: EtatSession
@@ -46,6 +61,10 @@ interface SessionContextValue {
   inscrire: (donnees: DemandeInscription) => Promise<void>
   deconnecter: () => Promise<void>
   rafraichir: () => Promise<void>
+  /** Ouvre l'application sur le jeu de démonstration, sans compte. */
+  entrerEnDemo: () => void
+  /** `true` quand l'écran affiché est une démonstration et non un vrai parc. */
+  estDemo: boolean
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null)
@@ -70,12 +89,26 @@ export function SessionProvider({
    */
   etatInitial?: EtatSession
 }) {
-  const [etat, setEtat] = useState<EtatSession>(etatInitial ?? { statut: 'inconnu' })
+  const [etat, setEtat] = useState<EtatSession>(
+    etatInitial ??
+      (typeof window !== 'undefined' && window.sessionStorage.getItem(CLE_DEMO) === '1'
+        ? { statut: 'demo' }
+        : { statut: 'inconnu' }),
+  )
   const [horsLigne, setHorsLigne] = useState(false)
+
+  const entrerEnDemo = useCallback(() => {
+    window.sessionStorage.setItem(CLE_DEMO, '1')
+    setEtat({ statut: 'demo' })
+  }, [])
 
   const rafraichir = useCallback(async () => {
     try {
       const { user, memberships } = await api.me()
+      // Un vrai compte l'emporte toujours sur une visite de démonstration : la
+      // trace de l'onglet est effacée, sans quoi le bandeau resterait affiché
+      // au-dessus des vraies données du propriétaire.
+      window.sessionStorage.removeItem(CLE_DEMO)
       setEtat({ statut: 'connecte', compte: user, adhesions: memberships })
       setHorsLigne(false)
     } catch (err) {
@@ -91,7 +124,14 @@ export function SessionProvider({
         return
       }
       if (err instanceof ApiError && err.status === 401) {
-        setEtat({ statut: 'anonyme' })
+        /**
+         * 401 est la réponse ATTENDUE pendant une démonstration : le visiteur
+         * n'a pas de compte, c'est tout le principe. Basculer en « anonyme »
+         * le renverrait à la connexion au premier rechargement, en plein
+         * milieu de la visite qu'on lui a promise.
+         */
+        const enDemo = window.sessionStorage.getItem(CLE_DEMO) === '1'
+        setEtat(enDemo ? { statut: 'demo' } : { statut: 'anonyme' })
         setHorsLigne(false)
         return
       }
@@ -131,6 +171,7 @@ export function SessionProvider({
       // Même si l'appel échoue, l'interface repasse en anonyme : refuser de
       // déconnecter quelqu'un parce que le réseau a lâché est le mauvais sens
       // de l'erreur.
+      window.sessionStorage.removeItem(CLE_DEMO)
       setEtat({ statut: 'anonyme' })
     }
   }, [])
@@ -138,14 +179,19 @@ export function SessionProvider({
   const value = useMemo<SessionContextValue>(
     () => ({
       etat,
+      // Une démonstration est un état RÉSOLU : il n'y a plus rien à attendre du
+      // serveur. La compter comme un chargement laisserait tourner l'attente
+      // indéfiniment.
       chargement: etat.statut === 'inconnu' && !horsLigne,
       horsLigne,
       connecter,
       inscrire,
       deconnecter,
       rafraichir,
+      entrerEnDemo,
+      estDemo: etat.statut === 'demo',
     }),
-    [etat, horsLigne, connecter, inscrire, deconnecter, rafraichir],
+    [etat, horsLigne, connecter, inscrire, deconnecter, rafraichir, entrerEnDemo],
   )
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>

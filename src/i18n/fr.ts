@@ -29,6 +29,10 @@ export const fr = {
     currency: 'Devise',
     language: 'Langue',
     country: 'Pays',
+    demoBadge: 'Démonstration',
+    demoNotice:
+      'Vous parcourez une démonstration : ces immeubles, ces locataires et ces montants sont fictifs.',
+    demoCta: 'Créer mon espace',
     countryOther: 'Autre pays',
     countryOtherHint:
       'Votre pays n’est pas encore listé : choisissez vous-même la devise et la langue de votre espace.',

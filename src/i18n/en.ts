@@ -22,6 +22,10 @@ export const en: Dictionary = {
     currency: 'Currency',
     language: 'Language',
     country: 'Country',
+    demoBadge: 'Demo',
+    demoNotice:
+      'You are browsing a demo: these buildings, tenants and amounts are fictional.',
+    demoCta: 'Create my space',
     countryOther: 'Other country',
     countryOtherHint:
       'Your country is not listed yet: choose the currency and language of your space yourself.',

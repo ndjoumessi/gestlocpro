@@ -28,6 +28,23 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     return horsLigne ? <ServeurInjoignable /> : <Attente />
   }
 
+  /**
+   * La démonstration passe.
+   *
+   * La page d'accueil promet « Parcourir la démonstration » sans compte, et
+   * cette barrière l'a longtemps démentie : le visiteur atterrissait sur une
+   * page de connexion intitulée « Content de vous revoir », alors qu'il n'était
+   * jamais venu. Une promesse commerciale que le produit contredit vaut moins
+   * que pas de promesse du tout.
+   *
+   * Aucun droit n'est accordé pour autant : le serveur ne connaît pas cet état
+   * et refuse toute requête authentifiée. Les données affichées sont le jeu de
+   * démonstration, qui n'appartient à personne.
+   */
+  if (etat.statut === 'demo') {
+    return <>{children}</>
+  }
+
   if (etat.statut === 'anonyme') {
     /**
      * L'adresse demandée voyage dans l'état de navigation.
