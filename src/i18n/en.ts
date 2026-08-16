@@ -26,7 +26,7 @@ export const en: Dictionary = {
     demoPark: 'Demo portfolio',
     emptyParkTitle: 'Your portfolio is still empty',
     emptyParkBody:
-      'Indicators, collections and reminders will appear here as soon as your portfolio holds units. Adding buildings is not open yet: we are working on it.',
+      'Indicators, collections and reminders will appear here as soon as your portfolio holds units. Start by adding a building.',
     emptyParkDemo: 'See what a full portfolio looks like',
     newVersion: 'A new version of GestLocPro is available.',
     newVersionReload: 'Reload',
@@ -350,6 +350,15 @@ export const en: Dictionary = {
     },
 
     portfolio: {
+      addBuildingTitle: 'Add a building',
+      addBuildingDescription:
+        'Unit counts and occupancy are computed afterwards, as you add units.',
+      buildingName: 'Building name',
+      buildingNamePlaceholder: 'Makepe Residence',
+      buildingNameInvalid: 'At least 2 characters',
+      district: 'District',
+      districtPlaceholder: 'Makepe',
+      districtInvalid: 'At least 2 characters',
       title: 'Portfolio',
       subtitle: 'Three buildings, twelve units. Status applies to the month shown.',
       unit: 'Unit',

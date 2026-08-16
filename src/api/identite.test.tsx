@@ -106,10 +106,11 @@ describe('parc vide, tableau de bord d’un compte neuf', () => {
     expect(screen.queryByRole('button', { name: /enregistrer un paiement/i })).not.toBeInTheDocument()
   })
 
-  it('ne promet pas un geste que le produit ne permet pas', async () => {
-    // Aucun écran ne permet aujourd'hui d'ajouter un immeuble : ni bouton, ni
-    // modale, ni route serveur. Annoncer « Ajouter un immeuble » ici serait le
-    // mensonge que cette journée a passé son temps à retirer.
+  it('renvoie vers le geste qui constitue le parc', async () => {
+    // Ce test disait l'inverse il y a une heure : « ne promet pas un geste que
+    // le produit ne permet pas ». Le geste existe désormais — écran du parc,
+    // modale, route serveur — et l'état vide doit y conduire. Un test qui garde
+    // l'ancienne vérité empêcherait la nouvelle.
     const serveur = installerFauxServeur({ authentifie: true })
     serveur.quand('GET', `/parks/${SESSION_REELLE.statut === 'connecte' ? SESSION_REELLE.adhesions[0]!.parkId : ''}/portfolio`, {
       status: 200,
@@ -118,6 +119,7 @@ describe('parc vide, tableau de bord d’un compte neuf', () => {
 
     renderApp('/app', { session: SESSION_REELLE })
     await screen.findByText(/votre parc est encore vide/i)
-    expect(screen.queryByText(/ajouter un immeuble/i)).not.toBeInTheDocument()
+    const lien = await screen.findByRole('link', { name: /ajouter un immeuble/i })
+    expect(lien).toHaveAttribute('href', '/app/parc')
   })
 })

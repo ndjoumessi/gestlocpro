@@ -130,8 +130,10 @@ export function Dashboard() {
           title={t('common.emptyParkTitle')}
           body={t('common.emptyParkBody')}
           action={
-            <Button variant="secondary" to="/demo" icon="grid">
-              {t('common.emptyParkDemo')}
+            // Le geste existe désormais : on y renvoie, au lieu de reconnaître
+            // un manque. Ce bouton aurait menti hier ; il dit vrai aujourd'hui.
+            <Button to={lien(base, 'parc')} icon="plus">
+              {t('app.portfolio.addBuildingTitle')}
             </Button>
           }
         />

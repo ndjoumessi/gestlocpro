@@ -175,3 +175,72 @@ describe('rattacher un locataire', () => {
     })
   })
 })
+
+describe('constituer son parc', () => {
+  it('envoie le nom et le quartier au serveur, et affiche ce qu’il rend', async () => {
+    /**
+     * Le geste qui manquait au produit.
+     *
+     * Un propriétaire pouvait créer son compte et n'en rien faire : tous les
+     * écrans opéraient sur un parc qu'aucune route ne permettait de constituer.
+     * La démonstration en montrait un rempli ; le produit ne savait pas le
+     * remplir.
+     */
+    // Le parc est chargé AVANT le geste, et on l'attend explicitement.
+    // Sans cette attente, la réponse du portefeuille se résolvait après la
+    // création et écrasait l'immeuble tout juste ajouté — un défaut d'ordre,
+    // pas de code, et invisible tant que le test ne le fixait pas.
+    const serveur = installerFauxServeur()
+    serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: portefeuille() })
+    serveur.quand('POST', `/parks/${PARK}/buildings`, {
+      status: 201,
+      body: { building: { id: 'aaaa1111-2222-4333-8444-555555555555', name: 'Résidence Makepe', district: 'Makepe' } },
+    })
+
+    const user = userEvent.setup()
+    renderApp('/app/parc', { session: SESSION_AVEC_PARC })
+    // Le parc du serveur est à l'écran : sa carte de quartier le prouve.
+    await screen.findAllByText('Bonamoussadi')
+
+    await user.click(await screen.findByRole('button', { name: /ajouter un immeuble/i }))
+    await user.type(screen.getByLabelText(/nom de l’immeuble/i), 'Résidence Makepe')
+    await user.type(screen.getByLabelText(/^quartier/i), 'Makepe')
+    await user.click(screen.getByRole('button', { name: /^enregistrer$/i }))
+
+    const appel = serveur.appels.find((a) => a.chemin.endsWith('/buildings'))
+    expect(appel?.methode).toBe('POST')
+    expect(appel?.corps).toEqual({ name: 'Résidence Makepe', district: 'Makepe' })
+
+    /**
+     * L'immeuble rendu par le SERVEUR apparaît à l'écran.
+     *
+     * On cherche le QUARTIER et non le nom : les cartes de cet écran portent
+     * `district`, et un immeuble neuf n'a encore aucun logement, donc aucune
+     * ligne de tableau où son nom figurerait. On crée « Résidence Makepe » et
+     * l'écran affiche « Makepe » — c'est un vrai manque, noté et à traiter,
+     * mais ce test décrit ce que le produit fait aujourd'hui plutôt que ce
+     * qu'on aimerait qu'il fasse.
+     */
+    // Deux occurrences : la carte de quartier et la puce de filtre — l'écran
+    // sait donc à la fois le compter et le proposer au filtrage.
+    expect(await screen.findAllByText('Makepe')).toHaveLength(2)
+  })
+
+  it('n’envoie rien quand le nom est trop court, et le dit', async () => {
+    const vide = portefeuille()
+    vide.buildings = []
+    const serveur = installerFauxServeur()
+    serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: vide })
+
+    const user = userEvent.setup()
+    renderApp('/app/parc', { session: SESSION_AVEC_PARC })
+    await user.click(await screen.findByRole('button', { name: /ajouter un immeuble/i }))
+
+    await user.type(screen.getByLabelText(/nom de l’immeuble/i), 'A')
+    await user.type(screen.getByLabelText(/^quartier/i), 'Makepe')
+    await user.click(screen.getByRole('button', { name: /^enregistrer$/i }))
+
+    expect(await screen.findByText(/au moins 2 caractères/i)).toBeInTheDocument()
+    expect(serveur.appels.find((a) => a.chemin.endsWith('/buildings'))).toBeUndefined()
+  })
+})

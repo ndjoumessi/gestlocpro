@@ -10,8 +10,10 @@ import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { type Unit } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
+import { AddBuildingModal } from './AddBuildingModal'
 
 export function Portfolio() {
+  const [ajoutOuvert, setAjoutOuvert] = useState(false)
   const t = useT()
   const { money } = useCurrency()
   const { units, buildings: BUILDINGS, buildingById } = usePortfolio()
@@ -57,7 +59,20 @@ export function Portfolio() {
 
   return (
     <>
-      <PageHeader title={t('app.portfolio.title')} description={t('app.portfolio.subtitle')} />
+      <PageHeader
+        title={t('app.portfolio.title')}
+        description={t('app.portfolio.subtitle')}
+        // Le seul endroit du produit où l'on constitue son parc. Il n'existait
+        // pas : tous les écrans opéraient sur des immeubles qu'aucun geste ne
+        // pouvait créer.
+        actions={
+          <Button icon="plus" onClick={() => setAjoutOuvert(true)}>
+            {t('app.portfolio.addBuildingTitle')}
+          </Button>
+        }
+      />
+
+      {ajoutOuvert && <AddBuildingModal open onClose={() => setAjoutOuvert(false)} />}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {BUILDINGS.map((b) => {

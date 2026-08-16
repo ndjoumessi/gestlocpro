@@ -21,6 +21,19 @@ const schemaArbitrage = z
     path: ['reason'],
   })
 
+/**
+ * Un immeuble : un nom, un quartier.
+ *
+ * Ni nombre de logements ni taux d'occupation — ce sont des comptages, dérivés
+ * des unités, et le schéma de base le dit déjà. Les demander à la saisie
+ * créerait deux vérités sur la même chose, et elles divergeraient au premier
+ * logement ajouté.
+ */
+const schemaImmeuble = z.object({
+  name: z.string().trim().min(2, 'Au moins 2 caractères').max(120),
+  district: z.string().trim().min(2, 'Au moins 2 caractères').max(120),
+})
+
 const schemaLocataire = z.object({
   unitId: z.string().uuid(),
   fullName: z.string().trim().min(2).max(120),
@@ -497,6 +510,34 @@ parksRouter.patch(
     })
 
     res.json({ deposit: maj })
+  },
+)
+
+/**
+ * Crée un immeuble dans le parc.
+ *
+ * Première pierre de la saisie : jusqu'ici, un propriétaire pouvait créer son
+ * compte et rien en faire — tous les écrans opéraient sur un parc qu'aucune
+ * route ne permettait de constituer.
+ *
+ * Le nom n'est pas contraint à l'unicité. Deux immeubles peuvent légitimement
+ * porter le même nom dans deux quartiers, et refuser la saisie sur cette base
+ * ferait perdre du temps à celui qui a raison.
+ */
+parksRouter.post(
+  '/:parkId/buildings',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const corps = schemaImmeuble.parse(req.body)
+
+    const immeuble = await prisma.building.create({
+      data: { parkId, name: corps.name, district: corps.district },
+      select: { id: true, name: true, district: true },
+    })
+
+    res.status(201).json({ building: immeuble })
   },
 )
 

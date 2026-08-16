@@ -463,3 +463,83 @@ describe('terrain et notifications', () => {
     ).toBe(true)
   })
 })
+
+describe('saisie des immeubles', () => {
+  /**
+   * La première pierre de la saisie.
+   *
+   * Jusqu'ici un propriétaire pouvait créer son compte et n'en rien faire :
+   * indicateurs, encaissements, relevés, cautions et travaux opéraient tous sur
+   * un parc qu'aucune route ne permettait de constituer. La démonstration en
+   * montrait un rempli ; le produit ne savait pas le remplir.
+   */
+  it('crée un immeuble dans le parc du propriétaire', async () => {
+    const { cookie } = await inscrire('batisseur@example.com', { parkName: 'Parc Makepe' })
+    const parcs = await request(app).get('/api/parks').set('Cookie', cookie)
+    const parkId = parcs.body.parks[0].id
+
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/buildings`)
+      .set('Cookie', cookie)
+      .send({ name: 'Résidence Makepe', district: 'Makepe' })
+
+    expect(res.status, JSON.stringify(res.body)).toBe(201)
+    expect(res.body.building).toMatchObject({ name: 'Résidence Makepe', district: 'Makepe' })
+
+    // Et il ressort du portefeuille : créer sans que l'écran le voie ne
+    // servirait à rien.
+    const portefeuille = await request(app)
+      .get(`/api/parks/${parkId}/portfolio`)
+      .set('Cookie', cookie)
+    expect(portefeuille.body.buildings.map((b: { name: string }) => b.name)).toContain(
+      'Résidence Makepe',
+    )
+  })
+
+  it('refuse un nom ou un quartier trop court, en nommant le champ', async () => {
+    const { cookie } = await inscrire('court@example.com', { parkName: 'Parc' })
+    const parcs = await request(app).get('/api/parks').set('Cookie', cookie)
+    const parkId = parcs.body.parks[0].id
+
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/buildings`)
+      .set('Cookie', cookie)
+      .send({ name: 'A', district: 'Makepe' })
+
+    expect(res.status).toBe(400)
+    expect(res.body.fields?.[0]?.path).toBe('name')
+  })
+
+  it('accepte deux immeubles de même nom dans deux quartiers', async () => {
+    // Refuser sur cette base ferait perdre du temps à celui qui a raison : deux
+    // « Résidence Les Palmiers » dans deux quartiers, cela existe.
+    const { cookie } = await inscrire('homonyme@example.com', { parkName: 'Parc' })
+    const parcs = await request(app).get('/api/parks').set('Cookie', cookie)
+    const parkId = parcs.body.parks[0].id
+
+    const corps = { name: 'Les Palmiers', district: 'Bonapriso' }
+    const un = await request(app).post(`/api/parks/${parkId}/buildings`).set('Cookie', cookie).send(corps)
+    const deux = await request(app)
+      .post(`/api/parks/${parkId}/buildings`)
+      .set('Cookie', cookie)
+      .send({ ...corps, district: 'Deïdo' })
+
+    expect(un.status).toBe(201)
+    expect(deux.status).toBe(201)
+  })
+
+  it('refuse un compte qui n’appartient pas au parc, en 404 et non en 403', async () => {
+    // 403 confirmerait l'existence du parc à qui l'a deviné.
+    const { cookie: proprio } = await inscrire('chez-moi@example.com', { parkName: 'Parc' })
+    const parcs = await request(app).get('/api/parks').set('Cookie', proprio)
+    const parkId = parcs.body.parks[0].id
+
+    const { cookie: etranger } = await inscrire('etranger@example.com')
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/buildings`)
+      .set('Cookie', etranger)
+      .send({ name: 'Résidence', district: 'Ailleurs' })
+
+    expect(res.status).toBe(404)
+  })
+})

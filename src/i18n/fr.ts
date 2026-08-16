@@ -33,7 +33,7 @@ export const fr = {
     demoPark: 'Parc de démonstration',
     emptyParkTitle: 'Votre parc est encore vide',
     emptyParkBody:
-      'Les indicateurs, les encaissements et les relances apparaîtront ici dès que votre parc portera des logements. La saisie des immeubles n’est pas encore ouverte : nous la préparons.',
+      'Les indicateurs, les encaissements et les relances apparaîtront ici dès que votre parc portera des logements. Commencez par déclarer un immeuble.',
     emptyParkDemo: 'Voir ce que donne un parc rempli',
     newVersion: 'Une nouvelle version de GestLocPro est disponible.',
     newVersionReload: 'Recharger',
@@ -391,6 +391,15 @@ export const fr = {
     },
 
     portfolio: {
+      addBuildingTitle: 'Ajouter un immeuble',
+      addBuildingDescription:
+        'Le nombre de logements et le taux d’occupation se calculent ensuite, à mesure que vous ajoutez des logements.',
+      buildingName: 'Nom de l’immeuble',
+      buildingNamePlaceholder: 'Résidence Makepe',
+      buildingNameInvalid: 'Au moins 2 caractères',
+      district: 'Quartier',
+      districtPlaceholder: 'Makepe',
+      districtInvalid: 'Au moins 2 caractères',
       title: 'Parc immobilier',
       subtitle: 'Trois immeubles, douze unités. Le statut porte sur le mois affiché.',
       unit: 'Unité',

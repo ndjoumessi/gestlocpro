@@ -56,6 +56,8 @@ interface PortfolioContextValue {
   settleDeposit: (unitId: string, withheld: number, reason?: string) => void
   /** Rattache un locataire à une unité vacante. Le bail démarre « en attente ». */
   addTenant: (unitId: string, name: string, phone: string) => void
+  /** Crée un immeuble dans le parc. Sans parc serveur, il reste local. */
+  addBuilding: (name: string, district: string) => void
   /**
    * Alertes marquées comme lues pendant la session.
    *
@@ -285,6 +287,28 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [parkId, deposits, signalerEchec],
   )
 
+  const addBuilding = useCallback(
+    (name: string, district: string) => {
+      if (!parkId) {
+        // Sans parc serveur — démonstration — l'immeuble reste local, comme
+        // tout le reste du jeu de données.
+        setBuildings((liste) => [...liste, { id: `local-${liste.length + 1}`, name, district }])
+        return
+      }
+      void api
+        .addBuilding<{ building: { id: string; name: string; district: string } }>(parkId, {
+          name,
+          district,
+        })
+        // On rejoue la réponse du SERVEUR et non la saisie : c'est lui qui
+        // décide de l'identifiant, et c'est par cet identifiant que les
+        // logements s'y rattacheront.
+        .then(({ building }) => setBuildings((liste) => [...liste, building]))
+        .catch(signalerEchec)
+    },
+    [parkId, signalerEchec],
+  )
+
   const addTenant = useCallback((unitId: string, name: string, phone: string) => {
     if (parkId) {
       void api
@@ -353,6 +377,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       approveWork,
       settleDeposit,
       addTenant,
+      addBuilding,
       readAlertIds,
       markAlertsRead,
       reset,
@@ -371,13 +396,38 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       depositForUnit: (unitId) => deposits.find((d) => d.unitId === unitId),
       unitById: (unitId) => units.find((u) => u.id === unitId),
     }),
+    /**
+     * TOUT ce que la valeur expose figure ici.
+     *
+     * `buildings`, `readings`, `inspections`, `alerts`, `collections` et
+     * `fromApi` en étaient absents alors que le contexte les rend. La valeur
+     * n'était donc pas recalculée quand l'un d'eux changeait SEUL, et les
+     * écrans gardaient l'ancienne liste.
+     *
+     * Le défaut est resté invisible parce qu'il ne se manifeste jamais au
+     * chargement : celui-ci change huit états d'un coup, dont `units` qui était
+     * listé — le mémo se recalculait alors et ramassait les autres au passage.
+     * Il a fallu la première mutation ne touchant QU'À `buildings` — créer un
+     * immeuble — pour qu'il se voie.
+     *
+     * Une dépendance manquante ne casse pas : elle attend. C'est ce qui la rend
+     * coûteuse à trouver, et c'est pourquoi on les liste toutes plutôt que
+     * celles qu'on croit utiles.
+     */
     [
       units,
       works,
       deposits,
+      buildings,
+      readings,
+      inspections,
+      alerts,
+      collections,
+      fromApi,
       approveWork,
       settleDeposit,
       addTenant,
+      addBuilding,
       readAlertIds,
       markAlertsRead,
       reset,
