@@ -624,6 +624,7 @@ export const en: Dictionary = {
       urgencyLow: 'Can wait',
       describe: 'Describe the problem',
       describeHint: 'The manager receives your message and replies from this space.',
+      describeRequired: 'Describe the problem: the manager acts on what you write here.',
     },
   },
 

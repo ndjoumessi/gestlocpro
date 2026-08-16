@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { PageHeader } from '@/components/layout/AppShell'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
@@ -30,6 +30,9 @@ export function TenantPortal() {
   const { notify } = useToast()
   const [tab, setTab] = useState<Tab>('space')
   const [sent, setSent] = useState(false)
+  const [description, setDescription] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const reportRef = useRef<HTMLDivElement>(null)
 
   const { worksForUnit } = usePortfolio()
 
@@ -204,7 +207,7 @@ export function TenantPortal() {
                     {t('app.portal.reportSent')}
                   </p>
                 ) : (
-                  <div className="flex flex-col gap-5">
+                  <div ref={reportRef} className="flex flex-col gap-5">
                     <div className="grid gap-5 sm:grid-cols-2">
                       <Field label={t('app.portal.category')} required>
                         {(props) => (
@@ -228,12 +231,39 @@ export function TenantPortal() {
                       </Field>
                     </div>
 
-                    <Field label={t('app.portal.describe')} required>
-                      {(props) => <Textarea {...props} />}
+                    {/* Le champ portait l'astérisque du champ obligatoire, mais
+                        rien ne le vérifiait : soumis à vide, le formulaire
+                        annonçait « signalement envoyé au gestionnaire et au
+                        propriétaire » pour un message sans contenu. La fiche
+                        locataire avait exactement ce défaut, et le même
+                        remède — la règle des trois caractères est celle de la
+                        justification d'une retenue de caution. */}
+                    <Field
+                      label={t('app.portal.describe')}
+                      required
+                      error={error ?? undefined}
+                    >
+                      {(props) => (
+                        <Textarea
+                          {...props}
+                          name="description"
+                          value={description}
+                          onChange={(e) => {
+                            setDescription(e.target.value)
+                            if (error) setError(null)
+                          }}
+                        />
+                      )}
                     </Field>
 
                     <Button
                       onClick={() => {
+                        if (description.trim().length < 3) {
+                          setError(t('app.portal.describeRequired'))
+                          reportRef.current?.querySelector<HTMLElement>('[name="description"]')?.focus()
+                          return
+                        }
+                        setError(null)
                         setSent(true)
                         notify(t('app.portal.reportSent'), { tone: 'ok' })
                       }}

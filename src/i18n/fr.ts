@@ -653,6 +653,8 @@ export const fr = {
       urgencyLow: 'Peut attendre',
       describe: 'Décrivez le problème',
       describeHint: 'Le gestionnaire reçoit votre message et vous répond depuis cet espace.',
+      describeRequired:
+        'Décrivez le problème : le gestionnaire intervient sur ce que vous écrivez ici.',
     },
   },
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, switchRole } from '@/test/render'
+import { renderApp, screen, switchRole, userEvent } from '@/test/render'
 import { UNITS, WORKS } from '@/data/portfolio'
 
 /**
@@ -164,6 +164,40 @@ describe('délégation expliquée au gestionnaire', () => {
     renderApp('/app/cautions', { locale: 'en' })
     await switchRole('manager')
     expect(screen.getByText(/Only the owner settles deposits/)).toBeInTheDocument()
+  })
+})
+
+/**
+ * Signalement depuis le portail locataire.
+ *
+ * Le champ de description portait l'astérisque du champ obligatoire, mais rien
+ * ne le vérifiait : soumis à vide, le formulaire annonçait « signalement envoyé
+ * au gestionnaire et au propriétaire » pour un message sans contenu. Le
+ * locataire croyait avoir alerté, personne n'avait rien reçu.
+ *
+ * La fiche locataire avait exactement ce défaut et il avait été corrigé là ;
+ * ce formulaire-ci l'avait gardé.
+ */
+describe('signalement du portail', () => {
+  it('refuse un envoi sans description', async () => {
+    renderApp('/app/portail', { locale: 'en' })
+    await userEvent.click(screen.getByRole('tab', { name: 'Report' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Report' }))
+
+    expect(screen.getByText(/Describe the problem: the manager acts/)).toBeInTheDocument()
+    expect(screen.queryByText(/Report sent to the manager/)).not.toBeInTheDocument()
+  })
+
+  it('envoie une fois le problème décrit', async () => {
+    renderApp('/app/portail', { locale: 'en' })
+    await userEvent.click(screen.getByRole('tab', { name: 'Report' }))
+    await userEvent.type(
+      screen.getByRole('textbox'),
+      'The kitchen tap drips continuously since Monday.',
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Report' }))
+
+    expect(screen.getAllByText(/Report sent to the manager/).length).toBeGreaterThan(0)
   })
 })
 
