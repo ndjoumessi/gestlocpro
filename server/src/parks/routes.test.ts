@@ -543,3 +543,98 @@ describe('saisie des immeubles', () => {
     expect(res.status).toBe(404)
   })
 })
+
+describe('saisie des logements', () => {
+  async function parcAvecImmeuble(email: string) {
+    const { cookie } = await inscrire(email, { parkName: 'Parc' })
+    const parcs = await request(app).get('/api/parks').set('Cookie', cookie)
+    const parkId = parcs.body.parks[0].id
+    const immeuble = await request(app)
+      .post(`/api/parks/${parkId}/buildings`)
+      .set('Cookie', cookie)
+      .send({ name: 'Résidence Makepe', district: 'Makepe' })
+    return { cookie, parkId, buildingId: immeuble.body.building.id as string }
+  }
+
+  it('crée un logement, et le portefeuille le rend', async () => {
+    const { cookie, parkId, buildingId } = await parcAvecImmeuble('logements@example.com')
+
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/buildings/${buildingId}/units`)
+      .set('Cookie', cookie)
+      .send({ label: 'A1', type: 'T3', surfaceSqm: 78, baseRentMinor: 145000 })
+
+    expect(res.status, JSON.stringify(res.body)).toBe(201)
+    expect(res.body.unit).toMatchObject({ label: 'A1', type: 'T3', surfaceSqm: 78 })
+
+    const portefeuille = await request(app)
+      .get(`/api/parks/${parkId}/portfolio`)
+      .set('Cookie', cookie)
+    const unites = portefeuille.body.buildings.flatMap((b: { units: unknown[] }) => b.units)
+    expect(unites).toHaveLength(1)
+    // Vacant, et non « à jour » : aucun bail n'existe encore. Marquer un
+    // logement occupé fausserait le taux d'occupation dès sa création.
+    expect(unites[0]).toMatchObject({ label: 'A1', tenant: null, status: 'vacant' })
+  })
+
+  it('refuse deux fois le même numéro dans le même immeuble, en 409', async () => {
+    /**
+     * 409 et non 400 : la saisie est bien formée, c'est l'état du parc qui s'y
+     * oppose. L'écran doit pouvoir distinguer « corrigez votre saisie » de « ce
+     * numéro est déjà pris » — deux gestes différents pour l'utilisateur.
+     *
+     * Deux « A1 » indiscernables dans un immeuble feraient encaisser sur le
+     * mauvais logement.
+     */
+    const { cookie, parkId, buildingId } = await parcAvecImmeuble('doublon@example.com')
+    const corps = { label: 'A1', type: 'T2', surfaceSqm: 54, baseRentMinor: 110000 }
+
+    const un = await request(app)
+      .post(`/api/parks/${parkId}/buildings/${buildingId}/units`)
+      .set('Cookie', cookie)
+      .send(corps)
+    const deux = await request(app)
+      .post(`/api/parks/${parkId}/buildings/${buildingId}/units`)
+      .set('Cookie', cookie)
+      .send(corps)
+
+    expect(un.status).toBe(201)
+    expect(deux.status).toBe(409)
+    expect(deux.body.error).toBe('label_taken')
+  })
+
+  it('accepte le même numéro dans deux immeubles différents', async () => {
+    // « A1 » existe dans presque tous les immeubles du monde : l'unicité est
+    // locale à l'immeuble, jamais globale.
+    const { cookie, parkId, buildingId } = await parcAvecImmeuble('deux-immeubles@example.com')
+    const autre = await request(app)
+      .post(`/api/parks/${parkId}/buildings`)
+      .set('Cookie', cookie)
+      .send({ name: 'Villa Deïdo', district: 'Deïdo' })
+
+    const corps = { label: 'A1', type: 'T2', surfaceSqm: 54, baseRentMinor: 110000 }
+    const un = await request(app)
+      .post(`/api/parks/${parkId}/buildings/${buildingId}/units`)
+      .set('Cookie', cookie)
+      .send(corps)
+    const deux = await request(app)
+      .post(`/api/parks/${parkId}/buildings/${autre.body.building.id}/units`)
+      .set('Cookie', cookie)
+      .send(corps)
+
+    expect(un.status).toBe(201)
+    expect(deux.status).toBe(201)
+  })
+
+  it('refuse un immeuble qui n’est pas dans le parc, en 404', async () => {
+    const { cookie, parkId } = await parcAvecImmeuble('mien@example.com')
+    const { buildingId: ailleurs } = await parcAvecImmeuble('sien@example.com')
+
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/buildings/${ailleurs}/units`)
+      .set('Cookie', cookie)
+      .send({ label: 'A1', type: 'T1', surfaceSqm: 30, baseRentMinor: 50000 })
+
+    expect(res.status).toBe(404)
+  })
+})

@@ -58,6 +58,11 @@ interface PortfolioContextValue {
   addTenant: (unitId: string, name: string, phone: string) => void
   /** Crée un immeuble dans le parc. Sans parc serveur, il reste local. */
   addBuilding: (name: string, district: string) => void
+  /** Crée un logement dans un immeuble. Vacant : aucun bail n'existe encore. */
+  addUnit: (
+    buildingId: string,
+    logement: { label: string; type: Unit['type']; surface: number; rent: number },
+  ) => void
   /**
    * Alertes marquées comme lues pendant la session.
    *
@@ -309,6 +314,49 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [parkId, signalerEchec],
   )
 
+  const addUnit = useCallback(
+    (
+      buildingId: string,
+      logement: { label: string; type: Unit['type']; surface: number; rent: number },
+    ) => {
+      const local = (id: string) =>
+        setUnits((liste) => [
+          ...liste,
+          {
+            id,
+            buildingId,
+            label: logement.label,
+            type: logement.type,
+            surface: logement.surface,
+            rent: logement.rent,
+            // Vacant, et non « à jour » : aucun bail n'existe. Marquer un
+            // logement occupé fausserait le taux d'occupation dès sa création.
+            tenant: null,
+            phone: null,
+            paid: 0,
+            status: 'vacant',
+          } as Unit,
+        ])
+
+      if (!parkId) {
+        local(`local-${logement.label}-${buildingId}`)
+        return
+      }
+      void api
+        .addUnit<{ unit: { id: string } }>(parkId, buildingId, {
+          label: logement.label,
+          type: logement.type,
+          surfaceSqm: logement.surface,
+          baseRentMinor: logement.rent,
+        })
+        // L'identifiant vient du SERVEUR : c'est par lui que le bail, les
+        // relevés et les charges s'y rattacheront.
+        .then(({ unit }) => local(unit.id))
+        .catch(signalerEchec)
+    },
+    [parkId, signalerEchec],
+  )
+
   const addTenant = useCallback((unitId: string, name: string, phone: string) => {
     if (parkId) {
       void api
@@ -378,6 +426,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       settleDeposit,
       addTenant,
       addBuilding,
+      addUnit,
       readAlertIds,
       markAlertsRead,
       reset,
@@ -428,6 +477,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       settleDeposit,
       addTenant,
       addBuilding,
+      addUnit,
       readAlertIds,
       markAlertsRead,
       reset,

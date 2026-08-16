@@ -11,9 +11,11 @@ import { useT } from '@/i18n/I18nProvider'
 import { type Unit } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { AddBuildingModal } from './AddBuildingModal'
+import { AddUnitModal } from './AddUnitModal'
 
 export function Portfolio() {
   const [ajoutOuvert, setAjoutOuvert] = useState(false)
+  const [logementOuvert, setLogementOuvert] = useState(false)
   const t = useT()
   const { money } = useCurrency()
   const { units, buildings: BUILDINGS, buildingById } = usePortfolio()
@@ -66,13 +68,19 @@ export function Portfolio() {
         // pas : tous les écrans opéraient sur des immeubles qu'aucun geste ne
         // pouvait créer.
         actions={
-          <Button icon="plus" onClick={() => setAjoutOuvert(true)}>
-            {t('app.portfolio.addBuildingTitle')}
-          </Button>
+          <>
+            <Button variant="secondary" icon="plus" onClick={() => setAjoutOuvert(true)}>
+              {t('app.portfolio.addBuildingTitle')}
+            </Button>
+            <Button icon="plus" onClick={() => setLogementOuvert(true)}>
+              {t('app.portfolio.addUnitTitle')}
+            </Button>
+          </>
         }
       />
 
       {ajoutOuvert && <AddBuildingModal open onClose={() => setAjoutOuvert(false)} />}
+      {logementOuvert && <AddUnitModal open onClose={() => setLogementOuvert(false)} />}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {BUILDINGS.map((b) => {

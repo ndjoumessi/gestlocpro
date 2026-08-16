@@ -350,6 +350,19 @@ export const en: Dictionary = {
     },
 
     portfolio: {
+      unitType: 'Layout',
+      addUnitTitle: 'Add a unit',
+      addUnitDescription:
+        'The unit is created vacant: you will attach a tenant afterwards, from the Tenants screen.',
+      unitBuilding: 'Building',
+      unitLabel: 'Unit number',
+      unitLabelPlaceholder: 'A1',
+      unitLabelRequired: 'Required',
+      unitLabelTaken: 'That number already exists in this building',
+      unitSurface: 'Surface (m²)',
+      unitRent: 'Monthly rent',
+      unitNumberInvalid: 'A number is expected',
+      noBuildingYet: 'Add a building first: a unit belongs to one.',
       addBuildingTitle: 'Add a building',
       addBuildingDescription:
         'Unit counts and occupancy are computed afterwards, as you add units.',

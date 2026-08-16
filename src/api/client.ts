@@ -173,4 +173,14 @@ export const api = {
 
   addBuilding: <T>(parkId: string, corps: { name: string; district: string }) =>
     requete<T>(`/parks/${parkId}/buildings`, { method: 'POST', body: JSON.stringify(corps) }),
+
+  addUnit: <T>(
+    parkId: string,
+    buildingId: string,
+    corps: { label: string; type: string; surfaceSqm: number; baseRentMinor: number },
+  ) =>
+    requete<T>(`/parks/${parkId}/buildings/${buildingId}/units`, {
+      method: 'POST',
+      body: JSON.stringify(corps),
+    }),
 }

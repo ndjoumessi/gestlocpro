@@ -391,6 +391,19 @@ export const fr = {
     },
 
     portfolio: {
+      unitType: 'Typologie',
+      addUnitTitle: 'Ajouter un logement',
+      addUnitDescription:
+        'Le logement est créé vacant : vous y rattacherez un locataire ensuite, depuis l’écran Locataires.',
+      unitBuilding: 'Immeuble',
+      unitLabel: 'Numéro du logement',
+      unitLabelPlaceholder: 'A1',
+      unitLabelRequired: 'Requis',
+      unitLabelTaken: 'Ce numéro existe déjà dans cet immeuble',
+      unitSurface: 'Surface (m²)',
+      unitRent: 'Loyer mensuel',
+      unitNumberInvalid: 'Nombre attendu',
+      noBuildingYet: 'Déclarez d’abord un immeuble : un logement s’y rattache.',
       addBuildingTitle: 'Ajouter un immeuble',
       addBuildingDescription:
         'Le nombre de logements et le taux d’occupation se calculent ensuite, à mesure que vous ajoutez des logements.',

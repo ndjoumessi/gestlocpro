@@ -244,3 +244,62 @@ describe('constituer son parc', () => {
     expect(serveur.appels.find((a) => a.chemin.endsWith('/buildings'))).toBeUndefined()
   })
 })
+
+describe('saisir un logement', () => {
+  const IMMEUBLE = 'aaaaaaaa-2222-4333-8444-555555555555'
+
+  it('envoie le logement à son immeuble, et l’affiche vacant', async () => {
+    const serveur = installerFauxServeur()
+    serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: portefeuille() })
+    serveur.quand('POST', `/parks/${PARK}/buildings/${IMMEUBLE}/units`, {
+      status: 201,
+      body: { unit: { id: 'bbbb2222-2222-4333-8444-555555555555' } },
+    })
+
+    const user = userEvent.setup()
+    renderApp('/app/parc', { session: SESSION_AVEC_PARC })
+    await screen.findAllByText('Bonamoussadi')
+
+    await user.click(screen.getByRole('button', { name: /ajouter un logement/i }))
+    await user.type(screen.getByLabelText(/numéro du logement/i), 'B7')
+    await user.type(screen.getByLabelText(/surface/i), '64')
+    await user.type(screen.getByLabelText(/loyer mensuel/i), '130000')
+    await user.click(screen.getByRole('button', { name: /^enregistrer$/i }))
+
+    const appel = serveur.appels.find((a) => a.chemin.endsWith('/units'))
+    expect(appel?.methode).toBe('POST')
+    expect(appel?.corps).toEqual({
+      label: 'B7',
+      type: 'T2',
+      surfaceSqm: 64,
+      // Le loyer part en unités mineures entières : c'est la seule forme qui
+      // se somme juste sur douze mois.
+      baseRentMinor: 130000,
+    })
+
+    // Et il apparaît à l'écran, VACANT — aucun bail n'existe encore.
+    expect(await screen.findByText('B7')).toBeInTheDocument()
+    expect(screen.getAllByText(/vacant/i).length).toBeGreaterThan(0)
+  })
+
+  it('refuse un numéro déjà pris dans le même immeuble, sans appeler le serveur', async () => {
+    // « A1 » existe déjà dans Bonamoussadi. Deux lignes indiscernables feraient
+    // encaisser sur le mauvais logement — et la correction doit se faire sans
+    // aller-retour, même si le serveur le refuse aussi en 409.
+    const serveur = installerFauxServeur()
+    serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: portefeuille() })
+
+    const user = userEvent.setup()
+    renderApp('/app/parc', { session: SESSION_AVEC_PARC })
+    await screen.findAllByText('Bonamoussadi')
+
+    await user.click(screen.getByRole('button', { name: /ajouter un logement/i }))
+    await user.type(screen.getByLabelText(/numéro du logement/i), 'a1')
+    await user.type(screen.getByLabelText(/surface/i), '50')
+    await user.type(screen.getByLabelText(/loyer mensuel/i), '90000')
+    await user.click(screen.getByRole('button', { name: /^enregistrer$/i }))
+
+    expect(await screen.findByText(/ce numéro existe déjà/i)).toBeInTheDocument()
+    expect(serveur.appels.find((a) => a.chemin.endsWith('/units'))).toBeUndefined()
+  })
+})

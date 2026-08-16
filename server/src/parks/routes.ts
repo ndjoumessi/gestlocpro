@@ -34,6 +34,24 @@ const schemaImmeuble = z.object({
   district: z.string().trim().min(2, 'Au moins 2 caractères').max(120),
 })
 
+/**
+ * Un logement dans un immeuble.
+ *
+ * `label` n'est pas une clé — « A1 » existe dans presque tous les immeubles du
+ * monde — mais il doit rester unique DANS son immeuble, sans quoi deux lignes
+ * indiscernables apparaîtraient à l'écran et le gestionnaire encaisserait sur
+ * la mauvaise.
+ *
+ * Le loyer est en unités mineures, entier. Un flottant introduirait des demi-
+ * francs qui ne se somment pas juste sur douze mois.
+ */
+const schemaLogement = z.object({
+  label: z.string().trim().min(1, 'Requis').max(20),
+  type: z.enum(['T1', 'T2', 'T3', 'T4']),
+  surfaceSqm: z.number().int().positive().max(10_000),
+  baseRentMinor: z.number().int().nonnegative(),
+})
+
 const schemaLocataire = z.object({
   unitId: z.string().uuid(),
   fullName: z.string().trim().min(2).max(120),
@@ -538,6 +556,60 @@ parksRouter.post(
     })
 
     res.status(201).json({ building: immeuble })
+  },
+)
+
+/**
+ * Crée un logement dans un immeuble du parc.
+ *
+ * L'immeuble est cherché AVEC le `parkId` : sans cela, un identifiant deviné
+ * permettrait d'ajouter un logement dans l'immeuble d'un autre. Absent, on rend
+ * 404 et non 403 — un 403 confirmerait son existence.
+ */
+parksRouter.post(
+  '/:parkId/buildings/:buildingId/units',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const corps = schemaLogement.parse(req.body)
+    // Le paramètre d'adresse est typé « string | string[] » : on le contraint
+    // avant de l'utiliser en filtre, plutôt que de le forcer par une assertion.
+    const buildingId = z.string().uuid().parse(req.params.buildingId)
+
+    const immeuble = await prisma.building.findFirst({
+      where: { id: buildingId, parkId },
+      select: { id: true },
+    })
+    if (!immeuble) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const existant = await prisma.unit.findFirst({
+      where: { buildingId: immeuble.id, label: corps.label },
+      select: { id: true },
+    })
+    if (existant) {
+      // 409 et non 400 : la saisie est bien formée, c'est l'état du parc qui
+      // s'y oppose. L'écran doit pouvoir distinguer « corrigez votre saisie »
+      // de « ce numéro est déjà pris ».
+      res.status(409).json({ error: 'label_taken' })
+      return
+    }
+
+    const logement = await prisma.unit.create({
+      data: {
+        buildingId: immeuble.id,
+        label: corps.label,
+        type: corps.type,
+        surfaceSqm: corps.surfaceSqm,
+        baseRentMinor: corps.baseRentMinor,
+      },
+      select: { id: true, buildingId: true, label: true, type: true, surfaceSqm: true, baseRentMinor: true },
+    })
+
+    res.status(201).json({ unit: logement })
   },
 )
 
