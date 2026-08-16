@@ -469,4 +469,55 @@ describe('enregistrer un encaissement', () => {
     expect(corps.periodStart).toBe('2026-07-01')
     expect(corps.paidOn).toBe('2026-08-02')
   })
+
+  it('transmet la référence quand elle est saisie, et l’omet sinon', async () => {
+    /**
+     * Facultative, et elle doit le rester : un versement en espèces n'en a pas,
+     * et l'exiger empêcherait d'enregistrer le cas le plus courant du marché
+     * visé. Mais c'est par elle qu'un versement se retrouve sur un relevé
+     * bancaire — sans elle, le rapprochement se fait ligne à ligne, à la main.
+     */
+    const serveur = installerFauxServeur()
+    serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: portefeuille() })
+    serveur.quand('POST', `/parks/${PARK}/payments`, {
+      status: 201,
+      body: { payment: { id: 'p1', amountMinor: 115000, method: 'mobile', paidOn: '2026-08-16' } },
+    })
+
+    const user = userEvent.setup()
+    renderApp('/app', { session: SESSION_AVEC_PARC })
+    await user.click(await screen.findByRole('button', { name: /enregistrer un paiement/i }))
+    await user.type(screen.getByLabelText(/montant/i), '115000')
+    await user.type(screen.getByLabelText(/référence de la transaction/i), 'MP260816.1432.A98765')
+    await user.click(screen.getByRole('button', { name: /^enregistrer$/i }))
+
+    const corps = serveur.appels.find((a) => a.chemin.endsWith('/payments'))?.corps as Record<
+      string,
+      unknown
+    >
+    expect(corps.reference).toBe('MP260816.1432.A98765')
+  })
+
+  it('n’envoie pas de référence vide pour un versement en espèces', async () => {
+    // Une chaîne vide n'est pas « pas de référence » : elle occuperait le champ
+    // et ferait croire à un rapprochement possible.
+    const serveur = installerFauxServeur()
+    serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: portefeuille() })
+    serveur.quand('POST', `/parks/${PARK}/payments`, {
+      status: 201,
+      body: { payment: { id: 'p1', amountMinor: 50000, method: 'cash', paidOn: '2026-08-16' } },
+    })
+
+    const user = userEvent.setup()
+    renderApp('/app', { session: SESSION_AVEC_PARC })
+    await user.click(await screen.findByRole('button', { name: /enregistrer un paiement/i }))
+    await user.type(screen.getByLabelText(/montant/i), '50000')
+    await user.click(screen.getByRole('button', { name: /^enregistrer$/i }))
+
+    const corps = serveur.appels.find((a) => a.chemin.endsWith('/payments'))?.corps as Record<
+      string,
+      unknown
+    >
+    expect('reference' in corps).toBe(false)
+  })
 })

@@ -188,6 +188,7 @@ export const api = {
       amountMinor: number
       method: string
       paidOn?: string
+      reference?: string
     },
   ) => requete<T>(`/parks/${parkId}/payments`, { method: 'POST', body: JSON.stringify(corps) }),
 

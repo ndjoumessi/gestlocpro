@@ -413,6 +413,8 @@ export const en: Dictionary = {
       periodHint: 'The month this payment settles — not necessarily the month it is received.',
       paidOn: 'Payment date',
       paidOnHint: 'When the money was received. Distinct from the month it settles.',
+      reference: 'Transaction reference',
+      referenceHint: 'Mobile Money number, transfer reference, cheque number. This is how the payment is matched on the bank statement.',
       amount: 'Amount',
       amountHint: 'Partial settlement is accepted.',
       methodMobile: 'Mobile money',

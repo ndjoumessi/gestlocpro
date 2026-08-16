@@ -39,6 +39,15 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
    * réception qui fait foi devant un locataire qui conteste un retard.
    */
   const [verseLe, setVerseLe] = useState(() => new Date().toISOString().slice(0, 10))
+  /**
+   * Référence de la transaction — Mobile Money, virement, chèque.
+   *
+   * Facultative, et elle doit le rester : un versement en espèces n'en a pas,
+   * et l'exiger empêcherait d'enregistrer le cas le plus courant du marché
+   * visé. Mais c'est par elle que le versement se retrouve sur un relevé
+   * bancaire, et sans elle un rapprochement se fait à la main, ligne à ligne.
+   */
+  const [reference, setReference] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const unit = units.find((u) => u.id === unitId)
@@ -68,11 +77,13 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
       amountMinor: parsed,
       method,
       ...(verseLe ? { paidOn: verseLe } : {}),
+      ...(reference.trim() ? { reference: reference.trim() } : {}),
     })
 
     onClose()
     notify(t('app.paymentSaved'), { tone: 'ok' })
     setAmount('')
+    setReference('')
   }
 
   return (
@@ -158,6 +169,20 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
               <option value="transfer">{t('app.payments.methodTransfer')}</option>
               <option value="check">{t('app.payments.methodCheck')}</option>
             </Select>
+          )}
+        </Field>
+        <Field
+          label={t('app.payments.reference')}
+          hint={t('app.payments.referenceHint')}
+          optional
+        >
+          {(props) => (
+            <Input
+              {...props}
+              name="reference"
+              value={reference}
+              onChange={(e) => setReference(e.target.value)}
+            />
           )}
         </Field>
       </div>
