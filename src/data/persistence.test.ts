@@ -80,6 +80,37 @@ describe('enregistrement abîmé', () => {
     expect(loadState().deposits).toEqual(DEPOSITS)
   })
 
+  it('écarte un enregistrement dont les unités n’ont pas de téléphone', () => {
+    // Le formulaire de création réclamait un numéro en promettant d'y envoyer
+    // le code d'invitation, puis le jetait faute de champ pour l'accueillir.
+    // Un enregistrement de version 3 rendrait la colonne « Contact » vide pour
+    // tout le parc.
+    window.localStorage.setItem(
+      CLE,
+      JSON.stringify({
+        version: 3,
+        etat: {
+          units: [{ id: 'A1', tenant: 'Charles Ngassa' }],
+          works: [{ id: 'X', trade: 'plumbing' }],
+          deposits: [{ unitId: 'A1', tenant: 'Charles Ngassa' }],
+        },
+      }),
+    )
+
+    expect(loadState().units).toEqual(UNITS)
+    expect(loadState().units.every((u) => (u.tenant === null) === (u.phone === null))).toBe(true)
+  })
+
+  it('accepte la typologie du logement inchangée, qui n’a pas justifié d’incrément', () => {
+    // Contre-exemple utile : `Unit.type` est passé de `string` à une union
+    // TypeScript au même moment, et cela ne devait PAS invalider les
+    // enregistrements — les valeurs `T1`…`T4` sont identiques. Ce qui compte
+    // est la forme des données écrites, pas celle du code qui les lit.
+    const etat = { ...loadState(), units: UNITS.map((u) => ({ ...u, type: 'T3' as const })) }
+    saveState(etat)
+    expect(loadState().units.every((u) => u.type === 'T3')).toBe(true)
+  })
+
   it('écarte une version périmée', () => {
     // Le jeu de démonstration a changé plusieurs fois pendant la construction —
     // dates en chaînes figées, puis en valeurs machine, statut « en attente »

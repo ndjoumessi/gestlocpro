@@ -30,8 +30,19 @@ import { DEPOSITS, UNITS, WORKS, type Deposit, type Unit, type WorkOrder } from 
  * Version 3 : le locataire d'une caution vaut `null` quand il est parti, là où
  * le champ portait « Ancien locataire » en clair. Un enregistrement antérieur
  * ferait réapparaître ce français dans une interface anglaise.
+ *
+ * Version 4 : l'unité porte le téléphone du locataire. Le formulaire de
+ * création le réclamait déjà — en promettant d'y envoyer le code d'invitation —
+ * mais aucun champ ne l'accueillait et il était jeté. Un enregistrement
+ * antérieur rendrait une colonne « Contact » vide pour tout le parc.
+ *
+ * À noter, par contraste : la typologie du logement est passée au même moment
+ * de `string` à l'union `UnitTypeKey`, et cela n'aurait justifié aucun
+ * incrément. Les valeurs `T1`…`T4` sont inchangées ; seul le type TypeScript
+ * s'est resserré, et `formeValide` ne l'inspecte pas. Ce qui compte ici est la
+ * forme des données enregistrées, pas celle du code qui les lit.
  */
-const VERSION = 3
+const VERSION = 4
 const CLE = 'gestlocpro.portfolio'
 
 export interface EtatPersiste {

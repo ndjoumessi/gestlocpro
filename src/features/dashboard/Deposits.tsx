@@ -160,13 +160,15 @@ function SettleModal({
   onConfirm: (unitId: string, withheld: number) => void
 }) {
   const t = useT()
-  const { money } = useCurrency()
+  const { money, parseAmount } = useCurrency()
 
   const [withheld, setWithheld] = useState(String(deposit.withheld || ''))
   const [reason, setReason] = useState('')
   const [errors, setErrors] = useState<{ withheld?: string; reason?: string }>({})
 
-  const parsed = Number(withheld.replace(/[^\d.,]/g, '').replace(',', '.')) || 0
+  // Voir `parseMoney` : lire la virgule comme un séparateur décimal quelle que
+  // soit la devise faisait d'une retenue de « 1,450 » une retenue de 1,45.
+  const parsed = parseAmount(withheld) ?? 0
   const balance = deposit.held - parsed
 
   const submit = () => {

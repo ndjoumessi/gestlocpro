@@ -351,8 +351,20 @@ export const fr = {
       noTenant: 'Aucun locataire',
       occupancy: '{occupied}/{total} occupées',
       filterAll: 'Toutes',
+      resetFilters: 'Réinitialiser les filtres',
       searchEmpty: 'Aucune unité ne correspond à « {query} ».',
       searchEmptyHint: 'Essayez un numéro d’unité, un nom de locataire ou un quartier.',
+    },
+
+    /**
+     * Typologie du logement. La notation française compte les pièces
+     * principales ; l'anglais compte les chambres — voir `en.ts`.
+     */
+    unitTypes: {
+      T1: 'T1',
+      T2: 'T2',
+      T3: 'T3',
+      T4: 'T4',
     },
 
     payments: {
@@ -374,6 +386,8 @@ export const fr = {
       modalDescription: 'Le locataire recevra sa quittance par e-mail et par SMS.',
       selectUnit: 'Unité',
       amountInvalid: 'Saisissez un montant supérieur à zéro.',
+      dueAmount: 'Dû : {amount}',
+      overdueDays: '+{days} j',
     },
 
     meters: {
@@ -393,6 +407,7 @@ export const fr = {
       missingHint: 'La facturation du mois restera incomplète tant qu’ils ne sont pas saisis.',
       complete: 'Tous les relevés sont saisis pour la période.',
       totalRebilled: 'Total refacturé',
+      capturedCount: '{done} sur {total} saisis',
     },
 
     inspections: {
@@ -464,6 +479,10 @@ export const fr = {
       phoneHint: 'Le code d’invitation y sera envoyé.',
       since: 'Locataire depuis',
       contact: 'Contact',
+      vacantList: '{count} unités vacantes : {units}',
+      vacantList_one: '{count} unité vacante : {units}',
+      noVacantNotice:
+        'Tout le parc est loué. Une fiche locataire a besoin d’une unité vacante à laquelle se rattacher.',
     },
 
     alerts: {
@@ -471,21 +490,67 @@ export const fr = {
       subtitle: 'Ce que le produit a détecté ou reçu, du plus récent au plus ancien.',
       markRead: 'Tout marquer comme lu',
       allRead: 'Toutes les notifications sont lues.',
+      empty: 'Rien à signaler sur le parc.',
       unread: '{count} non lues',
       unread_one: '{count} non lue',
       severityHigh: 'Prioritaire',
       severityMedium: 'À suivre',
       severityLow: 'Pour information',
+      kind: {
+        payment: 'Paiement',
+        work: 'Travaux',
+        meter: 'Relevé',
+        lease: 'Bail',
+      },
+      msg: {
+        rentOverdue: {
+          title: 'Loyer {unit} en retard de {count} jours',
+          title_one: 'Loyer {unit} en retard de {count} jour',
+          detail: '{tenant} · relance partie le {date}',
+        },
+        quotePending: {
+          title: 'Devis à arbitrer',
+          detail: '{workId} · {unit} · {amount} proposés par le gestionnaire',
+        },
+        metersMissing: {
+          title: '{count} relevés manquants pour {period}',
+          title_one: '{count} relevé manquant pour {period}',
+          detail: '{units} · à saisir avant la facturation',
+        },
+        leaseRenewal: {
+          title: 'Bail {unit} à renouveler dans {count} jours',
+          title_one: 'Bail {unit} à renouveler dans {count} jour',
+          detail: '{tenant} · échéance au {date}',
+        },
+        partialPayment: {
+          title: 'Règlement partiel enregistré sur {unit}',
+          detail: '{tenant} · {amount} sur {total}',
+        },
+        workDone: {
+          title: 'Intervention terminée',
+          detail: '{workId} · {unit} · achevée le {date}',
+        },
+        receiptAvailable: {
+          title: 'Quittance de {period} disponible',
+          detail: '{unit} · règlement de {amount} enregistré',
+        },
+      },
     },
 
     onboarding: {
       title: 'Onboarding & délégation des droits',
-      subtitle: 'Qui peut faire quoi, et comment inviter un gestionnaire ou un locataire.',
+      // La seconde proposition promettait d'inviter depuis cet écran, qui n'en
+      // porte ni bouton ni lien.
+      subtitle: 'Qui peut faire quoi, selon la façon dont vous gérez le parc.',
       delegateOn: 'Gestion déléguée',
       delegateOff: 'Vous gérez seul',
       delegateOnHint: 'Le gestionnaire opère le parc au quotidien et vous soumet les arbitrages.',
       delegateOffHint: 'Droits propriétaire et gestionnaire réunis sur votre compte.',
       matrixTitle: 'Matrice des droits',
+      matrixCaption:
+        'Actions autorisées pour chaque rôle, selon le mode de délégation choisi ci-dessus.',
+      matrixDelegated: 'Colonne gestionnaire mise à jour — le gestionnaire a ses propres droits.',
+      matrixSolo: 'Colonne gestionnaire mise à jour — aucun droit délégué.',
       capability: 'Action',
       allowed: 'Autorisé',
       denied: 'Non autorisé',

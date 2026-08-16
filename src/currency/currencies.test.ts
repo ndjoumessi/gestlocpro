@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CURRENCIES, CURRENCY_DEFS, formatMoney } from './currencies'
+import { CURRENCIES, CURRENCY_DEFS, formatMoney, parseMoney } from './currencies'
 import { COUNTRIES, dialOptions } from '@/lib/countries'
 
 /**
@@ -55,6 +55,48 @@ describe('formatage', () => {
     const rendu = formatMoney(1415000, 'CFA', { round: true })
     expect(rendu).toContain('\u202f')
     expect(rendu).not.toMatch(/\d \d/)
+  })
+})
+
+/**
+ * Lecture d'un montant saisi.
+ *
+ * Le code remplaçait la virgule par un point, quelle que soit la devise. En
+ * français c'est juste ; en anglais la virgule sépare les milliers, et
+ * « 1,450 » devenait **1,45**. Sans erreur : le résultat est un nombre valide
+ * et positif, donc aucune validation ne se déclenchait et le paiement partait
+ * cent fois trop bas.
+ */
+describe('lecture d’un montant saisi', () => {
+  it('ne prend pas le séparateur de milliers anglais pour une virgule décimale', () => {
+    // Le défaut, dans sa forme exacte : ce test échouait à 1.45.
+    expect(parseMoney('1,450', 'USD')).toBe(1450)
+  })
+
+  it('lit la virgule comme décimale là où la devise l’emploie ainsi', () => {
+    expect(parseMoney('1450,50', 'EUR')).toBe(1450.5)
+  })
+
+  it('relit ce que `formatMoney` a écrit', () => {
+    // Un montant recopié depuis l'écran doit pouvoir être resaisi tel quel,
+    // espaces insécables étroites et symbole compris.
+    for (const code of CURRENCIES) {
+      const rendu = formatMoney(1450, code, { round: true })
+      expect(parseMoney(rendu, code)).toBe(1450)
+    }
+  })
+
+  it('écarte le symbole monétaire et les lettres', () => {
+    expect(parseMoney('145 000 FCFA', 'CFA')).toBe(145000)
+    expect(parseMoney('$ 1,450', 'USD')).toBe(1450)
+  })
+
+  it('distingue une saisie vide d’un zéro', () => {
+    // `Number('')` vaut 0 : un appelant qui teste `!parsed` confondrait les
+    // deux, et une saisie illisible passerait pour un montant nul valide.
+    expect(parseMoney('', 'CFA')).toBeNull()
+    expect(parseMoney('abc', 'CFA')).toBeNull()
+    expect(parseMoney('0', 'CFA')).toBe(0)
   })
 })
 

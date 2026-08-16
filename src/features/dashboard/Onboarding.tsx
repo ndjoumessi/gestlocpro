@@ -23,7 +23,18 @@ const ROLES: Role[] = ['owner', 'manager', 'tenant']
 
 export function Onboarding() {
   const t = useT()
-  const [mode, setMode] = useState<'solo' | 'delegate'>('delegate')
+  /**
+   * Le défaut suit celui de l'inscription (`initialSignupState`), qui vaut
+   * `solo`. Il valait `delegate` : un propriétaire ayant répondu « je gère
+   * seul » arrivait sur un écran affichant l'inverse de sa réponse.
+   *
+   * L'aligner ne fait que supprimer la contradiction par défaut — la réponse
+   * réelle reste hors de portée. `SignupState` vit dans le parcours
+   * d'inscription, n'est ni partagé ni enregistré, et le produit n'a pas encore
+   * d'authentification pour le rattacher à un compte. Le jour où ce lien
+   * existera, c'est ici qu'il se branche.
+   */
+  const [mode, setMode] = useState<'solo' | 'delegate'>('solo')
 
   return (
     <>
@@ -53,14 +64,26 @@ export function Onboarding() {
         />
       </Card>
 
+      {/* Basculer le mode réécrit neuf lignes de la colonne « Gestionnaire ».
+          Un lecteur d'écran entendait la confirmation du bouton radio, puis
+          plus rien : la seule conséquence du geste ne lui parvenait jamais. */}
+      <p className="sr-only" aria-live="polite">
+        {mode === 'delegate'
+          ? t('app.onboarding.matrixDelegated')
+          : t('app.onboarding.matrixSolo')}
+      </p>
+
       <Card flush>
         <div className="p-4 sm:p-5">
           <CardHeader title={t('app.onboarding.matrixTitle')} level={2} className="mb-0" />
         </div>
 
         <div className="overflow-x-auto">
+          {/* Le `<caption>` répétait le titre rendu juste au-dessus : un
+              lecteur d'écran entendait « Matrice des droits » deux fois. Il
+              porte maintenant ce que le titre visible ne dit pas. */}
           <table className="w-full border-collapse text-body">
-            <caption className="sr-only">{t('app.onboarding.matrixTitle')}</caption>
+            <caption className="sr-only">{t('app.onboarding.matrixCaption')}</caption>
             <thead>
               <tr className="border-y border-divider bg-surface-sunken">
                 <th scope="col" className="eyebrow px-4 py-3 text-left font-normal text-muted">

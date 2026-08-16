@@ -13,6 +13,7 @@ import {
   DEFAULT_CURRENCY,
   formatMoney,
   formatMoneyCompact,
+  parseMoney,
   type CurrencyCode,
   type CurrencyDef,
   type FormatMoneyOptions,
@@ -26,6 +27,11 @@ interface CurrencyContextValue {
   money: (amount: number, options?: FormatMoneyOptions) => string
   /** Variante compacte pour les axes de graphe. */
   moneyCompact: (amount: number) => string
+  /**
+   * Lit un montant saisi, selon les conventions de la devise active.
+   * Rend `null` quand la saisie ne contient aucun nombre lisible.
+   */
+  parseAmount: (input: string) => number | null
 }
 
 const CurrencyContext = createContext<CurrencyContextValue | null>(null)
@@ -56,6 +62,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
       setCurrency,
       money: (amount, options) => formatMoney(amount, currency, options),
       moneyCompact: (amount) => formatMoneyCompact(amount, currency),
+      parseAmount: (input) => parseMoney(input, currency),
     }),
     [currency, setCurrency],
   )

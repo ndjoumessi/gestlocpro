@@ -12,7 +12,7 @@ import { cn } from '@/lib/cn'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
-import { TENANT_RECEIPTS, UNITS } from '@/data/portfolio'
+import { TENANT_RECEIPTS, UNITS, buildingById } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 
 const TABS = ['space', 'myPayments', 'myWorks', 'documents', 'report'] as const
@@ -100,10 +100,12 @@ export function TenantPortal() {
                 <Card>
                   <p className="eyebrow text-muted">{t('app.portal.myUnit')}</p>
                   <p className="mt-2 font-sans text-title-l font-semibold">
-                    {unit.id} · {unit.type}
+                    {unit.id} · {t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')}
                   </p>
+                  {/* Le nom de l'immeuble était écrit en dur : il restait
+                      « Résidence Bonamoussadi » quelle que soit l'unité. */}
                   <p className="mt-1 text-body-s text-muted">
-                    {unit.surface} m² · Résidence Bonamoussadi
+                    {unit.surface} m² · {buildingById(unit.buildingId)?.name}
                   </p>
                 </Card>
 

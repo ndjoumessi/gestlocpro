@@ -34,7 +34,7 @@ interface PortfolioContextValue {
   /** Le propriétaire arbitre une caution : retenue et restitution du solde. */
   settleDeposit: (unitId: string, withheld: number) => void
   /** Rattache un locataire à une unité vacante. Le bail démarre « en attente ». */
-  addTenant: (unitId: string, name: string) => void
+  addTenant: (unitId: string, name: string, phone: string) => void
   /** Efface le parcours enregistré et remet le jeu de démonstration. */
   reset: () => void
   /** `true` si un parcours a été enregistré, donc s'il y a quelque chose à effacer. */
@@ -90,12 +90,12 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
-  const addTenant = useCallback((unitId: string, name: string) => {
+  const addTenant = useCallback((unitId: string, name: string, phone: string) => {
     setUnits((list) =>
       // « En attente » et non « À jour » : le bail commence, la première
       // quittance n'est pas encore due. Marquer le locataire à jour d'un loyer
       // qu'il n'a pas payé fausserait les indicateurs d'encaissement.
-      list.map((u) => (u.id === unitId ? { ...u, tenant: name, status: 'pending' } : u)),
+      list.map((u) => (u.id === unitId ? { ...u, tenant: name, phone, status: 'pending' } : u)),
     )
   }, [])
 

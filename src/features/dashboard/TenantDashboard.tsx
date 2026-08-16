@@ -61,7 +61,7 @@ export function TenantDashboard() {
         <StatCard
           label={t('app.tenant.myUnit')}
           value={unit.id}
-          unit={unit.type}
+          unit={t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')}
           note={`${unit.surface} m² · ${building?.name ?? ''}`}
         />
         <StatCard

@@ -37,14 +37,25 @@ export function Inspections() {
       <div className="grid gap-4 lg:grid-cols-2">
         {Object.entries(byUnit).map(([unitId, inspections]) => {
           const unit = unitById(unitId)
-          const hasBoth = inspections.length > 1
+          // Le badge « comparer entrée et sortie » se déclenchait sur le
+          // nombre de lignes : deux entrées successives l'auraient allumé
+          // sans qu'aucune sortie n'existe. Il teste les deux natures.
+          const hasBoth =
+            inspections.some((i) => i.kind === 'entry') &&
+            inspections.some((i) => i.kind === 'exit')
+          // L'ordre venait du tableau source, qui plaçait la sortie de B4
+          // avant son entrée — une comparaison à rebours du temps.
+          const chronological = [...inspections].sort(
+            (a, b) =>
+              a.date.year - b.date.year || a.date.month - b.date.month || a.date.day - b.date.day,
+          )
 
           return (
             <Card key={unitId}>
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <h2 className="font-sans text-title-m font-semibold">
-                    {unitId} · {unit?.type}
+                    {unitId} · {unit && t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')}
                   </h2>
                   <p className="font-mono text-mono-label text-muted">
                     {unit?.tenant ?? t('app.portfolio.noTenant')}
@@ -54,7 +65,7 @@ export function Inspections() {
               </div>
 
               <div className="flex flex-col gap-2.5">
-                {inspections.map((inspection) => (
+                {chronological.map((inspection) => (
                   <div
                     key={`${inspection.kind}-${inspection.date.year}-${inspection.date.month}`}
                     className="flex items-center gap-3 rounded-md border border-divider bg-surface-sunken px-3.5 py-3"

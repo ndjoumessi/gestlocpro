@@ -25,7 +25,9 @@ export function Portfolio() {
       if (!needle) return true
       const haystack = [
         unit.id,
-        unit.type,
+        // La typologie est cherchée sur son libellé traduit et non sur la clé :
+        // un anglophone qui voit « 2-bed » à l'écran tape « bed », pas « T3 ».
+        t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1'),
         unit.tenant ?? '',
         buildingById(unit.buildingId)?.name ?? '',
         buildingById(unit.buildingId)?.district ?? '',
@@ -34,23 +36,39 @@ export function Portfolio() {
         .toLowerCase()
       return haystack.includes(needle)
     })
-  }, [query, building, units])
+  }, [query, building, units, t])
 
   const occupied = units.filter((u) => u.status !== 'vacant').length
+
+  /**
+   * L'occupation par immeuble se dérive de l'état vivant.
+   *
+   * Elle lisait `BUILDINGS`, une constante figée, tandis que la carte globale
+   * juste à côté comptait les unités du provider. Rattacher un locataire fait
+   * passer une unité de `vacant` à `pending` : le total bougeait, les quatre
+   * cartes d'immeuble non. Deux chiffres contradictoires sur la même ligne.
+   */
+  const occupancyOf = (buildingId: string) => {
+    const inBuilding = units.filter((u) => u.buildingId === buildingId)
+    return { occupied: inBuilding.filter((u) => u.status !== 'vacant').length, total: inBuilding.length }
+  }
 
   return (
     <>
       <PageHeader title={t('app.portfolio.title')} description={t('app.portfolio.subtitle')} />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {BUILDINGS.map((b) => (
-          <StatCard
-            key={b.id}
-            label={b.district}
-            value={`${b.occupied}/${b.units}`}
-            note={t('app.portfolio.occupancy', { occupied: b.occupied, total: b.units })}
-          />
-        ))}
+        {BUILDINGS.map((b) => {
+          const { occupied: occ, total } = occupancyOf(b.id)
+          return (
+            <StatCard
+              key={b.id}
+              label={b.district}
+              value={`${occ}/${total}`}
+              note={t('app.portfolio.occupancy', { occupied: occ, total })}
+            />
+          )
+        })}
         <StatCard
           label={t('app.dashboard.occupancy')}
           value={`${Math.round((occupied / units.length) * 100)}`}
@@ -103,9 +121,12 @@ export function Portfolio() {
           <EmptyState
             title={t('app.portfolio.searchEmpty', { query })}
             body={t('app.portfolio.searchEmptyHint')}
+            // Ce bouton réutilisait la clé du filtre, donc il s'appelait
+            // « Tous » / « All » : le libellé d'un filtre, pas d'une action.
+            // Il réinitialise la recherche ET l'immeuble — il le dit.
             action={
               <Button variant="secondary" onClick={() => { setQuery(''); setBuilding('all') }}>
-                {t('app.portfolio.filterAll')}
+                {t('app.portfolio.resetFilters')}
               </Button>
             }
           />
@@ -127,11 +148,14 @@ export function Portfolio() {
           },
           {
             key: 'type',
-            header: t('app.portfolio.type'),
+            // La colonne s'intitulait « Type » mais ses cellules portent la
+            // typologie ET la surface : un lecteur d'écran annonçait « Type »
+            // sur « T3 · 78 m² ». La clé `surface` existait, inutilisée.
+            header: `${t('app.portfolio.type')} · ${t('app.portfolio.surface')}`,
             hideOnMobile: true,
             render: (unit) => (
               <span className="text-muted">
-                {unit.type} · {unit.surface} m²
+                {t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')} · {unit.surface} m²
               </span>
             ),
           },

@@ -8,6 +8,7 @@ import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
+import { useNumbers } from '@/lib/numbers'
 import { READINGS, UTILITY_RATES, type MeterReading } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 
@@ -22,6 +23,7 @@ import { usePortfolio } from '@/data/PortfolioProvider'
 export function Meters() {
   const t = useT()
   const d = useDates()
+  const n = useNumbers()
   const { money } = useCurrency()
   const { notify } = useToast()
   const { unitById } = usePortfolio()
@@ -56,14 +58,25 @@ export function Meters() {
         <StatCard
           label={t('app.meters.totalRebilled')}
           value={money(total, { round: true })}
-          note={`${READINGS.length - missing.length}/${READINGS.length}`}
+          note={t('app.meters.capturedCount', {
+            done: READINGS.length - missing.length,
+            total: READINGS.length,
+          })}
         />
+        {/* Ces tarifs sont des montants : ils passaient par une interpolation
+            directe, donc sans devise ni groupement — « 520 » à côté d'un
+            « 185 000 FCFA » formaté, sur la même ligne, et insensibles au
+            changement de devise. */}
         <StatCard
           label={t('app.meters.water')}
-          value={`${UTILITY_RATES.water}`}
-          unit={`/ m³`}
+          value={money(UTILITY_RATES.water, { round: true })}
+          unit="/ m³"
         />
-        <StatCard label={t('app.meters.power')} value={`${UTILITY_RATES.power}`} unit="/ kWh" />
+        <StatCard
+          label={t('app.meters.power')}
+          value={money(UTILITY_RATES.power, { round: true })}
+          unit="/ kWh"
+        />
       </div>
 
       {/* Un relevé manquant a une conséquence concrète : on la nomme, plutôt
@@ -84,7 +97,7 @@ export function Meters() {
           </p>
           {missing.length > 0 && (
             <p className="mt-0.5 text-body-s">
-              {t('app.meters.missingHint')} — {missing.map((r) => r.unitId).join(', ')}
+              {t('app.meters.missingHint')} — {n.list(missing.map((r) => r.unitId))}
             </p>
           )}
         </div>
@@ -118,37 +131,39 @@ export function Meters() {
             key: 'water',
             header: `${t('app.meters.water')} (m³)`,
             numeric: true,
-            render: (r) => {
-              const c = consumption(r).water
-              return c === null ? (
+            // Le garde porte sur `r.waterCurrent` et non sur la consommation
+            // dérivée : les deux sont nuls ensemble, mais seul celui-ci permet
+            // à TypeScript de conclure, sans assertion de non-nullité.
+            render: (r) =>
+              r.waterCurrent === null ? (
                 <span className="text-muted">—</span>
               ) : (
                 <span>
-                  {c}
+                  {n.integer(r.waterCurrent - r.waterPrevious)}
                   <span className="ml-1.5 text-mono-label text-muted">
-                    {r.waterPrevious}→{r.waterCurrent}
+                    {n.integer(r.waterPrevious)}→{n.integer(r.waterCurrent)}
                   </span>
                 </span>
-              )
-            },
+              ),
           },
           {
             key: 'power',
             header: `${t('app.meters.power')} (kWh)`,
             numeric: true,
-            render: (r) => {
-              const c = consumption(r).power
-              return c === null ? (
+            render: (r) =>
+              r.powerCurrent === null ? (
                 <span className="text-muted">—</span>
               ) : (
                 <span>
-                  {c}
+                  {n.integer(r.powerCurrent - r.powerPrevious)}
+                  {/* Les index d'électricité sont à cinq chiffres : sans
+                      groupement ils rendaient « 7640 » dans les deux langues,
+                      là où le français écrit « 7 640 » et l'anglais « 7,640 ». */}
                   <span className="ml-1.5 text-mono-label text-muted">
-                    {r.powerPrevious}→{r.powerCurrent}
+                    {n.integer(r.powerPrevious)}→{n.integer(r.powerCurrent)}
                   </span>
                 </span>
-              )
-            },
+              ),
           },
           {
             key: 'rebilled',

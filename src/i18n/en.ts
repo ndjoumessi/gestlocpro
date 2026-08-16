@@ -334,8 +334,20 @@ export const en: Dictionary = {
       noTenant: 'No tenant',
       occupancy: '{occupied}/{total} occupied',
       filterAll: 'All',
+      resetFilters: 'Clear filters',
       searchEmpty: 'No unit matches “{query}”.',
       searchEmptyHint: 'Try a unit number, a tenant name or a district.',
+    },
+
+    /**
+     * Typologie du logement. « T3 » compte les pièces principales à la
+     * française ; le marché anglophone compte les chambres.
+     */
+    unitTypes: {
+      T1: 'Studio',
+      T2: '1-bed',
+      T3: '2-bed',
+      T4: '3-bed',
     },
 
     payments: {
@@ -357,6 +369,8 @@ export const en: Dictionary = {
       modalDescription: 'The tenant will receive their receipt by email and SMS.',
       selectUnit: 'Unit',
       amountInvalid: 'Enter an amount greater than zero.',
+      dueAmount: 'Due: {amount}',
+      overdueDays: '+{days} d',
     },
 
     meters: {
@@ -376,6 +390,7 @@ export const en: Dictionary = {
       missingHint: 'Monthly billing stays incomplete until they are captured.',
       complete: 'All readings captured for this period.',
       totalRebilled: 'Total re-billed',
+      capturedCount: '{done} of {total} captured',
     },
 
     inspections: {
@@ -446,6 +461,9 @@ export const en: Dictionary = {
       phoneHint: 'The invitation code will be sent there.',
       since: 'Tenant since',
       contact: 'Contact',
+      vacantList: '{count} vacant units: {units}',
+      vacantList_one: '{count} vacant unit: {units}',
+      noVacantNotice: 'Every unit is let. A tenant record needs a vacant unit to attach to.',
     },
 
     alerts: {
@@ -453,21 +471,66 @@ export const en: Dictionary = {
       subtitle: 'What the product detected or received, newest first.',
       markRead: 'Mark all as read',
       allRead: 'All notifications are read.',
+      empty: 'Nothing to report on the portfolio.',
       unread: '{count} unread',
       unread_one: '{count} unread',
       severityHigh: 'Priority',
       severityMedium: 'To follow',
       severityLow: 'For information',
+      kind: {
+        payment: 'Payment',
+        work: 'Works',
+        meter: 'Meter reading',
+        lease: 'Lease',
+      },
+      msg: {
+        rentOverdue: {
+          title: 'Rent {unit} overdue by {count} days',
+          title_one: 'Rent {unit} overdue by {count} day',
+          detail: '{tenant} · reminder sent on {date}',
+        },
+        quotePending: {
+          title: 'Quote awaiting your decision',
+          detail: '{workId} · {unit} · {amount} proposed by the manager',
+        },
+        metersMissing: {
+          title: '{count} readings missing for {period}',
+          title_one: '{count} reading missing for {period}',
+          detail: '{units} · to capture before billing',
+        },
+        leaseRenewal: {
+          title: 'Lease {unit} up for renewal in {count} days',
+          title_one: 'Lease {unit} up for renewal in {count} day',
+          detail: '{tenant} · expires on {date}',
+        },
+        partialPayment: {
+          title: 'Partial payment recorded on {unit}',
+          detail: '{tenant} · {amount} of {total}',
+        },
+        workDone: {
+          title: 'Work completed',
+          detail: '{workId} · {unit} · finished on {date}',
+        },
+        receiptAvailable: {
+          title: '{period} receipt available',
+          detail: '{unit} · payment of {amount} recorded',
+        },
+      },
     },
 
     onboarding: {
       title: 'Onboarding & delegation of rights',
-      subtitle: 'Who can do what, and how to invite a manager or a tenant.',
+      // La seconde proposition promettait d'inviter un gestionnaire ou un
+      // locataire depuis cet écran. Il n'en porte ni bouton ni lien.
+      subtitle: 'Who can do what, depending on how you run the portfolio.',
       delegateOn: 'Delegated management',
       delegateOff: 'You manage alone',
       delegateOnHint: 'The manager runs the portfolio daily and submits decisions to you.',
       delegateOffHint: 'Owner and manager rights combined on your account.',
       matrixTitle: 'Rights matrix',
+      matrixCaption: 'Actions allowed for each role, given the delegation mode selected above.',
+      matrixDelegated: 'Manager column updated — the manager holds their own rights.',
+      matrixSolo: 'Manager column updated — no rights delegated.',
       capability: 'Action',
       allowed: 'Allowed',
       denied: 'Not allowed',

@@ -114,6 +114,46 @@ export function formatMoney(
     : `${number} ${def.symbol}`
 }
 
+/**
+ * Lit un montant saisi au clavier, selon les conventions de la devise active.
+ *
+ * Le code appelait `amount.replace(',', '.')` : la virgule était traitée comme
+ * un séparateur décimal, toujours. En français c'est exact — « 1 450,50 ». En
+ * anglais c'est le séparateur des **milliers**, si bien qu'un utilisateur qui
+ * tapait `1,450` enregistrait **1,45**. Silencieusement : le montant est un
+ * nombre valide et positif, donc aucune validation ne se déclenchait. Le
+ * paiement était simplement enregistré cent fois trop bas.
+ *
+ * Les séparateurs ne sont pas devinés mais **demandés à `Intl`**, qui est déjà
+ * la source de vérité de `formatMoney` : les deux fonctions ne peuvent donc pas
+ * diverger. Écrire les séparateurs à la main ici aurait recréé le même défaut,
+ * une couche plus bas.
+ *
+ * Rend `null` quand la saisie ne contient aucun nombre lisible, plutôt que le
+ * `NaN` de `Number('')` — un appelant qui teste `!parsed` confondrait sinon
+ * zéro et illisible.
+ */
+export function parseMoney(input: string, currency: CurrencyCode): number | null {
+  const def = CURRENCY_DEFS[currency]
+  const parts = new Intl.NumberFormat(def.locale).formatToParts(12345.6)
+  const group = parts.find((p) => p.type === 'group')?.value ?? ''
+  const decimal = parts.find((p) => p.type === 'decimal')?.value ?? '.'
+
+  let cleaned = input.trim()
+  // Les espaces sous toutes leurs formes servent de séparateur de milliers en
+  // français, y compris l'insécable étroite que `formatMoney` produit : un
+  // montant recopié depuis l'écran doit pouvoir être resaisi tel quel.
+  if (group) cleaned = cleaned.split(group).join('')
+  cleaned = cleaned.replace(/[\s  ]/g, '')
+  cleaned = cleaned.split(decimal).join('.')
+  // Tout le reste — symbole monétaire, lettres, ponctuation — est écarté.
+  cleaned = cleaned.replace(/[^\d.-]/g, '')
+
+  if (!/\d/.test(cleaned)) return null
+  const value = Number(cleaned)
+  return Number.isFinite(value) ? value : null
+}
+
 /** Variante compacte pour les axes de graphe : 1 415 000 -> 1,4 M */
 export function formatMoneyCompact(amount: number, currency: CurrencyCode): string {
   const def = CURRENCY_DEFS[currency]

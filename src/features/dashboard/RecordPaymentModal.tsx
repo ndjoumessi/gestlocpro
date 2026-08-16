@@ -11,7 +11,7 @@ import { usePortfolio } from '@/data/PortfolioProvider'
 /** Saisie d'un encaissement. Le règlement partiel est admis par conception. */
 export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useT()
-  const { definition } = useCurrency()
+  const { money, parseAmount } = useCurrency()
   const { notify } = useToast()
   const { units } = usePortfolio()
 
@@ -25,8 +25,8 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
   const unit = units.find((u) => u.id === unitId)
 
   const submit = () => {
-    const parsed = Number(amount.replace(/[^\d.,]/g, '').replace(',', '.'))
-    if (!parsed || parsed <= 0) {
+    const parsed = parseAmount(amount)
+    if (parsed === null || parsed <= 0) {
       setError(t('app.payments.amountInvalid'))
       return
     }
@@ -68,7 +68,7 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
           label={t('app.payments.amount')}
           hint={
             unit
-              ? `${t('app.payments.due')} : ${new Intl.NumberFormat(definition.locale).format(unit.rent)} ${definition.symbol}`
+              ? t('app.payments.dueAmount', { amount: money(unit.rent, { round: true }) })
               : t('app.payments.amountHint')
           }
           required
@@ -80,7 +80,7 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
               name="amount"
               inputMode="decimal"
               value={amount}
-              placeholder={unit ? String(unit.rent) : ''}
+              placeholder={unit ? money(unit.rent, { round: true, omitSymbol: true }) : ''}
               onChange={(e) => setAmount(e.target.value)}
               className="numeric"
             />

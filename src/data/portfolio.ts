@@ -22,34 +22,58 @@ export const BUILDINGS: Building[] = [
   { id: 'des', name: 'Villa Deïdo', district: 'Deïdo', units: 3, occupied: 2 },
 ]
 
+/**
+ * Typologie du logement, en clé et non en clair.
+ *
+ * « T3 » n'est pas un mot français, mais c'est une **notation française** : elle
+ * compte les pièces principales, séjour compris, et ne dit rien à un lecteur
+ * anglophone — le marché anglo-saxon compte les chambres, un T3 s'y annonce
+ * « 2-bed ». Le champ était un `string` libre affiché tel quel sur six écrans.
+ *
+ * Les valeurs `T1`…`T4` sont conservées à l'identique : ce sont déjà des clés,
+ * elles n'étaient simplement pas traitées comme telles. Un enregistrement de
+ * `localStorage` antérieur reste donc valide, et `VERSION` n'a pas à bouger —
+ * contrairement au corps de métier, dont les valeurs, elles, changeaient.
+ */
+export type UnitTypeKey = 'T1' | 'T2' | 'T3' | 'T4'
+
 export interface Unit {
   id: string
   buildingId: string
   label: string
-  type: string
+  type: UnitTypeKey
   surface: number
   rent: number
   tenant: string | null
+  /**
+   * Téléphone du locataire, indicatif compris. `null` quand l'unité est vacante.
+   *
+   * Le formulaire de création réclamait ce numéro en promettant d'y envoyer le
+   * code d'invitation, puis le jetait : `addTenant` ne recevait que le nom, et
+   * rien dans le modèle ne pouvait l'accueillir. On demandait une donnée pour
+   * ne rien en faire, ce qui est pire que de ne pas la demander.
+   */
+  phone: string | null
   status: PaymentStatus
   /** Jours de retard, si le statut l'est. */
   overdueDays?: number
 }
 
 export const UNITS: Unit[] = [
-  { id: 'A1', buildingId: 'bon', label: 'A1', type: 'T3', surface: 78, rent: 145000, tenant: 'Charles Ngassa', status: 'paid' },
-  { id: 'A2', buildingId: 'bon', label: 'A2', type: 'T2', surface: 54, rent: 110000, tenant: 'Mireille Fotso', status: 'paid' },
-  { id: 'A3', buildingId: 'bon', label: 'A3', type: 'T2', surface: 56, rent: 115000, tenant: 'Serge Mbarga', status: 'overdue', overdueDays: 24 },
-  { id: 'A4', buildingId: 'bon', label: 'A4', type: 'T4', surface: 96, rent: 180000, tenant: 'Famille Owona', status: 'paid' },
-  { id: 'A5', buildingId: 'bon', label: 'A5', type: 'T1', surface: 38, rent: 75000, tenant: 'Aline Tchoumi', status: 'partial' },
+  { id: 'A1', buildingId: 'bon', label: 'A1', type: 'T3', surface: 78, rent: 145000, tenant: 'Charles Ngassa', phone: '+237 6 77 21 44 08', status: 'paid' },
+  { id: 'A2', buildingId: 'bon', label: 'A2', type: 'T2', surface: 54, rent: 110000, tenant: 'Mireille Fotso', phone: '+237 6 99 03 51 72', status: 'paid' },
+  { id: 'A3', buildingId: 'bon', label: 'A3', type: 'T2', surface: 56, rent: 115000, tenant: 'Serge Mbarga', phone: '+237 6 55 84 20 31', status: 'overdue', overdueDays: 24 },
+  { id: 'A4', buildingId: 'bon', label: 'A4', type: 'T4', surface: 96, rent: 180000, tenant: 'Famille Owona', phone: '+237 6 70 12 96 45', status: 'paid' },
+  { id: 'A5', buildingId: 'bon', label: 'A5', type: 'T1', surface: 38, rent: 75000, tenant: 'Aline Tchoumi', phone: '+237 6 94 37 08 12', status: 'partial' },
 
-  { id: 'B1', buildingId: 'akw', label: 'B1', type: 'T3', surface: 82, rent: 160000, tenant: 'Jean-Paul Eboa', status: 'paid' },
-  { id: 'B2', buildingId: 'akw', label: 'B2', type: 'T3', surface: 80, rent: 155000, tenant: 'Nadia Belinga', status: 'overdue', overdueDays: 9 },
-  { id: 'B3', buildingId: 'akw', label: 'B3', type: 'T2', surface: 58, rent: 120000, tenant: 'Éric Ndongo', status: 'paid' },
-  { id: 'B4', buildingId: 'akw', label: 'B4', type: 'T2', surface: 57, rent: 118000, tenant: null, status: 'vacant' },
+  { id: 'B1', buildingId: 'akw', label: 'B1', type: 'T3', surface: 82, rent: 160000, tenant: 'Jean-Paul Eboa', phone: '+237 6 78 45 11 90', status: 'paid' },
+  { id: 'B2', buildingId: 'akw', label: 'B2', type: 'T3', surface: 80, rent: 155000, tenant: 'Nadia Belinga', phone: '+237 6 51 60 73 24', status: 'overdue', overdueDays: 9 },
+  { id: 'B3', buildingId: 'akw', label: 'B3', type: 'T2', surface: 58, rent: 120000, tenant: 'Éric Ndongo', phone: '+237 6 96 82 30 57', status: 'paid' },
+  { id: 'B4', buildingId: 'akw', label: 'B4', type: 'T2', surface: 57, rent: 118000, tenant: null, phone: null, status: 'vacant' },
 
-  { id: 'C1', buildingId: 'des', label: 'C1', type: 'T4', surface: 104, rent: 195000, tenant: 'Cabinet Njoya', status: 'paid' },
-  { id: 'C2', buildingId: 'des', label: 'C2', type: 'T3', surface: 76, rent: 142000, tenant: 'Sylvie Manga', status: 'overdue', overdueDays: 3 },
-  { id: 'C3', buildingId: 'des', label: 'C3', type: 'T2', surface: 60, rent: 125000, tenant: null, status: 'vacant' },
+  { id: 'C1', buildingId: 'des', label: 'C1', type: 'T4', surface: 104, rent: 195000, tenant: 'Cabinet Njoya', phone: '+237 6 73 55 41 86', status: 'paid' },
+  { id: 'C2', buildingId: 'des', label: 'C2', type: 'T3', surface: 76, rent: 142000, tenant: 'Sylvie Manga', phone: '+237 6 82 19 64 03', status: 'overdue', overdueDays: 3 },
+  { id: 'C3', buildingId: 'des', label: 'C3', type: 'T2', surface: 60, rent: 125000, tenant: null, phone: null, status: 'vacant' },
 ]
 
 /**
@@ -197,6 +221,10 @@ export interface Inspection {
 }
 
 export const INSPECTIONS: Inspection[] = [
+  // A1 est l'unité du locataire connecté : sans état des lieux la rubrique
+  // affichait toujours son état vide en rôle locataire, et la fonctionnalité
+  // restait invisible à qui la regardait depuis ce profil.
+  { unitId: 'A1', kind: 'entry', date: { year: 2024, month: 5, day: 15 }, rooms: 4, issues: 2, signed: true },
   { unitId: 'B4', kind: 'exit', date: { year: 2026, month: 6, day: 22 }, rooms: 4, issues: 6, signed: true },
   { unitId: 'B4', kind: 'entry', date: { year: 2024, month: 8, day: 1 }, rooms: 4, issues: 1, signed: true },
   { unitId: 'C3', kind: 'exit', date: { year: 2026, month: 5, day: 30 }, rooms: 3, issues: 2, signed: true },
@@ -210,11 +238,59 @@ export interface RelativeStamp {
   unit: Intl.RelativeTimeFormatUnit
 }
 
+/**
+ * Message d'une alerte, en clé et non en clair.
+ *
+ * `title` et `detail` étaient des phrases françaises complètes — « Devis
+ * plomberie à arbitrer », « Serge Mbarga · relance J+15 partie le 04/08 ». Ce
+ * ne sont ni des noms propres ni de la saisie utilisateur : ce sont des
+ * messages que le produit compose, donc ils se traduisent.
+ *
+ * Chaque phrase cumulait d'ailleurs trois défauts figés d'un coup : une date au
+ * format numérique que `lib/dates` proscrit — « 04/08 » est le 4 août ici et le
+ * 8 avril ailleurs —, un montant sans devise ni groupement, et un pluriel
+ * concaténé à la main.
+ */
+export type AlertMessage =
+  | 'rentOverdue'
+  | 'quotePending'
+  | 'metersMissing'
+  | 'leaseRenewal'
+  | 'partialPayment'
+  | 'workDone'
+  | 'receiptAvailable'
+
+/**
+ * Valeurs d'une alerte, en données brutes.
+ *
+ * Rien n'est pré-formaté : les montants sont des nombres, les dates des
+ * `DateParts`, les décomptes des entiers. C'est l'écran qui les rend, avec la
+ * devise et la langue du moment — une chaîne pré-formatée dans la donnée serait
+ * à nouveau du français figé, une couche plus bas.
+ */
+export interface AlertData {
+  tenant?: string
+  unitId?: string
+  workId?: string
+  /** Sert aussi d'accord en nombre : voir la convention `_one` / `_other`. */
+  count?: number
+  amount?: number
+  total?: number
+  /** Rendue en jour et mois abrégé. */
+  on?: DateParts
+  /** Rendue en date complète, année comprise. */
+  dueOn?: DateParts
+  /** Période mensuelle, rendue « août 2026 » / « August 2026 ». */
+  period?: Pick<DateParts, 'year' | 'month'>
+  /** Unités concernées, énumérées par `Intl.ListFormat`. */
+  units?: string[]
+}
+
 export interface Alert {
   id: string
   kind: 'payment' | 'work' | 'meter' | 'lease'
-  title: string
-  detail: string
+  message: AlertMessage
+  data: AlertData
   at: RelativeStamp
   severity: 'high' | 'medium' | 'low'
   read: boolean
@@ -223,13 +299,13 @@ export interface Alert {
 }
 
 export const ALERTS: Alert[] = [
-  { id: 'n1', kind: 'payment', title: 'Loyer A3 en retard de 24 jours', detail: 'Serge Mbarga · relance J+15 partie le 04/08', at: { value: -2, unit: 'hour' }, severity: 'high', read: false, unitId: 'A3' },
-  { id: 'n2', kind: 'work', title: 'Devis plomberie à arbitrer', detail: 'SIG-2026-042 · A3 · 45 000 proposés par le gestionnaire', at: { value: -5, unit: 'hour' }, severity: 'high', read: false, unitId: 'A3' },
-  { id: 'n3', kind: 'meter', title: '2 relevés manquants pour août', detail: 'A5 et C2 · à saisir avant la facturation', at: { value: -1, unit: 'day' }, severity: 'medium', read: true },
-  { id: 'n4', kind: 'lease', title: 'Bail B1 à renouveler dans 45 jours', detail: 'Jean-Paul Eboa · échéance au 30/09/2026', at: { value: -2, unit: 'day' }, severity: 'low', read: true, unitId: 'B1' },
-  { id: 'n5', kind: 'payment', title: 'Règlement partiel enregistré sur A5', detail: 'Aline Tchoumi · 40 000 sur 75 000', at: { value: -3, unit: 'day' }, severity: 'medium', read: true, unitId: 'A5' },
-  { id: 'n6', kind: 'work', title: 'Groupe de sécurité remplacé', detail: 'SIG-2026-036 · A1 · intervention terminée le 28/07', at: { value: -5, unit: 'day' }, severity: 'low', read: true, unitId: 'A1' },
-  { id: 'n7', kind: 'payment', title: 'Quittance d’août disponible', detail: 'A1 · règlement de 145 000 enregistré', at: { value: -6, unit: 'day' }, severity: 'low', read: true, unitId: 'A1' },
+  { id: 'n1', kind: 'payment', message: 'rentOverdue', data: { unitId: 'A3', tenant: 'Serge Mbarga', count: 24, on: { year: 2026, month: 7, day: 4 } }, at: { value: -2, unit: 'hour' }, severity: 'high', read: false, unitId: 'A3' },
+  { id: 'n2', kind: 'work', message: 'quotePending', data: { workId: 'SIG-2026-042', unitId: 'A3', amount: 45000 }, at: { value: -5, unit: 'hour' }, severity: 'high', read: false, unitId: 'A3' },
+  { id: 'n3', kind: 'meter', message: 'metersMissing', data: { count: 2, period: { year: 2026, month: 7 }, units: ['A5', 'C2'] }, at: { value: -1, unit: 'day' }, severity: 'medium', read: true },
+  { id: 'n4', kind: 'lease', message: 'leaseRenewal', data: { unitId: 'B1', tenant: 'Jean-Paul Eboa', count: 45, dueOn: { year: 2026, month: 8, day: 30 } }, at: { value: -2, unit: 'day' }, severity: 'low', read: true, unitId: 'B1' },
+  { id: 'n5', kind: 'payment', message: 'partialPayment', data: { unitId: 'A5', tenant: 'Aline Tchoumi', amount: 40000, total: 75000 }, at: { value: -3, unit: 'day' }, severity: 'medium', read: true, unitId: 'A5' },
+  { id: 'n6', kind: 'work', message: 'workDone', data: { workId: 'SIG-2026-036', unitId: 'A1', on: { year: 2026, month: 6, day: 28 } }, at: { value: -5, unit: 'day' }, severity: 'low', read: true, unitId: 'A1' },
+  { id: 'n7', kind: 'payment', message: 'receiptAvailable', data: { unitId: 'A1', amount: 145000, period: { year: 2026, month: 7 } }, at: { value: -6, unit: 'day' }, severity: 'low', read: true, unitId: 'A1' },
 ]
 
 /**

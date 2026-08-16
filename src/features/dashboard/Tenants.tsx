@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { PageHeader } from '@/components/layout/AppShell'
+import { Icon } from '@/components/primitives/Icon'
 import { DataTable } from '@/components/primitives/DataTable'
 import { PaymentStatusPill } from '@/components/primitives/StatusPill'
 import { Button } from '@/components/primitives/Button'
@@ -8,13 +9,16 @@ import { Field } from '@/components/primitives/Field'
 import { Input, Select } from '@/components/primitives/Input'
 import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
-import { useT } from '@/i18n/I18nProvider'
+import { useI18n, useT } from '@/i18n/I18nProvider'
+import { useNumbers } from '@/lib/numbers'
+import { dialOptions } from '@/lib/countries'
 import { buildingById, type Unit } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { validateName, validatePhone, type FieldError } from '@/features/auth/validation'
 
 export function Tenants() {
   const t = useT()
+  const n = useNumbers()
   const { money } = useCurrency()
   const [open, setOpen] = useState(false)
 
@@ -36,6 +40,15 @@ export function Tenants() {
           </Button>
         }
       />
+
+      {/* Un bouton grisé sans motif laisse deviner. Quand tout est loué, il
+          n'y a rien à quoi rattacher un locataire — on le dit. */}
+      {vacant.length === 0 && (
+        <p className="mb-4 flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body-s text-gold-ink">
+          <Icon name="info" size={15} className="mt-0.5 shrink-0" />
+          {t('app.tenants.noVacantNotice')}
+        </p>
+      )}
 
       <DataTable<Unit>
         caption={t('app.tenants.title')}
@@ -75,13 +88,33 @@ export function Tenants() {
           },
           {
             key: 'type',
-            header: t('app.portfolio.type'),
+            header: `${t('app.portfolio.type')} · ${t('app.portfolio.surface')}`,
             hideOnMobile: true,
             render: (unit) => (
               <span className="text-muted">
-                {unit.type} · {unit.surface} m²
+                {t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')} · {unit.surface} m²
               </span>
             ),
+          },
+          {
+            // La colonne était partie sans que ses clés le soient :
+            // `app.tenants.contact` restait défini dans les deux langues sans
+            // aucun appelant. Le numéro est maintenant conservé — l'afficher
+            // est ce qui rend crédible le fait de le demander.
+            key: 'contact',
+            header: t('app.tenants.contact'),
+            hideOnMobile: true,
+            render: (unit) =>
+              unit.phone ? (
+                <a
+                  href={`tel:${unit.phone.replace(/\s/g, '')}`}
+                  className="numeric inline-flex min-h-11 items-center text-muted no-underline hover:text-ink hover:underline"
+                >
+                  {unit.phone}
+                </a>
+              ) : (
+                <span className="text-muted">—</span>
+              ),
           },
           {
             key: 'rent',
@@ -97,10 +130,15 @@ export function Tenants() {
         ]}
       />
 
+      {/* Le deux-points était concaténé dans le JSX, précédé d'une espace :
+          une règle typographique française servie telle quelle en anglais.
+          Il vit maintenant dans la clé, avec la conjonction de la liste. */}
       {vacant.length > 0 && (
         <p className="mt-4 text-body-s text-muted">
-          {t('app.dashboard.vacantUnits', { count: vacant.length })} :{' '}
-          {vacant.map((unit) => unit.id).join(', ')}
+          {t('app.tenants.vacantList', {
+            count: vacant.length,
+            units: n.list(vacant.map((unit) => unit.id)),
+          })}
         </p>
       )}
 
@@ -119,12 +157,18 @@ export function Tenants() {
  */
 function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => void }) {
   const t = useT()
+  const { locale } = useI18n()
   const { notify } = useToast()
   const { addTenant } = usePortfolio()
 
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
+  // Le champ était un `tel` nu, sans indicatif, alors que l'inscription en
+  // pose un : un bailleur hors zone CFA créait une fiche dont le numéro ne
+  // permettait pas d'envoyer le code promis par le libellé d'aide.
+  const [dial, setDial] = useState('+237')
   const [unitId, setUnitId] = useState(vacant[0]?.id ?? '')
+  const formRef = useRef<HTMLDivElement>(null)
   const [errors, setErrors] = useState<{ name: FieldError; phone: FieldError }>({
     name: null,
     phone: null,
@@ -137,11 +181,17 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
     setTouched({ name: true, phone: true })
 
     if (next.name || next.phone) {
-      document.querySelector<HTMLElement>(`[name="${next.name ? 'name' : 'phone'}"]`)?.focus()
+      // La recherche est bornée à la modale. Elle portait sur tout le
+      // document : aucun autre `[name="name"]` n'existe aujourd'hui, mais rien
+      // ne garantissait qu'il n'en apparaîtrait pas, et le focus serait alors
+      // parti sur un champ d'un autre écran.
+      formRef.current
+        ?.querySelector<HTMLElement>(`[name="${next.name ? 'name' : 'phone'}"]`)
+        ?.focus()
       return
     }
 
-    addTenant(unitId, name.trim())
+    addTenant(unitId, name.trim(), `${dial} ${phone.trim()}`)
     onClose()
     notify(t('app.tenants.created'), { tone: 'ok' })
   }
@@ -161,7 +211,7 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
         </>
       }
     >
-      <div className="flex flex-col gap-5">
+      <div ref={formRef} className="flex flex-col gap-5">
         <Field
           label={t('common.fullName')}
           required
@@ -189,18 +239,34 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
           error={touched.phone && errors.phone ? t(errors.phone) : undefined}
         >
           {(props) => (
-            <Input
-              {...props}
-              name="phone"
-              type="tel"
-              inputMode="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              onBlur={() => {
-                setTouched((s) => ({ ...s, phone: true }))
-                setErrors((s) => ({ ...s, phone: validatePhone(phone) }))
-              }}
-            />
+            <div className="flex gap-2">
+              <div className="w-44 shrink-0">
+                <Select
+                  aria-label={t('common.dialCode')}
+                  value={dial}
+                  onChange={(e) => setDial(e.target.value)}
+                >
+                  {dialOptions(locale).map(({ dial: code, label }) => (
+                    <option key={code} value={code}>
+                      {label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <Input
+                {...props}
+                name="phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel-national"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                onBlur={() => {
+                  setTouched((s) => ({ ...s, phone: true }))
+                  setErrors((s) => ({ ...s, phone: validatePhone(phone) }))
+                }}
+              />
+            </div>
           )}
         </Field>
 
@@ -214,7 +280,8 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
             >
               {vacant.map((unit) => (
                 <option key={unit.id} value={unit.id}>
-                  {unit.id} — {unit.type} · {buildingById(unit.buildingId)?.district}
+                  {unit.id} — {t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')} ·{' '}
+                  {buildingById(unit.buildingId)?.district}
                 </option>
               ))}
             </Select>

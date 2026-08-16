@@ -180,9 +180,14 @@ export function Payments() {
             render: (unit) => (
               <div className="flex items-center gap-2">
                 <PaymentStatusPill status={unit.status} size="sm" />
-                {unit.overdueDays && (
-                  <span className="numeric text-mono-label text-muted">+{unit.overdueDays} j</span>
-                )}
+                {/* Le « j » d'abréviation restait français en anglais, et le
+                    `&&` sur un nombre aurait affiché « 0 » plutôt que rien si
+                    le retard tombait à zéro. */}
+                {unit.overdueDays ? (
+                  <span className="numeric text-mono-label text-muted">
+                    {t('app.payments.overdueDays', { days: unit.overdueDays })}
+                  </span>
+                ) : null}
               </div>
             ),
           },
