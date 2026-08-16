@@ -19,7 +19,7 @@ import { useT } from '@/i18n/I18nProvider'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import type { Role } from '@/features/auth/signupState'
 import { usePortfolio } from '@/data/PortfolioProvider'
-import { ALERTS } from '@/data/portfolio'
+
 
 /* -------------------------------------------------------------------------- */
 /* Rôle actif — pilote ce que la barre latérale montre et ce que les écrans
@@ -362,7 +362,7 @@ function Sidebar({
  * un écran vide.
  */
 function useNavCount(): (key: NonNullable<NavItem['badge']>['count']) => number {
-  const { units, readAlertIds, isMine } = usePortfolio()
+  const { units, readAlertIds, isMine, alerts: ALERTS } = usePortfolio()
   const { role } = useRole()
 
   return (key) => {

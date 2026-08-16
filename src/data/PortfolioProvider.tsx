@@ -10,7 +10,15 @@ import {
 } from 'react'
 import { DEMO_TENANT_UNIT, type Deposit, type Unit, type WorkOrder } from './portfolio'
 import { chargerParc, type Immeuble } from './apiPortfolio'
-import { BUILDINGS as IMMEUBLES_DEMO } from './portfolio'
+import {
+  ALERTS as ALERTS_DEMO,
+  BUILDINGS as IMMEUBLES_DEMO,
+  INSPECTIONS as INSPECTIONS_DEMO,
+  READINGS as READINGS_DEMO,
+  type Alert,
+  type Inspection,
+  type MeterReading,
+} from './portfolio'
 import { api } from '@/api/client'
 import { useSession } from '@/api/SessionProvider'
 import { hasStoredState, loadState, resetState, saveState } from './persistence'
@@ -82,6 +90,11 @@ interface PortfolioContextValue {
    */
   buildings: Immeuble[]
   buildingById: (id: string) => Immeuble | undefined
+  /** Relevés, états des lieux et alertes — même source que le reste du parc. */
+  readings: MeterReading[]
+  inspections: Inspection[]
+  alerts: Alert[]
+  readingForUnit: (unitId: string) => MeterReading | undefined
   /** `true` si cette unité relève du compte connecté. */
   isMine: (unitId: string) => boolean
   /** `true` quand les données viennent du serveur et non du jeu local. */
@@ -116,6 +129,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const [stored, setStored] = useState(hasStoredState)
   const [fromApi, setFromApi] = useState(false)
   const [buildings, setBuildings] = useState<Immeuble[]>(IMMEUBLES_DEMO)
+  const [readings, setReadings] = useState<MeterReading[]>(READINGS_DEMO)
+  const [inspections, setInspections] = useState<Inspection[]>(INSPECTIONS_DEMO)
+  const [alerts, setAlerts] = useState<Alert[]>(ALERTS_DEMO)
 
   useEffect(() => {
     if (!parkId) return
@@ -126,6 +142,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       // reproduirait qu'au ralenti du réseau réel.
       if (annule) return
       setBuildings(parc.buildings)
+      setReadings(parc.readings)
+      setInspections(parc.inspections)
+      setAlerts(parc.alerts)
       setUnits(parc.units)
       setWorks(parc.works)
       setDeposits(parc.deposits)
@@ -281,6 +300,10 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       fromApi,
       buildings,
       buildingById: (id: string) => buildings.find((b) => b.id === id),
+      readings,
+      inspections,
+      alerts,
+      readingForUnit: (unitId) => readings.find((r) => r.unitId === unitId),
       tenantUnitIds,
       isMine: (unitId: string) => tenantUnitIds.includes(unitId),
       worksForUnit: (unitId) => works.filter((w) => w.unitId === unitId),

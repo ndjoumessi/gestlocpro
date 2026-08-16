@@ -1,6 +1,17 @@
 import { api } from '@/api/client'
 import type { PaymentStatus } from '@/components/primitives/StatusPill'
-import type { Deposit, TradeKey, Unit, UnitTypeKey, WorkOrder } from './portfolio'
+import type {
+  Alert,
+  AlertData,
+  AlertMessage,
+  Deposit,
+  Inspection,
+  MeterReading,
+  TradeKey,
+  Unit,
+  UnitTypeKey,
+  WorkOrder,
+} from './portfolio'
 
 /**
  * Traduction entre la forme du serveur et celle des écrans.
@@ -46,6 +57,32 @@ interface PortefeuilleApi {
     approvedAmountMinor: number | null
     reportedAt: string
   }[]
+  readings: {
+    unitId: string
+    utility: 'water' | 'power'
+    indexValue: number | null
+    previousIndex: number | null
+    readAt: string | null
+  }[]
+  inspections: {
+    id: string
+    unitId: string
+    kind: 'entry' | 'exit'
+    performedOn: string
+    rooms: number
+    issues: number
+    signedAt: string | null
+  }[]
+  notifications: {
+    id: string
+    kind: Alert['kind']
+    messageKey: AlertMessage
+    params: AlertData
+    severity: Alert['severity']
+    unitId: string | null
+    createdAt: string
+    read: boolean
+  }[]
   deposits: {
     id: string
     unitId: string
@@ -67,6 +104,9 @@ export interface ParcCharge {
   units: Unit[]
   works: WorkOrder[]
   deposits: Deposit[]
+  readings: MeterReading[]
+  inspections: Inspection[]
+  alerts: Alert[]
   /**
    * Versement réellement encaissé, par unité.
    *
@@ -135,6 +175,71 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
       withheld: d.withheldMinor,
       status: d.status,
     })),
+    /**
+     * Les deux fluides du serveur se replient en UNE ligne d'écran.
+     *
+     * Le serveur rend une ligne par (unité, fluide), ce qui est la bonne forme
+     * pour une base — un relevé d'eau et un relevé d'électricité sont deux
+     * faits distincts, saisis séparément. L'écran, lui, montre une ligne par
+     * unité avec ses deux colonnes. La conversion vit ici et nulle part
+     * ailleurs.
+     */
+    readings: (() => {
+      const parUnite = new Map<string, MeterReading>()
+      for (const r of data.readings) {
+        const ligne = parUnite.get(r.unitId) ?? {
+          unitId: r.unitId,
+          waterPrevious: 0,
+          waterCurrent: null,
+          powerPrevious: 0,
+          powerCurrent: null,
+          readAt: null,
+        }
+        if (r.utility === 'water') {
+          ligne.waterPrevious = r.previousIndex ?? 0
+          ligne.waterCurrent = r.indexValue
+        } else {
+          ligne.powerPrevious = r.previousIndex ?? 0
+          ligne.powerCurrent = r.indexValue
+        }
+        if (r.readAt) ligne.readAt = enParties(r.readAt)
+        parUnite.set(r.unitId, ligne)
+      }
+      return [...parUnite.values()]
+    })(),
+    inspections: data.inspections.map((i) => ({
+      unitId: i.unitId,
+      kind: i.kind,
+      date: enParties(i.performedOn),
+      rooms: i.rooms,
+      issues: i.issues,
+      // `signedAt` porte qui et quand ; l'écran n'affiche encore que le fait.
+      signed: i.signedAt !== null,
+    })),
+    alerts: data.notifications.map((n) => ({
+      id: n.id,
+      kind: n.kind,
+      message: n.messageKey,
+      data: n.params,
+      // L'horodatage relatif se CALCULE à l'affichage : le client stockait
+      // `{ value: -2, unit: 'hour' }`, un décalage figé qui n'a jamais vieilli.
+      at: relatif(new Date(n.createdAt)),
+      severity: n.severity,
+      read: n.read,
+      ...(n.unitId ? { unitId: n.unitId } : {}),
+    })),
     paidByUnit,
   }
+}
+
+/**
+ * Décalage relatif depuis une date, en unités que `Intl.RelativeTimeFormat`
+ * sait rendre. Le client portait ce décalage EN DUR dans la donnée : rouvrir
+ * l'enregistrement le lendemain affichait encore « il y a 2 heures ».
+ */
+function relatif(quand: Date): { value: number; unit: Intl.RelativeTimeFormatUnit } {
+  const secondes = (quand.getTime() - Date.now()) / 1000
+  const heures = secondes / 3600
+  if (Math.abs(heures) < 24) return { value: Math.round(heures), unit: 'hour' }
+  return { value: Math.round(heures / 24), unit: 'day' }
 }

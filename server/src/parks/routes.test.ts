@@ -398,9 +398,15 @@ describe('terrain et notifications', () => {
     const eau = res.body.readings.filter((r: { utility: string }) => r.utility === 'water')
     const elec = res.body.readings.filter((r: { utility: string }) => r.utility === 'power')
 
-    // Huit unités relevées sur dix : A5 et C2 ne le sont pas.
-    expect(eau).toHaveLength(8)
-    expect(elec).toHaveLength(8)
+    // Dix lignes : chaque unité a une ligne par fluide pour la période
+    // courante, même quand elle n'a PAS été relevée — c'est ce manque que
+    // l'écran doit montrer.
+    expect(eau).toHaveLength(10)
+    expect(elec).toHaveLength(10)
+    // Huit relevées, deux non : A5 et C2.
+    expect(eau.filter((r: { indexValue: number | null }) => r.indexValue !== null)).toHaveLength(8)
+    // L'index précédent est dérivé de la période antérieure, non recopié.
+    expect(eau.every((r: { previousIndex: number | null }) => r.previousIndex !== null)).toBe(true)
   })
 
   it('rend les états des lieux avec le compte de réserves et la signature', async () => {
@@ -446,7 +452,7 @@ describe('terrain et notifications', () => {
     const res = await pf(locataire.cookie)
     const sonUnite = res.body.buildings.flatMap((b: { units: { id: string }[] }) => b.units)[0].id
 
-    // Un fluide par relevé, une seule unité : deux lignes.
+    // Deux fluides pour une seule unité : deux lignes.
     expect(res.body.readings).toHaveLength(2)
     expect(res.body.readings.every((r: { unitId: string }) => r.unitId === sonUnite)).toBe(true)
     expect(res.body.inspections.every((i: { unitId: string }) => i.unitId === sonUnite)).toBe(true)

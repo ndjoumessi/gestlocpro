@@ -130,13 +130,20 @@ const ETATS_DES_LIEUX: { unite: string; kind: 'entry' | 'exit'; jours: number; r
  * répéterait ici si la base stockait du texte.
  */
 const NOTIFICATIONS: { kind: 'payment' | 'work' | 'meter' | 'lease'; messageKey: string; unite?: string; severity: 'high' | 'medium' | 'low'; lu: boolean; heures: number; params: Record<string, unknown> }[] = [
-  { kind: 'payment', messageKey: 'rentOverdue', unite: 'A3', severity: 'high', lu: false, heures: 2, params: { count: 24 } },
-  { kind: 'work', messageKey: 'quotePending', unite: 'A3', severity: 'high', lu: false, heures: 5, params: { amount: 45000 } },
-  { kind: 'meter', messageKey: 'metersMissing', severity: 'medium', lu: true, heures: 24, params: { count: 2 } },
-  { kind: 'lease', messageKey: 'leaseRenewal', unite: 'B1', severity: 'low', lu: true, heures: 48, params: { count: 45 } },
-  { kind: 'payment', messageKey: 'partialPayment', unite: 'A5', severity: 'medium', lu: true, heures: 72, params: { amount: 40000, total: 75000 } },
-  { kind: 'work', messageKey: 'workDone', unite: 'A1', severity: 'low', lu: true, heures: 120, params: {} },
-  { kind: 'payment', messageKey: 'receiptAvailable', unite: 'A1', severity: 'low', lu: true, heures: 144, params: { amount: 145000 } },
+  { kind: 'payment', messageKey: 'rentOverdue', unite: 'A3', severity: 'high', lu: false, heures: 2,
+    params: { unitId: 'A3', tenant: 'Serge Mbarga', count: 24, on: { year: 2026, month: 7, day: 4 } } },
+  { kind: 'work', messageKey: 'quotePending', unite: 'A3', severity: 'high', lu: false, heures: 5,
+    params: { workId: 'SIG-2026-001', unitId: 'A3', amount: 45000 } },
+  { kind: 'meter', messageKey: 'metersMissing', severity: 'medium', lu: true, heures: 24,
+    params: { count: 2, period: { year: 2026, month: 7 }, units: ['A5', 'C2'] } },
+  { kind: 'lease', messageKey: 'leaseRenewal', unite: 'B1', severity: 'low', lu: true, heures: 48,
+    params: { unitId: 'B1', tenant: 'Jean-Paul Eboa', count: 45, dueOn: { year: 2026, month: 8, day: 30 } } },
+  { kind: 'payment', messageKey: 'partialPayment', unite: 'A5', severity: 'medium', lu: true, heures: 72,
+    params: { unitId: 'A5', tenant: 'Aline Tchoumi', amount: 40000, total: 75000 } },
+  { kind: 'work', messageKey: 'workDone', unite: 'A1', severity: 'low', lu: true, heures: 120,
+    params: { workId: 'SIG-2026-004', unitId: 'A1', on: { year: 2026, month: 6, day: 28 } } },
+  { kind: 'payment', messageKey: 'receiptAvailable', unite: 'A1', severity: 'low', lu: true, heures: 144,
+    params: { unitId: 'A1', amount: 145000, period: { year: 2026, month: 7 } } },
 ]
 
 /** Décale une date d'un nombre de jours, sans toucher à l'original. */
@@ -150,6 +157,7 @@ export async function semerParcDemonstration(
   tx: Prisma.TransactionClient | PrismaClient,
   { parkId, proprietaireId, periode, aujourdhui }: Semence,
 ): Promise<void> {
+  const periodePrecedente = new Date(periode.getFullYear(), periode.getMonth() - 1, 1)
   const unites = new Map<string, string>()
   const immeubles = new Map<string, string>()
   for (const im of IMMEUBLES) {
@@ -274,7 +282,28 @@ export async function semerParcDemonstration(
     // Une ligne par (unité, fluide, période) portant l'INDEX : la consommation
     // et l'index précédent s'en dérivent. Le client stockait un couple
     // `previous`/`current`, donc la copie d'une ligne qui devrait exister.
-    for (const [utility, valeur] of [['water', r.eau], ['power', r.elec]] as const) {
+    for (const [utility, precedent, valeur] of [
+      ['water', r.eauPrec, r.eau],
+      ['power', r.elecPrec, r.elec],
+    ] as const) {
+      /**
+       * La période PRÉCÉDENTE est semée elle aussi.
+       *
+       * `eauPrec` du client n'était pas une donnée : c'était la copie, dans la
+       * ligne du mois, d'un relevé du mois d'avant qui aurait dû exister. Le
+       * semer rend la dérivation possible — et c'est tout l'intérêt d'un index
+       * plutôt que d'un couple figé.
+       */
+      await tx.meterReading.create({
+        data: {
+          unitId,
+          utility,
+          periodStart: periodePrecedente,
+          indexValue: precedent,
+          readAt: moins(30, aujourdhui),
+          capturedById: proprietaireId,
+        },
+      })
       if (valeur === null) continue
       await tx.meterReading.create({
         data: {

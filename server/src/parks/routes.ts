@@ -217,7 +217,7 @@ parksRouter.get(
       }),
       prisma.meterReading.findMany({
         where: { unit: { building: { parkId } }, ...(filtreUnite ? { unitId: filtreUnite } : {}) },
-        orderBy: [{ periodStart: 'desc' }, { unitId: 'asc' }],
+        orderBy: [{ unitId: 'asc' }, { utility: 'asc' }, { periodStart: 'desc' }],
         select: { id: true, unitId: true, utility: true, periodStart: true, indexValue: true, readAt: true },
       }),
       prisma.inspection.findMany({
@@ -257,7 +257,48 @@ parksRouter.get(
 
     res.json({
       buildings,
-      readings: releves,
+      /**
+       * L'index précédent est DÉRIVÉ de la période antérieure.
+       *
+       * Le client le stockait dans la ligne du mois courant — la copie d'un
+       * relevé qui existait ailleurs, libre de diverger. Ici les deux relevés
+       * sont deux lignes, et le précédent se lit ; c'est tout l'intérêt de
+       * stocker un index plutôt qu'un couple.
+       */
+      /**
+       * Un relevé par (unité, fluide) pour la PÉRIODE COURANTE, avec l'index
+       * antérieur dérivé.
+       *
+       * La distinction compte : une unité peut avoir un index le mois dernier
+       * et aucun ce mois-ci — c'est précisément « relevé manquant ». Rendre le
+       * dernier index connu, quelle que soit sa période, effacerait le manque
+       * et laisserait croire la facturation complète.
+       *
+       * Le client, lui, stockait `waterPrevious` dans la ligne du mois : la
+       * copie d'un relevé existant ailleurs, libre de diverger.
+       */
+      readings: (() => {
+        const periodeCourante = releves.reduce<Date | null>(
+          (max, r) => (!max || r.periodStart > max ? r.periodStart : max),
+          null,
+        )
+        const paires = new Map<string, { unitId: string; utility: string }>()
+        for (const r of releves) paires.set(`${r.unitId}|${r.utility}`, { unitId: r.unitId, utility: r.utility })
+
+        return [...paires.values()].map(({ unitId, utility }) => {
+          const pour = releves.filter((r) => r.unitId === unitId && r.utility === utility)
+          const courant = pour.find((r) => periodeCourante && +r.periodStart === +periodeCourante)
+          const anterieur = pour.find((r) => !periodeCourante || +r.periodStart !== +periodeCourante)
+          return {
+            unitId,
+            utility,
+            periodStart: periodeCourante,
+            indexValue: courant?.indexValue ?? null,
+            previousIndex: anterieur?.indexValue ?? null,
+            readAt: courant?.readAt ?? null,
+          }
+        })
+      })(),
       inspections: etatsDesLieux.map((i) => ({
         id: i.id,
         unitId: i.unitId,

@@ -9,7 +9,7 @@ import { useT } from '@/i18n/I18nProvider'
 import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
 import { useDates } from '@/lib/useDates'
 import { useNumbers } from '@/lib/numbers'
-import { READINGS, UTILITY_RATES, type MeterReading } from '@/data/portfolio'
+import { UTILITY_RATES, type MeterReading } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 
 /**
@@ -27,7 +27,7 @@ export function Meters() {
   const { money } = useCurrency()
   const exportCsv = useCsvExport()
   const csvMoney = useCsvMoney()
-  const { unitById } = usePortfolio()
+  const { unitById, readings: READINGS } = usePortfolio()
 
   /**
    * Libellé affichable d'une unité.

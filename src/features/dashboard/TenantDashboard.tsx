@@ -13,7 +13,6 @@ import {
   TENANT_RECEIPTS,
   UTILITY_RATES,
   buildingById,
-  readingForUnit,
 } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { workTitle } from '@/data/workTitle'
@@ -32,7 +31,7 @@ export function TenantDashboard() {
   const d = useDates()
   const { money } = useCurrency()
   const downloadReceipt = useReceiptExport()
-  const { worksForUnit, depositForUnit, unitById, tenantUnitIds } = usePortfolio()
+  const { worksForUnit, depositForUnit, unitById, tenantUnitIds, readingForUnit } = usePortfolio()
 
   /**
    * Cet écran est mono-unité par conception : un locataire y voit SON logement.
