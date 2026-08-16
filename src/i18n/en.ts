@@ -400,6 +400,22 @@ export const en: Dictionary = {
       T4: '3-bed',
     },
 
+    receipts: {
+      title: 'Document',
+      description: 'Issued by the server: amounts come from the register, not from the screen.',
+      quittance: 'Rent receipt',
+      recu: 'Payment receipt',
+      tenant: 'Tenant',
+      unit: 'Unit',
+      due: 'Amount due',
+      paid: 'Amount received',
+      balance: 'Balance',
+      credit: '{amount} in credit',
+      payments: 'Payments',
+      print: 'Print',
+      noCharge: 'No charge for this period: there is nothing to certify.',
+      issue: 'Receipt',
+    },
     payments: {
       title: 'Payment tracking by period',
       subtitle: 'Partial settlement is allowed: the balance carries to the next period.',

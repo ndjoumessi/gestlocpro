@@ -521,3 +521,107 @@ describe('enregistrer un encaissement', () => {
     expect('reference' in corps).toBe(false)
   })
 })
+
+describe('émettre une quittance', () => {
+  /**
+   * Attend que le parc du SERVEUR ait remplacé le jeu de démonstration.
+   *
+   * Sans cette attente, le clic porte sur un logement de démonstration — le
+   * fournisseur en sert dix tant que la réponse n'est pas arrivée — dont
+   * l'identifiant n'existe pas côté serveur. La modale s'ouvre alors sur un
+   * document introuvable, et l'échec ressemble à un défaut du produit.
+   *
+   * La leçon était déjà écrite plus haut dans ce fichier, pour la validation
+   * d'un devis. Je ne l'ai pas appliquée ici, et cela a coûté cinq
+   * investigations qui accusaient tour à tour `Button`, `DataTable`, `Modal` et
+   * le contexte — tous innocents.
+   *
+   * Le compte de boutons est le bon discriminant : le jeu local en rend dix,
+   * la charge de test deux.
+   */
+  const attendreLeParcDuServeur = async () => {
+    const { waitFor } = await import('@testing-library/react')
+    await waitFor(() =>
+      expect(screen.getAllByRole('button', { name: /^quittance$/i })).toHaveLength(2),
+    )
+  }
+
+  const doc = (kind: 'quittance' | 'recu', paid: number, balance: number) => ({
+    kind,
+    periodStart: '2026-08-01',
+    tenant: 'Charles Ngassa',
+    unit: 'A1',
+    building: 'Résidence Bonamoussadi',
+    district: 'Bonamoussadi',
+    rentMinor: 145000,
+    waterMinor: 0,
+    powerMinor: 0,
+    dueMinor: 145000,
+    paidMinor: paid,
+    balanceMinor: balance,
+    payments: [{ amountMinor: paid, method: 'mobile', paidOn: '2026-08-05', reference: 'MP123' }],
+  })
+
+  it('affiche le document rendu par le serveur, sans recalculer', async () => {
+    const serveur = installerFauxServeur()
+    serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: portefeuille() })
+    serveur.quand('POST', `/parks/${PARK}/receipts`, {
+      status: 201,
+      body: { document: doc('quittance', 145000, 0) },
+    })
+
+    const user = userEvent.setup()
+    renderApp('/app/paiements', { session: SESSION_AVEC_PARC })
+    await attendreLeParcDuServeur()
+    await user.click(screen.getAllByRole('button', { name: /^quittance$/i })[0]!)
+
+    // Deux occurrences, et c'est voulu : le titre de la modale et l'en-tête du
+    // document portent le même mot. C'est ce mot qui atteste — le répéter là où
+    // le regard se pose est un service, pas une redondance.
+    expect(await screen.findAllByText(/quittance de loyer/i)).toHaveLength(2)
+    // Le locataire figure aussi dans la ligne du tableau, derrière la modale :
+    // on vérifie qu'il est présent, pas qu'il est unique.
+    expect(screen.getAllByText('Charles Ngassa').length).toBeGreaterThan(1)
+    // La référence, elle, n'existe que sur le document.
+    expect(screen.getByText(/MP123/)).toBeInTheDocument()
+  })
+
+  it('n’écrit JAMAIS « quittance » quand le serveur rend un reçu', async () => {
+    /**
+     * Le mot n'est pas choisi par l'écran.
+     *
+     * Une quittance vaut preuve et ne se reprend pas : la dire sur un mois non
+     * soldé ferait signer au bailleur un paiement qu'il n'a pas reçu. Seul le
+     * serveur sait si la période est soldée, et c'est lui qui nomme.
+     */
+    const serveur = installerFauxServeur()
+    serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: portefeuille() })
+    serveur.quand('POST', `/parks/${PARK}/receipts`, {
+      status: 201,
+      body: { document: doc('recu', 60000, 85000) },
+    })
+
+    const user = userEvent.setup()
+    renderApp('/app/paiements', { session: SESSION_AVEC_PARC })
+    await attendreLeParcDuServeur()
+    await user.click(screen.getAllByRole('button', { name: /^quittance$/i })[0]!)
+
+    expect(await screen.findAllByText(/reçu de paiement/i)).toHaveLength(2)
+    // Le mot « quittance » n'apparaît NULLE PART : ni au titre, ni dans le
+    // document. Le serveur a dit « reçu », l'écran ne surenchérit pas.
+    expect(screen.queryByText(/quittance de loyer/i)).not.toBeInTheDocument()
+  })
+
+  it('dit qu’il n’y a rien à attester plutôt que d’afficher un document vide', async () => {
+    const serveur = installerFauxServeur()
+    serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: portefeuille() })
+    serveur.quand('POST', `/parks/${PARK}/receipts`, { status: 404, body: { error: 'not_found' } })
+
+    const user = userEvent.setup()
+    renderApp('/app/paiements', { session: SESSION_AVEC_PARC })
+    await attendreLeParcDuServeur()
+    await user.click(screen.getAllByRole('button', { name: /^quittance$/i })[0]!)
+
+    expect(await screen.findByText(/rien à attester/i)).toBeInTheDocument()
+  })
+})

@@ -1,2 +1,31 @@
 @import 'tailwindcss';
 @import './design-system/tokens.css';
+
+/**
+ * Impression d'un document qui atteste.
+ *
+ * Seule la zone marquée sort de l'imprimante. Sans cela, une quittance
+ * emporterait la barre latérale, la navigation et les boutons de la modale —
+ * personne ne remet cela à un locataire.
+ *
+ * `visibility` et non `display: none` sur les ancêtres : masquer un ancêtre
+ * masquerait aussi la zone qu'il contient. On éteint donc tout, puis on
+ * rallume la zone et sa descendance.
+ */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .zone-imprimable,
+  .zone-imprimable * {
+    visibility: visible;
+  }
+
+  .zone-imprimable {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    padding: 0;
+  }
+}

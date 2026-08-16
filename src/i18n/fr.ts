@@ -441,6 +441,22 @@ export const fr = {
       T4: 'T4',
     },
 
+    receipts: {
+      title: 'Document',
+      description: 'Émis par le serveur : les montants sont ceux du registre, pas ceux de l’écran.',
+      quittance: 'Quittance de loyer',
+      recu: 'Reçu de paiement',
+      tenant: 'Locataire',
+      unit: 'Logement',
+      due: 'Montant dû',
+      paid: 'Montant reçu',
+      balance: 'Solde',
+      credit: '{amount} d’avance',
+      payments: 'Versements',
+      print: 'Imprimer',
+      noCharge: 'Aucune échéance pour cette période : il n’y a rien à attester.',
+      issue: 'Quittance',
+    },
     payments: {
       title: 'Suivi des paiements par période',
       subtitle: 'Un règlement partiel reste possible : le solde suit sur la période suivante.',

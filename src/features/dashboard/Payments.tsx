@@ -11,12 +11,14 @@ import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
 import { type Unit } from '@/data/portfolio'
 import { computeKpis } from '@/data/kpis'
 import { usePortfolio } from '@/data/PortfolioProvider'
+import { ReceiptModal } from './ReceiptModal'
 import { RecordPaymentModal } from './RecordPaymentModal'
 import { TenantScopeNote } from './TenantDashboard'
 
 const FILTERS: (PaymentStatus | 'all')[] = ['all', 'paid', 'partial', 'overdue']
 
 export function Payments() {
+  const [quittanceDe, setQuittanceDe] = useState<string | null>(null)
   const t = useT()
   const { money } = useCurrency()
   const exportCsv = useCsvExport()
@@ -227,8 +229,37 @@ export function Payments() {
               </div>
             ),
           },
+          {
+            key: 'receipt',
+            header: '',
+            render: (unit) =>
+              // Offert seulement s'il y a quelque chose à attester : sur un
+              // logement vacant, le bouton n'aurait aucun sens.
+              unit.tenant ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon="download"
+                  onClick={() => setQuittanceDe(unit.id)}
+                >
+                  {t('app.receipts.issue')}
+                </Button>
+              ) : null,
+          },
         ]}
       />
+
+      {/* La période est le mois courant : c'est celle qu'on quittance dans la
+          quasi-totalité des cas. Le serveur en accepte d'autres, et l'écran
+          saura les offrir le jour où le besoin se posera. */}
+      {quittanceDe && (
+        <ReceiptModal
+          open
+          unitId={quittanceDe}
+          periodStart={`${new Date().toISOString().slice(0, 7)}-01`}
+          onClose={() => setQuittanceDe(null)}
+        />
+      )}
 
       <RecordPaymentModal open={payOpen} onClose={() => setPayOpen(false)} />
     </>
