@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CURRENCIES, CURRENCY_DEFS, formatMoney } from './currencies'
-import { COUNTRIES } from '@/lib/countries'
+import { COUNTRIES, dialOptions } from '@/lib/countries'
 
 /**
  * Formatage monétaire et cohérence des devises.
@@ -99,5 +99,41 @@ describe('cohérence de la liste des pays', () => {
       expect(country.nameFr.length).toBeGreaterThan(1)
       expect(country.nameEn.length).toBeGreaterThan(1)
     }
+  })
+})
+
+/**
+ * Indicatifs téléphoniques.
+ *
+ * Le menu ne rendait que des nombres nus — « +225 » ne dit rien à qui cherche
+ * la Côte d'Ivoire. La déduplication par `Set` écartait les doublons et, ce
+ * faisant, jetait le pays.
+ */
+describe('indicatifs téléphoniques', () => {
+  it('nomme le pays avant l’indicatif', () => {
+    const cameroun = dialOptions('fr').find((o) => o.dial === '+237')
+    // Le pays d'abord : un `<select>` natif saute à l'option dont le TEXTE
+    // commence par ce qu'on tape, donc « cam » doit mener au Cameroun.
+    expect(cameroun?.label).toBe('Cameroun · +237')
+  })
+
+  it('regroupe les pays qui partagent un indicatif en une seule entrée', () => {
+    const partages = dialOptions('fr').filter((o) => o.dial === '+1')
+    // Deux options de même valeur dans un `<select>` contrôlé se marqueraient
+    // toutes deux sélectionnées, et le choix semblerait sauter d'un pays à
+    // l'autre.
+    expect(partages).toHaveLength(1)
+    expect(partages[0].label).toBe('Canada, États-Unis · +1')
+  })
+
+  it('couvre tous les indicatifs du catalogue, sans doublon', () => {
+    const options = dialOptions('fr')
+    const attendus = new Set(COUNTRIES.map((c) => c.dial))
+    expect(options).toHaveLength(attendus.size)
+    expect(new Set(options.map((o) => o.dial)).size).toBe(options.length)
+  })
+
+  it('suit la langue', () => {
+    expect(dialOptions('en').find((o) => o.dial === '+225')?.label).toBe('Ivory Coast · +225')
   })
 })

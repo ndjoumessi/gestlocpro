@@ -18,7 +18,7 @@ import {
   countryName,
   findCountry,
   sortedCountries,
-  sortedDialCodes,
+  dialOptions,
 } from '@/lib/countries'
 import {
   formatInviteCode,
@@ -274,18 +274,21 @@ export function SignUp() {
                       départagent par l'ordre du CSS généré, pas par l'ordre des
                       classes. Le champ tombait à 68px pour 52px de rembourrage,
                       et « +237 » n'avait plus la place de s'afficher. */}
-                  <div className="w-28 shrink-0">
-                  <Select
-                    aria-label={t('common.dialCode')}
-                    value={state.dial}
-                    onChange={(e) => patch({ dial: e.target.value })}
-                  >
-                    {sortedDialCodes().map((dial) => (
-                      <option key={dial} value={dial}>
-                        {dial}
-                      </option>
-                    ))}
-                  </Select>
+                  {/* Élargi de 112 à 176px : l'étiquette porte désormais le
+                      pays avant l'indicatif, et « Cameroun · +237 » ne tient
+                      pas dans la largeur d'un nombre à quatre caractères. */}
+                  <div className="w-44 shrink-0">
+                    <Select
+                      aria-label={t('common.dialCode')}
+                      value={state.dial}
+                      onChange={(e) => patch({ dial: e.target.value })}
+                    >
+                      {dialOptions(locale).map(({ dial, label }) => (
+                        <option key={dial} value={dial}>
+                          {label}
+                        </option>
+                      ))}
+                    </Select>
                   </div>
                   <Input
                     {...props}

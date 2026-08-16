@@ -82,14 +82,39 @@ export function sortedCountries(locale: Locale): Country[] {
 }
 
 /**
- * Indicatifs uniques, triés par valeur numérique.
+ * Indicatifs téléphoniques, chacun accompagné du ou des pays qu'il dessert.
  *
- * Un tri de chaînes plaçait « +32 » après « +242 » : la France et la Belgique
- * se retrouvaient en fin de menu, derrière tous les indicatifs africains à
- * trois chiffres. On trie sur l'entier.
+ * La version précédente rendait des indicatifs nus — `['+1', '+32', '+33', …]` —
+ * obtenus par un `Set` qui écartait les doublons et, ce faisant, jetait le pays.
+ * Le menu affichait donc quinze nombres sans moyen de savoir lequel choisir :
+ * « +225 » ne dit rien à qui cherche la Côte d'Ivoire.
+ *
+ * Deux conséquences sur la forme retenue.
+ *
+ * Le **pays vient en premier** dans l'étiquette, et la liste est triée sur son
+ * nom. C'est ce qui rend la recherche possible : un `<select>` natif saute à
+ * l'option dont le texte commence par ce qu'on tape, donc « côt » mène à la
+ * Côte d'Ivoire. Avec l'indicatif en tête, il aurait fallu connaître le numéro
+ * qu'on est précisément venu chercher.
+ *
+ * Un indicatif partagé garde **une seule entrée**, portant tous ses pays —
+ * « Canada, États-Unis · +1 ». Deux options de même valeur dans un `<select>`
+ * contrôlé se marqueraient toutes deux sélectionnées, et l'utilisateur verrait
+ * son choix se déplacer sur l'autre pays.
  */
-export function sortedDialCodes(): string[] {
-  return [...new Set(COUNTRIES.map((country) => country.dial))].sort(
-    (a, b) => Number(a.slice(1)) - Number(b.slice(1)),
-  )
+export function dialOptions(locale: Locale): { dial: string; label: string }[] {
+  const parIndicatif = new Map<string, string[]>()
+
+  for (const country of COUNTRIES) {
+    const noms = parIndicatif.get(country.dial) ?? []
+    noms.push(countryName(country, locale))
+    parIndicatif.set(country.dial, noms)
+  }
+
+  return [...parIndicatif.entries()]
+    .map(([dial, noms]) => ({
+      dial,
+      label: `${noms.sort((a, b) => a.localeCompare(b, locale)).join(', ')} · ${dial}`,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label, locale))
 }
