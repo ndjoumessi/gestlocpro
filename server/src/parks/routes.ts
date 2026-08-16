@@ -1,8 +1,35 @@
 import { Router, type Request, type Response } from 'express'
+import { z } from 'zod'
 import { prisma } from '../db.js'
-import { exigerAppartenance, exigerCompte, unitesVisibles } from '../auth/guards.js'
+import { exigerAppartenance, exigerCompte, exigerRole, unitesVisibles } from '../auth/guards.js'
 
 export const parksRouter = Router()
+
+const schemaArbitrage = z
+  .object({
+    withheldMinor: z.number().int().min(0),
+    reason: z.string().trim().min(3).max(2000).optional(),
+  })
+  /**
+   * Une retenue exige sa justification, et la règle est ici plutôt que dans le
+   * seul formulaire : « un décompte sans motif est indéfendable », dit le
+   * commentaire de la modale — ce qui reste vrai quand la requête ne vient pas
+   * d'elle.
+   */
+  .refine((v) => v.withheldMinor === 0 || Boolean(v.reason), {
+    message: 'Une retenue doit être justifiée',
+    path: ['reason'],
+  })
+
+const schemaLocataire = z.object({
+  unitId: z.string().uuid(),
+  fullName: z.string().trim().min(2).max(120),
+  phoneE164: z
+    .string()
+    .trim()
+    .regex(/^\+[1-9]\d{6,14}$/, 'Numéro attendu au format international')
+    .optional(),
+})
 
 parksRouter.use(exigerCompte)
 
@@ -144,6 +171,228 @@ parksRouter.get(
       }),
     }))
 
-    res.json({ buildings })
+    /**
+     * Travaux et cautions voyagent dans la MÊME réponse.
+     *
+     * Trois requêtes séparées arriveraient dans un ordre indéterminé, et
+     * l'interface afficherait un parc à jour à côté de cautions périmées le
+     * temps que la dernière revienne. C'est aussi ce que faisait `loadState()`
+     * — un seul état, cohérent d'un bloc.
+     */
+    const idsVisibles = visibles?.map((u) => u.id)
+    const filtreUnite = idsVisibles ? { in: idsVisibles } : undefined
+
+    const [travaux, cautions] = await Promise.all([
+      prisma.workOrder.findMany({
+        where: { unit: { building: { parkId } }, ...(filtreUnite ? { unitId: filtreUnite } : {}) },
+        orderBy: { reportedAt: 'desc' },
+        select: {
+          id: true,
+          reference: true,
+          unitId: true,
+          title: true,
+          description: true,
+          trade: true,
+          status: true,
+          urgency: true,
+          quotedAmountMinor: true,
+          approvedAmountMinor: true,
+          reportedAt: true,
+        },
+      }),
+      prisma.deposit.findMany({
+        where: {
+          lease: { unit: { building: { parkId } }, ...(filtreUnite ? { unitId: filtreUnite } : {}) },
+        },
+        select: {
+          id: true,
+          heldMinor: true,
+          withheldMinor: true,
+          withheldReason: true,
+          status: true,
+          lease: {
+            select: { unitId: true, tenant: { select: { fullName: true } }, endsOn: true },
+          },
+        },
+      }),
+    ])
+
+    res.json({
+      buildings,
+      works: travaux,
+      deposits: cautions.map((d) => ({
+        id: d.id,
+        unitId: d.lease.unitId,
+        // `null` quand le bail est terminé : l'interface nomme alors « ancien
+        // locataire » dans sa langue, plutôt que de recevoir ce libellé figé.
+        tenant: d.lease.endsOn ? null : (d.lease.tenant?.fullName ?? null),
+        heldMinor: d.heldMinor,
+        withheldMinor: d.withheldMinor,
+        withheldReason: d.withheldReason,
+        status: d.status,
+      })),
+    })
+  },
+)
+
+/**
+ * Validation d'un devis — le droit qui distingue le propriétaire du gestionnaire.
+ *
+ * Le client l'appliquait par un `canApprove = role === 'owner'` qui masquait un
+ * bouton. Un devis validé engage une dépense : la règle doit tenir quand la
+ * requête ne vient pas de l'interface, et c'est `exigerRole` qui l'impose ici.
+ */
+parksRouter.patch(
+  '/:parkId/works/:workId/approve',
+  exigerAppartenance,
+  exigerRole('owner'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const workId = typeof req.params.workId === 'string' ? req.params.workId : ''
+
+    const travail = await prisma.workOrder.findFirst({
+      where: { id: workId, unit: { building: { parkId } } },
+      select: { id: true, quotedAmountMinor: true, status: true },
+    })
+    if (!travail) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+    if (travail.status !== 'quoted') {
+      // Valider deux fois n'est pas anodin : le second appel écraserait la date
+      // et l'auteur du premier.
+      res.status(409).json({ error: 'not_quoted' })
+      return
+    }
+
+    const maj = await prisma.workOrder.update({
+      where: { id: travail.id },
+      data: {
+        status: 'approved',
+        approvedAt: new Date(),
+        approvedById: req.compteId!,
+        // Le montant est figé au moment de la validation : un devis révisé
+        // ensuite ne doit pas réécrire ce qui a été engagé.
+        approvedAmountMinor: travail.quotedAmountMinor,
+      },
+      select: { id: true, status: true, approvedAmountMinor: true, approvedAt: true },
+    })
+
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'work.approve',
+        entity: 'WorkOrder',
+        entityId: travail.id,
+        payload: { approvedAmountMinor: travail.quotedAmountMinor },
+      },
+    })
+
+    res.json({ work: maj })
+  },
+)
+
+/** Arbitrage d'une caution — second droit réservé au propriétaire. */
+parksRouter.patch(
+  '/:parkId/deposits/:depositId/settle',
+  exigerAppartenance,
+  exigerRole('owner'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const depositId = typeof req.params.depositId === 'string' ? req.params.depositId : ''
+    const corps = schemaArbitrage.parse(req.body)
+
+    const caution = await prisma.deposit.findFirst({
+      where: { id: depositId, lease: { unit: { building: { parkId } } } },
+      select: { id: true, heldMinor: true },
+    })
+    if (!caution) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+    if (corps.withheldMinor > caution.heldMinor) {
+      res.status(422).json({ error: 'withheld_exceeds_held' })
+      return
+    }
+
+    const maj = await prisma.deposit.update({
+      where: { id: caution.id },
+      data: {
+        withheldMinor: corps.withheldMinor,
+        // La justification que la modale rend obligatoire, et que
+        // `settleDeposit` jetait : le seul texte qui défendrait la décision
+        // devant un locataire était le seul qu'on ne conservait pas.
+        withheldReason: corps.reason ?? null,
+        status: 'returned',
+        settledAt: new Date(),
+        settledById: req.compteId!,
+      },
+      select: { id: true, withheldMinor: true, withheldReason: true, status: true },
+    })
+
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'deposit.settle',
+        entity: 'Deposit',
+        entityId: caution.id,
+        payload: { withheldMinor: corps.withheldMinor, reason: corps.reason ?? null },
+      },
+    })
+
+    res.json({ deposit: maj })
+  },
+)
+
+/** Rattache un locataire à une unité vacante. */
+parksRouter.post(
+  '/:parkId/tenants',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const corps = schemaLocataire.parse(req.body)
+
+    const unite = await prisma.unit.findFirst({
+      where: { id: corps.unitId, building: { parkId } },
+      select: { id: true, baseRentMinor: true },
+    })
+    if (!unite) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    try {
+      const bail = await prisma.$transaction(async (tx) => {
+        const locataire = await tx.tenant.create({
+          data: { parkId, fullName: corps.fullName, phoneE164: corps.phoneE164 ?? null },
+        })
+        return tx.lease.create({
+          data: {
+            unitId: unite.id,
+            tenantId: locataire.id,
+            startsOn: new Date(),
+            rentMinor: unite.baseRentMinor,
+            // « En attente » et non « à jour » : le bail commence, la première
+            // quittance n'est pas due. Marquer le locataire à jour d'un loyer
+            // qu'il n'a pas payé fausserait les indicateurs d'encaissement.
+            status: 'pending',
+          },
+          select: { id: true, unitId: true, status: true },
+        })
+      })
+      res.status(201).json({ lease: bail })
+    } catch {
+      /**
+       * L'index unique partiel a parlé : l'unité a déjà un bail en cours.
+       *
+       * Deux requêtes simultanées liraient toutes deux « unité libre » avant
+       * que l'une n'écrive — c'est pourquoi la règle vit dans la base et non
+       * ici. Il ne reste qu'à traduire son refus.
+       */
+      res.status(409).json({ error: 'unit_already_leased' })
+    }
   },
 )

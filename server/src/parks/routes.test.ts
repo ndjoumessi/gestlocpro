@@ -213,3 +213,153 @@ describe('cloisonnement', () => {
     expect(JSON.stringify(res.body)).not.toContain('Serge Mbarga')
   })
 })
+
+/**
+ * Mutations réservées.
+ *
+ * Valider un devis et arbitrer une caution sont les deux droits qui distinguent
+ * le propriétaire du gestionnaire. Le client les appliquait par un
+ * `canApprove = role === 'owner'` qui masquait un bouton — ce qui ne survit pas
+ * à une requête forgée, et c'est ce que ces cas envoient.
+ */
+describe('droits d’arbitrage', () => {
+  let parkId: string
+  let proprio: string
+  let gestionnaire: string
+
+  beforeEach(async () => {
+    const p = await inscrire('proprio@example.com', {
+      parkName: 'Parc Bonamoussadi',
+      countryCode: 'CM',
+      seedDemo: true,
+    })
+    proprio = p.cookie
+    const parcs = await request(app).get('/api/parks').set('Cookie', proprio)
+    parkId = parcs.body.parks[0].id
+
+    const g = await inscrire('diane@example.com')
+    gestionnaire = g.cookie
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'diane@example.com' },
+    })
+    await prisma.membership.create({
+      data: { userId: compte.id, parkId, role: 'manager' },
+    })
+  })
+
+  async function devisAArbitrer() {
+    const pf = await request(app).get(`/api/parks/${parkId}/portfolio`).set('Cookie', proprio)
+    return pf.body.works.find((w: { status: string }) => w.status === 'quoted')
+  }
+
+  it('refuse la validation d’un devis au gestionnaire', async () => {
+    const devis = await devisAArbitrer()
+    const res = await request(app)
+      .patch(`/api/parks/${parkId}/works/${devis.id}/approve`)
+      .set('Cookie', gestionnaire)
+
+    expect(res.status).toBe(403)
+    // Et rien n'a bougé : un refus qui laisse une trace n'est pas un refus.
+    const apres = await prisma.workOrder.findUniqueOrThrow({ where: { id: devis.id } })
+    expect(apres.status).toBe('quoted')
+    expect(apres.approvedAt).toBeNull()
+  })
+
+  it('accepte du propriétaire, et fige le montant engagé', async () => {
+    const devis = await devisAArbitrer()
+    const res = await request(app)
+      .patch(`/api/parks/${parkId}/works/${devis.id}/approve`)
+      .set('Cookie', proprio)
+
+    expect(res.status).toBe(200)
+    expect(res.body.work.status).toBe('approved')
+    // Le montant est retenu au moment de la décision : un devis révisé ensuite
+    // ne doit pas réécrire ce qui a été engagé.
+    expect(res.body.work.approvedAmountMinor).toBe(devis.quotedAmountMinor)
+  })
+
+  it('refuse de valider deux fois', async () => {
+    const devis = await devisAArbitrer()
+    await request(app)
+      .patch(`/api/parks/${parkId}/works/${devis.id}/approve`)
+      .set('Cookie', proprio)
+      .expect(200)
+    // Le second appel écraserait la date et l'auteur du premier.
+    await request(app)
+      .patch(`/api/parks/${parkId}/works/${devis.id}/approve`)
+      .set('Cookie', proprio)
+      .expect(409)
+  })
+
+  it('exige la justification d’une retenue', async () => {
+    /**
+     * « Un décompte sans motif est indéfendable », dit le commentaire de la
+     * modale — ce qui reste vrai quand la requête ne vient pas d'elle. La règle
+     * était côté formulaire seulement, et `settleDeposit` jetait le texte.
+     */
+    const pf = await request(app).get(`/api/parks/${parkId}/portfolio`).set('Cookie', proprio)
+    const caution = pf.body.deposits[0]
+
+    await request(app)
+      .patch(`/api/parks/${parkId}/deposits/${caution.id}/settle`)
+      .set('Cookie', proprio)
+      .send({ withheldMinor: 45000 })
+      .expect(400)
+
+    const ok = await request(app)
+      .patch(`/api/parks/${parkId}/deposits/${caution.id}/settle`)
+      .set('Cookie', proprio)
+      .send({ withheldMinor: 45000, reason: 'Reprise de la peinture du séjour' })
+      .expect(200)
+
+    // Le seul texte qui défendrait la décision devant un locataire est
+    // désormais conservé.
+    expect(ok.body.deposit.withheldReason).toBe('Reprise de la peinture du séjour')
+  })
+
+  it('refuse une retenue supérieure à la caution', async () => {
+    const pf = await request(app).get(`/api/parks/${parkId}/portfolio`).set('Cookie', proprio)
+    const caution = pf.body.deposits[0]
+    await request(app)
+      .patch(`/api/parks/${parkId}/deposits/${caution.id}/settle`)
+      .set('Cookie', proprio)
+      .send({ withheldMinor: caution.heldMinor + 1, reason: 'Trop, justement' })
+      .expect(422)
+  })
+
+  it('laisse le gestionnaire créer une fiche locataire', async () => {
+    // Il opère le parc au quotidien : c'est l'arbitrage qu'il n'a pas.
+    const pf = await request(app).get(`/api/parks/${parkId}/portfolio`).set('Cookie', gestionnaire)
+    const vacante = pf.body.buildings
+      .flatMap((b: { units: { id: string; status: string }[] }) => b.units)
+      .find((u: { status: string }) => u.status === 'vacant')
+
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/tenants`)
+      .set('Cookie', gestionnaire)
+      .send({ unitId: vacante.id, fullName: 'Awa Diallo', phoneE164: '+237688401277' })
+
+    expect(res.status).toBe(201)
+    expect(res.body.lease.status).toBe('pending')
+  })
+
+  it('refuse un second bail sur une unité déjà louée', async () => {
+    /**
+     * La règle vit dans un index unique partiel, et non dans le code : deux
+     * requêtes simultanées liraient toutes deux « unité libre » avant que l'une
+     * n'écrive. Ici on ne fait que traduire son refus.
+     */
+    const pf = await request(app).get(`/api/parks/${parkId}/portfolio`).set('Cookie', proprio)
+    const occupee = pf.body.buildings
+      .flatMap((b: { units: { id: string; status: string }[] }) => b.units)
+      .find((u: { status: string }) => u.status === 'paid')
+
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/tenants`)
+      .set('Cookie', proprio)
+      .send({ unitId: occupee.id, fullName: 'Quelqu’un d’autre' })
+
+    expect(res.status).toBe(409)
+    expect(res.body).toEqual({ error: 'unit_already_leased' })
+  })
+})

@@ -73,6 +73,31 @@ const UNITES: {
   { cle: 'C3', immeuble: 'des', label: 'C3', type: 'T2', surface: 60, loyer: 125000 },
 ]
 
+/**
+ * Signalements du jeu de démonstration.
+ *
+ * `title` est ici une chaîne libre, comme dans le produit réel où le locataire
+ * l'écrit. Le client en avait fait cinq clés de traduction — c'était juste
+ * **tant que la donnée était un jeu de démonstration servi aux deux langues** ;
+ * dès qu'elle vient d'une base rattachée à un compte, elle redevient de la
+ * saisie, et une saisie ne se traduit pas.
+ */
+const TRAVAUX: {
+  unite: string
+  title: string
+  trade: 'plumbing' | 'power' | 'painting' | 'multi' | 'lock' | 'other'
+  status: 'reported' | 'quoted' | 'approved' | 'done'
+  urgency: 'blocking' | 'normal' | 'low'
+  montant?: number
+  jours: number
+}[] = [
+  { unite: 'A3', title: 'Fuite sous l’évier de la cuisine', trade: 'plumbing', status: 'quoted', urgency: 'blocking', montant: 45000, jours: 35 },
+  { unite: 'B2', title: 'Disjoncteur qui saute au démarrage du chauffe-eau', trade: 'power', status: 'approved', urgency: 'blocking', montant: 78000, jours: 38 },
+  { unite: 'C1', title: 'Peinture du séjour à reprendre', trade: 'painting', status: 'reported', urgency: 'low', jours: 42 },
+  { unite: 'A1', title: 'Remplacement du groupe de sécurité', trade: 'plumbing', status: 'done', urgency: 'normal', montant: 32000, jours: 50 },
+  { unite: 'B4', title: 'Réfection complète avant relocation', trade: 'multi', status: 'approved', urgency: 'normal', montant: 340000, jours: 56 },
+]
+
 /** Décale une date d'un nombre de jours, sans toucher à l'original. */
 function moins(jours: number, depuis: Date): Date {
   const d = new Date(depuis)
@@ -84,6 +109,7 @@ export async function semerParcDemonstration(
   tx: Prisma.TransactionClient | PrismaClient,
   { parkId, proprietaireId, periode, aujourdhui }: Semence,
 ): Promise<void> {
+  const unites = new Map<string, string>()
   const immeubles = new Map<string, string>()
   for (const im of IMMEUBLES) {
     const cree = await tx.building.create({
@@ -105,6 +131,7 @@ export async function semerParcDemonstration(
         baseRentMinor: u.loyer,
       },
     })
+    unites.set(u.cle, unite.id)
 
     if (!u.locataire) continue
 
@@ -160,5 +187,43 @@ export async function semerParcDemonstration(
         },
       })
     }
+  }
+
+  /**
+   * Les références sont allouées par le compteur du parc, comme en production.
+   *
+   * Les tirer d'un `count()` les dupliquerait dès deux créations simultanées ;
+   * un compteur ligne à ligne, verrouillé par la transaction, ne le peut pas.
+   */
+  const annee = aujourdhui.getFullYear()
+  await tx.workReferenceCounter.create({ data: { parkId, year: annee, next: 1 } })
+
+  for (const w of TRAVAUX) {
+    const unitId = unites.get(w.unite)
+    if (!unitId) continue
+
+    const compteur = await tx.workReferenceCounter.update({
+      where: { parkId_year: { parkId, year: annee } },
+      data: { next: { increment: 1 } },
+      select: { next: true },
+    })
+    const numero = String(compteur.next - 1).padStart(3, '0')
+
+    await tx.workOrder.create({
+      data: {
+        unitId,
+        reference: `SIG-${annee}-${numero}`,
+        title: w.title,
+        trade: w.trade,
+        status: w.status,
+        urgency: w.urgency,
+        quotedAmountMinor: w.montant ?? null,
+        approvedAmountMinor: w.status === 'approved' || w.status === 'done' ? (w.montant ?? null) : null,
+        approvedAt: w.status === 'approved' || w.status === 'done' ? moins(w.jours - 2, aujourdhui) : null,
+        approvedById: w.status === 'approved' || w.status === 'done' ? proprietaireId : null,
+        completedOn: w.status === 'done' ? moins(w.jours - 5, aujourdhui) : null,
+        reportedAt: moins(w.jours, aujourdhui),
+      },
+    })
   }
 }
