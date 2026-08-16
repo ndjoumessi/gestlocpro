@@ -222,6 +222,12 @@ export const en: Dictionary = {
       summaryCountry: 'Country',
       summaryCurrency: 'Currency',
       summaryLanguage: 'Language',
+      summaryPark: 'Portfolio',
+      summaryUnits: 'Units',
+      summaryManagement: 'Management',
+      summaryCompany: 'Firm',
+      summaryOwnerCode: 'Owner code',
+      summaryInviteCode: 'Invitation code',
     },
 
     errors: {

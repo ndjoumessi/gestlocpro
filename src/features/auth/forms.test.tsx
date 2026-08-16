@@ -171,6 +171,12 @@ describe('inscription', () => {
 
     expect(screen.getByText('Parc Bonamoussadi')).toBeInTheDocument()
     expect(screen.getByText('Je gère seul')).toBeInTheDocument()
+
+    // Libellés de récapitulatif, courts, et non ceux du formulaire : « Comment
+    // gérez-vous au quotidien ? » est une question posée à qui remplit, pas le
+    // nom d'une donnée qu'on relit.
+    expect(screen.getByText('Gestion')).toBeInTheDocument()
+    expect(screen.queryByText(/Comment gérez-vous/)).not.toBeInTheDocument()
     // Et les réponses des étapes précédentes restent présentes.
     expect(screen.getByText('arsene@example.com')).toBeInTheDocument()
   })

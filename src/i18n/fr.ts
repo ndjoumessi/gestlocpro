@@ -233,6 +233,16 @@ export const fr = {
       summaryCountry: 'Pays',
       summaryCurrency: 'Devise',
       summaryLanguage: 'Langue',
+      // Libellés de récapitulatif, distincts de ceux des champs. Un
+      // formulaire pose une question — « Comment gérez-vous au quotidien ? » ;
+      // un récapitulatif nomme une donnée. Réutiliser les premiers repliait
+      // l'étiquette sur trois lignes et rompait avec les sept autres lignes.
+      summaryPark: 'Parc',
+      summaryUnits: 'Unités',
+      summaryManagement: 'Gestion',
+      summaryCompany: 'Cabinet',
+      summaryOwnerCode: 'Code propriétaire',
+      summaryInviteCode: 'Code d’invitation',
     },
 
     errors: {

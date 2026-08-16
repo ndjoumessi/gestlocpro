@@ -677,10 +677,10 @@ function ReviewStep({
    */
   if (state.role === 'owner') {
     rows.push(
-      { label: t('auth.signup.parkName'), value: state.parkName, step: 2 },
-      { label: t('auth.signup.unitCount'), value: state.unitCount, step: 2 },
+      { label: t('auth.signup.summaryPark'), value: state.parkName, step: 2 },
+      { label: t('auth.signup.summaryUnits'), value: state.unitCount, step: 2 },
       {
-        label: t('auth.signup.management'),
+        label: t('auth.signup.summaryManagement'),
         value:
           state.delegates === 'delegate'
             ? t('auth.signup.manageDelegate')
@@ -690,11 +690,11 @@ function ReviewStep({
     )
   } else if (state.role === 'manager') {
     rows.push(
-      { label: t('auth.signup.company'), value: state.company, step: 2 },
-      { label: t('auth.signup.ownerCode'), value: state.ownerCode, step: 2 },
+      { label: t('auth.signup.summaryCompany'), value: state.company, step: 2 },
+      { label: t('auth.signup.summaryOwnerCode'), value: state.ownerCode, step: 2 },
     )
   } else if (state.role === 'tenant') {
-    rows.push({ label: t('auth.signup.inviteCode'), value: state.inviteCode, step: 2 })
+    rows.push({ label: t('auth.signup.summaryInviteCode'), value: state.inviteCode, step: 2 })
   }
 
   return (
