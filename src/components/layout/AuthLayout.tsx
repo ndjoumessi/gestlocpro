@@ -102,10 +102,24 @@ export function AuthLayout({
 function BrandPanel() {
   const t = useT()
 
+  /**
+   * Quatre promesses, et chacune doit être TENUE aujourd'hui.
+   *
+   * Cette colonne annonçait « Relances automatiques » sur la page où l'on crée
+   * son compte. Le produit n'a aucune relance — ni automatique, ni manuelle.
+   * C'est le pire endroit pour une promesse fausse : elle est lue au moment
+   * précis où quelqu'un décide de s'engager, et sa déception arrive quelques
+   * minutes plus tard, dans un espace vide.
+   *
+   * Les quatre retenues correspondent à ce que le produit sait faire de bout en
+   * bout : suivi des loyers avec quittances, relevés d'eau et d'électricité,
+   * cautions arbitrées, états des lieux. Les relances y reviendront le jour où
+   * elles existeront.
+   */
   const points = [
     'marketing.features.rent.title',
     'marketing.features.utilities.title',
-    'marketing.features.reminders.title',
+    'marketing.features.deposits.title',
     'marketing.features.inspections.title',
   ] as const
 
