@@ -408,3 +408,44 @@ describe('démonstration', () => {
     expect(screen.getAllByRole('button', { name: /^arbitrer$/i }).length).toBeGreaterThan(0)
   })
 })
+
+/**
+ * La vitrine des états JOUE son chargement au lieu de le figer.
+ *
+ * `SystemStates` rendait son squelette sans condition : il ne se terminait
+ * jamais. Tant qu'il valait quatre barres grises, on lisait un échantillon ; du
+ * jour où il a pris l'allure exacte d'un écran réel — rangée d'indicateurs et
+ * tableau, mêmes primitives que les huit écrans —, on a lu un écran BLOQUÉ.
+ * Plus la vitrine est fidèle, plus un état figé passe pour une panne, et c'est
+ * la fidélité qui a rendu le défaut visible plutôt que de le créer.
+ *
+ * Ses trois voisines montrent chacune un état abouti, et « Erreur » porte même
+ * un bouton. Celle-ci aboutit donc elle aussi, et se rejoue : la TRANSITION est
+ * le seul morceau que la vitrine ne montrait pas, alors que c'est exactement ce
+ * que vit l'utilisateur.
+ */
+describe('vitrine des états', () => {
+  const attente = () => within(screen.getByRole('main')).queryByRole('status')
+
+  it('joue l’attente puis aboutit sur du contenu réel', async () => {
+    renderApp('/app/systeme')
+
+    expect(attente()).not.toBeNull()
+
+    // Elle se termine d'elle-même — c'est tout ce qui manquait.
+    await waitFor(() => expect(attente()).toBeNull(), { timeout: 4000 })
+    // Et sur le contenu que le squelette annonçait, aux mêmes places.
+    expect(screen.getByRole('main')).toHaveTextContent('Bonamoussadi')
+  })
+
+  it('se rejoue à la demande', async () => {
+    const user = userEvent.setup()
+    renderApp('/app/systeme')
+    await waitFor(() => expect(attente()).toBeNull(), { timeout: 4000 })
+
+    await user.click(screen.getByRole('button', { name: /rejouer le chargement/i }))
+
+    expect(attente()).not.toBeNull()
+    await waitFor(() => expect(attente()).toBeNull(), { timeout: 4000 })
+  })
+})

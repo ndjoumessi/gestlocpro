@@ -1,8 +1,10 @@
+import { useEffect, useState } from 'react'
 import { PageHeader } from '@/components/layout/AppShell'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
 import { Icon } from '@/components/primitives/Icon'
-import { EmptyState } from '@/components/primitives/DataTable'
+import { DataTable, EmptyState } from '@/components/primitives/DataTable'
+import { StatCard } from '@/components/primitives/Charts'
 import {
   SkeletonRegion,
   SkeletonStatCard,
@@ -17,10 +19,34 @@ import { usePortfolio } from '@/data/PortfolioProvider'
  * Cet écran sert de référence : on y vérifie qu'aucun d'eux ne se réduit à un
  * écran blanc ou à un cadre d'axes vide.
  */
+/**
+ * Durée de l'attente JOUÉE par la vitrine.
+ *
+ * Plus longue que les 900 ms de la démonstration, et c'est voulu : là-bas
+ * l'attente est subie et doit se faire oublier, ici elle est l'objet même de la
+ * carte et doit se laisser regarder. On la relance quand on veut.
+ */
+const ATTENTE_VITRINE_MS = 1600
+
 export function SystemStates() {
   const t = useT()
   const { notify } = useToast()
-  const { reset, hasChanges } = usePortfolio()
+  const { reset, hasChanges, units, buildings, buildingById } = usePortfolio()
+
+  /**
+   * La carte joue son propre chargement, sans toucher au parc.
+   *
+   * Un état local et non `loading` du fournisseur : celui-ci gouverne les huit
+   * écrans réels, et le rejouer depuis une vitrine ferait clignoter toute
+   * l'application pour montrer une carte.
+   */
+  const [enAttente, setEnAttente] = useState(true)
+  useEffect(() => {
+    if (!enAttente) return
+    const minuteur = setTimeout(() => setEnAttente(false), ATTENTE_VITRINE_MS)
+    return () => clearTimeout(minuteur)
+  }, [enAttente])
+  const rejouer = () => setEnAttente(true)
 
   return (
     <>
@@ -49,8 +75,20 @@ export function SystemStates() {
               Deux indicateurs et non quatre, trois lignes de tableau et non
               huit : la carte occupe une demi-colonne, pas un écran. Le nombre
               est le seul écart, et il ne change ni les composants ni leur
-              agencement. */}
-          <SkeletonRegion>
+              agencement.
+
+              Et elle ABOUTIT, ce qui a fini par être le vrai sujet. Le
+              squelette était rendu sans condition : il ne se terminait jamais.
+              Tant qu'il valait quatre barres grises, on lisait un échantillon ;
+              du jour où il a pris l'allure exacte d'un écran réel, on a lu un
+              écran BLOQUÉ — plus la vitrine est fidèle, plus un état figé passe
+              pour une panne. Ses trois voisines montrent chacune un état abouti,
+              et « Erreur » porte même un bouton. Celle-ci joue donc l'attente,
+              la termine sur du vrai contenu, et se rejoue à la demande : c'est
+              le seul état dont la vitrine ne montrait que la moitié, alors que
+              la TRANSITION est précisément ce que vit l'utilisateur. */}
+          {enAttente ? (
+            <SkeletonRegion>
             {/* Empilés sous `sm`, comme sur les écrans réels. Deux colonnes à
                 375 px laissent 130 px par carte, où la ligne d'indicateur —
                 `w-32`, soit 128 px — déborde du cadre une fois le rembourrage
@@ -64,7 +102,82 @@ export function SystemStates() {
             <div className="mt-3">
               <SkeletonTable rows={3} />
             </div>
-          </SkeletonRegion>
+            </SkeletonRegion>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {/* Le contenu que le squelette annonçait, aux mêmes places : deux
+                  indicateurs puis un tableau. C'est ce qui rend la transition
+                  lisible — si l'un des deux états changeait de gabarit, on
+                  verrait la page sauter, ce que le squelette existe justement
+                  pour éviter. */}
+              <div className="grid gap-3 sm:grid-cols-2">
+                {buildings.slice(0, 2).map((immeuble) => {
+                  const logements = units.filter((u) => u.buildingId === immeuble.id)
+                  const occupes = logements.filter((u) => u.tenant).length
+                  return (
+                    <StatCard
+                      key={immeuble.id}
+                      label={immeuble.district}
+                      value={`${occupes}/${logements.length}`}
+                      note={t('app.portfolio.occupancy', {
+                        occupied: occupes,
+                        total: logements.length,
+                      })}
+                    />
+                  )
+                })}
+              </div>
+
+              <DataTable
+                /* La légende décrit le TABLEAU, pas la carte qui le porte.
+                   « Chargement » y annonçait un tableau de logements sous le
+                   nom d'un état d'interface — le titre est déjà donné par
+                   `CardHeader`, et un lecteur d'écran n'y aurait entendu que
+                   deux fois le même mot pour deux choses différentes. */
+                caption={t('app.portfolio.title')}
+                rows={units.slice(0, 3)}
+                rowKey={(u) => u.id}
+                columns={[
+                  {
+                    key: 'unit',
+                    header: t('app.portfolio.unit'),
+                    width: '5.5rem',
+                    render: (u) => <span className="numeric font-medium">{u.label}</span>,
+                  },
+                  {
+                    key: 'building',
+                    header: t('app.portfolio.building'),
+                    render: (u) => (
+                      <span className="text-muted">{buildingById(u.buildingId)?.district}</span>
+                    ),
+                  },
+                  {
+                    key: 'surface',
+                    header: t('app.portfolio.surface'),
+                    numeric: true,
+                    hideOnMobile: true,
+                    render: (u) => <span className="numeric">{u.surface}</span>,
+                  },
+                ]}
+              />
+            </div>
+          )}
+
+          {/* Rejouer plutôt que « recharger » : le mot dit que c'est une
+              démonstration d'état, non une requête. Même place et même forme
+              que « Réessayer » sur la carte d'erreur, pour que les deux cartes
+              se lisent pareil. */}
+          <div className="mt-4">
+            <Button
+              variant="secondary"
+              size="sm"
+              icon="arrowRight"
+              onClick={rejouer}
+              disabled={enAttente}
+            >
+              {t('app.system.replayLoading')}
+            </Button>
+          </div>
         </Card>
 
         <Card>
