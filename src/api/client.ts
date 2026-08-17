@@ -291,6 +291,15 @@ export const api = {
       body: JSON.stringify({ leaseIds }),
     }),
 
+  /**
+   * Retire un versement saisi par erreur.
+   *
+   * L'échéance reste : elle a été appelée, elle est due. Retirer le versement
+   * rétablit la dette, il ne l'efface pas.
+   */
+  deletePayment: <T>(parkId: string, paymentId: string) =>
+    requete<T>(`/parks/${parkId}/payments/${paymentId}`, { method: 'DELETE' }),
+
   /** Met en demeure — droit du seul propriétaire, motif obligatoire. */
   serveFormalNotice: <T>(parkId: string, leaseId: string, reason: string) =>
     requete<T>(`/parks/${parkId}/leases/${leaseId}/formal-notice`, {

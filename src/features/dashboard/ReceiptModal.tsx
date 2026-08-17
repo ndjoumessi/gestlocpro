@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Modal } from '@/components/primitives/Modal'
-import { Button } from '@/components/primitives/Button'
+import { Button, IconButton } from '@/components/primitives/Button'
 import { useT } from '@/i18n/I18nProvider'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { formatMoney } from '@/currency/currencies'
 import { useDates } from '@/lib/useDates'
 import { api, ApiError } from '@/api/client'
 import { useSession } from '@/api/SessionProvider'
+import { useRole } from '@/components/layout/AppShell'
+import { useToast } from '@/components/primitives/Toast'
 
 /**
  * Document de quittance ou de reçu, tel que le SERVEUR l'a arrêté.
@@ -37,7 +39,7 @@ interface DocumentEmis {
    * gardera pour prouver qu'il a payé.
    */
   currency: 'XAF' | 'XOF' | 'EUR' | 'CAD' | 'USD'
-  payments: { amountMinor: number; method: string; paidOn: string; reference: string | null }[]
+  payments: { id: string; amountMinor: number; method: string; paidOn: string; reference: string | null }[]
 }
 
 /**
@@ -80,6 +82,26 @@ export function ReceiptModal({
    */
   const [document, setDocument] = useState<DocumentEmis | null>(null)
   const [echec, setEchec] = useState<string | null>(null)
+  const { role } = useRole()
+  const { notify } = useToast()
+
+  /**
+   * Le document se referme après le retrait, plutôt que de se recalculer ici.
+   *
+   * Il atteste d'un état ; celui-ci vient de changer. Le rafraîchir sur place
+   * afficherait une quittance dont les montants ne correspondent plus à
+   * l'en-tête qu'on vient de lire.
+   */
+  const retirer = (paymentId: string) => {
+    if (!parkId) return
+    void api
+      .deletePayment(parkId, paymentId)
+      .then(() => {
+        onClose()
+        notify(t('app.receipts.paymentRemoved'), { tone: 'ok' })
+      })
+      .catch(() => setEchec(t('common.actionFailed')))
+  }
 
   const money = (montant: number) =>
     document
@@ -194,13 +216,35 @@ export function ReceiptModal({
           <div>
             <p className="eyebrow text-muted">{t('app.receipts.payments')}</p>
             <ul className="mt-2 flex flex-col gap-1">
-              {document.payments.map((p, i) => (
-                <li key={i} className="flex flex-wrap justify-between gap-2">
+              {document.payments.map((p) => (
+                <li key={p.id} className="flex flex-wrap items-center justify-between gap-2">
                   <span>
                     {d.fullDate(partsDe(p.paidOn))} · {libelleMoyen(p.method)}
                     {p.reference ? ` · ${p.reference}` : ''}
                   </span>
-                  <span className="numeric">{money(p.amountMinor)}</span>
+                  <span className="flex items-center gap-2">
+                    <span className="numeric">{money(p.amountMinor)}</span>
+                    {/*
+                      La gomme, à l'endroit où l'erreur se découvre.
+
+                      Un encaissement saisi sur la mauvaise période, au mauvais
+                      montant ou pour le mauvais locataire ne se réparait que
+                      dans la base. Un registre sans gomme force à contourner le
+                      produit, et c'est là que les vraies erreurs commencent.
+
+                      Propriétaire seul : retirer un versement fait réapparaître
+                      une dette — c'est de l'argent qu'on déclare ne plus avoir
+                      reçu. Le journal, lui, garde le montant retiré.
+                    */}
+                    {role === 'owner' && (
+                      <IconButton
+                        icon="close"
+                        label={t('app.receipts.removePayment')}
+                        variant="ghost"
+                        onClick={() => retirer(p.id)}
+                      />
+                    )}
+                  </span>
                 </li>
               ))}
             </ul>

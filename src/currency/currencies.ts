@@ -1,9 +1,18 @@
 /**
  * Devises supportées.
  *
- * Aucune conversion de change n'est appliquée : un montant du jeu de données
- * est affiché tel quel, avec le formatage et le symbole de la devise choisie.
- * C'est un parti pris assumé, signalé à l'utilisateur par `MoneyBasisNote`.
+ * Aucune conversion de change n'est appliquée : un montant est affiché tel quel,
+ * avec le formatage et le symbole de la devise en vigueur.
+ *
+ * Ce parti pris se réclamait d'un avertissement, « signalé à l'utilisateur par
+ * `MoneyBasisNote` » — composant qui n'a jamais existé. La justification était
+ * donc invoquée sans être tenue, et un parc camerounais pouvait s'afficher en
+ * euros parce que le navigateur l'avait retenu.
+ *
+ * Ce qui le rend tenable aujourd'hui n'est pas une note mais une contrainte :
+ * la devise vient du PARC (voir `AppShell`), et le sélecteur ne survit qu'en
+ * démonstration, où les montants sont fictifs. Sans conversion, il n'y a qu'une
+ * devise juste pour un parc — la sienne.
  * Les tarifs de la landing, eux, sont ancrés indépendamment par devise (voir
  * `features/marketing/pricing.ts`) et ne sont donc pas concernés.
  */

@@ -1012,7 +1012,9 @@ parksRouter.post(
       },
       include: {
         payments: {
-          select: { amountMinor: true, method: true, paidOn: true, reference: true },
+          // `id` : sans lui, l'écran qui LISTE les versements ne peut pas
+          // désigner celui qu'on veut retirer.
+          select: { id: true, amountMinor: true, method: true, paidOn: true, reference: true },
           orderBy: { paidOn: 'asc' },
         },
         lease: {
@@ -1072,6 +1074,7 @@ parksRouter.post(
       paidMinor: encaisse,
       balanceMinor: solde,
       payments: echeance.payments.map((p) => ({
+        id: p.id,
         amountMinor: p.amountMinor,
         method: p.method,
         paidOn: p.paidOn.toISOString().slice(0, 10),
@@ -2200,5 +2203,66 @@ parksRouter.post(
     // `issued` et non `created` : le nombre d'échéances RÉELLEMENT ajoutées.
     // Un second appel rend zéro, ce qui est un fait et non une erreur.
     res.status(200).json({ issued: count, leases: baux.length })
+  },
+)
+
+/**
+ * Supprime un versement.
+ *
+ * Le pendant manquant de l'annulation posée ailleurs : un encaissement saisi sur
+ * la mauvaise période, au mauvais montant ou pour le mauvais locataire ne se
+ * réparait que dans la base. Un registre sans gomme force à contourner le
+ * produit, et c'est là que les vraies erreurs commencent.
+ *
+ * Réservée au PROPRIÉTAIRE. Retirer un versement fait réapparaître une dette :
+ * c'est de l'argent qu'on déclare ne plus avoir reçu, et le gestionnaire
+ * « propose, ne décide pas ».
+ *
+ * L'échéance, elle, RESTE. Elle a été appelée, elle est due, et la supprimer
+ * effacerait la dette au lieu de la rétablir.
+ */
+parksRouter.delete(
+  '/:parkId/payments/:paymentId',
+  exigerAppartenance,
+  exigerRole('owner'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const paymentId = z.string().uuid().parse(req.params.paymentId)
+
+    const versement = await prisma.payment.findFirst({
+      where: { id: paymentId, charge: { lease: { unit: { building: { parkId } } } } },
+      select: { id: true, amountMinor: true, method: true, paidOn: true, chargeId: true },
+    })
+    if (!versement) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    await prisma.$transaction([
+      prisma.payment.delete({ where: { id: versement.id } }),
+      prisma.auditEvent.create({
+        data: {
+          parkId,
+          actorId: req.compteId!,
+          action: 'payment.delete',
+          entity: 'RentCharge',
+          entityId: versement.chargeId,
+          /**
+           * Le versement disparaît ; sa trace reste, montant compris.
+           *
+           * C'est ce qui distingue une correction d'un effacement : le jour où
+           * un locataire produira un reçu pour une somme absente du registre, ce
+           * journal dira quand elle en a été retirée et par qui.
+           */
+          payload: {
+            amountMinor: versement.amountMinor,
+            method: versement.method,
+            paidOn: versement.paidOn.toISOString().slice(0, 10),
+          },
+        },
+      }),
+    ])
+
+    res.status(204).end()
   },
 )

@@ -2613,3 +2613,95 @@ describe('appel de loyers', () => {
     expect(await prisma.rentCharge.count()).toBe(0)
   })
 })
+
+describe('suppression d’un versement', () => {
+  async function parcAvecVersement(email: string) {
+    const { cookie } = await inscrire(email, { parkName: 'Parc' })
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', cookie)
+    const parkId = parcs.body.parks[0].id
+    const immeuble = await request(serveur)
+      .post(`/api/parks/${parkId}/buildings`)
+      .set('Cookie', cookie)
+      .send({ name: 'Résidence Makepe', district: 'Makepe' })
+    const logement = await request(serveur)
+      .post(`/api/parks/${parkId}/buildings/${immeuble.body.building.id}/units`)
+      .set('Cookie', cookie)
+      .send({ label: 'A1', type: 'T3', surfaceSqm: 78, baseRentMinor: 145000 })
+    const unitId = logement.body.unit.id
+    await request(serveur)
+      .post(`/api/parks/${parkId}/tenants`)
+      .set('Cookie', cookie)
+      .send({ unitId, fullName: 'Charles Ngassa', startsOn: '2026-01-01', rentMinor: 145000 })
+    const versement = await request(serveur)
+      .post(`/api/parks/${parkId}/payments`)
+      .set('Cookie', cookie)
+      .send({ unitId, periodStart: '2026-07-01', amountMinor: 145000, method: 'cash' })
+    return { cookie, parkId, paymentId: versement.body.payment.id as string }
+  }
+
+  it('rétablit la dette, sans effacer l’échéance', async () => {
+    const { cookie, parkId, paymentId } = await parcAvecVersement('gomme@example.com')
+
+    const res = await request(serveur)
+      .delete(`/api/parks/${parkId}/payments/${paymentId}`)
+      .set('Cookie', cookie)
+
+    expect(res.status).toBe(204)
+    expect(await prisma.payment.count()).toBe(0)
+    /**
+     * L'échéance RESTE. Elle a été appelée, elle est due — la supprimer
+     * effacerait la dette au lieu de la rétablir, ce qui est l'inverse du geste
+     * demandé.
+     */
+    expect(await prisma.rentCharge.count()).toBe(1)
+  })
+
+  it('garde au journal ce qui a été retiré, montant compris', async () => {
+    const { cookie, parkId, paymentId } = await parcAvecVersement('journal@example.com')
+    await request(serveur)
+      .delete(`/api/parks/${parkId}/payments/${paymentId}`)
+      .set('Cookie', cookie)
+
+    /**
+     * Ce qui distingue une correction d'un effacement. Le jour où un locataire
+     * produira un reçu pour une somme absente du registre, ce journal dira quand
+     * elle en a été retirée et par qui.
+     */
+    const trace = await prisma.auditEvent.findFirstOrThrow({
+      where: { parkId, action: 'payment.delete' },
+    })
+    expect((trace.payload as { amountMinor: number }).amountMinor).toBe(145000)
+    expect(trace.actorId).not.toBeNull()
+  })
+
+  it('la refuse au gestionnaire : c’est de l’argent qu’on déclare ne plus avoir reçu', async () => {
+    const { parkId, paymentId } = await parcAvecVersement('refus@example.com')
+    const g = await inscrire('diane5@example.com')
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'diane5@example.com' },
+    })
+    await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'manager' } })
+
+    const res = await request(serveur)
+      .delete(`/api/parks/${parkId}/payments/${paymentId}`)
+      .set('Cookie', g.cookie)
+
+    expect(res.status).toBe(403)
+    // Un refus qui laisse une trace n'est pas un refus.
+    expect(await prisma.payment.count()).toBe(1)
+  })
+
+  it('ne touche pas au versement d’un autre parc', async () => {
+    const { paymentId } = await parcAvecVersement('cible@example.com')
+    const autre = await inscrire('voisin6@example.com', { parkName: 'Autre parc' })
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', autre.cookie)
+
+    const res = await request(serveur)
+      .delete(`/api/parks/${parcs.body.parks[0].id}/payments/${paymentId}`)
+      .set('Cookie', autre.cookie)
+
+    // 404 et non 403 : un 403 confirmerait que ce versement existe ailleurs.
+    expect(res.status).toBe(404)
+    expect(await prisma.payment.count()).toBe(1)
+  })
+})

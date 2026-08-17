@@ -467,6 +467,8 @@ export const en: Dictionary = {
       payments: 'Payments',
       print: 'Print',
       noCharge: 'No charge for this period: there is nothing to certify.',
+      removePayment: 'Remove this payment',
+      paymentRemoved: 'Payment removed · the debt is restored',
       issue: 'Receipt',
     },
     payments: {

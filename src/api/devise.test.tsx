@@ -19,12 +19,45 @@ import type { EtatSession } from '@/api/SessionProvider'
 
 const PARC = '11111111-2222-4333-8444-555555555555'
 
-function session(currency: string): EtatSession {
+function session(currency: string, role: 'owner' | 'manager' = 'owner'): EtatSession {
   return {
     statut: 'connecte',
     compte: COMPTE_FICTIF,
-    adhesions: [{ parkId: PARC, role: 'owner', parkName: 'Parc de test', currency }],
+    adhesions: [{ parkId: PARC, role, parkName: 'Parc de test', currency }],
   }
+}
+
+/** Le document que le serveur rend : sa devise et l'identifiant du versement. */
+function quittance(serveur: ReturnType<typeof installerFauxServeur>) {
+  serveur.quand('POST', `/parks/${PARC}/receipts`, {
+    status: 201,
+    body: {
+      document: {
+        kind: 'quittance',
+        currency: 'XAF',
+        periodStart: '2026-07-01',
+        tenant: 'Charles Ngassa',
+        unit: 'A1',
+        building: 'Résidence Makepe',
+        district: 'Makepe',
+        rentMinor: 145000,
+        waterMinor: 0,
+        powerMinor: 0,
+        dueMinor: 145000,
+        paidMinor: 145000,
+        balanceMinor: 0,
+        payments: [
+          {
+            id: 'ffffffff-1111-4111-8111-111111111111',
+            amountMinor: 145000,
+            method: 'cash',
+            paidOn: '2026-07-03',
+            reference: null,
+          },
+        ],
+      },
+    },
+  })
 }
 
 function parcVide() {
@@ -92,7 +125,15 @@ describe('devise de la quittance', () => {
           dueMinor: 145000,
           paidMinor: 145000,
           balanceMinor: 0,
-          payments: [{ amountMinor: 145000, method: 'cash', paidOn: '2026-07-03', reference: null }],
+          payments: [
+            {
+              id: 'ffffffff-1111-4111-8111-111111111111',
+              amountMinor: 145000,
+              method: 'cash',
+              paidOn: '2026-07-03',
+              reference: null,
+            },
+          ],
         },
       },
     })
@@ -105,6 +146,46 @@ describe('devise de la quittance', () => {
     const dialogue = await screen.findByRole('dialog')
     expect(dialogue.textContent).toMatch(/FCFA|CFA/)
     expect(dialogue.textContent).not.toMatch(/€/)
+  })
+
+  it('offre au propriétaire de retirer un versement fautif', async () => {
+    /**
+     * Le pendant manquant de l'annulation posée ailleurs. Un encaissement saisi
+     * sur la mauvaise période ne se réparait que dans la base — un registre sans
+     * gomme force à contourner le produit, et c'est là que les vraies erreurs
+     * commencent. L'échéance, elle, reste : retirer le versement rétablit la
+     * dette, il ne l'efface pas.
+     */
+    const serveur = parcVide()
+    quittance(serveur)
+    serveur.quand('DELETE', `/parks/${PARC}/payments/ffffffff-1111-4111-8111-111111111111`, {
+      status: 204,
+    })
+
+    const user = userEvent.setup()
+    renderApp('/app/paiements', { session: session('XAF') })
+    await screen.findByText('A1')
+    await user.click(screen.getByRole('button', { name: /quittance/i }))
+    await screen.findByRole('dialog')
+
+    await user.click(screen.getByRole('button', { name: /retirer ce versement/i }))
+
+    expect(await screen.findByText(/versement retiré/i)).toBeInTheDocument()
+    expect(serveur.appels.some((a) => a.methode === 'DELETE')).toBe(true)
+  })
+
+  it('ne l’offre pas au gestionnaire', async () => {
+    const serveur = parcVide()
+    quittance(serveur)
+    const user = userEvent.setup()
+    renderApp('/app/paiements', { session: session('XAF', 'manager') })
+    await screen.findByText('A1')
+    await user.click(screen.getByRole('button', { name: /quittance/i }))
+    await screen.findByRole('dialog')
+
+    // Retirer un versement fait réapparaître une dette : c'est de l'argent qu'on
+    // déclare ne plus avoir reçu, et le gestionnaire propose sans décider.
+    expect(screen.queryByRole('button', { name: /retirer ce versement/i })).not.toBeInTheDocument()
   })
 })
 
