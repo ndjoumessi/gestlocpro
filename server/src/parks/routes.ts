@@ -104,15 +104,20 @@ const schemaInvitation = z.object({
 })
 
 /**
- * Les échéances à relancer, désignées une par une.
+ * Les BAUX à relancer, et non les échéances.
+ *
+ * Première rédaction : `chargeIds`. C'était calquer le contrat sur le modèle de
+ * données plutôt que sur le geste. On ne relance pas un mois, on relance un
+ * locataire — et celui qui doit juin ET juillet ne reçoit pas deux courriers.
+ * Désigner une échéance aurait obligé le client à en choisir une, arbitrairement.
  *
  * Le client calcule qui est en retard — c'est lui qui l'affiche — mais il n'en
- * est pas l'AUTORITÉ : chaque échéance est revérifiée ici. Sans cela, un client
+ * est pas l'AUTORITÉ : chaque bail est revérifié ici. Sans cela, un client
  * fautif, ancien ou malveillant relancerait un locataire à jour, et une relance
  * indue coûte plus cher qu'une relance manquée.
  */
 const schemaRelance = z.object({
-  chargeIds: z.array(z.string().uuid()).min(1).max(200),
+  leaseIds: z.array(z.string().uuid()).min(1).max(200),
 })
 
 /**
@@ -1116,100 +1121,123 @@ parksRouter.post(
     const maintenant = new Date()
     const minuit = debutDuJour(maintenant)
 
-    const echeances = await prisma.rentCharge.findMany({
-      // Le `parkId` est dans le WHERE, pas vérifié après lecture : une échéance
-      // d'un autre parc ne doit pas même être chargée.
-      where: { id: { in: corps.chargeIds }, lease: { unit: { building: { parkId } } } },
+    const baux = await prisma.lease.findMany({
+      // Le `parkId` est dans le WHERE, pas vérifié après lecture : le bail
+      // d'un autre parc ne doit pas même être chargé.
+      where: { id: { in: corps.leaseIds }, unit: { building: { parkId } } },
       select: {
         id: true,
-        dueOn: true,
-        rentMinor: true,
-        payments: { select: { amountMinor: true } },
-        lease: {
-          select: {
-            id: true,
-            unitId: true,
-            tenant: { select: { id: true, fullName: true, userId: true } },
-          },
+        unitId: true,
+        tenant: { select: { fullName: true, userId: true } },
+        // Toutes les échéances EXIGIBLES, pas la dernière : un locataire qui
+        // doit juin et juillet est relancé une fois, pour le total.
+        charges: {
+          where: { dueOn: { lt: maintenant } },
+          select: { dueOn: true, rentMinor: true, payments: { select: { amountMinor: true } } },
+          orderBy: { dueOn: 'asc' },
         },
       },
     })
 
     /**
-     * Les échéances déjà relancées AUJOURD'HUI, en une requête.
+     * Les baux déjà relancés AUJOURD'HUI, en une requête.
      *
-     * Une lecture par échéance ferait N requêtes pour une action qui en vise
-     * une quinzaine sur un parc moyen — et la grille tarifaire chiffre le cas à
+     * Une lecture par bail ferait N requêtes pour une action qui en vise une
+     * quinzaine sur un parc moyen — et la grille tarifaire chiffre le cas à
      * cinquante unités.
      */
-    const dejaRelancees = await prisma.notification.findMany({
+    const dejaRelances = await prisma.notification.findMany({
       where: {
         parkId,
         messageKey: CLE_RELANCE,
         createdAt: { gte: minuit },
-        unitId: { in: echeances.map((e) => e.lease.unitId) },
+        // L'unité sert de PRÉ-FILTRE indexé ; la clé réelle est le bail, lu
+        // dans `params` juste après.
+        unitId: { in: baux.map((b) => b.unitId) },
       },
-      select: { unitId: true },
+      select: { params: true },
     })
-    const unitesDejaVues = new Set(dejaRelancees.map((n) => n.unitId))
+    /**
+     * La garde porte sur le BAIL, pas sur le logement.
+     *
+     * Première rédaction : sur `unitId`, seul champ de portée que `Notification`
+     * offre. Elle confondait deux baux successifs du même logement — un ancien
+     * locataire parti en laissant des arriérés, et celui qui l'a remplacé. Ce
+     * sont deux personnes : relancer l'une n'a jamais relancé l'autre, et la
+     * garde aurait silencieusement avalé la seconde relance.
+     *
+     * Le bail voyage donc dans `params`, qui est du JSON libre — aucune
+     * migration, et la lecture reste indexée par le pré-filtre ci-dessus.
+     */
+    const bauxDejaVus = new Set(
+      dejaRelances
+        .map((n) => (n.params as { leaseId?: string } | null)?.leaseId)
+        .filter((id): id is string => typeof id === 'string'),
+    )
 
     const envoyees: string[] = []
-    const ignorees: { chargeId: string; reason: string }[] = []
+    const ignorees: { leaseId: string; reason: string }[] = []
 
-    for (const echeance of echeances) {
-      const regle = echeance.payments.reduce((somme, p) => somme + p.amountMinor, 0)
+    for (const bail of baux) {
       // Le même calcul que `statut()`, délibérément : relancer un locataire que
       // l'écran affiche à jour serait le pire des défauts possibles ici.
-      if (regle >= echeance.rentMinor) {
-        ignorees.push({ chargeId: echeance.id, reason: 'already_paid' })
+      const dûMinor = bail.charges.reduce((somme, c) => {
+        const regle = c.payments.reduce((s, p) => s + p.amountMinor, 0)
+        return somme + Math.max(0, c.rentMinor - regle)
+      }, 0)
+      if (dûMinor <= 0) {
+        ignorees.push({ leaseId: bail.id, reason: 'nothing_due' })
         continue
       }
-      const jours = Math.floor((maintenant.getTime() - echeance.dueOn.getTime()) / 86_400_000)
-      if (jours <= 0) {
-        ignorees.push({ chargeId: echeance.id, reason: 'not_overdue' })
+      if (bauxDejaVus.has(bail.id)) {
+        ignorees.push({ leaseId: bail.id, reason: 'already_reminded_today' })
         continue
       }
-      if (unitesDejaVues.has(echeance.lease.unitId)) {
-        ignorees.push({ chargeId: echeance.id, reason: 'already_reminded_today' })
-        continue
-      }
+
+      // Le retard se compte depuis la PLUS ANCIENNE échéance impayée : c'est
+      // celle qui fait la gravité, et le chiffre que lit le bailleur.
+      const plusAncienne = bail.charges.find(
+        (c) => c.payments.reduce((s, p) => s + p.amountMinor, 0) < c.rentMinor,
+      )
+      const jours = plusAncienne
+        ? Math.floor((maintenant.getTime() - plusAncienne.dueOn.getTime()) / 86_400_000)
+        : 0
 
       await prisma.notification.create({
         data: {
           parkId,
           kind: 'payment',
           messageKey: CLE_RELANCE,
+          // `leaseId` dans les paramètres : c'est la clé de la garde du jour,
+          // et `Notification` n'a pas de colonne pour le porter.
           params: {
-            tenant: echeance.lease.tenant.fullName,
+            leaseId: bail.id,
+            tenant: bail.tenant.fullName,
             overdueDays: jours,
-            dueMinor: echeance.rentMinor - regle,
+            dueMinor: dûMinor,
           },
           severity: jours >= 15 ? 'high' : 'medium',
-          unitId: echeance.lease.unitId,
+          unitId: bail.unitId,
           channel: 'in_app',
           // `sentAt` reste nul : rien n'est encore parti.
           //
           // La clé est posée ou ABSENTE, jamais à `undefined` : un locataire
           // sans compte n'a pas de destinataire, et `exactOptionalPropertyTypes`
           // distingue « pas de destinataire » de « destinataire indéfini ».
-          ...(echeance.lease.tenant.userId
-            ? { recipients: { create: [{ userId: echeance.lease.tenant.userId }] } }
+          ...(bail.tenant.userId
+            ? { recipients: { create: [{ userId: bail.tenant.userId }] } }
             : {}),
         },
       })
 
-      // La même unité relancée deux fois dans UN SEUL appel : la liste est
-      // fournie par le client, rien ne l'empêche de citer deux échéances du
-      // même bail.
-      unitesDejaVues.add(echeance.lease.unitId)
-      envoyees.push(echeance.id)
+      envoyees.push(bail.id)
     }
 
     // Les identifiants inconnus du parc n'ont même pas été lus : ils sortent
     // ici, sans dire s'ils existent ailleurs.
-    const lues = new Set(echeances.map((e) => e.id))
-    for (const id of corps.chargeIds) {
-      if (!lues.has(id)) ignorees.push({ chargeId: id, reason: 'not_found' })
+    const lus = new Set(baux.map((b) => b.id))
+    for (const id of corps.leaseIds) {
+      if (!lus.has(id)) ignorees.push({ leaseId: id, reason: 'not_found' })
     }
 
     if (envoyees.length > 0) {
@@ -1218,9 +1246,9 @@ parksRouter.post(
           parkId,
           actorId: req.compteId!,
           action: 'rent.remind',
-          entity: 'RentCharge',
+          entity: 'Lease',
           entityId: envoyees[0]!,
-          payload: { chargeIds: envoyees, count: envoyees.length },
+          payload: { leaseIds: envoyees, count: envoyees.length },
         },
       })
     }

@@ -189,6 +189,27 @@ export const api = {
   deleteBuilding: <T>(parkId: string, buildingId: string) =>
     requete<T>(`/parks/${parkId}/buildings/${buildingId}`, { method: 'DELETE' }),
 
+  /**
+   * Relance les échéances désignées.
+   *
+   * Le serveur revérifie CHACUNE : à jour, pas encore due, déjà relancée ce
+   * matin, ou d'un autre parc. Il rend donc `sent` et `skipped` plutôt qu'un
+   * simple succès — l'écran doit pouvoir dire « 2 relancés, 1 déjà relancé »
+   * plutôt que d'annoncer trois envois dont un n'a pas eu lieu.
+   */
+  remindRent: <T>(parkId: string, chargeIds: string[]) =>
+    requete<T>(`/parks/${parkId}/reminders`, {
+      method: 'POST',
+      body: JSON.stringify({ chargeIds }),
+    }),
+
+  /** Met en demeure — droit du seul propriétaire, motif obligatoire. */
+  serveFormalNotice: <T>(parkId: string, leaseId: string, reason: string) =>
+    requete<T>(`/parks/${parkId}/leases/${leaseId}/formal-notice`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }),
+
   issueInvitation: <T>(
     parkId: string,
     corps: { role: 'tenant' | 'manager'; unitId?: string },

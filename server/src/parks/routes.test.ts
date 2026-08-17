@@ -1252,15 +1252,15 @@ describe('relance des loyers', () => {
   })
 
   it('laisse une trace datée, sans prétendre avoir envoyé quoi que ce soit', async () => {
-    const chargeId = await echeanceEnRetard()
+    await echeanceEnRetard()
 
     const res = await request(app)
       .post(`/api/parks/${parkId}/reminders`)
       .set('Cookie', proprio)
-      .send({ chargeIds: [chargeId] })
+      .send({ leaseIds: [leaseId] })
 
     expect(res.status, JSON.stringify(res.body)).toBe(200)
-    expect(res.body.sent).toEqual([chargeId])
+    expect(res.body.sent).toEqual([leaseId])
 
     const trace = await prisma.notification.findFirstOrThrow({
       where: { parkId, messageKey: 'notifications.rentReminder' },
@@ -1278,16 +1278,16 @@ describe('relance des loyers', () => {
   })
 
   it('ne relance pas deux fois le même locataire dans la même journée', async () => {
-    const chargeId = await echeanceEnRetard()
+    await echeanceEnRetard()
     await request(app)
       .post(`/api/parks/${parkId}/reminders`)
       .set('Cookie', proprio)
-      .send({ chargeIds: [chargeId] })
+      .send({ leaseIds: [leaseId] })
 
     const second = await request(app)
       .post(`/api/parks/${parkId}/reminders`)
       .set('Cookie', proprio)
-      .send({ chargeIds: [chargeId] })
+      .send({ leaseIds: [leaseId] })
 
     // 200 et non une erreur : l'appel est licite, il n'a simplement rien à
     // faire. Le corps le dit, plutôt que de laisser croire à un second envoi.
@@ -1297,17 +1297,46 @@ describe('relance des loyers', () => {
     expect(await prisma.notification.count({ where: { parkId } })).toBe(1)
   })
 
-  it('ne relance pas deux échéances du même bail en un seul appel', async () => {
-    // La liste vient du client : rien ne l'empêche de citer deux mois de retard
-    // du même locataire. La garde de la journée ne suffit pas — aucune des deux
-    // n'est encore en base quand la seconde est traitée.
-    const un = await echeanceEnRetard()
-    const deux = await prisma.rentCharge.create({
+  it('relance séparément deux baux successifs du même logement', async () => {
+    /**
+     * Ce cas a remplacé un test qui NE POUVAIT PAS échouer.
+     *
+     * Il citait deux fois le même bail pour éprouver une garde en mémoire —
+     * mais `findMany` dédoublonne les identifiants, donc la boucle ne voyait
+     * qu'une ligne et la garde n'était jamais atteinte. Le retirer du code ne
+     * faisait pas tomber le test : c'est ainsi qu'il s'est dénoncé.
+     *
+     * En cherchant le cas qui l'atteindrait vraiment, le vrai défaut est
+     * apparu : la garde du jour était posée sur le LOGEMENT. Un ancien
+     * locataire parti en laissant des arriérés et celui qui l'a remplacé
+     * partagent le même logement et sont deux personnes. Relancer l'un aurait
+     * silencieusement avalé la relance de l'autre.
+     */
+    await echeanceEnRetard()
+
+    const unite = await prisma.lease.findUniqueOrThrow({
+      where: { id: leaseId },
+      select: { unitId: true },
+    })
+    const ancien = await prisma.tenant.create({
+      data: { parkId, fullName: 'Ancien locataire' },
+      select: { id: true },
+    })
+    const bailClos = await prisma.lease.create({
       data: {
-        leaseId,
-        periodStart: new Date('2026-07-01T00:00:00Z'),
-        dueOn: new Date('2026-07-05T00:00:00Z'),
+        unitId: unite.unitId,
+        tenantId: ancien.id,
+        startsOn: new Date('2025-01-01T00:00:00Z'),
+        endsOn: new Date('2025-12-31T00:00:00Z'),
         rentMinor: 145000,
+        status: 'ended',
+        charges: {
+          create: {
+            periodStart: new Date('2025-11-01T00:00:00Z'),
+            dueOn: new Date('2025-11-05T00:00:00Z'),
+            rentMinor: 145000,
+          },
+        },
       },
       select: { id: true },
     })
@@ -1315,10 +1344,11 @@ describe('relance des loyers', () => {
     const res = await request(app)
       .post(`/api/parks/${parkId}/reminders`)
       .set('Cookie', proprio)
-      .send({ chargeIds: [un, deux.id] })
+      .send({ leaseIds: [leaseId, bailClos.id] })
 
-    expect(res.body.sent).toHaveLength(1)
-    expect(await prisma.notification.count({ where: { parkId } })).toBe(1)
+    // DEUX relances : deux locataires, deux dettes, même logement.
+    expect(res.body.sent).toHaveLength(2)
+    expect(await prisma.notification.count({ where: { parkId } })).toBe(2)
   })
 
   it('refuse de relancer un locataire à jour', async () => {
@@ -1338,60 +1368,61 @@ describe('relance des loyers', () => {
     const res = await request(app)
       .post(`/api/parks/${parkId}/reminders`)
       .set('Cookie', proprio)
-      .send({ chargeIds: [chargeId] })
+      .send({ leaseIds: [leaseId] })
 
     // Accuser à tort est le défaut le plus coûteux de cette route : le client
     // affiche « à jour » au même instant.
     expect(res.body.sent).toEqual([])
-    expect(res.body.skipped[0].reason).toBe('already_paid')
+    expect(res.body.skipped[0].reason).toBe('nothing_due')
     expect(await prisma.notification.count({ where: { parkId } })).toBe(0)
   })
 
-  it('refuse de relancer une échéance qui n’est pas encore due', async () => {
-    const future = await prisma.rentCharge.create({
+  it('refuse de relancer un bail dont rien n’est encore exigible', async () => {
+    await prisma.rentCharge.create({
       data: {
         leaseId,
         periodStart: new Date('2099-01-01T00:00:00Z'),
         dueOn: new Date('2099-01-05T00:00:00Z'),
         rentMinor: 145000,
       },
-      select: { id: true },
     })
 
     const res = await request(app)
       .post(`/api/parks/${parkId}/reminders`)
       .set('Cookie', proprio)
-      .send({ chargeIds: [future.id] })
+      .send({ leaseIds: [leaseId] })
 
-    expect(res.body.skipped[0].reason).toBe('not_overdue')
+    // Les échéances futures ne sont pas même lues : le bail n'a rien d'exigible.
+    expect(res.body.sent).toEqual([])
+    expect(res.body.skipped[0].reason).toBe('nothing_due')
   })
 
-  it('ignore une échéance d’un autre parc sans dire qu’elle existe', async () => {
-    const chargeId = await echeanceEnRetard()
+  it('ignore le bail d’un autre parc sans dire qu’il existe', async () => {
+    await echeanceEnRetard()
     const autre = await inscrire('voisin@example.com', { parkName: 'Autre parc' })
     const parcs = await request(app).get('/api/parks').set('Cookie', autre.cookie)
 
     const res = await request(app)
       .post(`/api/parks/${parcs.body.parks[0].id}/reminders`)
       .set('Cookie', autre.cookie)
-      .send({ chargeIds: [chargeId] })
+      .send({ leaseIds: [leaseId] })
 
-    // `not_found` et non `already_paid` : la réponse ne doit pas renseigner sur
-    // l'état d'une échéance qui appartient à quelqu'un d'autre.
+    // `not_found` et non `nothing_due` : la réponse ne doit pas renseigner sur
+    // l'état d'un bail qui appartient à quelqu'un d'autre.
     expect(res.body.sent).toEqual([])
     expect(res.body.skipped[0].reason).toBe('not_found')
   })
 
   it('ouvre la relance au gestionnaire, dont c’est le métier quotidien', async () => {
-    const chargeId = await echeanceEnRetard()
+    await echeanceEnRetard()
 
     const res = await request(app)
       .post(`/api/parks/${parkId}/reminders`)
       .set('Cookie', gestionnaire)
-      .send({ chargeIds: [chargeId] })
+      .send({ leaseIds: [leaseId] })
 
     expect(res.status).toBe(200)
-    expect(res.body.sent).toEqual([chargeId])
+    expect(res.body.sent).toEqual([leaseId])
   })
 })
 
