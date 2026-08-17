@@ -1110,3 +1110,80 @@ describe('envoi du code par SMS', () => {
     }
   })
 })
+
+/**
+ * Défaire une création d'immeuble.
+ *
+ * Le nom n'est délibérément pas contraint à l'unicité — deux immeubles peuvent
+ * légitimement porter le même dans deux quartiers. La contrepartie, c'est
+ * qu'une saisie en double produit deux entrées rigoureusement indiscernables,
+ * et qu'il n'existait aucun moyen d'en retirer une. Toute faute de frappe était
+ * définitive.
+ *
+ * La garde porte sur le VIDE : un immeuble qui porte des logements porte aussi
+ * des baux, des cautions et des encaissements, et rien ici ne doit pouvoir
+ * emporter tout cela en cascade.
+ */
+describe('suppression d’un immeuble', () => {
+  async function parcAvecImmeuble(email: string) {
+    const { cookie } = await inscrire(email, { parkName: 'Parc Bastos', countryCode: 'CM' })
+    const parcs = await request(app).get('/api/parks').set('Cookie', cookie)
+    const parkId = parcs.body.parks[0].id
+    const cree = await request(app)
+      .post(`/api/parks/${parkId}/buildings`)
+      .set('Cookie', cookie)
+      .send({ name: 'Residence Djoumessi', district: 'Bastos' })
+    return { cookie, parkId, buildingId: cree.body.building.id as string }
+  }
+
+  it('retire un immeuble vide, et le parc ne le rend plus', async () => {
+    const { cookie, parkId, buildingId } = await parcAvecImmeuble('vide@example.com')
+
+    const res = await request(app)
+      .delete(`/api/parks/${parkId}/buildings/${buildingId}`)
+      .set('Cookie', cookie)
+    expect(res.status).toBe(204)
+
+    const parc = await request(app).get(`/api/parks/${parkId}/portfolio`).set('Cookie', cookie)
+    expect(parc.body.buildings).toHaveLength(0)
+  })
+
+  it('refuse un immeuble qui porte des logements, sans rien détruire', async () => {
+    const { cookie, parkId, buildingId } = await parcAvecImmeuble('plein@example.com')
+    await request(app)
+      .post(`/api/parks/${parkId}/buildings/${buildingId}/units`)
+      .set('Cookie', cookie)
+      // `baseRentMinor` : le champ du contrat, que `rentMinor` — le nom rendu
+      // par la LECTURE du parc — ne remplace pas. Une charge mal formée passait
+      // en 400, l'immeuble restait vide, et la suppression avait alors raison
+      // de réussir : le cas ne vérifiait rien.
+      .send({ label: 'A1', type: 'T2', surfaceSqm: 100, baseRentMinor: 20000 })
+
+    const res = await request(app)
+      .delete(`/api/parks/${parkId}/buildings/${buildingId}`)
+      .set('Cookie', cookie)
+    // 409 et non 400 : la requête est bien formée, c'est l'état du parc qui s'y
+    // oppose. L'écran doit pouvoir dire quoi vider d'abord.
+    expect(res.status).toBe(409)
+    expect(res.body.error).toBe('building_not_empty')
+
+    const parc = await request(app).get(`/api/parks/${parkId}/portfolio`).set('Cookie', cookie)
+    expect(parc.body.buildings).toHaveLength(1)
+  })
+
+  it('ne laisse pas supprimer l’immeuble d’un autre parc', async () => {
+    const { buildingId } = await parcAvecImmeuble('proprio-a@example.com')
+    const { cookie: cookieB } = await inscrire('proprio-b@example.com', {
+      parkName: 'Parc B',
+      countryCode: 'CM',
+    })
+    const parcsB = await request(app).get('/api/parks').set('Cookie', cookieB)
+    const parkIdB = parcsB.body.parks[0].id
+
+    const res = await request(app)
+      .delete(`/api/parks/${parkIdB}/buildings/${buildingId}`)
+      .set('Cookie', cookieB)
+    // 404 et non 403 : un 403 confirmerait que cet immeuble existe ailleurs.
+    expect(res.status).toBe(404)
+  })
+})

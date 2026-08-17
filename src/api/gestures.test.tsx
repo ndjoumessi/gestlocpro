@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import { waitFor } from '@testing-library/react'
 import { renderApp, screen, userEvent, within } from '@/test/render'
 import { installerFauxServeur } from '@/test/api'
-import { PARK, SESSION_AVEC_PARC, U2, portefeuille } from './noTechnicalIds.test'
+import { IMMEUBLE, PARK, SESSION_AVEC_PARC, U2, portefeuille } from './noTechnicalIds.test'
 
 
 /**
@@ -299,15 +300,18 @@ describe('constituer son parc', () => {
      * L'immeuble rendu par le SERVEUR apparaît à l'écran.
      *
      * On cherche le QUARTIER et non le nom : les cartes de cet écran portent
-     * `district`, et un immeuble neuf n'a encore aucun logement, donc aucune
-     * ligne de tableau où son nom figurerait. On crée « Résidence Makepe » et
-     * l'écran affiche « Makepe » — c'est un vrai manque, noté et à traiter,
-     * mais ce test décrit ce que le produit fait aujourd'hui plutôt que ce
-     * qu'on aimerait qu'il fasse.
+     * le NOM depuis qu'un même quartier peut en porter deux : deux immeubles
+     * à Bastos donnaient deux cartes intitulées « BASTOS », indiscernables.
+     *
+     * Ce cas cherchait le quartier, et son commentaire notait le manque —
+     * « on crée Résidence Makepe et l'écran affiche Makepe, c'est un vrai
+     * manque, noté et à traiter ». Il est traité : la carte porte le nom, le
+     * quartier passe en note, et la puce de filtre reste au quartier puisque
+     * c'est sur lui qu'on filtre.
      */
-    // Deux occurrences : la carte de quartier et la puce de filtre — l'écran
-    // sait donc à la fois le compter et le proposer au filtrage.
-    expect(await screen.findAllByText('Makepe')).toHaveLength(2)
+    expect(await screen.findByText('Résidence Makepe')).toBeInTheDocument()
+    // Le quartier n'a pas disparu : il reste la clé du filtre.
+    expect(screen.getByRole('button', { name: 'Makepe' })).toBeInTheDocument()
   })
 
   it('n’envoie rien quand le nom est trop court, et le dit', async () => {
@@ -330,7 +334,6 @@ describe('constituer son parc', () => {
 })
 
 describe('saisir un logement', () => {
-  const IMMEUBLE = 'aaaaaaaa-2222-4333-8444-555555555555'
 
   it('envoie le logement à son immeuble, et l’affiche vacant', async () => {
     const serveur = installerFauxServeur()
@@ -780,5 +783,69 @@ describe('inviter à rejoindre le parc', () => {
     >
     expect(corps.role).toBe('manager')
     expect('unitId' in corps).toBe(false)
+  })
+})
+
+/**
+ * Défaire une création d'immeuble.
+ *
+ * Le nom n'est pas contraint à l'unicité — deux immeubles peuvent légitimement
+ * porter le même dans deux quartiers — et il n'existait aucun moyen d'en
+ * retirer un. Une saisie en double produisait deux entrées indiscernables, sans
+ * issue : toute faute de frappe était définitive.
+ */
+describe('retirer un immeuble', () => {
+  /** Un parc d'un seul immeuble, VIDE : le cas où l'issue doit exister. */
+  function parcAvecImmeubleVide() {
+    const serveur = installerFauxServeur()
+    serveur.quand('GET', `/parks/${PARK}/portfolio`, {
+      status: 200,
+      body: {
+        ...portefeuille(),
+        buildings: [{ id: IMMEUBLE, name: 'Residence Djoumessi', district: 'Bastos', units: [] }],
+      },
+    })
+    return serveur
+  }
+
+  it('demande confirmation, puis appelle le serveur', async () => {
+    const serveur = parcAvecImmeubleVide()
+    // Sans `body` : un 204 ne peut pas en porter, et le faux serveur
+    // sérialisait `null` en « null », ce que `Response` refuse.
+    serveur.quand('DELETE', `/parks/${PARK}/buildings/${IMMEUBLE}`, { status: 204 })
+
+    const user = userEvent.setup()
+    renderApp('/app/parc', { session: SESSION_AVEC_PARC })
+    await screen.findByText('Residence Djoumessi')
+
+    await user.click(
+      screen.getByRole('button', { name: /supprimer l’immeuble residence djoumessi/i }),
+    )
+    // Rien n'est parti tant qu'on n'a pas confirmé : c'est le seul geste de cet
+    // écran qu'on ne peut pas défaire.
+    expect(serveur.appels.find((a) => a.methode === 'DELETE')).toBeUndefined()
+
+    await user.click(screen.getByRole('button', { name: /^confirmer$/i }))
+
+    const appel = serveur.appels.find((a) => a.methode === 'DELETE')
+    expect(appel?.chemin).toBe(`/parks/${PARK}/buildings/${IMMEUBLE}`)
+    // La carte ne disparaît qu'APRÈS l'accord du serveur : il refuse un
+    // immeuble qui porte des logements, et la retirer d'abord montrerait une
+    // suppression qui n'a pas eu lieu.
+    await waitFor(() =>
+      expect(screen.queryByText('Residence Djoumessi')).not.toBeInTheDocument(),
+    )
+  })
+
+  it('n’offre pas l’issue sur un immeuble qui porte des logements', async () => {
+    // Le serveur la refuserait : offrir un geste qu'il refusera revient à
+    // promettre ce qu'on ne tient pas.
+    const serveur = installerFauxServeur()
+    serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: portefeuille() })
+
+    renderApp('/app/parc', { session: SESSION_AVEC_PARC })
+    await screen.findByText('Résidence Bonamoussadi')
+
+    expect(screen.queryByRole('button', { name: /supprimer l’immeuble/i })).not.toBeInTheDocument()
   })
 })

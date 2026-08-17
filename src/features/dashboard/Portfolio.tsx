@@ -11,6 +11,10 @@ import {
 } from '@/components/primitives/Skeleton'
 import { Input } from '@/components/primitives/Input'
 import { Button } from '@/components/primitives/Button'
+import { Modal } from '@/components/primitives/Modal'
+import { Icon } from '@/components/primitives/Icon'
+import { useToast } from '@/components/primitives/Toast'
+import type { Immeuble } from '@/data/apiPortfolio'
 import { cn } from '@/lib/cn'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
@@ -24,7 +28,10 @@ export function Portfolio() {
   const [logementOuvert, setLogementOuvert] = useState(false)
   const t = useT()
   const { money } = useCurrency()
-  const { units, buildings: BUILDINGS, buildingById, loading } = usePortfolio()
+  const { units, buildings: BUILDINGS, buildingById, loading, removeBuilding } = usePortfolio()
+  const { notify } = useToast()
+  /** L'immeuble dont la suppression attend confirmation. */
+  const [aSupprimer, setASupprimer] = useState<Immeuble | null>(null)
   const [query, setQuery] = useState('')
   const [building, setBuilding] = useState<string | 'all'>('all')
 
@@ -101,6 +108,36 @@ export function Portfolio() {
       />
 
       {ajoutOuvert && <AddBuildingModal open onClose={() => setAjoutOuvert(false)} />}
+
+      {/* Une confirmation AVANT une suppression définitive : c'est le seul
+          geste de cet écran qu'on ne peut pas défaire. */}
+      {aSupprimer && (
+        <Modal
+          open
+          onClose={() => setASupprimer(null)}
+          title={t('app.portfolio.deleteBuildingTitle', { name: aSupprimer.name })}
+          description={t('app.portfolio.deleteBuildingBody')}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setASupprimer(null)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  removeBuilding(aSupprimer.id)
+                  setASupprimer(null)
+                  notify(t('app.portfolio.deleteBuildingDone'), { tone: 'ok' })
+                }}
+              >
+                {t('common.confirm')}
+              </Button>
+            </>
+          }
+        >
+          <p className="text-body-s text-muted">{aSupprimer.district}</p>
+        </Modal>
+      )}
       {logementOuvert && <AddUnitModal open onClose={() => setLogementOuvert(false)} />}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -109,9 +146,28 @@ export function Portfolio() {
           return (
             <StatCard
               key={b.id}
-              label={b.district}
+              /* Le NOM et non le quartier : la carte parle d'un immeuble, et
+                 deux immeubles d'un même quartier donnaient deux cartes
+                 intitulées « BASTOS ». Le quartier passe en note, où il situe
+                 sans prétendre nommer. */
+              label={b.name}
               value={`${occ}/${total}`}
-              note={t('app.portfolio.occupancy', { occupied: occ, total })}
+              note={`${b.district} · ${t('app.portfolio.occupancy', { occupied: occ, total })}`}
+              action={
+                /* L'issue n'apparaît que sur un immeuble VIDE — le serveur
+                   refuse les autres, et offrir un geste qu'il refusera revient
+                   à promettre ce qu'on ne tient pas. */
+                total === 0 ? (
+                  <button
+                    type="button"
+                    aria-label={t('app.portfolio.deleteBuilding', { name: b.name })}
+                    onClick={() => setASupprimer(b)}
+                    className="-my-1.5 -mr-1.5 inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted hover:bg-danger-tint hover:text-danger"
+                  >
+                    <Icon name="close" size={15} />
+                  </button>
+                ) : undefined
+              }
             />
           )
         })}

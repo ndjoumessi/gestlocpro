@@ -789,16 +789,27 @@ export function StatCard({
   unit,
   delta,
   note,
+  action,
 }: {
   label: string
   value: string
   unit?: string
   delta?: ReactNode
   note?: string
+  /**
+   * Commande propre à cette carte, posée en regard de son intitulé.
+   *
+   * Distincte de `delta`, qui dit une VARIATION : une action n'est pas une
+   * donnée, et les loger au même endroit ferait lire l'une pour l'autre.
+   */
+  action?: ReactNode
 }) {
   return (
     <div className="rounded-lg border border-divider bg-surface p-4 shadow-e1 sm:p-5">
-      <p className="eyebrow text-muted">{label}</p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="eyebrow min-w-0 flex-1 truncate text-muted">{label}</p>
+        {action}
+      </div>
       <p className="mt-2 flex items-baseline gap-1.5">
         <span className="numeric text-kpi font-medium whitespace-nowrap">{value}</span>
         {unit && <span className="text-body-s text-muted">{unit}</span>}

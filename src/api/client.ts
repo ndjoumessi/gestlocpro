@@ -180,6 +180,15 @@ export const api = {
   addBuilding: <T>(parkId: string, corps: { name: string; district: string }) =>
     requete<T>(`/parks/${parkId}/buildings`, { method: 'POST', body: JSON.stringify(corps) }),
 
+  /**
+   * Retire un immeuble VIDE. Le serveur refuse s'il porte des logements.
+   *
+   * Aucun corps, aucune réponse : le 204 dit tout. `requete` sait déjà rendre
+   * `undefined` sur un corps absent.
+   */
+  deleteBuilding: <T>(parkId: string, buildingId: string) =>
+    requete<T>(`/parks/${parkId}/buildings/${buildingId}`, { method: 'DELETE' }),
+
   issueInvitation: <T>(
     parkId: string,
     corps: { role: 'tenant' | 'manager'; unitId?: string },

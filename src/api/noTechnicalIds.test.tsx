@@ -23,7 +23,7 @@ import type { EtatSession } from './SessionProvider'
 export const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
 
 export const PARK = '11111111-2222-4333-8444-555555555555'
-const IMMEUBLE = 'aaaaaaaa-2222-4333-8444-555555555555'
+export const IMMEUBLE = 'aaaaaaaa-2222-4333-8444-555555555555'
 export const U1 = 'bbbbbbbb-2222-4333-8444-555555555555'
 export const U2 = 'cccccccc-2222-4333-8444-555555555555'
 

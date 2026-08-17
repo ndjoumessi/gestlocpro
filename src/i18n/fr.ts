@@ -533,6 +533,11 @@ export const fr = {
        */
       subtitle: '{buildings}, {units}. Le statut porte sur le mois affiché.',
       // Aucun logement du tout : ce n'est pas une recherche infructueuse.
+      deleteBuilding: 'Supprimer l’immeuble {name}',
+      deleteBuildingTitle: 'Supprimer {name} ?',
+      deleteBuildingBody:
+        'Cet immeuble ne porte aucun logement. La suppression est définitive.',
+      deleteBuildingDone: 'Immeuble supprimé',
       emptyTitle: 'Aucun logement pour l’instant',
       emptyBody: 'Déclarez un immeuble, puis ajoutez-y vos logements.',
       unit: 'Unité',

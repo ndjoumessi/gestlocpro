@@ -88,6 +88,15 @@ interface PortfolioContextValue {
   /** Crée un immeuble dans le parc. Sans parc serveur, il reste local. */
   addBuilding: (name: string, district: string) => void
   /**
+   * Retire un immeuble VIDE.
+   *
+   * Le nom n'est pas contraint à l'unicité — deux immeubles peuvent
+   * légitimement porter le même dans deux quartiers — et il n'existait aucun
+   * moyen de défaire une saisie en double : deux entrées indiscernables, et
+   * rien pour en retirer une. Toute faute de frappe était définitive.
+   */
+  removeBuilding: (buildingId: string) => void
+  /**
    * Enregistre un encaissement sur une période.
    *
    * La modale affichait « Paiement enregistré · quittance envoyée » sans rien
@@ -483,6 +492,24 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [parkId, signalerEchec],
   )
 
+  const removeBuilding = useCallback(
+    (buildingId: string) => {
+      if (!parkId) {
+        // Sans parc serveur — démonstration — l'immeuble ne vit qu'en mémoire.
+        setBuildings((liste) => liste.filter((b) => b.id !== buildingId))
+        return
+      }
+      void api
+        .deleteBuilding(parkId, buildingId)
+        // On ne retire de l'écran qu'APRÈS l'accord du serveur : il refuse un
+        // immeuble qui porte des logements, et le faire disparaître d'abord
+        // montrerait une suppression qui n'a pas eu lieu.
+        .then(() => setBuildings((liste) => liste.filter((b) => b.id !== buildingId)))
+        .catch(signalerEchec)
+    },
+    [parkId, signalerEchec],
+  )
+
   const recordPayment = useCallback(
     (
       unitId: string,
@@ -645,6 +672,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       settleDeposit,
       addTenant,
       addBuilding,
+      removeBuilding,
       addUnit,
       recordPayment,
       readAlertIds,
@@ -699,6 +727,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       settleDeposit,
       addTenant,
       addBuilding,
+      removeBuilding,
       addUnit,
       recordPayment,
       readAlertIds,

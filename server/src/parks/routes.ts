@@ -635,6 +635,58 @@ parksRouter.post(
 )
 
 /**
+ * Supprime un immeuble, à la condition qu'il soit VIDE.
+ *
+ * Il n'existait aucun moyen de défaire une création. Le nom n'étant
+ * délibérément pas contraint à l'unicité — deux immeubles peuvent légitimement
+ * porter le même dans deux quartiers —, une saisie en double produisait deux
+ * entrées rigoureusement indiscernables : mêmes puces de filtre, mêmes cartes,
+ * deux lignes identiques dans le choix d'immeuble à la création d'un logement.
+ * L'utilisateur ne pouvait ni les distinguer ni en retirer une. Toute faute de
+ * frappe était définitive.
+ *
+ * La garde porte sur le VIDE et non sur un drapeau de confirmation : un
+ * immeuble qui porte des logements porte aussi des baux, des cautions et des
+ * encaissements, et rien ici ne doit pouvoir emporter tout cela en cascade. On
+ * refuse, et l'écran dira quoi vider d'abord.
+ *
+ * 409 et non 400 : la requête est bien formée, c'est l'état du parc qui s'y
+ * oppose — même distinction que pour un numéro de logement déjà pris.
+ *
+ * Les deux rôles qui créent peuvent défaire : annuler sa propre saisie n'est
+ * pas un pouvoir nouveau, et la garde du vide borne déjà ce qu'on risque.
+ */
+parksRouter.delete(
+  '/:parkId/buildings/:buildingId',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const buildingId = z.string().uuid().parse(req.params.buildingId)
+
+    // Cherché AVEC le `parkId` : sans cela un identifiant deviné permettrait de
+    // supprimer l'immeuble d'un autre. Absent, on rend 404 et non 403 — un 403
+    // confirmerait son existence.
+    const immeuble = await prisma.building.findFirst({
+      where: { id: buildingId, parkId },
+      select: { id: true, _count: { select: { units: true } } },
+    })
+    if (!immeuble) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    if (immeuble._count.units > 0) {
+      res.status(409).json({ error: 'building_not_empty' })
+      return
+    }
+
+    await prisma.building.delete({ where: { id: immeuble.id } })
+    res.status(204).end()
+  },
+)
+
+/**
  * Crée un logement dans un immeuble du parc.
  *
  * L'immeuble est cherché AVEC le `parkId` : sans cela, un identifiant deviné
