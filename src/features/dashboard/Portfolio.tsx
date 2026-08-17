@@ -81,7 +81,10 @@ export function Portfolio() {
     <>
       <PageHeader
         title={t('app.portfolio.title')}
-        description={t('app.portfolio.subtitle')}
+        description={t('app.portfolio.subtitle', {
+          buildings: BUILDINGS.length,
+          units: units.length,
+        })}
         // Le seul endroit du produit où l'on constitue son parc. Il n'existait
         // pas : tous les écrans opéraient sur des immeubles qu'aucun geste ne
         // pouvait créer.
@@ -114,7 +117,11 @@ export function Portfolio() {
         })}
         <StatCard
           label={t('app.dashboard.occupancy')}
-          value={`${Math.round((occupied / units.length) * 100)}`}
+          /* `computeKpis` borne déjà cette division — « un parc vide donne 0 %
+             et non NaN » — et ce second calcul, écrit à la main ici, ne le
+             faisait pas. Un compte neuf lisait « NaN % » dès l'ouverture de cet
+             écran, sur le seul indicateur de la page. */
+          value={`${units.length === 0 ? 0 : Math.round((occupied / units.length) * 100)}`}
           unit="%"
           note={t('app.portfolio.occupancy', { occupied, total: units.length })}
         />
@@ -161,6 +168,24 @@ export function Portfolio() {
         rows={rows}
         rowKey={(unit) => unit.id}
         empty={
+          /* Deux absences, deux messages. Un parc sans aucun logement n'a pas
+             « échoué à trouver » : il n'a rien à trouver. L'écran annonçait
+             pourtant « Aucune unité ne correspond à «  » » — la requête vide
+             entre ses guillemets — et proposait de réinitialiser des filtres
+             qu'on n'avait pas posés. C'est le premier écran d'un compte neuf. */
+          units.length === 0 ? (
+            /* Sans bouton : « Ajouter un immeuble » est déjà dans l'en-tête,
+               à trois centimètres au-dessus. Le répéter donnait deux actions
+               principales identiques sur le même écran — un doublon que la
+               synthèse vocale annonce deux fois, et qui fait hésiter sur
+               laquelle est la bonne. Le texte dit le geste, l'en-tête le
+               porte. */
+            <EmptyState
+              icon="building"
+              title={t('app.portfolio.emptyTitle')}
+              body={t('app.portfolio.emptyBody')}
+            />
+          ) : (
           <EmptyState
             title={t('app.portfolio.searchEmpty', { query })}
             body={t('app.portfolio.searchEmptyHint')}
@@ -173,6 +198,7 @@ export function Portfolio() {
               </Button>
             }
           />
+          )
         }
         columns={[
           {
@@ -245,7 +271,10 @@ function PortfolioSkeleton() {
     <>
       <PageHeader
         title={t('app.portfolio.title')}
-        description={t('app.portfolio.subtitle')}
+        /* Le sous-titre porte désormais les comptes réels : pendant l'attente
+           on ne les connaît pas, et en inventer — ne serait-ce que zéro —
+           annoncerait un parc vide à qui en a un. Un pavé tient la place. */
+        description={<Skeleton line="body" className="w-full max-w-md" />}
         actions={
           <>
             <Skeleton radius="md" className="h-11 w-48" />

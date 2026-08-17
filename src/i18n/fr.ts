@@ -509,7 +509,17 @@ export const fr = {
       districtPlaceholder: 'Makepe',
       districtInvalid: 'Au moins 2 caractères',
       title: 'Parc immobilier',
-      subtitle: 'Trois immeubles, douze unités. Le statut porte sur le mois affiché.',
+      /**
+       * Le sous-titre récitait « Trois immeubles, douze unités » — les chiffres
+       * du jeu de DÉMONSTRATION, écrits en dur, servis à tout parc réel. Un
+       * compte neuf ouvrait donc « Parc immobilier » sur une phrase qui lui
+       * annonçait douze logements qu'il n'a pas.
+       */
+      subtitle: '{buildings} immeubles, {units} unités. Le statut porte sur le mois affiché.',
+      subtitle_one: '{buildings} immeuble, {units} unités. Le statut porte sur le mois affiché.',
+      // Aucun logement du tout : ce n'est pas une recherche infructueuse.
+      emptyTitle: 'Aucun logement pour l’instant',
+      emptyBody: 'Déclarez un immeuble, puis ajoutez-y vos logements.',
       unit: 'Unité',
       building: 'Immeuble',
       type: 'Type',
