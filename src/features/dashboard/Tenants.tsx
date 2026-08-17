@@ -239,7 +239,7 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
   const [touched, setTouched] = useState({ name: false, phone: false })
 
   const submit = () => {
-    const next = { name: validateName(name), phone: validatePhone(phone) }
+    const next = { name: validateName(name), phone: validatePhone(phone, dial) }
     setErrors(next)
     setTouched({ name: true, phone: true })
 
@@ -345,7 +345,7 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
                 onChange={(e) => setPhone(e.target.value)}
                 onBlur={() => {
                   setTouched((s) => ({ ...s, phone: true }))
-                  setErrors((s) => ({ ...s, phone: validatePhone(phone) }))
+                  setErrors((s) => ({ ...s, phone: validatePhone(phone, dial) }))
                 }}
               />
             </div>

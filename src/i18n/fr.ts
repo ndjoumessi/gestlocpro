@@ -330,6 +330,9 @@ export const fr = {
       passwordShort: 'Utilisez au moins 8 caractères.',
       phoneRequired: 'Indiquez un numéro de téléphone.',
       phoneInvalid: 'Ce numéro semble incomplet.',
+      // Le message dit la CAUSE et la limite : « invalide » laisserait
+      // l'utilisateur retaper le même numéro sans savoir ce qui cloche.
+      phoneTooLong: 'Ce numéro est trop long, indicatif compris.',
       parkNameRequired: 'Donnez un nom à votre parc.',
       inviteRequired: 'Saisissez votre code d’invitation.',
       inviteInvalid: 'Code non reconnu. Format attendu : LOC-XXXX-XXXX.',

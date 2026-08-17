@@ -53,10 +53,38 @@ export function isValidResetToken(token: string | null): boolean {
 /** Jeton de la démonstration, fixe pour que le parcours soit rejouable. */
 export const DEMO_RESET_TOKEN = 'a7f3c9e1b4d82056'
 
-export function validatePhone(value: string): FieldError {
+/**
+ * Longueur maximale d'un numéro en E.164 : quinze chiffres, INDICATIF COMPRIS.
+ *
+ * C'est la borne de la norme elle-même, et la seule qui vaille pour deux cent
+ * quarante-deux pays sans embarquer un plan de numérotation par pays.
+ */
+const E164_MAX = 15
+
+/**
+ * Numéro NATIONAL — l'indicatif vit dans le champ voisin.
+ *
+ * Le contrôle n'avait qu'un plancher de six chiffres, et aucun plafond :
+ * « 6617519232222222222 », dix-neuf chiffres, passait sans un mot. Le formulaire
+ * laissait donc continuer, puis le serveur refusait l'E.164 recomposé et l'écran
+ * n'annonçait qu'une « erreur inattendue » — exactement le défaut qui avait déjà
+ * fait échouer la première inscription du produit, sur le pays cette fois.
+ * Valider ce qu'on va envoyer est moins cher que traduire un refus.
+ *
+ * Le plafond dépend de l'indicatif, puisque les deux voyagent ensemble : il
+ * reste au national ce que la norme laisse une fois l'indicatif retiré. `+237`
+ * en autorise donc douze, `+1` quatorze. C'est plus permissif que les plans
+ * nationaux réels — le Cameroun tient en neuf chiffres — et c'est délibéré :
+ * une borne trop serrée refuserait un numéro valide dans un pays dont on n'a
+ * pas la règle, ce qui coûte plus qu'un numéro trop long refusé par le serveur.
+ */
+export function validatePhone(value: string, dial = ''): FieldError {
   const digits = value.replace(/\D/g, '')
   if (!digits) return 'auth.errors.phoneRequired'
-  return digits.length < 6 ? 'auth.errors.phoneInvalid' : null
+  if (digits.length < 6) return 'auth.errors.phoneInvalid'
+
+  const chiffresIndicatif = dial.replace(/\D/g, '').length
+  return digits.length + chiffresIndicatif > E164_MAX ? 'auth.errors.phoneTooLong' : null
 }
 
 export function validateParkName(value: string): FieldError {

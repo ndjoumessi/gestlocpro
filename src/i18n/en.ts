@@ -288,6 +288,7 @@ export const en: Dictionary = {
       passwordShort: 'Use at least 8 characters.',
       phoneRequired: 'Enter a phone number.',
       phoneInvalid: 'That number looks incomplete.',
+      phoneTooLong: 'That number is too long, dial code included.',
       parkNameRequired: 'Give your portfolio a name.',
       inviteRequired: 'Enter your invitation code.',
       inviteInvalid: 'Code not recognised. Expected format: LOC-XXXX-XXXX.',

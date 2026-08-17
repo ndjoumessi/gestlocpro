@@ -70,6 +70,33 @@ describe('téléphone et nom', () => {
     expect(validatePhone('')).toBe('auth.errors.phoneRequired')
   })
 
+  /**
+   * Le champ n'avait qu'un plancher, et aucun plafond.
+   *
+   * « 6617519232222222222 » — dix-neuf chiffres, saisi en production — passait
+   * sans un mot. Le formulaire laissait continuer, puis le serveur refusait
+   * l'E.164 recomposé et l'écran n'annonçait qu'une « erreur inattendue » : le
+   * même mode de défaillance que la sentinelle de pays, sur un autre champ.
+   *
+   * La borne est celle de la norme, quinze chiffres INDICATIF COMPRIS, et non un
+   * plan de numérotation par pays : deux cent quarante-deux pays ne se codent
+   * pas à la main, et une borne trop serrée refuserait un numéro valide là où on
+   * n'a pas la règle.
+   */
+  it('refuse un numéro qui dépasse la norme E.164, indicatif compris', () => {
+    expect(validatePhone('6617519232222222222', '+237')).toBe('auth.errors.phoneTooLong')
+  })
+
+  it('compte l’indicatif dans la limite, puisqu’ils voyagent ensemble', () => {
+    // 12 chiffres nationaux + 3 d'indicatif = 15, la borne exacte.
+    expect(validatePhone('677889900123', '+237')).toBeNull()
+    // Un de plus, et l'E.164 devient impossible.
+    expect(validatePhone('6778899001234', '+237')).toBe('auth.errors.phoneTooLong')
+    // Le même national passe avec un indicatif plus court : c'est bien la somme
+    // qui compte, pas la longueur du numéro seul.
+    expect(validatePhone('6778899001234', '+1')).toBeNull()
+  })
+
   it('refuse un nom d’une seule lettre', () => {
     expect(validateName('Arsène Nkomo')).toBeNull()
     expect(validateName('A')).toBe('auth.errors.nameRequired')

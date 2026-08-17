@@ -108,7 +108,7 @@ export function SignUp() {
       return {
         name: validateName(state.name),
         email: validateEmail(state.email),
-        phone: validatePhone(state.phone),
+        phone: validatePhone(state.phone, state.dial),
         password: validatePassword(state.password, { requireStrong: true }),
       };
     }
@@ -471,7 +471,7 @@ export function SignUp() {
                     autoComplete="tel-national"
                     value={state.phone}
                     onChange={(e) => patch({ phone: e.target.value })}
-                    onBlur={blur("phone", validatePhone(state.phone))}
+                    onBlur={blur("phone", validatePhone(state.phone, state.dial))}
                   />
                 </div>
               )}
