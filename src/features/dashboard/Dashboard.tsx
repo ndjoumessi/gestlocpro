@@ -30,6 +30,7 @@ export function Dashboard() {
   const {
     units,
     works,
+    deposits,
     unitById,
     buildings: BUILDINGS,
     readings,
@@ -72,8 +73,28 @@ export function Dashboard() {
   const collectedShare = expected === 0 ? 0 : Math.round((collected / expected) * 100)
   const overdue = units.filter((unit) => unit.status === 'overdue')
 
-  // Les arbitrages en attente : ce que le propriétaire doit trancher.
-  const decisions = works.filter((work) => work.status === 'quoted')
+  /**
+   * Ce qui demande une décision — les DEUX natures, pas une seule.
+   *
+   * La carte ne listait que les devis de travaux. Elle taisait donc les
+   * cautions à arbitrer, alors que c'est la prérogative qui DÉFINIT le
+   * propriétaire dans ce produit : sa fiche de rôle, en barre latérale, dit
+   * « lecture et édition globale · arbitrage des cautions ». Une carte intitulée
+   * « ce qui demande une décision » qui omet la décision la plus caractéristique
+   * du rôle ne se contente pas d'être incomplète — elle laisse croire qu'il n'y
+   * a rien à trancher, ce qui est exactement l'inverse de sa fonction.
+   *
+   * Deux cautions attendaient dans le jeu de démonstration, invisibles ici et
+   * visibles à deux clics, sur l'écran Cautions. C'est aussi ce qui laissait la
+   * carte aux deux tiers vide à côté de ses voisines.
+   *
+   * Les cautions ne s'ajoutent que pour qui peut les arbitrer : un gestionnaire
+   * propose et ne décide pas, lui montrer une décision qu'il ne peut pas prendre
+   * ne ferait que déplacer l'attente.
+   */
+  const devis = works.filter((work) => work.status === 'quoted')
+  const cautionsAArbitrer = role === 'owner' ? deposits.filter((d) => d.status === 'settling') : []
+  const rienATrancher = devis.length === 0 && cautionsAArbitrer.length === 0
 
   /**
    * Un parc sans aucun logement.
@@ -260,11 +281,29 @@ export function Dashboard() {
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
         <Card>
           <CardHeader title={t('app.dashboard.decisionsTitle')} level={2} />
-          {decisions.length === 0 ? (
+          {rienATrancher ? (
             <p className="text-body-s text-muted">{t('app.dashboard.decisionsEmpty')}</p>
           ) : (
             <ul className="flex flex-col gap-3">
-              {decisions.map((work) => (
+              {cautionsAArbitrer.map((caution) => (
+                <li key={`caution-${caution.unitId}`} className="flex items-start gap-3">
+                  <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-gold-tint text-gold-ink">
+                    <Icon name="shield" size={15} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-body font-medium">
+                      {t('app.dashboard.decisionDeposit', {
+                        tenant: caution.tenant ?? t('app.deposits.formerTenant'),
+                      })}
+                    </p>
+                    <p className="mt-0.5 text-caps text-muted">
+                      {unitById(caution.unitId)?.label ?? caution.unitId} ·{' '}
+                      {money(caution.held, { round: true })}
+                    </p>
+                  </div>
+                </li>
+              ))}
+              {devis.map((work) => (
                 <li key={work.id} className="flex items-start gap-3">
                   <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-gold-tint text-gold-ink">
                     <Icon name="wrench" size={15} />
@@ -288,9 +327,19 @@ export function Dashboard() {
               ))}
             </ul>
           )}
-          <Button variant="ghost" to={lien(base, 'travaux')} iconAfter="chevronRight" className="mt-4 -ml-3.5">
-            {t('nav.works')}
-          </Button>
+          {/* Deux natures dans la carte, donc deux sorties : renvoyer aux seuls
+              travaux laisserait les cautions listées sans moyen d'agir dessus,
+              ce qui est la même omission que celle qu'on vient de corriger. */}
+          <div className="mt-4 -ml-3.5 flex flex-wrap items-center gap-1">
+            <Button variant="ghost" to={lien(base, 'travaux')} iconAfter="chevronRight">
+              {t('nav.works')}
+            </Button>
+            {cautionsAArbitrer.length > 0 && (
+              <Button variant="ghost" to={lien(base, 'cautions')} iconAfter="chevronRight">
+                {t('nav.deposits')}
+              </Button>
+            )}
+          </div>
         </Card>
 
         <Card>

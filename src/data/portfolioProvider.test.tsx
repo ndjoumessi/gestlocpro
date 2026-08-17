@@ -34,6 +34,34 @@ describe('validation d’un devis', () => {
 
     await allerA(/tableau de bord/i)
     expect(screen.getByRole('main')).not.toHaveTextContent('SIG-2026-042')
+
+    /**
+     * La carte ne se VIDE pas pour autant, et c'est le correctif :
+     * « ce qui demande une décision » listait les seuls devis de travaux et
+     * taisait les cautions à arbitrer — la prérogative qui définit pourtant le
+     * propriétaire. Deux attendent dans le jeu de démonstration. L'état vide
+     * ment tant qu'il en reste une.
+     */
+    expect(screen.getByRole('main')).not.toHaveTextContent('Rien à arbitrer pour le moment')
+    expect(screen.getByRole('main')).toHaveTextContent('Caution à arbitrer · Serge Mbarga')
+  })
+
+  it('ne montre l’état vide qu’une fois les DEUX natures traitées', async () => {
+    const user = userEvent.setup()
+    renderApp('/app/travaux')
+    await user.click(screen.getByRole('button', { name: /valider le devis/i }))
+
+    // Les deux cautions en attente sont arbitrées à leur tour. La liste se
+    // recompose après chaque arbitrage : on la relit plutôt que de garder des
+    // références devenues caduques.
+    await allerA(/^cautions/i)
+    while (screen.queryAllByRole('button', { name: /^arbitrer$/i }).length > 0) {
+      await user.click(screen.getAllByRole('button', { name: /^arbitrer$/i })[0])
+      await user.type(screen.getByLabelText(/justification/i), 'Réserves de l’état des lieux.')
+      await user.click(screen.getByRole('button', { name: /valider l’arbitrage/i }))
+    }
+
+    await allerA(/tableau de bord/i)
     expect(screen.getByRole('main')).toHaveTextContent('Rien à arbitrer pour le moment')
   })
 

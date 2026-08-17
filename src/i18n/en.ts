@@ -377,6 +377,7 @@ export const en: Dictionary = {
       recoveryLate: 'Overdue',
       rebilled: 'Utilities re-billed',
       decisionsTitle: 'Waiting on your decision',
+      decisionDeposit: 'Deposit to settle · {tenant}',
       decisionsEmpty: 'Nothing to arbitrate right now.',
       scheduleTitle: 'Schedule',
       breakdownTitle: 'Portfolio breakdown',

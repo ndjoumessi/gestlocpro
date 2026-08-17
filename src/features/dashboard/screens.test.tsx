@@ -287,3 +287,29 @@ describe('indicatif de la fiche locataire', () => {
     ).toBe('tel-country-code')
   })
 })
+
+/**
+ * Les cautions n'apparaissent en décision que pour qui peut trancher.
+ *
+ * « Ce qui demande une décision » listait les seuls devis de travaux et taisait
+ * les cautions à arbitrer — la prérogative qui définit pourtant le propriétaire.
+ * En les ajoutant, on ouvre le risque symétrique : les montrer au gestionnaire,
+ * qui propose et ne décide pas. Une décision qu'on ne peut pas prendre ne
+ * s'affiche pas comme une tâche, elle déplace l'attente.
+ */
+describe('décisions du tableau de bord', () => {
+  it('liste les cautions à arbitrer au propriétaire', async () => {
+    renderApp('/app')
+    expect(await screen.findByText(/caution à arbitrer · serge mbarga/i)).toBeInTheDocument()
+  })
+
+  it('ne les montre pas au gestionnaire, qui ne peut pas les arbitrer', async () => {
+    renderApp('/app')
+    await switchRole('manager')
+
+    expect(screen.queryByText(/caution à arbitrer/i)).not.toBeInTheDocument()
+    // Et l'écran Cautions ne lui offre pas le geste non plus : les deux doivent
+    // dire la même chose, sans quoi la carte promet ce que l'écran refuse.
+    expect(screen.queryByRole('button', { name: /^arbitrer$/i })).not.toBeInTheDocument()
+  })
+})

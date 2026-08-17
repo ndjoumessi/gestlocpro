@@ -440,6 +440,7 @@ export const fr = {
       recoveryLate: 'En retard',
       rebilled: 'Charges refacturées',
       decisionsTitle: 'Ce qui demande une décision',
+      decisionDeposit: 'Caution à arbitrer · {tenant}',
       decisionsEmpty: 'Rien à arbitrer pour le moment.',
       scheduleTitle: 'Échéancier',
       breakdownTitle: 'Répartition du parc',
