@@ -628,6 +628,9 @@ describe('émettre une quittance', () => {
   }
 
   const doc = (kind: 'quittance' | 'recu', paid: number, balance: number) => ({
+    // La devise fait désormais partie du document : il atteste, il doit dire en
+    // quoi. Sans elle, le client retombait sur la devise de la machine.
+    currency: 'XAF' as const,
     kind,
     periodStart: '2026-08-01',
     tenant: 'Charles Ngassa',

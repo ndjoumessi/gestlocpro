@@ -920,6 +920,25 @@ describe('émission des quittances', () => {
     return { cookie, parkId, unitId }
   }
 
+  it('porte la devise du PARC, et non celle de qui l’imprime', async () => {
+    /**
+     * Le document ne portait AUCUNE unité : le client le mettait en forme avec
+     * la devise d'affichage de sa machine. Le même versement imprimé sur deux
+     * postes réglés différemment portait deux monnaies — et une quittance est le
+     * seul papier que le locataire gardera pour prouver qu'il a payé.
+     */
+    const { cookie, parkId, unitId } = await parcPaye('devise@example.com', 145000)
+
+    const res = await request(serveur)
+      .post(`/api/parks/${parkId}/receipts`)
+      .set('Cookie', cookie)
+      .send({ unitId, periodStart: '2026-07-01' })
+
+    expect(res.status, JSON.stringify(res.body)).toBe(201)
+    // Le parc est créé au Cameroun par l'inscription : franc CFA.
+    expect(res.body.document.currency).toBe('XAF')
+  })
+
   it('émet une QUITTANCE quand la période est intégralement soldée', async () => {
     const { cookie, parkId, unitId } = await parcPaye('quittance@example.com', 145000)
 

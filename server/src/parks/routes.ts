@@ -1019,7 +1019,15 @@ parksRouter.post(
           select: {
             rentMinor: true,
             tenant: { select: { fullName: true } },
-            unit: { select: { label: true, building: { select: { name: true, district: true } } } },
+            unit: {
+              select: {
+                label: true,
+                building: {
+                  // La DEVISE du parc voyage avec le document.
+                  select: { name: true, district: true, park: { select: { currency: true } } },
+                },
+              },
+            },
           },
         },
       },
@@ -1039,6 +1047,19 @@ parksRouter.post(
 
     const document = {
       kind: solde <= 0 ? ('quittance' as const) : ('recu' as const),
+      /**
+       * La DEVISE du document, et non celle de qui l'imprime.
+       *
+       * Ce document ne portait aucune unité : le client le mettait en forme avec
+       * la devise d'affichage de sa machine. Le même versement imprimé sur deux
+       * postes réglés différemment portait donc deux monnaies — et une quittance
+       * est le seul papier que le locataire gardera pour prouver qu'il a payé.
+       *
+       * Elle est prise sur le PARC, à l'émission, et figée dans la réponse : une
+       * quittance atteste d'un fait passé, et le parc pourrait changer de devise
+       * demain sans que ce fait change.
+       */
+      currency: echeance.lease.unit.building.park.currency,
       periodStart: corps.periodStart,
       tenant: echeance.lease.tenant.fullName,
       unit: echeance.lease.unit.label,

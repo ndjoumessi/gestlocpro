@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, attendreLeChargement } from '@/test/render'
+import { renderApp, screen, userEvent, attendreLeChargement } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 
@@ -63,6 +63,50 @@ function parcVide() {
   })
   return serveur
 }
+
+describe('devise de la quittance', () => {
+  it('imprime celle du DOCUMENT, pas celle de l’écran', async () => {
+    /**
+     * Une quittance atteste d'un fait passé. Le parc pourrait changer de devise
+     * demain sans que ce fait change — et deux postes réglés différemment ne
+     * doivent pas imprimer deux monnaies pour un seul versement.
+     *
+     * Ici tout pousse vers l'euro : la préférence de la machine ET la devise du
+     * parc. Le document, lui, dit franc CFA. C'est lui qui gagne.
+     */
+    const serveur = parcVide()
+    serveur.quand('POST', `/parks/${PARC}/receipts`, {
+      status: 201,
+      body: {
+        document: {
+          kind: 'quittance',
+          currency: 'XAF',
+          periodStart: '2026-07-01',
+          tenant: 'Charles Ngassa',
+          unit: 'A1',
+          building: 'Résidence Makepe',
+          district: 'Makepe',
+          rentMinor: 145000,
+          waterMinor: 0,
+          powerMinor: 0,
+          dueMinor: 145000,
+          paidMinor: 145000,
+          balanceMinor: 0,
+          payments: [{ amountMinor: 145000, method: 'cash', paidOn: '2026-07-03', reference: null }],
+        },
+      },
+    })
+
+    const user = userEvent.setup()
+    renderApp('/app/paiements', { session: session('EUR'), currency: 'EUR' })
+    await screen.findByText('A1')
+    await user.click(screen.getByRole('button', { name: /quittance/i }))
+
+    const dialogue = await screen.findByRole('dialog')
+    expect(dialogue.textContent).toMatch(/FCFA|CFA/)
+    expect(dialogue.textContent).not.toMatch(/€/)
+  })
+})
 
 describe('devise d’affichage', () => {
   it('suit le parc, et non la dernière préférence de la machine', async () => {

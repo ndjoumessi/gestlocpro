@@ -3,6 +3,7 @@ import { Modal } from '@/components/primitives/Modal'
 import { Button } from '@/components/primitives/Button'
 import { useT } from '@/i18n/I18nProvider'
 import { useCurrency } from '@/currency/CurrencyProvider'
+import { formatMoney } from '@/currency/currencies'
 import { useDates } from '@/lib/useDates'
 import { api, ApiError } from '@/api/client'
 import { useSession } from '@/api/SessionProvider'
@@ -27,6 +28,15 @@ interface DocumentEmis {
   dueMinor: number
   paidMinor: number
   balanceMinor: number
+  /**
+   * Devise du document, posée par le SERVEUR à l'émission.
+   *
+   * Le document n'en portait aucune : il était mis en forme avec la devise
+   * d'affichage de la machine. Le même versement imprimé sur deux postes réglés
+   * différemment portait deux monnaies — sur le seul papier que le locataire
+   * gardera pour prouver qu'il a payé.
+   */
+  currency: 'XAF' | 'XOF' | 'EUR' | 'CAD' | 'USD'
   payments: { amountMinor: number; method: string; paidOn: string; reference: string | null }[]
 }
 
@@ -56,13 +66,27 @@ export function ReceiptModal({
   onClose: () => void
 }) {
   const t = useT()
-  const { money } = useCurrency()
+  const { money: moneyAffichage } = useCurrency()
   const d = useDates()
   const { etat } = useSession()
   const parkId = etat.statut === 'connecte' ? (etat.adhesions[0]?.parkId ?? null) : null
 
+  /**
+   * Le document se met en forme dans SA devise, pas dans celle de l'écran.
+   *
+   * `useCurrency` sert la lecture courante ; ici on atteste. Tant que le
+   * document n'est pas revenu du serveur, on retombe sur l'affichage — il n'y a
+   * alors aucun montant à mettre en forme.
+   */
   const [document, setDocument] = useState<DocumentEmis | null>(null)
   const [echec, setEchec] = useState<string | null>(null)
+
+  const money = (montant: number) =>
+    document
+      ? formatMoney(montant, ({ XAF: 'CFA', XOF: 'CFA', EUR: 'EUR', CAD: 'CAD', USD: 'USD' } as const)[
+          document.currency
+        ])
+      : moneyAffichage(montant)
 
   useEffect(() => {
     if (!open || !parkId) return
