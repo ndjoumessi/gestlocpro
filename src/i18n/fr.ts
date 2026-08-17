@@ -799,6 +799,7 @@ export const fr = {
       empty: 'Rien à signaler sur le parc.',
       emptyBody:
         'Le produit dépose ici les loyers en retard, les devis à arbitrer, les relevés manquants et les baux qui arrivent à échéance. Rien de tout cela n’est en cours.',
+      open: 'Ouvrir',
       unread: '{count} non lues',
       unread_one: '{count} non lue',
       severityHigh: 'Prioritaire',

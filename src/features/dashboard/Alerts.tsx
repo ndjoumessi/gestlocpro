@@ -1,5 +1,5 @@
 import { PageHeader, useRole } from '@/components/layout/AppShell'
-import { useBase } from '@/lib/base'
+import { lien, useBase } from '@/lib/base'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { Card } from '@/components/primitives/Card'
 import { StatusPill, type StatusTone } from '@/components/primitives/StatusPill'
@@ -14,6 +14,20 @@ import { useDates } from '@/lib/useDates'
 import { useNumbers } from '@/lib/numbers'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { type Alert } from '@/data/portfolio'
+
+/**
+ * L'écran qui répond à chaque nature de notification.
+ *
+ * Un impayé se traite aux paiements, un devis aux travaux, un relevé manquant
+ * aux relevés. Le bail renvoie aux cautions : les notifications de cette nature
+ * portent sur la restitution, seul geste de bail que le produit sait faire.
+ */
+const ECRAN_PAR_NATURE: Record<Alert['kind'], string> = {
+  payment: 'paiements',
+  work: 'travaux',
+  meter: 'releves',
+  lease: 'cautions',
+}
 
 const KIND_ICON: Record<Alert['kind'], IconName> = {
   payment: 'card',
@@ -207,9 +221,31 @@ export function Alerts() {
                 <p className="mt-1 text-body-s text-muted">{message(alert, 'detail')}</p>
               </div>
 
-              <span className="shrink-0 text-caps text-muted">
-                {d.relative(alert.at)}
-              </span>
+              <div className="flex shrink-0 items-center gap-3">
+                <span className="text-caps text-muted">{d.relative(alert.at)}</span>
+                {/*
+                  L'issue vers l'écran où la décision se prend.
+
+                  Ces cartes n'avaient AUCUNE action : on lisait « loyer en
+                  retard de 24 jours » et il fallait retrouver soi-même
+                  l'écran des paiements, puis la ligne. Une notification qui
+                  n'ouvre sur rien fait porter à l'utilisateur le travail de
+                  navigation que le produit connaît déjà.
+
+                  Un LIEN et non un bouton d'action : rien n'est décidé ici, on
+                  se déplace. Le commentaire de l'état vide reste vrai — « une
+                  notification est produite par le produit, personne n'en crée »
+                  — et ce lien ne le contredit pas.
+                */}
+                <Button
+                  to={lien(base, ECRAN_PAR_NATURE[alert.kind])}
+                  variant="ghost"
+                  size="sm"
+                  iconAfter="arrowRight"
+                >
+                  {t('app.alerts.open')}
+                </Button>
+              </div>
             </Card>
           ))}
         </div>

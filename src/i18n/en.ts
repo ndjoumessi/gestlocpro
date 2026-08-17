@@ -679,6 +679,7 @@ export const en: Dictionary = {
       empty: 'Nothing to report on the portfolio.',
       emptyBody:
         'The product files late rents, quotes awaiting a decision, missing meter readings and leases coming up for renewal here. None of that is pending.',
+      open: 'Open',
       unread: '{count} unread',
       unread_one: '{count} unread',
       severityHigh: 'Priority',
