@@ -41,7 +41,7 @@ export function Works() {
    * doit disparaître de la carte « Ce qui demande une décision » du tableau de
    * bord, qui la réclamait encore.
    */
-  const { works, approveWork, unitById, isMine, loading } = usePortfolio()
+  const { works, approveWork, completeWork, unitById, isMine, loading } = usePortfolio()
 
   // Le locataire suit les interventions sur SON logement, pas celles du parc.
   // Le périmètre vient du provider, qui le tient du serveur : le client ne
@@ -51,6 +51,11 @@ export function Works() {
   const approve = (id: string) => {
     approveWork(id)
     notify(t('app.works.approved_toast'), { tone: 'ok' })
+  }
+
+  const complete = (id: string) => {
+    completeWork(id)
+    notify(t('app.works.completed_toast'), { tone: 'ok' })
   }
 
   /**
@@ -160,6 +165,30 @@ export function Works() {
                     {t('app.works.approve')}
                   </Button>
                 )}
+
+                {/*
+                  Clore : le geste qui manquait, et son absence se voyait.
+
+                  `approved` était en pratique TERMINAL — un devis validé
+                  engageait la dépense et restait « à faire » indéfiniment, donc
+                  cette liste ne pouvait que grandir. Un logiciel de gestion dont
+                  la liste de travaux ne se vide jamais cesse d'être lu.
+
+                  Offert sur `reported` aussi : tout n'a pas de coût, et une
+                  intervention jamais chiffrée n'a rien à faire arbitrer. Jamais
+                  sur `quoted` — le serveur le refuse, parce que clore un devis
+                  en attente le ferait disparaître de la carte du propriétaire
+                  sans qu'il ait rien décidé.
+
+                  Le locataire consulte : il ne constate pas l'achèvement des
+                  travaux de son bailleur.
+                */}
+                {(work.status === 'approved' || work.status === 'reported') &&
+                  role !== 'tenant' && (
+                    <Button variant="secondary" size="sm" onClick={() => complete(work.id)}>
+                      {t('app.works.complete')}
+                    </Button>
+                  )}
               </div>
             </Card>
           )

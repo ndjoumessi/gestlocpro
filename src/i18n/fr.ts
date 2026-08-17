@@ -681,6 +681,8 @@ export const fr = {
       urgent: 'Urgent',
       noQuote: 'Pas encore chiffré',
       approve: 'Valider le devis',
+      complete: 'Marquer terminé',
+      completed_toast: 'Intervention close · elle sort des travaux à faire',
       approved_toast: 'Devis validé · le gestionnaire est prévenu',
       trade: 'Corps d’état',
       managerNotice:

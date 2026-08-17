@@ -67,6 +67,15 @@ interface PortfolioContextValue {
   deposits: Deposit[]
   /** Le propriétaire valide un devis proposé par le gestionnaire. */
   approveWork: (id: string) => void
+  /** Le gestionnaire chiffre une intervention déclarée : « propose, ne décide pas ». */
+  quoteWork: (id: string, quotedMinor: number) => void
+  /**
+   * Clôt une intervention.
+   *
+   * `approved` était en pratique TERMINAL : un devis validé restait « à faire »
+   * indéfiniment, donc la liste des travaux ne pouvait que grandir.
+   */
+  completeWork: (id: string) => void
   /** Le propriétaire arbitre une caution : retenue et restitution du solde. */
   /**
    * Arbitre une caution. La justification traverse jusqu'au serveur, qui
@@ -458,6 +467,51 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [parkId, signalerEchec],
   )
 
+  const quoteWork = useCallback(
+    (id: string, quotedMinor: number) => {
+      if (!parkId) {
+        setWorks((list) =>
+          list.map((w) => (w.id === id ? { ...w, status: 'quoted', amount: quotedMinor } : w)),
+        )
+        return
+      }
+      void api
+        .quoteWork<{ work: { id: string; status: WorkOrder['status']; quotedAmountMinor: number } }>(
+          parkId,
+          id,
+          quotedMinor,
+        )
+        .then(({ work }) =>
+          setWorks((list) =>
+            list.map((w) =>
+              w.id === work.id ? { ...w, status: work.status, amount: work.quotedAmountMinor } : w,
+            ),
+          ),
+        )
+        .catch(signalerEchec)
+    },
+    [parkId, signalerEchec],
+  )
+
+  const completeWork = useCallback(
+    (id: string) => {
+      if (!parkId) {
+        setWorks((list) => list.map((w) => (w.id === id ? { ...w, status: 'done' } : w)))
+        return
+      }
+      void api
+        .completeWork<{ work: { id: string; status: WorkOrder['status'] } }>(parkId, id)
+        // L'état ne change qu'APRÈS l'accord du serveur : il refuse un devis en
+        // attente d'arbitrage, et le marquer terminé d'abord montrerait une
+        // clôture qui n'a pas eu lieu.
+        .then(({ work }) =>
+          setWorks((list) => list.map((w) => (w.id === work.id ? { ...w, status: work.status } : w))),
+        )
+        .catch(signalerEchec)
+    },
+    [parkId, signalerEchec],
+  )
+
   const settleDeposit = useCallback(
     (unitId: string, withheld: number, reason?: string) => {
       const local = () =>
@@ -720,6 +774,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       works,
       deposits,
       approveWork,
+      quoteWork,
+      completeWork,
       settleDeposit,
       addTenant,
       addBuilding,
@@ -777,6 +833,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       fromApi,
       loading,
       approveWork,
+      quoteWork,
+      completeWork,
       settleDeposit,
       addTenant,
       addBuilding,

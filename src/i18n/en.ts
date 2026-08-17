@@ -564,6 +564,8 @@ export const en: Dictionary = {
       urgent: 'Urgent',
       noQuote: 'Not yet quoted',
       approve: 'Approve quote',
+      complete: 'Mark as done',
+      completed_toast: 'Work closed · it leaves the outstanding list',
       approved_toast: 'Quote approved · the manager has been notified',
       trade: 'Trade',
       managerNotice: 'Only the owner approves quotes. You prepare them, they decide.',

@@ -156,6 +156,36 @@ export const api = {
   approveWork: <T>(parkId: string, workId: string) =>
     requete<T>(`/parks/${parkId}/works/${workId}/approve`, { method: 'PATCH' }),
 
+  /** Chiffre une intervention déclarée. Le propriétaire arbitrera. */
+  quoteWork: <T>(parkId: string, workId: string, quotedAmountMinor: number) =>
+    requete<T>(`/parks/${parkId}/works/${workId}/quote`, {
+      method: 'PATCH',
+      body: JSON.stringify({ quotedAmountMinor }),
+    }),
+
+  /**
+   * Clôt une intervention.
+   *
+   * Le serveur refuse un devis en attente d'arbitrage : le clore le ferait
+   * disparaître de la carte du propriétaire sans qu'il ait rien décidé.
+   */
+  completeWork: <T>(parkId: string, workId: string, completedOn?: string) =>
+    requete<T>(`/parks/${parkId}/works/${workId}/complete`, {
+      method: 'PATCH',
+      body: JSON.stringify(completedOn ? { completedOn } : {}),
+    }),
+
+  /** Déclare une intervention sur un logement. */
+  addWork: <T>(
+    parkId: string,
+    unitId: string,
+    corps: { title: string; trade: string; urgency?: string; description?: string },
+  ) =>
+    requete<T>(`/parks/${parkId}/units/${unitId}/works`, {
+      method: 'POST',
+      body: JSON.stringify(corps),
+    }),
+
   settleDeposit: <T>(
     parkId: string,
     depositId: string,

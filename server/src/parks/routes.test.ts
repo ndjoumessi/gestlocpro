@@ -1745,6 +1745,29 @@ describe('cycle des interventions', () => {
     expect(apres.completedOn?.toISOString()).toBe('2026-08-01T00:00:00.000Z')
   })
 
+  it('refuse au locataire de clore une intervention', async () => {
+    /**
+     * La garde qui compte, et la seule qui tienne : le masquage du bouton à
+     * l'écran évite d'offrir un geste voué au refus, il ne protège rien. Une
+     * requête forgée ne passe pas par l'écran.
+     */
+    const { body } = await declarer()
+    const l = await inscrire('locataire3@example.com')
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'locataire3@example.com' },
+    })
+    await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'tenant' } })
+
+    const res = await request(app)
+      .patch(`/api/parks/${parkId}/works/${body.work.id}/complete`)
+      .set('Cookie', l.cookie)
+      .send({})
+
+    expect(res.status).toBe(403)
+    const apres = await prisma.workOrder.findUniqueOrThrow({ where: { id: body.work.id } })
+    expect(apres.status).toBe('reported')
+  })
+
   it('ne déclare rien sur le logement d’un autre parc', async () => {
     const autre = await inscrire('voisin3@example.com', { parkName: 'Autre parc' })
     const parcs = await request(app).get('/api/parks').set('Cookie', autre.cookie)
