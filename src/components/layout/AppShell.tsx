@@ -17,6 +17,8 @@ import { Badge } from '@/components/primitives/Badge'
 import { Button, IconButton } from '@/components/primitives/Button'
 import { LanguageSwitcher } from '@/components/controls/LanguageSwitcher'
 import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
+import { useCurrency } from '@/currency/CurrencyProvider'
+import type { CurrencyCode } from '@/currency/currencies'
 import { ThemeSwitcher } from '@/components/controls/ThemeSwitcher'
 import { useT } from '@/i18n/I18nProvider'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -219,6 +221,34 @@ export function AppShell() {
    * part le parcours, et le sélecteur reste là pour en changer.
    */
   const { etat: session } = useSession()
+  const { setCurrency } = useCurrency()
+
+  /**
+   * La devise vient du PARC, pas d'une préférence de navigateur.
+   *
+   * `CurrencyProvider` ne lisait que `localStorage` : la devise du parc, portée
+   * par l'adhésion depuis toujours, n'était lue nulle part. Un parc camerounais
+   * s'affichait donc dans la dernière devise choisie sur cette machine — et une
+   * QUITTANCE imprimait « 50,00 € » pour 50 000 FCFA, soit un écart de 655 fois
+   * sur un document opposable au locataire.
+   *
+   * Le produit ne convertit rien, et c'est un parti pris assumé du module de
+   * devises. Il ne tient que si la devise affichée EST celle du parc : sans
+   * conversion, en changer ne fait que mentir sur l'unité.
+   *
+   * `XAF` et `XOF` partagent le même « CFA » à l'écran — deux monnaies
+   * distinctes, même parité, et le produit n'affiche que des montants.
+   */
+  const deviseDuParc: CurrencyCode | null =
+    session.statut === 'connecte'
+      ? (({ XAF: 'CFA', XOF: 'CFA', EUR: 'EUR', CAD: 'CAD', USD: 'USD' } as const)[
+          session.adhesions[0]?.currency as 'XAF' | 'XOF' | 'EUR' | 'CAD' | 'USD'
+        ] ?? null)
+      : null
+
+  useEffect(() => {
+    if (deviseDuParc) setCurrency(deviseDuParc)
+  }, [deviseDuParc, setCurrency])
   const roleDuCompte: Role =
     session.statut === 'connecte' ? (session.adhesions[0]?.role ?? 'owner') : 'owner'
 
@@ -941,7 +971,16 @@ function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
 
       <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
         <LanguageSwitcher />
-        <CurrencySwitcher />
+        {/*
+          Le sélecteur ne survit qu'en DÉMONSTRATION, comme celui des profils.
+
+          Le produit ne convertit pas les montants — parti pris assumé, et
+          tenable tant que les sommes sont fictives. Sur un vrai parc, il n'y a
+          qu'une devise juste : la sienne. Offrir d'en changer sans convertir
+          n'offre pas un choix, cela ment sur l'unité — et la quittance imprimée
+          en porte la trace.
+        */}
+        {demo && <CurrencySwitcher />}
         <ThemeSwitcher />
         <span
           aria-hidden="true"
