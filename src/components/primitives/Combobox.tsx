@@ -242,6 +242,11 @@ export function Combobox({
             setOuvert(true)
           }}
           onFocus={() => setOuvert(true)}
+          onClick={() => setOuvert(true)}
+          // Le focus ne suffit pas : après un choix, la liste se referme mais
+          // le champ garde le focus. Un second clic ne déclenchait alors aucun
+          // `focus` et ne rouvrait rien — le champ paraissait mort dès qu'on
+          // voulait corriger son choix, et il fallait taper pour le réveiller.
           onKeyDown={auClavier}
         />
         <Icon

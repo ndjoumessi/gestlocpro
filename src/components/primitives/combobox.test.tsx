@@ -127,6 +127,27 @@ describe('combobox', () => {
     expect(screen.getByRole('combobox', { name: 'Indicatif' })).toHaveValue('France · +33')
   })
 
+  it('se rouvre au clic après un choix, sans qu’il faille taper', async () => {
+    /**
+     * Le champ garde le focus après un choix : le clic suivant ne déclenchait
+     * donc aucun `focus`, et rien ne se rouvrait. Corriger son pays demandait
+     * de taper au hasard pour réveiller un champ qui paraissait mort.
+     */
+    const user = userEvent.setup()
+    renderWithProviders(<Champ />)
+    const champ = screen.getByRole('combobox', { name: 'Indicatif' })
+
+    await user.click(champ)
+    await user.click(screen.getByRole('option', { name: /Cameroun/ }))
+    expect(champ).toHaveValue('Cameroun · +237')
+
+    await user.click(champ)
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
+    // Et le champ est vidé pour la recherche : sans cela, la première frappe
+    // s'ajouterait au libellé du choix précédent et ne filtrerait plus rien.
+    expect(champ).toHaveValue('')
+  })
+
   it('garde le jeton de remplissage automatique', () => {
     // Le jeton s'était déjà perdu une fois en passant du `<select>` au champ
     // cherchable. Il se reperdra à la prochaine réécriture si rien ne le tient.

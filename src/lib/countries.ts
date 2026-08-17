@@ -83,6 +83,65 @@ export function sortedCountries(locale: Locale): Country[] {
 }
 
 /**
+ * Le pays qu'un indicatif désigne SANS AMBIGUÏTÉ, s'il en désigne un.
+ *
+ * `+237` ne peut être que le Cameroun ; `+1` couvre vingt-cinq territoires et
+ * ne permet aucune déduction. La règle vaut sur le monde entier depuis que le
+ * champ pays s'y ouvre : la restreindre aux pays servis laisserait « +234 »
+ * — le Nigeria, et lui seul — sans effet sur un champ qui sait pourtant le
+ * nommer.
+ */
+export function paysDeLIndicatif(dial: string): string | undefined {
+  const codes = CODES_PAYS.filter((code) => INDICATIFS[code] === dial)
+  return codes.length === 1 ? codes[0] : undefined
+}
+
+export interface OptionPays {
+  code: string
+  label: string
+  /** Le pays fait partie du marché servi : il pré-remplit devise et langue. */
+  servi: boolean
+}
+
+/**
+ * Pays proposés au CHOIX : le monde entier, les pays servis en tête.
+ *
+ * Le champ n'en offrait que vingt et un, plus « Autre pays », quand le sélecteur
+ * d'indicatifs voisin en offre deux cent quatre. Deux listes de tailles très
+ * différentes pour la même notion, sur deux étapes voisines — et c'est la
+ * courte qui perdait de l'information : un bailleur de Harare tombait sur
+ * « Autre pays », donc AUCUN code pays n'était enregistré, alors que son
+ * indicatif l'était au caractère près. Le serveur, lui, accepte n'importe quel
+ * code ISO de deux lettres ; c'était l'interface seule qui rétrécissait.
+ *
+ * Ce que « servi » veut dire N'A PAS changé pour autant. `COUNTRIES` reste la
+ * liste des pays dont on connaît la devise et la langue, et eux seuls
+ * pré-remplissent. Ailleurs, le champ enregistre le pays réel et laisse devise
+ * et langue au choix de l'utilisateur : inventer « dollar » pour le Zimbabwe
+ * serait une supposition, et une supposition fausse coûte plus qu'un champ à
+ * régler soi-même. Le groupement dit lequel des deux cas on est en train de
+ * choisir, avant même de valider.
+ *
+ * Les noms des pays servis viennent de notre table, pas d'`Intl` : elle porte
+ * des qualificatifs délibérés — « Congo-Brazzaville » — qu'aucune base de noms
+ * ne donnera. Le reste du monde est traduit par le navigateur.
+ */
+export function countryOptions(locale: Locale): OptionPays[] {
+  const servis = new Map(COUNTRIES.map((c) => [c.code, c]))
+  return CODES_PAYS.map((code) => {
+    const servi = servis.get(code)
+    return {
+      code,
+      label: servi ? countryName(servi, locale) : nomDuPays(code, locale),
+      servi: Boolean(servi),
+    }
+  }).sort((a, b) => {
+    if (a.servi !== b.servi) return a.servi ? -1 : 1
+    return a.label.localeCompare(b.label, locale)
+  })
+}
+
+/**
  * Indicatifs téléphoniques, chacun accompagné du ou des pays qu'il dessert.
  *
  * La version précédente rendait des indicatifs nus — `['+1', '+32', '+33', …]` —

@@ -39,9 +39,10 @@ export const en: Dictionary = {
     demoNotice:
       'You are browsing a demo: these buildings, tenants and amounts are fictional.',
     demoCta: 'Create my space',
-    countryOther: 'Other country',
+    countryGroupServed: 'Supported countries',
+    countryGroupOther: 'Other countries',
     countryOtherHint:
-      'Your country is not listed yet: choose the currency and language of your space yourself.',
+      'This country is not supported yet: choose the currency and language of your space yourself.',
     email: 'Email address',
     password: 'Password',
     phone: 'Phone',
@@ -246,6 +247,8 @@ export const en: Dictionary = {
       successBody:
         'Account creation is not wired up yet. Here is the {role} space as you will discover it.',
       goToDashboard: 'Open the dashboard',
+
+      editSection: 'Edit: {section}',
 
       summaryRole: 'Role',
       summaryName: 'Name',

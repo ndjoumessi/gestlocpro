@@ -26,13 +26,14 @@ import {
   type CurrencyCode,
 } from "@/currency/currencies";
 import {
-  COUNTRIES,
   OTHER_COUNTRY,
   countryName,
   findCountry,
-  sortedCountries,
+  countryOptions,
   dialOptions,
+  paysDeLIndicatif,
 } from "@/lib/countries";
+import { INDICATIFS, nomDuPays } from "@/lib/indicatifs";
 import {
   formatInviteCode,
   validateEmail,
@@ -425,18 +426,29 @@ export function SignUp() {
                        * partait au serveur.
                        *
                        * La remontée n'a lieu que si l'indicatif désigne UN SEUL
-                       * pays servi. Les indicatifs partagés — `+1` couvre les
+                       * pays. Les indicatifs partagés — `+1` couvre les
                        * États-Unis, le Canada et une vingtaine de territoires —
                        * ne permettent aucune déduction : deviner y serait pire
                        * que se taire, puisque le pays pilote aussi la devise,
                        * la langue et le format des dates.
+                       *
+                       * « Un seul pays » se lit désormais sur le MONDE et non
+                       * sur les seuls pays servis, puisque le champ pays s'y
+                       * ouvre : `+234` nomme le Nigeria sans ambiguïté, et le
+                       * taire laisserait à nouveau les deux champs se
+                       * contredire. Ce qui reste réservé aux pays servis, c'est
+                       * le pré-remplissage de la devise et de la langue.
                        */
                       onChange={(dial: string) => {
-                        const servis = COUNTRIES.filter((c) => c.dial === dial);
-                        const pays =
-                          servis.length === 1 ? servis[0] : undefined;
-                        if (!pays) {
+                        const code = paysDeLIndicatif(dial);
+                        if (!code) {
                           patch({ dial });
+                          return;
+                        }
+                        const pays = findCountry(code);
+                        if (!pays) {
+                          patch({ dial, country: code });
+                          setRegion(code);
                           return;
                         }
                         patch({
@@ -500,17 +512,24 @@ export function SignUp() {
             errorFor={errorFor}
             blur={blur}
             onCountryChange={(code) => {
-              // « Autre » n'emporte aucun pré-remplissage : on enregistre le
-              // choix et on laisse devise et langue à l'utilisateur.
-              if (code === OTHER_COUNTRY) {
-                patch({ country: code });
-                // Pas de pays connu : on efface la région pour retomber sur le
-                // repli de formatage plutôt que d'en inventer une.
-                setRegion(null);
+              const country = findCountry(code);
+              /**
+               * Un pays hors du marché servi est un pays quand même.
+               *
+               * Il n'emporte ni devise ni langue — on ne les connaît pas pour
+               * lui, et les deviner ferait pire que se taire. Mais il emporte
+               * son indicatif et sa région : ce sont des données réelles, et
+               * l'ancien « Autre pays » les jetait toutes les deux avec le
+               * pays lui-même.
+               */
+              if (!country) {
+                patch({
+                  country: code,
+                  ...(INDICATIFS[code] ? { dial: INDICATIFS[code] } : {}),
+                });
+                setRegion(code);
                 return;
               }
-              const country = findCountry(code);
-              if (!country) return;
               // Le pays pré-remplit devise, langue et indicatif — et les
               // applique tout de suite à l'interface pour que le choix soit
               // visible, pas seulement enregistré.
@@ -612,7 +631,7 @@ function ContextStep({
 }) {
   const t = useT();
   const { locale } = useI18n();
-  const countries = useMemo(() => sortedCountries(locale), [locale]);
+  const paysOptions = useMemo(() => countryOptions(locale), [locale]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -620,30 +639,43 @@ function ContextStep({
         <Field
           label={t("common.country")}
           required
+          // L'aide ne parle plus d'un pays absent — il n'y en a plus — mais du
+          // seul écart qui subsiste : un pays réel dont on ignore la devise.
           hint={
-            state.country === OTHER_COUNTRY
+            state.country && !findCountry(state.country)
               ? t("common.countryOtherHint")
               : undefined
           }
         >
           {(props) => (
-            <Select
-              {...props}
+            <Combobox
+              id={props.id}
+              aria-describedby={props["aria-describedby"]}
               name="country"
+              /**
+               * `country` et non `country-name` : le champ ENVOIE le code ISO
+               * — c'est lui que porte l'entrée cachée du combobox, et lui que
+               * le serveur attend. Le nom traduit n'est qu'un affichage.
+               */
               autoComplete="country"
+              /**
+               * Deux cent quarante-deux pays : le menu nu de vingt-deux
+               * entrées ne pouvait pas grandir sans devenir impraticable. Le champ
+               * cherchable est déjà celui de l'indicatif, deux champs plus
+               * haut — la même notion mérite le même geste.
+               */
+              options={paysOptions.map(({ code, label, servi }) => ({
+                value: code,
+                label,
+                groupe: t(
+                  servi
+                    ? "common.countryGroupServed"
+                    : "common.countryGroupOther",
+                ),
+              }))}
               value={state.country}
-              onChange={(e) => onCountryChange(e.target.value)}
-            >
-              {countries.map((country) => (
-                <option key={country.code} value={country.code}>
-                  {countryName(country, locale)}
-                </option>
-              ))}
-              {/* Épinglé en fin de liste plutôt qu'alphabétisé : ce n'est pas
-                  un pays, et il ne doit pas s'intercaler entre l'Autriche et
-                  la Belgique. */}
-              <option value={OTHER_COUNTRY}>{t("common.countryOther")}</option>
-            </Select>
+              onChange={onCountryChange}
+            />
           )}
         </Field>
 
@@ -848,104 +880,165 @@ function ReviewStep({
 }) {
   const t = useT();
   const { locale } = useI18n();
-  const country = findCountry(state.country);
-
-  const rows: { label: string; value: string; step: number }[] = [
-    {
-      label: t("auth.signup.summaryRole"),
-      value: t(`roles.${state.role ?? "owner"}.name` as "roles.owner.name"),
-      step: 0,
-    },
-    { label: t("auth.signup.summaryName"), value: state.name, step: 1 },
-    { label: t("auth.signup.summaryEmail"), value: state.email, step: 1 },
-    {
-      label: t("auth.signup.summaryPhone"),
-      value: `${state.dial} ${state.phone}`,
-      step: 1,
-    },
-    {
-      label: t("auth.signup.summaryCountry"),
-      value: country
-        ? countryName(country, locale)
-        : state.country === OTHER_COUNTRY
-          ? t("common.countryOther")
-          : "—",
-      step: 2,
-    },
-    {
-      label: t("auth.signup.summaryCurrency"),
-      value: CURRENCY_DEFS[state.currency].label,
-      step: 2,
-    },
-    {
-      label: t("auth.signup.summaryLanguage"),
-      value: LOCALE_LABELS[state.locale].long,
-      step: 2,
-    },
-  ];
 
   /**
-   * Les réponses propres au rôle manquaient au récapitulatif.
+   * Les lignes du CONTEXTE, dans l'ordre de ce qui pèse.
    *
-   * L'écran annonce « dernière vérification avant la création de votre
-   * espace », et taisait pourtant trois des réponses saisies juste avant : le
-   * nom du parc, le nombre d'unités et le mode de gestion pour un
-   * propriétaire, le cabinet et le code pour un gestionnaire, le code
-   * d'invitation pour un locataire. Une vérification qui omet ce qu'on vient
-   * de taper n'en est pas une — et c'est le nom du parc qui s'affichera en
-   * tête de l'espace.
+   * Le parc, le nombre d'unités et le mode de gestion viennent d'abord : ce
+   * sont les réponses propres au rôle, saisies à l'instant, et le nom du parc
+   * s'affichera en tête de l'espace créé. Le pays suit, puis la devise et la
+   * langue — deux réglages qu'on ne relit pas, qu'il pré-remplit, et qui se
+   * changent en deux clics une fois dans l'application.
    */
+  const contexte: { label: string; value: string }[] = [];
+
   if (state.role === "owner") {
-    rows.push(
-      { label: t("auth.signup.summaryPark"), value: state.parkName, step: 2 },
-      { label: t("auth.signup.summaryUnits"), value: state.unitCount, step: 2 },
+    contexte.push(
+      { label: t("auth.signup.summaryPark"), value: state.parkName },
+      { label: t("auth.signup.summaryUnits"), value: state.unitCount },
       {
         label: t("auth.signup.summaryManagement"),
         value:
           state.delegates === "delegate"
             ? t("auth.signup.manageDelegate")
             : t("auth.signup.manageSolo"),
-        step: 2,
       },
     );
   } else if (state.role === "manager") {
-    rows.push(
-      { label: t("auth.signup.summaryCompany"), value: state.company, step: 2 },
-      {
-        label: t("auth.signup.summaryOwnerCode"),
-        value: state.ownerCode,
-        step: 2,
-      },
+    contexte.push(
+      { label: t("auth.signup.summaryCompany"), value: state.company },
+      { label: t("auth.signup.summaryOwnerCode"), value: state.ownerCode },
     );
   } else if (state.role === "tenant") {
-    rows.push({
+    contexte.push({
       label: t("auth.signup.summaryInviteCode"),
       value: state.inviteCode,
-      step: 2,
     });
   }
+
+  contexte.push(
+    {
+      label: t("auth.signup.summaryCountry"),
+      // Le pays peut être hors du marché servi : son nom vient alors du
+      // navigateur, comme dans la liste où il a été choisi. Afficher « Autre
+      // pays » là où l'utilisateur a écrit « Zimbabwe » lui ferait relire une
+      // réponse qui n'est pas la sienne.
+      value: state.country
+        ? (findCountry(state.country)
+            ? countryName(findCountry(state.country)!, locale)
+            : nomDuPays(state.country, locale))
+        : "—",
+    },
+    {
+      label: t("auth.signup.summaryCurrency"),
+      value: CURRENCY_DEFS[state.currency].label,
+    },
+    {
+      label: t("auth.signup.summaryLanguage"),
+      value: LOCALE_LABELS[state.locale].long,
+    },
+  );
+
+  /**
+   * Trois groupes, un seul lien de correction chacun.
+   *
+   * L'écran alignait dix lignes suivies chacune d'un « Modifier » : dix fois le
+   * même mot en colonne, à lire jusqu'au bout pour trouver la ligne qu'on veut
+   * changer. La répétition ne donnait pourtant aucune précision utile — toutes
+   * ces lignes viennent de trois écrans seulement, et c'est vers un écran que
+   * le lien ramène, jamais vers un champ. Un lien par groupe dit donc
+   * exactement ce que le geste fait, et rend le mot « Modifier » de nouveau
+   * visible en ne l'écrivant plus qu'à trois endroits.
+   */
+  const groupes: {
+    titre: string;
+    step: number;
+    entete?: string;
+    lignes: { label: string; value: string }[];
+  }[] = [
+    {
+      titre: t("auth.signup.steps.role"),
+      step: 0,
+      // Le rôle n'a pas d'étiquette : le titre du groupe la porte déjà, et
+      // « Rôle : Propriétaire » sous un intertitre « Votre rôle » écrivait le
+      // même mot deux fois pour une seule information.
+      entete: t(`roles.${state.role ?? "owner"}.name` as "roles.owner.name"),
+      lignes: [],
+    },
+    {
+      titre: t("auth.signup.steps.identity"),
+      step: 1,
+      lignes: [
+        { label: t("auth.signup.summaryName"), value: state.name },
+        { label: t("auth.signup.summaryEmail"), value: state.email },
+        {
+          label: t("auth.signup.summaryPhone"),
+          value: `${state.dial} ${state.phone}`,
+        },
+      ],
+    },
+    { titre: t("auth.signup.steps.context"), step: 2, lignes: contexte },
+  ];
 
   return (
     <div className="flex flex-col gap-6">
       <Card flush className="overflow-hidden">
-        <dl className="divide-y divide-divider">
-          {rows.map((row) => (
-            <div key={row.label} className="flex items-center gap-4 px-4 py-3">
-              <dt className="eyebrow w-32 shrink-0 text-muted">{row.label}</dt>
-              <dd className="min-w-0 flex-1 truncate text-body font-medium">
-                {row.value || "—"}
-              </dd>
-              {/* Chaque ligne est corrigeable sans repasser par tout le fil. */}
-              <button
-                type="button"
-                onClick={() => onEdit(row.step)}
-                className="shrink-0 cursor-pointer rounded-sm px-2 py-1 text-label font-semibold text-gold-ink hover:text-gold-ink-hover"
-              >
-                {t("common.edit")}
-              </button>
-            </div>
+        <div className="divide-y divide-divider">
+          {groupes.map((groupe) => (
+            <section key={groupe.titre} className="px-4 py-3">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="eyebrow text-muted">{groupe.titre}</h3>
+                {/* Cible de 44px, obtenue par la hauteur du contrôle et non par
+                    du rembourrage vertical : les marges négatives la rendent
+                    sans écarter les groupes les uns des autres. */}
+                <button
+                  type="button"
+                  onClick={() => onEdit(groupe.step)}
+                  aria-label={t("auth.signup.editSection", {
+                    section: groupe.titre,
+                  })}
+                  className="-my-2.5 -mr-2 inline-flex min-h-11 shrink-0 cursor-pointer items-center rounded-sm px-2 text-label font-semibold text-gold-ink hover:text-gold-ink-hover"
+                >
+                  {t("common.edit")}
+                </button>
+              </div>
+
+              {groupe.entete && (
+                <p className="mt-0.5 text-body-l font-medium text-ink">
+                  {groupe.entete}
+                </p>
+              )}
+
+              {groupe.lignes.length > 0 && (
+                <dl className="mt-1.5 flex flex-col gap-1.5">
+                  {groupe.lignes.map((ligne) => (
+                    <div
+                      key={ligne.label}
+                      className="flex items-baseline gap-3"
+                    >
+                      {/* L'étiquette n'est plus en capitales : dix intertitres
+                          alignés en majuscules pesaient autant que les valeurs
+                          qu'ils annonçaient, alors qu'on vient relire des
+                          valeurs. Les capitales ne servent plus qu'aux trois
+                          titres de groupe, où elles distinguent enfin quelque
+                          chose. */}
+                      <dt className="w-24 shrink-0 text-body-s text-muted">
+                        {ligne.label}
+                      </dt>
+                      {/* `break-words` et non `truncate` : un récapitulatif
+                          dont la valeur se termine par des points de suspension
+                          ne se vérifie pas. Une adresse longue tient sur deux
+                          lignes, c'est le prix juste. */}
+                      <dd className="min-w-0 flex-1 break-words text-body font-medium text-ink">
+                        {ligne.value || "—"}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+            </section>
           ))}
-        </dl>
+        </div>
       </Card>
 
       <div className="flex flex-col gap-1">

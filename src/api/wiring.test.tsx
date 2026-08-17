@@ -132,15 +132,22 @@ describe('inscription', () => {
     expect(corps.countryCode).toBe('CM')
   })
 
-  it('omet le pays quand il n’est pas dans la liste, au lieu d’envoyer la sentinelle', async () => {
+  it('envoie le vrai code d’un pays non desservi, plutôt qu’une sentinelle', async () => {
     /**
-     * Le défaut qui a fait échouer la première inscription en production.
+     * La suite du défaut qui a fait échouer la première inscription en
+     * production.
      *
-     * `OTHER` signifie « mon pays n'est pas proposé » : c'est une valeur
+     * `OTHER` signifiait « mon pays n'est pas proposé » : une valeur
      * d'interface, pas un code ISO 3166-1. Envoyée telle quelle, elle butait
-     * sur `length(2)` et le serveur répondait 400 — mais l'écran n'annonçait
-     * qu'une « erreur inattendue », sans nommer le champ. L'utilisateur ne
-     * pouvait ni comprendre ni corriger.
+     * sur `length(2)` et le serveur répondait 400 sans nommer le champ. On
+     * l'avait donc omise — le compte se créait alors sans pays du tout.
+     *
+     * La cause était en amont : une liste de vingt et un pays pour un monde qui
+     * en compte deux cents. Elle en compte désormais deux cent quarante-deux, et un
+     * bailleur de Harare enregistre « ZW » — un code que le serveur accepte,
+     * puisqu'il n'exige que deux lettres. La sentinelle n'est plus atteignable
+     * depuis l'écran ; ce que le serveur en fait reste vérifié par le contrat
+     * d'inscription, côté serveur.
      */
     const serveur = installerFauxServeur()
     serveur.quand('POST', '/auth/signup', { status: 201, body: { user: COMPTE_FICTIF } })
@@ -155,7 +162,10 @@ describe('inscription', () => {
     await user.click(screen.getByRole('button', { name: /continuer/i }))
 
     // Le pays se choisit à l'étape « contexte », avec le nom du parc.
-    await user.selectOptions(await screen.findByLabelText(/^pays/i), 'OTHER')
+    const pays = await screen.findByLabelText(/^pays/i)
+    await user.click(pays)
+    await user.type(pays, 'zimb')
+    await user.click(screen.getByRole('option', { name: 'Zimbabwe' }))
     await user.type(screen.getByLabelText(/nom de votre parc/i), 'Parc Bonamoussadi')
     await user.click(screen.getByRole('button', { name: /continuer/i }))
     await screen.findByRole('heading', { name: /tout est correct/i })
@@ -167,9 +177,9 @@ describe('inscription', () => {
       unknown
     >
     expect(corps).toBeDefined()
-    // Absent, et non `null` ni `'OTHER'` : le champ est facultatif côté
-    // serveur, et un pays inconnu est une absence de pays.
-    expect('countryCode' in corps).toBe(false)
+    // Le code ISO réel, et non une sentinelle ni un champ omis : le pays est
+    // connu, seule sa devise ne l'est pas.
+    expect(corps.countryCode).toBe('ZW')
   })
 
   it('ramène à l’étape où le champ existe quand l’adresse est prise', async () => {

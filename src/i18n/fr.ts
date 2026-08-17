@@ -49,9 +49,12 @@ export const fr = {
     demoNotice:
       'Vous parcourez une démonstration : ces immeubles, ces locataires et ces montants sont fictifs.',
     demoCta: 'Créer mon espace',
-    countryOther: 'Autre pays',
+    countryGroupServed: 'Pays desservis',
+    countryGroupOther: 'Autres pays',
+    // La liste couvre désormais le monde entier : ce n'est plus le pays qui
+    // manque, c'est la devise et la langue qu'on ne connaît pas pour lui.
     countryOtherHint:
-      'Votre pays n’est pas encore listé : choisissez vous-même la devise et la langue de votre espace.',
+      'Ce pays n’est pas encore desservi : choisissez vous-même la devise et la langue de votre espace.',
     email: 'Adresse e-mail',
     password: 'Mot de passe',
     phone: 'Téléphone',
@@ -277,6 +280,10 @@ export const fr = {
       successBody:
         'La création de compte n’est pas encore branchée. Voici l’espace {role} tel que vous le découvrirez.',
       goToDashboard: 'Ouvrir le tableau de bord',
+
+      // Une seule issue de correction par groupe, donc un libellé qui dit LEQUEL
+      // — « Modifier » répété trois fois ne se distingue pas à l'oreille.
+      editSection: 'Modifier : {section}',
 
       summaryRole: 'Rôle',
       summaryName: 'Nom',

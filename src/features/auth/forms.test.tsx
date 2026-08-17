@@ -144,11 +144,191 @@ describe('inscription', () => {
     await user.click(screen.getByRole('button', { name: /continuer/i }))
 
     const pays = await screen.findByLabelText(/^pays/i)
-    await user.selectOptions(pays, 'SN')
+    await user.click(pays)
+    await user.type(pays, 'France')
+    await user.click(screen.getByRole('option', { name: 'France' }))
+
+    // La France emporte l'euro : le pré-remplissage doit se voir CHANGER, sinon
+    // le test se contenterait de la valeur par défaut du Cameroun.
+    expect(screen.getByLabelText(/devise/i)).toHaveValue('EUR')
+
+    await user.click(pays)
+    await user.type(pays, 'Sénég')
+    await user.click(screen.getByRole('option', { name: 'Sénégal' }))
 
     // Le Sénégal relevait du XOF et le Cameroun du XAF ; les deux zones franc
     // sont désormais regroupées sous une seule devise.
     expect(screen.getByLabelText(/devise/i)).toHaveValue('CFA')
+  })
+
+  /**
+   * L'indicatif REMONTE vers le pays, et pas seulement l'inverse.
+   *
+   * Le défaut qui a produit deux réponses contradictoires sur le même écran :
+   * on choisissait « France · +33 » et le récapitulatif annonçait « Pays :
+   * Cameroun » — la valeur déduite de la devise au premier rendu, jamais
+   * corrigée. C'est celle qu'on n'avait pas choisie qui partait au serveur,
+   * entraînant la devise, la langue et le format des dates.
+   *
+   * Ce sens de la relation n'était tenu par aucun test : on a pu supprimer
+   * `paysDeLIndicatif` en entier sans qu'une seule des 513 assertions bronche.
+   */
+  it('fait remonter l’indicatif vers le pays, devise comprise', async () => {
+    const user = userEvent.setup()
+    renderApp('/inscription/proprietaire')
+
+    await user.type(screen.getByLabelText(/nom complet/i), 'Arsène Nkomo')
+    await user.type(screen.getByLabelText(/adresse e-mail/i), 'arsene@example.com')
+    await user.type(screen.getByLabelText(/^téléphone/i), '677889900')
+    await user.type(screen.getByLabelText(/^Mot de passe/), 'Bonamoussadi2026!')
+
+    const indicatif = screen.getByLabelText(/indicatif/i)
+    await user.click(indicatif)
+    await user.type(indicatif, 'France')
+    await user.click(screen.getByRole('option', { name: /^France · \+33$/ }))
+
+    await user.click(screen.getByRole('button', { name: /continuer/i }))
+
+    // Le pays a suivi l'indicatif, et avec lui la devise du pays servi.
+    const pays = await screen.findByLabelText(/^pays/i)
+    expect(pays).toHaveValue('France')
+    expect(screen.getByLabelText(/devise/i)).toHaveValue('EUR')
+  })
+
+  /**
+   * La remontée vaut sur le MONDE, pas sur les seuls pays servis.
+   *
+   * `+263` ne nomme que le Zimbabwe. S'en tenir aux vingt et un pays servis
+   * laisserait à nouveau les deux champs se contredire, sur un pays que la
+   * liste sait pourtant nommer. Ce qui reste réservé aux pays servis, c'est le
+   * pré-remplissage de la devise — pas l'identification du pays.
+   */
+  it('remonte aussi vers un pays non desservi, sans lui inventer de devise', async () => {
+    const user = userEvent.setup()
+    renderApp('/inscription/proprietaire')
+
+    await user.type(screen.getByLabelText(/nom complet/i), 'Arsène Nkomo')
+    await user.type(screen.getByLabelText(/adresse e-mail/i), 'arsene@example.com')
+    await user.type(screen.getByLabelText(/^téléphone/i), '677889900')
+    await user.type(screen.getByLabelText(/^Mot de passe/), 'Bonamoussadi2026!')
+
+    const indicatif = screen.getByLabelText(/indicatif/i)
+    await user.click(indicatif)
+    await user.type(indicatif, 'Zimb')
+    await user.click(screen.getByRole('option', { name: /^Zimbabwe · \+263$/ }))
+
+    await user.click(screen.getByRole('button', { name: /continuer/i }))
+
+    const pays = await screen.findByLabelText(/^pays/i)
+    expect(pays).toHaveValue('Zimbabwe')
+    // Le Cameroun par défaut tient : deviner une devise pour le Zimbabwe serait
+    // une invention, et une invention fausse coûte plus qu'un champ à régler.
+    expect(screen.getByLabelText(/devise/i)).toHaveValue('CFA')
+  })
+
+  /**
+   * Un indicatif PARTAGÉ ne désigne rien, et doit donc ne rien changer.
+   *
+   * `+1` couvre vingt-cinq territoires. Deviner y serait pire que se taire,
+   * puisque le pays pilote aussi la devise, la langue et le format des dates.
+   */
+  it('ne déduit aucun pays d’un indicatif partagé', async () => {
+    const user = userEvent.setup()
+    renderApp('/inscription/proprietaire')
+
+    await user.type(screen.getByLabelText(/nom complet/i), 'Arsène Nkomo')
+    await user.type(screen.getByLabelText(/adresse e-mail/i), 'arsene@example.com')
+    await user.type(screen.getByLabelText(/^téléphone/i), '677889900')
+    await user.type(screen.getByLabelText(/^Mot de passe/), 'Bonamoussadi2026!')
+
+    const indicatif = screen.getByLabelText(/indicatif/i)
+    await user.click(indicatif)
+    await user.type(indicatif, 'Canada')
+    await user.click(screen.getByRole('option', { name: /· \+1$/ }))
+
+    await user.click(screen.getByRole('button', { name: /continuer/i }))
+
+    // Le pays reste celui d'avant — le Cameroun par défaut —, et surtout il
+    // n'est PAS passé au Canada ni aux États-Unis sur la foi d'un « +1 ».
+    const pays = await screen.findByLabelText(/^pays/i)
+    expect(pays).toHaveValue('Cameroun')
+  })
+
+  /**
+   * Le champ pays proposait vingt et un pays dans un menu nu, quand le
+   * sélecteur d'indicatifs voisin en propose deux cent quatre et se cherche à
+   * la frappe. Deux listes de tailles très différentes pour la même notion, sur
+   * deux étapes voisines : un bailleur de Harare choisissait « Autre pays » —
+   * donc AUCUN pays n'était enregistré — alors que son indicatif, lui, était
+   * connu au caractère près.
+   */
+  it('ouvre le pays au monde entier, et le rend cherchable', async () => {
+    const user = userEvent.setup()
+    renderApp('/inscription/proprietaire')
+
+    await user.type(screen.getByLabelText(/nom complet/i), 'Arsène Nkomo')
+    await user.type(screen.getByLabelText(/adresse e-mail/i), 'arsene@example.com')
+    await user.type(screen.getByLabelText(/^téléphone/i), '677889900')
+    await user.type(screen.getByLabelText(/^Mot de passe/), 'Bonamoussadi2026!')
+    await user.click(screen.getByRole('button', { name: /continuer/i }))
+
+    const pays = await screen.findByLabelText(/^pays/i)
+    await user.click(pays)
+    await user.type(pays, 'zimb')
+    await user.click(screen.getByRole('option', { name: 'Zimbabwe' }))
+
+    expect(pays).toHaveValue('Zimbabwe')
+    // Un pays hors du marché servi ne porte ni devise ni langue : le choix
+    // précédent tient, et l'utilisateur tranche lui-même. Deviner « dollar »
+    // pour le Zimbabwe serait une invention, pas un pré-remplissage.
+    expect(screen.getByLabelText(/devise/i)).toHaveValue('CFA')
+  })
+
+  it('garde le jeton de remplissage automatique sur le pays', async () => {
+    // Le jeton s'était déjà perdu une fois en passant d'un menu natif à un
+    // champ cherchable, sur l'indicatif. Le pays emprunte le même chemin.
+    const user = userEvent.setup()
+    renderApp('/inscription/proprietaire')
+
+    await user.type(screen.getByLabelText(/nom complet/i), 'Arsène Nkomo')
+    await user.type(screen.getByLabelText(/adresse e-mail/i), 'arsene@example.com')
+    await user.type(screen.getByLabelText(/^téléphone/i), '677889900')
+    await user.type(screen.getByLabelText(/^Mot de passe/), 'Bonamoussadi2026!')
+    await user.click(screen.getByRole('button', { name: /continuer/i }))
+
+    const pays = await screen.findByLabelText(/^pays/i)
+    expect(pays.getAttribute('autocomplete')).toBe('country')
+  })
+
+  /**
+   * Dix lignes, dix fois le mot « Modifier », en colonne.
+   *
+   * La répétition noyait l'action utile : pour trouver la ligne à corriger, il
+   * fallait lire dix fois la même étiquette. Le récapitulatif se lit désormais
+   * par étape d'origine — rôle, identité, contexte — avec une seule issue de
+   * correction par groupe, et chacune nommée pour qui ne voit pas l'écran.
+   */
+  it('n’offre qu’une issue de correction par étape, et la nomme', async () => {
+    const user = userEvent.setup()
+    renderApp('/inscription/proprietaire')
+
+    await user.type(screen.getByLabelText(/nom complet/i), 'Arsène Nkomo')
+    await user.type(screen.getByLabelText(/adresse e-mail/i), 'arsene@example.com')
+    await user.type(screen.getByLabelText(/^téléphone/i), '677889900')
+    await user.type(screen.getByLabelText(/^Mot de passe/), 'Bonamoussadi2026!')
+    await user.click(screen.getByRole('button', { name: /continuer/i }))
+
+    await user.type(await screen.findByLabelText(/nom de votre parc/i), 'Parc Bonamoussadi')
+    await user.click(screen.getByRole('button', { name: /continuer/i }))
+
+    await screen.findByRole('heading', { name: /tout est correct/i })
+
+    const corrections = screen.getAllByRole('button', { name: /modifier/i })
+    expect(corrections).toHaveLength(3)
+
+    // Et chaque issue ramène à l'étape qui porte le champ.
+    await user.click(screen.getByRole('button', { name: /modifier.*votre identité/i }))
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Votre identité')
   })
   /**
    * Le récapitulatif taisait les réponses propres au rôle.
