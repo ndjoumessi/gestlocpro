@@ -588,11 +588,27 @@ export function DonutChart({
   centerValue,
   centerLabel,
   caption,
+  reconciliation = [],
 }: {
   slices: DonutSlice[]
   centerValue: string
   centerLabel: string
   caption: string
+  /**
+   * Lignes de RÉCONCILIATION, sous la légende et sous un filet.
+   *
+   * Une part d'anneau ne dit pas à quoi elle s'ajoute. Sur le tableau de bord,
+   * les trois parts sommaient exactement au premier indicateur de la page et
+   * deux d'entre elles au troisième — sans que rien ne le montre : quatre
+   * nombres justes, sur deux panneaux éloignés, que l'utilisateur devait
+   * rapprocher de tête pour savoir s'ils parlaient de la même chose.
+   *
+   * Ces lignes portent les MÊMES intitulés que les indicateurs qu'elles
+   * rejoignent : c'est le nom, plus encore que le montant, qui referme la
+   * boucle. Sans pastille de couleur — elles ne désignent aucun arc, elles
+   * totalisent.
+   */
+  reconciliation?: { key: string; label: string; value: number; fort?: boolean }[]
 }) {
   const { money } = useCurrency()
   const [active, setActive] = useState<string | null>(null)
@@ -685,6 +701,37 @@ export function DonutChart({
             </button>
           </li>
         ))}
+
+        {reconciliation.length > 0 && (
+          <li className="mt-1 border-t border-divider pt-2">
+            <dl className="flex flex-col gap-1.5">
+              {reconciliation.map((ligne) => (
+                <div key={ligne.key} className="flex items-baseline gap-2.5 px-2">
+                  {/* Décalage de la largeur d'une pastille et de sa gouttière :
+                      les montants restent dans la même colonne que ceux de la
+                      légende, ce qui est la seule façon de les lire comme une
+                      addition. */}
+                  <dt
+                    className={cn(
+                      'ml-[1.25rem] min-w-0 flex-1 truncate',
+                      ligne.fort ? 'text-body text-ink' : 'text-body-s text-muted',
+                    )}
+                  >
+                    {ligne.label}
+                  </dt>
+                  <dd
+                    className={cn(
+                      'numeric shrink-0',
+                      ligne.fort ? 'text-body font-medium' : 'text-body-s text-muted',
+                    )}
+                  >
+                    {money(ligne.value, { round: true })}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </li>
+        )}
       </ul>
 
       <figcaption className="sr-only">{caption}</figcaption>

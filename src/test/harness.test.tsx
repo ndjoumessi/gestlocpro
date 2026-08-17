@@ -22,11 +22,18 @@ describe('harnais de test', () => {
     // 1 397 000 : la somme des loyers des dix unités occupées. Ce test
     // attendait 1 415 000 — la valeur écrite à la main dans `KPIS`, qui ne se
     // recoupait avec rien. Le chiffre change parce qu'il devient vrai.
-    // Deux occurrences, et c'est voulu : la tuile « loyers attendus » et la
-    // ligne d'objectif du graphique portent le même montant EXACT. Elle
-    // affichait « 1,4 M » — le même chiffre arrondi, à côté du chiffre juste,
-    // ce qui invitait à les comparer et faisait douter du second.
-    expect(screen.getAllByText(/1 397 000/).length).toBe(2)
+    // Trois occurrences, et c'est voulu : la tuile « loyers attendus », la
+    // ligne d'objectif du graphique, et la ligne de réconciliation du
+    // recouvrement portent le même montant EXACT. La tuile affichait « 1,4 M »
+    // — le même chiffre arrondi, à côté du chiffre juste, ce qui invitait à les
+    // comparer et faisait douter du second.
+    //
+    // La troisième est venue APRÈS, et pour la raison inverse de ce que ce
+    // compte pourrait laisser croire : l'anneau du recouvrement décompose
+    // exactement ce total sans le nommer nulle part. Répéter le montant sous
+    // son propre intitulé est ce qui permet de lire les parts comme une
+    // addition — la répétition coûte moins que le rapprochement de tête.
+    expect(screen.getAllByText(/1 397 000/).length).toBe(3)
   })
 
   it('bascule le profil actif', async () => {

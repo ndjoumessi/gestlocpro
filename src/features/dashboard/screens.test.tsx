@@ -313,3 +313,50 @@ describe('décisions du tableau de bord', () => {
     expect(screen.queryByRole('button', { name: /^arbitrer$/i })).not.toBeInTheDocument()
   })
 })
+
+/**
+ * Les quatre nombres du tableau de bord se recoupent, et l'écran le MONTRE.
+ *
+ * L'anneau du recouvrement décompose exactement « loyers attendus », et ses
+ * deux parts non réglées somment à « impayés cumulés » — l'invariant est écrit
+ * dans `kpis.ts`. Rien à l'écran ne le disait : quatre nombres justes, sur deux
+ * panneaux éloignés, que l'utilisateur devait rapprocher de tête pour savoir
+ * s'ils parlaient de la même chose, ou de deux périodes différentes.
+ *
+ * Ce cas tient l'arithmétique ET les intitulés. Le montant seul se relirait
+ * comme une coïncidence des données de démonstration ; c'est le nom repris à
+ * l'identique de l'indicateur qui referme la boucle.
+ */
+describe('réconciliation du recouvrement', () => {
+  it('somme les parts sous les intitulés mêmes des indicateurs', async () => {
+    renderApp('/app')
+
+    const recouvrement = (await screen.findByRole('heading', { name: /recouvrement du mois/i }))
+      .closest('div[class*="rounded-lg"]') as HTMLElement
+
+    const lire = (etiquette: RegExp) => {
+      const texte = within(recouvrement)
+        .getAllByText(etiquette)
+        .map((n) => n.parentElement?.textContent ?? '')
+        .join(' ')
+      const montant = texte.match(/([\d   ]+)\s*(?:FCFA|€)/)?.[1] ?? ''
+      return Number(montant.replace(/[^\d]/g, ''))
+    }
+
+    const paye = lire(/^payé$/i)
+    const partiel = lire(/^partiel$/i)
+    const retard = lire(/^en retard$/i)
+    const impayes = lire(/impayés cumulés/i)
+    const attendu = lire(/loyers attendus/i)
+
+    // Les deux relations, telles que `kpis.ts` les pose.
+    expect(partiel + retard).toBe(impayes)
+    expect(paye + partiel + retard).toBe(attendu)
+
+    // Et les intitulés sont bien ceux des indicateurs, pas des synonymes : sans
+    // cela le rapprochement resterait à la charge du lecteur.
+    const entete = screen.getByRole('main')
+    expect(within(entete).getAllByText(/impayés cumulés/i).length).toBeGreaterThan(1)
+    expect(within(entete).getAllByText(/loyers attendus/i).length).toBeGreaterThan(1)
+  })
+})

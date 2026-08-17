@@ -268,6 +268,35 @@ export function Dashboard() {
                 color: 'var(--color-danger)',
               },
             ]}
+            /**
+             * Ce que l'anneau ne disait pas : à quoi ses parts s'ajoutent.
+             *
+             * Les trois somment exactement à « Loyers attendus », premier
+             * indicateur de la page, et les deux dernières à « Impayés
+             * cumulés », le troisième. Ce sont donc les mêmes nombres, à deux
+             * panneaux d'écart, sans que rien ne l'indique — l'utilisateur
+             * devait poser l'addition pour savoir s'ils parlaient de la même
+             * chose. L'invariant est pourtant écrit dans `kpis.ts` : l'impayé
+             * se ventile en partiel et en retard, et les deux parts somment au
+             * total.
+             *
+             * Les intitulés sont repris À L'IDENTIQUE des indicateurs : c'est
+             * le nom qui referme la boucle, le montant seul se serait encore lu
+             * comme une coïncidence.
+             */
+            reconciliation={[
+              {
+                key: 'outstanding',
+                label: t('app.dashboard.outstanding'),
+                value: outstanding,
+              },
+              {
+                key: 'expected',
+                label: t('app.dashboard.expected'),
+                value: expected,
+                fort: true,
+              },
+            ]}
           />
 
           <div className="mt-6 flex flex-col gap-3 border-t border-divider pt-5">
