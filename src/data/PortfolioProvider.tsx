@@ -28,7 +28,14 @@ import { useLocation } from 'react-router-dom'
  * total pour un visiteur est donc de 900 ms, pas de 900 ms par écran.
  */
 const ATTENTE_DEMO_MS = 900
-import { DEMO_TENANT_UNIT, type Deposit, type Unit, type WorkOrder } from './portfolio'
+import {
+  DEMO_TENANT_UNIT,
+  type Deposit,
+  type TradeKey,
+  type Unit,
+  type UrgencyKey,
+  type WorkOrder,
+} from './portfolio'
 import { chargerParc, type Immeuble } from './apiPortfolio'
 import {
   ALERTS as ALERTS_DEMO,
@@ -61,6 +68,37 @@ import { hasStoredState, loadState, resetState, saveState } from './persistence'
  * `AppShell`, pour que l'état survive à la navigation — et il s'enregistre
  * localement, pour qu'il survive aussi au rechargement.
  */
+/**
+ * La fiche d'une intervention tout juste déclarée.
+ *
+ * Écrite en toute lettres plutôt qu'avec un `as WorkOrder` sur un objet partiel.
+ * Le cast avait masqué `reportedAt` et `urgent` : le type se taisait, et l'écran
+ * tombait au rendu sur « Cannot read properties of undefined (reading 'year') ».
+ * Un cast n'ajoute rien à ce qu'on sait, il fait seulement taire ce qu'on ignore.
+ */
+function nouvelleFiche(
+  id: string,
+  unitId: string,
+  signalement: { title: string; trade: TradeKey; urgency: UrgencyKey; description?: string },
+): WorkOrder {
+  const maintenant = new Date()
+  return {
+    id,
+    unitId,
+    title: signalement.title,
+    trade: signalement.trade,
+    status: 'reported',
+    // Rien n'est chiffré : c'est le gestionnaire qui le fera.
+    amount: null,
+    reportedAt: {
+      year: maintenant.getFullYear(),
+      month: maintenant.getMonth() + 1,
+      day: maintenant.getDate(),
+    },
+    urgent: signalement.urgency === 'blocking',
+  }
+}
+
 interface PortfolioContextValue {
   units: Unit[]
   works: WorkOrder[]
@@ -86,6 +124,17 @@ interface PortfolioContextValue {
   reopenWork: (id: string) => void
   /** Défait une validation de devis : le devis redevient à arbitrer. */
   unapproveWork: (id: string) => void
+  /**
+   * Déclare une intervention. Le LOCATAIRE y a droit, sur son logement.
+   *
+   * C'est l'origine normale d'une intervention — « elle naît d'un signalement de
+   * locataire, jamais d'une saisie du bailleur » — et le produit ne l'offrait
+   * nulle part.
+   */
+  addWork: (
+    unitId: string,
+    signalement: { title: string; trade: TradeKey; urgency: UrgencyKey; description?: string },
+  ) => void
   /** Défait un arbitrage de caution : elle redevient retenue, sans retenue. */
   unsettleDeposit: (unitId: string) => void
   /** Le propriétaire arbitre une caution : retenue et restitution du solde. */
@@ -575,6 +624,31 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [parkId, deposits, signalerEchec],
   )
 
+  const addWork = useCallback(
+    (
+      unitId: string,
+      signalement: { title: string; trade: TradeKey; urgency: UrgencyKey; description?: string },
+    ) => {
+      if (!parkId) {
+        // Sans parc serveur — démonstration — le signalement ne vit qu'en
+        // mémoire. La référence est locale et le dit.
+        setWorks((list) => [nouvelleFiche(`LOCAL-${list.length + 1}`, unitId, signalement), ...list])
+        return
+      }
+      void api
+        .addWork<{ work: { id: string; reference: string; status: WorkOrder['status'] } }>(
+          parkId,
+          unitId,
+          signalement,
+        )
+        .then(({ work }) =>
+          setWorks((list) => [nouvelleFiche(work.id, unitId, signalement), ...list]),
+        )
+        .catch(signalerEchec)
+    },
+    [parkId, signalerEchec],
+  )
+
   const settleDeposit = useCallback(
     (unitId: string, withheld: number, reason?: string) => {
       const local = () =>
@@ -841,6 +915,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       completeWork,
       reopenWork,
       unapproveWork,
+      addWork,
       unsettleDeposit,
       settleDeposit,
       addTenant,
@@ -903,6 +978,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       completeWork,
       reopenWork,
       unapproveWork,
+      addWork,
       unsettleDeposit,
       settleDeposit,
       addTenant,

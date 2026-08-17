@@ -174,6 +174,8 @@ export const READINGS: MeterReading[] = [
 export const UTILITY_RATES = { water: 520, power: 99 }
 
 /** Vocabulaire des corps de métier, partagé avec les signalements du portail. */
+export type UrgencyKey = 'blocking' | 'normal' | 'low'
+
 export type TradeKey = 'plumbing' | 'power' | 'painting' | 'multi' | 'lock' | 'other'
 
 /**

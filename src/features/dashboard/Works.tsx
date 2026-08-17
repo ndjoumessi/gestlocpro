@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { PageHeader, useRole } from '@/components/layout/AppShell'
 import { useBase } from '@/lib/base'
 import { Card } from '@/components/primitives/Card'
@@ -15,6 +16,7 @@ import { useDates } from '@/lib/useDates'
 import { type WorkOrder } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { workTitle } from '@/data/workTitle'
+import { ReportModal } from './ReportModal'
 
 const STATUS_TONE: Record<WorkOrder['status'], StatusTone> = {
   reported: 'neutral',
@@ -41,8 +43,18 @@ export function Works() {
    * doit disparaître de la carte « Ce qui demande une décision » du tableau de
    * bord, qui la réclamait encore.
    */
-  const { works, approveWork, unapproveWork, completeWork, reopenWork, unitById, isMine, loading } =
-    usePortfolio()
+  const {
+    works,
+    units,
+    approveWork,
+    unapproveWork,
+    completeWork,
+    reopenWork,
+    unitById,
+    isMine,
+    loading,
+  } = usePortfolio()
+  const [signalementOuvert, setSignalementOuvert] = useState(false)
 
   // Le locataire suit les interventions sur SON logement, pas celles du parc.
   // Le périmètre vient du provider, qui le tient du serveur : le client ne
@@ -59,6 +71,8 @@ export function Works() {
       action: { label: t('common.undo'), onClick: () => unapproveWork(id) },
     })
   }
+
+  const mesUnites = units.filter((u) => isMine(u.id))
 
   const complete = (id: string) => {
     completeWork(id)
@@ -87,7 +101,30 @@ export function Works() {
 
   return (
     <>
-      <PageHeader title={t('app.works.title')} description={t('app.works.subtitle')} />
+      <PageHeader
+        title={t('app.works.title')}
+        description={t('app.works.subtitle')}
+        actions={
+          /*
+            Le geste du LOCATAIRE, et de lui seul sur cet écran.
+
+            Un commentaire de `etatsVides.test.tsx` affirmait le contraire :
+            « le geste n'existe pas dans le produit — une intervention naît d'un
+            signalement, jamais d'une saisie du bailleur ». La première moitié
+            était fausse par omission, la seconde était juste et le reste : le
+            bailleur ne déclare toujours pas, c'est le locataire qui signale.
+
+            `mesUnites[0]` : un locataire d'un seul logement n'a rien à choisir.
+            Le jour où il en occupera deux, il faudra le lui demander — et le
+            serveur, lui, revérifie déjà que le logement est bien le sien.
+          */
+          role === 'tenant' && mesUnites[0] ? (
+            <Button icon="bell" onClick={() => setSignalementOuvert(true)}>
+              {t('app.report.cta')}
+            </Button>
+          ) : undefined
+        }
+      />
 
       {isTenant && <TenantScopeNote />}
 
@@ -213,6 +250,14 @@ export function Works() {
           )
         })}
       </div>
+      )}
+
+      {role === 'tenant' && mesUnites[0] && (
+        <ReportModal
+          open={signalementOuvert}
+          onClose={() => setSignalementOuvert(false)}
+          unitId={mesUnites[0].id}
+        />
       )}
     </>
   )

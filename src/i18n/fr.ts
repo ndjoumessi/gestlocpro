@@ -684,6 +684,9 @@ export const fr = {
       approve: 'Valider le devis',
       complete: 'Marquer terminé',
       completed_toast: 'Intervention close · elle sort des travaux à faire',
+      urgency_blocking: 'Bloquant',
+      urgency_normal: 'Normal',
+      urgency_low: 'Faible',
       approved_toast: 'Devis validé · le gestionnaire est prévenu',
       trade: 'Corps d’état',
       managerNotice:
@@ -912,6 +915,24 @@ export const fr = {
 
     // Vocabulaire partagé par les travaux et les signalements du portail :
     // les deux nommaient « Plomberie » et « Électricité » chacun de leur côté.
+    report: {
+      title: 'Signaler un problème',
+      body: 'Votre gestionnaire et votre bailleur le reçoivent immédiatement. Décrivez ce que vous voyez : le devis et le corps de métier, ce n’est pas à vous de les fixer.',
+      what: 'Que se passe-t-il ?',
+      whatHint: 'Une phrase suffit. Vous pourrez détailler en dessous.',
+      whatPlaceholder: 'Fuite sous l’évier de la cuisine',
+      whatError: 'Décrivez le problème en quelques mots',
+      trade: 'De quoi s’agit-il ?',
+      urgency: 'À quel point est-ce urgent ?',
+      urgency_blocking: 'Le logement n’est pas utilisable en l’état.',
+      urgency_normal: 'Gênant, mais on peut vivre avec quelques jours.',
+      urgency_low: 'À traiter quand ce sera commode.',
+      detail: 'Détails',
+      detailHint: 'Depuis quand, à quel moment, ce que vous avez déjà tenté.',
+      send: 'Envoyer le signalement',
+      sent: 'Signalement envoyé · votre gestionnaire est prévenu',
+      cta: 'Signaler un problème',
+    },
     trades: {
       plumbing: 'Plomberie',
       power: 'Électricité',
