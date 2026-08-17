@@ -356,8 +356,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
    * cautions de démonstration, sans que rien à l'écran ne dise laquelle est
    * laquelle.
    */
-  const { etat } = useSession()
-  const parkId = etat.statut === 'connecte' ? (etat.adhesions[0]?.parkId ?? null) : null
+  const { adhesionActive } = useSession()
+  const parkId = adhesionActive?.parkId ?? null
   /**
    * La démonstration se reconnaît à son ADRESSE, comme le reste du produit.
    *
@@ -370,7 +370,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
    * consommateurs, eux, ne rendent pas pour autant.
    */
   const enDemonstration = useLocation().pathname.startsWith('/demo')
-  const role = etat.statut === 'connecte' ? (etat.adhesions[0]?.role ?? null) : null
+  const role = adhesionActive?.role ?? null
 
   const initial = loadState()
   const [units, setUnits] = useState<Unit[]>(initial.units)

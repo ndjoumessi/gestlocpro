@@ -66,6 +66,19 @@ interface SessionContextValue {
   entrerEnDemo: () => void
   /** `true` quand l'écran affiché est une démonstration et non un vrai parc. */
   estDemo: boolean
+  /**
+   * Le parc REGARDÉ, quand le compte en détient plusieurs.
+   *
+   * Sept endroits lisaient `adhesions[0]` en dur : la coquille, le fournisseur
+   * de données, la quittance, l'invitation. Un compte multi-parcs n'avait donc
+   * aucun moyen de choisir lequel il regarde — il voyait le premier, toujours,
+   * et les six autres écrans lisaient le même sans que rien ne le dise.
+   *
+   * `null` tant que la session n'est pas résolue ou qu'aucune adhésion n'existe.
+   */
+  adhesionActive: AdhesionApi | null
+  /** Change de parc. Sans effet si l'identifiant n'est pas une adhésion du compte. */
+  choisirParc: (parkId: string) => void
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null)
@@ -175,6 +188,20 @@ export function SessionProvider({
     }
   }, [])
 
+  const adhesions = etat.statut === 'connecte' ? etat.adhesions : []
+  /**
+   * Le parc actif est un IDENTIFIANT, pas un index.
+   *
+   * Retenir « le deuxième » se décalerait dès qu'une adhésion s'ajoute ou se
+   * retire — l'utilisateur se retrouverait sur un autre parc sans avoir rien
+   * demandé, ce qui est exactement le genre de faute qu'on ne remarque pas.
+   */
+  const [parcChoisi, setParcChoisi] = useState<string | null>(null)
+  const adhesionActive =
+    adhesions.find((a) => a.parkId === parcChoisi) ?? adhesions[0] ?? null
+
+  const choisirParc = useCallback((parkId: string) => setParcChoisi(parkId), [])
+
   const value = useMemo<SessionContextValue>(
     () => ({
       etat,
@@ -189,8 +216,23 @@ export function SessionProvider({
       rafraichir,
       entrerEnDemo,
       estDemo: etat.statut === 'demo',
+      adhesionActive,
+      choisirParc,
     }),
-    [etat, horsLigne, connecter, inscrire, deconnecter, rafraichir, entrerEnDemo],
+    // `adhesionActive` et `choisirParc` LISTÉES : une dépendance manquante ne
+    // casse pas, elle attend — le changement de parc n'aurait été vu qu'au
+    // prochain rendu déclenché par autre chose.
+    [
+      etat,
+      horsLigne,
+      connecter,
+      inscrire,
+      deconnecter,
+      rafraichir,
+      entrerEnDemo,
+      adhesionActive,
+      choisirParc,
+    ],
   )
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>

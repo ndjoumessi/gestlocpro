@@ -180,6 +180,7 @@ export const fr = {
     openNav: 'Ouvrir la navigation',
     closeNav: 'Fermer la navigation',
     searchPlaceholder: 'Rechercher un logement, un locataire…',
+    selectPark: 'Parc regardé',
     primaryNav: 'Navigation principale',
     breadcrumb: 'Fil d’Ariane',
     // La barre basse ne porte que quatre destinations : « Plus » ouvre le

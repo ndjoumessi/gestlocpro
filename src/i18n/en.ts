@@ -142,6 +142,7 @@ export const en: Dictionary = {
     openNav: 'Open navigation',
     closeNav: 'Close navigation',
     searchPlaceholder: 'Search a unit, a tenant…',
+    selectPark: 'Park being viewed',
     primaryNav: 'Main navigation',
     breadcrumb: 'Breadcrumb',
     quickNav: 'Quick navigation',

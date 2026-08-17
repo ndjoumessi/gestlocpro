@@ -70,8 +70,8 @@ export function ReceiptModal({
   const t = useT()
   const { money: moneyAffichage } = useCurrency()
   const d = useDates()
-  const { etat } = useSession()
-  const parkId = etat.statut === 'connecte' ? (etat.adhesions[0]?.parkId ?? null) : null
+  const { adhesionActive } = useSession()
+  const parkId = adhesionActive?.parkId ?? null
 
   /**
    * Le document se met en forme dans SA devise, pas dans celle de l'écran.

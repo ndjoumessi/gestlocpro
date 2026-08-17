@@ -188,7 +188,7 @@ const BOTTOM_MAX = 4
  * en inventer une est exactement ce qui a produit ce défaut.
  */
 function useIdentite(): { parc: string | null; nom: string | null; demo: boolean } {
-  const { etat, estDemo } = useSession()
+  const { etat, estDemo, adhesionActive } = useSession()
   const t = useT()
 
   if (estDemo) return { parc: t('common.demoPark'), nom: null, demo: true }
@@ -197,7 +197,7 @@ function useIdentite(): { parc: string | null; nom: string | null; demo: boolean
       // Première adhésion : un compte multi-parcs choisira le sien le jour où
       // le produit saura en gérer plusieurs. Afficher un nom faux en attendant
       // serait le défaut qu'on corrige ici.
-      parc: etat.adhesions[0]?.parkName ?? null,
+      parc: adhesionActive?.parkName ?? null,
       nom: etat.compte.fullName,
       demo: false,
     }
@@ -220,7 +220,7 @@ export function AppShell() {
    * En démonstration il n'y a pas d'adhésion : on garde « propriétaire », d'où
    * part le parcours, et le sélecteur reste là pour en changer.
    */
-  const { etat: session } = useSession()
+  const { etat: session, adhesionActive } = useSession()
   const { setCurrency } = useCurrency()
 
   /**
@@ -242,7 +242,7 @@ export function AppShell() {
   const deviseDuParc: CurrencyCode | null =
     session.statut === 'connecte'
       ? (({ XAF: 'CFA', XOF: 'CFA', EUR: 'EUR', CAD: 'CAD', USD: 'USD' } as const)[
-          session.adhesions[0]?.currency as 'XAF' | 'XOF' | 'EUR' | 'CAD' | 'USD'
+          adhesionActive?.currency as 'XAF' | 'XOF' | 'EUR' | 'CAD' | 'USD'
         ] ?? null)
       : null
 
@@ -250,7 +250,7 @@ export function AppShell() {
     if (deviseDuParc) setCurrency(deviseDuParc)
   }, [deviseDuParc, setCurrency])
   const roleDuCompte: Role =
-    session.statut === 'connecte' ? (session.adhesions[0]?.role ?? 'owner') : 'owner'
+    session.statut === 'connecte' ? (adhesionActive?.role ?? 'owner') : 'owner'
 
   const [role, setRole] = useState<Role>(roleDuCompte)
 
@@ -699,6 +699,42 @@ function Sidebar({
   )
 }
 
+/**
+ * Le parc regardé, quand il y en a plusieurs.
+ *
+ * N'apparaît qu'à partir de DEUX adhésions : un bailleur d'un seul parc n'a
+ * rien à choisir, et un sélecteur à une entrée occupe la place d'une commande
+ * utile tout en laissant croire qu'il en existe d'autres.
+ *
+ * Il ne convertit rien et n'additionne rien — chaque parc s'affiche dans sa
+ * devise, à son tour. C'est le choix documenté dans la note de décision : la
+ * vue consolidée demanderait des taux, une date de valeur et une réponse à ce
+ * qu'on imprime sur une quittance. Le sélecteur, lui, ne demande rien de tout
+ * cela.
+ */
+function SelecteurParc() {
+  const t = useT()
+  const { etat, adhesionActive, choisirParc } = useSession()
+  if (etat.statut !== 'connecte' || etat.adhesions.length < 2) return null
+
+  return (
+    <label className="flex items-center gap-2">
+      <span className="sr-only">{t('nav.selectPark')}</span>
+      <select
+        value={adhesionActive?.parkId ?? ''}
+        onChange={(e) => choisirParc(e.target.value)}
+        className="min-h-11 cursor-pointer rounded-md border border-border bg-paper px-2.5 text-label text-ink"
+      >
+        {etat.adhesions.map((a) => (
+          <option key={a.parkId} value={a.parkId}>
+            {a.parkName}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
 /** Initiales du titulaire — deux lettres au plus, prises sur les mots du nom. */
 function initiales(nom: string): string {
   return nom
@@ -1092,6 +1128,7 @@ function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
           Les initiales viennent maintenant du compte. En démonstration il n'y a
           pas de compte : le bouton n'y a rien à déconnecter, et n'apparaît pas.
         */}
+        <SelecteurParc />
         <MenuCompte />
       </div>
     </header>

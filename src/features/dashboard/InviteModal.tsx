@@ -22,8 +22,8 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
   const t = useT()
   const { notify } = useToast()
   const { units } = usePortfolio()
-  const { etat } = useSession()
-  const parkId = etat.statut === 'connecte' ? (etat.adhesions[0]?.parkId ?? null) : null
+  const { adhesionActive } = useSession()
+  const parkId = adhesionActive?.parkId ?? null
 
   const vacants = units.filter((u) => !u.tenant)
 
