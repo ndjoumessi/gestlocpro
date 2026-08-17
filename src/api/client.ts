@@ -190,17 +190,17 @@ export const api = {
     requete<T>(`/parks/${parkId}/buildings/${buildingId}`, { method: 'DELETE' }),
 
   /**
-   * Relance les échéances désignées.
+   * Relance les BAUX désignés.
    *
-   * Le serveur revérifie CHACUNE : à jour, pas encore due, déjà relancée ce
-   * matin, ou d'un autre parc. Il rend donc `sent` et `skipped` plutôt qu'un
+   * Le serveur revérifie chacun : rien d'exigible, déjà relancé ce matin, ou
+   * d'un autre parc. Il rend donc `sent` et `skipped` plutôt qu'un
    * simple succès — l'écran doit pouvoir dire « 2 relancés, 1 déjà relancé »
    * plutôt que d'annoncer trois envois dont un n'a pas eu lieu.
    */
-  remindRent: <T>(parkId: string, chargeIds: string[]) =>
+  remindRent: <T>(parkId: string, leaseIds: string[]) =>
     requete<T>(`/parks/${parkId}/reminders`, {
       method: 'POST',
-      body: JSON.stringify({ chargeIds }),
+      body: JSON.stringify({ leaseIds }),
     }),
 
   /** Met en demeure — droit du seul propriétaire, motif obligatoire. */

@@ -42,6 +42,7 @@ interface PortefeuilleApi {
       rentMinor: number
       tenant: { id: string; fullName: string; phoneE164: string | null } | null
       status: string
+      leaseId: string | null
       paidMinor: number
       overdueDays: number | null
     }[]
@@ -153,6 +154,7 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
         // serveur. Elle remplace la part simulée à 53 % du loyer.
         paid: u.paidMinor,
         status: u.status as PaymentStatus,
+        ...(u.leaseId !== null ? { leaseId: u.leaseId } : {}),
         ...(u.overdueDays !== null ? { overdueDays: u.overdueDays } : {}),
       })
     }

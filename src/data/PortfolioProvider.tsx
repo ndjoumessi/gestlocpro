@@ -97,6 +97,17 @@ interface PortfolioContextValue {
    */
   removeBuilding: (buildingId: string) => void
   /**
+   * Relance les baux désignés, et rend ce qui a RÉELLEMENT eu lieu.
+   *
+   * Le serveur revérifie chaque bail — à jour, rien d'exigible, déjà relancé ce
+   * matin — et peut donc n'en relancer aucun. L'écran doit dire « 2 relancés,
+   * 1 déjà relancé aujourd'hui » plutôt qu'annoncer trois envois : c'est le
+   * défaut que ce chantier corrige, pas un défaut à reproduire.
+   */
+  remindRent: (leaseIds: string[]) => Promise<{ sent: number; skipped: number }>
+  /** Met en demeure. Droit du seul propriétaire, motif obligatoire. */
+  serveFormalNotice: (leaseId: string, reason: string) => Promise<boolean>
+  /**
    * Enregistre un encaissement sur une période.
    *
    * La modale affichait « Paiement enregistré · quittance envoyée » sans rien
@@ -510,6 +521,46 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [parkId, signalerEchec],
   )
 
+  /**
+   * Relance, et rend le compte de ce qui est parti.
+   *
+   * Rien n'est modifié dans l'état local : une relance ne change ni le loyer ni
+   * le statut du bail. Elle laisse une trace côté serveur, que la prochaine
+   * lecture du parc rapportera avec les notifications.
+   */
+  const remindRent = useCallback(
+    async (leaseIds: string[]): Promise<{ sent: number; skipped: number }> => {
+      if (!parkId || leaseIds.length === 0) return { sent: 0, skipped: leaseIds.length }
+      try {
+        const reponse = await api.remindRent<{
+          sent: string[]
+          skipped: { leaseId: string; reason: string }[]
+        }>(parkId, leaseIds)
+        return { sent: reponse.sent.length, skipped: reponse.skipped.length }
+      } catch (erreur) {
+        signalerEchec(erreur)
+        // Zéro, et non le nombre demandé : annoncer un envoi après un échec
+        // réseau est précisément le mensonge qu'on retire du produit.
+        return { sent: 0, skipped: leaseIds.length }
+      }
+    },
+    [parkId, signalerEchec],
+  )
+
+  const serveFormalNotice = useCallback(
+    async (leaseId: string, reason: string): Promise<boolean> => {
+      if (!parkId) return false
+      try {
+        await api.serveFormalNotice(parkId, leaseId, reason)
+        return true
+      } catch (erreur) {
+        signalerEchec(erreur)
+        return false
+      }
+    },
+    [parkId, signalerEchec],
+  )
+
   const recordPayment = useCallback(
     (
       unitId: string,
@@ -673,6 +724,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       addTenant,
       addBuilding,
       removeBuilding,
+      remindRent,
+      serveFormalNotice,
       addUnit,
       recordPayment,
       readAlertIds,
@@ -728,6 +781,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       addTenant,
       addBuilding,
       removeBuilding,
+      remindRent,
+      serveFormalNotice,
       addUnit,
       recordPayment,
       readAlertIds,

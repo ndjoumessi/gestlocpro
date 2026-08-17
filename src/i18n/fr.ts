@@ -609,6 +609,25 @@ export const fr = {
       amountInvalid: 'Saisissez un montant supérieur à zéro.',
       dueAmount: 'Dû : {amount}',
       overdueDays: '+{days} j',
+      /* Relance et mise en demeure — la promesse de la grille tarifaire. */
+      remind: 'Relancer les retards',
+      remindTitle: 'Relancer {count} locataires en retard ?',
+      remindTitle_one: 'Relancer 1 locataire en retard ?',
+      remindBody:
+        'Une trace datée est enregistrée au dossier de chaque bail. Un locataire déjà relancé aujourd’hui est ignoré : le produit ne relance pas deux fois le même jour.',
+      remindDone: '{count} locataires relancés',
+      remindDone_one: '1 locataire relancé',
+      remindSkipped: '{count} déjà relancés aujourd’hui',
+      remindSkipped_one: '1 déjà relancé aujourd’hui',
+      remindNothing: 'Aucune relance : tous ont déjà été relancés aujourd’hui',
+      notice: 'Mettre en demeure',
+      noticeTitle: 'Mettre en demeure {tenant} ?',
+      noticeBody:
+        'Acte engageant, qui précède la résiliation. Le motif et le montant dû sont figés au dossier et seront produits en cas de litige.',
+      noticeReason: 'Motif',
+      noticeReasonHint: 'Au moins 10 caractères. C’est le texte qui défendra la décision.',
+      noticeReasonError: 'Un motif d’au moins 10 caractères est requis',
+      noticeDone: 'Mise en demeure enregistrée au dossier du bail',
       // En-tête de colonne de l'export : « +24 j » est une abréviation
       // d'affichage, illisible en tête d'une colonne de tableur.
       lateDays: 'Jours de retard',

@@ -10,6 +10,10 @@ import {
   SkeletonTable,
 } from '@/components/primitives/Skeleton'
 import { Button } from '@/components/primitives/Button'
+import { Modal } from '@/components/primitives/Modal'
+import { Field } from '@/components/primitives/Field'
+import { Textarea } from '@/components/primitives/Input'
+import { useToast } from '@/components/primitives/Toast'
 import { cn } from '@/lib/cn'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
@@ -30,10 +34,16 @@ export function Payments() {
   const exportCsv = useCsvExport()
   const csvMoney = useCsvMoney()
   const { role } = useRole()
-  const { units, isMine, readings, loading } = usePortfolio()
+  const { units, isMine, readings, loading, remindRent, serveFormalNotice } = usePortfolio()
+  const { notify } = useToast()
   const isTenant = role === 'tenant'
   const [filter, setFilter] = useState<PaymentStatus | 'all'>('all')
   const [payOpen, setPayOpen] = useState(false)
+  const [relanceOuverte, setRelanceOuverte] = useState(false)
+  const [enDemeure, setEnDemeure] = useState<Unit | null>(null)
+  const [motif, setMotif] = useState('')
+  const [motifErreur, setMotifErreur] = useState(false)
+  const [enCours, setEnCours] = useState(false)
 
   // Le locataire ne voit que son bail. Le filtre est posé à la source du
   // tableau, pas sur l'affichage : ainsi les compteurs des onglets de statut et
@@ -47,6 +57,23 @@ export function Payments() {
     [role, units, isMine],
   )
   const kpis = computeKpis(leases, readings)
+
+  /**
+   * Les baux à relancer, tels que L'ÉCRAN les voit.
+   *
+   * Le serveur revérifie chacun et reste l'autorité — il refusera un locataire
+   * à jour, une échéance non exigible, un bail déjà relancé ce matin. Ce calcul
+   * ne sert qu'à savoir s'il y a lieu de proposer le geste, et à en annoncer la
+   * portée avant de le déclencher.
+   *
+   * Le retard, et non le statut : un bail « partiel » qui a réglé avant
+   * l'échéance n'est pas en retard, et le proposer à la relance reviendrait à
+   * offrir une accusation que le serveur refusera.
+   */
+  const retards = useMemo(
+    () => leases.filter((unit) => (unit.overdueDays ?? 0) > 0),
+    [leases],
+  )
 
   const rows = useMemo(
     () => (filter === 'all' ? leases : leases.filter((unit) => unit.status === filter)),
@@ -115,6 +142,14 @@ export function Payments() {
             </Button>
             {/* Enregistrer un encaissement est un geste de gestion : le
                 locataire consulte, il ne saisit pas. */}
+            {/* Proposé seulement s'il y a des retards : un bouton qui ne peut
+                rien faire occupe la place d'une action utile, et la grille
+                tarifaire vend justement cette fonction. */}
+            {!isTenant && retards.length > 0 && (
+              <Button variant="secondary" icon="bell" onClick={() => setRelanceOuverte(true)}>
+                {t('app.payments.remind')}
+              </Button>
+            )}
             {!isTenant && (
               <Button icon="plus" onClick={() => setPayOpen(true)}>
                 {t('app.recordPayment')}
@@ -263,14 +298,39 @@ export function Payments() {
               // Offert seulement s'il y a quelque chose à attester : sur un
               // logement vacant, le bouton n'aurait aucun sens.
               unit.tenant ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon="download"
-                  onClick={() => setQuittanceDe(unit.id)}
-                >
-                  {t('app.receipts.issue')}
-                </Button>
+                <div className="flex justify-end gap-1">
+                  {/* Droit du seul PROPRIÉTAIRE, comme la validation d'un devis
+                      et l'arbitrage d'une caution : le gestionnaire propose, il
+                      ne décide pas. Le serveur le refuse aussi — ce masquage
+                      évite d'offrir un geste voué au refus, il ne le remplace
+                      pas.
+
+                      `leaseId` conditionne l'affichage : en démonstration aucun
+                      bail ne porte d'identifiant serveur, et il n'y a rien à
+                      mettre en demeure. */}
+                  {role === 'owner' && (unit.overdueDays ?? 0) > 0 && unit.leaseId ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon="shield"
+                      onClick={() => {
+                        setEnDemeure(unit)
+                        setMotif('')
+                        setMotifErreur(false)
+                      }}
+                    >
+                      {t('app.payments.notice')}
+                    </Button>
+                  ) : null}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon="download"
+                    onClick={() => setQuittanceDe(unit.id)}
+                  >
+                    {t('app.receipts.issue')}
+                  </Button>
+                </div>
               ) : null,
           },
         ]}
@@ -289,6 +349,121 @@ export function Payments() {
       )}
 
       <RecordPaymentModal open={payOpen} onClose={() => setPayOpen(false)} />
+
+      {/*
+        La confirmation dit COMBIEN, avant d'agir.
+        Le geste part vers plusieurs personnes à la fois : « relancer » sans
+        compte laisserait découvrir la portée après coup.
+      */}
+      <Modal
+        open={relanceOuverte}
+        onClose={() => setRelanceOuverte(false)}
+        role="alertdialog"
+        size="sm"
+        title={t('app.payments.remindTitle', { count: retards.length })}
+        description={t('app.payments.remindBody')}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setRelanceOuverte(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              disabled={enCours}
+              onClick={async () => {
+                setEnCours(true)
+                const bilan = await remindRent(
+                  // `leaseId` quand il existe, `id` en démonstration : c'est le
+                  // fournisseur qui court-circuite là-bas, faute de parc serveur.
+                  retards.map((unit) => unit.leaseId ?? unit.id),
+                )
+                setEnCours(false)
+                setRelanceOuverte(false)
+                /**
+                 * Le message dit ce qui A EU LIEU, pas ce qui a été demandé.
+                 *
+                 * Le serveur écarte les baux déjà relancés le matin même, et
+                 * annoncer « 3 relances » quand une seule est partie serait
+                 * exactement le défaut que ce chantier corrige.
+                 */
+                if (bilan.sent === 0) {
+                  notify(t('app.payments.remindNothing'), { tone: 'neutral' })
+                  return
+                }
+                const parti = t('app.payments.remindDone', { count: bilan.sent })
+                notify(
+                  bilan.skipped > 0
+                    ? `${parti} · ${t('app.payments.remindSkipped', { count: bilan.skipped })}`
+                    : parti,
+                  { tone: 'ok' },
+                )
+              }}
+            >
+              {t('common.confirm')}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-body-s text-muted">
+          {retards.map((unit) => unit.tenant).filter(Boolean).join(' · ')}
+        </p>
+      </Modal>
+
+      {enDemeure && (
+        <Modal
+          open
+          onClose={() => setEnDemeure(null)}
+          role="alertdialog"
+          size="sm"
+          title={t('app.payments.noticeTitle', { tenant: enDemeure.tenant ?? '' })}
+          description={t('app.payments.noticeBody')}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setEnDemeure(null)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                variant="danger"
+                disabled={enCours}
+                onClick={async () => {
+                  // La même borne que le serveur, pour que le refus arrive avant
+                  // l'aller-retour plutôt qu'après.
+                  if (motif.trim().length < 10) {
+                    setMotifErreur(true)
+                    return
+                  }
+                  setEnCours(true)
+                  const ok = await serveFormalNotice(enDemeure.leaseId!, motif.trim())
+                  setEnCours(false)
+                  if (!ok) return
+                  setEnDemeure(null)
+                  notify(t('app.payments.noticeDone'), { tone: 'ok' })
+                }}
+              >
+                {t('common.confirm')}
+              </Button>
+            </>
+          }
+        >
+          <Field
+            label={t('app.payments.noticeReason')}
+            hint={t('app.payments.noticeReasonHint')}
+            required
+            {...(motifErreur ? { error: t('app.payments.noticeReasonError') } : {})}
+          >
+            {(champ) => (
+              <Textarea
+                {...champ}
+                value={motif}
+                invalid={motifErreur}
+                onChange={(e) => {
+                  setMotif(e.target.value)
+                  setMotifErreur(false)
+                }}
+              />
+            )}
+          </Field>
+        </Modal>
+      )}
     </>
   )
 }

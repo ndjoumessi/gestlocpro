@@ -66,6 +66,15 @@ export interface Unit {
   status: PaymentStatus
   /** Jours de retard, si le statut l'est. */
   overdueDays?: number
+  /**
+   * Bail courant, quand l'unité en porte un.
+   *
+   * Le serveur le rendait déjà et la conversion le jetait. Il est la clé des
+   * actions qui portent sur le CONTRAT et non sur les murs — relancer, mettre
+   * en demeure — et sans lui l'écran n'a rien à désigner. Absent en
+   * démonstration, où aucun bail n'a d'identifiant serveur.
+   */
+  leaseId?: string
 }
 
 export const UNITS: Unit[] = [
