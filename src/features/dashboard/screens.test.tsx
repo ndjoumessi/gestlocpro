@@ -245,3 +245,45 @@ describe('états des lieux', () => {
     expect(screen.getAllByText(/A1/).length).toBeGreaterThan(0)
   })
 })
+
+/**
+ * L'indicatif de la fiche locataire, cherchable comme à l'inscription.
+ *
+ * Le menu natif alignait ici les deux cent quatre indicatifs sans moyen d'en
+ * atteindre un : « Rendre les indicatifs cherchables » n'avait porté que sur
+ * l'écran d'inscription, et cette modale — la seule autre du produit à demander
+ * un numéro — était restée en arrière. Deux champs pour la même donnée, dont un
+ * seul praticable, et rien n'obligeait le second à suivre.
+ */
+describe('indicatif de la fiche locataire', () => {
+  async function ouvrirLaFiche() {
+    const user = userEvent.setup()
+    renderApp('/app/locataires')
+    await user.click(await screen.findByRole('button', { name: /créer une fiche locataire/i }))
+    return user
+  }
+
+  it('se cherche à la frappe plutôt que de dérouler deux cents entrées', async () => {
+    const user = await ouvrirLaFiche()
+
+    const indicatif = screen.getByRole('combobox', { name: /indicatif/i })
+    await user.click(indicatif)
+    await user.type(indicatif, 'zimb')
+
+    // Porté sur la LISTE du combobox : `getAllByRole('option')` ramasserait
+    // aussi les `<option>` du sélecteur d'unité, natif et voisin.
+    const options = within(screen.getByRole('listbox')).getAllByRole('option')
+    expect(options).toHaveLength(1)
+    await user.click(options[0])
+    expect(indicatif).toHaveValue('Zimbabwe · +263')
+  })
+
+  it('garde le jeton de remplissage automatique', async () => {
+    // Le jeton s'était déjà perdu une fois en passant du menu natif au champ
+    // cherchable, sur l'inscription. Le même chemin, le même risque.
+    await ouvrirLaFiche()
+    expect(
+      screen.getByRole('combobox', { name: /indicatif/i }).getAttribute('autocomplete'),
+    ).toBe('tel-country-code')
+  })
+})

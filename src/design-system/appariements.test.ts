@@ -80,3 +80,89 @@ describe('appariements de couleurs', () => {
     expect(coupables).toEqual([])
   })
 })
+
+/**
+ * Pastilles de série sur l'infobulle des graphiques.
+ *
+ * Le défaut jumeau du précédent, et plus silencieux encore. La pastille
+ * « Loyer » prenait `--color-data-1`, qui vaut `#14201e` en thème clair —
+ * exactement la valeur de `--color-ink`, dont l'infobulle fait son fond. Elle
+ * était peinte, à la bonne taille, à la bonne place, de la couleur du fond.
+ * Les deux autres séries, teintes moyennes, s'en tiraient : une ligne sur trois
+ * perdait son repère de couleur sans que rien ne signale l'absence.
+ *
+ * La bascule `.on-dark` ne pouvait rien : elle redirige des CLASSES
+ * utilitaires, et la pastille reçoit sa couleur par un `style` en ligne.
+ *
+ * On vérifie donc l'ÉCART réel entre chaque teinte de l'infobulle et le fond
+ * qu'elle occupe, dans les deux thèmes — c'est le seul angle qui attrape une
+ * pastille invisible, aucune couverture de jetons ne pouvant la voir.
+ */
+describe('pastilles de l’infobulle', () => {
+  const CSS = readFileSync(join(SRC, 'design-system', 'tokens.css'), 'utf8')
+  const NU = CSS.replace(/\/\*[\s\S]*?\*\//g, '')
+
+  function corps(entete: string): string {
+    const debut = NU.indexOf(entete)
+    if (debut === -1) throw new Error(`bloc introuvable : ${entete}`)
+    let profondeur = 0
+    for (let i = NU.indexOf('{', debut); i < NU.length; i++) {
+      if (NU[i] === '{') profondeur++
+      else if (NU[i] === '}' && --profondeur === 0)
+        return NU.slice(NU.indexOf('{', debut) + 1, i)
+    }
+    throw new Error(`accolade non refermée après ${entete}`)
+  }
+
+  function jeton(bloc: string, nom: string): string {
+    const t = new RegExp(`${nom}\\s*:\\s*(#[0-9a-fA-F]{6})`).exec(bloc)
+    if (!t) throw new Error(`jeton absent : ${nom}`)
+    return t[1]
+  }
+
+  /** Clarté CIE L*, comme pour le squelette : c'est elle qui dit si l'œil sépare deux aplats. */
+  function clarte(hexa: string): number {
+    const [r, v, b] = [0, 2, 4]
+      .map((i) => parseInt(hexa.slice(1).substr(i, 2), 16))
+      .map((c) => {
+        const n = c / 255
+        return n <= 0.04045 ? n / 12.92 : Math.pow((n + 0.055) / 1.055, 2.4)
+      })
+    const y = 0.2126 * r + 0.7152 * v + 0.0722 * b
+    return y > 0.008856 ? 116 * Math.cbrt(y) - 16 : 903.3 * y
+  }
+
+  const BLOCS = {
+    clair: corps('@theme'),
+    'sombre (systeme)': corps('@media (prefers-color-scheme: dark)'),
+    'sombre (choisi)': corps(":root[data-theme='dark']"),
+  }
+
+  /** Les trois séries que l'infobulle affiche. */
+  const SERIES = ['--color-data-1-on-ink', '--color-data-4-on-ink', '--color-data-5-on-ink']
+
+  for (const [theme, bloc] of Object.entries(BLOCS)) {
+    for (const serie of SERIES) {
+      it(`détache ${serie} du fond de l’infobulle en ${theme}`, () => {
+        const fond = jeton(bloc, '--color-ink')
+        const pastille = jeton(bloc, serie)
+        const ecart = Math.abs(clarte(pastille) - clarte(fond))
+        expect(
+          ecart,
+          `${theme} : ${serie} ${pastille} sur ${fond} — ΔL* ${ecart.toFixed(1)}`,
+        ).toBeGreaterThan(20)
+      })
+    }
+  }
+
+  it('peint l’infobulle avec les contreparties, jamais avec les teintes claires', () => {
+    // La correction consiste à choisir la BONNE table ; l'oubli consiste à
+    // reprendre celle des barres, qui vivent sur une carte claire.
+    const code = sansCommentaires(readFileSync(join(SRC, 'components', 'primitives', 'Charts.tsx'), 'utf8'))
+    const lignesInfobulle = code
+      .split('\n')
+      .filter((l) => /color:\s*SERIES_COLORS/.test(l))
+    expect(lignesInfobulle.length, 'aucune pastille d’infobulle trouvée').toBeGreaterThan(0)
+    for (const ligne of lignesInfobulle) expect(ligne).toContain('SERIES_COLORS_ON_INK')
+  })
+})

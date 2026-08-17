@@ -40,6 +40,38 @@ const SERIES_COLORS: Record<string, string> = {
   power: 'var(--color-data-5)',
 }
 
+/**
+ * Les mêmes séries, pour l'INFOBULLE — dont le fond BASCULE avec le thème.
+ *
+ * La pastille « Loyer » avait disparu, et pour la pire des raisons : en thème
+ * clair, `--color-data-1` vaut `#14201e`, soit exactement la valeur de
+ * `--color-ink` dont l'infobulle fait son fond. La pastille était peinte, à la
+ * bonne taille, à la bonne place — de la couleur du fond. « Eau » et
+ * « Électricité », teintes moyennes, s'en tiraient ; seule la série la plus
+ * sombre s'effaçait, et une ligne sur trois perdait son repère sans que rien ne
+ * signale l'absence.
+ *
+ * La bascule `.on-dark` ne pouvait pas rattraper le coup : elle redirige des
+ * CLASSES utilitaires — `.text-muted`, `.text-ink` — et la pastille reçoit sa
+ * couleur par un `style` en ligne, hors de portée de toute règle CSS.
+ *
+ * Les jetons `-on-dark` ne convenaient pas davantage, et c'est le piège de
+ * cette correction : ils sont identiques dans les trois blocs de palette, car
+ * ils équipent « les panneaux qui restent sombres ». `bg-ink` n'en est pas un —
+ * il est sombre en thème clair et CLAIR en thème sombre. Les employer réparait
+ * donc le clair en cassant le sombre, où la pastille `#f7f4ee` serait tombée
+ * sur un fond `#ece7dd` : le même défaut, déplacé d'un thème à l'autre. C'est
+ * le garde d'appariement qui l'a arrêté, pas la relecture.
+ *
+ * D'où `-on-ink`, sur le modèle de `--color-gold-on-ink` : nommé d'après le
+ * fond qu'il accompagne, il suit `--color-ink` quoi qu'elle devienne.
+ */
+const SERIES_COLORS_ON_INK: Record<string, string> = {
+  rent: 'var(--color-data-1-on-ink)',
+  water: 'var(--color-data-4-on-ink)',
+  power: 'var(--color-data-5-on-ink)',
+}
+
 export interface StackedBar {
   label: string
   segments: { key: string; value: number }[]
@@ -240,7 +272,7 @@ export function StackedBarChart({
                   key: s.key,
                   label: seriesLabels[s.key],
                   value: money(s.value),
-                  color: SERIES_COLORS[s.key],
+                  color: SERIES_COLORS_ON_INK[s.key],
                 }))}
               note={active === bars.length - 1 ? openPeriodNote : undefined}
             />

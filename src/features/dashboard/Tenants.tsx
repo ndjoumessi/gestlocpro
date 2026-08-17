@@ -9,6 +9,7 @@ import { Button } from '@/components/primitives/Button'
 import { Modal } from '@/components/primitives/Modal'
 import { Field } from '@/components/primitives/Field'
 import { Input, Select } from '@/components/primitives/Input'
+import { Combobox } from '@/components/primitives/Combobox'
 import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useI18n, useT } from '@/i18n/I18nProvider'
@@ -314,17 +315,24 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
           {(props) => (
             <div className="flex gap-2">
               <div className="w-44 shrink-0">
-                <Select
+                {/* Cherchable, comme à l'inscription.
+                    Le menu natif alignait ici les deux cent quatre indicatifs
+                    sans moyen d'en atteindre un : le correctif qui les a rendus
+                    cherchables ne portait que sur l'écran d'inscription, et
+                    cette modale — la seule autre à demander un numéro — était
+                    restée en arrière. Deux champs pour la même donnée, dont un
+                    seul praticable. */}
+                <Combobox
                   aria-label={t('common.dialCode')}
+                  autoComplete="tel-country-code"
+                  options={dialOptions(locale).map(({ dial: code, label, zone }) => ({
+                    value: code,
+                    label,
+                    groupe: t(zone === 'cfa' ? 'common.dialZoneCfa' : 'common.dialZoneOther'),
+                  }))}
                   value={dial}
-                  onChange={(e) => setDial(e.target.value)}
-                >
-                  {dialOptions(locale).map(({ dial: code, label }) => (
-                    <option key={code} value={code}>
-                      {label}
-                    </option>
-                  ))}
-                </Select>
+                  onChange={setDial}
+                />
               </div>
               <Input
                 {...props}

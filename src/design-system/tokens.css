@@ -81,6 +81,31 @@
   --color-data-5: #9d8a52; /* L 26 % —  3,39:1 */
   --color-data-6: #899485; /* L 28 % —  3,16:1 */
 
+  /**
+   * Séries posées sur `--color-ink`, et qui s'inversent AVEC lui.
+   *
+   * Même défaut que `--color-gold-on-ink`, sur une autre paire. L'infobulle des
+   * graphiques fait son fond de `bg-ink` — une surface qui BASCULE : sombre en
+   * thème clair, claire en thème sombre. Ses pastilles prenaient `--color-data-1`,
+   * qui vaut `#14201e` en clair, soit exactement `--color-ink` : la pastille
+   * « Loyer » était peinte de la couleur du fond, donc invisible. Les deux
+   * autres séries, teintes moyennes, s'en tiraient — une ligne sur trois perdait
+   * son repère sans que rien ne le signale.
+   *
+   * Les jetons `-on-dark` ne pouvaient pas servir : ils sont IDENTIQUES dans les
+   * trois blocs, parce qu'ils équipent « les panneaux qui restent sombres ».
+   * L'infobulle n'en est pas un. Les employer réparait le thème clair en cassant
+   * le sombre, où la pastille `#f7f4ee` serait tombée sur un fond `#ece7dd`.
+   *
+   * D'où trois jetons nommés d'après le fond qu'ils accompagnent : quoi que
+   * devienne `--color-ink`, ils suivent. Trois et non six — l'infobulle n'affiche
+   * que le loyer, l'eau et l'électricité, et un jeton sans emploi ne se vérifie
+   * nulle part.
+   */
+  --color-data-1-on-ink: #f7f4ee;
+  --color-data-4-on-ink: #8fc0c8;
+  --color-data-5-on-ink: #c4b89b;
+
   /* Contreparties pour les graphiques posés sur fond sombre. */
   --color-data-1-on-dark: #f7f4ee;
   --color-data-2-on-dark: #d2a055;
@@ -430,6 +455,13 @@
     --color-data-5: #c4b89b; /*  8.05 */
     --color-data-6: #a8bca6; /*  7.84 */
 
+    /* Le fond `bg-ink` est CLAIR dans ce thème : les pastilles de l'infobulle
+       s'assombrissent donc, et reprennent les teintes du thème clair. C'est
+       tout l'objet d'un jeton nommé d'après son fond. */
+    --color-data-1-on-ink: #14201e;
+    --color-data-4-on-ink: #4a7f86;
+    --color-data-5-on-ink: #9d8a52;
+
     /* Inchangées : elles servent les panneaux qui restent sombres. */
     --color-data-1-on-dark: #f7f4ee;
     --color-data-2-on-dark: #d2a055;
@@ -528,6 +560,10 @@
   --color-data-4: #8fc0c8;
   --color-data-5: #c4b89b;
   --color-data-6: #a8bca6;
+
+  --color-data-1-on-ink: #14201e;
+  --color-data-4-on-ink: #4a7f86;
+  --color-data-5-on-ink: #9d8a52;
 
   --color-data-1-on-dark: #f7f4ee;
   --color-data-2-on-dark: #d2a055;
