@@ -169,6 +169,36 @@ const schemaAchevement = z.object({
     .optional(),
 })
 
+/**
+ * Un état des lieux, avec ses réserves.
+ *
+ * `costMinor` porte l'imputation sur la caution — « réserves relevées et
+ * horodatées, imputation chiffrée sur la caution », dit la page de tarifs. Il
+ * est facultatif : toutes les réserves ne se chiffrent pas, et une rayure
+ * relevée sans montant reste une rayure relevée.
+ */
+const schemaEtatDesLieux = z.object({
+  kind: z.enum(['entry', 'exit']),
+  performedOn: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date attendue au format AAAA-MM-JJ')
+    .optional(),
+  rooms: z.number().int().positive().max(50),
+  /** Nom du signataire. Un état des lieux non signé n'engage personne. */
+  signedByName: z.string().trim().min(2).max(120).optional(),
+  findings: z
+    .array(
+      z.object({
+        room: z.string().trim().min(1).max(80),
+        description: z.string().trim().min(3).max(500),
+        severity: z.enum(['minor', 'major']).default('minor'),
+        costMinor: z.number().int().positive().optional(),
+      }),
+    )
+    .max(200)
+    .default([]),
+})
+
 const schemaLocataire = z.object({
   unitId: z.string().uuid(),
   fullName: z.string().trim().min(2).max(120),
@@ -1851,5 +1881,142 @@ parksRouter.patch(
     })
 
     res.json({ deposit: maj })
+  },
+)
+
+/**
+ * Établit un état des lieux sur un logement.
+ *
+ * La fonction manquait ENTIÈREMENT : les modèles `Inspection` et
+ * `InspectionFinding` existaient, la démonstration en servait six, et aucune
+ * route ne permettait d'en créer un. L'écran correspondant n'avait donc aucune
+ * commande — et son test d'état vide le gardait explicitement : « ne fabrique
+ * aucune action : le produit ne sait pas en établir un ».
+ *
+ * C'est la seconde promesse vendue et non tenue trouvée dans cette grille
+ * tarifaire, après les relances automatiques.
+ *
+ * Le locataire n'établit pas : il SIGNE. Le champ `signedByName` porte ce nom,
+ * et son absence est un fait — un état des lieux non signé n'engage personne, et
+ * le taire vaudrait mieux que de le faire passer pour signé.
+ */
+parksRouter.post(
+  '/:parkId/units/:unitId/inspections',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const unitId = z.string().uuid().parse(req.params.unitId)
+    const corps = schemaEtatDesLieux.parse(req.body)
+
+    const unite = await prisma.unit.findFirst({
+      where: { id: unitId, building: { parkId } },
+      select: {
+        id: true,
+        leases: {
+          where: { status: { in: ['active', 'pending'] } },
+          select: { id: true },
+          take: 1,
+        },
+      },
+    })
+    if (!unite) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+    const bail = unite.leases[0]
+
+    /**
+     * Une SORTIE suppose un bail : on ne quitte pas un logement qu'on n'occupe
+     * pas. Une entrée peut en revanche précéder l'arrivée du locataire — c'est
+     * même l'ordre normal, on constate avant de remettre les clés.
+     */
+    if (corps.kind === 'exit' && !bail) {
+      res.status(409).json({ error: 'no_lease' })
+      return
+    }
+
+    /**
+     * IMPUTER UN COÛT DEPUIS UNE ENTRÉE EST REFUSÉ.
+     *
+     * C'est la règle qui donne son sens à l'état des lieux d'entrée : il relève
+     * ce qui est DÉJÀ abîmé, précisément pour que le locataire n'en réponde
+     * pas. Chiffrer une réserve d'entrée reviendrait à lui facturer les dégâts
+     * du précédent — l'exact inverse de la protection que ce document offre.
+     */
+    if (corps.kind === 'entry' && corps.findings.some((r) => r.costMinor !== undefined)) {
+      res.status(422).json({ error: 'entry_findings_not_billable' })
+      return
+    }
+
+    /**
+     * Un seul état des lieux de chaque nature par bail.
+     *
+     * « Entrée et sortie comparées pièce par pièce » : la comparaison suppose
+     * deux documents, pas une pile. Un second écraserait en pratique le premier
+     * dans la lecture, sans que rien ne dise lequel fait foi.
+     */
+    if (bail) {
+      const existant = await prisma.inspection.findFirst({
+        where: { leaseId: bail.id, kind: corps.kind },
+        select: { id: true },
+      })
+      if (existant) {
+        res.status(409).json({ error: 'already_recorded' })
+        return
+      }
+    }
+
+    const etat = await prisma.inspection.create({
+      data: {
+        unitId: unite.id,
+        ...(bail ? { leaseId: bail.id } : {}),
+        kind: corps.kind,
+        // La date saisie est lue en UTC : la colonne est de type `date`, et une
+        // date construite à minuit local recule d'un jour à l'est de Greenwich.
+        performedOn: corps.performedOn
+          ? new Date(`${corps.performedOn}T00:00:00Z`)
+          : new Date(),
+        rooms: corps.rooms,
+        ...(corps.signedByName
+          ? { signedByName: corps.signedByName, signedAt: new Date() }
+          : {}),
+        findings: {
+          create: corps.findings.map((r) => ({
+            room: r.room,
+            description: r.description,
+            severity: r.severity,
+            ...(r.costMinor !== undefined ? { costMinor: r.costMinor } : {}),
+          })),
+        },
+      },
+      select: {
+        id: true,
+        kind: true,
+        performedOn: true,
+        rooms: true,
+        signedAt: true,
+        findings: { select: { id: true, room: true, severity: true, costMinor: true } },
+      },
+    })
+
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'inspection.record',
+        entity: 'Inspection',
+        entityId: etat.id,
+        payload: {
+          kind: corps.kind,
+          findings: corps.findings.length,
+          // Le total imputable est figé ici : c'est le chiffre qui sera opposé
+          // au locataire lors de la restitution.
+          billableMinor: corps.findings.reduce((somme, r) => somme + (r.costMinor ?? 0), 0),
+        },
+      },
+    })
+
+    res.status(201).json({ inspection: etat })
   },
 )

@@ -2162,3 +2162,183 @@ describe('défaire un arbitrage', () => {
     expect(res.status).toBe(409)
   })
 })
+
+/**
+ * États des lieux.
+ *
+ * La fonction manquait entièrement : les modèles existaient, la démonstration
+ * en servait six, et aucune route ne permettait d'en créer un. L'écran n'avait
+ * donc aucune commande — son test d'état vide le gardait explicitement, « le
+ * produit ne sait pas en établir un ». C'est la seconde promesse vendue et non
+ * tenue de la grille tarifaire, après les relances automatiques.
+ */
+describe('états des lieux', () => {
+  let parkId: string
+  let proprio: string
+  let unitId: string
+
+  beforeEach(async () => {
+    const p = await inscrire('edl@example.com', { parkName: 'Parc' })
+    proprio = p.cookie
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio)
+    parkId = parcs.body.parks[0].id
+
+    const immeuble = await request(serveur)
+      .post(`/api/parks/${parkId}/buildings`)
+      .set('Cookie', proprio)
+      .send({ name: 'Résidence Makepe', district: 'Makepe' })
+    const logement = await request(serveur)
+      .post(`/api/parks/${parkId}/buildings/${immeuble.body.building.id}/units`)
+      .set('Cookie', proprio)
+      .send({ label: 'A1', type: 'T3', surfaceSqm: 78, baseRentMinor: 145000 })
+    unitId = logement.body.unit.id
+  })
+
+  async function avecBail() {
+    await request(serveur)
+      .post(`/api/parks/${parkId}/tenants`)
+      .set('Cookie', proprio)
+      .send({ unitId, fullName: 'Charles Ngassa', startsOn: '2026-01-01' })
+  }
+
+  const RESERVE = {
+    room: 'Cuisine',
+    description: 'Rayure profonde sur le plan de travail.',
+    severity: 'major' as const,
+  }
+
+  it('enregistre l’entrée avec ses réserves, et la rattache au bail', async () => {
+    await avecBail()
+
+    const res = await request(serveur)
+      .post(`/api/parks/${parkId}/units/${unitId}/inspections`)
+      .set('Cookie', proprio)
+      .send({ kind: 'entry', rooms: 3, performedOn: '2026-01-02', findings: [RESERVE] })
+
+    expect(res.status, JSON.stringify(res.body)).toBe(201)
+    const etat = await prisma.inspection.findUniqueOrThrow({
+      where: { id: res.body.inspection.id },
+      include: { findings: true },
+    })
+    // Rattaché au BAIL et non seulement au logement : la comparaison
+    // entrée/sortie porte sur une occupation, pas sur des murs.
+    expect(etat.leaseId).not.toBeNull()
+    expect(etat.findings).toHaveLength(1)
+    expect(etat.performedOn.toISOString()).toBe('2026-01-02T00:00:00.000Z')
+  })
+
+  it('REFUSE de chiffrer une réserve d’entrée', async () => {
+    await avecBail()
+
+    const res = await request(serveur)
+      .post(`/api/parks/${parkId}/units/${unitId}/inspections`)
+      .set('Cookie', proprio)
+      .send({ kind: 'entry', rooms: 3, findings: [{ ...RESERVE, costMinor: 25000 }] })
+
+    /**
+     * C'est la règle qui donne son sens au document d'entrée : il relève ce qui
+     * est DÉJÀ abîmé, précisément pour que le locataire n'en réponde pas. Le
+     * chiffrer reviendrait à lui facturer les dégâts du précédent — l'exact
+     * inverse de la protection qu'il offre.
+     */
+    expect(res.status).toBe(422)
+    expect(res.body.error).toBe('entry_findings_not_billable')
+    expect(await prisma.inspection.count()).toBe(0)
+  })
+
+  it('chiffre en revanche une réserve de sortie, et fige le total imputable', async () => {
+    await avecBail()
+
+    const res = await request(serveur)
+      .post(`/api/parks/${parkId}/units/${unitId}/inspections`)
+      .set('Cookie', proprio)
+      .send({
+        kind: 'exit',
+        rooms: 3,
+        findings: [{ ...RESERVE, costMinor: 25000 }, { ...RESERVE, room: 'Salon', costMinor: 13000 }],
+      })
+
+    expect(res.status, JSON.stringify(res.body)).toBe(201)
+    const journal = await prisma.auditEvent.findFirstOrThrow({
+      where: { parkId, action: 'inspection.record' },
+    })
+    // Le chiffre qui sera opposé au locataire lors de la restitution.
+    expect((journal.payload as { billableMinor: number }).billableMinor).toBe(38000)
+  })
+
+  it('refuse une sortie sans bail : on ne quitte pas un logement qu’on n’occupe pas', async () => {
+    const res = await request(serveur)
+      .post(`/api/parks/${parkId}/units/${unitId}/inspections`)
+      .set('Cookie', proprio)
+      .send({ kind: 'exit', rooms: 3 })
+
+    expect(res.status).toBe(409)
+    expect(res.body.error).toBe('no_lease')
+  })
+
+  it('admet en revanche une entrée avant le bail : on constate avant de remettre les clés', async () => {
+    const res = await request(serveur)
+      .post(`/api/parks/${parkId}/units/${unitId}/inspections`)
+      .set('Cookie', proprio)
+      .send({ kind: 'entry', rooms: 3 })
+
+    expect(res.status, JSON.stringify(res.body)).toBe(201)
+  })
+
+  it('refuse un second document de la même nature sur le même bail', async () => {
+    await avecBail()
+    const corps = { kind: 'entry', rooms: 3 }
+    await request(serveur)
+      .post(`/api/parks/${parkId}/units/${unitId}/inspections`)
+      .set('Cookie', proprio)
+      .send(corps)
+
+    const second = await request(serveur)
+      .post(`/api/parks/${parkId}/units/${unitId}/inspections`)
+      .set('Cookie', proprio)
+      .send(corps)
+
+    // « Entrée et sortie comparées » : la comparaison suppose deux documents,
+    // pas une pile où rien ne dit lequel fait foi.
+    expect(second.status).toBe(409)
+    expect(second.body.error).toBe('already_recorded')
+    expect(await prisma.inspection.count()).toBe(1)
+  })
+
+  it('date la signature quand un signataire est nommé, et pas autrement', async () => {
+    await avecBail()
+
+    const sans = await request(serveur)
+      .post(`/api/parks/${parkId}/units/${unitId}/inspections`)
+      .set('Cookie', proprio)
+      .send({ kind: 'entry', rooms: 3 })
+    const nonSigne = await prisma.inspection.findUniqueOrThrow({
+      where: { id: sans.body.inspection.id },
+    })
+    // Un état des lieux non signé n'engage personne. Le dater quand même le
+    // ferait passer pour signé.
+    expect(nonSigne.signedAt).toBeNull()
+
+    const avec = await request(serveur)
+      .post(`/api/parks/${parkId}/units/${unitId}/inspections`)
+      .set('Cookie', proprio)
+      .send({ kind: 'exit', rooms: 3, signedByName: 'Charles Ngassa' })
+    const signe = await prisma.inspection.findUniqueOrThrow({
+      where: { id: avec.body.inspection.id },
+    })
+    expect(signe.signedAt).not.toBeNull()
+    expect(signe.signedByName).toBe('Charles Ngassa')
+  })
+
+  it('n’établit rien sur le logement d’un autre parc', async () => {
+    const autre = await inscrire('voisin4@example.com', { parkName: 'Autre parc' })
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', autre.cookie)
+
+    const res = await request(serveur)
+      .post(`/api/parks/${parcs.body.parks[0].id}/units/${unitId}/inspections`)
+      .set('Cookie', autre.cookie)
+      .send({ kind: 'entry', rooms: 3 })
+
+    expect(res.status).toBe(404)
+  })
+})
