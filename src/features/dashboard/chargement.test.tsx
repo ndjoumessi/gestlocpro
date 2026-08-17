@@ -359,3 +359,52 @@ describe('l’espace locataire pendant le chargement', () => {
     expect(main()).toHaveTextContent('A1')
   })
 })
+
+/**
+ * L'attente SIMULÉE de la démonstration.
+ *
+ * Tout ce fichier décrit ce que le produit montre pendant que le parc arrive —
+ * et pas une seule de ces images n'a jamais été vue à l'écran. La démonstration
+ * sert un module local, donc `loading` y restait faux du premier rendu au
+ * dernier ; le seul déclencheur possible était un compte relié à un parc, qui
+ * n'existe toujours pas sur le déploiement. Du code livré, vérifié par des
+ * tests, jamais regardé — et le débordement de `SkeletonTable` à 375px, coupé
+ * en silence par `overflow-hidden`, dit ce que cet angle mort coûtait : les
+ * tests tenaient le comportement, pas la géométrie.
+ *
+ * La démonstration ouvre donc une attente, une fois, pour la rendre observable
+ * sans compte. Ce que ces cas tiennent, c'est le « une fois » : une attente qui
+ * se rejouerait à chaque écran rendrait la vitrine poussive et mentirait sur le
+ * produit, dont le chargement réel est un coup unique par parc — c'est ce que
+ * vérifie déjà, plus haut, « ne rouvre pas l'attente pour un changement de
+ * langue ».
+ *
+ * Le cas symétrique — un compte sans parc hors démonstration n'attend rien — est
+ * tenu par « sans parc serveur » et n'est pas redit ici.
+ */
+describe('démonstration', () => {
+  const attente = () => within(screen.getByRole('main')).queryByRole('status')
+
+  it('ouvre une attente dès le premier rendu, puis la referme', async () => {
+    renderApp('/demo/travaux', { session: { statut: 'demo' } })
+
+    // Dès la première image, posée par `useState` et non par l'effet : sinon
+    // une image complète de données passerait avant le squelette.
+    expect(attente()).not.toBeNull()
+
+    await waitFor(() => expect(attente()).toBeNull(), { timeout: 4000 })
+    expect(screen.getByRole('button', { name: /valider le devis/i })).toBeInTheDocument()
+  })
+
+  it('ne la rejoue pas d’un écran à l’autre', async () => {
+    const user = userEvent.setup()
+    renderApp('/demo/travaux', { session: { statut: 'demo' } })
+    await waitFor(() => expect(attente()).toBeNull(), { timeout: 4000 })
+
+    const liens = screen.getAllByRole('link', { name: /^cautions/i })
+    await user.click(liens[0])
+
+    expect(attente()).toBeNull()
+    expect(screen.getAllByRole('button', { name: /^arbitrer$/i }).length).toBeGreaterThan(0)
+  })
+})

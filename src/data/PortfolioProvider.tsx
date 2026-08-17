@@ -8,6 +8,26 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { useLocation } from 'react-router-dom'
+
+/**
+ * Durée de l'attente SIMULÉE, en démonstration seulement.
+ *
+ * Ralentir sciemment une vitrine se justifie mal, et c'est pourtant le seul
+ * moyen de montrer l'état d'attente sans compte : la démonstration sert un
+ * module local, donc n'attend rien. Le choix est assumé, la durée est le prix.
+ *
+ * 900 ms parce que les deux bornes sont serrées. En dessous de 500 ms environ,
+ * le squelette passe pour un clignotement et l'on doute d'avoir vu quelque
+ * chose ; au-delà d'une seconde et demie, la démonstration paraît lente, ce qui
+ * est le message exactement inverse de celui qu'elle porte. C'est aussi l'ordre
+ * de grandeur d'un vrai aller-retour sur le réseau visé — moins que les
+ * plusieurs secondes du pire cas, davantage que le réseau d'un bureau.
+ *
+ * L'attente n'a lieu qu'UNE fois, à l'entrée dans la démonstration : le coût
+ * total pour un visiteur est donc de 900 ms, pas de 900 ms par écran.
+ */
+const ATTENTE_DEMO_MS = 900
 import { DEMO_TENANT_UNIT, type Deposit, type Unit, type WorkOrder } from './portfolio'
 import { chargerParc, type Immeuble } from './apiPortfolio'
 import {
@@ -215,6 +235,18 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
    */
   const { etat } = useSession()
   const parkId = etat.statut === 'connecte' ? (etat.adhesions[0]?.parkId ?? null) : null
+  /**
+   * La démonstration se reconnaît à son ADRESSE, comme le reste du produit.
+   *
+   * Elle a sa propre route depuis qu'un bandeau ne suffisait pas à la
+   * distinguer de l'espace réel ; on lit donc la même chose que l'utilisateur.
+   * Ce fournisseur vit sous `BrowserRouter`, le crochet y est disponible.
+   *
+   * Il rend ce composant à chaque navigation, ce qui est le prix à payer. La
+   * valeur de contexte reste mémoïsée sur ses propres dépendances : les
+   * consommateurs, eux, ne rendent pas pour autant.
+   */
+  const enDemonstration = useLocation().pathname.startsWith('/demo')
   const role = etat.statut === 'connecte' ? (etat.adhesions[0]?.role ?? null) : null
 
   const initial = loadState()
@@ -231,7 +263,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
    * le squelette — le clignotement exact qu'on cherche à supprimer, et il se
    * verrait d'autant mieux que l'appareil est lent.
    */
-  const [loading, setLoading] = useState(() => parkId !== null)
+  const [loading, setLoading] = useState(() => parkId !== null || enDemonstration)
   /**
    * Le parc effectivement AFFICHÉ, une fois sa réponse arrivée.
    *
@@ -240,6 +272,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
    * rendu de plus à chaque chargement, pour rien.
    */
   const parcAffiche = useRef<string | null>(null)
+  /** Pendant de `parcAffiche` pour l'attente simulée : une fois servie, jamais rejouée. */
+  const attenteDemoServie = useRef(false)
   const [buildings, setBuildings] = useState<Immeuble[]>(IMMEUBLES_DEMO)
   const [readings, setReadings] = useState<MeterReading[]>(READINGS_DEMO)
   const [inspections, setInspections] = useState<Inspection[]>(INSPECTIONS_DEMO)
@@ -248,11 +282,44 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!parkId) {
-      // Rien en vol : les données locales sont déjà servies. Le cas se produit
-      // vraiment — un compte qui quitte son dernier parc, ou une visite en
-      // démonstration après une session connectée.
-      setLoading(false)
-      return
+      /**
+       * Rien en vol : les données locales sont déjà servies — SAUF en
+       * démonstration, où l'on simule l'attente une fois.
+       *
+       * Les huit écrans ont un squelette câblé que personne n'avait jamais vu.
+       * La démonstration sert un module local, de façon synchrone : `loading`
+       * restait faux du premier rendu au dernier, et la branche
+       * `if (loading) return <…Skeleton/>` n'était jamais prise. Le seul moyen
+       * de la déclencher était un compte relié à un parc, qui n'existe pas
+       * encore sur le déploiement. Du code livré, jamais regardé — et le
+       * débordement de `SkeletonTable` à 375px, coupé en silence, montre ce que
+       * cela coûtait.
+       *
+       * L'attente simulée est un COUP UNIQUE, comme la vraie. Le chargement
+       * réel n'est rouvert que si le parc affiché change (`parcAffiche`) ; il
+       * ne se rejoue pas d'un écran à l'autre, puisque ce fournisseur ne se
+       * remonte jamais. Ici, l'effet ne dépend que de l'ENTRÉE dans la
+       * démonstration : naviguer de `/demo/travaux` à `/demo/cautions` laisse
+       * `enDemonstration` à `true`, donc ne relance rien. Faire attendre à
+       * chaque clic aurait été une invention, et une démonstration poussive.
+       *
+       * La garde est posée à la FIN du minuteur, jamais à son ouverture.
+       * `StrictMode` rejoue les effets au montage : marquée d'entrée, elle
+       * survivrait au faux démontage et la seconde exécution effacerait
+       * l'attente aussitôt — le squelette ne se verrait qu'en production, donc
+       * jamais pendant qu'on le met au point. Le même piège a déjà été payé
+       * plus bas, sur `intact`.
+       */
+      if (!enDemonstration || attenteDemoServie.current) {
+        setLoading(false)
+        return
+      }
+      setLoading(true)
+      const minuteur = setTimeout(() => {
+        attenteDemoServie.current = true
+        setLoading(false)
+      }, ATTENTE_DEMO_MS)
+      return () => clearTimeout(minuteur)
     }
     let annule = false
     /**
@@ -319,7 +386,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     return () => {
       annule = true
     }
-  }, [parkId, signalerEchec])
+  }, [parkId, signalerEchec, enDemonstration])
 
   /**
    * Enregistré à chaque changement d'état plutôt qu'à chaque geste : un seul
