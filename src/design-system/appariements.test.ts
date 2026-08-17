@@ -339,3 +339,77 @@ describe('pastille de comptage', () => {
     })
   }
 })
+
+/**
+ * Le séparateur du fil d'Ariane.
+ *
+ * Il portait `text-border-strong` : un jeton de BORDURE employé pour un glyphe.
+ * 1,66:1 en clair, 2,42 en sombre — sous le seuil de 3:1 des éléments non
+ * textuels. Le fil perdait sa structure : on devinait la séparation plutôt
+ * qu'on ne la voyait.
+ *
+ * Ces chiffres ont d'abord été mal mesurés, et c'est ce qui rend ce garde
+ * utile : la barre supérieure est peinte en `oklab()` avec alpha, notation
+ * qu'une lecture naïve des nombres d'une chaîne CSS interprète comme du RGB.
+ * Le premier relevé annonçait 2,72 en sombre et des valeurs absurdes en clair.
+ * Le garde, lui, lit les jetons, dont les ratios sont vérifiables.
+ */
+describe('séparateur du fil d’Ariane', () => {
+  const CSS = readFileSync(join(SRC, 'design-system', 'tokens.css'), 'utf8')
+  const NU = CSS.replace(/\/\*[\s\S]*?\*\//g, '')
+
+  function corps(entete: string): string {
+    const debut = NU.indexOf(entete)
+    if (debut === -1) throw new Error(`bloc introuvable : ${entete}`)
+    let profondeur = 0
+    for (let i = NU.indexOf('{', debut); i < NU.length; i++) {
+      if (NU[i] === '{') profondeur++
+      else if (NU[i] === '}' && --profondeur === 0) return NU.slice(NU.indexOf('{', debut) + 1, i)
+    }
+    throw new Error(`accolade non refermée après ${entete}`)
+  }
+  function jeton(bloc: string, nom: string): string {
+    const t = new RegExp(`${nom}\\s*:\\s*(#[0-9a-fA-F]{6})`).exec(bloc)
+    if (!t) throw new Error(`jeton absent : ${nom}`)
+    return t[1]
+  }
+  function luminance(h: string): number {
+    const [r, v, b] = [0, 2, 4]
+      .map((i) => parseInt(h.slice(1).substr(i, 2), 16))
+      .map((c) => {
+        const n = c / 255
+        return n <= 0.03928 ? n / 12.92 : Math.pow((n + 0.055) / 1.055, 2.4)
+      })
+    return 0.2126 * r + 0.7152 * v + 0.0722 * b
+  }
+  function ratio(a: string, b: string): number {
+    const [x, y] = [luminance(a), luminance(b)]
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
+  }
+
+  const BLOCS = {
+    clair: corps('@theme'),
+    'sombre (systeme)': corps('@media (prefers-color-scheme: dark)'),
+    'sombre (choisi)': corps(":root[data-theme='dark']"),
+  }
+
+  it('n’emploie pas un jeton de bordure pour un glyphe', () => {
+    const coque = sansCommentaires(
+      readFileSync(join(SRC, 'components', 'layout', 'AppShell.tsx'), 'utf8'),
+    )
+    const ligne = coque
+      .split('\n')
+      .findIndex((l) => /aria-hidden="true"/.test(l) && /text-/.test(l) && /muted-soft|border-strong/.test(l))
+    expect(ligne, 'séparateur introuvable').toBeGreaterThan(-1)
+    expect(coque.split('\n')[ligne]).not.toContain('border-strong')
+  })
+
+  for (const [theme, bloc] of Object.entries(BLOCS)) {
+    it(`tient le seuil non textuel de 3:1 en ${theme}`, () => {
+      // Sur `--color-paper` : la barre supérieure en est un voile à 88 %, donc
+      // la composition y retombe à un cheveu près.
+      const r = ratio(jeton(bloc, '--color-muted-soft'), jeton(bloc, '--color-paper'))
+      expect(r, `${theme} — ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(3)
+    })
+  }
+})

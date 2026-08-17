@@ -835,7 +835,19 @@ function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
         {parc && (
           <>
             <span className="eyebrow text-muted">{parc}</span>
-            <span aria-hidden="true" className="text-border-strong">
+            {/* `muted-soft` et non `border-strong` : le second est un jeton de
+                BORDURE employé pour un glyphe, et il tenait 1,66:1 en clair,
+                2,42 en sombre — sous le seuil de 3:1 des éléments non textuels,
+                donc un séparateur qu'on devine plutôt qu'on ne le voit. Le fil
+                perdait sa structure.
+
+                Pas `muted` non plus : il porte déjà le nom du parc, à gauche.
+                Un séparateur aussi appuyé que ce qu'il sépare aplatit la
+                hiérarchie du fil, qui compte trois degrés — parc, séparateur,
+                écran courant. `muted-soft` passe à 4,33 et 5,04 en restant en
+                retrait, et son propre commentaire l'autorise sur du non
+                textuel : ce glyphe est `aria-hidden`. */}
+            <span aria-hidden="true" className="text-muted-soft">
               /
             </span>
           </>
