@@ -753,12 +753,16 @@
    Un `transform` sur un pseudo-élément se compose sans repeindre : le dégradé
    n'est rastérisé qu'une fois. `::after` plutôt qu'un nœud dédié, ce qui fait
    trente nœuds de DOM en moins. */
+/* La course vaut UNE PÉRIODE du motif, ni plus ni moins — c'est ce qui rend la
+   boucle invisible. Voir la règle `::after` pour le calcul complet ; les deux
+   nombres se lisent ensemble ou pas du tout, et squelette.test.ts vérifie leur
+   accord plutôt que leurs valeurs. */
 @keyframes gl-skeleton-sweep {
   from {
-    transform: translateX(-100%);
+    transform: translateX(-25%);
   }
   to {
-    transform: translateX(100%);
+    transform: translateX(25%);
   }
 }
 
@@ -776,17 +780,47 @@
    L'animation ne porte AUCUN `fill` : une fois neutralisée, la crête revient à
    `translateX(-100%)`, donc hors du pavé — d'où le relais défini plus bas, sans
    lequel il ne resterait qu'un aplat mort. */
+/* GÉOMÉTRIE — une crête unique laissait le pavé plat la moitié du temps.
+
+   Le pseudo-élément faisait la largeur du pavé (`inset: 0`) et parcourait
+   -100% → +100% de sa propre largeur. Sa crête, au milieu du dégradé, n'était
+   donc DANS le pavé qu'entre le quart et les trois quarts de la course : une
+   demi-seconde de balayage, puis sept dixièmes de seconde d'aplat mort, en
+   boucle. Ce n'est pas un reflet qui passe, c'est un clignotement — et une
+   capture d'écran prise au hasard avait une chance sur deux de ne rien montrer,
+   ce qui a durablement brouillé le diagnostic.
+
+   Deux corrections liées, et c'est leur ACCORD qui compte.
+
+   Le motif se répète, de période égale à la largeur du pavé. L'élément fait
+   deux fois cette largeur et déborde d'une demi-largeur de chaque côté, si bien
+   qu'il couvre le pavé à tout instant de la course.
+
+   La course vaut exactement une période. C'est la condition de la boucle
+   invisible : à la fin du cycle, chaque crête occupe la place de la précédente,
+   donc l'image de fin est l'image de début. Une crête sort par la droite au
+   moment précis où la suivante entre par la gauche.
+
+   Les pourcentages se lisent sur des bases différentes, ce qui est le piège du
+   calcul. Ceux du dégradé portent sur la largeur de l'élément (200% du pavé) :
+   une période de 50% y vaut donc 100% du pavé. Ceux de `translateX` aussi :
+   -25% → +25% fait 50% de l'élément, soit là encore 100% du pavé. Les deux
+   tombent juste ensemble ; changer l'un sans l'autre réintroduit le trou, et
+   c'est cet accord que le garde vérifie. */
 .gl-skeleton::after {
   content: '';
   position: absolute;
-  inset: 0;
-  background: linear-gradient(
+  top: 0;
+  bottom: 0;
+  left: -50%;
+  width: 200%;
+  background: repeating-linear-gradient(
     90deg,
     transparent 0%,
-    var(--color-skeleton-sweep) 50%,
-    transparent 100%
+    var(--color-skeleton-sweep) 25%,
+    transparent 50%
   );
-  transform: translateX(-100%);
+  transform: translateX(-25%);
   animation: gl-skeleton-sweep 1.4s linear infinite;
 }
 
@@ -813,7 +847,20 @@
    pas décoratif : sans lui, `animation-duration: 0.001ms` gagnerait. */
 @media (prefers-reduced-motion: reduce) {
   .gl-skeleton::after {
-    /* Immobile au centre : c'est la position où la crête couvre le pavé. */
+    /* La géométrie du balayage est DÉFAITE ici, et il le faut : un motif
+       répété ne vaut que s'il défile. Figé, ses crêtes tombent sur les deux
+       bords du pavé et son centre sur un creux — soit exactement l'inverse de
+       ce qu'on veut montrer à l'arrêt. On revient donc au pavé lui-même, avec
+       une crête unique et centrée. */
+    left: 0 !important;
+    right: 0 !important;
+    width: auto !important;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--color-skeleton-sweep) 50%,
+      transparent 100%
+    ) !important;
     transform: none !important;
     animation: gl-skeleton-breath 2.4s ease-in-out infinite !important;
   }

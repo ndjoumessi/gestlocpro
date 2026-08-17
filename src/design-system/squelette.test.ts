@@ -131,6 +131,51 @@ describe('balayage de squelette', () => {
 })
 
 /**
+ * Garde de la GÉOMÉTRIE du balayage.
+ *
+ * Une crête unique dans un élément large comme le pavé n'était visible que la
+ * moitié du cycle : elle entrait au quart de la course et sortait aux trois
+ * quarts, laissant sept dixièmes de seconde d'aplat mort en boucle. Le motif se
+ * répète désormais, et la course vaut exactement une période.
+ *
+ * Ce fichier ne fige pas les VALEURS — 200%, 50%, ±25% peuvent toutes changer
+ * ensemble sans dommage. Il fige les deux RELATIONS dont dépend le résultat, et
+ * qu'un réglage à l'œil casse sans prévenir parce que les pourcentages se lisent
+ * sur des bases différentes : ceux du dégradé et ceux de `translateX` portent
+ * sur la largeur de l'élément, pas sur celle du pavé.
+ */
+describe('géométrie du balayage', () => {
+  const REGLE = /\.gl-skeleton::after \{([\s\S]*?)\n\}/.exec(NU)?.[1] ?? ''
+  const KEYFRAMES = /@keyframes gl-skeleton-sweep \{([\s\S]*?)\n\}/.exec(NU)?.[1] ?? ''
+
+  /** Largeur de l'élément, en multiples de celle du pavé. */
+  const largeur = Number(/width:\s*([\d.]+)%/.exec(REGLE)?.[1]) / 100
+  /** Période du motif, exprimée sur la largeur de l'ÉLÉMENT puis ramenée au pavé. */
+  const periode = (Number(/transparent\s+([\d.]+)%\s*\n?\s*\)/.exec(REGLE)?.[1]) / 100) * largeur
+  /** Course d'un cycle, même conversion. */
+  const bornes = [...KEYFRAMES.matchAll(/translateX\((-?[\d.]+)%\)/g)].map(([, v]) => Number(v))
+  const course = ((Math.max(...bornes) - Math.min(...bornes)) / 100) * largeur
+
+  it('répète le motif plutôt que de promener une crête unique', () => {
+    // Une crête seule ne peut pas être partout : c'est la répétition qui fait
+    // qu'une autre entre à gauche quand la première sort à droite.
+    expect(REGLE).toContain('repeating-linear-gradient')
+  })
+
+  it('parcourt exactement une période, pour que la boucle ne se voie pas', () => {
+    // Course plus COURTE que la période : un trou où rien ne passe. Plus
+    // LONGUE : un saut à la reprise, la crête se téléportant en arrière.
+    expect(course, `course ${course} pavé(s) contre période ${periode}`).toBeCloseTo(periode, 5)
+  })
+
+  it('couvre le pavé à tout instant de la course', () => {
+    // L'élément se déplace : s'il n'est pas plus large que le pavé PLUS sa
+    // course, il découvre un bord et y laisse une bande morte.
+    expect(largeur).toBeGreaterThanOrEqual(1 + course)
+  })
+})
+
+/**
  * Garde du relais sans mouvement.
  *
  * La règle globale de `prefers-reduced-motion` neutralise toute animation en
