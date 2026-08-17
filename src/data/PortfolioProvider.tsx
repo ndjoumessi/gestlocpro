@@ -76,6 +76,20 @@ import { hasStoredState, loadState, resetState, saveState } from './persistence'
  * tombait au rendu sur « Cannot read properties of undefined (reading 'year') ».
  * Un cast n'ajoute rien à ce qu'on sait, il fait seulement taire ce qu'on ignore.
  */
+/** `AAAA-MM-JJ` en parties de date, ou aujourd'hui. */
+function dateDuJour(iso?: string): { year: number; month: number; day: number } {
+  if (iso) {
+    const [a, m, j] = iso.split('-').map(Number)
+    return { year: a!, month: m!, day: j! }
+  }
+  const maintenant = new Date()
+  return {
+    year: maintenant.getFullYear(),
+    month: maintenant.getMonth() + 1,
+    day: maintenant.getDate(),
+  }
+}
+
 function nouvelleFiche(
   id: string,
   unitId: string,
@@ -131,6 +145,17 @@ interface PortfolioContextValue {
    * locataire, jamais d'une saisie du bailleur » — et le produit ne l'offrait
    * nulle part.
    */
+  /** Établit un état des lieux sur un logement. */
+  addInspection: (
+    unitId: string,
+    etat: {
+      kind: 'entry' | 'exit'
+      rooms: number
+      performedOn?: string
+      signedByName?: string
+      findings: { room: string; description: string; severity: 'minor' | 'major'; costMinor?: number }[]
+    },
+  ) => void
   addWork: (
     unitId: string,
     signalement: { title: string; trade: TradeKey; urgency: UrgencyKey; description?: string },
@@ -649,6 +674,45 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [parkId, signalerEchec],
   )
 
+  const addInspection = useCallback(
+    (
+      unitId: string,
+      etat: {
+        kind: 'entry' | 'exit'
+        rooms: number
+        performedOn?: string
+        signedByName?: string
+        findings: {
+          room: string
+          description: string
+          severity: 'minor' | 'major'
+          costMinor?: number
+        }[]
+      },
+    ) => {
+      const local = () =>
+        setInspections((liste) => [
+          {
+            unitId,
+            kind: etat.kind,
+            date: dateDuJour(etat.performedOn),
+            rooms: etat.rooms,
+            // Le nombre de réserves, pas leur détail : c'est ce que l'écran
+            // affiche, et l'inventer complet ici en ferait une seconde source.
+            issues: etat.findings.length,
+            signed: Boolean(etat.signedByName),
+          },
+          ...liste,
+        ])
+      if (!parkId) {
+        local()
+        return
+      }
+      void api.addInspection(parkId, unitId, etat).then(local).catch(signalerEchec)
+    },
+    [parkId, signalerEchec],
+  )
+
   const settleDeposit = useCallback(
     (unitId: string, withheld: number, reason?: string) => {
       const local = () =>
@@ -915,6 +979,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       completeWork,
       reopenWork,
       unapproveWork,
+      addInspection,
       addWork,
       unsettleDeposit,
       settleDeposit,
@@ -978,6 +1043,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       completeWork,
       reopenWork,
       unapproveWork,
+      addInspection,
       addWork,
       unsettleDeposit,
       settleDeposit,

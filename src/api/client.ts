@@ -196,6 +196,28 @@ export const api = {
   reopenWork: <T>(parkId: string, workId: string) =>
     requete<T>(`/parks/${parkId}/works/${workId}/reopen`, { method: 'PATCH' }),
 
+  /**
+   * Établit un état des lieux.
+   *
+   * Le serveur refuse en 422 une réserve d'entrée CHIFFRÉE : ce document relève
+   * ce qui est déjà abîmé, précisément pour que le locataire n'en réponde pas.
+   */
+  addInspection: <T>(
+    parkId: string,
+    unitId: string,
+    corps: {
+      kind: 'entry' | 'exit'
+      rooms: number
+      performedOn?: string
+      signedByName?: string
+      findings: { room: string; description: string; severity: 'minor' | 'major'; costMinor?: number }[]
+    },
+  ) =>
+    requete<T>(`/parks/${parkId}/units/${unitId}/inspections`, {
+      method: 'POST',
+      body: JSON.stringify(corps),
+    }),
+
   /** Déclare une intervention sur un logement. */
   addWork: <T>(
     parkId: string,

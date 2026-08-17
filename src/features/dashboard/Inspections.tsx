@@ -1,4 +1,7 @@
+import { useState } from 'react'
 import { PageHeader, useRole } from '@/components/layout/AppShell'
+import { Button } from '@/components/primitives/Button'
+import { InspectionModal } from './InspectionModal'
 import { Card } from '@/components/primitives/Card'
 import { StatusPill } from '@/components/primitives/StatusPill'
 import { Badge } from '@/components/primitives/Badge'
@@ -15,7 +18,12 @@ export function Inspections() {
   const t = useT()
   const d = useDates()
   const { role } = useRole()
-  const { unitById, isMine, inspections: INSPECTIONS, loading } = usePortfolio()
+  const { unitById, isMine, units, inspections: INSPECTIONS, loading } = usePortfolio()
+  const [ouverte, setOuverte] = useState(false)
+  /* Un seul logement à l'écran de saisie : le jour où le parc en porte
+     plusieurs, il faudra le demander. Le serveur, lui, vérifie déjà que celui
+     qu'on lui donne appartient au parc. */
+  const logements = units
   const isTenant = role === 'tenant'
   const source = isTenant ? INSPECTIONS.filter((i) => isMine(i.unitId)) : INSPECTIONS
 
@@ -37,9 +45,38 @@ export function Inspections() {
 
   return (
     <>
-      <PageHeader title={t('app.inspections.title')} description={t('app.inspections.subtitle')} />
+      <PageHeader
+        title={t('app.inspections.title')}
+        description={t('app.inspections.subtitle')}
+        actions={
+          /*
+            La commande que cet écran n'a jamais eue.
+
+            Son test d'état vide gardait explicitement son absence — « ne
+            fabrique aucune action : le produit ne sait pas en établir un » — et
+            il avait raison : AUCUNE route d'état des lieux n'existait. Le
+            bouton arrive avec la fonction, pas avant.
+
+            Le locataire ne l'établit pas : il le SIGNE. Son nom est ce que le
+            champ « signé par » porte.
+          */
+          !isTenant && logements[0] ? (
+            <Button icon="plus" onClick={() => setOuverte(true)}>
+              {t('app.inspections.record')}
+            </Button>
+          ) : undefined
+        }
+      />
 
       {isTenant && <TenantScopeNote />}
+
+      {!isTenant && logements[0] && (
+        <InspectionModal
+          open={ouverte}
+          onClose={() => setOuverte(false)}
+          unitId={logements[0].id}
+        />
+      )}
 
       {/*
         Le titre valait pour le locataire et se servait aussi au propriétaire.

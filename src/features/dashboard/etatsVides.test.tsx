@@ -144,16 +144,30 @@ describe('les états des lieux, quand il n’y en a aucun', () => {
     expect(screen.getByText(/c’est leur comparaison qui justifie/i)).toBeInTheDocument()
   })
 
-  it('ne fabrique aucune action : le produit ne sait pas en établir un', async () => {
+  /**
+   * Ce cas disait l'inverse, et il avait raison à sa date.
+   *
+   * Il s'intitulait « ne fabrique aucune action : le produit ne sait pas en
+   * établir un », et sa prémisse était exacte : aucune route d'état des lieux
+   * n'existait côté serveur. Un bouton aurait mené au vide.
+   *
+   * La fonction ayant été construite, la prémisse est tombée — et le cas avec
+   * elle, comme il devait. Ce qui SURVIT du garde est la moitié qui reste
+   * vraie : le locataire n'établit pas un état des lieux, il le signe.
+   */
+  it('offre le geste au bailleur, une fois la fonction construite', async () => {
     parcSansRien()
     renderApp('/app/etats-des-lieux', { session: SESSION_PROPRIETAIRE })
 
     await screen.findByText(/aucun état des lieux enregistré$/i)
-    /**
-     * Ni pour le bailleur ni pour le locataire. Le produit ne dispose d'aucun
-     * écran de saisie d'un état des lieux — `TenantPortal` le dit déjà de son
-     * côté documents. Un bouton ici mènerait au vide.
-     */
-    expect(screen.queryByRole('button', { name: /état des lieux/i })).toBeNull()
+    expect(screen.getByRole('button', { name: /établir un état des lieux/i })).toBeInTheDocument()
+  })
+
+  it('ne l’offre pas au locataire, qui signe mais n’établit pas', async () => {
+    parcSansRien()
+    renderApp('/app/etats-des-lieux', { session: SESSION_LOCATAIRE })
+
+    await screen.findByText(/aucun état des lieux/i)
+    expect(screen.queryByRole('button', { name: /établir un état des lieux/i })).toBeNull()
   })
 })
