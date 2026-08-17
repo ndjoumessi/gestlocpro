@@ -3,6 +3,7 @@ import { Card, CardHeader } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
 import { Icon } from '@/components/primitives/Icon'
 import { EmptyState } from '@/components/primitives/DataTable'
+import { Skeleton, SkeletonRegion } from '@/components/primitives/Skeleton'
 import { useToast } from '@/components/primitives/Toast'
 import { useT } from '@/i18n/I18nProvider'
 import { usePortfolio } from '@/data/PortfolioProvider'
@@ -25,24 +26,19 @@ export function SystemStates() {
         <Card>
           <CardHeader title={t('app.system.loading')} level={2} />
           {/* Squelette plutôt que spinner : la mise en page ne saute pas
-              quand les données arrivent. */}
-          <div className="flex flex-col gap-3" aria-busy="true" aria-live="polite">
-            <span className="sr-only">{t('common.loading')}</span>
-            {[80, 100, 65, 90].map((width, index) => (
-              <span
-                key={index}
-                aria-hidden="true"
-                className="block h-3.5 rounded-full bg-surface-sunken"
-                style={{
-                  width: `${width}%`,
-                  backgroundImage:
-                    'linear-gradient(90deg, var(--color-surface-sunken) 0%, var(--color-border) 50%, var(--color-surface-sunken) 100%)',
-                  backgroundSize: '200% 100%',
-                  animation: 'gl-shimmer 1.4s linear infinite',
-                }}
-              />
+              quand les données arrivent.
+
+              Cette carte portait sa propre copie du squelette — quatre lignes
+              écrites à la main, avec leur dégradé et leur animation. Elle
+              montrait donc un état que le produit ne savait pas rendre : les
+              écrans réels servaient le jeu de démonstration pendant que le parc
+              du serveur arrivait. La vitrine et le produit rendent désormais le
+              MÊME composant, ce qui est la seule façon qu'elle reste honnête. */}
+          <SkeletonRegion className="flex flex-col gap-3">
+            {[80, 100, 65, 90].map((largeur, index) => (
+              <Skeleton key={index} line="body" width={`${largeur}%`} />
             ))}
-          </div>
+          </SkeletonRegion>
         </Card>
 
         <Card>

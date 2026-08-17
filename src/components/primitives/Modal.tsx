@@ -124,7 +124,21 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 flex items-end justify-center p-0 sm:items-center sm:p-6"
+      // Sous `sm`, la modale est une feuille collée en bas, pleine largeur : en
+      // portrait les insets latéraux valent 0, il n'y a donc rien à écarter, et
+      // le bas est traité plus loin, sur les sections de la feuille elle-même.
+      //
+      // Dès `sm` elle se recentre — et c'est là que le paysage frappe : un
+      // iPhone tourné mesure moins de `lg` mais bien plus que `sm`, donc il
+      // prend cette branche, avec ses 24 px de marge contre 59 px d'encoche. La
+      // boîte de dialogue passait sous l'encoche. `max()` : 24 px suffisent
+      // partout ailleurs, l'inset ne prend le relais que quand il est plus
+      // grand.
+      className={cn(
+        'fixed inset-0 flex items-end justify-center p-0 sm:items-center',
+        'sm:pt-6 sm:pb-6',
+        'sm:pl-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))]',
+      )}
       style={{ zIndex: 'var(--z-modal)' }}
     >
       {/* Le voile signale que l'arrière-plan est écarté, pas décoratif. */}
@@ -132,7 +146,7 @@ export function Modal({
         type="button"
         aria-label={t('common.close')}
         onClick={onClose}
-        className="absolute inset-0 cursor-default bg-ink/45 backdrop-blur-[3px]"
+        className="absolute inset-0 cursor-default bg-scrim backdrop-blur-[3px]"
       />
 
       <div
@@ -161,10 +175,37 @@ export function Modal({
           <IconButton icon="close" label={t('common.close')} onClick={onClose} />
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-5">{children}</div>
+        {/*
+          La zone sûre du bas se pose sur la SECTION du bas, pas sur la feuille.
+          Sur la feuille, le rembourrage aurait laissé apparaître une bande de
+          `bg-surface` sous une barre d'actions qui, elle, est peinte en
+          `bg-surface-sunken` : deux tons, un liseré parasite.
+
+          Elle est donc portée par le pied quand il existe, et par le corps
+          défilant sinon — sans quoi une modale sans actions laisserait sa
+          dernière ligne sous la barre de gestes. `calc()` dans les deux cas :
+          la section est peinte jusqu'au bord physique, son contenu s'en écarte.
+
+          `sm:pb-*` remet la valeur nue : dès `sm` la boîte est recentrée et le
+          conteneur l'a déjà écartée du bord. Sans ce retour, un dialogue de
+          bureau traînerait un pied de 34 px de trop.
+        */}
+        <div
+          className={cn(
+            'min-h-0 flex-1 overflow-y-auto px-5 pt-5',
+            footer ? 'pb-5' : 'pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-5',
+          )}
+        >
+          {children}
+        </div>
 
         {footer && (
-          <div className="flex flex-wrap justify-end gap-2 border-t border-divider bg-surface-sunken p-4">
+          <div
+            className={cn(
+              'flex flex-wrap justify-end gap-2 border-t border-divider bg-surface-sunken',
+              'px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4',
+            )}
+          >
             {footer}
           </div>
         )}

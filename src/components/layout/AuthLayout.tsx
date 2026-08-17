@@ -1,10 +1,12 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { cn } from '@/lib/cn'
+import { GOUTTIERE_LATERALE } from './gouttiere'
 import { Logo } from '@/components/primitives/Logo'
 import { Icon } from '@/components/primitives/Icon'
 import { LanguageSwitcher } from '@/components/controls/LanguageSwitcher'
 import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
+import { ThemeSwitcher } from '@/components/controls/ThemeSwitcher'
 import { useT } from '@/i18n/I18nProvider'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
@@ -47,7 +49,14 @@ export function AuthLayout({
       <BrandPanel />
 
       <div className="flex min-w-0 flex-1 flex-col bg-canvas">
-        <header className="flex items-center gap-3 px-5 py-4 sm:px-8">
+        {/* `flex-wrap` : la rangée porte le retour à l'accueil ET trois
+            sélecteurs — langue, devise, thème. Le troisième, ajouté avec le
+            mode sombre, a fait passer la somme au-delà de 375 px et la page
+            entière débordait de 79 px en largeur, sur les écrans les plus
+            étroits du marché visé. Le retour à la ligne coûte une rangée sur
+            un téléphone et rien du tout ailleurs ; réduire les sélecteurs
+            aurait rogné des cibles tactiles déjà calées sur 44 px. */}
+        <header className={cn('flex flex-wrap items-center gap-3 py-4', GOUTTIERE_LATERALE)}>
           {/* Ce lien portait `lg:hidden` : sur ordinateur, il n'existait pas.
               Et le logo du panneau de marque n'était pas cliquable. Les pages
               d'authentification étaient donc un cul-de-sac — on y entrait
@@ -72,10 +81,11 @@ export function AuthLayout({
           <div className="ml-auto flex items-center gap-2">
             <LanguageSwitcher />
             <CurrencySwitcher />
+            <ThemeSwitcher />
           </div>
         </header>
 
-        <main className="flex flex-1 items-start justify-center px-5 pt-4 pb-16 sm:px-8">
+        <main className={cn('flex flex-1 items-start justify-center pt-4 pb-16', GOUTTIERE_LATERALE)}>
           <div className={cn('w-full', wide ? 'max-w-3xl' : 'max-w-md')}>
             {above}
 
@@ -131,7 +141,25 @@ function BrandPanel() {
   ] as const
 
   return (
-    <div className="on-dark relative flex shrink-0 flex-col overflow-hidden bg-ink px-5 py-6 text-on-dark sm:px-8 lg:w-[34%] lg:max-w-md lg:justify-between lg:py-10">
+    <div
+      // Ce panneau est le PREMIER élément du document : sur mobile il coiffe la
+      // colonne, sur grand écran il tient la gauche. Dans les deux cas il
+      // touche le haut, et depuis `viewport-fit=cover` ce haut est le bord
+      // physique — le logo passait sous la barre d'état. Rien ici n'est collant
+      // ni fixe, mais l'encoche ne fait pas cette différence.
+      //
+      // `calc()` en haut : l'encre pleine doit remonter jusqu'au bord. `max()`
+      // sur les côtés : en paysage cette bande occupe toute la largeur, et
+      // l'encoche mord d'un côté ou de l'autre.
+      className={cn(
+        'on-dark relative flex shrink-0 flex-col overflow-hidden bg-ink text-on-dark',
+        'pt-[calc(1.5rem+env(safe-area-inset-top))] pb-6',
+        'pl-[max(1.25rem,env(safe-area-inset-left))] pr-[max(1.25rem,env(safe-area-inset-right))]',
+        'sm:pl-[max(2rem,env(safe-area-inset-left))] sm:pr-[max(2rem,env(safe-area-inset-right))]',
+        'lg:w-[34%] lg:max-w-md lg:justify-between',
+        'lg:pt-[calc(2.5rem+env(safe-area-inset-top))] lg:pb-10',
+      )}
+    >
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -top-32 -left-24 size-[30rem] rounded-full opacity-20 blur-3xl"

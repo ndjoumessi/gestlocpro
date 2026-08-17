@@ -3,6 +3,7 @@ import { PageHeader } from '@/components/layout/AppShell'
 import { InviteModal } from './InviteModal'
 import { Icon } from '@/components/primitives/Icon'
 import { DataTable } from '@/components/primitives/DataTable'
+import { Skeleton, SkeletonRegion, SkeletonTable } from '@/components/primitives/Skeleton'
 import { PaymentStatusPill } from '@/components/primitives/StatusPill'
 import { Button } from '@/components/primitives/Button'
 import { Modal } from '@/components/primitives/Modal'
@@ -26,10 +27,20 @@ export function Tenants() {
 
   // Unités partagées : rattacher un locataire doit se voir ici, dans le parc
   // immobilier et dans le taux d'occupation du tableau de bord.
-  const { units } = usePortfolio()
+  const { units, loading } = usePortfolio()
 
   const leases = units.filter((unit) => unit.tenant !== null)
   const vacant = units.filter((unit) => unit.tenant === null)
+
+  /**
+   * Le fichier des personnes.
+   *
+   * Dix noms et dix numéros de téléphone, cliquables, appelables. Le
+   * gestionnaire n'a aucun moyen de savoir qu'ils ne sont pas les siens — un
+   * nom camerounais plausible à côté d'un « A1 » plausible se lit comme une
+   * fiche. Le geste au bout est un appel à un inconnu.
+   */
+  if (loading) return <TenantsSkeleton />
 
   return (
     <>
@@ -92,7 +103,7 @@ export function Tenants() {
             render: (unit) => (
               <span className="numeric">
                 {unit.label}
-                <span className="ml-2 text-mono-label text-muted">
+                <span className="ml-2 text-caps text-muted">
                   {buildingById(unit.buildingId)?.district}
                 </span>
               </span>
@@ -155,6 +166,41 @@ export function Tenants() {
       )}
 
       {open && <NewTenantModal vacant={vacant} onClose={() => setOpen(false)} />}
+    </>
+  )
+}
+
+/**
+ * Les locataires, le temps que le parc arrive.
+ *
+ * Les deux actions sont retenues. « Inviter » émettrait un code d'accès à un
+ * parc dont on n'a pas encore la réponse ; « ajouter un locataire » ouvrirait
+ * une liste de logements vacants tirée de la démonstration, et rattacherait
+ * une personne réelle à un identifiant qui n'existe nulle part.
+ *
+ * La liste des logements vacants, en bas, n'est pas reproduite : elle est sous
+ * le tableau, donc sous la ligne de flottaison, et son apparition allonge la
+ * page sans déplacer ce qu'on regarde.
+ */
+function TenantsSkeleton() {
+  const t = useT()
+
+  return (
+    <>
+      <PageHeader
+        title={t('app.tenants.title')}
+        description={t('app.tenants.subtitle')}
+        actions={
+          <>
+            <Skeleton radius="md" className="h-11 w-40" />
+            <Skeleton radius="md" className="h-11 w-48" />
+          </>
+        }
+      />
+
+      <SkeletonRegion>
+        <SkeletonTable />
+      </SkeletonRegion>
     </>
   )
 }

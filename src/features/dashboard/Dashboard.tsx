@@ -8,6 +8,7 @@ import { PaymentStatusPill, StatusPill } from '@/components/primitives/StatusPil
 import { Icon } from '@/components/primitives/Icon'
 import { DonutChart, ProgressBar, StackedBarChart, StatCard } from '@/components/primitives/Charts'
 import { EmptyState } from '@/components/primitives/DataTable'
+import { Skeleton, SkeletonRegion, SkeletonStatCard } from '@/components/primitives/Skeleton'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
@@ -26,7 +27,15 @@ export function Dashboard() {
   const { money, definition } = useCurrency()
   const exportCsv = useCsvExport()
   const csvMoney = useCsvMoney()
-  const { units, works, unitById, buildings: BUILDINGS, readings, collections: COLLECTIONS } = usePortfolio()
+  const {
+    units,
+    works,
+    unitById,
+    buildings: BUILDINGS,
+    readings,
+    collections: COLLECTIONS,
+    loading,
+  } = usePortfolio()
   const [payOpen, setPayOpen] = useState(false)
 
   // Le locataire n'a pas une version filtrée de cet écran : il en a un autre.
@@ -35,19 +44,33 @@ export function Dashboard() {
   // montrer la situation de ses voisins.
   if (role === 'tenant') return <TenantDashboard />
 
-  // Les indicateurs se calculent sur le parc servi, quel qu'il soit. Ils
-  // étaient une constante qui ne se recoupait avec rien.
-  const kpis = computeKpis(units, readings)
-  const { expected, collected, outstanding, occupied, vacant, occupancy, maxOverdueDays } = kpis
-  const collectedShare = expected === 0 ? 0 : Math.round((collected / expected) * 100)
-  const overdue = units.filter((unit) => unit.status === 'overdue')
-
   const title =
     role === 'owner'
       ? t('app.dashboard.titleOwner')
       : role === 'manager'
         ? t('app.dashboard.titleManager')
         : t('app.dashboard.titleTenant')
+
+  /**
+   * L'attente passe AVANT le calcul des indicateurs, et après le rôle.
+   *
+   * Avant le calcul, parce que les calculer sur le jeu de démonstration puis les
+   * afficher est précisément le défaut : quatre chiffres justes portant sur le
+   * parc de quelqu'un d'autre.
+   *
+   * Après le rôle, parce que le locataire n'a pas cet écran : lui montrer le
+   * squelette d'un tableau de bord de bailleur annoncerait une page qui ne
+   * viendra jamais, et il faudrait ensuite la remplacer par une autre — deux
+   * mises en page pour une seule attente.
+   */
+  if (loading) return <DashboardSkeleton title={title} />
+
+  // Les indicateurs se calculent sur le parc servi, quel qu'il soit. Ils
+  // étaient une constante qui ne se recoupait avec rien.
+  const kpis = computeKpis(units, readings)
+  const { expected, collected, outstanding, occupied, vacant, occupancy, maxOverdueDays } = kpis
+  const collectedShare = expected === 0 ? 0 : Math.round((collected / expected) * 100)
+  const overdue = units.filter((unit) => unit.status === 'overdue')
 
   // Les arbitrages en attente : ce que le propriétaire doit trancher.
   const decisions = works.filter((work) => work.status === 'quoted')
@@ -252,7 +275,7 @@ export function Dashboard() {
                         l'écrit. Sans ce point de passage, l'écran rendrait
                         `app.works.samples.undefined` — un défaut qui compile. */}
                     <p className="text-body font-medium">{workTitle(work, t)}</p>
-                    <p className="mt-0.5 font-mono text-mono-label text-muted">
+                    <p className="mt-0.5 text-caps text-muted">
                       {/* Un signalement ne porte que l'identifiant technique de
                           l'unité : le libellé se relit depuis le parc. Afficher
                           `work.unitId` montrerait un uuid le jour où les données
@@ -319,7 +342,7 @@ export function Dashboard() {
                       <span className="block truncate text-body font-medium text-on-dark">
                         {building.name}
                       </span>
-                      <span className="font-mono text-mono-label text-on-dark-faint">
+                      <span className="text-caps text-on-dark-faint">
                         {building.district}
                       </span>
                     </span>
@@ -344,6 +367,92 @@ export function Dashboard() {
           disparaît sur un parc vide, et la démonter ici la ferait ressusciter
           au premier logement ajouté sans que rien ne le justifie. */}
       <RecordPaymentModal open={payOpen} onClose={() => setPayOpen(false)} />
+    </>
+  )
+}
+
+/**
+ * Le tableau de bord, le temps que le parc arrive.
+ *
+ * Le titre est le seul élément qui n'est PAS un squelette : il ne dépend
+ * d'aucune donnée, et l'effacer priverait l'utilisateur de la seule
+ * confirmation qu'il a atterri où il voulait.
+ *
+ * Le sous-titre, lui, compte les immeubles et les logements : deux nombres
+ * qu'on ignore encore. On tient sa place plutôt que de l'omettre — sinon toute
+ * la page remonterait d'une ligne à l'arrivée des données, et le premier
+ * indicateur passerait sous le doigt qui le visait.
+ *
+ * Les deux actions sont retenues pour la même raison, en plus forte : exporter
+ * le relevé sortirait les encaissements de la démonstration, et enregistrer un
+ * paiement l'imputerait sur un logement qui n'appartient pas à ce parc.
+ *
+ * La troisième rangée de cartes n'est pas reproduite. Elle vit sous la ligne de
+ * flottaison : son apparition allonge la page sans déplacer ce qu'on regarde,
+ * ce qui ne coûte rien — contrairement à quatre cartes fantômes de plus à
+ * peindre sur un appareil qui rame déjà.
+ */
+function DashboardSkeleton({ title }: { title: string }) {
+  return (
+    <>
+      <PageHeader
+        title={title}
+        description={<Skeleton line="body" className="w-full max-w-md" />}
+        actions={
+          <>
+            <Skeleton radius="md" className="h-11 w-44" />
+            <Skeleton radius="md" className="h-11 w-52" />
+          </>
+        }
+      />
+
+      <SkeletonRegion>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[0, 1, 2, 3].map((carte) => (
+            <SkeletonStatCard key={carte} />
+          ))}
+        </div>
+
+        <div className="mt-4 grid gap-4 xl:grid-cols-[1.6fr_1fr]">
+          <Card>
+            <Skeleton line="title" className="mb-4 w-56" />
+            {/* Légende interrogeable : trois boutons de 36px. */}
+            <div className="mb-5 flex flex-wrap gap-2">
+              {[0, 1, 2].map((serie) => (
+                <Skeleton key={serie} radius="md" className="h-9 w-24" />
+              ))}
+            </div>
+            {/* Même hauteur que la zone de tracé de `StackedBarChart`. */}
+            <Skeleton radius="lg" className="h-56 sm:h-64" />
+            <div className="mt-4 border-t border-divider pt-4">
+              <Skeleton line="bodyS" className="w-3/4" />
+            </div>
+          </Card>
+
+          <Card>
+            <Skeleton line="title" className="mb-4 w-40" />
+            <div className="flex flex-wrap items-center gap-6">
+              {/* L'anneau : 128px, comme le `<svg>` de `DonutChart`. */}
+              <Skeleton className="size-32" />
+              <div className="flex min-w-0 flex-1 flex-col gap-2">
+                {[0, 1, 2].map((part) => (
+                  <Skeleton key={part} line="bodyS" className="w-36" />
+                ))}
+              </div>
+            </div>
+            <div className="mt-6 flex flex-col gap-3 border-t border-divider pt-5">
+              <Skeleton line="eyebrow" className="w-28" />
+              {[0, 1].map((barre) => (
+                <div key={barre} className="flex items-center gap-3">
+                  <Skeleton line="bodyS" className="w-20" />
+                  <Skeleton className="h-1.5 min-w-0 flex-1" />
+                  <Skeleton line="bodyS" className="w-10" />
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </SkeletonRegion>
     </>
   )
 }

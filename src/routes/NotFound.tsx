@@ -1,10 +1,13 @@
 import { Link, useLocation } from 'react-router-dom'
+import { cn } from '@/lib/cn'
 import { PageHeader } from '@/components/layout/AppShell'
+import { GOUTTIERE_LATERALE } from '@/components/layout/gouttiere'
 import { Button } from '@/components/primitives/Button'
 import { Icon } from '@/components/primitives/Icon'
 import { Logo } from '@/components/primitives/Logo'
 import { LanguageSwitcher } from '@/components/controls/LanguageSwitcher'
 import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
+import { ThemeSwitcher } from '@/components/controls/ThemeSwitcher'
 import { useT } from '@/i18n/I18nProvider'
 
 /**
@@ -40,7 +43,7 @@ function AttemptedPath() {
   return (
     <div className="rounded-lg border border-border bg-surface px-4 py-3">
       <p className="text-body-s text-muted">{t('notFound.attempted')}</p>
-      <p className="mt-1 font-mono text-body-s break-all text-ink">{shown}</p>
+      <p className="mt-1 text-body-s break-all text-ink">{shown}</p>
     </div>
   )
 }
@@ -52,17 +55,28 @@ export function NotFound() {
     <div className="flex min-h-dvh flex-col bg-canvas">
       {/* En-tête réduit : le menu de la landing pointe vers des ancres qui
           n'existent pas sur cette page. Un logo et les sélecteurs suffisent. */}
-      <header className="flex items-center gap-4 border-b border-border px-5 py-3 sm:px-8">
+      <header
+        // Premier élément du document, donc au ras du bord physique depuis
+        // `viewport-fit=cover` : sans ce retrait, le logo et les sélecteurs
+        // s'alignaient sous la barre d'état.
+        className={cn(
+          'flex items-center gap-4 border-b border-border',
+          'pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3',
+          'pl-[max(1.25rem,env(safe-area-inset-left))] pr-[max(1.25rem,env(safe-area-inset-right))]',
+          'sm:pl-[max(2rem,env(safe-area-inset-left))] sm:pr-[max(2rem,env(safe-area-inset-right))]',
+        )}
+      >
         <Logo />
         <div className="ml-auto flex items-center gap-2">
           <LanguageSwitcher />
           <CurrencySwitcher />
+          <ThemeSwitcher />
         </div>
       </header>
 
-      <main className="flex flex-1 items-center justify-center px-5 py-16 sm:px-8">
+      <main className={cn('flex flex-1 items-center justify-center py-16', GOUTTIERE_LATERALE)}>
         <div className="w-full max-w-lg">
-          <p className="font-mono text-mono-label text-gold-ink">{t('notFound.code')}</p>
+          <p className="text-caps text-gold-ink">{t('notFound.code')}</p>
 
           <h1 className="display-m mt-3 text-balance">{t('notFound.title')}</h1>
           <p className="mt-4 text-body-l text-pretty text-muted">{t('notFound.body')}</p>

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/cn'
+import { GOUTTIERE_LATERALE } from './gouttiere'
 
 export interface SectionProps {
   id?: string
@@ -39,7 +40,8 @@ export function Section({
       // prescrit ce vide pour des pages d'agence ; sur une page produit, où
       // l'on compare et où l'on décide, il faut de la respiration sans trous.
       className={cn(
-        'scroll-mt-20 px-5 py-20 sm:px-8 sm:py-24 lg:py-32',
+        'scroll-mt-20 py-20 sm:py-24 lg:py-32',
+        GOUTTIERE_LATERALE,
         TONES[tone],
         className,
       )}

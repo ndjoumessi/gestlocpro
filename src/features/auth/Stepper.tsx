@@ -36,7 +36,7 @@ export function Stepper({ steps, current }: StepperProps) {
                 aria-current={active ? 'step' : undefined}
                 className={cn(
                   'flex size-7 shrink-0 items-center justify-center rounded-full',
-                  'font-mono text-mono-label font-semibold transition-colors duration-200',
+                  'numeric text-caps font-semibold transition-colors duration-200',
                   done && 'bg-ok text-on-dark',
                   active && 'bg-ink text-on-dark',
                   !done && !active && 'border border-border-strong bg-surface text-muted',

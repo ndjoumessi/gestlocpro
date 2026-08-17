@@ -14,6 +14,7 @@ export const en: Dictionary = {
     save: 'Save',
     edit: 'Edit',
     close: 'Close',
+    closeNotification: 'Dismiss notification',
     confirm: 'Confirm',
     search: 'Search',
     loading: 'Loading…',
@@ -21,6 +22,7 @@ export const en: Dictionary = {
     optional: 'optional',
     currency: 'Currency',
     language: 'Language',
+    theme: 'Theme',
     country: 'Country',
     dialZoneCfa: 'CFA franc zone',
     dialZoneOther: 'Other countries',
@@ -49,11 +51,19 @@ export const en: Dictionary = {
     showPassword: 'Show password',
     hidePassword: 'Hide password',
     selectPlaceholder: 'Select…',
+    listTruncated: 'Shortened list: narrow your search.',
     period: 'Period',
     perMonth: '/ month',
     perYear: '/ year',
     yes: 'Yes',
     no: 'No',
+  },
+
+  theme: {
+    auto: 'System',
+    autoResolu: 'System — currently {resolu}',
+    light: 'Light',
+    dark: 'Dark',
   },
 
   status: {
@@ -113,6 +123,8 @@ export const en: Dictionary = {
     searchPlaceholder: 'Search a unit, a tenant…',
     primaryNav: 'Main navigation',
     breadcrumb: 'Breadcrumb',
+    quickNav: 'Quick navigation',
+    more: 'More',
   },
 
   auth: {
@@ -302,8 +314,14 @@ export const en: Dictionary = {
       download: 'Download',
       myWorks: 'My ongoing works',
       worksEmpty: 'No work in progress on your home.',
+      worksEmptyBody:
+        'As soon as your manager records a report for your home, the work appears here: you follow its quote, its approval, then its completion.',
       alertsEmpty: 'No notifications concerning you.',
+      alertsEmptyBody:
+        'Payment reminders, rent follow-ups and progress on work for your home arrive here. Nothing has been issued yet.',
       inspectionsEmpty: 'No inspection recorded for your home.',
+      inspectionsEmptyBody:
+        'The move-in inspection is carried out when the keys are handed over, the move-out one when they are returned. Your manager files them here so you can compare the two.',
       manager: 'Your manager',
       managerName: 'Diane F.',
       contactManager: 'Report an issue',
@@ -481,6 +499,9 @@ export const en: Dictionary = {
       signed: 'Signed',
       unsigned: 'Awaiting signature',
       compare: 'Compare move-in and move-out',
+      emptyTitle: 'No inspection recorded',
+      emptyBody:
+        'A move-in inspection is done when the keys are handed over, a move-out one when they are returned: it is comparing the two that justifies what is withheld from the deposit.',
     },
 
     works: {
@@ -496,6 +517,9 @@ export const en: Dictionary = {
       approved_toast: 'Quote approved · the manager has been notified',
       trade: 'Trade',
       managerNotice: 'Only the owner approves quotes. You prepare them, they decide.',
+      emptyTitle: 'No work on the portfolio',
+      emptyBody:
+        'Work starts from a tenant report: the manager quotes it, you approve the quote, then the job goes ahead. All of it is followed here.',
       /**
        * Signalements du jeu de démonstration. Voir `WorkTitleKey` : dans le
        * produit réel ce champ porte la saisie du locataire et ne se traduit
@@ -584,6 +608,8 @@ export const en: Dictionary = {
       markRead: 'Mark all as read',
       allRead: 'All notifications are read.',
       empty: 'Nothing to report on the portfolio.',
+      emptyBody:
+        'The product files late rents, quotes awaiting a decision, missing meter readings and leases coming up for renewal here. None of that is pending.',
       unread: '{count} unread',
       unread_one: '{count} unread',
       severityHigh: 'Priority',
@@ -846,6 +872,8 @@ export const en: Dictionary = {
       currencies: 'Supported currencies',
       languages: 'Interface languages',
       countries: 'Countries offered at signup',
+      andMore: 'and {count} more',
+      andMore_one: 'and {count} more',
     },
 
 

@@ -21,6 +21,10 @@ export const fr = {
     save: 'Enregistrer',
     edit: 'Modifier',
     close: 'Fermer',
+    // Distincte de `close` : plusieurs boutons « Fermer » peuvent coexister à
+    // l'écran — celui d'une fenêtre modale et celui d'un toast posé par-dessus.
+    // Un libellé partagé les rendrait indiscernables à la voix.
+    closeNotification: 'Fermer la notification',
     confirm: 'Confirmer',
     search: 'Rechercher',
     loading: 'Chargement…',
@@ -28,6 +32,7 @@ export const fr = {
     optional: 'facultatif',
     currency: 'Devise',
     language: 'Langue',
+    theme: 'Thème',
     country: 'Pays',
     dialZoneCfa: 'Zone franc CFA',
     dialZoneOther: 'Autres pays',
@@ -56,11 +61,29 @@ export const fr = {
     showPassword: 'Afficher le mot de passe',
     hidePassword: 'Masquer le mot de passe',
     selectPlaceholder: 'Sélectionner…',
+    // Une liste de choix coupée sans un mot laisse conclure que l'entrée
+    // cherchée n'existe pas. La phrase dit les deux choses utiles : il en
+    // manque, et taper suffit à les faire venir.
+    //
+    // Courte à dessein : le pied s'affiche dans une liste large de 176px sur
+    // l'inscription, où une phrase complète tenait sur quatre lignes et pesait
+    // plus que les options qu'elle commente.
+    listTruncated: 'Liste raccourcie : affinez votre recherche.',
     period: 'Période',
     perMonth: '/ mois',
     perYear: '/ an',
     yes: 'Oui',
     no: 'Non',
+  },
+
+  /* Les trois états de la préférence de thème. « Système » n'est pas une
+     troisième palette : c'est le fait de ne pas choisir, et de laisser le
+     réglage du système d'exploitation trancher. */
+  theme: {
+    auto: 'Système',
+    autoResolu: 'Système — {resolu} actuellement',
+    light: 'Clair',
+    dark: 'Sombre',
   },
 
   status: {
@@ -124,6 +147,10 @@ export const fr = {
     searchPlaceholder: 'Rechercher un logement, un locataire…',
     primaryNav: 'Navigation principale',
     breadcrumb: 'Fil d’Ariane',
+    // La barre basse ne porte que quatre destinations : « Plus » ouvre le
+    // tiroir, qui reste le seul endroit où la navigation est complète.
+    quickNav: 'Navigation rapide',
+    more: 'Plus',
   },
 
   auth: {
@@ -336,8 +363,14 @@ export const fr = {
       download: 'Télécharger',
       myWorks: 'Mes travaux en cours',
       worksEmpty: 'Aucune intervention en cours sur votre logement.',
+      worksEmptyBody:
+        'Dès que votre gestionnaire enregistre un signalement pour votre logement, l’intervention apparaît ici : vous en suivez le devis, sa validation, puis la fin des travaux.',
       alertsEmpty: 'Aucune notification vous concernant.',
+      alertsEmptyBody:
+        'Les rappels d’échéance, les relances de loyer et l’avancement des interventions de votre logement arrivent ici. Rien n’a encore été émis.',
       inspectionsEmpty: 'Aucun état des lieux enregistré pour votre logement.',
+      inspectionsEmptyBody:
+        'L’état des lieux d’entrée est établi à la remise des clés, celui de sortie à leur restitution. Votre gestionnaire les dépose ici pour que vous puissiez comparer les deux.',
       manager: 'Votre gestionnaire',
       managerName: 'Diane F.',
       contactManager: 'Signaler un incident',
@@ -524,6 +557,9 @@ export const fr = {
       signed: 'Signé',
       unsigned: 'En attente de signature',
       compare: 'Comparer entrée et sortie',
+      emptyTitle: 'Aucun état des lieux enregistré',
+      emptyBody:
+        'Un état des lieux d’entrée se fait à la remise des clés, celui de sortie à leur restitution : c’est leur comparaison qui justifie ce qu’on retient sur la caution.',
     },
 
     works: {
@@ -540,6 +576,9 @@ export const fr = {
       trade: 'Corps d’état',
       managerNotice:
         'Seul le propriétaire valide les devis. Vous les préparez, il tranche.',
+      emptyTitle: 'Aucune intervention sur le parc',
+      emptyBody:
+        'Une intervention naît d’un signalement de locataire : le gestionnaire la chiffre, vous validez le devis, puis les travaux se déroulent. Tout cela se suit ici.',
       /**
        * Signalements du jeu de démonstration. Voir `WorkTitleKey` : dans le
        * produit réel ce champ porte la saisie du locataire et ne se traduit
@@ -630,6 +669,8 @@ export const fr = {
       markRead: 'Tout marquer comme lu',
       allRead: 'Toutes les notifications sont lues.',
       empty: 'Rien à signaler sur le parc.',
+      emptyBody:
+        'Le produit dépose ici les loyers en retard, les devis à arbitrer, les relevés manquants et les baux qui arrivent à échéance. Rien de tout cela n’est en cours.',
       unread: '{count} non lues',
       unread_one: '{count} non lue',
       severityHigh: 'Prioritaire',
@@ -909,6 +950,8 @@ export const fr = {
       currencies: 'Devises prises en charge',
       languages: 'Langues de l’interface',
       countries: 'Pays proposés à l’inscription',
+      andMore: 'et {count} autres',
+      andMore_one: 'et {count} autre',
     },
 
 

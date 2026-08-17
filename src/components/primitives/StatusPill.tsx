@@ -34,7 +34,12 @@ export function StatusPill({ tone, children, icon, size = 'md', className }: Sta
     <span
       className={cn(
         'inline-flex items-center gap-1.5 rounded-full border font-semibold whitespace-nowrap',
-        size === 'sm' ? 'px-2 py-0.5 text-mono-label' : 'px-2.5 py-1 text-label',
+        // Les deux tailles partagent le plancher de 12px : ce qui distingue la
+        // pastille compacte n'est pas un texte plus petit — un statut se lit ou
+        // ne sert à rien — mais son rembourrage et son icône. `text-label`
+        // plutôt que `text-caps` : le libellé est en sans, il n'a que
+        // faire de l'interlettrage d'un surtitre en capitales.
+        size === 'sm' ? 'px-2 py-0.5 text-label' : 'px-2.5 py-1 text-label',
         config.classes,
         className,
       )}

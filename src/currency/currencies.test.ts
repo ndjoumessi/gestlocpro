@@ -28,12 +28,17 @@ describe('formatage', () => {
   })
 
   it('place le symbole selon la convention de la devise', () => {
-    // L'espace entre montant et symbole est elle aussi insécable : « 1 000 »
-    // ne doit pas se retrouver séparé de « FCFA » en fin de ligne.
-    expect(formatMoney(1000, 'CFA', { round: true })).toBe('1\u202f000\u202fFCFA')
+    // DEUX espaces insécables différentes, et l'écart entre les deux est le
+    // sujet du test. Les milliers prennent la FINE (U+202F) ; le symbole prend
+    // la PLEINE (U+00A0). Les deux étaient fines tant que les montants étaient
+    // composés en chasse fixe, qui donne la même avance à tous les glyphes —
+    // espaces comprises. En police proportionnelle la fine retombe à 1,7 px et
+    // la devise se soude au montant. Insécables l'une comme l'autre : « 1 000 »
+    // ne doit jamais se retrouver séparé de « FCFA » en fin de ligne.
+    expect(formatMoney(1000, 'CFA', { round: true })).toBe('1\u202f000\u00a0FCFA')
     // Le dollar suit `en-US` et sépare donc les milliers par une virgule, là
     // où le franc CFA et l'euro emploient une espace.
-    expect(formatMoney(1000, 'USD', { round: true })).toBe('$\u202f1,000')
+    expect(formatMoney(1000, 'USD', { round: true })).toBe('$\u00a01,000')
   })
 
   it('n’ajoute pas de sous-unité au franc CFA', () => {

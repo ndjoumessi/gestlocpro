@@ -101,7 +101,7 @@ export function PricingSection() {
 
                     {/* La formule est affichée : le prix doit être vérifiable
                         par le prospect, pas seulement constaté. */}
-                    <p className="mt-3 flex items-center gap-1.5 font-mono text-mono-label text-gold-ink">
+                    <p className="mt-3 flex items-center gap-1.5 text-caps text-gold-ink">
                       <Icon name="building" size={13} />
                       {t('marketing.pricing.perUnitNote', {
                         base: money(plan.pricing.base[currency], {
@@ -273,7 +273,7 @@ function FeatureLine({ featureKey, value }: { featureKey: string; value: Feature
       />
       <span className={cn(!included && 'line-through decoration-border-strong')}>
         {label}
-        {detail && <span className="ml-1.5 font-mono text-mono-label text-muted">{detail}</span>}
+        {detail && <span className="ml-1.5 text-caps text-muted">{detail}</span>}
       </span>
     </li>
   )

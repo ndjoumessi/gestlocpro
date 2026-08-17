@@ -726,7 +726,7 @@ function ContextStep({
                 // code d'un SMS sans avoir à placer les tirets lui-même.
                 onChange={(e) => patch({ inviteCode: formatInviteCode(e.target.value) })}
                 onBlur={blur('inviteCode', validateInviteCode(state.inviteCode))}
-                className="font-mono tracking-[0.08em]"
+                className="tracking-[0.08em]"
               />
             )}
           </Field>

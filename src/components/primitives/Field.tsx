@@ -91,7 +91,15 @@ export const controlClasses = (invalid?: boolean, className?: string) =>
     'min-h-11 py-2.5 text-body-l sm:text-body',
     'placeholder:text-muted-soft',
     'transition-colors duration-150 ease-out',
-    'hover:border-border-strong focus:border-ink focus:outline-none',
+    // PAS de `focus:outline-none` ici. Il y était, et il annulait l'anneau de
+    // focus de TOUS les champs du produit — y compris ceux de l'inscription.
+    // Ce n'est pas une affaire de spécificité mais de COUCHES : `*:focus-visible`
+    // est déclaré dans `@layer base`, l'utilitaire atterrit dans `@layer
+    // utilities`, et une couche déclarée plus tard l'emporte quoi qu'il arrive.
+    // Il ne restait qu'un changement de bordure de 1px, à 1,33:1 sur le fond du
+    // champ. Le même piège est documenté vingt lignes plus bas dans `tokens.css`
+    // pour la bascule `.on-dark` — la leçon y avait été tirée, pas ici.
+    'hover:border-border-strong focus:border-ink',
     invalid ? 'border-danger bg-danger-tint/40' : 'border-border',
     'disabled:cursor-not-allowed disabled:opacity-45',
     'read-only:bg-surface-sunken read-only:text-muted',

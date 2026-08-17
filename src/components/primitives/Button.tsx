@@ -14,7 +14,12 @@ export type ButtonSize = 'sm' | 'md' | 'lg'
 const VARIANTS: Record<ButtonVariant, string> = {
   // Une seule action primaire par écran.
   primary:
-    'bg-ink text-on-dark shadow-[0_1px_2px_rgba(20,32,30,.18)] hover:bg-ink-2 active:translate-y-px',
+    // `shadow-e1` et non un littéral : l'ombre portait `rgba(20,32,30,.18)`,
+    // c'est-à-dire `--color-ink` figé à 18 %. Une ombre d'encre sombre posée sur
+    // un fond sombre ne se voit pas — le jeton d'élévation, lui, se redéfinit
+    // avec le thème. C'était la dernière couleur en dur du composant le plus
+    // réutilisé du produit.
+    'bg-ink text-on-dark shadow-e1 hover:bg-ink-2 active:translate-y-px',
   secondary:
     'bg-surface text-ink border border-border hover:border-ink active:translate-y-px',
   ghost: 'bg-transparent text-ink hover:bg-surface-sunken active:translate-y-px',
@@ -24,6 +29,20 @@ const VARIANTS: Record<ButtonVariant, string> = {
   onDark:
     'bg-on-dark-active text-on-dark border border-on-dark-border hover:bg-on-dark/20 active:translate-y-px',
 }
+
+/**
+ * L'amortissement d'un contrôle désactivé, nommé une seule fois.
+ *
+ * `IconButton` composait `VARIANTS[variant]` sans passer par `classes()` : un
+ * bouton icône désactivé gardait son opacité pleine et son curseur de main,
+ * donc rien ne le distinguait d'un bouton actif — alors que le `Button`
+ * ordinaire s'éteignait. Extraire le fragment plutôt que le recopier garantit
+ * que les deux resteront d'accord : il n'y a plus qu'un endroit où le changer.
+ *
+ * `pointer-events-none` en plus de l'attribut `disabled` : il coupe aussi le
+ * survol et le curseur, que l'attribut natif laisse passer sur les descendants.
+ */
+const ETEINT = 'pointer-events-none opacity-45'
 
 const SIZES: Record<ButtonSize, string> = {
   // min-h-11 = 44px, la cible tactile minimale, sur toutes les tailles.
@@ -66,7 +85,7 @@ function classes({
     VARIANTS[variant],
     SIZES[size],
     fullWidth && 'w-full',
-    disabled && 'pointer-events-none opacity-45',
+    disabled && ETEINT,
     className,
   )
 }
@@ -172,6 +191,7 @@ export function IconButton({
   variant = 'ghost',
   size = 16,
   className,
+  disabled,
   ...props
 }: IconButtonProps) {
   return (
@@ -179,10 +199,12 @@ export function IconButton({
       type="button"
       aria-label={label}
       title={label}
+      disabled={disabled}
       className={cn(
         'inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md',
         'transition-colors duration-150 ease-out',
         VARIANTS[variant],
+        disabled && ETEINT,
         className,
       )}
       {...props}

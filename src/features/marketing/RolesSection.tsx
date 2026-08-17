@@ -44,7 +44,7 @@ export function RolesSection() {
             <h3 className="mt-6 font-sans text-title-l font-semibold text-on-dark">
               {t(`roles.${key}.name` as 'roles.owner.name')}
             </h3>
-            <p className="mt-1.5 font-mono text-mono-label text-gold-on-dark">
+            <p className="mt-1.5 text-caps text-gold-on-dark">
               {t(`roles.${key}.short` as 'roles.owner.short')}
             </p>
 

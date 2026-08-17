@@ -67,7 +67,7 @@ export function ForgotPassword() {
             </p>
             <Link
               to={`/reinitialiser?jeton=${DEMO_RESET_TOKEN}`}
-              className="mt-2 inline-flex min-h-11 items-center gap-1.5 font-mono text-mono-label font-semibold text-gold-ink underline underline-offset-2 hover:text-gold-ink-hover"
+              className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-caps font-semibold text-gold-ink underline underline-offset-2 hover:text-gold-ink-hover"
             >
               /reinitialiser?jeton={DEMO_RESET_TOKEN}
               <Icon name="arrowRight" size={14} />

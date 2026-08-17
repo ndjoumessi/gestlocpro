@@ -3,6 +3,12 @@ import { PageHeader, useRole } from '@/components/layout/AppShell'
 import { DataTable, EmptyState } from '@/components/primitives/DataTable'
 import { PaymentStatusPill, type PaymentStatus } from '@/components/primitives/StatusPill'
 import { StatCard } from '@/components/primitives/Charts'
+import {
+  Skeleton,
+  SkeletonRegion,
+  SkeletonStatCard,
+  SkeletonTable,
+} from '@/components/primitives/Skeleton'
 import { Button } from '@/components/primitives/Button'
 import { cn } from '@/lib/cn'
 import { useCurrency } from '@/currency/CurrencyProvider'
@@ -24,7 +30,7 @@ export function Payments() {
   const exportCsv = useCsvExport()
   const csvMoney = useCsvMoney()
   const { role } = useRole()
-  const { units, isMine, readings } = usePortfolio()
+  const { units, isMine, readings, loading } = usePortfolio()
   const isTenant = role === 'tenant'
   const [filter, setFilter] = useState<PaymentStatus | 'all'>('all')
   const [payOpen, setPayOpen] = useState(false)
@@ -46,6 +52,17 @@ export function Payments() {
     () => (filter === 'all' ? leases : leases.filter((unit) => unit.status === filter)),
     [leases, filter],
   )
+
+  /**
+   * Après les crochets, avant le premier affichage de `leases`.
+   *
+   * C'est l'écran des impayés : pendant l'attente, il additionnait les loyers
+   * attendus, encaissés et en retard d'un parc de démonstration, puis nommait
+   * dix locataires qui ne sont pas ceux du bailleur. Trois montants faux
+   * énoncés comme des faits coûtent plus cher qu'ailleurs — c'est sur eux qu'on
+   * décide d'appeler quelqu'un.
+   */
+  if (loading) return <PaymentsSkeleton isTenant={isTenant} />
 
   return (
     <>
@@ -143,7 +160,11 @@ export function Payments() {
               )}
             >
               {value === 'all' ? t('app.payments.filterAll') : t(`status.${value}` as 'status.paid')}
-              <span className={cn('numeric text-mono-label', active ? 'text-gold' : 'text-muted')}>
+              {/* `gold-on-ink` : le filtre actif peint son fond en `--color-ink`,
+                  qui s'inverse avec le thème. À 12 px ce compteur est du texte,
+                  donc il lui faut 4,5:1 — l'or de marque n'en donnait que 2,33
+                  en sombre. */}
+              <span className={cn('numeric text-caps', active ? 'text-gold-on-ink' : 'text-muted')}>
                 {count}
               </span>
             </button>
@@ -220,9 +241,15 @@ export function Payments() {
                 <PaymentStatusPill status={unit.status} size="sm" />
                 {/* Le « j » d'abréviation restait français en anglais, et le
                     `&&` sur un nombre aurait affiché « 0 » plutôt que rien si
-                    le retard tombait à zéro. */}
+                    le retard tombait à zéro.
+                    `whitespace-nowrap` : « +24 j » se coupait à l'espace et
+                    s'empilait sur deux lignes à côté de la pastille, ce qui
+                    décalait la hauteur de la ligne du tableau. Le retard est
+                    une valeur unique, elle se lit d'un bloc. Le tableau défile
+                    déjà dans sa propre boîte : la douzaine de pixels que cela
+                    coûte ne se paie pas sur la page. */}
                 {unit.overdueDays ? (
-                  <span className="numeric text-mono-label text-muted">
+                  <span className="numeric text-caps whitespace-nowrap text-muted">
                     {t('app.payments.overdueDays', { days: unit.overdueDays })}
                   </span>
                 ) : null}
@@ -262,6 +289,63 @@ export function Payments() {
       )}
 
       <RecordPaymentModal open={payOpen} onClose={() => setPayOpen(false)} />
+    </>
+  )
+}
+
+/**
+ * Les paiements, le temps que le parc arrive.
+ *
+ * Titre et sous-titre sont écrits en dur : ils restent. Les deux actions sont
+ * retenues, et pour des raisons différentes — l'export sortirait un fichier
+ * d'impayés de démonstration que rien, dans le tableur, ne signalerait comme
+ * faux ; l'enregistrement d'un paiement l'imputerait à un bail qui n'existe pas
+ * chez ce bailleur.
+ *
+ * Le locataire n'a qu'un bouton et pas d'indicateurs : sa page est composée
+ * autrement, et un squelette qui montrerait trois cartes lui promettrait une
+ * mise en page qui ne viendra pas.
+ */
+function PaymentsSkeleton({ isTenant }: { isTenant: boolean }) {
+  const t = useT()
+
+  return (
+    <>
+      <PageHeader
+        title={t('app.payments.title')}
+        description={t('app.payments.subtitle')}
+        actions={
+          <>
+            <Skeleton radius="md" className="h-11 w-44" />
+            {!isTenant && <Skeleton radius="md" className="h-11 w-52" />}
+          </>
+        }
+      />
+
+      <SkeletonRegion>
+        {isTenant ? (
+          // La hauteur du bandeau de périmètre : une pastille dans une boîte
+          // `py-2.5`. Il nomme les unités du locataire, qu'on ne connaît pas
+          // encore.
+          <Skeleton radius="md" className="mb-4 h-11 w-full max-w-lg" />
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-3">
+            {[0, 1, 2].map((carte) => (
+              <SkeletonStatCard key={carte} />
+            ))}
+          </div>
+        )}
+
+        {/* Quatre filtres, exactement comme `FILTERS` : leur nombre ne dépend
+            d'aucune donnée, seuls leurs compteurs en dépendent. */}
+        <div className="mt-6 mb-4 flex flex-wrap gap-1.5">
+          {FILTERS.map((valeur) => (
+            <Skeleton key={valeur} radius="md" className="h-11 w-28" />
+          ))}
+        </div>
+
+        <SkeletonTable />
+      </SkeletonRegion>
     </>
   )
 }

@@ -74,6 +74,10 @@ describe('groupement monétaire', () => {
   // échappement plutôt qu'en caractère invisible évite un test qui échoue sans
   // qu'on voie pourquoi.
   const FINE = '\u202f'
+  // L'espace qui précède le symbole est PLEINE, celle des milliers est fine.
+  // Les deux étaient fines quand les montants étaient en chasse fixe ; voir
+  // `currency/currencies.ts`.
+  const PLEINE = '\u00a0'
 
   // La cellule découpe le montant en plusieurs nœuds selon la colonne, d'où
   // l'assertion sur le texte de la page plutôt que sur un élément : ce que la
@@ -83,12 +87,14 @@ describe('groupement monétaire', () => {
 
   it('suit la devise et non la langue de l’interface', () => {
     renderApp('/app/paiements', { locale: 'en', currency: 'CFA' })
-    expect(texte()).toContain(`145${FINE}000${FINE}FCFA`)
+    expect(texte()).toContain(`145${FINE}000${PLEINE}FCFA`)
   })
 
   it('change bien avec la devise, à langue égale', () => {
     renderApp('/app/paiements', { locale: 'en', currency: 'USD' })
-    expect(texte()).toContain(`$${FINE}145,000`)
+    // Symbole AVANT le montant pour le dollar, mais la même espace pleine :
+    // c'est la position qui change d'une devise à l'autre, pas la césure.
+    expect(texte()).toContain(`$${PLEINE}145,000`)
   })
 })
 

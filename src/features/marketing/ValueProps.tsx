@@ -41,7 +41,7 @@ export function ValueProps() {
           >
             <span
               aria-hidden="true"
-              className="font-mono text-mono-label text-gold-ink tabular-nums"
+              className="numeric text-caps text-gold-ink"
             >
               {String(index + 1).padStart(2, '0')}
             </span>

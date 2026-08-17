@@ -1,5 +1,6 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/cn'
+import { useT } from '@/i18n/I18nProvider'
 import { Icon } from './Icon'
 import { controlClasses } from './Field'
 
@@ -9,6 +10,27 @@ export interface OptionCombobox {
   /** Intitulé de groupe, affiché au-dessus de la première option du groupe. */
   groupe?: string
 }
+
+/**
+ * Plafond d'options RENDUES, quel que soit le nombre d'options connues.
+ *
+ * Deux cent quatre indicatifs montés d'un coup, à l'ouverture, sur le
+ * formulaire d'INSCRIPTION : c'est le tout premier geste d'un bailleur de
+ * Douala avec le produit, et il le paie sur un Android d'entrée de gamme —
+ * autant de nœuds créés, mis en page et peints pour une liste qu'il va réduire
+ * à deux entrées en trois frappes.
+ *
+ * Cinquante, et non dix : la liste haute de `max-h-72` en montre sept d'un
+ * coup, donc cinquante laissent sept écrans à parcourir — bien au-delà de ce
+ * qu'on parcourt avant de se mettre à taper. Descendre plus bas économiserait
+ * des nœuds déjà négligeables et transformerait le bornage en obstacle.
+ *
+ * Pas de bibliothèque de virtualisation : elle pèserait plus que le problème
+ * sur une liste qu'on filtre en trois frappes, et elle démonterait les options
+ * hors champ — donc `aria-activedescendant` désignerait un id absent du DOM,
+ * exactement la panne que ce fichier prend soin d'éviter.
+ */
+const MAX_OPTIONS_RENDUES = 50
 
 /**
  * Liste de choix CHERCHABLE, pour les listes trop longues à parcourir.
@@ -55,9 +77,11 @@ export function Combobox({
    */
   autoComplete?: string
 }) {
+  const t = useT()
   const genere = useId()
   const idChamp = id ?? genere
   const idListe = `${idChamp}-liste`
+  const idTroncature = `${idChamp}-troncature`
 
   const [ouvert, setOuvert] = useState(false)
   const [saisie, setSaisie] = useState('')
@@ -75,6 +99,39 @@ export function Combobox({
     // obligerait à connaître l'orthographe exacte.
     return options.filter((o) => o.label.toLowerCase().includes(aiguille))
   }, [options, saisie])
+
+  /**
+   * Les options réellement montées. TOUT le reste du composant s'y réfère.
+   *
+   * Le filtre s'applique d'abord, le plafond ensuite — jamais l'inverse.
+   * Borner les options AVANT de filtrer ferait disparaître de la recherche tout
+   * pays classé au-delà du cinquantième : le champ répondrait « rien » à un
+   * pays qui existe, ce qui est la panne la plus coûteuse de toutes.
+   *
+   * L'option CHOISIE remonte en tête quand elle tombe hors de la fenêtre.
+   * Ouvrir une liste où son propre choix n'apparaît pas — le champ affiche
+   * « Zimbabwe », la liste ne le montre nulle part — laisse croire à une perte
+   * du réglage. Deux réponses étaient possibles ; on écarte la fenêtre
+   * glissante centrée sur le choix, parce que la tête de liste n'est pas
+   * neutre : `dialOptions` y place délibérément la zone franc, le marché servi.
+   * Glisser la fenêtre vers le Zimbabwe cacherait le Cameroun, et le bailleur
+   * qui change d'indicatif se retrouverait au milieu de l'alphabet sans savoir
+   * pourquoi. La remontée, elle, ne coûte qu'une ligne de la fenêtre et place
+   * le choix courant là où l'œil est déjà — juste sous le champ qui l'affiche.
+   *
+   * Le choix ne remonte QUE s'il satisfait le filtre : afficher le Zimbabwe
+   * parmi les réponses à « cam » ferait douter du filtre entier. `findIndex`
+   * rend -1 quand il ne le trouve pas, ce que le seuil couvre déjà.
+   */
+  const visibles = useMemo(() => {
+    if (filtrees.length <= MAX_OPTIONS_RENDUES) return filtrees
+    const fenetre = filtrees.slice(0, MAX_OPTIONS_RENDUES)
+    const rang = filtrees.findIndex((o) => o.value === value)
+    if (rang < MAX_OPTIONS_RENDUES) return fenetre
+    return [filtrees[rang]!, ...fenetre.slice(0, MAX_OPTIONS_RENDUES - 1)]
+  }, [filtrees, value])
+
+  const tronquee = visibles.length < filtrees.length
 
   // L'option active ne doit jamais pointer hors de la liste filtrée : sinon
   // « Entrée » valide un choix qui n'est plus affiché.
@@ -117,17 +174,24 @@ export function Combobox({
       // Bornage plutôt que bouclage : arriver au bout d'une liste de deux cent
       // cinquante entrées et se retrouver au début désoriente plus que cela
       // n'aide.
-      setActif((i) => Math.min(Math.max(i + pas, 0), filtrees.length - 1))
+      //
+      // Et bornage sur ce qui est RENDU, pas sur ce qui est filtré : les deux
+      // bornes doivent être la même. Parcourir 204 entrées quand 50 sont
+      // montées ferait pointer `aria-activedescendant` sur un id absent du DOM
+      // — le lecteur d'écran cesserait d'annoncer quoi que ce soit, et le
+      // clavier heurterait un mur invisible. Le gain de nœuds ne vaut pas cette
+      // panne-là.
+      setActif((i) => Math.min(Math.max(i + pas, 0), visibles.length - 1))
       return
     }
     if (e.key === 'Home' || e.key === 'End') {
       if (!ouvert) return
       e.preventDefault()
-      setActif(e.key === 'Home' ? 0 : filtrees.length - 1)
+      setActif(e.key === 'Home' ? 0 : visibles.length - 1)
       return
     }
     if (e.key === 'Enter' && ouvert) {
-      const option = filtrees[actif]
+      const option = visibles[actif]
       if (option) {
         e.preventDefault()
         choisir(option)
@@ -157,9 +221,15 @@ export function Combobox({
           aria-expanded={ouvert}
           aria-controls={idListe}
           aria-autocomplete="list"
-          aria-activedescendant={ouvert && filtrees[actif] ? `${idChamp}-${actif}` : undefined}
+          aria-activedescendant={ouvert && visibles[actif] ? `${idChamp}-${actif}` : undefined}
           aria-label={ariaLabel}
-          aria-describedby={ariaDescribedBy}
+          // La mention de troncature s'ajoute à la description du champ, sans
+          // remplacer celle du consommateur : une liste qui s'arrête au
+          // cinquantième élément ne dit rien d'elle-même à qui ne la voit pas.
+          aria-describedby={
+            [ariaDescribedBy, ouvert && tronquee ? idTroncature : null].filter(Boolean).join(' ') ||
+            undefined
+          }
           aria-invalid={invalid ? true : undefined}
           autoComplete={autoComplete}
           className={controlClasses(invalid, 'pr-9')}
@@ -188,21 +258,37 @@ export function Combobox({
           role="listbox"
           className="absolute z-20 mt-1 max-h-72 w-full overflow-y-auto rounded-md border border-border bg-surface py-1 shadow-lg"
         >
-          {filtrees.length === 0 && (
+          {visibles.length === 0 && (
             // Une liste vide sans un mot laisse croire à une panne.
-            <li className="px-3 py-2 text-body-s text-muted">—</li>
+            <li role="presentation" className="px-3 py-2 text-body-s text-muted">
+              —
+            </li>
           )}
-          {filtrees.map((option, index) => {
+          {/*
+            L'option EST le `<li>`, et tout le reste est décor déclaré comme tel.
+            Un `listbox` ne reconnaît que des `option` parmi ses descendants ;
+            l'option vivait ici dans un `<div>` enveloppé d'un `<li>` nu, laissé
+            signifiant. Le lecteur d'écran comptait donc des éléments de liste
+            là où il attendait des options et cessait d'annoncer « 2 sur 4 ».
+            Le fragment porte la clé pour que l'intitulé de groupe reste un
+            frère de l'option plutôt qu'un enfant — un `option` ne contient que
+            son propre libellé.
+          */}
+          {visibles.map((option, index) => {
             const nouveauGroupe = option.groupe && option.groupe !== groupePrecedent
             groupePrecedent = option.groupe
             return (
-              <li key={option.value}>
+              <Fragment key={option.value}>
                 {nouveauGroupe && (
-                  <p className="eyebrow px-3 pt-2 pb-1 text-muted" aria-hidden="true">
+                  <li
+                    role="presentation"
+                    className="eyebrow px-3 pt-2 pb-1 text-muted"
+                    aria-hidden="true"
+                  >
                     {option.groupe}
-                  </p>
+                  </li>
                 )}
-                <div
+                <li
                   id={`${idChamp}-${index}`}
                   role="option"
                   aria-selected={option.value === value}
@@ -221,10 +307,29 @@ export function Combobox({
                   )}
                 >
                   {option.label}
-                </div>
-              </li>
+                </li>
+              </Fragment>
             )
           })}
+          {tronquee && (
+            /* En PIED de liste, et non en tête : la question « pourquoi ça
+               s'arrête ? » se pose au moment où l'on arrive au bout sans avoir
+               trouvé son pays, et c'est là que la réponse doit se trouver. En
+               tête, elle repousserait les options sans répondre à personne.
+               Une liste coupée en silence, elle, laisse conclure que le pays
+               n'existe pas. */
+            <li
+              id={idTroncature}
+              // Décor, pas option : la mention n'est pas un choix possible, et
+              // la laisser signifiante fausserait le décompte annoncé.
+              // Le texte reste lisible par `aria-describedby`, qui compose la
+              // description à partir du contenu et non du rôle.
+              role="presentation"
+              className="border-t border-border px-3 py-2 text-body-s text-muted"
+            >
+              {t('common.listTruncated')}
+            </li>
+          )}
         </ul>
       )}
     </div>

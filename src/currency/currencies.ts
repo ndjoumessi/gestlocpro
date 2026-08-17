@@ -89,8 +89,20 @@ export interface FormatMoneyOptions {
 
 /**
  * Formate un montant selon la devise active.
- * Utilise des espaces insécables étroits pour que les milliers ne se coupent
- * jamais en fin de ligne dans un tableau.
+ *
+ * DEUX espaces insécables différentes, et la distinction se voit à l'écran.
+ *
+ * Les milliers prennent la FINE (U+202F), qui est la convention française et
+ * qui empêche un montant de se couper en fin de cellule.
+ *
+ * Le symbole, lui, prend l'insécable PLEINE (U+00A0). Il portait la fine aussi,
+ * ce qui a tenu tant que les montants étaient composés en chasse fixe : une
+ * police à chasse fixe donne à chaque glyphe la même avance, espaces comprises,
+ * donc la fine y occupait la largeur d'un chiffre. Le passage à la police
+ * proportionnelle l'a ramenée à sa vraie valeur — 1,7 px contre 3,6 pour la
+ * pleine — et « 231 178 FCFA » se lisait « 231 178FCFA », la devise soudée au
+ * montant. L'usage français veut de toute façon une espace pleine devant une
+ * unité, et une fine seulement entre les tranches de chiffres.
  */
 export function formatMoney(
   amount: number,
@@ -110,8 +122,8 @@ export function formatMoney(
 
   if (options.omitSymbol) return number
   return def.position === 'before'
-    ? `${def.symbol} ${number}`
-    : `${number} ${def.symbol}`
+    ? `${def.symbol} ${number}`
+    : `${number} ${def.symbol}`
 }
 
 /**

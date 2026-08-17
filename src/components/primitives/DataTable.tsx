@@ -19,7 +19,6 @@ export interface DataTableProps<T> {
   rows: T[]
   rowKey: (row: T) => string
   empty?: ReactNode
-  onRowClick?: (row: T) => void
 }
 
 /**
@@ -28,6 +27,23 @@ export interface DataTableProps<T> {
  * Le conteneur porte `overflow-x-auto` : un tableau large défile dans sa
  * propre boîte au lieu de faire déborder la page entière — c'est la règle qui
  * évite le défilement horizontal du document sur mobile.
+ *
+ * Il porte AUSSI `relative`, et cette moitié-là de la règle est la moins
+ * intuitive : une boîte de défilement ne rogne que les éléments absolus dont
+ * elle est le bloc conteneur. Restée statique, elle laisse s'échapper tout
+ * `sr-only` posé dans une cellule — `position: absolute` — qui va alors
+ * étendre le défilement du document à la largeur intrinsèque du tableau. La
+ * matrice des droits de `Onboarding.tsx` a fait fuir 268px de cette façon.
+ * Le `relative` ne se voit pas ; c'est lui qui tient la promesse ci-dessus.
+ *
+ * PAS de ligne cliquable. Il en existait une — un `onClick` sur le `<tr>`, sans
+ * `tabIndex` ni gestionnaire clavier : la ligne s'ouvrait à la souris et restait
+ * hors d'atteinte autrement. Aucun écran ne s'en servait, et rien dans le
+ * produit n'annonçait de vouloir s'en servir ; la rendre accessible aurait donc
+ * consisté à câbler un rôle, un ordre de tabulation et Entrée/Espace au service
+ * d'un appelant imaginaire. Le jour où une ligne devra mener quelque part, la
+ * réponse juste sera un vrai lien dans une cellule — focalisable, ouvrable dans
+ * un nouvel onglet, annoncé par sa destination — et non une rangée piégée.
  */
 export function DataTable<T>({
   caption,
@@ -35,14 +51,13 @@ export function DataTable<T>({
   rows,
   rowKey,
   empty,
-  onRowClick,
 }: DataTableProps<T>) {
   if (rows.length === 0 && empty) {
     return <>{empty}</>
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-divider bg-surface shadow-e1">
+    <div className="relative overflow-x-auto rounded-lg border border-divider bg-surface shadow-e1">
       <table className="w-full border-collapse text-body">
         <caption className="sr-only">{caption}</caption>
         <thead>
@@ -68,11 +83,7 @@ export function DataTable<T>({
           {rows.map((row) => (
             <tr
               key={rowKey(row)}
-              onClick={onRowClick ? () => onRowClick(row) : undefined}
-              className={cn(
-                'border-b border-divider last:border-0 transition-colors duration-150',
-                onRowClick && 'cursor-pointer hover:bg-surface-raised',
-              )}
+              className="border-b border-divider transition-colors duration-150 last:border-0"
             >
               {columns.map((column) => (
                 <td

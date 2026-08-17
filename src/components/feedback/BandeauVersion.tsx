@@ -1,3 +1,4 @@
+import { cn } from '@/lib/cn'
 import { useT } from '@/i18n/I18nProvider'
 import { Button } from '@/components/primitives/Button'
 import { useNouvelleVersion } from '@/lib/version'
@@ -23,7 +24,22 @@ export function BandeauVersion() {
   return (
     <div
       role="status"
-      className="fixed inset-x-0 bottom-0 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-t border-border bg-ink px-5 py-3 text-body-s text-on-dark"
+      // `calc(base + env(…))` en bas, et non `max()` comme le toast : ce
+      // bandeau est PEINT. Son encre doit descendre jusqu'au bord physique,
+      // sinon la barre de gestes se détache sur une bande de page qui défile
+      // derrière elle. L'addition fait les deux d'un coup — le fond déborde
+      // dans la zone réservée, le texte et le bouton restent au-dessus.
+      //
+      // Latéralement en revanche, `max()` : le fond couvre déjà toute la
+      // largeur, seul le contenu doit s'écarter de l'encoche, et en paysage
+      // ajouter 20 px aux 59 px de l'inset volerait de la place à un écran qui
+      // en manque déjà.
+      className={cn(
+        'fixed inset-x-0 bottom-0 flex flex-wrap items-center justify-center gap-x-4 gap-y-2',
+        'border-t border-border bg-ink text-body-s text-on-dark',
+        'pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]',
+        'pl-[max(1.25rem,env(safe-area-inset-left))] pr-[max(1.25rem,env(safe-area-inset-right))]',
+      )}
       style={{ zIndex: 'var(--z-sticky)' }}
     >
       <span>{t('common.newVersion')}</span>

@@ -141,6 +141,30 @@ interface PortfolioContextValue {
   isMine: (unitId: string) => boolean
   /** `true` quand les données viennent du serveur et non du jeu local. */
   fromApi: boolean
+  /**
+   * `true` tant que le parc du SERVEUR est en vol.
+   *
+   * Il manquait, et son absence ne se lisait pas comme un manque : les écrans
+   * avaient toujours quelque chose à afficher — le jeu de démonstration, servi
+   * depuis le module en attendant la réponse. Rien n'échouait, rien ne
+   * clignotait ; le propriétaire lisait simplement trois immeubles, dix
+   * locataires et 447 000 FCFA d'impayés qui n'étaient pas les siens, puis
+   * l'écran se remplaçait sous ses yeux. C'est pire qu'une attente sans retour
+   * visuel : une attente se reconnaît, un parc inventé se croit.
+   *
+   * La suite de tests le savait déjà, sans le nommer : `gestures.test.tsx`
+   * attend explicitement la charge du serveur avant chaque clic, « sans quoi le
+   * geste porte sur le jeu de démonstration encore affiché ». L'utilisateur,
+   * lui, n'a pas de `findBy`.
+   *
+   * `fromApi` ne pouvait pas tenir ce rôle : il confond « pas encore chargé »,
+   * « chargement échoué » et « aucun parc » en une seule valeur fausse.
+   *
+   * Vaut `false` en démonstration, et c'est la moitié importante de la règle :
+   * sans parc serveur les données sont locales et déjà là. Annoncer une attente
+   * qui n'existe pas serait le même mensonge, dans l'autre sens.
+   */
+  loading: boolean
   worksForUnit: (unitId: string) => WorkOrder[]
   depositForUnit: (unitId: string) => Deposit | undefined
   unitById: (unitId: string) => Unit | undefined
@@ -199,6 +223,23 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const [deposits, setDeposits] = useState<Deposit[]>(initial.deposits)
   const [stored, setStored] = useState(hasStoredState)
   const [fromApi, setFromApi] = useState(false)
+  /**
+   * Initialisé DANS le premier rendu, et non par l'effet.
+   *
+   * L'effet ne s'exécute qu'après la première peinture : le poser à `false` au
+   * départ laisserait passer une image complète de parc de démonstration avant
+   * le squelette — le clignotement exact qu'on cherche à supprimer, et il se
+   * verrait d'autant mieux que l'appareil est lent.
+   */
+  const [loading, setLoading] = useState(() => parkId !== null)
+  /**
+   * Le parc effectivement AFFICHÉ, une fois sa réponse arrivée.
+   *
+   * Une `ref` et non un état : personne ne rend cette valeur, elle ne sert qu'à
+   * décider s'il faut rouvrir une attente. En faire un état provoquerait un
+   * rendu de plus à chaque chargement, pour rien.
+   */
+  const parcAffiche = useRef<string | null>(null)
   const [buildings, setBuildings] = useState<Immeuble[]>(IMMEUBLES_DEMO)
   const [readings, setReadings] = useState<MeterReading[]>(READINGS_DEMO)
   const [inspections, setInspections] = useState<Inspection[]>(INSPECTIONS_DEMO)
@@ -206,8 +247,26 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const [collections, setCollections] = useState<MonthlyCollection[]>(COLLECTIONS_DEMO)
 
   useEffect(() => {
-    if (!parkId) return
+    if (!parkId) {
+      // Rien en vol : les données locales sont déjà servies. Le cas se produit
+      // vraiment — un compte qui quitte son dernier parc, ou une visite en
+      // démonstration après une session connectée.
+      setLoading(false)
+      return
+    }
     let annule = false
+    /**
+     * On n'ouvre une attente que si le parc à l'écran n'est PAS celui qu'on
+     * demande.
+     *
+     * Cet effet ne se rejoue pas seulement au changement de parc : il dépend de
+     * `signalerEchec`, donc du dictionnaire, donc de la langue. Basculer en
+     * anglais relit le parc — vérifié, une lecture avant, deux après. Sans ce
+     * garde, le squelette recouvrirait alors des données valides et déjà lues,
+     * le temps d'un aller-retour réseau. On aurait remplacé un écran qui ment
+     * par un écran qui clignote.
+     */
+    if (parcAffiche.current !== parkId) setLoading(true)
     void chargerParc(parkId).then((parc) => {
       // Une réponse qui arrive après un changement de parc écraserait le
       // nouveau par l'ancien : la garde est indispensable, et le défaut ne se
@@ -222,6 +281,10 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       setWorks(parc.works)
       setDeposits(parc.deposits)
       setFromApi(true)
+      // Posé APRÈS l'écriture, et seulement en cas de succès : un échec laisse
+      // le jeu de démonstration à l'écran, et une relecture ultérieure a alors
+      // toutes les raisons de rouvrir l'attente.
+      parcAffiche.current = parkId
     })
       /**
        * Le chargement du parc peut échouer, lui aussi.
@@ -238,6 +301,20 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       .catch((err: unknown) => {
         if (annule) return
         signalerEchec(err)
+      })
+      /**
+       * L'attente se termine dans TOUS les cas, y compris l'échec.
+       *
+       * Un squelette qu'aucune réponse ne vient effacer est pire qu'une erreur :
+       * il promet que quelque chose arrive. La panne, elle, est déjà dite par
+       * `signalerEchec`.
+       *
+       * Silencieux si la requête a été annulée : le rendu suivant a déjà posé
+       * sa propre attente, et l'effacer ici la ferait sauter.
+       */
+      .finally(() => {
+        if (annule) return
+        setLoading(false)
       })
     return () => {
       annule = true
@@ -508,6 +585,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       reset,
       hasChanges: stored,
       fromApi,
+      loading,
       buildings,
       buildingById: (id: string) => buildings.find((b) => b.id === id),
       readings,
@@ -549,6 +627,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       alerts,
       collections,
       fromApi,
+      loading,
       approveWork,
       settleDeposit,
       addTenant,

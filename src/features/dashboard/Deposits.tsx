@@ -2,6 +2,12 @@ import { useState } from 'react'
 import { PageHeader, useRole } from '@/components/layout/AppShell'
 import { DataTable } from '@/components/primitives/DataTable'
 import { StatCard } from '@/components/primitives/Charts'
+import {
+  Skeleton,
+  SkeletonRegion,
+  SkeletonStatCard,
+  SkeletonTable,
+} from '@/components/primitives/Skeleton'
 import { StatusPill, type StatusTone } from '@/components/primitives/StatusPill'
 import { Button } from '@/components/primitives/Button'
 import { Modal } from '@/components/primitives/Modal'
@@ -28,7 +34,7 @@ export function Deposits() {
 
   // Les cautions viennent de l'état partagé : arbitrer ici doit se voir dans
   // l'espace locataire, qui affiche la caution consignée du bail.
-  const { deposits, settleDeposit, unitById } = usePortfolio()
+  const { deposits, settleDeposit, unitById, loading } = usePortfolio()
   const [settling, setSettling] = useState<Deposit | null>(null)
 
   /**
@@ -50,6 +56,18 @@ export function Deposits() {
     setSettling(null)
     notify(t('app.deposits.settled'), { tone: 'ok' })
   }
+
+  /**
+   * Après la déclaration de `settle` — les crochets doivent tourner à chaque
+   * rendu — et avant le moindre total.
+   *
+   * L'argument de retenue est de l'argent qui appartient à un locataire. Le
+   * propriétaire voyait « 555 000 FCFA consignés » et deux cautions offertes à
+   * l'arbitrage : cliquer aurait envoyé au serveur l'identifiant d'une caution
+   * de démonstration — refusée, mais après avoir fait prendre une décision sur
+   * des chiffres qui n'étaient pas les bons.
+   */
+  if (loading) return <DepositsSkeleton isManager={role === 'manager'} />
 
   return (
     <>
@@ -147,6 +165,47 @@ export function Deposits() {
       {settling && (
         <SettleModal deposit={settling} onClose={() => setSettling(null)} onConfirm={settle} />
       )}
+    </>
+  )
+}
+
+/**
+ * Les cautions, le temps que le parc arrive.
+ *
+ * L'en-tête ne porte aucune action : rien à retenir de ce côté.
+ *
+ * L'avis destiné au gestionnaire ne dépend d'aucune donnée — c'est la règle de
+ * délégation, qui se lit dans le rôle et non dans le parc. Il tient pourtant sa
+ * place en squelette plutôt que d'être écrit : il vit à l'INTÉRIEUR de la zone
+ * en attente, entre les cartes et le tableau, et la seule autre façon de le
+ * rendre en clair serait d'ouvrir une deuxième `SkeletonRegion` — donc une
+ * deuxième annonce d'attente pour un seul écran.
+ */
+function DepositsSkeleton({ isManager }: { isManager: boolean }) {
+  const t = useT()
+
+  return (
+    <>
+      <PageHeader title={t('app.deposits.title')} description={t('app.deposits.subtitle')} />
+
+      <SkeletonRegion>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {[0, 1, 2].map((carte) => (
+            <SkeletonStatCard key={carte} />
+          ))}
+        </div>
+
+        {/* Même boîte que l'avis : `py-3` autour d'une ligne de corps réduit. */}
+        {isManager && (
+          <div className="mt-6 rounded-md border border-divider px-3.5 py-3">
+            <Skeleton line="bodyS" className="w-80 max-w-full" />
+          </div>
+        )}
+
+        <div className="mt-6">
+          <SkeletonTable />
+        </div>
+      </SkeletonRegion>
     </>
   )
 }

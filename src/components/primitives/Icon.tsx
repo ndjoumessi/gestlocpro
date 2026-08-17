@@ -181,6 +181,15 @@ const PATHS = {
     </>
   ),
   logout: <path d="M15 7.5V5.4a2 2 0 00-2-2H6a2 2 0 00-2 2v13.2a2 2 0 002 2h7a2 2 0 002-2V16.5M10.5 12h10M17.5 8.5l3 3.5-3 3.5" />,
+  sun: (
+    <>
+      <circle cx="12" cy="12" r="4.2" />
+      <path d="M12 2.6v2.3M12 19.1v2.3M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2.6 12h2.3M19.1 12h2.3M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7" />
+    </>
+  ),
+  // Croissant d'un seul tracé : une lune « pleine + masque » aurait demandé un
+  // remplissage, or ce jeu est en contour seul.
+  moon: <path d="M20.5 14.6A8.6 8.6 0 019.4 3.5a8.6 8.6 0 1011.1 11.1z" />,
 } as const
 
 export type IconName = keyof typeof PATHS

@@ -9,12 +9,15 @@ import {
 } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/cn'
+import { GOUTTIERE_LATERALE } from './gouttiere'
+import { LienEvitement } from './LienEvitement'
 import { Logo } from '@/components/primitives/Logo'
 import { Icon, type IconName } from '@/components/primitives/Icon'
 import { Badge } from '@/components/primitives/Badge'
 import { Button, IconButton } from '@/components/primitives/Button'
 import { LanguageSwitcher } from '@/components/controls/LanguageSwitcher'
 import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
+import { ThemeSwitcher } from '@/components/controls/ThemeSwitcher'
 import { useT } from '@/i18n/I18nProvider'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import type { Role } from '@/features/auth/signupState'
@@ -107,6 +110,31 @@ const FOOTER_ITEMS: NavItem[] = [
   { to: 'portail', labelKey: 'nav.tenantPortal', icon: 'monitor' },
   { to: 'systeme', labelKey: 'nav.system', icon: 'layers' },
 ]
+
+/**
+ * Ordre de priorité de la barre basse, du plus utile au moins.
+ *
+ * Quatre destinations, plus « Plus » qui ouvre le tiroir : cinq cibles est le
+ * maximum tenable (règle Material, et à 360 px une sixième descend sous les
+ * 44 px). La navigation en compte une douzaine — il faut donc choisir, et le
+ * tiroir reste le seul endroit où elle est complète.
+ *
+ * Le choix : le tableau de bord parce qu'on y revient ; paiements et
+ * signalements parce que ce sont les deux entrées qui PORTENT UN COMPTEUR,
+ * c'est-à-dire les deux seules qui réclament quelque chose — une barre basse
+ * qui ne montrerait pas les impayés du jour ne servirait qu'à naviguer, jamais
+ * à alerter ; puis le parc, surface de travail de qui gère du stock.
+ *
+ * La liste est plus longue que quatre parce qu'elle est FILTRÉE PAR RÔLE avant
+ * d'être coupée : le parc disparaît pour un locataire, et les travaux — son
+ * seul vrai motif d'ouvrir l'application après le loyer — remontent prendre la
+ * place au lieu de laisser un trou. Un rôle qui n'aurait que deux entrées
+ * donnerait une barre à deux entrées, correcte quoique clairsemée.
+ */
+const BOTTOM_ORDER = ['', 'paiements', 'signalements', 'parc', 'travaux'] as const
+
+/** Nombre de destinations, « Plus » non compris — cinq cibles au total. */
+const BOTTOM_MAX = 4
 
 /**
  * Qui regarde, et quel parc.
@@ -208,6 +236,20 @@ export function AppShell() {
   return (
     <RoleContext.Provider value={{ role, setRole }}>
       <div className="flex min-h-dvh items-stretch">
+        {/*
+          Avant la barre latérale, et non dans la colonne de contenu : c'est
+          justement la barre latérale que le lien fait sauter, un lien placé
+          après elle n'éviterait plus rien. Il n'est donc pas non plus couvert
+          par l'`inert` du tiroir, qui ne porte que sur cette colonne — d'où le
+          retrait pur et simple quand le tiroir est ouvert. Le laisser tabulable
+          derrière le voile enverrait le focus vers un contenu neutralisé.
+
+          La barre basse, ajoutée depuis, ne change pas ce raisonnement : elle
+          vit en fin de colonne de contenu, donc après le contenu dans l'ordre
+          de tabulation. Le lien reste la première halte.
+        */}
+        {!drawerOpen && <LienEvitement />}
+
         <Sidebar
           role={role}
           setRole={setRole}
@@ -222,7 +264,7 @@ export function AppShell() {
               type="button"
               aria-label={t('common.close')}
               onClick={() => setDrawerOpen(false)}
-              className="fixed inset-0 cursor-default bg-ink/45 backdrop-blur-[2px] lg:hidden"
+              className="fixed inset-0 cursor-default bg-scrim backdrop-blur-[2px] lg:hidden"
               style={{ zIndex: 'var(--z-overlay)' }}
             />
             <Sidebar
@@ -241,9 +283,54 @@ export function AppShell() {
         <div ref={contentRef} className="flex min-w-0 flex-1 flex-col bg-paper">
           <Topbar onOpenDrawer={() => setDrawerOpen(true)} />
           <BandeauDemo />
-          <main id="main" className="animate-rise flex-1 px-5 py-6 sm:px-8 sm:py-8">
+          {/*
+            Le contenu coule, il n'est ni collant ni fixe — mais avec
+            `viewport-fit=cover` le bas du document EST le bas physique de
+            l'écran, et les 24 px de `py-6` ne suffisaient plus à dégager les
+            34 px de la barre de gestes : la dernière ligne d'un tableau, le
+            dernier bouton d'un formulaire finissaient dessous.
+
+            `calc()` et non `max()` : ici rien n'est peint, le fond `bg-paper`
+            venant du parent. Le rembourrage n'est que de la respiration de fin
+            de défilement, et `max()` poserait le dernier élément pile au ras de
+            la barre de gestes — techniquement hors zone réservée, désagréable à
+            lire. Latéralement `max()`, en revanche : sous `lg` la barre
+            latérale disparaît et cette colonne prend toute la largeur, encoche
+            de paysage comprise.
+          */}
+          <main
+            id="main"
+            className={cn(
+              'animate-rise flex-1',
+              // Le bas réserve EN PLUS la hauteur de la barre basse, qui est
+              // `fixed` et ne pousse donc rien : sans cette réserve elle
+              // recouvrirait la dernière ligne de chaque page — exactement le
+              // défaut que le rembourrage de zone sûre venait de corriger. La
+              // réserve tombe à `lg`, où la barre n'existe plus.
+              //
+              // `4rem` — la barre mesurée, libellés sur deux lignes compris —
+              // est écrit en toutes lettres et non interpolé depuis une
+              // constante : Tailwind lit les sources comme du TEXTE, et un
+              // `${…}` dans un nom de classe ne produit aucun utilitaire.
+              // C'est une panne silencieuse — le CSS manque, rien ne le dit.
+              'pt-6 pb-[calc(1.5rem+4rem+env(safe-area-inset-bottom))]',
+              'sm:pt-8 sm:pb-[calc(2rem+4rem+env(safe-area-inset-bottom))]',
+              'lg:pb-[calc(2rem+env(safe-area-inset-bottom))]',
+              // Latéralement, la gouttière commune : sous `lg` la barre
+              // latérale disparaît et cette colonne prend toute la largeur,
+              // encoche de paysage comprise.
+              GOUTTIERE_LATERALE,
+            )}
+          >
             <Outlet />
           </main>
+
+          {/*
+            La barre basse vit DANS la colonne de contenu, et non à côté : elle
+            hérite ainsi de l'`inert` posé à l'ouverture du tiroir. Elle est
+            derrière le voile, il serait faux qu'elle reste tabulable.
+          */}
+          <BarreBasse role={role} onOpenDrawer={() => setDrawerOpen(true)} />
         </div>
       </div>
     </RoleContext.Provider>
@@ -271,12 +358,27 @@ function BandeauDemo() {
   return (
     <div
       role="status"
-      className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-amber-200 bg-amber-50 px-5 py-2.5 text-sm text-amber-900 sm:px-8"
+      // Jetons `warn-*`, et non la palette `amber-*` de Tailwind. Ce bandeau
+      // était le seul endroit du produit peint hors du système : en clair la
+      // différence ne se voyait pas, en sombre il restait un rectangle crème
+      // vif au-dessus d'une page noire — l'îlot clair caractéristique d'un
+      // jeton oublié, ici d'une couleur qui n'était même pas un jeton. Les
+      // tailles suivent l'échelle pour la même raison.
+      className={cn(
+        'flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-warn-border bg-warn-tint py-2.5 text-body-s text-warn',
+        GOUTTIERE_LATERALE,
+      )}
     >
-      <span className="rounded-full bg-amber-200 px-2 py-0.5 text-xs font-semibold tracking-wide uppercase">
+      <span className="eyebrow rounded-full bg-warn-border px-2 py-0.5 font-semibold tracking-wide uppercase">
         {t('common.demoBadge')}
       </span>
-      <span className="min-w-0 flex-1">{t('common.demoNotice')}</span>
+      {/* `basis-48` et non le `flex-1` seul qu'il y avait ici. `flex-1` vaut
+          `flex: 1 1 0%` : la base nulle autorise le texte à se comprimer
+          indéfiniment plutôt qu'à passer à la ligne, et à 375 px il tombait à
+          un mot par ligne pendant que le bouton lui passait dessus. Une base
+          de 12 rem lui donne une largeur minimale à défendre : en dessous, il
+          renvoie le bouton à la ligne suivante au lieu de s'écraser. */}
+      <span className="min-w-0 flex-1 basis-48 sm:basis-0">{t('common.demoNotice')}</span>
       <Button size="sm" to="/inscription/proprietaire" iconAfter="arrowRight">
         {t('common.demoCta')}
       </Button>
@@ -343,9 +445,42 @@ function Sidebar({
       role={dialogLabel ? 'dialog' : undefined}
       aria-modal={dialogLabel ? true : undefined}
       aria-label={dialogLabel}
+      // `h-dvh` vaut la hauteur ENTIÈRE de l'écran depuis `viewport-fit=cover` :
+      // le logo se rangeait donc sous la barre d'état, et les deux dernières
+      // entrées — portail locataire, système — sous la barre de gestes.
+      //
+      // Haut et bas en `calc()` : le panneau est encre pleine, son fond doit
+      // couvrir les zones réservées pendant que son contenu s'en écarte. À
+      // gauche en `max()`, parce que la barre touche ce bord dans SES DEUX
+      // variantes — rail de bureau collant, et tiroir mobile `fixed left-0`,
+      // qui se rabat justement sur le côté où l'encoche mord en paysage. Le
+      // bord droit ne touche rien : il garde son `pr-3`.
+      //
+      // Le repli est INSTANTANÉ, et c'est délibéré. Il y avait ici un
+      // `transition-[width] duration-200` : `width` est une propriété de mise
+      // en page, l'animer force le navigateur à recalculer la disposition à
+      // chaque image — et pas seulement celle du panneau, qui est le frère
+      // flex de la colonne de contenu. Seuls `transform` et `opacity` se
+      // composent sans relayout.
+      //
+      // Les transpositions habituelles ne s'appliquent pas : la barre POUSSE
+      // le contenu au lieu de le recouvrir, donc un `translateX` laisserait un
+      // trou. Et surtout, regarder ce que le repli fait RÉELLEMENT retire tout
+      // intérêt à l'animation — ce n'est pas une largeur qui change, c'est le
+      // contenu du panneau qui est remplacé d'un bloc : logo réduit à sa
+      // marque, sélecteur de profil et intitulés de section démontés, entrées
+      // recentrées sans libellé ni pastille, bouton de bascule déplacé en
+      // pied. Tout cela basculait à l'image zéro pendant que le cadre glissait
+      // 200 ms de plus : on n'adoucissait rien, on payait un relayout complet
+      // pour un décalage entre la boîte et son contenu.
+      //
+      // Les `transition-colors` des entrées et des profils restent : la
+      // couleur est peinte, elle ne déclenche aucun calcul de disposition.
       className={cn(
-        'on-dark shrink-0 flex-col gap-4 overflow-y-auto bg-ink px-3 py-5 text-on-dark',
-        'sticky top-0 h-dvh transition-[width] duration-200',
+        'on-dark shrink-0 flex-col gap-4 overflow-y-auto bg-ink text-on-dark',
+        'sticky top-0 h-dvh',
+        'pt-[calc(1.25rem+env(safe-area-inset-top))] pb-[calc(1.25rem+env(safe-area-inset-bottom))]',
+        'pr-3 pl-[max(0.75rem,env(safe-area-inset-left))]',
         railed ? 'w-[72px]' : 'w-64',
         className,
       )}
@@ -416,7 +551,7 @@ function Sidebar({
             Le texte fait deux lignes et touchait les deux bords : `py-2.5` lui
             rend l'air que sa hauteur de ligne réclame.
           */}
-          <p className="rounded-md bg-on-dark-hover px-3.5 py-2.5 font-mono text-mono-label leading-relaxed text-on-dark-muted">
+          <p className="rounded-md bg-on-dark-hover px-3.5 py-2.5 text-caps leading-relaxed text-on-dark-muted">
             {t(`roles.${role}.rights` as 'roles.owner.rights')}
           </p>
         </div>
@@ -517,6 +652,139 @@ function SidebarLink({ item, wide }: { item: NavItem; wide: boolean }) {
 
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Navigation basse, sous `lg`.
+ *
+ * Toute la navigation mobile passait par un tiroir déclenché depuis le coin
+ * HAUT GAUCHE. Sur un Android grand format tenu à une main — la cible matérielle
+ * du produit — c'est le point le plus éloigné du pouce, et il fallait l'atteindre
+ * pour chaque changement d'écran.
+ *
+ * Elle ne REMPLACE pas le tiroir, elle l'abrège : la navigation complète y reste,
+ * et « Plus » l'ouvre. Le traitement clavier soigné du tiroir — `inert` sur
+ * l'arrière-plan, Échap, focus rendu au déclencheur — vaut donc aussi quand on
+ * part d'ici, puisque c'est le même état qui est basculé.
+ */
+function BarreBasse({ role, onOpenDrawer }: { role: Role; onOpenDrawer: () => void }) {
+  const t = useT()
+
+  // Filtrer PUIS couper, et non l'inverse : couper d'abord laisserait un trou à
+  // la place de l'entrée qu'un rôle ne voit pas.
+  const tous = [...SECTIONS.flatMap((s) => s.items), ...FOOTER_ITEMS]
+  const items = BOTTOM_ORDER.map((to) => tous.find((item) => item.to === to))
+    .filter((item): item is NavItem => !!item && (!item.roles || item.roles.includes(role)))
+    .slice(0, BOTTOM_MAX)
+
+  return (
+    <nav
+      aria-label={t('nav.quickNav')}
+      // `grid-flow-col auto-cols-fr` et non `grid-cols-5` : le nombre de
+      // colonnes suit le nombre d'entrées survivant au filtrage par rôle, sans
+      // qu'aucune arithmétique de classes n'ait à le deviner.
+      //
+      // Surface PEINTE et épinglée au bord physique : le bas prend donc
+      // `calc(base + env(…))` — son fond doit descendre sous la barre de
+      // gestes pendant que les cibles s'en écartent — quand un flotteur comme
+      // le toast prend `max(base, env(…))`. Les deux côtés latéraux sont
+      // traités parce qu'elle va d'un bord à l'autre : en paysage l'encoche
+      // mord à gauche OU à droite selon le sens de rotation.
+      //
+      // Sous `var(--z-sticky)`, donc sous le voile du tiroir : quand la
+      // navigation complète est ouverte, son abrégé n'a rien à faire par-dessus.
+      className={cn(
+        'fixed inset-x-0 bottom-0 grid grid-flow-col auto-cols-fr items-stretch lg:hidden',
+        'border-t border-border bg-paper/95 backdrop-blur-md',
+        'pt-1 pb-[calc(0.25rem+env(safe-area-inset-bottom))]',
+        'pl-[max(0.25rem,env(safe-area-inset-left))] pr-[max(0.25rem,env(safe-area-inset-right))]',
+      )}
+      style={{ zIndex: 'var(--z-sticky)' }}
+    >
+      {items.map((item) => (
+        <BottomLink key={item.to} item={item} />
+      ))}
+
+      {/*
+        « Plus » est un bouton et non un lien : il n'emmène nulle part, il
+        déplie la navigation restante — huit entrées que cinq cibles ne peuvent
+        pas porter.
+      */}
+      <button
+        type="button"
+        onClick={onOpenDrawer}
+        className={cn(
+          'flex min-h-11 cursor-pointer flex-col items-center justify-center gap-0.5',
+          'rounded-md px-1 text-muted transition-colors duration-150',
+          'hover:bg-surface-sunken hover:text-ink',
+        )}
+      >
+        <Icon name="menu" size={19} />
+        <span className="text-caps leading-tight tracking-normal">{t('nav.more')}</span>
+      </button>
+    </nav>
+  )
+}
+
+function BottomLink({ item }: { item: NavItem }) {
+  const t = useT()
+  const label = t(item.labelKey as 'nav.dashboard')
+  const count = useNavCount()
+  const base = useBase()
+  const valeur = item.badge ? count(item.badge.count) : 0
+
+  return (
+    <NavLink
+      to={lien(base, item.to)}
+      end={item.to === ''}
+      className={({ isActive }) =>
+        cn(
+          // 44 px de haut minimum, et la colonne donne la largeur : c'est le
+          // plancher de cible tactile, sous lequel on tape à côté.
+          'flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-md px-1',
+          'text-center no-underline transition-colors duration-150',
+          // L'entrée courante se signale TROIS fois : `aria-current` que
+          // `NavLink` pose seul, un filet doré au-dessus de la cible, et la
+          // graisse du libellé. La couleur seule ne se lit ni en plein soleil
+          // ni pour un daltonien — et c'est précisément dehors, sur un écran
+          // bon marché, que ce produit est utilisé.
+          isActive
+            ? 'font-semibold text-ink shadow-[inset_0_2px_0_var(--color-gold)]'
+            : 'text-muted hover:bg-surface-sunken hover:text-ink',
+        )
+      }
+    >
+      {/* Icône ET libellé : une barre en icônes seules se devine, elle ne se
+          lit pas — et le vocabulaire métier (« relevés », « cautions ») n'a
+          aucun pictogramme évident. */}
+      <span className="relative">
+        <Icon name={item.icon} size={19} />
+        {valeur > 0 && item.badge && (
+          <Badge
+            tone={item.badge.tone}
+            className="absolute -top-1.5 -right-2.5 px-1 py-0 leading-tight"
+          >
+            {valeur}
+          </Badge>
+        )}
+      </span>
+      {/*
+        Le libellé PASSE À LA LIGNE au lieu d'être coupé. Une cible fait 73 px
+        à 375 px de large et le plancher typographique est de 12 px : « Tableau
+        de bord » et « Parc immobilier » n'y tiennent pas sur une ligne, et
+        tronquer donnait « Tableau … », « Parc im… », « Signale… » — c'est-à-
+        dire une barre en icônes seules avec du bruit dessous, exactement ce
+        que le libellé devait éviter. Descendre la taille était l'autre issue ;
+        `plancher.test.ts` la refuse, à raison : ces écrans se lisent dehors.
+
+        `tracking-normal` annule l'interlettrage de `text-caps`, prévu pour des
+        surtitres de trois mots et qui coûte ici une lettre par ligne.
+      */}
+      <span className="w-full text-caps leading-tight tracking-normal text-balance">{label}</span>
+    </NavLink>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+
 function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
   const t = useT()
   const location = useLocation()
@@ -533,7 +801,23 @@ function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
 
   return (
     <header
-      className="sticky top-0 flex flex-wrap items-center gap-3 border-b border-border bg-paper/88 px-5 py-2.5 backdrop-blur-md sm:px-8"
+      // En-tête collant à `top-0` : avec `viewport-fit=cover`, ce zéro est le
+      // bord PHYSIQUE de l'écran. Sans rembourrage, le bouton du menu et les
+      // sélecteurs se rangent sous la barre d'état en portrait, et sous la
+      // Dynamic Island en paysage.
+      //
+      // En haut, `calc()` : la barre est peinte et floutée, son fond doit
+      // remonter jusqu'au bord — remplacer `py-2.5` par l'inset seul collerait
+      // les commandes juste sous l'encoche. Latéralement, `max()` : le fond
+      // couvre déjà toute la largeur, et l'iPhone en paysage reste sous `lg`,
+      // donc cet en-tête y occupe bien toute la largeur, encoche comprise.
+      className={cn(
+        'sticky top-0 flex flex-wrap items-center gap-3 border-b border-border',
+        'bg-paper/88 backdrop-blur-md',
+        'pt-[calc(0.625rem+env(safe-area-inset-top))] pb-2.5',
+        'pl-[max(1.25rem,env(safe-area-inset-left))] pr-[max(1.25rem,env(safe-area-inset-right))]',
+        'sm:pl-[max(2rem,env(safe-area-inset-left))] sm:pr-[max(2rem,env(safe-area-inset-right))]',
+      )}
       style={{ zIndex: 'var(--z-sticky)' }}
     >
       <IconButton
@@ -562,6 +846,7 @@ function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
       <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
         <LanguageSwitcher />
         <CurrencySwitcher />
+        <ThemeSwitcher />
         <span
           aria-hidden="true"
           className="flex size-9 shrink-0 items-center justify-center rounded-full bg-ink text-label font-semibold text-on-dark"

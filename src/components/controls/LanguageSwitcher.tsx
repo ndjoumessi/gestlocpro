@@ -41,7 +41,7 @@ export function LanguageSwitcher({ tone = 'light', className }: LanguageSwitcher
             className={cn(
               // 44px de haut comme de large : cible tactile minimale tenue.
               'inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-sm px-2.5',
-              'font-mono text-mono-label font-semibold transition-colors duration-150 ease-out',
+              'text-caps font-semibold transition-colors duration-150 ease-out',
               active
                 ? tone === 'dark'
                   ? 'bg-gold text-ink'

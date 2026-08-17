@@ -6,6 +6,7 @@ import { Icon } from '@/components/primitives/Icon'
 import { StatCard } from '@/components/primitives/Charts'
 import { PaymentStatusPill, StatusPill } from '@/components/primitives/StatusPill'
 import { EmptyState } from '@/components/primitives/DataTable'
+import { Skeleton, SkeletonRegion, SkeletonStatCard } from '@/components/primitives/Skeleton'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
@@ -33,7 +34,8 @@ export function TenantDashboard() {
   const d = useDates()
   const { money } = useCurrency()
   const downloadReceipt = useReceiptExport()
-  const { worksForUnit, depositForUnit, unitById, tenantUnitIds, readingForUnit } = usePortfolio()
+  const { worksForUnit, depositForUnit, unitById, tenantUnitIds, readingForUnit, loading } =
+    usePortfolio()
 
   /**
    * Cet écran est mono-unité par conception : un locataire y voit SON logement.
@@ -48,6 +50,22 @@ export function TenantDashboard() {
   const reading = readingForUnit(monUnite)
   const works = worksForUnit(monUnite)
   const openWorks = works.filter((work) => work.status !== 'done')
+
+  /**
+   * L'attente passe AVANT le garde `!unit`, et c'est l'ordre qui importe.
+   *
+   * Le locataire lisait le logement A1 de la démonstration : son numéro, sa
+   * surface, son loyer, sa caution et six quittances datées. Aucun de ces
+   * éléments n'est marqué comme provisoire, et c'est le seul écran du produit
+   * où l'utilisateur n'a AUCUN moyen de recouper — il ne connaît pas le parc,
+   * il ne connaît que son bail. Lui montrer celui d'un autre est le pire cas de
+   * tout ce chantier.
+   *
+   * Placé après le garde, il ne servirait à rien : pendant l'attente le jeu de
+   * démonstration fournit toujours une unité, donc `!unit` est faux et la page
+   * s'affichait entière.
+   */
+  if (loading) return <TenantDashboardSkeleton />
 
   if (!unit) return null
 
@@ -117,7 +135,7 @@ export function TenantDashboard() {
                   {d.monthYear(receipt)}
                 </span>
                 <span className="numeric text-body">{money(unit.rent, { round: true })}</span>
-                <span className="font-mono text-mono-label text-muted">
+                <span className="text-caps text-muted">
                   {t('app.tenant.paidOn', {
                     date: d.dayMonth({ year: receipt.year, month: receipt.month, day: receipt.paidDay }),
                   })}
@@ -153,7 +171,7 @@ export function TenantDashboard() {
                     </span>
                     <div className="min-w-0">
                       <p className="text-body font-medium">{workTitle(work, t)}</p>
-                      <p className="mt-0.5 font-mono text-mono-label text-muted">
+                      <p className="mt-0.5 text-caps text-muted">
                         {work.reference ?? work.id} ·{' '}
                         {d.dayMonth(work.reportedAt)}
                       </p>
@@ -178,7 +196,7 @@ export function TenantDashboard() {
               </span>
               <div className="min-w-0">
                 <p className="text-body font-medium text-on-dark">{t('app.tenant.managerName')}</p>
-                <p className="font-mono text-mono-label text-on-dark-faint">
+                <p className="text-caps text-on-dark-faint">
                   {t('roles.manager.name')}
                 </p>
               </div>
@@ -193,6 +211,106 @@ export function TenantDashboard() {
       {/* La règle de confidentialité est dite à l'écran, pas seulement
           appliquée : le locataire doit savoir ce que son bailleur ne voit pas
           de lui, et inversement. */}
+      <p className="mt-4 flex items-start gap-2 rounded-lg border border-divider bg-surface px-4 py-3 text-body-s text-muted">
+        <Icon name="shield" size={16} className="mt-0.5 shrink-0 text-ok" />
+        {t('app.tenant.privacyNote')}
+      </p>
+    </>
+  )
+}
+
+/**
+ * L'espace locataire, le temps que son bail arrive.
+ *
+ * Le bouton « Signaler un incident » est CONSERVÉ, contrairement aux actions
+ * des autres écrans, et la différence est de nature : il ne poste rien, il
+ * navigue. Rien de ce qu'il emporte ne dépend du parc — ni identifiant, ni
+ * montant — donc le retenir priverait le locataire du seul geste utile qu'il
+ * puisse faire pendant l'attente, sans rien protéger en échange.
+ *
+ * La note de confidentialité est écrite en clair, et pour la même raison :
+ * c'est une règle du produit, pas une donnée. Elle est placée APRÈS la région
+ * d'attente, comme dans l'écran réel, ce qui la garde hors de l'annonce sans
+ * changer l'ordre de lecture.
+ */
+function TenantDashboardSkeleton() {
+  const base = useBase()
+  const t = useT()
+
+  return (
+    <>
+      <PageHeader
+        title={t('app.tenant.title')}
+        description={t('app.tenant.subtitle')}
+        actions={
+          <Button icon="bell" to={lien(base, 'signalements')}>
+            {t('app.tenant.contactManager')}
+          </Button>
+        }
+      />
+
+      <SkeletonRegion>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[0, 1, 2, 3].map((carte) => (
+            <SkeletonStatCard key={carte} />
+          ))}
+        </div>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+          {/* Les quittances. Six lignes : c'est ce que rend `TENANT_RECEIPTS`,
+              et leur nombre ne dépend pas du serveur — seuls les montants en
+              dépendent. */}
+          <div className="min-w-0 rounded-lg border border-divider bg-surface shadow-e1">
+            <div className="p-4 sm:p-5">
+              <Skeleton line="title" className="w-40" />
+            </div>
+            <div className="divide-y divide-divider border-t border-divider">
+              {[0, 1, 2, 3, 4, 5].map((ligne) => (
+                <div key={ligne} className="flex items-center gap-3 px-4 py-3 sm:px-5">
+                  <Skeleton line="body" className="min-w-0 flex-1" />
+                  <Skeleton line="body" className="w-24" />
+                  <Skeleton line="eyebrow" className="hidden w-24 sm:block" />
+                  <Skeleton radius="md" className="h-9 w-28" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <div className="min-w-0 rounded-lg border border-divider bg-surface p-4 shadow-e1 sm:p-5">
+              <Skeleton line="title" className="mb-4 w-44" />
+              <div className="flex flex-col gap-3">
+                {[0, 1].map((travaux) => (
+                  <div key={travaux} className="flex items-start gap-3">
+                    <Skeleton radius="md" className="mt-0.5 size-8" />
+                    <div className="min-w-0 flex-1">
+                      <Skeleton line="body" className="w-48 max-w-full" />
+                      <Skeleton line="eyebrow" className="mt-0.5 w-32" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Skeleton radius="md" className="mt-4 h-9 w-28" />
+            </div>
+
+            {/* La carte du gestionnaire ne porte aucune donnée de parc, mais
+                elle est prise dans le même bloc : la reproduire évite que la
+                colonne de droite ne s'allonge d'un coup à l'arrivée du bail. */}
+            <div className="min-w-0 rounded-lg border border-divider bg-ink p-4 shadow-e1 sm:p-5">
+              <Skeleton line="title" className="mb-4 w-36" />
+              <div className="flex items-center gap-3">
+                <Skeleton className="size-10" />
+                <div className="min-w-0 flex-1">
+                  <Skeleton line="body" className="w-28" />
+                  <Skeleton line="eyebrow" className="mt-0.5 w-20" />
+                </div>
+              </div>
+              <Skeleton radius="md" className="mt-4 h-11 w-full" />
+            </div>
+          </div>
+        </div>
+      </SkeletonRegion>
+
       <p className="mt-4 flex items-start gap-2 rounded-lg border border-divider bg-surface px-4 py-3 text-body-s text-muted">
         <Icon name="shield" size={16} className="mt-0.5 shrink-0 text-ok" />
         {t('app.tenant.privacyNote')}

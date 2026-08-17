@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, userEvent } from '@/test/render'
+import { renderApp, screen, userEvent, within } from '@/test/render'
 
 /**
  * Adresse inconnue.
@@ -62,8 +62,11 @@ describe('adresse inconnue dans l’espace de gestion', () => {
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Écran introuvable')
     // La barre latérale est toujours là : c'est elle qui liste les écrans.
-    // Nom exact, pour ne pas attraper aussi le bouton « Revenir au tableau de bord ».
-    expect(screen.getByRole('link', { name: 'Tableau de bord' })).toBeInTheDocument()
+    // Nom exact, pour ne pas attraper aussi le bouton « Revenir au tableau de
+    // bord » — et requête portée sur la barre latérale, la navigation basse
+    // proposant la même destination sous un second lien de même nom.
+    const laterale = screen.getAllByRole('navigation', { name: 'Tableau de bord' })[0]
+    expect(within(laterale).getByRole('link', { name: 'Tableau de bord' })).toBeInTheDocument()
   })
 
   it('ne prétend pas dans le fil d’Ariane que l’on est au tableau de bord', () => {

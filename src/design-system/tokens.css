@@ -33,6 +33,19 @@
   --color-gold-ink: #8a6218; /* liens et labels sur fond clair */
   --color-gold-ink-hover: #7e571f;
   --color-gold-on-dark: #d2a055; /* or sur --ink-2 */
+  /**
+   * Or posé sur `--color-ink`, et qui s'inverse AVEC lui.
+   *
+   * `bg-ink text-gold` tenait 5,83:1 en clair et tombait à 2,33:1 en sombre :
+   * `--color-ink` s'inverse avec le thème, `--color-gold` non, donc la paire se
+   * casse à l'inversion. Aucun garde de couverture ne pouvait le voir — les deux
+   * jetons ont bien leur contrepartie sombre, c'est leur APPARIEMENT qui échoue.
+   * Il a fallu parcourir les écrans pour le trouver.
+   *
+   * D'où un jeton nommé d'après le fond qu'il accompagne plutôt que d'après sa
+   * couleur : quoi que devienne `--color-ink`, celui-ci suit.
+   */
+  --color-gold-on-ink: #c58e3e; /* 5.83 sur --ink clair */
   --color-gold-tint: #fbf3e2;
   --color-gold-tint-2: #f7ebd3;
   --color-gold-border: #e9c68b;
@@ -96,28 +109,68 @@
   --color-on-dark-border: rgba(255, 255, 255, 0.1);
 
   /* ---- Typographie ----------------------------------------------------- */
-  --font-display: 'Playfair Display', Georgia, serif;
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   /**
-   * Monospace SYSTÈME, et non une famille téléchargée.
+   * Serif de LECTURE, employé comme serif d'affichage.
    *
-   * IBM Plex Mono portait un dessin très marqué — chiffres étroits, accents
-   * anguleux, `l` à empattement — qui attirait l'œil sur des libellés qui ne
-   * demandent qu'à être lus : intitulés de colonne, périmètres de rôle,
-   * indicatifs. Une police de données doit se faire oublier ; celle-ci se
-   * remarquait.
+   * Troisième famille à ce poste, et les deux premières disent pourquoi.
+   * Playfair Display amincissait ses déliés jusqu'à les faire disparaître en
+   * descendant, or `display-app` sert des titres d'écran d'exploitation, pas
+   * des couvertures. Fraunces réglait cela par son axe de taille optique, mais
+   * son dessin d'affichage très typé rendait les titres massifs.
    *
-   * La pile système rend la police monospace native de chaque plateforme —
-   * SF Mono, Cascadia, DejaVu. Elles sont sobres, dessinées pour la lecture
-   * prolongée, et déjà présentes : une famille de moins à télécharger, donc
-   * un texte affiché plus tôt.
+   * Source Serif 4 a le même axe `opsz` sans le tic de dessin : contraste
+   * modéré, formes neutres, conçu d'abord pour du texte suivi. Un titre doit se
+   * lire, pas s'exposer.
    *
-   * Les chiffres tabulaires ne dépendent pas de la famille mais de
-   * `font-variant-numeric`, posé plus bas : l'alignement des montants est
-   * conservé.
+   * La famille n'était de toute façon qu'une moitié du problème. Les quatre
+   * échelles étaient composées en 800 ou 900 avec un resserrement allant
+   * jusqu'à −0,04em — près de 4 px par lettre à 96 px, assez pour souder les
+   * caractères. Toutes sont passées en 700, resserrement divisé par deux.
+   * Changer la famille sans y toucher aurait reproduit la même densité, comme
+   * changer de fonderie n'avait rien réglé au monospace.
+   *
+   * Georgia en repli, et non un `serif` générique : présente partout et assez
+   * proche pour que la substitution `swap` déplace le dessin sans faire sauter
+   * la mise en page.
    */
-  --font-mono:
-    ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  --font-display: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  /**
+   * Corps de texte : pile SYSTÈME, plus aucune famille téléchargée.
+   *
+   * Inter était retenu pour rester lisible à 13 px dans les tableaux. Les
+   * polices d'interface natives le sont tout autant — elles sont dessinées pour
+   * cela — et elles ont sur lui un avantage qu'aucune qualité de dessin ne
+   * rattrape : elles sont DÉJÀ sur l'appareil. Le texte prend sa forme
+   * définitive à la première image, sans attente ni resubstitution, sur le
+   * réseau lent qui est celui du marché visé.
+   *
+   * Il ne reste qu'une famille à télécharger, celle des titres, où le dessin
+   * porte réellement l'identité.
+   */
+  --font-sans:
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /**
+   * AUCUNE famille à chasse fixe dans ce produit — et la valeur `initial`
+   * supprime jusqu'à l'utilitaire que Tailwind génère par défaut.
+   *
+   * Le premier essai avait remplacé IBM Plex Mono par la pile système, en
+   * pensant que le dessin était le problème. Il ne l'était pas : c'est
+   * l'EMPLOI. Une police de code servait ici quatre rôles qui n'ont rien de
+   * code — surtitres, en-têtes de colonne, chiffres de tableau, et jusqu'à
+   * des phrases entières comme le périmètre d'un rôle, qui se lisaient alors
+   * comme la sortie d'un terminal. Changer de fonderie déplaçait le grain
+   * sans rien changer à cela.
+   *
+   * Ce qui portait réellement l'alignement des colonnes chiffrées n'est pas
+   * la chasse fixe mais `font-variant-numeric: tabular-nums`, que les polices
+   * d'interface système portent toutes. L'utilitaire `numeric` le conserve :
+   * les montants restent alignés sans famille dédiée.
+   *
+   * `initial` plutôt qu'une suppression pure : sans elle, Tailwind
+   * réintroduit sa propre pile et une classe oubliée continuerait de
+   * fonctionner en silence. Ici elle ne produit plus rien.
+   */
+  --font-mono: initial;
 
   /* Tailles d'affichage fluides.
      En taille fixe, le titre du hero (56px) remplissait tout l'écran d'un
@@ -135,10 +188,10 @@
      titre doit céder le pas au bout de trois secondes. */
   --text-display-xl: clamp(2.75rem, 1rem + 6.4vw, 6rem); /* 44 -> 96 */
   --text-display-xl--line-height: 0.98;
-  --text-display-xl--letter-spacing: -0.04em;
+  --text-display-xl--letter-spacing: -0.02em;
   --text-display-l: clamp(2.25rem, 1.4rem + 4vw, 4rem); /* 36 -> 64 */
   --text-display-l--line-height: 1;
-  --text-display-l--letter-spacing: -0.035em;
+  --text-display-l--letter-spacing: -0.02em;
 
   /* Titre de page applicative.
      `display-l` sert la landing, où le titre EST le message. Sur un écran
@@ -148,10 +201,10 @@
      bas, et la hiérarchie se remet à l'endroit. */
   --text-display-app: clamp(1.875rem, 1.4rem + 1.8vw, 2.5rem); /* 30 -> 40 */
   --text-display-app--line-height: 1.1;
-  --text-display-app--letter-spacing: -0.025em;
+  --text-display-app--letter-spacing: -0.015em;
   --text-display-m: clamp(2rem, 1.3rem + 3vw, 3.25rem); /* 32 -> 52 */
   --text-display-m--line-height: 1.04;
-  --text-display-m--letter-spacing: -0.03em;
+  --text-display-m--letter-spacing: -0.018em;
 
   --text-title-l: 1.25rem; /* 20 */
   --text-title-l--line-height: 1.3;
@@ -164,16 +217,31 @@
   --text-body--line-height: 1.55;
   --text-body-s: 0.8125rem; /* 13 */
   --text-body-s--line-height: 1.5;
+  /* Plancher typographique : 12px, et rien en dessous.
+     Il était annoncé ici et démenti trois lignes plus bas — `--text-caps`
+     valait 11px, et emportait avec lui les en-têtes de colonne, les pastilles
+     et tous les surtitres, soit près d'une centaine d'emplois. Un plancher qui
+     souffre une exception n'en est pas un : c'est l'exception qui devient la
+     règle, et elle l'était devenue. Sur un Android d'entrée de gamme lu en
+     plein soleil, ce pixel est celui qui fait renoncer à déchiffrer l'intitulé
+     d'une colonne. `plancher.test.ts` relit ce fichier et refuse toute valeur
+     `--text-*` sous 0.75rem. */
   --text-label: 0.75rem; /* 12 — plancher typographique */
   --text-label--line-height: 1.4;
 
-  --text-mono-label: 0.6875rem; /* 11 — eyebrows, en-têtes de colonne */
-  --text-mono-label--line-height: 1.3;
-  --text-mono-label--letter-spacing: 0.08em;
-  --text-mono-data: 0.8125rem; /* 13 — cellules chiffrées */
-  --text-mono-data--line-height: 1.45;
-  --text-mono-kpi: 1.625rem; /* 26 — KPI */
-  --text-mono-kpi--line-height: 1;
+  /* Même taille que `--text-label`, rôle distinct : capitales interlettrées.
+     Le nom disait « mono » ; la chasse fixe est partie et ces jetons n'ont
+     jamais porté de famille, seulement une taille. Un nom qui désigne une
+     police absente envoie le prochain lecteur chercher une famille
+     inexistante, puis la remettre : le renommage vaut ses ~60 emplacements.
+     L'interlettrage passe de 0.08 à 0.07em : à 11px il valait 0.88px, à 12px
+     0.07em en vaut 0.84 — la même respiration à l'œil, et la largeur rendue
+     aux en-têtes de colonne, qui sont le seul endroit où elle est comptée. */
+  --text-caps: 0.75rem; /* 12 — surtitres, en-têtes de colonne */
+  --text-caps--line-height: 1.3;
+  --text-caps--letter-spacing: 0.07em;
+  --text-kpi: 1.625rem; /* 26 — KPI */
+  --text-kpi--line-height: 1;
 
   /* ---- Tailles de contrôle --------------------------------------------- */
   /* 44px : cible tactile minimale, hauteur d'un bouton ou d'un champ isolé. */
@@ -192,6 +260,17 @@
   --radius-lg: 14px; /* cartes */
   --radius-xl: 20px; /* panneaux, modales */
   --radius-2xl: 28px; /* blocs hero */
+
+  /* ---- Voile ----------------------------------------------------------- */
+  /* Le voile des modales et du tiroir ASSOMBRIT toujours, dans les deux
+     thèmes. Il portait `bg-ink/45`, ce qui a tenu tant qu'il n'existait qu'un
+     thème clair : `--color-ink` y est sombre. En sombre, cette encre devient
+     claire — le voile virait au blanc et éclaircissait la page au lieu de la
+     reculer. Un jeton dédié dit ce que la couleur FAIT plutôt que d'emprunter
+     celle du texte, et c'est pourquoi il ne se redéfinit nulle part plus bas.
+     L'alpha est cuit dans le jeton : `bg-scrim/45` rouvrirait la porte à deux
+     opacités concurrentes sur les deux surfaces qui l'utilisent. */
+  --color-scrim: rgba(12, 10, 7, 0.55);
 
   /* ---- Élévation ------------------------------------------------------- */
   --shadow-e1: 0 1px 2px rgba(20, 32, 30, 0.04), 0 6px 18px -12px rgba(20, 32, 30, 0.1);
@@ -216,6 +295,296 @@
   --duration-fast: 150ms;
   --duration-base: 200ms;
   --duration-slow: 300ms;
+
+  /* ---- Pastilles du chrome de navigateur --------------------------------- */
+  /* Le feu tricolore du cadre de prévisualisation du portail locataire :
+     décor `aria-hidden`, qui ne porte aucune information et n'a donc aucun
+     seuil de contraste à tenir. Les teintes rappellent le trio de statut sans
+     en être des alias — une correction de contraste sur `--color-danger` ou
+     `--color-ok` sert un état à lire, elle n'a pas à repeindre un ornement. */
+  --chrome-dot-1: #e4b3aa;
+  --chrome-dot-2: #ead9b4;
+  --chrome-dot-3: #dee8e1;
+}
+
+/* ============================================================================
+   Thème sombre
+
+   Un thème n'est PAS une refonte : les composants ne connaissent que des
+   jetons, donc redéfinir les jetons suffit. Rien en dessous ne change.
+
+   ---- Trois états, et deux sens ------------------------------------------
+   Le réglage système est le défaut, et il s'applique en CSS pur — aucun
+   JavaScript, donc aucun éclair de thème clair avant que React ne se monte.
+   Un choix explicite le remplace, dans LES DEUX sens : `[data-theme='dark']`
+   force le sombre sous un système clair, et le `:not([data-theme='light'])`
+   qui garde la requête média rend le clair à qui le demande sous un système
+   sombre. Le cas facile — choisir le sombre — marcherait sans ce `:not()` ;
+   l'autre non, et c'est celui qu'on oublie.
+
+   `color-scheme` accompagne chaque état : sans lui, les widgets natifs —
+   ascenseurs, sélecteurs de date, autocomplétion — restent clairs et
+   trouent la page.
+
+   ---- Hors couche, comme la bascule `.on-dark` ----------------------------
+   Tailwind v4 émet les jetons de `@theme` dans `@layer theme`. Le CSS non
+   superposé l'emporte sur TOUTE couche : ces blocs gagnent donc sans avoir à
+   surenchérir en spécificité. C'est la même raison qui place la bascule
+   `.on-dark` hors couche, plus bas.
+
+   ---- Le sombre n'est pas le clair inversé --------------------------------
+   Les fonds sont des noirs CHAUDS, faible chroma (teinte ~40°), accordés au
+   crème de la marque : un gris bleuté aurait fait basculer l'identité. Les
+   encres ne montent pas jusqu'au blanc pur (#ECE7DD et non #FFF) — sur un
+   fond très sombre, le blanc pur produit un halo qui fatigue en lecture
+   prolongée. Les couleurs de statut sont désaturées ET éclaircies : #A63A2B
+   posé sur du noir tombe à 2,9:1, il fallait le remonter, pas l'inverser.
+
+   Chaque ratio en commentaire est CALCULÉ (WCAG 2.1, luminance relative),
+   pas estimé. Seuils : 4,5:1 texte courant, 3:1 grand texte et non textuel.
+   Toutes les paires de texte tiennent le seuil, et la plupart dépassent leur
+   contrepartie claire.
+   ========================================================================= */
+
+/* Un choix explicite « clair » sous un système sombre : la requête média
+   ci-dessous l'exclut déjà, il ne reste que les widgets natifs à cadrer. */
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+
+    /* ---- Surfaces sombres ---------------------------------------------- */
+    /* L'ordre d'élévation du thème clair est conservé, à l'envers :
+       canvas < sunken < paper < raised < surface. Une carte reste ce qu'il y
+       a de plus haut, donc de plus clair. */
+    --color-canvas: #100e0b; /* fond application */
+    --color-paper: #17140f; /* fond zone principale */
+    --color-surface: #26221b; /* cartes */
+    --color-surface-sunken: #14110d; /* zones creusées, en-têtes de table */
+    --color-surface-raised: #1e1b15; /* survol de ligne, cartes secondaires */
+    --color-border: #3a342a;
+    --color-border-strong: #5b5343;
+    --color-divider: #302b23;
+
+    /* ---- Encres ---------------------------------------------------------- */
+    /* ATTENTION — `--color-ink` bascule du texte vers une teinte CLAIRE. Il
+       porte deux rôles dans ce système : l'encre principale (`text-ink`, plus
+       la couleur héritée du `body`) et la surface inversée (`bg-ink`). Les
+       deux ne peuvent pas gagner. Le rôle d'encre l'emporte — il est de loin
+       le plus fréquent — et les surfaces qui doivent RESTER sombres figent le
+       jeton pour elles-mêmes, voir « Surfaces qui ne basculent pas » plus bas. */
+    --color-ink: #ece7dd; /* texte principal · 14.90 sur --paper, 12.84 sur --surface */
+    --color-ink-2: #d6d0c3; /* survol de la surface inversée · 10.30 sur --surface */
+    --color-ink-3: #b8b2a4; /* 7.49 sur --surface */
+    --color-muted: #a8a091; /* texte secondaire · 7.09 sur --paper, 6.11 sur --surface */
+    --color-muted-soft: #8d8576; /* 4.33 sur --surface — >=18px ou non textuel */
+
+    /* ---- Or (marque) ----------------------------------------------------- */
+    /* `--color-gold` ne bouge pas : c'est la couleur de la marque, et le fond
+       sombre lui rend précisément ce que le fond clair lui refusait — 5.51 sur
+       --surface contre 2.87 sur blanc. L'or redevient lisible en texte ici,
+       même si aucun composant n'en profite encore. */
+    --color-gold: #c58e3e; /* inchangé · 5.51 sur --surface, 6.71 sur --canvas */
+    /* Le voile s'ASSOMBRIT en sombre plutôt que de rester identique : posé sur
+       une page déjà sombre, un noir à 55 % ne détache plus assez la modale du
+       fond. C'est le seul jeton dont la version sombre est plus opaque, et non
+       plus claire. */
+    --color-scrim: rgba(0, 0, 0, 0.68);
+    --color-gold-ink: #d9a85f; /* liens et labels · 8.50 sur --paper, 7.32 sur --surface */
+    --color-gold-ink-hover: #e6bd80; /* 9.01 sur --surface */
+    --color-gold-on-dark: #d2a055; /* inchangé : sert les panneaux figés */
+    --color-gold-on-ink: #7e571f; /* 5.21 sur --ink sombre, contre 2.33 pour l'or de marque */
+    --color-gold-tint: #2e2417; /* lavis, porte --gold-ink à 7.04 */
+    --color-gold-tint-2: #3f3120; /* fond de ::selection */
+    --color-gold-border: #5c4823;
+
+    /* ---- Teintes de données ---------------------------------------------- */
+    /* Les contreparties sombres existaient déjà — mesurées sur `--color-ink`,
+       qui est à un cheveu de la nouvelle `--surface`. Aucun composant ne les
+       lisait : `Charts` n'appelle que `--color-data-1/4/5`. Le thème sombre
+       les met enfin en service, en les promouvant sur la série principale.
+       Étagement des clartés conservé : la couleur ne porte jamais seule. */
+    --color-data-1: #f7f4ee; /* 14.42 sur --surface */
+    --color-data-2: #d2a055; /*  6.71 */
+    --color-data-3: #c99a7f; /*  6.34 */
+    --color-data-4: #8fc0c8; /*  7.94 */
+    --color-data-5: #c4b89b; /*  8.05 */
+    --color-data-6: #a8bca6; /*  7.84 */
+
+    /* Inchangées : elles servent les panneaux qui restent sombres. */
+    --color-data-1-on-dark: #f7f4ee;
+    --color-data-2-on-dark: #d2a055;
+    --color-data-3-on-dark: #c99a7f;
+    --color-data-4-on-dark: #8fc0c8;
+    --color-data-5-on-dark: #c4b89b;
+    --color-data-6-on-dark: #a8bca6;
+
+    /* ---- Statuts --------------------------------------------------------- */
+    /* Éclaircis et désaturés. Chaque couleur pleine sert DEUX fois : en texte
+       sur la surface (`text-ok`), et en fond de pastille sous `text-on-dark`
+       (`bg-ok`) — d'où deux ratios par ton. */
+    --color-ok: #74bd95; /* 7.13 sur --surface · porte --on-dark à 7.53 */
+    --color-ok-tint: #182a20; /* porte --ok à 6.80 */
+    --color-ok-border: #31493a;
+
+    --color-warn: #e0b877; /* 6.87 sur --surface */
+    --color-warn-tint: #2e2417; /* porte --warn à 6.60 */
+    --color-warn-border: #54421f;
+
+    --color-danger: #e58d7d; /* 6.36 sur --surface · porte --on-dark à 6.72 */
+    --color-danger-strong: #f2a99b; /* survol : plus clair, non plus sombre · 8.70 */
+    --color-danger-tint: #301a17; /* porte --danger à 6.56 */
+    --color-danger-border: #5c3128;
+
+    --color-neutral: #a8a091; /* 6.11 sur --surface */
+    --color-neutral-tint: #14110d;
+    --color-neutral-border: #3a342a;
+
+    /* ---- Sur la surface inversée ----------------------------------------- */
+    /* Ce jeu se lit « ce qu'on écrit sur `bg-ink` ». En clair la surface
+       inversée est sombre, donc l'encre est blanche ; en sombre elle devient
+       claire, donc l'encre redevient sombre. Le nom `on-dark` garde son sens
+       relatif — inversé par rapport au fond courant — pas sa couleur.
+       Conséquence voulue : une pastille sélectionnée, un jeton de statut, un
+       avatar deviennent les éléments CLAIRS d'une page sombre. C'est bien
+       l'emphase inversée qu'ils cherchaient. */
+    --color-on-dark: #14201e; /* 13.58 sur --ink */
+    --color-on-dark-muted: rgba(20, 32, 30, 0.72); /* aplati #505853 · 5.95 sur --ink */
+    --color-on-dark-faint: rgba(20, 32, 30, 0.62); /* aplati #666C67 · 4.36 sur --ink */
+    --color-on-dark-hover: rgba(20, 32, 30, 0.08);
+    --color-on-dark-active: rgba(20, 32, 30, 0.16);
+    --color-on-dark-border: rgba(20, 32, 30, 0.16);
+
+    /* ---- Élévation ------------------------------------------------------- */
+    /* Une ombre presque noire ne se voit pas sur un fond presque noir. On
+       passe au noir pur, plus opaque : c'est le contraste avec la surface
+       éclaircie qui fait l'élévation, pas la teinte de l'ombre. */
+    --shadow-e1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 6px 18px -12px rgba(0, 0, 0, 0.7);
+    --shadow-e2: 0 2px 6px rgba(0, 0, 0, 0.55), 0 12px 32px -16px rgba(0, 0, 0, 0.75);
+    --shadow-e3: 0 8px 24px rgba(0, 0, 0, 0.6), 0 32px 64px -24px rgba(0, 0, 0, 0.85);
+    /* `--shadow-focus` n'est pas repris : il est écrit en `var(--color-paper)`
+       et `var(--color-gold-ink)`, donc il suit tout seul. Idem pour l'anneau
+       `*:focus-visible` et pour `::selection`. */
+  }
+}
+
+/* Miroir EXACT du bloc ci-dessus, pour le choix explicite « sombre ».
+   Deux copies parce que CSS ne sait pas partager un corps de règle entre une
+   requête média et un sélecteur d'attribut. Un test verrouille leur égalité
+   déclaration par déclaration : une valeur corrigée ici et pas là-haut, ou
+   l'inverse, fait échouer la suite. Les commentaires de ratio vivent dans le
+   bloc du haut, qui fait référence. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-canvas: #100e0b;
+  --color-paper: #17140f;
+  --color-surface: #26221b;
+  --color-surface-sunken: #14110d;
+  --color-surface-raised: #1e1b15;
+  --color-border: #3a342a;
+  --color-border-strong: #5b5343;
+  --color-divider: #302b23;
+
+  --color-ink: #ece7dd;
+  --color-ink-2: #d6d0c3;
+  --color-ink-3: #b8b2a4;
+  --color-muted: #a8a091;
+  --color-muted-soft: #8d8576;
+
+  --color-gold: #c58e3e;
+  --color-scrim: rgba(0, 0, 0, 0.68);
+  --color-gold-ink: #d9a85f;
+  --color-gold-ink-hover: #e6bd80;
+  --color-gold-on-dark: #d2a055;
+  --color-gold-on-ink: #7e571f; /* 5.21 sur --ink sombre, contre 2.33 pour l'or de marque */
+  --color-gold-tint: #2e2417;
+  --color-gold-tint-2: #3f3120;
+  --color-gold-border: #5c4823;
+
+  --color-data-1: #f7f4ee;
+  --color-data-2: #d2a055;
+  --color-data-3: #c99a7f;
+  --color-data-4: #8fc0c8;
+  --color-data-5: #c4b89b;
+  --color-data-6: #a8bca6;
+
+  --color-data-1-on-dark: #f7f4ee;
+  --color-data-2-on-dark: #d2a055;
+  --color-data-3-on-dark: #c99a7f;
+  --color-data-4-on-dark: #8fc0c8;
+  --color-data-5-on-dark: #c4b89b;
+  --color-data-6-on-dark: #a8bca6;
+
+  --color-ok: #74bd95;
+  --color-ok-tint: #182a20;
+  --color-ok-border: #31493a;
+
+  --color-warn: #e0b877;
+  --color-warn-tint: #2e2417;
+  --color-warn-border: #54421f;
+
+  --color-danger: #e58d7d;
+  --color-danger-strong: #f2a99b;
+  --color-danger-tint: #301a17;
+  --color-danger-border: #5c3128;
+
+  --color-neutral: #a8a091;
+  --color-neutral-tint: #14110d;
+  --color-neutral-border: #3a342a;
+
+  --color-on-dark: #14201e;
+  --color-on-dark-muted: rgba(20, 32, 30, 0.72);
+  --color-on-dark-faint: rgba(20, 32, 30, 0.62);
+  --color-on-dark-hover: rgba(20, 32, 30, 0.08);
+  --color-on-dark-active: rgba(20, 32, 30, 0.16);
+  --color-on-dark-border: rgba(20, 32, 30, 0.16);
+
+  --shadow-e1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 6px 18px -12px rgba(0, 0, 0, 0.7);
+  --shadow-e2: 0 2px 6px rgba(0, 0, 0, 0.55), 0 12px 32px -16px rgba(0, 0, 0, 0.75);
+  --shadow-e3: 0 8px 24px rgba(0, 0, 0, 0.6), 0 32px 64px -24px rgba(0, 0, 0, 0.85);
+}
+
+/* ============================================================================
+   Surfaces qui ne basculent pas
+
+   Deux surfaces sont sombres dans les DEUX thèmes, et leur encre avec :
+   le panneau `.on-dark` — barre latérale, hero, pied de page, infobulle — et
+   l'aplat d'or de la marque. Elles figent donc, pour elles-mêmes et leur
+   descendance, les jetons qui basculent ailleurs.
+
+   Ces règles sont INCONDITIONNELLES, et c'est ce qui les rend sûres : en
+   thème clair elles redisent la valeur déjà en vigueur — un non-événement —
+   et en thème sombre elles sont ce qui empêche la barre latérale de virer au
+   crème. Pas de condition à tenir en double, pas de branche non testée.
+
+   Une propriété personnalisée déclarée sur un élément vaut pour cet élément
+   AVANT tout héritage : `bg-ink` posé sur le même nœud que `.on-dark` lit
+   bien l'encre figée ici, quelle que soit la spécificité du sélecteur qui a
+   servi `<html>`.
+   ========================================================================= */
+
+.on-dark {
+  --color-ink: #14201e;
+  --color-ink-2: #243733;
+  --color-on-dark: #ffffff;
+  --color-on-dark-muted: rgba(255, 255, 255, 0.68);
+  --color-on-dark-faint: rgba(255, 255, 255, 0.58);
+  --color-on-dark-hover: rgba(255, 255, 255, 0.07);
+  --color-on-dark-active: rgba(255, 255, 255, 0.14);
+  --color-on-dark-border: rgba(255, 255, 255, 0.1);
+}
+
+/* « L'or ne porte jamais de texte : ici c'est un fond, avec de l'encre
+   dessus » — la règle du bouton doré vaut dans les deux thèmes, or l'encre
+   principale, elle, s'éclaircit. On la refixe sur l'aplat.
+   `.bg-gold` ne touche pas `bg-gold-tint` : un sélecteur de classe compare
+   des jetons entiers de l'attribut `class`, pas des préfixes. */
+.bg-gold {
+  --color-ink: #14201e;
 }
 
 /* ============================================================================
@@ -244,12 +613,6 @@
     font-family: var(--font-display);
     font-weight: 600;
     margin: 0;
-  }
-
-  /* Chiffres alignés partout où le mono sert de police de données. */
-  .font-mono,
-  [class*='font-mono'] {
-    font-variant-numeric: tabular-nums;
   }
 
   *:focus-visible {
@@ -364,13 +727,46 @@
   }
 }
 
-@keyframes gl-shimmer {
+/* Squelette de chargement.
+   Remplace l'ancien `gl-shimmer`, qui déplaçait un `background-position` : le
+   navigateur repeignait alors le dégradé de chaque pavé à chaque image. Un
+   tableau de bord en attente en aligne une trentaine, soixante fois par
+   seconde — sur les Android d'entrée de gamme du marché visé, c'est exactement
+   ce qui fait saccader le moment où l'utilisateur trouve déjà le produit lent.
+   Un `transform` sur un pseudo-élément se compose sans repeindre : le dégradé
+   n'est rastérisé qu'une fois. `::after` plutôt qu'un nœud dédié, ce qui fait
+   trente nœuds de DOM en moins. */
+@keyframes gl-skeleton-sweep {
   from {
-    background-position: 100% 0;
+    transform: translateX(-100%);
   }
   to {
-    background-position: -100% 0;
+    transform: translateX(100%);
   }
+}
+
+.gl-skeleton {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Le mouvement respecte `prefers-reduced-motion` par la règle globale plus
+   haut, qui neutralise `animation-duration` et `animation-iteration-count` sur
+   `*`, `*::before` et `*::after` en `!important` — une déclaration importante
+   l'emporte sur toute déclaration normale, couche ou pas. Même mécanisme que le
+   spinner de `Button`.
+
+   L'animation ne porte AUCUN `fill` : une fois neutralisée, la crête revient à
+   `translateX(-100%)`, donc hors du pavé. Il reste un aplat parfaitement
+   immobile, plutôt qu'une crête figée au milieu qui passerait pour un défaut
+   d'affichage. */
+.gl-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, var(--color-border) 50%, transparent 100%);
+  transform: translateX(-100%);
+  animation: gl-skeleton-sweep 1.4s linear infinite;
 }
 
 @keyframes gl-spin {
@@ -387,13 +783,25 @@
   animation: gl-pop var(--duration-base) var(--ease-out) both;
 }
 
+/* Entrée d'une barre de progression : un seul élément par jauge, aucun décalage
+   qui l'accompagne. Les 700 ms d'origine étaient donc 700 ms d'attente nette
+   avant que le taux d'occupation soit lisible — sur l'Android d'entrée de gamme
+   visé, la donnée arrivait après le doigt. La croissance se lit entièrement
+   dans les 300 ms du jeton lent : c'est une seule dimension qui varie, l'œil
+   n'a rien à suivre d'autre. */
 @utility animate-grow-x {
-  animation: gl-grow-x 700ms var(--ease-out) both;
+  animation: gl-grow-x var(--duration-slow) var(--ease-out) both;
   transform-origin: left;
 }
 
+/* Entrée des barres d'un graphe. Ici la durée déclarée n'est pas la durée
+   perçue : `Charts` échelonne les colonnes de 35 à 40 ms, si bien qu'un graphe
+   de douze mois terminait son entrée à 600 + 440, presque une seconde. Le
+   décalage est ce qui porte la lecture de gauche à droite — on le garde, et
+   c'est précisément parce qu'il la porte que la durée par barre n'a plus à le
+   faire. À 300 ms, la dernière colonne se pose avant 750 ms, cascade intacte. */
 @utility animate-grow-y {
-  animation: gl-grow-y 600ms var(--ease-out) both;
+  animation: gl-grow-y var(--duration-slow) var(--ease-out) both;
   transform-origin: bottom;
 }
 
@@ -414,11 +822,13 @@
   }
 }
 
+/* Surtitre : ce qui en fait un surtitre est la petite taille, les capitales et
+   l'interlettrage — pas la chasse fixe, qui n'y ajoutait qu'un air de code et
+   se transmettait par héritage à des phrases entières placées dessous. */
 @utility eyebrow {
-  font-family: var(--font-mono);
-  font-size: var(--text-mono-label);
-  line-height: var(--text-mono-label--line-height);
-  letter-spacing: var(--text-mono-label--letter-spacing);
+  font-size: var(--text-caps);
+  line-height: var(--text-caps--line-height);
+  letter-spacing: var(--text-caps--letter-spacing);
   text-transform: uppercase;
   font-weight: 500;
 }
@@ -435,10 +845,16 @@
   font-size: var(--text-display-xl);
   line-height: var(--text-display-xl--line-height);
   letter-spacing: var(--text-display-xl--letter-spacing);
-  /* 900 : la graisse que le style prescrit. Playfair Display la porte, et
-     c'est elle qui fait tenir la déclaration à cette échelle — en 600 le
-     titre paraissait simplement grand. */
-  font-weight: 900;
+  /* 700, et non les 900 d'origine. Le référentiel de style prescrivait la
+     graisse extrême, et elle tenait tant que la page servait une déclaration
+     de marque. À 96 px, combinée au resserrement de −0,04em, elle soudait les
+     caractères : le `r` et le `c` de « parc » se touchaient presque. Un titre
+     ne gagne rien à devenir un aplat.
+
+     La plage demandée au chargement (`600..700`) borne les deux extrémités :
+     aucune échelle d'affichage ne descend sous 600 ni ne remonte au-dessus de
+     700, donc rien d'inutile n'est téléchargé. */
+  font-weight: 700;
 }
 
 @utility display-l {
@@ -446,7 +862,7 @@
   font-size: var(--text-display-l);
   line-height: var(--text-display-l--line-height);
   letter-spacing: var(--text-display-l--letter-spacing);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 /* Titre de page applicative — voir `--text-display-app`. */
@@ -463,11 +879,12 @@
   font-size: var(--text-display-m);
   line-height: var(--text-display-m--line-height);
   letter-spacing: var(--text-display-m--letter-spacing);
-  font-weight: 800;
+  font-weight: 700;
 }
 
-/* Chiffres de données : mono, alignés en colonne. */
+/* Chiffres de données alignés en colonne. C'est `tabular-nums` qui aligne, et
+   lui seul : les polices d'interface système portent des chiffres tabulaires,
+   la chasse fixe n'était pas ce qui tenait les colonnes. */
 @utility numeric {
-  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }

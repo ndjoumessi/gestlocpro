@@ -131,7 +131,11 @@ export function RadioCards<T extends string>({
                 <span
                   className={cn(
                     'flex size-9 shrink-0 items-center justify-center rounded-md transition-colors duration-150',
-                    checked ? 'bg-ink text-gold' : 'bg-surface-sunken text-muted',
+                    // `gold-on-ink` et non l'or de marque : sur `--color-ink`,
+                    // qui s'inverse avec le thème, l'or fixe tombait à 2,33:1 en
+                    // sombre. L'icône de la tuile SÉLECTIONNÉE était alors
+                    // l'élément le moins lisible de la carte.
+                    checked ? 'bg-ink text-gold-on-ink' : 'bg-surface-sunken text-muted',
                   )}
                 >
                   <Icon name={option.icon ?? 'users'} size={18} />
@@ -206,7 +210,7 @@ export function SegmentedControl<T extends string>({
             {option.badge && (
               <span
                 className={cn(
-                  'rounded-full px-1.5 py-0.5 font-mono text-mono-label',
+                  'rounded-full px-1.5 py-0.5 numeric text-caps',
                   // La pastille de remise suit l'accent unique. Elle était en
                   // vert de succès, seule tache de couleur restante sur la
                   // landing une fois les autres neutralisées.

@@ -1,10 +1,12 @@
 import { PageHeader, useRole } from '@/components/layout/AppShell'
+import { useBase } from '@/lib/base'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { Card } from '@/components/primitives/Card'
 import { StatusPill, type StatusTone } from '@/components/primitives/StatusPill'
 import { Button } from '@/components/primitives/Button'
 import { Icon, type IconName } from '@/components/primitives/Icon'
 import { EmptyState } from '@/components/primitives/DataTable'
+import { Skeleton, SkeletonRegion } from '@/components/primitives/Skeleton'
 import { cn } from '@/lib/cn'
 import { TenantScopeNote } from './TenantDashboard'
 import { useT, type TranslateVars } from '@/i18n/I18nProvider'
@@ -67,6 +69,7 @@ function useAlertMessage() {
 }
 
 export function Alerts() {
+  const base = useBase()
   const t = useT()
   const d = useDates()
   const message = useAlertMessage()
@@ -86,7 +89,7 @@ export function Alerts() {
    * désormais dans le provider et non ici : la pastille de la barre latérale
    * doit compter les mêmes alertes que cet écran.
    */
-  const { readAlertIds, markAlertsRead, isMine, alerts: ALERTS } = usePortfolio()
+  const { readAlertIds, markAlertsRead, isMine, alerts: ALERTS, loading } = usePortfolio()
 
   const alerts = (isTenant ? ALERTS.filter((a) => a.unitId && isMine(a.unitId)) : ALERTS).map((alert) => ({
     ...alert,
@@ -96,6 +99,15 @@ export function Alerts() {
   const unread = alerts.filter((alert) => !alert.read).length
 
   const markAllRead = () => markAlertsRead(alerts.map((alert) => alert.id))
+
+  /**
+   * Une notification est une affirmation datée : « Loyer A3 en retard de 24
+   * jours », « Bail B1 à renouveler ». Servies depuis la démonstration, ce sont
+   * des faits inventés sur des gens qui n'existent pas, et le bailleur les lit
+   * comme la liste de ses urgences du jour. La pastille de la barre latérale en
+   * annonce déjà le compte, ce qui les rend d'autant plus crédibles.
+   */
+  if (loading) return <AlertsSkeleton />
 
   return (
     <>
@@ -121,7 +133,7 @@ export function Alerts() {
           La région est rendue en permanence — un `aria-live` monté en même
           temps que son contenu n'annonce rien, puisqu'il n'y a pas eu de
           changement à observer depuis. */}
-      <p className="mb-4 font-mono text-mono-label text-muted" aria-live="polite">
+      <p className="mb-4 text-caps text-muted" aria-live="polite">
         {unread > 0 ? t('app.alerts.unread', { count: unread }) : t('app.alerts.allRead')}
       </p>
 
@@ -130,8 +142,25 @@ export function Alerts() {
       {alerts.length === 0 ? (
         // L'écran servait au propriétaire un texte écrit pour le locataire —
         // « aucune notification vous concernant » — alors qu'il voit tout le
-        // parc.
-        <EmptyState icon="bell" title={isTenant ? t('app.tenant.alertsEmpty') : t('app.alerts.empty')} />
+        // parc. Le corps suit la même partition : il énumère ce qui se dépose
+        // ici, ce qui répond à la question réelle — « est-ce que ça marche ? »
+        // — que ne résout pas une phrase disant seulement qu'il n'y a rien.
+        //
+        // Aucune action côté parc : une notification est PRODUITE par le
+        // produit, personne n'en crée. Le seul bouton honnête serait « tout
+        // marquer comme lu », et il n'a rien à marquer.
+        <EmptyState
+          icon="bell"
+          title={isTenant ? t('app.tenant.alertsEmpty') : t('app.alerts.empty')}
+          body={isTenant ? t('app.tenant.alertsEmptyBody') : t('app.alerts.emptyBody')}
+          action={
+            isTenant ? (
+              <Button to={base} icon="chevronLeft">
+                {t('app.tenant.backToSpace')}
+              </Button>
+            ) : undefined
+          }
+        />
       ) : (
         <div className="flex flex-col gap-3">
           {alerts.map((alert) => (
@@ -178,13 +207,59 @@ export function Alerts() {
                 <p className="mt-1 text-body-s text-muted">{message(alert, 'detail')}</p>
               </div>
 
-              <span className="shrink-0 font-mono text-mono-label text-muted">
+              <span className="shrink-0 text-caps text-muted">
                 {d.relative(alert.at)}
               </span>
             </Card>
           ))}
         </div>
       )}
+    </>
+  )
+}
+
+/**
+ * Les notifications, le temps qu'elles arrivent.
+ *
+ * « Tout marquer comme lu » est retenu : le geste porterait sur les
+ * identifiants des alertes de démonstration, et il est irréversible côté
+ * session — on effacerait un compteur sans jamais avoir montré ce qu'il
+ * comptait.
+ *
+ * La ligne « n non lues » tient sa place en squelette. Elle porte un
+ * `aria-live` dans l'écran réel ; ici, pas de région vivante à annoncer deux
+ * fois — `SkeletonRegion` le fait déjà, une seule fois, pour tout le bloc.
+ */
+function AlertsSkeleton() {
+  const t = useT()
+
+  return (
+    <>
+      <PageHeader
+        title={t('app.alerts.title')}
+        description={t('app.alerts.subtitle')}
+        actions={<Skeleton radius="md" className="h-11 w-52" />}
+      />
+
+      <SkeletonRegion>
+        <Skeleton line="eyebrow" className="mb-4 w-28" />
+
+        <div className="flex flex-col gap-3">
+          {[0, 1, 2, 3].map((carte) => (
+            <div
+              key={carte}
+              className="flex min-w-0 items-start gap-4 rounded-lg border border-divider bg-surface p-4 shadow-e1 sm:p-5"
+            >
+              <Skeleton radius="md" className="size-10" />
+              <div className="min-w-0 flex-1">
+                <Skeleton line="title" className="w-72 max-w-full" />
+                <Skeleton line="bodyS" className="mt-1 w-56 max-w-full" />
+              </div>
+              <Skeleton line="eyebrow" className="w-12" />
+            </div>
+          ))}
+        </div>
+      </SkeletonRegion>
     </>
   )
 }

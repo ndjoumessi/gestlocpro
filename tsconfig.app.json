@@ -27,5 +27,21 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src"],
+
+  /* Ces tests-ci LISENT des fichiers sur le disque : ils s'exécutent sous Node,
+     pas dans le navigateur, et relèvent donc du projet `tsconfig.node.json`.
+     Les y renvoyer évite d'ouvrir les types Node à tout le code d'application,
+     où `process` et `Buffer` n'ont rien à faire. */
+  "exclude": [
+    "src/design-system/theme.test.ts",
+    "src/design-system/chasseFixe.test.ts",
+    "src/design-system/couches.test.ts", "src/design-system/appariements.test.ts",
+    "src/design-system/gouttiere.test.ts",
+    "src/design-system/durees.test.ts",
+    "src/design-system/orDonnee.test.ts",
+    "src/design-system/paletteAffichee.test.ts",
+    "src/design-system/plancher.test.ts",
+    "src/design-system/zonesSures.test.ts"
+  ]
 }

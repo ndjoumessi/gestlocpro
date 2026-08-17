@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react'
+import { cn } from '@/lib/cn'
+import { GOUTTIERE_LATERALE } from '@/components/layout/gouttiere'
 import { Button } from '@/components/primitives/Button'
 import { StatusPill } from '@/components/primitives/StatusPill'
 import { DeltaBadge } from '@/components/primitives/Badge'
@@ -17,7 +19,12 @@ export function Hero() {
     // Un halo doré flou occupait le coin haut droit. « No decorations » : il
     // ne portait rien et adoucissait précisément le contraste que ce style
     // cherche. Le fond est nu.
-    <section className="relative bg-canvas px-5 pt-12 pb-24 sm:px-8 sm:pt-20 sm:pb-32 lg:pt-28 lg:pb-40">
+    <section
+      className={cn(
+        'relative bg-canvas pt-12 pb-24 sm:pt-20 sm:pb-32 lg:pt-28 lg:pb-40',
+        GOUTTIERE_LATERALE,
+      )}
+    >
       {/* Le titre prend toute la largeur, et le reste se range dessous : en
           deux colonnes, il n'avait que la moitié de l'écran et venait buter
           contre la carte d'aperçu.

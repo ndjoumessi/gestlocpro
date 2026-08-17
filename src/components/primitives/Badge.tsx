@@ -24,7 +24,7 @@ export function Badge({ tone = 'neutral', children, className }: BadgeProps) {
     <span
       className={cn(
         'inline-flex items-center rounded-full px-2 py-0.5',
-        'font-mono text-mono-label font-medium whitespace-nowrap',
+        'numeric text-caps font-medium whitespace-nowrap',
         TONES[tone],
         className,
       )}
@@ -56,7 +56,7 @@ export function DeltaBadge({
     <span
       className={cn(
         'inline-flex items-center rounded-sm px-1.5 py-0.5',
-        'font-mono text-mono-label font-medium whitespace-nowrap',
+        'numeric text-caps font-medium whitespace-nowrap',
         good ? 'bg-ok-tint text-ok' : 'bg-danger-tint text-danger',
       )}
     >

@@ -124,7 +124,7 @@ export function CurrencySwitcher({ tone = 'light', className }: CurrencySwitcher
                     {active && <Icon name="check" size={14} strokeWidth={2.4} />}
                   </span>
                   <span className="flex-1">{def.label}</span>
-                  <span className="font-mono text-mono-label text-muted">{code}</span>
+                  <span className="text-caps text-muted">{code}</span>
                 </button>
               </li>
             )

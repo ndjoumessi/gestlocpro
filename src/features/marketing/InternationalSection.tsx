@@ -3,7 +3,18 @@ import { Icon } from '@/components/primitives/Icon'
 import { CURRENCIES, CURRENCY_DEFS } from '@/currency/currencies'
 import { COUNTRIES } from '@/lib/countries'
 import { LOCALES, LOCALE_LABELS } from '@/i18n/locales'
-import { useT } from '@/i18n/I18nProvider'
+import { useI18n, useT } from '@/i18n/I18nProvider'
+
+/**
+ * Nombre de pays nommés sous le chiffre, le reste étant compté.
+ *
+ * Les deux premières cartes énumèrent la totalité de ce qu'elles annoncent —
+ * quatre devises, deux langues, cela tient. Vingt et un pays, non : la carte
+ * affichait donc un nombre seul au-dessus d'un vide, alors que ses voisines
+ * portaient une liste. Nommer les premiers et compter les autres rend la carte
+ * comparable aux deux autres sans mentir sur ce qui est couvert.
+ */
+const PAYS_NOMMES = 4
 
 /**
  * Portée internationale, énoncée en chiffres.
@@ -21,11 +32,25 @@ import { useT } from '@/i18n/I18nProvider'
  */
 export function InternationalSection() {
   const t = useT()
+  const { locale } = useI18n()
+
+  // Le reste est CALCULÉ, jamais écrit. « et 17 autres » en dur deviendrait
+  // faux au premier pays ajouté, exactement comme les trois nombres au-dessus
+  // — dont c'est déjà la raison d'être.
+  const nommes = COUNTRIES.slice(0, PAYS_NOMMES).map((p) => (locale === 'fr' ? p.nameFr : p.nameEn))
+  const restants = COUNTRIES.length - nommes.length
 
   const facts = [
     { key: 'currencies', value: CURRENCIES.length, detail: CURRENCIES.map((c) => CURRENCY_DEFS[c].label) },
     { key: 'languages', value: LOCALES.length, detail: LOCALES.map((l) => LOCALE_LABELS[l].long) },
-    { key: 'countries', value: COUNTRIES.length, detail: [] },
+    {
+      key: 'countries',
+      value: COUNTRIES.length,
+      detail:
+        restants > 0
+          ? [...nommes, t('marketing.international.andMore', { count: String(restants) })]
+          : nommes,
+    },
   ] as const
 
   return (

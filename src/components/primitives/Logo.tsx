@@ -58,7 +58,12 @@ export function Logo({
           {caption && (
             <span
               className={cn(
-                'truncate font-mono text-[10px] tracking-[0.06em]',
+                // Le nom du parc s'affiche dans la barre latérale du produit,
+                // pas seulement sur une page de démonstration : il relève du
+                // plancher de 12px comme le reste. `text-caps` porte
+                // déjà taille, interligne et interlettrage — le `tracking`
+                // arbitraire qui l'accompagnait faisait double emploi.
+                'truncate text-caps',
                 tone === 'dark' ? 'text-on-dark-faint' : 'text-muted',
               )}
             >

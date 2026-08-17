@@ -1,6 +1,12 @@
 import { PageHeader } from '@/components/layout/AppShell'
 import { DataTable } from '@/components/primitives/DataTable'
 import { StatCard } from '@/components/primitives/Charts'
+import {
+  Skeleton,
+  SkeletonRegion,
+  SkeletonStatCard,
+  SkeletonTable,
+} from '@/components/primitives/Skeleton'
 import { StatusPill } from '@/components/primitives/StatusPill'
 import { Icon } from '@/components/primitives/Icon'
 import { Button } from '@/components/primitives/Button'
@@ -27,7 +33,7 @@ export function Meters() {
   const { money } = useCurrency()
   const exportCsv = useCsvExport()
   const csvMoney = useCsvMoney()
-  const { unitById, readings: READINGS } = usePortfolio()
+  const { unitById, readings: READINGS, loading } = usePortfolio()
 
   /**
    * Libellé affichable d'une unité.
@@ -57,6 +63,15 @@ export function Meters() {
 
   const missing = READINGS.filter((r) => r.waterCurrent === null || r.powerCurrent === null)
   const total = READINGS.reduce((sum, r) => sum + (rebilled(r) ?? 0), 0)
+
+  /**
+   * L'écran affirmait « 2 relevés manquants — A3, B1 » sur des unités
+   * inconnues du gestionnaire, et le nommait en jaune, ton d'une consigne. Un
+   * relevé manquant déclenche une tournée : envoyer quelqu'un sur le terrain
+   * pour des logements qui ne sont pas les siens est le coût le plus concret de
+   * tout ce chantier.
+   */
+  if (loading) return <MetersSkeleton />
 
   return (
     <>
@@ -198,7 +213,7 @@ export function Meters() {
               ) : (
                 <span>
                   {n.integer(r.waterCurrent - r.waterPrevious)}
-                  <span className="ml-1.5 text-mono-label text-muted">
+                  <span className="ml-1.5 text-caps text-muted">
                     {n.integer(r.waterPrevious)}→{n.integer(r.waterCurrent)}
                   </span>
                 </span>
@@ -217,7 +232,7 @@ export function Meters() {
                   {/* Les index d'électricité sont à cinq chiffres : sans
                       groupement ils rendaient « 7640 » dans les deux langues,
                       là où le français écrit « 7 640 » et l'anglais « 7,640 ». */}
-                  <span className="ml-1.5 text-mono-label text-muted">
+                  <span className="ml-1.5 text-caps text-muted">
                     {n.integer(r.powerPrevious)}→{n.integer(r.powerCurrent)}
                   </span>
                 </span>
@@ -250,6 +265,47 @@ export function Meters() {
           },
         ]}
       />
+    </>
+  )
+}
+
+/**
+ * Les relevés, le temps qu'ils arrivent.
+ *
+ * L'export est retenu : il sortirait les index de compteurs d'un autre parc
+ * dans un fichier qui, une fois enregistré, ne porte plus aucune trace de son
+ * origine.
+ *
+ * Le bandeau de complétude est remplacé par un pavé de MÊME hauteur — une boîte
+ * `py-3.5` à deux lignes de texte. Ne pas le reproduire ferait remonter le
+ * tableau d'une soixantaine de pixels à l'arrivée des données, juste sous le
+ * doigt qui vise la première ligne.
+ */
+function MetersSkeleton() {
+  const t = useT()
+
+  return (
+    <>
+      <PageHeader
+        title={t('app.meters.title')}
+        description={t('app.meters.subtitle')}
+        actions={<Skeleton radius="md" className="h-11 w-44" />}
+      />
+
+      <SkeletonRegion>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {[0, 1, 2].map((carte) => (
+            <SkeletonStatCard key={carte} />
+          ))}
+        </div>
+
+        <div className="mt-6 mb-4 rounded-lg border border-divider px-4 py-3.5">
+          <Skeleton line="body" className="w-56" />
+          <Skeleton line="bodyS" className="mt-0.5 w-72 max-w-full" />
+        </div>
+
+        <SkeletonTable />
+      </SkeletonRegion>
     </>
   )
 }

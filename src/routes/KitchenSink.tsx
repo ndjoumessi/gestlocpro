@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { cn } from '@/lib/cn'
 import { Button, IconButton } from '@/components/primitives/Button'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { Badge, DeltaBadge } from '@/components/primitives/Badge'
@@ -12,6 +13,7 @@ import { Logo } from '@/components/primitives/Logo'
 import { Icon } from '@/components/primitives/Icon'
 import { LanguageSwitcher } from '@/components/controls/LanguageSwitcher'
 import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
+import { ThemeSwitcher } from '@/components/controls/ThemeSwitcher'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 
@@ -30,12 +32,28 @@ export function KitchenSink() {
 
   return (
     <div className="min-h-dvh bg-canvas">
-      <header className="sticky top-0 z-20 border-b border-border bg-paper/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-6 py-3">
+      {/* Page de contrôle, mais en-tête collant tout de même : c'est ici qu'on
+          vérifie les primitives sur un téléphone, et une barre passée sous la
+          barre d'état ferait douter du composant qu'on inspecte. Même partage
+          qu'ailleurs : le vertical sur l'élément peint et pleine largeur, la
+          gouttière sur la rangée bornée par `max-w-6xl`. */}
+      <header
+        className={cn(
+          'sticky top-0 z-20 border-b border-border bg-paper/90 backdrop-blur-md',
+          'pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3',
+        )}
+      >
+        <div
+          className={cn(
+            'mx-auto flex max-w-6xl flex-wrap items-center gap-3',
+            'pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))]',
+          )}
+        >
           <Logo caption="Système de design" />
           <div className="ml-auto flex flex-wrap items-center gap-2">
             <LanguageSwitcher />
             <CurrencySwitcher />
+            <ThemeSwitcher />
           </div>
         </div>
       </header>
@@ -61,29 +79,30 @@ export function KitchenSink() {
             <p className="text-body-l">Body L · 16 — corps de la landing et des champs mobiles.</p>
             <p className="text-body">Body · 14 — corps de l’application.</p>
             <p className="text-body-s text-muted">Body S · 13 — annotations, en gris secondaire.</p>
-            <p className="eyebrow text-muted">Mono label · 11 · suréminence</p>
-            <p className="font-mono text-mono-kpi">1 415 000</p>
+            <p className="text-label text-muted">Label · 12 · plancher typographique</p>
+            <p className="eyebrow text-muted">Mono label · 12 · suréminence</p>
+            <p className="numeric text-kpi">1 415 000</p>
           </div>
         </Section>
 
         {/* ---- Couleurs ---- */}
         <Section title="Jetons de couleur">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            <Swatch name="ink" hex="#14201E" className="bg-ink" dark />
-            <Swatch name="ink-2" hex="#243733" className="bg-ink-2" dark />
-            <Swatch name="muted" hex="#5C6664" className="bg-muted" dark />
-            <Swatch name="gold" hex="#C58E3E" className="bg-gold" />
-            <Swatch name="gold-ink" hex="#8A6218" className="bg-gold-ink" dark />
-            <Swatch name="paper" hex="#F7F4EE" className="bg-paper" />
-            <Swatch name="canvas" hex="#EFEBE2" className="bg-canvas" />
-            <Swatch name="surface-sunken" hex="#F2F0EA" className="bg-surface-sunken" />
-            <Swatch name="border" hex="#E5DFD3" className="bg-border" />
-            <Swatch name="border-strong" hex="#CBBFA6" className="bg-border-strong" />
-            <Swatch name="ok" hex="#2C6A4E" className="bg-ok" dark />
-            <Swatch name="warn" hex="#8A6218" className="bg-warn" dark />
-            <Swatch name="danger" hex="#A63A2B" className="bg-danger" dark />
-            <Swatch name="gold-tint" hex="#FBF3E2" className="bg-gold-tint" />
-            <Swatch name="ok-tint" hex="#EAF2EC" className="bg-ok-tint" />
+            <Swatch name="ink" className="bg-ink" dark />
+            <Swatch name="ink-2" className="bg-ink-2" dark />
+            <Swatch name="muted" className="bg-muted" dark />
+            <Swatch name="gold" className="bg-gold" />
+            <Swatch name="gold-ink" className="bg-gold-ink" dark />
+            <Swatch name="paper" className="bg-paper" />
+            <Swatch name="canvas" className="bg-canvas" />
+            <Swatch name="surface-sunken" className="bg-surface-sunken" />
+            <Swatch name="border" className="bg-border" />
+            <Swatch name="border-strong" className="bg-border-strong" />
+            <Swatch name="ok" className="bg-ok" dark />
+            <Swatch name="warn" className="bg-warn" dark />
+            <Swatch name="danger" className="bg-danger" dark />
+            <Swatch name="gold-tint" className="bg-gold-tint" />
+            <Swatch name="ok-tint" className="bg-ok-tint" />
           </div>
         </Section>
 
@@ -119,6 +138,7 @@ export function KitchenSink() {
             <Button variant="onDark">Secondaire sombre</Button>
             <LanguageSwitcher tone="dark" />
             <CurrencySwitcher tone="dark" />
+            <ThemeSwitcher tone="dark" />
           </div>
         </Section>
 
@@ -249,7 +269,7 @@ export function KitchenSink() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card>
               <div className="eyebrow text-muted">Loyers attendus</div>
-              <div className="mt-2 font-mono text-mono-kpi">{money(1415000, { round: true })}</div>
+              <div className="mt-2 numeric text-kpi">{money(1415000, { round: true })}</div>
               <div className="mt-2 flex items-center gap-2">
                 <DeltaBadge value={165000} />
                 <span className="text-body-s text-muted">12 baux actifs</span>
@@ -315,9 +335,12 @@ export function KitchenSink() {
                 'trendUp', 'file', 'sparkle',
               ] as const
             ).map((name) => (
-              <div key={name} className="flex w-16 flex-col items-center gap-1.5">
+              /* La case s'élargit avec le libellé : à 12px, « clipboard » ne
+                 tient plus dans les 64px d'origine, et une planche de contrôle
+                 qui tronque le nom des icônes ne contrôle plus rien. */
+              <div key={name} className="flex w-20 flex-col items-center gap-1.5">
                 <Icon name={name} size={20} />
-                <span className="truncate font-mono text-[9px]">{name}</span>
+                <span className="truncate text-label">{name}</span>
               </div>
             ))}
           </div>
@@ -373,25 +396,111 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-function Swatch({
-  name,
-  hex,
-  className,
-  dark,
-}: {
-  name: string
-  hex: string
-  className: string
-  dark?: boolean
-}) {
+/**
+ * Rend une couleur calculée en hexadécimal majuscule.
+ *
+ * Les navigateurs restituent `background-color` en `rgb()` ou `rgba()`, jamais
+ * sous la forme d'origine. Ce qu'on veut afficher reste la notation dans
+ * laquelle les jetons sont écrits — c'est celle qu'un lecteur va recopier.
+ *
+ * Toute forme non reconnue est rendue TELLE QUELLE plutôt que remplacée par un
+ * repli plausible : sur cette page, une valeur inhabituelle est une information
+ * (un jeton passé en `color(display-p3 …)`, par exemple), et la masquer
+ * derrière un faux hexadécimal reproduirait exactement le mensonge qu'on vient
+ * de retirer.
+ */
+function enHexadecimal(couleurCalculee: string): string {
+  const canaux = /^rgba?\(([^)]+)\)$/.exec(couleurCalculee.trim())
+  if (!canaux) return couleurCalculee
+
+  const composantes = canaux[1].split(/[\s,/]+/).filter(Boolean).slice(0, 3)
+  if (composantes.length < 3) return couleurCalculee
+
+  const octets = composantes.map((c) => Number(c))
+  if (octets.some((o) => !Number.isFinite(o))) return couleurCalculee
+
+  return `#${octets.map((o) => Math.round(o).toString(16).padStart(2, '0')).join('')}`.toUpperCase()
+}
+
+/**
+ * Couleur RÉELLEMENT peinte par une pastille, relue à chaque bascule de thème.
+ *
+ * Trois précautions, chacune payée par un essai raté :
+ *
+ * 1. La lecture est différée d'une image. `ThemeProvider` pose `data-theme` dans
+ *    son propre effet, et les effets d'un enfant s'exécutent AVANT ceux de son
+ *    parent : lire ici sans attendre rendrait la couleur du thème précédent. La
+ *    même image de décalage neutralise l'autre piège connu du dépôt, celui du
+ *    style calculé lu au milieu d'une transition de couleur.
+ * 2. On observe l'attribut sur `<html>` plutôt que de dépendre de `useTheme` :
+ *    le script d'amorçage de `index.html` le pose aussi, hors de React.
+ * 3. On écoute `prefers-color-scheme` en plus, parce qu'en mode `auto` aucun
+ *    attribut ne change quand l'utilisateur bascule son système — c'est la
+ *    requête média seule qui repeint, et rien ne la signale à React.
+ */
+function useCouleurPeinte() {
+  const ref = useRef<HTMLDivElement>(null)
+  const [couleur, setCouleur] = useState('')
+
+  useEffect(() => {
+    let image = 0
+
+    const relire = () => {
+      if (ref.current) setCouleur(enHexadecimal(getComputedStyle(ref.current).backgroundColor))
+    }
+    // Deux lectures, et les deux comptent.
+    //
+    // La lecture immédiate suffit dans le cas courant : `getComputedStyle`
+    // force le recalcul des styles, la valeur est donc déjà celle du nouveau
+    // thème. Elle est SEULE à s'exécuter dans un onglet d'arrière-plan, où le
+    // navigateur n'appelle jamais `requestAnimationFrame` — sans elle, la page
+    // restait vide au retour sur l'onglet.
+    //
+    // La lecture différée d'une image rattrape les deux cas que la première ne
+    // couvre pas : le style calculé lu au milieu d'une transition de couleur,
+    // qui rend la valeur d'AVANT (piège déjà rencontré ici), et l'attribut posé
+    // par `ThemeProvider` dans un effet parent, qui s'exécute APRÈS celui-ci.
+    const planifier = () => {
+      relire()
+      cancelAnimationFrame(image)
+      image = requestAnimationFrame(relire)
+    }
+
+    planifier()
+
+    const observateur = new MutationObserver(planifier)
+    observateur.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    })
+
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    media.addEventListener('change', planifier)
+
+    return () => {
+      cancelAnimationFrame(image)
+      observateur.disconnect()
+      media.removeEventListener('change', planifier)
+    }
+  }, [])
+
+  return [ref, couleur] as const
+}
+
+function Swatch({ name, className, dark }: { name: string; className: string; dark?: boolean }) {
+  const [ref, couleur] = useCouleurPeinte()
+
   return (
     <div className="overflow-hidden rounded-md border border-border">
       <div
+        ref={ref}
         className={`flex h-16 items-end p-2 ${className} ${dark ? 'text-on-dark' : 'text-ink'}`}
       >
-        <span className="font-mono text-[10px] opacity-80">{hex}</span>
+        {/* Espace insécable avant la première lecture : la pastille garde sa
+            hauteur de ligne, plutôt que de sursauter à l'arrivée de la valeur. */}
+        <span className="numeric text-label opacity-80">{couleur || ' '}</span>
       </div>
-      <div className="bg-surface px-2 py-1.5 font-mono text-[10px] text-muted">{name}</div>
+      <div className="bg-surface px-2 py-1.5 text-label text-muted">{name}</div>
     </div>
   )
 }

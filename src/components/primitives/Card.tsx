@@ -20,7 +20,15 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
 export function Card({ tone = 'default', flush, className, children, ...props }: CardProps) {
   return (
     <div
-      className={cn('rounded-lg border', TONES[tone], !flush && 'p-4 sm:p-5', className)}
+      /* `min-w-0` : une carte est un contenant, jamais une règle graduée.
+         Posée dans une grille, elle hérite de `min-width: auto` et refuse donc
+         de descendre sous la largeur intrinsèque de son contenu. La rangée de
+         douze mois du graphe d'encaissements réclamait 402px à ce titre, dans
+         une cellule qui en offrait 335 : la carte débordait, et le document
+         avec elle — 19px de défilement horizontal sur un écran de 375, avant
+         même qu'on touche à la typographie. Le plancher à 12px l'a porté à
+         46px, ce qui a eu le mérite de rendre la fuite visible. */
+      className={cn('min-w-0 rounded-lg border', TONES[tone], !flush && 'p-4 sm:p-5', className)}
       {...props}
     >
       {children}

@@ -2,26 +2,104 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!--
+      `viewport-fit=cover` : la moitié du traitement des encoches qui ne se voit
+      pas dans le CSS, et sans laquelle l'autre moitié ne fait STRICTEMENT rien.
+
+      Par défaut, le navigateur rétrécit la fenêtre d'affichage pour contourner
+      l'encoche et la barre de gestes. Rien ne passe dessous — mais tous les
+      `env(safe-area-inset-*)` valent alors 0. Un rembourrage bas calculé sur
+      `safe-area-inset-bottom` se compile, s'affiche, et n'ajoute pas un pixel :
+      une panne parfaitement silencieuse, invisible en relecture de diff comme
+      dans un navigateur de bureau, où l'inset vaut 0 de toute façon.
+
+      (Le nom de la classe n'est pas écrit ici sous sa forme Tailwind : le
+      scanner lit ce fichier commentaires compris, et générerait pour de bon
+      l'utilitaire nu cité en exemple.)
+
+      Avec `cover`, la page couvre l'écran entier et les insets prennent enfin
+      leurs vraies valeurs. C'est aussi ce qui rend cette ligne INSUFFISANTE
+      seule, et même nuisible : ce qui touchait un bord passe désormais SOUS
+      l'encoche, la Dynamic Island, la barre de gestes iOS ou la barre de
+      navigation Android. Les rembourrages `env(...)` des surfaces collantes et
+      fixes sont l'autre moitié obligatoire ; `src/design-system/zonesSures.test.ts`
+      garde les deux ensemble pour qu'aucune ne parte sans l'autre.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+
+    <!--
+      Thème explicite, posé AVANT le premier rendu.
+
+      Le réglage SYSTÈME n'a pas besoin de ce script : `tokens.css` le traite en
+      `@media (prefers-color-scheme: dark)`, donc il est déjà appliqué à la
+      première peinture, sans JavaScript. Seul le choix explicite vit en
+      stockage, et lui doit être posé avant que quoi que ce soit ne s'affiche —
+      sinon quelqu'un qui a demandé le sombre reçoit un éclair de page claire le
+      temps que React se monte.
+
+      Ce script est donc volontairement bloquant et en tête de `<head>` : c'est
+      la seule position qui garantisse l'attribut avant la première peinture.
+      Il reste minuscule pour que ce blocage ne coûte rien de mesurable.
+
+      Le `try` n'est pas décoratif : `localStorage` LÈVE une `SecurityError`
+      quand l'accès est refusé (navigation privée, blocage tiers), et une
+      exception ici, avant tout le reste, laisserait une page blanche. Voir
+      `src/lib/stockage.ts`, qui applique la même prudence côté application.
+
+      La clé et les valeurs doivent rester d'accord avec
+      `src/theme/ThemeProvider.tsx`. L'absence de clé vaut « Système ».
+    -->
+    <script>
+      try {
+        var glTheme = localStorage.getItem('gestlocpro.theme')
+        if (glTheme === 'light' || glTheme === 'dark')
+          document.documentElement.setAttribute('data-theme', glTheme)
+      } catch (e) {
+        /* Préférence illisible : le réglage système s'applique, et c'est tout. */
+      }
+    </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!--
-      Playfair Display + Inter — paire « Classic Elegant » du référentiel de
-      design. Playfair porte le caractère haut de gamme en gros corps grâce à sa
-      forte modulation ; Inter reste lisible à 13px dans les tableaux du
-      tableau de bord, ce qu'une géométrique comme Josefin ne fait pas.
-      La troisième famille — celle des données — est désormais la monospace
-      SYSTÈME : sobre, dessinée pour la lecture prolongée, et déjà présente sur
-      la machine. IBM Plex Mono portait un dessin trop marqué pour des libellés
-      qui ne demandent qu'à être lus, et coûtait un téléchargement de plus.
+      UNE seule famille téléchargée, et c'est un choix de performance autant que
+      de dessin.
+
+      Le produit en chargeait deux — Playfair Display en six graisses, Inter en
+      quatre. Sur le réseau du marché visé, chaque famille est un aller-retour
+      de plus avant que le texte ne prenne sa forme définitive. La monospace
+      était déjà passée à la pile système pour cette raison ; le corps de texte
+      la rejoint.
+
+      Source Serif 4 aux titres, après deux tentatives.
+
+      Playfair Display est parti pour sa modulation extrême, qui amincit les
+      déliés jusqu'à les faire disparaître quand le corps descend. Fraunces l'a
+      remplacé pour son axe de taille optique, mais son dessin très typé — un
+      serif d'affichage assumé — rendait les titres massifs et bavards.
+
+      Source Serif 4 est un serif de LECTURE : contraste modéré, formes sans
+      tic, dessiné pour de longs textes avant de servir de titre. Il ne se
+      remarque pas, ce qui est exactement ce qu'on attend d'un produit
+      patrimonial. Il porte lui aussi un axe `opsz`, donc l'argument qui avait
+      fait choisir Fraunces reste satisfait.
+
+      Plage `600..700` et non `600..900` : les quatre échelles d'affichage sont
+      passées de 800/900 à 700. La graisse extrême était une part au moins
+      égale du problème — un serif sobre en 900 avec un resserrement de
+      −0,04em paraît tout aussi lourd que Fraunces. Le resserrement a donc été
+      divisé par deux dans le même mouvement. Demander une plage plus courte
+      allège aussi le fichier.
+
       `display=swap` : le texte s'affiche dans la police de repli plutôt que de
-      rester invisible pendant le chargement.
+      rester invisible pendant le chargement. Le repli des titres est Georgia,
+      un serif présent partout, pour que la substitution déplace le dessin sans
+      changer la nature de la page.
     -->
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600..700&display=swap"
     />
 
     <title>GestLocPro — La gestion locative, tenue comme un patrimoine</title>

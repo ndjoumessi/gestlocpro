@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import type { ReactElement } from 'react'
 import { App } from '@/App'
 import { I18nProvider } from '@/i18n/I18nProvider'
+import { ThemeProvider } from '@/theme/ThemeProvider'
 import { CurrencyProvider } from '@/currency/CurrencyProvider'
 import { ToastProvider } from '@/components/primitives/Toast'
 import { PortfolioProvider } from '@/data/PortfolioProvider'
@@ -83,15 +84,17 @@ export function renderApp(
   return render(
     <MemoryRouter initialEntries={[{ ...decouper(route), state: preferences.state ?? null }]}>
       <I18nProvider>
-        <CurrencyProvider>
-          <ToastProvider>
-            <SessionProvider etatInitial={preferences.session === null ? undefined : (preferences.session ?? SESSION_CONNECTEE)}>
-              <PortfolioProvider>
-                <App />
-              </PortfolioProvider>
-            </SessionProvider>
-          </ToastProvider>
-        </CurrencyProvider>
+        <ThemeProvider>
+          <CurrencyProvider>
+            <ToastProvider>
+              <SessionProvider etatInitial={preferences.session === null ? undefined : (preferences.session ?? SESSION_CONNECTEE)}>
+                <PortfolioProvider>
+                  <App />
+                </PortfolioProvider>
+              </SessionProvider>
+            </ToastProvider>
+          </CurrencyProvider>
+        </ThemeProvider>
       </I18nProvider>
     </MemoryRouter>,
   )
@@ -109,13 +112,15 @@ export function renderWithProviders(
   return render(
     <MemoryRouter>
       <I18nProvider>
-        <CurrencyProvider>
-          <ToastProvider>
-            <SessionProvider etatInitial={preferences.session === null ? undefined : (preferences.session ?? SESSION_CONNECTEE)}>
-              <PortfolioProvider>{ui}</PortfolioProvider>
-            </SessionProvider>
-          </ToastProvider>
-        </CurrencyProvider>
+        <ThemeProvider>
+          <CurrencyProvider>
+            <ToastProvider>
+              <SessionProvider etatInitial={preferences.session === null ? undefined : (preferences.session ?? SESSION_CONNECTEE)}>
+                <PortfolioProvider>{ui}</PortfolioProvider>
+              </SessionProvider>
+            </ToastProvider>
+          </CurrencyProvider>
+        </ThemeProvider>
       </I18nProvider>
     </MemoryRouter>,
   )

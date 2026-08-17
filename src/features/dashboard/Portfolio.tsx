@@ -3,6 +3,12 @@ import { PageHeader } from '@/components/layout/AppShell'
 import { DataTable, EmptyState } from '@/components/primitives/DataTable'
 import { PaymentStatusPill } from '@/components/primitives/StatusPill'
 import { StatCard } from '@/components/primitives/Charts'
+import {
+  Skeleton,
+  SkeletonRegion,
+  SkeletonStatCard,
+  SkeletonTable,
+} from '@/components/primitives/Skeleton'
 import { Input } from '@/components/primitives/Input'
 import { Button } from '@/components/primitives/Button'
 import { cn } from '@/lib/cn'
@@ -18,7 +24,7 @@ export function Portfolio() {
   const [logementOuvert, setLogementOuvert] = useState(false)
   const t = useT()
   const { money } = useCurrency()
-  const { units, buildings: BUILDINGS, buildingById } = usePortfolio()
+  const { units, buildings: BUILDINGS, buildingById, loading } = usePortfolio()
   const [query, setQuery] = useState('')
   const [building, setBuilding] = useState<string | 'all'>('all')
 
@@ -58,6 +64,18 @@ export function Portfolio() {
     const inBuilding = units.filter((u) => u.buildingId === buildingId)
     return { occupied: inBuilding.filter((u) => u.status !== 'vacant').length, total: inBuilding.length }
   }
+
+  /**
+   * Placé après les crochets — ils doivent tourner à chaque rendu — et avant le
+   * moindre affichage de `units`.
+   *
+   * C'est l'écran où le mensonge se voyait le plus : douze lignes de logements,
+   * avec leurs locataires et leurs loyers, dans un tableau qui invite à
+   * chercher, filtrer et cliquer. Un gestionnaire qui tape le nom d'un de ses
+   * locataires pendant l'attente obtient « Aucun résultat » sur un parc qui
+   * n'est pas le sien.
+   */
+  if (loading) return <PortfolioSkeleton />
 
   return (
     <>
@@ -203,6 +221,58 @@ export function Portfolio() {
           },
         ]}
       />
+    </>
+  )
+}
+
+/**
+ * Le parc, le temps qu'il arrive.
+ *
+ * Titre et sous-titre restent : ils sont écrits en dur, aucune donnée ne les
+ * décide. Les deux actions, elles, sont retenues — « ajouter un logement »
+ * ouvre une modale qui fait choisir un immeuble, et les seuls immeubles connus
+ * à cet instant sont ceux de la démonstration. Le geste partirait au serveur
+ * avec l'identifiant d'un immeuble qui n'existe pas chez lui.
+ *
+ * La recherche et les filtres sont retenus pour la même raison : filtrer un
+ * parc qu'on n'a pas encore n'a pas de sens, et un champ de recherche actif
+ * pendant l'attente invite à taper pour ne rien trouver.
+ */
+function PortfolioSkeleton() {
+  const t = useT()
+
+  return (
+    <>
+      <PageHeader
+        title={t('app.portfolio.title')}
+        description={t('app.portfolio.subtitle')}
+        actions={
+          <>
+            <Skeleton radius="md" className="h-11 w-48" />
+            <Skeleton radius="md" className="h-11 w-44" />
+          </>
+        }
+      />
+
+      <SkeletonRegion>
+        {/* Quatre cartes : le nombre réel vaut « un par immeuble, plus le
+            total », donc il dépend du parc qu'on attend. Quatre remplit
+            exactement une rangée de la grille sur grand écran. */}
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[0, 1, 2, 3].map((carte) => (
+            <SkeletonStatCard key={carte} />
+          ))}
+        </div>
+
+        <div className="mt-6 mb-4 flex flex-wrap items-center gap-3">
+          <Skeleton radius="md" className="h-11 w-full max-w-xs" />
+          {[0, 1, 2].map((filtre) => (
+            <Skeleton key={filtre} radius="md" className="h-11 w-24" />
+          ))}
+        </div>
+
+        <SkeletonTable />
+      </SkeletonRegion>
     </>
   )
 }

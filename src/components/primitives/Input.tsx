@@ -140,7 +140,7 @@ export function PasswordStrength({ value }: { value: string }) {
           />
         ))}
       </div>
-      <span className={cn('text-mono-label font-mono font-medium', level.text)}>{level.label}</span>
+      <span className={cn('text-caps font-medium', level.text)}>{level.label}</span>
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useId, useRef, useState, type KeyboardEvent } from 'react'
 import { PageHeader } from '@/components/layout/AppShell'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
@@ -19,6 +19,13 @@ import { useReceiptExport } from './receiptExport'
 
 const TABS = ['space', 'myPayments', 'myWorks', 'documents', 'report'] as const
 type Tab = (typeof TABS)[number]
+
+/**
+ * Pastilles du chrome de navigateur — voir `--chrome-dot-*` dans `tokens.css`.
+ * Elles ressemblent au trio de statut mais n'en sont pas : ce décor ne doit
+ * suivre ni `--color-danger`, ni `--color-warn`, ni `--color-ok`.
+ */
+const CHROME_DOTS = ['var(--chrome-dot-1)', 'var(--chrome-dot-2)', 'var(--chrome-dot-3)'] as const
 
 /**
  * Documents du portail.
@@ -57,6 +64,44 @@ export function TenantPortal() {
   const [error, setError] = useState<string | null>(null)
   const reportRef = useRef<HTMLDivElement>(null)
 
+  /** Préfixe des identifiants qui lient onglets et panneau. */
+  const tabsId = useId()
+  const onglets = useRef<(HTMLButtonElement | null)[]>([])
+
+  /**
+   * Sélection SUIVANT le focus — le comportement recommandé quand changer
+   * d'onglet ne coûte rien, ce qui est le cas ici : les cinq vues sont déjà
+   * en mémoire. L'alternative (flèche pour déplacer, Entrée pour activer)
+   * ferait payer deux frappes ce que la souris obtient en un clic.
+   */
+  const allerA = (index: number) => {
+    const cible = TABS[index]
+    if (!cible) return
+    setTab(cible)
+    onglets.current[index]?.focus()
+  }
+
+  const auClavier = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    // Bornage, jamais bouclage : voir le commentaire du `tablist`.
+    const destination =
+      e.key === 'ArrowRight'
+        ? Math.min(index + 1, TABS.length - 1)
+        : e.key === 'ArrowLeft'
+          ? Math.max(index - 1, 0)
+          : e.key === 'Home'
+            ? 0
+            : e.key === 'End'
+              ? TABS.length - 1
+              : null
+
+    if (destination === null) return
+    // `Home` et `End` défileraient le document, les flèches le feraient
+    // horizontalement dans la rangée débordante : dans les deux cas la page
+    // bougerait sous une commande qui ne la concerne pas.
+    e.preventDefault()
+    allerA(destination)
+  }
+
   const { worksForUnit } = usePortfolio()
 
   const unit = UNITS.find((u) => u.id === 'A1')!
@@ -70,11 +115,11 @@ export function TenantPortal() {
         {/* Chrome de navigateur */}
         <div className="flex items-center gap-3 border-b border-border bg-surface px-4 py-2.5">
           <span aria-hidden="true" className="flex gap-1.5">
-            {['#E4B3AA', '#EAD9B4', '#DEE8E1'].map((color) => (
-              <span key={color} className="size-2.5 rounded-full" style={{ background: color }} />
+            {CHROME_DOTS.map((dot) => (
+              <span key={dot} className="size-2.5 rounded-full" style={{ background: dot }} />
             ))}
           </span>
-          <span className="numeric truncate rounded-md bg-surface-sunken px-3 py-1 text-mono-label text-muted">
+          <span className="numeric truncate rounded-md bg-surface-sunken px-3 py-1 text-caps text-muted">
             {t('app.portal.demoUrl')}
           </span>
         </div>
@@ -91,26 +136,53 @@ export function TenantPortal() {
             </span>
           </div>
 
-          {/* Onglets */}
+          {/* Onglets — motif ARIA COMPLET, et non ses seuls rôles.
+              `role="tab"` annonce au lecteur d'écran une navigation aux
+              flèches ; la déclarer sans la câbler promet une commande qui
+              n'existe pas, ce qui est pire qu'une rangée de boutons ordinaires.
+              Le motif est donc tenu en entier : flèches, Début/Fin, `tabindex`
+              roulant, `aria-controls` et le panneau qui répond.
+
+              Le contenu s'y prête — cinq vues exclusives d'un même dossier,
+              pas cinq destinations —, donc on l'implémente plutôt que de
+              retirer les rôles.
+
+              BORNAGE et non bouclage, comme `Combobox` : c'est la convention
+              du dépôt, et sur cinq entrées visibles d'un coup, revenir au
+              début en poussant à droite se lit comme un raté. */}
           <div
             role="tablist"
             aria-label={t('app.portal.title')}
             className="flex gap-1 overflow-x-auto border-b border-border bg-paper px-3"
           >
-            {TABS.map((value) => {
+            {TABS.map((value, index) => {
               const active = tab === value
               return (
                 <button
                   key={value}
                   type="button"
                   role="tab"
+                  id={`${tabsId}-tab-${value}`}
                   aria-selected={active}
+                  aria-controls={`${tabsId}-panel-${value}`}
+                  // Un seul arrêt de tabulation pour tout le groupe : la
+                  // tabulation atteint le contenu du panneau, elle ne traverse
+                  // pas cinq onglets pour y arriver.
+                  tabIndex={active ? 0 : -1}
+                  ref={(node) => {
+                    onglets.current[index] = node
+                  }}
                   onClick={() => setTab(value)}
+                  onKeyDown={(e) => auClavier(e, index)}
                   className={cn(
                     'inline-flex min-h-11 shrink-0 cursor-pointer items-center border-b-2 px-3',
                     'text-label font-semibold transition-colors duration-150',
                     active
-                      ? 'border-gold text-ink'
+                      ? // L'or de marque tenait 2,62:1 sur `paper` : cette
+                        // barre est le SEUL repère de l'onglet courant, donc
+                        // de la donnée. `gold-ink` la porte à 4,98:1 en clair
+                        // et 8,50:1 en sombre.
+                        'border-gold-ink text-ink'
                       : 'border-transparent text-muted hover:text-ink',
                   )}
                 >
@@ -120,7 +192,15 @@ export function TenantPortal() {
             })}
           </div>
 
-          <div className="p-5">
+          <div
+            id={`${tabsId}-panel-${tab}`}
+            role="tabpanel"
+            aria-labelledby={`${tabsId}-tab-${tab}`}
+            // Le panneau n'est pas focalisable : ses cinq vues contiennent
+            // toutes au moins un élément atteignable au clavier, et la
+            // tabulation depuis l'onglet actif y entre directement.
+            className="p-5"
+          >
             {tab === 'space' && (
               <div className="grid gap-4 sm:grid-cols-2">
                 <Card>
@@ -137,7 +217,7 @@ export function TenantPortal() {
 
                 <Card>
                   <p className="eyebrow text-muted">{t('app.portal.nextDue')}</p>
-                  <p className="numeric mt-2 text-mono-kpi font-medium">
+                  <p className="numeric mt-2 text-kpi font-medium">
                     {money(unit.rent, { round: true })}
                   </p>
                   <div className="mt-2">
@@ -185,7 +265,7 @@ export function TenantPortal() {
                     <Icon name="wrench" size={18} className="shrink-0 text-muted" />
                     <div className="min-w-0 flex-1">
                       <p className="text-body font-medium">{workTitle(work, t)}</p>
-                      <p className="font-mono text-mono-label text-muted">
+                      <p className="text-caps text-muted">
                         {work.reference ?? work.id} ·{' '}
                         {d.dayMonth(work.reportedAt)}
                       </p>
@@ -214,7 +294,7 @@ export function TenantPortal() {
                           onClick={() => downloadReceipt(unit, TENANT_RECEIPTS[0])}
                         />
                       ) : (
-                        <span className="shrink-0 font-mono text-mono-label text-muted">
+                        <span className="shrink-0 text-caps text-muted">
                           {t('app.portal.docUnavailable')}
                         </span>
                       )}

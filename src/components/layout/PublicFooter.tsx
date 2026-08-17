@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom'
+import { cn } from '@/lib/cn'
 import { Logo } from '@/components/primitives/Logo'
+import { GOUTTIERE_LATERALE } from './gouttiere'
 import { useT } from '@/i18n/I18nProvider'
 
 const COLUMNS = [
@@ -33,7 +35,7 @@ export function PublicFooter() {
 
   return (
     <footer className="on-dark bg-ink text-on-dark">
-      <div className="mx-auto max-w-7xl px-5 py-14 sm:px-8">
+      <div className={cn('mx-auto max-w-7xl py-14', GOUTTIERE_LATERALE)}>
         <div className="grid gap-10 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
           <div className="max-w-sm">
             <Logo tone="dark" />
@@ -65,7 +67,7 @@ export function PublicFooter() {
         </div>
 
         <div className="mt-12 flex flex-col gap-4 border-t border-on-dark-border pt-6 sm:flex-row sm:items-center sm:justify-between">
-          <p className="font-mono text-mono-label text-on-dark-faint">
+          <p className="text-caps text-on-dark-faint">
             {t('marketing.footer.rights', { year: new Date().getFullYear() })}
           </p>
         </div>

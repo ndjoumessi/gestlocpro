@@ -26,6 +26,13 @@ import { useT } from '@/i18n/I18nProvider'
  * de marque : l'or `--color-gold` ne tient que 2,87:1 sur blanc, sous le seuil
  * de 3:1 exigé d'une donnée. Les trois retenues sont espacées en clarté
  * (1 %, 18 %, 26 %) pour rester distinctes en niveaux de gris.
+ *
+ * La règle vaut au-delà des séries, et ce fichier l'a longtemps contredite :
+ * une colonne mise en avant, une ligne d'objectif et un remplissage de
+ * progression portent de l'information tout autant qu'une série. Là où la
+ * couleur de marque doit rester lisible, c'est `--color-gold-ink` qui sert —
+ * même famille, 4,80:1 au pire des fonds. `orDonnee.test.ts` relit ce fichier
+ * et refuse le retour de l'or nu.
  */
 const SERIES_COLORS: Record<string, string> = {
   rent: 'var(--color-data-1)',
@@ -140,7 +147,13 @@ export function StackedBarChart({
           {showTarget && (
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-gold"
+              // `gold-ink` et non l'or de marque. Une ligne de repère est une
+              // donnée : elle dit où passe l'objectif, et l'or n'y tient que
+              // 2,87:1 sur la carte. `--color-gold-ink` reste dans la famille
+              // et monte à 5,47:1 en clair, 7,32:1 en sombre — et c'est déjà
+              // la couleur du libellé qui la nomme, deux lignes plus bas : le
+              // trait et son étiquette cessent d'être de deux ors différents.
+              className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-gold-ink"
               style={{ bottom: `${(target / max) * 100}%` }}
             >
               {/* Le montant EXACT, et non sa forme compacte.
@@ -154,7 +167,7 @@ export function StackedBarChart({
                   barres, en doré sur fond sombre. Le fond le rend lisible quelle
                   que soit la hauteur des barres, ce qu'un simple déplacement ne
                   garantirait pas : elles changent avec les données. */}
-              <span className="absolute -top-2.5 left-0 rounded-sm bg-surface px-1.5 py-0.5 font-mono text-mono-label tracking-wider text-gold-ink uppercase">
+              <span className="absolute -top-2.5 left-0 rounded-sm bg-surface px-1.5 py-0.5 numeric text-caps tracking-wider text-gold-ink uppercase">
                 {targetLabel} · {money(target, { round: true })}
               </span>
             </div>
@@ -239,11 +252,24 @@ export function StackedBarChart({
             <span
               key={bar.label}
               className={cn(
-                'min-w-0 flex-1 truncate text-center font-mono text-mono-label tracking-wide uppercase',
+                'min-w-0 flex-1 text-center text-caps tracking-wide uppercase',
+                // Chaque étiquette garde sa colonne — c'est ce qui la tient
+                // centrée sous SA barre — mais sur téléphone elle a le droit
+                // de déborder sur la voisine. La voisine est `invisible` : elle
+                // occupe sa place sans rien peindre, donc ce débordement se
+                // pose sur du vide. Sans cela, « sept » et « janv » perdaient
+                // 3px sur 30 et s'affichaient rabotés d'un point de suspension
+                // — c'était déjà vrai à 11px, et le plancher à 12px le rendait
+                // seulement plus visible. Les deux règles de débordement sont
+                // séparées par une requête média, jamais par l'ordre du
+                // fichier : une seule des deux s'applique à la fois.
+                'max-sm:overflow-visible sm:overflow-hidden text-ellipsis whitespace-nowrap',
                 'transition-colors duration-150',
                 active === index ? 'text-ink' : 'text-muted',
                 // Douze étiquettes ne tiennent pas sur un téléphone : on en
-                // retire une sur deux plutôt que de toutes les tronquer.
+                // retire une sur deux. `invisible` et non `hidden` — la
+                // colonne retirée doit continuer à réserver sa place, sinon
+                // les six restantes s'étalent et ne désignent plus rien.
                 index % 2 === 1 && 'max-sm:invisible',
               )}
             >
@@ -331,7 +357,7 @@ function Tooltip({
           : { left: `${((anchor + 0.5) / count) * 100}%`, transform: 'translateX(-50%)' }
       }
     >
-      <p className="font-mono text-mono-label tracking-wider text-on-dark-faint uppercase">
+      <p className="text-caps tracking-wider text-on-dark-faint uppercase">
         {title}
       </p>
       <p className="numeric mt-1 text-title-m font-semibold text-on-dark">{total}</p>
@@ -406,7 +432,14 @@ export function MiniBarChart({
                 className="animate-grow-y w-full rounded-t-[3px] transition-opacity duration-150"
                 style={{
                   height: `${(bar.value / max) * 100}%`,
-                  background: isLast ? 'var(--color-gold)' : 'var(--color-data-1)',
+                  // La colonne du mois courant se distingue des onze autres :
+                  // c'est une DONNÉE mise en avant, pas un ornement. L'or de
+                  // marque tombait à 2,87:1 sur la carte, sous le seuil de 3:1
+                  // — et le commentaire d'en-tête de ce fichier l'interdisait
+                  // déjà. `--color-gold-ink` tient 5,47:1 en clair et 7,32:1
+                  // en sombre, en gardant l'écart de clarté avec `data-1` qui
+                  // rend les deux distinguables en niveaux de gris.
+                  background: isLast ? 'var(--color-gold-ink)' : 'var(--color-data-1)',
                   animationDelay: `${index * 40}ms`,
                   opacity: active !== null && !isActive ? 0.4 : isLast ? 1 : 0.85,
                 }}
@@ -430,7 +463,7 @@ export function MiniBarChart({
       <div className="mt-3 flex min-h-5 items-baseline justify-between gap-3">
         <span
           aria-hidden="true"
-          className="font-mono text-mono-label tracking-wide text-muted uppercase"
+          className="text-caps tracking-wide text-muted uppercase"
         >
           {bars[0]?.label}
         </span>
@@ -441,7 +474,7 @@ export function MiniBarChart({
         >
           {active !== null && (
             <>
-              <span className="font-mono text-mono-label tracking-wide text-muted uppercase">
+              <span className="text-caps tracking-wide text-muted uppercase">
                 {bars[active].label}
               </span>{' '}
               <span className="numeric">{money(bars[active].value, { round: true })}</span>
@@ -451,7 +484,7 @@ export function MiniBarChart({
 
         <span
           aria-hidden="true"
-          className="font-mono text-mono-label tracking-wide text-muted uppercase"
+          className="text-caps tracking-wide text-muted uppercase"
         >
           {bars[bars.length - 1]?.label}
         </span>
@@ -547,7 +580,7 @@ export function DonutChart({
           <span className="numeric text-title-l font-medium">
             {shown ? `${Math.round(shown.fraction * 100)} %` : centerValue}
           </span>
-          <span className="max-w-[6rem] font-mono text-mono-label tracking-wide text-muted uppercase">
+          <span className="max-w-[6rem] text-caps tracking-wide text-muted uppercase">
             {shown ? shown.slice.label : centerLabel}
           </span>
         </div>
@@ -606,7 +639,13 @@ export function ProgressBar({
   label: string
   tone?: 'gold' | 'ok' | 'danger'
 }) {
-  const colors = { gold: 'bg-gold', ok: 'bg-ok', danger: 'bg-danger' }
+  // Le remplissage EST la valeur : c'est lui, et lui seul, qui dit 62 % contre
+  // 38 %. L'or de marque ne tenait que 2,52:1 sur la piste `surface-sunken`,
+  // le pire des quatre emplois recensés — et le ton par défaut, donc celui de
+  // tous les appels. `gold-ink` monte à 4,80:1 en clair et 8,71:1 en sombre.
+  // Le ton garde son nom : c'est un rôle — « la couleur de marque » — pas une
+  // teinte, exactement comme `ok` ne nomme pas un vert.
+  const colors = { gold: 'bg-gold-ink', ok: 'bg-ok', danger: 'bg-danger' }
 
   return (
     <div className="flex items-center gap-3">
@@ -647,7 +686,7 @@ export function StatCard({
     <div className="rounded-lg border border-divider bg-surface p-4 shadow-e1 sm:p-5">
       <p className="eyebrow text-muted">{label}</p>
       <p className="mt-2 flex items-baseline gap-1.5">
-        <span className="numeric text-mono-kpi font-medium whitespace-nowrap">{value}</span>
+        <span className="numeric text-kpi font-medium whitespace-nowrap">{value}</span>
         {unit && <span className="text-body-s text-muted">{unit}</span>}
       </p>
       {(delta || note) && (

@@ -138,7 +138,18 @@ export function Onboarding() {
           <CardHeader title={t('app.onboarding.matrixTitle')} level={2} className="mb-0" />
         </div>
 
-        <div className="overflow-x-auto">
+        {/* `relative` n'est pas décoratif : sans lui, le tableau fait défiler
+            la PAGE entière de 268px sur un écran de 375.
+            Chaque case de la matrice porte un `sr-only`, donc un
+            `position: absolute`. Une boîte de défilement ne rogne que les
+            absolus dont elle est le bloc conteneur — statique, elle ne l'est
+            pour aucun d'eux. Les trente-sept `sr-only` restaient donc posés à
+            leur place d'origine, jusqu'à x=687, hors de portée du
+            `overflow-x-auto` qui croyait les contenir. Invisibles, et
+            pourtant seuls responsables du défilement horizontal.
+            Même mécanisme que celui documenté dans `Charts.tsx` sur la table
+            alternative du graphe — la leçon y avait été tirée, pas ici. */}
+        <div className="relative overflow-x-auto">
           {/* Le `<caption>` répétait le titre rendu juste au-dessus : un
               lecteur d'écran entendait « Matrice des droits » deux fois. Il
               porte maintenant ce que le titre visible ne dit pas. */}
@@ -177,7 +188,7 @@ export function Onboarding() {
                     >
                       {t(`roles.${role}.name` as 'roles.owner.name')}
                       {inactive && (
-                        <span className="mt-0.5 block text-mono-label normal-case">
+                        <span className="mt-0.5 block text-caps normal-case">
                           {t('app.onboarding.managerOff')}
                         </span>
                       )}

@@ -4,6 +4,7 @@ import { StatusPill } from '@/components/primitives/StatusPill'
 import { Badge } from '@/components/primitives/Badge'
 import { Icon } from '@/components/primitives/Icon'
 import { EmptyState } from '@/components/primitives/DataTable'
+import { Skeleton, SkeletonRegion } from '@/components/primitives/Skeleton'
 import { TenantScopeNote } from './TenantDashboard'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
@@ -14,7 +15,7 @@ export function Inspections() {
   const t = useT()
   const d = useDates()
   const { role } = useRole()
-  const { unitById, isMine, inspections: INSPECTIONS } = usePortfolio()
+  const { unitById, isMine, inspections: INSPECTIONS, loading } = usePortfolio()
   const isTenant = role === 'tenant'
   const source = isTenant ? INSPECTIONS.filter((i) => isMine(i.unitId)) : INSPECTIONS
 
@@ -25,14 +26,40 @@ export function Inspections() {
     return acc
   }, {})
 
+  /**
+   * Un état des lieux est une pièce contradictoire : il porte des réserves
+   * chiffrées, signées ou non, et c'est lui qui justifie ce qu'on retient sur
+   * une caution. En servir de faux pendant l'attente — « 4 réserves », « en
+   * attente de signature » — met sous les yeux du bailleur des griefs contre
+   * des locataires qu'il n'a pas.
+   */
+  if (loading) return <InspectionsSkeleton />
+
   return (
     <>
       <PageHeader title={t('app.inspections.title')} description={t('app.inspections.subtitle')} />
 
       {isTenant && <TenantScopeNote />}
 
+      {/*
+        Le titre valait pour le locataire et se servait aussi au propriétaire.
+        Le corps dit à quoi sert un état des lieux — l'entrée, la sortie, et la
+        comparaison qui justifie la retenue sur caution — parce que c'est
+        précisément ce qu'ignore celui qui découvre cet écran vide.
+
+        AUCUNE action, pour personne, et c'est le point : le produit ne sait pas
+        établir un état des lieux. Un locataire n'en crée pas lui-même, et un
+        bouton « nouvel état des lieux » côté bailleur ouvrirait sur du vide.
+        On préfère un état vide honnête à un gabarit rempli.
+      */}
       {Object.keys(byUnit).length === 0 ? (
-        <EmptyState icon="clipboard" title={t('app.tenant.inspectionsEmpty')} />
+        <EmptyState
+          icon="clipboard"
+          title={isTenant ? t('app.tenant.inspectionsEmpty') : t('app.inspections.emptyTitle')}
+          body={
+            isTenant ? t('app.tenant.inspectionsEmptyBody') : t('app.inspections.emptyBody')
+          }
+        />
       ) : (
       <div className="grid gap-4 lg:grid-cols-2">
         {Object.entries(byUnit).map(([unitId, inspections]) => {
@@ -60,7 +87,7 @@ export function Inspections() {
                     {unit?.label ?? unitId} ·{' '}
                     {unit && t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')}
                   </h2>
-                  <p className="font-mono text-mono-label text-muted">
+                  <p className="text-caps text-muted">
                     {unit?.tenant ?? t('app.portfolio.noTenant')}
                   </p>
                 </div>
@@ -90,7 +117,7 @@ export function Inspections() {
                       <p className="text-body font-medium">
                         {t(`app.inspections.${inspection.kind}` as 'app.inspections.entry')}
                       </p>
-                      <p className="font-mono text-mono-label text-muted">
+                      <p className="text-caps text-muted">
                         {d.fullDate(inspection.date)}{' · '}
                         {t('app.inspections.rooms', { count: inspection.rooms })}
                       </p>
@@ -106,7 +133,7 @@ export function Inspections() {
                           : t('app.inspections.issues', { count: inspection.issues })}
                       </StatusPill>
                       {!inspection.signed && (
-                        <span className="font-mono text-mono-label text-warn">
+                        <span className="text-caps text-warn">
                           {t('app.inspections.unsigned')}
                         </span>
                       )}
@@ -119,6 +146,55 @@ export function Inspections() {
         })}
       </div>
       )}
+    </>
+  )
+}
+
+/**
+ * Les états des lieux, le temps qu'ils arrivent.
+ *
+ * Aucune action à retenir : l'en-tête n'en porte pas.
+ *
+ * Deux cartes, pas quatre : la grille passe à deux colonnes au-delà de `lg`, et
+ * deux remplissent une rangée sans promettre un parc plus grand qu'il ne l'est.
+ * Chacune reprend le gabarit d'un regroupement par unité — l'en-tête de carte,
+ * puis deux lignes de constat, la hauteur qui compte ici.
+ */
+function InspectionsSkeleton() {
+  const t = useT()
+
+  return (
+    <>
+      <PageHeader title={t('app.inspections.title')} description={t('app.inspections.subtitle')} />
+
+      <SkeletonRegion className="grid gap-4 lg:grid-cols-2">
+        {[0, 1].map((carte) => (
+          <div
+            key={carte}
+            className="min-w-0 rounded-lg border border-divider bg-surface p-4 shadow-e1 sm:p-5"
+          >
+            <div className="mb-4">
+              <Skeleton line="title" className="w-40" />
+              <Skeleton line="eyebrow" className="mt-1 w-32" />
+            </div>
+            <div className="flex flex-col gap-2.5">
+              {[0, 1].map((ligne) => (
+                <div
+                  key={ligne}
+                  className="flex items-center gap-3 rounded-md border border-divider px-3.5 py-3"
+                >
+                  <Skeleton radius="md" className="size-9" />
+                  <div className="min-w-0 flex-1">
+                    <Skeleton line="body" className="w-20" />
+                    <Skeleton line="eyebrow" className="mt-0.5 w-36 max-w-full" />
+                  </div>
+                  <Skeleton radius="md" className="h-7 w-24" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </SkeletonRegion>
     </>
   )
 }
