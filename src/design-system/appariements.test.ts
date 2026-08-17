@@ -268,3 +268,74 @@ describe('séries de l’histogramme', () => {
     }
   }
 })
+
+/**
+ * La pastille de comptage, sur son fond qui s'inverse.
+ *
+ * Troisième occurrence du même défaut d'appariement, et la plus retorse : la
+ * pastille était `bg-danger` + `text-on-dark`, juste en thème clair. En sombre
+ * `--color-danger` s'éclaircit en saumon, et le commentaire de sa version
+ * sombre annonçait justement une encre FONCÉE — mais la pastille vit dans la
+ * barre latérale, sous `.on-dark`, et cette classe FIGE `--color-on-dark` à
+ * blanc. Clair sur clair : 2,49:1.
+ *
+ * Le garde lit donc le premier plan là où il est réellement résolu, y compris
+ * sous la bascule de contexte, et vérifie la paire dans les trois blocs.
+ */
+describe('pastille de comptage', () => {
+  const CSS = readFileSync(join(SRC, 'design-system', 'tokens.css'), 'utf8')
+  const NU = CSS.replace(/\/\*[\s\S]*?\*\//g, '')
+
+  function corps(entete: string): string {
+    const debut = NU.indexOf(entete)
+    if (debut === -1) throw new Error(`bloc introuvable : ${entete}`)
+    let profondeur = 0
+    for (let i = NU.indexOf('{', debut); i < NU.length; i++) {
+      if (NU[i] === '{') profondeur++
+      else if (NU[i] === '}' && --profondeur === 0) return NU.slice(NU.indexOf('{', debut) + 1, i)
+    }
+    throw new Error(`accolade non refermée après ${entete}`)
+  }
+  function jeton(bloc: string, nom: string): string {
+    const t = new RegExp(`${nom}\\s*:\\s*(#[0-9a-fA-F]{6})`).exec(bloc)
+    if (!t) throw new Error(`jeton absent : ${nom}`)
+    return t[1]
+  }
+  function luminance(h: string): number {
+    const [r, v, b] = [0, 2, 4]
+      .map((i) => parseInt(h.slice(1).substr(i, 2), 16))
+      .map((c) => {
+        const n = c / 255
+        return n <= 0.03928 ? n / 12.92 : Math.pow((n + 0.055) / 1.055, 2.4)
+      })
+    return 0.2126 * r + 0.7152 * v + 0.0722 * b
+  }
+  function ratio(a: string, b: string): number {
+    const [x, y] = [luminance(a), luminance(b)]
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
+  }
+
+  const BLOCS = {
+    clair: corps('@theme'),
+    'sombre (systeme)': corps('@media (prefers-color-scheme: dark)'),
+    'sombre (choisi)': corps(":root[data-theme='dark']"),
+  }
+
+  it('emploie un premier plan qui suit son fond', () => {
+    // `text-on-dark` est figé à blanc sous `.on-dark` : il ne peut pas servir
+    // sur une surface qui, elle, s'inverse.
+    const badge = sansCommentaires(
+      readFileSync(join(SRC, 'components', 'primitives', 'Badge.tsx'), 'utf8'),
+    )
+    const ligne = badge.split('\n').find((l) => /danger:/.test(l) && /bg-danger/.test(l)) ?? ''
+    expect(ligne).toContain('text-on-danger')
+    expect(ligne).not.toContain('text-on-dark')
+  })
+
+  for (const [theme, bloc] of Object.entries(BLOCS)) {
+    it(`tient 4,5:1 en ${theme}`, () => {
+      const r = ratio(jeton(bloc, '--color-on-danger'), jeton(bloc, '--color-danger'))
+      expect(r, `${theme} — ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5)
+    })
+  }
+})

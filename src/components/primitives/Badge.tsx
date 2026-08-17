@@ -7,7 +7,10 @@ const TONES: Record<BadgeTone, string> = {
   neutral: 'bg-surface-sunken text-muted',
   gold: 'bg-gold-tint text-gold-ink',
   ok: 'bg-ok-tint text-ok',
-  danger: 'bg-danger text-on-dark',
+  // `text-on-danger` et non `text-on-dark` : le second est figé à blanc sous
+  // `.on-dark`, où vit la pastille de la barre latérale, alors que le fond
+  // s'éclaircit en thème sombre.
+  danger: 'bg-danger text-on-danger',
   dark: 'bg-ink text-on-dark',
   onDark: 'bg-gold text-ink',
 }

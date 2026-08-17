@@ -171,7 +171,11 @@ export function StackedBarChart({
               onClick={() => toggleSeries(key)}
               aria-pressed={shown}
               className={cn(
-                'inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-md px-2 -mx-0.5',
+                // 44px : les entrées de légende SONT des commandes — elles
+                // masquent et rétablissent une série. À 36px elles restaient
+                // sous le minimum tactile, sur un produit dont la cible est un
+                // Android d'entrée de gamme tenu à une main.
+                'inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md px-2 -mx-0.5',
                 'text-body-s transition-colors duration-150 hover:bg-surface-sunken',
                 shown ? 'text-muted' : 'text-muted-soft',
               )}

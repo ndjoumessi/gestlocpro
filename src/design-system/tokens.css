@@ -100,6 +100,22 @@
   --color-warn-border: #ead9b4;
 
   --color-danger: #a63a2b;
+  /**
+   * Premier plan d'une surface `--color-danger`, et qui s'inverse AVEC elle.
+   *
+   * Troisième occurrence du même défaut, après `--color-gold-on-ink` et les
+   * séries de l'infobulle. La pastille de comptage était `bg-danger` +
+   * `text-on-dark` : juste en thème clair, blanche sur bordeaux. En sombre,
+   * `--color-danger` s'éclaircit en saumon — le commentaire de sa version
+   * sombre annonce d'ailleurs « porte --on-dark à 6.72 », donc une encre
+   * FONCÉE — mais la pastille vit dans la barre latérale, sous `.on-dark`, et
+   * cette classe fige `--color-on-dark` à blanc. Le premier plan restait donc
+   * clair sur un fond devenu clair : 2,49:1.
+   *
+   * Nommé d'après le fond qu'il accompagne, il suit `--color-danger` quoi
+   * qu'elle devienne, et aucune bascule de contexte ne peut l'en détacher.
+   */
+  --color-on-danger: #ffffff;
   --color-danger-strong: #7e2a1e;
   --color-danger-tint: #faedea;
   --color-danger-border: #e4b3aa;
@@ -452,7 +468,8 @@
     --color-warn-tint: #2e2417; /* porte --warn à 6.60 */
     --color-warn-border: #54421f;
 
-    --color-danger: #e58d7d; /* 6.36 sur --surface · porte --on-dark à 6.72 */
+    --color-danger: #e58d7d; /* 6.36 sur --surface */
+    --color-on-danger: #14201e; /* 6.72 sur --danger sombre */
     --color-danger-strong: #f2a99b; /* survol : plus clair, non plus sombre · 8.70 */
     --color-danger-tint: #301a17; /* porte --danger à 6.56 */
     --color-danger-border: #5c3128;
@@ -547,6 +564,7 @@
   --color-warn-border: #54421f;
 
   --color-danger: #e58d7d;
+  --color-on-danger: #14201e;
   --color-danger-strong: #f2a99b;
   --color-danger-tint: #301a17;
   --color-danger-border: #5c3128;
