@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { PageHeader, useRole } from '@/components/layout/AppShell'
-import { DataTable } from '@/components/primitives/DataTable'
+import { DataTable, EmptyState } from '@/components/primitives/DataTable'
 import { StatCard } from '@/components/primitives/Charts'
 import {
   Skeleton,
@@ -110,6 +110,19 @@ export function Deposits() {
           caption={t('app.deposits.title')}
           rows={deposits}
           rowKey={(d) => d.unitId}
+          /* Sans cela, l'écran servait des en-têtes de colonnes au-dessus du
+             vide : ni ligne, ni message, ni indication de ce qui manque. Un
+             tableau nu se lit comme une panne. */
+          empty={
+            <EmptyState
+              icon="shield"
+              title={t('app.deposits.emptyTitle')}
+              /* Un seul corps : cet écran est réservé au propriétaire et au
+                 gestionnaire — `Restricted allow={['owner','manager']}` — et un
+                 texte écrit pour le locataire n'y serait jamais lu. */
+              body={t('app.deposits.emptyBody')}
+            />
+          }
           columns={[
             {
               key: 'unit',

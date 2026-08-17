@@ -763,6 +763,8 @@ export const fr = {
       confirmSettle: 'Valider l’arbitrage',
       unsettle: 'Défaire l’arbitrage',
       unsettled_toast: 'Arbitrage défait · la caution redevient retenue',
+      emptyTitle: 'Aucune caution consignée',
+      emptyBody: 'Le montant se saisit à la création de la fiche locataire. Il apparaîtra ici, avec les retenues justifiées et le solde à restituer.',
       settled: 'Caution arbitrée · décompte envoyé au locataire',
       errorTooHigh: 'La retenue ne peut pas dépasser la caution consignée, soit {amount}.',
       errorJustification: 'Justifiez la retenue : le locataire peut la contester.',

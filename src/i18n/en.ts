@@ -644,6 +644,8 @@ export const en: Dictionary = {
       confirmSettle: 'Confirm settlement',
       unsettle: 'Undo arbitration',
       unsettled_toast: 'Arbitration undone · the deposit is held again',
+      emptyTitle: 'No deposit held',
+      emptyBody: 'The amount is entered when creating the tenant record. It will show here, with justified withholdings and the balance to return.',
       settled: 'Deposit settled · statement sent to the tenant',
       errorTooHigh: 'The deduction cannot exceed the deposit held, {amount}.',
       errorJustification: 'Justify the deduction: the tenant may dispute it.',

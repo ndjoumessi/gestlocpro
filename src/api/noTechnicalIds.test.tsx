@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen } from '@/test/render'
+import { renderApp, screen, userEvent } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur } from '@/test/api'
 import type { EtatSession } from './SessionProvider'
 
@@ -176,6 +176,33 @@ describe('aucun identifiant technique à l’écran', () => {
     const texte = document.body.textContent ?? ''
     const trouves = texte.match(new RegExp(UUID, 'gi')) ?? []
     expect(trouves, `identifiant technique visible sur ${route}`).toEqual([])
+  })
+
+  /**
+   * LES MODALES AUSSI, et c'est par là que la fuite est passée.
+   *
+   * Les cas ci-dessus inspectent les écrans AU REPOS. La liste des unités de la
+   * modale d'encaissement affichait « 5d2665cd-eda5-4d9d-… — BEKONO LANDRY » et
+   * aucun garde ne pouvait le voir : elle ne se peuple qu'une fois la modale
+   * ouverte. Le défaut a été trouvé sur une capture d'écran, pas ici.
+   *
+   * C'est la même leçon que les boutons offerts par le seul toast : un garde
+   * qui n'observe qu'un état du produit ne dit rien des autres.
+   */
+  it('n’en montre pas davantage dans les listes des modales', async () => {
+    const serveur = installerFauxServeur()
+    serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: portefeuille() })
+    const user = userEvent.setup()
+    renderApp('/app/paiements', { session: SESSION_AVEC_PARC })
+    await screen.findAllByText(/A1|Charles Ngassa/)
+
+    await user.click(screen.getByRole('button', { name: /enregistrer un paiement/i }))
+    const dialogue = await screen.findByRole('dialog')
+
+    const trouves = (dialogue.textContent ?? '').match(new RegExp(UUID, 'gi')) ?? []
+    expect(trouves, 'identifiant technique visible dans la modale').toEqual([])
+    // Le pendant positif : la liste montre bien quelque chose.
+    expect(dialogue.textContent).toMatch(/A1/)
   })
 
   it('affiche bien le libellé et la référence, et non leurs clés', async () => {

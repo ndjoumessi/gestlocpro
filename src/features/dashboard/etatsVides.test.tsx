@@ -171,3 +171,28 @@ describe('les états des lieux, quand il n’y en a aucun', () => {
     expect(screen.queryByRole('button', { name: /établir un état des lieux/i })).toBeNull()
   })
 })
+
+describe('les cautions, quand il n’y en a aucune', () => {
+  it('dit d’où elles viennent, au lieu d’en-têtes au-dessus du vide', async () => {
+    /**
+     * L'écran servait des en-têtes de colonnes et rien en dessous : ni ligne,
+     * ni message, ni indication de ce qui manque. Un tableau nu se lit comme
+     * une panne — et il n'y en avait pas : ce parc n'a simplement pas encore de
+     * caution.
+     *
+     * Le corps répond à la question réelle, « où est-ce que ça se saisit ? ».
+     */
+    parcSansRien()
+    renderApp('/app/cautions', { session: SESSION_PROPRIETAIRE })
+
+    expect(await screen.findByText(/aucune caution consignée/i)).toBeInTheDocument()
+    expect(screen.getByText(/création de la fiche locataire/i)).toBeInTheDocument()
+  })
+
+  /**
+   * Le cas « texte propre au locataire » N'EST PAS ici : il n'y a pas de
+   * locataire sur cet écran. « Cautions » est réservé au propriétaire et au
+   * gestionnaire, et un second texte aurait été du code mort ajouté en croyant
+   * bien faire — écrit, puis retiré quand le test a rendu « Accès restreint ».
+   */
+})

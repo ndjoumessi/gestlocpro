@@ -108,7 +108,17 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
             <Select {...props} value={unitId} onChange={(e) => setUnitId(e.target.value)}>
               {payable.map((u) => (
                 <option key={u.id} value={u.id}>
-                  {u.id} — {u.tenant}
+                  {/*
+                    Le LIBELLÉ, pas l'identifiant.
+
+                    Cette liste affichait « 5d2665cd-eda5-4d9d-… — BEKONO
+                    LANDRY ». Le garde `noTechnicalIds` existe précisément pour
+                    ça — son en-tête dit que le produit « a un temps montré
+                    l'uuid d'une unité au lieu de son libellé » — et il ne l'a
+                    pas vu : il inspecte les écrans AU REPOS, et cette liste ne
+                    se peuple qu'une fois la modale ouverte.
+                  */}
+                  {u.label} — {u.tenant}
                 </option>
               ))}
             </Select>
