@@ -607,6 +607,7 @@ export const fr = {
       modalTitle: 'Enregistrer un paiement',
       modalDescription: 'Le locataire recevra sa quittance par e-mail et par SMS.',
       selectUnit: 'Unité',
+      paidInFuture: 'Un versement ne peut pas être reçu à une date future.',
       amountInvalid: 'Saisissez un montant supérieur à zéro.',
       dueAmount: 'Dû : {amount}',
       overdueDays: '+{days} j',

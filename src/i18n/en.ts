@@ -493,6 +493,7 @@ export const en: Dictionary = {
       modalTitle: 'Record a payment',
       modalDescription: 'The tenant will receive their receipt by email and SMS.',
       selectUnit: 'Unit',
+      paidInFuture: 'A payment cannot be received on a future date.',
       amountInvalid: 'Enter an amount greater than zero.',
       dueAmount: 'Due: {amount}',
       overdueDays: '+{days} d',

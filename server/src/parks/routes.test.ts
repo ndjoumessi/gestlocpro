@@ -802,6 +802,41 @@ describe('encaissements', () => {
     expect(charge.payments[0]!.amountMinor).toBe(145000)
   })
 
+  it('refuse un versement reçu DEMAIN', async () => {
+    /**
+     * `paidOn` n'était vérifié que sur sa forme. Une quittance a été émise pour
+     * un règlement daté du 17 septembre alors qu'on était le 18 août : le
+     * registre portait de l'argent qui n'était pas arrivé, et « encaissé ce
+     * mois » le comptait. Une quittance atteste d'un fait ; la dater en avant
+     * en fait une promesse.
+     */
+    const { cookie, parkId, unitId } = await parcAvecBail('futur@example.com')
+    const demain = new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10)
+
+    const res = await request(serveur)
+      .post(`/api/parks/${parkId}/payments`)
+      .set('Cookie', cookie)
+      .send({ unitId, periodStart: '2026-07-01', amountMinor: 145000, method: 'cash', paidOn: demain })
+
+    expect(res.status).toBe(422)
+    expect(res.body.error).toBe('paid_in_future')
+    expect(await prisma.payment.count()).toBe(0)
+  })
+
+  it('admet un versement reçu AUJOURD’HUI, quelle que soit l’heure', async () => {
+    // La borne est le jour courant en entier : un versement reçu ce matin et
+    // saisi ce soir doit passer, quel que soit le fuseau de qui saisit.
+    const { cookie, parkId, unitId } = await parcAvecBail('aujourdhui@example.com')
+    const aujourdhui = new Date().toISOString().slice(0, 10)
+
+    const res = await request(serveur)
+      .post(`/api/parks/${parkId}/payments`)
+      .set('Cookie', cookie)
+      .send({ unitId, periodStart: '2026-07-01', amountMinor: 145000, method: 'cash', paidOn: aujourdhui })
+
+    expect(res.status, JSON.stringify(res.body)).toBe(201)
+  })
+
   it('admet un versement partiel, et les cumule sur la même période', async () => {
     // Payer ce qu'on peut, quand on peut, est le cas COURANT. Interdire le
     // partiel forcerait à ne rien enregistrer, donc à perdre la trace.

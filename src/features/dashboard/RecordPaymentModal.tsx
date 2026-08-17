@@ -59,6 +59,18 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
       setError(t('app.payments.amountInvalid'))
       return
     }
+    /**
+     * Une quittance ATTESTE d'un fait ; la dater en avant en fait une promesse.
+     *
+     * Une quittance a été émise pour un règlement daté du 17 septembre alors
+     * qu'on était le 18 août — le registre portait de l'argent qui n'était pas
+     * arrivé. Le serveur refuse désormais en 422 ; la même borne est posée ici
+     * pour que le refus arrive avant l'aller-retour.
+     */
+    if (verseLe && verseLe > new Date().toISOString().slice(0, 10)) {
+      setError(t('app.payments.paidInFuture'))
+      return
+    }
     setError(null)
 
     /**

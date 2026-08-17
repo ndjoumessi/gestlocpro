@@ -143,6 +143,43 @@ describe('relance des loyers', () => {
   })
 })
 
+describe('date du versement', () => {
+  it('refuse une date future, et n’appelle pas le serveur', async () => {
+    /**
+     * Une quittance a été émise pour un règlement daté du 17 septembre alors
+     * qu'on était le 18 août : le registre portait de l'argent qui n'était pas
+     * arrivé, et « encaissé ce mois » le comptait. Une quittance atteste d'un
+     * fait ; la dater en avant en fait une promesse.
+     */
+    const serveur = parc()
+    const user = userEvent.setup()
+    renderApp('/app/paiements', { session: session('owner') })
+    await screen.findByText('Paul Kamga')
+
+    await user.click(bouton(/enregistrer un paiement/i))
+    const dialogue = screen.getByRole('dialog')
+    // Le montant d'abord : la modale le vérifie AVANT la date, et un champ vide
+    // ferait tomber le cas sur la mauvaise alerte — il passait ainsi pour un
+    // refus de date alors qu'il refusait un montant.
+    await user.type(within(dialogue).getByLabelText(/^montant/i), '145000')
+
+    // Mois suivant puis le 1er : toujours dans le futur, sans dépendre du jour
+    // où la suite tourne.
+    await user.click(within(dialogue).getByRole('button', { name: /date du versement/i }))
+    const calendrier = screen.getByRole('dialog', { name: /calendrier/i })
+    await user.click(within(calendrier).getByLabelText(/mois suivant/i))
+    const premier = within(calendrier)
+      .getAllByRole('button')
+      .find((b) => /(^|\D)1(\D|$)/.test(b.getAttribute('aria-label') ?? ''))!
+    await user.click(premier)
+
+    await user.click(within(dialogue).getByRole('button', { name: /^enregistrer$/i }))
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/date future/i)
+    expect(serveur.appels.some((a) => a.chemin.includes('/payments'))).toBe(false)
+  })
+})
+
 describe('appel de loyers', () => {
   it('dit combien d’échéances sont ÉMISES, pas combien de baux existent', async () => {
     const serveur = parc()

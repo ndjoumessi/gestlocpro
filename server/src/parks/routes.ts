@@ -914,6 +914,36 @@ parksRouter.post(
 
     const debut = new Date(`${corps.periodStart}T00:00:00Z`)
 
+    /**
+     * Un versement ne se reçoit pas DEMAIN.
+     *
+     * `paidOn` n'était vérifié que sur sa forme. Une quittance a été émise pour
+     * un règlement daté du 17 septembre alors qu'on était le 18 août : le
+     * registre portait de l'argent qui n'était pas arrivé, et « encaissé ce
+     * mois » le comptait.
+     *
+     * La borne est le jour COURANT en entier — un versement reçu ce matin et
+     * saisi ce soir doit passer, quel que soit le fuseau de qui saisit.
+     */
+    if (corps.paidOn) {
+      const recuLe = new Date(`${corps.paidOn}T00:00:00Z`)
+      const maintenant = new Date()
+      const finDuJour = new Date(
+        Date.UTC(
+          maintenant.getUTCFullYear(),
+          maintenant.getUTCMonth(),
+          maintenant.getUTCDate(),
+          23,
+          59,
+          59,
+        ),
+      )
+      if (recuLe > finDuJour) {
+        res.status(422).json({ error: 'paid_in_future' })
+        return
+      }
+    }
+
     const paiement = await prisma.$transaction(async (tx) => {
       const echeance = await tx.rentCharge.upsert({
         where: { leaseId_periodStart: { leaseId: bail.id, periodStart: debut } },
