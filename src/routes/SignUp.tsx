@@ -1,28 +1,38 @@
-import { useMemo, useState, type FormEvent } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { AuthLayout } from '@/components/layout/AuthLayout'
-import { Stepper } from '@/features/auth/Stepper'
-import { Button } from '@/components/primitives/Button'
-import { Field } from '@/components/primitives/Field'
-import { Input, PasswordInput, PasswordStrength, Select } from '@/components/primitives/Input'
-import { Combobox } from '@/components/primitives/Combobox'
-import { Checkbox, RadioCards } from '@/components/primitives/Choice'
-import { Icon } from '@/components/primitives/Icon'
-import { Card } from '@/components/primitives/Card'
-import { useI18n, useT, type MessageKey } from '@/i18n/I18nProvider'
-import { ApiError, NetworkError } from '@/api/client'
-import { useSession } from '@/api/SessionProvider'
-import { LOCALES, LOCALE_LABELS } from '@/i18n/locales'
-import type { Locale } from '@/i18n/locales'
-import { useCurrency } from '@/currency/CurrencyProvider'
-import { CURRENCIES, CURRENCY_DEFS, type CurrencyCode } from '@/currency/currencies'
+import { useMemo, useState, type FormEvent } from "react";
+import { Link, useParams } from "react-router-dom";
+import { AuthLayout } from "@/components/layout/AuthLayout";
+import { Stepper } from "@/features/auth/Stepper";
+import { Button } from "@/components/primitives/Button";
+import { Field } from "@/components/primitives/Field";
 import {
+  Input,
+  PasswordInput,
+  PasswordStrength,
+  Select,
+} from "@/components/primitives/Input";
+import { Combobox } from "@/components/primitives/Combobox";
+import { Checkbox, RadioCards } from "@/components/primitives/Choice";
+import { Icon } from "@/components/primitives/Icon";
+import { Card } from "@/components/primitives/Card";
+import { useI18n, useT, type MessageKey } from "@/i18n/I18nProvider";
+import { ApiError, NetworkError } from "@/api/client";
+import { useSession } from "@/api/SessionProvider";
+import { LOCALES, LOCALE_LABELS } from "@/i18n/locales";
+import type { Locale } from "@/i18n/locales";
+import { useCurrency } from "@/currency/CurrencyProvider";
+import {
+  CURRENCIES,
+  CURRENCY_DEFS,
+  type CurrencyCode,
+} from "@/currency/currencies";
+import {
+  COUNTRIES,
   OTHER_COUNTRY,
   countryName,
   findCountry,
   sortedCountries,
   dialOptions,
-} from '@/lib/countries'
+} from "@/lib/countries";
 import {
   formatInviteCode,
   validateEmail,
@@ -32,7 +42,7 @@ import {
   validatePassword,
   validatePhone,
   type FieldError,
-} from '@/features/auth/validation'
+} from "@/features/auth/validation";
 import {
   initialSignupState,
   ROLE_SLUGS,
@@ -40,10 +50,10 @@ import {
   UNIT_RANGES,
   type Role,
   type SignupState,
-} from '@/features/auth/signupState'
+} from "@/features/auth/signupState";
 
-const STEP_KEYS = ['role', 'identity', 'context', 'review'] as const
-type StepKey = (typeof STEP_KEYS)[number]
+const STEP_KEYS = ["role", "identity", "context", "review"] as const;
+type StepKey = (typeof STEP_KEYS)[number];
 
 /**
  * Assistant d'inscription.
@@ -56,57 +66,63 @@ type StepKey = (typeof STEP_KEYS)[number]
  * landing en sautant l'étape 1.
  */
 export function SignUp() {
-  const t = useT()
-  const { locale, setLocale, setRegion } = useI18n()
-  const { currency, setCurrency } = useCurrency()
-  const { inscrire } = useSession()
-  const { role: roleSlug } = useParams()
+  const t = useT();
+  const { locale, setLocale, setRegion } = useI18n();
+  const { currency, setCurrency } = useCurrency();
+  const { inscrire } = useSession();
+  const { role: roleSlug } = useParams();
 
-  const presetRole = roleSlug ? (SLUG_TO_ROLE[roleSlug] ?? null) : null
+  const presetRole = roleSlug ? (SLUG_TO_ROLE[roleSlug] ?? null) : null;
 
   const [state, setState] = useState<SignupState>(() =>
     initialSignupState(presetRole, locale, currency),
-  )
-  const [stepIndex, setStepIndex] = useState(presetRole ? 1 : 0)
-  const [errors, setErrors] = useState<Record<string, FieldError>>({})
-  const [touched, setTouched] = useState<Record<string, boolean>>({})
-  const [submitting, setSubmitting] = useState(false)
-  const [done, setDone] = useState(false)
+  );
+  const [stepIndex, setStepIndex] = useState(presetRole ? 1 : 0);
+  const [errors, setErrors] = useState<Record<string, FieldError>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
   /** Échec de l'appel, distinct des erreurs de saisie champ par champ. */
-  const [echec, setEchec] = useState<MessageKey | null>(null)
+  const [echec, setEchec] = useState<MessageKey | null>(null);
 
-  const step: StepKey = STEP_KEYS[stepIndex]
-  const patch = (values: Partial<SignupState>) => setState((s) => ({ ...s, ...values }))
+  const step: StepKey = STEP_KEYS[stepIndex];
+  const patch = (values: Partial<SignupState>) =>
+    setState((s) => ({ ...s, ...values }));
 
   const steps = useMemo(
-    () => STEP_KEYS.map((key) => t(`auth.signup.steps.${key}` as 'auth.signup.steps.role')),
+    () =>
+      STEP_KEYS.map((key) =>
+        t(`auth.signup.steps.${key}` as "auth.signup.steps.role"),
+      ),
     [t],
-  )
+  );
 
   /** Erreurs de l'étape courante. */
   function validateStep(current: StepKey): Record<string, FieldError> {
-    if (current === 'role') {
-      return {}
+    if (current === "role") {
+      return {};
     }
 
-    if (current === 'identity') {
+    if (current === "identity") {
       return {
         name: validateName(state.name),
         email: validateEmail(state.email),
         phone: validatePhone(state.phone),
         password: validatePassword(state.password, { requireStrong: true }),
-      }
+      };
     }
 
-    if (current === 'context') {
-      if (state.role === 'owner') return { parkName: validateParkName(state.parkName) }
+    if (current === "context") {
+      if (state.role === "owner")
+        return { parkName: validateParkName(state.parkName) };
       // Le gestionnaire sans code passe par une demande d'accès : on ne bloque
       // pas, on change de chemin.
-      if (state.role === 'manager') return {}
-      if (state.role === 'tenant') return { inviteCode: validateInviteCode(state.inviteCode) }
+      if (state.role === "manager") return {};
+      if (state.role === "tenant")
+        return { inviteCode: validateInviteCode(state.inviteCode) };
     }
 
-    return { terms: state.terms ? null : 'auth.signup.termsError' }
+    return { terms: state.terms ? null : "auth.signup.termsError" };
   }
 
   /**
@@ -117,8 +133,8 @@ export function SignUp() {
    * tout était jeté à la dernière étape. Le succès affiché ne recouvrait rien.
    */
   const creerLeCompte = async () => {
-    setSubmitting(true)
-    setEchec(null)
+    setSubmitting(true);
+    setEchec(null);
     try {
       await inscrire({
         email: state.email.trim(),
@@ -127,7 +143,7 @@ export function SignUp() {
         // Le couple indicatif + numéro devient un E.164 unique : c'est la forme
         // que le serveur exige, et la seule qui se compose sans ambiguïté.
         ...(state.phone.trim()
-          ? { phoneE164: `${state.dial}${state.phone.replace(/\D/g, '')}` }
+          ? { phoneE164: `${state.dial}${state.phone.replace(/\D/g, "")}` }
           : {}),
         // `OTHER` est une sentinelle d'interface — « mon pays n'est pas dans la
         // liste » — et non un code ISO 3166-1. L'envoyer faisait échouer
@@ -147,11 +163,11 @@ export function SignUp() {
         // démonstration : rien ne signalait que son parc n'existait pas.
         // Seul un propriétaire en fonde un ; les autres rejoignent celui d'un
         // tiers par invitation.
-        ...(state.role === 'owner' && state.parkName.trim()
+        ...(state.role === "owner" && state.parkName.trim()
           ? { parkName: state.parkName.trim() }
           : {}),
-      })
-      setDone(true)
+      });
+      setDone(true);
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         /**
@@ -161,28 +177,33 @@ export function SignUp() {
          * n'existe pas — l'utilisateur lirait le problème sans pouvoir le
          * corriger, et devrait deviner qu'il faut revenir en arrière.
          */
-        setErrors((s) => ({ ...s, email: 'auth.signup.emailTaken' }))
-        setTouched((s) => ({ ...s, email: true }))
-        setStepIndex(STEP_KEYS.indexOf('identity'))
-        window.scrollTo({ top: 0 })
-        return
+        setErrors((s) => ({ ...s, email: "auth.signup.emailTaken" }));
+        setTouched((s) => ({ ...s, email: true }));
+        setStepIndex(STEP_KEYS.indexOf("identity"));
+        window.scrollTo({ top: 0 });
+        return;
       }
       setEchec(
-        err instanceof NetworkError ? 'auth.signup.errorOffline' : 'auth.signup.errorUnexpected',
-      )
+        err instanceof NetworkError
+          ? "auth.signup.errorOffline"
+          : "auth.signup.errorUnexpected",
+      );
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   const goNext = () => {
-    if (step === 'role' && !state.role) return
+    if (step === "role" && !state.role) return;
 
-    const next = validateStep(step)
-    setErrors(next)
-    setTouched((s) => ({ ...s, ...Object.fromEntries(Object.keys(next).map((k) => [k, true])) }))
+    const next = validateStep(step);
+    setErrors(next);
+    setTouched((s) => ({
+      ...s,
+      ...Object.fromEntries(Object.keys(next).map((k) => [k, true])),
+    }));
 
-    const firstBad = Object.entries(next).find(([, error]) => error !== null)
+    const firstBad = Object.entries(next).find(([, error]) => error !== null);
     if (firstBad) {
       /**
        * Le refus doit se lire LÀ OÙ L'ON VIENT DE CLIQUER.
@@ -197,44 +218,46 @@ export function SignUp() {
        * principal qui paraît inerte est la pire des pannes : il n'y a rien à
        * lire, donc rien à corriger.
        */
-      const champ = document.querySelector<HTMLElement>(`[name="${firstBad[0]}"]`)
+      const champ = document.querySelector<HTMLElement>(
+        `[name="${firstBad[0]}"]`,
+      );
       // `scrollIntoView` n'existe pas sous jsdom : l'appel est facultatif pour
       // que les tests n'aient pas à simuler une capacité du navigateur.
-      champ?.scrollIntoView?.({ block: 'center' })
-      champ?.focus()
-      setEchec(firstBad[1])
-      return
+      champ?.scrollIntoView?.({ block: "center" });
+      champ?.focus();
+      setEchec(firstBad[1]);
+      return;
     }
 
-    if (step === 'review') {
-      void creerLeCompte()
-      return
+    if (step === "review") {
+      void creerLeCompte();
+      return;
     }
 
     // Le message disparaît quand on avance : le garder afficherait le reproche
     // d'une étape précédente au-dessus d'un formulaire déjà corrigé.
-    setEchec(null)
+    setEchec(null);
 
-    setStepIndex((i) => i + 1)
-    window.scrollTo({ top: 0 })
-  }
+    setStepIndex((i) => i + 1);
+    window.scrollTo({ top: 0 });
+  };
 
   const goBack = () => {
-    if (stepIndex === 0) return
-    setStepIndex((i) => i - 1)
-    window.scrollTo({ top: 0 })
-  }
+    if (stepIndex === 0) return;
+    setStepIndex((i) => i - 1);
+    window.scrollTo({ top: 0 });
+  };
 
   const errorFor = (key: string) =>
-    touched[key] && errors[key] ? t(errors[key]!) : undefined
+    touched[key] && errors[key] ? t(errors[key]!) : undefined;
 
   const blur = (key: string, error: FieldError) => () => {
-    setTouched((s) => ({ ...s, [key]: true }))
-    setErrors((s) => ({ ...s, [key]: error }))
-  }
+    setTouched((s) => ({ ...s, [key]: true }));
+    setErrors((s) => ({ ...s, [key]: error }));
+  };
 
   if (done) {
-    return <SignupSuccess role={state.role} />
+    return <SignupSuccess role={state.role} />;
   }
 
   return (
@@ -242,46 +265,49 @@ export function SignUp() {
       wide
       // L'étape seule ne situe pas : « Vos informations » peut être n'importe
       // quel formulaire. Le titre d'onglet nomme le parcours.
-      documentTitle={`${steps[stepIndex]} — ${t('auth.signup.title')}`}
+      documentTitle={`${steps[stepIndex]} — ${t("auth.signup.title")}`}
       title={
-        step === 'role'
-          ? t('auth.signup.roleTitle')
-          : step === 'identity'
-            ? t('auth.signup.identityTitle')
-            : step === 'context'
-              ? t('auth.signup.contextTitle')
-              : t('auth.signup.reviewTitle')
+        step === "role"
+          ? t("auth.signup.roleTitle")
+          : step === "identity"
+            ? t("auth.signup.identityTitle")
+            : step === "context"
+              ? t("auth.signup.contextTitle")
+              : t("auth.signup.reviewTitle")
       }
       subtitle={
-        step === 'role'
-          ? t('auth.signup.roleSubtitle')
-          : step === 'identity'
-            ? t('auth.signup.identitySubtitle')
-            : step === 'context'
-              ? t('auth.signup.contextSubtitle')
-              : t('auth.signup.reviewSubtitle')
+        step === "role"
+          ? t("auth.signup.roleSubtitle")
+          : step === "identity"
+            ? t("auth.signup.identitySubtitle")
+            : step === "context"
+              ? t("auth.signup.contextSubtitle")
+              : t("auth.signup.reviewSubtitle")
       }
       above={<Stepper steps={steps} current={stepIndex} />}
       footer={
         <>
-          {t('auth.hasAccount')}{' '}
-          <Link to="/connexion" className="font-semibold text-gold-ink hover:text-gold-ink-hover">
-            {t('auth.signIn')}
+          {t("auth.hasAccount")}{" "}
+          <Link
+            to="/connexion"
+            className="font-semibold text-gold-ink hover:text-gold-ink-hover"
+          >
+            {t("auth.signIn")}
           </Link>
         </>
       }
     >
       <form
         onSubmit={(event: FormEvent) => {
-          event.preventDefault()
-          goNext()
+          event.preventDefault();
+          goNext();
         }}
         noValidate
         className="flex flex-col gap-6"
       >
-        {step === 'role' && (
+        {step === "role" && (
           <RadioCards
-            legend={t('auth.signup.roleTitle')}
+            legend={t("auth.signup.roleTitle")}
             hideLegend
             name="role"
             value={state.role}
@@ -289,36 +315,36 @@ export function SignUp() {
             columns={3}
             options={[
               {
-                value: 'owner',
-                title: t('roles.owner.name'),
-                description: t('roles.owner.pitch'),
-                icon: 'building',
-                footnote: t('roles.owner.rights'),
+                value: "owner",
+                title: t("roles.owner.name"),
+                description: t("roles.owner.pitch"),
+                icon: "building",
+                footnote: t("roles.owner.rights"),
               },
               {
-                value: 'manager',
-                title: t('roles.manager.name'),
-                description: t('roles.manager.pitch'),
-                icon: 'users',
-                footnote: t('roles.manager.rights'),
+                value: "manager",
+                title: t("roles.manager.name"),
+                description: t("roles.manager.pitch"),
+                icon: "users",
+                footnote: t("roles.manager.rights"),
               },
               {
-                value: 'tenant',
-                title: t('roles.tenant.name'),
-                description: t('roles.tenant.pitch'),
-                icon: 'key',
-                footnote: t('roles.tenant.rights'),
+                value: "tenant",
+                title: t("roles.tenant.name"),
+                description: t("roles.tenant.pitch"),
+                icon: "key",
+                footnote: t("roles.tenant.rights"),
               },
             ]}
           />
         )}
 
-        {step === 'identity' && (
+        {step === "identity" && (
           <div className="grid gap-5 sm:grid-cols-2">
             <Field
-              label={t('common.fullName')}
+              label={t("common.fullName")}
               required
-              error={errorFor('name')}
+              error={errorFor("name")}
               className="sm:col-span-2"
             >
               {(props) => (
@@ -328,12 +354,12 @@ export function SignUp() {
                   autoComplete="name"
                   value={state.name}
                   onChange={(e) => patch({ name: e.target.value })}
-                  onBlur={blur('name', validateName(state.name))}
+                  onBlur={blur("name", validateName(state.name))}
                 />
               )}
             </Field>
 
-            <Field label={t('common.email')} required error={errorFor('email')}>
+            <Field label={t("common.email")} required error={errorFor("email")}>
               {(props) => (
                 <Input
                   {...props}
@@ -341,15 +367,15 @@ export function SignUp() {
                   type="email"
                   icon="mail"
                   autoComplete="email"
-                  placeholder={t('common.emailPlaceholder')}
+                  placeholder={t("common.emailPlaceholder")}
                   value={state.email}
                   onChange={(e) => patch({ email: e.target.value })}
-                  onBlur={blur('email', validateEmail(state.email))}
+                  onBlur={blur("email", validateEmail(state.email))}
                 />
               )}
             </Field>
 
-            <Field label={t('common.phone')} required error={errorFor('phone')}>
+            <Field label={t("common.phone")} required error={errorFor("phone")}>
               {(props) => (
                 <div className="flex gap-2">
                   {/* L'indicatif suit le pays choisi à l'étape suivante mais
@@ -366,20 +392,63 @@ export function SignUp() {
                       pas dans la largeur d'un nombre à quatre caractères. */}
                   <div className="w-44 shrink-0">
                     <Combobox
-                      aria-label={t('common.dialCode')}
+                      aria-label={t("common.dialCode")}
                       autoComplete="tel-country-code"
                       /**
                        * Deux cent cinquante indicatifs : un menu déroulant
                        * n'est plus parcourable. Taper « cam » ou « 237 » mène
                        * au Cameroun.
                        */
-                      options={dialOptions(locale).map(({ dial, label, zone }) => ({
-                        value: dial,
-                        label,
-                        groupe: t(zone === 'cfa' ? 'common.dialZoneCfa' : 'common.dialZoneOther'),
-                      }))}
+                      options={dialOptions(locale).map(
+                        ({ dial, label, zone }) => ({
+                          value: dial,
+                          label,
+                          groupe: t(
+                            zone === "cfa"
+                              ? "common.dialZoneCfa"
+                              : "common.dialZoneOther",
+                          ),
+                        }),
+                      )}
                       value={state.dial}
-                      onChange={(dial: string) => patch({ dial })}
+                      /**
+                       * L'indicatif remonte vers le PAYS, et pas seulement
+                       * l'inverse.
+                       *
+                       * La relation était à sens unique : choisir un pays
+                       * réglait l'indicatif, choisir un indicatif ne réglait
+                       * que lui-même. On pouvait donc saisir « France · +33 »
+                       * et voir le récapitulatif annoncer « Pays : Cameroun » —
+                       * la valeur déduite de la devise au premier rendu. Deux
+                       * réponses contradictoires à la même question, sur le
+                       * même écran, et c'est celle qu'on n'a pas choisie qui
+                       * partait au serveur.
+                       *
+                       * La remontée n'a lieu que si l'indicatif désigne UN SEUL
+                       * pays servi. Les indicatifs partagés — `+1` couvre les
+                       * États-Unis, le Canada et une vingtaine de territoires —
+                       * ne permettent aucune déduction : deviner y serait pire
+                       * que se taire, puisque le pays pilote aussi la devise,
+                       * la langue et le format des dates.
+                       */
+                      onChange={(dial: string) => {
+                        const servis = COUNTRIES.filter((c) => c.dial === dial);
+                        const pays =
+                          servis.length === 1 ? servis[0] : undefined;
+                        if (!pays) {
+                          patch({ dial });
+                          return;
+                        }
+                        patch({
+                          dial,
+                          country: pays.code,
+                          currency: pays.currency,
+                          locale: pays.locale,
+                        });
+                        setCurrency(pays.currency);
+                        setLocale(pays.locale);
+                        setRegion(pays.code);
+                      }}
                     />
                   </div>
                   <Input
@@ -390,16 +459,16 @@ export function SignUp() {
                     autoComplete="tel-national"
                     value={state.phone}
                     onChange={(e) => patch({ phone: e.target.value })}
-                    onBlur={blur('phone', validatePhone(state.phone))}
+                    onBlur={blur("phone", validatePhone(state.phone))}
                   />
                 </div>
               )}
             </Field>
 
             <Field
-              label={t('common.password')}
+              label={t("common.password")}
               required
-              error={errorFor('password')}
+              error={errorFor("password")}
               className="sm:col-span-2"
             >
               {(props) => (
@@ -411,7 +480,7 @@ export function SignUp() {
                     value={state.password}
                     onChange={(e) => patch({ password: e.target.value })}
                     onBlur={blur(
-                      'password',
+                      "password",
                       validatePassword(state.password, { requireStrong: true }),
                     )}
                   />
@@ -424,7 +493,7 @@ export function SignUp() {
           </div>
         )}
 
-        {step === 'context' && (
+        {step === "context" && (
           <ContextStep
             state={state}
             patch={patch}
@@ -434,14 +503,14 @@ export function SignUp() {
               // « Autre » n'emporte aucun pré-remplissage : on enregistre le
               // choix et on laisse devise et langue à l'utilisateur.
               if (code === OTHER_COUNTRY) {
-                patch({ country: code })
+                patch({ country: code });
                 // Pas de pays connu : on efface la région pour retomber sur le
                 // repli de formatage plutôt que d'en inventer une.
-                setRegion(null)
-                return
+                setRegion(null);
+                return;
               }
-              const country = findCountry(code)
-              if (!country) return
+              const country = findCountry(code);
+              if (!country) return;
               // Le pays pré-remplit devise, langue et indicatif — et les
               // applique tout de suite à l'interface pour que le choix soit
               // visible, pas seulement enregistré.
@@ -450,26 +519,31 @@ export function SignUp() {
                 currency: country.currency,
                 locale: country.locale,
                 dial: country.dial,
-              })
-              setCurrency(country.currency)
-              setLocale(country.locale)
+              });
+              setCurrency(country.currency);
+              setLocale(country.locale);
               // Le pays pilote aussi le format des dates : en-US rend 08/12
               // quand en-GB rend 12/08, et fr-CA rend 2026-08-12.
-              setRegion(country.code)
+              setRegion(country.code);
             }}
             onCurrencyChange={(currency) => {
-              patch({ currency })
-              setCurrency(currency)
+              patch({ currency });
+              setCurrency(currency);
             }}
             onLocaleChange={(next) => {
-              patch({ locale: next })
-              setLocale(next)
+              patch({ locale: next });
+              setLocale(next);
             }}
           />
         )}
 
-        {step === 'review' && (
-          <ReviewStep state={state} errorFor={errorFor} patch={patch} onEdit={setStepIndex} />
+        {step === "review" && (
+          <ReviewStep
+            state={state}
+            errorFor={errorFor}
+            patch={patch}
+            onEdit={setStepIndex}
+          />
         )}
 
         {/* Annoncé et non seulement affiché : sans `role="alert"`, un
@@ -487,8 +561,13 @@ export function SignUp() {
 
         <div className="flex flex-col-reverse gap-3 border-t border-border pt-6 sm:flex-row sm:justify-between">
           {stepIndex > 0 ? (
-            <Button variant="ghost" size="lg" icon="chevronLeft" onClick={goBack}>
-              {t('common.back')}
+            <Button
+              variant="ghost"
+              size="lg"
+              icon="chevronLeft"
+              onClick={goBack}
+            >
+              {t("common.back")}
             </Button>
           ) : (
             <span />
@@ -497,25 +576,25 @@ export function SignUp() {
           <Button
             type="submit"
             size="lg"
-            iconAfter={step === 'review' ? undefined : 'arrowRight'}
+            iconAfter={step === "review" ? undefined : "arrowRight"}
             loading={submitting}
-            disabled={step === 'role' && !state.role}
+            disabled={step === "role" && !state.role}
           >
-            {step === 'review' ? t('auth.signup.submit') : t('common.next')}
+            {step === "review" ? t("auth.signup.submit") : t("common.next")}
           </Button>
         </div>
       </form>
     </AuthLayout>
-  )
+  );
 }
 
 /* -------------------------------------------------------------------------- */
 
 interface StepProps {
-  state: SignupState
-  patch: (values: Partial<SignupState>) => void
-  errorFor: (key: string) => string | undefined
-  blur: (key: string, error: FieldError) => () => void
+  state: SignupState;
+  patch: (values: Partial<SignupState>) => void;
+  errorFor: (key: string) => string | undefined;
+  blur: (key: string, error: FieldError) => () => void;
 }
 
 function ContextStep({
@@ -527,21 +606,25 @@ function ContextStep({
   onCurrencyChange,
   onLocaleChange,
 }: StepProps & {
-  onCountryChange: (code: string) => void
-  onCurrencyChange: (currency: CurrencyCode) => void
-  onLocaleChange: (locale: Locale) => void
+  onCountryChange: (code: string) => void;
+  onCurrencyChange: (currency: CurrencyCode) => void;
+  onLocaleChange: (locale: Locale) => void;
 }) {
-  const t = useT()
-  const { locale } = useI18n()
-  const countries = useMemo(() => sortedCountries(locale), [locale])
+  const t = useT();
+  const { locale } = useI18n();
+  const countries = useMemo(() => sortedCountries(locale), [locale]);
 
   return (
     <div className="flex flex-col gap-6">
       <div className="grid gap-5 sm:grid-cols-3">
         <Field
-          label={t('common.country')}
+          label={t("common.country")}
           required
-          hint={state.country === OTHER_COUNTRY ? t('common.countryOtherHint') : undefined}
+          hint={
+            state.country === OTHER_COUNTRY
+              ? t("common.countryOtherHint")
+              : undefined
+          }
         >
           {(props) => (
             <Select
@@ -559,12 +642,12 @@ function ContextStep({
               {/* Épinglé en fin de liste plutôt qu'alphabétisé : ce n'est pas
                   un pays, et il ne doit pas s'intercaler entre l'Autriche et
                   la Belgique. */}
-              <option value={OTHER_COUNTRY}>{t('common.countryOther')}</option>
+              <option value={OTHER_COUNTRY}>{t("common.countryOther")}</option>
             </Select>
           )}
         </Field>
 
-        <Field label={t('common.currency')}>
+        <Field label={t("common.currency")}>
           {(props) => (
             <Select
               {...props}
@@ -581,7 +664,7 @@ function ContextStep({
           )}
         </Field>
 
-        <Field label={t('common.language')}>
+        <Field label={t("common.language")}>
           {(props) => (
             <Select
               {...props}
@@ -599,13 +682,13 @@ function ContextStep({
         </Field>
       </div>
 
-      {state.role === 'owner' && (
+      {state.role === "owner" && (
         <div className="flex flex-col gap-5 border-t border-border pt-6">
           <Field
-            label={t('auth.signup.parkName')}
-            hint={t('auth.signup.parkNameHint')}
+            label={t("auth.signup.parkName")}
+            hint={t("auth.signup.parkNameHint")}
             required
-            error={errorFor('parkName')}
+            error={errorFor("parkName")}
           >
             {(props) => (
               <Input
@@ -613,12 +696,15 @@ function ContextStep({
                 name="parkName"
                 value={state.parkName}
                 onChange={(e) => patch({ parkName: e.target.value })}
-                onBlur={blur('parkName', validateParkName(state.parkName))}
+                onBlur={blur("parkName", validateParkName(state.parkName))}
               />
             )}
           </Field>
 
-          <Field label={t('auth.signup.unitCount')} hint={t('auth.signup.unitCountHint')}>
+          <Field
+            label={t("auth.signup.unitCount")}
+            hint={t("auth.signup.unitCountHint")}
+          >
             {(props) => (
               <Select
                 {...props}
@@ -636,32 +722,36 @@ function ContextStep({
           </Field>
 
           <RadioCards
-            legend={t('auth.signup.management')}
+            legend={t("auth.signup.management")}
             name="delegates"
             columns={2}
             value={state.delegates}
-            onChange={(delegates: 'solo' | 'delegate') => patch({ delegates })}
+            onChange={(delegates: "solo" | "delegate") => patch({ delegates })}
             options={[
               {
-                value: 'solo',
-                title: t('auth.signup.manageSolo'),
-                description: t('auth.signup.manageSoloHint'),
-                icon: 'shield',
+                value: "solo",
+                title: t("auth.signup.manageSolo"),
+                description: t("auth.signup.manageSoloHint"),
+                icon: "shield",
               },
               {
-                value: 'delegate',
-                title: t('auth.signup.manageDelegate'),
-                description: t('auth.signup.manageDelegateHint'),
-                icon: 'users',
+                value: "delegate",
+                title: t("auth.signup.manageDelegate"),
+                description: t("auth.signup.manageDelegateHint"),
+                icon: "users",
               },
             ]}
           />
         </div>
       )}
 
-      {state.role === 'manager' && (
+      {state.role === "manager" && (
         <div className="flex flex-col gap-5 border-t border-border pt-6">
-          <Field label={t('auth.signup.company')} hint={t('auth.signup.companyHint')} optional>
+          <Field
+            label={t("auth.signup.company")}
+            hint={t("auth.signup.companyHint")}
+            optional
+          >
             {(props) => (
               <Input
                 {...props}
@@ -674,8 +764,8 @@ function ContextStep({
           </Field>
 
           <Field
-            label={t('auth.signup.ownerCode')}
-            hint={t('auth.signup.ownerCodeHint')}
+            label={t("auth.signup.ownerCode")}
+            hint={t("auth.signup.ownerCodeHint")}
             optional={state.requestAccess}
           >
             {(props) => (
@@ -686,32 +776,36 @@ function ContextStep({
                 placeholder="PROP-0000-0000"
                 disabled={state.requestAccess}
                 value={state.ownerCode}
-                onChange={(e) => patch({ ownerCode: e.target.value.toUpperCase() })}
+                onChange={(e) =>
+                  patch({ ownerCode: e.target.value.toUpperCase() })
+                }
               />
             )}
           </Field>
 
           <Checkbox
-            label={t('auth.signup.requestAccess')}
+            label={t("auth.signup.requestAccess")}
             name="requestAccess"
             checked={state.requestAccess}
-            onChange={(e) => patch({ requestAccess: e.target.checked, ownerCode: '' })}
+            onChange={(e) =>
+              patch({ requestAccess: e.target.checked, ownerCode: "" })
+            }
           />
         </div>
       )}
 
-      {state.role === 'tenant' && (
+      {state.role === "tenant" && (
         <div className="flex flex-col gap-5 border-t border-border pt-6">
           <p className="flex items-start gap-2.5 rounded-md border border-gold-border bg-gold-tint px-4 py-3 text-body-s text-gold-ink">
             <Icon name="info" size={16} className="mt-0.5 shrink-0" />
-            {t('auth.signup.tenantNotice')}
+            {t("auth.signup.tenantNotice")}
           </p>
 
           <Field
-            label={t('auth.signup.inviteCode')}
-            hint={t('auth.signup.inviteCodeHint')}
+            label={t("auth.signup.inviteCode")}
+            hint={t("auth.signup.inviteCodeHint")}
             required
-            error={errorFor('inviteCode')}
+            error={errorFor("inviteCode")}
           >
             {(props) => (
               <Input
@@ -724,8 +818,13 @@ function ContextStep({
                 value={state.inviteCode}
                 // Mise en forme au fil de la frappe : l'utilisateur recopie le
                 // code d'un SMS sans avoir à placer les tirets lui-même.
-                onChange={(e) => patch({ inviteCode: formatInviteCode(e.target.value) })}
-                onBlur={blur('inviteCode', validateInviteCode(state.inviteCode))}
+                onChange={(e) =>
+                  patch({ inviteCode: formatInviteCode(e.target.value) })
+                }
+                onBlur={blur(
+                  "inviteCode",
+                  validateInviteCode(state.inviteCode),
+                )}
                 className="tracking-[0.08em]"
               />
             )}
@@ -733,7 +832,7 @@ function ContextStep({
         </div>
       )}
     </div>
-  )
+  );
 }
 
 function ReviewStep({
@@ -742,32 +841,48 @@ function ReviewStep({
   patch,
   onEdit,
 }: {
-  state: SignupState
-  errorFor: (key: string) => string | undefined
-  patch: (values: Partial<SignupState>) => void
-  onEdit: (index: number) => void
+  state: SignupState;
+  errorFor: (key: string) => string | undefined;
+  patch: (values: Partial<SignupState>) => void;
+  onEdit: (index: number) => void;
 }) {
-  const t = useT()
-  const { locale } = useI18n()
-  const country = findCountry(state.country)
+  const t = useT();
+  const { locale } = useI18n();
+  const country = findCountry(state.country);
 
   const rows: { label: string; value: string; step: number }[] = [
-    { label: t('auth.signup.summaryRole'), value: t(`roles.${state.role ?? 'owner'}.name` as 'roles.owner.name'), step: 0 },
-    { label: t('auth.signup.summaryName'), value: state.name, step: 1 },
-    { label: t('auth.signup.summaryEmail'), value: state.email, step: 1 },
-    { label: t('auth.signup.summaryPhone'), value: `${state.dial} ${state.phone}`, step: 1 },
     {
-      label: t('auth.signup.summaryCountry'),
+      label: t("auth.signup.summaryRole"),
+      value: t(`roles.${state.role ?? "owner"}.name` as "roles.owner.name"),
+      step: 0,
+    },
+    { label: t("auth.signup.summaryName"), value: state.name, step: 1 },
+    { label: t("auth.signup.summaryEmail"), value: state.email, step: 1 },
+    {
+      label: t("auth.signup.summaryPhone"),
+      value: `${state.dial} ${state.phone}`,
+      step: 1,
+    },
+    {
+      label: t("auth.signup.summaryCountry"),
       value: country
         ? countryName(country, locale)
         : state.country === OTHER_COUNTRY
-          ? t('common.countryOther')
-          : '—',
+          ? t("common.countryOther")
+          : "—",
       step: 2,
     },
-    { label: t('auth.signup.summaryCurrency'), value: CURRENCY_DEFS[state.currency].label, step: 2 },
-    { label: t('auth.signup.summaryLanguage'), value: LOCALE_LABELS[state.locale].long, step: 2 },
-  ]
+    {
+      label: t("auth.signup.summaryCurrency"),
+      value: CURRENCY_DEFS[state.currency].label,
+      step: 2,
+    },
+    {
+      label: t("auth.signup.summaryLanguage"),
+      value: LOCALE_LABELS[state.locale].long,
+      step: 2,
+    },
+  ];
 
   /**
    * Les réponses propres au rôle manquaient au récapitulatif.
@@ -780,26 +895,34 @@ function ReviewStep({
    * de taper n'en est pas une — et c'est le nom du parc qui s'affichera en
    * tête de l'espace.
    */
-  if (state.role === 'owner') {
+  if (state.role === "owner") {
     rows.push(
-      { label: t('auth.signup.summaryPark'), value: state.parkName, step: 2 },
-      { label: t('auth.signup.summaryUnits'), value: state.unitCount, step: 2 },
+      { label: t("auth.signup.summaryPark"), value: state.parkName, step: 2 },
+      { label: t("auth.signup.summaryUnits"), value: state.unitCount, step: 2 },
       {
-        label: t('auth.signup.summaryManagement'),
+        label: t("auth.signup.summaryManagement"),
         value:
-          state.delegates === 'delegate'
-            ? t('auth.signup.manageDelegate')
-            : t('auth.signup.manageSolo'),
+          state.delegates === "delegate"
+            ? t("auth.signup.manageDelegate")
+            : t("auth.signup.manageSolo"),
         step: 2,
       },
-    )
-  } else if (state.role === 'manager') {
+    );
+  } else if (state.role === "manager") {
     rows.push(
-      { label: t('auth.signup.summaryCompany'), value: state.company, step: 2 },
-      { label: t('auth.signup.summaryOwnerCode'), value: state.ownerCode, step: 2 },
-    )
-  } else if (state.role === 'tenant') {
-    rows.push({ label: t('auth.signup.summaryInviteCode'), value: state.inviteCode, step: 2 })
+      { label: t("auth.signup.summaryCompany"), value: state.company, step: 2 },
+      {
+        label: t("auth.signup.summaryOwnerCode"),
+        value: state.ownerCode,
+        step: 2,
+      },
+    );
+  } else if (state.role === "tenant") {
+    rows.push({
+      label: t("auth.signup.summaryInviteCode"),
+      value: state.inviteCode,
+      step: 2,
+    });
   }
 
   return (
@@ -809,14 +932,16 @@ function ReviewStep({
           {rows.map((row) => (
             <div key={row.label} className="flex items-center gap-4 px-4 py-3">
               <dt className="eyebrow w-32 shrink-0 text-muted">{row.label}</dt>
-              <dd className="min-w-0 flex-1 truncate text-body font-medium">{row.value || '—'}</dd>
+              <dd className="min-w-0 flex-1 truncate text-body font-medium">
+                {row.value || "—"}
+              </dd>
               {/* Chaque ligne est corrigeable sans repasser par tout le fil. */}
               <button
                 type="button"
                 onClick={() => onEdit(row.step)}
                 className="shrink-0 cursor-pointer rounded-sm px-2 py-1 text-label font-semibold text-gold-ink hover:text-gold-ink-hover"
               >
-                {t('common.edit')}
+                {t("common.edit")}
               </button>
             </div>
           ))}
@@ -825,42 +950,44 @@ function ReviewStep({
 
       <div className="flex flex-col gap-1">
         <Checkbox
-          label={t('auth.signup.terms')}
+          label={t("auth.signup.terms")}
           name="terms"
           checked={state.terms}
           onChange={(e) => patch({ terms: e.target.checked })}
-          error={errorFor('terms')}
+          error={errorFor("terms")}
         />
         <Checkbox
-          label={t('auth.signup.newsletter')}
+          label={t("auth.signup.newsletter")}
           name="newsletter"
           checked={state.newsletter}
           onChange={(e) => patch({ newsletter: e.target.checked })}
         />
       </div>
     </div>
-  )
+  );
 }
 
 function SignupSuccess({ role }: { role: Role | null }) {
-  const t = useT()
+  const t = useT();
 
   return (
-    <AuthLayout title={t('auth.signup.successTitle')}>
+    <AuthLayout title={t("auth.signup.successTitle")}>
       <div className="flex flex-col gap-6">
         <p className="flex items-start gap-3 rounded-lg border border-ok-border bg-ok-tint px-4 py-3.5 text-body text-ok">
           <Icon name="checkCircle" size={18} className="mt-0.5 shrink-0" />
-          {t('auth.signup.successBody', {
-            role: t(`roles.${role ?? 'owner'}.name` as 'roles.owner.name').toLowerCase(),
+          {t("auth.signup.successBody", {
+            role: t(
+              `roles.${role ?? "owner"}.name` as "roles.owner.name",
+            ).toLowerCase(),
           })}
         </p>
 
         <Button size="lg" fullWidth to="/app" iconAfter="arrowRight">
-          {t('auth.signup.goToDashboard')}
+          {t("auth.signup.goToDashboard")}
         </Button>
       </div>
     </AuthLayout>
-  )
+  );
 }
 
-export { ROLE_SLUGS }
+export { ROLE_SLUGS };
