@@ -152,6 +152,7 @@ export const en: Dictionary = {
     signIn: 'Sign in',
     signUp: 'Create account',
     signUpFree: 'Start free',
+    accountMenu: 'Account of {name} — open menu',
     logout: 'Sign out',
     noAccount: 'No account yet?',
     hasAccount: 'Already have an account?',

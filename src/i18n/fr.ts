@@ -192,6 +192,7 @@ export const fr = {
     signIn: 'Se connecter',
     signUp: 'Créer un compte',
     signUpFree: 'Essayer gratuitement',
+    accountMenu: 'Compte de {name} — ouvrir le menu',
     logout: 'Se déconnecter',
     noAccount: 'Pas encore de compte ?',
     hasAccount: 'Vous avez déjà un compte ?',

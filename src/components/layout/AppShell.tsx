@@ -699,6 +699,101 @@ function Sidebar({
   )
 }
 
+/** Initiales du titulaire — deux lettres au plus, prises sur les mots du nom. */
+function initiales(nom: string): string {
+  return nom
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((mot) => mot[0]?.toUpperCase() ?? '')
+    .join('')
+}
+
+/**
+ * Le compte, et la sortie.
+ *
+ * Un menu plutôt qu'un bouton nu : l'avatar doit d'abord dire QUI est connecté —
+ * c'est la question qu'on se pose sur un poste partagé avant de se déconnecter,
+ * et l'application en a déjà fait les frais (« l'auteur du produit a pris la
+ * démonstration pour son espace deux fois dans la même après-midi »).
+ */
+function MenuCompte() {
+  const t = useT()
+  const { etat, deconnecter } = useSession()
+  const [ouvert, setOuvert] = useState(false)
+  const boite = useRef<HTMLDivElement>(null)
+
+  /**
+   * Fermeture au clic extérieur et à l'échappement, SANS voile.
+   *
+   * Un `fixed inset-0` transparent aurait fait l'affaire — et un garde du
+   * système de design l'a refusé, à juste titre : il ne peut pas distinguer un
+   * attrape-clic d'une surface peinte, et exige de toutes un rembourrage contre
+   * l'encoche. Un écouteur de document n'ajoute rien à l'arbre d'accessibilité
+   * et ne se pose sur aucun bord.
+   */
+  useEffect(() => {
+    if (!ouvert) return
+    const dehors = (e: MouseEvent) => {
+      if (!boite.current?.contains(e.target as Node)) setOuvert(false)
+    }
+    const echap = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOuvert(false)
+    }
+    document.addEventListener('mousedown', dehors)
+    document.addEventListener('keydown', echap)
+    return () => {
+      document.removeEventListener('mousedown', dehors)
+      document.removeEventListener('keydown', echap)
+    }
+  }, [ouvert])
+
+  if (etat.statut !== 'connecte') return null
+
+  const nom = etat.compte.fullName
+
+  return (
+    <div className="relative" ref={boite}>
+      <button
+        type="button"
+        aria-expanded={ouvert}
+        aria-haspopup="menu"
+        aria-label={t('auth.accountMenu', { name: nom })}
+        onClick={() => setOuvert((o) => !o)}
+        className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-ink text-label font-semibold text-on-dark"
+      >
+        {initiales(nom)}
+      </button>
+
+      {ouvert && (
+        <>
+          <div
+            role="menu"
+            className="absolute right-0 z-50 mt-2 flex w-64 flex-col gap-1 rounded-md border border-border bg-paper p-2 shadow-lg"
+          >
+            <div className="px-2 py-1.5">
+              <p className="text-label font-semibold text-ink">{nom}</p>
+              <p className="truncate text-caps text-muted">{etat.compte.email}</p>
+            </div>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOuvert(false)
+                void deconnecter()
+              }}
+              className="flex min-h-11 cursor-pointer items-center gap-2 rounded-sm px-2 text-label text-ink hover:bg-surface-sunken"
+            >
+              <Icon name="arrowRight" size={16} />
+              {t('auth.logout')}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 /**
  * Compteurs de navigation, dérivés de l'état partagé.
  *
@@ -982,12 +1077,22 @@ function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
         */}
         {demo && <CurrencySwitcher />}
         <ThemeSwitcher />
-        <span
-          aria-hidden="true"
-          className="flex size-9 shrink-0 items-center justify-center rounded-full bg-ink text-label font-semibold text-on-dark"
-        >
-          AN
-        </span>
+        {/*
+          L'AVATAR ÉTAIT UN LITTÉRAL, et il n'ouvrait rien.
+
+          « AN » — les initiales d'un personnage de la démonstration — écrites en
+          dur, `aria-hidden`, sans action. `deconnecter()` existait dans la
+          session, `api.logout` existait, la route serveur existait : rien ne les
+          appelait. Un utilisateur ne pouvait pas se déconnecter.
+
+          Ce n'est pas un manque d'écran mais un défaut de sécurité. Sur un poste
+          partagé — le cas courant du marché visé — la session restait ouverte
+          pour le suivant.
+
+          Les initiales viennent maintenant du compte. En démonstration il n'y a
+          pas de compte : le bouton n'y a rien à déconnecter, et n'apparaît pas.
+        */}
+        <MenuCompte />
       </div>
     </header>
   )
