@@ -16,6 +16,33 @@ import { PARK, SESSION_AVEC_PARC, U2, portefeuille } from './noTechnicalIds.test
  * Le jour se retrouve par son libellé complet, et non par son seul chiffre : la
  * grille montre aussi les jours des mois voisins, où « 1 » apparaît deux fois.
  */
+/**
+ * Choisit un mois dans le sélecteur maison.
+ *
+ * Pendant de `choisirLaDate` : « période couverte » gardait un
+ * `<input type="month">`, oublié par la passe qui n'avait remplacé que les
+ * `type="date"`. Il ouvrait donc le panneau du navigateur dans la modale même
+ * où le calendrier maison venait de le remplacer, deux champs plus bas.
+ */
+async function choisirLeMois(
+  user: ReturnType<typeof userEvent.setup>,
+  champ: RegExp,
+  iso: string,
+) {
+  const [annee, mois] = iso.split('-').map(Number)
+  await user.click(screen.getByLabelText(champ))
+  const panneau = screen.getByRole('dialog', { name: /choix du mois/i })
+  // Libellé EXACT : le panneau porte aussi « Année précédente » et « Année
+  // suivante » sur ses deux flèches.
+  await user.selectOptions(within(panneau).getByLabelText('Année'), String(annee))
+  // Les douze cases portent l'abréviation du mois dans la langue courante :
+  // on prend la n-ième plutôt que de recomposer le libellé ici.
+  const cases = within(panneau)
+    .getAllByRole('button')
+    .filter((b) => b.getAttribute('aria-pressed') !== null)
+  await user.click(cases[mois - 1])
+}
+
 async function choisirLaDate(
   user: ReturnType<typeof userEvent.setup>,
   champ: RegExp,
@@ -465,9 +492,7 @@ describe('enregistrer un encaissement', () => {
     renderApp('/app', { session: SESSION_AVEC_PARC })
     await user.click(await screen.findByRole('button', { name: /enregistrer un paiement/i }))
 
-    const mois = screen.getByLabelText(/période couverte/i)
-    await user.clear(mois)
-    await user.type(mois, '2026-07')
+    await choisirLeMois(user, /période couverte/i, '2026-07')
     await user.type(screen.getByLabelText(/montant/i), '115000')
     await user.click(screen.getByRole('button', { name: /^enregistrer$/i }))
 
@@ -496,9 +521,7 @@ describe('enregistrer un encaissement', () => {
     renderApp('/app', { session: SESSION_AVEC_PARC })
     await user.click(await screen.findByRole('button', { name: /enregistrer un paiement/i }))
 
-    const mois = screen.getByLabelText(/période couverte/i)
-    await user.clear(mois)
-    await user.type(mois, '2026-07')
+    await choisirLeMois(user, /période couverte/i, '2026-07')
     await choisirLaDate(user, /date du versement/i, '2026-08-02')
     await user.type(screen.getByLabelText(/montant/i), '115000')
     await user.click(screen.getByRole('button', { name: /^enregistrer$/i }))

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Modal } from '@/components/primitives/Modal'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
-import { DatePicker } from '@/components/primitives/DatePicker'
+import { DatePicker, MonthPicker } from '@/components/primitives/DatePicker'
 import { Input, Select } from '@/components/primitives/Input'
 import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
@@ -117,12 +117,14 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
 
         <Field label={t('app.payments.period')} hint={t('app.payments.periodHint')} required>
           {(props) => (
-            <Input
-              {...props}
+            <MonthPicker
+              id={props.id}
+              aria-describedby={props['aria-describedby']}
+              invalid={props['aria-invalid']}
               name="period"
-              type="month"
+              required
               value={periode}
-              onChange={(e) => setPeriode(e.target.value)}
+              onChange={setPeriode}
             />
           )}
         </Field>

@@ -124,6 +124,90 @@ function premierJourSemaine(tag: string): number {
   return 1
 }
 
+
+/**
+ * Ouverture, placement et fermeture d'un panneau ancré à un champ.
+ *
+ * Partagé par le calendrier et le sélecteur de mois : c'est de la géométrie, et
+ * elle a déjà coûté trois corrections successives — débordement par le bas,
+ * rognage par la modale qui défile, puis panneau plus haut que l'écran. En
+ * garder deux copies aurait garanti que la prochaine correction n'en touche
+ * qu'une.
+ */
+function usePanneauAncre(hauteur: number, largeur: number) {
+  const [ouvert, setOuvert] = useState(false)
+  const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
+
+  const racine = useRef<HTMLDivElement>(null)
+  const declencheur = useRef<HTMLButtonElement>(null)
+  /** Le panneau vit sur `document.body` : il faut le désigner à part. */
+  const panneau = useRef<HTMLDivElement>(null)
+
+  /**
+   * Place le panneau dans la FENÊTRE, hors du flux de ses ancêtres.
+   *
+   * Posé en absolu, il était rogné deux fois : par le bas de la fenêtre, puis —
+   * une fois basculé vers le haut — par le corps de la modale, qui défile et
+   * découpe ce qui en sort. Un panneau ancré à un champ ne peut pas vivre dans
+   * un conteneur qui coupe.
+   *
+   * Et basculer ne suffit pas, ce que le 375px a montré : un panneau plus haut
+   * que la place disponible des DEUX côtés ne tient nulle part. On borne donc,
+   * en plus de choisir le côté — sur une fenêtre plus courte que lui, il
+   * commence à la marge, car mieux vaut voir son début que sa fin.
+   */
+  const placer = () => {
+    const cadre = declencheur.current?.getBoundingClientRect()
+    if (!cadre) return
+    const MARGE = 8
+    const dessous = window.innerHeight - cadre.bottom
+    const enHaut = dessous < hauteur && cadre.top > dessous
+    const souhaite = enHaut ? cadre.top - hauteur - 4 : cadre.bottom + 4
+    setPosition({
+      top: Math.max(MARGE, Math.min(souhaite, window.innerHeight - hauteur - MARGE)),
+      // Calé à gauche du champ, ramené dans la fenêtre quand le champ est
+      // lui-même contre le bord droit — le cas des colonnes étroites.
+      left: Math.max(MARGE, Math.min(cadre.left, window.innerWidth - largeur - MARGE)),
+    })
+  }
+
+  const ouvrir = () => {
+    placer()
+    setOuvert(true)
+  }
+
+  const fermer = (rendreLeFocus = true) => {
+    setOuvert(false)
+    if (rendreLeFocus) declencheur.current?.focus()
+  }
+
+  useEffect(() => {
+    if (!ouvert) return
+    const auClic = (e: MouseEvent) => {
+      const cible = e.target as Node
+      // Les DEUX arbres, depuis que le panneau est porté ailleurs : sans le
+      // second, cliquer une flèche refermerait le panneau, puisque le clic
+      // tomberait « au-dehors » du champ.
+      if (racine.current?.contains(cible) || panneau.current?.contains(cible)) return
+      setOuvert(false)
+    }
+    // Repositionné plutôt que refermé : la modale défile sous le panneau, et un
+    // panneau qui se ferme au moindre glissement est inutilisable au doigt.
+    // `true` pour capter aussi les conteneurs qui défilent en interne.
+    const auDefilement = () => placer()
+    document.addEventListener('mousedown', auClic)
+    window.addEventListener('scroll', auDefilement, true)
+    window.addEventListener('resize', auDefilement)
+    return () => {
+      document.removeEventListener('mousedown', auClic)
+      window.removeEventListener('scroll', auDefilement, true)
+      window.removeEventListener('resize', auDefilement)
+    }
+  }, [ouvert])
+
+  return { ouvert, setOuvert, ouvrir, fermer, position, racine, declencheur, panneau }
+}
+
 export function DatePicker({
   id,
   name,
@@ -143,7 +227,8 @@ export function DatePicker({
     return { annee: n.getFullYear(), mois: n.getMonth(), jour: n.getDate() }
   }, [])
 
-  const [ouvert, setOuvert] = useState(false)
+  const { ouvert, ouvrir, fermer, position, racine, declencheur, panneau } =
+    usePanneauAncre(430, 360)
   /**
    * Le jour qui porte le focus dans la grille, distinct du jour CHOISI.
    *
@@ -153,22 +238,8 @@ export function DatePicker({
    * chaque flèche enverrait dix valeurs au formulaire pour un seul geste.
    */
   const [curseur, setCurseur] = useState<Jour>(choisi ?? aujourdHui)
-  /**
-   * Coin haut-gauche du panneau, en coordonnées de FENÊTRE.
-   *
-   * Il mesure environ 410px et sortait par le bas dès qu'il s'ouvrait sur le
-   * dernier champ d'une modale, ou sur un téléphone dont la fenêtre utile est
-   * réduite par le clavier : les six semaines passaient, la rangée
-   * « aujourd'hui » et « effacer » était coupée. Un panneau qui déborde ne se
-   * remarque pas — on conclut que l'action n'existe pas.
-   */
-  const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
 
-  const racine = useRef<HTMLDivElement>(null)
-  const declencheur = useRef<HTMLButtonElement>(null)
   const grille = useRef<HTMLDivElement>(null)
-  /** Le panneau vit sur `document.body` : il faut le désigner à part. */
-  const panneau = useRef<HTMLDivElement>(null)
 
   const debutSemaine = premierJourSemaine(d.tag)
 
@@ -231,52 +302,6 @@ export function DatePicker({
     )
   }, [curseur.annee, curseur.mois, debutSemaine])
 
-  /**
-   * Place le panneau dans la FENÊTRE, hors du flux de ses ancêtres.
-   *
-   * Posé en absolu, il était rogné deux fois : par le bas de la fenêtre, puis —
-   * une fois basculé vers le haut — par le corps de la modale, qui défile et
-   * découpe ce qui en sort. Un panneau ancré à un champ ne peut pas vivre dans
-   * un conteneur qui coupe ; il est donc porté sur `document.body` en position
-   * fixe, et calé à la main sur le champ.
-   *
-   * Six semaines, un en-tête et une rangée d'actions font une hauteur stable :
-   * on décide du côté AVANT de rendre. Mesurer après coup ferait sauter le
-   * panneau sous l'œil, ce qui est pire qu'un débordement — le contenu bouge
-   * pendant qu'on vise.
-   */
-  const placer = () => {
-    const cadre = declencheur.current?.getBoundingClientRect()
-    if (!cadre) return
-    const HAUTEUR = 430
-    const LARGEUR = 360
-    const MARGE = 8
-    const dessous = window.innerHeight - cadre.bottom
-    // On ne bascule que si le haut offre RÉELLEMENT mieux : sur un écran plus
-    // court que le panneau, remonter ne ferait que déborder par l'autre bord.
-    const enHaut = dessous < HAUTEUR && cadre.top > dessous
-    const souhaite = enHaut ? cadre.top - HAUTEUR - 4 : cadre.bottom + 4
-
-    /**
-     * Basculer ne suffit pas, et c'est ce que le 375px a montré : un panneau de
-     * 430px ne tient ni au-dessus ni au-dessous d'un champ placé au milieu d'un
-     * téléphone. On borne donc, en plus de choisir le côté — le panneau se cale
-     * aussi haut que nécessaire plutôt que de sortir par un bord. Sur les
-     * fenêtres plus courtes que lui, la borne basse l'emporte et il commence à
-     * la marge : mieux vaut voir le début du calendrier que sa fin.
-     */
-    setPosition({
-      top: Math.max(MARGE, Math.min(souhaite, window.innerHeight - HAUTEUR - MARGE)),
-      // Calé à gauche du champ, ramené dans la fenêtre quand le champ est
-      // lui-même contre le bord droit — le cas des colonnes étroites.
-      left: Math.max(MARGE, Math.min(cadre.left, window.innerWidth - LARGEUR - MARGE)),
-    })
-  }
-
-  const fermer = (rendreLeFocus = true) => {
-    setOuvert(false)
-    if (rendreLeFocus) declencheur.current?.focus()
-  }
 
   const choisir = (j: Jour) => {
     onChange(enValeur(j))
@@ -292,33 +317,6 @@ export function DatePicker({
     const cellule = grille.current?.querySelector<HTMLElement>('[data-curseur="true"]')
     cellule?.focus()
   }, [ouvert, curseur])
-
-  // Un clic au-dehors referme, sans rendre le focus : l'utilisateur est déjà
-  // parti ailleurs, le lui reprendre le ramènerait en arrière.
-  useEffect(() => {
-    if (!ouvert) return
-    const auClic = (e: MouseEvent) => {
-      const cible = e.target as Node
-      // Les DEUX arbres, depuis que le panneau est porté ailleurs : sans le
-      // second, cliquer une flèche de mois refermait le calendrier, puisque le
-      // clic tombait « au-dehors » du champ.
-      if (racine.current?.contains(cible) || panneau.current?.contains(cible)) return
-      setOuvert(false)
-    }
-    // Repositionné plutôt que refermé : la modale défile sous le panneau, et
-    // un calendrier qui se ferme au moindre glissement est inutilisable au
-    // doigt. `true` pour capter aussi les conteneurs qui défilent en interne,
-    // dont le corps de la modale.
-    const auDefilement = () => placer()
-    document.addEventListener('mousedown', auClic)
-    window.addEventListener('scroll', auDefilement, true)
-    window.addEventListener('resize', auDefilement)
-    return () => {
-      document.removeEventListener('mousedown', auClic)
-      window.removeEventListener('scroll', auDefilement, true)
-      window.removeEventListener('resize', auDefilement)
-    }
-  }, [ouvert])
 
   const auClavier = (e: React.KeyboardEvent) => {
     const touches: Record<string, () => Jour> = {
@@ -367,14 +365,14 @@ export function DatePicker({
         aria-required={required || undefined}
         onClick={() => {
           setCurseur(choisi ?? aujourdHui)
-          placer()
-          setOuvert((o) => !o)
+          if (ouvert) fermer()
+          else ouvrir()
         }}
         onKeyDown={(e) => {
           if (e.key === 'ArrowDown' && !ouvert) {
             e.preventDefault()
             setCurseur(choisi ?? aujourdHui)
-            setOuvert(true)
+            ouvrir()
           }
         }}
         className={controlClasses(invalid, 'flex cursor-pointer items-center justify-between text-left')}
@@ -529,6 +527,181 @@ export function DatePicker({
               </button>
             )}
           </div>
+          </div>,
+          document.body,
+        )}
+    </div>
+  )
+}
+
+/**
+ * Sélecteur de MOIS.
+ *
+ * Le champ « période couverte » gardait un `<input type="month">`, oublié par
+ * la première passe qui n'avait remplacé que les `type="date"`. Il ouvrait donc
+ * toujours le panneau du navigateur — même bleu système, mêmes liens bleus,
+ * dans la même modale que le calendrier maison qui venait de le remplacer deux
+ * champs plus bas. Une moitié d'écran corrigée est parfois pire que rien : elle
+ * met les deux rendus côte à côte.
+ *
+ * Douze cases et une année, pas un calendrier réduit : un mois se choisit
+ * d'un geste, et afficher des jours pour n'en garder que le mois inviterait à
+ * cliquer une date qui n'existe pas dans la donnée.
+ */
+export function MonthPicker({
+  id,
+  name,
+  value,
+  onChange,
+  'aria-describedby': ariaDescribedBy,
+  'aria-label': ariaLabel,
+  invalid,
+  required,
+}: DatePickerProps) {
+  const t = useT()
+  const d = useDates()
+
+  const { ouvert, ouvrir, fermer, position, racine, declencheur, panneau } =
+    usePanneauAncre(260, 300)
+
+  const courant = useMemo(() => {
+    const n = new Date()
+    return { annee: n.getFullYear(), mois: n.getMonth() }
+  }, [])
+
+  const choisi = useMemo(() => {
+    const m = /^(\d{4})-(\d{2})$/.exec(value)
+    if (!m) return null
+    const mois = Number(m[2]) - 1
+    if (mois < 0 || mois > 11) return null
+    return { annee: Number(m[1]), mois }
+  }, [value])
+
+  const [annee, setAnnee] = useState(() => (choisi ?? courant).annee)
+
+  const nomsMois = useMemo(() => {
+    const f = new Intl.DateTimeFormat(d.tag, { month: 'short' })
+    return Array.from({ length: 12 }, (_, m) => f.format(new Date(2026, m, 1)))
+  }, [d.tag])
+
+  const annees = useMemo(
+    () => Array.from({ length: 41 }, (_, i) => courant.annee - 30 + i),
+    [courant.annee],
+  )
+
+  const choisir = (mois: number, an = annee) => {
+    onChange(`${an}-${String(mois + 1).padStart(2, '0')}`)
+    fermer()
+  }
+
+  return (
+    <div ref={racine} className="relative">
+      <input type="hidden" name={name} value={value} />
+
+      <button
+        ref={declencheur}
+        id={id}
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={ouvert}
+        aria-describedby={ariaDescribedBy}
+        aria-label={ariaLabel}
+        aria-required={required || undefined}
+        onClick={() => {
+          setAnnee((choisi ?? courant).annee)
+          if (ouvert) fermer()
+          else ouvrir()
+        }}
+        className={controlClasses(
+          invalid,
+          'flex cursor-pointer items-center justify-between text-left',
+        )}
+      >
+        <span className={cn(!choisi && 'text-muted')}>
+          {choisi ? d.monthYear(enParts({ ...choisi, jour: 1 })) : t('common.monthPlaceholder')}
+        </span>
+        <Icon name="calendar" size={16} className="shrink-0 text-muted" />
+      </button>
+
+      {ouvert &&
+        position &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-label={t('common.monthCalendar')}
+            ref={panneau}
+            style={{ top: position.top, left: position.left }}
+            className="fixed z-50 w-max max-w-[calc(100vw-1rem)] rounded-lg border border-divider bg-surface p-3 shadow-e3"
+          >
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                aria-label={t('common.datePrevYear')}
+                onClick={() => setAnnee((a) => a - 1)}
+                className="inline-flex size-11 cursor-pointer items-center justify-center rounded-md text-muted hover:bg-surface-sunken hover:text-ink"
+              >
+                <Icon name="chevronLeft" size={16} />
+              </button>
+
+              <Select
+                aria-label={t('common.dateYear')}
+                value={annee}
+                onChange={(e) => setAnnee(Number(e.target.value))}
+                className="numeric h-11 w-auto py-0 pr-8 pl-2 text-body"
+              >
+                {annees.map((a) => (
+                  <option key={a} value={a}>
+                    {a}
+                  </option>
+                ))}
+              </Select>
+
+              <button
+                type="button"
+                aria-label={t('common.dateNextYear')}
+                onClick={() => setAnnee((a) => a + 1)}
+                className="inline-flex size-11 cursor-pointer items-center justify-center rounded-md text-muted hover:bg-surface-sunken hover:text-ink"
+              >
+                <Icon name="chevronRight" size={16} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-4 gap-1">
+              {nomsMois.map((nom, index) => {
+                const estChoisi = choisi?.annee === annee && choisi.mois === index
+                const estCourant = courant.annee === annee && courant.mois === index
+                return (
+                  <button
+                    key={nom}
+                    type="button"
+                    aria-current={estCourant ? 'date' : undefined}
+                    aria-pressed={estChoisi}
+                    onClick={() => choisir(index)}
+                    className={cn(
+                      'min-h-11 cursor-pointer rounded-md px-2 text-body transition-colors duration-150',
+                      !estChoisi && 'hover:bg-surface-sunken',
+                      estChoisi && 'bg-ink font-medium text-on-dark',
+                      // Le mois courant se cerne, il ne se colore pas : le mois
+                      // choisi porte déjà un fond plein, et deux aplats voisins
+                      // ne se distingueraient pas en niveaux de gris.
+                      estCourant && !estChoisi && 'ring-1 ring-gold-border',
+                    )}
+                  >
+                    {nom}
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="mt-2 border-t border-divider pt-2">
+              <button
+                type="button"
+                onClick={() => choisir(courant.mois, courant.annee)}
+                className="min-h-11 cursor-pointer rounded-md px-2 text-label font-semibold text-gold-ink hover:text-gold-ink-hover"
+              >
+                {t('common.monthCurrent')}
+              </button>
+            </div>
           </div>,
           document.body,
         )}

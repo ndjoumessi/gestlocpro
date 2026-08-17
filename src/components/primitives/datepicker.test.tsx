@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { describe, expect, it } from 'vitest'
 import { renderWithProviders, screen, userEvent, within } from '@/test/render'
-import { DatePicker } from './DatePicker'
+import { DatePicker, MonthPicker } from './DatePicker'
 
 /**
  * Un sélecteur de date maison refait à la main ce que le champ natif donnait
@@ -125,5 +125,59 @@ describe('sélecteur de date', () => {
     // Exactement une : la couleur seule ne dit rien à qui ne voit pas l'écran.
     expect(selectionnees).toHaveLength(1)
     expect(within(selectionnees[0]).getByRole('button')).toHaveAccessibleName(/10 avril 2023/i)
+  })
+})
+
+/**
+ * Le sélecteur de MOIS, oublié par la première passe.
+ *
+ * Elle n'avait remplacé que les `type="date"` ; « période couverte » gardait un
+ * `type="month"` et ouvrait donc le panneau du navigateur dans la modale même
+ * où le calendrier maison venait de le remplacer, deux champs plus bas. Une
+ * moitié d'écran corrigée est parfois pire que rien : elle met les deux rendus
+ * côte à côte.
+ */
+function ChampMois({ initiale = '' }: { initiale?: string }) {
+  const [valeur, setValeur] = useState(initiale)
+  return (
+    <>
+      <MonthPicker aria-label="Période couverte" name="p" value={valeur} onChange={setValeur} />
+      <p data-testid="valeur">{valeur}</p>
+    </>
+  )
+}
+
+describe('sélecteur de mois', () => {
+  const champMois = () => screen.getByRole('button', { name: /période couverte/i })
+  const panneau = () => screen.getByRole('dialog', { name: /choix du mois/i })
+  const cases = () =>
+    within(panneau())
+      .getAllByRole('button')
+      .filter((b) => b.getAttribute('aria-pressed') !== null)
+
+  it('rend `AAAA-MM`, et douze cases plutôt qu’un calendrier', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ChampMois initiale="2026-08" />)
+
+    await user.click(champMois())
+    // Douze, pas quarante-deux : afficher des jours pour n'en garder que le
+    // mois inviterait à cliquer une date qui n'existe pas dans la donnée.
+    expect(cases()).toHaveLength(12)
+
+    await user.selectOptions(within(panneau()).getByLabelText('Année'), '2023')
+    await user.click(cases()[3])
+
+    expect(screen.getByTestId('valeur').textContent).toBe('2023-04')
+  })
+
+  it('marque le mois choisi pour les technologies d’assistance', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ChampMois initiale="2026-08" />)
+    await user.click(champMois())
+
+    const marques = cases().filter((b) => b.getAttribute('aria-pressed') === 'true')
+    // Août : la couleur seule ne dit rien à qui ne voit pas l'écran.
+    expect(marques).toHaveLength(1)
+    expect(marques[0]).toHaveTextContent(/ao/i)
   })
 })
