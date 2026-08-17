@@ -34,7 +34,11 @@ async function choisirLeMois(
   const panneau = screen.getByRole('dialog', { name: /choix du mois/i })
   // Libellé EXACT : le panneau porte aussi « Année précédente » et « Année
   // suivante » sur ses deux flèches.
-  await user.selectOptions(within(panneau).getByLabelText('Année'), String(annee))
+  await user.click(within(panneau).getByLabelText('Année'))
+  while (within(panneau).queryByRole('button', { name: String(annee) }) === null) {
+    await user.click(within(panneau).getByLabelText(/années précédentes/i))
+  }
+  await user.click(within(panneau).getByRole('button', { name: String(annee) }))
   // Les douze cases portent l'abréviation du mois dans la langue courante :
   // on prend la n-ième plutôt que de recomposer le libellé ici.
   const cases = within(panneau)
@@ -52,14 +56,23 @@ async function choisirLaDate(
   await user.click(screen.getByLabelText(champ))
 
   const calendrier = screen.getByRole('dialog', { name: /calendrier/i })
-  const selMois = within(calendrier).getByLabelText(/^mois$/i) as HTMLSelectElement
-  await user.selectOptions(selMois, String(mois - 1))
-  await user.selectOptions(within(calendrier).getByLabelText(/^ann/i), String(annee))
 
-  // Le nom du mois est lu sur le sélecteur lui-même : le calendrier le rend
-  // dans la langue courante, et le recomposer ici ferait un second formateur à
-  // maintenir.
-  const nomMois = selMois.selectedOptions[0]?.textContent ?? ''
+  // La remontée du panneau : année, puis mois, puis jour. Les menus natifs ont
+  // disparu — celui des années dépliait quarante et une entrées rendues par le
+  // système, en travers de l'écran.
+  await user.click(within(calendrier).getByLabelText('Année'))
+  while (within(calendrier).queryByRole('button', { name: String(annee) }) === null) {
+    await user.click(within(calendrier).getByLabelText(/années précédentes/i))
+  }
+  await user.click(within(calendrier).getByRole('button', { name: String(annee) }))
+
+  // Les douze mois portent l'abréviation dans la langue courante : on prend le
+  // n-ième plutôt que de recomposer le libellé ici.
+  const casesMois = within(calendrier)
+    .getAllByRole('button')
+    .filter((b) => b.getAttribute('aria-pressed') !== null)
+  const nomMois = casesMois[mois - 1]?.textContent ?? ''
+  await user.click(casesMois[mois - 1])
   const cible = within(calendrier)
     .getAllByRole('button')
     .find((b) => {

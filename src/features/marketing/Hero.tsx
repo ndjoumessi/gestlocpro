@@ -134,7 +134,7 @@ function HeroPreview({
           <MiniStat
             label={t('marketing.metrics.overdue')}
             value={money(375000, { round: true })}
-            note="3 locataires"
+            note={t('marketing.metrics.overdueNote', { count: 3 })}
             delta={<DeltaBadge value={95000} invert />}
           />
         </div>

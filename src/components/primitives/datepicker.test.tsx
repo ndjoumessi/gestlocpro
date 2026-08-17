@@ -32,8 +32,16 @@ const calendrier = () => screen.getByRole('dialog', { name: /calendrier/i })
 /** Ouvre le calendrier et se pose sur un mois connu, pour ne pas dépendre du jour. */
 async function ouvrirEn(user: ReturnType<typeof userEvent.setup>, annee: number, mois: number) {
   await user.click(champ())
-  await user.selectOptions(within(calendrier()).getByLabelText(/^mois$/i), String(mois))
-  await user.selectOptions(within(calendrier()).getByLabelText(/^ann/i), String(annee))
+  // Année d'abord — la remontée du panneau, en place des menus natifs.
+  await user.click(within(calendrier()).getByLabelText('Année'))
+  while (within(calendrier()).queryByRole('button', { name: String(annee) }) === null) {
+    await user.click(within(calendrier()).getByLabelText(/années précédentes/i))
+  }
+  await user.click(within(calendrier()).getByRole('button', { name: String(annee) }))
+  const cases = within(calendrier())
+    .getAllByRole('button')
+    .filter((b) => b.getAttribute('aria-pressed') !== null)
+  await user.click(cases[mois])
 }
 
 /** Le bouton d'un jour, retrouvé par son libellé en toutes lettres. */
@@ -164,7 +172,11 @@ describe('sélecteur de mois', () => {
     // mois inviterait à cliquer une date qui n'existe pas dans la donnée.
     expect(cases()).toHaveLength(12)
 
-    await user.selectOptions(within(panneau()).getByLabelText('Année'), '2023')
+    await user.click(within(panneau()).getByLabelText('Année'))
+    while (within(panneau()).queryByRole('button', { name: '2023' }) === null) {
+      await user.click(within(panneau()).getByLabelText(/années précédentes/i))
+    }
+    await user.click(within(panneau()).getByRole('button', { name: '2023' }))
     await user.click(cases()[3])
 
     expect(screen.getByTestId('valeur').textContent).toBe('2023-04')
@@ -179,5 +191,49 @@ describe('sélecteur de mois', () => {
     // Août : la couleur seule ne dit rien à qui ne voit pas l'écran.
     expect(marques).toHaveLength(1)
     expect(marques[0]).toHaveTextContent(/ao/i)
+  })
+})
+
+/**
+ * Aucun menu NATIF dans ces panneaux.
+ *
+ * C'est la raison d'être des deux composants : `<input type="date">` a été
+ * remplacé parce que son calendrier est dessiné par le navigateur, dans ses
+ * couleurs et sa police. Le mois et l'année sont pourtant revenus en `<select>`
+ * — et celui des années dépliait quarante et une entrées rendues par le
+ * système, en travers de l'écran, dans la modale même qu'on venait d'assainir.
+ * Le champ natif chassé par la porte rentrait par la fenêtre.
+ *
+ * Ce garde tient l'invariant plutôt que l'apparence : un `<select>` ou un
+ * `<option>` dans le panneau, et le rendu redevient celui du système.
+ */
+describe('aucun rendu du navigateur dans les panneaux', () => {
+  const champMois = () => screen.getByRole('button', { name: /période couverte/i })
+  const panneau = () => screen.getByRole('dialog', { name: /choix du mois/i })
+
+  it('n’ouvre pas de menu natif pour l’année du calendrier', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Champ initiale="2026-08-17" />)
+    await user.click(champ())
+
+    const panneau = calendrier()
+    expect(panneau.querySelectorAll('select')).toHaveLength(0)
+    expect(panneau.querySelectorAll('option')).toHaveLength(0)
+
+    // Et l'année est bien atteignable : c'est ce que le menu apportait.
+    await user.click(within(panneau).getByLabelText('Année'))
+    expect(within(panneau).getByRole('button', { name: '2026' })).toBeInTheDocument()
+    expect(panneau.querySelectorAll('select')).toHaveLength(0)
+  })
+
+  it('n’en ouvre pas davantage pour le sélecteur de mois', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ChampMois initiale="2026-08" />)
+    await user.click(champMois())
+
+    expect(panneau().querySelectorAll('select')).toHaveLength(0)
+    await user.click(within(panneau()).getByLabelText('Année'))
+    expect(panneau().querySelectorAll('select')).toHaveLength(0)
+    expect(within(panneau()).getByRole('button', { name: '2026' })).toBeInTheDocument()
   })
 })

@@ -72,6 +72,8 @@ export const fr = {
     dateYear: 'Année',
     datePrevYear: 'Année précédente',
     dateNextYear: 'Année suivante',
+    datePrevYears: 'Douze années précédentes',
+    dateNextYears: 'Douze années suivantes',
     monthPlaceholder: 'Choisir un mois',
     monthCalendar: 'Choix du mois',
     monthCurrent: 'Ce mois-ci',
@@ -934,6 +936,11 @@ export const fr = {
       collected: 'Encaissé ce mois',
       occupancy: 'Taux d’occupation',
       overdue: 'Reste à percevoir',
+      // Écrit en dur dans `Hero.tsx`, donc servi tel quel sur la page d'accueil
+      // en anglais. Une maquette qui dépeint le produit doit se traduire comme
+      // lui — c'est la première page qu'un visiteur anglophone voit.
+      overdueNote: '{count} locataires',
+      overdueNote_one: '{count} locataire',
       reminders: 'Relances envoyées',
       note: 'Chiffres de démonstration, parc d’exemple de 12 unités.',
     },

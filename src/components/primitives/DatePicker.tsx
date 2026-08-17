@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { controlClasses } from './Field'
-import { Select } from './Input'
 import { Icon } from './Icon'
 import { cn } from '@/lib/cn'
 import { useT } from '@/i18n/I18nProvider'
@@ -208,6 +207,67 @@ function usePanneauAncre(hauteur: number, largeur: number) {
   return { ouvert, setOuvert, ouvrir, fermer, position, racine, declencheur, panneau }
 }
 
+
+/** Douze ans par page, comme douze mois : la même grille, le même geste. */
+const ANNEES_PAR_PAGE = 12
+
+/**
+ * Grille d'ANNÉES, en remplacement d'un menu déroulant natif.
+ *
+ * Le sélecteur d'année était un `<select>` : quarante et une entrées rendues par
+ * le système, dans sa police et ses couleurs, sur toute la hauteur de l'écran —
+ * exactement ce qu'on venait de supprimer en remplaçant `<input type="date">`.
+ * Le champ natif avait été chassé par la porte, il revenait par la fenêtre.
+ *
+ * D'où la remontée classique jour → mois → année : chaque niveau réutilise la
+ * grille du précédent, reste dans le panneau, et se parcourt au doigt comme au
+ * clavier. Deux clics suffisent pour trente ans en arrière, contre trente coups
+ * de flèche — c'est ce que le menu apportait, sans ce qu'il coûtait.
+ */
+function GrilleAnnees({
+  ancre,
+  choisie,
+  courante,
+  onChoisir,
+}: {
+  /** Première année de la page affichée. */
+  ancre: number
+  choisie: number
+  courante: number
+  onChoisir: (annee: number) => void
+}) {
+  return (
+    <div className="grid grid-cols-4 gap-1">
+      {Array.from({ length: ANNEES_PAR_PAGE }, (_, i) => ancre + i).map((annee) => {
+        const estChoisie = annee === choisie
+        const estCourante = annee === courante
+        return (
+          <button
+            key={annee}
+            type="button"
+            aria-pressed={estChoisie}
+            aria-current={estCourante ? 'date' : undefined}
+            onClick={() => onChoisir(annee)}
+            className={cn(
+              'numeric min-h-11 cursor-pointer rounded-md px-2 text-body transition-colors duration-150',
+              !estChoisie && 'hover:bg-surface-sunken',
+              estChoisie && 'bg-ink font-medium text-on-dark',
+              estCourante && !estChoisie && 'ring-1 ring-gold-border',
+            )}
+          >
+            {annee}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/** Début de la page de douze années qui contient `annee`. */
+function pageDe(annee: number): number {
+  return annee - ((annee % ANNEES_PAR_PAGE) + ANNEES_PAR_PAGE) % ANNEES_PAR_PAGE
+}
+
 export function DatePicker({
   id,
   name,
@@ -238,6 +298,19 @@ export function DatePicker({
    * chaque flèche enverrait dix valeurs au formulaire pour un seul geste.
    */
   const [curseur, setCurseur] = useState<Jour>(choisi ?? aujourdHui)
+  /**
+   * Le niveau affiché dans le panneau.
+   *
+   * Le mois et l'année étaient deux `<select>` : des menus rendus par le
+   * système, dans sa police et ses couleurs, dont celui des années dépliait
+   * quarante et une entrées sur toute la hauteur de l'écran. C'est précisément
+   * ce qu'on venait de chasser en remplaçant le champ de date natif.
+   *
+   * La remontée reste dans le panneau et réemploie sa grille : les jours, puis
+   * les douze mois, puis douze années par page.
+   */
+  const [vue, setVue] = useState<'jours' | 'mois' | 'annees'>('jours')
+  const [pageAnnees, setPageAnnees] = useState(() => pageDe((choisi ?? aujourdHui).annee))
 
   const grille = useRef<HTMLDivElement>(null)
 
@@ -271,19 +344,6 @@ export function DatePicker({
     const f = new Intl.DateTimeFormat(d.tag, { month: 'long' })
     return Array.from({ length: 12 }, (_, m) => f.format(new Date(2026, m, 1)))
   }, [d.tag])
-
-  /**
-   * Trente ans en arrière, dix en avant.
-   *
-   * Les deux champs servis sont un début de bail et une date de versement : le
-   * passé porte l'essentiel, l'avenir n'a besoin que de la marge d'un bail qui
-   * commence plus tard. Une liste centrée sur l'année courante, et non figée
-   * sur une borne écrite en dur, pour qu'elle ne se périme pas.
-   */
-  const annees = useMemo(() => {
-    const courante = aujourdHui.annee
-    return Array.from({ length: 41 }, (_, i) => courante - 30 + i)
-  }, [aujourdHui.annee])
 
   /** Les six semaines affichées, jours voisins compris. */
   const semaines = useMemo(() => {
@@ -365,6 +425,7 @@ export function DatePicker({
         aria-required={required || undefined}
         onClick={() => {
           setCurseur(choisi ?? aujourdHui)
+          setVue('jours')
           if (ouvert) fermer()
           else ouvrir()
         }}
@@ -372,6 +433,7 @@ export function DatePicker({
           if (e.key === 'ArrowDown' && !ouvert) {
             e.preventDefault()
             setCurseur(choisi ?? aujourdHui)
+            setVue('jours')
             ouvrir()
           }
         }}
@@ -398,57 +460,118 @@ export function DatePicker({
           <div className="mb-2 flex items-center justify-between gap-2">
             <button
               type="button"
-              aria-label={t('common.datePrevMonth')}
-              onClick={() => setCurseur(decalerMois(curseur, -1))}
+              aria-label={
+                vue === 'jours'
+                  ? t('common.datePrevMonth')
+                  : vue === 'mois'
+                    ? t('common.datePrevYear')
+                    : t('common.datePrevYears')
+              }
+              onClick={() => {
+                if (vue === 'jours') setCurseur(decalerMois(curseur, -1))
+                else if (vue === 'mois') setCurseur({ ...curseur, annee: curseur.annee - 1 })
+                else setPageAnnees((p) => p - ANNEES_PAR_PAGE)
+              }}
               className="inline-flex size-11 cursor-pointer items-center justify-center rounded-md text-muted hover:bg-surface-sunken hover:text-ink"
             >
               <Icon name="chevronLeft" size={16} />
             </button>
 
-            {/* Mois et année se CHOISISSENT, ils ne se feuillettent pas.
-                « Début du bail » se compte souvent en années : atteindre avril
-                2023 depuis aujourd'hui demanderait une quarantaine de clics sur
-                la flèche, ce qui revient à ne pas offrir le champ. Les flèches
-                restent pour le voisinage immédiat, où elles sont plus rapides
-                qu'un menu. */}
-            <div className="flex items-center gap-1.5">
-              <Select
-                aria-label={t('common.dateMonth')}
-                value={curseur.mois}
-                onChange={(e) => setCurseur({ ...curseur, mois: Number(e.target.value) })}
-                className="h-11 w-auto py-0 pr-8 pl-2 text-body"
-              >
-                {nomsMois.map((nom, index) => (
-                  <option key={nom} value={index}>
-                    {nom}
-                  </option>
-                ))}
-              </Select>
-              <Select
-                aria-label={t('common.dateYear')}
-                value={curseur.annee}
-                onChange={(e) => setCurseur({ ...curseur, annee: Number(e.target.value) })}
-                className="numeric h-11 w-auto py-0 pr-8 pl-2 text-body"
-              >
-                {annees.map((a) => (
-                  <option key={a} value={a}>
-                    {a}
-                  </option>
-                ))}
-              </Select>
+            {/* Le titre est une COMMANDE : il remonte d'un niveau.
+                Les flèches restent pour le voisinage immédiat, où elles sont
+                plus rapides ; la remontée sert les sauts, qu'un début de bail
+                réclame souvent en années. */}
+            <div className="flex items-center gap-1">
+              {vue === 'annees' ? (
+                <span className="numeric px-2 text-body font-medium">
+                  {pageAnnees}–{pageAnnees + ANNEES_PAR_PAGE - 1}
+                </span>
+              ) : (
+                <>
+                  {vue === 'jours' && (
+                    <button
+                      type="button"
+                      aria-label={t('common.dateMonth')}
+                      onClick={() => setVue('mois')}
+                      className="min-h-11 cursor-pointer rounded-md px-2 text-body font-medium hover:bg-surface-sunken"
+                    >
+                      {nomsMois[curseur.mois]}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    aria-label={t('common.dateYear')}
+                    onClick={() => {
+                      setPageAnnees(pageDe(curseur.annee))
+                      setVue('annees')
+                    }}
+                    className="numeric min-h-11 cursor-pointer rounded-md px-2 text-body font-medium hover:bg-surface-sunken"
+                  >
+                    {curseur.annee}
+                  </button>
+                </>
+              )}
             </div>
 
             <button
               type="button"
-              aria-label={t('common.dateNextMonth')}
-              onClick={() => setCurseur(decalerMois(curseur, 1))}
+              aria-label={
+                vue === 'jours'
+                  ? t('common.dateNextMonth')
+                  : vue === 'mois'
+                    ? t('common.dateNextYear')
+                    : t('common.dateNextYears')
+              }
+              onClick={() => {
+                if (vue === 'jours') setCurseur(decalerMois(curseur, 1))
+                else if (vue === 'mois') setCurseur({ ...curseur, annee: curseur.annee + 1 })
+                else setPageAnnees((p) => p + ANNEES_PAR_PAGE)
+              }}
               className="inline-flex size-11 cursor-pointer items-center justify-center rounded-md text-muted hover:bg-surface-sunken hover:text-ink"
             >
               <Icon name="chevronRight" size={16} />
             </button>
           </div>
 
-          <div ref={grille} role="grid" onKeyDown={auClavier}>
+          {vue === 'annees' && (
+            <GrilleAnnees
+              ancre={pageAnnees}
+              choisie={curseur.annee}
+              courante={aujourdHui.annee}
+              onChoisir={(annee) => {
+                setCurseur({ ...curseur, annee })
+                setVue('mois')
+              }}
+            />
+          )}
+
+          {vue === 'mois' && (
+            <div className="grid grid-cols-4 gap-1">
+              {nomsMois.map((nom, index) => {
+                const estChoisi = curseur.mois === index
+                return (
+                  <button
+                    key={nom}
+                    type="button"
+                    aria-pressed={estChoisi}
+                    onClick={() => {
+                      setCurseur(decalerMois({ ...curseur, mois: 0 }, index))
+                      setVue('jours')
+                    }}
+                    className={cn(
+                      'min-h-11 cursor-pointer rounded-md px-2 text-body transition-colors duration-150',
+                      !estChoisi && 'hover:bg-surface-sunken',
+                      estChoisi && 'bg-ink font-medium text-on-dark',
+                    )}
+                  >
+                    {nom}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          <div ref={grille} role="grid" onKeyDown={auClavier} hidden={vue !== 'jours'}>
             <div role="row" className="grid grid-cols-7">
               {nomsJours.map((nom) => (
                 <div
@@ -578,16 +701,14 @@ export function MonthPicker({
   }, [value])
 
   const [annee, setAnnee] = useState(() => (choisi ?? courant).annee)
+  /** Même remontée que le calendrier : les mois, puis douze années par page. */
+  const [vue, setVue] = useState<'mois' | 'annees'>('mois')
+  const [pageAnnees, setPageAnnees] = useState(() => pageDe((choisi ?? courant).annee))
 
   const nomsMois = useMemo(() => {
     const f = new Intl.DateTimeFormat(d.tag, { month: 'short' })
     return Array.from({ length: 12 }, (_, m) => f.format(new Date(2026, m, 1)))
   }, [d.tag])
-
-  const annees = useMemo(
-    () => Array.from({ length: 41 }, (_, i) => courant.annee - 30 + i),
-    [courant.annee],
-  )
 
   const choisir = (mois: number, an = annee) => {
     onChange(`${an}-${String(mois + 1).padStart(2, '0')}`)
@@ -609,6 +730,7 @@ export function MonthPicker({
         aria-required={required || undefined}
         onClick={() => {
           setAnnee((choisi ?? courant).annee)
+          setVue('mois')
           if (ouvert) fermer()
           else ouvrir()
         }}
@@ -636,37 +758,62 @@ export function MonthPicker({
             <div className="mb-2 flex items-center justify-between gap-2">
               <button
                 type="button"
-                aria-label={t('common.datePrevYear')}
-                onClick={() => setAnnee((a) => a - 1)}
+                aria-label={vue === 'mois' ? t('common.datePrevYear') : t('common.datePrevYears')}
+                onClick={() =>
+                  vue === 'mois'
+                    ? setAnnee((a) => a - 1)
+                    : setPageAnnees((p) => p - ANNEES_PAR_PAGE)
+                }
                 className="inline-flex size-11 cursor-pointer items-center justify-center rounded-md text-muted hover:bg-surface-sunken hover:text-ink"
               >
                 <Icon name="chevronLeft" size={16} />
               </button>
 
-              <Select
-                aria-label={t('common.dateYear')}
-                value={annee}
-                onChange={(e) => setAnnee(Number(e.target.value))}
-                className="numeric h-11 w-auto py-0 pr-8 pl-2 text-body"
-              >
-                {annees.map((a) => (
-                  <option key={a} value={a}>
-                    {a}
-                  </option>
-                ))}
-              </Select>
+              {vue === 'mois' ? (
+                <button
+                  type="button"
+                  aria-label={t('common.dateYear')}
+                  onClick={() => {
+                    setPageAnnees(pageDe(annee))
+                    setVue('annees')
+                  }}
+                  className="numeric min-h-11 cursor-pointer rounded-md px-2 text-body font-medium hover:bg-surface-sunken"
+                >
+                  {annee}
+                </button>
+              ) : (
+                <span className="numeric px-2 text-body font-medium">
+                  {pageAnnees}–{pageAnnees + ANNEES_PAR_PAGE - 1}
+                </span>
+              )}
 
               <button
                 type="button"
-                aria-label={t('common.dateNextYear')}
-                onClick={() => setAnnee((a) => a + 1)}
+                aria-label={vue === 'mois' ? t('common.dateNextYear') : t('common.dateNextYears')}
+                onClick={() =>
+                  vue === 'mois'
+                    ? setAnnee((a) => a + 1)
+                    : setPageAnnees((p) => p + ANNEES_PAR_PAGE)
+                }
                 className="inline-flex size-11 cursor-pointer items-center justify-center rounded-md text-muted hover:bg-surface-sunken hover:text-ink"
               >
                 <Icon name="chevronRight" size={16} />
               </button>
             </div>
 
-            <div className="grid grid-cols-4 gap-1">
+            {vue === 'annees' && (
+              <GrilleAnnees
+                ancre={pageAnnees}
+                choisie={annee}
+                courante={courant.annee}
+                onChoisir={(a) => {
+                  setAnnee(a)
+                  setVue('mois')
+                }}
+              />
+            )}
+
+            <div className="grid grid-cols-4 gap-1" hidden={vue !== 'mois'}>
               {nomsMois.map((nom, index) => {
                 const estChoisi = choisi?.annee === annee && choisi.mois === index
                 const estCourant = courant.annee === annee && courant.mois === index
