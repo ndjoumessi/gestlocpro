@@ -21,6 +21,16 @@
   --color-border-strong: #cbbfa6;
   --color-divider: #e8e2d7;
 
+  /* Crête du balayage de squelette, sur `--color-surface-sunken`.
+     Un jeton à elle, et non `--color-border` emprunté : le balayage n'est pas
+     une bordure, et l'emprunt a laissé les deux thèmes diverger en silence. Sur
+     fond clair, `--color-border` ne s'en détachait que de ΔL* 5,8 — l'animation
+     tournait, mais on ne la voyait pas ; le sombre, avec le MÊME jeton, montait
+     à 16,8 parce que l'écart entre creux et bordure y est bien plus grand.
+     Réglée ici à ΔL* -17,1, l'égal perceptif du sombre. Voir squelette.test.ts,
+     qui tient les deux thèmes dans la même fourchette. */
+  --color-skeleton-sweep: #cbbfa6;
+
   /* ---- Encres ---------------------------------------------------------- */
   --color-ink: #14201e; /* texte principal · 15.24 sur --paper */
   --color-ink-2: #243733; /* surface sombre élevée, survol bouton sombre */
@@ -369,6 +379,12 @@
     --color-border-strong: #5b5343;
     --color-divider: #302b23;
 
+    /* Le sombre garde la valeur qui marchait déjà — c'est le clair qui était
+       en défaut. `--color-border-strong` y monterait à ΔL* 30, soit une crête
+       deux fois plus marquée qu'en clair : le balayage cesserait d'être un
+       reflet pour devenir une barre qui passe. */
+    --color-skeleton-sweep: #3a342a;
+
     /* ---- Encres ---------------------------------------------------------- */
     /* ATTENTION — `--color-ink` bascule du texte vers une teinte CLAIRE. Il
        porte deux rôles dans ce système : l'encre principale (`text-ink`, plus
@@ -488,6 +504,7 @@
   --color-border: #3a342a;
   --color-border-strong: #5b5343;
   --color-divider: #302b23;
+  --color-skeleton-sweep: #3a342a;
 
   --color-ink: #ece7dd;
   --color-ink-2: #d6d0c3;
@@ -764,7 +781,12 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, transparent 0%, var(--color-border) 50%, transparent 100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-skeleton-sweep) 50%,
+    transparent 100%
+  );
   transform: translateX(-100%);
   animation: gl-skeleton-sweep 1.4s linear infinite;
 }

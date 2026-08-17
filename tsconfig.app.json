@@ -42,6 +42,7 @@
     "src/design-system/orDonnee.test.ts",
     "src/design-system/paletteAffichee.test.ts",
     "src/design-system/plancher.test.ts",
+    "src/design-system/squelette.test.ts",
     "src/design-system/zonesSures.test.ts"
   ]
 }
