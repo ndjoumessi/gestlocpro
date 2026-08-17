@@ -120,8 +120,8 @@ export function Dashboard() {
       <PageHeader
         title={title}
         description={t('app.dashboard.subtitle', {
-          buildings: BUILDINGS.length,
-          units: units.length,
+          buildings: t('common.buildingCount', { count: BUILDINGS.length }),
+          units: t('common.unitCount', { count: units.length }),
           currency: definition.label,
         })}
         actions={
@@ -225,6 +225,20 @@ export function Dashboard() {
               entendait « Collections over 12 months » deux fois de suite. Elle
               porte maintenant ce que le titre ne dit pas — la nature du
               tableau, qui est l'équivalent textuel du graphique. */}
+          {/* Un cadre d'axes sans barre n'est pas un graphique : c'est un
+              graphique qui a l'air cassé. Un compte neuf n'a aucun encaissement
+              — il n'en aura qu'après son premier paiement enregistré — et
+              l'écran lui montrait une ligne d'objectif à 0 € au-dessus d'une
+              zone vide, sans un mot. La règle est celle que la vitrine des
+              états énonce pour tout le produit : aucun état ne se réduit à un
+              écran blanc. */}
+          {COLLECTIONS.length === 0 ? (
+            <EmptyState
+              icon="gauge"
+              title={t('app.dashboard.chartEmptyTitle')}
+              body={t('app.dashboard.chartEmptyBody')}
+            />
+          ) : (
           <StackedBarChart
             caption={t('app.dashboard.chartTableCaption')}
             target={expected}
@@ -243,6 +257,7 @@ export function Dashboard() {
               ],
             }))}
           />
+          )}
           <p className="mt-4 border-t border-divider pt-4 text-body-s text-muted">
             {t('app.dashboard.chartNote')}
           </p>

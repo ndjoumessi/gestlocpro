@@ -82,8 +82,8 @@ export function Portfolio() {
       <PageHeader
         title={t('app.portfolio.title')}
         description={t('app.portfolio.subtitle', {
-          buildings: BUILDINGS.length,
-          units: units.length,
+          buildings: t('common.buildingCount', { count: BUILDINGS.length }),
+          units: t('common.unitCount', { count: units.length }),
         })}
         // Le seul endroit du produit où l'on constitue son parc. Il n'existait
         // pas : tous les écrans opéraient sur des immeubles qu'aucun geste ne

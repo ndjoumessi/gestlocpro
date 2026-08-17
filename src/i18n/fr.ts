@@ -59,6 +59,19 @@ export const fr = {
     password: 'Mot de passe',
     phone: 'Téléphone',
     dialCode: 'Indicatif téléphonique',
+    /**
+     * Comptes accordés SÉPARÉMENT, puis composés.
+     *
+     * Les sous-titres portaient « {buildings} immeubles, {units} unités » avec
+     * une seule variante `_one` — or la pluralisation se règle sur un unique
+     * `count`, et il y a ici deux noms à accorder. Un parc d'un logement
+     * affichait donc « 2 immeubles, 1 unités ». Deux fragments, deux accords,
+     * une composition : c'est la seule forme qui tienne dans les deux langues.
+     */
+    buildingCount: '{count} immeubles',
+    buildingCount_one: '{count} immeuble',
+    unitCount: '{count} unités',
+    unitCount_one: '{count} unité',
     // Le gabarit ne récite PAS un format — « jj/mm/aaaa » serait faux dès
     // qu'on passe en anglais, où l'ordre s'inverse. Le calendrier dit le
     // format en montrant les dates.
@@ -425,7 +438,10 @@ export const fr = {
       titleOwner: 'Vue consolidée du parc',
       titleManager: 'Ma journée de gestion',
       titleTenant: 'Mon espace locataire',
-      subtitle: '{buildings} immeubles, {units} unités · montants en {currency}',
+      subtitle: '{buildings}, {units} · montants en {currency}',
+      chartEmptyTitle: 'Aucun encaissement pour l’instant',
+      chartEmptyBody:
+        'La courbe des douze mois se remplira dès votre premier paiement enregistré.',
       expected: 'Loyers attendus',
       collected: 'Encaissé ce mois',
       /**
@@ -515,8 +531,7 @@ export const fr = {
        * compte neuf ouvrait donc « Parc immobilier » sur une phrase qui lui
        * annonçait douze logements qu'il n'a pas.
        */
-      subtitle: '{buildings} immeubles, {units} unités. Le statut porte sur le mois affiché.',
-      subtitle_one: '{buildings} immeuble, {units} unités. Le statut porte sur le mois affiché.',
+      subtitle: '{buildings}, {units}. Le statut porte sur le mois affiché.',
       // Aucun logement du tout : ce n'est pas une recherche infructueuse.
       emptyTitle: 'Aucun logement pour l’instant',
       emptyBody: 'Déclarez un immeuble, puis ajoutez-y vos logements.',

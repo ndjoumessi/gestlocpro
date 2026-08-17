@@ -52,6 +52,38 @@ const ECRANS = [
   '/app/prise-en-main',
 ]
 
+/** Le parc de la première journée : des murs, un logement, aucun encaissement. */
+const AVEC_UN_LOGEMENT = {
+  ...VIDE,
+  buildings: [
+    { id: 'b1', name: 'Residence A', district: 'Bastos', units: [] },
+    {
+      id: 'b2',
+      name: 'Residence B',
+      district: 'Bastos',
+      units: [
+        {
+          id: 'u1',
+          label: 'A1',
+          type: 'T2',
+          surfaceSqm: 100,
+          rentMinor: 20000,
+          tenant: null,
+          status: 'vacant',
+          paidMinor: 0,
+          overdueDays: null,
+        },
+      ],
+    },
+  ],
+}
+
+function serveurAvecUnLogement() {
+  const serveur = installerFauxServeur()
+  serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: AVEC_UN_LOGEMENT })
+  return serveur
+}
+
 function serveurVide() {
   const serveur = installerFauxServeur()
   serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: VIDE })
@@ -118,7 +150,47 @@ describe('parc vide, compte neuf', () => {
     // « Trois immeubles, douze unités » était écrit en dur : les chiffres du jeu
     // de démonstration, servis à tout parc réel.
     expect(main).not.toHaveTextContent(/trois immeubles/i)
-    expect(main).toHaveTextContent(/0 immeubles, 0 unités/i)
+    // Le français met le SINGULIER à zéro — « 0 immeuble » — là où l'anglais
+    // pluralise. C'est `Intl.PluralRules` qui tranche, pas une règle écrite à
+    // la main, et le dictionnaire le documente déjà.
+    expect(main).toHaveTextContent(/0 immeuble, 0 unité\./i)
+  })
+
+  it('accorde chaque nom séparément dans le sous-titre', async () => {
+    /**
+     * Le cas relevé sur le parc réel : deux immeubles, un seul logement,
+     * affichés « 2 immeubles, 1 unités ». Les sous-titres portaient les deux
+     * comptes dans un même gabarit avec une seule variante `_one` — or la
+     * pluralisation se règle sur un unique `count`, et il y a deux noms à
+     * accorder. Deux fragments accordés puis composés : c'est la seule forme
+     * qui tienne, et elle tient aussi en anglais où zéro pluralise.
+     */
+    serveurAvecUnLogement()
+    renderApp('/app/parc', { session: SESSION_AVEC_PARC })
+    const main = await screen.findByRole('main')
+    await new Promise((r) => setTimeout(r, 60))
+
+    expect(main).toHaveTextContent(/2 immeubles, 1 unité\./i)
+    expect(main).not.toHaveTextContent(/1 unités/i)
+  })
+
+  it('dit qu’il n’y a aucun encaissement, plutôt que de tracer un cadre nu', async () => {
+    /**
+     * Le parc n'est PAS vide — il a des murs et un logement — mais aucun
+     * encaissement n'a encore été enregistré. C'est l'état de la première
+     * journée, et c'est celui où le graphique apparaît : avec zéro immeuble, le
+     * tableau de bord prend sa branche « parc vide » et ne le rend pas du tout.
+     *
+     * Un cadre d'axes sans barre n'est pas un graphique : c'est un graphique qui
+     * a l'air cassé. L'écran traçait une ligne d'objectif à 0 € au-dessus d'une
+     * zone vide, sans un mot.
+     */
+    serveurAvecUnLogement()
+    renderApp('/app', { session: SESSION_AVEC_PARC })
+    const main = await screen.findByRole('main')
+    await new Promise((r) => setTimeout(r, 60))
+
+    expect(main).toHaveTextContent(/aucun encaissement pour l’instant/i)
   })
 
   it('n’offre pas d’enregistrer un paiement sur un parc sans logement', async () => {
