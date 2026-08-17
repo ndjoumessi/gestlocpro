@@ -3,6 +3,7 @@ import request from 'supertest'
 import { createApp } from '../app.js'
 import { prisma } from '../db.js'
 import { NOM_COOKIE } from '../auth/session.js'
+import { remplacerMessagerie } from '../messagerie/messagerie.js'
 
 /**
  * Lecture du parc.
@@ -1444,6 +1445,94 @@ describe('relance des loyers', () => {
     // l'état d'un bail qui appartient à quelqu'un d'autre.
     expect(res.body.sent).toEqual([])
     expect(res.body.skipped[0].reason).toBe('not_found')
+  })
+
+  it('ne pose une date d’envoi que si le message est PARTI', async () => {
+    await echeanceEnRetard()
+    await request(serveur)
+      .post(`/api/parks/${parkId}/reminders`)
+      .set('Cookie', proprio)
+      .send({ leaseIds: [leaseId] })
+
+    const trace = await prisma.notification.findFirstOrThrow({
+      where: { parkId, messageKey: 'notifications.rentReminder' },
+    })
+    /**
+     * Aucun fournisseur n'est configuré : `MessagerieDeJournal` rend `false`, et
+     * c'est le cœur de cette couture. Poser `sentAt` malgré tout ferait mentir
+     * le dossier le jour où un locataire contestera avoir été prévenu — le seul
+     * jour où cette trace sert.
+     */
+    expect(trace.sentAt).toBeNull()
+    expect(trace.channel).toBe('in_app')
+  })
+
+  it('date l’envoi et marque le canal quand un fournisseur le porte', async () => {
+    await prisma.tenant.updateMany({ where: { parkId }, data: { phoneE164: '+237677214408' } })
+    await echeanceEnRetard()
+
+    const envoyes: string[] = []
+    const rendre = remplacerMessagerie({
+      async envoyerSms(destinataire: string) {
+        envoyes.push(destinataire)
+        return true
+      },
+    })
+    try {
+      await request(serveur)
+        .post(`/api/parks/${parkId}/reminders`)
+        .set('Cookie', proprio)
+        .send({ leaseIds: [leaseId] })
+    } finally {
+      rendre()
+    }
+
+    expect(envoyes).toEqual(['+237677214408'])
+    const trace = await prisma.notification.findFirstOrThrow({
+      where: { parkId, messageKey: 'notifications.rentReminder' },
+    })
+    expect(trace.sentAt).not.toBeNull()
+    expect(trace.channel).toBe('sms')
+  })
+
+  it('ne relance, en mode jalons, qu’aux échéances vendues', async () => {
+    /**
+     * La grille tarifaire promet J+1, J+7 et J+15 — pas une relance quotidienne.
+     * Relancer tous les jours ferait du produit un harceleur ; le jalon est une
+     * donnée du contrat commercial, pas un réglage d'implémentation.
+     */
+    const hier = new Date(Date.now() - 3 * 86_400_000)
+    await prisma.rentCharge.create({
+      data: {
+        leaseId,
+        periodStart: new Date('2026-05-01T00:00:00Z'),
+        dueOn: hier,
+        rentMinor: 145000,
+      },
+    })
+
+    const res = await request(serveur)
+      .post(`/api/parks/${parkId}/reminders`)
+      .set('Cookie', proprio)
+      .send({ leaseIds: [leaseId], only: 'milestones' })
+
+    // Trois jours de retard : ni J+1, ni J+7, ni J+15.
+    expect(res.body.sent).toEqual([])
+    expect(res.body.skipped[0].reason).toBe('not_a_milestone')
+  })
+
+  it('relance tout le parc quand aucune liste n’est fournie', async () => {
+    // La forme qu'emprunte la relance automatique : elle ne connaît pas d'avance
+    // la liste des retardataires.
+    await echeanceEnRetard()
+
+    const res = await request(serveur)
+      .post(`/api/parks/${parkId}/reminders`)
+      .set('Cookie', proprio)
+      .send({})
+
+    expect(res.status, JSON.stringify(res.body)).toBe(200)
+    expect(res.body.sent).toEqual([leaseId])
   })
 
   it('ouvre la relance au gestionnaire, dont c’est le métier quotidien', async () => {

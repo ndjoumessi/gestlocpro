@@ -117,8 +117,25 @@ const schemaInvitation = z.object({
  * indue coûte plus cher qu'une relance manquée.
  */
 const schemaRelance = z.object({
-  leaseIds: z.array(z.string().uuid()).min(1).max(200),
+  /**
+   * Les baux visés. ABSENT signifie « tous ceux du parc qui doivent quelque
+   * chose » — c'est la forme qu'emprunte la relance automatique, qui ne connaît
+   * pas d'avance la liste des retardataires.
+   */
+  leaseIds: z.array(z.string().uuid()).min(1).max(200).optional(),
+  /**
+   * `milestones` restreint aux ÉCHÉANCES VENDUES : J+1, J+7, J+15.
+   *
+   * La grille tarifaire ne promet pas une relance quotidienne, elle promet ces
+   * trois-là. Relancer tous les jours ferait du produit un harceleur ; ne
+   * relancer qu'une fois ne tiendrait pas la promesse. Le jalon est donc une
+   * donnée du contrat commercial, pas un réglage d'implémentation.
+   */
+  only: z.enum(['milestones']).optional(),
 })
+
+/** Les jours de retard auxquels la grille tarifaire promet une relance. */
+export const JALONS_RELANCE = [1, 7, 15] as const
 
 /**
  * Mise en demeure : le motif est OBLIGATOIRE.
@@ -1145,11 +1162,16 @@ parksRouter.post(
     const baux = await prisma.lease.findMany({
       // Le `parkId` est dans le WHERE, pas vérifié après lecture : le bail
       // d'un autre parc ne doit pas même être chargé.
-      where: { id: { in: corps.leaseIds }, unit: { building: { parkId } } },
+      where: {
+        unit: { building: { parkId } },
+        // Liste absente : tout le parc. Le filtrage sur ce qui est réellement
+        // dû se fait plus bas, comme pour une liste explicite.
+        ...(corps.leaseIds ? { id: { in: corps.leaseIds } } : { status: { in: ['active', 'pending'] } }),
+      },
       select: {
         id: true,
         unitId: true,
-        tenant: { select: { fullName: true, userId: true } },
+        tenant: { select: { fullName: true, userId: true, phoneE164: true } },
         // Toutes les échéances EXIGIBLES, pas la dernière : un locataire qui
         // doit juin et juillet est relancé une fois, pour le total.
         charges: {
@@ -1224,6 +1246,32 @@ parksRouter.post(
         ? Math.floor((maintenant.getTime() - plusAncienne.dueOn.getTime()) / 86_400_000)
         : 0
 
+      if (corps.only === 'milestones' && !JALONS_RELANCE.includes(jours as 1 | 7 | 15)) {
+        ignorees.push({ leaseId: bail.id, reason: 'not_a_milestone' })
+        continue
+      }
+
+      /**
+       * L'ENVOI passe par la couture, et `sentAt` dit la vérité.
+       *
+       * `MessagerieDeJournal` rend `false` tant qu'aucun fournisseur n'est
+       * configuré — c'est le cœur de cette couture, et la raison pour laquelle
+       * elle ne ment pas. La date d'envoi n'est donc posée que si le message est
+       * réellement PARTI, et le canal suit : `sms` quand il est parti par SMS,
+       * `in_app` quand il n'est resté que dans le produit.
+       *
+       * Le jour où un fournisseur est branché, une seule ligne change ailleurs
+       * et ces relances partent pour de bon. Rien ici n'aura à bouger.
+       *
+       * Pas de numéro, pas de SMS : un locataire sans téléphone reçoit la
+       * notification dans le produit, et le bailleur voit qu'elle n'est pas
+       * partie.
+       */
+      const texte = `${bail.tenant.fullName} — loyer en retard de ${jours} j. Merci de régulariser.`
+      const parti = bail.tenant.phoneE164
+        ? await laMessagerie().envoyerSms(bail.tenant.phoneE164, texte)
+        : false
+
       await prisma.notification.create({
         data: {
           parkId,
@@ -1239,8 +1287,8 @@ parksRouter.post(
           },
           severity: jours >= 15 ? 'high' : 'medium',
           unitId: bail.unitId,
-          channel: 'in_app',
-          // `sentAt` reste nul : rien n'est encore parti.
+          channel: parti ? 'sms' : 'in_app',
+          ...(parti ? { sentAt: new Date() } : {}),
           //
           // La clé est posée ou ABSENTE, jamais à `undefined` : un locataire
           // sans compte n'a pas de destinataire, et `exactOptionalPropertyTypes`
@@ -1256,9 +1304,11 @@ parksRouter.post(
 
     // Les identifiants inconnus du parc n'ont même pas été lus : ils sortent
     // ici, sans dire s'ils existent ailleurs.
-    const lus = new Set(baux.map((b) => b.id))
-    for (const id of corps.leaseIds) {
-      if (!lus.has(id)) ignorees.push({ leaseId: id, reason: 'not_found' })
+    if (corps.leaseIds) {
+      const lus = new Set(baux.map((b) => b.id))
+      for (const id of corps.leaseIds) {
+        if (!lus.has(id)) ignorees.push({ leaseId: id, reason: 'not_found' })
+      }
     }
 
     if (envoyees.length > 0) {
