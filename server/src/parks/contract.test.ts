@@ -24,6 +24,12 @@ import { NOM_COOKIE } from '../auth/session.js'
  * rendu, c'était un accord sur les noms.
  */
 const app = createApp()
+/**
+ * Un serveur unique pour le fichier : `request(serveur)` en ouvrait un par appel.
+ * Voir `parks/routes.test.ts`, où la collision de ports éphémères se voyait —
+ * une exécution sur trois, jamais au même endroit.
+ */
+const serveur = app.listen(0)
 
 /** Noms interpolés par un gabarit : `{unit}`, `{count}`… */
 function placeholders(gabarit: string): string[] {
@@ -78,7 +84,7 @@ beforeAll(async () => {
   await prisma.park.deleteMany()
   await prisma.userAccount.deleteMany()
 
-  const res = await request(app).post('/api/auth/signup').send({
+  const res = await request(serveur).post('/api/auth/signup').send({
     email: 'contrat@example.com',
     password: 'un-mot-de-passe-assez-long',
     fullName: 'Compte de contrat',
@@ -91,18 +97,19 @@ beforeAll(async () => {
   const liste = Array.isArray(entetes) ? entetes : entetes ? [entetes] : []
   cookie = liste.find((c) => c.startsWith(`${NOM_COOKIE}=`))!
 
-  const parcs = await request(app).get('/api/parks').set('Cookie', cookie)
+  const parcs = await request(serveur).get('/api/parks').set('Cookie', cookie)
   parkId = parcs.body.parks[0].id
 })
 
 afterAll(async () => {
+  await new Promise((resoudre) => serveur.close(resoudre))
   await prisma.park.deleteMany()
   await prisma.userAccount.deleteMany()
   await prisma.$disconnect()
 })
 
 async function portefeuille() {
-  const res = await request(app).get(`/api/parks/${parkId}/portfolio`).set('Cookie', cookie)
+  const res = await request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', cookie)
   expect(res.status).toBe(200)
   return res.body
 }

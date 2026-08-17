@@ -24,6 +24,12 @@ import { prisma } from '../db.js'
  * sans rien vérifier.
  */
 const app = createApp()
+/**
+ * Un serveur unique pour le fichier : `request(serveur)` en ouvrait un par appel.
+ * Voir `parks/routes.test.ts`, où la collision de ports éphémères se voyait —
+ * une exécution sur trois, jamais au même endroit.
+ */
+const serveur = app.listen(0)
 
 const SOURCE = new URL('../../../src/lib/countries.ts', import.meta.url)
 
@@ -50,6 +56,7 @@ function inscription(champs: Record<string, unknown> = {}) {
 }
 
 afterAll(async () => {
+  await new Promise((resoudre) => serveur.close(resoudre))
   await prisma.userAccount.deleteMany({ where: { email: { contains: 'contrat.pays.' } } })
 })
 
@@ -57,7 +64,7 @@ describe('pays proposés à l’inscription', () => {
   const { liste, sentinelle } = codesDuClient()
 
   it.each(liste)('le serveur accepte %s', async (code) => {
-    const reponse = await request(app).post('/api/auth/signup').send(inscription({ countryCode: code }))
+    const reponse = await request(serveur).post('/api/auth/signup').send(inscription({ countryCode: code }))
     expect(reponse.status, JSON.stringify(reponse.body)).toBe(201)
     expect(reponse.body.user.countryCode).toBe(code)
   })
@@ -66,7 +73,7 @@ describe('pays proposés à l’inscription', () => {
     // Le pendant négatif, et la raison d'être du fichier : c'est bien le
     // serveur qui a raison. Le client ne doit pas envoyer cette valeur — il
     // doit omettre le champ.
-    const reponse = await request(app)
+    const reponse = await request(serveur)
       .post('/api/auth/signup')
       .send(inscription({ countryCode: sentinelle }))
     expect(reponse.status).toBe(400)
@@ -74,7 +81,7 @@ describe('pays proposés à l’inscription', () => {
   })
 
   it('un pays absent est une absence de pays, et l’inscription passe', async () => {
-    const reponse = await request(app).post('/api/auth/signup').send(inscription())
+    const reponse = await request(serveur).post('/api/auth/signup').send(inscription())
     expect(reponse.status, JSON.stringify(reponse.body)).toBe(201)
     expect(reponse.body.user.countryCode).toBeNull()
   })
@@ -87,7 +94,7 @@ describe('nom du parc', () => {
     // parc, et l'application montrait alors le jeu de démonstration : rien ne
     // signalait au propriétaire que son parc n'existait pas.
     const corps = inscription({ parkName: 'Résidence des Palmiers' })
-    const reponse = await request(app).post('/api/auth/signup').send(corps)
+    const reponse = await request(serveur).post('/api/auth/signup').send(corps)
     expect(reponse.status, JSON.stringify(reponse.body)).toBe(201)
 
     const adhesions = await prisma.membership.findMany({

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import request from 'supertest'
 import { createApp } from './app.js'
 
@@ -16,6 +16,14 @@ import { createApp } from './app.js'
  * endroit, et coûtent plus que l'absence de journal.
  */
 const app = createApp()
+/**
+ * Un serveur unique pour le fichier : `request(serveur)` en ouvrait un par appel.
+ * Voir `parks/routes.test.ts`, où la collision de ports éphémères se voyait —
+ * une exécution sur trois, jamais au même endroit.
+ */
+const serveur = app.listen(0)
+
+afterAll(() => new Promise((resoudre) => serveur.close(resoudre)))
 
 let lignes: string[]
 let espion: ReturnType<typeof vi.spyOn>
@@ -31,7 +39,7 @@ afterEach(() => espion.mockRestore())
 
 describe('journal des appels d’API', () => {
   it('donne le chemin complet d’une route montée dans un routeur imbriqué', async () => {
-    await request(app).get('/api/auth/me')
+    await request(serveur).get('/api/auth/me')
     expect(lignes).toHaveLength(1)
     expect(lignes[0]).toMatch(/^GET \/api\/auth\/me → 401 \(\d+ ms\)$/)
   })
@@ -39,14 +47,14 @@ describe('journal des appels d’API', () => {
   it('donne le chemin complet quand la requête est refusée par la validation', async () => {
     // Le cas qui révélait le défaut : la réponse passe par le gestionnaire
     // d'erreurs, et `req.url` n'y est pas dans le même état.
-    await request(app).post('/api/auth/signup').send({ email: 'pas-un-email' })
+    await request(serveur).post('/api/auth/signup').send({ email: 'pas-un-email' })
     expect(lignes).toHaveLength(1)
     expect(lignes[0]).toMatch(/^POST \/api\/auth\/signup → 400 \(\d+ ms\)$/)
   })
 
   it('ne journalise pas le chemin de santé', async () => {
     // Railway l'appelle sans cesse ; le laisser passer noierait tout le reste.
-    await request(app).get('/api/health')
+    await request(serveur).get('/api/health')
     expect(lignes).toEqual([])
   })
 
@@ -54,7 +62,7 @@ describe('journal des appels d’API', () => {
     // Rien ne la lit ici, et c'est le premier endroit où une donnée
     // personnelle s'égare dans un journal que bien plus de gens lisent qu'une
     // base.
-    await request(app).get('/api/auth/me?jeton=secret')
+    await request(serveur).get('/api/auth/me?jeton=secret')
     expect(lignes[0]).toContain('/api/auth/me →')
     expect(lignes[0]).not.toContain('secret')
   })

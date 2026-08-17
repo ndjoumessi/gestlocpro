@@ -14,6 +14,12 @@ import { empreinteJeton } from './token.js'
  * l'impossibilité de savoir si une adresse existe.
  */
 const app = createApp()
+/**
+ * Un serveur unique pour le fichier : `request(serveur)` en ouvrait un par appel.
+ * Voir `parks/routes.test.ts`, où la collision de ports éphémères se voyait —
+ * une exécution sur trois, jamais au même endroit.
+ */
+const serveur = app.listen(0)
 
 const INSCRIPTION = {
   email: 'sarah@example.com',
@@ -28,6 +34,7 @@ beforeEach(async () => {
 })
 
 afterAll(async () => {
+  await new Promise((resoudre) => serveur.close(resoudre))
   await prisma.park.deleteMany()
   await prisma.userAccount.deleteMany()
   await prisma.$disconnect()
@@ -42,7 +49,7 @@ function cookieDe(res: request.Response): string | undefined {
 
 describe('inscription', () => {
   it('crée le compte, ouvre la session et ne rend jamais l’empreinte', async () => {
-    const res = await request(app).post('/api/auth/signup').send(INSCRIPTION)
+    const res = await request(serveur).post('/api/auth/signup').send(INSCRIPTION)
 
     expect(res.status).toBe(201)
     expect(res.body.user.email).toBe('sarah@example.com')
@@ -54,14 +61,14 @@ describe('inscription', () => {
   it('pose un cookie hors de portée du script', async () => {
     // C'est la raison même de préférer un cookie à `localStorage` : la moindre
     // injection de script exfiltrerait un jeton rangé côté client.
-    const cookie = cookieDe(await request(app).post('/api/auth/signup').send(INSCRIPTION))
+    const cookie = cookieDe(await request(serveur).post('/api/auth/signup').send(INSCRIPTION))
     expect(cookie).toMatch(/HttpOnly/i)
     expect(cookie).toMatch(/SameSite=Lax/i)
     expect(cookie).toMatch(/Path=\//)
   })
 
   it('n’enregistre pas le jeton remis, seulement son empreinte', async () => {
-    const res = await request(app).post('/api/auth/signup').send(INSCRIPTION)
+    const res = await request(serveur).post('/api/auth/signup').send(INSCRIPTION)
     const valeur = decodeURIComponent(cookieDe(res)!.split('=')[1]!.split(';')[0]!)
 
     const parEmpreinte = await prisma.session.findUnique({
@@ -75,14 +82,14 @@ describe('inscription', () => {
   })
 
   it('normalise la casse de l’adresse', async () => {
-    await request(app).post('/api/auth/signup').send({ ...INSCRIPTION, email: 'Sarah@Example.COM' })
+    await request(serveur).post('/api/auth/signup').send({ ...INSCRIPTION, email: 'Sarah@Example.COM' })
     const compte = await prisma.userAccount.findUnique({ where: { email: 'sarah@example.com' } })
     expect(compte).not.toBeNull()
   })
 
   it('refuse une adresse déjà prise, quelle qu’en soit la casse', async () => {
-    await request(app).post('/api/auth/signup').send(INSCRIPTION)
-    const res = await request(app)
+    await request(serveur).post('/api/auth/signup').send(INSCRIPTION)
+    const res = await request(serveur)
       .post('/api/auth/signup')
       .send({ ...INSCRIPTION, email: 'SARAH@EXAMPLE.COM' })
 
@@ -96,7 +103,7 @@ describe('inscription', () => {
     // à conserver juridiquement, et le client la collecte déjà sans que rien ne
     // l'enregistre.
     for (const acceptTerms of [false, undefined]) {
-      const res = await request(app)
+      const res = await request(serveur)
         .post('/api/auth/signup')
         .send({ ...INSCRIPTION, acceptTerms })
       expect(res.status).toBe(400)
@@ -105,13 +112,13 @@ describe('inscription', () => {
   })
 
   it('horodate l’acceptation', async () => {
-    await request(app).post('/api/auth/signup').send(INSCRIPTION)
+    await request(serveur).post('/api/auth/signup').send(INSCRIPTION)
     const compte = await prisma.userAccount.findFirstOrThrow()
     expect(compte.termsAcceptedAt).toBeInstanceOf(Date)
   })
 
   it('nomme les champs fautifs plutôt qu’un message global', async () => {
-    const res = await request(app)
+    const res = await request(serveur)
       .post('/api/auth/signup')
       .send({ ...INSCRIPTION, email: 'pas-une-adresse', password: 'court' })
 
@@ -126,13 +133,13 @@ describe('inscription', () => {
 
 describe('connexion', () => {
   beforeEach(async () => {
-    await request(app).post('/api/auth/signup').send(INSCRIPTION)
+    await request(serveur).post('/api/auth/signup').send(INSCRIPTION)
     // L'inscription ouvre une session ; on repart d'un état propre.
     await prisma.session.deleteMany()
   })
 
   it('accepte les bons identifiants', async () => {
-    const res = await request(app)
+    const res = await request(serveur)
       .post('/api/auth/login')
       .send({ email: 'sarah@example.com', password: INSCRIPTION.password })
 
@@ -143,10 +150,10 @@ describe('connexion', () => {
 
   it('ne distingue pas un compte inconnu d’un mot de passe faux', async () => {
     // Les distinguer transforme le formulaire en oracle d'existence de comptes.
-    const inconnu = await request(app)
+    const inconnu = await request(serveur)
       .post('/api/auth/login')
       .send({ email: 'personne@example.com', password: INSCRIPTION.password })
-    const mauvais = await request(app)
+    const mauvais = await request(serveur)
       .post('/api/auth/login')
       .send({ email: 'sarah@example.com', password: 'ce-n-est-pas-le-bon' })
 
@@ -161,7 +168,7 @@ describe('connexion', () => {
     // l'oracle qu'en apparence.
     const chrono = async (email: string) => {
       const debut = performance.now()
-      await request(app).post('/api/auth/login').send({ email, password: 'quelconque' })
+      await request(serveur).post('/api/auth/login').send({ email, password: 'quelconque' })
       return performance.now() - debut
     }
 
@@ -175,7 +182,7 @@ describe('connexion', () => {
 
   it('refuse un compte désactivé', async () => {
     await prisma.userAccount.updateMany({ data: { disabledAt: new Date() } })
-    const res = await request(app)
+    const res = await request(serveur)
       .post('/api/auth/login')
       .send({ email: 'sarah@example.com', password: INSCRIPTION.password })
     expect(res.status).toBe(401)
@@ -186,24 +193,24 @@ describe('session', () => {
   let cookie: string
 
   beforeEach(async () => {
-    const res = await request(app).post('/api/auth/signup').send(INSCRIPTION)
+    const res = await request(serveur).post('/api/auth/signup').send(INSCRIPTION)
     cookie = cookieDe(res)!
   })
 
   it('reconnaît le porteur du cookie', async () => {
-    const res = await request(app).get('/api/auth/me').set('Cookie', cookie)
+    const res = await request(serveur).get('/api/auth/me').set('Cookie', cookie)
     expect(res.status).toBe(200)
     expect(res.body.user.email).toBe('sarah@example.com')
   })
 
   it('refuse sans cookie', async () => {
-    const res = await request(app).get('/api/auth/me')
+    const res = await request(serveur).get('/api/auth/me')
     expect(res.status).toBe(401)
     expect(res.body).toEqual({ error: 'unauthenticated' })
   })
 
   it('refuse un jeton forgé', async () => {
-    const res = await request(app)
+    const res = await request(serveur)
       .get('/api/auth/me')
       .set('Cookie', `${NOM_COOKIE}=jeton-invente-de-toutes-pieces`)
     expect(res.status).toBe(401)
@@ -213,9 +220,9 @@ describe('session', () => {
     // Effacer le cookie sans révoquer laisserait une session vivante en base,
     // réutilisable par quiconque a intercepté le jeton : la déconnexion serait
     // cosmétique. On rejoue donc le MÊME cookie après coup.
-    await request(app).post('/api/auth/logout').set('Cookie', cookie).expect(204)
+    await request(serveur).post('/api/auth/logout').set('Cookie', cookie).expect(204)
 
-    const rejoue = await request(app).get('/api/auth/me').set('Cookie', cookie)
+    const rejoue = await request(serveur).get('/api/auth/me').set('Cookie', cookie)
     expect(rejoue.status).toBe(401)
 
     const session = await prisma.session.findFirst()
@@ -225,12 +232,12 @@ describe('session', () => {
   it('accepte une déconnexion sans session', async () => {
     // Se déconnecter deux fois n'est pas une erreur : l'appelant n'a rien à
     // corriger.
-    await request(app).post('/api/auth/logout').expect(204)
+    await request(serveur).post('/api/auth/logout').expect(204)
   })
 
   it('refuse une session expirée', async () => {
     await prisma.session.updateMany({ data: { expiresAt: new Date(Date.now() - 1000) } })
-    const res = await request(app).get('/api/auth/me').set('Cookie', cookie)
+    const res = await request(serveur).get('/api/auth/me').set('Cookie', cookie)
     expect(res.status).toBe(401)
   })
 
@@ -243,7 +250,7 @@ describe('session', () => {
       data: { userId: compte.id, parkId: park.id, role: 'owner' },
     })
 
-    const res = await request(app).get('/api/auth/me').set('Cookie', cookie)
+    const res = await request(serveur).get('/api/auth/me').set('Cookie', cookie)
     expect(res.body.memberships).toEqual([
       { parkId: park.id, role: 'owner', parkName: 'Parc de Douala', currency: 'XAF' },
     ])
@@ -260,7 +267,7 @@ describe('session', () => {
       data: { userId: compte.id, parkId: park.id, role: 'manager', status: 'requested' },
     })
 
-    const res = await request(app).get('/api/auth/me').set('Cookie', cookie)
+    const res = await request(serveur).get('/api/auth/me').set('Cookie', cookie)
     expect(res.body.memberships).toEqual([])
   })
 })

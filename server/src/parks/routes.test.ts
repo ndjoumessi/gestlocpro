@@ -12,17 +12,49 @@ import { NOM_COOKIE } from '../auth/session.js'
  * bornaient leurs données en mémoire. Rien de tout cela ne survit à une requête
  * forgée — et c'est exactement ce que ces cas envoient.
  */
+/**
+ * UN serveur pour tout le fichier, et non un par requête.
+ *
+ * `request(serveur)` fait ouvrir à supertest un serveur éphémère, servir l'appel,
+ * puis le refermer — soit cent quarante-huit ouvertures de port pour ce
+ * fichier. Une exécution sur trois échouait, jamais au même endroit, sur des
+ * requêtes du `beforeEach` : inscription rendant un 404 en HTML — donc émis par
+ * autre chose que cette application, dont le 404 d'API est en JSON —, lecture
+ * des parcs rendant un corps vide, erreurs d'analyse HTTP du client.
+ *
+ * Le mécanisme exact de la collision importe moins que sa cause : un port
+ * éphémère par requête. Un serveur unique la retire entièrement.
+ *
+ * Le commentaire de `createApp` disait déjà l'intention — « les tests la montent
+ * directement, sans ouvrir de port » — mais `request(serveur)` en ouvre un quand
+ * même, à chaque appel. C'est supertest qui le fait, pas le test qui le demande.
+ */
 const app = createApp()
+const serveur = app.listen(0)
 
 const MDP = 'un-mot-de-passe-assez-long'
 
 async function inscrire(email: string, options: Record<string, unknown> = {}) {
-  const res = await request(app)
+  const res = await request(serveur)
     .post('/api/auth/signup')
     .send({ email, password: MDP, fullName: 'Compte de test', acceptTerms: true, ...options })
   const entetes = res.headers['set-cookie']
   const liste = Array.isArray(entetes) ? entetes : entetes ? [entetes] : []
-  return { res, cookie: liste.find((c) => c.startsWith(`${NOM_COOKIE}=`))! }
+  const cookie = liste.find((c) => c.startsWith(`${NOM_COOKIE}=`))
+  if (!cookie) {
+    throw new Error(
+      /**
+       * Le message porte le STATUT, et c'est ce qui a permis de trouver.
+       *
+       * Le helper rendait `liste.find(…)!` — un cookie éventuellement absent,
+       * affirmé présent par un `!`. L'échec ne se voyait donc pas ici mais trois
+       * lignes plus loin, sous la forme « Invalid value "undefined" for header
+       * "Cookie" », qui ne dit rien de l'inscription qui a échoué.
+       */
+      `inscription sans cookie — ${res.status} ${String(res.text).slice(0, 120)} (${email})`,
+    )
+  }
+  return { res, cookie }
 }
 
 beforeEach(async () => {
@@ -34,6 +66,7 @@ afterAll(async () => {
   await prisma.park.deleteMany()
   await prisma.userAccount.deleteMany()
   await prisma.$disconnect()
+  await new Promise((resoudre) => serveur.close(resoudre))
 })
 
 describe('création du parc à l’inscription', () => {
@@ -43,7 +76,7 @@ describe('création du parc à l’inscription', () => {
       countryCode: 'CM',
     })
 
-    const res = await request(app).get('/api/parks').set('Cookie', cookie)
+    const res = await request(serveur).get('/api/parks').set('Cookie', cookie)
     expect(res.body.parks).toHaveLength(1)
     expect(res.body.parks[0].name).toBe('Parc Bonamoussadi')
     expect(res.body.parks[0].role).toBe('owner')
@@ -57,14 +90,14 @@ describe('création du parc à l’inscription', () => {
       parkName: 'Parc Dakar',
       countryCode: 'SN',
     })
-    const res = await request(app).get('/api/parks').set('Cookie', cookie)
+    const res = await request(serveur).get('/api/parks').set('Cookie', cookie)
     expect(res.body.parks[0].currency).toBe('XOF')
   })
 
   it('ne crée aucun parc pour qui rejoint celui d’un autre', async () => {
     // Un gestionnaire ou un locataire n'apporte pas de parc : il en rejoint un.
     const { cookie } = await inscrire('gestionnaire@example.com')
-    const res = await request(app).get('/api/parks').set('Cookie', cookie)
+    const res = await request(serveur).get('/api/parks').set('Cookie', cookie)
     expect(res.body.parks).toEqual([])
   })
 })
@@ -83,9 +116,9 @@ describe('parc semé', () => {
   })
 
   async function portefeuille(c = cookie) {
-    const parcs = await request(app).get('/api/parks').set('Cookie', c)
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', c)
     const id = parcs.body.parks[0].id
-    return request(app).get(`/api/parks/${id}/portfolio`).set('Cookie', c)
+    return request(serveur).get(`/api/parks/${id}/portfolio`).set('Cookie', c)
   }
 
   it('rend trois immeubles et douze unités', async () => {
@@ -156,11 +189,11 @@ describe('cloisonnement', () => {
       countryCode: 'CM',
       seedDemo: true,
     })
-    const parcs = await request(app).get('/api/parks').set('Cookie', proprio.cookie)
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio.cookie)
     const parkId = parcs.body.parks[0].id
 
     const intrus = await inscrire('intrus@example.com')
-    const res = await request(app)
+    const res = await request(serveur)
       .get(`/api/parks/${parkId}/portfolio`)
       .set('Cookie', intrus.cookie)
 
@@ -169,7 +202,7 @@ describe('cloisonnement', () => {
   })
 
   it('refuse une requête sans session', async () => {
-    const res = await request(app).get('/api/parks')
+    const res = await request(serveur).get('/api/parks')
     expect(res.status).toBe(401)
   })
 
@@ -185,7 +218,7 @@ describe('cloisonnement', () => {
       countryCode: 'CM',
       seedDemo: true,
     })
-    const parcs = await request(app).get('/api/parks').set('Cookie', proprio.cookie)
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio.cookie)
     const parkId = parcs.body.parks[0].id
 
     // Un compte locataire, rattaché au bail de Charles Ngassa.
@@ -201,7 +234,7 @@ describe('cloisonnement', () => {
       data: { userId: compte.id },
     })
 
-    const res = await request(app)
+    const res = await request(serveur)
       .get(`/api/parks/${parkId}/portfolio`)
       .set('Cookie', locataire.cookie)
 
@@ -234,7 +267,7 @@ describe('droits d’arbitrage', () => {
       seedDemo: true,
     })
     proprio = p.cookie
-    const parcs = await request(app).get('/api/parks').set('Cookie', proprio)
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio)
     parkId = parcs.body.parks[0].id
 
     const g = await inscrire('diane@example.com')
@@ -248,13 +281,13 @@ describe('droits d’arbitrage', () => {
   })
 
   async function devisAArbitrer() {
-    const pf = await request(app).get(`/api/parks/${parkId}/portfolio`).set('Cookie', proprio)
+    const pf = await request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', proprio)
     return pf.body.works.find((w: { status: string }) => w.status === 'quoted')
   }
 
   it('refuse la validation d’un devis au gestionnaire', async () => {
     const devis = await devisAArbitrer()
-    const res = await request(app)
+    const res = await request(serveur)
       .patch(`/api/parks/${parkId}/works/${devis.id}/approve`)
       .set('Cookie', gestionnaire)
 
@@ -267,7 +300,7 @@ describe('droits d’arbitrage', () => {
 
   it('accepte du propriétaire, et fige le montant engagé', async () => {
     const devis = await devisAArbitrer()
-    const res = await request(app)
+    const res = await request(serveur)
       .patch(`/api/parks/${parkId}/works/${devis.id}/approve`)
       .set('Cookie', proprio)
 
@@ -280,12 +313,12 @@ describe('droits d’arbitrage', () => {
 
   it('refuse de valider deux fois', async () => {
     const devis = await devisAArbitrer()
-    await request(app)
+    await request(serveur)
       .patch(`/api/parks/${parkId}/works/${devis.id}/approve`)
       .set('Cookie', proprio)
       .expect(200)
     // Le second appel écraserait la date et l'auteur du premier.
-    await request(app)
+    await request(serveur)
       .patch(`/api/parks/${parkId}/works/${devis.id}/approve`)
       .set('Cookie', proprio)
       .expect(409)
@@ -297,16 +330,16 @@ describe('droits d’arbitrage', () => {
      * modale — ce qui reste vrai quand la requête ne vient pas d'elle. La règle
      * était côté formulaire seulement, et `settleDeposit` jetait le texte.
      */
-    const pf = await request(app).get(`/api/parks/${parkId}/portfolio`).set('Cookie', proprio)
+    const pf = await request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', proprio)
     const caution = pf.body.deposits[0]
 
-    await request(app)
+    await request(serveur)
       .patch(`/api/parks/${parkId}/deposits/${caution.id}/settle`)
       .set('Cookie', proprio)
       .send({ withheldMinor: 45000 })
       .expect(400)
 
-    const ok = await request(app)
+    const ok = await request(serveur)
       .patch(`/api/parks/${parkId}/deposits/${caution.id}/settle`)
       .set('Cookie', proprio)
       .send({ withheldMinor: 45000, reason: 'Reprise de la peinture du séjour' })
@@ -318,9 +351,9 @@ describe('droits d’arbitrage', () => {
   })
 
   it('refuse une retenue supérieure à la caution', async () => {
-    const pf = await request(app).get(`/api/parks/${parkId}/portfolio`).set('Cookie', proprio)
+    const pf = await request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', proprio)
     const caution = pf.body.deposits[0]
-    await request(app)
+    await request(serveur)
       .patch(`/api/parks/${parkId}/deposits/${caution.id}/settle`)
       .set('Cookie', proprio)
       .send({ withheldMinor: caution.heldMinor + 1, reason: 'Trop, justement' })
@@ -329,12 +362,12 @@ describe('droits d’arbitrage', () => {
 
   it('laisse le gestionnaire créer une fiche locataire', async () => {
     // Il opère le parc au quotidien : c'est l'arbitrage qu'il n'a pas.
-    const pf = await request(app).get(`/api/parks/${parkId}/portfolio`).set('Cookie', gestionnaire)
+    const pf = await request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', gestionnaire)
     const vacante = pf.body.buildings
       .flatMap((b: { units: { id: string; status: string }[] }) => b.units)
       .find((u: { status: string }) => u.status === 'vacant')
 
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/tenants`)
       .set('Cookie', gestionnaire)
       .send({ unitId: vacante.id, fullName: 'Awa Diallo', phoneE164: '+237688401277' })
@@ -349,12 +382,12 @@ describe('droits d’arbitrage', () => {
      * requêtes simultanées liraient toutes deux « unité libre » avant que l'une
      * n'écrive. Ici on ne fait que traduire son refus.
      */
-    const pf = await request(app).get(`/api/parks/${parkId}/portfolio`).set('Cookie', proprio)
+    const pf = await request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', proprio)
     const occupee = pf.body.buildings
       .flatMap((b: { units: { id: string; status: string }[] }) => b.units)
       .find((u: { status: string }) => u.status === 'paid')
 
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/tenants`)
       .set('Cookie', proprio)
       .send({ unitId: occupee.id, fullName: 'Quelqu’un d’autre' })
@@ -383,11 +416,11 @@ describe('terrain et notifications', () => {
       seedDemo: true,
     })
     proprio = p.cookie
-    const parcs = await request(app).get('/api/parks').set('Cookie', proprio)
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio)
     parkId = parcs.body.parks[0].id
   })
 
-  const pf = (c: string) => request(app).get(`/api/parks/${parkId}/portfolio`).set('Cookie', c)
+  const pf = (c: string) => request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', c)
 
   it('rend un index par unité ET par fluide', async () => {
     // Le client stockait un couple `previous`/`current` par unité : un
@@ -475,10 +508,10 @@ describe('saisie des immeubles', () => {
    */
   it('crée un immeuble dans le parc du propriétaire', async () => {
     const { cookie } = await inscrire('batisseur@example.com', { parkName: 'Parc Makepe' })
-    const parcs = await request(app).get('/api/parks').set('Cookie', cookie)
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', cookie)
     const parkId = parcs.body.parks[0].id
 
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/buildings`)
       .set('Cookie', cookie)
       .send({ name: 'Résidence Makepe', district: 'Makepe' })
@@ -488,7 +521,7 @@ describe('saisie des immeubles', () => {
 
     // Et il ressort du portefeuille : créer sans que l'écran le voie ne
     // servirait à rien.
-    const portefeuille = await request(app)
+    const portefeuille = await request(serveur)
       .get(`/api/parks/${parkId}/portfolio`)
       .set('Cookie', cookie)
     expect(portefeuille.body.buildings.map((b: { name: string }) => b.name)).toContain(
@@ -498,10 +531,10 @@ describe('saisie des immeubles', () => {
 
   it('refuse un nom ou un quartier trop court, en nommant le champ', async () => {
     const { cookie } = await inscrire('court@example.com', { parkName: 'Parc' })
-    const parcs = await request(app).get('/api/parks').set('Cookie', cookie)
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', cookie)
     const parkId = parcs.body.parks[0].id
 
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/buildings`)
       .set('Cookie', cookie)
       .send({ name: 'A', district: 'Makepe' })
@@ -514,12 +547,12 @@ describe('saisie des immeubles', () => {
     // Refuser sur cette base ferait perdre du temps à celui qui a raison : deux
     // « Résidence Les Palmiers » dans deux quartiers, cela existe.
     const { cookie } = await inscrire('homonyme@example.com', { parkName: 'Parc' })
-    const parcs = await request(app).get('/api/parks').set('Cookie', cookie)
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', cookie)
     const parkId = parcs.body.parks[0].id
 
     const corps = { name: 'Les Palmiers', district: 'Bonapriso' }
-    const un = await request(app).post(`/api/parks/${parkId}/buildings`).set('Cookie', cookie).send(corps)
-    const deux = await request(app)
+    const un = await request(serveur).post(`/api/parks/${parkId}/buildings`).set('Cookie', cookie).send(corps)
+    const deux = await request(serveur)
       .post(`/api/parks/${parkId}/buildings`)
       .set('Cookie', cookie)
       .send({ ...corps, district: 'Deïdo' })
@@ -531,11 +564,11 @@ describe('saisie des immeubles', () => {
   it('refuse un compte qui n’appartient pas au parc, en 404 et non en 403', async () => {
     // 403 confirmerait l'existence du parc à qui l'a deviné.
     const { cookie: proprio } = await inscrire('chez-moi@example.com', { parkName: 'Parc' })
-    const parcs = await request(app).get('/api/parks').set('Cookie', proprio)
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio)
     const parkId = parcs.body.parks[0].id
 
     const { cookie: etranger } = await inscrire('etranger@example.com')
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/buildings`)
       .set('Cookie', etranger)
       .send({ name: 'Résidence', district: 'Ailleurs' })
@@ -547,9 +580,9 @@ describe('saisie des immeubles', () => {
 describe('saisie des logements', () => {
   async function parcAvecImmeuble(email: string) {
     const { cookie } = await inscrire(email, { parkName: 'Parc' })
-    const parcs = await request(app).get('/api/parks').set('Cookie', cookie)
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', cookie)
     const parkId = parcs.body.parks[0].id
-    const immeuble = await request(app)
+    const immeuble = await request(serveur)
       .post(`/api/parks/${parkId}/buildings`)
       .set('Cookie', cookie)
       .send({ name: 'Résidence Makepe', district: 'Makepe' })
@@ -559,7 +592,7 @@ describe('saisie des logements', () => {
   it('crée un logement, et le portefeuille le rend', async () => {
     const { cookie, parkId, buildingId } = await parcAvecImmeuble('logements@example.com')
 
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/buildings/${buildingId}/units`)
       .set('Cookie', cookie)
       .send({ label: 'A1', type: 'T3', surfaceSqm: 78, baseRentMinor: 145000 })
@@ -567,7 +600,7 @@ describe('saisie des logements', () => {
     expect(res.status, JSON.stringify(res.body)).toBe(201)
     expect(res.body.unit).toMatchObject({ label: 'A1', type: 'T3', surfaceSqm: 78 })
 
-    const portefeuille = await request(app)
+    const portefeuille = await request(serveur)
       .get(`/api/parks/${parkId}/portfolio`)
       .set('Cookie', cookie)
     const unites = portefeuille.body.buildings.flatMap((b: { units: unknown[] }) => b.units)
@@ -589,11 +622,11 @@ describe('saisie des logements', () => {
     const { cookie, parkId, buildingId } = await parcAvecImmeuble('doublon@example.com')
     const corps = { label: 'A1', type: 'T2', surfaceSqm: 54, baseRentMinor: 110000 }
 
-    const un = await request(app)
+    const un = await request(serveur)
       .post(`/api/parks/${parkId}/buildings/${buildingId}/units`)
       .set('Cookie', cookie)
       .send(corps)
-    const deux = await request(app)
+    const deux = await request(serveur)
       .post(`/api/parks/${parkId}/buildings/${buildingId}/units`)
       .set('Cookie', cookie)
       .send(corps)
@@ -607,17 +640,17 @@ describe('saisie des logements', () => {
     // « A1 » existe dans presque tous les immeubles du monde : l'unicité est
     // locale à l'immeuble, jamais globale.
     const { cookie, parkId, buildingId } = await parcAvecImmeuble('deux-immeubles@example.com')
-    const autre = await request(app)
+    const autre = await request(serveur)
       .post(`/api/parks/${parkId}/buildings`)
       .set('Cookie', cookie)
       .send({ name: 'Villa Deïdo', district: 'Deïdo' })
 
     const corps = { label: 'A1', type: 'T2', surfaceSqm: 54, baseRentMinor: 110000 }
-    const un = await request(app)
+    const un = await request(serveur)
       .post(`/api/parks/${parkId}/buildings/${buildingId}/units`)
       .set('Cookie', cookie)
       .send(corps)
-    const deux = await request(app)
+    const deux = await request(serveur)
       .post(`/api/parks/${parkId}/buildings/${autre.body.building.id}/units`)
       .set('Cookie', cookie)
       .send(corps)
@@ -630,7 +663,7 @@ describe('saisie des logements', () => {
     const { cookie, parkId } = await parcAvecImmeuble('mien@example.com')
     const { buildingId: ailleurs } = await parcAvecImmeuble('sien@example.com')
 
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/buildings/${ailleurs}/units`)
       .set('Cookie', cookie)
       .send({ label: 'A1', type: 'T1', surfaceSqm: 30, baseRentMinor: 50000 })
@@ -642,13 +675,13 @@ describe('saisie des logements', () => {
 describe('saisie du bail', () => {
   async function parcAvecLogement(email: string) {
     const { cookie } = await inscrire(email, { parkName: 'Parc' })
-    const parcs = await request(app).get('/api/parks').set('Cookie', cookie)
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', cookie)
     const parkId = parcs.body.parks[0].id
-    const immeuble = await request(app)
+    const immeuble = await request(serveur)
       .post(`/api/parks/${parkId}/buildings`)
       .set('Cookie', cookie)
       .send({ name: 'Résidence Makepe', district: 'Makepe' })
-    const logement = await request(app)
+    const logement = await request(serveur)
       .post(`/api/parks/${parkId}/buildings/${immeuble.body.building.id}/units`)
       .set('Cookie', cookie)
       .send({ label: 'A1', type: 'T3', surfaceSqm: 78, baseRentMinor: 145000 })
@@ -667,7 +700,7 @@ describe('saisie du bail', () => {
      */
     const { cookie, parkId, unitId } = await parcAvecLogement('bail-date@example.com')
 
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/tenants`)
       .set('Cookie', cookie)
       .send({ unitId, fullName: 'Charles Ngassa', startsOn: '2023-04-01' })
@@ -682,7 +715,7 @@ describe('saisie du bail', () => {
     // celui du contrat. Le loyer de référence propose, il ne décide pas.
     const { cookie, parkId, unitId } = await parcAvecLogement('bail-loyer@example.com')
 
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/tenants`)
       .set('Cookie', cookie)
       .send({ unitId, fullName: 'Mireille Fotso', rentMinor: 120000 })
@@ -696,7 +729,7 @@ describe('saisie du bail', () => {
     // facultatifs, et le comportement d'origine est préservé.
     const { cookie, parkId, unitId } = await parcAvecLogement('bail-defaut@example.com')
 
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/tenants`)
       .set('Cookie', cookie)
       .send({ unitId, fullName: 'Serge Mbarga' })
@@ -712,7 +745,7 @@ describe('saisie du bail', () => {
   it('refuse une date mal formée en nommant le champ', async () => {
     const { cookie, parkId, unitId } = await parcAvecLogement('bail-mauvaise@example.com')
 
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/tenants`)
       .set('Cookie', cookie)
       .send({ unitId, fullName: 'Aline Tchoumi', startsOn: '01/04/2023' })
@@ -725,18 +758,18 @@ describe('saisie du bail', () => {
 describe('encaissements', () => {
   async function parcAvecBail(email: string) {
     const { cookie } = await inscrire(email, { parkName: 'Parc' })
-    const parcs = await request(app).get('/api/parks').set('Cookie', cookie)
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', cookie)
     const parkId = parcs.body.parks[0].id
-    const immeuble = await request(app)
+    const immeuble = await request(serveur)
       .post(`/api/parks/${parkId}/buildings`)
       .set('Cookie', cookie)
       .send({ name: 'Résidence Makepe', district: 'Makepe' })
-    const logement = await request(app)
+    const logement = await request(serveur)
       .post(`/api/parks/${parkId}/buildings/${immeuble.body.building.id}/units`)
       .set('Cookie', cookie)
       .send({ label: 'A1', type: 'T3', surfaceSqm: 78, baseRentMinor: 145000 })
     const unitId = logement.body.unit.id as string
-    await request(app)
+    await request(serveur)
       .post(`/api/parks/${parkId}/tenants`)
       .set('Cookie', cookie)
       .send({ unitId, fullName: 'Charles Ngassa', startsOn: '2026-01-01', rentMinor: 145000 })
@@ -752,7 +785,7 @@ describe('encaissements', () => {
      */
     const { cookie, parkId, unitId } = await parcAvecBail('encaissement@example.com')
 
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/payments`)
       .set('Cookie', cookie)
       .send({ unitId, periodStart: '2026-07-01', amountMinor: 145000, method: 'mobile' })
@@ -774,8 +807,8 @@ describe('encaissements', () => {
     const { cookie, parkId, unitId } = await parcAvecBail('partiel@example.com')
     const corps = { unitId, periodStart: '2026-07-01', method: 'cash' as const }
 
-    await request(app).post(`/api/parks/${parkId}/payments`).set('Cookie', cookie).send({ ...corps, amountMinor: 40000 })
-    await request(app).post(`/api/parks/${parkId}/payments`).set('Cookie', cookie).send({ ...corps, amountMinor: 60000 })
+    await request(serveur).post(`/api/parks/${parkId}/payments`).set('Cookie', cookie).send({ ...corps, amountMinor: 40000 })
+    await request(serveur).post(`/api/parks/${parkId}/payments`).set('Cookie', cookie).send({ ...corps, amountMinor: 60000 })
 
     const charge = await prisma.rentCharge.findFirstOrThrow({
       where: { periodStart: new Date('2026-07-01T00:00:00Z') },
@@ -791,7 +824,7 @@ describe('encaissements', () => {
     // produirait des mois soldés à tort et des impayés fantômes.
     const { cookie, parkId, unitId } = await parcAvecBail('periode@example.com')
 
-    await request(app)
+    await request(serveur)
       .post(`/api/parks/${parkId}/payments`)
       .set('Cookie', cookie)
       .send({ unitId, periodStart: '2026-07-01', amountMinor: 145000, method: 'transfer', paidOn: '2026-08-02' })
@@ -805,7 +838,7 @@ describe('encaissements', () => {
 
   it('refuse un montant nul ou négatif', async () => {
     const { cookie, parkId, unitId } = await parcAvecBail('montant@example.com')
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/payments`)
       .set('Cookie', cookie)
       .send({ unitId, periodStart: '2026-07-01', amountMinor: 0, method: 'cash' })
@@ -816,7 +849,7 @@ describe('encaissements', () => {
   it('refuse un logement d’un autre parc, en 404', async () => {
     const { cookie, parkId } = await parcAvecBail('ici@example.com')
     const { unitId: ailleurs } = await parcAvecBail('la-bas@example.com')
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/payments`)
       .set('Cookie', cookie)
       .send({ unitId: ailleurs, periodStart: '2026-07-01', amountMinor: 1000, method: 'cash' })
@@ -827,23 +860,23 @@ describe('encaissements', () => {
 describe('émission des quittances', () => {
   async function parcPaye(email: string, montant: number) {
     const { cookie } = await inscrire(email, { parkName: 'Parc' })
-    const parcs = await request(app).get('/api/parks').set('Cookie', cookie)
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', cookie)
     const parkId = parcs.body.parks[0].id
-    const immeuble = await request(app)
+    const immeuble = await request(serveur)
       .post(`/api/parks/${parkId}/buildings`)
       .set('Cookie', cookie)
       .send({ name: 'Résidence Makepe', district: 'Makepe' })
-    const logement = await request(app)
+    const logement = await request(serveur)
       .post(`/api/parks/${parkId}/buildings/${immeuble.body.building.id}/units`)
       .set('Cookie', cookie)
       .send({ label: 'A1', type: 'T3', surfaceSqm: 78, baseRentMinor: 145000 })
     const unitId = logement.body.unit.id as string
-    await request(app)
+    await request(serveur)
       .post(`/api/parks/${parkId}/tenants`)
       .set('Cookie', cookie)
       .send({ unitId, fullName: 'Charles Ngassa', startsOn: '2026-01-01', rentMinor: 145000 })
     if (montant > 0) {
-      await request(app)
+      await request(serveur)
         .post(`/api/parks/${parkId}/payments`)
         .set('Cookie', cookie)
         .send({ unitId, periodStart: '2026-07-01', amountMinor: montant, method: 'mobile' })
@@ -854,7 +887,7 @@ describe('émission des quittances', () => {
   it('émet une QUITTANCE quand la période est intégralement soldée', async () => {
     const { cookie, parkId, unitId } = await parcPaye('quittance@example.com', 145000)
 
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/receipts`)
       .set('Cookie', cookie)
       .send({ unitId, periodStart: '2026-07-01' })
@@ -880,7 +913,7 @@ describe('émission des quittances', () => {
      */
     const { cookie, parkId, unitId } = await parcPaye('recu@example.com', 60000)
 
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/receipts`)
       .set('Cookie', cookie)
       .send({ unitId, periodStart: '2026-07-01' })
@@ -894,7 +927,7 @@ describe('émission des quittances', () => {
     // Le ramener à zéro effacerait une avance que le locataire pourra réclamer.
     const { cookie, parkId, unitId } = await parcPaye('avance@example.com', 200000)
 
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/receipts`)
       .set('Cookie', cookie)
       .send({ unitId, periodStart: '2026-07-01' })
@@ -907,7 +940,7 @@ describe('émission des quittances', () => {
     // Sert le jour où un locataire dit « je n'ai jamais reçu ma quittance de
     // mars ». La trace n'empêche pas la réémission : elle la consigne.
     const { cookie, parkId, unitId } = await parcPaye('trace@example.com', 145000)
-    await request(app)
+    await request(serveur)
       .post(`/api/parks/${parkId}/receipts`)
       .set('Cookie', cookie)
       .send({ unitId, periodStart: '2026-07-01' })
@@ -923,7 +956,7 @@ describe('émission des quittances', () => {
     // Un document vide laisserait croire à un mois traité.
     const { cookie, parkId, unitId } = await parcPaye('vide@example.com', 0)
 
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/receipts`)
       .set('Cookie', cookie)
       .send({ unitId, periodStart: '2026-03-01' })
@@ -935,9 +968,9 @@ describe('émission des quittances', () => {
 describe('codes d’invitation', () => {
   async function parcAvecCode(email: string, role: 'tenant' | 'manager' = 'manager') {
     const { cookie } = await inscrire(email, { parkName: 'Parc' })
-    const parcs = await request(app).get('/api/parks').set('Cookie', cookie)
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', cookie)
     const parkId = parcs.body.parks[0].id
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/invitations`)
       .set('Cookie', cookie)
       .send({ role })
@@ -969,7 +1002,7 @@ describe('codes d’invitation', () => {
     // propriétaire lui a accordé.
     const { parkId, code } = await parcAvecCode('inviteur@example.com', 'manager')
 
-    const rejoint = await request(app).post('/api/auth/signup').send({
+    const rejoint = await request(serveur).post('/api/auth/signup').send({
       email: 'invite@example.com',
       password: MDP,
       fullName: 'Diane Fotso',
@@ -988,7 +1021,7 @@ describe('codes d’invitation', () => {
   it('tolère la casse et les espaces, jamais le contenu', async () => {
     // Un code se recopie à la main : « ges-4a7b 92cd » est le même code.
     const { code } = await parcAvecCode('casse@example.com')
-    const res = await request(app).post('/api/auth/signup').send({
+    const res = await request(serveur).post('/api/auth/signup').send({
       email: 'casse-invite@example.com',
       password: MDP,
       fullName: 'Test Casse',
@@ -1005,14 +1038,14 @@ describe('codes d’invitation', () => {
      * ont existé.
      */
     const { code } = await parcAvecCode('rejoue@example.com')
-    await request(app).post('/api/auth/signup').send({
+    await request(serveur).post('/api/auth/signup').send({
       email: 'premier@example.com', password: MDP, fullName: 'Premier', acceptTerms: true, invitationCode: code,
     })
 
-    const second = await request(app).post('/api/auth/signup').send({
+    const second = await request(serveur).post('/api/auth/signup').send({
       email: 'second@example.com', password: MDP, fullName: 'Second', acceptTerms: true, invitationCode: code,
     })
-    const inexistant = await request(app).post('/api/auth/signup').send({
+    const inexistant = await request(serveur).post('/api/auth/signup').send({
       email: 'tiers@example.com', password: MDP, fullName: 'Tiers', acceptTerms: true, invitationCode: 'GES-ZZZZ-ZZZZ',
     })
 
@@ -1027,7 +1060,7 @@ describe('codes d’invitation', () => {
       data: { expiresAt: new Date(Date.now() - 1000) },
     })
 
-    const res = await request(app).post('/api/auth/signup').send({
+    const res = await request(serveur).post('/api/auth/signup').send({
       email: 'tard@example.com', password: MDP, fullName: 'Tard', acceptTerms: true, invitationCode: code,
     })
     expect(res.status).toBe(400)
@@ -1044,9 +1077,9 @@ describe('envoi du code par SMS', () => {
      * qu'on retire partout ailleurs : un succès affiché que rien ne recouvre.
      */
     const { cookie } = await inscrire('sansfournisseur@example.com', { parkName: 'Parc' })
-    const parcs = await request(app).get('/api/parks').set('Cookie', cookie)
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', cookie)
 
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parcs.body.parks[0].id}/invitations`)
       .set('Cookie', cookie)
       .send({ role: 'tenant', phoneE164: '+237677214408' })
@@ -1070,8 +1103,8 @@ describe('envoi du code par SMS', () => {
     })
     try {
       const { cookie } = await inscrire('panne@example.com', { parkName: 'Parc' })
-      const parcs = await request(app).get('/api/parks').set('Cookie', cookie)
-      const res = await request(app)
+      const parcs = await request(serveur).get('/api/parks').set('Cookie', cookie)
+      const res = await request(serveur)
         .post(`/api/parks/${parcs.body.parks[0].id}/invitations`)
         .set('Cookie', cookie)
         .send({ role: 'tenant', phoneE164: '+237677214408' })
@@ -1095,8 +1128,8 @@ describe('envoi du code par SMS', () => {
     })
     try {
       const { cookie } = await inscrire('fournisseur@example.com', { parkName: 'Parc' })
-      const parcs = await request(app).get('/api/parks').set('Cookie', cookie)
-      const res = await request(app)
+      const parcs = await request(serveur).get('/api/parks').set('Cookie', cookie)
+      const res = await request(serveur)
         .post(`/api/parks/${parcs.body.parks[0].id}/invitations`)
         .set('Cookie', cookie)
         .send({ role: 'tenant', phoneE164: '+237677214408' })
@@ -1127,9 +1160,9 @@ describe('envoi du code par SMS', () => {
 describe('suppression d’un immeuble', () => {
   async function parcAvecImmeuble(email: string) {
     const { cookie } = await inscrire(email, { parkName: 'Parc Bastos', countryCode: 'CM' })
-    const parcs = await request(app).get('/api/parks').set('Cookie', cookie)
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', cookie)
     const parkId = parcs.body.parks[0].id
-    const cree = await request(app)
+    const cree = await request(serveur)
       .post(`/api/parks/${parkId}/buildings`)
       .set('Cookie', cookie)
       .send({ name: 'Residence Djoumessi', district: 'Bastos' })
@@ -1139,18 +1172,18 @@ describe('suppression d’un immeuble', () => {
   it('retire un immeuble vide, et le parc ne le rend plus', async () => {
     const { cookie, parkId, buildingId } = await parcAvecImmeuble('vide@example.com')
 
-    const res = await request(app)
+    const res = await request(serveur)
       .delete(`/api/parks/${parkId}/buildings/${buildingId}`)
       .set('Cookie', cookie)
     expect(res.status).toBe(204)
 
-    const parc = await request(app).get(`/api/parks/${parkId}/portfolio`).set('Cookie', cookie)
+    const parc = await request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', cookie)
     expect(parc.body.buildings).toHaveLength(0)
   })
 
   it('refuse un immeuble qui porte des logements, sans rien détruire', async () => {
     const { cookie, parkId, buildingId } = await parcAvecImmeuble('plein@example.com')
-    await request(app)
+    await request(serveur)
       .post(`/api/parks/${parkId}/buildings/${buildingId}/units`)
       .set('Cookie', cookie)
       // `baseRentMinor` : le champ du contrat, que `rentMinor` — le nom rendu
@@ -1159,7 +1192,7 @@ describe('suppression d’un immeuble', () => {
       // de réussir : le cas ne vérifiait rien.
       .send({ label: 'A1', type: 'T2', surfaceSqm: 100, baseRentMinor: 20000 })
 
-    const res = await request(app)
+    const res = await request(serveur)
       .delete(`/api/parks/${parkId}/buildings/${buildingId}`)
       .set('Cookie', cookie)
     // 409 et non 400 : la requête est bien formée, c'est l'état du parc qui s'y
@@ -1167,7 +1200,7 @@ describe('suppression d’un immeuble', () => {
     expect(res.status).toBe(409)
     expect(res.body.error).toBe('building_not_empty')
 
-    const parc = await request(app).get(`/api/parks/${parkId}/portfolio`).set('Cookie', cookie)
+    const parc = await request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', cookie)
     expect(parc.body.buildings).toHaveLength(1)
   })
 
@@ -1177,10 +1210,10 @@ describe('suppression d’un immeuble', () => {
       parkName: 'Parc B',
       countryCode: 'CM',
     })
-    const parcsB = await request(app).get('/api/parks').set('Cookie', cookieB)
+    const parcsB = await request(serveur).get('/api/parks').set('Cookie', cookieB)
     const parkIdB = parcsB.body.parks[0].id
 
-    const res = await request(app)
+    const res = await request(serveur)
       .delete(`/api/parks/${parkIdB}/buildings/${buildingId}`)
       .set('Cookie', cookieB)
     // 404 et non 403 : un 403 confirmerait que cet immeuble existe ailleurs.
@@ -1226,18 +1259,18 @@ describe('relance des loyers', () => {
   beforeEach(async () => {
     const p = await inscrire('bailleur@example.com', { parkName: 'Parc' })
     proprio = p.cookie
-    const parcs = await request(app).get('/api/parks').set('Cookie', proprio)
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio)
     parkId = parcs.body.parks[0].id
 
-    const immeuble = await request(app)
+    const immeuble = await request(serveur)
       .post(`/api/parks/${parkId}/buildings`)
       .set('Cookie', proprio)
       .send({ name: 'Résidence Makepe', district: 'Makepe' })
-    const logement = await request(app)
+    const logement = await request(serveur)
       .post(`/api/parks/${parkId}/buildings/${immeuble.body.building.id}/units`)
       .set('Cookie', proprio)
       .send({ label: 'A1', type: 'T3', surfaceSqm: 78, baseRentMinor: 145000 })
-    const bail = await request(app)
+    const bail = await request(serveur)
       .post(`/api/parks/${parkId}/tenants`)
       .set('Cookie', proprio)
       .send({ unitId: logement.body.unit.id, fullName: 'Paul Kamga', startsOn: '2026-01-01' })
@@ -1254,7 +1287,7 @@ describe('relance des loyers', () => {
   it('laisse une trace datée, sans prétendre avoir envoyé quoi que ce soit', async () => {
     await echeanceEnRetard()
 
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/reminders`)
       .set('Cookie', proprio)
       .send({ leaseIds: [leaseId] })
@@ -1279,12 +1312,12 @@ describe('relance des loyers', () => {
 
   it('ne relance pas deux fois le même locataire dans la même journée', async () => {
     await echeanceEnRetard()
-    await request(app)
+    await request(serveur)
       .post(`/api/parks/${parkId}/reminders`)
       .set('Cookie', proprio)
       .send({ leaseIds: [leaseId] })
 
-    const second = await request(app)
+    const second = await request(serveur)
       .post(`/api/parks/${parkId}/reminders`)
       .set('Cookie', proprio)
       .send({ leaseIds: [leaseId] })
@@ -1341,7 +1374,7 @@ describe('relance des loyers', () => {
       select: { id: true },
     })
 
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/reminders`)
       .set('Cookie', proprio)
       .send({ leaseIds: [leaseId, bailClos.id] })
@@ -1365,7 +1398,7 @@ describe('relance des loyers', () => {
       },
     })
 
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/reminders`)
       .set('Cookie', proprio)
       .send({ leaseIds: [leaseId] })
@@ -1387,7 +1420,7 @@ describe('relance des loyers', () => {
       },
     })
 
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/reminders`)
       .set('Cookie', proprio)
       .send({ leaseIds: [leaseId] })
@@ -1400,9 +1433,9 @@ describe('relance des loyers', () => {
   it('ignore le bail d’un autre parc sans dire qu’il existe', async () => {
     await echeanceEnRetard()
     const autre = await inscrire('voisin@example.com', { parkName: 'Autre parc' })
-    const parcs = await request(app).get('/api/parks').set('Cookie', autre.cookie)
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', autre.cookie)
 
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parcs.body.parks[0].id}/reminders`)
       .set('Cookie', autre.cookie)
       .send({ leaseIds: [leaseId] })
@@ -1416,7 +1449,7 @@ describe('relance des loyers', () => {
   it('ouvre la relance au gestionnaire, dont c’est le métier quotidien', async () => {
     await echeanceEnRetard()
 
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/reminders`)
       .set('Cookie', gestionnaire)
       .send({ leaseIds: [leaseId] })
@@ -1437,18 +1470,18 @@ describe('mise en demeure', () => {
   beforeEach(async () => {
     const p = await inscrire('bailleur2@example.com', { parkName: 'Parc' })
     proprio = p.cookie
-    const parcs = await request(app).get('/api/parks').set('Cookie', proprio)
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio)
     parkId = parcs.body.parks[0].id
 
-    const immeuble = await request(app)
+    const immeuble = await request(serveur)
       .post(`/api/parks/${parkId}/buildings`)
       .set('Cookie', proprio)
       .send({ name: 'Résidence Makepe', district: 'Makepe' })
-    const logement = await request(app)
+    const logement = await request(serveur)
       .post(`/api/parks/${parkId}/buildings/${immeuble.body.building.id}/units`)
       .set('Cookie', proprio)
       .send({ label: 'A1', type: 'T3', surfaceSqm: 78, baseRentMinor: 145000 })
-    const bail = await request(app)
+    const bail = await request(serveur)
       .post(`/api/parks/${parkId}/tenants`)
       .set('Cookie', proprio)
       .send({ unitId: logement.body.unit.id, fullName: 'Paul Kamga', startsOn: '2026-01-01' })
@@ -1476,7 +1509,7 @@ describe('mise en demeure', () => {
   it('trace la décision et le montant, des deux côtés', async () => {
     await impaye()
 
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/leases/${leaseId}/formal-notice`)
       .set('Cookie', proprio)
       .send({ reason: MOTIF })
@@ -1506,7 +1539,7 @@ describe('mise en demeure', () => {
   it('la refuse au gestionnaire, qui propose mais ne décide pas', async () => {
     await impaye()
 
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/leases/${leaseId}/formal-notice`)
       .set('Cookie', gestionnaire)
       .send({ reason: MOTIF })
@@ -1517,7 +1550,7 @@ describe('mise en demeure', () => {
   })
 
   it('la refuse quand rien n’est dû', async () => {
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/leases/${leaseId}/formal-notice`)
       .set('Cookie', proprio)
       .send({ reason: MOTIF })
@@ -1531,7 +1564,7 @@ describe('mise en demeure', () => {
   it('exige un motif, comme la retenue sur caution', async () => {
     await impaye()
 
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parkId}/leases/${leaseId}/formal-notice`)
       .set('Cookie', proprio)
       // Six caractères. « trop court » en faisait dix — exactement le minimum,
@@ -1545,9 +1578,9 @@ describe('mise en demeure', () => {
   it('ne met pas en demeure sur le bail d’un autre parc', async () => {
     await impaye()
     const autre = await inscrire('voisin2@example.com', { parkName: 'Autre parc' })
-    const parcs = await request(app).get('/api/parks').set('Cookie', autre.cookie)
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', autre.cookie)
 
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parcs.body.parks[0].id}/leases/${leaseId}/formal-notice`)
       .set('Cookie', autre.cookie)
       .send({ reason: MOTIF })
@@ -1575,14 +1608,14 @@ describe('cycle des interventions', () => {
   beforeEach(async () => {
     const p = await inscrire('travaux@example.com', { parkName: 'Parc' })
     proprio = p.cookie
-    const parcs = await request(app).get('/api/parks').set('Cookie', proprio)
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio)
     parkId = parcs.body.parks[0].id
 
-    const immeuble = await request(app)
+    const immeuble = await request(serveur)
       .post(`/api/parks/${parkId}/buildings`)
       .set('Cookie', proprio)
       .send({ name: 'Résidence Makepe', district: 'Makepe' })
-    const logement = await request(app)
+    const logement = await request(serveur)
       .post(`/api/parks/${parkId}/buildings/${immeuble.body.building.id}/units`)
       .set('Cookie', proprio)
       .send({ label: 'A1', type: 'T3', surfaceSqm: 78, baseRentMinor: 145000 })
@@ -1597,7 +1630,7 @@ describe('cycle des interventions', () => {
   })
 
   async function declarer(cookie = proprio) {
-    return request(app)
+    return request(serveur)
       .post(`/api/parks/${parkId}/units/${unitId}/works`)
       .set('Cookie', cookie)
       .send({ title: 'Fuite sous l’évier', trade: 'plumbing', urgency: 'blocking' })
@@ -1631,7 +1664,7 @@ describe('cycle des interventions', () => {
     const workId = body.work.id
 
     // Proposer EST le métier du gestionnaire.
-    const devis = await request(app)
+    const devis = await request(serveur)
       .patch(`/api/parks/${parkId}/works/${workId}/quote`)
       .set('Cookie', gestionnaire)
       .send({ quotedAmountMinor: 42000 })
@@ -1639,7 +1672,7 @@ describe('cycle des interventions', () => {
     expect(devis.body.work.status).toBe('quoted')
 
     // Décider ne l'est pas.
-    const refus = await request(app)
+    const refus = await request(serveur)
       .patch(`/api/parks/${parkId}/works/${workId}/approve`)
       .set('Cookie', gestionnaire)
     expect(refus.status).toBe(403)
@@ -1648,13 +1681,13 @@ describe('cycle des interventions', () => {
   it('refuse de rechiffrer un devis déjà validé', async () => {
     const { body } = await declarer()
     const workId = body.work.id
-    await request(app)
+    await request(serveur)
       .patch(`/api/parks/${parkId}/works/${workId}/quote`)
       .set('Cookie', proprio)
       .send({ quotedAmountMinor: 42000 })
-    await request(app).patch(`/api/parks/${parkId}/works/${workId}/approve`).set('Cookie', proprio)
+    await request(serveur).patch(`/api/parks/${parkId}/works/${workId}/approve`).set('Cookie', proprio)
 
-    const res = await request(app)
+    const res = await request(serveur)
       .patch(`/api/parks/${parkId}/works/${workId}/quote`)
       .set('Cookie', proprio)
       .send({ quotedAmountMinor: 900000 })
@@ -1670,13 +1703,13 @@ describe('cycle des interventions', () => {
   it('clôt une intervention validée, et la sort de la liste des travaux à faire', async () => {
     const { body } = await declarer()
     const workId = body.work.id
-    await request(app)
+    await request(serveur)
       .patch(`/api/parks/${parkId}/works/${workId}/quote`)
       .set('Cookie', proprio)
       .send({ quotedAmountMinor: 42000 })
-    await request(app).patch(`/api/parks/${parkId}/works/${workId}/approve`).set('Cookie', proprio)
+    await request(serveur).patch(`/api/parks/${parkId}/works/${workId}/approve`).set('Cookie', proprio)
 
-    const res = await request(app)
+    const res = await request(serveur)
       .patch(`/api/parks/${parkId}/works/${workId}/complete`)
       .set('Cookie', gestionnaire)
       .send({ completedOn: '2026-08-10' })
@@ -1690,7 +1723,7 @@ describe('cycle des interventions', () => {
   it('clôt aussi une intervention sans devis : tout n’a pas de coût', async () => {
     const { body } = await declarer()
 
-    const res = await request(app)
+    const res = await request(serveur)
       .patch(`/api/parks/${parkId}/works/${body.work.id}/complete`)
       .set('Cookie', gestionnaire)
       .send({})
@@ -1703,12 +1736,12 @@ describe('cycle des interventions', () => {
   it('refuse de clore un devis en attente d’arbitrage', async () => {
     const { body } = await declarer()
     const workId = body.work.id
-    await request(app)
+    await request(serveur)
       .patch(`/api/parks/${parkId}/works/${workId}/quote`)
       .set('Cookie', proprio)
       .send({ quotedAmountMinor: 42000 })
 
-    const res = await request(app)
+    const res = await request(serveur)
       .patch(`/api/parks/${parkId}/works/${workId}/complete`)
       .set('Cookie', gestionnaire)
       .send({})
@@ -1729,12 +1762,12 @@ describe('cycle des interventions', () => {
   it('refuse de clore deux fois', async () => {
     const { body } = await declarer()
     const workId = body.work.id
-    await request(app)
+    await request(serveur)
       .patch(`/api/parks/${parkId}/works/${workId}/complete`)
       .set('Cookie', proprio)
       .send({ completedOn: '2026-08-01' })
 
-    const second = await request(app)
+    const second = await request(serveur)
       .patch(`/api/parks/${parkId}/works/${workId}/complete`)
       .set('Cookie', proprio)
       .send({ completedOn: '2026-08-20' })
@@ -1758,7 +1791,7 @@ describe('cycle des interventions', () => {
     })
     await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'tenant' } })
 
-    const res = await request(app)
+    const res = await request(serveur)
       .patch(`/api/parks/${parkId}/works/${body.work.id}/complete`)
       .set('Cookie', l.cookie)
       .send({})
@@ -1777,14 +1810,14 @@ describe('cycle des interventions', () => {
      */
     const { body } = await declarer()
     const workId = body.work.id
-    await request(app)
+    await request(serveur)
       .patch(`/api/parks/${parkId}/works/${workId}/quote`)
       .set('Cookie', proprio)
       .send({ quotedAmountMinor: 42000 })
-    await request(app).patch(`/api/parks/${parkId}/works/${workId}/approve`).set('Cookie', proprio)
-    await request(app).patch(`/api/parks/${parkId}/works/${workId}/complete`).set('Cookie', proprio).send({})
+    await request(serveur).patch(`/api/parks/${parkId}/works/${workId}/approve`).set('Cookie', proprio)
+    await request(serveur).patch(`/api/parks/${parkId}/works/${workId}/complete`).set('Cookie', proprio).send({})
 
-    const res = await request(app)
+    const res = await request(serveur)
       .patch(`/api/parks/${parkId}/works/${workId}/reopen`)
       .set('Cookie', gestionnaire)
 
@@ -1799,9 +1832,9 @@ describe('cycle des interventions', () => {
   it('rend une intervention jamais chiffrée à l’état déclaré', async () => {
     const { body } = await declarer()
     const workId = body.work.id
-    await request(app).patch(`/api/parks/${parkId}/works/${workId}/complete`).set('Cookie', proprio).send({})
+    await request(serveur).patch(`/api/parks/${parkId}/works/${workId}/complete`).set('Cookie', proprio).send({})
 
-    const res = await request(app)
+    const res = await request(serveur)
       .patch(`/api/parks/${parkId}/works/${workId}/reopen`)
       .set('Cookie', proprio)
 
@@ -1811,7 +1844,7 @@ describe('cycle des interventions', () => {
   it('refuse de rouvrir ce qui n’est pas clos', async () => {
     const { body } = await declarer()
 
-    const res = await request(app)
+    const res = await request(serveur)
       .patch(`/api/parks/${parkId}/works/${body.work.id}/reopen`)
       .set('Cookie', proprio)
 
@@ -1822,9 +1855,9 @@ describe('cycle des interventions', () => {
 
   it('ne déclare rien sur le logement d’un autre parc', async () => {
     const autre = await inscrire('voisin3@example.com', { parkName: 'Autre parc' })
-    const parcs = await request(app).get('/api/parks').set('Cookie', autre.cookie)
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', autre.cookie)
 
-    const res = await request(app)
+    const res = await request(serveur)
       .post(`/api/parks/${parcs.body.parks[0].id}/units/${unitId}/works`)
       .set('Cookie', autre.cookie)
       .send({ title: 'Fuite', trade: 'plumbing' })
