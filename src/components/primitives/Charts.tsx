@@ -41,7 +41,8 @@ const SERIES_COLORS: Record<string, string> = {
 }
 
 /**
- * Les mêmes séries, pour l'INFOBULLE — dont le fond BASCULE avec le thème.
+ * Les mêmes séries, pour l'INFOBULLE — dont le fond reste SOMBRE dans les deux
+ * thèmes.
  *
  * La pastille « Loyer » avait disparu, et pour la pire des raisons : en thème
  * clair, `--color-data-1` vaut `#14201e`, soit exactement la valeur de
@@ -55,21 +56,22 @@ const SERIES_COLORS: Record<string, string> = {
  * CLASSES utilitaires — `.text-muted`, `.text-ink` — et la pastille reçoit sa
  * couleur par un `style` en ligne, hors de portée de toute règle CSS.
  *
- * Les jetons `-on-dark` ne convenaient pas davantage, et c'est le piège de
- * cette correction : ils sont identiques dans les trois blocs de palette, car
- * ils équipent « les panneaux qui restent sombres ». `bg-ink` n'en est pas un —
- * il est sombre en thème clair et CLAIR en thème sombre. Les employer réparait
- * donc le clair en cassant le sombre, où la pastille `#f7f4ee` serait tombée
- * sur un fond `#ece7dd` : le même défaut, déplacé d'un thème à l'autre. C'est
- * le garde d'appariement qui l'a arrêté, pas la relecture.
+ * Le piège est de croire que ce fond bascule. `--color-ink` s'inverse bien avec
+ * le thème — mais la classe `.on-dark`, que l'infobulle porte, la REFIXE à sa
+ * valeur sombre pour tout ce qui vit dessous. L'infobulle est donc de celles
+ * « qui restent sombres », et c'est précisément le public des jetons
+ * `-on-dark`, identiques dans les trois blocs de palette.
  *
- * D'où `-on-ink`, sur le modèle de `--color-gold-on-ink` : nommé d'après le
- * fond qu'il accompagne, il suit `--color-ink` quoi qu'elle devienne.
+ * L'erreur a été commise puis corrigée : des jetons `-on-ink` inversants ont
+ * d'abord remplacé ceux-ci, ce qui réparait le thème clair et rendait la
+ * pastille invisible en sombre — le même défaut, déplacé. La leçon tient en une
+ * ligne : le fond d'un composant se lit là où il est PEINT, pas dans la palette
+ * dont il tire son nom.
  */
-const SERIES_COLORS_ON_INK: Record<string, string> = {
-  rent: 'var(--color-data-1-on-ink)',
-  water: 'var(--color-data-4-on-ink)',
-  power: 'var(--color-data-5-on-ink)',
+const SERIES_COLORS_ON_DARK: Record<string, string> = {
+  rent: 'var(--color-data-1-on-dark)',
+  water: 'var(--color-data-4-on-dark)',
+  power: 'var(--color-data-5-on-dark)',
 }
 
 export interface StackedBar {
@@ -272,7 +274,7 @@ export function StackedBarChart({
                   key: s.key,
                   label: seriesLabels[s.key],
                   value: money(s.value),
-                  color: SERIES_COLORS_ON_INK[s.key],
+                  color: SERIES_COLORS_ON_DARK[s.key],
                 }))}
               note={active === bars.length - 1 ? openPeriodNote : undefined}
             />

@@ -138,18 +138,32 @@ describe('pastilles de l’infobulle', () => {
     'sombre (choisi)': corps(":root[data-theme='dark']"),
   }
 
+  /**
+   * Le fond RÉEL, lu là où il est peint.
+   *
+   * C'est le piège qui a coûté une correction fausse. `--color-ink` s'inverse
+   * avec le thème dans les blocs de palette — mais l'infobulle porte `.on-dark`,
+   * et cette classe la REFIXE à sa valeur sombre pour tout ce qui vit dessous.
+   * Un garde qui lit la palette mesure donc un fond que ce composant n'a jamais.
+   * Il avait ainsi « prouvé » qu'il fallait des jetons inversants, ce qui a
+   * réparé le thème clair en rendant la pastille invisible en sombre.
+   *
+   * On lit le bloc `.on-dark` lui-même : une seule valeur, pour les deux thèmes,
+   * ce qui est exactement ce que le composant voit.
+   */
+  const FOND = jeton(corps('.on-dark'), '--color-ink')
+
   /** Les trois séries que l'infobulle affiche. */
-  const SERIES = ['--color-data-1-on-ink', '--color-data-4-on-ink', '--color-data-5-on-ink']
+  const SERIES = ['--color-data-1-on-dark', '--color-data-4-on-dark', '--color-data-5-on-dark']
 
   for (const [theme, bloc] of Object.entries(BLOCS)) {
     for (const serie of SERIES) {
       it(`détache ${serie} du fond de l’infobulle en ${theme}`, () => {
-        const fond = jeton(bloc, '--color-ink')
         const pastille = jeton(bloc, serie)
-        const ecart = Math.abs(clarte(pastille) - clarte(fond))
+        const ecart = Math.abs(clarte(pastille) - clarte(FOND))
         expect(
           ecart,
-          `${theme} : ${serie} ${pastille} sur ${fond} — ΔL* ${ecart.toFixed(1)}`,
+          `${theme} : ${serie} ${pastille} sur ${FOND} — ΔL* ${ecart.toFixed(1)}`,
         ).toBeGreaterThan(20)
       })
     }
@@ -163,6 +177,6 @@ describe('pastilles de l’infobulle', () => {
       .split('\n')
       .filter((l) => /color:\s*SERIES_COLORS/.test(l))
     expect(lignesInfobulle.length, 'aucune pastille d’infobulle trouvée').toBeGreaterThan(0)
-    for (const ligne of lignesInfobulle) expect(ligne).toContain('SERIES_COLORS_ON_INK')
+    for (const ligne of lignesInfobulle) expect(ligne).toContain('SERIES_COLORS_ON_DARK')
   })
 })
