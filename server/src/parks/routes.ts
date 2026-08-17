@@ -131,6 +131,27 @@ const schemaMiseEnDemeure = z.object({
   reason: z.string().trim().min(10).max(2000),
 })
 
+/** Une intervention déclarée : ce qu'on sait au moment où le problème remonte. */
+const schemaIntervention = z.object({
+  title: z.string().trim().min(3).max(160),
+  trade: z.enum(['plumbing', 'power', 'painting', 'multi', 'lock', 'other']),
+  urgency: z.enum(['blocking', 'normal', 'low']).default('normal'),
+  description: z.string().trim().max(2000).optional(),
+})
+
+/** Le devis proposé par le gestionnaire. Le propriétaire arbitrera. */
+const schemaDevis = z.object({
+  quotedAmountMinor: z.number().int().positive('Un devis est strictement positif'),
+})
+
+/** Achèvement. La date est facultative : par défaut, aujourd'hui. */
+const schemaAchevement = z.object({
+  completedOn: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date attendue au format AAAA-MM-JJ')
+    .optional(),
+})
+
 const schemaLocataire = z.object({
   unitId: z.string().uuid(),
   fullName: z.string().trim().min(2).max(120),
@@ -1339,5 +1360,200 @@ parksRouter.post(
     ])
 
     res.status(201).json({ formalNotice: { leaseId: bail.id, dueMinor: dûMinor } })
+  },
+)
+
+/**
+ * Le cycle d'une intervention : déclarée → chiffrée → validée → terminée.
+ *
+ * Le modèle porte les quatre états depuis le premier jour, et une seule
+ * transition était exposée : la validation du devis. Un parc réel ne pouvait
+ * donc ni déclarer une intervention, ni la chiffrer, ni la clore — l'écran
+ * « Travaux » d'un vrai compte restait vide quoi qu'il arrive, et le jeu de
+ * démonstration était le seul endroit où ces états existaient.
+ *
+ * Plus gênant : `approved` était en pratique TERMINAL. Un devis validé engageait
+ * la dépense et restait indéfiniment « à faire », donc la liste des travaux ne
+ * pouvait que grandir.
+ */
+
+/** Numéro d'ordre du parc pour l'année, alloué sous verrou de transaction. */
+async function prochaineReference(
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  parkId: string,
+  annee: number,
+): Promise<string> {
+  /**
+   * `upsert` et non `update` : le compteur n'est créé qu'au semis de la
+   * démonstration. Un parc réel — celui d'un compte neuf — n'en a aucun, et sa
+   * première intervention aurait échoué sur une ligne absente. Le changement
+   * d'année pose le même problème, chaque 1er janvier.
+   */
+  const compteur = await tx.workReferenceCounter.upsert({
+    where: { parkId_year: { parkId, year: annee } },
+    create: { parkId, year: annee, next: 2 },
+    update: { next: { increment: 1 } },
+    select: { next: true },
+  })
+  return `SIG-${annee}-${String(compteur.next - 1).padStart(3, '0')}`
+}
+
+/** Déclare une intervention sur un logement. */
+parksRouter.post(
+  '/:parkId/units/:unitId/works',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const unitId = z.string().uuid().parse(req.params.unitId)
+    const corps = schemaIntervention.parse(req.body)
+
+    const unite = await prisma.unit.findFirst({
+      where: { id: unitId, building: { parkId } },
+      select: { id: true },
+    })
+    if (!unite) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const travail = await prisma.$transaction(async (tx) => {
+      const reference = await prochaineReference(tx, parkId, new Date().getFullYear())
+      return tx.workOrder.create({
+        data: {
+          unitId: unite.id,
+          reference,
+          title: corps.title,
+          trade: corps.trade,
+          urgency: corps.urgency,
+          // `reported` et non `quoted` : déclarer n'est pas chiffrer. Poser un
+          // montant nul ferait apparaître un devis à zéro dans la carte des
+          // arbitrages du propriétaire.
+          status: 'reported',
+          ...(corps.description ? { description: corps.description } : {}),
+        },
+        select: { id: true, reference: true, status: true, title: true },
+      })
+    })
+
+    res.status(201).json({ work: travail })
+  },
+)
+
+/**
+ * Chiffre une intervention déclarée.
+ *
+ * Ouvert au gestionnaire : proposer un devis EST son métier — « propose, ne
+ * décide pas ». C'est la validation qui reste au propriétaire.
+ */
+parksRouter.patch(
+  '/:parkId/works/:workId/quote',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const workId = z.string().uuid().parse(req.params.workId)
+    const corps = schemaDevis.parse(req.body)
+
+    const travail = await prisma.workOrder.findFirst({
+      where: { id: workId, unit: { building: { parkId } } },
+      select: { id: true, status: true },
+    })
+    if (!travail) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+    if (travail.status !== 'reported') {
+      // Rechiffrer un devis DÉJÀ VALIDÉ changerait le montant sous la décision
+      // du propriétaire, après coup et sans qu'il en soit informé.
+      res.status(409).json({ error: 'not_reported' })
+      return
+    }
+
+    const maj = await prisma.workOrder.update({
+      where: { id: travail.id },
+      data: { status: 'quoted', quotedAmountMinor: corps.quotedAmountMinor },
+      select: { id: true, status: true, quotedAmountMinor: true },
+    })
+
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'work.quote',
+        entity: 'WorkOrder',
+        entityId: travail.id,
+        payload: { quotedAmountMinor: corps.quotedAmountMinor },
+      },
+    })
+
+    res.json({ work: maj })
+  },
+)
+
+/**
+ * Clôt une intervention.
+ *
+ * Deux états seulement y mènent, et le troisième est refusé À DESSEIN :
+ *
+ * — `approved` : la dépense a été engagée, les travaux sont faits ;
+ * — `reported` : tout n'a pas de coût, et une intervention sans devis n'a rien
+ *   à faire arbitrer ;
+ * — `quoted` est REFUSÉ. Un devis en attente d'arbitrage doit être tranché, pas
+ *   contourné. Le clore ferait disparaître de la carte du propriétaire une
+ *   décision qu'il n'a jamais prise, et le montant serait engagé sans lui.
+ *
+ * Ouvert au gestionnaire : constater l'achèvement relève du quotidien.
+ */
+parksRouter.patch(
+  '/:parkId/works/:workId/complete',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const workId = z.string().uuid().parse(req.params.workId)
+    const corps = schemaAchevement.parse(req.body)
+
+    const travail = await prisma.workOrder.findFirst({
+      where: { id: workId, unit: { building: { parkId } } },
+      select: { id: true, status: true },
+    })
+    if (!travail) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+    if (travail.status === 'done') {
+      // Clore deux fois écraserait la date du premier constat.
+      res.status(409).json({ error: 'already_done' })
+      return
+    }
+    if (travail.status === 'quoted') {
+      res.status(409).json({ error: 'awaiting_approval' })
+      return
+    }
+
+    const maj = await prisma.workOrder.update({
+      where: { id: travail.id },
+      data: {
+        status: 'done',
+        // La date saisie est lue en UTC : la colonne est de type `date`, et une
+        // date construite à minuit local recule d'un jour à l'est de Greenwich.
+        completedOn: corps.completedOn ? new Date(`${corps.completedOn}T00:00:00Z`) : new Date(),
+      },
+      select: { id: true, status: true, completedOn: true },
+    })
+
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'work.complete',
+        entity: 'WorkOrder',
+        entityId: travail.id,
+        payload: { completedOn: maj.completedOn },
+      },
+    })
+
+    res.json({ work: maj })
   },
 )

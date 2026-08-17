@@ -1556,3 +1556,205 @@ describe('mise en demeure', () => {
     expect(res.status).toBe(404)
   })
 })
+
+/**
+ * Le cycle d'une intervention.
+ *
+ * Le modèle porte quatre états depuis le premier jour et une seule transition
+ * était exposée : la validation du devis. Un compte réel ne pouvait donc rien
+ * déclarer, rien chiffrer, rien clore — et `approved` était en pratique
+ * TERMINAL : un devis validé restait « à faire » indéfiniment, donc la liste
+ * des travaux ne pouvait que grandir.
+ */
+describe('cycle des interventions', () => {
+  let parkId: string
+  let proprio: string
+  let gestionnaire: string
+  let unitId: string
+
+  beforeEach(async () => {
+    const p = await inscrire('travaux@example.com', { parkName: 'Parc' })
+    proprio = p.cookie
+    const parcs = await request(app).get('/api/parks').set('Cookie', proprio)
+    parkId = parcs.body.parks[0].id
+
+    const immeuble = await request(app)
+      .post(`/api/parks/${parkId}/buildings`)
+      .set('Cookie', proprio)
+      .send({ name: 'Résidence Makepe', district: 'Makepe' })
+    const logement = await request(app)
+      .post(`/api/parks/${parkId}/buildings/${immeuble.body.building.id}/units`)
+      .set('Cookie', proprio)
+      .send({ label: 'A1', type: 'T3', surfaceSqm: 78, baseRentMinor: 145000 })
+    unitId = logement.body.unit.id
+
+    const g = await inscrire('diane3@example.com')
+    gestionnaire = g.cookie
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'diane3@example.com' },
+    })
+    await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'manager' } })
+  })
+
+  async function declarer(cookie = proprio) {
+    return request(app)
+      .post(`/api/parks/${parkId}/units/${unitId}/works`)
+      .set('Cookie', cookie)
+      .send({ title: 'Fuite sous l’évier', trade: 'plumbing', urgency: 'blocking' })
+  }
+
+  it('numérote la première intervention d’un parc qui n’a jamais été semé', async () => {
+    /**
+     * Le compteur de références n'est créé qu'au semis de la démonstration. Un
+     * compte neuf n'en a aucun : avec un `update`, sa toute première
+     * intervention aurait échoué sur une ligne absente — c'est-à-dire pour tout
+     * client réel, et jamais en démonstration.
+     */
+    const res = await declarer()
+
+    expect(res.status, JSON.stringify(res.body)).toBe(201)
+    expect(res.body.work.reference).toMatch(/^SIG-\d{4}-001$/)
+    // `reported` : déclarer n'est pas chiffrer.
+    expect(res.body.work.status).toBe('reported')
+  })
+
+  it('ne réutilise pas un numéro d’une déclaration à l’autre', async () => {
+    const un = await declarer()
+    const deux = await declarer()
+
+    expect(deux.body.work.reference).not.toBe(un.body.work.reference)
+    expect(deux.body.work.reference).toMatch(/-002$/)
+  })
+
+  it('laisse le gestionnaire chiffrer, et le propriétaire seul valider', async () => {
+    const { body } = await declarer()
+    const workId = body.work.id
+
+    // Proposer EST le métier du gestionnaire.
+    const devis = await request(app)
+      .patch(`/api/parks/${parkId}/works/${workId}/quote`)
+      .set('Cookie', gestionnaire)
+      .send({ quotedAmountMinor: 42000 })
+    expect(devis.status, JSON.stringify(devis.body)).toBe(200)
+    expect(devis.body.work.status).toBe('quoted')
+
+    // Décider ne l'est pas.
+    const refus = await request(app)
+      .patch(`/api/parks/${parkId}/works/${workId}/approve`)
+      .set('Cookie', gestionnaire)
+    expect(refus.status).toBe(403)
+  })
+
+  it('refuse de rechiffrer un devis déjà validé', async () => {
+    const { body } = await declarer()
+    const workId = body.work.id
+    await request(app)
+      .patch(`/api/parks/${parkId}/works/${workId}/quote`)
+      .set('Cookie', proprio)
+      .send({ quotedAmountMinor: 42000 })
+    await request(app).patch(`/api/parks/${parkId}/works/${workId}/approve`).set('Cookie', proprio)
+
+    const res = await request(app)
+      .patch(`/api/parks/${parkId}/works/${workId}/quote`)
+      .set('Cookie', proprio)
+      .send({ quotedAmountMinor: 900000 })
+
+    // Changer le montant sous la décision du propriétaire, après coup et sans
+    // qu'il en soit informé.
+    expect(res.status).toBe(409)
+    const apres = await prisma.workOrder.findUniqueOrThrow({ where: { id: workId } })
+    expect(apres.quotedAmountMinor).toBe(42000)
+    expect(apres.approvedAmountMinor).toBe(42000)
+  })
+
+  it('clôt une intervention validée, et la sort de la liste des travaux à faire', async () => {
+    const { body } = await declarer()
+    const workId = body.work.id
+    await request(app)
+      .patch(`/api/parks/${parkId}/works/${workId}/quote`)
+      .set('Cookie', proprio)
+      .send({ quotedAmountMinor: 42000 })
+    await request(app).patch(`/api/parks/${parkId}/works/${workId}/approve`).set('Cookie', proprio)
+
+    const res = await request(app)
+      .patch(`/api/parks/${parkId}/works/${workId}/complete`)
+      .set('Cookie', gestionnaire)
+      .send({ completedOn: '2026-08-10' })
+
+    expect(res.status, JSON.stringify(res.body)).toBe(200)
+    const apres = await prisma.workOrder.findUniqueOrThrow({ where: { id: workId } })
+    expect(apres.status).toBe('done')
+    expect(apres.completedOn?.toISOString()).toBe('2026-08-10T00:00:00.000Z')
+  })
+
+  it('clôt aussi une intervention sans devis : tout n’a pas de coût', async () => {
+    const { body } = await declarer()
+
+    const res = await request(app)
+      .patch(`/api/parks/${parkId}/works/${body.work.id}/complete`)
+      .set('Cookie', gestionnaire)
+      .send({})
+
+    // Une intervention jamais chiffrée n'a rien à faire arbitrer : exiger une
+    // validation la retiendrait pour une dépense qui n'existe pas.
+    expect(res.status, JSON.stringify(res.body)).toBe(200)
+  })
+
+  it('refuse de clore un devis en attente d’arbitrage', async () => {
+    const { body } = await declarer()
+    const workId = body.work.id
+    await request(app)
+      .patch(`/api/parks/${parkId}/works/${workId}/quote`)
+      .set('Cookie', proprio)
+      .send({ quotedAmountMinor: 42000 })
+
+    const res = await request(app)
+      .patch(`/api/parks/${parkId}/works/${workId}/complete`)
+      .set('Cookie', gestionnaire)
+      .send({})
+
+    /**
+     * C'est le contournement qui compte ici, pas l'état.
+     *
+     * Clore un devis en attente le ferait disparaître de la carte
+     * « ce qui demande une décision » du propriétaire — une décision qu'il n'a
+     * jamais prise, pour un montant engagé sans lui.
+     */
+    expect(res.status).toBe(409)
+    expect(res.body.error).toBe('awaiting_approval')
+    const apres = await prisma.workOrder.findUniqueOrThrow({ where: { id: workId } })
+    expect(apres.status).toBe('quoted')
+  })
+
+  it('refuse de clore deux fois', async () => {
+    const { body } = await declarer()
+    const workId = body.work.id
+    await request(app)
+      .patch(`/api/parks/${parkId}/works/${workId}/complete`)
+      .set('Cookie', proprio)
+      .send({ completedOn: '2026-08-01' })
+
+    const second = await request(app)
+      .patch(`/api/parks/${parkId}/works/${workId}/complete`)
+      .set('Cookie', proprio)
+      .send({ completedOn: '2026-08-20' })
+
+    expect(second.status).toBe(409)
+    // La date du premier constat est intacte : c'est elle qui fait foi.
+    const apres = await prisma.workOrder.findUniqueOrThrow({ where: { id: workId } })
+    expect(apres.completedOn?.toISOString()).toBe('2026-08-01T00:00:00.000Z')
+  })
+
+  it('ne déclare rien sur le logement d’un autre parc', async () => {
+    const autre = await inscrire('voisin3@example.com', { parkName: 'Autre parc' })
+    const parcs = await request(app).get('/api/parks').set('Cookie', autre.cookie)
+
+    const res = await request(app)
+      .post(`/api/parks/${parcs.body.parks[0].id}/units/${unitId}/works`)
+      .set('Cookie', autre.cookie)
+      .send({ title: 'Fuite', trade: 'plumbing' })
+
+    // 404 et non 403 : un 403 confirmerait que ce logement existe ailleurs.
+    expect(res.status).toBe(404)
+  })
+})
