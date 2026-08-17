@@ -253,3 +253,39 @@ describe('un refus doit se lire là où l’on vient de cliquer', () => {
     expect(serveur.appels.find((a) => a.chemin === '/auth/signup')).toBeUndefined()
   })
 })
+
+/**
+ * L'écran de succès ne dit plus le contraire de ce qui vient d'arriver.
+ *
+ * Il annonçait « la création de compte n'est pas encore branchée » — dernier
+ * vestige de l'époque où l'assistant validait neuf champs puis faisait
+ * `setDone(true)`. Le texte a survécu au câblage, et le mensonge tombait au
+ * pire moment : juste après avoir saisi une adresse, un mot de passe et un
+ * numéro réels, l'écran affirmait que rien n'avait été enregistré. Le premier
+ * compte du produit a été créé sous cette phrase.
+ *
+ * Le cas voisin vérifie l'inverse — que l'écran ne s'affiche PAS quand l'appel
+ * échoue. Les deux se tiennent : l'un interdit d'annoncer un succès qui n'a pas
+ * eu lieu, l'autre de nier un succès qui a eu lieu.
+ */
+describe('écran de succès', () => {
+  it('n’annonce pas que la création n’est pas branchée', async () => {
+    const serveur = installerFauxServeur()
+    serveur.quand('POST', '/auth/signup', { status: 201, body: { user: COMPTE_FICTIF } })
+    // `/auth/me` aussi : l'inscription ouvre une session, et le fournisseur la
+    // relit dans la foulée. Sans ce stub, la réponse arrivait après la fin du
+    // cas et retombait dans le suivant — la suite entière devenait instable,
+    // avec un échec différent à chaque exécution.
+    serveur.quand('GET', '/auth/me', { status: 200, body: { user: COMPTE_FICTIF, memberships: [] } })
+
+    const user = userEvent.setup()
+    renderApp('/inscription/proprietaire')
+    await remplirIdentite(user)
+    await user.click(screen.getByRole('button', { name: /créer mon espace/i }))
+
+    await screen.findByText(/votre espace est prêt/i)
+    // Le compte EST créé : l'écran ne peut pas prétendre le contraire.
+    expect(screen.queryByText(/pas encore branchée/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('main')).toHaveTextContent(/votre compte est créé/i)
+  })
+})

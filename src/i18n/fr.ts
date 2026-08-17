@@ -295,8 +295,19 @@ export const fr = {
 
       submit: 'Créer mon espace',
       successTitle: 'Votre espace est prêt',
+      /**
+       * Le compte est RÉELLEMENT créé depuis que `creerLeCompte` appelle
+       * `inscrire`. Ce texte annonçait pourtant l'inverse — « la création de
+       * compte n'est pas encore branchée » — et c'était le dernier vestige de
+       * l'époque où l'assistant validait neuf champs puis faisait `setDone`.
+       *
+       * Le mensonge tombait au pire moment : juste après avoir saisi une
+       * adresse, un mot de passe et un numéro réels, l'écran affirmait que rien
+       * n'avait été enregistré. Un utilisateur qui le croit recommence, ou
+       * renonce. Le premier compte du produit a été créé sous cette phrase.
+       */
       successBody:
-        'La création de compte n’est pas encore branchée. Voici l’espace {role} tel que vous le découvrirez.',
+        'Votre compte est créé et vous y êtes déjà connecté. Voici votre espace {role}, encore vide.',
       goToDashboard: 'Ouvrir le tableau de bord',
 
       // Une seule issue de correction par groupe, donc un libellé qui dit LEQUEL

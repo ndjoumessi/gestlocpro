@@ -260,7 +260,7 @@ export const en: Dictionary = {
       submit: 'Create my space',
       successTitle: 'Your space is ready',
       successBody:
-        'Account creation is not wired up yet. Here is the {role} space as you will discover it.',
+        'Your account is created and you are already signed in. Here is your {role} space, still empty.',
       goToDashboard: 'Open the dashboard',
 
       editSection: 'Edit: {section}',
