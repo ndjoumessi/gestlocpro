@@ -180,3 +180,91 @@ describe('pastilles de l’infobulle', () => {
     for (const ligne of lignesInfobulle) expect(ligne).toContain('SERIES_COLORS_ON_DARK')
   })
 })
+
+/**
+ * Les séries de l'histogramme, sur le fond de CARTE.
+ *
+ * Elles portent de l'information : le seuil est 3:1, celui d'un élément non
+ * textuel porteur de sens. Rien ne le vérifiait — le fichier de jetons récite
+ * les ratios en commentaire, et un commentaire ne se recalcule pas quand on
+ * change une teinte.
+ *
+ * Ce garde est né d'un remaniement volontaire : le loyer occupe environ 90 % de
+ * chaque colonne et prenait la teinte la plus SOMBRE de l'échelle, ce qui
+ * faisait de douze colonnes un mur. Les trois séries ont été réassignées pour
+ * que la plus grande surface porte le moins de poids. Un tel échange se fait à
+ * l'œil ; le seuil, lui, doit se mesurer, et dans les deux thèmes.
+ */
+describe('séries de l’histogramme', () => {
+  const CSS = readFileSync(join(SRC, 'design-system', 'tokens.css'), 'utf8')
+  const NU = CSS.replace(/\/\*[\s\S]*?\*\//g, '')
+  const CODE = sansCommentaires(
+    readFileSync(join(SRC, 'components', 'primitives', 'Charts.tsx'), 'utf8'),
+  )
+
+  function corps(entete: string): string {
+    const debut = NU.indexOf(entete)
+    if (debut === -1) throw new Error(`bloc introuvable : ${entete}`)
+    let profondeur = 0
+    for (let i = NU.indexOf('{', debut); i < NU.length; i++) {
+      if (NU[i] === '{') profondeur++
+      else if (NU[i] === '}' && --profondeur === 0)
+        return NU.slice(NU.indexOf('{', debut) + 1, i)
+    }
+    throw new Error(`accolade non refermée après ${entete}`)
+  }
+
+  function jeton(bloc: string, nom: string): string {
+    const t = new RegExp(`${nom}\\s*:\\s*(#[0-9a-fA-F]{6})`).exec(bloc)
+    if (!t) throw new Error(`jeton absent : ${nom}`)
+    return t[1]
+  }
+
+  function luminance(hexa: string): number {
+    const [r, v, b] = [0, 2, 4]
+      .map((i) => parseInt(hexa.slice(1).substr(i, 2), 16))
+      .map((c) => {
+        const n = c / 255
+        return n <= 0.03928 ? n / 12.92 : Math.pow((n + 0.055) / 1.055, 2.4)
+      })
+    return 0.2126 * r + 0.7152 * v + 0.0722 * b
+  }
+
+  function ratio(a: string, b: string): number {
+    const [x, y] = [luminance(a), luminance(b)]
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
+  }
+
+  /**
+   * Les jetons de l'HISTOGRAMME EMPILÉ, lus dans sa table.
+   *
+   * Portés sur `SERIES_COLORS` et non sur tous les `var(--color-data-N)` du
+   * fichier : l'histogramme simple, voisin, emploie `--color-data-1` pour une
+   * série unique dont aucune ne domine, et l'y inclure ferait échouer un choix
+   * parfaitement valide.
+   */
+  const TABLE = /const SERIES_COLORS: Record<string, string> = \{([\s\S]*?)\}/.exec(CODE)?.[1] ?? ''
+  const EMPLOYES = [...TABLE.matchAll(/var\(--color-(data-\d)\)/g)].map(
+    ([, nom]) => `--color-${nom}`,
+  )
+
+  const BLOCS = {
+    clair: corps('@theme'),
+    'sombre (systeme)': corps('@media (prefers-color-scheme: dark)'),
+    'sombre (choisi)': corps(":root[data-theme='dark']"),
+  }
+
+  it('emploie bien trois séries distinctes', () => {
+    expect(EMPLOYES).toHaveLength(3)
+  })
+
+  for (const [theme, bloc] of Object.entries(BLOCS)) {
+    for (const serie of EMPLOYES) {
+      it(`tient 3:1 pour ${serie} en ${theme}`, () => {
+        const fond = jeton(bloc, '--color-surface')
+        const r = ratio(jeton(bloc, serie), fond)
+        expect(r, `${theme} : ${serie} sur ${fond} — ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(3)
+      })
+    }
+  }
+})

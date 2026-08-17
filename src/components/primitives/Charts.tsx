@@ -25,7 +25,24 @@ import { useT } from '@/i18n/I18nProvider'
  * Teintes de séries, prises dans l'échelle de données et non dans les couleurs
  * de marque : l'or `--color-gold` ne tient que 2,87:1 sur blanc, sous le seuil
  * de 3:1 exigé d'une donnée. Les trois retenues sont espacées en clarté
- * (1 %, 18 %, 26 %) pour rester distinctes en niveaux de gris.
+ * (28 %, 18 %, 13 %) pour rester distinctes en niveaux de gris.
+ *
+ * LA PLUS GRANDE SURFACE PORTE LE MOINS DE POIDS, et c'est l'inverse qui était
+ * fait. Le loyer représente environ 90 % de chaque colonne ; il prenait
+ * `--color-data-1`, la teinte la plus sombre de l'échelle — 1 % de clarté, soit
+ * un quasi-noir. Douze colonnes remplies à 90 % de quasi-noir font un mur : on
+ * ne compare plus les mois entre eux, la ligne d'objectif se perd dessus, et
+ * l'eau comme l'électricité se réduisent à des filets de deux ou trois pixels
+ * qu'aucune couleur ne sauve.
+ *
+ * Le poids visuel se multiplie par la surface. Une série qui occupe presque
+ * toute la colonne doit donc être la plus DISCRÈTE des trois — elle est déjà
+ * lue par sa taille — et les teintes franches vont aux petites, qu'il faut
+ * pouvoir trouver. D'où l'ordre inversé : le loyer prend la plus claire de
+ * l'échelle, l'eau et l'électricité les deux plus tranchées.
+ *
+ * Les trois tiennent le seuil sur le fond de carte, dans les deux thèmes :
+ * 3,16 / 4,50 / 5,82 en clair, 7,84 / 7,94 / 6,34 en sombre.
  *
  * La règle vaut au-delà des séries, et ce fichier l'a longtemps contredite :
  * une colonne mise en avant, une ligne d'objectif et un remplissage de
@@ -35,9 +52,9 @@ import { useT } from '@/i18n/I18nProvider'
  * et refuse le retour de l'or nu.
  */
 const SERIES_COLORS: Record<string, string> = {
-  rent: 'var(--color-data-1)',
+  rent: 'var(--color-data-6)',
   water: 'var(--color-data-4)',
-  power: 'var(--color-data-5)',
+  power: 'var(--color-data-3)',
 }
 
 /**
@@ -69,9 +86,9 @@ const SERIES_COLORS: Record<string, string> = {
  * dont il tire son nom.
  */
 const SERIES_COLORS_ON_DARK: Record<string, string> = {
-  rent: 'var(--color-data-1-on-dark)',
+  rent: 'var(--color-data-6-on-dark)',
   water: 'var(--color-data-4-on-dark)',
-  power: 'var(--color-data-5-on-dark)',
+  power: 'var(--color-data-3-on-dark)',
 }
 
 export interface StackedBar {
@@ -249,6 +266,18 @@ export function StackedBarChart({
                         style={{
                           height: `${total ? (segment.value / total) * 100 : 0}%`,
                           background: SERIES_COLORS[segment.key],
+                          /**
+                           * Un filet de la couleur de la carte entre deux
+                           * segments.
+                           *
+                           * L'eau et l'électricité pèsent 5 % et 4,5 % : sur
+                           * une colonne de 200px, deux bandes de 9 et 10px qui
+                           * se touchent se lisent comme une seule. Le filet
+                           * n'ajoute pas de couleur — il retire un pixel, et
+                           * c'est ce qui rend les trois séries dénombrables.
+                           */
+                          boxShadow:
+                            segmentIndex > 0 ? 'inset 0 1px 0 var(--color-surface)' : undefined,
                           // Le mois en cours est encore ouvert : on le
                           // distingue. La colonne visée s'éclaire, celles qu'on
                           // ne vise pas s'effacent — l'attention suit le
