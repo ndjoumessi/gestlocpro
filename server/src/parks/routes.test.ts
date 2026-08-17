@@ -1853,6 +1853,71 @@ describe('cycle des interventions', () => {
     expect(res.status).toBe(409)
   })
 
+  it('laisse le locataire signaler sur SON logement, et le nomme', async () => {
+    /**
+     * L'origine normale d'une intervention.
+     *
+     * `reportedByTenantId` existait au modèle depuis le premier jour et rien ne
+     * l'écrivait : personne ne pouvait signaler. L'écran des travaux disait
+     * pourtant lui-même qu'« une intervention naît d'un signalement de
+     * locataire, jamais d'une saisie du bailleur » — la chaîne partait de son
+     * deuxième maillon.
+     */
+    await request(serveur)
+      .post(`/api/parks/${parkId}/tenants`)
+      .set('Cookie', proprio)
+      .send({ unitId, fullName: 'Charles Ngassa', startsOn: '2026-01-01' })
+    const l = await inscrire('charles@example.com')
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'charles@example.com' },
+    })
+    await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'tenant' } })
+    const fiche = await prisma.tenant.findFirstOrThrow({ where: { fullName: 'Charles Ngassa' } })
+    await prisma.tenant.update({ where: { id: fiche.id }, data: { userId: compte.id } })
+
+    const res = await request(serveur)
+      .post(`/api/parks/${parkId}/units/${unitId}/works`)
+      .set('Cookie', l.cookie)
+      .send({ title: 'Fuite sous l’évier', trade: 'plumbing', urgency: 'blocking' })
+
+    expect(res.status, JSON.stringify(res.body)).toBe(201)
+    const cree = await prisma.workOrder.findUniqueOrThrow({ where: { id: res.body.work.id } })
+    // Le bailleur doit savoir QUI a vu le problème : sans cela il ne peut ni
+    // rappeler, ni faire ouvrir la porte.
+    expect(cree.reportedByTenantId).toBe(fiche.id)
+    // Et il déclare, il n'ouvre pas un chantier.
+    expect(cree.status).toBe('reported')
+  })
+
+  it('refuse au locataire de signaler sur le logement d’un autre', async () => {
+    const autreLogement = await request(serveur)
+      .post(`/api/parks/${parkId}/buildings/${(await prisma.building.findFirstOrThrow({ where: { parkId } })).id}/units`)
+      .set('Cookie', proprio)
+      .send({ label: 'B2', type: 'T2', surfaceSqm: 50, baseRentMinor: 100000 })
+
+    await request(serveur)
+      .post(`/api/parks/${parkId}/tenants`)
+      .set('Cookie', proprio)
+      .send({ unitId, fullName: 'Charles Ngassa', startsOn: '2026-01-01' })
+    const l = await inscrire('charles2@example.com')
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'charles2@example.com' },
+    })
+    await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'tenant' } })
+    const fiche = await prisma.tenant.findFirstOrThrow({ where: { fullName: 'Charles Ngassa' } })
+    await prisma.tenant.update({ where: { id: fiche.id }, data: { userId: compte.id } })
+
+    const res = await request(serveur)
+      .post(`/api/parks/${parkId}/units/${autreLogement.body.unit.id}/works`)
+      .set('Cookie', l.cookie)
+      .send({ title: 'Fuite', trade: 'plumbing' })
+
+    // Un signalement chez le voisin, notifié au bailleur, sur un logement qui
+    // n'est pas le sien. 404 et non 403 : un 403 confirmerait qu'il existe.
+    expect(res.status).toBe(404)
+    expect(await prisma.workOrder.count({ where: { unitId: autreLogement.body.unit.id } })).toBe(0)
+  })
+
   it('ne déclare rien sur le logement d’un autre parc', async () => {
     const autre = await inscrire('voisin3@example.com', { parkName: 'Autre parc' })
     const parcs = await request(serveur).get('/api/parks').set('Cookie', autre.cookie)

@@ -1402,20 +1402,74 @@ async function prochaineReference(
 parksRouter.post(
   '/:parkId/units/:unitId/works',
   exigerAppartenance,
-  exigerRole('owner', 'manager'),
+  /**
+   * Le LOCATAIRE y a droit, et c'est le point de ce correctif.
+   *
+   * Le modèle porte `reportedByTenantId` depuis le premier jour, et rien ne
+   * l'écrivait : personne ne pouvait signaler quoi que ce soit. Or c'est
+   * l'origine NORMALE d'une intervention — l'écran des travaux le dit lui-même,
+   * « une intervention naît d'un signalement de locataire, jamais d'une saisie
+   * du bailleur ». La chaîne partait donc de son deuxième maillon.
+   *
+   * Le périmètre est posé plus bas, sur SON logement, et le statut est forcé :
+   * un locataire déclare un problème, il n'ouvre pas un chantier.
+   */
+  exigerRole('owner', 'manager', 'tenant'),
   async (req: Request, res: Response) => {
-    const { parkId } = req.adhesion!
+    const { parkId, role } = req.adhesion!
     const unitId = z.string().uuid().parse(req.params.unitId)
     const corps = schemaIntervention.parse(req.body)
 
+    /**
+     * Le cloisonnement est DANS la requête, comme partout ailleurs.
+     *
+     * Filtrer après lecture supposerait d'avoir d'abord chargé l'unité, et il
+     * suffirait d'un oubli pour qu'un locataire déclare une fuite chez son
+     * voisin — un signalement notifié au bailleur, sur un logement qui n'est pas
+     * le sien.
+     */
     const unite = await prisma.unit.findFirst({
-      where: { id: unitId, building: { parkId } },
+      where: {
+        id: unitId,
+        building: { parkId },
+        /**
+         * La contrainte porte sur le BAIL, et non sur une liste d'identifiants.
+         *
+         * Première rédaction : `...(visibles ? { id: { in: […] } } : {})`, à la
+         * suite de `id: unitId`. Le spread ÉCRASAIT la clé `id` — la requête
+         * cherchait donc « n'importe lequel de mes logements » au lieu du
+         * logement demandé. Un locataire visant celui du voisin recevait 201, et
+         * le signalement était créé sur le sien : ni refus, ni erreur, ni trace.
+         *
+         * Deux clés du même nom dans un littéral d'objet ne cohabitent pas ;
+         * exprimer la règle par la relation retire le piège au lieu de le
+         * contourner.
+         */
+        ...(role === 'tenant'
+          ? { leases: { some: { tenant: { userId: req.compteId! } } } }
+          : {}),
+      },
       select: { id: true },
     })
     if (!unite) {
+      // 404 et non 403 : un 403 confirmerait l'existence du logement voisin.
       res.status(404).json({ error: 'not_found' })
       return
     }
+
+    /**
+     * Le signalement porte le NOM de qui l'a fait, quand c'est un locataire.
+     *
+     * Sans cela, le bailleur reçoit un problème sans savoir qui l'a vu — et ne
+     * peut donc ni rappeler ni faire ouvrir la porte.
+     */
+    const declarant =
+      role === 'tenant'
+        ? await prisma.tenant.findFirst({
+            where: { parkId, userId: req.compteId!, leases: { some: { unitId: unite.id } } },
+            select: { id: true },
+          })
+        : null
 
     const travail = await prisma.$transaction(async (tx) => {
       const reference = await prochaineReference(tx, parkId, new Date().getFullYear())
@@ -1431,6 +1485,7 @@ parksRouter.post(
           // arbitrages du propriétaire.
           status: 'reported',
           ...(corps.description ? { description: corps.description } : {}),
+          ...(declarant ? { reportedByTenantId: declarant.id } : {}),
         },
         select: { id: true, reference: true, status: true, title: true },
       })
