@@ -61,6 +61,25 @@ describe('clôture d’une intervention', () => {
     expect(await screen.findByText(/intervention close/i)).toBeInTheDocument()
   })
 
+  it('offre une annulation qui rouvre réellement l’intervention', async () => {
+    const user = userEvent.setup()
+    renderApp('/demo/travaux')
+    await attendreLeChargement()
+
+    const avant = screen.getAllByText('Terminé').length
+    await user.click(screen.getAllByRole('button', { name: /marquer terminé/i })[0]!)
+    expect(screen.getAllByText('Terminé')).toHaveLength(avant + 1)
+
+    /**
+     * L'annulation REND l'état, elle ne se contente pas de fermer le message.
+     *
+     * Un bouton « Annuler » qui n'annulerait rien est pire que son absence :
+     * il fait croire que le geste est défait, et l'on referme la page.
+     */
+    await user.click(screen.getByRole('button', { name: /annuler l’action/i }))
+    expect(screen.getAllByText('Terminé')).toHaveLength(avant)
+  })
+
   /**
    * Le cas « pas offert au locataire » N'EST PAS ici, et c'est délibéré.
    *

@@ -41,7 +41,8 @@ export function Works() {
    * doit disparaître de la carte « Ce qui demande une décision » du tableau de
    * bord, qui la réclamait encore.
    */
-  const { works, approveWork, completeWork, unitById, isMine, loading } = usePortfolio()
+  const { works, approveWork, completeWork, reopenWork, unitById, isMine, loading } =
+    usePortfolio()
 
   // Le locataire suit les interventions sur SON logement, pas celles du parc.
   // Le périmètre vient du provider, qui le tient du serveur : le client ne
@@ -55,7 +56,19 @@ export function Works() {
 
   const complete = (id: string) => {
     completeWork(id)
-    notify(t('app.works.completed_toast'), { tone: 'ok' })
+    /**
+     * L'annulation est offerte AVEC le message, et elle est réelle.
+     *
+     * La maquette proposait une fenêtre de six secondes ; ce n'est pas ce qui
+     * est livré. Une clôture prise pour une autre se découvre en relisant sa
+     * liste, pas dans les six secondes — une fenêtre qui expire en silence
+     * enseigne un filet qui n'existe pas. Le geste reste disponible ensuite par
+     * la réouverture ; le toast n'en est que le chemin le plus court.
+     */
+    notify(t('app.works.completed_toast'), {
+      tone: 'ok',
+      action: { label: t('common.undo'), onClick: () => reopenWork(id) },
+    })
   }
 
   /**

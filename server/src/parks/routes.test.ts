@@ -1768,6 +1768,58 @@ describe('cycle des interventions', () => {
     expect(apres.status).toBe('reported')
   })
 
+  it('rouvre une clôture, et rend l’état d’avant plutôt qu’un état choisi', async () => {
+    /**
+     * L'état de retour est DÉDUIT : `approved` quand la dépense avait été
+     * engagée, `reported` sinon. Rendre à `quoted` un devis validé effacerait la
+     * décision du propriétaire — il faudrait la reprendre, et le montant serait
+     * de nouveau en suspens.
+     */
+    const { body } = await declarer()
+    const workId = body.work.id
+    await request(app)
+      .patch(`/api/parks/${parkId}/works/${workId}/quote`)
+      .set('Cookie', proprio)
+      .send({ quotedAmountMinor: 42000 })
+    await request(app).patch(`/api/parks/${parkId}/works/${workId}/approve`).set('Cookie', proprio)
+    await request(app).patch(`/api/parks/${parkId}/works/${workId}/complete`).set('Cookie', proprio).send({})
+
+    const res = await request(app)
+      .patch(`/api/parks/${parkId}/works/${workId}/reopen`)
+      .set('Cookie', gestionnaire)
+
+    expect(res.status, JSON.stringify(res.body)).toBe(200)
+    expect(res.body.work.status).toBe('approved')
+    const apres = await prisma.workOrder.findUniqueOrThrow({ where: { id: workId } })
+    // La date de constat s'efface avec la clôture qu'elle datait.
+    expect(apres.completedOn).toBeNull()
+    expect(apres.approvedAmountMinor).toBe(42000)
+  })
+
+  it('rend une intervention jamais chiffrée à l’état déclaré', async () => {
+    const { body } = await declarer()
+    const workId = body.work.id
+    await request(app).patch(`/api/parks/${parkId}/works/${workId}/complete`).set('Cookie', proprio).send({})
+
+    const res = await request(app)
+      .patch(`/api/parks/${parkId}/works/${workId}/reopen`)
+      .set('Cookie', proprio)
+
+    expect(res.body.work.status).toBe('reported')
+  })
+
+  it('refuse de rouvrir ce qui n’est pas clos', async () => {
+    const { body } = await declarer()
+
+    const res = await request(app)
+      .patch(`/api/parks/${parkId}/works/${body.work.id}/reopen`)
+      .set('Cookie', proprio)
+
+    // Sans quoi un devis en attente reculerait vers l'état déclaré, et le
+    // montant proposé disparaîtrait de la carte des arbitrages.
+    expect(res.status).toBe(409)
+  })
+
   it('ne déclare rien sur le logement d’un autre parc', async () => {
     const autre = await inscrire('voisin3@example.com', { parkName: 'Autre parc' })
     const parcs = await request(app).get('/api/parks').set('Cookie', autre.cookie)

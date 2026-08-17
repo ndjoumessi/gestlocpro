@@ -15,6 +15,7 @@ export const en: Dictionary = {
     edit: 'Edit',
     close: 'Close',
     closeNotification: 'Dismiss notification',
+    undo: 'Undo',
     confirm: 'Confirm',
     search: 'Search',
     loading: 'Loading…',

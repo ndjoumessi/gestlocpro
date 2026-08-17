@@ -25,6 +25,7 @@ export const fr = {
     // l'écran — celui d'une fenêtre modale et celui d'un toast posé par-dessus.
     // Un libellé partagé les rendrait indiscernables à la voix.
     closeNotification: 'Fermer la notification',
+    undo: 'Annuler l’action',
     confirm: 'Confirmer',
     search: 'Rechercher',
     loading: 'Chargement…',

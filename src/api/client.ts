@@ -175,6 +175,15 @@ export const api = {
       body: JSON.stringify(completedOn ? { completedOn } : {}),
     }),
 
+  /**
+   * Rouvre une intervention close.
+   *
+   * PERMANENT, et non une fenêtre de quelques secondes : une clôture prise pour
+   * une autre se découvre en relisant sa liste, pas dans les six secondes.
+   */
+  reopenWork: <T>(parkId: string, workId: string) =>
+    requete<T>(`/parks/${parkId}/works/${workId}/reopen`, { method: 'PATCH' }),
+
   /** Déclare une intervention sur un logement. */
   addWork: <T>(
     parkId: string,

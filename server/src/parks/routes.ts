@@ -1557,3 +1557,63 @@ parksRouter.patch(
     res.json({ work: maj })
   },
 )
+
+/**
+ * Rouvre une intervention close.
+ *
+ * L'annulation de la maquette est une fenêtre de six secondes après le clic.
+ * Ce n'est pas ce qui est livré ici, et l'écart est délibéré : une clôture prise
+ * pour une autre se découvre en relisant sa liste, pas dans les six secondes.
+ * Une fenêtre qui expire en silence enseigne un filet qui n'existe pas — elle
+ * rassure au moment où l'on ne se trompe pas encore.
+ *
+ * La réouverture est donc PERMANENTE. Le toast d'annulation n'en est que le
+ * chemin le plus court.
+ *
+ * L'état de retour est DÉDUIT, faute d'être conservé : `approved` si la dépense
+ * avait été engagée — `approvedAt` en fait foi — et `reported` sinon. Rendre à
+ * `quoted` un devis qui avait été validé effacerait la décision du propriétaire.
+ */
+parksRouter.patch(
+  '/:parkId/works/:workId/reopen',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const workId = z.string().uuid().parse(req.params.workId)
+
+    const travail = await prisma.workOrder.findFirst({
+      where: { id: workId, unit: { building: { parkId } } },
+      select: { id: true, status: true, approvedAt: true },
+    })
+    if (!travail) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+    if (travail.status !== 'done') {
+      // Rouvrir ce qui n'est pas clos n'a pas de sens, et ferait reculer un
+      // devis en attente vers l'état déclaré.
+      res.status(409).json({ error: 'not_done' })
+      return
+    }
+
+    const maj = await prisma.workOrder.update({
+      where: { id: travail.id },
+      data: { status: travail.approvedAt ? 'approved' : 'reported', completedOn: null },
+      select: { id: true, status: true, completedOn: true },
+    })
+
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'work.reopen',
+        entity: 'WorkOrder',
+        entityId: travail.id,
+        payload: { status: maj.status },
+      },
+    })
+
+    res.json({ work: maj })
+  },
+)

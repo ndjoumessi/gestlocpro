@@ -76,6 +76,14 @@ interface PortfolioContextValue {
    * indéfiniment, donc la liste des travaux ne pouvait que grandir.
    */
   completeWork: (id: string) => void
+  /**
+   * Rouvre une clôture.
+   *
+   * L'état de retour n'est pas choisi ici : le serveur le déduit — validé si la
+   * dépense avait été engagée, déclaré sinon. Le décider côté client rendrait à
+   * `quoted` un devis déjà validé, et effacerait la décision du propriétaire.
+   */
+  reopenWork: (id: string) => void
   /** Le propriétaire arbitre une caution : retenue et restitution du solde. */
   /**
    * Arbitre une caution. La justification traverse jusqu'au serveur, qui
@@ -512,6 +520,22 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [parkId, signalerEchec],
   )
 
+  const reopenWork = useCallback(
+    (id: string) => {
+      if (!parkId) {
+        setWorks((list) => list.map((w) => (w.id === id ? { ...w, status: 'approved' } : w)))
+        return
+      }
+      void api
+        .reopenWork<{ work: { id: string; status: WorkOrder['status'] } }>(parkId, id)
+        .then(({ work }) =>
+          setWorks((list) => list.map((w) => (w.id === work.id ? { ...w, status: work.status } : w))),
+        )
+        .catch(signalerEchec)
+    },
+    [parkId, signalerEchec],
+  )
+
   const settleDeposit = useCallback(
     (unitId: string, withheld: number, reason?: string) => {
       const local = () =>
@@ -776,6 +800,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       approveWork,
       quoteWork,
       completeWork,
+      reopenWork,
       settleDeposit,
       addTenant,
       addBuilding,
@@ -835,6 +860,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       approveWork,
       quoteWork,
       completeWork,
+      reopenWork,
       settleDeposit,
       addTenant,
       addBuilding,
