@@ -153,7 +153,7 @@ export function RadioCards<T extends string>({
                 </span>
               </div>
 
-              <span className="text-title-m font-semibold text-ink">{option.title}</span>
+              <span className="title-m text-ink">{option.title}</span>
               <span className="text-body-s text-muted">{option.description}</span>
 
               {option.footnote && (

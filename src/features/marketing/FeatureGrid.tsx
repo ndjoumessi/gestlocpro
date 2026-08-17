@@ -55,7 +55,7 @@ export function FeatureGrid() {
               <Icon name={icon} size={22} />
             </span>
 
-            <h3 className="mt-6 font-sans text-title-l font-semibold text-balance">
+            <h3 className="mt-6 title-l text-balance">
               {t(`marketing.features.${key}.title` as 'marketing.features.rent.title')}
             </h3>
             <p className="mt-3 text-body text-pretty text-muted">

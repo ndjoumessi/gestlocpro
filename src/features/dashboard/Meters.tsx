@@ -163,7 +163,7 @@ export function Meters() {
       >
         <Icon name={missing.length ? 'alert' : 'checkCircle'} size={18} className="mt-0.5 shrink-0" />
         <div>
-          <p className="text-body font-semibold">
+          <p className="text-body font-medium">
             {missing.length
               ? t('app.meters.missingCount', { count: missing.length })
               : t('app.meters.complete')}

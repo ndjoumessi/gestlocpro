@@ -23,7 +23,7 @@ export function Faq() {
             <summary
               className={cn(
                 'flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 py-4',
-                'font-sans text-title-m font-semibold text-ink',
+                'title-m text-ink',
                 'marker:content-none [&::-webkit-details-marker]:hidden',
               )}
             >

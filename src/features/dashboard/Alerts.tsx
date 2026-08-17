@@ -191,7 +191,7 @@ export function Alerts() {
                 <div className="flex flex-wrap items-center gap-2">
                   <h2
                     className={cn(
-                      'font-sans text-title-m',
+                      'title-m',
                       alert.read ? 'font-medium' : 'font-semibold',
                     )}
                   >

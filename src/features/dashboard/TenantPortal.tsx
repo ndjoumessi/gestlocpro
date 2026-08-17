@@ -205,7 +205,7 @@ export function TenantPortal() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <Card>
                   <p className="eyebrow text-muted">{t('app.portal.myUnit')}</p>
-                  <p className="mt-2 font-sans text-title-l font-semibold">
+                  <p className="mt-2 title-l">
                     {unit.label} · {t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')}
                   </p>
                   {/* Le nom de l'immeuble était écrit en dur : il restait

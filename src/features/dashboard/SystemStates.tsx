@@ -60,7 +60,7 @@ export function SystemStates() {
           >
             <Icon name="alert" size={18} className="mt-0.5 shrink-0 text-danger" />
             <div className="min-w-0">
-              <p className="text-body font-semibold text-danger">{t('app.system.errorTitle')}</p>
+              <p className="text-body font-medium text-danger">{t('app.system.errorTitle')}</p>
               <p className="mt-1 text-body-s text-danger">{t('app.system.errorBody')}</p>
               <Button
                 variant="secondary"
@@ -80,7 +80,7 @@ export function SystemStates() {
           <div className="flex items-start gap-3 rounded-lg border border-warn-border bg-warn-tint px-4 py-3.5">
             <Icon name="globe" size={18} className="mt-0.5 shrink-0 text-warn" />
             <div className="min-w-0">
-              <p className="text-body font-semibold text-warn">{t('app.system.offlineTitle')}</p>
+              <p className="text-body font-medium text-warn">{t('app.system.offlineTitle')}</p>
               <p className="mt-1 text-body-s text-warn">{t('app.system.offlineBody')}</p>
             </div>
           </div>

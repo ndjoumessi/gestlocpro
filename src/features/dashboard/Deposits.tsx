@@ -325,7 +325,7 @@ function SettleModal({
               : 'border-ok-border bg-ok-tint text-ok'
           }`}
         >
-          <span className="text-body font-semibold">{t('app.deposits.balanceToReturn')}</span>
+          <span className="text-body font-medium">{t('app.deposits.balanceToReturn')}</span>
           {/* `money()` porte déjà le symbole : en ajouter un second donnait
               « 185 000 FCFA FCFA ». */}
           <span className="numeric text-title-l font-medium">

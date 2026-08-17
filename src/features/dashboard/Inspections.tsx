@@ -83,7 +83,7 @@ export function Inspections() {
                 <div>
                   {/* Le regroupement se fait sur l'identifiant technique, mais
                       c'est le libellé de l'unité qui se lit dans le titre. */}
-                  <h2 className="font-sans text-title-m font-semibold">
+                  <h2 className="title-m">
                     {unit?.label ?? unitId} ·{' '}
                     {unit && t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')}
                   </h2>

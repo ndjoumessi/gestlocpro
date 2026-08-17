@@ -882,6 +882,44 @@
   font-weight: 700;
 }
 
+/**
+ * Titres de section et de carte — les deux rôles qui MANQUAIENT à l'échelle.
+ *
+ * `--text-title-l` et `--text-title-m` n'étaient que des jetons de TAILLE. Il
+ * n'existait aucun rôle pour les habiller, donc chaque titre du produit
+ * réassemblait la même triade à la main : famille, taille, graisse. Quinze
+ * fois, dans quinze fichiers.
+ *
+ * C'est ainsi que quatre graisses ont fini par coexister sans que personne ne
+ * l'ait décidé — non pas parce que 600 serait une mauvaise valeur, mais parce
+ * qu'une graisse posée en ligne échappe à l'échelle et ne peut donc plus être
+ * arbitrée nulle part. Les échelles d'affichage, elles, déclarent leur graisse
+ * depuis toujours : ces deux rôles ne font que rejoindre la règle de la maison.
+ *
+ * 600 est conservé, délibérément. La règle des deux graisses vise le CORPS de
+ * texte ; un titre est une charnière de lecture, et l'aplatir à 500 lui ferait
+ * perdre la distinction avec le texte qu'il surplombe — sur un écran lu en
+ * plein soleil, c'est un service qu'on rend au lecteur. Ce qui change est que
+ * la valeur vit désormais à un seul endroit.
+ *
+ * `--font-sans` explicitement : la famille est déjà héritée du `body`, mais un
+ * titre posé dans une zone qui en change (une carte de graphique, un bloc de
+ * marque) doit rester dans la famille de texte.
+ */
+@utility title-l {
+  font-family: var(--font-sans);
+  font-size: var(--text-title-l);
+  line-height: var(--text-title-l--line-height);
+  font-weight: 600;
+}
+
+@utility title-m {
+  font-family: var(--font-sans);
+  font-size: var(--text-title-m);
+  line-height: var(--text-title-m--line-height);
+  font-weight: 600;
+}
+
 /* Chiffres de données alignés en colonne. C'est `tabular-nums` qui aligne, et
    lui seul : les polices d'interface système portent des chiffres tabulaires,
    la chasse fixe n'était pas ce qui tenait les colonnes. */

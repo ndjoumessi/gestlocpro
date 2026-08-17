@@ -41,7 +41,7 @@ export function RolesSection() {
               <Icon name={icon} size={22} />
             </span>
 
-            <h3 className="mt-6 font-sans text-title-l font-semibold text-on-dark">
+            <h3 className="mt-6 title-l text-on-dark">
               {t(`roles.${key}.name` as 'roles.owner.name')}
             </h3>
             <p className="mt-1.5 text-caps text-gold-on-dark">

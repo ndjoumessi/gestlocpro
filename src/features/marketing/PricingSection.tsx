@@ -75,7 +75,7 @@ export function PricingSection() {
                 </span>
               )}
 
-              <h3 className="font-sans text-title-l font-semibold">
+              <h3 className="title-l">
                 {t(`marketing.pricing.${plan.id}.name` as 'marketing.pricing.pro.name')}
               </h3>
               <p className="mt-1.5 min-h-10 text-body-s text-muted">
@@ -84,7 +84,7 @@ export function PricingSection() {
 
               <div className="mt-5 border-y border-divider py-5">
                 {price === null || !plan.pricing ? (
-                  <p className="font-sans text-title-l font-semibold">
+                  <p className="title-l">
                     {t('marketing.pricing.quote')}
                   </p>
                 ) : (
@@ -232,7 +232,7 @@ function UnitSlider({ units, onChange }: { units: number; onChange: (n: number) 
 
         <output
           htmlFor={id}
-          className="numeric w-24 shrink-0 text-right text-title-m font-semibold"
+          className="numeric w-24 shrink-0 text-right title-m"
         >
           {atMax
             ? t('marketing.pricing.unitsValueMax', { count: units })

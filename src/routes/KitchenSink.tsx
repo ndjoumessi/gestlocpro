@@ -74,8 +74,8 @@ export function KitchenSink() {
             <p className="display-xl">Display XL · 56</p>
             <p className="display-l">Display L · 46</p>
             <p className="display-m">Display M · 32</p>
-            <p className="font-sans text-title-l font-semibold">Title L · 20 · Manrope 600</p>
-            <p className="font-sans text-title-m font-semibold">Title M · 17 · Manrope 600</p>
+            <p className="title-l">Title L · 20 · Manrope 600</p>
+            <p className="title-m">Title M · 17 · Manrope 600</p>
             <p className="text-body-l">Body L · 16 — corps de la landing et des champs mobiles.</p>
             <p className="text-body">Body · 14 — corps de l’application.</p>
             <p className="text-body-s text-muted">Body S · 13 — annotations, en gris secondaire.</p>
@@ -390,7 +390,7 @@ export function KitchenSink() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="border-t border-border pt-8">
-      <h2 className="mb-5 font-sans text-title-l font-semibold">{title}</h2>
+      <h2 className="mb-5 title-l">{title}</h2>
       {children}
     </section>
   )

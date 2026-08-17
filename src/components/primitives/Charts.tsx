@@ -360,7 +360,7 @@ function Tooltip({
       <p className="text-caps tracking-wider text-on-dark-faint uppercase">
         {title}
       </p>
-      <p className="numeric mt-1 text-title-m font-semibold text-on-dark">{total}</p>
+      <p className="numeric mt-1 title-m text-on-dark">{total}</p>
 
       {/* Le bloc de détail disparaît quand la série est unique : un filet et
           un espacement sous un total, sans rien en dessous, se lisent comme un

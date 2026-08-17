@@ -84,7 +84,7 @@ function ServeurInjoignable() {
         <span className="inline-flex size-12 items-center justify-center rounded-full bg-warn-tint text-warn">
           <Icon name="alert" size={22} />
         </span>
-        <h1 className="mt-4 font-sans text-title-l font-semibold">{t('app.offline.title')}</h1>
+        <h1 className="mt-4 title-l">{t('app.offline.title')}</h1>
         <p className="mt-2 text-body text-muted">{t('app.offline.body')}</p>
       </div>
     </div>

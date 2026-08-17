@@ -187,7 +187,7 @@ export function PublicHeader() {
                 href={`#${section.id}`}
                 onClick={() => setMenuOpen(false)}
                 className={cn(
-                  'flex min-h-14 items-center rounded-md px-4 font-sans text-title-m font-semibold',
+                  'flex min-h-14 items-center rounded-md px-4 title-m',
                   'text-ink no-underline transition-colors duration-150 hover:bg-surface-sunken',
                 )}
               >
