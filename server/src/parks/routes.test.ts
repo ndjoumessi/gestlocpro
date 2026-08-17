@@ -2194,11 +2194,16 @@ describe('états des lieux', () => {
     unitId = logement.body.unit.id
   })
 
-  async function avecBail() {
+  async function avecBail(depositMinor?: number) {
     await request(serveur)
       .post(`/api/parks/${parkId}/tenants`)
       .set('Cookie', proprio)
-      .send({ unitId, fullName: 'Charles Ngassa', startsOn: '2026-01-01' })
+      .send({
+        unitId,
+        fullName: 'Charles Ngassa',
+        startsOn: '2026-01-01',
+        ...(depositMinor ? { depositMinor } : {}),
+      })
   }
 
   const RESERVE = {
@@ -2266,6 +2271,32 @@ describe('états des lieux', () => {
     expect((journal.payload as { billableMinor: number }).billableMinor).toBe(38000)
   })
 
+  it('enregistre la caution encaissée avec le bail', async () => {
+    /**
+     * `deposit.create` n'existait QUE dans le semis de démonstration : un parc
+     * réel ne pouvait porter aucune caution, donc l'écran « Cautions » restait
+     * vide quoi qu'on fasse et les deux routes d'arbitrage n'avaient rien sur
+     * quoi opérer. Toute une surface du produit était inatteignable.
+     */
+    await avecBail(180000)
+
+    const caution = await prisma.deposit.findFirstOrThrow({
+      where: { lease: { unit: { building: { parkId } } } },
+    })
+    expect(caution.heldMinor).toBe(180000)
+    // `held` : encaissée et détenue. Elle ne devient arbitrable qu'à la sortie.
+    expect(caution.status).toBe('held')
+    expect(caution.withheldMinor).toBe(0)
+  })
+
+  it('admet un bail SANS caution : l’imposer bloquerait une saisie légitime', async () => {
+    await avecBail()
+
+    // Un locataire déjà en place dont on ne retrouve pas le montant doit
+    // pouvoir être déclaré. Fabriquer un chiffre serait pire que l'absence.
+    expect(await prisma.deposit.count()).toBe(0)
+  })
+
   it('refuse une sortie sans bail : on ne quitte pas un logement qu’on n’occupe pas', async () => {
     const res = await request(serveur)
       .post(`/api/parks/${parkId}/units/${unitId}/inspections`)
@@ -2328,6 +2359,69 @@ describe('états des lieux', () => {
     })
     expect(signe.signedAt).not.toBeNull()
     expect(signe.signedByName).toBe('Charles Ngassa')
+  })
+
+  it('propose au portefeuille ce que les réserves de sortie justifient', async () => {
+    /**
+     * La moitié manquante de « imputation chiffrée sur la caution ».
+     *
+     * Le montant était relevé à l'état des lieux, journalisé, puis ressaisi à la
+     * main dans l'arbitrage : deux saisies pour un seul fait, dont la seconde
+     * pouvait diverger de la première sans que rien ne le dise.
+     */
+    await avecBail(180000)
+    await request(serveur)
+      .post(`/api/parks/${parkId}/units/${unitId}/inspections`)
+      .set('Cookie', proprio)
+      .send({
+        kind: 'exit',
+        rooms: 3,
+        findings: [
+          { ...RESERVE, costMinor: 25000 },
+          { ...RESERVE, room: 'Salon', costMinor: 13000 },
+        ],
+      })
+
+    const pf = await request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', proprio)
+    const caution = pf.body.deposits[0]
+    expect(caution.billableMinor).toBe(38000)
+    // PROPOSÉ, jamais appliqué : la retenue reste une décision du propriétaire.
+    expect(caution.withheldMinor).toBe(0)
+    expect(caution.status).not.toBe('returned')
+  })
+
+  it('ne propose rien tant qu’aucune sortie n’a été établie', async () => {
+    await avecBail(180000)
+    await request(serveur)
+      .post(`/api/parks/${parkId}/units/${unitId}/inspections`)
+      .set('Cookie', proprio)
+      .send({ kind: 'entry', rooms: 3, findings: [RESERVE] })
+
+    /**
+     * La réserve d'entrée est chiffrée DIRECTEMENT EN BASE, hors de l'API.
+     *
+     * C'est le seul moyen d'atteindre ce garde, et c'est aussi le seul cas
+     * contre lequel il défend. La route refuse en 422 un coût à l'entrée, donc
+     * aucune donnée créée par le produit ne peut le déclencher — première
+     * version de ce cas : il passait même le filtre retiré, parce que la
+     * réserve n'avait de toute façon aucun montant.
+     *
+     * Restent les données écrites autrement : une reprise d'historique, une
+     * correction manuelle, une règle assouplie un jour. Un filtre de lecture qui
+     * répète une règle d'écriture n'est pas redondant — il tient le jour où
+     * l'écriture n'a pas eu lieu ici.
+     */
+    const reserve = await prisma.inspectionFinding.findFirstOrThrow({
+      where: { inspection: { kind: 'entry' } },
+    })
+    await prisma.inspectionFinding.update({
+      where: { id: reserve.id },
+      data: { costMinor: 25000 },
+    })
+
+    const pf = await request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', proprio)
+    // L'entrée ne s'impute pas : il n'y a rien à opposer au locataire.
+    expect(pf.body.deposits[0].billableMinor).toBe(0)
   })
 
   it('n’établit rien sur le logement d’un autre parc', async () => {

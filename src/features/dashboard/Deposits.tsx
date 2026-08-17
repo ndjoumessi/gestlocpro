@@ -265,7 +265,20 @@ function SettleModal({
   const { money, parseAmount } = useCurrency()
   const { unitById } = usePortfolio()
 
-  const [withheld, setWithheld] = useState(String(deposit.withheld || ''))
+  /**
+   * Pré-rempli par les RÉSERVES DE SORTIE, quand il y en a.
+   *
+   * C'est la moitié manquante de « imputation chiffrée sur la caution » : le
+   * montant était relevé à l'état des lieux, journalisé, puis ressaisi ici à la
+   * main. Deux saisies pour un seul fait, dont la seconde pouvait diverger de la
+   * première sans que rien ne le dise.
+   *
+   * PROPOSÉ et non imposé : le champ reste modifiable, et la retenue demeure une
+   * décision du propriétaire. L'état des lieux en est la pièce, pas l'auteur.
+   */
+  const [withheld, setWithheld] = useState(
+    String(deposit.withheld || deposit.billable || ''),
+  )
   const [reason, setReason] = useState('')
   const [errors, setErrors] = useState<{ withheld?: string; reason?: string }>({})
 

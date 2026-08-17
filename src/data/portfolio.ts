@@ -259,6 +259,13 @@ export const WORKS: WorkOrder[] = [
 
 export interface Deposit {
   /**
+   * Ce que les réserves de SORTIE justifieraient de retenir.
+   *
+   * Proposé, jamais appliqué : la retenue reste une décision du propriétaire, et
+   * l'état des lieux en est la pièce, pas l'auteur.
+   */
+  billable?: number
+  /**
    * Identifiant serveur, absent du jeu de démonstration.
    *
    * Une caution est clé par **bail** côté serveur, et non par unité : celle du

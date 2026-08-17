@@ -93,6 +93,8 @@ interface PortefeuilleApi {
     heldMinor: number
     withheldMinor: number
     status: Deposit['status']
+    /** Ce que les réserves de sortie justifieraient de retenir. */
+    billableMinor: number
   }[]
 }
 
@@ -183,6 +185,7 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
       held: d.heldMinor,
       withheld: d.withheldMinor,
       status: d.status,
+      billable: d.billableMinor,
     })),
     /**
      * Les deux fluides du serveur se replient en UNE ligne d'écran.

@@ -231,6 +231,18 @@ const schemaLocataire = z.object({
    * pas à décider.
    */
   rentMinor: z.number().int().nonnegative().optional(),
+  /**
+   * Caution encaissée à l'entrée.
+   *
+   * `deposit.create` n'existait QUE dans le semis de démonstration : un parc
+   * réel ne pouvait porter aucune caution, donc l'écran « Cautions » restait
+   * vide quoi qu'on fasse et les deux routes d'arbitrage n'avaient rien sur quoi
+   * opérer. Toute une surface du produit était inatteignable hors démonstration.
+   *
+   * Facultative : un bail sans caution existe, et l'imposer bloquerait la saisie
+   * d'un locataire déjà en place dont on ne retrouve pas le montant.
+   */
+  depositMinor: z.number().int().positive().optional(),
 })
 
 parksRouter.use(exigerCompte)
@@ -413,7 +425,28 @@ parksRouter.get(
           withheldReason: true,
           status: true,
           lease: {
-            select: { unitId: true, tenant: { select: { fullName: true } }, endsOn: true },
+            select: {
+              unitId: true,
+              tenant: { select: { fullName: true } },
+              endsOn: true,
+              /**
+               * Les réserves de SORTIE, et leur coût.
+               *
+               * C'est la moitié manquante de la promesse « imputation chiffrée
+               * sur la caution » : le montant était relevé à l'état des lieux,
+               * journalisé, et il fallait ensuite le ressaisir à la main dans
+               * l'arbitrage. Deux saisies pour un seul fait, dont la seconde
+               * pouvait diverger de la première sans que rien ne le dise.
+               *
+               * L'entrée est exclue par le `kind` : elle constate ce qui est
+               * déjà abîmé, et le serveur refuse d'ailleurs d'y chiffrer quoi
+               * que ce soit.
+               */
+              inspections: {
+                where: { kind: 'exit' as const },
+                select: { findings: { select: { costMinor: true } } },
+              },
+            },
           },
         },
       }),
@@ -586,6 +619,17 @@ parksRouter.get(
         withheldMinor: d.withheldMinor,
         withheldReason: d.withheldReason,
         status: d.status,
+        /**
+         * Ce que les réserves de sortie justifieraient de retenir.
+         *
+         * PROPOSÉ, jamais appliqué : la retenue reste une décision du
+         * propriétaire, et l'état des lieux en est la pièce, pas l'auteur. Zéro
+         * quand aucune sortie n'a été établie — auquel cas il n'y a rien à
+         * opposer au locataire.
+         */
+        billableMinor: d.lease.inspections
+          .flatMap((i) => i.findings)
+          .reduce((somme, r) => somme + (r.costMinor ?? 0), 0),
       })),
     })
   },
@@ -1117,7 +1161,7 @@ parksRouter.post(
         const locataire = await tx.tenant.create({
           data: { parkId, fullName: corps.fullName, phoneE164: corps.phoneE164 ?? null },
         })
-        return tx.lease.create({
+        const bail = await tx.lease.create({
           data: {
             unitId: unite.id,
             tenantId: locataire.id,
@@ -1132,6 +1176,16 @@ parksRouter.post(
           },
           select: { id: true, unitId: true, status: true },
         })
+
+        if (corps.depositMinor !== undefined) {
+          // `held` : encaissée et détenue. Elle ne devient arbitrable qu'à la
+          // sortie, quand un état des lieux dit ce qu'il y a à retenir.
+          await tx.deposit.create({
+            data: { leaseId: bail.id, heldMinor: corps.depositMinor, status: 'held' },
+          })
+        }
+
+        return bail
       })
       res.status(201).json({ lease: bail })
     } catch {
