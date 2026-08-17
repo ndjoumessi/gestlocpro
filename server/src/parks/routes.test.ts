@@ -1187,3 +1187,341 @@ describe('suppression d’un immeuble', () => {
     expect(res.status).toBe(404)
   })
 })
+
+/**
+ * Relance des loyers, et mise en demeure.
+ *
+ * La page de tarifs vend « Relances automatiques · SMS et e-mail déclenchés à
+ * J+1, J+7, J+15 » depuis le premier jour, et aucune ligne de code n'en
+ * produisait une. La démonstration en affichait pourtant — « relance partie
+ * le … » — ce qui est le pire des deux mondes : la fonction est vendue, montrée,
+ * et absente.
+ *
+ * Ces cas portent d'abord sur ce qu'une relance ne doit PAS faire. Relancer un
+ * locataire à jour, ou le relancer deux fois le même matin, coûte plus cher que
+ * ne pas le relancer du tout : le premier est une accusation fausse, le second
+ * fait passer le bailleur pour un harceleur. C'est la raison d'être du champ
+ * `Notification.channel`, dont le commentaire de schéma disait déjà tout.
+ */
+describe('relance des loyers', () => {
+  let parkId: string
+  let proprio: string
+  let gestionnaire: string
+  let leaseId: string
+
+  /** Une échéance EXIGIBLE et impayée : c'est le seul cas relançable. */
+  async function echeanceEnRetard(rentMinor = 145000) {
+    const charge = await prisma.rentCharge.create({
+      data: {
+        leaseId,
+        periodStart: new Date('2026-06-01T00:00:00Z'),
+        dueOn: new Date('2026-06-05T00:00:00Z'),
+        rentMinor,
+      },
+      select: { id: true },
+    })
+    return charge.id
+  }
+
+  beforeEach(async () => {
+    const p = await inscrire('bailleur@example.com', { parkName: 'Parc' })
+    proprio = p.cookie
+    const parcs = await request(app).get('/api/parks').set('Cookie', proprio)
+    parkId = parcs.body.parks[0].id
+
+    const immeuble = await request(app)
+      .post(`/api/parks/${parkId}/buildings`)
+      .set('Cookie', proprio)
+      .send({ name: 'Résidence Makepe', district: 'Makepe' })
+    const logement = await request(app)
+      .post(`/api/parks/${parkId}/buildings/${immeuble.body.building.id}/units`)
+      .set('Cookie', proprio)
+      .send({ label: 'A1', type: 'T3', surfaceSqm: 78, baseRentMinor: 145000 })
+    const bail = await request(app)
+      .post(`/api/parks/${parkId}/tenants`)
+      .set('Cookie', proprio)
+      .send({ unitId: logement.body.unit.id, fullName: 'Paul Kamga', startsOn: '2026-01-01' })
+    leaseId = bail.body.lease.id
+
+    const g = await inscrire('diane@example.com')
+    gestionnaire = g.cookie
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'diane@example.com' },
+    })
+    await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'manager' } })
+  })
+
+  it('laisse une trace datée, sans prétendre avoir envoyé quoi que ce soit', async () => {
+    const chargeId = await echeanceEnRetard()
+
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/reminders`)
+      .set('Cookie', proprio)
+      .send({ chargeIds: [chargeId] })
+
+    expect(res.status, JSON.stringify(res.body)).toBe(200)
+    expect(res.body.sent).toEqual([chargeId])
+
+    const trace = await prisma.notification.findFirstOrThrow({
+      where: { parkId, messageKey: 'notifications.rentReminder' },
+    })
+    expect(trace.channel).toBe('in_app')
+    /**
+     * `sentAt` NUL, et c'est le point.
+     *
+     * Rien n'est encore expédié — pas de SMS, pas d'e-mail. Poser une date
+     * d'envoi par avance ferait mentir le dossier le jour où un locataire
+     * contestera avoir été prévenu, ce qui est exactement le moment où cette
+     * trace servira.
+     */
+    expect(trace.sentAt).toBeNull()
+  })
+
+  it('ne relance pas deux fois le même locataire dans la même journée', async () => {
+    const chargeId = await echeanceEnRetard()
+    await request(app)
+      .post(`/api/parks/${parkId}/reminders`)
+      .set('Cookie', proprio)
+      .send({ chargeIds: [chargeId] })
+
+    const second = await request(app)
+      .post(`/api/parks/${parkId}/reminders`)
+      .set('Cookie', proprio)
+      .send({ chargeIds: [chargeId] })
+
+    // 200 et non une erreur : l'appel est licite, il n'a simplement rien à
+    // faire. Le corps le dit, plutôt que de laisser croire à un second envoi.
+    expect(second.status).toBe(200)
+    expect(second.body.sent).toEqual([])
+    expect(second.body.skipped[0].reason).toBe('already_reminded_today')
+    expect(await prisma.notification.count({ where: { parkId } })).toBe(1)
+  })
+
+  it('ne relance pas deux échéances du même bail en un seul appel', async () => {
+    // La liste vient du client : rien ne l'empêche de citer deux mois de retard
+    // du même locataire. La garde de la journée ne suffit pas — aucune des deux
+    // n'est encore en base quand la seconde est traitée.
+    const un = await echeanceEnRetard()
+    const deux = await prisma.rentCharge.create({
+      data: {
+        leaseId,
+        periodStart: new Date('2026-07-01T00:00:00Z'),
+        dueOn: new Date('2026-07-05T00:00:00Z'),
+        rentMinor: 145000,
+      },
+      select: { id: true },
+    })
+
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/reminders`)
+      .set('Cookie', proprio)
+      .send({ chargeIds: [un, deux.id] })
+
+    expect(res.body.sent).toHaveLength(1)
+    expect(await prisma.notification.count({ where: { parkId } })).toBe(1)
+  })
+
+  it('refuse de relancer un locataire à jour', async () => {
+    const chargeId = await echeanceEnRetard()
+    await prisma.payment.create({
+      data: {
+        chargeId,
+        amountMinor: 145000,
+        method: 'cash',
+        paidOn: new Date('2026-06-04T00:00:00Z'),
+        recordedById: (
+          await prisma.userAccount.findUniqueOrThrow({ where: { email: 'bailleur@example.com' } })
+        ).id,
+      },
+    })
+
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/reminders`)
+      .set('Cookie', proprio)
+      .send({ chargeIds: [chargeId] })
+
+    // Accuser à tort est le défaut le plus coûteux de cette route : le client
+    // affiche « à jour » au même instant.
+    expect(res.body.sent).toEqual([])
+    expect(res.body.skipped[0].reason).toBe('already_paid')
+    expect(await prisma.notification.count({ where: { parkId } })).toBe(0)
+  })
+
+  it('refuse de relancer une échéance qui n’est pas encore due', async () => {
+    const future = await prisma.rentCharge.create({
+      data: {
+        leaseId,
+        periodStart: new Date('2099-01-01T00:00:00Z'),
+        dueOn: new Date('2099-01-05T00:00:00Z'),
+        rentMinor: 145000,
+      },
+      select: { id: true },
+    })
+
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/reminders`)
+      .set('Cookie', proprio)
+      .send({ chargeIds: [future.id] })
+
+    expect(res.body.skipped[0].reason).toBe('not_overdue')
+  })
+
+  it('ignore une échéance d’un autre parc sans dire qu’elle existe', async () => {
+    const chargeId = await echeanceEnRetard()
+    const autre = await inscrire('voisin@example.com', { parkName: 'Autre parc' })
+    const parcs = await request(app).get('/api/parks').set('Cookie', autre.cookie)
+
+    const res = await request(app)
+      .post(`/api/parks/${parcs.body.parks[0].id}/reminders`)
+      .set('Cookie', autre.cookie)
+      .send({ chargeIds: [chargeId] })
+
+    // `not_found` et non `already_paid` : la réponse ne doit pas renseigner sur
+    // l'état d'une échéance qui appartient à quelqu'un d'autre.
+    expect(res.body.sent).toEqual([])
+    expect(res.body.skipped[0].reason).toBe('not_found')
+  })
+
+  it('ouvre la relance au gestionnaire, dont c’est le métier quotidien', async () => {
+    const chargeId = await echeanceEnRetard()
+
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/reminders`)
+      .set('Cookie', gestionnaire)
+      .send({ chargeIds: [chargeId] })
+
+    expect(res.status).toBe(200)
+    expect(res.body.sent).toEqual([chargeId])
+  })
+})
+
+describe('mise en demeure', () => {
+  let parkId: string
+  let proprio: string
+  let gestionnaire: string
+  let leaseId: string
+
+  const MOTIF = 'Trois échéances impayées malgré deux relances restées sans réponse.'
+
+  beforeEach(async () => {
+    const p = await inscrire('bailleur2@example.com', { parkName: 'Parc' })
+    proprio = p.cookie
+    const parcs = await request(app).get('/api/parks').set('Cookie', proprio)
+    parkId = parcs.body.parks[0].id
+
+    const immeuble = await request(app)
+      .post(`/api/parks/${parkId}/buildings`)
+      .set('Cookie', proprio)
+      .send({ name: 'Résidence Makepe', district: 'Makepe' })
+    const logement = await request(app)
+      .post(`/api/parks/${parkId}/buildings/${immeuble.body.building.id}/units`)
+      .set('Cookie', proprio)
+      .send({ label: 'A1', type: 'T3', surfaceSqm: 78, baseRentMinor: 145000 })
+    const bail = await request(app)
+      .post(`/api/parks/${parkId}/tenants`)
+      .set('Cookie', proprio)
+      .send({ unitId: logement.body.unit.id, fullName: 'Paul Kamga', startsOn: '2026-01-01' })
+    leaseId = bail.body.lease.id
+
+    const g = await inscrire('diane2@example.com')
+    gestionnaire = g.cookie
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'diane2@example.com' },
+    })
+    await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'manager' } })
+  })
+
+  async function impaye() {
+    await prisma.rentCharge.create({
+      data: {
+        leaseId,
+        periodStart: new Date('2026-06-01T00:00:00Z'),
+        dueOn: new Date('2026-06-05T00:00:00Z'),
+        rentMinor: 145000,
+      },
+    })
+  }
+
+  it('trace la décision et le montant, des deux côtés', async () => {
+    await impaye()
+
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/leases/${leaseId}/formal-notice`)
+      .set('Cookie', proprio)
+      .send({ reason: MOTIF })
+
+    expect(res.status, JSON.stringify(res.body)).toBe(201)
+    expect(res.body.formalNotice.dueMinor).toBe(145000)
+
+    /**
+     * Deux traces, et ce n'est pas une redondance : `AuditEvent` garde la pièce
+     * du côté de qui a décidé — c'est elle qu'on produit — et `Notification` la
+     * porte du côté du locataire, qui doit la voir.
+     */
+    const decision = await prisma.auditEvent.findFirstOrThrow({
+      where: { parkId, action: 'lease.formal_notice' },
+    })
+    expect((decision.payload as { reason: string }).reason).toBe(MOTIF)
+    // Le montant est FIGÉ : il sera contesté, et un montant recalculé plus tard
+    // ne serait plus celui qui a été notifié.
+    expect((decision.payload as { dueMinor: number }).dueMinor).toBe(145000)
+
+    const avis = await prisma.notification.findFirstOrThrow({
+      where: { parkId, messageKey: 'notifications.formalNotice' },
+    })
+    expect(avis.severity).toBe('high')
+  })
+
+  it('la refuse au gestionnaire, qui propose mais ne décide pas', async () => {
+    await impaye()
+
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/leases/${leaseId}/formal-notice`)
+      .set('Cookie', gestionnaire)
+      .send({ reason: MOTIF })
+
+    expect(res.status).toBe(403)
+    // Un refus qui laisse une trace n'est pas un refus.
+    expect(await prisma.auditEvent.count({ where: { action: 'lease.formal_notice' } })).toBe(0)
+  })
+
+  it('la refuse quand rien n’est dû', async () => {
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/leases/${leaseId}/formal-notice`)
+      .set('Cookie', proprio)
+      .send({ reason: MOTIF })
+
+    // Mettre en demeure un locataire à jour n'est pas une maladresse
+    // d'interface : c'est une faute, et elle est écrite.
+    expect(res.status).toBe(409)
+    expect(res.body.error).toBe('nothing_due')
+  })
+
+  it('exige un motif, comme la retenue sur caution', async () => {
+    await impaye()
+
+    const res = await request(app)
+      .post(`/api/parks/${parkId}/leases/${leaseId}/formal-notice`)
+      .set('Cookie', proprio)
+      // Six caractères. « trop court » en faisait dix — exactement le minimum,
+      // donc accepté : le fixture disait le contraire de ce qu'il annonçait.
+      .send({ reason: 'impayé' })
+
+    expect(res.status).toBe(400)
+    expect(await prisma.notification.count({ where: { parkId } })).toBe(0)
+  })
+
+  it('ne met pas en demeure sur le bail d’un autre parc', async () => {
+    await impaye()
+    const autre = await inscrire('voisin2@example.com', { parkName: 'Autre parc' })
+    const parcs = await request(app).get('/api/parks').set('Cookie', autre.cookie)
+
+    const res = await request(app)
+      .post(`/api/parks/${parcs.body.parks[0].id}/leases/${leaseId}/formal-notice`)
+      .set('Cookie', autre.cookie)
+      .send({ reason: MOTIF })
+
+    // 404 et non 403 : un 403 confirmerait que ce bail existe ailleurs.
+    expect(res.status).toBe(404)
+  })
+})

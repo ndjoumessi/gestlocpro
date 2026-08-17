@@ -103,6 +103,29 @@ const schemaInvitation = z.object({
     .optional(),
 })
 
+/**
+ * Les échéances à relancer, désignées une par une.
+ *
+ * Le client calcule qui est en retard — c'est lui qui l'affiche — mais il n'en
+ * est pas l'AUTORITÉ : chaque échéance est revérifiée ici. Sans cela, un client
+ * fautif, ancien ou malveillant relancerait un locataire à jour, et une relance
+ * indue coûte plus cher qu'une relance manquée.
+ */
+const schemaRelance = z.object({
+  chargeIds: z.array(z.string().uuid()).min(1).max(200),
+})
+
+/**
+ * Mise en demeure : le motif est OBLIGATOIRE.
+ *
+ * C'est l'acte le plus engageant du produit — il précède la résiliation et se
+ * produit devant un juge. Une trace sans motif est indéfendable, exactement
+ * comme la retenue sur caution dont la justification était jetée.
+ */
+const schemaMiseEnDemeure = z.object({
+  reason: z.string().trim().min(10).max(2000),
+})
+
 const schemaLocataire = z.object({
   unitId: z.string().uuid(),
   fullName: z.string().trim().min(2).max(120),
@@ -1048,5 +1071,245 @@ parksRouter.post(
        */
       res.status(409).json({ error: 'unit_already_leased' })
     }
+  },
+)
+
+/** Minuit du jour courant, en UTC — la borne du « déjà relancé aujourd'hui ». */
+function debutDuJour(maintenant: Date): Date {
+  return new Date(
+    Date.UTC(maintenant.getUTCFullYear(), maintenant.getUTCMonth(), maintenant.getUTCDate()),
+  )
+}
+
+/** Clé de message d'une relance, et marqueur de sa trace. */
+const CLE_RELANCE = 'notifications.rentReminder'
+/** Clé de message d'une mise en demeure. */
+const CLE_MISE_EN_DEMEURE = 'notifications.formalNotice'
+
+/**
+ * Relance des loyers en retard.
+ *
+ * La page de tarifs VEND cette fonction — « SMS et e-mail déclenchés à J+1,
+ * J+7, J+15 » — et rien ne la produisait. Pire : la démonstration affichait des
+ * relances (« relance partie le … ») qu'aucun code n'avait envoyées. Le modèle,
+ * lui, l'attendait : le champ `Notification.channel` porte en commentaire la
+ * raison même de cette route — « sans trace d'envoi, le produit relancerait
+ * deux fois le même locataire le même jour ».
+ *
+ * Ce qui est livré ici est la trace, pas l'envoi. Le canal est enregistré,
+ * `sentAt` reste NUL tant que rien n'est parti : une date d'envoi posée par
+ * avance ferait mentir le dossier le jour où un locataire contestera. La
+ * planification J+1/J+7/J+15 viendra au-dessus de cette trace, pas à sa place.
+ *
+ * Ouverte au gestionnaire : relancer relève de la gestion quotidienne, et c'est
+ * précisément ce qu'un propriétaire délègue. La mise en demeure, elle, ne l'est
+ * pas — voir la route suivante.
+ */
+parksRouter.post(
+  '/:parkId/reminders',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const corps = schemaRelance.parse(req.body)
+
+    const maintenant = new Date()
+    const minuit = debutDuJour(maintenant)
+
+    const echeances = await prisma.rentCharge.findMany({
+      // Le `parkId` est dans le WHERE, pas vérifié après lecture : une échéance
+      // d'un autre parc ne doit pas même être chargée.
+      where: { id: { in: corps.chargeIds }, lease: { unit: { building: { parkId } } } },
+      select: {
+        id: true,
+        dueOn: true,
+        rentMinor: true,
+        payments: { select: { amountMinor: true } },
+        lease: {
+          select: {
+            id: true,
+            unitId: true,
+            tenant: { select: { id: true, fullName: true, userId: true } },
+          },
+        },
+      },
+    })
+
+    /**
+     * Les échéances déjà relancées AUJOURD'HUI, en une requête.
+     *
+     * Une lecture par échéance ferait N requêtes pour une action qui en vise
+     * une quinzaine sur un parc moyen — et la grille tarifaire chiffre le cas à
+     * cinquante unités.
+     */
+    const dejaRelancees = await prisma.notification.findMany({
+      where: {
+        parkId,
+        messageKey: CLE_RELANCE,
+        createdAt: { gte: minuit },
+        unitId: { in: echeances.map((e) => e.lease.unitId) },
+      },
+      select: { unitId: true },
+    })
+    const unitesDejaVues = new Set(dejaRelancees.map((n) => n.unitId))
+
+    const envoyees: string[] = []
+    const ignorees: { chargeId: string; reason: string }[] = []
+
+    for (const echeance of echeances) {
+      const regle = echeance.payments.reduce((somme, p) => somme + p.amountMinor, 0)
+      // Le même calcul que `statut()`, délibérément : relancer un locataire que
+      // l'écran affiche à jour serait le pire des défauts possibles ici.
+      if (regle >= echeance.rentMinor) {
+        ignorees.push({ chargeId: echeance.id, reason: 'already_paid' })
+        continue
+      }
+      const jours = Math.floor((maintenant.getTime() - echeance.dueOn.getTime()) / 86_400_000)
+      if (jours <= 0) {
+        ignorees.push({ chargeId: echeance.id, reason: 'not_overdue' })
+        continue
+      }
+      if (unitesDejaVues.has(echeance.lease.unitId)) {
+        ignorees.push({ chargeId: echeance.id, reason: 'already_reminded_today' })
+        continue
+      }
+
+      await prisma.notification.create({
+        data: {
+          parkId,
+          kind: 'payment',
+          messageKey: CLE_RELANCE,
+          params: {
+            tenant: echeance.lease.tenant.fullName,
+            overdueDays: jours,
+            dueMinor: echeance.rentMinor - regle,
+          },
+          severity: jours >= 15 ? 'high' : 'medium',
+          unitId: echeance.lease.unitId,
+          channel: 'in_app',
+          // `sentAt` reste nul : rien n'est encore parti.
+          //
+          // La clé est posée ou ABSENTE, jamais à `undefined` : un locataire
+          // sans compte n'a pas de destinataire, et `exactOptionalPropertyTypes`
+          // distingue « pas de destinataire » de « destinataire indéfini ».
+          ...(echeance.lease.tenant.userId
+            ? { recipients: { create: [{ userId: echeance.lease.tenant.userId }] } }
+            : {}),
+        },
+      })
+
+      // La même unité relancée deux fois dans UN SEUL appel : la liste est
+      // fournie par le client, rien ne l'empêche de citer deux échéances du
+      // même bail.
+      unitesDejaVues.add(echeance.lease.unitId)
+      envoyees.push(echeance.id)
+    }
+
+    // Les identifiants inconnus du parc n'ont même pas été lus : ils sortent
+    // ici, sans dire s'ils existent ailleurs.
+    const lues = new Set(echeances.map((e) => e.id))
+    for (const id of corps.chargeIds) {
+      if (!lues.has(id)) ignorees.push({ chargeId: id, reason: 'not_found' })
+    }
+
+    if (envoyees.length > 0) {
+      await prisma.auditEvent.create({
+        data: {
+          parkId,
+          actorId: req.compteId!,
+          action: 'rent.remind',
+          entity: 'RentCharge',
+          entityId: envoyees[0]!,
+          payload: { chargeIds: envoyees, count: envoyees.length },
+        },
+      })
+    }
+
+    // 200 et non 201 : l'appel peut n'avoir rien créé — tout était déjà relancé
+    // ce matin — et ce n'est pas une erreur. Le corps dit ce qui a eu lieu.
+    res.json({ sent: envoyees, skipped: ignorees })
+  },
+)
+
+/**
+ * Mise en demeure d'un locataire.
+ *
+ * Réservée au PROPRIÉTAIRE, comme la validation d'un devis et l'arbitrage d'une
+ * caution. Le gestionnaire « propose, ne décide pas » : une mise en demeure
+ * ouvre la voie à la résiliation et engage le bailleur, pas son mandataire.
+ *
+ * Elle est tracée deux fois, et ce n'est pas une redondance : `AuditEvent` la
+ * garde du côté de qui a décidé — c'est la pièce qu'on produit — et
+ * `Notification` la porte du côté du locataire, qui doit la voir.
+ */
+parksRouter.post(
+  '/:parkId/leases/:leaseId/formal-notice',
+  exigerAppartenance,
+  exigerRole('owner'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const leaseId = z.string().uuid().parse(req.params.leaseId)
+    const corps = schemaMiseEnDemeure.parse(req.body)
+
+    const maintenant = new Date()
+    const bail = await prisma.lease.findFirst({
+      where: { id: leaseId, unit: { building: { parkId } } },
+      select: {
+        id: true,
+        unitId: true,
+        tenant: { select: { fullName: true, userId: true } },
+        charges: {
+          where: { dueOn: { lt: maintenant } },
+          select: { rentMinor: true, payments: { select: { amountMinor: true } } },
+        },
+      },
+    })
+    if (!bail) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    /**
+     * Le reste dû, recalculé sur TOUTES les échéances exigibles.
+     *
+     * Mettre en demeure un locataire à jour n'est pas une maladresse
+     * d'interface : c'est une faute, et elle est écrite. Le montant est figé
+     * dans la trace parce qu'il sera contesté.
+     */
+    const dûMinor = bail.charges.reduce((somme, c) => {
+      const regle = c.payments.reduce((s, p) => s + p.amountMinor, 0)
+      return somme + Math.max(0, c.rentMinor - regle)
+    }, 0)
+    if (dûMinor <= 0) {
+      res.status(409).json({ error: 'nothing_due' })
+      return
+    }
+
+    await prisma.$transaction([
+      prisma.auditEvent.create({
+        data: {
+          parkId,
+          actorId: req.compteId!,
+          action: 'lease.formal_notice',
+          entity: 'Lease',
+          entityId: bail.id,
+          payload: { reason: corps.reason, dueMinor: dûMinor },
+        },
+      }),
+      prisma.notification.create({
+        data: {
+          parkId,
+          kind: 'lease',
+          messageKey: CLE_MISE_EN_DEMEURE,
+          params: { tenant: bail.tenant.fullName, dueMinor: dûMinor },
+          severity: 'high',
+          unitId: bail.unitId,
+          channel: 'in_app',
+          ...(bail.tenant.userId ? { recipients: { create: [{ userId: bail.tenant.userId }] } } : {}),
+        },
+      }),
+    ])
+
+    res.status(201).json({ formalNotice: { leaseId: bail.id, dueMinor: dûMinor } })
   },
 )
