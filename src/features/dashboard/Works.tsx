@@ -41,7 +41,7 @@ export function Works() {
    * doit disparaître de la carte « Ce qui demande une décision » du tableau de
    * bord, qui la réclamait encore.
    */
-  const { works, approveWork, completeWork, reopenWork, unitById, isMine, loading } =
+  const { works, approveWork, unapproveWork, completeWork, reopenWork, unitById, isMine, loading } =
     usePortfolio()
 
   // Le locataire suit les interventions sur SON logement, pas celles du parc.
@@ -51,7 +51,13 @@ export function Works() {
 
   const approve = (id: string) => {
     approveWork(id)
-    notify(t('app.works.approved_toast'), { tone: 'ok' })
+    // Valider engage une dépense, et se tromper de ligne dans une liste de
+    // devis est ordinaire. Le retrait rend le devis à l'arbitrage sans effacer
+    // la proposition : il n'y a rien à redemander à l'artisan.
+    notify(t('app.works.approved_toast'), {
+      tone: 'ok',
+      action: { label: t('common.undo'), onClick: () => unapproveWork(id) },
+    })
   }
 
   const complete = (id: string) => {

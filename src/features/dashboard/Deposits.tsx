@@ -34,7 +34,7 @@ export function Deposits() {
 
   // Les cautions viennent de l'état partagé : arbitrer ici doit se voir dans
   // l'espace locataire, qui affiche la caution consignée du bail.
-  const { deposits, settleDeposit, unitById, loading } = usePortfolio()
+  const { deposits, settleDeposit, unsettleDeposit, unitById, loading } = usePortfolio()
   const [settling, setSettling] = useState<Deposit | null>(null)
 
   /**
@@ -54,7 +54,21 @@ export function Deposits() {
     // décompte sans motif est indéfendable » — et perdue une ligne plus bas.
     settleDeposit(unitId, withheld, reason)
     setSettling(null)
-    notify(t('app.deposits.settled'), { tone: 'ok' })
+    /**
+     * L'annulation est offerte AVEC le message, et elle est réelle.
+     *
+     * C'est le geste le plus lourd du produit après la mise en demeure : il
+     * retient l'argent de quelqu'un. Une retenue portée sur la mauvaise caution
+     * ne se réparait que dans la base.
+     *
+     * Elle n'expire pas : une erreur de ligne se découvre en relisant sa liste,
+     * pas dans les six secondes du message. Le journal garde LES DEUX
+     * décisions — le locataire a pu voir la première.
+     */
+    notify(t('app.deposits.settled'), {
+      tone: 'ok',
+      action: { label: t('common.undo'), onClick: () => unsettleDeposit(unitId) },
+    })
   }
 
   /**

@@ -84,6 +84,10 @@ interface PortfolioContextValue {
    * `quoted` un devis déjà validé, et effacerait la décision du propriétaire.
    */
   reopenWork: (id: string) => void
+  /** Défait une validation de devis : le devis redevient à arbitrer. */
+  unapproveWork: (id: string) => void
+  /** Défait un arbitrage de caution : elle redevient retenue, sans retenue. */
+  unsettleDeposit: (unitId: string) => void
   /** Le propriétaire arbitre une caution : retenue et restitution du solde. */
   /**
    * Arbitre une caution. La justification traverse jusqu'au serveur, qui
@@ -536,6 +540,41 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [parkId, signalerEchec],
   )
 
+  const unapproveWork = useCallback(
+    (id: string) => {
+      if (!parkId) {
+        setWorks((list) => list.map((w) => (w.id === id ? { ...w, status: 'quoted' } : w)))
+        return
+      }
+      void api
+        .unapproveWork<{ work: { id: string; status: WorkOrder['status'] } }>(parkId, id)
+        .then(({ work }) =>
+          setWorks((list) => list.map((w) => (w.id === work.id ? { ...w, status: work.status } : w))),
+        )
+        .catch(signalerEchec)
+    },
+    [parkId, signalerEchec],
+  )
+
+  const unsettleDeposit = useCallback(
+    (unitId: string) => {
+      const caution = deposits.find((d) => d.unitId === unitId)
+      const local = () =>
+        setDeposits((list) =>
+          list.map((d) => (d.unitId === unitId ? { ...d, withheld: 0, status: 'held' } : d)),
+        )
+      if (!parkId || !caution?.id) {
+        local()
+        return
+      }
+      void api
+        .unsettleDeposit(parkId, caution.id)
+        .then(local)
+        .catch(signalerEchec)
+    },
+    [parkId, deposits, signalerEchec],
+  )
+
   const settleDeposit = useCallback(
     (unitId: string, withheld: number, reason?: string) => {
       const local = () =>
@@ -801,6 +840,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       quoteWork,
       completeWork,
       reopenWork,
+      unapproveWork,
+      unsettleDeposit,
       settleDeposit,
       addTenant,
       addBuilding,
@@ -861,6 +902,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       quoteWork,
       completeWork,
       reopenWork,
+      unapproveWork,
+      unsettleDeposit,
       settleDeposit,
       addTenant,
       addBuilding,

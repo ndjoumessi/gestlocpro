@@ -80,6 +80,32 @@ describe('clôture d’une intervention', () => {
     expect(screen.getAllByText('Terminé')).toHaveLength(avant)
   })
 
+  it('rend le devis à l’arbitrage quand on défait sa validation', async () => {
+    const user = userEvent.setup()
+    renderApp('/demo/travaux')
+    await attendreLeChargement()
+
+    // `queryAllByText` et non `getAllByText` : la démonstration ne porte qu'UN
+    // devis en attente, donc le compte tombe à zéro — et `getAllBy` lève au
+    // lieu de rendre une liste vide, ce qui ferait échouer le cas sur sa
+    // mécanique plutôt que sur son objet.
+    const avant = screen.queryAllByText('Devis proposé').length
+    expect(avant, 'le jeu de démonstration ne porte plus de devis en attente').toBeGreaterThan(0)
+
+    await user.click(screen.getAllByRole('button', { name: /^valider le devis$/i })[0]!)
+    expect(screen.queryAllByText('Devis proposé')).toHaveLength(avant - 1)
+
+    /**
+     * Le devis REVIENT, il ne disparaît pas.
+     *
+     * C'est l'accord qui est retiré, pas la proposition : effacer le montant
+     * obligerait à le redemander à l'artisan. Un « Annuler » qui rendrait le
+     * travail à l'état déclaré serait donc pire qu'aucun.
+     */
+    await user.click(screen.getByRole('button', { name: /annuler l’action/i }))
+    expect(screen.queryAllByText('Devis proposé')).toHaveLength(avant)
+  })
+
   /**
    * Le cas « pas offert au locataire » N'EST PAS ici, et c'est délibéré.
    *

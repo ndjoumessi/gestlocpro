@@ -1866,3 +1866,145 @@ describe('cycle des interventions', () => {
     expect(res.status).toBe(404)
   })
 })
+
+/**
+ * Défaire les deux gestes qui engagent de l'argent.
+ *
+ * Valider un devis engage une dépense ; arbitrer une caution retient l'argent de
+ * quelqu'un. Ce sont les deux droits qui définissent le propriétaire, et aucun
+ * des deux n'avait de retour en arrière : une erreur de ligne dans une liste se
+ * réparait hors du produit, ou pas du tout.
+ */
+describe('défaire un arbitrage', () => {
+  let parkId: string
+  let proprio: string
+  let gestionnaire: string
+
+  beforeEach(async () => {
+    const p = await inscrire('arbitre@example.com', {
+      parkName: 'Parc Bonamoussadi',
+      countryCode: 'CM',
+      seedDemo: true,
+    })
+    proprio = p.cookie
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio)
+    parkId = parcs.body.parks[0].id
+
+    const g = await inscrire('diane4@example.com')
+    gestionnaire = g.cookie
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'diane4@example.com' },
+    })
+    await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'manager' } })
+  })
+
+  async function devisValide() {
+    const pf = await request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', proprio)
+    const devis = pf.body.works.find((w: { status: string }) => w.status === 'quoted')
+    await request(serveur)
+      .patch(`/api/parks/${parkId}/works/${devis.id}/approve`)
+      .set('Cookie', proprio)
+    return devis.id as string
+  }
+
+  it('rend le devis à l’arbitrage, et efface le seul montant engagé', async () => {
+    const workId = await devisValide()
+
+    const res = await request(serveur)
+      .patch(`/api/parks/${parkId}/works/${workId}/unapprove`)
+      .set('Cookie', proprio)
+
+    expect(res.status, JSON.stringify(res.body)).toBe(200)
+    const apres = await prisma.workOrder.findUniqueOrThrow({ where: { id: workId } })
+    expect(apres.status).toBe('quoted')
+    // Le devis EXISTE toujours : c'est l'accord qui est retiré, pas la
+    // proposition. Effacer le montant proposé obligerait à tout redemander.
+    expect(apres.quotedAmountMinor).not.toBeNull()
+    expect(apres.approvedAmountMinor).toBeNull()
+    expect(apres.approvedAt).toBeNull()
+  })
+
+  it('la refuse au gestionnaire, qui n’a pas le droit de valider', async () => {
+    const workId = await devisValide()
+
+    const res = await request(serveur)
+      .patch(`/api/parks/${parkId}/works/${workId}/unapprove`)
+      .set('Cookie', gestionnaire)
+
+    // Lui rendre le pouvoir d'effacer une décision qu'il ne peut pas prendre
+    // reviendrait à lui donner ce droit par la bande.
+    expect(res.status).toBe(403)
+    const apres = await prisma.workOrder.findUniqueOrThrow({ where: { id: workId } })
+    expect(apres.status).toBe('approved')
+  })
+
+  it('refuse de défaire l’accord d’un travail déjà terminé', async () => {
+    const workId = await devisValide()
+    await request(serveur)
+      .patch(`/api/parks/${parkId}/works/${workId}/complete`)
+      .set('Cookie', proprio)
+      .send({})
+
+    const res = await request(serveur)
+      .patch(`/api/parks/${parkId}/works/${workId}/unapprove`)
+      .set('Cookie', proprio)
+
+    /**
+     * L'artisan est passé, la dépense est réelle. Défaire l'accord laisserait
+     * une intervention faite et non engagée — un état que la comptabilité ne
+     * sait pas lire. Il faut d'abord rouvrir : deux gestes pour deux faits.
+     */
+    expect(res.status).toBe(409)
+    expect(res.body.error).toBe('not_approved')
+  })
+
+  it('rend la caution à son état retenu, et garde les deux traces', async () => {
+    const pf = await request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', proprio)
+    const caution = pf.body.deposits.find((d: { status: string }) => d.status !== 'returned')
+    const depositId = (
+      await prisma.deposit.findFirstOrThrow({ where: { lease: { unit: { label: caution.unit } } } })
+    ).id
+
+    await request(serveur)
+      .patch(`/api/parks/${parkId}/deposits/${depositId}/settle`)
+      .set('Cookie', proprio)
+      .send({ withheldMinor: 38000, reason: 'Réserves de l’état des lieux.' })
+
+    const res = await request(serveur)
+      .patch(`/api/parks/${parkId}/deposits/${depositId}/unsettle`)
+      .set('Cookie', proprio)
+
+    expect(res.status, JSON.stringify(res.body)).toBe(200)
+    const apres = await prisma.deposit.findUniqueOrThrow({ where: { id: depositId } })
+    expect(apres.status).toBe('held')
+    expect(apres.withheldMinor).toBe(0)
+    expect(apres.withheldReason).toBeNull()
+
+    /**
+     * LES DEUX événements restent au journal.
+     *
+     * Le locataire a pu voir la retenue ; un dossier d'où les décisions
+     * disparaissent ne défend plus personne. Et le retrait consigne le montant
+     * défait, sans quoi le journal dirait qu'un arbitrage a été retiré sans dire
+     * lequel.
+     */
+    const journal = await prisma.auditEvent.findMany({
+      where: { parkId, entityId: depositId },
+      orderBy: { createdAt: 'asc' },
+    })
+    expect(journal.map((e) => e.action)).toEqual(['deposit.settle', 'deposit.unsettle'])
+    expect((journal[1]!.payload as { withheldMinor: number }).withheldMinor).toBe(38000)
+  })
+
+  it('refuse de défaire une caution jamais arbitrée', async () => {
+    const caution = await prisma.deposit.findFirstOrThrow({
+      where: { status: 'held', lease: { unit: { building: { parkId } } } },
+    })
+
+    const res = await request(serveur)
+      .patch(`/api/parks/${parkId}/deposits/${caution.id}/unsettle`)
+      .set('Cookie', proprio)
+
+    expect(res.status).toBe(409)
+  })
+})

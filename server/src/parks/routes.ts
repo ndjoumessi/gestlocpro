@@ -1617,3 +1617,134 @@ parksRouter.patch(
     res.json({ work: maj })
   },
 )
+
+/**
+ * Défaire une validation de devis.
+ *
+ * Valider engage une dépense ; se tromper de ligne dans une liste de devis est
+ * ordinaire, et rien ne permettait de revenir. La correction se faisait donc
+ * hors du produit — au téléphone, ou pas du tout.
+ *
+ * Réservée au PROPRIÉTAIRE, comme la validation qu'elle défait : rendre à un
+ * gestionnaire le pouvoir d'effacer une décision qu'il n'a pas le droit de
+ * prendre reviendrait à lui donner ce droit par la bande.
+ *
+ * Le retour se fait à `quoted` et non à `reported` : le devis existe toujours,
+ * c'est l'accord qui est retiré. Le montant proposé est conservé, le montant
+ * ENGAGÉ est effacé — c'est toute la différence, et c'est elle qu'on rétablit.
+ */
+parksRouter.patch(
+  '/:parkId/works/:workId/unapprove',
+  exigerAppartenance,
+  exigerRole('owner'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const workId = z.string().uuid().parse(req.params.workId)
+
+    const travail = await prisma.workOrder.findFirst({
+      where: { id: workId, unit: { building: { parkId } } },
+      select: { id: true, status: true },
+    })
+    if (!travail) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+    if (travail.status !== 'approved') {
+      /**
+       * Un travail TERMINÉ n'est pas concerné, et c'est délibéré : l'artisan est
+       * passé, la dépense est réelle. Défaire l'accord laisserait une
+       * intervention faite et non engagée. Il faut d'abord la rouvrir — deux
+       * gestes pour deux faits distincts.
+       */
+      res.status(409).json({ error: 'not_approved' })
+      return
+    }
+
+    const maj = await prisma.workOrder.update({
+      where: { id: travail.id },
+      data: {
+        status: 'quoted',
+        approvedAmountMinor: null,
+        approvedAt: null,
+        approvedById: null,
+      },
+      select: { id: true, status: true, quotedAmountMinor: true },
+    })
+
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'work.unapprove',
+        entity: 'WorkOrder',
+        entityId: travail.id,
+        payload: {},
+      },
+    })
+
+    res.json({ work: maj })
+  },
+)
+
+/**
+ * Défaire un arbitrage de caution.
+ *
+ * C'est le geste le plus lourd du produit après la mise en demeure : il retient
+ * l'argent de quelqu'un. Une retenue portée sur la mauvaise caution ne se
+ * réparait que dans la base.
+ *
+ * La trace de l'arbitrage défait N'EST PAS effacée. `AuditEvent` garde les deux
+ * événements — l'arbitrage et son retrait — parce que le locataire a pu voir le
+ * premier, et qu'un dossier d'où les décisions disparaissent ne défend plus
+ * personne.
+ */
+parksRouter.patch(
+  '/:parkId/deposits/:depositId/unsettle',
+  exigerAppartenance,
+  exigerRole('owner'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const depositId = z.string().uuid().parse(req.params.depositId)
+
+    const caution = await prisma.deposit.findFirst({
+      where: { id: depositId, lease: { unit: { building: { parkId } } } },
+      select: { id: true, status: true, withheldMinor: true, withheldReason: true },
+    })
+    if (!caution) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+    if (caution.status !== 'returned') {
+      res.status(409).json({ error: 'not_settled' })
+      return
+    }
+
+    const maj = await prisma.deposit.update({
+      where: { id: caution.id },
+      data: {
+        status: 'held',
+        withheldMinor: 0,
+        withheldReason: null,
+        settledAt: null,
+        settledById: null,
+        returnedAt: null,
+      },
+      select: { id: true, status: true, withheldMinor: true },
+    })
+
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'deposit.unsettle',
+        entity: 'Deposit',
+        entityId: caution.id,
+        // Ce qui est défait est consigné : sans ce montant, le journal dirait
+        // qu'un arbitrage a été retiré sans dire lequel.
+        payload: { withheldMinor: caution.withheldMinor, reason: caution.withheldReason },
+      },
+    })
+
+    res.json({ deposit: maj })
+  },
+)

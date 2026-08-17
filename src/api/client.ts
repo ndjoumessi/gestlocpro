@@ -156,6 +156,18 @@ export const api = {
   approveWork: <T>(parkId: string, workId: string) =>
     requete<T>(`/parks/${parkId}/works/${workId}/approve`, { method: 'PATCH' }),
 
+  /**
+   * Défait une validation de devis. Le devis subsiste, l'accord est retiré.
+   *
+   * Refusé sur un travail TERMINÉ : l'artisan est passé, la dépense est réelle.
+   */
+  unapproveWork: <T>(parkId: string, workId: string) =>
+    requete<T>(`/parks/${parkId}/works/${workId}/unapprove`, { method: 'PATCH' }),
+
+  /** Défait un arbitrage de caution. Les deux traces restent au journal. */
+  unsettleDeposit: <T>(parkId: string, depositId: string) =>
+    requete<T>(`/parks/${parkId}/deposits/${depositId}/unsettle`, { method: 'PATCH' }),
+
   /** Chiffre une intervention déclarée. Le propriétaire arbitrera. */
   quoteWork: <T>(parkId: string, workId: string, quotedAmountMinor: number) =>
     requete<T>(`/parks/${parkId}/works/${workId}/quote`, {
