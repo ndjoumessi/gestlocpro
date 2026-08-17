@@ -169,6 +169,26 @@ export function Deposits() {
                       {t('app.deposits.settle')}
                     </Button>
                   )}
+                  {/*
+                    Défaire l'arbitrage : UN BOUTON, et pas seulement l'action
+                    d'un message qui s'efface au bout de quatre secondes et
+                    demie. C'est le geste le plus lourd du produit après la mise
+                    en demeure — il retient l'argent de quelqu'un — et une
+                    retenue portée sur la mauvaise ligne se découvre en relisant
+                    sa liste, pas dans les secondes qui suivent le clic.
+                  */}
+                  {d.status === 'returned' && canSettle && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        unsettleDeposit(d.unitId)
+                        notify(t('app.deposits.unsettled_toast'), { tone: 'ok' })
+                      }}
+                    >
+                      {t('app.deposits.unsettle')}
+                    </Button>
+                  )}
                 </div>
               ),
             },

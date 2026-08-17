@@ -17,6 +17,9 @@ import { type WorkOrder } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { workTitle } from '@/data/workTitle'
 import { ReportModal } from './ReportModal'
+import { Modal } from '@/components/primitives/Modal'
+import { Field } from '@/components/primitives/Field'
+import { Input } from '@/components/primitives/Input'
 
 const STATUS_TONE: Record<WorkOrder['status'], StatusTone> = {
   reported: 'neutral',
@@ -47,6 +50,7 @@ export function Works() {
     works,
     units,
     approveWork,
+    quoteWork,
     unapproveWork,
     completeWork,
     reopenWork,
@@ -55,6 +59,9 @@ export function Works() {
     loading,
   } = usePortfolio()
   const [signalementOuvert, setSignalementOuvert] = useState(false)
+  const [aChiffrer, setAChiffrer] = useState<WorkOrder | null>(null)
+  const [montant, setMontant] = useState('')
+  const [montantErreur, setMontantErreur] = useState(false)
 
   // Le locataire suit les interventions sur SON logement, pas celles du parc.
   // Le périmètre vient du provider, qui le tient du serveur : le client ne
@@ -73,6 +80,25 @@ export function Works() {
   }
 
   const mesUnites = units.filter((u) => isMine(u.id))
+
+  /**
+   * Retirer une validation, et rouvrir : DES BOUTONS, pas seulement un toast.
+   *
+   * Ces deux gestes n'existaient que comme action du message de confirmation,
+   * lequel s'efface au bout de quatre secondes et demie. J'avais pourtant écrit
+   * qu'une fenêtre qui expire en silence enseigne un filet qui n'existe pas —
+   * puis livré exactement cela. La capacité était permanente côté serveur et
+   * injoignable à l'écran passé le délai.
+   */
+  const reopen = (id: string) => {
+    reopenWork(id)
+    notify(t('app.works.reopened_toast'), { tone: 'ok' })
+  }
+
+  const unapprove = (id: string) => {
+    unapproveWork(id)
+    notify(t('app.works.unapproved_toast'), { tone: 'ok' })
+  }
 
   const complete = (id: string) => {
     completeWork(id)
@@ -213,6 +239,40 @@ export function Works() {
                   {t(`app.works.${work.status}` as 'app.works.reported')}
                 </StatusPill>
 
+                {/*
+                  CHIFFRER : l'action centrale du gestionnaire, et elle n'avait
+                  aucun bouton. La route existait, la méthode du fournisseur
+                  aussi — rien ne les appelait. « Le locataire signale, le
+                  gestionnaire chiffre, le propriétaire arbitre » dit le
+                  sous-titre de cet écran ; le deuxième maillon manquait.
+                */}
+                {work.status === 'reported' && role !== 'tenant' && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      setAChiffrer(work)
+                      setMontant('')
+                      setMontantErreur(false)
+                    }}
+                  >
+                    {t('app.works.quote')}
+                  </Button>
+                )}
+
+                {/* Retirer la validation : réservé à qui a le droit de valider. */}
+                {work.status === 'approved' && canApprove && (
+                  <Button variant="ghost" size="sm" onClick={() => unapprove(work.id)}>
+                    {t('app.works.unapprove')}
+                  </Button>
+                )}
+
+                {work.status === 'done' && role !== 'tenant' && (
+                  <Button variant="ghost" size="sm" onClick={() => reopen(work.id)}>
+                    {t('app.works.reopen')}
+                  </Button>
+                )}
+
                 {work.status === 'quoted' && canApprove && (
                   <Button
                     size="sm"
@@ -250,6 +310,59 @@ export function Works() {
           )
         })}
       </div>
+      )}
+
+      {aChiffrer && (
+        <Modal
+          open
+          onClose={() => setAChiffrer(null)}
+          size="sm"
+          title={t('app.works.quoteTitle')}
+          description={t('app.works.quoteBody')}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setAChiffrer(null)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                onClick={() => {
+                  const valeur = Number(montant.replace(/\s/g, ''))
+                  // La même borne que le serveur — « un devis est strictement
+                  // positif » — pour que le refus arrive avant l'aller-retour.
+                  if (!Number.isFinite(valeur) || valeur <= 0) {
+                    setMontantErreur(true)
+                    return
+                  }
+                  quoteWork(aChiffrer.id, Math.round(valeur))
+                  setAChiffrer(null)
+                  notify(t('app.works.quoted_toast'), { tone: 'ok' })
+                }}
+              >
+                {t('common.confirm')}
+              </Button>
+            </>
+          }
+        >
+          <Field
+            label={t('app.works.quoteAmount')}
+            hint={t('app.works.quoteHint')}
+            required
+            {...(montantErreur ? { error: t('app.works.quoteError') } : {})}
+          >
+            {(champ) => (
+              <Input
+                {...champ}
+                inputMode="numeric"
+                value={montant}
+                invalid={montantErreur}
+                onChange={(e) => {
+                  setMontant(e.target.value)
+                  setMontantErreur(false)
+                }}
+              />
+            )}
+          </Field>
+        </Modal>
       )}
 
       {role === 'tenant' && mesUnites[0] && (
