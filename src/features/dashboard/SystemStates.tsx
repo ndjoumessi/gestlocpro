@@ -3,7 +3,11 @@ import { Card, CardHeader } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
 import { Icon } from '@/components/primitives/Icon'
 import { EmptyState } from '@/components/primitives/DataTable'
-import { Skeleton, SkeletonRegion } from '@/components/primitives/Skeleton'
+import {
+  SkeletonRegion,
+  SkeletonStatCard,
+  SkeletonTable,
+} from '@/components/primitives/Skeleton'
 import { useToast } from '@/components/primitives/Toast'
 import { useT } from '@/i18n/I18nProvider'
 import { usePortfolio } from '@/data/PortfolioProvider'
@@ -33,11 +37,33 @@ export function SystemStates() {
               montrait donc un état que le produit ne savait pas rendre : les
               écrans réels servaient le jeu de démonstration pendant que le parc
               du serveur arrivait. La vitrine et le produit rendent désormais le
-              MÊME composant, ce qui est la seule façon qu'elle reste honnête. */}
-          <SkeletonRegion className="flex flex-col gap-3">
-            {[80, 100, 65, 90].map((largeur, index) => (
-              <Skeleton key={index} line="body" width={`${largeur}%`} />
-            ))}
+              MÊME composant, ce qui est la seule façon qu'elle reste honnête.
+
+              Quatre barres restaient pourtant une abstraction : aucun écran du
+              produit n'attend sous cette forme. Ils attendent en rangée
+              d'indicateurs au-dessus d'un tableau — c'est la composition de
+              `PortfolioSkeleton`, de `PaymentsSkeleton` et des six autres. La
+              vitrine la reprend donc telle quelle, avec les mêmes primitives :
+              ce qu'on y voit est littéralement ce que le produit affiche.
+
+              Deux indicateurs et non quatre, trois lignes de tableau et non
+              huit : la carte occupe une demi-colonne, pas un écran. Le nombre
+              est le seul écart, et il ne change ni les composants ni leur
+              agencement. */}
+          <SkeletonRegion>
+            {/* Empilés sous `sm`, comme sur les écrans réels. Deux colonnes à
+                375 px laissent 130 px par carte, où la ligne d'indicateur —
+                `w-32`, soit 128 px — déborde du cadre une fois le rembourrage
+                retiré. La grille du produit dit déjà `sm:grid-cols-2` ; s'en
+                écarter ici reproduisait le défaut que la vitrine est censée
+                exclure. */}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <SkeletonStatCard />
+              <SkeletonStatCard />
+            </div>
+            <div className="mt-3">
+              <SkeletonTable rows={3} />
+            </div>
           </SkeletonRegion>
         </Card>
 

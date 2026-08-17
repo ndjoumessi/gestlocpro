@@ -131,6 +131,61 @@ describe('balayage de squelette', () => {
 })
 
 /**
+ * Garde des COLONNES du tableau en attente.
+ *
+ * Les colonnes valaient des largeurs fixes — `w-10 w-28 w-24 w-32 w-20 w-16` —
+ * sur des pavés en `shrink-0`. À 375px, les quatre visibles totalisaient 360px
+ * pour 283px disponibles, et le conteneur portant `overflow-hidden`, la
+ * dernière était coupée net. Le vrai `DataTable` porte `overflow-x-auto` : le
+ * squelette rognait là où le tableau qu'il annonce défile.
+ *
+ * La rangée est passée en grille de fractions, qui ne peut pas déborder. Reste
+ * un accord fragile, et c'est lui qu'on tient ici : un élément en
+ * `display: none` est retiré de la grille et n'y occupe AUCUNE piste, donc
+ * chaque gabarit doit compter exactement les colonnes visibles à sa largeur.
+ * Ajouter une colonne à `COLONNES` sans toucher aux gabarits ne casse ni les
+ * types ni le rendu — la grille se contente de décaler tout ce qui suit.
+ *
+ * jsdom ne calculant aucune mise en page, un test de rendu ne verrait pas le
+ * débordement. On lit donc la source, comme les gardes voisines.
+ */
+describe('colonnes du tableau en attente', () => {
+  const SOURCE = readFileSync(
+    join(ICI, '..', 'components', 'primitives', 'Skeleton.tsx'),
+    'utf8',
+  )
+  const NU_TSX = sansCommentaires(SOURCE).replace(/\/\/[^\n]*/g, '')
+
+  const pistes = (gabarit: string | undefined) =>
+    gabarit ? gabarit.split('_').length : -1
+
+  const mobile = pistes(/(?:^|[\s'"])grid-cols-\[([^\]]+)\]/.exec(NU_TSX)?.[1])
+  const large = pistes(/sm:grid-cols-\[([^\]]+)\]/.exec(NU_TSX)?.[1])
+
+  const colonnes = [...NU_TSX.matchAll(/\{\s*mobile:\s*(true|false)\s*\}/g)].map(
+    ([, v]) => v === 'true',
+  )
+
+  it('ne fixe plus les colonnes en pixels', () => {
+    // Ce sont ces largeurs-là qui débordaient ; leur retour ramènerait la
+    // colonne coupée, sans qu'aucun type ne bronche.
+    const rangee = /const RANGEE =\s*'([^']*)'/.exec(NU_TSX)?.[1] ?? ''
+    expect(rangee, 'RANGEE introuvable').not.toBe('')
+    expect(rangee).toContain('grid-cols-[')
+    expect(rangee).not.toMatch(/\bw-\d/)
+  })
+
+  it('compte autant de pistes que de colonnes visibles sur mobile', () => {
+    expect(colonnes.length, 'COLONNES introuvable').toBeGreaterThan(0)
+    expect(mobile).toBe(colonnes.filter(Boolean).length)
+  })
+
+  it('compte autant de pistes que de colonnes au-delà de sm', () => {
+    expect(large).toBe(colonnes.length)
+  })
+})
+
+/**
  * Garde de la GÉOMÉTRIE du balayage.
  *
  * Une crête unique dans un élément large comme le pavé n'était visible que la

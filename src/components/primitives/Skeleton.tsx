@@ -164,26 +164,23 @@ export function SkeletonStatCard() {
 export function SkeletonTable({ rows = 8 }: { rows?: number }) {
   return (
     <div className="overflow-hidden rounded-lg border border-divider bg-surface shadow-e1">
-      <div className="flex items-center gap-4 border-b border-divider bg-surface-sunken px-4 py-3">
+      <div className={cn(RANGEE, 'border-b border-divider bg-surface-sunken')}>
         {COLONNES.map((colonne, index) => (
           <Skeleton
             key={index}
             line="eyebrow"
-            className={cn(colonne.largeur, colonne.mobile ? undefined : 'hidden sm:block')}
+            className={cn('w-full', colonne.mobile ? undefined : 'hidden sm:block')}
           />
         ))}
       </div>
 
       {Array.from({ length: rows }, (_, ligne) => (
-        <div
-          key={ligne}
-          className="flex items-center gap-4 border-b border-divider px-4 py-3 last:border-0"
-        >
+        <div key={ligne} className={cn(RANGEE, 'border-b border-divider last:border-0')}>
           {COLONNES.map((colonne, index) => (
             <Skeleton
               key={index}
               line="body"
-              className={cn(colonne.largeur, colonne.mobile ? undefined : 'hidden sm:block')}
+              className={cn('w-full', colonne.mobile ? undefined : 'hidden sm:block')}
             />
           ))}
         </div>
@@ -193,15 +190,45 @@ export function SkeletonTable({ rows = 8 }: { rows?: number }) {
 }
 
 /**
+ * Rangée en GRILLE, et non en ligne flexible à largeurs fixes.
+ *
+ * Les colonnes valaient `w-10 w-28 w-24 w-32 w-20 w-16`, portées par des pavés
+ * en `shrink-0`. À 375px, les quatre colonnes visibles totalisaient 360px de
+ * contenu et de gouttières pour 283px disponibles : le conteneur porte
+ * `overflow-hidden`, donc la dernière colonne était simplement COUPÉE. Le vrai
+ * `DataTable`, lui, porte `overflow-x-auto` et défile — le squelette rognait là
+ * où le tableau qu'il annonce se déroule, et sur la cible 375px du produit.
+ *
+ * Le défaut ne se voyait nulle part parce qu'aucun squelette n'est jamais
+ * apparu à l'écran : la démonstration n'attend rien, et le compte qui ferait
+ * attendre les écrans réels n'existe pas encore. Il a fallu poser le composant
+ * dans la vitrine pour qu'il se montre.
+ *
+ * Des fractions plutôt que des pixels : la rangée épouse son conteneur à toute
+ * largeur, dans une carte de demi-colonne comme sur une page entière, et ne
+ * peut plus déborder par construction. Les proportions gardent l'allure d'un
+ * tableau — une colonne de tête étroite, un libellé large, des valeurs
+ * courtes — et le rembourrage reste celui de `DataTable`, puisque c'est de lui
+ * que vient la hauteur.
+ *
+ * Les gabarits comptent les colonnes VISIBLES : quatre sous `sm`, six au-delà.
+ * Un élément en `display: none` est retiré de la grille et n'y occupe aucune
+ * piste, donc les deux listes doivent correspondre exactement aux `mobile`
+ * ci-dessous.
+ */
+const RANGEE =
+  'grid grid-cols-[2rem_1.8fr_1.1fr_0.9fr] sm:grid-cols-[2rem_1.6fr_1.3fr_1.8fr_1.1fr_0.9fr] items-center gap-4 px-4 py-3'
+
+/**
  * Gabarit de colonnes. `mobile: false` reprend `hideOnMobile` de `DataTable` :
  * un squelette qui montrerait six colonnes sur 375px annoncerait un tableau
  * que l'écran ne rendra pas.
  */
 const COLONNES = [
-  { largeur: 'w-10', mobile: true },
-  { largeur: 'w-28', mobile: false },
-  { largeur: 'w-24', mobile: false },
-  { largeur: 'w-32', mobile: true },
-  { largeur: 'w-20', mobile: true },
-  { largeur: 'w-16', mobile: true },
+  { mobile: true },
+  { mobile: false },
+  { mobile: false },
+  { mobile: true },
+  { mobile: true },
+  { mobile: true },
 ]
