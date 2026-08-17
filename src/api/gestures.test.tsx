@@ -1,7 +1,51 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, userEvent } from '@/test/render'
+import { renderApp, screen, userEvent, within } from '@/test/render'
 import { installerFauxServeur } from '@/test/api'
 import { PARK, SESSION_AVEC_PARC, U2, portefeuille } from './noTechnicalIds.test'
+
+
+/**
+ * Choisit une date dans le calendrier maison.
+ *
+ * Le champ natif se remplissait à la frappe ; il a été remplacé pour cesser
+ * d'ouvrir un calendrier système au milieu du produit. Ces cas passent donc par
+ * les gestes réels — ouvrir, choisir le mois et l'année, cliquer le jour — ce
+ * qui est de toute façon ce qu'on veut vérifier : que la date affichée est bien
+ * celle qui part au serveur.
+ *
+ * Le jour se retrouve par son libellé complet, et non par son seul chiffre : la
+ * grille montre aussi les jours des mois voisins, où « 1 » apparaît deux fois.
+ */
+async function choisirLaDate(
+  user: ReturnType<typeof userEvent.setup>,
+  champ: RegExp,
+  iso: string,
+) {
+  const [annee, mois, jour] = iso.split('-').map(Number)
+  await user.click(screen.getByLabelText(champ))
+
+  const calendrier = screen.getByRole('dialog', { name: /calendrier/i })
+  const selMois = within(calendrier).getByLabelText(/^mois$/i) as HTMLSelectElement
+  await user.selectOptions(selMois, String(mois - 1))
+  await user.selectOptions(within(calendrier).getByLabelText(/^ann/i), String(annee))
+
+  // Le nom du mois est lu sur le sélecteur lui-même : le calendrier le rend
+  // dans la langue courante, et le recomposer ici ferait un second formateur à
+  // maintenir.
+  const nomMois = selMois.selectedOptions[0]?.textContent ?? ''
+  const cible = within(calendrier)
+    .getAllByRole('button')
+    .find((b) => {
+      const libelle = b.getAttribute('aria-label') ?? ''
+      return (
+        libelle.includes(nomMois) &&
+        libelle.includes(String(annee)) &&
+        new RegExp(`(^|\\D)${jour}(\\D|$)`).test(libelle)
+      )
+    })
+  if (!cible) throw new Error(`jour introuvable dans le calendrier : ${iso}`)
+  await user.click(cible)
+}
 
 /**
  * Les gestes, de bout en bout.
@@ -329,7 +373,7 @@ describe('saisir les termes du bail', () => {
 
     await user.type(screen.getByLabelText(/nom complet/i), 'Awa Diallo')
     await user.type(screen.getByLabelText(/^téléphone/i), '688401277')
-    await user.type(screen.getByLabelText(/début du bail/i), '2023-04-01')
+    await choisirLaDate(user, /début du bail/i, '2023-04-01')
     await user.type(screen.getByLabelText(/loyer du bail/i), '120000')
     await user.click(screen.getByRole('button', { name: /^enregistrer$/i }))
 
@@ -455,9 +499,7 @@ describe('enregistrer un encaissement', () => {
     const mois = screen.getByLabelText(/période couverte/i)
     await user.clear(mois)
     await user.type(mois, '2026-07')
-    const jour = screen.getByLabelText(/date du versement/i)
-    await user.clear(jour)
-    await user.type(jour, '2026-08-02')
+    await choisirLaDate(user, /date du versement/i, '2026-08-02')
     await user.type(screen.getByLabelText(/montant/i), '115000')
     await user.click(screen.getByRole('button', { name: /^enregistrer$/i }))
 

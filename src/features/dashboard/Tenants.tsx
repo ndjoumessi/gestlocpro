@@ -10,6 +10,7 @@ import { Modal } from '@/components/primitives/Modal'
 import { Field } from '@/components/primitives/Field'
 import { Input, Select } from '@/components/primitives/Input'
 import { Combobox } from '@/components/primitives/Combobox'
+import { DatePicker } from '@/components/primitives/DatePicker'
 import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useI18n, useT } from '@/i18n/I18nProvider'
@@ -354,12 +355,13 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label={t('app.tenants.leaseStart')} hint={t('app.tenants.leaseStartHint')} optional>
             {(props) => (
-              <Input
-                {...props}
+              <DatePicker
+                id={props.id}
+                aria-describedby={props['aria-describedby']}
+                invalid={props['aria-invalid']}
                 name="leaseStart"
-                type="date"
                 value={debut}
-                onChange={(e) => setDebut(e.target.value)}
+                onChange={setDebut}
               />
             )}
           </Field>

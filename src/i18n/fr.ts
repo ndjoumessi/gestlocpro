@@ -59,6 +59,17 @@ export const fr = {
     password: 'Mot de passe',
     phone: 'Téléphone',
     dialCode: 'Indicatif téléphonique',
+    // Le gabarit ne récite PAS un format — « jj/mm/aaaa » serait faux dès
+    // qu'on passe en anglais, où l'ordre s'inverse. Le calendrier dit le
+    // format en montrant les dates.
+    datePlaceholder: 'Choisir une date',
+    dateCalendar: 'Calendrier',
+    datePrevMonth: 'Mois précédent',
+    dateNextMonth: 'Mois suivant',
+    dateToday: 'Aujourd’hui',
+    dateClear: 'Effacer',
+    dateMonth: 'Mois',
+    dateYear: 'Année',
     emailPlaceholder: 'nom@domaine.com',
     fullName: 'Nom complet',
     showPassword: 'Afficher le mot de passe',

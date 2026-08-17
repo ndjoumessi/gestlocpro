@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Modal } from '@/components/primitives/Modal'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
+import { DatePicker } from '@/components/primitives/DatePicker'
 import { Input, Select } from '@/components/primitives/Input'
 import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
@@ -128,12 +129,14 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
 
         <Field label={t('app.payments.paidOn')} hint={t('app.payments.paidOnHint')} required>
           {(props) => (
-            <Input
-              {...props}
+            <DatePicker
+              id={props.id}
+              aria-describedby={props['aria-describedby']}
+              invalid={props['aria-invalid']}
               name="paidOn"
-              type="date"
+              required
               value={verseLe}
-              onChange={(e) => setVerseLe(e.target.value)}
+              onChange={setVerseLe}
             />
           )}
         </Field>
