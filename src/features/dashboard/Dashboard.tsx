@@ -71,7 +71,15 @@ export function Dashboard() {
   const kpis = computeKpis(units, readings)
   const { expected, collected, outstanding, occupied, vacant, occupancy, maxOverdueDays } = kpis
   const collectedShare = expected === 0 ? 0 : Math.round((collected / expected) * 100)
-  const overdue = units.filter((unit) => unit.status === 'overdue')
+  /**
+   * Ceux qui doivent encore quelque chose — retards ET partiels.
+   *
+   * La note de la carte comptait les seuls retards, sous un montant qui totalise
+   * les deux : quatre locataires devaient, la note en annonçait trois. Le
+   * nombre et sa légende doivent porter sur la même population, sans quoi la
+   * légende dément le nombre qu'elle explique.
+   */
+  const doivent = units.filter((u) => u.status === 'overdue' || u.status === 'partial')
 
   /**
    * Ce qui demande une décision — les DEUX natures, pas une seule.
@@ -198,7 +206,7 @@ export function Dashboard() {
           label={t('app.dashboard.outstanding')}
           value={money(outstanding, { round: true })}
           note={t('app.dashboard.overdueTenants', {
-            count: overdue.length,
+            count: doivent.length,
             days: maxOverdueDays,
           })}
         />

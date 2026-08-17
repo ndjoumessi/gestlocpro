@@ -346,7 +346,7 @@ describe('réconciliation du recouvrement', () => {
     const paye = lire(/^payé$/i)
     const partiel = lire(/^partiel$/i)
     const retard = lire(/^en retard$/i)
-    const impayes = lire(/impayés cumulés/i)
+    const impayes = lire(/reste à percevoir/i)
     const attendu = lire(/loyers attendus/i)
 
     // Les deux relations, telles que `kpis.ts` les pose.
@@ -356,7 +356,42 @@ describe('réconciliation du recouvrement', () => {
     // Et les intitulés sont bien ceux des indicateurs, pas des synonymes : sans
     // cela le rapprochement resterait à la charge du lecteur.
     const entete = screen.getByRole('main')
-    expect(within(entete).getAllByText(/impayés cumulés/i).length).toBeGreaterThan(1)
+    expect(within(entete).getAllByText(/reste à percevoir/i).length).toBeGreaterThan(1)
     expect(within(entete).getAllByText(/loyers attendus/i).length).toBeGreaterThan(1)
+  })
+})
+
+/**
+ * La légende d'un indicateur porte sur la MÊME population que son nombre.
+ *
+ * « Impayés cumulés » totalisait les retards ET les règlements partiels, mais
+ * sa note ne comptait que les retards : quatre locataires devaient, la note en
+ * annonçait trois. Une légende qui dément le nombre qu'elle explique est pire
+ * qu'une absence de légende — elle donne un motif de douter du chiffre.
+ *
+ * Le nom a suivi. « Cumulés » promettait un arriéré qui grossit de mois en
+ * mois, alors que le montant se calcule sur l'appel de loyers courant, comme
+ * « encaissé ce mois » à côté ; et « impayés » nommait l'ensemble par sa moitié
+ * la plus sévère, durcissant la lecture d'un parc qui se porte mieux.
+ */
+describe('reste à percevoir', () => {
+  it('compte tous ceux qui doivent, partiels compris', async () => {
+    renderApp('/app')
+
+    // Deux éléments portent ce nom, et c'est voulu : la tuile et la ligne de
+    // réconciliation du recouvrement. On retient celle qui porte une note.
+    const cartes = (await screen.findAllByText(/^reste à percevoir$/i)).map(
+      (n) => n.closest('div[class*="rounded-lg"]') as HTMLElement,
+    )
+    const carte = cartes.find((c) => /locataires/.test(c.textContent ?? ''))!
+
+    // Trois en retard — A3, B2, C2 — plus un partiel, A5.
+    expect(carte).toHaveTextContent(/4 locataires/)
+  })
+
+  it('ne promet plus un arriéré qui s’accumule', async () => {
+    renderApp('/app')
+    await screen.findAllByText(/^reste à percevoir$/i)
+    expect(screen.getByRole('main')).not.toHaveTextContent(/cumulés/i)
   })
 })

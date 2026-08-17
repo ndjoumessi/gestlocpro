@@ -412,7 +412,23 @@ export const fr = {
       subtitle: '{buildings} immeubles, {units} unités · montants en {currency}',
       expected: 'Loyers attendus',
       collected: 'Encaissé ce mois',
-      outstanding: 'Impayés cumulés',
+      /**
+       * « Impayés cumulés » disait deux choses fausses.
+       *
+       * Rien n'est CUMULÉ : c'est le reste de l'appel de loyers courant, calculé
+       * sur l'instantané des unités, exactement comme « encaissé ce mois » à
+       * côté. Le mot laissait croire à un arriéré qui grossit de mois en mois.
+       *
+       * Et tout n'est pas IMPAYÉ au sens de « en retard » : le montant réunit
+       * les règlements partiels et les retards, que la carte de recouvrement
+       * distingue justement en deux lignes. Nommer l'ensemble par sa moitié la
+       * plus sévère durcit la lecture d'un parc qui se porte mieux qu'il n'y
+       * paraît.
+       *
+       * « Reste à percevoir » dit ce que le nombre est : ce qui manque à
+       * l'appel, sans préjuger de la raison ni de l'ancienneté.
+       */
+      outstanding: 'Reste à percevoir',
       occupancy: 'Taux d’occupation',
       // « vs mois précédent » accompagnait un écart mensuel qui a disparu :
       // il supposait un historique que le produit n'a pas, et l'indicateur
@@ -421,7 +437,11 @@ export const fr = {
       activeLeases: '{count} baux actifs',
       activeLeases_one: '{count} bail actif',
       collectedShare: '{percent} % du dû',
-      overdueTenants: '{count} locataires · jusqu’à {days} jours',
+      // Le compte porte sur TOUS les locataires qui doivent encore quelque
+      // chose — partiels compris —, puisque c'est ce que totalise le montant
+      // au-dessus. Il ne retenait que les retards : quatre locataires devaient,
+      // la note en annonçait trois.
+      overdueTenants: '{count} locataires · jusqu’à {days} jours de retard',
       overdueTenants_one: '{count} locataire · jusqu’à {days} jours',
       vacantUnits: '{count} unités vacantes',
       vacantUnits_one: '{count} unité vacante',
@@ -913,7 +933,7 @@ export const fr = {
       title: 'Ce que le registre tient à jour',
       collected: 'Encaissé ce mois',
       occupancy: 'Taux d’occupation',
-      overdue: 'Impayés cumulés',
+      overdue: 'Reste à percevoir',
       reminders: 'Relances envoyées',
       note: 'Chiffres de démonstration, parc d’exemple de 12 unités.',
     },
