@@ -774,9 +774,8 @@
    spinner de `Button`.
 
    L'animation ne porte AUCUN `fill` : une fois neutralisée, la crête revient à
-   `translateX(-100%)`, donc hors du pavé. Il reste un aplat parfaitement
-   immobile, plutôt qu'une crête figée au milieu qui passerait pour un défaut
-   d'affichage. */
+   `translateX(-100%)`, donc hors du pavé — d'où le relais défini plus bas, sans
+   lequel il ne resterait qu'un aplat mort. */
 .gl-skeleton::after {
   content: '';
   position: absolute;
@@ -789,6 +788,45 @@
   );
   transform: translateX(-100%);
   animation: gl-skeleton-sweep 1.4s linear infinite;
+}
+
+/* Relais SANS MOUVEMENT, quand le balayage est neutralisé.
+
+   « Réduire les animations » ne veut pas dire « ne rien signaler ». La règle
+   globale laissait ici quatre pavés gris rigoureusement inertes : le lecteur
+   d'écran, lui, restait prévenu — `role="status"`, `aria-busy` et l'intitulé
+   caché de `SkeletonRegion` —, mais l'utilisateur qui VOIT l'écran et a
+   seulement demandé moins de mouvement n'avait plus aucun repère. Réduire le
+   mouvement n'est pas être aveugle, et c'est le seul public qui se retrouvait
+   sans rien.
+
+   La crête ne traverse donc plus : elle reste au centre et RESPIRE. Aucune
+   translation, aucune mise à l'échelle, aucun défilement — rien de ce qui
+   déclenche les troubles vestibulaires que cette préférence existe pour
+   épargner. Une variation d'opacité est le substitut admis, à condition de
+   rester lente : 2,4 s font 0,42 Hz, très loin des 3 Hz au-delà desquels un
+   clignotement devient un risque photosensible.
+
+   La spécificité fait le reste. La règle globale porte `!important` sur `*`
+   (0,0,0) ; celle-ci le porte sur `.gl-skeleton::after` (0,1,0). À importance
+   égale, c'est la spécificité qui tranche — d'où le `!important` ici, qui n'est
+   pas décoratif : sans lui, `animation-duration: 0.001ms` gagnerait. */
+@media (prefers-reduced-motion: reduce) {
+  .gl-skeleton::after {
+    /* Immobile au centre : c'est la position où la crête couvre le pavé. */
+    transform: none !important;
+    animation: gl-skeleton-breath 2.4s ease-in-out infinite !important;
+  }
+}
+
+@keyframes gl-skeleton-breath {
+  from,
+  to {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 @keyframes gl-spin {

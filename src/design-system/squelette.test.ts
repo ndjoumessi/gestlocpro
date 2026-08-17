@@ -129,3 +129,55 @@ describe('balayage de squelette', () => {
     )
   })
 })
+
+/**
+ * Garde du relais sans mouvement.
+ *
+ * La règle globale de `prefers-reduced-motion` neutralise toute animation en
+ * `!important`. Le balayage ne portant pas de `fill`, la crête retombait alors
+ * hors du pavé : quatre aplats morts, sans le moindre repère d'attente pour qui
+ * voit l'écran. Les technologies d'assistance, elles, restaient prévenues — ce
+ * qui a masqué le trou d'autant plus longtemps.
+ *
+ * Deux choses se vérifient ici, et la seconde a failli manquer.
+ *
+ * Que le relais EXISTE. Et qu'il porte `!important` : à importance égale, c'est
+ * la spécificité qui départage, mais sans `!important` du tout la déclaration
+ * globale — importante, elle — l'emporterait quelle que soit la spécificité.
+ * Le relais serait écrit, présent dans la feuille, et sans aucun effet.
+ */
+describe('relais sans mouvement', () => {
+  const REGLE =
+    /@media \(prefers-reduced-motion: reduce\) \{\s*\.gl-skeleton::after \{([^}]*)\}/.exec(NU)?.[1] ??
+    ''
+
+  it('anime encore le squelette quand le mouvement est réduit', () => {
+    expect(REGLE, 'aucun relais `.gl-skeleton::after` sous prefers-reduced-motion').toContain(
+      'gl-skeleton-breath',
+    )
+    expect(NU).toContain('@keyframes gl-skeleton-breath')
+  })
+
+  it('l’emporte sur la neutralisation globale', () => {
+    // Sans `!important`, la règle serait présente et sans effet : c'est le
+    // genre de correctif qu'on croit livré parce qu'on l'a écrit.
+    const animation = /animation:[^;]*/.exec(REGLE)?.[0] ?? ''
+    expect(animation).toContain('!important')
+  })
+
+  it('ne déplace rien : le relais est une opacité, pas un mouvement', () => {
+    // Toute la raison d'être de la préférence. Une translation ou une mise à
+    // l'échelle ici trahirait l'utilisateur qui a demandé moins de mouvement.
+    const corpsAnim = /@keyframes gl-skeleton-breath \{([\s\S]*?)\n\}/.exec(NU)?.[1] ?? ''
+    expect(corpsAnim).toContain('opacity')
+    expect(corpsAnim).not.toMatch(/translate|scale|rotate/)
+    expect(REGLE).toContain('transform: none')
+  })
+
+  it('respire assez lentement pour ne pas clignoter', () => {
+    // 3 Hz est le seuil photosensible ; on se tient très en dessous.
+    const duree = /animation:[^;]*?([\d.]+)s/.exec(REGLE)?.[1]
+    expect(duree, 'durée du relais introuvable').toBeDefined()
+    expect(1 / Number(duree)).toBeLessThan(1)
+  })
+})
