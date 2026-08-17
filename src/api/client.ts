@@ -247,6 +247,8 @@ export const api = {
       phoneE164?: string
       startsOn?: string
       rentMinor?: number
+      /** Caution encaissée à l'entrée. Sans elle, le parc n'en porte aucune. */
+      depositMinor?: number
     },
   ) => requete<T>(`/parks/${parkId}/tenants`, { method: 'POST', body: JSON.stringify(corps) }),
 
@@ -261,6 +263,19 @@ export const api = {
    */
   deleteBuilding: <T>(parkId: string, buildingId: string) =>
     requete<T>(`/parks/${parkId}/buildings/${buildingId}`, { method: 'DELETE' }),
+
+  /**
+   * Appelle les loyers du mois : émet les échéances de tous les baux en cours.
+   *
+   * Sans cet appel, une échéance n'existait que comme effet de bord d'un
+   * encaissement — le locataire qui ne paie pas n'en avait aucune, donc n'était
+   * jamais en retard.
+   */
+  callRent: <T>(parkId: string, periodStart: string) =>
+    requete<T>(`/parks/${parkId}/charges`, {
+      method: 'POST',
+      body: JSON.stringify({ periodStart }),
+    }),
 
   /**
    * Relance les BAUX désignés.

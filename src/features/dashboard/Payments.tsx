@@ -34,7 +34,8 @@ export function Payments() {
   const exportCsv = useCsvExport()
   const csvMoney = useCsvMoney()
   const { role } = useRole()
-  const { units, isMine, readings, loading, remindRent, serveFormalNotice } = usePortfolio()
+  const { units, isMine, readings, loading, remindRent, callRent, serveFormalNotice } =
+    usePortfolio()
   const { notify } = useToast()
   const isTenant = role === 'tenant'
   const [filter, setFilter] = useState<PaymentStatus | 'all'>('all')
@@ -145,6 +146,37 @@ export function Payments() {
             {/* Proposé seulement s'il y a des retards : un bouton qui ne peut
                 rien faire occupe la place d'une action utile, et la grille
                 tarifaire vend justement cette fonction. */}
+            {/*
+              APPELER LES LOYERS : le geste sans lequel rien n'est jamais dû.
+
+              Une échéance n'existait que comme effet de bord d'un encaissement.
+              Le locataire qui ne paie pas n'en avait donc aucune, et n'était
+              JAMAIS en retard : ni reste à percevoir, ni relance, ni mise en
+              demeure. Un loyer est dû parce que le mois est là, pas parce que
+              quelqu'un a payé.
+
+              Sans effet s'il a déjà été passé : le compte rendu le dit plutôt
+              que de laisser croire à une seconde dette.
+            */}
+            {!isTenant && (
+              <Button
+                variant="secondary"
+                icon="calendar"
+                onClick={async () => {
+                  const maintenant = new Date()
+                  const mois = `${maintenant.getFullYear()}-${String(maintenant.getMonth() + 1).padStart(2, '0')}-01`
+                  const emises = await callRent(mois)
+                  notify(
+                    emises > 0
+                      ? t('app.payments.rentCalled', { count: emises })
+                      : t('app.payments.rentAlreadyCalled'),
+                    { tone: emises > 0 ? 'ok' : 'neutral' },
+                  )
+                }}
+              >
+                {t('app.payments.callRent')}
+              </Button>
+            )}
             {!isTenant && retards.length > 0 && (
               <Button variant="secondary" icon="bell" onClick={() => setRelanceOuverte(true)}>
                 {t('app.payments.remind')}

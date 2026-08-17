@@ -230,6 +230,7 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
   const [dial, setDial] = useState('+237')
   const [debut, setDebut] = useState('')
   const [loyer, setLoyer] = useState('')
+  const [caution, setCaution] = useState('')
   const [unitId, setUnitId] = useState(vacant[0]?.id ?? '')
   const formRef = useRef<HTMLDivElement>(null)
   const [errors, setErrors] = useState<{ name: FieldError; phone: FieldError }>({
@@ -266,6 +267,7 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
     addTenant(unitId, name.trim(), `${dial} ${phone.trim()}`, {
       ...(debut ? { startsOn: debut } : {}),
       ...(loyerLu !== null ? { rentMinor: loyerLu } : {}),
+      ...(Number(caution) > 0 ? { depositMinor: Math.round(Number(caution)) } : {}),
     })
     onClose()
     notify(t('app.tenants.created'), { tone: 'ok' })
@@ -373,6 +375,28 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
                 inputMode="numeric"
                 value={loyer}
                 onChange={(e) => setLoyer(e.target.value)}
+              />
+            )}
+          </Field>
+          {/*
+            La caution, qu'aucun écran ne demandait.
+
+            Le serveur l'accepte depuis peu ; sans ce champ, aucun compte réel
+            n'aurait jamais pu en enregistrer une — et l'écran « Cautions »
+            serait resté vide quoi qu'on fasse, comme il l'était.
+
+            Facultative : un locataire déjà en place dont on ne retrouve pas le
+            montant doit pouvoir être déclaré. Fabriquer un chiffre serait pire
+            que l'absence.
+          */}
+          <Field label={t('app.tenants.deposit')} hint={t('app.tenants.depositHint')} optional>
+            {(props) => (
+              <Input
+                {...props}
+                name="deposit"
+                inputMode="numeric"
+                value={caution}
+                onChange={(e) => setCaution(e.target.value)}
               />
             )}
           </Field>

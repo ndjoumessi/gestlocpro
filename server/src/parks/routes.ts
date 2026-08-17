@@ -2074,3 +2074,80 @@ parksRouter.post(
     res.status(201).json({ inspection: etat })
   },
 )
+
+/**
+ * Appel de loyers : émet les échéances du mois pour tous les baux en cours.
+ *
+ * Sans cela, une échéance n'existait QUE comme effet de bord d'un encaissement.
+ * Le locataire qui ne paie pas n'en avait donc aucune — et n'était jamais en
+ * retard : ni reste à percevoir, ni relance, ni mise en demeure. Toute la
+ * chaîne de recouvrement, celle que la grille tarifaire vend, ne pouvait pas se
+ * déclencher sur un parc réel. Elle ne se voyait qu'en démonstration, dont le
+ * semis pose les échéances lui-même.
+ *
+ * C'est l'inversion qui compte : un loyer est dû parce que le mois est là, pas
+ * parce que quelqu'un a payé.
+ *
+ * Le vocabulaire n'est pas inventé — le tableau de bord nomme déjà « le reste à
+ * percevoir de l'appel de loyers courant ».
+ */
+parksRouter.post(
+  '/:parkId/charges',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const corps = schemaQuittance.omit({ unitId: true }).parse(req.body)
+    const debut = new Date(`${corps.periodStart}T00:00:00Z`)
+
+    const baux = await prisma.lease.findMany({
+      where: {
+        unit: { building: { parkId } },
+        status: { in: ['active', 'pending'] },
+        // Un bail qui commence APRÈS la période ne doit rien pour elle.
+        startsOn: { lte: debut },
+      },
+      select: { id: true, rentMinor: true, dueDayOfMonth: true },
+    })
+
+    /**
+     * `skipDuplicates` plutôt qu'une lecture préalable : l'unicité
+     * `(leaseId, periodStart)` vit dans la base, et deux appels simultanés
+     * liraient tous deux « rien pour ce mois » avant que l'un n'écrive.
+     *
+     * Appeler deux fois le même mois est donc SANS EFFET, et c'est voulu : on
+     * relance l'appel après avoir ajouté un locataire en cours de mois, sans
+     * craindre de doubler la dette des autres.
+     */
+    const { count } = await prisma.rentCharge.createMany({
+      data: baux.map((bail) => ({
+        leaseId: bail.id,
+        periodStart: debut,
+        // Le loyer du BAIL, figé à l'émission : le revaloriser plus tard ne
+        // doit pas réécrire un mois déjà appelé.
+        rentMinor: bail.rentMinor,
+        dueOn: new Date(
+          Date.UTC(debut.getUTCFullYear(), debut.getUTCMonth(), bail.dueDayOfMonth),
+        ),
+      })),
+      skipDuplicates: true,
+    })
+
+    if (count > 0) {
+      await prisma.auditEvent.create({
+        data: {
+          parkId,
+          actorId: req.compteId!,
+          action: 'rent.call',
+          entity: 'Park',
+          entityId: parkId,
+          payload: { periodStart: corps.periodStart, count },
+        },
+      })
+    }
+
+    // `issued` et non `created` : le nombre d'échéances RÉELLEMENT ajoutées.
+    // Un second appel rend zéro, ce qui est un fait et non une erreur.
+    res.status(200).json({ issued: count, leases: baux.length })
+  },
+)

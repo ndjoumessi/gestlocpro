@@ -178,7 +178,7 @@ interface PortfolioContextValue {
     unitId: string,
     name: string,
     phone: string,
-    bail?: { startsOn?: string; rentMinor?: number },
+    bail?: { startsOn?: string; rentMinor?: number; depositMinor?: number },
   ) => void
   /** Crée un immeuble dans le parc. Sans parc serveur, il reste local. */
   addBuilding: (name: string, district: string) => void
@@ -200,6 +200,14 @@ interface PortfolioContextValue {
    * défaut que ce chantier corrige, pas un défaut à reproduire.
    */
   remindRent: (leaseIds: string[]) => Promise<{ sent: number; skipped: number }>
+  /**
+   * Appelle les loyers d'une période. Rend le nombre d'échéances ÉMISES.
+   *
+   * Zéro n'est pas une erreur : appeler deux fois le même mois est sans effet,
+   * et c'est voulu — on relance l'appel après avoir ajouté un locataire en
+   * cours de mois.
+   */
+  callRent: (periodStart: string) => Promise<number>
   /** Met en demeure. Droit du seul propriétaire, motif obligatoire. */
   serveFormalNotice: (leaseId: string, reason: string) => Promise<boolean>
   /**
@@ -802,6 +810,20 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [parkId, signalerEchec],
   )
 
+  const callRent = useCallback(
+    async (periodStart: string): Promise<number> => {
+      if (!parkId) return 0
+      try {
+        const { issued } = await api.callRent<{ issued: number }>(parkId, periodStart)
+        return issued
+      } catch (erreur) {
+        signalerEchec(erreur)
+        return 0
+      }
+    },
+    [parkId, signalerEchec],
+  )
+
   const serveFormalNotice = useCallback(
     async (leaseId: string, reason: string): Promise<boolean> => {
       if (!parkId) return false
@@ -902,7 +924,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     unitId: string,
     name: string,
     phone: string,
-    bail?: { startsOn?: string; rentMinor?: number },
+    bail?: { startsOn?: string; rentMinor?: number; depositMinor?: number },
   ) => {
     if (parkId) {
       void api
@@ -912,6 +934,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           phoneE164: phone.replace(/\s/g, ''),
           ...(bail?.startsOn ? { startsOn: bail.startsOn } : {}),
           ...(bail?.rentMinor !== undefined ? { rentMinor: bail.rentMinor } : {}),
+          // Sans ce relais, le champ de la modale se saisissait et se perdait :
+          // le parc n'aurait toujours porté aucune caution.
+          ...(bail?.depositMinor !== undefined ? { depositMinor: bail.depositMinor } : {}),
         })
         .then(() => chargerParc(parkId))
         .then((parc) => {
@@ -987,6 +1012,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       addBuilding,
       removeBuilding,
       remindRent,
+      callRent,
       serveFormalNotice,
       addUnit,
       recordPayment,
@@ -1051,6 +1077,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       addBuilding,
       removeBuilding,
       remindRent,
+      callRent,
       serveFormalNotice,
       addUnit,
       recordPayment,

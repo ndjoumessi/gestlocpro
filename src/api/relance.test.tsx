@@ -143,6 +143,42 @@ describe('relance des loyers', () => {
   })
 })
 
+describe('appel de loyers', () => {
+  it('dit combien d’échéances sont ÉMISES, pas combien de baux existent', async () => {
+    const serveur = parc()
+    serveur.quand('POST', `/parks/${PARC}/charges`, { status: 200, body: { issued: 1, leases: 2 } })
+    const user = userEvent.setup()
+    renderApp('/app/paiements', { session: session('owner') })
+    await screen.findByText('Paul Kamga')
+
+    await user.click(bouton(/appeler les loyers/i))
+
+    // `issued` et non `leases` : deux baux, une seule échéance nouvelle — la
+    // seconde existait déjà. Annoncer deux ferait croire à une dette doublée.
+    expect(await screen.findByText(/1 échéance émise/i)).toBeInTheDocument()
+  })
+
+  it('ne laisse pas croire à une seconde dette quand le mois est déjà appelé', async () => {
+    const serveur = parc()
+    serveur.quand('POST', `/parks/${PARC}/charges`, { status: 200, body: { issued: 0, leases: 2 } })
+    const user = userEvent.setup()
+    renderApp('/app/paiements', { session: session('owner') })
+    await screen.findByText('Paul Kamga')
+
+    await user.click(bouton(/appeler les loyers/i))
+
+    expect(await screen.findByText(/déjà été appelés/i)).toBeInTheDocument()
+  })
+
+  it('n’est pas offert au locataire, qui ne s’appelle pas ses propres loyers', async () => {
+    parc()
+    renderApp('/app/paiements', { session: session('tenant') })
+    await screen.findByText(/suivi des paiements/i)
+
+    expect(screen.queryByRole('button', { name: /appeler les loyers/i })).not.toBeInTheDocument()
+  })
+})
+
 describe('mise en demeure', () => {
   it('n’est offerte qu’au propriétaire', async () => {
     parc()

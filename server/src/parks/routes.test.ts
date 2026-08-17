@@ -2436,3 +2436,126 @@ describe('états des lieux', () => {
     expect(res.status).toBe(404)
   })
 })
+
+/**
+ * Appel de loyers.
+ *
+ * Une échéance n'existait QUE comme effet de bord d'un encaissement. Le
+ * locataire qui ne paie pas n'en avait donc aucune, et n'était JAMAIS en retard :
+ * ni reste à percevoir, ni relance, ni mise en demeure. Toute la chaîne de
+ * recouvrement — celle que la grille tarifaire vend — ne pouvait pas se
+ * déclencher sur un parc réel. Elle ne se voyait qu'en démonstration, dont le
+ * semis pose les échéances lui-même : le jeu de données masquait l'absence de la
+ * fonction, comme il l'avait fait pour les cautions et les états des lieux.
+ */
+describe('appel de loyers', () => {
+  let parkId: string
+  let proprio: string
+  let unitId: string
+
+  beforeEach(async () => {
+    const p = await inscrire('appel@example.com', { parkName: 'Parc' })
+    proprio = p.cookie
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio)
+    parkId = parcs.body.parks[0].id
+
+    const immeuble = await request(serveur)
+      .post(`/api/parks/${parkId}/buildings`)
+      .set('Cookie', proprio)
+      .send({ name: 'Résidence Makepe', district: 'Makepe' })
+    const logement = await request(serveur)
+      .post(`/api/parks/${parkId}/buildings/${immeuble.body.building.id}/units`)
+      .set('Cookie', proprio)
+      .send({ label: 'A1', type: 'T3', surfaceSqm: 78, baseRentMinor: 145000 })
+    unitId = logement.body.unit.id
+    await request(serveur)
+      .post(`/api/parks/${parkId}/tenants`)
+      .set('Cookie', proprio)
+      .send({ unitId, fullName: 'Charles Ngassa', startsOn: '2026-01-01', rentMinor: 145000 })
+  })
+
+  it('rend le loyer EXIGIBLE sans qu’un versement l’ait créé', async () => {
+    const res = await request(serveur)
+      .post(`/api/parks/${parkId}/charges`)
+      .set('Cookie', proprio)
+      .send({ periodStart: '2026-06-01' })
+
+    expect(res.status, JSON.stringify(res.body)).toBe(200)
+    expect(res.body.issued).toBe(1)
+
+    const echeance = await prisma.rentCharge.findFirstOrThrow({
+      where: { lease: { unitId } },
+    })
+    // Le loyer du BAIL, et l'échéance au jour convenu.
+    expect(echeance.rentMinor).toBe(145000)
+    expect(echeance.dueOn.toISOString()).toBe('2026-06-05T00:00:00.000Z')
+    // Aucun versement : c'est tout l'intérêt.
+    expect(await prisma.payment.count()).toBe(0)
+  })
+
+  it('devient relançable, ce qu’un bail sans échéance n’était jamais', async () => {
+    /**
+     * Le cas qui relie les deux moitiés. Avant cet appel, la relance rendait
+     * `nothing_due` sur un locataire qui n'avait rien payé depuis six mois —
+     * réponse exacte et absurde : rien n'était dû parce que rien n'avait été
+     * appelé.
+     */
+    const bail = await prisma.lease.findFirstOrThrow({ where: { unitId } })
+
+    const avant = await request(serveur)
+      .post(`/api/parks/${parkId}/reminders`)
+      .set('Cookie', proprio)
+      .send({ leaseIds: [bail.id] })
+    expect(avant.body.sent).toEqual([])
+    expect(avant.body.skipped[0].reason).toBe('nothing_due')
+
+    await request(serveur)
+      .post(`/api/parks/${parkId}/charges`)
+      .set('Cookie', proprio)
+      .send({ periodStart: '2026-06-01' })
+
+    const apres = await request(serveur)
+      .post(`/api/parks/${parkId}/reminders`)
+      .set('Cookie', proprio)
+      .send({ leaseIds: [bail.id] })
+    expect(apres.body.sent).toEqual([bail.id])
+  })
+
+  it('appelé deux fois, ne double pas la dette', async () => {
+    const corps = { periodStart: '2026-06-01' }
+    await request(serveur).post(`/api/parks/${parkId}/charges`).set('Cookie', proprio).send(corps)
+
+    const second = await request(serveur)
+      .post(`/api/parks/${parkId}/charges`)
+      .set('Cookie', proprio)
+      .send(corps)
+
+    // Zéro émise : un fait, pas une erreur. On relance l'appel après avoir
+    // ajouté un locataire en cours de mois, sans craindre de doubler les autres.
+    expect(second.body.issued).toBe(0)
+    expect(await prisma.rentCharge.count()).toBe(1)
+  })
+
+  it('n’appelle rien sur un bail qui commence après la période', async () => {
+    const res = await request(serveur)
+      .post(`/api/parks/${parkId}/charges`)
+      .set('Cookie', proprio)
+      .send({ periodStart: '2025-06-01' })
+
+    // Un bail commencé en 2026 ne doit rien pour juin 2025 : appeler ce mois-là
+    // fabriquerait une dette qui n'a jamais existé.
+    expect(res.body.issued).toBe(0)
+  })
+
+  it('n’appelle rien sur le parc d’un autre', async () => {
+    const autre = await inscrire('voisin5@example.com', { parkName: 'Autre parc' })
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', autre.cookie)
+
+    await request(serveur)
+      .post(`/api/parks/${parcs.body.parks[0].id}/charges`)
+      .set('Cookie', autre.cookie)
+      .send({ periodStart: '2026-06-01' })
+
+    expect(await prisma.rentCharge.count()).toBe(0)
+  })
+})
