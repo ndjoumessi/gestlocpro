@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, switchRole } from './render'
+import { renderApp, screen, switchRole, attendreLeChargement } from './render'
 
 /**
  * Vérifie le harnais lui-même : providers montés, routage en mémoire,
@@ -36,11 +36,21 @@ describe('harnais de test', () => {
     expect(screen.getAllByText(/1 397 000/).length).toBe(3)
   })
 
-  it('bascule le profil actif', async () => {
-    renderApp('/app')
+  /**
+   * Le sélecteur s'éprouve là où il vit : la DÉMONSTRATION.
+   *
+   * Il n'a jamais été un contrôle d'accès — il change le point de vue de la
+   * page, pas ce que le serveur accorde — et il ne s'affiche plus sur un vrai
+   * compte, où le rôle vient de l'adhésion. Le monter sous `/app` éprouverait
+   * donc un contrôle que l'utilisateur n'y trouve pas.
+   */
+  it('bascule le profil actif, dans la démonstration', async () => {
+    renderApp('/demo')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Vue consolidée du parc')
 
     await switchRole('tenant')
+
+    await attendreLeChargement()
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Mon espace locataire')
   })
 })

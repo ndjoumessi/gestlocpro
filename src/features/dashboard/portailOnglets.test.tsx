@@ -16,7 +16,7 @@ import { renderApp, screen, userEvent } from '@/test/render'
  */
 async function ouvrirPortail() {
   const user = userEvent.setup()
-  renderApp('/app/portail')
+  renderApp('/demo/portail')
   const onglets = screen.getAllByRole('tab')
   return { user, onglets }
 }

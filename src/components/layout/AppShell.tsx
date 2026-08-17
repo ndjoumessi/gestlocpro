@@ -66,6 +66,15 @@ interface NavItem {
   badge?: { count: 'overdue' | 'unreadAlerts'; tone: 'danger' | 'onDark' }
   /** Rôles auxquels l'entrée est proposée. */
   roles?: Role[]
+  /**
+   * Entrée de VITRINE : elle ne mène pas à une fonction du produit, mais à une
+   * page qui montre le produit. Réservée à la démonstration.
+   *
+   * Ce champ existe parce que son absence se voyait : le groupe de pied était
+   * le seul à ne déclarer aucune condition, et s'affichait donc pour tout le
+   * monde. Le déclarer force la question à chaque entrée ajoutée.
+   */
+  vitrine?: boolean
 }
 
 const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
@@ -106,10 +115,32 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
   },
 ]
 
+/**
+ * Les deux vitrines, et rien d'autre.
+ *
+ * « Portail locataire » est une MAQUETTE — « ce que voit votre locataire depuis
+ * son navigateur », avec une adresse factice — d'un produit qui n'existe pas
+ * encore. « États du système » est la démonstration des états que l'interface
+ * sait afficher ; son propre dictionnaire le dit, à propos de « Rejouer » :
+ * « le verbe dit qu'on est dans une vitrine ».
+ *
+ * Elles s'affichaient pourtant sur les vrais comptes, et l'une d'elles offre
+ * « Repartir du jeu de démonstration » — un bouton qui remplace le parc de
+ * l'utilisateur, à l'écran, par celui de la démonstration. Rien n'est écrit au
+ * serveur et un rechargement rend les vraies données, mais d'ici là un
+ * propriétaire regarde le parc de quelqu'un d'autre.
+ */
 const FOOTER_ITEMS: NavItem[] = [
-  { to: 'portail', labelKey: 'nav.tenantPortal', icon: 'monitor' },
-  { to: 'systeme', labelKey: 'nav.system', icon: 'layers' },
+  { to: 'portail', labelKey: 'nav.tenantPortal', icon: 'monitor', vitrine: true },
+  { to: 'systeme', labelKey: 'nav.system', icon: 'layers', vitrine: true },
 ]
+
+/** Ce qu'un contexte donné a le droit de montrer : rôle ET nature de l'entrée. */
+function entreesVisibles(items: NavItem[], role: Role, demo: boolean): NavItem[] {
+  return items.filter(
+    (item) => (!item.roles || item.roles.includes(role)) && (!item.vitrine || demo),
+  )
+}
 
 /**
  * Ordre de priorité de la barre basse, du plus utile au moins.
@@ -175,7 +206,28 @@ function useIdentite(): { parc: string | null; nom: string | null; demo: boolean
 export function AppShell() {
   const t = useT()
   const location = useLocation()
-  const [role, setRole] = useState<Role>('owner')
+  /**
+   * Le rôle vient de l'ADHÉSION, pas d'un défaut.
+   *
+   * Il était fixé à `'owner'` en dur, alors que la session porte le vrai rôle
+   * depuis toujours. Un gestionnaire ou un locataire qui se connectait recevait
+   * donc la navigation d'un propriétaire — « Parc immobilier », « Cautions »,
+   * « Prise en main et droits », entrées qu'il ne peut pas servir. Le serveur
+   * refusait bien les données, mais la barre latérale promettait l'inverse.
+   *
+   * En démonstration il n'y a pas d'adhésion : on garde « propriétaire », d'où
+   * part le parcours, et le sélecteur reste là pour en changer.
+   */
+  const { etat: session } = useSession()
+  const roleDuCompte: Role =
+    session.statut === 'connecte' ? (session.adhesions[0]?.role ?? 'owner') : 'owner'
+
+  const [role, setRole] = useState<Role>(roleDuCompte)
+
+  // La session arrive après le premier rendu : sans cette synchronisation, le
+  // rôle resterait celui deviné avant sa résolution. L'effet ne se rejoue qu'au
+  // CHANGEMENT de l'adhésion, il n'écrase donc pas le choix fait au sélecteur.
+  useEffect(() => setRole(roleDuCompte), [roleDuCompte])
   const [railed, setRailed] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const drawerRef = useRef<HTMLElement>(null)
@@ -418,6 +470,8 @@ function Sidebar({
 
   const { parc, nom, demo } = useIdentite()
 
+  const pied = entreesVisibles(FOOTER_ITEMS, role, demo)
+
   /**
    * Le sélecteur change le point de vue de CELUI QUI REGARDE : c'est donc son
    * nom qui doit y figurer, pas celui d'un personnage. En démonstration, les
@@ -503,7 +557,19 @@ function Sidebar({
         />
       </div>
 
-      {wide && (
+      {/*
+        Le sélecteur est un POINT DE VUE, pas une identité — il ne change que ce
+        que cette page affiche, jamais ce que le serveur accorde. Il n'a donc de
+        sens que là où il y a plusieurs points de vue à montrer : la
+        démonstration et ses trois personnages.
+
+        Sur un vrai compte il proposait à l'utilisateur trois rôles portant son
+        propre nom, dont deux qu'il n'a pas. Le masquer n'est possible que parce
+        que le rôle vient désormais de l'adhésion : tant qu'il était fixé à
+        « propriétaire » en dur, ce sélecteur était le seul moyen pour un
+        gestionnaire ou un locataire d'atteindre sa propre navigation.
+      */}
+      {wide && demo && (
         <div className="flex flex-col gap-1.5">
           <p className="eyebrow px-2 text-on-dark-faint">{t('nav.activeProfile')}</p>
 
@@ -559,7 +625,7 @@ function Sidebar({
 
       <nav aria-label={t('nav.dashboard')} className="flex flex-col gap-3">
         {SECTIONS.map((section) => {
-          const items = section.items.filter((item) => !item.roles || item.roles.includes(role))
+          const items = entreesVisibles(section.items, role, demo)
           if (!items.length) return null
 
           return (
@@ -577,8 +643,16 @@ function Sidebar({
         })}
       </nav>
 
-      <div className="mt-auto flex flex-col gap-0.5 border-t border-on-dark-border pt-3">
-        {FOOTER_ITEMS.map((item) => (
+      {/* Le filet de séparation ne se dessine que s'il sépare quelque chose :
+          hors démonstration ce pied peut ne contenir que le bouton de repli, et
+          n'en contenir rien du tout quand la barre est dépliée. */}
+      <div
+        className={cn(
+          'mt-auto flex flex-col gap-0.5',
+          (pied.length > 0 || railed) && 'border-t border-on-dark-border pt-3',
+        )}
+      >
+        {pied.map((item) => (
           <SidebarLink key={item.to} item={item} wide={wide} />
         ))}
         {railed && (
@@ -667,13 +741,18 @@ function SidebarLink({ item, wide }: { item: NavItem; wide: boolean }) {
  */
 function BarreBasse({ role, onOpenDrawer }: { role: Role; onOpenDrawer: () => void }) {
   const t = useT()
+  const { demo } = useIdentite()
 
   // Filtrer PUIS couper, et non l'inverse : couper d'abord laisserait un trou à
   // la place de l'entrée qu'un rôle ne voit pas.
   const tous = [...SECTIONS.flatMap((s) => s.items), ...FOOTER_ITEMS]
-  const items = BOTTOM_ORDER.map((to) => tous.find((item) => item.to === to))
-    .filter((item): item is NavItem => !!item && (!item.roles || item.roles.includes(role)))
-    .slice(0, BOTTOM_MAX)
+  const items = entreesVisibles(
+    BOTTOM_ORDER.map((to) => tous.find((item) => item.to === to)).filter(
+      (item): item is NavItem => !!item,
+    ),
+    role,
+    demo,
+  ).slice(0, BOTTOM_MAX)
 
   return (
     <nav
@@ -789,13 +868,18 @@ function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
   const t = useT()
   const location = useLocation()
   const base = useBase()
-  const { parc } = useIdentite()
+  const { parc, demo } = useIdentite()
+  const { role } = useRole()
 
   // Repli sur « Écran introuvable » et non sur le tableau de bord : toute
   // adresse sans entrée de navigation rend le 404 interne, et annoncer le
   // tableau de bord dans le fil situerait l'utilisateur là où il n'est pas.
+  //
+  // La liste est FILTRÉE comme la navigation l'est : une adresse de vitrine
+  // saisie à la main hors démonstration rend le 404, et le fil doit dire la
+  // même chose que l'écran plutôt que nommer une page qui ne s'affiche pas.
   const crumb =
-    [...SECTIONS.flatMap((s) => s.items), ...FOOTER_ITEMS].find(
+    entreesVisibles([...SECTIONS.flatMap((s) => s.items), ...FOOTER_ITEMS], role, demo).find(
       (item) => lien(base, item.to) === location.pathname,
     )?.labelKey ?? 'notFound.appTitle'
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, userEvent } from '@/test/render'
+import { renderApp, screen, userEvent, attendreLeChargement } from '@/test/render'
 
 /**
  * Propagation de l'état partagé.
@@ -165,7 +165,7 @@ describe('parcours enregistré', () => {
   const CLE = 'gestlocpro.portfolio'
 
   it('n’écrit rien tant que rien n’a été modifié', () => {
-    renderApp('/app/systeme')
+    renderApp('/demo/systeme')
 
     expect(window.localStorage.getItem(CLE)).toBeNull()
     // La carte explique le mécanisme dans tous les cas ; c'est le bouton qui
@@ -190,7 +190,11 @@ describe('parcours enregistré', () => {
 
   it('efface sur demande, et n’enregistre pas de nouveau dans la foulée', async () => {
     const user = userEvent.setup()
-    renderApp('/app/travaux')
+    // Sous `/demo` : « Repartir du jeu de démonstration » est un bouton de
+    // VITRINE, et « États du système » ne figure plus dans la navigation d'un
+    // vrai compte — c'est tout l'objet du garde `vitrineHorsDemo.test.tsx`.
+    renderApp('/demo/travaux')
+    await attendreLeChargement()
 
     await user.click(screen.getByRole('button', { name: /valider le devis/i }))
     await allerA(/états du système/i)

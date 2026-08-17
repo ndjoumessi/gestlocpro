@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest'
 import { within } from '@testing-library/react'
-import { renderApp, screen, switchRole, userEvent } from '@/test/render'
+import { renderApp, screen, switchRole, attendreLeChargement, userEvent } from '@/test/render'
 
 /**
  * Barre de navigation basse.
@@ -60,12 +60,16 @@ describe('barre de navigation basse', () => {
   })
 
   it('respecte le filtrage par rôle', async () => {
-    renderApp('/app')
+    // Sous `/demo`, où vit le sélecteur de profil. Ce cas éprouve le FILTRAGE
+    // de la barre basse, pas la provenance du rôle : il lui faut donc un moyen
+    // d'en changer sans remonter, et c'est ce que la démonstration offre.
+    renderApp('/demo')
     expect(libelles()).toContain('Parc immobilier')
 
     // Un locataire n'a pas de parc : l'entrée disparaît, et la barre se remplit
     // avec la suivante de la liste plutôt que de laisser un trou.
     await switchRole('tenant')
+    await attendreLeChargement()
     expect(libelles()).not.toContain('Parc immobilier')
     expect(libelles()).toContain('Travaux')
   })

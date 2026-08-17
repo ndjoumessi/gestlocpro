@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, switchRole } from '@/test/render'
+import { renderApp, screen } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 
@@ -113,8 +113,9 @@ describe('les travaux, quand il n’y en a aucun', () => {
 
   it('ramène le locataire là où ses données vivent', async () => {
     parcSansRien()
+    // L'adhésion de cette session dit déjà « locataire » : le rôle en découle,
+    // il n'y a plus rien à basculer.
     renderApp('/app/travaux', { session: SESSION_LOCATAIRE })
-    await switchRole('tenant')
 
     expect(await screen.findByText(/aucune intervention en cours/i)).toBeInTheDocument()
     expect(screen.getByText(/dès que votre gestionnaire enregistre/i)).toBeInTheDocument()

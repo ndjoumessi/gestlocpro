@@ -24,6 +24,7 @@ import { Onboarding } from './features/dashboard/Onboarding'
 import { SystemStates } from './features/dashboard/SystemStates'
 import { TenantPortal } from './features/dashboard/TenantPortal'
 import { TenantRestricted } from './features/dashboard/TenantDashboard'
+import { useSession } from './api/SessionProvider'
 
 /** Raccourci : un écran réservé, avec le même écran de refus partout. */
 function Restricted({ allow, children }: { allow: Role[]; children: ReactNode }) {
@@ -32,6 +33,23 @@ function Restricted({ allow, children }: { allow: Role[]; children: ReactNode })
       {children}
     </RoleGuard>
   )
+}
+
+/**
+ * Un écran de VITRINE : il montre le produit au lieu de le rendre.
+ *
+ * Le garde double celui de la navigation, et pour la raison que ce fichier
+ * donne déjà des écrans de gestion — « pour que navigation et accès ne
+ * divergent pas ». Retirer l'entrée en laissant l'adresse ouverte n'aurait
+ * caché la vitrine qu'à qui ne l'avait jamais mise en signet.
+ *
+ * `NotFoundInApp` et non une redirection : sous un vrai compte, ces adresses
+ * n'existent pas, et c'est ce qu'un 404 dit. Rediriger vers le tableau de bord
+ * ferait passer une page absente pour une page déplacée.
+ */
+function Vitrine({ children }: { children: ReactNode }) {
+  const { estDemo } = useSession()
+  return <>{estDemo ? children : <NotFoundInApp />}</>
 }
 
 /**
@@ -59,8 +77,10 @@ function ecransDeLApplication() {
       <Route path="locataires" element={<Restricted allow={['owner', 'manager']}><Tenants /></Restricted>} />
       <Route path="prise-en-main" element={<Restricted allow={['owner']}><Onboarding /></Restricted>} />
 
-      <Route path="systeme" element={<SystemStates />} />
-      <Route path="portail" element={<TenantPortal />} />
+      {/* Vitrines : le même garde que dans la barre latérale, où elles portent
+          `vitrine: true`. */}
+      <Route path="systeme" element={<Vitrine><SystemStates /></Vitrine>} />
+      <Route path="portail" element={<Vitrine><TenantPortal /></Vitrine>} />
 
       {/* Écran inconnu sous /app : la coque et sa barre latérale restent
           affichées, puisqu'elles listent justement les écrans qui existent. */}

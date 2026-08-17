@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, switchRole, userEvent, within } from '@/test/render'
+import { renderApp, screen, switchRole, attendreLeChargement, userEvent, within } from '@/test/render'
 import { UNITS, WORKS } from '@/data/portfolio'
 
 /**
@@ -153,8 +153,9 @@ describe('signalements de démonstration', () => {
  */
 describe('délégation expliquée au gestionnaire', () => {
   it('dit pourquoi le gestionnaire ne valide pas un devis', async () => {
-    renderApp('/app/travaux', { locale: 'en' })
+    renderApp('/demo/travaux', { locale: 'en' })
     await switchRole('manager')
+    await attendreLeChargement()
     expect(screen.getByText(/Only the owner approves quotes/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Approve quote/i })).not.toBeInTheDocument()
   })
@@ -167,8 +168,9 @@ describe('délégation expliquée au gestionnaire', () => {
 
   it('traite les deux droits de la même façon', async () => {
     // La parité est le point : deux écrans, une seule règle.
-    renderApp('/app/cautions', { locale: 'en' })
+    renderApp('/demo/cautions', { locale: 'en' })
     await switchRole('manager')
+    await attendreLeChargement()
     expect(screen.getByText(/Only the owner settles deposits/)).toBeInTheDocument()
   })
 })
@@ -186,7 +188,7 @@ describe('délégation expliquée au gestionnaire', () => {
  */
 describe('signalement du portail', () => {
   it('refuse un envoi sans description', async () => {
-    renderApp('/app/portail', { locale: 'en' })
+    renderApp('/demo/portail', { locale: 'en' })
     await userEvent.click(screen.getByRole('tab', { name: 'Report' }))
     await userEvent.click(screen.getByRole('button', { name: 'Report' }))
 
@@ -195,7 +197,7 @@ describe('signalement du portail', () => {
   })
 
   it('envoie une fois le problème décrit', async () => {
-    renderApp('/app/portail', { locale: 'en' })
+    renderApp('/demo/portail', { locale: 'en' })
     await userEvent.click(screen.getByRole('tab', { name: 'Report' }))
     await userEvent.type(
       screen.getByRole('textbox'),
@@ -304,8 +306,9 @@ describe('décisions du tableau de bord', () => {
   })
 
   it('ne les montre pas au gestionnaire, qui ne peut pas les arbitrer', async () => {
-    renderApp('/app')
+    renderApp('/demo')
     await switchRole('manager')
+    await attendreLeChargement()
 
     expect(screen.queryByText(/caution à arbitrer/i)).not.toBeInTheDocument()
     // Et l'écran Cautions ne lui offre pas le geste non plus : les deux doivent

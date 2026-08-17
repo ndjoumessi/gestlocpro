@@ -1,4 +1,4 @@
-import { render, screen, within, type RenderResult } from '@testing-library/react'
+import { render, screen, waitFor, within, type RenderResult } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { ReactElement } from 'react'
@@ -39,6 +39,27 @@ export interface PreferencesTest {
   session?: EtatSession | null
   /** État de navigation de la route de départ, comme le poserait `RequireAuth`. */
   state?: unknown
+}
+
+/**
+ * L'état de session effectif d'un rendu de test.
+ *
+ * Une route sous `/demo` reçoit d'office une session de démonstration : sans
+ * elle, `Demo` ne rend rien tant que son effet d'entrée n'a pas basculé la
+ * session, et le test observe un écran vide qu'il prend pour un défaut.
+ *
+ * Il n'y a délibérément PAS de raccourci « rends-moi cet écran en tant que
+ * gestionnaire ». Le rôle vient de l'adhésion, l'adhésion porte un `parkId`, et
+ * un `parkId` déclenche la lecture du parc : un tel raccourci donnerait une
+ * session cohérente à un test sans serveur, qui lirait « Chargement… » sans
+ * comprendre pourquoi. Les cas qui éprouvent les rôles montent donc leur propre
+ * session ET leur faux serveur — voir `roleDeLAdhesion.test.tsx`.
+ */
+function sessionDe(preferences: PreferencesTest, route = ''): EtatSession | undefined {
+  if (preferences.session === null) return undefined
+  if (preferences.session) return preferences.session
+  if (route.startsWith('/demo')) return { statut: 'demo' }
+  return SESSION_CONNECTEE
 }
 
 /**
@@ -87,7 +108,7 @@ export function renderApp(
         <ThemeProvider>
           <CurrencyProvider>
             <ToastProvider>
-              <SessionProvider etatInitial={preferences.session === null ? undefined : (preferences.session ?? SESSION_CONNECTEE)}>
+              <SessionProvider etatInitial={sessionDe(preferences, route)}>
                 <PortfolioProvider>
                   <App />
                 </PortfolioProvider>
@@ -115,7 +136,7 @@ export function renderWithProviders(
         <ThemeProvider>
           <CurrencyProvider>
             <ToastProvider>
-              <SessionProvider etatInitial={preferences.session === null ? undefined : (preferences.session ?? SESSION_CONNECTEE)}>
+              <SessionProvider etatInitial={sessionDe(preferences)}>
                 <PortfolioProvider>{ui}</PortfolioProvider>
               </SessionProvider>
             </ToastProvider>
@@ -130,6 +151,9 @@ export function renderWithProviders(
  * Bascule le profil actif via le sélecteur de la barre latérale, comme le
  * ferait l'utilisateur. Passer par l'interface plutôt que par le contexte
  * garantit que le test échouerait aussi si le sélecteur cessait de fonctionner.
+ *
+ * RÉSERVÉ À `/demo` : le sélecteur ne s'affiche plus ailleurs. Sur un compte
+ * réel, le rôle vient de l'adhésion — il se pose au montage, par la session.
  */
 export async function switchRole(role: Role): Promise<void> {
   const user = userEvent.setup()
@@ -137,6 +161,29 @@ export async function switchRole(role: Role): Promise<void> {
   const target = radios.find((radio) => (radio as HTMLInputElement).value === role)
   if (!target) throw new Error(`Profil « ${role} » introuvable dans la barre latérale`)
   await user.click(target)
+}
+
+/**
+ * Attend la fin de l'attente DÉLIBÉRÉE de la démonstration.
+ *
+ * La démonstration retient les données 900 ms au premier montage, pour que les
+ * squelettes soient observables sans compte — c'était le seul moyen de les
+ * regarder, et l'un d'eux débordait à 375 px sans que rien ne le signale. Le
+ * prix est ici : un test monté sous `/demo` lit « Chargement… » s'il assertait
+ * aussitôt.
+ *
+ * L'attente porte sur `aria-busy`, que `Skeleton` pose sur sa région d'état.
+ * C'est le même signal que reçoit un lecteur d'écran : attendre autre chose —
+ * un délai fixe, un texte traduit — reviendrait à deviner.
+ */
+export async function attendreLeChargement(): Promise<void> {
+  await waitFor(
+    () => {
+      const enCours = document.querySelectorAll('[aria-busy="true"]').length
+      if (enCours > 0) throw new Error(`${enCours} région(s) encore en chargement`)
+    },
+    { timeout: 3000 },
+  )
 }
 
 export { screen, userEvent, within }

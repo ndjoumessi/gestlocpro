@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, switchRole } from '@/test/render'
+import { renderApp, screen, switchRole, attendreLeChargement } from '@/test/render'
 import { DEMO_TENANT_UNIT, UNITS } from '@/data/portfolio'
 
 /**
@@ -22,22 +22,31 @@ const AUTRES_LOCATAIRES = UNITS.filter(
   (unit) => unit.tenant !== null && unit.id !== DEMO_TENANT_UNIT,
 ).map((unit) => unit.tenant as string)
 
-/** Écrans que la barre latérale propose au locataire. */
+/**
+ * Les écrans sont montés sous `/demo`, et c'est ce qu'ils ont toujours été.
+ *
+ * Ces cas éprouvent le cloisonnement SUR LE JEU DE DÉMONSTRATION — c'est de là
+ * que viennent `AUTRES_LOCATAIRES` — et ils changent de rôle par le sélecteur
+ * de profil, qui n'existe que là. Les monter sous `/app` était un déguisement :
+ * l'adresse disait « vrai compte » quand la donnée et le levier disaient
+ * « démonstration ». Un vrai compte n'a pas de sélecteur, il a une adhésion,
+ * et c'est ce que vérifie `roleDeLAdhesion.test.tsx`.
+ */
 const ECRANS_AUTORISES = [
-  ['/app', 'espace locataire'],
-  ['/app/paiements', 'paiements'],
-  ['/app/etats-des-lieux', 'états des lieux'],
-  ['/app/travaux', 'travaux'],
-  ['/app/signalements', 'signalements'],
+  ['/demo', 'espace locataire'],
+  ['/demo/paiements', 'paiements'],
+  ['/demo/etats-des-lieux', 'états des lieux'],
+  ['/demo/travaux', 'travaux'],
+  ['/demo/signalements', 'signalements'],
 ] as const
 
 /** Écrans de gestion, retirés de sa navigation et interdits d'accès direct. */
 const ECRANS_INTERDITS = [
-  ['/app/parc', 'parc immobilier'],
-  ['/app/releves', 'relevés'],
-  ['/app/cautions', 'cautions'],
-  ['/app/locataires', 'locataires'],
-  ['/app/prise-en-main', 'onboarding'],
+  ['/demo/parc', 'parc immobilier'],
+  ['/demo/releves', 'relevés'],
+  ['/demo/cautions', 'cautions'],
+  ['/demo/locataires', 'locataires'],
+  ['/demo/prise-en-main', 'onboarding'],
 ] as const
 
 describe('cloisonnement du locataire', () => {
@@ -51,6 +60,7 @@ describe('cloisonnement du locataire', () => {
     it('ne cite aucun autre locataire', async () => {
       renderApp(route)
       await switchRole('tenant')
+      await attendreLeChargement()
 
       const main = screen.getByRole('main')
       for (const nom of AUTRES_LOCATAIRES) {
@@ -63,6 +73,7 @@ describe('cloisonnement du locataire', () => {
     it('refuse l’accès direct et l’explique', async () => {
       renderApp(route)
       await switchRole('tenant')
+      await attendreLeChargement()
 
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Accès restreint')
 
@@ -74,8 +85,9 @@ describe('cloisonnement du locataire', () => {
   })
 
   it('n’expose pas les indicateurs de parc sur son tableau de bord', async () => {
-    renderApp('/app')
+    renderApp('/demo')
     await switchRole('tenant')
+    await attendreLeChargement()
 
     const main = screen.getByRole('main')
     // Loyers attendus consolidés et taux d'occupation appartiennent au bailleur.
@@ -86,8 +98,9 @@ describe('cloisonnement du locataire', () => {
   })
 
   it('ne liste que son propre bail sur l’écran des paiements', async () => {
-    renderApp('/app/paiements')
+    renderApp('/demo/paiements')
     await switchRole('tenant')
+    await attendreLeChargement()
 
     const lignes = screen.getAllByRole('row')
     // Une ligne d'en-tête plus une seule ligne de données.
@@ -95,15 +108,15 @@ describe('cloisonnement du locataire', () => {
     expect(lignes[1]).toHaveTextContent(DEMO_TENANT_UNIT)
   })
 
-  it('laisse le propriétaire et le gestionnaire voir tout le parc', async () => {
-    renderApp('/app/paiements')
+  /** Le pendant positif : les deux rôles de gestion voient bien tout le parc. */
+  it.each(['owner', 'manager'] as const)('laisse le %s voir tout le parc', async (role) => {
+    renderApp('/demo/paiements')
+    await switchRole(role)
+    await attendreLeChargement()
 
-    for (const role of ['owner', 'manager'] as const) {
-      await switchRole(role)
-      const main = screen.getByRole('main')
-      for (const nom of AUTRES_LOCATAIRES) {
-        expect(main).toHaveTextContent(nom)
-      }
+    const main = screen.getByRole('main')
+    for (const nom of AUTRES_LOCATAIRES) {
+      expect(main).toHaveTextContent(nom)
     }
   })
 })

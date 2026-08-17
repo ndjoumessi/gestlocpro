@@ -61,14 +61,32 @@ describe('identité affichée dans la coquille', () => {
     expect(trouves, 'identité de démonstration visible dans un espace réel').toEqual([])
   })
 
-  it('nomme le compte dans le sélecteur de profil', async () => {
-    // Le sélecteur change le point de vue de CELUI QUI REGARDE : c'est son nom
-    // qui doit y figurer.
+  /**
+   * Ce cas disait l'inverse, et il avait raison à sa date.
+   *
+   * Le sélecteur affichait « Propriétaire · Arsène N. » sur un vrai compte ; on
+   * lui avait fait porter le nom du titulaire, ce qui retirait bien l'identité
+   * d'emprunt. Restait une incohérence que ce correctif-là ne pouvait pas voir :
+   * il donnait alors à l'utilisateur TROIS profils à son propre nom, dont deux
+   * rôles qu'il n'a pas. Nommer correctement une chose qui n'a pas lieu d'être
+   * ne la justifie pas.
+   *
+   * Le sélecteur n'a jamais été un contrôle d'accès — le serveur décide, lui —
+   * mais un point de vue de démonstration. Il y reste ; ici, le rôle vient de
+   * l'adhésion.
+   */
+  it('n’offre aucun sélecteur de profil sur un compte réel', async () => {
     installerFauxServeur({ authentifie: true })
     renderApp('/app', { session: SESSION_REELLE })
     await screen.findByRole('heading', { level: 1, name: /vue consolidée/i })
 
-    expect(screen.getAllByText(/Nelson Djoumessi/).length).toBeGreaterThan(0)
+    expect(screen.queryByText('Profil actif')).not.toBeInTheDocument()
+    expect(screen.queryAllByRole('radio', { hidden: true })).toHaveLength(0)
+
+    // Le nom du titulaire reste affiché là où il situe l'espace — le parc dans
+    // la barre latérale, le compte dans l'en-tête — sans passer par un choix de
+    // rôle. Sans cette assertion, vider la coquille satisferait le cas.
+    expect(screen.getAllByText(/Résidence Makepe/).length).toBeGreaterThan(0)
   })
 
   it('annonce « Parc de démonstration » en visite, et garde ses personnages', async () => {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { renderApp, screen, switchRole, userEvent, within } from '@/test/render'
+import { renderApp, screen, switchRole, attendreLeChargement, userEvent, within } from '@/test/render'
 import { captureDownloads } from '@/test/downloads'
 import { UTF8_BOM } from '@/lib/csv'
 import { DEMO_TENANT_UNIT, UNITS } from '@/data/portfolio'
@@ -83,8 +83,9 @@ describe('export des paiements', () => {
     // Le périmètre du rôle vaut pour le fichier autant que pour l'écran : un
     // export qui repartirait de la source aurait sorti tout le parc.
     capture = captureDownloads()
-    renderApp('/app/paiements')
+    renderApp('/demo/paiements')
     await switchRole('tenant')
+    await attendreLeChargement()
 
     const file = await exporter(/Exporter le relevé/)
     const lignes = file.text.replace(UTF8_BOM, '').trim().split('\r\n').slice(1)
@@ -181,8 +182,9 @@ describe('export du tableau de bord', () => {
 describe('quittances du locataire', () => {
   it('télécharge la quittance de la période, nommée par son mois', async () => {
     capture = captureDownloads()
-    renderApp('/app')
+    renderApp('/demo')
     await switchRole('tenant')
+    await attendreLeChargement()
 
     const user = userEvent.setup()
     const [premier] = screen.getAllByRole('button', { name: /Télécharger/ })
@@ -199,8 +201,9 @@ describe('quittances du locataire', () => {
 
   it('donne un fichier distinct à chaque période', async () => {
     capture = captureDownloads()
-    renderApp('/app')
+    renderApp('/demo')
     await switchRole('tenant')
+    await attendreLeChargement()
 
     const user = userEvent.setup()
     const boutons = screen.getAllByRole('button', { name: /Télécharger/ })
@@ -220,7 +223,7 @@ describe('quittances du locataire', () => {
 describe('portail locataire', () => {
   it('télécharge la quittance depuis l’onglet des paiements', async () => {
     capture = captureDownloads()
-    renderApp('/app/portail')
+    renderApp('/demo/portail')
 
     const user = userEvent.setup()
     await user.click(screen.getByRole('tab', { name: 'Mes paiements' }))
@@ -238,7 +241,7 @@ describe('portail locataire', () => {
     // part dans le produit : leur bouton « Télécharger » ne pouvait produire
     // qu'un faux fichier. On affiche l'état de la case à la place.
     capture = captureDownloads()
-    renderApp('/app/portail')
+    renderApp('/demo/portail')
 
     const user = userEvent.setup()
     await user.click(screen.getByRole('tab', { name: 'Documents' }))

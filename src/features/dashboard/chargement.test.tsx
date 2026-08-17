@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { waitFor } from '@testing-library/react'
-import { renderApp, screen, switchRole, userEvent, within } from '@/test/render'
+import { renderApp, screen, userEvent, within } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 
@@ -334,9 +334,8 @@ describe('l’espace locataire pendant le chargement', () => {
   it('ne présente pas le bail d’un autre', async () => {
     serveurAvecParc()
     ralentirLePortefeuille(800)
+    // L'adhésion porte déjà le rôle : le sélecteur n'a plus à le poser.
     renderApp('/app', { session: SESSION_LOCATAIRE })
-
-    await switchRole('tenant')
 
     const main = () => screen.getByRole('main')
 
@@ -428,7 +427,7 @@ describe('vitrine des états', () => {
   const attente = () => within(screen.getByRole('main')).queryByRole('status')
 
   it('joue l’attente puis aboutit sur du contenu réel', async () => {
-    renderApp('/app/systeme')
+    renderApp('/demo/systeme')
 
     expect(attente()).not.toBeNull()
 
@@ -440,7 +439,7 @@ describe('vitrine des états', () => {
 
   it('se rejoue à la demande', async () => {
     const user = userEvent.setup()
-    renderApp('/app/systeme')
+    renderApp('/demo/systeme')
     await waitFor(() => expect(attente()).toBeNull(), { timeout: 4000 })
 
     await user.click(screen.getByRole('button', { name: /rejouer le chargement/i }))
