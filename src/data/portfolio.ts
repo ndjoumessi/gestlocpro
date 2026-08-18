@@ -680,6 +680,26 @@ export const TENANT_DOCUMENT_REQUESTS: DocumentRequest[] = [
 ]
 
 /**
+ * Une occupation : qui a habité ce logement, quand, et à quel loyer.
+ *
+ * Le produit ne savait dire que le présent — `Unit.tenant` porte le locataire
+ * en cours. L'histoire d'un logement n'existait nulle part, alors que le modèle
+ * la porte depuis l'origine : un `Lease` est daté, et `endsOn` distingue le bail
+ * qui court de celui qui s'est terminé.
+ */
+export interface Occupation {
+  id: string
+  unitId: string
+  /** `null` quand la fiche du locataire a été retirée après coup. */
+  tenant: string | null
+  startsOn: DateParts
+  /** `null` tant que le bail court — et non « bail sans fin ». */
+  endsOn: DateParts | null
+  rentMinor: number
+  status: 'pending' | 'active' | 'ended'
+}
+
+/**
  * Les périodes de démonstration d'une unité, dérivées de son état courant.
  *
  * La grille des paiements montre six mois par bail. Seule l'unité du locataire

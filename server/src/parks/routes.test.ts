@@ -699,6 +699,119 @@ describe('historique des échéances', () => {
 })
 
 /**
+ * L'occupation d'une unité, bail par bail.
+ *
+ * Le portefeuille ne rendait que le bail EN COURS. « Que s'est-il passé dans ce
+ * logement ? » n'avait donc aucune réponse, alors que le modèle porte des baux
+ * datés depuis l'origine — le dossier du logement se construit sur eux.
+ */
+describe('occupation d’un logement', () => {
+  let parkId: string
+  let proprio: string
+
+  interface Occupation {
+    id: string
+    unitId: string
+    tenant: string | null
+    startsOn: string
+    endsOn: string | null
+    rentMinor: number
+    status: string
+  }
+
+  beforeEach(async () => {
+    const p = await inscrire('proprio@example.com', {
+      parkName: 'Parc Bonamoussadi',
+      countryCode: 'CM',
+      seedDemo: true,
+    })
+    proprio = p.cookie
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio)
+    parkId = parcs.body.parks[0].id
+  })
+
+  const pf = (c: string) => request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', c)
+
+  /** Clôt le bail de Charles et installe un successeur sur la même unité. */
+  async function faireSucceder(userId?: string) {
+    const ancien = await prisma.lease.findFirstOrThrow({
+      where: userId
+        ? { tenant: { userId } }
+        : { tenant: { fullName: 'Charles Ngassa' }, unit: { building: { parkId } } },
+      select: { id: true, unitId: true },
+    })
+    // L'index unique partiel n'autorise qu'un bail en cours par unité.
+    await prisma.lease.update({
+      where: { id: ancien.id },
+      data: { status: 'ended', endsOn: new Date(Date.UTC(2026, 6, 31)) },
+    })
+    const suivant = await prisma.tenant.create({
+      data: { parkId, fullName: 'Locataire suivant' },
+    })
+    const bailSuivant = await prisma.lease.create({
+      data: {
+        unitId: ancien.unitId,
+        tenantId: suivant.id,
+        startsOn: new Date(Date.UTC(2026, 7, 1)),
+        rentMinor: 160000,
+        status: 'active',
+      },
+    })
+    return { ancien, bailSuivant }
+  }
+
+  it('rend au gestionnaire TOUS les baux d’une unité, terminés compris', async () => {
+    const { ancien, bailSuivant } = await faireSucceder()
+    const res = await pf(proprio)
+    const baux: Occupation[] = res.body.leases
+
+    const surLUnite = baux.filter((b) => b.unitId === ancien.unitId)
+    expect(surLUnite.map((b) => b.id).sort()).toEqual([ancien.id, bailSuivant.id].sort())
+
+    // Le bail clos porte sa date de SORTIE — un bail terminé sans elle serait
+    // une donnée manquante, pas un bail en cours.
+    const clos = surLUnite.find((b) => b.id === ancien.id)!
+    expect(clos.status).toBe('ended')
+    expect(clos.endsOn).toBeTruthy()
+    // Et le loyer DE L'ÉPOQUE, pas celui du bail courant.
+    expect(clos.rentMinor).toBe(145000)
+    expect(surLUnite.find((b) => b.id === bailSuivant.id)!.rentMinor).toBe(160000)
+  })
+
+  /**
+   * Le cloisonnement porte sur le BAIL, non sur l'unité — le seul scénario où
+   * les deux divergent.
+   *
+   * `unitesVisibles` retient les unités où le compte a un bail sans regarder
+   * s'il court encore : un locataire parti reste « visible » sur son ancien
+   * logement. Lui rendre l'occupation suivante lui donnerait le NOM de son
+   * successeur, sa date d'entrée et son loyer. Le cas du voisin ne mord pas —
+   * `filtreUnite` l'écarte déjà.
+   */
+  it('ne dit pas au locataire parti qui lui a succédé', async () => {
+    const locataire = await inscrire('charles@example.com')
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'charles@example.com' },
+    })
+    await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'tenant' } })
+    await prisma.tenant.updateMany({
+      where: { parkId, fullName: 'Charles Ngassa' },
+      data: { userId: compte.id },
+    })
+
+    const { ancien, bailSuivant } = await faireSucceder(compte.id)
+
+    const res = await pf(locataire.cookie)
+    const baux: Occupation[] = res.body.leases
+
+    expect(baux.every((b) => b.id === ancien.id)).toBe(true)
+    expect(baux.some((b) => b.id === bailSuivant.id)).toBe(false)
+    // Le nom, explicitement : c'est lui que la fuite livrerait.
+    expect(baux.some((b) => b.tenant === 'Locataire suivant')).toBe(false)
+  })
+})
+
+/**
  * Les demandes de pièces administratives.
  *
  * Elles n'avaient pas d'objet : l'écran « Documents » les envoyait par la route

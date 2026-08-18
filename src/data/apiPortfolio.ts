@@ -6,6 +6,7 @@ import type {
   AlertMessage,
   Deposit,
   DocumentRequest,
+  Occupation,
   Inspection,
   MeterReading,
   MonthlyCollection,
@@ -108,6 +109,17 @@ interface PortefeuilleApi {
     createdAt: string
     read: boolean
   }[]
+  /** Optionnel, comme le reste de ce qui est arrivé après coup. */
+  leases?: {
+    id: string
+    unitId: string
+    tenant: string | null
+    /** ISO. */
+    startsOn: string
+    endsOn: string | null
+    rentMinor: number
+    status: Occupation['status']
+  }[]
   /**
    * Optionnel : un serveur antérieur à cette entité ne le rend pas, et l'écran
    * doit alors annoncer qu'il n'y a aucune demande plutôt que de casser.
@@ -168,6 +180,8 @@ export interface ParcCharge {
   receiptsByLease: Record<string, Receipt[]>
   /** Les demandes de pièces, toutes unités visibles confondues. */
   documentRequests: DocumentRequest[]
+  /** L'occupation des logements, baux terminés compris. */
+  leases: Occupation[]
 }
 
 /** Date ISO vers `DateParts`, dont le mois est indexé à zéro. */
@@ -294,6 +308,17 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
     // sont rapprochés.
     collections: data.collections,
     paidByUnit,
+    leases: (data.leases ?? []).map((b) => ({
+      id: b.id,
+      unitId: b.unitId,
+      tenant: b.tenant,
+      // Des colonnes `date` : lues dans la chaîne, jamais par un fuseau. Voir
+      // `jourCalendaire`.
+      startsOn: jourCalendaire(b.startsOn),
+      endsOn: b.endsOn ? jourCalendaire(b.endsOn) : null,
+      rentMinor: b.rentMinor,
+      status: b.status,
+    })),
     documentRequests: (data.documentRequests ?? []).map((d) => ({
       id: d.id,
       unitId: d.unitId,

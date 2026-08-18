@@ -607,6 +607,38 @@ export const fr = {
       legendPower: 'Électricité',
     },
 
+    unitFile: {
+      /**
+       * Le dossier d'un logement — ce que cinq écrans savaient chacun de leur
+       * côté, réuni autour d'une seule unité.
+       */
+      back: 'Retour au parc',
+      open: 'Ouvrir le dossier du logement {unit}',
+      loadingTitle: 'Dossier du logement',
+      notFoundTitle: 'Ce logement est introuvable',
+      notFoundBody: 'Il a peut-être été retiré du parc, ou l’adresse est incomplète.',
+      occupancy: 'Occupation',
+      occupancyHint: 'Les baux successifs de ce logement, le plus récent d’abord.',
+      occupancyEmpty: 'Aucun bail enregistré',
+      occupancyEmptyBody:
+        'Ce logement n’a pas encore d’historique d’occupation. Il apparaîtra dès qu’un bail y sera rattaché.',
+      since: 'depuis le {date}',
+      between: 'du {start} au {end}',
+      billing: 'Périodes facturées',
+      billingHint: 'Ce que le logement a appelé, et ce qu’il reste à recouvrer.',
+      billingEmptyBody: 'Aucune échéance n’a encore été émise pour ce logement.',
+      works: 'Travaux du logement',
+      worksHint: 'Toutes les interventions, quelle que soit l’occupation.',
+      worksEmpty: 'Aucune intervention',
+      worksEmptyBody: 'Rien n’a été signalé ni planifié sur ce logement.',
+      file: 'Pièces du dossier',
+      waterUse: 'Consommation d’eau du mois',
+      noDeposit: 'Aucune caution versée',
+      noInspection: 'Non réalisé',
+      noReading: 'Relevé manquant',
+      fileHint: 'Caution, états des lieux et dernier relevé.',
+    },
+
     portfolio: {
       unitType: 'Typologie',
       addUnitTitle: 'Ajouter un logement',

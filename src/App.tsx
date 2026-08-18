@@ -13,6 +13,7 @@ import { AppShell, RoleGuard } from './components/layout/AppShell'
 import { RequireAuth } from './api/RequireAuth'
 import { Dashboard } from './features/dashboard/Dashboard'
 import { Portfolio } from './features/dashboard/Portfolio'
+import { UnitFile } from './features/dashboard/UnitFile'
 import { Payments } from './features/dashboard/Payments'
 import { Meters } from './features/dashboard/Meters'
 import { Inspections } from './features/dashboard/Inspections'
@@ -82,6 +83,17 @@ function ecransDeLApplication() {
       {/* Écrans de gestion : la même liste de rôles que dans la barre
           latérale, pour que navigation et accès ne divergent pas. */}
       <Route path="parc" element={<Restricted allow={['owner', 'manager']}><Portfolio /></Restricted>} />
+      {/* Le dossier d'UN logement. Même garde que la liste dont il vient : une
+          adresse forgée ne doit pas ouvrir à un locataire le dossier du voisin,
+          et le serveur borne déjà ce qu'il rend. */}
+      <Route
+        path="parc/:unitId"
+        element={
+          <Restricted allow={['owner', 'manager']}>
+            <UnitFile />
+          </Restricted>
+        }
+      />
       {/* Ouverts au locataire : ce sont SES relevés et SA caution, et le
           portefeuille les borne déjà à son unité côté serveur. */}
       <Route path="releves" element={<Meters />} />

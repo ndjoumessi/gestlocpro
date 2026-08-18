@@ -427,7 +427,7 @@ parksRouter.get(
     const idsVisibles = visibles?.map((u) => u.id)
     const filtreUnite = idsVisibles ? { in: idsVisibles } : undefined
 
-    const [travaux, cautions, releves, etatsDesLieux, notifications, echeances, demandes] =
+    const [travaux, cautions, releves, etatsDesLieux, notifications, echeances, demandes, baux] =
       await Promise.all([
       prisma.workOrder.findMany({
         where: { unit: { building: { parkId } }, ...(filtreUnite ? { unitId: filtreUnite } : {}) },
@@ -613,6 +613,37 @@ parksRouter.get(
           },
         },
       }),
+      /**
+       * TOUS les baux, terminés compris — l'occupation d'un logement dans le
+       * temps.
+       *
+       * La réponse ne portait que le bail en cours : `units[].tenant` dit qui
+       * habite, jamais qui a habité. Un logement a pourtant autant de dossiers
+       * que de locataires successifs, et la question « que s'est-il passé
+       * ici ? » n'avait aucune réponse dans le produit — ni la durée des
+       * occupations passées, ni le loyer d'alors, ni la date de sortie.
+       *
+       * Cloisonné par le BAIL pour le locataire, comme les échéances et les
+       * demandes : `unitesVisibles` retient son ancien logement, et lui rendre
+       * l'occupation suivante lui donnerait le nom de son successeur.
+       */
+      prisma.lease.findMany({
+        where: {
+          unit: { building: { parkId } },
+          ...(filtreUnite ? { unitId: filtreUnite } : {}),
+          ...(role === 'tenant' ? { tenant: { userId: req.compteId! } } : {}),
+        },
+        orderBy: { startsOn: 'desc' },
+        select: {
+          id: true,
+          unitId: true,
+          startsOn: true,
+          endsOn: true,
+          rentMinor: true,
+          status: true,
+          tenant: { select: { fullName: true } },
+        },
+      }),
     ])
 
     /**
@@ -678,6 +709,23 @@ parksRouter.get(
           method: p.method,
           paidOn: p.paidOn,
         })),
+      })),
+      /**
+       * L'occupation du logement, la plus récente d'abord.
+       *
+       * `endsOn` à `null` ne veut pas dire « bail sans fin » mais « bail qui
+       * court » : c'est l'écran qui choisit de l'écrire « depuis le … », et il
+       * lui faut la nuance — un bail terminé sans date de sortie serait une
+       * donnée manquante, pas un bail en cours.
+       */
+      leases: baux.map((b) => ({
+        id: b.id,
+        unitId: b.unitId,
+        tenant: b.tenant?.fullName ?? null,
+        startsOn: b.startsOn,
+        endsOn: b.endsOn,
+        rentMinor: b.rentMinor,
+        status: b.status,
       })),
       documentRequests: demandes.map((d) => ({
         id: d.id,

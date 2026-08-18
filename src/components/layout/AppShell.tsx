@@ -1347,10 +1347,25 @@ function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
   // La liste est FILTRÉE comme la navigation l'est : une adresse de vitrine
   // saisie à la main hors démonstration rend le 404, et le fil doit dire la
   // même chose que l'écran plutôt que nommer une page qui ne s'affiche pas.
+  /**
+   * L'entrée EXACTE, ou celle dont l'écran courant descend.
+   *
+   * La comparaison était une égalité stricte : le dossier d'un logement —
+   * `/app/parc/<id>`, qui n'est l'adresse d'aucune entrée de navigation —
+   * affichait donc « Écran introuvable » dans son fil, sur une page qui
+   * s'ouvrait parfaitement. Le repli sur le 404 reste juste pour une adresse
+   * inconnue ; il ne l'est pas pour un écran de détail, qui appartient bel et
+   * bien à sa section.
+   *
+   * On retient l'entrée la plus LONGUE parmi les préfixes : sans cela, l'entrée
+   * d'index — chemin vide, donc préfixe de tout — les emporterait toutes.
+   */
+  const visibles = entreesVisibles(toutesLesEntrees(role), role, demo)
   const crumb =
-    entreesVisibles(toutesLesEntrees(role), role, demo).find(
-      (item) => lien(base, item.to) === location.pathname,
-    )?.labelKey ?? 'notFound.appTitle'
+    (visibles.find((item) => lien(base, item.to) === location.pathname) ??
+      visibles
+        .filter((item) => item.to !== '' && location.pathname.startsWith(`${lien(base, item.to)}/`))
+        .sort((a, b) => b.to.length - a.to.length)[0])?.labelKey ?? 'notFound.appTitle'
 
   return (
     <header

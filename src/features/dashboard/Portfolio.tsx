@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { PageHeader } from '@/components/layout/AppShell'
+import { lien, useBase } from '@/lib/base'
 import { DataTable, EmptyState } from '@/components/primitives/DataTable'
 import { PaymentStatusPill } from '@/components/primitives/StatusPill'
 import { StatCard } from '@/components/primitives/Charts'
@@ -24,6 +26,7 @@ import { AddBuildingModal } from './AddBuildingModal'
 import { AddUnitModal } from './AddUnitModal'
 
 export function Portfolio() {
+  const base = useBase()
   const [ajoutOuvert, setAjoutOuvert] = useState(false)
   const [logementOuvert, setLogementOuvert] = useState(false)
   const t = useT()
@@ -261,7 +264,28 @@ export function Portfolio() {
             key: 'unit',
             header: t('app.portfolio.unit'),
             width: '5.5rem',
-            render: (unit) => <span className="numeric font-medium">{unit.label}</span>,
+            /**
+             * UN LIEN DANS LA CELLULE, et non une ligne cliquable.
+             *
+             * C'est la voie que `DataTable` avait laissée ouverte, en toutes
+             * lettres : « le jour où une ligne devra mener quelque part, la
+             * réponse juste sera un vrai lien dans une cellule — focalisable,
+             * ouvrable dans un nouvel onglet, annoncé par sa destination — et
+             * non une rangée piégée ». Ce jour est arrivé avec le dossier du
+             * logement.
+             *
+             * Le nom accessible porte le libellé de l'unité : « A1 » seul, dans
+             * une liste de dix liens, ne dit pas où l'on va.
+             */
+            render: (unit) => (
+              <Link
+                to={lien(base, `parc/${unit.id}`)}
+                aria-label={t('app.unitFile.open', { unit: unit.label })}
+                className="numeric font-medium text-ink underline-offset-4 hover:underline"
+              >
+                {unit.label}
+              </Link>
+            ),
           },
           {
             key: 'building',

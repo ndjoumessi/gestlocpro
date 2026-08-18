@@ -32,6 +32,7 @@ import {
   DEMO_TENANT_UNIT,
   type Deposit,
   type DocumentKind,
+  type Occupation,
   type DocumentRequest,
   type TradeKey,
   type Unit,
@@ -313,6 +314,15 @@ interface PortfolioContextValue {
    * Le serveur ne lui envoie de toute façon que les siennes.
    */
   documentRequests: DocumentRequest[]
+  /**
+   * L'occupation d'un logement, la plus récente d'abord.
+   *
+   * Vide en démonstration : le jeu local ne porte qu'un bail par unité, celui
+   * qui court. Le dossier le dit plutôt que d'inventer des locataires passés —
+   * un logement dont on affirmerait qu'il a été occupé par trois personnes
+   * qu'aucun autre écran ne connaît serait pire qu'une case vide.
+   */
+  leasesForUnit: (unitId: string) => Occupation[]
   /** Le locataire demande une pièce. Refusée en double tant qu'elle est en attente. */
   requestDocument: (unitId: string, kind: DocumentKind) => void
   /** Le gestionnaire répond : fournie, ou impossible à fournir. */
@@ -491,6 +501,26 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const [documentRequests, setDocumentRequests] = useState<DocumentRequest[]>(
     DEMANDES_DOCUMENTS_DEMO,
   )
+  /**
+   * En démonstration, le bail EN COURS — et lui seul.
+   *
+   * Le jeu local le connaît : `unit.tenant`, `unit.leaseStart` et le loyer sont
+   * déjà à l'écran ailleurs. Le construire ici ne crée aucune donnée, cela
+   * rassemble ce que le parc dit déjà. Les occupations PASSÉES, en revanche, ne
+   * sont pas inventées : un logement dont on affirmerait qu'il a hébergé trois
+   * personnes qu'aucun autre écran ne connaît vaudrait moins qu'une case vide.
+   */
+  const [leases, setLeases] = useState<Occupation[]>(() =>
+    UNITS_DEMO.filter((u) => u.tenant !== null && u.leaseStart !== null).map((u) => ({
+      id: `bail-demo-${u.id}`,
+      unitId: u.id,
+      tenant: u.tenant,
+      startsOn: u.leaseStart!,
+      endsOn: null,
+      rentMinor: u.rent,
+      status: 'active' as const,
+    })),
+  )
 
   useEffect(() => {
     if (!parkId) {
@@ -576,6 +606,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         ),
       )
       setDocumentRequests(parc.documentRequests)
+      setLeases(parc.leases)
       setFromApi(true)
       // Posé APRÈS l'écriture, et seulement en cas de succès : un échec laisse
       // le jeu de démonstration à l'écran, et une relecture ultérieure a alors
@@ -1230,6 +1261,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       collections,
       receiptsForUnit: (unitId) => receiptsByUnit[unitId] ?? [],
       documentRequests,
+      leasesForUnit: (unitId) => leases.filter((b) => b.unitId === unitId),
       requestDocument,
       resolveDocumentRequest,
       readingForUnit: (unitId) => readings.find((r) => r.unitId === unitId),
@@ -1272,6 +1304,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       loading,
       receiptsByUnit,
       documentRequests,
+      leases,
       requestDocument,
       resolveDocumentRequest,
       approveWork,
