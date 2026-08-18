@@ -12,7 +12,8 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "test": "vitest run",
-    "check": "tsc -b && vitest run"
+    "check": "tsc -b && vitest run",
+    "db:test:setup": "node scripts/setup-test-db.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
