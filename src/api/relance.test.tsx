@@ -179,6 +179,40 @@ describe('retrait d’une fiche locataire', () => {
   })
 })
 
+describe('retrait refusé', () => {
+  it('n’annonce PAS un retrait que le serveur a refusé', async () => {
+    /**
+     * Défaut vu en production, et introduit par le correctif qui l'accompagne :
+     * le succès était annoncé dans le même souffle que l'appel, sans l'attendre.
+     * Le serveur refusait en 409 — une somme avait circulé — et l'écran affichait
+     * « Fiche retirée » PUIS « le serveur a refusé cette action » : deux messages
+     * contradictoires côte à côte, dont le premier était faux.
+     *
+     * C'est le défaut que ce produit corrige depuis le matin, réintroduit par
+     * celui qui le corrigeait.
+     */
+    const serveur = parc()
+    serveur.quand(
+      'DELETE',
+      `/parks/${PARC}/tenants/dddddddd-1111-4111-8111-111111111111`,
+      { status: 409, body: { error: 'has_payments' } },
+    )
+    const user = userEvent.setup()
+    renderApp('/app/locataires', { session: session('owner') })
+    await screen.findByText('Paul Kamga')
+
+    await user.click(screen.getAllByRole('button', { name: /^retirer$/i })[0]!)
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: /confirmer/i }),
+    )
+
+    expect(await screen.findByText(/refusé cette action/i)).toBeInTheDocument()
+    expect(screen.queryByText(/fiche retirée/i)).not.toBeInTheDocument()
+    // Et la ligne reste : le locataire n'a pas bougé.
+    expect(screen.getByText('Paul Kamga')).toBeInTheDocument()
+  })
+})
+
 describe('date du versement', () => {
   it('refuse une date future, et n’appelle pas le serveur', async () => {
     /**

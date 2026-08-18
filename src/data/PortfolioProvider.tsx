@@ -197,7 +197,7 @@ interface PortfolioContextValue {
    * Refusé par le serveur tant qu'une somme a circulé. L'unité redevient
    * vacante ; les murs restent.
    */
-  removeTenant: (unitId: string, tenantId: string) => void
+  removeTenant: (unitId: string, tenantId: string) => Promise<boolean>
   /**
    * Relance les baux désignés, et rend ce qui a RÉELLEMENT eu lieu.
    *
@@ -799,28 +799,26 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
    * lecture du parc rapportera avec les notifications.
    */
   const removeTenant = useCallback(
-    (unitId: string, tenantId: string) => {
-      if (!parkId) {
+    async (unitId: string, tenantId: string): Promise<boolean> => {
+      const libere = () =>
         setUnits((liste) =>
           liste.map((u) =>
             u.id === unitId ? { ...u, tenant: null, phone: null, status: 'vacant', paid: 0 } : u,
           ),
         )
-        return
+      if (!parkId) {
+        libere()
+        return true
       }
-      void api
-        .deleteTenant(parkId, tenantId)
-        // L'unité ne redevient vacante qu'APRÈS l'accord du serveur : il refuse
-        // tant qu'une somme a circulé, et l'afficher libre d'abord montrerait un
-        // retrait qui n'a pas eu lieu.
-        .then(() =>
-          setUnits((liste) =>
-            liste.map((u) =>
-              u.id === unitId ? { ...u, tenant: null, phone: null, status: 'vacant', paid: 0 } : u,
-            ),
-          ),
-        )
-        .catch(signalerEchec)
+      try {
+        await api.deleteTenant(parkId, tenantId)
+        // L'unité ne redevient vacante qu'APRÈS l'accord du serveur.
+        libere()
+        return true
+      } catch (erreur) {
+        signalerEchec(erreur)
+        return false
+      }
     },
     [parkId, signalerEchec],
   )

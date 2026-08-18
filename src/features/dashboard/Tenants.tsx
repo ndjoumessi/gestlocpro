@@ -202,10 +202,24 @@ export function Tenants() {
               </Button>
               <Button
                 variant="danger"
-                onClick={() => {
-                  removeTenant(aRetirer.id, aRetirer.tenantId!)
+                /**
+                 * Le message SUIT la réponse du serveur.
+                 *
+                 * Première version : le succès était annoncé dans le même souffle
+                 * que l'appel, sans l'attendre. Le serveur refusait en 409 —
+                 * « aucune somme n'a circulé » n'était pas satisfait — et l'écran
+                 * affichait « Fiche retirée » PUIS « le serveur a refusé cette
+                 * action » : deux messages contradictoires côte à côte, dont le
+                 * premier était faux.
+                 *
+                 * C'est le défaut que ce produit corrige depuis le matin,
+                 * réintroduit par celui qui le corrigeait. Le refus, lui, est
+                 * déjà dit par `signalerEchec` : rien à ajouter ici.
+                 */
+                onClick={async () => {
+                  const retire = await removeTenant(aRetirer.id, aRetirer.tenantId!)
                   setARetirer(null)
-                  notify(t('app.tenants.removed'), { tone: 'ok' })
+                  if (retire) notify(t('app.tenants.removed'), { tone: 'ok' })
                 }}
               >
                 {t('common.confirm')}
