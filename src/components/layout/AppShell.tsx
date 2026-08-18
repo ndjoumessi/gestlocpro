@@ -96,10 +96,14 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
         icon: 'card',
         badge: { count: 'overdue', tone: 'danger' },
       },
-      { to: 'releves', labelKey: 'nav.meters', icon: 'gauge', roles: ['owner', 'manager'] },
+      /* Le locataire voit LES SIENS : l'eau et l'électricité lui sont
+         refacturées, et le portefeuille borne déjà les relevés à son unité. */
+      { to: 'releves', labelKey: 'nav.meters', icon: 'gauge' },
       { to: 'etats-des-lieux', labelKey: 'nav.inspections', icon: 'clipboard' },
       { to: 'travaux', labelKey: 'nav.works', icon: 'wrench' },
-      { to: 'cautions', labelKey: 'nav.deposits', icon: 'shield', roles: ['owner', 'manager'] },
+      /* Sa caution est SON argent. La lui cacher jusqu'à la restitution est
+         exactement ce que ce produit reproche aux pratiques qu'il remplace. */
+      { to: 'cautions', labelKey: 'nav.deposits', icon: 'shield' },
     ],
   },
   {

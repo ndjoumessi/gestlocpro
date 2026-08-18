@@ -72,8 +72,10 @@ function ecransDeLApplication() {
       {/* Écrans de gestion : la même liste de rôles que dans la barre
           latérale, pour que navigation et accès ne divergent pas. */}
       <Route path="parc" element={<Restricted allow={['owner', 'manager']}><Portfolio /></Restricted>} />
-      <Route path="releves" element={<Restricted allow={['owner', 'manager']}><Meters /></Restricted>} />
-      <Route path="cautions" element={<Restricted allow={['owner', 'manager']}><Deposits /></Restricted>} />
+      {/* Ouverts au locataire : ce sont SES relevés et SA caution, et le
+          portefeuille les borne déjà à son unité côté serveur. */}
+      <Route path="releves" element={<Meters />} />
+      <Route path="cautions" element={<Deposits />} />
       <Route path="locataires" element={<Restricted allow={['owner', 'manager']}><Tenants /></Restricted>} />
       <Route path="prise-en-main" element={<Restricted allow={['owner']}><Onboarding /></Restricted>} />
 

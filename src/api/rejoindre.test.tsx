@@ -52,6 +52,27 @@ describe('rejoindre un parc', () => {
     expect(screen.queryByText(/parc rejoint/i)).not.toBeInTheDocument()
   })
 
+  it('n’est PAS proposée à qui appartient déjà à un parc', async () => {
+    /**
+     * Posée sans condition, la carte s'affichait chez le propriétaire — qui a
+     * fondé son parc et n'a aucun code à saisir. Elle lui proposait un geste
+     * sans objet sur l'écran censé lui expliquer ses droits.
+     */
+    installerFauxServeur({ authentifie: true })
+    renderApp('/app/prise-en-main', {
+      session: {
+        statut: 'connecte',
+        compte: COMPTE_FICTIF,
+        adhesions: [
+          { parkId: 'p1', role: 'owner', parkName: 'Parc Bastos', currency: 'XAF' },
+        ],
+      },
+    })
+    await screen.findByRole('heading', { level: 1 })
+
+    expect(screen.queryByLabelText(/code d’invitation/i)).not.toBeInTheDocument()
+  })
+
   it('n’envoie rien tant que le code est trop court', async () => {
     const serveur = installerFauxServeur({ authentifie: true })
     const user = userEvent.setup()

@@ -1,4 +1,4 @@
-import { PageHeader } from '@/components/layout/AppShell'
+import { PageHeader, useRole } from '@/components/layout/AppShell'
 import { DataTable } from '@/components/primitives/DataTable'
 import { StatCard } from '@/components/primitives/Charts'
 import {
@@ -33,7 +33,12 @@ export function Meters() {
   const { money } = useCurrency()
   const exportCsv = useCsvExport()
   const csvMoney = useCsvMoney()
-  const { unitById, readings: READINGS, loading } = usePortfolio()
+  const { role } = useRole()
+  const { unitById, readings: TOUS, isMine, loading } = usePortfolio()
+
+  /* Le locataire ne voit que SES relevés : l'écran vient de s'ouvrir à lui,
+     puisque l'eau et l'électricité lui sont refacturées. */
+  const READINGS = TOUS.filter((r) => role !== 'tenant' || isMine(r.unitId))
 
   /**
    * Libellé affichable d'une unité.

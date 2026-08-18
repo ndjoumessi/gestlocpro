@@ -90,10 +90,20 @@ const ROLES: Role[] = ['owner', 'manager', 'tenant']
 function RejoindreUnParc() {
   const t = useT()
   const { notify } = useToast()
-  const { rafraichir } = useSession()
+  const { etat, rafraichir } = useSession()
   const [code, setCode] = useState('')
   const [erreur, setErreur] = useState<string | null>(null)
   const [envoi, setEnvoi] = useState(false)
+
+  /**
+   * Rien à rejoindre quand on appartient DÉJÀ à un parc.
+   *
+   * Posée sans condition, la carte s'affichait chez le propriétaire — qui a
+   * fondé son parc et n'a aucun code à saisir. Elle lui proposait un geste sans
+   * objet sur l'écran censé lui expliquer ses droits, ce qui est le contraire de
+   * son propos.
+   */
+  if (etat.statut !== 'connecte' || etat.adhesions.length > 0) return null
 
   return (
     <Card className="flex flex-col gap-4">

@@ -38,13 +38,26 @@ const ECRANS_AUTORISES = [
   ['/demo/etats-des-lieux', 'états des lieux'],
   ['/demo/travaux', 'travaux'],
   ['/demo/signalements', 'signalements'],
+  /**
+   * RELEVÉS et CAUTIONS ont changé de camp, et c'est une décision de produit.
+   *
+   * Ils figuraient parmi les écrans INTERDITS. L'eau et l'électricité sont
+   * refacturées au locataire, et la caution est SON argent : les lui cacher
+   * jusqu'à la restitution est exactement ce que ce produit reproche aux
+   * pratiques qu'il remplace.
+   *
+   * Le cloisonnement n'est pas affaibli — il est déplacé là où il compte. Ces
+   * deux écrans passent désormais par l'invariante ci-dessous : aucun nom d'un
+   * autre locataire n'y apparaît, et le portefeuille borne déjà les données à
+   * son unité côté serveur.
+   */
+  ['/demo/releves', 'relevés'],
+  ['/demo/cautions', 'cautions'],
 ] as const
 
 /** Écrans de gestion, retirés de sa navigation et interdits d'accès direct. */
 const ECRANS_INTERDITS = [
   ['/demo/parc', 'parc immobilier'],
-  ['/demo/releves', 'relevés'],
-  ['/demo/cautions', 'cautions'],
   ['/demo/locataires', 'locataires'],
   ['/demo/prise-en-main', 'onboarding'],
 ] as const

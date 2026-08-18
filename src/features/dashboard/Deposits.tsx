@@ -34,7 +34,24 @@ export function Deposits() {
 
   // Les cautions viennent de l'état partagé : arbitrer ici doit se voir dans
   // l'espace locataire, qui affiche la caution consignée du bail.
-  const { deposits, settleDeposit, unsettleDeposit, unitById, loading } = usePortfolio()
+  const {
+    deposits: TOUTES,
+    settleDeposit,
+    unsettleDeposit,
+    unitById,
+    isMine,
+    loading,
+  } = usePortfolio()
+
+  /**
+   * Le locataire ne voit que SA caution.
+   *
+   * L'écran vient de s'ouvrir à lui — c'est son argent — et il listait alors le
+   * parc entier, noms compris. Le filtre est posé à la SOURCE et non à
+   * l'affichage : les trois totaux du haut se calculent dessus, sans quoi il
+   * lirait « total consigné » sur les cautions de ses voisins.
+   */
+  const deposits = TOUTES.filter((d) => role !== 'tenant' || isMine(d.unitId))
   const [settling, setSettling] = useState<Deposit | null>(null)
 
   /**
