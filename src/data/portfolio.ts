@@ -596,6 +596,78 @@ export const TENANT_RECEIPTS: Receipt[] = [
   { year: 2026, month: 2, rentMinor: 145000, waterMinor: 8840, powerMinor: 16632, dueOn: { year: 2026, month: 2, day: 5 }, paidMinor: 170472, payments: [{ amountMinor: 170472, method: 'mobile', paidOn: { year: 2026, month: 2, day: 6 } }] },
 ]
 
+/**
+ * Une pièce administrative demandée par le locataire.
+ *
+ * Elle partait par `addWork`, le canal des signalements, faute d'objet pour la
+ * porter : le suivi du locataire comme la liste du gestionnaire la rangeaient
+ * parmi les interventions, avec un métier, une urgence et une référence de
+ * chantier. « Attestation de résidence » s'affichait à côté d'une fuite
+ * d'évier.
+ *
+ * `tenant` est le nom de qui demande — `null` hors démonstration quand le bail
+ * n'en porte pas. Le gestionnaire répond à une personne, pas à un identifiant
+ * de logement.
+ */
+export interface DocumentRequest {
+  id: string
+  unitId: string
+  tenant: string | null
+  kind: DocumentKind
+  status: DocumentRequestStatus
+  requestedAt: DateParts
+  /** `null` tant que personne n'a répondu. */
+  resolvedAt: DateParts | null
+}
+
+/** Les trois pièces que l'écran sait demander. Liste fermée, comme au serveur. */
+export type DocumentKind = 'residence' | 'goodStanding' | 'leaseCopy'
+
+/**
+ * `declined` est une RÉPONSE.
+ *
+ * Une pièce qu'on ne peut pas produire — bail non signé, document inexistant —
+ * laisserait sinon la demande en attente indéfiniment : le locataire
+ * guetterait, le gestionnaire garderait une ligne qu'il ne peut pas retirer.
+ */
+export type DocumentRequestStatus = 'pending' | 'fulfilled' | 'declined'
+
+/** L'intitulé de chaque pièce, dans la langue de qui lit. */
+export const DOCUMENT_KIND_LABELS: Record<DocumentKind, string> = {
+  residence: 'app.documents.reqResidence',
+  goodStanding: 'app.documents.reqGoodStanding',
+  leaseCopy: 'app.documents.reqLeaseCopy',
+}
+
+/**
+ * Deux demandes de démonstration, dans deux états.
+ *
+ * Une seule ne montrerait qu'une moitié de l'objet : c'est la RÉPONSE — la
+ * date à laquelle le gestionnaire a fourni la pièce — qui distingue cette
+ * entité d'un formulaire d'envoi. Elles portent l'unité du locataire de
+ * démonstration, la seule dont l'espace locataire montre le dossier.
+ */
+export const TENANT_DOCUMENT_REQUESTS: DocumentRequest[] = [
+  {
+    id: 'dem-1',
+    unitId: DEMO_TENANT_UNIT,
+    tenant: 'Charles Ngassa',
+    kind: 'goodStanding',
+    status: 'pending',
+    requestedAt: { year: 2026, month: 7, day: 12 },
+    resolvedAt: null,
+  },
+  {
+    id: 'dem-2',
+    unitId: DEMO_TENANT_UNIT,
+    tenant: 'Charles Ngassa',
+    kind: 'residence',
+    status: 'fulfilled',
+    requestedAt: { year: 2026, month: 6, day: 3 },
+    resolvedAt: { year: 2026, month: 6, day: 5 },
+  },
+]
+
 export function buildingById(id: string): Building | undefined {
   return BUILDINGS.find((building) => building.id === id)
 }

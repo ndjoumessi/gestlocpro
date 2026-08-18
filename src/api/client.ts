@@ -176,6 +176,35 @@ export const api = {
    */
   portfolio: <T>(parkId: string) => requete<T>(`/parks/${parkId}/portfolio`),
 
+  /**
+   * Le locataire demande une pièce administrative.
+   *
+   * Elle empruntait `addWork`, le canal des signalements : le gestionnaire la
+   * recevait bien — ce qui valait mieux qu'un toast sans envoi — mais sous la
+   * forme d'une intervention, rangée dans « Travaux dans mon logement » à côté
+   * d'une fuite d'évier.
+   *
+   * Le serveur rend 409 `already_pending` si la même pièce est déjà demandée et
+   * sans réponse : l'écran le dit, il ne réessaie pas.
+   */
+  requestDocument: <T>(parkId: string, unitId: string, kind: string) =>
+    requete<T>(`/parks/${parkId}/units/${unitId}/document-requests`, {
+      method: 'POST',
+      body: JSON.stringify({ kind }),
+    }),
+
+  /**
+   * Le gestionnaire répond : la pièce est fournie, ou elle ne peut pas l'être.
+   *
+   * Les deux sont des réponses. Sans le refus, une demande impossible à
+   * satisfaire resterait « en attente » pour toujours.
+   */
+  resolveDocumentRequest: <T>(parkId: string, requestId: string, status: string) =>
+    requete<T>(`/parks/${parkId}/document-requests/${requestId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+
   approveWork: <T>(parkId: string, workId: string) =>
     requete<T>(`/parks/${parkId}/works/${workId}/approve`, { method: 'PATCH' }),
 

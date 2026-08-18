@@ -102,6 +102,8 @@ model UserAccount {
   settledDeposits Deposit[]     @relation("DepositSettler")
   recordedPayments Payment[]    @relation("PaymentRecorder")
   capturedReadings MeterReading[] @relation("ReadingCapturer")
+  documentRequests DocumentRequest[] @relation("DocumentRequester")
+  resolvedDocumentRequests DocumentRequest[] @relation("DocumentResolver")
 
   @@index([disabledAt])
 }
@@ -342,6 +344,7 @@ model Lease {
   charges     RentCharge[]
   deposit     Deposit?
   inspections Inspection[]
+  documentRequests DocumentRequest[]
 
   @@index([unitId, status])
   @@index([tenantId])
@@ -539,6 +542,52 @@ model WorkOrder {
 /// Une référence tirée d'un `count()` se duplique dès deux créations
 /// simultanées ; un compteur ligne à ligne, verrouillé par la transaction, ne
 /// le peut pas.
+/**
+ * Une pièce administrative demandée par le locataire.
+ *
+ * Elle n'avait pas d'objet : l'écran « Documents » envoyait la demande par
+ * `addWork`, le canal des signalements — le seul que le gestionnaire relève
+ * réellement. Elle lui parvenait donc, ce qui valait mieux qu'un toast sans
+ * envoi, mais elle arrivait sous la forme d'une INTERVENTION : « Travaux dans
+ * mon logement » rangeait « Attestation de résidence » à côté d'une fuite
+ * d'évier, avec un métier, une urgence, une référence de chantier et un cycle
+ * devis → validation → clôture dont rien ne s'applique à une attestation.
+ * Le commentaire de `TenantDocuments.tsx` l'annonçait comme une dette ; la
+ * voici soldée.
+ *
+ * Clé sur le BAIL et non sur l'unité, pour la raison qui a déjà servi à
+ * l'historique des quittances : une unité a autant de dossiers que de
+ * locataires successifs, et la demande appartient à celui qui l'a faite.
+ *
+ * Aucune référence lisible — « SIG-2026-042 » — parce qu'on ne se la donne pas
+ * au téléphone : une demande de pièce se règle en la fournissant, pas en la
+ * citant. Le compteur du parc reste aux interventions.
+ */
+model DocumentRequest {
+  id      String @id @default(uuid()) @db.Uuid
+  leaseId String @db.Uuid
+  lease   Lease  @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  /// La pièce demandée, en CLÉ et non en phrase : l'écran la traduit dans la
+  /// langue de qui la lit. Le locataire écrit en français, le gestionnaire peut
+  /// lire en anglais — figer l'intitulé à l'envoi les enfermerait tous deux
+  /// dans la langue du premier.
+  kind    DocumentKind
+  status  DocumentRequestStatus @default(pending)
+  requestedAt DateTime @default(now())
+  /// Le compte qui a demandé. `SetNull` : la demande traitée survit à la
+  /// fermeture du compte, et le gestionnaire garde la trace de ce qu'il a
+  /// fourni.
+  requestedById String? @db.Uuid
+  requestedBy   UserAccount? @relation("DocumentRequester", fields: [requestedById], references: [id], onDelete: SetNull)
+  /// Qui a répondu, et quand. Une pièce fournie sans auteur ne se réclame à
+  /// personne — c'est le même raisonnement que `Payment.recordedBy`.
+  resolvedAt   DateTime?
+  resolvedById String? @db.Uuid
+  resolvedBy   UserAccount? @relation("DocumentResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@index([leaseId, status])
+}
+
 model WorkReferenceCounter {
   parkId String @db.Uuid
   park   Park   @relation(fields: [parkId], references: [id], onDelete: Cascade)
@@ -703,6 +752,35 @@ enum Trade {
   multi
   lock
   other
+}
+
+/**
+ * Les pièces qu'un locataire peut demander.
+ *
+ * Trois, celles de l'écran. Une liste fermée plutôt qu'un texte libre : le
+ * gestionnaire doit pouvoir répondre sans déchiffrer, et une demande nommée se
+ * traduit. Le jour où il en faut une quatrième, elle s'ajoute ici et dans les
+ * deux dictionnaires — le vérificateur d'i18n refuse qu'elle n'existe que d'un
+ * côté.
+ */
+enum DocumentKind {
+  residence
+  goodStanding
+  leaseCopy
+}
+
+/**
+ * `declined` existe, et ce n'est pas une facilité.
+ *
+ * Une demande qu'on ne peut pas satisfaire — le bail n'est pas signé, la pièce
+ * n'existe pas — resterait sinon « en attente » pour toujours : le locataire
+ * guetterait, le gestionnaire garderait une ligne qu'il ne peut pas retirer.
+ * Refuser est une réponse ; ne pas répondre n'en est pas une.
+ */
+enum DocumentRequestStatus {
+  pending
+  fulfilled
+  declined
 }
 
 enum WorkStatus {

@@ -422,8 +422,27 @@ export const fr = {
       reqResidence: 'Attestation de résidence',
       reqGoodStanding: 'Attestation de bon paiement',
       reqLeaseCopy: 'Duplicata de bail',
-      // Le titre porté par la demande jusqu'au gestionnaire.
-      requestTitle: 'Demande de document : {document}',
+      /**
+       * Où en est la demande.
+       *
+       * « Fournie » plutôt que « traitée » : le locataire veut savoir s'il peut
+       * venir chercher sa pièce, pas si son dossier a avancé. Et « Non
+       * disponible » plutôt que « Refusée » — le gestionnaire décline une pièce
+       * qu'il ne peut pas produire, il ne rejette pas la personne.
+       */
+      reqStatus: {
+        pending: 'Demandée',
+        fulfilled: 'Fournie',
+        declined: 'Non disponible',
+      },
+      /** Côté gestionnaire : ce qu'il a à traiter, et ses deux réponses. */
+      myRequests: 'Mes demandes',
+      pending: 'Demandes de documents',
+      pendingHint: 'Vos locataires attendent ces pièces.',
+      markFulfilled: 'Marquer fournie',
+      markDeclined: 'Ne peut pas être fournie',
+      resolvedToast: 'Réponse enregistrée · le locataire la voit dans son espace',
+      requestedOn: 'Demandée le {date}',
       privacy: 'Confidentialité',
       privacyBody:
         'Vos pièces ne sont visibles que de vous et des gestionnaires de votre parc. Aucun autre locataire n’y accède.',

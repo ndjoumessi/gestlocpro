@@ -275,3 +275,25 @@ describe('barre du locataire connecté', () => {
     expect(within(barre).queryByRole('combobox')).toBeNull()
   })
 })
+
+/**
+ * Les demandes de pièces, sur un vrai parc.
+ *
+ * Le jeu de démonstration en porte deux, sur l'unité A1 — « Attestation de bon
+ * paiement » en attente, « Attestation de résidence » fournie. Ce sont des
+ * dates et des états qui n'appartiennent à personne d'autre qu'au personnage de
+ * la démonstration : servis à un locataire réel, ils lui annonceraient qu'on
+ * lui a fourni une pièce qu'il n'a jamais demandée.
+ */
+describe('demandes de documents sur un vrai parc', () => {
+  it('n’affiche aucune demande tant que le serveur n’en rend pas', async () => {
+    await ouvrir('/app/documents')
+    const main = screen.getByRole('main')
+    // La liste de suivi n'existe pas : elle ne s'affiche que s'il y a quelque
+    // chose à suivre.
+    expect(screen.queryByRole('list', { name: 'Mes demandes' })).toBeNull()
+    expect(main).not.toHaveTextContent('Attestation de bon paiement · Demandée')
+    // Et les trois cases restent proposables : rien n'est « déjà en attente ».
+    expect(screen.getByRole('button', { name: 'Attestation de résidence' })).toBeEnabled()
+  })
+})

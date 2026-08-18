@@ -31,6 +31,8 @@ const ATTENTE_DEMO_MS = 900
 import {
   DEMO_TENANT_UNIT,
   type Deposit,
+  type DocumentKind,
+  type DocumentRequest,
   type TradeKey,
   type Unit,
   type UrgencyKey,
@@ -43,6 +45,7 @@ import {
   COLLECTIONS as COLLECTIONS_DEMO,
   INSPECTIONS as INSPECTIONS_DEMO,
   READINGS as READINGS_DEMO,
+  TENANT_DOCUMENT_REQUESTS as DEMANDES_DOCUMENTS_DEMO,
   TENANT_RECEIPTS as TENANT_RECEIPTS_DEMO,
   type Alert,
   type Inspection,
@@ -300,6 +303,18 @@ interface PortfolioContextValue {
    * vide, ce qui est l'état réel d'un parc sans échéance enregistrée.
    */
   receiptsForUnit: (unitId: string) => Receipt[]
+  /**
+   * Les demandes de pièces, dans l'ordre où elles ont été faites.
+   *
+   * Une liste et non un `xForUnit` : le gestionnaire les traite TOUTES depuis
+   * un seul endroit, quand l'espace du locataire n'en montre qu'un logement.
+   * Le serveur ne lui envoie de toute façon que les siennes.
+   */
+  documentRequests: DocumentRequest[]
+  /** Le locataire demande une pièce. Refusée en double tant qu'elle est en attente. */
+  requestDocument: (unitId: string, kind: DocumentKind) => void
+  /** Le gestionnaire répond : fournie, ou impossible à fournir. */
+  resolveDocumentRequest: (id: string, status: 'fulfilled' | 'declined') => void
   readingForUnit: (unitId: string) => MeterReading | undefined
   /**
    * État des lieux d'une unité, pris sur l'état PARTAGÉ.
@@ -450,6 +465,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const [receiptsByUnit, setReceiptsByUnit] = useState<Record<string, Receipt[]>>({
     [DEMO_TENANT_UNIT]: TENANT_RECEIPTS_DEMO,
   })
+  const [documentRequests, setDocumentRequests] = useState<DocumentRequest[]>(
+    DEMANDES_DOCUMENTS_DEMO,
+  )
 
   useEffect(() => {
     if (!parkId) {
@@ -534,6 +552,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
             .map((u) => [u.id, parc.receiptsByLease[u.leaseId!]!]),
         ),
       )
+      setDocumentRequests(parc.documentRequests)
       setFromApi(true)
       // Posé APRÈS l'écriture, et seulement en cas de succès : un échec laisse
       // le jeu de démonstration à l'écran, et une relecture ultérieure a alors
@@ -741,6 +760,74 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         .then(({ work }) =>
           setWorks((list) => [nouvelleFiche(work.id, unitId, signalement), ...list]),
         )
+        .catch(signalerEchec)
+    },
+    [parkId, signalerEchec],
+  )
+
+  /**
+   * La demande du locataire.
+   *
+   * Sans parc serveur — démonstration — elle ne vit qu'en mémoire, comme le
+   * signalement : l'identifiant est local et le dit.
+   *
+   * Le serveur refuse en 409 la même pièce déjà demandée et sans réponse. On
+   * n'écrit donc RIEN avant sa réponse : une ligne posée d'avance puis retirée
+   * ferait clignoter une demande qui n'a jamais existé.
+   */
+  const requestDocument = useCallback(
+    (unitId: string, kind: DocumentKind) => {
+      const maintenant = new Date()
+      const local = (id: string): DocumentRequest => ({
+        id,
+        unitId,
+        tenant: null,
+        kind,
+        status: 'pending',
+        requestedAt: {
+          year: maintenant.getFullYear(),
+          month: maintenant.getMonth(),
+          day: maintenant.getDate(),
+        },
+        resolvedAt: null,
+      })
+      if (!parkId) {
+        setDocumentRequests((liste) => [local(`LOCAL-${liste.length + 1}`), ...liste])
+        return
+      }
+      void api
+        .requestDocument<{ request: { id: string } }>(parkId, unitId, kind)
+        .then(({ request }) => setDocumentRequests((liste) => [local(request.id), ...liste]))
+        .catch(signalerEchec)
+    },
+    [parkId, signalerEchec],
+  )
+
+  /** La réponse du gestionnaire. Le serveur refuse la seconde. */
+  const resolveDocumentRequest = useCallback(
+    (id: string, status: 'fulfilled' | 'declined') => {
+      const maintenant = new Date()
+      const repondue = (liste: DocumentRequest[]) =>
+        liste.map((d) =>
+          d.id === id
+            ? {
+                ...d,
+                status,
+                resolvedAt: {
+                  year: maintenant.getFullYear(),
+                  month: maintenant.getMonth(),
+                  day: maintenant.getDate(),
+                },
+              }
+            : d,
+        )
+      if (!parkId) {
+        setDocumentRequests(repondue)
+        return
+      }
+      void api
+        .resolveDocumentRequest(parkId, id, status)
+        .then(() => setDocumentRequests(repondue))
         .catch(signalerEchec)
     },
     [parkId, signalerEchec],
@@ -1119,6 +1206,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       alerts,
       collections,
       receiptsForUnit: (unitId) => receiptsByUnit[unitId] ?? [],
+      documentRequests,
+      requestDocument,
+      resolveDocumentRequest,
       readingForUnit: (unitId) => readings.find((r) => r.unitId === unitId),
       inspectionForUnit: (unitId, kind) =>
         inspections.find((i) => i.unitId === unitId && i.kind === kind),
@@ -1158,6 +1248,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       fromApi,
       loading,
       receiptsByUnit,
+      documentRequests,
+      requestDocument,
+      resolveDocumentRequest,
       approveWork,
       quoteWork,
       completeWork,

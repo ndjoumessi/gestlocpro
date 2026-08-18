@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from 'express'
 import { z } from 'zod'
+import { Prisma } from '@prisma/client'
 import { prisma } from '../db.js'
 import { creerCode, expirationInvitation, normaliserCode } from './invitations.js'
 import { empreinteJeton } from '../auth/token.js'
@@ -155,6 +156,29 @@ const schemaIntervention = z.object({
   trade: z.enum(['plumbing', 'power', 'painting', 'multi', 'lock', 'other']),
   urgency: z.enum(['blocking', 'normal', 'low']).default('normal'),
   description: z.string().trim().max(2000).optional(),
+})
+
+/**
+ * La pièce demandée. Une valeur d'une liste fermée, jamais un texte libre.
+ *
+ * Le gestionnaire doit pouvoir répondre sans déchiffrer, et une demande nommée
+ * se traduit : le locataire demande en français, le gestionnaire peut lire en
+ * anglais. Un intitulé figé à l'envoi les enfermerait tous deux dans la langue
+ * du premier.
+ */
+const schemaDemandeDocument = z.object({
+  kind: z.enum(['residence', 'goodStanding', 'leaseCopy']),
+})
+
+/**
+ * La réponse du gestionnaire.
+ *
+ * `pending` n'y figure pas : on ne remet pas une demande traitée en attente.
+ * Ce serait effacer une réponse déjà donnée au locataire, et le laisser
+ * attendre une seconde fois ce qu'il a déjà reçu.
+ */
+const schemaReponseDocument = z.object({
+  status: z.enum(['fulfilled', 'declined']),
 })
 
 /** Le devis proposé par le gestionnaire. Le propriétaire arbitrera. */
@@ -403,7 +427,8 @@ parksRouter.get(
     const idsVisibles = visibles?.map((u) => u.id)
     const filtreUnite = idsVisibles ? { in: idsVisibles } : undefined
 
-    const [travaux, cautions, releves, etatsDesLieux, notifications, echeances] = await Promise.all([
+    const [travaux, cautions, releves, etatsDesLieux, notifications, echeances, demandes] =
+      await Promise.all([
       prisma.workOrder.findMany({
         where: { unit: { building: { parkId } }, ...(filtreUnite ? { unitId: filtreUnite } : {}) },
         orderBy: { reportedAt: 'desc' },
@@ -551,6 +576,43 @@ parksRouter.get(
           },
         },
       }),
+      /**
+       * Les demandes de pièces, dans la même réponse que le reste.
+       *
+       * Le cloisonnement porte sur le BAIL, comme pour les échéances et pour la
+       * même raison : `unitesVisibles` retient les unités où le compte a un
+       * bail sans regarder s'il court encore, et un locataire parti lirait
+       * sinon les demandes de celui qui l'a remplacé.
+       *
+       * Toutes, et non les seules en attente : le locataire doit pouvoir
+       * constater qu'on lui a répondu — et quand — plutôt que de voir sa
+       * demande disparaître sans mot dire.
+       */
+      prisma.documentRequest.findMany({
+        where: {
+          lease: {
+            unit: { building: { parkId } },
+            ...(filtreUnite ? { unitId: filtreUnite } : {}),
+            ...(role === 'tenant' ? { tenant: { userId: req.compteId! } } : {}),
+          },
+        },
+        orderBy: { requestedAt: 'desc' },
+        select: {
+          id: true,
+          kind: true,
+          status: true,
+          requestedAt: true,
+          resolvedAt: true,
+          lease: {
+            select: {
+              unitId: true,
+              // Le NOM de qui demande : le gestionnaire répond à une personne,
+              // pas à un identifiant de logement.
+              tenant: { select: { fullName: true } },
+            },
+          },
+        },
+      }),
     ])
 
     /**
@@ -616,6 +678,15 @@ parksRouter.get(
           method: p.method,
           paidOn: p.paidOn,
         })),
+      })),
+      documentRequests: demandes.map((d) => ({
+        id: d.id,
+        unitId: d.lease.unitId,
+        tenant: d.lease.tenant?.fullName ?? null,
+        kind: d.kind,
+        status: d.status,
+        requestedAt: d.requestedAt,
+        resolvedAt: d.resolvedAt,
       })),
       buildings,
       /**
@@ -1756,6 +1827,150 @@ parksRouter.post(
     })
 
     res.status(201).json({ work: travail })
+  },
+)
+
+/**
+ * Le locataire demande une pièce administrative.
+ *
+ * Cette demande partait par la route des interventions, faute d'objet pour la
+ * porter : le gestionnaire recevait « Attestation de résidence » avec un
+ * métier, une urgence, une référence de chantier et un cycle devis →
+ * validation → clôture dont rien ne s'applique. Elle s'affichait, chez le
+ * locataire comme chez lui, dans « Travaux dans mon logement », à côté d'une
+ * fuite d'évier.
+ *
+ * **Réservée au locataire**, quand la déclaration d'incident est ouverte aux
+ * trois rôles. Un propriétaire n'a pas à se demander à lui-même une attestation
+ * de résidence : la route existerait pour un geste que personne ne fait, et
+ * `requestedBy` porterait alors un nom qui n'a rien demandé.
+ */
+parksRouter.post(
+  '/:parkId/units/:unitId/document-requests',
+  exigerAppartenance,
+  exigerRole('tenant'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const unitId = z.string().uuid().parse(req.params.unitId)
+    const corps = schemaDemandeDocument.parse(req.body)
+
+    /**
+     * Le cloisonnement est DANS la requête, et il vise le BAIL.
+     *
+     * On ne cherche pas « une unité que ce compte peut voir » mais « le bail en
+     * cours de ce compte sur cette unité » : c'est lui qui portera la demande,
+     * et c'est la seule lecture qui interdise à un ancien locataire d'en
+     * déposer une sur le dossier de celui qui l'a remplacé.
+     */
+    const bail = await prisma.lease.findFirst({
+      where: {
+        unitId,
+        unit: { building: { parkId } },
+        status: { in: ['active', 'pending'] },
+        tenant: { userId: req.compteId! },
+      },
+      select: { id: true },
+    })
+    if (!bail) {
+      // 404 et non 403 : un 403 confirmerait l'existence du logement voisin.
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    /**
+     * Le doublon est refusé par la BASE, pas par une lecture préalable.
+     *
+     * `DocumentRequest_bail_piece_en_attente_unique` est un index unique
+     * partiel sur (bail, pièce) tant que la demande est en attente. Deux
+     * requêtes simultanées — le double clic sur un réseau lent, exactement le
+     * geste du marché visé — liraient toutes deux « aucune demande en cours »
+     * avant que l'une n'écrive ; on attrape donc le refus de l'index plutôt que
+     * d'ouvrir cette fenêtre.
+     *
+     * 409 et non 400 : la demande est bien formée, c'est son état qui
+     * s'y oppose. L'écran s'en sert pour dire « déjà demandée », pas
+     * « demande invalide ».
+     */
+    try {
+      const demande = await prisma.documentRequest.create({
+        data: { leaseId: bail.id, kind: corps.kind, requestedById: req.compteId! },
+        select: { id: true, kind: true, status: true, requestedAt: true },
+      })
+      res.status(201).json({ request: demande })
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        res.status(409).json({ error: 'already_pending' })
+        return
+      }
+      throw err
+    }
+  },
+)
+
+/**
+ * Le gestionnaire répond à une demande de pièce.
+ *
+ * `declined` est une réponse à part entière, et c'est pour cela qu'il existe :
+ * une pièce qu'on ne peut pas produire — bail non signé, document inexistant —
+ * laisserait sinon la demande « en attente » indéfiniment. Le locataire
+ * guetterait, le gestionnaire garderait une ligne qu'il ne peut pas retirer.
+ *
+ * Ouvert au propriétaire ET au gestionnaire : fournir une attestation n'engage
+ * aucune dépense, contrairement à la validation d'un devis. C'est
+ * l'administratif courant, le cœur de ce qu'on délègue.
+ */
+parksRouter.patch(
+  '/:parkId/document-requests/:requestId',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const requestId = z.string().uuid().parse(req.params.requestId)
+    const corps = schemaReponseDocument.parse(req.body)
+
+    const demande = await prisma.documentRequest.findFirst({
+      where: { id: requestId, lease: { unit: { building: { parkId } } } },
+      select: { id: true, status: true },
+    })
+    if (!demande) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+    if (demande.status !== 'pending') {
+      // Répondre deux fois écraserait la première réponse — et sa date, que le
+      // locataire a peut-être déjà lue.
+      res.status(409).json({ error: 'not_pending' })
+      return
+    }
+
+    const maj = await prisma.documentRequest.update({
+      where: { id: demande.id },
+      data: { status: corps.status, resolvedAt: new Date(), resolvedById: req.compteId! },
+      select: { id: true, kind: true, status: true, requestedAt: true, resolvedAt: true },
+    })
+
+    /**
+     * Tracé, comme les autres décisions.
+     *
+     * « Je n'ai jamais reçu mon attestation » se règle en relisant qui a
+     * répondu quoi, et quand. Sans cette ligne, la réponse ne vit que dans un
+     * statut que la prochaine demande recouvrira.
+     */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: `document.${corps.status}`,
+        entity: 'DocumentRequest',
+        entityId: demande.id,
+        payload: { kind: maj.kind },
+      },
+    })
+
+    res.json({ request: maj })
   },
 )
 

@@ -698,6 +698,245 @@ describe('historique des échéances', () => {
   })
 })
 
+/**
+ * Les demandes de pièces administratives.
+ *
+ * Elles n'avaient pas d'objet : l'écran « Documents » les envoyait par la route
+ * des interventions, faute de mieux. Le gestionnaire recevait « Attestation de
+ * résidence » avec un métier, une urgence, une référence de chantier et un
+ * cycle devis → validation → clôture dont rien ne s'applique — et les deux
+ * écrans la rangeaient parmi les travaux du logement, à côté d'une fuite
+ * d'évier.
+ */
+describe('demandes de documents', () => {
+  let parkId: string
+  let proprio: string
+  let locataire: string
+  let uniteDuLocataire: string
+
+  interface DemandeApi {
+    id: string
+    unitId: string
+    tenant: string | null
+    kind: string
+    status: string
+    requestedAt: string
+    resolvedAt: string | null
+  }
+
+  beforeEach(async () => {
+    const p = await inscrire('proprio@example.com', {
+      parkName: 'Parc Bonamoussadi',
+      countryCode: 'CM',
+      seedDemo: true,
+    })
+    proprio = p.cookie
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio)
+    parkId = parcs.body.parks[0].id
+
+    const l = await inscrire('charles@example.com')
+    locataire = l.cookie
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'charles@example.com' },
+    })
+    await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'tenant' } })
+    await prisma.tenant.updateMany({
+      where: { parkId, fullName: 'Charles Ngassa' },
+      data: { userId: compte.id },
+    })
+    const vue = await request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', locataire)
+    uniteDuLocataire = vue.body.buildings.flatMap((b: { units: { id: string }[] }) => b.units)[0].id
+  })
+
+  const demander = (cookie: string, unitId: string, kind: string) =>
+    request(serveur)
+      .post(`/api/parks/${parkId}/units/${unitId}/document-requests`)
+      .set('Cookie', cookie)
+      .send({ kind })
+
+  const portefeuille = (cookie: string) =>
+    request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', cookie)
+
+  it('enregistre la demande du locataire, et la rend au gestionnaire', async () => {
+    const res = await demander(locataire, uniteDuLocataire, 'goodStanding')
+    expect(res.status, JSON.stringify(res.body)).toBe(201)
+    expect(res.body.request).toMatchObject({ kind: 'goodStanding', status: 'pending' })
+
+    // Elle voyage dans la MÊME réponse que le reste du parc, avec le nom de qui
+    // demande : le gestionnaire répond à une personne, pas à un identifiant.
+    const vue = await portefeuille(proprio)
+    const sienne = vue.body.documentRequests.find((d: DemandeApi) => d.kind === 'goodStanding')
+    expect(sienne).toMatchObject({
+      unitId: uniteDuLocataire,
+      tenant: 'Charles Ngassa',
+      status: 'pending',
+      resolvedAt: null,
+    })
+  })
+
+  it('n’en enregistre pas deux fois la même tant qu’elle est en attente', async () => {
+    await demander(locataire, uniteDuLocataire, 'leaseCopy')
+    const doublon = await demander(locataire, uniteDuLocataire, 'leaseCopy')
+
+    // 409 et non 400 : la demande est bien formée, c'est son état qui s'y
+    // oppose — l'écran dit « déjà demandée », pas « demande invalide ».
+    expect(doublon.status).toBe(409)
+    expect(doublon.body).toEqual({ error: 'already_pending' })
+
+    const vue = await portefeuille(proprio)
+    expect(
+      vue.body.documentRequests.filter((d: DemandeApi) => d.kind === 'leaseCopy'),
+    ).toHaveLength(1)
+  })
+
+  it('la rouvre une fois la première traitée', async () => {
+    // Redemander une attestation six mois plus tard est légitime : l'unicité ne
+    // porte que sur les demandes EN ATTENTE.
+    const une = await demander(locataire, uniteDuLocataire, 'residence')
+    await request(serveur)
+      .patch(`/api/parks/${parkId}/document-requests/${une.body.request.id}`)
+      .set('Cookie', proprio)
+      .send({ status: 'fulfilled' })
+
+    const deux = await demander(locataire, uniteDuLocataire, 'residence')
+    expect(deux.status, JSON.stringify(deux.body)).toBe(201)
+  })
+
+  it('refuse au locataire le logement d’un autre', async () => {
+    const vueProprio = await portefeuille(proprio)
+    const toutes = vueProprio.body.buildings.flatMap((b: { units: { id: string }[] }) => b.units)
+    const voisine = toutes.find((u: { id: string }) => u.id !== uniteDuLocataire)!
+
+    const res = await demander(locataire, voisine.id, 'residence')
+    // 404 et non 403 : un 403 confirmerait l'existence du logement voisin.
+    expect(res.status).toBe(404)
+  })
+
+  /**
+   * Le propriétaire ne DEMANDE pas.
+   *
+   * La déclaration d'incident est ouverte aux trois rôles — un gestionnaire
+   * constate une fuite lui aussi. Une attestation de résidence, non : elle se
+   * demande à celui qui la produit, et une route ouverte au propriétaire
+   * existerait pour un geste que personne ne fait, en inscrivant son nom dans
+   * `requestedBy`.
+   */
+  it('n’ouvre la demande qu’au locataire', async () => {
+    const res = await demander(proprio, uniteDuLocataire, 'residence')
+    expect(res.status).toBe(403)
+  })
+
+  it('laisse le gestionnaire répondre, une fois et une seule', async () => {
+    const une = await demander(locataire, uniteDuLocataire, 'goodStanding')
+    const id = une.body.request.id
+
+    const repondu = await request(serveur)
+      .patch(`/api/parks/${parkId}/document-requests/${id}`)
+      .set('Cookie', proprio)
+      .send({ status: 'fulfilled' })
+    expect(repondu.status, JSON.stringify(repondu.body)).toBe(200)
+    expect(repondu.body.request.status).toBe('fulfilled')
+    expect(repondu.body.request.resolvedAt).toBeTruthy()
+
+    // Répondre deux fois écraserait la première réponse — et sa date, que le
+    // locataire a peut-être déjà lue.
+    const encore = await request(serveur)
+      .patch(`/api/parks/${parkId}/document-requests/${id}`)
+      .set('Cookie', proprio)
+      .send({ status: 'declined' })
+    expect(encore.status).toBe(409)
+    expect(encore.body).toEqual({ error: 'not_pending' })
+
+    // La réponse est TRACÉE : « je n'ai jamais reçu mon attestation » se règle
+    // en relisant qui a répondu quoi, et quand.
+    const trace = await prisma.auditEvent.findFirst({
+      where: { entity: 'DocumentRequest', entityId: id },
+      select: { action: true, actorId: true },
+    })
+    expect(trace?.action).toBe('document.fulfilled')
+  })
+
+  it('refuse la demande d’un parc voisin au gestionnaire qui n’y appartient pas', async () => {
+    const une = await demander(locataire, uniteDuLocataire, 'residence')
+    const etranger = await inscrire('ailleurs@example.com', { parkName: 'Autre parc' })
+
+    const res = await request(serveur)
+      .patch(`/api/parks/${parkId}/document-requests/${une.body.request.id}`)
+      .set('Cookie', etranger.cookie)
+      .send({ status: 'fulfilled' })
+    // Il n'appartient pas à ce parc : la garde d'appartenance tombe avant tout
+    // le reste.
+    expect([403, 404]).toContain(res.status)
+  })
+
+  it('ne montre au locataire que SES demandes', async () => {
+    await demander(locataire, uniteDuLocataire, 'residence')
+
+    // Une demande sur le bail d'un voisin, posée directement en base : elle ne
+    // doit jamais atteindre la réponse servie à Charles.
+    const bailVoisin = await prisma.lease.findFirstOrThrow({
+      where: { unit: { building: { parkId } }, unitId: { not: uniteDuLocataire } },
+      select: { id: true },
+    })
+    await prisma.documentRequest.create({
+      data: { leaseId: bailVoisin.id, kind: 'leaseCopy' },
+    })
+
+    const vue = await portefeuille(locataire)
+    expect(vue.body.documentRequests).toHaveLength(1)
+    expect(vue.body.documentRequests[0].kind).toBe('residence')
+
+    // Le gestionnaire, lui, voit les deux — plus celle du jeu de démonstration.
+    const cote = await portefeuille(proprio)
+    expect(cote.body.documentRequests.length).toBeGreaterThanOrEqual(2)
+  })
+
+  /**
+   * Le cloisonnement porte sur le BAIL, et non sur l'unité.
+   *
+   * Le cas au-dessus ne le vérifie pas, et c'est une mutation qui l'a montré :
+   * en retirant de la lecture du portefeuille le filtre par bail, la suite
+   * restait ENTIÈREMENT verte. Il pose sa demande voisine sur une AUTRE unité,
+   * que `filtreUnite` écarte déjà — le filtre par bail n'y sert à rien.
+   *
+   * Les deux ne divergent qu'ici. `unitesVisibles` retient les unités où le
+   * compte a un bail sans regarder s'il court encore : un locataire parti reste
+   * « visible » sur son ancien logement, et lirait alors les demandes de celui
+   * qui a pris sa place — la pièce demandée, sa date, et si elle a été fournie.
+   */
+  it('ne sert pas au locataire parti les demandes du bail qui a suivi', async () => {
+    const ancien = await prisma.lease.findFirstOrThrow({
+      where: { unitId: uniteDuLocataire },
+      select: { id: true },
+    })
+    // L'index unique partiel n'autorise qu'un bail en cours par unité : le
+    // précédent doit être clos avant que le suivant n'existe.
+    await prisma.lease.update({
+      where: { id: ancien.id },
+      data: { status: 'ended', endsOn: new Date() },
+    })
+    const suivant = await prisma.tenant.create({
+      data: { parkId, fullName: 'Locataire suivant' },
+    })
+    const bailSuivant = await prisma.lease.create({
+      data: {
+        unitId: uniteDuLocataire,
+        tenantId: suivant.id,
+        startsOn: new Date(),
+        rentMinor: 145000,
+        status: 'active',
+      },
+    })
+    const laSienne = await prisma.documentRequest.create({
+      data: { leaseId: bailSuivant.id, kind: 'leaseCopy' },
+      select: { id: true },
+    })
+
+    const vue = await portefeuille(locataire)
+    expect(vue.body.documentRequests.some((d: DemandeApi) => d.id === laSienne.id)).toBe(false)
+  })
+})
+
 describe('saisie des immeubles', () => {
   /**
    * La première pierre de la saisie.

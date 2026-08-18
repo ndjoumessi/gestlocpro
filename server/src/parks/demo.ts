@@ -198,6 +198,26 @@ export async function semerParcDemonstration(
       },
     })
 
+    /**
+     * UNE demande de pièce en attente, et pas sur A1.
+     *
+     * Elle est là pour que la démonstration montre ce qu'elle prétend montrer :
+     * la carte du gestionnaire ne s'affiche que s'il y a quelque chose à
+     * traiter, et un parc sans demande la laisserait invisible. Une seule, et
+     * en attente : c'est l'état qui appelle un geste, le seul qui apprenne
+     * quelque chose à qui visite.
+     *
+     * B1 plutôt que A1 parce que A1 — Charles Ngassa — est le logement que la
+     * suite de tests rattache au compte locataire : y poser une demande d'avance
+     * ferait échouer sur un 409 le premier cas qui en demande une, pour une
+     * raison qui n'aurait rien à voir avec ce qu'il vérifie.
+     */
+    if (u.cle === 'B1') {
+      await tx.documentRequest.create({
+        data: { leaseId: bail.id, kind: 'residence' },
+      })
+    }
+
     if (u.caution) {
       await tx.deposit.create({
         data: {

@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { PageHeader, useRole } from '@/components/layout/AppShell'
 import { InviteModal } from './InviteModal'
 import { Icon } from '@/components/primitives/Icon'
+import { Card, CardHeader } from '@/components/primitives/Card'
 import { DataTable } from '@/components/primitives/DataTable'
 import { Skeleton, SkeletonRegion, SkeletonTable } from '@/components/primitives/Skeleton'
 import { PaymentStatusPill } from '@/components/primitives/StatusPill'
@@ -15,26 +16,33 @@ import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useI18n, useT } from '@/i18n/I18nProvider'
 import { useNumbers } from '@/lib/numbers'
+import { useDates } from '@/lib/useDates'
 import { dialOptions } from '@/lib/countries'
-import { buildingById, type Unit } from '@/data/portfolio'
+import { DOCUMENT_KIND_LABELS, buildingById, type Unit } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { validateName, validatePhone, type FieldError } from '@/features/auth/validation'
 
 export function Tenants() {
   const t = useT()
   const n = useNumbers()
+  const d = useDates()
   const { money } = useCurrency()
   const [open, setOpen] = useState(false)
   const [inviteOuverte, setInviteOuverte] = useState(false)
 
   // Unités partagées : rattacher un locataire doit se voir ici, dans le parc
   // immobilier et dans le taux d'occupation du tableau de bord.
-  const { units, loading, removeTenant } = usePortfolio()
+  const { units, loading, removeTenant, documentRequests, resolveDocumentRequest, unitById } =
+    usePortfolio()
   const [aRetirer, setARetirer] = useState<Unit | null>(null)
   const { role } = useRole()
   const { notify } = useToast()
 
   const leases = units.filter((unit) => unit.tenant !== null)
+  /* Celles qui appellent un geste. Une demande déjà traitée n'a plus rien à
+     faire dans une liste de travail — elle reste lisible chez le locataire,
+     qui est celui que la réponse concerne. */
+  const demandesEnAttente = documentRequests.filter((d) => d.status === 'pending')
   const vacant = units.filter((unit) => unit.tenant === null)
 
   /**
@@ -76,6 +84,89 @@ export function Tenants() {
           <Icon name="info" size={15} className="mt-0.5 shrink-0" />
           {t('app.tenants.noVacantNotice')}
         </p>
+      )}
+
+      {/*
+        LES DEMANDES DE PIÈCES.
+
+        Elles arrivaient jusqu'ici par le canal des signalements, faute d'objet
+        pour les porter : « Attestation de résidence » s'affichait dans la liste
+        des travaux, avec un métier, une urgence et une référence de chantier,
+        entre une fuite d'évier et un volet cassé. Le gestionnaire pouvait la
+        clore comme on clôt un chantier — sans que rien ne dise au locataire si
+        sa pièce était fournie ou refusée.
+
+        Sur l'écran des LOCATAIRES et non sur celui des travaux : une pièce
+        administrative se rattache à une personne, pas à un logement.
+
+        La carte n'existe que s'il y a quelque chose à traiter. Une section
+        « Demandes de documents » vide sur un parc calme occuperait la place
+        d'une commande utile en laissant croire qu'il y a quelque chose à voir.
+      */}
+      {demandesEnAttente.length > 0 && (
+        <Card className="mb-4">
+          <CardHeader
+            title={t('app.documents.pending')}
+            description={t('app.documents.pendingHint')}
+            level={2}
+          />
+          <ul
+            aria-label={t('app.documents.pending')}
+            className="flex flex-col divide-y divide-divider"
+          >
+            {demandesEnAttente.map((demande) => (
+              <li
+                key={demande.id}
+                className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 first:pt-0 last:pb-0"
+              >
+                <div className="min-w-0">
+                  <p className="text-body font-medium">
+                    {t(DOCUMENT_KIND_LABELS[demande.kind] as 'app.documents.reqResidence')}
+                  </p>
+                  <p className="mt-0.5 text-caps text-muted">
+                    {/* Le NOM d'abord : c'est à une personne qu'on répond. Le
+                        libellé du logement se relit depuis le parc — afficher
+                        `demande.unitId` montrerait un uuid. */}
+                    {demande.tenant ?? unitById(demande.unitId)?.tenant ?? ''}
+                    {' · '}
+                    {unitById(demande.unitId)?.label ?? ''}
+                    {' · '}
+                    {t('app.documents.requestedOn', { date: d.fullDate(demande.requestedAt) })}
+                  </p>
+                </div>
+                <div className="-mr-3.5 flex flex-wrap items-center gap-1">
+                  {/*
+                    DEUX réponses, et le refus n'est pas caché derrière la
+                    première. Une pièce qu'on ne peut pas produire — bail non
+                    signé, document inexistant — laisserait sinon la demande en
+                    attente indéfiniment : le locataire guetterait, et cette
+                    ligne ne partirait jamais d'ici.
+                  */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      resolveDocumentRequest(demande.id, 'declined')
+                      notify(t('app.documents.resolvedToast'), { tone: 'ok' })
+                    }}
+                  >
+                    {t('app.documents.markDeclined')}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      resolveDocumentRequest(demande.id, 'fulfilled')
+                      notify(t('app.documents.resolvedToast'), { tone: 'ok' })
+                    }}
+                  >
+                    {t('app.documents.markFulfilled')}
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Card>
       )}
 
       <DataTable<Unit>

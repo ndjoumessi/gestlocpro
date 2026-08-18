@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { PageHeader } from '@/components/layout/AppShell'
 import { lien, useBase } from '@/lib/base'
 import { Card, CardHeader } from '@/components/primitives/Card'
@@ -9,7 +9,12 @@ import { Skeleton, SkeletonRegion } from '@/components/primitives/Skeleton'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
-import { dernierVersement } from '@/data/portfolio'
+import {
+  DOCUMENT_KIND_LABELS,
+  dernierVersement,
+  type DocumentKind,
+  type DocumentRequest,
+} from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { useToast } from '@/components/primitives/Toast'
 import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
@@ -37,12 +42,13 @@ import { useReceiptExport } from './receiptExport'
  *
  * Un champ libre aurait laissé écrire n'importe quoi, y compris ce que le
  * gestionnaire ne peut pas produire. Trois cases nommées disent le périmètre.
+ *
+ * Ce sont les valeurs du SERVEUR — `DocumentKind` — et non des clés de
+ * traduction : la demande voyage nommée, et chaque écran la lit dans sa propre
+ * langue. Figer l'intitulé à l'envoi enfermerait le gestionnaire dans la langue
+ * du locataire.
  */
-const DEMANDES = [
-  'app.documents.reqResidence',
-  'app.documents.reqGoodStanding',
-  'app.documents.reqLeaseCopy',
-] as const
+const DEMANDES: DocumentKind[] = ['residence', 'goodStanding', 'leaseCopy']
 
 export function TenantDocuments() {
   const base = useBase()
@@ -56,17 +62,21 @@ export function TenantDocuments() {
     depositForUnit,
     inspectionForUnit,
     receiptsForUnit,
-    addWork,
+    documentRequests,
+    requestDocument,
     loading,
   } = usePortfolio()
   const { notify } = useToast()
   const exportCsv = useCsvExport()
   const csvMoney = useCsvMoney()
-  const [choix, setChoix] = useState<(typeof DEMANDES)[number] | null>(null)
+  const [choix, setChoix] = useState<DocumentKind | null>(null)
+  const suiviId = useId()
 
   /** Mono-unité, comme l'espace locataire — et pour la même raison. */
   const monUnite = tenantUnitIds[0] ?? ''
   const tenantReceipts = receiptsForUnit(monUnite)
+  /* Les siennes, et dans l'ordre où il les a faites. */
+  const mesDemandes = documentRequests.filter((d) => d.unitId === monUnite)
   const unit = unitById(monUnite)
   const deposit = depositForUnit(monUnite)
   const entree = inspectionForUnit(monUnite, 'entry')
@@ -124,13 +134,7 @@ export function TenantDocuments() {
 
   function envoyerLaDemande() {
     if (!choix || !unit) return
-    addWork(unit.id, {
-      title: t('app.documents.requestTitle', { document: t(choix) }),
-      trade: 'other',
-      // Une pièce administrative n'immobilise pas le logement : elle attend son
-      // tour derrière ce qui empêche d'y vivre.
-      urgency: 'low',
-    })
+    requestDocument(unit.id, choix)
     setChoix(null)
     notify(t('app.documents.requestSent'), { tone: 'ok' })
   }
@@ -255,21 +259,37 @@ export function TenantDocuments() {
           <div className="flex flex-wrap gap-2">
             {DEMANDES.map((demande) => {
               const actif = demande === choix
+              /**
+               * Une pièce DÉJÀ demandée et sans réponse ne se redemande pas.
+               *
+               * Le serveur le refuse — 409 `already_pending`, garanti par un
+               * index unique partiel —, et le bouton doit dire la même chose
+               * AVANT le clic : proposer un geste dont on sait qu'il échouera
+               * n'offre pas un choix, il fabrique une erreur. Le suivi juste en
+               * dessous montre la demande en cours ; la case n'est pas grisée
+               * sans explication.
+               */
+              const enAttente = mesDemandes.some(
+                (d) => d.kind === demande && d.status === 'pending',
+              )
               return (
                 <button
                   key={demande}
                   type="button"
                   aria-pressed={actif}
+                  disabled={enAttente}
                   onClick={() => setChoix(demande)}
                   className={cn(
-                    'inline-flex min-h-11 cursor-pointer items-center rounded-md border px-3.5',
+                    'inline-flex min-h-11 items-center rounded-md border px-3.5',
                     'text-label font-medium transition-colors duration-150',
+                    'disabled:cursor-not-allowed disabled:opacity-55',
+                    !enAttente && 'cursor-pointer',
                     actif
                       ? 'border-ink bg-ink text-on-dark'
                       : 'border-border bg-surface-sunken text-ink hover:border-border-strong',
                   )}
                 >
-                  {t(demande)}
+                  {t(DOCUMENT_KIND_LABELS[demande] as 'app.documents.reqResidence')}
                 </button>
               )
             })}
@@ -277,6 +297,36 @@ export function TenantDocuments() {
           <Button className="mt-4" onClick={envoyerLaDemande} disabled={!choix}>
             {t('app.documents.requestSend')}
           </Button>
+
+          {/*
+            LE SUIVI, sous le formulaire.
+
+            Sans lui, la demande partait dans le noir : le locataire cliquait,
+            lisait un toast, et n'avait plus aucun moyen de savoir si on lui
+            avait répondu. Elle apparaissait bien quelque part — dans « Travaux
+            dans mon logement », rangée entre une fuite d'évier et un volet
+            cassé, avec une référence de chantier.
+
+            La liste ne s'affiche que s'il y a quelque chose à suivre : une
+            section « Mes demandes » vide sur un dossier neuf annoncerait un
+            historique qui n'existe pas.
+          */}
+          {mesDemandes.length > 0 && (
+            <div className="mt-4 border-t border-divider pt-4">
+              {/* L'intitulé est VISIBLE, et il nomme la liste pour tout le
+                  monde : un `aria-label` seul laissait la section anonyme à
+                  l'œil, sous un simple filet, alors qu'elle change de sujet —
+                  au-dessus on demande, ici on suit. */}
+              <p id={suiviId} className="eyebrow text-muted">
+                {t('app.documents.myRequests')}
+              </p>
+              <ul aria-labelledby={suiviId} className="mt-2 flex flex-col gap-2">
+                {mesDemandes.map((demande) => (
+                  <LigneDemande key={demande.id} demande={demande} />
+                ))}
+              </ul>
+            </div>
+          )}
         </Card>
 
         {/*
@@ -359,5 +409,37 @@ function TenantDocumentsSkeleton() {
         </div>
       </SkeletonRegion>
     </>
+  )
+}
+
+/**
+ * Une demande, et où elle en est.
+ *
+ * La date de RÉPONSE est affichée quand elle existe : c'est elle qui distingue
+ * « on s'en occupe » de « c'est fait », et le locataire n'a aucun autre moyen
+ * de le savoir. Un refus porte sa date au même titre — une demande refusée est
+ * traitée, elle n'est pas oubliée.
+ */
+function LigneDemande({ demande }: { demande: DocumentRequest }) {
+  const t = useT()
+  const d = useDates()
+
+  const TONS: Record<DocumentRequest['status'], string> = {
+    pending: 'text-warn',
+    fulfilled: 'text-ok',
+    declined: 'text-muted',
+  }
+
+  return (
+    <li className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+      <span className="text-body">{t(DOCUMENT_KIND_LABELS[demande.kind] as 'app.documents.reqResidence')}</span>
+      <span className={cn('text-body-s', TONS[demande.status])}>
+        {t(`app.documents.reqStatus.${demande.status}` as 'app.documents.reqStatus.pending')}
+        {' · '}
+        {/* La date de la RÉPONSE prime sur celle de la demande : une fois
+            répondu, « demandé le 12/08 » n'apprend plus rien. */}
+        {d.fullDate(demande.resolvedAt ?? demande.requestedAt)}
+      </span>
+    </li>
   )
 }

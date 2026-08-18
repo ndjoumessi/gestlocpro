@@ -5,6 +5,7 @@ import type {
   AlertData,
   AlertMessage,
   Deposit,
+  DocumentRequest,
   Inspection,
   MeterReading,
   MonthlyCollection,
@@ -107,6 +108,20 @@ interface PortefeuilleApi {
     createdAt: string
     read: boolean
   }[]
+  /**
+   * Optionnel : un serveur antérieur à cette entité ne le rend pas, et l'écran
+   * doit alors annoncer qu'il n'y a aucune demande plutôt que de casser.
+   */
+  documentRequests?: {
+    id: string
+    unitId: string
+    tenant: string | null
+    kind: DocumentRequest['kind']
+    status: DocumentRequest['status']
+    /** ISO. */
+    requestedAt: string
+    resolvedAt: string | null
+  }[]
   deposits: {
     id: string
     unitId: string
@@ -151,6 +166,8 @@ export interface ParcCharge {
    * au locataire que les échéances de ses propres baux.
    */
   receiptsByLease: Record<string, Receipt[]>
+  /** Les demandes de pièces, toutes unités visibles confondues. */
+  documentRequests: DocumentRequest[]
 }
 
 /** Date ISO vers `DateParts`, dont le mois est indexé à zéro. */
@@ -277,6 +294,18 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
     // sont rapprochés.
     collections: data.collections,
     paidByUnit,
+    documentRequests: (data.documentRequests ?? []).map((d) => ({
+      id: d.id,
+      unitId: d.unitId,
+      tenant: d.tenant,
+      kind: d.kind,
+      status: d.status,
+      // `requestedAt` est un INSTANT — un horodatage, pas une colonne `date` —
+      // et se lit donc dans le fuseau de qui regarde : c'est l'heure à laquelle
+      // il a demandé, chez lui.
+      requestedAt: enParties(d.requestedAt),
+      resolvedAt: d.resolvedAt ? enParties(d.resolvedAt) : null,
+    })),
     receiptsByLease: (() => {
       const parBail: Record<string, Receipt[]> = {}
       for (const e of data.leaseCharges ?? []) {
