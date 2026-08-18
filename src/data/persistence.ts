@@ -46,8 +46,14 @@ import { DEPOSITS, UNITS, WORKS, type Deposit, type Unit, type WorkOrder } from 
  * la phrase en clair (« Fuite sous l'évier de la cuisine ») à une clé
  * (`sinkLeak`), et le champ a changé de nom — `title` devient `titleKey`. Un
  * enregistrement antérieur rendrait un intitulé vide, la clé étant introuvable.
+ *
+ * Version 6 : l'unité porte la date de début du BAIL EN COURS. Le portail
+ * annonce « bail en cours depuis le … » et date les travaux « depuis mon entrée
+ * le … » ; rien dans le modèle ne portait cette date. Un enregistrement
+ * antérieur la rendrait `undefined`, et ces deux phrases s'afficheraient
+ * amputées de ce qu'elles annoncent.
  */
-const VERSION = 5
+const VERSION = 6
 const CLE = 'gestlocpro.portfolio'
 
 export interface EtatPersiste {
