@@ -47,6 +47,8 @@ import {
   READINGS as READINGS_DEMO,
   TENANT_DOCUMENT_REQUESTS as DEMANDES_DOCUMENTS_DEMO,
   TENANT_RECEIPTS as TENANT_RECEIPTS_DEMO,
+  UNITS as UNITS_DEMO,
+  receiptsDemoPourUnite,
   type Alert,
   type Inspection,
   type MeterReading,
@@ -462,8 +464,29 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
    * fait ici, où les unités sont connues ; le cloisonnement, lui, reste posé
    * dans la requête du serveur, qui ne rend au locataire que ses propres baux.
    */
-  const [receiptsByUnit, setReceiptsByUnit] = useState<Record<string, Receipt[]>>({
-    [DEMO_TENANT_UNIT]: TENANT_RECEIPTS_DEMO,
+  /**
+   * Les périodes de démonstration, pour TOUTES les unités louées.
+   *
+   * A1 garde sa table écrite à la main : ses quantités d'eau et d'électricité
+   * reprennent le relevé de l'unité, et l'espace du locataire affiche les deux
+   * côte à côte. Les autres sont dérivées de leur loyer et de leur encaissé
+   * courant — la grille des paiements en montre dix, et n'aurait sinon affiché
+   * qu'une ligne pleine sur une vitrine publique.
+   */
+  const [receiptsByUnit, setReceiptsByUnit] = useState<Record<string, Receipt[]>>(() => {
+    const maintenant = new Date()
+    const aujourdhui = {
+      year: maintenant.getFullYear(),
+      month: maintenant.getMonth(),
+      day: maintenant.getDate(),
+    }
+    const parUnite: Record<string, Receipt[]> = {}
+    for (const unite of UNITS_DEMO) {
+      if (unite.status === 'vacant') continue
+      parUnite[unite.id] = receiptsDemoPourUnite(unite, aujourdhui)
+    }
+    parUnite[DEMO_TENANT_UNIT] = TENANT_RECEIPTS_DEMO
+    return parUnite
   })
   const [documentRequests, setDocumentRequests] = useState<DocumentRequest[]>(
     DEMANDES_DOCUMENTS_DEMO,

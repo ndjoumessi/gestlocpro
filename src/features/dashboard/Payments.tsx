@@ -17,8 +17,14 @@ import { useToast } from '@/components/primitives/Toast'
 import { cn } from '@/lib/cn'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
+import { useDates } from '@/lib/useDates'
 import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
-import { type Unit } from '@/data/portfolio'
+import {
+  imputation,
+  receiptDue,
+  type Receipt,
+  type Unit,
+} from '@/data/portfolio'
 import { computeKpis } from '@/data/kpis'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { ReceiptModal } from './ReceiptModal'
@@ -30,12 +36,21 @@ const FILTERS: (PaymentStatus | 'all')[] = ['all', 'paid', 'partial', 'overdue']
 export function Payments() {
   const [quittanceDe, setQuittanceDe] = useState<string | null>(null)
   const t = useT()
+  const d = useDates()
   const { money } = useCurrency()
   const exportCsv = useCsvExport()
   const csvMoney = useCsvMoney()
   const { role } = useRole()
-  const { units, isMine, readings, loading, remindRent, callRent, serveFormalNotice } =
-    usePortfolio()
+  const {
+    units,
+    isMine,
+    readings,
+    loading,
+    remindRent,
+    callRent,
+    serveFormalNotice,
+    receiptsForUnit,
+  } = usePortfolio()
   const { notify } = useToast()
   const isTenant = role === 'tenant'
   const [filter, setFilter] = useState<PaymentStatus | 'all'>('all')
@@ -58,6 +73,36 @@ export function Payments() {
     [role, units, isMine],
   )
   const kpis = computeKpis(leases, readings)
+
+  /**
+   * Les six dernières périodes CONNUES, toutes unités confondues.
+   *
+   * Six parce que c'est ce que la grille peut porter sans devenir illisible, et
+   * les DERNIÈRES parce qu'un impayé de l'an dernier ne se règle plus par cet
+   * écran. La liste est tirée des données et non de l'horloge : un parc dont
+   * les échéances s'arrêtent en juin doit montrer juin, pas six colonnes vides
+   * suivies d'un mois courant esseulé.
+   */
+  const periodes = useMemo(() => {
+    const vues = new Map<string, { year: number; month: number }>()
+    for (const unit of leases) {
+      for (const r of receiptsForUnit(unit.id)) vues.set(`${r.year}-${r.month}`, r)
+    }
+    return [...vues.values()]
+      .sort((a, b) => a.year - b.year || a.month - b.month)
+      .slice(-6)
+  }, [leases, receiptsForUnit])
+
+  /**
+   * Le solde CUMULÉ du bail : ce qui reste dû sur toutes ses périodes.
+   *
+   * La colonne montrait l'écart du mois courant. « Paul K. · 120 000 » ne
+   * disait donc pas si la dette datait de ce mois-ci ou de deux ans, alors que
+   * c'est la seule chose qui change la démarche à engager. Négatif quand le
+   * locataire a payé d'avance — un cas que le mois seul ne pouvait pas exprimer.
+   */
+  const soldeCumule = (unit: Unit) =>
+    receiptsForUnit(unit.id).reduce((somme, r) => somme + receiptDue(r) - r.paidMinor, 0)
 
   /**
    * Les baux à relancer, tels que L'ÉCRAN les voit.
@@ -239,6 +284,40 @@ export function Payments() {
         })}
       </div>
 
+      {/*
+        LA LÉGENDE, et elle n'est pas décorative.
+
+        Trois points colorés dans une cellule ne disent rien à qui les voit pour
+        la première fois — ni ce que chacun désigne, ni ce que sa couleur veut
+        dire. Chaque cellule porte bien un nom accessible qui énonce les trois
+        états en toutes lettres, mais un lecteur voyant n'y a pas accès : sans
+        cette ligne, la grille se déchiffre au lieu de se lire.
+
+        Elle ne s'affiche qu'avec la grille : sans période, il n'y a pas de
+        pastille à expliquer.
+      */}
+      {periodes.length > 0 && (
+        <p className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-caps text-muted">
+          <span>{t('app.payments.legendPosts')}</span>
+          {(['paid', 'partial', 'overdue'] as const).map((etat) => (
+            <span key={etat} className="flex items-center gap-1.5">
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'size-2.5 rounded-full',
+                  etat === 'paid' ? 'bg-ok' : etat === 'partial' ? 'bg-warn' : 'bg-danger',
+                )}
+              />
+              {t(`app.payments.state.${etat}` as 'app.payments.state.paid')}
+            </span>
+          ))}
+          <span className="flex items-center gap-1.5">
+            <span aria-hidden="true">—</span>
+            {t('app.payments.outOfLease')}
+          </span>
+        </p>
+      )}
+
       <DataTable<Unit>
         caption={t('app.payments.title')}
         rows={rows}
@@ -265,37 +344,86 @@ export function Payments() {
           {
             key: 'tenant',
             header: t('app.portfolio.tenant'),
-            render: (unit) => unit.tenant,
+            /**
+             * Le LOYER sous le nom, et non dans sa propre colonne.
+             *
+             * Les colonnes de période ont pris la place de « dû » et « réglé ».
+             * Le loyer mensuel reste pourtant la mesure à laquelle on rapporte
+             * tout le reste : sans lui, « −258 000 » ne dit pas s'il s'agit de
+             * deux mois ou de six. Il se lit donc là où il ne coûte pas de
+             * colonne, exactement comme sur la maquette.
+             */
+            render: (unit) => (
+              <div className="min-w-0">
+                <p className="truncate">{unit.tenant}</p>
+                <p className="numeric mt-0.5 text-caps text-muted">
+                  {money(unit.rent, { round: true })}
+                </p>
+              </div>
+            ),
           },
-          {
-            key: 'due',
-            header: t('app.payments.due'),
-            numeric: true,
-            hideOnMobile: true,
-            render: (unit) => money(unit.rent, { round: true }),
-          },
-          {
-            key: 'paid',
-            header: t('app.payments.paid'),
-            numeric: true,
-            render: (unit) => money(unit.paid, { round: true }),
-          },
+          /**
+           * UNE COLONNE PAR PÉRIODE, et trois postes dans chaque cellule.
+           *
+           * Le tableau ne montrait que le mois courant : « dû », « réglé »,
+           * « solde ». On y lisait l'état d'un bail à un instant, jamais son
+           * histoire — impossible de distinguer un retard de ce mois-ci d'une
+           * dette qui court depuis six mois, ni de voir que l'eau est réglée
+           * quand le loyer ne l'est pas.
+           *
+           * La donnée était déjà là : le serveur rend toutes les périodes de
+           * tous les baux depuis que l'historique des quittances existe, et
+           * l'espace du locataire affiche déjà cette grille pour son logement.
+           * Seul l'écran du gestionnaire ne s'en servait pas.
+           *
+           * Les colonnes ne remplacent l'ancien trio QUE si des périodes
+           * existent : sur un parc dont aucune échéance n'est enregistrée, une
+           * grille de tirets se lirait comme une panne.
+           */
+          ...(periodes.length > 0
+            ? periodes.map((periode) => ({
+                key: `p-${periode.year}-${periode.month}`,
+                header: d.monthShort(periode),
+                hideOnMobile: true,
+                render: (unit: Unit) => (
+                  <CellulePeriode
+                    receipt={receiptsForUnit(unit.id).find(
+                      (r) => r.year === periode.year && r.month === periode.month,
+                    )}
+                    periode={d.monthYear(periode)}
+                  />
+                ),
+              }))
+            : [
+                {
+                  key: 'due',
+                  header: t('app.payments.due'),
+                  numeric: true,
+                  hideOnMobile: true,
+                  render: (unit: Unit) => money(unit.rent, { round: true }),
+                },
+                {
+                  key: 'paid',
+                  header: t('app.payments.paid'),
+                  numeric: true,
+                  render: (unit: Unit) => money(unit.paid, { round: true }),
+                },
+              ]),
           {
             key: 'balance',
-            header: t('app.payments.balance'),
+            header: t('app.payments.balanceTotal'),
             numeric: true,
             render: (unit) => {
-              const balance = unit.rent - unit.paid
-              // Un bail qui démarre affiche son loyer à venir, mais pas en
-              // rouge : ce n'est pas un impayé, c'est une échéance future.
-              const enRetard = unit.status === 'overdue' || unit.status === 'partial'
+              // Cumulé quand l'historique existe, sinon l'écart du mois — la
+              // seule chose que l'on sache alors.
+              const balance = periodes.length > 0 ? soldeCumule(unit) : unit.rent - unit.paid
+              if (balance === 0) return <span className="text-muted">{money(0, { round: true })}</span>
+              // Une AVANCE n'est pas une dette : elle se lit en clair, avec son
+              // signe, et jamais en rouge.
               return (
-                <span
-                  className={cn(
-                    balance > 0 && enRetard ? 'font-medium text-danger' : 'text-muted',
-                  )}
-                >
-                  {money(balance, { round: true })}
+                <span className={cn(balance > 0 ? 'font-medium text-danger' : 'text-ok')}>
+                  {balance > 0 ? '−' : '+'}
+                  {money(Math.abs(balance), { round: true })}
                 </span>
               )
             },
@@ -554,5 +682,77 @@ function PaymentsSkeleton({ isTenant }: { isTenant: boolean }) {
         <SkeletonTable />
       </SkeletonRegion>
     </>
+  )
+}
+
+/**
+ * L'état d'une période, poste par poste.
+ *
+ * Trois pastilles — loyer, eau, électricité — et non un seul statut : c'est
+ * précisément la distinction que l'écran ne savait pas faire. Un locataire qui
+ * règle son loyer et laisse courir l'électricité n'est pas « en retard » au même
+ * titre que celui qui n'a rien versé, et la démarche à engager n'est pas la
+ * même.
+ *
+ * La couleur ne porte pas l'information toute seule : chaque cellule a un nom
+ * accessible qui énonce les trois états en toutes lettres. Une grille de
+ * pastilles vertes et rouges est illisible pour qui ne distingue pas les deux,
+ * et c'est la règle que le dépôt applique déjà à l'entrée de navigation
+ * courante.
+ */
+function CellulePeriode({ receipt, periode }: { receipt?: Receipt; periode: string }) {
+  const t = useT()
+
+  // Hors bail : la période est antérieure à l'entrée, ou postérieure à la
+  // sortie. Un tiret le dit ; une pastille grise se lirait comme un impayé.
+  if (!receipt) {
+    return (
+      <span className="text-muted" aria-label={`${periode} · ${t('app.payments.outOfLease')}`}>
+        —
+      </span>
+    )
+  }
+
+  const regle = imputation(receipt)
+  /**
+   * Les postes nommés EN TOUTES LETTRES.
+   *
+   * Première rédaction : les intitulés de colonne du tableau du locataire, où
+   * l'électricité s'abrège en « Élec. » faute de largeur. Ici il ne s'agit pas
+   * d'une en-tête mais d'un nom accessible — la seule chose qu'un lecteur
+   * d'écran prononce de cette cellule. Une abréviation y est un mot de moins,
+   * pas une colonne de gagnée.
+   */
+  const postes = [
+    { cle: 'app.tenant.colRent', du: receipt.rentMinor, paye: regle.rent },
+    { cle: 'app.tenant.water', du: receipt.waterMinor, paye: regle.water },
+    { cle: 'app.tenant.power', du: receipt.powerMinor, paye: regle.power },
+  ] as const
+
+  const etat = (du: number, paye: number) =>
+    du === 0 || paye >= du ? 'paid' : paye > 0 ? 'partial' : 'overdue'
+
+  const TONS = { paid: 'bg-ok', partial: 'bg-warn', overdue: 'bg-danger' } as const
+
+  return (
+    <span
+      className="flex items-center gap-1"
+      aria-label={`${periode} · ${postes
+        .map(
+          (p) =>
+            `${t(p.cle as 'app.tenant.colRent')} ${t(
+              `app.payments.state.${etat(p.du, p.paye)}` as 'app.payments.state.paid',
+            )}`,
+        )
+        .join(', ')}`}
+    >
+      {postes.map((p) => (
+        <span
+          key={p.cle}
+          aria-hidden="true"
+          className={`size-2.5 rounded-full ${TONS[etat(p.du, p.paye)]}`}
+        />
+      ))}
+    </span>
   )
 }

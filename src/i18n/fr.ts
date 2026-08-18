@@ -697,6 +697,19 @@ export const fr = {
       due: 'Dû',
       paid: 'Réglé',
       balance: 'Solde',
+      /**
+       * Le solde de TOUTES les périodes du bail, et non l'écart du mois.
+       * « 120 000 » ne disait pas si la dette datait de ce mois-ci ou de deux
+       * ans — la seule chose qui change la démarche à engager.
+       */
+      balanceTotal: 'Solde cumulé',
+      outOfLease: 'hors bail',
+      legendPosts: 'Par cellule : loyer · eau · électricité',
+      state: {
+        paid: 'soldé',
+        partial: 'partiel',
+        overdue: 'impayé',
+      },
       method: 'Moyen',
       date: 'Date',
       period: 'Période couverte',

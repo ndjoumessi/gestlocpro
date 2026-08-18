@@ -679,6 +679,67 @@ export const TENANT_DOCUMENT_REQUESTS: DocumentRequest[] = [
   },
 ]
 
+/**
+ * Les périodes de démonstration d'une unité, dérivées de son état courant.
+ *
+ * La grille des paiements montre six mois par bail. Seule l'unité du locataire
+ * de démonstration — A1 — avait un historique écrit à la main : la grille
+ * n'aurait affiché qu'une ligne pleine sur dix, et neuf rangées de tirets sur
+ * la vitrine publique du produit.
+ *
+ * Ces périodes sont DÉRIVÉES, pas inventées : les cinq mois passés sont soldés,
+ * et le mois courant reprend exactement ce que l'unité annonce déjà —
+ * `unit.paid` sur `unit.rent`. Un chiffre tiré au hasard aurait contredit la
+ * carte d'à côté ; c'est le défaut que les constantes `COLLECTIONS` avaient
+ * coûté, et il n'est pas question de le refaire ici.
+ *
+ * Les charges suivent le loyer — 4,5 % pour l'eau, 3,6 % pour l'électricité,
+ * les mêmes proportions que le jeu de données du serveur, avec la même variation
+ * d'un mois sur l'autre : un parc dont l'eau coûte douze fois le même montant
+ * ne ressemble à rien.
+ */
+export function receiptsDemoPourUnite(
+  unit: Pick<Unit, 'rent' | 'paid' | 'status'>,
+  aujourdhui: DateParts,
+  periodes = 6,
+): Receipt[] {
+  const sortie: Receipt[] = []
+  for (let recul = 0; recul < periodes; recul++) {
+    const mois = aujourdhui.month - recul
+    const year = aujourdhui.year + Math.floor(mois / 12)
+    const month = ((mois % 12) + 12) % 12
+    const courant = recul === 0
+
+    const waterMinor = Math.round(unit.rent * 0.045 * (1 + ((recul % 5) - 2) * 0.06))
+    const powerMinor = Math.round(unit.rent * 0.036 * (1 + ((recul % 4) - 1.5) * 0.08))
+    const du = unit.rent + waterMinor + powerMinor
+
+    /**
+     * Le mois courant dit ce que l'unité dit ; les précédents sont soldés.
+     *
+     * Une unité « à jour » solde le TOTAL, charges comprises. Première
+     * rédaction : `unit.paid` tel quel — or ce champ porte l'encaissé du loyer,
+     * et la grille affichait alors une dette de quelques milliers de francs sur
+     * les dix baux, y compris ceux que la pastille annonce à jour. Deux
+     * chiffres pour un seul fait, sur la même ligne.
+     */
+    const paidMinor = courant ? (unit.status === 'paid' ? du : unit.paid) : du
+    sortie.push({
+      year,
+      month,
+      rentMinor: unit.rent,
+      waterMinor,
+      powerMinor,
+      dueOn: { year, month, day: 5 },
+      paidMinor,
+      payments: paidMinor
+        ? [{ amountMinor: paidMinor, method: 'mobile', paidOn: { year, month, day: 3 } }]
+        : [],
+    })
+  }
+  return sortie
+}
+
 export function buildingById(id: string): Building | undefined {
   return BUILDINGS.find((building) => building.id === id)
 }
