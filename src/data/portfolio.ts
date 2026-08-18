@@ -190,6 +190,17 @@ export const READINGS: MeterReading[] = [
 /** Tarifs unitaires de refacturation des charges. */
 export const UTILITY_RATES = { water: 520, power: 99 }
 
+/**
+ * Corps de métier proposés AU DÉCLARANT, dans l'ordre où ils lui sont montrés.
+ *
+ * Sous-ensemble ordonné de `TradeKey` : « multi-corps » qualifie un chantier
+ * que le bailleur arbitre, jamais un problème que le locataire constate. Il vit
+ * ici plutôt que dans l'un des deux écrans qui le proposent — la modale du
+ * bailleur et l'écran du locataire — sans quoi le second l'aurait recopié, et
+ * les deux listes auraient divergé au premier ajout.
+ */
+export const TRADES_REPORTABLE = ['plumbing', 'power', 'lock', 'painting', 'other'] as const
+
 /** Vocabulaire des corps de métier, partagé avec les signalements du portail. */
 export type UrgencyKey = 'blocking' | 'normal' | 'low'
 

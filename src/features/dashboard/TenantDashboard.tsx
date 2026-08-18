@@ -4,7 +4,7 @@ import { lien, useBase } from '@/lib/base'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
 import { Icon } from '@/components/primitives/Icon'
-import { ProgressBar, StatCard } from '@/components/primitives/Charts'
+import { ProgressBar } from '@/components/primitives/Charts'
 import { PaymentStatusPill, StatusPill } from '@/components/primitives/StatusPill'
 import { EmptyState } from '@/components/primitives/DataTable'
 import { Skeleton, SkeletonRegion, SkeletonStatCard } from '@/components/primitives/Skeleton'
@@ -41,8 +41,7 @@ export function TenantDashboard() {
   const d = useDates()
   const n = useNumbers()
   const { money } = useCurrency()
-  const { worksForUnit, depositForUnit, unitById, tenantUnitIds, readingForUnit, loading } =
-    usePortfolio()
+  const { worksForUnit, depositForUnit, unitById, tenantUnitIds, loading } = usePortfolio()
 
   /**
    * Cet écran est mono-unité par conception : un locataire y voit SON logement.
@@ -54,10 +53,8 @@ export function TenantDashboard() {
   const unit = unitById(monUnite)
   const building = unit ? buildingById(unit.buildingId) : undefined
   const deposit = depositForUnit(monUnite)
-  const reading = readingForUnit(monUnite)
   const works = worksForUnit(monUnite)
   const entree = inspectionsForUnit(monUnite).find((i) => i.kind === 'entry')
-  const openWorks = works.filter((work) => work.status !== 'done')
 
   /**
    * L'attente passe AVANT le garde `!unit`, et c'est l'ordre qui importe.
@@ -98,10 +95,6 @@ export function TenantDashboard() {
       </>
     )
 
-  const water = reading?.waterCurrent === null || !reading ? null : reading.waterCurrent - reading.waterPrevious
-  const power = reading?.powerCurrent === null || !reading ? null : reading.powerCurrent - reading.powerPrevious
-  const rebilled =
-    water === null || power === null ? null : water * UTILITY_RATES.water + power * UTILITY_RATES.power
 
   const receiptCourante = TENANT_RECEIPTS[0]
   const eauDue = chargeDue(receiptCourante.water, UTILITY_RATES.water)

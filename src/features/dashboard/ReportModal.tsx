@@ -7,6 +7,7 @@ import { RadioCards, type RadioCardOption } from '@/components/primitives/Choice
 import { useToast } from '@/components/primitives/Toast'
 import { useT } from '@/i18n/I18nProvider'
 import { usePortfolio } from '@/data/PortfolioProvider'
+import { TRADES_REPORTABLE } from '@/data/portfolio'
 import type { TradeKey, UrgencyKey } from '@/data/portfolio'
 
 /**
@@ -23,7 +24,6 @@ import type { TradeKey, UrgencyKey } from '@/data/portfolio'
  * nomenclature — le locataire décrit ce qu'il voit, le gestionnaire qualifie.
  */
 
-const METIERS: TradeKey[] = ['plumbing', 'power', 'lock', 'painting', 'other']
 
 export function ReportModal({
   open,
@@ -48,7 +48,7 @@ export function ReportModal({
   /* Le vocabulaire des corps de métier est DÉJÀ partagé par les travaux et le
      portail : le redéclarer ici en ferait une troisième source, et elles
      divergeraient au premier ajout. */
-  const options: RadioCardOption<TradeKey>[] = METIERS.map((cle) => ({
+  const options: RadioCardOption<TradeKey>[] = TRADES_REPORTABLE.map((cle) => ({
     value: cle,
     title: t(`app.trades.${cle}` as 'app.trades.plumbing'),
     description: '',

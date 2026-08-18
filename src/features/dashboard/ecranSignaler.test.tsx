@@ -17,7 +17,15 @@ describe('écran Signaler', () => {
     await attendreLeChargement()
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/signaler/i)
-    expect(screen.getByRole('button', { name: /signaler un problème/i })).toBeInTheDocument()
+    // Le formulaire est POSÉ À PLAT, il n'est plus derrière un bouton qui
+    // ouvre une modale : c'est le point des maquettes, et la raison n'est pas
+    // cosmétique — la modale masquait « Mes signalements » à l'instant précis
+    // où elle sert, et le locataire redéclarait ce qui était en cours.
+    expect(screen.getByRole('button', { name: /envoyer le signalement/i })).toBeInTheDocument()
+    // Les deux choix exclusifs sont des `radiogroup` et non des rangées de
+    // boutons : l'exclusivité est portée par la sémantique, et un lecteur
+    // d'écran annonce « 3 sur 5 » plutôt que cinq boutons sans lien.
+    expect(screen.getAllByRole('radiogroup')).toHaveLength(2)
     expect(screen.getByRole('main')).toHaveTextContent(/mes signalements/i)
   })
 
@@ -57,6 +65,6 @@ describe('écran Signaler', () => {
     renderApp('/demo/signaler')
     await attendreLeChargement()
 
-    expect(screen.queryByRole('button', { name: /signaler un problème/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /envoyer le signalement/i })).not.toBeInTheDocument()
   })
 })
