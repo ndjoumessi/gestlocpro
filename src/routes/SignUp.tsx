@@ -167,6 +167,25 @@ export function SignUp() {
         ...(state.role === "owner" && state.parkName.trim()
           ? { parkName: state.parkName.trim() }
           : {}),
+        // Le code REJOINT un parc, il n'en fonde pas : le serveur traite cette
+        // branche en premier et exclusivement. Sans cet envoi, tout invité
+        // devenait propriétaire d'un parc vide.
+        /**
+         * Le code était saisi, formaté au fil de la frappe, validé — et JETÉ à
+         * l'envoi. Exactement ce que le commentaire voisin décrit pour le nom du
+         * parc : la même faute, sur l'autre branche, et deux ans de tests la
+         * gardaient sans jamais vérifier qu'elle partait.
+         *
+         * Conséquence : tout invité s'inscrivait sans code, tombait dans la
+         * branche « fonde un parc » du serveur, et devenait propriétaire d'un
+         * parc vide. Deux codes émis n'ont jamais pu être consommés.
+         *
+         * Le serveur traite cette branche EN PREMIER et exclusivement de la
+         * création d'un parc : un code l'emporte sur un nom de parc.
+         */
+        ...(state.role !== "owner" && state.inviteCode.trim()
+          ? { invitationCode: state.inviteCode.trim() }
+          : {}),
       });
       setDone(true);
     } catch (err) {

@@ -118,6 +118,16 @@ export interface DemandeInscription {
   locale: 'fr' | 'en'
   acceptTerms: true
   newsletterOptIn?: boolean
+  /** Nom du parc fondé — propriétaire seulement. */
+  parkName?: string
+  /**
+   * Code d'invitation : rejoint le parc d'un tiers, au rôle de l'invitation.
+   *
+   * Le serveur traite cette branche EN PREMIER et exclusivement de la création
+   * d'un parc. Le client ne l'envoyait jamais — le mot n'existait nulle part
+   * dans les sources — et tout invité devenait propriétaire d'un parc vide.
+   */
+  invitationCode?: string
 }
 
 // ─── Authentification ────────────────────────────────────────────────────────

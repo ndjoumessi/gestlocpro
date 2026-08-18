@@ -98,6 +98,23 @@ describe('connexion', () => {
 })
 
 describe('inscription', () => {
+  /**
+   * CE CAS MANQUE, et son absence est dite ici plutôt que tue.
+   *
+   * Le correctif — envoyer `invitationCode` au lieu de le jeter — n'est PAS
+   * couvert par un test. J'ai tenté de conduire le parcours d'inscription
+   * jusqu'à l'envoi ; il compte plusieurs étapes et une condition que je n'ai
+   * pas identifiée bloque la soumission dans le harnais. Le laisser en échec
+   * était impossible, l'écrire faux aurait été pire.
+   *
+   * Deux tests voisins gardent déjà la mise en forme du code au fil de la
+   * frappe et son refus s'il est incomplet — et AUCUN ne vérifiait qu'il
+   * partait. C'est précisément ce trou qui a laissé passer le défaut : un champ
+   * saisi, formaté, validé, et jeté à l'envoi.
+   *
+   * À écrire en premier au prochain passage.
+   */
+
   it('transmet au serveur les champs que l’assistant collectait puis jetait', async () => {
     const serveur = installerFauxServeur()
     serveur.quand('POST', '/auth/signup', { status: 201, body: { user: COMPTE_FICTIF } })
