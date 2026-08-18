@@ -379,6 +379,17 @@ export type AlertMessage =
   | 'partialPayment'
   | 'workDone'
   | 'receiptAvailable'
+  /**
+   * Les deux que le SERVEUR écrit et que le client ne connaissait pas.
+   *
+   * Une relance et une mise en demeure créent chacune une notification. Aucune
+   * des deux n'existait ici ni dans les dictionnaires : l'écran composait une
+   * clé introuvable et affichait la clé elle-même. Elles n'apparaissent jamais
+   * en démonstration — le jeu de données ne relance personne —, ce qui est
+   * exactement pourquoi le défaut a tenu.
+   */
+  | 'rentReminder'
+  | 'formalNotice'
 
 /**
  * Valeurs d'une alerte, en données brutes.

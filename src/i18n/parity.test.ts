@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { fr } from './fr'
 import { en } from './en'
+import { ALERTS, type AlertMessage } from '@/data/portfolio'
 
 /**
  * Parité et cohérence des dictionnaires.
@@ -94,5 +95,54 @@ describe('parité des dictionnaires', () => {
       .map(([chemin]) => chemin)
 
     expect(suspectes).toEqual([])
+  })
+})
+
+/**
+ * Chaque message d'alerte QUE LE PRODUIT PEUT ÉCRIRE a son gabarit.
+ *
+ * Deux d'entre eux n'en avaient pas — ceux de la relance et de la mise en
+ * demeure, que seul le serveur écrit, jamais la démonstration. L'écran compose
+ * `app.alerts.msg.<clé>.title` ; sans gabarit, le fournisseur d'i18n rend la
+ * CLÉ BRUTE, et le gestionnaire lisait du texte technique dans sa liste.
+ *
+ * Le type `AlertMessage` est la seule liste qui les recense tous. La parcourir
+ * ici lie les trois pièces — le type, le dictionnaire français, l'anglais — de
+ * sorte qu'en ajouter une quatrième oblige à écrire les deux autres.
+ */
+describe('les messages d’alerte ont tous leur gabarit', () => {
+  const MESSAGES: AlertMessage[] = [
+    'rentOverdue',
+    'quotePending',
+    'metersMissing',
+    'leaseRenewal',
+    'partialPayment',
+    'workDone',
+    'receiptAvailable',
+    'rentReminder',
+    'formalNotice',
+  ]
+
+  it('recense bien tout le type, sans en oublier', () => {
+    // Une liste écrite à la main peut prendre du retard sur le type qu'elle
+    // couvre. Les messages du jeu de démonstration servent de témoin : ils
+    // doivent tous s'y trouver.
+    for (const alerte of ALERTS) expect(MESSAGES).toContain(alerte.message)
+  })
+
+  it('porte un titre et un détail dans les deux langues', () => {
+    const manquants: string[] = []
+    for (const message of MESSAGES) {
+      for (const [langue, dico] of [['fr', FR], ['en', EN]] as const) {
+        // `title` et `detail` sont les deux parties que `Alerts.tsx` demande.
+        // Les variantes `_one` sont facultatives : toutes les alertes ne
+        // comptent pas quelque chose.
+        for (const part of ['title', 'detail']) {
+          const chemin = `app.alerts.msg.${message}.${part}`
+          if (!dico[chemin]) manquants.push(`${langue}: ${chemin}`)
+        }
+      }
+    }
+    expect(manquants).toEqual([])
   })
 })

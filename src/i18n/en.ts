@@ -336,7 +336,7 @@ export const en: Dictionary = {
       downloadAll: 'Download all',
       allReceipts: 'Tenant receipts',
       request: 'Request a document',
-      requestHint: 'The manager receives the request and uploads the document to this space.',
+      requestHint: 'The manager receives the request and replies in this space.',
       requestSend: 'Send the request',
       requestSent: 'Request sent to the manager',
       reqResidence: 'Proof of residence',
@@ -574,7 +574,7 @@ export const en: Dictionary = {
       methodTransfer: 'Bank transfer',
       methodCheck: 'Cheque',
       modalTitle: 'Record a payment',
-      modalDescription: 'The tenant will receive their receipt by email and SMS.',
+      modalDescription: 'The receipt is available in the tenant’s space as soon as it is recorded.',
       selectUnit: 'Unit',
       paidInFuture: 'A payment cannot be received on a future date.',
       amountInvalid: 'Enter an amount greater than zero.',
@@ -808,6 +808,15 @@ export const en: Dictionary = {
           title: 'Rent {unit} overdue by {count} days',
           title_one: 'Rent {unit} overdue by {count} day',
           detail: '{tenant} · reminder sent on {date}',
+        },
+        rentReminder: {
+          title: 'Reminder sent to {tenant}',
+          detail: '{count} days overdue · {amount} due',
+          detail_one: '{count} day overdue · {amount} due',
+        },
+        formalNotice: {
+          title: 'Formal notice — {tenant}',
+          detail: '{amount} due · recorded in the audit log',
         },
         quotePending: {
           title: 'Quote awaiting your decision',

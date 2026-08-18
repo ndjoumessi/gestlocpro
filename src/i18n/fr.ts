@@ -416,7 +416,13 @@ export const fr = {
       downloadAll: 'Tout télécharger',
       allReceipts: 'Quittances du locataire',
       request: 'Demander un document',
-      requestHint: 'Le gestionnaire reçoit la demande et dépose la pièce dans cet espace.',
+      /**
+        * « …et dépose la pièce dans cet espace » : il ne dépose rien. Le
+        * produit ne sait recevoir aucun fichier, et le gestionnaire ne fait
+        * que répondre. La phrase datait d'avant l'entité de demande et ne
+        * l'avait pas suivie.
+        */
+      requestHint: 'Le gestionnaire reçoit la demande et vous répond dans cet espace.',
       requestSend: 'Envoyer la demande',
       requestSent: 'Demande envoyée au gestionnaire',
       reqResidence: 'Attestation de résidence',
@@ -706,7 +712,14 @@ export const fr = {
       methodTransfer: 'Virement',
       methodCheck: 'Chèque',
       modalTitle: 'Enregistrer un paiement',
-      modalDescription: 'Le locataire recevra sa quittance par e-mail et par SMS.',
+      /**
+       * Elle annonçait « Le locataire recevra sa quittance par e-mail et par
+       * SMS ». La route d'émission n'appelle pas la messagerie, et celle-ci
+       * journalise sans rien envoyer : personne ne recevait rien. Le produit
+       * est honnête ailleurs — l'invitation dit « Aucun SMS n'a été envoyé » —,
+       * cette phrase était la seule à affirmer le contraire.
+       */
+      modalDescription: 'La quittance est disponible dans l’espace du locataire dès l’enregistrement.',
       selectUnit: 'Unité',
       paidInFuture: 'Un versement ne peut pas être reçu à une date future.',
       amountInvalid: 'Saisissez un montant supérieur à zéro.',
@@ -946,6 +959,26 @@ export const fr = {
           title: 'Loyer {unit} en retard de {count} jours',
           title_one: 'Loyer {unit} en retard de {count} jour',
           detail: '{tenant} · relance partie le {date}',
+        },
+        /**
+         * La relance : ce que le gestionnaire a FAIT, pas ce qu'il doit faire.
+         *
+         * `rentOverdue` dit le retard, celle-ci dit la démarche — les deux
+         * cohabitent dans la liste, et les confondre ferait lire deux fois le
+         * même impayé.
+         */
+        rentReminder: {
+          title: 'Relance envoyée à {tenant}',
+          detail: '{count} jours de retard · {amount} dus',
+          detail_one: '{count} jour de retard · {amount} dus',
+        },
+        /**
+         * La mise en demeure. Le détail ne parle ni de courrier ni d'accusé de
+         * réception : le produit consigne, il n'expédie rien.
+         */
+        formalNotice: {
+          title: 'Mise en demeure — {tenant}',
+          detail: '{amount} dus · consignée au journal',
         },
         quotePending: {
           title: 'Devis à arbitrer',

@@ -1409,10 +1409,23 @@ function debutDuJour(maintenant: Date): Date {
   )
 }
 
-/** Clé de message d'une relance, et marqueur de sa trace. */
-const CLE_RELANCE = 'notifications.rentReminder'
-/** Clé de message d'une mise en demeure. */
-const CLE_MISE_EN_DEMEURE = 'notifications.formalNotice'
+/**
+ * Clé de message d'une relance, et marqueur de sa trace.
+ *
+ * SANS préfixe, comme toutes les autres — `rentOverdue`, `quotePending`,
+ * `metersMissing`. Elle s'écrivait `notifications.rentReminder` : l'écran
+ * compose `app.alerts.msg.${messageKey}.title`, ce qui donnait
+ * `app.alerts.msg.notifications.rentReminder.title`, absent des deux
+ * dictionnaires. Le fournisseur d'i18n rend alors la CLÉ BRUTE : un
+ * gestionnaire qui relançait un impayé sur son parc voyait du texte technique
+ * s'inscrire dans sa liste de signalements.
+ *
+ * Le défaut n'était visible que sur un vrai parc : le jeu de démonstration
+ * écrit les bonnes clés, et toute la suite du gestionnaire tourne dessus.
+ */
+const CLE_RELANCE = 'rentReminder'
+/** Clé de message d'une mise en demeure. Même règle. */
+const CLE_MISE_EN_DEMEURE = 'formalNotice'
 
 /**
  * Relance des loyers en retard.
@@ -1564,11 +1577,25 @@ parksRouter.post(
           messageKey: CLE_RELANCE,
           // `leaseId` dans les paramètres : c'est la clé de la garde du jour,
           // et `Notification` n'a pas de colonne pour le porter.
+          /**
+           * Les noms du CONTRAT, et non ceux du domaine.
+           *
+           * `overdueDays` et `dueMinor` disaient juste, mais le client ne sait
+           * interpoler que `count`, `amount`, `tenant`, `date`… — la table de
+           * `useAlertMessage`. Un gabarit « en retard de {count} jours »
+           * n'aurait donc rien trouvé à mettre dans ses accolades, et l'écran
+           * aurait affiché l'accolade elle-même : exactement le défaut pour
+           * lequel `contract.test.ts` a été écrit.
+           *
+           * `leaseId` reste : il n'est pas interpolé, il porte la garde du
+           * « déjà relancé aujourd'hui », que `Notification` n'a pas de colonne
+           * pour exprimer.
+           */
           params: {
             leaseId: bail.id,
             tenant: bail.tenant.fullName,
-            overdueDays: jours,
-            dueMinor: dûMinor,
+            count: jours,
+            amount: dûMinor,
           },
           severity: jours >= 15 ? 'high' : 'medium',
           unitId: bail.unitId,
@@ -1685,7 +1712,8 @@ parksRouter.post(
           parkId,
           kind: 'lease',
           messageKey: CLE_MISE_EN_DEMEURE,
-          params: { tenant: bail.tenant.fullName, dueMinor: dûMinor },
+          // `amount` et non `dueMinor` : voir la relance ci-dessus, même raison.
+          params: { tenant: bail.tenant.fullName, amount: dûMinor },
           severity: 'high',
           unitId: bail.unitId,
           channel: 'in_app',

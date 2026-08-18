@@ -1790,7 +1790,7 @@ describe('relance des loyers', () => {
     expect(res.body.sent).toEqual([leaseId])
 
     const trace = await prisma.notification.findFirstOrThrow({
-      where: { parkId, messageKey: 'notifications.rentReminder' },
+      where: { parkId, messageKey: 'rentReminder' },
     })
     expect(trace.channel).toBe('in_app')
     /**
@@ -1948,7 +1948,7 @@ describe('relance des loyers', () => {
       .send({ leaseIds: [leaseId] })
 
     const trace = await prisma.notification.findFirstOrThrow({
-      where: { parkId, messageKey: 'notifications.rentReminder' },
+      where: { parkId, messageKey: 'rentReminder' },
     })
     /**
      * Aucun fournisseur n'est configuré : `MessagerieDeJournal` rend `false`, et
@@ -1982,7 +1982,7 @@ describe('relance des loyers', () => {
 
     expect(envoyes).toEqual(['+237677214408'])
     const trace = await prisma.notification.findFirstOrThrow({
-      where: { parkId, messageKey: 'notifications.rentReminder' },
+      where: { parkId, messageKey: 'rentReminder' },
     })
     expect(trace.sentAt).not.toBeNull()
     expect(trace.channel).toBe('sms')
@@ -2113,7 +2113,7 @@ describe('mise en demeure', () => {
     expect((decision.payload as { dueMinor: number }).dueMinor).toBe(145000)
 
     const avis = await prisma.notification.findFirstOrThrow({
-      where: { parkId, messageKey: 'notifications.formalNotice' },
+      where: { parkId, messageKey: 'formalNotice' },
     })
     expect(avis.severity).toBe('high')
   })

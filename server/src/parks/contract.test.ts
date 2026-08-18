@@ -136,6 +136,74 @@ describe('les notifications portent ce que leurs messages interpolent', () => {
     expect(manquants).toEqual([])
   })
 
+  /**
+   * Les notifications que le PRODUIT écrit, et non celles que la démonstration
+   * a semées.
+   *
+   * Le cas ci-dessus lit le portefeuille d'un parc fraîchement créé : il ne
+   * voit donc que les sept notifications du jeu de démonstration, toutes
+   * écrites à la main avec les bonnes clés. Deux chemins en créent pourtant
+   * d'autres à l'exécution — la relance d'impayé et la mise en demeure — et
+   * tous deux étaient faux, chacun d'une façon que ce fichier savait déjà
+   * attraper :
+   *
+   *   — la clé portait un préfixe (`notifications.rentReminder`), absent des
+   *     deux dictionnaires : l'écran affichait la clé brute ;
+   *   — les paramètres portaient les noms du domaine (`overdueDays`,
+   *     `dueMinor`) quand le client n'interpole que `count` et `amount` : les
+   *     accolades seraient restées à l'écran.
+   *
+   * Ils ont tenu parce que rien ne les DÉCLENCHAIT ici. Ce cas les déclenche.
+   */
+  it('vaut aussi pour les notifications qu’une action vient de créer', async () => {
+    const avant = await portefeuille()
+    const enRetard = avant.buildings
+      .flatMap((b: { units: { id: string; leaseId: string | null; status: string }[] }) => b.units)
+      .filter((u: { leaseId: string | null; status: string }) => u.leaseId && u.status === 'overdue')
+    // Le jeu de démonstration porte des impayés : sans eux, ce cas ne
+    // vérifierait rien tout en restant vert.
+    expect(enRetard.length).toBeGreaterThan(0)
+
+    const relance = await request(serveur)
+      .post(`/api/parks/${parkId}/reminders`)
+      .set('Cookie', cookie)
+      .send({ leaseIds: enRetard.map((u: { leaseId: string }) => u.leaseId) })
+    expect(relance.status, JSON.stringify(relance.body)).toBe(200)
+    // `sent` est la LISTE des baux relancés, pas leur compte : la route rend
+    // `{ sent: string[], skipped: string[] }`.
+    expect(relance.body.sent.length).toBeGreaterThan(0)
+
+    const demeure = await request(serveur)
+      .post(`/api/parks/${parkId}/leases/${enRetard[0].leaseId}/formal-notice`)
+      .set('Cookie', cookie)
+      .send({ reason: 'Deux mois de loyer impayés malgré quatre relances.' })
+    // 201 : la mise en demeure CRÉE un avis, elle ne met rien à jour.
+    expect(demeure.status, JSON.stringify(demeure.body)).toBe(201)
+
+    const { notifications } = await portefeuille()
+    const gabarits = gabaritsDuClient()
+    const nouvelles = notifications.filter((n: { messageKey: string }) =>
+      ['rentReminder', 'formalNotice'].includes(n.messageKey),
+    )
+    // Les deux chemins ont bien écrit : sans cette borne, un renommage de clé
+    // rendrait la liste vide et le reste du cas passerait à vide.
+    expect(nouvelles.map((n: { messageKey: string }) => n.messageKey)).toEqual(
+      expect.arrayContaining(['rentReminder', 'formalNotice']),
+    )
+
+    const manquants: string[] = []
+    for (const n of nouvelles) {
+      const attendus = gabarits.get(n.messageKey)
+      expect(attendus, `aucun gabarit pour « ${n.messageKey} »`).toBeDefined()
+      for (const nom of attendus!) {
+        const champs = CHAMP_POUR.get(nom) ?? [nom]
+        const present = champs.some((c) => n.params?.[c] !== undefined && n.params[c] !== null)
+        if (!present) manquants.push(`${n.messageKey}.{${nom}}`)
+      }
+    }
+    expect(manquants).toEqual([])
+  })
+
   it('nomme l’unité par son libellé et non par son identifiant', async () => {
     // `params.unitId` est AFFICHÉ. S'il portait l'uuid, l'utilisateur lirait
     // « Loyer 3f7a91c2-… en retard ».
