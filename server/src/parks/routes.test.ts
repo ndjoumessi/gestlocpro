@@ -246,6 +246,46 @@ describe('cloisonnement', () => {
     // Et rien des voisins ne traverse, pas même un nom.
     expect(JSON.stringify(res.body)).not.toContain('Serge Mbarga')
   })
+
+  /**
+   * La DATE DE DÉBUT du bail traverse jusqu'au client.
+   *
+   * Le bail la portait depuis toujours ; la réponse ne la transmettait pas.
+   * Le client l'affiche — « bail en cours depuis le … », et il date les travaux
+   * « depuis mon entrée le … » : sans elle, les deux phrases restaient amputées
+   * pour tout compte réel, quand la démonstration les affichait entières.
+   *
+   * Le cas VACANT compte autant : une unité sans bail rend `null`, et non
+   * l'absence du champ — le client distingue « pas de bail » de « serveur qui
+   * ne sait pas », et la nuance décide s'il tait la phrase ou s'en inquiète.
+   */
+  it('transmet la date de début du bail, et `null` pour une unité vacante', async () => {
+    const proprio = await inscrire('proprio@example.com', {
+      parkName: 'Parc Bonamoussadi',
+      countryCode: 'CM',
+      seedDemo: true,
+    })
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio.cookie)
+    const parkId = parcs.body.parks[0].id
+
+    const res = await request(serveur)
+      .get(`/api/parks/${parkId}/portfolio`)
+      .set('Cookie', proprio.cookie)
+
+    const unites: { label: string; tenant: unknown; leaseStartsOn: string | null }[] =
+      res.body.buildings.flatMap((b: { units: unknown[] }) => b.units)
+
+    const loue = unites.find((u) => u.tenant !== null)
+    expect(loue, 'le jeu de démonstration doit contenir une unité louée').toBeDefined()
+    expect(loue!.leaseStartsOn).toEqual(expect.any(String))
+    // Une date, et non une chaîne quelconque : `Date` accepte n'importe quoi et
+    // rend `Invalid Date`, que le client afficherait tel quel.
+    expect(Number.isNaN(Date.parse(loue!.leaseStartsOn!))).toBe(false)
+
+    const vacante = unites.find((u) => u.tenant === null)
+    expect(vacante, 'le jeu de démonstration doit contenir une unité vacante').toBeDefined()
+    expect(vacante!.leaseStartsOn).toBeNull()
+  })
 })
 
 /**
