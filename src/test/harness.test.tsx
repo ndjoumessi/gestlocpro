@@ -51,6 +51,6 @@ describe('harnais de test', () => {
     await switchRole('tenant')
 
     await attendreLeChargement()
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Mon espace locataire')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Résidence Bonamoussadi — A1')
   })
 })

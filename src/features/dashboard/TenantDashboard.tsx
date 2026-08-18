@@ -4,7 +4,7 @@ import { lien, useBase } from '@/lib/base'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
 import { Icon } from '@/components/primitives/Icon'
-import { StatCard } from '@/components/primitives/Charts'
+import { ProgressBar, StatCard } from '@/components/primitives/Charts'
 import { PaymentStatusPill, StatusPill } from '@/components/primitives/StatusPill'
 import { EmptyState } from '@/components/primitives/DataTable'
 import { Skeleton, SkeletonRegion, SkeletonStatCard } from '@/components/primitives/Skeleton'
@@ -12,15 +12,19 @@ import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
 import { useNumbers } from '@/lib/numbers'
+import { cn } from '@/lib/cn'
 import {
   TENANT_RECEIPTS,
   UTILITY_RATES,
   buildingById,
+  chargeDue,
+  chargeSettled,
+  inspectionsForUnit,
+  type Charge,
 } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { ReceiptModal } from './ReceiptModal'
 import { workTitle } from '@/data/workTitle'
-import { useReceiptExport } from './receiptExport'
 
 /**
  * Espace locataire.
@@ -30,28 +34,13 @@ import { useReceiptExport } from './receiptExport'
  * veut son échéance, ses quittances et l'état de ses signalements. Toutes les
  * données proviennent de sa seule unité — le parc n'est jamais interrogé.
  */
-/**
- * Les trois dernières périodes, mois courant compris.
- *
- * Calculées une fois au chargement du module : elles ne changent pas pendant
- * qu'on lit l'écran, et les recalculer à chaque rendu ferait dépendre le test
- * de l'instant où il tourne.
- */
-const PERIODES_RECENTES = (() => {
-  const maintenant = new Date()
-  return [0, 1, 2].map((recul) => {
-    const m = new Date(Date.UTC(maintenant.getUTCFullYear(), maintenant.getUTCMonth() - recul, 1))
-    return { year: m.getUTCFullYear(), month: m.getUTCMonth() + 1 }
-  })
-})()
-
 export function TenantDashboard() {
   const [quittanceDe, setQuittanceDe] = useState<string | null>(null)
   const base = useBase()
   const t = useT()
   const d = useDates()
+  const n = useNumbers()
   const { money } = useCurrency()
-  const downloadReceipt = useReceiptExport()
   const { worksForUnit, depositForUnit, unitById, tenantUnitIds, readingForUnit, loading } =
     usePortfolio()
 
@@ -67,6 +56,7 @@ export function TenantDashboard() {
   const deposit = depositForUnit(monUnite)
   const reading = readingForUnit(monUnite)
   const works = worksForUnit(monUnite)
+  const entree = inspectionsForUnit(monUnite).find((i) => i.kind === 'entry')
   const openWorks = works.filter((work) => work.status !== 'done')
 
   /**
@@ -113,70 +103,224 @@ export function TenantDashboard() {
   const rebilled =
     water === null || power === null ? null : water * UTILITY_RATES.water + power * UTILITY_RATES.power
 
+  const receiptCourante = TENANT_RECEIPTS[0]
+  const eauDue = chargeDue(receiptCourante.water, UTILITY_RATES.water)
+  const elecDue = chargeDue(receiptCourante.power, UTILITY_RATES.power)
+
   return (
     <>
       <PageHeader
-        title={t('app.tenant.title')}
-        description={t('app.tenant.subtitle')}
+        title={building ? `${building.name} — ${unit.label}` : unit.label}
+        description={[
+          unit.leaseStart && t('app.tenant.leaseSince', { date: d.fullDate(unit.leaseStart) }),
+          t('app.tenant.leaseManager', { name: t('app.tenant.managerName') }),
+        ]
+          .filter(Boolean)
+          .join(' · ')}
         actions={
-          <Button icon="bell" to={lien(base, 'signalements')}>
-            {t('app.tenant.contactManager')}
-          </Button>
+          <>
+            <Button variant="secondary" icon="download" to={lien(base, 'documents')}>
+              {t('app.tenant.downloadReceipts')}
+            </Button>
+            <Button icon="bell" to={lien(base, 'signaler')}>
+              {t('app.tenant.reportIssue')}
+            </Button>
+          </>
         }
       />
 
-      {/*
-        MON BAIL — la carte que la maquette du portail met en évidence.
-
-        Le locataire lisait son loyer et sa consommation, jamais les TERMES de
-        son contrat : combien il paie chaque mois, et combien il a versé en
-        caution. Cette dernière est son argent, et il ne pouvait le lire nulle
-        part — c'est ce que ce produit reproche aux pratiques qu'il remplace.
-
-        Le montant vient de `depositForUnit`, la même source que l'écran des
-        cautions : deux chiffres pour un seul fait divergeraient au premier
-        arbitrage.
-      */}
-      {/*
-        MES QUITTANCES — la colonne « quittance » de la maquette du portail.
-
-        Le locataire n'avait AUCUN accès à ses propres quittances : elles ne
-        s'émettent que depuis l'écran des paiements, réservé à la gestion. Il
-        devait donc les réclamer à son gestionnaire — précisément la démarche que
-        ce produit existe pour supprimer.
-
-        Les périodes sont calculées ici ; les MONTANTS ne le sont pas. Le
-        document est émis par le serveur, qui rend les siens : « les montants
-        sont ceux du registre, pas ceux de l'écran », dit déjà la modale. Un
-        tableau qui les recomposerait côté client donnerait deux vérités pour un
-        seul fait.
-      */}
-      <Card className="mb-4 flex flex-col gap-3">
-        <h2 className="title-m font-semibold">{t('app.tenant.myReceipts')}</h2>
-        <p className="text-body-s text-muted">{t('app.tenant.myReceiptsHint')}</p>
-        <ul className="flex flex-col">
-          {PERIODES_RECENTES.map((periode) => (
-            <li
-              key={`${periode.year}-${periode.month}`}
-              className="flex min-h-11 items-center justify-between gap-3 border-b border-divider last:border-b-0"
+      {/* LE MOIS EN COURS — loyer, eau, électricité.
+          Le loyer occupe la première carte parce qu'il est la seule somme due
+          d'office ; l'eau et l'électricité sont REFACTURÉES, et leur montant se
+          dérive de la quantité relevée et du tarif, jamais d'un chiffre saisi
+          deux fois. */}
+      <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr_1fr]">
+        <Card className="flex flex-col">
+          <div className="flex items-start justify-between gap-3">
+            <p className="eyebrow text-muted">
+              {t('app.tenant.rentFor')} · {d.monthYear(receiptCourante)}
+            </p>
+            <PaymentStatusPill status={unit.status} size="sm" />
+          </div>
+          <p className="numeric mt-2 text-kpi font-medium">{money(unit.rent, { round: true })}</p>
+          {/* La valeur est un POURCENTAGE, pas un montant : passer le montant
+              rendait une piste large de 145 000 % et un libellé « 145000 % ».
+              Le libellé est masqué — le montant juste au-dessus le dit déjà —
+              mais reste annoncé aux lecteurs d'écran. */}
+          <div className="mt-3">
+            <ProgressBar
+              value={unit.rent === 0 ? 0 : Math.round((unit.paid / unit.rent) * 100)}
+              label={t('app.tenant.rentFor')}
+              tone="ok"
+              hideLabel
+            />
+          </div>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-body-s text-muted">
+              {t('app.tenant.paidOnBy', {
+                date: d.dayMonth({
+                  year: receiptCourante.year,
+                  month: receiptCourante.month,
+                  day: receiptCourante.paidDay,
+                }),
+                method: t(
+                  `app.paymentMethods.${receiptCourante.method}` as 'app.paymentMethods.cash',
+                ),
+              })}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="-mr-3.5"
+              onClick={() => setQuittanceDe(periodeIso(receiptCourante))}
             >
-              <span className="text-label">{d.monthYear(periode)}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                icon="download"
-                onClick={() =>
-                  setQuittanceDe(
-                    `${periode.year}-${String(periode.month).padStart(2, '0')}-01`,
-                  )
-                }
-              >
-                {t('app.receipts.issue')}
-              </Button>
-            </li>
-          ))}
-        </ul>
-      </Card>
+              {t('app.tenant.receipt')}
+            </Button>
+          </div>
+        </Card>
+
+        <CarteCharge
+          label={t('app.tenant.water')}
+          amount={money(eauDue, { round: true })}
+          note={`${t('app.tenant.settled')} · ${t('app.tenant.consumedWater', { n: n.integer(receiptCourante.water.quantity) })}`}
+        />
+        <CarteCharge
+          label={t('app.tenant.power')}
+          amount={money(elecDue, { round: true })}
+          note={`${t('app.tenant.settled')} · ${t('app.tenant.consumedPower', { n: n.integer(receiptCourante.power.quantity) })}`}
+        />
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+        {/* MES PAIEMENTS PAR PÉRIODE.
+            Trois colonnes de montants pour une même période : c'est un tableau,
+            et non une liste. Les en-têtes portent `scope` — sans quoi un lecteur
+            d'écran annonce une suite de nombres sans dire de quoi ils sont le
+            montant, ni de quel mois. */}
+        <Card flush>
+          <CardHeader
+            title={t('app.tenant.byPeriod')}
+            level={2}
+            className="px-4 pt-4 sm:px-5 sm:pt-5"
+            action={
+              <span className="flex items-center gap-3 text-caps text-muted">
+                <Legende tone="bg-ok" label={t('app.tenant.legendSettled')} />
+                <Legende tone="bg-warn" label={t('app.tenant.legendPartial')} />
+              </span>
+            }
+          />
+          <div className="overflow-x-auto border-t border-divider">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b border-divider">
+                  <th scope="col" className="px-4 py-2.5 text-left text-caps text-muted sm:px-5">
+                    {t('app.tenant.colPeriod')}
+                  </th>
+                  <th scope="col" className="px-3 py-2.5 text-right text-caps text-muted">
+                    {t('app.tenant.colRent')}
+                  </th>
+                  <th scope="col" className="px-3 py-2.5 text-right text-caps text-muted">
+                    {t('app.tenant.colWater')}
+                  </th>
+                  <th scope="col" className="px-3 py-2.5 text-right text-caps text-muted">
+                    {t('app.tenant.colPower')}
+                  </th>
+                  <th scope="col" className="px-4 py-2.5 text-right text-caps text-muted sm:px-5">
+                    {t('app.tenant.colReceipt')}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-divider">
+                {TENANT_RECEIPTS.map((receipt) => (
+                  <tr key={`${receipt.year}-${receipt.month}`}>
+                    <th scope="row" className="px-4 py-3 text-left text-body font-medium sm:px-5">
+                      {d.monthYear(receipt)}
+                    </th>
+                    <td className="numeric px-3 py-3 text-right text-body text-ok">
+                      {n.integer(unit.rent)}
+                    </td>
+                    <CelluleCharge charge={receipt.water} rate={UTILITY_RATES.water} />
+                    <CelluleCharge charge={receipt.power} rate={UTILITY_RATES.power} />
+                    <td className="px-4 py-3 text-right sm:px-5">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`${t('app.tenant.receipt')} — ${d.monthYear(receipt)}`}
+                        className="-mr-3.5"
+                        onClick={() => setQuittanceDe(periodeIso(receipt))}
+                      >
+                        {t('app.tenant.receipt')}
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        <div className="flex flex-col gap-4">
+          {/* MON BAIL — les TERMES du contrat, que le locataire ne lisait nulle
+              part. La caution est son argent : la lui cacher jusqu'à la
+              restitution est ce que ce produit reproche aux pratiques qu'il
+              remplace. Le montant vient de `depositForUnit`, la même source que
+              l'écran des cautions — deux chiffres pour un seul fait
+              divergeraient au premier arbitrage. */}
+          <Card>
+            <CardHeader title={t('app.tenant.myLease')} level={2} />
+            <dl className="flex flex-col">
+              <LigneBail
+                terme={t('app.tenant.leaseRent')}
+                valeur={money(unit.rent, { round: true })}
+              />
+              <LigneBail
+                terme={t('app.tenant.leaseDeposit')}
+                valeur={deposit ? money(deposit.held, { round: true }) : '—'}
+              />
+              {/* L'état des lieux EXISTE comme fiche, pas comme fichier : aucun
+                  dépôt ne le crée, et ce produit ne fabrique pas de PDF
+                  opposable. On renvoie donc vers ce qu'on sait montrer. */}
+              <LigneBail
+                terme={t('app.documents.entryInspection')}
+                href={entree ? lien(base, 'etats-des-lieux') : undefined}
+                action={t('app.documents.view')}
+                valeur={entree ? undefined : t('app.documents.none')}
+              />
+            </dl>
+          </Card>
+
+          <Card>
+            <CardHeader
+              title={t('app.tenant.myWorks')}
+              description={
+                unit.leaseStart
+                  ? t('app.tenant.worksSince', { date: d.fullDate(unit.leaseStart) })
+                  : undefined
+              }
+              level={2}
+            />
+            {works.length === 0 ? (
+              <p className="text-body-s text-muted">{t('app.tenant.worksEmpty')}</p>
+            ) : (
+              <ul className="flex flex-col gap-3">
+                {works.map((work) => (
+                  <li key={work.id} className="flex items-start gap-3">
+                    <span className="numeric mt-0.5 shrink-0 text-caps text-muted">
+                      {d.dayMonth(work.reportedAt)}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-body font-medium">{workTitle(work, t)}</p>
+                      <p className="mt-0.5 text-caps text-muted">
+                        {t(`app.works.${work.status}` as 'app.works.reported')}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        </div>
+      </div>
 
       {quittanceDe && (
         <ReceiptModal
@@ -186,145 +330,6 @@ export function TenantDashboard() {
           onClose={() => setQuittanceDe(null)}
         />
       )}
-
-      <div className="mb-4 grid gap-4 sm:grid-cols-2">
-        <StatCard
-          label={t('app.tenant.leaseRent')}
-          value={money(unit.rent, { round: true })}
-          note={t('app.tenant.leaseRentNote')}
-        />
-        <StatCard
-          label={t('app.tenant.leaseDeposit')}
-          value={deposit ? money(deposit.held, { round: true }) : '—'}
-          note={
-            deposit
-              ? t('app.tenant.leaseDepositNote')
-              : t('app.tenant.leaseDepositNone')
-          }
-        />
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label={t('app.tenant.myUnit')}
-          value={unit.label}
-          unit={t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')}
-          note={`${unit.surface} m² · ${building?.name ?? ''}`}
-        />
-        <StatCard
-          label={t('app.tenant.nextDue')}
-          value={money(unit.rent, { round: true })}
-          note={t('app.dashboard.legendRent')}
-        />
-        <StatCard
-          label={t('app.tenant.consumption')}
-          value={rebilled === null ? '—' : money(rebilled, { round: true })}
-          note={
-            water === null || power === null
-              ? t('app.meters.missing')
-              : `${water} m³ · ${power} kWh`
-          }
-        />
-        <StatCard
-          label={t('app.tenant.deposit')}
-          value={deposit ? money(deposit.held, { round: true }) : '—'}
-          note={deposit ? t(`app.deposits.${deposit.status}` as 'app.deposits.held') : undefined}
-        />
-      </div>
-
-      <div className="mt-4 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        <Card flush>
-          <div className="p-4 sm:p-5">
-            <CardHeader
-              title={t('app.tenant.receipts')}
-              level={2}
-              className="mb-0"
-              action={<PaymentStatusPill status={unit.status} size="sm" />}
-            />
-          </div>
-
-          <ul className="divide-y divide-divider border-t border-divider">
-            {TENANT_RECEIPTS.map((receipt) => (
-              <li
-                key={`${receipt.year}-${receipt.month}`}
-                className="flex flex-wrap items-center gap-3 px-4 py-3 sm:px-5"
-              >
-                <span className="min-w-0 flex-1 text-body font-medium">
-                  {d.monthYear(receipt)}
-                </span>
-                <span className="numeric text-body">{money(unit.rent, { round: true })}</span>
-                <span className="text-caps text-muted">
-                  {t('app.tenant.paidOn', {
-                    date: d.dayMonth({ year: receipt.year, month: receipt.month, day: receipt.paidDay }),
-                  })}
-                </span>
-                {/* Six boutons sans `onClick` : le clic ne produisait rien,
-                    pas même un toast, et le locataire pouvait s'y reprendre à
-                    trois fois avant de conclure que son navigateur bloquait
-                    quelque chose. */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon="download"
-                  onClick={() => downloadReceipt(unit, receipt)}
-                >
-                  {t('app.tenant.download')}
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </Card>
-
-        <div className="flex flex-col gap-4">
-          <Card>
-            <CardHeader title={t('app.tenant.myWorks')} level={2} />
-            {openWorks.length === 0 ? (
-              <p className="text-body-s text-muted">{t('app.tenant.worksEmpty')}</p>
-            ) : (
-              <ul className="flex flex-col gap-3">
-                {openWorks.map((work) => (
-                  <li key={work.id} className="flex items-start gap-3">
-                    <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-surface-sunken text-muted">
-                      <Icon name="wrench" size={15} />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-body font-medium">{workTitle(work, t)}</p>
-                      <p className="mt-0.5 text-caps text-muted">
-                        {work.reference ?? work.id} ·{' '}
-                        {d.dayMonth(work.reportedAt)}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <Button variant="ghost" to={lien(base, 'travaux')} iconAfter="chevronRight" className="mt-4 -ml-3.5">
-              {t('nav.works')}
-            </Button>
-          </Card>
-
-          <Card tone="dark">
-            <CardHeader title={t('app.tenant.manager')} level={2} />
-            <div className="flex items-center gap-3">
-              <span
-                aria-hidden="true"
-                className="flex size-10 shrink-0 items-center justify-center rounded-full bg-gold text-label font-semibold text-ink"
-              >
-                DF
-              </span>
-              <div className="min-w-0">
-                <p className="text-body font-medium text-on-dark">{t('app.tenant.managerName')}</p>
-                <p className="text-caps text-on-dark-faint">
-                  {t('roles.manager.name')}
-                </p>
-              </div>
-            </div>
-            <Button variant="gold" to={lien(base, 'signalements')} className="mt-4" fullWidth>
-              {t('app.tenant.contactManager')}
-            </Button>
-          </Card>
-        </div>
-      </div>
 
       {/* La règle de confidentialité est dite à l'écran, pas seulement
           appliquée : le locataire doit savoir ce que son bailleur ne voit pas
@@ -336,6 +341,96 @@ export function TenantDashboard() {
     </>
   )
 }
+
+/**
+ * Premier jour de la période, au format que réclame la modale.
+ *
+ * Les quittances de cet écran passent TOUTES par `ReceiptModal`, et non par
+ * l'export CSV. L'écran en offrait les deux — une carte « Mes quittances » qui
+ * ouvrait la modale, une liste « Quittances » qui téléchargeait un CSV — pour
+ * le même document et les mêmes périodes. Le CSV recompose les montants côté
+ * client ; la modale rend ceux du REGISTRE, et c'est la modale qui a raison :
+ * « les montants sont ceux du registre, pas ceux de l'écran », dit-elle
+ * elle-même. Deux vérités pour un seul document, c'en était une de trop.
+ */
+function periodeIso(periode: { year: number; month: number }): string {
+  return `${periode.year}-${String(periode.month + 1).padStart(2, '0')}-01`
+}
+
+/** Une charge du mois : son montant, et le volume qu'elle facture. */
+function CarteCharge({ label, amount, note }: { label: string; amount: string; note: string }) {
+  return (
+    <Card>
+      <p className="eyebrow text-muted">{label}</p>
+      <p className="numeric mt-2 text-kpi font-medium">{amount}</p>
+      <p className="mt-2 text-body-s text-muted">{note}</p>
+    </Card>
+  )
+}
+
+/**
+ * Une charge dans le tableau — soldée, ou partielle avec son reste.
+ *
+ * Le reste est affiché parce qu'il est le seul chiffre qui appelle un geste :
+ * une cellule qui ne montrerait que la part versée laisserait croire la période
+ * close. La couleur ne porte pas seule cette différence — le reste est écrit.
+ */
+function CelluleCharge({ charge, rate }: { charge: Charge; rate: number }) {
+  const t = useT()
+  const n = useNumbers()
+  const du = chargeDue(charge, rate)
+  const solde = chargeSettled(charge, rate)
+  return (
+    <td className={cn('numeric px-3 py-3 text-right text-body', solde ? 'text-ok' : 'text-warn')}>
+      {n.integer(solde ? du : charge.paid)}
+      {!solde && (
+        <span className="text-caps">
+          {' · '}
+          {t('app.tenant.remaining', { amount: n.integer(du - charge.paid) })}
+        </span>
+      )}
+    </td>
+  )
+}
+
+/** Un terme du bail : un intitulé, et soit une valeur, soit un renvoi. */
+function LigneBail({
+  terme,
+  valeur,
+  href,
+  action,
+}: {
+  terme: string
+  valeur?: string
+  href?: string
+  action?: string
+}) {
+  return (
+    <div className="flex min-h-11 items-center justify-between gap-3 border-b border-divider py-2 last:border-b-0">
+      <dt className="text-body text-muted">{terme}</dt>
+      <dd className="numeric text-body font-medium">
+        {href ? (
+          <Button variant="ghost" size="sm" to={href} className="-mr-3.5">
+            {action}
+          </Button>
+        ) : (
+          valeur
+        )}
+      </dd>
+    </div>
+  )
+}
+
+/** Pastille de légende — la couleur seule ne dit rien, elle est toujours nommée. */
+function Legende({ tone, label }: { tone: string; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span aria-hidden="true" className={cn('size-2 rounded-xs', tone)} />
+      {label}
+    </span>
+  )
+}
+
 
 /**
  * L'espace locataire, le temps que son bail arrive.

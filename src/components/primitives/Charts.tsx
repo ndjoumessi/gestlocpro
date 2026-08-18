@@ -748,10 +748,23 @@ export function ProgressBar({
   value,
   label,
   tone = 'gold',
+  hideLabel,
 }: {
   value: number
   label: string
   tone?: 'gold' | 'ok' | 'danger'
+  /**
+   * Masque le libellé VISIBLE sans le retirer de l'arbre d'accessibilité.
+   *
+   * Le libellé occupe une colonne de 20 unités à gauche de la piste. C'est
+   * juste quand la barre vit dans une liste de barres comparables, où la
+   * colonne aligne les intitulés ; ce l'est moins quand elle est seule sous un
+   * montant qui la nomme déjà — la carte du loyer du mois — et la piste s'y
+   * trouvait amputée du tiers de sa largeur pour répéter ce qui est écrit
+   * au-dessus. `aria-label` reste posé : ce qui disparaît est le doublon
+   * visuel, pas l'annonce.
+   */
+  hideLabel?: boolean
 }) {
   // Le remplissage EST la valeur : c'est lui, et lui seul, qui dit 62 % contre
   // 38 %. L'or de marque ne tenait que 2,52:1 sur la piste `surface-sunken`,
@@ -763,7 +776,7 @@ export function ProgressBar({
 
   return (
     <div className="flex items-center gap-3">
-      <span className="w-20 shrink-0 text-body-s text-muted">{label}</span>
+      {!hideLabel && <span className="w-20 shrink-0 text-body-s text-muted">{label}</span>}
       <div
         role="progressbar"
         aria-valuenow={value}

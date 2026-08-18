@@ -179,10 +179,19 @@ describe('export du tableau de bord', () => {
   })
 })
 
+/**
+ * L'export CSV des quittances a quitté « Mon espace » pour « Documents ».
+ *
+ * L'espace en offrait DEUX chemins pour le même document : une carte qui
+ * ouvrait la modale — laquelle rend les montants du REGISTRE — et une liste qui
+ * téléchargeait un CSV recomposé côté client. Deux vérités pour une seule
+ * quittance. L'espace ne garde que la modale ; le CSV, qui est un export et non
+ * un document opposable, vit là où le locataire vient chercher ses pièces.
+ */
 describe('quittances du locataire', () => {
   it('télécharge la quittance de la période, nommée par son mois', async () => {
     capture = captureDownloads()
-    renderApp('/demo')
+    renderApp('/demo/documents')
     await switchRole('tenant')
     await attendreLeChargement()
 
@@ -201,7 +210,7 @@ describe('quittances du locataire', () => {
 
   it('donne un fichier distinct à chaque période', async () => {
     capture = captureDownloads()
-    renderApp('/demo')
+    renderApp('/demo/documents')
     await switchRole('tenant')
     await attendreLeChargement()
 

@@ -410,6 +410,12 @@ export const fr = {
     demoBanner:
       'Les montants s’affichent en {currency} sans conversion de change.',
 
+    paymentMethods: {
+      mobileMoney: 'Mobile Money',
+      transfer: 'Virement',
+      cash: 'Espèces',
+    },
+
     documents: {
       title: 'Mes pièces et quittances',
       subtitle: 'Votre dossier de bail et l’historique de vos quittances.',
@@ -433,6 +439,30 @@ export const fr = {
     tenant: {
       title: 'Mon espace locataire',
       subtitle: 'Votre logement, vos quittances et vos signalements.',
+      // Les trois cartes de tête et le tableau par période — voir les maquettes.
+      leaseSince: 'Bail en cours depuis le {date}',
+      leaseManager: 'gestionnaire {name}',
+      downloadReceipts: 'Télécharger mes quittances',
+      reportIssue: 'Signaler une anomalie',
+      rentFor: 'Loyer',
+      water: 'Eau',
+      power: 'Électricité',
+      settled: 'Réglé',
+      remaining: 'reste {amount}',
+      paidOnBy: 'Payé le {date} par {method}',
+      receipt: 'Quittance',
+      byPeriod: 'Mes paiements par période',
+      colPeriod: 'Période',
+      colRent: 'Loyer',
+      colWater: 'Eau',
+      colPower: 'Élec.',
+      colReceipt: 'Quittance',
+      legendSettled: 'Réglé',
+      legendPartial: 'Partiel',
+      myLease: 'Mon bail',
+      worksSince: 'Depuis mon entrée le {date}',
+      consumedWater: '{n} m³ consommés',
+      consumedPower: '{n} kWh',
       noUnitTitle: 'Aucun logement rattaché à votre compte',
       noUnitBody: 'Votre compte appartient bien à ce parc, mais aucun bail n’y porte encore votre nom. Demandez à votre propriétaire ou à votre gestionnaire de relier votre fiche locataire à ce compte.',
       myReceipts: 'Mes quittances',

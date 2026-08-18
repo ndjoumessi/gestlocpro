@@ -451,15 +451,65 @@ export interface Receipt {
   month: number
   paidDay: number
   status: PaymentStatus
+  method: PaymentMethodKey
+  water: Charge
+  power: Charge
 }
 
+/**
+ * Moyen de paiement d'une quittance.
+ *
+ * Le portail annonce « payé le 03/08 par … » : sans ce champ, la phrase
+ * s'arrêtait avant son complément. Le mobile money vient en premier parce
+ * qu'il est le moyen dominant sur le marché visé, pas par ordre alphabétique.
+ */
+export type PaymentMethodKey = 'mobileMoney' | 'transfer' | 'cash'
+
+/**
+ * Charge refacturée d'une période : ce qui a été consommé, ce qui a été réglé.
+ *
+ * Le montant dû n'est PAS stocké — il se dérive de la quantité et du tarif de
+ * `UTILITY_RATES`. Le figer ici en donnerait une seconde source, et le jour où
+ * un tarif change, l'historique dirait deux choses différentes du même mois.
+ *
+ * `paid` existe séparément parce qu'une charge peut être réglée en partie :
+ * c'est le cas que le tableau du portail affiche « reste X », et sans ce champ
+ * une période partiellement soldée passait pour soldée.
+ */
+export interface Charge {
+  /** Quantité consommée — m³ pour l'eau, kWh pour l'électricité. */
+  quantity: number
+  /** Part réglée, en unité neutre. */
+  paid: number
+}
+
+/** Ce que la période doit au titre d'une charge, au tarif en vigueur. */
+export function chargeDue(charge: Charge, rate: number): number {
+  return Math.round(charge.quantity * rate)
+}
+
+/** `true` quand la charge est soldée — et non « payée au premier franc ». */
+export function chargeSettled(charge: Charge, rate: number): boolean {
+  return charge.paid >= chargeDue(charge, rate)
+}
+
+/**
+ * Quittances du locataire connecté.
+ *
+ * Les quantités d'août reprennent CELLES DU RELEVÉ de l'unité A1 — 358−342 m³
+ * et 4298−4120 kWh. L'écran des relevés et le portail parlent du même mois : en
+ * inventer d'autres ici aurait donné au locataire une consommation que son
+ * gestionnaire ne lit nulle part.
+ */
 export const TENANT_RECEIPTS: Receipt[] = [
-  { year: 2026, month: 7, paidDay: 3, status: 'paid' },
-  { year: 2026, month: 6, paidDay: 2, status: 'paid' },
-  { year: 2026, month: 5, paidDay: 5, status: 'paid' },
-  { year: 2026, month: 4, paidDay: 4, status: 'paid' },
-  { year: 2026, month: 3, paidDay: 2, status: 'paid' },
-  { year: 2026, month: 2, paidDay: 6, status: 'paid' },
+  { year: 2026, month: 7, paidDay: 3, status: 'paid', method: 'mobileMoney', water: { quantity: 16, paid: 8320 }, power: { quantity: 178, paid: 17622 } },
+  { year: 2026, month: 6, paidDay: 2, status: 'paid', method: 'mobileMoney', water: { quantity: 15, paid: 7800 }, power: { quantity: 163, paid: 16137 } },
+  { year: 2026, month: 5, paidDay: 5, status: 'paid', method: 'transfer', water: { quantity: 14, paid: 7280 }, power: { quantity: 171, paid: 16929 } },
+  // Mai : l'électricité n'est soldée qu'en partie — le cas que le tableau
+  // affiche « reste … », et la raison d'être de `Charge.paid`.
+  { year: 2026, month: 4, paidDay: 4, status: 'paid', method: 'mobileMoney', water: { quantity: 13, paid: 6760 }, power: { quantity: 142, paid: 9000 } },
+  { year: 2026, month: 3, paidDay: 2, status: 'paid', method: 'cash', water: { quantity: 12, paid: 6240 }, power: { quantity: 155, paid: 15345 } },
+  { year: 2026, month: 2, paidDay: 6, status: 'paid', method: 'mobileMoney', water: { quantity: 17, paid: 8840 }, power: { quantity: 168, paid: 16632 } },
 ]
 
 export function buildingById(id: string): Building | undefined {

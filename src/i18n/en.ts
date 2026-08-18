@@ -330,6 +330,12 @@ export const en: Dictionary = {
     demoBanner:
       'Amounts display in {currency} with no exchange conversion.',
 
+    paymentMethods: {
+      mobileMoney: 'Mobile Money',
+      transfer: 'Bank transfer',
+      cash: 'Cash',
+    },
+
     documents: {
       title: 'My documents and receipts',
       subtitle: 'Your lease file and the history of your receipts.',
@@ -348,6 +354,29 @@ export const en: Dictionary = {
     tenant: {
       title: 'My tenant space',
       subtitle: 'Your home, your receipts and your reports.',
+      leaseSince: 'Lease running since {date}',
+      leaseManager: 'manager {name}',
+      downloadReceipts: 'Download my receipts',
+      reportIssue: 'Report an issue',
+      rentFor: 'Rent',
+      water: 'Water',
+      power: 'Electricity',
+      settled: 'Settled',
+      remaining: '{amount} left',
+      paidOnBy: 'Paid on {date} by {method}',
+      receipt: 'Receipt',
+      byPeriod: 'My payments by period',
+      colPeriod: 'Period',
+      colRent: 'Rent',
+      colWater: 'Water',
+      colPower: 'Elec.',
+      colReceipt: 'Receipt',
+      legendSettled: 'Settled',
+      legendPartial: 'Partial',
+      myLease: 'My lease',
+      worksSince: 'Since I moved in on {date}',
+      consumedWater: '{n} m³ used',
+      consumedPower: '{n} kWh',
       noUnitTitle: 'No home linked to your account',
       noUnitBody: 'Your account does belong to this park, but no lease carries your name yet. Ask your landlord or manager to link your tenant record to this account.',
       myReceipts: 'My receipts',
