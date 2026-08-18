@@ -53,6 +53,9 @@ const ECRANS_AUTORISES = [
    */
   ['/demo/releves', 'relevés'],
   ['/demo/cautions', 'cautions'],
+  /* L'écran de déclaration liste SES signalements : sans filtre, il montrerait
+     les pannes des voisins, avec le logement où elles ont lieu. */
+  ['/demo/signaler', 'signaler'],
 ] as const
 
 /** Écrans de gestion, retirés de sa navigation et interdits d'accès direct. */

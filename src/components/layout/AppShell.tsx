@@ -116,6 +116,9 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
         icon: 'bell',
         badge: { count: 'unreadAlerts', tone: 'onDark' },
       },
+      /* « Signaler » est au locataire ce que « Signalements » est au bailleur :
+         l'un déclare, l'autre reçoit. Deux écrans, deux rôles, un seul objet. */
+      { to: 'signaler', labelKey: 'nav.report', icon: 'bell', roles: ['tenant'] },
       { to: 'prise-en-main', labelKey: 'nav.onboarding', icon: 'info', roles: ['owner'] },
     ],
   },

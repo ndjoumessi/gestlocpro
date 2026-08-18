@@ -129,6 +129,7 @@ export const en: Dictionary = {
     works: 'Works',
     deposits: 'Deposits',
     tenants: 'Tenants',
+    report: 'Report',
     alerts: 'Reports',
     onboarding: 'Onboarding and rights',
     system: 'System states',
@@ -861,6 +862,9 @@ export const en: Dictionary = {
       detailHint: 'Since when, at what time of day, what you already tried.',
       send: 'Send report',
       sent: 'Report sent · your manager has been notified',
+      mine: 'My reports',
+      emptyTitle: 'No reports',
+      emptyBody: 'Report an issue and follow it here: received, quoted, approved, then done.',
       cta: 'Report an issue',
     },
     trades: {

@@ -163,6 +163,7 @@ export const fr = {
     works: 'Travaux',
     deposits: 'Cautions',
     tenants: 'Locataires',
+    report: 'Signaler',
     alerts: 'Signalements',
     onboarding: 'Prise en main et droits',
     system: 'États du système',
@@ -988,6 +989,9 @@ export const fr = {
       detailHint: 'Depuis quand, à quel moment, ce que vous avez déjà tenté.',
       send: 'Envoyer le signalement',
       sent: 'Signalement envoyé · votre gestionnaire est prévenu',
+      mine: 'Mes signalements',
+      emptyTitle: 'Aucun signalement',
+      emptyBody: 'Déclarez un problème et suivez son traitement ici : reçu, chiffré, validé, puis terminé.',
       cta: 'Signaler un problème',
     },
     trades: {

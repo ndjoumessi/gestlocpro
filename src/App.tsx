@@ -20,6 +20,7 @@ import { Works } from './features/dashboard/Works'
 import { Deposits } from './features/dashboard/Deposits'
 import { Tenants } from './features/dashboard/Tenants'
 import { Alerts } from './features/dashboard/Alerts'
+import { Signaler } from './features/dashboard/Signaler'
 import { Onboarding } from './features/dashboard/Onboarding'
 import { SystemStates } from './features/dashboard/SystemStates'
 import { TenantPortal } from './features/dashboard/TenantPortal'
@@ -68,6 +69,8 @@ function ecransDeLApplication() {
       <Route path="etats-des-lieux" element={<Inspections />} />
       <Route path="travaux" element={<Works />} />
       <Route path="signalements" element={<Alerts />} />
+      {/* Écran du LOCATAIRE : il déclare, et suit ses propres déclarations. */}
+      <Route path="signaler" element={<Signaler />} />
 
       {/* Écrans de gestion : la même liste de rôles que dans la barre
           latérale, pour que navigation et accès ne divergent pas. */}
