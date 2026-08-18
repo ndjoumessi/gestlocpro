@@ -92,3 +92,68 @@ describe('onglets du portail — navigation au clavier', () => {
     for (const onglet of onglets) expect(onglet).not.toHaveFocus()
   })
 })
+
+/**
+ * La COQUILLE elle-même, et non plus seulement son motif ARIA.
+ *
+ * Les tests ci-dessus tiennent le clavier et les liaisons `aria-*` quel que
+ * soit le nombre d'onglets — c'est ce qui leur a permis de survivre au passage
+ * de cinq à trois sans qu'on les touche. Mais du coup, aucun d'eux ne dit
+ * combien il y en a ni ce qu'ils portent : on aurait pu en rajouter deux et
+ * rester au vert. Ceux-ci fixent la structure que décrivent les maquettes.
+ */
+describe('coquille du portail — trois onglets', () => {
+  it('n’en expose que trois, et ceux-là', async () => {
+    const { onglets } = await ouvrirPortail()
+    expect(onglets.map((o) => o.textContent)).toEqual(['Mon espace', 'Documents', 'Signaler'])
+  })
+
+  it('ouvre « Mon espace » d’emblée', async () => {
+    const { onglets } = await ouvrirPortail()
+    expect(onglets[0].getAttribute('aria-selected')).toBe('true')
+  })
+
+  /**
+   * Les paiements et les travaux avaient chacun leur onglet. En les repliant
+   * dans « Mon espace », rien ne garantissait qu'ils y arrivent — supprimer les
+   * deux `tab === '…'` aurait suffi à les faire disparaître en silence, et les
+   * tests d'ARIA seraient restés verts.
+   */
+  it('replie les paiements et les travaux dans « Mon espace »', async () => {
+    await ouvrirPortail()
+    expect(screen.getByRole('heading', { name: 'Mes paiements' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Travaux' })).toBeInTheDocument()
+  })
+})
+
+/**
+ * L'adresse du chrome de navigateur suivait l'onglet… jamais : elle était figée
+ * sur « /mon-espace ». La fenêtre prétendait donc être sur l'espace du locataire
+ * pendant qu'on lisait ses documents.
+ */
+describe('coquille du portail — adresse de démonstration', () => {
+  it('suit l’onglet ouvert', async () => {
+    const { user, onglets } = await ouvrirPortail()
+    expect(screen.getByText('portail.gestlocpro.com/mon-espace')).toBeInTheDocument()
+
+    await user.click(onglets[1])
+    expect(screen.getByText('portail.gestlocpro.com/documents')).toBeInTheDocument()
+
+    await user.click(onglets[2])
+    expect(screen.getByText('portail.gestlocpro.com/signaler')).toBeInTheDocument()
+  })
+})
+
+/**
+ * Le nom et les initiales de la barre étaient écrits en dur (« CN »). L'unité
+ * affichée pouvait donc changer sans que l'identité bouge — le défaut déjà
+ * corrigé une fois pour le nom de l'immeuble.
+ */
+describe('coquille du portail — identité de la barre', () => {
+  it('dérive le nom court du locataire de l’unité', async () => {
+    await ouvrirPortail()
+    // L'unité A1 est louée à Charles Ngassa (`DEMO_TENANT_UNIT`).
+    expect(screen.getByText('Charles N.')).toBeInTheDocument()
+    expect(screen.getByText('CN')).toBeInTheDocument()
+  })
+})

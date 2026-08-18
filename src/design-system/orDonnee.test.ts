@@ -77,7 +77,27 @@ const SOMBRE = jetons(corps(corps(NU, '@media (prefers-color-scheme: dark)'), ':
 
 /** Fragments : jamais de classe Tailwind écrite d'un seul tenant. */
 const OR = 'gold'
-const CLASSES_INTERDITES = [`border-${OR}`, `bg-${OR}`, `text-${OR}`]
+const CLASSES_INTERDITES = [`border-${OR}`, `text-${OR}`]
+
+/**
+ * `bg-gold` fait exception, et une seule : l'aplat doré PORTANT DE L'ENCRE.
+ *
+ * C'est le motif que `tokens.css` sanctionne explicitement — « l'or ne porte
+ * jamais de texte : ici c'est un fond, avec de l'encre dessus » — et que
+ * `.bg-gold` outille en refixant `--color-ink` sur l'aplat. La pastille
+ * d'identité du portail est exactement cela : le doré est décor, la
+ * signification est portée par les initiales, en encre, à 5,83:1.
+ *
+ * La garde interdisait `bg-gold` en bloc dans ces deux fichiers. C'était plus
+ * large que la règle qu'elle défend : les quatre points de code d'origine
+ * peignaient de la DONNÉE en or, pas un fond sous du texte foncé. On resserre
+ * donc sur l'intention, sans rouvrir ce qui avait été fermé.
+ *
+ * Découpage par LITTÉRAUX et non par lignes : un `cn()` étale ses classes sur
+ * plusieurs chaînes, et exiger que l'aplat et l'encre partagent le même
+ * littéral fait échouer le cas douteux plutôt que de le laisser passer.
+ */
+const LITTERAUX = /'[^']*'|"[^"]*"|`[^`]*`/g
 
 describe('l’or de marque ne porte pas de donnée', () => {
   it('trouve bien les sources à inspecter', () => {
@@ -106,30 +126,71 @@ describe('l’or de marque ne porte pas de donnée', () => {
       expect(motif.test(CODE), `${classe} encore employé`).toBe(false)
     }
   })
+
+  it('n’admet l’aplat doré que sous de l’encre', () => {
+    const aplat = new RegExp(`\\bbg-${OR}\\b(?!-)`)
+    const encre = /\btext-ink\b(?!-)/
+    const fautifs = (CODE.match(LITTERAUX) ?? []).filter(
+      (litteral) => aplat.test(litteral) && !encre.test(litteral),
+    )
+    expect(fautifs, 'aplat doré sans encre dessus').toEqual([])
+  })
 })
 
 /**
- * [rôle, encre, fond, seuil] — le fond est celui SUR lequel l'élément se pose.
- * Le seuil est 3:1 : ces quatre éléments sont non textuels mais porteurs de
- * sens. Ils dépassent tous largement, `--color-gold-ink` étant taillé pour du
- * texte.
+ * Blocs de CLASSE qui refixent des jetons pour tout ce qui vit dessous.
+ *
+ * Sans eux, le test lit `--color-ink` au niveau du thème et conclut de travers
+ * sur la barre sombre : en thème sombre l'encre de thème s'éclaircit, alors que
+ * `.on-dark` la rabat à #14201e quel que soit le thème. Le rendu était juste,
+ * c'est le modèle qui manquait une couche de la cascade.
  */
-const SITES: [string, string, string, number][] = [
-  ['barre du mois courant (MiniBarChart)', '--color-gold-ink', '--color-surface', 3],
-  ['ligne d’objectif (StackedBarChart)', '--color-gold-ink', '--color-surface', 3],
-  ['remplissage de progression', '--color-gold-ink', '--color-surface-sunken', 3],
-  ['indicateur d’onglet actif (portail)', '--color-gold-ink', '--color-paper', 3],
+const PORTEES = {
+  'on-dark': jetons(corps(NU, '.on-dark {')),
+  'bg-gold': jetons(corps(NU, '.bg-gold {')),
+} as const
+
+/** Le jeton tel que le voit l'élément : sa portée d'abord, le thème ensuite. */
+function resolu(palette: Map<string, string>, portee: Portee, jeton: string) {
+  return (portee && PORTEES[portee].get(jeton)) || palette.get(jeton)
+}
+
+type Portee = keyof typeof PORTEES | null
+
+/**
+ * [rôle, encre, fond, seuil, portée] — le fond est celui SUR lequel l'élément
+ * se pose, la portée le bloc de classe sous lequel il vit.
+ *
+ * Le seuil est 3:1 pour les éléments non textuels mais porteurs de sens, 4,5:1
+ * dès qu'il s'agit de texte lu.
+ */
+const SITES: [string, string, string, number, Portee][] = [
+  ['barre du mois courant (MiniBarChart)', '--color-gold-ink', '--color-surface', 3, null],
+  ['ligne d’objectif (StackedBarChart)', '--color-gold-ink', '--color-surface', 3, null],
+  ['remplissage de progression', '--color-gold-ink', '--color-surface-sunken', 3, null],
+  // La rangée d'onglets est passée sur fond sombre : elle se lit désormais
+  // sous `.on-dark`, qui fige l'encre, et non plus sur `--color-paper`.
+  ['indicateur d’onglet actif (portail)', '--color-gold-ink', '--color-ink', 3, 'on-dark'],
+  // Du TEXTE, donc 4,5:1 : les initiales sont lues, pas devinées.
+  ['initiales sur la pastille d’identité (portail)', '--color-ink', '--color-gold', 4.5, 'bg-gold'],
 ]
 
 describe('le jeton retenu tient le seuil dans les DEUX thèmes', () => {
-  for (const [role, encre, fond, seuil] of SITES) {
+  it('la portée l’emporte bien sur le thème', () => {
+    // Garde du garde : si `resolu` retombait toujours sur le thème, les deux
+    // sites du portail passeraient pour une raison qui n'est pas la bonne.
+    expect(resolu(SOMBRE, null, '--color-ink')).not.toBe('#14201e')
+    expect(resolu(SOMBRE, 'on-dark', '--color-ink')).toBe('#14201e')
+  })
+
+  for (const [role, encre, fond, seuil, portee] of SITES) {
     it(`${role} tient ${seuil}:1`, () => {
       for (const [nom, palette] of [
         ['clair', CLAIR],
         ['sombre', SOMBRE],
       ] as const) {
-        const e = palette.get(encre)
-        const f = palette.get(fond)
+        const e = resolu(palette, portee, encre)
+        const f = resolu(palette, portee, fond)
         expect(e, `${encre} absent du thème ${nom}`).toBeDefined()
         expect(f, `${fond} absent du thème ${nom}`).toBeDefined()
         expect(

@@ -221,12 +221,15 @@ describe('quittances du locataire', () => {
 })
 
 describe('portail locataire', () => {
-  it('télécharge la quittance depuis l’onglet des paiements', async () => {
+  it('télécharge la quittance depuis « Mon espace »', async () => {
+    // Les paiements n'ont plus d'onglet : ils sont une carte de « Mon espace »,
+    // qui est l'onglet ouvert d'emblée. Le locataire atteint donc sa quittance
+    // sans un seul clic de navigation — c'est tout l'objet du passage à trois
+    // onglets, et ce test le mesure.
     capture = captureDownloads()
     renderApp('/demo/portail')
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole('tab', { name: 'Mes paiements' }))
     // Quatre périodes, donc quatre boutons de même nom : on prend le premier,
     // comme le ferait un locataire cherchant sa quittance la plus récente.
     const [premier] = screen.getAllByRole('button', { name: /Télécharger la quittance/ })

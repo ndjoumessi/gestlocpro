@@ -1011,10 +1011,14 @@ export const fr = {
       title: 'Portail locataire',
       subtitle: 'Ce que voit votre locataire depuis son navigateur.',
       space: 'Mon espace',
-      // L'adresse de la fenêtre de démonstration. Elle était écrite en dur,
-      // donc « /mon-espace » s'affichait au milieu d'une interface anglaise.
-      // Le garde-fou ne pouvait pas la voir : elle ne porte aucun accent.
-      demoUrl: 'portail.gestlocpro.com/mon-espace',
+      // L'adresse de la fenêtre de démonstration, une par onglet. Elle était
+      // écrite en dur, donc « /mon-espace » s'affichait au milieu d'une
+      // interface anglaise — et restait « /mon-espace » quel que soit l'onglet
+      // ouvert. Le garde-fou ne pouvait voir ni l'un ni l'autre : ces chaînes
+      // ne portent aucun accent.
+      urlSpace: 'portail.gestlocpro.com/mon-espace',
+      urlDocuments: 'portail.gestlocpro.com/documents',
+      urlReport: 'portail.gestlocpro.com/signaler',
       docLease: 'Bail signé',
       docInspection: 'État des lieux d’entrée',
       docReceipt: 'Quittance du mois',
