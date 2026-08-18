@@ -157,6 +157,7 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
         paid: u.paidMinor,
         status: u.status as PaymentStatus,
         ...(u.leaseId !== null ? { leaseId: u.leaseId } : {}),
+        ...(u.tenant ? { tenantId: u.tenant.id } : {}),
         ...(u.overdueDays !== null ? { overdueDays: u.overdueDays } : {}),
       })
     }

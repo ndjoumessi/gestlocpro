@@ -292,6 +292,15 @@ export const api = {
     }),
 
   /**
+   * Retire une fiche locataire, avec son bail et ses échéances appelées.
+   *
+   * Le serveur refuse tant qu'une somme a circulé — versement encaissé ou
+   * caution détenue. On défait dans l'ordre inverse de ce qu'on a fait.
+   */
+  deleteTenant: <T>(parkId: string, tenantId: string) =>
+    requete<T>(`/parks/${parkId}/tenants/${tenantId}`, { method: 'DELETE' }),
+
+  /**
    * Retire un versement saisi par erreur.
    *
    * L'échéance reste : elle a été appelée, elle est due. Retirer le versement

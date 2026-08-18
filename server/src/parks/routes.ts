@@ -2266,3 +2266,93 @@ parksRouter.delete(
     res.status(204).end()
   },
 )
+
+/**
+ * Retire une fiche locataire.
+ *
+ * Même manque que les immeubles ce matin : on pouvait créer une fiche et jamais
+ * la retirer. Sur un objet plus lourd, puisqu'une fiche porte un bail.
+ *
+ * LA RÈGLE EST « AUCUNE SOMME N'A CIRCULÉ ». Un versement encaissé ou une
+ * caution détenue rattachent de l'argent réel à cette personne : les effacer
+ * laisserait des mouvements sans titulaire, ce que la contrainte `NoAction` de
+ * `Lease.tenant` interdit déjà au niveau de la base.
+ *
+ * Les échéances APPELÉES et impayées, elles, partent avec le bail : ce ne sont
+ * pas des mouvements mais des attentes, et elles n'ont plus d'objet dès lors que
+ * le bail disparaît.
+ *
+ * Réservée au propriétaire. Retirer une fiche efface une personne du registre.
+ */
+parksRouter.delete(
+  '/:parkId/tenants/:tenantId',
+  exigerAppartenance,
+  exigerRole('owner'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const tenantId = z.string().uuid().parse(req.params.tenantId)
+
+    const locataire = await prisma.tenant.findFirst({
+      where: { id: tenantId, parkId },
+      select: {
+        id: true,
+        fullName: true,
+        leases: {
+          select: {
+            id: true,
+            deposit: { select: { heldMinor: true } },
+            charges: { select: { _count: { select: { payments: true } } } },
+          },
+        },
+      },
+    })
+    if (!locataire) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const versements = locataire.leases.reduce(
+      (somme, bail) => somme + bail.charges.reduce((s, c) => s + c._count.payments, 0),
+      0,
+    )
+    if (versements > 0) {
+      // Le chemin de sortie existe : retirer d'abord les versements, un par un,
+      // depuis la quittance. On défait dans l'ordre inverse de ce qu'on a fait.
+      res.status(409).json({ error: 'has_payments' })
+      return
+    }
+
+    const detenu = locataire.leases.reduce((somme, b) => somme + (b.deposit?.heldMinor ?? 0), 0)
+    if (detenu > 0) {
+      // Une caution détenue est l'argent de quelqu'un. Elle s'arbitre, elle ne
+      // s'efface pas avec la fiche de celui à qui elle appartient.
+      res.status(409).json({ error: 'has_deposit' })
+      return
+    }
+
+    await prisma.$transaction(async (tx) => {
+      const baux = locataire.leases.map((b) => b.id)
+      // L'ordre suit les dépendances : les échéances tiennent au bail, le bail
+      // tient au locataire, et `NoAction` refuse qu'on prenne le raccourci.
+      await tx.rentCharge.deleteMany({ where: { leaseId: { in: baux } } })
+      await tx.deposit.deleteMany({ where: { leaseId: { in: baux } } })
+      await tx.inspection.deleteMany({ where: { leaseId: { in: baux } } })
+      await tx.lease.deleteMany({ where: { id: { in: baux } } })
+      await tx.tenant.delete({ where: { id: locataire.id } })
+      await tx.auditEvent.create({
+        data: {
+          parkId,
+          actorId: req.compteId!,
+          action: 'tenant.delete',
+          entity: 'Tenant',
+          entityId: locataire.id,
+          // Le nom reste au journal : la fiche part, la trace de son retrait
+          // dit qui a été retiré et par qui.
+          payload: { fullName: locataire.fullName, leases: baux.length },
+        },
+      })
+    })
+
+    res.status(204).end()
+  },
+)

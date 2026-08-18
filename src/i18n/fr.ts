@@ -813,6 +813,11 @@ export const fr = {
       phoneHint: 'Le code d’invitation y sera envoyé.',
       since: 'Locataire depuis',
       contact: 'Contact',
+      remove: 'Retirer',
+      removeTitle: 'Retirer la fiche de {name} ?',
+      removeBody: 'Le bail et les échéances appelées partent avec elle ; le logement redevient vacant. Refusé si un versement a été encaissé ou une caution détenue — retirez-les d’abord.',
+      removeUnit: 'Logement {unit}',
+      removed: 'Fiche retirée · le logement est vacant',
       vacantList: '{count} unités vacantes : {units}',
       vacantList_one: '{count} unité vacante : {units}',
       noVacantNotice:

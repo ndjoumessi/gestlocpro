@@ -143,6 +143,42 @@ describe('relance des loyers', () => {
   })
 })
 
+describe('retrait d’une fiche locataire', () => {
+  it('n’est offert qu’au propriétaire', async () => {
+    parc()
+    renderApp('/app/locataires', { session: session('manager') })
+    await screen.findByText('Paul Kamga')
+
+    // Retirer une fiche efface une personne du registre.
+    expect(screen.queryByRole('button', { name: /^retirer$/i })).not.toBeInTheDocument()
+  })
+
+  it('demande confirmation, puis appelle le serveur', async () => {
+    const serveur = parc()
+    serveur.quand(
+      'DELETE',
+      `/parks/${PARC}/tenants/dddddddd-1111-4111-8111-111111111111`,
+      { status: 204 },
+    )
+    const user = userEvent.setup()
+    renderApp('/app/locataires', { session: session('owner') })
+    await screen.findByText('Paul Kamga')
+
+    await user.click(screen.getAllByRole('button', { name: /^retirer$/i })[0]!)
+    // La confirmation NOMME la personne : le geste est irréversible et porte sur
+    // quelqu'un, pas sur une ligne.
+    const dialogue = screen.getByRole('alertdialog')
+    expect(dialogue).toHaveTextContent('Paul Kamga')
+
+    await user.click(within(dialogue).getByRole('button', { name: /confirmer/i }))
+
+    expect(serveur.appels.some((a) => a.methode === 'DELETE' && a.chemin.includes('/tenants/'))).toBe(
+      true,
+    )
+    expect(await screen.findByText(/fiche retirée/i)).toBeInTheDocument()
+  })
+})
+
 describe('date du versement', () => {
   it('refuse une date future, et n’appelle pas le serveur', async () => {
     /**

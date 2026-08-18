@@ -2705,3 +2705,143 @@ describe('suppression d’un versement', () => {
     expect(await prisma.payment.count()).toBe(1)
   })
 })
+
+/**
+ * Retrait d'une fiche locataire.
+ *
+ * Même manque que les immeubles : on pouvait créer une fiche et jamais la
+ * retirer. Sur un objet plus lourd, puisqu'une fiche porte un bail — et la base
+ * l'interdit déjà par `Lease.tenant onDelete: NoAction`, précisément pour qu'on
+ * ne laisse pas des sommes rattachées à personne.
+ */
+describe('retrait d’une fiche locataire', () => {
+  async function parcAvecLocataire(email: string, depositMinor?: number) {
+    const { cookie } = await inscrire(email, { parkName: 'Parc' })
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', cookie)
+    const parkId = parcs.body.parks[0].id
+    const immeuble = await request(serveur)
+      .post(`/api/parks/${parkId}/buildings`)
+      .set('Cookie', cookie)
+      .send({ name: 'Résidence Makepe', district: 'Makepe' })
+    const logement = await request(serveur)
+      .post(`/api/parks/${parkId}/buildings/${immeuble.body.building.id}/units`)
+      .set('Cookie', cookie)
+      .send({ label: 'A1', type: 'T3', surfaceSqm: 78, baseRentMinor: 145000 })
+    const unitId = logement.body.unit.id
+    await request(serveur)
+      .post(`/api/parks/${parkId}/tenants`)
+      .set('Cookie', cookie)
+      .send({
+        unitId,
+        fullName: 'Charles Ngassa',
+        startsOn: '2026-01-01',
+        rentMinor: 145000,
+        ...(depositMinor ? { depositMinor } : {}),
+      })
+    const fiche = await prisma.tenant.findFirstOrThrow({ where: { parkId } })
+    return { cookie, parkId, unitId, tenantId: fiche.id }
+  }
+
+  it('retire la fiche et son bail, échéances appelées comprises', async () => {
+    const { cookie, parkId, tenantId } = await parcAvecLocataire('retrait@example.com')
+    // Une échéance appelée et IMPAYÉE : une attente, pas un mouvement. Elle n'a
+    // plus d'objet dès lors que le bail disparaît.
+    await request(serveur)
+      .post(`/api/parks/${parkId}/charges`)
+      .set('Cookie', cookie)
+      .send({ periodStart: '2026-06-01' })
+    expect(await prisma.rentCharge.count()).toBe(1)
+
+    const res = await request(serveur)
+      .delete(`/api/parks/${parkId}/tenants/${tenantId}`)
+      .set('Cookie', cookie)
+
+    expect(res.status, JSON.stringify(res.body)).toBe(204)
+    expect(await prisma.tenant.count()).toBe(0)
+    expect(await prisma.lease.count()).toBe(0)
+    expect(await prisma.rentCharge.count()).toBe(0)
+    // Le logement, lui, RESTE : ce sont des murs, pas une personne.
+    expect(await prisma.unit.count()).toBe(1)
+  })
+
+  it('REFUSE tant qu’un versement a été encaissé', async () => {
+    const { cookie, parkId, unitId, tenantId } = await parcAvecLocataire('somme@example.com')
+    await request(serveur)
+      .post(`/api/parks/${parkId}/payments`)
+      .set('Cookie', cookie)
+      .send({ unitId, periodStart: '2026-07-01', amountMinor: 145000, method: 'cash' })
+
+    const res = await request(serveur)
+      .delete(`/api/parks/${parkId}/tenants/${tenantId}`)
+      .set('Cookie', cookie)
+
+    /**
+     * De l'argent réel est rattaché à cette personne. L'effacer laisserait un
+     * mouvement sans titulaire — ce que la contrainte `NoAction` interdit déjà
+     * au niveau de la base, et que cette route refuse en le disant.
+     *
+     * Le chemin de sortie existe : retirer d'abord les versements depuis la
+     * quittance. On défait dans l'ordre inverse de ce qu'on a fait.
+     */
+    expect(res.status).toBe(409)
+    expect(res.body.error).toBe('has_payments')
+    expect(await prisma.tenant.count()).toBe(1)
+  })
+
+  it('REFUSE tant qu’une caution est détenue', async () => {
+    const { cookie, parkId, tenantId } = await parcAvecLocataire('caution@example.com', 180000)
+
+    const res = await request(serveur)
+      .delete(`/api/parks/${parkId}/tenants/${tenantId}`)
+      .set('Cookie', cookie)
+
+    // Une caution détenue est l'argent de quelqu'un : elle s'arbitre, elle ne
+    // s'efface pas avec la fiche de celui à qui elle appartient.
+    expect(res.status).toBe(409)
+    expect(res.body.error).toBe('has_deposit')
+  })
+
+  it('garde au journal qui a été retiré', async () => {
+    const { cookie, parkId, tenantId } = await parcAvecLocataire('journal2@example.com')
+    await request(serveur)
+      .delete(`/api/parks/${parkId}/tenants/${tenantId}`)
+      .set('Cookie', cookie)
+
+    // La fiche part ; la trace de son retrait dit qui et par qui.
+    const trace = await prisma.auditEvent.findFirstOrThrow({
+      where: { parkId, action: 'tenant.delete' },
+    })
+    expect((trace.payload as { fullName: string }).fullName).toBe('Charles Ngassa')
+    expect(trace.actorId).not.toBeNull()
+  })
+
+  it('la refuse au gestionnaire', async () => {
+    const { parkId, tenantId } = await parcAvecLocataire('roles@example.com')
+    const g = await inscrire('diane6@example.com')
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'diane6@example.com' },
+    })
+    await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'manager' } })
+
+    const res = await request(serveur)
+      .delete(`/api/parks/${parkId}/tenants/${tenantId}`)
+      .set('Cookie', g.cookie)
+
+    expect(res.status).toBe(403)
+    expect(await prisma.tenant.count()).toBe(1)
+  })
+
+  it('ne touche pas à la fiche d’un autre parc', async () => {
+    const { tenantId } = await parcAvecLocataire('cible2@example.com')
+    const autre = await inscrire('voisin7@example.com', { parkName: 'Autre parc' })
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', autre.cookie)
+
+    const res = await request(serveur)
+      .delete(`/api/parks/${parcs.body.parks[0].id}/tenants/${tenantId}`)
+      .set('Cookie', autre.cookie)
+
+    // 404 et non 403 : un 403 confirmerait que cette fiche existe ailleurs.
+    expect(res.status).toBe(404)
+    expect(await prisma.tenant.count()).toBe(1)
+  })
+})

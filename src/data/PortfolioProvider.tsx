@@ -192,6 +192,13 @@ interface PortfolioContextValue {
    */
   removeBuilding: (buildingId: string) => void
   /**
+   * Retire une fiche locataire, son bail et ses échéances appelées.
+   *
+   * Refusé par le serveur tant qu'une somme a circulé. L'unité redevient
+   * vacante ; les murs restent.
+   */
+  removeTenant: (unitId: string, tenantId: string) => void
+  /**
    * Relance les baux désignés, et rend ce qui a RÉELLEMENT eu lieu.
    *
    * Le serveur revérifie chaque bail — à jour, rien d'exigible, déjà relancé ce
@@ -791,6 +798,33 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
    * le statut du bail. Elle laisse une trace côté serveur, que la prochaine
    * lecture du parc rapportera avec les notifications.
    */
+  const removeTenant = useCallback(
+    (unitId: string, tenantId: string) => {
+      if (!parkId) {
+        setUnits((liste) =>
+          liste.map((u) =>
+            u.id === unitId ? { ...u, tenant: null, phone: null, status: 'vacant', paid: 0 } : u,
+          ),
+        )
+        return
+      }
+      void api
+        .deleteTenant(parkId, tenantId)
+        // L'unité ne redevient vacante qu'APRÈS l'accord du serveur : il refuse
+        // tant qu'une somme a circulé, et l'afficher libre d'abord montrerait un
+        // retrait qui n'a pas eu lieu.
+        .then(() =>
+          setUnits((liste) =>
+            liste.map((u) =>
+              u.id === unitId ? { ...u, tenant: null, phone: null, status: 'vacant', paid: 0 } : u,
+            ),
+          ),
+        )
+        .catch(signalerEchec)
+    },
+    [parkId, signalerEchec],
+  )
+
   const remindRent = useCallback(
     async (leaseIds: string[]): Promise<{ sent: number; skipped: number }> => {
       if (!parkId || leaseIds.length === 0) return { sent: 0, skipped: leaseIds.length }
@@ -1011,6 +1045,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       addTenant,
       addBuilding,
       removeBuilding,
+      removeTenant,
       remindRent,
       callRent,
       serveFormalNotice,
@@ -1076,6 +1111,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       addTenant,
       addBuilding,
       removeBuilding,
+      removeTenant,
       remindRent,
       callRent,
       serveFormalNotice,

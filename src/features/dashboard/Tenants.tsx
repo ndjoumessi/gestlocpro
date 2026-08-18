@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { PageHeader } from '@/components/layout/AppShell'
+import { PageHeader, useRole } from '@/components/layout/AppShell'
 import { InviteModal } from './InviteModal'
 import { Icon } from '@/components/primitives/Icon'
 import { DataTable } from '@/components/primitives/DataTable'
@@ -29,7 +29,10 @@ export function Tenants() {
 
   // Unités partagées : rattacher un locataire doit se voir ici, dans le parc
   // immobilier et dans le taux d'occupation du tableau de bord.
-  const { units, loading } = usePortfolio()
+  const { units, loading, removeTenant } = usePortfolio()
+  const [aRetirer, setARetirer] = useState<Unit | null>(null)
+  const { role } = useRole()
+  const { notify } = useToast()
 
   const leases = units.filter((unit) => unit.tenant !== null)
   const vacant = units.filter((unit) => unit.tenant === null)
@@ -152,12 +155,70 @@ export function Tenants() {
             header: t('app.portfolio.status'),
             render: (unit) => <PaymentStatusPill status={unit.status} size="sm" />,
           },
+          {
+            key: 'retrait',
+            header: '',
+            render: (unit) =>
+              /*
+                Le retrait d'une fiche, qui n'existait pas.
+
+                Même manque que les immeubles : on pouvait créer et jamais
+                défaire. Offert au seul PROPRIÉTAIRE — retirer une fiche efface
+                une personne du registre — et seulement quand une fiche existe.
+
+                Le serveur refuse de toute façon tant qu'une somme a circulé ;
+                ce masquage évite d'offrir un geste sur une ligne vacante, il ne
+                remplace pas la règle.
+              */
+              role === 'owner' && unit.tenant && unit.tenantId ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon="close"
+                  onClick={() => setARetirer(unit)}
+                >
+                  {t('app.tenants.remove')}
+                </Button>
+              ) : null,
+          },
         ]}
       />
 
       {/* Le deux-points était concaténé dans le JSX, précédé d'une espace :
           une règle typographique française servie telle quelle en anglais.
           Il vit maintenant dans la clé, avec la conjonction de la liste. */}
+      {aRetirer && (
+        <Modal
+          open
+          onClose={() => setARetirer(null)}
+          role="alertdialog"
+          size="sm"
+          title={t('app.tenants.removeTitle', { name: aRetirer.tenant ?? '' })}
+          description={t('app.tenants.removeBody')}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setARetirer(null)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  removeTenant(aRetirer.id, aRetirer.tenantId!)
+                  setARetirer(null)
+                  notify(t('app.tenants.removed'), { tone: 'ok' })
+                }}
+              >
+                {t('common.confirm')}
+              </Button>
+            </>
+          }
+        >
+          <p className="text-body-s text-muted">
+            {t('app.tenants.removeUnit', { unit: aRetirer.label })}
+          </p>
+        </Modal>
+      )}
+
       {vacant.length > 0 && (
         <p className="mt-4 text-body-s text-muted">
           {t('app.tenants.vacantList', {

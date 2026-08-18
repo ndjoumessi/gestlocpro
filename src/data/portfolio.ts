@@ -75,6 +75,14 @@ export interface Unit {
    * démonstration, où aucun bail n'a d'identifiant serveur.
    */
   leaseId?: string
+  /**
+   * Fiche du locataire, quand l'unité en porte une.
+   *
+   * Le serveur la rendait déjà et la conversion ne gardait que le NOM. Un nom ne
+   * désigne pas une fiche — deux locataires peuvent être homonymes, et le
+   * retrait porte sur la personne, pas sur son étiquette.
+   */
+  tenantId?: string
 }
 
 export const UNITS: Unit[] = [
