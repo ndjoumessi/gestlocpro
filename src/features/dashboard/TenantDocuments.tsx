@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { PageHeader } from '@/components/layout/AppShell'
 import { lien, useBase } from '@/lib/base'
 import { Card, CardHeader } from '@/components/primitives/Card'
@@ -8,8 +9,11 @@ import { Skeleton, SkeletonRegion } from '@/components/primitives/Skeleton'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
-import { TENANT_RECEIPTS, inspectionsForUnit } from '@/data/portfolio'
+import { TENANT_RECEIPTS, UTILITY_RATES, chargeDue, inspectionsForUnit } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
+import { useToast } from '@/components/primitives/Toast'
+import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
+import { cn } from '@/lib/cn'
 import { useReceiptExport } from './receiptExport'
 
 /**
@@ -28,13 +32,29 @@ import { useReceiptExport } from './receiptExport'
  * trois entrées. Elles n'ont pas été fermées pour autant : c'est ici qu'elles
  * se rattrapent, et c'est la raison pour laquelle elles restent ouvertes.
  */
+/**
+ * Les trois pièces qu'un locataire réclame réellement à son gestionnaire.
+ *
+ * Un champ libre aurait laissé écrire n'importe quoi, y compris ce que le
+ * gestionnaire ne peut pas produire. Trois cases nommées disent le périmètre.
+ */
+const DEMANDES = [
+  'app.documents.reqResidence',
+  'app.documents.reqGoodStanding',
+  'app.documents.reqLeaseCopy',
+] as const
+
 export function TenantDocuments() {
   const base = useBase()
   const t = useT()
   const d = useDates()
   const { money } = useCurrency()
   const downloadReceipt = useReceiptExport()
-  const { unitById, tenantUnitIds, depositForUnit, loading } = usePortfolio()
+  const { unitById, tenantUnitIds, depositForUnit, addWork, loading } = usePortfolio()
+  const { notify } = useToast()
+  const exportCsv = useCsvExport()
+  const csvMoney = useCsvMoney()
+  const [choix, setChoix] = useState<(typeof DEMANDES)[number] | null>(null)
 
   /** Mono-unité, comme l'espace locataire — et pour la même raison. */
   const monUnite = tenantUnitIds[0] ?? ''
@@ -45,6 +65,48 @@ export function TenantDocuments() {
   // L'attente AVANT le garde `!unit` : pendant le chargement, le jeu de
   // démonstration fournit toujours une unité, et l'écran montrerait le dossier
   // d'un autre. Même ordre, même raison que l'espace locataire.
+  /**
+   * Toutes les périodes en UN fichier, et non six téléchargements.
+   *
+   * « Tout télécharger » qui déclencherait six enregistrements successifs se
+   * ferait arrêter par le navigateur dès le deuxième, et le locataire
+   * repartirait avec une quittance sur six en croyant les avoir toutes.
+   */
+  function toutTelecharger() {
+    if (!unit) return
+    exportCsv({
+      name: [t('app.documents.allReceipts'), unit.label],
+      headers: [
+        t('app.period'),
+        csvMoney.header(t('app.tenant.colRent')),
+        csvMoney.header(t('app.tenant.colWater')),
+        csvMoney.header(t('app.tenant.colPower')),
+        t('app.payments.date'),
+      ],
+      rows: TENANT_RECEIPTS.map((receipt) => [
+        d.monthYear(receipt),
+        csvMoney.amount(unit.rent),
+        csvMoney.amount(chargeDue(receipt.water, UTILITY_RATES.water)),
+        csvMoney.amount(chargeDue(receipt.power, UTILITY_RATES.power)),
+        d.fullDate({ year: receipt.year, month: receipt.month, day: receipt.paidDay }),
+      ]),
+      notice: 'app.receiptDownloaded',
+    })
+  }
+
+  function envoyerLaDemande() {
+    if (!choix || !unit) return
+    addWork(unit.id, {
+      title: t('app.documents.requestTitle', { document: t(choix) }),
+      trade: 'other',
+      // Une pièce administrative n'immobilise pas le logement : elle attend son
+      // tour derrière ce qui empêche d'y vivre.
+      urgency: 'low',
+    })
+    setChoix(null)
+    notify(t('app.documents.requestSent'), { tone: 'ok' })
+  }
+
   if (loading) return <TenantDocumentsSkeleton />
 
   if (!unit)
@@ -99,6 +161,11 @@ export function TenantDocuments() {
             title={t('app.documents.receiptsTitle')}
             level={2}
             className="px-4 pt-4 sm:px-5 sm:pt-5"
+            action={
+              <Button variant="ghost" size="sm" icon="download" onClick={toutTelecharger}>
+                {t('app.documents.downloadAll')}
+              </Button>
+            }
           />
           <ul className="divide-y divide-divider border-t border-divider">
             {TENANT_RECEIPTS.map((receipt) => (
@@ -119,6 +186,71 @@ export function TenantDocuments() {
               </li>
             ))}
           </ul>
+        </Card>
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        {/*
+          DEMANDER UN DOCUMENT.
+
+          La demande part par le canal des signalements — `addWork` —, le seul
+          que le gestionnaire relève réellement. Elle lui arrive donc, il la voit
+          et peut la clore, ce qu'un simple toast n'aurait jamais fait.
+
+          DETTE DE MODÈLE, assumée et à solder : une demande de pièce n'est pas
+          une intervention. Elle apparaîtra dans « Travaux dans mon logement »
+          aux côtés d'une fuite d'évier, ce qui est faux. Le produit n'a pas
+          d'objet « demande » ; en fabriquer un dépasse cet écran, et faire
+          semblant d'envoyer aurait été pire que de mal ranger.
+        */}
+        <Card>
+          <CardHeader
+            title={t('app.documents.request')}
+            description={t('app.documents.requestHint')}
+            level={2}
+          />
+          <div className="flex flex-wrap gap-2">
+            {DEMANDES.map((demande) => {
+              const actif = demande === choix
+              return (
+                <button
+                  key={demande}
+                  type="button"
+                  aria-pressed={actif}
+                  onClick={() => setChoix(demande)}
+                  className={cn(
+                    'inline-flex min-h-11 cursor-pointer items-center rounded-md border px-3.5',
+                    'text-label font-medium transition-colors duration-150',
+                    actif
+                      ? 'border-ink bg-ink text-on-dark'
+                      : 'border-border bg-surface-sunken text-ink hover:border-border-strong',
+                  )}
+                >
+                  {t(demande)}
+                </button>
+              )
+            })}
+          </div>
+          <Button className="mt-4" onClick={envoyerLaDemande} disabled={!choix}>
+            {t('app.documents.requestSend')}
+          </Button>
+        </Card>
+
+        {/*
+          CONFIDENTIALITÉ — la règle est dite, pas seulement appliquée.
+
+          Les maquettes ajoutent « DERNIER ACCÈS · 12/08/2026 09:41 ». Rien ne
+          journalise les consultations : cette ligne annoncerait une traçabilité
+          qui n'existe pas, sur l'écran précisément où l'on promet la
+          confidentialité. Une promesse de sécurité inventée est le pire endroit
+          où en inventer une.
+        */}
+        <Card tone="dark">
+          <CardHeader eyebrow={t('app.documents.privacy')} title="" level={2} className="mb-2" />
+          <p className="flex items-start gap-3 text-body-s text-on-dark-muted">
+            <Icon name="shield" size={17} className="mt-0.5 shrink-0 text-gold" />
+            {t('app.documents.privacyBody')}
+          </p>
         </Card>
       </div>
     </>

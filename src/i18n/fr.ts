@@ -419,6 +419,20 @@ export const fr = {
     documents: {
       title: 'Mes pièces et quittances',
       subtitle: 'Votre dossier de bail et l’historique de vos quittances.',
+      downloadAll: 'Tout télécharger',
+      allReceipts: 'Quittances du locataire',
+      request: 'Demander un document',
+      requestHint: 'Le gestionnaire reçoit la demande et dépose la pièce dans cet espace.',
+      requestSend: 'Envoyer la demande',
+      requestSent: 'Demande envoyée au gestionnaire',
+      reqResidence: 'Attestation de résidence',
+      reqGoodStanding: 'Attestation de bon paiement',
+      reqLeaseCopy: 'Duplicata de bail',
+      // Le titre porté par la demande jusqu'au gestionnaire.
+      requestTitle: 'Demande de document : {document}',
+      privacy: 'Confidentialité',
+      privacyBody:
+        'Vos pièces ne sont visibles que de vous et des gestionnaires de votre parc. Aucun autre locataire n’y accède.',
       contractual: 'Contractuel',
       contractualTitle: 'Mon dossier',
       receipts: 'Quittances',

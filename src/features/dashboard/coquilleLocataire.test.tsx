@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { within } from '@testing-library/react'
-import { renderApp, screen, switchRole, attendreLeChargement } from '@/test/render'
+import { renderApp, screen, switchRole, attendreLeChargement, userEvent } from '@/test/render'
 
 /**
  * La coquille du LOCATAIRE — trois entrées, et trois vraies adresses.
@@ -82,5 +82,44 @@ describe('coquille du locataire — adresses', () => {
     const ligne = screen.getByText('Contrat de bail signé').closest('li')!
     expect(within(ligne).queryByRole('button')).toBeNull()
     expect(ligne).toHaveTextContent('Aucun document déposé')
+  })
+})
+
+/**
+ * Les deux cartes basses de « Documents ».
+ *
+ * Elles posent chacune une question d'honnêteté, et les réponses diffèrent :
+ * la demande de document PART réellement, l'horodatage de dernier accès n'est
+ * pas affiché parce que rien ne le journalise.
+ */
+describe('documents — demander une pièce', () => {
+  it('ne laisse pas envoyer une demande sans objet', async () => {
+    await ouvrirEnLocataire('/demo/documents')
+    expect(screen.getByRole('button', { name: 'Envoyer la demande' })).toBeDisabled()
+  })
+
+  /**
+   * La demande emprunte le canal des signalements — le seul que le gestionnaire
+   * relève. Un toast sans envoi aurait laissé le locataire attendre une pièce
+   * que personne n'a jamais reçue.
+   */
+  it('fait vraiment partir la demande, et la fait apparaître au suivi', async () => {
+    const user = userEvent.setup()
+    await ouvrirEnLocataire('/demo/documents')
+
+    await user.click(screen.getByRole('button', { name: 'Attestation de résidence' }))
+    await user.click(screen.getByRole('button', { name: 'Envoyer la demande' }))
+
+    await screen.findByText('Demande envoyée au gestionnaire')
+  })
+
+  /**
+   * Les maquettes affichent « DERNIER ACCÈS · 12/08/2026 09:41 ». Rien ne
+   * journalise les consultations : cette ligne annoncerait une traçabilité
+   * inexistante, sur l'écran même où l'on promet la confidentialité.
+   */
+  it('n’annonce aucune traçabilité que le produit ne tient pas', async () => {
+    await ouvrirEnLocataire('/demo/documents')
+    expect(screen.getByRole('main')).not.toHaveTextContent(/dernier acc[èe]s/i)
   })
 })
