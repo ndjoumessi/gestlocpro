@@ -335,6 +335,7 @@ parksRouter.get(
               select: {
                 id: true,
                 rentMinor: true,
+                startsOn: true,
                 tenant: { select: { id: true, fullName: true, phoneE164: true } },
                 deposit: {
                   select: { heldMinor: true, withheldMinor: true, status: true },
@@ -378,6 +379,11 @@ parksRouter.get(
           // a pas un qui s'appellerait « vacant ».
           tenant: bail?.tenant ? { id: bail.tenant.id, fullName: bail.tenant.fullName, phoneE164: bail.tenant.phoneE164 } : null,
           leaseId: bail?.id ?? null,
+          // Le bail portait sa date de début depuis toujours ; la réponse ne la
+          // transmettait pas. Le client l'affiche — « bail en cours depuis
+          // le … » —, et sans elle la phrase restait amputée pour tout compte
+          // réel, quand la démonstration la montrait.
+          leaseStartsOn: bail?.startsOn.toISOString() ?? null,
           status,
           paidMinor,
           overdueDays,

@@ -80,8 +80,8 @@ const DOCUMENTS = [
  * changer sans que le nom bouge, exactement le défaut déjà corrigé pour le nom
  * de l'immeuble. On les dérive donc du locataire de l'unité.
  */
-function identite(nom: string) {
-  const mots = nom.trim().split(/\s+/).filter(Boolean)
+function identite(nom: string | null) {
+  const mots = (nom ?? '').trim().split(/\s+/).filter(Boolean)
   const premier = mots[0] ?? ''
   const dernier = mots.length > 1 ? mots[mots.length - 1] : ''
   return {
