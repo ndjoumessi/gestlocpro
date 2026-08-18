@@ -71,12 +71,18 @@ describe('mon espace — le mois en cours', () => {
   })
 
   /**
-   * L'eau et l'électricité sont REFACTURÉES : leur montant se dérive de la
-   * quantité relevée et du tarif de `UTILITY_RATES`. Le figer dans la donnée en
-   * ferait une seconde source, et un changement de tarif ferait dire deux
-   * choses au même mois.
+   * Deux chiffres voisins, deux sources différentes — et c'est voulu.
+   *
+   * Le MONTANT du tableau est figé à l'émission, comme sur une facture : il
+   * vient de la période et ne se recalcule jamais, sans quoi un changement de
+   * tarif réécrirait tout l'historique et juillet se relirait au prix d'août.
+   * La CONSOMMATION affichée à côté — « 16 m³ consommés » — vient du relevé,
+   * la seule source qui la connaisse.
+   *
+   * Ils coïncident ici parce que la démonstration a été calculée au tarif de
+   * `UTILITY_RATES` : 16 m³ × 520 et 178 kWh × 99.
    */
-  it('dérive les charges du volume et du tarif', async () => {
+  it('affiche le montant figé de la période et la consommation relevée', async () => {
     await ouvrir()
     const main = screen.getByRole('main')
     // 16 m³ × 520 = 8 320 ; 178 kWh × 99 = 17 622.

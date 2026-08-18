@@ -496,22 +496,59 @@ parksRouter.get(
         },
       }),
       /**
-       * Encaissements par période, calculés sur les échéances du parc.
+       * Toutes les échéances lisibles : l'histogramme des encaissements ET
+       * l'historique du locataire se servent de cette seule lecture.
        *
        * `COLLECTIONS` était une constante de douze mois côté client, cohérente
        * en elle-même et reliée à rien : la ligne d'objectif du graphique
        * annonçait « 1,4 M » quand la somme des loyers vaut 1 397 000.
+       *
+       * Le portefeuille ne rendait qu'UNE échéance par bail — la courante, par
+       * le `take: 1` du bloc au-dessus. L'historique de quittances du locataire
+       * était donc vide, et les deux écrans qui l'affichent l'annonçaient comme
+       * une case vide du produit. Il n'y avait pourtant rien à aller chercher :
+       * ces lignes-ci étaient déjà lues pour l'histogramme, et jetées après
+       * l'agrégation par mois.
        */
       prisma.rentCharge.findMany({
         where: {
-          lease: { unit: { building: { parkId } }, ...(filtreUnite ? { unitId: filtreUnite } : {}) },
+          lease: {
+            unit: { building: { parkId } },
+            ...(filtreUnite ? { unitId: filtreUnite } : {}),
+            /**
+             * Le cloisonnement du locataire porte sur le BAIL, et non sur
+             * l'unité — c'est la seule ligne de ce fichier où les deux
+             * diffèrent.
+             *
+             * `unitesVisibles` retient les unités où le compte a UN bail, sans
+             * regarder s'il court encore : un locataire parti reste donc
+             * appelé « visible » sur son ancien logement. Tant que la réponse
+             * ne portait qu'un montant du mois, l'écart passait ; un
+             * historique complet lui aurait servi les échéances du locataire
+             * SUIVANT, période par période et montant par montant.
+             */
+            ...(role === 'tenant' ? { tenant: { userId: req.compteId! } } : {}),
+          },
         },
+        orderBy: { periodStart: 'desc' },
         select: {
+          leaseId: true,
           periodStart: true,
+          dueOn: true,
           rentMinor: true,
           waterMinor: true,
           powerMinor: true,
-          payments: { select: { amountMinor: true } },
+          /**
+           * Le moyen et la date de chaque versement, et non leur seule somme.
+           *
+           * Le portail annonce « payé le 03/08 par Mobile Money » : sans eux,
+           * la phrase s'arrêtait avant son complément — et le client la
+           * complétait avec une constante de démonstration.
+           */
+          payments: {
+            orderBy: { paidOn: 'asc' },
+            select: { amountMinor: true, method: true, paidOn: true },
+          },
         },
       }),
     ])
@@ -548,6 +585,38 @@ parksRouter.get(
       collections: [...parPeriode.values()].sort(
         (a, b) => a.year - b.year || a.month - b.month,
       ),
+      /**
+       * L'historique des échéances, période par période et bail par bail.
+       *
+       * Les montants sont ceux de la BASE, figés à l'émission, jamais
+       * recalculés : refacturer juillet au tarif d'août est faux, et rien ne le
+       * signalerait. C'est la même règle que celle de l'émission des quittances
+       * — un document réémis en octobre doit rendre exactement celui de juillet.
+       *
+       * La part réglée est un TOTAL, pas une ventilation par fluide : un
+       * versement solde une échéance, il ne se rattache pas à l'eau plutôt
+       * qu'à l'électricité. L'imputation — loyer d'abord, puis les charges —
+       * est une convention d'affichage ; elle appartient à qui affiche, et la
+       * poser ici la ferait passer pour un fait enregistré.
+       *
+       * Plate et non groupée par bail : le client tient déjà ses unités par
+       * `leaseId`, et un objet indexé rendrait la réponse illisible au débogage
+       * pour la seule économie d'une boucle.
+       */
+      leaseCharges: echeances.map((e) => ({
+        leaseId: e.leaseId,
+        periodStart: e.periodStart,
+        dueOn: e.dueOn,
+        rentMinor: e.rentMinor,
+        waterMinor: e.waterMinor,
+        powerMinor: e.powerMinor,
+        paidMinor: e.payments.reduce((somme, p) => somme + p.amountMinor, 0),
+        payments: e.payments.map((p) => ({
+          amountMinor: p.amountMinor,
+          method: p.method,
+          paidOn: p.paidOn,
+        })),
+      })),
       buildings,
       /**
        * L'index précédent est DÉRIVÉ de la période antérieure.

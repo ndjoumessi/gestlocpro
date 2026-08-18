@@ -410,12 +410,6 @@ export const fr = {
     demoBanner:
       'Les montants s’affichent en {currency} sans conversion de change.',
 
-    paymentMethods: {
-      mobileMoney: 'Mobile Money',
-      transfer: 'Virement',
-      cash: 'Espèces',
-    },
-
     documents: {
       title: 'Mes pièces et quittances',
       subtitle: 'Votre dossier de bail et l’historique de vos quittances.',
@@ -688,7 +682,7 @@ export const fr = {
       referenceHint: 'Numéro Mobile Money, référence du virement, numéro de chèque. C’est par lui que le versement se retrouve sur le relevé bancaire.',
       amount: 'Montant',
       amountHint: 'Un règlement partiel est accepté.',
-      methodMobile: 'Mobile money',
+      methodMobile: 'Mobile Money',
       methodCash: 'Espèces',
       methodTransfer: 'Virement',
       methodCheck: 'Chèque',

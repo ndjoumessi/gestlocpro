@@ -330,12 +330,6 @@ export const en: Dictionary = {
     demoBanner:
       'Amounts display in {currency} with no exchange conversion.',
 
-    paymentMethods: {
-      mobileMoney: 'Mobile Money',
-      transfer: 'Bank transfer',
-      cash: 'Cash',
-    },
-
     documents: {
       title: 'My documents and receipts',
       subtitle: 'Your lease file and the history of your receipts.',
@@ -564,7 +558,7 @@ export const en: Dictionary = {
       referenceHint: 'Mobile Money number, transfer reference, cheque number. This is how the payment is matched on the bank statement.',
       amount: 'Amount',
       amountHint: 'Partial settlement is accepted.',
-      methodMobile: 'Mobile money',
+      methodMobile: 'Mobile Money',
       methodCash: 'Cash',
       methodTransfer: 'Bank transfer',
       methodCheck: 'Cheque',

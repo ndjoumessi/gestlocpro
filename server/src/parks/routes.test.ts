@@ -538,6 +538,166 @@ describe('terrain et notifications', () => {
   })
 })
 
+/**
+ * L'historique des échéances.
+ *
+ * La réponse ne portait qu'UNE échéance par bail — la courante. L'espace du
+ * locataire affiche pourtant un tableau de quittances, période par période : il
+ * était vide sur un vrai parc, et les deux écrans l'annonçaient comme une case
+ * vide du produit. Elle ne l'était pas : ces lignes étaient déjà lues pour
+ * l'histogramme des encaissements, puis jetées après l'agrégation par mois.
+ */
+describe('historique des échéances', () => {
+  let parkId: string
+  let proprio: string
+
+  beforeEach(async () => {
+    const p = await inscrire('proprio@example.com', {
+      parkName: 'Parc Bonamoussadi',
+      countryCode: 'CM',
+      seedDemo: true,
+    })
+    proprio = p.cookie
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio)
+    parkId = parcs.body.parks[0].id
+  })
+
+  const pf = (c: string) => request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', c)
+
+  interface LigneEcheance {
+    leaseId: string
+    periodStart: string
+    dueOn: string
+    rentMinor: number
+    waterMinor: number
+    powerMinor: number
+    paidMinor: number
+    payments: { amountMinor: number; method: string; paidOn: string }[]
+  }
+
+  it('rend les douze périodes de chaque bail, et non la seule échéance courante', async () => {
+    const res = await pf(proprio)
+    const lignes: LigneEcheance[] = res.body.leaseCharges
+
+    // Dix baux, douze mois chacun — ce que le jeu de démonstration écrit.
+    const parBail = new Map<string, LigneEcheance[]>()
+    for (const l of lignes) parBail.set(l.leaseId, [...(parBail.get(l.leaseId) ?? []), l])
+    expect(parBail.size).toBe(10)
+    expect([...parBail.values()].every((p) => p.length === 12)).toBe(true)
+
+    // La plus récente d'abord : c'est l'ordre du tableau de quittances, et le
+    // trier au client supposerait qu'il sache toujours le faire.
+    const periodes = lignes.map((l) => l.periodStart)
+    expect([...periodes].sort().reverse()).toEqual(periodes)
+  })
+
+  it('porte le loyer et les charges DE LA PÉRIODE, versements compris', async () => {
+    const res = await pf(proprio)
+    const lignes: LigneEcheance[] = res.body.leaseCharges
+
+    // Un mois passé est soldé : le versement couvre loyer, eau et électricité.
+    const soldee = lignes.find((l) => l.paidMinor === l.rentMinor + l.waterMinor + l.powerMinor)
+    expect(soldee).toBeDefined()
+    // Les charges sont VENTILÉES par fluide. Un total unique obligerait l'écran
+    // à inventer la répartition qu'il affiche en trois colonnes.
+    expect(soldee!.waterMinor).toBeGreaterThan(0)
+    expect(soldee!.powerMinor).toBeGreaterThan(0)
+
+    // Le moyen et la date de chaque versement : le portail annonce « payé le
+    // 03/08 par Mobile Money », et complétait jusqu'ici la phrase avec une
+    // constante de démonstration.
+    expect(soldee!.payments).toHaveLength(1)
+    const versement = soldee!.payments[0]!
+    expect(versement.method).toBe('mobile')
+    expect(versement.paidOn).toBeTruthy()
+
+    // Un règlement PARTIEL se lit comme tel — A5 verse 40 000 sur 75 000 de
+    // loyer. Déduire la part réglée du statut donnait 53 % du loyer, soit deux
+    // chiffres pour un seul fait.
+    const partielle = lignes.find((l) => l.paidMinor > 0 && l.paidMinor < l.rentMinor)
+    expect(partielle).toBeDefined()
+  })
+
+  it('borne le locataire à l’historique de son propre bail', async () => {
+    const locataire = await inscrire('charles@example.com')
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'charles@example.com' },
+    })
+    await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'tenant' } })
+    await prisma.tenant.updateMany({
+      where: { parkId, fullName: 'Charles Ngassa' },
+      data: { userId: compte.id },
+    })
+
+    const res = await pf(locataire.cookie)
+    const lignes: LigneEcheance[] = res.body.leaseCharges
+
+    // Douze périodes, celles d'un seul bail : le sien.
+    expect(lignes).toHaveLength(12)
+    expect(new Set(lignes.map((l) => l.leaseId)).size).toBe(1)
+    // Son loyer, et pas celui du voisin : A1 vaut 145 000.
+    expect(lignes.every((l) => l.rentMinor === 145000)).toBe(true)
+  })
+
+  it('ne sert pas au locataire parti les échéances du bail qui a suivi', async () => {
+    /**
+     * Le cloisonnement porte sur le BAIL, non sur l'unité.
+     *
+     * `unitesVisibles` retient les unités où le compte a un bail, sans regarder
+     * s'il court encore. Tant que la réponse ne portait qu'un montant du mois,
+     * l'écart ne se voyait pas ; un historique complet aurait servi à
+     * l'ancien locataire les échéances de celui qui a pris sa place — période
+     * par période, montant par montant, et jusqu'au moyen de paiement.
+     */
+    const locataire = await inscrire('charles@example.com')
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'charles@example.com' },
+    })
+    await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'tenant' } })
+    await prisma.tenant.updateMany({
+      where: { parkId, fullName: 'Charles Ngassa' },
+      data: { userId: compte.id },
+    })
+
+    const ancien = await prisma.lease.findFirstOrThrow({
+      where: { tenant: { userId: compte.id } },
+      select: { id: true, unitId: true },
+    })
+    await prisma.lease.update({
+      where: { id: ancien.id },
+      data: { status: 'ended', endsOn: new Date() },
+    })
+    const suivant = await prisma.tenant.create({
+      data: { parkId, fullName: 'Locataire suivant' },
+    })
+    const bailSuivant = await prisma.lease.create({
+      data: {
+        unitId: ancien.unitId,
+        tenantId: suivant.id,
+        startsOn: new Date(),
+        rentMinor: 145000,
+        status: 'active',
+      },
+    })
+    await prisma.rentCharge.create({
+      data: {
+        leaseId: bailSuivant.id,
+        periodStart: new Date(Date.UTC(2030, 0, 1)),
+        dueOn: new Date(Date.UTC(2030, 0, 5)),
+        rentMinor: 145000,
+        waterMinor: 6000,
+        powerMinor: 5000,
+      },
+    })
+
+    const res = await pf(locataire.cookie)
+    const lignes: LigneEcheance[] = res.body.leaseCharges
+
+    expect(lignes.every((l) => l.leaseId === ancien.id)).toBe(true)
+    expect(lignes.some((l) => l.leaseId === bailSuivant.id)).toBe(false)
+  })
+})
+
 describe('saisie des immeubles', () => {
   /**
    * La première pierre de la saisie.

@@ -17,8 +17,11 @@ import type { EtatSession } from '@/api/SessionProvider'
  * Sur le seul écran du produit où il n'a aucun moyen de recouper — il ne
  * connaît pas le parc, il ne connaît que son bail.
  *
- * Le serveur ne rend qu'UNE échéance par bail et aucun historique : la bonne
- * réponse n'est pas d'en fabriquer un, c'est de dire que le produit ne l'a pas.
+ * Le serveur ne rendait qu'UNE échéance par bail et aucun historique : la bonne
+ * réponse n'était pas d'en fabriquer un, c'était de dire que le produit ne
+ * l'avait pas. Il le rend depuis — le dernier bloc de ce fichier le vérifie —,
+ * et le cas de la case vide reste : un parc sans échéance enregistrée existe,
+ * et doit se lire comme tel plutôt que comme une panne.
  */
 
 const PARC = '11111111-2222-4333-8444-555555555555'
@@ -33,8 +36,20 @@ function sessionLocataire(): EtatSession {
   }
 }
 
+/** Une période facturée, telle que le serveur la rend. */
+interface EcheanceApi {
+  leaseId: string
+  periodStart: string
+  dueOn: string
+  rentMinor: number
+  waterMinor: number
+  powerMinor: number
+  paidMinor: number
+  payments: { amountMinor: number; method: string; paidOn: string }[]
+}
+
 /** Un parc réel portant UN bail : celui du compte connecté. */
-function serveurAvecBail() {
+function serveurAvecBail(leaseCharges: EcheanceApi[] = []) {
   const serveur = installerFauxServeur()
   serveur.quand('GET', `/parks/${PARC}/portfolio`, {
     status: 200,
@@ -67,16 +82,52 @@ function serveurAvecBail() {
       readings: [],
       inspections: [],
       notifications: [],
+      leaseCharges,
     },
   })
   return serveur
 }
 
-async function ouvrir(route: string) {
-  serveurAvecBail()
+async function ouvrir(route: string, leaseCharges: EcheanceApi[] = []) {
+  serveurAvecBail(leaseCharges)
   renderApp(route, { session: sessionLocataire() })
   await attendreLeChargement()
 }
+
+/**
+ * Deux périodes du bail, telles que le serveur les rend.
+ *
+ * Le loyer de juin — 88 000 — n'est PAS celui du bail d'aujourd'hui, qui vaut
+ * 90 000. L'écart est là pour être vu : la colonne affichait le loyer courant
+ * de l'unité sur chaque ligne, si bien qu'une révision de loyer réécrivait tout
+ * l'historique jusqu'au premier mois.
+ *
+ * Juillet n'est réglé qu'en partie : 90 000 de loyer et 6 500 d'eau couverts,
+ * puis 3 000 sur les 7 300 d'électricité. C'est la seule ligne qui appelle un
+ * geste, et le tableau doit dire lequel.
+ */
+const HISTORIQUE: EcheanceApi[] = [
+  {
+    leaseId: 'bail-1',
+    periodStart: '2026-07-01T00:00:00.000Z',
+    dueOn: '2026-07-05T00:00:00.000Z',
+    rentMinor: 90000,
+    waterMinor: 6500,
+    powerMinor: 7300,
+    paidMinor: 99500,
+    payments: [{ amountMinor: 99500, method: 'cash', paidOn: '2026-07-04T00:00:00.000Z' }],
+  },
+  {
+    leaseId: 'bail-1',
+    periodStart: '2026-06-01T00:00:00.000Z',
+    dueOn: '2026-06-05T00:00:00.000Z',
+    rentMinor: 88000,
+    waterMinor: 6200,
+    powerMinor: 7100,
+    paidMinor: 101300,
+    payments: [{ amountMinor: 101300, method: 'transfer', paidOn: '2026-06-03T00:00:00.000Z' }],
+  },
+]
 
 /**
  * Tout ce qui n'appartient QU'AU jeu de démonstration.
@@ -107,9 +158,10 @@ describe('espace du locataire sur un vrai parc', () => {
   })
 
   /**
-   * Le serveur n'a pas d'historique à rendre : l'écran le DIT. Un tableau
-   * d'en-têtes sans ligne se lirait comme une panne, et les six périodes de la
-   * démonstration se lisaient comme les siennes.
+   * Ce parc-ci ne porte aucune échéance — la réponse ne contient pas de
+   * `leaseCharges` — et l'écran le DIT. Un tableau d'en-têtes sans ligne se
+   * lirait comme une panne, et les six périodes de la démonstration se lisaient
+   * comme les siennes.
    */
   it('annonce l’absence d’historique au lieu d’en fabriquer un', async () => {
     await ouvrir('/app/mon-espace')
@@ -145,5 +197,61 @@ describe('documents du locataire sur un vrai parc', () => {
     await ouvrir('/app/documents')
     const ligne = screen.getByText('État des lieux d’entrée').closest('li')!
     expect(ligne).toHaveTextContent('Aucun document déposé')
+  })
+})
+
+/**
+ * L'historique servi par le SERVEUR.
+ *
+ * Il n'existait pas : `/parks/:id/portfolio` ne rendait qu'une échéance par
+ * bail, et les deux écrans du locataire annonçaient honnêtement leur case vide.
+ * Ces cas montent un parc qui en porte un, et vérifient que ce sont bien ces
+ * périodes-là — et rien de la démonstration — qui atteignent l'écran.
+ */
+describe('historique des quittances servi par le serveur', () => {
+  it('affiche les périodes du bail, et non la case vide', async () => {
+    await ouvrir('/app/mon-espace', HISTORIQUE)
+    const main = screen.getByRole('main')
+    expect(main).not.toHaveTextContent('Aucune quittance disponible')
+    expect(main).toHaveTextContent('Juin 2026')
+    /* Les traces de démonstration SAUF les périodes : « Juillet 2026 » est
+       ici une période du serveur, et l'exclure de la liste dirait le
+       contraire de ce que ce cas vérifie. */
+    for (const trace of ['Mobile Money', 'Charles Ngassa', 'Résidence Bonamoussadi'])
+      expect(main, trace).not.toHaveTextContent(trace)
+  })
+
+  it('porte le loyer DE LA PÉRIODE, et non celui du bail d’aujourd’hui', async () => {
+    await ouvrir('/app/mon-espace', HISTORIQUE)
+    /**
+     * L'assertion porte sur LA LIGNE de juin, pas sur la table.
+     *
+     * Écrite sur la table entière, elle ne mordait pas : rendre à nouveau le
+     * loyer courant — 90 000 — laissait « 88 000 » à l'écran, cette fois comme
+     * part réglée d'une ligne devenue partielle. Le chiffre attendu était là,
+     * au mauvais titre, et le cas restait vert. Une ligne soldée de 88 000 et
+     * une ligne partielle de 90 000 dont il reste 2 000 ne se distinguent que
+     * dans leur ligne.
+     */
+    const juin = screen.getByRole('row', { name: /Juin 2026/ })
+    expect(juin).toHaveTextContent('88 000')
+    expect(juin).not.toHaveTextContent('90 000')
+    // Juin est soldé : aucun reste à réclamer sur cette ligne.
+    expect(juin).not.toHaveTextContent('reste')
+  })
+
+  it('montre le reste dû d’une période partiellement réglée', async () => {
+    await ouvrir('/app/mon-espace', HISTORIQUE)
+    // 7 300 d'électricité, 3 000 versés une fois le loyer et l'eau couverts :
+    // il reste 4 300, et c'est le seul chiffre qui appelle un geste.
+    expect(screen.getByRole('table')).toHaveTextContent('reste 4 300')
+  })
+
+  it('sert les mêmes périodes à l’écran des documents', async () => {
+    await ouvrir('/app/documents', HISTORIQUE)
+    const main = screen.getByRole('main')
+    expect(main).not.toHaveTextContent('Aucune quittance disponible')
+    expect(main).toHaveTextContent('Juin 2026')
+    expect(main).toHaveTextContent('Juillet 2026')
   })
 })

@@ -8,6 +8,8 @@ import type {
   Inspection,
   MeterReading,
   MonthlyCollection,
+  Receipt,
+  ReceiptPayment,
   TradeKey,
   Unit,
   UnitTypeKey,
@@ -62,6 +64,23 @@ interface PortefeuilleApi {
     reportedAt: string
   }[]
   collections: { year: number; month: number; rent: number; water: number; power: number }[]
+  /**
+   * L'historique des échéances, plat, une entrée par période et par bail.
+   *
+   * Optionnel : un serveur antérieur à ce champ ne le rend pas, et l'espace du
+   * locataire doit alors annoncer sa case vide plutôt que de casser.
+   */
+  leaseCharges?: {
+    leaseId: string
+    /** ISO. */
+    periodStart: string
+    dueOn: string
+    rentMinor: number
+    waterMinor: number
+    powerMinor: number
+    paidMinor: number
+    payments: { amountMinor: number; method: ReceiptPayment['method']; paidOn: string }[]
+  }[]
   readings: {
     unitId: string
     utility: 'water' | 'power'
@@ -123,6 +142,15 @@ export interface ParcCharge {
    * pendant qu'une alerte annonçait 40 000 : deux chiffres pour un seul fait.
    */
   paidByUnit: Record<string, number>
+  /**
+   * Les périodes facturées, par BAIL et non par unité.
+   *
+   * C'est le bail qui porte l'historique : une unité en a autant que de
+   * locataires successifs, et les regrouper par unité ferait lire à l'un les
+   * quittances de l'autre. Le serveur cloisonne déjà dans ce sens — il ne rend
+   * au locataire que les échéances de ses propres baux.
+   */
+  receiptsByLease: Record<string, Receipt[]>
 }
 
 /** Date ISO vers `DateParts`, dont le mois est indexé à zéro. */
@@ -249,7 +277,50 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
     // sont rapprochés.
     collections: data.collections,
     paidByUnit,
+    receiptsByLease: (() => {
+      const parBail: Record<string, Receipt[]> = {}
+      for (const e of data.leaseCharges ?? []) {
+        const debut = jourCalendaire(e.periodStart)
+        const ligne: Receipt = {
+          year: debut.year,
+          month: debut.month,
+          rentMinor: e.rentMinor,
+          waterMinor: e.waterMinor,
+          powerMinor: e.powerMinor,
+          dueOn: jourCalendaire(e.dueOn),
+          paidMinor: e.paidMinor,
+          payments: e.payments.map((p) => ({
+            amountMinor: p.amountMinor,
+            method: p.method,
+            paidOn: jourCalendaire(p.paidOn),
+          })),
+        }
+        parBail[e.leaseId] = [...(parBail[e.leaseId] ?? []), ligne]
+      }
+      return parBail
+    })(),
   }
+}
+
+/**
+ * Un jour du calendrier, LU DANS LA CHAÎNE et non par un fuseau.
+ *
+ * Ces champs viennent de colonnes `date` : le serveur les sérialise à minuit
+ * UTC, et elles ne désignent pas un instant mais un jour. `new Date(iso)` suivi
+ * de `getMonth()` les décale d'un jour — donc parfois d'un mois — à l'ouest de
+ * Greenwich : « juin 2026 » se lirait « mai 2026 » sur toute la colonne, pour
+ * un locataire à Douala comme pour un serveur déployé n'importe où. Le même
+ * piège a déjà pris le serveur en écrivant ces dates ; le commentaire de
+ * `demo.ts` le raconte.
+ *
+ * Découper la chaîne retire la question. Et il le faut : la suite de tests
+ * s'exécute avec `TZ: 'UTC'` — pour que les formats d'`Intl` soient stables —,
+ * fuseau où la version fautive donne exactement le même résultat. Aucun cas
+ * n'aurait pu attraper ce défaut ; seule sa disparition le prévient.
+ */
+function jourCalendaire(iso: string) {
+  const [annee, mois, jour] = iso.slice(0, 10).split('-').map(Number)
+  return { year: annee!, month: mois! - 1, day: jour! }
 }
 
 /**

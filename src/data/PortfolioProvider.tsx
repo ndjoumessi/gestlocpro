@@ -289,12 +289,17 @@ interface PortfolioContextValue {
   alerts: Alert[]
   collections: MonthlyCollection[]
   /**
-   * Quittances du locataire connecté. VIDE hors démonstration : le serveur ne
-   * rend qu'une échéance par bail, pas d'historique — et une constante de
-   * démonstration servie à un vrai locataire lui donnerait des périodes, des
-   * montants et un moyen de paiement qui ne sont pas les siens.
+   * Les périodes facturées d'une unité, de la plus récente à la plus ancienne.
+   *
+   * `tenantReceipts` — une liste unique, celle du « locataire connecté » —
+   * supposait qu'il n'y en ait jamais qu'un et qu'une seule unité. Le tableau
+   * est celui d'un LOGEMENT ; le demander par unité retire la supposition, et
+   * suit ce que font déjà `depositForUnit` et `inspectionForUnit`.
+   *
+   * Vide quand le serveur n'en rend pas — les écrans annoncent alors la case
+   * vide, ce qui est l'état réel d'un parc sans échéance enregistrée.
    */
-  tenantReceipts: Receipt[]
+  receiptsForUnit: (unitId: string) => Receipt[]
   readingForUnit: (unitId: string) => MeterReading | undefined
   /**
    * État des lieux d'une unité, pris sur l'état PARTAGÉ.
@@ -428,7 +433,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const [alerts, setAlerts] = useState<Alert[]>(ALERTS_DEMO)
   const [collections, setCollections] = useState<MonthlyCollection[]>(COLLECTIONS_DEMO)
   /**
-   * Quittances du locataire connecté.
+   * Périodes facturées, indexées par unité.
    *
    * Elles étaient importées EN DUR par les deux écrans du locataire, seule
    * collection à ne pas passer par ici. Sur un vrai parc, il lisait donc les six
@@ -436,12 +441,15 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
    * une consommation d'eau et d'électricité inventées — à côté de son loyer
    * réel, sur le seul écran où il n'a aucun moyen de recouper.
    *
-   * Le serveur ne sait pas encore les rendre : la réponse du portefeuille ne
-   * porte qu'UNE échéance par bail, la courante, et aucun historique. La liste
-   * est donc VIDE hors démonstration, et les écrans le disent — ce qui est
-   * l'état réel de la fonctionnalité, quand la constante le masquait.
+   * Le serveur les rend désormais, par BAIL : la réponse du portefeuille ne
+   * portait qu'une échéance — la courante — alors qu'elle lisait déjà toutes
+   * les autres pour son histogramme d'encaissements. L'indexation par unité se
+   * fait ici, où les unités sont connues ; le cloisonnement, lui, reste posé
+   * dans la requête du serveur, qui ne rend au locataire que ses propres baux.
    */
-  const [tenantReceipts, setTenantReceipts] = useState<Receipt[]>(TENANT_RECEIPTS_DEMO)
+  const [receiptsByUnit, setReceiptsByUnit] = useState<Record<string, Receipt[]>>({
+    [DEMO_TENANT_UNIT]: TENANT_RECEIPTS_DEMO,
+  })
 
   useEffect(() => {
     if (!parkId) {
@@ -510,9 +518,22 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       setUnits(parc.units)
       setWorks(parc.works)
       setDeposits(parc.deposits)
-      // Aucun historique de quittances côté serveur : la démonstration ne doit
-      // pas survivre au branchement des vraies données.
-      setTenantReceipts([])
+      /**
+       * L'historique vient du BAIL ; on l'indexe par unité pour l'écran.
+       *
+       * La démonstration ne survit pas au branchement : ce qui n'est pas dans
+       * la réponse n'apparaît pas. Un parc dont aucune échéance n'est
+       * enregistrée rend donc une table vide, et les écrans le disent — c'est
+       * l'état réel de ce parc, quand la constante affichait six périodes
+       * inventées à côté d'un loyer véritable.
+       */
+      setReceiptsByUnit(
+        Object.fromEntries(
+          parc.units
+            .filter((u) => u.leaseId && parc.receiptsByLease[u.leaseId])
+            .map((u) => [u.id, parc.receiptsByLease[u.leaseId!]!]),
+        ),
+      )
       setFromApi(true)
       // Posé APRÈS l'écriture, et seulement en cas de succès : un échec laisse
       // le jeu de démonstration à l'écran, et une relecture ultérieure a alors
@@ -1097,7 +1118,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       inspections,
       alerts,
       collections,
-      tenantReceipts,
+      receiptsForUnit: (unitId) => receiptsByUnit[unitId] ?? [],
       readingForUnit: (unitId) => readings.find((r) => r.unitId === unitId),
       inspectionForUnit: (unitId, kind) =>
         inspections.find((i) => i.unitId === unitId && i.kind === kind),
@@ -1136,7 +1157,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       collections,
       fromApi,
       loading,
-      tenantReceipts,
+      receiptsByUnit,
       approveWork,
       quoteWork,
       completeWork,

@@ -15,9 +15,9 @@ import { useNumbers } from '@/lib/numbers'
 import { cn } from '@/lib/cn'
 import {
   UTILITY_RATES,
-  chargeDue,
-  chargeSettled,
-  type Charge,
+  dernierVersement,
+  imputation,
+  type Receipt,
 } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { ReceiptModal } from './ReceiptModal'
@@ -43,7 +43,7 @@ export function TenantDashboard() {
     depositForUnit,
     unitById,
     tenantUnitIds,
-    tenantReceipts,
+    receiptsForUnit,
     buildingById,
     readingForUnit,
     inspectionForUnit,
@@ -58,6 +58,8 @@ export function TenantDashboard() {
   const monUnite = tenantUnitIds[0] ?? ''
 
   const unit = unitById(monUnite)
+  /* Les périodes de CE logement : le tableau en dessous est le sien. */
+  const tenantReceipts = receiptsForUnit(monUnite)
   /* `buildingById` du PROVIDER, et non celui du module de démonstration : ce
      dernier ne connaît que « bon », « akw », « des », et sur un vrai parc — où
      les identifiants sont des `uuid` — il ne trouvait rien. Le titre retombait
@@ -125,6 +127,8 @@ export function TenantDashboard() {
   const quittanceCourante = tenantReceipts.find(
     (r) => r.year === periodeCourante.year && r.month === periodeCourante.month,
   )
+  /* Sans versement, pas de phrase : « payé le … » suppose qu'on ait payé. */
+  const versementCourant = quittanceCourante ? dernierVersement(quittanceCourante) : undefined
 
   /* L'eau et l'électricité du mois viennent du RELEVÉ, la seule source que le
      serveur alimente. Elles se lisaient dans la quittance de démonstration. */
@@ -191,16 +195,12 @@ export function TenantDashboard() {
                 la quittance sait et que le portefeuille ignore. Sans quittance
                 pour la période, la ligne disparaît plutôt que d'en inventer
                 une : le statut au-dessus dit déjà où en est le loyer. */}
-            {quittanceCourante ? (
+            {versementCourant ? (
               <span className="text-body-s text-muted">
                 {t('app.tenant.paidOnBy', {
-                  date: d.dayMonth({
-                    year: quittanceCourante.year,
-                    month: quittanceCourante.month,
-                    day: quittanceCourante.paidDay,
-                  }),
+                  date: d.dayMonth(versementCourant.paidOn),
                   method: t(
-                    `app.paymentMethods.${quittanceCourante.method}` as 'app.paymentMethods.cash',
+                    MOYENS_DE_PAIEMENT[versementCourant.method] as 'app.payments.methodCash',
                   ),
                 })}
               </span>
@@ -256,10 +256,11 @@ export function TenantDashboard() {
               </span>
             }
           />
-          {/* Aucun historique : on le DIT. Le serveur ne rend qu'une échéance
-              par bail, et la liste est vide hors démonstration — un tableau
-              d'en-têtes sans ligne se lit comme une panne, et les six périodes
-              de la démonstration se lisaient comme les siennes. */}
+          {/* Aucune période enregistrée : on le DIT. Le serveur rend
+              l'historique du bail, mais un parc peut n'avoir encore aucune
+              échéance — un tableau d'en-têtes sans ligne se lit alors comme une
+              panne, et les six périodes de la démonstration se lisaient comme
+              les siennes. */}
           {tenantReceipts.length === 0 ? (
             <div className="border-t border-divider px-4 py-4 sm:px-5">
               <EmptyState
@@ -291,16 +292,22 @@ export function TenantDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-divider">
-                {tenantReceipts.map((receipt) => (
+                {tenantReceipts.map((receipt) => {
+                  /* Une imputation par ligne, et non une par cellule : les
+                     trois colonnes lisent le même partage du même versement. */
+                  const regle = imputation(receipt)
+                  return (
                   <tr key={`${receipt.year}-${receipt.month}`}>
                     <th scope="row" className="px-4 py-3 text-left text-body font-medium sm:px-5">
                       {d.monthYear(receipt)}
                     </th>
-                    <td className="numeric px-3 py-3 text-right text-body text-ok">
-                      {n.integer(unit.rent)}
-                    </td>
-                    <CelluleCharge charge={receipt.water} rate={UTILITY_RATES.water} />
-                    <CelluleCharge charge={receipt.power} rate={UTILITY_RATES.power} />
+                    {/* Le loyer DE LA PÉRIODE, et non celui du bail
+                        d'aujourd'hui. La colonne affichait `unit.rent` sur
+                        chaque ligne : une révision de loyer aurait réécrit tout
+                        l'historique, du premier mois au dernier. */}
+                    <CelluleMontant du={receipt.rentMinor} regle={regle.rent} />
+                    <CelluleMontant du={receipt.waterMinor} regle={regle.water} />
+                    <CelluleMontant du={receipt.powerMinor} regle={regle.power} />
                     <td className="px-4 py-3 text-right sm:px-5">
                       <Button
                         variant="ghost"
@@ -313,7 +320,8 @@ export function TenantDashboard() {
                       </Button>
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -430,28 +438,45 @@ function CarteCharge({ label, amount, note }: { label: string; amount: string; n
 }
 
 /**
- * Une charge dans le tableau — soldée, ou partielle avec son reste.
+ * Un poste dans le tableau — soldé, ou partiel avec son reste.
  *
  * Le reste est affiché parce qu'il est le seul chiffre qui appelle un geste :
  * une cellule qui ne montrerait que la part versée laisserait croire la période
  * close. La couleur ne porte pas seule cette différence — le reste est écrit.
+ *
+ * Le dû et la part réglée arrivent tous deux calculés : le montant vient du
+ * serveur, figé à l'émission, et la part de l'imputation conventionnelle. La
+ * cellule ne dérive plus rien d'un tarif courant.
  */
-function CelluleCharge({ charge, rate }: { charge: Charge; rate: number }) {
+function CelluleMontant({ du, regle }: { du: number; regle: number }) {
   const t = useT()
   const n = useNumbers()
-  const du = chargeDue(charge, rate)
-  const solde = chargeSettled(charge, rate)
+  const solde = regle >= du
   return (
     <td className={cn('numeric px-3 py-3 text-right text-body', solde ? 'text-ok' : 'text-warn')}>
-      {n.integer(solde ? du : charge.paid)}
+      {n.integer(solde ? du : regle)}
       {!solde && (
         <span className="text-caps">
           {' · '}
-          {t('app.tenant.remaining', { amount: n.integer(du - charge.paid) })}
+          {t('app.tenant.remaining', { amount: n.integer(du - regle) })}
         </span>
       )}
     </td>
   )
+}
+
+/**
+ * Le dictionnaire des moyens de paiement, aux valeurs du serveur.
+ *
+ * Une table plutôt qu'une clé construite : `app.payments.method${method}`
+ * imposerait une majuscule à la volée, et `check-i18n` ne verrait plus quelles
+ * clés sont employées.
+ */
+const MOYENS_DE_PAIEMENT: Record<Receipt['payments'][number]['method'], string> = {
+  mobile: 'app.payments.methodMobile',
+  cash: 'app.payments.methodCash',
+  transfer: 'app.payments.methodTransfer',
+  check: 'app.payments.methodCheck',
 }
 
 /** Un terme du bail : un intitulé, et soit une valeur, soit un renvoi. */

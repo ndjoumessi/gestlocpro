@@ -455,77 +455,145 @@ export function alertsForUnit(unitId: string): Alert[] {
 }
 
 /**
- * Historique de quittances simulé pour l'espace locataire.
+ * Une période de facturation du locataire : ce qui était dû, ce qui a été reçu.
  *
  * Les périodes sont stockées en valeurs machine — année et index de mois — et
  * non en chaînes : un nom de mois est du formatage, pas du contenu, et doit
  * suivre la langue de l'interface. Voir `lib/dates`.
+ *
+ * **Les montants sont FIGÉS, jamais dérivés d'un tarif courant.** Ce type
+ * portait des quantités — 16 m³, 178 kWh — que l'écran multipliait par
+ * `UTILITY_RATES` pour obtenir ce qu'il affichait. Tant que le tarif ne bouge
+ * pas, les deux coïncident ; le jour où il change, tout l'historique se
+ * recalcule et juillet se relit au prix d'août. C'est précisément ce que le
+ * serveur refuse de faire — `RentCharge.waterMinor` le dit dans son propre
+ * commentaire —, et une quittance réémise doit rendre exactement la première.
+ *
+ * La quantité consommée n'est pas perdue pour autant : elle vit au RELEVÉ, une
+ * ligne par unité, fluide et période, d'où l'espace locataire tire déjà sa
+ * consommation du mois.
  */
 export interface Receipt {
   year: number
   /** 0 = janvier. */
   month: number
-  paidDay: number
-  status: PaymentStatus
+  /** Loyer de la période — celui du bail d'alors, pas celui d'aujourd'hui. */
+  rentMinor: number
+  /** Eau et électricité refacturées, figées à l'émission. */
+  waterMinor: number
+  powerMinor: number
+  /** Jour d'échéance : ce qui distingue « pas encore dû » de « en retard ». */
+  dueOn: DateParts
+  /**
+   * Total encaissé sur la période, tous versements confondus.
+   *
+   * UN total et non une part par poste : un versement solde une échéance, il ne
+   * se rattache pas à l'eau plutôt qu'à l'électricité. La ventilation que le
+   * tableau affiche est une convention d'affichage — voir `imputation`.
+   */
+  paidMinor: number
+  /** Les versements reçus, dans l'ordre où ils l'ont été. */
+  payments: ReceiptPayment[]
+}
+
+/** Un versement reçu sur une période. */
+export interface ReceiptPayment {
+  amountMinor: number
   method: PaymentMethodKey
-  water: Charge
-  power: Charge
+  paidOn: DateParts
 }
 
 /**
- * Moyen de paiement d'une quittance.
+ * Moyen de paiement, aux valeurs du SERVEUR.
  *
- * Le portail annonce « payé le 03/08 par … » : sans ce champ, la phrase
- * s'arrêtait avant son complément. Le mobile money vient en premier parce
- * qu'il est le moyen dominant sur le marché visé, pas par ordre alphabétique.
+ * Le client en tenait deux vocabulaires : `'mobileMoney' | 'transfer' | 'cash'`
+ * pour la démonstration, et `'mobile' | 'cash' | 'transfer' | 'check'` dans le
+ * formulaire d'encaissement, qui les envoie tels quels. Deux tables pour un
+ * seul fait, dont l'une ignorait le chèque : un règlement par chèque remonté du
+ * serveur n'avait aucun libellé à afficher. Ce sont les valeurs du serveur qui
+ * restent, et le dictionnaire `app.payments.method*` qui les nomme — il les
+ * nommait déjà toutes les quatre.
  */
-export type PaymentMethodKey = 'mobileMoney' | 'transfer' | 'cash'
+export type PaymentMethodKey = 'mobile' | 'cash' | 'transfer' | 'check'
+
+/** Ce que la période doit, tous postes confondus. */
+export function receiptDue(receipt: Receipt): number {
+  return receipt.rentMinor + receipt.waterMinor + receipt.powerMinor
+}
 
 /**
- * Charge refacturée d'une période : ce qui a été consommé, ce qui a été réglé.
+ * Ce que le versement a soldé, poste par poste.
  *
- * Le montant dû n'est PAS stocké — il se dérive de la quantité et du tarif de
- * `UTILITY_RATES`. Le figer ici en donnerait une seconde source, et le jour où
- * un tarif change, l'historique dirait deux choses différentes du même mois.
+ * Une CONVENTION d'affichage, et non un fait enregistré : le loyer d'abord,
+ * puis l'eau, puis l'électricité — l'ordre d'imputation usuel, et celui que le
+ * serveur applique déjà pour son histogramme d'encaissements. Les deux doivent
+ * rester identiques, sans quoi le même versement se lirait de deux façons selon
+ * l'écran qui l'affiche.
  *
- * `paid` existe séparément parce qu'une charge peut être réglée en partie :
- * c'est le cas que le tableau du portail affiche « reste X », et sans ce champ
- * une période partiellement soldée passait pour soldée.
+ * Elle existe parce qu'un règlement partiel doit se voir sur le poste qui
+ * appelle un geste. Sans elle, une période à moitié réglée s'affichait soldée.
  */
-export interface Charge {
-  /** Quantité consommée — m³ pour l'eau, kWh pour l'électricité. */
-  quantity: number
-  /** Part réglée, en unité neutre. */
-  paid: number
+export function imputation(receipt: Receipt): { rent: number; water: number; power: number } {
+  const rent = Math.min(receipt.paidMinor, receipt.rentMinor)
+  const reste = receipt.paidMinor - rent
+  const water = Math.max(0, Math.min(reste, receipt.waterMinor))
+  const power = Math.max(0, Math.min(reste - receipt.waterMinor, receipt.powerMinor))
+  return { rent, water, power }
 }
 
-/** Ce que la période doit au titre d'une charge, au tarif en vigueur. */
-export function chargeDue(charge: Charge, rate: number): number {
-  return Math.round(charge.quantity * rate)
+/**
+ * Le versement qui a CLOS la période, ou le dernier reçu si elle ne l'est pas.
+ *
+ * Le portail annonce « payé le 03/08 par Mobile Money » : la phrase ne peut
+ * porter qu'une date et un moyen, alors qu'une période peut être réglée en
+ * plusieurs fois et par plusieurs canaux. C'est le DERNIER versement qui la
+ * complète, donc lui qui date le règlement ; les autres restent lisibles dans
+ * `payments`, où le détail a sa place.
+ *
+ * `undefined` quand rien n'a été reçu — auquel cas la ligne disparaît plutôt
+ * que d'afficher une date de règlement qui n'a pas eu lieu.
+ */
+export function dernierVersement(receipt: Receipt): ReceiptPayment | undefined {
+  return receipt.payments[receipt.payments.length - 1]
 }
 
-/** `true` quand la charge est soldée — et non « payée au premier franc ». */
-export function chargeSettled(charge: Charge, rate: number): boolean {
-  return charge.paid >= chargeDue(charge, rate)
+/**
+ * Où en est la période.
+ *
+ * `overdue` demande la date du jour : une période non réglée dont l'échéance
+ * n'est pas passée n'est pas en retard, elle est à venir. Confondre les deux
+ * afficherait le mois courant en rouge dès le premier du mois.
+ */
+export function receiptStatus(receipt: Receipt, aujourdhui: Date): PaymentStatus {
+  if (receipt.paidMinor >= receiptDue(receipt)) return 'paid'
+  if (receipt.paidMinor > 0) return 'partial'
+  const echeance = new Date(receipt.dueOn.year, receipt.dueOn.month, receipt.dueOn.day)
+  return echeance < aujourdhui ? 'overdue' : 'pending'
 }
 
 /**
  * Quittances du locataire connecté.
  *
- * Les quantités d'août reprennent CELLES DU RELEVÉ de l'unité A1 — 358−342 m³
- * et 4298−4120 kWh. L'écran des relevés et le portail parlent du même mois : en
- * inventer d'autres ici aurait donné au locataire une consommation que son
- * gestionnaire ne lit nulle part.
+ * Les quantités d'août — 16 m³ et 178 kWh — reprennent CELLES DU RELEVÉ de
+ * l'unité A1 : 358−342 et 4298−4120. L'écran des relevés et le portail parlent
+ * du même mois ; en inventer d'autres ici aurait donné au locataire une
+ * consommation que son gestionnaire ne lit nulle part. Les montants ci-dessous
+ * sont ces quantités au tarif de `UTILITY_RATES`, calculées UNE FOIS et
+ * inscrites — c'est ainsi qu'une facture se fige, et le serveur ne fait pas
+ * autrement.
+ *
+ * Mai — `month: 4` — n'est soldé qu'en partie : 9 000 sur les 14 058 dus
+ * d'électricité, une fois le loyer et l'eau couverts. C'est le cas que le
+ * tableau affiche « reste … », et la seule raison pour laquelle l'imputation
+ * poste par poste existe.
  */
 export const TENANT_RECEIPTS: Receipt[] = [
-  { year: 2026, month: 7, paidDay: 3, status: 'paid', method: 'mobileMoney', water: { quantity: 16, paid: 8320 }, power: { quantity: 178, paid: 17622 } },
-  { year: 2026, month: 6, paidDay: 2, status: 'paid', method: 'mobileMoney', water: { quantity: 15, paid: 7800 }, power: { quantity: 163, paid: 16137 } },
-  { year: 2026, month: 5, paidDay: 5, status: 'paid', method: 'transfer', water: { quantity: 14, paid: 7280 }, power: { quantity: 171, paid: 16929 } },
-  // Mai : l'électricité n'est soldée qu'en partie — le cas que le tableau
-  // affiche « reste … », et la raison d'être de `Charge.paid`.
-  { year: 2026, month: 4, paidDay: 4, status: 'paid', method: 'mobileMoney', water: { quantity: 13, paid: 6760 }, power: { quantity: 142, paid: 9000 } },
-  { year: 2026, month: 3, paidDay: 2, status: 'paid', method: 'cash', water: { quantity: 12, paid: 6240 }, power: { quantity: 155, paid: 15345 } },
-  { year: 2026, month: 2, paidDay: 6, status: 'paid', method: 'mobileMoney', water: { quantity: 17, paid: 8840 }, power: { quantity: 168, paid: 16632 } },
+  { year: 2026, month: 7, rentMinor: 145000, waterMinor: 8320, powerMinor: 17622, dueOn: { year: 2026, month: 7, day: 5 }, paidMinor: 170942, payments: [{ amountMinor: 170942, method: 'mobile', paidOn: { year: 2026, month: 7, day: 3 } }] },
+  { year: 2026, month: 6, rentMinor: 145000, waterMinor: 7800, powerMinor: 16137, dueOn: { year: 2026, month: 6, day: 5 }, paidMinor: 168937, payments: [{ amountMinor: 168937, method: 'mobile', paidOn: { year: 2026, month: 6, day: 2 } }] },
+  { year: 2026, month: 5, rentMinor: 145000, waterMinor: 7280, powerMinor: 16929, dueOn: { year: 2026, month: 5, day: 5 }, paidMinor: 169209, payments: [{ amountMinor: 169209, method: 'transfer', paidOn: { year: 2026, month: 5, day: 5 } }] },
+  { year: 2026, month: 4, rentMinor: 145000, waterMinor: 6760, powerMinor: 14058, dueOn: { year: 2026, month: 4, day: 5 }, paidMinor: 160760, payments: [{ amountMinor: 160760, method: 'mobile', paidOn: { year: 2026, month: 4, day: 4 } }] },
+  { year: 2026, month: 3, rentMinor: 145000, waterMinor: 6240, powerMinor: 15345, dueOn: { year: 2026, month: 3, day: 5 }, paidMinor: 166585, payments: [{ amountMinor: 166585, method: 'cash', paidOn: { year: 2026, month: 3, day: 2 } }] },
+  { year: 2026, month: 2, rentMinor: 145000, waterMinor: 8840, powerMinor: 16632, dueOn: { year: 2026, month: 2, day: 5 }, paidMinor: 170472, payments: [{ amountMinor: 170472, method: 'mobile', paidOn: { year: 2026, month: 2, day: 6 } }] },
 ]
 
 export function buildingById(id: string): Building | undefined {

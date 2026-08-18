@@ -9,7 +9,7 @@ import { Skeleton, SkeletonRegion } from '@/components/primitives/Skeleton'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
-import { UTILITY_RATES, chargeDue } from '@/data/portfolio'
+import { dernierVersement } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { useToast } from '@/components/primitives/Toast'
 import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
@@ -50,8 +50,15 @@ export function TenantDocuments() {
   const d = useDates()
   const { money } = useCurrency()
   const downloadReceipt = useReceiptExport()
-  const { unitById, tenantUnitIds, depositForUnit, inspectionForUnit, tenantReceipts, addWork, loading } =
-    usePortfolio()
+  const {
+    unitById,
+    tenantUnitIds,
+    depositForUnit,
+    inspectionForUnit,
+    receiptsForUnit,
+    addWork,
+    loading,
+  } = usePortfolio()
   const { notify } = useToast()
   const exportCsv = useCsvExport()
   const csvMoney = useCsvMoney()
@@ -59,6 +66,7 @@ export function TenantDocuments() {
 
   /** Mono-unité, comme l'espace locataire — et pour la même raison. */
   const monUnite = tenantUnitIds[0] ?? ''
+  const tenantReceipts = receiptsForUnit(monUnite)
   const unit = unitById(monUnite)
   const deposit = depositForUnit(monUnite)
   const entree = inspectionForUnit(monUnite, 'entry')
@@ -82,15 +90,34 @@ export function TenantDocuments() {
         csvMoney.header(t('app.tenant.colRent')),
         csvMoney.header(t('app.tenant.colWater')),
         csvMoney.header(t('app.tenant.colPower')),
+        csvMoney.header(t('app.payments.paid')),
         t('app.payments.date'),
       ],
-      rows: tenantReceipts.map((receipt) => [
-        d.monthYear(receipt),
-        csvMoney.amount(unit.rent),
-        csvMoney.amount(chargeDue(receipt.water, UTILITY_RATES.water)),
-        csvMoney.amount(chargeDue(receipt.power, UTILITY_RATES.power)),
-        d.fullDate({ year: receipt.year, month: receipt.month, day: receipt.paidDay }),
-      ]),
+      /**
+       * Les montants de CHAQUE période, pris tels que le serveur les a figés.
+       *
+       * Le loyer sortait de `unit.rent` — celui du bail d'aujourd'hui, recopié
+       * sur les six lignes —, et l'eau comme l'électricité se recalculaient au
+       * tarif courant. Un fichier téléchargé en octobre n'aurait donc pas dit
+       * la même chose que le même fichier téléchargé en juillet.
+       *
+       * La colonne « réglé » manquait, et son absence laissait croire chaque
+       * ligne soldée : c'est le seul chiffre qui distingue une période payée
+       * d'une période en cours.
+       */
+      rows: tenantReceipts.map((receipt) => {
+        const versement = dernierVersement(receipt)
+        return [
+          d.monthYear(receipt),
+          csvMoney.amount(receipt.rentMinor),
+          csvMoney.amount(receipt.waterMinor),
+          csvMoney.amount(receipt.powerMinor),
+          csvMoney.amount(receipt.paidMinor),
+          // Pas de versement, pas de date : inventer celle de l'échéance
+          // laisserait croire à un règlement reçu.
+          versement ? d.fullDate(versement.paidOn) : null,
+        ]
+      }),
       notice: 'app.receiptDownloaded',
     })
   }
@@ -170,9 +197,9 @@ export function TenantDocuments() {
               ) : undefined
             }
           />
-          {/* La liste est vide hors démonstration : le serveur ne rend pas
-              d'historique. On l'annonce plutôt que de servir les six périodes
-              de la démonstration comme si elles étaient les siennes. */}
+          {/* Vide tant qu'aucune échéance n'est enregistrée sur le bail. On
+              l'annonce plutôt que de servir les six périodes de la
+              démonstration comme si elles étaient les siennes. */}
           {tenantReceipts.length === 0 ? (
             <div className="border-t border-divider px-4 py-4 sm:px-5">
               <EmptyState
