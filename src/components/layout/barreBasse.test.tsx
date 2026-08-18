@@ -59,24 +59,31 @@ describe('barre de navigation basse', () => {
     for (const lien of entrees()) expect(lien.textContent?.trim()).not.toBe('')
   })
 
-  it('respecte le filtrage par rôle', async () => {
-    // Sous `/demo`, où vit le sélecteur de profil. Ce cas éprouve le FILTRAGE
-    // de la barre basse, pas la provenance du rôle : il lui faut donc un moyen
-    // d'en changer sans remonter, et c'est ce que la démonstration offre.
+  /**
+   * La barre basse appartient à la coquille de GESTION.
+   *
+   * Elle abrège une navigation de douze entrées dont le reste vit dans un
+   * tiroir. Le locataire n'a pas cette coquille : sa barre est en haut, elle
+   * porte ses trois entrées en entier, et rien n'y est replié. Deux
+   * navigations pour trois destinations, dont l'une déplierait exactement ce
+   * que l'autre affiche déjà, ne servaient personne.
+   */
+  it('n’existe pas dans la coquille du locataire', async () => {
+    // Sous `/demo`, où vit le sélecteur de profil : ce cas a besoin de changer
+    // de rôle sans remonter, et c'est ce que la démonstration offre.
     renderApp('/demo')
     expect(libelles()).toContain('Parc immobilier')
 
-    // Le locataire n'a pas une navigation filtrée, il en a une AUTRE — trois
-    // entrées, celles de son espace. La barre basse les porte toutes les trois
-    // sans passer par l'ordre de priorité : cet ordre sert à choisir parmi une
-    // douzaine d'entrées, et aucune des siennes n'y figure. L'y soumettre
-    // rendrait une barre vide.
     await switchRole('tenant')
     await attendreLeChargement()
-    expect(libelles()).not.toContain('Parc immobilier')
-    expect(libelles()).toEqual(
-      expect.arrayContaining(['Mon espace', 'Documents', 'Signaler']),
-    )
+    expect(screen.queryByRole('navigation', { name: 'Navigation rapide' })).toBeNull()
+    // Ses trois entrées n'ont pas disparu pour autant : elles sont en haut.
+    const haute = screen.getByRole('navigation', { name: 'Navigation principale' })
+    expect(
+      within(haute)
+        .getAllByRole('link')
+        .map((a) => a.textContent?.trim()),
+    ).toEqual(['Mon espace', 'Documents', 'Signaler'])
   })
 
   it('signale l’entrée courante autrement que par la seule couleur', () => {

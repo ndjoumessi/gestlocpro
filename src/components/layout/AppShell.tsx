@@ -360,6 +360,50 @@ export function AppShell() {
     }
   }, [drawerOpen])
 
+  /**
+   * Le LOCATAIRE n'a pas de barre latérale : il a une barre en haut.
+   *
+   * Sa navigation vivait dans la coquille du bailleur — le même panneau
+   * vertical sombre, réduit à trois entrées. Les maquettes du portail montrent
+   * tout autre chose : une barre horizontale, logo à gauche, ses trois
+   * destinations au centre, son identité à droite. La différence n'est pas
+   * décorative. Un panneau latéral rangé par sections — « Pilotage »,
+   * « Opérations » — est l'outil de qui exploite un parc et navigue entre douze
+   * écrans ; le locataire en a trois, et il habite.
+   *
+   * Toute la mécanique de la coquille de gestion tombe avec elle : ni tiroir,
+   * ni voile, ni barre basse, ni bouton « Plus » — qui, chez lui, dépliait une
+   * navigation contenant exactement les trois entrées déjà affichées. Une
+   * seule navigation, au même endroit à toutes les tailles.
+   */
+  if (role === 'tenant') {
+    return (
+      <RoleContext.Provider value={{ role, setRole }}>
+        <div className="flex min-h-dvh flex-col bg-paper">
+          {/* Le lien d'évitement reste la première halte : ici il fait sauter
+              la barre supérieure, et rien ne le neutralise puisqu'il n'y a plus
+              de tiroir pour recouvrir la page. */}
+          <LienEvitement />
+          <BarreLocataire setRole={setRole} />
+          <BandeauDemo />
+          <main
+            id="main"
+            className={cn(
+              'animate-rise flex-1',
+              // Aucune barre basse à réserver — d'où un simple rembourrage de
+              // fin de défilement, zone de gestes comprise.
+              'pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]',
+              'sm:pt-8 sm:pb-[calc(2rem+env(safe-area-inset-bottom))]',
+              GOUTTIERE_LATERALE,
+            )}
+          >
+            <Outlet />
+          </main>
+        </div>
+      </RoleContext.Provider>
+    )
+  }
+
   return (
     <RoleContext.Provider value={{ role, setRole }}>
       <div className="flex min-h-dvh items-stretch">
@@ -461,6 +505,201 @@ export function AppShell() {
         </div>
       </div>
     </RoleContext.Provider>
+  )
+}
+
+/**
+ * La barre du locataire — UNE barre, sombre, en haut.
+ *
+ * Portée depuis la prévisualisation `/portail`, qui la rendait déjà : logo,
+ * destinations, identité sur un seul bandeau d'encre. Ce qui NE traverse pas :
+ *
+ * — **Le motif `tab`.** La prévisualisation montre trois vues exclusives d'un
+ *   même dossier, et tient pour cela le motif ARIA complet, flèches comprises.
+ *   Ici les trois entrées sont trois ADRESSES : ce sont des liens, et un lecteur
+ *   d'écran doit entendre « lien », pas « onglet ». Déclarer `role="tab"` sur
+ *   une navigation promettrait des flèches qui ne mènent nulle part — la règle
+ *   du dépôt vaut dans les deux sens : le motif se tient en entier, ou pas du
+ *   tout.
+ *
+ * — **La cloche.** Elle est `aria-hidden` dans la prévisualisation, où elle est
+ *   assumée comme décor. Une barre réelle ne peut pas porter un décor en forme
+ *   de commande : le locataire n'a aucune file de notifications à ouvrir — son
+ *   icône `bell` est celle de « Signaler », qui est déjà là. Un bouton qui
+ *   n'ouvre rien est le défaut que les « Télécharger » de l'écran Documents ont
+ *   déjà coûté une fois.
+ *
+ * Ce qui traverse, en revanche : la pastille d'identité, qui devient le vrai
+ * menu du compte — celui qui dit qui est connecté et permet d'en sortir.
+ */
+function BarreLocataire({ setRole }: { setRole: (role: Role) => void }) {
+  const t = useT()
+  const base = useBase()
+  const { demo } = useIdentite()
+
+  const items = entreesVisibles(
+    sectionsPour('tenant').flatMap((section) => section.items),
+    'tenant',
+    demo,
+  )
+
+  return (
+    <header
+      /**
+       * `on-dark` sur le conteneur, mais les libellés portent `text-on-dark`
+       * EN TOUTES LETTRES.
+       *
+       * Le remappage de `.on-dark` est écrit `:not([class*='bg-'])` : il se
+       * retire de lui-même dès qu'un élément porte son propre fond — ce qui est
+       * le cas de l'entrée courante et du survol. S'y fier rendait le libellé
+       * actif invisible, encre sur encre. La prévisualisation s'y est déjà
+       * brûlée ; son commentaire le raconte.
+       *
+       * Collante et peinte jusqu'au bord physique : avec `viewport-fit=cover`,
+       * `top-0` est le haut de l'écran, et sans le `calc()` le logo se range
+       * sous la barre d'état. Latéralement `max()`, la barre allant d'un bord à
+       * l'autre — en paysage l'encoche mord d'un côté ou de l'autre.
+       */
+      className={cn(
+        'on-dark sticky top-0 flex flex-wrap items-center gap-x-2 gap-y-1 bg-ink',
+        'pt-[calc(0.625rem+env(safe-area-inset-top))]',
+        'pl-[max(1.25rem,env(safe-area-inset-left))] pr-[max(1.25rem,env(safe-area-inset-right))]',
+        'sm:pl-[max(2rem,env(safe-area-inset-left))] sm:pr-[max(2rem,env(safe-area-inset-right))]',
+      )}
+      style={{ zIndex: 'var(--z-sticky)' }}
+    >
+      <Logo to={base} size="sm" tone="dark" className="mr-4 mb-2.5" />
+
+      <nav
+        aria-label={t('nav.primaryNav')}
+        // `overflow-x-auto` plutôt qu'un repli : trois libellés courts tiennent
+        // sur un écran de 320 px, et le défilement latéral est le recours si un
+        // jour ils ne tiennent plus. Rien ici ne se cache derrière un « Plus ».
+        className="flex gap-1 overflow-x-auto"
+      >
+        {items.map((item) => (
+          <LienLocataire key={item.to} item={item} />
+        ))}
+      </nav>
+
+      {/* `tone="dark"` sur les trois commandes, et ce n'est pas cosmétique.
+          Elles se peignent sinon dans le thème AMBIANT : en thème sombre, leur
+          fond descend à la couleur du texte de la page et vient se poser sur
+          une barre qui, elle, est encre en permanence. Le sélecteur de devise
+          disparaissait ainsi presque entièrement — vérifié en capture, thème
+          sombre, avant correction. Les trois composants portent ce ton depuis
+          l'origine : il suffisait de le leur passer. */}
+      <div className="mb-2.5 ml-auto flex flex-wrap items-center justify-end gap-2">
+        <LanguageSwitcher tone="dark" />
+        {/* Même règle qu'ailleurs : le sélecteur de devise ne survit qu'en
+            démonstration, faute de conversion. */}
+        {/* Le repli est porté par une ENVELOPPE et non par la `className` du
+            composant : celle-ci est concaténée à ses propres classes, où un
+            `flex` figure déjà — deux utilitaires de `display` dans le même
+            attribut, et c'est l'ordre de la feuille qui tranche, pas celui de
+            la chaîne. Le sélecteur de thème restait ainsi affiché. */}
+        {demo && (
+          <span className="hidden sm:flex">
+            <CurrencySwitcher tone="dark" />
+          </span>
+        )}
+        {/**
+         * Devise et thème se retirent sous `sm`, la langue reste.
+         *
+         * Les quatre commandes alignées mesurent près de 500 px : sur les
+         * 390 px d'un téléphone — la cible matérielle du produit — la barre
+         * passait à quatre lignes et mangeait le tiers de l'écran, en restant
+         * collée. Mesuré en capture avant correction.
+         *
+         * Le thème est celui qui se retire le mieux : par défaut il SUIT le
+         * système, qui a déjà son propre réglage sur un téléphone. La langue,
+         * elle, n'a pas ce recours et reste la commande la plus demandée sur ce
+         * marché.
+         */}
+        <span className="hidden sm:flex">
+          <ThemeSwitcher tone="dark" />
+        </span>
+        {/* En démonstration, le sélecteur de profil est le propos : c'est par
+            lui qu'on entre dans la peau du locataire, et il doit permettre d'en
+            sortir. Sans lui, cette barre serait un cul-de-sac — la barre
+            latérale qui le portait n'existe plus ici. */}
+        {demo && <SelecteurProfilCompact role="tenant" setRole={setRole} />}
+        <SelecteurParc tone="dark" />
+        <MenuCompte tone="dark" />
+      </div>
+    </header>
+  )
+}
+
+/**
+ * Une destination du locataire.
+ *
+ * Le repère de l'entrée courante est un filet DORÉ sous le libellé, et non
+ * seulement un fond : `gold-ink` tient au-delà de 3:1 sur l'encre dans les deux
+ * thèmes, quand l'or de marque n'y atteint que 2,62:1. C'est le seul indice de
+ * l'écran où l'on se trouve ; il doit se voir.
+ */
+function LienLocataire({ item }: { item: NavItem }) {
+  const t = useT()
+  const base = useBase()
+  const label = t(item.labelKey as 'nav.dashboard')
+
+  return (
+    <NavLink
+      to={lien(base, item.to)}
+      end={item.to === ''}
+      className={({ isActive }) =>
+        cn(
+          'inline-flex min-h-11 shrink-0 items-center gap-2 rounded-t-lg border-b-2 px-3 sm:px-4',
+          'text-label font-semibold no-underline transition-colors duration-150',
+          isActive
+            ? 'border-gold-ink bg-on-dark-hover text-on-dark'
+            : 'border-transparent text-on-dark-muted hover:bg-on-dark-hover hover:text-on-dark',
+        )
+      }
+    >
+      {/* L'icône se retire sous `sm`, jamais le libellé. À 320 px les trois
+          entrées et leurs pictogrammes ne tiennent pas : « Signaler » sortait
+          du cadre et se réduisait à sa cloche, laissant deviner sa
+          destination. Le dépôt tranche déjà dans ce sens pour la barre basse —
+          un libellé visible, pas une icône seule. */}
+      <Icon name={item.icon} size={17} className="hidden sm:block" />
+      {label}
+    </NavLink>
+  )
+}
+
+/**
+ * Le sélecteur de profil, réduit à une liste déroulante.
+ *
+ * Celui de la barre latérale est un groupe de boutons radio sur trois lignes —
+ * il a la place, cette barre ne l'a pas. Les deux écrivent le même état ; en
+ * faire deux formes est un moindre mal comparé à une barre qui ne rendrait pas
+ * la main au visiteur.
+ */
+function SelecteurProfilCompact({
+  role,
+  setRole,
+}: {
+  role: Role
+  setRole: (role: Role) => void
+}) {
+  const t = useT()
+  return (
+    <label className="flex items-center gap-2">
+      <span className="sr-only">{t('nav.activeProfile')}</span>
+      <select
+        value={role}
+        onChange={(e) => setRole(e.target.value as Role)}
+        className="min-h-11 cursor-pointer rounded-md border border-on-dark-border bg-on-dark-hover px-2.5 text-label text-on-dark"
+      >
+        {(['owner', 'manager', 'tenant'] as const).map((value) => (
+          <option key={value} value={value} className="text-ink">
+            {t(`roles.${value}.name` as 'roles.owner.name')}
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }
 
@@ -757,7 +996,7 @@ function Sidebar({
  * qu'on imprime sur une quittance. Le sélecteur, lui, ne demande rien de tout
  * cela.
  */
-function SelecteurParc() {
+function SelecteurParc({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
   const t = useT()
   const { etat, adhesionActive, choisirParc } = useSession()
   if (etat.statut !== 'connecte' || etat.adhesions.length < 2) return null
@@ -768,10 +1007,18 @@ function SelecteurParc() {
       <select
         value={adhesionActive?.parkId ?? ''}
         onChange={(e) => choisirParc(e.target.value)}
-        className="min-h-11 cursor-pointer rounded-md border border-border bg-paper px-2.5 text-label text-ink"
+        className={cn(
+          'min-h-11 cursor-pointer rounded-md border px-2.5 text-label',
+          tone === 'dark'
+            ? 'border-on-dark-border bg-on-dark-hover text-on-dark'
+            : 'border-border bg-paper text-ink',
+        )}
       >
         {etat.adhesions.map((a) => (
-          <option key={a.parkId} value={a.parkId}>
+          // La LISTE DÉROULÉE est peinte par le système, pas par la barre : sans
+          // encre explicite, ses entrées héritent du blanc du sélecteur et
+          // s'écrivent alors en blanc sur le fond clair du menu natif.
+          <option key={a.parkId} value={a.parkId} className="text-ink">
             {a.parkName}
           </option>
         ))}
@@ -798,7 +1045,7 @@ function initiales(nom: string): string {
  * et l'application en a déjà fait les frais (« l'auteur du produit a pris la
  * démonstration pour son espace deux fois dans la même après-midi »).
  */
-function MenuCompte() {
+function MenuCompte({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
   const t = useT()
   const { etat, deconnecter } = useSession()
   const [ouvert, setOuvert] = useState(false)
@@ -841,7 +1088,15 @@ function MenuCompte() {
         aria-haspopup="menu"
         aria-label={t('auth.accountMenu', { name: nom })}
         onClick={() => setOuvert((o) => !o)}
-        className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-ink text-label font-semibold text-on-dark"
+        className={cn(
+          'flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full',
+          'text-label font-semibold',
+          // Encre sur encre : la pastille disparaissait purement et simplement
+          // dans la barre du locataire, qui est de la même couleur. L'or est
+          // celui de la maquette du portail, et `text-ink` s'y tient parce que
+          // `.bg-gold` refixe `--color-ink` sur son aplat.
+          tone === 'dark' ? 'bg-gold text-ink' : 'bg-ink text-on-dark',
+        )}
       >
         {initiales(nom)}
       </button>

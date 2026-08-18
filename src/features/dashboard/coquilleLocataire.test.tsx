@@ -15,7 +15,13 @@ import { renderApp, screen, switchRole, attendreLeChargement, userEvent } from '
  * filtre, ajouter un écran ouvert à tous l'allongeait sans que rien ne s'en
  * aperçoive.
  */
-const nav = () => screen.getByRole('navigation', { name: 'Tableau de bord' })
+/**
+ * Sa navigation s'appelle « Navigation principale », et non « Tableau de
+ * bord » : c'est le nom que portait le panneau du bailleur, dont le locataire
+ * a hérité tant qu'il en partageait la coquille. Il n'a pas de tableau de
+ * bord — il a « Mon espace ».
+ */
+const nav = () => screen.getByRole('navigation', { name: 'Navigation principale' })
 
 const entrees = () =>
   within(nav())
@@ -186,19 +192,63 @@ describe('signaler — les choix au clavier', () => {
 })
 
 /**
- * La barre basse du locataire ne propose pas de VITRINE.
+ * UNE barre, en haut, et rien d'autre.
  *
- * Ses candidats étaient devenus « toutes ses entrées », pied compris : en
- * démonstration la quatrième place revenait donc à « Portail locataire (web) »,
- * une page qui MONTRE le produit, promue au rang de destination du produit.
+ * Le locataire naviguait dans le panneau latéral du bailleur, doublé sous `lg`
+ * d'une barre basse et d'un tiroir. Les maquettes montrent une barre
+ * horizontale sombre ; la coquille de gestion tombe donc avec elle, tiroir et
+ * abrégé compris. Ce que ces cas gardent : qu'il n'en reste qu'une, et qu'elle
+ * n'y fasse entrer aucune vitrine — « Portail locataire (web) » est une page
+ * qui MONTRE le produit, elle n'est pas une destination du produit.
  */
-describe('coquille du locataire — barre basse', () => {
+describe('coquille du locataire — une seule navigation', () => {
+  it('n’expose ni barre basse, ni tiroir à ouvrir', async () => {
+    await ouvrirEnLocataire('/demo/mon-espace')
+    expect(screen.queryByRole('navigation', { name: 'Navigation rapide' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Ouvrir la navigation' })).toBeNull()
+    expect(screen.getAllByRole('navigation', { name: 'Navigation principale' })).toHaveLength(1)
+  })
+
   it('n’y fait entrer aucune page de démonstration', async () => {
     await ouvrirEnLocataire('/demo/mon-espace')
-    const barre = screen.getByRole('navigation', { name: 'Navigation rapide' })
-    const libelles = within(barre)
-      .getAllByRole('link')
-      .map((a) => a.textContent?.trim())
-    expect(libelles).toEqual(['Mon espace', 'Documents', 'Signaler'])
+    expect(entrees()).toEqual(['Mon espace', 'Documents', 'Signaler'])
+  })
+
+  /**
+   * Trois LIENS, et non trois onglets.
+   *
+   * La prévisualisation `/portail`, d'où cette barre est portée, tient le motif
+   * `tab` en entier — flèches, `tabindex` roulant, panneau lié — parce qu'elle
+   * montre trois vues d'un même dossier. Ici ce sont trois adresses : un
+   * lecteur d'écran doit entendre « lien », et rien ne doit promettre une
+   * navigation aux flèches qui n'existe pas.
+   */
+  it('annonce des liens, pas un groupe d’onglets', async () => {
+    await ouvrirEnLocataire('/demo/mon-espace')
+    expect(within(nav()).queryAllByRole('tab')).toHaveLength(0)
+    expect(within(nav()).getAllByRole('link')).toHaveLength(3)
+  })
+
+  /**
+   * La cloche des maquettes ne traverse pas.
+   *
+   * Elle est `aria-hidden` dans la prévisualisation, où elle est assumée comme
+   * décor. Le locataire n'a aucune file de notifications à ouvrir : une cloche
+   * dans la vraie barre serait une commande sans donnée derrière — le défaut
+   * que les « Télécharger » de l'écran Documents ont déjà coûté une fois.
+   */
+  it('ne porte aucune commande qui n’ouvre rien', async () => {
+    await ouvrirEnLocataire('/demo/mon-espace')
+    const barre = screen.getByRole('banner')
+    for (const bouton of within(barre).getAllByRole('button'))
+      expect(bouton.textContent?.trim() || bouton.getAttribute('aria-label')).toBeTruthy()
+  })
+
+  /** Le bailleur, lui, garde la sienne : cette coquille n'a pas bougé. */
+  it('laisse au bailleur sa barre latérale et son abrégé', async () => {
+    renderApp('/demo/parc')
+    await attendreLeChargement()
+    expect(screen.getByRole('navigation', { name: 'Tableau de bord' })).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Navigation rapide' })).toBeInTheDocument()
   })
 })

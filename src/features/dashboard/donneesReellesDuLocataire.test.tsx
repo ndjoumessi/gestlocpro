@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { within } from '@testing-library/react'
 import { renderApp, screen, attendreLeChargement } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
@@ -253,5 +254,24 @@ describe('historique des quittances servi par le serveur', () => {
     expect(main).not.toHaveTextContent('Aucune quittance disponible')
     expect(main).toHaveTextContent('Juin 2026')
     expect(main).toHaveTextContent('Juillet 2026')
+  })
+})
+
+/**
+ * La barre du locataire CONNECTÉ.
+ *
+ * Elle porte son identité, et par elle la sortie : sur un poste partagé — le
+ * cas courant du marché visé — la déconnexion est le geste qui compte, et la
+ * coquille précédente la logeait dans une barre latérale que le locataire n'a
+ * plus. Le sélecteur de profil, lui, appartient à la démonstration : proposer
+ * à un vrai locataire de « regarder en propriétaire » annoncerait un pouvoir
+ * que le serveur lui refuse.
+ */
+describe('barre du locataire connecté', () => {
+  it('porte le menu du compte, et non le sélecteur de profil', async () => {
+    await ouvrir('/app/mon-espace')
+    const barre = screen.getByRole('banner')
+    expect(within(barre).getByRole('button', { name: /Sarah Ngassa/ })).toBeInTheDocument()
+    expect(within(barre).queryByRole('combobox')).toBeNull()
   })
 })
