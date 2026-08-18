@@ -6,7 +6,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { env } from './env.js'
 import { authRouter } from './auth/routes.js'
-import { parksRouter } from './parks/routes.js'
+import { parksRouter, rejoindreRouter } from './parks/routes.js'
 
 /**
  * Répertoire du client construit.
@@ -182,6 +182,9 @@ export function createApp() {
   // principale verrue d'Express 4, et l'oublier une seule fois y laissait une
   // requête suspendue jusqu'au délai d'expiration du client.
   app.use('/api/auth', authRouter)
+  // Hors de `/api/parks/:parkId` : on ne peut pas exiger l'appartenance à un
+  // parc pour demander à le rejoindre.
+  app.use('/api/join', rejoindreRouter)
   app.use('/api/parks', parksRouter)
 
   // 404 en JSON pour l'API : le client parse toutes ses réponses, et une page

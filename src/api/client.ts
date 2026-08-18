@@ -147,6 +147,19 @@ export const api = {
 
   logout: () => requete<void>('/auth/logout', { method: 'POST' }),
 
+  /**
+   * Rejoint un parc avec un compte DÉJÀ créé.
+   *
+   * Le code ne se consommait qu'à l'inscription : un compte existant n'avait
+   * aucun moyen de rejoindre quoi que ce soit, et l'invitation restait valable
+   * et sans porte.
+   */
+  joinPark: (invitationCode: string) =>
+    requete<{ parkId: string; role: Role }>('/join', {
+      method: 'POST',
+      body: JSON.stringify({ invitationCode }),
+    }),
+
   me: () => requete<SessionApi>('/auth/me'),
 
   health: () => requete<{ ok: boolean }>('/health'),

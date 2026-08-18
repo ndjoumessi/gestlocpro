@@ -6,6 +6,12 @@ import { RadioCards } from '@/components/primitives/Choice'
 import { Icon } from '@/components/primitives/Icon'
 import { useT } from '@/i18n/I18nProvider'
 import type { Role } from '@/features/auth/signupState'
+import { Button } from '@/components/primitives/Button'
+import { Field } from '@/components/primitives/Field'
+import { Input } from '@/components/primitives/Input'
+import { useToast } from '@/components/primitives/Toast'
+import { useSession } from '@/api/SessionProvider'
+import { api } from '@/api/client'
 
 /** Droits par rôle. `false` = action refusée. */
 /**
@@ -70,6 +76,77 @@ const FAMILLES: {
 
 const ROLES: Role[] = ['owner', 'manager', 'tenant']
 
+/**
+ * Rejoindre un parc quand on a DÉJÀ un compte.
+ *
+ * Le code d'invitation ne se consommait qu'à l'inscription. Un compte existant —
+ * celui d'un invité dont le code n'était jamais parti — n'avait aucune porte :
+ * l'invitation restait valable et inutilisable, et son porteur se retrouvait
+ * propriétaire d'un parc vide.
+ *
+ * Posé ici, sur « Prise en main et droits », parce que c'est l'écran qu'on
+ * ouvre quand on ne comprend pas où l'on est.
+ */
+function RejoindreUnParc() {
+  const t = useT()
+  const { notify } = useToast()
+  const { rafraichir } = useSession()
+  const [code, setCode] = useState('')
+  const [erreur, setErreur] = useState<string | null>(null)
+  const [envoi, setEnvoi] = useState(false)
+
+  return (
+    <Card className="flex flex-col gap-4">
+      <div>
+        <h2 className="title-m font-semibold">{t('app.onboarding.joinTitle')}</h2>
+        <p className="mt-1 text-body-s text-muted">{t('app.onboarding.joinBody')}</p>
+      </div>
+      <Field
+        label={t('auth.signup.inviteCode')}
+        {...(erreur ? { error: erreur } : {})}
+      >
+        {(props) => (
+          <Input
+            {...props}
+            name="joinCode"
+            autoCapitalize="characters"
+            placeholder="LOC-XXXX-XXXX"
+            value={code}
+            invalid={Boolean(erreur)}
+            onChange={(e) => {
+              setCode(e.target.value)
+              setErreur(null)
+            }}
+          />
+        )}
+      </Field>
+      <div>
+        <Button
+          disabled={envoi || code.trim().length < 4}
+          onClick={async () => {
+            setEnvoi(true)
+            try {
+              await api.joinPark(code.trim())
+              // La session porte les adhésions : sans relecture, l'écran
+              // resterait sur celles d'avant et le parc rejoint n'apparaîtrait
+              // qu'au prochain rechargement.
+              await rafraichir()
+              notify(t('app.onboarding.joined'), { tone: 'ok' })
+              setCode('')
+            } catch {
+              setErreur(t('app.onboarding.joinRefused'))
+            } finally {
+              setEnvoi(false)
+            }
+          }}
+        >
+          {t('app.onboarding.join')}
+        </Button>
+      </div>
+    </Card>
+  )
+}
+
 export function Onboarding() {
   const t = useT()
   /**
@@ -99,6 +176,10 @@ export function Onboarding() {
   return (
     <>
       <PageHeader title={t('app.onboarding.title')} description={t('app.onboarding.subtitle')} />
+
+      <div className="mt-6">
+        <RejoindreUnParc />
+      </div>
 
       <Card className="mb-4">
         <RadioCards

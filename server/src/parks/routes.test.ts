@@ -2845,3 +2845,81 @@ describe('retrait d’une fiche locataire', () => {
     expect(await prisma.tenant.count()).toBe(1)
   })
 })
+
+describe('rejoindre un parc avec un compte existant', () => {
+  it('crée l’adhésion au rôle de l’INVITATION', async () => {
+    /**
+     * Le code ne se consommait qu'à l'inscription. Un compte existant — celui
+     * d'un invité dont le code n'était jamais parti — n'avait aucun moyen de
+     * rejoindre quoi que ce soit : l'invitation restait valable et sans porte.
+     */
+    const p = await inscrire('hote@example.com', { parkName: 'Parc' })
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', p.cookie)
+    const parkId = parcs.body.parks[0].id
+    const invit = await request(serveur)
+      .post(`/api/parks/${parkId}/invitations`)
+      .set('Cookie', p.cookie)
+      .send({ role: 'tenant' })
+
+    const invite = await inscrire('invite@example.com', { parkName: 'Son propre parc' })
+    const res = await request(serveur)
+      .post('/api/join')
+      .set('Cookie', invite.cookie)
+      .send({ invitationCode: invit.body.code })
+
+    expect(res.status, JSON.stringify(res.body)).toBe(201)
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'invite@example.com' },
+    })
+    const adhesion = await prisma.membership.findFirstOrThrow({
+      where: { userId: compte.id, parkId },
+    })
+    // Le rôle vient de l'invitation, jamais de la saisie.
+    expect(adhesion.role).toBe('tenant')
+  })
+
+  it('refuse un code déjà accepté, sans dire qu’il a existé', async () => {
+    const p = await inscrire('hote2@example.com', { parkName: 'Parc' })
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', p.cookie)
+    const invit = await request(serveur)
+      .post(`/api/parks/${parcs.body.parks[0].id}/invitations`)
+      .set('Cookie', p.cookie)
+      .send({ role: 'tenant' })
+
+    const a = await inscrire('premier@example.com', { parkName: 'Parc Premier' })
+    await request(serveur)
+      .post('/api/join')
+      .set('Cookie', a.cookie)
+      .send({ invitationCode: invit.body.code })
+
+    const b = await inscrire('second@example.com', { parkName: 'Parc Second' })
+    const res = await request(serveur)
+      .post('/api/join')
+      .set('Cookie', b.cookie)
+      .send({ invitationCode: invit.body.code })
+
+    // Le MÊME refus qu'un code inconnu : les distinguer dirait à qui essaie des
+    // codes au hasard lesquels ont existé.
+    expect(res.status).toBe(400)
+    expect(res.body.error).toBe('invitation_invalid')
+  })
+
+  it('ne brûle pas le code quand on est déjà membre', async () => {
+    const p = await inscrire('hote3@example.com', { parkName: 'Parc' })
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', p.cookie)
+    const invit = await request(serveur)
+      .post(`/api/parks/${parcs.body.parks[0].id}/invitations`)
+      .set('Cookie', p.cookie)
+      .send({ role: 'tenant' })
+
+    const res = await request(serveur)
+      .post('/api/join')
+      .set('Cookie', p.cookie)
+      .send({ invitationCode: invit.body.code })
+
+    expect(res.status).toBe(409)
+    // Le code reste consommable par celui à qui il était destiné.
+    const apres = await prisma.invitation.findFirstOrThrow({ where: { id: invit.body.invitation.id } })
+    expect(apres.acceptedAt).toBeNull()
+  })
+})

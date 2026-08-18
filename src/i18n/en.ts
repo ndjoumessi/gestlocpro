@@ -760,6 +760,11 @@ export const en: Dictionary = {
     },
 
     onboarding: {
+      joinTitle: 'Join a park',
+      joinBody: 'If your landlord or manager gave you a code, enter it here: your account will be attached to their park, with the role they granted you.',
+      join: 'Join',
+      joined: 'Park joined · your space is up to date',
+      joinRefused: 'This code cannot be used. Check it, or ask for a new one.',
       title: 'Onboarding and delegation of rights',
       // La seconde proposition promettait d'inviter un gestionnaire ou un
       // locataire depuis cet écran. Il n'en porte ni bouton ni lien.

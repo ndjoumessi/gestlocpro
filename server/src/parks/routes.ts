@@ -1,7 +1,8 @@
 import { Router, type Request, type Response } from 'express'
 import { z } from 'zod'
 import { prisma } from '../db.js'
-import { creerCode, expirationInvitation } from './invitations.js'
+import { creerCode, expirationInvitation, normaliserCode } from './invitations.js'
+import { empreinteJeton } from '../auth/token.js'
 import { laMessagerie } from '../messagerie/messagerie.js'
 import { exigerAppartenance, exigerCompte, exigerRole, unitesVisibles } from '../auth/guards.js'
 
@@ -2356,3 +2357,61 @@ parksRouter.delete(
     res.status(204).end()
   },
 )
+
+/**
+ * Rejoindre un parc avec un compte DÉJÀ créé.
+ *
+ * Le code d'invitation ne se consommait qu'à l'inscription. Un compte existant —
+ * celui d'un invité dont le code n'était jamais parti, ou d'un locataire inscrit
+ * avant de recevoir le sien — n'avait aucun moyen de rejoindre quoi que ce soit.
+ * L'invitation restait valable et sans porte.
+ *
+ * Hors de `parksRouter` : on ne peut pas exiger l'appartenance à un parc pour
+ * demander à le rejoindre. Seul le compte est requis.
+ */
+export const rejoindreRouter = Router()
+rejoindreRouter.use(exigerCompte)
+
+rejoindreRouter.post('/', async (req: Request, res: Response) => {
+  const corps = z.object({ invitationCode: z.string().trim().min(4).max(40) }).parse(req.body)
+
+  const invitation = await prisma.invitation.findUnique({
+    where: { codeHash: empreinteJeton(normaliserCode(corps.invitationCode)) },
+    select: { id: true, parkId: true, role: true, expiresAt: true, acceptedAt: true, revokedAt: true },
+  })
+
+  const maintenant = new Date()
+  const utilisable =
+    invitation && !invitation.acceptedAt && !invitation.revokedAt && invitation.expiresAt > maintenant
+
+  // Un code invalide, expiré, révoqué ou déjà accepté rend le MÊME refus : les
+  // distinguer dirait à qui essaie des codes au hasard lesquels ont existé.
+  if (!utilisable) {
+    res.status(400).json({ error: 'invitation_invalid' })
+    return
+  }
+
+  const deja = await prisma.membership.findFirst({
+    where: { userId: req.compteId!, parkId: invitation.parkId },
+    select: { id: true },
+  })
+  if (deja) {
+    // Le code resterait consommable pour quelqu'un d'autre : on ne le brûle pas.
+    res.status(409).json({ error: 'already_member' })
+    return
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.membership.create({
+      // Le rôle vient de l'INVITATION, jamais de la saisie — la même règle qu'à
+      // l'inscription, et pour la même raison.
+      data: { userId: req.compteId!, parkId: invitation.parkId, role: invitation.role },
+    })
+    await tx.invitation.update({
+      where: { id: invitation.id, acceptedAt: null },
+      data: { acceptedAt: maintenant },
+    })
+  })
+
+  res.status(201).json({ parkId: invitation.parkId, role: invitation.role })
+})

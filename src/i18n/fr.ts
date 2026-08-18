@@ -880,6 +880,11 @@ export const fr = {
     },
 
     onboarding: {
+      joinTitle: 'Rejoindre un parc',
+      joinBody: 'Si votre propriétaire ou gestionnaire vous a remis un code, saisissez-le ici : votre compte sera rattaché à son parc, au rôle qu’il vous a accordé.',
+      join: 'Rejoindre',
+      joined: 'Parc rejoint · votre espace est à jour',
+      joinRefused: 'Ce code ne peut pas être utilisé. Vérifiez-le, ou demandez-en un nouveau.',
       title: 'Prise en main et délégation des droits',
       // La seconde proposition promettait d'inviter depuis cet écran, qui n'en
       // porte ni bouton ni lien.
