@@ -9,7 +9,7 @@ import { Skeleton, SkeletonRegion } from '@/components/primitives/Skeleton'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
-import { TENANT_RECEIPTS, UTILITY_RATES, chargeDue, inspectionsForUnit } from '@/data/portfolio'
+import { UTILITY_RATES, chargeDue } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { useToast } from '@/components/primitives/Toast'
 import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
@@ -50,7 +50,8 @@ export function TenantDocuments() {
   const d = useDates()
   const { money } = useCurrency()
   const downloadReceipt = useReceiptExport()
-  const { unitById, tenantUnitIds, depositForUnit, addWork, loading } = usePortfolio()
+  const { unitById, tenantUnitIds, depositForUnit, inspectionForUnit, tenantReceipts, addWork, loading } =
+    usePortfolio()
   const { notify } = useToast()
   const exportCsv = useCsvExport()
   const csvMoney = useCsvMoney()
@@ -60,7 +61,7 @@ export function TenantDocuments() {
   const monUnite = tenantUnitIds[0] ?? ''
   const unit = unitById(monUnite)
   const deposit = depositForUnit(monUnite)
-  const entree = inspectionsForUnit(monUnite).find((i) => i.kind === 'entry')
+  const entree = inspectionForUnit(monUnite, 'entry')
 
   // L'attente AVANT le garde `!unit` : pendant le chargement, le jeu de
   // démonstration fournit toujours une unité, et l'écran montrerait le dossier
@@ -83,7 +84,7 @@ export function TenantDocuments() {
         csvMoney.header(t('app.tenant.colPower')),
         t('app.payments.date'),
       ],
-      rows: TENANT_RECEIPTS.map((receipt) => [
+      rows: tenantReceipts.map((receipt) => [
         d.monthYear(receipt),
         csvMoney.amount(unit.rent),
         csvMoney.amount(chargeDue(receipt.water, UTILITY_RATES.water)),
@@ -157,18 +158,32 @@ export function TenantDocuments() {
 
         <Card flush>
           <CardHeader
-            eyebrow={`${t('app.documents.receipts')} · ${TENANT_RECEIPTS.length}`}
+            eyebrow={`${t('app.documents.receipts')} · ${tenantReceipts.length}`}
             title={t('app.documents.receiptsTitle')}
             level={2}
             className="px-4 pt-4 sm:px-5 sm:pt-5"
             action={
-              <Button variant="ghost" size="sm" icon="download" onClick={toutTelecharger}>
-                {t('app.documents.downloadAll')}
-              </Button>
+              tenantReceipts.length > 0 ? (
+                <Button variant="ghost" size="sm" icon="download" onClick={toutTelecharger}>
+                  {t('app.documents.downloadAll')}
+                </Button>
+              ) : undefined
             }
           />
+          {/* La liste est vide hors démonstration : le serveur ne rend pas
+              d'historique. On l'annonce plutôt que de servir les six périodes
+              de la démonstration comme si elles étaient les siennes. */}
+          {tenantReceipts.length === 0 ? (
+            <div className="border-t border-divider px-4 py-4 sm:px-5">
+              <EmptyState
+                icon="file"
+                title={t('app.tenant.noReceiptsTitle')}
+                body={t('app.tenant.noDocumentsBody')}
+              />
+            </div>
+          ) : (
           <ul className="divide-y divide-divider border-t border-divider">
-            {TENANT_RECEIPTS.map((receipt) => (
+            {tenantReceipts.map((receipt) => (
               <li
                 key={`${receipt.year}-${receipt.month}`}
                 className="flex items-center gap-3 px-4 py-3 sm:px-5"
@@ -186,6 +201,7 @@ export function TenantDocuments() {
               </li>
             ))}
           </ul>
+          )}
         </Card>
       </div>
 
@@ -246,7 +262,10 @@ export function TenantDocuments() {
           où en inventer une.
         */}
         <Card tone="dark">
-          <CardHeader eyebrow={t('app.documents.privacy')} title="" level={2} className="mb-2" />
+          {/* Le titre porte le libellé : `CardHeader` rend son `<h2>` sans
+              condition, et le laisser vide posait un en-tête anonyme qu'un
+              lecteur d'écran annonce sans pouvoir le nommer. */}
+          <CardHeader title={t('app.documents.privacy')} level={2} className="mb-2" />
           <p className="flex items-start gap-3 text-body-s text-on-dark-muted">
             <Icon name="shield" size={17} className="mt-0.5 shrink-0 text-gold" />
             {t('app.documents.privacyBody')}

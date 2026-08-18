@@ -26,11 +26,24 @@ describe('mon espace — en-tête', () => {
     )
   })
 
-  it('date le bail en cours et nomme le gestionnaire', async () => {
+  it('date le bail en cours, sur la date de l’état des lieux d’entrée', async () => {
     await ouvrir()
-    const main = screen.getByRole('main')
-    expect(main).toHaveTextContent('Bail en cours depuis le 15/05/2024')
-    expect(main).toHaveTextContent('gestionnaire Diane F.')
+    // A1 : état des lieux d'entrée le 15/06/2024, et le bail commence le même
+    // jour — voir `alignementDuBail.test.ts`.
+    expect(screen.getByRole('main')).toHaveTextContent('Bail en cours depuis le 15/06/2024')
+  })
+
+  /**
+   * Le gestionnaire ne figure PAS dans l'en-tête.
+   *
+   * La ligne annonçait « gestionnaire Diane F. » — une chaîne du dictionnaire,
+   * servie à tout locataire de tout parc. Rien dans le modèle ne relie un
+   * gestionnaire à une unité : la valeur ne pouvait être juste que par
+   * coïncidence, et l'en-tête est le dernier endroit où en loger une.
+   */
+  it('ne nomme aucun gestionnaire qu’il ne sait pas identifier', async () => {
+    await ouvrir()
+    expect(screen.getByRole('main')).not.toHaveTextContent(/gestionnaire Diane F\./)
   })
 })
 
@@ -96,7 +109,8 @@ describe('mon espace — paiements par période', () => {
    */
   it('écrit le reste dû d’une charge partiellement réglée', async () => {
     await ouvrir()
-    // Avril 2026 : 142 kWh × 99 = 14 058 dus, 9 000 réglés, reste 5 058.
+    // Mai 2026 (`month: 4`, indexé à zéro) : 142 kWh × 99 = 14 058 dus,
+    // 9 000 réglés, reste 5 058.
     expect(screen.getByRole('table')).toHaveTextContent('reste 5 058')
   })
 

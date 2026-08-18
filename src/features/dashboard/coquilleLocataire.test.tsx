@@ -123,3 +123,82 @@ describe('documents — demander une pièce', () => {
     expect(screen.getByRole('main')).not.toHaveTextContent(/dernier acc[èe]s/i)
   })
 })
+
+/**
+ * Le clavier du formulaire de signalement.
+ *
+ * Les deux choix — métier, urgence — portaient `role="radio"` et un `tabIndex`
+ * roulant SANS gestionnaire de touches. La tabulation entrait sur la pastille
+ * active, les flèches ne faisaient rien, les autres portaient `tabIndex={-1}`
+ * et la tabulation les sautait : il était impossible de déclarer autre chose
+ * qu'une plomberie d'urgence normale sans souris.
+ */
+describe('signaler — les choix au clavier', () => {
+  async function groupeMetier() {
+    const user = userEvent.setup()
+    await ouvrirEnLocataire('/demo/signaler')
+    const groupe = screen.getByRole('radiogroup', { name: 'De quoi s’agit-il ?' })
+    return { user, choix: within(groupe).getAllByRole('radio') }
+  }
+
+  it('déplace la sélection et le focus aux flèches', async () => {
+    const { user, choix } = await groupeMetier()
+    choix[0].focus()
+    expect(choix[0]).toHaveAttribute('aria-checked', 'true')
+
+    await user.keyboard('{ArrowRight}')
+    expect(choix[1]).toHaveFocus()
+    expect(choix[1]).toHaveAttribute('aria-checked', 'true')
+    expect(choix[0]).toHaveAttribute('aria-checked', 'false')
+
+    await user.keyboard('{ArrowLeft}')
+    expect(choix[0]).toHaveFocus()
+    expect(choix[0]).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('borne aux extrémités au lieu de boucler', async () => {
+    const { user, choix } = await groupeMetier()
+    choix[0].focus()
+    await user.keyboard('{ArrowLeft}')
+    expect(choix[0]).toHaveFocus()
+
+    const dernier = choix[choix.length - 1]
+    dernier.focus()
+    await user.keyboard('{ArrowRight}')
+    expect(dernier).toHaveFocus()
+  })
+
+  it('saute aux extrémités avec Début et Fin', async () => {
+    const { user, choix } = await groupeMetier()
+    choix[0].focus()
+    await user.keyboard('{End}')
+    expect(choix[choix.length - 1]).toHaveFocus()
+    await user.keyboard('{Home}')
+    expect(choix[0]).toHaveFocus()
+  })
+
+  it('n’offre qu’un seul arrêt de tabulation par groupe', async () => {
+    const { choix } = await groupeMetier()
+    const arrets = choix.filter((c) => c.getAttribute('tabindex') === '0')
+    expect(arrets).toHaveLength(1)
+    expect(arrets[0]).toHaveAttribute('aria-checked', 'true')
+  })
+})
+
+/**
+ * La barre basse du locataire ne propose pas de VITRINE.
+ *
+ * Ses candidats étaient devenus « toutes ses entrées », pied compris : en
+ * démonstration la quatrième place revenait donc à « Portail locataire (web) »,
+ * une page qui MONTRE le produit, promue au rang de destination du produit.
+ */
+describe('coquille du locataire — barre basse', () => {
+  it('n’y fait entrer aucune page de démonstration', async () => {
+    await ouvrirEnLocataire('/demo/mon-espace')
+    const barre = screen.getByRole('navigation', { name: 'Navigation rapide' })
+    const libelles = within(barre)
+      .getAllByRole('link')
+      .map((a) => a.textContent?.trim())
+    expect(libelles).toEqual(['Mon espace', 'Documents', 'Signaler'])
+  })
+})

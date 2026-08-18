@@ -43,10 +43,12 @@ import {
   COLLECTIONS as COLLECTIONS_DEMO,
   INSPECTIONS as INSPECTIONS_DEMO,
   READINGS as READINGS_DEMO,
+  TENANT_RECEIPTS as TENANT_RECEIPTS_DEMO,
   type Alert,
   type Inspection,
   type MeterReading,
   type MonthlyCollection,
+  type Receipt,
 } from './portfolio'
 import { ApiError, api } from '@/api/client'
 import { useToast } from '@/components/primitives/Toast'
@@ -286,7 +288,23 @@ interface PortfolioContextValue {
   inspections: Inspection[]
   alerts: Alert[]
   collections: MonthlyCollection[]
+  /**
+   * Quittances du locataire connecté. VIDE hors démonstration : le serveur ne
+   * rend qu'une échéance par bail, pas d'historique — et une constante de
+   * démonstration servie à un vrai locataire lui donnerait des périodes, des
+   * montants et un moyen de paiement qui ne sont pas les siens.
+   */
+  tenantReceipts: Receipt[]
   readingForUnit: (unitId: string) => MeterReading | undefined
+  /**
+   * État des lieux d'une unité, pris sur l'état PARTAGÉ.
+   *
+   * Les écrans du locataire appelaient `inspectionsForUnit` du module de
+   * démonstration : sur un vrai parc, les identifiants sont des `uuid` et la
+   * recherche ne trouvait jamais rien — l'état des lieux d'entrée s'affichait
+   * « aucun document déposé » alors que le parc en portait un.
+   */
+  inspectionForUnit: (unitId: string, kind: Inspection['kind']) => Inspection | undefined
   /** `true` si cette unité relève du compte connecté. */
   isMine: (unitId: string) => boolean
   /** `true` quand les données viennent du serveur et non du jeu local. */
@@ -409,6 +427,21 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const [inspections, setInspections] = useState<Inspection[]>(INSPECTIONS_DEMO)
   const [alerts, setAlerts] = useState<Alert[]>(ALERTS_DEMO)
   const [collections, setCollections] = useState<MonthlyCollection[]>(COLLECTIONS_DEMO)
+  /**
+   * Quittances du locataire connecté.
+   *
+   * Elles étaient importées EN DUR par les deux écrans du locataire, seule
+   * collection à ne pas passer par ici. Sur un vrai parc, il lisait donc les six
+   * périodes de la démonstration — « Août 2026 », « payé par Mobile Money »,
+   * une consommation d'eau et d'électricité inventées — à côté de son loyer
+   * réel, sur le seul écran où il n'a aucun moyen de recouper.
+   *
+   * Le serveur ne sait pas encore les rendre : la réponse du portefeuille ne
+   * porte qu'UNE échéance par bail, la courante, et aucun historique. La liste
+   * est donc VIDE hors démonstration, et les écrans le disent — ce qui est
+   * l'état réel de la fonctionnalité, quand la constante le masquait.
+   */
+  const [tenantReceipts, setTenantReceipts] = useState<Receipt[]>(TENANT_RECEIPTS_DEMO)
 
   useEffect(() => {
     if (!parkId) {
@@ -477,6 +510,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       setUnits(parc.units)
       setWorks(parc.works)
       setDeposits(parc.deposits)
+      // Aucun historique de quittances côté serveur : la démonstration ne doit
+      // pas survivre au branchement des vraies données.
+      setTenantReceipts([])
       setFromApi(true)
       // Posé APRÈS l'écriture, et seulement en cas de succès : un échec laisse
       // le jeu de démonstration à l'écran, et une relecture ultérieure a alors
@@ -1061,7 +1097,10 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       inspections,
       alerts,
       collections,
+      tenantReceipts,
       readingForUnit: (unitId) => readings.find((r) => r.unitId === unitId),
+      inspectionForUnit: (unitId, kind) =>
+        inspections.find((i) => i.unitId === unitId && i.kind === kind),
       tenantUnitIds,
       isMine: (unitId: string) => tenantUnitIds.includes(unitId),
       worksForUnit: (unitId) => works.filter((w) => w.unitId === unitId),
@@ -1097,6 +1136,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       collections,
       fromApi,
       loading,
+      tenantReceipts,
       approveWork,
       quoteWork,
       completeWork,

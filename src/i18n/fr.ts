@@ -453,6 +453,11 @@ export const fr = {
     tenant: {
       title: 'Mon espace locataire',
       subtitle: 'Votre logement, vos quittances et vos signalements.',
+      noReceiptsTitle: 'Aucune quittance disponible',
+      noReceiptsBody:
+        'Votre historique de règlements n’est pas encore accessible depuis cet espace. Votre gestionnaire peut vous éditer une quittance sur demande.',
+      noDocumentsBody:
+        'Vos quittances apparaîtront ici dès que votre gestionnaire les aura émises.',
       // Les trois cartes de tête et le tableau par période — voir les maquettes.
       leaseSince: 'Bail en cours depuis le {date}',
       leaseManager: 'gestionnaire {name}',

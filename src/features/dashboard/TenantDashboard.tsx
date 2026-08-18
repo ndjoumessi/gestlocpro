@@ -14,12 +14,9 @@ import { useDates } from '@/lib/useDates'
 import { useNumbers } from '@/lib/numbers'
 import { cn } from '@/lib/cn'
 import {
-  TENANT_RECEIPTS,
   UTILITY_RATES,
-  buildingById,
   chargeDue,
   chargeSettled,
-  inspectionsForUnit,
   type Charge,
 } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
@@ -41,7 +38,17 @@ export function TenantDashboard() {
   const d = useDates()
   const n = useNumbers()
   const { money } = useCurrency()
-  const { worksForUnit, depositForUnit, unitById, tenantUnitIds, loading } = usePortfolio()
+  const {
+    worksForUnit,
+    depositForUnit,
+    unitById,
+    tenantUnitIds,
+    tenantReceipts,
+    buildingById,
+    readingForUnit,
+    inspectionForUnit,
+    loading,
+  } = usePortfolio()
 
   /**
    * Cet écran est mono-unité par conception : un locataire y voit SON logement.
@@ -51,10 +58,15 @@ export function TenantDashboard() {
   const monUnite = tenantUnitIds[0] ?? ''
 
   const unit = unitById(monUnite)
+  /* `buildingById` du PROVIDER, et non celui du module de démonstration : ce
+     dernier ne connaît que « bon », « akw », « des », et sur un vrai parc — où
+     les identifiants sont des `uuid` — il ne trouvait rien. Le titre retombait
+     alors sur le seul numéro d'unité, « B7 », sans dire dans quel immeuble. */
   const building = unit ? buildingById(unit.buildingId) : undefined
   const deposit = depositForUnit(monUnite)
   const works = worksForUnit(monUnite)
-  const entree = inspectionsForUnit(monUnite).find((i) => i.kind === 'entry')
+  const entree = inspectionForUnit(monUnite, 'entry')
+  const releve = readingForUnit(monUnite)
 
   /**
    * L'attente passe AVANT le garde `!unit`, et c'est l'ordre qui importe.
@@ -96,20 +108,46 @@ export function TenantDashboard() {
     )
 
 
-  const receiptCourante = TENANT_RECEIPTS[0]
-  const eauDue = chargeDue(receiptCourante.water, UTILITY_RATES.water)
-  const elecDue = chargeDue(receiptCourante.power, UTILITY_RATES.power)
+  /**
+   * Le mois EN COURS, et non la première quittance de la liste.
+   *
+   * La carte lisait `TENANT_RECEIPTS[0]` : elle annonçait donc « Loyer · Août
+   * 2026 » et « payé le 3 août par Mobile Money » à un locataire réel de
+   * n'importe quel mois, à côté d'un loyer et d'un encaissé qui, eux, étaient
+   * les siens. Deux vérités sur la même carte, dont une inventée.
+   *
+   * La période vient de l'horloge ; le montant, l'encaissé et le statut du
+   * portefeuille. La quittance ne sert plus qu'à ce qu'elle seule sait —
+   * le jour et le moyen du règlement — et seulement si elle existe.
+   */
+  const maintenant = new Date()
+  const periodeCourante = { year: maintenant.getFullYear(), month: maintenant.getMonth() }
+  const quittanceCourante = tenantReceipts.find(
+    (r) => r.year === periodeCourante.year && r.month === periodeCourante.month,
+  )
+
+  /* L'eau et l'électricité du mois viennent du RELEVÉ, la seule source que le
+     serveur alimente. Elles se lisaient dans la quittance de démonstration. */
+  const eauConso =
+    releve && releve.waterCurrent !== null ? releve.waterCurrent - releve.waterPrevious : null
+  const elecConso =
+    releve && releve.powerCurrent !== null ? releve.powerCurrent - releve.powerPrevious : null
 
   return (
     <>
       <PageHeader
         title={building ? `${building.name} — ${unit.label}` : unit.label}
-        description={[
-          unit.leaseStart && t('app.tenant.leaseSince', { date: d.fullDate(unit.leaseStart) }),
-          t('app.tenant.leaseManager', { name: t('app.tenant.managerName') }),
-        ]
-          .filter(Boolean)
-          .join(' · ')}
+        /* Le gestionnaire ne figure PAS ici. La ligne annonçait « gestionnaire
+           Diane F. » — une chaîne du dictionnaire, servie à tout locataire de
+           tout parc. Rien dans le modèle ne relie un gestionnaire à une unité :
+           la valeur ne pouvait être juste que par coïncidence, et l'en-tête est
+           le dernier endroit où loger une coïncidence. Elle reviendra le jour
+           où l'adhésion porte ce nom. */
+        description={
+          unit.leaseStart
+            ? t('app.tenant.leaseSince', { date: d.fullDate(unit.leaseStart) })
+            : t('app.tenant.subtitle')
+        }
         actions={
           <>
             <Button variant="secondary" icon="download" to={lien(base, 'documents')}>
@@ -131,7 +169,7 @@ export function TenantDashboard() {
         <Card className="flex flex-col">
           <div className="flex items-start justify-between gap-3">
             <p className="eyebrow text-muted">
-              {t('app.tenant.rentFor')} · {d.monthYear(receiptCourante)}
+              {t('app.tenant.rentFor')} · {d.monthYear(periodeCourante)}
             </p>
             <PaymentStatusPill status={unit.status} size="sm" />
           </div>
@@ -149,23 +187,31 @@ export function TenantDashboard() {
             />
           </div>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-            <span className="text-body-s text-muted">
-              {t('app.tenant.paidOnBy', {
-                date: d.dayMonth({
-                  year: receiptCourante.year,
-                  month: receiptCourante.month,
-                  day: receiptCourante.paidDay,
-                }),
-                method: t(
-                  `app.paymentMethods.${receiptCourante.method}` as 'app.paymentMethods.cash',
-                ),
-              })}
-            </span>
+            {/* Le jour et le moyen du règlement sont les deux seules choses que
+                la quittance sait et que le portefeuille ignore. Sans quittance
+                pour la période, la ligne disparaît plutôt que d'en inventer
+                une : le statut au-dessus dit déjà où en est le loyer. */}
+            {quittanceCourante ? (
+              <span className="text-body-s text-muted">
+                {t('app.tenant.paidOnBy', {
+                  date: d.dayMonth({
+                    year: quittanceCourante.year,
+                    month: quittanceCourante.month,
+                    day: quittanceCourante.paidDay,
+                  }),
+                  method: t(
+                    `app.paymentMethods.${quittanceCourante.method}` as 'app.paymentMethods.cash',
+                  ),
+                })}
+              </span>
+            ) : (
+              <span />
+            )}
             <Button
               variant="ghost"
               size="sm"
               className="-mr-3.5"
-              onClick={() => setQuittanceDe(periodeIso(receiptCourante))}
+              onClick={() => setQuittanceDe(periodeIso(periodeCourante))}
             >
               {t('app.tenant.receipt')}
             </Button>
@@ -174,13 +220,21 @@ export function TenantDashboard() {
 
         <CarteCharge
           label={t('app.tenant.water')}
-          amount={money(eauDue, { round: true })}
-          note={`${t('app.tenant.settled')} · ${t('app.tenant.consumedWater', { n: n.integer(receiptCourante.water.quantity) })}`}
+          amount={eauConso === null ? '—' : money(eauConso * UTILITY_RATES.water, { round: true })}
+          note={
+            eauConso === null
+              ? t('app.meters.missing')
+              : t('app.tenant.consumedWater', { n: n.integer(eauConso) })
+          }
         />
         <CarteCharge
           label={t('app.tenant.power')}
-          amount={money(elecDue, { round: true })}
-          note={`${t('app.tenant.settled')} · ${t('app.tenant.consumedPower', { n: n.integer(receiptCourante.power.quantity) })}`}
+          amount={elecConso === null ? '—' : money(elecConso * UTILITY_RATES.power, { round: true })}
+          note={
+            elecConso === null
+              ? t('app.meters.missing')
+              : t('app.tenant.consumedPower', { n: n.integer(elecConso) })
+          }
         />
       </div>
 
@@ -202,6 +256,19 @@ export function TenantDashboard() {
               </span>
             }
           />
+          {/* Aucun historique : on le DIT. Le serveur ne rend qu'une échéance
+              par bail, et la liste est vide hors démonstration — un tableau
+              d'en-têtes sans ligne se lit comme une panne, et les six périodes
+              de la démonstration se lisaient comme les siennes. */}
+          {tenantReceipts.length === 0 ? (
+            <div className="border-t border-divider px-4 py-4 sm:px-5">
+              <EmptyState
+                icon="card"
+                title={t('app.tenant.noReceiptsTitle')}
+                body={t('app.tenant.noReceiptsBody')}
+              />
+            </div>
+          ) : (
           <div className="overflow-x-auto border-t border-divider">
             <table className="w-full border-collapse">
               <thead>
@@ -224,7 +291,7 @@ export function TenantDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-divider">
-                {TENANT_RECEIPTS.map((receipt) => (
+                {tenantReceipts.map((receipt) => (
                   <tr key={`${receipt.year}-${receipt.month}`}>
                     <th scope="row" className="px-4 py-3 text-left text-body font-medium sm:px-5">
                       {d.monthYear(receipt)}
@@ -250,6 +317,7 @@ export function TenantDashboard() {
               </tbody>
             </table>
           </div>
+          )}
         </Card>
 
         <div className="flex flex-col gap-4">

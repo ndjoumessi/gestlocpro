@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState, type KeyboardEvent } from 'react'
 import { PageHeader, useRole } from '@/components/layout/AppShell'
 import { Button } from '@/components/primitives/Button'
 import { Card, CardHeader } from '@/components/primitives/Card'
@@ -218,6 +218,20 @@ export function Signaler() {
  * `role="radiogroup"` et `role="radio"` plutôt qu'une rangée de `<button>` :
  * l'exclusivité est portée par la SÉMANTIQUE, et un lecteur d'écran annonce
  * « 3 sur 5 » au lieu de cinq boutons sans lien entre eux.
+ *
+ * Le motif est tenu EN ENTIER, et ce n'est pas une politesse. Première
+ * version : `tabIndex` roulant, aucun gestionnaire de touches. La tabulation
+ * entrait sur la pastille active, les flèches ne faisaient rien, et les autres
+ * portaient `tabIndex={-1}` — donc la tabulation les sautait. Les deux choix
+ * du formulaire étaient purement et simplement INUTILISABLES au clavier :
+ * impossible de déclarer autre chose qu'une plomberie d'urgence normale sans
+ * souris. C'est exactement ce que le portail avait déjà payé avec ses onglets,
+ * et son commentaire le dit — annoncer une navigation aux flèches sans la
+ * câbler est pire qu'une rangée de boutons ordinaires, qui au moins ne promet
+ * rien et garde ses arrêts de tabulation.
+ *
+ * BORNAGE et non bouclage : la convention du dépôt, posée par `Combobox` et
+ * reprise par les onglets du portail.
  */
 function Choix<T extends string>({
   legende,
@@ -234,11 +248,46 @@ function Choix<T extends string>({
   libelle: (v: T) => string
   tonPourValeur?: (v: T) => 'danger' | 'neutre'
 }) {
+  const boutons = useRef<(HTMLButtonElement | null)[]>([])
+
+  /**
+   * La sélection SUIT le focus, comme les onglets du portail : les cinq choix
+   * sont déjà en mémoire, changer d'avis ne coûte rien, et exiger une seconde
+   * frappe pour valider ferait payer deux touches ce que la souris obtient en
+   * un clic.
+   */
+  const allerA = (index: number) => {
+    const cible = valeurs[index]
+    if (cible === undefined) return
+    onChange(cible)
+    boutons.current[index]?.focus()
+  }
+
+  const auClavier = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const destination =
+      e.key === 'ArrowRight' || e.key === 'ArrowDown'
+        ? Math.min(index + 1, valeurs.length - 1)
+        : e.key === 'ArrowLeft' || e.key === 'ArrowUp'
+          ? Math.max(index - 1, 0)
+          : e.key === 'Home'
+            ? 0
+            : e.key === 'End'
+              ? valeurs.length - 1
+              : null
+
+    if (destination === null) return
+    // Les flèches feraient défiler la rangée débordante, `Début` et `Fin` le
+    // document : dans les deux cas la page bougerait sous une commande qui ne
+    // la concerne pas.
+    e.preventDefault()
+    allerA(destination)
+  }
+
   return (
     <div>
       <p className="mb-2 text-label font-semibold">{legende}</p>
       <div role="radiogroup" aria-label={legende} className="flex flex-wrap gap-2">
-        {valeurs.map((v) => {
+        {valeurs.map((v, index) => {
           const actif = v === valeur
           const danger = tonPourValeur?.(v) === 'danger'
           return (
@@ -248,9 +297,14 @@ function Choix<T extends string>({
               role="radio"
               aria-checked={actif}
               // Un seul arrêt de tabulation pour le groupe, comme les onglets :
-              // la tabulation traverse le formulaire, pas cinq métiers.
+              // la tabulation traverse le formulaire, pas cinq métiers. Il ne
+              // tient que parce que les flèches, elles, atteignent les autres.
               tabIndex={actif ? 0 : -1}
+              ref={(node) => {
+                boutons.current[index] = node
+              }}
               onClick={() => onChange(v)}
+              onKeyDown={(e) => auClavier(e, index)}
               className={cn(
                 'inline-flex min-h-11 cursor-pointer items-center rounded-md border px-3.5',
                 'text-label font-medium transition-colors duration-150',

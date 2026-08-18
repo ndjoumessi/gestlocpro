@@ -367,6 +367,10 @@ export const en: Dictionary = {
     tenant: {
       title: 'My tenant space',
       subtitle: 'Your home, your receipts and your reports.',
+      noReceiptsTitle: 'No receipt available',
+      noReceiptsBody:
+        'Your payment history is not accessible from this space yet. Your manager can issue a receipt on request.',
+      noDocumentsBody: 'Your receipts will appear here once your manager has issued them.',
       leaseSince: 'Lease running since {date}',
       leaseManager: 'manager {name}',
       downloadReceipts: 'Download my receipts',

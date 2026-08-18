@@ -955,9 +955,14 @@ function BarreBasse({ role, onOpenDrawer }: { role: Role; onOpenDrawer: () => vo
   // Le locataire n'a que trois entrées, toutes essentielles : l'ordre de
   // priorité ne sert qu'à choisir parmi une douzaine, et aucune des siennes n'y
   // figure. Les lui passer au crible rendrait une barre basse VIDE.
+  //
+  // Ses SECTIONS seulement, jamais le pied : `toutesLesEntrees` y ajoute les
+  // vitrines, et en démonstration la quatrième place revenait alors à « Portail
+  // locataire (web) » — une page qui montre le produit, promue au rang de
+  // destination du produit. `BOTTOM_ORDER` ne les avait jamais laissées entrer.
   const candidats =
     role === 'tenant'
-      ? tous
+      ? sectionsPour(role).flatMap((s) => s.items)
       : BOTTOM_ORDER.map((to) => tous.find((item) => item.to === to)).filter(
           (item): item is NavItem => !!item,
         )
