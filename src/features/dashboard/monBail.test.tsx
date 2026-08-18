@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, switchRole, attendreLeChargement } from '@/test/render'
+import { renderApp, screen, switchRole, within, attendreLeChargement } from '@/test/render'
 
 /**
  * « Mon bail », carte que la maquette du portail met en évidence.
@@ -19,6 +19,23 @@ describe('mon bail', () => {
     const main = screen.getByRole('main')
     expect(main).toHaveTextContent(/mon loyer mensuel/i)
     expect(main).toHaveTextContent(/ma caution versée/i)
+  })
+
+  it('lui donne accès à SES quittances, sans passer par son gestionnaire', async () => {
+    /**
+     * Le locataire n'avait aucun accès à ses propres quittances : elles ne
+     * s'émettent que depuis l'écran des paiements, réservé à la gestion. Il
+     * devait les réclamer — précisément la démarche que ce produit supprime.
+     */
+    renderApp('/demo')
+    await attendreLeChargement()
+    await switchRole('tenant')
+    await attendreLeChargement()
+
+    const main = screen.getByRole('main')
+    expect(main).toHaveTextContent(/mes quittances/i)
+    // Trois périodes offertes, mois courant compris.
+    expect(within(main).getAllByRole('button', { name: /quittance/i }).length).toBeGreaterThanOrEqual(3)
   })
 
   it('ne les montre pas au bailleur, qui voit le parc entier', async () => {

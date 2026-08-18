@@ -330,6 +330,8 @@ export const en: Dictionary = {
     tenant: {
       title: 'My tenant space',
       subtitle: 'Your home, your receipts and your reports.',
+      myReceipts: 'My receipts',
+      myReceiptsHint: 'Issued by the server: the amounts are those of the ledger, not of the screen.',
       leaseRent: 'My monthly rent',
       leaseRentNote: 'Amount set in the lease, water and power excluded.',
       leaseDeposit: 'My deposit',

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { PageHeader } from '@/components/layout/AppShell'
 import { lien, useBase } from '@/lib/base'
 import { Card, CardHeader } from '@/components/primitives/Card'
@@ -17,6 +18,7 @@ import {
   buildingById,
 } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
+import { ReceiptModal } from './ReceiptModal'
 import { workTitle } from '@/data/workTitle'
 import { useReceiptExport } from './receiptExport'
 
@@ -28,7 +30,23 @@ import { useReceiptExport } from './receiptExport'
  * veut son échéance, ses quittances et l'état de ses signalements. Toutes les
  * données proviennent de sa seule unité — le parc n'est jamais interrogé.
  */
+/**
+ * Les trois dernières périodes, mois courant compris.
+ *
+ * Calculées une fois au chargement du module : elles ne changent pas pendant
+ * qu'on lit l'écran, et les recalculer à chaque rendu ferait dépendre le test
+ * de l'instant où il tourne.
+ */
+const PERIODES_RECENTES = (() => {
+  const maintenant = new Date()
+  return [0, 1, 2].map((recul) => {
+    const m = new Date(Date.UTC(maintenant.getUTCFullYear(), maintenant.getUTCMonth() - recul, 1))
+    return { year: m.getUTCFullYear(), month: m.getUTCMonth() + 1 }
+  })
+})()
+
 export function TenantDashboard() {
+  const [quittanceDe, setQuittanceDe] = useState<string | null>(null)
   const base = useBase()
   const t = useT()
   const d = useDates()
@@ -98,6 +116,56 @@ export function TenantDashboard() {
         cautions : deux chiffres pour un seul fait divergeraient au premier
         arbitrage.
       */}
+      {/*
+        MES QUITTANCES — la colonne « quittance » de la maquette du portail.
+
+        Le locataire n'avait AUCUN accès à ses propres quittances : elles ne
+        s'émettent que depuis l'écran des paiements, réservé à la gestion. Il
+        devait donc les réclamer à son gestionnaire — précisément la démarche que
+        ce produit existe pour supprimer.
+
+        Les périodes sont calculées ici ; les MONTANTS ne le sont pas. Le
+        document est émis par le serveur, qui rend les siens : « les montants
+        sont ceux du registre, pas ceux de l'écran », dit déjà la modale. Un
+        tableau qui les recomposerait côté client donnerait deux vérités pour un
+        seul fait.
+      */}
+      <Card className="mb-4 flex flex-col gap-3">
+        <h2 className="title-m font-semibold">{t('app.tenant.myReceipts')}</h2>
+        <p className="text-body-s text-muted">{t('app.tenant.myReceiptsHint')}</p>
+        <ul className="flex flex-col">
+          {PERIODES_RECENTES.map((periode) => (
+            <li
+              key={`${periode.year}-${periode.month}`}
+              className="flex min-h-11 items-center justify-between gap-3 border-b border-divider last:border-b-0"
+            >
+              <span className="text-label">{d.monthYear(periode)}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                icon="download"
+                onClick={() =>
+                  setQuittanceDe(
+                    `${periode.year}-${String(periode.month).padStart(2, '0')}-01`,
+                  )
+                }
+              >
+                {t('app.receipts.issue')}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      </Card>
+
+      {quittanceDe && (
+        <ReceiptModal
+          unitId={monUnite}
+          periodStart={quittanceDe}
+          open
+          onClose={() => setQuittanceDe(null)}
+        />
+      )}
+
       <div className="mb-4 grid gap-4 sm:grid-cols-2">
         <StatCard
           label={t('app.tenant.leaseRent')}

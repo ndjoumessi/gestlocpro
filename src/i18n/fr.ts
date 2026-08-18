@@ -408,6 +408,8 @@ export const fr = {
     tenant: {
       title: 'Mon espace locataire',
       subtitle: 'Votre logement, vos quittances et vos signalements.',
+      myReceipts: 'Mes quittances',
+      myReceiptsHint: 'Émises par le serveur : les montants sont ceux du registre, pas ceux de l’écran.',
       leaseRent: 'Mon loyer mensuel',
       leaseRentNote: 'Montant fixé au bail, hors eau et électricité.',
       leaseDeposit: 'Ma caution versée',
