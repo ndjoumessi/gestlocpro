@@ -85,7 +85,28 @@ export function TenantDashboard() {
    */
   if (loading) return <TenantDashboardSkeleton />
 
-  if (!unit) return null
+  /**
+   * PAS DE LOGEMENT : on le dit, on ne rend pas une page blanche.
+   *
+   * `return null` laissait un écran entièrement vide — barre latérale, fil
+   * d'Ariane, et rien. C'est l'état d'un compte rattaché au parc dont AUCUN bail
+   * ne porte encore son nom : le propriétaire l'a invité, mais n'a pas relié sa
+   * fiche locataire au compte.
+   *
+   * Une page blanche se lit comme une panne. Elle laisse chercher un défaut
+   * là où il n'y a qu'une étape manquante, et personne ne sait laquelle.
+   */
+  if (!unit)
+    return (
+      <>
+        <PageHeader title={t('app.tenant.title')} description={t('app.tenant.subtitle')} />
+        <EmptyState
+          icon="info"
+          title={t('app.tenant.noUnitTitle')}
+          body={t('app.tenant.noUnitBody')}
+        />
+      </>
+    )
 
   const water = reading?.waterCurrent === null || !reading ? null : reading.waterCurrent - reading.waterPrevious
   const power = reading?.powerCurrent === null || !reading ? null : reading.powerCurrent - reading.powerPrevious

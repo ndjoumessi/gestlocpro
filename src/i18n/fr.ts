@@ -408,6 +408,8 @@ export const fr = {
     tenant: {
       title: 'Mon espace locataire',
       subtitle: 'Votre logement, vos quittances et vos signalements.',
+      noUnitTitle: 'Aucun logement rattaché à votre compte',
+      noUnitBody: 'Votre compte appartient bien à ce parc, mais aucun bail n’y porte encore votre nom. Demandez à votre propriétaire ou à votre gestionnaire de relier votre fiche locataire à ce compte.',
       myReceipts: 'Mes quittances',
       myReceiptsHint: 'Émises par le serveur : les montants sont ceux du registre, pas ceux de l’écran.',
       leaseRent: 'Mon loyer mensuel',

@@ -330,6 +330,8 @@ export const en: Dictionary = {
     tenant: {
       title: 'My tenant space',
       subtitle: 'Your home, your receipts and your reports.',
+      noUnitTitle: 'No home linked to your account',
+      noUnitBody: 'Your account does belong to this park, but no lease carries your name yet. Ask your landlord or manager to link your tenant record to this account.',
       myReceipts: 'My receipts',
       myReceiptsHint: 'Issued by the server: the amounts are those of the ledger, not of the screen.',
       leaseRent: 'My monthly rent',
