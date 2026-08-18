@@ -66,12 +66,17 @@ describe('barre de navigation basse', () => {
     renderApp('/demo')
     expect(libelles()).toContain('Parc immobilier')
 
-    // Un locataire n'a pas de parc : l'entrée disparaît, et la barre se remplit
-    // avec la suivante de la liste plutôt que de laisser un trou.
+    // Le locataire n'a pas une navigation filtrée, il en a une AUTRE — trois
+    // entrées, celles de son espace. La barre basse les porte toutes les trois
+    // sans passer par l'ordre de priorité : cet ordre sert à choisir parmi une
+    // douzaine d'entrées, et aucune des siennes n'y figure. L'y soumettre
+    // rendrait une barre vide.
     await switchRole('tenant')
     await attendreLeChargement()
     expect(libelles()).not.toContain('Parc immobilier')
-    expect(libelles()).toContain('Travaux')
+    expect(libelles()).toEqual(
+      expect.arrayContaining(['Mon espace', 'Documents', 'Signaler']),
+    )
   })
 
   it('signale l’entrée courante autrement que par la seule couleur', () => {

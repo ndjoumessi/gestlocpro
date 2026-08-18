@@ -34,6 +34,10 @@ const AUTRES_LOCATAIRES = UNITS.filter(
  */
 const ECRANS_AUTORISES = [
   ['/demo', 'espace locataire'],
+  /* Les trois adresses que porte sa navigation depuis qu'elle est passée à
+     trois entrées. « Mon espace » a quitté l'index pour la sienne. */
+  ['/demo/mon-espace', 'mon espace'],
+  ['/demo/documents', 'documents'],
   ['/demo/paiements', 'paiements'],
   ['/demo/etats-des-lieux', 'états des lieux'],
   ['/demo/travaux', 'travaux'],

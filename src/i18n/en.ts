@@ -135,6 +135,9 @@ export const en: Dictionary = {
     system: 'System states',
     tenantPortal: 'Tenant portal (web)',
     tenantApp: 'Tenant app',
+    mySpace: 'My space',
+    documents: 'Documents',
+    sectionMySpace: 'My space',
     sectionSteering: 'Steering',
     sectionOperations: 'Operations',
     sectionAdmin: 'Administration',
@@ -326,6 +329,21 @@ export const en: Dictionary = {
     roleNotice: 'You are viewing this space as {role}. Switch profile in the sidebar.',
     demoBanner:
       'Amounts display in {currency} with no exchange conversion.',
+
+    documents: {
+      title: 'My documents and receipts',
+      subtitle: 'Your lease file and the history of your receipts.',
+      contractual: 'Contractual',
+      contractualTitle: 'My file',
+      receipts: 'Receipts',
+      receiptsTitle: 'My receipts',
+      lease: 'Signed lease',
+      entryInspection: 'Move-in inspection',
+      depositReceipt: 'Deposit receipt',
+      view: 'View',
+      download: 'Download',
+      none: 'No document uploaded',
+    },
 
     tenant: {
       title: 'My tenant space',

@@ -24,7 +24,8 @@ import { Signaler } from './features/dashboard/Signaler'
 import { Onboarding } from './features/dashboard/Onboarding'
 import { SystemStates } from './features/dashboard/SystemStates'
 import { TenantPortal } from './features/dashboard/TenantPortal'
-import { TenantRestricted } from './features/dashboard/TenantDashboard'
+import { TenantDashboard, TenantRestricted } from './features/dashboard/TenantDashboard'
+import { TenantDocuments } from './features/dashboard/TenantDocuments'
 import { useSession } from './api/SessionProvider'
 
 /** Raccourci : un écran réservé, avec le même écran de refus partout. */
@@ -69,7 +70,13 @@ function ecransDeLApplication() {
       <Route path="etats-des-lieux" element={<Inspections />} />
       <Route path="travaux" element={<Works />} />
       <Route path="signalements" element={<Alerts />} />
-      {/* Écran du LOCATAIRE : il déclare, et suit ses propres déclarations. */}
+      {/* Les trois écrans du LOCATAIRE, aux adresses que porte sa navigation.
+          « Mon espace » est une VRAIE route et non l'index : l'index sert trois
+          rôles, et le locataire doit pouvoir mettre son espace en favori,
+          revenir en arrière et partager l'adresse comme n'importe quel écran. */}
+      <Route path="mon-espace" element={<TenantDashboard />} />
+      <Route path="documents" element={<TenantDocuments />} />
+      {/* Il déclare, et suit ses propres déclarations. */}
       <Route path="signaler" element={<Signaler />} />
 
       {/* Écrans de gestion : la même liste de rôles que dans la barre

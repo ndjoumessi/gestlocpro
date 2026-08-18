@@ -169,6 +169,11 @@ export const fr = {
     system: 'États du système',
     tenantPortal: 'Portail locataire (web)',
     tenantApp: 'App locataire',
+    // Les trois entrées du locataire. « Mon espace » et non « Tableau de
+    // bord » : il n'en pilote aucun, il consulte le sien.
+    mySpace: 'Mon espace',
+    documents: 'Documents',
+    sectionMySpace: 'Mon espace',
     sectionSteering: 'Pilotage',
     sectionOperations: 'Opérations',
     sectionAdmin: 'Administration',
@@ -404,6 +409,26 @@ export const fr = {
     roleNotice: 'Vous consultez l’espace en tant que {role}. Changez de profil dans la barre latérale.',
     demoBanner:
       'Les montants s’affichent en {currency} sans conversion de change.',
+
+    documents: {
+      title: 'Mes pièces et quittances',
+      subtitle: 'Votre dossier de bail et l’historique de vos quittances.',
+      contractual: 'Contractuel',
+      contractualTitle: 'Mon dossier',
+      receipts: 'Quittances',
+      receiptsTitle: 'Mes quittances',
+      lease: 'Contrat de bail signé',
+      entryInspection: 'État des lieux d’entrée',
+      depositReceipt: 'Reçu de caution',
+      view: 'Consulter',
+      download: 'Télécharger',
+      /**
+       * Le produit ne sait ni recevoir un fichier déposé, ni fabriquer un PDF
+       * opposable. Annoncer « PDF » sur une case vide inventerait la pièce que
+       * le bouton prétend restituer — le défaut que le portail a déjà payé.
+       */
+      none: 'Aucun document déposé',
+    },
 
     tenant: {
       title: 'Mon espace locataire',

@@ -116,13 +116,51 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
         icon: 'bell',
         badge: { count: 'unreadAlerts', tone: 'onDark' },
       },
-      /* « Signaler » est au locataire ce que « Signalements » est au bailleur :
-         l'un déclare, l'autre reçoit. Deux écrans, deux rôles, un seul objet. */
-      { to: 'signaler', labelKey: 'nav.report', icon: 'bell', roles: ['tenant'] },
       { to: 'prise-en-main', labelKey: 'nav.onboarding', icon: 'info', roles: ['owner'] },
     ],
   },
 ]
+
+/**
+ * La navigation du LOCATAIRE — trois entrées, et pas une version filtrée de
+ * celle du bailleur.
+ *
+ * Elle en était une : le filtrage par rôle laissait passer huit entrées
+ * — tableau de bord, paiements, relevés, états des lieux, travaux, cautions,
+ * signalements, signaler — rangées sous « Pilotage », « Opérations » et
+ * « Administration ». Ces trois titres nomment le métier de qui gère un parc.
+ * Un locataire n'exploite rien : il habite.
+ *
+ * Les écrans repliés ne sont pas fermés, ils quittent la NAVIGATION. Leur
+ * contenu remonte dans les trois entrées — les relevés et les paiements dans
+ * « Mon espace », la caution et l'état des lieux dans « Documents » — et les
+ * adresses restent atteignables en direct, cloisonnées comme avant par
+ * `tenantIsolation`. Rien de ce qu'une session précédente a ouvert au locataire
+ * ne se referme ici : sa caution reste son argent, ses relevés restent les
+ * siens, ils cessent seulement d'être des destinations.
+ */
+const SECTIONS_LOCATAIRE: { headingKey: string; items: NavItem[] }[] = [
+  {
+    headingKey: 'nav.sectionMySpace',
+    items: [
+      { to: 'mon-espace', labelKey: 'nav.mySpace', icon: 'grid' },
+      { to: 'documents', labelKey: 'nav.documents', icon: 'file' },
+      /* « Signaler » est au locataire ce que « Signalements » est au bailleur :
+         l'un déclare, l'autre reçoit. Deux écrans, deux rôles, un seul objet. */
+      { to: 'signaler', labelKey: 'nav.report', icon: 'bell' },
+    ],
+  },
+]
+
+/** La navigation tient au rôle, et non à un filtre posé sur celle d'un autre. */
+function sectionsPour(role: Role) {
+  return role === 'tenant' ? SECTIONS_LOCATAIRE : SECTIONS
+}
+
+/** Toutes les entrées atteignables par ce rôle, sections et pied confondus. */
+function toutesLesEntrees(role: Role): NavItem[] {
+  return [...sectionsPour(role).flatMap((s) => s.items), ...FOOTER_ITEMS]
+}
 
 /**
  * Les deux vitrines, et rien d'autre.
@@ -661,7 +699,7 @@ function Sidebar({
       )}
 
       <nav aria-label={t('nav.dashboard')} className="flex flex-col gap-3">
-        {SECTIONS.map((section) => {
+        {sectionsPour(role).map((section) => {
           const items = entreesVisibles(section.items, role, demo)
           if (!items.length) return null
 
@@ -913,14 +951,17 @@ function BarreBasse({ role, onOpenDrawer }: { role: Role; onOpenDrawer: () => vo
 
   // Filtrer PUIS couper, et non l'inverse : couper d'abord laisserait un trou à
   // la place de l'entrée qu'un rôle ne voit pas.
-  const tous = [...SECTIONS.flatMap((s) => s.items), ...FOOTER_ITEMS]
-  const items = entreesVisibles(
-    BOTTOM_ORDER.map((to) => tous.find((item) => item.to === to)).filter(
-      (item): item is NavItem => !!item,
-    ),
-    role,
-    demo,
-  ).slice(0, BOTTOM_MAX)
+  const tous = toutesLesEntrees(role)
+  // Le locataire n'a que trois entrées, toutes essentielles : l'ordre de
+  // priorité ne sert qu'à choisir parmi une douzaine, et aucune des siennes n'y
+  // figure. Les lui passer au crible rendrait une barre basse VIDE.
+  const candidats =
+    role === 'tenant'
+      ? tous
+      : BOTTOM_ORDER.map((to) => tous.find((item) => item.to === to)).filter(
+          (item): item is NavItem => !!item,
+        )
+  const items = entreesVisibles(candidats, role, demo).slice(0, BOTTOM_MAX)
 
   return (
     <nav
@@ -1047,7 +1088,7 @@ function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
   // saisie à la main hors démonstration rend le 404, et le fil doit dire la
   // même chose que l'écran plutôt que nommer une page qui ne s'affiche pas.
   const crumb =
-    entreesVisibles([...SECTIONS.flatMap((s) => s.items), ...FOOTER_ITEMS], role, demo).find(
+    entreesVisibles(toutesLesEntrees(role), role, demo).find(
       (item) => lien(base, item.to) === location.pathname,
     )?.labelKey ?? 'notFound.appTitle'
 

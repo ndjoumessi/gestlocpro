@@ -86,8 +86,10 @@ describe('le rôle vient de l’adhésion', () => {
 
     expect(screen.queryAllByRole('link', { name: RESERVEE_A_LA_GESTION })).toHaveLength(0)
     expect(screen.queryAllByRole('link', { name: RESERVEE_AU_PROPRIETAIRE })).toHaveLength(0)
-    // Et il lui reste bien une navigation : « Travaux » est ouvert à tous.
-    expect(screen.getAllByRole('link', { name: 'Travaux' }).length).toBeGreaterThan(0)
+    // Et il lui reste bien une navigation — la SIENNE. « Travaux » n'en fait
+    // plus partie : son contenu est remonté dans « Mon espace », et l'adresse
+    // reste atteignable en direct, cloisonnée comme avant.
+    expect(screen.getAllByRole('link', { name: 'Mon espace' }).length).toBeGreaterThan(0)
   })
 
   it('refuse au locataire l’accès direct à un écran de gestion', async () => {

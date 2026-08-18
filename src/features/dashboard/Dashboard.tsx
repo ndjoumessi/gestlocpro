@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { lien, useBase } from '@/lib/base'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { PageHeader, useRole } from '@/components/layout/AppShell'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
@@ -17,7 +17,6 @@ import { computeKpis } from '@/data/kpis'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { workTitle } from '@/data/workTitle'
 import { RecordPaymentModal } from './RecordPaymentModal'
-import { TenantDashboard } from './TenantDashboard'
 
 export function Dashboard() {
   const base = useBase()
@@ -43,7 +42,12 @@ export function Dashboard() {
   // Les indicateurs de parc — encaissé consolidé, taux d'occupation, impayés de
   // tous les baux — n'ont aucun sens pour lui, et les afficher revenait à lui
   // montrer la situation de ses voisins.
-  if (role === 'tenant') return <TenantDashboard />
+  //
+  // Cet écran vivait ICI, rendu sous l'adresse de l'index. Il a désormais la
+  // sienne — `mon-espace`, celle que porte sa navigation —, et l'index ne fait
+  // plus que l'y conduire. `replace` : l'index n'est pas une étape de son
+  // parcours, et le bouton « Précédent » ne doit pas y ramener en boucle.
+  if (role === 'tenant') return <Navigate to="mon-espace" replace />
 
   const title =
     role === 'owner'
