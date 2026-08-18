@@ -407,6 +407,11 @@ export const fr = {
     tenant: {
       title: 'Mon espace locataire',
       subtitle: 'Votre logement, vos quittances et vos signalements.',
+      leaseRent: 'Mon loyer mensuel',
+      leaseRentNote: 'Montant fixé au bail, hors eau et électricité.',
+      leaseDeposit: 'Ma caution versée',
+      leaseDepositNote: 'Consignée jusqu’à l’état des lieux de sortie.',
+      leaseDepositNone: 'Aucune caution enregistrée à votre nom.',
       myUnit: 'Mon logement',
       nextDue: 'Prochaine échéance',
       deposit: 'Caution consignée',

@@ -329,6 +329,11 @@ export const en: Dictionary = {
     tenant: {
       title: 'My tenant space',
       subtitle: 'Your home, your receipts and your reports.',
+      leaseRent: 'My monthly rent',
+      leaseRentNote: 'Amount set in the lease, water and power excluded.',
+      leaseDeposit: 'My deposit',
+      leaseDepositNote: 'Held until the move-out inspection.',
+      leaseDepositNone: 'No deposit recorded in your name.',
       myUnit: 'My home',
       nextDue: 'Next payment due',
       deposit: 'Deposit held',

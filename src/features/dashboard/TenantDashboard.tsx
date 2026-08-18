@@ -86,6 +86,35 @@ export function TenantDashboard() {
         }
       />
 
+      {/*
+        MON BAIL — la carte que la maquette du portail met en évidence.
+
+        Le locataire lisait son loyer et sa consommation, jamais les TERMES de
+        son contrat : combien il paie chaque mois, et combien il a versé en
+        caution. Cette dernière est son argent, et il ne pouvait le lire nulle
+        part — c'est ce que ce produit reproche aux pratiques qu'il remplace.
+
+        Le montant vient de `depositForUnit`, la même source que l'écran des
+        cautions : deux chiffres pour un seul fait divergeraient au premier
+        arbitrage.
+      */}
+      <div className="mb-4 grid gap-4 sm:grid-cols-2">
+        <StatCard
+          label={t('app.tenant.leaseRent')}
+          value={money(unit.rent, { round: true })}
+          note={t('app.tenant.leaseRentNote')}
+        />
+        <StatCard
+          label={t('app.tenant.leaseDeposit')}
+          value={deposit ? money(deposit.held, { round: true }) : '—'}
+          note={
+            deposit
+              ? t('app.tenant.leaseDepositNote')
+              : t('app.tenant.leaseDepositNone')
+          }
+        />
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label={t('app.tenant.myUnit')}
