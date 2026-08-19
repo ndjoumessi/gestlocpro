@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { empreinteJeton } from './token.js'
 import { normaliserCode } from '../parks/invitations.js'
 import { Prisma } from '../generated/prisma/client.js'
+import type { ParkRole } from '../generated/prisma/client.js'
 import { prisma } from '../db.js'
 import { hashPassword, needsRehash, verifyPassword } from './password.js'
 import { fermerSession, lireSession, ouvrirSession } from './session.js'
@@ -134,105 +135,178 @@ function vueCompte(u: {
   }
 }
 
+/**
+ * Le code a été consommé entre sa vérification et son marquage.
+ *
+ * Une classe plutôt qu'un drapeau : elle est LEVÉE dans la transaction, ce qui
+ * l'annule — c'est la levée elle-même qui défait le compte, et un booléen posé
+ * après coup ne l'aurait pas fait.
+ */
+class CodeDejaConsomme extends Error {}
+
 authRouter.post('/signup', async (req: Request, res: Response) => {
   const donnees = schemaInscription.parse(req.body)
 
-  const compte = await prisma.userAccount
-    .create({
-      data: {
-        email: donnees.email,
-        passwordHash: await hashPassword(donnees.password),
-        fullName: donnees.fullName,
-        phoneE164: donnees.phoneE164 ?? null,
-        countryCode: donnees.countryCode ?? null,
-        locale: donnees.locale,
-        termsAcceptedAt: new Date(),
-        newsletterOptIn: donnees.newsletterOptIn,
-      },
-    })
-    .catch((err: unknown) => {
-      // P2002 : violation d'unicité, donc e-mail déjà pris. On rend 409 avec un
-      // code stable plutôt qu'un message : c'est au client de le traduire.
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') return null
-      throw err
-    })
-
-  if (!compte) {
-    res.status(409).json({ error: 'email_taken' })
-    return
-  }
-
   /**
-   * Le parc et l'adhésion naissent avec le compte, en une seule transaction.
+   * L'INVITATION EST EXAMINÉE AVANT QUE RIEN NE SOIT ÉCRIT.
    *
-   * Les créer séparément laisserait, au moindre échec, un compte sans parc :
-   * son porteur se connecterait sur une application où rien n'existe, et aucun
-   * écran ne saurait dire pourquoi.
+   * Elle l'était après, et le refus ne défaisait rien : `userAccount.create`
+   * s'exécutait le premier, inconditionnellement, puis le `return` du 400
+   * laissait derrière lui un compte réel, avec son empreinte de mot de passe et
+   * sans aucun parc. Trois conséquences, dont la deuxième est celle qui mord :
+   *
+   *  1. Le commentaire de ce handler promettait exactement l'inverse — « les
+   *     créer séparément laisserait, au moindre échec, un compte sans parc ».
+   *     La promesse tenait pour le couple parc/adhésion et pas pour le compte,
+   *     qui est pourtant ce que la phrase nomme.
+   *
+   *  2. L'ADRESSE ÉTAIT PRISE. Qui saisit son code de travers reçoit 400,
+   *     corrige, réessaie — et reçoit 409 `email_taken`. Il ne peut plus
+   *     s'inscrire avec sa propre adresse alors que son code est valide, et
+   *     rien ne lui dira de se connecter plutôt que de s'inscrire, puisque de
+   *     son point de vue aucun compte n'a jamais été créé.
+   *
+   *  3. Un code INVENTÉ suffisait alors à occuper l'adresse de quelqu'un —
+   *     avant même qu'il ait reçu son invitation.
+   *
+   * Le défaut s'est vu en faisant le ménage d'un parc de sonde : quatre comptes
+   * y traînaient là où deux inscriptions avaient réussi. Les deux autres étaient
+   * les traces de deux refus.
    */
-  /**
-   * Rejoindre un parc par invitation.
-   *
-   * Traité AVANT la création d'un parc, et exclusif d'elle. Le rôle vient de
-   * l'invitation, jamais de la saisie : quelqu'un qui poste `role: 'owner'`
-   * n'obtient rien de plus que ce que le propriétaire lui a accordé.
-   *
-   * Un code invalide, expiré, révoqué ou déjà accepté rend le MÊME refus. Les
-   * distinguer dirait à qui essaie des codes au hasard lesquels ont existé.
-   */
+  let invitation: {
+    id: string
+    parkId: string
+    role: ParkRole
+  } | null = null
+
   if (donnees.invitationCode) {
-    const invitation = await prisma.invitation.findUnique({
+    const trouvee = await prisma.invitation.findUnique({
       where: { codeHash: empreinteJeton(normaliserCode(donnees.invitationCode)) },
       select: { id: true, parkId: true, role: true, expiresAt: true, acceptedAt: true, revokedAt: true },
     })
 
-    const maintenant = new Date()
+    /**
+     * Un code invalide, expiré, révoqué ou déjà accepté rend le MÊME refus. Les
+     * distinguer dirait à qui essaie des codes au hasard lesquels ont existé.
+     */
     const utilisable =
-      invitation && !invitation.acceptedAt && !invitation.revokedAt && invitation.expiresAt > maintenant
-
+      trouvee && !trouvee.acceptedAt && !trouvee.revokedAt && trouvee.expiresAt > new Date()
     if (!utilisable) {
       res.status(400).json({ error: 'invitation_invalid' })
       return
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.membership.create({
-        data: { userId: compte.id, parkId: invitation.parkId, role: invitation.role },
-      })
-      // Marquée acceptée dans la MÊME transaction : sans cela, deux inscriptions
-      // simultanées avec le même code créeraient deux adhésions.
-      await tx.invitation.update({
-        where: { id: invitation.id, acceptedAt: null },
-        data: { acceptedAt: maintenant },
-      })
-    })
-  } else if (donnees.parkName) {
-    const aujourdhui = new Date()
-    // En UTC : une colonne `date` est tronquée en UTC, et un premier du mois
-    // construit en heure locale s'y enregistre comme le dernier du mois d'avant.
-    const periode = new Date(Date.UTC(aujourdhui.getUTCFullYear(), aujourdhui.getUTCMonth(), 1))
+    invitation = { id: trouvee.id, parkId: trouvee.parkId, role: trouvee.role }
+  }
 
-    await prisma.$transaction(async (tx) => {
-      const park = await tx.park.create({
+  // Le hachage AVANT la transaction, et délibérément : il est lent par
+  // construction, et le tenir à l'intérieur immobiliserait une connexion et
+  // rapprocherait du délai au bout duquel Prisma annule la transaction.
+  const passwordHash = await hashPassword(donnees.password)
+
+  const aujourdhui = new Date()
+  // En UTC : une colonne `date` est tronquée en UTC, et un premier du mois
+  // construit en heure locale s'y enregistre comme le dernier du mois d'avant.
+  const periode = new Date(Date.UTC(aujourdhui.getUTCFullYear(), aujourdhui.getUTCMonth(), 1))
+
+  /**
+   * Le compte, son parc ou son adhésion : UNE transaction, ou rien.
+   *
+   * C'est ce que le commentaire d'origine décrivait, étendu à ce qu'il
+   * nommait. Tout échec — e-mail déjà pris, code consommé entre-temps, semis
+   * de démonstration interrompu — laisse la base exactement comme il l'a
+   * trouvée, et l'appelant peut réessayer avec la même adresse.
+   */
+  const compte = await prisma
+    .$transaction(async (tx) => {
+      const cree = await tx.userAccount.create({
         data: {
-          name: donnees.parkName!,
-          countryCode: donnees.countryCode ?? 'CM',
-          // La devise appartient au parc, pas à la session : un loyer de Douala
-          // est en francs CFA quelle que soit la langue de qui le regarde.
-          currency: deviseDuPays(donnees.countryCode),
-          memberships: { create: { userId: compte.id, role: 'owner' } },
+          email: donnees.email,
+          passwordHash,
+          fullName: donnees.fullName,
+          phoneE164: donnees.phoneE164 ?? null,
+          countryCode: donnees.countryCode ?? null,
+          locale: donnees.locale,
+          termsAcceptedAt: new Date(),
+          newsletterOptIn: donnees.newsletterOptIn,
         },
       })
 
-      if (donnees.seedDemo) {
-        await semerParcDemonstration(tx, {
-          parkId: park.id,
-          proprietaireId: compte.id,
-          periode,
-          aujourdhui,
+      /**
+       * Rejoindre un parc par invitation, exclusif de la création d'un parc. Le
+       * rôle vient de l'invitation, jamais de la saisie : quelqu'un qui poste
+       * `role: 'owner'` n'obtient rien de plus que ce que le propriétaire lui a
+       * accordé.
+       */
+      if (invitation) {
+        await tx.membership.create({
+          data: { userId: cree.id, parkId: invitation.parkId, role: invitation.role },
         })
+
+        /**
+         * Le marquage tranche la COURSE, et il est ici plutôt que dans la
+         * lecture qui précède : entre les deux, une autre inscription peut
+         * avoir consommé le même code. `updateMany` n'écrit que si
+         * `acceptedAt` est encore nul, et un compteur à zéro fait échouer la
+         * transaction entière — donc le compte avec elle. Deux inscriptions
+         * simultanées avec le même code ne peuvent plus produire deux
+         * adhésions, ni un compte pour le perdant.
+         */
+        const { count } = await tx.invitation.updateMany({
+          where: { id: invitation.id, acceptedAt: null },
+          data: { acceptedAt: new Date() },
+        })
+        if (count === 0) throw new CodeDejaConsomme()
+      } else if (donnees.parkName) {
+        const park = await tx.park.create({
+          data: {
+            name: donnees.parkName,
+            countryCode: donnees.countryCode ?? 'CM',
+            // La devise appartient au parc, pas à la session : un loyer de
+            // Douala est en francs CFA quelle que soit la langue de qui le
+            // regarde.
+            currency: deviseDuPays(donnees.countryCode),
+            memberships: { create: { userId: cree.id, role: 'owner' } },
+          },
+        })
+
+        if (donnees.seedDemo) {
+          await semerParcDemonstration(tx, {
+            parkId: park.id,
+            proprietaireId: cree.id,
+            periode,
+            aujourdhui,
+          })
+        }
       }
+
+      return cree
+    }, {
+      /**
+       * Le semis de démonstration écrit plusieurs centaines de lignes, et il
+       * vit désormais dans la même transaction que le compte. Le délai par
+       * défaut de Prisma est de cinq secondes : le tenir ici évite qu'une
+       * machine lente transforme une inscription valide en compte perdu.
+       */
+      timeout: 20_000,
     })
+    .catch((err: unknown) => {
+      // P2002 : violation d'unicité, donc e-mail déjà pris. On rend un code
+      // stable plutôt qu'un message : c'est au client de le traduire.
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') return null
+      if (err instanceof CodeDejaConsomme) return err
+      throw err
+    })
+
+  if (compte === null) {
+    res.status(409).json({ error: 'email_taken' })
+    return
   }
+  if (compte instanceof CodeDejaConsomme) {
+    res.status(400).json({ error: 'invitation_invalid' })
+    return
+  }
+
 
   await ouvrirSession(res, compte.id, contexte(req))
   res.status(201).json({ user: vueCompte(compte) })

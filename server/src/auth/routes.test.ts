@@ -271,3 +271,169 @@ describe('session', () => {
     expect(res.body.memberships).toEqual([])
   })
 })
+
+/**
+ * UNE INSCRIPTION REFUSÉE N'ÉCRIT RIEN.
+ *
+ * Le handler créait le compte AVANT d'examiner le code d'invitation, et le
+ * refus ne défaisait rien : le 400 partait, le compte restait. Le défaut s'est
+ * vu en faisant le ménage d'un parc de sonde en production — quatre comptes y
+ * traînaient là où deux inscriptions avaient réussi ; les deux autres étaient
+ * les traces de deux refus, horodatées à la milliseconde du 400.
+ *
+ * Le pire n'était pas la ligne morte, c'était l'adresse PRISE. Qui saisit son
+ * code de travers une seule fois ne peut plus s'inscrire avec sa propre adresse
+ * — il reçoit `email_taken` pour un compte dont il ignore l'existence, alors que
+ * son code est valide. Et un code inventé suffisait à occuper l'adresse d'un
+ * autre avant même qu'il ait reçu son invitation.
+ */
+describe('une inscription refusée n’écrit rien', () => {
+  /** Émet un code d'invitation réel depuis un parc réel. */
+  async function parcAvecCode() {
+    const proprio = await request(serveur)
+      .post('/api/auth/signup')
+      .send({ ...INSCRIPTION, email: 'bailleur@example.com', parkName: 'Parc de test' })
+    const cookie = cookieDe(proprio)!
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', cookie)
+    const parkId = parcs.body.parks[0].id
+    const invit = await request(serveur)
+      .post(`/api/parks/${parkId}/invitations`)
+      .set('Cookie', cookie)
+      .send({ role: 'tenant' })
+    expect(invit.status, JSON.stringify(invit.body)).toBe(201)
+    return { parkId, code: invit.body.code as string }
+  }
+
+  it('ne laisse aucun compte derrière un code refusé', async () => {
+    const res = await request(serveur)
+      .post('/api/auth/signup')
+      .send({ ...INSCRIPTION, email: 'candidat@example.com', invitationCode: 'LOC-9999-XXXX' })
+    expect(res.status).toBe(400)
+    expect(res.body.error).toBe('invitation_invalid')
+
+    // La ligne morte n'est pas le vrai dégât, mais c'est elle qui le cause.
+    expect(await prisma.userAccount.count({ where: { email: 'candidat@example.com' } })).toBe(0)
+  })
+
+  it('laisse l’adresse libre pour la seconde tentative, avec le bon code', async () => {
+    const { code } = await parcAvecCode()
+
+    await request(serveur)
+      .post('/api/auth/signup')
+      .send({ ...INSCRIPTION, email: 'candidat@example.com', invitationCode: 'LOC-9999-XXXX' })
+      .expect(400)
+
+    /**
+     * LE CAS QUI COMPTE. Une faute de frappe sur un code condamnait l'adresse :
+     * la seconde tentative — avec le bon code, la bonne adresse — se heurtait à
+     * `email_taken`, et rien à l'écran ne pouvait lui dire de se connecter
+     * plutôt que de s'inscrire, puisque de son point de vue aucun compte
+     * n'existait.
+     */
+    const res = await request(serveur)
+      .post('/api/auth/signup')
+      .send({ ...INSCRIPTION, email: 'candidat@example.com', invitationCode: code })
+    expect(res.status, JSON.stringify(res.body)).toBe(201)
+
+    const me = await request(serveur).get('/api/auth/me').set('Cookie', cookieDe(res)!)
+    expect(me.body.memberships).toHaveLength(1)
+    expect(me.body.memberships[0].role).toBe('tenant')
+  })
+
+  it('ne consomme pas le code quand c’est l’adresse qui est déjà prise', async () => {
+    const { code } = await parcAvecCode()
+    await request(serveur)
+      .post('/api/auth/signup')
+      .send({ ...INSCRIPTION, email: 'occupe@example.com' })
+      .expect(201)
+
+    const res = await request(serveur)
+      .post('/api/auth/signup')
+      .send({ ...INSCRIPTION, email: 'occupe@example.com', invitationCode: code })
+    expect(res.status).toBe(409)
+    expect(res.body.error).toBe('email_taken')
+
+    // Le code est LU avant l'écriture et marqué DANS la transaction : un échec
+    // sur l'adresse annule le marquage avec le reste. Sans cela, un code
+    // parfaitement valide serait brûlé par une inscription qui n'a rien créé.
+    const entrant = await request(serveur)
+      .post('/api/auth/signup')
+      .send({ ...INSCRIPTION, email: 'entrant@example.com', invitationCode: code })
+    expect(entrant.status, JSON.stringify(entrant.body)).toBe(201)
+  })
+
+  it('ne laisse entrer qu’une personne par code, et sans compte pour la seconde', async () => {
+    const { code } = await parcAvecCode()
+    await request(serveur)
+      .post('/api/auth/signup')
+      .send({ ...INSCRIPTION, email: 'premier@example.com', invitationCode: code })
+      .expect(201)
+
+    const second = await request(serveur)
+      .post('/api/auth/signup')
+      .send({ ...INSCRIPTION, email: 'second@example.com', invitationCode: code })
+    expect(second.status).toBe(400)
+    expect(second.body.error).toBe('invitation_invalid')
+
+    // Le perdant repart les mains vides — sans adhésion ET sans compte. Ce cas
+    // éprouve l'ORDRE et non l'atomicité : le code est déjà marqué accepté au
+    // moment de la lecture, donc le refus tombe avant toute écriture. La course
+    // vraie, elle, est le cas suivant.
+    expect(await prisma.userAccount.count({ where: { email: 'second@example.com' } })).toBe(0)
+  })
+
+  it('n’en laisse entrer qu’un quand les deux arrivent en même temps', async () => {
+    const { code } = await parcAvecCode()
+
+    /**
+     * LA COURSE, pour de bon.
+     *
+     * Le cas précédent enchaîne les deux inscriptions : le second lit un code
+     * déjà marqué et repart avant d'écrire. Ici les deux partent ENSEMBLE, les
+     * deux lisent un code libre, et les deux entrent en transaction. Ce qui les
+     * départage est le `updateMany` gardé par `acceptedAt: null` — le perdant
+     * obtient un compteur à zéro, lève, et son compte tombe avec sa
+     * transaction.
+     *
+     * Sans ce cas, trois mutations restaient muettes : sortir la création du
+     * compte de la transaction, retirer la garde du marquage, et supprimer la
+     * levée. Le chemin qu'elles cassent n'était emprunté par aucun test.
+     */
+    const [a, b] = await Promise.all([
+      request(serveur)
+        .post('/api/auth/signup')
+        .send({ ...INSCRIPTION, email: 'course-a@example.com', invitationCode: code }),
+      request(serveur)
+        .post('/api/auth/signup')
+        .send({ ...INSCRIPTION, email: 'course-b@example.com', invitationCode: code }),
+    ])
+
+    const statuts = [a.status, b.status].sort()
+    expect(statuts, `${a.status}/${JSON.stringify(a.body)} ${b.status}/${JSON.stringify(b.body)}`)
+      .toEqual([201, 400])
+
+    // Une seule adhésion, et un seul compte : le perdant n'a pas même pris son
+    // adresse. C'est l'atomicité, celle que le handler ne tenait pas.
+    expect(
+      await prisma.userAccount.count({
+        where: { email: { in: ['course-a@example.com', 'course-b@example.com'] } },
+      }),
+    ).toBe(1)
+    expect(await prisma.membership.count({ where: { role: 'tenant' } })).toBe(1)
+  })
+
+  it('crée toujours le compte sans parc de qui n’a ni code ni parc à fonder', async () => {
+    /**
+     * La moitié POSITIVE, sans laquelle un correctif trop zélé passerait au
+     * vert en refusant tout. Un compte sans parc est un état servi : l'écran de
+     * prise en main lui propose de rejoindre un parc par code.
+     */
+    const res = await request(serveur)
+      .post('/api/auth/signup')
+      .send({ ...INSCRIPTION, email: 'seul@example.com' })
+    expect(res.status, JSON.stringify(res.body)).toBe(201)
+
+    const me = await request(serveur).get('/api/auth/me').set('Cookie', cookieDe(res)!)
+    expect(me.body.memberships).toEqual([])
+  })
+})
