@@ -23,7 +23,11 @@ export class MessagerieResend implements Messagerie {
     return false
   }
 
-  async envoyerEmail(destinataire: string, sujet: string, texte: string): Promise<boolean> {
+  async envoyerEmail(
+    destinataire: string,
+    sujet: string,
+    corps: { texte: string; html: string },
+  ): Promise<boolean> {
     try {
       const reponse = await fetch('https://api.resend.com/emails', {
         method: 'POST',
@@ -35,7 +39,12 @@ export class MessagerieResend implements Messagerie {
           from: this.expediteur,
           to: [destinataire],
           subject: sujet,
-          text: texte,
+          // Les DEUX. Les clients modernes affichent le HTML, où le lien vit
+          // dans un attribut ; les autres retombent sur le texte. Envoyer le
+          // seul HTML priverait les seconds, envoyer le seul texte est ce qui
+          // a cassé le parcours en production.
+          html: corps.html,
+          text: corps.texte,
         }),
       })
 

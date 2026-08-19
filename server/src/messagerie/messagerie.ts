@@ -33,8 +33,25 @@ export interface Messagerie {
    * se paie sur une opération qu'un utilisateur répète quand il doute. Elle ne
    * s'élargit pas d'un octet de plus : ni pièce jointe, ni modèle, ni accusé de
    * lecture, tant que rien ne les réclame.
+   *
+   * DEUX CORPS, et c'est un incident de production qui l'impose. Le premier
+   * message n'avait qu'une version texte ; son lien de 112 caractères a été
+   * mutilé quelque part entre l'envoi et le navigateur — repli de ligne,
+   * encodage, ou auto-détection qui décide seule où une URL s'arrête. L'écran
+   * a rendu « lien expiré » sans qu'aucune requête ne parte, et chacune des
+   * pièces était pourtant juste : le jeton émis, le paquet client servi, le
+   * contrôle qui le lit.
+   *
+   * Dans une version HTML, l'adresse vit dans un ATTRIBUT. Aucun repli ne la
+   * coupe, aucune heuristique n'a à deviner où elle finit. La version texte
+   * reste jointe pour les clients qui n'affichent pas le HTML : elle n'est plus
+   * la seule chance du lien, seulement la dernière.
    */
-  envoyerEmail(destinataire: string, sujet: string, texte: string): Promise<boolean>
+  envoyerEmail(
+    destinataire: string,
+    sujet: string,
+    corps: { texte: string; html: string },
+  ): Promise<boolean>
 }
 
 /**
@@ -61,7 +78,11 @@ export class MessagerieDeJournal implements Messagerie {
     return false
   }
 
-  async envoyerEmail(destinataire: string, sujet: string, texte: string): Promise<boolean> {
+  async envoyerEmail(
+    destinataire: string,
+    sujet: string,
+    corps: { texte: string; html: string },
+  ): Promise<boolean> {
     /**
      * Ni le corps ni l'adresse entière ne sont journalisés.
      *
@@ -74,7 +95,7 @@ export class MessagerieDeJournal implements Messagerie {
     const [avant = '', apres = ''] = destinataire.split('@')
     const masque = `${avant.slice(0, 2)}…@${apres}`
     console.log(
-      `Courriel non envoyé — aucun fournisseur configuré — vers ${masque} — « ${sujet} » (${texte.length} car.)`,
+      `Courriel non envoyé — aucun fournisseur configuré — vers ${masque} — « ${sujet} » (${corps.texte.length} car.)`,
     )
     return false
   }

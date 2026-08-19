@@ -36,7 +36,7 @@ describe('l’envoi de courriels par Resend', () => {
   it('poste le message à Resend, signé de la clé', async () => {
     const appels = fauxFetch(new Response('{"id":"abc"}', { status: 200 }))
 
-    const parti = await messagerie.envoyerEmail('sarah@example.com', 'Sujet', 'Le corps')
+    const parti = await messagerie.envoyerEmail('sarah@example.com', 'Sujet', { texte: 'Le corps', html: '<p>Le corps</p>' })
     expect(parti).toBe(true)
 
     expect(appels).toHaveLength(1)
@@ -50,6 +50,7 @@ describe('l’envoi de courriels par Resend', () => {
       to: ['sarah@example.com'],
       subject: 'Sujet',
       text: 'Le corps',
+      html: '<p>Le corps</p>',
     })
   })
 
@@ -61,7 +62,7 @@ describe('l’envoi de courriels par Resend', () => {
      * parti. Rendre `true` ici produirait exactement le mensonge qu'on retire
      * partout ailleurs — un succès affiché que rien ne recouvre.
      */
-    await expect(messagerie.envoyerEmail('sarah@example.com', 'S', 'C')).resolves.toBe(false)
+    await expect(messagerie.envoyerEmail('sarah@example.com', 'S', { texte: 'C', html: '<p>C</p>' })).resolves.toBe(false)
   })
 
   it('rend faux quand le réseau lâche, sans lever non plus', async () => {
@@ -75,7 +76,7 @@ describe('l’envoi de courriels par Resend', () => {
     // « Jamais d'exception » n'est pas une politesse : une panne réseau qui
     // remonterait ferait rendre 500 à la demande de réinitialisation, ce qui
     // apprendrait au passage que l'adresse est connue.
-    await expect(messagerie.envoyerEmail('sarah@example.com', 'S', 'C')).resolves.toBe(false)
+    await expect(messagerie.envoyerEmail('sarah@example.com', 'S', { texte: 'C', html: '<p>C</p>' })).resolves.toBe(false)
   })
 
   it('ne journalise ni la clé ni le corps du message', async () => {
@@ -85,11 +86,10 @@ describe('l’envoi de courriels par Resend', () => {
     })
     fauxFetch(new Response('{"message":"domaine non vérifié"}', { status: 403 }))
 
-    await messagerie.envoyerEmail(
-      'sarah@example.com',
-      'Réinitialiser',
-      'https://app.example.cm/reinitialiser?jeton=LE-SECRET-QUI-OUVRE-LE-COMPTE',
-    )
+    await messagerie.envoyerEmail('sarah@example.com', 'Réinitialiser', {
+      texte: 'https://app.example.cm/reinitialiser?jeton=LE-SECRET-QUI-OUVRE-LE-COMPTE',
+      html: '<a href="https://app.example.cm/reinitialiser?jeton=LE-SECRET-QUI-OUVRE-LE-COMPTE">ici</a>',
+    })
 
     const tout = erreurs.join('\n')
     // Le corps porte le lien, qui EST le compte le temps de sa validité. Un

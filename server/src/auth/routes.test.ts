@@ -451,13 +451,13 @@ describe('une inscription refusée n’écrit rien', () => {
 describe('réinitialisation du mot de passe', () => {
   /** Capture les courriels au lieu de les envoyer, et rend le lien émis. */
   function messagerieQuiCapture() {
-    const envoyes: { destinataire: string; texte: string }[] = []
+    const envoyes: { destinataire: string; texte: string; html: string }[] = []
     const rendre = remplacerMessagerie({
       async envoyerSms() {
         return false
       },
-      async envoyerEmail(destinataire: string, _sujet: string, texte: string) {
-        envoyes.push({ destinataire, texte })
+      async envoyerEmail(destinataire: string, _sujet: string, corps: { texte: string; html: string }) {
+        envoyes.push({ destinataire, ...corps })
         return true
       },
     })
@@ -465,6 +465,7 @@ describe('réinitialisation du mot de passe', () => {
       envoyes,
       rendre,
       jeton: () => envoyes.at(-1)?.texte.match(/jeton=([\w-]+)/)?.[1] ?? '',
+      html: () => envoyes.at(-1)?.html ?? '',
     }
   }
 
@@ -510,6 +511,56 @@ describe('réinitialisation du mot de passe', () => {
       const enregistre = await prisma.passwordReset.findFirstOrThrow()
       expect(enregistre.tokenHash).not.toBe(clair)
       expect(enregistre.tokenHash).toBe(empreinteJeton(clair))
+    } finally {
+      m.rendre()
+    }
+  })
+
+  it('porte le lien dans un attribut, que nul repli de ligne ne coupe', async () => {
+    /**
+     * L'INCIDENT DE PRODUCTION, gardé.
+     *
+     * Le premier message n'avait qu'un corps texte. Son lien de 112 caractères
+     * est arrivé mutilé dans le navigateur : l'écran a rendu « lien expiré »
+     * sans qu'aucune requête ne parte, alors que le jeton émis, le paquet
+     * client servi et le contrôle qui le lit étaient tous les trois justes.
+     * Repli de ligne, encodage, auto-détection : la cause exacte n'a jamais été
+     * établie, et c'est pourquoi ce cas ne garde aucune d'elles — il garde que
+     * l'adresse vit dans un ATTRIBUT, où rien de tout cela ne l'atteint.
+     */
+    await compteExistant()
+    const m = messagerieQuiCapture()
+    try {
+      await request(serveur).post('/api/auth/forgot').send({ email: 'sarah@example.com' })
+      const jeton = m.jeton()
+      const html = m.html()
+
+      // Le jeton ENTIER dans le href, et le href sur une seule pièce.
+      expect(html).toContain(`href="${process.env.CLIENT_ORIGIN ?? 'http://localhost:5173'}/reinitialiser?jeton=${jeton}"`)
+
+      // Et le corps texte le porte toujours : le HTML ne le remplace pas, il
+      // lui retire seulement la charge d'être la seule chance du lien.
+      expect(m.envoyes.at(-1)?.texte).toContain(`jeton=${jeton}`)
+    } finally {
+      m.rendre()
+    }
+  })
+
+  it('échappe le nom, qui vient de l’inscription et non de nous', async () => {
+    const res = await request(serveur)
+      .post('/api/auth/signup')
+      .send({ ...INSCRIPTION, email: 'balise@example.com', fullName: '<script>alert(1)</script>' })
+    expect(res.status).toBe(201)
+
+    const m = messagerieQuiCapture()
+    try {
+      await request(serveur).post('/api/auth/forgot').send({ email: 'balise@example.com' })
+
+      // Une balise dans un `fullName` s'exécuterait chez le destinataire. Le
+      // lien, lui, n'est pas échappé — il est fabriqué ici, rien n'y vient de
+      // l'extérieur.
+      expect(m.html()).not.toContain('<script>')
+      expect(m.html()).toContain('&lt;script&gt;')
     } finally {
       m.rendre()
     }

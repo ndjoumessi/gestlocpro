@@ -428,6 +428,60 @@ authRouter.get('/me', async (req: Request, res: Response) => {
 const DUREE_REINITIALISATION_MS = 60 * 60 * 1000
 
 /**
+ * Le message de réinitialisation, dans ses deux corps.
+ *
+ * LE LIEN VIT DANS UN ATTRIBUT, et c'est tout l'objet de cette fonction. La
+ * première version n'avait qu'un corps texte : le lien y occupait une ligne de
+ * 112 caractères, et il est arrivé mutilé dans le navigateur — l'écran a rendu
+ * « lien expiré » sans qu'aucune requête ne parte. Repli de ligne d'un client
+ * de messagerie, encodage, auto-détection qui décide seule où une URL finit :
+ * la cause exacte n'a pas été établie, et c'est justement pourquoi le correctif
+ * ne vise aucune d'elles en particulier. Un `href` ne se coupe pas.
+ *
+ * Le HTML est délibérément pauvre — pas d'image, pas de fichier de style, rien
+ * qu'un paragraphe et un lien. Un courriel qui exige de charger des ressources
+ * distantes se fait bloquer par la moitié des clients, et un message de
+ * sécurité qui s'affiche en pièces détachées inspire exactement la méfiance
+ * qu'il faudrait éviter ici.
+ *
+ * La version texte reste jointe, et porte le même lien : elle n'est plus la
+ * seule chance de l'utilisateur, seulement la dernière.
+ */
+export function corpsDeReinitialisation(nom: string, lien: string): { texte: string; html: string } {
+  const texte =
+    `Bonjour ${nom},\n\n` +
+    `Vous avez demandé à réinitialiser votre mot de passe. Ce lien est valable une heure :\n\n` +
+    `${lien}\n\n` +
+    `Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : votre mot de passe reste inchangé.`
+
+  /**
+   * Le nom est ÉCHAPPÉ, le lien ne l'est pas.
+   *
+   * Le nom vient de l'inscription : c'est une chaîne choisie par un
+   * utilisateur, donc à traiter comme hostile — un `fullName` contenant une
+   * balise s'exécuterait chez le destinataire. Le lien, lui, est fabriqué ici à
+   * partir d'un jeton tiré au hasard en base64url et d'une origine de
+   * configuration : rien n'y vient de l'extérieur.
+   */
+  const html =
+    `<p>Bonjour ${echapper(nom)},</p>` +
+    `<p>Vous avez demandé à réinitialiser votre mot de passe. Ce lien est valable une heure.</p>` +
+    `<p><a href="${lien}">Choisir un nouveau mot de passe</a></p>` +
+    `<p>Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : votre mot de passe reste inchangé.</p>`
+
+  return { texte, html }
+}
+
+/** Échappe ce qui viendrait d'un utilisateur avant de l'insérer dans du HTML. */
+function echapper(valeur: string): string {
+  return valeur
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+/**
  * Demande d'un lien de réinitialisation.
  *
  * LE PARCOURS EXISTAIT SANS SA MÉCANIQUE. `ForgotPassword.tsx` et
@@ -478,10 +532,7 @@ authRouter.post('/forgot', async (req: Request, res: Response) => {
     await laMessagerie().envoyerEmail(
       donnees.email,
       'GestLocPro — réinitialiser votre mot de passe',
-      `Bonjour ${compte.fullName},\n\n` +
-        `Vous avez demandé à réinitialiser votre mot de passe. Ce lien est valable une heure :\n\n` +
-        `${lien}\n\n` +
-        `Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : votre mot de passe reste inchangé.`,
+      corpsDeReinitialisation(compte.fullName, lien),
     )
   }
 
