@@ -444,6 +444,18 @@ parksRouter.get(
           quotedAmountMinor: true,
           approvedAmountMinor: true,
           reportedAt: true,
+          origin: true,
+          /**
+           * Le NOM du déclarant, par l'une ou l'autre des deux relations.
+           *
+           * `reportedByTenantId` était écrit depuis l'origine et lu nulle part,
+           * faute de relation : le bailleur recevait un problème sans savoir
+           * qui l'avait vu, donc sans pouvoir rappeler ni faire ouvrir la
+           * porte. C'est la moitié locataire. L'autre — le compte qui ouvre un
+           * chantier — n'existait pas du tout.
+           */
+          reportedByTenant: { select: { fullName: true } },
+          reportedBy: { select: { fullName: true } },
         },
       }),
       prisma.deposit.findMany({
@@ -910,7 +922,23 @@ parksRouter.get(
         // latérale — la pastille annonçait « 2 » même après tout avoir lu.
         read: n.recipients[0]?.readAt !== null && n.recipients[0]?.readAt !== undefined,
       })),
-      works: travaux,
+      /**
+       * Le déclarant est APLATI en un nom, quelle que soit sa nature.
+       *
+       * Deux relations le portent — un locataire, ou un compte du bailleur —
+       * mais l'écran n'a qu'une phrase à composer : « signalé par Charles
+       * Ngassa », « ouvert par Arsène Nkolo ». C'est `origin` qui dit laquelle
+       * des deux, et rendre les deux objets obligerait chaque appelant à
+       * refaire ce choix.
+       *
+       * `null` reste possible : les interventions antérieures à ce champ n'ont
+       * pas d'auteur, et un locataire supprimé s'efface de la sienne — le
+       * travail lui survit, sa jointure retombe à `null`.
+       */
+      works: travaux.map(({ reportedByTenant, reportedBy, ...reste }) => ({
+        ...reste,
+        reportedBy: reportedByTenant?.fullName ?? reportedBy?.fullName ?? null,
+      })),
       deposits: cautions.map((d) => ({
         id: d.id,
         unitId: d.lease.unitId,
@@ -1989,6 +2017,19 @@ parksRouter.post(
           })
         : null
 
+    /**
+     * L'origine se DÉRIVE du rôle, elle ne se saisit pas.
+     *
+     * Le corps de la requête ne la porte pas, et c'est délibéré : un client qui
+     * pourrait l'annoncer pourrait mentir. Une intervention étiquetée
+     * « initiative du bailleur » alors qu'un locataire l'a ouverte inverserait
+     * la charge d'une dépense — et l'origine sert précisément à distinguer ce
+     * qu'on subit de ce qu'on décide.
+     *
+     * Le serveur sait qui parle ; il n'a besoin de rien d'autre.
+     */
+    const origine = role === 'tenant' ? 'tenantReport' : 'ownerInitiative'
+
     const travail = await prisma.$transaction(async (tx) => {
       const reference = await prochaineReference(tx, parkId, new Date().getFullYear())
       return tx.workOrder.create({
@@ -2002,10 +2043,15 @@ parksRouter.post(
           // montant nul ferait apparaître un devis à zéro dans la carte des
           // arbitrages du propriétaire.
           status: 'reported',
+          origin: origine,
           ...(corps.description ? { description: corps.description } : {}),
           ...(declarant ? { reportedByTenantId: declarant.id } : {}),
+          /* L'AUTEUR, quand ce n'est pas un locataire. L'intervention naissait
+             sans aucun auteur dans ce cas : rien à opposer six mois plus tard à
+             « qui a décidé cette dépense ». */
+          ...(role === 'tenant' ? {} : { reportedById: req.compteId! }),
         },
-        select: { id: true, reference: true, status: true, title: true },
+        select: { id: true, reference: true, status: true, title: true, origin: true },
       })
     })
 

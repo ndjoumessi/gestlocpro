@@ -2603,6 +2603,174 @@ describe('mise en demeure', () => {
  * TERMINAL : un devis validé restait « à faire » indéfiniment, donc la liste
  * des travaux ne pouvait que grandir.
  */
+/**
+ * L'ORIGINE d'une intervention.
+ *
+ * Jusqu'ici elle naissait forcément d'un signalement de locataire — c'était le
+ * seul chemin ouvert par l'interface, et l'état vide de l'écran le disait en
+ * toutes lettres : « une intervention naît d'un signalement de locataire ». Un
+ * bailleur qui remplaçait un chauffe-eau de sa propre initiative n'avait donc
+ * aucun endroit où l'enregistrer, et la dépense n'existait nulle part.
+ *
+ * La route, elle, acceptait déjà les trois rôles. La capacité existait, seule
+ * l'interface la refusait — et rien ne distinguait ce qu'on subit de ce qu'on
+ * décide.
+ */
+describe('origine des interventions', () => {
+  let parkId: string
+  let proprio: string
+
+  beforeEach(async () => {
+    const p = await inscrire('proprio@example.com', {
+      parkName: 'Parc Bonamoussadi',
+      countryCode: 'CM',
+      seedDemo: true,
+    })
+    proprio = p.cookie
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio)
+    parkId = parcs.body.parks[0].id
+  })
+
+  const portefeuille = (cookie: string) =>
+    request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', cookie)
+
+  interface TravailApi {
+    id: string
+    unitId: string
+    title: string
+    origin: 'tenantReport' | 'ownerInitiative'
+    reportedBy: string | null
+  }
+
+  async function uniteDe(label: string) {
+    const vue = await portefeuille(proprio)
+    for (const immeuble of vue.body.buildings) {
+      const u = immeuble.units.find((x: { label: string }) => x.label === label)
+      if (u) return u
+    }
+    throw new Error(`unité ${label} introuvable`)
+  }
+
+  it('rend l’origine de chaque intervention', async () => {
+    const vue = await portefeuille(proprio)
+    const travaux: TravailApi[] = vue.body.works
+    expect(travaux.length).toBeGreaterThan(0)
+    for (const t of travaux) expect(['tenantReport', 'ownerInitiative']).toContain(t.origin)
+    // Les DEUX natures sont représentées : un jeu qui n'en montrerait qu'une
+    // laisserait passer une origine écrite en dur.
+    expect(travaux.some((t) => t.origin === 'ownerInitiative')).toBe(true)
+    expect(travaux.some((t) => t.origin === 'tenantReport')).toBe(true)
+  })
+
+  /**
+   * Le NOM du déclarant, que la réponse ne rendait pas.
+   *
+   * `reportedByTenantId` était écrit depuis l'origine et lu nulle part, faute
+   * de relation : le bailleur recevait un problème sans savoir qui l'avait vu,
+   * donc sans pouvoir rappeler ni faire ouvrir la porte.
+   */
+  it('nomme le déclarant, locataire ou bailleur', async () => {
+    const vue = await portefeuille(proprio)
+    const travaux: TravailApi[] = vue.body.works
+    for (const t of travaux) {
+      expect(typeof t.reportedBy, t.title).toBe('string')
+      expect(t.reportedBy!.length).toBeGreaterThan(0)
+    }
+  })
+
+  /**
+   * L'origine se DÉRIVE DU RÔLE, elle ne se saisit pas.
+   *
+   * C'est l'invariant qui donne son sens au champ : un client qui pourrait
+   * l'annoncer pourrait mentir, et une intervention étiquetée « initiative du
+   * bailleur » alors qu'un locataire l'a ouverte inverserait la charge d'une
+   * dépense.
+   */
+  it('étiquette « signalement » ce qu’un locataire ouvre', async () => {
+    const locataire = await inscrire('charles@example.com')
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'charles@example.com' },
+    })
+    await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'tenant' } })
+    await prisma.tenant.updateMany({
+      where: { parkId, fullName: 'Charles Ngassa' },
+      data: { userId: compte.id },
+    })
+    const sien = await prisma.lease.findFirstOrThrow({
+      where: { tenant: { userId: compte.id } },
+      select: { unitId: true },
+    })
+
+    const cree = await request(serveur)
+      .post(`/api/parks/${parkId}/units/${sien.unitId}/works`)
+      .set('Cookie', locataire.cookie)
+      .send({
+        title: 'Volet roulant bloqué en position haute',
+        trade: 'other',
+        urgency: 'normal',
+        // Le client ANNONCE le contraire : le serveur ne doit pas l'écouter.
+        origin: 'ownerInitiative',
+      })
+    expect(cree.status).toBe(201)
+
+    const vue = await portefeuille(proprio)
+    const travaux: TravailApi[] = vue.body.works
+    const nouveau = travaux.find((t) => t.id === cree.body.work.id)!
+    expect(nouveau.origin).toBe('tenantReport')
+    expect(nouveau.reportedBy).toBe('Charles Ngassa')
+  })
+
+  it('étiquette « initiative » ce que le bailleur ouvre, et le nomme', async () => {
+    const unite = await uniteDe('A2')
+    const cree = await request(serveur)
+      .post(`/api/parks/${parkId}/units/${unite.id}/works`)
+      .set('Cookie', proprio)
+      .send({
+        title: 'Remplacement du chauffe-eau avant panne',
+        trade: 'plumbing',
+        urgency: 'low',
+      })
+    expect(cree.status).toBe(201)
+
+    const vue = await portefeuille(proprio)
+    const travaux: TravailApi[] = vue.body.works
+    const nouveau = travaux.find((t) => t.id === cree.body.work.id)!
+    expect(nouveau.origin).toBe('ownerInitiative')
+    // L'intervention naissait SANS AUCUN AUTEUR dans ce cas : ni nom, ni
+    // compte, rien à opposer six mois plus tard à « qui a décidé cette
+    // dépense ». `approvedById` existait pour la validation, rien pour
+    // l'ouverture.
+    expect(nouveau.reportedBy).not.toBeNull()
+  })
+
+  /**
+   * Le cloisonnement ne bouge pas.
+   *
+   * Le locataire lit les interventions de SON logement. L'origine et le nom du
+   * déclarant en sont deux champs de plus — et le nom d'un voisin n'a rien à
+   * faire chez lui.
+   */
+  it('ne livre pas au locataire le déclarant d’un autre logement', async () => {
+    const locataire = await inscrire('charles@example.com')
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'charles@example.com' },
+    })
+    await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'tenant' } })
+    await prisma.tenant.updateMany({
+      where: { parkId, fullName: 'Charles Ngassa' },
+      data: { userId: compte.id },
+    })
+    const sien = await prisma.lease.findFirstOrThrow({
+      where: { tenant: { userId: compte.id } },
+      select: { unitId: true },
+    })
+
+    const vue = await portefeuille(locataire.cookie)
+    const travaux: TravailApi[] = vue.body.works
+    expect(travaux.every((t) => t.unitId === sien.unitId)).toBe(true)
+  })
+})
+
 describe('cycle des interventions', () => {
   let parkId: string
   let proprio: string

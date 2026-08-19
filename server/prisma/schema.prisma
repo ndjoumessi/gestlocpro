@@ -99,6 +99,7 @@ model UserAccount {
   invitationsSent Invitation[]  @relation("InvitationIssuer")
   auditEvents   AuditEvent[]
   approvedWorks WorkOrder[]     @relation("WorkApprover")
+  reportedWorks WorkOrder[]     @relation("WorkReporterAccount")
   settledDeposits Deposit[]     @relation("DepositSettler")
   recordedPayments Payment[]    @relation("PaymentRecorder")
   capturedReadings MeterReading[] @relation("ReadingCapturer")
@@ -305,6 +306,7 @@ model Tenant {
   updatedAt DateTime @updatedAt
 
   leases Lease[]
+  reportedWorks WorkOrder[] @relation("WorkReporter")
 
   @@index([parkId])
 }
@@ -531,10 +533,37 @@ model WorkOrder {
   approvedBy   UserAccount? @relation("WorkApprover", fields: [approvedById], references: [id], onDelete: SetNull)
   completedOn DateTime? @db.Date
   reportedAt DateTime @default(now())
+  /// D'où vient l'intervention. Voir `WorkOrigin`.
+  ///
+  /// `tenantReport` par défaut parce que c'est ce qu'étaient TOUTES les
+  /// interventions jusqu'ici : la route n'acceptait la création que par ce
+  /// chemin. Le défaut n'est donc pas un choix de commodité, c'est la vérité
+  /// des lignes déjà en base.
+  origin WorkOrigin @default(tenantReport)
   /// Renseigné quand le signalement vient du portail locataire.
   reportedByTenantId String? @db.Uuid
+  /// La RELATION, qui manquait.
+  ///
+  /// Le champ vivait en `uuid` nu, sans clé étrangère : rien n'empêchait un
+  /// identifiant orphelin, et surtout on ne pouvait pas joindre le nom du
+  /// déclarant. Il était donc écrit depuis l'origine et lu nulle part — le
+  /// bailleur recevait un problème sans savoir qui l'avait vu, ce que le
+  /// commentaire de la route promettait pourtant de corriger.
+  reportedByTenant Tenant? @relation("WorkReporter", fields: [reportedByTenantId], references: [id], onDelete: SetNull)
+  /// Le COMPTE qui a ouvert le chantier, quand ce n'est pas un locataire.
+  ///
+  /// `reportedByTenantId` ne couvre que la moitié des cas. Quand le bailleur ou
+  /// son gestionnaire déclare, l'intervention naissait sans aucun auteur : ni
+  /// nom, ni compte, rien à opposer six mois plus tard à « qui a décidé cette
+  /// dépense ». `approvedById` existe pour la validation ; celui-ci lui répond
+  /// pour l'ouverture.
+  reportedById String? @db.Uuid
+  reportedBy   UserAccount? @relation("WorkReporterAccount", fields: [reportedById], references: [id], onDelete: SetNull)
 
   @@index([unitId, status])
+  /// La liste se filtre par origine, et le tableau de bord compte les
+  /// initiatives du bailleur séparément des signalements.
+  @@index([unitId, origin])
 }
 
 /// Alloue les références lisibles par parc et par année, sans balayer la table.
@@ -794,6 +823,24 @@ enum Urgency {
   blocking
   normal
   low
+}
+
+/// D'où vient l'intervention.
+///
+/// DEUX valeurs, et pas trois. « État des lieux de sortie » avait été envisagé
+/// — une réserve chiffrée qui devient un chantier — mais aucun écran ne sait
+/// produire ce lien aujourd'hui. Une valeur d'enum que rien n'écrit est une
+/// promesse d'interface : la liste se filtrerait sur une origine qui ne
+/// remonterait jamais rien.
+///
+/// La distinction qui compte à l'écran est celle-ci : un problème CONSTATÉ par
+/// celui qui habite, ou un chantier DÉCIDÉ par celui qui paie. Le premier
+/// arrive avec une gêne et sans devis, le second avec un budget et sans
+/// urgence. Les confondre dans une seule liste, c'était présenter au bailleur
+/// ses propres décisions comme des plaintes.
+enum WorkOrigin {
+  tenantReport
+  ownerInitiative
 }
 
 enum NotificationKind {

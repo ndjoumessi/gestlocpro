@@ -90,12 +90,28 @@ const TRAVAUX: {
   urgency: 'blocking' | 'normal' | 'low'
   montant?: number
   jours: number
+  /**
+   * `true` quand le bailleur l'a décidée lui-même.
+   *
+   * La réfection complète de B4 l'était depuis toujours SANS pouvoir le dire :
+   * c'est un chantier de relocation, décidé entre deux locataires, et son corps
+   * de métier — « multi » — est justement celui que `TRADES_REPORTABLE` exclut
+   * de ce qu'un locataire peut déclarer, avec ce commentaire : « multi-corps
+   * qualifie un chantier que le bailleur arbitre, jamais un problème que le
+   * locataire constate ». La donnée disait donc déjà l'origine, sans champ pour
+   * la porter.
+   */
+  duBailleur?: boolean
 }[] = [
   { unite: 'A3', title: 'Fuite sous l’évier de la cuisine', trade: 'plumbing', status: 'quoted', urgency: 'blocking', montant: 45000, jours: 35 },
   { unite: 'B2', title: 'Disjoncteur qui saute au démarrage du chauffe-eau', trade: 'power', status: 'approved', urgency: 'blocking', montant: 78000, jours: 38 },
   { unite: 'C1', title: 'Peinture du séjour à reprendre', trade: 'painting', status: 'reported', urgency: 'low', jours: 42 },
   { unite: 'A1', title: 'Remplacement du groupe de sécurité', trade: 'plumbing', status: 'done', urgency: 'normal', montant: 32000, jours: 50 },
-  { unite: 'B4', title: 'Réfection complète avant relocation', trade: 'multi', status: 'approved', urgency: 'normal', montant: 340000, jours: 56 },
+  { unite: 'B4', title: 'Réfection complète avant relocation', trade: 'multi', status: 'approved', urgency: 'normal', montant: 340000, jours: 56, duBailleur: true },
+  /* Une seconde initiative, sur une unité OCCUPÉE : sans elle, « à l'initiative
+     du bailleur » se confondrait avec « logement vide », et le filtre paraîtrait
+     ne trier que les relocations. */
+  { unite: 'A4', title: 'Ravalement de la façade côté cour', trade: 'painting', status: 'quoted', urgency: 'low', montant: 210000, jours: 20, duBailleur: true },
 ]
 
 /** Index de compteurs du mois, par unité. `null` = relevé non fait. */
@@ -419,6 +435,24 @@ export async function semerParcDemonstration(
         approvedById: w.status === 'approved' || w.status === 'done' ? proprietaireId : null,
         completedOn: w.status === 'done' ? moins(w.jours - 5, aujourdhui) : null,
         reportedAt: moins(w.jours, aujourdhui),
+        origin: w.duBailleur ? 'ownerInitiative' : 'tenantReport',
+        /**
+         * Le DÉCLARANT, dans les deux cas.
+         *
+         * Aucune intervention du jeu n'en portait : `reportedByTenantId` était
+         * écrit par la vraie route et jamais par la démonstration, si bien que
+         * l'écran ne pouvait pas montrer « signalé par » sur un parc de
+         * démonstration — c'est-à-dire jamais pendant qu'on développe.
+         */
+        ...(w.duBailleur
+          ? { reportedById: proprietaireId }
+          : await (async () => {
+              const locataire = await tx.tenant.findFirst({
+                where: { parkId, leases: { some: { unitId } } },
+                select: { id: true },
+              })
+              return locataire ? { reportedByTenantId: locataire.id } : {}
+            })()),
       },
     })
   }
