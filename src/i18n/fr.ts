@@ -246,8 +246,6 @@ export const fr = {
       invalidBody:
         'Un lien de réinitialisation expire au bout d’une heure et ne sert qu’une fois. Demandez-en un nouveau.',
       askAnother: 'Demander un nouveau lien',
-      demoNotice:
-        'L’enregistrement n’est pas encore branché : le formulaire valide la saisie, puis affiche l’écran de confirmation.',
     },
 
     strength: {

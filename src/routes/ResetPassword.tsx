@@ -192,11 +192,6 @@ export function ResetPassword() {
         <Button type="submit" size="lg" fullWidth loading={submitting}>
           {t('auth.reset.submit')}
         </Button>
-
-        <p className="flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body-s text-gold-ink">
-          <Icon name="info" size={15} className="mt-0.5 shrink-0" />
-          {t('auth.reset.demoNotice')}
-        </p>
       </form>
     </AuthLayout>
   )

@@ -201,8 +201,6 @@ export const en: Dictionary = {
       invalidBody:
         'A reset link expires after one hour and works only once. Request a new one.',
       askAnother: 'Request a new link',
-      demoNotice:
-        'Saving is not wired up yet: the form validates your input, then shows the confirmation screen.',
     },
 
     strength: {

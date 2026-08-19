@@ -118,6 +118,26 @@ describe('formulaire de réinitialisation', () => {
 })
 
 describe('ce que le serveur décide', () => {
+  it('n’avoue plus un enregistrement qui n’est pas branché — il l’est', async () => {
+    /**
+     * LE DERNIER AVEU DE LA SIMULATION.
+     *
+     * Sous le bouton vivait un bandeau : « L'enregistrement n'est pas encore
+     * branché : le formulaire valide la saisie, puis affiche l'écran de
+     * confirmation. » Il était vrai quand un `setTimeout` tenait lieu d'appel,
+     * et il a survécu au lot qui a branché la route. Un écran qui prévient que
+     * son propre geste ne fait rien décourage exactement celui qui vient
+     * réparer son accès — et le pire est qu'il disait faux.
+     *
+     * Cette phrase n'existe plus dans aucun dictionnaire. Le cas la nomme en
+     * toutes lettres pour que sa réapparition, sous quelque forme que ce soit,
+     * fasse rougir quelque chose.
+     */
+    renderApp(AVEC_JETON)
+    expect(screen.queryByText(/pas encore branché/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /enregistrer le mot de passe/i })).toBeInTheDocument()
+  })
+
   it('bascule sur « lien expiré » quand le serveur refuse le jeton', async () => {
     // Inconnu, périmé ou déjà servi : le serveur rend le même 400, et l'écran
     // n'en dit pas plus que lui. Le formulaire ne peut pas le savoir avant
