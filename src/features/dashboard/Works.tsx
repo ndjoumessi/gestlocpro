@@ -13,7 +13,7 @@ import { TenantScopeNote } from './TenantDashboard'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
-import { type WorkOrder } from '@/data/portfolio'
+import { montantEngage, type WorkOrder } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { workTitle } from '@/data/workTitle'
 import { ReportModal } from './ReportModal'
@@ -32,7 +32,6 @@ export function Works() {
   const base = useBase()
   const t = useT()
   const d = useDates()
-  const { money } = useCurrency()
   const { notify } = useToast()
   const { role } = useRole()
 
@@ -222,18 +221,66 @@ export function Works() {
                   {t(`app.trades.${work.trade}` as 'app.trades.plumbing')} ·{' '}
                   {d.dayMonth(work.reportedAt)}
                 </p>
+                {/*
+                  D'OÙ ELLE VIENT, et de qui.
+
+                  L'écran ne le disait pas, et le serveur ne le rendait pas :
+                  `reportedByTenantId` était écrit depuis l'origine et lu nulle
+                  part. Le bailleur recevait donc un problème sans savoir qui
+                  l'avait vu — il ne pouvait ni rappeler, ni faire ouvrir la
+                  porte à l'artisan.
+
+                  Rien ne s'affiche quand l'origine manque : une intervention
+                  antérieure à ce champ n'a pas de déclarant connu, et écrire
+                  « signalé par » sans nom serait pire que le silence.
+                */}
+                {work.origin && (
+                  <p className="mt-1 text-body-s text-muted">
+                    {work.reportedBy
+                      ? t(
+                          work.origin === 'ownerInitiative'
+                            ? 'app.works.openedByNamed'
+                            : 'app.works.reportedByNamed',
+                          { name: work.reportedBy },
+                        )
+                      : t(
+                          work.origin === 'ownerInitiative'
+                            ? 'app.works.openedBy'
+                            : 'app.works.reportedBy',
+                        )}
+                  </p>
+                )}
               </div>
 
               <div className="flex shrink-0 flex-wrap items-center gap-3">
-                <span className="numeric text-title-m font-medium">
-                  {work.amount ? (
-                    money(work.amount, { round: true })
-                  ) : (
-                    <span className="text-body-s font-normal text-muted italic">
-                      {t('app.works.noQuote')}
-                    </span>
-                  )}
-                </span>
+                {/*
+                  LE MONTANT DIT CE QU'IL EST : proposé, ou engagé.
+
+                  C'était un nombre nu à côté de la pastille de statut, et le
+                  lecteur devait déduire du statut s'il regardait un devis ou une
+                  dépense. Le client aplatissait d'ailleurs les deux champs du
+                  serveur en un seul — le devis d'origine disparaissait dès
+                  qu'une validation existait, alors que l'écart entre proposé et
+                  engagé est exactement ce qu'un bailleur veut voir.
+                */}
+                {/*
+                  ET PAS AU LOCATAIRE — une fuite qui précède ce chantier.
+
+                  La règle est celle des maquettes, appliquée partout ailleurs :
+                  « le coût des travaux n'est jamais exposé au locataire ». Son
+                  espace ne l'affiche pas, l'écran Signaler non plus — et un cas
+                  le garde là-bas. Mais l'écran des travaux, lui, le montrait à
+                  qui l'ouvrait, sans aucune condition de rôle.
+                  `coquilleLocataire` a retiré « Travaux » de sa navigation, ce
+                  qui a rendu le défaut invisible sans le corriger : la route
+                  reste atteignable, et `tenantIsolation` garde justement
+                  qu'elle le reste.
+
+                  Le devis et l'engagé regardent celui qui paie. Le locataire
+                  voit le statut, ce qui répond à sa seule question : est-ce que
+                  ça avance ?
+                */}
+                {!isTenant && <Montant work={work} />}
 
                 <StatusPill tone={STATUS_TONE[work.status]} size="sm">
                   {t(`app.works.${work.status}` as 'app.works.reported')}
@@ -414,5 +461,42 @@ function WorksSkeleton() {
         ))}
       </SkeletonRegion>
     </>
+  )
+}
+
+/**
+ * Ce qu'a coûté une intervention, ou ce qu'elle coûterait.
+ *
+ * Le devis RESTE visible sous l'engagé quand les deux diffèrent : un devis à
+ * 78 000 validé à 78 000 se lit comme une dépense tenue, le même validé après
+ * révision à 95 000 est une dérive. Les confondre effaçait la seule information
+ * que ce couple porte.
+ */
+function Montant({ work }: { work: WorkOrder }) {
+  const t = useT()
+  const { money } = useCurrency()
+  const { montant, nature } = montantEngage(work)
+
+  if (montant === null) {
+    return (
+      <span className="text-body-s text-muted italic">{t('app.works.noQuote')}</span>
+    )
+  }
+
+  const revise =
+    nature === 'approved' && work.quotedAmount !== null && work.quotedAmount !== montant
+
+  return (
+    <span className="flex flex-col items-end">
+      <span className="numeric text-title-m font-medium">{money(montant, { round: true })}</span>
+      <span className="text-caps text-muted">
+        {t(nature === 'approved' ? 'app.works.amountApproved' : 'app.works.amountQuoted')}
+      </span>
+      {revise && (
+        <span className="numeric text-caps text-muted">
+          {t('app.works.amountWasQuoted', { amount: money(work.quotedAmount!, { round: true }) })}
+        </span>
+      )}
+    </span>
   )
 }

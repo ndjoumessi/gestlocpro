@@ -35,7 +35,7 @@ import { VERSION_STOCKAGE, signatureDeLaForme } from './persistence'
  * pas celle du code qui les lit.
  */
 const SIGNATURE_ARRETEE = {
-  version: 6,
+  version: 7,
   forme: {
     deposits: ['held', 'status', 'tenant', 'unitId', 'withheld'],
     units: [
@@ -53,9 +53,12 @@ const SIGNATURE_ARRETEE = {
       'type',
     ],
     works: [
-      'amount',
+      'approvedAmount',
       'id',
+      'origin',
+      'quotedAmount',
       'reportedAt',
+      'reportedBy',
       'status',
       'titleKey',
       'trade',

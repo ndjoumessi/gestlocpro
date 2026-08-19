@@ -376,7 +376,12 @@ export function Dashboard() {
                           `work.unitId` montrerait un uuid le jour où les données
                           viendront du serveur. */}
                       {unitById(work.unitId)?.label} · {work.reference ?? work.id} ·{' '}
-                      {work.amount ? money(work.amount, { round: true }) : t('app.works.noQuote')}
+                      {/* Le DEVIS, et non le montant qui fait foi : cette carte
+                          ne liste que `status === 'quoted'`, c'est-à-dire ce qui
+                          attend une décision. L'engagé y serait toujours nul. */}
+                      {work.quotedAmount
+                        ? money(work.quotedAmount, { round: true })
+                        : t('app.works.noQuote')}
                     </p>
                   </div>
                 </li>

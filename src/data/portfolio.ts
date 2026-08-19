@@ -386,17 +386,84 @@ export interface WorkOrder {
    */
   trade: TradeKey
   status: 'reported' | 'quoted' | 'approved' | 'done'
-  amount: number | null
+  /**
+   * DEUX montants, et non un seul.
+   *
+   * Le client les aplatissait — `amount: approvedAmountMinor ?? quotedAmountMinor`
+   * — alors que le serveur les distingue depuis toujours, et pour une raison
+   * qu'il écrit lui-même : « un devis révisé après coup ne doit pas réécrire ce
+   * qui a été engagé ». L'écran affichait donc un nombre nu que rien ne
+   * qualifiait, et le lecteur devait deviner au statut s'il regardait une
+   * proposition ou une dépense.
+   *
+   * La différence porte : un devis à 78 000 validé à 78 000 se lit comme une
+   * dépense tenue ; le même devis validé après révision à 95 000 est une
+   * dérive, et c'est exactement ce qu'un bailleur veut voir.
+   */
+  quotedAmount: number | null
+  /** Figé à la validation. `null` tant que rien n'est engagé. */
+  approvedAmount: number | null
   reportedAt: DateParts
   urgent: boolean
+  /**
+   * D'où vient l'intervention.
+   *
+   * `undefined` sur un enregistrement antérieur à ce champ, ou sur un serveur
+   * qui ne le rend pas encore : l'écran n'affiche alors aucune origine plutôt
+   * que d'en supposer une. Étiqueter « signalement » par défaut inventerait un
+   * locataire déclarant là où personne n'a rien dit.
+   */
+  origin?: 'tenantReport' | 'ownerInitiative'
+  /**
+   * Le NOM de qui l'a ouverte — locataire ou bailleur, selon `origin`.
+   *
+   * Le serveur écrivait `reportedByTenantId` depuis l'origine et ne le rendait
+   * pas, faute de relation : le bailleur recevait un problème sans savoir qui
+   * l'avait vu, donc sans pouvoir rappeler ni faire ouvrir la porte.
+   */
+  reportedBy?: string | null
 }
 
+/**
+ * Le montant qui FAIT FOI, et ce qu'il est.
+ *
+ * L'engagé quand il existe, le devisé sinon. Les écrans affichaient déjà cette
+ * règle — c'était le `??` de la conversion — mais sans jamais dire lequel des
+ * deux ils montraient : un nombre nu à côté d'une pastille de statut, à charge
+ * pour le lecteur de deviner s'il regardait une proposition ou une dépense.
+ *
+ * La fonction rend les deux ensemble précisément pour que l'appelant ne puisse
+ * pas afficher l'un sans l'autre.
+ */
+export function montantEngage(work: WorkOrder): {
+  montant: number | null
+  nature: 'approved' | 'quoted' | null
+} {
+  if (work.approvedAmount !== null) return { montant: work.approvedAmount, nature: 'approved' }
+  if (work.quotedAmount !== null) return { montant: work.quotedAmount, nature: 'quoted' }
+  return { montant: null, nature: null }
+}
+
+/**
+ * Les interventions de démonstration, avec leur ORIGINE et leur déclarant.
+ *
+ * B4 était une initiative du bailleur depuis toujours SANS pouvoir le dire :
+ * « réfection complète avant relocation » est un chantier décidé entre deux
+ * locataires, et son corps de métier — `multi` — est justement celui que
+ * `TRADES_REPORTABLE` exclut de ce qu'un locataire peut déclarer. La donnée
+ * disait déjà l'origine, il lui manquait un champ pour la porter.
+ *
+ * A3 porte le seul écart entre devisé et engagé : 45 000 proposés, rien de
+ * validé. Sans lui, les deux montants coïncideraient partout et la distinction
+ * ne se verrait sur aucune ligne — c'est le cas qu'une mutation doit pouvoir
+ * viser.
+ */
 export const WORKS: WorkOrder[] = [
-  { id: 'SIG-2026-042', unitId: 'A3', titleKey: 'sinkLeak', trade: 'plumbing', status: 'quoted', amount: 45000, reportedAt: { year: 2026, month: 7, day: 12 }, urgent: true },
-  { id: 'SIG-2026-041', unitId: 'B2', titleKey: 'waterHeaterBreaker', trade: 'power', status: 'approved', amount: 78000, reportedAt: { year: 2026, month: 7, day: 9 }, urgent: true },
-  { id: 'SIG-2026-039', unitId: 'C1', titleKey: 'livingRoomPaint', trade: 'painting', status: 'reported', amount: null, reportedAt: { year: 2026, month: 7, day: 5 }, urgent: false },
-  { id: 'SIG-2026-036', unitId: 'A1', titleKey: 'safetyValve', trade: 'plumbing', status: 'done', amount: 32000, reportedAt: { year: 2026, month: 6, day: 28 }, urgent: false },
-  { id: 'SIG-2026-034', unitId: 'B4', titleKey: 'fullRefurbishment', trade: 'multi', status: 'approved', amount: 340000, reportedAt: { year: 2026, month: 6, day: 22 }, urgent: false },
+  { id: 'SIG-2026-042', unitId: 'A3', titleKey: 'sinkLeak', trade: 'plumbing', status: 'quoted', quotedAmount: 45000, approvedAmount: null, reportedAt: { year: 2026, month: 7, day: 12 }, urgent: true, origin: 'tenantReport', reportedBy: 'Serge Mbarga' },
+  { id: 'SIG-2026-041', unitId: 'B2', titleKey: 'waterHeaterBreaker', trade: 'power', status: 'approved', quotedAmount: 78000, approvedAmount: 78000, reportedAt: { year: 2026, month: 7, day: 9 }, urgent: true, origin: 'tenantReport', reportedBy: 'Nadia Belinga' },
+  { id: 'SIG-2026-039', unitId: 'C1', titleKey: 'livingRoomPaint', trade: 'painting', status: 'reported', quotedAmount: null, approvedAmount: null, reportedAt: { year: 2026, month: 7, day: 5 }, urgent: false, origin: 'tenantReport', reportedBy: 'Cabinet Njoya' },
+  { id: 'SIG-2026-036', unitId: 'A1', titleKey: 'safetyValve', trade: 'plumbing', status: 'done', quotedAmount: 32000, approvedAmount: 32000, reportedAt: { year: 2026, month: 6, day: 28 }, urgent: false, origin: 'tenantReport', reportedBy: 'Charles Ngassa' },
+  { id: 'SIG-2026-034', unitId: 'B4', titleKey: 'fullRefurbishment', trade: 'multi', status: 'approved', quotedAmount: 340000, approvedAmount: 340000, reportedAt: { year: 2026, month: 6, day: 22 }, urgent: false, origin: 'ownerInitiative', reportedBy: 'Arsène Nkolo' },
 ]
 
 export interface Deposit {

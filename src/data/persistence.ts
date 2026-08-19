@@ -52,8 +52,16 @@ import { DEPOSITS, UNITS, WORKS, type Deposit, type Unit, type WorkOrder } from 
  * le … » ; rien dans le modèle ne portait cette date. Un enregistrement
  * antérieur la rendrait `undefined`, et ces deux phrases s'afficheraient
  * amputées de ce qu'elles annoncent.
+ *
+ * Version 7 : l'intervention porte son ORIGINE et son déclarant, et son montant
+ * unique se scinde en deux — `amount` devient `quotedAmount` + `approvedAmount`.
+ * Le scindement est ce qui rend l'incrément obligatoire plutôt que prudent : un
+ * enregistrement antérieur porte un `amount` que plus personne ne lit, donc
+ * toutes ses interventions s'afficheraient « pas encore chiffré », y compris
+ * celles dont le devis est validé. L'origine, elle, se serait simplement tue —
+ * ce que l'écran sait faire.
  */
-const VERSION = 6
+const VERSION = 7
 const CLE = 'gestlocpro.portfolio'
 
 export interface EtatPersiste {

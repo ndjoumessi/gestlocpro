@@ -8,7 +8,7 @@ import { Skeleton, SkeletonRegion } from '@/components/primitives/Skeleton'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
-import { imputation, receiptDue, type Occupation } from '@/data/portfolio'
+import { imputation, montantEngage, receiptDue, type Occupation } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { workTitle } from '@/data/workTitle'
 
@@ -201,7 +201,8 @@ export function UnitFile() {
                         `reported`, `quoted`, `approved`, `done` — et non sous
                         un sous-objet `status`. */}
                     {t(`app.works.${work.status}` as 'app.works.reported')}
-                    {work.amount ? ` · ${money(work.amount, { round: true })}` : ''}
+                    {montantEngage(work).montant !== null &&
+                      ` · ${money(montantEngage(work).montant!, { round: true })}`}
                   </span>
                 </li>
               ))}

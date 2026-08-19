@@ -65,6 +65,9 @@ interface PortefeuilleApi {
     quotedAmountMinor: number | null
     approvedAmountMinor: number | null
     reportedAt: string
+    /** Optionnels : un serveur antérieur à ces champs ne les rend pas. */
+    origin?: 'tenantReport' | 'ownerInitiative'
+    reportedBy?: string | null
   }[]
   collections: { year: number; month: number; rent: number; water: number; power: number }[]
   /**
@@ -267,9 +270,15 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
       title: w.title,
       trade: w.trade,
       status: w.status,
-      amount: w.approvedAmountMinor ?? w.quotedAmountMinor,
+      /* Les DEUX montants, séparés. Le `??` d'avant perdait le devis d'origine
+         dès qu'une validation existait, alors que l'écart entre proposé et
+         engagé est précisément ce qu'un bailleur veut lire. */
+      quotedAmount: w.quotedAmountMinor,
+      approvedAmount: w.approvedAmountMinor,
       reportedAt: enParties(w.reportedAt),
       urgent: w.urgency === 'blocking',
+      ...(w.origin ? { origin: w.origin } : {}),
+      reportedBy: w.reportedBy ?? null,
     })),
     deposits: data.deposits.map((d) => ({
       id: d.id,

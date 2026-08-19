@@ -884,6 +884,33 @@ export const fr = {
       done: 'Terminé',
       urgent: 'Urgent',
       noQuote: 'Pas encore chiffré',
+      /**
+       * D'où vient l'intervention, et de qui.
+       *
+       * Quatre clés et non deux : le nom manque sur les interventions
+       * antérieures au champ, et « Signalé par » suivi de rien se lirait comme
+       * un défaut d'affichage. La phrase entière change plutôt que de laisser
+       * un trou.
+       *
+       * « Ouvert par » et non « signalé par » pour le bailleur : il ne constate
+       * pas un problème chez quelqu'un d'autre, il décide un chantier. Deux
+       * gestes, deux verbes.
+       */
+      reportedBy: 'Signalé par le locataire',
+      reportedByNamed: 'Signalé par {name}',
+      openedBy: 'À l’initiative du bailleur',
+      openedByNamed: 'Ouvert par {name}',
+      /* Le montant dit ce qu'il EST : un nombre nu à côté d'une pastille de
+         statut laissait deviner s'il s'agissait d'une proposition ou d'une
+         dépense. */
+      /* « Devis » et non « Devis proposé » : cette dernière chaîne est DÉJÀ le
+         libellé du statut `quoted`, juste au-dessus. Deux choses différentes
+         sous le même mot — l'état d'une intervention et la nature d'un montant
+         — se confondraient à l'écran comme elles se confondaient dans les cas
+         qui comptent les statuts, et qui ont eu raison de tomber. */
+      amountQuoted: 'Devis',
+      amountApproved: 'Engagé',
+      amountWasQuoted: 'devisé {amount}',
       approve: 'Valider le devis',
       complete: 'Marquer terminé',
       completed_toast: 'Intervention close · elle sort des travaux à faire',

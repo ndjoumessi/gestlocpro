@@ -113,7 +113,8 @@ function nouvelleFiche(
     trade: signalement.trade,
     status: 'reported',
     // Rien n'est chiffré : c'est le gestionnaire qui le fera.
-    amount: null,
+    quotedAmount: null,
+    approvedAmount: null,
     reportedAt: {
       year: maintenant.getFullYear(),
       month: maintenant.getMonth() + 1,
@@ -724,7 +725,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     (id: string, quotedMinor: number) => {
       if (!parkId) {
         setWorks((list) =>
-          list.map((w) => (w.id === id ? { ...w, status: 'quoted', amount: quotedMinor } : w)),
+          list.map((w) => (w.id === id ? { ...w, status: 'quoted', quotedAmount: quotedMinor } : w)),
         )
         return
       }
@@ -737,7 +738,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         .then(({ work }) =>
           setWorks((list) =>
             list.map((w) =>
-              w.id === work.id ? { ...w, status: work.status, amount: work.quotedAmountMinor } : w,
+              w.id === work.id ? { ...w, status: work.status, quotedAmount: work.quotedAmountMinor } : w,
             ),
           ),
         )
