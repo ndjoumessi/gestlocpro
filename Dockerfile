@@ -53,9 +53,10 @@ ENV NODE_ENV=production
 # fausse erreur permanente dans les journaux — exactement le bruit qui fait
 # qu'on cesse de les lire, et on vient de passer une nuit à en avoir besoin.
 #
-# La montée en version majeure reste à faire ; c'est un chantier en soi, et
-# taire l'encart ne le repousse pas — il n'a jamais été un rappel utile puisque
-# personne ne lit les journaux d'un démarrage réussi.
+# La montée en 7 est faite depuis ; cet encart-là ne s'affichera plus. La
+# variable reste pour la prochaine majeure, et pour la même raison : un rappel
+# que personne ne lit — on n'ouvre pas les journaux d'un démarrage réussi — ne
+# vaut pas de salir ceux qu'on ouvre quand quelque chose casse.
 ENV PRISMA_HIDE_UPDATE_MESSAGE=1
 
 # `start` applique les migrations avant d'écouter. L'ordre importe : servir une

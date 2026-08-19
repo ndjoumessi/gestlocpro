@@ -53,8 +53,12 @@
 //
 // Sous `src/` pour que `tsc -b` l'emporte dans `dist` : le conteneur exécute
 // `node dist/src/index.js`, et un client resté hors de `dist` s'y chercherait
-// en vain. `postinstall` le régénère à chaque installation, donc il reste
-// ignoré par git — c'est une sortie de compilation, pas une source.
+// en vain. Il reste ignoré par git : c'est une sortie de compilation, pas une
+// source. Un `postinstall` avait été envisagé pour le régénérer, et il ne
+// pouvait pas tenir — `npm ci` s'exécute AVANT que le schéma ne soit copié dans
+// l'image, et sans `DATABASE_URL`. La génération vit donc à deux endroits
+// nommés : `db:test:setup`, la commande qu'on lance après un changement de
+// schéma, et la ligne `RUN` du Dockerfile pour l'image.
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
