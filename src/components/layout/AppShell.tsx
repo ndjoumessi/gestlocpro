@@ -44,6 +44,45 @@ export function useRole() {
   return useContext(RoleContext)
 }
 
+/**
+ * Vrai quand un écran applicatif est monté DANS un cadre — la prévisualisation
+ * du portail, aujourd'hui.
+ *
+ * Un contexte plutôt qu'une prop : les trois écrans montés ne connaissent pas
+ * le cadre et n'ont aucune raison de le connaître. Leur passer un drapeau
+ * ferait remonter la prévisualisation jusque dans leur signature.
+ */
+const CadreContext = createContext(false)
+
+/**
+ * Monte de VRAIS écrans du locataire dans une fenêtre de démonstration.
+ *
+ * La prévisualisation entretenait sa propre copie des trois vues — cartes de
+ * quittances, liste de documents, formulaire de signalement. Une copie ne se
+ * met pas à jour : la grille par période, le dossier du logement, le détail des
+ * états des lieux et la consommation sur douze mois l'ont tous contournée. Pire,
+ * elle avait DIVERGÉ — quatre corps de métier là où le produit en compte cinq,
+ * et des urgences qui n'existaient nulle part ailleurs.
+ *
+ * Le rôle forcé n'est pas du confort, c'est ce que la prévisualisation
+ * SIGNIFIE : le propriétaire regarde ce que voit son locataire. Sans lui,
+ * `Signaler` borne son formulaire à `role === 'tenant'` — « le bailleur ne
+ * signale pas un problème chez quelqu'un d'autre, il le reçoit » — et le cadre
+ * n'afficherait qu'un état vide.
+ *
+ * `setRole` est neutre : le cadre MONTRE un profil, on n'en change pas depuis
+ * l'intérieur. Une bascule y serait une commande sans destination.
+ */
+export function DansUnCadre({ children }: { children: ReactNode }) {
+  return (
+    <CadreContext.Provider value={true}>
+      <RoleContext.Provider value={{ role: 'tenant', setRole: () => {} }}>
+        {children}
+      </RoleContext.Provider>
+    </CadreContext.Provider>
+  )
+}
+
 /* -------------------------------------------------------------------------- */
 
 interface NavItem {
@@ -1489,15 +1528,29 @@ export function PageHeader({
   description?: ReactNode
   actions?: ReactNode
 }) {
+  /**
+   * Monté DANS un cadre, un écran cesse d'être deux choses.
+   *
+   * Il n'est plus le titre de la PAGE : un second `<h1>` en ferait deux
+   * documents, alors que la prévisualisation est une fenêtre dans une page qui
+   * a déjà le sien. Et il ne nomme plus l'onglet du navigateur : l'historique
+   * porterait « Résidence Bonamoussadi — A1 » pour une page qui est la
+   * prévisualisation du portail — exactement le défaut que `useDocumentTitle`
+   * avait été écrit pour corriger.
+   */
+  const dansUnCadre = useContext(CadreContext)
+
   // Chaque écran applicatif nomme son onglet. Les douze portaient le titre
   // statique de la landing : deux onglets ouverts côte à côte, un signet ou une
   // entrée d'historique ne permettaient pas de les distinguer.
-  useDocumentTitle(title)
+  useDocumentTitle(dansUnCadre ? undefined : title)
+
+  const Titre = dansUnCadre ? 'h2' : 'h1'
 
   return (
     <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
-        <h1 className="display-app text-balance">{title}</h1>
+        <Titre className="display-app text-balance">{title}</Titre>
         {description && (
           <p className="mt-2 max-w-[62ch] text-body text-pretty text-muted">{description}</p>
         )}

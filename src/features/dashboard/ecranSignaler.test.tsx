@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, switchRole, attendreLeChargement } from '@/test/render'
+import { renderApp, screen, switchRole, attendreLeChargement, userEvent } from '@/test/render'
 
 /**
  * L'écran « Signaler », que la maquette du portail décrit.
@@ -66,5 +66,47 @@ describe('écran Signaler', () => {
     await attendreLeChargement()
 
     expect(screen.queryByRole('button', { name: /envoyer le signalement/i })).not.toBeInTheDocument()
+  })
+})
+
+/**
+ * La description est OBLIGATOIRE, et le formulaire le vérifie.
+ *
+ * Le champ portait l'astérisque du champ obligatoire, mais rien ne le
+ * contrôlait : soumis à vide, il annonçait « signalement envoyé » pour un
+ * message sans contenu. Le locataire croyait avoir alerté, personne n'avait
+ * rien reçu.
+ *
+ * Ces deux cas vivaient dans `screens.test.tsx`, sur la COPIE que la
+ * prévisualisation du portail entretenait. Ils étaient les seuls gardiens de
+ * cette règle dans tout le dépôt — et ils la gardaient sur un formulaire qui
+ * n'est pas celui du produit. Ils visent désormais le vrai écran.
+ */
+describe('écran Signaler — la description est obligatoire', () => {
+  async function ouvrir() {
+    const user = userEvent.setup()
+    renderApp('/demo/signaler')
+    await switchRole('tenant')
+    await attendreLeChargement()
+    return { user }
+  }
+
+  it('refuse un envoi sans description', async () => {
+    const { user } = await ouvrir()
+    await user.click(screen.getByRole('button', { name: 'Envoyer le signalement' }))
+
+    expect(screen.getByText(/Décrivez le problème en quelques mots/)).toBeInTheDocument()
+    expect(screen.queryByText(/Signalement envoyé/)).not.toBeInTheDocument()
+  })
+
+  it('envoie une fois le problème décrit', async () => {
+    const { user } = await ouvrir()
+    await user.type(
+      screen.getByRole('textbox', { name: /Que se passe-t-il/ }),
+      'Le robinet de la cuisine goutte sans arrêt depuis lundi.',
+    )
+    await user.click(screen.getByRole('button', { name: 'Envoyer le signalement' }))
+
+    expect(await screen.findByText(/Signalement envoyé/)).toBeInTheDocument()
   })
 })

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { renderApp, screen, switchRole, attendreLeChargement, userEvent, within } from '@/test/render'
+import { renderApp, screen, switchRole, attendreLeChargement, userEvent } from '@/test/render'
 import { captureDownloads } from '@/test/downloads'
 import { UTF8_BOM } from '@/lib/csv'
 import { DEMO_TENANT_UNIT, UNITS } from '@/data/portfolio'
@@ -229,42 +229,10 @@ describe('quittances du locataire', () => {
   })
 })
 
-describe('portail locataire', () => {
-  it('télécharge la quittance depuis « Mon espace »', async () => {
-    // Les paiements n'ont plus d'onglet : ils sont une carte de « Mon espace »,
-    // qui est l'onglet ouvert d'emblée. Le locataire atteint donc sa quittance
-    // sans un seul clic de navigation — c'est tout l'objet du passage à trois
-    // onglets, et ce test le mesure.
-    capture = captureDownloads()
-    renderApp('/demo/portail')
-
-    const user = userEvent.setup()
-    // Quatre périodes, donc quatre boutons de même nom : on prend le premier,
-    // comme le ferait un locataire cherchant sa quittance la plus récente.
-    const [premier] = screen.getAllByRole('button', { name: /Télécharger la quittance/ })
-    await user.click(premier)
-    const [file] = await capture.settle()
-
-    expect(file.name).toBe('gestlocpro-quittance-a1-2026-08.csv')
-  })
-
-  it('dit la vérité sur les documents qu’il n’a pas', async () => {
-    // Bail signé, état des lieux et attestation d'assurance n'existent nulle
-    // part dans le produit : leur bouton « Télécharger » ne pouvait produire
-    // qu'un faux fichier. On affiche l'état de la case à la place.
-    capture = captureDownloads()
-    renderApp('/demo/portail')
-
-    const user = userEvent.setup()
-    await user.click(screen.getByRole('tab', { name: 'Documents' }))
-
-    const lignes = screen.getAllByRole('listitem')
-    const sansDocument = lignes.filter((li) =>
-      within(li).queryByText('Aucun document déposé'),
-    )
-    expect(sansDocument).toHaveLength(3)
-    // Aucun bouton mort ne subsiste : seule la quittance, qui a une donnée
-    // derrière elle, garde le sien.
-    expect(screen.getAllByRole('button', { name: /Télécharger la quittance/ })).toHaveLength(1)
-  })
-})
+/*
+ * « portail locataire » vivait ici, et c'était un DOUBLON avéré : « quittances
+ * du locataire », juste au-dessus, mesure le même export sous le même nom de
+ * fichier. Quant à « Aucun document déposé », il est gardé par
+ * `donneesReellesDuLocataire` et `coquilleLocataire` — et la liste de documents
+ * qu'il interrogeait était celle de la copie, que le portail n'entretient plus.
+ */

@@ -1208,35 +1208,8 @@ export const fr = {
       urlSpace: 'portail.gestlocpro.com/mon-espace',
       urlDocuments: 'portail.gestlocpro.com/documents',
       urlReport: 'portail.gestlocpro.com/signaler',
-      docLease: 'Bail signé',
-      docInspection: 'État des lieux d’entrée',
-      docReceipt: 'Quittance du mois',
-      docInsurance: 'Attestation d’assurance',
-      /**
-       * Trois de ces quatre documents n'existent nulle part dans le produit :
-       * aucun dépôt de fichier ne les crée. Leur bouton « Télécharger » ne
-       * pouvait donc rien produire d'autre qu'un faux — mieux vaut dire que
-       * la case est vide que fabriquer un fichier vide.
-       */
-      docUnavailable: 'Aucun document déposé',
-      myPayments: 'Mes paiements',
-      myWorks: 'Travaux',
       documents: 'Documents',
       report: 'Signaler',
-      nextDue: 'Prochaine échéance',
-      myUnit: 'Mon logement',
-      downloadReceipt: 'Télécharger la quittance',
-      reportIssue: 'Signaler un incident',
-      reportSent: 'Signalement envoyé au gestionnaire et au propriétaire',
-      category: 'Nature du problème',
-      urgency: 'Urgence',
-      urgencyHigh: 'Bloquant',
-      urgencyMedium: 'Gênant',
-      urgencyLow: 'Peut attendre',
-      describe: 'Décrivez le problème',
-      describeHint: 'Le gestionnaire reçoit votre message et vous répond depuis cet espace.',
-      describeRequired:
-        'Décrivez le problème : le gestionnaire intervient sur ce que vous écrivez ici.',
     },
   },
 
