@@ -333,24 +333,115 @@ export const DEPOSITS: Deposit[] = [
 
 export interface Inspection {
   unitId: string
+  /**
+   * Le BAIL, quand l'état des lieux en porte un.
+   *
+   * C'est lui qui apparie une entrée et une sortie : deux locataires successifs
+   * ont chacun les leurs, et comparer l'entrée de l'un à la sortie de l'autre
+   * n'aurait aucun sens — c'est pourtant tout ce qu'une comparaison par unité
+   * saurait faire.
+   */
+  leaseId?: string | null
   kind: 'entry' | 'exit'
   date: DateParts
   rooms: number
   issues: number
+  /**
+   * Le détail des réserves. Vide tant que le serveur ne le rend pas — l'écran
+   * retombe alors sur le compte, qui est ce qu'il montrait jusqu'ici.
+   */
+  findings?: Finding[]
   signed: boolean
 }
 
+/**
+ * Une réserve : ce qui a été constaté, où, et ce qu'il en coûte.
+ *
+ * `costMinor` n'existe QUE sur une sortie. C'est la règle qui donne son sens à
+ * l'état des lieux d'entrée : il relève ce qui est déjà abîmé précisément pour
+ * que le locataire n'en réponde pas, et le serveur refuse d'y chiffrer quoi que
+ * ce soit.
+ */
+export interface Finding {
+  id: string
+  room: string
+  description: string
+  severity: 'minor' | 'major'
+  costMinor: number | null
+}
+
+/**
+ * Les états des lieux, avec le DÉTAIL de leurs réserves.
+ *
+ * `issues` reste, parce que c'est ce que les listes affichent — et il se déduit
+ * désormais de `findings`, plutôt que d'être écrit à côté : deux nombres pour un
+ * seul fait finissent toujours par diverger.
+ *
+ * B4 porte l'entrée et la sortie du même logement, sur les mêmes pièces : c'est
+ * là que la comparaison a quelque chose à montrer. Le séjour s'est dégradé, la
+ * cuisine est restée intacte, et la vitre fêlée n'existait pas à l'entrée.
+ */
 export const INSPECTIONS: Inspection[] = [
   // A1 est l'unité du locataire connecté : sans état des lieux la rubrique
   // affichait toujours son état vide en rôle locataire, et la fonctionnalité
   // restait invisible à qui la regardait depuis ce profil.
-  { unitId: 'A1', kind: 'entry', date: { year: 2024, month: 5, day: 15 }, rooms: 4, issues: 2, signed: true },
-  { unitId: 'B4', kind: 'exit', date: { year: 2026, month: 6, day: 22 }, rooms: 4, issues: 6, signed: true },
-  { unitId: 'B4', kind: 'entry', date: { year: 2024, month: 8, day: 1 }, rooms: 4, issues: 1, signed: true },
-  { unitId: 'C3', kind: 'exit', date: { year: 2026, month: 5, day: 30 }, rooms: 3, issues: 2, signed: true },
-  { unitId: 'A4', kind: 'entry', date: { year: 2026, month: 2, day: 15 }, rooms: 5, issues: 0, signed: true },
-  { unitId: 'A5', kind: 'entry', date: { year: 2026, month: 1, day: 2 }, rooms: 2, issues: 1, signed: false },
+  etatDesLieux('A1', 'entry', { year: 2024, month: 5, day: 15 }, 4, true, [
+    ['Salle de bain', 'Joint de douche noirci', 'minor'],
+    ['Séjour', 'Peinture écaillée derrière la porte', 'minor'],
+  ]),
+  etatDesLieux('B4', 'exit', { year: 2026, month: 6, day: 22 }, 4, true, [
+    ['Séjour', 'Parquet rayé sur deux lames', 'major', 35000],
+    ['Chambre 2', 'Vitre fêlée', 'major', 20000],
+    ['Salle de bain', 'Mitigeur fuyant', 'major', 18000],
+    ['Salle de bain', 'Miroir descellé', 'minor', 6000],
+    ['Cuisine', 'Plaque de cuisson rayée', 'minor'],
+    ['Entrée', 'Serrure dure à fermer', 'minor', 12000],
+  ]),
+  etatDesLieux('B4', 'entry', { year: 2024, month: 8, day: 1 }, 4, true, [
+    ['Séjour', 'Légère trace d’usure au sol', 'minor'],
+  ]),
+  etatDesLieux('C3', 'exit', { year: 2026, month: 5, day: 30 }, 3, true, [
+    ['Chambre', 'Volet roulant bloqué', 'major', 25000],
+    ['Séjour', 'Interrupteur cassé', 'minor', 4000],
+  ]),
+  etatDesLieux('A4', 'entry', { year: 2026, month: 2, day: 15 }, 5, true, []),
+  etatDesLieux('A5', 'entry', { year: 2026, month: 1, day: 2 }, 2, false, [
+    ['Cuisine', 'Plan de travail entaillé', 'minor'],
+  ]),
 ]
+
+/**
+ * Un état des lieux de démonstration.
+ *
+ * Le coût n'est retenu que sur une SORTIE : chiffrer une réserve d'entrée
+ * reviendrait à facturer au locataire les dégâts du précédent, et le serveur
+ * refuse cette saisie en 422. La démonstration ne montre pas ce que le produit
+ * interdit.
+ */
+function etatDesLieux(
+  unitId: string,
+  kind: 'entry' | 'exit',
+  date: DateParts,
+  rooms: number,
+  signed: boolean,
+  reserves: [string, string, 'minor' | 'major', number?][],
+): Inspection {
+  return {
+    unitId,
+    kind,
+    date,
+    rooms,
+    issues: reserves.length,
+    signed,
+    findings: reserves.map(([room, description, severity, cout], i) => ({
+      id: `${unitId}-${kind}-${i}`,
+      room,
+      description,
+      severity,
+      costMinor: kind === 'exit' && cout !== undefined ? cout : null,
+    })),
+  }
+}
 
 /** Horodatage relatif en valeurs machine, rendu par `formatRelative`. */
 export interface RelativeStamp {

@@ -93,10 +93,19 @@ interface PortefeuilleApi {
   inspections: {
     id: string
     unitId: string
+    /** Optionnel : un serveur antérieur à ce champ ne le rend pas. */
+    leaseId?: string | null
     kind: 'entry' | 'exit'
     performedOn: string
     rooms: number
     issues: number
+    findings?: {
+      id: string
+      room: string
+      description: string
+      severity: 'minor' | 'major'
+      costMinor: number | null
+    }[]
     signedAt: string | null
   }[]
   notifications: {
@@ -284,10 +293,15 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
     })(),
     inspections: data.inspections.map((i) => ({
       unitId: i.unitId,
+      leaseId: i.leaseId ?? null,
       kind: i.kind,
       date: enParties(i.performedOn),
       rooms: i.rooms,
       issues: i.issues,
+      // Le détail quand il vient, une liste vide sinon : l'écran distingue
+      // « aucune réserve » de « détail non rendu » par le COMPTE, qui lui est
+      // là depuis toujours.
+      findings: i.findings ?? [],
       // `signedAt` porte qui et quand ; l'écran n'affiche encore que le fait.
       signed: i.signedAt !== null,
     })),

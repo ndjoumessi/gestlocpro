@@ -10,7 +10,9 @@ import { EmptyState } from '@/components/primitives/DataTable'
 import { Skeleton, SkeletonRegion } from '@/components/primitives/Skeleton'
 import { TenantScopeNote } from './TenantDashboard'
 import { useT } from '@/i18n/I18nProvider'
+import { useCurrency } from '@/currency/CurrencyProvider'
 import { useDates } from '@/lib/useDates'
+import type { Finding, Inspection } from '@/data/portfolio'
 
 import { usePortfolio } from '@/data/PortfolioProvider'
 
@@ -178,6 +180,23 @@ export function Inspections() {
                   </div>
                 ))}
               </div>
+
+              {/*
+                LA COMPARAISON, et c'est la raison d'être de ces deux documents.
+
+                « Entrée et sortie comparées pièce par pièce » : le badge le
+                promettait, l'écran ne montrait que deux lignes et un NOMBRE de
+                réserves. La donnée était pourtant saisie depuis l'origine —
+                pièce, description, gravité, coût — et la retenue proposée sur
+                la caution en dérivait déjà. Le locataire à qui l'on retient
+                38 000 pouvait lire la somme, jamais ce qui la compose.
+
+                Elle ne s'affiche que si les deux documents existent ET qu'au
+                moins l'un porte le détail : un serveur qui ne rend que le
+                compte laisse l'écran tel qu'il était, plutôt que de dresser un
+                tableau vide sous un badge qui promet une comparaison.
+              */}
+              {hasBoth && <Comparaison inspections={chronological} />}
             </Card>
           )
         })}
@@ -233,5 +252,128 @@ function InspectionsSkeleton() {
         ))}
       </SkeletonRegion>
     </>
+  )
+}
+
+/**
+ * Ce qui a changé entre l'entrée et la sortie, pièce par pièce.
+ *
+ * L'appariement se fait sur la PIÈCE et non sur la description : « robinetterie
+ * salle de bain » à l'entrée et « mitigeur fuyant » à la sortie parlent du même
+ * endroit sans partager un mot. Une pièce peut porter plusieurs réserves ; elles
+ * s'empilent dans leur colonne plutôt que de multiplier les lignes, sans quoi
+ * une même pièce apparaîtrait trois fois sans qu'on sache pourquoi.
+ *
+ * Le coût ne figure que dans la colonne de sortie, parce qu'il n'existe que là :
+ * chiffrer une réserve d'entrée reviendrait à facturer au locataire les dégâts
+ * du précédent, et le serveur le refuse en 422.
+ */
+function Comparaison({ inspections }: { inspections: Inspection[] }) {
+  const t = useT()
+  const { money } = useCurrency()
+
+  const entree = inspections.find((i) => i.kind === 'entry')
+  const sortie = inspections.find((i) => i.kind === 'exit')
+  const reservesEntree = entree?.findings ?? []
+  const reservesSortie = sortie?.findings ?? []
+
+  // Sans détail, on ne dresse rien : le compte reste seul, comme avant.
+  if (reservesEntree.length === 0 && reservesSortie.length === 0) return null
+
+  /* L'ordre suit la SORTIE — c'est elle qui appelle une décision —, puis les
+     pièces que seule l'entrée mentionne : elles disent ce qui était déjà abîmé
+     et n'a rien coûté, ce qui est précisément le service que rend une entrée. */
+  const pieces = [
+    ...new Set([...reservesSortie.map((r) => r.room), ...reservesEntree.map((r) => r.room)]),
+  ]
+
+  const retenue = reservesSortie.reduce((somme, r) => somme + (r.costMinor ?? 0), 0)
+
+  return (
+    <div className="mt-4 border-t border-divider pt-4">
+      <p className="eyebrow mb-2 text-muted">{t('app.inspections.comparison')}</p>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse">
+          <caption className="sr-only">{t('app.inspections.comparison')}</caption>
+          <thead>
+            <tr className="border-b border-divider">
+              <th scope="col" className="py-2 text-left text-caps text-muted">
+                {t('app.inspections.colRoom')}
+              </th>
+              <th scope="col" className="py-2 text-left text-caps text-muted">
+                {t('app.inspections.entry')}
+              </th>
+              <th scope="col" className="py-2 text-left text-caps text-muted">
+                {t('app.inspections.exit')}
+              </th>
+              <th scope="col" className="py-2 text-right text-caps text-muted">
+                {t('app.inspections.colWithheld')}
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-divider">
+            {pieces.map((piece) => {
+              const avant = reservesEntree.filter((r) => r.room === piece)
+              const apres = reservesSortie.filter((r) => r.room === piece)
+              const cout = apres.reduce((somme, r) => somme + (r.costMinor ?? 0), 0)
+              return (
+                <tr key={piece}>
+                  <th scope="row" className="py-2.5 pr-3 text-left text-body-s font-medium">
+                    {piece}
+                  </th>
+                  <CelluleReserves reserves={avant} />
+                  <CelluleReserves reserves={apres} />
+                  <td className="numeric py-2.5 pl-3 text-right text-body-s">
+                    {cout > 0 ? (
+                      <span className="font-medium text-danger">{money(cout, { round: true })}</span>
+                    ) : (
+                      /* Rien à retenir se DIT : une cellule vide se lirait comme
+                         un montant qu'on a oublié de porter. */
+                      <span className="text-muted">{t('app.inspections.noWithhold')}</span>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {retenue > 0 && (
+        <p className="mt-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <span className="text-body-s text-muted">{t('app.inspections.proposed')}</span>
+          <span className="numeric text-body font-medium">{money(retenue, { round: true })}</span>
+        </p>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Les réserves d'une pièce, dans une colonne.
+ *
+ * « Bon état » quand il n'y en a pas — et non une case vide : sur un tableau de
+ * comparaison, le vide se lit comme une donnée manquante, alors qu'ici il dit
+ * quelque chose de précis. C'est la formule de la maquette, et elle est juste.
+ */
+function CelluleReserves({ reserves }: { reserves: Finding[] }) {
+  const t = useT()
+  if (reserves.length === 0) {
+    return <td className="py-2.5 pr-3 text-body-s text-muted">{t('app.inspections.asGood')}</td>
+  }
+  return (
+    <td className="py-2.5 pr-3 text-body-s">
+      <ul className="flex flex-col gap-0.5">
+        {reserves.map((r) => (
+          <li key={r.id} className={r.severity === 'major' ? 'text-warn' : undefined}>
+            {r.description}
+            {/* La gravité est écrite, pas seulement colorée. */}
+            {r.severity === 'major' && (
+              <span className="text-caps"> · {t('app.inspections.major')}</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </td>
   )
 }

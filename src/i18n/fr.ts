@@ -846,6 +846,20 @@ export const fr = {
       signed: 'Signé',
       unsigned: 'En attente de signature',
       compare: 'Comparer entrée et sortie',
+      /**
+       * La comparaison entrée/sortie, pièce par pièce.
+       *
+       * « Bon état » plutôt qu'une case vide : sur un tableau de comparaison, le
+       * vide se lit comme une donnée manquante, alors qu'ici il dit quelque
+       * chose de précis.
+       */
+      comparison: 'Comparaison entrée / sortie',
+      colRoom: 'Élément',
+      colWithheld: 'Retenue',
+      noWithhold: '—',
+      asGood: 'Bon état',
+      major: 'dégradé',
+      proposed: 'Retenue proposée sur la caution',
       emptyTitle: 'Aucun état des lieux enregistré',
       emptyBody:
         'Un état des lieux d’entrée se fait à la remise des clés, celui de sortie à leur restitution : c’est leur comparaison qui justifie ce qu’on retient sur la caution.',

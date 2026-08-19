@@ -692,6 +692,13 @@ export const en: Dictionary = {
       emptyTitle: 'No inspection recorded',
       emptyBody:
         'A move-in inspection is done when the keys are handed over, a move-out one when they are returned: it is comparing the two that justifies what is withheld from the deposit.',
+      comparison: 'Move-in / move-out comparison',
+      colRoom: 'Item',
+      colWithheld: 'Withheld',
+      noWithhold: '—',
+      asGood: 'Good condition',
+      major: 'damaged',
+      proposed: 'Proposed deduction from the deposit',
     },
 
     works: {

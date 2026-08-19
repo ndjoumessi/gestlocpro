@@ -488,16 +488,61 @@ parksRouter.get(
         select: { id: true, unitId: true, utility: true, periodStart: true, indexValue: true, readAt: true },
       }),
       prisma.inspection.findMany({
-        where: { unit: { building: { parkId } }, ...(filtreUnite ? { unitId: filtreUnite } : {}) },
+        where: {
+          unit: { building: { parkId } },
+          ...(filtreUnite ? { unitId: filtreUnite } : {}),
+          /**
+           * Le locataire ne lit QUE les états des lieux de son bail — ou ceux
+           * qui n'en portent aucun.
+           *
+           * `unitesVisibles` retient son logement même après son départ, et le
+           * détail que cette route se met à rendre n'est pas anodin : les
+           * réserves de SORTIE du prédécesseur portent une description et un
+           * coût imputé, celles d'ENTRÉE du successeur décrivent l'état d'un
+           * logement qu'il n'occupe plus. Ni les unes ni les autres ne le
+           * regardent.
+           *
+           * `leaseId: null` reste visible : une entrée précède souvent la
+           * signature — « on constate avant de remettre les clés », dit la
+           * route de création — et sur SON logement c'est la sienne.
+           */
+          ...(role === 'tenant'
+            ? { OR: [{ lease: { tenant: { userId: req.compteId! } } }, { leaseId: null }] }
+            : {}),
+        },
         orderBy: { performedOn: 'asc' },
         select: {
           id: true,
           unitId: true,
+          leaseId: true,
           kind: true,
           performedOn: true,
           rooms: true,
           signedAt: true,
-          _count: { select: { findings: true } },
+          /**
+           * Le DÉTAIL des réserves, et non leur seul compte.
+           *
+           * `InspectionModal` saisit `room`, `description`, `severity` et
+           * `costMinor` depuis l'origine ; la route de création les enregistre ;
+           * `billableMinor` en dérive déjà la retenue proposée sur la caution.
+           * Seul l'écran n'en voyait qu'un nombre — « 3 réserves » —, et le
+           * commentaire de cette projection l'assumait : « le détail n'a pas
+           * encore d'écran pour le montrer ». Il en a un.
+           *
+           * C'est la pièce qu'on oppose au locataire quand il conteste une
+           * retenue : sans le détail, la somme proposée ne se justifie par rien
+           * qu'il puisse lire.
+           */
+          findings: {
+            orderBy: { room: 'asc' },
+            select: {
+              id: true,
+              room: true,
+              description: true,
+              severity: true,
+              costMinor: true,
+            },
+          },
         },
       }),
       prisma.notification.findMany({
@@ -782,12 +827,23 @@ parksRouter.get(
       inspections: etatsDesLieux.map((i) => ({
         id: i.id,
         unitId: i.unitId,
+        // Le BAIL : c'est lui qui apparie l'entrée et la sortie d'une même
+        // occupation. Deux locataires successifs ont chacun les leurs, et
+        // comparer l'entrée de l'un à la sortie de l'autre n'aurait aucun sens.
+        leaseId: i.leaseId,
         kind: i.kind,
         performedOn: i.performedOn,
         rooms: i.rooms,
-        // Le compte des réserves plutôt que leur détail : c'est ce que l'écran
-        // affiche, et le détail n'a pas encore d'écran pour le montrer.
-        issues: i._count.findings,
+        // Le compte SURVIT au détail : les écrans de liste le montrent, et le
+        // recalculer partout depuis le tableau serait une seconde source.
+        issues: i.findings.length,
+        findings: i.findings.map((r) => ({
+          id: r.id,
+          room: r.room,
+          description: r.description,
+          severity: r.severity,
+          costMinor: r.costMinor,
+        })),
         signedAt: i.signedAt,
       })),
       notifications: notifications.map((n) => ({

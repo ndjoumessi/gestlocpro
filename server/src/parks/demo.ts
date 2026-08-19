@@ -112,13 +112,66 @@ const RELEVES: { unite: string; eauPrec: number; eau: number | null; elecPrec: n
   { unite: 'C2', eauPrec: 334, eau: null, elecPrec: 4010, elec: null, jours: null },
 ]
 
-const ETATS_DES_LIEUX: { unite: string; kind: 'entry' | 'exit'; jours: number; rooms: number; issues: number; signe: boolean }[] = [
-  { unite: 'A1', kind: 'entry', jours: 800, rooms: 4, issues: 2, signe: true },
-  { unite: 'B4', kind: 'entry', jours: 720, rooms: 4, issues: 1, signe: true },
-  { unite: 'B4', kind: 'exit', jours: 55, rooms: 4, issues: 6, signe: true },
-  { unite: 'C3', kind: 'exit', jours: 78, rooms: 3, issues: 2, signe: true },
-  { unite: 'A4', kind: 'entry', jours: 180, rooms: 5, issues: 0, signe: true },
-  { unite: 'A5', kind: 'entry', jours: 225, rooms: 2, issues: 1, signe: false },
+/**
+ * Les états des lieux, avec leurs réserves NOMMÉES.
+ *
+ * Elles étaient fabriquées à la volée — « Pièce 1 », « Réserve constatée à
+ * l'état des lieux », répétées autant de fois que le compte l'exigeait. Tant
+ * que la réponse ne rendait qu'un nombre, personne ne les lisait ; la
+ * comparaison entrée/sortie les met à l'écran, et une colonne de « Pièce 1 » ne
+ * montre pas ce que ce tableau sert à montrer.
+ *
+ * B4 porte l'entrée ET la sortie du même bail, sur les mêmes pièces : c'est le
+ * seul logement où la comparaison a quelque chose à comparer, et c'est
+ * exactement ce qu'un visiteur doit pouvoir regarder. Le séjour s'est dégradé,
+ * la cuisine est restée intacte, et la vitre cassée n'existait pas à l'entrée.
+ */
+const ETATS_DES_LIEUX: {
+  unite: string
+  kind: 'entry' | 'exit'
+  jours: number
+  rooms: number
+  signe: boolean
+  reserves: { room: string; description: string; severity: 'minor' | 'major'; cout?: number }[]
+}[] = [
+  {
+    unite: 'A1', kind: 'entry', jours: 800, rooms: 4, signe: true,
+    reserves: [
+      { room: 'Salle de bain', description: 'Joint de douche noirci', severity: 'minor' },
+      { room: 'Séjour', description: 'Peinture écaillée derrière la porte', severity: 'minor' },
+    ],
+  },
+  {
+    unite: 'B4', kind: 'entry', jours: 720, rooms: 4, signe: true,
+    reserves: [
+      { room: 'Séjour', description: 'Légère trace d’usure au sol', severity: 'minor' },
+    ],
+  },
+  {
+    unite: 'B4', kind: 'exit', jours: 55, rooms: 4, signe: true,
+    reserves: [
+      { room: 'Séjour', description: 'Parquet rayé sur deux lames', severity: 'major', cout: 35000 },
+      { room: 'Chambre 2', description: 'Vitre fêlée', severity: 'major', cout: 20000 },
+      { room: 'Salle de bain', description: 'Mitigeur fuyant', severity: 'major', cout: 18000 },
+      { room: 'Salle de bain', description: 'Miroir descellé', severity: 'minor', cout: 6000 },
+      { room: 'Cuisine', description: 'Plaque de cuisson rayée', severity: 'minor' },
+      { room: 'Entrée', description: 'Serrure dure à fermer', severity: 'minor', cout: 12000 },
+    ],
+  },
+  {
+    unite: 'C3', kind: 'exit', jours: 78, rooms: 3, signe: true,
+    reserves: [
+      { room: 'Chambre', description: 'Volet roulant bloqué', severity: 'major', cout: 25000 },
+      { room: 'Séjour', description: 'Interrupteur cassé', severity: 'minor', cout: 4000 },
+    ],
+  },
+  { unite: 'A4', kind: 'entry', jours: 180, rooms: 5, signe: true, reserves: [] },
+  {
+    unite: 'A5', kind: 'entry', jours: 225, rooms: 2, signe: false,
+    reserves: [
+      { room: 'Cuisine', description: 'Plan de travail entaillé', severity: 'minor' },
+    ],
+  },
 ]
 
 /**
@@ -373,9 +426,24 @@ export async function semerParcDemonstration(
   for (const e of ETATS_DES_LIEUX) {
     const unitId = unites.get(e.unite)
     if (!unitId) continue
+    /**
+     * Rattaché au BAIL, comme la vraie route le fait.
+     *
+     * Il ne l'était pas : toutes les inspections du jeu portaient `leaseId`
+     * nul, alors que le modèle porte ce champ pour une raison écrite dans son
+     * propre commentaire — « une sortie doit être attribuable au locataire qui
+     * part, précisément la personne dont on arbitre la caution ». Une
+     * démonstration qui s'écarte du produit sur ce point rendrait la
+     * comparaison entrée/sortie impossible à apparier.
+     */
+    const bailDeLUnite = await tx.lease.findFirst({
+      where: { unitId },
+      select: { id: true },
+    })
     await tx.inspection.create({
       data: {
         unitId,
+        ...(bailDeLUnite ? { leaseId: bailDeLUnite.id } : {}),
         kind: e.kind,
         performedOn: moins(e.jours, aujourdhui),
         rooms: e.rooms,
@@ -383,10 +451,14 @@ export async function semerParcDemonstration(
         // qu'on oppose au locataire en cas de litige.
         signedAt: e.signe ? moins(e.jours, aujourdhui) : null,
         findings: {
-          create: Array.from({ length: e.issues }, (_, i) => ({
-            room: `Pièce ${i + 1}`,
-            description: 'Réserve constatée à l’état des lieux',
-            severity: i === 0 ? 'major' : 'minor',
+          create: e.reserves.map((r) => ({
+            room: r.room,
+            description: r.description,
+            severity: r.severity,
+            // Le coût n'existe que sur une SORTIE — le serveur refuse en 422
+            // qu'une entrée en porte un, et la démonstration ne fait pas
+            // exception à ce qu'elle est censée montrer.
+            ...(e.kind === 'exit' && r.cout !== undefined ? { costMinor: r.cout } : {}),
           })),
         },
       },

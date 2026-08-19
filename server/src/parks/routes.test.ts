@@ -1050,6 +1050,158 @@ describe('demandes de documents', () => {
   })
 })
 
+/**
+ * Le DÉTAIL des états des lieux.
+ *
+ * `InspectionModal` saisit une pièce, une description, une gravité et un coût
+ * depuis l'origine ; la route de création les enregistre ; la retenue proposée
+ * sur la caution en dérive. La réponse du portefeuille, elle, ne rendait qu'un
+ * NOMBRE — « 3 réserves » —, si bien que la somme opposée au locataire ne se
+ * justifiait par rien qu'il puisse lire.
+ */
+describe('réserves des états des lieux', () => {
+  let parkId: string
+  let proprio: string
+
+  beforeEach(async () => {
+    const p = await inscrire('proprio@example.com', {
+      parkName: 'Parc Bonamoussadi',
+      countryCode: 'CM',
+      seedDemo: true,
+    })
+    proprio = p.cookie
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio)
+    parkId = parcs.body.parks[0].id
+  })
+
+  const portefeuille = (cookie: string) =>
+    request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', cookie)
+
+  interface EtatApi {
+    id: string
+    unitId: string
+    leaseId: string | null
+    kind: string
+    issues: number
+    findings: {
+      id: string
+      room: string
+      description: string
+      severity: string
+      costMinor: number | null
+    }[]
+  }
+
+  it('rend chaque réserve avec sa pièce, sa gravité et son coût', async () => {
+    const vue = await portefeuille(proprio)
+    const etats: EtatApi[] = vue.body.inspections
+    const avecReserves = etats.filter((i) => i.issues > 0)
+    expect(avecReserves.length).toBeGreaterThan(0)
+
+    for (const etat of avecReserves) {
+      // Le compte et le détail disent la MÊME chose : deux sources qui
+      // divergent sur le nombre de réserves seraient pires qu'une seule.
+      expect(etat.findings, etat.id).toHaveLength(etat.issues)
+      for (const reserve of etat.findings) {
+        expect(reserve.room.length).toBeGreaterThan(0)
+        expect(reserve.description.length).toBeGreaterThan(0)
+        expect(['minor', 'major']).toContain(reserve.severity)
+      }
+    }
+
+    /**
+     * Le coût n'existe QUE sur une sortie.
+     *
+     * C'est la règle qui donne son sens à l'état des lieux d'entrée : il relève
+     * ce qui est déjà abîmé pour que le locataire n'en réponde pas. La route de
+     * création refuse d'y chiffrer quoi que ce soit ; la lecture doit montrer
+     * la même chose.
+     */
+    const entrees = etats.filter((i) => i.kind === 'entry')
+    expect(entrees.length).toBeGreaterThan(0)
+    expect(entrees.flatMap((i) => i.findings).every((r) => r.costMinor === null)).toBe(true)
+
+    const sorties = etats.filter((i) => i.kind === 'exit')
+    expect(sorties.flatMap((i) => i.findings).some((r) => (r.costMinor ?? 0) > 0)).toBe(true)
+  })
+
+  it('apparie l’entrée et la sortie par le BAIL, et non par le logement', async () => {
+    const vue = await portefeuille(proprio)
+    const etats: EtatApi[] = vue.body.inspections
+    // Sans `leaseId`, comparer deux états des lieux d'une même unité
+    // rapprocherait l'entrée d'un locataire de la sortie d'un autre.
+    expect(etats.some((i) => i.leaseId !== null)).toBe(true)
+  })
+
+  /**
+   * Le cloisonnement, et c'est ici qu'il devient sensible.
+   *
+   * `unitesVisibles` retient le logement d'un locataire même après son départ.
+   * Tant que la réponse ne portait qu'un compte, l'écart ne coûtait rien ; le
+   * détail, lui, porte des descriptions et des coûts imputés. Ceux du bail
+   * SUIVANT ne le regardent pas.
+   */
+  it('ne détaille pas au locataire parti les réserves du bail qui a suivi', async () => {
+    const locataire = await inscrire('charles@example.com')
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'charles@example.com' },
+    })
+    await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'tenant' } })
+    await prisma.tenant.updateMany({
+      where: { parkId, fullName: 'Charles Ngassa' },
+      data: { userId: compte.id },
+    })
+
+    const ancien = await prisma.lease.findFirstOrThrow({
+      where: { tenant: { userId: compte.id } },
+      select: { id: true, unitId: true },
+    })
+    // L'index unique partiel n'autorise qu'un bail en cours par unité : on clôt
+    // le sien avant d'installer son successeur.
+    await prisma.lease.update({
+      where: { id: ancien.id },
+      data: { status: 'ended', endsOn: new Date() },
+    })
+    const suivant = await prisma.tenant.create({
+      data: { parkId, fullName: 'Locataire suivant' },
+    })
+    const bailSuivant = await prisma.lease.create({
+      data: {
+        unitId: ancien.unitId,
+        tenantId: suivant.id,
+        startsOn: new Date(),
+        rentMinor: 145000,
+        status: 'active',
+      },
+    })
+    await prisma.inspection.create({
+      data: {
+        unitId: ancien.unitId,
+        leaseId: bailSuivant.id,
+        kind: 'entry',
+        performedOn: new Date(),
+        rooms: 3,
+        findings: {
+          create: [
+            {
+              room: 'Chambre du successeur',
+              description: 'Trace d’humidité au plafond',
+              severity: 'major',
+            },
+          ],
+        },
+      },
+    })
+
+    const vue = await portefeuille(locataire.cookie)
+    const etats: EtatApi[] = vue.body.inspections
+
+    expect(etats.every((i) => i.leaseId !== bailSuivant.id)).toBe(true)
+    // La description est ce que la fuite livrerait : on l'assert nommément.
+    expect(JSON.stringify(etats)).not.toContain('Chambre du successeur')
+  })
+})
+
 describe('saisie des immeubles', () => {
   /**
    * La première pierre de la saisie.
