@@ -4494,6 +4494,122 @@ describe('les accès au parc', () => {
     expect(res.body.error).toBe('already_accepted')
   })
 
+  it('retire au gestionnaire son accès, dès la requête suivante', async () => {
+    const membres = await request(serveur).get(`/api/parks/${parkId}/access`).set('Cookie', proprio)
+    const sien = membres.body.members.find((m: { role: string }) => m.role === 'manager')
+
+    // AVANT : il lit le parc. Sans cette moitié, une coquille qui casserait le
+    // gestionnaire dès le `beforeEach` satisferait le cas.
+    await request(serveur)
+      .get(`/api/parks/${parkId}/portfolio`)
+      .set('Cookie', gestionnaire)
+      .expect(200)
+
+    const res = await request(serveur)
+      .patch(`/api/parks/${parkId}/memberships/${sien.id}/revoke`)
+      .set('Cookie', proprio)
+    expect(res.status, JSON.stringify(res.body)).toBe(204)
+
+    /**
+     * APRÈS, et avec LE MÊME COOKIE : c'est tout l'intérêt de `status`.
+     * `exigerAppartenance` ne cherche que des adhésions actives, si bien que le
+     * retrait vaut dès la requête suivante — sans attendre une reconnexion, et
+     * sans qu'on ait à révoquer sa session, qui reste valable pour ses autres
+     * parcs. Le 404 est celui d'un inconnu : un 403 confirmerait le parc.
+     */
+    const apres = await request(serveur)
+      .get(`/api/parks/${parkId}/portfolio`)
+      .set('Cookie', gestionnaire)
+    expect(apres.status).toBe(404)
+  })
+
+  it('le fait disparaître du registre, sans effacer ce qu’il a fait', async () => {
+    const avant = await request(serveur).get(`/api/parks/${parkId}/access`).set('Cookie', proprio)
+    const sien = avant.body.members.find((m: { role: string }) => m.role === 'manager')
+
+    // Une trace du gestionnaire dans le parc : un code qu'il a émis lui survit,
+    // parce qu'on retire un accès et non une personne.
+    const emis = await emettre(gestionnaire, { role: 'tenant' })
+
+    await request(serveur)
+      .patch(`/api/parks/${parkId}/memberships/${sien.id}/revoke`)
+      .set('Cookie', proprio)
+      .expect(204)
+
+    const apres = await request(serveur).get(`/api/parks/${parkId}/access`).set('Cookie', proprio)
+    expect(apres.body.members.map((m: { role: string }) => m.role)).toEqual(['owner'])
+    // Le code qu'il avait émis reste valable : révoquer son émetteur ne ferme
+    // pas la porte au locataire qui attend, lequel n'y est pour rien.
+    expect(apres.body.invitations.map((i: { id: string }) => i.id)).toContain(emis.invitation.id)
+  })
+
+  it('refuse au gestionnaire de retirer qui que ce soit', async () => {
+    const membres = await request(serveur).get(`/api/parks/${parkId}/access`).set('Cookie', proprio)
+    const celle = membres.body.members.find((m: { role: string }) => m.role === 'owner')
+
+    // Retirer un accès est un acte de propriétaire — celui-ci retirerait le
+    // sien, ce qui est le scénario que la garde doit rendre impossible.
+    const res = await request(serveur)
+      .patch(`/api/parks/${parkId}/memberships/${celle.id}/revoke`)
+      .set('Cookie', gestionnaire)
+    expect(res.status).toBe(403)
+
+    const apres = await prisma.membership.findUniqueOrThrow({ where: { id: celle.id } })
+    expect(apres.status).toBe('active')
+  })
+
+  it('refuse au propriétaire de se retirer lui-même', async () => {
+    const membres = await request(serveur).get(`/api/parks/${parkId}/access`).set('Cookie', proprio)
+    const sienne = membres.body.members.find((m: { role: string }) => m.role === 'owner')
+
+    // Un parc dont le dernier propriétaire est parti est inatteignable pour
+    // toujours : ses immeubles et ses cautions restent en base, et aucune route
+    // ne permet de s'y rattacher sans un code que seul un membre peut émettre.
+    const res = await request(serveur)
+      .patch(`/api/parks/${parkId}/memberships/${sienne.id}/revoke`)
+      .set('Cookie', proprio)
+    expect(res.status).toBe(409)
+    expect(res.body.error).toBe('cannot_revoke_self')
+
+    await request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', proprio).expect(200)
+  })
+
+  it('retire deux fois sans se plaindre', async () => {
+    // Ce que ce cas garde n'est pas une branche mais l'ABSENCE d'une condition :
+    // l'écriture est inconditionnelle, donc reposer `revoked` sur `revoked`
+    // réussit. Restreindre le `where` aux adhésions actives — le réflexe naturel
+    // — ferait lever Prisma au second appel, et deux écrans ouverts sur le même
+    // registre suffiraient à produire une erreur pour un état déjà atteint.
+
+    const membres = await request(serveur).get(`/api/parks/${parkId}/access`).set('Cookie', proprio)
+    const sien = membres.body.members.find((m: { role: string }) => m.role === 'manager')
+    const chemin = `/api/parks/${parkId}/memberships/${sien.id}/revoke`
+
+    await request(serveur).patch(chemin).set('Cookie', proprio).expect(204)
+    await request(serveur).patch(chemin).set('Cookie', proprio).expect(204)
+  })
+
+  it('ne retire personne dans le parc d’à côté', async () => {
+    const voisin = await inscrire('voisine@example.com', {
+      parkName: 'Parc Bastos',
+      countryCode: 'CM',
+    })
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', voisin.cookie)
+    const parcVoisin = parcs.body.parks[0].id
+    const chezElle = await request(serveur)
+      .get(`/api/parks/${parcVoisin}/access`)
+      .set('Cookie', voisin.cookie)
+    const sienne = chezElle.body.members[0]
+
+    const res = await request(serveur)
+      .patch(`/api/parks/${parkId}/memberships/${sienne.id}/revoke`)
+      .set('Cookie', proprio)
+    expect(res.status).toBe(404)
+
+    const apres = await prisma.membership.findUniqueOrThrow({ where: { id: sienne.id } })
+    expect(apres.status).toBe('active')
+  })
+
   it('reprend deux fois sans se plaindre, et sans réécrire la date', async () => {
     const { invitation } = await emettre(proprio, { role: 'tenant' })
     const chemin = `/api/parks/${parkId}/invitations/${invitation.id}/revoke`

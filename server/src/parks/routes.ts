@@ -1819,6 +1819,86 @@ parksRouter.patch(
   },
 )
 
+/**
+ * Retire à quelqu'un son accès au parc.
+ *
+ * La dernière moitié d'une ligne tracée en trois lots. On savait empêcher
+ * d'entrer — le recrutement d'un gestionnaire est réservé au propriétaire — et
+ * reprendre un code non consommé. Celui qui était DÉJÀ entré, lui, ne pouvait
+ * plus sortir : il n'existait pas un seul `membership.update` dans tout le
+ * serveur, et `MembershipStatus.revoked` était une valeur que rien n'avait
+ * jamais posée.
+ *
+ * Ce qui rend le geste immédiat était en place depuis toujours sans que
+ * personne s'en serve : `exigerAppartenance` cherche une adhésion `active`. La
+ * requête suivante ne trouve donc plus rien, et rend le 404 qu'elle rend à un
+ * inconnu — pas un 403, qui confirmerait l'existence du parc.
+ *
+ * Ce qui n'est PAS retiré : le compte, ses autres parcs, et — pour un
+ * locataire — sa fiche, son bail et son historique de paiements. On retire un
+ * ACCÈS, pas une personne ni ce qu'elle a vécu dans le parc. Effacer le second
+ * en retirant le premier ferait disparaître des dettes et des cautions.
+ */
+parksRouter.patch(
+  '/:parkId/memberships/:membershipId/revoke',
+  exigerAppartenance,
+  exigerRole('owner'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const brut = req.params.membershipId
+    const membershipId = typeof brut === 'string' ? brut : ''
+
+    // `parkId` DANS le filtre : sans lui, un identifiant deviné retirerait
+    // quelqu'un d'un parc dont on n'est pas membre.
+    const adhesion = await prisma.membership.findFirst({
+      where: { id: membershipId, parkId },
+      select: { id: true, userId: true },
+    })
+    if (!adhesion) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    /**
+     * ON NE SE RETIRE PAS SOI-MÊME.
+     *
+     * Un propriétaire qui se révoque laisse un parc que plus personne ne peut
+     * arbitrer : ses immeubles, ses baux et ses cautions restent en base, hors
+     * d'atteinte, et aucune route ne permet de s'y rattacher sans un code que
+     * seul un membre peut émettre. Le parc serait orphelin pour toujours.
+     *
+     * Cette garde suffit, et c'est pourquoi il n'y en a pas de seconde sur « le
+     * dernier propriétaire » : la route étant fermée à tout autre rôle, le seul
+     * chemin vers un parc sans propriétaire passe par l'auto-retrait. Un
+     * propriétaire peut en retirer un autre — il en reste alors au moins un,
+     * lui-même. Ajouter un comptage ici serait du code qu'aucune mutation ne
+     * pourrait faire rougir.
+     */
+    if (adhesion.userId === req.compteId!) {
+      res.status(409).json({ error: 'cannot_revoke_self' })
+      return
+    }
+
+    /**
+     * L'écriture est INCONDITIONNELLE, et c'est ce qui rend la route idempotente.
+     *
+     * Un premier jet ajoutait ici une sortie anticipée « déjà révoquée, 204 » :
+     * elle ne changeait rien — l'écriture repose la même valeur et rend le même
+     * code — et aucune mutation ne pouvait la distinguer. Elle est partie. Ce
+     * qu'il ne faut PAS faire, en revanche, c'est restreindre ce `where` aux
+     * adhésions actives : le second appel ne trouverait plus sa ligne, Prisma
+     * lèverait, et deux écrans ouverts sur le même registre suffiraient à
+     * produire une erreur là où il n'y a qu'un état déjà atteint.
+     */
+    await prisma.membership.update({
+      where: { id: adhesion.id },
+      data: { status: 'revoked' },
+    })
+
+    res.status(204).end()
+  },
+)
+
 /** Rattache un locataire à une unité vacante. */
 parksRouter.post(
   '/:parkId/tenants',
