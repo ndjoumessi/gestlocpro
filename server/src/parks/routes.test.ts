@@ -2031,6 +2031,9 @@ describe('envoi du code par SMS', () => {
       envoyerSms: async () => {
         throw new Error('fournisseur injoignable')
       },
+      // Ces cas n'éprouvent que le SMS ; le courriel complète la couture sans
+      // rien promettre — comme l'adaptateur de journal, il ne part pas.
+      envoyerEmail: async () => false,
     })
     try {
       const { cookie } = await inscrire('panne@example.com', { parkName: 'Parc' })
@@ -2056,6 +2059,7 @@ describe('envoi du code par SMS', () => {
         envoyes.push(`${destinataire}|${texte}`)
         return true
       },
+      envoyerEmail: async () => false,
     })
     try {
       const { cookie } = await inscrire('fournisseur@example.com', { parkName: 'Parc' })
@@ -2406,6 +2410,9 @@ describe('relance des loyers', () => {
       async envoyerSms(destinataire: string) {
         envoyes.push(destinataire)
         return true
+      },
+      async envoyerEmail() {
+        return false
       },
     })
     try {

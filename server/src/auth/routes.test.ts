@@ -4,6 +4,7 @@ import { createApp } from '../app.js'
 import { prisma } from '../db.js'
 import { NOM_COOKIE } from './session.js'
 import { empreinteJeton } from './token.js'
+import { remplacerMessagerie } from '../messagerie/messagerie.js'
 
 /**
  * Inscription, connexion, session.
@@ -435,5 +436,249 @@ describe('une inscription refusée n’écrit rien', () => {
 
     const me = await request(serveur).get('/api/auth/me').set('Cookie', cookieDe(res)!)
     expect(me.body.memberships).toEqual([])
+  })
+})
+
+/**
+ * LA RÉINITIALISATION DE MOT DE PASSE, qui n'existait pas.
+ *
+ * Les deux écrans du parcours étaient écrits et simulaient leur travail par un
+ * `window.setTimeout` ; la table `PasswordReset` figurait au schéma avec sa
+ * migration, et pas une ligne du serveur ne la touchait. Un propriétaire qui
+ * perdait son mot de passe lisait « un lien vient de vous être envoyé » et
+ * perdait l'accès à son parc sans recours.
+ */
+describe('réinitialisation du mot de passe', () => {
+  /** Capture les courriels au lieu de les envoyer, et rend le lien émis. */
+  function messagerieQuiCapture() {
+    const envoyes: { destinataire: string; texte: string }[] = []
+    const rendre = remplacerMessagerie({
+      async envoyerSms() {
+        return false
+      },
+      async envoyerEmail(destinataire: string, _sujet: string, texte: string) {
+        envoyes.push({ destinataire, texte })
+        return true
+      },
+    })
+    return {
+      envoyes,
+      rendre,
+      jeton: () => envoyes.at(-1)?.texte.match(/jeton=([\w-]+)/)?.[1] ?? '',
+    }
+  }
+
+  async function compteExistant(email = 'sarah@example.com') {
+    const res = await request(serveur).post('/api/auth/signup').send({ ...INSCRIPTION, email })
+    expect(res.status, JSON.stringify(res.body)).toBe(201)
+    return cookieDe(res)!
+  }
+
+  it('répond exactement pareil à une adresse connue et à une inconnue', async () => {
+    await compteExistant()
+
+    const connue = await request(serveur)
+      .post('/api/auth/forgot')
+      .send({ email: 'sarah@example.com' })
+    const inconnue = await request(serveur)
+      .post('/api/auth/forgot')
+      .send({ email: 'personne@example.com' })
+
+    /**
+     * Sans cette égalité, le formulaire devient un oracle : on y essaie des
+     * adresses pour savoir qui possède un compte, et sur un produit qui gère
+     * des biens immobiliers, cette liste-là se revend.
+     */
+    expect(connue.status).toBe(inconnue.status)
+    expect(connue.body).toEqual(inconnue.body)
+
+    // Et rien n'est écrit pour l'inconnue : l'égalité des réponses ne doit pas
+    // être obtenue en créant une demande pour une adresse qui n'existe pas.
+    expect(await prisma.passwordReset.count()).toBe(1)
+  })
+
+  it('n’enregistre que l’empreinte du jeton, jamais le jeton', async () => {
+    await compteExistant()
+    const m = messagerieQuiCapture()
+    try {
+      await request(serveur).post('/api/auth/forgot').send({ email: 'sarah@example.com' })
+      const clair = m.jeton()
+      expect(clair.length).toBeGreaterThan(16)
+
+      // Le même raisonnement que pour les sessions : une fuite de cette table
+      // ne doit livrer aucun lien utilisable.
+      const enregistre = await prisma.passwordReset.findFirstOrThrow()
+      expect(enregistre.tokenHash).not.toBe(clair)
+      expect(enregistre.tokenHash).toBe(empreinteJeton(clair))
+    } finally {
+      m.rendre()
+    }
+  })
+
+  it('change le mot de passe, et le nouveau seul ouvre la porte', async () => {
+    await compteExistant()
+    const m = messagerieQuiCapture()
+    try {
+      await request(serveur).post('/api/auth/forgot').send({ email: 'sarah@example.com' })
+      const res = await request(serveur)
+        .post('/api/auth/reset')
+        .send({ token: m.jeton(), password: 'un-nouveau-mot-de-passe' })
+      expect(res.status, JSON.stringify(res.body)).toBe(204)
+
+      // Les DEUX moitiés : le nouveau ouvre, et l'ancien ne doit plus.
+      await request(serveur)
+        .post('/api/auth/login')
+        .send({ email: 'sarah@example.com', password: 'un-nouveau-mot-de-passe' })
+        .expect(200)
+      await request(serveur)
+        .post('/api/auth/login')
+        .send({ email: 'sarah@example.com', password: INSCRIPTION.password })
+        .expect(401)
+    } finally {
+      m.rendre()
+    }
+  })
+
+  it('éjecte les sessions ouvertes, y compris celle de l’intrus', async () => {
+    /**
+     * LE POINT QU'ON OUBLIE. On réinitialise souvent parce qu'un autre est
+     * entré. Rendre son mot de passe à quelqu'un sans couper les sessions ne
+     * lui rend rien : l'intrus garde son cookie, valable trente jours.
+     */
+    const ancienne = await compteExistant()
+    await request(serveur).get('/api/auth/me').set('Cookie', ancienne).expect(200)
+
+    const m = messagerieQuiCapture()
+    try {
+      await request(serveur).post('/api/auth/forgot').send({ email: 'sarah@example.com' })
+      await request(serveur)
+        .post('/api/auth/reset')
+        .send({ token: m.jeton(), password: 'un-nouveau-mot-de-passe' })
+        .expect(204)
+    } finally {
+      m.rendre()
+    }
+
+    expect((await request(serveur).get('/api/auth/me').set('Cookie', ancienne)).status).toBe(401)
+  })
+
+  it('ne sert le lien qu’une fois', async () => {
+    await compteExistant()
+    const m = messagerieQuiCapture()
+    try {
+      await request(serveur).post('/api/auth/forgot').send({ email: 'sarah@example.com' })
+      const jeton = m.jeton()
+      await request(serveur)
+        .post('/api/auth/reset')
+        .send({ token: jeton, password: 'un-nouveau-mot-de-passe' })
+        .expect(204)
+
+      // `usedAt` est le champ que rien n'écrivait. Sans lui, le lien reste
+      // rejouable toute son heure : qui lit la boîte aux lettres plus tard
+      // reprend le compte que son porteur vient de récupérer.
+      const rejeu = await request(serveur)
+        .post('/api/auth/reset')
+        .send({ token: jeton, password: 'un-troisieme-mot-de-passe' })
+      expect(rejeu.status).toBe(400)
+      expect(rejeu.body.error).toBe('reset_invalid')
+
+      await request(serveur)
+        .post('/api/auth/login')
+        .send({ email: 'sarah@example.com', password: 'un-nouveau-mot-de-passe' })
+        .expect(200)
+    } finally {
+      m.rendre()
+    }
+  })
+
+  it('n’en sert qu’un quand le même lien est joué deux fois en même temps', async () => {
+    /**
+     * LA COURSE, pour de bon.
+     *
+     * Le cas précédent enchaîne les deux tentatives : la seconde lit un jeton
+     * déjà marqué et repart avant d'écrire. Ici les deux partent ENSEMBLE, les
+     * deux lisent un jeton libre, et les deux entrent en transaction. Ce qui les
+     * départage est le `updateMany` gardé par `usedAt: null`. Sans lui, deux
+     * mots de passe seraient posés l'un après l'autre et le dernier
+     * l'emporterait — celui qui a demandé le lien se retrouverait avec un mot
+     * de passe qu'il n'a pas choisi, sans que rien ne le lui dise.
+     */
+    await compteExistant()
+    const m = messagerieQuiCapture()
+    let jeton = ''
+    try {
+      await request(serveur).post('/api/auth/forgot').send({ email: 'sarah@example.com' })
+      jeton = m.jeton()
+    } finally {
+      m.rendre()
+    }
+
+    const [a, b] = await Promise.all([
+      request(serveur).post('/api/auth/reset').send({ token: jeton, password: 'le-premier-choisi' }),
+      request(serveur).post('/api/auth/reset').send({ token: jeton, password: 'le-second-choisi' }),
+    ])
+
+    expect([a.status, b.status].sort(), `${a.status}/${b.status}`).toEqual([204, 400])
+
+    // Un seul des deux mots de passe ouvre — celui du gagnant, quel qu'il soit.
+    const ouvre = await Promise.all(
+      ['le-premier-choisi', 'le-second-choisi'].map(async (mdp) => {
+        const res = await request(serveur)
+          .post('/api/auth/login')
+          .send({ email: 'sarah@example.com', password: mdp })
+        return res.status === 200
+      }),
+    )
+    expect(ouvre.filter(Boolean)).toHaveLength(1)
+  })
+
+  it('refuse un lien périmé, et le dit comme un lien inconnu', async () => {
+    await compteExistant()
+    const m = messagerieQuiCapture()
+    try {
+      await request(serveur).post('/api/auth/forgot').send({ email: 'sarah@example.com' })
+      const jeton = m.jeton()
+      await prisma.passwordReset.updateMany({ data: { expiresAt: new Date(Date.now() - 1000) } })
+
+      const perime = await request(serveur)
+        .post('/api/auth/reset')
+        .send({ token: jeton, password: 'un-nouveau-mot-de-passe' })
+      const inconnu = await request(serveur)
+        .post('/api/auth/reset')
+        .send({ token: 'jeton-parfaitement-invente-mais-assez-long', password: 'un-nouveau-mot-de-passe' })
+
+      expect(perime.status).toBe(400)
+      expect(perime.body).toEqual(inconnu.body)
+
+      // Et le mot de passe n'a pas bougé.
+      await request(serveur)
+        .post('/api/auth/login')
+        .send({ email: 'sarah@example.com', password: INSCRIPTION.password })
+        .expect(200)
+    } finally {
+      m.rendre()
+    }
+  })
+
+  it('ne périme pas les liens précédents quand on en demande un autre', async () => {
+    /**
+     * Invalider les anciens serait un moyen de nuisance : il suffirait de
+     * demander une réinitialisation pour l'adresse de quelqu'un afin d'annuler
+     * le lien qu'il est peut-être en train d'ouvrir.
+     */
+    await compteExistant()
+    const m = messagerieQuiCapture()
+    try {
+      await request(serveur).post('/api/auth/forgot').send({ email: 'sarah@example.com' })
+      const premier = m.jeton()
+      await request(serveur).post('/api/auth/forgot').send({ email: 'sarah@example.com' })
+
+      const res = await request(serveur)
+        .post('/api/auth/reset')
+        .send({ token: premier, password: 'un-nouveau-mot-de-passe' })
+      expect(res.status, JSON.stringify(res.body)).toBe(204)
+    } finally {
+      m.rendre()
+    }
   })
 })

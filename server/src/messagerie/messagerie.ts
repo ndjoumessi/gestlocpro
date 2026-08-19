@@ -19,6 +19,19 @@ export interface Messagerie {
    * l'envoi a échoué perdrait le code au lieu de sauver le message.
    */
   envoyerSms(destinataire: string, texte: string): Promise<boolean>
+
+  /**
+   * Rend `true` si le courriel est PARTI, `false` sinon. Mêmes règles que le
+   * SMS : jamais d'exception, et le `false` se dit à l'écran.
+   *
+   * La couture s'élargit d'une méthode parce qu'un besoin réel l'exige — la
+   * réinitialisation d'un mot de passe ne peut pas passer par un SMS, dont le
+   * corps ne porterait pas un lien sans le tronquer, et dont le coût par envoi
+   * se paie sur une opération qu'un utilisateur répète quand il doute. Elle ne
+   * s'élargit pas d'un octet de plus : ni pièce jointe, ni modèle, ni accusé de
+   * lecture, tant que rien ne les réclame.
+   */
+  envoyerEmail(destinataire: string, sujet: string, texte: string): Promise<boolean>
 }
 
 /**
@@ -42,6 +55,24 @@ export class MessagerieDeJournal implements Messagerie {
     // à le porter en entier pour qu'on sache qu'un envoi a été tenté.
     const masque = destinataire.slice(0, 4) + '…' + destinataire.slice(-2)
     console.log(`SMS non envoyé — aucun fournisseur configuré — vers ${masque} (${texte.length} car.)`)
+    return false
+  }
+
+  async envoyerEmail(destinataire: string, sujet: string, texte: string): Promise<boolean> {
+    /**
+     * Ni le corps ni l'adresse entière ne sont journalisés.
+     *
+     * Le corps porte un lien de réinitialisation — c'est-à-dire, le temps de sa
+     * validité, la clé du compte. L'écrire dans le journal reviendrait à
+     * distribuer cette clé à tous ceux qui lisent les journaux, et ils sont
+     * plus nombreux que ceux qui lisent la base. Le sujet, lui, ne dit rien de
+     * secret et aide à savoir quel envoi a été tenté.
+     */
+    const [avant = '', apres = ''] = destinataire.split('@')
+    const masque = `${avant.slice(0, 2)}…@${apres}`
+    console.log(
+      `Courriel non envoyé — aucun fournisseur configuré — vers ${masque} — « ${sujet} » (${texte.length} car.)`,
+    )
     return false
   }
 }

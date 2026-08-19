@@ -1,6 +1,8 @@
 import { Router, type Request, type Response } from 'express'
 import { z } from 'zod'
-import { empreinteJeton } from './token.js'
+import { creerJeton, empreinteJeton } from './token.js'
+import { env } from '../env.js'
+import { laMessagerie } from '../messagerie/messagerie.js'
 import { normaliserCode } from '../parks/invitations.js'
 import { Prisma } from '../generated/prisma/client.js'
 import type { ParkRole } from '../generated/prisma/client.js'
@@ -411,4 +413,166 @@ authRouter.get('/me', async (req: Request, res: Response) => {
       currency: m.park.currency,
     })),
   })
+})
+
+/**
+ * Durée de vie d'un lien de réinitialisation : une heure.
+ *
+ * Bien plus court que les quatorze jours d'un code d'invitation, et pour une
+ * raison de nature différente : le code d'invitation est transmis de la main à
+ * la main par quelqu'un qui l'a demandé, le lien de réinitialisation dort dans
+ * une boîte aux lettres. Tant qu'il est valable, il EST le compte — il ouvre
+ * sans mot de passe. Une heure suffit à qui vient de le demander, et réduit
+ * d'autant la fenêtre pour qui lira cette boîte plus tard.
+ */
+const DUREE_REINITIALISATION_MS = 60 * 60 * 1000
+
+/**
+ * Demande d'un lien de réinitialisation.
+ *
+ * LE PARCOURS EXISTAIT SANS SA MÉCANIQUE. `ForgotPassword.tsx` et
+ * `ResetPassword.tsx` étaient écrits, soignés, et simulaient tous deux leur
+ * travail par un `window.setTimeout` ; la table `PasswordReset` figurait au
+ * schéma depuis l'origine, avec sa migration, et pas une ligne du serveur ne la
+ * lisait ni ne l'écrivait. Un propriétaire qui perdait son mot de passe lisait
+ * « un lien vient de vous être envoyé », n'en recevait aucun, et perdait
+ * l'accès à son parc — ses baux, ses cautions, ses dettes — sans recours.
+ *
+ * LA RÉPONSE EST LA MÊME QUE L'ADRESSE EXISTE OU NON. C'est la règle qui
+ * gouverne toute cette route : distinguer les deux cas transformerait le
+ * formulaire en oracle — on y essaierait des adresses pour savoir qui possède
+ * un compte, et sur un produit qui gère des biens immobiliers, cette liste-là
+ * se revend. Le délai de réponse ne les distingue pas non plus de façon utile :
+ * l'écriture et l'envoi sont du même ordre que la lecture qui les précède.
+ */
+authRouter.post('/forgot', async (req: Request, res: Response) => {
+  const donnees = z.object({ email }).parse(req.body)
+
+  const compte = await prisma.userAccount.findUnique({
+    where: { email: donnees.email },
+    select: { id: true, fullName: true, locale: true },
+  })
+
+  if (compte) {
+    const jeton = creerJeton()
+    await prisma.passwordReset.create({
+      data: {
+        userId: compte.id,
+        // Seule l'empreinte, comme pour les sessions et les codes d'invitation.
+        // Une fuite de cette table ne donne aucun lien utilisable.
+        tokenHash: jeton.empreinte,
+        expiresAt: new Date(Date.now() + DUREE_REINITIALISATION_MS),
+      },
+    })
+
+    /**
+     * Les demandes précédentes ne sont PAS invalidées.
+     *
+     * On pourrait vouloir qu'un nouveau lien périme les anciens. Ce serait un
+     * moyen de nuisance : il suffirait de demander une réinitialisation pour
+     * l'adresse de quelqu'un afin d'annuler le lien qu'il vient de recevoir et
+     * qu'il est peut-être en train d'ouvrir. Chaque lien vit sa propre heure et
+     * ne sert qu'une fois — c'est suffisant, et cela ne donne prise à personne.
+     */
+    const lien = `${env.CLIENT_ORIGIN}/reinitialiser?jeton=${jeton.clair}`
+    await laMessagerie().envoyerEmail(
+      donnees.email,
+      'GestLocPro — réinitialiser votre mot de passe',
+      `Bonjour ${compte.fullName},\n\n` +
+        `Vous avez demandé à réinitialiser votre mot de passe. Ce lien est valable une heure :\n\n` +
+        `${lien}\n\n` +
+        `Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : votre mot de passe reste inchangé.`,
+    )
+  }
+
+  /**
+   * 202 et non 200 : la demande est ACCEPTÉE, et ce qu'il en advient ne se dit
+   * pas ici. Le client n'apprend rien de l'existence du compte, pas même par le
+   * code de statut — et il n'apprend pas davantage si le courriel est parti,
+   * puisque le lui dire reviendrait à confirmer l'adresse.
+   */
+  res.status(202).json({ ok: true })
+})
+
+/**
+ * Réinitialisation proprement dite.
+ *
+ * Trois effets, indissociables et dans une seule transaction :
+ *
+ *  1. le mot de passe change ;
+ *  2. le jeton est marqué `usedAt` — le champ que rien n'écrivait, et sans quoi
+ *     le lien resterait rejouable pendant toute son heure. Quelqu'un qui lit la
+ *     boîte aux lettres plus tard reprendrait le compte que son porteur vient
+ *     tout juste de récupérer ;
+ *  3. TOUTES les sessions du compte tombent. C'est le point qu'on oublie :
+ *     celui qui réinitialise le fait souvent parce qu'un autre est entré. Lui
+ *     rendre son mot de passe sans éjecter l'intrus ne lui rend rien du tout —
+ *     l'intrus garde son cookie, valable trente jours.
+ *
+ * En une transaction parce qu'un mot de passe changé sans jeton consommé, ou
+ * des sessions coupées sans mot de passe changé, sont deux états pires que
+ * l'échec entier.
+ */
+authRouter.post('/reset', async (req: Request, res: Response) => {
+  const donnees = z.object({ token: z.string().trim().min(16).max(200), password: motDePasse })
+    .parse(req.body)
+
+  const demande = await prisma.passwordReset.findUnique({
+    where: { tokenHash: empreinteJeton(donnees.token) },
+    select: { id: true, userId: true, expiresAt: true, usedAt: true },
+  })
+
+  // Un jeton inconnu, expiré ou déjà servi rend le MÊME refus, pour la raison
+  // qui vaut déjà pour les codes d'invitation : les distinguer renseignerait
+  // celui qui en essaie au hasard sur ceux qui ont existé.
+  if (!demande || demande.usedAt || demande.expiresAt <= new Date()) {
+    res.status(400).json({ error: 'reset_invalid' })
+    return
+  }
+
+  const empreinte = await hashPassword(donnees.password)
+
+  const change = await prisma
+    .$transaction(async (tx) => {
+      /**
+       * Le marquage d'abord, et gardé par `usedAt: null` : c'est lui qui tranche
+       * deux réinitialisations lancées avec le même lien. Le perdant obtient un
+       * compteur à zéro, lève, et le mot de passe n'est pas changé deux fois —
+       * ce qui, sinon, laisserait le second mot de passe l'emporter sans que le
+       * premier demandeur le sache.
+       */
+      const { count } = await tx.passwordReset.updateMany({
+        where: { id: demande.id, usedAt: null },
+        data: { usedAt: new Date() },
+      })
+      if (count === 0) return false
+
+      await tx.userAccount.update({
+        where: { id: demande.userId },
+        data: { passwordHash: empreinte },
+      })
+
+      await tx.session.updateMany({
+        where: { userId: demande.userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      })
+
+      return true
+    })
+
+  if (!change) {
+    res.status(400).json({ error: 'reset_invalid' })
+    return
+  }
+
+  /**
+   * Aucune session n'est ouverte au passage.
+   *
+   * Il serait commode de connecter la personne dans la foulée. Ce serait aussi
+   * accorder un accès sur la seule preuve d'un lien reçu, sans que le nouveau
+   * mot de passe ait jamais été saisi pour entrer. Elle se connecte, une fois,
+   * avec ce qu'elle vient de choisir : c'est la vérification que le geste a
+   * abouti, et elle ne coûte qu'un écran.
+   */
+  res.status(204).end()
 })
