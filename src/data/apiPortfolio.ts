@@ -93,6 +93,13 @@ interface PortefeuilleApi {
     indexValue: number | null
     previousIndex: number | null
     readAt: string | null
+    /**
+     * Prix unitaire applicable à la période relevée. Optionnel : un serveur
+     * antérieur à ce champ ne le rend pas, et l'écran retombe alors sur
+     * « aucun prix » — ce qui est le bon repli, puisqu'inventer une valeur est
+     * précisément le défaut que ce champ corrige.
+     */
+    unitPriceMinor?: number | null
   }[]
   /**
    * Toutes les périodes relevées, en INDEX.
@@ -312,13 +319,21 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
           powerPrevious: 0,
           powerCurrent: null,
           readAt: null,
+          waterPrice: null,
+          powerPrice: null,
         }
         if (r.utility === 'water') {
           ligne.waterPrevious = r.previousIndex ?? 0
           ligne.waterCurrent = r.indexValue
+          // `?? null` et non `?? 0` : un prix absent n'est pas un prix nul. Le
+          // second afficherait « 0 FCFA » sous les yeux du locataire, ce qui
+          // est une affirmation ; le premier n'affiche rien, ce qui est la
+          // vérité.
+          ligne.waterPrice = r.unitPriceMinor ?? null
         } else {
           ligne.powerPrevious = r.previousIndex ?? 0
           ligne.powerCurrent = r.indexValue
+          ligne.powerPrice = r.unitPriceMinor ?? null
         }
         if (r.readAt) ligne.readAt = enParties(r.readAt)
         parUnite.set(r.unitId, ligne)

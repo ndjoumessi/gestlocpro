@@ -177,19 +177,56 @@ export interface MeterReading {
   powerPrevious: number
   powerCurrent: number | null
   readAt: DateParts | null
+  /**
+   * Le prix unitaire APPLICABLE à ce relevé, ou `null` quand il n'y en a aucun.
+   *
+   * Il vient du serveur, qui choisit le tarif en vigueur à la période relevée —
+   * les prix sont datés, et refacturer janvier au tarif de novembre serait
+   * faux. Le client ne fait plus qu'une multiplication.
+   *
+   * `null` n'est pas un cas dégradé à combler : c'est un parc dont le
+   * propriétaire n'a pas encore posé ses prix, et l'écran doit alors montrer la
+   * QUANTITÉ SEULE. Deux constantes vivaient ici — 520 le mètre cube, 99 le
+   * kilowattheure — affichées à tous les parcs, dans toutes les devises, et le
+   * locataire lisait ce qu'il doit à partir d'un chiffre que rien ne fondait.
+   */
+  waterPrice: number | null
+  powerPrice: number | null
 }
 
+/**
+ * Tarifs de la DÉMONSTRATION, et d'elle seule.
+ *
+ * Ces deux nombres étaient `UTILITY_RATES`, servis à tous les parcs et à toutes
+ * les devises depuis le client : l'écran des relevés et l'espace du locataire
+ * les affichaient comme des faits, avec les totaux qui en découlent. Un parc
+ * réel lit désormais ses propres prix, datés, que son propriétaire a posés — et
+ * n'en affiche aucun tant qu'il n'en a posé aucun.
+ *
+ * Ils survivent ici au même titre que les loyers et les noms de ce fichier :
+ * un jeu fictif assumé, qui ne quitte jamais la démonstration. Le nom le dit
+ * maintenant, ce que « UTILITY_RATES » laissait croire l'inverse.
+ */
+export const TARIFS_DEMO = { water: 520, power: 99 }
+
+/**
+ * Les relevés de la démonstration portent les prix de la démonstration.
+ *
+ * Posés à la construction plutôt que multipliés à l'écran : c'est la même forme
+ * que ce que le serveur rend, si bien que les deux chemins — démonstration et
+ * parc réel — nourrissent le même composant sans qu'il sache lequel le sert.
+ */
 export const READINGS: MeterReading[] = [
-  { unitId: 'A1', waterPrevious: 342, waterCurrent: 358, powerPrevious: 4120, powerCurrent: 4298, readAt: { year: 2026, month: 7, day: 20 } },
-  { unitId: 'A2', waterPrevious: 289, waterCurrent: 301, powerPrevious: 3540, powerCurrent: 3671, readAt: { year: 2026, month: 7, day: 20 } },
-  { unitId: 'A3', waterPrevious: 415, waterCurrent: 436, powerPrevious: 5210, powerCurrent: 5402, readAt: { year: 2026, month: 7, day: 20 } },
-  { unitId: 'A4', waterPrevious: 502, waterCurrent: 529, powerPrevious: 6180, powerCurrent: 6455, readAt: { year: 2026, month: 7, day: 20 } },
-  { unitId: 'A5', waterPrevious: 176, waterCurrent: null, powerPrevious: 2140, powerCurrent: null, readAt: null },
-  { unitId: 'B1', waterPrevious: 388, waterCurrent: 402, powerPrevious: 4870, powerCurrent: 5033, readAt: { year: 2026, month: 7, day: 19 } },
-  { unitId: 'B2', waterPrevious: 356, waterCurrent: 371, powerPrevious: 4405, powerCurrent: 4560, readAt: { year: 2026, month: 7, day: 19 } },
-  { unitId: 'B3', waterPrevious: 271, waterCurrent: 284, powerPrevious: 3290, powerCurrent: 3418, readAt: { year: 2026, month: 7, day: 19 } },
-  { unitId: 'C1', waterPrevious: 611, waterCurrent: 644, powerPrevious: 7320, powerCurrent: 7640, readAt: { year: 2026, month: 7, day: 18 } },
-  { unitId: 'C2', waterPrevious: 334, waterCurrent: null, powerPrevious: 4010, powerCurrent: null, readAt: null },
+  { unitId: 'A1', waterPrevious: 342, waterCurrent: 358, powerPrevious: 4120, powerCurrent: 4298, readAt: { year: 2026, month: 7, day: 20 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
+  { unitId: 'A2', waterPrevious: 289, waterCurrent: 301, powerPrevious: 3540, powerCurrent: 3671, readAt: { year: 2026, month: 7, day: 20 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
+  { unitId: 'A3', waterPrevious: 415, waterCurrent: 436, powerPrevious: 5210, powerCurrent: 5402, readAt: { year: 2026, month: 7, day: 20 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
+  { unitId: 'A4', waterPrevious: 502, waterCurrent: 529, powerPrevious: 6180, powerCurrent: 6455, readAt: { year: 2026, month: 7, day: 20 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
+  { unitId: 'A5', waterPrevious: 176, waterCurrent: null, powerPrevious: 2140, powerCurrent: null, readAt: null, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
+  { unitId: 'B1', waterPrevious: 388, waterCurrent: 402, powerPrevious: 4870, powerCurrent: 5033, readAt: { year: 2026, month: 7, day: 19 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
+  { unitId: 'B2', waterPrevious: 356, waterCurrent: 371, powerPrevious: 4405, powerCurrent: 4560, readAt: { year: 2026, month: 7, day: 19 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
+  { unitId: 'B3', waterPrevious: 271, waterCurrent: 284, powerPrevious: 3290, powerCurrent: 3418, readAt: { year: 2026, month: 7, day: 19 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
+  { unitId: 'C1', waterPrevious: 611, waterCurrent: 644, powerPrevious: 7320, powerCurrent: 7640, readAt: { year: 2026, month: 7, day: 18 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
+  { unitId: 'C2', waterPrevious: 334, waterCurrent: null, powerPrevious: 4010, powerCurrent: null, readAt: null, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
 ]
 
 /**
@@ -301,8 +338,6 @@ export const READING_HISTORY_DEMO: {
   return lignes
 })()
 
-/** Tarifs unitaires de refacturation des charges. */
-export const UTILITY_RATES = { water: 520, power: 99 }
 
 /**
  * Corps de métier proposés AU DÉCLARANT, dans l'ordre où ils lui sont montrés.
@@ -811,7 +846,7 @@ export function alertsForUnit(unitId: string): Alert[] {
  *
  * **Les montants sont FIGÉS, jamais dérivés d'un tarif courant.** Ce type
  * portait des quantités — 16 m³, 178 kWh — que l'écran multipliait par
- * `UTILITY_RATES` pour obtenir ce qu'il affichait. Tant que le tarif ne bouge
+ * les tarifs pour obtenir ce qu'il affichait. Tant que le tarif ne bouge
  * pas, les deux coïncident ; le jour où il change, tout l'historique se
  * recalcule et juillet se relit au prix d'août. C'est précisément ce que le
  * serveur refuse de faire — `RentCharge.waterMinor` le dit dans son propre
@@ -926,7 +961,7 @@ export function receiptStatus(receipt: Receipt, aujourdhui: Date): PaymentStatus
  * l'unité A1 : 358−342 et 4298−4120. L'écran des relevés et le portail parlent
  * du même mois ; en inventer d'autres ici aurait donné au locataire une
  * consommation que son gestionnaire ne lit nulle part. Les montants ci-dessous
- * sont ces quantités au tarif de `UTILITY_RATES`, calculées UNE FOIS et
+ * sont ces quantités au tarif de `TARIFS_DEMO`, calculées UNE FOIS et
  * inscrites — c'est ainsi qu'une facture se fige, et le serveur ne fait pas
  * autrement.
  *

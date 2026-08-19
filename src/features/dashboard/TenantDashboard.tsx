@@ -14,7 +14,6 @@ import { useDates } from '@/lib/useDates'
 import { useNumbers } from '@/lib/numbers'
 import { cn } from '@/lib/cn'
 import {
-  UTILITY_RATES,
   dernierVersement,
   imputation,
   type ConsumptionPoint,
@@ -143,6 +142,24 @@ export function TenantDashboard() {
   const elecConso =
     releve && releve.powerCurrent !== null ? releve.powerCurrent - releve.powerPrevious : null
 
+  /**
+   * Le montant refacturé, et le TIRET quand il n'y a pas de prix.
+   *
+   * Deux constantes du client servaient ici : le locataire lisait « eau —
+   * 8 320 FCFA » calculé à 520 le mètre cube, un prix que personne ne lui avait
+   * accordé et que son bailleur n'avait jamais saisi. C'est l'endroit du
+   * produit où un chiffre inventé coûte le plus cher, puisque c'est celui qui
+   * le paie qui le lit.
+   *
+   * Sans prix, la consommation reste affichée — 16 m³ est un fait relevé — et
+   * seul le montant disparaît. Le tiret est le même que celui d'un relevé
+   * manquant, et c'est voulu : dans les deux cas, la somme n'est pas connue.
+   */
+  const refacture = (conso: number | null, prix: number | null | undefined) =>
+    conso === null || prix === null || prix === undefined
+      ? '—'
+      : money(conso * prix, { round: true })
+
   return (
     <>
       <PageHeader
@@ -226,7 +243,7 @@ export function TenantDashboard() {
 
         <CarteCharge
           label={t('app.tenant.water')}
-          amount={eauConso === null ? '—' : money(eauConso * UTILITY_RATES.water, { round: true })}
+          amount={refacture(eauConso, releve?.waterPrice)}
           note={
             eauConso === null
               ? t('app.meters.missing')
@@ -235,7 +252,7 @@ export function TenantDashboard() {
         />
         <CarteCharge
           label={t('app.tenant.power')}
-          amount={elecConso === null ? '—' : money(elecConso * UTILITY_RATES.power, { round: true })}
+          amount={refacture(elecConso, releve?.powerPrice)}
           note={
             elecConso === null
               ? t('app.meters.missing')

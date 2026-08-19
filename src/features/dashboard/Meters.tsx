@@ -15,7 +15,7 @@ import { useT } from '@/i18n/I18nProvider'
 import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
 import { useDates } from '@/lib/useDates'
 import { useNumbers } from '@/lib/numbers'
-import { UTILITY_RATES, type MeterReading } from '@/data/portfolio'
+import { type MeterReading } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 
 /**
@@ -60,12 +60,34 @@ export function Meters() {
     power: reading.powerCurrent === null ? null : reading.powerCurrent - reading.powerPrevious,
   })
 
+  /**
+   * Le montant refacturé, ou `null` — relevé incomplet OU prix absent.
+   *
+   * Deux constantes tenaient ce rôle, servies à tous les parcs : le total
+   * s'affichait donc toujours, y compris pour un propriétaire qui n'avait
+   * jamais posé de prix. Le `null` du prix se propage maintenant jusqu'ici, et
+   * l'écran montre la quantité seule — c'est la règle du produit, aucun chiffre
+   * sans donnée derrière, appliquée à celui sur lequel quelqu'un paie.
+   */
   const rebilled = (reading: MeterReading) => {
     const c = consumption(reading)
     if (c.water === null || c.power === null) return null
-    return c.water * UTILITY_RATES.water + c.power * UTILITY_RATES.power
+    if (reading.waterPrice === null || reading.powerPrice === null) return null
+    return c.water * reading.waterPrice + c.power * reading.powerPrice
   }
 
+  /**
+   * Le prix en vigueur, lu sur les relevés plutôt que sur une constante.
+   *
+   * Tous les relevés d'un parc portent le même prix pour une énergie donnée à
+   * une période donnée — c'est le serveur qui le choisit —, donc le premier
+   * suffit. `null` quand aucun n'a été posé, et la vignette disparaît alors :
+   * afficher « — / m³ » nommerait un prix qui n'existe pas.
+   */
+  const prixCourant = (energie: 'waterPrice' | 'powerPrice') =>
+    READINGS.find((r) => r[energie] !== null)?.[energie] ?? null
+
+  const aUnPrix = prixCourant('waterPrice') !== null && prixCourant('powerPrice') !== null
   const missing = READINGS.filter((r) => r.waterCurrent === null || r.powerCurrent === null)
   const total = READINGS.reduce((sum, r) => sum + (rebilled(r) ?? 0), 0)
 
@@ -133,9 +155,19 @@ export function Meters() {
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
+        {/*
+          Le total n'est un total QUE s'il y a un prix.
+          `rebilled` rend `null` sans tarif, et la somme retombait alors à zéro :
+          l'écran annonçait « 0 FCFA refacturés » là où la vérité est qu'on ne
+          sait pas encore combien. Un zéro affirmé est le même défaut que 520
+          affirmé, en plus discret — il a l'air d'un fait mesuré.
+
+          Le compte des relevés saisis, lui, reste : il ne dépend d'aucun prix,
+          et c'est l'information dont le gestionnaire a besoin pour sa tournée.
+        */}
         <StatCard
           label={t('app.meters.totalRebilled')}
-          value={money(total, { round: true })}
+          value={aUnPrix ? money(total, { round: true }) : '—'}
           note={t('app.meters.capturedCount', {
             done: READINGS.length - missing.length,
             total: READINGS.length,
@@ -145,16 +177,20 @@ export function Meters() {
             directe, donc sans devise ni groupement — « 520 » à côté d'un
             « 185 000 FCFA » formaté, sur la même ligne, et insensibles au
             changement de devise. */}
-        <StatCard
-          label={t('app.meters.water')}
-          value={money(UTILITY_RATES.water, { round: true })}
-          unit="/ m³"
-        />
-        <StatCard
-          label={t('app.meters.power')}
-          value={money(UTILITY_RATES.power, { round: true })}
-          unit="/ kWh"
-        />
+        {prixCourant('waterPrice') !== null && (
+          <StatCard
+            label={t('app.meters.water')}
+            value={money(prixCourant('waterPrice')!, { round: true })}
+            unit="/ m³"
+          />
+        )}
+        {prixCourant('powerPrice') !== null && (
+          <StatCard
+            label={t('app.meters.power')}
+            value={money(prixCourant('powerPrice')!, { round: true })}
+            unit="/ kWh"
+          />
+        )}
       </div>
 
       {/* Un relevé manquant a une conséquence concrète : on la nomme, plutôt
