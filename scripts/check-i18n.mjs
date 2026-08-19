@@ -197,6 +197,89 @@ async function* walk(dir) {
   }
 }
 
+
+/**
+ * Deux QUESTIONS identiques dans un même écran.
+ *
+ * Deuxième défaut de cette famille, après les chaînes écrites en dur : deux
+ * clés distinctes rendant le même libellé, affichées côte à côte. Il s'est
+ * produit deux fois de suite. « Devis proposé » a servi au statut d'une
+ * intervention ET à la nature de son montant, sur la même ligne. Puis « De quoi
+ * s'agit-il ? » a désigné le titre d'un chantier ET le choix du corps de
+ * métier, à quinze pixels d'écart dans le même formulaire.
+ *
+ * Aucun outil ne les voyait. Le typage garantit que chaque CLÉ existe et qu'elle
+ * est traduite ; il ne regarde jamais la chaîne rendue. Et les tests visaient
+ * les valeurs — « multi-corps », un sélecteur — jamais les questions posées.
+ *
+ * ── POURQUOI CE CRITÈRE, ET PAS UN AUTRE ──
+ *
+ * « Valeur unique dans le dictionnaire » : mesuré, 61 doublons, presque tous
+ * légitimes — « Travaux » nomme une entrée de navigation et un titre d'écran,
+ * c'est le même mot pour la même chose. Inutilisable.
+ *
+ * « Valeur unique par FICHIER » : mesuré, 10 doublons sur du code sain. « Loyer »
+ * en carte et en colonne du même tableau, « Eau », « Quittance » — le même
+ * concept nommé deux fois, ce qui ne gêne personne. Un garde-fou qui naît avec
+ * dix exceptions n'est pas un garde-fou.
+ *
+ * « Deux QUESTIONS identiques dans un fichier » : mesuré, zéro sur le code
+ * actuel, et il attrape la collision réelle sur le seul fichier concerné. Une
+ * interrogation appelle une réponse ; deux fois la même appelle deux réponses
+ * différentes, ce qui est toujours un défaut. Un nom de colonne répété, non.
+ *
+ * ── CE QU'IL NE VOIT PAS, ET C'EST DÉLIBÉRÉ ──
+ *
+ * Les clés COMPOSÉES — `t(`app.works.${statut}`)` — ne sont pas résolues. Les
+ * développer par préfixe ferait remonter « Devis proposé », la première des
+ * deux collisions ; mais cela signalait aussi `Signaler.tsx`, qui n'emploie
+ * aucune des deux clés en cause. Un garde-fou qui désigne le mauvais fichier
+ * apprend à ne pas le lire.
+ *
+ * Ce contrôle ne couvre donc que la moitié de ce qu'il devrait. Il vaut mieux
+ * qu'une moitié juste qu'un tout approximatif — et la moitié restante est celle
+ * qu'un humain voit à l'écran, comme les deux fois où elle a été trouvée.
+ */
+export function questionsEnDouble(dictionnaire, fichiers) {
+  const trouvailles = []
+  for (const [fichier, code] of fichiers) {
+    const cles = new Set([...code.matchAll(/t\(\s*'([a-zA-Z0-9_.]+)'/g)].map((m) => m[1]))
+    const parLibelle = new Map()
+    for (const cle of cles) {
+      const valeur = dictionnaire.get(cle)
+      // Seules les interrogations. Le point d'interrogation pleine chasse est
+      // là pour le jour où le produit parlera une langue qui l'emploie.
+      if (!valeur || !/[?？]\s*$/.test(valeur)) continue
+      parLibelle.set(valeur, [...(parLibelle.get(valeur) ?? []), cle])
+    }
+    for (const [valeur, clesEnCause] of parLibelle)
+      if (clesEnCause.length > 1) trouvailles.push({ fichier, valeur, cles: clesEnCause })
+  }
+  return trouvailles
+}
+
+/**
+ * Le dictionnaire à plat : « app.works.openWhat » → « Que faut-il faire ? ».
+ *
+ * Lu au texte plutôt qu'importé. `fr.ts` est un module TypeScript, et ce script
+ * tourne sous Node sans transpilation — l'importer demanderait une étape de
+ * construction pour un garde-fou dont tout l'intérêt est de tourner vite et
+ * partout.
+ */
+export function dictionnaireAPlat(source) {
+  const valeurs = new Map()
+  const pile = []
+  for (const ligne of source.split('\n')) {
+    const ouvre = ligne.match(/^\s+([A-Za-z_][\w]*): \{/)
+    const feuille = ligne.match(/^\s+([A-Za-z_][\w]*): '((?:[^'\\]|\\.)*)',?\s*$/)
+    const ferme = ligne.match(/^\s+\},?\s*$/)
+    if (ouvre) pile.push(ouvre[1])
+    else if (ferme) pile.pop()
+    else if (feuille) valeurs.set([...pile, feuille[1]].join('.'), feuille[2])
+  }
+  return valeurs
+}
+
 /**
  * Le parcours des sources ne s'exécute QUE si ce fichier est lancé lui-même.
  *
@@ -207,14 +290,35 @@ async function* walk(dir) {
  */
 if (import.meta.url === pathToFileURL(argv[1] ?? '').href) {
   const findings = []
+  const sources = []
 
   for await (const file of walk(SRC)) {
     const rel = relative(ROOT, file)
-    findings.push(...analyser(rel, await readFile(file, 'utf8')))
+    const code = await readFile(file, 'utf8')
+    findings.push(...analyser(rel, code))
+    // Les fichiers de test ne rendent rien : deux questions identiques y sont
+    // deux assertions, pas deux champs voisins.
+    if (!/\.test\.tsx?$/.test(rel)) sources.push([rel, code])
+  }
+
+  const doublons = questionsEnDouble(
+    dictionnaireAPlat(await readFile(join(SRC, 'i18n/fr.ts'), 'utf8')),
+    sources,
+  )
+
+  if (doublons.length > 0) {
+    console.error(`✗ ${doublons.length} question(s) posée(s) deux fois dans un même écran :\n`)
+    for (const d of doublons) {
+      console.error(`  ${d.fichier}`)
+      console.error(`    « ${d.valeur} »`)
+      console.error(`    → ${d.cles.join('  et  ')}`)
+      console.error('    Deux questions distinctes appellent deux libellés distincts.\n')
+    }
+    process.exit(1)
   }
 
   if (findings.length === 0) {
-    console.log('✓ Aucune chaîne utilisateur écrite en dur.')
+    console.log('✓ Aucune chaîne en dur, aucune question posée deux fois.')
     process.exit(0)
   }
 

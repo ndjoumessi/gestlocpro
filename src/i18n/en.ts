@@ -726,7 +726,7 @@ export const en: Dictionary = {
       openTitle: 'Open a job',
       openBody: 'A job you decide on, without a tenant having reported it. It joins the list like any other, and gets quoted afterwards.',
       openUnit: 'On which home?',
-      openWhat: 'What is it?',
+      openWhat: 'What needs doing?',
       openWhatHint: 'One sentence is enough. The quote comes later.',
       openWhatPlaceholder: 'Repaint the courtyard facade',
       openSubmit: 'Open the job',

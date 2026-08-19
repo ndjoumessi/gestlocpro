@@ -924,7 +924,11 @@ export const fr = {
       openTitle: 'Ouvrir un chantier',
       openBody: 'Une intervention que vous décidez, sans qu’un locataire l’ait signalée. Elle apparaîtra dans la liste comme les autres, et se chiffre ensuite.',
       openUnit: 'Sur quel logement ?',
-      openWhat: 'De quoi s’agit-il ?',
+      /* « Que faut-il faire ? » et non « De quoi s'agit-il ? » : cette
+         dernière est DÉJÀ la légende du choix des métiers, quinze pixels plus
+         bas dans la même modale. Deux questions distinctes sous le même
+         libellé, et un formulaire qui demande deux fois la même chose. */
+      openWhat: 'Que faut-il faire ?',
       openWhatHint: 'Une phrase suffit. Le devis vient après.',
       openWhatPlaceholder: 'Ravalement de la façade côté cour',
       openSubmit: 'Ouvrir le chantier',
