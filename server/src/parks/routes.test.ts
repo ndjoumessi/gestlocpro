@@ -4299,3 +4299,255 @@ describe('rejoindre un parc avec un compte existant', () => {
     expect(apres.acceptedAt).toBeNull()
   })
 })
+
+/**
+ * LE REGISTRE DES ACCÈS.
+ *
+ * Le produit savait faire entrer et ne savait ni regarder ni reprendre. Aucune
+ * route ne listait les membres d'un parc ni les codes en attente ; aucune
+ * n'écrivait `Invitation.revokedAt`, pourtant lu à chaque consommation depuis
+ * l'origine. La colonne était toujours nulle : une garde qui ne gardait rien.
+ *
+ * Le blocage qu'elle causait n'avait été vu de personne : l'index unique
+ * partiel de `bail_unique_par_unite` empêche un second code sur un logement
+ * dont le premier n'a pas servi. Sans révocation, un propriétaire qui s'était
+ * trompé de destinataire restait bloqué quatorze jours sur ce logement.
+ */
+describe('les accès au parc', () => {
+  let parkId: string
+  let proprio: string
+  let gestionnaire: string
+
+  beforeEach(async () => {
+    const p = await inscrire('proprio@example.com', {
+      parkName: 'Parc Bonamoussadi',
+      countryCode: 'CM',
+      seedDemo: true,
+    })
+    proprio = p.cookie
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio)
+    parkId = parcs.body.parks[0].id
+
+    const d = await inscrire('diane@example.com')
+    gestionnaire = d.cookie
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'diane@example.com' },
+    })
+    await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'manager' } })
+  })
+
+  /** Émet un code et rend la réponse entière : le clair n'existe qu'ici. */
+  async function emettre(cookie: string, corps: Record<string, unknown>) {
+    const res = await request(serveur)
+      .post(`/api/parks/${parkId}/invitations`)
+      .set('Cookie', cookie)
+      .send(corps)
+    expect(res.status, JSON.stringify(res.body)).toBe(201)
+    return res.body as { code: string; invitation: { id: string } }
+  }
+
+  it('liste les membres du parc, le propriétaire en tête', async () => {
+    const res = await request(serveur).get(`/api/parks/${parkId}/access`).set('Cookie', proprio)
+    expect(res.status, JSON.stringify(res.body)).toBe(200)
+
+    // L'ordre n'est pas cosmétique : `ParkRole` est déclaré `owner, manager,
+    // tenant` et PostgreSQL trie ses énumérations dans cet ordre-là. Le jour où
+    // quelqu'un réordonne l'enum, ce cas le dira.
+    expect(res.body.members.map((m: { email: string }) => m.email)).toEqual([
+      'proprio@example.com',
+      'diane@example.com',
+    ])
+    expect(res.body.members[0].role).toBe('owner')
+    expect(res.body.members[1].role).toBe('manager')
+    expect(res.body.members[0].since).toEqual(expect.any(String))
+  })
+
+  it('montre les codes en attente par leur indice, jamais en clair', async () => {
+    const { code } = await emettre(proprio, { role: 'tenant' })
+
+    const res = await request(serveur).get(`/api/parks/${parkId}/access`).set('Cookie', proprio)
+    expect(res.body.invitations).toHaveLength(1)
+    expect(res.body.invitations[0].codeHint).toBe(code.slice(-4))
+
+    // Seule l'empreinte est en base : si le clair réapparaissait ici, une
+    // sauvegarde ou un journal ouvrirait le parc. L'indice reconnaît un code,
+    // il n'en fabrique pas.
+    expect(JSON.stringify(res.body)).not.toContain(code)
+  })
+
+  it('n’y montre ni le code consommé ni le code repris', async () => {
+    const consomme = await emettre(proprio, { role: 'tenant' })
+    const repris = await emettre(proprio, { role: 'tenant' })
+
+    const { cookie } = await inscrire('entrant@example.com')
+    const rejoint = await request(serveur)
+      .post('/api/join')
+      .set('Cookie', cookie)
+      .send({ invitationCode: consomme.code })
+    expect(rejoint.status, JSON.stringify(rejoint.body)).toBe(201)
+
+    const revoque = await request(serveur)
+      .patch(`/api/parks/${parkId}/invitations/${repris.invitation.id}/revoke`)
+      .set('Cookie', proprio)
+    expect(revoque.status).toBe(204)
+
+    // La liste montre EXACTEMENT ce que `/api/join` accepterait. Deux
+    // définitions de « en attente » divergeraient, et l'écran promettrait alors
+    // des codes que la porte refuse.
+    const res = await request(serveur).get(`/api/parks/${parkId}/access`).set('Cookie', proprio)
+    expect(res.body.invitations).toHaveLength(0)
+  })
+
+  it('reprend un code en attente, qui cesse aussitôt d’ouvrir la porte', async () => {
+    const { code, invitation } = await emettre(proprio, { role: 'tenant' })
+
+    const revoque = await request(serveur)
+      .patch(`/api/parks/${parkId}/invitations/${invitation.id}/revoke`)
+      .set('Cookie', proprio)
+    expect(revoque.status).toBe(204)
+    expect((await prisma.invitation.findUniqueOrThrow({ where: { id: invitation.id } })).revokedAt)
+      .not.toBeNull()
+
+    // La preuve qui compte n'est pas la colonne, c'est la PORTE : `revokedAt`
+    // était déjà lu par `/api/join` avant ce lot, sans que rien ne l'écrive.
+    const { cookie } = await inscrire('trop-tard@example.com')
+    const entre = await request(serveur)
+      .post('/api/join')
+      .set('Cookie', cookie)
+      .send({ invitationCode: code })
+    expect(entre.status).toBe(400)
+    expect(entre.body.error).toBe('invitation_invalid')
+  })
+
+  it('libère le logement, qu’un code inutilisé bloquait quatorze jours', async () => {
+    const unite = await prisma.unit.findFirstOrThrow({
+      where: { building: { parkId }, leases: { none: { status: 'active' } } },
+      select: { id: true },
+    })
+    const premier = await emettre(proprio, { role: 'tenant', unitId: unite.id })
+
+    // L'index unique partiel de `bail_unique_par_unite` refuse un second code
+    // tant que le premier n'est ni accepté ni révoqué. C'est le blocage réel :
+    // un destinataire qui ne s'en sert jamais gèle le logement.
+    const bloque = await request(serveur)
+      .post(`/api/parks/${parkId}/invitations`)
+      .set('Cookie', proprio)
+      .send({ role: 'tenant', unitId: unite.id })
+    expect(bloque.status).toBe(409)
+    expect(bloque.body.error).toBe('invitation_pending')
+
+    await request(serveur)
+      .patch(`/api/parks/${parkId}/invitations/${premier.invitation.id}/revoke`)
+      .set('Cookie', proprio)
+      .expect(204)
+
+    const second = await request(serveur)
+      .post(`/api/parks/${parkId}/invitations`)
+      .set('Cookie', proprio)
+      .send({ role: 'tenant', unitId: unite.id })
+    expect(second.status, JSON.stringify(second.body)).toBe(201)
+  })
+
+  it('refuse au gestionnaire de reprendre un code de gestionnaire', async () => {
+    const { invitation } = await emettre(proprio, { role: 'manager' })
+
+    // Annuler le recrutement décidé par le propriétaire, c'est décider qui
+    // n'entre pas — le pendant exact du geste que le lot précédent lui a retiré.
+    const res = await request(serveur)
+      .patch(`/api/parks/${parkId}/invitations/${invitation.id}/revoke`)
+      .set('Cookie', gestionnaire)
+    expect(res.status).toBe(403)
+
+    const apres = await prisma.invitation.findUniqueOrThrow({ where: { id: invitation.id } })
+    expect(apres.revokedAt).toBeNull()
+  })
+
+  it('lui laisse reprendre un code de locataire, dont c’est le métier', async () => {
+    const { invitation } = await emettre(gestionnaire, { role: 'tenant' })
+
+    // Sans ce cas, fermer la route aux deux natures passerait au vert : on
+    // aurait corrigé une escalade en retirant au gestionnaire son geste courant.
+    const res = await request(serveur)
+      .patch(`/api/parks/${parkId}/invitations/${invitation.id}/revoke`)
+      .set('Cookie', gestionnaire)
+    expect(res.status).toBe(204)
+  })
+
+  it('refuse de reprendre un code déjà consommé, et le dit autrement qu’un absent', async () => {
+    const { code, invitation } = await emettre(proprio, { role: 'tenant' })
+    const { cookie } = await inscrire('deja-entre@example.com')
+    await request(serveur)
+      .post('/api/join')
+      .set('Cookie', cookie)
+      .send({ invitationCode: code })
+      .expect(201)
+
+    const res = await request(serveur)
+      .patch(`/api/parks/${parkId}/invitations/${invitation.id}/revoke`)
+      .set('Cookie', proprio)
+
+    // La personne est ENTRÉE : son accès ne tient plus au code mais à son
+    // adhésion. Reprendre le code ne fermerait rien tout en ayant l'air de le
+    // faire, et le refus doit se distinguer d'un identifiant inconnu pour que
+    // l'écran puisse dire quoi faire à la place.
+    expect(res.status).toBe(409)
+    expect(res.body.error).toBe('already_accepted')
+  })
+
+  it('reprend deux fois sans se plaindre, et sans réécrire la date', async () => {
+    const { invitation } = await emettre(proprio, { role: 'tenant' })
+    const chemin = `/api/parks/${parkId}/invitations/${invitation.id}/revoke`
+
+    await request(serveur).patch(chemin).set('Cookie', proprio).expect(204)
+    const premier = await prisma.invitation.findUniqueOrThrow({ where: { id: invitation.id } })
+
+    // Un second clic, ou deux écrans ouverts sur la même liste : l'état demandé
+    // est celui qu'on trouve, refuser serait punir l'utilisateur pour rien. Et
+    // la date du PREMIER retrait tient — c'est elle qui dit quand l'accès a
+    // cessé d'exister.
+    await request(serveur).patch(chemin).set('Cookie', proprio).expect(204)
+    const second = await prisma.invitation.findUniqueOrThrow({ where: { id: invitation.id } })
+    expect(second.revokedAt?.toISOString()).toBe(premier.revokedAt?.toISOString())
+  })
+
+  it('n’y montre pas un code expiré, que la porte refuse déjà', async () => {
+    const { invitation } = await emettre(proprio, { role: 'tenant' })
+    await prisma.invitation.update({
+      where: { id: invitation.id },
+      data: { expiresAt: new Date(Date.now() - 60_000) },
+    })
+
+    // La liste et `/api/join` doivent dire la même chose. Un code expiré affiché
+    // « en attente » ferait attendre un locataire devant une porte fermée.
+    const res = await request(serveur).get(`/api/parks/${parkId}/access`).set('Cookie', proprio)
+    expect(res.body.invitations).toHaveLength(0)
+  })
+
+  it('ne touche pas au code du parc d’à côté', async () => {
+    const voisin = await inscrire('voisin@example.com', {
+      parkName: 'Parc Bastos',
+      countryCode: 'CM',
+    })
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', voisin.cookie)
+    const parcVoisin = parcs.body.parks[0].id
+    const chezLeVoisin = await request(serveur)
+      .post(`/api/parks/${parcVoisin}/invitations`)
+      .set('Cookie', voisin.cookie)
+      .send({ role: 'tenant' })
+    expect(chezLeVoisin.status).toBe(201)
+
+    // Le filtre porte `parkId` : sans lui, un identifiant deviné reprendrait le
+    // code d'un parc dont on n'est pas membre, et le 404 se confond avec celui
+    // d'une invitation absente — « vous n'avez pas le droit » et « cela n'existe
+    // pas » doivent se ressembler vu de l'extérieur.
+    const res = await request(serveur)
+      .patch(`/api/parks/${parkId}/invitations/${chezLeVoisin.body.invitation.id}/revoke`)
+      .set('Cookie', proprio)
+    expect(res.status).toBe(404)
+
+    const apres = await prisma.invitation.findUniqueOrThrow({
+      where: { id: chezLeVoisin.body.invitation.id },
+    })
+    expect(apres.revokedAt).toBeNull()
+  })
+})

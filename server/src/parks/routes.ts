@@ -1558,20 +1558,44 @@ parksRouter.post(
     }
 
     const code = creerCode(corps.role)
-    const invitation = await prisma.invitation.create({
-      data: {
-        parkId,
-        role: corps.role,
-        codeHash: code.hash,
-        codeHint: code.indice,
-        ...(corps.email ? { email: corps.email } : {}),
-        ...(corps.phoneE164 ? { phoneE164: corps.phoneE164 } : {}),
-        ...(corps.unitId ? { unitId: corps.unitId } : {}),
-        issuedById: req.compteId!,
-        expiresAt: expirationInvitation(new Date()),
-      },
-      select: { id: true, role: true, codeHint: true, expiresAt: true },
-    })
+    let invitation
+    try {
+      invitation = await prisma.invitation.create({
+        data: {
+          parkId,
+          role: corps.role,
+          codeHash: code.hash,
+          codeHint: code.indice,
+          ...(corps.email ? { email: corps.email } : {}),
+          ...(corps.phoneE164 ? { phoneE164: corps.phoneE164 } : {}),
+          ...(corps.unitId ? { unitId: corps.unitId } : {}),
+          issuedById: req.compteId!,
+          expiresAt: expirationInvitation(new Date()),
+        },
+        select: { id: true, role: true, codeHint: true, expiresAt: true },
+      })
+    } catch (err) {
+      /**
+       * UN SEUL code vivant par logement, et le dire au lieu de rompre.
+       *
+       * `bail_unique_par_unite` pose un index unique partiel sur `unitId` là où
+       * `acceptedAt` et `revokedAt` sont nuls — c'est lui qui empêche « deux
+       * codes valides pour un seul accès, dont on ne saurait pas lequel
+       * révoquer ». La contrainte est juste ; ce qui manquait, c'est sa
+       * traduction : Prisma levait P2002, rien ne le rattrapait, et le
+       * propriétaire recevait un 500 nu sur un geste parfaitement ordinaire —
+       * réémettre un code pour un logement dont le premier n'a pas servi.
+       *
+       * Le 409 nomme l'état plutôt que l'accident, et la route de révocation
+       * livrée avec lui donne enfin la sortie : reprendre le code en attente,
+       * puis en émettre un autre.
+       */
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        res.status(409).json({ error: 'invitation_pending' })
+        return
+      }
+      throw err
+    }
 
     /**
      * Tentative d'envoi, dont l'échec ne fait PAS échouer l'émission.
@@ -1608,6 +1632,190 @@ parksRouter.post(
     // Le code clair voyage UNE fois, dans cette réponse. Il ne sera plus jamais
     // lisible : c'est au propriétaire de le transmettre.
     res.status(201).json({ invitation, code: code.clair, envoye })
+  },
+)
+
+/**
+ * QUI A ACCÈS À CE PARC.
+ *
+ * Le produit savait faire entrer et ne savait pas regarder. Aucune route ne
+ * listait les membres ni les codes en attente : le propriétaire ignorait qui
+ * détenait un accès au parc, et `codeHint` — les quatre derniers caractères,
+ * écrits à chaque émission « pour qu'il reconnaisse le code qu'il a envoyé » —
+ * n'était relu nulle part, faute d'écran pour l'afficher.
+ *
+ * Ouverte au gestionnaire, et pas seulement au propriétaire : c'est lui qui
+ * émet les codes de locataire au quotidien, et un code qu'on ne peut pas
+ * retrouver est un code qu'on réémet en double.
+ *
+ * Les invitations rendues sont exactement celles que `/api/join` accepterait —
+ * ni acceptée, ni révoquée, ni expirée. Deux définitions du mot « en attente »
+ * finiraient par diverger, et l'écran promettrait alors des codes que la porte
+ * refuse.
+ */
+parksRouter.get(
+  '/:parkId/access',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const maintenant = new Date()
+
+    const [membres, invitations] = await Promise.all([
+      prisma.membership.findMany({
+        where: { parkId, status: 'active' },
+        // `ParkRole` est déclaré `owner, manager, tenant` : PostgreSQL trie ses
+        // énumérations dans l'ordre de DÉCLARATION, pas dans l'ordre
+        // alphabétique. Le propriétaire vient donc en tête, ce qui est aussi
+        // l'ordre de lecture attendu.
+        orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
+        select: {
+          id: true,
+          role: true,
+          createdAt: true,
+          user: { select: { fullName: true, email: true } },
+        },
+      }),
+      prisma.invitation.findMany({
+        where: { parkId, acceptedAt: null, revokedAt: null, expiresAt: { gt: maintenant } },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          role: true,
+          codeHint: true,
+          expiresAt: true,
+          createdAt: true,
+          unit: { select: { id: true, label: true } },
+        },
+      }),
+    ])
+
+    res.json({
+      members: membres.map((m) => ({
+        id: m.id,
+        role: m.role,
+        fullName: m.user.fullName,
+        email: m.user.email,
+        since: m.createdAt.toISOString(),
+      })),
+      /**
+       * `codeHint` et JAMAIS le code : seule son empreinte est en base, et
+       * c'est le seul état du produit qui garantit qu'une sauvegarde volée
+       * n'ouvre aucun parc. L'indice suffit à reconnaître un code qu'on a
+       * transmis, il ne suffit pas à en fabriquer un.
+       */
+      invitations: invitations.map((i) => ({
+        id: i.id,
+        role: i.role,
+        codeHint: i.codeHint,
+        expiresAt: i.expiresAt.toISOString(),
+        issuedAt: i.createdAt.toISOString(),
+        unitId: i.unit?.id ?? null,
+        unitLabel: i.unit?.label ?? null,
+      })),
+    })
+  },
+)
+
+/**
+ * Révoque une invitation qui n'a pas encore servi.
+ *
+ * Trois raisons, dont la deuxième est un blocage que personne n'avait vu :
+ *
+ *  1. Un code transmis au mauvais numéro reste valable quatorze jours, et rien
+ *     ne permettait de le reprendre. `Invitation.revokedAt` existait depuis
+ *     l'origine, était LU à chaque consommation — dans `/api/join` comme à
+ *     l'inscription — et n'était écrit nulle part. La colonne était
+ *     structurellement toujours nulle : une garde qui ne gardait rien.
+ *
+ *  2. La migration `bail_unique_par_unite` pose un index unique partiel sur
+ *     `unitId` là où `acceptedAt` et `revokedAt` sont nuls. Sans écriture de
+ *     `revokedAt`, un logement dont le code n'a jamais été utilisé n'en accepte
+ *     aucun second avant l'expiration : le propriétaire qui s'était trompé de
+ *     destinataire était bloqué deux semaines sur ce logement. Le commentaire
+ *     de la migration décrivait le piège sans savoir qu'il le créait — « deux
+ *     codes valides pour un seul accès, dont on ne saurait pas lequel révoquer ».
+ *
+ *  3. Le lot précédent a fermé le recrutement d'un gestionnaire au seul
+ *     propriétaire. Fermer la porte d'entrée sans donner de moyen de reprendre
+ *     un code déjà émis laissait la moitié du geste en l'air.
+ *
+ * PATCH et non DELETE : la ligne reste, avec la date et son émetteur. Un
+ * registre d'accès dont les décisions disparaissent ne défend plus personne —
+ * c'est le raisonnement que `unsettle` porte déjà mot pour mot.
+ */
+parksRouter.patch(
+  '/:parkId/invitations/:invitationId/revoke',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId, role } = req.adhesion!
+    const brut = req.params.invitationId
+    const invitationId = typeof brut === 'string' ? brut : ''
+
+    // `parkId` DANS le filtre : un identifiant deviné révoquerait sinon le code
+    // d'un parc voisin, et le 404 dit la même chose qu'une invitation absente.
+    const invitation = await prisma.invitation.findFirst({
+      where: { id: invitationId, parkId },
+      select: { id: true, role: true, revokedAt: true },
+    })
+    if (!invitation) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    /**
+     * Le partage du lot précédent, dans l'autre sens.
+     *
+     * Reprendre un code de gestionnaire, c'est décider qui n'entre pas — le
+     * pendant exact de décider qui entre. Laisser ce geste au gestionnaire lui
+     * rendrait par la bande la main sur le recrutement : il pourrait annuler
+     * celui que le propriétaire vient d'inviter. Les codes de LOCATAIRE
+     * restent les siens, émission comme retrait.
+     */
+    if (invitation.role === 'manager' && role !== 'owner') {
+      res.status(403).json({ error: 'forbidden' })
+      return
+    }
+
+    if (invitation.revokedAt) {
+      /**
+       * Reprendre un code DÉJÀ repris réussit, et ne réécrit pas la date.
+       *
+       * L'état demandé est celui qu'on trouve : refuser serait punir un second
+       * clic, ou deux écrans ouverts sur la même liste. Mais la date du premier
+       * retrait est conservée — c'est elle qui dit quand l'accès a cessé
+       * d'exister, et l'écraser réécrirait l'histoire du registre.
+       */
+      res.status(204).end()
+      return
+    }
+
+    const { count } = await prisma.invitation.updateMany({
+      // `acceptedAt: null` porté par l'ÉCRITURE, et non par la lecture qui
+      // précède. Un premier jet contrôlait les deux : la lecture rendait le
+      // refus, l'écriture le rendait aussi, et aucune mutation ne pouvait plus
+      // distinguer laquelle tenait la règle. Un contrôle que rien ne distingue
+      // est un contrôle que rien ne tient — celui-ci reste seul, parce qu'il
+      // est le seul à trancher aussi la course : entre les deux requêtes,
+      // quelqu'un peut avoir consommé le code.
+      where: { id: invitation.id, acceptedAt: null, revokedAt: null },
+      data: { revokedAt: new Date() },
+    })
+    if (count === 0) {
+      /**
+       * Une invitation consommée ne se reprend pas : la personne est ENTRÉE, et
+       * son accès ne tient plus au code mais à son adhésion. Reprendre le code
+       * ici ne fermerait rien tout en ayant l'air de le faire — c'est
+       * exactement le genre de geste qui rassure à tort. Le refus se distingue
+       * du 404 pour que l'écran puisse dire quoi faire à la place : retirer
+       * l'accès, pas le code.
+       */
+      res.status(409).json({ error: 'already_accepted' })
+      return
+    }
+
+    res.status(204).end()
   },
 )
 
