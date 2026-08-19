@@ -427,8 +427,17 @@ parksRouter.get(
     const idsVisibles = visibles?.map((u) => u.id)
     const filtreUnite = idsVisibles ? { in: idsVisibles } : undefined
 
-    const [travaux, cautions, releves, etatsDesLieux, notifications, echeances, demandes, baux] =
-      await Promise.all([
+    const [
+      travaux,
+      cautions,
+      releves,
+      etatsDesLieux,
+      notifications,
+      echeances,
+      demandes,
+      baux,
+      tarifs,
+    ] = await Promise.all([
       prisma.workOrder.findMany({
         where: { unit: { building: { parkId } }, ...(filtreUnite ? { unitId: filtreUnite } : {}) },
         orderBy: { reportedAt: 'desc' },
@@ -718,6 +727,14 @@ parksRouter.get(
           tenant: { select: { fullName: true } },
         },
       }),
+      prisma.utilityTariff.findMany({
+        where: { parkId },
+        // Du plus RÉCENT au plus ancien : le tarif applicable à une période est
+        // le premier dont la prise d'effet la précède, et cet ordre en fait une
+        // simple recherche linéaire plutôt qu'un tri par appel.
+        orderBy: { effectiveFrom: 'desc' },
+        select: { utility: true, unitPriceMinor: true, effectiveFrom: true },
+      }),
     ])
 
     /**
@@ -917,6 +934,23 @@ parksRouter.get(
             indexValue: courant?.indexValue ?? null,
             previousIndex: anterieur?.indexValue ?? null,
             readAt: courant?.readAt ?? null,
+            /**
+             * Le prix applicable à CETTE période, et `null` quand il n'y en a
+             * aucun.
+             *
+             * Le client portait deux constantes — 520 le mètre cube, 99 le
+             * kilowattheure — écrites en dur et servies à tous les parcs, dans
+             * toutes les devises, sans qu'aucun propriétaire puisse les
+             * changer. Un locataire lisait donc un total à payer que rien ne
+             * fondait. La table des tarifs existait depuis l'origine du schéma,
+             * datée et par parc ; personne ne l'écrivait ni ne la lisait.
+             *
+             * Le calcul vit ICI et non à l'écran : « quel tarif s'applique à
+             * cette période » est une règle, et deux écrans la recopieraient
+             * différemment. Le client ne fait plus qu'une multiplication — ou
+             * n'affiche aucun montant, ce que `null` lui dit sans ambiguïté.
+             */
+            unitPriceMinor: prixApplicable(tarifs, utility, periodeCourante),
           }
         })
       })(),
@@ -1499,6 +1533,34 @@ parksRouter.post(
 )
 
 /**
+ * Le tarif en vigueur pour une période donnée.
+ *
+ * Les tarifs sont DATÉS parce qu'un prix du kilowattheure change en cours
+ * d'année : refacturer janvier au tarif de novembre serait faux, et le seul
+ * moyen de ne pas se tromper est de choisir celui qui était en vigueur au
+ * moment du relevé. `UtilityTariff` porte `effectiveFrom` depuis l'origine du
+ * schéma, sans que rien ne l'écrive ni ne le lise.
+ *
+ * `null` quand aucun tarif ne précède la période — un parc qui vient d'ouvrir,
+ * ou un relevé antérieur au premier prix saisi. Ce `null` voyage jusqu'à
+ * l'écran, qui montre alors la QUANTITÉ sans montant. Poser un prix par défaut
+ * ici ramènerait exactement le défaut qu'on retire : un chiffre affirmé à la
+ * place de quelqu'un.
+ *
+ * La liste est supposée triée du plus récent au plus ancien — c'est l'ordre
+ * demandé à la requête, et le premier candidat trouvé est donc le bon.
+ */
+function prixApplicable(
+  tarifs: { utility: string; unitPriceMinor: number; effectiveFrom: Date }[],
+  utility: string,
+  periode: Date | null,
+): number | null {
+  if (!periode) return null
+  const trouve = tarifs.find((t) => t.utility === utility && t.effectiveFrom <= periode)
+  return trouve ? trouve.unitPriceMinor : null
+}
+
+/**
  * Émet un code d'invitation pour rejoindre le parc.
  *
  * Le modèle décrivait ces codes depuis l'origine et rien ne les écrivait :
@@ -1632,6 +1694,127 @@ parksRouter.post(
     // Le code clair voyage UNE fois, dans cette réponse. Il ne sera plus jamais
     // lisible : c'est au propriétaire de le transmettre.
     res.status(201).json({ invitation, code: code.clair, envoye })
+  },
+)
+
+/**
+ * LES TARIFS DE REFACTURATION.
+ *
+ * Deux constantes vivaient dans le client — 520 le mètre cube, 99 le
+ * kilowattheure — et l'écran des relevés les affichait comme des faits, avec le
+ * total qui en découle. Pour tous les parcs, dans toutes les devises, sans
+ * qu'aucun propriétaire puisse les corriger : un locataire lisait donc ce qu'il
+ * doit à partir d'un prix que rien ne fondait. C'est la faute la plus chère de
+ * ce produit, parce que quelqu'un paie dessus.
+ *
+ * La table existait depuis l'origine du schéma, avec `parkId`, `effectiveFrom`
+ * et une contrainte d'unicité sur le triplet — donc des prix PAR PARC et DATÉS,
+ * ce qui est la seule forme juste. Rien ne l'écrivait ni ne la lisait.
+ *
+ * Lecture ouverte aux deux rôles de gestion : le gestionnaire refacture au
+ * quotidien et doit voir à quel prix. L'écriture est au propriétaire seul —
+ * fixer un prix engage l'argent du locataire, et c'est le même partage que la
+ * validation d'un devis ou l'arbitrage d'une caution.
+ */
+parksRouter.get(
+  '/:parkId/tariffs',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const tarifs = await prisma.utilityTariff.findMany({
+      where: { parkId },
+      orderBy: [{ utility: 'asc' }, { effectiveFrom: 'desc' }],
+      select: { id: true, utility: true, unitPriceMinor: true, effectiveFrom: true },
+    })
+
+    res.json({
+      /**
+       * L'HISTORIQUE ENTIER, pas seulement le prix courant.
+       *
+       * Un tarif passé n'est pas un déchet : c'est ce qui explique une
+       * quittance de l'an dernier. Ne rendre que le dernier obligerait à
+       * deviner pourquoi un mois ancien a été facturé autrement, et c'est
+       * exactement la question qu'un locataire pose quand il conteste.
+       */
+      tariffs: tarifs.map((t) => ({
+        id: t.id,
+        utility: t.utility,
+        unitPriceMinor: t.unitPriceMinor,
+        effectiveFrom: t.effectiveFrom.toISOString().slice(0, 10),
+      })),
+    })
+  },
+)
+
+const schemaTarif = z.object({
+  utility: z.enum(['water', 'power']),
+  /**
+   * Le prix en unités MINEURES, entier, et strictement positif.
+   *
+   * Zéro serait accepté par une contrainte « positif ou nul » et signifierait
+   * « je refacture gratuitement » — ce qui se dit en ne posant pas de tarif du
+   * tout, l'écran montrant alors la quantité sans montant. Deux façons
+   * d'exprimer la même chose, dont une qui affiche « 0 FCFA » sous les yeux du
+   * locataire, valent mieux qu'une seule bien choisie.
+   */
+  unitPriceMinor: z.number().int().positive(),
+  /**
+   * La date de prise d'effet, en jour calendaire.
+   *
+   * `YYYY-MM-DD` et non un instant : un tarif entre en vigueur un jour, pas à
+   * une heure, et lire ce jour à travers un fuseau le décalerait d'un cran pour
+   * la moitié de la planète — le défaut que le dépôt a déjà payé sur les dates
+   * de bail.
+   */
+  effectiveFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date attendue au format AAAA-MM-JJ'),
+})
+
+parksRouter.post(
+  '/:parkId/tariffs',
+  exigerAppartenance,
+  exigerRole('owner'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const corps = schemaTarif.parse(req.body)
+
+    try {
+      const tarif = await prisma.utilityTariff.create({
+        data: {
+          parkId,
+          utility: corps.utility,
+          unitPriceMinor: corps.unitPriceMinor,
+          // `T00:00:00Z` explicite : la colonne est de type `date`, et une
+          // chaîne sans fuseau serait lue dans celui du serveur.
+          effectiveFrom: new Date(`${corps.effectiveFrom}T00:00:00.000Z`),
+        },
+        select: { id: true, utility: true, unitPriceMinor: true, effectiveFrom: true },
+      })
+
+      res.status(201).json({
+        tariff: {
+          id: tarif.id,
+          utility: tarif.utility,
+          unitPriceMinor: tarif.unitPriceMinor,
+          effectiveFrom: tarif.effectiveFrom.toISOString().slice(0, 10),
+        },
+      })
+    } catch (err) {
+      /**
+       * UN SEUL prix par énergie et par jour de prise d'effet.
+       *
+       * La contrainte est au schéma depuis l'origine, et elle est juste : deux
+       * prix valables le même jour rendraient indéterminable ce qu'on facture.
+       * Ce qui manquait, c'est sa traduction — sans ce rattrapage, un
+       * propriétaire qui corrige une faute de frappe en réémettant le même jour
+       * reçoit un 500 nu sur un geste ordinaire.
+       */
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        res.status(409).json({ error: 'tariff_exists' })
+        return
+      }
+      throw err
+    }
   },
 )
 

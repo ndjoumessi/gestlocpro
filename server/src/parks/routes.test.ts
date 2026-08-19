@@ -4674,3 +4674,187 @@ describe('les accès au parc', () => {
     expect(apres.revokedAt).toBeNull()
   })
 })
+
+/**
+ * LES TARIFS DE REFACTURATION.
+ *
+ * Le client portait deux constantes — 520 le mètre cube, 99 le kilowattheure —
+ * affichées comme des faits sur l'écran des relevés, avec le total qui en
+ * découle. Pour tous les parcs, dans toutes les devises, sans qu'aucun
+ * propriétaire puisse les corriger : un locataire lisait ce qu'il doit à partir
+ * d'un prix que rien ne fondait.
+ *
+ * `UtilityTariff` existait depuis l'origine du schéma — par parc, daté, avec sa
+ * contrainte d'unicité — et rien ne l'écrivait ni ne la lisait. C'est le
+ * troisième champ mort de la même famille, et le seul sur lequel quelqu'un
+ * paie.
+ */
+describe('les tarifs de refacturation', () => {
+  let parkId: string
+  let proprio: string
+  let gestionnaire: string
+
+  beforeEach(async () => {
+    const p = await inscrire('proprio@example.com', {
+      parkName: 'Parc Bonamoussadi',
+      countryCode: 'CM',
+      seedDemo: true,
+    })
+    proprio = p.cookie
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio)
+    parkId = parcs.body.parks[0].id
+
+    const d = await inscrire('diane@example.com')
+    gestionnaire = d.cookie
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'diane@example.com' },
+    })
+    await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'manager' } })
+  })
+
+  /**
+   * Pas `async` : supertest rend un objet chaînable qui porte `.expect()`, et
+   * l'envelopper dans une promesse retire cette méthode — l'appel part quand
+   * même, ce qui donne une erreur de type à un endroit et un 404 déroutant à un
+   * autre, la base ayant été nettoyée entre-temps.
+   */
+  function poser(cookie: string, corps: Record<string, unknown>) {
+    return request(serveur).post(`/api/parks/${parkId}/tariffs`).set('Cookie', cookie).send(corps)
+  }
+
+  it('n’applique aucun prix tant que le propriétaire n’en a posé aucun', async () => {
+    const res = await request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', proprio)
+    expect(res.status).toBe(200)
+
+    /**
+     * LE CAS QUI PORTE LE LOT. `null` et non un prix par défaut : l'écran
+     * montrera la quantité relevée sans montant. Poser une valeur ici — fût-ce
+     * le tarif réglementé du pays — ramènerait le défaut qu'on retire, un
+     * chiffre affirmé à la place de quelqu'un, et il deviendrait faux à la
+     * première révision sans que personne ne le sache.
+     */
+    expect(res.body.readings.length).toBeGreaterThan(0)
+    for (const releve of res.body.readings) {
+      expect(releve.unitPriceMinor, JSON.stringify(releve)).toBeNull()
+    }
+  })
+
+  it('applique le prix en vigueur à la période du relevé', async () => {
+    const releveAvant = await request(serveur)
+      .get(`/api/parks/${parkId}/portfolio`)
+      .set('Cookie', proprio)
+    const periode: string = releveAvant.body.readings[0].periodStart
+    const veille = new Date(new Date(periode).getTime() - 86_400_000).toISOString().slice(0, 10)
+
+    await poser(proprio, { utility: 'water', unitPriceMinor: 520, effectiveFrom: veille }).expect(201)
+    await poser(proprio, { utility: 'power', unitPriceMinor: 99, effectiveFrom: veille }).expect(201)
+
+    const res = await request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', proprio)
+    const eau = res.body.readings.find((r: { utility: string }) => r.utility === 'water')
+    const elec = res.body.readings.find((r: { utility: string }) => r.utility === 'power')
+    expect(eau.unitPriceMinor).toBe(520)
+    expect(elec.unitPriceMinor).toBe(99)
+  })
+
+  it('ignore un tarif qui prend effet APRÈS la période relevée', async () => {
+    const avant = await request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', proprio)
+    const periode: string = avant.body.readings[0].periodStart
+    const lendemain = new Date(new Date(periode).getTime() + 86_400_000).toISOString().slice(0, 10)
+
+    await poser(proprio, { utility: 'water', unitPriceMinor: 999, effectiveFrom: lendemain }).expect(201)
+
+    // Refacturer janvier au tarif de novembre serait faux, et c'est tout
+    // l'objet d'`effectiveFrom` : un prix ne vaut pas pour le passé.
+    const res = await request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', proprio)
+    const eau = res.body.readings.find((r: { utility: string }) => r.utility === 'water')
+    expect(eau.unitPriceMinor).toBeNull()
+  })
+
+  it('retient le plus récent des prix déjà en vigueur', async () => {
+    const avant = await request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', proprio)
+    const periode = new Date(avant.body.readings[0].periodStart).getTime()
+    const vieux = new Date(periode - 400 * 86_400_000).toISOString().slice(0, 10)
+    const recent = new Date(periode - 30 * 86_400_000).toISOString().slice(0, 10)
+
+    await poser(proprio, { utility: 'water', unitPriceMinor: 400, effectiveFrom: vieux }).expect(201)
+    await poser(proprio, { utility: 'water', unitPriceMinor: 610, effectiveFrom: recent }).expect(201)
+
+    // Les deux sont en vigueur au sens large ; c'est le plus proche en amont
+    // qui vaut. Sans cet ordre, une hausse de prix ne prendrait jamais effet.
+    const res = await request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', proprio)
+    const eau = res.body.readings.find((r: { utility: string }) => r.utility === 'water')
+    expect(eau.unitPriceMinor).toBe(610)
+  })
+
+  it('rend l’historique entier, et pas seulement le prix courant', async () => {
+    await poser(proprio, { utility: 'water', unitPriceMinor: 400, effectiveFrom: '2025-01-01' }).expect(201)
+    await poser(proprio, { utility: 'water', unitPriceMinor: 520, effectiveFrom: '2026-01-01' }).expect(201)
+
+    const res = await request(serveur).get(`/api/parks/${parkId}/tariffs`).set('Cookie', proprio)
+    expect(res.status).toBe(200)
+
+    // Un tarif passé explique une quittance de l'an dernier : ne rendre que le
+    // dernier obligerait à deviner pourquoi un mois ancien a été facturé
+    // autrement, ce qui est la question qu'un locataire pose quand il conteste.
+    const eau = res.body.tariffs.filter((t: { utility: string }) => t.utility === 'water')
+    expect(eau.map((t: { unitPriceMinor: number }) => t.unitPriceMinor)).toEqual([520, 400])
+    expect(eau[0].effectiveFrom).toBe('2026-01-01')
+  })
+
+  it('laisse le gestionnaire LIRE les prix, sans lui laisser en poser', async () => {
+    await poser(proprio, { utility: 'water', unitPriceMinor: 520, effectiveFrom: '2026-01-01' }).expect(201)
+
+    // Il refacture au quotidien : lui cacher le prix lui retirerait le moyen de
+    // vérifier ce qu'il présente au locataire.
+    const lecture = await request(serveur)
+      .get(`/api/parks/${parkId}/tariffs`)
+      .set('Cookie', gestionnaire)
+    expect(lecture.status).toBe(200)
+    expect(lecture.body.tariffs).toHaveLength(1)
+
+    // Mais fixer un prix engage l'argent du locataire — même partage que la
+    // validation d'un devis ou l'arbitrage d'une caution.
+    const ecriture = await poser(gestionnaire, {
+      utility: 'power',
+      unitPriceMinor: 99,
+      effectiveFrom: '2026-01-01',
+    })
+    expect(ecriture.status).toBe(403)
+    expect(await prisma.utilityTariff.count({ where: { parkId, utility: 'power' } })).toBe(0)
+  })
+
+  it('refuse deux prix pour la même énergie le même jour, et le dit', async () => {
+    await poser(proprio, { utility: 'water', unitPriceMinor: 520, effectiveFrom: '2026-01-01' }).expect(201)
+
+    // Deux prix valables le même jour rendraient indéterminable ce qu'on
+    // facture. Sans ce rattrapage, une faute de frappe corrigée le jour même
+    // rendait un 500 nu sur un geste ordinaire.
+    const res = await poser(proprio, {
+      utility: 'water',
+      unitPriceMinor: 530,
+      effectiveFrom: '2026-01-01',
+    })
+    expect(res.status).toBe(409)
+    expect(res.body.error).toBe('tariff_exists')
+  })
+
+  it('refuse un prix nul, qui se dit en ne posant pas de tarif', async () => {
+    const res = await poser(proprio, {
+      utility: 'water',
+      unitPriceMinor: 0,
+      effectiveFrom: '2026-01-01',
+    })
+    expect(res.status).toBe(400)
+  })
+
+  it('ne montre pas les prix du parc d’à côté', async () => {
+    await poser(proprio, { utility: 'water', unitPriceMinor: 520, effectiveFrom: '2026-01-01' }).expect(201)
+    const voisin = await inscrire('voisin@example.com', { parkName: 'Parc Bastos', countryCode: 'CM' })
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', voisin.cookie)
+
+    const res = await request(serveur)
+      .get(`/api/parks/${parcs.body.parks[0].id}/tariffs`)
+      .set('Cookie', voisin.cookie)
+    expect(res.body.tariffs).toEqual([])
+  })
+})
