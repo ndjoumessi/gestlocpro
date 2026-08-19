@@ -581,6 +581,31 @@ export async function semerParcDemonstration(
 
   await tx.meterReading.createMany({ data: lignesDeReleve })
 
+  /**
+   * LES TARIFS DE LA DÉMONSTRATION.
+   *
+   * Sans eux, les relevés semés n'auraient aucun prix — le portefeuille rend
+   * `null` quand aucun tarif ne couvre la période — et l'écran montrerait des
+   * mètres cubes sans montant. Ce serait juste et illisible : la démonstration
+   * existe pour montrer ce que le produit fait, et refacturer en fait partie.
+   *
+   * Ce sont des données de démonstration au même titre que les loyers et les
+   * noms, PAS une valeur par défaut du produit. Un parc réel créé sans semis
+   * n'en reçoit aucune, et c'est le comportement que ce lot défend.
+   *
+   * La prise d'effet remonte au-delà du plus ancien relevé — douze périodes en
+   * arrière — sans quoi l'historique se lirait sans prix jusqu'à la date posée.
+   */
+  const debutDesTarifs = new Date(
+    Date.UTC(periode.getUTCFullYear(), periode.getUTCMonth() - PROFONDEUR_HISTORIQUE - 1, 1),
+  )
+  await tx.utilityTariff.createMany({
+    data: [
+      { parkId, utility: 'water', unitPriceMinor: 520, effectiveFrom: debutDesTarifs },
+      { parkId, utility: 'power', unitPriceMinor: 99, effectiveFrom: debutDesTarifs },
+    ],
+  })
+
   for (const e of ETATS_DES_LIEUX) {
     const unitId = unites.get(e.unite)
     if (!unitId) continue

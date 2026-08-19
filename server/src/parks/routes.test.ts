@@ -4710,6 +4710,15 @@ describe('les tarifs de refacturation', () => {
       where: { email: 'diane@example.com' },
     })
     await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'manager' } })
+
+    /**
+     * Le semis de démonstration POSE des tarifs — un parc de démonstration qui
+     * montrerait des mètres cubes sans montant serait juste et illisible. Les
+     * cas ci-dessous éprouvent justement l'absence de tarif et le choix de
+     * celui qui s'applique : ils repartent donc d'une table vide, et le cas qui
+     * garde le semis lui-même vit à part, dans son propre `describe`.
+     */
+    await prisma.utilityTariff.deleteMany({ where: { parkId } })
   })
 
   /**
@@ -4856,5 +4865,48 @@ describe('les tarifs de refacturation', () => {
       .get(`/api/parks/${parcs.body.parks[0].id}/tariffs`)
       .set('Cookie', voisin.cookie)
     expect(res.body.tariffs).toEqual([])
+  })
+})
+
+describe('les tarifs de la démonstration', () => {
+  it('sème des prix qui couvrent tout l’historique relevé', async () => {
+    const p = await inscrire('proprio@example.com', {
+      parkName: 'Parc Bonamoussadi',
+      countryCode: 'CM',
+      seedDemo: true,
+    })
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', p.cookie)
+    const parkId = parcs.body.parks[0].id
+
+    /**
+     * Sans ce cas, retirer le semis des tarifs passerait inaperçu : le
+     * portefeuille rendrait `null` partout, l'écran montrerait des quantités
+     * sans montant, et le produit aurait l'air de se comporter comme prévu —
+     * pour un parc de DÉMONSTRATION, qui existe précisément pour montrer ce que
+     * la refacturation donne.
+     *
+     * Ces prix sont des données de démonstration au même titre que les loyers
+     * et les noms, et non une valeur par défaut : un parc réel créé sans semis
+     * n'en reçoit aucune.
+     */
+    const res = await request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', p.cookie)
+    expect(res.body.readings.length).toBeGreaterThan(0)
+    for (const releve of res.body.readings) {
+      expect(releve.unitPriceMinor, JSON.stringify(releve)).not.toBeNull()
+    }
+
+    // L'historique ANCIEN aussi : la prise d'effet remonte au-delà du plus
+    // vieux relevé, sans quoi les douze périodes se liraient sans prix jusqu'à
+    // la date posée.
+    const tarifs = await request(serveur).get(`/api/parks/${parkId}/tariffs`).set('Cookie', p.cookie)
+    expect(tarifs.body.tariffs).toHaveLength(2)
+    const plusVieux = await prisma.meterReading.findFirstOrThrow({
+      where: { unit: { building: { parkId } } },
+      orderBy: { periodStart: 'asc' },
+      select: { periodStart: true },
+    })
+    for (const tarif of tarifs.body.tariffs) {
+      expect(new Date(tarif.effectiveFrom).getTime()).toBeLessThan(+plusVieux.periodStart)
+    }
   })
 })
