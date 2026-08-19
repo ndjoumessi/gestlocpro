@@ -933,6 +933,24 @@ export const fr = {
       openWhatPlaceholder: 'Ravalement de la façade côté cour',
       openSubmit: 'Ouvrir le chantier',
       openedToast: 'Chantier ouvert · il attend son devis',
+      /**
+       * Le tri par ORIGINE, pour le bailleur seul.
+       *
+       * Deux questions distinctes qu'une liste mêlée ne servait ni l'une ni
+       * l'autre : « qu'est-ce qu'on me signale ? » et « qu'est-ce que j'ai
+       * engagé de ma propre initiative ? ».
+       */
+      filterOrigin: 'Trier par origine',
+      filterAll: 'Toutes',
+      filterReported: 'Signalées',
+      filterOpened: 'À mon initiative',
+      /* ENGAGÉ et non devisé : un devis proposé n'est pas une dépense, et
+         l'additionner ferait passer pour engagé ce qui attend un arbitrage. */
+      /* « Total engagé » et non « Engagé » : ce dernier est déjà le libellé que
+         chaque ligne porte sous son montant, à quelques centimètres. Le même
+         mot pour la somme et pour ses termes — c'est la troisième fois que ce
+         motif se présente, et la première où il est vu avant livraison. */
+      totalCommitted: 'Total engagé',
       /* L'état vide s'adresse au bailleur, à qui le geste est désormais
          offert. La phrase disait « une intervention naît d'un signalement de
          locataire » : c'était vrai, ça ne l'est plus. */

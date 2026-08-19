@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, switchRole, attendreLeChargement } from '@/test/render'
+import { renderApp, screen, switchRole, attendreLeChargement, userEvent } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 
@@ -236,5 +236,79 @@ describe('origine des interventions — un devis révisé', () => {
     expect(carte).not.toHaveTextContent('Signalé par')
     expect(carte).not.toHaveTextContent('Ouvert par')
     expect(carte).not.toHaveTextContent('initiative')
+  })
+})
+
+/**
+ * LE TRI PAR ORIGINE, et le total qu'il commande.
+ *
+ * L'origine s'affichait ligne à ligne sans qu'on puisse rien en faire. Un
+ * bailleur pose deux questions distinctes devant sa liste de travaux —
+ * « qu'est-ce qu'on me signale ? » et « qu'est-ce que j'ai engagé de ma propre
+ * initiative ? » — et une seule liste mêlée n'en servait aucune.
+ *
+ * Le total, lui, n'existait nulle part. Les cautions, les réserves d'état des
+ * lieux, les compteurs et les impayés ont tous le leur ; les travaux, qui sont
+ * la seule dépense que le bailleur DÉCIDE, n'en avaient aucun. Il pouvait
+ * valider douze devis sans jamais voir la somme qu'ils font.
+ */
+describe('travaux — tri par origine et total engagé', () => {
+  const segment = (nom: RegExp) => screen.getByRole('button', { name: nom })
+
+  async function ouvrir() {
+    renderApp('/demo/travaux')
+    await attendreLeChargement()
+  }
+
+  it('compte les deux origines séparément', async () => {
+    await ouvrir()
+    // Cinq interventions au jeu : quatre signalées, une à l'initiative du
+    // bailleur — la réfection de B4, qui l'était depuis toujours sans pouvoir
+    // le dire.
+    expect(segment(/^Toutes/)).toHaveTextContent('5')
+    expect(segment(/^Signalées/)).toHaveTextContent('4')
+    expect(segment(/^À mon initiative/)).toHaveTextContent('1')
+  })
+
+  it('ne montre que l’origine demandée', async () => {
+    await ouvrir()
+    await userEvent.click(segment(/^À mon initiative/))
+
+    const page = screen.getByRole('main')
+    expect(page).toHaveTextContent(/réfection complète/i)
+    expect(page).not.toHaveTextContent(/évier de la cuisine/i)
+  })
+
+  /**
+   * Le total suit le FILTRE, et c'est tout son intérêt : basculer sur « à mon
+   * initiative » répond à « combien m'ont coûté mes propres décisions ».
+   */
+  it('totalise ce que le parc a ENGAGÉ, pas ce qu’on lui a proposé', async () => {
+    await ouvrir()
+    // 78 000 + 32 000 + 340 000 = 450 000. Les 45 000 de la fuite sont un devis
+    // que personne n'a validé : les compter ferait passer pour engagé ce qui
+    // attend encore un arbitrage.
+    const totalTous = screen.getByText('Total engagé').parentElement!
+    expect(totalTous).toHaveTextContent('450 000')
+    expect(totalTous).not.toHaveTextContent('495 000')
+
+    await userEvent.click(segment(/^À mon initiative/))
+    expect(screen.getByText('Total engagé').parentElement).toHaveTextContent('340 000')
+  })
+
+  /**
+   * Rien de tout cela pour le locataire.
+   *
+   * Une moitié du tri lui serait toujours vide — il ne voit que ses propres
+   * signalements — et le total engagé relève de la règle des maquettes : « le
+   * coût des travaux n'est jamais exposé au locataire ».
+   */
+  it('n’offre ni tri ni total au locataire', async () => {
+    renderApp('/demo/travaux')
+    await switchRole('tenant')
+    await attendreLeChargement()
+
+    expect(screen.queryByRole('button', { name: /^À mon initiative/ })).toBeNull()
+    expect(screen.queryByText('Total engagé')).toBeNull()
   })
 })

@@ -11,6 +11,7 @@ import { EmptyState } from '@/components/primitives/DataTable'
 import { Skeleton, SkeletonRegion } from '@/components/primitives/Skeleton'
 import { TenantScopeNote } from './TenantDashboard'
 import { useCurrency } from '@/currency/CurrencyProvider'
+import { cn } from '@/lib/cn'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
 import { montantEngage, type WorkOrder } from '@/data/portfolio'
@@ -59,7 +60,16 @@ export function Works() {
     loading,
   } = usePortfolio()
   const [signalementOuvert, setSignalementOuvert] = useState(false)
+  const { money } = useCurrency()
   const [chantierOuvert, setChantierOuvert] = useState(false)
+  /**
+   * Le filtre d'ORIGINE, et il n'existe que pour le bailleur.
+   *
+   * Un locataire ne voit que ses propres signalements : trier « ce que j'ai
+   * signalé » de « ce que le bailleur a décidé » lui proposerait un tri dont
+   * une moitié est toujours vide.
+   */
+  const [origine, setOrigine] = useState<'all' | 'tenantReport' | 'ownerInitiative'>('all')
   const [aChiffrer, setAChiffrer] = useState<WorkOrder | null>(null)
   const [montant, setMontant] = useState('')
   const [montantErreur, setMontantErreur] = useState(false)
@@ -67,7 +77,47 @@ export function Works() {
   // Le locataire suit les interventions sur SON logement, pas celles du parc.
   // Le périmètre vient du provider, qui le tient du serveur : le client ne
   // connaît plus « son » unité par une constante.
-  const visible = isTenant ? works.filter((w) => isMine(w.unitId)) : works
+  /**
+   * Le périmètre du LOCATAIRE d'abord, le filtre d'origine ensuite.
+   *
+   * Les deux ne sont pas de même nature et l'ordre le dit : le premier est un
+   * cloisonnement que l'utilisateur ne choisit pas, le second un tri qu'il
+   * demande.
+   *
+   * Les compteurs se calculent sur `duPerimetre` et non sur `works`, et il faut
+   * dire honnêtement que cela NE CHANGE RIEN aujourd'hui : les segments ne sont
+   * offerts qu'au bailleur et au gestionnaire, dont le périmètre est le parc
+   * entier. Une mutation qui remplace l'un par l'autre ne fait rougir aucun cas,
+   * vérifié.
+   *
+   * On l'écrit ainsi quand même, parce que la variable dit l'intention : un
+   * compteur porte sur ce que l'utilisateur peut voir. Le jour où un rôle au
+   * périmètre réduit accédera à cet écran — un gestionnaire délégué sur une
+   * partie du parc, que l'adhésion sait déjà représenter — `works` annoncerait
+   * des interventions qu'il n'a pas le droit de lire.
+   */
+  const duPerimetre = isTenant ? works.filter((w) => isMine(w.unitId)) : works
+  const visible =
+    origine === 'all' ? duPerimetre : duPerimetre.filter((w) => w.origin === origine)
+
+  /**
+   * CE QUE LE PARC A ENGAGÉ, et non ce qu'on lui a proposé.
+   *
+   * Aucun total n'existait sur cet écran — ni par immeuble, ni par métier, ni
+   * du tout. Les cautions, les réserves d'état des lieux, les compteurs et les
+   * impayés ont tous le leur ; les travaux, qui sont la seule dépense que le
+   * bailleur DÉCIDE, n'en avaient aucun. Il pouvait valider douze devis sans
+   * jamais voir la somme qu'ils font.
+   *
+   * `approvedAmount` seul : un devis proposé n'est pas une dépense, et
+   * l'additionner ferait passer pour engagé ce qui attend encore un arbitrage.
+   * C'est la distinction que le lot précédent a rendue lisible ligne à ligne —
+   * le total la respecte, sans quoi les deux se contrediraient.
+   *
+   * Il suit le FILTRE, ce qui est tout son intérêt : basculer sur « à mon
+   * initiative » répond à « combien m'ont coûté mes propres décisions ».
+   */
+  const engage = visible.reduce((somme, w) => somme + (w.approvedAmount ?? 0), 0)
 
   const approve = (id: string) => {
     approveWork(id)
@@ -178,6 +228,75 @@ export function Works() {
           <Icon name="info" size={15} className="mt-0.5 shrink-0" />
           {t('app.works.managerNotice')}
         </p>
+      )}
+
+      {/*
+        LE TRI PAR ORIGINE, et le total qu'il commande.
+
+        L'origine était affichée ligne à ligne sans qu'on puisse rien en faire.
+        Un bailleur qui regarde ses travaux pose deux questions distinctes —
+        « qu'est-ce qu'on me signale ? » et « qu'est-ce que j'ai engagé de ma
+        propre initiative ? » — et une seule liste mêlée n'en servait aucune.
+
+        Le motif est celui de `Payments` : compteurs sur chaque segment,
+        `aria-pressed` pour l'état, et un nombre de segments qui ne dépend
+        d'aucune donnée. Trois ici, comme il y a trois choses à demander.
+
+        Rien de tout cela pour le locataire : il ne voit que ses propres
+        signalements, donc une moitié du tri serait toujours vide — et le total
+        engagé ne le regarde pas, c'est la règle des maquettes.
+      */}
+      {!isTenant && duPerimetre.length > 0 && (
+        <div className="mt-6 mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div role="group" aria-label={t('app.works.filterOrigin')} className="flex flex-wrap gap-1.5">
+            {(['all', 'tenantReport', 'ownerInitiative'] as const).map((valeur) => {
+              const actif = origine === valeur
+              const compte =
+                valeur === 'all'
+                  ? duPerimetre.length
+                  : duPerimetre.filter((w) => w.origin === valeur).length
+              return (
+                <button
+                  key={valeur}
+                  type="button"
+                  aria-pressed={actif}
+                  onClick={() => setOrigine(valeur)}
+                  className={cn(
+                    'inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3.5',
+                    'text-label font-semibold transition-colors duration-150',
+                    actif
+                      ? 'border-ink bg-ink text-on-dark'
+                      : 'border-border bg-surface text-muted hover:border-border-strong hover:text-ink',
+                  )}
+                >
+                  {t(
+                    valeur === 'all'
+                      ? 'app.works.filterAll'
+                      : valeur === 'tenantReport'
+                        ? 'app.works.filterReported'
+                        : 'app.works.filterOpened',
+                  )}
+                  {/* `gold-on-ink` : le segment actif peint son fond en
+                      `--color-ink`, qui s'inverse avec le thème. À 12 px ce
+                      compteur est du texte, donc il lui faut 4,5:1 — l'or de
+                      marque n'en donne que 2,33 en sombre. */}
+                  <span className={cn('numeric text-caps', actif ? 'text-gold-on-ink' : 'text-muted')}>
+                    {compte}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+
+          {engage > 0 && (
+            <p className="flex items-baseline gap-2">
+              <span className="text-body-s text-muted">{t('app.works.totalCommitted')}</span>
+              <span className="numeric text-title-m font-medium">
+                {money(engage, { round: true })}
+              </span>
+            </p>
+          )}
+        </div>
       )}
 
       {/*
