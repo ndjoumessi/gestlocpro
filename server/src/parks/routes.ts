@@ -1515,8 +1515,34 @@ parksRouter.post(
   exigerAppartenance,
   exigerRole('owner', 'manager'),
   async (req: Request, res: Response) => {
-    const { parkId } = req.adhesion!
+    const { parkId, role } = req.adhesion!
     const corps = schemaInvitation.parse(req.body)
+
+    /**
+     * RECRUTER UN GESTIONNAIRE est un droit du propriétaire, et de lui seul.
+     *
+     * La route acceptait les deux rôles pour les deux natures de code : un
+     * gestionnaire pouvait donc émettre un `GES` et faire entrer un pair qui
+     * accède aussitôt à TOUT le parc — sans que le propriétaire ait rien à dire,
+     * et sans qu'il puisse l'en retirer, puisque aucune route ne révoque une
+     * adhésion et que `Invitation.revokedAt` est lu sans jamais être écrit.
+     *
+     * L'escalade était donc silencieuse et irréversible. Elle n'exigeait aucune
+     * faille : la route faisait exactement ce qu'on lui demandait.
+     *
+     * Le partage suit la doctrine que le reste du serveur applique déjà — « le
+     * gestionnaire opère, le propriétaire arbitre ». Recruter n'est pas opérer :
+     * c'est décider qui entre. Le code LOCATAIRE, lui, reste au gestionnaire,
+     * dont c'est le métier quotidien.
+     *
+     * Le contrôle vit ici et non dans `exigerRole`, parce qu'il dépend du CORPS
+     * de la requête : le middleware ne le lit pas, et un rôle autorisé pour une
+     * nature de code ne l'est pas pour l'autre.
+     */
+    if (corps.role === 'manager' && role !== 'owner') {
+      res.status(403).json({ error: 'forbidden' })
+      return
+    }
 
     if (corps.unitId) {
       // L'unité doit appartenir au parc : sans cette vérification, un

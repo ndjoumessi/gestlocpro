@@ -769,7 +769,12 @@ describe('occupation d’un logement', () => {
     return { ancien, bailSuivant }
   }
 
-  it('rend au gestionnaire TOUS les baux d’une unité, terminés compris', async () => {
+  /* « au bailleur » et non « au gestionnaire » : ce cas ouvre une session
+     PROPRIÉTAIRE. Il passait sous son ancien titre parce que les deux rôles sont
+     indiscernables en lecture — donc il ne gardait pas ce qu'il annonçait. Ce
+     qu'il vérifie vraiment, c'est l'absence de cloisonnement hors locataire ;
+     le rôle du gestionnaire est gardé plus bas, sous son propre cookie. */
+  it('rend au bailleur TOUS les baux d’une unité, terminés compris', async () => {
     const { ancien, bailSuivant } = await faireSucceder()
     const res = await pf(proprio)
     const baux: Occupation[] = res.body.leases
@@ -948,7 +953,7 @@ describe('demandes de documents', () => {
     expect(res.status).toBe(403)
   })
 
-  it('laisse le gestionnaire répondre, une fois et une seule', async () => {
+  it('laisse le bailleur répondre, une fois et une seule', async () => {
     const une = await demander(locataire, uniteDuLocataire, 'goodStanding')
     const id = une.body.request.id
 
@@ -1008,7 +1013,8 @@ describe('demandes de documents', () => {
     expect(vue.body.documentRequests).toHaveLength(1)
     expect(vue.body.documentRequests[0].kind).toBe('residence')
 
-    // Le gestionnaire, lui, voit les deux — plus celle du jeu de démonstration.
+    // Le bailleur, lui, voit les deux — plus celle du jeu de démonstration.
+    // (Session propriétaire : le gestionnaire a son propre cas plus bas.)
     const cote = await portefeuille(proprio)
     expect(cote.body.documentRequests.length).toBeGreaterThanOrEqual(2)
   })
@@ -2630,6 +2636,177 @@ describe('rang des relances', () => {
     // le rang ne fonctionnent, et les deux resteraient inertes en démonstration.
     for (const r of relances) expect(typeof r.params.leaseId).toBe('string')
     expect(new Set(relances.map((r) => r.rank)).size).toBe(relances.length)
+  })
+})
+
+/**
+ * LA LIGNE OWNER / MANAGER, gardée là où elle n'était pas.
+ *
+ * La doctrine du serveur est écrite et cohérente : le gestionnaire OPÈRE —
+ * saisir, chiffrer, encaisser, relancer, quittancer, clore un chantier — et le
+ * propriétaire ARBITRE : valider une dépense, retenir une caution, mettre en
+ * demeure, effacer de l'argent ou une personne. Chaque paire faire/défaire est
+ * du même côté de la ligne.
+ *
+ * Trois trous s'y étaient ouverts, tous invisibles au vert.
+ *
+ * 1. `deposits/:id/settle` — l'un des DEUX droits fondateurs de la ligne, celui
+ *    dont le commentaire dit « il retient l'argent de quelqu'un » — n'avait
+ *    aucun cas de refus. Son inverse `unsettle` non plus : les deux cas
+ *    existants ouvrent une session propriétaire.
+ *
+ * 2. Trois cas portaient « gestionnaire » dans leur titre en exerçant une
+ *    session PROPRIÉTAIRE. Ils passaient parce que les deux rôles sont
+ *    indiscernables en lecture — ils gardaient donc l'absence de cloisonnement,
+ *    pas le rôle. Renommés ; ce que leur titre promettait est ici.
+ *
+ * 3. Un gestionnaire pouvait RECRUTER un gestionnaire. Le code `GES` émis, le
+ *    pair entrait sur tout le parc sans que le propriétaire ait rien à dire — et
+ *    sans qu'il puisse l'en retirer, aucune route ne révoquant une adhésion.
+ *    Silencieux, et irréversible.
+ */
+describe('la ligne entre le propriétaire et son gestionnaire', () => {
+  let parkId: string
+  let proprio: string
+  let gestionnaire: string
+
+  beforeEach(async () => {
+    const p = await inscrire('proprio@example.com', {
+      parkName: 'Parc Bonamoussadi',
+      countryCode: 'CM',
+      seedDemo: true,
+    })
+    proprio = p.cookie
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio)
+    parkId = parcs.body.parks[0].id
+
+    const d = await inscrire('diane@example.com')
+    gestionnaire = d.cookie
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'diane@example.com' },
+    })
+    await prisma.membership.create({
+      data: { userId: compte.id, parkId, role: 'manager' },
+    })
+  })
+
+  /**
+   * Ce que les trois cas renommés annonçaient sans le vérifier : le gestionnaire
+   * voit TOUT le parc. `unitesVisibles` ne connaît que la frontière
+   * locataire / non-locataire, et c'est un choix — « un gestionnaire opère tout
+   * le parc, et lui attacher une unité laisserait croire à un périmètre qui
+   * n'existe pas ». Un choix non gardé finit par se perdre.
+   */
+  it('lui donne tout le parc en lecture, comme au propriétaire', async () => {
+    const sien = await request(serveur)
+      .get(`/api/parks/${parkId}/portfolio`)
+      .set('Cookie', gestionnaire)
+    const celui = await request(serveur)
+      .get(`/api/parks/${parkId}/portfolio`)
+      .set('Cookie', proprio)
+
+    expect(sien.status).toBe(200)
+    const unites = (b: { buildings: { units: { id: string }[] }[] }) =>
+      b.buildings.flatMap((i) => i.units.map((u) => u.id)).sort()
+    expect(unites(sien.body)).toEqual(unites(celui.body))
+    expect(unites(sien.body).length).toBeGreaterThan(5)
+  })
+
+  /**
+   * L'ARBITRAGE D'UNE CAUTION, le droit dont le refus n'était gardé nulle part.
+   *
+   * Un refus qui laisse une trace n'est pas un refus : on vérifie que la caution
+   * n'a pas bougé, pas seulement que la route a rendu 403.
+   */
+  it('lui refuse l’arbitrage d’une caution', async () => {
+    const caution = await prisma.deposit.findFirstOrThrow({
+      where: { lease: { unit: { building: { parkId } } }, status: 'held' },
+      select: { id: true, withheldMinor: true },
+    })
+
+    const res = await request(serveur)
+      .patch(`/api/parks/${parkId}/deposits/${caution.id}/settle`)
+      .set('Cookie', gestionnaire)
+      .send({ withheldMinor: 20000, reason: 'Peinture à reprendre dans le séjour' })
+    expect(res.status).toBe(403)
+
+    const apres = await prisma.deposit.findUniqueOrThrow({ where: { id: caution.id } })
+    expect(apres.status).toBe('held')
+    expect(apres.withheldMinor).toBe(caution.withheldMinor)
+    expect(apres.settledAt).toBeNull()
+  })
+
+  /**
+   * Et son INVERSE. Rendre à quelqu'un le pouvoir de défaire une décision lui
+   * donne cette décision par la bande : c'est le raisonnement que la route de
+   * `unapprove` porte déjà en commentaire, et il vaut ici mot pour mot.
+   */
+  it('lui refuse aussi de défaire un arbitrage', async () => {
+    const caution = await prisma.deposit.findFirstOrThrow({
+      where: { lease: { unit: { building: { parkId } } }, status: 'held' },
+      select: { id: true },
+    })
+    const arbitre = await request(serveur)
+      .patch(`/api/parks/${parkId}/deposits/${caution.id}/settle`)
+      .set('Cookie', proprio)
+      .send({ withheldMinor: 20000, reason: 'Peinture à reprendre dans le séjour' })
+    expect(arbitre.status, JSON.stringify(arbitre.body)).toBe(200)
+
+    const res = await request(serveur)
+      .patch(`/api/parks/${parkId}/deposits/${caution.id}/unsettle`)
+      .set('Cookie', gestionnaire)
+    expect(res.status).toBe(403)
+
+    const apres = await prisma.deposit.findUniqueOrThrow({ where: { id: caution.id } })
+    expect(apres.withheldMinor).toBe(20000)
+  })
+
+  /**
+   * RECRUTER UN GESTIONNAIRE, et c'est la trouvaille de ce lot.
+   *
+   * Rien n'empêchait un gestionnaire d'émettre un code `GES`. Le pair invité
+   * entrait sur l'intégralité du parc — `unitesVisibles` ne restreint que le
+   * locataire — sans validation du propriétaire, et sans retour possible :
+   * aucune route ne révoque une adhésion, et `Invitation.revokedAt` est lu sans
+   * jamais être écrit.
+   *
+   * Ce n'était pas une faille : la route faisait exactement ce qu'on lui
+   * demandait. C'est la demande qui était trop large.
+   */
+  it('lui refuse d’émettre un code de gestionnaire', async () => {
+    const res = await request(serveur)
+      .post(`/api/parks/${parkId}/invitations`)
+      .set('Cookie', gestionnaire)
+      .send({ role: 'manager' })
+    expect(res.status).toBe(403)
+
+    // Un refus qui laisse une invitation en base n'est pas un refus : le code
+    // serait consommable même sans avoir été rendu à l'appelant.
+    expect(await prisma.invitation.count({ where: { parkId, role: 'manager' } })).toBe(0)
+  })
+
+  /**
+   * Le code LOCATAIRE, lui, reste le sien.
+   *
+   * Sans ce cas, fermer la route aux deux natures passerait au vert : on aurait
+   * corrigé une escalade en retirant au gestionnaire son geste le plus courant.
+   */
+  it('lui laisse émettre un code de locataire, dont c’est le métier', async () => {
+    const res = await request(serveur)
+      .post(`/api/parks/${parkId}/invitations`)
+      .set('Cookie', gestionnaire)
+      .send({ role: 'tenant' })
+    expect(res.status, JSON.stringify(res.body)).toBe(201)
+    expect(res.body.code).toMatch(/^LOC-[A-Z2-9]{4}-[A-Z2-9]{4}$/)
+  })
+
+  it('laisse le propriétaire recruter un gestionnaire', async () => {
+    const res = await request(serveur)
+      .post(`/api/parks/${parkId}/invitations`)
+      .set('Cookie', proprio)
+      .send({ role: 'manager' })
+    expect(res.status, JSON.stringify(res.body)).toBe(201)
+    expect(res.body.code).toMatch(/^GES-[A-Z2-9]{4}-[A-Z2-9]{4}$/)
   })
 })
 
