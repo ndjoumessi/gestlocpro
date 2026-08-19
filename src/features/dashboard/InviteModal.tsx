@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Modal } from '@/components/primitives/Modal'
+import { Icon } from '@/components/primitives/Icon'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
 import { Select } from '@/components/primitives/Input'
@@ -7,6 +8,7 @@ import { useToast } from '@/components/primitives/Toast'
 import { useT } from '@/i18n/I18nProvider'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { useSession } from '@/api/SessionProvider'
+import { useRole } from '@/components/layout/AppShell'
 import { api } from '@/api/client'
 
 /**
@@ -17,17 +19,35 @@ import { api } from '@/api/client'
  * un journal ne donnent accès à aucun parc, et personne — pas même le
  * propriétaire — ne peut le relire. Laisser croire qu'on le retrouvera dans une
  * liste ferait perdre l'accès à un locataire qui n'aurait pas noté.
+ *
+ * QUI PEUT INVITER QUOI. Le serveur réserve au propriétaire l'émission d'un
+ * code de GESTIONNAIRE : sans cette règle, un gestionnaire faisait entrer un
+ * pair sur tout le parc sans que le propriétaire l'apprenne, et rien ne
+ * permettait de l'en retirer. L'écran, lui, offrait encore le choix — le
+ * gestionnaire choisissait « Gestionnaire délégué », cliquait, et récoltait un
+ * refus rendu par le `.catch()` générique en « L'action a échoué », sans
+ * apprendre ni pourquoi ni que c'était définitif. On ne propose pas un geste
+ * qu'on refusera : le champ disparaît, et une note dit qui recrute.
  */
 export function InviteModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useT()
   const { notify } = useToast()
   const { units } = usePortfolio()
   const { adhesionActive } = useSession()
+  const { role } = useRole()
   const parkId = adhesionActive?.parkId ?? null
+
+  // Même partage que les devis et les cautions : le gestionnaire OPÈRE, le
+  // propriétaire ARBITRE. Recruter un pair est un acte de propriétaire.
+  const peutRecruter = role === 'owner'
 
   const vacants = units.filter((u) => !u.tenant)
 
-  const [role, setRole] = useState<'tenant' | 'manager'>('tenant')
+  // `roleInvite` est le rôle du FUTUR membre, à ne pas confondre avec `role`,
+  // celui de la personne qui invite. Sa valeur initiale — locataire — est aussi
+  // la seule qu'un gestionnaire puisse émettre : privé du champ, il n'a aucun
+  // moyen de la changer, et l'appel part avec le seul rôle qu'on lui accorde.
+  const [roleInvite, setRoleInvite] = useState<'tenant' | 'manager'>('tenant')
   const [unitId, setUnitId] = useState(vacants[0]?.id ?? '')
   const [code, setCode] = useState<string | null>(null)
   const [envoye, setEnvoye] = useState(false)
@@ -45,11 +65,11 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
     setEnvoi(true)
     void api
       .issueInvitation<{ code: string; envoye: boolean }>(parkId, {
-        role,
+        role: roleInvite,
         // L'unité n'accompagne qu'une invitation de LOCATAIRE : un gestionnaire
         // opère tout le parc, et lui en attacher une laisserait croire à un
         // périmètre qui n'existe pas.
-        ...(role === 'tenant' && unitId ? { unitId } : {}),
+        ...(roleInvite === 'tenant' && unitId ? { unitId } : {}),
       })
       .then(({ code: emis, envoye: parti }) => {
         setCode(emis)
@@ -112,19 +132,33 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
         </div>
       ) : (
         <div className="flex flex-col gap-5">
-          <Field label={t('app.invite.role')} required>
-            {(props) => (
-              <Select
-                {...props}
-                name="role"
-                value={role}
-                onChange={(e) => setRole(e.target.value as 'tenant' | 'manager')}
-              >
-                <option value="tenant">{t('app.invite.roleTenant')}</option>
-                <option value="manager">{t('app.invite.roleManager')}</option>
-              </Select>
-            )}
-          </Field>
+          {peutRecruter && (
+            <Field label={t('app.invite.role')} required>
+              {(props) => (
+                <Select
+                  {...props}
+                  name="role"
+                  value={roleInvite}
+                  onChange={(e) => setRoleInvite(e.target.value as 'tenant' | 'manager')}
+                >
+                  <option value="tenant">{t('app.invite.roleTenant')}</option>
+                  <option value="manager">{t('app.invite.roleManager')}</option>
+                </Select>
+              )}
+            </Field>
+          )}
+
+          {/* Le champ ne devient pas un menu à un seul article : un choix qui
+              n'en est pas un se lit comme une panne. La note prend sa place et
+              dit ce qui va être émis — c'est le même geste que sur les devis et
+              les cautions, où l'absence de bouton est expliquée plutôt que
+              subie. */}
+          {role === 'manager' && (
+            <p className="flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body-s text-gold-ink">
+              <Icon name="info" size={15} className="mt-0.5 shrink-0" />
+              {t('app.invite.managerNotice')}
+            </p>
+          )}
 
           {/* Ni `required` ni `optional` sur le logement.
               « Facultatif » invitait à passer outre, alors que l'omettre a une
@@ -132,7 +166,7 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
               marquer requis serait faux — on peut légitimement inviter d'abord
               et rattacher ensuite. L'aide porte la conséquence, ce qu'aucune
               étiquette ne sait dire. */}
-          {role === 'tenant' && vacants.length > 0 && (
+          {roleInvite === 'tenant' && vacants.length > 0 && (
             <Field label={t('app.invite.unit')} hint={t('app.invite.unitHint')}>
               {(props) => (
                 <Select

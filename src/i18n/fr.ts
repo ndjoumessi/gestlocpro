@@ -1034,6 +1034,8 @@ export const fr = {
       role: 'Rôle invité',
       roleTenant: 'Locataire',
       roleManager: 'Gestionnaire délégué',
+      managerNotice:
+        'Seul le propriétaire recrute un gestionnaire. Vous invitez des locataires.',
       unit: 'Logement concerné',
       unitHint:
         'Le locataire rejoindra ce logement. Sans logement, il rejoint le parc sans bail — vous l’y rattacherez ensuite.',
