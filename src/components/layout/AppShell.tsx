@@ -149,6 +149,7 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
     headingKey: 'nav.sectionAdmin',
     items: [
       { to: 'locataires', labelKey: 'nav.tenants', icon: 'users', roles: ['owner', 'manager'] },
+      { to: 'acces', labelKey: 'nav.access', icon: 'key', roles: ['owner', 'manager'] },
       {
         to: 'signalements',
         labelKey: 'nav.alerts',

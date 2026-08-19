@@ -22,6 +22,7 @@ import { Deposits } from './features/dashboard/Deposits'
 import { Tenants } from './features/dashboard/Tenants'
 import { Alerts } from './features/dashboard/Alerts'
 import { Signaler } from './features/dashboard/Signaler'
+import { Access } from './features/dashboard/Access'
 import { Onboarding } from './features/dashboard/Onboarding'
 import { SystemStates } from './features/dashboard/SystemStates'
 import { TenantPortal } from './features/dashboard/TenantPortal'
@@ -99,6 +100,12 @@ function ecransDeLApplication() {
       <Route path="releves" element={<Meters />} />
       <Route path="cautions" element={<Deposits />} />
       <Route path="locataires" element={<Restricted allow={['owner', 'manager']}><Tenants /></Restricted>} />
+      {/* Le registre des accès : ouvert aux deux rôles de gestion, parce que le
+          gestionnaire émet des codes de locataire au quotidien et qu'un code
+          qu'on ne peut pas retrouver est un code qu'on réémet en double. Ce
+          qu'il ne peut pas faire — retirer un accès, reprendre un code de
+          gestionnaire — l'écran ne le lui propose pas. */}
+      <Route path="acces" element={<Restricted allow={['owner', 'manager']}><Access /></Restricted>} />
       <Route path="prise-en-main" element={<Restricted allow={['owner']}><Onboarding /></Restricted>} />
 
       {/* Vitrines : le même garde que dans la barre latérale, où elles portent

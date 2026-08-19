@@ -385,6 +385,23 @@ export const api = {
       body: JSON.stringify({ reason }),
     }),
 
+  /**
+   * Le registre des accès : qui est membre, et quels codes attendent encore.
+   *
+   * Une seule lecture pour les deux, parce qu'ils répondent à la même question
+   * — qui peut entrer dans ce parc — et que les séparer laisserait un écran
+   * afficher une moitié à jour et l'autre périmée.
+   */
+  access: <T>(parkId: string) => requete<T>(`/parks/${parkId}/access`),
+
+  /** Reprend un code encore en attente. Un code déjà consommé rend 409. */
+  revokeInvitation: (parkId: string, invitationId: string) =>
+    requete<void>(`/parks/${parkId}/invitations/${invitationId}/revoke`, { method: 'PATCH' }),
+
+  /** Retire son accès à un membre. Réservé au propriétaire, et jamais le sien. */
+  revokeMembership: (parkId: string, membershipId: string) =>
+    requete<void>(`/parks/${parkId}/memberships/${membershipId}/revoke`, { method: 'PATCH' }),
+
   issueInvitation: <T>(
     parkId: string,
     corps: { role: 'tenant' | 'manager'; unitId?: string },

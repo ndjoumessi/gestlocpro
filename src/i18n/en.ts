@@ -128,6 +128,7 @@ export const en: Dictionary = {
     inspections: 'Inspections',
     works: 'Works',
     deposits: 'Deposits',
+    access: 'Portfolio access',
     tenants: 'Tenants',
     report: 'Report',
     alerts: 'Reports',
@@ -803,6 +804,33 @@ export const en: Dictionary = {
         'Only the owner settles deposits. You prepare the statement, they approve it.',
     },
 
+    access: {
+      title: 'Portfolio access',
+      subtitle: 'Who holds a key, and which codes are still waiting to be used.',
+      managerNotice:
+        'Only the owner removes access. You can see the register and take back tenant codes.',
+      membersTitle: 'Members',
+      membersHint: 'The people who can reach the portfolio today.',
+      member: 'Person',
+      since: 'Member since',
+      action: 'Action',
+      role_owner: 'Owner',
+      role_manager: 'Manager',
+      role_tenant: 'Tenant',
+      revokeMember: 'Remove access',
+      memberRevoked: 'Access removed',
+      invitesTitle: 'Pending codes',
+      invitesHint:
+        'A code lasts fourteen days and works once. Take back the one you sent by mistake.',
+      code: 'Code',
+      expires: 'Valid until',
+      noUnit: 'No unit attached',
+      revokeInvite: 'Take back',
+      inviteRevoked: 'Code taken back — it no longer opens anything',
+      noInvites: 'No pending code',
+      noInvitesBody:
+        'Codes already used, taken back or expired are not listed here: this list only shows what still opens.',
+    },
     invite: {
       button: 'Invite by code',
       title: 'Invite someone to the portfolio',

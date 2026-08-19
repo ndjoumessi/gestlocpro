@@ -162,6 +162,7 @@ export const fr = {
     inspections: 'États des lieux',
     works: 'Travaux',
     deposits: 'Cautions',
+    access: 'Accès au parc',
     tenants: 'Locataires',
     report: 'Signaler',
     alerts: 'Signalements',
@@ -1023,6 +1024,33 @@ export const fr = {
         'Seul le propriétaire arbitre les cautions. Vous préparez le décompte, il le valide.',
     },
 
+    access: {
+      title: 'Accès au parc',
+      subtitle: 'Qui détient une clé, et quels codes attendent encore d’être utilisés.',
+      managerNotice:
+        'Seul le propriétaire retire un accès. Vous voyez le registre et reprenez les codes de locataire.',
+      membersTitle: 'Membres',
+      membersHint: 'Les personnes qui accèdent au parc aujourd’hui.',
+      member: 'Personne',
+      since: 'Membre depuis',
+      action: 'Action',
+      role_owner: 'Propriétaire',
+      role_manager: 'Gestionnaire',
+      role_tenant: 'Locataire',
+      revokeMember: 'Retirer l’accès',
+      memberRevoked: 'Accès retiré',
+      invitesTitle: 'Codes en attente',
+      invitesHint:
+        'Un code vaut quatorze jours et ne sert qu’une fois. Reprenez celui que vous avez transmis par erreur.',
+      code: 'Code',
+      expires: 'Valable jusqu’au',
+      noUnit: 'Sans logement rattaché',
+      revokeInvite: 'Reprendre',
+      inviteRevoked: 'Code repris — il n’ouvre plus rien',
+      noInvites: 'Aucun code en attente',
+      noInvitesBody:
+        'Les codes déjà utilisés, repris ou périmés ne figurent pas ici : cette liste ne montre que ce qui ouvre encore.',
+    },
     invite: {
       button: 'Inviter par code',
       title: 'Inviter à rejoindre le parc',

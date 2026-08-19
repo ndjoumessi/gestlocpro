@@ -186,4 +186,4 @@ export async function attendreLeChargement(): Promise<void> {
   )
 }
 
-export { screen, userEvent, within }
+export { screen, userEvent, waitFor, within }
