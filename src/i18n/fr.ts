@@ -490,6 +490,16 @@ export const fr = {
       paidOnBy: 'Payé le {date} par {method}',
       receipt: 'Quittance',
       byPeriod: 'Mes paiements par période',
+      /**
+       * `consumptionTrend` et non `consumption` : cette dernière EXISTE déjà —
+       * « Ma consommation du mois », qu'affiche le portail vitrine. Réutiliser
+       * la clé aurait changé un libellé sur un écran qu'on ne touche pas.
+       */
+      consumptionTrend: 'Ma consommation sur douze mois',
+      average: 'moy. {value}',
+      noReading: 'Relevé manquant',
+      unitWater: 'm³',
+      unitPower: 'kWh',
       colPeriod: 'Période',
       colRent: 'Loyer',
       colWater: 'Eau',

@@ -692,6 +692,35 @@ parksRouter.get(
     ])
 
     /**
+     * Les relevés que le locataire a le DROIT de lire — bornés à ses baux.
+     *
+     * Le filtre de la requête porte sur l'UNITÉ (`filtreUnite`), et
+     * `unitesVisibles` retient le logement d'un locataire même après son
+     * départ : c'est voulu, il doit garder l'accès à ses quittances. Mais un
+     * index de compteur postérieur à sa sortie est la consommation de son
+     * SUCCESSEUR. Tant que la réponse ne portait que deux points, la fuite se
+     * limitait au dernier index ; douze périodes en feraient un profil de vie —
+     * les absences, les retours, le rythme d'un foyer qu'il ne connaît pas.
+     *
+     * `baux` est DÉJÀ cloisonné sur `tenant.userId` : les fenêtres construites
+     * ici sont donc les siennes et rien d'autre. Pour un bailleur la liste est
+     * vide, et la garde rend `releves` inchangé — il voit tout son parc.
+     */
+    const relevesVisibles = (() => {
+      if (role !== 'tenant') return releves
+      const fenetres = baux.map((b) => ({
+        unitId: b.unitId,
+        debut: +b.startsOn,
+        fin: b.endsOn ? +b.endsOn : Number.POSITIVE_INFINITY,
+      }))
+      return releves.filter((r) =>
+        fenetres.some(
+          (f) => f.unitId === r.unitId && +r.periodStart >= f.debut && +r.periodStart <= f.fin,
+        ),
+      )
+    })()
+
+    /**
      * Le mois porte ce qui a été ENCAISSÉ, non ce qui était dû.
      *
      * Un graphique d'encaissements qui afficherait les loyers appelés serait
@@ -803,15 +832,15 @@ parksRouter.get(
        * copie d'un relevé existant ailleurs, libre de diverger.
        */
       readings: (() => {
-        const periodeCourante = releves.reduce<Date | null>(
+        const periodeCourante = relevesVisibles.reduce<Date | null>(
           (max, r) => (!max || r.periodStart > max ? r.periodStart : max),
           null,
         )
         const paires = new Map<string, { unitId: string; utility: string }>()
-        for (const r of releves) paires.set(`${r.unitId}|${r.utility}`, { unitId: r.unitId, utility: r.utility })
+        for (const r of relevesVisibles) paires.set(`${r.unitId}|${r.utility}`, { unitId: r.unitId, utility: r.utility })
 
         return [...paires.values()].map(({ unitId, utility }) => {
-          const pour = releves.filter((r) => r.unitId === unitId && r.utility === utility)
+          const pour = relevesVisibles.filter((r) => r.unitId === unitId && r.utility === utility)
           const courant = pour.find((r) => periodeCourante && +r.periodStart === +periodeCourante)
           const anterieur = pour.find((r) => !periodeCourante || +r.periodStart !== +periodeCourante)
           return {
@@ -824,6 +853,28 @@ parksRouter.get(
           }
         })
       })(),
+      /**
+       * Toutes les périodes relevées, pour la série des douze mois.
+       *
+       * **Des INDEX, jamais des consommations.** C'est ce que le compteur
+       * porte, et la différence entre deux périodes s'en dérive ; l'inverse ne
+       * se dérive pas. Rendre des consommations toutes faites perdrait aussi le
+       * seul indice qui distingue un mois à zéro d'un mois non relevé : avec
+       * les index, une période absente reste absente.
+       *
+       * `readings` n'est PAS une seconde source. Les deux vues projettent le
+       * MÊME tableau — l'une n'en garde que la période courante et son
+       * antérieur, l'autre le rend en entier — dans la même réponse, au même
+       * instant. C'est pourquoi le cloisonnement s'applique en amont des deux :
+       * borner la série et laisser `readings` rendre l'index du successeur
+       * ferait fuir par la porte à côté.
+       */
+      readingHistory: relevesVisibles.map((r) => ({
+        unitId: r.unitId,
+        utility: r.utility,
+        periodStart: r.periodStart,
+        indexValue: r.indexValue,
+      })),
       inspections: etatsDesLieux.map((i) => ({
         id: i.id,
         unitId: i.unitId,

@@ -192,6 +192,115 @@ export const READINGS: MeterReading[] = [
   { unitId: 'C2', waterPrevious: 334, waterCurrent: null, powerPrevious: 4010, powerCurrent: null, readAt: null },
 ]
 
+/**
+ * La consommation d'une période, fluide par fluide.
+ *
+ * **`null` ne veut pas dire zéro.** Il dit qu'aucune consommation n'est
+ * DÉRIVABLE : le relevé du mois manque, ou celui du mois d'avant, ou l'index a
+ * reculé. Zéro serait un mensonge parfaitement lisible — une barre au sol se
+ * lit comme un logement vide, une absence à domicile, et c'est la seule chose
+ * qu'on ne sait justement pas.
+ */
+export interface ConsumptionPoint {
+  year: number
+  /** 0 = janvier. */
+  month: number
+  water: number | null
+  power: number | null
+}
+
+/**
+ * Le profil saisonnier de la démonstration, par index de mois.
+ *
+ * Les mêmes facteurs que `server/src/parks/demo.ts` — climat de Yaoundé, grande
+ * saison sèche de décembre à février, petite en juillet-août. Deux copies d'une
+ * table de douze nombres valent mieux qu'un import du serveur dans le client :
+ * le jeu de démonstration client existe précisément pour tourner SANS serveur.
+ */
+const SAISON_DEMO = {
+  water: [1.18, 1.2, 1.05, 0.92, 0.88, 0.9, 1.1, 1.15, 0.9, 0.85, 0.95, 1.15],
+  power: [1.1, 1.14, 1.08, 1.0, 0.95, 0.92, 1.05, 1.12, 1.0, 0.96, 0.98, 1.08],
+} as const
+
+/** La période de tête du jeu de démonstration. 7 = août. */
+const PERIODE_DEMO = { year: 2026, month: 7 }
+const PROFONDEUR_DEMO = 12
+
+/**
+ * Consommation de référence des deux unités SANS relevé courant.
+ *
+ * A5 et C2 n'ont qu'un index : aucune consommation ne s'en dérive, et la
+ * rétro-génération n'aurait rien pour partir. Mêmes valeurs qu'au semis du
+ * serveur.
+ */
+const BASE_SANS_RELEVE: Record<string, { water: number; power: number }> = {
+  A5: { water: 10, power: 120 },
+  C2: { water: 14, power: 150 },
+}
+
+/**
+ * Un premier de mois en ISO, construit en UTC.
+ *
+ * `new Date(annee, mois, 1).toISOString()` construirait dans le fuseau de la
+ * machine : à Douala — UTC+1 — le 1er août devient le 31 juillet à 23 h, et
+ * toute la période glisse d'un mois. Le serveur sérialise ces colonnes `date` à
+ * minuit UTC ; on écrit donc la même chose.
+ */
+function isoDeLaPeriode({ year, month }: { year: number; month: number }): string {
+  return new Date(Date.UTC(year, month, 1)).toISOString()
+}
+
+/**
+ * L'historique de relevés de la démonstration — des INDEX, comme le serveur.
+ *
+ * Il porte des index et non des consommations toutes faites, pour que le jeu de
+ * démonstration passe par la MÊME dérivation que la réponse réelle. Sans cela,
+ * le seul endroit où ce calcul vit — `consommations`, dans `apiPortfolio` — ne
+ * serait jamais exercé en développement : on ne verrait ni le trou de période,
+ * ni l'index qui recule, ni le décalage de fuseau.
+ *
+ * Rétro-généré depuis l'index le plus ancien de `READINGS`, exactement comme le
+ * semis : les deux index de tête ne bougent donc pas, et les écrans du
+ * gestionnaire restent identiques.
+ */
+export const READING_HISTORY_DEMO: {
+  unitId: string
+  utility: 'water' | 'power'
+  periodStart: string
+  indexValue: number
+}[] = (() => {
+  const precedente = { year: PERIODE_DEMO.year, month: PERIODE_DEMO.month - 1 }
+  const lignes: { unitId: string; utility: 'water' | 'power'; periodStart: string; indexValue: number }[] = []
+
+  for (const r of READINGS) {
+    for (const utility of ['water', 'power'] as const) {
+      const precedent = utility === 'water' ? r.waterPrevious : r.powerPrevious
+      const valeur = utility === 'water' ? r.waterCurrent : r.powerCurrent
+
+      lignes.push({ unitId: r.unitId, utility, periodStart: isoDeLaPeriode(precedente), indexValue: precedent })
+      if (valeur !== null) {
+        lignes.push({ unitId: r.unitId, utility, periodStart: isoDeLaPeriode(PERIODE_DEMO), indexValue: valeur })
+      }
+
+      const base = BASE_SANS_RELEVE[r.unitId]?.[utility]
+      const consoDeReference = valeur !== null ? valeur - precedent : (base ?? 0)
+      let index = precedent
+      let quand = { ...precedente }
+      for (let recul = 1; recul <= PROFONDEUR_DEMO - 1; recul += 1) {
+        // Le facteur du mois QUITTÉ : dans l'autre sens la saisonnalité glisse
+        // d'un cran. Le mois peut être négatif après plusieurs reculs, d'où le
+        // modulo positif.
+        const moisQuitte = ((quand.month % 12) + 12) % 12
+        index -= Math.round(consoDeReference * SAISON_DEMO[utility][moisQuitte]!)
+        if (index <= 0) break
+        quand = quand.month === 0 ? { year: quand.year - 1, month: 11 } : { year: quand.year, month: quand.month - 1 }
+        lignes.push({ unitId: r.unitId, utility, periodStart: isoDeLaPeriode(quand), indexValue: index })
+      }
+    }
+  }
+  return lignes
+})()
+
 /** Tarifs unitaires de refacturation des charges. */
 export const UTILITY_RATES = { water: 520, power: 99 }
 

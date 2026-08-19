@@ -30,6 +30,7 @@ import { useLocation } from 'react-router-dom'
 const ATTENTE_DEMO_MS = 900
 import {
   DEMO_TENANT_UNIT,
+  type ConsumptionPoint,
   type Deposit,
   type DocumentKind,
   type Occupation,
@@ -39,13 +40,14 @@ import {
   type UrgencyKey,
   type WorkOrder,
 } from './portfolio'
-import { chargerParc, type Immeuble } from './apiPortfolio'
+import { chargerParc, consommations, type Immeuble } from './apiPortfolio'
 import {
   ALERTS as ALERTS_DEMO,
   BUILDINGS as IMMEUBLES_DEMO,
   COLLECTIONS as COLLECTIONS_DEMO,
   INSPECTIONS as INSPECTIONS_DEMO,
   READINGS as READINGS_DEMO,
+  READING_HISTORY_DEMO,
   TENANT_DOCUMENT_REQUESTS as DEMANDES_DOCUMENTS_DEMO,
   TENANT_RECEIPTS as TENANT_RECEIPTS_DEMO,
   UNITS as UNITS_DEMO,
@@ -329,6 +331,14 @@ interface PortfolioContextValue {
   resolveDocumentRequest: (id: string, status: 'fulfilled' | 'declined') => void
   readingForUnit: (unitId: string) => MeterReading | undefined
   /**
+   * La consommation d'une unité, période par période, de la plus ancienne à la
+   * plus récente.
+   *
+   * Vide quand le serveur ne rend pas d'historique : l'écran n'affiche alors
+   * aucune série, ce qui est l'état réel d'un parc sans relevés.
+   */
+  consumptionForUnit: (unitId: string) => ConsumptionPoint[]
+  /**
    * État des lieux d'une unité, pris sur l'état PARTAGÉ.
    *
    * Les écrans du locataire appelaient `inspectionsForUnit` du module de
@@ -456,6 +466,17 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const attenteDemoServie = useRef(false)
   const [buildings, setBuildings] = useState<Immeuble[]>(IMMEUBLES_DEMO)
   const [readings, setReadings] = useState<MeterReading[]>(READINGS_DEMO)
+  /**
+   * La consommation dérivée, indexée par unité.
+   *
+   * Semée en passant `READING_HISTORY_DEMO` par `consommations` — la fonction
+   * même qui traite la réponse du serveur. Fabriquer ici des points tout faits
+   * laisserait cette dérivation sans aucun exercice en développement : ni le
+   * trou de période, ni l'index qui recule ne se verraient avant la production.
+   */
+  const [consumption, setConsumption] = useState<Record<string, ConsumptionPoint[]>>(() =>
+    consommations(READING_HISTORY_DEMO),
+  )
   const [inspections, setInspections] = useState<Inspection[]>(INSPECTIONS_DEMO)
   const [alerts, setAlerts] = useState<Alert[]>(ALERTS_DEMO)
   const [collections, setCollections] = useState<MonthlyCollection[]>(COLLECTIONS_DEMO)
@@ -583,6 +604,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       if (annule) return
       setBuildings(parc.buildings)
       setReadings(parc.readings)
+      setConsumption(parc.consumptionByUnit)
       setInspections(parc.inspections)
       setAlerts(parc.alerts)
       setCollections(parc.collections)
@@ -1265,6 +1287,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       requestDocument,
       resolveDocumentRequest,
       readingForUnit: (unitId) => readings.find((r) => r.unitId === unitId),
+      consumptionForUnit: (unitId) => consumption[unitId] ?? [],
       inspectionForUnit: (unitId, kind) =>
         inspections.find((i) => i.unitId === unitId && i.kind === kind),
       tenantUnitIds,
@@ -1297,6 +1320,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       deposits,
       buildings,
       readings,
+      consumption,
       inspections,
       alerts,
       collections,

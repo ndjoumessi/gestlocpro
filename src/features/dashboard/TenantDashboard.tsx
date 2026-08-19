@@ -4,7 +4,7 @@ import { lien, useBase } from '@/lib/base'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
 import { Icon } from '@/components/primitives/Icon'
-import { ProgressBar } from '@/components/primitives/Charts'
+import { MiniBarChart, ProgressBar } from '@/components/primitives/Charts'
 import { PaymentStatusPill, StatusPill } from '@/components/primitives/StatusPill'
 import { EmptyState } from '@/components/primitives/DataTable'
 import { Skeleton, SkeletonRegion, SkeletonStatCard } from '@/components/primitives/Skeleton'
@@ -17,6 +17,7 @@ import {
   UTILITY_RATES,
   dernierVersement,
   imputation,
+  type ConsumptionPoint,
   type Receipt,
 } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
@@ -46,6 +47,7 @@ export function TenantDashboard() {
     receiptsForUnit,
     buildingById,
     readingForUnit,
+    consumptionForUnit,
     inspectionForUnit,
     loading,
   } = usePortfolio()
@@ -69,6 +71,10 @@ export function TenantDashboard() {
   const works = worksForUnit(monUnite)
   const entree = inspectionForUnit(monUnite, 'entry')
   const releve = readingForUnit(monUnite)
+  /* Douze périodes au plus, les plus RÉCENTES : la série arrive du plus ancien
+     au plus récent, et un parc qui en porte davantage ne doit pas écraser la
+     carte. */
+  const historique = consumptionForUnit(monUnite).slice(-12)
 
   /**
    * L'attente passe AVANT le garde `!unit`, et c'est l'ordre qui importe.
@@ -272,6 +278,11 @@ export function TenantDashboard() {
           ) : (
           <div className="overflow-x-auto border-t border-divider">
             <table className="w-full border-collapse">
+              {/* Le titre vit dans le `CardHeader`, DEHORS de la table : un
+                  lecteur d'écran n'entendait donc que « tableau, sept
+                  colonnes ». La légende le lui donne, sans rien changer à
+                  l'œil. */}
+              <caption className="sr-only">{t('app.tenant.byPeriod')}</caption>
               <thead>
                 <tr className="border-b border-divider">
                   <th scope="col" className="px-4 py-2.5 text-left text-caps text-muted sm:px-5">
@@ -391,6 +402,40 @@ export function TenantDashboard() {
         </div>
       </div>
 
+      {/*
+        LA SÉRIE DES DOUZE MOIS.
+
+        « 16 m³ » seul ne répond à rien. La question du locataire dont la
+        facture double est toujours la même — est-ce moi, une fuite, ou le mois
+        d'août ? — et elle ne se tranche qu'en voyant les onze mois d'avant.
+
+        Deux graphes CÔTE À CÔTE, jamais une pile : 16 m³ et 178 kWh ne
+        s'additionnent pas, et empiler ferait paraître haute la barre d'un
+        locataire économe en eau au seul motif qu'il a chaud.
+
+        Rendue à partir de DEUX points : une barre isolée n'est pas une série,
+        elle répète ce que la carte du mois dit déjà.
+      */}
+      {historique.length > 1 && (
+        <Card className="mt-4">
+          <CardHeader title={t('app.tenant.consumptionTrend')} level={2} />
+          <div className="grid gap-6 px-4 pb-4 sm:grid-cols-2 sm:px-5 sm:pb-5">
+            <SerieFluide
+              points={historique}
+              fluide="water"
+              libelle={t('app.tenant.water')}
+              unite={t('app.tenant.unitWater')}
+            />
+            <SerieFluide
+              points={historique}
+              fluide="power"
+              libelle={t('app.tenant.power')}
+              unite={t('app.tenant.unitPower')}
+            />
+          </div>
+        </Card>
+      )}
+
       {quittanceDe && (
         <ReceiptModal
           unitId={monUnite}
@@ -434,6 +479,59 @@ function CarteCharge({ label, amount, note }: { label: string; amount: string; n
       <p className="numeric mt-2 text-kpi font-medium">{amount}</p>
       <p className="mt-2 text-body-s text-muted">{note}</p>
     </Card>
+  )
+}
+
+/**
+ * Une série de consommation, pour UN fluide.
+ *
+ * La moyenne ignore les mois inconnus — `filter(v => v !== null)` et non
+ * `?? 0`. Diviser par douze quand trois relevés manquent tire la moyenne vers
+ * le bas, et fait alors paraître anormal un mois qui ne l'est pas : le
+ * locataire lirait une hausse là où il n'y a qu'un trou de saisie.
+ */
+function SerieFluide({
+  points,
+  fluide,
+  libelle,
+  unite,
+}: {
+  points: ConsumptionPoint[]
+  fluide: 'water' | 'power'
+  libelle: string
+  unite: string
+}) {
+  const t = useT()
+  const d = useDates()
+  const n = useNumbers()
+
+  const releves = points.map((p) => p[fluide]).filter((v): v is number => v !== null)
+  const moyenne = releves.length > 0 ? Math.round(releves.reduce((s, v) => s + v, 0) / releves.length) : null
+  const lire = (v: number) => `${n.integer(v)} ${unite}`
+
+  return (
+    <div className="min-w-0">
+      <div className="mb-2 flex items-baseline justify-between gap-3">
+        <span className="text-caps text-muted">{libelle}</span>
+        {moyenne !== null && (
+          <span className="numeric text-body-s text-muted">
+            {t('app.tenant.average', { value: lire(moyenne) })}
+          </span>
+        )}
+      </div>
+      <MiniBarChart
+        caption={`${libelle} — ${t('app.tenant.consumptionTrend')}`}
+        format={lire}
+        emptyLabel={t('app.tenant.noReading')}
+        bars={points.map((point) => ({
+          // La clé porte la PÉRIODE, pas le libellé : douze relevés peuvent
+          // s'étaler sur quatorze mois, et « août » reviendrait deux fois.
+          key: `${point.year}-${point.month}`,
+          label: d.monthShort(point),
+          value: point[fluide],
+        }))}
+      />
+    </div>
   )
 }
 

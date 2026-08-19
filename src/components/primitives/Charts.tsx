@@ -466,16 +466,42 @@ export function MiniBarChart({
   bars,
   caption,
   openPeriodNote,
+  format,
+  emptyLabel = '—',
 }: {
-  bars: { label: string; value: number }[]
+  /**
+   * `value: null` — la barre est ABSENTE, non nulle.
+   *
+   * Une barre au sol et une barre manquante racontent deux choses
+   * différentes : « il n'a rien consommé » et « on ne sait pas ». Sur une série
+   * de relevés la seconde est la règle — un mois non relevé, un compteur
+   * remplacé — et l'afficher à zéro se lirait comme une absence à domicile.
+   *
+   * `key` sépare l'identité React du libellé affiché : douze relevés peuvent
+   * s'étaler sur quatorze mois si des périodes manquent, « août » revient alors
+   * deux fois, et React fige une barre à la mauvaise hauteur sans rien casser
+   * ni prévenir.
+   */
+  bars: { key?: string; label: string; value: number | null }[]
   caption: string
   openPeriodNote?: string
+  /**
+   * Comment lire une valeur. Par défaut de la monnaie — ce que cette carte
+   * montrait à l'origine —, mais un compteur se lit en m³ ou en kWh, et `money`
+   * y inscrivait des francs sur des mètres cubes.
+   */
+  format?: (value: number) => string
+  /** Ce qu'annonce une période sans valeur dérivable. */
+  emptyLabel?: string
 }) {
   const { money } = useCurrency()
   const titleId = useId()
   const [active, setActive] = useState<number | null>(null)
 
-  const max = Math.max(...bars.map((b) => b.value), 1) * 1.04
+  const lire = format ?? ((v: number) => money(v, { round: true }))
+  // Les périodes inconnues ne pèsent pas sur l'échelle : une barre absente ne
+  // doit ni écraser ni gonfler les autres.
+  const max = Math.max(...bars.map((b) => b.value ?? 0), 1) * 1.04
 
   return (
     <figure className="m-0" aria-labelledby={titleId}>
@@ -486,19 +512,23 @@ export function MiniBarChart({
 
           return (
             <button
-              key={bar.label}
+              key={bar.key ?? bar.label}
               type="button"
               className="group flex h-full min-w-0 flex-1 cursor-pointer items-end rounded-sm"
               onMouseEnter={() => setActive(index)}
               onMouseLeave={() => setActive((c) => (c === index ? null : c))}
               onFocus={() => setActive(index)}
               onBlur={() => setActive((c) => (c === index ? null : c))}
-              aria-label={`${bar.label} — ${money(bar.value, { round: true })}`}
+              aria-label={`${bar.label} — ${bar.value === null ? emptyLabel : lire(bar.value)}`}
             >
               <span
                 className="animate-grow-y w-full rounded-t-[3px] transition-opacity duration-150"
                 style={{
-                  height: `${(bar.value / max) * 100}%`,
+                  // Une période inconnue garde un filet de 2 px : la colonne
+                  // reste visible et cliquable — sans quoi le trou se lirait
+                  // comme un mois qui n'existe pas — mais aucune hauteur ne
+                  // suggère une quantité.
+                  height: bar.value === null ? '2px' : `${(bar.value / max) * 100}%`,
                   // La colonne du mois courant se distingue des onze autres :
                   // c'est une DONNÉE mise en avant, pas un ornement. L'or de
                   // marque tombait à 2,87:1 sur la carte, sous le seuil de 3:1
@@ -506,7 +536,12 @@ export function MiniBarChart({
                   // déjà. `--color-gold-ink` tient 5,47:1 en clair et 7,32:1
                   // en sombre, en gardant l'écart de clarté avec `data-1` qui
                   // rend les deux distinguables en niveaux de gris.
-                  background: isLast ? 'var(--color-gold-ink)' : 'var(--color-data-1)',
+                  background:
+                    bar.value === null
+                      ? 'var(--color-divider)'
+                      : isLast
+                        ? 'var(--color-gold-ink)'
+                        : 'var(--color-data-1)',
                   animationDelay: `${index * 40}ms`,
                   opacity: active !== null && !isActive ? 0.4 : isLast ? 1 : 0.85,
                 }}
@@ -544,7 +579,9 @@ export function MiniBarChart({
               <span className="text-caps tracking-wide text-muted uppercase">
                 {bars[active].label}
               </span>{' '}
-              <span className="numeric">{money(bars[active].value, { round: true })}</span>
+              <span className="numeric">
+                {bars[active].value === null ? emptyLabel : lire(bars[active].value)}
+              </span>
             </>
           )}
         </span>
@@ -568,9 +605,11 @@ export function MiniBarChart({
           <caption id={titleId}>{caption}</caption>
           <tbody>
             {bars.map((bar) => (
-              <tr key={bar.label}>
+              // Même clé que les colonnes : deux « août » dans une série ne
+              // doivent pas se confondre ici non plus.
+              <tr key={bar.key ?? bar.label}>
                 <th scope="row">{bar.label}</th>
-                <td>{money(bar.value)}</td>
+                <td>{bar.value === null ? emptyLabel : lire(bar.value)}</td>
               </tr>
             ))}
           </tbody>

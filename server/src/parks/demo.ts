@@ -99,17 +99,59 @@ const TRAVAUX: {
 ]
 
 /** Index de compteurs du mois, par unité. `null` = relevé non fait. */
-const RELEVES: { unite: string; eauPrec: number; eau: number | null; elecPrec: number; elec: number | null; jours: number | null }[] = [
+/**
+ * Profondeur de l'historique de relevés, en périodes.
+ *
+ * Douze, parce que c'est la question du locataire : « est-ce moi, une fuite, ou
+ * le mois d'août ? » ne se répond qu'en voyant le même mois l'année d'avant.
+ */
+const PROFONDEUR_HISTORIQUE = 12
+
+/**
+ * Le profil saisonnier, par index de mois — 0 = janvier.
+ *
+ * Des facteurs FIXES, jamais tirés au hasard : un jeu de démonstration qui
+ * change à chaque semis rend toute capture d'écran et tout cas de test
+ * ininterprétables — on ne saurait plus si un chiffre a bougé parce que le code
+ * a changé ou parce que le dé est retombé ailleurs.
+ *
+ * Ils suivent le climat de Yaoundé : grande saison sèche de décembre à février,
+ * petite en juillet-août. L'eau y monte — arrosage, lessive, douches — et
+ * l'électricité suit la ventilation.
+ */
+const SAISON = {
+  water: [1.18, 1.2, 1.05, 0.92, 0.88, 0.9, 1.1, 1.15, 0.9, 0.85, 0.95, 1.15],
+  power: [1.1, 1.14, 1.08, 1.0, 0.95, 0.92, 1.05, 1.12, 1.0, 0.96, 0.98, 1.08],
+} as const
+
+/**
+ * `eauBase` et `elecBase` : la consommation de référence, EN DERNIER RECOURS.
+ *
+ * Elles ne servent qu'à A5 et C2, les deux unités sans relevé courant : sans
+ * second index, aucune consommation ne se dérive, et la rétro-génération n'a
+ * rien pour partir. Partout ailleurs les deux index la donnent — l'écrire à
+ * côté en ferait une seconde source, libre de les contredire.
+ */
+const RELEVES: {
+  unite: string
+  eauPrec: number
+  eau: number | null
+  elecPrec: number
+  elec: number | null
+  jours: number | null
+  eauBase?: number
+  elecBase?: number
+}[] = [
   { unite: 'A1', eauPrec: 342, eau: 358, elecPrec: 4120, elec: 4298, jours: 4 },
   { unite: 'A2', eauPrec: 289, eau: 301, elecPrec: 3540, elec: 3671, jours: 4 },
   { unite: 'A3', eauPrec: 415, eau: 436, elecPrec: 5210, elec: 5402, jours: 4 },
   { unite: 'A4', eauPrec: 502, eau: 529, elecPrec: 6180, elec: 6455, jours: 4 },
-  { unite: 'A5', eauPrec: 176, eau: null, elecPrec: 2140, elec: null, jours: null },
+  { unite: 'A5', eauPrec: 176, eau: null, elecPrec: 2140, elec: null, jours: null, eauBase: 10, elecBase: 120 },
   { unite: 'B1', eauPrec: 388, eau: 402, elecPrec: 4870, elec: 5033, jours: 5 },
   { unite: 'B2', eauPrec: 356, eau: 371, elecPrec: 4405, elec: 4560, jours: 5 },
   { unite: 'B3', eauPrec: 271, eau: 284, elecPrec: 3290, elec: 3418, jours: 5 },
   { unite: 'C1', eauPrec: 611, eau: 644, elecPrec: 7320, elec: 7640, jours: 6 },
-  { unite: 'C2', eauPrec: 334, eau: null, elecPrec: 4010, elec: null, jours: null },
+  { unite: 'C2', eauPrec: 334, eau: null, elecPrec: 4010, elec: null, jours: null, eauBase: 14, elecBase: 150 },
 ]
 
 /**
@@ -381,15 +423,36 @@ export async function semerParcDemonstration(
     })
   }
 
+  /**
+   * Les relevés, accumulés puis écrits EN UNE FOIS.
+   *
+   * Le semis n'en créait que deux par (unité, fluide) — le mois courant et son
+   * antérieur — et l'espace du locataire n'avait donc qu'un chiffre à montrer.
+   * Douze périodes répondent à sa seule vraie question quand sa facture
+   * double : « est-ce moi, une fuite, ou le mois d'août ? »
+   *
+   * Un `createMany` et non 260 `create` : ce semis tourne dans CHAQUE cas
+   * serveur qui demande `seedDemo`, et un aller-retour par ligne s'y paierait à
+   * chaque fois.
+   */
+  const lignesDeReleve: {
+    unitId: string
+    utility: 'water' | 'power'
+    periodStart: Date
+    indexValue: number
+    readAt: Date
+    capturedById: string
+  }[] = []
+
   for (const r of RELEVES) {
     const unitId = unites.get(r.unite)
     if (!unitId) continue
     // Une ligne par (unité, fluide, période) portant l'INDEX : la consommation
     // et l'index précédent s'en dérivent. Le client stockait un couple
     // `previous`/`current`, donc la copie d'une ligne qui devrait exister.
-    for (const [utility, precedent, valeur] of [
-      ['water', r.eauPrec, r.eau],
-      ['power', r.elecPrec, r.elec],
+    for (const [utility, precedent, valeur, base] of [
+      ['water', r.eauPrec, r.eau, r.eauBase],
+      ['power', r.elecPrec, r.elec, r.elecBase],
     ] as const) {
       /**
        * La période PRÉCÉDENTE est semée elle aussi.
@@ -399,29 +462,60 @@ export async function semerParcDemonstration(
        * semer rend la dérivation possible — et c'est tout l'intérêt d'un index
        * plutôt que d'un couple figé.
        */
-      await tx.meterReading.create({
-        data: {
-          unitId,
-          utility,
-          periodStart: periodePrecedente,
-          indexValue: precedent,
-          readAt: moins(30, aujourdhui),
-          capturedById: proprietaireId,
-        },
+      lignesDeReleve.push({
+        unitId,
+        utility,
+        periodStart: periodePrecedente,
+        indexValue: precedent,
+        readAt: moins(30, aujourdhui),
+        capturedById: proprietaireId,
       })
-      if (valeur === null) continue
-      await tx.meterReading.create({
-        data: {
+      if (valeur !== null) {
+        lignesDeReleve.push({
           unitId,
           utility,
           periodStart: periode,
           indexValue: valeur,
           readAt: moins(r.jours ?? 0, aujourdhui),
           capturedById: proprietaireId,
-        },
-      })
+        })
+      }
+
+      /**
+       * L'historique est RÉTRO-GÉNÉRÉ depuis l'index le plus ancien connu.
+       *
+       * En descendant plutôt qu'en montant, les deux index de tête — ceux que
+       * les écrans du gestionnaire affichent et que ses cas de test lisent — ne
+       * bougent pas d'un chiffre. Ajouter douze périodes ne réécrit donc aucune
+       * attente existante.
+       */
+      const consoDeReference = valeur !== null ? valeur - precedent : (base ?? 0)
+      let index = precedent
+      let quand = periodePrecedente
+      for (let recul = 1; recul <= PROFONDEUR_HISTORIQUE - 1; recul += 1) {
+        // Le facteur du mois qu'on QUITTE, et non de celui où l'on arrive :
+        // dans l'autre sens toute la saisonnalité glisse d'un cran, et la
+        // pointe de saison sèche tomberait en mars.
+        const facteur = SAISON[utility][quand.getMonth()]!
+        index -= Math.round(consoDeReference * facteur)
+        // Un index négatif serait un compteur qui tourne à l'envers. On
+        // s'arrête : une série courte est honnête, une série absurde ne l'est
+        // pas.
+        if (index <= 0) break
+        quand = new Date(quand.getFullYear(), quand.getMonth() - 1, 1)
+        lignesDeReleve.push({
+          unitId,
+          utility,
+          periodStart: quand,
+          indexValue: index,
+          readAt: moins(30 * (recul + 1), aujourdhui),
+          capturedById: proprietaireId,
+        })
+      }
     }
   }
+
+  await tx.meterReading.createMany({ data: lignesDeReleve })
 
   for (const e of ETATS_DES_LIEUX) {
     const unitId = unites.get(e.unite)

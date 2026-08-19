@@ -1202,6 +1202,163 @@ describe('réserves des états des lieux', () => {
   })
 })
 
+/**
+ * L'historique des relevés de compteur.
+ *
+ * Le portefeuille LISAIT déjà toutes les périodes — aucun `take` sur
+ * `meterReading.findMany` — puis n'en projetait que deux points avant de jeter
+ * le reste. L'espace du locataire n'avait donc qu'un chiffre à montrer, quand
+ * sa seule question est de savoir à quoi le comparer.
+ */
+describe('historique des relevés', () => {
+  let parkId: string
+  let proprio: string
+
+  interface RelevéApi {
+    unitId: string
+    utility: 'water' | 'power'
+    periodStart: string
+    indexValue: number
+  }
+
+  beforeEach(async () => {
+    const p = await inscrire('proprio@example.com', {
+      parkName: 'Parc Bonamoussadi',
+      countryCode: 'CM',
+      seedDemo: true,
+    })
+    proprio = p.cookie
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio)
+    parkId = parcs.body.parks[0].id
+  })
+
+  const pf = (c: string) => request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', c)
+
+  /** Regroupe l'historique par (unité, fluide), du plus ancien au plus récent. */
+  function parCouple(historique: RelevéApi[]) {
+    const groupes = new Map<string, RelevéApi[]>()
+    for (const r of historique) {
+      const cle = `${r.unitId}|${r.utility}`
+      groupes.set(cle, [...(groupes.get(cle) ?? []), r])
+    }
+    for (const serie of groupes.values())
+      serie.sort((a, b) => +new Date(a.periodStart) - +new Date(b.periodStart))
+    return groupes
+  }
+
+  it('rend plus de DEUX périodes par unité et par fluide', async () => {
+    const res = await pf(proprio)
+    const groupes = parCouple(res.body.readingHistory)
+    expect(groupes.size).toBeGreaterThan(0)
+
+    for (const [cle, serie] of groupes) {
+      // Deux, c'est ce que le semis créait : le mois courant et son antérieur.
+      expect(serie.length, cle).toBeGreaterThan(2)
+      /**
+       * Un index qui RECULE prouverait qu'on rend autre chose — des
+       * consommations prises pour des index, ou deux unités mélangées. Un
+       * compteur ne tourne pas à l'envers.
+       */
+      for (let i = 1; i < serie.length; i += 1)
+        expect(serie[i]!.indexValue, `${cle} @ ${serie[i]!.periodStart}`).toBeGreaterThan(
+          serie[i - 1]!.indexValue,
+        )
+    }
+  })
+
+  /**
+   * L'historique et `readings` projettent le MÊME tableau.
+   *
+   * Ce ne sont pas deux sources : l'une garde la période courante et son
+   * antérieur, l'autre rend tout, dans la même réponse et au même instant. Si
+   * les deux divergeaient, le locataire lirait un chiffre sur sa carte du mois
+   * et un autre sur la dernière barre de sa série.
+   */
+  it('reste d’accord avec la période courante de `readings`', async () => {
+    const res = await pf(proprio)
+    const groupes = parCouple(res.body.readingHistory)
+
+    const courants = (res.body.readings as { unitId: string; utility: string; indexValue: number | null }[])
+      .filter((r) => r.indexValue !== null)
+    expect(courants.length).toBeGreaterThan(0)
+
+    for (const courant of courants) {
+      const serie = groupes.get(`${courant.unitId}|${courant.utility}`)!
+      expect(serie.at(-1)!.indexValue, `${courant.unitId}|${courant.utility}`).toBe(courant.indexValue)
+    }
+  })
+
+  /**
+   * Les relevés du locataire PARTI s'arrêtent à la fin de son bail.
+   *
+   * Le filtre de la requête porte sur l'UNITÉ, et `unitesVisibles` retient son
+   * logement après son départ — voulu, il garde ses quittances. Mais un index
+   * postérieur à sa sortie est la consommation de son SUCCESSEUR : douze
+   * périodes en feraient un profil de vie, absences comprises.
+   */
+  it('borne les relevés du locataire parti à la fin de son bail', async () => {
+    const locataire = await inscrire('charles@example.com')
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'charles@example.com' },
+    })
+    await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'tenant' } })
+    await prisma.tenant.updateMany({
+      where: { parkId, fullName: 'Charles Ngassa' },
+      data: { userId: compte.id },
+    })
+
+    // Il part au 1er du mois d'il y a deux mois ; le successeur entre le jour
+    // même. Deux mois de relevés lui sont donc postérieurs.
+    const maintenant = new Date()
+    const depart = new Date(Date.UTC(maintenant.getUTCFullYear(), maintenant.getUTCMonth() - 2, 1))
+    const ancien = await prisma.lease.findFirstOrThrow({
+      where: { tenant: { userId: compte.id } },
+      select: { id: true, unitId: true },
+    })
+    await prisma.lease.update({
+      where: { id: ancien.id },
+      data: { status: 'ended', endsOn: depart },
+    })
+    const suivant = await prisma.tenant.create({ data: { parkId, fullName: 'Locataire suivant' } })
+    await prisma.lease.create({
+      data: {
+        unitId: ancien.unitId,
+        tenantId: suivant.id,
+        startsOn: depart,
+        rentMinor: 145000,
+        status: 'active',
+      },
+    })
+
+    // Le BAILLEUR voit des relevés postérieurs au départ — sans quoi ce cas ne
+    // prouverait rien : borner une série qui s'arrête déjà est gratuit.
+    const vueProprio = await pf(proprio)
+    const surLUnite = (vueProprio.body.readingHistory as RelevéApi[]).filter(
+      (r) => r.unitId === ancien.unitId,
+    )
+    const apresLeDepart = surLUnite.filter((r) => new Date(r.periodStart) > depart)
+    expect(apresLeDepart.length).toBeGreaterThan(0)
+
+    const vue = await pf(locataire.cookie)
+    const sien = vue.body.readingHistory as RelevéApi[]
+    expect(sien.length).toBeGreaterThan(0)
+    expect(sien.every((r) => new Date(r.periodStart) <= depart)).toBe(true)
+
+    /**
+     * `readings` est bornée par la MÊME garde.
+     *
+     * C'est la moitié qu'on oublie : borner la série et laisser la période
+     * courante rendre l'index du successeur ferait fuir par la porte à côté —
+     * un seul index, mais le sien.
+     */
+    const indexDuSuccesseur = new Set(apresLeDepart.map((r) => r.indexValue))
+    const courants = vue.body.readings as { indexValue: number | null }[]
+    expect(courants.every((r) => r.indexValue === null || !indexDuSuccesseur.has(r.indexValue))).toBe(
+      true,
+    )
+  })
+})
+
 describe('saisie des immeubles', () => {
   /**
    * La première pierre de la saisie.

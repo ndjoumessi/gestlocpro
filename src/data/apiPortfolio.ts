@@ -4,6 +4,7 @@ import type {
   Alert,
   AlertData,
   AlertMessage,
+  ConsumptionPoint,
   Deposit,
   DocumentRequest,
   Occupation,
@@ -89,6 +90,19 @@ interface PortefeuilleApi {
     indexValue: number | null
     previousIndex: number | null
     readAt: string | null
+  }[]
+  /**
+   * Toutes les périodes relevées, en INDEX.
+   *
+   * Optionnel : un serveur antérieur à ce champ ne le rend pas, et l'espace du
+   * locataire n'affiche alors aucune série — plutôt que de casser.
+   */
+  readingHistory?: {
+    unitId: string
+    utility: 'water' | 'power'
+    /** ISO. */
+    periodStart: string
+    indexValue: number
   }[]
   inspections: {
     id: string
@@ -191,6 +205,13 @@ export interface ParcCharge {
   documentRequests: DocumentRequest[]
   /** L'occupation des logements, baux terminés compris. */
   leases: Occupation[]
+  /**
+   * La consommation par unité, du plus ANCIEN au plus récent.
+   *
+   * L'ordre fait partie du contrat : c'est celui des barres du graphique, et le
+   * trier à l'affichage supposerait que chaque appelant sache le refaire.
+   */
+  consumptionByUnit: Record<string, ConsumptionPoint[]>
 }
 
 /** Date ISO vers `DateParts`, dont le mois est indexé à zéro. */
@@ -333,6 +354,7 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
       rentMinor: b.rentMinor,
       status: b.status,
     })),
+    consumptionByUnit: consommations(data.readingHistory ?? []),
     documentRequests: (data.documentRequests ?? []).map((d) => ({
       id: d.id,
       unitId: d.unitId,
@@ -368,6 +390,82 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
       return parBail
     })(),
   }
+}
+
+/**
+ * La consommation par unité et par période, DÉRIVÉE des index.
+ *
+ * Le serveur rend ce que le compteur porte — un index — et la consommation
+ * d'une période est la différence avec l'index de la période précédente. Ce
+ * sens-là seulement se dérive : d'une suite de consommations on ne remonte pas
+ * aux index, et une période manquante y ferait passer deux mois pour un.
+ *
+ * Trois pièges habitent cette fonction, et le jeu de démonstration n'en révèle
+ * aucun — d'où ces commentaires plutôt qu'une confiance dans les cas de test.
+ */
+export function consommations(
+  historique: { unitId: string; utility: 'water' | 'power'; periodStart: string; indexValue: number }[],
+): Record<string, ConsumptionPoint[]> {
+  const parUnite = new Map<string, Map<string, ConsumptionPoint>>()
+  const index = new Map<string, number>()
+
+  for (const r of historique) {
+    /**
+     * PIÈGE 1 — `jourCalendaire`, jamais `new Date(iso).getMonth()`.
+     *
+     * `periodStart` est une colonne `@db.Date` sérialisée à minuit UTC. En
+     * fuseau négatif, `getMonth()` recule d'un jour et donc parfois d'un mois :
+     * toute la série glisserait d'un cran. Et `vitest.config.ts` force
+     * `TZ: 'UTC'` — pour que les formats d'`Intl` soient stables —, fuseau où
+     * la version fautive donne exactement le même résultat. Aucun cas ne peut
+     * attraper ce défaut ; seule sa disparition le prévient.
+     */
+    const { year, month } = jourCalendaire(r.periodStart)
+    const clePeriode = `${year}-${month}`
+    index.set(`${r.unitId}|${r.utility}|${clePeriode}`, r.indexValue)
+    const periodes = parUnite.get(r.unitId) ?? new Map<string, ConsumptionPoint>()
+    if (!periodes.has(clePeriode)) periodes.set(clePeriode, { year, month, water: null, power: null })
+    parUnite.set(r.unitId, periodes)
+  }
+
+  const resultat: Record<string, ConsumptionPoint[]> = {}
+  for (const [unitId, periodes] of parUnite) {
+    const points = [...periodes.values()].sort((a, b) => a.year - b.year || a.month - b.month)
+    for (const point of points) {
+      /**
+       * PIÈGE 2 — le mois précédent DU CALENDRIER, et non le point précédent
+       * de la liste.
+       *
+       * C'est ce qui distingue un trou d'une série courte. Si février manque et
+       * qu'on prend « le point d'avant », janvier devient l'antérieur de mars :
+       * deux mois de consommation s'inscrivent sur une seule barre, et mars
+       * paraît anormal alors qu'il ne l'est pas.
+       */
+      const avant =
+        point.month === 0
+          ? { year: point.year - 1, month: 11 }
+          : { year: point.year, month: point.month - 1 }
+
+      for (const fluide of ['water', 'power'] as const) {
+        const courant = index.get(`${unitId}|${fluide}|${point.year}-${point.month}`)
+        const anterieur = index.get(`${unitId}|${fluide}|${avant.year}-${avant.month}`)
+        // L'un des deux manque : rien n'est dérivable, et `null` le dit. Un
+        // repli sur `courant` afficherait l'index brut — 250 m³ en une barre.
+        if (courant === undefined || anterieur === undefined) continue
+        /**
+         * PIÈGE 3 — un compteur ne tourne pas à l'envers.
+         *
+         * Un index qui recule est un remplacement de compteur, une reprise de
+         * saisie ou une faute de frappe. La différence serait négative, la
+         * barre partirait sous l'axe, et le locataire lirait une consommation
+         * qui n'existe pas. On ne sait pas : `null`.
+         */
+        point[fluide] = courant >= anterieur ? courant - anterieur : null
+      }
+    }
+    resultat[unitId] = points
+  }
+  return resultat
 }
 
 /**

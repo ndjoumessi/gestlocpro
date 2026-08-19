@@ -96,7 +96,7 @@ describe('mon espace — le mois en cours', () => {
 describe('mon espace — paiements par période', () => {
   it('range les montants dans un vrai tableau, en-têtes compris', async () => {
     await ouvrir()
-    const table = screen.getByRole('table')
+    const table = screen.getByRole('table', { name: 'Mes paiements par période' })
     const colonnes = within(table)
       .getAllByRole('columnheader')
       .map((th) => th.textContent?.trim())
@@ -117,7 +117,9 @@ describe('mon espace — paiements par période', () => {
     await ouvrir()
     // Mai 2026 (`month: 4`, indexé à zéro) : 142 kWh × 99 = 14 058 dus,
     // 9 000 réglés, reste 5 058.
-    expect(screen.getByRole('table')).toHaveTextContent('reste 5 058')
+    expect(screen.getByRole('table', { name: 'Mes paiements par période' })).toHaveTextContent(
+      'reste 5 058',
+    )
   })
 
   /**
