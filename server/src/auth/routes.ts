@@ -144,6 +144,22 @@ function vueCompte(u: {
  */
 class CodeDejaConsomme extends Error {}
 
+/**
+ * L'adresse était déjà prise.
+ *
+ * Une sentinelle plutôt qu'un `catch` sur toute la transaction. Le premier jet
+ * enveloppait l'ensemble et traduisait TOUT P2002 en `email_taken` : le jour où
+ * une contrainte d'unicité s'ajoute dans cette transaction — sur l'adhésion,
+ * sur une ligne du semis — le diagnostic aurait menti sans que rien ne le
+ * signale. Filtrer sur la colonne fautive n'était pas une option : sous
+ * l'adaptateur `pg`, Prisma 7 ne renseigne plus `meta.target` mais un
+ * `meta.driverAdapterError.cause.constraint.fields` propre à l'adaptateur, non
+ * typé et sujet à changer. On lève donc à l'endroit exact où l'on sait ce que
+ * l'échec veut dire, et tout autre P2002 continue de remonter en 500 — ce qui
+ * est le comportement juste pour un défaut qu'on n'a pas prévu.
+ */
+class AdresseDejaPrise extends Error {}
+
 authRouter.post('/signup', async (req: Request, res: Response) => {
   const donnees = schemaInscription.parse(req.body)
 
@@ -219,18 +235,28 @@ authRouter.post('/signup', async (req: Request, res: Response) => {
    */
   const compte = await prisma
     .$transaction(async (tx) => {
-      const cree = await tx.userAccount.create({
-        data: {
-          email: donnees.email,
-          passwordHash,
-          fullName: donnees.fullName,
-          phoneE164: donnees.phoneE164 ?? null,
-          countryCode: donnees.countryCode ?? null,
-          locale: donnees.locale,
-          termsAcceptedAt: new Date(),
-          newsletterOptIn: donnees.newsletterOptIn,
-        },
-      })
+      const cree = await tx.userAccount
+        .create({
+          data: {
+            email: donnees.email,
+            passwordHash,
+            fullName: donnees.fullName,
+            phoneE164: donnees.phoneE164 ?? null,
+            countryCode: donnees.countryCode ?? null,
+            locale: donnees.locale,
+            termsAcceptedAt: new Date(),
+            newsletterOptIn: donnees.newsletterOptIn,
+          },
+        })
+        .catch((err: unknown) => {
+          // P2002 ICI ne peut vouloir dire qu'une chose : l'unique contrainte
+          // d'unicité de la table porte sur l'adresse. La levée traverse la
+          // transaction et l'annule, ce qu'un `return null` n'aurait pas fait.
+          if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+            throw new AdresseDejaPrise()
+          }
+          throw err
+        })
 
       /**
        * Rejoindre un parc par invitation, exclusif de la création d'un parc. Le
@@ -291,9 +317,10 @@ authRouter.post('/signup', async (req: Request, res: Response) => {
       timeout: 20_000,
     })
     .catch((err: unknown) => {
-      // P2002 : violation d'unicité, donc e-mail déjà pris. On rend un code
-      // stable plutôt qu'un message : c'est au client de le traduire.
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') return null
+      // Seules les DEUX sentinelles sont traduites. Tout le reste remonte, et
+      // c'est voulu : un échec qu'on n'a pas nommé ne doit pas emprunter le
+      // message d'un échec qu'on connaît.
+      if (err instanceof AdresseDejaPrise) return null
       if (err instanceof CodeDejaConsomme) return err
       throw err
     })
