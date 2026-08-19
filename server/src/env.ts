@@ -36,6 +36,26 @@ const schema = z.object({
   PORT: z.coerce.number().int().positive().default(3001),
   CLIENT_ORIGIN: z.string().url().default('http://localhost:5173'),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  /**
+   * Clé d'API Resend. FACULTATIVE, et c'est le cœur de la couture.
+   *
+   * Absente, le serveur n'envoie rien et le dit — c'est l'état dans lequel le
+   * produit a vécu depuis le début. La rendre obligatoire ferait échouer le
+   * démarrage sur une machine de développement pour une fonction dont on n'a
+   * pas besoin en développement, et l'habitude qu'on prendrait alors — poser
+   * une fausse valeur pour démarrer — donnerait un serveur qui croit pouvoir
+   * envoyer.
+   */
+  RESEND_API_KEY: z.string().min(1).optional(),
+  /**
+   * Expéditeur des courriels.
+   *
+   * Le défaut est le domaine bac à sable de Resend, qui n'accepte que l'adresse
+   * du titulaire du compte en destinataire : de quoi éprouver le circuit, pas
+   * de quoi servir un locataire. Un domaine vérifié se pose ici sans toucher au
+   * code.
+   */
+  EMAIL_FROM: z.string().min(3).default('GestLocPro <onboarding@resend.dev>'),
 })
 
 function charger() {

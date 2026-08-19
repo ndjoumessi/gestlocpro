@@ -1,3 +1,6 @@
+import { env } from '../env.js'
+import { MessagerieResend } from './resend.js'
+
 /**
  * Envoi de messages courts, derrière une couture.
  *
@@ -84,7 +87,9 @@ export class MessagerieDeJournal implements Messagerie {
  * ligne change et rien d'autre — c'est la seule promesse que fait une couture,
  * et elle ne vaut que si personne ne contourne cette fonction.
  */
-let messagerie: Messagerie = new MessagerieDeJournal()
+let messagerie: Messagerie = env.RESEND_API_KEY
+  ? new MessagerieResend(env.RESEND_API_KEY, env.EMAIL_FROM)
+  : new MessagerieDeJournal()
 
 export function laMessagerie(): Messagerie {
   return messagerie
