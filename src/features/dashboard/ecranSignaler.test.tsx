@@ -61,6 +61,19 @@ describe('écran Signaler', () => {
     expect(screen.getByRole('main').textContent).not.toMatch(/évier de la cuisine/i)
   })
 
+  /**
+   * Ce cas SURVIT à l'ouverture de la création au bailleur, et c'est délibéré.
+   *
+   * Le bailleur peut désormais ouvrir un chantier — mais depuis l'écran des
+   * TRAVAUX, sur un logement qu'il choisit. Pas depuis celui-ci. « Signaler »
+   * reste ce qu'il est : l'écran de qui habite et constate, adossé à ses
+   * propres signalements. Le bailleur ne constate pas une fuite chez quelqu'un
+   * d'autre, il la reçoit — et cette phrase-là n'a pas vieilli.
+   *
+   * Deux gestes, deux écrans, deux verbes. Les fondre aurait donné au bailleur
+   * un formulaire dont chaque mot s'adresse au locataire : « votre gestionnaire
+   * et votre bailleur le reçoivent immédiatement ».
+   */
   it('n’offre pas de déclarer au bailleur, qui reçoit au lieu de signaler', async () => {
     renderApp('/demo/signaler')
     await attendreLeChargement()

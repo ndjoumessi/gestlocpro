@@ -85,30 +85,54 @@ describe('les travaux, quand il n’y en a aucun', () => {
     renderApp('/app/travaux', { session: SESSION_PROPRIETAIRE })
 
     expect(await screen.findByText(/aucune intervention sur le parc/i)).toBeInTheDocument()
-    // Le corps nomme l'origine — un signalement de locataire — au lieu de
-    // paraphraser le titre.
-    expect(screen.getByText(/naît d’un signalement de locataire/i)).toBeInTheDocument()
+    // Le corps nomme les DEUX origines au lieu de paraphraser le titre. Il n'en
+    // nommait qu'une — « naît d'un signalement de locataire » — et cette phrase
+    // est devenue fausse le jour où le bailleur a pu en ouvrir une lui-même.
+    expect(screen.getByText(/vous ouvrez ce que vous décidez/i)).toBeInTheDocument()
     // Et surtout, plus le texte du locataire : le propriétaire n'a pas « son »
     // logement, il a un parc.
     expect(screen.queryByText(/sur votre logement/i)).not.toBeInTheDocument()
   })
 
-  it('n’offre au bailleur aucun bouton : rien ne crée une intervention ici', async () => {
+  /**
+   * Ce cas disait l'inverse, et il avait raison à sa date.
+   *
+   * Il s'intitulait « n'offre au bailleur aucun bouton : rien ne crée une
+   * intervention ici », et sa prémisse était exacte du point de vue de
+   * l'interface : aucun écran n'ouvrait d'intervention, un bouton aurait mené
+   * au vide. Il annonçait lui-même sa péremption — « il tombera le jour où
+   * quelqu'un croira bien faire en fabriquant l'action ».
+   *
+   * Il n'est pas tombé, et c'est ce qu'il faut retenir. Le geste construit
+   * s'appelle « Ouvrir un chantier », qui ne contient ni « ajouter », ni
+   * « nouveau », ni « créer » : l'assertion continuait de passer sur une
+   * prémisse morte. Un cas qui garde une FORMULATION plutôt qu'une intention
+   * ne se signale pas quand le monde change autour de lui — il faut aller le
+   * chercher.
+   *
+   * La prémisse elle-même n'était vraie qu'à moitié : la route serveur
+   * acceptait les trois rôles depuis l'origine. Le bouton n'aurait pas ouvert
+   * sur rien, il aurait ouvert sur une capacité que personne n'exposait.
+   *
+   * Ce qui SURVIT du garde est la moitié qui reste vraie — celle du locataire,
+   * juste en dessous.
+   */
+  it('offre le geste au bailleur, une fois la fonction construite', async () => {
     parcSansRien()
     renderApp('/app/travaux', { session: SESSION_PROPRIETAIRE })
 
     await screen.findByText(/aucune intervention sur le parc/i)
-    /**
-     * Le geste n'existe pas dans le produit : une intervention naît d'un
-     * signalement, jamais d'une saisie du bailleur. Un bouton « ajouter des
-     * travaux » remplirait le gabarit et ouvrirait sur rien — c'est le
-     * mensonge d'interface que ces écrans passent leur temps à retirer.
-     *
-     * Le cas garde donc son intérêt en négatif : il tombera le jour où
-     * quelqu'un croira bien faire en fabriquant l'action.
-     */
-    expect(screen.queryByRole('link', { name: /ajouter|nouveau|créer/i })).toBeNull()
-    expect(screen.queryByRole('button', { name: /ajouter|nouveau|créer/i })).toBeNull()
+    // Dans l'état vide ET dans l'en-tête : c'est précisément le parc où le
+    // bailleur cherche par où commencer.
+    expect(screen.getAllByRole('button', { name: /ouvrir un chantier/i }).length).toBeGreaterThan(0)
+  })
+
+  it('ne l’offre pas au locataire, qui signale mais n’ouvre pas', async () => {
+    parcSansRien()
+    renderApp('/app/travaux', { session: SESSION_LOCATAIRE })
+
+    await screen.findByText(/aucune intervention/i)
+    expect(screen.queryByRole('button', { name: /ouvrir un chantier/i })).toBeNull()
   })
 
   it('ramène le locataire là où ses données vivent', async () => {

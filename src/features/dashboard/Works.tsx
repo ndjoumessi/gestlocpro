@@ -17,6 +17,7 @@ import { montantEngage, type WorkOrder } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { workTitle } from '@/data/workTitle'
 import { ReportModal } from './ReportModal'
+import { OpenWorkModal } from './OpenWorkModal'
 import { Modal } from '@/components/primitives/Modal'
 import { Field } from '@/components/primitives/Field'
 import { Input } from '@/components/primitives/Input'
@@ -58,6 +59,7 @@ export function Works() {
     loading,
   } = usePortfolio()
   const [signalementOuvert, setSignalementOuvert] = useState(false)
+  const [chantierOuvert, setChantierOuvert] = useState(false)
   const [aChiffrer, setAChiffrer] = useState<WorkOrder | null>(null)
   const [montant, setMontant] = useState('')
   const [montantErreur, setMontantErreur] = useState(false)
@@ -131,23 +133,36 @@ export function Works() {
         description={t('app.works.subtitle')}
         actions={
           /*
-            Le geste du LOCATAIRE, et de lui seul sur cet écran.
+            DEUX gestes distincts, un par rôle — et le second est neuf.
 
-            Un commentaire de `etatsVides.test.tsx` affirmait le contraire :
-            « le geste n'existe pas dans le produit — une intervention naît d'un
-            signalement, jamais d'une saisie du bailleur ». La première moitié
-            était fausse par omission, la seconde était juste et le reste : le
-            bailleur ne déclare toujours pas, c'est le locataire qui signale.
+            Ce commentaire disait : « le bailleur ne déclare toujours pas, c'est
+            le locataire qui signale ». La prémisse était exacte à sa date et ne
+            l'est plus : la route serveur acceptait les trois rôles depuis
+            l'origine, seule l'interface refusait. Un bailleur qui remplaçait un
+            chauffe-eau avant la panne n'avait aucun endroit où l'enregistrer,
+            donc la dépense n'existait nulle part.
+
+            Les deux verbes sont différents à dessein. Le locataire SIGNALE ce
+            qu'il constate — il ne choisit ni le devis ni le corps de métier. Le
+            bailleur OUVRE ce qu'il décide, sur un logement qu'il choisit.
+            `origin` porte la distinction dans la donnée, ces deux boutons la
+            portent à l'écran.
 
             `mesUnites[0]` : un locataire d'un seul logement n'a rien à choisir.
             Le jour où il en occupera deux, il faudra le lui demander — et le
             serveur, lui, revérifie déjà que le logement est bien le sien.
           */
-          role === 'tenant' && mesUnites[0] ? (
-            <Button icon="bell" onClick={() => setSignalementOuvert(true)}>
-              {t('app.report.cta')}
+          isTenant ? (
+            mesUnites[0] ? (
+              <Button icon="bell" onClick={() => setSignalementOuvert(true)}>
+                {t('app.report.cta')}
+              </Button>
+            ) : undefined
+          ) : (
+            <Button icon="wrench" onClick={() => setChantierOuvert(true)}>
+              {t('app.works.openCta')}
             </Button>
-          ) : undefined
+          )
         }
       />
 
@@ -172,17 +187,20 @@ export function Works() {
         ensemble : le texte se dit au bon destinataire, et il explique ce qui
         apparaîtra là plutôt que de répéter qu'il n'y a rien.
 
-        Aucune action pour le gestionnaire ni le propriétaire : une
-        intervention NAÎT d'un signalement de locataire, aucun écran ne permet
-        d'en ouvrir une, et un bouton « ajouter des travaux » serait le
-        mensonge d'interface habituel. Le corps dit d'où elles viennent, ce qui
-        est l'information utile.
+        L'action du bailleur, elle, a été CONSTRUITE depuis.
+
+        Ce commentaire disait qu'aucune n'existait, et qu'un bouton « ajouter
+        des travaux » serait « le mensonge d'interface habituel ». C'était juste
+        tant que rien ne se passait derrière — la route serveur, elle, acceptait
+        déjà. Le geste ouvre désormais sur une capacité réelle, et le corps du
+        message change avec lui : il ne peut plus dire qu'une intervention naît
+        d'un signalement, puisque la moitié des siennes naîtront d'une décision.
       */}
       {visible.length === 0 ? (
         <EmptyState
           icon="wrench"
           title={isTenant ? t('app.tenant.worksEmpty') : t('app.works.emptyTitle')}
-          body={isTenant ? t('app.tenant.worksEmptyBody') : t('app.works.emptyBody')}
+          body={isTenant ? t('app.tenant.worksEmptyBody') : t('app.works.emptyBodyOwner')}
           // Le locataire, lui, est sur une impasse : rien à faire ici, et ses
           // données sont ailleurs. On le ramène là où elles sont — c'est le
           // même geste que `TenantRestricted`, et il existe vraiment.
@@ -191,7 +209,14 @@ export function Works() {
               <Button to={base} icon="chevronLeft">
                 {t('app.tenant.backToSpace')}
               </Button>
-            ) : undefined
+            ) : (
+              /* Le même geste que l'en-tête, à l'endroit où il manque le plus :
+                 un parc sans aucune intervention est exactement celui où le
+                 bailleur cherche par où commencer. */
+              <Button icon="wrench" onClick={() => setChantierOuvert(true)}>
+                {t('app.works.openCta')}
+              </Button>
+            )
           }
         />
       ) : (
@@ -417,6 +442,19 @@ export function Works() {
           open={signalementOuvert}
           onClose={() => setSignalementOuvert(false)}
           unitId={mesUnites[0].id}
+        />
+      )}
+
+      {/* Le bailleur choisit son logement dans TOUT le parc : c'est la seule
+          différence de forme entre les deux modales, et c'est celle qui
+          interdisait de partager `ReportModal`, dont l'unité arrive toute faite
+          en prop. `units` et non `visible` : on ouvre un chantier sur un
+          logement, pas sur une intervention. */}
+      {!isTenant && units.length > 0 && (
+        <OpenWorkModal
+          open={chantierOuvert}
+          onClose={() => setChantierOuvert(false)}
+          unitIds={units.map((u) => ({ id: u.id, label: u.label }))}
         />
       )}
     </>

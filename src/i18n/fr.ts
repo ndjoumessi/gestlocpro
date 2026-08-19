@@ -911,6 +911,28 @@ export const fr = {
       amountQuoted: 'Devis',
       amountApproved: 'Engagé',
       amountWasQuoted: 'devisé {amount}',
+      /**
+       * Le bailleur OUVRE un chantier — il ne le signale pas.
+       *
+       * Le vocabulaire de `app.report` est entièrement tourné vers le
+       * locataire : « votre gestionnaire et votre bailleur le reçoivent
+       * immédiatement », « le devis et le corps de métier, ce n'est pas à vous
+       * de les fixer ». Servi au bailleur lui-même, il ne veut plus rien dire.
+       * Deux gestes, deux verbes, deux jeux de mots.
+       */
+      openCta: 'Ouvrir un chantier',
+      openTitle: 'Ouvrir un chantier',
+      openBody: 'Une intervention que vous décidez, sans qu’un locataire l’ait signalée. Elle apparaîtra dans la liste comme les autres, et se chiffre ensuite.',
+      openUnit: 'Sur quel logement ?',
+      openWhat: 'De quoi s’agit-il ?',
+      openWhatHint: 'Une phrase suffit. Le devis vient après.',
+      openWhatPlaceholder: 'Ravalement de la façade côté cour',
+      openSubmit: 'Ouvrir le chantier',
+      openedToast: 'Chantier ouvert · il attend son devis',
+      /* L'état vide s'adresse au bailleur, à qui le geste est désormais
+         offert. La phrase disait « une intervention naît d'un signalement de
+         locataire » : c'était vrai, ça ne l'est plus. */
+      emptyBodyOwner: 'Un locataire signale ce qu’il constate, et vous ouvrez ce que vous décidez. Les deux se rejoignent ici.',
       approve: 'Valider le devis',
       complete: 'Marquer terminé',
       completed_toast: 'Intervention close · elle sort des travaux à faire',

@@ -321,6 +321,22 @@ export type UrgencyKey = 'blocking' | 'normal' | 'low'
 export type TradeKey = 'plumbing' | 'power' | 'painting' | 'multi' | 'lock' | 'other'
 
 /**
+ * TOUS les corps de métier, dans l'ordre où on les propose au bailleur.
+ *
+ * `TRADES_REPORTABLE` en est le sous-ensemble ordonné qu'un LOCATAIRE peut
+ * déclarer — il en exclut `multi`, et son commentaire dit pourquoi :
+ * « multi-corps qualifie un chantier que le bailleur arbitre, jamais un
+ * problème que le locataire constate ». C'est donc précisément la valeur qui
+ * manque ici, et elle vient en tête : un bailleur qui ouvre un chantier de sa
+ * propre initiative ouvre le plus souvent celui-là.
+ *
+ * Deux listes et non une avec un filtre, parce que l'ORDRE diffère autant que
+ * le contenu — et une liste dérivée par `filter` figerait celui du locataire
+ * pour les deux.
+ */
+export const TRADES: readonly TradeKey[] = ['multi', 'plumbing', 'power', 'painting', 'lock', 'other']
+
+/**
  * Intitulés des signalements du jeu de démonstration.
  *
  * **Ce n'est pas une exception à la règle sur la saisie utilisateur, c'est une
