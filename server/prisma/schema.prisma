@@ -58,6 +58,19 @@
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
+  // Les imports du client généré portent leur EXTENSION.
+  //
+  // Sans elle, le générateur écrit `from './enums'` : TypeScript l'accepte,
+  // `tsc` le recopie tel quel dans `dist/`, et Node le refuse au démarrage —
+  // « Cannot find module .../generated/prisma/enums ». Le fichier est pourtant
+  // là, à l'extension près : la résolution ESM de Node, elle, ne devine pas.
+  //
+  // Le défaut n'apparaît qu'en PRODUCTION. Vitest a son propre résolveur et
+  // avale l'import nu ; les deux portes du dépôt passaient donc au vert sur un
+  // serveur que Node refusait de charger. C'est ce qui a fait échouer le
+  // déploiement de la montée en version — le conteneur redémarrait en boucle
+  // pendant que `migrate deploy` s'exécutait correctement juste avant.
+  importFileExtension = "js"
 }
 
 // L'URL a quitté ce fichier : Prisma 7 la refuse ici. Elle vit dans
