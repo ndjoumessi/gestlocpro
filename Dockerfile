@@ -38,6 +38,16 @@ RUN npm run build \
 # `env.ts` refuse de démarrer en production avec le secret d'exemple : la valeur
 # vient des variables du service, jamais de l'image.
 ENV NODE_ENV=production
+# L'encart « Update available 6.19.3 → 7.9.1 » que Prisma écrit à chaque
+# démarrage part sur STDERR, et Railway classe donc en `error` un message qui
+# n'en est pas un. Sur un service qui redémarre à chaque déploiement, c'est une
+# fausse erreur permanente dans les journaux — exactement le bruit qui fait
+# qu'on cesse de les lire, et on vient de passer une nuit à en avoir besoin.
+#
+# La montée en version majeure reste à faire ; c'est un chantier en soi, et
+# taire l'encart ne le repousse pas — il n'a jamais été un rappel utile puisque
+# personne ne lit les journaux d'un démarrage réussi.
+ENV PRISMA_HIDE_UPDATE_MESSAGE=1
 
 # `start` applique les migrations avant d'écouter. L'ordre importe : servir une
 # base au schéma périmé rend des erreurs de colonne inconnue, plus difficiles à

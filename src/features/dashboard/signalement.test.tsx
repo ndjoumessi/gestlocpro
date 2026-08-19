@@ -80,6 +80,30 @@ describe('signalement par le locataire', () => {
     expect(within(modale).getByRole('combobox')).toBeInTheDocument()
   })
 
+  /**
+   * Deux questions voisines ne portent pas le même libellé.
+   *
+   * Le champ de titre demandait « De quoi s'agit-il ? » et la légende des
+   * métiers, quinze pixels plus bas, demandait exactement la même chose : deux
+   * questions différentes sous le même mot, dans un formulaire qui tient sur un
+   * écran. C'est le défaut qu'un lot précédent venait de corriger sur « Devis
+   * proposé » — le libellé du statut réutilisé pour la nature d'un montant — et
+   * qui a été reproduit à l'identique ici.
+   *
+   * Aucun cas ne l'attrapait : ils visaient les VALEURS — « multi-corps », le
+   * sélecteur de logement — jamais les questions posées. Celui-ci compte les
+   * occurrences, ce qu'aucune assertion de présence ne sait faire.
+   */
+  it('ne pose pas deux fois la même question', async () => {
+    renderApp('/demo/travaux')
+    await attendreLeChargement()
+    await userEvent.click(screen.getByRole('button', { name: /ouvrir un chantier/i }))
+
+    const modale = dialogue()
+    expect(within(modale).getAllByText('De quoi s’agit-il ?')).toHaveLength(1)
+    expect(within(modale).getByText('Que faut-il faire ?')).toBeInTheDocument()
+  })
+
   it('est proposé au locataire', async () => {
     const { switchRole } = await import('@/test/render')
     renderApp('/demo/travaux')
