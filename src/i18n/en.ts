@@ -184,8 +184,6 @@ export const en: Dictionary = {
       sentBody:
         'If an account exists for {email}, a reset link is on its way. Remember to check your spam folder.',
       resend: 'Send it again',
-      demoLinkNotice:
-        'Email sending is not wired up yet. Here is the link it will contain.',
     },
 
     reset: {

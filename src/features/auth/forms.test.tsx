@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { renderApp, screen, userEvent } from '@/test/render'
+import { installerFauxServeur } from '@/test/api'
 
 /**
  * Comportement des formulaires.
@@ -65,6 +66,11 @@ describe('connexion', () => {
 
 describe('mot de passe oublié', () => {
   it('ne confirme jamais qu’un compte existe', async () => {
+    // La demande PART désormais : l'écran ne bascule qu'une fois le 202 reçu,
+    // là où un `setTimeout` annonçait un envoi qui n'avait jamais lieu. Sans
+    // ce faux serveur, ce cas éprouverait l'échec de transport au lieu du
+    // message qu'il vise.
+    installerFauxServeur().quand('POST', '/auth/forgot', { status: 202, body: { ok: true } })
     const user = userEvent.setup()
     renderApp('/mot-de-passe-oublie')
 

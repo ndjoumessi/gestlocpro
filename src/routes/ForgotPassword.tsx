@@ -6,10 +6,13 @@ import { Field } from '@/components/primitives/Field'
 import { Input } from '@/components/primitives/Input'
 import { Icon } from '@/components/primitives/Icon'
 import { useT } from '@/i18n/I18nProvider'
-import { DEMO_RESET_TOKEN, validateEmail, type FieldError } from '@/features/auth/validation'
+import { validateEmail, type FieldError } from '@/features/auth/validation'
+import { api } from '@/api/client'
+import { useToast } from '@/components/primitives/Toast'
 
 export function ForgotPassword() {
   const t = useT()
+  const { notify } = useToast()
   const [email, setEmail] = useState('')
   const [error, setError] = useState<FieldError>(null)
   const [touched, setTouched] = useState(false)
@@ -24,10 +27,23 @@ export function ForgotPassword() {
     if (next) return
 
     setSubmitting(true)
-    window.setTimeout(() => {
-      setSubmitting(false)
-      setSent(true)
-    }, 700)
+    /**
+     * L'écran ne bascule QU'APRÈS que la demande est partie.
+     *
+     * Un `setTimeout` tenait ce rôle : il annonçait un envoi qui n'avait jamais
+     * lieu, et la mécanique qui aurait dû le suivre n'existait pas côté
+     * serveur. C'est le mensonge que ce lot retire.
+     *
+     * L'échec RÉSEAU se dit, et lui seul : le serveur rend le même 202 que
+     * l'adresse existe ou non, si bien qu'aucune réponse ne peut trahir un
+     * compte. Seule une requête qui ne part pas mérite d'être signalée, et elle
+     * ne renseigne sur personne.
+     */
+    void api
+      .forgotPassword(email)
+      .then(() => setSent(true))
+      .catch(() => notify(t('common.actionFailed'), { tone: 'danger' }))
+      .finally(() => setSubmitting(false))
   }
 
   const backLink = (
@@ -56,23 +72,6 @@ export function ForgotPassword() {
             {t('auth.forgot.resend')}
           </Button>
 
-          {/* Sans service d'envoi, le lien promis resterait inatteignable et le
-              parcours s'arrêterait ici. On l'expose donc explicitement comme
-              artefact de démonstration, plutôt que de laisser croire à un
-              e-mail parti quelque part. */}
-          <div className="rounded-md border border-gold-border bg-gold-tint px-3.5 py-3">
-            <p className="flex items-start gap-2 text-body-s text-gold-ink">
-              <Icon name="info" size={15} className="mt-0.5 shrink-0" />
-              {t('auth.forgot.demoLinkNotice')}
-            </p>
-            <Link
-              to={`/reinitialiser?jeton=${DEMO_RESET_TOKEN}`}
-              className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-caps font-semibold text-gold-ink underline underline-offset-2 hover:text-gold-ink-hover"
-            >
-              /reinitialiser?jeton={DEMO_RESET_TOKEN}
-              <Icon name="arrowRight" size={14} />
-            </Link>
-          </div>
         </div>
       </AuthLayout>
     )

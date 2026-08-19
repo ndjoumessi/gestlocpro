@@ -40,18 +40,25 @@ export function validatePasswordConfirmation(value: string, reference: string): 
 }
 
 /**
- * Jeton de réinitialisation.
+ * Jeton de réinitialisation : présent, et rien de plus.
  *
- * Sans serveur, la validité se réduit à la forme : seize caractères
- * hexadécimaux. Un jeton absent, tronqué ou raturé mène à l'écran « lien
- * expiré » plutôt qu'à un formulaire qui échouerait à l'envoi.
+ * Cette fonction jugeait la FORME — seize caractères hexadécimaux, celle du
+ * jeton figé de la démonstration, écrite quand aucun serveur n'existait. Le
+ * serveur en émet aujourd'hui de quarante-trois en base64url, majuscules et
+ * tirets compris : le filtre les rejetait tous, et l'écran « lien expiré »
+ * s'affichait sans qu'aucune requête ne parte. Le parcours entier était
+ * inatteignable, chaque côté ayant raison dans son coin.
+ *
+ * Le défaut n'était pas la valeur du motif mais son EXISTENCE ici : le client
+ * n'a pas à connaître la forme d'un objet que le serveur seul fabrique. Deux
+ * vérités sur la même chose, dont une ignorante, et c'est l'ignorante qui
+ * tranchait. Il ne reste donc qu'un contrôle de présence — assez pour éviter un
+ * appel vide quand l'adresse est saisie à la main, et la borne haute pour ne
+ * pas expédier une URL entière. La validité, elle, ne se sait qu'au serveur.
  */
 export function isValidResetToken(token: string | null): boolean {
-  return typeof token === 'string' && /^[0-9a-f]{16}$/.test(token)
+  return typeof token === 'string' && token.length >= 16 && token.length <= 200
 }
-
-/** Jeton de la démonstration, fixe pour que le parcours soit rejouable. */
-export const DEMO_RESET_TOKEN = 'a7f3c9e1b4d82056'
 
 /**
  * Longueur maximale d'un numéro en E.164 : quinze chiffres, INDICATIF COMPRIS.

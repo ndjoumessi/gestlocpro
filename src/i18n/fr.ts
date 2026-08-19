@@ -229,8 +229,6 @@ export const fr = {
       sentBody:
         'Si un compte existe pour {email}, un lien de réinitialisation vient d’y être envoyé. Pensez à regarder dans les indésirables.',
       resend: 'Renvoyer le lien',
-      demoLinkNotice:
-        'L’envoi d’e-mail n’est pas encore branché. Voici le lien qu’il contiendra.',
     },
 
     reset: {

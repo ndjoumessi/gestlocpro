@@ -6,6 +6,9 @@ import { Field } from '@/components/primitives/Field'
 import { PasswordInput, PasswordStrength } from '@/components/primitives/Input'
 import { Icon } from '@/components/primitives/Icon'
 import { useT } from '@/i18n/I18nProvider'
+import { api } from '@/api/client'
+import { ApiError } from '@/api/client'
+import { useToast } from '@/components/primitives/Toast'
 import {
   isValidResetToken,
   validatePassword,
@@ -27,8 +30,20 @@ import {
  */
 export function ResetPassword() {
   const t = useT()
+  const { notify } = useToast()
   const [params] = useSearchParams()
   const token = params.get('jeton')
+  /**
+   * Le refus vient du SERVEUR, et non plus d'une supposition sur la forme.
+   *
+   * L'écran jugeait lui-même la validité du jeton — seize caractères
+   * hexadécimaux — et se trompait sur tous ceux que le serveur émet. Il ne
+   * juge plus que la présence ; c'est la réponse à l'envoi qui bascule ici,
+   * vers le même écran « lien expiré » qu'un jeton absent. Un lien inconnu,
+   * périmé ou déjà servi rend le même refus, et l'écran ne cherche pas à en
+   * dire plus que le serveur n'en dit.
+   */
+  const [refuse, setRefuse] = useState(false)
 
   const [password, setPassword] = useState('')
   const [confirmation, setConfirmation] = useState('')
@@ -40,7 +55,7 @@ export function ResetPassword() {
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
 
-  if (!isValidResetToken(token)) {
+  if (!isValidResetToken(token) || refuse) {
     return (
       <AuthLayout title={t('auth.reset.invalidTitle')}>
         <div className="flex flex-col gap-6">
@@ -90,10 +105,19 @@ export function ResetPassword() {
     }
 
     setSubmitting(true)
-    window.setTimeout(() => {
-      setSubmitting(false)
-      setDone(true)
-    }, 700)
+    void api
+      .resetPassword(token!, password)
+      .then(() => setDone(true))
+      .catch((err: unknown) => {
+        // Le 400 est le seul refus MÉTIER de cette route : il dit que le lien
+        // ne vaut plus, et l'écran qui le porte existe déjà, avec le moyen d'en
+        // redemander un. Tout le reste est un incident de transport, qui ne
+        // doit pas faire croire à un lien mort — on le dit et on laisse le
+        // formulaire en place, avec le mot de passe déjà saisi.
+        if (err instanceof ApiError && err.status === 400) setRefuse(true)
+        else notify(t('common.actionFailed'), { tone: 'danger' })
+      })
+      .finally(() => setSubmitting(false))
   }
 
   return (

@@ -148,6 +148,23 @@ export const api = {
   logout: () => requete<void>('/auth/logout', { method: 'POST' }),
 
   /**
+   * Demande d'un lien de réinitialisation.
+   *
+   * Rend le même 202 que l'adresse existe ou non — la règle est portée par le
+   * serveur, et l'écran doit se garder de la contredire en affichant autre
+   * chose selon le cas. Il n'y a d'ailleurs rien à lire dans la réponse.
+   */
+  forgotPassword: (email: string) =>
+    requete<{ ok: true }>('/auth/forgot', { method: 'POST', body: JSON.stringify({ email }) }),
+
+  /**
+   * Réinitialisation proprement dite. Un jeton refusé — inconnu, périmé ou déjà
+   * servi — rend 400 `reset_invalid`, sans dire lequel des trois.
+   */
+  resetPassword: (token: string, password: string) =>
+    requete<void>('/auth/reset', { method: 'POST', body: JSON.stringify({ token, password }) }),
+
+  /**
    * Rejoint un parc avec un compte DÉJÀ créé.
    *
    * Le code ne se consommait qu'à l'inscription : un compte existant n'avait

@@ -1,8 +1,28 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { renderApp, screen, userEvent } from '@/test/render'
-import { DEMO_RESET_TOKEN } from '@/features/auth/validation'
+import { installerFauxServeur, type FauxServeur } from '@/test/api'
 
-const AVEC_JETON = `/reinitialiser?jeton=${DEMO_RESET_TOKEN}`
+/**
+ * Un jeton de la forme que le SERVEUR produit — `randomBytes(32)` en base64url,
+ * quarante-trois caractères, majuscules et tirets compris.
+ *
+ * Il valait auparavant `DEMO_RESET_TOKEN`, seize caractères hexadécimaux, et
+ * c'est ce qui a masqué le défaut : les cas client validaient une forme
+ * inventée, les cas serveur frappaient la route avec un vrai jeton, chacun
+ * était juste de son côté, et rien ne traversait la couture. Cet échantillon
+ * est copié d'une sortie réelle pour que le fichier de test échoue le jour où
+ * les deux côtés cesseraient de s'accorder.
+ */
+const JETON_DE_TEST = 'n8_JnTDL0lXhnNjlWVPjdGYs4Pl42h-m48bADguuBgE'
+const AVEC_JETON = `/reinitialiser?jeton=${JETON_DE_TEST}`
+
+let serveur: FauxServeur
+
+beforeEach(() => {
+  serveur = installerFauxServeur()
+  serveur.quand('POST', '/auth/reset', { status: 204 })
+  serveur.quand('POST', '/auth/forgot', { status: 202, body: { ok: true } })
+})
 
 /**
  * Réinitialisation du mot de passe.
@@ -17,7 +37,6 @@ describe('jeton de réinitialisation', () => {
     ['/reinitialiser', 'absent'],
     ['/reinitialiser?jeton=', 'vide'],
     ['/reinitialiser?jeton=court', 'trop court'],
-    ['/reinitialiser?jeton=ZZZZZZZZZZZZZZZZ', 'hors hexadécimal'],
   ])('%s → écran « lien expiré » (%s)', (route) => {
     renderApp(route)
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Ce lien n’est plus valable')
@@ -32,7 +51,7 @@ describe('jeton de réinitialisation', () => {
     )
   })
 
-  it('ouvre le formulaire avec un jeton bien formé', () => {
+  it('ouvre le formulaire pour un jeton de la forme que le serveur émet', () => {
     renderApp(AVEC_JETON)
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
       'Choisissez un nouveau mot de passe',
@@ -98,8 +117,41 @@ describe('formulaire de réinitialisation', () => {
   })
 })
 
-describe('continuité du parcours', () => {
-  it('le lien promis par l’e-mail mène bien au formulaire', async () => {
+describe('ce que le serveur décide', () => {
+  it('bascule sur « lien expiré » quand le serveur refuse le jeton', async () => {
+    // Inconnu, périmé ou déjà servi : le serveur rend le même 400, et l'écran
+    // n'en dit pas plus que lui. Le formulaire ne peut pas le savoir avant
+    // d'avoir demandé — c'est précisément pourquoi il ne juge plus la forme.
+    serveur.quand('POST', '/auth/reset', { status: 400, body: { error: 'reset_invalid' } })
+    const user = userEvent.setup()
+    renderApp(AVEC_JETON)
+
+    await user.type(screen.getByLabelText(/^Nouveau mot de passe/), 'Bonamoussadi2026!')
+    await user.type(screen.getByLabelText(/^Confirmez/), 'Bonamoussadi2026!')
+    await user.click(screen.getByRole('button', { name: /enregistrer le mot de passe/i }))
+
+    expect(await screen.findByRole('heading', { level: 1, name: /plus valable/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /demander un nouveau lien/i })).toBeInTheDocument()
+  })
+
+  it('envoie le jeton de l’URL et le mot de passe choisi', async () => {
+    const user = userEvent.setup()
+    renderApp(AVEC_JETON)
+
+    await user.type(screen.getByLabelText(/^Nouveau mot de passe/), 'Bonamoussadi2026!')
+    await user.type(screen.getByLabelText(/^Confirmez/), 'Bonamoussadi2026!')
+    await user.click(screen.getByRole('button', { name: /enregistrer le mot de passe/i }))
+    await screen.findByRole('heading', { level: 1, name: /Mot de passe modifié/ })
+
+    // Le jeton part TEL QUEL. Un écran qui le normaliserait — casse, troncature
+    // — casserait la seule chose que le serveur sait comparer.
+    const appel = serveur.appels.find((a) => a.chemin === '/auth/reset')
+    expect(appel?.corps).toEqual({ token: JETON_DE_TEST, password: 'Bonamoussadi2026!' })
+  })
+})
+
+describe('la demande de lien', () => {
+  it('part vraiment, et l’écran ne bascule qu’ensuite', async () => {
     const user = userEvent.setup()
     renderApp('/mot-de-passe-oublie')
 
@@ -107,12 +159,28 @@ describe('continuité du parcours', () => {
     await user.click(screen.getByRole('button', { name: /envoyer le lien/i }))
     await screen.findByRole('heading', { level: 1, name: /Vérifiez votre boîte mail/ })
 
-    // Sans service d'envoi, le lien est exposé comme artefact de démonstration :
-    // c'est ce qui rend le parcours parcourable de bout en bout.
-    await user.click(screen.getByRole('link', { name: /reinitialiser/i }))
+    // Un `setTimeout` tenait ce rôle : l'écran annonçait un envoi qui n'avait
+    // jamais lieu, faute de route pour le porter.
+    expect(serveur.appels.find((a) => a.chemin === '/auth/forgot')?.corps).toEqual({
+      email: 'sarah@example.com',
+    })
+  })
 
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      'Choisissez un nouveau mot de passe',
-    )
+  it('ne prétend rien quand la demande ne part pas', async () => {
+    serveur.quand('POST', '/auth/forgot', { status: 500, body: { error: 'internal_error' } })
+    const user = userEvent.setup()
+    renderApp('/mot-de-passe-oublie')
+
+    await user.type(screen.getByLabelText(/adresse e-mail/i), 'sarah@example.com')
+    await user.click(screen.getByRole('button', { name: /envoyer le lien/i }))
+
+    /**
+     * Seul l'échec de TRANSPORT se dit. Le serveur rend le même 202 que
+     * l'adresse existe ou non, si bien qu'aucune réponse normale ne peut
+     * trahir un compte — mais une requête qui ne part pas ne renseigne sur
+     * personne, et laisser croire à un envoi serait reprendre le mensonge.
+     */
+    expect(await screen.findByText(/Action impossible pour l’instant/)).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /Vérifiez votre boîte mail/ })).not.toBeInTheDocument()
   })
 })
