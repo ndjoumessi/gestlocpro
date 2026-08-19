@@ -495,7 +495,12 @@ describe('terrain et notifications', () => {
 
   it('rend les notifications en clé et paramètres, jamais en phrases', async () => {
     const res = await pf(proprio)
-    expect(res.body.notifications).toHaveLength(7)
+    // Dix : les sept d'origine, plus les TROIS relances du bail de Serge
+    // Mbarga. Le jeu n'en portait aucune, si bien que `rentReminder` — un
+    // gabarit pourtant présent dans les deux dictionnaires — ne s'affichait
+    // jamais pendant qu'on développe. C'est ainsi qu'il a pu partir en clé
+    // brute en production sans qu'aucun regard ne s'y pose.
+    expect(res.body.notifications).toHaveLength(10)
     const retard = res.body.notifications.find(
       (n: { messageKey: string }) => n.messageKey === 'rentOverdue',
     )
@@ -509,7 +514,11 @@ describe('terrain et notifications', () => {
     // Le client le tenait dans un `Set` de session, invisible de la barre
     // latérale : la pastille annonçait « 2 » même après tout avoir marqué lu.
     const res = await pf(proprio)
-    expect(res.body.notifications.filter((n: { read: boolean }) => !n.read)).toHaveLength(2)
+    // Trois depuis que la démonstration relance : le dernier rappel de Serge
+    // Mbarga est NON LU, les deux précédents le sont. C'est ce qu'un bailleur
+    // trouve en arrivant — le rappel qu'il vient d'envoyer, et l'historique
+    // qu'il a déjà consulté.
+    expect(res.body.notifications.filter((n: { read: boolean }) => !n.read)).toHaveLength(3)
   })
 
   it('borne le locataire sur ses seules unités, terrain compris', async () => {
@@ -2460,6 +2469,167 @@ describe('relance des loyers', () => {
 
     expect(res.status).toBe(200)
     expect(res.body.sent).toEqual([leaseId])
+  })
+})
+
+/**
+ * LE RANG D'UNE RELANCE, dérivé à la lecture.
+ *
+ * Le produit comptait déjà — la garde « déjà relancé aujourd'hui » lit ces
+ * mêmes lignes et les clefe sur `params.leaseId` — mais le compte ne sortait
+ * jamais : le bailleur voyait N cartes indistinctes et relançait une cinquième
+ * fois sans savoir qu'il en avait envoyé quatre.
+ *
+ * Dérivé et non stocké. Une colonne figée serait opposable quoi qu'il arrive
+ * aux voisines, mais elle coûterait une migration, un remplissage rétroactif et
+ * un index unique contre deux relances simultanées. Le rang dérivé vaut
+ * immédiatement pour les relances déjà en base. Ce qu'il coûte : une purge de
+ * rétention le renuméroterait — aucune n'existe, et la pièce qu'on oppose
+ * vraiment n'est pas la relance mais la mise en demeure.
+ */
+describe('rang des relances', () => {
+  let parkId: string
+  let proprio: string
+  let leaseId: string
+  let unitId: string
+
+  beforeEach(async () => {
+    const p = await inscrire('proprio@example.com', {
+      parkName: 'Parc Bonamoussadi',
+      countryCode: 'CM',
+      seedDemo: true,
+    })
+    proprio = p.cookie
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio)
+    parkId = parcs.body.parks[0].id
+    const bail = await prisma.lease.findFirstOrThrow({
+      where: { unit: { building: { parkId } } },
+      select: { id: true, unitId: true },
+    })
+    leaseId = bail.id
+    unitId = bail.unitId
+  })
+
+  const portefeuille = () =>
+    request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', proprio)
+
+  interface NotifApi {
+    id: string
+    messageKey: string
+    rank: number | null
+    channel: string
+    sentAt: string | null
+    params: { leaseId?: string }
+  }
+
+  /** Une relance posée directement, pour maîtriser les dates. */
+  async function poserRelance(bail: string, unite: string, joursEnArriere: number) {
+    return prisma.notification.create({
+      data: {
+        parkId,
+        kind: 'payment',
+        messageKey: 'rentReminder',
+        params: { leaseId: bail, tenant: 'X', count: 1, amount: 1000 },
+        severity: 'medium',
+        unitId: unite,
+        createdAt: new Date(Date.now() - joursEnArriere * 86_400_000),
+      },
+      select: { id: true },
+    })
+  }
+
+  it('numérote du plus ANCIEN au plus récent', async () => {
+    const premiere = await poserRelance(leaseId, unitId, 21)
+    const seconde = await poserRelance(leaseId, unitId, 14)
+    const troisieme = await poserRelance(leaseId, unitId, 7)
+
+    const vue = await portefeuille()
+    const parId = new Map<string, NotifApi>(
+      (vue.body.notifications as NotifApi[]).map((n) => [n.id, n]),
+    )
+    // L'ordre de la réponse est le plus récent d'abord — celui de l'écran. Le
+    // rang, lui, se compte dans l'autre sens : la première relance porte le n° 1.
+    expect(parId.get(premiere.id)!.rank).toBe(1)
+    expect(parId.get(seconde.id)!.rank).toBe(2)
+    expect(parId.get(troisieme.id)!.rank).toBe(3)
+  })
+
+  /**
+   * Le rang se compte par BAIL, jamais par unité.
+   *
+   * Deux locataires successifs dans le même logement ne partagent pas un
+   * compteur de relances : le nouvel arrivant recevrait « rappel n° 4 » à sa
+   * première relance, pour des impayés qui ne sont pas les siens. C'est la
+   * même règle que la garde quotidienne, qui a déjà été corrigée dans ce sens.
+   */
+  it('ne partage pas le compteur entre deux baux du même logement', async () => {
+    await poserRelance(leaseId, unitId, 21)
+    await poserRelance(leaseId, unitId, 14)
+
+    await prisma.lease.update({
+      where: { id: leaseId },
+      data: { status: 'ended', endsOn: new Date() },
+    })
+    const suivant = await prisma.tenant.create({ data: { parkId, fullName: 'Locataire suivant' } })
+    const bailSuivant = await prisma.lease.create({
+      data: { unitId, tenantId: suivant.id, startsOn: new Date(), rentMinor: 100000, status: 'active' },
+    })
+    const sienne = await poserRelance(bailSuivant.id, unitId, 1)
+
+    const vue = await portefeuille()
+    const notifs = vue.body.notifications as NotifApi[]
+    // Sa PREMIÈRE relance porte le n° 1, alors que le logement en a vu trois.
+    expect(notifs.find((n) => n.id === sienne.id)!.rank).toBe(1)
+  })
+
+  it('ne numérote pas ce qui n’est pas une relance', async () => {
+    const vue = await portefeuille()
+    const notifs = vue.body.notifications as NotifApi[]
+    const autres = notifs.filter((n) => n.messageKey !== 'rentReminder')
+    expect(autres.length).toBeGreaterThan(0)
+    for (const n of autres) expect(n.rank, n.messageKey).toBeNull()
+  })
+
+  /**
+   * Le CANAL et la date d'envoi, que la réponse jetait.
+   *
+   * Le schéma les porte depuis l'origine avec sa justification — « sans trace
+   * d'envoi, le produit relancerait deux fois le même locataire le même jour ».
+   * Le `select` de la lecture les omettait tous les deux, si bien que le
+   * bailleur ne pouvait pas distinguer un SMS parti d'une relance restée dans
+   * le produit.
+   */
+  it('rend le canal et la date d’envoi', async () => {
+    const vue = await portefeuille()
+    const notifs = vue.body.notifications as NotifApi[]
+    for (const n of notifs) expect(['in_app', 'email', 'sms']).toContain(n.channel)
+
+    const relances = notifs.filter((n) => n.messageKey === 'rentReminder')
+    expect(relances.length).toBeGreaterThan(0)
+    // Le jeu porte les DEUX cas : une relance partie, deux restées ici. Sans cet
+    // écart, l'écran ne pourrait pas montrer la différence.
+    expect(relances.some((n) => n.sentAt !== null)).toBe(true)
+    expect(relances.some((n) => n.sentAt === null)).toBe(true)
+  })
+
+  /**
+   * La démonstration relance, ce qu'elle ne faisait pas.
+   *
+   * Ni `rentReminder` ni `formalNotice` n'y figuraient : les deux gabarits
+   * existaient dans les deux dictionnaires et personne ne les voyait jamais
+   * pendant qu'on développe. C'est ainsi qu'ils ont pu s'afficher en clé brute
+   * en production sans qu'aucun regard ne s'y pose.
+   */
+  it('sème des relances rattachées à un bail', async () => {
+    const vue = await portefeuille()
+    const relances = (vue.body.notifications as NotifApi[]).filter(
+      (n) => n.messageKey === 'rentReminder',
+    )
+    expect(relances.length).toBeGreaterThanOrEqual(3)
+    // Rattachées à un BAIL : sans `params.leaseId`, ni la garde quotidienne ni
+    // le rang ne fonctionnent, et les deux resteraient inertes en démonstration.
+    for (const r of relances) expect(typeof r.params.leaseId).toBe('string')
+    expect(new Set(relances.map((r) => r.rank)).size).toBe(relances.length)
   })
 })
 

@@ -240,7 +240,28 @@ const ETATS_DES_LIEUX: {
  * plus une date au format numérique et un pluriel concaténé — le défaut se
  * répéterait ici si la base stockait du texte.
  */
-const NOTIFICATIONS: { kind: 'payment' | 'work' | 'meter' | 'lease'; messageKey: string; unite?: string; severity: 'high' | 'medium' | 'low'; lu: boolean; heures: number; params: Record<string, unknown> }[] = [
+/**
+ * Les notifications, RELANCES COMPRISES.
+ *
+ * Le jeu n'en portait aucune : ni `rentReminder`, ni `formalNotice`. Les deux
+ * gabarits existaient dans les deux dictionnaires, le serveur les écrivait sur
+ * un vrai parc — et personne ne les voyait jamais à l'écran pendant qu'on
+ * développe. C'est ainsi qu'ils ont pu s'afficher en clé brute en production
+ * sans qu'aucun regard ne s'y pose.
+ *
+ * TROIS relances sur le même bail — celui de Serge Mbarga, A3, le seul
+ * retardataire du parc — parce que c'est le rang qui donne son sens à ce
+ * journal. Une relance isolée ne montre pas qu'on en est au troisième rappel,
+ * et le défaut à prévenir est précisément là : un bailleur qui relance une
+ * quatrième fois sans savoir qu'il en a déjà envoyé trois.
+ *
+ * `canal` et `envoye` disent l'autre moitié : la première est partie par SMS,
+ * les deux suivantes sont restées dans le produit. Sans cet écart, l'écran ne
+ * pourrait pas montrer la différence entre « envoyé » et « posé ici », qui est
+ * exactement ce que le contrat de messagerie laisse arriver — le fournisseur
+ * de journal rend toujours `false`.
+ */
+const NOTIFICATIONS: { kind: 'payment' | 'work' | 'meter' | 'lease'; messageKey: string; unite?: string; severity: 'high' | 'medium' | 'low'; lu: boolean; heures: number; params: Record<string, unknown>; canal?: 'in_app' | 'sms'; envoye?: boolean }[] = [
   { kind: 'payment', messageKey: 'rentOverdue', unite: 'A3', severity: 'high', lu: false, heures: 2,
     params: { unitId: 'A3', tenant: 'Serge Mbarga', count: 24, on: { year: 2026, month: 7, day: 4 } } },
   { kind: 'work', messageKey: 'quotePending', unite: 'A3', severity: 'high', lu: false, heures: 5,
@@ -255,6 +276,15 @@ const NOTIFICATIONS: { kind: 'payment' | 'work' | 'meter' | 'lease'; messageKey:
     params: { workId: 'SIG-2026-004', unitId: 'A1', on: { year: 2026, month: 6, day: 28 } } },
   { kind: 'payment', messageKey: 'receiptAvailable', unite: 'A1', severity: 'low', lu: true, heures: 144,
     params: { unitId: 'A1', amount: 145000, period: { year: 2026, month: 7 } } },
+  /* Les trois rappels de Serge Mbarga, du plus RÉCENT au plus ancien comme le
+     reste du tableau — c'est l'ordre de l'écran. Le rang, lui, se dérive dans
+     l'autre sens : le plus ancien porte le n° 1. */
+  { kind: 'payment', messageKey: 'rentReminder', unite: 'A3', severity: 'high', lu: false, heures: 6,
+    params: { tenant: 'Serge Mbarga', count: 24, amount: 115000 }, canal: 'in_app' },
+  { kind: 'payment', messageKey: 'rentReminder', unite: 'A3', severity: 'high', lu: true, heures: 174,
+    params: { tenant: 'Serge Mbarga', count: 17, amount: 115000 }, canal: 'in_app' },
+  { kind: 'payment', messageKey: 'rentReminder', unite: 'A3', severity: 'medium', lu: true, heures: 318,
+    params: { tenant: 'Serge Mbarga', count: 11, amount: 115000 }, canal: 'sms', envoye: true },
 ]
 
 /** Décale une date d'un nombre de jours, sans toucher à l'original. */
@@ -595,14 +625,32 @@ export async function semerParcDemonstration(
 
   for (const n of NOTIFICATIONS) {
     const unitId = n.unite ? unites.get(n.unite) : undefined
+    /**
+     * Le BAIL est écrit dans les paramètres, comme la vraie route le fait.
+     *
+     * `Notification` n'a pas de colonne pour le porter — le rattachement se
+     * fait par convention dans `params.leaseId`, et c'est sur cette convention
+     * que reposent DEUX mécanismes : la garde « déjà relancé aujourd'hui » et
+     * le rang de la relance. Une démonstration qui ne l'écrirait pas laisserait
+     * les deux inertes, donc invisibles pendant qu'on développe.
+     */
+    const bailDeLUnite =
+      n.messageKey === 'rentReminder' && unitId
+        ? await tx.lease.findFirst({ where: { unitId }, select: { id: true } })
+        : null
     await tx.notification.create({
       data: {
         parkId,
         kind: n.kind,
         messageKey: n.messageKey,
-        params: n.params as object,
+        params: (bailDeLUnite ? { ...n.params, leaseId: bailDeLUnite.id } : n.params) as object,
         severity: n.severity,
         unitId: unitId ?? null,
+        ...(n.canal ? { channel: n.canal } : {}),
+        // La date d'envoi n'existe que si le message est PARTI. C'est la règle
+        // de la vraie route, et la démonstration ne montre pas ce que le
+        // produit ne fait pas.
+        ...(n.envoye ? { sentAt: new Date(aujourdhui.getTime() - n.heures * 3600_000) } : {}),
         recipients: {
           create: { userId: proprietaireId, readAt: n.lu ? moins(0, aujourdhui) : null },
         },

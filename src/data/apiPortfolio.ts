@@ -134,6 +134,10 @@ interface PortefeuilleApi {
     unitId: string | null
     createdAt: string
     read: boolean
+    /** Optionnels : un serveur antérieur à ces champs ne les rend pas. */
+    rank?: number | null
+    channel?: 'in_app' | 'email' | 'sms'
+    sentAt?: string | null
   }[]
   /** Optionnel, comme le reste de ce qui est arrivé après coup. */
   leases?: {
@@ -346,6 +350,12 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
       severity: n.severity,
       read: n.read,
       ...(n.unitId ? { unitId: n.unitId } : {}),
+      ...(n.rank != null ? { rank: n.rank } : {}),
+      ...(n.channel ? { channel: n.channel } : {}),
+      /* `jourCalendaire` et non `new Date()` : la date d'envoi est ce qu'on
+         oppose au locataire — « la relance est partie le 4 août ». En fuseau
+         négatif, `new Date()` la ramènerait au 3. */
+      sentAt: n.sentAt ? jourCalendaire(n.sentAt) : null,
     })),
     // Le serveur rend déjà la forme attendue : mois indexé à zéro et montants
     // entiers. Rien à convertir, ce qui est le signe que les deux modèles se

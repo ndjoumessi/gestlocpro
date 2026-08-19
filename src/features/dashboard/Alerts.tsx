@@ -11,6 +11,7 @@ import { cn } from '@/lib/cn'
 import { TenantScopeNote } from './TenantDashboard'
 import { useT, type TranslateVars } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
+import { Badge } from '@/components/primitives/Badge'
 import { useNumbers } from '@/lib/numbers'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { type Alert } from '@/data/portfolio'
@@ -85,6 +86,7 @@ function useAlertMessage() {
 export function Alerts() {
   const base = useBase()
   const t = useT()
+  const n = useNumbers()
   const d = useDates()
   const message = useAlertMessage()
   const { role } = useRole()
@@ -211,6 +213,22 @@ export function Alerts() {
                   >
                     {message(alert, 'title')}
                   </h2>
+                  {/*
+                    LE RANG, avant la sévérité.
+
+                    « Relance envoyée à Serge Mbarga » ne disait pas si c'était
+                    la première ou la quatrième. Les relances s'empilaient dans
+                    un flux plat où N rappels sur le même bail produisaient N
+                    cartes indistinctes, et le bailleur relançait une cinquième
+                    fois sans savoir qu'il en avait déjà envoyé quatre.
+
+                    Il se dérive à la lecture, par BAIL et non par unité : deux
+                    locataires successifs dans le même logement ne partagent pas
+                    un compteur de relances.
+                  */}
+                  {alert.rank != null && (
+                    <Badge tone="neutral">{t('app.alerts.rank', { n: n.integer(alert.rank) })}</Badge>
+                  )}
                   {/* La sévérité est nommée, pas seulement colorée. */}
                   <StatusPill tone={SEVERITY_TONE[alert.severity]} size="sm">
                     {t(
@@ -219,6 +237,29 @@ export function Alerts() {
                   </StatusPill>
                 </div>
                 <p className="mt-1 text-body-s text-muted">{message(alert, 'detail')}</p>
+                {/*
+                  EST-ELLE PARTIE ? Le serveur le sait, la réponse le taisait.
+
+                  `sentAt` n'est posé que si le fournisseur a confirmé l'envoi ;
+                  le fournisseur de journal, lui, rend toujours faux. Une
+                  relance peut donc porter `channel: 'sms'` SANS date d'envoi —
+                  ce n'est pas une contradiction, c'est une tentative non
+                  confirmée, et la distinction est celle que le bailleur doit
+                  lire avant de croire que son locataire a été prévenu.
+
+                  Rien ne s'affiche sur ce qui n'est pas une relance : une
+                  notification de relevé manquant n'est envoyée à personne.
+                */}
+                {alert.channel && (
+                  <p className="mt-1 text-caps text-muted">
+                    {alert.sentAt
+                      ? t('app.alerts.sentOn', {
+                          channel: t(`app.alerts.channel_${alert.channel}` as 'app.alerts.channel_sms'),
+                          date: d.dayMonth(alert.sentAt),
+                        })
+                      : t('app.alerts.notSent')}
+                  </p>
+                )}
               </div>
 
               <div className="flex shrink-0 items-center gap-3">

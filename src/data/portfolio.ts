@@ -708,6 +708,30 @@ export interface Alert {
   at: RelativeStamp
   severity: 'high' | 'medium' | 'low'
   read: boolean
+  /**
+   * Le RANG de la relance pour ce bail — « rappel n° 4 ».
+   *
+   * `undefined` sur tout ce qui n'est pas une relance, et sur un serveur qui ne
+   * le rend pas encore. Le numéro se dérive à la lecture côté serveur : il vaut
+   * immédiatement pour les relances déjà en base, mais il se renumérote si l'une
+   * d'elles disparaît. Aucune purge n'existe aujourd'hui ; le jour où il en
+   * arrivera une, il faudra le figer à l'écriture.
+   */
+  rank?: number | null
+  /**
+   * Par où le message est PARTI, et s'il est parti.
+   *
+   * Le schéma porte les deux depuis l'origine et la réponse les jetait : le
+   * bailleur ne pouvait pas distinguer une relance réellement expédiée d'une
+   * relance restée dans le produit. Sur un écran qui annonce « Relance envoyée
+   * à Serge Mbarga », c'est la seule chose qui compte — et la vitrine vend des
+   * SMS déclenchés à J+1, J+7, J+15.
+   *
+   * `sentAt` nul avec `channel: 'sms'` n'est pas une contradiction : c'est une
+   * tentative que le fournisseur n'a pas confirmée.
+   */
+  channel?: 'in_app' | 'email' | 'sms'
+  sentAt?: DateParts | null
   /** Unité concernée. Sert au filtrage par rôle. */
   unitId?: string
 }

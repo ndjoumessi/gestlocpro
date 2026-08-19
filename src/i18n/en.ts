@@ -857,6 +857,12 @@ export const en: Dictionary = {
       title: 'Reports and notifications',
       subtitle: 'What the product detected or received, newest first.',
       markRead: 'Mark all as read',
+      rank: 'Reminder no. {n}',
+      sentOn: 'Sent by {channel} on {date}',
+      notSent: 'Not sent yet · visible here only',
+      channel_in_app: 'the app',
+      channel_email: 'email',
+      channel_sms: 'SMS',
       allRead: 'All notifications are read.',
       empty: 'Nothing to report on the portfolio.',
       emptyBody:

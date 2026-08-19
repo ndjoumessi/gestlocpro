@@ -1078,6 +1078,23 @@ export const fr = {
       title: 'Signalements et notifications',
       subtitle: 'Ce que le produit a détecté ou reçu, du plus récent au plus ancien.',
       markRead: 'Tout marquer comme lu',
+      /**
+       * Le RANG d'une relance, et si elle est partie.
+       *
+       * « Relance envoyée à Serge Mbarga » ne disait ni la combientième c'était,
+       * ni si le message avait quitté le produit. Deux manques distincts : le
+       * premier fait relancer une cinquième fois sans le savoir, le second fait
+       * croire qu'un locataire a été prévenu alors que rien n'est parti.
+       */
+      rank: 'Rappel n° {n}',
+      sentOn: 'Parti par {channel} le {date}',
+      /* « Pas encore parti » et non le silence : une relance qui n'a pas quitté
+         le produit est une relance que le locataire n'a pas reçue, et c'est
+         précisément ce que le bailleur doit savoir avant de s'étonner. */
+      notSent: 'Pas encore parti · visible ici seulement',
+      channel_in_app: 'l’application',
+      channel_email: 'e-mail',
+      channel_sms: 'SMS',
       allRead: 'Toutes les notifications sont lues.',
       empty: 'Rien à signaler sur le parc.',
       emptyBody:

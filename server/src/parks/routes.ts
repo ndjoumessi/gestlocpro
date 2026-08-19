@@ -574,6 +574,23 @@ parksRouter.get(
           severity: true,
           unitId: true,
           createdAt: true,
+          /**
+           * Le CANAL et la date d'envoi, que la réponse jetait.
+           *
+           * Le schéma porte les deux depuis l'origine, avec sa justification :
+           * « sans trace d'envoi, le produit relancerait deux fois le même
+           * locataire le même jour ». La route de relance les écrit
+           * scrupuleusement — `sentAt` n'est posé QUE si le fournisseur a
+           * confirmé —, et le `select` de la lecture les omettait.
+           *
+           * Le bailleur ne pouvait donc pas distinguer une relance réellement
+           * partie par SMS d'une relance restée dans le produit. Sur un écran
+           * qui annonce « Relance envoyée à Serge Mbarga », c'est la seule
+           * chose qui compte : la vitrine vend « SMS et e-mail déclenchés à
+           * J+1, J+7, J+15 », et rien ne disait s'ils partaient.
+           */
+          channel: true,
+          sentAt: true,
           recipients: { where: { userId: req.compteId! }, select: { readAt: true } },
         },
       }),
@@ -702,6 +719,44 @@ parksRouter.get(
         },
       }),
     ])
+
+    /**
+     * LE RANG D'UNE RELANCE — « rappel n° 4 » plutôt qu'une relance de plus.
+     *
+     * Il se DÉRIVE, il ne se stocke pas. Une colonne figée à l'écriture serait
+     * opposable quoi qu'il arrive aux voisines, mais elle coûterait une
+     * migration, un remplissage rétroactif, et un index unique pour que deux
+     * relances simultanées sur le même bail ne prennent pas le même numéro. Le
+     * rang dérivé, lui, vaut immédiatement pour les relances déjà en base.
+     *
+     * Ce que la dérivation coûte, il faut le dire : si une purge de rétention
+     * supprimait une relance, « rappel n° 4 » deviendrait « n° 3 ». Deux
+     * raisons de l'accepter aujourd'hui — aucune purge n'existe, et la pièce
+     * qu'on oppose vraiment à un locataire n'est pas la relance mais la MISE EN
+     * DEMEURE, qui a son propre chemin et son propre journal d'audit. Le jour
+     * où une rétention arrivera, ou le jour où ce numéro figurera sur un
+     * document imprimé, il faudra le figer.
+     *
+     * Le rang se compte par BAIL et non par unité : deux locataires successifs
+     * dans le même logement ne partagent pas un compteur de relances. C'est la
+     * même règle que la garde quotidienne, qui a déjà été corrigée dans ce
+     * sens — `Notification` ne porte pas de `leaseId`, il vit dans `params`.
+     */
+    const rangDeRelance = (() => {
+      const rangs = new Map<string, number>()
+      const compteurs = new Map<string, number>()
+      /* Du plus ANCIEN au plus récent : la première relance porte le n° 1. La
+         requête, elle, rend l'ordre inverse — c'est celui de l'écran. */
+      for (const n of [...notifications].reverse()) {
+        if (n.messageKey !== CLE_RELANCE) continue
+        const bail = (n.params as { leaseId?: unknown } | null)?.leaseId
+        if (typeof bail !== 'string') continue
+        const suivant = (compteurs.get(bail) ?? 0) + 1
+        compteurs.set(bail, suivant)
+        rangs.set(n.id, suivant)
+      }
+      return rangs
+    })()
 
     /**
      * Les relevés que le locataire a le DROIT de lire — bornés à ses baux.
@@ -917,6 +972,14 @@ parksRouter.get(
         severity: n.severity,
         unitId: n.unitId,
         createdAt: n.createdAt,
+        channel: n.channel,
+        /**
+         * `null` quand le message n'est pas parti — et c'est une information,
+         * pas une absence. Une relance sans date d'envoi vit dans le produit et
+         * nulle part ailleurs : le locataire ne l'a pas reçue.
+         */
+        sentAt: n.sentAt,
+        rank: rangDeRelance.get(n.id) ?? null,
         // L'état « lu » appartient au couple destinataire × notification : le
         // client le tenait dans un `Set` de session, invisible de la barre
         // latérale — la pastille annonçait « 2 » même après tout avoir lu.
