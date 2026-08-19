@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from 'express'
 import { z } from 'zod'
-import { Prisma } from '@prisma/client'
+import { Prisma } from '../generated/prisma/client.js'
 import { prisma } from '../db.js'
 import { creerCode, expirationInvitation, normaliserCode } from './invitations.js'
 import { empreinteJeton } from '../auth/token.js'

@@ -2,12 +2,12 @@ import { Router, type Request, type Response } from 'express'
 import { z } from 'zod'
 import { empreinteJeton } from './token.js'
 import { normaliserCode } from '../parks/invitations.js'
-import { Prisma } from '@prisma/client'
+import { Prisma } from '../generated/prisma/client.js'
 import { prisma } from '../db.js'
 import { hashPassword, needsRehash, verifyPassword } from './password.js'
 import { fermerSession, lireSession, ouvrirSession } from './session.js'
 import { semerParcDemonstration } from '../parks/demo.js'
-import { Currency } from '@prisma/client'
+import { Currency } from '../generated/prisma/client.js'
 
 export const authRouter = Router()
 

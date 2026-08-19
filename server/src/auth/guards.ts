@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express'
-import type { ParkRole } from '@prisma/client'
+import type { ParkRole } from '../generated/prisma/client.js'
 import { prisma } from '../db.js'
 import { lireSession } from './session.js'
 

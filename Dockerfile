@@ -31,9 +31,18 @@ COPY . .
 
 # Le client se construit dans `dist/`, à la racine ; le serveur dans
 # `server/dist/`. `prisma generate` s'exécute depuis `server/` : le client
-# généré se pose à côté du schéma qui le décrit.
+# généré se pose à côté du schéma qui le décrit — et il DOIT précéder le build
+# du serveur, qui compile désormais ce client avec le reste des sources.
+#
+# `DATABASE_URL` factice, et sur cette LIGNE seulement : depuis Prisma 7,
+# `prisma.config.ts` résout la variable au chargement, et `generate` échoue donc
+# sans elle — alors qu'il n'ouvre aucune connexion. La valeur ne survit pas à la
+# couche ; celle du service reste la seule que le conteneur voit à l'exécution,
+# et `env.ts` refuserait de démarrer sur un secret d'exemple.
 RUN npm run build \
-  && cd server && npx prisma generate && npm run build
+  && cd server \
+  && DATABASE_URL='postgresql://build:build@127.0.0.1:5432/build' npx prisma generate \
+  && npm run build
 
 # `env.ts` refuse de démarrer en production avec le secret d'exemple : la valeur
 # vient des variables du service, jamais de l'image.

@@ -27,3 +27,8 @@ dist-ssr
 server/.env
 server/dist
 server/node_modules
+# Le client Prisma 7 est GÉNÉRÉ dans l'arbre des sources — c'est le générateur
+# qui l'impose, `node_modules` n'est plus une sortie possible. Il reste une
+# sortie de compilation malgré son emplacement : `postinstall` le refabrique,
+# et le versionner ferait entrer 40 fichiers dérivés dans chaque revue.
+server/src/generated

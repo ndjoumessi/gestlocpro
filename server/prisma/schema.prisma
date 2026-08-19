@@ -44,14 +44,28 @@
 // décalage figé qui n'a jamais vieilli. Le relatif se calcule à l'affichage,
 // comme `lib/dates` le fait déjà.
 
+// Le générateur de Prisma 7. `prisma-client-js` a disparu avec la version 6.
+//
+// Il émet du TYPESCRIPT dans l'arbre des sources, et non du JavaScript dans
+// `node_modules` : le client cesse d'être un artefact caché que `npm install`
+// fabrique en silence, il devient du code que `tsc` compile avec le reste. Le
+// chemin de sortie est désormais OBLIGATOIRE — Prisma 7 refuse de deviner.
+//
+// Sous `src/` pour que `tsc -b` l'emporte dans `dist` : le conteneur exécute
+// `node dist/src/index.js`, et un client resté hors de `dist` s'y chercherait
+// en vain. `postinstall` le régénère à chaque installation, donc il reste
+// ignoré par git — c'est une sortie de compilation, pas une source.
 generator client {
-  provider = "prisma-client-js"
-  output   = "../node_modules/.prisma/client"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
+// L'URL a quitté ce fichier : Prisma 7 la refuse ici. Elle vit dans
+// `prisma.config.ts` pour les commandes de migration, et arrive au client par
+// son ADAPTATEUR de pilote — voir `src/db.ts`. Le schéma ne décrit plus que la
+// forme des données, jamais où les joindre.
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ─── Identité et accès ───────────────────────────────────────────────────────
