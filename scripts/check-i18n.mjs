@@ -259,6 +259,111 @@ export function questionsEnDouble(dictionnaire, fichiers) {
 }
 
 /**
+ * Un libellé qui AVOUE que son propre geste ne fait rien.
+ *
+ * Troisième défaut de cette famille, et le premier qui mentait au lieu de se
+ * taire. Sous le bouton d'enregistrement du mot de passe vivait ceci :
+ * « L'enregistrement n'est pas encore branché : le formulaire valide la saisie,
+ * puis affiche l'écran de confirmation. » C'était vrai quand un
+ * `window.setTimeout` tenait lieu d'appel. La route a été branchée deux lots
+ * plus tôt, et la phrase est restée — décourageant exactement celui qui venait
+ * réparer son accès, au moment le plus mauvais : après avoir reçu son lien,
+ * ouvert la page et choisi un mot de passe.
+ *
+ * C'était le SECOND de l'espèce. Le premier annonçait que « la création de
+ * compte n'est pas encore branchée » alors qu'`inscrire` était appelé. Ces
+ * phrases survivent au code qu'elles décrivent parce que RIEN NE LES Y RELIE :
+ * remplacer un `setTimeout` par un appel réel ne fait tomber aucun test qui
+ * parle du bandeau. Il a fallu deux fois un œil humain sur l'écran.
+ *
+ * ── POURQUOI CES MOTIFS, ET PAS LES ÉVIDENTS ──
+ *
+ * Mesuré sur les 895 clés françaises et les 905 anglaises :
+ *
+ *   « démonstration »     12 occurrences, toutes justes — le badge, le parc
+ *                         d'exemple, « Repartir du jeu de démonstration ».
+ *   « demo »               4, dont deux appels à l'action du site vitrine.
+ *   « pour l'instant »     3 — « Aucun encaissement pour l'instant » décrit un
+ *                         état vide, pas une fonction absente.
+ *   « n'est pas encore »   1 — « Laissez vide s'il n'est pas encore signé ».
+ *   « not yet »            1 — « Not yet quoted ».
+ *
+ * Aucun de ces cinq n'est utilisable : ils désignent un ÉTAT du parc, pas un
+ * aveu d'impuissance du logiciel. Un garde-fou qui naît avec cinq exceptions
+ * n'en est pas un — c'est la leçon déjà tirée pour les questions en double.
+ *
+ * Les motifs retenus mesurent zéro sur le dictionnaire actuel et attrapent les
+ * deux phrases historiques. Ils ne visent pas un vocabulaire mais un ACTE de
+ * langage : dire au lecteur que ce qu'il vient de faire n'a pas eu lieu.
+ *
+ * ── CE QU'IL NE VOIT PAS ──
+ *
+ * Un aveu formulé autrement lui échappera, et il n'y a pas de remède général :
+ * reconnaître « cette phrase dit que la fonction est absente » demanderait de
+ * comprendre la phrase. Ce garde-fou attrape la RÉCIDIVE — la même tournure, la
+ * prochaine fois — ce qui est précisément ce qui vient de se produire deux fois.
+ */
+const AVEUX_DE_SIMULATION = [
+  /pas encore branch[ée]/i,
+  /pas encore (?:impl[ée]ment|connect|reli)/i,
+  /bient[oô]t disponible/i,
+  /en cours de d[ée]veloppement/i,
+  /ne fait rien/i,
+  /sans effet r[ée]el/i,
+  /simul[ée]\b|simulation/i,
+  /not yet (?:wired|connected|implemented|hooked)/i,
+  /coming soon/i,
+  /under construction/i,
+  /does nothing/i,
+  /simulat(?:ed|es|ion)/i,
+  /for now,? nothing/i,
+]
+
+/**
+ * LES AVEUX ASSUMÉS, et pourquoi ce registre plutôt qu'un motif plus étroit.
+ *
+ * Un aveu peut être VRAI. « La synchronisation différée n'est pas encore
+ * implémentée » l'est : ni service worker, ni file d'attente, ni stockage local
+ * dans tout `src`. La carte le dit honnêtement, sur l'écran qui montre les états
+ * du système. Le défaut n'est donc jamais l'aveu — c'est l'aveu DEVENU FAUX, et
+ * aucune expression régulière ne distingue les deux.
+ *
+ * D'où ce registre plutôt qu'un motif rétréci à la seule tournure qui a récidivé.
+ * Y inscrire une clé n'est pas contourner le garde-fou : c'est prendre date. Le
+ * jour où la fonction est branchée, cette liste est le seul endroit du dépôt qui
+ * sache qu'une phrase attend d'être retirée — et c'est précisément ce qui a
+ * manqué deux fois, où rien ne reliait le texte au code qu'il décrivait.
+ *
+ * Une entrée ici doit donc nommer ce qu'elle attend. Si la ligne survit à la
+ * fonction qu'elle annonce absente, le garde-fou n'aura servi à rien.
+ */
+const AVEUX_ASSUMES = new Map([
+  [
+    'app.system.offlineNotice',
+    'Vrai au 2026-08-20 : aucun service worker, aucune file d’attente, aucun ' +
+      'stockage local dans src. À RETIRER le jour où la synchronisation ' +
+      'différée est branchée.',
+  ],
+])
+
+/**
+ * Parcourt UN dictionnaire à plat et rend les libellés qui s'accusent.
+ *
+ * Les deux langues sont contrôlées, et pas seulement le français : un bandeau
+ * périmé resté en anglais trompe son lecteur tout autant, et c'est même la
+ * moitié qu'on relit le moins.
+ */
+export function aveuxDeSimulation(langue, dictionnaire) {
+  const trouvailles = []
+  for (const [cle, valeur] of dictionnaire) {
+    if (AVEUX_ASSUMES.has(cle)) continue
+    const motif = AVEUX_DE_SIMULATION.find((re) => re.test(valeur))
+    if (motif) trouvailles.push({ langue, cle, valeur, motif: String(motif) })
+  }
+  return trouvailles
+}
+
+/**
  * Le dictionnaire à plat : « app.works.openWhat » → « Que faut-il faire ? ».
  *
  * Lu au texte plutôt qu'importé. `fr.ts` est un module TypeScript, et ce script
@@ -269,14 +374,39 @@ export function questionsEnDouble(dictionnaire, fichiers) {
 export function dictionnaireAPlat(source) {
   const valeurs = new Map()
   const pile = []
-  for (const ligne of source.split('\n')) {
+  const lignes = source.split('\n')
+
+  /**
+   * LES ENTRÉES REPLIÉES, qui étaient invisibles.
+   *
+   * Prettier renvoie la valeur à la ligne quand elle est longue :
+   *
+   *     demoNotice:
+   *       'Vous parcourez une démonstration…',
+   *
+   * Le motif d'origine exigeait clé et valeur sur la MÊME ligne. Mesuré, il
+   * ratait 62 entrées françaises et 52 anglaises — et pas n'importe lesquelles :
+   * exactement les longues, c'est-à-dire les phrases. Un aveu de simulation
+   * étant par nature une explication, le point aveugle recouvrait précisément la
+   * classe qu'on cherche à garder. Il l'a d'ailleurs démontré : le bandeau
+   * historique, réintroduit tel quel pour éprouver le garde-fou, est passé sans
+   * un mot.
+   */
+  lignes.forEach((ligne, i) => {
     const ouvre = ligne.match(/^\s+([A-Za-z_][\w]*): \{/)
     const feuille = ligne.match(/^\s+([A-Za-z_][\w]*): '((?:[^'\\]|\\.)*)',?\s*$/)
+    const cleSeule = ligne.match(/^\s+([A-Za-z_][\w]*):\s*$/)
     const ferme = ligne.match(/^\s+\},?\s*$/)
+
     if (ouvre) pile.push(ouvre[1])
     else if (ferme) pile.pop()
     else if (feuille) valeurs.set([...pile, feuille[1]].join('.'), feuille[2])
-  }
+    else if (cleSeule) {
+      const suite = (lignes[i + 1] ?? '').match(/^\s+'((?:[^'\\]|\\.)*)',?\s*$/)
+      if (suite) valeurs.set([...pile, cleSeule[1]].join('.'), suite[1])
+    }
+  })
+
   return valeurs
 }
 
@@ -301,10 +431,23 @@ if (import.meta.url === pathToFileURL(argv[1] ?? '').href) {
     if (!/\.test\.tsx?$/.test(rel)) sources.push([rel, code])
   }
 
-  const doublons = questionsEnDouble(
-    dictionnaireAPlat(await readFile(join(SRC, 'i18n/fr.ts'), 'utf8')),
-    sources,
-  )
+  const fr = dictionnaireAPlat(await readFile(join(SRC, 'i18n/fr.ts'), 'utf8'))
+  const en = dictionnaireAPlat(await readFile(join(SRC, 'i18n/en.ts'), 'utf8'))
+
+  const aveux = [...aveuxDeSimulation('fr', fr), ...aveuxDeSimulation('en', en)]
+
+  if (aveux.length > 0) {
+    console.error(`✗ ${aveux.length} libellé(s) avouant que le geste ne fait rien :\n`)
+    for (const a of aveux) {
+      console.error(`  ${a.langue} · ${a.cle}`)
+      console.error(`    « ${a.valeur} »`)
+      console.error(`    → motif ${a.motif}`)
+      console.error("    Si c'est faux, retirer la phrase. Si c'est vrai, brancher le geste.\n")
+    }
+    process.exit(1)
+  }
+
+  const doublons = questionsEnDouble(fr, sources)
 
   if (doublons.length > 0) {
     console.error(`✗ ${doublons.length} question(s) posée(s) deux fois dans un même écran :\n`)
@@ -318,7 +461,7 @@ if (import.meta.url === pathToFileURL(argv[1] ?? '').href) {
   }
 
   if (findings.length === 0) {
-    console.log('✓ Aucune chaîne en dur, aucune question posée deux fois.')
+    console.log('✓ Aucune chaîne en dur, aucune question en double, aucun aveu de simulation.')
     process.exit(0)
   }
 
