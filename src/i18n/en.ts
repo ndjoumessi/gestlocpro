@@ -886,7 +886,7 @@ export const en: Dictionary = {
           detail: '{tenant} · reminder sent on {date}',
         },
         rentReminder: {
-          title: 'Reminder sent to {tenant}',
+          title: 'Rent reminder · {tenant}',
           detail: '{count} days overdue · {amount} due',
           detail_one: '{count} day overdue · {amount} due',
         },

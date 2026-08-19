@@ -154,7 +154,7 @@ describe('journal des relances — le rang', () => {
 describe('journal des relances — l’envoi', () => {
   it('dit par où le message est parti, et quand', async () => {
     await ouvrir([relance({ id: 'n1', rank: 1, channel: 'sms', sentAt: '2026-08-04T09:12:00.000Z' })])
-    expect(carte(/Relance envoyée/)).toHaveTextContent('Parti par SMS le 4 août')
+    expect(carte(/Rappel de loyer/)).toHaveTextContent('Parti par SMS le 4 août')
   })
 
   /**
@@ -168,7 +168,7 @@ describe('journal des relances — l’envoi', () => {
    */
   it('avoue qu’une relance n’est pas partie, même avec un canal', async () => {
     await ouvrir([relance({ id: 'n1', rank: 1, channel: 'sms', sentAt: null })])
-    const c = carte(/Relance envoyée/)
+    const c = carte(/Rappel de loyer/)
     expect(c).toHaveTextContent('Pas encore parti')
     expect(c).not.toHaveTextContent('Parti par')
   })
@@ -209,8 +209,67 @@ describe('journal des relances — l’envoi', () => {
         sentAt: '2026-08-04T00:12:00.000Z',
       }),
     ])
-    const c = carte(/Relance envoyée/)
+    const c = carte(/Rappel de loyer/)
     expect(c).toHaveTextContent('4 août')
     expect(c).not.toHaveTextContent('18 août')
+  })
+})
+
+/**
+ * LA DÉMONSTRATION relance, ce qu'elle ne faisait pas.
+ *
+ * C'est l'argument du lot appliqué à l'écran qu'on ouvre le plus souvent. Le
+ * semis serveur ne suffit pas : `/demo` ne le lit pas, il sert les sept alertes
+ * statiques du module — où ni `rentReminder` ni `formalNotice` ne figuraient.
+ * Les deux gabarits existaient dans les deux dictionnaires, le type les
+ * connaissait, et personne ne les voyait jamais en développant.
+ */
+describe('journal des relances — en démonstration', () => {
+  async function ouvrirDemo() {
+    renderApp('/demo/signalements')
+    await attendreLeChargement()
+  }
+
+  /**
+   * Le titre n'AFFIRME plus un envoi que le produit ne fait pas.
+   *
+   * Il disait « Relance envoyée à Serge Mbarga » au-dessus de « Pas encore
+   * parti » : une contradiction frontale dans les deux lignes d'une même carte,
+   * que les tests ne voyaient pas parce qu'ils vérifiaient chaque moitié
+   * séparément. Le fournisseur qui tourne aujourd'hui rend toujours faux —
+   * « pas parti » est donc le cas ORDINAIRE, et le titre le démentait à chaque
+   * fois.
+   */
+  it('ne dit pas « envoyée » sur une relance qui n’est pas partie', async () => {
+    await ouvrirDemo()
+    const enAttente = screen.getAllByText(/Pas encore parti/)
+    expect(enAttente.length).toBeGreaterThan(0)
+    for (const ligne of enAttente) {
+      const carte = ligne.closest('div')!.parentElement!
+      expect(carte).not.toHaveTextContent(/Relance envoyée/)
+    }
+  })
+
+  it('montre les trois rappels, numérotés', async () => {
+    await ouvrirDemo()
+    expect(screen.getAllByText(/^Rappel n° \d+$/).map((e) => e.textContent)).toEqual([
+      'Rappel n° 3',
+      'Rappel n° 2',
+      'Rappel n° 1',
+    ])
+  })
+
+  /**
+   * L'écart entre parti et resté ici, VISIBLE sur le jeu.
+   *
+   * Sans lui, l'écran ne montrerait jamais la différence : trois relances toutes
+   * envoyées, ou toutes en attente, laisseraient croire à un état unique. Le
+   * fournisseur qui tourne aujourd'hui — `MessagerieDeJournal` — rend toujours
+   * faux, donc « resté ici » est le cas ORDINAIRE, pas l'exception.
+   */
+  it('distingue celle qui est partie des deux qui attendent', async () => {
+    await ouvrirDemo()
+    expect(screen.getAllByText(/Pas encore parti/)).toHaveLength(2)
+    expect(screen.getByText(/Parti par SMS le 4 août/)).toBeInTheDocument()
   })
 })

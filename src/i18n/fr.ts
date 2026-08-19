@@ -1125,7 +1125,22 @@ export const fr = {
          * même impayé.
          */
         rentReminder: {
-          title: 'Relance envoyée à {tenant}',
+          /**
+           * « Rappel de loyer » et non « Relance envoyée ».
+           *
+           * Le titre AFFIRMAIT un envoi que le produit ne fait pas : le
+           * fournisseur de messagerie qui tourne aujourd'hui écrit dans le
+           * journal et rend toujours faux, si bien que la carte annonçait
+           * « Relance envoyée à Serge Mbarga » au-dessus de « Pas encore parti ».
+           * Une contradiction frontale dans les deux lignes d'une même carte,
+           * vue en capture et par aucun test — ils vérifiaient chaque moitié
+           * séparément.
+           *
+           * Le titre nomme donc ce que la ligne EST — un rappel de loyer — et
+           * laisse `sentAt` dire ce qu'il est advenu. Une seule source pour
+           * l'envoi, celle qui le connaît.
+           */
+          title: 'Rappel de loyer · {tenant}',
           detail: '{count} jours de retard · {amount} dus',
           detail_one: '{count} jour de retard · {amount} dus',
         },

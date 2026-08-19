@@ -75,11 +75,19 @@ describe('messages d’alerte', () => {
     renderApp('/app/signalements', { locale: 'en' })
     const nav = screen.getAllByRole('navigation')[0]
 
-    expect(within(nav).getByText('2')).toBeInTheDocument()
+    /* TROIS et non deux : le jeu porte désormais un rappel de loyer non lu, en
+       plus de l'impayé et du devis en attente. C'est un compte de JEU et non un
+       invariant — il doit bouger avec lui, ce que le lot des relances n'avait
+       pas prévu.
+       On vise l'entrée « Reports » et non le texte « 3 » dans toute la barre :
+       « Paiements » porte lui aussi une pastille à 3, et l'ancienne assertion ne
+       tenait que parce que les deux nombres différaient. */
+    const entree = () => within(nav).getByRole('link', { name: /Reports/ })
+    expect(entree()).toHaveTextContent('3')
 
     await userEvent.click(screen.getByRole('button', { name: /Mark all as read/i }))
 
-    expect(within(nav).queryByText('2')).not.toBeInTheDocument()
+    expect(entree()).not.toHaveTextContent('3')
     expect(screen.getByText('All notifications are read.')).toBeInTheDocument()
   })
 

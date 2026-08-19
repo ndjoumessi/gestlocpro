@@ -736,8 +736,38 @@ export interface Alert {
   unitId?: string
 }
 
+/**
+ * Les notifications de démonstration, RELANCES COMPRISES.
+ *
+ * Le jeu n'en portait aucune : ni `rentReminder`, ni `formalNotice`. Le type les
+ * connaît, les deux dictionnaires les traduisent, le serveur les écrit sur un
+ * vrai parc — et personne ne les voyait jamais sur l'écran qu'on ouvre le plus
+ * souvent. C'est ainsi qu'elles ont pu s'afficher en clé brute en production
+ * sans qu'aucun regard ne s'y pose, et le semis serveur seul n'y change rien :
+ * `/demo` ne le lit pas.
+ *
+ * TROIS rappels sur le même locataire — Serge Mbarga, A3, le seul retardataire
+ * du parc, et déjà le sujet de `rentOverdue` juste au-dessus. C'est le rang qui
+ * donne son sens à ce journal : une relance isolée ne montre pas qu'on en est au
+ * troisième rappel, et le défaut à prévenir est là — un bailleur qui relance une
+ * quatrième fois sans savoir qu'il en a envoyé trois.
+ *
+ * Un seul est PARTI. Les deux plus récents portent un canal sans date d'envoi :
+ * ce n'est pas une contradiction, c'est une tentative que le fournisseur n'a pas
+ * confirmée — et `MessagerieDeJournal`, celui qui tourne aujourd'hui, rend
+ * toujours faux. Sans cet écart dans le jeu, l'écran ne montrerait jamais la
+ * différence entre « parti » et « resté ici », qui est précisément ce que le
+ * bailleur doit lire avant de croire son locataire prévenu.
+ *
+ * Le `rank` est écrit ici plutôt que dérivé : sur un vrai parc il vient du
+ * serveur, et le recalculer côté client en ferait une seconde source qui
+ * finirait par le contredire.
+ */
 export const ALERTS: Alert[] = [
   { id: 'n1', kind: 'payment', message: 'rentOverdue', data: { unitId: 'A3', tenant: 'Serge Mbarga', count: 24, on: { year: 2026, month: 7, day: 4 } }, at: { value: -2, unit: 'hour' }, severity: 'high', read: false, unitId: 'A3' },
+  { id: 'r3', kind: 'payment', message: 'rentReminder', data: { tenant: 'Serge Mbarga', count: 24, amount: 115000 }, at: { value: -6, unit: 'hour' }, severity: 'high', read: false, unitId: 'A3', rank: 3, channel: 'sms', sentAt: null },
+  { id: 'r2', kind: 'payment', message: 'rentReminder', data: { tenant: 'Serge Mbarga', count: 17, amount: 115000 }, at: { value: -7, unit: 'day' }, severity: 'high', read: true, unitId: 'A3', rank: 2, channel: 'sms', sentAt: null },
+  { id: 'r1', kind: 'payment', message: 'rentReminder', data: { tenant: 'Serge Mbarga', count: 11, amount: 115000 }, at: { value: -13, unit: 'day' }, severity: 'medium', read: true, unitId: 'A3', rank: 1, channel: 'sms', sentAt: { year: 2026, month: 7, day: 4 } },
   { id: 'n2', kind: 'work', message: 'quotePending', data: { workId: 'SIG-2026-042', unitId: 'A3', amount: 45000 }, at: { value: -5, unit: 'hour' }, severity: 'high', read: false, unitId: 'A3' },
   { id: 'n3', kind: 'meter', message: 'metersMissing', data: { count: 2, period: { year: 2026, month: 7 }, units: ['A5', 'C2'] }, at: { value: -1, unit: 'day' }, severity: 'medium', read: true },
   { id: 'n4', kind: 'lease', message: 'leaseRenewal', data: { unitId: 'B1', tenant: 'Jean-Paul Eboa', count: 45, dueOn: { year: 2026, month: 8, day: 30 } }, at: { value: -2, unit: 'day' }, severity: 'low', read: true, unitId: 'B1' },
