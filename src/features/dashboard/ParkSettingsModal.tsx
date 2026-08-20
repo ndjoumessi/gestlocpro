@@ -8,10 +8,10 @@ import { useToast } from '@/components/primitives/Toast'
 import { useT, useI18n } from '@/i18n/I18nProvider'
 import { useSession } from '@/api/SessionProvider'
 import { countryOptions } from '@/lib/countries'
-import { api, DEVISES_DU_PARC, type DeviseDuParc } from '@/api/client'
+import { ApiError, api, DEVISES_DU_PARC, type DeviseDuParc } from '@/api/client'
 
 /**
- * CORRIGER LE PARC : SON NOM, SON PAYS, SA DEVISE.
+ * CORRIGER LE PARC : SON NOM, SON PAYS, SA DEVISE, SA DÉLÉGATION.
  *
  * Les trois sont posés à la création du parc et n'étaient modifiables nulle
  * part. Un propriétaire dont le parc était né dans la mauvaise devise l'était
@@ -26,6 +26,18 @@ import { api, DEVISES_DU_PARC, type DeviseDuParc } from '@/api/client'
  * Réservée au propriétaire : la devise n'est pas un réglage d'affichage, c'est
  * l'unité de tout ce qui se compte dans le parc. Même partage que la validation
  * d'un devis ou l'arbitrage d'une caution.
+ *
+ * LA DÉLÉGATION LES REJOINT, et c'est le sujet de ce lot.
+ *
+ * Elle s'écrivait depuis l'écran de prise en main, qui est un écran d'EXPLICATION
+ * — il dessine la matrice des droits pour la faire comprendre. Deux endroits
+ * réglaient donc le parc, avec deux contrôles d'apparence identique dont un seul
+ * enregistrait : l'ambiguïté exacte que ce dépôt passe son temps à retirer.
+ *
+ * Le critère n'est pas le confort mais la nature de la valeur : le nom, le pays,
+ * la devise et la délégation sont les quatre choses qu'un parc EST. Elles se
+ * corrigent au même endroit, sous la même règle de rôle, avec le même
+ * rafraîchissement de session derrière.
  */
 export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useT()
@@ -46,13 +58,23 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
       name: adhesionActive?.parkName ?? '',
       countryCode: adhesionActive?.countryCode ?? '',
       currency: (adhesionActive?.currency ?? '') as DeviseDuParc | '',
+      /* `?? 'delegate'` : un serveur antérieur au champ ne le rend pas, et le
+         supposer `solo` proposerait de « rétablir » une délégation que le parc
+         n'a jamais perdue. C'est le défaut du schéma. */
+      delegation: adhesionActive?.delegation ?? 'delegate',
     }),
-    [adhesionActive?.parkName, adhesionActive?.countryCode, adhesionActive?.currency],
+    [
+      adhesionActive?.parkName,
+      adhesionActive?.countryCode,
+      adhesionActive?.currency,
+      adhesionActive?.delegation,
+    ],
   )
 
   const [nom, setNom] = useState(origine.name)
   const [pays, setPays] = useState(origine.countryCode)
   const [devise, setDevise] = useState<DeviseDuParc | ''>(origine.currency)
+  const [delegation, setDelegation] = useState<'solo' | 'delegate'>(origine.delegation)
   const [envoi, setEnvoi] = useState(false)
 
   const optionsDePays = useMemo(() => countryOptions(locale), [locale])
@@ -60,10 +82,16 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
   const deviseChange = devise !== '' && devise !== origine.currency
 
   /** Ce qui a changé, et rien d'autre. Vide quand la saisie est celle d'origine. */
-  const correction: { name?: string; countryCode?: string; currency?: DeviseDuParc } = {}
+  const correction: {
+    name?: string
+    countryCode?: string
+    currency?: DeviseDuParc
+    delegation?: 'solo' | 'delegate'
+  } = {}
   if (nom.trim() && nom.trim() !== origine.name) correction.name = nom.trim()
   if (pays && pays !== origine.countryCode) correction.countryCode = pays
   if (deviseChange) correction.currency = devise as DeviseDuParc
+  if (delegation !== origine.delegation) correction.delegation = delegation
 
   const enregistrer = (event: FormEvent) => {
     event.preventDefault()
@@ -90,7 +118,21 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
         notify(t('app.parkSettings.saved'), { tone: 'ok' })
         onClose()
       })
-      .catch(() => notify(t('common.actionFailed'), { tone: 'danger' }))
+      .catch((cause: unknown) => {
+        /**
+         * `has_managers` a son propre message.
+         *
+         * Le serveur refuse la gestion seule tant qu'un gestionnaire opère le
+         * parc. « L'action a échoué » laisserait chercher une panne là où il y a
+         * une règle, et surtout ne nommerait pas le geste qui débloque — retirer
+         * l'accès, au registre des accès.
+         */
+        const code = cause instanceof ApiError ? cause.code : ''
+        notify(
+          code === 'has_managers' ? t('app.parkSettings.hasManagers') : t('common.actionFailed'),
+          { tone: 'danger' },
+        )
+      })
       .finally(() => setEnvoi(false))
   }
 
@@ -138,6 +180,23 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
                   {t(`app.parkSettings.currency${code}` as 'app.parkSettings.currencyXAF')}
                 </option>
               ))}
+            </Select>
+          )}
+        </Field>
+
+        <Field
+          label={t('app.parkSettings.delegation')}
+          hint={t('app.parkSettings.delegationHint')}
+        >
+          {(props) => (
+            <Select
+              {...props}
+              name="delegation"
+              value={delegation}
+              onChange={(e) => setDelegation(e.target.value as 'solo' | 'delegate')}
+            >
+              <option value="delegate">{t('app.onboarding.delegateOn')}</option>
+              <option value="solo">{t('app.onboarding.delegateOff')}</option>
             </Select>
           )}
         </Field>

@@ -827,6 +827,9 @@ export const fr = {
     },
 
     parkSettings: {
+      delegation: 'Délégation',
+      delegationHint: 'Elle borne ce qu’un gestionnaire peut décider. En gestion seule, aucun code de gestionnaire n’est émis.',
+      hasManagers: 'Un gestionnaire opère encore ce parc. Retirez son accès au registre des accès avant de passer en gestion seule.',
       open: 'Corriger le parc',
       title: 'Corriger le parc',
       description:
@@ -1298,8 +1301,7 @@ export const fr = {
     },
 
     onboarding: {
-      hasManagers: 'Un gestionnaire opère encore ce parc. Retirez son accès au registre des accès avant de passer en gestion seule.',
-      saving: 'Enregistrement…',
+      changeInSettings: 'Modifier dans les réglages du parc',
       delegationOffNotice: 'Ce parc est en gestion seule : aucun code de gestionnaire n’est émis. Changez la politique de délégation pour en recruter un.',
       joinTitle: 'Rejoindre un parc',
       joinBody: 'Si votre propriétaire ou gestionnaire vous a remis un code, saisissez-le ici : votre compte sera rattaché à son parc, au rôle qu’il vous a accordé.',
@@ -1323,8 +1325,20 @@ export const fr = {
       allowed: 'Autorisé',
       denied: 'Non autorisé',
       managerOff: 'non activé',
+      /**
+       * SANS « CI-DESSUS ».
+       *
+       * La phrase désignait le sélecteur radio, que la délégation a emporté
+       * avec elle en rejoignant les réglages du parc : elle renvoyait donc à un
+       * contrôle absent de l'écran. Et elle ne peut pas nommer le nouveau
+       * chemin non plus, parce qu'il n'est pas le même partout — un lien vers
+       * les réglages sur un vrai parc, la bascule elle-même en démonstration.
+       *
+       * Elle énonce donc la RÈGLE, que les deux contextes partagent, et laisse
+       * le contrôle voisin dire par lui-même où l'on va.
+       */
       managerOffNote:
-        'Activez la gestion déléguée ci-dessus pour accorder ces droits à un gestionnaire.',
+        'Ces droits n’existent que si le parc est en gestion déléguée.',
       families: {
         build: 'Constituer le parc',
         operate: 'Exploiter au quotidien',

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, userEvent, waitFor, attendreLeChargement } from '@/test/render'
+import { renderApp, screen, userEvent, waitFor, within, attendreLeChargement } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur, type FauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 import type { Role } from '@/features/auth/signupState'
@@ -53,47 +53,133 @@ function installer(): FauxServeur {
   return faux
 }
 
-describe('le mode de délégation vient du parc', () => {
-  it('affiche celui du parc, et non un défaut d’écran', async () => {
+/** Ouvre « Corriger le parc » depuis l'écran du parc immobilier. */
+async function ouvrirLesReglages(delegation: 'solo' | 'delegate') {
+  installer()
+  renderApp('/app/parc', { session: session('owner', delegation) })
+  await attendreLeChargement()
+  const clavier = userEvent.setup()
+  await clavier.click(screen.getByRole('button', { name: /Corriger le parc/ }))
+  return clavier
+}
+
+describe('la délégation se règle avec le reste du parc', () => {
+  /**
+   * LE RÉGLAGE A DÉMÉNAGÉ, et l'écran qui l'écrivait ne l'écrit plus.
+   *
+   * Il vivait sur la prise en main, qui est un écran d'EXPLICATION : deux
+   * endroits réglaient donc le parc, avec deux contrôles d'apparence identique
+   * dont un seul enregistrait. Sans ce cas, on pourrait remettre le sélecteur
+   * là-bas sans que rien ne rougisse.
+   */
+  it('n’est plus un contrôle de la prise en main', async () => {
     installer()
     renderApp('/app/prise-en-main', { session: session('owner', 'solo') })
 
-    // Le bouton radio « je gère seul » est celui qui porte la valeur du parc.
-    // Sans le branchement, l'écran montrait « je délègue » quoi qu'il arrive.
-    const seul = await screen.findByRole('radio', { name: /Vous gérez seul/i })
-    await waitFor(() => expect(seul).toBeChecked())
+    // Ce que l'écran garde : il DIT le mode du parc, et renvoie où il se change.
+    await screen.findByRole('link', { name: /Modifier dans les réglages du parc/ })
+    expect(screen.queryByRole('radio', { name: /Vous gérez seul/i })).not.toBeInTheDocument()
   })
 
-  it('écrit le choix au serveur, puis relit la session', async () => {
+  /**
+   * LA MATRICE SUIT LE PARC, et pas seulement le sélecteur qui a déménagé.
+   *
+   * Le réglage est parti dans les réglages du parc, et le cas qui gardait sa
+   * lecture est parti avec lui. Mais `mode` n'a pas quitté cet écran : il
+   * gouverne encore toute la colonne « Gestionnaire » — son en-tête, ses douze
+   * cases et la note du bas. Un parc en gestion seule qui afficherait cette
+   * colonne ouverte annoncerait des droits à quelqu'un qui n'existe pas, et
+   * plus rien ne le disait : le seul cas qui monte encore cet écran ne vérifie
+   * qu'une ABSENCE de contrôle, jamais ce que le tableau montre.
+   *
+   * Mesuré : neutraliser la dérivation de `mode` ne faisait rougir aucun cas.
+   */
+  it('barre la colonne du gestionnaire quand le parc se gère seul', async () => {
+    installer()
+    renderApp('/app/prise-en-main', { session: session('owner', 'solo') })
+
+    /**
+     * L'EN-TÊTE de la colonne, et non « quelque part sur la page » : le libellé
+     * « non activé » est aussi porté, hors écran, par chacune des douze cases du
+     * gestionnaire. Un motif cherché sur la page entière passerait donc au vert
+     * sur ces cases seules, sans rien dire de la colonne elle-même.
+     */
+    const enTete = await screen.findByRole('columnheader', { name: /Gestionnaire/ })
+    expect(within(enTete).getByText('non activé')).toBeInTheDocument()
+
+    // Et la note qui remplace douze refus par une phrase. Elle énonce la RÈGLE
+    // depuis que le sélecteur a quitté cet écran : elle ne peut plus désigner
+    // « ci-dessus » un contrôle qui n'y est pas.
+    expect(screen.getByText(/Ces droits n.existent que si le parc/)).toBeInTheDocument()
+  })
+
+  /**
+   * L'AUTRE MOITIÉ, sans laquelle un écran barrant toujours la colonne
+   * satisferait le cas précédent — et retirerait le gestionnaire aux parcs qui
+   * en ont un.
+   */
+  it('la laisse ouverte quand le parc délègue', async () => {
+    installer()
+    renderApp('/app/prise-en-main', { session: session('owner', 'delegate') })
+
+    await screen.findByRole('link', { name: /Modifier dans les réglages du parc/ })
+    expect(screen.queryByText('non activé')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Ces droits n.existent que si le parc/)).not.toBeInTheDocument()
+  })
+
+  it('montre celui du parc, et non un défaut d’écran', async () => {
+    await ouvrirLesReglages('solo')
+
+    const champ = await screen.findByRole('combobox', { name: /Délégation/i })
+    // Sans le branchement, le champ montrerait « Gestion déléguée » quoi qu'il
+    // arrive — le défaut du `useState` que ce lot a fini de retirer.
+    expect(champ).toHaveValue('solo')
+  })
+
+  it('n’envoie que ce qui a changé', async () => {
     const faux = installer()
     faux.quand('PATCH', `/parks/${PARC}`, {
       status: 200,
       body: { park: { id: PARC, name: 'Parc de test', delegation: 'solo' } },
     })
-    renderApp('/app/prise-en-main', { session: session('owner', 'delegate') })
+    renderApp('/app/parc', { session: session('owner', 'delegate') })
+    await attendreLeChargement()
+    const clavier = userEvent.setup()
+    await clavier.click(screen.getByRole('button', { name: /Corriger le parc/ }))
 
-    const seul = await screen.findByRole('radio', { name: /Vous gérez seul/i })
-    await userEvent.setup().click(seul)
+    await clavier.selectOptions(
+      await screen.findByRole('combobox', { name: /Délégation/i }),
+      'solo',
+    )
+    await clavier.click(screen.getByRole('button', { name: /Enregistrer/ }))
 
     await waitFor(() => {
       const appel = faux.appels.find((a) => a.methode === 'PATCH' && a.chemin === `/parks/${PARC}`)
+      /*
+        LA DÉLÉGATION SEULE. Le nom, le pays et la devise n'ont pas bougé :
+        les envoyer réécrirait le parc avec ce que l'écran croyait savoir en
+        s'ouvrant — c'est la règle que cette modale portait déjà pour trois
+        champs, et le quatrième s'y plie.
+      */
       expect(appel?.corps).toEqual({ delegation: 'solo' })
     })
-    /*
-      RELUE et non retouchée en mémoire : c'est le serveur qui refuse `solo`
-      quand un gestionnaire est en place, et poser la valeur d'abord afficherait
-      une politique que le parc n'a pas.
-    */
+    // RELUE et non retouchée en mémoire : le serveur peut refuser.
     await waitFor(() => expect(faux.appels.some((a) => a.chemin === '/auth/me')).toBe(true))
   })
 
   it('dit pourquoi la gestion seule a été refusée', async () => {
     const faux = installer()
     faux.quand('PATCH', `/parks/${PARC}`, { status: 409, body: { error: 'has_managers' } })
-    renderApp('/app/prise-en-main', { session: session('owner', 'delegate') })
+    renderApp('/app/parc', { session: session('owner', 'delegate') })
+    await attendreLeChargement()
+    const clavier = userEvent.setup()
+    await clavier.click(screen.getByRole('button', { name: /Corriger le parc/ }))
 
-    const seul = await screen.findByRole('radio', { name: /Vous gérez seul/i })
-    await userEvent.setup().click(seul)
+    await clavier.selectOptions(
+      await screen.findByRole('combobox', { name: /Délégation/i }),
+      'solo',
+    )
+    await clavier.click(screen.getByRole('button', { name: /Enregistrer/ }))
 
     // « L'action a échoué » laisserait chercher une panne là où il y a une règle,
     // et surtout ne nommerait pas le geste qui débloque — retirer l'accès.
@@ -101,11 +187,11 @@ describe('le mode de délégation vient du parc', () => {
   })
 
   /**
-   * En DÉMONSTRATION, la matrice reste pédagogique : il n'y a pas de parc où
-   * écrire, et basculer le mode doit continuer de réécrire les neuf lignes de la
-   * colonne « Gestionnaire » sans prétendre enregistrer quoi que ce soit.
+   * EN DÉMONSTRATION, la bascule reste — et c'est le seul contexte où elle ne
+   * peut pas mentir : il n'y a pas de parc où enregistrer. Elle réécrit les neuf
+   * lignes de la colonne « Gestionnaire », ce qui est sa valeur pédagogique.
    */
-  it('reste une démonstration en démonstration', async () => {
+  it('reste une bascule pédagogique en démonstration', async () => {
     const faux = installerFauxServeur()
     renderApp('/demo/prise-en-main')
     await attendreLeChargement()

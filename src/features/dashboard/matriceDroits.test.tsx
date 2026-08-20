@@ -77,8 +77,11 @@ describe('matrice des droits', () => {
     expect(gestionnaire).toHaveLength(12)
     expect(new Set(gestionnaire)).toEqual(new Set(['—non activé']))
 
-    // Et la note remplace les douze refus par une phrase qui ouvre une porte.
-    expect(screen.getByText(/activez la gestion déléguée/i)).toBeInTheDocument()
+    // Et la note remplace les douze refus par une phrase qui énonce la règle.
+    // Elle ne désigne plus « ci-dessus » : le sélecteur a suivi la délégation
+    // dans les réglages du parc, et le chemin diffère selon le contexte — un
+    // lien sur un vrai parc, la bascule elle-même en démonstration.
+    expect(screen.getByText(/en gestion déléguée/i)).toBeInTheDocument()
   })
 
   it('réserve au propriétaire les deux gestes qui engagent son argent', async () => {

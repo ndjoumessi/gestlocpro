@@ -5,13 +5,14 @@ import { Card, CardHeader } from '@/components/primitives/Card'
 import { RadioCards } from '@/components/primitives/Choice'
 import { Icon } from '@/components/primitives/Icon'
 import { useT } from '@/i18n/I18nProvider'
+import { lien, useBase } from '@/lib/base'
 import type { Role } from '@/features/auth/signupState'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
 import { Input } from '@/components/primitives/Input'
 import { useToast } from '@/components/primitives/Toast'
 import { useSession } from '@/api/SessionProvider'
-import { ApiError, api } from '@/api/client'
+import { api } from '@/api/client'
 
 /** Droits par rôle. `false` = action refusée. */
 /**
@@ -159,70 +160,31 @@ function RejoindreUnParc() {
 
 export function Onboarding() {
   const t = useT()
-  const { notify } = useToast()
-  const { adhesionActive, estDemo, rafraichir } = useSession()
-  const [enregistrement, setEnregistrement] = useState(false)
+  const base = useBase()
+  const { adhesionActive, estDemo } = useSession()
+
   /**
-   * LE MODE VIENT DU PARC, il ne vit plus dans cet écran.
+   * CET ÉCRAN EXPLIQUE, IL NE RÈGLE PLUS.
    *
-   * Il était tenu dans un `useState` initialisé à `delegate` : le propriétaire
-   * choisissait entre deux politiques qui n'existaient que le temps du rendu, et
-   * quitter l'écran effaçait sa réponse. `Park.delegation` portait pourtant la
-   * valeur depuis l'origine du schéma, avec un commentaire affirmant que « le
-   * serveur s'en sert pour autoriser » — il ne s'en servait nulle part.
+   * Il écrivait `Park.delegation` alors que `ParkSettingsModal` corrigeait déjà
+   * le nom, le pays et la devise : deux endroits réglaient le parc, avec deux
+   * contrôles d'apparence identique dont un seul enregistrait. Le réglage a
+   * rejoint les trois autres — ce sont les quatre choses qu'un parc EST — et
+   * cette page redevient ce qu'elle a toujours été, la matrice des droits et ce
+   * qu'elle enseigne.
    *
    * DÉRIVÉ et non figé : un `useState` initialisé depuis l'adhésion ne se
    * réexécute pas au montage suivant, et changer de parc dans le sélecteur
-   * laisserait la politique du précédent à l'écran. C'est le défaut exact que
-   * `Alerts` a corrigé sur le rôle.
+   * laisserait la politique du précédent à l'écran — le défaut qu'`Alerts` a
+   * corrigé sur le rôle.
    *
    * `?? 'delegate'` couvre un serveur antérieur au champ : c'est le défaut du
-   * schéma, et le supposer `solo` retirerait le recrutement à des parcs qui
-   * l'ont.
+   * schéma, et le supposer `solo` barrerait toute la colonne « Gestionnaire »
+   * d'un parc qui délègue.
    */
   const [modeDemo, setModeDemo] = useState<'solo' | 'delegate'>('delegate')
   const surUnVraiParc = !estDemo && adhesionActive !== null
   const mode = surUnVraiParc ? (adhesionActive.delegation ?? 'delegate') : modeDemo
-
-  /**
-   * AUCUNE GARDE DE RÔLE ICI, et c'est délibéré.
-   *
-   * La route est déjà `Restricted allow={['owner']}` : le gestionnaire n'atteint
-   * pas cet écran. Doubler la règle par un `role === 'owner'` local produirait
-   * une branche que rien ne peut atteindre — donc que rien ne peut mettre en
-   * défaut, et qui pourrirait au premier changement de routage sans qu'un cas
-   * ne rougisse. C'est la même leçon que la garde de lecture dupliquée : deux
-   * conditions pour une seule règle se couvrent mutuellement.
-   *
-   * Le refus réel vit au serveur, qui rend 403 au gestionnaire — et c'est là
-   * qu'il est éprouvé.
-   */
-
-  const changerLeMode = (choix: 'solo' | 'delegate') => {
-    // La démonstration n'a pas de parc où écrire : le geste reste pédagogique,
-    // et bascule la matrice sans prétendre enregistrer quoi que ce soit.
-    if (!surUnVraiParc || !adhesionActive) {
-      setModeDemo(choix)
-      return
-    }
-    setEnregistrement(true)
-    void api
-      .updatePark(adhesionActive.parkId, { delegation: choix })
-      /* RELU auprès du serveur, jamais retouché en mémoire : c'est lui qui
-         refuse `solo` quand un gestionnaire est en place, et poser la valeur
-         d'abord afficherait une politique que le parc n'a pas. */
-      .then(() => rafraichir())
-      .catch((cause: unknown) => {
-        const code = cause instanceof ApiError ? cause.code : ''
-        notify(
-          code === 'has_managers'
-            ? t('app.onboarding.hasManagers')
-            : t('common.actionFailed'),
-          { tone: 'danger' },
-        )
-      })
-      .finally(() => setEnregistrement(false))
-  }
 
   return (
     <>
@@ -233,32 +195,64 @@ export function Onboarding() {
       </div>
 
       <Card className="mb-4">
-        <RadioCards
-          legend={t('auth.signup.management')}
-          name="delegation"
-          columns={2}
-          value={mode}
-          onChange={changerLeMode}
-          options={[
-            {
-              value: 'delegate',
-              title: t('app.onboarding.delegateOn'),
-              description: t('app.onboarding.delegateOnHint'),
-              icon: 'users',
-            },
-            {
-              value: 'solo',
-              title: t('app.onboarding.delegateOff'),
-              description: t('app.onboarding.delegateOffHint'),
-              icon: 'shield',
-            },
-          ]}
-        />
-        {/* L'enregistrement se voit. Sans lui, basculer le mode ne produit rien
-            à l'écran tant que `/auth/me` n'a pas répondu, et le second clic part
-            avant que le premier ne soit tranché. */}
-        {enregistrement && (
-          <p className="mt-3 text-caps text-muted">{t('app.onboarding.saving')}</p>
+        {/*
+          SUR UN VRAI PARC : ce que la politique EST, et où elle se change.
+
+          Pas de contrôle ici. Un second sélecteur, identique à celui des
+          réglages mais sans effet — ou pire, avec le même effet depuis deux
+          écrans — laisse deviner lequel fait foi. La phrase nomme le mode en
+          cours et renvoie au seul endroit qui l'écrit.
+        */}
+        {surUnVraiParc ? (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-label font-semibold text-ink">
+                {mode === 'delegate'
+                  ? t('app.onboarding.delegateOn')
+                  : t('app.onboarding.delegateOff')}
+              </p>
+              <p className="mt-1 text-body-s text-muted">
+                {mode === 'delegate'
+                  ? t('app.onboarding.delegateOnHint')
+                  : t('app.onboarding.delegateOffHint')}
+              </p>
+            </div>
+            {/* Un LIEN et non un bouton d'action : rien n'est décidé ici, on se
+                déplace. Même partition que l'issue des notifications. */}
+            <Button to={lien(base, 'parc')} variant="secondary" size="sm" iconAfter="arrowRight">
+              {t('app.onboarding.changeInSettings')}
+            </Button>
+          </div>
+        ) : (
+          /*
+            EN DÉMONSTRATION, la bascule reste — et elle n'écrit rien.
+
+            Il n'y a pas de parc où enregistrer, et c'est justement le seul
+            contexte où basculer le mode a une valeur pédagogique : on montre en
+            deux clics ce que la délégation retire au gestionnaire. Le contrôle
+            n'existe donc que là où il ne peut mentir sur ce qu'il fait.
+          */
+          <RadioCards
+            legend={t('auth.signup.management')}
+            name="delegation"
+            columns={2}
+            value={mode}
+            onChange={setModeDemo}
+            options={[
+              {
+                value: 'delegate',
+                title: t('app.onboarding.delegateOn'),
+                description: t('app.onboarding.delegateOnHint'),
+                icon: 'users',
+              },
+              {
+                value: 'solo',
+                title: t('app.onboarding.delegateOff'),
+                description: t('app.onboarding.delegateOffHint'),
+                icon: 'shield',
+              },
+            ]}
+          />
         )}
       </Card>
 

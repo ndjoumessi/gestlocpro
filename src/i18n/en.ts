@@ -664,6 +664,9 @@ export const en: Dictionary = {
     },
 
     parkSettings: {
+      delegation: 'Delegation',
+      delegationHint: 'It bounds what a manager may decide. In solo management, no manager code is issued.',
+      hasManagers: 'A manager still operates this portfolio. Revoke their access in the access registry before switching to solo management.',
       open: 'Correct the park',
       title: 'Correct the park',
       description:
@@ -1031,8 +1034,7 @@ export const en: Dictionary = {
     },
 
     onboarding: {
-      hasManagers: 'A manager still operates this portfolio. Revoke their access in the access registry before switching to solo management.',
-      saving: 'Saving…',
+      changeInSettings: 'Change it in the portfolio settings',
       delegationOffNotice: 'This portfolio is in solo management: no manager code is issued. Change the delegation policy to recruit one.',
       joinTitle: 'Join a park',
       joinBody: 'If your landlord or manager gave you a code, enter it here: your account will be attached to their park, with the role they granted you.',
@@ -1055,8 +1057,7 @@ export const en: Dictionary = {
       allowed: 'Allowed',
       denied: 'Not allowed',
       managerOff: 'not enabled',
-      managerOffNote:
-        'Turn on delegated management above to grant these rights to a manager.',
+      managerOffNote: 'These rights only exist when the portfolio delegates management.',
       families: {
         build: 'Build the portfolio',
         operate: 'Run it day to day',
