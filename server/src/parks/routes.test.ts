@@ -5172,3 +5172,169 @@ describe('le message groupé', () => {
     expect(res.status).toBe(404)
   })
 })
+
+/**
+ * RÉPONDRE AU LOCATAIRE QUI A SIGNALÉ.
+ *
+ * Le canal existait dans un seul sens : le locataire déclarait une fuite, puis
+ * regardait un statut avancer sans jamais savoir quand quelqu'un passerait. Les
+ * échanges qui décident d'une dépense se perdaient hors du dossier.
+ */
+describe('répondre au locataire', () => {
+  let parkId: string
+  let proprio: string
+  let gestionnaire: string
+  let workId: string
+  let cookieLocataire: string
+
+  beforeEach(async () => {
+    const p = await inscrire('proprio@example.com', {
+      parkName: 'Parc Bonamoussadi',
+      countryCode: 'CM',
+      seedDemo: true,
+    })
+    proprio = p.cookie
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio)
+    parkId = parcs.body.parks[0].id
+
+    const d = await inscrire('diane@example.com')
+    gestionnaire = d.cookie
+    const compteGestion = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'diane@example.com' },
+    })
+    await prisma.membership.create({
+      data: { userId: compteGestion.id, parkId, role: 'manager' },
+    })
+
+    // Un locataire réel, avec son compte : c'est lui qui déclare, et c'est à
+    // lui qu'on répond.
+    const l = await inscrire('locataire@example.com')
+    cookieLocataire = l.cookie
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'locataire@example.com' },
+    })
+    const bail = await prisma.lease.findFirstOrThrow({
+      where: { status: 'active', unit: { building: { parkId } } },
+      select: { tenantId: true, unitId: true },
+    })
+    await prisma.tenant.update({ where: { id: bail.tenantId }, data: { userId: compte.id } })
+    await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'tenant' } })
+
+    const travail = await prisma.workOrder.findFirstOrThrow({
+      where: { unitId: bail.unitId },
+      select: { id: true },
+    })
+    await prisma.workOrder.update({
+      where: { id: travail.id },
+      data: { reportedByTenantId: bail.tenantId },
+    })
+    workId = travail.id
+  })
+
+  function repondre(cookie: string, id: string, corps: Record<string, unknown>) {
+    return request(serveur)
+      .post(`/api/parks/${parkId}/works/${id}/reply`)
+      .set('Cookie', cookie)
+      .send(corps)
+  }
+
+  it('porte la réponse jusqu’à l’espace du locataire', async () => {
+    const res = await repondre(proprio, workId, { message: 'Le plombier passe jeudi matin.' })
+    expect(res.status, JSON.stringify(res.body)).toBe(201)
+    expect(res.body.delivered).toBe(true)
+
+    // La preuve qui compte n'est pas la ligne en base, c'est ce que le
+    // déclarant voit.
+    const portefeuille = await request(serveur)
+      .get(`/api/parks/${parkId}/portfolio`)
+      .set('Cookie', cookieLocataire)
+    const reponse = portefeuille.body.notifications.find(
+      (n: { messageKey: string }) => n.messageKey === 'workReply',
+    )
+    expect(reponse, JSON.stringify(portefeuille.body.notifications)).toBeDefined()
+    expect(reponse.params.text).toBe('Le plombier passe jeudi matin.')
+    // `workId` rattache la réponse au signalement : sans lui, les réponses
+    // s'empileraient sans dire de quoi elles parlent.
+    expect(reponse.params.workId).toBe(workId)
+  })
+
+  it('empile les réponses au lieu de n’en garder qu’une', async () => {
+    await repondre(proprio, workId, { message: 'Devis demandé au plombier.' }).expect(201)
+    await repondre(proprio, workId, { message: 'Le plombier passe jeudi matin.' }).expect(201)
+
+    /**
+     * Un dossier d'où les échanges disparaissent ne défend plus personne. Un
+     * champ unique sur l'intervention n'aurait gardé que le dernier message —
+     * c'est la raison pour laquelle la réponse passe par le fil des
+     * notifications plutôt que par une colonne.
+     */
+    const fil = await prisma.notification.count({ where: { parkId, messageKey: 'workReply' } })
+    expect(fil).toBe(2)
+  })
+
+  it('laisse le gestionnaire répondre, dont c’est le métier', async () => {
+    await repondre(gestionnaire, workId, { message: 'Nous intervenons demain.' }).expect(201)
+  })
+
+  it('refuse de répondre à une intervention sans déclarant', async () => {
+    const sansDeclarant = await prisma.workOrder.findFirstOrThrow({
+      where: { unit: { building: { parkId } }, reportedByTenantId: null },
+      select: { id: true },
+    })
+
+    // Celles que le bailleur ouvre lui-même n'ont personne à qui répondre.
+    // Écrire quand même produirait une notification sans destinataire, et
+    // l'écran annoncerait « réponse envoyée ».
+    const res = await repondre(proprio, sansDeclarant.id, { message: 'Bonjour.' })
+    expect(res.status).toBe(409)
+    expect(res.body.error).toBe('no_reporter')
+    expect(await prisma.notification.count({ where: { parkId, messageKey: 'workReply' } })).toBe(0)
+  })
+
+  it('dit que la réponse ne sera pas lue quand le locataire n’a pas de compte', async () => {
+    const travail = await prisma.workOrder.findUniqueOrThrow({
+      where: { id: workId },
+      select: { reportedByTenantId: true },
+    })
+    await prisma.tenant.update({
+      where: { id: travail.reportedByTenantId! },
+      data: { userId: null },
+    })
+
+    // La réponse est consignée — elle appartient au dossier — mais il reste un
+    // appel à passer, et le gestionnaire doit le savoir.
+    const res = await repondre(proprio, workId, { message: 'Le plombier passe jeudi.' })
+    expect(res.status).toBe(201)
+    expect(res.body.delivered).toBe(false)
+    expect(res.body.reporter.fullName).toBeTruthy()
+  })
+
+  it('ne répond pas à une intervention du parc d’à côté', async () => {
+    const ailleurs = await prisma.workOrder.create({
+      data: {
+        reference: 'SIG-2026-999',
+        title: 'Fuite chez le voisin',
+        trade: 'plumbing',
+        unit: {
+          create: {
+            label: 'Z9',
+            type: 'T2',
+            surfaceSqm: 40,
+            baseRentMinor: 100000,
+            building: {
+              create: {
+                name: 'Résidence voisine',
+                district: 'Bastos',
+                park: { create: { name: 'Parc Bastos', countryCode: 'CM', currency: 'XAF' } },
+              },
+            },
+          },
+        },
+      },
+      select: { id: true },
+    })
+
+    const res = await repondre(proprio, ailleurs.id, { message: 'Bonjour.' })
+    expect(res.status).toBe(404)
+  })
+})

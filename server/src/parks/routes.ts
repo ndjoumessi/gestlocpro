@@ -1751,6 +1751,100 @@ const schemaMessageGroupe = z.object({
   message: z.string().trim().min(3, 'Au moins 3 caractères').max(1000),
 })
 
+const schemaReponse = z.object({
+  message: z.string().trim().min(3, 'Au moins 3 caractères').max(1000),
+})
+
+/**
+ * RÉPONDRE AU LOCATAIRE QUI A SIGNALÉ.
+ *
+ * Le canal existait dans un seul sens. Un locataire déclarait une fuite, puis
+ * regardait un statut avancer — « déclaré », « devisé », « validé » — sans
+ * jamais savoir quand quelqu'un passerait, ni pourquoi rien ne bougeait. Le
+ * gestionnaire, lui, n'avait que le téléphone : les échanges qui décident d'une
+ * dépense se perdaient hors du dossier.
+ *
+ * PAS de nouvelle table, et c'est un choix. La notification est déjà un fil :
+ * elle porte un destinataire nommé, une date, un état de lecture, et plusieurs
+ * réponses s'y empilent d'elles-mêmes. Ajouter un `lastReply` sur le chantier
+ * n'en garderait qu'une — un dossier d'où les échanges disparaissent ne défend
+ * plus personne, c'est le raisonnement que `unsettle` porte déjà.
+ *
+ * Ouverte aux deux rôles de gestion : répondre à un locataire est le geste le
+ * plus ordinaire de l'exploitation.
+ */
+parksRouter.post(
+  '/:parkId/works/:workId/reply',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const brut = req.params.workId
+    const workId = typeof brut === 'string' ? brut : ''
+    const corps = schemaReponse.parse(req.body)
+
+    const travail = await prisma.workOrder.findFirst({
+      where: { id: workId, unit: { building: { parkId } } },
+      select: {
+        id: true,
+        reference: true,
+        unitId: true,
+        reportedByTenant: { select: { id: true, fullName: true, userId: true } },
+      },
+    })
+    if (!travail) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    /**
+     * Une intervention SANS déclarant n'a personne à qui répondre.
+     *
+     * C'est le cas de celles que le bailleur ouvre lui-même — un entretien
+     * planifié, une remise en location. Rendre 409 plutôt que d'écrire une
+     * notification sans destinataire : elle n'aurait été lue par personne, et
+     * l'écran aurait annoncé « réponse envoyée ».
+     */
+    if (!travail.reportedByTenant) {
+      res.status(409).json({ error: 'no_reporter' })
+      return
+    }
+
+    const destinataire = travail.reportedByTenant.userId
+
+    await prisma.notification.create({
+      data: {
+        parkId,
+        kind: 'work',
+        messageKey: 'workReply',
+        /**
+         * `workId` voyage avec le texte : c'est lui qui rattache la réponse au
+         * signalement dans l'espace du locataire. Sans lui, les réponses
+         * s'empileraient dans une liste sans dire de quoi elles parlent.
+         */
+        params: { text: corps.message, workId: travail.id, reference: travail.reference },
+        severity: 'medium',
+        unitId: travail.unitId,
+        channel: 'in_app',
+        ...(destinataire ? { recipients: { create: [{ userId: destinataire }] } } : {}),
+      },
+    })
+
+    /**
+     * On dit si elle sera LUE, pas seulement si elle est écrite.
+     *
+     * Un locataire dont la fiche n'est reliée à aucun compte n'a pas d'espace
+     * où la trouver. La réponse est quand même consignée — elle appartient au
+     * dossier de l'intervention — mais le gestionnaire doit savoir qu'il lui
+     * reste un appel à passer.
+     */
+    res.status(201).json({
+      delivered: Boolean(destinataire),
+      reporter: { fullName: travail.reportedByTenant.fullName },
+    })
+  },
+)
+
 /**
  * LE MESSAGE GROUPÉ AUX LOCATAIRES.
  *
