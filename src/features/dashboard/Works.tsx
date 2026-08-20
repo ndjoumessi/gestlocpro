@@ -353,6 +353,12 @@ export function Works() {
         Le NOM est nécessaire et non décoratif : l'écran porte d'autres listes,
         et « liste, 6 éléments » ne dirait pas de quoi.
 
+        « Interventions » et non « Interventions du parc » : le locataire ne voit
+        que les siennes — `duPerimetre` filtre sur ses unités —, et le filtre
+        d'origine restreint encore `visible`. Un nom qui promet le parc entier
+        serait faux dans les deux cas ; `TenantScopeNote` dit déjà le périmètre
+        à qui le subit.
+
         `list` et non `region` : dix interventions feraient dix repères dans le
         sommaire de la page, ce qui l'encombre au lieu de l'éclairer. Et non
         `group`, dont la spécification dit l'inverse de ce qu'on cherche — un
