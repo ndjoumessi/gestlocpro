@@ -310,7 +310,25 @@ export function Portfolio() {
               <Link
                 to={lien(base, `parc/${unit.id}`)}
                 aria-label={t('app.unitFile.open', { unit: unit.label })}
-                className="numeric font-medium text-ink underline-offset-4 hover:underline"
+                /*
+                  LA CIBLE FAIT LA CELLULE, SANS DÉPLACER UN PIXEL.
+
+                  Mesuré dans un navigateur : ce lien faisait 18 × 17 px. C'est
+                  la SEULE entrée vers le dossier d'un logement — la rangée n'est
+                  pas cliquable, et ce fichier explique pourquoi elle ne doit pas
+                  l'être — alors que le dépôt s'est donné un plancher de 44 px,
+                  honoré par soixante-treize autres commandes. Viser « A1 » entre
+                  neuf voisins, sur un téléphone d'entrée de gamme, demande une
+                  précision que personne n'a.
+
+                  `min-h-11` sur le lien aurait marché et coûté cher : mesuré, il
+                  portait la rangée de 47 à 69 px et le tableau de 613 à 868 px
+                  sur mobile, où la colonne « Immeuble » est masquée et
+                  n'absorbe donc rien. `::after` étendu sur la cellule — qui fait
+                  déjà 47 px de haut — donne une cible PLUS grande pour zéro
+                  déplacement.
+                */
+                className="numeric font-medium text-ink underline-offset-4 after:absolute after:inset-0 hover:underline"
               >
                 {unit.label}
               </Link>

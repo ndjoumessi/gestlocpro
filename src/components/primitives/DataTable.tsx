@@ -89,7 +89,21 @@ export function DataTable<T>({
                 <td
                   key={column.key}
                   className={cn(
-                    'px-4 py-3 align-middle',
+                    /*
+                      `relative` : la cellule est le bloc conteneur de ce qu'elle
+                      contient. Une cellule qui MÈNE quelque part peut alors
+                      offrir toute sa surface au doigt, par un `::after` étendu
+                      sur ses bords, sans qu'un seul pixel ne se déplace — c'est
+                      ce que fait la colonne « Logement » du parc.
+
+                      La note du haut de ce fichier annonçait la manœuvre : « le
+                      jour où une ligne devra mener quelque part, la réponse
+                      juste sera un vrai lien dans une cellule ». Le lien reste
+                      un lien — focalisable, ouvrable dans un nouvel onglet,
+                      annoncé par son nom — et c'est sa zone tapable, non sa
+                      nature, qui grandit.
+                    */
+                    'relative px-4 py-3 align-middle',
                     column.numeric && 'numeric text-right whitespace-nowrap',
                     column.hideOnMobile && 'hidden sm:table-cell',
                   )}
