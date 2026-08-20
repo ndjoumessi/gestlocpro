@@ -197,7 +197,36 @@ export function StackedBarChart({
           main la hauteur des étiquettes. Les colonnes portent `h-full` car une
           hauteur en pourcentage ne se résout que contre un parent de hauteur
           définie — sans cela les barres ne s'affichaient pas du tout. */}
-      <div className="flex h-56 flex-col sm:h-64">
+      {/*
+        LE DÉFILEMENT ENVELOPPE LE TRACÉ *ET* LES ÉTIQUETTES.
+
+        Le graphe des consommations a reçu son plancher de pas ; celui-ci ne
+        pouvait pas recevoir le même remède, et c'est pourquoi il a attendu son
+        propre lot. Deux raisons, toutes deux vérifiées avant d'y toucher.
+
+        La ligne d'objectif est posée en `absolute inset-x-0` DANS la zone de
+        tracé : un `overflow` sur cette zone l'aurait figée pendant que les
+        barres défileraient dessous, et le repère aurait désigné le mauvais
+        mois. Elle doit donc défiler avec elles — d'où la boîte de défilement un
+        cran plus haut, autour du tracé et de la rangée d'étiquettes, que
+        `min-w-max` fait aussi larges que leur contenu. Le repère garde alors sa
+        largeur réelle et suit le tracé.
+
+        Et l'étiquette du montant déborde de dix pixels VERS LE HAUT
+        (`-top-2.5`). Or `overflow-x` ne se règle pas seul : le navigateur
+        contraint aussi l'axe vertical, et l'étiquette se serait fait raboter
+        quand l'objectif approche du sommet. Le `pt-2.5` lui rend exactement ces
+        dix pixels — et la hauteur totale les compense au même montant, pour que
+        la BOÎTE DE CONTENU garde ses 224 px : `h-56` avec `pt-2.5` n'en
+        laisserait que 214, et toutes les barres auraient raccourci d'autant.
+
+        Deux boîtes, deux nombres, et il vaut mieux les nommer séparément : la
+        boîte de contenu porte le tracé ET la rangée d'étiquettes, la rangée de
+        tracé seule vaut 26 px de moins — 198 px ici, 230 px sous `sm`. Mesuré
+        avant et après ce lot : 230 des deux côtés, les barres n'ont pas bougé.
+      */}
+      <div className="flex h-[14.625rem] flex-col overflow-x-auto pt-2.5 sm:h-[16.625rem]">
+        <div className="flex min-w-max flex-1 flex-col">
         <div className="relative flex min-h-0 flex-1 items-stretch gap-1 sm:gap-2.5">
           {showTarget && (
             <div
@@ -244,7 +273,7 @@ export function StackedBarChart({
               <button
                 key={bar.label}
                 type="button"
-                className="group relative flex h-full min-w-0 flex-1 cursor-pointer flex-col justify-end rounded-sm"
+                className="group relative flex h-full min-w-6 flex-1 shrink-0 cursor-pointer flex-col justify-end rounded-sm"
                 onMouseEnter={() => setActive(index)}
                 onMouseLeave={() => setActive((c) => (c === index ? null : c))}
                 onFocus={() => setActive(index)}
@@ -319,6 +348,12 @@ export function StackedBarChart({
             <span
               key={bar.label}
               className={cn(
+                // PAS de plancher ici, et c'est mesuré. Les deux rangées vivent
+                // dans le même conteneur `min-w-max` : elles ont donc la même
+                // largeur, et `flex-1` y découpe les mêmes colonnes. Leur poser
+                // un `min-w-6` ne déplaçait rien — vérifié au pixel, alignement
+                // identique — et un réglage qui ne fait rien ment sur ce qu'il
+                // tient.
                 'min-w-0 flex-1 text-center text-caps tracking-wide uppercase',
                 // Chaque étiquette garde sa colonne — c'est ce qui la tient
                 // centrée sous SA barre — mais sur téléphone elle a le droit
@@ -343,6 +378,7 @@ export function StackedBarChart({
               {bar.label}
             </span>
           ))}
+        </div>
         </div>
       </div>
 

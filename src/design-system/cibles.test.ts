@@ -177,16 +177,18 @@ const EXEMPTIONS: Exemption[] = [
     fichier: 'components/primitives/Charts.tsx',
     marqueur: 'key={bar.label}',
     raison:
-      'La barre de `StackedBarChart`, ET C’EST UN MANQUE CONNU, non un compromis. ' +
-      'Elle n’a pas de plancher de pas ; la contrepartie de sa voisine l’a débusquée ' +
-      'aussitôt écrite, alors qu’une raison commune aux deux graphes l’avait couverte ' +
-      'sans que personne la voie. Le remède de `MiniBarChart` ne s’y transplante pas : ' +
-      'sa zone de tracé porte la ligne d’objectif en position absolue, calée sur ' +
-      '`inset-x-0`, et l’étiquette du montant déborde vers le haut. Y poser un ' +
-      '`overflow` rognerait l’étiquette et figerait la ligne pendant que les barres ' +
-      'défileraient sous elle. Il faut porter le défilement un cran plus haut et ' +
-      'donner à la zone de tracé la largeur de son contenu — un lot à soi, mesuré ' +
-      'comme l’a été celui de sa voisine.',
+      'La barre de `StackedBarChart`. Même partage que sa voisine : la hauteur est la ' +
+      'donnée, la largeur est un pas de grille, et seul le compromis entre 24 et 44 px ' +
+      'est exempté. Le manque que la contrepartie de `MiniBarChart` avait débusqué est ' +
+      'comblé — le défilement porte désormais le tracé ET la rangée d’étiquettes, ce ' +
+      'qui laisse la ligne d’objectif suivre les barres au lieu de rester figée ' +
+      'au-dessus d’elles, et un rembourrage haut rend à son étiquette les dix pixels ' +
+      'dont elle déborde. La hauteur totale les compense, pour que la zone de tracé ' +
+      'garde exactement ses 198 px — mesuré des deux côtés.',
+    exige: {
+      verifie: porteUnPasSuffisant,
+      contrepartie: 'un pas d’au moins 24 px, déclaré sur la barre',
+    },
   },
   {
     fichier: 'components/layout/AppShell.tsx',
