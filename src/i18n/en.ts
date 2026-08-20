@@ -300,6 +300,7 @@ export const en: Dictionary = {
       parkNameRequired: 'Give your portfolio a name.',
       inviteRequired: 'Enter your invitation code.',
       inviteInvalid: 'Code not recognised. Expected format: LOC-XXXX-XXXX.',
+      countryRequired: 'Choose your country.',
       credentials: 'Incorrect email or password.',
       confirmRequired: 'Confirm your password.',
       confirmMismatch: 'The two entries do not match.',

@@ -19,7 +19,16 @@ async function remplirIdentite(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/^téléphone/i), '677889900')
   await user.type(screen.getByLabelText(/^Mot de passe/), 'Bonamoussadi2026!')
   await user.click(screen.getByRole('button', { name: /continuer/i }))
-  await user.type(await screen.findByLabelText(/nom de votre parc/i), 'Parc Bonamoussadi')
+  /*
+    Le PAYS se choisit désormais : il n'arrive plus pré-rempli, déduit de la
+    devise qu'affichait la vitrine. Ce parcours de test le traversait sans le
+    voir, ce qui est exactement ce que faisait l'utilisateur.
+  */
+  const pays = await screen.findByLabelText(/^pays/i)
+  await user.click(pays)
+  await user.type(pays, 'camer')
+  await user.click(screen.getByRole('option', { name: 'Cameroun' }))
+  await user.type(screen.getByLabelText(/nom de votre parc/i), 'Parc Bonamoussadi')
   await user.click(screen.getByRole('button', { name: /continuer/i }))
   await screen.findByRole('heading', { name: /tout est correct/i })
   // Sans cette case, l'assistant refuse de soumettre — et c'est le
@@ -252,7 +261,11 @@ describe('un refus doit se lire là où l’on vient de cliquer', () => {
     await user.type(screen.getByLabelText(/^téléphone/i), '677889900')
     await user.type(screen.getByLabelText(/^Mot de passe/), 'Bonamoussadi2026!')
     await user.click(screen.getByRole('button', { name: /continuer/i }))
-    await user.type(await screen.findByLabelText(/nom de votre parc/i), 'Parc Bonamoussadi')
+    const pays = await screen.findByLabelText(/^pays/i)
+    await user.click(pays)
+    await user.type(pays, 'camer')
+    await user.click(screen.getByRole('option', { name: 'Cameroun' }))
+    await user.type(screen.getByLabelText(/nom de votre parc/i), 'Parc Bonamoussadi')
     await user.click(screen.getByRole('button', { name: /continuer/i }))
     await screen.findByRole('heading', { name: /tout est correct/i })
 

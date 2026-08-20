@@ -127,7 +127,16 @@ describe('inscription', () => {
     await user.type(screen.getByLabelText(/^Mot de passe/), 'MonBail2026!')
     await user.click(screen.getByRole('button', { name: /continuer/i }))
 
-    await user.type(await screen.findByLabelText(/code d’invitation/i), 'loc12')
+    /*
+      Le pays est choisi d'abord : il est requis depuis qu'il n'arrive plus
+      pré-rempli, et sans lui l'étape porterait DEUX refus. Ce cas éprouve celui
+      du code, pas le nombre de champs incomplets qu'on peut accumuler.
+    */
+    const pays = await screen.findByLabelText(/^pays/i)
+    await user.click(pays)
+    await user.type(pays, 'camer')
+    await user.click(screen.getByRole('option', { name: 'Cameroun' }))
+    await user.type(screen.getByLabelText(/code d’invitation/i), 'loc12')
     await user.click(screen.getByRole('button', { name: /continuer/i }))
 
     // Deux annonces, et c'est voulu : à côté du champ ET au bord du bouton.
@@ -254,10 +263,14 @@ describe('inscription', () => {
 
     await user.click(screen.getByRole('button', { name: /continuer/i }))
 
-    // Le pays reste celui d'avant — le Cameroun par défaut —, et surtout il
-    // n'est PAS passé au Canada ni aux États-Unis sur la foi d'un « +1 ».
+    /*
+      Le champ reste VIDE, et c'est une assertion plus forte qu'avant : il
+      portait « Cameroun » par pré-remplissage, ce qui masquait la question que
+      ce cas pose. Un « +1 » est partagé par le Canada et les États-Unis — en
+      déduire un pays serait tirer à pile ou face sur la devise d'un parc.
+    */
     const pays = await screen.findByLabelText(/^pays/i)
-    expect(pays).toHaveValue('Cameroun')
+    expect(pays).toHaveValue('')
   })
 
   /**
@@ -324,7 +337,11 @@ describe('inscription', () => {
     await user.type(screen.getByLabelText(/^Mot de passe/), 'Bonamoussadi2026!')
     await user.click(screen.getByRole('button', { name: /continuer/i }))
 
-    await user.type(await screen.findByLabelText(/nom de votre parc/i), 'Parc Bonamoussadi')
+    const pays = await screen.findByLabelText(/^pays/i)
+    await user.click(pays)
+    await user.type(pays, 'camer')
+    await user.click(screen.getByRole('option', { name: 'Cameroun' }))
+    await user.type(screen.getByLabelText(/nom de votre parc/i), 'Parc Bonamoussadi')
     await user.click(screen.getByRole('button', { name: /continuer/i }))
 
     await screen.findByRole('heading', { name: /tout est correct/i })
@@ -355,7 +372,11 @@ describe('inscription', () => {
     await user.type(screen.getByLabelText(/^Mot de passe/), 'Bonamoussadi2026!')
     await user.click(screen.getByRole('button', { name: /continuer/i }))
 
-    await user.type(await screen.findByLabelText(/nom de votre parc/i), 'Parc Bonamoussadi')
+    const pays = await screen.findByLabelText(/^pays/i)
+    await user.click(pays)
+    await user.type(pays, 'camer')
+    await user.click(screen.getByRole('option', { name: 'Cameroun' }))
+    await user.type(screen.getByLabelText(/nom de votre parc/i), 'Parc Bonamoussadi')
     await user.click(screen.getByRole('button', { name: /continuer/i }))
 
     const recap = await screen.findByRole('heading', { name: /tout est correct/i })

@@ -40,6 +40,30 @@ export function validatePasswordConfirmation(value: string, reference: string): 
 }
 
 /**
+ * Le pays du compte : REQUIS, et rien de plus.
+ *
+ * Il n'était pas requis, parce que personne n'avait à le toucher — il arrivait
+ * pré-rempli, déduit de la devise qu'affichait la vitrine, en prenant le
+ * premier pays de la liste qui la porte. Un champ qu'on ne touche pas est un
+ * champ qu'on ne lit pas, et sa valeur partait au serveur sans que quiconque
+ * l'ait vue : c'est ainsi qu'un parc de Yaoundé est né français.
+ *
+ * On ne vérifie PAS l'appartenance à `COUNTRIES`, et c'est délibéré. Cette
+ * liste compte vingt et un pays *desservis* — ceux dont on connaît la devise,
+ * la langue et l'indicatif — quand le formulaire en propose deux cent
+ * quarante-deux. Un premier jet exigeait l'appartenance : il interdisait
+ * l'inscription à un bailleur de Harare, et c'est un cas existant du harnais
+ * qui l'a attrapé. La présence suffit ici ; la forme du code est le contrat du
+ * serveur, qui n'exige que deux lettres.
+ *
+ * `OTHER_COUNTRY` est une réponse : « mon pays n'est pas proposé ». Le
+ * formulaire ne transmet alors aucun code plutôt qu'un faux.
+ */
+export function validateCountry(value: string): FieldError {
+  return value ? null : 'auth.errors.countryRequired'
+}
+
+/**
  * Jeton de réinitialisation : présent, et rien de plus.
  *
  * Cette fonction jugeait la FORME — seize caractères hexadécimaux, celle du

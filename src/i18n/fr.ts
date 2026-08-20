@@ -366,6 +366,7 @@ export const fr = {
       parkNameRequired: 'Donnez un nom à votre parc.',
       inviteRequired: 'Saisissez votre code d’invitation.',
       inviteInvalid: 'Code non reconnu. Format attendu : LOC-XXXX-XXXX.',
+      countryRequired: 'Choisissez votre pays.',
       credentials: 'E-mail ou mot de passe incorrect.',
       confirmRequired: 'Confirmez votre mot de passe.',
       confirmMismatch: 'Les deux saisies ne correspondent pas.',

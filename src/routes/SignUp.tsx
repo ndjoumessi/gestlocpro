@@ -38,6 +38,7 @@ import {
   formatInviteCode,
   validateEmail,
   validateInviteCode,
+  validateCountry,
   validateName,
   validateParkName,
   validatePassword,
@@ -114,13 +115,22 @@ export function SignUp() {
     }
 
     if (current === "context") {
+      /**
+       * Le PAYS est exigé pour les trois rôles.
+       *
+       * Il arrivait pré-rempli, déduit de la devise qu'affichait la vitrine, et
+       * personne n'avait à le regarder. Le propriétaire y joue la devise de son
+       * parc ; le locataire et le gestionnaire, leur indicatif et leur langue.
+       * Aucun des trois ne gagne à ce qu'on le devine à sa place.
+       */
+      const pays = { country: validateCountry(state.country) };
       if (state.role === "owner")
-        return { parkName: validateParkName(state.parkName) };
+        return { ...pays, parkName: validateParkName(state.parkName) };
       // Le gestionnaire sans code passe par une demande d'accès : on ne bloque
       // pas, on change de chemin.
-      if (state.role === "manager") return {};
+      if (state.role === "manager") return pays;
       if (state.role === "tenant")
-        return { inviteCode: validateInviteCode(state.inviteCode) };
+        return { ...pays, inviteCode: validateInviteCode(state.inviteCode) };
     }
 
     return { terms: state.terms ? null : "auth.signup.termsError" };
