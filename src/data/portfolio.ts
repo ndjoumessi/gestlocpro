@@ -690,6 +690,20 @@ export interface RelativeStamp {
  * concaténé à la main.
  */
 export type AlertMessage =
+  /**
+   * Les deux que le bailleur ÉCRIT lui-même.
+   *
+   * `announcement` porte un message groupé — « coupure d'eau jeudi » —, et
+   * `workReply` la réponse à un signalement. Leur texte n'est pas une phrase du
+   * produit : il vient d'un humain, voyage dans `data.text`, et ne se traduit
+   * pas. Les libellés ne portent donc que l'habillage, jamais le contenu.
+   *
+   * Sans eux, l'écran composait une clé qui n'existait dans aucun dictionnaire
+   * et affichait `app.alerts.msg.announcement.title` en toutes lettres — le
+   * défaut exact que les deux clés du dessous avaient déjà causé.
+   */
+  | 'announcement'
+  | 'workReply'
   | 'rentOverdue'
   | 'quotePending'
   | 'metersMissing'
@@ -733,11 +747,19 @@ export interface AlertData {
   period?: Pick<DateParts, 'year' | 'month'>
   /** Unités concernées, énumérées par `Intl.ListFormat`. */
   units?: string[]
+  /**
+   * Le texte écrit par le bailleur — annonce groupée ou réponse à un
+   * signalement. Rendu TEL QUEL : c'est la seule donnée d'alerte qui ne soit
+   * pas une valeur à formater, et personne ne traduit ce qu'un humain a écrit.
+   */
+  text?: string
+  /** La référence du chantier auquel une réponse se rattache — « SIG-2026-042 ». */
+  reference?: string
 }
 
 export interface Alert {
   id: string
-  kind: 'payment' | 'work' | 'meter' | 'lease'
+  kind: 'payment' | 'work' | 'meter' | 'lease' | 'announcement'
   message: AlertMessage
   data: AlertData
   at: RelativeStamp

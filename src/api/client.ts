@@ -478,6 +478,42 @@ export const api = {
     },
   ) => requete<T>(`/parks/${parkId}/payments`, { method: 'POST', body: JSON.stringify(corps) }),
 
+  /**
+   * RÉPONDRE AU LOCATAIRE QUI A SIGNALÉ.
+   *
+   * Le fil n'existait que dans un sens : le locataire déclarait une fuite, puis
+   * regardait un statut avancer sans jamais savoir quand quelqu'un passerait.
+   *
+   * La réponse dit `delivered`, et l'écran doit le lire : un locataire dont la
+   * fiche n'est reliée à aucun compte n'a pas d'espace où lire le message. Il
+   * est quand même consigné au dossier, mais il reste un appel à passer —
+   * annoncer « réponse envoyée » dans ce cas serait le mensonge que ce produit
+   * retire partout ailleurs. Le serveur rend 409 `no_reporter` sur une
+   * intervention que le bailleur a ouverte lui-même : il n'y a personne à qui
+   * répondre.
+   */
+  replyToWork: <T>(parkId: string, workId: string, message: string) =>
+    requete<T>(`/parks/${parkId}/works/${workId}/reply`, {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    }),
+
+  /**
+   * Le message groupé aux locataires en place.
+   *
+   * `buildingId` absent vaut TOUT LE PARC : c'est le serveur qui borne, et le
+   * client ne compose pas la liste des destinataires — il l'ignore. Un bail
+   * terminé n'est pas prévenu, et cette règle n'a pas à être recopiée ici.
+   *
+   * Rend `delivered` et `unreachable` : le compte de ceux qui liront, et le nom
+   * de ceux qu'il faudra appeler.
+   */
+  announce: <T>(parkId: string, corps: { message: string; buildingId?: string }) =>
+    requete<T>(`/parks/${parkId}/announcements`, {
+      method: 'POST',
+      body: JSON.stringify(corps),
+    }),
+
   addUnit: <T>(
     parkId: string,
     buildingId: string,

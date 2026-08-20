@@ -28,6 +28,14 @@ const ECRAN_PAR_NATURE: Record<Alert['kind'], string> = {
   work: 'travaux',
   meter: 'releves',
   lease: 'cautions',
+  /**
+   * Un message groupé ne renvoie NULLE PART, et c'est voulu.
+   *
+   * Les autres natures désignent l'écran où l'on traite le problème ; une
+   * annonce n'appelle aucun geste — elle informe. La renvoyer aux paiements ou
+   * aux travaux ferait chercher une action qui n'existe pas.
+   */
+  announcement: '',
 }
 
 const KIND_ICON: Record<Alert['kind'], IconName> = {
@@ -35,6 +43,7 @@ const KIND_ICON: Record<Alert['kind'], IconName> = {
   work: 'wrench',
   meter: 'gauge',
   lease: 'file',
+  announcement: 'phone',
 }
 
 const SEVERITY_TONE: Record<Alert['severity'], StatusTone> = {
@@ -75,6 +84,10 @@ function useAlertMessage() {
     if (data.dueOn) vars.date = d.fullDate(data.dueOn)
     if (data.period) vars.period = d.monthYear(data.period)
     if (data.units) vars.units = n.list(data.units)
+    // Le texte du bailleur, tel qu'il l'a écrit. Il n'est ni formaté ni
+    // traduit : c'est la seule variable d'alerte qui porte une phrase humaine.
+    if (data.text) vars.text = data.text
+    if (data.reference) vars.reference = data.reference
 
     return t(
       `app.alerts.msg.${alert.message}.${part}` as 'app.alerts.msg.rentOverdue.title',
@@ -278,14 +291,27 @@ export function Alerts() {
                   notification est produite par le produit, personne n'en crée »
                   — et ce lien ne le contredit pas.
                 */}
-                <Button
-                  to={lien(base, ECRAN_PAR_NATURE[alert.kind])}
-                  variant="ghost"
-                  size="sm"
-                  iconAfter="arrowRight"
-                >
-                  {t('app.alerts.open')}
-                </Button>
+                {/*
+                  PAS DE BOUTON QUAND IL NE MÈNE NULLE PART.
+
+                  `ECRAN_PAR_NATURE` rend la chaîne vide pour une annonce, et
+                  `lien(base, '')` renvoie à la racine de l'espace : le bouton
+                  aurait dit « Ouvrir » et ramené le lecteur au tableau de bord,
+                  lui faisant chercher un écran de traitement qui n'existe pas.
+                  On teste la DESTINATION et non la nature — la prochaine
+                  notification sans écran héritera de la règle sans qu'on y
+                  repense.
+                */}
+                {ECRAN_PAR_NATURE[alert.kind] !== '' && (
+                  <Button
+                    to={lien(base, ECRAN_PAR_NATURE[alert.kind])}
+                    variant="ghost"
+                    size="sm"
+                    iconAfter="arrowRight"
+                  >
+                    {t('app.alerts.open')}
+                  </Button>
+                )}
               </div>
             </Card>
           ))}

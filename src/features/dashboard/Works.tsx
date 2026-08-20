@@ -19,6 +19,7 @@ import { usePortfolio } from '@/data/PortfolioProvider'
 import { workTitle } from '@/data/workTitle'
 import { ReportModal } from './ReportModal'
 import { OpenWorkModal } from './OpenWorkModal'
+import { ReplyModal } from './ReplyModal'
 import { Modal } from '@/components/primitives/Modal'
 import { Field } from '@/components/primitives/Field'
 import { Input } from '@/components/primitives/Input'
@@ -71,6 +72,7 @@ export function Works() {
    */
   const [origine, setOrigine] = useState<'all' | 'tenantReport' | 'ownerInitiative'>('all')
   const [aChiffrer, setAChiffrer] = useState<WorkOrder | null>(null)
+  const [aRepondre, setARepondre] = useState<WorkOrder | null>(null)
   const [montant, setMontant] = useState('')
   const [montantErreur, setMontantErreur] = useState(false)
 
@@ -437,6 +439,30 @@ export function Works() {
                   gestionnaire chiffre, le propriétaire arbitre » dit le
                   sous-titre de cet écran ; le deuxième maillon manquait.
                 */}
+                {/*
+                  RÉPONDRE : le retour que le locataire n'a jamais eu.
+
+                  Il déclare une fuite, puis regarde une pastille avancer —
+                  « déclaré », « devisé », « validé » — sans jamais apprendre
+                  quand quelqu'un passera. Les deux routes existaient depuis le
+                  lot précédent et RIEN ne les appelait : un canal branché des
+                  deux côtés du serveur et muet à l'écran ne répond à personne.
+
+                  Sur une intervention QUE LE LOCATAIRE A OUVERTE, et sur elle
+                  seule : celle que le bailleur s'est ouverte à lui-même n'a
+                  personne à qui répondre, et le serveur la refuse en 409. On ne
+                  propose pas un geste qu'on refusera.
+
+                  À tout statut, y compris `done` : « c'est réparé, l'artisan
+                  est passé jeudi » est précisément la réponse qui manque le
+                  plus. Le locataire ne la lisait nulle part.
+                */}
+                {work.origin === 'tenantReport' && work.reportedBy && role !== 'tenant' && (
+                  <Button variant="ghost" size="sm" icon="bell" onClick={() => setARepondre(work)}>
+                    {t('app.works.reply')}
+                  </Button>
+                )}
+
                 {work.status === 'reported' && role !== 'tenant' && (
                   <Button
                     variant="secondary"
@@ -555,6 +581,10 @@ export function Works() {
           </Field>
         </Modal>
       )}
+
+      {/* Rendue sans condition de rôle sur le montage : la modale se ferme sur
+          `work === null`, et le bouton qui l'ouvre porte déjà la garde. */}
+      <ReplyModal work={aRepondre} onClose={() => setARepondre(null)} />
 
       {role === 'tenant' && mesUnites[0] && (
         <ReportModal

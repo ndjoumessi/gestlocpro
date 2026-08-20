@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { PageHeader, useRole } from '@/components/layout/AppShell'
 import { InviteModal } from './InviteModal'
+import { AnnounceModal } from './AnnounceModal'
 import { Icon } from '@/components/primitives/Icon'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { DataTable } from '@/components/primitives/DataTable'
@@ -29,6 +30,7 @@ export function Tenants() {
   const { money } = useCurrency()
   const [open, setOpen] = useState(false)
   const [inviteOuverte, setInviteOuverte] = useState(false)
+  const [annonceOuverte, setAnnonceOuverte] = useState(false)
 
   // Unités partagées : rattacher un locataire doit se voir ici, dans le parc
   // immobilier et dans le taux d'occupation du tableau de bord.
@@ -65,6 +67,28 @@ export function Tenants() {
             {/* L'invitation n'exige PAS de logement vacant : on peut inviter un
                 gestionnaire, ou un locataire dont le bail se prépare. La lier à
                 la disponibilité aurait bloqué les deux. */}
+            {/*
+              PRÉVENIR TOUT LE MONDE D'UN COUP.
+
+              Le seul envoi à plusieurs destinataires du produit était la relance
+              d'impayés, sans texte libre. Une coupure d'eau annoncée jeudi se
+              transmettait au téléphone, locataire par locataire, et ce qui avait
+              été dit ne laissait aucune trace.
+
+              Il vit sur le FICHIER DES PERSONNES et non sur le parc immobilier :
+              on écrit à des gens, pas à des murs, et c'est ici qu'on lit qui ils
+              sont. Grisé quand personne n'est en place — le serveur rendrait 404
+              sur un parc sans bail actif, et un bouton qui ne peut qu'échouer
+              vaut moins qu'un bouton qui dit pourquoi.
+            */}
+            <Button
+              variant="secondary"
+              icon="bell"
+              onClick={() => setAnnonceOuverte(true)}
+              disabled={leases.length === 0}
+            >
+              {t('app.announce.button')}
+            </Button>
             <Button variant="secondary" icon="users" onClick={() => setInviteOuverte(true)}>
               {t('app.invite.button')}
             </Button>
@@ -76,6 +100,7 @@ export function Tenants() {
       />
 
       {inviteOuverte && <InviteModal open onClose={() => setInviteOuverte(false)} />}
+      {annonceOuverte && <AnnounceModal open onClose={() => setAnnonceOuverte(false)} />}
 
       {/* Un bouton grisé sans motif laisse deviner. Quand tout est loué, il
           n'y a rien à quoi rattacher un locataire — on le dit. */}
