@@ -109,14 +109,11 @@ model UserAccount {
   /// ISO 3166-1 alpha-2. Pilote le format des dates via `resolveDateLocale`.
   countryCode String? @db.Char(2)
   locale   Locale @default(fr)
-  /// Préférence d'affichage de la personne, distincte de la devise du parc.
-  displayCurrency Currency?
 
   /// Juridiquement la première chose à conserver, avec sa date. La case bloque
   /// l'inscription et n'était enregistrée nulle part.
   termsAcceptedAt DateTime
   newsletterOptIn Boolean  @default(false)
-  emailVerifiedAt DateTime?
   /// On désactive, on ne supprime pas : cette personne est citée par des baux,
   /// des paiements et des décisions d'arbitrage.
   disabledAt      DateTime?
