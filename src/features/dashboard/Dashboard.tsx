@@ -446,7 +446,10 @@ export function Dashboard() {
                 <li key={building.id}>
                   <Link
                     to={lien(base, 'parc')}
-                    className="flex items-center gap-3 rounded-md py-1 no-underline"
+                    /* `min-h-11` : les deux lignes de texte frôlaient déjà le
+                       plancher sans que rien ne le garantisse — un immeuble au nom
+                       court et sans quartier serait passé dessous. */
+                    className="flex min-h-11 items-center gap-3 rounded-md py-1 no-underline"
                   >
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-body font-medium text-on-dark">

@@ -1129,7 +1129,12 @@ function MenuCompte({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
         aria-label={t('auth.accountMenu', { name: nom })}
         onClick={() => setOuvert((o) => !o)}
         className={cn(
-          'flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full',
+          // `size-11` et non `size-9` : la pastille du menu de compte faisait
+          // 36 px, huit de moins que le plancher, alors qu'elle ouvre le SEUL
+          // chemin vers la déconnexion et le changement de parc. Elle s'aligne
+          // désormais sur l'`IconButton` qui la jouxte, qui porte 44 px depuis
+          // l'origine — l'écart se voyait dans la barre sans que personne le lise.
+          'flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full',
           'text-label font-semibold',
           // Encre sur encre : la pastille disparaissait purement et simplement
           // dans la barre du locataire, qui est de la même couleur. L'or est

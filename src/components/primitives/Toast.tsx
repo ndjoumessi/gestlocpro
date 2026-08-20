@@ -162,7 +162,14 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
             toast.action?.onClick()
             onDismiss()
           }}
-          className="cursor-pointer rounded-sm px-1 text-label font-semibold text-gold-on-dark underline underline-offset-2 hover:text-gold"
+          /*
+            `-my-3` avec `min-h-11` : la cible fait 44 px, et le toast ne grandit
+            pas d'un pixel. Le rembourrage vertical du toast vaut douze de chaque
+            côté ; la marge négative y loge la hauteur excédentaire du bouton, dont
+            la boîte de marge retombe alors sous celle du message. Un doigt vise
+            44 px, l'œil voit la ligne de texte qu'il voyait.
+          */
+          className="-my-3 inline-flex min-h-11 cursor-pointer items-center rounded-sm px-1 text-label font-semibold text-gold-on-dark underline underline-offset-2 hover:text-gold"
         >
           {toast.action.label}
         </button>

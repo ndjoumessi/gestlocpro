@@ -39,8 +39,18 @@ function sources(depuis: string): string[] {
  * mêmes où il vient d'être corrigé — ce qui pousserait à effacer l'explication
  * pour faire passer la suite.
  */
+/**
+ * Commentaires BLANCHIS, et non retirés.
+ *
+ * Un bloc `/* … *\/` se remplaçait par UN espace, écrasant vingt lignes en une.
+ * Tout numéro rapporté ensuite désignait donc la mauvaise ligne, et d'autant
+ * plus loin qu'on descendait dans un fichier — dans un dépôt qui commente
+ * autant, le décalage est systématique. Le message du garde trompait au moment
+ * précis où on s'y fie : quand il échoue.
+ */
 function sansCommentaires(source: string): string {
-  return source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/.*$/gm, '$1')
+  const blanchir = (bloc: string) => bloc.replace(/[^\n]/g, ' ')
+  return source.replace(/\/\*[\s\S]*?\*\//g, blanchir).replace(/(^|[^:])\/\/.*$/gm, '$1')
 }
 
 function lignes(predicat: (ligne: string) => boolean): string[] {
