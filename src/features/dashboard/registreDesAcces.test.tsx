@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { renderApp, screen, userEvent, waitFor, within } from '@/test/render'
+import { attendreLeChargement, renderApp, screen, userEvent, waitFor, within } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur, type FauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 import type { Role } from '@/features/auth/signupState'
@@ -89,10 +89,55 @@ beforeEach(() => {
 
 async function ouvrir(role: Role) {
   renderApp('/app/acces', { session: sessionDuRole(role) })
-  await screen.findByRole('heading', { level: 1, name: /Accès au parc/ })
+  /**
+   * ON ATTEND UNE DONNÉE DU REGISTRE, ET NON LE TITRE.
+   *
+   * `RegistreEnChargement` rend le MÊME `PageHeader`, avec le même titre, que
+   * l'écran chargé — et c'est un bon parti pris d'interface, qui évite au
+   * contenu de sauter quand les données arrivent. Mais il rendait cette attente
+   * creuse : `findByRole('heading')` se satisfaisait du squelette, donc de
+   * l'état où le registre n'est pas encore là. Ce n'était pas un point de
+   * synchronisation, seulement l'apparence d'un.
+   *
+   * Les assertions synchrones qui suivent — `getByText` sur des lignes venues
+   * d'un `fetch` — couraient donc contre la résolution de la promesse. Six
+   * exécutions sur vingt tombaient, sur CINQ cas différents : ce n'était pas un
+   * cas fragile, c'était le fichier entier qui tirait au sort.
+   *
+   * `attendreLeChargement` est le point de synchronisation du harnais depuis
+   * toujours : il attend la disparition des régions `aria-busy`. Il était
+   * AVEUGLE ici, l'écran des accès rendant son squelette nu — c'est corrigé du
+   * même geste, et l'attente ne dépend plus d'une donnée choisie à la main.
+   */
+  await attendreLeChargement()
 }
 
 describe('le registre des accès', () => {
+  it('annonce son attente, au lieu de se taire jusqu’aux données', async () => {
+    /**
+     * SANS `await` : on regarde le PREMIER rendu, celui où le registre n'est pas
+     * encore arrivé.
+     *
+     * L'écran rendait alors un squelette nu — ni `role="status"` ni `aria-busy`,
+     * donc muet aux technologies d'assistance pendant toute l'attente. Les onze
+     * autres écrans l'annoncent ; celui-ci était le seul à ne pas le faire.
+     *
+     * Le manque avait un second effet, celui par lequel il a été trouvé.
+     * `PageHeader` étant rendu à l'identique dans les deux états, RIEN ne
+     * distinguait l'attente du chargé : `attendreLeChargement()` — qui guette la
+     * disparition des régions `aria-busy` — rendait la main immédiatement, et
+     * les assertions couraient contre le `fetch`. Six exécutions sur vingt
+     * tombaient, sur cinq cas différents. Ce cas-ci est la garde qui empêche la
+     * course de se rouvrir.
+     */
+    renderApp('/app/acces', { session: sessionDuRole('owner') })
+    expect(document.querySelector('[aria-busy="true"]')).not.toBeNull()
+
+    // Puis on laisse l'écran finir, pour ne pas laisser un rendu en vol.
+    await attendreLeChargement()
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull()
+  })
+
   it('montre qui détient une clé, et à quel titre', async () => {
     await ouvrir('owner')
 

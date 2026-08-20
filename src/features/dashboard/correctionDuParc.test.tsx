@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { renderApp, screen, userEvent, within } from '@/test/render'
+import { attendreLeChargement, renderApp, screen, userEvent, within } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur, type FauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 import type { Role } from '@/features/auth/signupState'
@@ -72,7 +72,12 @@ beforeEach(() => {
 /** Monte l'écran du parc et ouvre la modale de correction. */
 async function ouvrirLaCorrection() {
   renderApp('/app/parc', { session: sessionDuRole('owner') })
-  await screen.findByRole('heading', { level: 1 })
+  /**
+   * Le titre ne dit RIEN de l'état : `PortfolioSkeleton` rend le même
+   * `PageHeader` que l'écran chargé. L'attendre laissait le clic qui suit
+   * courir contre le `fetch`, et le bouton n'existe que chargé.
+   */
+  await attendreLeChargement()
   await userEvent.setup().click(screen.getByRole('button', { name: 'Corriger le parc' }))
   return screen.findByRole('dialog')
 }
@@ -85,7 +90,7 @@ function correctionsEnvoyees() {
 describe('corriger le parc', () => {
   it('n’est proposé qu’au propriétaire', async () => {
     renderApp('/app/parc', { session: sessionDuRole('manager') })
-    await screen.findByRole('heading', { level: 1 })
+    await attendreLeChargement()
 
     /**
      * La devise n'est pas un réglage d'affichage : c'est l'unité de tout ce qui

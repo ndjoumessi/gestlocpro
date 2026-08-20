@@ -5,7 +5,7 @@ import { Card, CardHeader } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
 import { Icon } from '@/components/primitives/Icon'
 import { StatusPill } from '@/components/primitives/StatusPill'
-import { SkeletonTable } from '@/components/primitives/Skeleton'
+import { SkeletonRegion, SkeletonTable } from '@/components/primitives/Skeleton'
 import { useToast } from '@/components/primitives/Toast'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
@@ -294,7 +294,23 @@ function RegistreEnChargement() {
   return (
     <>
       <PageHeader title={t('app.access.title')} description={t('app.access.subtitle')} />
-      <SkeletonTable rows={3} />
+      {/**
+        * L'ATTENTE S'ANNONCE, comme sur les onze autres écrans.
+        *
+        * Le squelette était rendu nu : ni `role="status"` ni `aria-busy`, donc
+        * un écran muet pendant les secondes qui séparent la navigation de
+        * l'arrivée du registre — précisément ce que le commentaire de
+        * `SkeletonRegion` désigne comme le deuxième plus mauvais choix.
+        *
+        * Le manque avait un second effet, invisible à l'usage : `PageHeader`
+        * étant rendu à l'identique dans les deux états, RIEN ne distinguait
+        * l'écran en attente de l'écran chargé. Le harnais de test n'avait donc
+        * aucun point de synchronisation ici, et six exécutions sur vingt
+        * tombaient sur cinq cas différents.
+        */}
+      <SkeletonRegion>
+        <SkeletonTable rows={3} />
+      </SkeletonRegion>
     </>
   )
 }

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { renderApp, screen, userEvent, within } from '@/test/render'
+import { attendreLeChargement, renderApp, screen, userEvent, within } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur, type FauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 import type { Role } from '@/features/auth/signupState'
@@ -93,7 +93,7 @@ describe('les prix affichés sur les relevés', () => {
     // prix sans que rien ne le dise.
     servir({ water: 610, power: 112 })
     renderApp('/app/releves', { session: sessionDuRole('owner') })
-    await screen.findByRole('heading', { level: 1 })
+    await attendreLeChargement()
 
     expect(await screen.findByText(/610/)).toBeInTheDocument()
     expect(screen.getByText(/112/)).toBeInTheDocument()
@@ -103,7 +103,7 @@ describe('les prix affichés sur les relevés', () => {
   it('disparaissent quand le parc n’en a posé aucun', async () => {
     servir({ water: null, power: null })
     renderApp('/app/releves', { session: sessionDuRole('owner') })
-    await screen.findByRole('heading', { level: 1 })
+    await attendreLeChargement()
 
     /**
      * La QUANTITÉ reste — 16 m³ est un fait relevé —, seul le prix s'en va.
@@ -127,7 +127,7 @@ describe('ce que le locataire lit de ses charges', () => {
   it('voit son montant quand le prix existe', async () => {
     servir({ water: 610, power: 112 })
     renderApp('/app/mon-espace', { session: sessionDuRole('tenant') })
-    await screen.findByRole('heading', { level: 1 })
+    await attendreLeChargement()
 
     // 16 m³ à 610 : la moitié positive, sans laquelle un écran qui n'afficherait
     // plus jamais de montant satisferait le cas suivant.
@@ -137,7 +137,7 @@ describe('ce que le locataire lit de ses charges', () => {
   it('lit un tiret plutôt qu’un montant que personne ne lui a accordé', async () => {
     servir({ water: null, power: null })
     renderApp('/app/mon-espace', { session: sessionDuRole('tenant') })
-    await screen.findByRole('heading', { level: 1 })
+    await attendreLeChargement()
 
     /**
      * C'est l'endroit du produit où un chiffre inventé coûte le plus cher :
@@ -171,14 +171,14 @@ describe('poser un prix', () => {
 
   async function ouvrirLesTarifs() {
     renderApp('/app/releves', { session: sessionDuRole('owner') })
-    await screen.findByRole('heading', { level: 1 })
+    await attendreLeChargement()
     await userEvent.setup().click(screen.getByRole('button', { name: 'Prix de refacturation' }))
     return screen.findByRole('dialog')
   }
 
   it('n’est proposé qu’au propriétaire', async () => {
     renderApp('/app/releves', { session: sessionDuRole('manager') })
-    await screen.findByRole('heading', { level: 1 })
+    await attendreLeChargement()
 
     // Fixer un prix engage l'argent du locataire — même partage que la
     // validation d'un devis. Le serveur refuse déjà ; l'écran ne propose pas.
