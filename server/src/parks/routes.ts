@@ -1698,6 +1698,79 @@ parksRouter.post(
 )
 
 /**
+ * Ce qu'on peut corriger d'un parc, et rien d'autre.
+ *
+ * Chaque champ est FACULTATIF : l'appelant envoie ce qu'il change. Exiger le
+ * triplet complet obligerait l'écran à renvoyer des valeurs qu'il n'a pas
+ * modifiées, et une lecture périmée écraserait alors la correction d'un autre.
+ *
+ * `.refine` sur le corps vide : une requête qui ne change rien réussirait
+ * silencieusement, et l'écran annoncerait « enregistré » sans qu'aucune
+ * écriture ait eu lieu — le mensonge le plus discret de la famille.
+ */
+const schemaCorrectionDuParc = z
+  .object({
+    name: z.string().trim().min(2, 'Au moins 2 caractères').max(120).optional(),
+    countryCode: z.string().length(2).toUpperCase().optional(),
+    currency: z.enum(['XAF', 'XOF', 'EUR', 'CAD', 'USD']).optional(),
+  })
+  .refine((v) => v.name !== undefined || v.countryCode !== undefined || v.currency !== undefined, {
+    message: 'Rien à corriger',
+  })
+
+/**
+ * CORRIGER LE PARC : son nom, son pays, sa devise.
+ *
+ * Aucune route ne modifiait un parc — pas un `park.update` dans tout le
+ * serveur. Un propriétaire dont le parc était né avec la mauvaise devise
+ * l'était pour toujours, et chaque loyer qu'il saisissait était relu dans une
+ * unité qui n'est pas la sienne. Le cas n'est pas théorique : le pays du compte
+ * était déduit de la devise affichée sur la vitrine au moment de l'inscription,
+ * si bien qu'un visiteur qui avait regardé la grille tarifaire en euros
+ * naissait français.
+ *
+ * Réservée au PROPRIÉTAIRE. La devise et le pays d'un parc ne sont pas des
+ * réglages d'affichage : ils déterminent l'unité de tout ce qui s'y compte, et
+ * le gestionnaire opère dans cette unité sans la fixer.
+ */
+parksRouter.patch(
+  '/:parkId',
+  exigerAppartenance,
+  exigerRole('owner'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const corps = schemaCorrectionDuParc.parse(req.body)
+
+    /**
+     * CHANGER LA DEVISE NE CONVERTIT RIEN, et c'est assumé.
+     *
+     * Les montants sont stockés en unités mineures, sans devise attachée : un
+     * loyer de 180 000 relu en euros reste 180 000, soit six cent cinquante-six
+     * fois sa valeur. Convertir demanderait une source de taux et une date de
+     * référence sur chaque montant — un vrai sujet, pas un effet de bord de
+     * cette route.
+     *
+     * On ne l'interdit pas pour autant : le cas qui appelle ce geste est
+     * précisément le parc jeune, né dans la mauvaise unité, dont les quelques
+     * montants seront resaisis. C'est à l'écran de le dire AVANT le clic, et il
+     * le dit — mais la route n'a pas à faire semblant de l'ignorer, d'où ce
+     * commentaire plutôt qu'une garde silencieuse.
+     */
+    const parc = await prisma.park.update({
+      where: { id: parkId },
+      data: {
+        ...(corps.name !== undefined ? { name: corps.name } : {}),
+        ...(corps.countryCode !== undefined ? { countryCode: corps.countryCode } : {}),
+        ...(corps.currency !== undefined ? { currency: corps.currency } : {}),
+      },
+      select: { id: true, name: true, countryCode: true, currency: true },
+    })
+
+    res.json({ park: parc })
+  },
+)
+
+/**
  * LES TARIFS DE REFACTURATION.
  *
  * Deux constantes vivaient dans le client — 520 le mètre cube, 99 le

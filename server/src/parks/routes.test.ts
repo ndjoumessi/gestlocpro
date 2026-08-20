@@ -4910,3 +4910,107 @@ describe('les tarifs de la démonstration', () => {
     }
   })
 })
+
+/**
+ * CORRIGER LE PARC.
+ *
+ * Aucune route ne modifiait un parc. Un propriétaire dont le parc était né avec
+ * la mauvaise devise l'était pour toujours — et le cas n'est pas théorique : le
+ * pays du compte se déduisait de la devise affichée sur la vitrine, si bien
+ * qu'un visiteur ayant regardé la grille tarifaire en euros naissait français,
+ * puis voyait ses loyers de Yaoundé libellés dans une unité six cent
+ * cinquante-six fois trop grande.
+ */
+describe('corriger le parc', () => {
+  let parkId: string
+  let proprio: string
+  let gestionnaire: string
+
+  beforeEach(async () => {
+    const p = await inscrire('proprio@example.com', {
+      parkName: 'Parc Bastos',
+      countryCode: 'FR',
+    })
+    proprio = p.cookie
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio)
+    parkId = parcs.body.parks[0].id
+
+    const d = await inscrire('diane@example.com')
+    gestionnaire = d.cookie
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'diane@example.com' },
+    })
+    await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'manager' } })
+  })
+
+  function corriger(cookie: string, corps: Record<string, unknown>) {
+    return request(serveur).patch(`/api/parks/${parkId}`).set('Cookie', cookie).send(corps)
+  }
+
+  it('rétablit la devise d’un parc né dans la mauvaise', async () => {
+    // L'état de départ est celui qu'on a trouvé en production : un parc nommé
+    // d'après un quartier de Yaoundé, en euros.
+    const avant = await request(serveur).get('/api/parks').set('Cookie', proprio)
+    expect(avant.body.parks[0].currency).toBe('EUR')
+
+    const res = await corriger(proprio, { countryCode: 'CM', currency: 'XAF' })
+    expect(res.status, JSON.stringify(res.body)).toBe(200)
+
+    // La lecture qui compte est celle que l'écran fait : c'est elle qui pose la
+    // devise de tous les montants affichés.
+    const apres = await request(serveur).get('/api/parks').set('Cookie', proprio)
+    expect(apres.body.parks[0].currency).toBe('XAF')
+
+    // Et le NOM n'a pas bougé, alors qu'il n'était pas dans la requête. Sans
+    // cette moitié, une route qui écraserait les champs absents par une valeur
+    // par défaut passerait au vert — et c'est précisément la famille de défaut
+    // que ce lot répare.
+    expect(apres.body.parks[0].name).toBe('Parc Bastos')
+  })
+
+  it('ne change que ce qu’on lui envoie', async () => {
+    await corriger(proprio, { name: 'Parc de Bastos' }).expect(200)
+
+    // Exiger le triplet complet obligerait l'écran à renvoyer ce qu'il n'a pas
+    // touché, et une lecture périmée écraserait la correction d'un autre.
+    const parc = await prisma.park.findUniqueOrThrow({ where: { id: parkId } })
+    expect(parc.name).toBe('Parc de Bastos')
+    expect(parc.currency).toBe('EUR')
+    expect(parc.countryCode).toBe('FR')
+  })
+
+  it('refuse une requête qui ne corrige rien', async () => {
+    // Elle réussirait silencieusement, et l'écran annoncerait « enregistré »
+    // sans qu'aucune écriture ait eu lieu.
+    const res = await corriger(proprio, {})
+    expect(res.status).toBe(400)
+  })
+
+  it('refuse au gestionnaire de fixer l’unité dans laquelle il opère', async () => {
+    const res = await corriger(gestionnaire, { currency: 'XAF' })
+    expect(res.status).toBe(403)
+
+    const parc = await prisma.park.findUniqueOrThrow({ where: { id: parkId } })
+    expect(parc.currency).toBe('EUR')
+  })
+
+  it('ne corrige pas le parc d’à côté', async () => {
+    const voisin = await inscrire('voisin@example.com', {
+      parkName: 'Parc Bonamoussadi',
+      countryCode: 'CM',
+    })
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', voisin.cookie)
+    const parcVoisin = parcs.body.parks[0].id
+
+    const res = await request(serveur)
+      .patch(`/api/parks/${parcVoisin}`)
+      .set('Cookie', proprio)
+      .send({ currency: 'EUR' })
+    // 404 et non 403 : `exigerAppartenance` ne confirme pas l'existence d'un
+    // parc dont on n'est pas membre.
+    expect(res.status).toBe(404)
+
+    const parc = await prisma.park.findUniqueOrThrow({ where: { id: parcVoisin } })
+    expect(parc.currency).toBe('XAF')
+  })
+})
