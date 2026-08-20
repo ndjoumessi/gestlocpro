@@ -127,7 +127,17 @@ export function Alerts() {
 
   const unread = alerts.filter((alert) => !alert.read).length
 
-  const markAllRead = () => markAlertsRead(alerts.map((alert) => alert.id))
+  /**
+   * Les NON LUES seulement, et non toute la liste.
+   *
+   * Le geste partait avec l'intégralité des identifiants affichés — désormais
+   * jusqu'au serveur, qui les borne à deux cents. Un parc bavard aurait vu son
+   * bouton échouer en validation, sur un écran où il n'y avait rien à échouer.
+   * Et le corps de la requête dit maintenant ce que le geste fait : marquer ce
+   * qui ne l'est pas.
+   */
+  const markAllRead = () =>
+    markAlertsRead(alerts.filter((alert) => !alert.read).map((alert) => alert.id))
 
   /**
    * Une notification est une affirmation datée : « Loyer A3 en retard de 24

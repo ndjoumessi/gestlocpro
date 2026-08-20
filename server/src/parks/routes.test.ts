@@ -5347,3 +5347,220 @@ describe('répondre au locataire', () => {
     expect(res.status).toBe(404)
   })
 })
+
+/**
+ * MARQUER COMME LU, ET QUE ÇA TIENNE.
+ *
+ * `readAt` était au modèle depuis sa création, relu par le portefeuille depuis
+ * autant de temps, et écrit par personne : le bouton « tout marquer comme lu »
+ * vidait un compteur de session que le rechargement suivant remplissait de
+ * nouveau. Le lot précédent a consigné la dette en toutes lettres ; ces cas la
+ * ferment.
+ */
+describe('les notifications lues', () => {
+  let parkId: string
+  let proprio: string
+  let cookieLocataire: string
+  let compteLocataireId: string
+  let uniteDuLocataire: string
+
+  beforeEach(async () => {
+    const p = await inscrire('proprio@example.com', {
+      parkName: 'Parc Bonamoussadi',
+      countryCode: 'CM',
+      seedDemo: true,
+    })
+    proprio = p.cookie
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio)
+    parkId = parcs.body.parks[0].id
+
+    const l = await inscrire('locataire@example.com')
+    cookieLocataire = l.cookie
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'locataire@example.com' },
+    })
+    compteLocataireId = compte.id
+    const bail = await prisma.lease.findFirstOrThrow({
+      where: { status: 'active', unit: { building: { parkId } } },
+      select: { tenantId: true, unitId: true },
+    })
+    uniteDuLocataire = bail.unitId
+    await prisma.tenant.update({ where: { id: bail.tenantId }, data: { userId: compte.id } })
+    await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'tenant' } })
+  })
+
+  function marquer(cookie: string, ids: string[]) {
+    return request(serveur)
+      .patch(`/api/parks/${parkId}/notifications/read`)
+      .set('Cookie', cookie)
+      .send({ ids })
+  }
+
+  async function notificationsDe(cookie: string) {
+    const res = await request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', cookie)
+    return res.body.notifications as { id: string; read: boolean; messageKey: string }[]
+  }
+
+  /**
+   * LE BAILLEUR N'EST DESTINATAIRE DE RIEN, nommément.
+   *
+   * Ses notifications lui parviennent par l'unité — un impayé, un devis en
+   * attente — et aucune ligne de `NotificationRecipient` ne les accompagne.
+   * Sans création de ligne, il n'aurait RIEN pu marquer, jamais : le cas le
+   * plus courant du produit aurait été le seul que la route ne traite pas.
+   */
+  it('marque ce dont personne n’est destinataire nommé', async () => {
+    const avant = await notificationsDe(proprio)
+    const nonLues = avant.filter((n) => !n.read)
+    expect(nonLues.length, 'la démonstration doit semer des notifications').toBeGreaterThan(0)
+
+    const res = await marquer(proprio, avant.map((n) => n.id))
+    expect(res.status, JSON.stringify(res.body)).toBe(200)
+    // Le compte des NOUVELLES lectures, et non celui des identifiants reçus :
+    // le jeu de démonstration en sème déjà des lues, et les recompter ferait
+    // passer ce cas pour la mauvaise raison.
+    expect(res.body.marked).toBe(nonLues.length)
+
+    // La preuve n'est pas la ligne en base, c'est ce que le portefeuille rend
+    // au chargement SUIVANT — celui qui rallumait la pastille.
+    const apres = await notificationsDe(proprio)
+    expect(apres.every((n) => n.read)).toBe(true)
+  })
+
+  /**
+   * L'AUTRE MOITIÉ : le locataire, dont la ligne existe déjà et attend sa date.
+   *
+   * Elle est écrite à l'envoi — c'est elle qui porte « à qui l'on parle » — avec
+   * `readAt` nul. Ne traiter que les lignes absentes laisserait le destinataire
+   * nommé, seul vrai lecteur du produit, incapable de marquer quoi que ce soit.
+   */
+  it('marque ce dont on est destinataire nommé', async () => {
+    await request(serveur)
+      .post(`/api/parks/${parkId}/announcements`)
+      .set('Cookie', proprio)
+      .send({ message: 'Coupure d’eau jeudi de 8 h à 12 h.' })
+      .expect(201)
+
+    const avant = await notificationsDe(cookieLocataire)
+    const annonce = avant.find((n) => n.messageKey === 'announcement')
+    expect(annonce, JSON.stringify(avant)).toBeDefined()
+    expect(annonce!.read).toBe(false)
+    // La ligne existe DÉJÀ, posée par l'envoi : c'est la branche « en attente »
+    // et non la branche « sans ligne ».
+    expect(
+      await prisma.notificationRecipient.count({
+        where: { notificationId: annonce!.id, userId: compteLocataireId, readAt: null },
+      }),
+    ).toBe(1)
+
+    const res = await marquer(cookieLocataire, [annonce!.id])
+    expect(res.body.marked).toBe(1)
+
+    const apres = await notificationsDe(cookieLocataire)
+    expect(apres.find((n) => n.id === annonce!.id)!.read).toBe(true)
+  })
+
+  /**
+   * « IL L'A VUE LE 12 » EST UN FAIT.
+   *
+   * Rouvrir l'écran des notifications renvoie la même liste : réécrire la date à
+   * chaque passage effacerait la seule information que ce champ porte, et le
+   * jour où le produit dira « lue le 12 » il dirait « lue à l'instant ».
+   */
+  it('ne déplace pas la date d’une notification déjà lue', async () => {
+    const liste = await notificationsDe(proprio)
+    const cible = liste[0]!.id
+
+    const premier = await marquer(proprio, [cible])
+    expect(premier.body.marked).toBe(1)
+    const date = await prisma.notificationRecipient.findFirstOrThrow({
+      where: { notificationId: cible },
+      select: { readAt: true },
+    })
+
+    const second = await marquer(proprio, [cible])
+    // `0` et non `1` : c'est ce compte qui rend l'idempotence observable, et
+    // sans lui la branche morte survivrait sans bruit.
+    expect(second.body.marked).toBe(0)
+
+    const apres = await prisma.notificationRecipient.findFirstOrThrow({
+      where: { notificationId: cible },
+      select: { readAt: true },
+    })
+    expect(apres.readAt!.getTime()).toBe(date.readAt!.getTime())
+  })
+
+  /**
+   * LE FILTRE, sans lequel le geste le plus anodin ouvrirait le parc.
+   *
+   * Marquer crée une ligne de destinataire. Le filtre de lecture du portefeuille
+   * sert ensuite ce dont on est destinataire — donc marquer la notification d'un
+   * autre logement se la ferait servir au chargement suivant. Le locataire
+   * lirait les impayés de son voisin par le bouton « tout marquer comme lu ».
+   */
+  it('ne marque pas ce que le locataire ne voit pas', async () => {
+    const dAilleurs = await prisma.unit.findFirstOrThrow({
+      where: { building: { parkId }, id: { not: uniteDuLocataire } },
+      select: { id: true },
+    })
+    const voisine = await prisma.notification.create({
+      data: {
+        parkId,
+        kind: 'payment',
+        messageKey: 'rentOverdue',
+        params: { tenant: 'Le voisin' },
+        severity: 'high',
+        unitId: dAilleurs.id,
+      },
+      select: { id: true },
+    })
+
+    const res = await marquer(cookieLocataire, [voisine.id])
+    // 200 et non 404 : distinguer « inconnue » de « pas pour vous » dirait à qui
+    // devine des identifiants lesquels existent. Rien n'est écrit, et c'est ce
+    // que le compte annonce.
+    expect(res.status).toBe(200)
+    expect(res.body.marked).toBe(0)
+    expect(
+      await prisma.notificationRecipient.count({ where: { notificationId: voisine.id } }),
+    ).toBe(0)
+
+    // ET elle reste invisible : la moitié qui prouve que rien n'a fui.
+    const liste = await notificationsDe(cookieLocataire)
+    expect(liste.some((n) => n.id === voisine.id)).toBe(false)
+  })
+
+  it('ne marque pas les notifications du parc d’à côté', async () => {
+    const voisin = await inscrire('ailleurs@example.com', {
+      parkName: 'Parc Akwa',
+      countryCode: 'CM',
+    })
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', voisin.cookie)
+    const autreParc = parcs.body.parks[0].id as string
+    const dAilleurs = await prisma.notification.create({
+      data: {
+        parkId: autreParc,
+        kind: 'payment',
+        messageKey: 'rentOverdue',
+        params: { tenant: 'Chez le voisin' },
+        severity: 'high',
+      },
+      select: { id: true },
+    })
+
+    const res = await marquer(proprio, [dAilleurs.id])
+    expect(res.body.marked).toBe(0)
+    expect(
+      await prisma.notificationRecipient.count({ where: { notificationId: dAilleurs.id } }),
+    ).toBe(0)
+  })
+
+  it('refuse un corps vide plutôt que de ne rien faire en silence', async () => {
+    // Une liste vide n'est pas un geste : la laisser passer rendrait `marked: 0`
+    // — indistinguable d'un refus de périmètre — pour un appel qui n'avait rien
+    // à demander.
+    const res = await marquer(proprio, [])
+    expect(res.status).toBe(400)
+  })
+})
+

@@ -1230,9 +1230,30 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   )
 
   const [readAlertIds, setReadAlertIds] = useState<string[]>([])
-  const markAlertsRead = useCallback((ids: string[]) => {
-    setReadAlertIds((current) => [...new Set([...current, ...ids])])
-  }, [])
+  /**
+   * La lecture se POSE localement et s'écrit au serveur.
+   *
+   * L'ordre est l'inverse des autres mutations, et c'est délibéré : marquer une
+   * notification comme lue n'a pas de refus possible — le serveur ne retient que
+   * ce que le compte voit déjà, et rend le nombre de lectures nouvelles sans
+   * jamais rejeter le geste. Attendre la réponse pour éteindre la pastille
+   * ferait clignoter un compteur pour un aller-retour qui ne dira jamais non.
+   *
+   * L'écriture, elle, est ce qui manquait : sans elle l'état ne survivait pas au
+   * rechargement, et la pastille de la barre latérale annonçait de nouveau ce
+   * qu'on venait de lire.
+   */
+  const markAlertsRead = useCallback(
+    (ids: string[]) => {
+      if (ids.length === 0) return
+      setReadAlertIds((current) => [...new Set([...current, ...ids])])
+      // Sans parc serveur, la démonstration garde son comportement de session :
+      // il n'y a pas de compte à qui rattacher une lecture.
+      if (!parkId) return
+      void api.markNotificationsRead(parkId, ids).catch(signalerEchec)
+    },
+    [parkId, signalerEchec],
+  )
 
   const reset = useCallback(() => {
     const initial = resetState()

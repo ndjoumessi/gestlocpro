@@ -439,15 +439,19 @@ export const api = {
   ) => requete<T>(`/parks/${parkId}/tariffs`, { method: 'POST', body: JSON.stringify(corps) }),
 
   /**
-   * Corrige le parc — son nom, son pays, sa devise. Réservé au propriétaire.
+   * Corrige le parc — son nom, son pays, sa devise.
    *
-   * Le corps ne porte QUE les champs à changer : envoyer les trois à chaque
+   * Le corps ne porte QUE les champs à changer : envoyer les quatre à chaque
    * fois réécrirait le pays et la devise avec ce que l'écran croyait savoir en
    * s'ouvrant. Un corps vide rend 422, le serveur n'ayant rien à corriger.
    */
   updatePark: <T>(
     parkId: string,
-    corps: { name?: string; countryCode?: string; currency?: DeviseDuParc },
+    corps: {
+      name?: string
+      countryCode?: string
+      currency?: DeviseDuParc
+    },
   ) => requete<T>(`/parks/${parkId}`, { method: 'PATCH', body: JSON.stringify(corps) }),
 
   /** Reprend un code encore en attente. Un code déjà consommé rend 409. */
@@ -477,6 +481,24 @@ export const api = {
       reference?: string
     },
   ) => requete<T>(`/parks/${parkId}/payments`, { method: 'POST', body: JSON.stringify(corps) }),
+
+  /**
+   * Marque des notifications comme lues, pour le compte connecté.
+   *
+   * L'état « lu » appartient au couple destinataire × notification, et il vivait
+   * dans un `Set` de session : le bouton « tout marquer comme lu » vidait un
+   * compteur qui repoussait au rechargement. Le serveur relisait `readAt` depuis
+   * l'origine — personne ne l'écrivait.
+   *
+   * Rend `marked`, le nombre de lectures NOUVELLES : renvoyer deux fois la même
+   * liste rend `2` puis `0`, ce qui est la seule façon de voir qu'une seconde
+   * lecture ne réécrit pas la première date.
+   */
+  markNotificationsRead: <T>(parkId: string, ids: string[]) =>
+    requete<T>(`/parks/${parkId}/notifications/read`, {
+      method: 'PATCH',
+      body: JSON.stringify({ ids }),
+    }),
 
   /**
    * RÉPONDRE AU LOCATAIRE QUI A SIGNALÉ.

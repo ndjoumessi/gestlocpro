@@ -1948,6 +1948,144 @@ parksRouter.post(
 )
 
 /**
+ * Les identifiants à marquer. Bornés : « tout marquer comme lu » n'est pas une
+ * invitation à envoyer le parc entier dans un corps de requête.
+ */
+const schemaLecture = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(200),
+})
+
+/**
+ * MARQUER UNE NOTIFICATION COMME LUE.
+ *
+ * `NotificationRecipient.readAt` existe au modèle depuis sa création, et son
+ * commentaire disait déjà pourquoi : « le client le tenait dans un `Set` de
+ * session, invisible de la barre latérale — la pastille annonçait 2 même après
+ * avoir tout marqué comme lu ». La lecture du portefeuille le RELIT depuis
+ * autant de temps. Aucune route ne l'écrivait : le bouton « tout marquer comme
+ * lu » vidait un compteur qui repoussait au rechargement suivant.
+ *
+ * Le lot précédent a consigné la dette en toutes lettres — « aucune route ne le
+ * marque encore ; le jour où l'une le fera, elle n'aura rien à rattraper ».
+ * C'est ce jour-là.
+ *
+ * TROIS ÉTATS et non deux, et c'est ce que l'`upsert` ne sait pas dire :
+ *   — aucune ligne : le bailleur, à qui l'on n'adresse rien nommément. Ses
+ *     notifications lui parviennent par l'unité, pas par un destinataire. Sans
+ *     création de ligne, il ne pourrait RIEN marquer, jamais ;
+ *   — une ligne à `readAt` nul : le locataire à qui l'on a répondu. La ligne
+ *     existe depuis l'envoi, elle attend sa date ;
+ *   — une ligne datée : déjà lue. On n'y touche plus — « il l'a vue le 12 » est
+ *     un fait, et le réécrire à chaque ouverture de l'écran l'effacerait.
+ *
+ * Ouverte à TOUS LES RÔLES : lire ses propres notifications n'est pas un acte
+ * de gestion.
+ */
+parksRouter.patch(
+  '/:parkId/notifications/read',
+  exigerAppartenance,
+  async (req: Request, res: Response) => {
+    const { parkId, role } = req.adhesion!
+    const corps = schemaLecture.parse(req.body)
+
+    /**
+     * Le MÊME filtre que la lecture du portefeuille, et pour la même raison.
+     *
+     * Sans lui, un locataire marquerait comme lue une notification d'un autre
+     * logement — donc en créerait la ligne de destinataire, donc se la ferait
+     * servir au chargement suivant par la seconde branche du filtre. Le geste
+     * le plus anodin du produit ouvrirait un accès aux impayés du voisin.
+     */
+    const visibles = await unitesVisibles(parkId, req.compteId!, role)
+    const idsVisibles = visibles?.map((u) => u.id)
+
+    const lisibles = await prisma.notification.findMany({
+      where: {
+        id: { in: corps.ids },
+        parkId,
+        ...(idsVisibles
+          ? {
+              OR: [
+                { unitId: { in: idsVisibles } },
+                { recipients: { some: { userId: req.compteId! } } },
+              ],
+            }
+          : {}),
+      },
+      select: {
+        id: true,
+        recipients: { where: { userId: req.compteId! }, select: { readAt: true } },
+      },
+    })
+
+    const maintenant = new Date()
+    const sansLigne = lisibles.filter((n) => n.recipients.length === 0)
+    /**
+     * On sépare selon qu'une LIGNE existe, et non selon qu'elle est lue.
+     *
+     * Filtrer ici sur `readAt === null` aurait porté la condition une seconde
+     * fois, le `where` ci-dessous la portant déjà. Deux gardes pour une même
+     * règle ne valent pas mieux qu'une : elles se couvrent l'une l'autre, et
+     * AUCUNE des deux ne peut alors être mise en défaut — retirer l'une laissait
+     * l'autre satisfaire les cas, et la ligne survivait à toute mutation sans
+     * qu'on sache si elle servait encore.
+     *
+     * Une seule garde, portée par la base où elle est atomique. Marquer deux
+     * fois ne compte plus zéro parce qu'on l'a calculé d'avance, mais parce que
+     * la seconde écriture ne trouve aucune ligne à changer.
+     */
+    const dejaDestinataire = lisibles.filter((n) => n.recipients.length > 0)
+
+    const [crees, relues] = await prisma.$transaction([
+      /**
+       * `skipDuplicates` tranche une COURSE, et une seule : deux onglets ouverts
+       * sur les notifications, tous deux « tout marquer comme lu ». Les deux ont
+       * lu la même absence de ligne, les deux en créent une. Sans lui, le second
+       * casse sur la clé primaire du couple et le geste échoue à l'écran alors
+       * qu'il a abouti.
+       */
+      prisma.notificationRecipient.createMany({
+        data: sansLigne.map((n) => ({
+          notificationId: n.id,
+          userId: req.compteId!,
+          readAt: maintenant,
+        })),
+        skipDuplicates: true,
+      }),
+      /**
+       * `readAt: null` dans le FILTRE, et non seulement dans la sélection au
+       * dessus : la même course y remettrait une date par-dessus la première.
+       * La condition est portée par la base, où elle est atomique.
+       */
+      prisma.notificationRecipient.updateMany({
+        where: {
+          notificationId: { in: dejaDestinataire.map((n) => n.id) },
+          userId: req.compteId!,
+          readAt: null,
+        },
+        data: { readAt: maintenant },
+      }),
+    ])
+
+    /**
+     * CE QUI A CHANGÉ, et non « c'est fait ».
+     *
+     * Rendre le nombre de nouvelles lectures — et non le nombre d'identifiants
+     * reçus — est ce qui rend l'idempotence observable : marquer deux fois rend
+     * `2` puis `0`. C'est la forme que la relance porte déjà avec
+     * `sent` / `skipped`, et sans elle une branche morte survivrait sans bruit.
+     */
+    /*
+     * Le compte vient des ÉCRITURES, non de l'état lu avant elles. Entre la
+     * lecture et la transaction, un second onglet a pu marquer les mêmes
+     * notifications : `sansLigne.length + enAttente.length` aurait alors
+     * annoncé des lectures que cette requête n'a pas faites.
+     */
+    res.json({ marked: crees.count + relues.count })
+  },
+)
+
+/**
  * CORRIGER LE PARC : son nom, son pays, sa devise.
  *
  * Aucune route ne modifiait un parc — pas un `park.update` dans tout le
