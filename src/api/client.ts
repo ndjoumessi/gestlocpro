@@ -97,11 +97,38 @@ export interface CompteApi {
   phoneE164: string | null
 }
 
+/** Devises que le serveur STOCKE. `CFA` n'en est pas une : voir `DeviseDuParc`. */
+export const DEVISES_DU_PARC = ['XAF', 'XOF', 'EUR', 'CAD', 'USD'] as const
+
+/**
+ * La devise telle que le PARC la porte, et non telle que l'écran l'affiche.
+ *
+ * Le client n'en connaît que quatre — `CFA` réunit les deux francs sous un seul
+ * libellé, puisqu'il n'affiche que des montants et que la parité est la même.
+ * Le stockage, lui, doit trancher : `XAF` en zone CEMAC, `XOF` en zone UEMOA.
+ * Une correction de parc parle donc au serveur dans SA langue, sinon `CFA`
+ * partirait pour un code ISO qui n'existe pas.
+ */
+export type DeviseDuParc = (typeof DEVISES_DU_PARC)[number]
+
 export interface AdhesionApi {
   parkId: string
   role: Role
   parkName: string
   currency: string
+  /**
+   * Pays du parc. FACULTATIF, et c'est délibéré.
+   *
+   * Il est stocké depuis l'origine et n'était rendu nulle part ; le serveur le
+   * sert maintenant sur chaque adhésion, gardé par son propre cas. Le déclarer
+   * REQUIS aurait obligé vingt-quatre jeux d'essai, qui ne parlent ni de pays ni
+   * de devise, à porter un champ dont ils n'ont que faire — et le manque y
+   * aurait été comblé par une valeur inventée, ce que ce lot combat.
+   *
+   * Absent, l'écran de correction ouvre sur un champ vide plutôt que sur un pays
+   * supposé : c'est le comportement juste, pas un contournement.
+   */
+  countryCode?: string | null
 }
 
 export interface SessionApi {
@@ -410,6 +437,18 @@ export const api = {
     parkId: string,
     corps: { utility: 'water' | 'power'; unitPriceMinor: number; effectiveFrom: string },
   ) => requete<T>(`/parks/${parkId}/tariffs`, { method: 'POST', body: JSON.stringify(corps) }),
+
+  /**
+   * Corrige le parc — son nom, son pays, sa devise. Réservé au propriétaire.
+   *
+   * Le corps ne porte QUE les champs à changer : envoyer les trois à chaque
+   * fois réécrirait le pays et la devise avec ce que l'écran croyait savoir en
+   * s'ouvrant. Un corps vide rend 422, le serveur n'ayant rien à corriger.
+   */
+  updatePark: <T>(
+    parkId: string,
+    corps: { name?: string; countryCode?: string; currency?: DeviseDuParc },
+  ) => requete<T>(`/parks/${parkId}`, { method: 'PATCH', body: JSON.stringify(corps) }),
 
   /** Reprend un code encore en attente. Un code déjà consommé rend 409. */
   revokeInvitation: (parkId: string, invitationId: string) =>

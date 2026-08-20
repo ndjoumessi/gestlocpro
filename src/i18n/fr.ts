@@ -824,6 +824,36 @@ export const fr = {
         'Aucun prix posé. Les relevés affichent les quantités relevées, sans montant refacturé.',
       open: 'Prix de refacturation',
     },
+
+    parkSettings: {
+      open: 'Corriger le parc',
+      title: 'Corriger le parc',
+      description:
+        'Le nom, le pays et la devise du parc. Ils ont été posés à sa création et n’étaient modifiables nulle part.',
+      name: 'Nom du parc',
+      country: 'Pays',
+      countryHint: 'Il détermine la zone monétaire proposée, sans l’imposer.',
+      currency: 'Devise',
+      currencyHint: 'L’unité de tous les montants du parc : loyers, paiements, refacturations.',
+      // Les deux francs partagent « FCFA » à l'écran — même parité, monnaies
+      // distinctes. Le stockage doit trancher, la zone le dit.
+      currencyXAF: 'FCFA — Afrique centrale (CEMAC)',
+      currencyXOF: 'FCFA — Afrique de l’Ouest (UEMOA)',
+      currencyEUR: 'Euro (€)',
+      currencyCAD: 'Dollar canadien ($)',
+      currencyUSD: 'Dollar américain ($)',
+      submit: 'Enregistrer',
+      /**
+       * Le second clic. Le libellé NOMME le geste au lieu de le confirmer :
+       * « Confirmer » demanderait de se souvenir de ce qu'on confirme, alors
+       * que c'est précisément le geste dont l'effet se lit mal.
+       */
+      confirmCurrency: 'Changer la devise',
+      currencyWarning:
+        'Les montants déjà saisis ne seront pas convertis : 180 000 se relira 180 000 dans la nouvelle devise. À ne faire que sur un parc dont les montants seront resaisis.',
+      unchanged: 'Rien n’a changé.',
+      saved: 'Parc corrigé',
+    },
     meters: {
       title: 'Relevé des compteurs',
       subtitle:

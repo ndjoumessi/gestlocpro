@@ -661,6 +661,29 @@ export const en: Dictionary = {
       empty: 'No price set. Readings show the quantities recorded, with no rebilled amount.',
       open: 'Rebilling prices',
     },
+
+    parkSettings: {
+      open: 'Correct the park',
+      title: 'Correct the park',
+      description:
+        'The park’s name, country and currency. They were set when it was created and could not be changed anywhere.',
+      name: 'Park name',
+      country: 'Country',
+      countryHint: 'It suggests the monetary zone without imposing it.',
+      currency: 'Currency',
+      currencyHint: 'The unit of every amount in the park: rents, payments, rebilled charges.',
+      currencyXAF: 'CFA franc — Central Africa (CEMAC)',
+      currencyXOF: 'CFA franc — West Africa (WAEMU)',
+      currencyEUR: 'Euro (€)',
+      currencyCAD: 'Canadian dollar ($)',
+      currencyUSD: 'US dollar ($)',
+      submit: 'Save',
+      confirmCurrency: 'Change the currency',
+      currencyWarning:
+        'Amounts already entered will not be converted: 180,000 will read as 180,000 in the new currency. Only do this on a park whose amounts will be re-entered.',
+      unchanged: 'Nothing changed.',
+      saved: 'Park corrected',
+    },
     meters: {
       title: 'Meter readings',
       subtitle:

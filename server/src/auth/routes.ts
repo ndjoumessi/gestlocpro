@@ -398,7 +398,11 @@ authRouter.get('/me', async (req: Request, res: Response) => {
 
   const memberships = await prisma.membership.findMany({
     where: { userId: session.userId, status: 'active' },
-    select: { parkId: true, role: true, park: { select: { name: true, currency: true } } },
+    select: {
+      parkId: true,
+      role: true,
+      park: { select: { name: true, currency: true, countryCode: true } },
+    },
   })
 
   res.json({
@@ -411,6 +415,14 @@ authRouter.get('/me', async (req: Request, res: Response) => {
       role: m.role,
       parkName: m.park.name,
       currency: m.park.currency,
+      /**
+       * Le pays du parc, stocké depuis l'origine et rendu nulle part.
+       *
+       * L'écran qui le corrige doit d'abord pouvoir l'afficher : une modale
+       * ouverte sur un champ vide ferait reposer « France » une seconde fois
+       * sans que rien ne signale qu'elle y était déjà.
+       */
+      countryCode: m.park.countryCode,
     })),
   })
 })

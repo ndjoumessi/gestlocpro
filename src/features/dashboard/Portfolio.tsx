@@ -22,13 +22,24 @@ import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { type Unit } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
+import { useSession } from '@/api/SessionProvider'
 import { AddBuildingModal } from './AddBuildingModal'
+import { ParkSettingsModal } from './ParkSettingsModal'
 import { AddUnitModal } from './AddUnitModal'
 
 export function Portfolio() {
   const base = useBase()
   const [ajoutOuvert, setAjoutOuvert] = useState(false)
   const [logementOuvert, setLogementOuvert] = useState(false)
+  const [correctionOuverte, setCorrectionOuverte] = useState(false)
+  const { adhesionActive } = useSession()
+  /**
+   * Corriger le parc engage l'unité de tous ses montants : c'est le
+   * propriétaire, comme pour la validation d'un devis. Sans adhésion il n'y a
+   * pas de parc à qui écrire, et offrir le bouton mènerait à un appel sans
+   * destinataire.
+   */
+  const peutCorrigerLeParc = adhesionActive?.role === 'owner'
   const t = useT()
   const { money } = useCurrency()
   const { units, buildings: BUILDINGS, buildingById, loading, removeBuilding } = usePortfolio()
@@ -100,6 +111,14 @@ export function Portfolio() {
         // pouvait créer.
         actions={
           <>
+            {/* Le nom, le pays et la devise du parc étaient posés à sa création
+                et modifiables nulle part. Réservé au propriétaire : la devise
+                est l'unité de tout ce qui se compte ici, pas un affichage. */}
+            {peutCorrigerLeParc && (
+              <Button variant="ghost" icon="globe" onClick={() => setCorrectionOuverte(true)}>
+                {t('app.parkSettings.open')}
+              </Button>
+            )}
             <Button variant="secondary" icon="plus" onClick={() => setAjoutOuvert(true)}>
               {t('app.portfolio.addBuildingTitle')}
             </Button>
@@ -111,6 +130,10 @@ export function Portfolio() {
       />
 
       {ajoutOuvert && <AddBuildingModal open onClose={() => setAjoutOuvert(false)} />}
+
+      {correctionOuverte && (
+        <ParkSettingsModal open onClose={() => setCorrectionOuverte(false)} />
+      )}
 
       {/* Une confirmation AVANT une suppression définitive : c'est le seul
           geste de cet écran qu'on ne peut pas défaire. */}

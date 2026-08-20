@@ -253,8 +253,37 @@ describe('session', () => {
 
     const res = await request(serveur).get('/api/auth/me').set('Cookie', cookie)
     expect(res.body.memberships).toEqual([
-      { parkId: park.id, role: 'owner', parkName: 'Parc de Douala', currency: 'XAF' },
+      {
+        parkId: park.id,
+        role: 'owner',
+        parkName: 'Parc de Douala',
+        currency: 'XAF',
+        countryCode: 'CM',
+      },
     ])
+  })
+
+  it('porte le pays du parc, que l’écran de correction doit pouvoir afficher', async () => {
+    /**
+     * Le pays est STOCKÉ sur le parc depuis l'origine, et n'était rendu nulle
+     * part. L'écran qui le corrige doit d'abord le lire : sans lui, la modale
+     * s'ouvrirait sur un champ vide, et le propriétaire reposerait « France »
+     * une seconde fois sans le savoir.
+     *
+     * Le cas est écrit sur un parc né FRANÇAIS parce que c'est la situation
+     * réelle en production — « Parc Bastos », un quartier de Yaoundé, créé
+     * FR/EUR par un pays que personne n'avait choisi.
+     */
+    const compte = await prisma.userAccount.findFirstOrThrow()
+    const park = await prisma.park.create({
+      data: { name: 'Parc Bastos', countryCode: 'FR', currency: 'EUR' },
+    })
+    await prisma.membership.create({
+      data: { userId: compte.id, parkId: park.id, role: 'owner' },
+    })
+
+    const res = await request(serveur).get('/api/auth/me').set('Cookie', cookie)
+    expect(res.body.memberships[0].countryCode).toBe('FR')
   })
 
   it('ignore une adhésion seulement demandée', async () => {
