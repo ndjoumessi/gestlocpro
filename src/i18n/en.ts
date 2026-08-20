@@ -738,7 +738,7 @@ export const en: Dictionary = {
       noIssues: 'No issues',
       signed: 'Signed',
       unsigned: 'Awaiting signature',
-      compare: 'Compare move-in and move-out',
+      compare: 'Entry and exit',
       emptyTitle: 'No inspection recorded',
       emptyBody:
         'A move-in inspection is done when the keys are handed over, a move-out one when they are returned: it is comparing the two that justifies what is withheld from the deposit.',

@@ -908,7 +908,7 @@ export const fr = {
       noIssues: 'Aucune réserve',
       signed: 'Signé',
       unsigned: 'En attente de signature',
-      compare: 'Comparer entrée et sortie',
+      compare: 'Entrée et sortie',
       /**
        * La comparaison entrée/sortie, pièce par pièce.
        *

@@ -130,6 +130,23 @@ export function Inspections() {
                     {unit?.tenant ?? t('app.portfolio.noTenant')}
                   </p>
                 </div>
+                {/*
+                  UN STATUT, ET NON UNE CONSIGNE.
+
+                  Le badge portait « Comparer entrée et sortie » — une phrase de
+                  vingt-huit caractères en anglais dans une pastille
+                  `whitespace-nowrap`. À 320 px elle poussait la page huit pixels
+                  au-delà de la fenêtre : mesuré, pas supposé. En français elle
+                  passait de justesse, si bien que le défaut n'existait que dans
+                  une langue — un décalage qu'une relecture ne trouve jamais.
+
+                  Une pastille dit ce qu'une chose EST — « Payé », « Devis »,
+                  « Relance n°2 » — et le `nowrap` est juste pour cela : un
+                  statut ne se coupe pas en deux. Y loger une consigne ne pouvait
+                  que déborder, dans n'importe quelle langue assez longue.
+                  D'autant que la consigne était redondante : le tableau qui suit
+                  porte déjà « Comparaison entrée / sortie » en titre.
+                */}
                 {hasBoth && <Badge tone="gold">{t('app.inspections.compare')}</Badge>}
               </div>
 
