@@ -208,6 +208,49 @@ const plaintes = []
   }
 }
 
+// ─── 4. Un écran que rien ne monte ───────────────────────────────────────────
+//
+// LA FORME SUIVANTE DU MÊME DÉFAUT, et c'est une mutation muette qui l'a
+// désignée. Retirer `<ReplyModal … />` de `Works.tsx` ne faisait broncher aucun
+// des trois contrôles ci-dessus : le composant existait toujours, il appelait
+// toujours `api.replyToWork`, et la méthode avait donc toujours son appelant.
+// Le maillon rompu n'était pas la route ni la méthode — c'était la porte
+// d'entrée de l'écran.
+//
+// Les cinq cas historiques étaient tous « une route sans écran ». Celui-ci est
+// « un écran sans porte d'entrée » : il se compile, ses tests passent puisqu'ils
+// le montent eux-mêmes, et aucun utilisateur ne peut l'atteindre.
+{
+  const tsx = await fichiers(join(RACINE, 'src'), ['.tsx'])
+  const sources = new Map()
+  for (const chemin of tsx.filter((c) => !/\.test\.tsx$/.test(c))) {
+    sources.set(chemin, await readFile(chemin, 'utf8'))
+  }
+
+  const composants = new Map()
+  for (const [chemin, texte] of sources) {
+    for (const m of texte.matchAll(/^export function ([A-Z]\w+)/gm)) {
+      composants.set(m[1], chemin)
+    }
+  }
+
+  for (const [nom, source] of composants) {
+    // Monté PAR UN AUTRE FICHIER. Un composant qui ne s'emploie que chez lui
+    // n'a pas d'entrée non plus — et le fichier de test ne compte pas : s'y
+    // monter soi-même est exactement ce qui masque le défaut.
+    const monte = [...sources].some(
+      ([chemin, texte]) => chemin !== source && new RegExp(`<${nom}[\\s/>]`).test(texte),
+    )
+    if (!monte) {
+      plaintes.push(
+        `écran orphelin · <${nom}> · aucun autre fichier de src/ ne le monte ` +
+          `(${source.replace(RACINE, '')}). Il se compile, ses tests passent, ` +
+          `et personne ne peut l’atteindre.`,
+      )
+    }
+  }
+}
+
 if (plaintes.length > 0) {
   console.error(`✗ ${plaintes.length} maillon(s) orphelin(s) :\n`)
   for (const p of plaintes) console.error('  ' + p)
@@ -218,4 +261,4 @@ if (plaintes.length > 0) {
   exit(1)
 }
 
-console.log('✓ Aucune colonne, méthode ni route orpheline.')
+console.log('✓ Aucune colonne, méthode, route ni écran orphelin.')
