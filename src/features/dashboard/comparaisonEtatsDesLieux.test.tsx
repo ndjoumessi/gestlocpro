@@ -16,6 +16,20 @@ import type { EtatSession } from '@/api/SessionProvider'
 
 const tableau = () => screen.getByRole('table', { name: 'Comparaison entrée / sortie' })
 
+/**
+ * La carte d'un logement, portée par son titre.
+ *
+ * Le titre vit dans un `div` NU, lui-même dans l'en-tête de la carte : la
+ * pastille est la sœur de ce div nu, et le tableau descend d'un cran plus bas
+ * encore. `closest('div')` seul s'arrête donc sur un contenant où il n'y a
+ * jamais ni pastille ni tableau — une portée qui ne peut rien voir, et dont
+ * toute assertion négative passe sans rien garder. Deux crans au-dessus, on
+ * tient la carte entière, et les deux à la fois.
+ */
+const carte = (label: string) =>
+  screen.getByRole('heading', { name: new RegExp(label) }).closest('div')!.parentElement!
+    .parentElement!
+
 async function ouvrir() {
   renderApp('/demo/etats-des-lieux')
   await attendreLeChargement()
@@ -82,8 +96,33 @@ describe('comparaison entrée / sortie', () => {
     // première rédaction de ce cas en attendait deux, ce qui aurait laissé
     // passer un tableau dressé sur un document unique.
     expect(screen.getAllByRole('table', { name: 'Comparaison entrée / sortie' })).toHaveLength(1)
-    const a1 = screen.getByRole('heading', { name: /A1/ }).closest('div')!
-    expect(within(a1).queryByRole('table')).toBeNull()
+    expect(within(carte('A1')).queryByRole('table')).toBeNull()
+    expect(within(carte('C3')).queryByRole('table')).toBeNull()
+    expect(
+      within(carte('B4')).getByRole('table', { name: 'Comparaison entrée / sortie' }),
+    ).toBeInTheDocument()
+  })
+
+  /**
+   * La pastille s'éteint là où le tableau ne se dresse pas.
+   *
+   * Elle annonce « Entrée et sortie » : sur un logement qui n'en porte qu'un
+   * seul, elle promet une comparaison que la carte ne montre pas — le décalage
+   * même que ce chantier poursuit. Elle partage la garde du tableau, mais
+   * personne ne la regardait : la supprimer de cette garde ne faisait rougir
+   * aucun test de la suite, dans aucun fichier.
+   *
+   * Le cas positif compte autant que le négatif. Sans lui, retirer la pastille
+   * pour de bon resterait muet à son tour.
+   */
+  it('n’allume la pastille que là où les deux documents existent', async () => {
+    await ouvrir()
+    // UNE seule sur tout le parc, comme un seul tableau : A1 n'a qu'une
+    // entrée, C3 qu'une sortie.
+    expect(screen.getAllByText('Entrée et sortie')).toHaveLength(1)
+    expect(within(carte('B4')).getByText('Entrée et sortie')).toBeInTheDocument()
+    expect(within(carte('A1')).queryByText('Entrée et sortie')).toBeNull()
+    expect(within(carte('C3')).queryByText('Entrée et sortie')).toBeNull()
   })
 })
 
