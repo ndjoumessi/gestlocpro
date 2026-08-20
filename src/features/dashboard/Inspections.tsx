@@ -100,7 +100,35 @@ export function Inspections() {
           }
         />
       ) : (
-      <div className="grid gap-4 lg:grid-cols-2">
+      /*
+        UNE LISTE, et son compte.
+
+        Chaque carte est le dossier d'UN logement. À la lecture d'écran on
+        entendait un titre, puis une liste, puis un tableau, sans jamais savoir
+        COMBIEN de logements attendaient plus bas ni où s'arrêtait le dossier
+        en cours. Le `h2` annonçait déjà le passage de l'un à l'autre — la
+        navigation par titres est le geste le plus courant d'un lecteur
+        d'écran — mais ni l'étendue ni le nombre.
+
+        `role="list"` les donne tous deux : « États des lieux par logement,
+        liste, 3 éléments », puis chaque dossier annoncé avec son rang.
+
+        PAS `role="region"`, ni `role="group"`. Une région est un point de
+        repère : dix logements encombreraient le sommaire de dix entrées. Et
+        `group` est le rôle défini comme EXCLU des sommaires — il donne la
+        frontière, jamais la navigation qu'on cherchait ici. Le reste du
+        dépôt le réserve d'ailleurs aux groupes de CONTRÔLES, ce pour quoi il
+        est fait ; un dossier est du contenu.
+
+        Les rôles sont EXPLICITES et non portés par `<ul>` : la sémantique
+        implicite d'une liste se perd sous certaines mises en page, un rôle
+        écrit ne se perd pas.
+      */
+      <div
+        role="list"
+        aria-label={t('app.inspections.byUnit')}
+        className="grid gap-4 lg:grid-cols-2"
+      >
         {Object.entries(byUnit).map(([unitId, inspections]) => {
           const unit = unitById(unitId)
           // Le badge « comparer entrée et sortie » se déclenchait sur le
@@ -117,7 +145,23 @@ export function Inspections() {
           )
 
           return (
-            <Card key={unitId}>
+            /*
+              Le dossier porte son rang dans la liste, et son `h2` le nomme.
+
+              PAS d'`aria-labelledby` ici : nommer un `listitem` depuis l'auteur
+              remplace, chez certains lecteurs, la lecture de son CONTENU — on
+              perdrait les deux constats et le tableau pour ne garder que le
+              titre qu'on entendait déjà. Le nom d'un dossier est son titre ;
+              l'élément de liste n'a qu'à en marquer la frontière.
+
+              Effet de bord qui n'en est pas un : les cas de test désignaient ce
+              dossier par `closest('div')!.parentElement!`, une chaîne
+              d'ancêtres anonymes qui s'était déjà révélée fausse une fois —
+              elle s'arrêtait avant le tableau, et l'assertion d'absence qu'elle
+              portait ne pouvait pas échouer. Un rôle écrit ne se déplace pas
+              quand on ajoute une enveloppe.
+            */
+            <Card key={unitId} role="listitem">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   {/* Le regroupement se fait sur l'identifiant technique, mais

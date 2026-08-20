@@ -16,19 +16,26 @@ import type { EtatSession } from '@/api/SessionProvider'
 
 const tableau = () => screen.getByRole('table', { name: 'Comparaison entrée / sortie' })
 
+/** La liste des dossiers, celle des logements et non celle des réserves. */
+const dossiers = () => screen.getByRole('list', { name: 'États des lieux par logement' })
+
 /**
- * La carte d'un logement, portée par son titre.
+ * Le dossier d'un logement, remonté depuis son titre PAR UN RÔLE.
  *
- * Le titre vit dans un `div` NU, lui-même dans l'en-tête de la carte : la
- * pastille est la sœur de ce div nu, et le tableau descend d'un cran plus bas
- * encore. `closest('div')` seul s'arrête donc sur un contenant où il n'y a
- * jamais ni pastille ni tableau — une portée qui ne peut rien voir, et dont
- * toute assertion négative passe sans rien garder. Deux crans au-dessus, on
- * tient la carte entière, et les deux à la fois.
+ * Première rédaction : `closest('div')` — qui s'arrêtait sur un div nu ne
+ * contenant ni la pastille ni le tableau. La portée ne pouvait rien voir, et
+ * l'assertion d'absence qu'elle portait ne pouvait pas échouer. Deuxième
+ * rédaction : deux `parentElement` de plus, ce qui marchait — jusqu'à la
+ * prochaine enveloppe ajoutée au rendu, qui l'aurait recassée en silence.
+ *
+ * Une chaîne d'ancêtres anonymes n'est pas une portée, c'est un pari sur la
+ * profondeur du DOM. `closest` sur un RÔLE ne fait aucun pari : il remonte
+ * jusqu'à la frontière du dossier, où qu'elle soit.
  */
 const carte = (label: string) =>
-  screen.getByRole('heading', { name: new RegExp(label) }).closest('div')!.parentElement!
-    .parentElement!
+  screen
+    .getByRole('heading', { name: new RegExp(label) })
+    .closest<HTMLElement>('[role="listitem"]')!
 
 async function ouvrir() {
   renderApp('/demo/etats-des-lieux')
@@ -36,6 +43,34 @@ async function ouvrir() {
 }
 
 describe('comparaison entrée / sortie', () => {
+  /**
+   * Les dossiers s'annoncent COMME UNE LISTE, et le compte se dit.
+   *
+   * Ce cas garde le câblage d'accessibilité pour lui-même. Les autres cas s'y
+   * adossent déjà — `carte()` remonte au `listitem` — donc casser le rôle les
+   * fait tous tomber ; mais ils tomberaient pour une raison de plomberie, et
+   * une plomberie se réécrit. Ce fichier l'a fait deux fois. À la troisième, le
+   * contrat d'accessibilité perdrait son seul garde EN SILENCE.
+   *
+   * Une fonctionnalité gardée par accident n'est pas gardée.
+   */
+  it('annonce les dossiers comme une liste nommée de logements', async () => {
+    await ouvrir()
+    // Les éléments DIRECTS : chaque dossier porte aussi des listes de réserves
+    // dans les cellules de son tableau, et une réserve n'est pas un dossier.
+    const directs = within(dossiers())
+      .getAllByRole('listitem')
+      .filter((el) => el.parentElement === dossiers())
+    expect(directs).toHaveLength(5)
+    // Et ce sont bien LES logements du parc, pas cinq éléments quelconques.
+    // Cinq dossiers, dont un seul — B4 — porte les deux documents : les cas
+    // voisins ne nommaient que A1, B4 et C3, et leurs comptes globaux
+    // tenaient A4 et A5 sans jamais les dire.
+    for (const label of ['A1', 'B4', 'C3', 'A4', 'A5']) {
+      expect(directs).toContain(carte(label))
+    }
+  })
+
   it('apparie les réserves par PIÈCE, et non par description', async () => {
     await ouvrir()
     // « Légère trace d'usure au sol » à l'entrée et « Parquet rayé sur deux

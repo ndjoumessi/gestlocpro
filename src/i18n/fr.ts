@@ -910,6 +910,15 @@ export const fr = {
       unsigned: 'En attente de signature',
       compare: 'Entrée et sortie',
       /**
+       * Le NOM de la liste des dossiers.
+       *
+       * Une liste sans nom s'annonce « liste, 3 éléments » : le compte sans
+       * l'objet. Six autres listes vivent déjà sur cet écran — les réserves,
+       * dans les cellules du tableau — et rien ne dirait laquelle porte les
+       * logements.
+       */
+      byUnit: 'États des lieux par logement',
+      /**
        * La comparaison entrée/sortie, pièce par pièce.
        *
        * « Bon état » plutôt qu'une case vide : sur un tableau de comparaison, le
