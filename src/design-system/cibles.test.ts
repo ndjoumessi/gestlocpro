@@ -49,6 +49,16 @@ const PLANCHER_PX = 44
 /** Un pas de l'échelle d'espacement de Tailwind vaut 0.25rem, soit 4 px. */
 const PAS_PX = 4
 
+/**
+ * 24 px : le seuil BAS de WCAG 2.5.8.
+ *
+ * En dessous de 44, la norme tolère encore une cible si un cercle de 24 px
+ * centré dessus ne rencontre pas celui de sa voisine. C'est ce que peut offrir
+ * une grille dense — douze mois sur une carte — quand 44 px reviendrait à
+ * renoncer à des mois.
+ */
+const ESPACEMENT_MIN_PX = 24
+
 /*
   Motifs assemblés par FRAGMENTS.
 
@@ -60,6 +70,8 @@ const H = ['min', 'h'].join('-')
 const HAUTEUR = new RegExp(`\\b(?:${H}|h|size|min-w)-(\\d+(?:\\.\\d+)?)\\b`, 'g')
 const HAUTEUR_LIBRE = new RegExp(`\\b(?:${H}|h|size)-\\[([^\\]]+)\\]`, 'g')
 const HAUTEUR_JETON = new RegExp(`\\b(?:${H}|h|size)-\\((--[a-z0-9-]+)\\)`, 'g')
+const W = ['min', 'w'].join('-')
+const LARGEUR = new RegExp(`\\b(?:${W}|w|size)-(\\d+(?:\\.\\d+)?)\\b`, 'g')
 
 /**
  * ÉPINGLÉ SUR LES QUATRE BORDS de son conteneur.
@@ -104,7 +116,26 @@ const DELEGUE = new RegExp(`className=\\{\\s*(?!${'cn'}\\b)[A-Za-z_$][\\w$]*\\s*
  * entrée se repère par un fragment de sa balise, et non par un numéro de ligne
  * qui dériverait au premier remaniement.
  */
-const EXEMPTIONS: { fichier: string; marqueur: string; raison: string }[] = [
+interface Exemption {
+  fichier: string
+  marqueur: string
+  raison: string
+  /**
+   * LA CONTREPARTIE, quand l'exemption en a une.
+   *
+   * Une exemption sans condition est un laissez-passer : elle couvre le
+   * contrôle entier, pour toujours, quoi qu'il devienne. La barre de graphe l'a
+   * montré — sa raison s'était resserrée en prose (« le pas est désormais
+   * planché à 24 px ») sans que rien ne tienne le resserrement, et retirer ce
+   * plancher ne faisait rougir personne.
+   *
+   * Avec une contrepartie, l'exemption devient un ÉCHANGE : on dispense des
+   * 44 px de hauteur contre une garantie qui, elle, se vérifie.
+   */
+  exige?: { verifie: (balise: string) => boolean; contrepartie: string }
+}
+
+const EXEMPTIONS: Exemption[] = [
   {
     fichier: 'routes/Login.tsx',
     marqueur: 'to="/inscription"',
@@ -128,11 +159,34 @@ const EXEMPTIONS: { fichier: string; marqueur: string; raison: string }[] = [
   },
   {
     fichier: 'components/primitives/Charts.tsx',
-    marqueur: 'onMouseEnter={() => setActive(index)}',
+    marqueur: 'key={bar.key ?? bar.label}',
     raison:
-      'La barre d’un graphe : sa hauteur EST la donnée et sa largeur vaut la largeur ' +
-      'du graphe divisée par le nombre de barres. Lui imposer un plancher mentirait ' +
-      'sur la mesure. La légende cliquable au-dessus, elle, porte le sien.',
+      'La barre de `MiniBarChart`. Sa HAUTEUR est la donnée : lui imposer un plancher ' +
+      'mentirait sur la mesure. Sa LARGEUR, en revanche, n’est pas une mesure mais ' +
+      'un pas de grille — et la première rédaction de cette raison couvrait les deux, ' +
+      'ce qui la rendait infalsifiable. Le pas est planché à 24 px, seuil de ' +
+      'WCAG 2.5.8, le graphe défilant dans sa propre boîte au-delà. Il n’atteindra ' +
+      'pas 44 px sans renoncer à des mois, et c’est ce compromis-là qui est exempté, ' +
+      'pas la mesure. La légende cliquable au-dessus, elle, porte son plancher.',
+    exige: {
+      verifie: porteUnPasSuffisant,
+      contrepartie: 'un pas d’au moins 24 px, déclaré sur la barre',
+    },
+  },
+  {
+    fichier: 'components/primitives/Charts.tsx',
+    marqueur: 'key={bar.label}',
+    raison:
+      'La barre de `StackedBarChart`, ET C’EST UN MANQUE CONNU, non un compromis. ' +
+      'Elle n’a pas de plancher de pas ; la contrepartie de sa voisine l’a débusquée ' +
+      'aussitôt écrite, alors qu’une raison commune aux deux graphes l’avait couverte ' +
+      'sans que personne la voie. Le remède de `MiniBarChart` ne s’y transplante pas : ' +
+      'sa zone de tracé porte la ligne d’objectif en position absolue, calée sur ' +
+      '`inset-x-0`, et l’étiquette du montant déborde vers le haut. Y poser un ' +
+      '`overflow` rognerait l’étiquette et figerait la ligne pendant que les barres ' +
+      'défileraient sous elle. Il faut porter le défilement un cran plus haut et ' +
+      'donner à la zone de tracé la largeur de son contenu — un lot à soi, mesuré ' +
+      'comme l’a été celui de sa voisine.',
   },
   {
     fichier: 'components/layout/AppShell.tsx',
@@ -276,7 +330,7 @@ function porteUnPlancher(fragment: string): boolean {
  * distingue pas un dépôt sain d'un détecteur cassé : élargir le recouvrement à
  * tout faisait passer l'ensemble du produit sans que rien ne rougisse.
  */
-function fautifsDe(relatif: string, brut: string): string[] {
+function fautifsDe(relatif: string, brut: string, exemptions: Exemption[] = EXEMPTIONS): string[] {
   const source = sansCommentaires(brut)
   const fautifs: string[] = []
 
@@ -287,12 +341,25 @@ function fautifsDe(relatif: string, brut: string): string[] {
     if (porteUnPlancher(balise)) continue
     if (RECOUVREMENT.test(balise)) continue
     if (DELEGUE.test(balise) && porteUnPlancher(source)) continue
-    if (EXEMPTIONS.some((e) => relatif === e.fichier && balise.includes(e.marqueur))) continue
 
-    fautifs.push(`${relatif}:${ligne} <${trouve[1]}>`)
+    const exemption = exemptions.find((e) => relatif === e.fichier && balise.includes(e.marqueur))
+    if (exemption && (!exemption.exige || exemption.exige.verifie(balise))) continue
+
+    // La contrepartie rompue se DIT : sans elle, le message renverrait à une
+    // règle de 44 px qu'on avait précisément accepté de ne pas tenir ici.
+    const pourquoi = exemption ? ` — exemption non honorée : ${exemption.exige!.contrepartie}` : ''
+    fautifs.push(`${relatif}:${ligne} <${trouve[1]}>${pourquoi}`)
   }
 
   return fautifs
+}
+
+/** Ce fragment déclare-t-il une largeur au moins égale au seuil d'espacement ? */
+function porteUnPasSuffisant(fragment: string): boolean {
+  for (const [, pas] of fragment.matchAll(LARGEUR)) {
+    if (Number(pas) * PAS_PX >= ESPACEMENT_MIN_PX) return true
+  }
+  return false
 }
 
 describe('plancher des cibles tactiles', () => {
@@ -342,6 +409,55 @@ describe('plancher des cibles tactiles', () => {
       'temoin.tsx:2 <button>',
       'temoin.tsx:6 <button>',
     ])
+  })
+
+  /**
+   * UNE EXEMPTION N'EST ACCORDÉE QU'À SA CONTREPARTIE.
+   *
+   * Le mécanisme se garde ici plutôt que sur le produit, et pour la raison qui
+   * revient à chaque fois : aujourd'hui les deux exemptions conditionnelles du
+   * dépôt sont honorées, donc retirer la condition ne ferait rougir personne.
+   * Le jour où quelqu'un l'ôterait « parce qu'elle gênait », l'échange
+   * redeviendrait un laissez-passer en silence.
+   */
+  it('n’accorde une exemption qu’à sa contrepartie', () => {
+    const assezLarge = `${W}-6`
+    const temoin = [
+      `<button className="px-2" data-temoin="oui">sans contrepartie</button>`,
+      `<button className="px-2 ${assezLarge}" data-temoin="oui">avec</button>`,
+    ].join('\n')
+
+    const exemptions = [
+      {
+        fichier: 'temoin.tsx',
+        marqueur: 'data-temoin="oui"',
+        raison: 'Témoin.',
+        exige: { verifie: porteUnPasSuffisant, contrepartie: 'un pas d’au moins 24 px' },
+      },
+    ]
+
+    // Le second honore l'échange, le premier non — et le message dit ce qui
+    // manque, plutôt que de renvoyer à des 44 px qu'on avait accepté de ne pas
+    // tenir ici.
+    expect(fautifsDe('temoin.tsx', temoin, exemptions)).toEqual([
+      'temoin.tsx:1 <button> — exemption non honorée : un pas d’au moins 24 px',
+    ])
+  })
+
+  /**
+   * UNE CONTREPARTIE QUI ACCEPTE TOUT N'EN EST PAS UNE.
+   *
+   * Le témoin ci-dessus garde le mécanisme, avec sa propre liste ; il ne dit
+   * rien des entrées RÉELLES. Remplacer la condition d'une exemption par
+   * « vrai » la vidait donc en silence, puisque le produit l'honore aujourd'hui
+   * et qu'aucune victime n'apparaissait. On soumet chaque condition à un
+   * contrôle nu : celle qui l'accepte n'exige rien.
+   */
+  it('ne souffre aucune contrepartie qui accepte un contrôle nu', () => {
+    const nu = '<button className="px-2" />'
+    const laxistes = EXEMPTIONS.filter((e) => e.exige?.verifie(nu)).map((e) => e.marqueur)
+
+    expect(laxistes).toEqual([])
   })
 
   /**

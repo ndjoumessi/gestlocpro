@@ -505,7 +505,29 @@ export function MiniBarChart({
 
   return (
     <figure className="m-0" aria-labelledby={titleId}>
-      <div className="relative flex h-24 items-end gap-1 sm:h-28 sm:gap-1.5">
+      {/*
+        LE GRAPHE DÉFILE PLUTÔT QUE DE RENDRE UN MOIS INATTEIGNABLE.
+
+        Mesuré : à 320 px les douze colonnes tombaient à 14 px de large pour un
+        pas de 18. WCAG 2.5.8 tolère une cible sous 24 px si un cercle de 24 px
+        centré dessus ne rencontre pas celui de sa voisine — à 18 px de pas, ils
+        se chevauchent. Vingt-quatre cibles échouaient sur cet écran.
+
+        Et l'enjeu n'est pas l'ergonomie : taper entre deux colonnes affiche la
+        valeur de la VOISINE, sans rien qui le signale. Le locataire lit alors
+        « 19 m³ » pour un mois qui en faisait 14, et croit lire son relevé.
+
+        `min-w-6` pose le plancher de 24 px, `overflow-x-auto` laisse la
+        conséquence défiler DANS SA PROPRE BOÎTE — jamais le document, c'est la
+        règle que `DataTable` applique déjà. La dernière colonne coupée signale
+        qu'il en reste. Le clavier atteint tout : chaque colonne est un bouton,
+        et tabuler fait défiler.
+
+        Rien n'est recouvert au passage : la lecture de cette carte est fixe
+        SOUS le graphe — voir plus bas — et non une infobulle flottante qu'un
+        `overflow` aurait rognée.
+      */}
+      <div className="relative flex h-24 items-end gap-1 overflow-x-auto sm:h-28 sm:gap-1.5">
         {bars.map((bar, index) => {
           const isLast = index === bars.length - 1
           const isActive = active === index
@@ -514,7 +536,7 @@ export function MiniBarChart({
             <button
               key={bar.key ?? bar.label}
               type="button"
-              className="group flex h-full min-w-0 flex-1 cursor-pointer items-end rounded-sm"
+              className="group flex h-full min-w-6 flex-1 shrink-0 cursor-pointer items-end rounded-sm"
               onMouseEnter={() => setActive(index)}
               onMouseLeave={() => setActive((c) => (c === index ? null : c))}
               onFocus={() => setActive(index)}
