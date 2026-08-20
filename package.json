@@ -9,13 +9,14 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "lint:i18n": "node scripts/check-i18n.mjs",
-    "check": "tsc -b && oxlint && node scripts/check-i18n.mjs && vitest run",
+    "check": "tsc -b && oxlint && node scripts/check-i18n.mjs && node scripts/check-orphelins.mjs && vitest run",
     "check:server": "npm --prefix server run check",
     "check:all": "npm run check && npm run check:server",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "lint:orphelins": "node scripts/check-orphelins.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
