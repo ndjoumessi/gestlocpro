@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { renderApp, screen } from '@/test/render'
+import { renderApp, screen, userEvent, within } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur, type FauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 import type { Role } from '@/features/auth/signupState'
@@ -160,5 +160,86 @@ describe('ce que le locataire lit de ses charges', () => {
     const eau = screen.getByText('Eau').parentElement!
     expect(eau.textContent).toContain('—')
     expect(eau.textContent).not.toContain('FCFA')
+  })
+})
+
+describe('poser un prix', () => {
+  beforeEach(() => {
+    servir({ water: null, power: null })
+    serveur.quand('GET', `/parks/${PARC}/tariffs`, { status: 200, body: { tariffs: [] } })
+  })
+
+  async function ouvrirLesTarifs() {
+    renderApp('/app/releves', { session: sessionDuRole('owner') })
+    await screen.findByRole('heading', { level: 1 })
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Prix de refacturation' }))
+    return screen.findByRole('dialog')
+  }
+
+  it('n’est proposé qu’au propriétaire', async () => {
+    renderApp('/app/releves', { session: sessionDuRole('manager') })
+    await screen.findByRole('heading', { level: 1 })
+
+    // Fixer un prix engage l'argent du locataire — même partage que la
+    // validation d'un devis. Le serveur refuse déjà ; l'écran ne propose pas.
+    expect(screen.queryByRole('button', { name: 'Prix de refacturation' })).not.toBeInTheDocument()
+  })
+
+  it('dit ce qu’un parc sans prix affiche, plutôt que de montrer une liste vide', async () => {
+    const dialogue = await ouvrirLesTarifs()
+    expect(
+      within(dialogue).getByText(/Aucun prix posé. Les relevés affichent les quantités/),
+    ).toBeInTheDocument()
+  })
+
+  it('envoie le prix saisi, daté', async () => {
+    const dialogue = await ouvrirLesTarifs()
+    serveur.quand('POST', `/parks/${PARC}/tariffs`, {
+      status: 201,
+      body: {
+        tariff: { id: 't-1', utility: 'water', unitPriceMinor: 610, effectiveFrom: '2026-08-01' },
+      },
+    })
+
+    const user = userEvent.setup()
+    await user.type(within(dialogue).getByLabelText(/Prix unitaire/), '610')
+    await user.click(within(dialogue).getByRole('button', { name: 'Enregistrer ce prix' }))
+    await screen.findByText('Prix enregistré')
+
+    const appel = serveur.appels.find((a) => a.methode === 'POST' && a.chemin.endsWith('/tariffs'))
+    expect(appel?.corps).toMatchObject({ utility: 'water', unitPriceMinor: 610 })
+    // La date d'effet part au format jour, jamais un instant : un tarif entre
+    // en vigueur un jour, et le lire à travers un fuseau le décalerait.
+    expect((appel?.corps as { effectiveFrom: string }).effectiveFrom).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  })
+
+  it('refuse un prix nul avant même d’appeler', async () => {
+    const dialogue = await ouvrirLesTarifs()
+    const user = userEvent.setup()
+    await user.type(within(dialogue).getByLabelText(/Prix unitaire/), '0')
+    await user.click(within(dialogue).getByRole('button', { name: 'Enregistrer ce prix' }))
+
+    // « Je refacture gratuitement » se dit en ne posant pas de prix : un zéro
+    // afficherait « 0 FCFA » sous les yeux du locataire.
+    await screen.findByText(/prix entier supérieur à zéro/)
+    expect(serveur.appels.some((a) => a.methode === 'POST' && a.chemin.endsWith('/tariffs'))).toBe(
+      false,
+    )
+  })
+
+  it('explique le refus d’un doublon, au lieu d’une panne', async () => {
+    const dialogue = await ouvrirLesTarifs()
+    serveur.quand('POST', `/parks/${PARC}/tariffs`, {
+      status: 409,
+      body: { error: 'tariff_exists' },
+    })
+
+    const user = userEvent.setup()
+    await user.type(within(dialogue).getByLabelText(/Prix unitaire/), '610')
+    await user.click(within(dialogue).getByRole('button', { name: 'Enregistrer ce prix' }))
+
+    // Le 409 a une cause précise et un remède précis. Le confondre avec « une
+    // action a échoué » obligerait à deviner ce qu'il faut changer.
+    expect(await screen.findByText(/Un prix existe déjà pour cette énergie/)).toBeInTheDocument()
   })
 })

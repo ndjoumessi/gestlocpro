@@ -394,6 +394,23 @@ export const api = {
    */
   access: <T>(parkId: string) => requete<T>(`/parks/${parkId}/access`),
 
+  /**
+   * Les prix de refacturation, historique compris.
+   *
+   * Un tarif passé n'est pas un déchet : c'est ce qui explique une quittance de
+   * l'an dernier, et c'est la question qu'un locataire pose quand il conteste.
+   */
+  tariffs: <T>(parkId: string) => requete<T>(`/parks/${parkId}/tariffs`),
+
+  /**
+   * Pose un prix, daté. Réservé au propriétaire — fixer un prix engage l'argent
+   * du locataire. Deux prix pour la même énergie le même jour rendent 409.
+   */
+  setTariff: <T>(
+    parkId: string,
+    corps: { utility: 'water' | 'power'; unitPriceMinor: number; effectiveFrom: string },
+  ) => requete<T>(`/parks/${parkId}/tariffs`, { method: 'POST', body: JSON.stringify(corps) }),
+
   /** Reprend un code encore en attente. Un code déjà consommé rend 409. */
   revokeInvitation: (parkId: string, invitationId: string) =>
     requete<void>(`/parks/${parkId}/invitations/${invitationId}/revoke`, { method: 'PATCH' }),

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { PageHeader, useRole } from '@/components/layout/AppShell'
 import { DataTable } from '@/components/primitives/DataTable'
 import { StatCard } from '@/components/primitives/Charts'
@@ -17,6 +18,8 @@ import { useDates } from '@/lib/useDates'
 import { useNumbers } from '@/lib/numbers'
 import { type MeterReading } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
+import { useSession } from '@/api/SessionProvider'
+import { TariffsModal } from './TariffsModal'
 
 /**
  * Relevé des compteurs.
@@ -35,6 +38,18 @@ export function Meters() {
   const csvMoney = useCsvMoney()
   const { role } = useRole()
   const { unitById, readings: TOUS, isMine, loading } = usePortfolio()
+  const { adhesionActive } = useSession()
+  const [tarifsOuverts, setTarifsOuverts] = useState(false)
+
+  /**
+   * Poser un prix est un acte de PROPRIÉTAIRE, et il exige un vrai parc.
+   *
+   * Le rôle d'abord — fixer un prix engage l'argent du locataire, même partage
+   * que la validation d'un devis. Et l'adhésion ensuite : la démonstration n'a
+   * pas de parc à qui écrire, et lui offrir le bouton mènerait à un appel sans
+   * destinataire.
+   */
+  const peutPoserUnPrix = role === 'owner' && adhesionActive !== null
 
   /* Le locataire ne voit que SES relevés : l'écran vient de s'ouvrir à lui,
      puisque l'eau et l'électricité lui sont refacturées. */
@@ -153,6 +168,16 @@ export function Meters() {
           </Button>
         }
       />
+
+      {peutPoserUnPrix && (
+        <div className="mb-6">
+          <Button variant="secondary" icon="card" onClick={() => setTarifsOuverts(true)}>
+            {t('app.tariffs.open')}
+          </Button>
+        </div>
+      )}
+
+      {tarifsOuverts && <TariffsModal open onClose={() => setTarifsOuverts(false)} />}
 
       <div className="grid gap-4 sm:grid-cols-3">
         {/*

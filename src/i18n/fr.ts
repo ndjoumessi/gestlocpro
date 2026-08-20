@@ -805,6 +805,25 @@ export const fr = {
       lateDays: 'Jours de retard',
     },
 
+    tariffs: {
+      title: 'Prix de refacturation',
+      description:
+        'L’eau et l’électricité sont refacturées à ces prix. Sans eux, les relevés s’affichent en quantités, sans montant.',
+      utility: 'Énergie',
+      price: 'Prix unitaire',
+      priceHint: 'Par mètre cube pour l’eau, par kilowattheure pour l’électricité.',
+      priceInvalid: 'Saisissez un prix entier supérieur à zéro.',
+      effectiveFrom: 'À partir du',
+      effectiveFromHint:
+        'Un prix ne vaut pas pour le passé : les relevés antérieurs gardent celui qui était en vigueur.',
+      submit: 'Enregistrer ce prix',
+      saved: 'Prix enregistré',
+      duplicate: 'Un prix existe déjà pour cette énergie à cette date. Changez la date d’effet.',
+      historyTitle: 'Prix déjà posés',
+      empty:
+        'Aucun prix posé. Les relevés affichent les quantités relevées, sans montant refacturé.',
+      open: 'Prix de refacturation',
+    },
     meters: {
       title: 'Relevé des compteurs',
       subtitle:

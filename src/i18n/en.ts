@@ -643,6 +643,24 @@ export const en: Dictionary = {
       lateDays: 'Days late',
     },
 
+    tariffs: {
+      title: 'Rebilling prices',
+      description:
+        'Water and power are rebilled at these prices. Without them, meter readings show quantities only, with no amount.',
+      utility: 'Utility',
+      price: 'Unit price',
+      priceHint: 'Per cubic metre for water, per kilowatt-hour for power.',
+      priceInvalid: 'Enter a whole price greater than zero.',
+      effectiveFrom: 'Effective from',
+      effectiveFromHint:
+        'A price does not apply to the past: earlier readings keep the one that was in force.',
+      submit: 'Save this price',
+      saved: 'Price saved',
+      duplicate: 'A price already exists for this utility on that date. Change the effective date.',
+      historyTitle: 'Prices already set',
+      empty: 'No price set. Readings show the quantities recorded, with no rebilled amount.',
+      open: 'Rebilling prices',
+    },
     meters: {
       title: 'Meter readings',
       subtitle:
