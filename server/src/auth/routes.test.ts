@@ -328,8 +328,8 @@ describe('une inscription refusée n’écrit rien', () => {
       .post('/api/auth/signup')
       .send({ ...INSCRIPTION, email: 'bailleur@example.com', parkName: 'Parc de test' })
     const cookie = cookieDe(proprio)!
-    const parcs = await request(serveur).get('/api/parks').set('Cookie', cookie)
-    const parkId = parcs.body.parks[0].id
+    const parcs = await request(serveur).get('/api/auth/me').set('Cookie', cookie)
+    const parkId = parcs.body.memberships[0].parkId
     const invit = await request(serveur)
       .post(`/api/parks/${parkId}/invitations`)
       .set('Cookie', cookie)

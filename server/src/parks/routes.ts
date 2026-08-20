@@ -285,29 +285,6 @@ const schemaLocataire = z.object({
 
 parksRouter.use(exigerCompte)
 
-/** Parcs auxquels le compte appartient. */
-parksRouter.get('/', async (req: Request, res: Response) => {
-  const adhesions = await prisma.membership.findMany({
-    where: { userId: req.compteId!, status: 'active' },
-    select: {
-      role: true,
-      park: { select: { id: true, name: true, currency: true, countryCode: true, delegation: true } },
-    },
-    orderBy: { createdAt: 'asc' },
-  })
-
-  res.json({
-    parks: adhesions.map((a) => ({
-      id: a.park.id,
-      name: a.park.name,
-      currency: a.park.currency,
-      countryCode: a.park.countryCode,
-      delegation: a.park.delegation,
-      role: a.role,
-    })),
-  })
-})
-
 /**
  * Statut d'une échéance, **calculé**.
  *

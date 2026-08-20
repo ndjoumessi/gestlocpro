@@ -97,8 +97,8 @@ beforeAll(async () => {
   const liste = Array.isArray(entetes) ? entetes : entetes ? [entetes] : []
   cookie = liste.find((c) => c.startsWith(`${NOM_COOKIE}=`))!
 
-  const parcs = await request(serveur).get('/api/parks').set('Cookie', cookie)
-  parkId = parcs.body.parks[0].id
+  const parcs = await request(serveur).get('/api/auth/me').set('Cookie', cookie)
+  parkId = parcs.body.memberships[0].parkId
 })
 
 afterAll(async () => {
