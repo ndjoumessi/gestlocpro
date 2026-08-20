@@ -5014,3 +5014,161 @@ describe('corriger le parc', () => {
     expect(parc.currency).toBe('XAF')
   })
 })
+
+/**
+ * LE MESSAGE GROUPÉ AUX LOCATAIRES.
+ *
+ * Le seul envoi à plusieurs destinataires qui existait était la relance
+ * d'impayés, sans texte libre : un bailleur devant prévenir d'une coupure d'eau
+ * n'avait que son téléphone.
+ */
+describe('le message groupé', () => {
+  let parkId: string
+  let proprio: string
+  let gestionnaire: string
+
+  beforeEach(async () => {
+    const p = await inscrire('proprio@example.com', {
+      parkName: 'Parc Bonamoussadi',
+      countryCode: 'CM',
+      seedDemo: true,
+    })
+    proprio = p.cookie
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio)
+    parkId = parcs.body.parks[0].id
+
+    const d = await inscrire('diane@example.com')
+    gestionnaire = d.cookie
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'diane@example.com' },
+    })
+    await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'manager' } })
+  })
+
+  function annoncer(cookie: string, corps: Record<string, unknown>) {
+    return request(serveur)
+      .post(`/api/parks/${parkId}/announcements`)
+      .set('Cookie', cookie)
+      .send(corps)
+  }
+
+  /** Donne un compte à un locataire du parc, et rend son identifiant. */
+  async function rattacherUnCompte(email: string) {
+    const { cookie } = await inscrire(email)
+    const compte = await prisma.userAccount.findUniqueOrThrow({ where: { email } })
+    const bail = await prisma.lease.findFirstOrThrow({
+      where: { status: 'active', unit: { building: { parkId } } },
+      select: { tenantId: true },
+    })
+    await prisma.tenant.update({ where: { id: bail.tenantId }, data: { userId: compte.id } })
+    // Le compte doit aussi ÊTRE MEMBRE : rattacher un `userId` à une fiche
+    // locataire ne donne aucun accès au parc, c'est l'adhésion qui le fait.
+    await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'tenant' } })
+    return { cookie, userId: compte.id }
+  }
+
+  it('écrit UNE notification pour tous, et non une par personne', async () => {
+    await rattacherUnCompte('locataire@example.com')
+
+    const res = await annoncer(proprio, { message: 'Coupure d’eau jeudi de 8 h à 12 h.' })
+    expect(res.status, JSON.stringify(res.body)).toBe(201)
+    expect(res.body.delivered).toBe(1)
+
+    /**
+     * Le message est le MÊME pour tous : en fabriquer un par personne créerait
+     * quatre faits là où il y en a un, et le bailleur relisant son journal
+     * croirait avoir écrit quatre fois.
+     */
+    const annonces = await prisma.notification.findMany({
+      where: { parkId, kind: 'announcement' },
+      select: { messageKey: true, params: true, unitId: true, recipients: true },
+    })
+    expect(annonces).toHaveLength(1)
+    expect(annonces[0]!.params).toEqual({ text: 'Coupure d’eau jeudi de 8 h à 12 h.' })
+    // Aucune unité : le message porte sur l'immeuble ou le parc, et l'attacher
+    // à un logement le ferait lire comme un événement de celui-là.
+    expect(annonces[0]!.unitId).toBeNull()
+  })
+
+  it('nomme ceux qui ne recevront rien, plutôt que de les compter comme prévenus', async () => {
+    await rattacherUnCompte('locataire@example.com')
+
+    const res = await annoncer(proprio, { message: 'Coupure d’eau jeudi.' })
+
+    /**
+     * Un locataire sans compte n'a pas d'espace où lire. Rendre le seul nombre
+     * d'envois laisserait croire que tout le monde est prévenu — le bailleur a
+     * besoin de savoir qui appeler.
+     */
+    expect(res.body.unreachable.length).toBeGreaterThan(0)
+    expect(res.body.unreachable[0]).toHaveProperty('fullName')
+    // Et le compte des joignables ne les inclut pas.
+    expect(res.body.delivered).toBe(1)
+  })
+
+  it('le locataire le lit dans son portefeuille', async () => {
+    const { cookie } = await rattacherUnCompte('locataire@example.com')
+    await annoncer(proprio, { message: 'Coupure d’eau jeudi de 8 h à 12 h.' }).expect(201)
+
+    // La preuve qui compte n'est pas la ligne en base, c'est ce que la personne
+    // visée voit.
+    const res = await request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', cookie)
+    const annonce = res.body.notifications.find(
+      (n: { messageKey: string }) => n.messageKey === 'announcement',
+    )
+    expect(annonce, JSON.stringify(res.body.notifications)).toBeDefined()
+    expect(annonce.params.text).toBe('Coupure d’eau jeudi de 8 h à 12 h.')
+  })
+
+  it('borne l’envoi à un immeuble quand on le nomme', async () => {
+    await rattacherUnCompte('locataire@example.com')
+    const immeuble = await prisma.building.findFirstOrThrow({
+      where: { parkId, units: { some: { leases: { some: { status: 'active' } } } } },
+      select: { id: true },
+    })
+    const autre = await prisma.building.findFirstOrThrow({
+      where: { parkId, id: { not: immeuble.id } },
+      select: { id: true },
+    })
+
+    const cible = await annoncer(proprio, { buildingId: immeuble.id, message: 'Coupure jeudi.' })
+    expect(cible.status).toBe(201)
+    const large = await annoncer(proprio, { message: 'Coupure jeudi.' })
+
+    // L'immeuble nommé touche STRICTEMENT moins de monde que le parc entier :
+    // sans cette comparaison, un filtre ignoré passerait au vert.
+    expect(cible.body.delivered + cible.body.unreachable.length).toBeLessThan(
+      large.body.delivered + large.body.unreachable.length,
+    )
+    expect(autre.id).not.toBe(immeuble.id)
+  })
+
+  it('laisse le gestionnaire annoncer, dont c’est le métier', async () => {
+    await rattacherUnCompte('locataire@example.com')
+    // Prévenir d'une coupure d'eau est un geste d'exploitation, pas un
+    // arbitrage : le lui refuser obligerait à réveiller le propriétaire.
+    await annoncer(gestionnaire, { message: 'Coupure d’eau jeudi.' }).expect(201)
+  })
+
+  it('refuse un message vide, et un immeuble qui n’est pas du parc', async () => {
+    await annoncer(proprio, { message: '  ' }).expect(400)
+
+    // Le parc voisin est posé DIRECTEMENT : ce cas éprouve le cloisonnement,
+    // pas le parcours d'inscription, et une seconde inscription avec semis
+    // coûterait plus cher que ce qu'elle prouve.
+    const immeubleVoisin = await prisma.building.create({
+      data: {
+        name: 'Résidence voisine',
+        district: 'Bastos',
+        park: { create: { name: 'Parc Bastos', countryCode: 'CM', currency: 'XAF' } },
+      },
+      select: { id: true },
+    })
+
+    // Un immeuble inconnu du parc et un immeuble sans locataire rendent le même
+    // refus : les distinguer dirait à qui devine des identifiants lesquels
+    // existent.
+    const res = await annoncer(proprio, { buildingId: immeubleVoisin.id, message: 'Coupure.' })
+    expect(res.status).toBe(404)
+  })
+})

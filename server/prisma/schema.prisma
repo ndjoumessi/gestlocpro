@@ -879,6 +879,10 @@ enum NotificationKind {
   work
   meter
   lease
+  /// Le bailleur qui parle à ses locataires — une coupure d'eau annoncée, un
+  /// passage prévu. Distinct des quatre autres, qui sont des faits du produit :
+  /// son texte est écrit par un humain et ne se traduit pas.
+  announcement
 }
 
 enum NotificationSeverity {

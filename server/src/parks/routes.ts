@@ -569,10 +569,30 @@ parksRouter.get(
       prisma.notification.findMany({
         where: {
           parkId,
-          // Le locataire ne reçoit que ce qui concerne SES unités. Une
-          // notification sans unité — un relevé manquant sur le parc — ne le
-          // regarde pas : elle s'adresse à qui gère.
-          ...(idsVisibles ? { unitId: { in: idsVisibles } } : {}),
+          /**
+           * Le locataire voit ce qui concerne SES unités, ou ce dont il est
+           * DESTINATAIRE NOMMÉ.
+           *
+           * La première moitié suffisait tant que toute notification portait une
+           * unité : un relevé manquant sur le parc s'adresse à qui gère, pas à
+           * lui. Le message groupé du bailleur — « coupure d'eau jeudi » — n'a
+           * volontairement aucune unité, puisqu'il porte sur un immeuble
+           * entier ; le filtre le lui cachait, alors qu'il en était le
+           * destinataire explicite.
+           *
+           * L'unité est le cloisonnement PAR DÉFAUT, à défaut de destinataire.
+           * Quand quelqu'un est nommé, c'est ce nom qui fait foi — et il n'est
+           * jamais posé par accident : `NotificationRecipient` n'existe que
+           * pour dire à qui l'on parle.
+           */
+          ...(idsVisibles
+            ? {
+                OR: [
+                  { unitId: { in: idsVisibles } },
+                  { recipients: { some: { userId: req.compteId! } } },
+                ],
+              }
+            : {}),
         },
         orderBy: { createdAt: 'desc' },
         select: {
@@ -1717,6 +1737,107 @@ const schemaCorrectionDuParc = z
   .refine((v) => v.name !== undefined || v.countryCode !== undefined || v.currency !== undefined, {
     message: 'Rien à corriger',
   })
+
+const schemaMessageGroupe = z.object({
+  /** Absent : tout le parc. Présent : le seul immeuble nommé. */
+  buildingId: z.string().uuid().optional(),
+  /**
+   * Le texte, borné.
+   *
+   * Trois caractères au moins — « ok » n'est pas une annonce —, mille au plus :
+   * au-delà, ce n'est plus une notification mais une lettre, et le canal qui la
+   * porterait n'existe pas encore.
+   */
+  message: z.string().trim().min(3, 'Au moins 3 caractères').max(1000),
+})
+
+/**
+ * LE MESSAGE GROUPÉ AUX LOCATAIRES.
+ *
+ * « Une intervention sur le réseau d'eau est prévue jeudi entre 8 h et 12 h » —
+ * le seul envoi à plusieurs destinataires qui existait était la relance
+ * d'impayés, sans texte libre. Un bailleur qui devait prévenir les quatre
+ * locataires d'un immeuble n'avait que son téléphone.
+ *
+ * UNE notification, N destinataires, et non l'inverse. Le message est le même
+ * pour tous : en fabriquer un par personne créerait quatre faits là où il y en
+ * a un, et le bailleur relisant son journal croirait avoir écrit quatre fois.
+ *
+ * Le texte voyage dans `params`, pas dans une clé. C'est l'exception à la règle
+ * « aucune phrase dans la donnée », et elle se justifie précisément par ce que
+ * la règle protège : les phrases du PRODUIT doivent être traduites, donc
+ * portées par des clés. Celle-ci est écrite par un humain pour un autre, et
+ * personne ne traduit ce que le bailleur a écrit.
+ */
+parksRouter.post(
+  '/:parkId/announcements',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const corps = schemaMessageGroupe.parse(req.body)
+
+    /**
+     * Les locataires EN PLACE, et eux seuls.
+     *
+     * La fenêtre du bail borne l'envoi : prévenir d'une coupure d'eau celui qui
+     * est parti l'an dernier est au mieux inutile, au pire une fuite — il
+     * apprendrait qu'un logement qu'il a quitté est occupé.
+     */
+    const baux = await prisma.lease.findMany({
+      where: {
+        status: 'active',
+        unit: {
+          building: { parkId, ...(corps.buildingId ? { id: corps.buildingId } : {}) },
+        },
+      },
+      select: { tenant: { select: { id: true, fullName: true, userId: true } } },
+    })
+
+    if (baux.length === 0) {
+      // Un immeuble inconnu du parc et un immeuble sans locataire rendent le
+      // MÊME refus : distinguer les deux dirait à qui devine des identifiants
+      // lesquels existent.
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const avecCompte = baux.filter((b) => b.tenant.userId)
+    const sansCompte = baux.filter((b) => !b.tenant.userId)
+
+    if (avecCompte.length > 0) {
+      await prisma.notification.create({
+        data: {
+          parkId,
+          kind: 'announcement',
+          messageKey: 'announcement',
+          params: { text: corps.message },
+          severity: 'medium',
+          // Aucune `unitId` : le message porte sur un immeuble ou sur le parc,
+          // et l'attacher à une unité le ferait apparaître comme un événement
+          // de ce logement-là chez les autres destinataires.
+          channel: 'in_app',
+          recipients: {
+            create: avecCompte.map((b) => ({ userId: b.tenant.userId! })),
+          },
+        },
+      })
+    }
+
+    /**
+     * CE QUI N'EST PAS PARTI SE DIT.
+     *
+     * Un locataire sans compte ne recevra rien — il n'a pas d'espace où lire.
+     * Rendre le seul nombre d'envois laisserait croire que tout le monde est
+     * prévenu, et c'est le mensonge que ce produit retire partout ailleurs. Le
+     * bailleur a besoin de savoir qui appeler.
+     */
+    res.status(201).json({
+      delivered: avecCompte.length,
+      unreachable: sansCompte.map((b) => ({ tenantId: b.tenant.id, fullName: b.tenant.fullName })),
+    })
+  },
+)
 
 /**
  * CORRIGER LE PARC : son nom, son pays, sa devise.
