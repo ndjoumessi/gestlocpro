@@ -199,7 +199,13 @@ export function Portfolio() {
         </div>
 
         <div role="group" aria-label={t('app.portfolio.building')} className="flex flex-wrap gap-1.5">
-          {[{ id: 'all', district: t('app.portfolio.filterAll') }, ...BUILDINGS].map((b) => {
+          {/*
+            Le bouton porte le NOM de l'immeuble, qui est ce sur quoi il filtre.
+            Il portait le quartier : deux résidences à Bastos auraient donné deux
+            boutons identiques, dont l'un aurait été injoignable — l'utilisateur
+            aurait cliqué le premier en croyant atteindre le second.
+          */}
+          {[{ id: 'all', name: t('app.portfolio.filterAll') }, ...BUILDINGS].map((b) => {
             const active = building === b.id
             return (
               <button
@@ -215,7 +221,7 @@ export function Portfolio() {
                     : 'border-border bg-surface text-muted hover:border-border-strong hover:text-ink',
                 )}
               >
-                {b.district}
+                {b.name}
               </button>
             )
           })}
@@ -289,11 +295,27 @@ export function Portfolio() {
           },
           {
             key: 'building',
+            /**
+             * LE NOM DE L'IMMEUBLE, sous un en-tête qui dit « Immeuble ».
+             *
+             * La cellule rendait le QUARTIER. La vignette du haut, elle, rend le
+             * nom : « Résidence Djoumessi » en carte et « Bastos » en ligne
+             * désignaient le même bâtiment sans que rien ne le dise, et deux
+             * résidences d'un même quartier étaient indiscernables dans le
+             * tableau. Le quartier reste, en second, parce qu'il situe — mais
+             * il ne tient plus la place du nom.
+             */
             header: t('app.portfolio.building'),
             hideOnMobile: true,
-            render: (unit) => (
-              <span className="text-muted">{buildingById(unit.buildingId)?.district}</span>
-            ),
+            render: (unit) => {
+              const immeuble = buildingById(unit.buildingId)
+              return (
+                <div className="flex flex-col">
+                  <span>{immeuble?.name}</span>
+                  <span className="text-body-s text-muted">{immeuble?.district}</span>
+                </div>
+              )
+            },
           },
           {
             key: 'type',

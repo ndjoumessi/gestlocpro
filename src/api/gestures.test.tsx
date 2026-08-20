@@ -309,9 +309,21 @@ describe('constituer son parc', () => {
      * quartier passe en note, et la puce de filtre reste au quartier puisque
      * c'est sur lui qu'on filtre.
      */
-    expect(await screen.findByText('Résidence Makepe')).toBeInTheDocument()
-    // Le quartier n'a pas disparu : il reste la clé du filtre.
-    expect(screen.getByRole('button', { name: 'Makepe' })).toBeInTheDocument()
+    /*
+      `findAllByText` : le nom paraît maintenant DEUX fois — sur la carte et
+      dans la colonne « Immeuble » du tableau, qui rendait le quartier sous un
+      en-tête annonçant le nom. Ce cas éprouve que le serveur a été entendu, pas
+      le nombre d'endroits où l'écran le répète.
+    */
+    expect((await screen.findAllByText('Résidence Makepe')).length).toBeGreaterThan(0)
+    /*
+      Le quartier n'a pas disparu, mais il n'est plus un libellé À LUI SEUL : le
+      bouton de filtre porte désormais le nom de l'immeuble — sans quoi deux
+      résidences d'un même quartier donnaient deux boutons identiques — et le
+      quartier vit dans la note de la carte, aux côtés du compte d'occupation.
+      Pour un immeuble sans logement, c'est même le seul endroit où il paraît.
+    */
+    expect(screen.getAllByText(/Makepe/).length).toBeGreaterThan(0)
   })
 
   it('n’envoie rien quand le nom est trop court, et le dit', async () => {
@@ -819,7 +831,9 @@ describe('retirer un immeuble', () => {
 
     const user = userEvent.setup()
     renderApp('/app/parc', { session: SESSION_AVEC_PARC })
-    await screen.findByText('Residence Djoumessi')
+    // Le nom paraît sur la carte ET dans la colonne « Immeuble » depuis que
+    // celle-ci ne rend plus le quartier.
+    await screen.findAllByText('Residence Djoumessi')
 
     await user.click(
       screen.getByRole('button', { name: /supprimer l’immeuble residence djoumessi/i }),
@@ -835,9 +849,7 @@ describe('retirer un immeuble', () => {
     // La carte ne disparaît qu'APRÈS l'accord du serveur : il refuse un
     // immeuble qui porte des logements, et la retirer d'abord montrerait une
     // suppression qui n'a pas eu lieu.
-    await waitFor(() =>
-      expect(screen.queryByText('Residence Djoumessi')).not.toBeInTheDocument(),
-    )
+    await waitFor(() => expect(screen.queryAllByText('Residence Djoumessi')).toHaveLength(0))
   })
 
   it('n’offre pas l’issue sur un immeuble qui porte des logements', async () => {
@@ -847,7 +859,7 @@ describe('retirer un immeuble', () => {
     serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: portefeuille() })
 
     renderApp('/app/parc', { session: SESSION_AVEC_PARC })
-    await screen.findByText('Résidence Bonamoussadi')
+    await screen.findAllByText('Résidence Bonamoussadi')
 
     expect(screen.queryByRole('button', { name: /supprimer l’immeuble/i })).not.toBeInTheDocument()
   })
