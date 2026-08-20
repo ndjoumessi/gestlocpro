@@ -1298,6 +1298,9 @@ export const fr = {
     },
 
     onboarding: {
+      hasManagers: 'Un gestionnaire opère encore ce parc. Retirez son accès au registre des accès avant de passer en gestion seule.',
+      saving: 'Enregistrement…',
+      delegationOffNotice: 'Ce parc est en gestion seule : aucun code de gestionnaire n’est émis. Changez la politique de délégation pour en recruter un.',
       joinTitle: 'Rejoindre un parc',
       joinBody: 'Si votre propriétaire ou gestionnaire vous a remis un code, saisissez-le ici : votre compte sera rattaché à son parc, au rôle qu’il vous a accordé.',
       join: 'Rejoindre',

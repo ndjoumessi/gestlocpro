@@ -259,6 +259,10 @@ describe('session', () => {
         parkName: 'Parc de Douala',
         currency: 'XAF',
         countryCode: 'CM',
+        // La politique de délégation accompagne l'adhésion : c'est elle qui
+        // décide si l'écran propose de recruter un gestionnaire, et cet écran
+        // est monté bien avant qu'on ait listé les parcs.
+        delegation: 'delegate',
       },
     ])
   })

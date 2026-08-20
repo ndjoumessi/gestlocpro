@@ -11,7 +11,7 @@ import { Field } from '@/components/primitives/Field'
 import { Input } from '@/components/primitives/Input'
 import { useToast } from '@/components/primitives/Toast'
 import { useSession } from '@/api/SessionProvider'
-import { api } from '@/api/client'
+import { ApiError, api } from '@/api/client'
 
 /** Droits par rôle. `false` = action refusée. */
 /**
@@ -159,29 +159,70 @@ function RejoindreUnParc() {
 
 export function Onboarding() {
   const t = useT()
+  const { notify } = useToast()
+  const { adhesionActive, estDemo, rafraichir } = useSession()
+  const [enregistrement, setEnregistrement] = useState(false)
   /**
-   * Le défaut suit l'état du parc démontré, qui **est** délégué : le sélecteur
-   * de profil porte « Gestionnaire délégué · Diane F. », et deux écrans lui
-   * adressent une note expliquant ce qu'il ne peut pas décider.
+   * LE MODE VIENT DU PARC, il ne vit plus dans cet écran.
    *
-   * Il avait un temps été aligné sur le défaut du formulaire d'inscription
-   * (`solo`), pour éviter qu'un propriétaire ayant répondu « je gère seul » ne
-   * voie l'inverse de sa réponse. C'était se tromper de contradiction : cette
-   * réponse n'est jamais transmise — `SignupState` vit dans le parcours
-   * d'inscription, n'est ni partagé ni enregistré, et il n'y a pas encore
-   * d'authentification pour le rattacher à un compte. Le désaccord corrigé
-   * était donc hypothétique, tandis que le coût était réel : en mode `solo`,
-   * la colonne « Gestionnaire » est entièrement barrée, et un écran intitulé
-   * « délégation des droits » n'enseigne plus rien à qui l'ouvre.
+   * Il était tenu dans un `useState` initialisé à `delegate` : le propriétaire
+   * choisissait entre deux politiques qui n'existaient que le temps du rendu, et
+   * quitter l'écran effaçait sa réponse. `Park.delegation` portait pourtant la
+   * valeur depuis l'origine du schéma, avec un commentaire affirmant que « le
+   * serveur s'en sert pour autoriser » — il ne s'en servait nulle part.
    *
-   * En mode délégué, les deux seules lignes refusées au gestionnaire sont
-   * valider un devis et arbitrer une caution — précisément la règle appliquée
-   * dans `Works` et `Deposits`. C'est ce que l'écran doit montrer d'emblée.
+   * DÉRIVÉ et non figé : un `useState` initialisé depuis l'adhésion ne se
+   * réexécute pas au montage suivant, et changer de parc dans le sélecteur
+   * laisserait la politique du précédent à l'écran. C'est le défaut exact que
+   * `Alerts` a corrigé sur le rôle.
    *
-   * Le jour où la réponse d'inscription sera réellement portée jusqu'ici,
-   * c'est cette ligne qui la lira.
+   * `?? 'delegate'` couvre un serveur antérieur au champ : c'est le défaut du
+   * schéma, et le supposer `solo` retirerait le recrutement à des parcs qui
+   * l'ont.
    */
-  const [mode, setMode] = useState<'solo' | 'delegate'>('delegate')
+  const [modeDemo, setModeDemo] = useState<'solo' | 'delegate'>('delegate')
+  const surUnVraiParc = !estDemo && adhesionActive !== null
+  const mode = surUnVraiParc ? (adhesionActive.delegation ?? 'delegate') : modeDemo
+
+  /**
+   * AUCUNE GARDE DE RÔLE ICI, et c'est délibéré.
+   *
+   * La route est déjà `Restricted allow={['owner']}` : le gestionnaire n'atteint
+   * pas cet écran. Doubler la règle par un `role === 'owner'` local produirait
+   * une branche que rien ne peut atteindre — donc que rien ne peut mettre en
+   * défaut, et qui pourrirait au premier changement de routage sans qu'un cas
+   * ne rougisse. C'est la même leçon que la garde de lecture dupliquée : deux
+   * conditions pour une seule règle se couvrent mutuellement.
+   *
+   * Le refus réel vit au serveur, qui rend 403 au gestionnaire — et c'est là
+   * qu'il est éprouvé.
+   */
+
+  const changerLeMode = (choix: 'solo' | 'delegate') => {
+    // La démonstration n'a pas de parc où écrire : le geste reste pédagogique,
+    // et bascule la matrice sans prétendre enregistrer quoi que ce soit.
+    if (!surUnVraiParc || !adhesionActive) {
+      setModeDemo(choix)
+      return
+    }
+    setEnregistrement(true)
+    void api
+      .updatePark(adhesionActive.parkId, { delegation: choix })
+      /* RELU auprès du serveur, jamais retouché en mémoire : c'est lui qui
+         refuse `solo` quand un gestionnaire est en place, et poser la valeur
+         d'abord afficherait une politique que le parc n'a pas. */
+      .then(() => rafraichir())
+      .catch((cause: unknown) => {
+        const code = cause instanceof ApiError ? cause.code : ''
+        notify(
+          code === 'has_managers'
+            ? t('app.onboarding.hasManagers')
+            : t('common.actionFailed'),
+          { tone: 'danger' },
+        )
+      })
+      .finally(() => setEnregistrement(false))
+  }
 
   return (
     <>
@@ -197,7 +238,7 @@ export function Onboarding() {
           name="delegation"
           columns={2}
           value={mode}
-          onChange={setMode}
+          onChange={changerLeMode}
           options={[
             {
               value: 'delegate',
@@ -213,6 +254,12 @@ export function Onboarding() {
             },
           ]}
         />
+        {/* L'enregistrement se voit. Sans lui, basculer le mode ne produit rien
+            à l'écran tant que `/auth/me` n'a pas répondu, et le second clic part
+            avant que le premier ne soit tranché. */}
+        {enregistrement && (
+          <p className="mt-3 text-caps text-muted">{t('app.onboarding.saving')}</p>
+        )}
       </Card>
 
       {/* Basculer le mode réécrit neuf lignes de la colonne « Gestionnaire ».

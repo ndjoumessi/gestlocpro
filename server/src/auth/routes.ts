@@ -401,7 +401,10 @@ authRouter.get('/me', async (req: Request, res: Response) => {
     select: {
       parkId: true,
       role: true,
-      park: { select: { name: true, currency: true, countryCode: true } },
+      /* `delegation` voyage avec l'adhésion, et non seulement dans `/parks` :
+         c'est elle qui décide si l'écran propose de recruter un gestionnaire, et
+         cet écran est monté bien avant qu'on ait listé les parcs. */
+      park: { select: { name: true, currency: true, countryCode: true, delegation: true } },
     },
   })
 
@@ -423,6 +426,7 @@ authRouter.get('/me', async (req: Request, res: Response) => {
        * sans que rien ne signale qu'elle y était déjà.
        */
       countryCode: m.park.countryCode,
+      delegation: m.park.delegation,
     })),
   })
 })

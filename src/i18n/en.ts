@@ -1031,6 +1031,9 @@ export const en: Dictionary = {
     },
 
     onboarding: {
+      hasManagers: 'A manager still operates this portfolio. Revoke their access in the access registry before switching to solo management.',
+      saving: 'Saving…',
+      delegationOffNotice: 'This portfolio is in solo management: no manager code is issued. Change the delegation policy to recruit one.',
       joinTitle: 'Join a park',
       joinBody: 'If your landlord or manager gave you a code, enter it here: your account will be attached to their park, with the role they granted you.',
       join: 'Join',

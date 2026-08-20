@@ -1626,6 +1626,34 @@ parksRouter.post(
       return
     }
 
+    /**
+     * ET PERSONNE NE RECRUTE DANS UN PARC QUI SE GÈRE SEUL.
+     *
+     * `Park.delegation` existait depuis l'origine du schéma, avec un commentaire
+     * affirmant que « le serveur s'en sert pour autoriser ». Il ne s'en servait
+     * nulle part : la colonne était lue une fois, pour être recopiée dans la
+     * liste des parcs, et aucune décision n'en dépendait. Un propriétaire ayant
+     * répondu « je gère seul » pouvait émettre un code de gestionnaire dans la
+     * minute — le réglage n'était qu'un décor.
+     *
+     * 409 et non 403 : ce n'est pas un défaut de droit, c'est un état du parc,
+     * et il se défait. Le code d'erreur nomme le réglage à changer plutôt que de
+     * renvoyer le propriétaire à un « interdit » qui le viserait, lui.
+     *
+     * Le code LOCATAIRE reste émis dans les deux modes : gérer seul, c'est se
+     * passer d'un tiers, pas de ses locataires.
+     */
+    if (corps.role === 'manager') {
+      const parc = await prisma.park.findUniqueOrThrow({
+        where: { id: parkId },
+        select: { delegation: true },
+      })
+      if (parc.delegation === 'solo') {
+        res.status(409).json({ error: 'delegation_off' })
+        return
+      }
+    }
+
     if (corps.unitId) {
       // L'unité doit appartenir au parc : sans cette vérification, un
       // identifiant deviné rattacherait un locataire au logement d'un autre.
@@ -1733,10 +1761,23 @@ const schemaCorrectionDuParc = z
     name: z.string().trim().min(2, 'Au moins 2 caractères').max(120).optional(),
     countryCode: z.string().length(2).toUpperCase().optional(),
     currency: z.enum(['XAF', 'XOF', 'EUR', 'CAD', 'USD']).optional(),
+    /**
+     * La politique de délégation, qui n'était modifiable par aucune route.
+     *
+     * Elle vaut `delegate` par défaut depuis la création du schéma, et le seul
+     * écran qui la présente la tient dans un `useState` : le propriétaire
+     * choisissait entre deux modes qui n'existaient que le temps du rendu.
+     */
+    delegation: z.enum(['solo', 'delegate']).optional(),
   })
-  .refine((v) => v.name !== undefined || v.countryCode !== undefined || v.currency !== undefined, {
-    message: 'Rien à corriger',
-  })
+  .refine(
+    (v) =>
+      v.name !== undefined ||
+      v.countryCode !== undefined ||
+      v.currency !== undefined ||
+      v.delegation !== undefined,
+    { message: 'Rien à corriger' },
+  )
 
 const schemaMessageGroupe = z.object({
   /** Absent : tout le parc. Présent : le seul immeuble nommé. */
@@ -2123,14 +2164,39 @@ parksRouter.patch(
      * le dit — mais la route n'a pas à faire semblant de l'ignorer, d'où ce
      * commentaire plutôt qu'une garde silencieuse.
      */
+    /**
+     * ON NE PASSE PAS EN « JE GÈRE SEUL » AVEC UN GESTIONNAIRE EN PLACE.
+     *
+     * Le mode `solo` dit qu'aucun tiers n'opère ce parc. L'écrire pendant qu'une
+     * adhésion de gestionnaire est active produirait un parc qui affirme une
+     * chose et en pratique une autre : Diane garderait sa clé, ses écrans et ses
+     * gestes, sous un réglage qui annonce qu'elle n'existe pas. Le refus nomme
+     * le geste à faire d'abord — retirer l'accès, au registre des accès — plutôt
+     * que de révoquer dans le dos du propriétaire une adhésion qu'il n'a pas
+     * demandé de retirer.
+     *
+     * Compté sur `status: 'active'`, comme `exigerAppartenance` : une adhésion
+     * révoquée ne retient plus rien.
+     */
+    if (corps.delegation === 'solo') {
+      const gestionnaires = await prisma.membership.count({
+        where: { parkId, role: 'manager', status: 'active' },
+      })
+      if (gestionnaires > 0) {
+        res.status(409).json({ error: 'has_managers' })
+        return
+      }
+    }
+
     const parc = await prisma.park.update({
       where: { id: parkId },
       data: {
         ...(corps.name !== undefined ? { name: corps.name } : {}),
         ...(corps.countryCode !== undefined ? { countryCode: corps.countryCode } : {}),
         ...(corps.currency !== undefined ? { currency: corps.currency } : {}),
+        ...(corps.delegation !== undefined ? { delegation: corps.delegation } : {}),
       },
-      select: { id: true, name: true, countryCode: true, currency: true },
+      select: { id: true, name: true, countryCode: true, currency: true, delegation: true },
     })
 
     res.json({ park: parc })

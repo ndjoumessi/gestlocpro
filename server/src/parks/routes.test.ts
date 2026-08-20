@@ -5564,3 +5564,142 @@ describe('les notifications lues', () => {
   })
 })
 
+/**
+ * LA DÉLÉGATION CESSE D'ÊTRE UN DÉCOR.
+ *
+ * `Park.delegation` est au schéma depuis l'origine, avec un commentaire
+ * affirmant que « le serveur s'en sert pour autoriser ». Il ne s'en servait
+ * nulle part : la colonne était lue une fois pour être recopiée dans la liste
+ * des parcs, et aucune décision n'en dépendait. Aucune route ne l'écrivait non
+ * plus — l'écran qui la présente la tenait dans un `useState`.
+ */
+describe('la politique de délégation', () => {
+  let parkId: string
+  let proprio: string
+
+  beforeEach(async () => {
+    const p = await inscrire('proprio@example.com', {
+      parkName: 'Parc Bonamoussadi',
+      countryCode: 'CM',
+    })
+    proprio = p.cookie
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio)
+    parkId = parcs.body.parks[0].id
+  })
+
+  const corriger = (cookie: string, corps: Record<string, unknown>) =>
+    request(serveur).patch(`/api/parks/${parkId}`).set('Cookie', cookie).send(corps)
+
+  const inviter = (cookie: string, corps: Record<string, unknown>) =>
+    request(serveur).post(`/api/parks/${parkId}/invitations`).set('Cookie', cookie).send(corps)
+
+  async function recruterUnGestionnaire() {
+    const d = await inscrire('diane@example.com')
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'diane@example.com' },
+    })
+    await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'manager' } })
+    return { cookie: d.cookie, compteId: compte.id }
+  }
+
+  it('s’écrit, et se relit', async () => {
+    // Elle naît déléguée : c'est le défaut du schéma, et le cas le fixe pour que
+    // la bascule qui suit prouve quelque chose.
+    const avant = await request(serveur).get('/api/parks').set('Cookie', proprio)
+    expect(avant.body.parks[0].delegation).toBe('delegate')
+
+    const res = await corriger(proprio, { delegation: 'solo' })
+    expect(res.status, JSON.stringify(res.body)).toBe(200)
+
+    const apres = await request(serveur).get('/api/parks').set('Cookie', proprio)
+    expect(apres.body.parks[0].delegation).toBe('solo')
+  })
+
+  /**
+   * Elle voyage aussi par `/auth/me`, et pas seulement par `/parks`.
+   *
+   * C'est elle qui décide si l'écran propose de recruter un gestionnaire, et cet
+   * écran est monté bien avant qu'on ait listé les parcs : la servir uniquement
+   * dans `/parks` laisserait la modale d'invitation décider sans la connaître.
+   */
+  it('accompagne l’adhésion dès la session', async () => {
+    await corriger(proprio, { delegation: 'solo' }).expect(200)
+    const moi = await request(serveur).get('/api/auth/me').set('Cookie', proprio)
+    expect(moi.body.memberships[0].delegation).toBe('solo')
+  })
+
+  /**
+   * LE REFUS QUI DONNE SON SENS AU RÉGLAGE.
+   *
+   * Sans lui, « je gère seul » serait une étiquette : le propriétaire l'aurait
+   * posée puis aurait recruté dans la minute, et le mode n'aurait borné personne.
+   */
+  it('refuse le code gestionnaire quand le parc se gère seul', async () => {
+    await corriger(proprio, { delegation: 'solo' }).expect(200)
+
+    const res = await inviter(proprio, { role: 'manager' })
+    expect(res.status).toBe(409)
+    expect(res.body.error).toBe('delegation_off')
+    expect(await prisma.invitation.count({ where: { parkId, role: 'manager' } })).toBe(0)
+  })
+
+  /**
+   * L'AUTRE MOITIÉ : gérer seul, c'est se passer d'un tiers, pas de ses
+   * locataires. Sans ce cas, tout refuser satisferait le précédent.
+   */
+  it('émet toujours le code locataire dans un parc qui se gère seul', async () => {
+    await corriger(proprio, { delegation: 'solo' }).expect(200)
+    const res = await inviter(proprio, { role: 'tenant' })
+    expect(res.status, JSON.stringify(res.body)).toBe(201)
+  })
+
+  it('laisse recruter tant que le parc délègue', async () => {
+    const res = await inviter(proprio, { role: 'manager' })
+    expect(res.status, JSON.stringify(res.body)).toBe(201)
+  })
+
+  /**
+   * ON NE DÉCLARE PAS SEUL UN PARC QUE QUELQU'UN OPÈRE.
+   *
+   * Le réglage annoncerait qu'aucun tiers n'y touche pendant que Diane garde sa
+   * clé, ses écrans et ses gestes. Le refus nomme le geste à faire d'abord
+   * plutôt que de révoquer dans le dos du propriétaire une adhésion qu'il n'a
+   * pas demandé de retirer.
+   */
+  it('refuse la gestion seule tant qu’un gestionnaire est en place', async () => {
+    await recruterUnGestionnaire()
+
+    const res = await corriger(proprio, { delegation: 'solo' })
+    expect(res.status).toBe(409)
+    expect(res.body.error).toBe('has_managers')
+
+    // Et RIEN n'a été écrit : un refus qui laisse la moitié du geste passer est
+    // pire que pas de refus du tout.
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio)
+    expect(parcs.body.parks[0].delegation).toBe('delegate')
+  })
+
+  it('l’accepte une fois l’accès du gestionnaire retiré', async () => {
+    const { compteId } = await recruterUnGestionnaire()
+    const adhesion = await prisma.membership.findFirstOrThrow({
+      where: { parkId, userId: compteId },
+      select: { id: true },
+    })
+    await request(serveur)
+      .patch(`/api/parks/${parkId}/memberships/${adhesion.id}/revoke`)
+      .set('Cookie', proprio)
+      .expect(204)
+
+    // `exigerAppartenance` filtre déjà sur `status: 'active'` : le compte est la
+    // même règle, et une adhésion révoquée ne retient plus rien.
+    await corriger(proprio, { delegation: 'solo' }).expect(200)
+  })
+
+  it('n’est pas un réglage de gestionnaire', async () => {
+    const { cookie } = await recruterUnGestionnaire()
+    // Il est précisément celui que la politique borne : la lui laisser changer
+    // lui rendrait les deux gestes qu'elle lui retire.
+    const res = await corriger(cookie, { delegation: 'solo' })
+    expect(res.status).toBe(403)
+  })
+})

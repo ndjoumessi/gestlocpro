@@ -39,7 +39,17 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
 
   // Même partage que les devis et les cautions : le gestionnaire OPÈRE, le
   // propriétaire ARBITRE. Recruter un pair est un acte de propriétaire.
-  const peutRecruter = role === 'owner'
+  //
+  // ET ENCORE FAUT-IL QUE LE PARC DÉLÈGUE. `Park.delegation` décidait de rien :
+  // un propriétaire ayant répondu « je gère seul » se voyait proposer le code
+  // GESTIONNAIRE dans la minute, et le serveur l'émettait. Il refuse désormais
+  // en 409 `delegation_off` — on ne propose donc plus ce geste, on dit ce qui le
+  // rendrait possible.
+  //
+  // `?? 'delegate'` : un serveur antérieur au champ ne le rend pas, et le
+  // supposer `solo` retirerait le recrutement à des parcs qui l'ont.
+  const gereSeul = (adhesionActive?.delegation ?? 'delegate') === 'solo'
+  const peutRecruter = role === 'owner' && !gereSeul
 
   const vacants = units.filter((u) => !u.tenant)
 
@@ -157,6 +167,17 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
             <p className="flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body-s text-gold-ink">
               <Icon name="info" size={15} className="mt-0.5 shrink-0" />
               {t('app.invite.managerNotice')}
+            </p>
+          )}
+
+          {/* Au PROPRIÉTAIRE d'un parc en gestion seule, la note dit autre chose
+              que celle du gestionnaire : ce n'est pas un droit qui lui manque,
+              c'est un réglage qu'il détient. Elle nomme donc l'écran où il se
+              change plutôt que de le laisser deviner. */}
+          {role === 'owner' && gereSeul && (
+            <p className="flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body-s text-gold-ink">
+              <Icon name="info" size={15} className="mt-0.5 shrink-0" />
+              {t('app.onboarding.delegationOffNotice')}
             </p>
           )}
 

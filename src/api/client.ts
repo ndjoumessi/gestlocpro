@@ -129,6 +129,15 @@ export interface AdhesionApi {
    * supposé : c'est le comportement juste, pas un contournement.
    */
   countryCode?: string | null
+  /**
+   * Politique de délégation du parc.
+   *
+   * FACULTATIVE, comme tout ce qui est arrivé après coup : un serveur antérieur
+   * à ce champ ne le rend pas, et les écrans doivent alors se comporter comme
+   * avant plutôt que de lire `undefined` comme « je gère seul » — ce qui
+   * retirerait le recrutement d'un gestionnaire à des parcs qui l'ont.
+   */
+  delegation?: 'solo' | 'delegate'
 }
 
 export interface SessionApi {
@@ -439,11 +448,15 @@ export const api = {
   ) => requete<T>(`/parks/${parkId}/tariffs`, { method: 'POST', body: JSON.stringify(corps) }),
 
   /**
-   * Corrige le parc — son nom, son pays, sa devise.
+   * Corrige le parc — son nom, son pays, sa devise, sa politique de délégation.
    *
    * Le corps ne porte QUE les champs à changer : envoyer les quatre à chaque
    * fois réécrirait le pays et la devise avec ce que l'écran croyait savoir en
    * s'ouvrant. Un corps vide rend 422, le serveur n'ayant rien à corriger.
+   *
+   * Rend 409 `has_managers` si l'on passe en `solo` avec un gestionnaire en
+   * place : le réglage annoncerait qu'aucun tiers n'opère le parc pendant qu'un
+   * tiers l'opère.
    */
   updatePark: <T>(
     parkId: string,
@@ -451,6 +464,7 @@ export const api = {
       name?: string
       countryCode?: string
       currency?: DeviseDuParc
+      delegation?: 'solo' | 'delegate'
     },
   ) => requete<T>(`/parks/${parkId}`, { method: 'PATCH', body: JSON.stringify(corps) }),
 
