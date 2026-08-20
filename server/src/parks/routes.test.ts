@@ -5222,17 +5222,35 @@ describe('répondre au locataire', () => {
     const compte = await prisma.userAccount.findUniqueOrThrow({
       where: { email: 'locataire@example.com' },
     })
+    /**
+     * ON PART DE L'INTERVENTION, la plus rare, et non du bail.
+     *
+     * Le semis pose DIX baux actifs et CINQ interventions. Tirer d'abord un bail
+     * — `findFirstOrThrow` sans `orderBy` n'en promet aucun en particulier —
+     * tombait une fois sur deux sur une unité qui n'en porte pas, et le
+     * `findFirstOrThrow` suivant levait P2025 : tout le bloc échouait ensemble.
+     *
+     * Le défaut se voyait environ une exécution sur quatre, et JAMAIS sur le
+     * fichier seul. Sans `ORDER BY`, Postgres rend les lignes dans l'ordre du
+     * tas, que la suite entière remodèle à mesure qu'elle insère et efface :
+     * l'ordre dépendait donc de ce qui avait tourné avant, ce qui rendait le
+     * défaut irreproductible en isolation et le faisait passer pour du hasard.
+     *
+     * `orderBy` sur la référence — unique et croissante — rend le tirage
+     * reproductible ; la contrainte sur le bail actif garantit que l'unité
+     * retenue en porte un.
+     */
+    const travail = await prisma.workOrder.findFirstOrThrow({
+      where: { unit: { building: { parkId }, leases: { some: { status: 'active' } } } },
+      orderBy: { reference: 'asc' },
+      select: { id: true, unitId: true },
+    })
     const bail = await prisma.lease.findFirstOrThrow({
-      where: { status: 'active', unit: { building: { parkId } } },
-      select: { tenantId: true, unitId: true },
+      where: { status: 'active', unitId: travail.unitId },
+      select: { tenantId: true },
     })
     await prisma.tenant.update({ where: { id: bail.tenantId }, data: { userId: compte.id } })
     await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'tenant' } })
-
-    const travail = await prisma.workOrder.findFirstOrThrow({
-      where: { unitId: bail.unitId },
-      select: { id: true },
-    })
     await prisma.workOrder.update({
       where: { id: travail.id },
       data: { reportedByTenantId: bail.tenantId },
