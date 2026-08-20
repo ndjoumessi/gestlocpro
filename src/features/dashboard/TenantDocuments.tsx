@@ -102,6 +102,7 @@ export function TenantDocuments() {
         csvMoney.header(t('app.tenant.colPower')),
         csvMoney.header(t('app.payments.paid')),
         t('app.payments.date'),
+        t('app.payments.reference'),
       ],
       /**
        * Les montants de CHAQUE période, pris tels que le serveur les a figés.
@@ -126,6 +127,16 @@ export function TenantDocuments() {
           // Pas de versement, pas de date : inventer celle de l'échéance
           // laisserait croire à un règlement reçu.
           versement ? d.fullDate(versement.paidOn) : null,
+          /*
+            LA RÉFÉRENCE DE L'OPÉRATEUR, dans le fichier que le locataire garde.
+            C'est avec elle qu'il conteste : sans elle, l'export lui demande de
+            croire sur parole un encaissement qu'il ne peut pas retrouver chez
+            son opérateur. Elle était écrite en base et rendue à personne.
+
+            La NOTE du bailleur n'y est pas, et ne peut pas y être : le serveur
+            ne la sert pas à un locataire.
+          */
+          versement?.reference ?? null,
         ]
       }),
       notice: 'app.receiptDownloaded',

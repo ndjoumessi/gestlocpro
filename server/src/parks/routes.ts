@@ -79,6 +79,19 @@ const schemaEncaissement = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date attendue au format AAAA-MM-JJ')
     .optional(),
   reference: z.string().trim().max(80).optional(),
+  /**
+   * L'annotation du bailleur, INTERNE.
+   *
+   * `Payment.note` est au schéma depuis l'origine et n'a jamais eu ni saisie ni
+   * lecture. Elle porte ce que la référence ne dit pas : « solde promis le 15 »,
+   * « versé par le frère ». C'est le même manque que `withheldReason` sur la
+   * caution — le seul texte qui expliquerait la ligne six mois plus tard était
+   * le seul qu'on ne gardait pas.
+   *
+   * Plus longue que la référence, et pour cause : l'une est un identifiant
+   * d'opérateur, l'autre une phrase.
+   */
+  note: z.string().trim().max(280).optional(),
 })
 
 /** Émission d'un document pour une période donnée. */
@@ -675,7 +688,16 @@ parksRouter.get(
            */
           payments: {
             orderBy: { paidOn: 'asc' },
-            select: { amountMinor: true, method: true, paidOn: true },
+            select: {
+              amountMinor: true,
+              method: true,
+              paidOn: true,
+              /* Écrits depuis l'origine, rendus à personne : la référence était
+                 saisie par le bailleur et disparaissait, la note n'avait même
+                 pas de champ. */
+              reference: true,
+              note: true,
+            },
           },
         },
       }),
@@ -886,6 +908,24 @@ parksRouter.get(
           amountMinor: p.amountMinor,
           method: p.method,
           paidOn: p.paidOn,
+          /**
+           * LA RÉFÉRENCE EST OPPOSABLE, LA NOTE NE L'EST PAS.
+           *
+           * La référence est l'identifiant de l'opérateur — « MM-4471 ». Elle
+           * appartient aux deux parties : c'est avec elle qu'un locataire
+           * conteste, et la lui cacher reviendrait à lui demander de croire sur
+           * parole un encaissement qu'il ne peut pas retrouver.
+           *
+           * La note est l'annotation du bailleur sur son propre dossier —
+           * « solde promis le 15 », « à rappeler ». La servir au locataire
+           * exposerait ce qu'on écrit SUR lui, du même ordre que le coût des
+           * travaux que son espace n'affiche pas.
+           *
+           * Le retrait se fait ICI, au serveur : un masquage à l'écran laisse
+           * la donnée dans la réponse, où elle se lit dans l'onglet réseau.
+           */
+          reference: p.reference,
+          ...(role === 'tenant' ? {} : { note: p.note }),
         })),
       })),
       /**
@@ -1415,6 +1455,7 @@ parksRouter.post(
           method: corps.method,
           paidOn: corps.paidOn ? new Date(`${corps.paidOn}T00:00:00Z`) : new Date(),
           ...(corps.reference ? { reference: corps.reference } : {}),
+          ...(corps.note ? { note: corps.note } : {}),
           // Un versement en espèces sans auteur est incontestable, donc
           // indéfendable. Le schéma l'exige déjà ; la route le fournit.
           recordedById: req.compteId!,

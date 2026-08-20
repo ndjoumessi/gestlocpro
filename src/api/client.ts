@@ -492,7 +492,10 @@ export const api = {
       amountMinor: number
       method: string
       paidOn?: string
+      /** L'identifiant de l'opérateur. Opposable : le locataire le lit aussi. */
       reference?: string
+      /** L'annotation du bailleur. INTERNE : le serveur ne la sert pas au locataire. */
+      note?: string
     },
   ) => requete<T>(`/parks/${parkId}/payments`, { method: 'POST', body: JSON.stringify(corps) }),
 

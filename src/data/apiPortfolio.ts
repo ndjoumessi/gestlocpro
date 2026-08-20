@@ -85,7 +85,15 @@ interface PortefeuilleApi {
     waterMinor: number
     powerMinor: number
     paidMinor: number
-    payments: { amountMinor: number; method: ReceiptPayment['method']; paidOn: string }[]
+    payments: {
+      amountMinor: number
+      method: ReceiptPayment['method']
+      paidOn: string
+      /* Facultatifs : un serveur antérieur à ce lot ne les rend pas, et le
+         client doit alors se taire plutôt que d'afficher « réf. undefined ». */
+      reference?: string | null
+      note?: string | null
+    }[]
   }[]
   readings: {
     unitId: string
@@ -417,6 +425,12 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
             amountMinor: p.amountMinor,
             method: p.method,
             paidOn: jourCalendaire(p.paidOn),
+            // `?? null` pour la référence : le champ EXISTE toujours côté
+            // client, vide ou non. La note, elle, reste `undefined` quand le
+            // serveur ne l'envoie pas — c'est ainsi que l'écran distingue
+            // « rien d'écrit » de « pas pour vous ».
+            reference: p.reference ?? null,
+            ...(p.note !== undefined ? { note: p.note } : {}),
           })),
         }
         parBail[e.leaseId] = [...(parBail[e.leaseId] ?? []), ligne]

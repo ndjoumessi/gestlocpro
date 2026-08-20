@@ -906,6 +906,22 @@ export interface ReceiptPayment {
   amountMinor: number
   method: PaymentMethodKey
   paidOn: DateParts
+  /**
+   * L'identifiant de l'opérateur — « MM-4471 ». OPPOSABLE : c'est avec lui
+   * qu'un locataire conteste, et il lui est donc servi comme au bailleur.
+   *
+   * Il était saisi à l'encaissement, écrit en base, et rendu à personne : le
+   * bailleur le tapait et ne le revoyait jamais.
+   */
+  reference: string | null
+  /**
+   * L'annotation du bailleur sur son propre dossier — « solde promis le 15 ».
+   *
+   * `undefined` chez le LOCATAIRE, où le serveur ne l'envoie pas : c'est ce
+   * qu'on écrit sur lui, du même ordre que le coût des travaux. `null` quand
+   * personne n'en a écrit. Les deux absences ne disent pas la même chose.
+   */
+  note?: string | null
 }
 
 /**
@@ -993,12 +1009,12 @@ export function receiptStatus(receipt: Receipt, aujourdhui: Date): PaymentStatus
  * poste par poste existe.
  */
 export const TENANT_RECEIPTS: Receipt[] = [
-  { year: 2026, month: 7, rentMinor: 145000, waterMinor: 8320, powerMinor: 17622, dueOn: { year: 2026, month: 7, day: 5 }, paidMinor: 170942, payments: [{ amountMinor: 170942, method: 'mobile', paidOn: { year: 2026, month: 7, day: 3 } }] },
-  { year: 2026, month: 6, rentMinor: 145000, waterMinor: 7800, powerMinor: 16137, dueOn: { year: 2026, month: 6, day: 5 }, paidMinor: 168937, payments: [{ amountMinor: 168937, method: 'mobile', paidOn: { year: 2026, month: 6, day: 2 } }] },
-  { year: 2026, month: 5, rentMinor: 145000, waterMinor: 7280, powerMinor: 16929, dueOn: { year: 2026, month: 5, day: 5 }, paidMinor: 169209, payments: [{ amountMinor: 169209, method: 'transfer', paidOn: { year: 2026, month: 5, day: 5 } }] },
-  { year: 2026, month: 4, rentMinor: 145000, waterMinor: 6760, powerMinor: 14058, dueOn: { year: 2026, month: 4, day: 5 }, paidMinor: 160760, payments: [{ amountMinor: 160760, method: 'mobile', paidOn: { year: 2026, month: 4, day: 4 } }] },
-  { year: 2026, month: 3, rentMinor: 145000, waterMinor: 6240, powerMinor: 15345, dueOn: { year: 2026, month: 3, day: 5 }, paidMinor: 166585, payments: [{ amountMinor: 166585, method: 'cash', paidOn: { year: 2026, month: 3, day: 2 } }] },
-  { year: 2026, month: 2, rentMinor: 145000, waterMinor: 8840, powerMinor: 16632, dueOn: { year: 2026, month: 2, day: 5 }, paidMinor: 170472, payments: [{ amountMinor: 170472, method: 'mobile', paidOn: { year: 2026, month: 2, day: 6 } }] },
+  { year: 2026, month: 7, rentMinor: 145000, waterMinor: 8320, powerMinor: 17622, dueOn: { year: 2026, month: 7, day: 5 }, paidMinor: 170942, payments: [{ amountMinor: 170942, method: 'mobile', paidOn: { year: 2026, month: 7, day: 3 } , reference: 'MM-4471' }] },
+  { year: 2026, month: 6, rentMinor: 145000, waterMinor: 7800, powerMinor: 16137, dueOn: { year: 2026, month: 6, day: 5 }, paidMinor: 168937, payments: [{ amountMinor: 168937, method: 'mobile', paidOn: { year: 2026, month: 6, day: 2 } , reference: 'MM-4318' }] },
+  { year: 2026, month: 5, rentMinor: 145000, waterMinor: 7280, powerMinor: 16929, dueOn: { year: 2026, month: 5, day: 5 }, paidMinor: 169209, payments: [{ amountMinor: 169209, method: 'transfer', paidOn: { year: 2026, month: 5, day: 5 } , reference: 'VIR-20260504' }] },
+  { year: 2026, month: 4, rentMinor: 145000, waterMinor: 6760, powerMinor: 14058, dueOn: { year: 2026, month: 4, day: 5 }, paidMinor: 160760, payments: [{ amountMinor: 160760, method: 'mobile', paidOn: { year: 2026, month: 4, day: 4 } , reference: 'MM-4102' }] },
+  { year: 2026, month: 3, rentMinor: 145000, waterMinor: 6240, powerMinor: 15345, dueOn: { year: 2026, month: 3, day: 5 }, paidMinor: 166585, payments: [{ amountMinor: 166585, method: 'cash', paidOn: { year: 2026, month: 3, day: 2 } , reference: null }] },
+  { year: 2026, month: 2, rentMinor: 145000, waterMinor: 8840, powerMinor: 16632, dueOn: { year: 2026, month: 2, day: 5 }, paidMinor: 170472, payments: [{ amountMinor: 170472, method: 'mobile', paidOn: { year: 2026, month: 2, day: 6 } , reference: 'MM-3877' }] },
 ]
 
 /**
@@ -1147,7 +1163,18 @@ export function receiptsDemoPourUnite(
       dueOn: { year, month, day: 5 },
       paidMinor,
       payments: paidMinor
-        ? [{ amountMinor: paidMinor, method: 'mobile', paidOn: { year, month, day: 3 } }]
+        ? [
+            {
+              amountMinor: paidMinor,
+              method: 'mobile' as const,
+              paidOn: { year, month, day: 3 },
+              /* Une référence DÉRIVÉE de la période, et non tirée au hasard :
+                 deux rendus successifs de la démonstration doivent montrer le
+                 même identifiant, sans quoi l'écran raconte une histoire qui
+                 change à chaque rechargement. */
+              reference: `MM-${String(year).slice(2)}${String(month + 1).padStart(2, '0')}`,
+            },
+          ]
         : [],
     })
   }

@@ -236,3 +236,74 @@ describe('quittances du locataire', () => {
  * `donneesReellesDuLocataire` et `coquilleLocataire` — et la liste de documents
  * qu'il interrogeait était celle de la copie, que le portail n'entretient plus.
  */
+
+/**
+ * LA RÉFÉRENCE DE L'OPÉRATEUR, dans le fichier que le locataire garde.
+ *
+ * Elle était saisie à l'encaissement, écrite en base, et absente du `select` de
+ * la lecture : le bailleur tapait « MM-4471 » et personne ne le revoyait. Sans
+ * elle, l'export demande au locataire de croire sur parole un encaissement
+ * qu'il ne peut pas retrouver chez son opérateur — c'est avec cette chaîne
+ * qu'il conteste.
+ *
+ * Le lot qui l'a rétablie l'avait ajoutée SANS ce cas, et la mutation l'a dit :
+ * remplacer la colonne par `null` ne faisait rougir personne. Le commentaire
+ * posé au-dessus de la ligne désignait pourtant cette colonne comme la raison
+ * d'être du travail.
+ */
+describe('la référence dans l’export du locataire', () => {
+  /** Le fichier « Tout télécharger » : les six périodes en un seul CSV. */
+  async function historique() {
+    capture = captureDownloads()
+    renderApp('/demo/documents')
+    await switchRole('tenant')
+    await attendreLeChargement()
+    return exporter(/Tout télécharger/)
+  }
+
+  it('nomme la colonne et y porte la référence du versement', async () => {
+    const file = await historique()
+    const [entetes, ...lignes] = file.text.replace(UTF8_BOM, '').trim().split('\r\n')
+
+    // La colonne est la DERNIÈRE : l'ajouter ailleurs décalerait les cinq
+    // autres dans les fichiers que le locataire a déjà téléchargés.
+    expect(entetes.split(';').at(-1)).toBe('Référence de la transaction')
+
+    /*
+      Une référence RÉELLE, tirée du jeu de démonstration, et non la seule
+      présence d'une colonne : un en-tête suivi de six cellules vides
+      satisferait une assertion qui ne regarderait que la première ligne.
+    */
+    const references = lignes.map((l) => l.split(';').at(-1))
+    expect(references).toContain('MM-4471')
+  })
+
+  /**
+   * L'AUTRE MOITIÉ. Les espèces ne produisent aucune référence, et la cellule
+   * reste vide — sans quoi un export qui inventerait un identifiant serait pire
+   * que celui qui n'en portait aucun.
+   */
+  it('laisse la cellule vide quand le versement n’en porte pas', async () => {
+    const file = await historique()
+    const lignes = file.text.replace(UTF8_BOM, '').trim().split('\r\n').slice(1)
+
+    const references = lignes.map((l) => l.split(';').at(-1))
+    expect(references).toContain('')
+    // Et la ligne existe bel et bien : une cellule vide sur une ligne absente
+    // ne prouverait rien.
+    expect(lignes.length).toBe(6)
+  })
+
+  /**
+   * LA NOTE DU BAILLEUR N'Y EST PAS, et ne peut pas y être.
+   *
+   * Le serveur ne la sert pas à un locataire ; ce cas garde que l'export ne la
+   * réintroduit pas par une colonne de plus. C'est le pendant, côté fichier, du
+   * cas serveur « ne sert pas la note au locataire ».
+   */
+  it('n’emporte pas l’annotation du bailleur', async () => {
+    const file = await historique()
+    const entetes = file.text.replace(UTF8_BOM, '').trim().split('\r\n')[0]
+    expect(entetes).not.toContain('Note')
+  })
+})

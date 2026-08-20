@@ -5703,3 +5703,141 @@ describe('la politique de délégation', () => {
     expect(res.status).toBe(403)
   })
 })
+
+/**
+ * LES DEUX TEXTES DU VERSEMENT.
+ *
+ * `Payment.reference` était saisie à l'encaissement, écrite en base, et rendue à
+ * personne : le bailleur tapait « MM-4471 » et ne le revoyait jamais.
+ * `Payment.note` n'avait même pas de champ de saisie. Deux colonnes au schéma
+ * depuis l'origine, dont l'une écrite pour rien et l'autre jamais écrite.
+ *
+ * Elles ne se servent PAS aux mêmes gens, et c'est le sujet : la référence est
+ * opposable, la note est interne.
+ */
+describe('la référence et la note d’un versement', () => {
+  let parkId: string
+  let proprio: string
+  let cookieLocataire: string
+  let uniteDuLocataire: string
+  let bailDuLocataire: string
+  let periode: string
+
+  beforeEach(async () => {
+    const p = await inscrire('proprio@example.com', {
+      parkName: 'Parc Bonamoussadi',
+      countryCode: 'CM',
+      seedDemo: true,
+    })
+    proprio = p.cookie
+    const parcs = await request(serveur).get('/api/parks').set('Cookie', proprio)
+    parkId = parcs.body.parks[0].id
+
+    const l = await inscrire('locataire@example.com')
+    cookieLocataire = l.cookie
+    const compte = await prisma.userAccount.findUniqueOrThrow({
+      where: { email: 'locataire@example.com' },
+    })
+    const bail = await prisma.lease.findFirstOrThrow({
+      where: { status: 'active', unit: { building: { parkId } } },
+      select: { id: true, tenantId: true, unitId: true },
+    })
+    uniteDuLocataire = bail.unitId
+    bailDuLocataire = bail.id
+    await prisma.tenant.update({ where: { id: bail.tenantId }, data: { userId: compte.id } })
+    await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'tenant' } })
+
+    const echeance = await prisma.rentCharge.findFirstOrThrow({
+      where: { lease: { unitId: uniteDuLocataire } },
+      orderBy: { periodStart: 'desc' },
+      select: { periodStart: true },
+    })
+    periode = echeance.periodStart.toISOString().slice(0, 10)
+  })
+
+  const encaisser = (corps: Record<string, unknown>) =>
+    request(serveur)
+      .post(`/api/parks/${parkId}/payments`)
+      .set('Cookie', proprio)
+      .send({ unitId: uniteDuLocataire, periodStart: periode, amountMinor: 1000, method: 'mobile', ...corps })
+
+  async function versementsVus(cookie: string) {
+    const res = await request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', cookie)
+    // `leaseCharges` est plate et porte le BAIL, non l'unité : c'est la clé du
+    // cloisonnement, et deux locataires successifs d'un même logement ne
+    // partagent pas leurs versements.
+    const lignes = (res.body.leaseCharges ?? []) as {
+      leaseId: string
+      payments: { reference?: string | null; note?: string | null }[]
+    }[]
+    return lignes.filter((l) => l.leaseId === bailDuLocataire).flatMap((l) => l.payments)
+  }
+
+  it('garde la note, que rien n’écrivait', async () => {
+    await encaisser({ note: 'Solde promis le 15.' }).expect(201)
+
+    const enBase = await prisma.payment.findFirstOrThrow({
+      where: { charge: { lease: { unitId: uniteDuLocataire } } },
+      orderBy: { createdAt: 'desc' },
+      select: { note: true },
+    })
+    expect(enBase.note).toBe('Solde promis le 15.')
+  })
+
+  /**
+   * LA RÉFÉRENCE REVIENT — c'est la moitié qui manquait le plus.
+   *
+   * Elle était acceptée par le schéma de la route depuis l'origine et absente du
+   * `select` de la lecture : écrite, puis perdue de vue pour toujours.
+   */
+  it('rend la référence au bailleur ET au locataire', async () => {
+    await encaisser({ reference: 'MM-4471', note: 'Solde promis le 15.' }).expect(201)
+
+    const cotéBailleur = await versementsVus(proprio)
+    expect(cotéBailleur.some((p) => p.reference === 'MM-4471')).toBe(true)
+
+    // C'est avec elle qu'un locataire conteste : la lui cacher lui demanderait
+    // de croire sur parole un encaissement qu'il ne peut pas retrouver.
+    const cotéLocataire = await versementsVus(cookieLocataire)
+    expect(cotéLocataire.some((p) => p.reference === 'MM-4471')).toBe(true)
+  })
+
+  /**
+   * LA NOTE NE SORT PAS, et le retrait se fait au SERVEUR.
+   *
+   * Un masquage à l'écran laisserait la phrase dans la réponse, où elle se lit
+   * dans l'onglet réseau. C'est ce qu'on écrit SUR le locataire — même ordre
+   * que le coût des travaux, que son espace n'affiche pas.
+   */
+  it('ne sert pas la note au locataire', async () => {
+    await encaisser({ reference: 'MM-4471', note: 'Solde promis le 15.' }).expect(201)
+
+    const cotéBailleur = await versementsVus(proprio)
+    expect(cotéBailleur.some((p) => p.note === 'Solde promis le 15.')).toBe(true)
+
+    const cotéLocataire = await versementsVus(cookieLocataire)
+    // Le champ est ABSENT, et pas seulement vide : `note: null` dirait au
+    // locataire qu'il existe une annotation qu'on lui refuse.
+    expect(cotéLocataire.every((p) => !('note' in p))).toBe(true)
+    expect(JSON.stringify(cotéLocataire)).not.toContain('Solde promis')
+  })
+
+  it('accepte un versement sans aucun des deux', async () => {
+    // Les espèces ne produisent pas de référence, et tout ne s'annote pas. Les
+    // deux champs restent facultatifs : les rendre requis ferait échouer le
+    // geste le plus courant du produit.
+    await encaisser({}).expect(201)
+    const enBase = await prisma.payment.findFirstOrThrow({
+      where: { charge: { lease: { unitId: uniteDuLocataire } } },
+      orderBy: { createdAt: 'desc' },
+      select: { reference: true, note: true },
+    })
+    expect(enBase.reference).toBeNull()
+    expect(enBase.note).toBeNull()
+  })
+
+  it('refuse une note plus longue que la colonne', async () => {
+    const res = await encaisser({ note: 'x'.repeat(281) })
+    expect(res.status).toBe(400)
+  })
+})

@@ -8,7 +8,13 @@ import { Skeleton, SkeletonRegion } from '@/components/primitives/Skeleton'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
-import { imputation, montantEngage, receiptDue, type Occupation } from '@/data/portfolio'
+import {
+  dernierVersement,
+  imputation,
+  montantEngage,
+  receiptDue,
+  type Occupation,
+} from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { workTitle } from '@/data/workTitle'
 
@@ -146,12 +152,41 @@ export function UnitFile() {
                 const du = receiptDue(periode)
                 const regle = imputation(periode)
                 const reste = du - (regle.rent + regle.water + regle.power)
+                /**
+                 * LE DERNIER VERSEMENT, ET CE QU'IL PORTE.
+                 *
+                 * La référence était saisie à l'encaissement, écrite en base et
+                 * rendue à personne : le bailleur tapait « MM-4471 » et ne le
+                 * revoyait jamais. La note n'avait même pas de champ. Le dossier
+                 * du logement est l'endroit où l'on vient précisément demander
+                 * « ce mois-là, il a payé comment, et qu'avais-je noté ? ».
+                 */
+                const versement = dernierVersement(periode)
                 return (
                   <li
                     key={`${periode.year}-${periode.month}`}
                     className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-2.5 first:pt-0 last:pb-0"
                   >
-                    <span className="text-body">{d.monthYear(periode)}</span>
+                    <span className="min-w-0 text-body">
+                      {d.monthYear(periode)}
+                      {/* Rien ne s'affiche sur un versement sans référence :
+                          les espèces n'en produisent pas, et « réf. — » ferait
+                          chercher une donnée manquante là où il n'y a rien à
+                          trouver. */}
+                      {versement?.reference && (
+                        <span className="ml-2 text-caps text-muted">
+                          {t('app.payments.referenceShort', { reference: versement.reference })}
+                        </span>
+                      )}
+                      {/* `note` est ABSENTE chez le locataire — le serveur ne
+                          l'envoie pas —, `null` quand personne n'a rien écrit.
+                          Le test de vérité couvre les deux d'un coup. */}
+                      {versement?.note && (
+                        <span className="mt-0.5 block text-body-s text-muted">
+                          {versement.note}
+                        </span>
+                      )}
+                    </span>
                     <span className="numeric text-body-s">
                       {money(du, { round: true })}
                       {/* Le reste dû, et lui seul, appelle un geste : une

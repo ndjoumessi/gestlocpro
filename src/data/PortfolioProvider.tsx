@@ -242,6 +242,7 @@ interface PortfolioContextValue {
       method: string
       paidOn?: string
       reference?: string
+      note?: string
     },
   ) => void
   /** Crée un logement dans un immeuble. Vacant : aucun bail n'existe encore. */
@@ -1100,6 +1101,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         method: string
         paidOn?: string
         reference?: string
+        note?: string
       },
     ) => {
       const local = () =>

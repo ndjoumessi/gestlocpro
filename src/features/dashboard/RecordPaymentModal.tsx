@@ -3,7 +3,7 @@ import { Modal } from '@/components/primitives/Modal'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
 import { DatePicker, MonthPicker } from '@/components/primitives/DatePicker'
-import { Input, Select } from '@/components/primitives/Input'
+import { Input, Select, Textarea } from '@/components/primitives/Input'
 import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
@@ -49,6 +49,7 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
    * bancaire, et sans elle un rapprochement se fait à la main, ligne à ligne.
    */
   const [reference, setReference] = useState('')
+  const [note, setNote] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const unit = units.find((u) => u.id === unitId)
@@ -91,12 +92,14 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
       method,
       ...(verseLe ? { paidOn: verseLe } : {}),
       ...(reference.trim() ? { reference: reference.trim() } : {}),
+      ...(note.trim() ? { note: note.trim() } : {}),
     })
 
     onClose()
     notify(t('app.paymentSaved'), { tone: 'ok' })
     setAmount('')
     setReference('')
+    setNote('')
   }
 
   return (
@@ -209,6 +212,30 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
               name="reference"
               value={reference}
               onChange={(e) => setReference(e.target.value)}
+            />
+          )}
+        </Field>
+        {/*
+          LA NOTE, ET LE LOCATAIRE NE LA LIT PAS.
+
+          `Payment.note` est au schéma depuis l'origine, sans saisie ni lecture :
+          le même manque que `withheldReason` sur la caution — le seul texte qui
+          expliquerait la ligne six mois plus tard était le seul qu'on ne gardait
+          pas. Elle porte ce que la référence ne dit pas : « solde promis le 15 ».
+
+          L'aide dit qu'elle est interne AVANT la frappe, et non après : c'est la
+          seule façon d'écrire librement sans se demander qui lira. Le retrait
+          réel est fait par le serveur, qui ne la sert pas au locataire — un
+          masquage à l'écran laisserait la donnée dans la réponse.
+        */}
+        <Field label={t('app.payments.note')} hint={t('app.payments.noteHint')} optional>
+          {(props) => (
+            <Textarea
+              {...props}
+              name="note"
+              rows={2}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
             />
           )}
         </Field>
