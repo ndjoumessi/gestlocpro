@@ -789,6 +789,7 @@ export const en: Dictionary = {
       urgency_blocking: 'Blocking',
       urgency_normal: 'Normal',
       urgency_low: 'Low',
+      listLabel: 'Jobs',
       quote: 'Quote',
       reply: 'Reply',
       replyTitle: 'Reply to the tenant',

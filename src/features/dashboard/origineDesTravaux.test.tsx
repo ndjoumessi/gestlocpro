@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, switchRole, attendreLeChargement, userEvent } from '@/test/render'
+import { renderApp, screen, switchRole, attendreLeChargement, userEvent, within } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 
@@ -17,8 +17,63 @@ import type { EtatSession } from '@/api/SessionProvider'
  * rappeler ni faire ouvrir la porte à l'artisan.
  */
 
+/**
+ * L'intervention, DÉSIGNÉE PAR SON ÉLÉMENT DE LISTE.
+ *
+ * C'était `closest('div')!.parentElement!.parentElement!` — trois ancêtres
+ * anonymes, donc un pari sur la profondeur du DOM. La même chaîne s'est déjà
+ * révélée fausse ailleurs dans ce dépôt : elle s'arrêtait avant ce qu'elle
+ * prétendait tenir, et l'assertion d'absence qu'elle portait ne pouvait pas
+ * échouer. La carte porte désormais `role="listitem"` — pour la lecture
+ * d'écran d'abord — et le cas s'y adosse.
+ */
 const ligne = (titre: RegExp) =>
-  screen.getByRole('heading', { name: titre }).closest('div')!.parentElement!.parentElement!
+  screen.getByRole('heading', { name: titre }).closest<HTMLElement>('[role="listitem"]')!
+
+/**
+ * LE CONTRAT D'ACCESSIBILITÉ, AFFIRMÉ ET NON SUBI.
+ *
+ * Les cas ci-dessous s'adossent au `listitem` — `ligne()` y remonte —, donc
+ * casser le rôle les fait tous tomber. Mais ils tomberaient pour une raison de
+ * PLOMBERIE : la portée ne trouve plus rien. Or une plomberie se réécrit, et ce
+ * dépôt l'a déjà fait deux fois sur un autre écran. Le jour où quelqu'un
+ * retourne à une marche d'ancêtres, le câblage ARIA perdrait son seul garde
+ * sans qu'aucun cas ne rougisse.
+ *
+ * C'est la famille de défaut que les lots précédents poursuivent : un maillon
+ * dont la garde n'est qu'un effet de bord. Celui-ci l'affirme.
+ */
+describe('les interventions s’annoncent comme une liste', () => {
+  it('se comptent et se nomment', async () => {
+    renderApp('/demo/travaux')
+    await attendreLeChargement()
+
+    const liste = screen.getByRole('list', { name: 'Interventions' })
+    // Les éléments DIRECTS : d'autres listes peuvent vivre dans une carte, et
+    // ce qu'on compte ici, ce sont les interventions.
+    const directs = within(liste)
+      .getAllByRole('listitem')
+      .filter((el) => el.parentElement === liste)
+    expect(directs).toHaveLength(5)
+
+    /*
+      ÉNUMÉRÉES, et non comptées.
+
+      « 5 » est un nombre nu que la prochaine intervention ajoutée fera tomber
+      sans rien apprendre à personne. Les nommer documente le parc de
+      démonstration au passage — et attrape le cas où la liste rendrait bien
+      cinq éléments, mais pas ceux-là.
+    */
+    const titres = directs.map((el) => el.querySelector('h2')?.textContent ?? '')
+    expect(titres).toEqual([
+      expect.stringContaining('évier de la cuisine'),
+      expect.stringContaining('Disjoncteur'),
+      expect.stringContaining('Peinture du séjour'),
+      expect.stringContaining('groupe de sécurité'),
+      expect.stringContaining('Réfection complète'),
+    ])
+  })
+})
 
 describe('origine des interventions — en démonstration', () => {
   async function ouvrir() {

@@ -104,7 +104,7 @@ function installer(options: { works?: unknown[]; notifications?: unknown[] } = {
  * bouton » — passer sur un DOM encore vide, pour la mauvaise raison.
  */
 const carte = (titre: RegExp) =>
-  screen.getByRole('heading', { name: titre }).closest('div')!.parentElement!.parentElement!
+  screen.getByRole('heading', { name: titre }).closest<HTMLElement>('[role="listitem"]')!
 
 describe('répondre au locataire qui a signalé', () => {
   it('n’offre le geste que là où le serveur a quelqu’un à qui répondre', async () => {
@@ -327,12 +327,12 @@ describe('ce que le locataire lit', () => {
     renderApp('/app/signalements', { session: session() })
     await screen.findByText(/Coupure d’eau jeudi de 8 h à 12 h/)
 
-    const annonce = screen.getByText('Message de votre bailleur').closest('div')!.parentElement!.parentElement!
+    const annonce = screen.getByText('Message de votre bailleur').closest<HTMLElement>('[role="listitem"]')!
     expect(annonce.textContent).not.toContain('Ouvrir')
 
     // La moitié qui empêche de tout masquer : une réponse à un signalement
     // renvoie bien aux travaux.
-    const reponse = screen.getByText('Réponse à votre signalement').closest('div')!.parentElement!.parentElement!
+    const reponse = screen.getByText('Réponse à votre signalement').closest<HTMLElement>('[role="listitem"]')!
     await waitFor(() => expect(reponse.textContent).toContain('Ouvrir'))
   })
 })

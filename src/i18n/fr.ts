@@ -1023,6 +1023,12 @@ export const fr = {
       urgency_blocking: 'Bloquant',
       urgency_normal: 'Normal',
       urgency_low: 'Faible',
+      /**
+       * SANS « du parc » : le locataire ne voit que les siennes, et un filtre
+       * d'origine restreint encore. Un nom de liste ne promet pas plus que ce
+       * que la liste porte au moment où on l'entend.
+       */
+      listLabel: 'Interventions',
       quote: 'Chiffrer',
       reply: 'Répondre',
       replyTitle: 'Répondre au locataire',

@@ -201,10 +201,20 @@ export function Alerts() {
           }
         />
       ) : (
-        <div className="flex flex-col gap-3">
+        /* Voir `Works` : une colonne de cartes sœurs n'est une liste que pour
+           l'œil. Ici le compte importe plus qu'ailleurs — la barre latérale
+           annonce déjà « 2 non lues », et l'écran devait pouvoir le confirmer
+           autrement qu'en comptant des titres à l'oreille.
+
+           LE TITRE DE L'ÉCRAN, et non un libellé à elle. La liste porte les deux
+           provenances que ce titre nomme — ce que le produit a détecté, ce qu'il
+           a reçu — et « Notifications » seul n'en annonçait qu'une. Une seule
+           chaîne pour les deux : elle ne peut pas dériver du titre. */
+        <div role="list" aria-label={t('app.alerts.title')} className="flex flex-col gap-3">
           {alerts.map((alert) => (
             <Card
               key={alert.id}
+              role="listitem"
               className={cn('flex items-start gap-4', !alert.read && 'border-l-2 border-l-gold')}
             >
               <span

@@ -341,11 +341,32 @@ export function Works() {
           }
         />
       ) : (
-      <div className="flex flex-col gap-3">
+      /*
+        UNE LISTE, ET ELLE SE COMPTE.
+
+        Une colonne de cartes sœurs n'est une liste que pour l'œil : à la
+        lecture d'écran, on entendait une suite de titres sans jamais savoir
+        combien il y en avait, ni où l'une s'arrêtait. `role="list"` donne les
+        trois d'un coup — « liste de 6 éléments », la frontière de chacune, et
+        le saut d'un élément au suivant sans tout parcourir.
+
+        Le NOM est nécessaire et non décoratif : l'écran porte d'autres listes,
+        et « liste, 6 éléments » ne dirait pas de quoi.
+
+        `list` et non `region` : dix interventions feraient dix repères dans le
+        sommaire de la page, ce qui l'encombre au lieu de l'éclairer. Et non
+        `group`, dont la spécification dit l'inverse de ce qu'on cherche — un
+        ensemble « qui n'a pas vocation à figurer au sommaire ».
+      */
+      <div role="list" aria-label={t('app.works.listLabel')} className="flex flex-col gap-3">
         {visible.map((work) => {
           const unit = unitById(work.unitId)
           return (
-            <Card key={work.id} className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <Card
+              key={work.id}
+              role="listitem"
+              className="flex flex-col gap-4 sm:flex-row sm:items-center"
+            >
               <span
                 className={`flex size-11 shrink-0 items-center justify-center rounded-md ${
                   work.urgent ? 'bg-danger-tint text-danger' : 'bg-surface-sunken text-muted'

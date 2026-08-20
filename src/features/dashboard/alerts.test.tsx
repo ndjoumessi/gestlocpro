@@ -1,6 +1,41 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, userEvent, within } from '@/test/render'
+import { renderApp, screen, userEvent, within, attendreLeChargement } from '@/test/render'
 import { ALERTS } from '@/data/portfolio'
+
+/**
+ * LE CONTRAT D'ACCESSIBILITÉ, AFFIRMÉ ET NON SUBI.
+ *
+ * Les autres cas s'adossent à la liste sans la nommer : ils tomberaient si le
+ * rôle disparaissait, mais pour une raison de plomberie — la portée ne trouve
+ * plus rien. Une plomberie se réécrit ; le contrat, lui, doit avoir son propre
+ * garde. C'est ici que la barre latérale trouve sa contrepartie : elle annonce
+ * « n non lues », et l'écran doit pouvoir dire combien il en montre autrement
+ * qu'en faisant compter des titres à l'oreille.
+ */
+describe('les notifications s’annoncent comme une liste', () => {
+  it('se comptent et se nomment', async () => {
+    renderApp('/demo/signalements')
+    await attendreLeChargement()
+
+    const liste = screen.getByRole('list', { name: 'Signalements et notifications' })
+    const directs = within(liste)
+      .getAllByRole('listitem')
+      .filter((el) => el.parentElement === liste)
+    /*
+      ANCRÉ SUR LA DONNÉE, et non sur le rendu.
+
+      La première rédaction comparait les éléments aux TITRES qu'ils
+      contiennent. C'était vrai par construction — une carte porte un titre,
+      donc les deux nombres bougent ensemble — et l'assertion ne gardait rien :
+      escamoter une notification la laissait verte. Le compte n'a de sens que
+      rapporté à ce que le parc contient.
+
+      Vu du propriétaire, aucune notification n'est filtrée : l'écran les montre
+      toutes, et c'est précisément ce qu'on vérifie ici.
+    */
+    expect(directs).toHaveLength(ALERTS.length)
+  })
+})
 
 /**
  * Composition des messages d'alerte.
