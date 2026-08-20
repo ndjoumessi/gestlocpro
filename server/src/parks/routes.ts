@@ -1810,6 +1810,20 @@ parksRouter.post(
       return
     }
 
+    /**
+     * Le destinataire nommé est REDONDANT ici, et il est posé quand même.
+     *
+     * La notification porte l'unité du chantier, qui est celle du déclarant :
+     * le filtre du portefeuille la lui montrerait déjà par ce chemin. Aucune
+     * mutation ne peut donc distinguer les deux, et il faut le dire plutôt que
+     * de laisser croire à une garde — c'est un cas de test qui l'a révélé, en
+     * survivant au retrait du destinataire.
+     *
+     * On le pose parce qu'il porte `readAt`, le seul endroit où l'état de
+     * lecture peut vivre. Aucune route ne le marque encore ; le jour où l'une
+     * le fera, elle n'aura rien à rattraper. L'omettre aujourd'hui coûterait
+     * une migration de données ce jour-là.
+     */
     const destinataire = travail.reportedByTenant.userId
 
     await prisma.notification.create({

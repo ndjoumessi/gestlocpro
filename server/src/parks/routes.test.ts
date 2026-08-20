@@ -5084,6 +5084,15 @@ describe('le message groupé', () => {
       select: { messageKey: true, params: true, unitId: true, recipients: true },
     })
     expect(annonces).toHaveLength(1)
+    /**
+     * Les DESTINATAIRES, assertés et non seulement sélectionnés.
+     *
+     * Ce cas lisait `recipients` sans rien en dire : le `select` avait
+     * l'apparence d'une garde sans en être une, et vider la création des
+     * destinataires le laissait vert. Une notification sans destinataire n'est
+     * lue par personne — c'est précisément ce que ce cas prétend éprouver.
+     */
+    expect(annonces[0]!.recipients).toHaveLength(1)
     expect(annonces[0]!.params).toEqual({ text: 'Coupure d’eau jeudi de 8 h à 12 h.' })
     // Aucune unité : le message porte sur l'immeuble ou le parc, et l'attacher
     // à un logement le ferait lire comme un événement de celui-là.
