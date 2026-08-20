@@ -98,7 +98,18 @@ const relance = (n: Partial<NotifApi> & { id: string }): NotifApi => ({
   ...n,
 })
 
-const carte = (titre: RegExp) => screen.getByRole('heading', { name: titre }).closest('div')!.parentElement!
+/**
+ * La carte d'une notification, DÉSIGNÉE PAR SON ÉLÉMENT DE LISTE.
+ *
+ * C'était `closest('div')!.parentElement!` — deux ancêtres anonymes, donc un
+ * pari sur la profondeur du DOM. Ce dépôt a déjà vu la même chaîne s'arrêter
+ * avant ce qu'elle prétendait tenir, en laissant vertes des assertions
+ * d'absence qui ne gardaient rien. Les cartes de cet écran portent
+ * `role="listitem"` depuis qu'elles forment une liste nommée ; le cas s'y
+ * adosse plutôt que de compter les enveloppes.
+ */
+const carte = (titre: RegExp) =>
+  screen.getByRole('heading', { name: titre }).closest<HTMLElement>('[role="listitem"]')!
 
 async function ouvrir(notifications: NotifApi[]) {
   serveur(notifications)
@@ -245,7 +256,10 @@ describe('journal des relances — en démonstration', () => {
     const enAttente = screen.getAllByText(/Pas encore parti/)
     expect(enAttente.length).toBeGreaterThan(0)
     for (const ligne of enAttente) {
-      const carte = ligne.closest('div')!.parentElement!
+      /* La carte ENTIÈRE, et non deux enveloppes au hasard : l'assertion est
+         une ABSENCE, donc plus la portée est large, plus elle garde. Une chaîne
+         d'ancêtres qui s'arrête trop tôt rend ce cas vert sans rien vérifier. */
+      const carte = ligne.closest<HTMLElement>('[role="listitem"]')!
       expect(carte).not.toHaveTextContent(/Relance envoyée/)
     }
   })
