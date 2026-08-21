@@ -1,4 +1,5 @@
 import { cn } from '@/lib/cn'
+import { useT } from '@/i18n/I18nProvider'
 
 /**
  * Lien d'évitement.
@@ -16,7 +17,16 @@ import { cn } from '@/lib/cn'
  * recopié : deux pastilles qui divergeraient de position ou de libellé seraient
  * pires qu'une seule, l'utilisateur apprend le geste une fois.
  */
+/*
+  SON TEXTE ÉTAIT LE SEUL DU PRODUIT HORS DICTIONNAIRE, et il a tenu parce que le
+  garde-fou ne pouvait pas le voir : `check-i18n` repère une chaîne visible à ses
+  caractères accentués, et « Aller au contenu » n'en porte aucun. Un visiteur
+  anglophone lisait donc du français à la première tabulation de chaque page — la
+  toute première chose que le produit lui dise.
+*/
 export function LienEvitement() {
+  const t = useT()
+
   return (
     <a
       href="#main"
@@ -32,7 +42,7 @@ export function LienEvitement() {
         'focus:rounded-md focus:bg-ink focus:px-4 focus:py-2.5 focus:text-body focus:font-semibold focus:text-on-dark',
       )}
     >
-      Aller au contenu
+      {t('common.skipToContent')}
     </a>
   )
 }

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { cleanup } from '@testing-library/react'
 import { renderApp, screen, userEvent } from '@/test/render'
 
 /**
@@ -44,5 +45,28 @@ describe('lien d’évitement de l’application', () => {
 
     await user.tab()
     expect(screen.getByRole('link', { name: 'Aller au contenu' })).toHaveFocus()
+  })
+
+  /**
+   * SON TEXTE SUIT LA LANGUE, ce qui n'a pas toujours été vrai.
+   *
+   * Il était écrit en dur dans le composant — seul texte du produit hors
+   * dictionnaire — et le garde-fou des chaînes ne pouvait pas le voir : il
+   * repère une chaîne visible à ses caractères accentués, et « Aller au
+   * contenu » n'en porte aucun. Un visiteur anglophone lisait donc du français
+   * à la PREMIÈRE tabulation de chaque page.
+   *
+   * Ce cas ne vérifie pas une traduction particulière — il vérifie que le texte
+   * CHANGE. C'est la seule chose qu'une chaîne en dur ne sait pas faire.
+   */
+  it('dit son libellé dans la langue de l’utilisateur', async () => {
+    renderApp('/app', { locale: 'fr' })
+    const enFrancais = screen.getByRole('link', { name: /aller au contenu/i })
+    expect(enFrancais).toBeInTheDocument()
+
+    cleanup()
+    renderApp('/app', { locale: 'en' })
+    expect(screen.queryByRole('link', { name: /aller au contenu/i })).toBeNull()
+    expect(screen.getByRole('link', { name: /skip to content/i })).toBeInTheDocument()
   })
 })
