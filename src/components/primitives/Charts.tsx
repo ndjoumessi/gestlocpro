@@ -119,8 +119,18 @@ export function StackedBarChart({
 
   /** Séries masquées depuis la légende. */
   const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set())
-  /** Colonne survolée ou focalisée ; `null` quand l'infobulle est fermée. */
+  /** Colonne survolée ou focalisée ; `null` quand rien n'est visé. */
   const [active, setActive] = useState<number | null>(null)
+
+  /**
+   * La colonne que la lecture affiche : celle qu'on vise, à défaut la dernière.
+   *
+   * Sans ce repli, la lecture serait vide tant que personne ne survole — et
+   * n'apprendrait donc rien à qui regarde simplement l'écran. La plus récente
+   * est la seule réponse juste à « et alors, ce mois-ci ? », qui est la
+   * question qu'on se pose devant un graphe d'encaissements.
+   */
+  const lu = active ?? bars.length - 1
 
   const seriesKeys = bars[0]?.segments.map((s) => s.key) ?? []
   const visible = (key: string) => !hidden.has(key)
@@ -324,23 +334,6 @@ export function StackedBarChart({
             )
           })}
 
-          {active !== null && (
-            <Tooltip
-              anchor={active}
-              count={bars.length}
-              title={bars[active].label}
-              total={money(totals[active])}
-              rows={bars[active].segments
-                .filter((s) => visible(s.key))
-                .map((s) => ({
-                  key: s.key,
-                  label: seriesLabels[s.key],
-                  value: money(s.value),
-                  color: SERIES_COLORS_ON_DARK[s.key],
-                }))}
-              note={active === bars.length - 1 ? openPeriodNote : undefined}
-            />
-          )}
         </div>
 
         <div className="mt-2.5 flex gap-1 sm:gap-2.5" aria-hidden="true">
@@ -382,6 +375,44 @@ export function StackedBarChart({
         </div>
       </div>
 
+      {/*
+        LECTURE FIXE, et non plus une infobulle qui flotte.
+
+        Elle flottait en `absolute bottom-full` DANS la zone de tracé — laquelle
+        est passée à `overflow-x-auto` pour porter le plancher de pas de 24 px,
+        et `overflow-x` non visible contraint aussi l'axe vertical. Mesuré au
+        navigateur : sur 158 px de haut, 154 étaient rognés. Il en restait
+        quatre. L'infobulle existait, se peignait, et ne se voyait pas.
+
+        Le fichier avait déjà tranché ce point pour son voisin, et l'argument
+        vaut ici mot pour mot : « la valeur s'inscrit toujours au même endroit,
+        sous le graphe : rien ne bouge, rien ne se recouvre, et cela fonctionne
+        au doigt comme au clavier. »
+
+        LA PLACE EST RÉSERVÉE EN PERMANENCE, et la colonne la plus récente s'y
+        lit par défaut. Un bandeau qui n'apparaît qu'au survol déplacerait tout
+        ce qui le suit à chaque passage de souris ; et vide au premier regard,
+        il n'apprendrait rien à qui ne survole pas — c'est le reproche que la
+        lecture du graphe voisin s'était déjà fait.
+
+        Le fond encre reste celui de l'infobulle : les jetons de série y sont
+        mesurés pour ce fond, et les porter sur la carte claire demanderait
+        l'autre palette — un sujet à soi, que ce lot n'ouvre pas.
+      */}
+      <LectureFixe
+        title={bars[lu].label}
+        total={money(totals[lu])}
+        rows={bars[lu].segments
+          .filter((s) => visible(s.key))
+          .map((s) => ({
+            key: s.key,
+            label: seriesLabels[s.key],
+            value: money(s.value),
+            color: SERIES_COLORS_ON_DARK[s.key],
+          }))}
+        note={lu === bars.length - 1 ? openPeriodNote : undefined}
+      />
+
       {/* Alternative textuelle : mêmes données, lisibles au lecteur d'écran.
           `sr-only` doit porter sur le DIV, pas sur le TABLE : sous
           `display: table`, la largeur de 1px d'un `sr-only` est traitée comme
@@ -418,72 +449,78 @@ export function StackedBarChart({
 }
 
 /**
- * Infobulle d'une colonne.
+ * La lecture d'une colonne, à place fixe sous le graphe.
  *
- * `aria-hidden` : son contenu est déjà porté par l'`aria-label` du bouton
- * déclencheur, et l'annoncer deux fois ferait répéter les mêmes chiffres au
- * lecteur d'écran. Elle est purement visuelle.
+ * `aria-hidden` : son contenu est déjà porté par l'`aria-label` du bouton de
+ * chaque colonne, et l'annoncer deux fois ferait répéter les mêmes chiffres au
+ * lecteur d'écran. Elle est purement visuelle — la table `sr-only` en bas de la
+ * figure porte la version lisible.
  *
- * Le calage évite le débordement sans mesurer quoi que ce soit : les colonnes
- * extrêmes ancrent l'infobulle sur leur bord, les autres la centrent.
+ * Ni `absolute` ni calage : c'est tout l'objet du changement. Flottante, elle
+ * devait deviner où se placer sans mesurer, et se faisait rogner par la boîte
+ * de défilement du tracé. Posée dans le flux, elle n'a plus rien à deviner.
+ *
+ * LE DÉTAIL EST EN LIGNE ET NON EMPILÉ. Trois rangées sous un total faisaient
+ * 158 px : réservée en permanence, cette hauteur aurait coûté à chaque carte du
+ * tableau de bord ce que l'infobulle ne coûtait qu'au survol. En ligne, la même
+ * information tient sur une bande qui se replie d'elle-même quand la carte est
+ * étroite.
  */
-function Tooltip({
-  anchor,
-  count,
+function LectureFixe({
   title,
   total,
   rows,
   note,
 }: {
-  anchor: number
-  count: number
   title: string
   total: string
   rows: { key: string; label: string; value: string; color: string }[]
   note?: string
 }) {
-  const first = anchor === 0
-  const last = anchor === count - 1
-
   return (
     <div
       aria-hidden="true"
       className={cn(
-        'on-dark pointer-events-none absolute bottom-full z-20 mb-3 w-max max-w-[min(15rem,80vw)]',
-        'animate-rise rounded-lg bg-ink px-3.5 py-3 text-on-dark shadow-e3',
-        first && 'left-0',
-        last && 'right-0',
+        'on-dark mt-3 rounded-lg bg-ink px-3.5 py-2.5 text-on-dark',
+        // La hauteur est PRÉVISIBLE, ce qui est plus fort que réservée. Un
+        // simple plancher n'aurait tenu que le cas court : mesuré, la bande
+        // passait de 68 px à 640 de large à 92 puis 115 quand la carte se
+        // resserre, parce que le détail se repliait au gré de la LONGUEUR des
+        // montants. Survoler une colonne à 980 000 après une à 1 040 000
+        // aurait donc fait remonter la bande d'une rangée — le saut même qu'on
+        // vient de fuir, revenu par la porte de derrière.
+        //
+        // Le détail est donc empilé sous `sm` et en ligne au-delà : le nombre
+        // de rangées ne dépend plus que du nombre de séries, qui ne change pas
+        // d'une colonne à l'autre. La hauteur suit le point de rupture, jamais
+        // la donnée.
+        'min-h-[7.75rem] sm:min-h-[4.25rem]',
       )}
-      style={
-        first || last
-          ? undefined
-          : { left: `${((anchor + 0.5) / count) * 100}%`, transform: 'translateX(-50%)' }
-      }
     >
-      <p className="text-caps tracking-wider text-on-dark-faint uppercase">
-        {title}
+      <p className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+        <span className="text-caps tracking-wider text-on-dark-faint uppercase">{title}</span>
+        <span className="numeric title-m text-on-dark">{total}</span>
       </p>
-      <p className="numeric mt-1 title-m text-on-dark">{total}</p>
 
-      {/* Le bloc de détail disparaît quand la série est unique : un filet et
-          un espacement sous un total, sans rien en dessous, se lisent comme un
+      {/* Le détail disparaît quand la série est unique : un filet et un
+          espacement sous un total, sans rien en dessous, se lisent comme un
           contenu qui a échoué à s'afficher. */}
       {rows.length > 0 && (
-      <ul className="mt-2.5 flex flex-col gap-1.5 border-t border-on-dark-border pt-2.5">
-        {rows.map((row) => (
-          <li key={row.key} className="flex items-center gap-2 text-body-s">
-            <span
-              className="size-2 shrink-0 rounded-[2px]"
-              style={{ background: row.color }}
-            />
-            <span className="min-w-0 flex-1 text-on-dark-muted">{row.label}</span>
-            <span className="numeric shrink-0 text-on-dark">{row.value}</span>
-          </li>
-        ))}
-      </ul>
+        <ul className="mt-1.5 flex flex-col gap-y-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4">
+          {rows.map((row) => (
+            <li key={row.key} className="flex items-center gap-1.5 text-body-s">
+              <span
+                className="size-2 shrink-0 rounded-[2px]"
+                style={{ background: row.color }}
+              />
+              <span className="text-on-dark-muted">{row.label}</span>
+              <span className="numeric text-on-dark">{row.value}</span>
+            </li>
+          ))}
+        </ul>
       )}
 
-      {note && <p className="mt-2.5 text-body-s text-on-dark-faint">{note}</p>}
+      {note && <p className="mt-1.5 text-body-s text-on-dark-faint">{note}</p>}
     </div>
   )
 }
