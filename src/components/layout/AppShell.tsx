@@ -1561,7 +1561,16 @@ export function PageHeader({
           <p className="mt-2 max-w-[62ch] text-body text-pretty text-muted">{description}</p>
         )}
       </div>
-      {actions && <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>}
+      {/* `flex-wrap` SANS `shrink-0` : les deux se contredisaient. `shrink-0`
+          interdit au bloc de descendre sous sa largeur `max-content`, donc le
+          retour à la ligne que `flex-wrap` déclare vouloir n'arrivait jamais —
+          les actions poussaient la rangée au-delà de la fenêtre et TOUT l'écran
+          défilait latéralement. Mesuré sur `/app/paiements` : 812 px de boutons
+          dans 700 px de fenêtre, `scrollX=160` ; le défaut vivait de 700 à
+          860 px de large, c'est-à-dire dans la bande que ni le téléphone ni le
+          bureau ne montrent. Le bloc de titre porte déjà `min-w-0` : c'est lui
+          qui cède la place, et le titre se replie, ce qu'un titre sait faire. */}
+      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </div>
   )
 }

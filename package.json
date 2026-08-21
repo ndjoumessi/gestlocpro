@@ -9,14 +9,15 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "lint:i18n": "node scripts/check-i18n.mjs",
-    "check": "tsc -b && oxlint && node scripts/check-i18n.mjs && node scripts/check-orphelins.mjs && vitest run",
+    "check": "tsc -b && oxlint && node scripts/check-i18n.mjs && node scripts/check-orphelins.mjs && vitest run && node scripts/mesure-ui.mjs",
     "check:server": "npm --prefix server run check",
     "check:all": "npm run check && npm run check:server",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint:orphelins": "node scripts/check-orphelins.mjs"
+    "lint:orphelins": "node scripts/check-orphelins.mjs",
+    "mesure": "node scripts/mesure-ui.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -35,6 +36,7 @@
     "@vitest/coverage-v8": "^4.1.10",
     "jsdom": "^29.1.1",
     "oxlint": "^1.75.0",
+    "playwright": "^1.56.0",
     "tailwindcss": "^4.1.18",
     "typescript": "~5.9.3",
     "vite": "^7.1.14",

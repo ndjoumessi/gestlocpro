@@ -125,7 +125,17 @@ export function PublicHeader() {
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
-            <div className="hidden items-center gap-2 md:flex">
+            {/* `lg:flex` et non `md:flex` : c'est à `lg` que le bouton du menu
+                disparaît, et le menu porte DÉJÀ ces trois sélecteurs (plus bas
+                dans ce fichier). Entre 768 et 1024 px ils étaient donc affichés
+                deux fois — une fois dans la barre, une fois dans le panneau —
+                et la rangée de droite atteignait 676 px : toute la vitrine
+                défilait latéralement, mesuré `scrollX=117` à 768 px. Les deux
+                boutons d'inscription restent, eux, visibles dès `sm` : ce sont
+                les seuls éléments de cette rangée qu'un prospect vient chercher,
+                et les cacher derrière un menu sur tablette coûterait plus que la
+                place qu'ils prennent. */}
+            <div className="hidden items-center gap-2 lg:flex">
               <LanguageSwitcher />
               <CurrencySwitcher />
               <ThemeSwitcher />
