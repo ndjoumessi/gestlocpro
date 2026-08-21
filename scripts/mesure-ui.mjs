@@ -103,16 +103,46 @@ function adressesDeLApplication() {
   */
   const HORS_PRODUIT = ['/kitchen-sink']
 
-  const adresses = [...new Set([...publiques.filter((c) => c !== '/demo'), '/demo', ...internes])].filter(
-    (c) => !HORS_PRODUIT.includes(c),
-  )
+  /*
+    L'ÉCRAN 404 EST AJOUTÉ À LA MAIN, et c'est la seule adresse qui ne se lit pas
+    dans `App.tsx`.
 
-  // Garde du garde : si la lecture d'`App.tsx` casse, le balayage ne doit pas
-  // rendre « aucun défaut » sur une liste vide.
-  if (adresses.length < 20) {
+    Sa route est `*`, écartée plus haut avec les chemins à paramètre — pour une
+    bonne raison, `*` n'étant pas une adresse qu'on puisse visiter. Mais l'écran
+    qu'elle rend, lui, se visite : il suffit de se tromper de lien. Il portait la
+    même rangée de sélecteurs que les écrans d'authentification, le même
+    débordement de 38 px à 320, et il l'a gardé plus longtemps qu'eux
+    précisément parce que rien ne le regardait.
+
+    N'importe quelle adresse inexistante le rend ; celle-ci le dit en toutes
+    lettres, pour que le rapport d'échec se lise sans avoir à deviner.
+  */
+  const ADRESSE_404 = '/adresse-qui-n-existe-pas'
+
+  const adresses = [
+    ...new Set([...publiques.filter((c) => c !== '/demo'), '/demo', ...internes, ADRESSE_404]),
+  ].filter((c) => !HORS_PRODUIT.includes(c))
+
+  /*
+    Garde du garde, et le plancher COLLE au réel plutôt que de flotter loin
+    dessous.
+
+    Il valait 20 pour 22 écrans : il n'attrapait qu'une lecture d'`App.tsx`
+    entièrement cassée, et laissait retirer deux écrans du balayage en silence.
+    Or c'est exactement ce qui a maintenu le 404 hors de toute mesure pendant
+    des lots — un écran qu'aucun défaut ne pouvait plus atteindre parce que
+    personne ne le regardait.
+
+    Serré, il ne peut rougir que dans un sens : ajouter une route fait monter le
+    compte et ne dérange personne, en retirer une le fait tomber et arrête tout.
+    C'est la seule asymétrie qu'on veuille ici.
+  */
+  const ATTENDUES = 23
+
+  if (adresses.length < ATTENDUES) {
     throw new Error(
-      `mesure-ui : ${adresses.length} adresses lues dans App.tsx, moins que les 20 attendues. ` +
-        `La lecture des routes a cessé de fonctionner — ce n'est pas une absence de défaut.`,
+      `mesure-ui : ${adresses.length} adresses balayées, moins que les ${ATTENDUES} attendues. ` +
+        `Un écran est sorti du champ de la mesure — ce n'est pas une absence de défaut.`,
     )
   }
   return adresses

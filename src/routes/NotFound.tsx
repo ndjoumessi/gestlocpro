@@ -60,14 +60,30 @@ export function NotFound() {
         // `viewport-fit=cover` : sans ce retrait, le logo et les sélecteurs
         // s'alignaient sous la barre d'état.
         className={cn(
-          'flex items-center gap-4 border-b border-border',
+          // `flex-wrap` sur l'en-tête AUSSI, et pas seulement sur la rangée de
+          // sélecteurs : c'est la moitié que la rangée jumelle d'`AuthLayout`
+          // tenait déjà. Sans elle, le logo et la rangée restent sur une même
+          // ligne quoi qu'il arrive, et la rangée ne peut se replier qu'en
+          // elle-même — mesuré, il restait 4 px de débordement à 320.
+          'flex flex-wrap items-center gap-4 border-b border-border',
           'pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3',
           'pl-[max(1.25rem,env(safe-area-inset-left))] pr-[max(1.25rem,env(safe-area-inset-right))]',
           'sm:pl-[max(2rem,env(safe-area-inset-left))] sm:pr-[max(2rem,env(safe-area-inset-right))]',
         )}
       >
         <Logo />
-        <div className="ml-auto flex items-center gap-2">
+        {/* `flex-wrap justify-end`, comme la rangée jumelle d'`AuthLayout`, et
+            pour la même mesure : les trois sélecteurs réclament 338 px dans une
+            fenêtre de 320, et aucun ne peut se comprimer — ils sont au plancher
+            de 44 px. Sans repli, la page défilait latéralement de 38 px.
+
+            Cet écran l'avait gardé plus longtemps que ses jumeaux pour une
+            raison qui n'en est pas une : la mesure au navigateur lit les
+            adresses dans `App.tsx` et écartait les chemins `*`. Le 404 n'était
+            donc surveillé par rien. Il l'est maintenant, et c'est la moitié qui
+            manquait — corriger ce que rien ne garde revient à laisser le défaut
+            revenir. */}
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
           <LanguageSwitcher />
           <CurrencySwitcher />
           <ThemeSwitcher />
