@@ -251,6 +251,127 @@ const plaintes = []
   }
 }
 
+// ─── 5. Une destination que la vitrine promet et que rien ne sert ────────────
+//
+// LE DÉFAUT SYMÉTRIQUE DES QUATRE PRÉCÉDENTS. Ceux-là traquent un maillon qui
+// EXISTE et que rien n'appelle ; celui-ci traque un appel qui existe et dont le
+// maillon n'existe pas. Le pied de page en portait cinq d'un coup — « À
+// propos », « Contact », « Conditions générales », « Confidentialité »,
+// « Cookies » — dont trois documents juridiques.
+//
+// LES CINQ RÉSOLVAIENT POURTANT, et c'est ce qui rend ce contrôle nécessaire
+// plutôt qu'évident : elles pointaient toutes vers `#faq` ou `#roles`, des
+// ancres bien réelles. Ce contrôle ne peut pas voir qu'un libellé ment sur sa
+// destination — cela reste un jugement, et il est écrit en tête de
+// `PublicFooter.tsx`. Ce qu'il voit, et que personne ne verra à l'œil le jour
+// où quelqu'un écrira `/mentions-legales` en attendant la page : une
+// destination qui n'est servie par rien du tout.
+//
+// LA PORTÉE EST CELLE DE LA VITRINE, pas de l'application : c'est la surface
+// qu'un prospect méfiant vérifie, et la seule dont toutes les destinations
+// tiennent dans deux listes closes — les routes déclarées et les ancres
+// rendues. Élargir à `src/` entier demanderait de résoudre des chemins
+// composés, et un contrôle plus large que ce qu'il sait garder est le défaut
+// que ce fichier traque partout ailleurs.
+{
+  const SURFACES = [
+    join(RACINE, 'src/features/marketing'),
+    join(RACINE, 'src/components/layout/PublicFooter.tsx'),
+  ]
+
+  const app = await readFile(join(RACINE, 'src/App.tsx'), 'utf8')
+  /*
+    Les routes DÉCLARÉES, étoilées comme dans le contrôle des routes serveur.
+    `/inscription/:role` devient `/inscription/*` et couvre donc les trois
+    chemins par rôle que la section des rôles compose.
+  */
+  const routes = new Set(
+    [...app.matchAll(/<Route\s+[^>]*path="([^"]+)"/g)]
+      .map((m) => m[1].replace(/:[A-Za-z]\w*/g, '*').replace(/\/\*$/, '/*'))
+      .filter((p) => p !== '*'),
+  )
+  const sert = (chemin) => {
+    if (routes.has(chemin)) return true
+    // Une route en `/app/*` sert `/app/parc` : on remonte segment par segment.
+    const segments = chemin.split('/').filter(Boolean)
+    for (let i = segments.length; i > 0; i--) {
+      if (routes.has('/' + segments.slice(0, i).join('/') + '/*')) return true
+    }
+    return false
+  }
+
+  // Les ancres RENDUES : tout `id="…"` posé quelque part dans `src/`. On lit
+  // large à dessein — une ancre peut vivre hors de la vitrine, et se tromper
+  // dans ce sens ne fait que rendre le contrôle moins bavard, jamais faux.
+  const toutLeClient = await concatener(
+    await fichiers(join(RACINE, 'src'), ['.tsx']),
+    (c) => !/\.test\.tsx$/.test(c),
+  )
+  const ancres = new Set([...toutLeClient.matchAll(/\bid="([^"{}]+)"/g)].map((m) => m[1]))
+
+  /*
+    LES COMMENTAIRES SONT RETIRÉS, et c'est la règle elle-même qui l'a exigé :
+    à sa première exécution elle a rapporté `/#features` et `#id`, deux
+    destinations qui n'existent que dans la prose qui explique pourquoi on ne
+    les écrit PAS — le commentaire en tête de `COLUMNS` cite `<Link
+    to="/#features">` comme contre-exemple. Un contrôle qui lit les explications
+    d'un défaut comme le défaut lui-même désigne le mauvais coupable, ce que ce
+    fichier reproche déjà ailleurs à une première rédaction trop large.
+
+    `zonesSures.test.ts` a rencontré le même écueil et le traite pareil : « les
+    commentaires citent les classes qu'ils expliquent ».
+  */
+  const sansCommentaires = (source) =>
+    source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/.*$/gm, '$1')
+
+  const surface = sansCommentaires(
+    await concatener(
+      (
+        await Promise.all(
+          SURFACES.map(async (s) =>
+            s.endsWith('.tsx') ? [s] : await fichiers(s, ['.ts', '.tsx']),
+          ),
+        )
+      )
+        .flat()
+        .filter((c) => !/\.test\.tsx?$/.test(c)),
+    ),
+  )
+
+  // `to=` comme `href=`, en attribut JSX ou en propriété d'objet — le pied de
+  // page et la grille des rôles déclarent leurs destinations dans des tableaux,
+  // pas dans le balisage. On ne retient que l'INTERNE : `http`, `mailto` et
+  // `tel` sortent de la portée de ce contrôle, qui ne sait rien du dehors.
+  const destinations = new Set(
+    [...surface.matchAll(/\b(?:to|href):?=?\s*['"]([^'"{}]+)['"]/g)]
+      .map((m) => m[1])
+      .filter((d) => d.startsWith('/') || d.startsWith('#')),
+  )
+
+  for (const d of destinations) {
+    const ok = d.startsWith('#') ? ancres.has(d.slice(1)) : sert(d)
+    if (!ok) {
+      plaintes.push(
+        `destination orpheline · ${d} · promise par la vitrine, servie par ` +
+          `${d.startsWith('#') ? 'aucune ancre rendue' : 'aucune route déclarée'}. ` +
+          `Servez-la, ou retirez le lien : un pied de page qui liste des pages ` +
+          `absentes est la première chose qu’un prospect méfiant vérifie.`,
+      )
+    }
+  }
+
+  // Garde du garde : le motif doit continuer de trouver des destinations. Un
+  // jour où `to=` s'écrirait autrement, la boucle ci-dessus tournerait à vide
+  // et la porte dirait « aucune destination orpheline » sans en avoir lu une.
+  if (destinations.size < 5) {
+    plaintes.push(
+      `contrôle des destinations · ${destinations.size} destination(s) interne(s) lue(s) ` +
+        `dans la vitrine, ce qui est trop peu pour être vrai. Le motif de lecture ` +
+        `est-il encore accordé à la façon dont les liens s’y écrivent ?`,
+    )
+  }
+}
+
 if (plaintes.length > 0) {
   console.error(`✗ ${plaintes.length} maillon(s) orphelin(s) :\n`)
   for (const p of plaintes) console.error('  ' + p)
@@ -261,4 +382,4 @@ if (plaintes.length > 0) {
   exit(1)
 }
 
-console.log('✓ Aucune colonne, méthode, route ni écran orphelin.')
+console.log('✓ Aucune colonne, méthode, route, écran ni destination orpheline.')

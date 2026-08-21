@@ -1751,13 +1751,12 @@ export const fr = {
 
     footer: {
       product: 'Produit',
-      company: 'Société',
-      legal: 'Légal',
-      about: 'À propos',
-      contact: 'Contact',
-      terms: 'Conditions générales',
-      privacy: 'Confidentialité',
-      cookies: 'Cookies',
+      // `company`, `legal`, `about`, `contact`, `terms`, `privacy` et
+      // `cookies` sont partis avec les liens qu'ils nommaient : ils
+      // promettaient des pages que ce dépôt n'a pas. Une chaîne traduite qui
+      // n'est plus rendue nulle part est un orphelin de plus, et le
+      // dictionnaire est justement l'endroit où l'on ne s'en aperçoit jamais.
+      // Voir le relevé lien par lien en tête de `PublicFooter.tsx`.
       demo: 'Démonstration',
       rights: '© {year} GestLocPro.',
     },

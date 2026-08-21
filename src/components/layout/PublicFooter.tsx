@@ -18,28 +18,53 @@ import { useT } from '@/i18n/I18nProvider'
   `<a href="#id">` ordinaire — non intercepté par React Router — suffit et
   défile réellement, exactement comme le fait déjà la navigation de l'en-tête.
 */
+/*
+  DEUX COLONNES SUR TROIS PROMETTAIENT DES PAGES QUI N'EXISTENT PAS.
+
+  Relevé lien par lien, avant ce lot :
+
+    « À propos »            → #roles   la section « Trois rôles ». Elle dit à
+                                       QUI le produit s'adresse, pas qui le
+                                       fait. Le prospect cherchait une société
+                                       et trouvait une grille de personas.
+    « Contact »             → #faq     la FAQ, qui ne porte AUCUN canal de
+                                       contact : ni adresse, ni formulaire, ni
+                                       numéro, et le dépôt entier n'en porte
+                                       aucun. Déjà relevé quand le même défaut
+                                       a délogé « Nous contacter » de la carte
+                                       de tarifs.
+    « Conditions générales »→ #faq     idem.
+    « Confidentialité »     → #faq     idem.
+    « Cookies »             → #faq     idem.
+
+  Les cinq ancres RÉSOLVENT — `#faq` existe, la page défile bel et bien — ce
+  qui est précisément ce qui rendait le défaut invisible à une vérification
+  mécanique. Ce n'est pas la destination qui manquait, c'est la promesse
+  qu'elle tienne le libellé qui y menait.
+
+  ELLES DISPARAISSENT PLUTÔT QUE D'ÊTRE RÉÉCRITES. Trois d'entre elles sont des
+  documents juridiques ; les inventer serait un mensonge d'une autre gravité
+  que celui qu'on corrige. Un pied de page qui liste des pages absentes est la
+  première chose qu'un prospect méfiant vérifie, et il n'en vérifie qu'une.
+
+  CE QUE LEUR RETRAIT NE RÈGLE PAS, écrit ici pour que personne ne s'y trompe :
+  des conditions générales, une politique de confidentialité et un moyen de
+  contact restent à écrire, et leur absence reste un manque du produit. Retirer
+  le lien retire le mensonge, pas le devoir.
+
+  CE QUI RESTE porte des libellés que leur destination tient : cinq entrées de
+  la page où le pied est rendu, plus la démonstration. Le pied redit la barre,
+  et c'est sa fonction — on y arrive par le bas, sans vouloir remonter.
+*/
 const COLUMNS = [
   {
     heading: 'marketing.footer.product',
     links: [
       { label: 'marketing.nav.features', to: '#features' },
+      { label: 'marketing.nav.roles', to: '#roles' },
       { label: 'marketing.nav.pricing', to: '#pricing' },
+      { label: 'marketing.nav.faq', to: '#faq' },
       { label: 'marketing.footer.demo', to: '/demo' },
-    ],
-  },
-  {
-    heading: 'marketing.footer.company',
-    links: [
-      { label: 'marketing.footer.about', to: '#roles' },
-      { label: 'marketing.footer.contact', to: '#faq' },
-    ],
-  },
-  {
-    heading: 'marketing.footer.legal',
-    links: [
-      { label: 'marketing.footer.terms', to: '#faq' },
-      { label: 'marketing.footer.privacy', to: '#faq' },
-      { label: 'marketing.footer.cookies', to: '#faq' },
     ],
   },
 ] as const
@@ -50,7 +75,12 @@ export function PublicFooter() {
   return (
     <footer className="on-dark bg-ink text-on-dark">
       <div className={cn('mx-auto max-w-7xl py-14', GOUTTIERE_LATERALE)}>
-        <div className="grid gap-10 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
+        {/* Une colonne de liens et non plus trois : la grille suit ce qui
+            reste, au lieu de garder quatre pistes dont deux seraient vides.
+            `sm:grid-cols-2` place la marque et les liens côte à côte dès
+            qu'il y a la place, et le bloc de marque garde sa mesure de
+            lecture — c'est lui, désormais, qui porte la largeur du pied. */}
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr]">
           <div className="max-w-sm">
             <Logo tone="dark" />
             <p className="mt-4 text-body text-on-dark-muted">{t('brand.tagline')}.</p>

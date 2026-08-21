@@ -1389,13 +1389,6 @@ export const en: Dictionary = {
 
     footer: {
       product: 'Product',
-      company: 'Company',
-      legal: 'Legal',
-      about: 'About',
-      contact: 'Contact',
-      terms: 'Terms of service',
-      privacy: 'Privacy',
-      cookies: 'Cookies',
       demo: 'Demo',
       rights: '© {year} GestLocPro.',
     },
