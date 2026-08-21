@@ -142,8 +142,31 @@ export function Combobox({
     const dehors = (e: MouseEvent) => {
       if (!conteneur.current?.contains(e.target as Node)) setOuvert(false)
     }
+    /*
+      LE FOCUS QUI S'EN VA REFERME AUSSI, et pas seulement la souris.
+
+      Seul `mousedown` fermait la liste : quitter le champ à la TABULATION la
+      laissait ouverte. Deux cent quatre-vingt-huit pixels de panneau flottant
+      restaient alors posés par-dessus les champs suivants — qu'on remplissait
+      donc à l'aveugle — et `aria-expanded` continuait d'annoncer « développé »
+      sur un champ qu'on avait quitté.
+
+      Le piège du `blur` qui précède le `mousedown` d'une option est DÉJÀ
+      neutralisé plus bas : les options appellent `preventDefault` sur leur
+      `mousedown`, donc le champ ne perd jamais le focus en les choisissant.
+      C'est cette précaution-là, prise pour une autre raison, qui rend celle-ci
+      sûre.
+    */
+    const partirDuChamp = (e: FocusEvent) => {
+      if (!conteneur.current?.contains(e.relatedTarget as Node)) setOuvert(false)
+    }
     document.addEventListener('mousedown', dehors)
-    return () => document.removeEventListener('mousedown', dehors)
+    conteneur.current?.addEventListener('focusout', partirDuChamp)
+    const boite = conteneur.current
+    return () => {
+      document.removeEventListener('mousedown', dehors)
+      boite?.removeEventListener('focusout', partirDuChamp)
+    }
   }, [ouvert])
 
   // L'option active est amenée dans le champ visible : la navigation aux

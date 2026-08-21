@@ -319,4 +319,31 @@ describe('combobox · fenêtre de rendu', () => {
     expect(screen.queryByText(/affinez votre recherche/i)).not.toBeInTheDocument()
     expect(champ.getAttribute('aria-describedby')).toBeNull()
   })
+
+  /**
+   * LA LISTE SE REFERME QUAND LE FOCUS S'EN VA.
+   *
+   * Seule la souris la fermait : `mousedown` hors du conteneur. Quitter le
+   * champ à la TABULATION la laissait ouverte — deux cent quatre-vingt-huit
+   * pixels de panneau flottant posés par-dessus les champs suivants, qu'on
+   * remplissait donc à l'aveugle, pendant qu'`aria-expanded` annonçait
+   * « développé » sur un champ qu'on avait quitté.
+   *
+   * Ce cas passe au champ SUIVANT plutôt que de simuler un `blur` : c'est le
+   * geste réel, et c'est lui qui doit refermer.
+   */
+  it('se referme quand la tabulation emmène le focus ailleurs', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Champ />)
+
+    const champ = screen.getByRole('combobox')
+    await user.click(champ)
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
+    expect(champ).toHaveAttribute('aria-expanded', 'true')
+
+    await user.tab()
+
+    expect(screen.queryByRole('listbox')).toBeNull()
+    expect(champ).toHaveAttribute('aria-expanded', 'false')
+  })
 })
