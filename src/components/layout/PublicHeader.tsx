@@ -95,7 +95,21 @@ export function PublicHeader() {
       >
         <div
           className={cn(
-            'mx-auto flex max-w-7xl items-center gap-4',
+            /*
+              `flex-wrap` SUR LA BARRE, et non sur ses liens.
+
+              Le commentaire du bloc suivant interdit qu'un LIEN de navigation
+              se coupe — « il rétrécit la rangée ou il disparaît » — et cette
+              règle tient : les liens gardent leur `whitespace-nowrap`. Mais la
+              barre, elle, peut passer à la ligne, et c'est le remède déjà
+              retenu pour l'en-tête des écrans d'authentification.
+
+              Mesuré : à 1280 px, en français, la rangée complète réclamait
+              dix-neuf pixels de plus que la fenêtre — les libellés français
+              étant plus longs, l'anglais passait. Un débordement qui n'existe
+              que dans une langue est celui qu'une relecture ne trouve jamais.
+            */
+            'mx-auto flex max-w-7xl flex-wrap items-center gap-4',
             GOUTTIERE_LATERALE,
           )}
         >
@@ -135,7 +149,7 @@ export function PublicHeader() {
                 les seuls éléments de cette rangée qu'un prospect vient chercher,
                 et les cacher derrière un menu sur tablette coûterait plus que la
                 place qu'ils prennent. */}
-            <div className="hidden items-center gap-2 lg:flex">
+            <div className="hidden items-center gap-2 xl:flex">
               <LanguageSwitcher />
               <CurrencySwitcher />
               <ThemeSwitcher />
@@ -153,7 +167,7 @@ export function PublicHeader() {
               label={menuOpen ? t('marketing.nav.closeMenu') : t('marketing.nav.openMenu')}
               variant="secondary"
               onClick={() => setMenuOpen((v) => !v)}
-              className="lg:hidden"
+              className="xl:hidden"
               aria-expanded={menuOpen}
             />
           </div>
@@ -183,7 +197,7 @@ export function PublicHeader() {
             son dernier lien a besoin d'air sous la barre de gestes.
           */
           className={cn(
-            'fixed inset-x-0 bottom-0 overflow-y-auto border-t border-border bg-paper lg:hidden',
+            'fixed inset-x-0 bottom-0 overflow-y-auto border-t border-border bg-paper xl:hidden',
             'top-[calc(65px+env(safe-area-inset-top))]',
             'pt-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]',
             'pl-[max(1.25rem,env(safe-area-inset-left))] pr-[max(1.25rem,env(safe-area-inset-right))]',

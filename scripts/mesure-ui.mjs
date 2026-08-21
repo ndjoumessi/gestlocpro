@@ -158,7 +158,8 @@ function adressesDeLApplication() {
  * Clé : `adresse@largeur`, indépendante de la langue — un débordement qui
  * n'existe qu'en anglais reste le même défaut de mise en page.
  *
- * DEUX ENTRÉES, ET C'EST UNE DETTE DATÉE, pas un tapis. Chacune porte sa mesure
+ * AUCUNE ENTRÉE, et c'est le but. Une dette datée s'écrit ici avec sa mesure et
+ * le lot qui la lèvera ; il n'en reste plus. Chacune porte sa mesure
  * et le lot qui la lèvera ; la garde du garde plus bas fait rougir celle qui ne
  * couvre plus rien, donc aucune ne peut survivre à sa réparation. Elles sont
  * ici parce qu'une garde hors de `check` ne s'exécute jamais — l'audit en fait
@@ -166,20 +167,6 @@ function adressesDeLApplication() {
  * sous le seuil et ne l'a jamais trouvé faute d'être lancé.
  */
 const TOLERES = {
-  /*
-    LA BARRE DE LA VITRINE AU-DESSUS DE `lg`, ET ELLE EST ANTÉRIEURE À CE LOT.
-
-    À 1024 px, `md` et `lg` sont tous deux actifs : la composition de la barre
-    est donc IDENTIQUE avant et après le passage des sélecteurs à `lg:flex`, qui
-    n'agit qu'entre 768 et 1023. Mesuré sur la page rendue : logo 146 + navigation
-    367 + rangée droite 699 = 1212 px réclamés contre ~976 disponibles.
-    `scrollX=275` en français, 165 en anglais — l'écart est celui des libellés.
-
-    La mesure à quatre largeurs de l'audit n'avait jamais échantillonné 1024 :
-    c'est ce que onze largeurs achètent.
-  */
-  '/@1024': 'Barre de la vitrine : 1212 px de contenu pour 976 disponibles. Antérieur à ce lot.',
-  '/@1280': 'Même barre, 19 px en français seulement — la marge y est nulle.',
 }
 
 /**
