@@ -50,7 +50,7 @@ export function PublicFooter() {
               <h2 className="eyebrow font-sans text-gold">
                 {t(column.heading as 'marketing.footer.product')}
               </h2>
-              <ul className="mt-4 flex flex-col gap-0.5">
+              <ul className="mt-4 flex flex-col gap-2">
                 {column.links.map((link) => (
                   <li key={link.label}>
                     <Link

@@ -168,7 +168,7 @@ export function TenantPortal() {
             <div
               role="tablist"
               aria-label={t('app.portal.title')}
-              className="flex gap-1 overflow-x-auto"
+              className="flex gap-2 overflow-x-auto"
             >
               {TABS.map((value, index) => {
                 const active = tab === value

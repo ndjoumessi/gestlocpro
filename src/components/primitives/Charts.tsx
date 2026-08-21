@@ -195,7 +195,7 @@ export function StackedBarChart({
   return (
     <figure className="m-0" aria-labelledby={titleId}>
       {/* Légende interrogeable : chaque entrée masque ou rétablit sa série. */}
-      <div className="mb-5 flex flex-wrap items-center gap-x-2 gap-y-1">
+      <div className="mb-5 flex flex-wrap items-center gap-2">
         {seriesKeys.map((key) => {
           const shown = visible(key)
           return (

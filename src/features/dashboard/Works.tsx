@@ -250,7 +250,7 @@ export function Works() {
       */}
       {!isTenant && duPerimetre.length > 0 && (
         <div className="mt-6 mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div role="group" aria-label={t('app.works.filterOrigin')} className="flex flex-wrap gap-1.5">
+          <div role="group" aria-label={t('app.works.filterOrigin')} className="flex flex-wrap gap-2">
             {(['all', 'tenantReport', 'ownerInitiative'] as const).map((valeur) => {
               const actif = origine === valeur
               const compte =

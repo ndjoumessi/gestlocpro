@@ -221,7 +221,7 @@ export function Portfolio() {
           />
         </div>
 
-        <div role="group" aria-label={t('app.portfolio.building')} className="flex flex-wrap gap-1.5">
+        <div role="group" aria-label={t('app.portfolio.building')} className="flex flex-wrap gap-2">
           {/*
             Le bouton porte le NOM de l'immeuble, qui est ce sur quoi il filtre.
             Il portait le quartier : deux résidences à Bastos auraient donné deux

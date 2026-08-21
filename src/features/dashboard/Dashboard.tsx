@@ -397,7 +397,7 @@ export function Dashboard() {
           {/* Deux natures dans la carte, donc deux sorties : renvoyer aux seuls
               travaux laisserait les cautions listées sans moyen d'agir dessus,
               ce qui est la même omission que celle qu'on vient de corriger. */}
-          <div className="mt-4 -ml-3.5 flex flex-wrap items-center gap-1">
+          <div className="mt-4 -ml-3.5 flex flex-wrap items-center gap-2">
             <Button variant="ghost" to={lien(base, 'travaux')} iconAfter="chevronRight">
               {t('nav.works')}
             </Button>

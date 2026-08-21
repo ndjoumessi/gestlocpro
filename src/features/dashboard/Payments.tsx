@@ -252,7 +252,7 @@ export function Payments() {
         </div>
       )}
 
-      <div role="group" aria-label={t('app.portfolio.status')} className="mt-6 mb-4 flex flex-wrap gap-1.5">
+      <div role="group" aria-label={t('app.portfolio.status')} className="mt-6 mb-4 flex flex-wrap gap-2">
         {FILTERS.map((value) => {
           const active = filter === value
           const count =
@@ -674,7 +674,7 @@ function PaymentsSkeleton({ isTenant }: { isTenant: boolean }) {
 
         {/* Quatre filtres, exactement comme `FILTERS` : leur nombre ne dépend
             d'aucune donnée, seuls leurs compteurs en dépendent. */}
-        <div className="mt-6 mb-4 flex flex-wrap gap-1.5">
+        <div className="mt-6 mb-4 flex flex-wrap gap-2">
           {FILTERS.map((valeur) => (
             <Skeleton key={valeur} radius="md" className="h-11 w-28" />
           ))}
