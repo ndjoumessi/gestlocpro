@@ -582,6 +582,9 @@ export const en: Dictionary = {
       noCharge: 'No charge for this period: there is nothing to certify.',
       removePayment: 'Remove this payment',
       paymentRemoved: 'Payment removed · the debt is restored',
+      removeTitle: 'Remove this {amount} payment?',
+      removeBody:
+        'Received on {date}. Removing it brings the debt back: this is money you declare you no longer received. The journal keeps a record.',
       issue: 'Receipt',
     },
     payments: {

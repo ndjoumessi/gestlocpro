@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, userEvent, attendreLeChargement } from '@/test/render'
+import { attendreLeChargement, renderApp, screen, userEvent, within } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 
@@ -169,6 +169,23 @@ describe('devise de la quittance', () => {
     await screen.findByRole('dialog')
 
     await user.click(screen.getByRole('button', { name: /retirer ce versement/i }))
+
+    /*
+      DEUX CLICS DÉSORMAIS, et c'est le prix correct.
+
+      Le retrait partait au premier appui, sur une gomme discrète posée à huit
+      pixels du montant. Il fait réapparaître une dette : c'est de l'argent
+      qu'on déclare ne plus avoir reçu, et le produit confirme partout ailleurs
+      avant un geste de cette nature.
+
+      Le premier clic n'émet RIEN — c'est ce que vérifie l'assertion
+      intercalée, sans quoi ce cas ne distinguerait plus une confirmation d'un
+      simple doublon de bouton.
+    */
+    expect(serveur.appels.some((a) => a.methode === 'DELETE')).toBe(false)
+
+    const confirmation = await screen.findByRole('alertdialog')
+    await user.click(within(confirmation).getByRole('button', { name: /confirmer/i }))
 
     expect(await screen.findByText(/versement retiré/i)).toBeInTheDocument()
     expect(serveur.appels.some((a) => a.methode === 'DELETE')).toBe(true)

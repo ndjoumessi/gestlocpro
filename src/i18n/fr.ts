@@ -740,6 +740,9 @@ export const fr = {
       noCharge: 'Aucune échéance pour cette période : il n’y a rien à attester.',
       removePayment: 'Retirer ce versement',
       paymentRemoved: 'Versement retiré · la dette est rétablie',
+      removeTitle: 'Retirer ce versement de {amount} ?',
+      removeBody:
+        'Encaissé le {date}. Le retirer fait réapparaître la dette : c’est de l’argent qu’on déclare ne plus avoir reçu. Le journal en garde la trace.',
       issue: 'Quittance',
     },
     payments: {

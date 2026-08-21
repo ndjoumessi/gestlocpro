@@ -82,6 +82,23 @@ export function ReceiptModal({
    */
   const [document, setDocument] = useState<DocumentEmis | null>(null)
   const [echec, setEchec] = useState<string | null>(null)
+  /*
+    LE RETRAIT SE CONFIRME, comme partout ailleurs dans ce produit.
+
+    Il partait au PREMIER clic, sur une gomme discrète posée à huit pixels du
+    montant, et rien n'empêchait deux appuis rapides d'émettre deux
+    suppressions. Le commentaire voisin défend l'EXISTENCE de cette gomme —
+    « c'est là que les vraies erreurs commencent » — jamais son déclenchement
+    immédiat. Retirer un versement fait réapparaître une dette : c'est de
+    l'argent qu'on déclare ne plus avoir reçu.
+
+    Le motif est celui de la fiche locataire, recopié : `alertdialog`, un titre
+    qui NOMME ce qu'on retire, et l'action en variante dangereuse.
+  */
+  const [aRetirer, setARetirer] = useState<{ id: string; montant: string; date: string } | null>(
+    null,
+  )
+  const [retraitEnCours, setRetraitEnCours] = useState(false)
   const { role } = useRole()
   const { notify } = useToast()
 
@@ -94,6 +111,10 @@ export function ReceiptModal({
    */
   const retirer = (paymentId: string) => {
     if (!parkId) return
+    // Le bouton s'éteint pendant le vol : sans cela, deux appuis rapides
+    // émettent deux suppressions, et la seconde porte sur un versement qui
+    // n'existe plus.
+    setRetraitEnCours(true)
     void api
       .deletePayment(parkId, paymentId)
       .then(() => {
@@ -101,6 +122,10 @@ export function ReceiptModal({
         notify(t('app.receipts.paymentRemoved'), { tone: 'ok' })
       })
       .catch(() => setEchec(t('common.actionFailed')))
+      .finally(() => {
+        setRetraitEnCours(false)
+        setARetirer(null)
+      })
   }
 
   const money = (montant: number) =>
@@ -158,6 +183,7 @@ export function ReceiptModal({
     })[code] ?? code
 
   return (
+    <>
     <Modal
       open={open}
       onClose={onClose}
@@ -168,7 +194,21 @@ export function ReceiptModal({
           <Button variant="secondary" onClick={onClose}>
             {t('common.close')}
           </Button>
-          <Button icon="download" onClick={() => window.print()} disabled={!document}>
+          <Button
+            icon="download"
+            onClick={() => window.print()}
+            /*
+              ÉTEINT AUSSI QUAND LE RETRAIT A ÉCHOUÉ.
+
+              La branche d'erreur DÉMONTE la quittance entière et affiche le
+              motif à sa place ; le bouton, lui, ne regardait que la présence du
+              document. On pouvait donc imprimer sur un corps qui n'existe plus
+              — la feuille sortait blanche, `.zone-imprimable` n'étant plus
+              montée. Un bouton actif qui ne peut rien produire est pire qu'un
+              bouton absent : il fait croire à une panne de l'imprimante.
+            */
+            disabled={!document || Boolean(echec)}
+          >
             {t('app.receipts.print')}
           </Button>
         </>
@@ -241,7 +281,14 @@ export function ReceiptModal({
                         icon="close"
                         label={t('app.receipts.removePayment')}
                         variant="ghost"
-                        onClick={() => retirer(p.id)}
+                        disabled={retraitEnCours}
+                        onClick={() =>
+                          setARetirer({
+                            id: p.id,
+                            montant: money(p.amountMinor),
+                            date: d.fullDate(partsDe(p.paidOn)),
+                          })
+                        }
                       />
                     )}
                   </span>
@@ -252,5 +299,42 @@ export function ReceiptModal({
         </div>
       )}
     </Modal>
+
+      {/*
+        LA CONFIRMATION, hors de la quittance et non dedans.
+
+        Une modale dans une modale : la seconde se monte par-dessus la première,
+        qui reste ouverte derrière. C'est voulu — annuler doit rendre la
+        quittance telle qu'on l'avait, avec la ligne qu'on hésitait à retirer.
+      */}
+      {aRetirer && (
+        <Modal
+          open
+          onClose={() => setARetirer(null)}
+          role="alertdialog"
+          size="sm"
+          title={t('app.receipts.removeTitle', { amount: aRetirer.montant })}
+          description={t('app.receipts.removeBody', { date: aRetirer.date })}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setARetirer(null)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                variant="danger"
+                loading={retraitEnCours}
+                onClick={() => retirer(aRetirer.id)}
+              >
+                {t('common.confirm')}
+              </Button>
+            </>
+          }
+        >
+          {/* Le titre nomme le montant, la description la date : le corps
+              n'aurait qu'à les répéter. */}
+          <span className="sr-only">{t('app.receipts.removeBody', { date: aRetirer.date })}</span>
+        </Modal>
+      )}
+    </>
   )
 }

@@ -103,6 +103,19 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
     <Modal
       open={open}
       onClose={fermer}
+      /*
+        UNE FOIS LE CODE AFFICHÉ, LE VOILE NE FERME PLUS.
+
+        Le voile d'une modale est un `<button>` qui couvre TOUTE la fenêtre, et
+        sous `sm` la feuille est collée en bas : le voile occupe donc tout le
+        haut de l'écran. Un pouce qui rate, un Échap réflexe, et le code
+        disparaît — alors que le produit dit lui-même qu'« il n'est plus lisible
+        ensuite, même par vous ».
+
+        La modale reste quittable : le pied porte un « Fermer » explicite. Ce
+        qu'on retire, c'est le renvoi ACCIDENTEL, pas la sortie.
+      */
+      dismissible={!code}
       title={code ? t('app.invite.codeTitle') : t('app.invite.title')}
       description={code ? t('app.invite.codeOnce') : t('app.invite.description')}
       footer={

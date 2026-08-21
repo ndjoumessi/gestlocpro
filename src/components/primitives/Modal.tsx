@@ -14,6 +14,16 @@ export interface ModalProps {
   size?: 'sm' | 'md' | 'lg'
   /** `alertdialog` pour les confirmations destructives. */
   role?: 'dialog' | 'alertdialog'
+  /**
+   * Le voile et Échap ferment-ils ? Oui par défaut.
+   *
+   * `false` pour une modale qui porte quelque chose d'IRRÉCUPÉRABLE — un code
+   * d'invitation qui ne se relit pas. Le voile est un bouton qui couvre toute
+   * la fenêtre, et sous `sm` la feuille est collée en bas : un pouce qui rate
+   * emporte alors ce qu'on venait chercher. La modale reste quittable par son
+   * pied ; ce qu'on retire, c'est le renvoi ACCIDENTEL.
+   */
+  dismissible?: boolean
 }
 
 const SIZES = { sm: 'max-w-md', md: 'max-w-xl', lg: 'max-w-3xl' }
@@ -31,6 +41,7 @@ export function Modal({
   footer,
   size = 'md',
   role = 'dialog',
+  dismissible = true,
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const openerRef = useRef<Element | null>(null)
@@ -58,6 +69,8 @@ export function Modal({
    */
   const fermetureRef = useRef(onClose)
   fermetureRef.current = onClose
+  const renvoyableRef = useRef(dismissible)
+  renvoyableRef.current = dismissible
   const t = useT()
 
   const focusables = useCallback(() => {
@@ -98,8 +111,11 @@ export function Modal({
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        // La touche est arrêtée MÊME quand la modale ne se ferme pas : sinon
+        // elle remonterait à ce qui l'entoure, et fermerait l'écran d'à côté au
+        // lieu de celui qu'on regarde.
         event.stopPropagation()
-        fermetureRef.current()
+        if (renvoyableRef.current) fermetureRef.current()
         return
       }
       if (event.key !== 'Tab') return
@@ -158,7 +174,11 @@ export function Modal({
       <button
         type="button"
         aria-label={t('common.close')}
-        onClick={onClose}
+        onClick={dismissible ? onClose : undefined}
+        // Le voile reste PEINT quand il ne ferme plus : il dit que
+        // l'arrière-plan est écarté, ce qui est vrai dans les deux cas. Seul son
+        // geste disparaît.
+        disabled={!dismissible}
         className="absolute inset-0 cursor-default bg-scrim backdrop-blur-[3px]"
       />
 

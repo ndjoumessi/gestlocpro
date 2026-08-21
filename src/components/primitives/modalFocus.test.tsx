@@ -78,6 +78,34 @@ describe('focus dans une modale', () => {
    * Aucun test ne montait une modale sans champ. C'est ce qui a laissé le
    * commentaire et le code diverger.
    */
+  /**
+   * LE VOILE NE RENVOIE PLUS CE QU'ON NE PEUT PAS RETROUVER.
+   *
+   * Le voile est un `<button>` qui couvre TOUTE la fenêtre, et sous `sm` la
+   * feuille est collée en bas : il occupe donc tout le haut de l'écran. Un
+   * pouce qui rate emportait le code d'invitation qu'on venait d'émettre —
+   * alors que le produit dit lui-même qu'« il n'est plus lisible ensuite, même
+   * par vous ».
+   *
+   * La modale reste quittable par son pied. Ce que `dismissible={false}`
+   * retire, c'est le renvoi ACCIDENTEL, jamais la sortie.
+   */
+  it('ne se ferme ni au voile ni à Échap quand elle ne se renvoie pas', async () => {
+    let fermetures = 0
+    renderWithProviders(
+      <Modal open title="Code émis" dismissible={false} onClose={() => (fermetures += 1)}>
+        <p>GES-4A7B-92CD</p>
+      </Modal>,
+    )
+
+    const user = userEvent.setup()
+    const voiles = screen.getAllByRole('button', { name: /fermer/i })
+    await user.click(voiles[0])
+    await user.keyboard('{Escape}')
+
+    expect(fermetures).toBe(0)
+  })
+
   it('pose le focus sur le dialogue, jamais sur le bouton fermer', async () => {
     renderWithProviders(<ModaleSansChamp />)
 
