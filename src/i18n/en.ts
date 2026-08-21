@@ -1218,6 +1218,8 @@ export const en: Dictionary = {
       faq: 'Questions',
       openMenu: 'Open menu',
       closeMenu: 'Close menu',
+      openSettings: 'Open settings',
+      closeSettings: 'Close settings',
     },
 
     hero: {

@@ -772,6 +772,86 @@ async function reglagesAtteignables(page) {
 }
 
 /**
+ * LE PANNEAU NE REJOUE PAS LA BARRE — mesuré à 1440 px, panneau ouvert.
+ *
+ * POURQUOI UNE RÈGLE, et pas seulement un cas sous jsdom. Le doublon n'existe
+ * QUE parce qu'une requête média fait apparaître les liens dans la barre, et
+ * jsdom n'en applique aucune : il ne peut pas distinguer « la barre les montre »
+ * de « la barre les cache ». Un cas y passerait au vert sur les deux états —
+ * exactement la panne que le commentaire de `menuMobile.test.tsx` décrit déjà
+ * pour `xl:hidden`. Ce qui se voit à 1440 px se mesure à 1440 px.
+ *
+ * CE QU'ELLE ATTRAPE, textuellement : les quatre liens de section étaient rendus
+ * deux fois à 1440, 1920 et 2000 px — dans la barre et dans le panneau — et
+ * « Se connecter » / « Essayer gratuitement » l'étaient dès 768. Aucune des
+ * autres règles ne pouvait le voir : rien ne débordait, rien ne se repliait, le
+ * jeu de la barre était intact. Deux navigations identiques côte à côte sont un
+ * défaut de PRODUIT, et il se mesure comme les autres.
+ *
+ * LE NOM ACCESSIBLE, et non le seul texte : un lien dont le libellé vit en
+ * `aria-label` compte comme rejoué au même titre. On compare des noms, parce
+ * que c'est par leur nom que deux commandes se confondent.
+ */
+const MESURER_DOUBLONS = () => {
+  const visible = (el) => {
+    const style = getComputedStyle(el)
+    if (style.display === 'none' || style.visibility === 'hidden') return false
+    if (el.classList.contains('sr-only')) return false
+    const boite = el.getBoundingClientRect()
+    return boite.width > 0 && boite.height > 0
+  }
+  const nom = (el) =>
+    (el.getAttribute('aria-label') || el.textContent || '').replace(/\s+/g, ' ').trim()
+
+  const barre = document.querySelector('[data-mesure="rangee-entete-vitrine"]')
+  const panneau = document.querySelector('[data-testid="menu-mobile"]')
+  if (!barre || !panneau) return null
+
+  // Le panneau est un descendant de la couche, pas de la barre — mais rien ne
+  // l'interdirait demain, et un lien compté des deux côtés serait son propre
+  // doublon. On écarte explicitement ce que le panneau contient.
+  const dansLaBarre = [...barre.querySelectorAll('a[href], button')]
+    .filter((el) => !panneau.contains(el))
+    .filter(visible)
+    .map(nom)
+    .filter(Boolean)
+
+  const connus = new Set(dansLaBarre)
+  const rejoues = [...panneau.querySelectorAll('a[href], button')]
+    .filter(visible)
+    .map(nom)
+    .filter((n) => n && connus.has(n))
+
+  return { rejoues: [...new Set(rejoues)], barre: [...new Set(dansLaBarre)] }
+}
+
+/**
+ * Ouvre le panneau au CLIC à 1440 px et rend ce qu'il rejoue de la barre.
+ *
+ * PASSE INDÉPENDANTE de `reglagesAtteignables`, alors que celle-ci ouvre déjà
+ * le même panneau à la même largeur et qu'on pourrait mesurer dans sa foulée.
+ * On ne le fait pas : la mesure ne s'exécuterait alors que si l'autre règle
+ * réussit, et un échec là-bas rendrait celle-ci muette — une porte qui se tait
+ * quand sa voisine tombe est une porte qu'on croit verte. Le coût est une
+ * navigation par langue.
+ *
+ * AU CLIC et non à la tabulation : ce qui est éprouvé ici est le CONTENU du
+ * panneau, pas le chemin qui y mène — `reglagesAtteignables` tient déjà ce
+ * chemin, et le refaire ici doublerait sa fragilité sans rien ajouter.
+ */
+async function doublonsDuPanneau(page) {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto(BASE + '/', { waitUntil: 'domcontentloaded' })
+  await attendre(page, '/ (doublons)')
+
+  const declencheur = page.locator('header [data-declencheur-reglages]')
+  if ((await declencheur.count()) === 0) return null
+  await declencheur.click()
+  await page.waitForSelector('[data-testid="menu-mobile"]', { timeout: 5000 }).catch(() => {})
+  return page.evaluate(MESURER_DOUBLONS)
+}
+
+/**
  * Exécuté DANS la page : rend la rangée d'en-tête repliée, ou `null`.
  *
  * POURQUOI UNE SECONDE MESURE. Celle du débordement ne pouvait pas voir ce
@@ -1164,6 +1244,14 @@ const echecs = []
 const reproches = []
 const etroitesses = []
 const inatteignables = []
+const rejouements = []
+// Même raison qu'`ATTENDUES` et que `rangeesMesurees` : « le panneau ne rejoue
+// rien » et « on n'a pas ouvert le panneau » s'écrivent pareil dans un journal.
+// Compte les langues où la mesure a VRAIMENT eu lieu, panneau ouvert.
+let panneauxMesures = 0
+// Ce que la barre portait au moment de la mesure. Une barre vide rendrait la
+// règle vacuement verte : sans rien à rejouer, rien ne peut être rejoué.
+let barreLaPlusGarnie = 0
 // Compte les rangées d'en-tête public RÉELLEMENT mesurées. Le marqueur retiré,
 // `MESURER_JEU` rendrait `null` partout et la porte dirait « aucune barre trop
 // serrée » sans en avoir regardé une seule — la panne qu'`ATTENDUES` surveille
@@ -1236,6 +1324,15 @@ try {
     const manque = await reglagesAtteignables(page)
     process.stdout.write(manque ? 'ÉCHEC\n' : 'ok\n')
     if (manque) inatteignables.push({ langue, manque })
+
+    process.stdout.write(`   ${langue}  panneau sans doublon à 1440 px … `)
+    const doublons = await doublonsDuPanneau(page)
+    if (doublons) {
+      panneauxMesures++
+      barreLaPlusGarnie = Math.max(barreLaPlusGarnie, doublons.barre.length)
+      if (doublons.rejoues.length > 0) rejouements.push({ langue, ...doublons })
+    }
+    process.stdout.write(doublons?.rejoues.length ? 'ÉCHEC\n' : doublons ? 'ok\n' : 'NON MESURÉ\n')
 
     await contexte.close()
   }
@@ -1515,6 +1612,57 @@ if (inatteignables.length > 0) {
 }
 
 /*
+  GARDE DU GARDE, en deux moitiés, parce que cette règle a deux façons de se
+  taire.
+
+  LA PREMIÈRE : le panneau ne s'ouvre pas. Le marqueur du déclencheur renommé,
+  `doublonsDuPanneau` rend `null`, et la porte dirait « aucun doublon » sans
+  avoir ouvert un seul panneau.
+
+  LA SECONDE, plus insidieuse : le panneau s'ouvre mais la BARRE est vide. Rien
+  n'y étant rendu, rien ne peut y être rejoué, et la règle passe au vert en
+  n'ayant comparé le panneau à rien. C'est l'état qu'aurait produit une barre
+  qui déléguerait TOUT au menu — précisément la régression que ce lot corrige,
+  vue de l'autre bord. Six est le compte du jour à 1440 px : quatre liens de
+  section et deux boutons d'inscription. On n'exige pas six, on exige que la
+  barre porte de quoi être rejouée.
+*/
+if (panneauxMesures < LANGUES.length) {
+  console.error(
+    `\n✗ mesure-ui : panneau de la vitrine ouvert dans ${panneauxMesures} langue(s) sur ${LANGUES.length}.\n` +
+      "   Le déclencheur porte-t-il encore `data-declencheur-reglages` ?\n" +
+      "   Une règle qui n'a rien regardé ne dit pas qu'il n'y a rien à voir.\n",
+  )
+  process.exit(1)
+}
+if (barreLaPlusGarnie < 2) {
+  console.error(
+    `\n✗ mesure-ui : la barre de la vitrine ne portait que ${barreLaPlusGarnie} commande(s) à 1440 px.\n` +
+      "   La règle du doublon compare le panneau à la barre : une barre vide la rend vacue.\n",
+  )
+  process.exit(1)
+}
+
+/*
+  PUIS LE DOUBLON, juste après l'absence : ce sont les deux défauts que les
+  règles de pixels ne savent pas voir. L'une regarde une commande qui a disparu,
+  l'autre une commande rendue deux fois — et retirer comme redoubler laissent
+  les débordements, les replis et le jeu de la barre parfaitement verts.
+*/
+if (rejouements.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : le panneau de la vitrine rejoue à 1440 px des commandes que la barre montre déjà.\n` +
+      "   Deux navigations identiques côte à côte : le regard doit choisir, et rien ne l'aide.\n",
+  )
+  for (const r of rejouements) {
+    console.error(`   ${r.langue}  →  ${r.rejoues.length} rejouée(s) : ${r.rejoues.join(' · ')}`)
+    console.error(`      la barre porte : ${r.barre.join(' · ')}`)
+  }
+  console.error('')
+  process.exit(1)
+}
+
+/*
   PUIS LE CONTRASTE : après ce qu'on ne peut pas atteindre, ce qu'on ne peut pas
   lire. Les trois règles qui suivent regardent la mise en page ; ces deux-ci
   regardent l'usage, et une barre parfaitement rangée dont le texte est
@@ -1638,6 +1786,7 @@ console.log(
     `  ${fuite.reserves.length} modules réservés à l'application, aucun dans un paquet impatient.\n` +
     `  Premier chargement de la vitrine : ${premierChargement.octets} o compressés, sous le budget de ${BUDGET_PREMIER_CHARGEMENT} o.\n` +
     `  ${rangeesMesurees} mesures de la barre de la vitrine, toutes au-dessus de ${JEU_MINIMAL} px de jeu ; réglages atteints au clavier à 1440 px dans les deux langues.\n` +
+    `  Panneau ouvert à 1440 px dans ${panneauxMesures} langues face à une barre de ${barreLaPlusGarnie} commandes, aucune rejouée.\n` +
     `  ${textesAudites} textes audités en contraste (${THEMES.join(' + ')}, ${LARGEURS_CONTRASTE.join(' et ')} px), aucun sous le seuil WCAG AA.\n` +
     `  ${ciblesSondees} cibles sondées au point de contact, aucune sous ${PLANCHER_CIBLE} px hors les ${Object.keys(CIBLES_EXEMPTES).length} exemptions motivées.`,
 )

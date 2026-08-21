@@ -1561,6 +1561,10 @@ export const fr = {
       faq: 'Questions',
       openMenu: 'Ouvrir le menu',
       closeMenu: 'Fermer le menu',
+      // Au-delà de `lg` la barre porte déjà ses liens : le même bouton n'ouvre
+      // plus qu'un panneau de réglages, et son nom doit le dire.
+      openSettings: 'Ouvrir les réglages',
+      closeSettings: 'Fermer les réglages',
     },
 
     hero: {

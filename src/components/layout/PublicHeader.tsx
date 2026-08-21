@@ -8,6 +8,7 @@ import { LanguageSwitcher } from '@/components/controls/LanguageSwitcher'
 import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
 import { ThemeSwitcher } from '@/components/controls/ThemeSwitcher'
 import { useT } from '@/i18n/I18nProvider'
+import { AU_DELA_LG, AU_DELA_SM, useAuDela } from '@/lib/useAuDela'
 
 const SECTIONS = [
   { id: 'features', key: 'marketing.nav.features' },
@@ -20,8 +21,44 @@ export function PublicHeader() {
   const t = useT()
   const [menuOpen, setMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const coucheRef = useRef<HTMLDivElement>(null)
   const panneauRef = useRef<HTMLDivElement>(null)
   const enteteRef = useRef<HTMLElement>(null)
+
+  /*
+    LE PANNEAU NE REJOUE QUE CE QUE LA BARRE NE MONTRE PAS.
+
+    Mesuré au navigateur, menu ouvert, avant ce lot : à 1440, 1920 et 2000 px,
+    les quatre liens de section étaient rendus DEUX FOIS — dans la barre et dans
+    le panneau — et « Se connecter » / « Essayer gratuitement » l'étaient dès
+    768 px, à 1960 px de large chacun sur un écran de 2000. Le panneau prenait
+    1021 px de haut pour quatre liens et trois réglages, ses entrées commençaient
+    à 20 px du bord pendant que le logo commençait à 392 : il ignorait la bande
+    `max-w-7xl` que toute la page respecte.
+
+    Les deux seuils sont ceux de la barre elle-même, pas des valeurs choisies
+    ici : `lg` est l'endroit où son `<nav>` apparaît, `sm` celui où ses deux
+    boutons apparaissent. Le panneau lit les mêmes, donc il ne peut pas se
+    désaccorder — déplacer un point de rupture de la barre déplace le sien.
+
+    LE RENDU, ET NON `lg:hidden` : voir l'en-tête de `useAuDela`. Un bouton
+    pleine largeur caché en CSS continue de dicter la largeur naturelle du
+    panneau, et un panneau « dimensionné à son contenu » ne peut pas se calculer
+    sur du contenu qu'on prétend avoir retiré.
+  */
+  const barrePorteLesLiens = useAuDela(AU_DELA_LG)
+  const barrePorteLesBoutons = useAuDela(AU_DELA_SM)
+
+  /*
+    Au-delà de `lg`, le panneau n'a plus rien d'une feuille : quatre liens et
+    deux boutons lui sont retirés, il ne reste que les trois réglages. Ce n'est
+    plus une fenêtre modale, c'est une liste déroulante ancrée — et les deux
+    n'ont pas les mêmes devoirs. Une modale fige le fond et le neutralise ; une
+    liste déroulante laisse la page vivre et se referme quand on clique
+    ailleurs. Prendre l'un pour l'autre donne soit un fond figé pour trois
+    boutons, soit un menu plein écran qu'on ne peut plus quitter.
+  */
+  const ancre = barrePorteLesLiens
 
   /*
     LA HAUTEUR DE L'EN-TÊTE SE MESURE, elle ne se recopie pas.
@@ -108,30 +145,99 @@ export function PublicHeader() {
   useEffect(() => {
     if (!menuOpen) return
 
-    const declencheur = document.activeElement as HTMLElement | null
-    const panneau = panneauRef.current
     const entete = enteteRef.current
-    const fond = Array.from(panneau?.parentElement?.children ?? []).filter(
-      (noeud) => noeud !== panneau && noeud !== entete,
+    const declencheur = entete?.querySelector<HTMLElement>('[data-declencheur-reglages]') ?? null
+    const couche = coucheRef.current
+    const panneau = panneauRef.current
+
+    // La couche, et non le panneau : c'est elle qui est sœur de l'en-tête dans
+    // le fragment. Depuis que le panneau vit à l'intérieur d'un conteneur qui
+    // le borne à la bande de la page, `panneau.parentElement` ne désigne plus
+    // le corps du document — il désignerait ce conteneur, dont l'unique enfant
+    // est le panneau lui-même : la liste des frères à neutraliser serait vide,
+    // et l'arrière-plan resterait tabulable sans qu'aucun cas ne le voie.
+    const fond = Array.from(couche?.parentElement?.children ?? []).filter(
+      (noeud) => noeud !== couche && noeud !== entete,
     )
     const previous = document.body.style.overflow
 
-    document.body.style.overflow = 'hidden'
-    fond.forEach((noeud) => noeud.setAttribute('inert', ''))
+    // Une liste déroulante de trois réglages ne fige pas la page derrière elle
+    // et ne la retire pas du clavier : ce serait le traitement d'une modale
+    // pour un objet qui n'en est pas une, et le lecteur d'écran perdrait la
+    // page entière le temps de changer de langue.
+    if (!ancre) {
+      document.body.style.overflow = 'hidden'
+      fond.forEach((noeud) => noeud.setAttribute('inert', ''))
+    }
     panneau?.focus()
 
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false)
     document.addEventListener('keydown', onKey)
 
+    /*
+      Refermer AU CLIC DEHORS, et seulement en mode ancré : la feuille pleine
+      page n'a pas de « dehors », son fond EST le panneau.
+
+      `pointerdown` et non `click` : un clic dont l'appui a commencé dans le
+      panneau et fini dehors — une sélection de texte glissée — n'a pas à
+      refermer. On écoute la capture pour passer avant les `onClick` internes,
+      qui peuvent démonter leur propre cible avant que l'événement ne remonte,
+      auquel cas `contains` répondrait faux sur un nœud pourtant du panneau.
+
+      Le déclencheur est exclu : sans cela son propre appui refermerait le
+      panneau, et son `onClick` le rouvrirait dans la foulée — un bouton qui ne
+      ferme jamais rien.
+    */
+    /*
+      QUI REFERME DÉCIDE SI LE FOCUS REVIENT, et c'est le seul endroit d'où la
+      question se tranche.
+
+      On ne peut pas la poser au nettoyage : les effets passifs s'exécutent
+      APRÈS la mutation du DOM, donc le panneau y est déjà démonté, son focus
+      déjà retombé sur `<body>`, et « le focus était-il dedans ? » répond
+      toujours non. Mesuré : les deux cas de retour du focus tombaient
+      ensemble.
+
+      Le drapeau nomme la règle plutôt que de la déduire d'un état perdu :
+      Échap, le déclencheur et le franchissement du seuil rendent le focus —
+      sans quoi il repartirait du début du document ; le clic dehors ne le rend
+      pas — l'utilisateur a désigné où il allait, et le lui reprendre ferait du
+      panneau une souricière à la souris.
+    */
+    let rendreLeFocus = true
+    const onDehors = (e: PointerEvent) => {
+      const cible = e.target as Node | null
+      if (!cible) return
+      if (panneau?.contains(cible)) return
+      if (declencheur?.contains(cible)) return
+      rendreLeFocus = false
+      setMenuOpen(false)
+    }
+    if (ancre) document.addEventListener('pointerdown', onDehors, true)
+
     return () => {
       document.body.style.overflow = previous
       fond.forEach((noeud) => noeud.removeAttribute('inert'))
       document.removeEventListener('keydown', onKey)
+      document.removeEventListener('pointerdown', onDehors, true)
       // Rendu au bouton d'ouverture : refermer ne doit pas laisser le focus
       // retomber sur le corps de la page, d'où l'on repartirait du début.
-      declencheur?.focus()
+      // Sauf sortie par le dehors — voir le drapeau, plus haut.
+      if (rendreLeFocus) declencheur?.focus()
     }
-  }, [menuOpen])
+  }, [menuOpen, ancre])
+
+  /*
+    Franchir le seuil pendant que le panneau est ouvert le referme.
+
+    Le contenu du panneau CHANGE au passage de `lg` — les liens et les boutons
+    y entrent ou en sortent. Le laisser ouvert ferait muter sous le doigt un
+    objet dont la forme, la position et les devoirs clavier viennent tous de
+    changer ; et l'effet ci-dessus a déjà rendu le focus au déclencheur en se
+    rejouant. `AppShell` referme son tiroir au même seuil, pour la raison
+    jumelle.
+  */
+  useEffect(() => setMenuOpen(false), [ancre, barrePorteLesBoutons])
 
   return (
     <>
@@ -269,12 +375,42 @@ export function PublicHeader() {
               <Button to="/inscription">{t('auth.signUpFree')}</Button>
             </div>
 
+            {/* Le nom suit ce que le bouton OUVRE VRAIMENT, qui n'est plus le
+                même des deux côtés du seuil : au-delà de `lg` il n'ouvre plus
+                un menu — les liens sont dans la barre, les boutons aussi — mais
+                trois réglages. « Ouvrir le menu » y annoncerait une navigation
+                que le panneau ne contient pas, et le hamburger la dessinerait. */}
             <IconButton
-              icon={menuOpen ? 'close' : 'menu'}
-              label={menuOpen ? t('marketing.nav.closeMenu') : t('marketing.nav.openMenu')}
+              icon={menuOpen ? 'close' : ancre ? 'sliders' : 'menu'}
+              label={
+                ancre
+                  ? menuOpen
+                    ? t('marketing.nav.closeSettings')
+                    : t('marketing.nav.openSettings')
+                  : menuOpen
+                    ? t('marketing.nav.closeMenu')
+                    : t('marketing.nav.openMenu')
+              }
               variant="secondary"
               onClick={() => setMenuOpen((v) => !v)}
               aria-expanded={menuOpen}
+              /*
+                LE DÉCLENCHEUR SE DÉSIGNE, il ne se devine pas.
+
+                L'effet d'ouverture le retrouvait par `document.activeElement`.
+                C'était juste tant qu'il n'en faisait qu'une chose — rendre le
+                focus —, et Chrome focalise un bouton qu'on clique. Le clic
+                dehors, lui, doit EXCLURE ce bouton, faute de quoi son propre
+                appui referme le panneau que son `onClick` rouvre aussitôt ; et
+                sur un navigateur qui ne focalise pas les boutons au clic,
+                `activeElement` vaut `<body>`, qui contient tout — l'exclusion
+                avalerait alors la page entière et plus rien ne refermerait.
+
+                `mesure-ui` a déjà payé cette leçon en prenant le sélecteur de
+                devise pour le déclencheur du menu : « un grief exact sur un
+                fait faux ». On nomme.
+              */
+              data-declencheur-reglages=""
             />
           </div>
         </div>
@@ -282,68 +418,136 @@ export function PublicHeader() {
 
       {menuOpen && (
         <div
-          ref={panneauRef}
-          data-testid="menu-mobile"
-          // `tabIndex={-1}` sans quoi le panneau ne peut pas recevoir le focus
-          // à l'ouverture : la tabulation suivante repartirait du début du
-          // document, c'est-à-dire de l'en-tête, et non des liens du menu.
-          tabIndex={-1}
+          ref={coucheRef}
           /*
-            Le haut vient de la MESURE de l'en-tête, faite plus haut, et non
-            d'une valeur recopiée : elle suit ainsi la langue, le point de
-            rupture et la zone sûre sans que personne ait à les refaire.
+            LA COUCHE N'EST PAS LE PANNEAU, depuis que le panneau ne va plus d'un
+            bord à l'autre. Elle porte deux choses, et rien d'autre : le haut
+            MESURÉ de l'en-tête — jamais une valeur recopiée, elle suit ainsi la
+            langue, le point de rupture et la zone sûre — et la bande
+            `max-w-7xl` de la page, sur laquelle le panneau ancré vient
+            s'aligner à droite comme le logo s'aligne à gauche.
 
-            La gouttière `p-5` descend du `<nav>` vers ce conteneur : c'est lui
-            qui touche les deux bords, donc c'est lui qui doit les traiter, et
-            laisser le rembourrage à l'enfant reviendrait à cumuler 20 px de
-            plus. Bas en `calc()` — le panneau est plein `bg-paper` et défile,
-            son dernier lien a besoin d'air sous la barre de gestes.
+            En mode ancré elle ne reçoit AUCUN clic : elle couvre la page entière
+            et l'avaler ferait d'une liste déroulante un voile invisible, où le
+            premier lien de la page cesserait de répondre. Le panneau se rend le
+            clic pour lui seul.
           */
           className={cn(
-            // Le panneau suit son bouton : le masquer au-delà de `xl` pendant
-            // que le bouton reste visible ferait basculer un état que rien ne
-            // montre — un déclencheur qui n'ouvre rien.
-            'fixed inset-x-0 top-[var(--h-entete-vitrine)] bottom-0 overflow-y-auto border-t border-border bg-paper',
-            'pt-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]',
-            'pl-[max(1.25rem,env(safe-area-inset-left))] pr-[max(1.25rem,env(safe-area-inset-right))]',
+            'fixed inset-x-0 top-[var(--h-entete-vitrine)]',
+            ancre
+              ? cn('pointer-events-none mx-auto max-w-7xl', GOUTTIERE_LATERALE)
+              : 'bottom-0 flex',
           )}
-          style={{
-            zIndex: 'var(--z-overlay)',
-          }}
+          style={{ zIndex: 'var(--z-overlay)' }}
         >
-          <nav aria-label={t('nav.primaryNav')} className="flex flex-col gap-1">
-            {SECTIONS.map((section) => (
-              <a
-                key={section.id}
-                href={`#${section.id}`}
-                onClick={() => setMenuOpen(false)}
+          <div
+            ref={panneauRef}
+            data-testid="menu-mobile"
+            // `tabIndex={-1}` sans quoi le panneau ne peut pas recevoir le focus
+            // à l'ouverture : la tabulation suivante repartirait du début du
+            // document, c'est-à-dire de l'en-tête, et non des liens du menu.
+            tabIndex={-1}
+            className={cn(
+              ancre
+                ? /*
+                    ANCRÉ ET DIMENSIONNÉ À SON CONTENU. `w-max` prend la largeur
+                    que les trois réglages réclament — mesurée à 407 px en
+                    français, 433 en anglais — au lieu des 1960 px que la feuille
+                    prenait sur un écran de 2000. `ml-auto` le colle au bord
+                    droit de la bande, c'est-à-dire sous le bouton qui l'ouvre.
+
+                    `max-w-full` reste le filet : la bande est bornée à 1280 px
+                    et le contenu à ~433, donc il ne sert jamais aujourd'hui — il
+                    servira le jour où un quatrième réglage arrivera, et il vaut
+                    mieux qu'il rétrécisse que qu'il déborde.
+
+                    L'ombre et le rayon sont ceux des listes déroulantes du
+                    dépôt (`CurrencySwitcher`) : le panneau flotte désormais
+                    au-dessus de la page au lieu de la remplacer, et rien ne
+                    l'en détacherait sans elles.
+                  */
+                  cn(
+                    'pointer-events-auto ml-auto mt-2 w-max max-w-full',
+                    'rounded-xl border border-divider bg-surface p-4 shadow-e3',
+                  )
+                : /*
+                    LA FEUILLE NE CHANGE PAS : en deçà de `lg` elle est juste.
+                    Elle prend tout, elle défile, et son dernier bouton a besoin
+                    d'air sous la barre de gestes — d'où le bas en `calc()`.
+                  */
+                  cn(
+                    'w-full overflow-y-auto border-t border-border bg-paper',
+                    'pt-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]',
+                    GOUTTIERE_LATERALE,
+                  ),
+            )}
+          >
+            <nav aria-label={t('nav.primaryNav')} className="flex flex-col gap-1">
+              {/*
+                Les liens de section ne sont rendus QUE si la barre ne les
+                montre pas. Au-delà de `lg` ils y sont, et les répéter ici
+                obligeait le regard à choisir entre deux navigations identiques
+                — sans compter les 1021 px de haut que le panneau prenait pour
+                les afficher une seconde fois.
+              */}
+              {!barrePorteLesLiens &&
+                SECTIONS.map((section) => (
+                  <a
+                    key={section.id}
+                    href={`#${section.id}`}
+                    onClick={() => setMenuOpen(false)}
+                    className={cn(
+                      'flex min-h-14 items-center rounded-md px-4 title-m',
+                      'text-ink no-underline transition-colors duration-150 hover:bg-surface-sunken',
+                    )}
+                  >
+                    {t(section.key as 'marketing.nav.features')}
+                  </a>
+                ))}
+
+              {/*
+                Le filet ne se dessine que s'il sépare quelque chose : sans les
+                liens au-dessus, une bordure haute ne délimiterait rien et la
+                marge ouvrirait un vide en tête d'un panneau qui tient en trois
+                boutons.
+              */}
+              <div
                 className={cn(
-                  'flex min-h-14 items-center rounded-md px-4 title-m',
-                  'text-ink no-underline transition-colors duration-150 hover:bg-surface-sunken',
+                  'flex flex-col gap-3',
+                  !barrePorteLesLiens && 'mt-4 border-t border-border pt-5',
                 )}
               >
-                {t(section.key as 'marketing.nav.features')}
-              </a>
-            ))}
+                {/* Marqué pour la mesure : la barre ayant délégué les réglages au
+                    menu, une garde doit pouvoir vérifier au navigateur qu'ils y
+                    sont VRAIMENT atteignables au clavier à 1440 px — sans quoi le
+                    retrait ne serait qu'une disparition. */}
+                <div data-mesure="reglages-vitrine" className="flex flex-wrap items-center gap-2">
+                  <LanguageSwitcher />
+                  <CurrencySwitcher />
+                  <ThemeSwitcher />
+                </div>
 
-            <div className="mt-4 flex flex-col gap-3 border-t border-border pt-5">
-              {/* Marqué pour la mesure : la barre ayant délégué les réglages au
-                  menu, une garde doit pouvoir vérifier au navigateur qu'ils y
-                  sont VRAIMENT atteignables au clavier à 1440 px — sans quoi le
-                  retrait ne serait qu'une disparition. */}
-              <div data-mesure="reglages-vitrine" className="flex flex-wrap items-center gap-2">
-                <LanguageSwitcher />
-                <CurrencySwitcher />
-                <ThemeSwitcher />
+                {/*
+                  Mêmes règles pour les deux boutons, à leur propre seuil : la
+                  barre les montre dès `sm`, donc le panneau ne les reprend qu'en
+                  deçà. C'est là aussi qu'ils sont pleine largeur à bon droit —
+                  sur un téléphone. Deux boutons de 1960 px sur un écran de 2000
+                  ne disaient pas « important », ils disaient « personne n'a
+                  regardé ».
+                */}
+                {!barrePorteLesBoutons && (
+                  <>
+                    <Button variant="secondary" size="lg" fullWidth to="/connexion">
+                      {t('auth.signIn')}
+                    </Button>
+                    <Button size="lg" fullWidth to="/inscription">
+                      {t('auth.signUpFree')}
+                    </Button>
+                  </>
+                )}
               </div>
-              <Button variant="secondary" size="lg" fullWidth to="/connexion">
-                {t('auth.signIn')}
-              </Button>
-              <Button size="lg" fullWidth to="/inscription">
-                {t('auth.signUpFree')}
-              </Button>
-            </div>
-          </nav>
+            </nav>
+          </div>
         </div>
       )}
     </>

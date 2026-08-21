@@ -105,6 +105,10 @@ const PATHS = {
     </>
   ),
   menu: <path d="M4 6h16M4 12h10M4 18h16" />,
+  // Trois curseurs sur trois rails : le déclencheur de la vitrine n'ouvre plus
+  // un menu au grand écran, il ouvre les trois réglages. Un chevron de
+  // hamburger y promettrait une navigation qui vit déjà dans la barre.
+  sliders: <path d="M4 7h9M17 7h3M4 17h3M11 17h9M15 4.5v5M9 14.5v5" />,
   check: <path d="M4.5 12.5l5 5 10-11" />,
   checkCircle: (
     <>

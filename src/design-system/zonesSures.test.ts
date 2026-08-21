@@ -124,6 +124,32 @@ const DEUX_BORDS_LATERAUX = /(?<![-\w])inset-(x-)?0(?![-\w])/
 const INSET = 'env(safe-area-inset-'
 
 /**
+ * LA GOUTTIÈRE NOMMÉE COMPTE COMME SES DEUX INSETS.
+ *
+ * L'analyseur lit du TEXTE, et `GOUTTIERE_LATERALE` n'en est pas : une surface
+ * épinglée qui compose la constante du dépôt plutôt que d'en recopier les
+ * quatre utilitaires paraissait nue, alors qu'elle traite ses deux bords mieux
+ * que la recopie — c'est même la raison d'être de la constante, écrite en tête
+ * de `gouttiere.ts` : « une valeur répétée onze fois n'est pas une convention,
+ * c'est onze occasions de diverger ».
+ *
+ * Ce n'est donc pas un assouplissement de la règle mais son ALIGNEMENT sur ce
+ * que le dépôt tient déjà pour juste. La règle continue d'exiger que
+ * l'épinglage et son inset soient écrits au même endroit ; elle admet
+ * simplement que « son inset » puisse s'écrire par son nom.
+ *
+ * La contrepartie est la garde ci-dessous : si la constante cessait un jour de
+ * traiter ses deux bords, cette reconnaissance deviendrait un trou. On lit donc
+ * son fichier plutôt que de la croire sur parole.
+ */
+const GOUTTIERE = 'GOUTTIERE_LATERALE'
+const SOURCE_GOUTTIERE = readFileSync(join(SRC, 'components/layout/gouttiere.ts'), 'utf8')
+
+/** Une surface traite un bord si elle l'écrit, ou si elle compose la gouttière. */
+const traite = (classes: string, bord: 'left' | 'right') =>
+  classes.includes(`${INSET}${bord}`) || classes.includes(GOUTTIERE)
+
+/**
  * Les deux seules surfaces épinglées qui n'ont légitimement rien à rembourrer.
  * Toute autre doit traiter ses bords ; on ajoute ici en connaissance de cause,
  * pas pour faire taire le test.
@@ -165,8 +191,18 @@ describe('zones sûres — les surfaces épinglées', () => {
     expect(A_TRAITER.length).toBeGreaterThan(6)
   })
 
+  it('la gouttière nommée traite bien les deux bords, sans quoi la reconnaître serait un trou', () => {
+    // Garde du garde : `traite()` accepte `GOUTTIERE_LATERALE` comme valant ses
+    // deux insets. Cette équivalence est un FAIT sur le contenu d'un autre
+    // fichier, pas une convention — on le vérifie plutôt que de le supposer.
+    expect(SOURCE_GOUTTIERE).toContain(`${INSET}left`)
+    expect(SOURCE_GOUTTIERE).toContain(`${INSET}right`)
+  })
+
   it('rembourre chaque surface collante ou fixe contre l’encoche', () => {
-    const nues = A_TRAITER.filter((s) => !s.classes.includes(INSET)).map((s) => s.fichier)
+    const nues = A_TRAITER.filter(
+      (s) => !s.classes.includes(INSET) && !s.classes.includes(GOUTTIERE),
+    ).map((s) => s.fichier)
     expect([...new Set(nues)], 'surfaces épinglées sans zone sûre').toEqual([])
   })
 
@@ -178,7 +214,7 @@ describe('zones sûres — les surfaces épinglées', () => {
     const bancales = A_TRAITER.filter(
       (s) =>
         DEUX_BORDS_LATERAUX.test(s.classes) &&
-        !(s.classes.includes(`${INSET}left`) && s.classes.includes(`${INSET}right`)),
+        !(traite(s.classes, 'left') && traite(s.classes, 'right')),
     ).map((s) => s.fichier)
 
     expect([...new Set(bancales)], 'surfaces pleine largeur à un seul côté traité').toEqual([])
