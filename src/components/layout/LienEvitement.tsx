@@ -21,7 +21,12 @@ export function LienEvitement() {
     <a
       href="#main"
       className={cn(
-        'sr-only focus:not-sr-only focus:fixed focus:z-100',
+        // Le sommet de l'échelle, et par la valeur arbitraire plutôt que par
+        // `style` : l'altitude ne doit exister QU'AU FOCUS, et un attribut de
+        // style ne connaît pas les variantes. La pastille est la première
+        // tabulation de la page ; elle apparaît par-dessus tout ce qui est déjà
+        // à l'écran, sans quoi elle serait annoncée sans être vue.
+        'sr-only focus:not-sr-only focus:fixed focus:z-[var(--z-toast)]',
         'focus:top-[calc(0.75rem+env(safe-area-inset-top))]',
         'focus:left-[calc(0.75rem+env(safe-area-inset-left))]',
         'focus:rounded-md focus:bg-ink focus:px-4 focus:py-2.5 focus:text-body focus:font-semibold focus:text-on-dark',

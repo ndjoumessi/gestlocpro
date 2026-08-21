@@ -403,6 +403,11 @@ export function DatePicker({
     }
     if (e.key === 'Escape') {
       e.preventDefault()
+      // La touche s'arrête au panneau qu'elle vient de fermer. `Modal` écoute
+      // Échap sur `document` : sans cette borne, une date choisie dans une
+      // modale refermait le calendrier ET le formulaire, et la saisie en cours
+      // partait avec — un geste, deux fermetures, dont une jamais demandée.
+      e.stopPropagation()
       fermer()
     }
   }
@@ -454,8 +459,8 @@ export function DatePicker({
             role="dialog"
             aria-label={t('common.dateCalendar')}
             ref={panneau}
-            style={{ top: position.top, left: position.left }}
-            className="fixed z-50 w-max max-w-[calc(100vw-1rem)] rounded-lg border border-divider bg-surface p-3 shadow-e3"
+            style={{ top: position.top, left: position.left, zIndex: 'var(--z-popover)' }}
+            className="fixed w-max max-w-[calc(100vw-1rem)] rounded-lg border border-divider bg-surface p-3 shadow-e3"
           >
           <div className="mb-2 flex items-center justify-between gap-2">
             <button
@@ -716,7 +721,26 @@ export function MonthPicker({
   }
 
   return (
-    <div ref={racine} className="relative">
+    <div
+      ref={racine}
+      className="relative"
+      // Échap posé sur la RACINE, et non sur le panneau : le sélecteur de mois
+      // ne déplace le focus nulle part à l'ouverture — il reste sur le bouton,
+      // qui vit ici. Un écouteur posé sur le panneau n'aurait donc jamais rien
+      // reçu. Le panneau, lui, est un portail, et React fait remonter ses
+      // événements par l'arbre des composants : la même branche couvre les deux
+      // côtés du portail.
+      //
+      // Le panneau n'avait AUCUNE branche Échap. La touche filait jusqu'à
+      // l'écouteur de `Modal` sur `document`, qui refermait le formulaire
+      // entier : le seul moyen de renoncer à un mois était de fermer la saisie.
+      onKeyDown={(e) => {
+        if (e.key !== 'Escape' || !ouvert) return
+        e.preventDefault()
+        e.stopPropagation()
+        fermer()
+      }}
+    >
       <input type="hidden" name={name} value={value} />
 
       <button
@@ -752,8 +776,8 @@ export function MonthPicker({
             role="dialog"
             aria-label={t('common.monthCalendar')}
             ref={panneau}
-            style={{ top: position.top, left: position.left }}
-            className="fixed z-50 w-max max-w-[calc(100vw-1rem)] rounded-lg border border-divider bg-surface p-3 shadow-e3"
+            style={{ top: position.top, left: position.left, zIndex: 'var(--z-popover)' }}
+            className="fixed w-max max-w-[calc(100vw-1rem)] rounded-lg border border-divider bg-surface p-3 shadow-e3"
           >
             <div className="mb-2 flex items-center justify-between gap-2">
               <button

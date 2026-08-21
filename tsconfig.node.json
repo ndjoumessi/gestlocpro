@@ -23,6 +23,7 @@
     "vite.config.ts",
     "src/design-system/theme.test.ts",
     "src/design-system/chasseFixe.test.ts",
+    "src/design-system/altitudes.test.ts",
     "src/design-system/cibles.test.ts",
     "src/design-system/couches.test.ts", "src/design-system/appariements.test.ts", "src/design-system/graisses.test.ts",
     "src/design-system/gouttiere.test.ts",

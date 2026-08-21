@@ -1193,7 +1193,11 @@ function MenuCompte({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
         <>
           <div
             role="menu"
-            className="absolute right-0 z-50 mt-2 flex w-64 flex-col gap-1 rounded-md border border-border bg-paper p-2 shadow-lg"
+            // Troisième site du même 50 écrit à la main, et le même remède : un
+            // menu ancré à son bouton est un panneau flottant, il se nomme
+            // comme les deux autres.
+            style={{ zIndex: 'var(--z-popover)' }}
+            className="absolute right-0 mt-2 flex w-64 flex-col gap-1 rounded-md border border-border bg-paper p-2 shadow-lg"
           >
             <div className="px-2 py-1.5">
               <p className="text-label font-semibold text-ink">{nom}</p>

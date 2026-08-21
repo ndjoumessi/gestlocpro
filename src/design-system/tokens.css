@@ -314,6 +314,14 @@
   --z-dropdown: 40;
   --z-overlay: 60;
   --z-modal: 70;
+  /* Le panneau ANCRÉ à un champ passe au-dessus de la fenêtre qui l'a ouvert.
+     Le calendrier et le sélecteur de mois vivent sur `document.body`, hors de
+     tout ancêtre qui pourrait les rogner ; ils portaient un 50 écrit à la main,
+     donc SOUS la modale à 70, et le panneau se peignait derrière le champ qui
+     venait de l'ouvrir. Au-dessus de la modale, mais sous le toast : un message
+     doit rester lisible par-dessus tout, y compris par-dessus un panneau
+     ouvert. */
+  --z-popover: 80;
   --z-toast: 100;
 }
 

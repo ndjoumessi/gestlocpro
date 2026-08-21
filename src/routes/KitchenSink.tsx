@@ -38,8 +38,12 @@ export function KitchenSink() {
           qu'ailleurs : le vertical sur l'élément peint et pleine largeur, la
           gouttière sur la rangée bornée par `max-w-6xl`. */}
       <header
+        // Le 20 écrit à la main VALAIT déjà `--z-sticky` : la page de contrôle
+        // s'empilait par coïncidence avec le reste du produit. Le jeton ne
+        // change pas le nombre, il dit qu'il n'est pas le sien.
+        style={{ zIndex: 'var(--z-sticky)' }}
         className={cn(
-          'sticky top-0 z-20 border-b border-border bg-paper/90 backdrop-blur-md',
+          'sticky top-0 border-b border-border bg-paper/90 backdrop-blur-md',
           'pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3',
         )}
       >

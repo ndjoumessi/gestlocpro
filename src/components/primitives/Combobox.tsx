@@ -200,6 +200,12 @@ export function Combobox({
     }
     if (e.key === 'Escape' && ouvert) {
       e.preventDefault()
+      // Échap appartient à ce qui retient, et la liste ouverte retient — c'est
+      // la règle que `Toast` écrit pour justifier de ne PAS l'écouter. Encore
+      // faut-il que la touche s'arrête là : `Modal` l'écoute sur `document`,
+      // donc un renoncement à la liste des indicatifs refermait aussi le
+      // formulaire qui la contient, avec ce qui y était déjà saisi.
+      e.stopPropagation()
       setOuvert(false)
       setSaisie('')
     }
@@ -261,7 +267,12 @@ export function Combobox({
           ref={listeRef}
           id={idListe}
           role="listbox"
-          className="absolute z-20 mt-1 max-h-72 w-full overflow-y-auto rounded-md border border-border bg-surface py-1 shadow-lg"
+          // Le `relative` du conteneur ne crée aucun contexte d'empilement : la
+          // liste concourt donc à la racine, et son altitude est une affaire de
+          // produit, pas de composant. `--z-dropdown` est déjà celle du menu de
+          // devise, qui est la même chose sous un autre nom.
+          style={{ zIndex: 'var(--z-dropdown)' }}
+          className="absolute mt-1 max-h-72 w-full overflow-y-auto rounded-md border border-border bg-surface py-1 shadow-lg"
         >
           {visibles.length === 0 && (
             // Une liste vide sans un mot laisse croire à une panne.
