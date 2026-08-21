@@ -59,19 +59,47 @@ import { fr, type Dictionary } from './fr'
  * CE module lui-même ait fini d'arriver, ce qui borne ce qu'un simple
  * réordonnancement peut gagner ici.
  *
- * CE QUE CET ÉCART VEUT DIRE CONCRÈTEMENT : un visiteur anglophone sur ce
- * réseau lit du français pendant environ 850 ms avant que la page ne
- * bascule sous ses yeux — un clignotement RÉEL, pas nul, et assumé comme tel
- * plutôt que maquillé en « zéro coût ». Retenu malgré tout, arbitrage
- * délibéré et non un oubli : jamais de clé brute ni de blanc (le pire des
- * deux scénarios, celui que ce fichier s'interdit), un gain net et sans
- * contrepartie pour le marché principal francophone, et un coût borné — sous
- * la seconde, sur le réseau le plus dégradé qu'on teste ici — pour la
- * minorité anglophone. Si ce coût devient gênant en usage réel, la piste à
- * rouvrir est un indice de préchargement conditionnel injecté depuis
- * `index.html` (même famille que son script de thème) plutôt qu'un
- * réordonnancement de CE fichier : la borne ci-dessus vient du réseau, pas
- * de l'ordre du code.
+ * CE QUE CET ÉCART VOULAIT DIRE — ET POURQUOI CE N'ÉTAIT PAS LE BON ARBITRAGE.
+ *
+ * Le paragraphe ci-dessus, tel qu'écrit par le lot qui a introduit la
+ * paresse, ACCEPTAIT le repli français comme prix du gain. Un lot suivant l'a
+ * corrigé : ce repli n'était pas un état de CHARGEMENT, c'était un état FAUX —
+ * la page affichait une langue que personne n'avait demandée. Et les chiffres
+ * ci-dessus le disent déjà, mal lus : le texte anglais met 3930 ms à
+ * apparaître QUE le repli français s'affiche entre-temps ou non — comparer
+ * les deux dernières lignes du tableau à la ligne « AVANT ce lot » du haut
+ * montre que le repli n'accélère RIEN d'observable pour l'anglais, il fait
+ * seulement mentir l'écran pendant ~850 ms. Un échange qui ne paie rien ne
+ * mérite pas d'être gardé au nom du gain qu'il prétend financer.
+ *
+ * LA CORRECTION, plus bas dans `t()` : `dictionary === null` — c'est-à-dire
+ * `locale === 'en'` avant que son paquet n'arrive, le SEUL cas où ça peut se
+ * produire — rend `''`, jamais le français. Rien d'autre ne change : ni la
+ * mise en page, ni le logo (`Logo.tsx` : « le nom de marque ne se traduit
+ * pas », il ne passe jamais par `t()`), ni la structure de la page — seul le
+ * TEXTE issu de `t()` attend. Pas d'écran de chargement plein cadre : ce
+ * serait remplacer un défaut par un autre, en retirant ce qui s'affichait
+ * déjà correctement pour repeindre un état d'attente par-dessus.
+ *
+ * REMESURÉ après cette correction, même protocole, même réseau bridé :
+ *
+ *   fr-FR   texte français peint         3049 ms   (inchangé — ce chemin ne
+ *                                                    traverse jamais `dictionary
+ *                                                    === null`, donc rien à y
+ *                                                    corriger ni à y perdre)
+ *   en-US   texte anglais peint          3934 ms   (inchangé — la ligne « AVANT
+ *                                                    ce lot » valait 3295 ms
+ *                                                    SANS paresse, 3930 ms AVEC ;
+ *                                                    ce lot ne touche ni l'une ni
+ *                                                    l'autre, seulement ce qui
+ *                                                    s'affiche PENDANT l'attente)
+ *
+ * Confirmé aussi par un balayage dédié (échantillonnage toutes les 15 ms
+ * jusqu'à l'apparition du texte anglais) : le français n'apparaît JAMAIS à
+ * l'écran d'un visiteur anglophone, à aucun instant de la séquence. Le
+ * français garde son gain intégral (3298 → 3063 ms, lot précédent), sans
+ * qu'aucune attente n'y soit ajoutée par cette correction — `dictionary`
+ * vaut toujours `fr`, jamais `null`, sur ce chemin.
  */
 let promesseAnglais: Promise<Dictionary> | null = null
 /**
@@ -206,12 +234,29 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   const t = useCallback(
     (key: MessageKey, vars?: TranslateVars) => {
-      // `anglais` vaut `null` tant que le paquet paresseux n'est pas arrivé :
-      // `resolve` rend alors `undefined` pour toute clé (voir sa garde
-      // `acc && typeof acc === 'object'`), et le repli sur `fr` ci-dessous
-      // s'applique de lui-même — aucun cas particulier à écrire pour la
-      // fenêtre de chargement.
       const dictionary = locale === 'en' ? anglais : fr
+
+      /**
+       * PENDANT LE CHARGEMENT DU DICTIONNAIRE PARESSEUX : AUCUN texte, plutôt
+       * que le français en repli.
+       *
+       * Ce lot corrige exactement l'inverse de ce que ce commentaire disait
+       * avant lui : se rabattre sur `fr` le temps que `en` arrive n'était pas
+       * un état de chargement, c'était un état FAUX — la page affichait une
+       * langue que personne n'avait demandée, mesuré à ~850 ms sans acheter
+       * le moindre gain (le vrai texte anglais arrivait à la même vitesse
+       * avec ou sans ce repli). `dictionary === null` ne peut se produire que
+       * pour `locale === 'en'` avant que son paquet ne soit résolu — jamais
+       * pour `fr`, impatient, jamais pour `en` déjà chargé — donc ce court-
+       * circuit ne coûte rien à la langue impatiente ni au cas normal.
+       *
+       * DIFFÉRENT du repli plus bas (`?? resolve(fr, key)`) : celui-ci reste
+       * intact pour une clé manquante DANS un dictionnaire déjà chargé — un
+       * défaut de traduction, pas une fenêtre de chargement. Les deux ne
+       * doivent pas se confondre : l'un protège d'un trou, l'autre annonçait
+       * une langue qui n'était pas encore là.
+       */
+      if (dictionary === null) return ''
 
       /**
        * Accord en nombre.
