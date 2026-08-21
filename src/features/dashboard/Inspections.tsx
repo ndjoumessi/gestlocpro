@@ -22,9 +22,11 @@ export function Inspections() {
   const { role } = useRole()
   const { unitById, isMine, units, inspections: INSPECTIONS, loading } = usePortfolio()
   const [ouverte, setOuverte] = useState(false)
-  /* Un seul logement à l'écran de saisie : le jour où le parc en porte
-     plusieurs, il faudra le demander. Le serveur, lui, vérifie déjà que celui
-     qu'on lui donne appartient au parc. */
+  /* Le parc ENTIER descend dans la modale, qui demande lequel.
+     Le commentaire qui vivait ici promettait de le demander « le jour où le
+     parc en porte plusieurs » — il en portait douze, et l'écran envoyait le
+     premier en dur. Le serveur ne pouvait rien y voir : l'unité qu'on lui
+     donnait appartenait bien au parc. */
   const logements = units
   const isTenant = role === 'tenant'
   const source = isTenant ? INSPECTIONS.filter((i) => isMine(i.unitId)) : INSPECTIONS
@@ -76,7 +78,7 @@ export function Inspections() {
         <InspectionModal
           open={ouverte}
           onClose={() => setOuverte(false)}
-          unitId={logements[0].id}
+          unitIds={logements}
         />
       )}
 

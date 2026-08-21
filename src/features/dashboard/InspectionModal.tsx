@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Modal } from '@/components/primitives/Modal'
 import { Button, IconButton } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
-import { Input } from '@/components/primitives/Input'
+import { Input, Select } from '@/components/primitives/Input'
 import { DatePicker } from '@/components/primitives/DatePicker'
 import { SegmentedControl } from '@/components/primitives/Choice'
 import { useToast } from '@/components/primitives/Toast'
@@ -53,17 +53,31 @@ const RESERVE_VIDE: Reserve = { room: '', description: '', severity: 'minor', co
 export function InspectionModal({
   open,
   onClose,
-  unitId,
+  unitIds,
 }: {
   open: boolean
   onClose: () => void
-  unitId: string
+  /**
+   * LE PARC, et non un logement reçu tout fait.
+   *
+   * L'écran passait `logements[0].id` — le premier du parc, en dur — sous un
+   * commentaire qui promettait de le demander « le jour où le parc en porte
+   * plusieurs ». Il en portait douze depuis l'origine : onze logements étaient
+   * hors d'atteinte, et le constat établi pour l'un d'eux s'enregistrait au nom
+   * d'un autre sans que rien ne le dise. Le serveur ne pouvait pas rattraper la
+   * confusion — l'unité qu'on lui donnait appartenait bien au parc.
+   *
+   * `OpenWorkModal` demande déjà le sien, et pour la même raison : le bailleur
+   * choisit dans son parc, quand le locataire n'a qu'un logement.
+   */
+  unitIds: { id: string; label: string }[]
 }) {
   const t = useT()
   const { notify } = useToast()
   const { parseAmount } = useCurrency()
   const { addInspection } = usePortfolio()
 
+  const [unite, setUnite] = useState(unitIds[0]?.id ?? '')
   const [nature, setNature] = useState<'entry' | 'exit'>('entry')
   const [date, setDate] = useState('')
   const [pieces, setPieces] = useState('3')
@@ -78,11 +92,25 @@ export function InspectionModal({
    * faute là où elle n'était pas.
    */
   const [coutFautif, setCoutFautif] = useState<number | null>(null)
+  /**
+   * LA LIGNE commencée et laissée en plan, avec le champ qui lui manque.
+   *
+   * Même précision que le refus ci-dessus, pour la même raison : le message se
+   * pose sous le champ fautif, jamais sous les six autres qui vont bien.
+   */
+  const [lacune, setLacune] = useState<{ index: number; champ: 'room' | 'description' } | null>(
+    null,
+  )
+
+  /** Ce champ-là, sur cette ligne-là, est-il celui qui manque ? */
+  const manque = (index: number, champ: 'room' | 'description') =>
+    lacune?.index === index && lacune.champ === champ
 
   function majReserve(index: number, champ: keyof Reserve, valeur: string) {
     // Toute retouche éteint le refus : un message qui survit à la correction
     // qu'il a provoquée dit faux.
     setCoutFautif(null)
+    setLacune(null)
     setReserves((liste) =>
       liste.map((r, i) => (i === index ? { ...r, [champ]: valeur } : r)),
     )
@@ -95,16 +123,41 @@ export function InspectionModal({
       return
     }
     /**
-     * Les lignes VIDES sont écartées, pas refusées.
+     * VIDE on écarte, COMMENCÉE on refuse.
      *
      * La modale ouvre sur une ligne pour montrer ce qu'on attend ; un logement
      * sans réserve est le cas normal et ne doit pas obliger à effacer la ligne
-     * d'exemple. Le serveur, lui, refuserait une description trop courte.
+     * d'exemple. Une ligne À MOITIÉ saisie, elle, partait au même panier : la
+     * pièce relevée sans le constat, ou le constat sans la pièce, disparaissait
+     * entre le clic et le toast « état des lieux enregistré ». Le propriétaire
+     * repartait convaincu d'avoir relevé la rayure que le document ne portait
+     * pas, et la retenue s'arbitrait ensuite sur ce qui restait — l'exact
+     * silence que ce document existe pour empêcher.
+     *
+     * Refuser, ici, n'est pas une rigueur de plus : c'est la seule façon de
+     * distinguer « je n'avais rien à signaler » de « je n'ai pas fini ».
      */
     const retenues: Retenue[] = []
     for (let index = 0; index < reserves.length; index++) {
       const r = reserves[index]
-      if (!r.room.trim() || r.description.trim().length < 3) continue
+      const piece = r.room.trim()
+      const constat = r.description.trim()
+
+      // Une ligne est vide quand RIEN n'y a été saisi. La gravité n'entre pas
+      // dans le compte : elle vaut « léger » d'office et n'est le fait de
+      // personne, si bien que la tenir pour une saisie rendrait toute ligne
+      // intouchée obligatoire.
+      if (!piece && !constat && !r.cout.trim()) continue
+      if (!piece) {
+        setLacune({ index, champ: 'room' })
+        return
+      }
+      // Trois caractères : la même borne que le serveur, pour que le refus
+      // arrive avant l'aller-retour plutôt qu'en 422.
+      if (constat.length < 3) {
+        setLacune({ index, champ: 'description' })
+        return
+      }
 
       /**
        * LE COÛT PASSE PAR `parseAmount`, comme le loyer et la caution.
@@ -129,14 +182,14 @@ export function InspectionModal({
       }
 
       retenues.push({
-        room: r.room.trim(),
-        description: r.description.trim(),
+        room: piece,
+        description: constat,
         severity: r.severity,
         ...(cout > 0 ? { costMinor: Math.round(cout) } : {}),
       })
     }
 
-    addInspection(unitId, {
+    addInspection(unite, {
       kind: nature,
       rooms: Math.round(nombre),
       ...(date ? { performedOn: date } : {}),
@@ -165,6 +218,20 @@ export function InspectionModal({
       }
     >
       <div className="flex flex-col gap-5">
+        {/* Le logement d'abord : c'est lui qui décide de qui répondra des
+            réserves relevées en dessous. */}
+        <Field label={t('app.inspections.unit')} required>
+          {(champ) => (
+            <Select {...champ} value={unite} onChange={(e) => setUnite(e.target.value)}>
+              {unitIds.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.label}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
+
         <SegmentedControl
           label={t('app.inspections.kind')}
           value={nature}
@@ -223,24 +290,59 @@ export function InspectionModal({
           </legend>
           {reserves.map((reserve, index) => (
             <div key={index} className="flex flex-wrap items-end gap-2">
-              <Field label={t('app.inspections.room')} className="min-w-28 flex-1">
+              <Field
+                label={t('app.inspections.room')}
+                className="min-w-28 flex-1"
+                {...(manque(index, 'room') ? { error: t('app.inspections.roomError') } : {})}
+              >
                 {(champ) => (
                   <Input
                     {...champ}
                     value={reserve.room}
+                    invalid={manque(index, 'room')}
                     onChange={(e) => majReserve(index, 'room', e.target.value)}
                   />
                 )}
               </Field>
-              <Field label={t('app.inspections.finding')} className="min-w-40 flex-[2]">
+              <Field
+                label={t('app.inspections.finding')}
+                className="min-w-40 flex-[2]"
+                {...(manque(index, 'description')
+                  ? { error: t('app.inspections.findingError') }
+                  : {})}
+              >
                 {(champ) => (
                   <Input
                     {...champ}
                     value={reserve.description}
+                    invalid={manque(index, 'description')}
                     onChange={(e) => majReserve(index, 'description', e.target.value)}
                   />
                 )}
               </Field>
+              {/*
+                LA GRAVITÉ SE SAISIT.
+
+                Elle partait au serveur depuis l'origine, toujours à « léger » :
+                le type la déclarait, la route l'enregistrait, la colonne de
+                comparaison l'écrivait en toutes lettres — « · dégradé » — et
+                aucune main ne pouvait la poser. Une donnée qu'on affiche sans
+                jamais pouvoir la produire est un champ mort, et celui-ci se lit
+                comme un constat du bailleur : le locataire qui conteste une
+                retenue voyait « léger » sous un mur défoncé.
+
+                Elle n'ouvre pas la colonne du montant, qui reste l'affaire de la
+                sortie : une réserve d'entrée se qualifie sans se chiffrer.
+              */}
+              <SegmentedControl
+                label={t('app.inspections.severity')}
+                value={reserve.severity}
+                onChange={(gravite) => majReserve(index, 'severity', gravite)}
+                options={[
+                  { value: 'minor', label: t('app.inspections.severityMinor') },
+                  { value: 'major', label: t('app.inspections.severityMajor') },
+                ]}
+              />
               {/* Le montant, sur une SORTIE seulement. */}
               {nature === 'exit' && (
                 <Field
@@ -259,15 +361,33 @@ export function InspectionModal({
                   )}
                 </Field>
               )}
+              {/*
+                RETIRER RETIRE, et le bouton dit LAQUELLE.
+
+                Deux défauts sous un seul contrôle. Il portait « Retirer cette
+                réserve » sur chaque ligne : à la lecture d'écran, trois boutons
+                d'un même nom dans un même formulaire, sans rien pour les
+                distinguer — la liste des contrôles annonçait trois fois la même
+                commande. Le rang les sépare, et c'est le seul repère qu'ait le
+                lecteur puisque les champs, eux, sont vides.
+
+                Et sur la DERNIÈRE ligne il ne retirait rien : il la vidait, sous
+                un libellé qui promettait un retrait. Une pièce et un constat
+                effacés d'un clic ressemblent à s'y méprendre à une ligne retirée,
+                sauf qu'elle reste — et qu'un montant retapé à côté repart avec
+                elle. La ligne s'en va pour de bon ; « Ajouter une réserve » la
+                rappelle, et l'ouverture suivante en repose une.
+              */}
               <IconButton
                 icon="close"
-                label={t('app.inspections.removeFinding')}
+                label={t('app.inspections.removeFinding', { rank: index + 1 })}
                 variant="ghost"
                 onClick={() => {
                   // Retirer une ligne renumérote celles qui suivent : garder le
                   // repère du refus l'aurait fait désigner une voisine innocente.
                   setCoutFautif(null)
-                  setReserves((l) => (l.length === 1 ? [RESERVE_VIDE] : l.filter((_, i) => i !== index)))
+                  setLacune(null)
+                  setReserves((l) => l.filter((_, i) => i !== index))
                 }}
               />
             </div>

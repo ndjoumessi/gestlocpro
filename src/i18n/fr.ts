@@ -898,6 +898,7 @@ export const fr = {
       record: 'Établir un état des lieux',
       recordBody: 'Entrée ou sortie, pièce par pièce. Les réserves d’entrée ne se chiffrent pas : elles constatent ce qui est déjà abîmé, pour que le locataire n’en réponde pas.',
       recorded: 'État des lieux enregistré',
+      unit: 'Logement',
       kind: 'Nature',
       performedOn: 'Date du constat',
       roomCount: 'Nombre de pièces',
@@ -906,10 +907,23 @@ export const fr = {
       signedHint: 'Laissez vide s’il n’est pas encore signé : un état des lieux non signé n’engage personne.',
       findings: 'Réserves',
       room: 'Pièce',
+      roomError: 'Nommez la pièce, ou retirez la ligne',
       finding: 'Constat',
+      findingError: 'Décrivez le constat, ou retirez la ligne',
       cost: 'Imputation',
+      severity: 'Gravité',
+      /**
+       * DEUX libellés pour la gravité, et non le réemploi de `major`.
+       *
+       * Celui-ci se sert en fin de phrase — « Vitre fêlée · dégradé » — et vit
+       * donc en minuscule. Une commande porte un libellé, pas une incise : le
+       * réemployer mettrait « dégradé » à côté de « Entrée » et « Sortie » dans
+       * la même rangée de boutons.
+       */
+      severityMinor: 'Léger',
+      severityMajor: 'Dégradé',
       addFinding: 'Ajouter une réserve',
-      removeFinding: 'Retirer cette réserve',
+      removeFinding: 'Retirer la réserve n° {rank}',
       title: 'États des lieux',
       subtitle: 'Entrée et sortie comparées pièce par pièce, réserves chiffrées et imputées sur la caution.',
       entry: 'Entrée',

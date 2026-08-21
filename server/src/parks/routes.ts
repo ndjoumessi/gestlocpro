@@ -533,8 +533,12 @@ parksRouter.get(
           /**
            * Le DÉTAIL des réserves, et non leur seul compte.
            *
-           * `InspectionModal` saisit `room`, `description`, `severity` et
-           * `costMinor` depuis l'origine ; la route de création les enregistre ;
+           * `InspectionModal` saisit `room`, `description` et `costMinor` ;
+           * la gravité, elle, ne s'est saisie que bien plus tard — le champ
+           * partait toujours à « léger », et la première rédaction de ce
+           * commentaire l'a affirmé rendu par la modale alors que rien ne le
+           * posait. Une note qui certifie une saisie inexistante coûte plus
+           * cher qu'une note absente. La route de création les enregistre ;
            * `billableMinor` en dérive déjà la retenue proposée sur la caution.
            * Seul l'écran n'en voyait qu'un nombre — « 3 réserves » —, et le
            * commentaire de cette projection l'assumait : « le détail n'a pas
