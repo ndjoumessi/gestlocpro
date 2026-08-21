@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Modal } from '@/components/primitives/Modal'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
@@ -42,12 +42,21 @@ export function ReplyModal({
   const [texte, setTexte] = useState('')
   const [erreur, setErreur] = useState(false)
   const [envoi, setEnvoi] = useState(false)
+  const issueRef = useRef<HTMLParagraphElement>(null)
+
   /**
    * Ce que le serveur a répondu : `null` tant qu'on saisit, puis le sort réel de
    * l'envoi. On ne referme pas sur un toast — la distinction « lu » / « à
    * rappeler » ne tient pas dans une bulle qui disparaît en trois secondes.
    */
   const [issue, setIssue] = useState<{ delivered: boolean; fullName: string } | null>(null)
+
+  // Le panneau d'issue prend le focus dès qu'il paraît : c'est lui, et non
+  // le formulaire démonté, qui porte désormais la réponse à la question
+  // qu'on venait de poser.
+  useEffect(() => {
+    issueRef.current?.focus()
+  }, [issue])
 
   const fermer = () => {
     setTexte('')
@@ -141,7 +150,25 @@ export function ReplyModal({
           succès de communication. Le second laisse un appel à passer, et c'est
           la seule chose que le gestionnaire a besoin de savoir en fermant.
         */
+        /*
+          LE FOCUS SUIT CE QUE LE GESTE A PRODUIT.
+
+          La bascule vers ce panneau DÉMONTE le formulaire, donc l'élément qui
+          portait le focus. Sans replacement, il retombe sur `<body>` : plus
+          rien n'est annoncé, et la tabulation suivante repart du haut du
+          document. L'utilisateur a cliqué, quelque chose a changé, et son
+          lecteur d'écran ne le sait pas.
+
+          Un `aria-live` ne serait PAS la réponse, et ce dépôt l'a déjà écrit
+          ailleurs : « un `aria-live` monté en même temps que son contenu
+          n'annonce rien, puisqu'il n'y a pas eu de changement à observer
+          depuis ». La réponse est le focus.
+
+          `tabIndex={-1}` : focalisable par programme, jamais à la tabulation.
+        */
         <p
+          ref={issueRef}
+          tabIndex={-1}
           className={
             issue.delivered
               ? 'flex items-start gap-2 rounded-md border border-ok-border bg-ok-tint px-3.5 py-3 text-body-s text-ok'

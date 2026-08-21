@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Modal } from '@/components/primitives/Modal'
 import { Icon } from '@/components/primitives/Icon'
 import { Button } from '@/components/primitives/Button'
@@ -60,6 +60,16 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
   const [roleInvite, setRoleInvite] = useState<'tenant' | 'manager'>('tenant')
   const [unitId, setUnitId] = useState(vacants[0]?.id ?? '')
   const [code, setCode] = useState<string | null>(null)
+  const codeRef = useRef<HTMLDivElement>(null)
+
+  // Le panneau du code prend le focus dès qu'il paraît, et c'est ici que
+  // cela compte le plus : ce code est LA chose que l'utilisateur venait
+  // chercher, et le produit dit lui-même qu'il n'est plus lisible ensuite.
+  // Sans replacement, la bascule démonte le formulaire et le focus retombe
+  // sur `<body>` — le lecteur d'écran ne saura jamais que le code existe.
+  useEffect(() => {
+    codeRef.current?.focus()
+  }, [code])
   const [envoye, setEnvoye] = useState(false)
   const [envoi, setEnvoi] = useState(false)
 
@@ -111,7 +121,7 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
       }
     >
       {code ? (
-        <div className="flex flex-col gap-4">
+        <div ref={codeRef} tabIndex={-1} className="flex flex-col gap-4">
           {/* Le code en gros, en chiffres tabulaires : il se recopie à la main
               et se dicte au téléphone. */}
           <p className="numeric rounded-md bg-surface-sunken px-4 py-4 text-center text-h3 tracking-wider select-all">

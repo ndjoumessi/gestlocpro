@@ -55,7 +55,44 @@ function ModaleAvecChampControle() {
   )
 }
 
+/** Une confirmation : un titre, une phrase, deux boutons. Aucun champ. */
+function ModaleSansChamp() {
+  return (
+    <Modal open title="Retirer cet accès ?" onClose={() => undefined} role="alertdialog">
+      <p>Cette personne perdra l’accès au parc.</p>
+    </Modal>
+  )
+}
+
 describe('focus dans une modale', () => {
+  /**
+   * LE REPLI ANNONCÉ N'AVAIT JAMAIS ÉTÉ ÉCRIT.
+   *
+   * Le commentaire du composant disait « le premier champ, à défaut le
+   * CONTENEUR : jamais le bouton fermer », et le code retombait sur le premier
+   * focalisable — c'est-à-dire la croix. Dans toute modale sans champ, et les
+   * confirmations n'en ont aucun, le focus se posait donc sur le geste
+   * d'abandon : on ouvre « Retirer cet accès ? » et le doigt du clavier est
+   * déjà sur « Fermer ».
+   *
+   * Aucun test ne montait une modale sans champ. C'est ce qui a laissé le
+   * commentaire et le code diverger.
+   */
+  it('pose le focus sur le dialogue, jamais sur le bouton fermer', async () => {
+    renderWithProviders(<ModaleSansChamp />)
+
+    const dialogue = await screen.findByRole('alertdialog')
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(dialogue).toHaveFocus()
+    // Les DEUX « Fermer » — le voile et la croix — et non l'un des deux : le
+    // repli fautif prenait le premier focalisable, et lequel des deux vient en
+    // premier dans l'arbre n'est pas une garantie qu'on veuille dépendre.
+    for (const bouton of screen.getAllByRole('button', { name: /fermer/i })) {
+      expect(bouton).not.toHaveFocus()
+    }
+  })
+
   it('laisse un champ contrôlé recevoir plus d’un caractère', async () => {
     const user = userEvent.setup()
     renderWithProviders(<ModaleAvecChampControle />)

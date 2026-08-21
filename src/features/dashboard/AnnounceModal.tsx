@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Modal } from '@/components/primitives/Modal'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
@@ -46,6 +46,17 @@ export function AnnounceModal({ open, onClose }: { open: boolean; onClose: () =>
       de `buildingId`, et la valeur initiale du champ. */
   const [immeuble, setImmeuble] = useState('')
   const [issue, setIssue] = useState<Envoi | null>(null)
+  const issueRef = useRef<HTMLDivElement>(null)
+
+  // Le panneau d'issue prend le focus dès qu'il paraît. La bascule démonte le
+  // formulaire, donc l'élément focalisé : sans replacement, le focus retombe
+  // sur `<body>`, plus rien n'est annoncé, et la tabulation suivante repart
+  // du haut du document. Un `aria-live` ne dirait rien — ce dépôt l'a déjà
+  // écrit : monté en même temps que son contenu, il n'a aucun changement à
+  // observer. La réponse est le focus.
+  useEffect(() => {
+    issueRef.current?.focus()
+  }, [issue])
 
   const fermer = () => {
     setTexte('')
@@ -109,7 +120,7 @@ export function AnnounceModal({ open, onClose }: { open: boolean; onClose: () =>
       }
     >
       {issue ? (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4" ref={issueRef} tabIndex={-1}>
           <p className="flex items-start gap-2 rounded-md border border-ok-border bg-ok-tint px-3.5 py-3 text-body-s text-ok">
             <Icon name="check" size={15} className="mt-0.5 shrink-0" />
             {t('app.announce.delivered', { count: issue.delivered })}

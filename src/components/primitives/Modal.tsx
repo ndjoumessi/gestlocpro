@@ -78,8 +78,21 @@ export function Modal({
 
     const timer = window.setTimeout(() => {
       const nodes = focusables()
-      // Le premier champ, à défaut le conteneur : jamais le bouton fermer.
-      const target = nodes.find((el) => el.tagName !== 'BUTTON') ?? nodes[0]
+      /*
+        LE REPLI ANNONCÉ N'AVAIT JAMAIS ÉTÉ ÉCRIT.
+
+        Le commentaire disait « à défaut le CONTENEUR : jamais le bouton
+        fermer », et le code retombait sur `nodes[0]` — c'est-à-dire la croix,
+        premier focalisable de toute modale. Donc dans TOUTE modale sans champ,
+        et les confirmations n'en ont aucun, le focus se posait sur le geste
+        d'abandon. On ouvre « Retirer cet accès ? » et le doigt du clavier est
+        déjà sur « Fermer ».
+
+        Le conteneur porte `tabIndex={-1}` pour pouvoir le recevoir sans entrer
+        dans l'ordre de tabulation — et le sélecteur ci-dessus l'exclut
+        explicitement, donc le piège de focus ne le compte pas comme une étape.
+      */
+      const target = nodes.find((el) => el.tagName !== 'BUTTON') ?? dialogRef.current
       target?.focus()
     }, 0)
 
@@ -151,6 +164,10 @@ export function Modal({
 
       <div
         ref={dialogRef}
+        // Focalisable par programme, jamais à la tabulation : c'est ce que
+        // `-1` veut dire, et c'est ce qui permet au repli ci-dessus de poser le
+        // focus ici plutôt que sur le bouton d'abandon.
+        tabIndex={-1}
         role={role}
         aria-modal="true"
         aria-labelledby={titleId}
