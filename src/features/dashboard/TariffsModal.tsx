@@ -33,7 +33,7 @@ interface TarifApi {
  */
 export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useT()
-  const { money } = useCurrency()
+  const { money, parseAmount } = useCurrency()
   const { notify } = useToast()
   const { adhesionActive } = useSession()
   const parkId = adhesionActive?.parkId ?? null
@@ -63,8 +63,14 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
   const enregistrer = (event: FormEvent) => {
     event.preventDefault()
     if (!parkId) return
-    const valeur = Number(prix)
-    if (!Number.isInteger(valeur) || valeur <= 0) {
+    // Un prix unitaire est un montant : il se lit comme les autres. `Number`
+    // refusait « 1 250 » recopié depuis l'historique affiché juste en dessous —
+    // le produit rejetait la forme qu'il venait lui-même d'imprimer.
+    const valeur = parseAmount(prix)
+    // `null` d'abord et à part : `Number.isInteger(null)` est faux, mais s'en
+    // remettre à cette coïncidence confondrait l'illisible avec le prix
+    // décimal, deux refus qui n'ont ni la même cause ni le même remède.
+    if (valeur === null || !Number.isInteger(valeur) || valeur <= 0) {
       notify(t('app.tariffs.priceInvalid'), { tone: 'danger' })
       return
     }

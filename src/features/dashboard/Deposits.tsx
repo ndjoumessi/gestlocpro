@@ -314,10 +314,28 @@ function SettleModal({
 
   // Voir `parseMoney` : lire la virgule comme un séparateur décimal quelle que
   // soit la devise faisait d'une retenue de « 1,450 » une retenue de 1,45.
-  const parsed = parseAmount(withheld) ?? 0
-  const balance = deposit.held - parsed
+  //
+  // LE `?? 0` EST PARTI, et c'est lui qui rendait le défaut muet : il ramenait
+  // une saisie que personne n'avait su lire à une retenue NULLE. Les deux
+  // erreurs de `submit` se règlent sur ce nombre — dépassement de la caution,
+  // justification exigée — donc aucune ne pouvait se déclencher, et la caution
+  // s'arbitrait à zéro retenue sur un montant fantôme. Un champ VIDE, lui, vaut
+  // bien zéro : restituer l'intégralité est le cas normal, et c'est ce que
+  // promet le libellé d'aide du champ.
+  const parsed = withheld.trim() ? parseAmount(withheld) : 0
+  // Tant que le montant ne se lit pas, le solde montré est la caution
+  // ENTIÈRE — rien de lisible n'en est encore retenu. Le calculer sur un zéro
+  // inventé aurait mis à l'écran un nombre sans donnée derrière.
+  const balance = parsed === null ? deposit.held : deposit.held - parsed
 
   const submit = () => {
+    // Le refus vient AVANT tout le reste : un montant qu'on ne sait pas lire ne
+    // se compare à rien, et c'est de n'être jamais dit qu'il tirait sa nocivité.
+    if (parsed === null || parsed < 0) {
+      setErrors({ withheld: t('common.amountUnreadable') })
+      return
+    }
+
     const next: typeof errors = {}
     if (parsed > deposit.held) {
       next.withheld = t('app.deposits.errorTooHigh', {

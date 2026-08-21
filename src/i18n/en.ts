@@ -38,6 +38,8 @@ export const en: Dictionary = {
     newVersionReload: 'Reload',
     actionRefused: 'The server refused this action. Nothing was saved.',
     actionFailed: 'This action failed for now. Nothing was saved.',
+    amountUnreadable:
+      'Amount unreadable. Re-enter it in positive digits, without letters or symbols.',
     demoNotice:
       'You are browsing a demo: these buildings, tenants and amounts are fictional.',
     demoCta: 'Create my space',

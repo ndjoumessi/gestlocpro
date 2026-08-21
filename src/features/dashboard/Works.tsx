@@ -61,7 +61,7 @@ export function Works() {
     loading,
   } = usePortfolio()
   const [signalementOuvert, setSignalementOuvert] = useState(false)
-  const { money } = useCurrency()
+  const { money, parseAmount } = useCurrency()
   const [chantierOuvert, setChantierOuvert] = useState(false)
   /**
    * Le filtre d'ORIGINE, et il n'existe que pour le bailleur.
@@ -570,10 +570,19 @@ export function Works() {
               </Button>
               <Button
                 onClick={() => {
-                  const valeur = Number(montant.replace(/\s/g, ''))
+                  // `parseAmount` et non `Number` : le champ prend le montant
+                  // tel qu'il se lit à l'écran. Retirer les espaces à la main
+                  // sauvait la fine insécable des milliers — `\s` la couvre — et
+                  // perdait la virgule décimale : « 35 000,50 » devenait `NaN`,
+                  // donc un refus que rien ne justifiait, sur un montant que le
+                  // produit venait lui-même d'imprimer sous cette forme.
+                  const valeur = parseAmount(montant)
                   // La même borne que le serveur — « un devis est strictement
                   // positif » — pour que le refus arrive avant l'aller-retour.
-                  if (!Number.isFinite(valeur) || valeur <= 0) {
+                  // `null` s'y ajoute : `parseAmount` distingue l'illisible du
+                  // zéro là où `Number` les confondait dans un `NaN` que seul
+                  // `Number.isFinite` savait rattraper.
+                  if (valeur === null || valeur <= 0) {
                     setMontantErreur(true)
                     return
                   }

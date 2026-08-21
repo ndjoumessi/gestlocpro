@@ -455,10 +455,34 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
      * comme les impayés cumulés en découlaient faux.
      */
     const loyerLu = loyer.trim() ? parseAmount(loyer) : null
+    const cautionLue = caution.trim() ? parseAmount(caution) : null
+    /**
+     * LA CAUTION se lisait par `Number(caution)`, le loyer par `parseAmount` —
+     * deux façons de lire l'argent dans le même appel, à trois lignes d'écart,
+     * ce qu'`AddUnitModal` interdit explicitement. « 145 000 » recopié depuis
+     * l'écran rendait `NaN`, `NaN > 0` était faux, et le locataire naissait
+     * sans caution consignée pendant que le toast disait « locataire créé ».
+     * L'écran des cautions n'avait alors plus rien à arbitrer, et rien nulle
+     * part ne disait qu'il manquait quelque chose.
+     *
+     * Un montant SAISI mais illisible arrête la création. Un toast plutôt
+     * qu'une erreur de champ : c'est déjà l'idiome de `TariffsModal`, du même
+     * dossier, et cette modale ne tient d'erreurs que pour le nom et le
+     * téléphone — leur en ajouter une troisième relèverait d'un autre sujet.
+     */
+    const loyerFautif = loyer.trim() !== '' && (loyerLu === null || loyerLu < 0)
+    const cautionFautive = caution.trim() !== '' && (cautionLue === null || cautionLue < 0)
+    if (loyerFautif || cautionFautive) {
+      notify(t('common.amountUnreadable'), { tone: 'danger' })
+      return
+    }
+
     addTenant(unitId, name.trim(), `${dial} ${phone.trim()}`, {
       ...(debut ? { startsOn: debut } : {}),
       ...(loyerLu !== null ? { rentMinor: loyerLu } : {}),
-      ...(Number(caution) > 0 ? { depositMinor: Math.round(Number(caution)) } : {}),
+      ...(cautionLue !== null && cautionLue > 0
+        ? { depositMinor: Math.round(cautionLue) }
+        : {}),
     })
     onClose()
     notify(t('app.tenants.created'), { tone: 'ok' })

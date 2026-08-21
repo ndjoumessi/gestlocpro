@@ -51,6 +51,16 @@ export const fr = {
     newVersionReload: 'Recharger',
     actionRefused: 'Le serveur a refusé cette action. Rien n’a été enregistré.',
     actionFailed: 'Action impossible pour l’instant. Rien n’a été enregistré.',
+    /**
+     * UN SEUL message pour tous les écrans qui refusent un montant.
+     *
+     * Il ne dit pas OÙ la lecture a buté — espace insécable, virgule décimale,
+     * symbole recopié — mais ce qu'il faut faire. La cause n'apprend rien à qui
+     * vient de coller « 35 000 FCFA » dans un champ, et cinq libellés taillés
+     * écran par écran auraient divergé au premier remaniement.
+     */
+    amountUnreadable:
+      'Montant illisible. Reprenez-le en chiffres positifs, sans lettre ni symbole.',
     demoNotice:
       'Vous parcourez une démonstration : ces immeubles, ces locataires et ces montants sont fictifs.',
     demoCta: 'Créer mon espace',

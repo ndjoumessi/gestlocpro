@@ -7,6 +7,7 @@ import { DatePicker } from '@/components/primitives/DatePicker'
 import { SegmentedControl } from '@/components/primitives/Choice'
 import { useToast } from '@/components/primitives/Toast'
 import { useT } from '@/i18n/I18nProvider'
+import { useCurrency } from '@/currency/CurrencyProvider'
 import { usePortfolio } from '@/data/PortfolioProvider'
 
 /**
@@ -31,6 +32,22 @@ interface Reserve {
   cout: string
 }
 
+/**
+ * Ce qui PART au serveur pour une réserve.
+ *
+ * Le type se déduisait d'une chaîne `.filter().map()`. La lecture du coût
+ * devant désormais pouvoir REFUSER — donc interrompre —, l'assemblage se fait
+ * ligne à ligne, et un tableau qu'on remplit doit dire ce qu'il contient.
+ * `costMinor` reste facultatif : toute réserve n'est pas chiffrée, et le
+ * serveur refuse en 422 une réserve d'entrée qui le porterait.
+ */
+interface Retenue {
+  room: string
+  description: string
+  severity: 'minor' | 'major'
+  costMinor?: number
+}
+
 const RESERVE_VIDE: Reserve = { room: '', description: '', severity: 'minor', cout: '' }
 
 export function InspectionModal({
@@ -44,6 +61,7 @@ export function InspectionModal({
 }) {
   const t = useT()
   const { notify } = useToast()
+  const { parseAmount } = useCurrency()
   const { addInspection } = usePortfolio()
 
   const [nature, setNature] = useState<'entry' | 'exit'>('entry')
@@ -52,8 +70,19 @@ export function InspectionModal({
   const [signataire, setSignataire] = useState('')
   const [reserves, setReserves] = useState<Reserve[]>([RESERVE_VIDE])
   const [erreur, setErreur] = useState(false)
+  /**
+   * LA LIGNE dont le coût ne se lit pas, et non un simple drapeau.
+   *
+   * Un booléen aurait allumé le message sous tous les champs de coût à la fois,
+   * dont les autres se lisaient très bien : le propriétaire aurait cherché sa
+   * faute là où elle n'était pas.
+   */
+  const [coutFautif, setCoutFautif] = useState<number | null>(null)
 
   function majReserve(index: number, champ: keyof Reserve, valeur: string) {
+    // Toute retouche éteint le refus : un message qui survit à la correction
+    // qu'il a provoquée dit faux.
+    setCoutFautif(null)
     setReserves((liste) =>
       liste.map((r, i) => (i === index ? { ...r, [champ]: valeur } : r)),
     )
@@ -72,14 +101,40 @@ export function InspectionModal({
      * sans réserve est le cas normal et ne doit pas obliger à effacer la ligne
      * d'exemple. Le serveur, lui, refuserait une description trop courte.
      */
-    const retenues = reserves
-      .filter((r) => r.room.trim() && r.description.trim().length >= 3)
-      .map((r) => ({
+    const retenues: Retenue[] = []
+    for (let index = 0; index < reserves.length; index++) {
+      const r = reserves[index]
+      if (!r.room.trim() || r.description.trim().length < 3) continue
+
+      /**
+       * LE COÛT PASSE PAR `parseAmount`, comme le loyer et la caution.
+       *
+       * Il se lisait par `Number(r.cout)`. Le propriétaire qui recopie le
+       * montant tel qu'il s'affiche colle « 35 000 » avec l'espace insécable
+       * étroite que `formatMoney` pose entre les milliers, ou « 35,50 » en
+       * euros : `Number` rend `NaN` des deux fois, `NaN > 0` est faux, et la
+       * réserve partait SANS son montant pendant que le toast annonçait
+       * « état des lieux enregistré ». La caution s'arbitrait ensuite sur un
+       * chiffre qui n'avait jamais été relevé.
+       *
+       * Un coût VIDE reste licite et vaut zéro : toute réserve n'est pas
+       * chiffrée, et le champ n'apparaît même pas sur une entrée. Seul
+       * l'ILLISIBLE arrête — sans ce refus, corriger la lecture n'aurait fait
+       * que déplacer le silence d'un cran.
+       */
+      const cout = nature === 'exit' && r.cout.trim() ? parseAmount(r.cout) : 0
+      if (cout === null || cout < 0) {
+        setCoutFautif(index)
+        return
+      }
+
+      retenues.push({
         room: r.room.trim(),
         description: r.description.trim(),
         severity: r.severity,
-        ...(nature === 'exit' && Number(r.cout) > 0 ? { costMinor: Math.round(Number(r.cout)) } : {}),
-      }))
+        ...(cout > 0 ? { costMinor: Math.round(cout) } : {}),
+      })
+    }
 
     addInspection(unitId, {
       kind: nature,
@@ -188,12 +243,17 @@ export function InspectionModal({
               </Field>
               {/* Le montant, sur une SORTIE seulement. */}
               {nature === 'exit' && (
-                <Field label={t('app.inspections.cost')} className="min-w-24 flex-1">
+                <Field
+                  label={t('app.inspections.cost')}
+                  className="min-w-24 flex-1"
+                  {...(coutFautif === index ? { error: t('common.amountUnreadable') } : {})}
+                >
                   {(champ) => (
                     <Input
                       {...champ}
                       inputMode="numeric"
                       value={reserve.cout}
+                      invalid={coutFautif === index}
                       onChange={(e) => majReserve(index, 'cout', e.target.value)}
                     />
                   )}
@@ -203,7 +263,12 @@ export function InspectionModal({
                 icon="close"
                 label={t('app.inspections.removeFinding')}
                 variant="ghost"
-                onClick={() => setReserves((l) => (l.length === 1 ? [RESERVE_VIDE] : l.filter((_, i) => i !== index)))}
+                onClick={() => {
+                  // Retirer une ligne renumérote celles qui suivent : garder le
+                  // repère du refus l'aurait fait désigner une voisine innocente.
+                  setCoutFautif(null)
+                  setReserves((l) => (l.length === 1 ? [RESERVE_VIDE] : l.filter((_, i) => i !== index)))
+                }}
               />
             </div>
           ))}
