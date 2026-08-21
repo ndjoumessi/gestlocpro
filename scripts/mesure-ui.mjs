@@ -772,6 +772,52 @@ async function reglagesAtteignables(page) {
 }
 
 /**
+ * LA GRILLE DE TARIFS — un seul signe pour l'exclusion, un seul bas pour le trio.
+ *
+ * DEUX DÉFAUTS MESURÉS, tous deux invisibles aux autres règles de ce fichier :
+ * rien ne débordait, rien ne se repliait, aucun contraste n'était en cause.
+ *
+ * LA RATURE. Les lignes non incluses portaient une croix ET une barre de texte.
+ * Deux signes pour un message, dont un qui en dit un autre : une croix dit
+ * « non inclus dans ce palier », une rature dit « supprimé », « obsolète »,
+ * « annulé ». Sur une grille qui vend la montée en gamme, la seconde lecture
+ * travaille contre la première.
+ *
+ * LE BAS DU TRIO. La carte sans prix — « Sur devis » tient sur une ligne là où
+ * les autres empilent montant, mention mensuelle, formule et essai — finissait
+ * une centaine de pixels au-dessus de ses voisines, et son bouton flottait
+ * seul. Un tableau comparatif se compare par ses lignes ; celle des boutons est
+ * la dernière et la plus décisive.
+ *
+ * LA TOLÉRANCE EST DE UN PIXEL, et c'en est vraiment une : les hauteurs sont
+ * arrondies, pas approchées. On ne demande pas que les cartes se ressemblent,
+ * on demande qu'elles finissent ensemble — ce qui est soit vrai, soit faux.
+ */
+const MESURER_TARIFS = () => {
+  const grille = document.querySelector('[data-mesure="tarifs-grille"]')
+  if (!grille) return null
+
+  const cartes = [...grille.children].map((c) => ({
+    nom: c.querySelector('h3')?.textContent?.trim() ?? '(sans nom)',
+    bas: Math.round(c.getBoundingClientRect().bottom),
+  }))
+  if (cartes.length === 0) return null
+
+  // Les lignes exclues, et ce qu'elles portent comme décoration. On interroge
+  // le STYLE CALCULÉ et non la classe : la rature peut revenir par n'importe
+  // quel chemin, et c'est le rendu qui trompe le lecteur, pas le nom de la
+  // classe qui l'a produit.
+  const exclues = [...grille.querySelectorAll('[data-inclus="non"]')]
+  const raturees = exclues.filter((li) =>
+    [li, ...li.querySelectorAll('*')].some((el) =>
+      getComputedStyle(el).textDecorationLine.includes('line-through'),
+    ),
+  ).length
+
+  return { cartes, exclues: exclues.length, raturees }
+}
+
+/**
  * LES DEUX COLONNES DES ÉCRANS D'ENTRÉE — mesurées à plusieurs HAUTEURS.
  *
  * CE QU'ELLE ATTRAPE. Mesuré avant le lot, à 2000 × 1090 sur `/connexion` : la
@@ -1428,6 +1474,8 @@ const accroches = []
 const rythmes = []
 /** Les deux colonnes des écrans d'entrée, à trois hauteurs, par langue. */
 const colonnes = []
+/** La grille de tarifs, relevée au-delà du repli où les cartes sont côte à côte. */
+const tarifs = []
 // Même raison qu'`ATTENDUES` et que `rangeesMesurees` : « le panneau ne rejoue
 // rien » et « on n'a pas ouvert le panneau » s'écrivent pareil dans un journal.
 // Compte les langues où la mesure a VRAIMENT eu lieu, panneau ouvert.
@@ -1503,6 +1551,12 @@ try {
           if (largeur >= LARGEUR_SANS_REPLI) {
             const releve = await page.evaluate(MESURER_RYTHME)
             if (releve) rythmes.push({ largeur, langue, sections: releve })
+
+            // Au-delà du repli seulement : c'est là que les trois cartes sont
+            // côte à côte. Empilées, « elles finissent ensemble » n'a pas de
+            // sens — chacune finit où commence la suivante.
+            const grille = await page.evaluate(MESURER_TARIFS)
+            if (grille) tarifs.push({ largeur, langue, ...grille })
           }
         }
 
@@ -2122,6 +2176,69 @@ if (GARDE_COLONNES) {
 }
 
 /*
+  PUIS LA GRILLE DE TARIFS. Elle ferme la série des règles qui regardent ce que
+  les pixels ne disent pas : après une commande absente, une commande en double,
+  un vide subi et deux colonnes qui se tournent le dos — un signe de trop.
+*/
+const GARDE_TARIFS = (() => {
+  if (tarifs.length === 0) {
+    return (
+      'aucun relevé de la grille de tarifs.\n' +
+      '   Le marqueur `tarifs-grille` est-il encore posé, et la grille est-elle\n' +
+      '   encore rendue au-delà du point de rupture ?'
+    )
+  }
+
+  for (const relevé of tarifs) {
+    const { largeur, langue, cartes, exclues, raturees } = relevé
+
+    // Garde du garde, première moitié : trois paliers sont attendus, et « ils
+    // finissent ensemble » est trivialement vrai s'il n'y en a qu'un.
+    if (cartes.length < 2) {
+      return (
+        `${cartes.length} carte(s) de tarif à ${largeur}px ${langue}.\n` +
+        '   « Les cartes finissent ensemble » ne veut rien dire sur une seule carte.'
+      )
+    }
+
+    // Garde du garde, seconde moitié : sans ligne exclue à l'écran, « aucune
+    // rature » est un constat sur l'ensemble vide. C'est la panne exacte que la
+    // règle du doublon surveille de son côté avec la barre vide.
+    if (exclues === 0) {
+      return (
+        `aucune ligne exclue rendue dans la grille de tarifs à ${largeur}px ${langue}.\n` +
+        '   « Un seul signe pour l’exclusion » ne se vérifie que s’il y a une exclusion.'
+      )
+    }
+
+    if (raturees > 0) {
+      return (
+        `${raturees} ligne(s) exclue(s) sur ${exclues} portent une RATURE en plus de leur croix, ` +
+        `à ${largeur}px ${langue}.\n` +
+        '   Deux signes pour un message, dont un qui en dit un autre : une croix dit\n' +
+        '   « non inclus », une rature dit « supprimé ». La grille vend la montée en gamme.'
+      )
+    }
+
+    const bas = new Set(cartes.map((c) => c.bas))
+    if (bas.size > 1) {
+      return (
+        `les cartes de tarif ne finissent pas ensemble à ${largeur}px ${langue} :\n` +
+        cartes.map((c) => `      ${c.nom.padEnd(14)} bas = ${c.bas}`).join('\n') +
+        '\n   Un tableau comparatif se compare par ses lignes, et celle des boutons est\n' +
+        '   la dernière et la plus décisive.'
+      )
+    }
+  }
+  return null
+})()
+
+if (GARDE_TARIFS) {
+  console.error(`\n✗ mesure-ui : ${GARDE_TARIFS}\n`)
+  process.exit(1)
+}
+
+/*
   L'ORDRE DES TROIS RÈGLES VA DU SIGNAL LE PLUS TÔT AU SYMPTÔME LE PLUS TARD :
   jeu trop faible, puis repli, puis débordement.
 
@@ -2191,6 +2308,8 @@ console.log(
     `  Rythme de la vitrine : ${rythmes[0]?.sections.length} sections sur ` +
     `${new Set(rythmes[0]?.sections.map((s) => s.pad)).size} rembourrages distincts, un seul temps ample.\n` +
     `  Colonnes d'entrée : ${colonnes.length} relevés à ${HAUTEURS_AUTH.join('/')} px, axes partagés à ${ECART_D_AXE} px près.\n` +
+    `  Grille de tarifs : ${tarifs[0]?.cartes.length} cartes finissant ensemble, ` +
+    `${tarifs[0]?.exclues} lignes exclues, aucune raturée.\n` +
     `  ${textesAudites} textes audités en contraste (${THEMES.join(' + ')}, ${LARGEURS_CONTRASTE.join(' et ')} px), aucun sous le seuil WCAG AA.\n` +
     `  ${ciblesSondees} cibles sondées au point de contact, aucune sous ${PLANCHER_CIBLE} px hors les ${Object.keys(CIBLES_EXEMPTES).length} exemptions motivées.`,
 )

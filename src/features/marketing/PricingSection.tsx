@@ -59,7 +59,27 @@ export function PricingSection() {
         <CurrencySwitcher />
       </div>
 
-      <div className="grid items-start gap-4 lg:grid-cols-3">
+      {/*
+        LES TROIS CARTES FONT UNE GRILLE, pas trois hauteurs libres.
+
+        `items-start` laissait chacune à sa hauteur naturelle. Mesuré à 1440 px,
+        la carte « Cabinet » finissait une centaine de pixels au-dessus de ses
+        voisines : elle est la seule sans prix — « Sur devis » tient sur une
+        ligne là où les deux autres empilent le montant, la mention mensuelle,
+        la formule par unité et l'essai. Le palier le plus engageant se
+        détachait donc du trio, et son bouton flottait seul en l'air.
+
+        Sans `items-start`, les trois s'étirent à la hauteur de la rangée. Rien
+        d'autre n'est à faire : la liste des fonctions porte déjà `flex-1`,
+        c'est donc elle qui absorbe la place rendue, et les trois « Commencer »
+        se retrouvent sur la même ligne. Un tableau comparatif se compare par
+        ses lignes ; celle des boutons est la dernière et la plus décisive.
+
+        Le décalage voulu de la carte mise en avant survit — `lg:-mt-3` la lève
+        toujours de douze pixels au-dessus des deux autres, qu'elle dépasse
+        désormais en haut sans les dépasser en bas.
+      */}
+      <div data-mesure="tarifs-grille" className="grid gap-4 lg:grid-cols-3">
         {PLANS.map((plan) => {
           const price = planPrice(plan, currency, period, units)
           const exact = exactPlanPrice(plan, currency, period, units)
@@ -286,7 +306,14 @@ function FeatureLine({ featureKey, value }: { featureKey: string; value: Feature
   else if (typeof value === 'string') detail = value
 
   return (
-    <li className={cn('flex items-start gap-2.5 text-body', !included && 'text-muted')}>
+    <li
+      // Marqué pour la mesure : la règle « un seul signe pour l'exclusion » ne
+      // veut rien dire s'il n'y a aucune exclusion à l'écran. C'est le marqueur
+      // qui permet à la garde de vérifier qu'elle a bien quelque chose à
+      // regarder avant de conclure qu'elle n'a rien vu.
+      data-inclus={included ? 'oui' : 'non'}
+      className={cn('flex items-start gap-2.5 text-body', !included && 'text-muted')}
+    >
       {/* Inclus / non inclus repose sur la forme de l'icône, pas sur sa
           couleur — ce qui rend le passage au monochrome sans conséquence pour
           la compréhension. Le vert a laissé place à l'encre : le style retenu
@@ -297,7 +324,22 @@ function FeatureLine({ featureKey, value }: { featureKey: string; value: Feature
         strokeWidth={included ? 2.2 : 1.7}
         className={cn('mt-0.5 shrink-0', included ? 'text-ink' : 'text-muted-soft')}
       />
-      <span className={cn(!included && 'line-through decoration-border-strong')}>
+      {/*
+        UN SEUL SIGNE POUR L'EXCLUSION, et la rature n'est pas le bon.
+
+        Les lignes non incluses portaient une croix ET une barre de texte. Deux
+        signes pour un message, dont un qui en dit un autre : une croix dit
+        « non inclus dans ce palier », une rature dit « supprimé », « obsolète »,
+        « annulé ». Sur une grille de tarifs, la seconde lecture est active — le
+        prospect peut comprendre que la fonction a été RETIRÉE du produit, pas
+        qu'elle vit un cran plus haut. C'est précisément le contraire de ce que
+        cette grille doit lui faire comprendre, puisqu'elle vend la montée.
+
+        La croix reste, et elle suffit : elle repose sur la FORME et non sur la
+        couleur, ce qui la garde lisible en monochrome comme pour un daltonien.
+        Le `text-muted` de la ligne l'appuie sans porter le sens à lui seul.
+      */}
+      <span>
         {label}
         {detail && <span className="ml-1.5 text-caps text-muted">{detail}</span>}
       </span>
