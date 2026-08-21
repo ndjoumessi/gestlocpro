@@ -294,6 +294,6 @@ describe('demandes de documents sur un vrai parc', () => {
     expect(screen.queryByRole('list', { name: 'Mes demandes' })).toBeNull()
     expect(main).not.toHaveTextContent('Attestation de bon paiement · Demandée')
     // Et les trois cases restent proposables : rien n'est « déjà en attente ».
-    expect(screen.getByRole('button', { name: 'Attestation de résidence' })).toBeEnabled()
+    expect(screen.getByRole('radio', { name: 'Attestation de résidence' })).toBeEnabled()
   })
 })

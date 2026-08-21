@@ -28,6 +28,14 @@ async function ouvrirEnLocataire(route: string) {
 /** La liste de suivi du locataire, nommée pour être atteignable comme il l'atteint. */
 const suivi = () => screen.getByRole('list', { name: 'Mes demandes' })
 
+/*
+  `radio` ET NON `button` : le choix de pièce est EXCLUSIF.
+
+  Il était rendu en trois boutons `aria-pressed`, c'est-à-dire trois
+  interrupteurs indépendants — un lecteur d'écran en annonçait trois sans lien,
+  quand il doit annoncer « 2 sur 3 ». Le changement de rôle dans ces cas est
+  donc le signe que la sémantique a été corrigée, pas une retouche de confort.
+*/
 describe('le locataire demande une pièce', () => {
   it('affiche l’état de ses demandes, réponse comprise', async () => {
     await ouvrirEnLocataire('/demo/documents')
@@ -52,7 +60,7 @@ describe('le locataire demande une pièce', () => {
     const user = userEvent.setup()
     await ouvrirEnLocataire('/demo/documents')
 
-    await user.click(screen.getByRole('button', { name: 'Duplicata de bail' }))
+    await user.click(screen.getByRole('radio', { name: 'Duplicata de bail' }))
     await user.click(screen.getByRole('button', { name: 'Envoyer la demande' }))
     await screen.findByText('Demande envoyée au gestionnaire')
 
@@ -75,10 +83,10 @@ describe('le locataire demande une pièce', () => {
   it('ne laisse pas redemander une pièce déjà en attente', async () => {
     await ouvrirEnLocataire('/demo/documents')
     // « Attestation de bon paiement » est en attente au jeu de démonstration.
-    expect(screen.getByRole('button', { name: 'Attestation de bon paiement' })).toBeDisabled()
+    expect(screen.getByRole('radio', { name: 'Attestation de bon paiement' })).toBeDisabled()
     // Celle qui a reçu sa réponse, elle, se redemande : six mois plus tard,
     // c'est légitime.
-    expect(screen.getByRole('button', { name: 'Attestation de résidence' })).toBeEnabled()
+    expect(screen.getByRole('radio', { name: 'Attestation de résidence' })).toBeEnabled()
   })
 })
 
@@ -211,5 +219,39 @@ describe('demandes de documents — le gestionnaire sur un vrai parc', () => {
     // locataire de la démonstration.
     expect(screen.queryByRole('list', { name: 'Demandes de documents' })).toBeNull()
     expect(screen.getByRole('main')).not.toHaveTextContent('Charles Ngassa')
+  })
+
+  /**
+   * LE CLAVIER ATTEINT LES TROIS PIÈCES, et c'est la moitié qui manque le plus
+   * souvent.
+   *
+   * Le formulaire de signalement porte l'avertissement, payé sur un autre
+   * écran : « annoncer une navigation aux flèches sans la câbler est pire
+   * qu'une rangée de boutons ordinaires, qui au moins ne promet rien et garde
+   * ses arrêts de tabulation ». Un `radiogroup` promet les flèches ; ce cas
+   * vérifie qu'elles répondent, et que le groupe ne coûte qu'un seul arrêt de
+   * tabulation.
+   */
+  it('se parcourt aux flèches, avec un seul arrêt de tabulation', async () => {
+    const user = userEvent.setup()
+    await ouvrirEnLocataire('/demo/documents')
+
+    const groupe = screen.getByRole('radiogroup')
+    const choix = within(groupe).getAllByRole('radio')
+    expect(choix.length).toBeGreaterThan(1)
+
+    // Une pièce DÉJÀ demandée est désactivée, et un bouton désactivé ne prend
+    // pas le focus : le parcours se vérifie sur ce qui est atteignable.
+    const atteignables = choix.filter((b) => !b.hasAttribute('disabled'))
+    expect(atteignables.length).toBeGreaterThan(1)
+
+    // Un seul arrêt de tabulation pour tout le groupe.
+    expect(choix.filter((b) => b.getAttribute('tabindex') === '0')).toHaveLength(1)
+
+    const depart = choix.indexOf(atteignables[0])
+    atteignables[0].focus()
+    await user.keyboard('{ArrowRight}')
+    expect(choix[depart + 1]).toHaveFocus()
+    expect(choix[depart + 1]).toHaveAttribute('aria-checked', 'true')
   })
 })

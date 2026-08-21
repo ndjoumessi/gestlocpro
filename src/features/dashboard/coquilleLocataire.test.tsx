@@ -113,7 +113,7 @@ describe('documents — demander une pièce', () => {
     const user = userEvent.setup()
     await ouvrirEnLocataire('/demo/documents')
 
-    await user.click(screen.getByRole('button', { name: 'Attestation de résidence' }))
+    await user.click(screen.getByRole('radio', { name: 'Attestation de résidence' }))
     await user.click(screen.getByRole('button', { name: 'Envoyer la demande' }))
 
     await screen.findByText('Demande envoyée au gestionnaire')

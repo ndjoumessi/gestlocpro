@@ -1,4 +1,5 @@
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
+import type { KeyboardEvent } from 'react'
 import { PageHeader } from '@/components/layout/AppShell'
 import { lien, useBase } from '@/lib/base'
 import { Card, CardHeader } from '@/components/primitives/Card'
@@ -70,6 +71,38 @@ export function TenantDocuments() {
   const exportCsv = useCsvExport()
   const csvMoney = useCsvMoney()
   const [choix, setChoix] = useState<DocumentKind | null>(null)
+  const boutons = useRef<(HTMLButtonElement | null)[]>([])
+
+  /*
+    UN CHOIX EXCLUSIF SE DIT `radiogroup`, et pas trois boutons pressés.
+
+    `aria-pressed` décrit un interrupteur — chacun indépendant des autres. Ici
+    les trois s'excluent : un lecteur d'écran annonçait donc trois bascules sans
+    lien, quand il doit annoncer « 2 sur 3 ». Le motif complet vit déjà dans le
+    formulaire de signalement, et son commentaire pose l'avertissement qu'on
+    suit ici : annoncer une navigation aux flèches sans la câbler est PIRE
+    qu'une rangée de boutons ordinaires, qui au moins ne promet rien.
+
+    BORNAGE et non bouclage, comme partout dans ce dépôt.
+  */
+  const auClavier = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const destination =
+      e.key === 'ArrowRight' || e.key === 'ArrowDown'
+        ? Math.min(index + 1, DEMANDES.length - 1)
+        : e.key === 'ArrowLeft' || e.key === 'ArrowUp'
+          ? Math.max(index - 1, 0)
+          : e.key === 'Home'
+            ? 0
+            : e.key === 'End'
+              ? DEMANDES.length - 1
+              : null
+
+    if (destination === null) return
+    // Les flèches feraient défiler la rangée, `Début` et `Fin` le document.
+    e.preventDefault()
+    setChoix(DEMANDES[destination])
+    boutons.current[destination]?.focus()
+  }
   const suiviId = useId()
 
   /** Mono-unité, comme l'espace locataire — et pour la même raison. */
@@ -268,8 +301,8 @@ export function TenantDocuments() {
             description={t('app.documents.requestHint')}
             level={2}
           />
-          <div className="flex flex-wrap gap-2">
-            {DEMANDES.map((demande) => {
+          <div role="radiogroup" aria-label={t('app.documents.request')} className="flex flex-wrap gap-2">
+            {DEMANDES.map((demande, index) => {
               const actif = demande === choix
               /**
                * Une pièce DÉJÀ demandée et sans réponse ne se redemande pas.
@@ -288,9 +321,19 @@ export function TenantDocuments() {
                 <button
                   key={demande}
                   type="button"
-                  aria-pressed={actif}
+                  role="radio"
+                  aria-checked={actif}
+                  // Un seul arrêt de tabulation pour le groupe : la tabulation
+                  // traverse le formulaire, pas trois pièces. Il ne tient que
+                  // parce que les flèches, elles, atteignent les autres. À
+                  // défaut d'un choix fait, c'est la première qui l'accueille.
+                  tabIndex={actif || (choix === null && index === 0) ? 0 : -1}
+                  ref={(node) => {
+                    boutons.current[index] = node
+                  }}
                   disabled={enAttente}
                   onClick={() => setChoix(demande)}
+                  onKeyDown={(event) => auClavier(event, index)}
                   className={cn(
                     'inline-flex min-h-11 items-center rounded-md border px-3.5',
                     'text-label font-medium transition-colors duration-150',
