@@ -223,6 +223,21 @@ export function Combobox({
       <div className="relative">
         <input
           id={idChamp}
+          /*
+            LE CHAMP VISIBLE PORTE LE NOM, en plus du champ caché.
+
+            Un formulaire qui veut poser le focus sur son premier champ fautif
+            le cherche par `[name="…"]` — et ne trouvait que l'entrée CACHÉE
+            posée plus haut, celle qui transporte la valeur à la soumission
+            native. Un champ caché ne se focalise pas : l'appel était un
+            no-op, et l'optionalité écrite pour jsdom masquait la panne. Le
+            pays est la première clé produite par la validation de son étape,
+            donc le refus le plus fréquent de l'inscription.
+
+            `data-champ` et non un second `name` : deux `name` identiques dans
+            un même formulaire changeraient ce qui part au serveur.
+          */
+          data-champ={name}
           role="combobox"
           aria-expanded={ouvert}
           aria-controls={idListe}

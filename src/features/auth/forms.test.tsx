@@ -37,6 +37,42 @@ describe('connexion', () => {
     expect(screen.getByLabelText(/adresse e-mail/i)).toHaveFocus()
   })
 
+  /**
+   * LE CAS DU COMBOBOX, celui que le sélecteur ne trouvait pas.
+   *
+   * La règle ci-dessus était appliquée à l'inscription, et elle y échouait EN
+   * SILENCE sur le pays. Le champ se cherchait par `[name="…"]`, ce qui ne
+   * pouvait désigner que l'entrée CACHÉE du combobox — celle qui transporte le
+   * code ISO à la soumission native. Un champ caché ne prend pas le focus :
+   * l'appel ne faisait rien, et l'optionalité écrite pour jsdom rendait la
+   * panne muette.
+   *
+   * Le pays est la PREMIÈRE clé que produit la validation de son étape, donc le
+   * refus le plus fréquent de cet écran — et celui où le bouton paraissait le
+   * plus inerte.
+   */
+  it('place le focus sur un combobox fautif, et pas sur son champ caché', async () => {
+    const user = userEvent.setup()
+    renderApp('/inscription/proprietaire')
+
+    await user.type(screen.getByLabelText(/nom complet/i), 'Sarah Mbala')
+    await user.type(screen.getByLabelText(/adresse e-mail/i), 'sarah@example.com')
+    await user.type(screen.getByLabelText(/^téléphone/i), '699112233')
+    await user.type(screen.getByLabelText(/^Mot de passe/), 'Bonamoussadi2026!')
+    await user.click(screen.getByRole('button', { name: /continuer/i }))
+
+    // L'étape « contexte » s'ouvre avec un pays vide : on la soumet telle quelle.
+    await screen.findByLabelText(/^pays/i)
+    await user.click(screen.getByRole('button', { name: /continuer/i }))
+
+    const pays = screen.getByLabelText(/^pays/i)
+    expect(pays).toHaveFocus()
+    // Et c'est bien le champ VISIBLE : un `type="hidden"` ne se focalise pas,
+    // donc l'assertion ci-dessus ne pourrait pas passer sur lui — mais on le
+    // dit, parce que c'est exactement l'élément que l'ancien sélecteur trouvait.
+    expect(pays).not.toHaveAttribute('type', 'hidden')
+  })
+
   it('dit comment réparer, et pas seulement que c’est invalide', async () => {
     const user = userEvent.setup()
     renderApp('/connexion')

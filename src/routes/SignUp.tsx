@@ -266,8 +266,18 @@ export function SignUp() {
        * principal qui paraît inerte est la pire des pannes : il n'y a rien à
        * lire, donc rien à corriger.
        */
+      /*
+        ON CHERCHE CE QUI SE FOCALISE, pas ce qui porte le nom.
+
+        `[name="pays"]` désignait l'entrée CACHÉE du combobox — celle qui
+        transporte le code ISO à la soumission — et un champ caché ne prend pas
+        le focus. L'appel ne faisait donc rien, en silence, sur le refus le plus
+        fréquent de cet écran. `data-champ` désigne le champ VISIBLE, et
+        l'exclusion des entrées cachées couvre le cas général plutôt que ce
+        seul composant.
+      */
       const champ = document.querySelector<HTMLElement>(
-        `[name="${firstBad[0]}"]`,
+        `[data-champ="${firstBad[0]}"], [name="${firstBad[0]}"]:not([type="hidden"])`,
       );
       // `scrollIntoView` n'existe pas sous jsdom : l'appel est facultatif pour
       // que les tests n'aient pas à simuler une capacité du navigateur.
