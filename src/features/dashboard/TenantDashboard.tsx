@@ -674,9 +674,27 @@ function TenantDashboardSkeleton() {
         title={t('app.tenant.title')}
         description={t('app.tenant.subtitle')}
         actions={
-          <Button icon="bell" to={lien(base, 'signalements')}>
-            {t('app.tenant.contactManager')}
-          </Button>
+          <>
+            {/*
+              LE SQUELETTE POINTE OÙ L'ÉCRAN POINTE.
+
+              Il offrait « Signaler un incident » vers `signalements` — la boîte
+              du BAILLEUR — quand l'écran réel offre `signaler`, le formulaire du
+              locataire, et `documents` à côté. Un squelette qui promet autre
+              chose que ce qu'il remplace apprend un geste faux : le locataire
+              qui clique pendant l'attente arrive ailleurs, et refait le chemin
+              une fois la page chargée.
+
+              Le libellé suit la même correction : `reportIssue` est celui de
+              l'écran, `contactManager` n'était employé que par ce squelette.
+            */}
+            <Button variant="secondary" icon="download" to={lien(base, 'documents')}>
+              {t('app.tenant.downloadReceipts')}
+            </Button>
+            <Button icon="bell" to={lien(base, 'signaler')}>
+              {t('app.tenant.reportIssue')}
+            </Button>
+          </>
         }
       />
 

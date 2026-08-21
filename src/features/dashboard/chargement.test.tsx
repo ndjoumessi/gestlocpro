@@ -447,4 +447,35 @@ describe('vitrine des états', () => {
     expect(attente()).not.toBeNull()
     await waitFor(() => expect(attente()).toBeNull(), { timeout: 4000 })
   })
+
+  /**
+   * LE SQUELETTE DU LOCATAIRE POINTE OÙ SON ÉCRAN POINTE.
+   *
+   * Il offrait « Signaler un incident » vers la boîte du BAILLEUR, quand
+   * l'écran réel offre le formulaire du locataire — et ses documents à côté. Un
+   * squelette qui promet autre chose que ce qu'il remplace apprend un geste
+   * faux : on clique pendant l'attente, on arrive ailleurs, et on refait le
+   * chemin une fois la page chargée.
+   *
+   * Le cas compare les destinations du squelette à celles de l'écran, plutôt
+   * que de citer une adresse : citer reviendrait à recopier ici la décision
+   * qu'on prétend surveiller.
+   */
+  it('offre au locataire, pendant l’attente, les gestes de son écran', async () => {
+    const serveur = installerFauxServeur()
+    serveur.quand('GET', '/parks/:id/portfolio', { status: 200, body: null, delai: 10_000 })
+
+    renderApp('/demo/mon-espace')
+
+    // DANS le contenu principal : la barre latérale porte ses propres
+    // destinations, et elles ne sont pas le sujet.
+    const pendant = within(screen.getByRole('main'))
+      .getAllByRole('link')
+      .map((l) => l.getAttribute('href') ?? '')
+      .filter((h) => h.includes('signal') || h.includes('document'))
+
+    expect(pendant.some((h) => h.endsWith('/signaler'))).toBe(true)
+    // Et surtout PAS la boîte du bailleur, qui n'est pas un écran du locataire.
+    expect(pendant.some((h) => h.endsWith('/signalements'))).toBe(false)
+  })
 })

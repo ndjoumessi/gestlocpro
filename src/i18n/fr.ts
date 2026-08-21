@@ -553,7 +553,6 @@ export const fr = {
         'L’état des lieux d’entrée est établi à la remise des clés, celui de sortie à leur restitution. Votre gestionnaire les dépose ici pour que vous puissiez comparer les deux.',
       manager: 'Votre gestionnaire',
       managerName: 'Diane F.',
-      contactManager: 'Signaler un incident',
       privacyNote:
         'Vous ne voyez que les données de votre logement. Les autres locataires du parc ne vous sont pas visibles.',
       restrictedTitle: 'Accès restreint',
