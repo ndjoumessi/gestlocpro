@@ -18,6 +18,11 @@ export function FeatureGrid() {
   return (
     <Section
       id="features"
+      // `suite` : cette section RÉPOND à celle qui la précède — « Le problème »
+      // pose quatre frictions, celle-ci nomme ce qui les traite. Les séparer de
+      // 256 px comme deux étapes distinctes faisait perdre le lien ; on ne
+      // resserre que le HAUT, pour lier sans déplacer le mouvement.
+      rythme="suite"
       eyebrow={t('marketing.features.eyebrow')}
       title={t('marketing.features.title')}
       description={t('marketing.features.subtitle')}

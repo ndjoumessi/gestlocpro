@@ -19,15 +19,46 @@ export function FinalCta() {
     // respiration généreuse reste voulue — c'est la dernière chose qu'on lit —
     // mais elle doit encadrer le propos, pas le noyer.
     <section
-      className={cn('on-dark bg-ink py-24 text-on-dark sm:py-28 lg:py-32', GOUTTIERE_LATERALE)}
+      data-rythme="cloture"
+      className={cn('on-dark bg-ink py-20 text-on-dark sm:py-24 lg:py-28', GOUTTIERE_LATERALE)}
     >
-      <div className="mx-auto max-w-3xl text-center">
-        <h2 className="display-l text-balance text-on-dark">{t('marketing.finalCta.title')}</h2>
-        <p className="mt-6 text-body-l text-pretty text-on-dark-muted">
-          {t('marketing.finalCta.subtitle')}
-        </p>
+      {/*
+        LE BLOC SOMBRE REPREND LA BANDE DE LA PAGE, et cesse d'être une île.
 
-        <div className="mt-12 flex flex-col justify-center gap-3 sm:flex-row">
+        Mesuré avant ce lot, à 1440 px : 466 px de haut pour 210 px de contenu,
+        et ce contenu tenu dans 768 px (`max-w-3xl`) au milieu d'une bande qui
+        en fait 1216 — soit 224 px de sombre inerte de chaque côté, en plus des
+        128 px au-dessus et au-dessous. Le vide n'y était pas dessiné : il
+        restait de ce qu'on n'avait pas mis.
+
+        Deux colonnes le rendent lisible. La déclaration prend la gauche, comme
+        le titre de l'accroche et comme cinq des six sections qui précèdent ; les
+        deux actions prennent la droite, là où le regard finit sa ligne. Le
+        sombre n'entoure plus le propos, il le porte d'un bord à l'autre.
+
+        C'EST AUSSI UN ARGUMENT DE RYTHME, et c'est ce qui a tranché entre
+        « resserrer » et « élargir ». La page enchaînait TROIS blocs centrés à la
+        suite — tarifs, questions, clôture. Le dernier reprend l'axe du premier
+        écran : la page ouvre et ferme sur la même forme, et les deux blocs
+        centrés du milieu se lisent enfin comme une parenthèse plutôt que comme
+        la fin d'une série de trois.
+
+        `items-center` ici et non `items-start` : ce bloc n'a pas de colonne de
+        lecture et de colonne d'illustration — il a une phrase et sa
+        conséquence. Aucune des deux ne porte l'axe de l'autre, et rien ne
+        dépasse : la contrainte du bloc d'accroche ne s'applique pas.
+      */}
+      <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1.4fr_1fr] lg:items-center lg:gap-16">
+        <div className="min-w-0">
+          <h2 className="display-l text-balance text-on-dark">{t('marketing.finalCta.title')}</h2>
+          <p className="mt-5 max-w-[52ch] text-body-l text-pretty text-on-dark-muted">
+            {t('marketing.finalCta.subtitle')}
+          </p>
+        </div>
+
+        {/* `lg:justify-end` seulement : en dessous les boutons s'empilent et
+            prennent la largeur, ce qui reste juste sur un téléphone. */}
+        <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
           <Button size="lg" variant="gold" to="/inscription" iconAfter="arrowRight">
             {t('marketing.finalCta.cta')}
           </Button>

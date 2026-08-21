@@ -772,6 +772,53 @@ async function reglagesAtteignables(page) {
 }
 
 /**
+ * LE RYTHME DE LA VITRINE — exécuté DANS la page, au-delà du point de rupture.
+ *
+ * CE QU'ELLE ATTRAPE. Mesuré avant le lot, à 1440 et 1920 px : les SEPT
+ * sections de la page portaient exactement 128 px de rembourrage en haut comme
+ * en bas, et 64 px sous leur en-tête. Sept fois la même valeur. Rien
+ * n'indiquait au regard où il en était ni ce qui comptait le plus, parce que
+ * tout était présenté avec la même insistance.
+ *
+ * CE DÉFAUT NE SE VOIT PAS SECTION PAR SECTION, et c'est ce qui le rend
+ * difficile à garder : chaque section, prise seule, est parfaitement bien
+ * réglée. Il ne se voit qu'en les COMPARANT — d'où une règle qui mesure la page
+ * entière et regarde la variété, là où toutes les autres de ce fichier
+ * regardent un élément et son défaut.
+ *
+ * TROIS FAITS, du plus faible au plus fort :
+ *
+ *   1. La page emploie au moins trois rembourrages distincts. Une page à une
+ *      seule valeur est un métronome ; trois est le minimum pour qu'on puisse
+ *      parler de temps forts et de temps faibles.
+ *   2. Deux temps NOMMÉS DIFFÉREMMENT ne rendent jamais le même rembourrage.
+ *      C'est le fait qui porte : un vocabulaire dont deux mots veulent dire la
+ *      même chose n'est pas un vocabulaire, c'est une décoration au-dessus
+ *      d'une valeur unique. Sans lui, on pourrait satisfaire (1) en écrivant
+ *      quatre noms sur trois valeurs et croire la page rythmée.
+ *   3. Un seul temps `ample`. C'est un point culminant, et une page qui en a
+ *      deux n'en a aucun.
+ *
+ * ON NE FIXE AUCUNE VALEUR EN PIXELS. Le rythme est un rapport entre les
+ * sections, pas un nombre : figer « la section des tarifs vaut 160 px » ferait
+ * rougir la porte au premier réglage délibéré de l'échelle, et la relever
+ * serait l'occasion de la vider. Ce qu'on garde, c'est la DIFFÉRENCE.
+ */
+const MESURER_RYTHME = () => {
+  const sections = [...document.querySelectorAll('main [data-rythme]')]
+  if (sections.length === 0) return null
+
+  return sections.map((s) => {
+    const style = getComputedStyle(s)
+    return {
+      temps: s.getAttribute('data-rythme'),
+      id: s.id || '(sans id)',
+      pad: `${Math.round(parseFloat(style.paddingTop))}/${Math.round(parseFloat(style.paddingBottom))}`,
+    }
+  })
+}
+
+/**
  * L'AXE DU BLOC D'ACCROCHE — exécuté DANS la page, à chaque largeur.
  *
  * CE QU'ELLE ATTRAPE. La colonne de lecture du hero était alignée sur le CENTRE
@@ -1295,6 +1342,8 @@ const inatteignables = []
 const rejouements = []
 /** Une entrée par (langue, largeur) où le bloc d'accroche a été mesuré. */
 const accroches = []
+/** Le rythme de la vitrine, relevé une fois par langue au-delà du repli. */
+const rythmes = []
 // Même raison qu'`ATTENDUES` et que `rangeesMesurees` : « le panneau ne rejoue
 // rien » et « on n'a pas ouvert le panneau » s'écrivent pareil dans un journal.
 // Compte les langues où la mesure a VRAIMENT eu lieu, panneau ouvert.
@@ -1362,6 +1411,15 @@ try {
         if (adresse === '/') {
           const accroche = await page.evaluate(MESURER_ACCROCHE)
           if (accroche) accroches.push({ largeur, langue, ...accroche })
+
+          // Le rythme se lit là où l'échelle `lg` s'applique : en dessous, les
+          // temps se rapprochent par construction et la variété qu'on mesure
+          // serait celle du téléphone, où elle compte moins — un défilement
+          // vertical ne se compare pas d'un bout à l'autre du pouce.
+          if (largeur >= LARGEUR_SANS_REPLI) {
+            const releve = await page.evaluate(MESURER_RYTHME)
+            if (releve) rythmes.push({ largeur, langue, sections: releve })
+          }
         }
 
         const resultat = await page.evaluate(MESURER)
@@ -1847,6 +1905,79 @@ if (GARDE_ACCROCHE) {
 }
 
 /*
+  PUIS LE RYTHME, et il vient juste après l'axe pour la même raison : deux
+  défauts d'ABSENCE, que ni le débordement ni le repli ne savent voir. Un
+  métronome ne déborde jamais.
+*/
+const GARDE_RYTHME = (() => {
+  // Garde du garde : les marqueurs `data-rythme` doivent avoir été trouvés.
+  if (rythmes.length === 0) {
+    return (
+      'aucun relevé du rythme de la vitrine.\n' +
+      '   Les sections portent-elles encore `data-rythme` ? Une page qu’on n’a pas\n' +
+      '   regardée et une page bien rythmée s’écrivent pareil dans un journal.'
+    )
+  }
+
+  for (const { largeur, langue, sections } of rythmes) {
+    // Seconde moitié de la garde du garde : une page d'une ou deux sections
+    // rendrait la variété triviale. Sept sont attendues, on en exige cinq.
+    if (sections.length < 5) {
+      return (
+        `${sections.length} section(s) rythmée(s) seulement à ${largeur}px ${langue}.\n` +
+        '   La règle mesure la VARIÉTÉ d’une page : sur trois sections, elle ne mesure rien.'
+      )
+    }
+
+    const pads = new Set(sections.map((s) => s.pad))
+    if (pads.size < 3) {
+      return (
+        `la page n’emploie que ${pads.size} rembourrage(s) distinct(s) à ${largeur}px ${langue} :\n` +
+        sections.map((s) => `      ${s.id.padEnd(16)} ${s.temps.padEnd(8)} ${s.pad}`).join('\n') +
+        '\n   Une page à un seul temps est un métronome : rien n’y dit ce qui compte le plus.'
+      )
+    }
+
+    // LE FAIT QUI PORTE : deux mots du vocabulaire ne peuvent pas vouloir dire
+    // la même chose. Sans lui, quatre noms sur une seule valeur passeraient.
+    const parTemps = new Map()
+    for (const s of sections) {
+      if (!parTemps.has(s.temps)) parTemps.set(s.temps, new Set())
+      parTemps.get(s.temps).add(s.pad)
+    }
+    for (const [tempsA, padsA] of parTemps) {
+      for (const [tempsB, padsB] of parTemps) {
+        if (tempsA >= tempsB) continue
+        const commun = [...padsA].filter((p) => padsB.has(p))
+        if (commun.length > 0) {
+          return (
+            `les temps « ${tempsA} » et « ${tempsB} » rendent le même rembourrage ` +
+            `(${commun.join(', ')}) à ${largeur}px ${langue}.\n` +
+            '   Un vocabulaire dont deux mots veulent dire la même chose n’est pas un\n' +
+            '   vocabulaire : c’est un métronome sur lequel on a écrit quatre noms.'
+          )
+        }
+      }
+    }
+
+    const amples = sections.filter((s) => s.temps === 'ample')
+    if (amples.length !== 1) {
+      return (
+        `${amples.length} section(s) « ample » à ${largeur}px ${langue} ` +
+        `(${amples.map((s) => s.id).join(', ') || 'aucune'}).\n` +
+        '   Un point culminant est unique : une page qui en a deux n’en a aucun.'
+      )
+    }
+  }
+  return null
+})()
+
+if (GARDE_RYTHME) {
+  console.error(`\n✗ mesure-ui : ${GARDE_RYTHME}\n`)
+  process.exit(1)
+}
+
+/*
   L'ORDRE DES TROIS RÈGLES VA DU SIGNAL LE PLUS TÔT AU SYMPTÔME LE PLUS TARD :
   jeu trop faible, puis repli, puis débordement.
 
@@ -1913,6 +2044,8 @@ console.log(
     `  ${rangeesMesurees} mesures de la barre de la vitrine, toutes au-dessus de ${JEU_MINIMAL} px de jeu ; réglages atteints au clavier à 1440 px dans les deux langues.\n` +
     `  Panneau ouvert à 1440 px dans ${panneauxMesures} langues face à une barre de ${barreLaPlusGarnie} commandes, aucune rejouée.\n` +
     `  Bloc d'accroche : ${accroches.length} mesures, un seul écart titre–lecture (${accroches[0]?.ecart} px) des deux côtés du point de rupture.\n` +
+    `  Rythme de la vitrine : ${rythmes[0]?.sections.length} sections sur ` +
+    `${new Set(rythmes[0]?.sections.map((s) => s.pad)).size} rembourrages distincts, un seul temps ample.\n` +
     `  ${textesAudites} textes audités en contraste (${THEMES.join(' + ')}, ${LARGEURS_CONTRASTE.join(' et ')} px), aucun sous le seuil WCAG AA.\n` +
     `  ${ciblesSondees} cibles sondées au point de contact, aucune sous ${PLANCHER_CIBLE} px hors les ${Object.keys(CIBLES_EXEMPTES).length} exemptions motivées.`,
 )

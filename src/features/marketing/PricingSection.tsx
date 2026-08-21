@@ -29,6 +29,12 @@ export function PricingSection() {
   return (
     <Section
       id="pricing"
+      // `ample`, et c'est la SEULE de la page. Tout ce qui précède amène ici :
+      // c'est le seul endroit où le visiteur manipule quelque chose — le
+      // curseur d'unités, la bascule mensuel/annuel — et le seul où il décide.
+      // Lui donner le même temps qu'aux six autres sections revenait à dire
+      // qu'on peut la parcourir comme le reste.
+      rythme="ample"
       eyebrow={t('marketing.pricing.eyebrow')}
       title={t('marketing.pricing.title')}
       description={t('marketing.pricing.subtitle')}

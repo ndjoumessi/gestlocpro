@@ -55,6 +55,12 @@ export function InternationalSection() {
 
   return (
     <Section
+      // `serre` : trois nombres et leurs listes. C'est un appui — de quoi lever
+      // un doute sur la couverture — et non une étape du raisonnement. Mesurée
+      // à 683 px pour 256 de rembourrage, la section consacrait plus d'un tiers
+      // de sa hauteur à ne rien dire, au même tarif que la grille des
+      // fonctionnalités qui en dit six fois plus.
+      rythme="serre"
       id="international"
       tone="paper"
       eyebrow={t('marketing.international.eyebrow')}

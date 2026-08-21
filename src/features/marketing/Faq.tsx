@@ -13,7 +13,18 @@ export function Faq() {
   const t = useT()
 
   return (
-    <Section id="faq" tone="paper" eyebrow={t('marketing.faq.eyebrow')} title={t('marketing.faq.title')} centered>
+    <Section
+      id="faq"
+      tone="paper"
+      // `serre` : on lève des objections, on ne construit plus l'argument — la
+      // décision s'est prise juste au-dessus. Cinq lignes repliées ne réclament
+      // pas le temps qu'on accorde à une grille de six cartes, et l'aération
+      // d'origine séparait la FAQ du tarif dont elle est le prolongement.
+      rythme="serre"
+      eyebrow={t('marketing.faq.eyebrow')}
+      title={t('marketing.faq.title')}
+      centered
+    >
       <div className="mx-auto flex max-w-3xl flex-col gap-3">
         {QUESTIONS.map((key) => (
           <details
