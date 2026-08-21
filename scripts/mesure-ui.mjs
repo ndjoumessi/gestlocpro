@@ -128,7 +128,7 @@ function adressesDeLApplication() {
  * Clé : `adresse@largeur`, indépendante de la langue — un débordement qui
  * n'existe qu'en anglais reste le même défaut de mise en page.
  *
- * SIX ENTRÉES, ET C'EST UNE DETTE DATÉE, pas un tapis. Chacune porte sa mesure
+ * DEUX ENTRÉES, ET C'EST UNE DETTE DATÉE, pas un tapis. Chacune porte sa mesure
  * et le lot qui la lèvera ; la garde du garde plus bas fait rougir celle qui ne
  * couvre plus rien, donc aucune ne peut survivre à sa réparation. Elles sont
  * ici parce qu'une garde hors de `check` ne s'exécute jamais — l'audit en fait
@@ -136,20 +136,6 @@ function adressesDeLApplication() {
  * sous le seuil et ne l'a jamais trouvé faute d'être lancé.
  */
 const TOLERES = {
-  /*
-    LA RANGÉE DE SÉLECTEURS D'`AuthLayout`, quatre écrans pour une seule cause.
-
-    `ml-auto flex items-center gap-2` réclame 338 px dans une fenêtre de 320 :
-    langue, devise et thème s'y alignent sans jamais se replier. Mesuré
-    `scrollX=38` sur les quatre écrans d'authentification, dans les DEUX langues
-    — ce n'est donc pas une affaire de longueur de libellé, c'est la rangée qui
-    ne sait pas se couper.
-  */
-  '/connexion@320': 'Rangée de sélecteurs d’AuthLayout, 338 px dans 320. Lot à venir.',
-  '/inscription@320': 'Même rangée d’AuthLayout que /connexion.',
-  '/mot-de-passe-oublie@320': 'Même rangée d’AuthLayout que /connexion.',
-  '/reinitialiser@320': 'Même rangée d’AuthLayout que /connexion.',
-
   /*
     LA BARRE DE LA VITRINE AU-DESSUS DE `lg`, ET ELLE EST ANTÉRIEURE À CE LOT.
 
