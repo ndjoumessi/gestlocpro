@@ -1563,6 +1563,17 @@ export const fr = {
       title: 'Ce que le registre tient à jour',
       collected: 'Encaissé ce mois',
       occupancy: 'Taux d’occupation',
+      // Le pourcentage s'écrit avec une espace avant le signe en français et
+      // sans en anglais. Trois d'entre eux étaient écrits en dur dans
+      // `Hero.tsx` — donc servis à la française sur la page anglaise, la
+      // première qu'un visiteur anglophone voit. C'est le défaut que la note
+      // ci-dessous rapporte déjà pour le compte de locataires : il avait
+      // survécu à la passe qui l'a corrigée.
+      percent: '{value} %',
+      // Effectif sous le taux : dix logements occupés sur douze. Séparé du
+      // pourcentage parce qu'un lecteur qui doute du taux veut le rapport qui
+      // le fonde, pas une seconde formulation du même chiffre.
+      occupancyNote: '{occupied} / {total}',
       overdue: 'Reste à percevoir',
       // Écrit en dur dans `Hero.tsx`, donc servi tel quel sur la page d'accueil
       // en anglais. Une maquette qui dépeint le produit doit se traduire comme

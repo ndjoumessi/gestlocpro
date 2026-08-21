@@ -3,9 +3,9 @@ import { cn } from '@/lib/cn'
 import { GOUTTIERE_LATERALE } from '@/components/layout/gouttiere'
 import { Button } from '@/components/primitives/Button'
 import { StatusPill } from '@/components/primitives/StatusPill'
-import { DeltaBadge } from '@/components/primitives/Badge'
 import { MiniBarChart } from '@/components/primitives/Charts'
-import { COLLECTIONS } from '@/data/portfolio'
+import { COLLECTIONS, READINGS, UNITS } from '@/data/portfolio'
+import { computeKpis } from '@/data/kpis'
 import { useDates } from '@/lib/useDates'
 import { Icon } from '@/components/primitives/Icon'
 import { useCurrency } from '@/currency/CurrencyProvider'
@@ -92,16 +92,31 @@ function HeroPreview({
     value: month.rent + month.water + month.power,
   }))
 
+  // La promesse ci-dessus ne valait que pour les barres. Les quatre chiffres de
+  // la carte étaient écrits à la main et démentaient le jeu servi à `/demo`, à
+  // un clic de là : 1 040 000 encaissés contre 950 000, 375 000 d'impayé contre
+  // 447 000, trois locataires débiteurs contre quatre. Le dernier écart est
+  // celui que le tableau de bord dit avoir corrigé chez lui — la vitrine le
+  // rejouait intact, et c'est elle que le visiteur lit en premier.
+  const kpis = computeKpis(UNITS, READINGS)
+  const partEncaissee =
+    kpis.expected === 0 ? 0 : Math.round((kpis.collected / kpis.expected) * 100)
+  // Retards ET partiels, comme le tableau de bord : la légende doit porter sur
+  // la même population que le montant qu'elle explique, sans quoi elle le
+  // dément.
+  const doivent = UNITS.filter((u) => u.status === 'overdue' || u.status === 'partial')
+
   return (
     <div className="relative min-w-0">
       <div className="animate-rise rounded-2xl border border-divider bg-surface p-5 shadow-e3 sm:p-6">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="eyebrow text-muted">{t('marketing.metrics.collected')}</p>
-            {/* Le montant descend d'un cran sous `sm` : « 1 040 000 FCFA » en
-                mono 32px ne se coupe pas et ne tient pas dans 375px. */}
+            {/* Le montant descend d'un cran sous `sm` : à 32px, un montant de
+                cette taille suivi de sa devise ne se coupe pas et ne tient pas
+                dans 375px. */}
             <p className="numeric mt-2 text-2xl leading-none font-medium sm:text-[2rem]">
-              {money(1040000, { round: true })}
+              {money(kpis.collected, { round: true })}
             </p>
           </div>
           {/* Couleurs de statut rétablies. Le motif retenu pour ce produit —
@@ -112,7 +127,7 @@ function HeroPreview({
               discours de la page, pas pour l'échantillon de produit qu'elle
               montre. */}
           <StatusPill tone="ok" size="sm">
-            73 %
+            {t('marketing.metrics.percent', { value: partEncaissee })}
           </StatusPill>
         </div>
 
@@ -127,18 +142,26 @@ function HeroPreview({
         <div className="mt-6 grid grid-cols-2 gap-4 border-t border-divider pt-5">
           <MiniStat
             label={t('marketing.metrics.occupancy')}
-            value="83 %"
-            note="10 / 12"
-            delta={<DeltaBadge value={-8} suffix="pts" />}
+            value={t('marketing.metrics.percent', { value: kpis.occupancy })}
+            note={t('marketing.metrics.occupancyNote', {
+              occupied: kpis.occupied,
+              total: UNITS.length,
+            })}
           />
           <MiniStat
             label={t('marketing.metrics.overdue')}
-            value={money(375000, { round: true })}
-            note={t('marketing.metrics.overdueNote', { count: 3 })}
-            delta={<DeltaBadge value={95000} invert />}
+            value={money(kpis.outstanding, { round: true })}
+            note={t('marketing.metrics.overdueNote', { count: doivent.length })}
           />
         </div>
       </div>
+
+      {/* La mention existait au dictionnaire, traduite, et n'était rendue nulle
+          part : la carte donnait donc des chiffres de parc sans dire de quel
+          parc. Elle est ce qui autorise la carte à être précise — un chiffre
+          exact sur un parc nommé fictif n'induit personne en erreur, un chiffre
+          exact sans provenance se lit comme une moyenne de marché. */}
+      <p className="mt-3 text-body-s text-muted">{t('marketing.metrics.note')}</p>
 
       {/* Une vignette « Relances envoyées » flottait au-dessus de la carte.
           Elle a changé de place trois fois : sur les chiffres d'occupation,
@@ -160,14 +183,24 @@ function MiniStat({
   label: string
   value: string
   note: string
-  delta: ReactNode
+  /**
+   * Variation, quand le produit sait en calculer une.
+   *
+   * Les deux qui vivaient ici — « −8 pts » et « +95 000 » — étaient les
+   * dernières survivantes de la constante écrite à la main : rien dans les
+   * indicateurs ne porte d'écart mois à mois, faute d'un historique, si bien
+   * qu'aucun calcul n'aurait pu les retrouver. Un indicateur qui ne peut pas
+   * varier ment plus sûrement qu'un indicateur absent.
+   */
+  delta?: ReactNode
 }) {
   return (
     <div className="min-w-0">
       <p className="eyebrow text-muted">{label}</p>
       <p className="numeric mt-2 text-title-l font-medium">{value}</p>
       {/* Variation et effectif sur une seule ligne : empilés, ils faisaient
-          quatre niveaux de lecture pour un chiffre. */}
+          quatre niveaux de lecture pour un chiffre. La ligne tient sans
+          variation, qui est le cas de toutes les cartes aujourd'hui. */}
       <p className="mt-2 flex flex-wrap items-center gap-2">
         {delta}
         <span className="text-body-s text-muted">{note}</span>

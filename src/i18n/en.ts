@@ -1220,6 +1220,8 @@ export const en: Dictionary = {
       title: 'What the ledger keeps current',
       collected: 'Collected this month',
       occupancy: 'Occupancy rate',
+      percent: '{value}%',
+      occupancyNote: '{occupied} / {total}',
       overdue: 'Still to collect',
       overdueNote: '{count} tenants',
       overdueNote_one: '{count} tenant',
