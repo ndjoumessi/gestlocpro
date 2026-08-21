@@ -164,7 +164,7 @@ export function Payments() {
                     t('app.portfolio.tenant'),
                     csvMoney.header(t('app.payments.due')),
                     csvMoney.header(t('app.payments.paid')),
-                    csvMoney.header(t('app.payments.balance')),
+                    csvMoney.header(t('app.payments.balanceTotal')),
                     t('app.portfolio.status'),
                     t('app.payments.lateDays'),
                   ],
@@ -175,7 +175,23 @@ export function Payments() {
                     unit.tenant ?? t('app.portfolio.noTenant'),
                     csvMoney.amount(unit.rent),
                     csvMoney.amount(unit.paid),
-                    csvMoney.amount(unit.rent - unit.paid),
+                    /*
+                      LE MÊME SOLDE QUE LE TABLEAU, et non l'écart du mois.
+
+                      L'export écrivait `loyer − encaissé`, c'est-à-dire le mois
+                      COURANT, sous un en-tête qui disait « Solde » — pendant
+                      que la colonne à l'écran montre le solde CUMULÉ depuis le
+                      début du bail. Sur un locataire en retard de plusieurs
+                      mois, les deux chiffres divergent de tout l'arriéré, et
+                      c'est le fichier exporté qui sert à réclamer.
+
+                      Un export qui ne dit pas la même chose que l'écran dont il
+                      part est pire qu'une absence d'export : on l'a lu à
+                      l'écran, on le croit sur parole dans le tableur.
+                    */
+                    csvMoney.amount(
+                      periodes.length > 0 ? soldeCumule(unit) : unit.rent - unit.paid,
+                    ),
                     t(`status.${unit.status}` as 'status.paid'),
                     // Un nombre de jours n'est pas de l'argent, mais il se
                     // calcule aussi : groupé, il deviendrait du texte.

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, attendreLeChargement } from '@/test/render'
+import { renderApp, screen, attendreLeChargement, userEvent } from '@/test/render'
+import { captureDownloads } from '@/test/downloads'
 import { COMPTE_FICTIF, installerFauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 
@@ -163,6 +164,39 @@ describe('grille des paiements — les périodes', () => {
     // aurait annoncé 103 800, et le tableau ne disait pas que la dette courait
     // depuis le mois d'avant.
     expect(screen.getByRole('table')).toHaveTextContent('111 100')
+  })
+
+  /**
+   * ET L'EXPORT DIT LE MÊME CHIFFRE QUE LE TABLEAU.
+   *
+   * Il écrivait `dû − encaissé`, c'est-à-dire le mois COURANT, sous un en-tête
+   * qui promettait le cumul : 103 800 au lieu de 111 100, soit tout l'arriéré
+   * de juillet passé à la trappe. Et c'est le fichier exporté qui sert à
+   * réclamer — on a lu le chiffre à l'écran, on le croit sur parole dans le
+   * tableur.
+   *
+   * Le cas vit ICI et non dans le fichier des exports : celui-là s'exécute sur
+   * un parc SANS historique, où les deux formules coïncident et où aucune
+   * mutation ne peut les séparer. Une garde qui ne peut pas distinguer les deux
+   * réponses ne garde rien.
+   */
+  it('exporte le solde cumulé, et non l’écart du mois', async () => {
+    await ouvrir(HISTORIQUE)
+
+    const capture = captureDownloads()
+    try {
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: /exporter le relevé/i }))
+
+      const fichiers = await capture.settle()
+      expect(fichiers).toHaveLength(1)
+      // Le montant exporté est brut, sans séparateur de milliers : c'est ce
+      // qu'un tableur sait additionner.
+      expect(fichiers[0].text).toContain('111100')
+      expect(fichiers[0].text).not.toContain('103800')
+    } finally {
+      capture.restore()
+    }
   })
 
   /**

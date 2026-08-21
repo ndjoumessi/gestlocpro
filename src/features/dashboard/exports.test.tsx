@@ -58,11 +58,42 @@ describe('export des paiements', () => {
     // La devise est nommée une fois par colonne, pas mille fois dans les
     // cellules : c'est ce qui rend la colonne sommable par un tableur.
     expect(entetes).toBe(
-      'Unité;Locataire;Dû (FCFA);Réglé (FCFA);Solde (FCFA);Statut;Jours de retard',
+      // « Solde CUMULÉ » et non « Solde » : l'en-tête suit la colonne du
+      // tableau, qui montre l'arriéré depuis le début du bail. L'export disait
+      // « Solde » en écrivant l'écart du mois — deux chiffres qui divergent de
+      // tout l'arriéré sur un locataire en retard, et c'est le fichier qui sert
+      // à réclamer.
+      'Unité;Locataire;Dû (FCFA);Réglé (FCFA);Solde cumulé (FCFA);Statut;Jours de retard',
     )
     // Dix baux : les deux unités vacantes du parc n'en sont pas.
     expect(lignes).toHaveLength(UNITS.filter((u) => u.status !== 'vacant').length)
     expect(file.text).toContain('Charles Ngassa')
+
+    /*
+      LA VALEUR, ET PAS SEULEMENT L'EN-TÊTE.
+
+      L'export écrivait l'écart du MOIS sous un en-tête qui promettait le cumul,
+      et rien ne le voyait : les cas de ce fichier ne comparaient que les
+      libellés. Sur un locataire en retard de plusieurs mois, les deux chiffres
+      divergent de tout l'arriéré — et c'est le fichier exporté qui sert à
+      réclamer.
+
+      On lit donc la colonne dans le tableau RENDU et on exige que le fichier
+      porte le même nombre. Comparer l'export à un calcul refait ici ne
+      prouverait rien : les deux pourraient se tromper ensemble.
+      */
+    const cumulAffiche = screen
+      .getAllByRole('row')
+      .map((r) => r.textContent ?? '')
+      .find((texte) => texte.includes('A3'))
+    expect(cumulAffiche).toBeDefined()
+
+    const ligneA3 = lignes.find((l) => l.startsWith('A3'))
+    expect(ligneA3).toBeDefined()
+    const soldeExporte = ligneA3!.split(';')[4]
+    // Le montant exporté est brut (sans espaces de milliers) ; on le retrouve
+    // dans la cellule affichée, qui les porte.
+    expect(cumulAffiche!.replace(/[\s\u202f\u00a0]/g, '')).toContain(soldeExporte)
   })
 
   it('suit le filtre de statut, et le dit dans le nom du fichier', async () => {
@@ -120,7 +151,7 @@ describe('export selon la langue', () => {
     const [entetes] = file.text.replace(UTF8_BOM, '').split('\r\n')
 
     expect(entetes).toBe(
-      'Unit,Tenant,Due (FCFA),Paid (FCFA),Balance (FCFA),Status,Days late',
+      'Unit,Tenant,Due (FCFA),Paid (FCFA),Running balance (FCFA),Status,Days late',
     )
     expect(file.name).toMatch(/^gestlocpro-payments-/)
   })
