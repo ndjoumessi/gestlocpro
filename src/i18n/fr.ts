@@ -298,8 +298,7 @@ export const fr = {
       companyHint: 'Laissez vide si vous exercez en votre nom propre.',
       ownerCode: 'Code d’invitation du propriétaire',
       ownerCodeHint:
-        'Le propriétaire vous le communique depuis son espace. Sans code, votre demande lui sera soumise pour validation.',
-      requestAccess: 'Je n’ai pas de code — envoyer une demande d’accès',
+        'Le propriétaire vous le communique depuis son espace. Format : GES-XXXX-XXXX.',
 
       inviteCode: 'Code d’invitation',
       inviteCodeHint:
@@ -369,7 +368,7 @@ export const fr = {
       phoneTooLong: 'Ce numéro est trop long, indicatif compris.',
       parkNameRequired: 'Donnez un nom à votre parc.',
       inviteRequired: 'Saisissez votre code d’invitation.',
-      inviteInvalid: 'Code non reconnu. Format attendu : LOC-XXXX-XXXX.',
+      inviteInvalid: 'Code non reconnu. Format attendu : LOC-XXXX-XXXX pour un locataire, GES-XXXX-XXXX pour un gestionnaire.',
       countryRequired: 'Choisissez votre pays.',
       credentials: 'E-mail ou mot de passe incorrect.',
       confirmRequired: 'Confirmez votre mot de passe.',

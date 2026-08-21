@@ -39,7 +39,6 @@ export interface SignupState {
   // Étape contexte — gestionnaire.
   company: string
   ownerCode: string
-  requestAccess: boolean
 
   // Étape contexte — locataire.
   inviteCode: string
@@ -101,7 +100,6 @@ export function initialSignupState(
     delegates: 'solo',
     company: '',
     ownerCode: '',
-    requestAccess: false,
     inviteCode: '',
     terms: false,
     newsletter: false,

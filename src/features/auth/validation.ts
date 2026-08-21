@@ -122,8 +122,20 @@ export function validateParkName(value: string): FieldError {
   return value.trim().length < 2 ? 'auth.errors.parkNameRequired' : null
 }
 
-/** Code d'invitation locataire : LOC-XXXX-XXXX. */
-const INVITE = /^LOC-[A-Z0-9]{4}-[A-Z0-9]{4}$/i
+/**
+ * Code d'invitation : LOC-XXXX-XXXX pour un locataire, GES-XXXX-XXXX pour un
+ * gestionnaire.
+ *
+ * Le motif ne connaissait que `LOC`. Le serveur, lui, préfixe le code par le
+ * rôle invité depuis toujours — `creerCode` rend `GES` pour un gestionnaire —
+ * si bien qu'un code de gestionnaire parfaitement valide aurait été refusé par
+ * l'écran avant qu'aucune requête ne parte. Deux vérités sur la même forme,
+ * dont une ignorante, et c'est l'ignorante qui aurait tranché.
+ *
+ * Les deux préfixes font trois caractères : `formatInviteCode` regroupe donc
+ * l'un comme l'autre sans avoir à connaître le rôle.
+ */
+const INVITE = /^(?:LOC|GES)-[A-Z0-9]{4}-[A-Z0-9]{4}$/i
 
 export function validateInviteCode(value: string): FieldError {
   if (!value.trim()) return 'auth.errors.inviteRequired'

@@ -250,8 +250,7 @@ export const en: Dictionary = {
       companyHint: 'Leave empty if you operate under your own name.',
       ownerCode: 'Owner invitation code',
       ownerCodeHint:
-        'The owner shares it from their space. Without a code, your request goes to them for approval.',
-      requestAccess: 'I have no code — send an access request',
+        'The owner shares it from their space. Format: GES-XXXX-XXXX.',
 
       inviteCode: 'Invitation code',
       inviteCodeHint:
@@ -300,7 +299,7 @@ export const en: Dictionary = {
       phoneTooLong: 'That number is too long, dial code included.',
       parkNameRequired: 'Give your portfolio a name.',
       inviteRequired: 'Enter your invitation code.',
-      inviteInvalid: 'Code not recognised. Expected format: LOC-XXXX-XXXX.',
+      inviteInvalid: 'Code not recognised. Expected format: LOC-XXXX-XXXX for a tenant, GES-XXXX-XXXX for a manager.',
       countryRequired: 'Choose your country.',
       credentials: 'Incorrect email or password.',
       confirmRequired: 'Confirm your password.',

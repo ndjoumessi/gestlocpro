@@ -108,20 +108,20 @@ describe('connexion', () => {
 
 describe('inscription', () => {
   /**
-   * CE CAS MANQUE, et son absence est dite ici plutôt que tue.
+   * L'AVEU QUI VIVAIT ICI est levé, et seulement à moitié.
    *
-   * Le correctif — envoyer `invitationCode` au lieu de le jeter — n'est PAS
-   * couvert par un test. J'ai tenté de conduire le parcours d'inscription
-   * jusqu'à l'envoi ; il compte plusieurs étapes et une condition que je n'ai
-   * pas identifiée bloque la soumission dans le harnais. Le laisser en échec
-   * était impossible, l'écrire faux aurait été pire.
+   * Il disait : « le correctif — envoyer `invitationCode` au lieu de le jeter —
+   * n'est PAS couvert par un test […] une condition que je n'ai pas identifiée
+   * bloque la soumission dans le harnais ». La condition était le PAYS, devenu
+   * requis à l'étape « contexte » depuis qu'il n'arrive plus pré-rempli : le
+   * parcours de test le traversait sans le voir, exactement comme
+   * l'utilisateur. `remplirIdentite` le choisit désormais, et le cas ci-dessous
+   * conduit le parcours gestionnaire jusqu'à l'envoi.
    *
-   * Deux tests voisins gardent déjà la mise en forme du code au fil de la
-   * frappe et son refus s'il est incomplet — et AUCUN ne vérifiait qu'il
-   * partait. C'est précisément ce trou qui a laissé passer le défaut : un champ
-   * saisi, formaté, validé, et jeté à l'envoi.
-   *
-   * À écrire en premier au prochain passage.
+   * Ce que ce trou avait laissé passer, il l'a laissé passer DEUX FOIS : une
+   * fois pour le locataire, une fois pour le gestionnaire, sur le même champ
+   * sous deux noms. Le second est gardé ici ; le premier reste à écrire, et
+   * c'est dit plutôt que tu.
    */
 
   it('transmet au serveur les champs que l’assistant collectait puis jetait', async () => {
@@ -206,6 +206,83 @@ describe('inscription', () => {
     // Le code ISO réel, et non une sentinelle ni un champ omis : le pays est
     // connu, seule sa devise ne l'est pas.
     expect(corps.countryCode).toBe('ZW')
+  })
+
+  it('transmet le code d’invitation du GESTIONNAIRE, et pas seulement celui du locataire', async () => {
+    /**
+     * Le même défaut, sur la troisième branche.
+     *
+     * L'envoi ne lisait que `state.inviteCode` — le champ du locataire. Le
+     * gestionnaire saisit le sien dans `state.ownerCode`, un nom que le serveur
+     * ne connaît pas : `grep ownerCode server/src` ne rend rien. Le code était
+     * donc saisi, mis en forme au fil de la frappe, relu au récapitulatif, puis
+     * jeté — et le compte se créait sans invitation ET sans parc, rattaché à
+     * rien, sous l'écran « votre espace est prêt ».
+     *
+     * Le préfixe est `GES` et non `LOC` : c'est `creerCode` qui le pose, côté
+     * serveur, selon le rôle invité.
+     */
+    const serveur = installerFauxServeur()
+    serveur.quand('POST', '/auth/signup', { status: 201, body: { user: COMPTE_FICTIF } })
+    serveur.quand('GET', '/auth/me', { status: 200, body: { user: COMPTE_FICTIF, memberships: [] } })
+
+    const user = userEvent.setup()
+    renderApp('/inscription/gestionnaire')
+
+    await user.type(screen.getByLabelText(/nom complet/i), 'Sarah Mbala')
+    await user.type(screen.getByLabelText(/adresse e-mail/i), 'sarah@example.com')
+    await user.type(screen.getByLabelText(/^téléphone/i), '699112233')
+    await user.type(screen.getByLabelText(/^Mot de passe/), 'Bonamoussadi2026!')
+    await user.click(screen.getByRole('button', { name: /continuer/i }))
+
+    const pays = await screen.findByLabelText(/^pays/i)
+    await user.click(pays)
+    await user.type(pays, 'camer')
+    await user.click(screen.getByRole('option', { name: 'Cameroun' }))
+    // Saisi sans tirets, comme on recopie un code depuis un SMS : c'est le
+    // champ qui les place.
+    await user.type(
+      screen.getByLabelText(/code d’invitation du propriétaire/i),
+      'ges4a7b92cd',
+    )
+    await user.click(screen.getByRole('button', { name: /continuer/i }))
+
+    await screen.findByRole('heading', { name: /tout est correct/i })
+    await user.click(screen.getByLabelText(/j’accepte les conditions/i))
+    await user.click(screen.getByRole('button', { name: /créer mon espace/i }))
+
+    const corps = serveur.appels.find((a) => a.chemin === '/auth/signup')?.corps as Record<
+      string,
+      unknown
+    >
+    expect(corps).toBeDefined()
+    // LE point du cas : le code part, sous le nom que le serveur attend.
+    expect(corps.invitationCode).toBe('GES-4A7B-92CD')
+    // Et il part SEUL : un code rejoint un parc, il n'en fonde pas. Le serveur
+    // traite cette branche en premier et exclusivement.
+    expect(corps.parkName).toBeUndefined()
+  })
+
+  it('ne propose plus une demande d’accès que rien ne reçoit', async () => {
+    /**
+     * La case « Je n'ai pas de code — envoyer une demande d'accès » n'avait
+     * aucune route derrière elle : ni `accessRequest`, ni `joinRequest`, rien
+     * dans `server/src`. La cocher désactivait le champ, laissait passer
+     * l'étape, et produisait un compte rattaché à aucun parc.
+     */
+    const user = userEvent.setup()
+    renderApp('/inscription/gestionnaire')
+
+    await user.type(screen.getByLabelText(/nom complet/i), 'Sarah Mbala')
+    await user.type(screen.getByLabelText(/adresse e-mail/i), 'sarah@example.com')
+    await user.type(screen.getByLabelText(/^téléphone/i), '699112233')
+    await user.type(screen.getByLabelText(/^Mot de passe/), 'Bonamoussadi2026!')
+    await user.click(screen.getByRole('button', { name: /continuer/i }))
+
+    await screen.findByLabelText(/^pays/i)
+    expect(screen.queryByText(/demande d’accès/i)).not.toBeInTheDocument()
+    // Le champ reste, et il est le seul chemin : sans lui, on n'avance pas.
+    expect(screen.getByLabelText(/code d’invitation du propriétaire/i)).toBeEnabled()
   })
 
   it('ramène à l’étape où le champ existe quand l’adresse est prise', async () => {

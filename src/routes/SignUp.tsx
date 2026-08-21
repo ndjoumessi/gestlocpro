@@ -126,9 +126,12 @@ export function SignUp() {
       const pays = { country: validateCountry(state.country) };
       if (state.role === "owner")
         return { ...pays, parkName: validateParkName(state.parkName) };
-      // Le gestionnaire sans code passe par une demande d'accès : on ne bloque
-      // pas, on change de chemin.
-      if (state.role === "manager") return pays;
+      // Le gestionnaire REJOINT un parc, il n'en fonde pas : sans code, le
+      // serveur n'a aucune branche pour lui — il crée alors un compte rattaché
+      // à rien, sous un écran qui annonce « votre espace est prêt ». Le chemin
+      // de repli qu'on invoquait ici n'existait que dans cette phrase.
+      if (state.role === "manager")
+        return { ...pays, ownerCode: validateInviteCode(state.ownerCode) };
       if (state.role === "tenant")
         return { ...pays, inviteCode: validateInviteCode(state.inviteCode) };
     }
@@ -144,6 +147,21 @@ export function SignUp() {
    * tout était jeté à la dernière étape. Le succès affiché ne recouvrait rien.
    */
   const creerLeCompte = async () => {
+    /**
+     * UN code d'invitation, sous deux noms de champ.
+     *
+     * Le gestionnaire saisit le sien dans `ownerCode`, le locataire dans
+     * `inviteCode` : deux étiquettes à l'écran, un seul objet côté serveur.
+     * L'envoi ne lisait que le second, si bien que le code du gestionnaire
+     * était formaté, récapitulé, puis jeté — la faute même que le commentaire
+     * ci-dessous déclare corrigée, rejouée sur l'autre branche.
+     * `grep ownerCode server/src` ne rend rien : ce nom n'a jamais existé
+     * ailleurs que dans cet état local, et rien ne reliait les deux.
+     */
+    const codeInvitation = (
+      state.role === "manager" ? state.ownerCode : state.inviteCode
+    ).trim();
+
     setSubmitting(true);
     setEchec(null);
     try {
@@ -193,8 +211,8 @@ export function SignUp() {
          * Le serveur traite cette branche EN PREMIER et exclusivement de la
          * création d'un parc : un code l'emporte sur un nom de parc.
          */
-        ...(state.role !== "owner" && state.inviteCode.trim()
-          ? { invitationCode: state.inviteCode.trim() }
+        ...(state.role !== "owner" && codeInvitation
+          ? { invitationCode: codeInvitation }
           : {}),
       });
       setDone(true);
@@ -824,34 +842,43 @@ function ContextStep({
             )}
           </Field>
 
+          {/*
+              La case « je n'ai pas de code » est partie avec le chemin qu'elle
+              promettait : aucune route serveur ne reçoit de demande d'accès,
+              rien dans le client n'en émet, et l'aide annonçait une validation
+              par le propriétaire que personne n'aurait vue arriver. La cocher
+              menait à un compte rattaché à aucun parc, sous l'écran « votre
+              espace est prêt » — le mensonge que ce dépôt retire partout
+              ailleurs. Le code devient donc requis, comme il l'est pour le
+              locataire, parce que c'est la seule façon d'entrer.
+          */}
           <Field
             label={t("auth.signup.ownerCode")}
             hint={t("auth.signup.ownerCodeHint")}
-            optional={state.requestAccess}
+            required
+            error={errorFor("ownerCode")}
           >
             {(props) => (
               <Input
                 {...props}
                 name="ownerCode"
                 icon="key"
-                placeholder="PROP-0000-0000"
-                disabled={state.requestAccess}
+                placeholder="GES-4A7B-92CD"
+                autoCapitalize="characters"
+                spellCheck={false}
                 value={state.ownerCode}
+                // Mise en forme au fil de la frappe, comme pour le locataire :
+                // les deux codes ont la même longueur et le même découpage, et
+                // le `toUpperCase()` seul laissait l'utilisateur placer les
+                // tirets à la main d'un côté et pas de l'autre.
                 onChange={(e) =>
-                  patch({ ownerCode: e.target.value.toUpperCase() })
+                  patch({ ownerCode: formatInviteCode(e.target.value) })
                 }
+                onBlur={blur("ownerCode", validateInviteCode(state.ownerCode))}
+                className="tracking-[0.08em]"
               />
             )}
           </Field>
-
-          <Checkbox
-            label={t("auth.signup.requestAccess")}
-            name="requestAccess"
-            checked={state.requestAccess}
-            onChange={(e) =>
-              patch({ requestAccess: e.target.checked, ownerCode: "" })
-            }
-          />
         </div>
       )}
 
