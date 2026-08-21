@@ -2,10 +2,20 @@
    GestLocPro — Jetons de design
    Source de vérité unique. Aucun hex en dur dans les composants.
 
-   La palette de marque porte trois corrections de contraste :
+   La palette de marque porte quatre corrections de contraste :
      --muted     #6B7573 -> #5C6664   (4.33 -> 5.40 sur --paper)
      --gold-ink  #A0722C -> #8A6218   (3.87 -> 4.98 sur --paper)
      --gold-on-dark  #C58E3E -> #D2A055 (4.38 -> 5.33 sur --ink-2)
+     --warn      #8A6218 -> #795415   (3.93 -> 4.88 sur --warn-border)
+
+   La quatrième dit ce que les trois premières taisaient : un ratio est écrit
+   ICI CONTRE UN FOND, et le jeton, lui, part servir sur toute sa famille. Les
+   trois lignes du dessus certifient --paper ou --ink-2 ; aucune ne dit ce que
+   la même encre vaut sur --warn-border, --ok-tint ou --danger-border. Ces
+   nombres sont donc des relevés, pas des garanties. La garantie est ailleurs,
+   et elle est mécanique : `scripts/mesure-ui.mjs` lit `contrast-audit.js` et
+   audite chaque texte peint, en deux thèmes et deux langues, à chaque
+   `npm run check`. C'est elle qui a trouvé la quatrième.
    --gold (#C58E3E) reste l'accent de marque mais n'est jamais du texte sur
    fond clair (2.87 sur blanc) : fond, bordure, icône, ou texte sur --ink.
    ========================================================================= */
@@ -95,7 +105,16 @@
   --color-ok-tint: #eaf2ec;
   --color-ok-border: #dee8e1;
 
-  --color-warn: #8a6218;
+  /* #8a6218 -> #795415. L'ancienne valeur était certifiée « 4.98 sur --paper »
+     et l'était : mais le fanion « Démonstration » la pose sur --warn-border, où
+     elle tombait à 3.93 pour 4.5 requis. Un ratio ne vaut que CONTRE UN FOND, et
+     un jeton d'encre est employé sur tous ceux de sa famille. Les quatre sont
+     désormais tenus : 4.88 sur --warn-border, 6.15 sur --warn-tint, 6.19 sur
+     --paper, 6.79 sur --surface. #7e571f était le premier candidat à passer, à
+     4.61 — onze centièmes de marge, écartés pour cela.
+     Les cinq `bg-warn` du produit sont des pastilles et des segments de jauge,
+     jamais un fond de texte : ils ne font que gagner en lisibilité. */
+  --color-warn: #795415;
   --color-warn-tint: #fbf3e2;
   --color-warn-border: #ead9b4;
 

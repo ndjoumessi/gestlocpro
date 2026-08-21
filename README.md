@@ -72,5 +72,8 @@ intégration continue : le garde-fou sort en 1 quand il trouve quelque chose.
 
 - [docs/PLAN.md](docs/PLAN.md) — décisions de conception, jetons, défauts trouvés,
   hypothèses à valider.
-- [scripts/contrast-audit.js](scripts/contrast-audit.js) — audit de contraste à
-  exécuter dans la console du navigateur.
+- [scripts/contrast-audit.js](scripts/contrast-audit.js) — audit de contraste.
+  Se colle dans la console du navigateur, et `npm run check` le lance de
+  lui-même via [scripts/mesure-ui.mjs](scripts/mesure-ui.mjs), qui l'évalue sur
+  le paquet construit en deux thèmes et deux langues. Une seule source pour les
+  deux usages : une copie dériverait sans que personne l'apprenne.

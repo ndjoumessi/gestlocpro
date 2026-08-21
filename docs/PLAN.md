@@ -35,19 +35,23 @@ Rôles : `proprio` `gest` `loc`. Devises : `FCFA` `Euro` `CAD` `USD`.
 
 ## 2. Corrections d'accessibilité (ratios vérifiés)
 
-Trois défauts mesurés dans la palette de marque telle que fournie. Le système de
-design les corrige.
+Quatre défauts mesurés dans la palette de marque. Les trois premiers l'ont été à
+la main sur la palette telle que fournie ; le quatrième a été trouvé des lots plus
+tard par l'audit automatique, et il dit ce que les trois autres taisaient — un
+ratio se vérifie CONTRE UN FOND, et un jeton d'encre part ensuite servir sur toute
+sa famille.
 
 | Token | Valeur d'origine | Ratio | Remplacement | Nouveau ratio |
 | --- | --- | --- | --- | --- |
 | Texte secondaire | `#6B7573` sur `#F7F4EE` | **4.33** ✗ | `#5C6664` | **5.40** ✓ |
 | Lien / label doré | `#A0722C` sur `#F7F4EE` | **3.87** ✗ | `#8A6218` | **4.98** ✓ |
 | Or sur sombre élevé | `#C58E3E` sur `#243733` | **4.38** ✗ | `#D2A055` | **5.33** ✓ |
+| Alerte sur son propre liseré | `#8A6218` sur `#EAD9B4` | **3.93** ✗ | `#795415` | **4.88** ✓ |
 
 `#C58E3E` reste l'accent de marque, mais **jamais en texte sur fond clair** (2.87 sur blanc).
 Il sert en fond, bordure, icône, et en texte sur `#14201E` (5.83 ✓).
 
-Quatrième correction : la conception d'origine descendait à `9.5px` / `10px` sur les labels mono.
+Cinquième correction : la conception d'origine descendait à `9.5px` / `10px` sur les labels mono.
 Plancher relevé à **12px**, corps dashboard **14px**, corps landing/mobile **16px** (évite l'auto-zoom iOS).
 
 ---
@@ -79,7 +83,7 @@ Plancher relevé à **12px**, corps dashboard **14px**, corps landing/mobile **1
 --gold-border    #E9C68B
 
 --ok      #2C6A4E   --ok-tint      #EAF2EC   --ok-border      #DEE8E1
---warn    #8A6218   --warn-tint    #FBF3E2   --warn-border    #EAD9B4
+--warn    #795415   --warn-tint    #FBF3E2   --warn-border    #EAD9B4
 --danger  #A63A2B   --danger-tint  #FAEDEA   --danger-border  #E4B3AA
 --neutral #5C6664   --neutral-tint #F2F0EA   --neutral-border #E5DFD3
 ```
@@ -414,8 +418,17 @@ dès qu'une couleur porte un alpha, et ni un parseur naïf ni `canvas.fillStyle`
 ne le décodent — le canvas retombait silencieusement sur du noir, ce qui faisait
 passer un fond crème pour un fond sombre.
 
-**Résultat final : 0 échec de contraste et 0 cible sous 44 px** sur les
-17 routes, en français comme en anglais.
+**L'outil est désormais LANCÉ**, et c'est la moitié importante de cette section.
+Il ne l'était pas : il fallait penser à coller son contenu dans une console, et
+personne n'y pensait. `scripts/mesure-ui.mjs` le lit et l'évalue sur le paquet
+construit à chaque `npm run check` — 23 écrans, deux thèmes, deux largeurs, deux
+langues, un peu moins de 14 000 textes.
+
+Ce paragraphe portait avant « Résultat final : 0 échec de contraste sur les
+17 routes ». C'était vrai le jour où ç'a été mesuré, et faux depuis : les routes
+sont 23, et le fanion de démonstration était sous le seuil. Un relevé à la main
+se périme sans prévenir, et il se périme en gardant l'air d'une garantie. C'est
+la porte qui tient le résultat maintenant, pas cette phrase.
 
 ---
 

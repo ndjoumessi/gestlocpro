@@ -12,14 +12,17 @@
  *
  * Ce fichier ouvre donc un VRAI navigateur sur le VRAI paquet construit.
  *
- * SUJET DE CETTE GARDE : ce que la mise en page fait VRAIMENT une fois peinte.
- * Quatre règles, rapportées du signal le plus tôt au symptôme le plus tard —
- * les réglages restent atteignables au clavier ; la barre de la vitrine garde
- * du jeu ; aucune rangée d'en-tête ne se replie là où la place existe ; aucun
- * écran ne défile latéralement, à aucune largeur, dans aucune des deux langues.
- * Les trois dernières regardent des pixels et la première une absence : aucune
- * mesure de pixels ne voit une commande retirée, puisque la retirer fait de la
- * place.
+ * SUJET DE CETTE GARDE : ce que la page fait VRAIMENT une fois peinte.
+ *
+ * Cinq règles. Les deux premières regardent l'USAGE — les réglages restent
+ * atteignables au clavier, aucun texte ne passe sous le seuil WCAG AA. Les
+ * trois suivantes regardent la MISE EN PAGE, du signal le plus tôt au symptôme
+ * le plus tard — la barre de la vitrine garde du jeu, aucune rangée d'en-tête
+ * ne se replie là où la place existe, aucun écran ne défile latéralement.
+ *
+ * L'ordre est celui-là parce qu'une mesure de pixels ne voit ni une commande
+ * retirée (la retirer fait de la place) ni un texte illisible (il occupe la
+ * même boîte). Une barre parfaitement rangée peut être inutilisable.
  *
  * PIÈGES HONORÉS — chacun a été payé une fois :
  *
@@ -160,6 +163,46 @@ function adressesDeLApplication() {
     )
   }
   return adresses
+}
+
+/**
+ * LE CONTRASTE SE MESURE ICI PARCE QUE C'EST ICI QUE LE NAVIGATEUR EST OUVERT.
+ *
+ * `scripts/contrast-audit.js` sait trouver un texte sous le seuil WCAG AA
+ * depuis des lots. Aucune porte ne le lançait : c'était un outil de console,
+ * qu'il fallait penser à coller. Le commentaire de `TOLERES`, plus bas, le cite
+ * déjà comme LA démonstration du dépôt qu'une garde hors de `check` ne
+ * s'exécute jamais. Il avait raison, et il se citait lui-même : au premier
+ * passage automatique, l'audit a trouvé le fanion « Démonstration » à 3,93 pour
+ * 4,5 requis — une encre dont `tokens.css` certifiait « 4.98 sur --paper », et
+ * que le fanion posait sur un tout autre fond.
+ *
+ * ON LIT LE FICHIER, ON NE LE RECOPIE PAS. Une copie dériverait en silence de
+ * l'outil que la console emploie encore, et les deux se contrediraient sans que
+ * personne l'apprenne. La forme du retour est le contrat, écrit là-bas.
+ *
+ * POURQUOI DEUX THÈMES. La moitié des jetons ne vivent qu'en sombre — `warn`
+ * y vaut #e0b877 sur #54421f, aucun de ces deux-là n'existant en clair. Ne
+ * mesurer qu'un thème, c'est ne mesurer qu'une palette sur deux.
+ *
+ * POURQUOI DEUX LARGEURS ET PAS ONZE. Le contraste ne dépend pas de la
+ * géométrie : entre 360 et 375, aucune couleur ne change, et onze largeurs
+ * porteraient la porte à un quart d'heure pour redire onze fois la même chose.
+ * Mais il n'en faut pas qu'UNE : à 1280 la barre basse de l'espace connecté,
+ * le panneau du menu et les variantes compactes ne sont pas rendus du tout, et
+ * ce qui n'est pas rendu n'est pas mesuré. Une largeur de poche, une de bureau.
+ */
+const THEMES = ['light', 'dark']
+const LARGEURS_CONTRASTE = [360, 1280]
+
+/**
+ * Contrastes TOLÉRÉS, même doctrine que `TOLERES` : nommés, motivés, mortels.
+ *
+ * Clé : le texte relevé, tronqué comme l'audit le tronque. AUCUNE ENTRÉE, et
+ * c'est le but — la garde du garde plus bas fait rougir celle qui ne couvre
+ * plus rien, donc aucune ne peut survivre au défaut qu'elle couvrait.
+ */
+const CONTRASTES_TOLERES = {
 }
 
 /**
@@ -551,6 +594,14 @@ async function servir() {
 }
 
 const adresses = adressesDeLApplication()
+
+/*
+  LU AU DÉMARRAGE, avant le build : si le fichier a disparu ou n'est plus
+  lisible, on veut l'apprendre en une seconde et non après trois minutes de
+  balayage. `readFileSync` jette de lui-même, et c'est le comportement voulu.
+*/
+const AUDIT_CONTRASTE = readFileSync(join(RACINE, 'scripts/contrast-audit.js'), 'utf8')
+
 await construire()
 const serveur = await servir()
 const echecs = []
@@ -563,6 +614,15 @@ const inatteignables = []
 // déjà pour la liste des adresses, et la garde du garde plus bas pour le seuil.
 let rangeesMesurees = 0
 const tolerancesUtilisees = new Set()
+
+const contrastes = new Map()
+const contrastesTolerancesUtilisees = new Set()
+// Même raison qu'`ATTENDUES` et que `rangeesMesurees` : « aucun texte sous le
+// seuil » et « aucun texte regardé » s'écrivent pareil dans un journal.
+let textesAudites = 0
+// Le fond du corps par thème. Si les deux thèmes rendent la même chose, la
+// moitié sombre du balayage n'est qu'un décor — voir la garde du garde.
+const fondsParTheme = new Map()
 
 try {
   const navigateur = await chromium.launch()
@@ -619,6 +679,69 @@ try {
 
     await contexte.close()
   }
+
+  /*
+    PASSE SÉPARÉE, et non une règle de plus dans la boucle ci-dessus.
+
+    Les deux passes n'ont pas les mêmes axes : la mise en page balaie onze
+    largeurs et ignore le thème (les boîtes ne changent pas de taille selon la
+    couleur) ; le contraste balaie deux thèmes et se contente de deux largeurs.
+    Les fondre donnerait le produit des deux — 506 arrêts au lieu de 322 — pour
+    mesurer partout des choses qui ne varient que quelque part.
+
+    Ce qu'elles PARTAGENT est ce qui coûte cher, et c'est déjà mutualisé : un
+    seul `vite build`, un seul serveur, un seul navigateur.
+  */
+  for (const langue of LANGUES) {
+    for (const theme of THEMES) {
+      const contexte = await navigateur.newContext({
+        viewport: { width: LARGEURS_CONTRASTE[0], height: 900 },
+        locale: langue,
+        colorScheme: theme,
+      })
+      const page = await contexte.newPage()
+      for (const adresse of adresses) {
+        const depart = Date.now()
+        process.stdout.write(`   ${langue}  ${theme}  ${adresse} … `)
+        for (const largeur of LARGEURS_CONTRASTE) {
+          await page.setViewportSize({ width: largeur, height: 900 })
+          // On recharge à la première largeur seulement : le reste est un
+          // redimensionnement, comme dans la passe de mise en page.
+          if (largeur === LARGEURS_CONTRASTE[0]) {
+            await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
+          }
+          await attendre(page, adresse)
+
+          if (adresse === '/' && largeur === LARGEURS_CONTRASTE[0]) {
+            fondsParTheme.set(
+              theme,
+              await page.evaluate(() => getComputedStyle(document.body).backgroundColor),
+            )
+          }
+
+          const audit = await page.evaluate(AUDIT_CONTRASTE)
+          if (!audit || typeof audit.examines !== 'number') {
+            throw new Error(
+              "mesure-ui : `contrast-audit.js` n'a pas rendu `{ failures, items, examines }`. " +
+                "Son expression doit rester une IIFE qui s'évalue en cet objet.",
+            )
+          }
+          textesAudites += audit.examines
+
+          for (const item of audit.items) {
+            // Dédupliqué sur la FORME du défaut, pas sur l'endroit : le même
+            // couple encre/fond rapporté vingt fois est un seul correctif, et
+            // vingt lignes de rapport cachent le deuxième défaut.
+            const cle = `${item.text}|${item.color}|${item.bg}`
+            if (!contrastes.has(cle)) contrastes.set(cle, { ...item, ou: `${adresse} ${largeur}px ${langue} ${theme}` })
+          }
+        }
+        process.stdout.write(`${((Date.now() - depart) / 1000).toFixed(1)}s\n`)
+      }
+      await contexte.close()
+    }
+  }
+
   await navigateur.close()
 } finally {
   serveur.kill()
@@ -667,6 +790,50 @@ if (rangeesMesurees === 0) {
 }
 
 /*
+  GARDE DU GARDE : l'audit doit avoir REGARDÉ quelque chose.
+
+  Zéro texte examiné se lit « aucun contraste sous le seuil » dans le journal
+  final — c'est la panne exacte que ce fichier reproche déjà à `contrast-audit`
+  d'avoir subie pendant des lots, à ceci près qu'elle serait désormais SILENCIEUSE
+  au lieu d'être seulement oubliée. Le seuil est volontairement grossier : on
+  n'estime pas le bon nombre de textes du produit, on distingue « il a travaillé »
+  de « il n'a rien vu ».
+*/
+const TEXTES_ATTENDUS = 500
+
+if (textesAudites < TEXTES_ATTENDUS) {
+  console.error(
+    `\n✗ mesure-ui : ${textesAudites} textes audités en contraste, moins que les ${TEXTES_ATTENDUS} attendus.\n` +
+      "   L'audit ne regarde plus rien — ce n'est pas une absence de défaut.\n",
+  )
+  process.exit(1)
+}
+
+/*
+  GARDE DU GARDE : les deux thèmes doivent rendre DEUX choses.
+
+  `colorScheme` ne force pas un thème, il pose `prefers-color-scheme` — et
+  l'application est libre de ne pas le suivre. Le jour où elle cesse de le
+  suivre, ou le jour où `THEMES` se retrouve à deux entrées identiques, la
+  moitié sombre du balayage devient un décor : même palette mesurée deux fois,
+  rapportée comme deux thèmes vérifiés. Or c'est précisément en sombre que
+  vivent les jetons qu'aucun oeil ne relit.
+
+  Le fond du corps de la page d'accueil suffit à trancher : il vaut #efebe2 en
+  clair et #100e0b en sombre.
+*/
+const fondsDistincts = new Set(fondsParTheme.values())
+if (fondsDistincts.size < THEMES.length) {
+  console.error(
+    `\n✗ mesure-ui : les ${THEMES.length} thèmes balayés rendent ${fondsDistincts.size} fond(s) distinct(s).\n` +
+      "   Une palette mesurée deux fois n'est pas deux palettes vérifiées.\n",
+  )
+  for (const [theme, fond] of fondsParTheme) console.error(`   ${theme} → ${fond}`)
+  console.error('')
+  process.exit(1)
+}
+
+/*
   LES RÉGLAGES SORTENT AVANT TOUT LE RESTE : une commande qu'on ne peut plus
   atteindre est pire qu'une barre serrée. Les trois autres règles de ce fichier
   regardent des pixels ; celle-ci regarde une absence, et aucune des trois ne
@@ -678,6 +845,45 @@ if (inatteignables.length > 0) {
       "   La barre les a confiés au menu ; le menu doit donc s'ouvrir à TOUTE largeur.\n",
   )
   for (const i of inatteignables) console.error(`   ${i.langue}  →  ${i.manque}`)
+  console.error('')
+  process.exit(1)
+}
+
+/*
+  PUIS LE CONTRASTE : après ce qu'on ne peut pas atteindre, ce qu'on ne peut pas
+  lire. Les trois règles qui suivent regardent la mise en page ; ces deux-ci
+  regardent l'usage, et une barre parfaitement rangée dont le texte est
+  illisible n'est pas une barre qui va bien.
+*/
+const contrastesOrphelins = Object.keys(CONTRASTES_TOLERES).filter(
+  (cle) => !contrastesTolerancesUtilisees.has(cle),
+)
+if (contrastesOrphelins.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${contrastesOrphelins.length} tolérance(s) de contraste ne couvrent plus rien.\n` +
+      contrastesOrphelins.map((cle) => `   ${cle} — à retirer de CONTRASTES_TOLERES`).join('\n') +
+      '\n',
+  )
+  process.exit(1)
+}
+
+const sousLeSeuil = [...contrastes.values()]
+  .filter((c) => {
+    if (!CONTRASTES_TOLERES[c.text]) return true
+    contrastesTolerancesUtilisees.add(c.text)
+    return false
+  })
+  .sort((a, b) => a.ratio - b.ratio)
+
+if (sousLeSeuil.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${sousLeSeuil.length} forme(s) de texte sous le seuil WCAG AA, sur ${textesAudites} audités.\n` +
+      '   Le ratio requis vaut 3 pour du grand texte, 4,5 sinon.\n',
+  )
+  for (const c of sousLeSeuil) {
+    console.error(`   ${c.ratio} / ${c.required}   ${c.fontSize}px poids ${c.weight}   ${JSON.stringify(c.text)}`)
+    console.error(`      ${c.color} sur ${c.bg}   vu à ${c.ou}`)
+  }
   console.error('')
   process.exit(1)
 }
@@ -744,5 +950,6 @@ if (echecs.length > 0) {
 
 console.log(
   `\n✓ mesure-ui : ${adresses.length} écrans × ${LARGEURS.length} largeurs × ${LANGUES.length} langues, aucun débordement latéral ni en-tête replié.\n` +
-    `  ${rangeesMesurees} mesures de la barre de la vitrine, toutes au-dessus de ${JEU_MINIMAL} px de jeu ; réglages atteints au clavier à 1440 px dans les deux langues.`,
+    `  ${rangeesMesurees} mesures de la barre de la vitrine, toutes au-dessus de ${JEU_MINIMAL} px de jeu ; réglages atteints au clavier à 1440 px dans les deux langues.\n` +
+    `  ${textesAudites} textes audités en contraste (${THEMES.join(' + ')}, ${LARGEURS_CONTRASTE.join(' et ')} px), aucun sous le seuil WCAG AA.`,
 )

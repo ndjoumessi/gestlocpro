@@ -7,8 +7,23 @@
  *  - Un fond semi-transparent doit être composité sur ce qu'il recouvre, sinon
  *    le ratio calculé est faux. On remonte la chaîne des ancêtres en composant.
  *
- * Usage : coller le contenu dans la console du navigateur, sur chaque page à
- * vérifier. Retourne la liste des textes sous le seuil WCAG AA.
+ * DEUX USAGES, UNE SEULE SOURCE.
+ *
+ *  1. À la main : coller le contenu dans la console du navigateur, sur la page
+ *     à vérifier. Rend la liste des textes sous le seuil WCAG AA.
+ *  2. À chaque `npm run check` : `scripts/mesure-ui.mjs` LIT ce fichier et
+ *     l'évalue dans la page, sur le paquet construit, en deux thèmes et deux
+ *     langues.
+ *
+ * Il le lit plutôt que d'en recopier la logique, et c'est le point : une copie
+ * dériverait de l'original en silence, et ce fichier a déjà payé exactement ce
+ * genre de silence — il savait trouver un contraste sous le seuil et ne l'a
+ * jamais trouvé, faute d'être lancé par quoi que ce soit.
+ *
+ * LA FORME DU RETOUR EST UN CONTRAT depuis lors : `{ failures, items, examines }`.
+ * L'expression doit rester une IIFE qui S'ÉVALUE en cet objet — c'est ce que
+ * `page.evaluate` reçoit. Un `return` de plus haut niveau, ou un point-virgule
+ * de trop, et la porte reçoit `undefined` sans rien dire.
  *
  * Pour l'automatiser sur plusieurs routes, copier ce fichier dans `public/dev/`
  * le temps de la session, puis :
@@ -147,6 +162,7 @@
   const failures = []
   const seen = new Set()
 
+  let examines = 0
   document.querySelectorAll('*').forEach((el) => {
     if (!el.offsetParent && getComputedStyle(el).position !== 'fixed') return
 
@@ -168,6 +184,7 @@
     const bg = effectiveBackground(el)
     const ratio = contrast(fg, bg)
 
+    examines++
     const size = parseFloat(cs.fontSize)
     const weight = parseInt(cs.fontWeight, 10) || 400
     const isLarge = size >= 24 || (size >= 18.66 && weight >= 700)
@@ -190,5 +207,15 @@
   })
 
   failures.sort((a, b) => a.ratio - b.ratio)
-  return { failures: failures.length, items: failures }
+  /*
+    ON REND AUSSI LE NOMBRE D'ÉLÉMENTS REGARDÉS, et pas seulement les fautifs.
+
+    « Zéro faute » et « zéro élément examiné » s'écrivent pareil dans un
+    journal, et ce fichier est le dépôt même qui a payé la confusion : il savait
+    trouver un contraste sous le seuil et ne l'a jamais trouvé, faute d'être
+    lancé. Maintenant qu'une porte l'exécute, le prochain silence possible n'est
+    plus « personne ne le lance » mais « il ne regarde plus rien » — un sélecteur
+    qui ne rend rien, une page qui n'a pas fini de peindre. Le compte le dit.
+  */
+  return { failures: failures.length, items: failures, examines }
 })()
