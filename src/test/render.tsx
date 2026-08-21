@@ -125,18 +125,26 @@ async function attendreLEspaceApplicatif(): Promise<void> {
 }
 
 /**
- * Attend la résolution de la SECONDE frontière paresseuse de ce lot : le
- * dictionnaire anglais (voir I18nProvider.tsx). Pas de marqueur DOM ici,
- * volontairement — la page ne doit RIEN afficher de spécial pendant ce
- * chargement, elle affiche le français en repli. `chargerAnglais` est donc
- * le seul repère : sa promesse est PARTAGÉE avec l'effet du fournisseur, qui
- * y pose `setAnglais` une fois résolue.
+ * Attend la résolution de la SECONDE frontière paresseuse : le dictionnaire
+ * anglais (voir I18nProvider.tsx). Pas de marqueur DOM ici, volontairement —
+ * `I18nProvider` ne monte RIEN qui porte cette frontière tant qu'elle n'est
+ * pas résolue (voir son en-tête : une chaîne vide n'est pas une absence,
+ * donc le sous-arbre entier reste démonté plutôt que monté avec des trous).
+ * `chargerAnglais` est donc le seul repère : sa promesse est PARTAGÉE avec
+ * l'effet du fournisseur, qui y pose `setAnglais` une fois résolue.
  *
  * `act`, et non un simple `await` : `setAnglais` se pose dans l'effet
  * d'`I18nProvider`, pas ici. Sans `act`, React avertirait d'une mise à jour
  * hors de son contrôle, et rien ne garantirait que le DOM porte déjà le
  * texte anglais au retour de cette fonction — la même panne, en somme, que
  * celle qu'`attendreLEspaceApplicatif` évite pour l'autre frontière.
+ *
+ * APPELÉE AVANT `attendreLEspaceApplicatif`, et c'est devenu un ordre
+ * OBLIGÉ : tant que cette frontière-ci n'est pas résolue, `<App/>` n'est pas
+ * monté DU TOUT — son propre découpage paresseux (`/app`, `/demo`) n'a donc
+ * pas encore commencé à charger, et son marqueur ne peut pas encore exister.
+ * L'inverser ferait chercher `attendreLEspaceApplicatif` un marqueur qui n'a
+ * pas eu la chance d'apparaître, et cette fonction rendrait la main trop tôt.
  */
 async function attendreLaLangue(locale: Locale): Promise<void> {
   if (locale !== 'en') return
@@ -192,8 +200,8 @@ export async function renderApp(
     </MemoryRouter>,
   )
 
-  await attendreLEspaceApplicatif()
   await attendreLaLangue(preferences.locale ?? 'fr')
+  await attendreLEspaceApplicatif()
 
   return resultat
 }

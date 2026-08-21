@@ -200,36 +200,73 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const [region, setRegionState] = useState<string | null>(readStoredRegion)
   const [anglais, setAnglais] = useState<Dictionary | null>(null)
 
+  /**
+   * La langue DEMANDÉE, distincte de `locale` — la langue EFFECTIVE, celle
+   * que `t()` et `children` emploient réellement.
+   *
+   * Elles ne divergent que dans un seul cas : `demandee === 'en'` alors que
+   * `anglais` n'est pas encore chargé. Tant que ça dure, `locale` ne bouge
+   * PAS — voir l'effet plus bas, qui ne le fait avancer QUE muni du
+   * dictionnaire. Une bascule vers le français, elle, n'a jamais rien à
+   * attendre : `locale` la suit dans le même battement.
+   *
+   * POURQUOI CETTE INDIRECTION, et pas `setLocale` posant `locale`
+   * directement (comme avant ce lot) : un contenu déjà affiché — un tableau
+   * de parc rempli, un texte français lu — ne doit JAMAIS être démonté pour
+   * une bascule de langue (`chargement.test.tsx` le garde depuis un lot
+   * antérieur : rouvrir un état de chargement sur des données déjà valides
+   * EST une régression, pas un détail). Si `locale` passait à `'en'` avant
+   * que son dictionnaire n'existe, `t()` retomberait sur `dictionary ===
+   * null` en PLEIN milieu d'un arbre déjà monté — exactement le défaut que ce
+   * lot corrige, mais réapparu par la porte de la bascule au lieu de celle du
+   * premier rendu. En retardant `locale` lui-même, le contenu français reste
+   * affiché, intact, jusqu'à ce que l'anglais soit prêt à le remplacer d'un
+   * coup — jamais entre les deux.
+   */
+  const [demandee, setDemandee] = useState<Locale>(locale)
+
   useEffect(() => {
     document.documentElement.lang = locale
     ecrireStockage('local', STORAGE_KEY, locale)
   }, [locale])
 
   /*
-   * Charge `en` la première fois que `locale` le demande — à l'ouverture si
-   * la langue stockée était déjà l'anglais (la requête est alors déjà en vol,
-   * lancée à l'évaluation du module, plus haut), ou plus tard si l'utilisateur
-   * bascule via `setLocale`. `annule` protège contre un démontage ou un
-   * changement de langue pendant le chargement : sans lui, une réponse tardive
-   * poserait l'état d'un composant qui ne s'y intéresse plus.
+   * Fait avancer `locale` vers `demandee` — immédiatement si rien à charger,
+   * une fois `en.ts` arrivé sinon. Se déclenche au premier rendu (si la
+   * langue stockée était déjà l'anglais, la requête est alors déjà en vol,
+   * lancée à l'évaluation du module, plus haut) comme à toute bascule
+   * ultérieure via `setLocale` — un seul mécanisme pour les deux moments.
+   *
+   * `setAnglais` et `setLocaleState('en')` dans le MÊME callback : React les
+   * applique dans le même rendu, donc `locale` ne vaut jamais `'en'` sans que
+   * `anglais` ne soit déjà posé — c'est ce qui rend `dictionary === null`
+   * injoignable dans `t()` une fois le premier rendu passé.
+   *
+   * `annule` protège d'une réponse tardive après démontage ou après un
+   * second changement de langue survenu avant que le premier n'ait résolu.
    */
   useEffect(() => {
-    if (locale !== 'en' || anglais) return
+    if (demandee !== 'en' || anglais) {
+      if (demandee !== locale) setLocaleState(demandee)
+      return
+    }
     let annule = false
     chargerAnglais().then((dictionnaire) => {
-      if (!annule) setAnglais(dictionnaire)
+      if (annule) return
+      setAnglais(dictionnaire)
+      setLocaleState('en')
     })
     return () => {
       annule = true
     }
-  }, [locale, anglais])
+  }, [demandee, anglais, locale])
 
   useEffect(() => {
     if (region) ecrireStockage('local', REGION_KEY, region)
     else effacerStockage('local', REGION_KEY)
   }, [region])
 
-  const setLocale = useCallback((next: Locale) => setLocaleState(next), [])
+  const setLocale = useCallback((next: Locale) => setDemandee(next), [])
   const setRegion = useCallback((next: string | null) => setRegionState(next), [])
 
   const t = useCallback(
@@ -297,7 +334,61 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     [locale, setLocale, region, setRegion, dateLocale, t],
   )
 
-  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
+  /**
+   * NE MONTE PAS `children` tant que le dictionnaire de LA LANGUE DEMANDÉE
+   * n'est pas résolu.
+   *
+   * Un lot précédent laissait `t()` rendre `''` pendant ce temps, en gardant
+   * `children` monté. MESURÉ, ce choix avait trois coûts que `mesure-ui` ne
+   * peut pas voir — il mesure l'état stable, après résolution — et que ce lot
+   * a mesurés au navigateur, réseau bridé, `en-US`, pendant la fenêtre
+   * d'attente (~750 ms) :
+   *
+   *   noms accessibles vides    jusqu'à 6 `aria-label`/`alt` simultanés
+   *   décalage de mise en page  0,147 de CLS (« à améliorer » au sens des
+   *                             Core Web Vitals), un seul saut, au moment
+   *                             précis où le texte arrive
+   *   titre d'onglet            « — » (le tiret cadratin nu — `document.title`
+   *                             normalise les espaces autour) pendant la
+   *                             même fenêtre, au lieu du titre statique ou du
+   *                             titre anglais
+   *
+   * Une chaîne vide n'est pas une absence : le DOM la porte quand même — un
+   * `<nav aria-label="">` a perdu son nom, pas gagné le silence. Ne PAS
+   * monter le sous-arbre évite les trois d'un coup, par construction : rien
+   * n'est peint, donc rien ne porte d'attribut vide et rien ne se remplit
+   * ensuite.
+   *
+   * `dictionnairePret` vaut TOUJOURS `true` pour `fr` — `anglais` n'entre
+   * dans le calcul que si `locale === 'en'` — donc la langue impatiente ne
+   * traverse jamais ce montage différé : zéro attente, zéro rendu
+   * conditionnel sur son chemin.
+   *
+   * NE VAUT `false` QU'AU TOUT PREMIER RENDU — jamais à une bascule
+   * ultérieure. `locale` (voir `demandee`, plus haut) n'atteint `'en'` que
+   * lorsque `anglais` est DÉJÀ posé, sauf sur le rendu initial où
+   * `readStoredLocale` peut l'y placer directement. Une bascule en cours de
+   * page ne fait donc jamais tomber cette condition à `false` : le contenu
+   * déjà affiché reste monté, intact, pendant que l'anglais charge en
+   * arrière-plan — voir le commentaire de `demandee` pour la raison, dictée
+   * par `chargement.test.tsx`.
+   *
+   * CE QUI RESTE AFFICHÉ : rien qui porte du texte ou une image à charger —
+   * un fond uni, `bg-canvas`, la même couleur que ce sur quoi `children`
+   * finira par peindre. Remesuré : le remplacement de ce fond par `children`
+   * une fois prêt ne produit AUCUNE entrée `layout-shift` — un fond qui ne
+   * bouge jamais ne peut pas se décaler à l'arrivée de ce qui le recouvre.
+   * Le point d'arrivée du texte anglais est inchangé (~3930 ms, comme les
+   * deux lots précédents) : ce lot ne fait que changer ce qui s'affiche
+   * AVANT, jamais quand le vrai contenu arrive.
+   */
+  const dictionnairePret = locale !== 'en' || anglais !== null
+
+  return (
+    <I18nContext.Provider value={value}>
+      {dictionnairePret ? children : <div aria-hidden="true" className="min-h-dvh bg-canvas" />}
+    </I18nContext.Provider>
+  )
 }
 
 export function useI18n(): I18nContextValue {
