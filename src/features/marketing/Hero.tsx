@@ -27,21 +27,50 @@ export function Hero() {
     >
       {/* Le titre prend toute la largeur, et le reste se range dessous : en
           deux colonnes, il n'avait que la moitié de l'écran et venait buter
-          contre la carte d'aperçu.
-
-          `items-center` et non `items-end` : le texte était épinglé au bas de
-          la carte, ce qui creusait un vide entre le titre et la première ligne
-          utile — le défaut le plus visible de la version précédente. */}
+          contre la carte d'aperçu. */}
       <div className="relative mx-auto max-w-7xl">
         <p className="eyebrow flex items-center gap-2 text-gold-ink">
           <Icon name="globe" size={14} />
           {t('marketing.hero.eyebrow')}
         </p>
 
-        <h1 className="display-xl mt-6 max-w-[18ch] text-balance">{t('marketing.hero.title')}</h1>
+        {/* Les trois marqueurs qui suivent existent pour la mesure, et ils ne
+            peuvent pas s'en déduire : « la colonne qui porte la lecture » et
+            « celle qui illustre » sont un fait de CONCEPTION, pas de DOM — rien
+            dans une grille ne distingue son premier enfant de son second. Une
+            règle qui devinerait par la position se tromperait le jour où les
+            colonnes s'inversent, et se tairait en se trompant. */}
+        <h1 data-mesure="accroche-titre" className="display-xl mt-6 max-w-[18ch] text-balance">
+          {t('marketing.hero.title')}
+        </h1>
 
-        <div className="mt-12 grid items-center gap-10 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
-          <div className="min-w-0">
+        {/*
+          LES DEUX COLONNES PARTENT DU MÊME HAUT, et c'est la troisième et
+          dernière position essayée ici. `items-end` épinglait le texte au BAS
+          de la carte ; `items-center` l'a remonté de moitié et a laissé le
+          défaut intact sous une forme plus discrète.
+
+          Mesuré, avant ce lot : la rangée fait 427 px (c'est la carte qui la
+          dicte, 396 plus sa mention), la colonne de gauche 204. `items-center`
+          la décalait donc de (427 − 204) / 2 ≈ 111 px vers le bas, et le trou
+          entre le bas du titre et la première ligne de texte valait 159 px à
+          1440, 1920 et 2000 px — contre 48 px à 375 et 768, où la grille est à
+          une colonne et où l'alignement ne s'applique pas. Le même bloc se
+          lisait donc autrement selon la largeur, sans que rien ne le décide.
+
+          Ce n'est pas une question de goût mais d'AXE : la colonne de gauche
+          porte la lecture — titre, texte, actions, mention — et la carte
+          illustre. Un axe se donne au porteur ; centrer revenait à donner
+          l'axe à l'illustration et à faire flotter le texte autour d'elle.
+          `items-start` rend les 111 px et aligne le haut de la carte sur la
+          première ligne du paragraphe : deux colonnes qui commencent ensemble.
+
+          Le trou vaut désormais 48 px — la marge `mt-12` de la grille — à
+          TOUTES les largeurs, ce qui est aussi ce que la version à une colonne
+          faisait déjà.
+        */}
+        <div className="mt-12 grid items-start gap-10 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
+          <div data-mesure="accroche-lecture" className="min-w-0">
             <p className="max-w-[46ch] text-body-l text-pretty text-muted">
               {t('marketing.hero.subtitle')}
             </p>
@@ -107,7 +136,7 @@ function HeroPreview({
   const doivent = UNITS.filter((u) => u.status === 'overdue' || u.status === 'partial')
 
   return (
-    <div className="relative min-w-0">
+    <div data-mesure="accroche-illustration" className="relative min-w-0">
       <div className="animate-rise rounded-2xl border border-divider bg-surface p-5 shadow-e3 sm:p-6">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">

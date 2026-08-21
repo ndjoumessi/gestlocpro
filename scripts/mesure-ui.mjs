@@ -772,6 +772,54 @@ async function reglagesAtteignables(page) {
 }
 
 /**
+ * L'AXE DU BLOC D'ACCROCHE — exécuté DANS la page, à chaque largeur.
+ *
+ * CE QU'ELLE ATTRAPE. La colonne de lecture du hero était alignée sur le CENTRE
+ * de la carte qui l'illustre. Mesuré avant le lot : la rangée fait 427 px, la
+ * colonne 204, donc `items-center` la décalait de 111 px vers le bas — et le
+ * vide entre le bas du titre et la première ligne de texte valait 159 px à
+ * 1440, 1920 et 2000, contre 48 px à 375 et 768 où la grille tient sur une
+ * colonne. Le même bloc se lisait autrement selon la largeur, et rien ne
+ * l'avait décidé : c'était le reste d'un alignement, pas une respiration.
+ *
+ * DEUX FAITS, ET C'EST LE PREMIER QUI PORTE. Le second — les deux colonnes
+ * partent du même haut — ne vaut qu'au-delà du point de rupture et se
+ * satisferait d'un vide, pourvu qu'il soit partagé. Le premier tient à toutes
+ * les largeurs : l'écart entre le titre et sa première ligne utile est le MÊME
+ * partout. Une valeur qui change avec la fenêtre sans que personne l'ait voulu
+ * est exactement le défaut, et une constante est ce qui le nie.
+ *
+ * ON NE FIXE AUCUN NOMBRE. Le seuil serait à refaire au premier changement de
+ * marge, et le refaire est l'occasion de le relever. L'invariant est
+ * l'ÉGALITÉ — il survit à tout changement délibéré de l'espacement, et ne
+ * survit à aucun décalage accidentel.
+ */
+const MESURER_ACCROCHE = () => {
+  const boite = (marqueur) => {
+    const el = document.querySelector(`[data-mesure="${marqueur}"]`)
+    if (!el) return null
+    const r = el.getBoundingClientRect()
+    if (r.width === 0) return null
+    return { haut: Math.round(r.top), bas: Math.round(r.bottom) }
+  }
+
+  const titre = boite('accroche-titre')
+  const lecture = boite('accroche-lecture')
+  const illustration = boite('accroche-illustration')
+  if (!titre || !lecture || !illustration) return null
+
+  return {
+    // Le vide entre le titre et la première ligne qu'on lit après lui.
+    ecart: lecture.haut - titre.bas,
+    // Les deux colonnes sont-elles côte à côte ? Empilées, « même haut » n'a
+    // pas de sens, et l'exiger ferait rougir la version mobile, qui est juste.
+    cote_a_cote: illustration.haut < lecture.bas - 1,
+    // De combien l'illustration décroche de la lecture, quand elles le sont.
+    decalage: illustration.haut - lecture.haut,
+  }
+}
+
+/**
  * LE PANNEAU NE REJOUE PAS LA BARRE — mesuré à 1440 px, panneau ouvert.
  *
  * POURQUOI UNE RÈGLE, et pas seulement un cas sous jsdom. Le doublon n'existe
@@ -1245,6 +1293,8 @@ const reproches = []
 const etroitesses = []
 const inatteignables = []
 const rejouements = []
+/** Une entrée par (langue, largeur) où le bloc d'accroche a été mesuré. */
+const accroches = []
 // Même raison qu'`ATTENDUES` et que `rangeesMesurees` : « le panneau ne rejoue
 // rien » et « on n'a pas ouvert le panneau » s'écrivent pareil dans un journal.
 // Compte les langues où la mesure a VRAIMENT eu lieu, panneau ouvert.
@@ -1304,6 +1354,14 @@ try {
             rangeesMesurees++
             if (place.jeu < JEU_MINIMAL) etroitesses.push({ adresse, largeur, langue, ...place })
           }
+        }
+
+        // Le bloc d'accroche n'existe que sur l'accueil, et il s'y mesure à
+        // toutes les largeurs : c'est justement d'une largeur à l'autre que son
+        // écart variait.
+        if (adresse === '/') {
+          const accroche = await page.evaluate(MESURER_ACCROCHE)
+          if (accroche) accroches.push({ largeur, langue, ...accroche })
         }
 
         const resultat = await page.evaluate(MESURER)
@@ -1722,6 +1780,73 @@ if (ciblesTrop_petites.size > 0) {
 }
 
 /*
+  PUIS L'AXE DE L'ACCROCHE. Il vient avant les règles de pixels pour la même
+  raison que les deux précédentes : elles regardent ce qui DÉBORDE, celle-ci
+  regarde ce qui manque — un vide de 111 px qu'aucun débordement, aucun repli et
+  aucun jeu de barre ne pouvait signaler, puisque rien n'était de trop.
+*/
+const GARDE_ACCROCHE = (() => {
+  // Garde du garde, en deux moitiés — les marqueurs, puis la portée.
+  if (accroches.length === 0) {
+    return (
+      'aucune mesure du bloc d’accroche.\n' +
+      '   Les marqueurs `accroche-titre`, `accroche-lecture` et `accroche-illustration`\n' +
+      '   sont-ils encore posés ? Une règle qui n’a rien regardé ne dit rien.'
+    )
+  }
+  /*
+    La règle compare l'écart d'une largeur à l'autre : elle est VACUE si toutes
+    les largeurs mesurées sont du même côté du point de rupture. C'est
+    exactement l'état d'où vient le défaut — il ne se voyait qu'en comparant une
+    grille à une colonne à une grille à deux.
+  */
+  const empilees = accroches.filter((a) => !a.cote_a_cote).length
+  const cote = accroches.filter((a) => a.cote_a_cote).length
+  if (empilees === 0 || cote === 0) {
+    return (
+      `les ${accroches.length} mesures sont toutes du même côté du point de rupture ` +
+      `(${empilees} empilées, ${cote} côte à côte).\n` +
+      '   La règle compare les deux dispositions : sans les deux, elle ne compare rien.'
+    )
+  }
+
+  const ecarts = [...new Set(accroches.map((a) => a.ecart))]
+  if (ecarts.length > 1) {
+    const parEcart = new Map()
+    for (const a of accroches) {
+      if (!parEcart.has(a.ecart)) parEcart.set(a.ecart, [])
+      parEcart.get(a.ecart).push(`${a.largeur}px ${a.langue}`)
+    }
+    return (
+      `le vide entre le titre et la première ligne de lecture prend ${ecarts.length} valeurs :\n` +
+      [...parEcart.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(([e, ou]) => `      ${String(e).padStart(4)} px  →  ${ou.join(', ')}`)
+        .join('\n') +
+      '\n   Le même bloc ne peut pas se lire autrement selon la largeur sans que rien ne l’ait décidé.'
+    )
+  }
+
+  // Le second fait, et il ne vaut que là où les colonnes sont côte à côte.
+  const decroche = accroches.filter((a) => a.cote_a_cote && Math.abs(a.decalage) > 1)
+  if (decroche.length > 0) {
+    return (
+      `${decroche.length} mesure(s) où l’illustration ne part pas du haut de la lecture :\n` +
+      decroche
+        .map((a) => `      ${a.largeur}px ${a.langue}  →  décalage de ${a.decalage} px`)
+        .join('\n') +
+      '\n   L’axe appartient à la colonne qui porte la lecture, pas à celle qui illustre.'
+    )
+  }
+  return null
+})()
+
+if (GARDE_ACCROCHE) {
+  console.error(`\n✗ mesure-ui : ${GARDE_ACCROCHE}\n`)
+  process.exit(1)
+}
+
+/*
   L'ORDRE DES TROIS RÈGLES VA DU SIGNAL LE PLUS TÔT AU SYMPTÔME LE PLUS TARD :
   jeu trop faible, puis repli, puis débordement.
 
@@ -1787,6 +1912,7 @@ console.log(
     `  Premier chargement de la vitrine : ${premierChargement.octets} o compressés, sous le budget de ${BUDGET_PREMIER_CHARGEMENT} o.\n` +
     `  ${rangeesMesurees} mesures de la barre de la vitrine, toutes au-dessus de ${JEU_MINIMAL} px de jeu ; réglages atteints au clavier à 1440 px dans les deux langues.\n` +
     `  Panneau ouvert à 1440 px dans ${panneauxMesures} langues face à une barre de ${barreLaPlusGarnie} commandes, aucune rejouée.\n` +
+    `  Bloc d'accroche : ${accroches.length} mesures, un seul écart titre–lecture (${accroches[0]?.ecart} px) des deux côtés du point de rupture.\n` +
     `  ${textesAudites} textes audités en contraste (${THEMES.join(' + ')}, ${LARGEURS_CONTRASTE.join(' et ')} px), aucun sous le seuil WCAG AA.\n` +
     `  ${ciblesSondees} cibles sondées au point de contact, aucune sous ${PLANCHER_CIBLE} px hors les ${Object.keys(CIBLES_EXEMPTES).length} exemptions motivées.`,
 )
