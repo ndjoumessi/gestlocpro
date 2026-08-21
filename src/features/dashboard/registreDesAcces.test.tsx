@@ -184,7 +184,16 @@ describe('le registre des accès', () => {
     })
 
     const celle = screen.getByText('diane@example.com').closest('tr')!
-    await userEvent.setup().click(within(celle).getByRole('button', { name: /Retirer l’accès/ }))
+    const utilisateur = userEvent.setup()
+    await utilisateur.click(within(celle).getByRole('button', { name: /Retirer l’accès/ }))
+
+    // DEUX clics depuis ce lot : un retrait d'accès est irréversible et se
+    // confirme. Ce cas-ci n'éprouve pas la confirmation — il éprouve la
+    // relecture — mais il passe désormais par elle, comme la main de qui s'en
+    // sert.
+    await utilisateur.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Confirmer' }),
+    )
 
     // La liste est RELUE et non retouchée en mémoire : entre-temps, un second
     // onglet a pu retirer quelqu'un d'autre, et seul le serveur sait ce qui
@@ -204,7 +213,11 @@ describe('le registre des accès', () => {
     serveur.quand('PATCH', `/parks/${PARC}/invitations/${CODE_LOC}/revoke`, { status: 204 })
 
     const ligne = screen.getByText('••••-ANEW').closest('tr')!
-    await userEvent.setup().click(within(ligne).getByRole('button', { name: /Reprendre/ }))
+    const utilisateur = userEvent.setup()
+    await utilisateur.click(within(ligne).getByRole('button', { name: /Reprendre/ }))
+    await utilisateur.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Confirmer' }),
+    )
 
     await screen.findByText(/Code repris/)
     const appel = serveur.appels.find((a) => a.methode === 'PATCH' && a.chemin.includes(CODE_LOC))
@@ -259,5 +272,66 @@ describe('l’état vide du registre', () => {
     // l'avoir perdu.
     expect(screen.getByText('Aucun code en attente')).toBeInTheDocument()
     expect(screen.getByText(/ne montre que ce qui ouvre encore/)).toBeInTheDocument()
+  })
+})
+
+/**
+ * CE QUE L'ÉCRAN NE SAIT PAS, IL NE L'AFFIRME PAS.
+ *
+ * Trois manières, pour un écran, de parler à la place de ce qu'il ignore : un
+ * squelette qui tourne sans qu'aucune réponse ne vienne l'effacer, une liste
+ * déclarée vide alors que rien n'a été lu, et un geste irréversible qui part
+ * sans avoir été demandé deux fois. Le registre des accès les avait toutes
+ * les trois.
+ */
+describe('ce que le registre n’affirme pas', () => {
+  it('n’attend pas indéfiniment un parc qui n’existe pas', async () => {
+    /**
+     * `/demo` est la session sans adhésion la plus facile à atteindre — mais
+     * ce n'est pas la seule : un compte dont le dernier parc vient d'être
+     * retiré est dans le même état, et c'est là que le défaut se paie.
+     *
+     * `charger` retournait avant `setChargement(true)`, et `chargement` naît à
+     * `true` : le `finally` qui l'éteint n'était jamais atteint. Le squelette
+     * tournait donc pour toujours, en promettant une arrivée.
+     */
+    renderApp('/demo/acces')
+
+    await attendreLeChargement()
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull()
+    expect(screen.getByText('Aucun parc rattaché à cette session')).toBeInTheDocument()
+  })
+
+  it('ne déclare pas la liste vide quand il n’a rien pu lire', async () => {
+    serveur.quand('GET', `/parks/${PARC}/access`, {
+      status: 500,
+      body: { error: 'server_error' },
+    })
+    await ouvrir('owner')
+
+    // « Aucun code en attente » AFFIRME qu'on a regardé. Après un 500, rien
+    // n'a été lu : le propriétaire qui ne retrouve pas son code en émettrait
+    // un second, pendant que le premier ouvre toujours.
+    expect(screen.queryByText('Aucun code en attente')).not.toBeInTheDocument()
+    expect(screen.getByText('Impossible de lire le registre des accès')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Réessayer' })).toBeInTheDocument()
+  })
+
+  it('ne retire un accès qu’après confirmation', async () => {
+    await ouvrir('owner')
+    serveur.quand('PATCH', `/parks/${PARC}/memberships/${AUTRE}/revoke`, { status: 204 })
+
+    const celle = screen.getByText('diane@example.com').closest('tr')!
+    const utilisateur = userEvent.setup()
+    await utilisateur.click(within(celle).getByRole('button', { name: /Retirer l’accès/ }))
+
+    // Le dialogue est ouvert, et RIEN n'est parti : c'est la moitié qui compte.
+    // Un test qui ne vérifierait que l'appel APRÈS confirmation passerait tout
+    // aussi bien sans confirmation du tout.
+    const dialogue = await screen.findByRole('alertdialog')
+    expect(serveur.appels.some((a) => a.methode === 'PATCH')).toBe(false)
+
+    await utilisateur.click(within(dialogue).getByRole('button', { name: 'Confirmer' }))
+    await waitFor(() => expect(serveur.appels.some((a) => a.methode === 'PATCH')).toBe(true))
   })
 })

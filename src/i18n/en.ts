@@ -17,6 +17,7 @@ export const en: Dictionary = {
     closeNotification: 'Dismiss notification',
     undo: 'Undo',
     confirm: 'Confirm',
+    retry: 'Try again',
     search: 'Search',
     loading: 'Loading…',
     required: 'required',
@@ -893,6 +894,18 @@ export const en: Dictionary = {
       noInvites: 'No pending code',
       noInvitesBody:
         'Codes already used, taken back or expired are not listed here: this list only shows what still opens.',
+      noParkTitle: 'No portfolio attached to this session',
+      noParkBody:
+        'The access register belongs to a portfolio. Create yours, or join an owner’s with the code they sent you.',
+      loadFailedTitle: 'Could not read the access register',
+      loadFailedBody:
+        'No one was removed and no code was taken back. This page does not know who holds a key: do not read it as an empty list.',
+      confirmMemberTitle: 'Remove {name}’s access?',
+      confirmMemberBody:
+        'This person loses access to the portfolio right away. Bringing them back means issuing a new code.',
+      confirmInviteTitle: 'Take back the code ending in {hint}?',
+      confirmInviteBody:
+        'The code stops opening anything, including in the hands of the person you sent it to. It cannot be re-issued: you will create another one.',
     },
     announce: {
       button: 'Notify tenants',

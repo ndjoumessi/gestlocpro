@@ -4,6 +4,7 @@ import { DataTable, EmptyState } from '@/components/primitives/DataTable'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
 import { Icon } from '@/components/primitives/Icon'
+import { Modal } from '@/components/primitives/Modal'
 import { StatusPill } from '@/components/primitives/StatusPill'
 import { SkeletonRegion, SkeletonTable } from '@/components/primitives/Skeleton'
 import { useToast } from '@/components/primitives/Toast'
@@ -37,18 +38,53 @@ export function Access() {
   const [registre, setRegistre] = useState<RegistreApi | null>(null)
   const [chargement, setChargement] = useState(true)
   const [enCours, setEnCours] = useState<string | null>(null)
+  /**
+   * L'ÉCHEC DE LECTURE EST RETENU, au lieu de passer dans un toast qui s'efface.
+   *
+   * Ce qui restait derrière le toast, c'étaient deux tables vides et « Aucun
+   * code en attente » — une phrase qui AFFIRME avoir regardé. L'écran n'avait
+   * rien lu : un registre qu'on n'a pas pu ouvrir n'est pas un registre vide,
+   * et la confusion coûte ici un code réémis en double pendant que le premier
+   * ouvre toujours.
+   */
+  const [erreur, setErreur] = useState(false)
+  /**
+   * AUCUNE RÉVOCATION NE PART DU PREMIER CLIC.
+   *
+   * Retirer un accès et reprendre un code sont irréversibles : le serveur ne
+   * sait pas défaire, et un code repris n'est pas réémis — il est perdu pour
+   * celui à qui on l'avait transmis. Les deux boutons vivaient au bout d'une
+   * colonne étroite, à côté de celui de la ligne voisine. Le motif est celui
+   * de `Tenants`, repris tel quel plutôt que réinventé : la question se pose
+   * avant le geste, et de la même façon partout.
+   */
+  const [aRetirer, setARetirer] = useState<ARetirer | null>(null)
 
   const charger = useCallback(async () => {
-    if (!parkId) return
+    /**
+     * L'ATTENTE SE TERMINE AUSSI QUAND IL N'Y A RIEN À ATTENDRE.
+     *
+     * `chargement` naît à `true` et n'était remis à `false` que dans le
+     * `finally`, en aval de ce retour : une session sans adhésion — la
+     * démonstration, un compte dont le parc vient d'être retiré — laissait le
+     * squelette tourner sans fin. C'est mot pour mot ce que `PortfolioProvider`
+     * interdit : « Un squelette qu'aucune réponse ne vient effacer est pire
+     * qu'une erreur : il promet que quelque chose arrive. »
+     */
+    if (!parkId) {
+      setChargement(false)
+      return
+    }
     setChargement(true)
+    setErreur(false)
     try {
       setRegistre(await api.access<RegistreApi>(parkId))
     } catch {
-      notify(t('common.actionFailed'), { tone: 'danger' })
+      setErreur(true)
     } finally {
       setChargement(false)
     }
-  }, [parkId, notify, t])
+  }, [parkId])
 
   useEffect(() => {
     void charger()
@@ -80,6 +116,10 @@ export function Access() {
   const invitations = registre?.invitations ?? []
 
   if (chargement) return <RegistreEnChargement />
+  // L'ordre compte : sans parc, aucune lecture n'a eu lieu, donc aucun échec à
+  // dire. On nomme d'abord ce qui manque le plus en amont.
+  if (!parkId) return <RegistreSansParc />
+  if (erreur) return <RegistreIllisible onReessayer={() => void charger()} />
 
   return (
     <>
@@ -151,13 +191,7 @@ export function Access() {
                     variant="ghost"
                     size="sm"
                     loading={enCours === m.id}
-                    onClick={() =>
-                      void agir(
-                        m.id,
-                        () => api.revokeMembership(parkId!, m.id),
-                        t('app.access.memberRevoked'),
-                      )
-                    }
+                    onClick={() => setARetirer({ genre: 'membre', membre: m })}
                   >
                     {t('app.access.revokeMember')}
                   </Button>
@@ -231,13 +265,7 @@ export function Access() {
                       variant="ghost"
                       size="sm"
                       loading={enCours === i.id}
-                      onClick={() =>
-                        void agir(
-                          i.id,
-                          () => api.revokeInvitation(parkId!, i.id),
-                          t('app.access.inviteRevoked'),
-                        )
-                      }
+                      onClick={() => setARetirer({ genre: 'code', code: i })}
                     >
                       {t('app.access.revokeInvite')}
                     </Button>
@@ -248,6 +276,77 @@ export function Access() {
           />
         </Card>
       </div>
+
+      {/* Le motif de confirmation de `Tenants` recopié plutôt que réécrit :
+          `alertdialog`, taille `sm`, le refus à gauche et le geste destructeur
+          à droite. Deux motifs de confirmation feraient de la question posée
+          avant un geste irréversible une affaire de goût, et le second finirait
+          par s'en passer. */}
+      {aRetirer && (
+        <Modal
+          open
+          onClose={() => setARetirer(null)}
+          role="alertdialog"
+          size="sm"
+          title={
+            aRetirer.genre === 'membre'
+              ? t('app.access.confirmMemberTitle', { name: aRetirer.membre.fullName })
+              : t('app.access.confirmInviteTitle', { hint: aRetirer.code.codeHint })
+          }
+          description={
+            aRetirer.genre === 'membre'
+              ? t('app.access.confirmMemberBody')
+              : t('app.access.confirmInviteBody')
+          }
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setARetirer(null)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                variant="danger"
+                /**
+                 * La modale se ferme AVANT que le geste parte, et non après.
+                 *
+                 * `agir` relit le registre, et cette relecture repose un
+                 * `chargement` : l'écran redevient un squelette et la modale
+                 * disparaît avec lui, pour reparaître au retour des données le
+                 * temps d'un rendu — un dialogue qui redemande ce qu'on vient
+                 * de lui accorder, et qui reprend le focus au passage. La
+                 * réponse est donnée ; l'attente se lit sur la ligne, dont le
+                 * bouton porte déjà `loading`.
+                 */
+                onClick={() => {
+                  const cible = aRetirer
+                  setARetirer(null)
+                  void (cible.genre === 'membre'
+                    ? agir(
+                        cible.membre.id,
+                        () => api.revokeMembership(parkId!, cible.membre.id),
+                        t('app.access.memberRevoked'),
+                      )
+                    : agir(
+                        cible.code.id,
+                        () => api.revokeInvitation(parkId!, cible.code.id),
+                        t('app.access.inviteRevoked'),
+                      ))
+                }}
+              >
+                {t('common.confirm')}
+              </Button>
+            </>
+          }
+        >
+          {/* Ce que le titre ne dit pas : DE QUI, ou de quel logement. Deux
+              lignes voisines portent le même libellé de bouton — c'est la
+              donnée qui les distingue, pas la question. */}
+          <p className="text-body-s text-muted">
+            {aRetirer.genre === 'membre'
+              ? aRetirer.membre.email
+              : (aRetirer.code.unitLabel ?? t('app.access.noUnit'))}
+          </p>
+        </Modal>
+      )}
     </>
   )
 }
@@ -311,6 +410,83 @@ function RegistreEnChargement() {
       <SkeletonRegion>
         <SkeletonTable rows={3} />
       </SkeletonRegion>
+    </>
+  )
+}
+
+/**
+ * Ce qu'on s'apprête à retirer : une personne, ou un code.
+ *
+ * Une union plutôt que deux états jumeaux : les deux gestes posent la même
+ * question au même endroit, et deux drapeaux indépendants laisseraient exister
+ * l'état où l'on confirme les deux à la fois — celui qu'on n'écrit jamais et
+ * qui finit par arriver.
+ */
+type ARetirer =
+  | { genre: 'membre'; membre: MembreApi }
+  | { genre: 'code'; code: InvitationApi }
+
+/**
+ * AUCUN PARC RATTACHÉ — un état, pas une attente.
+ *
+ * Il se rencontre sous `/demo`, dont la session ne porte aucune adhésion, et
+ * sur un compte dont le dernier parc vient d'être retiré. L'écran n'a alors
+ * rien à demander au serveur : il ne le dit pas en tournant, il le dit. « Un
+ * squelette qu'aucune réponse ne vient effacer est pire qu'une erreur : il
+ * promet que quelque chose arrive. »
+ */
+function RegistreSansParc() {
+  const t = useT()
+  return (
+    <>
+      <PageHeader title={t('app.access.title')} description={t('app.access.subtitle')} />
+      <Card>
+        <EmptyState
+          icon="key"
+          title={t('app.access.noParkTitle')}
+          body={t('app.access.noParkBody')}
+        />
+      </Card>
+    </>
+  )
+}
+
+/**
+ * LA LECTURE A ÉCHOUÉ, et l'écran le dit plutôt que de montrer une liste vide.
+ *
+ * L'échec n'était signalé que par un toast, qui s'efface. Restaient deux tables
+ * vides et « Aucun code en attente » : un propriétaire qui vient de transmettre
+ * un code et ne le retrouve plus en émet un second, pendant que le premier
+ * ouvre toujours. Le registre est justement l'écran où l'on ne devine pas.
+ *
+ * Le motif est celui de la vitrine des états du système : ce qui a échoué, ce
+ * qui est préservé, et une sortie. La sortie RELIT au lieu de recharger la
+ * page — il n'y a rien de saisi à perdre, mais rien non plus à jeter.
+ */
+function RegistreIllisible({ onReessayer }: { onReessayer: () => void }) {
+  const t = useT()
+  return (
+    <>
+      <PageHeader title={t('app.access.title')} description={t('app.access.subtitle')} />
+      <div
+        role="alert"
+        className="flex items-start gap-3 rounded-lg border border-danger-border bg-danger-tint px-4 py-3.5"
+      >
+        <Icon name="alert" size={18} className="mt-0.5 shrink-0 text-danger" />
+        <div className="min-w-0">
+          <p className="text-body font-medium text-danger">{t('app.access.loadFailedTitle')}</p>
+          <p className="mt-1 text-body-s text-danger">{t('app.access.loadFailedBody')}</p>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon="arrowRight"
+            className="mt-3"
+            onClick={onReessayer}
+          >
+            {t('common.retry')}
+          </Button>
+        </div>
+      </div>
     </>
   )
 }

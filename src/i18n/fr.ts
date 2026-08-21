@@ -27,6 +27,10 @@ export const fr = {
     closeNotification: 'Fermer la notification',
     undo: 'Annuler l’action',
     confirm: 'Confirmer',
+    // Distincte de `app.system.retry`, qui vit dans la vitrine des états : là,
+    // le bouton ne relit rien, il rejoue un état pour le montrer. Ici il relance
+    // une vraie lecture après un vrai échec. Deux gestes, deux clés.
+    retry: 'Réessayer',
     search: 'Rechercher',
     loading: 'Chargement…',
     required: 'obligatoire',
@@ -1134,6 +1138,18 @@ export const fr = {
       noInvites: 'Aucun code en attente',
       noInvitesBody:
         'Les codes déjà utilisés, repris ou périmés ne figurent pas ici : cette liste ne montre que ce qui ouvre encore.',
+      noParkTitle: 'Aucun parc rattaché à cette session',
+      noParkBody:
+        'Le registre des accès appartient à un parc. Créez le vôtre, ou rejoignez celui d’un propriétaire avec le code qu’il vous a transmis.',
+      loadFailedTitle: 'Impossible de lire le registre des accès',
+      loadFailedBody:
+        'Personne n’a été retiré et aucun code n’a été repris. Cette page ne sait pas qui détient une clé : ne la lisez pas comme une liste vide.',
+      confirmMemberTitle: 'Retirer l’accès de {name} ?',
+      confirmMemberBody:
+        'Cette personne perd l’accès au parc immédiatement. Pour la faire revenir, il faudra lui émettre un nouveau code.',
+      confirmInviteTitle: 'Reprendre le code qui finit par {hint} ?',
+      confirmInviteBody:
+        'Le code cesse d’ouvrir, y compris entre les mains de celui à qui vous l’avez transmis. Il ne se réémet pas : vous en créerez un autre.',
     },
     announce: {
       button: 'Prévenir les locataires',
