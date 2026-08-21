@@ -700,6 +700,19 @@ function PaymentsSkeleton({ isTenant }: { isTenant: boolean }) {
  * pastilles vertes et rouges est illisible pour qui ne distingue pas les deux,
  * et c'est la règle que le dépôt applique déjà à l'entrée de navigation
  * courante.
+ *
+ * Ce nom tient au `role="img"` porté par chacune des deux cellules, et non au
+ * seul `aria-label`. ARIA 1.2 INTERDIT de nommer le rôle `generic` — celui
+ * qu'une balise sans rôle, ici un `<span>`, porte implicitement : un navigateur
+ * conforme jette l'étiquette, et la cellule se lit vide puisque ses pastilles
+ * sont `aria-hidden`. L'intention était juste, le mécanisme ne délivrait rien
+ * et toute l'information restait dans la couleur. `img` est le rôle qui
+ * convient : il accepte d'être nommé, et il rend son contenu présentationnel —
+ * ce que ces glyphes sont déjà.
+ *
+ * La garde interroge donc `getByRole`, jamais `getByLabelText` : celui-ci lit
+ * l'attribut sans passer par le calcul du nom accessible, et réussissait sur
+ * une cellule que le navigateur laissait muette.
  */
 function CellulePeriode({ receipt, periode }: { receipt?: Receipt; periode: string }) {
   const t = useT()
@@ -708,7 +721,11 @@ function CellulePeriode({ receipt, periode }: { receipt?: Receipt; periode: stri
   // sortie. Un tiret le dit ; une pastille grise se lirait comme un impayé.
   if (!receipt) {
     return (
-      <span className="text-muted" aria-label={`${periode} · ${t('app.payments.outOfLease')}`}>
+      <span
+        role="img"
+        className="text-muted"
+        aria-label={`${periode} · ${t('app.payments.outOfLease')}`}
+      >
         —
       </span>
     )
@@ -737,6 +754,7 @@ function CellulePeriode({ receipt, periode }: { receipt?: Receipt; periode: stri
 
   return (
     <span
+      role="img"
       className="flex items-center gap-1"
       aria-label={`${periode} · ${postes
         .map(

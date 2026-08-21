@@ -139,15 +139,22 @@ describe('grille des paiements — les périodes', () => {
    * La couleur ne porte pas l'information seule : une grille de pastilles
    * vertes et rouges est illisible pour qui ne distingue pas les deux, et c'est
    * la règle que le dépôt applique déjà à l'entrée de navigation courante.
+   *
+   * On interroge le RÔLE, et le nom par `toHaveAccessibleName`. La rédaction
+   * précédente demandait `getByLabelText` puis relisait `aria-label` : deux
+   * lectures d'attribut qui ne passent jamais par le calcul du nom accessible.
+   * Elles réussissaient sur un `<span>` nu, dont le rôle implicite `generic`
+   * interdit pourtant d'être nommé — le test promettait une cellule parlante là
+   * où un navigateur conforme n'énonçait rien.
    */
   it('nomme l’état de chaque poste, sans compter sur la couleur', async () => {
     await ouvrir(HISTORIQUE)
-    const juillet = screen.getByLabelText(/juillet 2026/i)
+    const juillet = screen.getByRole('img', { name: /juillet 2026/i })
     // Loyer et eau soldés, électricité impayée : le versement couvre 96 500 des
     // 103 800 dus, imputés dans l'ordre loyer → eau → électricité.
-    expect(juillet.getAttribute('aria-label')).toMatch(/loyer soldé/i)
-    expect(juillet.getAttribute('aria-label')).toMatch(/eau soldé/i)
-    expect(juillet.getAttribute('aria-label')).toMatch(/électricité impayé/i)
+    expect(juillet).toHaveAccessibleName(/loyer soldé/i)
+    expect(juillet).toHaveAccessibleName(/eau soldé/i)
+    expect(juillet).toHaveAccessibleName(/électricité impayé/i)
   })
 
   it('cumule la dette sur toutes les périodes, et non sur le seul mois', async () => {
