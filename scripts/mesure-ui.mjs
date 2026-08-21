@@ -14,15 +14,18 @@
  *
  * SUJET DE CETTE GARDE : ce que la page fait VRAIMENT une fois peinte.
  *
- * Cinq règles. Les deux premières regardent l'USAGE — les réglages restent
- * atteignables au clavier, aucun texte ne passe sous le seuil WCAG AA. Les
- * trois suivantes regardent la MISE EN PAGE, du signal le plus tôt au symptôme
- * le plus tard — la barre de la vitrine garde du jeu, aucune rangée d'en-tête
- * ne se replie là où la place existe, aucun écran ne défile latéralement.
+ * Six règles. Les trois premières regardent l'USAGE — les réglages restent
+ * atteignables au clavier, aucun texte ne passe sous le seuil WCAG AA, aucune
+ * cible ne se touche sous 44 px. Les trois suivantes regardent la MISE EN PAGE,
+ * du signal le plus tôt au symptôme le plus tard — la barre de la vitrine garde
+ * du jeu, aucune rangée d'en-tête ne se replie là où la place existe, aucun
+ * écran ne défile latéralement.
  *
- * L'ordre est celui-là parce qu'une mesure de pixels ne voit ni une commande
- * retirée (la retirer fait de la place) ni un texte illisible (il occupe la
- * même boîte). Une barre parfaitement rangée peut être inutilisable.
+ * L'ordre est celui-là parce qu'une mesure de boîtes ne voit rien des trois
+ * premières : une commande retirée fait de la place, un texte illisible occupe
+ * la même boîte, et une cible se touche par autre chose que sa boîte — un
+ * `::after` étendu la triple, un recouvrement l'annule. Une page parfaitement
+ * rangée peut être inutilisable.
  *
  * PIÈGES HONORÉS — chacun a été payé une fois :
  *
@@ -196,6 +199,77 @@ const THEMES = ['light', 'dark']
 const LARGEURS_CONTRASTE = [360, 1280]
 
 /**
+ * LE PLANCHER DES CIBLES TACTILES, mesuré par CE QUE LE DOIGT TOUCHE.
+ *
+ * `cibles.test.ts` tient déjà cette règle, et il la tient bien — mais il lit
+ * les SOURCES, et il écrit lui-même pourquoi : « jsdom ne calcule aucune
+ * hauteur ». Deux angles morts en découlent, tous deux payés ici :
+ *
+ *  1. UNE CLASSE N'EST PAS UNE MESURE. Les liens du pied portaient `min-h-11`,
+ *     ce que le contrôle de sources lit comme « plancher honoré ». Leur LARGEUR
+ *     restait celle du libellé traduit : « Tarifs » faisait 35 px. Un plancher
+ *     de hauteur ne dit rien d'une largeur, et aucune lecture de fichier ne
+ *     pouvait le voir.
+ *
+ *  2. UNE BOÎTE N'EST PAS UNE CIBLE. L'inverse est vrai aussi, et cette garde a
+ *     failli le rater : le lien vers le dossier d'un logement mesure 18 × 17 px
+ *     — c'est LE défaut fondateur du dépôt — et il est pourtant correct depuis
+ *     des lots. Son `::after` étendu porte la cible réelle à 72 × 68, celle de
+ *     la cellule. Une première version de cette règle mesurait
+ *     `getBoundingClientRect` et le dénonçait : elle aurait fait défaire un
+ *     correctif juste.
+ *
+ * D'OÙ `elementFromPoint`, ET RIEN D'AUTRE. On part du centre de l'élément et
+ * on s'écarte tant que le point touché lui appartient encore. Ce que ça mesure
+ * est ce qui compte : la surface réellement cliquable, pseudo-éléments,
+ * rembourrages et recouvrements compris. Une boîte se calcule ; une cible se
+ * touche.
+ *
+ * DEUX PIÈGES, chacun payé une fois pendant l'écriture :
+ *
+ *  - `elementFromPoint` ne répond QUE dans le cadre visible et rend `null`
+ *    ailleurs. Sans `scrollIntoView` préalable, il déclarait le lien du parc
+ *    intouchable — on mesurait la position de la fenêtre, pas la cible.
+ *  - Le point touché est souvent un DESCENDANT (l'icône dans le bouton), jamais
+ *    l'élément lui-même. Comparer par identité seule rate presque tout ; il
+ *    faut `el.contains(touche)`.
+ */
+const PLANCHER_CIBLE = 44
+
+/**
+ * Le rayon de sondage autour du centre.
+ *
+ * 22 de part et d'autre rendent 45 px atteignables, un de plus que le plancher.
+ * On ne cherche pas la taille exacte d'une grande cible — seulement à savoir si
+ * elle atteint 44 — donc s'arrêter juste au-dessus évite des milliers de
+ * sondages inutiles sur les cibles déjà confortables.
+ */
+const RAYON_SONDAGE = 22
+
+/**
+ * Les exemptions, DÉCLARÉES AU SITE et motivées ici.
+ *
+ * Elles ne vivent pas dans une liste de chemins de fichiers, contrairement aux
+ * `EXEMPTIONS` de `cibles.test.ts`, et pour deux raisons. D'abord une liste de
+ * chemins se périme au premier déplacement de fichier, en silence. Ensuite un
+ * motif de classe écrit ici serait GÉNÉRÉ : Tailwind v4 balaie ce dépôt, et une
+ * garde qui cite une classe en littéral la fait exister dans le CSS livré.
+ *
+ * Chaque élément exempté porte donc `data-cible="<raison>"` là où il est écrit,
+ * avec son argument en commentaire. Ici ne vit que la liste des raisons
+ * admises — et la garde du garde plus bas fait rougir une raison qui ne couvre
+ * plus rien, comme une raison employée sans être déclarée.
+ */
+const CIBLES_EXEMPTES = {
+  donnee:
+    "la largeur d'une colonne de graphe est celle que la donnée et la fenêtre lui laissent " +
+    "(douze mois dans 360 px), et la colonne n'agit pas : elle appelle une infobulle. WCAG 2.5.8, « essentiel ».",
+  'dans-une-phrase':
+    'un lien porté par une ligne de texte a la hauteur de cette ligne ; ' +
+    "l'agrandir casserait l'interligne du paragraphe. WCAG 2.5.8, « en ligne ».",
+}
+
+/**
  * Contrastes TOLÉRÉS, même doctrine que `TOLERES` : nommés, motivés, mortels.
  *
  * Clé : le texte relevé, tronqué comme l'audit le tronque. AUCUNE ENTRÉE, et
@@ -341,6 +415,97 @@ if (JEU_MINIMAL <= 0) {
       "   À zéro ou moins, la règle ne devance plus le repli — elle le double.\n",
   )
   process.exit(1)
+}
+
+/**
+ * Exécuté DANS la page : rend les cibles dont la surface touchable reste
+ * sous le plancher, avec la raison d'exemption qu'elles déclarent.
+ *
+ * Le sélecteur ratisse ce qu'un doigt peut viser : les commandes natives, les
+ * rôles ARIA qui en tiennent lieu, et tout ce qui est tabulable. Il exclut ce
+ * qui n'est pas visé — masqué, hors flux, neutralisé par `inert`, ou réservé
+ * aux lecteurs d'écran.
+ */
+const MESURER_CIBLES = (config) => {
+  const { plancher, rayon } = config
+  const SELECTEUR = [
+    'a[href]',
+    'button',
+    'input:not([type=hidden])',
+    'select',
+    'textarea',
+    '[role="button"]',
+    '[role="link"]',
+    '[role="radio"]',
+    '[role="checkbox"]',
+    '[role="tab"]',
+    '[role="switch"]',
+    '[role="menuitem"]',
+    '[tabindex]:not([tabindex="-1"])',
+  ].join(', ')
+
+  const defauts = []
+  const raisonsVues = []
+  let sondees = 0
+
+  for (const el of document.querySelectorAll(SELECTEUR)) {
+    const style = getComputedStyle(el)
+    if (style.display === 'none' || style.visibility === 'hidden') continue
+    if (el.classList.contains('sr-only')) continue
+    if (el.closest('[inert]')) continue
+
+    let boite = el.getBoundingClientRect()
+    if (boite.width === 0 || boite.height === 0) continue
+    sondees++
+
+    const raison = el.getAttribute('data-cible')
+    if (raison) raisonsVues.push(raison)
+
+    // La boîte suffit à conclure quand elle passe : une cible ne peut que
+    // GRANDIR en s'écartant du centre, jamais rétrécir.
+    if (boite.width >= plancher && boite.height >= plancher) continue
+
+    el.scrollIntoView({ block: 'center', inline: 'center' })
+    boite = el.getBoundingClientRect()
+    const cx = Math.round(boite.left + boite.width / 2)
+    const cy = Math.round(boite.top + boite.height / 2)
+    const touche = (x, y) => {
+      const cible = document.elementFromPoint(x, y)
+      return !!cible && (cible === el || el.contains(cible))
+    }
+
+    let largeurUtile = 0
+    let hauteurUtile = 0
+    if (touche(cx, cy)) {
+      let gauche = 0
+      let droite = 0
+      let haut = 0
+      let bas = 0
+      while (gauche < rayon && touche(cx - gauche - 1, cy)) gauche++
+      while (droite < rayon && touche(cx + droite + 1, cy)) droite++
+      while (haut < rayon && touche(cx, cy - haut - 1)) haut++
+      while (bas < rayon && touche(cx, cy + bas + 1)) bas++
+      largeurUtile = gauche + droite + 1
+      hauteurUtile = haut + bas + 1
+    }
+    if (largeurUtile >= plancher && hauteurUtile >= plancher) continue
+
+    defauts.push({
+      balise: el.tagName.toLowerCase(),
+      boite: `${Math.round(boite.width)}x${Math.round(boite.height)}`,
+      cible: `${largeurUtile}x${hauteurUtile}`,
+      raison,
+      texte:
+        (el.textContent || '').trim().slice(0, 34) ||
+        (el.getAttribute('aria-label') || '').slice(0, 34),
+      classes: typeof el.className === 'string' ? el.className.slice(0, 70) : '',
+    })
+  }
+
+  // Le défilement a bougé : le rendre, sinon la mesure suivante hérite d'une
+  // page à mi-hauteur — et l'en-tête collant y a déjà changé de fond.
+  window.scrollTo(0, 0)
+  return { defauts, raisonsVues, sondees }
 }
 
 /**
@@ -624,6 +789,10 @@ let textesAudites = 0
 // moitié sombre du balayage n'est qu'un décor — voir la garde du garde.
 const fondsParTheme = new Map()
 
+const ciblesTrop_petites = new Map()
+const raisonsEmployees = new Set()
+let ciblesSondees = 0
+
 try {
   const navigateur = await chromium.launch()
   for (const langue of LANGUES) {
@@ -742,6 +911,61 @@ try {
     }
   }
 
+
+  /*
+    TROISIÈME PASSE, et son axe n'est ni celui des deux autres.
+
+    Une cible ne dépend pas du THÈME — repeindre un bouton ne le déplace pas —
+    mais elle dépend de la LANGUE, « Tarifs » n'ayant pas la largeur de
+    « Pricing », et de la largeur de fenêtre, qui redistribue les colonnes. Un
+    thème, deux langues, deux largeurs.
+
+    Elle vient EN DERNIER parce qu'elle est la seule à faire défiler la page :
+    `elementFromPoint` ne répond que dans le cadre visible. La sonde remet le
+    défilement à zéro en sortant, mais la passer avant le contraste ferait
+    dépendre une mesure de couleur du travail d'une mesure de géométrie —
+    l'en-tête collant change de fond dès le neuvième pixel de défilement.
+  */
+  for (const langue of LANGUES) {
+    const contexte = await navigateur.newContext({
+      viewport: { width: LARGEURS_CONTRASTE[0], height: 900 },
+      locale: langue,
+    })
+    const page = await contexte.newPage()
+    for (const adresse of adresses) {
+      const depart = Date.now()
+      process.stdout.write(`   ${langue}  cibles  ${adresse} … `)
+      for (const largeur of LARGEURS_CONTRASTE) {
+        await page.setViewportSize({ width: largeur, height: 900 })
+        if (largeur === LARGEURS_CONTRASTE[0]) {
+          await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
+        }
+        await attendre(page, adresse)
+
+        const releve = await page.evaluate(MESURER_CIBLES, {
+          plancher: PLANCHER_CIBLE,
+          rayon: RAYON_SONDAGE,
+        })
+        ciblesSondees += releve.sondees
+        for (const raison of releve.raisonsVues) raisonsEmployees.add(raison)
+
+        for (const defaut of releve.defauts) {
+          // Une raison DÉCLARÉE mais inconnue n'exempte rien : elle serait une
+          // dérogation que personne n'a motivée, exactement ce que la doctrine
+          // des `TOLERES` interdit. On la laisse donc tomber dans les défauts,
+          // et la garde du garde plus bas la nommera.
+          if (defaut.raison && CIBLES_EXEMPTES[defaut.raison]) continue
+          const cle = `${defaut.balise}|${defaut.cible}|${defaut.classes}`
+          if (!ciblesTrop_petites.has(cle)) {
+            ciblesTrop_petites.set(cle, { ...defaut, ou: `${adresse} ${largeur}px ${langue}` })
+          }
+        }
+      }
+      process.stdout.write(`${((Date.now() - depart) / 1000).toFixed(1)}s\n`)
+    }
+    await contexte.close()
+  }
+
   await navigateur.close()
 } finally {
   serveur.kill()
@@ -834,6 +1058,56 @@ if (fondsDistincts.size < THEMES.length) {
 }
 
 /*
+  GARDE DU GARDE : la sonde des cibles doit avoir SONDÉ.
+
+  Même panne, même remède qu'ailleurs dans ce fichier : un sélecteur qui ne
+  rend plus rien écrit « aucune cible sous le plancher » dans le journal final.
+  Le seuil est grossier à dessein — on distingue « il a travaillé » de « il n'a
+  rien vu », on n'estime pas le bon nombre de commandes du produit.
+*/
+const CIBLES_ATTENDUES = 500
+
+if (ciblesSondees < CIBLES_ATTENDUES) {
+  console.error(
+    `\n✗ mesure-ui : ${ciblesSondees} cibles sondées, moins que les ${CIBLES_ATTENDUES} attendues.\n` +
+      "   La sonde ne regarde plus rien — ce n'est pas une absence de défaut.\n",
+  )
+  process.exit(1)
+}
+
+/*
+  GARDE DU GARDE, DANS LES DEUX SENS : les raisons déclarées et les raisons
+  admises doivent se recouvrir exactement.
+
+  Une raison ADMISE que plus aucun élément ne porte est une dérogation
+  orpheline — le cimetière qui blanchit le prochain défaut, comme pour
+  `TOLERES`. Une raison PORTÉE que rien n'admet est pire : c'est une exemption
+  que personne n'a motivée, obtenue en écrivant un attribut. La première fait
+  rougir ici ; la seconde fait rougir plus bas, parce que l'élément retombe
+  dans les défauts ordinaires et s'y voit nommer.
+*/
+const raisonsOrphelines = Object.keys(CIBLES_EXEMPTES).filter((r) => !raisonsEmployees.has(r))
+if (raisonsOrphelines.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${raisonsOrphelines.length} raison(s) d'exemption de cible ne couvrent plus rien.\n` +
+      raisonsOrphelines.map((r) => `   data-cible="${r}" — à retirer de CIBLES_EXEMPTES`).join('\n') +
+      '\n',
+  )
+  process.exit(1)
+}
+
+const raisonsNonMotivees = [...raisonsEmployees].filter((r) => !CIBLES_EXEMPTES[r])
+if (raisonsNonMotivees.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${raisonsNonMotivees.length} raison(s) d'exemption portée(s) sans être motivée(s).\n` +
+      "   Une exemption s'obtient en l'argumentant dans CIBLES_EXEMPTES, pas en écrivant un attribut.\n" +
+      raisonsNonMotivees.map((r) => `   data-cible="${r}"`).join('\n') +
+      '\n',
+  )
+  process.exit(1)
+}
+
+/*
   LES RÉGLAGES SORTENT AVANT TOUT LE RESTE : une commande qu'on ne peut plus
   atteindre est pire qu'une barre serrée. Les trois autres règles de ce fichier
   regardent des pixels ; celle-ci regarde une absence, et aucune des trois ne
@@ -883,6 +1157,26 @@ if (sousLeSeuil.length > 0) {
   for (const c of sousLeSeuil) {
     console.error(`   ${c.ratio} / ${c.required}   ${c.fontSize}px poids ${c.weight}   ${JSON.stringify(c.text)}`)
     console.error(`      ${c.color} sur ${c.bg}   vu à ${c.ou}`)
+  }
+  console.error('')
+  process.exit(1)
+}
+
+/*
+  PUIS LES CIBLES : après ce qu'on ne peut pas atteindre et ce qu'on ne peut pas
+  lire, ce qu'on ne peut pas viser. Les trois se rapportent avant la mise en
+  page pour la même raison — aucune mesure de boîte ne les voit.
+*/
+if (ciblesTrop_petites.size > 0) {
+  const liste = [...ciblesTrop_petites.values()]
+  console.error(
+    `\n✗ mesure-ui : ${liste.length} forme(s) de cible sous ${PLANCHER_CIBLE} px, sur ${ciblesSondees} sondées.\n` +
+      '   La taille rendue est celle que le doigt TOUCHE, pseudo-éléments compris — pas celle de la boîte.\n',
+  )
+  for (const c of liste) {
+    console.error(`   cible ${c.cible}  (boîte ${c.boite})  <${c.balise}> ${JSON.stringify(c.texte)}`)
+    console.error(`      vu à ${c.ou}   class="${c.classes}"`)
+    if (c.raison) console.error(`      data-cible="${c.raison}" — raison NON MOTIVÉE dans CIBLES_EXEMPTES`)
   }
   console.error('')
   process.exit(1)
@@ -951,5 +1245,6 @@ if (echecs.length > 0) {
 console.log(
   `\n✓ mesure-ui : ${adresses.length} écrans × ${LARGEURS.length} largeurs × ${LANGUES.length} langues, aucun débordement latéral ni en-tête replié.\n` +
     `  ${rangeesMesurees} mesures de la barre de la vitrine, toutes au-dessus de ${JEU_MINIMAL} px de jeu ; réglages atteints au clavier à 1440 px dans les deux langues.\n` +
-    `  ${textesAudites} textes audités en contraste (${THEMES.join(' + ')}, ${LARGEURS_CONTRASTE.join(' et ')} px), aucun sous le seuil WCAG AA.`,
+    `  ${textesAudites} textes audités en contraste (${THEMES.join(' + ')}, ${LARGEURS_CONTRASTE.join(' et ')} px), aucun sous le seuil WCAG AA.\n` +
+    `  ${ciblesSondees} cibles sondées au point de contact, aucune sous ${PLANCHER_CIBLE} px hors les ${Object.keys(CIBLES_EXEMPTES).length} exemptions motivées.`,
 )

@@ -55,7 +55,22 @@ export function PublicFooter() {
                   <li key={link.label}>
                     <Link
                       to={link.to}
-                      className="inline-flex min-h-11 items-center text-body text-on-dark-muted no-underline transition-colors duration-150 hover:text-on-dark"
+                      /*
+                        `min-w-11` EN PLUS de `min-h-11`, et c'est le défaut que
+                        ce lot corrige.
+
+                        `min-h-11` garantissait la hauteur et rien d'autre : la
+                        largeur restait celle du libellé. Mesuré au navigateur,
+                        « Tarifs » faisait 35 px de large, « Demo » 38, « About »
+                        39 — des cibles de 35 × 44 sous un plancher de 44.
+                        `cibles.test.ts` ne pouvait pas le voir : il lit les
+                        sources, y trouve `min-h-11`, et un plancher de hauteur
+                        ne dit rien d'une largeur portée par la traduction.
+
+                        Le pied est sombre et sans fond au survol : les 9 px
+                        gagnés ne se voient pas, ils se touchent seulement.
+                      */
+                      className="inline-flex min-h-11 min-w-11 items-center text-body text-on-dark-muted no-underline transition-colors duration-150 hover:text-on-dark"
                     >
                       {t(link.label as 'marketing.nav.features')}
                     </Link>

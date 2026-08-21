@@ -110,7 +110,15 @@ export function Login() {
       footer={
         <>
           {t('auth.noAccount')}{' '}
-          <Link to="/inscription" className="font-semibold text-gold-ink hover:text-gold-ink-hover">
+          {/* `data-cible` : ce lien vit DANS une phrase, sa hauteur est celle de
+              la ligne de texte qui le porte. L'agrandir à 44 px casserait
+              l'interligne du paragraphe. WCAG 2.5.8 nomme l'exception ; la
+              garde de `mesure-ui` la lit ici plutôt que de la deviner. */}
+          <Link
+            to="/inscription"
+            data-cible="dans-une-phrase"
+            className="font-semibold text-gold-ink hover:text-gold-ink-hover"
+          >
             {t('auth.signUp')}
           </Link>
         </>

@@ -32,6 +32,19 @@ import { describe, expect, it } from 'vitest'
  *     plus grande qu'un jeton de hauteur pour zéro déplacement ;
  *  4. figurer dans `EXEMPTIONS`, avec sa raison écrite.
  *
+ * CE CONTRÔLE N'EST PLUS SEUL, et c'est important pour lire ses limites.
+ * `scripts/mesure-ui.mjs` mesure désormais les mêmes cibles AU NAVIGATEUR, par
+ * `elementFromPoint` — la surface que le doigt touche réellement. Les deux ne
+ * se doublent pas, ils se complètent, et chacun voit ce que l'autre ne peut
+ * pas :
+ *
+ *  - Celui-ci voit un fichier de contrôle qui ne mentionne aucun plancher, y
+ *    compris sur un écran qu'aucun balayage n'atteint (une modale qui ne
+ *    s'ouvre que sur une donnée rare, un état d'erreur).
+ *  - L'autre voit ce qu'une classe ne dit pas. Les liens du pied portaient
+ *    `min-h-11`, que ce contrôle-ci lit comme « plancher honoré » ; leur
+ *    largeur restait celle du libellé traduit, et « Tarifs » faisait 35 px.
+ *
  * LIMITE ASSUMÉE, la même que `zonesSures.test.ts` : la granularité est celle
  * d'UNE balise ouvrante. Un contrôle qui délègue sa `className` à un identifiant
  * n'est vérifié qu'à l'échelle du fichier — `Button.tsx` tient son plancher

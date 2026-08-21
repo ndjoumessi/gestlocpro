@@ -424,11 +424,32 @@ personne n'y pensait. `scripts/mesure-ui.mjs` le lit et l'évalue sur le paquet
 construit à chaque `npm run check` — 23 écrans, deux thèmes, deux largeurs, deux
 langues, un peu moins de 14 000 textes.
 
-Ce paragraphe portait avant « Résultat final : 0 échec de contraste sur les
-17 routes ». C'était vrai le jour où ç'a été mesuré, et faux depuis : les routes
-sont 23, et le fanion de démonstration était sous le seuil. Un relevé à la main
-se périme sans prévenir, et il se périme en gardant l'air d'une garantie. C'est
-la porte qui tient le résultat maintenant, pas cette phrase.
+Ce paragraphe portait avant « Résultat final : 0 échec de contraste **et 0 cible
+sous 44 px** sur les 17 routes ». C'était vrai le jour où ç'a été mesuré, et faux
+depuis, sur les deux moitiés. Les routes sont 23. Le fanion de démonstration
+était sous le seuil de contraste ; les liens du pied faisaient 35 × 44. Un relevé
+à la main se périme sans prévenir, et il se périme en gardant l'air d'une
+garantie.
+
+Les deux moitiés sont désormais tenues par la même porte, et par la même méthode
+— un vrai navigateur sur le paquet livré :
+
+| Ce qui est mesuré | Comment | Volume par `npm run check` |
+| --- | --- | --- |
+| Contraste WCAG AA | `contrast-audit.js` évalué dans la page, 2 thèmes × 2 largeurs × 2 langues | ~13 700 textes |
+| Cibles tactiles ≥ 44 px | `elementFromPoint` autour du centre, 2 largeurs × 2 langues | ~2 300 cibles |
+
+**Une cible se mesure par ce qu'on touche, pas par sa boîte**, et cette
+distinction n'est pas théorique : le lien vers le dossier d'un logement mesure
+18 × 17 px et est correct depuis des lots — son `::after` étendu porte la cible
+réelle à 72 × 68, celle de la cellule. Une première version de la garde mesurait
+`getBoundingClientRect` et le dénonçait ; elle aurait fait défaire un correctif
+juste. Symétriquement, une boîte de 44 px de haut ne dit rien de sa largeur.
+
+Deux exemptions sont déclarées au site par `data-cible`, avec leur argument dans
+`mesure-ui.mjs` : les colonnes de graphe, dont la largeur est portée par la
+donnée et qui n'agissent pas, et les liens vivant dans une phrase, dont la
+hauteur est celle de l'interligne. WCAG 2.5.8 nomme les deux.
 
 ---
 

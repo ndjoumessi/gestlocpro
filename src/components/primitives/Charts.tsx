@@ -317,6 +317,24 @@ export function StackedBarChart({
               <button
                 key={bar.label}
                 type="button"
+                /*
+                  LARGEUR PORTÉE PAR LA DONNÉE, et c'est pour cela qu'elle est
+                  exemptée du plancher de 44 px.
+
+                  Douze mois côte à côte dans 360 px de fenêtre laissent 24 px
+                  par colonne ; les porter à 44 en demanderait 528. Ce n'est pas
+                  un choix de mise en page qu'on pourrait refaire autrement,
+                  c'est l'exception « essentiel » de WCAG 2.5.8.
+
+                  Ce qu'une frappe à côté coûte, et c'est ce qui rend
+                  l'exception tenable : rien. La colonne n'a pas d'`onClick` —
+                  elle ne fait qu'appeler une infobulle au survol et au focus.
+                  Se tromper de mois affiche le mois d'à côté ; au clavier, la
+                  tabulation les prend un par un sans viser.
+
+                  La HAUTEUR, elle, est déjà traitée juste au-dessus.
+                */
+                data-cible="donnee"
                 className="group relative flex h-full min-w-6 flex-1 shrink-0 cursor-pointer flex-col justify-end rounded-sm"
                 onMouseEnter={() => setActive(index)}
                 onMouseLeave={() => setActive((c) => (c === index ? null : c))}
@@ -664,6 +682,10 @@ export function MiniBarChart({
             <button
               key={bar.key ?? bar.label}
               type="button"
+              /* Même exemption que le graphe empilé plus haut, pour la même
+                 raison : la largeur d'une colonne est celle que la donnée et la
+                 fenêtre lui laissent, et la colonne n'agit pas — elle informe. */
+              data-cible="donnee"
               className="group flex h-full min-w-6 flex-1 shrink-0 cursor-pointer items-end rounded-sm"
               onMouseEnter={() => setActive(index)}
               onMouseLeave={() => setActive((c) => (c === index ? null : c))}

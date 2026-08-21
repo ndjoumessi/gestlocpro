@@ -346,8 +346,11 @@ export function SignUp() {
       footer={
         <>
           {t("auth.hasAccount")}{" "}
+          {/* Même exception que sur l'écran de connexion : lien DANS une phrase,
+              hauteur portée par l'interligne. Voir `Login.tsx`. */}
           <Link
             to="/connexion"
+            data-cible="dans-une-phrase"
             className="font-semibold text-gold-ink hover:text-gold-ink-hover"
           >
             {t("auth.signIn")}
