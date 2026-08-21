@@ -213,11 +213,36 @@ export function InspectionModal({
           <Button variant="secondary" onClick={onClose}>
             {t('common.cancel')}
           </Button>
-          <Button onClick={envoyer}>{t('common.save')}</Button>
+          <Button type="submit" form="etat-des-lieux">{t('common.save')}</Button>
         </>
       }
     >
-      <div className="flex flex-col gap-5">
+      {/*
+        UN VRAI `<form>`, ET LE BOUTON DU PIED LUI EST RATTACHÉ.
+
+        `Modal` rend le corps et le pied dans deux `<div>` FRÈRES : un `<form>`
+        autour du corps ne peut donc pas contenir le bouton du pied — et faute
+        de l'avoir résolu, cette modale n'avait pas de formulaire du tout.
+        Entrée n'y validait rien.
+
+        Le coût n'est pas seulement au clavier. Sur un clavier virtuel de
+        téléphone, un champ hors formulaire perd sa touche d'action « Aller » :
+        le clavier reste ouvert par-dessus la barre d'actions, au moment précis
+        où il faut l'atteindre.
+
+        L'attribut `form` est fait pour ce cas. `noValidate` l'accompagne
+        toujours : sans lui la validation native rouvre ses bulles à côté des
+        messages de `Field`, deux refus pour la même faute.
+      */}
+      <form
+        id="etat-des-lieux"
+        onSubmit={(e) => {
+          e.preventDefault()
+          envoyer()
+        }}
+        noValidate
+        className="flex flex-col gap-5"
+      >
         {/* Le logement d'abord : c'est lui qui décide de qui répondra des
             réserves relevées en dessous. */}
         <Field label={t('app.inspections.unit')} required>
@@ -401,7 +426,7 @@ export function InspectionModal({
             {t('app.inspections.addFinding')}
           </Button>
         </fieldset>
-      </div>
+      </form>
     </Modal>
   )
 }

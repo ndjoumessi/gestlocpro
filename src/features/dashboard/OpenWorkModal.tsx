@@ -115,13 +115,38 @@ export function OpenWorkModal({
           <Button variant="secondary" onClick={onClose} disabled={envoi}>
             {t('common.cancel')}
           </Button>
-          <Button onClick={() => void ouvrir()} loading={envoi}>
+          <Button type="submit" form="ouverture-travaux" loading={envoi}>
             {t('app.works.openSubmit')}
           </Button>
         </>
       }
     >
-      <div className="flex flex-col gap-5">
+      {/*
+        UN VRAI `<form>`, ET LE BOUTON DU PIED LUI EST RATTACHÉ.
+
+        `Modal` rend le corps et le pied dans deux `<div>` FRÈRES : un `<form>`
+        autour du corps ne peut donc pas contenir le bouton du pied — et faute
+        de l'avoir résolu, cette modale n'avait pas de formulaire du tout.
+        Entrée n'y validait rien.
+
+        Le coût n'est pas seulement au clavier. Sur un clavier virtuel de
+        téléphone, un champ hors formulaire perd sa touche d'action « Aller » :
+        le clavier reste ouvert par-dessus la barre d'actions, au moment précis
+        où il faut l'atteindre.
+
+        L'attribut `form` est fait pour ce cas. `noValidate` l'accompagne
+        toujours : sans lui la validation native rouvre ses bulles à côté des
+        messages de `Field`, deux refus pour la même faute.
+      */}
+      <form
+        id="ouverture-travaux"
+        onSubmit={(e) => {
+          e.preventDefault()
+          void ouvrir()
+        }}
+        noValidate
+        className="flex flex-col gap-5"
+      >
         <Field label={t('app.works.openUnit')} required>
           {(champ) => (
             <Select {...champ} value={unite} onChange={(e) => setUnite(e.target.value)}>
@@ -177,7 +202,7 @@ export function OpenWorkModal({
             <Textarea {...champ} value={detail} onChange={(e) => setDetail(e.target.value)} />
           )}
         </Field>
-      </div>
+      </form>
     </Modal>
   )
 }

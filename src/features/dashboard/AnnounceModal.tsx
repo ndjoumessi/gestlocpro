@@ -112,7 +112,7 @@ export function AnnounceModal({ open, onClose }: { open: boolean; onClose: () =>
             <Button variant="secondary" onClick={fermer}>
               {t('common.cancel')}
             </Button>
-            <Button onClick={envoyer} loading={envoi}>
+            <Button type="submit" form="annonce" loading={envoi}>
               {t('app.announce.send')}
             </Button>
           </>
@@ -146,7 +146,32 @@ export function AnnounceModal({ open, onClose }: { open: boolean; onClose: () =>
           )}
         </div>
       ) : (
-        <div className="flex flex-col gap-5">
+        /*
+          UN VRAI `<form>`, ET LE BOUTON DU PIED LUI EST RATTACHÉ.
+
+          `Modal` rend le corps et le pied dans deux `<div>` FRÈRES : un `<form>`
+          autour du corps ne peut donc pas contenir le bouton du pied — et faute
+          de l'avoir résolu, cette modale n'avait pas de formulaire du tout.
+          Entrée n'y validait rien.
+
+          Le coût n'est pas seulement au clavier. Sur un clavier virtuel de
+          téléphone, un champ hors formulaire perd sa touche d'action « Aller » :
+          le clavier reste ouvert par-dessus la barre d'actions, au moment précis
+          où il faut l'atteindre.
+
+          L'attribut `form` est fait pour ce cas. `noValidate` l'accompagne
+          toujours : sans lui la validation native rouvre ses bulles à côté des
+          messages de `Field`, deux refus pour la même faute.
+        */
+        <form
+          id="annonce"
+          onSubmit={(e) => {
+            e.preventDefault()
+            envoyer()
+          }}
+          noValidate
+          className="flex flex-col gap-5"
+        >
           {/* Le champ ne devient pas un menu à un seul article quand le parc n'a
               qu'un immeuble : « tout le parc » et « cet immeuble-là » y désignent
               alors les mêmes personnes, et le choix se lirait comme une panne.
@@ -196,7 +221,7 @@ export function AnnounceModal({ open, onClose }: { open: boolean; onClose: () =>
               fournisseur n'est branché. Le dire avant l'envoi évite de compter
               sur un canal qui n'existe pas pour une coupure d'eau de jeudi. */}
           <p className="text-body-s text-muted">{t('app.announce.channelNotice')}</p>
-        </div>
+        </form>
       )}
     </Modal>
   )

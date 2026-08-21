@@ -84,7 +84,7 @@ export function AddUnitModal({ open, onClose }: { open: boolean; onClose: () => 
           <Button variant="secondary" onClick={fermer}>
             {t('common.cancel')}
           </Button>
-          <Button onClick={submit} disabled={buildings.length === 0}>
+          <Button type="submit" form="ajout-unite" disabled={buildings.length === 0}>
             {t('common.save')}
           </Button>
         </>
@@ -95,7 +95,33 @@ export function AddUnitModal({ open, onClose }: { open: boolean; onClose: () => 
         // n'a pas de sens et on le dit, plutôt que d'offrir un menu vide.
         <p className="text-body text-muted">{t('app.portfolio.noBuildingYet')}</p>
       ) : (
-        <div className="flex flex-col gap-5">
+        /*
+          UN VRAI `<form>`, ET LE BOUTON DU PIED LUI EST RATTACHÉ.
+
+          `Modal` rend le corps et le pied dans deux `<div>` FRÈRES : un `<form>`
+          autour du corps ne peut donc pas contenir le bouton du pied, et cette
+          modale n'avait pas de formulaire du tout — Entrée n'y validait rien.
+
+          Le coût n'est pas seulement au clavier. Sur un clavier virtuel de
+          téléphone, un champ hors formulaire perd la touche d'action « Aller » :
+          le clavier reste ouvert par-dessus la barre d'actions, au moment
+          précis où il faut l'atteindre.
+
+          L'attribut `form` est fait pour ce cas — un bouton peut soumettre un
+          formulaire qui ne le contient pas. `noValidate` est indispensable :
+          sans lui, la validation native rouvre ses bulles à côté des messages
+          de `Field`, ce que les autres modales du dossier évitent déjà pour
+          cette raison.
+        */
+        <form
+          id="ajout-unite"
+          onSubmit={(e) => {
+            e.preventDefault()
+            submit()
+          }}
+          noValidate
+          className="flex flex-col gap-5"
+        >
           <Field label={t('app.portfolio.unitBuilding')} required>
             {(props) => (
               <Select
@@ -167,7 +193,7 @@ export function AddUnitModal({ open, onClose }: { open: boolean; onClose: () => 
               )}
             </Field>
           </div>
-        </div>
+        </form>
       )}
     </Modal>
   )

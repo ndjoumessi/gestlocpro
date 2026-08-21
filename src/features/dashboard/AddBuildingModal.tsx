@@ -59,11 +59,36 @@ export function AddBuildingModal({ open, onClose }: { open: boolean; onClose: ()
           <Button variant="secondary" onClick={fermer}>
             {t('common.cancel')}
           </Button>
-          <Button onClick={submit}>{t('common.save')}</Button>
+          <Button type="submit" form="ajout-immeuble">{t('common.save')}</Button>
         </>
       }
     >
-      <div className="flex flex-col gap-5">
+      {/*
+        UN VRAI `<form>`, ET LE BOUTON DU PIED LUI EST RATTACHÉ.
+
+        `Modal` rend le corps et le pied dans deux `<div>` FRÈRES : un `<form>`
+        autour du corps ne peut donc pas contenir le bouton du pied. Faute de
+        l'avoir résolu, cette modale n'avait pas de formulaire du tout — et
+        Entrée n'y validait rien.
+
+        Le coût n'est pas seulement au clavier. Sur un clavier virtuel de
+        téléphone, un champ hors formulaire perd la touche d'action « Aller » :
+        le clavier reste ouvert par-dessus la barre d'actions, au moment précis
+        où il faut l'atteindre.
+
+        L'attribut `form` est fait pour ce cas — un bouton peut soumettre un
+        formulaire qui ne le contient pas. `noValidate` est indispensable :
+        sans lui, la validation native rouvre ses bulles à côté des messages de
+        `Field`, ce qui est exactement pourquoi les autres modales du dossier le
+        portent déjà.
+      */}
+      <form id="ajout-immeuble" onSubmit={(e) => {
+          // `preventDefault` : sans lui, le formulaire part NATIVEMENT et
+          // recharge la page — l'envoi se fait par `api`, jamais par le
+          // navigateur.
+          e.preventDefault()
+          submit()
+        }} noValidate className="flex flex-col gap-5">
         <Field label={t('app.portfolio.buildingName')} required error={errors.name}>
           {(props) => (
             <Input
@@ -87,7 +112,7 @@ export function AddBuildingModal({ open, onClose }: { open: boolean; onClose: ()
             />
           )}
         </Field>
-      </div>
+      </form>
     </Modal>
   )
 }

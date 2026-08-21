@@ -117,9 +117,35 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
       onClose={onClose}
       title={t('app.tariffs.title')}
       description={t('app.tariffs.description')}
-      footer={<Button onClick={onClose}>{t('common.close')}</Button>}
+      /*
+        UNE SEULE ACTION PRIMAIRE, et ce n'était pas la bonne.
+
+        `Button` rend « primaire » par défaut : ce « Fermer » était donc en
+        encre pleine, dans la barre épinglée qui ne défile jamais — le bouton le
+        plus fort de l'écran était celui qui abandonne. Le vrai geste,
+        « Enregistrer ce prix », vivait dans le corps défilant, et pouvait se
+        trouver hors champ au moment où l'on cherche à valider.
+
+        Le fichier du composant porte la règle en toutes lettres, juste
+        au-dessus de la variante concernée : « Une seule action primaire par
+        écran. »
+
+        L'enregistrement remonte au pied par l'attribut `form`, le formulaire
+        étant déjà écrit dans le corps — c'est ce que les deux modales voisines
+        viennent d'adopter.
+      */
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            {t('common.close')}
+          </Button>
+          <Button type="submit" form="tarif" loading={envoi}>
+            {t('app.tariffs.submit')}
+          </Button>
+        </>
+      }
     >
-      <form onSubmit={enregistrer} noValidate className="flex flex-col gap-5">
+      <form id="tarif" onSubmit={enregistrer} noValidate className="flex flex-col gap-5">
         <Field label={t('app.tariffs.utility')} required>
           {(props) => (
             <Select
@@ -163,9 +189,6 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
           )}
         </Field>
 
-        <Button type="submit" loading={envoi}>
-          {t('app.tariffs.submit')}
-        </Button>
       </form>
 
       <div className="mt-6 border-t border-divider pt-5">

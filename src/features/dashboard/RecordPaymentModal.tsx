@@ -122,11 +122,36 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
           <Button variant="secondary" onClick={onClose}>
             {t('common.cancel')}
           </Button>
-          <Button onClick={submit}>{t('common.save')}</Button>
+          <Button type="submit" form="encaissement">{t('common.save')}</Button>
         </>
       }
     >
-      <div className="flex flex-col gap-5">
+      {/*
+        UN VRAI `<form>`, ET LE BOUTON DU PIED LUI EST RATTACHÉ.
+
+        `Modal` rend le corps et le pied dans deux `<div>` FRÈRES : un `<form>`
+        autour du corps ne peut donc pas contenir le bouton du pied — et faute
+        de l'avoir résolu, cette modale n'avait pas de formulaire du tout.
+        Entrée n'y validait rien.
+
+        Le coût n'est pas seulement au clavier. Sur un clavier virtuel de
+        téléphone, un champ hors formulaire perd sa touche d'action « Aller » :
+        le clavier reste ouvert par-dessus la barre d'actions, au moment précis
+        où il faut l'atteindre.
+
+        L'attribut `form` est fait pour ce cas. `noValidate` l'accompagne
+        toujours : sans lui la validation native rouvre ses bulles à côté des
+        messages de `Field`, deux refus pour la même faute.
+      */}
+      <form
+        id="encaissement"
+        onSubmit={(e) => {
+          e.preventDefault()
+          submit()
+        }}
+        noValidate
+        className="flex flex-col gap-5"
+      >
         <Field label={t('app.payments.selectUnit')} required>
           {(props) => (
             <Select {...props} value={unitId} onChange={(e) => setUnitId(e.target.value)}>
@@ -253,7 +278,7 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
             />
           )}
         </Field>
-      </div>
+      </form>
     </Modal>
   )
 }
