@@ -69,6 +69,7 @@ export function UnitFile() {
         <PageHeader title={t('app.unitFile.loadingTitle')} />
         <EmptyState
           icon="building"
+          level={2}
           title={t('app.unitFile.notFoundTitle')}
           body={t('app.unitFile.notFoundBody')}
           action={

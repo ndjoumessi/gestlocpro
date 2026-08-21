@@ -119,23 +119,45 @@ export function DataTable<T>({
   )
 }
 
+/**
+ * Ce qu'un écran dit quand il n'a rien à montrer.
+ *
+ * Le NIVEAU du titre est un argument, et son défaut vaut pour l'usage
+ * majoritaire : servi dans une carte, sous un `CardHeader level={2}`, le `h3`
+ * est la marche suivante et il est juste. C'est de l'avoir FIGÉ qui coûtait.
+ * Quatorze appels rendent cet état vide EN PLEINE PAGE, sous le seul `<h1>` de
+ * `PageHeader` — le tableau de bord d'un parc neuf, le dossier d'un logement
+ * introuvable, l'accès refusé au locataire — et la structure y sautait de 1 à
+ * 3. Qui parcourt une page par ses titres compte les marches : un niveau
+ * manquant lui fait chercher la section qu'il n'a pas entendue, et sur le
+ * premier écran d'un compte neuf c'est la toute première chose que le produit
+ * lui dit.
+ *
+ * Le remède ne se voit pas, et c'est voulu : `title-m` habille le titre par sa
+ * classe, et la règle de base groupe `h1, h2, h3` sous la même famille et la
+ * même graisse — la balise, à elle seule, ne porte aucune apparence.
+ */
 export function EmptyState({
   title,
   body,
   action,
   icon = 'search',
+  level = 3,
 }: {
   title: string
   body?: string
   action?: ReactNode
   icon?: Parameters<typeof Icon>[0]['name']
+  /** Niveau du titre — préserve la hiérarchie h1→h6 de la page. */
+  level?: 2 | 3 | 4
 }) {
+  const Titre = `h${level}` as 'h2' | 'h3' | 'h4'
   return (
     <div className="flex flex-col items-center rounded-lg border border-dashed border-border-strong bg-surface px-6 py-14 text-center">
       <span className="flex size-12 items-center justify-center rounded-full bg-surface-sunken text-muted">
         <Icon name={icon} size={22} />
       </span>
-      <h3 className="mt-4 title-m">{title}</h3>
+      <Titre className="mt-4 title-m">{title}</Titre>
       {body && <p className="mt-2 max-w-sm text-body text-pretty text-muted">{body}</p>}
       {action && <div className="mt-5">{action}</div>}
     </div>

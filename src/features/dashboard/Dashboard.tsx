@@ -183,6 +183,7 @@ export function Dashboard() {
       {parcVide ? (
         <EmptyState
           icon="building"
+          level={2}
           title={t('common.emptyParkTitle')}
           body={t('common.emptyParkBody')}
           action={

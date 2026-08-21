@@ -158,6 +158,7 @@ export function TenantDocuments() {
         <PageHeader title={t('app.documents.title')} description={t('app.documents.subtitle')} />
         <EmptyState
           icon="info"
+          level={2}
           title={t('app.tenant.noUnitTitle')}
           body={t('app.tenant.noUnitBody')}
         />

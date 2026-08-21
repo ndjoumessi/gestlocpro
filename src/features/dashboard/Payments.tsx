@@ -325,6 +325,7 @@ export function Payments() {
         empty={
           <EmptyState
             icon="card"
+            level={2}
             title={t('app.system.emptyTitle')}
             body={t('app.system.emptyBody')}
             action={

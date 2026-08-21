@@ -190,6 +190,7 @@ export function Alerts() {
         // marquer comme lu », et il n'a rien à marquer.
         <EmptyState
           icon="bell"
+          level={2}
           title={isTenant ? t('app.tenant.alertsEmpty') : t('app.alerts.empty')}
           body={isTenant ? t('app.tenant.alertsEmptyBody') : t('app.alerts.emptyBody')}
           action={

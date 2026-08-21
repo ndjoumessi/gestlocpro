@@ -443,6 +443,7 @@ function RegistreSansParc() {
       <Card>
         <EmptyState
           icon="key"
+          level={2}
           title={t('app.access.noParkTitle')}
           body={t('app.access.noParkBody')}
         />

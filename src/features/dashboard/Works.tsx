@@ -320,6 +320,7 @@ export function Works() {
       {visible.length === 0 ? (
         <EmptyState
           icon="wrench"
+          level={2}
           title={isTenant ? t('app.tenant.worksEmpty') : t('app.works.emptyTitle')}
           body={isTenant ? t('app.tenant.worksEmptyBody') : t('app.works.emptyBodyOwner')}
           // Le locataire, lui, est sur une impasse : rien à faire ici, et ses

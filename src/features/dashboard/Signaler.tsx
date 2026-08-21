@@ -165,7 +165,12 @@ export function Signaler() {
           /* Le bailleur atteint cet écran depuis sa navigation : il y lit ce
              qu'on lui signale, sans pouvoir déclarer à la place d'un autre. */
           <Card>
-            <EmptyState icon="bell" title={t('app.report.title')} body={t('app.report.body')} />
+            <EmptyState
+              icon="bell"
+              level={2}
+              title={t('app.report.title')}
+              body={t('app.report.body')}
+            />
           </Card>
         )}
 

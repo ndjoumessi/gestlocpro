@@ -96,6 +96,7 @@ export function Inspections() {
       {Object.keys(byUnit).length === 0 ? (
         <EmptyState
           icon="clipboard"
+          level={2}
           title={isTenant ? t('app.tenant.inspectionsEmpty') : t('app.inspections.emptyTitle')}
           body={
             isTenant ? t('app.tenant.inspectionsEmptyBody') : t('app.inspections.emptyBody')

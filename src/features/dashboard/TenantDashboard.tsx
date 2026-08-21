@@ -108,6 +108,7 @@ export function TenantDashboard() {
         <PageHeader title={t('app.tenant.title')} description={t('app.tenant.subtitle')} />
         <EmptyState
           icon="info"
+          level={2}
           title={t('app.tenant.noUnitTitle')}
           body={t('app.tenant.noUnitBody')}
         />
@@ -752,6 +753,7 @@ export function TenantRestricted() {
       <PageHeader title={t('app.tenant.restrictedTitle')} />
       <EmptyState
         icon="lock"
+        level={2}
         title={t('app.tenant.restricted')}
         body={t('app.tenant.restrictedHint')}
         action={

@@ -133,6 +133,7 @@ export function Deposits() {
           empty={
             <EmptyState
               icon="shield"
+              level={2}
               title={t('app.deposits.emptyTitle')}
               /* Un seul corps : cet écran est réservé au propriétaire et au
                  gestionnaire — `Restricted allow={['owner','manager']}` — et un

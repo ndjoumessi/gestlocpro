@@ -270,11 +270,13 @@ export function Portfolio() {
                porte. */
             <EmptyState
               icon="building"
+              level={2}
               title={t('app.portfolio.emptyTitle')}
               body={t('app.portfolio.emptyBody')}
             />
           ) : (
           <EmptyState
+            level={2}
             title={t('app.portfolio.searchEmpty', { query })}
             body={t('app.portfolio.searchEmptyHint')}
             // Ce bouton réutilisait la clé du filtre, donc il s'appelait
