@@ -34,7 +34,23 @@ export function Faq() {
                 className="shrink-0 text-muted transition-transform duration-200 group-open:rotate-180"
               />
             </summary>
-            <p className="border-t border-divider py-4 text-body text-pretty text-muted">
+            {/*
+              `text-body-l` ET NON `text-body`.
+
+              Le jeton de 16 px porte son usage dans son commentaire — « landing »
+              — et celui de 14 s'appelle « corps application ». La réponse d'une
+              FAQ est du texte PRINCIPAL sur une page de vitrine : elle se lit
+              d'affilée, souvent sur un téléphone, par quelqu'un qui hésite
+              encore. Quatorze pixels y sont la taille d'une interface qu'on
+              parcourt, pas d'une prose qu'on lit.
+
+              `max-w-[65ch]` : c'est la plus longue mesure de la page, environ
+              cent quatre caractères. La section de la vitrine a déjà tranché ce
+              point à 60ch après mesure ; on borne le PARAGRAPHE et non le
+              `<details>`, dont la question et la flèche doivent rester alignées
+              sur la largeur de la carte.
+            */}
+            <p className="max-w-[65ch] border-t border-divider py-4 text-body-l text-pretty text-muted">
               {t(`marketing.faq.${key}.a` as 'marketing.faq.one.a')}
             </p>
           </details>

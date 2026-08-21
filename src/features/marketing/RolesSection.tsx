@@ -48,7 +48,12 @@ export function RolesSection() {
               {t(`roles.${key}.short` as 'roles.owner.short')}
             </p>
 
-            <p className="mt-5 flex-1 text-body text-pretty text-on-dark-muted">
+            {/* Même raison que la réponse de FAQ : c'est le texte principal
+                d'une carte de vitrine, celui qui décide, et le jeton de 16 px
+                porte « landing » dans son propre commentaire. La glose de la
+                grille de fonctionnalités, elle, reste en 14 : elle est
+                SUBORDONNÉE à un titre, et l'échelle doit le dire. */}
+            <p className="mt-5 flex-1 text-body-l text-pretty text-on-dark-muted">
               {t(`roles.${key}.pitch` as 'roles.owner.pitch')}
             </p>
 
