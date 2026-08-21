@@ -208,6 +208,77 @@ function marquer(ou, quoi) {
   lenteurs.set(cle, (lenteurs.get(cle) ?? 0) + 1)
 }
 
+/**
+ * La largeur À PARTIR DE LAQUELLE une barre d'en-tête ne doit plus se replier.
+ *
+ * 1280 px : c'est le plafond de la bande (`max-w-7xl`), donc la largeur au-delà
+ * de laquelle élargir la fenêtre ne donne plus un pixel de plus au contenu. Si
+ * la barre se replie là, elle se repliera à toutes les largeurs supérieures.
+ */
+const LARGEUR_SANS_REPLI = 1280
+
+/*
+  GARDE DU GARDE : le seuil doit tomber dans les largeurs balayées.
+
+  Porté au-delà de la plus large, il viderait la règle sans que rien ne
+  rougisse — la porte dirait « aucun en-tête replié » en n'ayant regardé aucune
+  largeur. C'est la panne qu'`ATTENDUES` surveille déjà pour la liste des
+  adresses, et pour la même raison : une absence de défaut et une absence de
+  mesure se ressemblent trop dans un journal.
+*/
+if (!LARGEURS.some((l) => l >= LARGEUR_SANS_REPLI)) {
+  console.error(
+    `\n✗ mesure-ui : aucune largeur balayée n'atteint ${LARGEUR_SANS_REPLI} px.\n` +
+      "   La règle du repli ne s'exécuterait jamais — ce n'est pas une absence de défaut.\n",
+  )
+  process.exit(1)
+}
+
+/**
+ * Exécuté DANS la page : rend la rangée d'en-tête repliée, ou `null`.
+ *
+ * POURQUOI UNE SECONDE MESURE. Celle du débordement ne pouvait pas voir ce
+ * défaut-là, et l'a même masqué : `flex-wrap` a été posé sur la barre de la
+ * vitrine pour supprimer un débordement à 1280, ce qu'il a fait — en empilant
+ * la barre sur deux rangées. La porte est passée au vert pendant que l'en-tête
+ * doublait de hauteur sur un portable ordinaire, mesuré à 131 px.
+ *
+ * Le repli reste le bon filet : il vaut mieux deux rangées qu'une page qui
+ * défile de côté. Ce qu'on interdit, c'est qu'il se déclenche là où la place
+ * existe, c'est-à-dire qu'on s'en serve pour ne pas faire entrer le contenu.
+ *
+ * Le nombre de rangées se lit par les BOÎTES, jamais par `flexWrap` : la classe
+ * dit ce qui est permis, pas ce qui arrive. Un enfant dont le haut atteint le
+ * bas d'un autre commence une rangée nouvelle — la tolérance d'un pixel écarte
+ * les arrondis, et `items-center` suffit à décaler des enfants de hauteurs
+ * différentes sans qu'ils changent de rangée pour autant.
+ */
+const MESURER_REPLI = () => {
+  const replies = []
+  for (const entete of document.querySelectorAll('header')) {
+    for (const rangee of entete.querySelectorAll('*')) {
+      const style = getComputedStyle(rangee)
+      if (style.display !== 'flex' || style.flexWrap !== 'wrap') continue
+
+      const boites = [...rangee.children]
+        .filter((e) => getComputedStyle(e).display !== 'none')
+        .map((e) => e.getBoundingClientRect())
+        .filter((b) => b.width > 0)
+      if (boites.length < 2) continue
+
+      const empile = boites.some((a) => boites.some((b) => a.top >= b.bottom - 1))
+      if (!empile) continue
+
+      replies.push({
+        classes: typeof rangee.className === 'string' ? rangee.className.slice(0, 110) : '',
+        hauteur: Math.round(entete.getBoundingClientRect().height),
+        enfants: boites.map((b) => Math.round(b.width)),
+      })
+    }
+  }
+  return replies.length > 0 ? replies : null
+}
+
 /** Exécuté DANS la page : rend les coupables, ou `null` si rien ne déborde. */
 const MESURER = () => {
   const avant = window.scrollX
@@ -281,6 +352,7 @@ const adresses = adressesDeLApplication()
 await construire()
 const serveur = await servir()
 const echecs = []
+const reproches = []
 const tolerancesUtilisees = new Set()
 
 try {
@@ -303,6 +375,11 @@ try {
       for (const largeur of LARGEURS) {
         await page.setViewportSize({ width: largeur, height: 900 })
         await attendre(page, adresse)
+        if (largeur >= LARGEUR_SANS_REPLI) {
+          const replis = await page.evaluate(MESURER_REPLI)
+          if (replis) for (const r of replis) reproches.push({ adresse, largeur, langue, ...r })
+        }
+
         const resultat = await page.evaluate(MESURER)
         if (!resultat) continue
         const cle = `${adresse}@${largeur}`
@@ -344,6 +421,27 @@ if (orphelines.length > 0) {
   process.exit(1)
 }
 
+/*
+  LE REPLI SORT AVANT LE DÉBORDEMENT, et ce n'est pas un détail d'ordre.
+
+  Poser `flex-wrap` supprime un débordement en créant un repli. Rapporter le
+  repli en premier évite de refaire l'échange qui a produit ce défaut : lire
+  « débordement », poser un repli, voir le vert, et livrer une barre deux fois
+  plus haute.
+*/
+if (reproches.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${reproches.length} rangée(s) d'en-tête repliée(s) à ${LARGEUR_SANS_REPLI} px ou plus.\n` +
+      "   La place existe : c'est le contenu qui doit entrer, pas la barre qui doit s'empiler.\n",
+  )
+  for (const r of reproches) {
+    console.error(`   ${r.adresse}  ${r.largeur}px  ${r.langue}  →  en-tête de ${r.hauteur}px`)
+    console.error(`      enfants=${r.enfants.join(' + ')}  class="${r.classes}"`)
+  }
+  console.error('')
+  process.exit(1)
+}
+
 if (echecs.length > 0) {
   console.error(`\n✗ mesure-ui : ${echecs.length} débordement(s) latéral(aux).\n`)
   for (const e of echecs) {
@@ -359,5 +457,5 @@ if (echecs.length > 0) {
 }
 
 console.log(
-  `\n✓ mesure-ui : ${adresses.length} écrans × ${LARGEURS.length} largeurs × ${LANGUES.length} langues, aucun débordement latéral.`,
+  `\n✓ mesure-ui : ${adresses.length} écrans × ${LARGEURS.length} largeurs × ${LANGUES.length} langues, aucun débordement latéral ni en-tête replié.`,
 )

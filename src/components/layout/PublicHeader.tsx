@@ -166,13 +166,35 @@ export function PublicHeader() {
               étant plus longs, l'anglais passait. Un débordement qui n'existe
               que dans une langue est celui qu'une relecture ne trouve jamais.
             */
-                        'mx-auto flex max-w-7xl flex-wrap items-center gap-4',
+                        /*
+              LE CONTENU ENTRE DANS LA BANDE, et le repli n'est plus qu'un filet.
+
+              Mesuré au navigateur : la rangée réclamait 1268 px pour 1216
+              disponibles dans une bande plafonnée à 1280. Le déficit est
+              ANTÉRIEUR au repli — il ne se voyait comme débordement du document
+              qu'à 1280 pile, seule largeur où les marges tombent à zéro.
+              Au-delà, le trop-plein débordait dans les marges de la page, où
+              rien ne le mesurait. Le repli l'a rendu visible en le changeant de
+              forme : une barre sur deux rangées, 131 px de haut, sur un
+              portable ordinaire.
+
+              Cinquante-deux pixels se rendent sans rien retirer : la marge du
+              bloc de navigation, le rembourrage de ses liens, l'écart de la
+              rangée. Aucun ne touche à une cible — les liens gardent leur
+              plancher de 44 px, et `ecarts.test.ts` tient leur écart intérieur.
+
+              Le repli RESTE : c'est lui qui garantit qu'aucune langue et
+              aucune largeur ne feront jamais défiler la page. Il ne se
+              déclenche simplement plus sur un ordinateur, et `mesure-ui` le
+              vérifie désormais à chaque passage.
+            */
+            'mx-auto flex max-w-7xl flex-wrap items-center gap-3',
             GOUTTIERE_LATERALE,
           )}
         >
           <Logo />
 
-          <nav aria-label={t('nav.primaryNav')} className="ml-6 hidden items-center gap-1 lg:flex">
+          <nav aria-label={t('nav.primaryNav')} className="ml-3 hidden items-center gap-1 lg:flex">
             {SECTIONS.map((section) => (
               <a
                 key={section.id}
@@ -185,7 +207,7 @@ export function PublicHeader() {
                   // seul élément de la rangée à tenir sur deux lignes, ce qui
                   // désalignait toute la barre. Un lien de navigation ne se
                   // coupe pas : il rétrécit la rangée ou il disparaît.
-                  'inline-flex min-h-11 items-center rounded-md px-3 text-body font-medium whitespace-nowrap',
+                  'inline-flex min-h-11 items-center rounded-md px-2 text-body font-medium whitespace-nowrap',
                   'text-muted no-underline transition-colors duration-150',
                   'hover:bg-surface-sunken hover:text-ink',
                 )}
