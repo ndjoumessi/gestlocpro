@@ -566,15 +566,31 @@ function SerieFluide({
  */
 function CelluleMontant({ du, regle }: { du: number; regle: number }) {
   const t = useT()
-  const n = useNumbers()
+  const { money } = useCurrency()
   const solde = regle >= du
+  /*
+    DE L'ARGENT SE LIT PAR LE FORMATEUR DE DEVISE, jamais par celui des nombres.
+
+    `n.integer` suit la locale de la LANGUE ; `money` suit celle de la DEVISE.
+    Sur un compte en anglais réglé en francs CFA, la même somme s'écrivait donc
+    « 145,000 » ici et « 145 000 » trois cents pixels plus haut, dans l'en-tête
+    de la même carte. Deux graphies pour un seul montant sur un seul écran, et
+    c'est le locataire qui doit décider laquelle croire.
+
+    `omitSymbol` : la devise est nommée UNE fois, dans l'en-tête de la carte.
+    L'écrire dans chaque cellule d'un tableau de trois colonnes la répéterait
+    trente-six fois et rendrait la colonne illisible — c'est déjà le choix que
+    fait l'export du même tableau.
+  */
+  const lireMontant = (v: number) => money(v, { round: true, omitSymbol: true })
+
   return (
     <td className={cn('numeric px-3 py-3 text-right text-body', solde ? 'text-ok' : 'text-warn')}>
-      {n.integer(solde ? du : regle)}
+      {lireMontant(solde ? du : regle)}
       {!solde && (
         <span className="text-caps">
           {' · '}
-          {t('app.tenant.remaining', { amount: n.integer(du - regle) })}
+          {t('app.tenant.remaining', { amount: lireMontant(du - regle) })}
         </span>
       )}
     </td>

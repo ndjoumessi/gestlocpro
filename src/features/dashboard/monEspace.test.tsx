@@ -131,4 +131,27 @@ describe('mon espace — paiements par période', () => {
     const main = screen.getByRole('main')
     expect(within(main).queryAllByRole('button', { name: /^Télécharger$/ })).toHaveLength(0)
   })
+
+  /**
+   * LES MONTANTS SUIVENT LA DEVISE, jamais la langue.
+   *
+   * Le tableau des postes les formatait par le formateur de NOMBRES, qui suit
+   * la locale de la langue. Sur un compte en anglais réglé en francs CFA, la
+   * même somme s'écrivait donc « 145,000 » dans la cellule et « 145 000 » trois
+   * cents pixels plus haut, dans l'en-tête de la même carte. Deux graphies pour
+   * un seul montant sur un seul écran.
+   *
+   * Le cas lit l'écran EN ANGLAIS, parce que c'est la seule langue où les deux
+   * formateurs divergent : en français ils tombent d'accord, et le défaut y
+   * était invisible.
+   */
+  it('écrit les montants dans la graphie de la devise, même en anglais', async () => {
+    renderApp('/demo/mon-espace', { locale: 'en' })
+    await attendreLeChargement()
+
+    const principal = screen.getByRole('main')
+    // Le franc CFA ne porte pas de décimale et groupe par espace insécable
+    // étroite ; la virgule des milliers est la marque de l'autre formateur.
+    expect(principal.textContent ?? '').not.toMatch(/\d,\d{3}/)
+  })
 })
