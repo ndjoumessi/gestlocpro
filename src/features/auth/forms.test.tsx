@@ -477,4 +477,26 @@ describe('retour à l’accueil depuis l’authentification', () => {
     expect(await screen.findByRole('button', { name: 'Retour' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /retour à l’accueil/i })).toHaveAttribute('href', '/')
   })
+
+  /**
+   * LA JAUGE DE MOT DE PASSE SE DIT, au lieu de n'être que quatre barres.
+   *
+   * Les barres sont `aria-hidden`, et c'est juste : ce sont des formes. Mais le
+   * mot qui les traduit était rendu dans un élément INERTE — un lecteur d'écran
+   * n'apprenait donc jamais que le mot de passe qu'on tape est refusable, alors
+   * que c'est la seule information du composant.
+   *
+   * Ce cas vérifie la RÉGION vivante, pas le mot : citer « faible » reviendrait
+   * à recopier le barème qu'on prétend surveiller.
+   */
+  it('annonce le niveau du mot de passe au fil de la frappe', async () => {
+    const user = userEvent.setup()
+    renderApp('/inscription/proprietaire')
+
+    await user.type(screen.getByLabelText(/^Mot de passe/), 'abc')
+
+    const jauge = screen.getByText(/faible|correct|bon|fort/i).closest('[aria-live]')
+    expect(jauge).not.toBeNull()
+    expect(jauge).toHaveAttribute('aria-live', 'polite')
+  })
 })

@@ -128,7 +128,21 @@ export function PasswordStrength({ value }: { value: string }) {
   const level = levels[score]
 
   return (
-    <div className="flex items-center gap-2.5">
+    /*
+      LE NIVEAU SE DIT, et il ne se disait pas.
+
+      Les quatre barres sont `aria-hidden`, et c'est juste : ce sont des formes,
+      pas du texte. Mais le mot qui les traduit — « faible », « correct »,
+      « bon », « fort » — était rendu SANS annonce, dans un élément inerte. Un
+      lecteur d'écran n'apprenait donc jamais que le mot de passe qu'on tape est
+      refusable, alors que c'est la seule information de tout ce composant.
+
+      `aria-live="polite"` et non `assertive` : le niveau change au fil de la
+      frappe, et une annonce impérieuse couperait la parole à chaque caractère.
+      Poli, le lecteur attend une pause — donc au plus trois ou quatre annonces
+      pour un mot de passe entier, jamais une par touche.
+    */
+    <div className="flex items-center gap-2.5" aria-live="polite">
       <div className="flex flex-1 gap-1" aria-hidden="true">
         {[0, 1, 2, 3].map((i) => (
           <span
