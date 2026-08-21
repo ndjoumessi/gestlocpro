@@ -623,6 +623,9 @@ export const fr = {
       decisionDeposit: 'Caution à arbitrer · {tenant}',
       decisionsEmpty: 'Rien à arbitrer pour le moment.',
       scheduleTitle: 'Échéancier',
+      scheduleEmptyTitle: 'Aucune échéance en attente',
+      scheduleEmptyBody:
+        'Tous les loyers appelés ont été encaissés. Cette liste se remplit d’elle-même dès qu’une échéance passe la date d’exigibilité.',
       breakdownTitle: 'Répartition du parc',
       legendRent: 'Loyer',
       legendWater: 'Eau',

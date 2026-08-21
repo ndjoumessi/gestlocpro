@@ -219,4 +219,25 @@ describe('les cautions, quand il n’y en a aucune', () => {
    * gestionnaire, et un second texte aurait été du code mort ajouté en croyant
    * bien faire — écrit, puis retiré quand le test a rendu « Accès restreint ».
    */
+
+  /**
+   * L'ÉCHÉANCIER DIT QU'IL EST VIDE, sur l'état NORMAL d'un parc bien tenu.
+   *
+   * C'était la seule des trois cartes de sa rangée sans état vide : elle se
+   * réduisait à un titre au-dessus d'une zone blanche dès que tous les loyers
+   * étaient encaissés. Un gestionnaire qui a bien travaillé voyait un silence là
+   * où il attendait une confirmation, et rien ne distinguait « rien à faire » de
+   * « rien ne s'est chargé ».
+   *
+   * Le cas passe par le tableau de bord, seul écran que ce jeu ne visitait pas.
+   */
+  it('dit à l’échéancier qu’il n’a rien à appeler', async () => {
+    parcSansRien()
+    renderApp('/app', { session: SESSION_PROPRIETAIRE })
+
+    expect(await screen.findByText('Aucune échéance en attente')).toBeInTheDocument()
+    // Et il dit COMMENT la liste se remplira : sans cela, un compte neuf croit
+    // à une panne de saisie.
+    expect(screen.getByText(/se remplit d’elle-même/)).toBeInTheDocument()
+  })
 })

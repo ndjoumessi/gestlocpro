@@ -477,6 +477,9 @@ export const en: Dictionary = {
       decisionDeposit: 'Deposit to settle · {tenant}',
       decisionsEmpty: 'Nothing to arbitrate right now.',
       scheduleTitle: 'Schedule',
+      scheduleEmptyTitle: 'Nothing due',
+      scheduleEmptyBody:
+        'Every rent called has been collected. This list fills itself as soon as a due date passes.',
       breakdownTitle: 'Portfolio breakdown',
       legendRent: 'Rent',
       legendWater: 'Water',

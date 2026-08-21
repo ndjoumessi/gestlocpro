@@ -411,6 +411,26 @@ export function Dashboard() {
 
         <Card>
           <CardHeader title={t('app.dashboard.scheduleTitle')} level={2} />
+          {/*
+            LA SEULE DES TROIS CARTES SANS ÉTAT VIDE, et sur l'état NORMAL d'un
+            parc bien tenu.
+
+            Ses deux voisines en ont un ; celle-ci se réduisait à un titre
+            au-dessus d'une zone blanche dès que tous les loyers étaient
+            encaissés. Un gestionnaire qui a bien travaillé voyait donc un
+            silence là où il attendait une confirmation, et rien ne distinguait
+            « rien à faire » de « rien ne s'est chargé ».
+
+            Le corps dit AUSSI comment la liste se remplit : sans cela, un
+            compte neuf lit « aucune échéance » et croit à une panne de saisie.
+          */}
+          {units.filter((unit) => unit.status !== 'paid' && unit.status !== 'vacant').length === 0 ? (
+            <EmptyState
+              icon="calendar"
+              title={t('app.dashboard.scheduleEmptyTitle')}
+              body={t('app.dashboard.scheduleEmptyBody')}
+            />
+          ) : (
           <ul className="flex flex-col gap-3">
             {units.filter((unit) => unit.status !== 'paid' && unit.status !== 'vacant')
               .slice(0, 4)
@@ -424,6 +444,7 @@ export function Dashboard() {
                 </li>
               ))}
           </ul>
+          )}
           <Button
             variant="ghost"
             to={lien(base, 'paiements')}
