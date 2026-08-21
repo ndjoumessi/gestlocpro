@@ -278,6 +278,20 @@ export function ReceiptModal({
                     */}
                     {role === 'owner' && (
                       <IconButton
+                        /*
+                          LA GOMME NE SORT PAS DE L'IMPRIMANTE.
+
+                          La feuille d'impression dit « seule la zone marquée
+                          sort », et c'est vrai des ancêtres — mais elle rallume
+                          TOUT ce que cette zone contient, `zone-imprimable *`.
+                          Le bouton de retrait vit dedans : il s'imprimait donc
+                          sur la quittance remise au locataire, une croix grise
+                          au bout de chaque ligne de versement.
+
+                          Un document qui atteste ne porte pas les commandes de
+                          celui qui le consulte.
+                        */
+                        className="print:hidden"
                         icon="close"
                         label={t('app.receipts.removePayment')}
                         variant="ghost"
