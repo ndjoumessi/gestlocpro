@@ -340,12 +340,30 @@ function fautifsDe(relatif: string, brut: string, exemptions: Exemption[] = EXEM
     const balise = attributs(source, trouve.index)
     const ligne = source.slice(0, trouve.index).split('\n').length
 
+    /*
+      L'ORDRE DE CES TESTS EST LA RÈGLE, et il se lit de haut en bas.
+
+      L'EXEMPTION passe en premier : elle excuse tout, y compris une largeur
+      déclarée sous le plancher — la barre d'un graphe déclare vingt-quatre
+      pixels parce que sa contrepartie l'EXIGE, et une règle générale ne doit
+      pas défaire une dérogation motivée.
+
+      LA LARGEUR DÉCLARÉE vient ensuite, AVANT les acceptations. Placée après,
+      elle était court-circuitée par le plancher de hauteur — le défaut même
+      qu'elle corrige : une cible carrée déclarant quarante pixels de large
+      passait sur la foi de ses quarante-quatre de haut.
+    */
+    const exemption = exemptions.find((e) => relatif === e.fichier && balise.includes(e.marqueur))
+    if (exemption && (!exemption.exige || exemption.exige.verifie(balise))) continue
+
+    if (declareUneLargeurTropPetite(balise)) {
+      fautifs.push(`${relatif}:${ligne} <${trouve[1]}> — largeur déclarée sous le plancher`)
+      continue
+    }
+
     if (porteUnPlancher(balise)) continue
     if (RECOUVREMENT.test(balise)) continue
     if (DELEGUE.test(balise) && porteUnPlancher(source)) continue
-
-    const exemption = exemptions.find((e) => relatif === e.fichier && balise.includes(e.marqueur))
-    if (exemption && (!exemption.exige || exemption.exige.verifie(balise))) continue
 
     // La contrepartie rompue se DIT : sans elle, le message renverrait à une
     // règle de 44 px qu'on avait précisément accepté de ne pas tenir ici.
@@ -363,6 +381,36 @@ function porteUnPasSuffisant(fragment: string): boolean {
   }
   return false
 }
+
+/**
+ * Une LARGEUR déclarée sous le plancher, ce qui est autre chose qu'une largeur
+ * absente.
+ *
+ * `porteUnPlancher` accepte une cible dès qu'UNE de ses dimensions atteint
+ * 44 px. C'est juste dans le cas courant — un bouton qui s'étire sur sa colonne
+ * n'a pas de largeur à déclarer, et l'exiger de lui ferait rougir des dizaines
+ * de contrôles sains, ce que ce dépôt refuse ailleurs par écrit.
+ *
+ * Mais la tolérance allait trop loin dans l'autre sens : une cible carrée qui
+ * DÉCLARE `min-w-10` — quarante pixels, quatre de moins que le plancher —
+ * passait, le contrôle se contentant du `min-h-11` voisin. Le plancher
+ * horizontal n'était donc tenu que par l'intention de celui qui écrit.
+ *
+ * La règle ne réclame pas une largeur. Elle refuse une largeur déclarée TROP
+ * PETITE : qui prend la peine de la fixer prend la responsabilité du chiffre.
+ */
+function declareUneLargeurTropPetite(fragment: string): boolean {
+  for (const [, pas] of fragment.matchAll(LARGEUR)) {
+    const px = Number(pas) * PAS_PX
+    // `w-0`, `w-px` et consorts servent à effacer, jamais à dimensionner une
+    // cible : sous huit pixels, la valeur ne prétend pas être une largeur.
+    if (px >= ECART_MINIMAL_DECLARE && px < PLANCHER_PX) return true
+  }
+  return false
+}
+
+/** En dessous, une largeur n'est pas une dimension mais un effacement. */
+const ECART_MINIMAL_DECLARE = 8
 
 describe('plancher des cibles tactiles', () => {
   it('n’est franchi par aucun contrôle des sources', () => {
@@ -400,6 +448,10 @@ describe('plancher des cibles tactiles', () => {
       // plancher — sans lui, l'abaisser à 40 ne ferait rougir personne, car
       // rien dans le produit ne vit dans cet intervalle.
       `<button className="${H}-10 px-2">presque</button>`,
+      // Une LARGEUR déclarée sous le plancher : quarante pixels, quatre de
+      // moins. Le contrôle se contentait auparavant de la hauteur voisine, si
+      // bien que le plancher horizontal n'était tenu que par l'intention.
+      `<button className="${H}-11 ${W}-10 px-2">carré, presque</button>`,
       `const partage = '${plancher} px-2'`,
     ].join('\n')
 
@@ -410,6 +462,7 @@ describe('plancher des cibles tactiles', () => {
       'temoin.tsx:1 <button>',
       'temoin.tsx:2 <button>',
       'temoin.tsx:6 <button>',
+      'temoin.tsx:7 <button> — largeur déclarée sous le plancher',
     ])
   })
 
