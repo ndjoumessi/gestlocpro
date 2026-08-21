@@ -12,8 +12,14 @@
  *
  * Ce fichier ouvre donc un VRAI navigateur sur le VRAI paquet construit.
  *
- * SUJET DE CETTE GARDE, et un seul : aucun écran ne défile latéralement,
- * à aucune largeur, dans aucune des deux langues.
+ * SUJET DE CETTE GARDE : ce que la mise en page fait VRAIMENT une fois peinte.
+ * Quatre règles, rapportées du signal le plus tôt au symptôme le plus tard —
+ * les réglages restent atteignables au clavier ; la barre de la vitrine garde
+ * du jeu ; aucune rangée d'en-tête ne se replie là où la place existe ; aucun
+ * écran ne défile latéralement, à aucune largeur, dans aucune des deux langues.
+ * Les trois dernières regardent des pixels et la première une absence : aucune
+ * mesure de pixels ne voit une commande retirée, puisque la retirer fait de la
+ * place.
  *
  * PIÈGES HONORÉS — chacun a été payé une fois :
  *
@@ -64,7 +70,15 @@ const BASE = `http://127.0.0.1:${PORT}`
  */
 const LARGEURS = [320, 360, 375, 414, 700, 768, 800, 900, 1024, 1280, 1440]
 
-/** `en` d'abord : c'est la langue la plus large, donc celle qui déborde. */
+/**
+ * LES DEUX LANGUES, et aucune n'est « la large » partout.
+ *
+ * L'anglais l'est sur les écrans de l'application — le défaut fondateur de
+ * cette garde n'existait qu'en anglais. Mais sur la barre de la vitrine c'est
+ * l'inverse, mesuré : 12 px de jeu en français contre 123 en anglais, parce que
+ * « Essayer gratuitement » coûte 172 px là où « Start free » en coûte 92. Un
+ * balayage qui n'aurait regardé qu'une des deux aurait déclaré la barre saine.
+ */
 const LANGUES = ['en-US', 'fr-FR']
 
 /**
@@ -235,6 +249,194 @@ if (!LARGEURS.some((l) => l >= LARGEUR_SANS_REPLI)) {
 }
 
 /**
+ * LE JEU MINIMAL que la rangée de l'en-tête public doit garder.
+ *
+ * POURQUOI UN SEUIL, alors que deux règles gardent déjà cette rangée. Les deux
+ * ne rougissent qu'une fois le défaut ARRIVÉ : le débordement quand la page
+ * défile de côté, le repli quand la barre s'empile. Mesuré juste avant ce lot,
+ * la rangée passait les deux au vert avec DOUZE pixels de jeu en français —
+ * 1204 px occupés pour 1216 disponibles. Elle tenait parce que la porte l'y
+ * obligeait, pas parce qu'elle avait de la place, et le prochain libellé
+ * traduit un peu long la faisait basculer. Une porte verte jusqu'à la seconde
+ * où elle casse ne dit rien de l'état du système ; elle dit seulement qu'on
+ * n'a pas encore payé.
+ *
+ * D'OÙ VIENT 120. Après le retrait des trois sélecteurs, la mesure donne 498 px
+ * de jeu en anglais et 362 en français — le français est la langue serrée ici,
+ * ses deux boutons d'inscription coûtant 297 px contre 174 à l'anglais. Le plus
+ * étroit des éléments que la barre porte encore est le bouton « Se connecter »,
+ * 117 px. Le seuil dit donc : la barre garde toujours de quoi accueillir un
+ * élément de la taille du plus petit qu'elle porte déjà. En dessous, elle est à
+ * une traduction près du repli — l'état exact d'où ce lot la sort.
+ *
+ * SA CONTREPARTIE, et elle est réelle : un ajout LÉGITIME qui coûterait plus de
+ * 242 px en français (362 − 120) fera rougir cette porte alors que rien ne se
+ * replie. Un troisième bouton de la taille d'« Essayer gratuitement » (172 px
+ * plus 12 de gouttière) passe encore, avec 178 px de reste ; deux ne passent
+ * pas. Le seuil n'interdit pas d'ajouter : il interdit d'ajouter EN SILENCE. Le
+ * relever se fait ici, avec la mesure du jour et la raison écrite — ce qui est
+ * précisément la décision qui n'a jamais été prise quand la barre est descendue
+ * à douze pixels.
+ */
+const JEU_MINIMAL = 120
+
+/*
+  GARDE DU GARDE : un seuil nul ou négatif est un seuil qui ne sert à rien.
+
+  À zéro, la règle ne rougit qu'une fois la somme des enfants passée au-delà de
+  la bande — c'est-à-dire au moment même où `MESURER_REPLI` rougit déjà. Elle
+  aurait l'air d'une anticipation et n'en serait pas une : deux formulations du
+  même constat tardif, dont l'une donne l'impression d'être couverte en amont.
+
+  Le haut n'a pas besoin de garde symétrique : un seuil démesuré rend la porte
+  PLUS stricte, il fait rougir immédiatement et bruyamment, et se corrige de
+  lui-même. C'est le bas qui sait se taire, et c'est le silence qu'on garde.
+*/
+if (JEU_MINIMAL <= 0) {
+  console.error(
+    `\n✗ mesure-ui : le jeu minimal vaut ${JEU_MINIMAL}.\n` +
+      "   À zéro ou moins, la règle ne devance plus le repli — elle le double.\n",
+  )
+  process.exit(1)
+}
+
+/**
+ * Exécuté DANS la page : rend le jeu restant sur la rangée de l'en-tête public.
+ *
+ * LA RANGÉE SE DÉSIGNE, elle ne se devine pas. Un plancher en pixels n'a de
+ * sens que sur une rangée BORNÉE PAR UNE BANDE — ici `max-w-7xl`, qui fige la
+ * largeur utile à 1216 px dès 1280, donc le jeu y est une constante par langue.
+ * Les rangées d'en-tête des écrans d'authentification, elles, sont en
+ * `ml-auto … justify-end` : elles épousent leur contenu, et leur jeu vaut zéro
+ * par construction — vérifié sur les 21 écrans qui les portent. Balayer « toute
+ * rangée d'en-tête » ferait donc rougir vingt-et-un écrans qui n'ont jamais eu
+ * de place à perdre. D'où le marqueur, posé dans `PublicHeader.tsx`.
+ *
+ * Rend `null` sur les écrans sans en-tête public : ce n'est pas un manque, la
+ * plupart des adresses balayées sont des écrans de l'application. C'est le
+ * compteur plus bas qui distingue « absent ici » de « disparu partout ».
+ */
+const MESURER_JEU = () => {
+  const rangee = document.querySelector('[data-mesure="rangee-entete-vitrine"]')
+  if (!rangee) return null
+
+  const style = getComputedStyle(rangee)
+  const boite = rangee.getBoundingClientRect()
+  const dispo = boite.width - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0)
+  const gouttiere = parseFloat(style.columnGap) || 0
+
+  const enfants = [...rangee.children]
+    .filter((e) => getComputedStyle(e).display !== 'none')
+    .map((e) => ({
+      largeur: Math.round(e.getBoundingClientRect().width),
+      nom: e.tagName.toLowerCase(),
+    }))
+    .filter((e) => e.largeur > 0)
+  if (enfants.length === 0) return null
+
+  const occupe = enfants.reduce((a, e) => a + e.largeur, 0) + gouttiere * (enfants.length - 1)
+  return {
+    jeu: Math.round(dispo - occupe),
+    dispo: Math.round(dispo),
+    gouttieres: Math.round(gouttiere * (enfants.length - 1)),
+    enfants,
+  }
+}
+
+/**
+ * Exécuté DANS la page : les réglages sont-ils atteignables AU CLAVIER ?
+ *
+ * C'est la dette que contracte le retrait des sélecteurs de la barre. Les
+ * confier au menu n'est une simplification que tant que le menu s'ouvre ; le
+ * bouton qui l'ouvre portait `xl:hidden`, et le laisser tel quel aurait rendu
+ * langue et thème INATTEIGNABLES au-delà de 1280 px. Ce n'aurait pas été une
+ * barre allégée, ç'aurait été des réglages perdus — et aucune des trois autres
+ * règles de ce fichier ne sait voir une commande absente.
+ *
+ * AU CLAVIER et non par sélecteur CSS : `display: none` se lit dans le DOM,
+ * mais un bouton visible qu'aucune tabulation n'atteint est le même défaut pour
+ * qui n'a pas de souris. On part donc du début du document et on tabule.
+ */
+const PLAFOND_TABULATIONS = 24
+
+/**
+ * Rend le grief, ou `null` si les réglages sont atteints.
+ *
+ * ON NE DÉSIGNE PAS LE BOUTON DU MENU, on cherche ce qui OUVRE LES RÉGLAGES —
+ * et la nuance a été payée. Une première version prenait le premier élément
+ * focalisable de l'en-tête portant `aria-expanded` : elle est tombée sur le
+ * sélecteur de devise, qui en porte un lui aussi, a déplié sa liste, et a
+ * rapporté que le panneau des réglages n'existait pas. Un grief exact sur un
+ * fait faux — le pire genre, celui qu'on croit.
+ *
+ * On essaie donc CHAQUE déclencheur rencontré et on retient celui qui rend les
+ * réglages visibles, en refermant les autres derrière soi. C'est exactement ce
+ * que fait quelqu'un qui cherche où régler sa langue.
+ */
+async function reglagesAtteignables(page) {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto(BASE + '/', { waitUntil: 'domcontentloaded' })
+  await attendre(page, '/ (clavier)')
+  // Repartir du tout début : sans cela la tabulation continue d'où le
+  // chargement a laissé le focus, et le compte de tabulations ne veut rien dire.
+  await page.evaluate(
+    () => document.activeElement instanceof HTMLElement && document.activeElement.blur(),
+  )
+
+  const ETAT = () => {
+    const actif = document.activeElement
+    const bloc = document.querySelector('[data-mesure="reglages-vitrine"]')
+    const boite = bloc?.getBoundingClientRect()
+    return {
+      declencheur: !!(actif && actif.closest('header') && actif.hasAttribute('aria-expanded')),
+      ouverts: !!(boite && boite.width > 0 && boite.height > 0),
+      commandes: bloc ? bloc.querySelectorAll('button, select, a[href]').length : 0,
+    }
+  }
+
+  let essayes = 0
+  let etat = null
+  for (let i = 0; i < PLAFOND_TABULATIONS; i++) {
+    await page.keyboard.press('Tab')
+    etat = await page.evaluate(ETAT)
+    if (!etat.declencheur) continue
+
+    essayes++
+    await page.keyboard.press('Enter')
+    etat = await page.evaluate(ETAT)
+    if (etat.ouverts) break
+    // Refermer ce qui vient de s'ouvrir — une liste déroulante laissée
+    // dépliée capte les tabulations suivantes et fausse la suite du parcours.
+    await page.keyboard.press('Escape')
+    etat = null
+  }
+
+  if (!etat?.ouverts) {
+    return (
+      `réglages non ouverts après ${PLAFOND_TABULATIONS} tabulations depuis le début du document ` +
+      `(${essayes} déclencheur(s) essayé(s))`
+    )
+  }
+  if (etat.commandes < 3) {
+    return `le bloc des réglages ne porte que ${etat.commandes} commande(s) sur les 3 attendues`
+  }
+
+  // Visible ne suffit pas : une commande qu'aucune tabulation n'atteint est
+  // absente pour qui n'a pas de souris, et c'est tout le sujet de ce contrôle.
+  let dedans = false
+  for (let i = 0; i < PLAFOND_TABULATIONS && !dedans; i++) {
+    await page.keyboard.press('Tab')
+    dedans = await page.evaluate(
+      () => !!document.activeElement?.closest('[data-mesure="reglages-vitrine"]'),
+    )
+  }
+  if (!dedans) {
+    return `réglages ouverts mais aucune de leurs commandes atteinte en ${PLAFOND_TABULATIONS} tabulations`
+  }
+  return null
+}
+
+/**
  * Exécuté DANS la page : rend la rangée d'en-tête repliée, ou `null`.
  *
  * POURQUOI UNE SECONDE MESURE. Celle du débordement ne pouvait pas voir ce
@@ -353,6 +555,13 @@ await construire()
 const serveur = await servir()
 const echecs = []
 const reproches = []
+const etroitesses = []
+const inatteignables = []
+// Compte les rangées d'en-tête public RÉELLEMENT mesurées. Le marqueur retiré,
+// `MESURER_JEU` rendrait `null` partout et la porte dirait « aucune barre trop
+// serrée » sans en avoir regardé une seule — la panne qu'`ATTENDUES` surveille
+// déjà pour la liste des adresses, et la garde du garde plus bas pour le seuil.
+let rangeesMesurees = 0
 const tolerancesUtilisees = new Set()
 
 try {
@@ -378,6 +587,15 @@ try {
         if (largeur >= LARGEUR_SANS_REPLI) {
           const replis = await page.evaluate(MESURER_REPLI)
           if (replis) for (const r of replis) reproches.push({ adresse, largeur, langue, ...r })
+
+          // Au-delà de la bande, la largeur utile ne bouge plus : c'est là, et
+          // là seulement, qu'un plancher en pixels veut dire quelque chose. En
+          // dessous, la bande suit la fenêtre et le jeu doit pouvoir fondre.
+          const place = await page.evaluate(MESURER_JEU)
+          if (place) {
+            rangeesMesurees++
+            if (place.jeu < JEU_MINIMAL) etroitesses.push({ adresse, largeur, langue, ...place })
+          }
         }
 
         const resultat = await page.evaluate(MESURER)
@@ -391,6 +609,14 @@ try {
       }
       process.stdout.write(`${((Date.now() - depart) / 1000).toFixed(1)}s\n`)
     }
+
+    // Une fois par langue, et non par écran : la barre est la même partout, et
+    // la tabulation coûte un aller-retour par touche.
+    process.stdout.write(`   ${langue}  réglages au clavier à 1440 px … `)
+    const manque = await reglagesAtteignables(page)
+    process.stdout.write(manque ? 'ÉCHEC\n' : 'ok\n')
+    if (manque) inatteignables.push({ langue, manque })
+
     await contexte.close()
   }
   await navigateur.close()
@@ -418,6 +644,66 @@ if (orphelines.length > 0) {
     `\n✗ mesure-ui : ${orphelines.length} tolérance(s) ne couvrent plus aucun débordement.\n` +
       orphelines.map((cle) => `   ${cle} — à retirer de TOLERES`).join('\n'),
   )
+  process.exit(1)
+}
+
+/*
+  GARDE DU GARDE : le marqueur de la rangée doit avoir été TROUVÉ.
+
+  `MESURER_JEU` rend `null` sur les écrans sans en-tête public, ce qui est
+  normal — la plupart des adresses balayées sont des écrans de l'application.
+  Mais il rend aussi `null` si le marqueur disparaît de `PublicHeader.tsx`, et
+  la porte dirait alors « aucune barre trop serrée » en n'en ayant regardé
+  aucune. Compter les rangées vues sépare les deux : c'est le même raisonnement
+  qu'`ATTENDUES` pour les adresses, et il s'est déjà payé une fois.
+*/
+if (rangeesMesurees === 0) {
+  console.error(
+    "\n✗ mesure-ui : la rangée de l'en-tête public n'a été mesurée nulle part.\n" +
+      '   Le marqueur `data-mesure="rangee-entete-vitrine"` a disparu — la règle du jeu\n' +
+      "   minimal ne s'exécuterait jamais, et ce n'est pas une absence de défaut.\n",
+  )
+  process.exit(1)
+}
+
+/*
+  LES RÉGLAGES SORTENT AVANT TOUT LE RESTE : une commande qu'on ne peut plus
+  atteindre est pire qu'une barre serrée. Les trois autres règles de ce fichier
+  regardent des pixels ; celle-ci regarde une absence, et aucune des trois ne
+  sait la voir — retirer un bouton fait toujours de la place.
+*/
+if (inatteignables.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : les réglages de la vitrine ne sont plus atteignables au clavier à 1440 px.\n` +
+      "   La barre les a confiés au menu ; le menu doit donc s'ouvrir à TOUTE largeur.\n",
+  )
+  for (const i of inatteignables) console.error(`   ${i.langue}  →  ${i.manque}`)
+  console.error('')
+  process.exit(1)
+}
+
+/*
+  L'ORDRE DES TROIS RÈGLES VA DU SIGNAL LE PLUS TÔT AU SYMPTÔME LE PLUS TARD :
+  jeu trop faible, puis repli, puis débordement.
+
+  C'est le même raisonnement que celui qui met déjà le repli avant le
+  débordement, poussé d'un cran. Le jeu nomme la CAUSE — il rend la largeur de
+  chaque enfant, donc où les pixels sont partis. Le repli ne dit que « la barre
+  a doublé de hauteur », le débordement que « la page défile ». Quand les trois
+  rougissent ensemble, c'est le premier qu'on veut lire.
+*/
+if (etroitesses.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${etroitesses.length} mesure(s) où la barre de la vitrine garde moins de ${JEU_MINIMAL} px de jeu.\n` +
+      "   Rien ne se replie encore : c'est justement l'état d'avant, celui qu'on veut voir.\n",
+  )
+  for (const e of etroitesses) {
+    console.error(`   ${e.adresse}  ${e.largeur}px  ${e.langue}  →  jeu=${e.jeu}px (seuil ${JEU_MINIMAL})`)
+    console.error(
+      `      bande=${e.dispo}  enfants=${e.enfants.map((x) => `${x.nom}:${x.largeur}`).join(' + ')}  gouttières=${e.gouttieres}`,
+    )
+  }
+  console.error('')
   process.exit(1)
 }
 
@@ -457,5 +743,6 @@ if (echecs.length > 0) {
 }
 
 console.log(
-  `\n✓ mesure-ui : ${adresses.length} écrans × ${LARGEURS.length} largeurs × ${LANGUES.length} langues, aucun débordement latéral ni en-tête replié.`,
+  `\n✓ mesure-ui : ${adresses.length} écrans × ${LARGEURS.length} largeurs × ${LANGUES.length} langues, aucun débordement latéral ni en-tête replié.\n` +
+    `  ${rangeesMesurees} mesures de la barre de la vitrine, toutes au-dessus de ${JEU_MINIMAL} px de jeu ; réglages atteints au clavier à 1440 px dans les deux langues.`,
 )

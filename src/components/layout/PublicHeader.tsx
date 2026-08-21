@@ -191,6 +191,20 @@ export function PublicHeader() {
             'mx-auto flex max-w-7xl flex-wrap items-center gap-3',
             GOUTTIERE_LATERALE,
           )}
+          /*
+            LE MARQUEUR EXISTE POUR LA MESURE, et il ne peut pas s'en déduire.
+
+            `mesure-ui` tient désormais un JEU MINIMAL sur cette rangée. Un tel
+            plancher n'a de sens que sur une rangée BORNÉE PAR UNE BANDE :
+            ici `max-w-7xl` fige la largeur utile à 1216 px dès 1280, donc le
+            jeu est une constante par langue, et un nombre de pixels veut dire
+            quelque chose. Les rangées d'en-tête des écrans d'authentification
+            sont en `ml-auto … justify-end` : elles épousent leur contenu, et
+            leur jeu vaut zéro par construction — mesuré sur les 21 écrans. Leur
+            appliquer le même plancher ferait rougir la porte sur des rangées
+            qui n'ont jamais eu de place à perdre.
+          */
+          data-mesure="rangee-entete-vitrine"
         >
           <Logo />
 
@@ -201,7 +215,7 @@ export function PublicHeader() {
                 href={`#${section.id}`}
                 className={cn(
                   // `whitespace-nowrap` : la barre porte quatre liens, deux
-                  // sélecteurs, le thème et deux boutons. Sans lui, le premier
+                  // boutons et celui du menu. Sans lui, le premier
                   // libellé en deux mots se coupe dès que la place manque —
                   // « Pour qui » s'affichait « Pour » au-dessus de « qui »,
                   // seul élément de la rangée à tenir sur deux lignes, ce qui
@@ -218,22 +232,36 @@ export function PublicHeader() {
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
-            {/* `lg:flex` et non `md:flex` : c'est à `lg` que le bouton du menu
-                disparaît, et le menu porte DÉJÀ ces trois sélecteurs (plus bas
-                dans ce fichier). Entre 768 et 1024 px ils étaient donc affichés
-                deux fois — une fois dans la barre, une fois dans le panneau —
-                et la rangée de droite atteignait 676 px : toute la vitrine
-                défilait latéralement, mesuré `scrollX=117` à 768 px. Les deux
-                boutons d'inscription restent, eux, visibles dès `sm` : ce sont
-                les seuls éléments de cette rangée qu'un prospect vient chercher,
-                et les cacher derrière un menu sur tablette coûterait plus que la
-                place qu'ils prennent. */}
-            <div className="hidden items-center gap-2 xl:flex">
-              <LanguageSwitcher />
-              <CurrencySwitcher />
-              <ThemeSwitcher />
-            </div>
+            {/*
+              LA BARRE NE PORTE QUE CE QU'UN PROSPECT VIENT CHERCHER.
 
+              Les trois sélecteurs vivaient ici au-delà de 1280 px et coûtaient
+              393 px en français, 419 en anglais — pour un jeu restant de 12 px
+              en français. Douze. La rangée tenait parce que la porte l'y
+              obligeait, plus parce qu'elle avait de la place ; le prochain
+              libellé traduit un peu long la faisait replier.
+
+              Ils ne disparaissent pas, ils changent de rang : le panneau du
+              menu les porte déjà, plus bas dans ce fichier, et le bouton qui
+              l'ouvre est désormais visible à TOUTES les largeurs. Sans cela le
+              retrait serait une régression d'accessibilité et non une
+              simplification — des réglages inatteignables au grand écran.
+
+              L'ARBITRAGE N'EST PAS QUE SPATIAL, et la mesure ne le tranche pas
+              seule : 362 px de jeu restent en français après le retrait, de
+              quoi rendre le thème (142 px) sans rien serrer. On ne le fait pas
+              parce qu'une barre où DEUX réglages sur trois vivent au menu et le
+              troisième dans la barre n'a plus de règle énonçable — or c'est la
+              règle, pas le pixel, que consultera le prochain ajout. La devise
+              tranchait déjà d'elle-même : le produit ne convertit pas, et
+              proposer un choix sans effet est ce que ce dépôt s'interdit
+              ailleurs sous le nom « jamais un nombre sans donnée derrière ».
+
+              Les deux boutons d'inscription restent visibles dès `sm` : ce sont
+              les seuls éléments de cette rangée qu'un prospect vient chercher,
+              et les cacher derrière un menu sur tablette coûterait plus que la
+              place qu'ils prennent.
+            */}
             <div className="hidden items-center gap-2 sm:flex">
               <Button variant="ghost" to="/connexion">
                 {t('auth.signIn')}
@@ -246,7 +274,6 @@ export function PublicHeader() {
               label={menuOpen ? t('marketing.nav.closeMenu') : t('marketing.nav.openMenu')}
               variant="secondary"
               onClick={() => setMenuOpen((v) => !v)}
-              className="xl:hidden"
               aria-expanded={menuOpen}
             />
           </div>
@@ -273,7 +300,10 @@ export function PublicHeader() {
             son dernier lien a besoin d'air sous la barre de gestes.
           */
           className={cn(
-            'fixed inset-x-0 top-[var(--h-entete-vitrine)] bottom-0 overflow-y-auto border-t border-border bg-paper xl:hidden',
+            // Le panneau suit son bouton : le masquer au-delà de `xl` pendant
+            // que le bouton reste visible ferait basculer un état que rien ne
+            // montre — un déclencheur qui n'ouvre rien.
+            'fixed inset-x-0 top-[var(--h-entete-vitrine)] bottom-0 overflow-y-auto border-t border-border bg-paper',
             'pt-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]',
             'pl-[max(1.25rem,env(safe-area-inset-left))] pr-[max(1.25rem,env(safe-area-inset-right))]',
           )}
@@ -297,7 +327,11 @@ export function PublicHeader() {
             ))}
 
             <div className="mt-4 flex flex-col gap-3 border-t border-border pt-5">
-              <div className="flex flex-wrap items-center gap-2">
+              {/* Marqué pour la mesure : la barre ayant délégué les réglages au
+                  menu, une garde doit pouvoir vérifier au navigateur qu'ils y
+                  sont VRAIMENT atteignables au clavier à 1440 px — sans quoi le
+                  retrait ne serait qu'une disparition. */}
+              <div data-mesure="reglages-vitrine" className="flex flex-wrap items-center gap-2">
                 <LanguageSwitcher />
                 <CurrencySwitcher />
                 <ThemeSwitcher />
