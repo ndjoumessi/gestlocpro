@@ -32,3 +32,4 @@ server/node_modules
 # sortie de compilation malgré son emplacement : `postinstall` le refabrique,
 # et le versionner ferait entrer 40 fichiers dérivés dans chaque revue.
 server/src/generated
+.carte-des-paquets.json

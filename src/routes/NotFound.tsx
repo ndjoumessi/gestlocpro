@@ -1,6 +1,5 @@
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { cn } from '@/lib/cn'
-import { PageHeader } from '@/components/layout/PageHeader'
 import { GOUTTIERE_LATERALE } from '@/components/layout/gouttiere'
 import { Button } from '@/components/primitives/Button'
 import { Icon } from '@/components/primitives/Icon'
@@ -9,9 +8,10 @@ import { LanguageSwitcher } from '@/components/controls/LanguageSwitcher'
 import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
 import { ThemeSwitcher } from '@/components/controls/ThemeSwitcher'
 import { useT } from '@/i18n/I18nProvider'
+import { AttemptedPath } from './AttemptedPath'
 
 /**
- * Adresse inconnue.
+ * Adresse inconnue, côté PUBLIC.
  *
  * La route attrape-tout rendait la landing page : une URL fautive s'affichait
  * comme si elle était la destination — pas d'erreur, pas d'indice, et un lien
@@ -19,34 +19,10 @@ import { useT } from '@/i18n/I18nProvider'
  *
  * Deux écrans plutôt qu'un, parce que le contexte de l'égarement diffère. Hors
  * de l'application, on ne sait rien de l'intention : on renvoie vers l'accueil.
- * Dans l'espace de gestion, la barre latérale liste déjà les écrans existants —
- * la garder sous les yeux vaut mieux que d'éjecter l'utilisateur vers la
- * landing, ce qui lui ferait perdre le fil de sa session.
+ * Le jumeau applicatif, `NotFoundInApp`, vit dans son propre fichier
+ * (`NotFoundInApp.tsx`) depuis ce lot — voir son en-tête pour pourquoi ce
+ * n'est plus une seule paire d'exports partageant un fichier.
  */
-
-/** Longueur au-delà de laquelle l'adresse fautive est coupée. */
-const MAX_PATH = 120
-
-/**
- * Rappelle l'adresse demandée.
- *
- * Sans elle, l'utilisateur ne peut ni corriger sa saisie ni signaler utilement
- * le lien mort. Elle est coupée, car rien n'empêche une adresse arbitrairement
- * longue de repousser les boutons hors de l'écran ; React échappe le texte,
- * l'afficher est donc sans risque.
- */
-function AttemptedPath() {
-  const t = useT()
-  const { pathname } = useLocation()
-  const shown = pathname.length > MAX_PATH ? `${pathname.slice(0, MAX_PATH)}…` : pathname
-
-  return (
-    <div className="rounded-lg border border-border bg-surface px-4 py-3">
-      <p className="text-body-s text-muted">{t('notFound.attempted')}</p>
-      <p className="mt-1 text-body-s break-all text-ink">{shown}</p>
-    </div>
-  )
-}
 
 export function NotFound() {
   const t = useT()
@@ -122,27 +98,5 @@ export function NotFound() {
         </div>
       </main>
     </div>
-  )
-}
-
-/** Adresse inconnue à l'intérieur de l'espace de gestion : la coque est gardée. */
-export function NotFoundInApp() {
-  const t = useT()
-
-  return (
-    <>
-      <PageHeader
-        title={t('notFound.appTitle')}
-        description={t('notFound.appBody')}
-        actions={
-          <Button to="/app" iconAfter="arrowRight">
-            {t('notFound.appAction')}
-          </Button>
-        }
-      />
-      <div className="max-w-lg">
-        <AttemptedPath />
-      </div>
-    </>
   )
 }

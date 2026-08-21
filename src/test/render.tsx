@@ -95,6 +95,35 @@ function decouper(route: string): { pathname: string; search: string } {
 }
 
 /**
+ * Attend la résolution du découpage paresseux — SANS EXIGER qu'il y en ait
+ * un à résoudre.
+ *
+ * `queryByTestId`, et non `getByTestId` : `waitForElementToBeRemoved` exige
+ * un élément PRÉSENT au moment de l'appel, et lui en passer un qui n'existe
+ * pas LÈVE une erreur — pas un délai qui expire, une exception immédiate. Le
+ * `if` n'est donc pas une garde optionnelle, c'est ce qui distingue « rien à
+ * attendre » de « l'attente a échoué ».
+ *
+ * PROUVÉ DANS LES DEUX SENS PAR MUTATION, à ce lot :
+ *  - Frontière RETIRÉE (`/app` redevient impatient, comme si ce lot n'avait
+ *    jamais existé) : le marqueur n'apparaît plus jamais, `repli` vaut
+ *    toujours `null`, cette fonction ne fait rien — les 1027 tests
+ *    restent verts.
+ *  - Attente RETIRÉE alors que la frontière EXISTE : 17 tests sur 27
+ *    échouent dans le seul `screens.test.tsx`, sur des `getBy…` qui lisaient
+ *    encore le repli de chargement.
+ *
+ * NE PAS SIMPLIFIER CE `if` au nom d'un repli « toujours présent
+ * aujourd'hui » : c'est précisément le jour où une route repasse en
+ * impatient qu'il cesse de l'être, et c'est ce jour-là que les 401 sites
+ * d'appel de `renderApp` rougiraient d'un coup pour un non-défaut.
+ */
+async function attendreLEspaceApplicatif(): Promise<void> {
+  const repli = screen.queryByTestId('chargement-espace-applicatif')
+  if (repli) await waitForElementToBeRemoved(repli)
+}
+
+/**
  * `async`, et c'est le coût direct du découpage paresseux de l'espace
  * applicatif (voir `src/App.tsx`).
  *
@@ -108,12 +137,7 @@ function decouper(route: string): { pathname: string; search: string } {
  * `await` de ce que `React.lazy` suspend AVANT de rendre la main au test :
  * sans lui, chaque test sous `/app` ou `/demo` devrait remplacer son premier
  * `getBy…` par `findBy…`, un changement dispersé sur toute la suite pour un
- * défaut que cette seule fonction peut absorber. `waitForElementToBeRemoved`
- * et non un délai : le marqueur `chargement-espace-applicatif` disparaît
- * exactement quand le paquet a fini de se résoudre, ni avant, ni après.
- * `queryByTestId` d'abord, car sur une route publique — ou une fois le paquet
- * déjà mis en cache par un test précédent du même fichier — il n'apparaît
- * jamais, et `waitForElementToBeRemoved` exige un élément PRÉSENT au départ.
+ * défaut qu'`attendreLEspaceApplicatif` peut absorber seule.
  */
 export async function renderApp(
   route = '/',
@@ -146,8 +170,7 @@ export async function renderApp(
     </MemoryRouter>,
   )
 
-  const repli = screen.queryByTestId('chargement-espace-applicatif')
-  if (repli) await waitForElementToBeRemoved(repli)
+  await attendreLEspaceApplicatif()
 
   return resultat
 }

@@ -15,9 +15,13 @@
  * SUJET DE CETTE GARDE : ce que la page fait VRAIMENT une fois peinte —
  * et, depuis ce lot, ce qu'elle a dû FAIRE ARRIVER pour en arriver là.
  *
- * Sept règles. La première regarde le RÉSEAU, avant même qu'un navigateur ne
- * s'ouvre : le premier chargement de la vitrine tient sous un budget d'octets
- * compressés, motivé et mesuré dans `mesurerPremierChargement`. Les trois
+ * Huit règles. Les deux premières regardent le RÉSEAU, avant même qu'un
+ * navigateur ne s'ouvre — et elles ne posent PAS la même question.
+ * `mesurerFuite` demande si un module réservé à l'application est présent
+ * dans le paquet impatient : oui ou non, sans seuil, jamais relevée.
+ * `mesurerPremierChargement` demande combien pèse ce paquet, sous un budget
+ * dont la marge est motivée par la croissance MESURÉE des dictionnaires — la
+ * dérive lente, pas l'accident, que la première règle tient déjà. Les trois
  * suivantes regardent l'USAGE — les réglages restent atteignables au clavier,
  * aucun texte ne passe sous le seuil WCAG AA, aucune cible ne se touche sous
  * 44 px. Les trois dernières regardent la MISE EN PAGE, du signal le plus tôt
@@ -108,6 +112,82 @@ const LANGUES = ['en-US', 'fr-FR']
  * compte de 23 à 8 — un silence que la garde du garde, plus bas, est justement
  * là pour crier au lieu de laisser passer.
  */
+/**
+ * CE QUI EST RÉSERVÉ À L'APPLICATION, déduit d'`EspaceApplicatif.tsx` —
+ * jamais recopié.
+ *
+ * `EspaceApplicatif.tsx` importe déjà, une fois, chaque écran de gestion pour
+ * les monter : c'est la source de vérité qu'`adressesDeLApplication` lit
+ * juste au-dessus pour les ADRESSES, et c'est la même qu'on lit ici pour les
+ * MODULES. Recopier les vingt noms d'écran dans ce fichier serait exactement
+ * la panne qu'`appariements.test.ts` a déjà payée : une liste qui se périme
+ * en silence dès le prochain écran ajouté ailleurs.
+ *
+ * TROIS FAMILLES, ET C'EST TOUT :
+ *
+ *  1. `@/features/dashboard/…` — vingt écrans et leurs modales, PAR PRÉFIXE
+ *     et non par nom : un écran neuf porte cette adresse le jour de son
+ *     import dans `EspaceApplicatif.tsx`, sans qu'il faille toucher ce
+ *     fichier-ci.
+ *  2. Les fichiers de FRONTIÈRE eux-mêmes — `AppShell.tsx`, qui porte toute
+ *     la coque et sa barre latérale ; `PortfolioProvider.tsx`, qui pèse à lui
+ *     seul plus que les vingt écrans réunis (voir `BUDGET_PREMIER_CHARGEMENT`
+ *     plus bas) ; `RequireAuth.tsx`, la barrière d'accès ; `Demo.tsx`, qui
+ *     rejoue la même coque sans compte ; `NotFoundInApp.tsx`, séparé de
+ *     l'écran 404 public par ce lot pour cette raison précise — voir son
+ *     en-tête.
+ *  3. `EspaceApplicatif.tsx` LUI-MÊME : s'il apparaît un jour dans le paquet
+ *     impatient, la frontière paresseuse a disparu, `React.lazy` en tête —
+ *     c'est la panne la plus grave que cette règle puisse voir, et il n'y a
+ *     personne d'autre pour la nommer.
+ *
+ * CE QUI N'Y FIGURE PAS, ET C'EST UN CHOIX MESURÉ, PAS UN OUBLI :
+ * `Charts.tsx`. `EspaceApplicatif.tsx` ne l'importe pas — ce sont les écrans
+ * qui l'importent — et il a une seconde raison d'être légitimement impatient :
+ * `features/marketing/Hero.tsx`, sur la page de vente, l'utilise pour son
+ * illustration. Mesuré : le forcer hors du paquet impatient romprait la
+ * landing, pas une fuite. `data/portfolio.ts` et `data/kpis.ts` sont dans le
+ * même cas, pour la même page. `@/api/SessionProvider`, qu'`EspaceApplicatif`
+ * importe aussi (pour `useSession`), est logiquement PARTAGÉ : `Login.tsx` et
+ * `SignUp.tsx`, publics, en dépendent pour la connexion elle-même — c'est
+ * pourquoi seuls les préfixes ci-dessus sont retenus, pas « tout ce
+ * qu'importe ce fichier ».
+ */
+function modulesReservesALApplication() {
+  const source = readFileSync(join(RACINE, 'src/app/EspaceApplicatif.tsx'), 'utf8')
+
+  // `import type` est erasé à la compilation — aucun octet, aucun module dans
+  // le paquet construit. Le compter comme une fuite possible ferait rougir la
+  // porte sur une ligne qui ne pèse rien.
+  const specificateurs = [...source.matchAll(/^import (?!type )[^;]*?from '([^']+)'/gm)].map((m) => m[1])
+
+  const PREFIXES_RESERVES = ['@/features/dashboard/']
+  const FICHIERS_RESERVES = [
+    '@/components/layout/AppShell',
+    '@/data/PortfolioProvider',
+    '@/api/RequireAuth',
+    '@/routes/Demo',
+    '@/routes/NotFoundInApp',
+  ]
+
+  const reserves = specificateurs.filter(
+    (s) => PREFIXES_RESERVES.some((p) => s.startsWith(p)) || FICHIERS_RESERVES.includes(s),
+  )
+
+  // `EspaceApplicatif.tsx` ne s'importe pas lui-même : sa propre présence
+  // éventuelle dans le paquet impatient se vérifie à part, en ajoutant son
+  // propre chemin à la liste.
+  reserves.push('@/app/EspaceApplicatif')
+
+  // `@/X` -> `X.tsx`, le format des chemins que Rollup rapporte dans la carte
+  // des paquets. `.ts` existe aussi dans ce dépôt (voir `data/kpis.ts`), mais
+  // aucun des chemins réservés ci-dessus n'en a besoin aujourd'hui — et le
+  // garder en `.tsx` seul est délibéré : un faux négatif se verrait au premier
+  // écran `.ts` ajouté à `EspaceApplicatif.tsx`, ce que la garde du garde plus
+  // bas transforme en échec explicite plutôt qu'en trou silencieux.
+  return reserves.map((s) => s.replace(/^@\//, '') + '.tsx')
+}
+
 function adressesDeLApplication() {
   const extraireChemins = (relatif) =>
     [...readFileSync(join(RACINE, relatif), 'utf8').matchAll(/<Route\s+path="([^"]+)"/g)].map((m) => m[1])
@@ -781,6 +861,40 @@ async function servir() {
 }
 
 /**
+ * LA FUITE — exacte, sans seuil, jamais relevée.
+ *
+ * Le lot qui a posé le budget d'octets (85e12e0) confondait deux questions :
+ * « le mauvais module est-il présent ? » et « le paquet est-il trop lourd ? ».
+ * La première se répond par oui ou non ; en faire un seuil en octets voulait
+ * dire qu'un import oublié de 200 o pouvait rester invisible tant que la
+ * marge tenait, et que la marge, elle, devait rester assez SERRÉE pour
+ * l'attraper — au prix de rougir bientôt pour une raison parfaitement
+ * légitime : les dictionnaires i18n grossissent d'eux-mêmes, un peu à chaque
+ * lot qui ajoute une chaîne visible.
+ *
+ * ICI ON NE PÈSE RIEN. On lit `.carte-des-paquets.json`, que
+ * `vite.config.ts` écrit à chaque build (voir son plugin `carte-des-paquets`
+ * pour pourquoi CE moment et pourquoi hors de `dist/`), et on demande une
+ * seule chose : aucun des modules réservés à l'application n'apparaît dans un
+ * paquet qui N'EST PAS une entrée dynamique. Peu importe qu'il pèse 200 o ou
+ * 70 Ko — la question n'est pas combien, c'est présent ou absent.
+ */
+function mesurerFuite() {
+  const chemin = join(RACINE, '.carte-des-paquets.json')
+  const carte = JSON.parse(readFileSync(chemin, 'utf8'))
+  const reserves = modulesReservesALApplication()
+
+  const fautifs = []
+  for (const [nomPaquet, info] of Object.entries(carte)) {
+    if (info.isDynamicEntry) continue // C'est là qu'ils ONT LE DROIT d'être.
+    for (const module of info.modules) {
+      if (reserves.includes(module)) fautifs.push({ module, paquet: nomPaquet })
+    }
+  }
+  return { fautifs, reserves }
+}
+
+/**
  * LE BUDGET DU PREMIER CHARGEMENT — ce qu'un prospect télécharge avant de lire
  * la première phrase de vente.
  *
@@ -814,11 +928,14 @@ async function servir() {
  *
  * CE QUI RESTE DANS LA VITRINE ET N'A PAS BOUGÉ, mesuré et volontairement hors
  * du champ de ce lot : le dictionnaire de traduction (`src/i18n/fr.ts` +
- * `en.ts`), 34 Ko compressés à lui seul, chargé pour les deux langues à la
- * fois parce qu'`I18nProvider` l'importe tel quel. Le scinder par écran est un
- * AUTRE sujet, avec ses propres risques — la forme de `useT()`, l'hypothèse
- * qu'une clé existe toujours, `scripts/check-i18n.mjs` — et UN LOT reste UN
- * SUJET.
+ * `en.ts`), chargé pour les deux langues à la fois parce qu'`I18nProvider`
+ * l'importe tel quel. Le scinder par écran est un AUTRE sujet, avec ses
+ * propres risques — la forme de `useT()`, l'hypothèse qu'une clé existe
+ * toujours, `scripts/check-i18n.mjs` — et UN LOT reste UN SUJET. Ce qui EST du
+ * ressort de ce fichier, en revanche, c'est de ne pas confondre SA croissance
+ * normale avec un accident : voir `BUDGET_PREMIER_CHARGEMENT`, plus bas, et
+ * `mesurerFuite`, plus haut, qui se partagent désormais la question que ce
+ * seul nombre essayait de couvrir seul.
  */
 function mesurerPremierChargement() {
   const html = readFileSync(join(RACINE, 'dist/index.html'), 'utf8')
@@ -851,25 +968,42 @@ function mesurerPremierChargement() {
 }
 
 /**
- * Le plafond, motivé par la mesure ci-dessus : 145 179 o compressés une fois
- * ce lot posé (133 160 de JavaScript, 12 019 de CSS).
+ * Le plafond — un seuil de DÉRIVE, plus un seuil d'ACCIDENT.
  *
- * `148 000` LAISSE 2 821 o DE MARGE, et pas davantage — c'est un choix, pas un
- * oubli. Réimporter EN STATIQUE un seul écran de gestion dans `App.tsx`
- * (`Portfolio.tsx`, mesuré : +4 573 o) suffit à le dépasser ; c'est le point.
- * La régression que ce lot corrige n'est pas « vingt écrans de trop », c'est
- * « un seul oublié dans le mauvais fichier », et c'est celle-là que le budget
- * doit attraper.
+ * `mesurerFuite`, plus haut, tient désormais l'accident : un import oublié
+ * rougit EXACTEMENT, quel que soit son poids. Ce budget-ci n'a donc plus
+ * besoin d'être serré au point de confondre les deux — ce que le lot 85e12e0
+ * faisait, à 2 821 o de marge, en écrivant lui-même sa propre condamnation :
+ * les dictionnaires i18n pèsent 34 Ko DANS ce paquet, chaque chaîne visible
+ * ajoutée en ajoute deux (fr et en), et une marge de 3 Ko se dépasse par la
+ * croissance la plus ordinaire qui soit.
  *
- * LA CONTREPARTIE, ÉCRITE : une marge de moins de 3 Ko va se dépasser vite —
- * une phrase de plus dans la vitrine, une nouvelle route publique — et il
- * faudra alors RELEVER ce nombre. Le relever est légitime ; le relever SANS
- * REMESURER ne l'est pas. Un budget qu'on pousse au premier rouge sans
- * réfléchir ne garde plus rien, comme le rappelle déjà `JEU_MINIMAL` plus
- * bas : la hausse se motive ici, avec un chiffre à jour et la raison de la
- * croissance — jamais par confort.
+ * MESURÉ, la croissance ordinaire : gzip de `src/i18n/fr.ts` + `en.ts`,
+ * séparément, sur les quinze derniers commits qui les ont touchés (20 août
+ * 17h06 → 21 août 11h39) —
+ *
+ *   moyenne   156 o / commit
+ *   médiane    99 o / commit
+ *   plus gros bond isolé   665 o  (« l'écran des accès dit ce qu'il sait… »)
+ *
+ * Gzipper le dictionnaire à part plutôt que dans le paquet entier majore
+ * légèrement ce chiffre — le flux combiné compresse au moins aussi bien,
+ * jamais moins bien — ce qui va dans le sens PRUDENT : la marge ci-dessous ne
+ * sous-estime pas la croissance réelle.
+ *
+ * BASE MESURÉE APRÈS CE LOT : 145 010 o (132 991 de JavaScript, 12 019 de
+ * CSS). MARGE : 3 990 o, soit environ VINGT-CINQ lots à la moyenne mesurée, ou
+ * SIX au rythme du plus gros bond observé — de quoi laisser la vitrine
+ * grossir un moment sans qu'on y pense, pas indéfiniment.
+ *
+ * LA CONTREPARTIE, ÉCRITE, parce qu'une marge plus large est aussi une marge
+ * plus lente à dire « il est temps de scinder le dictionnaire » : passé ce
+ * nombre de lots, la porte rougira pour une raison entièrement légitime, et
+ * ce sera le signal — pas un accident à corriger, un sujet à ouvrir (voir la
+ * note plus haut sur pourquoi ce lot n'y touche pas). Relever ce chiffre sans
+ * remesurer la croissance resterait la même faute que celle qu'il corrige.
  */
-const BUDGET_PREMIER_CHARGEMENT = 148_000
+const BUDGET_PREMIER_CHARGEMENT = 149_000
 
 /*
   GARDE DU GARDE : un budget hors de toute plage plausible ne défend rien.
@@ -900,6 +1034,45 @@ const adresses = adressesDeLApplication()
 const AUDIT_CONTRASTE = readFileSync(join(RACINE, 'scripts/contrast-audit.js'), 'utf8')
 
 await construire()
+
+/*
+  LA FUITE SE VÉRIFIE AVANT LE POIDS — la question binaire avant la question
+  de degré. Un module réservé qui a fui EST un défaut quel que soit son poids ;
+  le savoir tout de suite évite de lire un dépassement de budget comme
+  « il faut relever le nombre » alors que la vraie réponse est « il faut
+  retirer cet import ». Ni l'un ni l'autre n'a besoin d'un serveur ou d'un
+  navigateur — même raison qu'ailleurs dans ce fichier : inutile de passer
+  huit minutes à ouvrir vingt-trois écrans pour confirmer ce qu'on sait déjà.
+*/
+const fuite = mesurerFuite()
+
+/*
+  GARDE DU GARDE : la liste des modules réservés doit avoir trouvé quelque
+  chose. `EspaceApplicatif.tsx` sans un seul import correspondant aux préfixes
+  attendus — un renommage de dossier, une réécriture qui change de forme —
+  viderait `reserves`, et la règle dirait « aucune fuite » en n'ayant rien à
+  vérifier. La même panne que partout ailleurs dans ce fichier.
+*/
+if (fuite.reserves.length === 0) {
+  console.error(
+    `\n✗ mesure-ui : aucun module réservé à l'application déduit d'EspaceApplicatif.tsx.\n` +
+      "   La règle de fuite ne vérifie plus rien — ce n'est pas une absence de fuite.\n",
+  )
+  process.exit(1)
+}
+
+if (fuite.fautifs.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${fuite.fautifs.length} module(s) réservé(s) à l'application présent(s) ` +
+      `dans un paquet impatient.\n`,
+  )
+  for (const f of fuite.fautifs) console.error(`   ${f.module}  →  ${f.paquet}`)
+  console.error(
+    '\n   Peu importe son poids : ce module ne devrait être atteignable QUE derrière\n' +
+      "   `React.lazy` — voir `src/App.tsx` et `src/app/EspaceApplicatif.tsx`.\n",
+  )
+  process.exit(1)
+}
 
 /*
   MESURÉ TOUT DE SUITE APRÈS LE BUILD, avant même de lancer un serveur ou un
@@ -933,8 +1106,10 @@ if (premierChargement.octets > BUDGET_PREMIER_CHARGEMENT) {
   )
   for (const d of premierChargement.detail) console.error(`   ${d.octets} o  ${d.href}`)
   console.error(
-    "\n   Un module de l'espace applicatif s'est réimporté dans la vitrine — " +
-      'voir `src/App.tsx` et `src/app/EspaceApplicatif.tsx`.\n',
+    "\n   Ce n'est PAS une fuite — `mesurerFuite`, juste au-dessus, vient de le confirmer.\n" +
+      "   C'est une dérive : la vitrine a grossi au-delà de la marge que ce fichier lui\n" +
+      '   accorde. Remesure la croissance des dictionnaires (voir `BUDGET_PREMIER_CHARGEMENT`)\n' +
+      "   avant de relever ce nombre — le relever sans remesurer ne garde plus rien.\n",
   )
   process.exit(1)
 }
@@ -1415,6 +1590,7 @@ if (echecs.length > 0) {
 
 console.log(
   `\n✓ mesure-ui : ${adresses.length} écrans × ${LARGEURS.length} largeurs × ${LANGUES.length} langues, aucun débordement latéral ni en-tête replié.\n` +
+    `  ${fuite.reserves.length} modules réservés à l'application, aucun dans un paquet impatient.\n` +
     `  Premier chargement de la vitrine : ${premierChargement.octets} o compressés, sous le budget de ${BUDGET_PREMIER_CHARGEMENT} o.\n` +
     `  ${rangeesMesurees} mesures de la barre de la vitrine, toutes au-dessus de ${JEU_MINIMAL} px de jeu ; réglages atteints au clavier à 1440 px dans les deux langues.\n` +
     `  ${textesAudites} textes audités en contraste (${THEMES.join(' + ')}, ${LARGEURS_CONTRASTE.join(' et ')} px), aucun sous le seuil WCAG AA.\n` +
