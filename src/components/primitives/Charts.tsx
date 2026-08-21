@@ -91,6 +91,30 @@ const SERIES_COLORS_ON_DARK: Record<string, string> = {
   power: 'var(--color-data-3-on-dark)',
 }
 
+/**
+ * La HACHURE d'une période encore OUVERTE.
+ *
+ * Cette distinction se portait par l'ALPHA : la dernière colonne était peinte à
+ * 0,55 AU REPOS, sans qu'aucune interaction ne soit en cours. Une opacité n'est
+ * pas un signe, c'est un affaiblissement — elle rapproche la marque de son fond
+ * au lieu de lui ajouter du sens. Mesuré sur la carte claire, les trois séries y
+ * tombaient à 1,78:1, 2,09:1 et 2,35:1, sous le seuil de 3:1 qu'un élément non
+ * textuel porteur de sens doit tenir ; en sombre l'électricité restait à 2,91:1.
+ * Le mois le plus récent — celui qu'on vient regarder — était donc le moins
+ * lisible des douze.
+ *
+ * La hachure dit la même chose sans rien retirer : chaque bande garde la teinte
+ * à PLEINE FORCE, donc son ratio, et c'est l'alternance qui porte le sens. Elle
+ * survit au niveau de gris et à l'impression, ce qu'une opacité ne fait pas.
+ *
+ * Les creux prennent la couleur de la carte plutôt que d'être transparents : la
+ * colonne croise la ligne d'objectif, et un vrai trou y laisserait passer le
+ * trait doré au milieu de la donnée.
+ */
+function hachureOuverte(couleur: string): string {
+  return `repeating-linear-gradient(-45deg, ${couleur} 0 5px, var(--color-surface) 5px 7px)`
+}
+
 export interface StackedBar {
   label: string
   segments: { key: string; value: number }[]
@@ -190,10 +214,20 @@ export function StackedBarChart({
                 shown ? 'text-muted' : 'text-muted-soft',
               )}
             >
+              {/* Une série masquée passe en CONTOUR, jamais en transparence.
+                  À 0,25 d'opacité la pastille retombait sous 1,3:1 sur la carte :
+                  « masquée » se lisait « absente », et rien ne rappelait plus de
+                  quelle couleur on rétablirait la série. Le contour garde la
+                  teinte à pleine force — donc son ratio — et dit le retrait par
+                  la forme, en écho au libellé barré qui l'accompagne. */}
               <span
                 aria-hidden="true"
-                className={cn('size-2.5 rounded-[2px] transition-opacity duration-150')}
-                style={{ background: SERIES_COLORS[key], opacity: shown ? 1 : 0.25 }}
+                className={cn('size-2.5 rounded-[2px] transition-shadow duration-150')}
+                style={
+                  shown
+                    ? { background: SERIES_COLORS[key] }
+                    : { boxShadow: `inset 0 0 0 2px ${SERIES_COLORS[key]}` }
+                }
               />
               <span className={cn(!shown && 'line-through')}>{seriesLabels[key]}</span>
             </button>
@@ -291,10 +325,24 @@ export function StackedBarChart({
                 aria-label={`${bar.label} — ${money(total)}. ${detail}`}
               >
                 <span
-                  className="animate-grow-y flex w-full flex-col-reverse"
+                  className={cn(
+                    'animate-grow-y flex w-full flex-col-reverse',
+                    'rounded-t-[3px] transition-shadow duration-150',
+                  )}
                   style={{
                     height: `${(total / max) * 100}%`,
                     animationDelay: `${index * 35}ms`,
+                    // L'EMPHASE AJOUTE DE L'ENCRE À LA COLONNE VISÉE au lieu
+                    // d'en retirer aux onze autres. Effacer les voisines à 0,40
+                    // les faisait tomber entre 1,50:1 et 2,44:1 selon la série
+                    // et le thème : désigner un mois rendait tous les autres
+                    // illisibles. Et l'état est STABLE AU CLAVIER — le focus le
+                    // déclenche autant que le survol — donc onze colonnes sous
+                    // le seuil tant qu'on ne quitte pas la douzième.
+                    // Le liseré ne coûte rien aux voisines et ne déplace rien :
+                    // `box-shadow` ne participe pas à la mise en page, et il
+                    // tient dans la gouttière sans la combler.
+                    boxShadow: isActive ? '0 0 0 2px var(--color-ink)' : undefined,
                   }}
                 >
                   {bar.segments
@@ -303,12 +351,17 @@ export function StackedBarChart({
                       <span
                         key={segment.key}
                         className={cn(
-                          'w-full transition-opacity duration-150',
+                          'w-full',
                           segmentIndex === shownSegments.length - 1 && 'rounded-t-[3px]',
                         )}
                         style={{
                           height: `${total ? (segment.value / total) * 100 : 0}%`,
-                          background: SERIES_COLORS[segment.key],
+                          // Le mois en cours est encore ouvert : sa colonne est
+                          // HACHURÉE et non atténuée — voir `hachureOuverte`,
+                          // qui porte le pourquoi et les ratios.
+                          background: isLast
+                            ? hachureOuverte(SERIES_COLORS[segment.key])
+                            : SERIES_COLORS[segment.key],
                           /**
                            * Un filet de la couleur de la carte entre deux
                            * segments.
@@ -321,11 +374,6 @@ export function StackedBarChart({
                            */
                           boxShadow:
                             segmentIndex > 0 ? 'inset 0 1px 0 var(--color-surface)' : undefined,
-                          // Le mois en cours est encore ouvert : on le
-                          // distingue. La colonne visée s'éclaire, celles qu'on
-                          // ne vise pas s'effacent — l'attention suit le
-                          // curseur sans que rien ne bouge de place.
-                          opacity: isLast && !isActive ? 0.55 : active !== null && !isActive ? 0.4 : 1,
                         }}
                       />
                     ))}
@@ -617,7 +665,7 @@ export function MiniBarChart({
               aria-label={`${bar.label} — ${bar.value === null ? emptyLabel : lire(bar.value)}`}
             >
               <span
-                className="animate-grow-y w-full rounded-t-[3px] transition-opacity duration-150"
+                className="animate-grow-y w-full rounded-t-[3px] transition-shadow duration-150"
                 style={{
                   // Une période inconnue garde un filet de 2 px : la colonne
                   // reste visible et cliquable — sans quoi le trou se lirait
@@ -630,15 +678,31 @@ export function MiniBarChart({
                   // — et le commentaire d'en-tête de ce fichier l'interdisait
                   // déjà. `--color-gold-ink` tient 5,47:1 en clair et 7,32:1
                   // en sombre, en gardant l'écart de clarté avec `data-1` qui
-                  // rend les deux distinguables en niveaux de gris.
+                  // rend les deux distinguables en niveaux de gris. La hachure
+                  // s'y ajoute pour dire la même chose que chez la voisine
+                  // empilée : la période n'est pas close.
+                  //
+                  // LA PÉRIODE SANS RELEVÉ CHANGE DE JETON. `--color-divider`
+                  // vaut 1,29:1 sur la carte claire et 1,13:1 en sombre : le
+                  // raisonnement au-dessus était juste — « la colonne reste
+                  // visible » — mais la valeur du jeton le démentait, et le
+                  // filet de deux pixels était invisible, donc le trou se
+                  // lisait bien comme un mois qui n'existe pas. Un jeton de
+                  // SÉPARATEUR n'est pas fait pour porter du sens ;
+                  // `--color-muted-soft` l'est, et tient 4,75:1 en clair,
+                  // 4,33:1 en sombre.
                   background:
                     bar.value === null
-                      ? 'var(--color-divider)'
+                      ? 'var(--color-muted-soft)'
                       : isLast
-                        ? 'var(--color-gold-ink)'
+                        ? hachureOuverte('var(--color-gold-ink)')
                         : 'var(--color-data-1)',
                   animationDelay: `${index * 40}ms`,
-                  opacity: active !== null && !isActive ? 0.4 : isLast ? 1 : 0.85,
+                  // Même arbitrage que chez la voisine empilée : la colonne
+                  // visée reçoit un liseré, les autres ne perdent rien. À 0,40
+                  // elles retombaient à 2,47:1 en clair pour `data-1` et 1,79:1
+                  // pour l'or, sous le seuil, au survol comme au focus.
+                  boxShadow: isActive ? '0 0 0 2px var(--color-ink)' : undefined,
                 }}
               />
             </button>
@@ -779,10 +843,18 @@ export function DonutChart({
               stroke={slice.color}
               // La part visée épaissit vers l'extérieur : l'anneau ne change
               // pas de rayon, donc rien ne se déplace autour.
+              //
+              // L'ÉPAISSISSEMENT SUFFIT, et les parts qu'on ne vise pas ne
+              // s'effacent plus. Elles passaient à 0,35 d'opacité : composées
+              // sur la carte, les trois teintes du tableau de bord retombaient
+              // entre 1,65:1 et 1,77:1 en clair, entre 1,94:1 et 2,26:1 en
+              // sombre — quand un élément non textuel porteur de sens doit
+              // tenir 3:1, et qu'opaques elles vont de 5,47:1 à 8,51:1. Deux
+              // signaux disaient la même chose ; un seul ne coûte rien aux
+              // voisines.
               strokeWidth={active === slice.key ? 14 : 11}
               strokeDasharray={`${dash} ${circumference - dash}`}
               strokeDashoffset={-arcOffset}
-              opacity={active && active !== slice.key ? 0.35 : 1}
               className="transition-all duration-150"
               // -90° pour démarrer à midi plutôt qu'à 3 h.
               transform="rotate(-90 50 50)"

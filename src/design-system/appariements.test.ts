@@ -101,6 +101,9 @@ describe('appariements de couleurs', () => {
 describe('pastilles de l’infobulle', () => {
   const CSS = readFileSync(join(SRC, 'design-system', 'tokens.css'), 'utf8')
   const NU = CSS.replace(/\/\*[\s\S]*?\*\//g, '')
+  const CODE = sansCommentaires(
+    readFileSync(join(SRC, 'components', 'primitives', 'Charts.tsx'), 'utf8'),
+  )
 
   function corps(entete: string): string {
     const debut = NU.indexOf(entete)
@@ -153,8 +156,32 @@ describe('pastilles de l’infobulle', () => {
    */
   const FOND = jeton(corps('.on-dark'), '--color-ink')
 
-  /** Les trois séries que l'infobulle affiche. */
-  const SERIES = ['--color-data-1-on-dark', '--color-data-4-on-dark', '--color-data-5-on-dark']
+  /**
+   * Les séries de l'infobulle, lues DANS SA TABLE plutôt que recopiées.
+   *
+   * Cette liste était figée à la main, et elle a périmé sans bruit. Le lot qui a
+   * inversé l'ordre des teintes — la plus grande surface porte le moins de poids
+   * — a repeint l'infobulle en `data-6`, `data-4` et `data-3`, pendant que le
+   * garde continuait de mesurer `data-1`, `data-4` et `data-5`. UNE SEULE des
+   * trois séries affichées était donc surveillée ; les deux autres passaient
+   * sans contrôle, et deux jetons que plus personne ne peint étaient déclarés
+   * sains à chaque exécution.
+   *
+   * C'est le défaut le plus insidieux d'un garde : il n'échoue pas, il achète de
+   * la confiance sans rien tenir. Le bloc frère, plus bas, extrayait déjà sa
+   * table à la source par expression régulière, précisément pour n'avoir pas à
+   * la maintenir — la technique existait quand cette liste a été figée. On la
+   * reprend ici, avec la même garde du garde.
+   */
+  const TABLE =
+    /const SERIES_COLORS_ON_DARK: Record<string, string> = \{([\s\S]*?)\}/.exec(CODE)?.[1] ?? ''
+  const SERIES = [...TABLE.matchAll(/var\((--color-data-\d-on-dark)\)/g)].map(([, nom]) => nom)
+
+  it('lit bien les trois séries de l’infobulle', () => {
+    // Une extraction qui rend une liste vide ne mesure rien et passe au vert :
+    // exactement le silence qu'on vient de corriger.
+    expect(SERIES).toHaveLength(3)
+  })
 
   for (const [theme, bloc] of Object.entries(BLOCS)) {
     for (const serie of SERIES) {
@@ -248,6 +275,87 @@ describe('séries de l’histogramme', () => {
     ([, nom]) => `--color-${nom}`,
   )
 
+  /**
+   * Les jetons que ce fichier PEINT, toutes marques confondues.
+   *
+   * Plus large qu'`EMPLOYES`, et à dessein : une opacité ne connaît pas les
+   * tables. Elle s'applique à ce qui se trouve sous elle, et l'histogramme
+   * simple — `data-1` pour les mois révolus, `gold-ink` pour le mois courant,
+   * `muted-soft` pour une période sans relevé — était le premier concerné.
+   */
+  const MARQUES = [
+    ...new Set(
+      [...CODE.matchAll(/var\(--color-(data-\d|gold-ink|muted-soft)\)/g)].map(
+        ([, nom]) => `--color-${nom}`,
+      ),
+    ),
+  ]
+
+  /**
+   * Les OPACITÉS littérales du composant. C'est l'angle mort qui a laissé passer
+   * trois défauts d'affilée.
+   *
+   * Le garde mesurait les jetons NUS et les déclarait à 3,16, 4,50 et 5,82 en
+   * clair — vrai du jeton, faux de la marque. Le composant peignait la dernière
+   * colonne à 0,55 AU REPOS (1,78 / 2,09 / 2,35 sur la carte), les colonnes non
+   * visées à 0,40 (1,50 / 1,67 / 1,81) et les parts d'anneau à 0,35. Aucun de
+   * ces chiffres n'est atteignable sans composer l'alpha sur le fond, et le
+   * défaut n'est pas théorique : le 0,40 se déclenche aussi au FOCUS, donc c'est
+   * un état stable, atteint au clavier, pas un instant de survol.
+   *
+   * `scripts/contrast-audit.js` ne pouvait pas les voir non plus : il n'écarte
+   * l'opacité que si elle vaut exactement `0`, ne la compose jamais, et ignore
+   * tout élément sans texte propre — une barre en est un. Doublement aveugle.
+   *
+   * La liste reste VIDE tant qu'aucune marque ne dépend d'une transparence : la
+   * boucle ne mesure alors rien, et c'est l'état voulu. Elle mord dès qu'une
+   * opacité revient dans un `style`.
+   */
+  function alphasDe(source: string): number[] {
+    return [
+      ...new Set(
+        source
+          .split('\n')
+          .filter((ligne) => /\bopacity\b\s*[:=]/.test(ligne))
+          .flatMap((ligne) =>
+            [...ligne.matchAll(/(?:^|[^\w.])(0?\.\d+)/g)].map(([, a]) => Number(a)),
+          ),
+      ),
+    ]
+  }
+
+  const ALPHAS = alphasDe(CODE)
+
+  /** La couleur RÉELLEMENT peinte : la teinte, son alpha, et ce qu'elle recouvre. */
+  function composer(teinte: string, fond: string, alpha: number): string {
+    const canaux = (h: string) => [0, 2, 4].map((i) => parseInt(h.slice(1).substr(i, 2), 16))
+    const [t, f] = [canaux(teinte), canaux(fond)]
+    return (
+      '#' +
+      [0, 1, 2]
+        .map((i) =>
+          Math.round(t[i] * alpha + f[i] * (1 - alpha))
+            .toString(16)
+            .padStart(2, '0'),
+        )
+        .join('')
+    )
+  }
+
+  /**
+   * Le jeton de la période SANS RELEVÉ, lu dans le ternaire qui la peint.
+   *
+   * Elle prenait `--color-divider` : 1,29:1 sur la carte claire, 1,13:1 en
+   * sombre. Le raisonnement du commentaire était juste — « la colonne reste
+   * visible et cliquable », sans quoi le trou se lirait comme un mois qui
+   * n'existe pas — mais la valeur du jeton le démentait : à 1,29:1, un filet de
+   * deux pixels ne se voit pas, et le défaut que le commentaire prétendait
+   * éviter était précisément celui qu'il produisait.
+   */
+  const ABSENTE = /background:\s*bar\.value === null\s*\?\s*'var\((--color-[\w-]+)\)'/.exec(
+    CODE,
+  )?.[1]
+
   const BLOCS = {
     clair: corps('@theme'),
     'sombre (systeme)': corps('@media (prefers-color-scheme: dark)'),
@@ -258,6 +366,26 @@ describe('séries de l’histogramme', () => {
     expect(EMPLOYES).toHaveLength(3)
   })
 
+  it('sait extraire une opacité littérale', () => {
+    // Garde du garde. Sans lui, une expression régulière cassée rendrait une
+    // liste vide, la boucle ne mesurerait rien, et la suite passerait au vert
+    // pour la pire des raisons — celle-là même que la liste de séries figée du
+    // bloc précédent a servie pendant tout un lot.
+    expect(alphasDe('opacity: isLast ? 0.55 : 1')).toEqual([0.55])
+    expect(alphasDe('opacity={active ? 0.35 : 1}')).toEqual([0.35])
+    // Un nombre à virgule qui n'est pas une opacité ne doit pas être mesuré.
+    expect(alphasDe('height: `${ratio * 0.5}%`')).toEqual([])
+  })
+
+  it('trouve bien les marques peintes par le fichier', () => {
+    expect(MARQUES.length).toBeGreaterThanOrEqual(3)
+  })
+
+  it('ne peint pas une période sans relevé avec un jeton de séparateur', () => {
+    expect(ABSENTE, 'jeton de la barre absente introuvable').toBeDefined()
+    expect(ABSENTE).not.toBe('--color-divider')
+  })
+
   for (const [theme, bloc] of Object.entries(BLOCS)) {
     for (const serie of EMPLOYES) {
       it(`tient 3:1 pour ${serie} en ${theme}`, () => {
@@ -265,6 +393,28 @@ describe('séries de l’histogramme', () => {
         const r = ratio(jeton(bloc, serie), fond)
         expect(r, `${theme} : ${serie} sur ${fond} — ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(3)
       })
+    }
+
+    it(`la période sans relevé tient 3:1 en ${theme}`, () => {
+      const fond = jeton(bloc, '--color-surface')
+      const r = ratio(jeton(bloc, ABSENTE ?? ''), fond)
+      expect(r, `${theme} : ${ABSENTE} sur ${fond} — ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(3)
+    })
+
+    // La marque telle qu'elle est PEINTE, alpha composé sur la carte : c'est la
+    // seule mesure qui corresponde à ce que l'œil reçoit.
+    for (const alpha of ALPHAS) {
+      for (const marque of MARQUES) {
+        it(`tient 3:1 pour ${marque} à ${alpha} d’opacité en ${theme}`, () => {
+          const fond = jeton(bloc, '--color-surface')
+          const peint = composer(jeton(bloc, marque), fond, alpha)
+          const r = ratio(peint, fond)
+          expect(
+            r,
+            `${theme} : ${marque} à ${alpha} donne ${peint} sur ${fond} — ${r.toFixed(2)}:1`,
+          ).toBeGreaterThanOrEqual(3)
+        })
+      }
     }
   }
 })

@@ -248,6 +248,11 @@ export function Dashboard() {
             caption={t('app.dashboard.chartTableCaption')}
             target={expected}
             targetLabel={t('app.dashboard.expected')}
+            /* La dernière colonne est HACHURÉE parce que sa période court
+               encore ; une trame que rien ne nomme n'apprend rien. La note
+               existait déjà dans les deux dictionnaires, et l'aperçu du hero la
+               posait sur les mêmes mois — ce graphe-ci hachurait sans dire. */
+            openPeriodNote={t('app.dashboard.openMonth')}
             seriesLabels={{
               rent: t('app.dashboard.legendRent'),
               water: t('app.dashboard.legendWater'),
