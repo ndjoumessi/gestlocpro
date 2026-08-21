@@ -65,7 +65,7 @@ describe('adresse inconnue dans l’espace de gestion', () => {
     // Nom exact, pour ne pas attraper aussi le bouton « Revenir au tableau de
     // bord » — et requête portée sur la barre latérale, la navigation basse
     // proposant la même destination sous un second lien de même nom.
-    const laterale = screen.getAllByRole('navigation', { name: 'Tableau de bord' })[0]
+    const laterale = screen.getAllByRole('navigation', { name: 'Sections du produit' })[0]
     expect(within(laterale).getByRole('link', { name: 'Tableau de bord' })).toBeInTheDocument()
   })
 

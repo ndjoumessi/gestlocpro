@@ -1020,7 +1020,20 @@ function Sidebar({
         </div>
       )}
 
-      <nav aria-label={t('nav.dashboard')} className="flex flex-col gap-3">
+      {/*
+        UN REPÈRE DE NAVIGATION NE PORTE PAS LE NOM D'UNE DE SES DESTINATIONS.
+
+        Ce `<nav>` en aligne douze, et s'appelait « Tableau de bord » — comme la
+        première d'entre elles. Un lecteur d'écran qui liste les repères de la
+        page annonçait donc « navigation, Tableau de bord », puis, dans son
+        contenu, un lien « Tableau de bord » : deux choses différentes sous un
+        seul nom, et rien pour dire que l'une contient l'autre.
+
+        `nav.primaryNav` n'irait pas non plus : la vitrine le porte déjà, et
+        surtout la barre basse mobile le mérite mieux — c'est elle qui porte les
+        destinations principales, celle-ci les regroupe par section.
+      */}
+      <nav aria-label={t('nav.sectionsNav')} className="flex flex-col gap-3">
         {sectionsPour(role).map((section) => {
           const items = entreesVisibles(section.items, role, demo)
           if (!items.length) return null

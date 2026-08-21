@@ -99,7 +99,7 @@ describe('barre de navigation basse', () => {
   it('porte les mêmes pastilles que la barre latérale', () => {
     renderApp('/app')
 
-    const laterale = screen.getByRole('navigation', { name: 'Tableau de bord' })
+    const laterale = screen.getByRole('navigation', { name: 'Sections du produit' })
     const attendu = within(laterale)
       .getByRole('link', { name: /^Paiements/ })
       .textContent?.replace('Paiements', '')

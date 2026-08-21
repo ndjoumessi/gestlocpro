@@ -153,6 +153,7 @@ export const en: Dictionary = {
     searchPlaceholder: 'Search a unit, a tenant…',
     selectPark: 'Park being viewed',
     primaryNav: 'Main navigation',
+    sectionsNav: 'Product sections',
     breadcrumb: 'Breadcrumb',
     quickNav: 'Quick navigation',
     more: 'More',

@@ -83,7 +83,7 @@ describe('vitrines, dans la démonstration seulement', () => {
     // flotterait alors au bas de la barre, à séparer le vide du vide.
     renderApp('/app')
 
-    const laterale = screen.getByRole('navigation', { name: 'Tableau de bord' })
+    const laterale = screen.getByRole('navigation', { name: 'Sections du produit' })
     const pied = laterale.parentElement?.querySelector('.mt-auto')
     expect(pied, 'le conteneur de pied a disparu : ce garde ne vérifie plus rien').not.toBeNull()
     expect(pied?.className).not.toMatch(/border-t/)

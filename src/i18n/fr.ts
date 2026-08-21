@@ -204,6 +204,7 @@ export const fr = {
     searchPlaceholder: 'Rechercher un logement, un locataire…',
     selectPark: 'Parc regardé',
     primaryNav: 'Navigation principale',
+    sectionsNav: 'Sections du produit',
     breadcrumb: 'Fil d’Ariane',
     // La barre basse ne porte que quatre destinations : « Plus » ouvre le
     // tiroir, qui reste le seul endroit où la navigation est complète.
