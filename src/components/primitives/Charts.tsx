@@ -295,7 +295,7 @@ export function StackedBarChart({
                   barres, en doré sur fond sombre. Le fond le rend lisible quelle
                   que soit la hauteur des barres, ce qu'un simple déplacement ne
                   garantirait pas : elles changent avec les données. */}
-              <span className="absolute -top-2.5 left-0 rounded-sm bg-surface px-1.5 py-0.5 numeric text-caps tracking-wider text-gold-ink uppercase">
+              <span className="absolute -top-2.5 left-0 rounded-sm bg-surface px-1.5 py-0.5 numeric text-caps text-gold-ink uppercase">
                 {targetLabel} · {money(target, { round: true })}
               </span>
             </div>
@@ -395,6 +395,13 @@ export function StackedBarChart({
                 // un `min-w-6` ne déplaçait rien — vérifié au pixel, alignement
                 // identique — et un réglage qui ne fait rien ment sur ce qu'il
                 // tient.
+                // `tracking-wide` RESTE ici, et c'est la seule surcharge du
+                // fichier à survivre : le commentaire ci-dessous en donne la
+                // mesure — « sept » et « janv » perdaient trois pixels sur
+                // trente et s'affichaient rabotés. Ailleurs, six surcharges
+                // écrasaient l'interlettrage de `text-caps` sans raison écrite,
+                // et une valeur défendue au centième dans la feuille de jetons
+                // ne se corrige pas en passant.
                 'min-w-0 flex-1 text-center text-caps tracking-wide uppercase',
                 // Chaque étiquette garde sa colonne — c'est ce qui la tient
                 // centrée sous SA barre — mais sur téléphone elle a le droit
@@ -546,7 +553,7 @@ function LectureFixe({
       )}
     >
       <p className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-        <span className="text-caps tracking-wider text-on-dark-faint uppercase">{title}</span>
+        <span className="text-caps text-on-dark-faint uppercase">{title}</span>
         <span className="numeric title-m text-on-dark">{total}</span>
       </p>
 
@@ -724,7 +731,7 @@ export function MiniBarChart({
       <div className="mt-3 flex min-h-5 items-baseline justify-between gap-3">
         <span
           aria-hidden="true"
-          className="text-caps tracking-wide text-muted uppercase"
+          className="text-caps text-muted uppercase"
         >
           {bars[0]?.label}
         </span>
@@ -735,7 +742,7 @@ export function MiniBarChart({
         >
           {active !== null && (
             <>
-              <span className="text-caps tracking-wide text-muted uppercase">
+              <span className="text-caps text-muted uppercase">
                 {bars[active].label}
               </span>{' '}
               <span className="numeric">
@@ -747,7 +754,7 @@ export function MiniBarChart({
 
         <span
           aria-hidden="true"
-          className="text-caps tracking-wide text-muted uppercase"
+          className="text-caps text-muted uppercase"
         >
           {bars[bars.length - 1]?.label}
         </span>
@@ -869,7 +876,7 @@ export function DonutChart({
           <span className="numeric text-title-l font-medium">
             {shown ? `${Math.round(shown.fraction * 100)} %` : centerValue}
           </span>
-          <span className="max-w-[6rem] text-caps tracking-wide text-muted uppercase">
+          <span className="max-w-[6rem] text-caps text-muted uppercase">
             {shown ? shown.slice.label : centerLabel}
           </span>
         </div>

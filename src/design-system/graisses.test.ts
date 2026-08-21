@@ -109,4 +109,38 @@ describe('graisses typographiques', () => {
     const fichiers = [...new Set(lignes((l) => GRAS.test(l)).map((s) => s.split(':')[0]))]
     expect(fichiers).toEqual(['components/primitives/Logo.tsx'])
   })
+
+  /**
+   * L'INTERLETTRAGE D'UN RÔLE NE SE SURCHARGE PAS SANS RAISON ÉCRITE.
+   *
+   * `--text-caps` porte 0,07em, une valeur défendue au centième dans la feuille
+   * de jetons — c'est elle qui rend douze pixels en capitales lisibles. Sept
+   * emplois l'écrasaient à 0,025 ou 0,05 par une classe utilitaire, sans qu'une
+   * seule ligne dise pourquoi. Le rôle existe précisément pour n'avoir pas à
+   * reprendre ces réglages un par un.
+   *
+   * DEUX SURCHARGES SURVIVENT ET SONT NOMMÉES, chacune avec sa mesure : la
+   * barre basse resserre pour tenir deux mots sur une ligne de rail, les
+   * étiquettes de mois pour ne pas raboter « sept » sur trente pixels. Une
+   * exemption qui porte un chiffre n'est pas une exemption de complaisance.
+   */
+  it('ne laisse aucune surcharge d’interlettrage non nommée sur le rôle capitales', () => {
+    const ROLE = new RegExp(['text', 'caps'].join('-'))
+    const SURCHARGE = new RegExp(`\\b${'tracking'}-(?:wide|wider|widest|tight|tighter)\\b`)
+
+    const NOMMEES = [
+      'components/layout/AppShell.tsx',
+      'components/primitives/Charts.tsx',
+    ]
+
+    const coupables = sources(SRC).flatMap((chemin) => {
+      const relatif = chemin.slice(SRC.length + 1)
+      if (NOMMEES.includes(relatif)) return []
+      return sansCommentaires(readFileSync(chemin, 'utf8'))
+        .split('\n')
+        .flatMap((ligne, i) => (ROLE.test(ligne) && SURCHARGE.test(ligne) ? [`${relatif}:${i + 1}`] : []))
+    })
+
+    expect(coupables).toEqual([])
+  })
 })
