@@ -63,7 +63,21 @@ export function Field({
         'aria-invalid': error ? true : undefined,
       })}
 
-      {hint && !error && (
+      {/*
+        L'AIDE RESTE QUAND L'ERREUR ARRIVE, et le contrat de ce fichier le
+        promettait déjà en toutes lettres : « aide PERSISTANTE ».
+
+        Elle disparaissait au moment précis où elle sert — celui où l'on vient
+        de se tromper. Pire, `aria-describedby` continuait de la citer : le
+        champ désignait un identifiant ABSENT du DOM, et un lecteur d'écran
+        n'annonçait donc ni l'aide, ni parfois l'erreur, selon qu'il abandonne
+        ou poursuit la liste. Un appelant passe bien les deux au même champ —
+        « Montant » de l'encaissement porte le montant dû en aide.
+
+        L'ordre compte : l'aide d'abord, l'erreur ensuite et au plus près du
+        champ. C'est celle qu'on vient de déclencher qui doit se lire en dernier.
+      */}
+      {hint && (
         <p id={hintId} className="text-body-s text-muted">
           {hint}
         </p>

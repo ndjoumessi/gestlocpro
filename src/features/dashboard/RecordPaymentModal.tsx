@@ -50,14 +50,23 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
    */
   const [reference, setReference] = useState('')
   const [note, setNote] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  /*
+    UNE ERREUR PAR CHAMP, et non une pour deux.
+
+    Un état unique servait le montant ET la date : refuser une date future
+    affichait le motif sous « Montant », qui devenait `aria-invalid` à la
+    place du champ fautif. L'utilisateur corrigeait donc ce qui n'avait rien
+    et laissait la vraie faute en place. L'écran des cautions tient déjà le
+    motif correct, un objet dont chaque clé est un champ.
+  */
+  const [erreurs, setErreurs] = useState<{ amount?: string; paidOn?: string }>({})
 
   const unit = units.find((u) => u.id === unitId)
 
   const submit = () => {
     const parsed = parseAmount(amount)
     if (parsed === null || parsed <= 0) {
-      setError(t('app.payments.amountInvalid'))
+      setErreurs({ amount: t('app.payments.amountInvalid') })
       return
     }
     /**
@@ -69,10 +78,10 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
      * pour que le refus arrive avant l'aller-retour.
      */
     if (verseLe && verseLe > new Date().toISOString().slice(0, 10)) {
-      setError(t('app.payments.paidInFuture'))
+      setErreurs({ paidOn: t('app.payments.paidInFuture') })
       return
     }
-    setError(null)
+    setErreurs({})
 
     /**
      * Le versement part RÉELLEMENT au serveur.
@@ -154,7 +163,12 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
           )}
         </Field>
 
-        <Field label={t('app.payments.paidOn')} hint={t('app.payments.paidOnHint')} required>
+        <Field
+          label={t('app.payments.paidOn')}
+          hint={t('app.payments.paidOnHint')}
+          required
+          error={erreurs.paidOn}
+        >
           {(props) => (
             <DatePicker
               id={props.id}
@@ -176,7 +190,7 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
               : t('app.payments.amountHint')
           }
           required
-          error={error ?? undefined}
+          error={erreurs.amount}
         >
           {(props) => (
             <Input

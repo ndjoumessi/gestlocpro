@@ -35,6 +35,16 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
   const t = useT()
   const { money, parseAmount } = useCurrency()
   const { notify } = useToast()
+  /*
+    LE REFUS LOCAL VIT SOUS SON CHAMP, et non dans un toast.
+
+    Un toast s'efface au bout de quelques secondes pendant que le champ garde
+    la valeur refusée : l'utilisateur relit un prix qui semble accepté, sans
+    plus rien pour dire ce qu'on lui reproche. La modale d'ajout d'unité
+    tient déjà le motif correct. Les échecs SERVEUR restent au toast — eux ne
+    désignent aucun champ.
+  */
+  const [erreurPrix, setErreurPrix] = useState<string | undefined>(undefined)
   const { adhesionActive } = useSession()
   const parkId = adhesionActive?.parkId ?? null
 
@@ -71,9 +81,10 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
     // remettre à cette coïncidence confondrait l'illisible avec le prix
     // décimal, deux refus qui n'ont ni la même cause ni le même remède.
     if (valeur === null || !Number.isInteger(valeur) || valeur <= 0) {
-      notify(t('app.tariffs.priceInvalid'), { tone: 'danger' })
+      setErreurPrix(t('app.tariffs.priceInvalid'))
       return
     }
+    setErreurPrix(undefined)
 
     setEnvoi(true)
     void api
@@ -123,7 +134,12 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
           )}
         </Field>
 
-        <Field label={t('app.tariffs.price')} hint={t('app.tariffs.priceHint')} required>
+        <Field
+          label={t('app.tariffs.price')}
+          hint={t('app.tariffs.priceHint')}
+          required
+          error={erreurPrix}
+        >
           {(props) => (
             <Input
               {...props}

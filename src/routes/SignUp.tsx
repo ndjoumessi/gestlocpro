@@ -693,6 +693,17 @@ function ContextStep({
               ? t("common.countryOtherHint")
               : undefined
           }
+          /*
+            LE PAYS RENDAIT SON AIDE ET JAMAIS SON ERREUR.
+
+            `validateStep` produit bien une clé pour lui — c'est même la
+            PREMIÈRE de l'étape « contexte », donc le refus le plus fréquent —
+            et aucun rendu ne la lisait. Le champ voisin, lui, l'avait. Un
+            formulaire qui refuse d'avancer sans dire lequel de ses champs
+            bloque enseigne que le bouton ne marche pas, ce que ce fichier
+            raconte avoir déjà payé une fois.
+          */
+          error={errorFor("country")}
         >
           {(props) => (
             <Combobox

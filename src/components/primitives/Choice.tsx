@@ -11,6 +11,21 @@ export interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement
 export function Checkbox({ label, hint, error, className, ...props }: CheckboxProps) {
   const id = useId()
   const hintId = `${id}-hint`
+  const errorId = `${id}-error`
+
+  /*
+    L'ERREUR EST RATTACHÉE, et elle ne l'était pas.
+
+    Le paragraphe de refus portait `role="alert"` mais AUCUN identifiant, et
+    `aria-describedby` ne citait que l'aide. Le motif du refus n'était donc
+    lié à rien : quiconque revient sur la case après coup — au clavier, ou
+    en la relisant — n'entend que son libellé, jamais pourquoi elle bloque.
+    C'est le refus des conditions générales, à l'inscription, qui en dépend.
+
+    L'aide persiste ici pour la même raison que dans `Field`, et les deux
+    identifiants sont cités ensemble.
+  */
+  const decritPar = [hint && hintId, error && errorId].filter(Boolean).join(' ') || undefined
 
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
@@ -21,7 +36,7 @@ export function Checkbox({ label, hint, error, className, ...props }: CheckboxPr
           <input
             id={id}
             type="checkbox"
-            aria-describedby={hint ? hintId : undefined}
+            aria-describedby={decritPar}
             aria-invalid={error ? true : undefined}
             className={cn(
               'peer size-5 cursor-pointer appearance-none rounded-sm border bg-surface',
@@ -41,13 +56,17 @@ export function Checkbox({ label, hint, error, className, ...props }: CheckboxPr
         <span className="text-body text-ink">{label}</span>
       </label>
 
-      {hint && !error && (
+      {hint && (
         <p id={hintId} className="pl-8 text-body-s text-muted">
           {hint}
         </p>
       )}
       {error && (
-        <p role="alert" className="flex items-start gap-1.5 pl-8 text-body-s font-medium text-danger">
+        <p
+          id={errorId}
+          role="alert"
+          className="flex items-start gap-1.5 pl-8 text-body-s font-medium text-danger"
+        >
           <Icon name="alert" size={14} className="mt-0.5" />
           {error}
         </p>
