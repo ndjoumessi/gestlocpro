@@ -772,6 +772,88 @@ async function reglagesAtteignables(page) {
 }
 
 /**
+ * LES DEUX COLONNES DES ÉCRANS D'ENTRÉE — mesurées à plusieurs HAUTEURS.
+ *
+ * CE QU'ELLE ATTRAPE. Mesuré avant le lot, à 2000 × 1090 sur `/connexion` : la
+ * carte du formulaire allait de 98 à 576 px et laissait 514 px de crème vide en
+ * dessous, épinglée en haut ; en face, la colonne de marque collait son
+ * argumentaire tout en bas de ses 1090 px. Deux colonnes déséquilibrées, chacune
+ * dans le sens opposé de l'autre, qui se tournaient le dos.
+ *
+ * UN SEUL FAIT, ET C'EST DÉLIBÉRÉ. Une première version en gardait deux : elle
+ * exigeait aussi que rien ne soit poussé AU-DESSUS du cadre, le défaut classique
+ * du centrage par `align-items` sur une fenêtre courte. Cette règle-là a été
+ * retirée après avoir essayé de la faire rougir : on ne peut pas. Le cadre est
+ * un élément flexible, qui garde `min-height: auto` et ne descend donc jamais
+ * sous son contenu ; la place libre n'est jamais négative, et le formulaire
+ * commence à 98 px à 1440 × 620 quelle qu'en soit l'écriture — vérifié en
+ * remplaçant `my-auto` par `items-center`, puis `min-h-dvh` par `h-dvh`.
+ *
+ * Une règle qu'aucune mutation ne fait rougir ne dit pas que le défaut est
+ * absent : elle dit qu'on ne l'a pas cherché là où il vit. La garder aurait
+ * donné à cette porte un deuxième feu vert gratuit, et c'est exactement ce que
+ * le seuil de jeu de la barre reproche déjà à une porte « verte jusqu'à la
+ * seconde où elle casse ».
+ *
+ * RESTE L'AXE, qui est ce que le lot corrige : quand la place existe, les deux
+ * colonnes se centrent sur la même ligne. La tolérance de 24 px n'est pas un
+ * seuil déguisé — les deux colonnes n'ont pas la même boîte de départ, l'une
+ * commençant sous un logo et l'autre sous une rangée de réglages, et exiger
+ * l'égalité au pixel reviendrait à interdire les deux en-têtes. Mesuré, l'écart
+ * réel vaut 5 px.
+ */
+const ECART_D_AXE = 24
+
+const MESURER_COLONNES = () => {
+  const centre = (marqueur) => {
+    const el = document.querySelector(`[data-mesure="${marqueur}"]`)
+    if (!el) return null
+    const r = el.getBoundingClientRect()
+    if (r.height === 0) return null
+    return { haut: Math.round(r.top), bas: Math.round(r.bottom), mi: Math.round(r.top + r.height / 2) }
+  }
+
+  const cadre = centre('auth-cadre')
+  const formulaire = centre('auth-formulaire')
+  if (!cadre || !formulaire) return null
+  const argument = centre('marque-argument')
+
+  return {
+    // La page tient-elle dans la fenêtre ? L'axe ne veut dire quelque chose que
+    // là où il reste de la place à répartir ; à l'étroit, les marges
+    // s'effondrent et les deux colonnes repartent de leur haut, ce qui est le
+    // comportement voulu et non un décrochage.
+    auLarge: document.documentElement.scrollHeight <= innerHeight + 1,
+    axe: argument ? formulaire.mi - argument.mi : null,
+    formulaire,
+    argument,
+  }
+}
+
+/**
+ * Relève les deux colonnes sur les écrans d'entrée, à trois hauteurs.
+ *
+ * TROIS HAUTEURS ET NON UNE, et c'est tout l'intérêt : la fenêtre haute montre
+ * l'axe, la fenêtre courte montre si le centrage tient. Une seule des deux ne
+ * prouve que la moitié, et c'est la moitié confortable.
+ */
+const HAUTEURS_AUTH = [1090, 800, 620]
+
+async function colonnesDesEcransDEntree(page) {
+  const releves = []
+  for (const adresse of ['/connexion', '/inscription']) {
+    for (const hauteur of HAUTEURS_AUTH) {
+      await page.setViewportSize({ width: 1440, height: hauteur })
+      await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
+      await attendre(page, `${adresse} (colonnes)`)
+      const releve = await page.evaluate(MESURER_COLONNES)
+      if (releve) releves.push({ adresse, hauteur, ...releve })
+    }
+  }
+  return releves
+}
+
+/**
  * LE RYTHME DE LA VITRINE — exécuté DANS la page, au-delà du point de rupture.
  *
  * CE QU'ELLE ATTRAPE. Mesuré avant le lot, à 1440 et 1920 px : les SEPT
@@ -1344,6 +1426,8 @@ const rejouements = []
 const accroches = []
 /** Le rythme de la vitrine, relevé une fois par langue au-delà du repli. */
 const rythmes = []
+/** Les deux colonnes des écrans d'entrée, à trois hauteurs, par langue. */
+const colonnes = []
 // Même raison qu'`ATTENDUES` et que `rangeesMesurees` : « le panneau ne rejoue
 // rien » et « on n'a pas ouvert le panneau » s'écrivent pareil dans un journal.
 // Compte les langues où la mesure a VRAIMENT eu lieu, panneau ouvert.
@@ -1449,6 +1533,11 @@ try {
       if (doublons.rejoues.length > 0) rejouements.push({ langue, ...doublons })
     }
     process.stdout.write(doublons?.rejoues.length ? 'ÉCHEC\n' : doublons ? 'ok\n' : 'NON MESURÉ\n')
+
+    process.stdout.write(`   ${langue}  colonnes d'entrée à ${HAUTEURS_AUTH.join('/')} px … `)
+    const releves = await colonnesDesEcransDEntree(page)
+    colonnes.push(...releves.map((r) => ({ langue, ...r })))
+    process.stdout.write(`${releves.length} relevés\n`)
 
     await contexte.close()
   }
@@ -1978,6 +2067,61 @@ if (GARDE_RYTHME) {
 }
 
 /*
+  PUIS LES COLONNES D'ENTRÉE. Le débordement qu'elles peuvent produire n'est pas
+  celui que `MESURER` sait voir : celui-là défile de côté, celui-ci sort par le
+  HAUT, où il n'y a rien à défiler. C'est pourquoi il lui faut sa propre règle.
+*/
+const GARDE_COLONNES = (() => {
+  if (colonnes.length === 0) {
+    return (
+      'aucun relevé des colonnes des écrans d’entrée.\n' +
+      '   Les marqueurs `auth-cadre` et `auth-formulaire` sont-ils encore posés ?'
+    )
+  }
+
+  /*
+    Garde du garde : la règle ne porte QUE sur les relevés au large, et elle
+    serait vide s'il n'y en avait aucun. Trois hauteurs sont balayées ; il faut
+    qu'au moins une laisse de la place, sinon la porte dirait « aucun
+    décrochage » sans avoir regardé une seule fenêtre où l'axe existe.
+
+    Le régime étroit est balayé lui aussi, et il n'est pas décoratif pour
+    autant : il sert de témoin, et c'est en l'ajoutant qu'on a découvert que la
+    règle du dépassement retirée plus haut ne pouvait pas rougir.
+  */
+  const large = colonnes.filter((c) => c.auLarge).length
+  if (large === 0) {
+    return (
+      `aucun des ${colonnes.length} relevés ne laisse de place à répartir.\n` +
+      '   L’axe ne se mesure qu’au large : à l’étroit, les colonnes repartent de leur haut,\n' +
+      '   ce qui est voulu. Les hauteurs balayées sont-elles encore assez hautes ?'
+    )
+  }
+
+  // L'axe, là seulement où la place existe pour qu'il veuille dire quelque chose.
+  const decroches = colonnes.filter((c) => c.auLarge && c.axe !== null && Math.abs(c.axe) > ECART_D_AXE)
+  if (decroches.length > 0) {
+    return (
+      `${decroches.length} relevé(s) où les deux colonnes ne partagent aucun axe :\n` +
+      decroches
+        .map(
+          (c) =>
+            `      ${c.adresse} 1440×${c.hauteur} ${c.langue}  →  ${c.axe} px d’écart entre les milieux ` +
+            `(tolérance ${ECART_D_AXE})`,
+        )
+        .join('\n') +
+      '\n   L’argumentaire et le formulaire se lisent ensemble ou ne se lisent pas.'
+    )
+  }
+  return null
+})()
+
+if (GARDE_COLONNES) {
+  console.error(`\n✗ mesure-ui : ${GARDE_COLONNES}\n`)
+  process.exit(1)
+}
+
+/*
   L'ORDRE DES TROIS RÈGLES VA DU SIGNAL LE PLUS TÔT AU SYMPTÔME LE PLUS TARD :
   jeu trop faible, puis repli, puis débordement.
 
@@ -2046,6 +2190,7 @@ console.log(
     `  Bloc d'accroche : ${accroches.length} mesures, un seul écart titre–lecture (${accroches[0]?.ecart} px) des deux côtés du point de rupture.\n` +
     `  Rythme de la vitrine : ${rythmes[0]?.sections.length} sections sur ` +
     `${new Set(rythmes[0]?.sections.map((s) => s.pad)).size} rembourrages distincts, un seul temps ample.\n` +
+    `  Colonnes d'entrée : ${colonnes.length} relevés à ${HAUTEURS_AUTH.join('/')} px, axes partagés à ${ECART_D_AXE} px près.\n` +
     `  ${textesAudites} textes audités en contraste (${THEMES.join(' + ')}, ${LARGEURS_CONTRASTE.join(' et ')} px), aucun sous le seuil WCAG AA.\n` +
     `  ${ciblesSondees} cibles sondées au point de contact, aucune sous ${PLANCHER_CIBLE} px hors les ${Object.keys(CIBLES_EXEMPTES).length} exemptions motivées.`,
 )

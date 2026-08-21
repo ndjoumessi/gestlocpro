@@ -118,8 +118,43 @@ export function AuthLayout({
           </div>
         </header>
 
-        <main className={cn('flex flex-1 items-start justify-center pt-4 pb-16', GOUTTIERE_LATERALE)}>
-          <div className={cn('w-full', wide ? 'max-w-3xl' : 'max-w-md')}>
+        {/*
+          LE FORMULAIRE SE CENTRE, au lieu d'être épinglé en haut.
+
+          Mesuré avant ce lot, à 2000 × 1090 sur `/connexion` : la carte allait
+          de 98 à 576 px et laissait 514 px de crème vide en dessous, épinglée
+          en haut par `items-start` pendant que la colonne de marque, elle,
+          collait son argumentaire tout en bas de ses 1090 px. Les deux colonnes
+          étaient déséquilibrées, chacune dans le sens opposé de l'autre, et
+          elles se tournaient le dos. Après : leurs milieux tombent à 5 px l'un
+          de l'autre — 562 contre 567 à 1920 × 1090.
+
+          `my-auto` PLUTÔT QU'`items-center`, ET IL FAUT DIRE POURQUOI, parce
+          que le pourquoi habituel est faux ici. On lit partout que le centrage
+          par `align-items` rogne le haut d'un enfant trop grand, hors
+          d'atteinte du défilement. C'est vrai d'un conteneur de hauteur FIXE ;
+          ce n'en est pas un. Vérifié au navigateur à 1440 × 620 sur
+          `/inscription`, la plus haute des cartes : avec `items-center`, et
+          même après avoir remplacé `min-h-dvh` par `h-dvh`, le formulaire
+          commence toujours à 98 px. Un élément flexible garde `min-height:
+          auto` — il ne descend jamais sous son contenu, la place libre n'est
+          donc jamais négative, et les deux écritures rendent le même pixel.
+
+          Le choix se fait donc sur autre chose, et c'est un argument plus
+          faible qu'on ne l'écrit d'ordinaire : la marge automatique porte
+          l'intention SUR L'ENFANT qui se centre, et reste juste le jour où
+          l'une des trois conditions ci-dessus tombe. Elle ne nous sauve de rien
+          aujourd'hui. C'est la garde de `mesure-ui` qui tient l'axe, et elle le
+          tient en le mesurant plutôt qu'en faisant confiance à une classe.
+        */}
+        <main
+          data-mesure="auth-cadre"
+          className={cn('flex flex-1 justify-center pt-4 pb-16', GOUTTIERE_LATERALE)}
+        >
+          <div
+            data-mesure="auth-formulaire"
+            className={cn('my-auto w-full', wide ? 'max-w-3xl' : 'max-w-md')}
+          >
             {above}
 
             {/* `display-app` et non `display-m` : un formulaire est une tâche,
@@ -189,7 +224,17 @@ function BrandPanel() {
         'pt-[calc(1.5rem+env(safe-area-inset-top))] pb-6',
         'pl-[max(1.25rem,env(safe-area-inset-left))] pr-[max(1.25rem,env(safe-area-inset-right))]',
         'sm:pl-[max(2rem,env(safe-area-inset-left))] sm:pr-[max(2rem,env(safe-area-inset-right))]',
-        'lg:w-[34%] lg:max-w-md lg:justify-between',
+        // La largeur ne bouge pas : `lg:w-[34%] lg:max-w-md` porte son propre
+        // argumentaire, mesuré, un peu plus bas dans ce fichier.
+        //
+        // `lg:justify-between` en revanche est parti. Il poussait
+        // l'argumentaire tout en bas du panneau : mesuré à 2000 × 1090, les
+        // huit cents premiers pixels de cette bande sombre étaient vides et le
+        // titre commençait là où le formulaire d'en face avait déjà fini. Deux
+        // colonnes qui se tournent le dos. La répartition se fait maintenant
+        // par les marges de l'argumentaire lui-même, qui savent, elles, ce
+        // qu'il faut faire quand la place manque.
+        'lg:w-[34%] lg:max-w-md',
         'lg:pt-[calc(2.5rem+env(safe-area-inset-top))] lg:pb-10',
       )}
     >
@@ -207,8 +252,19 @@ function BrandPanel() {
       </div>
 
       {/* Argumentaire réservé au grand écran : sur mobile il repousserait le
-          formulaire sous la ligne de flottaison. */}
-      <div className="relative mt-auto hidden lg:block">
+          formulaire sous la ligne de flottaison.
+
+          `lg:my-auto` — les mêmes marges automatiques que le formulaire d'en
+          face, et pour la même raison : sur une fenêtre haute elles répartissent
+          la place et l'argumentaire vient à hauteur de lecture ; sur une fenêtre
+          courte elles s'effondrent et il se range sous le logo, sans jamais
+          pousser quoi que ce soit hors du cadre. `mt-auto` seul ne savait faire
+          que la moitié du travail : coller en bas, quelle que soit la hauteur.
+
+          Un écart minimal sous le logo, sinon la marge automatique pourrait le
+          laisser toucher l'argumentaire au pixel près sur la fenêtre exacte où
+          elle s'annule. */}
+      <div data-mesure="marque-argument" className="relative mt-12 hidden lg:my-auto lg:block">
         <p className="display-m max-w-sm text-balance text-on-dark">{t('brand.tagline')}.</p>
 
         <ul className="mt-8 flex flex-col gap-3">
