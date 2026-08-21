@@ -207,10 +207,17 @@ export function TenantDashboard() {
               Le libellé est masqué — le montant juste au-dessus le dit déjà —
               mais reste annoncé aux lecteurs d'écran. */}
           <div className="mt-3">
+            {/* Le TON suit le STATUT de la pastille juste au-dessus, et non un
+                vert fixe. Un logement EN RETARD affichait une pastille rouge
+                ET une piste verte pour le même fait — deux couleurs
+                contraires sur la même carte, à un public qui lit d'abord la
+                couleur. `ProgressBar` n'expose que trois tons (`gold`, `ok`,
+                `danger`) : `danger` est le seul qui rejoigne la pastille sans
+                en inventer un quatrième dans un composant partagé. */}
             <ProgressBar
               value={unit.rent === 0 ? 0 : Math.round((unit.paid / unit.rent) * 100)}
               label={t('app.tenant.rentFor')}
-              tone="ok"
+              tone={unit.status === 'overdue' ? 'danger' : 'ok'}
               hideLabel
             />
           </div>

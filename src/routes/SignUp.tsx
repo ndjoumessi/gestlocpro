@@ -722,6 +722,15 @@ function ContextStep({
             <Combobox
               id={props.id}
               aria-describedby={props["aria-describedby"]}
+              // `invalid` ET `aria-invalid` manquaient tous les deux : le champ
+              // voisin (l'indicatif) les reçoit via `{...props}`, mais celui-ci
+              // les prend un par un et s'arrêtait avant ces deux-là. Le message
+              // d'erreur s'affichait bien sous le champ — `error` le rend plus
+              // haut — mais la bordure restait neutre et aucun lecteur d'écran
+              // n'apprenait que LE champ visé par ce message était celui-ci,
+              // sur le refus le plus fréquent de l'étape.
+              aria-invalid={props["aria-invalid"]}
+              invalid={!!errorFor("country")}
               name="country"
               /**
                * `country` et non `country-name` : le champ ENVOIE le code ISO

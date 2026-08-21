@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { lien, useBase } from '@/lib/base'
 import { DataTable, EmptyState } from '@/components/primitives/DataTable'
@@ -29,6 +29,18 @@ import { AddUnitModal } from './AddUnitModal'
 
 export function Portfolio() {
   const base = useBase()
+  /**
+   * Portée jusqu'au dossier d'un logement, pour que « Retour » y revienne.
+   *
+   * Le bouton « bouton précédent » du navigateur rétablit déjà l'immeuble
+   * filtré — le filtre vit dans l'URL, exprès pour ça. Le lien « Retour » du
+   * dossier, lui, pointait en dur vers `parc` nu : les deux chemins pour
+   * revenir en arrière ne menaient plus au même endroit, l'un gardait le
+   * filtre, l'autre le perdait. `location.search` porte `?immeuble=…` quand un
+   * immeuble est choisi, rien sinon — il suffit à reconstituer l'état exact
+   * d'où l'on partait.
+   */
+  const location = useLocation()
   const [ajoutOuvert, setAjoutOuvert] = useState(false)
   const [logementOuvert, setLogementOuvert] = useState(false)
   const [correctionOuverte, setCorrectionOuverte] = useState(false)
@@ -337,6 +349,10 @@ export function Portfolio() {
             render: (unit) => (
               <Link
                 to={lien(base, `parc/${unit.id}`)}
+                // Porte l'adresse d'où l'on part — voir le commentaire sur
+                // `location` en tête de composant. Le dossier n'en fait rien
+                // s'il est ouvert autrement, une adresse tapée directement.
+                state={{ from: `${location.pathname}${location.search}` }}
                 aria-label={t('app.unitFile.open', { unit: unit.label })}
                 /*
                   LA CIBLE FAIT LA CELLULE, SANS DÉPLACER UN PIXEL.

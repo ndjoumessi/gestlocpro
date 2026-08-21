@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom'
+import { useLocation, useParams } from 'react-router-dom'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { lien, useBase } from '@/lib/base'
 import { Button } from '@/components/primitives/Button'
@@ -38,6 +38,7 @@ export function UnitFile() {
   const t = useT()
   const d = useDates()
   const base = useBase()
+  const location = useLocation()
   const { money } = useCurrency()
   const {
     unitById,
@@ -52,6 +53,18 @@ export function UnitFile() {
   } = usePortfolio()
 
   if (loading) return <DossierSkeleton />
+
+  /**
+   * Où renvoie « Retour » — le parc filtré tel qu'on l'a quitté, à défaut le
+   * parc nu.
+   *
+   * `Portfolio` pose `state.from` sur le lien qui mène ici : cette unité
+   * appartenait à l'immeuble alors filtré, sinon la ligne n'aurait pas été
+   * visible dans le tableau. Sans cet état — dossier ouvert par une adresse
+   * tapée ou mise en favori — il n'y a rien à restituer, et `parc` nu reste la
+   * réponse juste : c'est l'entrée du parc entier, jamais fausse.
+   */
+  const retour = typeof location.state?.from === 'string' ? location.state.from : lien(base, 'parc')
 
   const unit = unitById(unitId)
   if (!unit) {
@@ -73,7 +86,7 @@ export function UnitFile() {
           title={t('app.unitFile.notFoundTitle')}
           body={t('app.unitFile.notFoundBody')}
           action={
-            <Button variant="secondary" to={lien(base, 'parc')}>
+            <Button variant="secondary" to={retour}>
               {t('app.unitFile.back')}
             </Button>
           }
@@ -97,7 +110,7 @@ export function UnitFile() {
         title={immeuble ? `${immeuble.name} — ${unit.label}` : unit.label}
         description={`${t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')} · ${unit.surface} m² · ${money(unit.rent, { round: true })}`}
         actions={
-          <Button variant="secondary" icon="chevronLeft" to={lien(base, 'parc')}>
+          <Button variant="secondary" icon="chevronLeft" to={retour}>
             {t('app.unitFile.back')}
           </Button>
         }

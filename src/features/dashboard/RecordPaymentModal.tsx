@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Modal } from '@/components/primitives/Modal'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
@@ -8,6 +8,11 @@ import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { usePortfolio } from '@/data/PortfolioProvider'
+
+/** Le repli par défaut du mois et du jour, à l'ouverture ET à chaque
+    réinitialisation ci-dessous : une seule formule pour les deux moments. */
+const moisCourant = () => new Date().toISOString().slice(0, 7)
+const jourCourant = () => new Date().toISOString().slice(0, 10)
 
 /** Saisie d'un encaissement. Le règlement partiel est admis par conception. */
 export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -30,7 +35,7 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
    * apparaissait soldé d'un loyer qu'il n'avait pas reçu. Deux mois faux pour
    * un seul versement.
    */
-  const [periode, setPeriode] = useState(() => new Date().toISOString().slice(0, 7))
+  const [periode, setPeriode] = useState(moisCourant)
   /**
    * Jour où l'argent a été reçu, `AAAA-MM-JJ`.
    *
@@ -39,7 +44,7 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
    * arrivé. Les confondre, c'est perdre l'une des deux — et c'est la date de
    * réception qui fait foi devant un locataire qui conteste un retard.
    */
-  const [verseLe, setVerseLe] = useState(() => new Date().toISOString().slice(0, 10))
+  const [verseLe, setVerseLe] = useState(jourCourant)
   /**
    * Référence de la transaction — Mobile Money, virement, chèque.
    *
@@ -60,6 +65,32 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
     motif correct, un objet dont chaque clé est un champ.
   */
   const [erreurs, setErreurs] = useState<{ amount?: string; paidOn?: string }>({})
+
+  /**
+   * REMISE À ZÉRO À L'OUVERTURE, et non au montage.
+   *
+   * `Payments` et `Dashboard` gardent cette modale montée en permanence et ne
+   * font varier que `open` — à l'inverse de `SettleModal` ou `TariffsModal`,
+   * démontées avec leur état à la fermeture. Sans ce repli, un montant refusé
+   * restait affiché, message d'erreur compris, à la réouverture suivante —
+   * pour un versement sans rapport avec celui qui avait échoué — et l'unité
+   * choisie la fois précédente restait sélectionnée en silence : au premier
+   * clic sur « Enregistrer », l'argent serait parti sur le bail d'hier.
+   */
+  useEffect(() => {
+    if (!open) return
+    setUnitId(payable[0]?.id ?? '')
+    setAmount('')
+    setMethod('mobile')
+    setPeriode(moisCourant())
+    setVerseLe(jourCourant())
+    setReference('')
+    setNote('')
+    setErreurs({})
+    // `payable` n'entre pas dans les dépendances : on ne réinitialise qu'à
+    // l'OUVERTURE, jamais parce que le parc a changé sous une modale ouverte.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 
   const unit = units.find((u) => u.id === unitId)
 

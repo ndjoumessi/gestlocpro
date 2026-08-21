@@ -127,7 +127,14 @@ export function TenantPortal() {
               <span key={dot} className="size-2.5 rounded-full" style={{ background: dot }} />
             ))}
           </span>
-          <span className="numeric truncate rounded-md bg-surface-sunken px-3 py-1 text-caps text-muted">
+          {/* `min-w-0` : sans lui, cet enfant de la rangée flexible ne
+              descend jamais sous la largeur de son propre texte — le plancher
+              par défaut d'un item flexible est son contenu, pas zéro — et
+              `truncate` ne rognait donc rien. À 320-375px l'adresse la plus
+              longue (`portail.gestlocpro.com/documents`) débordait de la
+              barre sans le point de suspension qui dirait qu'elle est
+              coupée ; seul le cadre arrondi l'empêchait de pousser la page. */}
+          <span className="numeric min-w-0 truncate rounded-md bg-surface-sunken px-3 py-1 text-caps text-muted">
             {t(URL_PAR_ONGLET[tab])}
           </span>
         </div>

@@ -430,7 +430,15 @@ function LignePiece({
     <li className="flex items-center gap-3 px-4 py-3 sm:px-5">
       <Icon name="file" size={17} className="shrink-0 text-muted" />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-body">{label}</span>
+        {/* PAS de `truncate` sur le libellé : à 320px, la case vide
+            (« Aucun document déposé », `shrink-0`) est plus large que le
+            bouton « Consulter » qu'elle remplace, et coupait le nom de la
+            pièce à deux ou trois lettres pour lui faire de la place —
+            « Contrat de bail signé » devenait illisible dans l'état
+            précisément où l'écran doit être le plus clair. Ces trois
+            libellés tiennent sur deux lignes courtes ; les y laisser vaut
+            mieux que les faire disparaître. */}
+        <span className="block text-body">{label}</span>
         {detail && <span className="numeric block text-caps text-muted">{detail}</span>}
       </span>
       {to ? (

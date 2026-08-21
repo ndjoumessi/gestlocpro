@@ -76,6 +76,16 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
   const [devise, setDevise] = useState<DeviseDuParc | ''>(origine.currency)
   const [delegation, setDelegation] = useState<'solo' | 'delegate'>(origine.delegation)
   const [envoi, setEnvoi] = useState(false)
+  /**
+   * LE CHAMP EFFACÉ N'ÉTAIT PAS UN CHAMP INCHANGÉ.
+   *
+   * `correction.name` ne se pose que si `nom.trim()` est vrai : la garde évite
+   * d'envoyer un nom blanc, mais elle ne DIT rien de ce cas, et l'écran
+   * traitait alors une case vidée comme une case intacte — jusqu'au même
+   * « Rien n'a changé » qu'un formulaire jamais touché. Le champ porte
+   * pourtant `required`, comme les autres modales de saisie du dossier.
+   */
+  const [erreurNom, setErreurNom] = useState<string | undefined>(undefined)
 
   const optionsDePays = useMemo(() => countryOptions(locale), [locale])
 
@@ -96,6 +106,14 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
   const enregistrer = (event: FormEvent) => {
     event.preventDefault()
     if (!parkId) return
+
+    if (!nom.trim()) {
+      // Le seul champ requis de cette modale : le dire ici plutôt que de
+      // laisser « Rien n'a changé » répondre à la place d'un nom effacé.
+      setErreurNom(t('app.parkSettings.nameRequired'))
+      return
+    }
+    setErreurNom(undefined)
 
     if (Object.keys(correction).length === 0) {
       // Le serveur rend 422 sur un corps vide — « Rien à corriger ». L'écran
@@ -144,9 +162,17 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
       description={t('app.parkSettings.description')}
     >
       <form onSubmit={enregistrer} noValidate className="flex flex-col gap-5">
-        <Field label={t('app.parkSettings.name')} required>
+        <Field label={t('app.parkSettings.name')} required error={erreurNom}>
           {(props) => (
-            <Input {...props} name="name" value={nom} onChange={(e) => setNom(e.target.value)} />
+            <Input
+              {...props}
+              name="name"
+              value={nom}
+              onChange={(e) => {
+                setNom(e.target.value)
+                if (erreurNom) setErreurNom(undefined)
+              }}
+            />
           )}
         </Field>
 

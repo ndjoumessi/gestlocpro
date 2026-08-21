@@ -7,8 +7,16 @@ import { Icon } from '@/components/primitives/Icon'
 import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
+import { useDates } from '@/lib/useDates'
 import { useSession } from '@/api/SessionProvider'
 import { ApiError, api } from '@/api/client'
+
+/** `AAAA-MM-JJ` en parties, pour le formateur de dates du produit — la même
+    conversion que `ReceiptModal`, qui reçoit la même forme du serveur. */
+const partsDe = (iso: string) => {
+  const [y, m, j] = iso.split('-').map(Number)
+  return { year: y!, month: m!, day: j! }
+}
 
 interface TarifApi {
   id: string
@@ -33,6 +41,7 @@ interface TarifApi {
  */
 export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useT()
+  const d = useDates()
   const { money, parseAmount } = useCurrency()
   const { notify } = useToast()
   /*
@@ -207,7 +216,11 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
                 <span>
                   {t(`app.meters.${tarif.utility}` as 'app.meters.water')}
                   {' · '}
-                  <span className="text-muted">{tarif.effectiveFrom}</span>
+                  {/* La date brute du serveur, « 2026-08-01 », ne se lit ni en
+                      français ni en anglais : chaque autre écran de ce
+                      périmètre passe par `useDates`, celui-ci l'affichait
+                      encore tel quel. */}
+                  <span className="text-muted">{d.fullDate(partsDe(tarif.effectiveFrom))}</span>
                 </span>
                 <span className="numeric font-medium">
                   {money(tarif.unitPriceMinor, { round: true })}

@@ -683,6 +683,7 @@ export const en: Dictionary = {
       description:
         'The park’s name, country and currency. They were set when it was created and could not be changed anywhere.',
       name: 'Park name',
+      nameRequired: 'Required',
       country: 'Country',
       countryHint: 'It suggests the monetary zone without imposing it.',
       currency: 'Currency',
@@ -1146,8 +1147,11 @@ export const en: Dictionary = {
       persistenceScope: 'Nothing leaves your machine: no server is contacted.',
       reset: 'Start from the demonstration data',
       resetDone: 'Demonstration reset',
+      // Mirrors the French: "implemented" named a code state to a
+      // non-developer reader, the one technical word in a showcase written to
+      // be understood without jargon. "Exist" says the same thing plainly.
       offlineNotice:
-        'Deferred sync is not implemented yet. This card shows the state as it will appear once it is.',
+        'Deferred sync does not exist in the product yet. This card shows the state as it will appear once it does.',
     },
 
     report: {

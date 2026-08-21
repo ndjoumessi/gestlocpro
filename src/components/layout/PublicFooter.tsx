@@ -4,28 +4,42 @@ import { Logo } from '@/components/primitives/Logo'
 import { GOUTTIERE_LATERALE } from './gouttiere'
 import { useT } from '@/i18n/I18nProvider'
 
+/*
+  LES ANCRES S'ÉCRIVENT `#id`, PAS `/#id`.
+
+  `BrowserRouter` (voir `main.tsx`) n'est pas un routeur « data » : il n'a pas
+  de `ScrollRestoration`, et `grep -rn hash src/` ne rend toujours aucune ligne
+  — même diagnostic que celui qui a délogé le bouton « Nous contacter » de
+  `PricingSection`. Un `<Link to="/#features">` change l'URL par
+  `history.pushState` et NE FAIT DÉFILER NULLE PART : cette API ne déclenche
+  jamais le comportement natif d'ancrage, réservé à une vraie navigation ou à
+  `location.hash =`. Le pied de page n'existe que sur `Landing.tsx` (voir son
+  seul import), donc chaque lien pointe déjà vers la page où il est rendu : un
+  `<a href="#id">` ordinaire — non intercepté par React Router — suffit et
+  défile réellement, exactement comme le fait déjà la navigation de l'en-tête.
+*/
 const COLUMNS = [
   {
     heading: 'marketing.footer.product',
     links: [
-      { label: 'marketing.nav.features', to: '/#features' },
-      { label: 'marketing.nav.pricing', to: '/#pricing' },
+      { label: 'marketing.nav.features', to: '#features' },
+      { label: 'marketing.nav.pricing', to: '#pricing' },
       { label: 'marketing.footer.demo', to: '/demo' },
     ],
   },
   {
     heading: 'marketing.footer.company',
     links: [
-      { label: 'marketing.footer.about', to: '/#roles' },
-      { label: 'marketing.footer.contact', to: '/#faq' },
+      { label: 'marketing.footer.about', to: '#roles' },
+      { label: 'marketing.footer.contact', to: '#faq' },
     ],
   },
   {
     heading: 'marketing.footer.legal',
     links: [
-      { label: 'marketing.footer.terms', to: '/#faq' },
-      { label: 'marketing.footer.privacy', to: '/#faq' },
-      { label: 'marketing.footer.cookies', to: '/#faq' },
+      { label: 'marketing.footer.terms', to: '#faq' },
+      { label: 'marketing.footer.privacy', to: '#faq' },
+      { label: 'marketing.footer.cookies', to: '#faq' },
     ],
   },
 ] as const
@@ -51,31 +65,43 @@ export function PublicFooter() {
                 {t(column.heading as 'marketing.footer.product')}
               </h2>
               <ul className="mt-4 flex flex-col gap-2">
-                {column.links.map((link) => (
-                  <li key={link.label}>
-                    <Link
-                      to={link.to}
-                      /*
-                        `min-w-11` EN PLUS de `min-h-11`, et c'est le défaut que
-                        ce lot corrige.
+                {column.links.map((link) => {
+                  const cible = link.to
+                  /*
+                    `min-w-11` EN PLUS de `min-h-11`, et c'est le défaut que
+                    ce lot corrige.
 
-                        `min-h-11` garantissait la hauteur et rien d'autre : la
-                        largeur restait celle du libellé. Mesuré au navigateur,
-                        « Tarifs » faisait 35 px de large, « Demo » 38, « About »
-                        39 — des cibles de 35 × 44 sous un plancher de 44.
-                        `cibles.test.ts` ne pouvait pas le voir : il lit les
-                        sources, y trouve `min-h-11`, et un plancher de hauteur
-                        ne dit rien d'une largeur portée par la traduction.
+                    `min-h-11` garantissait la hauteur et rien d'autre : la
+                    largeur restait celle du libellé. Mesuré au navigateur,
+                    « Tarifs » faisait 35 px de large, « Demo » 38, « About »
+                    39 — des cibles de 35 × 44 sous un plancher de 44.
+                    `cibles.test.ts` ne pouvait pas le voir : il lit les
+                    sources, y trouve `min-h-11`, et un plancher de hauteur
+                    ne dit rien d'une largeur portée par la traduction.
 
-                        Le pied est sombre et sans fond au survol : les 9 px
-                        gagnés ne se voient pas, ils se touchent seulement.
-                      */
-                      className="inline-flex min-h-11 min-w-11 items-center text-body text-on-dark-muted no-underline transition-colors duration-150 hover:text-on-dark"
-                    >
-                      {t(link.label as 'marketing.nav.features')}
-                    </Link>
-                  </li>
-                ))}
+                    Le pied est sombre et sans fond au survol : les 9 px
+                    gagnés ne se voient pas, ils se touchent seulement.
+                  */
+                  const classesLien =
+                    'inline-flex min-h-11 min-w-11 items-center text-body text-on-dark-muted no-underline transition-colors duration-150 hover:text-on-dark'
+
+                  return (
+                    <li key={link.label}>
+                      {cible.startsWith('#') ? (
+                        // Ancre de la même page : un `<a>` natif, pour la
+                        // raison détaillée au-dessus de `COLUMNS` — `Link`
+                        // change l'URL sans jamais faire défiler.
+                        <a href={cible} className={classesLien}>
+                          {t(link.label as 'marketing.nav.features')}
+                        </a>
+                      ) : (
+                        <Link to={cible} className={classesLien}>
+                          {t(link.label as 'marketing.nav.features')}
+                        </Link>
+                      )}
+                    </li>
+                  )
+                })}
               </ul>
             </nav>
           ))}

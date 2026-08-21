@@ -1181,12 +1181,19 @@ function MenuCompte({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
           // désormais sur l'`IconButton` qui la jouxte, qui porte 44 px depuis
           // l'origine — l'écart se voyait dans la barre sans que personne le lise.
           'flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full',
-          'text-label font-semibold',
+          'text-label font-semibold transition-colors duration-150',
           // Encre sur encre : la pastille disparaissait purement et simplement
           // dans la barre du locataire, qui est de la même couleur. L'or est
           // celui de la maquette du portail, et `text-ink` s'y tient parce que
           // `.bg-gold` refixe `--color-ink` sur son aplat.
-          tone === 'dark' ? 'bg-gold text-ink' : 'bg-ink text-on-dark',
+          //
+          // Seul bouton de la coquille sans survol : `Button` et `IconButton`
+          // en portent un chacun, celui-ci recopie leurs classes à la main sans
+          // recopier ce dernier détail. Les jetons de survol sont ceux de leurs
+          // variantes `gold` et `primary`, qui peignent déjà les mêmes fonds.
+          tone === 'dark'
+            ? 'bg-gold text-ink hover:bg-gold-on-dark'
+            : 'bg-ink text-on-dark hover:bg-ink-2',
         )}
       >
         {initiales(nom)}

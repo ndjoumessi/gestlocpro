@@ -105,7 +105,23 @@ export function ReplyModal({
          * laisserait réessayer indéfiniment un geste qui n'aboutira jamais.
          */
         const code = cause instanceof ApiError ? cause.code : ''
-        notify(code === 'no_reporter' ? t('app.works.replyNoReporter') : t('common.actionFailed'), {
+        if (code === 'no_reporter') {
+          notify(t('app.works.replyNoReporter'), { tone: 'danger' })
+          return
+        }
+        /**
+         * REFUS ou PANNE, et non toujours « panne ».
+         *
+         * Tout ce qui n'était pas `no_reporter` retombait sur
+         * `common.actionFailed` — « impossible pour l'instant », qui invite à
+         * réessayer. `signalerEchec` (`PortfolioProvider`) distingue pourtant
+         * les deux depuis l'origine : un `ApiError` autre que 409 est un REFUS
+         * du serveur (message trop court côté validation serveur, par
+         * exemple), pas une panne réseau — réessayer à l'identique échouera
+         * pareil. Cette modale appelle `api` directement, hors du provider, et
+         * avait perdu la distinction en chemin.
+         */
+        notify(t(cause instanceof ApiError ? 'common.actionRefused' : 'common.actionFailed'), {
           tone: 'danger',
         })
       })

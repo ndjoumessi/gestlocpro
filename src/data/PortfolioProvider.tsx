@@ -156,7 +156,16 @@ interface PortfolioContextValue {
    * locataire, jamais d'une saisie du bailleur » — et le produit ne l'offrait
    * nulle part.
    */
-  /** Établit un état des lieux sur un logement. */
+  /**
+   * Établit un état des lieux sur un logement, et rend ce que le SERVEUR en a
+   * fait.
+   *
+   * `Promise<boolean>`, même motif qu'`addWork` juste en dessous : la modale
+   * qui l'appelait annonçait « état des lieux enregistré », vidait sa saisie
+   * et se fermait dans le même souffle que l'appel, sans l'attendre. Sur un
+   * refus serveur, le bailleur lisait le succès PUIS le refus — deux phrases
+   * contradictoires — et la saisie était déjà perdue.
+   */
   addInspection: (
     unitId: string,
     etat: {
@@ -166,7 +175,7 @@ interface PortfolioContextValue {
       signedByName?: string
       findings: { room: string; description: string; severity: 'minor' | 'major'; costMinor?: number }[]
     },
-  ) => void
+  ) => Promise<boolean>
   /**
    * Ouvre un signalement, et rend ce que le SERVEUR en a fait.
    *
@@ -934,7 +943,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   )
 
   const addInspection = useCallback(
-    (
+    async (
       unitId: string,
       etat: {
         kind: 'entry' | 'exit'
@@ -948,7 +957,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           costMinor?: number
         }[]
       },
-    ) => {
+    ): Promise<boolean> => {
       const local = () =>
         setInspections((liste) => [
           {
@@ -964,10 +973,19 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           ...liste,
         ])
       if (!parkId) {
+        // Même raison qu'`addWork` : une démonstration qui rendrait `undefined`
+        // prendrait un chemin que rien n'éprouve.
         local()
-        return
+        return true
       }
-      void api.addInspection(parkId, unitId, etat).then(local).catch(signalerEchec)
+      try {
+        await api.addInspection(parkId, unitId, etat)
+        local()
+        return true
+      } catch (erreur) {
+        signalerEchec(erreur)
+        return false
+      }
     },
     [parkId, signalerEchec],
   )

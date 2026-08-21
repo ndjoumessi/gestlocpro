@@ -24,7 +24,15 @@ export function ForgotPassword() {
     const next = validateEmail(email)
     setError(next)
     setTouched(true)
-    if (next) return
+    if (next) {
+      // Même geste que sur les trois autres écrans du parcours : le focus
+      // revient au champ fautif après l'échec de la soumission. Un seul champ
+      // ici ne rend pas le geste inutile — sans lui, le focus reste sur le
+      // bouton et un clavier ou un lecteur d'écran doit chercher le champ à
+      // la main, alors que `Login.tsx` et `ResetPassword.tsx` le lui évitent.
+      document.querySelector<HTMLInputElement>('[name="email"]')?.focus()
+      return
+    }
 
     setSubmitting(true)
     /**

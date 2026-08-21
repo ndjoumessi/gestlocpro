@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Modal } from '@/components/primitives/Modal'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
@@ -33,6 +33,8 @@ export function AddUnitModal({ open, onClose }: { open: boolean; onClose: () => 
   const [surface, setSurface] = useState('')
   const [rent, setRent] = useState('')
   const [errors, setErrors] = useState<Record<string, string | undefined>>({})
+  // Portée à la recherche du champ fautif après un refus — voir `submit`.
+  const formRef = useRef<HTMLFormElement>(null)
 
   const fermer = () => {
     setLabel('')
@@ -67,7 +69,22 @@ export function AddUnitModal({ open, onClose }: { open: boolean; onClose: () => 
     if (label.trim() && dejaPris) suivant.label = t('app.portfolio.unitLabelTaken')
 
     setErrors(suivant)
-    if (Object.values(suivant).some(Boolean)) return
+    if (Object.values(suivant).some(Boolean)) {
+      /**
+       * LE FOCUS REJOINT LE PREMIER CHAMP FAUTIF, comme sur la fiche locataire
+       * (`NewTenantModal`, dans `Tenants.tsx`) et sur la saisie d'un immeuble
+       * (`AddBuildingModal`, dans ce même dossier).
+       *
+       * Le message d'erreur s'affichait déjà sous le champ, mais rien ne l'y
+       * amenait : au clavier, la touche suivante après « Enregistrer » restait
+       * « Annuler ». L'ordre suit celui du formulaire — libellé, surface,
+       * loyer — et non celui des clés de `suivant`, qui suit celui des règles
+       * de validation.
+       */
+      const premier = (['label', 'surface', 'rent'] as const).find((champ) => suivant[champ])
+      if (premier) formRef.current?.querySelector<HTMLElement>(`[name="${premier}"]`)?.focus()
+      return
+    }
 
     addUnit(buildingId, { label: label.trim(), type, surface: surfaceLue, rent: loyerLu! })
     fermer()
@@ -114,6 +131,7 @@ export function AddUnitModal({ open, onClose }: { open: boolean; onClose: () => 
           cette raison.
         */
         <form
+          ref={formRef}
           id="ajout-unite"
           onSubmit={(e) => {
             e.preventDefault()

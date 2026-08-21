@@ -241,4 +241,46 @@ describe('état des lieux — ce qui part au serveur', () => {
     await waitFor(() => expect(envoi(faux)).toBeDefined())
     expect(envoi(faux)!.chemin).toBe(`/parks/${PARC}/units/${U2}/inspections`)
   })
+
+  /**
+   * ON N'ANNONCE PAS UN SUCCÈS QU'ON N'A PAS ENCORE.
+   *
+   * `addInspection` était typé `=> void` : la modale annonçait « état des
+   * lieux enregistré », se fermait et vidait sa saisie dans le même souffle
+   * que l'appel, sans l'attendre. Sur un refus serveur, le bailleur lisait le
+   * succès PUIS le refus — deux phrases contradictoires — et la réserve
+   * saisie était déjà perdue. Même défaut, même correctif que `addTenant` et
+   * `addWork` (voir `succesApresReponse.test.tsx`), appliqué ici à
+   * `addInspection`.
+   */
+  it('n’annonce pas « enregistré » quand le serveur refuse', async () => {
+    const { user, faux } = await ouvrirSurLeParc()
+    faux.quand('POST', `/parks/${PARC}/units/${U1}/inspections`, {
+      status: 422,
+      body: { error: 'entry_finding_priced' },
+    })
+    await saisirUneReserve(user)
+    await user.click(within(dialogue()).getByRole('button', { name: /^enregistrer$/i }))
+
+    expect(await screen.findByText(/Le serveur a refusé cette action/)).toBeInTheDocument()
+    // Correspondance EXACTE, et non `/état des lieux enregistré/i` comme
+    // ailleurs dans ce fichier : sur un parc à une seule unité déjà refusée,
+    // l'écran affiche aussi « Aucun état des lieux enregistré » (état vide),
+    // que ce motif large aurait pris pour le toast de succès.
+    expect(screen.queryByText('État des lieux enregistré')).not.toBeInTheDocument()
+  })
+
+  it('garde la modale ouverte, et la réserve saisie avec elle, sur un refus', async () => {
+    const { user, faux } = await ouvrirSurLeParc()
+    faux.quand('POST', `/parks/${PARC}/units/${U1}/inspections`, {
+      status: 422,
+      body: { error: 'entry_finding_priced' },
+    })
+    await saisirUneReserve(user)
+    await user.click(within(dialogue()).getByRole('button', { name: /^enregistrer$/i }))
+    await screen.findByText(/Le serveur a refusé cette action/)
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(within(dialogue()).getByLabelText(/^pièce$/i)).toHaveValue('Séjour')
+  })
 })

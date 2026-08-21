@@ -85,6 +85,12 @@ export function InspectionModal({
   const [reserves, setReserves] = useState<Reserve[]>([RESERVE_VIDE])
   const [erreur, setErreur] = useState(false)
   /**
+   * Distingue « en train d'envoyer » de « prêt à envoyer » : le bouton
+   * reste actionnable pendant l'attente serveur si on ne le désactive pas,
+   * et un double clic ouvrait alors deux états des lieux pour un seul geste.
+   */
+  const [envoi, setEnvoi] = useState(false)
+  /**
    * LA LIGNE dont le coût ne se lit pas, et non un simple drapeau.
    *
    * Un booléen aurait allumé le message sous tous les champs de coût à la fois,
@@ -116,7 +122,7 @@ export function InspectionModal({
     )
   }
 
-  function envoyer() {
+  async function envoyer() {
     const nombre = Number(pieces)
     if (!Number.isFinite(nombre) || nombre <= 0) {
       setErreur(true)
@@ -189,13 +195,19 @@ export function InspectionModal({
       })
     }
 
-    addInspection(unite, {
+    // Même règle que l'ouverture d'un chantier (`OpenWorkModal`) : l'état des
+    // lieux n'est annoncé enregistré qu'une fois le serveur d'accord, et la
+    // saisie survit à un refus au lieu de disparaître avec la fermeture.
+    setEnvoi(true)
+    const enregistre = await addInspection(unite, {
       kind: nature,
       rooms: Math.round(nombre),
       ...(date ? { performedOn: date } : {}),
       ...(signataire.trim() ? { signedByName: signataire.trim() } : {}),
       findings: retenues,
     })
+    setEnvoi(false)
+    if (!enregistre) return
     onClose()
     setReserves([RESERVE_VIDE])
     setSignataire('')
@@ -213,7 +225,7 @@ export function InspectionModal({
           <Button variant="secondary" onClick={onClose}>
             {t('common.cancel')}
           </Button>
-          <Button type="submit" form="etat-des-lieux">{t('common.save')}</Button>
+          <Button type="submit" form="etat-des-lieux" loading={envoi}>{t('common.save')}</Button>
         </>
       }
     >
@@ -238,7 +250,7 @@ export function InspectionModal({
         id="etat-des-lieux"
         onSubmit={(e) => {
           e.preventDefault()
-          envoyer()
+          void envoyer()
         }}
         noValidate
         className="flex flex-col gap-5"

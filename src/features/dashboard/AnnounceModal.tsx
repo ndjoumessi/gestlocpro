@@ -9,7 +9,7 @@ import { useT } from '@/i18n/I18nProvider'
 import { useNumbers } from '@/lib/numbers'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { useSession } from '@/api/SessionProvider'
-import { api } from '@/api/client'
+import { api, ApiError } from '@/api/client'
 
 /** Ce que le serveur rend : le compte de ceux qui liront, le nom des autres. */
 interface Envoi {
@@ -93,7 +93,20 @@ export function AnnounceModal({ open, onClose }: { open: boolean; onClose: () =>
     void api
       .announce<Envoi>(parkId, { message, ...(immeuble ? { buildingId: immeuble } : {}) })
       .then(setIssue)
-      .catch(() => notify(t('common.actionFailed'), { tone: 'danger' }))
+      /**
+       * REFUS ou PANNE. `signalerEchec` (`PortfolioProvider`) le distingue
+       * depuis l'origine — un `ApiError` est un refus du serveur, définitif
+       * tant que la saisie ne change pas ; tout le reste est une panne, qui
+       * peut se résoudre au prochain essai. Cette modale appelle `api`
+       * directement plutôt que le provider, et rendait toujours « panne »,
+       * même sur un refus — invitant à réessayer un message que le serveur
+       * ne validera jamais tel quel.
+       */
+      .catch((cause: unknown) =>
+        notify(t(cause instanceof ApiError ? 'common.actionRefused' : 'common.actionFailed'), {
+          tone: 'danger',
+        }),
+      )
       .finally(() => setEnvoi(false))
   }
 

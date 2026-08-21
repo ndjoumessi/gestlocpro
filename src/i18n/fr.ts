@@ -857,6 +857,7 @@ export const fr = {
       description:
         'Le nom, le pays et la devise du parc. Ils ont été posés à sa création et n’étaient modifiables nulle part.',
       name: 'Nom du parc',
+      nameRequired: 'Requis',
       country: 'Pays',
       countryHint: 'Il détermine la zone monétaire proposée, sans l’imposer.',
       currency: 'Devise',
@@ -1480,8 +1481,11 @@ export const fr = {
         'Rien ne quitte votre machine : aucun serveur n’est contacté.',
       reset: 'Repartir du jeu de démonstration',
       resetDone: 'Démonstration réinitialisée',
+      // « Implémentée » nommait un état de code à un lecteur non développeur —
+      // le seul mot technique de cette vitrine, écrite pour être comprise sans
+      // jargon. « Existe » dit la même chose en clair.
       offlineNotice:
-        'La synchronisation différée n’est pas encore implémentée. Cette carte montre l’état tel qu’il s’affichera le jour où elle le sera.',
+        'La synchronisation différée n’existe pas encore dans le produit. Cette carte montre l’état tel qu’il s’affichera le jour où elle existera.',
     },
 
     // Vocabulaire partagé par les travaux et les signalements du portail :

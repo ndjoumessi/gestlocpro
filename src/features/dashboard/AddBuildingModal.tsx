@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Modal } from '@/components/primitives/Modal'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
@@ -26,6 +26,8 @@ export function AddBuildingModal({ open, onClose }: { open: boolean; onClose: ()
   const [name, setName] = useState('')
   const [district, setDistrict] = useState('')
   const [errors, setErrors] = useState<{ name?: string; district?: string }>({})
+  // Portée à la recherche du champ fautif après un refus — voir `submit`.
+  const formRef = useRef<HTMLFormElement>(null)
 
   const fermer = () => {
     setName('')
@@ -42,7 +44,22 @@ export function AddBuildingModal({ open, onClose }: { open: boolean; onClose: ()
     if (name.trim().length < 2) suivant.name = t('app.portfolio.buildingNameInvalid')
     if (district.trim().length < 2) suivant.district = t('app.portfolio.districtInvalid')
     setErrors(suivant)
-    if (Object.keys(suivant).length > 0) return
+    if (Object.keys(suivant).length > 0) {
+      /**
+       * LE FOCUS REJOINT LE PREMIER CHAMP FAUTIF, comme sur la fiche locataire
+       * (`NewTenantModal`, dans ce même dossier).
+       *
+       * Le message d'erreur s'affichait déjà sous le champ, mais rien ne l'y
+       * amenait : au clavier, la touche suivante après « Enregistrer » restait
+       * « Annuler », et il fallait remonter à la main jusqu'au champ que le
+       * message désignait. `role="alert"` annonce le texte à un lecteur
+       * d'écran, mais n'y déplace pas le focus des autres.
+       */
+      formRef.current
+        ?.querySelector<HTMLElement>(`[name="${suivant.name ? 'buildingName' : 'district'}"]`)
+        ?.focus()
+      return
+    }
 
     addBuilding(name.trim(), district.trim())
     fermer()
@@ -82,7 +99,7 @@ export function AddBuildingModal({ open, onClose }: { open: boolean; onClose: ()
         `Field`, ce qui est exactement pourquoi les autres modales du dossier le
         portent déjà.
       */}
-      <form id="ajout-immeuble" onSubmit={(e) => {
+      <form ref={formRef} id="ajout-immeuble" onSubmit={(e) => {
           // `preventDefault` : sans lui, le formulaire part NATIVEMENT et
           // recharge la page — l'envoi se fait par `api`, jamais par le
           // navigateur.

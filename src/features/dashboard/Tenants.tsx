@@ -246,9 +246,16 @@ export function Tenants() {
             // `app.tenants.contact` restait défini dans les deux langues sans
             // aucun appelant. Le numéro est maintenant conservé — l'afficher
             // est ce qui rend crédible le fait de le demander.
+            //
+            // PAS `hideOnMobile`, à rebours des colonnes voisines. Ce fichier
+            // s'ouvre sur « Dix noms et dix numéros de téléphone, cliquables,
+            // appelables » — le numéro n'est pas une donnée secondaire ici,
+            // c'est le geste que l'écran existe pour permettre, et sur le
+            // marché que ce produit sert, la lecture se fait d'abord sur un
+            // téléphone. Le masquer sous `sm` aurait retiré le seul geste
+            // utile à qui consulte cette liste depuis le sien.
             key: 'contact',
             header: t('app.tenants.contact'),
-            hideOnMobile: true,
             render: (unit) =>
               unit.phone ? (
                 <a
