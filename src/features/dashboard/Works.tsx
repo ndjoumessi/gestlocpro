@@ -425,7 +425,18 @@ export function Works() {
                 )}
               </div>
 
-              <div className="flex shrink-0 flex-wrap items-center gap-3">
+              {/* `flex-wrap` SANS `shrink-0`, comme `PageHeader` : la paire
+                  s'était propagée jusqu'ici, et elle s'y contredisait pareil.
+                  `shrink-0` interdit à cette rangée de descendre sous sa
+                  largeur `max-content`, donc le repli que `flex-wrap` déclare
+                  vouloir n'arrivait jamais. Mesuré sur `/demo/travaux` à 700 px
+                  en français : 585 px réclamés, bord droit à 714 dans une
+                  fenêtre de 700, `scrollX=14` — « Marquer terminé » sortait du
+                  champ et TOUTE la page défilait latéralement. Le bloc voisin
+                  porte déjà `min-w-0 flex-1` : c'est lui qui cède la place, et
+                  le titre de l'intervention se replie, ce qu'un titre sait
+                  faire. */}
+              <div className="flex flex-wrap items-center gap-3">
                 {/*
                   LE MONTANT DIT CE QU'IL EST : proposé, ou engagé.
 

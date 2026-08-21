@@ -128,7 +128,7 @@ function adressesDeLApplication() {
  * Clé : `adresse@largeur`, indépendante de la langue — un débordement qui
  * n'existe qu'en anglais reste le même défaut de mise en page.
  *
- * SEPT ENTRÉES, ET C'EST UNE DETTE DATÉE, pas un tapis. Chacune porte sa mesure
+ * SIX ENTRÉES, ET C'EST UNE DETTE DATÉE, pas un tapis. Chacune porte sa mesure
  * et le lot qui la lèvera ; la garde du garde plus bas fait rougir celle qui ne
  * couvre plus rien, donc aucune ne peut survivre à sa réparation. Elles sont
  * ici parce qu'une garde hors de `check` ne s'exécute jamais — l'audit en fait
@@ -164,16 +164,6 @@ const TOLERES = {
   */
   '/@1024': 'Barre de la vitrine : 1212 px de contenu pour 976 disponibles. Antérieur à ce lot.',
   '/@1280': 'Même barre, 19 px en français seulement — la marge y est nulle.',
-
-  /*
-    LA CARTE D'INTERVENTION, et c'est le même défaut que celui-ci corrige.
-
-    `flex shrink-0 flex-wrap items-center gap-3` : `shrink-0` interdit au bloc de
-    descendre sous sa largeur `max-content`, donc le repli que `flex-wrap`
-    déclare vouloir n'arrive jamais. Exactement ce que `PageHeader` vient de
-    perdre — la paire avait essaimé.
-  */
-  '/demo/travaux@700': 'shrink-0 contre flex-wrap dans la carte d’intervention. Lot à venir.',
 }
 
 /**
