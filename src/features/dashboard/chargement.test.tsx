@@ -463,7 +463,9 @@ describe('vitrine des états', () => {
    */
   it('offre au locataire, pendant l’attente, les gestes de son écran', async () => {
     const serveur = installerFauxServeur()
-    serveur.quand('GET', '/parks/:id/portfolio', { status: 200, body: null, delai: 10_000 })
+    // Le portefeuille ne rend rien : l'écran reste en attente, et c'est
+    // exactement l'instant qu'on veut regarder.
+    serveur.quand('GET', '/parks/:id/portfolio', { status: 200, body: null })
 
     renderApp('/demo/mon-espace')
 

@@ -375,6 +375,17 @@
 :root {
   --h-barre-basse-montee: 4rem;
   --h-barre-basse: 0px;
+  /*
+    Hauteur de l'en-tête de la VITRINE, publiée par `PublicHeader` qui la
+    MESURE — elle varie avec la langue, le point de rupture et la zone sûre,
+    contrairement à la barre basse dont la hauteur est décidée juste au-dessus.
+
+    Le défaut d'avant mesure vaut zéro et non une hauteur plausible : la mesure
+    est posée en `useLayoutEffect`, donc avant la première peinture, et une
+    valeur crédible ici ne servirait qu'à masquer une mesure qui aurait cessé
+    de se faire.
+  */
+  --h-entete-vitrine: 0px;
 }
 
 @media (min-width: 64rem) {

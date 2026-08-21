@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/cn'
 import { GOUTTIERE_LATERALE } from './gouttiere'
 import { LienEvitement } from './LienEvitement'
@@ -22,6 +22,63 @@ export function PublicHeader() {
   const [scrolled, setScrolled] = useState(false)
   const panneauRef = useRef<HTMLDivElement>(null)
   const enteteRef = useRef<HTMLElement>(null)
+
+  /*
+    LA HAUTEUR DE L'EN-TÊTE SE MESURE, elle ne se recopie pas.
+
+    Le panneau du menu s'ouvrait sous `top-[65px]` — une valeur relevée à la
+    main. Le commentaire qui l'accompagnait avouait déjà le couplage
+    (« fragile — il l'était déjà »), et il avait cessé d'être juste : mesuré au
+    navigateur, l'en-tête vaut 75 px sur un portable, et 131 quand la barre se
+    replie. Trop petit, le panneau remonte SOUS la barre et masque le bouton
+    qui le ferme — c'est-à-dire la seule sortie du menu.
+
+    Mesurer supprime le couplage plutôt que de l'ajuster : la valeur suit la
+    langue, le point de rupture et la zone sûre sans que personne ait à les
+    refaire.
+
+    LA MESURE EST PUBLIÉE EN PROPRIÉTÉ CSS, et non portée par un état React —
+    c'est l'idiome que `AppShell` tient déjà pour `--h-barre-basse`. Deux
+    raisons : le panneau la lit alors en feuille de style, sans qu'un nombre
+    traverse le rendu ; et tout ce qui devra un jour se placer sous cette barre
+    la trouvera sans redemander la mesure. Écrire une propriété ne déclenche
+    aucun rendu, donc l'observateur peut suivre chaque redimensionnement sans
+    coûter un cycle React par pixel.
+
+    `useLayoutEffect` et non `useEffect` : la valeur doit être posée AVANT la
+    peinture, sinon le premier cadre place le panneau sur son défaut.
+  */
+  useLayoutEffect(() => {
+    const entete = enteteRef.current
+    if (!entete) return
+
+    const racine = document.documentElement
+    const mesurer = () =>
+      racine.style.setProperty('--h-entete-vitrine', `${entete.getBoundingClientRect().height}px`)
+    mesurer()
+
+    // Accolades, et non un retour implicite : `removeProperty` rend la valeur
+    // qu'elle retire, et un nettoyage d'effet doit rendre `void`.
+    const nettoyer = () => {
+      racine.style.removeProperty('--h-entete-vitrine')
+    }
+
+    // jsdom ne connaît pas `ResizeObserver` et ne calcule aucune géométrie :
+    // le repli sur `resize` garde le code montable sous le harnais.
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', mesurer)
+      return () => {
+        window.removeEventListener('resize', mesurer)
+        nettoyer()
+      }
+    }
+    const observateur = new ResizeObserver(mesurer)
+    observateur.observe(entete)
+    return () => {
+      observateur.disconnect()
+      nettoyer()
+    }
+  }, [])
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8)
@@ -109,7 +166,7 @@ export function PublicHeader() {
               étant plus longs, l'anglais passait. Un débordement qui n'existe
               que dans une langue est celui qu'une relecture ne trouve jamais.
             */
-            'mx-auto flex max-w-7xl flex-wrap items-center gap-4',
+                        'mx-auto flex max-w-7xl flex-wrap items-center gap-4',
             GOUTTIERE_LATERALE,
           )}
         >
@@ -183,12 +240,9 @@ export function PublicHeader() {
           // document, c'est-à-dire de l'en-tête, et non des liens du menu.
           tabIndex={-1}
           /*
-            `top-[65px]` était une hauteur d'en-tête recopiée à la main. Elle
-            reste juste, mais l'en-tête grandit maintenant EXACTEMENT de
-            `safe-area-inset-top` : sans le même terme ici, le panneau
-            remonterait sous la barre supérieure et masquerait le bouton qui le
-            ferme. Le couplage est fragile — il l'était déjà — mais au moins les
-            deux valeurs bougent désormais ensemble.
+            Le haut vient de la MESURE de l'en-tête, faite plus haut, et non
+            d'une valeur recopiée : elle suit ainsi la langue, le point de
+            rupture et la zone sûre sans que personne ait à les refaire.
 
             La gouttière `p-5` descend du `<nav>` vers ce conteneur : c'est lui
             qui touche les deux bords, donc c'est lui qui doit les traiter, et
@@ -197,12 +251,13 @@ export function PublicHeader() {
             son dernier lien a besoin d'air sous la barre de gestes.
           */
           className={cn(
-            'fixed inset-x-0 bottom-0 overflow-y-auto border-t border-border bg-paper xl:hidden',
-            'top-[calc(65px+env(safe-area-inset-top))]',
+            'fixed inset-x-0 top-[var(--h-entete-vitrine)] bottom-0 overflow-y-auto border-t border-border bg-paper xl:hidden',
             'pt-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]',
             'pl-[max(1.25rem,env(safe-area-inset-left))] pr-[max(1.25rem,env(safe-area-inset-right))]',
           )}
-          style={{ zIndex: 'var(--z-overlay)' }}
+          style={{
+            zIndex: 'var(--z-overlay)',
+          }}
         >
           <nav aria-label={t('nav.primaryNav')} className="flex flex-col gap-1">
             {SECTIONS.map((section) => (
