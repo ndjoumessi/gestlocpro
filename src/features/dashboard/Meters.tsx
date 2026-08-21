@@ -84,11 +84,31 @@ export function Meters() {
    * l'écran montre la quantité seule — c'est la règle du produit, aucun chiffre
    * sans donnée derrière, appliquée à celui sur lequel quelqu'un paie.
    */
-  const rebilled = (reading: MeterReading) => {
+  /*
+    DEUX CAUSES DE `null`, ET ELLES N'APPELLENT PAS LE MÊME GESTE.
+
+    La fonction rendait `null` dans les deux cas, et la colonne affichait
+    « Relevé manquant » pour l'un comme pour l'autre. Or un relevé manquant
+    déclenche une TOURNÉE — ce fichier chiffre lui-même ce coût quelques lignes
+    plus haut — tandis qu'un tarif non fixé se règle en trente secondes depuis
+    l'écran des tarifs, sans que personne se déplace.
+
+    Envoyer quelqu'un sur le terrain parce qu'un prix n'a pas été saisi est le
+    genre de méprise qu'un libellé approximatif finance.
+  */
+  const rebilled = (
+    reading: MeterReading,
+  ): { montant: number } | { manque: 'reading' | 'price' } => {
     const c = consumption(reading)
-    if (c.water === null || c.power === null) return null
-    if (reading.waterPrice === null || reading.powerPrice === null) return null
-    return c.water * reading.waterPrice + c.power * reading.powerPrice
+    if (c.water === null || c.power === null) return { manque: 'reading' }
+    if (reading.waterPrice === null || reading.powerPrice === null) return { manque: 'price' }
+    return { montant: c.water * reading.waterPrice + c.power * reading.powerPrice }
+  }
+
+  /** Le montant seul, pour les sommes — `null` quelle que soit la cause. */
+  const montantRefacture = (reading: MeterReading) => {
+    const r = rebilled(reading)
+    return 'montant' in r ? r.montant : null
   }
 
   /**
@@ -104,7 +124,7 @@ export function Meters() {
 
   const aUnPrix = prixCourant('waterPrice') !== null && prixCourant('powerPrice') !== null
   const missing = READINGS.filter((r) => r.waterCurrent === null || r.powerCurrent === null)
-  const total = READINGS.reduce((sum, r) => sum + (rebilled(r) ?? 0), 0)
+  const total = READINGS.reduce((sum, r) => sum + (montantRefacture(r) ?? 0), 0)
 
   /**
    * L'écran affirmait « 2 relevés manquants — A3, B1 » sur des unités
@@ -141,7 +161,7 @@ export function Meters() {
                 ],
                 rows: READINGS.map((r) => {
                   const c = consumption(r)
-                  const amount = rebilled(r)
+                  const amount = montantRefacture(r)
                   // Un relevé manquant laisse la cellule VIDE plutôt que le
                   // tiret de l'écran : « — » se compte comme une valeur dans un
                   // tableur, le vide se filtre.
@@ -309,13 +329,16 @@ export function Meters() {
             header: t('app.meters.rebilled'),
             numeric: true,
             render: (r) => {
-              const value = rebilled(r)
-              return value === null ? (
+              const r2 = rebilled(r)
+              if ('montant' in r2) {
+                return <span className="font-medium">{money(r2.montant, { round: true })}</span>
+              }
+              // Le libellé DIT la cause : une tournée d'un côté, une saisie de
+              // tarif de l'autre.
+              return (
                 <StatusPill tone="warn" size="sm">
-                  {t('app.meters.missing')}
+                  {r2.manque === 'reading' ? t('app.meters.missing') : t('app.meters.noPrice')}
                 </StatusPill>
-              ) : (
-                <span className="font-medium">{money(value, { round: true })}</span>
               )
             },
           },

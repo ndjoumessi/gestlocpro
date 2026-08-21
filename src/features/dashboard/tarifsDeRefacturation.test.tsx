@@ -242,4 +242,25 @@ describe('poser un prix', () => {
     // action a échoué » obligerait à deviner ce qu'il faut changer.
     expect(await screen.findByText(/Un prix existe déjà pour cette énergie/)).toBeInTheDocument()
   })
+
+  /**
+   * LE LIBELLÉ DIT LA CAUSE, et les deux causes n'appellent pas le même geste.
+   *
+   * La colonne affichait « Relevé manquant » aussi bien quand le relevé
+   * manquait que quand le TARIF n'était pas fixé. Or un relevé manquant
+   * déclenche une tournée — l'écran chiffre lui-même ce coût — tandis qu'un
+   * tarif se saisit en trente secondes sans que personne se déplace. Envoyer
+   * quelqu'un sur le terrain parce qu'un prix n'a pas été saisi est le genre de
+   * méprise qu'un libellé approximatif finance.
+   */
+  it('distingue un tarif non fixé d’un relevé manquant', async () => {
+    servir({ water: null, power: null })
+    renderApp('/app/releves', { session: sessionDuRole('owner') })
+    await attendreLeChargement()
+
+    // Les relevés SONT là — c'est le tarif qui manque.
+    expect(await screen.findByText('16')).toBeInTheDocument()
+    expect(screen.getAllByText('Tarif non fixé').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Relevé manquant')).toBeNull()
+  })
 })

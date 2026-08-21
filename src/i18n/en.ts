@@ -709,6 +709,7 @@ export const en: Dictionary = {
       rebilled: 'Re-billed',
       readAt: 'Read on',
       missing: 'Reading missing',
+      noPrice: 'No rate set',
       missingCount: '{count} readings missing for this period',
       missingCount_one: '{count} reading missing for this period',
       missingHint: 'Monthly billing stays incomplete until they are captured.',

@@ -890,6 +890,7 @@ export const fr = {
       rebilled: 'Refacturé',
       readAt: 'Relevé le',
       missing: 'Relevé manquant',
+      noPrice: 'Tarif non fixé',
       missingCount: '{count} relevés manquants pour la période',
       missingCount_one: '{count} relevé manquant pour la période',
       missingHint: 'La facturation du mois restera incomplète tant qu’ils ne sont pas saisis.',
