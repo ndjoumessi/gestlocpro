@@ -24,7 +24,7 @@ async function allerA(nom: RegExp) {
 describe('validation d’un devis', () => {
   it('retire l’arbitrage de la carte du tableau de bord', async () => {
     const user = userEvent.setup()
-    renderApp('/app')
+    await renderApp('/app')
 
     // Le tableau de bord réclame bien la décision au départ.
     expect(screen.getByRole('main')).toHaveTextContent('SIG-2026-042')
@@ -48,7 +48,7 @@ describe('validation d’un devis', () => {
 
   it('ne montre l’état vide qu’une fois les DEUX natures traitées', async () => {
     const user = userEvent.setup()
-    renderApp('/app/travaux')
+    await renderApp('/app/travaux')
     await user.click(screen.getByRole('button', { name: /valider le devis/i }))
 
     // Les deux cautions en attente sont arbitrées à leur tour. La liste se
@@ -67,7 +67,7 @@ describe('validation d’un devis', () => {
 
   it('fait disparaître le bouton, puisqu’il n’y a plus rien à valider', async () => {
     const user = userEvent.setup()
-    renderApp('/app/travaux')
+    await renderApp('/app/travaux')
 
     await user.click(screen.getByRole('button', { name: /valider le devis/i }))
 
@@ -78,7 +78,7 @@ describe('validation d’un devis', () => {
 describe('arbitrage d’une caution', () => {
   it('met à jour la ligne et les totaux', async () => {
     const user = userEvent.setup()
-    renderApp('/app/cautions')
+    await renderApp('/app/cautions')
 
     const avant = screen.getAllByRole('button', { name: /^arbitrer$/i })
     expect(avant).toHaveLength(2)
@@ -96,7 +96,7 @@ describe('arbitrage d’une caution', () => {
 
   it('refuse une retenue supérieure à la caution', async () => {
     const user = userEvent.setup()
-    renderApp('/app/cautions')
+    await renderApp('/app/cautions')
 
     await user.click(screen.getAllByRole('button', { name: /^arbitrer$/i })[0])
     await user.clear(screen.getByLabelText(/montant retenu/i))
@@ -108,7 +108,7 @@ describe('arbitrage d’une caution', () => {
 
   it('refuse une retenue non justifiée', async () => {
     const user = userEvent.setup()
-    renderApp('/app/cautions')
+    await renderApp('/app/cautions')
 
     await user.click(screen.getAllByRole('button', { name: /^arbitrer$/i })[0])
     await user.click(screen.getByRole('button', { name: /valider l’arbitrage/i }))
@@ -121,7 +121,7 @@ describe('arbitrage d’une caution', () => {
 describe('création d’une fiche locataire', () => {
   it('occupe l’unité et se voit sur le parc et les paiements', async () => {
     const user = userEvent.setup()
-    renderApp('/app/locataires')
+    await renderApp('/app/locataires')
 
     await user.click(screen.getByRole('button', { name: /créer une fiche locataire/i }))
     await user.type(screen.getByLabelText(/nom complet/i), 'Awa Diallo')
@@ -141,7 +141,7 @@ describe('création d’une fiche locataire', () => {
 
   it('refuse une fiche sans nom ni téléphone', async () => {
     const user = userEvent.setup()
-    renderApp('/app/locataires')
+    await renderApp('/app/locataires')
 
     await user.click(screen.getByRole('button', { name: /créer une fiche locataire/i }))
     await user.click(screen.getByRole('button', { name: /^enregistrer$/i }))
@@ -164,8 +164,8 @@ describe('création d’une fiche locataire', () => {
 describe('parcours enregistré', () => {
   const CLE = 'gestlocpro.portfolio'
 
-  it('n’écrit rien tant que rien n’a été modifié', () => {
-    renderApp('/demo/systeme')
+  it('n’écrit rien tant que rien n’a été modifié', async () => {
+    await renderApp('/demo/systeme')
 
     expect(window.localStorage.getItem(CLE)).toBeNull()
     // La carte explique le mécanisme dans tous les cas ; c'est le bouton qui
@@ -178,7 +178,7 @@ describe('parcours enregistré', () => {
 
   it('enregistre dès la première modification', async () => {
     const user = userEvent.setup()
-    renderApp('/app/travaux')
+    await renderApp('/app/travaux')
 
     await user.click(screen.getByRole('button', { name: /valider le devis/i }))
 
@@ -193,7 +193,7 @@ describe('parcours enregistré', () => {
     // Sous `/demo` : « Repartir du jeu de démonstration » est un bouton de
     // VITRINE, et « États du système » ne figure plus dans la navigation d'un
     // vrai compte — c'est tout l'objet du garde `vitrineHorsDemo.test.tsx`.
-    renderApp('/demo/travaux')
+    await renderApp('/demo/travaux')
     await attendreLeChargement()
 
     await user.click(screen.getByRole('button', { name: /valider le devis/i }))

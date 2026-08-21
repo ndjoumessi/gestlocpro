@@ -71,7 +71,7 @@ beforeEach(() => {
 
 /** Monte l'écran du parc et ouvre la modale de correction. */
 async function ouvrirLaCorrection() {
-  renderApp('/app/parc', { session: sessionDuRole('owner') })
+  await renderApp('/app/parc', { session: sessionDuRole('owner') })
   /**
    * Le titre ne dit RIEN de l'état : `PortfolioSkeleton` rend le même
    * `PageHeader` que l'écran chargé. L'attendre laissait le clic qui suit
@@ -89,7 +89,7 @@ function correctionsEnvoyees() {
 
 describe('corriger le parc', () => {
   it('n’est proposé qu’au propriétaire', async () => {
-    renderApp('/app/parc', { session: sessionDuRole('manager') })
+    await renderApp('/app/parc', { session: sessionDuRole('manager') })
     await attendreLeChargement()
 
     /**

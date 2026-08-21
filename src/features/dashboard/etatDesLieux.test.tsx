@@ -19,7 +19,7 @@ const dialogue = () => screen.getByRole('dialog')
 
 async function ouvrir() {
   const user = userEvent.setup()
-  renderApp('/demo/etats-des-lieux')
+  await renderApp('/demo/etats-des-lieux')
   await attendreLeChargement()
   await user.click(screen.getByRole('button', { name: /établir un état des lieux/i }))
   return user
@@ -190,7 +190,7 @@ describe('état des lieux — ce qui part au serveur', () => {
     }
 
     const user = userEvent.setup()
-    renderApp('/app/etats-des-lieux', { session: session() })
+    await renderApp('/app/etats-des-lieux', { session: session() })
     await attendreLeChargement()
     await user.click(screen.getByRole('button', { name: /établir un état des lieux/i }))
     return { user, faux }

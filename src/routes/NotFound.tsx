@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/cn'
-import { PageHeader } from '@/components/layout/AppShell'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { GOUTTIERE_LATERALE } from '@/components/layout/gouttiere'
 import { Button } from '@/components/primitives/Button'
 import { Icon } from '@/components/primitives/Icon'

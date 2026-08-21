@@ -11,7 +11,7 @@ import { renderApp, screen, switchRole, within, attendreLeChargement } from '@/t
  */
 describe('mon bail', () => {
   it('montre au locataire son loyer et sa caution', async () => {
-    renderApp('/demo')
+    await renderApp('/demo')
     await attendreLeChargement()
     await switchRole('tenant')
     await attendreLeChargement()
@@ -27,7 +27,7 @@ describe('mon bail', () => {
      * s'émettent que depuis l'écran des paiements, réservé à la gestion. Il
      * devait les réclamer — précisément la démarche que ce produit supprime.
      */
-    renderApp('/demo')
+    await renderApp('/demo')
     await attendreLeChargement()
     await switchRole('tenant')
     await attendreLeChargement()
@@ -39,7 +39,7 @@ describe('mon bail', () => {
   })
 
   it('ne les montre pas au bailleur, qui voit le parc entier', async () => {
-    renderApp('/demo')
+    await renderApp('/demo')
     await attendreLeChargement()
 
     /**

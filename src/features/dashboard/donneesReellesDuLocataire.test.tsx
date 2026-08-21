@@ -91,7 +91,7 @@ function serveurAvecBail(leaseCharges: EcheanceApi[] = []) {
 
 async function ouvrir(route: string, leaseCharges: EcheanceApi[] = []) {
   serveurAvecBail(leaseCharges)
-  renderApp(route, { session: sessionLocataire() })
+  await renderApp(route, { session: sessionLocataire() })
   await attendreLeChargement()
 }
 

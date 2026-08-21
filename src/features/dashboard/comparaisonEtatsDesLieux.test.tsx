@@ -38,7 +38,7 @@ const carte = (label: string) =>
     .closest<HTMLElement>('[role="listitem"]')!
 
 async function ouvrir() {
-  renderApp('/demo/etats-des-lieux')
+  await renderApp('/demo/etats-des-lieux')
   await attendreLeChargement()
 }
 
@@ -236,7 +236,7 @@ describe('comparaison — sans détail servi', () => {
       },
     })
 
-    renderApp('/app/etats-des-lieux', { session: sessionProprietaire() })
+    await renderApp('/app/etats-des-lieux', { session: sessionProprietaire() })
     await attendreLeChargement()
 
     expect(screen.queryByRole('table', { name: 'Comparaison entrée / sortie' })).toBeNull()
@@ -338,7 +338,7 @@ describe('comparaison — un coût porté par une entrée', () => {
       },
     })
 
-    renderApp('/app/etats-des-lieux', {
+    await renderApp('/app/etats-des-lieux', {
       session: {
         statut: 'connecte',
         compte: COMPTE_FICTIF,

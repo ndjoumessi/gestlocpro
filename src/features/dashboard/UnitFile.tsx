@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom'
-import { PageHeader } from '@/components/layout/AppShell'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { lien, useBase } from '@/lib/base'
 import { Button } from '@/components/primitives/Button'
 import { Card, CardHeader } from '@/components/primitives/Card'

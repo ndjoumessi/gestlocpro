@@ -124,7 +124,7 @@ function serveurAvecReleves(readingHistory: RelevéApi[] | null) {
 
 async function ouvrir(readingHistory: RelevéApi[] | null) {
   serveurAvecReleves(readingHistory)
-  renderApp('/app/mon-espace', { session: sessionLocataire() })
+  await renderApp('/app/mon-espace', { session: sessionLocataire() })
   await attendreLeChargement()
 }
 

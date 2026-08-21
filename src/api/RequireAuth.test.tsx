@@ -12,7 +12,7 @@ import { COMPTE_FICTIF, installerFauxServeur } from '@/test/api'
  */
 describe('accès aux écrans applicatifs', () => {
   it('renvoie un visiteur vers la connexion', async () => {
-    renderApp('/app', { session: SESSION_ANONYME })
+    await renderApp('/app', { session: SESSION_ANONYME })
 
     expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(
       /content de vous revoir/i,
@@ -23,14 +23,14 @@ describe('accès aux écrans applicatifs', () => {
   })
 
   it('protège aussi les écrans profonds', async () => {
-    renderApp('/app/cautions', { session: SESSION_ANONYME })
+    await renderApp('/app/cautions', { session: SESSION_ANONYME })
     expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(
       /content de vous revoir/i,
     )
   })
 
-  it('laisse passer un compte connecté', () => {
-    renderApp('/app')
+  it('laisse passer un compte connecté', async () => {
+    await renderApp('/app')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/vue consolidée/i)
   })
 
@@ -54,7 +54,7 @@ describe('accès aux écrans applicatifs', () => {
     })
 
     // `session: undefined` force le provider à interroger le serveur.
-    renderApp('/app', { session: { statut: 'inconnu' } })
+    await renderApp('/app', { session: { statut: 'inconnu' } })
 
     // Pendant l'attente : ni l'écran, ni la connexion — une attente annoncée.
     expect(screen.getByText(/chargement/i)).toBeInTheDocument()
@@ -71,7 +71,7 @@ describe('retour à l’adresse demandée', () => {
     serveur.quand('POST', '/auth/login', { status: 200, body: { user: COMPTE_FICTIF } })
 
     const user = userEvent.setup()
-    renderApp('/app/cautions', { session: SESSION_ANONYME })
+    await renderApp('/app/cautions', { session: SESSION_ANONYME })
     await screen.findByRole('heading', { name: /content de vous revoir/i })
 
     serveur.quand('GET', '/auth/me', {
@@ -104,7 +104,7 @@ describe('retour à l’adresse demandée', () => {
     })
 
     const user = userEvent.setup()
-    renderApp('/connexion', { session: SESSION_ANONYME, state: { from: 'https://mechant.example' } })
+    await renderApp('/connexion', { session: SESSION_ANONYME, state: { from: 'https://mechant.example' } })
 
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'sarah@example.com')
     await user.type(screen.getByLabelText(/^Mot de passe/), 'un-mot-de-passe-assez-long')

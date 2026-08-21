@@ -20,7 +20,7 @@ import type { EtatSession } from '@/api/SessionProvider'
  */
 
 async function ouvrirEnLocataire(route: string) {
-  renderApp(route)
+  await renderApp(route)
   await switchRole('tenant')
   await attendreLeChargement()
 }
@@ -93,7 +93,7 @@ describe('le locataire demande une pièce', () => {
 describe('le gestionnaire répond aux demandes', () => {
   async function ouvrirLesLocataires() {
     const user = userEvent.setup()
-    renderApp('/demo/locataires')
+    await renderApp('/demo/locataires')
     await attendreLeChargement()
     return user
   }
@@ -212,7 +212,7 @@ describe('demandes de documents — le gestionnaire sur un vrai parc', () => {
       },
     })
 
-    renderApp('/app/locataires', { session: sessionProprietaire() })
+    await renderApp('/app/locataires', { session: sessionProprietaire() })
     await attendreLeChargement()
 
     // Aucune demande dans la réponse : pas de carte, et surtout aucune trace du

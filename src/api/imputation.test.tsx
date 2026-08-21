@@ -78,7 +78,7 @@ async function ouvrirArbitrage() {
 describe('imputation sur la caution', () => {
   it('propose le total des réserves de sortie', async () => {
     parc(38000)
-    renderApp('/app/cautions', { session: SESSION })
+    await renderApp('/app/cautions', { session: SESSION })
     await ouvrirArbitrage()
 
     // Le chiffre relevé à l'état des lieux, sans ressaisie.
@@ -87,7 +87,7 @@ describe('imputation sur la caution', () => {
 
   it('ne propose rien quand aucune sortie n’a été chiffrée', async () => {
     parc(0)
-    renderApp('/app/cautions', { session: SESSION })
+    await renderApp('/app/cautions', { session: SESSION })
     await ouvrirArbitrage()
 
     // Zéro pré-rempli serait une retenue proposée sans pièce pour la défendre.
@@ -96,7 +96,7 @@ describe('imputation sur la caution', () => {
 
   it('laisse le propriétaire trancher autrement', async () => {
     parc(38000)
-    renderApp('/app/cautions', { session: SESSION })
+    await renderApp('/app/cautions', { session: SESSION })
     const user = await ouvrirArbitrage()
 
     /**

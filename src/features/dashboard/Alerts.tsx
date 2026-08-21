@@ -1,4 +1,5 @@
-import { PageHeader, useRole } from '@/components/layout/AppShell'
+import { useRole } from '@/components/layout/AppShell'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { lien, useBase } from '@/lib/base'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { Card } from '@/components/primitives/Card'

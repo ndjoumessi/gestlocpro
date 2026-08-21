@@ -27,7 +27,7 @@ const ouvrir = () => screen.getByRole('button', { name: 'Ouvrir le menu' })
 describe('menu mobile de la vitrine', () => {
   it('retire l’arrière-plan du parcours de tabulation, sans toucher à l’en-tête', async () => {
     const user = userEvent.setup()
-    renderApp('/')
+    await renderApp('/')
 
     expect(screen.getByRole('main')).not.toHaveAttribute('inert')
 
@@ -46,7 +46,7 @@ describe('menu mobile de la vitrine', () => {
 
   it('prend le focus à l’ouverture', async () => {
     const user = userEvent.setup()
-    renderApp('/')
+    await renderApp('/')
 
     await user.click(ouvrir())
     expect(screen.getByTestId('menu-mobile')).toHaveFocus()
@@ -69,7 +69,7 @@ describe('menu mobile de la vitrine', () => {
   */
   it('porte les trois réglages, et la barre ne les porte plus', async () => {
     const user = userEvent.setup()
-    renderApp('/')
+    await renderApp('/')
 
     const declencheur = ouvrir()
     const barre = declencheur.closest('header') as HTMLElement
@@ -98,7 +98,7 @@ describe('menu mobile de la vitrine', () => {
 
   it('rend le focus au bouton d’ouverture à la fermeture', async () => {
     const user = userEvent.setup()
-    renderApp('/')
+    await renderApp('/')
 
     const declencheur = ouvrir()
     await user.click(declencheur)

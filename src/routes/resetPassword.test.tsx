@@ -37,22 +37,22 @@ describe('jeton de réinitialisation', () => {
     ['/reinitialiser', 'absent'],
     ['/reinitialiser?jeton=', 'vide'],
     ['/reinitialiser?jeton=court', 'trop court'],
-  ])('%s → écran « lien expiré » (%s)', (route) => {
-    renderApp(route)
+  ])('%s → écran « lien expiré » (%s)', async (route) => {
+    await renderApp(route)
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Ce lien n’est plus valable')
     expect(screen.queryByLabelText(/nouveau mot de passe/i)).not.toBeInTheDocument()
   })
 
-  it('propose d’en redemander un', () => {
-    renderApp('/reinitialiser')
+  it('propose d’en redemander un', async () => {
+    await renderApp('/reinitialiser')
     expect(screen.getByRole('link', { name: /demander un nouveau lien/i })).toHaveAttribute(
       'href',
       '/mot-de-passe-oublie',
     )
   })
 
-  it('ouvre le formulaire pour un jeton de la forme que le serveur émet', () => {
-    renderApp(AVEC_JETON)
+  it('ouvre le formulaire pour un jeton de la forme que le serveur émet', async () => {
+    await renderApp(AVEC_JETON)
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
       'Choisissez un nouveau mot de passe',
     )
@@ -62,7 +62,7 @@ describe('jeton de réinitialisation', () => {
 describe('formulaire de réinitialisation', () => {
   it('refuse un mot de passe trop court', async () => {
     const user = userEvent.setup()
-    renderApp(AVEC_JETON)
+    await renderApp(AVEC_JETON)
 
     await user.type(screen.getByLabelText(/^Nouveau mot de passe/), 'court')
     await user.type(screen.getByLabelText(/^Confirmez/), 'court')
@@ -73,7 +73,7 @@ describe('formulaire de réinitialisation', () => {
 
   it('refuse deux saisies différentes', async () => {
     const user = userEvent.setup()
-    renderApp(AVEC_JETON)
+    await renderApp(AVEC_JETON)
 
     await user.type(screen.getByLabelText(/^Nouveau mot de passe/), 'Bonamoussadi2026!')
     await user.type(screen.getByLabelText(/^Confirmez/), 'Bonamoussadi2026')
@@ -84,7 +84,7 @@ describe('formulaire de réinitialisation', () => {
 
   it('place le focus sur le premier champ fautif', async () => {
     const user = userEvent.setup()
-    renderApp(AVEC_JETON)
+    await renderApp(AVEC_JETON)
 
     await user.click(screen.getByRole('button', { name: /enregistrer le mot de passe/i }))
     expect(screen.getByLabelText(/^Nouveau mot de passe/)).toHaveFocus()
@@ -92,7 +92,7 @@ describe('formulaire de réinitialisation', () => {
 
   it('confirme et renvoie vers la connexion', async () => {
     const user = userEvent.setup()
-    renderApp(AVEC_JETON)
+    await renderApp(AVEC_JETON)
 
     await user.type(screen.getByLabelText(/^Nouveau mot de passe/), 'Bonamoussadi2026!')
     await user.type(screen.getByLabelText(/^Confirmez/), 'Bonamoussadi2026!')
@@ -106,7 +106,7 @@ describe('formulaire de réinitialisation', () => {
 
   it('annonce que les autres sessions sont déconnectées', async () => {
     const user = userEvent.setup()
-    renderApp(AVEC_JETON)
+    await renderApp(AVEC_JETON)
 
     await user.type(screen.getByLabelText(/^Nouveau mot de passe/), 'Bonamoussadi2026!')
     await user.type(screen.getByLabelText(/^Confirmez/), 'Bonamoussadi2026!')
@@ -133,7 +133,7 @@ describe('ce que le serveur décide', () => {
      * toutes lettres pour que sa réapparition, sous quelque forme que ce soit,
      * fasse rougir quelque chose.
      */
-    renderApp(AVEC_JETON)
+    await renderApp(AVEC_JETON)
     expect(screen.queryByText(/pas encore branché/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /enregistrer le mot de passe/i })).toBeInTheDocument()
   })
@@ -144,7 +144,7 @@ describe('ce que le serveur décide', () => {
     // d'avoir demandé — c'est précisément pourquoi il ne juge plus la forme.
     serveur.quand('POST', '/auth/reset', { status: 400, body: { error: 'reset_invalid' } })
     const user = userEvent.setup()
-    renderApp(AVEC_JETON)
+    await renderApp(AVEC_JETON)
 
     await user.type(screen.getByLabelText(/^Nouveau mot de passe/), 'Bonamoussadi2026!')
     await user.type(screen.getByLabelText(/^Confirmez/), 'Bonamoussadi2026!')
@@ -156,7 +156,7 @@ describe('ce que le serveur décide', () => {
 
   it('envoie le jeton de l’URL et le mot de passe choisi', async () => {
     const user = userEvent.setup()
-    renderApp(AVEC_JETON)
+    await renderApp(AVEC_JETON)
 
     await user.type(screen.getByLabelText(/^Nouveau mot de passe/), 'Bonamoussadi2026!')
     await user.type(screen.getByLabelText(/^Confirmez/), 'Bonamoussadi2026!')
@@ -173,7 +173,7 @@ describe('ce que le serveur décide', () => {
 describe('la demande de lien', () => {
   it('part vraiment, et l’écran ne bascule qu’ensuite', async () => {
     const user = userEvent.setup()
-    renderApp('/mot-de-passe-oublie')
+    await renderApp('/mot-de-passe-oublie')
 
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'sarah@example.com')
     await user.click(screen.getByRole('button', { name: /envoyer le lien/i }))
@@ -189,7 +189,7 @@ describe('la demande de lien', () => {
   it('ne prétend rien quand la demande ne part pas', async () => {
     serveur.quand('POST', '/auth/forgot', { status: 500, body: { error: 'internal_error' } })
     const user = userEvent.setup()
-    renderApp('/mot-de-passe-oublie')
+    await renderApp('/mot-de-passe-oublie')
 
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'sarah@example.com')
     await user.click(screen.getByRole('button', { name: /envoyer le lien/i }))

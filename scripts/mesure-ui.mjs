@@ -12,20 +12,25 @@
  *
  * Ce fichier ouvre donc un VRAI navigateur sur le VRAI paquet construit.
  *
- * SUJET DE CETTE GARDE : ce que la page fait VRAIMENT une fois peinte.
+ * SUJET DE CETTE GARDE : ce que la page fait VRAIMENT une fois peinte —
+ * et, depuis ce lot, ce qu'elle a dû FAIRE ARRIVER pour en arriver là.
  *
- * Six règles. Les trois premières regardent l'USAGE — les réglages restent
- * atteignables au clavier, aucun texte ne passe sous le seuil WCAG AA, aucune
- * cible ne se touche sous 44 px. Les trois suivantes regardent la MISE EN PAGE,
- * du signal le plus tôt au symptôme le plus tard — la barre de la vitrine garde
- * du jeu, aucune rangée d'en-tête ne se replie là où la place existe, aucun
- * écran ne défile latéralement.
+ * Sept règles. La première regarde le RÉSEAU, avant même qu'un navigateur ne
+ * s'ouvre : le premier chargement de la vitrine tient sous un budget d'octets
+ * compressés, motivé et mesuré dans `mesurerPremierChargement`. Les trois
+ * suivantes regardent l'USAGE — les réglages restent atteignables au clavier,
+ * aucun texte ne passe sous le seuil WCAG AA, aucune cible ne se touche sous
+ * 44 px. Les trois dernières regardent la MISE EN PAGE, du signal le plus tôt
+ * au symptôme le plus tard — la barre de la vitrine garde du jeu, aucune
+ * rangée d'en-tête ne se replie là où la place existe, aucun écran ne défile
+ * latéralement.
  *
  * L'ordre est celui-là parce qu'une mesure de boîtes ne voit rien des trois
- * premières : une commande retirée fait de la place, un texte illisible occupe
+ * du milieu : une commande retirée fait de la place, un texte illisible occupe
  * la même boîte, et une cible se touche par autre chose que sa boîte — un
  * `::after` étendu la triple, un recouvrement l'annule. Une page parfaitement
- * rangée peut être inutilisable.
+ * rangée peut être inutilisable — et, désormais, jamais téléchargée par qui
+ * n'en avait pas besoin peut coûter plus cher qu'elle ne le devrait.
  *
  * PIÈGES HONORÉS — chacun a été payé une fois :
  *
@@ -60,6 +65,7 @@ import { spawn } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { gzipSync } from 'node:zlib'
 import { chromium } from 'playwright'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -88,21 +94,37 @@ const LARGEURS = [320, 360, 375, 414, 700, 768, 800, 900, 1024, 1280, 1440]
 const LANGUES = ['en-US', 'fr-FR']
 
 /**
- * Les adresses sont LUES dans `App.tsx`, jamais recopiées.
+ * Les adresses sont LUES dans DEUX fichiers, jamais recopiées.
  *
  * Une liste recopiée se périme en silence : `appariements.test.ts` a surveillé
  * pendant des lots trois jetons de couleur que le graphe n'employait plus.
  * Ici, un écran neuf est mesuré le jour où sa route est écrite.
+ *
+ * DEUX FICHIERS, ET NON PLUS UN SEUL, depuis que la vitrine et l'application
+ * ont cessé de partager un paquet. `src/App.tsx` ne monte plus `paiements`,
+ * `parc` ou les quatorze autres écrans de gestion : il monte `/app/*` et
+ * `/demo/*`, deux frontières paresseuses dont le détail vit dans
+ * `src/app/EspaceApplicatif.tsx`. Ne lire que le premier ferait tomber le
+ * compte de 23 à 8 — un silence que la garde du garde, plus bas, est justement
+ * là pour crier au lieu de laisser passer.
  */
 function adressesDeLApplication() {
-  const source = readFileSync(join(RACINE, 'src/App.tsx'), 'utf8')
-  const chemins = [...source.matchAll(/<Route\s+path="([^"]+)"/g)].map((m) => m[1])
+  const extraireChemins = (relatif) =>
+    [...readFileSync(join(RACINE, relatif), 'utf8').matchAll(/<Route\s+path="([^"]+)"/g)].map((m) => m[1])
 
-  const publiques = chemins.filter((c) => c.startsWith('/') && !c.includes(':') && c !== '*')
+  const cheminsPublics = extraireChemins('src/App.tsx')
+  // `/app/*` et `/demo/*` : la syntaxe qu'exige une frontière paresseuse
+  // (« routes descendantes » de React Router) et non des adresses qu'on
+  // visite telles quelles — `/app` et `/demo` sont ajoutés plus bas, à la
+  // main, pour la même raison que l'écran 404 l'est : ce sont eux qu'un
+  // navigateur atteint réellement.
+  const publiques = cheminsPublics.filter(
+    (c) => c.startsWith('/') && !c.includes(':') && c !== '*' && !c.endsWith('/*'),
+  )
   // Les écrans de l'application sont montés sous deux adresses ; `/demo` est
   // celle qui sert un parc complet sans authentification, donc la seule
   // mesurable ici. `index` n'apparaît pas comme `path` : c'est `/demo` nu.
-  const internes = chemins
+  const internes = extraireChemins('src/app/EspaceApplicatif.tsx')
     .filter((c) => !c.startsWith('/') && !c.includes(':') && c !== '*')
     .map((c) => `/demo/${c}`)
 
@@ -140,7 +162,7 @@ function adressesDeLApplication() {
   const ADRESSE_404 = '/adresse-qui-n-existe-pas'
 
   const adresses = [
-    ...new Set([...publiques.filter((c) => c !== '/demo'), '/demo', ...internes, ADRESSE_404]),
+    ...new Set([...publiques, '/app', '/demo', ...internes, ADRESSE_404]),
   ].filter((c) => !HORS_PRODUIT.includes(c))
 
   /*
@@ -758,6 +780,116 @@ async function servir() {
   throw new Error(`mesure-ui : le serveur de prévisualisation n'a pas répondu sur ${BASE}`)
 }
 
+/**
+ * LE BUDGET DU PREMIER CHARGEMENT — ce qu'un prospect télécharge avant de lire
+ * la première phrase de vente.
+ *
+ * SUJET DIFFÉRENT des six règles plus bas, et c'est pour cela qu'il est
+ * mesuré à PART : elles regardent ce qu'une page affiche une fois peinte,
+ * celui-ci regarde ce qui a dû ARRIVER par le réseau pour qu'elle le soit.
+ * Marché visé : Afrique de l'Ouest, réseau mobile, appareils d'entrée de
+ * gamme — l'octet compte plus ici qu'un plancher de contraste ne le laisse
+ * deviner.
+ *
+ * MESURÉ avant ce lot : un seul paquet, 176 Ko compressés de JavaScript, pour
+ * TOUTE adresse. `vite build` le disait déjà à chaque passage
+ * (« chunks larger than 500 kB ») et rien n'écoutait, parce qu'un avertissement
+ * qui ne fait pas rougir n'est pas une garde.
+ *
+ * `React.lazy` (voir `src/App.tsx`) scinde désormais la vitrine — `/`,
+ * `/connexion`, `/inscription`, `/mot-de-passe-oublie`, `/reinitialiser` — de
+ * l'espace applicatif — tout ce qui vit sous `/app` et `/demo`. UNE frontière,
+ * pas vingt : un gestionnaire qui passe d'un écran de gestion à l'autre ne la
+ * retraverse jamais, et un découpage par écran lui aurait fait payer un
+ * aller-retour réseau à chaque clic dans la barre latérale pour économiser un
+ * octet qu'un visiteur de la vitrine ne télécharge de toute façon jamais.
+ *
+ * `PortfolioProvider` a suivi l'espace applicatif et non la vitrine, alors que
+ * rien ne l'imposait par la seule forme des routes : mesuré, il pèse À LUI
+ * SEUL 70 Ko compressés, plus que les vingt écrans de gestion réunis (39 Ko),
+ * et `usePortfolio` n'a AUCUN consommateur public. Le laisser envelopper
+ * `<App/>` dans `main.tsx`, comme avant ce lot, aurait rendu le découpage des
+ * routes presque cosmétique : la vitrine aurait continué de le télécharger en
+ * entier.
+ *
+ * CE QUI RESTE DANS LA VITRINE ET N'A PAS BOUGÉ, mesuré et volontairement hors
+ * du champ de ce lot : le dictionnaire de traduction (`src/i18n/fr.ts` +
+ * `en.ts`), 34 Ko compressés à lui seul, chargé pour les deux langues à la
+ * fois parce qu'`I18nProvider` l'importe tel quel. Le scinder par écran est un
+ * AUTRE sujet, avec ses propres risques — la forme de `useT()`, l'hypothèse
+ * qu'une clé existe toujours, `scripts/check-i18n.mjs` — et UN LOT reste UN
+ * SUJET.
+ */
+function mesurerPremierChargement() {
+  const html = readFileSync(join(RACINE, 'dist/index.html'), 'utf8')
+
+  /*
+    LES ACTIFS SE LISENT DANS `index.html`, jamais recopiés par leur nom.
+
+    Un nom de fichier construit porte un hachage de contenu — `index-C9xSCgIn.js`
+    — qui change à chaque build. Le lire ailleurs que dans le HTML que Vite
+    vient d'écrire se périmerait au build suivant. `index.html` liste
+    exactement, et seulement, ce qu'un navigateur télécharge SANS ATTENDRE :
+    le `<script type="module">` d'entrée et sa feuille de style. Le paquet
+    paresseux n'y figure PAS — c'est tout le sujet de ce lot — donc le lire
+    ainsi mesure le premier chargement par construction, sans avoir à savoir
+    quel fichier est « le bon ».
+  */
+  const scripts = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map((m) => m[1])
+  const styles = [...html.matchAll(/<link[^>]+rel="stylesheet"[^>]+href="([^"]+)"/g)].map((m) => m[1])
+
+  // Locaux seulement : la police Google Fonts est un lien externe, déjà
+  // mesurée et tranchée ailleurs — `index.html` porte l'argumentaire complet
+  // de ce choix. Ce budget porte sur ce que CE dépôt construit et sert.
+  const locaux = [...scripts, ...styles].filter((href) => href.startsWith('/'))
+
+  const detail = locaux.map((href) => {
+    const octets = gzipSync(readFileSync(join(RACINE, 'dist', href.replace(/^\//, '')))).length
+    return { href, octets }
+  })
+  return { octets: detail.reduce((a, d) => a + d.octets, 0), detail }
+}
+
+/**
+ * Le plafond, motivé par la mesure ci-dessus : 145 179 o compressés une fois
+ * ce lot posé (133 160 de JavaScript, 12 019 de CSS).
+ *
+ * `148 000` LAISSE 2 821 o DE MARGE, et pas davantage — c'est un choix, pas un
+ * oubli. Réimporter EN STATIQUE un seul écran de gestion dans `App.tsx`
+ * (`Portfolio.tsx`, mesuré : +4 573 o) suffit à le dépasser ; c'est le point.
+ * La régression que ce lot corrige n'est pas « vingt écrans de trop », c'est
+ * « un seul oublié dans le mauvais fichier », et c'est celle-là que le budget
+ * doit attraper.
+ *
+ * LA CONTREPARTIE, ÉCRITE : une marge de moins de 3 Ko va se dépasser vite —
+ * une phrase de plus dans la vitrine, une nouvelle route publique — et il
+ * faudra alors RELEVER ce nombre. Le relever est légitime ; le relever SANS
+ * REMESURER ne l'est pas. Un budget qu'on pousse au premier rouge sans
+ * réfléchir ne garde plus rien, comme le rappelle déjà `JEU_MINIMAL` plus
+ * bas : la hausse se motive ici, avec un chiffre à jour et la raison de la
+ * croissance — jamais par confort.
+ */
+const BUDGET_PREMIER_CHARGEMENT = 148_000
+
+/*
+  GARDE DU GARDE : un budget hors de toute plage plausible ne défend rien.
+
+  À zéro ou en dessous, la porte rougirait sur CHAQUE build, y compris un
+  premier chargement vide — elle cesserait de distinguer un dépassement d'une
+  absence de mesure. Au-delà d'un mégaoctet, elle ne rougirait plus JAMAIS :
+  le premier chargement entier de ce dépôt, vitrine ET application réunies,
+  ne l'atteint pas avant ce lot (176 Ko). La même asymétrie que pour
+  `JEU_MINIMAL` : un seuil trop haut se corrige de lui-même en restant
+  muet, c'est le silence qu'on interdit ici.
+*/
+if (BUDGET_PREMIER_CHARGEMENT <= 0 || BUDGET_PREMIER_CHARGEMENT > 1_000_000) {
+  console.error(
+    `\n✗ mesure-ui : le budget du premier chargement vaut ${BUDGET_PREMIER_CHARGEMENT} o.\n` +
+      "   Hors de [1, 1 000 000], il ne peut plus jouer son rôle de plafond.\n",
+  )
+  process.exit(1)
+}
+
 const adresses = adressesDeLApplication()
 
 /*
@@ -768,6 +900,45 @@ const adresses = adressesDeLApplication()
 const AUDIT_CONTRASTE = readFileSync(join(RACINE, 'scripts/contrast-audit.js'), 'utf8')
 
 await construire()
+
+/*
+  MESURÉ TOUT DE SUITE APRÈS LE BUILD, avant même de lancer un serveur ou un
+  navigateur — cette règle n'a besoin ni de l'un ni de l'autre. Un dépassement
+  ici dit « le mauvais code est déjà arrivé sur le disque », ce qui vaut la
+  peine de le savoir avant de passer huit minutes à ouvrir vingt-trois écrans.
+*/
+const premierChargement = mesurerPremierChargement()
+
+/*
+  VÉRIFIÉ ICI, PAS PLUS BAS — c'est ce qui rend vraie la phrase juste
+  au-dessus : « inutile de passer huit minutes ». Calculer `premierChargement`
+  puis vérifier son seuil seulement dans le rapport final, après le balayage
+  complet des vingt-trois écrans, aurait mesuré tôt et échoué tard — la même
+  panne, en somme, que celle que ce fichier reproche à `contrast-audit.js`
+  d'avoir vécue avant d'être lancé : une mesure qui existe ne sert à rien tant
+  que rien ne la LIT au bon moment.
+*/
+if (premierChargement.detail.length === 0) {
+  console.error(
+    `\n✗ mesure-ui : aucun actif du premier chargement trouvé dans dist/index.html.\n` +
+      "   La lecture ne regarde plus rien — ce n'est pas une absence de défaut.\n",
+  )
+  process.exit(1)
+}
+
+if (premierChargement.octets > BUDGET_PREMIER_CHARGEMENT) {
+  console.error(
+    `\n✗ mesure-ui : premier chargement de la vitrine à ${premierChargement.octets} o compressés, ` +
+      `au-delà du budget de ${BUDGET_PREMIER_CHARGEMENT} o.\n`,
+  )
+  for (const d of premierChargement.detail) console.error(`   ${d.octets} o  ${d.href}`)
+  console.error(
+    "\n   Un module de l'espace applicatif s'est réimporté dans la vitrine — " +
+      'voir `src/App.tsx` et `src/app/EspaceApplicatif.tsx`.\n',
+  )
+  process.exit(1)
+}
+
 const serveur = await servir()
 const echecs = []
 const reproches = []
@@ -1244,6 +1415,7 @@ if (echecs.length > 0) {
 
 console.log(
   `\n✓ mesure-ui : ${adresses.length} écrans × ${LARGEURS.length} largeurs × ${LANGUES.length} langues, aucun débordement latéral ni en-tête replié.\n` +
+    `  Premier chargement de la vitrine : ${premierChargement.octets} o compressés, sous le budget de ${BUDGET_PREMIER_CHARGEMENT} o.\n` +
     `  ${rangeesMesurees} mesures de la barre de la vitrine, toutes au-dessus de ${JEU_MINIMAL} px de jeu ; réglages atteints au clavier à 1440 px dans les deux langues.\n` +
     `  ${textesAudites} textes audités en contraste (${THEMES.join(' + ')}, ${LARGEURS_CONTRASTE.join(' et ')} px), aucun sous le seuil WCAG AA.\n` +
     `  ${ciblesSondees} cibles sondées au point de contact, aucune sous ${PLANCHER_CIBLE} px hors les ${Object.keys(CIBLES_EXEMPTES).length} exemptions motivées.`,

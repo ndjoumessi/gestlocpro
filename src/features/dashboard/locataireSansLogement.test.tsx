@@ -38,7 +38,7 @@ describe('locataire sans logement', () => {
       },
     })
 
-    renderApp('/app', { session: SESSION })
+    await renderApp('/app', { session: SESSION })
 
     expect(await screen.findByText(/aucun logement rattaché/i)).toBeInTheDocument()
     // Et la marche à suivre : l'étape manquante appartient au bailleur.

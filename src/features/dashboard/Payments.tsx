@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { PageHeader, useRole } from '@/components/layout/AppShell'
+import { useRole } from '@/components/layout/AppShell'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { DataTable, EmptyState } from '@/components/primitives/DataTable'
 import { PaymentStatusPill, type PaymentStatus } from '@/components/primitives/StatusPill'
 import { StatCard } from '@/components/primitives/Charts'

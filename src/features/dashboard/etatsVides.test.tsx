@@ -82,7 +82,7 @@ function parcSansRien() {
 describe('les travaux, quand il n’y en a aucun', () => {
   it('dit au bailleur d’où viennent les interventions, dans SES termes', async () => {
     parcSansRien()
-    renderApp('/app/travaux', { session: SESSION_PROPRIETAIRE })
+    await renderApp('/app/travaux', { session: SESSION_PROPRIETAIRE })
 
     expect(await screen.findByText(/aucune intervention sur le parc/i)).toBeInTheDocument()
     // Le corps nomme les DEUX origines au lieu de paraphraser le titre. Il n'en
@@ -119,7 +119,7 @@ describe('les travaux, quand il n’y en a aucun', () => {
    */
   it('offre le geste au bailleur, une fois la fonction construite', async () => {
     parcSansRien()
-    renderApp('/app/travaux', { session: SESSION_PROPRIETAIRE })
+    await renderApp('/app/travaux', { session: SESSION_PROPRIETAIRE })
 
     await screen.findByText(/aucune intervention sur le parc/i)
     // Dans l'état vide ET dans l'en-tête : c'est précisément le parc où le
@@ -129,7 +129,7 @@ describe('les travaux, quand il n’y en a aucun', () => {
 
   it('ne l’offre pas au locataire, qui signale mais n’ouvre pas', async () => {
     parcSansRien()
-    renderApp('/app/travaux', { session: SESSION_LOCATAIRE })
+    await renderApp('/app/travaux', { session: SESSION_LOCATAIRE })
 
     await screen.findByText(/aucune intervention/i)
     expect(screen.queryByRole('button', { name: /ouvrir un chantier/i })).toBeNull()
@@ -139,7 +139,7 @@ describe('les travaux, quand il n’y en a aucun', () => {
     parcSansRien()
     // L'adhésion de cette session dit déjà « locataire » : le rôle en découle,
     // il n'y a plus rien à basculer.
-    renderApp('/app/travaux', { session: SESSION_LOCATAIRE })
+    await renderApp('/app/travaux', { session: SESSION_LOCATAIRE })
 
     expect(await screen.findByText(/aucune intervention en cours/i)).toBeInTheDocument()
     expect(screen.getByText(/dès que votre gestionnaire enregistre/i)).toBeInTheDocument()
@@ -152,7 +152,7 @@ describe('les travaux, quand il n’y en a aucun', () => {
 describe('les notifications, quand il n’y en a aucune', () => {
   it('énumère au bailleur ce que le produit dépose ici', async () => {
     parcSansRien()
-    renderApp('/app/signalements', { session: SESSION_PROPRIETAIRE })
+    await renderApp('/app/signalements', { session: SESSION_PROPRIETAIRE })
 
     expect(await screen.findByText(/rien à signaler sur le parc/i)).toBeInTheDocument()
     expect(screen.getByText(/loyers en retard.*devis à arbitrer/i)).toBeInTheDocument()
@@ -162,7 +162,7 @@ describe('les notifications, quand il n’y en a aucune', () => {
 describe('les états des lieux, quand il n’y en a aucun', () => {
   it('explique à quoi ils servent plutôt que de répéter qu’il n’y en a pas', async () => {
     parcSansRien()
-    renderApp('/app/etats-des-lieux', { session: SESSION_PROPRIETAIRE })
+    await renderApp('/app/etats-des-lieux', { session: SESSION_PROPRIETAIRE })
 
     expect(await screen.findByText(/aucun état des lieux enregistré$/i)).toBeInTheDocument()
     expect(screen.getByText(/c’est leur comparaison qui justifie/i)).toBeInTheDocument()
@@ -181,7 +181,7 @@ describe('les états des lieux, quand il n’y en a aucun', () => {
    */
   it('offre le geste au bailleur, une fois la fonction construite', async () => {
     parcSansRien()
-    renderApp('/app/etats-des-lieux', { session: SESSION_PROPRIETAIRE })
+    await renderApp('/app/etats-des-lieux', { session: SESSION_PROPRIETAIRE })
 
     await screen.findByText(/aucun état des lieux enregistré$/i)
     expect(screen.getByRole('button', { name: /établir un état des lieux/i })).toBeInTheDocument()
@@ -189,7 +189,7 @@ describe('les états des lieux, quand il n’y en a aucun', () => {
 
   it('ne l’offre pas au locataire, qui signe mais n’établit pas', async () => {
     parcSansRien()
-    renderApp('/app/etats-des-lieux', { session: SESSION_LOCATAIRE })
+    await renderApp('/app/etats-des-lieux', { session: SESSION_LOCATAIRE })
 
     await screen.findByText(/aucun état des lieux/i)
     expect(screen.queryByRole('button', { name: /établir un état des lieux/i })).toBeNull()
@@ -207,7 +207,7 @@ describe('les cautions, quand il n’y en a aucune', () => {
      * Le corps répond à la question réelle, « où est-ce que ça se saisit ? ».
      */
     parcSansRien()
-    renderApp('/app/cautions', { session: SESSION_PROPRIETAIRE })
+    await renderApp('/app/cautions', { session: SESSION_PROPRIETAIRE })
 
     expect(await screen.findByText(/aucune caution consignée/i)).toBeInTheDocument()
     expect(screen.getByText(/création de la fiche locataire/i)).toBeInTheDocument()
@@ -233,7 +233,7 @@ describe('les cautions, quand il n’y en a aucune', () => {
    */
   it('dit à l’échéancier qu’il n’a rien à appeler', async () => {
     parcSansRien()
-    renderApp('/app', { session: SESSION_PROPRIETAIRE })
+    await renderApp('/app', { session: SESSION_PROPRIETAIRE })
 
     expect(await screen.findByText('Aucune échéance en attente')).toBeInTheDocument()
     // Et il dit COMMENT la liste se remplira : sans cela, un compte neuf croit

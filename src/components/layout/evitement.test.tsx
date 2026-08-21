@@ -31,8 +31,8 @@ beforeEach(() => {
 })
 
 describe('lien d’évitement de l’application', () => {
-  it('vise le contenu principal', () => {
-    renderApp('/app')
+  it('vise le contenu principal', async () => {
+    await renderApp('/app')
 
     const lien = screen.getByRole('link', { name: 'Aller au contenu' })
     expect(lien).toHaveAttribute('href', '#main')
@@ -41,7 +41,7 @@ describe('lien d’évitement de l’application', () => {
 
   it('est la toute première tabulation, avant la navigation', async () => {
     const user = userEvent.setup()
-    renderApp('/app')
+    await renderApp('/app')
 
     await user.tab()
     expect(screen.getByRole('link', { name: 'Aller au contenu' })).toHaveFocus()
@@ -60,12 +60,12 @@ describe('lien d’évitement de l’application', () => {
    * CHANGE. C'est la seule chose qu'une chaîne en dur ne sait pas faire.
    */
   it('dit son libellé dans la langue de l’utilisateur', async () => {
-    renderApp('/app', { locale: 'fr' })
+    await renderApp('/app', { locale: 'fr' })
     const enFrancais = screen.getByRole('link', { name: /aller au contenu/i })
     expect(enFrancais).toBeInTheDocument()
 
     cleanup()
-    renderApp('/app', { locale: 'en' })
+    await renderApp('/app', { locale: 'en' })
     expect(screen.queryByRole('link', { name: /aller au contenu/i })).toBeNull()
     expect(screen.getByRole('link', { name: /skip to content/i })).toBeInTheDocument()
   })

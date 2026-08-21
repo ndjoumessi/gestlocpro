@@ -85,7 +85,7 @@ const bouton = (nom: RegExp) => screen.getByRole('button', { name: nom })
 describe('relance des loyers', () => {
   it('n’offre pas le geste quand personne n’est en retard', async () => {
     parc({ retard: false })
-    renderApp('/app/paiements', { session: session('owner') })
+    await renderApp('/app/paiements', { session: session('owner') })
     await screen.findByText('Paul Kamga')
 
     // Un bouton qui ne peut rien faire occupe la place d'une action utile — et
@@ -100,7 +100,7 @@ describe('relance des loyers', () => {
       body: { sent: [BAIL_RETARD], skipped: [] },
     })
     const user = userEvent.setup()
-    renderApp('/app/paiements', { session: session('owner') })
+    await renderApp('/app/paiements', { session: session('owner') })
     await screen.findByText('Paul Kamga')
 
     await user.click(bouton(/relancer les retards/i))
@@ -124,7 +124,7 @@ describe('relance des loyers', () => {
       body: { sent: [], skipped: [{ leaseId: BAIL_RETARD, reason: 'already_reminded_today' }] },
     })
     const user = userEvent.setup()
-    renderApp('/app/paiements', { session: session('owner') })
+    await renderApp('/app/paiements', { session: session('owner') })
     await screen.findByText('Paul Kamga')
 
     await user.click(bouton(/relancer les retards/i))
@@ -146,7 +146,7 @@ describe('relance des loyers', () => {
 describe('retrait d’une fiche locataire', () => {
   it('n’est offert qu’au propriétaire', async () => {
     parc()
-    renderApp('/app/locataires', { session: session('manager') })
+    await renderApp('/app/locataires', { session: session('manager') })
     await screen.findByText('Paul Kamga')
 
     // Retirer une fiche efface une personne du registre.
@@ -161,7 +161,7 @@ describe('retrait d’une fiche locataire', () => {
       { status: 204 },
     )
     const user = userEvent.setup()
-    renderApp('/app/locataires', { session: session('owner') })
+    await renderApp('/app/locataires', { session: session('owner') })
     await screen.findByText('Paul Kamga')
 
     await user.click(screen.getAllByRole('button', { name: /^retirer$/i })[0]!)
@@ -198,7 +198,7 @@ describe('retrait refusé', () => {
       { status: 409, body: { error: 'has_payments' } },
     )
     const user = userEvent.setup()
-    renderApp('/app/locataires', { session: session('owner') })
+    await renderApp('/app/locataires', { session: session('owner') })
     await screen.findByText('Paul Kamga')
 
     await user.click(screen.getAllByRole('button', { name: /^retirer$/i })[0]!)
@@ -223,7 +223,7 @@ describe('date du versement', () => {
      */
     const serveur = parc()
     const user = userEvent.setup()
-    renderApp('/app/paiements', { session: session('owner') })
+    await renderApp('/app/paiements', { session: session('owner') })
     await screen.findByText('Paul Kamga')
 
     await user.click(bouton(/enregistrer un paiement/i))
@@ -255,7 +255,7 @@ describe('appel de loyers', () => {
     const serveur = parc()
     serveur.quand('POST', `/parks/${PARC}/charges`, { status: 200, body: { issued: 1, leases: 2 } })
     const user = userEvent.setup()
-    renderApp('/app/paiements', { session: session('owner') })
+    await renderApp('/app/paiements', { session: session('owner') })
     await screen.findByText('Paul Kamga')
 
     await user.click(bouton(/appeler les loyers/i))
@@ -269,7 +269,7 @@ describe('appel de loyers', () => {
     const serveur = parc()
     serveur.quand('POST', `/parks/${PARC}/charges`, { status: 200, body: { issued: 0, leases: 2 } })
     const user = userEvent.setup()
-    renderApp('/app/paiements', { session: session('owner') })
+    await renderApp('/app/paiements', { session: session('owner') })
     await screen.findByText('Paul Kamga')
 
     await user.click(bouton(/appeler les loyers/i))
@@ -279,7 +279,7 @@ describe('appel de loyers', () => {
 
   it('n’est pas offert au locataire, qui ne s’appelle pas ses propres loyers', async () => {
     parc()
-    renderApp('/app/paiements', { session: session('tenant') })
+    await renderApp('/app/paiements', { session: session('tenant') })
     await screen.findByText(/suivi des paiements/i)
 
     expect(screen.queryByRole('button', { name: /appeler les loyers/i })).not.toBeInTheDocument()
@@ -289,7 +289,7 @@ describe('appel de loyers', () => {
 describe('mise en demeure', () => {
   it('n’est offerte qu’au propriétaire', async () => {
     parc()
-    renderApp('/app/paiements', { session: session('manager') })
+    await renderApp('/app/paiements', { session: session('manager') })
     await screen.findByText('Paul Kamga')
 
     // Le gestionnaire « propose, ne décide pas » — et le serveur le refuse
@@ -300,7 +300,7 @@ describe('mise en demeure', () => {
   it('exige un motif avant d’appeler le serveur', async () => {
     const serveur = parc()
     const user = userEvent.setup()
-    renderApp('/app/paiements', { session: session('owner') })
+    await renderApp('/app/paiements', { session: session('owner') })
     await screen.findByText('Paul Kamga')
 
     await user.click(bouton(/mettre en demeure/i))
@@ -322,7 +322,7 @@ describe('mise en demeure', () => {
       body: { formalNotice: { leaseId: BAIL_RETARD, dueMinor: 145000 } },
     })
     const user = userEvent.setup()
-    renderApp('/app/paiements', { session: session('owner') })
+    await renderApp('/app/paiements', { session: session('owner') })
     await screen.findByText('Paul Kamga')
 
     await user.click(bouton(/mettre en demeure/i))

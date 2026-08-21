@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { cn } from '@/lib/cn'
-import { PageHeader } from '@/components/layout/AppShell'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { RadioCards } from '@/components/primitives/Choice'
 import { Icon } from '@/components/primitives/Icon'

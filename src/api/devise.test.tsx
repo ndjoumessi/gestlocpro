@@ -139,7 +139,7 @@ describe('devise de la quittance', () => {
     })
 
     const user = userEvent.setup()
-    renderApp('/app/paiements', { session: session('EUR'), currency: 'EUR' })
+    await renderApp('/app/paiements', { session: session('EUR'), currency: 'EUR' })
     await screen.findByText('A1')
     await user.click(screen.getByRole('button', { name: /quittance/i }))
 
@@ -163,7 +163,7 @@ describe('devise de la quittance', () => {
     })
 
     const user = userEvent.setup()
-    renderApp('/app/paiements', { session: session('XAF') })
+    await renderApp('/app/paiements', { session: session('XAF') })
     await screen.findByText('A1')
     await user.click(screen.getByRole('button', { name: /quittance/i }))
     await screen.findByRole('dialog')
@@ -195,7 +195,7 @@ describe('devise de la quittance', () => {
     const serveur = parcVide()
     quittance(serveur)
     const user = userEvent.setup()
-    renderApp('/app/paiements', { session: session('XAF', 'manager') })
+    await renderApp('/app/paiements', { session: session('XAF', 'manager') })
     await screen.findByText('A1')
     await user.click(screen.getByRole('button', { name: /quittance/i }))
     await screen.findByRole('dialog')
@@ -211,7 +211,7 @@ describe('devise d’affichage', () => {
     // La préférence stockée dit euro ; le parc dit franc CFA. C'est le parc qui
     // décide : les montants ne sont pas convertis.
     parcVide()
-    renderApp('/app/parc', { session: session('XAF'), currency: 'EUR' })
+    await renderApp('/app/parc', { session: session('XAF'), currency: 'EUR' })
     await screen.findByText('A1')
 
     expect(screen.getByRole('main').textContent).toMatch(/FCFA|CFA/)
@@ -222,7 +222,7 @@ describe('devise d’affichage', () => {
     // Le pendant positif : sans lui, un produit qui n'afficherait JAMAIS l'euro
     // satisferait le cas précédent.
     parcVide()
-    renderApp('/app/parc', { session: session('EUR'), currency: 'CFA' })
+    await renderApp('/app/parc', { session: session('EUR'), currency: 'CFA' })
     await screen.findByText('A1')
 
     expect(screen.getByRole('main').textContent).toMatch(/€/)
@@ -230,7 +230,7 @@ describe('devise d’affichage', () => {
 
   it('n’offre pas d’en changer sur un compte réel', async () => {
     parcVide()
-    renderApp('/app/parc', { session: session('XAF') })
+    await renderApp('/app/parc', { session: session('XAF') })
     await screen.findByText('A1')
 
     /**
@@ -241,7 +241,7 @@ describe('devise d’affichage', () => {
   })
 
   it('le garde en démonstration, où les montants sont fictifs', async () => {
-    renderApp('/demo/parc')
+    await renderApp('/demo/parc')
     await attendreLeChargement()
 
     expect(screen.getAllByRole('button', { name: /devise/i }).length).toBeGreaterThan(0)

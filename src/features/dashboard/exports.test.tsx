@@ -36,7 +36,7 @@ async function exporter(label: RegExp | string) {
 describe('export des paiements', () => {
   it('produit un fichier CSV nommé, daté et encodé pour Excel', async () => {
     capture = captureDownloads()
-    renderApp('/app/paiements')
+    await renderApp('/app/paiements')
 
     const file = await exporter(/Exporter le relevé/)
 
@@ -50,7 +50,7 @@ describe('export des paiements', () => {
 
   it('exporte les lignes affichées, en-têtes traduits compris', async () => {
     capture = captureDownloads()
-    renderApp('/app/paiements')
+    await renderApp('/app/paiements')
 
     const file = await exporter(/Exporter le relevé/)
     const [entetes, ...lignes] = file.text.replace(UTF8_BOM, '').trim().split('\r\n')
@@ -98,7 +98,7 @@ describe('export des paiements', () => {
 
   it('suit le filtre de statut, et le dit dans le nom du fichier', async () => {
     capture = captureDownloads()
-    renderApp('/app/paiements')
+    await renderApp('/app/paiements')
 
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /En retard/ }))
@@ -114,7 +114,7 @@ describe('export des paiements', () => {
     // Le périmètre du rôle vaut pour le fichier autant que pour l'écran : un
     // export qui repartirait de la source aurait sorti tout le parc.
     capture = captureDownloads()
-    renderApp('/demo/paiements')
+    await renderApp('/demo/paiements')
     await switchRole('tenant')
     await attendreLeChargement()
 
@@ -130,7 +130,7 @@ describe('export des paiements', () => {
 
   it('n’annonce le fichier qu’une fois celui-ci produit', async () => {
     capture = captureDownloads()
-    renderApp('/app/paiements')
+    await renderApp('/app/paiements')
 
     const file = await exporter(/Exporter le relevé/)
 
@@ -145,7 +145,7 @@ describe('export des paiements', () => {
 describe('export selon la langue', () => {
   it('sépare par des virgules en anglais', async () => {
     capture = captureDownloads()
-    renderApp('/app/paiements', { locale: 'en' })
+    await renderApp('/app/paiements', { locale: 'en' })
 
     const file = await exporter(/Export statement/)
     const [entetes] = file.text.replace(UTF8_BOM, '').split('\r\n')
@@ -160,7 +160,7 @@ describe('export selon la langue', () => {
     // Excel FR lit la virgule comme séparateur décimal : un fichier virgulé y
     // arrive tout entier dans la colonne A.
     capture = captureDownloads()
-    renderApp('/app/paiements')
+    await renderApp('/app/paiements')
 
     const file = await exporter(/Exporter le relevé/)
     expect(file.text.split('\r\n')[0]).toContain(';')
@@ -170,7 +170,7 @@ describe('export selon la langue', () => {
 describe('export des relevés de compteurs', () => {
   it('porte les index, la consommation et le montant refacturé', async () => {
     capture = captureDownloads()
-    renderApp('/app/releves')
+    await renderApp('/app/releves')
 
     const file = await exporter(/Exporter le relevé/)
     const lignes = file.text.replace(UTF8_BOM, '').trim().split('\r\n')
@@ -199,7 +199,7 @@ describe('export des relevés de compteurs', () => {
 describe('export du tableau de bord', () => {
   it('exporte les douze mois d’encaissements du graphique', async () => {
     capture = captureDownloads()
-    renderApp('/app')
+    await renderApp('/app')
 
     const file = await exporter(/Exporter le relevé/)
     const lignes = file.text.replace(UTF8_BOM, '').trim().split('\r\n')
@@ -222,7 +222,7 @@ describe('export du tableau de bord', () => {
 describe('quittances du locataire', () => {
   it('télécharge la quittance de la période, nommée par son mois', async () => {
     capture = captureDownloads()
-    renderApp('/demo/documents')
+    await renderApp('/demo/documents')
     await switchRole('tenant')
     await attendreLeChargement()
 
@@ -241,7 +241,7 @@ describe('quittances du locataire', () => {
 
   it('donne un fichier distinct à chaque période', async () => {
     capture = captureDownloads()
-    renderApp('/demo/documents')
+    await renderApp('/demo/documents')
     await switchRole('tenant')
     await attendreLeChargement()
 
@@ -286,7 +286,7 @@ describe('la référence dans l’export du locataire', () => {
   /** Le fichier « Tout télécharger » : les six périodes en un seul CSV. */
   async function historique() {
     capture = captureDownloads()
-    renderApp('/demo/documents')
+    await renderApp('/demo/documents')
     await switchRole('tenant')
     await attendreLeChargement()
     return exporter(/Tout télécharger/)

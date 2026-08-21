@@ -99,8 +99,8 @@ describe('les chiffres du hero sortent du même calcul que le produit', () => {
   const kpis = computeKpis(UNITS, READINGS)
   const doivent = UNITS.filter((u) => u.status === 'overdue' || u.status === 'partial')
 
-  it('affiche l’encaissé et l’impayé que le calcul rend sur le jeu de démonstration', () => {
-    renderApp('/')
+  it('affiche l’encaissé et l’impayé que le calcul rend sur le jeu de démonstration', async () => {
+    await renderApp('/')
 
     expect(
       screen.getByText(commeALEcran(formatMoney(kpis.collected, 'CFA', { round: true }))),
@@ -118,8 +118,8 @@ describe('les chiffres du hero sortent du même calcul que le produit', () => {
     ).toBeNull()
   })
 
-  it('compte les locataires qui doivent, partiels compris', () => {
-    renderApp('/')
+  it('compte les locataires qui doivent, partiels compris', async () => {
+    await renderApp('/')
 
     // Quatre doivent — trois retards et un règlement partiel — et le montant
     // au-dessus totalise les deux. La note en annonçait trois, exactement le
@@ -129,20 +129,20 @@ describe('les chiffres du hero sortent du même calcul que le produit', () => {
     expect(screen.queryByText('3 locataires')).toBeNull()
   })
 
-  it('tient le taux d’occupation de la donnée, et sa typographie de la langue', () => {
-    renderApp('/')
+  it('tient le taux d’occupation de la donnée, et sa typographie de la langue', async () => {
+    await renderApp('/')
     expect(screen.getByText(`${kpis.occupancy} %`)).toBeInTheDocument()
     expect(screen.getByText(`${kpis.occupied} / ${UNITS.length}`)).toBeInTheDocument()
   })
 
-  it('écrit le pourcentage sans espace en anglais, où l’espace française passait telle quelle', () => {
-    renderApp('/', { locale: 'en' })
+  it('écrit le pourcentage sans espace en anglais, où l’espace française passait telle quelle', async () => {
+    await renderApp('/', { locale: 'en' })
     expect(screen.getByText(`${kpis.occupancy}%`)).toBeInTheDocument()
     expect(screen.queryByText(`${kpis.occupancy} %`)).toBeNull()
   })
 
-  it('nomme le parc dont ces chiffres viennent', () => {
-    renderApp('/')
+  it('nomme le parc dont ces chiffres viennent', async () => {
+    await renderApp('/')
     // La mention existait au dictionnaire et n'était rendue nulle part.
     expect(screen.getByText(/parc d’exemple de 12 unités/)).toBeInTheDocument()
   })

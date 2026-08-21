@@ -94,7 +94,7 @@ describe('parc vide, compte neuf', () => {
   for (const route of ECRANS) {
     it(`ne montre ni NaN ni undefined sur ${route}`, async () => {
       serveurVide()
-      renderApp(route, { session: SESSION_AVEC_PARC })
+      await renderApp(route, { session: SESSION_AVEC_PARC })
 
       // On attend la fin de l'attente : juger un écran sur son squelette
       // reviendrait à ne rien juger.
@@ -114,7 +114,7 @@ describe('parc vide, compte neuf', () => {
 
   it('propose une première action plutôt qu’un écran nu', async () => {
     serveurVide()
-    renderApp('/app', { session: SESSION_AVEC_PARC })
+    await renderApp('/app', { session: SESSION_AVEC_PARC })
 
     // Un parc vide n'est pas une panne : c'est un début. L'écran doit dire quoi
     // faire, pas seulement constater l'absence.
@@ -129,7 +129,7 @@ describe('parc vide, compte neuf', () => {
 
   it('distingue « rien » de « rien qui corresponde »', async () => {
     serveurVide()
-    renderApp('/app/parc', { session: SESSION_AVEC_PARC })
+    await renderApp('/app/parc', { session: SESSION_AVEC_PARC })
     const main = await screen.findByRole('main')
     await new Promise((r) => setTimeout(r, 60))
 
@@ -143,7 +143,7 @@ describe('parc vide, compte neuf', () => {
 
   it('compte le parc réel dans son sous-titre, sans réciter la démonstration', async () => {
     serveurVide()
-    renderApp('/app/parc', { session: SESSION_AVEC_PARC })
+    await renderApp('/app/parc', { session: SESSION_AVEC_PARC })
     const main = await screen.findByRole('main')
     await new Promise((r) => setTimeout(r, 60))
 
@@ -166,7 +166,7 @@ describe('parc vide, compte neuf', () => {
      * qui tienne, et elle tient aussi en anglais où zéro pluralise.
      */
     serveurAvecUnLogement()
-    renderApp('/app/parc', { session: SESSION_AVEC_PARC })
+    await renderApp('/app/parc', { session: SESSION_AVEC_PARC })
     const main = await screen.findByRole('main')
     await new Promise((r) => setTimeout(r, 60))
 
@@ -186,7 +186,7 @@ describe('parc vide, compte neuf', () => {
      * zone vide, sans un mot.
      */
     serveurAvecUnLogement()
-    renderApp('/app', { session: SESSION_AVEC_PARC })
+    await renderApp('/app', { session: SESSION_AVEC_PARC })
     const main = await screen.findByRole('main')
     await new Promise((r) => setTimeout(r, 60))
 
@@ -196,7 +196,7 @@ describe('parc vide, compte neuf', () => {
   it('n’offre pas d’enregistrer un paiement sur un parc sans logement', async () => {
     serveurVide()
     const user = userEvent.setup()
-    renderApp('/app', { session: SESSION_AVEC_PARC })
+    await renderApp('/app', { session: SESSION_AVEC_PARC })
     await screen.findByText(/votre parc est encore vide/i)
 
     // Le geste n'aurait aucune unité à créditer : l'offrir mènerait à un

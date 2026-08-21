@@ -14,7 +14,7 @@ import { ALERTS } from '@/data/portfolio'
  */
 describe('les notifications s’annoncent comme une liste', () => {
   it('se comptent et se nomment', async () => {
-    renderApp('/demo/signalements')
+    await renderApp('/demo/signalements')
     await attendreLeChargement()
 
     const liste = screen.getByRole('list', { name: 'Signalements et notifications' })
@@ -50,53 +50,53 @@ describe('les notifications s’annoncent comme une liste', () => {
  * la devise choisie.
  */
 describe('messages d’alerte', () => {
-  it('rend les titres dans la langue de l’interface', () => {
-    renderApp('/app/signalements', { locale: 'en' })
+  it('rend les titres dans la langue de l’interface', async () => {
+    await renderApp('/app/signalements', { locale: 'en' })
     expect(screen.getByText(/Quote awaiting your decision/)).toBeInTheDocument()
     expect(screen.getByText(/Partial payment recorded on A5/)).toBeInTheDocument()
   })
 
-  it('accorde en nombre plutôt que de concaténer', () => {
+  it('accorde en nombre plutôt que de concaténer', async () => {
     // « 2 relevés manquants » était écrit à la main, donc au pluriel même à un.
-    renderApp('/app/signalements', { locale: 'en' })
+    await renderApp('/app/signalements', { locale: 'en' })
     expect(screen.getByText(/2 readings missing/)).toBeInTheDocument()
   })
 
-  it('nomme le mois d’une période au lieu de le figer', () => {
-    renderApp('/app/signalements', { locale: 'en' })
+  it('nomme le mois d’une période au lieu de le figer', async () => {
+    await renderApp('/app/signalements', { locale: 'en' })
     // « août » était écrit dans la chaîne ; il se calcule désormais.
     expect(screen.getByText(/August 2026 receipt available/)).toBeInTheDocument()
   })
 
-  it('rend une date de relance non ambiguë', () => {
-    renderApp('/app/signalements', { locale: 'en', region: 'US' })
+  it('rend une date de relance non ambiguë', async () => {
+    await renderApp('/app/signalements', { locale: 'en', region: 'US' })
     // « 04/08 » se lisait 4 août ici et 8 avril là. Le mois est nommé, et
     // l'ordre reste celui du pays.
     expect(screen.getByText(/reminder sent on Aug 4/)).toBeInTheDocument()
   })
 
-  it('porte l’année sur une échéance de bail', () => {
-    renderApp('/app/signalements', { locale: 'en' })
+  it('porte l’année sur une échéance de bail', async () => {
+    await renderApp('/app/signalements', { locale: 'en' })
     expect(screen.getByText(/expires on 30\/09\/2026/)).toBeInTheDocument()
   })
 
-  it('formate les montants dans la devise choisie', () => {
-    renderApp('/app/signalements', { locale: 'en', currency: 'USD' })
+  it('formate les montants dans la devise choisie', async () => {
+    await renderApp('/app/signalements', { locale: 'en', currency: 'USD' })
     // Le montant était « 45 000 » en clair dans la chaîne : ni symbole, ni
     // groupement anglais, et insensible au changement de devise.
     expect(screen.getByText(/\$\s?45,000 proposed by the manager/)).toBeInTheDocument()
   })
 
-  it('énumère les unités avec la conjonction de la langue', () => {
-    renderApp('/app/signalements', { locale: 'en' })
+  it('énumère les unités avec la conjonction de la langue', async () => {
+    await renderApp('/app/signalements', { locale: 'en' })
     // « A5 et C2 » était figé dans le détail de l'alerte.
     expect(screen.getByText(/A5 and C2/)).toBeInTheDocument()
   })
 
-  it('nomme la catégorie pour les lecteurs d’écran', () => {
+  it('nomme la catégorie pour les lecteurs d’écran', async () => {
     // Elle n'existait qu'en icône, et `Icon` est `aria-hidden` : la catégorie
     // était invisible à qui n'a pas l'image.
-    renderApp('/app/signalements', { locale: 'en' })
+    await renderApp('/app/signalements', { locale: 'en' })
     expect(screen.getAllByText('Meter reading').length).toBeGreaterThan(0)
   })
 
@@ -107,7 +107,7 @@ describe('messages d’alerte', () => {
    * plus. Il est remonté dans le provider.
    */
   it('éteint la pastille de navigation quand tout est lu', async () => {
-    renderApp('/app/signalements', { locale: 'en' })
+    await renderApp('/app/signalements', { locale: 'en' })
     const nav = screen.getAllByRole('navigation')[0]
 
     /* TROIS et non deux : le jeu porte désormais un rappel de loyer non lu, en
@@ -144,7 +144,7 @@ describe('messages d’alerte', () => {
    * écran, et celle dont la barre latérale annonce le compte juste à côté.
    */
   it('dit lesquelles restent à lire, et pas seulement en couleur', async () => {
-    renderApp('/demo/signalements')
+    await renderApp('/demo/signalements')
     await attendreLeChargement()
 
     const liste = screen.getByRole('list', { name: 'Signalements et notifications' })

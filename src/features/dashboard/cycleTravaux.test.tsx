@@ -17,7 +17,7 @@ import { renderApp, screen, userEvent, attendreLeChargement } from '@/test/rende
 
 describe('clôture d’une intervention', () => {
   it('offre le geste sur un devis validé, jamais sur un devis en attente', async () => {
-    renderApp('/demo/travaux')
+    await renderApp('/demo/travaux')
     await attendreLeChargement()
 
     const validees = screen.getAllByText('Validé')
@@ -29,7 +29,7 @@ describe('clôture d’une intervention', () => {
   })
 
   it('ne l’offre pas sur un devis en attente d’arbitrage', async () => {
-    renderApp('/demo/travaux')
+    await renderApp('/demo/travaux')
     await attendreLeChargement()
 
     /**
@@ -51,7 +51,7 @@ describe('clôture d’une intervention', () => {
 
   it('sort l’intervention de la liste des travaux à faire', async () => {
     const user = userEvent.setup()
-    renderApp('/demo/travaux')
+    await renderApp('/demo/travaux')
     await attendreLeChargement()
 
     const avant = screen.getAllByText('Terminé').length
@@ -63,7 +63,7 @@ describe('clôture d’une intervention', () => {
 
   it('offre une annulation qui rouvre réellement l’intervention', async () => {
     const user = userEvent.setup()
-    renderApp('/demo/travaux')
+    await renderApp('/demo/travaux')
     await attendreLeChargement()
 
     const avant = screen.getAllByText('Terminé').length
@@ -82,7 +82,7 @@ describe('clôture d’une intervention', () => {
 
   it('rend le devis à l’arbitrage quand on défait sa validation', async () => {
     const user = userEvent.setup()
-    renderApp('/demo/travaux')
+    await renderApp('/demo/travaux')
     await attendreLeChargement()
 
     // `queryAllByText` et non `getAllByText` : la démonstration ne porte qu'UN

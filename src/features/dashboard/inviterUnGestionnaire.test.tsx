@@ -53,7 +53,7 @@ function serveurAvecParc() {
 /** Ouvre la modale d'invitation depuis l'écran des locataires. */
 async function ouvrirLInvitation(role: Role) {
   const serveur = serveurAvecParc()
-  renderApp('/app/locataires', { session: sessionDuRole(role) })
+  await renderApp('/app/locataires', { session: sessionDuRole(role) })
   await screen.findByRole('heading', { level: 1 })
   await userEvent.setup().click(screen.getByRole('button', { name: 'Inviter par code' }))
   await screen.findByRole('dialog')

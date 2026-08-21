@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { PageHeader, useRole } from '@/components/layout/AppShell'
+import { useRole } from '@/components/layout/AppShell'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { DataTable, EmptyState } from '@/components/primitives/DataTable'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'

@@ -39,23 +39,23 @@ const libelles = () => entrees().map((lien) => lien.textContent?.replace(/\d+$/,
 describe('barre de navigation basse', () => {
   beforeEach(() => poserLargeur(false))
 
-  it('n’existe qu’en deçà de `lg`, comme le tiroir', () => {
-    renderApp('/app')
+  it('n’existe qu’en deçà de `lg`, comme le tiroir', async () => {
+    await renderApp('/app')
     // Ce que jsdom permet d'affirmer : la classe qui la retire en grand écran
     // est bien posée. Qu'elle produise l'effet attendu relève du navigateur.
     expect(barre().className).toMatch(/(?<![-\w])lg:hidden(?![-\w])/)
   })
 
-  it('tient en cinq cibles au plus, dont une sortie vers le reste', () => {
-    renderApp('/app')
+  it('tient en cinq cibles au plus, dont une sortie vers le reste', async () => {
+    await renderApp('/app')
 
     // Au-delà de cinq, les cibles passent sous les 44 px à 360 px de large.
     expect(entrees().length).toBeLessThanOrEqual(4)
     expect(within(barre()).getByRole('button', { name: 'Plus' })).toBeInTheDocument()
   })
 
-  it('donne à chaque cible un libellé visible, pas une icône seule', () => {
-    renderApp('/app')
+  it('donne à chaque cible un libellé visible, pas une icône seule', async () => {
+    await renderApp('/app')
     for (const lien of entrees()) expect(lien.textContent?.trim()).not.toBe('')
   })
 
@@ -71,7 +71,7 @@ describe('barre de navigation basse', () => {
   it('n’existe pas dans la coquille du locataire', async () => {
     // Sous `/demo`, où vit le sélecteur de profil : ce cas a besoin de changer
     // de rôle sans remonter, et c'est ce que la démonstration offre.
-    renderApp('/demo')
+    await renderApp('/demo')
     expect(libelles()).toContain('Parc immobilier')
 
     await switchRole('tenant')
@@ -86,8 +86,8 @@ describe('barre de navigation basse', () => {
     ).toEqual(['Mon espace', 'Documents', 'Signaler'])
   })
 
-  it('signale l’entrée courante autrement que par la seule couleur', () => {
-    renderApp('/app/paiements')
+  it('signale l’entrée courante autrement que par la seule couleur', async () => {
+    await renderApp('/app/paiements')
 
     const courante = within(barre()).getByRole('link', { current: 'page' })
     expect(courante).toHaveTextContent('Paiements')
@@ -96,8 +96,8 @@ describe('barre de navigation basse', () => {
     expect(courante.className).toMatch(/font-semibold/)
   })
 
-  it('porte les mêmes pastilles que la barre latérale', () => {
-    renderApp('/app')
+  it('porte les mêmes pastilles que la barre latérale', async () => {
+    await renderApp('/app')
 
     const laterale = screen.getByRole('navigation', { name: 'Sections du produit' })
     const attendu = within(laterale)
@@ -114,7 +114,7 @@ describe('barre de navigation basse', () => {
 
   it('ouvre le tiroir par « Plus » sans lui retirer son traitement clavier', async () => {
     const user = userEvent.setup()
-    renderApp('/app')
+    await renderApp('/app')
 
     const plus = within(barre()).getByRole('button', { name: 'Plus' })
     await user.click(plus)

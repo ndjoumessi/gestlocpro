@@ -28,7 +28,7 @@ describe('parcourir la démonstration', () => {
     installerFauxServeur({ authentifie: false })
 
     const user = userEvent.setup()
-    renderApp('/', { session: SESSION_ANONYME })
+    await renderApp('/', { session: SESSION_ANONYME })
     await user.click(await screen.findByRole('link', { name: /parcourir la démonstration/i }))
 
     expect(await screen.findByRole('heading', { level: 1, name: /vue consolidée/i })).toBeInTheDocument()
@@ -41,7 +41,7 @@ describe('parcourir la démonstration', () => {
     // rien ne les désigne.
     installerFauxServeur({ authentifie: false })
 
-    renderApp('/demo', { session: SESSION_ANONYME })
+    await renderApp('/demo', { session: SESSION_ANONYME })
     expect(await screen.findByText(/ces immeubles, ces locataires et ces montants sont fictifs/i))
       .toBeInTheDocument()
     expect(screen.getByRole('link', { name: /créer mon espace/i })).toBeInTheDocument()
@@ -51,7 +51,7 @@ describe('parcourir la démonstration', () => {
     // La visite est conservée le temps de l'onglet : sans cela, recharger en
     // pleine démonstration renverrait à la connexion.
     installerFauxServeur({ authentifie: false })
-    renderApp('/demo', { session: null })
+    await renderApp('/demo', { session: null })
     await screen.findByRole('heading', { level: 1, name: /vue consolidée/i })
 
     // Démontage explicite : sans lui le second arbre s'ajouterait au premier
@@ -60,7 +60,7 @@ describe('parcourir la démonstration', () => {
 
     // Second montage, comme après un rechargement de `/demo`.
     installerFauxServeur({ authentifie: false })
-    renderApp('/demo', { session: null })
+    await renderApp('/demo', { session: null })
     expect(await screen.findByRole('heading', { level: 1, name: /vue consolidée/i })).toBeInTheDocument()
   })
 
@@ -69,7 +69,7 @@ describe('parcourir la démonstration', () => {
     // `/demo` ouvre l'application sans compte.
     installerFauxServeur({ authentifie: false })
 
-    renderApp('/app/cautions', { session: SESSION_ANONYME })
+    await renderApp('/app/cautions', { session: SESSION_ANONYME })
     expect(await screen.findByText(/content de vous revoir/i)).toBeInTheDocument()
     expect(screen.queryByRole('heading', { level: 1, name: /cautions/i })).not.toBeInTheDocument()
   })
@@ -84,7 +84,7 @@ describe('parcourir la démonstration', () => {
      * L'auteur du produit s'y est trompé deux fois.
      */
     installerFauxServeur({ authentifie: false })
-    renderApp('/app', { session: { statut: 'demo' } })
+    await renderApp('/app', { session: { statut: 'demo' } })
 
     expect(await screen.findByText(/content de vous revoir/i)).toBeInTheDocument()
     expect(screen.queryByText(/sont fictifs/i)).not.toBeInTheDocument()
@@ -94,7 +94,7 @@ describe('parcourir la démonstration', () => {
     // Le bandeau se lit ; l'adresse se regarde. C'est la seule différence que
     // l'on constate sans avoir rien à lire.
     installerFauxServeur({ authentifie: false })
-    renderApp('/demo/cautions', { session: { statut: 'demo' } })
+    await renderApp('/demo/cautions', { session: { statut: 'demo' } })
 
     expect(await screen.findByRole('heading', { level: 1, name: /cautions/i })).toBeInTheDocument()
     expect(await screen.findByText(/sont fictifs/i)).toBeInTheDocument()
@@ -105,7 +105,7 @@ describe('parcourir la démonstration', () => {
     // qu'inutile : il ferait douter de ses propres chiffres.
     installerFauxServeur({ authentifie: true })
 
-    renderApp('/app')
+    await renderApp('/app')
     await screen.findByRole('heading', { level: 1, name: /vue consolidée/i })
     expect(screen.queryByText(/sont fictifs/i)).not.toBeInTheDocument()
   })

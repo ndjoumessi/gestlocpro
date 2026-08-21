@@ -75,7 +75,7 @@ function serveurDeuxParcs() {
 describe('sélecteur de parc', () => {
   it('n’apparaît pas pour un bailleur d’un seul parc', async () => {
     installerFauxServeur({ authentifie: true })
-    renderApp('/app', { session: session([{ id: A, nom: 'Parc Bastos', devise: 'XAF' }]) })
+    await renderApp('/app', { session: session([{ id: A, nom: 'Parc Bastos', devise: 'XAF' }]) })
     await screen.findByRole('heading', { level: 1 })
 
     // Un sélecteur à une entrée occupe la place d'une commande utile, et laisse
@@ -86,7 +86,7 @@ describe('sélecteur de parc', () => {
   it('change réellement le parc chargé', async () => {
     serveurDeuxParcs()
     const user = userEvent.setup()
-    renderApp('/app/parc', {
+    await renderApp('/app/parc', {
       session: session([
         { id: A, nom: 'Parc Douala', devise: 'XAF' },
         { id: B, nom: 'Parc Paris', devise: 'EUR' },
@@ -104,7 +104,7 @@ describe('sélecteur de parc', () => {
   it('emporte la DEVISE du parc choisi', async () => {
     serveurDeuxParcs()
     const user = userEvent.setup()
-    renderApp('/app/parc', {
+    await renderApp('/app/parc', {
       session: session([
         { id: A, nom: 'Parc Douala', devise: 'XAF' },
         { id: B, nom: 'Parc Paris', devise: 'EUR' },
@@ -127,7 +127,7 @@ describe('sélecteur de parc', () => {
   it('nomme le parc regardé dans la barre latérale', async () => {
     serveurDeuxParcs()
     const user = userEvent.setup()
-    renderApp('/app/parc', {
+    await renderApp('/app/parc', {
       session: session([
         { id: A, nom: 'Parc Douala', devise: 'XAF' },
         { id: B, nom: 'Parc Paris', devise: 'EUR' },

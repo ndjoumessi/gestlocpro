@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { PageHeader, useRole } from '@/components/layout/AppShell'
+import { useRole } from '@/components/layout/AppShell'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/primitives/Button'
 import { InspectionModal } from './InspectionModal'
 import { Card } from '@/components/primitives/Card'

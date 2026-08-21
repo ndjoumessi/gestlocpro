@@ -29,7 +29,7 @@ const entrees = () =>
     .map((a) => a.textContent?.trim())
 
 async function ouvrirEnLocataire(route = '/demo') {
-  renderApp(route)
+  await renderApp(route)
   await switchRole('tenant')
   await attendreLeChargement()
 }
@@ -246,7 +246,7 @@ describe('coquille du locataire — une seule navigation', () => {
 
   /** Le bailleur, lui, garde la sienne : cette coquille n'a pas bougé. */
   it('laisse au bailleur sa barre latérale et son abrégé', async () => {
-    renderApp('/demo/parc')
+    await renderApp('/demo/parc')
     await attendreLeChargement()
     expect(screen.getByRole('navigation', { name: 'Sections du produit' })).toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: 'Navigation rapide' })).toBeInTheDocument()

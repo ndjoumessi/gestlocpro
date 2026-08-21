@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
-import { PageHeader, useRole } from '@/components/layout/AppShell'
+import { useRole } from '@/components/layout/AppShell'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { InviteModal } from './InviteModal'
 import { AnnounceModal } from './AnnounceModal'
 import { Icon } from '@/components/primitives/Icon'

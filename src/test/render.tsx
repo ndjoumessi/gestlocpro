@@ -1,4 +1,11 @@
-import { render, screen, waitFor, within, type RenderResult } from '@testing-library/react'
+import {
+  render,
+  screen,
+  waitFor,
+  waitForElementToBeRemoved,
+  within,
+  type RenderResult,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { ReactElement } from 'react'
@@ -87,10 +94,31 @@ function decouper(route: string): { pathname: string; search: string } {
   return { pathname, search: search ? `?${search}` : '' }
 }
 
-export function renderApp(
+/**
+ * `async`, et c'est le coût direct du découpage paresseux de l'espace
+ * applicatif (voir `src/App.tsx`).
+ *
+ * `PortfolioProvider` NE VIT PLUS ICI : il a suivi `/app` et `/demo` dans
+ * `src/app/EspaceApplicatif.tsx`, et l'y enrouler une seconde fois ferait
+ * cohabiter deux instances — celle du test, jamais lue, et celle du paquet
+ * paresseux, seule à compter puisque React résout un contexte par
+ * l'ancêtre le plus proche. Un tel doublon prouverait moins qu'il ne cache :
+ * il donnerait l'air de tester le vrai montage en en testant un autre.
+ *
+ * `await` de ce que `React.lazy` suspend AVANT de rendre la main au test :
+ * sans lui, chaque test sous `/app` ou `/demo` devrait remplacer son premier
+ * `getBy…` par `findBy…`, un changement dispersé sur toute la suite pour un
+ * défaut que cette seule fonction peut absorber. `waitForElementToBeRemoved`
+ * et non un délai : le marqueur `chargement-espace-applicatif` disparaît
+ * exactement quand le paquet a fini de se résoudre, ni avant, ni après.
+ * `queryByTestId` d'abord, car sur une route publique — ou une fois le paquet
+ * déjà mis en cache par un test précédent du même fichier — il n'apparaît
+ * jamais, et `waitForElementToBeRemoved` exige un élément PRÉSENT au départ.
+ */
+export async function renderApp(
   route = '/',
   preferences: PreferencesTest = {},
-): RenderResult {
+): Promise<RenderResult> {
   // Les préférences sont lues depuis `localStorage` au premier rendu : il faut
   // donc les poser avant de monter, pas après.
   //
@@ -102,16 +130,14 @@ export function renderApp(
   if (preferences.currency) window.localStorage.setItem('gestlocpro.currency', preferences.currency)
   if (preferences.region) window.localStorage.setItem('gestlocpro.region', preferences.region)
 
-  return render(
+  const resultat = render(
     <MemoryRouter initialEntries={[{ ...decouper(route), state: preferences.state ?? null }]}>
       <I18nProvider>
         <ThemeProvider>
           <CurrencyProvider>
             <ToastProvider>
               <SessionProvider etatInitial={sessionDe(preferences, route)}>
-                <PortfolioProvider>
-                  <App />
-                </PortfolioProvider>
+                <App />
               </SessionProvider>
             </ToastProvider>
           </CurrencyProvider>
@@ -119,6 +145,11 @@ export function renderApp(
       </I18nProvider>
     </MemoryRouter>,
   )
+
+  const repli = screen.queryByTestId('chargement-espace-applicatif')
+  if (repli) await waitForElementToBeRemoved(repli)
+
+  return resultat
 }
 
 /** Rend un composant isolé avec les mêmes providers, sans routeur d'application. */

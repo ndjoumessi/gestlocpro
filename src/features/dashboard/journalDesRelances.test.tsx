@@ -113,7 +113,7 @@ const carte = (titre: RegExp) =>
 
 async function ouvrir(notifications: NotifApi[]) {
   serveur(notifications)
-  renderApp('/app/signalements', { session: session() })
+  await renderApp('/app/signalements', { session: session() })
   await attendreLeChargement()
 }
 
@@ -237,7 +237,7 @@ describe('journal des relances — l’envoi', () => {
  */
 describe('journal des relances — en démonstration', () => {
   async function ouvrirDemo() {
-    renderApp('/demo/signalements')
+    await renderApp('/demo/signalements')
     await attendreLeChargement()
   }
 

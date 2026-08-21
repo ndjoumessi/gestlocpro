@@ -12,6 +12,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/cn'
 import { GOUTTIERE_LATERALE } from './gouttiere'
 import { LienEvitement } from './LienEvitement'
+import { CadreContext } from './PageHeader'
 import { Logo } from '@/components/primitives/Logo'
 import { Icon, type IconName } from '@/components/primitives/Icon'
 import { Badge } from '@/components/primitives/Badge'
@@ -22,7 +23,6 @@ import { useCurrency } from '@/currency/CurrencyProvider'
 import type { CurrencyCode } from '@/currency/currencies'
 import { ThemeSwitcher } from '@/components/controls/ThemeSwitcher'
 import { useT } from '@/i18n/I18nProvider'
-import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import type { Role } from '@/features/auth/signupState'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { useSession } from '@/api/SessionProvider'
@@ -44,16 +44,6 @@ const RoleContext = createContext<RoleContextValue>({ role: 'owner', setRole: ()
 export function useRole() {
   return useContext(RoleContext)
 }
-
-/**
- * Vrai quand un écran applicatif est monté DANS un cadre — la prévisualisation
- * du portail, aujourd'hui.
- *
- * Un contexte plutôt qu'une prop : les trois écrans montés ne connaissent pas
- * le cadre et n'ont aucune raison de le connaître. Leur passer un drapeau
- * ferait remonter la prévisualisation jusque dans leur signature.
- */
-const CadreContext = createContext(false)
 
 /**
  * Monte de VRAIS écrans du locataire dans une fenêtre de démonstration.
@@ -1584,53 +1574,3 @@ export function RoleGuard({
   return <>{allow.includes(role) ? children : fallback}</>
 }
 
-/** En-tête de page, commun à tous les écrans applicatifs. */
-export function PageHeader({
-  title,
-  description,
-  actions,
-}: {
-  title: string
-  description?: ReactNode
-  actions?: ReactNode
-}) {
-  /**
-   * Monté DANS un cadre, un écran cesse d'être deux choses.
-   *
-   * Il n'est plus le titre de la PAGE : un second `<h1>` en ferait deux
-   * documents, alors que la prévisualisation est une fenêtre dans une page qui
-   * a déjà le sien. Et il ne nomme plus l'onglet du navigateur : l'historique
-   * porterait « Résidence Bonamoussadi — A1 » pour une page qui est la
-   * prévisualisation du portail — exactement le défaut que `useDocumentTitle`
-   * avait été écrit pour corriger.
-   */
-  const dansUnCadre = useContext(CadreContext)
-
-  // Chaque écran applicatif nomme son onglet. Les douze portaient le titre
-  // statique de la landing : deux onglets ouverts côte à côte, un signet ou une
-  // entrée d'historique ne permettaient pas de les distinguer.
-  useDocumentTitle(dansUnCadre ? undefined : title)
-
-  const Titre = dansUnCadre ? 'h2' : 'h1'
-
-  return (
-    <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div className="min-w-0">
-        <Titre className="display-app text-balance">{title}</Titre>
-        {description && (
-          <p className="mt-2 max-w-[62ch] text-body text-pretty text-muted">{description}</p>
-        )}
-      </div>
-      {/* `flex-wrap` SANS `shrink-0` : les deux se contredisaient. `shrink-0`
-          interdit au bloc de descendre sous sa largeur `max-content`, donc le
-          retour à la ligne que `flex-wrap` déclare vouloir n'arrivait jamais —
-          les actions poussaient la rangée au-delà de la fenêtre et TOUT l'écran
-          défilait latéralement. Mesuré sur `/app/paiements` : 812 px de boutons
-          dans 700 px de fenêtre, `scrollX=160` ; le défaut vivait de 700 à
-          860 px de large, c'est-à-dire dans la bande que ni le téléphone ni le
-          bureau ne montrent. Le bloc de titre porte déjà `min-w-0` : c'est lui
-          qui cède la place, et le titre se replie, ce qu'un titre sait faire. */}
-      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
-    </div>
-  )
-}

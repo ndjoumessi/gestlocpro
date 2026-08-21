@@ -83,7 +83,7 @@ function serveurReel() {
  */
 describe('en démonstration, la devise se choisit', () => {
   it('offre le sélecteur au bailleur', async () => {
-    renderApp('/demo')
+    await renderApp('/demo')
     await attendreLeChargement()
     expect(selecteurDeDevise()).toBeInTheDocument()
   })
@@ -95,7 +95,7 @@ describe('en démonstration, la devise se choisit', () => {
    * qu'aucun cas ne bronche.
    */
   it('offre le sélecteur au locataire, dans sa coquille distincte', async () => {
-    renderApp('/demo')
+    await renderApp('/demo')
     await switchRole('tenant')
     await attendreLeChargement()
     expect(selecteurDeDevise()).toBeInTheDocument()
@@ -105,14 +105,14 @@ describe('en démonstration, la devise se choisit', () => {
 describe('sur un vrai parc, la devise ne se choisit pas', () => {
   it('ne propose pas d’en changer au bailleur', async () => {
     serveurReel()
-    renderApp('/app', { session: sessionReelle('owner') })
+    await renderApp('/app', { session: sessionReelle('owner') })
     await attendreLeChargement()
     expect(selecteurDeDevise()).toBeNull()
   })
 
   it('ne propose pas d’en changer au locataire', async () => {
     serveurReel()
-    renderApp('/app/mon-espace', { session: sessionReelle('tenant') })
+    await renderApp('/app/mon-espace', { session: sessionReelle('tenant') })
     await attendreLeChargement()
     expect(selecteurDeDevise()).toBeNull()
   })
@@ -130,7 +130,7 @@ describe('sur un vrai parc, la devise ne se choisit pas', () => {
    */
   it('affiche les montants dans la devise du parc', async () => {
     serveurReel()
-    renderApp('/app', { session: sessionReelle('owner'), currency: 'EUR' })
+    await renderApp('/app', { session: sessionReelle('owner'), currency: 'EUR' })
     await attendreLeChargement()
 
     const main = screen.getByRole('main')

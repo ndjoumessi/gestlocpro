@@ -28,8 +28,8 @@ function proprietesReact(noeud: Element): Record<string, unknown> | null {
 }
 
 describe('connexion — aucune case qui ne commande rien', () => {
-  it('n’offre que des cases dont l’état est lu', () => {
-    renderApp('/connexion')
+  it('n’offre que des cases dont l’état est lu', async () => {
+    await renderApp('/connexion')
 
     const formulaire = screen.getByRole('button', { name: 'Se connecter' }).closest('form')
     expect(formulaire).not.toBeNull()

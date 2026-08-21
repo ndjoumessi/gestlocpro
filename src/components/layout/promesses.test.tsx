@@ -14,13 +14,13 @@ import { renderApp, screen } from '@/test/render'
  */
 describe('promesses de la page d’inscription', () => {
   it('n’annonce pas de relances tant que le produit n’en fait pas', async () => {
-    renderApp('/inscription/proprietaire')
+    await renderApp('/inscription/proprietaire')
     await screen.findByRole('heading', { level: 1 })
     expect(screen.queryByText(/relances/i)).not.toBeInTheDocument()
   })
 
   it('annonce quatre choses que le produit sait faire', async () => {
-    renderApp('/inscription/proprietaire')
+    await renderApp('/inscription/proprietaire')
     await screen.findByRole('heading', { level: 1 })
     for (const promesse of [
       /suivi des loyers/i,

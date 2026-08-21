@@ -15,32 +15,32 @@ import { renderApp, screen, userEvent } from '@/test/render'
  * d'écran, qui annonce le titre au changement de page.
  */
 describe('titre du document', () => {
-  it('nomme chaque écran, avec le produit en suffixe', () => {
-    renderApp('/connexion')
+  it('nomme chaque écran, avec le produit en suffixe', async () => {
+    await renderApp('/connexion')
     expect(document.title).toBe('Content de vous revoir · GestLocPro')
   })
 
-  it('distingue deux écrans applicatifs', () => {
-    renderApp('/app/cautions')
+  it('distingue deux écrans applicatifs', async () => {
+    await renderApp('/app/cautions')
     expect(document.title).toBe('Cautions · GestLocPro')
   })
 
-  it('nomme le parcours et non la seule étape à l’inscription', () => {
-    renderApp('/inscription')
+  it('nomme le parcours et non la seule étape à l’inscription', async () => {
+    await renderApp('/inscription')
     // « Votre rôle » seul ne dirait pas qu'on crée un compte.
     expect(document.title).toBe('Votre rôle — Créer votre compte · GestLocPro')
   })
 
   it('suit la langue', async () => {
     const user = userEvent.setup()
-    renderApp('/connexion')
+    await renderApp('/connexion')
 
     await user.click(screen.getByRole('button', { name: /english/i }))
     expect(document.title).toBe('Good to see you again · GestLocPro')
   })
 
-  it('laisse à la landing son titre de marque, sans suffixe redondant', () => {
-    renderApp('/')
+  it('laisse à la landing son titre de marque, sans suffixe redondant', async () => {
+    await renderApp('/')
     expect(document.title).toBe('GestLocPro — La gestion locative tenue comme un patrimoine')
   })
 })

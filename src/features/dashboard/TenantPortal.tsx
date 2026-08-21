@@ -1,5 +1,6 @@
 import { useId, useRef, useState, type KeyboardEvent } from 'react'
-import { DansUnCadre, PageHeader } from '@/components/layout/AppShell'
+import { DansUnCadre } from '@/components/layout/AppShell'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { Icon } from '@/components/primitives/Icon'
 import { Logo } from '@/components/primitives/Logo'
 import { cn } from '@/lib/cn'

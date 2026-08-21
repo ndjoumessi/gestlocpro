@@ -61,7 +61,7 @@ const RESERVEE_A_LA_GESTION = 'Parc immobilier'
 describe('le rôle vient de l’adhésion', () => {
   it('donne au propriétaire ses deux entrées réservées', async () => {
     serveurAvecParc()
-    renderApp('/app', { session: sessionDuRole('owner') })
+    await renderApp('/app', { session: sessionDuRole('owner') })
     await screen.findByRole('heading', { level: 1 })
 
     expect(screen.getAllByRole('link', { name: RESERVEE_AU_PROPRIETAIRE }).length).toBeGreaterThan(0)
@@ -70,7 +70,7 @@ describe('le rôle vient de l’adhésion', () => {
 
   it('retire au gestionnaire la seule entrée du propriétaire, et lui laisse le reste', async () => {
     serveurAvecParc()
-    renderApp('/app', { session: sessionDuRole('manager') })
+    await renderApp('/app', { session: sessionDuRole('manager') })
     await screen.findByRole('heading', { level: 1 })
 
     // Le cas tient sur ses DEUX moitiés : sans la seconde, une coquille vide le
@@ -81,7 +81,7 @@ describe('le rôle vient de l’adhésion', () => {
 
   it('retire au locataire les écrans de gestion', async () => {
     serveurAvecParc()
-    renderApp('/app', { session: sessionDuRole('tenant') })
+    await renderApp('/app', { session: sessionDuRole('tenant') })
     await screen.findByRole('heading', { level: 1 })
 
     expect(screen.queryAllByRole('link', { name: RESERVEE_A_LA_GESTION })).toHaveLength(0)
@@ -94,7 +94,7 @@ describe('le rôle vient de l’adhésion', () => {
 
   it('refuse au locataire l’accès direct à un écran de gestion', async () => {
     serveurAvecParc()
-    renderApp('/app/parc', { session: sessionDuRole('tenant') })
+    await renderApp('/app/parc', { session: sessionDuRole('tenant') })
 
     // La route porte le même filtre que la navigation : sans cela, l'adresse
     // saisie à la main contournerait la barre latérale.
@@ -103,7 +103,7 @@ describe('le rôle vient de l’adhésion', () => {
 
   it('n’offre à aucun de ces comptes un sélecteur de profil', async () => {
     serveurAvecParc()
-    renderApp('/app', { session: sessionDuRole('manager') })
+    await renderApp('/app', { session: sessionDuRole('manager') })
     await screen.findByRole('heading', { level: 1 })
 
     // Il ne changerait que le point de vue de la page, jamais ce que le serveur

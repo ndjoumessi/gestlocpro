@@ -1,6 +1,6 @@
 import { useId, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
-import { PageHeader } from '@/components/layout/AppShell'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { lien, useBase } from '@/lib/base'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'

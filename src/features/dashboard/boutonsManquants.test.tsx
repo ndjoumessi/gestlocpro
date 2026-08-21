@@ -21,7 +21,7 @@ import { renderApp, screen, switchRole, userEvent, within, attendreLeChargement 
 describe('gestes atteignables sans le toast', () => {
   it('offre de chiffrer une intervention déclarée', async () => {
     const user = userEvent.setup()
-    renderApp('/demo/travaux')
+    await renderApp('/demo/travaux')
     await attendreLeChargement()
 
     const avant = screen.queryAllByText('Devis proposé').length
@@ -38,7 +38,7 @@ describe('gestes atteignables sans le toast', () => {
 
   it('refuse un devis sans montant, et n’appelle rien', async () => {
     const user = userEvent.setup()
-    renderApp('/demo/travaux')
+    await renderApp('/demo/travaux')
     await attendreLeChargement()
 
     const avant = screen.queryAllByText('Devis proposé').length
@@ -52,7 +52,7 @@ describe('gestes atteignables sans le toast', () => {
   })
 
   it('offre de rouvrir un travail terminé, hors de tout message', async () => {
-    renderApp('/demo/travaux')
+    await renderApp('/demo/travaux')
     await attendreLeChargement()
 
     // Aucun toast n'a été déclenché : le geste doit exister par lui-même.
@@ -61,7 +61,7 @@ describe('gestes atteignables sans le toast', () => {
   })
 
   it('offre de retirer une validation, hors de tout message', async () => {
-    renderApp('/demo/travaux')
+    await renderApp('/demo/travaux')
     await attendreLeChargement()
 
     expect(
@@ -70,7 +70,7 @@ describe('gestes atteignables sans le toast', () => {
   })
 
   it('ne propose ni chiffrage ni réouverture au locataire', async () => {
-    renderApp('/demo/travaux')
+    await renderApp('/demo/travaux')
     await attendreLeChargement()
     await switchRole('tenant')
     await attendreLeChargement()
@@ -83,7 +83,7 @@ describe('gestes atteignables sans le toast', () => {
 describe('défaire un arbitrage de caution, hors du toast', () => {
   it('offre le geste sur une caution déjà arbitrée', async () => {
     const user = userEvent.setup()
-    renderApp('/demo/cautions')
+    await renderApp('/demo/cautions')
     await attendreLeChargement()
 
     // Une caution est arbitrée par le test lui-même : la démonstration n'en

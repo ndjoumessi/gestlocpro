@@ -11,7 +11,7 @@ import { renderApp, screen, switchRole, attendreLeChargement, userEvent } from '
  */
 describe('écran Signaler', () => {
   it('est proposé au locataire, et liste SES signalements', async () => {
-    renderApp('/demo/signaler')
+    await renderApp('/demo/signaler')
     await attendreLeChargement()
     await switchRole('tenant')
     await attendreLeChargement()
@@ -30,7 +30,7 @@ describe('écran Signaler', () => {
   })
 
   it('n’expose jamais le montant des travaux', async () => {
-    renderApp('/demo/signaler')
+    await renderApp('/demo/signaler')
     await attendreLeChargement()
     await switchRole('tenant')
     await attendreLeChargement()
@@ -44,7 +44,7 @@ describe('écran Signaler', () => {
   })
 
   it('ne liste QUE les siens', async () => {
-    renderApp('/demo/signaler')
+    await renderApp('/demo/signaler')
     await attendreLeChargement()
     await switchRole('tenant')
     await attendreLeChargement()
@@ -75,7 +75,7 @@ describe('écran Signaler', () => {
    * et votre bailleur le reçoivent immédiatement ».
    */
   it('n’offre pas de déclarer au bailleur, qui reçoit au lieu de signaler', async () => {
-    renderApp('/demo/signaler')
+    await renderApp('/demo/signaler')
     await attendreLeChargement()
 
     expect(screen.queryByRole('button', { name: /envoyer le signalement/i })).not.toBeInTheDocument()
@@ -98,7 +98,7 @@ describe('écran Signaler', () => {
 describe('écran Signaler — la description est obligatoire', () => {
   async function ouvrir() {
     const user = userEvent.setup()
-    renderApp('/demo/signaler')
+    await renderApp('/demo/signaler')
     await switchRole('tenant')
     await attendreLeChargement()
     return { user }

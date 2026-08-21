@@ -22,7 +22,7 @@ import { installerFauxServeur } from '@/test/api'
 describe('la liste du parc nomme les immeubles', () => {
   it('affiche le nom de l’immeuble dans la colonne qui l’annonce', async () => {
     installerFauxServeur()
-    renderApp('/demo/parc')
+    await renderApp('/demo/parc')
     await screen.findByRole('heading', { level: 1 })
     await attendreLeChargement()
 
@@ -35,7 +35,7 @@ describe('la liste du parc nomme les immeubles', () => {
 
   it('nomme les filtres par ce sur quoi ils filtrent', async () => {
     installerFauxServeur()
-    renderApp('/demo/parc')
+    await renderApp('/demo/parc')
     await screen.findByRole('heading', { level: 1 })
     await attendreLeChargement()
 
@@ -49,7 +49,7 @@ describe('la liste du parc nomme les immeubles', () => {
 
   it('filtre bien sur l’immeuble nommé', async () => {
     installerFauxServeur()
-    renderApp('/demo/parc')
+    await renderApp('/demo/parc')
     await screen.findByRole('heading', { level: 1 })
     await attendreLeChargement()
 
@@ -77,14 +77,14 @@ describe('la liste du parc nomme les immeubles', () => {
    */
   it('laisse l’adresse piloter le filtre d’immeuble', async () => {
     // Le parc entier d'abord, pour avoir un point de comparaison.
-    renderApp('/demo/parc')
+    await renderApp('/demo/parc')
     await attendreLeChargement()
     const toutes = screen.getAllByRole('row').length
     cleanup()
 
     // La MÊME page, ouverte sur une adresse qui porte le filtre : c'est le
     // mécanisme qui fait survivre le choix à un aller-retour vers un dossier.
-    renderApp(`/demo/parc?immeuble=${BUILDINGS[0].id}`)
+    await renderApp(`/demo/parc?immeuble=${BUILDINGS[0].id}`)
     await attendreLeChargement()
     const filtrees = screen.getAllByRole('row').length
 

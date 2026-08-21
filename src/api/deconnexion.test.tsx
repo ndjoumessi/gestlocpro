@@ -29,7 +29,7 @@ const avatar = () => screen.getByRole('button', { name: /nelson djoumessi/i })
 describe('déconnexion', () => {
   it('porte les initiales du COMPTE, et non celles d’un personnage', async () => {
     installerFauxServeur({ authentifie: true })
-    renderApp('/app', { session: SESSION })
+    await renderApp('/app', { session: SESSION })
 
     // « ND », pas « AN ». Le nom du titulaire répond à la question qu'on se pose
     // sur un poste partagé avant même de se déconnecter : qui est connecté ?
@@ -40,7 +40,7 @@ describe('déconnexion', () => {
     const serveur = installerFauxServeur({ authentifie: true })
     serveur.quand('POST', '/auth/logout', { status: 204 })
     const user = userEvent.setup()
-    renderApp('/app', { session: SESSION })
+    await renderApp('/app', { session: SESSION })
 
     await user.click(avatar())
     await user.click(screen.getByRole('menuitem', { name: /se déconnecter/i }))
@@ -56,7 +56,7 @@ describe('déconnexion', () => {
   it('montre à qui appartient la session avant de la fermer', async () => {
     installerFauxServeur({ authentifie: true })
     const user = userEvent.setup()
-    renderApp('/app', { session: SESSION })
+    await renderApp('/app', { session: SESSION })
 
     await user.click(avatar())
     const menu = screen.getByRole('menu')
@@ -65,7 +65,7 @@ describe('déconnexion', () => {
   })
 
   it('n’en propose pas en démonstration, où il n’y a pas de compte', async () => {
-    renderApp('/demo')
+    await renderApp('/demo')
 
     // Rien à déconnecter : le visiteur n'a pas de session à fermer, et un bouton
     // qui ne peut rien faire occupe la place d'une action utile.

@@ -1,5 +1,6 @@
 import { useRef, useState, type KeyboardEvent } from 'react'
-import { PageHeader, useRole } from '@/components/layout/AppShell'
+import { useRole } from '@/components/layout/AppShell'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/primitives/Button'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { Field } from '@/components/primitives/Field'

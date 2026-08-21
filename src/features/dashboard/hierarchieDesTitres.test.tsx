@@ -89,7 +89,7 @@ const ECRANS_DU_LOCATAIRE = [
 describe('la hiérarchie des titres, sur un parc qui n’a rien à montrer', () => {
   it.each(ECRANS_DU_BAILLEUR)('ne saute aucune marche sur %s', async (route) => {
     parcSansAucunLogement()
-    renderApp(route, { session: session('owner') })
+    await renderApp(route, { session: session('owner') })
     await attendreLeSecondTitre()
 
     expect(sautsDeNiveau()).toEqual([])
@@ -97,7 +97,7 @@ describe('la hiérarchie des titres, sur un parc qui n’a rien à montrer', () 
 
   it.each(ECRANS_DU_LOCATAIRE)('ne saute aucune marche sur %s, côté locataire', async (route) => {
     parcSansAucunLogement()
-    renderApp(route, { session: session('tenant') })
+    await renderApp(route, { session: session('tenant') })
     await attendreLeSecondTitre()
 
     expect(sautsDeNiveau()).toEqual([])
@@ -107,7 +107,7 @@ describe('la hiérarchie des titres, sur un parc qui n’a rien à montrer', () 
 describe('le niveau que porte un état vide', () => {
   it('suit le titre de la page quand il la remplit tout entière', async () => {
     parcSansAucunLogement()
-    renderApp('/app', { session: session('owner') })
+    await renderApp('/app', { session: session('owner') })
 
     // Le seul `<h1>` reste celui de l'en-tête : l'état vide ne se hisse pas à
     // la place du titre de page, il prend la marche d'en dessous.
@@ -126,7 +126,7 @@ describe('le niveau que porte un état vide', () => {
    */
   it('reste d’un cran sous l’en-tête de la carte qui le contient', async () => {
     parcSansAucunLogement()
-    renderApp('/app/signaler', { session: session('tenant') })
+    await renderApp('/app/signaler', { session: session('tenant') })
 
     expect(await screen.findByRole('heading', { level: 3, name: /aucun signalement/i }))
       .toBeInTheDocument()

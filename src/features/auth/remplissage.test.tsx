@@ -16,7 +16,7 @@ import { renderApp, screen } from '@/test/render'
  */
 describe('remplissage automatique', () => {
   it('nomme chaque champ de l’inscription', async () => {
-    renderApp('/inscription/proprietaire')
+    await renderApp('/inscription/proprietaire')
     await screen.findByRole('heading', { level: 1 })
 
     const jeton = (libelle: RegExp) =>
@@ -39,7 +39,7 @@ describe('remplissage automatique', () => {
      * l'inscription avec un ancien mot de passe, ou refuser d'enregistrer le
      * nouveau.
      */
-    renderApp('/connexion')
+    await renderApp('/connexion')
     await screen.findByRole('heading', { level: 1 })
     expect(screen.getByLabelText(/^Mot de passe/).getAttribute('autocomplete')).toBe(
       'current-password',

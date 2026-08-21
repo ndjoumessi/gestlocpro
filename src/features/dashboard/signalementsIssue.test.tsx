@@ -17,7 +17,7 @@ import { renderApp, screen, attendreLeChargement } from '@/test/render'
 
 describe('issue des notifications', () => {
   it('mène chaque nature à l’écran qui la traite', async () => {
-    renderApp('/demo/signalements')
+    await renderApp('/demo/signalements')
     await attendreLeChargement()
 
     const liens = screen.getAllByRole('link', { name: /ouvrir/i })
@@ -40,7 +40,7 @@ describe('issue des notifications', () => {
   })
 
   it('reste dans l’espace où l’on se trouve', async () => {
-    renderApp('/demo/signalements')
+    await renderApp('/demo/signalements')
     await attendreLeChargement()
 
     // Sous `/demo`, les liens ne doivent pas renvoyer vers `/app` : le visiteur
@@ -51,7 +51,7 @@ describe('issue des notifications', () => {
   })
 
   it('donne une issue à chaque carte, pas seulement à la première', async () => {
-    renderApp('/demo/signalements')
+    await renderApp('/demo/signalements')
     await attendreLeChargement()
 
     const titres = screen.getAllByRole('heading', { level: 2 })

@@ -19,7 +19,7 @@ describe('rejoindre un parc', () => {
     const serveur = installerFauxServeur({ authentifie: true })
     serveur.quand('POST', '/join', { status: 201, body: { parkId: 'p', role: 'tenant' } })
     const user = userEvent.setup()
-    renderApp('/app/prise-en-main', { session: SESSION })
+    await renderApp('/app/prise-en-main', { session: SESSION })
 
     await user.type(await screen.findByLabelText(/code d’invitation/i), 'LOC-WS4V-YEC9')
     await user.click(screen.getByRole('button', { name: /^rejoindre$/i }))
@@ -43,7 +43,7 @@ describe('rejoindre un parc', () => {
     const serveur = installerFauxServeur({ authentifie: true })
     serveur.quand('POST', '/join', { status: 400, body: { error: 'invitation_invalid' } })
     const user = userEvent.setup()
-    renderApp('/app/prise-en-main', { session: SESSION })
+    await renderApp('/app/prise-en-main', { session: SESSION })
 
     await user.type(await screen.findByLabelText(/code d’invitation/i), 'LOC-FAUX-CODE')
     await user.click(screen.getByRole('button', { name: /^rejoindre$/i }))
@@ -59,7 +59,7 @@ describe('rejoindre un parc', () => {
      * sans objet sur l'écran censé lui expliquer ses droits.
      */
     installerFauxServeur({ authentifie: true })
-    renderApp('/app/prise-en-main', {
+    await renderApp('/app/prise-en-main', {
       session: {
         statut: 'connecte',
         compte: COMPTE_FICTIF,
@@ -76,7 +76,7 @@ describe('rejoindre un parc', () => {
   it('n’envoie rien tant que le code est trop court', async () => {
     const serveur = installerFauxServeur({ authentifie: true })
     const user = userEvent.setup()
-    renderApp('/app/prise-en-main', { session: SESSION })
+    await renderApp('/app/prise-en-main', { session: SESSION })
 
     await user.type(await screen.findByLabelText(/code d’invitation/i), 'LO')
 

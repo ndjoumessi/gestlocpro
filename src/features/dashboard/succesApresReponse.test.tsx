@@ -76,7 +76,7 @@ beforeEach(() => {
 
 /** Ouvre la modale de création et remplit ce que la validation exige. */
 async function remplirLaFiche(user: ReturnType<typeof userEvent.setup>) {
-  renderApp('/app/locataires', { session: SESSION })
+  await renderApp('/app/locataires', { session: SESSION })
   await attendreLeChargement()
 
   await user.click(screen.getByRole('button', { name: 'Créer une fiche locataire' }))

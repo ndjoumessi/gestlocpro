@@ -16,7 +16,7 @@ import { renderApp, screen, userEvent, attendreLeChargement } from '@/test/rende
  */
 async function ouvrirPortail() {
   const user = userEvent.setup()
-  renderApp('/demo/portail')
+  await renderApp('/demo/portail')
   const onglets = screen.getAllByRole('tab')
   return { user, onglets }
 }

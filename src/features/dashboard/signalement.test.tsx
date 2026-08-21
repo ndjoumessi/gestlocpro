@@ -36,7 +36,7 @@ describe('signalement par le locataire', () => {
    * décide un chantier, et c'est un autre verbe.
    */
   it('n’offre pas au bailleur de SIGNALER, mais d’ouvrir un chantier', async () => {
-    renderApp('/demo/travaux')
+    await renderApp('/demo/travaux')
     await attendreLeChargement()
 
     expect(screen.queryByRole('button', { name: /signaler un problème/i })).not.toBeInTheDocument()
@@ -52,7 +52,7 @@ describe('signalement par le locataire', () => {
    */
   it('n’offre pas au locataire d’ouvrir un chantier', async () => {
     const { switchRole } = await import('@/test/render')
-    renderApp('/demo/travaux')
+    await renderApp('/demo/travaux')
     await switchRole('tenant')
     await attendreLeChargement()
 
@@ -69,7 +69,7 @@ describe('signalement par le locataire', () => {
    * n'est pas celle du locataire déguisée.
    */
   it('lui offre le corps de métier que le locataire ne peut pas déclarer', async () => {
-    renderApp('/demo/travaux')
+    await renderApp('/demo/travaux')
     await attendreLeChargement()
     await userEvent.click(screen.getByRole('button', { name: /ouvrir un chantier/i }))
 
@@ -95,7 +95,7 @@ describe('signalement par le locataire', () => {
    * occurrences, ce qu'aucune assertion de présence ne sait faire.
    */
   it('ne pose pas deux fois la même question', async () => {
-    renderApp('/demo/travaux')
+    await renderApp('/demo/travaux')
     await attendreLeChargement()
     await userEvent.click(screen.getByRole('button', { name: /ouvrir un chantier/i }))
 
@@ -106,7 +106,7 @@ describe('signalement par le locataire', () => {
 
   it('est proposé au locataire', async () => {
     const { switchRole } = await import('@/test/render')
-    renderApp('/demo/travaux')
+    await renderApp('/demo/travaux')
     await attendreLeChargement()
     await switchRole('tenant')
     await attendreLeChargement()
@@ -117,7 +117,7 @@ describe('signalement par le locataire', () => {
   it('refuse un signalement sans description, et n’ajoute rien', async () => {
     const user = userEvent.setup()
     const { switchRole } = await import('@/test/render')
-    renderApp('/demo/travaux')
+    await renderApp('/demo/travaux')
     await attendreLeChargement()
     await switchRole('tenant')
     await attendreLeChargement()
@@ -136,7 +136,7 @@ describe('signalement par le locataire', () => {
   it('ajoute l’intervention déclarée à la liste', async () => {
     const user = userEvent.setup()
     const { switchRole } = await import('@/test/render')
-    renderApp('/demo/travaux')
+    await renderApp('/demo/travaux')
     await attendreLeChargement()
     await switchRole('tenant')
     await attendreLeChargement()

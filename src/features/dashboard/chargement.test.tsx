@@ -95,7 +95,7 @@ function serveurAvecParc() {
 describe('tableau de bord pendant le chargement du parc', () => {
   it('ne sert pas le parc de démonstration à la place du parc réel', async () => {
     serveurAvecParc()
-    renderApp('/app', { session: SESSION_AVEC_PARC })
+    await renderApp('/app', { session: SESSION_AVEC_PARC })
 
     // « Villa Deïdo » n'appartient qu'au jeu de démonstration : le parc du
     // serveur ne porte qu'un immeuble. Le voir ici, c'est lire le parc de
@@ -109,7 +109,7 @@ describe('tableau de bord pendant le chargement du parc', () => {
 
   it('annonce le chargement sans décrire le décor aux lecteurs d’écran', async () => {
     serveurAvecParc()
-    renderApp('/app', { session: SESSION_AVEC_PARC })
+    await renderApp('/app', { session: SESSION_AVEC_PARC })
 
     const region = within(screen.getByRole('main')).getByRole('status')
     expect(region).toHaveAttribute('aria-busy', 'true')
@@ -128,7 +128,7 @@ describe('tableau de bord pendant le chargement du parc', () => {
 describe('parc immobilier pendant le chargement', () => {
   it('ne fabrique aucune ligne de tableau, ni vraie ni fausse', async () => {
     serveurAvecParc()
-    renderApp('/app/parc', { session: SESSION_AVEC_PARC })
+    await renderApp('/app/parc', { session: SESSION_AVEC_PARC })
 
     // Zéro : ni les douze lignes de la démonstration, ni des lignes de
     // squelette qu'un lecteur d'écran annoncerait comme des logements.
@@ -178,7 +178,7 @@ describe('quand le parc est déjà à l’écran', () => {
     ralentirLePortefeuille()
 
     const user = userEvent.setup()
-    renderApp('/app/parc', { session: SESSION_AVEC_PARC })
+    await renderApp('/app/parc', { session: SESSION_AVEC_PARC })
     await screen.findByText('A3')
 
     await user.click(screen.getAllByRole('button', { name: /english/i })[0]!)
@@ -190,8 +190,8 @@ describe('quand le parc est déjà à l’écran', () => {
 })
 
 describe('sans parc serveur', () => {
-  it('n’invente aucun chargement : les données locales sont déjà là', () => {
-    renderApp('/app')
+  it('n’invente aucun chargement : les données locales sont déjà là', async () => {
+    await renderApp('/app')
 
     // Aucune annonce d'attente…
     expect(within(screen.getByRole('main')).queryByRole('status')).toBeNull()
@@ -205,7 +205,7 @@ describe('quand le parc ne se charge pas', () => {
   it('efface le squelette au lieu de faire attendre indéfiniment', async () => {
     // La route du portefeuille n'est pas programmée : le faux serveur rend 404.
     installerFauxServeur()
-    renderApp('/app', { session: SESSION_AVEC_PARC })
+    await renderApp('/app', { session: SESSION_AVEC_PARC })
 
     expect(within(screen.getByRole('main')).getByRole('status')).toBeInTheDocument()
 
@@ -260,7 +260,7 @@ describe.each(ECRANS)('$nom pendant le chargement', ({ route, temoin }) => {
      * `ralentirLePortefeuille`, il a déjà servi une fois dans ce fichier.
      */
     ralentirLePortefeuille()
-    renderApp(route, { session: SESSION_AVEC_PARC })
+    await renderApp(route, { session: SESSION_AVEC_PARC })
 
     const main = () => screen.getByRole('main')
 
@@ -288,7 +288,7 @@ describe.each(ECRANS)('$nom pendant le chargement', ({ route, temoin }) => {
   it('annonce l’attente une seule fois', async () => {
     serveurAvecParc()
     ralentirLePortefeuille()
-    renderApp(route, { session: SESSION_AVEC_PARC })
+    await renderApp(route, { session: SESSION_AVEC_PARC })
 
     const main = screen.getByRole('main')
     // Une région, pas quinze : les pavés sont décoratifs, l'annonce est unique.
@@ -335,7 +335,7 @@ describe('l’espace locataire pendant le chargement', () => {
     serveurAvecParc()
     ralentirLePortefeuille(800)
     // L'adhésion porte déjà le rôle : le sélecteur n'a plus à le poser.
-    renderApp('/app', { session: SESSION_LOCATAIRE })
+    await renderApp('/app', { session: SESSION_LOCATAIRE })
 
     const main = () => screen.getByRole('main')
 
@@ -385,7 +385,7 @@ describe('démonstration', () => {
   const attente = () => within(screen.getByRole('main')).queryByRole('status')
 
   it('ouvre une attente dès le premier rendu, puis la referme', async () => {
-    renderApp('/demo/travaux', { session: { statut: 'demo' } })
+    await renderApp('/demo/travaux', { session: { statut: 'demo' } })
 
     // Dès la première image, posée par `useState` et non par l'effet : sinon
     // une image complète de données passerait avant le squelette.
@@ -397,7 +397,7 @@ describe('démonstration', () => {
 
   it('ne la rejoue pas d’un écran à l’autre', async () => {
     const user = userEvent.setup()
-    renderApp('/demo/travaux', { session: { statut: 'demo' } })
+    await renderApp('/demo/travaux', { session: { statut: 'demo' } })
     await waitFor(() => expect(attente()).toBeNull(), { timeout: 4000 })
 
     const liens = screen.getAllByRole('link', { name: /^cautions/i })
@@ -427,7 +427,7 @@ describe('vitrine des états', () => {
   const attente = () => within(screen.getByRole('main')).queryByRole('status')
 
   it('joue l’attente puis aboutit sur du contenu réel', async () => {
-    renderApp('/demo/systeme')
+    await renderApp('/demo/systeme')
 
     expect(attente()).not.toBeNull()
 
@@ -439,7 +439,7 @@ describe('vitrine des états', () => {
 
   it('se rejoue à la demande', async () => {
     const user = userEvent.setup()
-    renderApp('/demo/systeme')
+    await renderApp('/demo/systeme')
     await waitFor(() => expect(attente()).toBeNull(), { timeout: 4000 })
 
     await user.click(screen.getByRole('button', { name: /rejouer le chargement/i }))
@@ -467,7 +467,7 @@ describe('vitrine des états', () => {
     // exactement l'instant qu'on veut regarder.
     serveur.quand('GET', '/parks/:id/portfolio', { status: 200, body: null })
 
-    renderApp('/demo/mon-espace')
+    await renderApp('/demo/mon-espace')
 
     // DANS le contenu principal : la barre latérale porte ses propres
     // destinations, et elles ne sont pas le sujet.

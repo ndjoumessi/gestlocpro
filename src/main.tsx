@@ -7,7 +7,6 @@ import { I18nProvider } from './i18n/I18nProvider'
 import { ThemeProvider } from './theme/ThemeProvider'
 import { CurrencyProvider } from './currency/CurrencyProvider'
 import { ToastProvider } from './components/primitives/Toast'
-import { PortfolioProvider } from './data/PortfolioProvider'
 import { SessionProvider } from './api/SessionProvider'
 import { BandeauVersion } from './components/feedback/BandeauVersion'
 
@@ -22,16 +21,21 @@ createRoot(document.getElementById('root')!).render(
         <ThemeProvider>
           <CurrencyProvider>
             <ToastProvider>
-              {/* Au-dessus du parc : celui-ci lira à terme les données du compte
-                  connecté, là où il sert encore un jeu de démonstration commun. */}
+              {/*
+                `PortfolioProvider` ne vit plus ici depuis ce lot : mesuré, il
+                pèse à lui seul plus que les vingt écrans de gestion réunis, et
+                aucune page publique ne l'a jamais consommé. Il descend avec
+                l'espace applicatif dans `src/App.tsx`, sous la même frontière
+                paresseuse — voir `src/app/EspaceApplicatif.tsx`. `SessionProvider`
+                reste ICI : `Login` et `SignUp`, publics, en dépendent pour la
+                connexion elle-même.
+              */}
               <SessionProvider>
-                <PortfolioProvider>
-                  <App />
-                  {/* Hors de `<App />` : l'avertissement vaut sur TOUTE page, y
-                      compris l'accueil et l'inscription — c'est précisément là
-                      qu'un code périmé a fait perdre le plus de temps. */}
-                  <BandeauVersion />
-                </PortfolioProvider>
+                <App />
+                {/* Hors de `<App />` : l'avertissement vaut sur TOUTE page, y
+                    compris l'accueil et l'inscription — c'est précisément là
+                    qu'un code périmé a fait perdre le plus de temps. */}
+                <BandeauVersion />
               </SessionProvider>
             </ToastProvider>
           </CurrencyProvider>

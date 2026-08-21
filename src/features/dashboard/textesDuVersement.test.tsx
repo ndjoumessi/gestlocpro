@@ -86,7 +86,7 @@ function installer(versement: Record<string, unknown>): FauxServeur {
 describe('la référence revient sous les yeux du bailleur', () => {
   it('la montre au dossier du logement', async () => {
     installer({ reference: 'MM-4471', note: null })
-    renderApp(`/app/parc/${UNITE}`, { session: session('owner') })
+    await renderApp(`/app/parc/${UNITE}`, { session: session('owner') })
     await attendreLeChargement()
 
     expect(await screen.findByText(/réf\. MM-4471/)).toBeInTheDocument()
@@ -99,7 +99,7 @@ describe('la référence revient sous les yeux du bailleur', () => {
    */
   it('n’écrit rien quand le versement n’en porte pas', async () => {
     installer({ reference: null, note: null })
-    renderApp(`/app/parc/${UNITE}`, { session: session('owner') })
+    await renderApp(`/app/parc/${UNITE}`, { session: session('owner') })
     await attendreLeChargement()
 
     await waitFor(() => expect(screen.queryByText(/réf\./)).not.toBeInTheDocument())
@@ -107,7 +107,7 @@ describe('la référence revient sous les yeux du bailleur', () => {
 
   it('montre la note au bailleur', async () => {
     installer({ reference: 'MM-4471', note: 'Solde promis le 15.' })
-    renderApp(`/app/parc/${UNITE}`, { session: session('owner') })
+    await renderApp(`/app/parc/${UNITE}`, { session: session('owner') })
     await attendreLeChargement()
 
     expect(await screen.findByText('Solde promis le 15.')).toBeInTheDocument()
@@ -118,7 +118,7 @@ describe('la saisie', () => {
   it('envoie la note avec le versement', async () => {
     const faux = installer({ reference: null, note: null })
     faux.quand('POST', `/parks/${PARC}/payments`, { status: 201, body: { payment: { id: 'p-1' } } })
-    renderApp('/app/paiements', { session: session('owner') })
+    await renderApp('/app/paiements', { session: session('owner') })
     await attendreLeChargement()
 
     const clavier = userEvent.setup()

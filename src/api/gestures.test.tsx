@@ -125,7 +125,7 @@ describe('valider un devis', () => {
     })
 
     const user = userEvent.setup()
-    renderApp('/app/travaux', { session: SESSION_AVEC_PARC })
+    await renderApp('/app/travaux', { session: SESSION_AVEC_PARC })
     // On attend la charge du SERVEUR avant de cliquer : sans cela le geste
     // porte sur le jeu de démonstration encore affiché, et vise un autre devis.
     await screen.findByText(/SIG-2026-001/)
@@ -146,7 +146,7 @@ describe('valider un devis', () => {
     })
 
     const user = userEvent.setup()
-    renderApp('/app/travaux', { session: SESSION_AVEC_PARC })
+    await renderApp('/app/travaux', { session: SESSION_AVEC_PARC })
     // On attend la charge du SERVEUR avant de cliquer : sans cela le geste
     // porte sur le jeu de démonstration encore affiché, et vise un autre devis.
     await screen.findByText(/SIG-2026-001/)
@@ -175,7 +175,7 @@ describe('valider un devis', () => {
     })
 
     const user = userEvent.setup()
-    renderApp('/app/travaux', { session: SESSION_AVEC_PARC })
+    await renderApp('/app/travaux', { session: SESSION_AVEC_PARC })
     // On attend la charge du SERVEUR avant de cliquer : sans cela le geste
     // porte sur le jeu de démonstration encore affiché, et vise un autre devis.
     await screen.findByText(/SIG-2026-001/)
@@ -210,7 +210,7 @@ describe('arbitrer une caution', () => {
     })
 
     const user = userEvent.setup()
-    renderApp('/app/cautions', { session: SESSION_AVEC_PARC })
+    await renderApp('/app/cautions', { session: SESSION_AVEC_PARC })
     await user.click(await screen.findByRole('button', { name: /^arbitrer$/i }))
 
     await user.type(screen.getByLabelText(/montant retenu/i), '45000')
@@ -240,7 +240,7 @@ describe('rattacher un locataire', () => {
     })
 
     const user = userEvent.setup()
-    renderApp('/app/locataires', { session: SESSION_AVEC_PARC })
+    await renderApp('/app/locataires', { session: SESSION_AVEC_PARC })
     await user.click(await screen.findByRole('button', { name: /créer une fiche locataire/i }))
 
     await user.type(screen.getByLabelText(/nom complet/i), 'Awa Diallo')
@@ -283,7 +283,7 @@ describe('constituer son parc', () => {
     })
 
     const user = userEvent.setup()
-    renderApp('/app/parc', { session: SESSION_AVEC_PARC })
+    await renderApp('/app/parc', { session: SESSION_AVEC_PARC })
     // Le parc du serveur est à l'écran : sa carte de quartier le prouve.
     await screen.findAllByText('Bonamoussadi')
 
@@ -333,7 +333,7 @@ describe('constituer son parc', () => {
     serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: vide })
 
     const user = userEvent.setup()
-    renderApp('/app/parc', { session: SESSION_AVEC_PARC })
+    await renderApp('/app/parc', { session: SESSION_AVEC_PARC })
     await user.click(await screen.findByRole('button', { name: /ajouter un immeuble/i }))
 
     await user.type(screen.getByLabelText(/nom de l’immeuble/i), 'A')
@@ -356,7 +356,7 @@ describe('saisir un logement', () => {
     })
 
     const user = userEvent.setup()
-    renderApp('/app/parc', { session: SESSION_AVEC_PARC })
+    await renderApp('/app/parc', { session: SESSION_AVEC_PARC })
     await screen.findAllByText('Bonamoussadi')
 
     await user.click(screen.getByRole('button', { name: /ajouter un logement/i }))
@@ -389,7 +389,7 @@ describe('saisir un logement', () => {
     serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: portefeuille() })
 
     const user = userEvent.setup()
-    renderApp('/app/parc', { session: SESSION_AVEC_PARC })
+    await renderApp('/app/parc', { session: SESSION_AVEC_PARC })
     await screen.findAllByText('Bonamoussadi')
 
     await user.click(screen.getByRole('button', { name: /ajouter un logement/i }))
@@ -423,7 +423,7 @@ describe('saisir les termes du bail', () => {
     })
 
     const user = userEvent.setup()
-    renderApp('/app/locataires', { session: SESSION_AVEC_PARC })
+    await renderApp('/app/locataires', { session: SESSION_AVEC_PARC })
     await user.click(await screen.findByRole('button', { name: /créer une fiche locataire/i }))
 
     await user.type(screen.getByLabelText(/nom complet/i), 'Awa Diallo')
@@ -458,7 +458,7 @@ describe('saisir les termes du bail', () => {
     })
 
     const user = userEvent.setup()
-    renderApp('/app/locataires', { session: SESSION_AVEC_PARC })
+    await renderApp('/app/locataires', { session: SESSION_AVEC_PARC })
     await user.click(await screen.findByRole('button', { name: /créer une fiche locataire/i }))
     await user.type(screen.getByLabelText(/nom complet/i), 'Awa Diallo')
     await user.type(screen.getByLabelText(/^téléphone/i), '688401277')
@@ -489,7 +489,7 @@ describe('enregistrer un encaissement', () => {
     })
 
     const user = userEvent.setup()
-    renderApp('/app', { session: SESSION_AVEC_PARC })
+    await renderApp('/app', { session: SESSION_AVEC_PARC })
     await user.click(await screen.findByRole('button', { name: /enregistrer un paiement/i }))
     await user.type(screen.getByLabelText(/montant/i), '115000')
     await user.click(screen.getByRole('button', { name: /^enregistrer$/i }))
@@ -517,7 +517,7 @@ describe('enregistrer un encaissement', () => {
     })
 
     const user = userEvent.setup()
-    renderApp('/app', { session: SESSION_AVEC_PARC })
+    await renderApp('/app', { session: SESSION_AVEC_PARC })
     await user.click(await screen.findByRole('button', { name: /enregistrer un paiement/i }))
 
     await choisirLeMois(user, /période couverte/i, '2026-07')
@@ -546,7 +546,7 @@ describe('enregistrer un encaissement', () => {
     })
 
     const user = userEvent.setup()
-    renderApp('/app', { session: SESSION_AVEC_PARC })
+    await renderApp('/app', { session: SESSION_AVEC_PARC })
     await user.click(await screen.findByRole('button', { name: /enregistrer un paiement/i }))
 
     await choisirLeMois(user, /période couverte/i, '2026-07')
@@ -578,7 +578,7 @@ describe('enregistrer un encaissement', () => {
     })
 
     const user = userEvent.setup()
-    renderApp('/app', { session: SESSION_AVEC_PARC })
+    await renderApp('/app', { session: SESSION_AVEC_PARC })
     await user.click(await screen.findByRole('button', { name: /enregistrer un paiement/i }))
     await user.type(screen.getByLabelText(/montant/i), '115000')
     await user.type(screen.getByLabelText(/référence de la transaction/i), 'MP260816.1432.A98765')
@@ -602,7 +602,7 @@ describe('enregistrer un encaissement', () => {
     })
 
     const user = userEvent.setup()
-    renderApp('/app', { session: SESSION_AVEC_PARC })
+    await renderApp('/app', { session: SESSION_AVEC_PARC })
     await user.click(await screen.findByRole('button', { name: /enregistrer un paiement/i }))
     await user.type(screen.getByLabelText(/montant/i), '50000')
     await user.click(screen.getByRole('button', { name: /^enregistrer$/i }))
@@ -667,7 +667,7 @@ describe('émettre une quittance', () => {
     })
 
     const user = userEvent.setup()
-    renderApp('/app/paiements', { session: SESSION_AVEC_PARC })
+    await renderApp('/app/paiements', { session: SESSION_AVEC_PARC })
     await attendreLeParcDuServeur()
     await user.click(screen.getAllByRole('button', { name: /^quittance$/i })[0]!)
 
@@ -698,7 +698,7 @@ describe('émettre une quittance', () => {
     })
 
     const user = userEvent.setup()
-    renderApp('/app/paiements', { session: SESSION_AVEC_PARC })
+    await renderApp('/app/paiements', { session: SESSION_AVEC_PARC })
     await attendreLeParcDuServeur()
     await user.click(screen.getAllByRole('button', { name: /^quittance$/i })[0]!)
 
@@ -714,7 +714,7 @@ describe('émettre une quittance', () => {
     serveur.quand('POST', `/parks/${PARK}/receipts`, { status: 404, body: { error: 'not_found' } })
 
     const user = userEvent.setup()
-    renderApp('/app/paiements', { session: SESSION_AVEC_PARC })
+    await renderApp('/app/paiements', { session: SESSION_AVEC_PARC })
     await attendreLeParcDuServeur()
     await user.click(screen.getAllByRole('button', { name: /^quittance$/i })[0]!)
 
@@ -744,7 +744,7 @@ describe('inviter à rejoindre le parc', () => {
     })
 
     const user = userEvent.setup()
-    renderApp('/app/locataires', { session: SESSION_AVEC_PARC })
+    await renderApp('/app/locataires', { session: SESSION_AVEC_PARC })
     await user.click(await screen.findByRole('button', { name: /inviter par code/i }))
     await user.click(screen.getByRole('button', { name: /émettre le code/i }))
 
@@ -768,7 +768,7 @@ describe('inviter à rejoindre le parc', () => {
     })
 
     const user = userEvent.setup()
-    renderApp('/app/locataires', { session: SESSION_AVEC_PARC })
+    await renderApp('/app/locataires', { session: SESSION_AVEC_PARC })
     await user.click(await screen.findByRole('button', { name: /inviter par code/i }))
     await user.click(screen.getByRole('button', { name: /émettre le code/i }))
 
@@ -787,7 +787,7 @@ describe('inviter à rejoindre le parc', () => {
     })
 
     const user = userEvent.setup()
-    renderApp('/app/locataires', { session: SESSION_AVEC_PARC })
+    await renderApp('/app/locataires', { session: SESSION_AVEC_PARC })
     await user.click(await screen.findByRole('button', { name: /inviter par code/i }))
     await user.selectOptions(screen.getByLabelText(/rôle invité/i), 'manager')
     await user.click(screen.getByRole('button', { name: /émettre le code/i }))
@@ -830,7 +830,7 @@ describe('retirer un immeuble', () => {
     serveur.quand('DELETE', `/parks/${PARK}/buildings/${IMMEUBLE}`, { status: 204 })
 
     const user = userEvent.setup()
-    renderApp('/app/parc', { session: SESSION_AVEC_PARC })
+    await renderApp('/app/parc', { session: SESSION_AVEC_PARC })
     // Le nom paraît sur la carte ET dans la colonne « Immeuble » depuis que
     // celle-ci ne rend plus le quartier.
     await screen.findAllByText('Residence Djoumessi')
@@ -858,7 +858,7 @@ describe('retirer un immeuble', () => {
     const serveur = installerFauxServeur()
     serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: portefeuille() })
 
-    renderApp('/app/parc', { session: SESSION_AVEC_PARC })
+    await renderApp('/app/parc', { session: SESSION_AVEC_PARC })
     await screen.findAllByText('Résidence Bonamoussadi')
 
     expect(screen.queryByRole('button', { name: /supprimer l’immeuble/i })).not.toBeInTheDocument()

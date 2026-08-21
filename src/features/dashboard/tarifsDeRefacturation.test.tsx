@@ -92,7 +92,7 @@ describe('les prix affichés sur les relevés', () => {
     // client : un écran qui aurait gardé les constantes afficherait l'ancien
     // prix sans que rien ne le dise.
     servir({ water: 610, power: 112 })
-    renderApp('/app/releves', { session: sessionDuRole('owner') })
+    await renderApp('/app/releves', { session: sessionDuRole('owner') })
     await attendreLeChargement()
 
     expect(await screen.findByText(/610/)).toBeInTheDocument()
@@ -102,7 +102,7 @@ describe('les prix affichés sur les relevés', () => {
 
   it('disparaissent quand le parc n’en a posé aucun', async () => {
     servir({ water: null, power: null })
-    renderApp('/app/releves', { session: sessionDuRole('owner') })
+    await renderApp('/app/releves', { session: sessionDuRole('owner') })
     await attendreLeChargement()
 
     /**
@@ -126,7 +126,7 @@ describe('les prix affichés sur les relevés', () => {
 describe('ce que le locataire lit de ses charges', () => {
   it('voit son montant quand le prix existe', async () => {
     servir({ water: 610, power: 112 })
-    renderApp('/app/mon-espace', { session: sessionDuRole('tenant') })
+    await renderApp('/app/mon-espace', { session: sessionDuRole('tenant') })
     await attendreLeChargement()
 
     // 16 m³ à 610 : la moitié positive, sans laquelle un écran qui n'afficherait
@@ -136,7 +136,7 @@ describe('ce que le locataire lit de ses charges', () => {
 
   it('lit un tiret plutôt qu’un montant que personne ne lui a accordé', async () => {
     servir({ water: null, power: null })
-    renderApp('/app/mon-espace', { session: sessionDuRole('tenant') })
+    await renderApp('/app/mon-espace', { session: sessionDuRole('tenant') })
     await attendreLeChargement()
 
     /**
@@ -170,14 +170,14 @@ describe('poser un prix', () => {
   })
 
   async function ouvrirLesTarifs() {
-    renderApp('/app/releves', { session: sessionDuRole('owner') })
+    await renderApp('/app/releves', { session: sessionDuRole('owner') })
     await attendreLeChargement()
     await userEvent.setup().click(screen.getByRole('button', { name: 'Prix de refacturation' }))
     return screen.findByRole('dialog')
   }
 
   it('n’est proposé qu’au propriétaire', async () => {
-    renderApp('/app/releves', { session: sessionDuRole('manager') })
+    await renderApp('/app/releves', { session: sessionDuRole('manager') })
     await attendreLeChargement()
 
     // Fixer un prix engage l'argent du locataire — même partage que la
@@ -255,7 +255,7 @@ describe('poser un prix', () => {
    */
   it('distingue un tarif non fixé d’un relevé manquant', async () => {
     servir({ water: null, power: null })
-    renderApp('/app/releves', { session: sessionDuRole('owner') })
+    await renderApp('/app/releves', { session: sessionDuRole('owner') })
     await attendreLeChargement()
 
     // Les relevés SONT là — c'est le tarif qui manque.

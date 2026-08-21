@@ -56,7 +56,7 @@ function installer(): FauxServeur {
 /** Ouvre « Corriger le parc » depuis l'écran du parc immobilier. */
 async function ouvrirLesReglages(delegation: 'solo' | 'delegate') {
   installer()
-  renderApp('/app/parc', { session: session('owner', delegation) })
+  await renderApp('/app/parc', { session: session('owner', delegation) })
   await attendreLeChargement()
   const clavier = userEvent.setup()
   await clavier.click(screen.getByRole('button', { name: /Corriger le parc/ }))
@@ -74,7 +74,7 @@ describe('la délégation se règle avec le reste du parc', () => {
    */
   it('n’est plus un contrôle de la prise en main', async () => {
     installer()
-    renderApp('/app/prise-en-main', { session: session('owner', 'solo') })
+    await renderApp('/app/prise-en-main', { session: session('owner', 'solo') })
 
     // Ce que l'écran garde : il DIT le mode du parc, et renvoie où il se change.
     await screen.findByRole('link', { name: /Modifier dans les réglages du parc/ })
@@ -96,7 +96,7 @@ describe('la délégation se règle avec le reste du parc', () => {
    */
   it('barre la colonne du gestionnaire quand le parc se gère seul', async () => {
     installer()
-    renderApp('/app/prise-en-main', { session: session('owner', 'solo') })
+    await renderApp('/app/prise-en-main', { session: session('owner', 'solo') })
 
     /**
      * L'EN-TÊTE de la colonne, et non « quelque part sur la page » : le libellé
@@ -120,7 +120,7 @@ describe('la délégation se règle avec le reste du parc', () => {
    */
   it('la laisse ouverte quand le parc délègue', async () => {
     installer()
-    renderApp('/app/prise-en-main', { session: session('owner', 'delegate') })
+    await renderApp('/app/prise-en-main', { session: session('owner', 'delegate') })
 
     await screen.findByRole('link', { name: /Modifier dans les réglages du parc/ })
     expect(screen.queryByText('non activé')).not.toBeInTheDocument()
@@ -142,7 +142,7 @@ describe('la délégation se règle avec le reste du parc', () => {
       status: 200,
       body: { park: { id: PARC, name: 'Parc de test', delegation: 'solo' } },
     })
-    renderApp('/app/parc', { session: session('owner', 'delegate') })
+    await renderApp('/app/parc', { session: session('owner', 'delegate') })
     await attendreLeChargement()
     const clavier = userEvent.setup()
     await clavier.click(screen.getByRole('button', { name: /Corriger le parc/ }))
@@ -170,7 +170,7 @@ describe('la délégation se règle avec le reste du parc', () => {
   it('dit pourquoi la gestion seule a été refusée', async () => {
     const faux = installer()
     faux.quand('PATCH', `/parks/${PARC}`, { status: 409, body: { error: 'has_managers' } })
-    renderApp('/app/parc', { session: session('owner', 'delegate') })
+    await renderApp('/app/parc', { session: session('owner', 'delegate') })
     await attendreLeChargement()
     const clavier = userEvent.setup()
     await clavier.click(screen.getByRole('button', { name: /Corriger le parc/ }))
@@ -193,7 +193,7 @@ describe('la délégation se règle avec le reste du parc', () => {
    */
   it('reste une bascule pédagogique en démonstration', async () => {
     const faux = installerFauxServeur()
-    renderApp('/demo/prise-en-main')
+    await renderApp('/demo/prise-en-main')
     await attendreLeChargement()
 
     await userEvent.setup().click(screen.getByRole('radio', { name: /Vous gérez seul/i }))
@@ -208,7 +208,7 @@ describe('la délégation se règle avec le reste du parc', () => {
 describe('recruter dans un parc qui se gère seul', () => {
   it('ne propose plus le code gestionnaire, et dit ce qui le rendrait possible', async () => {
     installer()
-    renderApp('/app/locataires', { session: session('owner', 'solo') })
+    await renderApp('/app/locataires', { session: session('owner', 'solo') })
     await attendreLeChargement()
 
     await userEvent.setup().click(screen.getByRole('button', { name: /Inviter/ }))
@@ -221,7 +221,7 @@ describe('recruter dans un parc qui se gère seul', () => {
 
   it('le propose encore quand le parc délègue', async () => {
     installer()
-    renderApp('/app/locataires', { session: session('owner', 'delegate') })
+    await renderApp('/app/locataires', { session: session('owner', 'delegate') })
     await attendreLeChargement()
 
     await userEvent.setup().click(screen.getByRole('button', { name: /Inviter/ }))

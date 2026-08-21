@@ -88,7 +88,7 @@ beforeEach(() => {
 })
 
 async function ouvrir(role: Role) {
-  renderApp('/app/acces', { session: sessionDuRole(role) })
+  await renderApp('/app/acces', { session: sessionDuRole(role) })
   /**
    * ON ATTEND UNE DONNÉE DU REGISTRE, ET NON LE TITRE.
    *
@@ -130,7 +130,7 @@ describe('le registre des accès', () => {
      * tombaient, sur cinq cas différents. Ce cas-ci est la garde qui empêche la
      * course de se rouvrir.
      */
-    renderApp('/app/acces', { session: sessionDuRole('owner') })
+    await renderApp('/app/acces', { session: sessionDuRole('owner') })
     expect(document.querySelector('[aria-busy="true"]')).not.toBeNull()
 
     // Puis on laisse l'écran finir, pour ne pas laisser un rendu en vol.
@@ -295,7 +295,7 @@ describe('ce que le registre n’affirme pas', () => {
      * `true` : le `finally` qui l'éteint n'était jamais atteint. Le squelette
      * tournait donc pour toujours, en promettant une arrivée.
      */
-    renderApp('/demo/acces')
+    await renderApp('/demo/acces')
 
     await attendreLeChargement()
     expect(document.querySelector('[aria-busy="true"]')).toBeNull()

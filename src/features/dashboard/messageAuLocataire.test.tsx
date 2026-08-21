@@ -109,7 +109,7 @@ const carte = (titre: RegExp) =>
 describe('répondre au locataire qui a signalé', () => {
   it('n’offre le geste que là où le serveur a quelqu’un à qui répondre', async () => {
     installer()
-    renderApp('/app/travaux', { session: session() })
+    await renderApp('/app/travaux', { session: session() })
     // La référence du signalement n'existe qu'une fois la réponse du serveur
     // arrivée, et une seule ligne la porte.
     await screen.findByText(/SIG-2026-042/)
@@ -122,7 +122,7 @@ describe('répondre au locataire qui a signalé', () => {
 
   it('ne le propose pas au locataire : c’est lui qui a signalé', async () => {
     installer()
-    renderApp('/app/travaux', { session: session('tenant') })
+    await renderApp('/app/travaux', { session: session('tenant') })
     await attendreLeChargement()
 
     expect(screen.queryByRole('button', { name: 'Répondre' })).not.toBeInTheDocument()
@@ -134,7 +134,7 @@ describe('répondre au locataire qui a signalé', () => {
       status: 201,
       body: { delivered: true, reporter: { fullName: 'Serge Mbarga' } },
     })
-    renderApp('/app/travaux', { session: session() })
+    await renderApp('/app/travaux', { session: session() })
     // La référence du signalement n'existe qu'une fois la réponse du serveur
     // arrivée, et une seule ligne la porte.
     await screen.findByText(/SIG-2026-042/)
@@ -166,7 +166,7 @@ describe('répondre au locataire qui a signalé', () => {
       status: 201,
       body: { delivered: false, reporter: { fullName: 'Serge Mbarga' } },
     })
-    renderApp('/app/travaux', { session: session() })
+    await renderApp('/app/travaux', { session: session() })
     // La référence du signalement n'existe qu'une fois la réponse du serveur
     // arrivée, et une seule ligne la porte.
     await screen.findByText(/SIG-2026-042/)
@@ -182,7 +182,7 @@ describe('répondre au locataire qui a signalé', () => {
 
   it('refuse un message trop court sans appeler le serveur', async () => {
     const faux = installer()
-    renderApp('/app/travaux', { session: session() })
+    await renderApp('/app/travaux', { session: session() })
     // La référence du signalement n'existe qu'une fois la réponse du serveur
     // arrivée, et une seule ligne la porte.
     await screen.findByText(/SIG-2026-042/)
@@ -200,7 +200,7 @@ describe('répondre au locataire qui a signalé', () => {
 describe('prévenir les locataires', () => {
   async function ouvrirLaModale() {
     const faux = installer()
-    renderApp('/app/locataires', { session: session() })
+    await renderApp('/app/locataires', { session: session() })
     // Le libellé du logement : le tableau des baux n'existe qu'une fois le parc
     // chargé, et l'en-tête est rendu par le squelette autant que par l'écran.
     await screen.findByText('A3')
@@ -306,7 +306,7 @@ describe('ce que le locataire lit', () => {
    */
   it('rend le texte du bailleur, et non le nom de la clé', async () => {
     installer({ notifications: [ANNONCE, REPONSE] })
-    renderApp('/app/signalements', { session: session() })
+    await renderApp('/app/signalements', { session: session() })
     await screen.findByText(/Coupure d’eau jeudi de 8 h à 12 h/)
 
     expect(screen.getByText('Message de votre bailleur')).toBeInTheDocument()
@@ -324,7 +324,7 @@ describe('ce que le locataire lit', () => {
    */
   it('n’offre pas d’issue à une annonce, et en garde une à la réponse', async () => {
     installer({ notifications: [ANNONCE, REPONSE] })
-    renderApp('/app/signalements', { session: session() })
+    await renderApp('/app/signalements', { session: session() })
     await screen.findByText(/Coupure d’eau jeudi de 8 h à 12 h/)
 
     const annonce = screen.getByText('Message de votre bailleur').closest<HTMLElement>('[role="listitem"]')!

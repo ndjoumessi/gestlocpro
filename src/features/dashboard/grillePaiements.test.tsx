@@ -122,7 +122,7 @@ function serveur(leaseCharges: EcheanceApi[]) {
 
 async function ouvrir(leaseCharges: EcheanceApi[]) {
   serveur(leaseCharges)
-  renderApp('/app/paiements', { session: sessionProprietaire() })
+  await renderApp('/app/paiements', { session: sessionProprietaire() })
   await attendreLeChargement()
 }
 

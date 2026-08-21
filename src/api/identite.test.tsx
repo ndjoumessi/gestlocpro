@@ -43,7 +43,7 @@ beforeEach(() => {
 describe('identité affichée dans la coquille', () => {
   it('porte le nom du parc du compte, et non celui d’un personnage', async () => {
     installerFauxServeur({ authentifie: true })
-    renderApp('/app', { session: SESSION_REELLE })
+    await renderApp('/app', { session: SESSION_REELLE })
     await screen.findByRole('heading', { level: 1, name: /vue consolidée/i })
 
     expect(screen.getAllByText(/Résidence Makepe/).length).toBeGreaterThan(0)
@@ -53,7 +53,7 @@ describe('identité affichée dans la coquille', () => {
     // Le filet. Il ne dit pas ce qui doit s'afficher — il dit ce qui ne le doit
     // jamais.
     installerFauxServeur({ authentifie: true })
-    renderApp('/app', { session: SESSION_REELLE })
+    await renderApp('/app', { session: SESSION_REELLE })
     await screen.findByRole('heading', { level: 1, name: /vue consolidée/i })
 
     const texte = document.body.textContent ?? ''
@@ -77,7 +77,7 @@ describe('identité affichée dans la coquille', () => {
    */
   it('n’offre aucun sélecteur de profil sur un compte réel', async () => {
     installerFauxServeur({ authentifie: true })
-    renderApp('/app', { session: SESSION_REELLE })
+    await renderApp('/app', { session: SESSION_REELLE })
     await screen.findByRole('heading', { level: 1, name: /vue consolidée/i })
 
     expect(screen.queryByText('Profil actif')).not.toBeInTheDocument()
@@ -92,7 +92,7 @@ describe('identité affichée dans la coquille', () => {
   it('annonce « Parc de démonstration » en visite, et garde ses personnages', async () => {
     // En démonstration les trois personnages sont le propos : ils restent.
     installerFauxServeur({ authentifie: false })
-    renderApp('/demo', { session: { statut: 'demo' } })
+    await renderApp('/demo', { session: { statut: 'demo' } })
     await screen.findByRole('heading', { level: 1, name: /vue consolidée/i })
 
     expect(screen.getAllByText(/Parc de démonstration/).length).toBeGreaterThan(0)
@@ -116,7 +116,7 @@ describe('parc vide, tableau de bord d’un compte neuf', () => {
       body: { collections: [], buildings: [], works: [], deposits: [], readings: [], inspections: [], notifications: [] },
     })
 
-    renderApp('/app', { session: SESSION_REELLE })
+    await renderApp('/app', { session: SESSION_REELLE })
     await screen.findByRole('heading', { level: 1, name: /vue consolidée/i })
 
     expect(await screen.findByText(/votre parc est encore vide/i)).toBeInTheDocument()
@@ -135,7 +135,7 @@ describe('parc vide, tableau de bord d’un compte neuf', () => {
       body: { collections: [], buildings: [], works: [], deposits: [], readings: [], inspections: [], notifications: [] },
     })
 
-    renderApp('/app', { session: SESSION_REELLE })
+    await renderApp('/app', { session: SESSION_REELLE })
     await screen.findByText(/votre parc est encore vide/i)
     const lien = await screen.findByRole('link', { name: /ajouter un immeuble/i })
     expect(lien).toHaveAttribute('href', '/app/parc')

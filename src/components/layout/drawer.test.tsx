@@ -43,7 +43,7 @@ describe('tiroir de navigation', () => {
    */
   it('distingue ouvrir, fermer et replier', async () => {
     const user = userEvent.setup()
-    renderApp('/app')
+    await renderApp('/app')
 
     expect(screen.getByRole('button', { name: 'Ouvrir la navigation' })).toBeInTheDocument()
     // Barre latérale de bureau : masquée en mobile, mais montée sous jsdom.
@@ -59,7 +59,7 @@ describe('tiroir de navigation', () => {
 
   it('s’annonce comme fenêtre modale', async () => {
     const user = userEvent.setup()
-    renderApp('/app')
+    await renderApp('/app')
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     await user.click(ouvrir())
@@ -71,7 +71,7 @@ describe('tiroir de navigation', () => {
 
   it('prend le focus à l’ouverture', async () => {
     const user = userEvent.setup()
-    renderApp('/app')
+    await renderApp('/app')
 
     await user.click(ouvrir())
     expect(screen.getByRole('dialog')).toHaveFocus()
@@ -79,7 +79,7 @@ describe('tiroir de navigation', () => {
 
   it('retire l’arrière-plan du parcours de tabulation', async () => {
     const user = userEvent.setup()
-    renderApp('/app')
+    await renderApp('/app')
 
     const contenu = screen.getByRole('main').parentElement
     expect(contenu).not.toHaveAttribute('inert')
@@ -92,7 +92,7 @@ describe('tiroir de navigation', () => {
 
   it('rend le focus au bouton d’ouverture à la fermeture', async () => {
     const user = userEvent.setup()
-    renderApp('/app')
+    await renderApp('/app')
 
     const declencheur = ouvrir()
     await user.click(declencheur)
@@ -105,7 +105,7 @@ describe('tiroir de navigation', () => {
 
   it('se referme si l’écran passe en grand format', async () => {
     const user = userEvent.setup()
-    renderApp('/app')
+    await renderApp('/app')
 
     poserLargeur(true)
     await user.click(ouvrir())

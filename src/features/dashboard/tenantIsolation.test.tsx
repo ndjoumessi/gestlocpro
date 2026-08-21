@@ -78,7 +78,7 @@ describe('cloisonnement du locataire', () => {
 
   describe.each(ECRANS_AUTORISES)('écran %s', (route) => {
     it('ne cite aucun autre locataire', async () => {
-      renderApp(route)
+      await renderApp(route)
       await switchRole('tenant')
       await attendreLeChargement()
 
@@ -91,7 +91,7 @@ describe('cloisonnement du locataire', () => {
 
   describe.each(ECRANS_INTERDITS)('écran de gestion %s', (route) => {
     it('refuse l’accès direct et l’explique', async () => {
-      renderApp(route)
+      await renderApp(route)
       await switchRole('tenant')
       await attendreLeChargement()
 
@@ -105,7 +105,7 @@ describe('cloisonnement du locataire', () => {
   })
 
   it('n’expose pas les indicateurs de parc sur son tableau de bord', async () => {
-    renderApp('/demo')
+    await renderApp('/demo')
     await switchRole('tenant')
     await attendreLeChargement()
 
@@ -118,7 +118,7 @@ describe('cloisonnement du locataire', () => {
   })
 
   it('ne liste que son propre bail sur l’écran des paiements', async () => {
-    renderApp('/demo/paiements')
+    await renderApp('/demo/paiements')
     await switchRole('tenant')
     await attendreLeChargement()
 
@@ -130,7 +130,7 @@ describe('cloisonnement du locataire', () => {
 
   /** Le pendant positif : les deux rôles de gestion voient bien tout le parc. */
   it.each(['owner', 'manager'] as const)('laisse le %s voir tout le parc', async (role) => {
-    renderApp('/demo/paiements')
+    await renderApp('/demo/paiements')
     await switchRole(role)
     await attendreLeChargement()
 

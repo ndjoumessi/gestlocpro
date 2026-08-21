@@ -43,7 +43,7 @@ describe('connexion', () => {
     serveur.quand('GET', '/auth/me', { status: 200, body: { user: COMPTE_FICTIF, memberships: [] } })
 
     const user = userEvent.setup()
-    renderApp('/connexion')
+    await renderApp('/connexion')
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'sarah@example.com')
     await user.type(screen.getByLabelText(/^Mot de passe/), 'un-mot-de-passe-assez-long')
     await user.click(screen.getByRole('button', { name: /^se connecter$/i }))
@@ -67,7 +67,7 @@ describe('connexion', () => {
     serveur.quand('POST', '/auth/login', { status: 401, body: { error: 'invalid_credentials' } })
 
     const user = userEvent.setup()
-    renderApp('/connexion')
+    await renderApp('/connexion')
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'sarah@example.com')
     await user.type(screen.getByLabelText(/^Mot de passe/), 'ce-n-est-pas-le-bon')
     await user.click(screen.getByRole('button', { name: /^se connecter$/i }))
@@ -92,7 +92,7 @@ describe('connexion', () => {
     )
 
     const user = userEvent.setup()
-    renderApp('/connexion')
+    await renderApp('/connexion')
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'sarah@example.com')
     await user.type(screen.getByLabelText(/^Mot de passe/), 'un-mot-de-passe-assez-long')
     await user.click(screen.getByRole('button', { name: /^se connecter$/i }))
@@ -101,7 +101,7 @@ describe('connexion', () => {
   })
 
   it('n’annonce plus que l’authentification n’est pas branchée', async () => {
-    renderApp('/connexion')
+    await renderApp('/connexion')
     expect(screen.queryByText(/pas encore branchée/i)).not.toBeInTheDocument()
   })
 })
@@ -130,7 +130,7 @@ describe('inscription', () => {
     serveur.quand('GET', '/auth/me', { status: 200, body: { user: COMPTE_FICTIF, memberships: [] } })
 
     const user = userEvent.setup()
-    renderApp('/inscription/proprietaire')
+    await renderApp('/inscription/proprietaire')
     await remplirIdentite(user)
     await user.click(screen.getByRole('button', { name: /créer mon espace/i }))
 
@@ -180,7 +180,7 @@ describe('inscription', () => {
     serveur.quand('GET', '/auth/me', { status: 200, body: { user: COMPTE_FICTIF, memberships: [] } })
 
     const user = userEvent.setup()
-    renderApp('/inscription/proprietaire')
+    await renderApp('/inscription/proprietaire')
     await user.type(screen.getByLabelText(/nom complet/i), 'Arsène Nkomo')
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'arsene@example.com')
     await user.type(screen.getByLabelText(/^téléphone/i), '677889900')
@@ -227,7 +227,7 @@ describe('inscription', () => {
     serveur.quand('GET', '/auth/me', { status: 200, body: { user: COMPTE_FICTIF, memberships: [] } })
 
     const user = userEvent.setup()
-    renderApp('/inscription/gestionnaire')
+    await renderApp('/inscription/gestionnaire')
 
     await user.type(screen.getByLabelText(/nom complet/i), 'Sarah Mbala')
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'sarah@example.com')
@@ -271,7 +271,7 @@ describe('inscription', () => {
      * l'étape, et produisait un compte rattaché à aucun parc.
      */
     const user = userEvent.setup()
-    renderApp('/inscription/gestionnaire')
+    await renderApp('/inscription/gestionnaire')
 
     await user.type(screen.getByLabelText(/nom complet/i), 'Sarah Mbala')
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'sarah@example.com')
@@ -292,7 +292,7 @@ describe('inscription', () => {
     serveur.quand('POST', '/auth/signup', { status: 409, body: { error: 'email_taken' } })
 
     const user = userEvent.setup()
-    renderApp('/inscription/proprietaire')
+    await renderApp('/inscription/proprietaire')
     await remplirIdentite(user)
     await user.click(screen.getByRole('button', { name: /créer mon espace/i }))
 
@@ -306,7 +306,7 @@ describe('inscription', () => {
     serveur.quand('POST', '/auth/signup', { status: 500, body: { error: 'internal_error' } })
 
     const user = userEvent.setup()
-    renderApp('/inscription/proprietaire')
+    await renderApp('/inscription/proprietaire')
     await remplirIdentite(user)
     await user.click(screen.getByRole('button', { name: /créer mon espace/i }))
 
@@ -332,7 +332,7 @@ describe('un refus doit se lire là où l’on vient de cliquer', () => {
     serveur.quand('POST', '/auth/signup', { status: 201, body: { user: COMPTE_FICTIF } })
 
     const user = userEvent.setup()
-    renderApp('/inscription/proprietaire')
+    await renderApp('/inscription/proprietaire')
     await user.type(screen.getByLabelText(/nom complet/i), 'Arsène Nkomo')
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'arsene@example.com')
     await user.type(screen.getByLabelText(/^téléphone/i), '677889900')
@@ -386,7 +386,7 @@ describe('écran de succès', () => {
     serveur.quand('GET', '/auth/me', { status: 200, body: { user: COMPTE_FICTIF, memberships: [] } })
 
     const user = userEvent.setup()
-    renderApp('/inscription/proprietaire')
+    await renderApp('/inscription/proprietaire')
     await remplirIdentite(user)
     await user.click(screen.getByRole('button', { name: /créer mon espace/i }))
 

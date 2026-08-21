@@ -11,48 +11,48 @@ import { UNITS, WORKS } from '@/data/portfolio'
  * explique qu'ils aient tous survécu à la relecture.
  */
 describe('typologie du logement', () => {
-  it('se traduit là où la notation française ne se lit pas', () => {
+  it('se traduit là où la notation française ne se lit pas', async () => {
     // « T3 » compte les pièces principales à la française. Ce n'est pas un mot
     // français, mais c'est une notation française : le marché anglophone
     // compte les chambres.
-    renderApp('/app/parc', { locale: 'en' })
+    await renderApp('/app/parc', { locale: 'en' })
     expect(screen.getAllByText(/2-bed/).length).toBeGreaterThan(0)
     expect(screen.queryByText(/\bT3\b/)).not.toBeInTheDocument()
   })
 
-  it('garde la notation d’origine en français', () => {
-    renderApp('/app/parc')
+  it('garde la notation d’origine en français', async () => {
+    await renderApp('/app/parc')
     expect(screen.getAllByText(/T3/).length).toBeGreaterThan(0)
   })
 
-  it('se cherche sur le libellé affiché, non sur la clé', () => {
+  it('se cherche sur le libellé affiché, non sur la clé', async () => {
     // Un anglophone tape ce qu'il voit. Chercher « T3 » sur une interface qui
     // affiche « 2-bed » ne ramenait rien de ce qui était pourtant à l'écran.
-    renderApp('/app/parc', { locale: 'en' })
+    await renderApp('/app/parc', { locale: 'en' })
     expect(screen.getAllByText(/2-bed/).length).toBeGreaterThan(0)
   })
 })
 
 describe('paiements', () => {
-  it('n’abrège pas les jours de retard en français', () => {
+  it('n’abrège pas les jours de retard en français', async () => {
     // La cellule portait « +24 j », y compris en anglais.
-    renderApp('/app/paiements', { locale: 'en' })
+    await renderApp('/app/paiements', { locale: 'en' })
     expect(screen.getByText('+24 d')).toBeInTheDocument()
     expect(screen.queryByText('+24 j')).not.toBeInTheDocument()
   })
 })
 
 describe('relevés de compteurs', () => {
-  it('affiche les tarifs unitaires comme des montants', () => {
+  it('affiche les tarifs unitaires comme des montants', async () => {
     // Ils étaient interpolés directement : « 520 » sans devise ni groupement,
     // à côté d'un total correctement formaté, et insensibles à la devise.
-    renderApp('/app/releves', { locale: 'en', currency: 'USD' })
+    await renderApp('/app/releves', { locale: 'en', currency: 'USD' })
     expect(screen.getByText(/\$\s?520/)).toBeInTheDocument()
   })
 
-  it('groupe les index de compteur', () => {
+  it('groupe les index de compteur', async () => {
     // Cinq chiffres rendus « 7640 » dans les deux langues.
-    renderApp('/app/releves', { locale: 'en' })
+    await renderApp('/app/releves', { locale: 'en' })
     expect(screen.getByText(/7,320→7,640/)).toBeInTheDocument()
   })
 })
@@ -85,13 +85,13 @@ describe('groupement monétaire', () => {
   // élément ».
   const texte = () => document.body.textContent ?? ''
 
-  it('suit la devise et non la langue de l’interface', () => {
-    renderApp('/app/paiements', { locale: 'en', currency: 'CFA' })
+  it('suit la devise et non la langue de l’interface', async () => {
+    await renderApp('/app/paiements', { locale: 'en', currency: 'CFA' })
     expect(texte()).toContain(`145${FINE}000${PLEINE}FCFA`)
   })
 
-  it('change bien avec la devise, à langue égale', () => {
-    renderApp('/app/paiements', { locale: 'en', currency: 'USD' })
+  it('change bien avec la devise, à langue égale', async () => {
+    await renderApp('/app/paiements', { locale: 'en', currency: 'USD' })
     // Symbole AVANT le montant pour le dollar, mais la même espace pleine :
     // c'est la position qui change d'une devise à l'autre, pas la césure.
     expect(texte()).toContain(`$${PLEINE}145,000`)
@@ -106,8 +106,8 @@ describe('locataires', () => {
     expect(UNITS.every((u) => (u.tenant === null) === (u.phone === null))).toBe(true)
   })
 
-  it('affiche le contact, dont les clés existaient sans appelant', () => {
-    renderApp('/app/locataires', { locale: 'en' })
+  it('affiche le contact, dont les clés existaient sans appelant', async () => {
+    await renderApp('/app/locataires', { locale: 'en' })
     expect(screen.getByRole('columnheader', { name: 'Contact' })).toBeInTheDocument()
     expect(screen.getByText('+237 6 77 21 44 08')).toBeInTheDocument()
   })
@@ -123,13 +123,13 @@ describe('locataires', () => {
  * produit le défaut en miroir.
  */
 describe('signalements de démonstration', () => {
-  it('suit la langue de l’interface', () => {
-    renderApp('/app/travaux', { locale: 'en' })
+  it('suit la langue de l’interface', async () => {
+    await renderApp('/app/travaux', { locale: 'en' })
     expect(screen.getByText('Leak under the kitchen sink')).toBeInTheDocument()
   })
 
-  it('reste correct en français, et non anglais en miroir', () => {
-    renderApp('/app/travaux')
+  it('reste correct en français, et non anglais en miroir', async () => {
+    await renderApp('/app/travaux')
     expect(screen.getByText('Fuite sous l’évier de la cuisine')).toBeInTheDocument()
   })
 
@@ -153,7 +153,7 @@ describe('signalements de démonstration', () => {
  */
 describe('délégation expliquée au gestionnaire', () => {
   it('dit pourquoi le gestionnaire ne valide pas un devis', async () => {
-    renderApp('/demo/travaux', { locale: 'en' })
+    await renderApp('/demo/travaux', { locale: 'en' })
     await switchRole('manager')
     await attendreLeChargement()
     expect(screen.getByText(/Only the owner approves quotes/)).toBeInTheDocument()
@@ -161,14 +161,14 @@ describe('délégation expliquée au gestionnaire', () => {
   })
 
   it('laisse au propriétaire le bouton et non la note', async () => {
-    renderApp('/app/travaux', { locale: 'en' })
+    await renderApp('/app/travaux', { locale: 'en' })
     expect(screen.getAllByRole('button', { name: /Approve quote/i }).length).toBeGreaterThan(0)
     expect(screen.queryByText(/Only the owner approves quotes/)).not.toBeInTheDocument()
   })
 
   it('traite les deux droits de la même façon', async () => {
     // La parité est le point : deux écrans, une seule règle.
-    renderApp('/demo/cautions', { locale: 'en' })
+    await renderApp('/demo/cautions', { locale: 'en' })
     await switchRole('manager')
     await attendreLeChargement()
     expect(screen.getByText(/Only the owner settles deposits/)).toBeInTheDocument()
@@ -192,14 +192,14 @@ describe('délégation expliquée au gestionnaire', () => {
  * entièrement barrée et l'écran n'enseigne plus rien.
  */
 describe('délégation des droits', () => {
-  it('montre d’emblée un gestionnaire qui a des droits', () => {
-    renderApp('/app/prise-en-main', { locale: 'en' })
+  it('montre d’emblée un gestionnaire qui a des droits', async () => {
+    await renderApp('/app/prise-en-main', { locale: 'en' })
     const row = screen.getByRole('row', { name: /Record a payment/ })
     expect(within(row).getAllByText('Allowed').length).toBe(2)
   })
 
-  it('refuse au gestionnaire exactement les deux droits d’arbitrage', () => {
-    renderApp('/app/prise-en-main', { locale: 'en' })
+  it('refuse au gestionnaire exactement les deux droits d’arbitrage', async () => {
+    await renderApp('/app/prise-en-main', { locale: 'en' })
     for (const action of ['Approve a quote', 'Settle a deposit']) {
       const row = screen.getByRole('row', { name: new RegExp(action) })
       // Le propriétaire seul : une autorisation sur les trois colonnes.
@@ -207,17 +207,17 @@ describe('délégation des droits', () => {
     }
   })
 
-  it('ne promet pas d’inviter depuis un écran sans invitation', () => {
-    renderApp('/app/prise-en-main', { locale: 'en' })
+  it('ne promet pas d’inviter depuis un écran sans invitation', async () => {
+    await renderApp('/app/prise-en-main', { locale: 'en' })
     expect(screen.queryByText(/how to invite/i)).not.toBeInTheDocument()
   })
 })
 
 describe('états des lieux', () => {
-  it('couvre l’unité du locataire connecté', () => {
+  it('couvre l’unité du locataire connecté', async () => {
     // Aucun état des lieux n'existait sur A1 : en rôle locataire, l'écran
     // affichait toujours son état vide et la fonctionnalité restait invisible.
-    renderApp('/app/etats-des-lieux', { locale: 'en' })
+    await renderApp('/app/etats-des-lieux', { locale: 'en' })
     expect(screen.getAllByText(/A1/).length).toBeGreaterThan(0)
   })
 })
@@ -234,7 +234,7 @@ describe('états des lieux', () => {
 describe('indicatif de la fiche locataire', () => {
   async function ouvrirLaFiche() {
     const user = userEvent.setup()
-    renderApp('/app/locataires')
+    await renderApp('/app/locataires')
     await user.click(await screen.findByRole('button', { name: /créer une fiche locataire/i }))
     return user
   }
@@ -275,12 +275,12 @@ describe('indicatif de la fiche locataire', () => {
  */
 describe('décisions du tableau de bord', () => {
   it('liste les cautions à arbitrer au propriétaire', async () => {
-    renderApp('/app')
+    await renderApp('/app')
     expect(await screen.findByText(/caution à arbitrer · serge mbarga/i)).toBeInTheDocument()
   })
 
   it('ne les montre pas au gestionnaire, qui ne peut pas les arbitrer', async () => {
-    renderApp('/demo')
+    await renderApp('/demo')
     await switchRole('manager')
     await attendreLeChargement()
 
@@ -306,7 +306,7 @@ describe('décisions du tableau de bord', () => {
  */
 describe('réconciliation du recouvrement', () => {
   it('somme les parts sous les intitulés mêmes des indicateurs', async () => {
-    renderApp('/app')
+    await renderApp('/app')
 
     const recouvrement = (await screen.findByRole('heading', { name: /recouvrement du mois/i }))
       .closest('div[class*="rounded-lg"]') as HTMLElement
@@ -353,7 +353,7 @@ describe('réconciliation du recouvrement', () => {
  */
 describe('reste à percevoir', () => {
   it('compte tous ceux qui doivent, partiels compris', async () => {
-    renderApp('/app')
+    await renderApp('/app')
 
     // Deux éléments portent ce nom, et c'est voulu : la tuile et la ligne de
     // réconciliation du recouvrement. On retient celle qui porte une note.
@@ -367,7 +367,7 @@ describe('reste à percevoir', () => {
   })
 
   it('ne promet plus un arriéré qui s’accumule', async () => {
-    renderApp('/app')
+    await renderApp('/app')
     await screen.findAllByText(/^reste à percevoir$/i)
     expect(screen.getByRole('main')).not.toHaveTextContent(/cumulés/i)
   })

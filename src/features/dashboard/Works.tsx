@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { PageHeader, useRole } from '@/components/layout/AppShell'
+import { useRole } from '@/components/layout/AppShell'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { useBase } from '@/lib/base'
 import { Card } from '@/components/primitives/Card'
 import { StatusPill, type StatusTone } from '@/components/primitives/StatusPill'

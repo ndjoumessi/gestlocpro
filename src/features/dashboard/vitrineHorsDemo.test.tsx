@@ -48,19 +48,19 @@ describe('vitrines, dans la démonstration seulement', () => {
      */
     const liens = () => screen.queryAllByRole('link', { name: libelle })
 
-    it('ne figure pas dans la navigation d’un compte réel', () => {
-      renderApp('/app')
+    it('ne figure pas dans la navigation d’un compte réel', async () => {
+      await renderApp('/app')
       expect(liens()).toHaveLength(0)
     })
 
     it('reste proposée dans la démonstration, dont elle est le propos', async () => {
-      renderApp('/demo')
+      await renderApp('/demo')
       await attendreLeChargement()
       expect(liens().length).toBeGreaterThan(0)
     })
 
-    it('rend « écran introuvable » sur l’adresse directe d’un compte réel', () => {
-      renderApp(`/app/${chemin}`)
+    it('rend « écran introuvable » sur l’adresse directe d’un compte réel', async () => {
+      await renderApp(`/app/${chemin}`)
 
       // Un 404 et non une redirection : sous un vrai compte cette adresse
       // n'existe pas, et c'est ce qu'un 404 dit. Rediriger vers le tableau de
@@ -72,16 +72,16 @@ describe('vitrines, dans la démonstration seulement', () => {
   it('sert bien la vitrine des états sous la démonstration', async () => {
     // Le pendant positif des trois cas ci-dessus : sans lui, un garde qui
     // fermerait la route PARTOUT les satisferait tous.
-    renderApp('/demo/systeme')
+    await renderApp('/demo/systeme')
     await attendreLeChargement()
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('États du système')
   })
 
-  it('ne laisse aucun filet de séparation sans rien à séparer', () => {
+  it('ne laisse aucun filet de séparation sans rien à séparer', async () => {
     // Le groupe de pied devient vide sur un compte réel : son trait supérieur
     // flotterait alors au bas de la barre, à séparer le vide du vide.
-    renderApp('/app')
+    await renderApp('/app')
 
     const laterale = screen.getByRole('navigation', { name: 'Sections du produit' })
     const pied = laterale.parentElement?.querySelector('.mt-auto')

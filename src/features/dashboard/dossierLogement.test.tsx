@@ -94,7 +94,7 @@ function serveur(leases: typeof OCCUPATIONS | []) {
 
 async function ouvrirLeDossier(leases: typeof OCCUPATIONS | [] = OCCUPATIONS) {
   serveur(leases)
-  renderApp(`/app/parc/${UNITE}`, { session: sessionProprietaire() })
+  await renderApp(`/app/parc/${UNITE}`, { session: sessionProprietaire() })
   await attendreLeChargement()
 }
 
@@ -150,7 +150,7 @@ describe('dossier d’un logement', () => {
    */
   it('dit qu’un logement est introuvable au lieu de replier vers le parc', async () => {
     serveur(OCCUPATIONS)
-    renderApp('/app/parc/nexiste-pas', { session: sessionProprietaire() })
+    await renderApp('/app/parc/nexiste-pas', { session: sessionProprietaire() })
     await attendreLeChargement()
     expect(screen.getByText('Ce logement est introuvable')).toBeInTheDocument()
   })
@@ -168,7 +168,7 @@ describe('le parc mène au dossier', () => {
   it('ouvre le dossier depuis un lien nommé par sa destination', async () => {
     const user = userEvent.setup()
     serveur(OCCUPATIONS)
-    renderApp('/app/parc', { session: sessionProprietaire() })
+    await renderApp('/app/parc', { session: sessionProprietaire() })
     await attendreLeChargement()
 
     const lien = within(screen.getByRole('table')).getByRole('link', {

@@ -10,29 +10,29 @@ import { renderApp, screen, userEvent, within } from '@/test/render'
  * landing n'apparaît pas.
  */
 describe('adresse publique inconnue', () => {
-  it('affiche un 404 et non la landing', () => {
-    renderApp('/nimportequoi')
+  it('affiche un 404 et non la landing', async () => {
+    await renderApp('/nimportequoi')
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Cette page n’existe pas')
     // Le titre de la landing : sa présence signalerait le retour du défaut.
     expect(screen.queryByText(/La gestion locative, tenue comme un patrimoine/)).not.toBeInTheDocument()
   })
 
-  it('rappelle l’adresse demandée', () => {
-    renderApp('/parc/immeuble-inexistant')
+  it('rappelle l’adresse demandée', async () => {
+    await renderApp('/parc/immeuble-inexistant')
     expect(screen.getByText('/parc/immeuble-inexistant')).toBeInTheDocument()
   })
 
-  it('coupe une adresse démesurée plutôt que de déformer la page', () => {
+  it('coupe une adresse démesurée plutôt que de déformer la page', async () => {
     const long = `/${'a'.repeat(400)}`
-    renderApp(long)
+    await renderApp(long)
 
     expect(screen.queryByText(long)).not.toBeInTheDocument()
     expect(screen.getByText(/^\/a+…$/)).toBeInTheDocument()
   })
 
-  it('offre une sortie vers l’accueil, la démonstration et la connexion', () => {
-    renderApp('/nimportequoi')
+  it('offre une sortie vers l’accueil, la démonstration et la connexion', async () => {
+    await renderApp('/nimportequoi')
 
     expect(screen.getByRole('link', { name: /retour à l’accueil/i })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: /ouvrir la démonstration/i })).toHaveAttribute(
@@ -44,7 +44,7 @@ describe('adresse publique inconnue', () => {
 
   it('traduit l’écran', async () => {
     const user = userEvent.setup()
-    renderApp('/nimportequoi')
+    await renderApp('/nimportequoi')
 
     await user.click(screen.getByRole('button', { name: /english/i }))
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('This page does not exist')
@@ -57,8 +57,8 @@ describe('adresse publique inconnue', () => {
  * L'éjecter vers la landing lui ferait perdre le fil.
  */
 describe('adresse inconnue dans l’espace de gestion', () => {
-  it('garde la coque et sa navigation', () => {
-    renderApp('/app/ecran-inexistant')
+  it('garde la coque et sa navigation', async () => {
+    await renderApp('/app/ecran-inexistant')
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Écran introuvable')
     // La barre latérale est toujours là : c'est elle qui liste les écrans.
@@ -69,23 +69,23 @@ describe('adresse inconnue dans l’espace de gestion', () => {
     expect(within(laterale).getByRole('link', { name: 'Tableau de bord' })).toBeInTheDocument()
   })
 
-  it('ne prétend pas dans le fil d’Ariane que l’on est au tableau de bord', () => {
-    renderApp('/app/ecran-inexistant')
+  it('ne prétend pas dans le fil d’Ariane que l’on est au tableau de bord', async () => {
+    await renderApp('/app/ecran-inexistant')
     const fil = screen.getByRole('navigation', { name: /fil d’ariane/i })
     expect(fil).toHaveTextContent('Écran introuvable')
     expect(fil).not.toHaveTextContent('Tableau de bord')
   })
 
-  it('ramène au tableau de bord', () => {
-    renderApp('/app/ecran-inexistant')
+  it('ramène au tableau de bord', async () => {
+    await renderApp('/app/ecran-inexistant')
     expect(screen.getByRole('link', { name: /revenir au tableau de bord/i })).toHaveAttribute(
       'href',
       '/app',
     )
   })
 
-  it('ne se déclenche pas sur un écran qui existe', () => {
-    renderApp('/app/travaux')
+  it('ne se déclenche pas sur un écran qui existe', async () => {
+    await renderApp('/app/travaux')
     expect(screen.queryByText(/Écran introuvable/)).not.toBeInTheDocument()
   })
 })

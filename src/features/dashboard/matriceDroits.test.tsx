@@ -14,7 +14,7 @@ import { renderApp, screen, userEvent } from '@/test/render'
  */
 describe('matrice des droits', () => {
   it('annonce les gestes qui constituent le parc', async () => {
-    renderApp('/app/prise-en-main')
+    await renderApp('/app/prise-en-main')
     await screen.findByRole('heading', { level: 1, name: /prise en main/i })
 
     for (const action of [
@@ -36,7 +36,7 @@ describe('matrice des droits', () => {
      * tableau, un `<tbody>` et un en-tête `colgroup` par famille, plutôt que par
      * un espacement qu'un lecteur d'écran ignorerait.
      */
-    renderApp('/app/prise-en-main')
+    await renderApp('/app/prise-en-main')
     await screen.findByRole('heading', { level: 1, name: /prise en main/i })
 
     const familles = Array.from(document.querySelectorAll('th[scope="colgroup"]')).map((e) =>
@@ -63,7 +63,7 @@ describe('matrice des droits', () => {
      * propriétaire qui hésite.
      */
     const user = userEvent.setup()
-    renderApp('/app/prise-en-main')
+    await renderApp('/app/prise-en-main')
     await screen.findByRole('heading', { level: 1, name: /prise en main/i })
     await user.click(screen.getByRole('radio', { name: /vous gérez seul/i }))
 
@@ -92,7 +92,7 @@ describe('matrice des droits', () => {
      * réinventer.
      */
     const user = userEvent.setup()
-    renderApp('/app/prise-en-main')
+    await renderApp('/app/prise-en-main')
     await screen.findByRole('heading', { level: 1, name: /prise en main/i })
 
     // On se place en gestion DÉLÉGUÉE : c'est le seul mode où la question se

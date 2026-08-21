@@ -11,7 +11,7 @@ import { renderApp, screen, switchRole, attendreLeChargement } from '@/test/rend
  * indicateur. Les maquettes consolident, et ces tests fixent la consolidation.
  */
 async function ouvrir(route = '/demo/mon-espace') {
-  renderApp(route)
+  await renderApp(route)
   await switchRole('tenant')
   await attendreLeChargement()
 }
@@ -146,7 +146,7 @@ describe('mon espace — paiements par période', () => {
    * était invisible.
    */
   it('écrit les montants dans la graphie de la devise, même en anglais', async () => {
-    renderApp('/demo/mon-espace', { locale: 'en' })
+    await renderApp('/demo/mon-espace', { locale: 'en' })
     await attendreLeChargement()
 
     const principal = screen.getByRole('main')

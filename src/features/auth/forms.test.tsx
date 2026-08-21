@@ -18,7 +18,7 @@ import { installerFauxServeur } from '@/test/api'
 describe('connexion', () => {
   it('refuse une soumission vide et signale les deux champs', async () => {
     const user = userEvent.setup()
-    renderApp('/connexion')
+    await renderApp('/connexion')
 
     await user.click(screen.getByRole('button', { name: 'Se connecter' }))
 
@@ -30,7 +30,7 @@ describe('connexion', () => {
 
   it('place le focus sur le premier champ fautif', async () => {
     const user = userEvent.setup()
-    renderApp('/connexion')
+    await renderApp('/connexion')
 
     await user.click(screen.getByRole('button', { name: 'Se connecter' }))
 
@@ -53,7 +53,7 @@ describe('connexion', () => {
    */
   it('place le focus sur un combobox fautif, et pas sur son champ caché', async () => {
     const user = userEvent.setup()
-    renderApp('/inscription/proprietaire')
+    await renderApp('/inscription/proprietaire')
 
     await user.type(screen.getByLabelText(/nom complet/i), 'Sarah Mbala')
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'sarah@example.com')
@@ -75,7 +75,7 @@ describe('connexion', () => {
 
   it('dit comment réparer, et pas seulement que c’est invalide', async () => {
     const user = userEvent.setup()
-    renderApp('/connexion')
+    await renderApp('/connexion')
 
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'sarah@')
     await user.tab()
@@ -86,14 +86,14 @@ describe('connexion', () => {
 
   it('ne valide pas pendant la frappe', async () => {
     const user = userEvent.setup()
-    renderApp('/connexion')
+    await renderApp('/connexion')
 
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'sar')
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
-  it('associe chaque champ à un libellé visible', () => {
-    renderApp('/connexion')
+  it('associe chaque champ à un libellé visible', async () => {
+    await renderApp('/connexion')
     // `getByLabelText` échoue si l'association label/champ est rompue.
     expect(screen.getByLabelText(/adresse e-mail/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/^Mot de passe/)).toBeInTheDocument()
@@ -108,7 +108,7 @@ describe('mot de passe oublié', () => {
     // message qu'il vise.
     installerFauxServeur().quand('POST', '/auth/forgot', { status: 202, body: { ok: true } })
     const user = userEvent.setup()
-    renderApp('/mot-de-passe-oublie')
+    await renderApp('/mot-de-passe-oublie')
 
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'sarah@example.com')
     await user.click(screen.getByRole('button', { name: /envoyer le lien/i }))
@@ -126,19 +126,19 @@ describe('mot de passe oublié', () => {
 })
 
 describe('inscription', () => {
-  it('exige un rôle avant de continuer', () => {
-    renderApp('/inscription')
+  it('exige un rôle avant de continuer', async () => {
+    await renderApp('/inscription')
     expect(screen.getByRole('button', { name: /continuer/i })).toBeDisabled()
   })
 
-  it('saute le choix de rôle quand l’URL le porte déjà', () => {
-    renderApp('/inscription/proprietaire')
+  it('saute le choix de rôle quand l’URL le porte déjà', async () => {
+    await renderApp('/inscription/proprietaire')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Votre identité')
   })
 
   it('met en forme le code d’invitation au fil de la frappe', async () => {
     const user = userEvent.setup()
-    renderApp('/inscription/locataire')
+    await renderApp('/inscription/locataire')
 
     // Étape identité, puis contexte.
     await user.type(screen.getByLabelText(/nom complet/i), 'Charles Ngassa')
@@ -155,7 +155,7 @@ describe('inscription', () => {
 
   it('refuse un code d’invitation incomplet en donnant le format attendu', async () => {
     const user = userEvent.setup()
-    renderApp('/inscription/locataire')
+    await renderApp('/inscription/locataire')
 
     await user.type(screen.getByLabelText(/nom complet/i), 'Charles Ngassa')
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'charles@example.com')
@@ -186,7 +186,7 @@ describe('inscription', () => {
 
   it('laisse le pays pré-remplir la devise et la langue', async () => {
     const user = userEvent.setup()
-    renderApp('/inscription/proprietaire')
+    await renderApp('/inscription/proprietaire')
 
     await user.type(screen.getByLabelText(/nom complet/i), 'Arsène Nkomo')
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'arsene@example.com')
@@ -226,7 +226,7 @@ describe('inscription', () => {
    */
   it('fait remonter l’indicatif vers le pays, devise comprise', async () => {
     const user = userEvent.setup()
-    renderApp('/inscription/proprietaire')
+    await renderApp('/inscription/proprietaire')
 
     await user.type(screen.getByLabelText(/nom complet/i), 'Arsène Nkomo')
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'arsene@example.com')
@@ -256,7 +256,7 @@ describe('inscription', () => {
    */
   it('remonte aussi vers un pays non desservi, sans lui inventer de devise', async () => {
     const user = userEvent.setup()
-    renderApp('/inscription/proprietaire')
+    await renderApp('/inscription/proprietaire')
 
     await user.type(screen.getByLabelText(/nom complet/i), 'Arsène Nkomo')
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'arsene@example.com')
@@ -285,7 +285,7 @@ describe('inscription', () => {
    */
   it('ne déduit aucun pays d’un indicatif partagé', async () => {
     const user = userEvent.setup()
-    renderApp('/inscription/proprietaire')
+    await renderApp('/inscription/proprietaire')
 
     await user.type(screen.getByLabelText(/nom complet/i), 'Arsène Nkomo')
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'arsene@example.com')
@@ -319,7 +319,7 @@ describe('inscription', () => {
    */
   it('ouvre le pays au monde entier, et le rend cherchable', async () => {
     const user = userEvent.setup()
-    renderApp('/inscription/proprietaire')
+    await renderApp('/inscription/proprietaire')
 
     await user.type(screen.getByLabelText(/nom complet/i), 'Arsène Nkomo')
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'arsene@example.com')
@@ -343,7 +343,7 @@ describe('inscription', () => {
     // Le jeton s'était déjà perdu une fois en passant d'un menu natif à un
     // champ cherchable, sur l'indicatif. Le pays emprunte le même chemin.
     const user = userEvent.setup()
-    renderApp('/inscription/proprietaire')
+    await renderApp('/inscription/proprietaire')
 
     await user.type(screen.getByLabelText(/nom complet/i), 'Arsène Nkomo')
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'arsene@example.com')
@@ -365,7 +365,7 @@ describe('inscription', () => {
    */
   it('n’offre qu’une issue de correction par étape, et la nomme', async () => {
     const user = userEvent.setup()
-    renderApp('/inscription/proprietaire')
+    await renderApp('/inscription/proprietaire')
 
     await user.type(screen.getByLabelText(/nom complet/i), 'Arsène Nkomo')
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'arsene@example.com')
@@ -400,7 +400,7 @@ describe('inscription', () => {
    */
   it('récapitule aussi les réponses propres au rôle', async () => {
     const user = userEvent.setup()
-    renderApp('/inscription/proprietaire')
+    await renderApp('/inscription/proprietaire')
 
     await user.type(screen.getByLabelText(/nom complet/i), 'Arsène Nkomo')
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'arsene@example.com')
@@ -447,8 +447,8 @@ describe('inscription', () => {
 describe('retour à l’accueil depuis l’authentification', () => {
   it.each(['/connexion', '/inscription', '/mot-de-passe-oublie'])(
     '%s offre un lien vers l’accueil et un logo cliquable',
-    (route) => {
-      renderApp(route)
+    async (route) => {
+      await renderApp(route)
 
       const versAccueil = screen
         .getAllByRole('link')
@@ -464,7 +464,7 @@ describe('retour à l’accueil depuis l’authentification', () => {
 
   it('ne confond pas le retour d’étape avec le retour à l’accueil', async () => {
     const user = userEvent.setup()
-    renderApp('/inscription/proprietaire')
+    await renderApp('/inscription/proprietaire')
 
     await user.type(screen.getByLabelText(/nom complet/i), 'Arsène Nkomo')
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'arsene@example.com')
@@ -491,7 +491,7 @@ describe('retour à l’accueil depuis l’authentification', () => {
    */
   it('annonce le niveau du mot de passe au fil de la frappe', async () => {
     const user = userEvent.setup()
-    renderApp('/inscription/proprietaire')
+    await renderApp('/inscription/proprietaire')
 
     await user.type(screen.getByLabelText(/^Mot de passe/), 'abc')
 

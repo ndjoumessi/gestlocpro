@@ -45,7 +45,7 @@ const ligne = (titre: RegExp) =>
  */
 describe('les interventions s’annoncent comme une liste', () => {
   it('se comptent et se nomment', async () => {
-    renderApp('/demo/travaux')
+    await renderApp('/demo/travaux')
     await attendreLeChargement()
 
     const liste = screen.getByRole('list', { name: 'Interventions' })
@@ -77,7 +77,7 @@ describe('les interventions s’annoncent comme une liste', () => {
 
 describe('origine des interventions — en démonstration', () => {
   async function ouvrir() {
-    renderApp('/demo/travaux')
+    await renderApp('/demo/travaux')
     await attendreLeChargement()
   }
 
@@ -138,7 +138,7 @@ describe('origine des interventions — en démonstration', () => {
    * couvre pas.
    */
   it('n’expose ni devis ni engagé au locataire', async () => {
-    renderApp('/demo/travaux')
+    await renderApp('/demo/travaux')
     await switchRole('tenant')
     await attendreLeChargement()
     const page = screen.getByRole('main')
@@ -225,7 +225,7 @@ describe('origine des interventions — un devis révisé', () => {
    */
   it('montre l’engagé ET le devis d’origine quand ils diffèrent', async () => {
     serveur({ ...BASE, quotedAmountMinor: 60000, approvedAmountMinor: 95000, origin: 'ownerInitiative', reportedBy: 'Arsène Nkolo' })
-    renderApp('/app/travaux', { session: session() })
+    await renderApp('/app/travaux', { session: session() })
     await attendreLeChargement()
 
     const carte = ligne(/ballon d’eau chaude/i)
@@ -237,7 +237,7 @@ describe('origine des interventions — un devis révisé', () => {
 
   it('ne répète pas le devis quand il n’a pas bougé', async () => {
     serveur({ ...BASE, quotedAmountMinor: 60000, approvedAmountMinor: 60000, origin: 'tenantReport', reportedBy: 'Awa Bello' })
-    renderApp('/app/travaux', { session: session() })
+    await renderApp('/app/travaux', { session: session() })
     await attendreLeChargement()
 
     const carte = ligne(/ballon d’eau chaude/i)
@@ -261,7 +261,7 @@ describe('origine des interventions — un devis révisé', () => {
    */
   it('rend l’origine et le déclarant que le serveur envoie', async () => {
     serveur({ ...BASE, quotedAmountMinor: 60000, approvedAmountMinor: 60000, origin: 'tenantReport', reportedBy: 'Awa Bello' })
-    renderApp('/app/travaux', { session: session() })
+    await renderApp('/app/travaux', { session: session() })
     await attendreLeChargement()
 
     expect(ligne(/ballon d’eau chaude/i)).toHaveTextContent('Signalé par Awa Bello')
@@ -269,7 +269,7 @@ describe('origine des interventions — un devis révisé', () => {
 
   it('distingue l’initiative du bailleur sur un vrai parc', async () => {
     serveur({ ...BASE, quotedAmountMinor: 60000, approvedAmountMinor: 60000, origin: 'ownerInitiative', reportedBy: 'Arsène Nkolo' })
-    renderApp('/app/travaux', { session: session() })
+    await renderApp('/app/travaux', { session: session() })
     await attendreLeChargement()
 
     const carte = ligne(/ballon d’eau chaude/i)
@@ -284,7 +284,7 @@ describe('origine des interventions — un devis révisé', () => {
    */
   it('n’invente pas d’origine quand le serveur n’en rend pas', async () => {
     serveur({ ...BASE, quotedAmountMinor: 60000, approvedAmountMinor: 60000 })
-    renderApp('/app/travaux', { session: session() })
+    await renderApp('/app/travaux', { session: session() })
     await attendreLeChargement()
 
     const carte = ligne(/ballon d’eau chaude/i)
@@ -311,7 +311,7 @@ describe('travaux — tri par origine et total engagé', () => {
   const segment = (nom: RegExp) => screen.getByRole('button', { name: nom })
 
   async function ouvrir() {
-    renderApp('/demo/travaux')
+    await renderApp('/demo/travaux')
     await attendreLeChargement()
   }
 
@@ -359,7 +359,7 @@ describe('travaux — tri par origine et total engagé', () => {
    * coût des travaux n'est jamais exposé au locataire ».
    */
   it('n’offre ni tri ni total au locataire', async () => {
-    renderApp('/demo/travaux')
+    await renderApp('/demo/travaux')
     await switchRole('tenant')
     await attendreLeChargement()
 
@@ -381,7 +381,7 @@ describe('travaux — tri par origine et total engagé', () => {
    */
   it('nomme l’intervention et son logement avant de la chiffrer', async () => {
     const user = userEvent.setup()
-    renderApp('/demo/travaux')
+    await renderApp('/demo/travaux')
     await attendreLeChargement()
 
     // Le geste n'existe que sur une intervention SIGNALÉE et non encore

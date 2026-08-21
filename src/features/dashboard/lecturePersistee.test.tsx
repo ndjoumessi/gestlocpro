@@ -79,7 +79,7 @@ function installer(): FauxServeur {
 describe('l’état « lu » d’une notification', () => {
   it('compte ce que le SERVEUR dit non lu, et non toute la liste', async () => {
     installer()
-    renderApp('/app/signalements', { session: session() })
+    await renderApp('/app/signalements', { session: session() })
     // Une donnée du serveur, jamais le titre : le `<h1>` est rendu par l'écran
     // de chargement autant que par l'écran chargé.
     await screen.findByText(/Coupure d’eau jeudi/)
@@ -92,7 +92,7 @@ describe('l’état « lu » d’une notification', () => {
   it('n’envoie au serveur que les identifiants non lus', async () => {
     const faux = installer()
     faux.quand('PATCH', `/parks/${PARC}/notifications/read`, { status: 200, body: { marked: 2 } })
-    renderApp('/app/signalements', { session: session() })
+    await renderApp('/app/signalements', { session: session() })
     await screen.findByText(/Coupure d’eau jeudi/)
 
     await userEvent.setup().click(screen.getByRole('button', { name: /Tout marquer comme lu/ }))
@@ -115,7 +115,7 @@ describe('l’état « lu » d’une notification', () => {
   it('ne rappelle pas le serveur quand tout est déjà lu', async () => {
     const faux = installer()
     faux.quand('PATCH', `/parks/${PARC}/notifications/read`, { status: 200, body: { marked: 2 } })
-    renderApp('/app/signalements', { session: session() })
+    await renderApp('/app/signalements', { session: session() })
     await screen.findByText(/Coupure d’eau jeudi/)
 
     await userEvent.setup().click(screen.getByRole('button', { name: /Tout marquer comme lu/ }))
@@ -135,7 +135,7 @@ describe('l’état « lu » d’une notification', () => {
    */
   it('ne prétend pas écrire une lecture en démonstration', async () => {
     const faux = installerFauxServeur()
-    renderApp('/demo/signalements')
+    await renderApp('/demo/signalements')
     await attendreLeChargement()
 
     await userEvent.setup().click(screen.getByRole('button', { name: /Tout marquer comme lu/ }))

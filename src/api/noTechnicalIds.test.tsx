@@ -167,7 +167,7 @@ describe('aucun identifiant technique à l’écran', () => {
     const serveur = installerFauxServeur()
     serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: portefeuille() })
 
-    renderApp(route, { session: SESSION_AVEC_PARC })
+    await renderApp(route, { session: SESSION_AVEC_PARC })
     // On attend que la charge du serveur ait remplacé le jeu local : sans cela
     // le test passerait sur les constantes, c'est-à-dire sur rien.
     await screen.findByRole('heading', { level: 1, name: titre })
@@ -193,7 +193,7 @@ describe('aucun identifiant technique à l’écran', () => {
     const serveur = installerFauxServeur()
     serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: portefeuille() })
     const user = userEvent.setup()
-    renderApp('/app/paiements', { session: SESSION_AVEC_PARC })
+    await renderApp('/app/paiements', { session: SESSION_AVEC_PARC })
     await screen.findAllByText(/A1|Charles Ngassa/)
 
     await user.click(screen.getByRole('button', { name: /enregistrer un paiement/i }))
@@ -211,7 +211,7 @@ describe('aucun identifiant technique à l’écran', () => {
     const serveur = installerFauxServeur()
     serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: portefeuille() })
 
-    renderApp('/app/travaux', { session: SESSION_AVEC_PARC })
+    await renderApp('/app/travaux', { session: SESSION_AVEC_PARC })
     expect(await screen.findByText(/SIG-2026-001/)).toBeInTheDocument()
     expect(screen.getByText(/Fuite sous l’évier/)).toBeInTheDocument()
   })
