@@ -574,7 +574,30 @@ export function Works() {
           onClose={() => setAChiffrer(null)}
           size="sm"
           title={t('app.works.quoteTitle')}
-          description={t('app.works.quoteBody')}
+          /*
+            LA MODALE NOMME CE QU'ELLE CHIFFRE.
+
+            Elle s'ouvrait sur « Chiffrer l'intervention » — laquelle ? L'écran
+            en aligne parfois une dizaine, et le geste est IRRÉVERSIBLE : le
+            serveur refuse un rechiffrage en 409, avec un motif juste
+            (« rechiffrer un devis déjà validé changerait le montant sous la
+            décision du propriétaire »). Se tromper de ligne coûte donc un
+            devis, définitivement.
+
+            C'est le seul des trois actes de cet écran à ne pas dire sur quoi il
+            porte : répondre au locataire nomme le déclarant, retirer une fiche
+            nomme le locataire.
+          */
+          description={t('app.works.quoteOn', {
+            // `workTitle` et non `title` : le jeu de démonstration porte une
+            // CLÉ, une saisie d'utilisateur porte un texte, et ce fichier a
+            // déjà tranché le point pour son en-tête de carte. Lire `title`
+            // directement rendait un titre vide sur toute intervention de
+            // démonstration — c'est-à-dire sur tout ce qu'on regarde en
+            // développant.
+            title: workTitle(aChiffrer, t),
+            unit: unitById(aChiffrer.unitId)?.label ?? aChiffrer.unitId,
+          })}
           footer={
             <>
               <Button variant="secondary" onClick={() => setAChiffrer(null)}>

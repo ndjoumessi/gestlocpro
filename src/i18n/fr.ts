@@ -1079,6 +1079,7 @@ export const fr = {
       replyNoReporter: 'Cette intervention n’a pas de déclarant : il n’y a personne à qui répondre.',
       replyDemo: 'Démonstration : aucune réponse n’est envoyée.',
       quoteTitle: 'Chiffrer l’intervention',
+      quoteOn: '{title} · {unit}',
       quoteBody: 'Le montant proposé. Le propriétaire arbitrera : vous proposez, il décide.',
       quoteAmount: 'Montant du devis',
       quoteHint: 'En unités entières, sans séparateur.',

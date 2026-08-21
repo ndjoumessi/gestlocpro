@@ -366,4 +366,39 @@ describe('travaux — tri par origine et total engagé', () => {
     expect(screen.queryByRole('button', { name: /^À mon initiative/ })).toBeNull()
     expect(screen.queryByText('Total engagé')).toBeNull()
   })
+
+  /**
+   * LA MODALE DE CHIFFRAGE NOMME CE QU'ELLE CHIFFRE.
+   *
+   * Elle s'ouvrait sur « Chiffrer l'intervention » — laquelle ? L'écran en
+   * aligne parfois une dizaine, et le geste est IRRÉVERSIBLE : le serveur
+   * refuse un rechiffrage en 409, avec un motif juste. Se tromper de ligne
+   * coûte un devis, définitivement.
+   *
+   * C'était le seul des trois actes de cet écran à ne pas dire sur quoi il
+   * porte : répondre au locataire nomme le déclarant, retirer une fiche nomme
+   * le locataire.
+   */
+  it('nomme l’intervention et son logement avant de la chiffrer', async () => {
+    const user = userEvent.setup()
+    renderApp('/demo/travaux')
+    await attendreLeChargement()
+
+    // Le geste n'existe que sur une intervention SIGNALÉE et non encore
+    // chiffrée : on prend celle que l'écran offre, plutôt que d'en nommer une
+    // qui pourrait changer d'état dans le jeu de démonstration.
+    const bouton = screen.getAllByRole('button', { name: /^chiffrer$/i })[0]
+    expect(bouton).toBeDefined()
+    const cible = bouton.closest<HTMLElement>('[class*="rounded-lg"]')!
+    const titre = within(cible).getAllByRole('heading')[0].textContent ?? ''
+    await user.click(bouton)
+
+    const dialogue = await screen.findByRole('dialog')
+    // Le titre de l'intervention ET son logement : sur un parc où deux unités
+    // ont la même panne, le premier ne suffit pas à trancher.
+    // Le titre lu SUR LA LIGNE qu'on vient de viser : comparer la modale à une
+    // chaîne écrite ici ne prouverait que la chaîne.
+    expect(dialogue).toHaveTextContent(titre.split('·')[0].trim())
+    expect(dialogue).toHaveTextContent(/A\d|B\d|C\d/)
+  })
 })

@@ -821,6 +821,7 @@ export const en: Dictionary = {
       replyNoReporter: 'This job has no reporter: there is nobody to reply to.',
       replyDemo: 'Demo: no reply is sent.',
       quoteTitle: 'Quote this job',
+      quoteOn: '{title} · {unit}',
       quoteBody: 'The amount you propose. The owner decides: you propose, they arbitrate.',
       quoteAmount: 'Quoted amount',
       quoteHint: 'Whole units, no separator.',
