@@ -133,4 +133,26 @@ describe('messages d’alerte', () => {
       expect(alert).not.toHaveProperty('detail')
     }
   })
+
+  /**
+   * L'ÉTAT « NON LUE » SE DIT, au lieu de n'être qu'une couleur.
+   *
+   * Il n'existait que dans un liseré — et un liseré à 2,87:1, que la feuille de
+   * jetons condamne elle-même pour cet usage. Un lecteur d'écran parcourait
+   * donc douze notifications rigoureusement identiques, sans jamais savoir
+   * lesquelles restaient à traiter : la seule question qu'on se pose sur cet
+   * écran, et celle dont la barre latérale annonce le compte juste à côté.
+   */
+  it('dit lesquelles restent à lire, et pas seulement en couleur', async () => {
+    renderApp('/demo/signalements')
+    await attendreLeChargement()
+
+    const liste = screen.getByRole('list', { name: 'Signalements et notifications' })
+    const nonLues = ALERTS.filter((a) => !a.read).length
+    expect(nonLues).toBeGreaterThan(0)
+
+    // Autant de mentions que de notifications non lues dans la donnée : ni une
+    // par carte — ce qui ne distinguerait rien — ni une seule pour tout l'écran.
+    expect(within(liste).getAllByText('Non lue')).toHaveLength(nonLues)
+  })
 })

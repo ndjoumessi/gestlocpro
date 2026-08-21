@@ -1285,6 +1285,7 @@ export const fr = {
       channel_email: 'e-mail',
       channel_sms: 'SMS',
       allRead: 'Toutes les notifications sont lues.',
+      unreadMark: 'Non lue',
       empty: 'Rien à signaler sur le parc.',
       emptyBody:
         'Le produit dépose ici les loyers en retard, les devis à arbitrer, les relevés manquants et les baux qui arrivent à échéance. Rien de tout cela n’est en cours.',

@@ -995,6 +995,7 @@ export const en: Dictionary = {
       channel_email: 'email',
       channel_sms: 'SMS',
       allRead: 'All notifications are read.',
+      unreadMark: 'Unread',
       empty: 'Nothing to report on the portfolio.',
       emptyBody:
         'The product files late rents, quotes awaiting a decision, missing meter readings and leases coming up for renewal here. None of that is pending.',

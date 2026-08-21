@@ -216,8 +216,27 @@ export function Alerts() {
             <Card
               key={alert.id}
               role="listitem"
-              className={cn('flex items-start gap-4', !alert.read && 'border-l-2 border-l-gold')}
+              /*
+                `gold-ink` ET NON `gold` pour le liseré.
+
+                L'or de marque tient 2,87:1 sur la carte — la feuille de jetons
+                le CONDAMNE elle-même en commentaire pour cet usage. Un liseré
+                qui distingue une notification non lue est de la DONNÉE, pas de
+                l'ornement : il doit se voir. L'encre dorée reste dans la même
+                famille et monte à 4,98.
+              */
+              className={cn('flex items-start gap-4', !alert.read && 'border-l-2 border-l-gold-ink')}
             >
+              {/*
+                ET L'ÉTAT SE DIT, au lieu de n'être qu'une couleur.
+
+                « Non lue » n'existait que dans le liseré. Un lecteur d'écran
+                parcourait donc douze notifications rigoureusement identiques,
+                sans jamais savoir lesquelles restaient à traiter — alors que
+                c'est la seule question qu'on se pose sur cet écran, et que la
+                barre latérale annonce le compte juste à côté.
+              */}
+              {!alert.read && <span className="sr-only">{t('app.alerts.unreadMark')}</span>}
               <span
                 className={cn(
                   'flex size-10 shrink-0 items-center justify-center rounded-md',
