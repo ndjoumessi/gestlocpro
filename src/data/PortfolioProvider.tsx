@@ -167,10 +167,22 @@ interface PortfolioContextValue {
       findings: { room: string; description: string; severity: 'minor' | 'major'; costMinor?: number }[]
     },
   ) => void
+  /**
+   * Ouvre un signalement, et rend ce que le SERVEUR en a fait.
+   *
+   * `Promise<boolean>` et non `void` : les quatre écrans qui l'appellent
+   * annonçaient « Signalement envoyé » dans le même souffle que l'appel, sans
+   * l'attendre. Sur un refus, le locataire lisait le succès PUIS « le serveur a
+   * refusé cette action » — deux phrases contradictoires côte à côte, dont la
+   * première était fausse.
+   *
+   * Le motif du refus est déjà dit par `signalerEchec` ; ce booléen ne répond
+   * qu'à une question, celle que l'appelant se pose : faut-il féliciter ?
+   */
   addWork: (
     unitId: string,
     signalement: { title: string; trade: TradeKey; urgency: UrgencyKey; description?: string },
-  ) => void
+  ) => Promise<boolean>
   /** Défait un arbitrage de caution : elle redevient retenue, sans retenue. */
   unsettleDeposit: (unitId: string) => void
   /** Le propriétaire arbitre une caution : retenue et restitution du solde. */
@@ -184,13 +196,18 @@ interface PortfolioContextValue {
   /**
    * Rattache un locataire. `bail` porte les termes réels du contrat — début et
    * loyer — quand ils diffèrent de « aujourd'hui » et du loyer de référence.
+   *
+   * Rend la RÉPONSE du serveur, comme `removeTenant` juste en dessous et pour la
+   * même raison. L'unité peut déjà porter un bail en cours — l'index unique
+   * partiel de la base est seul à le trancher, deux écrans ouverts suffisent — et
+   * la modale annonçait « Fiche locataire créée » avant de le savoir.
    */
   addTenant: (
     unitId: string,
     name: string,
     phone: string,
     bail?: { startsOn?: string; rentMinor?: number; depositMinor?: number },
-  ) => void
+  ) => Promise<boolean>
   /** Crée un immeuble dans le parc. Sans parc serveur, il reste local. */
   addBuilding: (name: string, district: string) => void
   /**
@@ -819,26 +836,31 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   )
 
   const addWork = useCallback(
-    (
+    async (
       unitId: string,
       signalement: { title: string; trade: TradeKey; urgency: UrgencyKey; description?: string },
-    ) => {
+    ): Promise<boolean> => {
       if (!parkId) {
         // Sans parc serveur — démonstration — le signalement ne vit qu'en
         // mémoire. La référence est locale et le dit.
+        //
+        // La branche rend malgré tout une promesse, et un `true` franc : les
+        // appelants attendent désormais la réponse avant de féliciter, et une
+        // démonstration qui rendrait `undefined` prendrait un chemin que ni les
+        // tests ni personne n'éprouve — c'est sur elle que tourne le harnais.
         setWorks((list) => [nouvelleFiche(`LOCAL-${list.length + 1}`, unitId, signalement), ...list])
-        return
+        return true
       }
-      void api
-        .addWork<{ work: { id: string; reference: string; status: WorkOrder['status'] } }>(
-          parkId,
-          unitId,
-          signalement,
-        )
-        .then(({ work }) =>
-          setWorks((list) => [nouvelleFiche(work.id, unitId, signalement), ...list]),
-        )
-        .catch(signalerEchec)
+      try {
+        const { work } = await api.addWork<{
+          work: { id: string; reference: string; status: WorkOrder['status'] }
+        }>(parkId, unitId, signalement)
+        setWorks((list) => [nouvelleFiche(work.id, unitId, signalement), ...list])
+        return true
+      } catch (erreur) {
+        signalerEchec(erreur)
+        return false
+      }
     },
     [parkId, signalerEchec],
   )
@@ -1175,42 +1197,47 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [parkId, signalerEchec],
   )
 
-  const addTenant = useCallback((
+  const addTenant = useCallback(async (
     unitId: string,
     name: string,
     phone: string,
     bail?: { startsOn?: string; rentMinor?: number; depositMinor?: number },
-  ) => {
-    if (parkId) {
-      void api
-        .addTenant(parkId, {
-          unitId,
-          fullName: name,
-          phoneE164: phone.replace(/\s/g, ''),
-          ...(bail?.startsOn ? { startsOn: bail.startsOn } : {}),
-          ...(bail?.rentMinor !== undefined ? { rentMinor: bail.rentMinor } : {}),
-          // Sans ce relais, le champ de la modale se saisissait et se perdait :
-          // le parc n'aurait toujours porté aucune caution.
-          ...(bail?.depositMinor !== undefined ? { depositMinor: bail.depositMinor } : {}),
-        })
-        .then(() => chargerParc(parkId))
-        .then((parc) => {
-          // On relit le parc plutôt que de deviner l'état résultant : le
-          // serveur décide du statut du bail, et deux calculs de la même chose
-          // finissent toujours par diverger.
-          setUnits(parc.units)
-          setWorks(parc.works)
-          setDeposits(parc.deposits)
-        })
-        .catch(signalerEchec)
-      return
+  ): Promise<boolean> => {
+    if (!parkId) {
+      setUnits((list) =>
+        // « En attente » et non « À jour » : le bail commence, la première
+        // quittance n'est pas encore due. Marquer le locataire à jour d'un loyer
+        // qu'il n'a pas payé fausserait les indicateurs d'encaissement.
+        list.map((u) => (u.id === unitId ? { ...u, tenant: name, phone, status: 'pending' } : u)),
+      )
+      // La démonstration rend une promesse comme l'autre branche : c'est elle
+      // que le harnais parcourt, et une branche qui ne rendrait rien laisserait
+      // le chemin réellement livré sans aucun témoin.
+      return true
     }
-    setUnits((list) =>
-      // « En attente » et non « À jour » : le bail commence, la première
-      // quittance n'est pas encore due. Marquer le locataire à jour d'un loyer
-      // qu'il n'a pas payé fausserait les indicateurs d'encaissement.
-      list.map((u) => (u.id === unitId ? { ...u, tenant: name, phone, status: 'pending' } : u)),
-    )
+    try {
+      await api.addTenant(parkId, {
+        unitId,
+        fullName: name,
+        phoneE164: phone.replace(/\s/g, ''),
+        ...(bail?.startsOn ? { startsOn: bail.startsOn } : {}),
+        ...(bail?.rentMinor !== undefined ? { rentMinor: bail.rentMinor } : {}),
+        // Sans ce relais, le champ de la modale se saisissait et se perdait :
+        // le parc n'aurait toujours porté aucune caution.
+        ...(bail?.depositMinor !== undefined ? { depositMinor: bail.depositMinor } : {}),
+      })
+      // On relit le parc plutôt que de deviner l'état résultant : le serveur
+      // décide du statut du bail, et deux calculs de la même chose finissent
+      // toujours par diverger.
+      const parc = await chargerParc(parkId)
+      setUnits(parc.units)
+      setWorks(parc.works)
+      setDeposits(parc.deposits)
+      return true
+    } catch (erreur) {
+      signalerEchec(erreur)
+      return false
+    }
   }, [parkId, signalerEchec])
 
   /**

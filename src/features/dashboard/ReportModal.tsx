@@ -44,6 +44,10 @@ export function ReportModal({
   const [metier, setMetier] = useState<TradeKey>('plumbing')
   const [urgence, setUrgence] = useState<UrgencyKey>('normal')
   const [detail, setDetail] = useState('')
+  /* Le vol en cours : le bouton s'éteint le temps de l'aller-retour. Une
+     attente devenue visible invite à recliquer, et deux fiches naîtraient du
+     même constat. */
+  const [envoi, setEnvoi] = useState(false)
 
   /* Le vocabulaire des corps de métier est DÉJÀ partagé par les travaux et le
      portail : le redéclarer ici en ferait une troisième source, et elles
@@ -62,18 +66,23 @@ export function ReportModal({
     description: t(`app.report.urgency_${cle}` as 'app.report.urgency_blocking'),
   }))
 
-  function envoyer() {
+  async function envoyer() {
     // La même borne que le serveur : le refus arrive avant l'aller-retour.
     if (titre.trim().length < 3) {
       setErreur(true)
       return
     }
-    addWork(unitId, {
+    // Même règle que l'écran « Signaler », dont cette modale est la jumelle :
+    // on ne félicite pas avant la réponse, et la saisie survit au refus.
+    setEnvoi(true)
+    const ouvert = await addWork(unitId, {
       title: titre.trim(),
       trade: metier,
       urgency: urgence,
       ...(detail.trim() ? { description: detail.trim() } : {}),
     })
+    setEnvoi(false)
+    if (!ouvert) return
     onClose()
     setTitre('')
     setDetail('')
@@ -88,10 +97,12 @@ export function ReportModal({
       description={t('app.report.body')}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose} disabled={envoi}>
             {t('common.cancel')}
           </Button>
-          <Button onClick={envoyer}>{t('app.report.send')}</Button>
+          <Button onClick={() => void envoyer()} loading={envoi}>
+            {t('app.report.send')}
+          </Button>
         </>
       }
     >

@@ -151,14 +151,34 @@ export function PricingSection() {
                 ))}
               </ul>
 
+              {/*
+                « NOUS CONTACTER » NE MENAIT NULLE PART.
+
+                Le palier sur devis — le plus cher, et le seul sans prix — offrait
+                ce bouton vers `/#faq`. Deux défauts empilés. L'ancre d'abord :
+                rien dans le dépôt ne recale la page sur le fragment d'une adresse,
+                `grep -rn hash src/` ne rend pas une ligne, et le prospect
+                atterrissait donc en haut de la page qu'il venait de quitter. Le
+                fond ensuite : la FAQ ne porte aucun canal de contact — ni adresse,
+                ni formulaire, ni numéro, et le dépôt entier n'en porte aucun. Le
+                seul geste du palier le plus engageant promettait une conversation
+                qui n'existe pas.
+
+                Il mène désormais là où mènent les deux autres, et le dit avec le
+                même mot. C'est aussi vrai pour Cabinet que pour Pro : aucun palier
+                n'est facturé aujourd'hui, l'inscription ouvre le même espace, et
+                « Sur devis » reste écrit juste au-dessus — le prospect n'apprend
+                pas son prix en cliquant, il ne l'apprenait pas davantage avant.
+                Fabriquer une adresse de contact aurait été le mensonge suivant.
+              */}
               <Button
                 className="mt-6"
                 size="lg"
                 fullWidth
                 variant={popular ? 'primary' : 'secondary'}
-                to={price === null ? '/#faq' : '/inscription'}
+                to="/inscription"
               >
-                {price === null ? t('marketing.pricing.ctaEnterprise') : t('marketing.pricing.cta')}
+                {t('marketing.pricing.cta')}
               </Button>
             </article>
           )

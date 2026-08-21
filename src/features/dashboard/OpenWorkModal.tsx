@@ -58,6 +58,10 @@ export function OpenWorkModal({
   const [metier, setMetier] = useState<TradeKey>('multi')
   const [urgence, setUrgence] = useState<UrgencyKey>('normal')
   const [detail, setDetail] = useState('')
+  /* Le vol en cours : le bouton s'éteint le temps de l'aller-retour. Une
+     attente devenue visible invite à recliquer, et deux fiches naîtraient du
+     même constat. */
+  const [envoi, setEnvoi] = useState(false)
 
   /* Le vocabulaire vient de `portfolio`, jamais d'une liste recopiée ici : le
      commentaire de `TRADES_REPORTABLE` annonçait deux copieurs, il y en avait
@@ -76,19 +80,24 @@ export function OpenWorkModal({
     description: '',
   }))
 
-  function ouvrir() {
+  async function ouvrir() {
     // La même borne que le serveur, et que la modale du locataire : le refus
     // arrive avant l'aller-retour.
     if (titre.trim().length < 3 || !unite) {
       setErreur(true)
       return
     }
-    addWork(unite, {
+    // Même règle que l'écran « Signaler » : le chantier n'est annoncé ouvert
+    // qu'une fois le serveur d'accord, et la saisie survit au refus.
+    setEnvoi(true)
+    const ouvert = await addWork(unite, {
       title: titre.trim(),
       trade: metier,
       urgency: urgence,
       ...(detail.trim() ? { description: detail.trim() } : {}),
     })
+    setEnvoi(false)
+    if (!ouvert) return
     onClose()
     setTitre('')
     setDetail('')
@@ -103,10 +112,12 @@ export function OpenWorkModal({
       description={t('app.works.openBody')}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose} disabled={envoi}>
             {t('common.cancel')}
           </Button>
-          <Button onClick={ouvrir}>{t('app.works.openSubmit')}</Button>
+          <Button onClick={() => void ouvrir()} loading={envoi}>
+            {t('app.works.openSubmit')}
+          </Button>
         </>
       }
     >

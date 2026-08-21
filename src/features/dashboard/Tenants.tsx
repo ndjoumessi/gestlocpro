@@ -429,8 +429,11 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
     phone: null,
   })
   const [touched, setTouched] = useState({ name: false, phone: false })
+  /* Le vol en cours. Il éteint le bouton, faute de quoi l'attente désormais
+     visible invite à recliquer — et deux fiches partiraient pour une personne. */
+  const [envoi, setEnvoi] = useState(false)
 
-  const submit = () => {
+  const submit = async () => {
     const next = { name: validateName(name), phone: validatePhone(phone, dial) }
     setErrors(next)
     setTouched({ name: true, phone: true })
@@ -477,13 +480,30 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
       return
     }
 
-    addTenant(unitId, name.trim(), `${dial} ${phone.trim()}`, {
+    /**
+     * LE SUCCÈS SUIT LA RÉPONSE, comme au retrait d'une fiche trois cents lignes
+     * plus haut — même défaut, même écran, et l'un corrigé sans l'autre.
+     *
+     * `addTenant` partait sans qu'on l'attende. Sur un 409 — l'unité porte déjà
+     * un bail en cours, ce que l'index unique de la base tranche seul, et deux
+     * onglets ouverts suffisent à l'obtenir — le bailleur lisait « Fiche
+     * locataire créée » puis « le serveur a refusé cette action ». Deux phrases
+     * contradictoires côte à côte, dont la première était fausse, et la modale
+     * s'était déjà refermée sur une saisie perdue.
+     */
+    setEnvoi(true)
+    const creee = await addTenant(unitId, name.trim(), `${dial} ${phone.trim()}`, {
       ...(debut ? { startsOn: debut } : {}),
       ...(loyerLu !== null ? { rentMinor: loyerLu } : {}),
       ...(cautionLue !== null && cautionLue > 0
         ? { depositMinor: Math.round(cautionLue) }
         : {}),
     })
+    setEnvoi(false)
+    // La modale RESTE ouverte sur un refus : la saisie est encore là, et le
+    // motif est déjà dit par `signalerEchec`. La refermer punirait le bailleur
+    // d'un conflit qui n'est pas le sien.
+    if (!creee) return
     onClose()
     notify(t('app.tenants.created'), { tone: 'ok' })
   }
@@ -496,10 +516,12 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
       description={t('app.tenants.modalDescription')}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose} disabled={envoi}>
             {t('common.cancel')}
           </Button>
-          <Button onClick={submit}>{t('common.save')}</Button>
+          <Button onClick={() => void submit()} loading={envoi}>
+            {t('common.save')}
+          </Button>
         </>
       }
     >

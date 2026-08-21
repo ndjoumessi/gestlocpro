@@ -224,7 +224,6 @@ export const fr = {
       title: 'Content de vous revoir',
       subtitle: 'Reprenez la main sur votre parc.',
       submit: 'Se connecter',
-      remember: 'Rester connecté sur cet appareil',
       success: 'Connexion réussie — bienvenue.',
       // Un seul message pour « compte inconnu » et « mot de passe faux » : les
       // distinguer ferait du formulaire un oracle d'existence de comptes, et
@@ -1226,9 +1225,27 @@ export const fr = {
       leaseRent: 'Loyer du bail',
       leaseRentHint: 'Laissez vide pour reprendre le loyer de référence du logement.',
       modalTitle: 'Nouvelle fiche locataire',
-      modalDescription: 'Un code d’invitation lui sera envoyé par SMS pour activer son espace.',
-      created: 'Fiche locataire créée · code d’invitation envoyé par SMS',
-      phoneHint: 'Le code d’invitation y sera envoyé.',
+      /**
+       * TROIS FOIS la même promesse, et pas une tenue.
+       *
+       * Un code d’invitation parti par SMS : annoncé à l’ouverture de la modale,
+       * répété sous le champ du téléphone, confirmé au passé dans le message de
+       * succès. La route qui crée la fiche n’émet aucun code — elle écrit un
+       * locataire, un bail, parfois une caution, et rien d’autre — et la
+       * messagerie n’a pas de canal SMS : `envoyerSms` rend `false` sans appeler
+       * personne, et le commentaire au-dessus dit pourquoi. Le bailleur croyait
+       * donc son locataire prévenu, ne transmettait rien, et attendait une
+       * activation qui ne pouvait pas venir.
+       *
+       * L’émission d’un code existe, mais sur un geste distinct — « Inviter par
+       * code », deux boutons plus loin sur le même écran. C’est là qu’on renvoie,
+       * et c’est le seul endroit du produit qui sache dire si quelque chose est
+       * parti : `InviteModal` lit la réponse du serveur avant de l’affirmer.
+       */
+      modalDescription:
+        'La fiche rattache le locataire à son logement. Pour lui ouvrir son espace, émettez ensuite un code depuis « Inviter par code ».',
+      created: 'Fiche locataire créée',
+      phoneHint: 'Pour l’appeler depuis sa fiche. Aucun message ne part d’ici.',
       since: 'Locataire depuis',
       contact: 'Contact',
       remove: 'Retirer',
@@ -1632,7 +1649,6 @@ export const fr = {
       quote: 'Sur devis',
       trial: '30 jours d’essai, sans carte bancaire',
       cta: 'Commencer',
-      ctaEnterprise: 'Nous contacter',
       unitsSelector: 'Combien d’unités gérez-vous ?',
       unitsValue: '{count} unités',
       unitsValue_one: '{count} unité',

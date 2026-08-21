@@ -347,6 +347,78 @@ const AVEUX_ASSUMES = new Map([
 ])
 
 /**
+ * LA QUATRIÈME FAMILLE : une promesse d'envoi sur un canal qui n'existe pas.
+ *
+ * Symétrique exacte de la précédente. L'aveu de simulation dit « je n'ai rien
+ * fait » alors que le geste a lieu ; celle-ci dit « c'est parti » alors que rien
+ * ne part. Elle est la plus coûteuse des deux, parce que le lecteur AGIT sur
+ * elle : le bailleur qui lisait « Fiche locataire créée · code d'invitation
+ * envoyé par SMS » ne transmettait pas le code, et attendait une activation qui
+ * ne pouvait pas venir. La modale le promettait trois fois — à l'ouverture, sous
+ * le champ du téléphone, au succès — et la route de création n'émet aucun code.
+ *
+ * Le canal, lui, n'existe pas du tout : `MessagerieResend.envoyerSms` rend
+ * `false` sans appeler personne, et le commentaire au-dessus dit que c'est
+ * délibéré — « rendre `true` pour faire propre annoncerait un envoi qui n'a pas
+ * lieu ». Tant que cette méthode est ce qu'elle est, toute phrase du produit qui
+ * affirme un envoi par SMS est fausse par construction.
+ *
+ * ── POURQUOI CE MOTIF, ET PAS « SMS » TOUT COURT ──
+ *
+ * Mesuré sur les deux dictionnaires : « SMS » apparaît dans des libellés
+ * parfaitement justes — « Aucun SMS n'est envoyé », « Aucun SMS n'a été envoyé :
+ * transmettez le code vous-même », le nom du canal dans le journal des relances,
+ * et la ligne de la grille tarifaire qui décrit une fonction à venir. Un motif
+ * sur le mot seul naîtrait avec cinq exceptions, ce que les deux garde-fous
+ * précédents ont déjà appris à refuser.
+ *
+ * On vise donc la seule tournure qui AFFIRME le départ — le participe passé et
+ * son équivalent anglais, que « sera envoyé » et « will be sent » portent aussi.
+ * Ces deux-là mesurent zéro sur le dictionnaire corrigé, hors la clé inscrite au
+ * registre ci-dessous.
+ */
+const PROMESSES_DE_CANAL = [
+  /envoy[ée]e?s? par SMS/i,
+  /sent by SMS/i,
+]
+
+/**
+ * LA PROMESSE ASSUMÉE, sur le modèle du registre des aveux.
+ *
+ * Une phrase peut affirmer un envoi sans mentir, à une condition : que ce soit le
+ * SERVEUR qui l'affirme, et l'écran qui le répète. C'est le cas de la seule
+ * entrée ci-dessous — `InviteModal` ne la rend que si la réponse porte
+ * `envoye: true`, et choisit sinon « Aucun SMS n'a été envoyé ». Elle est donc
+ * du texte en attente, pas une affirmation.
+ *
+ * Y inscrire une clé n'est pas contourner le garde-fou : c'est prendre date. Le
+ * jour où un fournisseur de SMS est branché, cette liste est le seul endroit du
+ * dépôt qui sache qu'une ligne attend d'être relue.
+ */
+const PROMESSES_ASSUMEES = new Map([
+  [
+    'app.invite.sentBySms',
+    'Vrai au 2026-08-21 : cette phrase n’est rendue que si le serveur répond ' +
+      '`envoye: true`, ce que `MessagerieResend.envoyerSms` — qui rend `false` ' +
+      'sans appeler personne — ne peut pas produire. L’écran affiche sinon ' +
+      '« Aucun SMS n’a été envoyé ». À RETIRER DU REGISTRE le jour où un ' +
+      'fournisseur de SMS est branché : la phrase sera alors simplement vraie, ' +
+      'et n’aura plus besoin de dérogation.',
+  ],
+])
+
+/** Parcourt UN dictionnaire à plat et rend les libellés qui promettent un envoi. */
+export function promessesDeCanal(langue, dictionnaire) {
+  const trouvailles = []
+  for (const [cle, valeur] of dictionnaire) {
+    if (PROMESSES_ASSUMEES.has(cle)) continue
+    const motif = PROMESSES_DE_CANAL.find((re) => re.test(valeur))
+    if (motif) trouvailles.push({ langue, cle, valeur, motif: String(motif) })
+  }
+  return trouvailles
+}
+
+/**
  * Parcourt UN dictionnaire à plat et rend les libellés qui s'accusent.
  *
  * Les deux langues sont contrôlées, et pas seulement le français : un bandeau
@@ -447,6 +519,21 @@ if (import.meta.url === pathToFileURL(argv[1] ?? '').href) {
     process.exit(1)
   }
 
+  const promesses = [...promessesDeCanal('fr', fr), ...promessesDeCanal('en', en)]
+
+  if (promesses.length > 0) {
+    console.error(`✗ ${promesses.length} libellé(s) annonçant un envoi par SMS :\n`)
+    for (const p of promesses) {
+      console.error(`  ${p.langue} · ${p.cle}`)
+      console.error(`    « ${p.valeur} »`)
+      console.error(`    → motif ${p.motif}`)
+      console.error(
+        "    `envoyerSms` rend `false` : rien ne part. Retirer la phrase, ou brancher le canal.\n",
+      )
+    }
+    process.exit(1)
+  }
+
   const doublons = questionsEnDouble(fr, sources)
 
   if (doublons.length > 0) {
@@ -461,7 +548,9 @@ if (import.meta.url === pathToFileURL(argv[1] ?? '').href) {
   }
 
   if (findings.length === 0) {
-    console.log('✓ Aucune chaîne en dur, aucune question en double, aucun aveu de simulation.')
+    console.log(
+      '✓ Aucune chaîne en dur, aucune question en double, aucun aveu de simulation, aucun envoi promis sur un canal absent.',
+    )
     process.exit(0)
   }
 

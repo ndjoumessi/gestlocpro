@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 // @ts-expect-error — script Node en JavaScript, hors du projet TypeScript.
-import { analyser, aveuxDeSimulation, dictionnaireAPlat, questionsEnDouble } from '../../scripts/check-i18n.mjs'
+import { analyser, aveuxDeSimulation, dictionnaireAPlat, promessesDeCanal, questionsEnDouble } from '../../scripts/check-i18n.mjs'
 
 /**
  * La garde du GARDE-FOU des chaînes écrites en dur.
@@ -216,6 +216,72 @@ describe('garde-fou i18n — le lecteur de dictionnaire', () => {
 
   it('ne prend pas une ouverture de bloc pour une valeur', () => {
     expect(aplat("  a: {\n    b: 'x',\n  },").has('a')).toBe(false)
+  })
+})
+
+/**
+ * LA QUATRIÈME FAMILLE : « envoyé par SMS », sur un canal qui n'existe pas.
+ *
+ * Symétrique de la précédente, et plus coûteuse : l'aveu de simulation dit « je
+ * n'ai rien fait » quand le geste a lieu, celle-ci dit « c'est parti » quand rien
+ * ne part — et le lecteur AGIT dessus. Le bailleur qui lisait « code
+ * d'invitation envoyé par SMS » ne transmettait pas le code, et attendait une
+ * activation qui ne pouvait pas venir.
+ *
+ * Ces cas tiennent les deux bouts, comme les précédents. Le motif attrape la
+ * tournure qui affirme le départ — participe passé, futur passif — et laisse
+ * tranquilles les libellés qui NIENT l'envoi, qui sont les plus nombreux du
+ * dictionnaire sur ce mot et les plus honnêtes du produit.
+ */
+const promesses = promessesDeCanal as (
+  langue: string,
+  dictionnaire: Map<string, string>,
+) => { cle: string }[]
+
+describe('garde-fou i18n — les envois promis sur un canal absent', () => {
+  it('attrape la phrase du message de succès, qui affirme au passé', () => {
+    const trouves = promesses(
+      'fr',
+      dico({ 'app.tenants.created': 'Fiche locataire créée · code d’invitation envoyé par SMS' }),
+    )
+    expect(trouves.map((p) => p.cle)).toEqual(['app.tenants.created'])
+  })
+
+  it('attrape aussi le futur, qui promet autant', () => {
+    expect(
+      promesses('fr', dico({ x: 'Un code d’invitation lui sera envoyé par SMS pour activer son espace.' })),
+    ).toHaveLength(1)
+    expect(promesses('en', dico({ x: 'An invitation code will be sent by SMS.' }))).toHaveLength(1)
+  })
+
+  /**
+   * Le produit est honnête sur ce canal PARTOUT ailleurs, et ces phrases-là sont
+   * exactement celles qu'un motif sur le mot « SMS » aurait fait tomber. C'est la
+   * raison pour laquelle il ne vise que l'affirmation du départ.
+   */
+  it('laisse passer les libellés qui NIENT l’envoi', () => {
+    const honnetes = dico({
+      a: 'Aucun SMS n’a été envoyé : transmettez le code vous-même.',
+      b: 'Le message se dépose dans l’application. Aucun SMS n’est envoyé.',
+      c: 'SMS',
+      d: 'Pas encore parti · visible ici seulement',
+    })
+    expect(promesses('fr', honnetes)).toHaveLength(0)
+  })
+
+  /**
+   * La seule dérogation, et sa raison : c'est le SERVEUR qui affirme, l'écran ne
+   * fait que répéter. `InviteModal` ne rend cette phrase que sur `envoye: true`,
+   * et choisit « Aucun SMS n'a été envoyé » sinon.
+   */
+  it('laisse passer la clé inscrite au registre, dont l’affirmation vient du serveur', () => {
+    expect(
+      promesses('fr', dico({ 'app.invite.sentBySms': 'Envoyé par SMS au numéro indiqué.' })),
+    ).toHaveLength(0)
+  })
+
+  it('attrape la même phrase sous une clé NON inscrite', () => {
+    expect(promesses('fr', dico({ 'app.autre.notice': 'Envoyé par SMS au numéro indiqué.' }))).toHaveLength(1)
   })
 })
 

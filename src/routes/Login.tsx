@@ -4,7 +4,6 @@ import { AuthLayout } from '@/components/layout/AuthLayout'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
 import { Input, PasswordInput } from '@/components/primitives/Input'
-import { Checkbox } from '@/components/primitives/Choice'
 import { Icon } from '@/components/primitives/Icon'
 import { useToast } from '@/components/primitives/Toast'
 import { useT, type MessageKey } from '@/i18n/I18nProvider'
@@ -174,8 +173,24 @@ export function Login() {
           )}
         </Field>
 
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <Checkbox label={t('auth.login.remember')} name="remember" />
+        {/*
+          « RESTER CONNECTÉ SUR CET APPAREIL » n'est plus proposé ici.
+
+          La case se cochait et rien ne la lisait : ni état, ni `onChange`, et
+          `connecter` ne prend que l'adresse et le mot de passe. `grep -rn
+          "remember" src/` rendait trois lignes — celle-ci et ses deux
+          traductions. Elle promettait donc une durée de session que personne
+          n'avait écrite, à l'endroit précis où l'on confie son mot de passe :
+          le pire moment du produit pour une promesse en l'air.
+
+          Sa clé part des deux dictionnaires avec elle. La garder aurait laissé
+          un libellé sans appelant, prêt à être recoché par le premier qui le
+          retrouve — c'est ainsi que la promesse était née.
+
+          Elle reviendra le jour où la session longue existera, avec son état et
+          son gestionnaire ; `caseControlee.test.tsx` tient la porte d'ici là.
+        */}
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {/* Lien autonome et non inséré dans une phrase : il porte donc une
               cible de 44px, contrairement aux liens en ligne du pied de carte
               que l'exception « lien dans un bloc de texte » couvre. */}

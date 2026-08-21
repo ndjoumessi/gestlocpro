@@ -55,6 +55,9 @@ export function Signaler() {
   const [metier, setMetier] = useState<TradeKey>('plumbing')
   const [urgence, setUrgence] = useState<UrgencyKey>('normal')
   const [detail, setDetail] = useState('')
+  /* Le vol en cours : le bouton s'éteint, sans quoi une attente devenue visible
+     ferait naître deux fiches d'intervention de la même fuite. */
+  const [envoi, setEnvoi] = useState(false)
 
   const mesUnites = units.filter((u) => isMine(u.id))
   const miens = works.filter((w) => isMine(w.unitId))
@@ -62,19 +65,32 @@ export function Signaler() {
      chez quelqu'un d'autre, il le reçoit. */
   const peutDeclarer = role === 'tenant' && mesUnites[0]
 
-  function envoyer() {
+  async function envoyer() {
     if (!mesUnites[0]) return
     // La même borne que le serveur : le refus arrive avant l'aller-retour.
     if (titre.trim().length < 3) {
       setErreur(true)
       return
     }
-    addWork(mesUnites[0].id, {
+    /**
+     * « SIGNALEMENT ENVOYÉ » attend maintenant que le serveur l'ait accepté.
+     *
+     * La phrase partait avec l'appel et non avec sa réponse : sur un refus, le
+     * locataire lisait qu'il avait signalé sa fuite PUIS que rien n'avait été
+     * enregistré — et le formulaire s'était déjà vidé de ce qu'il venait
+     * d'écrire, si bien qu'il ne restait même pas de quoi recommencer.
+     */
+    setEnvoi(true)
+    const ouvert = await addWork(mesUnites[0].id, {
       title: titre.trim(),
       trade: metier,
       urgency: urgence,
       ...(detail.trim() ? { description: detail.trim() } : {}),
     })
+    setEnvoi(false)
+    // La saisie SURVIT au refus. Le motif est déjà dit par `signalerEchec` ;
+    // faire retaper le locataire le punirait d'une panne qui n'est pas la sienne.
+    if (!ouvert) return
     setTitre('')
     setDetail('')
     setErreur(false)
@@ -140,7 +156,9 @@ export function Signaler() {
             </Field>
 
             <div>
-              <Button onClick={envoyer}>{t('app.report.send')}</Button>
+              <Button onClick={() => void envoyer()} loading={envoi}>
+                {t('app.report.send')}
+              </Button>
             </div>
           </Card>
         ) : (
