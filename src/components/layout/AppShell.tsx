@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -401,6 +402,43 @@ export function AppShell() {
   }, [drawerOpen])
 
   /**
+   * La barre basse DIT sa hauteur au reste de la page.
+   *
+   * Elle est `fixed` : elle ne pousse rien, et tout ce qui vit au bord bas la
+   * traverse sans le savoir. Le bandeau « nouvelle version » — rendu hors de
+   * `<App />` par `main.tsx`, donc frère SUIVANT, à `var(--z-sticky)` égal —
+   * la recouvrait entièrement : à 375 px, barre à top=759, bandeau à top=716,
+   * et `elementFromPoint` au centre du bord bas rendait « Recharger » au lieu
+   * du lien. Les cinq destinations mobiles disparaissaient le jour d'un
+   * déploiement, c'est-à-dire le jour où l'on a le plus besoin de naviguer.
+   *
+   * Le jeton est posé sur `<html>` et non passé en prop, pour la raison même
+   * qui a sorti le bandeau de `<App />` : les deux n'ont aucun arbre commun.
+   * `document.body.style` sert déjà de canal à l'ouverture du tiroir, quelques
+   * dizaines de lignes plus haut — c'est le même geste, au même endroit.
+   *
+   * `useLayoutEffect` et non `useEffect` : `main` réserve désormais sa marge
+   * basse depuis ce même jeton, et un effet passif l'écrirait APRÈS la
+   * première peinture — 64 px de rembourrage qui apparaîtraient d'un coup sous
+   * le premier écran mobile venu. Il n'y a pas de rendu serveur ici, donc pas
+   * d'avertissement à redouter.
+   *
+   * Le LOCATAIRE est rendu par la branche ci-dessous, qui ne monte aucune
+   * barre basse : lui élever le bord décollerait le bandeau de 64 px pour
+   * rien.
+   */
+  useLayoutEffect(() => {
+    if (role === 'tenant') return
+    const racine = document.documentElement
+    racine.style.setProperty('--h-barre-basse', 'var(--h-barre-basse-montee)')
+    // Accolades, et non un retour implicite : `removeProperty` rend la valeur
+    // qu'elle retire, et un nettoyage d'effet doit rendre `void`.
+    return () => {
+      racine.style.removeProperty('--h-barre-basse')
+    }
+  }, [role])
+
+  /**
    * Le LOCATAIRE n'a pas de barre latérale : il a une barre en haut.
    *
    * Sa navigation vivait dans la coquille du bailleur — le même panneau
@@ -516,17 +554,22 @@ export function AppShell() {
               // Le bas réserve EN PLUS la hauteur de la barre basse, qui est
               // `fixed` et ne pousse donc rien : sans cette réserve elle
               // recouvrirait la dernière ligne de chaque page — exactement le
-              // défaut que le rembourrage de zone sûre venait de corriger. La
-              // réserve tombe à `lg`, où la barre n'existe plus.
+              // défaut que le rembourrage de zone sûre venait de corriger.
               //
-              // `4rem` — la barre mesurée, libellés sur deux lignes compris —
-              // est écrit en toutes lettres et non interpolé depuis une
-              // constante : Tailwind lit les sources comme du TEXTE, et un
-              // `${…}` dans un nom de classe ne produit aucun utilitaire.
-              // C'est une panne silencieuse — le CSS manque, rien ne le dit.
-              'pt-6 pb-[calc(1.5rem+4rem+env(safe-area-inset-bottom))]',
-              'sm:pt-8 sm:pb-[calc(2rem+4rem+env(safe-area-inset-bottom))]',
-              'lg:pb-[calc(2rem+env(safe-area-inset-bottom))]',
+              // La mesure ne s'écrit plus ici. Ce `4rem` était recopié à deux
+              // points de rupture, et le bandeau de version — qui doit
+              // s'écarter de la MÊME barre — n'y avait aucun accès : la barre
+              // le recouvrait, et rien ne reliait les deux écritures. Le jeton
+              // est cette liaison. Il retombe à 0 à partir de `lg`, où la
+              // barre est masquée, et la ligne `lg:` qui ne servait qu'à
+              // retrancher ces 4rem disparaît avec lui.
+              //
+              // Un jeton, et non une constante interpolée : Tailwind lit les
+              // sources comme du TEXTE, et un `${…}` dans un nom de classe ne
+              // produit aucun utilitaire. C'est une panne silencieuse — le CSS
+              // manque, rien ne le dit.
+              'pt-6 pb-[calc(1.5rem+var(--h-barre-basse)+env(safe-area-inset-bottom))]',
+              'sm:pt-8 sm:pb-[calc(2rem+var(--h-barre-basse)+env(safe-area-inset-bottom))]',
               // Latéralement, la gouttière commune : sous `lg` la barre
               // latérale disparaît et cette colonne prend toute la largeur,
               // encoche de paysage comprise.

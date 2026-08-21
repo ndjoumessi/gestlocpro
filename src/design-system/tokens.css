@@ -334,6 +334,47 @@
   --chrome-dot-3: #dee8e1;
 }
 
+/* ---- Réserve du bord bas (hors @theme : `@theme` ne souffre pas de requête
+   média, et cette hauteur en dépend) -------------------------------------- */
+/* Deux surfaces peintes se disputaient le bord bas de l'écran à la MÊME
+   altitude. La barre de navigation mobile et le bandeau « nouvelle version »
+   portent l'une et l'autre `fixed`, le bord bas et `var(--z-sticky)` ; à
+   z-index égal la cascade ne tranche pas, c'est l'ordre du document — et
+   `main.tsx` rend le bandeau APRÈS `<App />`, délibérément, pour qu'il couvre
+   aussi l'accueil et l'inscription. Mesuré à 375 px : barre à top=759 h=53,
+   bandeau à top=716 h=97, et `elementFromPoint` au centre du bord bas rendait
+   le bouton « Recharger », jamais le lien de navigation. Les cinq destinations
+   mobiles devenaient inatteignables — pas en permanence, ce qui se serait vu,
+   mais à partir du déploiement suivant, c'est-à-dire au moment précis où l'on
+   a le plus besoin de naviguer.
+
+   Le bandeau ne peut pas deviner ce qui vit sous lui : ce jeton le lui dit. Il
+   vaut 0 par défaut — sur l'accueil, la connexion, l'inscription, aucune barre
+   basse n'est montée et le bandeau doit toucher le bord — et la coquille de
+   gestion l'élève tant qu'elle est à l'écran.
+
+   DEUX jetons et non un, parce que deux questions distinctes se posent : la
+   coquille sait « une barre est montée », elle ne sait pas « elle mesure
+   combien ICI ». La barre est `lg:hidden` : à partir de 64rem elle ne mesure
+   plus rien, et une hauteur unique écrite depuis JavaScript aurait fait
+   flotter le bandeau 64 px au-dessus du bord sur tout écran de bureau — ou
+   obligé JavaScript à redire le point de rupture, qui aurait alors dérivé.
+
+   4rem — la barre mesurée, libellés sur deux lignes compris — est ici et nulle
+   part ailleurs. `main` réservait la même valeur en toutes lettres à deux
+   points de rupture, sans que rien ne relie les deux écritures ni ne les
+   expose au bandeau. */
+:root {
+  --h-barre-basse-montee: 4rem;
+  --h-barre-basse: 0px;
+}
+
+@media (min-width: 64rem) {
+  :root {
+    --h-barre-basse-montee: 0px;
+  }
+}
+
 /* ============================================================================
    Thème sombre
 
