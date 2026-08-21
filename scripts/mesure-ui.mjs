@@ -17,8 +17,9 @@
  *
  * Huit règles. Les deux premières regardent le RÉSEAU, avant même qu'un
  * navigateur ne s'ouvre — et elles ne posent PAS la même question.
- * `mesurerFuite` demande si un module réservé à l'application est présent
- * dans le paquet impatient : oui ou non, sans seuil, jamais relevée.
+ * `mesurerFuite` demande si un module réservé — à l'application, ou depuis ce
+ * lot à sa propre frontière paresseuse comme `i18n/en.ts` — est présent dans
+ * un paquet impatient : oui ou non, sans seuil, jamais relevée.
  * `mesurerPremierChargement` demande combien pèse ce paquet, sous un budget
  * dont la marge est motivée par la croissance MESURÉE des dictionnaires — la
  * dérive lente, pas l'accident, que la première règle tient déjà. Les trois
@@ -186,6 +187,30 @@ function modulesReservesALApplication() {
   // écran `.ts` ajouté à `EspaceApplicatif.tsx`, ce que la garde du garde plus
   // bas transforme en échec explicite plutôt qu'en trou silencieux.
   return reserves.map((s) => s.replace(/^@\//, '') + '.tsx')
+}
+
+/**
+ * LE DICTIONNAIRE ANGLAIS, réservé à son propre chargement paresseux — un
+ * SECOND sujet, distinct de `modulesReservesALApplication` ci-dessus.
+ *
+ * Celui-là dérive la liste des vingt écrans de gestion depuis
+ * `EspaceApplicatif.tsx`, la frontière `/app` et `/demo`. `i18n/en.ts` n'a
+ * rien à voir avec cette frontière-là : il est paresseux jusque sur `/`, la
+ * vitrine elle-même — voir `src/i18n/I18nProvider.tsx`, qui porte
+ * l'argumentaire complet de l'échange. Le fondre dans la liste ci-dessus
+ * aurait forcé l'extension `.tsx` codée en dur sur UN fichier qui est
+ * `i18n/en.ts`, pas `.tsx` — et aurait mélangé deux raisons de rester hors du
+ * paquet impatient qui n'ont rien en commun.
+ *
+ * DÉRIVÉ, et non recopié : le chemin lu dans le seul `import(...)` de
+ * `I18nProvider.tsx` — même raison que ci-dessus, une chaîne recopiée se
+ * périme le jour où quelqu'un renomme le fichier sans penser à cette garde.
+ */
+function moduleReserveALaLangueParesseuse() {
+  const source = readFileSync(join(RACINE, 'src/i18n/I18nProvider.tsx'), 'utf8')
+  const specificateur = source.match(/import\(['"]([^'"]+)['"]\)/)
+  if (!specificateur) return null
+  return 'i18n/' + specificateur[1].replace(/^\.\//, '') + '.ts'
 }
 
 function adressesDeLApplication() {
@@ -882,7 +907,8 @@ async function servir() {
 function mesurerFuite() {
   const chemin = join(RACINE, '.carte-des-paquets.json')
   const carte = JSON.parse(readFileSync(chemin, 'utf8'))
-  const reserves = modulesReservesALApplication()
+  const langue = moduleReserveALaLangueParesseuse()
+  const reserves = [...modulesReservesALApplication(), ...(langue ? [langue] : [])]
 
   const fautifs = []
   for (const [nomPaquet, info] of Object.entries(carte)) {
@@ -891,7 +917,7 @@ function mesurerFuite() {
       if (reserves.includes(module)) fautifs.push({ module, paquet: nomPaquet })
     }
   }
-  return { fautifs, reserves }
+  return { fautifs, reserves, langue }
 }
 
 /**
@@ -1057,6 +1083,25 @@ if (fuite.reserves.length === 0) {
   console.error(
     `\n✗ mesure-ui : aucun module réservé à l'application déduit d'EspaceApplicatif.tsx.\n` +
       "   La règle de fuite ne vérifie plus rien — ce n'est pas une absence de fuite.\n",
+  )
+  process.exit(1)
+}
+
+/*
+  GARDE DU GARDE, symétrique de celle juste au-dessus — mais pour l'AUTRE
+  moitié de la liste. `moduleReserveALaLangueParesseuse` dérive son chemin du
+  seul `import(...)` d'`I18nProvider.tsx` : si ce fichier perd sa frontière
+  paresseuse — `en.ts` réimporté en statique, le seul `import(...)` disparu —
+  la fonction rend `null` en silence, et la fuite qu'elle est censée nommer ne
+  serait alors JAMAIS signalée par ce mécanisme-ci. C'est exactement la
+  panne que `BUDGET_PREMIER_CHARGEMENT`, plus bas, rattrape par le poids —
+  mais cette porte-ci doit nommer le module, pas seulement gonfler un total.
+*/
+if (!fuite.langue) {
+  console.error(
+    "\n✗ mesure-ui : aucun `import()` dynamique trouvé dans src/i18n/I18nProvider.tsx.\n" +
+      "   La frontière paresseuse du dictionnaire anglais a disparu — ou changé de\n" +
+      '   forme au point que cette garde ne la reconnaît plus.\n',
   )
   process.exit(1)
 }

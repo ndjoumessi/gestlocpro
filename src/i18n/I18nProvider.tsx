@@ -9,10 +9,82 @@ import {
   type ReactNode,
 } from 'react'
 import { DATE_LOCALE, DEFAULT_LOCALE, LOCALES, resolveDateLocale, type Locale } from './locales'
-import { fr } from './fr'
-import { en } from './en'
+import { fr, type Dictionary } from './fr'
 
-const DICTIONARIES = { fr, en } as const
+/**
+ * UN dictionnaire reste impatient, l'autre devient paresseux — pas les deux.
+ *
+ * MESURÉ avant ce lot : `fr.ts` pèse 27 274 o gzip, `en.ts` 17 879 o, tous
+ * deux dans le paquet impatient de la vitrine, pour toute adresse et toute
+ * langue. `readStoredLocale`, plus bas, déterminE déjà la langue de façon
+ * SYNCHRONE — `localStorage` ou `navigator.language`, jamais de réseau — donc
+ * rien n'empêchait techniquement de rendre n'importe lequel des deux
+ * paresseux. Le choix n'est pas arbitraire pour autant :
+ *
+ *  - `fr` sert de REPLI RUNTIME pour toute clé absente d'`en` (`?? resolve(fr,
+ *    key)`, plus bas) et pour la catégorie plurielle absente. Le rendre
+ *    paresseux romprait ce repli pour LES DEUX langues pendant son
+ *    chargement, pas seulement pour le français.
+ *  - `MessageKey` — le typage qui vérifie chaque appel à `t()` à la
+ *    compilation — est dérivé de `typeof fr`. Cette dépendance est un import
+ *    de TYPE, erasé à la compilation, donc indépendant de la paresse ; mais
+ *    `fr` reste la source de vérité que `en.ts` type-checke déjà contre lui
+ *    (voir l'en-tête de `fr.ts`), et la garder impatiente garde le rôle de
+ *    référence lisible sans détour.
+ *  - `index.html` porte `lang="fr"` en valeur d'amorçage, et le marché visé
+ *    est francophone (voir `index.html`) : c'est la langue qu'un premier
+ *    visiteur voit le plus souvent, celle qui ne doit jamais attendre.
+ *
+ * MESURÉ ENSUITE, réseau bridé (Slow 3G — 500 kb/s, 400 ms de latence, le bas
+ * du marché visé), sur `/`, moyenne de cinq passages :
+ *
+ *                                        AVANT ce lot      APRÈS ce lot
+ *   fr-FR   premier texte peint            3298 ms          3063 ms
+ *   en-US   premier texte peint (*)        3295 ms          3072 ms
+ *   en-US   texte ANGLAIS peint            3295 ms          3930 ms
+ *
+ * (*) Avant ce lot, « premier texte peint » et « texte anglais peint »
+ * coïncidaient : les deux dictionnaires arrivaient ensemble. Depuis ce lot,
+ * ils divergent pour un visiteur anglophone — c'est tout le sujet de cette
+ * troisième ligne.
+ *
+ * Le français gagne PARTOUT, sans contrepartie : 235 ms de moins, aucun repli
+ * à gérer, `fr` n'a pas changé de statut. L'anglais est le VRAI échange : le
+ * premier texte peint arrive plus vite qu'avant (le paquet impatient a
+ * maigri de 129 Ko) — mais c'est le repli français qui s'affiche, pas
+ * l'anglais demandé. Le texte anglais lui-même met 635 ms de PLUS qu'avant à
+ * apparaître (+19 %), le temps que le paquet paresseux arrive derrière le
+ * bundle principal — `chargerAnglais`, plus bas, le démarre dès l'évaluation
+ * du module plutôt que dans un effet, mais ne peut pas s'exécuter avant que
+ * CE module lui-même ait fini d'arriver, ce qui borne ce qu'un simple
+ * réordonnancement peut gagner ici.
+ *
+ * CE QUE CET ÉCART VEUT DIRE CONCRÈTEMENT : un visiteur anglophone sur ce
+ * réseau lit du français pendant environ 850 ms avant que la page ne
+ * bascule sous ses yeux — un clignotement RÉEL, pas nul, et assumé comme tel
+ * plutôt que maquillé en « zéro coût ». Retenu malgré tout, arbitrage
+ * délibéré et non un oubli : jamais de clé brute ni de blanc (le pire des
+ * deux scénarios, celui que ce fichier s'interdit), un gain net et sans
+ * contrepartie pour le marché principal francophone, et un coût borné — sous
+ * la seconde, sur le réseau le plus dégradé qu'on teste ici — pour la
+ * minorité anglophone. Si ce coût devient gênant en usage réel, la piste à
+ * rouvrir est un indice de préchargement conditionnel injecté depuis
+ * `index.html` (même famille que son script de thème) plutôt qu'un
+ * réordonnancement de CE fichier : la borne ci-dessus vient du réseau, pas
+ * de l'ordre du code.
+ */
+let promesseAnglais: Promise<Dictionary> | null = null
+/**
+ * Exportée pour `src/test/render.tsx` : c'est le seul repère stable qu'un
+ * test puisse attendre avant d'asserter sur du texte anglais, la promesse
+ * étant PARTAGÉE avec l'effet du fournisseur ci-dessous — même raison que le
+ * `data-testid` de `ChargementEspaceApplicatif` dans `App.tsx`, sous une
+ * forme différente parce qu'ici rien ne doit apparaître dans le DOM.
+ */
+export function chargerAnglais(): Promise<Dictionary> {
+  promesseAnglais ??= import('./en').then((module) => module.en)
+  return promesseAnglais
+}
 
 /** Chemins pointés valides, dérivés du dictionnaire français. */
 type Join<K, P> = K extends string
@@ -64,6 +136,17 @@ function readStoredLocale(): Locale {
   return (LOCALES as readonly string[]).includes(browser) ? (browser as Locale) : DEFAULT_LOCALE
 }
 
+/*
+ * Démarré ICI, à l'évaluation du module — pas dans un effet.
+ *
+ * Un effet n'arrive qu'après le premier rendu commis, donc après la première
+ * peinture : demander le paquet paresseux à ce moment-là ajouterait la durée
+ * du rendu initial au-dessus de l'aller-retour réseau, pour rien. La langue
+ * est déjà connue de façon synchrone (`readStoredLocale`, juste au-dessus) —
+ * autant lancer la requête au plus tôt que le module s'évalue.
+ */
+if (readStoredLocale() === 'en') chargerAnglais()
+
 function resolve(dictionary: unknown, key: string): string | undefined {
   const value = key
     .split('.')
@@ -87,11 +170,31 @@ function readStoredRegion(): string | null {
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(readStoredLocale)
   const [region, setRegionState] = useState<string | null>(readStoredRegion)
+  const [anglais, setAnglais] = useState<Dictionary | null>(null)
 
   useEffect(() => {
     document.documentElement.lang = locale
     ecrireStockage('local', STORAGE_KEY, locale)
   }, [locale])
+
+  /*
+   * Charge `en` la première fois que `locale` le demande — à l'ouverture si
+   * la langue stockée était déjà l'anglais (la requête est alors déjà en vol,
+   * lancée à l'évaluation du module, plus haut), ou plus tard si l'utilisateur
+   * bascule via `setLocale`. `annule` protège contre un démontage ou un
+   * changement de langue pendant le chargement : sans lui, une réponse tardive
+   * poserait l'état d'un composant qui ne s'y intéresse plus.
+   */
+  useEffect(() => {
+    if (locale !== 'en' || anglais) return
+    let annule = false
+    chargerAnglais().then((dictionnaire) => {
+      if (!annule) setAnglais(dictionnaire)
+    })
+    return () => {
+      annule = true
+    }
+  }, [locale, anglais])
 
   useEffect(() => {
     if (region) ecrireStockage('local', REGION_KEY, region)
@@ -103,7 +206,12 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   const t = useCallback(
     (key: MessageKey, vars?: TranslateVars) => {
-      const dictionary = DICTIONARIES[locale]
+      // `anglais` vaut `null` tant que le paquet paresseux n'est pas arrivé :
+      // `resolve` rend alors `undefined` pour toute clé (voir sa garde
+      // `acc && typeof acc === 'object'`), et le repli sur `fr` ci-dessous
+      // s'applique de lui-même — aucun cas particulier à écrire pour la
+      // fenêtre de chargement.
+      const dictionary = locale === 'en' ? anglais : fr
 
       /**
        * Accord en nombre.
@@ -134,7 +242,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       }
       return interpolate(template, vars)
     },
-    [locale],
+    [locale, anglais],
   )
 
   const dateLocale = resolveDateLocale(locale, region)

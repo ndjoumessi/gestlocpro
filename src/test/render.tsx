@@ -1,4 +1,5 @@
 import {
+  act,
   render,
   screen,
   waitFor,
@@ -10,7 +11,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { ReactElement } from 'react'
 import { App } from '@/App'
-import { I18nProvider } from '@/i18n/I18nProvider'
+import { chargerAnglais, I18nProvider } from '@/i18n/I18nProvider'
 import { ThemeProvider } from '@/theme/ThemeProvider'
 import { CurrencyProvider } from '@/currency/CurrencyProvider'
 import { ToastProvider } from '@/components/primitives/Toast'
@@ -124,6 +125,27 @@ async function attendreLEspaceApplicatif(): Promise<void> {
 }
 
 /**
+ * Attend la résolution de la SECONDE frontière paresseuse de ce lot : le
+ * dictionnaire anglais (voir I18nProvider.tsx). Pas de marqueur DOM ici,
+ * volontairement — la page ne doit RIEN afficher de spécial pendant ce
+ * chargement, elle affiche le français en repli. `chargerAnglais` est donc
+ * le seul repère : sa promesse est PARTAGÉE avec l'effet du fournisseur, qui
+ * y pose `setAnglais` une fois résolue.
+ *
+ * `act`, et non un simple `await` : `setAnglais` se pose dans l'effet
+ * d'`I18nProvider`, pas ici. Sans `act`, React avertirait d'une mise à jour
+ * hors de son contrôle, et rien ne garantirait que le DOM porte déjà le
+ * texte anglais au retour de cette fonction — la même panne, en somme, que
+ * celle qu'`attendreLEspaceApplicatif` évite pour l'autre frontière.
+ */
+async function attendreLaLangue(locale: Locale): Promise<void> {
+  if (locale !== 'en') return
+  await act(async () => {
+    await chargerAnglais()
+  })
+}
+
+/**
  * `async`, et c'est le coût direct du découpage paresseux de l'espace
  * applicatif (voir `src/App.tsx`).
  *
@@ -171,6 +193,7 @@ export async function renderApp(
   )
 
   await attendreLEspaceApplicatif()
+  await attendreLaLangue(preferences.locale ?? 'fr')
 
   return resultat
 }

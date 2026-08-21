@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderWithProviders, screen } from '@/test/render'
+import { renderWithProviders, screen, waitFor } from '@/test/render'
 import { useT } from '@/i18n/I18nProvider'
 
 /**
@@ -37,21 +37,25 @@ describe('accord en nombre', () => {
     [1, '1 issue'],
     [2, '2 issues'],
     [21, '21 issues'],
-  ])('anglais : %i → « %s »', (count, attendu) => {
+  ])('anglais : %i → « %s »', async (count, attendu) => {
+    // `en.ts` est désormais paresseux (voir I18nProvider.tsx) : le premier
+    // rendu se rabat sur le français le temps que le paquet arrive.
+    // `waitFor` laisse cette fenêtre se refermer avant d'asserter, plutôt
+    // que de lire le repli et de le prendre pour un défaut.
     renderWithProviders(<Sonde count={count} />, { locale: 'en' })
-    expect(texte()).toBe(attendu)
+    await waitFor(() => expect(texte()).toBe(attendu))
   })
 
-  it('diverge bien entre les deux langues à zéro', () => {
+  it('diverge bien entre les deux langues à zéro', async () => {
     // La raison d'être d'Intl.PluralRules : si ces deux valeurs devenaient
     // identiques, c'est que la sélection ne dépend plus de la langue.
     renderWithProviders(<Sonde count={0} />, { locale: 'fr' })
     const fr = texte()
     renderWithProviders(<Sonde count={0} />, { locale: 'en' })
-    const en = screen.getAllByTestId('sonde').at(-1)?.textContent
+    const dernier = () => screen.getAllByTestId('sonde').at(-1)?.textContent
 
     expect(fr).toBe('0 réserve')
-    expect(en).toBe('0 issues')
+    await waitFor(() => expect(dernier()).toBe('0 issues'))
   })
 
   it('retombe sur la forme par défaut si la variante manque', () => {
