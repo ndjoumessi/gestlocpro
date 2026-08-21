@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@/components/layout/AppShell'
 import { lien, useBase } from '@/lib/base'
 import { DataTable, EmptyState } from '@/components/primitives/DataTable'
@@ -47,7 +47,33 @@ export function Portfolio() {
   /** L'immeuble dont la suppression attend confirmation. */
   const [aSupprimer, setASupprimer] = useState<Immeuble | null>(null)
   const [query, setQuery] = useState('')
-  const [building, setBuilding] = useState<string | 'all'>('all')
+
+  /*
+    LE FILTRE D'IMMEUBLE VIT DANS L'URL, la recherche non.
+
+    Il vivait en mémoire : ouvrir le dossier d'un logement puis revenir rendait
+    le parc entier, filtre perdu. Sur un parc de trois immeubles c'est agaçant ;
+    sur douze, c'est un geste à refaire à chaque aller-retour, et l'aller-retour
+    est précisément ce que cet écran sert à faire.
+
+    La RECHERCHE, elle, reste locale, et ce n'est pas une inconséquence. Un
+    filtre d'immeuble désigne une portion stable du parc — il se partage, se met
+    en favori, se retrouve. Une frappe en cours de saisie est personnelle et
+    éphémère : la pousser dans l'URL écrirait une entrée d'historique par
+    caractère.
+
+    `replace` et non `push` : choisir un immeuble n'est pas une navigation, et
+    le bouton « retour » doit ramener à l'écran précédent, jamais dérouler à
+    l'envers la liste des filtres qu'on a essayés.
+  */
+  const [parametres, setParametres] = useSearchParams()
+  const building = parametres.get('immeuble') ?? 'all'
+  const setBuilding = (valeur: string | 'all') => {
+    const suite = new URLSearchParams(parametres)
+    if (valeur === 'all') suite.delete('immeuble')
+    else suite.set('immeuble', valeur)
+    setParametres(suite, { replace: true })
+  }
 
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase()
