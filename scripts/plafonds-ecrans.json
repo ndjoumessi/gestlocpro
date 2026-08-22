@@ -1,0 +1,57 @@
+{
+ "_lisezMoi": [
+  "Poids par écran mesuré sur une PAGE RÉUTILISÉE : le JS d’application est compté",
+  "UNE SEULE FOIS, sur le premier écran visité (« / »). Ces octets ne sont donc pas",
+  "comparables à un relevé de PREMIER CHARGEMENT — /demo vaut 198 072 o ici et",
+  "640 070 o à froid, pour le même paquet. Ce fichier garde la NON-RÉGRESSION d’une",
+  "exécution à l’autre, pas le coût réel d’une première visite.",
+  "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
+ ],
+ "course": "dfbe12e2",
+ "mesures": {
+  "/@360": {
+   "octets": 573191,
+   "requetes": 6,
+   "releve": {
+    "de": 572838,
+    "requetesDe": 6,
+    "motif": "l'anneau du recouvrement porte son état par le PROFIL RADIAL et non par la teinte seule : 3,4 de ΔE00 séparaient « partiel » et « en retard » sous deutéranopie, soit deux aplats identiques. Les trois formes — pleine, demie, creuse — posent leurs segments à des RAYONS distincts, ce qui interdit la circonférence unique d'avant : part et départ sont gardés sans dimension et convertis par segment. Ces 353 octets sont ce calcul et la table qui lie état, teinte et forme ; aucune règle CSS, aucune requête, aucune clé de traduction, et zéro pixel de hauteur aux onze largeurs.",
+    "course": "dfbe12e2"
+   }
+  },
+  "/demo@360": {
+   "octets": 197784,
+   "requetes": 4
+  },
+  "/demo/paiements@360": {
+   "octets": 8241,
+   "requetes": 3
+  },
+  "/demo/prise-en-main@360": {
+   "octets": 8241,
+   "requetes": 3
+  },
+  "/@1280": {
+   "octets": 573191,
+   "requetes": 6,
+   "releve": {
+    "de": 572838,
+    "requetesDe": 6,
+    "motif": "l'anneau du recouvrement porte son état par le PROFIL RADIAL et non par la teinte seule : 3,4 de ΔE00 séparaient « partiel » et « en retard » sous deutéranopie, soit deux aplats identiques. Les trois formes — pleine, demie, creuse — posent leurs segments à des RAYONS distincts, ce qui interdit la circonférence unique d'avant : part et départ sont gardés sans dimension et convertis par segment. Ces 353 octets sont ce calcul et la table qui lie état, teinte et forme ; aucune règle CSS, aucune requête, aucune clé de traduction, et zéro pixel de hauteur aux onze largeurs.",
+    "course": "dfbe12e2"
+   }
+  },
+  "/demo@1280": {
+   "octets": 197784,
+   "requetes": 4
+  },
+  "/demo/paiements@1280": {
+   "octets": 8241,
+   "requetes": 3
+  },
+  "/demo/prise-en-main@1280": {
+   "octets": 8241,
+   "requetes": 3
+  }
+ }
+}
