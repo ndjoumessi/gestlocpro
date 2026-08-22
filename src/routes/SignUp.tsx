@@ -631,7 +631,7 @@ export function SignUp() {
         {echec && (
           <p
             role="alert"
-            className="flex items-start gap-2 rounded-md border border-danger-border bg-danger-tint px-3.5 py-3 text-body-s text-danger"
+            className="flex items-start gap-2 rounded-md border border-danger-border bg-danger-tint px-3.5 py-3 text-body text-danger"
           >
             <Icon name="alert" size={15} className="mt-0.5 shrink-0" />
             {t(echec)}
@@ -917,7 +917,7 @@ function ContextStep({
 
       {state.role === "tenant" && (
         <div className="flex flex-col gap-5 border-t border-border pt-6">
-          <p className="flex items-start gap-2.5 rounded-md border border-gold-border bg-gold-tint px-4 py-3 text-body-s text-gold-ink">
+          <p className="flex items-start gap-2.5 rounded-md border border-gold-border bg-gold-tint px-4 py-3 text-body text-gold-ink">
             <Icon name="info" size={16} className="mt-0.5 shrink-0" />
             {t("auth.signup.tenantNotice")}
           </p>
@@ -1111,7 +1111,7 @@ function ReviewStep({
                           valeurs. Les capitales ne servent plus qu'aux trois
                           titres de groupe, où elles distinguent enfin quelque
                           chose. */}
-                      <dt className="w-24 shrink-0 text-body-s text-muted">
+                      <dt className="w-24 shrink-0 text-body text-muted">
                         {ligne.label}
                       </dt>
                       {/* `break-words` et non `truncate` : un récapitulatif

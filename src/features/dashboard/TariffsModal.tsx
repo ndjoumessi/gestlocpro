@@ -205,14 +205,14 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
         {tarifs.length === 0 ? (
           /* Un parc sans prix n'affiche aucun montant : on le dit ici plutôt que
              de laisser une liste vide sans explication. */
-          <p className="mt-3 flex items-start gap-2 text-body-s text-muted">
+          <p className="mt-3 flex items-start gap-2 text-body text-muted">
             <Icon name="info" size={15} className="mt-0.5 shrink-0" />
             {t('app.tariffs.empty')}
           </p>
         ) : (
           <ul className="mt-3 flex flex-col gap-2">
             {tarifs.map((tarif) => (
-              <li key={tarif.id} className="flex items-baseline justify-between gap-3 text-body-s">
+              <li key={tarif.id} className="flex items-baseline justify-between gap-3 text-body">
                 <span>
                   {t(`app.meters.${tarif.utility}` as 'app.meters.water')}
                   {' · '}

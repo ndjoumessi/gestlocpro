@@ -130,7 +130,7 @@ export function Access() {
           les devis et les cautions, on lui dit pourquoi le bouton lui manque
           plutôt que de le laisser deviner. */}
       {role === 'manager' && (
-        <p className="mb-6 flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body-s text-gold-ink">
+        <p className="mb-6 flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body text-gold-ink">
           <Icon name="info" size={15} className="mt-0.5 shrink-0" />
           {t('app.access.managerNotice')}
         </p>
@@ -152,7 +152,7 @@ export function Access() {
               render: (m) => (
                 <div className="flex flex-col">
                   <span className="font-medium">{m.fullName}</span>
-                  <span className="text-body-s text-muted">{m.email}</span>
+                  <span className="text-body text-muted">{m.email}</span>
                 </div>
               ),
             },
@@ -231,7 +231,7 @@ export function Access() {
                         le relire. Il sert à RECONNAÎTRE un code qu'on a
                         transmis, pas à le retrouver. */}
                     <span className="numeric font-medium">••••-{i.codeHint}</span>
-                    <span className="text-body-s text-muted">
+                    <span className="text-body text-muted">
                       {i.unitLabel ?? t('app.access.noUnit')}
                     </span>
                   </div>
@@ -341,7 +341,7 @@ export function Access() {
           {/* Ce que le titre ne dit pas : DE QUI, ou de quel logement. Deux
               lignes voisines portent le même libellé de bouton — c'est la
               donnée qui les distingue, pas la question. */}
-          <p className="text-body-s text-muted">
+          <p className="text-body text-muted">
             {aRetirer.genre === 'membre'
               ? aRetirer.membre.email
               : (aRetirer.code.unitLabel ?? t('app.access.noUnit'))}
@@ -477,7 +477,7 @@ function RegistreIllisible({ onReessayer }: { onReessayer: () => void }) {
         <Icon name="alert" size={18} className="mt-0.5 shrink-0 text-danger" />
         <div className="min-w-0">
           <p className="text-body font-medium text-danger">{t('app.access.loadFailedTitle')}</p>
-          <p className="mt-1 text-body-s text-danger">{t('app.access.loadFailedBody')}</p>
+          <p className="mt-1 text-body text-danger">{t('app.access.loadFailedBody')}</p>
           <Button
             variant="secondary"
             size="sm"

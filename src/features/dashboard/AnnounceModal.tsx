@@ -134,7 +134,7 @@ export function AnnounceModal({ open, onClose }: { open: boolean; onClose: () =>
     >
       {issue ? (
         <div className="flex flex-col gap-4" ref={issueRef} tabIndex={-1}>
-          <p className="flex items-start gap-2 rounded-md border border-ok-border bg-ok-tint px-3.5 py-3 text-body-s text-ok">
+          <p className="flex items-start gap-2 rounded-md border border-ok-border bg-ok-tint px-3.5 py-3 text-body text-ok">
             <Icon name="check" size={15} className="mt-0.5 shrink-0" />
             {t('app.announce.delivered', { count: issue.delivered })}
           </p>
@@ -149,7 +149,7 @@ export function AnnounceModal({ open, onClose }: { open: boolean; onClose: () =>
             Les noms, et non un compte — on ne rappelle pas « deux personnes ».
           */}
           {issue.unreachable.length > 0 && (
-            <div className="rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body-s text-gold-ink">
+            <div className="rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body text-gold-ink">
               <p className="flex items-start gap-2">
                 <Icon name="info" size={15} className="mt-0.5 shrink-0" />
                 {t('app.announce.unreachable', { count: issue.unreachable.length })}
@@ -233,7 +233,7 @@ export function AnnounceModal({ open, onClose }: { open: boolean; onClose: () =>
               notifications de l'application ; aucun SMS ne part, parce qu'aucun
               fournisseur n'est branché. Le dire avant l'envoi évite de compter
               sur un canal qui n'existe pas pour une coupure d'eau de jeudi. */}
-          <p className="text-body-s text-muted">{t('app.announce.channelNotice')}</p>
+          <p className="text-body text-muted">{t('app.announce.channelNotice')}</p>
         </form>
       )}
     </Modal>

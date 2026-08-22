@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -52,12 +53,66 @@ export type EtatSession =
  */
 const CLE_DEMO = 'gestlocpro.demo'
 
+/**
+ * LE DÉLAI DE LA PREMIÈRE LECTURE DE SESSION, et il est MESURÉ, pas choisi.
+ *
+ * `fetch` n'a aucun délai par défaut : un appel qui pend pend jusqu'à ce que le
+ * système d'exploitation abandonne, ce qui se compte en minutes. Sans ce
+ * plafond, l'écran d'attente n'a pas de fin — mesuré : « Chargement… » toujours
+ * à l'écran après 45 secondes, sans titre ni sortie.
+ *
+ * POURQUOI TRENTE SECONDES ET PAS DIX. C'est ici que ce lot pouvait se
+ * retourner contre le marché qu'il sert. Le chargement LÉGITIME de `/app` a été
+ * chronométré sur douze passages, paquet réel, bouchon de session valide, sous
+ * bridage réseau et processeur :
+ *
+ *   3G lente  (400 kb/s, 400 ms de latence, processeur ÷4) : 13 782 → 13 880 ms
+ *   3G rapide (1,6 Mb/s, 150 ms, processeur ÷4)            :  3 598 →  3 622 ms
+ *
+ * Un délai de dix secondes aurait donc déclaré EN PANNE tout utilisateur de 3G
+ * lente — c'est-à-dire le marché visé — en échangeant un défaut contre un pire.
+ * Trente secondes vaut 2,16× le maximum observé sur le profil le plus lent. La
+ * marge n'est pas du confort : l'émulation est propre, sans perte de paquet ni
+ * contention, et un réseau réel ajoute une variance que ce banc ne reproduit
+ * pas.
+ *
+ * CE N'EST PAS UN BUDGET D'ATTENTE POUR L'UTILISATEUR. Il n'attend pas trente
+ * secondes devant un écran muet : l'écran d'attente porte une sortie dès le
+ * premier instant. Ce plafond n'existe que pour l'appel qui ne revient JAMAIS.
+ */
+const DELAI_DE_SESSION_MS = 30_000
+
+/** Le dépassement, distinct d'une erreur du serveur : le geste proposé diffère. */
+class DelaiDepasse extends Error {}
+
+/**
+ * Les deux façons dont la première lecture peut échouer SANS être un refus.
+ *
+ * `technique` : le serveur a répondu autre chose qu'un 401 — un 500, un corps
+ * illisible. Réessayer a du sens, l'incident est peut-être passager.
+ * `delai`     : rien n'est revenu à temps. Même geste, autre phrase : dire
+ * « le serveur a rencontré une erreur » quand il n'a rien dit du tout serait
+ * inventer une cause.
+ */
+export type EchecDeSession = 'technique' | 'delai'
+
 interface SessionContextValue {
   etat: EtatSession
   /** `true` tant que le premier `/auth/me` n'a pas répondu. */
   chargement: boolean
   /** `true` quand le serveur est injoignable — distinct de « déconnecté ». */
   horsLigne: boolean
+  /**
+   * L'échec TERMINAL de la première lecture, ou `null`.
+   *
+   * Distinct de `horsLigne`, qui dit « le serveur n'a pas répondu du tout » et
+   * laisse la session peut-être valable. Ici le serveur a répondu de travers,
+   * ou n'a pas répondu à temps : dans les deux cas l'attente est FINIE, et
+   * l'écran doit proposer un geste.
+   */
+  echecDeSession: EchecDeSession | null
+  /** Relance la première lecture. Déclenchée par l'utilisateur, jamais en boucle. */
+  reprendreLaSession: () => void
   connecter: (email: string, motDePasse: string) => Promise<void>
   inscrire: (donnees: DemandeInscription) => Promise<void>
   deconnecter: () => Promise<void>
@@ -108,6 +163,17 @@ export function SessionProvider({
       (lireStockage('session', CLE_DEMO) === '1' ? { statut: 'demo' } : { statut: 'inconnu' }),
   )
   const [horsLigne, setHorsLigne] = useState(false)
+  const [echec, setEchec] = useState<EchecDeSession | null>(null)
+  /**
+   * Le numéro de la tentative en cours.
+   *
+   * Une lecture qui a dépassé son délai peut TOUJOURS revenir : la requête n'est
+   * pas interrompue, elle a seulement perdu la course. Sans ce compteur, sa
+   * réponse tardive écrirait l'état pendant que l'utilisateur tend le doigt vers
+   * « Réessayer », et l'écran changerait sous sa main. Une tentative dépassée
+   * est terminée : seule une reprise EXPLICITE peut aboutir.
+   */
+  const tentative = useRef(0)
 
   const entrerEnDemo = useCallback(() => {
     ecrireStockage('session', CLE_DEMO, '1')
@@ -151,12 +217,52 @@ export function SessionProvider({
     }
   }, [])
 
+  /**
+   * L'AMORÇAGE — le seul chemin qui a des états terminaux, et c'est délibéré.
+   *
+   * `rafraichir` continue de LEVER : `connecter` et `inscrire` en dépendent pour
+   * afficher l'erreur sur leur formulaire, et avaler leurs échecs ici ferait
+   * paraître une connexion réussie alors qu'elle a échoué. Ce qu'on borne est
+   * l'appel du MONTAGE, celui que personne n'attend et dont l'échec n'avait
+   * jusqu'ici aucun lecteur : `void rafraichir()` jetait son rejet dans le vide,
+   * et l'état restait « inconnu » pour toujours.
+   *
+   * MESURÉ AVANT D'ÉCRIRE CECI : sous un serveur qui rend 500, l'écran affichait
+   * « Chargement… » à 3 s, 15 s et 45 s — 0 titre, 0 sortie. L'appel REVENAIT
+   * pourtant en quelques millisecondes. Le défaut n'était donc pas un appel sans
+   * fin, c'était un rejet sans lecteur.
+   */
+  const chargerLaSession = useCallback(async () => {
+    const mienne = ++tentative.current
+    setEchec(null)
+    let minuterie: ReturnType<typeof setTimeout> | undefined
+    try {
+      await Promise.race([
+        rafraichir(),
+        new Promise<never>((_, rejeter) => {
+          minuterie = setTimeout(() => rejeter(new DelaiDepasse()), DELAI_DE_SESSION_MS)
+        }),
+      ])
+    } catch (err) {
+      // Une tentative dépassée par une reprise n'écrit plus rien : sa réponse
+      // tardive ne doit pas ressusciter un écran que l'utilisateur a quitté.
+      if (mienne !== tentative.current) return
+      setEchec(err instanceof DelaiDepasse ? 'delai' : 'technique')
+    } finally {
+      clearTimeout(minuterie)
+    }
+  }, [rafraichir])
+
+  const reprendreLaSession = useCallback(() => {
+    void chargerLaSession()
+  }, [chargerLaSession])
+
   useEffect(() => {
     // Un état fourni est déjà résolu : réinterroger le serveur l'écraserait
     // aussitôt, et la couture ne servirait à rien.
     if (etatInitial) return
-    void rafraichir()
-  }, [etatInitial, rafraichir])
+    void chargerLaSession()
+  }, [etatInitial, chargerLaSession])
 
   const connecter = useCallback(
     async (email: string, motDePasse: string) => {
@@ -207,9 +313,12 @@ export function SessionProvider({
       etat,
       // Une démonstration est un état RÉSOLU : il n'y a plus rien à attendre du
       // serveur. La compter comme un chargement laisserait tourner l'attente
-      // indéfiniment.
-      chargement: etat.statut === 'inconnu' && !horsLigne,
+      // indéfiniment. Un ÉCHEC est résolu de la même façon : c'est la FIN de
+      // l'attente, pas sa poursuite.
+      chargement: etat.statut === 'inconnu' && !horsLigne && echec === null,
       horsLigne,
+      echecDeSession: echec,
+      reprendreLaSession,
       connecter,
       inscrire,
       deconnecter,
@@ -225,6 +334,8 @@ export function SessionProvider({
     [
       etat,
       horsLigne,
+      echec,
+      reprendreLaSession,
       connecter,
       inscrire,
       deconnecter,

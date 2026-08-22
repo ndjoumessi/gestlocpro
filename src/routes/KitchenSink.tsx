@@ -82,7 +82,7 @@ export function KitchenSink() {
             <p className="title-m">Title M · 17 · Manrope 600</p>
             <p className="text-body-l">Body L · 16 — corps de la landing et des champs mobiles.</p>
             <p className="text-body">Body · 14 — corps de l’application.</p>
-            <p className="text-body-s text-muted">Body S · 13 — annotations, en gris secondaire.</p>
+            <p className="text-body text-muted">Body S · 13 — annotations, en gris secondaire.</p>
             <p className="text-label text-muted">Label · 12 · plancher typographique</p>
             <p className="eyebrow text-muted">Mono label · 12 · suréminence</p>
             <p className="numeric text-kpi">1 415 000</p>
@@ -167,7 +167,7 @@ export function KitchenSink() {
             <DeltaBadge value={95000} invert />
             <DeltaBadge value={-8} suffix="pts" />
           </div>
-          <p className="mt-4 text-body-s text-muted">
+          <p className="mt-4 text-body text-muted">
             Chaque pastille porte une icône <em>et</em> un libellé : l’information ne repose jamais
             sur la seule couleur.
           </p>
@@ -276,23 +276,23 @@ export function KitchenSink() {
               <div className="mt-2 numeric text-kpi">{money(1415000, { round: true })}</div>
               <div className="mt-2 flex items-center gap-2">
                 <DeltaBadge value={165000} />
-                <span className="text-body-s text-muted">12 baux actifs</span>
+                <span className="text-body text-muted">12 baux actifs</span>
               </div>
             </Card>
 
             <Card tone="sunken">
               <CardHeader title="Ton creusé" description="Pour les zones secondaires." />
-              <p className="text-body-s text-muted">Sans ombre, bordure plus marquée.</p>
+              <p className="text-body text-muted">Sans ombre, bordure plus marquée.</p>
             </Card>
 
             <Card tone="gold">
               <CardHeader title="Ton doré" description="Pour les mises en avant." />
-              <p className="text-body-s text-muted">Teinte dorée, bordure dorée.</p>
+              <p className="text-body text-muted">Teinte dorée, bordure dorée.</p>
             </Card>
 
             <Card tone="dark">
               <CardHeader title="Ton sombre" description="Pour les blocs de synthèse." />
-              <p className="text-body-s text-on-dark-muted">
+              <p className="text-body text-on-dark-muted">
                 L’or passe en <span className="text-gold">accent</span> sur fond sombre.
               </p>
             </Card>

@@ -73,6 +73,17 @@ import { fileURLToPath } from 'node:url'
 import { gzipSync } from 'node:zlib'
 import { chromium } from 'playwright'
 
+/*
+  LA LISTE D'EXEMPTIONS EST IMPORTÉE, ET SON ABSENCE EST UNE PANNE.
+
+  Un `import` manquant lève de lui-même, et c'est la bonne façon : une porte
+  dont le fichier d'exemptions a disparu ne doit pas démarrer en croyant
+  n'avoir rien à exempter. Elle rendrait alors « aucun défaut » sur un dépôt
+  où l'écran connu comme non mesurable serait devenu invisible — la forme de
+  mensonge exacte que ce lot ferme.
+*/
+import { EXEMPTIONS_DE_RENDU, MAXIMUM_D_EXEMPTIONS } from './exemptions-de-rendu.mjs'
+
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
 const PORT = 4183
 const BASE = `http://127.0.0.1:${PORT}`
@@ -323,6 +334,30 @@ function adressesDeLApplication() {
  * ce qui n'est pas rendu n'est pas mesuré. Une largeur de poche, une de bureau.
  */
 const THEMES = ['light', 'dark']
+
+/**
+ * LE THÈME DES PASSES DE GÉOMÉTRIE, fixé au lieu d'être hérité.
+ *
+ * Ni la boucle de géométrie ni la passe des cibles ne posaient `colorScheme` :
+ * elles héritaient du défaut de Playwright, qui est le thème clair. La sortie
+ * annonçait donc un thème sans l'avoir demandé — exact, mais CONSTANT, et donc
+ * trompeur pour qui lit « thème clair » dans un refus et en déduit que le
+ * sombre a été regardé lui aussi.
+ *
+ * ON LE FIXE PLUTÔT QUE DE BALAYER LES DEUX, et c'est une mesure qui l'a
+ * décidé, pas une économie : la géométrie des cibles a été relevée aux deux
+ * thèmes sur 69 points (23 routes × 3 largeurs), en comparant le nombre de
+ * cibles visibles et leurs plus petites hauteur et largeur. ZÉRO point diffère.
+ * Le thème change des couleurs, pas des boîtes — et c'est bien ce que le
+ * contraste, lui, balaie déjà aux deux thèmes.
+ *
+ * Le jour où une variante sombre changera une hauteur — une bordure qui
+ * n'existe qu'en sombre, une ombre portée qui pousse — cette constante devra
+ * redevenir une boucle. Ce commentaire est le seul endroit où cette hypothèse
+ * est écrite ; elle est fausse dès qu'un jeton de GÉOMÉTRIE devient
+ * conditionnel au thème.
+ */
+const THEME_DE_GEOMETRIE = 'light'
 const LARGEURS_CONTRASTE = [360, 1280]
 
 /**
@@ -1119,6 +1154,64 @@ const MESURER_REPLI = () => {
   return replies.length > 0 ? replies : null
 }
 
+/**
+ * LA PAGE A-T-ELLE RENDU ? — la question qu'aucune règle de ce fichier ne posait.
+ *
+ * POURQUOI ELLE MANQUAIT, ET POURQUOI CE N'EST PAS `if (!resultat) continue`.
+ * `MESURER`, juste en dessous, rend `null` quand la page NE DÉBORDE PAS : c'est
+ * le résultat SAIN, et de très loin le plus fréquent. Mesuré sur ce dépôt :
+ * 506 points de mesure sur 506 passent par ce `continue`, dont 484 sont des
+ * écrans parfaitement rendus qui ne débordent simplement pas. Transformer ce
+ * `continue` en refus refuserait le balayage entier. Le trou n'était pas là :
+ * il était dans l'ABSENCE d'une question posée AVANT la règle du débordement.
+ *
+ * LE CRITÈRE EST CATÉGORIQUE, PAS NUMÉRIQUE, et c'est délibéré. Un seuil en
+ * nombre d'éléments aurait été facile — `/app` en rend 3, le plus dégarni des
+ * écrans sains en rend 54, n'importe quel seuil entre les deux marche
+ * aujourd'hui. Mais un tel seuil est un nombre que le premier écran
+ * légitimement sobre fera relever par réflexe, et qui aura alors cessé de
+ * garder quoi que ce soit. On demande donc deux choses qu'un écran de produit
+ * a toujours et qu'un squelette de chargement n'a jamais :
+ *
+ *   UN TITRE  (h1–h3)            : mesuré, minimum 1 sur les 22 écrans sains ;
+ *   UN ÉLÉMENT INTERACTIF        : mesuré, minimum 9 sur les 22 écrans sains.
+ *
+ * `/app` en rend 0 et 0. La marge n'est pas « 3 contre 54 », elle est « rien
+ * contre quelque chose » — la seule marge qu'aucune dérive ne grignote.
+ *
+ * LES ERREURS JS NE SONT PAS UN CRITÈRE, et c'est une mesure qui l'a décidé :
+ * les 484 points sains en portent tous, parce que `vite preview` ne mandate
+ * pas `/api` et que les deux appels de session échouent partout. En faire une
+ * cause de refus aurait fait rougir les vingt-deux écrans. Elles sont donc
+ * RELEVÉES et jointes au refus comme contexte, jamais comme motif.
+ *
+ * LE THÈME EST LU DANS LA PAGE plutôt que supposé : la boucle de géométrie
+ * n'en fixe aucun, et écrire « clair » dans un refus sans l'avoir demandé
+ * serait une affirmation gratuite dans le seul message que quelqu'un lira.
+ */
+const MESURER_RENDU = () => ({
+  titres: document.querySelectorAll('h1, h2, h3').length,
+  interactifs: document.querySelectorAll(
+    'a[href], button, input:not([type=hidden]), select, textarea, [role="button"], [role="link"]',
+  ).length,
+  elements: document.querySelectorAll('#root *').length,
+  racineVide: !document.querySelector('#root')?.firstElementChild,
+  // Lu dans la page, et non recopié depuis la constante : si un jour le
+  // contexte demandait un thème que la page ne suit pas, c'est ce que la PAGE
+  // rend qui doit apparaître dans le refus, pas ce qu'on croyait demander.
+  theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'sombre' : 'clair',
+})
+
+/** La cause, en clair, pour qu'un refus se lise sans ouvrir le code. */
+function causeDeNonRendu(r) {
+  if (r.racineVide) return 'racine sans enfant — rien n’a été monté'
+  if (r.titres === 0 && r.interactifs === 0) return 'aucun titre et aucun élément interactif'
+  if (r.titres === 0) return 'aucun titre (h1–h3)'
+  return 'aucun élément interactif'
+}
+
+const aRendu = (r) => !r.racineVide && r.titres > 0 && r.interactifs > 0
+
 /** Exécuté DANS la page : rend les coupables, ou `null` si rien ne déborde. */
 const MESURER = () => {
   const avant = window.scrollX
@@ -1490,6 +1583,21 @@ let barreLaPlusGarnie = 0
 let rangeesMesurees = 0
 const tolerancesUtilisees = new Set()
 
+/** Les points où la page n'a rien rendu, hors adresses exemptées. */
+const nonRendus = []
+/** Les adresses exemptées qui se sont mises à rendre — exemption périmée. */
+const exemptionsQuiRendent = new Map()
+/** Ce que chaque exemption a réellement couvert : une exemption qui ne couvre
+ *  rien est aussi suspecte qu'une exemption périmée, dans l'autre sens. */
+const exemptionsEmployees = new Map()
+/** La marge du critère de rendu, pour la rendre falsifiable (voir plus bas). */
+let plancherTitresObserve = Infinity
+let plancherInteractifsObserve = Infinity
+/** Compte les points où la question « a-t-elle rendu ? » a VRAIMENT été posée. */
+let renduxExamines = 0
+/** Les erreurs JS par (adresse, langue) : contexte d'un refus, jamais son motif. */
+const erreursDePage = new Map()
+
 const contrastes = new Map()
 const contrastesTolerancesUtilisees = new Set()
 // Même raison qu'`ATTENDUES` et que `rangeesMesurees` : « aucun texte sous le
@@ -1502,6 +1610,8 @@ const fondsParTheme = new Map()
 const ciblesTrop_petites = new Map()
 const raisonsEmployees = new Set()
 let ciblesSondees = 0
+/** Points (écran × largeur × langue) où la sonde de plancher s'est exécutée. */
+let pointsDeCible = 0
 
 try {
   const navigateur = await chromium.launch()
@@ -1509,9 +1619,20 @@ try {
     const contexte = await navigateur.newContext({
       viewport: { width: LARGEURS[0], height: 900 },
       locale: langue,
+      colorScheme: THEME_DE_GEOMETRIE,
     })
     const page = await contexte.newPage()
+    // Relevées pour ÉCLAIRER un refus, jamais pour en déclencher un : les 484
+    // points sains en portent tous (voir l'en-tête de `MESURER_RENDU`).
+    let adresseCourante = ''
+    page.on('pageerror', (e) => {
+      const cle = `${adresseCourante}|${langue}`
+      if (!erreursDePage.has(cle)) erreursDePage.set(cle, [])
+      const liste = erreursDePage.get(cle)
+      if (liste.length < 4) liste.push(String(e.message).slice(0, 80))
+    })
     for (const adresse of adresses) {
+      adresseCourante = adresse
       // Le balayage DIT où il en est. Sans cela il reste muet une demi-heure,
       // et rien ne distingue « il travaille » de « il est bloqué » — l'état
       // dans lequel on désactive une porte plutôt que de la lire.
@@ -1558,6 +1679,44 @@ try {
             const grille = await page.evaluate(MESURER_TARIFS)
             if (grille) tarifs.push({ largeur, langue, ...grille })
           }
+        }
+
+        /*
+          POSÉE AVANT LA RÈGLE DU DÉBORDEMENT, et à chaque point.
+
+          Avant : parce qu'une page qui n'a rien rendu ne déborde jamais, et que
+          la lire d'abord par la règle du débordement revient à la déclarer
+          saine. Après ce lot, l'ordre dit ce qu'on veut savoir en premier.
+
+          À chaque point, et non une fois par écran : le refus doit pouvoir
+          nommer une LARGEUR. Un écran qui rend à 320 px et meurt à 1440 est un
+          défaut que « une fois par écran » ne saurait pas dire, et qui coûterait
+          le même prix à l'utilisateur.
+        */
+        const rendu = await page.evaluate(MESURER_RENDU)
+        renduxExamines++
+        const exemptee = EXEMPTIONS_DE_RENDU[adresse]
+        if (aRendu(rendu)) {
+          plancherTitresObserve = Math.min(plancherTitresObserve, rendu.titres)
+          plancherInteractifsObserve = Math.min(plancherInteractifsObserve, rendu.interactifs)
+          if (exemptee) {
+            if (!exemptionsQuiRendent.has(adresse)) exemptionsQuiRendent.set(adresse, [])
+            exemptionsQuiRendent.get(adresse).push({ langue, largeur, ...rendu })
+          }
+        } else if (exemptee) {
+          exemptionsEmployees.set(adresse, (exemptionsEmployees.get(adresse) ?? 0) + 1)
+        } else {
+          nonRendus.push({
+            adresse,
+            langue,
+            largeur,
+            theme: rendu.theme,
+            cause: causeDeNonRendu(rendu),
+            titres: rendu.titres,
+            interactifs: rendu.interactifs,
+            elements: rendu.elements,
+            erreurs: erreursDePage.get(`${adresse}|${langue}`) ?? [],
+          })
         }
 
         const resultat = await page.evaluate(MESURER)
@@ -1675,16 +1834,17 @@ try {
   */
   for (const langue of LANGUES) {
     const contexte = await navigateur.newContext({
-      viewport: { width: LARGEURS_CONTRASTE[0], height: 900 },
+      viewport: { width: LARGEURS[0], height: 900 },
       locale: langue,
+      colorScheme: THEME_DE_GEOMETRIE,
     })
     const page = await contexte.newPage()
     for (const adresse of adresses) {
       const depart = Date.now()
       process.stdout.write(`   ${langue}  cibles  ${adresse} … `)
-      for (const largeur of LARGEURS_CONTRASTE) {
+      for (const largeur of LARGEURS) {
         await page.setViewportSize({ width: largeur, height: 900 })
-        if (largeur === LARGEURS_CONTRASTE[0]) {
+        if (largeur === LARGEURS[0]) {
           await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
         }
         await attendre(page, adresse)
@@ -1694,6 +1854,7 @@ try {
           rayon: RAYON_SONDAGE,
         })
         ciblesSondees += releve.sondees
+        pointsDeCible++
         for (const raison of releve.raisonsVues) raisonsEmployees.add(raison)
 
         for (const defaut of releve.defauts) {
@@ -1713,6 +1874,80 @@ try {
     await contexte.close()
   }
 
+  /*
+    ═══ LE MORCEAU QUI N'ARRIVE PAS, REJOUÉ À CHAQUE PASSAGE ═══
+
+    Sur un réseau mobile lent, une requête de morceau qui échoue est plus
+    probable qu'une exception de rendu. Le lot qui a posé la frontière d'erreur
+    l'a mesuré une fois — écran terminal aux trois conditions — puis plus
+    jamais : une preuve unique n'est pas une garde, et rien n'aurait rougi le
+    jour où quelqu'un aurait retiré la frontière.
+
+    C'est rejouable ici, et c'est donc ici que ça vit : on bloque la requête du
+    morceau paresseux et on exige un écran terminal — un titre ET une commande.
+    Un écran vide, c'est la page blanche d'avant.
+
+    GARDE DU GARDE : le blocage doit AVOIR EU LIEU. Si le nom du morceau change
+    et que le motif n'attrape plus rien, la page se chargerait normalement et
+    l'assertion passerait pour la pire des raisons — « aucune page blanche »
+    parce qu'on n'a rien cassé. On compte donc les requêtes réellement bloquées.
+  */
+  {
+    const morceauParesseux = Object.entries(JSON.parse(readFileSync(join(RACINE, '.carte-des-paquets.json'), 'utf8')))
+      .find(([, info]) => info.isDynamicEntry && info.modules.some((m) => m.includes('EspaceApplicatif')))?.[0]
+    if (!morceauParesseux) {
+      console.error(
+        '\n✗ mesure-ui : aucun morceau dynamique portant `EspaceApplicatif` dans la carte des paquets.\n' +
+          "   La frontière paresseuse a disparu, ou la carte ne la décrit plus — dans les deux cas\n" +
+          "   l'épreuve du morceau manquant ne mesure plus rien.\n",
+      )
+      process.exit(1)
+    }
+
+    const contexte = await navigateur.newContext({
+      viewport: { width: 390, height: 844 },
+      locale: LANGUES[1],
+      colorScheme: THEME_DE_GEOMETRIE,
+    })
+    const page = await contexte.newPage()
+    let bloquees = 0
+    await page.route('**/*', (route) => {
+      if (route.request().url().includes(morceauParesseux)) {
+        bloquees++
+        return route.abort()
+      }
+      return route.continue()
+    })
+    process.stdout.write(`   morceau paresseux bloqué (${morceauParesseux}) … `)
+    await page.goto(BASE + '/demo', { waitUntil: 'domcontentloaded' })
+    await attendre(page, '/demo (morceau bloqué)')
+    const repli = await page.evaluate(() => ({
+      titres: document.querySelectorAll('h1, h2, h3').length,
+      commandes: document.querySelectorAll('a[href], button').length,
+      elements: document.querySelectorAll('#root *').length,
+    }))
+    await contexte.close()
+    process.stdout.write(`${bloquees} requête(s) bloquée(s), ${repli.elements} élément(s)\n`)
+
+    if (bloquees === 0) {
+      console.error(
+        `\n✗ mesure-ui : aucune requête bloquée pour « ${morceauParesseux} ».\n` +
+          "   L'épreuve n'a rien cassé, donc son verdict ne vaut rien — ce n'est pas « aucune\n" +
+          "   page blanche », c'est « je n'ai pas réussi à faire échouer le morceau ».\n",
+      )
+      process.exit(1)
+    }
+    if (repli.titres === 0 || repli.commandes === 0) {
+      console.error(
+        `\n✗ mesure-ui : le morceau bloqué ne rend PAS d'écran terminal — ` +
+          `${repli.elements} élément(s), ${repli.titres} titre(s), ${repli.commandes} commande(s).\n` +
+          "   Une requête de morceau qui échoue est, sur un réseau mobile lent, plus probable\n" +
+          "   qu'une exception de rendu. Sans frontière, elle rend une page blanche.\n",
+      )
+      process.exit(1)
+    }
+  }
+
   await navigateur.close()
 } finally {
   serveur.kill()
@@ -1729,6 +1964,197 @@ if (lenteurs.size > 0) {
   console.warn(`\n⚠ ${lenteurs.size} attente(s) dépassée(s) — un écran qui ne se stabilise pas :`)
   for (const [cle, n] of [...lenteurs].sort((a, b) => b[1] - a[1])) console.warn(`   ${n}× ${cle}`)
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LE RENDU — quatre refus, dans l'ordre où ils se lisent
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/*
+  GARDE DU GARDE nº 0 : la question a-t-elle été POSÉE ?
+
+  Sans elle, retirer l'appel à `MESURER_RENDU` de la boucle rendrait « aucune
+  page non rendue » sans en avoir regardé une seule — et ce serait exactement
+  le silence que ce lot ferme, réinstallé un cran plus haut. Le compte doit
+  valoir un point de mesure par écran, par largeur et par langue.
+*/
+const RENDUS_ATTENDUS = adresses.length * LARGEURS.length * LANGUES.length
+if (renduxExamines < RENDUS_ATTENDUS) {
+  console.error(
+    `\n✗ mesure-ui : ${renduxExamines} points de rendu examinés, moins que les ${RENDUS_ATTENDUS} attendus.\n` +
+      "   La question « la page a-t-elle rendu ? » n'a pas été posée partout — ce n'est pas\n" +
+      '   une absence de défaut, c\'est une absence de mesure.\n',
+  )
+  process.exit(1)
+}
+
+/*
+  GARDE DU GARDE nº 1 : la liste d'exemptions existe et n'est pas vide.
+
+  Le fichier introuvable lève à l'import, bien plus haut. Reste la liste vidée
+  de son contenu, qui se lirait « plus rien à exempter » alors qu'elle veut dire
+  « quelqu'un a effacé la mémoire de ce qui n'est pas mesurable ».
+
+  SI ELLE EST LÉGITIMEMENT VIDE — le jour où `/app` deviendra mesurable — ce
+  n'est pas ce refus qu'il faut contourner, c'est le MÉCANISME qu'il faut
+  retirer : ce fichier, son import, et ces quatre gardes. Voir l'en-tête de
+  `scripts/exemptions-de-rendu.mjs`, qui porte l'argument complet.
+*/
+const adressesExemptees = Object.keys(EXEMPTIONS_DE_RENDU)
+/*
+  LES QUATRE PLAINTES S'ACCUMULENT AVANT DE SORTIR, et ce n'est pas du confort.
+
+  Chacune sortait d'abord tout de suite. Or elles arrivent ensemble dans le cas
+  qui compte : vider la liste d'exemptions rend la liste vide ET laisse `/app`
+  non rendu. Sortir sur la première aurait dit « la liste est vide » sans jamais
+  NOMMER l'écran que cette liste tenait — c'est-à-dire sans montrer ce qu'on
+  vient de perdre. Et chaque aller-retour coûte huit minutes de balayage.
+*/
+const plaintesDeRendu = []
+
+/*
+  LE CLIQUET, et pas un refus sur liste vide.
+
+  Une liste VIDE est un état légitime — c'est même l'état qu'on vise, le jour où
+  `/app` sera mesurable. Ce qu'il faut surveiller est l'autre bout : la liste
+  qui s'allonge. `MAXIMUM_D_EXEMPTIONS` vaut le nombre d'entrées du jour, donc
+  en ajouter une exige de le relever, donc de le montrer dans un diff.
+*/
+if (adressesExemptees.length > MAXIMUM_D_EXEMPTIONS) {
+  plaintesDeRendu.push(
+    `${adressesExemptees.length} exemptions de rendu pour un maximum de ${MAXIMUM_D_EXEMPTIONS} :\n` +
+      `   ${adressesExemptees.join(', ')}\n` +
+      "   Relevez `MAXIMUM_D_EXEMPTIONS` dans `scripts/exemptions-de-rendu.mjs` si l'ajout est\n" +
+      '   justifié — le cliquet n\'interdit pas, il oblige à ce que l\'ajout se voie.',
+  )
+}
+
+/*
+  REFUS nº 2 : une page n'a pas rendu, et elle n'est pas exemptée.
+
+  Le message nomme ROUTE, LANGUE, THÈME, LARGEUR et CAUSE. Les erreurs JS
+  suivent en contexte — elles n'ont jamais déclenché ce refus, et le dire ici
+  évite qu'on les lise comme le motif.
+*/
+if (nonRendus.length > 0) {
+  const ecrans = [...new Set(nonRendus.map((r) => r.adresse))]
+  const lignes = nonRendus
+    .slice(0, 24)
+    .map(
+      (r) =>
+        `   ${r.adresse}  ${r.langue}  thème ${r.theme}  ${r.largeur} px  —  ${r.cause}\n` +
+        `      ${r.elements} élément(s) sous la racine, ${r.titres} titre(s), ${r.interactifs} interactif(s)` +
+        (r.erreurs.length ? `\n      erreurs JS (contexte, PAS le motif) : ${r.erreurs.join(' · ')}` : ''),
+    )
+  if (nonRendus.length > 24) lignes.push(`   … et ${nonRendus.length - 24} autre(s)`)
+  plaintesDeRendu.push(
+    `${nonRendus.length} point(s) de mesure où la page N'A PAS RENDU, sur ${ecrans.length} écran(s) :\n` +
+      lignes.join('\n') +
+      "\n\n   Un écran qui ne rend rien ne déborde pas, n'a aucune cible trop petite et aucun texte\n" +
+      '   sous le seuil : il traversait donc toutes les règles de cette porte en VERT. Si son\n' +
+      "   échec est connu et hors du champ d'un paquet statique, inscrivez-le — avec sa date et\n" +
+      '   son motif — dans `scripts/exemptions-de-rendu.mjs`.',
+  )
+}
+
+/*
+  REFUS nº 3 : une exemption a survécu à sa raison d'être.
+
+  Elle est plus grave qu'elle n'en a l'air. Une adresse exemptée qui se met à
+  rendre n'est pas seulement une ligne à nettoyer : c'est un écran REVENU dans
+  le champ du mesurable, et donc un écran que plus personne ne mesure alors
+  qu'on le pourrait.
+*/
+if (exemptionsQuiRendent.size > 0) {
+  const lignes = [...exemptionsQuiRendent].map(([adresse, points]) => {
+    const p = points[0]
+    return (
+      `   ${adresse} — exemptée depuis ${EXEMPTIONS_DE_RENDU[adresse].depuis}, et elle REND :\n` +
+      `      ${points.length} point(s) rendus, dont ${p.langue} thème ${p.theme} ${p.largeur} px ` +
+      `(${p.elements} éléments, ${p.titres} titres, ${p.interactifs} interactifs)`
+    )
+  })
+  plaintesDeRendu.push(
+    `${exemptionsQuiRendent.size} exemption(s) de rendu PÉRIMÉE(S) :\n` +
+      lignes.join('\n') +
+      "\n\n   Retirez l'entrée de `scripts/exemptions-de-rendu.mjs` : l'écran est mesurable, et le\n" +
+      "   laisser exempté le sortirait du champ sans que personne ne l'ait décidé.",
+  )
+}
+
+/*
+  LE SEUIL DE MARGE A ÉTÉ RETIRÉ, et c'est un aveu autant qu'une correction.
+
+  Il valait 3, inventé sous un minimum observé de 9. Le premier écran sobre du
+  produit — un titre, « Réessayer », « Retour à l'accueil » — l'a fait rougir, et
+  je l'ai abaissé à 2. Le repli de la frontière d'erreur en rend deux aussi. Le
+  prochain écran légitime à un seul geste l'aurait fait descendre à 1, où il
+  aurait été IDENTIQUE au critère et n'aurait plus rien gardé.
+
+  Un seuil qui recule à chaque rencontre avec le réel ne mesure pas le réel : il
+  le suit. Et ce qu'il prétendait protéger, le critère catégorique le protège
+  déjà — un squelette de chargement rend 0 titre ET 0 élément interactif, un
+  écran de produit en rend au moins un de chaque, et cette séparation ne
+  s'érode pas quand un écran passe de neuf gestes à deux.
+
+  Ce qui reste est le CHIFFRE, rendu à chaque exécution, sans porte. Une
+  distribution qu'on lit vaut mieux qu'un seuil qu'on abaisse.
+*/
+console.log(
+  `   critère de rendu : le plus dégarni des écrans rendus porte ` +
+    `${plancherTitresObserve} titre(s) et ${plancherInteractifsObserve} élément(s) interactif(s).`,
+)
+
+/*
+  Une exemption qui ne couvre RIEN est l'autre panne, symétrique de la
+  périmée : l'adresse a disparu du balayage, et son entrée blanchit désormais
+  un écran qui n'existe plus.
+*/
+/*
+  « SANS OBJET » ET « PÉRIMÉE » SONT DEUX PANNES, ET ELLES SE CONFONDAIENT.
+
+  La première version comptait comme sans objet toute exemption n'ayant couvert
+  aucun point — or une exemption dont l'adresse s'est mise à RENDRE ne couvre
+  aucun point non plus, par construction. La mutation M3 a donc rendu les deux
+  plaintes à la fois, dont une fausse : elle affirmait que `/app` « n'est plus
+  balayée » alors qu'elle venait d'être balayée vingt-deux fois.
+
+  Sans objet veut dire une seule chose : l'adresse n'est plus dans le champ du
+  balayage. Les adresses qui rendent sont donc retirées d'ici — leur cas est
+  déjà nommé, correctement, par le refus des exemptions périmées.
+*/
+const exemptionsSansObjet = adressesExemptees.filter(
+  (a) => !exemptionsEmployees.has(a) && !exemptionsQuiRendent.has(a),
+)
+if (exemptionsSansObjet.length > 0) {
+  plaintesDeRendu.push(
+    `${exemptionsSansObjet.length} exemption(s) de rendu ne couvrent AUCUN point :\n` +
+      exemptionsSansObjet.map((a) => `   ${a} — l'adresse n'est plus balayée, ou n'existe plus`).join('\n') +
+      '\n   Retirez-la, ou remettez son adresse dans le champ de la mesure.',
+  )
+}
+
+if (plaintesDeRendu.length > 0) {
+  console.error(`\n✗ mesure-ui : ${plaintesDeRendu.length} plainte(s) sur le RENDU des pages.\n`)
+  for (const plainte of plaintesDeRendu) console.error('  ▸ ' + plainte + '\n')
+  process.exit(1)
+}
+
+/*
+  DIRE LA LISTE VIDE EN TOUTES LETTRES.
+
+  Elle s'imprimait comme une ligne vide après deux-points — ce qui se lit
+  « quelque chose a manqué » aussi bien que « il n'y a rien ». Or l'absence
+  d'exemption est le meilleur état possible de cette porte : c'est celui où
+  aucun écran n'est sorti du champ. Il mérite une phrase, pas un blanc.
+*/
+console.log(
+  adressesExemptees.length === 0
+    ? '   exemptions de rendu : AUCUNE — tous les écrans sont mesurés.'
+    : `   exemptions de rendu employées : ` +
+        adressesExemptees
+          .map((a) => `${a} (depuis ${EXEMPTIONS_DE_RENDU[a].depuis}, ${exemptionsEmployees.get(a)} points)`)
+          .join(', '),
+)
 
 // Garde du garde : une tolérance qui ne couvre plus rien doit mourir, sinon
 // la liste devient un cimetière qui blanchit des défauts à venir.
@@ -1812,6 +2238,31 @@ if (fondsDistincts.size < THEMES.length) {
   Le seuil est grossier à dessein — on distingue « il a travaillé » de « il n'a
   rien vu », on n'estime pas le bon nombre de commandes du produit.
 */
+/*
+  GARDE DU GARDE : la sonde de plancher doit s'être exécutée À CHAQUE POINT.
+
+  Même forme que celle du rendu, et pour la même raison. La sonde ne couvrait
+  que deux largeurs sur onze — 92 points sur 506 — pendant que le rapport final
+  annonçait « 23 écrans × 11 largeurs × 2 langues ». Le rapport ne mentait pas
+  sur ce qu'il avait balayé, il mentait par voisinage : la phrase couvrait la
+  page entière, la règle couvrait un cinquième.
+
+  Restreindre à nouveau le balayage — par distraction ou pour gagner trois
+  secondes — doit désormais ARRÊTER la porte, jamais rendre « aucune cible sous
+  le plancher ». C'est ce que ce compte fait, et rien d'autre.
+*/
+const POINTS_DE_CIBLE_ATTENDUS = adresses.length * LARGEURS.length * LANGUES.length
+if (pointsDeCible !== POINTS_DE_CIBLE_ATTENDUS) {
+  console.error(
+    `\n✗ mesure-ui : la sonde de plancher s'est exécutée ${pointsDeCible} fois, ` +
+      `pour ${POINTS_DE_CIBLE_ATTENDUS} points attendus ` +
+      `(${adresses.length} écrans × ${LARGEURS.length} largeurs × ${LANGUES.length} langues).\n` +
+      "   Une règle qui ne couvre pas ce que le rapport annonce rend « aucune cible sous le\n" +
+      "   plancher » sur des points qu'elle n'a jamais regardés.\n",
+  )
+  process.exit(1)
+}
+
 const CIBLES_ATTENDUES = 500
 
 if (ciblesSondees < CIBLES_ATTENDUES) {
@@ -2311,5 +2762,7 @@ console.log(
     `  Grille de tarifs : ${tarifs[0]?.cartes.length} cartes finissant ensemble, ` +
     `${tarifs[0]?.exclues} lignes exclues, aucune raturée.\n` +
     `  ${textesAudites} textes audités en contraste (${THEMES.join(' + ')}, ${LARGEURS_CONTRASTE.join(' et ')} px), aucun sous le seuil WCAG AA.\n` +
-    `  ${ciblesSondees} cibles sondées au point de contact, aucune sous ${PLANCHER_CIBLE} px hors les ${Object.keys(CIBLES_EXEMPTES).length} exemptions motivées.`,
+    `  ${ciblesSondees} cibles sondées au point de contact sur ${pointsDeCible} points ` +
+      `(${LARGEURS.length} largeurs × ${LANGUES.length} langues, thème ${THEME_DE_GEOMETRIE}), ` +
+      `aucune sous ${PLANCHER_CIBLE} px hors les ${Object.keys(CIBLES_EXEMPTES).length} exemptions motivées.`,
 )

@@ -152,13 +152,18 @@ export function ReportModal({
           )}
         </Field>
 
+        {/* Mêmes pastilles que « Ouvrir un chantier », et pour la même raison
+            mesurée : ces options n'ont ni description ni icône, donc la tuile
+            n'a rien à montrer et rendait six fois la même icône de repli. Les
+            deux écrans posent le même choix ; ils le posent désormais de la
+            même façon. */}
         <RadioCards
           legend={t('app.report.trade')}
           name="signalement-metier"
           value={metier}
           onChange={setMetier}
           options={options}
-          columns={1}
+          variant="puces"
         />
 
         <RadioCards
@@ -167,7 +172,7 @@ export function ReportModal({
           value={urgence}
           onChange={setUrgence}
           options={urgences}
-          columns={1}
+          variant="puces"
         />
 
         <Field label={t('app.report.detail')} optional hint={t('app.report.detailHint')}>

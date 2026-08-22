@@ -383,12 +383,12 @@ function Comparaison({ inspections }: { inspections: Inspection[] }) {
               const cout = apres.reduce((somme, r) => somme + (r.costMinor ?? 0), 0)
               return (
                 <tr key={piece}>
-                  <th scope="row" className="py-2.5 pr-3 text-left text-body-s font-medium">
+                  <th scope="row" className="py-2.5 pr-3 text-left text-body font-medium">
                     {piece}
                   </th>
                   <CelluleReserves reserves={avant} />
                   <CelluleReserves reserves={apres} />
-                  <td className="numeric py-2.5 pl-3 text-right text-body-s">
+                  <td className="numeric py-2.5 pl-3 text-right text-body">
                     {cout > 0 ? (
                       <span className="font-medium text-danger">{money(cout, { round: true })}</span>
                     ) : (
@@ -406,7 +406,7 @@ function Comparaison({ inspections }: { inspections: Inspection[] }) {
 
       {retenue > 0 && (
         <p className="mt-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-          <span className="text-body-s text-muted">{t('app.inspections.proposed')}</span>
+          <span className="text-body text-muted">{t('app.inspections.proposed')}</span>
           <span className="numeric text-body font-medium">{money(retenue, { round: true })}</span>
         </p>
       )}
@@ -424,10 +424,10 @@ function Comparaison({ inspections }: { inspections: Inspection[] }) {
 function CelluleReserves({ reserves }: { reserves: Finding[] }) {
   const t = useT()
   if (reserves.length === 0) {
-    return <td className="py-2.5 pr-3 text-body-s text-muted">{t('app.inspections.asGood')}</td>
+    return <td className="py-2.5 pr-3 text-body text-muted">{t('app.inspections.asGood')}</td>
   }
   return (
-    <td className="py-2.5 pr-3 text-body-s">
+    <td className="py-2.5 pr-3 text-body">
       <ul className="flex flex-col gap-0.5">
         {reserves.map((r) => (
           <li key={r.id} className={r.severity === 'major' ? 'text-warn' : undefined}>

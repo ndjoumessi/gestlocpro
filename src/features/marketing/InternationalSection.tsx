@@ -92,7 +92,7 @@ export function InternationalSection() {
               {fact.detail.length > 0 && (
                 <ul className="mt-5 flex flex-wrap gap-x-4 gap-y-1.5 border-t border-divider pt-4">
                   {fact.detail.map((label) => (
-                    <li key={label} className="text-body-s text-muted">
+                    <li key={label} className="text-body text-muted">
                       {label}
                     </li>
                   ))}

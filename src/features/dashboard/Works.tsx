@@ -227,7 +227,7 @@ export function Works() {
           cautions traite déjà le cas symétrique — les deux se répondent
           maintenant, puisque c'est la même règle de délégation. */}
       {role === 'manager' && works.some((work) => work.status === 'quoted') && (
-        <p className="mb-4 flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body-s text-gold-ink">
+        <p className="mb-4 flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body text-gold-ink">
           <Icon name="info" size={15} className="mt-0.5 shrink-0" />
           {t('app.works.managerNotice')}
         </p>
@@ -293,7 +293,7 @@ export function Works() {
 
           {engage > 0 && (
             <p className="flex items-baseline gap-2">
-              <span className="text-body-s text-muted">{t('app.works.totalCommitted')}</span>
+              <span className="text-body text-muted">{t('app.works.totalCommitted')}</span>
               <span className="numeric text-title-m font-medium">
                 {money(engage, { round: true })}
               </span>
@@ -410,7 +410,7 @@ export function Works() {
                   « signalé par » sans nom serait pire que le silence.
                 */}
                 {work.origin && (
-                  <p className="mt-1 text-body-s text-muted">
+                  <p className="mt-1 text-body text-muted">
                     {work.reportedBy
                       ? t(
                           work.origin === 'ownerInitiative'
@@ -738,7 +738,7 @@ function Montant({ work }: { work: WorkOrder }) {
 
   if (montant === null) {
     return (
-      <span className="text-body-s text-muted italic">{t('app.works.noQuote')}</span>
+      <span className="text-body text-muted italic">{t('app.works.noQuote')}</span>
     )
   }
 

@@ -199,7 +199,7 @@ export function Portfolio() {
             </>
           }
         >
-          <p className="text-body-s text-muted">{aSupprimer.district}</p>
+          <p className="text-body text-muted">{aSupprimer.district}</p>
         </Modal>
       )}
       {logementOuvert && <AddUnitModal open onClose={() => setLogementOuvert(false)} />}
@@ -397,7 +397,7 @@ export function Portfolio() {
               return (
                 <div className="flex flex-col">
                   <span>{immeuble?.name}</span>
-                  <span className="text-body-s text-muted">{immeuble?.district}</span>
+                  <span className="text-body text-muted">{immeuble?.district}</span>
                 </div>
               )
             },

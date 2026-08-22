@@ -213,7 +213,7 @@ export function StackedBarChart({
         obtenir n'explique rien à qui tient l'appareil du marché visé.
       */}
       {openPeriodNote && (
-        <p className="mb-2 text-body-s text-muted">{openPeriodNote}</p>
+        <p className="mb-2 text-body text-muted">{openPeriodNote}</p>
       )}
 
       {/* Légende interrogeable : chaque entrée masque ou rétablit sa série. */}
@@ -232,7 +232,7 @@ export function StackedBarChart({
                 // sous le minimum tactile, sur un produit dont la cible est un
                 // Android d'entrée de gamme tenu à une main.
                 'inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md px-2 -mx-0.5',
-                'text-body-s transition-colors duration-150 hover:bg-surface-sunken',
+                'text-body transition-colors duration-150 hover:bg-surface-sunken',
                 shown ? 'text-muted' : 'text-muted-soft',
               )}
             >
@@ -622,7 +622,7 @@ function LectureFixe({
       {rows.length > 0 && (
         <ul className="mt-1.5 flex flex-col gap-y-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4">
           {rows.map((row) => (
-            <li key={row.key} className="flex items-center gap-1.5 text-body-s">
+            <li key={row.key} className="flex items-center gap-1.5 text-body">
               <span
                 className="size-2 shrink-0 rounded-[2px]"
                 style={{ background: row.color }}
@@ -815,7 +815,7 @@ export function MiniBarChart({
 
         <span
           aria-live="polite"
-          className="min-w-0 truncate text-center text-body-s font-medium text-ink"
+          className="min-w-0 truncate text-center text-body font-medium text-ink"
         >
           {active !== null && (
             <>
@@ -847,7 +847,7 @@ export function MiniBarChart({
           `LectureFixe`, même correctif — et pour la même seconde raison : un
           téléphone n'a pas de survol, donc la note n'y existait jamais. */}
       {openPeriodNote && (
-        <p className="mt-1.5 text-center text-body-s text-muted">{openPeriodNote}</p>
+        <p className="mt-1.5 text-center text-body text-muted">{openPeriodNote}</p>
       )}
 
       <div className="sr-only">
@@ -1112,7 +1112,7 @@ export function DonutChart({
                   <dt
                     className={cn(
                       'ml-[1.25rem] min-w-0 flex-1 truncate',
-                      ligne.fort ? 'text-body text-ink' : 'text-body-s text-muted',
+                      ligne.fort ? 'text-body text-ink' : 'text-body text-muted',
                     )}
                   >
                     {ligne.label}
@@ -1120,7 +1120,7 @@ export function DonutChart({
                   <dd
                     className={cn(
                       'numeric shrink-0',
-                      ligne.fort ? 'text-body font-medium' : 'text-body-s text-muted',
+                      ligne.fort ? 'text-body font-medium' : 'text-body text-muted',
                     )}
                   >
                     {money(ligne.value, { round: true })}
@@ -1170,7 +1170,7 @@ export function ProgressBar({
 
   return (
     <div className="flex items-center gap-3">
-      {!hideLabel && <span className="w-20 shrink-0 text-body-s text-muted">{label}</span>}
+      {!hideLabel && <span className="w-20 shrink-0 text-body text-muted">{label}</span>}
       <div
         role="progressbar"
         aria-valuenow={value}
@@ -1184,7 +1184,7 @@ export function ProgressBar({
           style={{ width: `${value}%` }}
         />
       </div>
-      <span className="numeric w-10 shrink-0 text-right text-body-s text-muted">{value} %</span>
+      <span className="numeric w-10 shrink-0 text-right text-body text-muted">{value} %</span>
     </div>
   )
 }
@@ -1219,12 +1219,12 @@ export function StatCard({
       </div>
       <p className="mt-2 flex items-baseline gap-1.5">
         <span className="numeric text-kpi font-medium whitespace-nowrap">{value}</span>
-        {unit && <span className="text-body-s text-muted">{unit}</span>}
+        {unit && <span className="text-body text-muted">{unit}</span>}
       </p>
       {(delta || note) && (
         <p className="mt-2 flex flex-wrap items-center gap-2">
           {delta}
-          {note && <span className="text-body-s text-muted">{note}</span>}
+          {note && <span className="text-body text-muted">{note}</span>}
         </p>
       )}
     </div>

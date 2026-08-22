@@ -73,7 +73,14 @@ export const fr = {
        déduits, donc rognée en « Données fictives : rien… ». Une phrase coupée
        au milieu d'un mot est exactement le mensonge par omission que la forme
        courte existait pour éviter. Celle-ci tient. */
-    demoNoticeShort: 'Données fictives.',
+    /* ELLE NOMME CE QUI EST FICTIF, et c'est ce qui la justifie.
+       « Données fictives. » tenait sur une ligne à 320 px et ne disait PAS de
+       quoi il s'agissait — le téléphone, appareil du marché visé, recevait la
+       version pauvre pendant que le bureau avait la phrase entière. Celle-ci
+       nomme les trois choses que l'écran montre. Elle passe sur deux lignes
+       sous 700 px : c'est le prix, mesuré à +21 px de coquille, et il est
+       moins cher qu'une phrase qui n'apprend rien. */
+    demoNoticeShort: 'Immeubles, locataires et montants fictifs.',
     demoNotice:
       'Vous parcourez une démonstration : ces immeubles, ces locataires et ces montants sont fictifs.',
     demoCta: 'Créer mon espace',

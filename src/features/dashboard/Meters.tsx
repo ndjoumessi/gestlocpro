@@ -256,7 +256,7 @@ export function Meters() {
               : t('app.meters.complete')}
           </p>
           {missing.length > 0 && (
-            <p className="mt-0.5 text-body-s">
+            <p className="mt-0.5 text-body">
               {t('app.meters.missingHint')} — {n.list(missing.map((r) => unitLabel(r.unitId)))}
             </p>
           )}
@@ -275,7 +275,7 @@ export function Meters() {
             render: (r) => (
               <div>
                 <span className="numeric font-medium">{unitLabel(r.unitId)}</span>
-                <span className="block truncate text-body-s text-muted sm:hidden">
+                <span className="block truncate text-body text-muted sm:hidden">
                   {unitById(r.unitId)?.tenant}
                 </span>
               </div>

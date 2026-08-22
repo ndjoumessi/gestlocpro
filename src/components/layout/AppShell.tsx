@@ -17,6 +17,7 @@ import { Logo } from '@/components/primitives/Logo'
 import { Icon, type IconName } from '@/components/primitives/Icon'
 import { Badge } from '@/components/primitives/Badge'
 import { Button, IconButton } from '@/components/primitives/Button'
+import { usePiegeDeFocus } from '@/components/primitives/piegeDeFocus'
 import { LanguageSwitcher } from '@/components/controls/LanguageSwitcher'
 import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
 import { useCurrency } from '@/currency/CurrencyProvider'
@@ -820,7 +821,7 @@ function BandeauDemo() {
         marché visé, qui aurait reçu le mensonge.
       */
       className={cn(
-        'flex flex-nowrap items-center gap-x-3 border-b border-warn-border bg-warn-tint py-1.5 text-body-s text-warn',
+        'flex flex-nowrap items-center gap-x-3 border-b border-warn-border bg-warn-tint py-1.5 text-body text-warn',
         GOUTTIERE_LATERALE,
       )}
     >
@@ -843,7 +844,13 @@ function BandeauDemo() {
           téléphone. Relevé sur les onze largeurs, dans les deux langues : la
           longue ne tient qu'à partir de 1280 — à 1024 la barre latérale reprend
           256 px et la rogne encore —, la courte tient dès 320. */}
-      <span className="min-w-0 flex-1 truncate xl:hidden">{t('common.demoNoticeShort')}</span>
+      {/* PAS DE `truncate` SUR LA COURTE : elle nomme ce qui est fictif, et
+          couper « Immeubles, locataires et mon… » rendrait la phrase pauvre
+          qu'elle vient remplacer. Elle passe donc à la ligne quand il le faut —
+          mesuré à deux lignes sous 700 px, une au-delà. La longue garde son
+          `truncate` : à partir de 1280 px elle tient, et le garder est une
+          ceinture pour une langue future plus bavarde. */}
+      <span className="min-w-0 flex-1 xl:hidden">{t('common.demoNoticeShort')}</span>
       <span className="hidden min-w-0 flex-1 truncate xl:block">{t('common.demoNotice')}</span>
       <Button size="sm" to="/inscription/proprietaire" iconAfter="arrowRight" className="shrink-0">
         {t('common.demoCta')}
@@ -1211,21 +1218,27 @@ function MenuReglages({ demo }: { demo: boolean }) {
   const [ouvert, setOuvert] = useState(false)
   const boite = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    if (!ouvert) return
-    const dehors = (e: MouseEvent) => {
-      if (!boite.current?.contains(e.target as Node)) setOuvert(false)
-    }
-    const echap = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOuvert(false)
-    }
-    document.addEventListener('mousedown', dehors)
-    document.addEventListener('keydown', echap)
-    return () => {
-      document.removeEventListener('mousedown', dehors)
-      document.removeEventListener('keydown', echap)
-    }
-  }, [ouvert])
+  /*
+    LE MÊME PIÈGE QUE LA MODALE, ET IL MANQUAIT.
+
+    Ce panneau n'avait qu'un écouteur d'Échap et un clic extérieur. Mesuré au
+    navigateur : quatre tabulations sur dix sortaient du panneau OUVERT, et à la
+    fermeture le focus restait où il avait erré — sur un bouton de légende de
+    graphique, à l'autre bout de la page. Trois commandes de la coquille, sur
+    les 23 écrans, derrière une porte sans poignée au clavier.
+
+    `focusInitial: 'premier'` et non le repli de la modale : tout le contenu de
+    ce panneau EST des boutons, donc « le premier non-bouton » n'existe pas et
+    ferait retomber le focus sur le conteneur. Le premier segment de langue est
+    la bonne première étape.
+
+    `verrouillerLeDefilement: false` : un panneau ancré à son bouton n'arrête
+    pas la page derrière lui. Une modale le fait ; celui-ci n'en est pas une.
+  */
+  usePiegeDeFocus(ouvert, boite, () => setOuvert(false), {
+    fermerAuClicExterieur: true,
+    focusInitial: 'premier',
+  })
 
   return (
     <div className="relative" ref={boite}>
@@ -1274,30 +1287,22 @@ function MenuCompte({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
   const [ouvert, setOuvert] = useState(false)
   const boite = useRef<HTMLDivElement>(null)
 
-  /**
-   * Fermeture au clic extérieur et à l'échappement, SANS voile.
-   *
-   * Un `fixed inset-0` transparent aurait fait l'affaire — et un garde du
-   * système de design l'a refusé, à juste titre : il ne peut pas distinguer un
-   * attrape-clic d'une surface peinte, et exige de toutes un rembourrage contre
-   * l'encoche. Un écouteur de document n'ajoute rien à l'arbre d'accessibilité
-   * et ne se pose sur aucun bord.
-   */
-  useEffect(() => {
-    if (!ouvert) return
-    const dehors = (e: MouseEvent) => {
-      if (!boite.current?.contains(e.target as Node)) setOuvert(false)
-    }
-    const echap = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOuvert(false)
-    }
-    document.addEventListener('mousedown', dehors)
-    document.addEventListener('keydown', echap)
-    return () => {
-      document.removeEventListener('mousedown', dehors)
-      document.removeEventListener('keydown', echap)
-    }
-  }, [ouvert])
+  /*
+    MÊME PIÈGE QUE LE PANNEAU DES RÉGLAGES ET QUE LA MODALE.
+
+    Ce menu portait le même motif incomplet — Échap et clic extérieur, rien
+    d'autre — et il n'a jamais eu de cas de test clavier. Il ouvre pourtant le
+    SEUL chemin vers la déconnexion : sur un poste partagé, cas courant du
+    marché visé, un focus qui s'échappe laisse la session ouverte au suivant.
+
+    `focusInitial: 'premier'` : son contenu est un pavé d'identité non
+    focalisable puis un bouton de déconnexion. Le premier focalisable est donc
+    ce bouton, et c'est la bonne première étape.
+  */
+  usePiegeDeFocus(ouvert, boite, () => setOuvert(false), {
+    fermerAuClicExterieur: true,
+    focusInitial: 'premier',
+  })
 
   if (etat.statut !== 'connecte') return null
 

@@ -59,6 +59,9 @@ import {
   type Receipt,
 } from './portfolio'
 import { ApiError, api } from '@/api/client'
+
+/** Les deux façons dont le CHARGEMENT du parc peut échouer, et leurs gestes. */
+export type EchecDuParc = 'session' | 'technique'
 import { useToast } from '@/components/primitives/Toast'
 import { useT } from '@/i18n/I18nProvider'
 import { useSession } from '@/api/SessionProvider'
@@ -403,6 +406,29 @@ interface PortfolioContextValue {
    * qui n'existe pas serait le même mensonge, dans l'autre sens.
    */
   loading: boolean
+  /**
+   * L'ÉCHEC TERMINAL du CHARGEMENT du parc — distinct d'un échec d'action.
+   *
+   * `signalerEchec`, plus bas, est le point de sortie commun des ACTIONS : il
+   * pose un toast qui dit « rien n'a été enregistré », ce qui est juste quand on
+   * vient de tenter d'enregistrer quelque chose. Le chargement du parc
+   * l'empruntait aussi, et cela produisait deux défauts MESURÉS sur le paquet
+   * construit, session expirée en cours d'usage :
+   *
+   *   · le message était FAUX — rien n'était en cours d'enregistrement ;
+   *   · le toast dure 4,5 s, après quoi il ne reste RIEN. Toast à 1,5 s et 3 s,
+   *     plus rien à 5 s — et l'écran affichait alors 532 éléments du jeu de
+   *     DÉMONSTRATION là où le parc réel en rendait 165. L'utilisateur
+   *     regardait des données qui n'étaient pas les siennes, sans rien pour le
+   *     lui dire et sans rien à toucher.
+   *
+   * Ce n'est donc pas une seconde voie parallèle : c'est la couture qui
+   * manquait à celle qui existe. Les actions gardent leur toast ; le chargement
+   * gagne un état qui NE S'EFFACE PAS TOUT SEUL.
+   */
+  echecDuParc: EchecDuParc | null
+  /** Relance le chargement. Déclenchée par l'utilisateur, jamais en boucle. */
+  reprendreLeParc: () => void
   worksForUnit: (unitId: string) => WorkOrder[]
   depositForUnit: (unitId: string) => Deposit | undefined
   unitById: (unitId: string) => Unit | undefined
@@ -473,6 +499,16 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const [deposits, setDeposits] = useState<Deposit[]>(initial.deposits)
   const [stored, setStored] = useState(hasStoredState)
   const [fromApi, setFromApi] = useState(false)
+  const [echecDuParc, setEchecDuParc] = useState<EchecDuParc | null>(null)
+  /**
+   * Incrémenté par une reprise, et LU par l'effet de chargement.
+   *
+   * Sans lui, « réessayer » n'aurait rien à quoi s'accrocher : l'effet dépend de
+   * `parkId`, qui n'a pas changé. On ne relance donc pas l'effet en boucle — on
+   * lui donne une raison explicite de repartir, une par geste.
+   */
+  const [tentativeDuParc, setTentativeDuParc] = useState(0)
+  const reprendreLeParc = useCallback(() => setTentativeDuParc((n) => n + 1), [])
   /**
    * Initialisé DANS le premier rendu, et non par l'effet.
    *
@@ -658,6 +694,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       setDocumentRequests(parc.documentRequests)
       setLeases(parc.leases)
       setFromApi(true)
+      setEchecDuParc(null)
       // Posé APRÈS l'écriture, et seulement en cas de succès : un échec laisse
       // le jeu de démonstration à l'écran, et une relecture ultérieure a alors
       // toutes les raisons de rouvrir l'attente.
@@ -677,7 +714,23 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
        */
       .catch((err: unknown) => {
         if (annule) return
-        signalerEchec(err)
+        /*
+          ON NE POSE PLUS LE TOAST DES ACTIONS ICI, et c'est le cœur de la
+          couture. Il disait « rien n'a été enregistré » pour une LECTURE, et il
+          s'effaçait au bout de 4,5 s en laissant le jeu de démonstration à
+          l'écran. L'état terminal, lui, reste.
+
+          401 est distingué du reste parce que le GESTE diffère : une session
+          expirée se reprend en se reconnectant, une panne technique en
+          réessayant. Les confondre enverrait quelqu'un ressaisir son mot de
+          passe pour un 500.
+
+          IDEMPOTENT PAR CONSTRUCTION : trois requêtes qui rendent 401 ensemble
+          écrivent trois fois la même valeur, et React n'en fait qu'un rendu. Il
+          n'y a rien à dédupliquer — et surtout AUCUNE redirection à déclencher,
+          voir `CadreDuParc` pour pourquoi.
+        */
+        setEchecDuParc(err instanceof ApiError && err.status === 401 ? 'session' : 'technique')
       })
       /**
        * L'attente se termine dans TOUS les cas, y compris l'échec.
@@ -696,7 +749,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     return () => {
       annule = true
     }
-  }, [parkId, signalerEchec, enDemonstration])
+  }, [parkId, signalerEchec, enDemonstration, tentativeDuParc])
 
   /**
    * Enregistré à chaque changement d'état plutôt qu'à chaque geste : un seul
@@ -1344,6 +1397,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       hasChanges: stored,
       fromApi,
       loading,
+      echecDuParc,
+      reprendreLeParc,
       buildings,
       buildingById: (id: string) => buildings.find((b) => b.id === id),
       readings,
@@ -1395,6 +1450,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       collections,
       fromApi,
       loading,
+      echecDuParc,
+      reprendreLeParc,
       receiptsByUnit,
       documentRequests,
       leases,

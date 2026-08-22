@@ -61,7 +61,7 @@ export function CardHeader({
       <div className="min-w-0">
         {eyebrow && <div className="eyebrow mb-1.5 text-muted">{eyebrow}</div>}
         <Heading className="title-m text-balance">{title}</Heading>
-        {description && <p className="mt-1 text-body-s text-muted">{description}</p>}
+        {description && <p className="mt-1 text-body text-muted">{description}</p>}
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </div>

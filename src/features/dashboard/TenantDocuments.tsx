@@ -398,7 +398,7 @@ export function TenantDocuments() {
               condition, et le laisser vide posait un en-tête anonyme qu'un
               lecteur d'écran annonce sans pouvoir le nommer. */}
           <CardHeader title={t('app.documents.privacy')} level={2} className="mb-2" />
-          <p className="flex items-start gap-3 text-body-s text-on-dark-muted">
+          <p className="flex items-start gap-3 text-body text-on-dark-muted">
             <Icon name="shield" size={17} className="mt-0.5 shrink-0 text-gold" />
             {t('app.documents.privacyBody')}
           </p>
@@ -496,7 +496,7 @@ function LigneDemande({ demande }: { demande: DocumentRequest }) {
   return (
     <li className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
       <span className="text-body">{t(DOCUMENT_KIND_LABELS[demande.kind] as 'app.documents.reqResidence')}</span>
-      <span className={cn('text-body-s', TONS[demande.status])}>
+      <span className={cn('text-body', TONS[demande.status])}>
         {t(`app.documents.reqStatus.${demande.status}` as 'app.documents.reqStatus.pending')}
         {' · '}
         {/* La date de la RÉPONSE prime sur celle de la demande : une fois

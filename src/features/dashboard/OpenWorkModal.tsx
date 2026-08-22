@@ -179,13 +179,20 @@ export function OpenWorkModal({
           )}
         </Field>
 
+        {/* EN PASTILLES, ET NON EN TUILES — mesuré. Les six métiers et les
+            trois urgences portent `description: ''` et aucune icône : la tuile
+            n'avait rien à mettre dedans, et rendait donc six fois la MÊME icône
+            de repli, promettant une distinction inexistante. Neuf mots dans
+            neuf boîtes pleine largeur valaient 1033 px de défilement à 360 px.
+            Le vocabulaire ne change pas, la sémantique non plus : mêmes radios,
+            mêmes flèches, même annonce « 2 sur 6 ». */}
         <RadioCards
           legend={t('app.report.trade')}
           name="chantier-metier"
           value={metier}
           onChange={setMetier}
           options={options}
-          columns={1}
+          variant="puces"
         />
 
         <RadioCards
@@ -194,7 +201,7 @@ export function OpenWorkModal({
           value={urgence}
           onChange={setUrgence}
           options={urgences}
-          columns={1}
+          variant="puces"
         />
 
         <Field label={t('app.report.detail')} optional>

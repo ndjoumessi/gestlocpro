@@ -290,7 +290,7 @@ export function Alerts() {
                     )}
                   </StatusPill>
                 </div>
-                <p className="mt-1 text-body-s text-muted">{message(alert, 'detail')}</p>
+                <p className="mt-1 text-body text-muted">{message(alert, 'detail')}</p>
                 {/*
                   EST-ELLE PARTIE ? Le serveur le sait, la réponse le taisait.
 

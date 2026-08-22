@@ -117,7 +117,7 @@ export function Deposits() {
       {/* Le gestionnaire voit les cautions mais ne les arbitre pas. On lui dit
           pourquoi le bouton lui manque, plutôt que de le laisser deviner. */}
       {role === 'manager' && (
-        <p className="mt-6 flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body-s text-gold-ink">
+        <p className="mt-6 flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body text-gold-ink">
           <Icon name="info" size={15} className="mt-0.5 shrink-0" />
           {t('app.deposits.managerNotice')}
         </p>

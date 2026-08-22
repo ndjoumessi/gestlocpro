@@ -237,7 +237,7 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
          * clic, et non après.
          */}
         {deviseChange && (
-          <p className="flex items-start gap-2 rounded-lg border border-warn-border bg-warn-tint px-4 py-3.5 text-body-s text-warn">
+          <p className="flex items-start gap-2 rounded-lg border border-warn-border bg-warn-tint px-4 py-3.5 text-body text-warn">
             <Icon name="info" size={15} className="mt-0.5 shrink-0" />
             {t('app.parkSettings.currencyWarning')}
           </p>

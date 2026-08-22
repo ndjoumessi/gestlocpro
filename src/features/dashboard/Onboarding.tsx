@@ -110,7 +110,7 @@ function RejoindreUnParc() {
     <Card className="flex flex-col gap-4">
       <div>
         <h2 className="title-m font-semibold">{t('app.onboarding.joinTitle')}</h2>
-        <p className="mt-1 text-body-s text-muted">{t('app.onboarding.joinBody')}</p>
+        <p className="mt-1 text-body text-muted">{t('app.onboarding.joinBody')}</p>
       </div>
       <Field
         label={t('auth.signup.inviteCode')}
@@ -211,7 +211,7 @@ export function Onboarding() {
                   ? t('app.onboarding.delegateOn')
                   : t('app.onboarding.delegateOff')}
               </p>
-              <p className="mt-1 text-body-s text-muted">
+              <p className="mt-1 text-body text-muted">
                 {mode === 'delegate'
                   ? t('app.onboarding.delegateOnHint')
                   : t('app.onboarding.delegateOffHint')}
@@ -409,7 +409,7 @@ export function Onboarding() {
             Elle ne s'affiche qu'en gestion seule — la répéter en gestion
             déléguée serait du bruit. */}
         {mode !== 'delegate' && (
-          <p className="border-t border-divider px-4 py-3 text-body-s text-muted sm:px-5">
+          <p className="border-t border-divider px-4 py-3 text-body text-muted sm:px-5">
             {t('app.onboarding.managerOffNote')}
           </p>
         )}

@@ -12,11 +12,21 @@
  * CE QUE CE SCRIPT MESURE, ET CE QU'IL NE MESURE PAS.
  *
  * Il ouvre un écran, s'abonne aux `layout-shift` du navigateur, puis SURVOLE
- * puis FOCALISE chaque commande d'un graphique, une par une, en relâchant entre
- * chaque. Ce qu'il additionne est donc le décalage causé par le POINTAGE seul —
- * distinct du décalage de chargement, que la porte mesure ailleurs et qui ne
- * dit rien de celui-ci : une page peut se charger sans un tressaillement et
- * sauter à chaque passage de souris.
+ * puis FOCALISE chaque commande, une par une, en relâchant entre chaque. Ce
+ * qu'il additionne est donc le décalage causé par le POINTAGE seul — distinct
+ * du décalage de chargement, que la porte mesure ailleurs et qui ne dit rien de
+ * celui-ci : une page peut se charger sans un tressaillement et sauter à chaque
+ * passage de souris.
+ *
+ * LE SURVOL EST UN VRAI SURVOL, ET IL NE L'ÉTAIT PAS. La première rédaction
+ * envoyait des `MouseEvent` construits en JavaScript. Ils déclenchent bien les
+ * gestionnaires React — `onMouseEnter` —, mais PAS la pseudo-classe `:hover`
+ * du CSS : le navigateur ne la donne qu'au pointeur physique. Une moitié
+ * entière du recensement — toutes les règles `hover:` de Tailwind, qui sont la
+ * forme la plus courante du survol dans ce dépôt — échappait donc à la mesure
+ * pendant que la garde affichait « 90 commandes survolées ». On déplace
+ * désormais le POINTEUR sur le centre de chaque commande, ce qui pose `:hover`
+ * pour de bon, et l'on garde le focus en plus : les deux chemins comptent.
  *
  * Il mesure AUSSI le déplacement en pixels d'un repère pris sous le graphique.
  * Les deux nombres ne disent pas la même chose et il faut les deux : le
@@ -80,6 +90,17 @@ const POINTS = [
   { adresse: '/demo', largeur: 360, langue: 'fr' },
   { adresse: '/demo', largeur: 1280, langue: 'fr' },
   { adresse: '/demo', largeur: 360, langue: 'en' },
+
+  /* LES MODALES. `ouvrir` nomme le bouton qui les fait apparaître ; le pointage
+     porte alors sur LEURS commandes — pastilles de métier, d'urgence, segments,
+     boutons du pied. C'est le lieu le plus exposé au défaut que ce script
+     garde : un formulaire dense, dans une boîte dont la hauteur est bornée,
+     où un champ qui grandit au survol pousse l'action principale hors du
+     champ de vision. */
+  { adresse: '/demo/travaux', largeur: 360, langue: 'fr', ouvrir: /^Ouvrir un chantier$/ },
+  { adresse: '/demo/travaux', largeur: 1280, langue: 'fr', ouvrir: /^Ouvrir un chantier$/ },
+  { adresse: '/demo/paiements', largeur: 360, langue: 'fr', ouvrir: /^Enregistrer un paiement$/ },
+  { adresse: '/demo/paiements', largeur: 1280, langue: 'fr', ouvrir: /^Enregistrer un paiement$/ },
 ]
 /*
   ATTENDUS EST UNE CONSTANTE ÉCRITE, JAMAIS UNE SOMME DE `POINTS`.
@@ -89,10 +110,10 @@ const POINTS = [
   trouvé par la même mutation deux lots de suite ; le nombre est donc écrit à
   la main, et l'ajout d'un point oblige à le changer dans le diff.
 
-  6 = accueil à 360 et 1280 en français, accueil à 360 en anglais, et les trois
-  mêmes états du tableau de bord.
+  10 = accueil à 360 et 1280 en français, accueil à 360 en anglais, les trois
+  mêmes états du tableau de bord, et deux modales à deux largeurs.
 */
-const ATTENDUS = 6
+const ATTENDUS = 10
 /** Sous ce compte, un écran n'a pas de graphique à pointer : c'est un défaut. */
 const COMMANDES_MINIMUM = 3
 
@@ -146,36 +167,93 @@ try {
         if(!e.hadRecentInput){window.__d+=e.value;window.__n++}})
       .observe({type:'layout-shift',buffered:false})`)
 
-    const mesure = await page.evaluate(async () => {
-      let deplacement = 0
-      let commandes = 0
-      for (const figure of document.querySelectorAll('figure')) {
-        const boutons = [...figure.querySelectorAll('button')]
+    if (point.ouvrir) {
+      const bouton = page.getByRole('button', { name: point.ouvrir }).first()
+      if ((await bouton.count()) === 0) {
+        plaintes.push(
+          `${point.adresse}@${point.largeur}/${point.langue} : le bouton qui ouvre la modale est introuvable.\n` +
+            "   Une modale qu'on n'ouvre pas est une modale qu'on ne pointe pas, et « pas pointée »\n" +
+            "   ne doit jamais s'écrire comme « sans défaut ».",
+        )
+        await contexte.close()
+        continue
+      }
+      await bouton.click()
+      await page.waitForSelector('[role="dialog"]', { timeout: 5000 })
+      await page.waitForTimeout(300)
+    }
+
+    /* Les commandes à pointer, et le repère qui encaisse ce qu'elles poussent.
+       Relevées en une fois : les pointer depuis Node demande leurs positions,
+       et les redemander à chaque tour ferait mesurer un DOM qui a bougé. */
+    const cibles = await page.evaluate(() => {
+      const out = []
+      let n = 0
+      /* Dans une modale, les commandes ne vivent pas dans un `<figure>` : le
+         dialogue EST le champ de mesure, et son pied d'action est le repère —
+         c'est lui que pousserait un champ qui grandit au survol. Hors modale,
+         ce sont les graphiques et le bloc qui les suit. */
+      const dialogue = document.querySelector('[role="dialog"]')
+      const zones = dialogue ? [dialogue] : [...document.querySelectorAll('figure')]
+      /* PAS SEULEMENT LES `<button>`. Les pastilles de choix sont des `<label>`
+         portant un radio en `sr-only` : c'est le label qui reçoit le survol et
+         qui porte les règles `hover:`, donc c'est lui qu'il faut pointer. La
+         première rédaction n'en voyait aucune — trois commandes pointées dans
+         « Ouvrir un chantier », qui en compte douze — et affichait « pointées »
+         sur ce qu'elle n'avait pas touché. */
+      for (const zone of zones) {
+        const boutons = [...zone.querySelectorAll('button, label, a[href], summary')]
         if (boutons.length === 0) continue
-        figure.scrollIntoView({ block: 'center' })
-        await new Promise((r) => requestAnimationFrame(r))
-        /* Le repère est pris SOUS la figure : c'est lui qui encaisse tout ce
-           qu'une hauteur variable pousse vers le bas. */
-        const repere = figure.parentElement?.nextElementSibling ?? figure.nextElementSibling
-        const y0 = repere ? Math.round(repere.getBoundingClientRect().top) : null
+        if (!dialogue) zone.scrollIntoView({ block: 'center' })
         for (const b of boutons) {
-          b.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
-          b.dispatchEvent(new MouseEvent('mouseenter'))
-          b.focus()
-          await new Promise((r) => setTimeout(r, 80))
-          if (y0 !== null && repere) {
-            deplacement = Math.max(deplacement, Math.abs(Math.round(repere.getBoundingClientRect().top) - y0))
-          }
-          b.blur()
-          b.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }))
-          b.dispatchEvent(new MouseEvent('mouseleave'))
-          await new Promise((r) => setTimeout(r, 50))
-          commandes++
+          b.dataset.pointage = String(n++)
+          out.push(`[data-pointage="${b.dataset.pointage}"]`)
         }
       }
-      await new Promise((r) => setTimeout(r, 350))
-      return { decalage: window.__d, evenements: window.__n, deplacement, commandes }
+      if (dialogue) {
+        const pied = dialogue.children[dialogue.children.length - 1]
+        if (pied) pied.setAttribute('data-repere', '1')
+      } else {
+        const fig = document.querySelector('figure')
+        const repere = fig?.parentElement?.nextElementSibling ?? fig?.nextElementSibling
+        if (repere) repere.setAttribute('data-repere', '1')
+      }
+      return out
     })
+
+    /* EN COORDONNÉES DE DOCUMENT, et non de fenêtre. `hover()` amène la
+       commande sous le pointeur en FAISANT DÉFILER la page : lu dans la
+       fenêtre, le repère « bougeait » alors de 785 px sans qu'aucune mise en
+       page n'ait changé. Le défilement n'est pas un décalage. */
+    const lireRepere = () =>
+      page.evaluate(() => {
+        const r = document.querySelector('[data-repere]')
+        return r ? Math.round(r.getBoundingClientRect().top + window.scrollY) : null
+      })
+
+    const y0 = await lireRepere()
+    let deplacement = 0
+    let commandes = 0
+    for (const sel of cibles) {
+      const el = page.locator(sel)
+      /* `hover()` déplace le POINTEUR : c'est ce qui pose `:hover` en CSS.
+         `focus()` couvre l'autre chemin. Les deux, un par un, en relâchant. */
+      await el.hover({ timeout: 3000 }).catch(() => {})
+      await el.focus({ timeout: 3000 }).catch(() => {})
+      await page.waitForTimeout(70)
+      const y = await lireRepere()
+      if (y0 !== null && y !== null) deplacement = Math.max(deplacement, Math.abs(y - y0))
+      await page.mouse.move(0, 0)
+      await page.evaluate(() => document.activeElement?.blur?.())
+      await page.waitForTimeout(50)
+      commandes++
+    }
+    await page.waitForTimeout(350)
+    const mesure = {
+      ...(await page.evaluate(() => ({ decalage: window.__d, evenements: window.__n }))),
+      deplacement,
+      commandes,
+    }
 
     const nom = `${point.adresse}@${point.largeur}/${point.langue}`
 

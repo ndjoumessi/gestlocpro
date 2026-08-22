@@ -195,7 +195,7 @@ export function Signaler() {
             <div
               role="status"
               aria-busy="true"
-              className="px-4 pb-4 text-body-s text-muted sm:px-5 sm:pb-5"
+              className="px-4 pb-4 text-body text-muted sm:px-5 sm:pb-5"
             >
               {t('common.loading')}
             </div>

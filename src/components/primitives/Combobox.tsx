@@ -314,7 +314,7 @@ export function Combobox({
         >
           {visibles.length === 0 && (
             // Une liste vide sans un mot laisse croire à une panne.
-            <li role="presentation" className="px-3 py-2 text-body-s text-muted">
+            <li role="presentation" className="px-3 py-2 text-body text-muted">
               —
             </li>
           )}
@@ -379,7 +379,7 @@ export function Combobox({
               // Le texte reste lisible par `aria-describedby`, qui compose la
               // description à partir du contenu et non du rôle.
               role="presentation"
-              className="border-t border-border px-3 py-2 text-body-s text-muted"
+              className="border-t border-border px-3 py-2 text-body text-muted"
             >
               {t('common.listTruncated')}
             </li>

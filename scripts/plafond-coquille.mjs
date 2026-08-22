@@ -19,9 +19,22 @@
  * donc en dur ci-dessous, avec la valeur d'avant à côté — la marge est
  * lisible dans le diff, et la faire monter demande d'écrire pourquoi.
  *
- * DEUX ÉCRANS AU MOINS, ET C'EST LA GARDE DU GARDE. La coquille applicative et
- * la coquille publique ne sont pas la même, et mesurer l'une pour l'autre
- * laisserait la moitié du produit sans surveillance.
+ * CE QU'IL REGARDE, ET CE QU'IL NE REGARDE PAS — écrit parce qu'il a d'abord
+ * regardé cinq points sur deux cent cinquante-trois, sans le dire.
+ *
+ * IL REGARDE les 23 écrans déduits du routeur, à TROIS largeurs : 320, la plus
+ * étroite du marché visé ; 360, l'appareil de référence ; 1280, le poste de
+ * bureau. Soixante-neuf points.
+ *
+ * IL NE REGARDE PAS les huit autres largeurs de `mesure-ui`. Ce n'est pas un
+ * oubli : la hauteur de coquille ne change qu'aux points de rupture, et les
+ * trois familles de coquille du produit — applicative, publique,
+ * authentification — les franchissent toutes entre 320 et 1280. Une quatrième
+ * largeur mesurerait la même chose une quatrième fois. Si un jour une coquille
+ * se replie à 700 px, ce script ne le verra pas, et c'est écrit ici.
+ *
+ * IL NE REGARDE PAS non plus ce que cette hauteur CONTIENT. Remplacez l'en-tête
+ * par une bande vide de même hauteur et il reste vert. Il garde un nombre.
  *
  *   node scripts/plafond-coquille.mjs
  *
@@ -33,6 +46,7 @@ import { spawn } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { exit } from 'node:process'
+import { inventaireDesRoutes, exigerUnInventairePlein } from './inventaire/routes.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
 const PORT = 4191
@@ -48,25 +62,91 @@ const BASE = `http://127.0.0.1:${PORT}`
  * La marge au-dessus du mesuré est de dix pixels, pas de cent : une refonte
  * qui coûte un demi-bouton doit rougir, sinon le plafond n'est qu'un souvenir.
  */
-const PLAFONDS = [
-  { adresse: '/demo', largeur: 360, plafond: 132, avant: 325, mesure: 122 },
-  { adresse: '/demo', largeur: 1280, plafond: 132, avant: 136, mesure: 122 },
-  { adresse: '/demo/paiements', largeur: 360, plafond: 132, avant: 325, mesure: 122 },
-  { adresse: '/', largeur: 360, plafond: 80, avant: 69, mesure: 69 },
-  { adresse: '/connexion', largeur: 360, plafond: 300, avant: 288, mesure: 288 },
-]
-/*
-  ATTENDUS EST UNE CONSTANTE ÉCRITE, JAMAIS `PLAFONDS.length`.
+/**
+ * LES PLAFONDS, PAR FAMILLE DE COQUILLE ET PAR LARGEUR.
+ *
+ * TROIS FAMILLES, parce qu'il y en a trois et pas vingt-trois : l'applicative
+ * (barre + bandeau + barre basse), la publique (un en-tête seul), celle de
+ * l'authentification (une colonne centrée sous un en-tête haut). Les 23 écrans
+ * s'y rangent, et un plafond par écran serait vingt-trois fois le même nombre.
+ *
+ * LE PLAFOND EST LE MESURÉ, SANS MARGE — et c'est le second correctif de ce
+ * fichier. La première rédaction autorisait 132 px pour un mesuré de 122 : dix
+ * pixels que personne n'avait justifiés, donc dix pixels qu'une refonte
+ * distraite pouvait dépenser sans que rien ne le dise. Un plafond au mesuré
+ * fait rougir au premier pixel, et le faire monter demande d'écrire ici la
+ * valeur d'avant et ce qu'elle achète — comme le fait `poids-ecrans` pour les
+ * octets.
+ *
+ * `avant` garde la mesure d'avant la refonte : un plafond seul est un nombre,
+ * un plafond avec l'avant est une décision.
+ */
+const FAMILLES = {
+  applicative: {
+    /* 320 : la mention de démonstration passe à deux lignes, +21 px. C'est le
+       prix d'une phrase courte QUI NOMME ce qui est fictif, plutôt qu'une
+       « Données fictives. » qui tient sur une ligne et n'apprend rien. */
+    320: { plafond: 143, avant: 325 },
+    360: { plafond: 122, avant: 325 },
+    1280: { plafond: 122, avant: 136 },
+  },
+  publique: { 320: { plafond: 69, avant: 69 }, 360: { plafond: 69, avant: 69 }, 1280: { plafond: 69, avant: 69 } },
+  /* QUATRIÈME FAMILLE, TROUVÉE EN ÉLARGISSANT — et c'est ce que l'élargissement
+     valait. L'écran introuvable porte son propre en-tête, plus haut que celui
+     de la vitrine : 193 px à 320 et 360, 75 px à 1280. Les cinq points de la
+     première rédaction ne le voyaient pas, et il aurait passé pour « publique »
+     s'il avait été rangé au jugé. Valeurs entérinées, non bénies : cet écran
+     n'a pas été refondu. */
+  introuvable: {
+    320: { plafond: 193, avant: 193 },
+    360: { plafond: 193, avant: 193 },
+    1280: { plafond: 75, avant: 75 },
+  },
+  /* Non touchée par la refonte : la valeur est celle d'avant, et le plafond
+     l'entérine sans la bénir. C'est le prochain lot qui aura à la défendre. */
+  authentification: {
+    320: { plafond: 288, avant: 288 },
+    360: { plafond: 288, avant: 288 },
+    1280: { plafond: 82, avant: 82 },
+  },
+}
 
-  Le dériver de la liste surveillée rend la garde d'accord avec elle-même :
-  vider `PLAFONDS`, et l'inspection compare 0 à 0 puis se déclare verte. La
-  même mutation a trouvé ce piège deux lots de suite. Ajouter un écran oblige
+/** À quelle famille appartient une adresse. Déduit, jamais recopié. */
+function familleDe(adresse) {
+  if (adresse === ADRESSE_404) return 'introuvable'
+  if (adresse.startsWith('/app') || adresse.startsWith('/demo')) return 'applicative'
+  if (['/connexion', '/inscription', '/mot-de-passe-oublie', '/reinitialiser'].includes(adresse))
+    return 'authentification'
+  return 'publique'
+}
+
+const LARGEURS = [320, 360, 1280]
+
+/**
+ * Les adresses qui ne rendent PAS d'écran, et pourquoi.
+ *
+ * `/app` redirige vers le tableau de bord du rôle : il n'a ni contenu ni
+ * `<main>`, et lui demander une hauteur de coquille n'aurait pas de sens.
+ * Écrite ici plutôt que devinée par l'absence de `<main>` — sans quoi un écran
+ * réel qui perdrait son `<main>` par accident se sauterait tout seul.
+ */
+const SANS_ECRAN = ['/app']
+/** L'adresse que `routes.mjs` emploie pour visiter l'écran introuvable. */
+const ADRESSE_404 = '/adresse-qui-n-existe-pas'
+/*
+  ATTENDUS EST UNE CONSTANTE ÉCRITE, JAMAIS UN PRODUIT CALCULÉ.
+
+  Le dériver de la liste surveillée — `ADRESSES.length * LARGEURS.length` —
+  rendrait la garde d'accord avec elle-même : vider l'inventaire, et
+  l'inspection comparerait 0 à 0 puis se déclarerait verte. La même mutation a
+  trouvé ce piège trois lots de suite. Ajouter un écran ou une largeur oblige
   donc à toucher ce nombre, et le diff le montre.
 
-  5 = tableau de bord aux deux largeurs · un écran de liste dense · la page
-  publique · un écran d'authentification, dont la coquille est une troisième.
+  66 = (23 écrans déduits du routeur − 1 sans écran) × 3 largeurs.
+  3  = la route `/app`, redirection sans `<main>`, à ses trois largeurs.
 */
-const ATTENDUS = 5
+const ATTENDUS = 66
+const SAUTEES_ATTENDUES = 3
 
 async function servir() {
   const fils = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--host', '127.0.0.1'], {
@@ -85,49 +165,79 @@ async function servir() {
   throw new Error('plafond-coquille : le serveur de prévisualisation n’a pas répondu.')
 }
 
+const routes = inventaireDesRoutes()
+exigerUnInventairePlein(routes)
+const ADRESSES = routes.map((r) => r.adresse)
+
 const serveur = await servir()
 const plaintes = []
 const releve = []
 let inspectes = 0
+/** Les routes déclarées sans écran, comptées pour que leur nombre soit gardé. */
+let sautees = 0
 
 try {
   const navigateur = await chromium.launch()
-  for (const point of PLAFONDS) {
+  for (const largeur of LARGEURS) {
     const contexte = await navigateur.newContext({
-      viewport: { width: point.largeur, height: 900 },
+      viewport: { width: largeur, height: 900 },
       locale: 'fr-FR',
       colorScheme: 'light',
     })
     const page = await contexte.newPage()
-    await page.goto(BASE + point.adresse, { waitUntil: 'domcontentloaded' })
-    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {})
-    await page.waitForTimeout(500)
+    for (const adresse of ADRESSES) {
+      await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {})
+      await page.waitForTimeout(300)
 
-    const h = await page.evaluate(() => {
-      const main = document.querySelector('main')
-      if (!main) return null
-      return Math.round(main.getBoundingClientRect().top + window.scrollY)
-    })
+      const h = await page.evaluate(() => {
+        const main = document.querySelector('main')
+        if (!main) return null
+        return Math.round(main.getBoundingClientRect().top + window.scrollY)
+      })
+
+      const nom = `${adresse}@${largeur}`
+      /*
+        LES ROUTES SANS ÉCRAN, DÉCLARÉES ET COMPTÉES À PART.
+
+        `/app` ne rend pas un écran : il redirige vers le tableau de bord selon
+        le rôle. Il n'a donc pas de `<main>`, et exiger une hauteur de coquille
+        d'une redirection n'a pas de sens. La liste est ÉCRITE et son compte
+        entre dans `ATTENDUS` : une route qui perdrait son `<main>` sans être
+        ici fait toujours rougir, et une route qui redeviendrait un écran ferait
+        chuter le compte des sautées.
+      */
+      if (SANS_ECRAN.includes(adresse)) {
+        if (h !== null) {
+          plaintes.push(
+            `${nom} : déclarée sans écran, mais elle rend un <main>.\n` +
+              "   La déclaration est périmée : retirez-la, l'écran veut un plafond.",
+          )
+        }
+        sautees++
+        continue
+      }
+      if (h === null) {
+        plaintes.push(
+          `${nom} : pas de <main> sur cet écran.\n` +
+            "   La hauteur de coquille se mesure contre lui ; sans lui il n'y a pas de mesure,\n" +
+            '   et une absence de mesure ne doit jamais s’écrire comme une absence de défaut.',
+        )
+        continue
+      }
+      const famille = familleDe(adresse)
+      const p = FAMILLES[famille][largeur]
+      inspectes++
+      releve.push({ nom, h, famille, ...p })
+      if (h > p.plafond) {
+        plaintes.push(
+          `${nom} (${famille}) : ${h} px de coquille avant le contenu, pour un plafond de ${p.plafond}.\n` +
+            `   Avant la refonte : ${p.avant} px. Ce qui remonte ici est repris sur le contenu,\n` +
+            '   sur tous les écrans de cette famille à la fois.',
+        )
+      }
+    }
     await contexte.close()
-
-    const nom = `${point.adresse}@${point.largeur}`
-    if (h === null) {
-      plaintes.push(
-        `${nom} : pas de <main> sur cet écran.\n` +
-          "   La hauteur de coquille se mesure contre lui ; sans lui il n'y a pas de mesure,\n" +
-          '   et une absence de mesure ne doit jamais s’écrire comme une absence de défaut.',
-      )
-      continue
-    }
-    inspectes++
-    releve.push({ nom, h, ...point })
-    if (h > point.plafond) {
-      plaintes.push(
-        `${nom} : ${h} px de coquille avant le contenu, pour un plafond de ${point.plafond}.\n` +
-          `   Avant ce lot : ${point.avant} px. Ce qui remonte ici est repris sur le contenu,\n` +
-          '   sur les 23 écrans à la fois.',
-      )
-    }
   }
   await navigateur.close()
 } finally {
@@ -142,12 +252,25 @@ if (inspectes === 0) {
 if (inspectes !== ATTENDUS) {
   plaintes.push(`${inspectes} écran(s) inspecté(s) pour ${ATTENDUS} attendu(s).`)
 }
+if (sautees !== SAUTEES_ATTENDUES) {
+  plaintes.push(
+    `${sautees} route(s) sautée(s) pour ${SAUTEES_ATTENDUES} attendue(s).\n` +
+      "   La liste des routes sans écran est périmée dans un sens ou dans l'autre.",
+  )
+}
 
+/* Le relevé est résumé PAR FAMILLE : soixante-neuf lignes noieraient le seul
+   nombre qui compte, qui est le pire de chaque famille. */
+const parFamille = {}
 for (const r of releve) {
+  const cle = `${r.famille}@${r.nom.split('@')[1]}`
+  if (!parFamille[cle] || r.h > parFamille[cle].h) parFamille[cle] = r
+}
+for (const [cle, r] of Object.entries(parFamille)) {
   console.log(
-    `  ${r.nom.padEnd(24)} ${String(r.h).padStart(4)} px  (plafond ${String(r.plafond).padStart(4)} · ` +
-      `avant le lot ${String(r.avant).padStart(4)} · ` +
-      `${r.avant > r.h ? `−${r.avant - r.h}` : `+${r.h - r.avant}`} px)`,
+    `  ${cle.padEnd(26)} pire ${String(r.h).padStart(4)} px  (plafond ${String(r.plafond).padStart(4)} · ` +
+      `avant la refonte ${String(r.avant).padStart(4)} · ` +
+      `${r.avant > r.h ? `−${r.avant - r.h}` : `+${r.h - r.avant}`} px)   ${r.nom}`,
   )
 }
 

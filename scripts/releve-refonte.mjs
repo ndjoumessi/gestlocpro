@@ -149,29 +149,50 @@ const DANS_LA_PAGE = () => {
   /* ── Coquille : hauteur AVANT le contenu ──────────────────────────────── */
   const main = document.querySelector('main')
   const hautDuContenu = main ? Math.round(main.getBoundingClientRect().top + window.scrollY) : null
-  /* Le premier élément réellement actionnable, dans l'ordre du document. */
-  let premier = null
-  for (const el of document.querySelectorAll(ACTIONNABLES)) {
-    if (!visible(el)) continue
-    const r = el.getBoundingClientRect()
-    premier = {
-      nature: el.tagName.toLowerCase() + (el.getAttribute('type') ? `[${el.getAttribute('type')}]` : ''),
-      nom: (el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 40),
-      y: Math.round(r.top + window.scrollY),
-      dansCoquille: hautDuContenu !== null && r.top + window.scrollY < hautDuContenu,
-    }
-    break
-  }
+  /*
+    DEUX PREMIERS ACTIONNABLES, ET IL FAUT LES DEUX.
 
-  /* ── Cibles tactiles : au POINT DE CONTACT, pas la boîte déclarée ─────── */
-  const petites = []
-  for (const el of document.querySelectorAll(ACTIONNABLES)) {
-    if (!visible(el)) continue
-    const r = el.getBoundingClientRect()
-    if (Math.min(r.width, r.height) >= 44) continue
-    petites.push({ nature: el.tagName.toLowerCase(), w: Math.round(r.width), h: Math.round(r.height),
-      nom: (el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 30) })
+    La première rédaction n'en rendait qu'un : le premier du DOCUMENT. Sur un
+    écran applicatif c'est le bouton de menu de la coquille, à y = 10, et il ne
+    bouge par construction jamais — d'où une ligne de rapport qui annonçait
+    « inchangé sur les 23 écrans » tout en masquant le seul chiffre qui comptait :
+    « Exporter le relevé » est passé de 427 à 225 px dans le même lot, et le
+    relevé ne l'a pas vu.
+
+    Le premier actionnable du CONTENU répond à la question qu'on pose vraiment —
+    à quelle distance est le premier geste que l'écran propose. Celui du
+    document répond à une autre, plus étroite : où commence la tabulation. Les
+    deux sont rendus, nommés, et ne se confondent plus.
+  */
+  const premierDe = (racine) => {
+    for (const el of racine.querySelectorAll(ACTIONNABLES)) {
+      if (!visible(el)) continue
+      const r = el.getBoundingClientRect()
+      return {
+        nature: el.tagName.toLowerCase() + (el.getAttribute('type') ? `[${el.getAttribute('type')}]` : ''),
+        nom: (el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 40),
+        y: Math.round(r.top + window.scrollY),
+      }
+    }
+    return null
   }
+  const premier = premierDe(document)
+  const premierDuContenu = main ? premierDe(main) : null
+
+  /*
+    LA COLONNE DES CIBLES A ÉTÉ RETIRÉE, ET C'EST UNE CORRECTION.
+
+    Elle lisait `getBoundingClientRect()` et comptait 546 cibles « sous 44 px »
+    là où `mesure-ui`, qui SONDE réellement le point de contact — rembourrages,
+    pseudo-éléments et recouvrements compris — en compte ZÉRO. Une boîte se
+    calcule ; une cible se touche, et un lien de 18 × 17 px posé au milieu d'une
+    rangée de 44 px est parfaitement atteignable.
+
+    Refaire ici le sondage de `mesure-ui` serait le recopier — et une mesure
+    recopiée diverge au premier ajustement. Un relevé qui rend un chiffre faux
+    est un piège posé pour le prochain lecteur : on le retire, et l'on dit où
+    vit la vraie mesure. `mesure-ui.mjs`, constante `PLANCHER_CIBLE`.
+  */
 
   return {
     typo: [...typo.values()].sort((a, b) => b.n - a.n),
@@ -180,7 +201,7 @@ const DANS_LA_PAGE = () => {
     hCoquille: hautDuContenu,
     debordement: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
     premierActionnable: premier,
-    petitesCibles: petites,
+    premierActionnableDuContenu: premierDuContenu,
     nActionnables: [...document.querySelectorAll(ACTIONNABLES)].filter(visible).length,
   }
 }

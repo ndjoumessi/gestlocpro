@@ -41,7 +41,7 @@ export const en: Dictionary = {
     actionFailed: 'This action failed for now. Nothing was saved.',
     amountUnreadable:
       'Amount unreadable. Re-enter it in positive digits, without letters or symbols.',
-    demoNoticeShort: 'Sample data.',
+    demoNoticeShort: 'Buildings, tenants and amounts are fictional.',
     demoNotice:
       'You are browsing a demo: these buildings, tenants and amounts are fictional.',
     demoCta: 'Create my space',

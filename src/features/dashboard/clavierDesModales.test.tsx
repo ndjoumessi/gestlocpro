@@ -1,0 +1,137 @@
+import { describe, expect, it } from 'vitest'
+import { attendreLeChargement, renderApp, screen, userEvent } from '@/test/render'
+
+/**
+ * TOUTE MODALE S'OUVRE, SE TIENT ET SE REND AU CLAVIER.
+ *
+ * Quatre propriétés, et il les faut toutes : ouvrir depuis le clavier, ne pas
+ * pouvoir sortir du dialogue à la tabulation, fermer à Échap, retrouver le
+ * focus sur le bouton qui a ouvert. Trois sur quatre ne font pas une modale
+ * utilisable — c'est l'état dans lequel se trouvaient les deux panneaux de la
+ * barre avant ce lot, et il a fallu les mesurer au navigateur pour le voir.
+ *
+ * POURQUOI CE FICHIER N'EXISTAIT PAS, ET POURQUOI IL N'AURAIT RIEN PROUVÉ.
+ * `Modal` portait son piège depuis l'origine et `modalFocus.test.tsx` passait —
+ * mais le prédicat de visibilité du piège était `offsetParent !== null`, et
+ * `offsetParent` vaut TOUJOURS `null` sous jsdom, faute de mise en page. La
+ * liste des focalisables était donc vide, le gestionnaire de Tab sortait par
+ * son `length === 0`, et le piège ne s'exécutait pas. Un cas écrit avant la
+ * correction du prédicat aurait été vert sans rien exercer.
+ *
+ * Le même prédicat écartait, dans un VRAI navigateur, tout focalisable
+ * `position: fixed` — pour lequel `offsetParent` vaut également `null`. Le trou
+ * était donc réel des deux côtés.
+ */
+
+/** Où chaque modale s'ouvre, et par quel bouton. Une ligne par modale. */
+const MODALES: { nom: string; adresse: string; bouton: RegExp }[] = [
+  { nom: 'Ajouter un immeuble', adresse: '/demo/parc', bouton: /^Ajouter un immeuble$/ },
+  { nom: 'Ajouter un logement', adresse: '/demo/parc', bouton: /^Ajouter un logement$/ },
+  { nom: 'Ouvrir un chantier', adresse: '/demo/travaux', bouton: /^Ouvrir un chantier$/ },
+  { nom: 'Enregistrer un paiement', adresse: '/demo/paiements', bouton: /^Enregistrer un paiement$/ },
+]
+
+async function parcoursClavier(adresse: string, motif: RegExp) {
+  const user = userEvent.setup()
+  await renderApp(adresse)
+  await attendreLeChargement()
+
+  const ouvreur = screen.getByRole('button', { name: motif })
+  ouvreur.focus()
+  expect(document.activeElement).toBe(ouvreur)
+
+  /* Ouvert au CLAVIER, pas à la souris : c'est le chemin qu'on garde. */
+  await user.keyboard('{Enter}')
+  const dialogue = await screen.findByRole('dialog')
+
+  /* LE FOCUS EST ENTRÉ. Une modale qui s'ouvre en laissant le focus derrière
+     elle oblige à tabuler à travers toute la page pour l'atteindre. */
+  expect(dialogue.contains(document.activeElement)).toBe(true)
+
+  /* LE PIÈGE. Vingt tabulations : plus que la plus fournie de ces modales n'a
+     de commandes, donc le tour est bouclé. On compte TOUTES les évasions pour
+     que l'échec dise combien, et non seulement qu'il y en a eu. */
+  const evasions: string[] = []
+  for (let i = 0; i < 20; i++) {
+    await user.tab()
+    if (!dialogue.contains(document.activeElement)) {
+      evasions.push((document.activeElement as HTMLElement)?.tagName ?? '?')
+    }
+  }
+  expect(evasions, 'le focus est sorti de la modale ouverte').toEqual([])
+
+  await user.keyboard('{Escape}')
+  expect(screen.queryByRole('dialog')).toBeNull()
+  expect(document.activeElement, 'le focus n’est pas revenu au bouton d’ouverture').toBe(ouvreur)
+}
+
+describe('le clavier des modales', () => {
+  for (const modale of MODALES) {
+    it(`« ${modale.nom} » : ouverture, piège, Échap, retour du focus`, async () => {
+      await parcoursClavier(modale.adresse, modale.bouton)
+    })
+  }
+
+  /**
+   * CHAQUE CHAMP PORTE UN NOM, ET C'EST LE LIEN LIBELLÉ↔CHAMP QUI LE DONNE.
+   *
+   * Ce cas existe parce qu'une mutation l'a exigé et qu'AUCUNE garde ne la
+   * voyait : couper le `htmlFor` de `Field` — donc séparer chaque libellé de son
+   * contrôle — laissait la porte entièrement verte. Les cas de clavier
+   * passaient (le focus circule très bien entre des champs anonymes), la mesure
+   * des modales passait (la géométrie ne change pas), et `mesure-ui` aussi.
+   *
+   * Ce que la coupure détruit est invisible à l'œil et total au lecteur
+   * d'écran : « zone de saisie, vide » à la place de « Montant, obligatoire,
+   * zone de saisie ». C'est exactement l'interdit du sujet — ne jamais séparer
+   * un libellé de son champ — et il se vérifie par le NOM ACCESSIBLE, qui est
+   * la conséquence directe du lien.
+   *
+   * On interroge par `getAllByRole` puis `toHaveAccessibleName` plutôt que par
+   * `getByLabelText` : le second passerait aussi sur un `aria-label` posé à la
+   * main, ce qui est un autre montage — juste, mais qui ne prouve pas que le
+   * libellé VISIBLE est relié.
+   */
+  for (const modale of MODALES) {
+    it(`« ${modale.nom} » : chaque champ porte le nom de son libellé`, async () => {
+      await renderApp(modale.adresse)
+      await attendreLeChargement()
+      await userEvent.click(screen.getByRole('button', { name: modale.bouton }))
+      const dialogue = await screen.findByRole('dialog')
+
+      /* `type="hidden"` EXCLU, et c'est mesuré, pas supposé : `DatePicker` et
+         `MonthPicker` posent chacun un champ caché qui porte la valeur pour la
+         soumission native du formulaire. Il n'a ni libellé ni focus — il n'est
+         pas un champ pour l'utilisateur, c'est le fil qui relie le sélecteur au
+         `<form>`. Les exiger nommés ferait rougir sur deux montages corrects. */
+      /* `Array.from` et non un étalement : `DOM.Iterable` n'est pas dans les
+         `lib` du projet applicatif, et un `NodeList` étalé ne compile pas. */
+      const controles = Array.from(
+        dialogue.querySelectorAll<HTMLElement>(
+          'input:not([type="radio"]):not([type="hidden"]), select, textarea',
+        ),
+      ).filter((el) => !el.classList.contains('sr-only'))
+
+      /* Une modale sans champ ne prouverait rien : on exige qu'il y en ait. */
+      expect(controles.length, 'aucun champ à vérifier dans cette modale').toBeGreaterThan(0)
+      const anonymes = controles
+        .filter((el) => !el.getAttribute('aria-label') && !document.querySelector(`label[for="${el.id}"]`))
+        .map((el) => `${el.tagName.toLowerCase()}#${el.id}`)
+      expect(anonymes, 'champ(s) sans libellé relié').toEqual([])
+    })
+  }
+
+  /**
+   * LA GARDE DU GARDE, ET ELLE COMPTE CE QU'ELLE A JOUÉ.
+   *
+   * Une liste vidée par mégarde ferait passer ce fichier au vert avec zéro cas
+   * exécuté — « aucun défaut » et « rien regardé » s'écriraient pareil. Le
+   * nombre est ÉCRIT ici, jamais dérivé de `MODALES.length` : le dériver
+   * rendrait la garde d'accord avec elle-même, piège trouvé par la même
+   * mutation trois lots de suite.
+   */
+  it('a bien joué les quatre modales déclarées', () => {
+    expect(MODALES.length).toBe(4)
+    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(4)
+  })
+})

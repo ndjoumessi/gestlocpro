@@ -227,7 +227,7 @@ export function TenantDashboard() {
                 pour la période, la ligne disparaît plutôt que d'en inventer
                 une : le statut au-dessus dit déjà où en est le loyer. */}
             {versementCourant ? (
-              <span className="text-body-s text-muted">
+              <span className="text-body text-muted">
                 {t('app.tenant.paidOnBy', {
                   date: d.dayMonth(versementCourant.paidOn),
                   method: t(
@@ -405,7 +405,7 @@ export function TenantDashboard() {
               level={2}
             />
             {works.length === 0 ? (
-              <p className="text-body-s text-muted">{t('app.tenant.worksEmpty')}</p>
+              <p className="text-body text-muted">{t('app.tenant.worksEmpty')}</p>
             ) : (
               <ul className="flex flex-col gap-3">
                 {works.map((work) => (
@@ -473,7 +473,7 @@ export function TenantDashboard() {
       {/* La règle de confidentialité est dite à l'écran, pas seulement
           appliquée : le locataire doit savoir ce que son bailleur ne voit pas
           de lui, et inversement. */}
-      <p className="mt-4 flex items-start gap-2 rounded-lg border border-divider bg-surface px-4 py-3 text-body-s text-muted">
+      <p className="mt-4 flex items-start gap-2 rounded-lg border border-divider bg-surface px-4 py-3 text-body text-muted">
         <Icon name="shield" size={16} className="mt-0.5 shrink-0 text-ok" />
         {t('app.tenant.privacyNote')}
       </p>
@@ -502,7 +502,7 @@ function CarteCharge({ label, amount, note }: { label: string; amount: string; n
     <Card>
       <p className="eyebrow text-muted">{label}</p>
       <p className="numeric mt-2 text-kpi font-medium">{amount}</p>
-      <p className="mt-2 text-body-s text-muted">{note}</p>
+      <p className="mt-2 text-body text-muted">{note}</p>
     </Card>
   )
 }
@@ -539,7 +539,7 @@ function SerieFluide({
       <div className="mb-2 flex items-baseline justify-between gap-3">
         <span className="text-caps text-muted">{libelle}</span>
         {moyenne !== null && (
-          <span className="numeric text-body-s text-muted">
+          <span className="numeric text-body text-muted">
             {t('app.tenant.average', { value: lire(moyenne) })}
           </span>
         )}
@@ -767,7 +767,7 @@ function TenantDashboardSkeleton() {
         </div>
       </SkeletonRegion>
 
-      <p className="mt-4 flex items-start gap-2 rounded-lg border border-divider bg-surface px-4 py-3 text-body-s text-muted">
+      <p className="mt-4 flex items-start gap-2 rounded-lg border border-divider bg-surface px-4 py-3 text-body text-muted">
         <Icon name="shield" size={16} className="mt-0.5 shrink-0 text-ok" />
         {t('app.tenant.privacyNote')}
       </p>
@@ -817,7 +817,7 @@ export function TenantScopeNote() {
   const n = useNumbers()
   const libelles = tenantUnitIds.map((id) => unitById(id)?.label).filter(Boolean) as string[]
   return (
-    <p className="mb-4 flex items-start gap-2 rounded-md border border-ok-border bg-ok-tint px-3.5 py-2.5 text-body-s text-ok">
+    <p className="mb-4 flex items-start gap-2 rounded-md border border-ok-border bg-ok-tint px-3.5 py-2.5 text-body text-ok">
       <StatusPill tone="ok" size="sm" icon="shield">
         {n.list(libelles)}
       </StatusPill>

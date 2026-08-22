@@ -104,7 +104,7 @@ export function PricingSection() {
               <h3 className="title-l">
                 {t(`marketing.pricing.${plan.id}.name` as 'marketing.pricing.pro.name')}
               </h3>
-              <p className="mt-1.5 min-h-10 text-body-s text-muted">
+              <p className="mt-1.5 min-h-10 text-body text-muted">
                 {t(`marketing.pricing.${plan.id}.pitch` as 'marketing.pricing.pro.pitch')}
               </p>
 
@@ -120,7 +120,7 @@ export function PricingSection() {
                     <p className="numeric text-[2.25rem] leading-none font-medium">
                       {money(price, { round: Number.isInteger(price) })}
                     </p>
-                    <p className="mt-2 text-body-s text-muted">
+                    <p className="mt-2 text-body text-muted">
                       {t('common.perMonth')}
                       {period === 'yearly' && ` · ${t('marketing.pricing.yearly').toLowerCase()}`}
                     </p>
@@ -142,7 +142,7 @@ export function PricingSection() {
                         la mention perdrait justement sa valeur là où elle
                         compte. */}
                     {priceIsRounded(plan, currency, period, units) && (
-                      <p className="mt-1.5 text-body-s text-muted">
+                      <p className="mt-1.5 text-body text-muted">
                         {t('marketing.pricing.roundingNote', {
                           exact: money(exact ?? 0, { round: Number.isInteger(exact) }),
                         })}
@@ -152,7 +152,7 @@ export function PricingSection() {
                 )}
 
                 {price !== null && (
-                  <p className="mt-2 flex items-center gap-1.5 text-body-s text-muted">
+                  <p className="mt-2 flex items-center gap-1.5 text-body text-muted">
                     <Icon name="checkCircle" size={14} />
                     {t('marketing.pricing.trial')}
                   </p>
@@ -161,7 +161,7 @@ export function PricingSection() {
 
               {/* Le socle commun est énoncé une fois, en prose, plutôt que
                   répété en quatre coches identiques sur chaque carte. */}
-              <p className="mt-5 flex items-start gap-2 text-body-s text-pretty text-muted">
+              <p className="mt-5 flex items-start gap-2 text-body text-pretty text-muted">
                 <Icon
                   name="check"
                   size={14}
@@ -211,7 +211,7 @@ export function PricingSection() {
         })}
       </div>
 
-      <p className="mx-auto mt-8 flex max-w-xl items-start justify-center gap-2 text-body-s text-muted">
+      <p className="mx-auto mt-8 flex max-w-xl items-start justify-center gap-2 text-body text-muted">
         <Icon name="info" size={15} className="mt-0.5 shrink-0 text-gold-ink" />
         {t('marketing.pricing.currencyNote')}
       </p>
@@ -286,7 +286,7 @@ function UnitSlider({ units, onChange }: { units: number; onChange: (n: number) 
         </output>
       </div>
 
-      <p className="mt-1 text-body-s text-muted">{t('marketing.pricing.unitsHint')}</p>
+      <p className="mt-1 text-body text-muted">{t('marketing.pricing.unitsHint')}</p>
     </div>
   )
 }

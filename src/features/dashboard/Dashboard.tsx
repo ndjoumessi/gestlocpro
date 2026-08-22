@@ -197,17 +197,29 @@ export function Dashboard() {
         />
       ) : (
       <>
+      {/*
+        TROIS NIVEAUX DE LECTURE, ET L'ORDRE EN FAIT PARTIE.
+
+        Les quatre cartes étaient égales — même taille, même graisse, même
+        gabarit — et rangées dans l'ordre du calcul : attendu, encaissé, reste,
+        occupation. Le rôle qui lit cet écran ARBITRE : ce sur quoi il agit,
+        c'est le RESTE À PERCEVOIR, dont la note porte le nombre de locataires
+        en retard et l'ancienneté du plus vieil impayé. C'est aussi la seule
+        des quatre qui mène à la seule action de l'écran, `RecordPaymentModal`.
+        Les trois autres la SITUENT : sans le loyer attendu et le taux
+        d'occupation, un reste à percevoir ne se lit pas.
+
+        VÉRIFIÉ AVANT DE RÉORDONNER : aucune des quatre n'est l'entrée d'un
+        parcours. `StatCard` n'accepte ni `onClick` ni `to` ; leur seule
+        commande possible est `action`, qu'aucune des quatre ne passe. Le
+        risque « je déplace l'entrée principale sans le savoir » n'existe pas
+        sur cet écran.
+
+        `encaissé` reste en second et garde le gabarit plein : c'est le
+        complément immédiat du reste à percevoir — les deux se lisent
+        ensemble, et replier l'un des deux forcerait à chercher l'autre.
+      */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label={t('app.dashboard.expected')}
-          value={money(expected, { round: true })}
-          note={t('app.dashboard.activeLeases', { count: occupied })}
-        />
-        <StatCard
-          label={t('app.dashboard.collected')}
-          value={money(collected, { round: true })}
-          note={t('app.dashboard.collectedShare', { percent: collectedShare })}
-        />
         <StatCard
           label={t('app.dashboard.outstanding')}
           value={money(outstanding, { round: true })}
@@ -215,6 +227,16 @@ export function Dashboard() {
             count: doivent.length,
             days: maxOverdueDays,
           })}
+        />
+        <StatCard
+          label={t('app.dashboard.collected')}
+          value={money(collected, { round: true })}
+          note={t('app.dashboard.collectedShare', { percent: collectedShare })}
+        />
+        <StatCard
+          label={t('app.dashboard.expected')}
+          value={money(expected, { round: true })}
+          note={t('app.dashboard.activeLeases', { count: occupied })}
         />
         <StatCard
           label={t('app.dashboard.occupancy')}
@@ -269,7 +291,7 @@ export function Dashboard() {
             }))}
           />
           )}
-          <p className="mt-4 border-t border-divider pt-4 text-body-s text-muted">
+          <p className="mt-4 border-t border-divider pt-4 text-body text-muted">
             {t('app.dashboard.chartNote')}
           </p>
         </Card>
@@ -280,27 +302,18 @@ export function Dashboard() {
             caption={t('app.dashboard.recoveryTableCaption')}
             centerValue={`${collectedShare} %`}
             centerLabel={t('app.dashboard.recoveryCollected')}
+            /* L'ÉTAT, ET NON LA COULEUR. La teinte et la forme d'une part
+               découlent toutes deux de `etat`, par une seule table dans
+               `Charts`. Cet écran ne peut donc plus les désaccorder — c'est le
+               même geste que la grille des paiements et sa légende, qui
+               appellent le même composant plutôt que de s'accorder à vue.
+               « en retard » se dit `overdue` ici comme partout ailleurs dans le
+               produit : un second mot pour le même état rouvrait la porte à
+               deux vocabulaires. */
             slices={[
-              {
-                key: 'paid',
-                label: t('app.dashboard.recoveryCollected'),
-                value: collected,
-                color: 'var(--color-ok)',
-              },
-              {
-                key: 'partial',
-                label: t('app.dashboard.recoveryPartial'),
-                // `--color-warn` et non `--color-gold` : l'or de marque ne
-                // tient que 2,87:1 sur blanc, sous le seuil d'une donnée.
-                value: kpis.partial,
-                color: 'var(--color-warn)',
-              },
-              {
-                key: 'late',
-                label: t('app.dashboard.recoveryLate'),
-                value: kpis.late,
-                color: 'var(--color-danger)',
-              },
+              { etat: 'paid', label: t('app.dashboard.recoveryCollected'), value: collected },
+              { etat: 'partial', label: t('app.dashboard.recoveryPartial'), value: kpis.partial },
+              { etat: 'overdue', label: t('app.dashboard.recoveryLate'), value: kpis.late },
             ]}
             /**
              * Ce que l'anneau ne disait pas : à quoi ses parts s'ajoutent.
@@ -345,7 +358,7 @@ export function Dashboard() {
         <Card>
           <CardHeader title={t('app.dashboard.decisionsTitle')} level={2} />
           {rienATrancher ? (
-            <p className="text-body-s text-muted">{t('app.dashboard.decisionsEmpty')}</p>
+            <p className="text-body text-muted">{t('app.dashboard.decisionsEmpty')}</p>
           ) : (
             <ul className="flex flex-col gap-3">
               {cautionsAArbitrer.map((caution) => (
@@ -437,8 +450,8 @@ export function Dashboard() {
               .slice(0, 4)
               .map((unit) => (
                 <li key={unit.id} className="flex items-center gap-3">
-                  <span className="numeric w-9 shrink-0 text-body-s font-medium">{unit.label}</span>
-                  <span className="min-w-0 flex-1 truncate text-body-s text-muted">
+                  <span className="numeric w-9 shrink-0 text-body font-medium">{unit.label}</span>
+                  <span className="min-w-0 flex-1 truncate text-body text-muted">
                     {unit.tenant}
                   </span>
                   <PaymentStatusPill status={unit.status} size="sm" />

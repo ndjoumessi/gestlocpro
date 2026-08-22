@@ -196,12 +196,12 @@ export function UnitFile() {
                           l'envoie pas —, `null` quand personne n'a rien écrit.
                           Le test de vérité couvre les deux d'un coup. */}
                       {versement?.note && (
-                        <span className="mt-0.5 block text-body-s text-muted">
+                        <span className="mt-0.5 block text-body text-muted">
                           {versement.note}
                         </span>
                       )}
                     </span>
-                    <span className="numeric text-body-s">
+                    <span className="numeric text-body">
                       {money(du, { round: true })}
                       {/* Le reste dû, et lui seul, appelle un geste : une
                           période soldée n'a pas à porter un « reste 0 ». */}
@@ -340,7 +340,7 @@ function LigneOccupation({ bail }: { bail: Occupation }) {
             : t('app.unitFile.since', { date: d.fullDate(bail.startsOn) })}
         </p>
       </div>
-      <span className="numeric text-body-s text-muted">{money(bail.rentMinor, { round: true })}</span>
+      <span className="numeric text-body text-muted">{money(bail.rentMinor, { round: true })}</span>
     </li>
   )
 }
@@ -359,9 +359,9 @@ function LignePiece({
     <li className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-2.5 first:pt-0 last:pb-0">
       <span className="text-body">{label}</span>
       {valeur ? (
-        <span className="numeric text-body-s">{valeur}</span>
+        <span className="numeric text-body">{valeur}</span>
       ) : (
-        <span className="text-body-s text-muted">{absence}</span>
+        <span className="text-body text-muted">{absence}</span>
       )}
     </li>
   )

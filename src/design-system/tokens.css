@@ -278,16 +278,15 @@
   --text-body-l--line-height: 1.6;
   --text-body: 0.875rem; /* 14 — corps application */
   --text-body--line-height: 1.55;
-  /* 14 ET NON 13 — second volet du même repli, même raison.
+  /* `--text-body-s` A ÉTÉ SUPPRIMÉ, ET SES 110 EMPLOIS MIGRÉS SUR `--text-body`.
 
-     `--text-body-s` désigne le corps SECONDAIRE : une note sous un montant,
-     une légende de graphique, un intitulé de rangée. Ce qui le met en retrait
-     n'a jamais été son pixel de moins ; c'est `--color-muted`, que ses 146
-     emplois portent presque tous. Un pixel de moins ne dit pas « secondaire »,
-     il dit « moins lisible » — et sur un Android d'entrée de gamme lu dehors,
-     c'est la seule chose qu'il dit. */
-  --text-body-s: 0.875rem; /* 14 — replié depuis 13 */
-  --text-body-s--line-height: 1.5;
+     Le repli du lot précédent l'avait amené de 13 à 14 px, c'est-à-dire à la
+     valeur exacte de `--text-body` : deux noms pour un pixel, dont l'un
+     promettait une distinction que la feuille ne portait plus. Ce qui met un
+     texte en retrait est `--color-muted`, que ces emplois portaient déjà.
+
+     L'interligne passe de 1,5 à 1,55 sur ces 110 sites — c'est celui de
+     `--text-body`, et c'est le seul effet mesurable du retrait. */
   /* Plancher typographique : 12px, et rien en dessous.
      Il était annoncé ici et démenti trois lignes plus bas — `--text-caps`
      valait 11px, et emportait avec lui les en-têtes de colonne, les pastilles
@@ -315,8 +314,19 @@
   --text-kpi--line-height: 1;
 
   /* ---- Tailles de contrôle --------------------------------------------- */
-  /* 44px : cible tactile minimale, hauteur d'un bouton ou d'un champ isolé. */
-  --size-control: 2.75rem;
+  /* `--size-control` A ÉTÉ SUPPRIMÉ : personne ne le lisait.
+
+     Il déclarait « 44 px, cible tactile minimale, hauteur d'un bouton ou d'un
+     champ isolé ». Vérifié par balayage du dépôt puis au navigateur : AUCUN
+     composant ne le cite, `getComputedStyle` rend une chaîne vide, et les
+     boutons d'icône tiennent leurs 44 px d'un utilitaire écrit à la main. Une
+     mutation l'a démontré — le baisser à 43 px ne changeait pas un pixel à
+     l'écran et la porte restait verte.
+
+     Un jeton que rien ne lit est pire qu'absent : il donne l'illusion d'un
+     réglage central, et le prochain qui voudra changer la hauteur des contrôles
+     le changera ici sans effet. `--size-control-group`, lui, RESTE : il est lu
+     par le sélecteur de devise, et `cibles.test.ts` s'appuie dessus. */
   /* 50px : hauteur d'un contrôle GROUPÉ, qui enveloppe des boutons de 44px
      dans un cadre — 44 + 2×2px de rembourrage + 2×1px de bordure. Le
      sélecteur de langue est de ce type ; le sélecteur de devise, qui vit

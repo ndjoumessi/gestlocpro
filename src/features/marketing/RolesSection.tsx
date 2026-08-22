@@ -57,7 +57,7 @@ export function RolesSection() {
               {t(`roles.${key}.pitch` as 'roles.owner.pitch')}
             </p>
 
-            <p className="mt-6 border-t border-on-dark-border pt-5 text-body-s text-on-dark-muted">
+            <p className="mt-6 border-t border-on-dark-border pt-5 text-body text-on-dark-muted">
               <span className="eyebrow mb-1 block text-on-dark-faint">
                 {t('marketing.roles.seeMore')}
               </span>

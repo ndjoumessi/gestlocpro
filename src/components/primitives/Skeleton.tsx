@@ -40,7 +40,7 @@ import { useT } from '@/i18n/I18nProvider'
 const LIGNES = {
   /** `eyebrow` — 12px × 1.3 */
   eyebrow: 'h-[0.975rem]',
-  /** `--text-body-s` — 13px × 1.5 */
+  /** `--text-body` — 13px × 1.5 */
   bodyS: 'h-[1.22rem]',
   /** `--text-body` — 14px × 1.55 */
   body: 'h-[1.35rem]',

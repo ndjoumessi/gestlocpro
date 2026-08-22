@@ -49,7 +49,7 @@ export function BandeauVersion() {
       // l'y déclarer, et `empilement.test.ts` vérifie les deux moitiés.
       className={cn(
         'fixed inset-x-0 bottom-[var(--h-barre-basse,0px)] flex flex-wrap items-center justify-center gap-x-4 gap-y-2',
-        'border-t border-border bg-ink text-body-s text-on-dark',
+        'border-t border-border bg-ink text-body text-on-dark',
         'pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]',
         'pl-[max(1.25rem,env(safe-area-inset-left))] pr-[max(1.25rem,env(safe-area-inset-right))]',
       )}

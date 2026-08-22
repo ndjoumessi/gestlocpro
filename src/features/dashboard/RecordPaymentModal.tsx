@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Modal } from '@/components/primitives/Modal'
 import { Button } from '@/components/primitives/Button'
-import { Field } from '@/components/primitives/Field'
+import { ChampsApparies, Field } from '@/components/primitives/Field'
 import { DatePicker, MonthPicker } from '@/components/primitives/DatePicker'
 import { Input, Select, Textarea } from '@/components/primitives/Input'
 import { useToast } from '@/components/primitives/Toast'
@@ -205,6 +205,11 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
           )}
         </Field>
 
+        {/* PÉRIODE ET DATE DE VERSEMENT SE LISENT COMME UNE PAIRE : l'une dit
+            quel loyer, l'autre quand il est arrivé, et l'écart entre les deux
+            est justement ce qu'on vérifie. Appairées, elles rendent 116 px de
+            hauteur dès 640 px de fenêtre. */}
+        <ChampsApparies>
         <Field label={t('app.payments.period')} hint={t('app.payments.periodHint')} required>
           {(props) => (
             <MonthPicker
@@ -238,6 +243,11 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
           )}
         </Field>
 
+        </ChampsApparies>
+
+        {/* MONTANT ET MOYEN : le second qualifie le premier — « 145 000 en
+            mobile money » est une seule information en deux champs. */}
+        <ChampsApparies>
         <Field
           label={t('app.payments.amount')}
           hint={
@@ -271,6 +281,8 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
             </Select>
           )}
         </Field>
+        </ChampsApparies>
+
         <Field
           label={t('app.payments.reference')}
           hint={t('app.payments.referenceHint')}

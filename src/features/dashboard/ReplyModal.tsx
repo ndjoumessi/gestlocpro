@@ -187,8 +187,8 @@ export function ReplyModal({
           tabIndex={-1}
           className={
             issue.delivered
-              ? 'flex items-start gap-2 rounded-md border border-ok-border bg-ok-tint px-3.5 py-3 text-body-s text-ok'
-              : 'flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body-s text-gold-ink'
+              ? 'flex items-start gap-2 rounded-md border border-ok-border bg-ok-tint px-3.5 py-3 text-body text-ok'
+              : 'flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body text-gold-ink'
           }
         >
           <Icon name={issue.delivered ? 'check' : 'info'} size={15} className="mt-0.5 shrink-0" />
@@ -202,7 +202,7 @@ export function ReplyModal({
               modale depuis une liste de douze lignes ; le nom du déclarant est
               ce qui lui dit qu'il ne s'est pas trompé de ligne. */}
           {work.reportedBy && (
-            <p className="text-body-s text-muted">
+            <p className="text-body text-muted">
               {t('app.works.replyTo', { name: work.reportedBy })}
             </p>
           )}

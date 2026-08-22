@@ -78,7 +78,7 @@ export function Field({
         champ. C'est celle qu'on vient de déclencher qui doit se lire en dernier.
       */}
       {hint && (
-        <p id={hintId} className="text-body-s text-muted">
+        <p id={hintId} className="text-body text-muted">
           {hint}
         </p>
       )}
@@ -87,7 +87,7 @@ export function Field({
         <p
           id={errorId}
           role="alert"
-          className="flex items-start gap-1.5 text-body-s font-medium text-danger"
+          className="flex items-start gap-1.5 text-body font-medium text-danger"
         >
           <Icon name="alert" size={14} className="mt-0.5" />
           {error}
@@ -119,3 +119,33 @@ export const controlClasses = (invalid?: boolean, className?: string) =>
     'read-only:bg-surface-sunken read-only:text-muted',
     className,
   )
+
+/**
+ * DEUX COLONNES DÈS QUE LA LARGEUR LE PERMET, une seule sur téléphone.
+ *
+ * Ce qu'elle appaire, ce sont des `Field` ENTIERS — libellé, aide, contrôle et
+ * message d'erreur ensemble. C'est la seule façon d'appairer sans risque : le
+ * geste interdit serait de mettre les libellés dans une colonne et les contrôles
+ * dans l'autre, ce qui séparerait chaque libellé de son champ et chaque erreur
+ * de sa cause. Ici la grille ne coupe rien : elle pose côte à côte deux blocs
+ * déjà complets.
+ *
+ * `sm:` et non `md:` : mesuré, une modale `md` fait 576 px de large à partir de
+ * 640 px de fenêtre, ce qui laisse deux colonnes de 264 px — assez pour un
+ * champ de date ou un montant, qui sont précisément les champs qu'on appaire.
+ * Sous 640 px la grille rend une seule colonne et le `gap` vertical reprend
+ * exactement l'écart d'origine, donc rien ne bouge sur téléphone.
+ *
+ * Elle ne devine RIEN : c'est l'appelant qui décide quels champs vont ensemble,
+ * parce que « période » et « versé le » se lisent comme une paire alors que
+ * « logement » et « montant » n'ont rien à faire sur la même ligne.
+ */
+export function ChampsApparies({
+  children,
+  className,
+}: {
+  children: ReactNode
+  className?: string
+}) {
+  return <div className={cn('grid gap-5 sm:grid-cols-2', className)}>{children}</div>
+}

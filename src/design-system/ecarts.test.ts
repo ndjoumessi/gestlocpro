@@ -96,10 +96,15 @@ const TOLERES: { fichier: string; ligne: number; raison: string }[] = [
   },
   {
     fichier: 'components/primitives/Choice.tsx',
-    ligne: 210,
+    ligne: 319,
     raison:
       'La primitive de contrôle segmenté elle-même — celle dont les deux sélecteurs ' +
-      'ci-dessus reprennent la forme.',
+      'ci-dessus reprennent la forme. Passée de la ligne 210 à la 319 quand le ' +
+      'variant en pastilles s’est inséré au-dessus : une tolérance repérée par ' +
+      'un NUMÉRO DE LIGNE se périme au premier ajout dans le fichier, et c’est ' +
+      'la garde du garde — « aucune tolérance devenue sans objet » — qui l’a ' +
+      'dit, en même temps que le contrôle principal signalait la ligne 319 ' +
+      'comme fautive. Les deux plaintes décrivaient le même déplacement.',
   },
 ]
 

@@ -106,7 +106,7 @@ export function Tenants() {
       {/* Un bouton grisé sans motif laisse deviner. Quand tout est loué, il
           n'y a rien à quoi rattacher un locataire — on le dit. */}
       {vacant.length === 0 && (
-        <p className="mb-4 flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body-s text-gold-ink">
+        <p className="mb-4 flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body text-gold-ink">
           <Icon name="info" size={15} className="mt-0.5 shrink-0" />
           {t('app.tenants.noVacantNotice')}
         </p>
@@ -351,14 +351,14 @@ export function Tenants() {
             </>
           }
         >
-          <p className="text-body-s text-muted">
+          <p className="text-body text-muted">
             {t('app.tenants.removeUnit', { unit: aRetirer.label })}
           </p>
         </Modal>
       )}
 
       {vacant.length > 0 && (
-        <p className="mt-4 text-body-s text-muted">
+        <p className="mt-4 text-body text-muted">
           {t('app.tenants.vacantList', {
             count: vacant.length,
             units: n.list(vacant.map((unit) => unit.label)),

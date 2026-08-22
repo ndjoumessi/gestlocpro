@@ -200,7 +200,7 @@ export function SystemStates() {
             <Icon name="alert" size={18} className="mt-0.5 shrink-0 text-danger" />
             <div className="min-w-0">
               <p className="text-body font-medium text-danger">{t('app.system.errorTitle')}</p>
-              <p className="mt-1 text-body-s text-danger">{t('app.system.errorBody')}</p>
+              <p className="mt-1 text-body text-danger">{t('app.system.errorBody')}</p>
               <Button
                 variant="secondary"
                 size="sm"
@@ -220,7 +220,7 @@ export function SystemStates() {
             <Icon name="globe" size={18} className="mt-0.5 shrink-0 text-warn" />
             <div className="min-w-0">
               <p className="text-body font-medium text-warn">{t('app.system.offlineTitle')}</p>
-              <p className="mt-1 text-body-s text-warn">{t('app.system.offlineBody')}</p>
+              <p className="mt-1 text-body text-warn">{t('app.system.offlineBody')}</p>
             </div>
           </div>
 
@@ -229,7 +229,7 @@ export function SystemStates() {
               synchronisation différée — qui n'existe pas encore. On le dit,
               plutôt que de laisser la carte passer pour une fonctionnalité
               livrée. */}
-          <p className="mt-3 flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body-s text-gold-ink">
+          <p className="mt-3 flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body text-gold-ink">
             <Icon name="info" size={15} className="mt-0.5 shrink-0" />
             {t('app.system.offlineNotice')}
           </p>
@@ -259,7 +259,7 @@ export function SystemStates() {
             ) : undefined
           }
         />
-        <p className="flex items-start gap-2 text-body-s text-muted">
+        <p className="flex items-start gap-2 text-body text-muted">
           <Icon name="shield" size={15} className="mt-0.5 shrink-0 text-ok" />
           {t('app.system.persistenceScope')}
         </p>

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useRole } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { DataTable, EmptyState } from '@/components/primitives/DataTable'
-import { PaymentStatusPill, type PaymentStatus } from '@/components/primitives/StatusPill'
+import { JaugeDePoste, PaymentStatusPill, type PaymentStatus } from '@/components/primitives/StatusPill'
 import { StatCard } from '@/components/primitives/Charts'
 import {
   Skeleton,
@@ -257,14 +257,27 @@ export function Payments() {
         <TenantScopeNote />
       ) : (
         <div className="grid gap-4 sm:grid-cols-3">
-          <StatCard label={t('app.dashboard.expected')} value={money(kpis.expected, { round: true })} />
+          {/*
+            MÊME HIÉRARCHIE QUE LE TABLEAU DE BORD, et le décideur change parce
+            que le geste change. Ici l'écran monte la relance et la mise en
+            demeure : ce sur quoi on agit, c'est le RETARD. Le loyer attendu ne
+            fait que le situer.
+
+            `encaissé` garde son gabarit plein pour la même raison qu'ailleurs :
+            retard et encaissé se lisent ensemble, replier l'un forcerait à
+            chercher l'autre.
+          */}
+          <StatCard
+            label={t('app.dashboard.recoveryLate')}
+            value={money(kpis.late, { round: true })}
+          />
           <StatCard
             label={t('app.dashboard.recoveryCollected')}
             value={money(kpis.collected, { round: true })}
           />
           <StatCard
-            label={t('app.dashboard.recoveryLate')}
-            value={money(kpis.late, { round: true })}
+            label={t('app.dashboard.expected')}
+            value={money(kpis.expected, { round: true })}
           />
         </div>
       )}
@@ -304,11 +317,16 @@ export function Payments() {
       {/*
         LA LÉGENDE, et elle n'est pas décorative.
 
-        Trois points colorés dans une cellule ne disent rien à qui les voit pour
-        la première fois — ni ce que chacun désigne, ni ce que sa couleur veut
-        dire. Chaque cellule porte bien un nom accessible qui énonce les trois
-        états en toutes lettres, mais un lecteur voyant n'y a pas accès : sans
-        cette ligne, la grille se déchiffre au lieu de se lire.
+        Trois jauges dans une cellule ne disent rien à qui les voit pour la
+        première fois — ni ce que chacune désigne, ni ce que son remplissage
+        veut dire. Chaque cellule porte bien un nom accessible qui énonce les
+        trois états en toutes lettres, mais un lecteur voyant n'y a pas accès :
+        sans cette ligne, la grille se déchiffre au lieu de se lire.
+
+        ELLE PORTE LA MÊME JAUGE QUE LES CELLULES, par le même composant. Une
+        légende qui montrerait une autre forme que celle de la grille serait
+        une clé qui n'ouvre pas — pire que pas de légende du tout, parce qu'on
+        la croit.
 
         Elle ne s'affiche qu'avec la grille : sans période, il n'y a pas de
         pastille à expliquer.
@@ -318,13 +336,7 @@ export function Payments() {
           <span>{t('app.payments.legendPosts')}</span>
           {(['paid', 'partial', 'overdue'] as const).map((etat) => (
             <span key={etat} className="flex items-center gap-1.5">
-              <span
-                aria-hidden="true"
-                className={cn(
-                  'size-2.5 rounded-full',
-                  etat === 'paid' ? 'bg-ok' : etat === 'partial' ? 'bg-warn' : 'bg-danger',
-                )}
-              />
+              <JaugeDePoste etat={etat} />
               {t(`app.payments.state.${etat}` as 'app.payments.state.paid')}
             </span>
           ))}
@@ -581,7 +593,7 @@ export function Payments() {
           </>
         }
       >
-        <p className="text-body-s text-muted">
+        <p className="text-body text-muted">
           {retards.map((unit) => unit.tenant).filter(Boolean).join(' · ')}
         </p>
       </Modal>
@@ -767,7 +779,6 @@ function CellulePeriode({ receipt, periode }: { receipt?: Receipt; periode: stri
   const etat = (du: number, paye: number) =>
     du === 0 || paye >= du ? 'paid' : paye > 0 ? 'partial' : 'overdue'
 
-  const TONS = { paid: 'bg-ok', partial: 'bg-warn', overdue: 'bg-danger' } as const
 
   return (
     <span
@@ -783,11 +794,7 @@ function CellulePeriode({ receipt, periode }: { receipt?: Receipt; periode: stri
         .join(', ')}`}
     >
       {postes.map((p) => (
-        <span
-          key={p.cle}
-          aria-hidden="true"
-          className={`size-2.5 rounded-full ${TONS[etat(p.du, p.paye)]}`}
-        />
+        <JaugeDePoste key={p.cle} etat={etat(p.du, p.paye)} />
       ))}
     </span>
   )

@@ -57,7 +57,7 @@ export function Checkbox({ label, hint, error, className, ...props }: CheckboxPr
       </label>
 
       {hint && (
-        <p id={hintId} className="pl-8 text-body-s text-muted">
+        <p id={hintId} className="pl-8 text-body text-muted">
           {hint}
         </p>
       )}
@@ -65,7 +65,7 @@ export function Checkbox({ label, hint, error, className, ...props }: CheckboxPr
         <p
           id={errorId}
           role="alert"
-          className="flex items-start gap-1.5 pl-8 text-body-s font-medium text-danger"
+          className="flex items-start gap-1.5 pl-8 text-body font-medium text-danger"
         >
           <Icon name="alert" size={14} className="mt-0.5" />
           {error}
@@ -94,6 +94,26 @@ export interface RadioCardsProps<T extends string> {
   onChange: (value: T) => void
   options: RadioCardOption<T>[]
   columns?: 1 | 2 | 3
+  /**
+   * `cartes` — une tuile par option : icône, titre, description, marque de
+   * sélection. C'est la forme du choix de rôle à l'inscription, où chaque
+   * option porte réellement une icône distincte et deux lignes d'explication.
+   *
+   * `puces` — une rangée de pastilles qui se replie, un mot par pastille.
+   *
+   * QUAND EMPLOYER `puces`, ET POURQUOI CE VARIANT EXISTE. Mesuré sur « Ouvrir
+   * un chantier » : six corps de métier et trois urgences, tous avec
+   * `description: ''` et sans icône, rendus en tuiles pleine largeur. Le corps
+   * de la modale mesurait 1517 px pour une fenêtre de 484 — soit 1033 px de
+   * défilement pour neuf mots. Et comme aucune option ne fournissait d'icône,
+   * les six tuiles affichaient la MÊME icône de repli : une distinction promise
+   * à l'œil, et démentie.
+   *
+   * La règle qui en sort : une option sans description ET sans icône n'a rien à
+   * mettre dans une tuile. `puces` est alors la forme juste, et `cartes` est un
+   * mensonge de mise en page.
+   */
+  variant?: 'cartes' | 'puces'
   className?: string
 }
 
@@ -110,8 +130,22 @@ export function RadioCards<T extends string>({
   onChange,
   options,
   columns = 3,
+  variant = 'cartes',
   className,
 }: RadioCardsProps<T>) {
+  if (variant === 'puces') {
+    return (
+      <RadioPuces
+        legend={legend}
+        hideLegend={hideLegend}
+        name={name}
+        value={value}
+        onChange={onChange}
+        options={options}
+        className={className}
+      />
+    )
+  }
   const gridClass =
     columns === 1 ? 'grid-cols-1' : columns === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-2 lg:grid-cols-3'
 
@@ -173,13 +207,88 @@ export function RadioCards<T extends string>({
               </div>
 
               <span className="title-m text-ink">{option.title}</span>
-              <span className="text-body-s text-muted">{option.description}</span>
+              <span className="text-body text-muted">{option.description}</span>
 
               {option.footnote && (
                 <span className="eyebrow mt-1 border-t border-divider pt-2.5 text-muted">
                   {option.footnote}
                 </span>
               )}
+            </label>
+          )
+        })}
+      </div>
+    </fieldset>
+  )
+}
+
+/**
+ * PASTILLES RADIO — un mot par option, sur une rangée qui se replie.
+ *
+ * MÊME SÉMANTIQUE QUE LES TUILES, et c'est la condition pour que ce soit un
+ * variant et non un autre composant : `fieldset`/`legend`, de vrais
+ * `input[type=radio]` d'un même `name`. La navigation aux flèches, l'annonce
+ * « 2 sur 6 » et le groupement sont donc natifs, exactement comme avant. Rien
+ * de ce que le clavier ou le lecteur d'écran obtenait n'est perdu ; c'est la
+ * PLACE qui change.
+ *
+ * LA SÉLECTION N'EST PAS PORTÉE PAR LA COULEUR SEULE. La pastille retenue prend
+ * l'encre ET une coche : c'est la règle du dépôt, et elle vaut ici comme sur la
+ * grille des paiements — sous deutéranopie, deux teintes de statut sont à 3,4
+ * de ΔE00, c'est-à-dire le même aplat. La coche est `aria-hidden` : l'état
+ * coché est déjà annoncé par le radio lui-même, et le redire en ferait deux.
+ *
+ * `min-h-11` : une pastille est une cible, pas une étiquette. 44 px, comme tout
+ * ce qu'on touche dans ce produit.
+ *
+ * L'ICÔNE, SI ELLE EXISTE, EST RENDUE. Une option qui en fournit une distincte
+ * mérite qu'on la montre ; ce que ce variant refuse, c'est l'icône de REPLI —
+ * la même pour toutes, qui promet une distinction inexistante.
+ */
+function RadioPuces<T extends string>({
+  legend,
+  hideLegend,
+  name,
+  value,
+  onChange,
+  options,
+  className,
+}: Omit<RadioCardsProps<T>, 'columns' | 'variant'>) {
+  return (
+    <fieldset className={cn('min-w-0 border-0 p-0', className)}>
+      <legend className={cn('mb-2 text-label font-semibold text-ink', hideLegend && 'sr-only')}>
+        {legend}
+      </legend>
+
+      <div className="flex flex-wrap gap-2">
+        {options.map((option) => {
+          const checked = value === option.value
+          return (
+            <label
+              key={option.value}
+              className={cn(
+                'inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3',
+                'text-label transition-colors duration-150',
+                'has-[:focus-visible]:outline has-[:focus-visible]:outline-2',
+                'has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-gold-ink',
+                checked
+                  ? 'border-ink bg-ink text-on-dark'
+                  : 'border-border bg-surface text-ink hover:border-border-strong',
+              )}
+            >
+              <input
+                type="radio"
+                name={name}
+                value={option.value}
+                checked={checked}
+                onChange={() => onChange(option.value)}
+                className="sr-only"
+              />
+              {/* Forme ET couleur : la coche dit le choix à qui ne distingue pas
+                  l'encre du fond. `aria-hidden`, l'état est déjà annoncé. */}
+              {checked && <Icon name="check" size={13} strokeWidth={3} aria-hidden="true" />}
+              {option.icon && !checked && <Icon name={option.icon} size={14} />}
+              {option.title}
             </label>
           )
         })}

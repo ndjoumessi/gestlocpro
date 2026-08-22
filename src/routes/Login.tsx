@@ -131,7 +131,7 @@ export function Login() {
         {echec && (
           <p
             role="alert"
-            className="flex items-start gap-2 rounded-md border border-danger-border bg-danger-tint px-3.5 py-3 text-body-s text-danger"
+            className="flex items-start gap-2 rounded-md border border-danger-border bg-danger-tint px-3.5 py-3 text-body text-danger"
           >
             <Icon name="alert" size={15} className="mt-0.5 shrink-0" />
             {t(echec)}

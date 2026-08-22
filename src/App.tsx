@@ -8,6 +8,7 @@ import { SignUp } from './routes/SignUp'
 import { KitchenSink } from './routes/KitchenSink'
 import { NotFound } from './routes/NotFound'
 import { useT } from './i18n/I18nProvider'
+import { FrontiereDErreur } from './components/feedback/FrontiereDErreur'
 
 /**
  * L'ESPACE APPLICATIF NE SE TÉLÉCHARGE QUE POUR QUI Y ENTRE.
@@ -69,45 +70,59 @@ function ChargementEspaceApplicatif() {
 }
 
 export function App() {
+  /*
+    LA FRONTIÈRE ENVELOPPE LES ROUTES, et rien de plus haut.
+
+    Mesuré : une exception de rendu, qu'elle vienne d'un composant de route ou
+    d'un composant imbriqué dans un écran sain, vidait `#root` — 0 élément,
+    0 titre, 0 sortie. Les deux cas, pas seulement le premier.
+
+    Ici, et pas dans `main.tsx` : au-dessus de `SessionProvider`, sa
+    réinitialisation relancerait la lecture de session, jusqu'à 13,88 s sur
+    3G lente. Voir l'en-tête de `FrontiereDErreur` pour l'échange complet et
+    pour les six corps de rendu qui restent au-dessus d'elle.
+  */
   return (
-    <Routes>
-      <Route path="/" element={<Landing />} />
+    <FrontiereDErreur>
+      <Routes>
+        <Route path="/" element={<Landing />} />
 
-      <Route path="/inscription" element={<SignUp />} />
-      {/* Entrée directe dans un parcours depuis la landing : l'étape de choix
-          de rôle est alors sautée, mais reste atteignable par « Retour ». */}
-      <Route path="/inscription/:role" element={<SignUp />} />
-      <Route path="/connexion" element={<Login />} />
-      <Route path="/mot-de-passe-oublie" element={<ForgotPassword />} />
-      <Route path="/reinitialiser" element={<ResetPassword />} />
+        <Route path="/inscription" element={<SignUp />} />
+        {/* Entrée directe dans un parcours depuis la landing : l'étape de choix
+            de rôle est alors sautée, mais reste atteignable par « Retour ». */}
+        <Route path="/inscription/:role" element={<SignUp />} />
+        <Route path="/connexion" element={<Login />} />
+        <Route path="/mot-de-passe-oublie" element={<ForgotPassword />} />
+        <Route path="/reinitialiser" element={<ResetPassword />} />
 
-      {/*
-        `/*` sur les deux : ce sont désormais des ROUTES DESCENDANTES.
-        `EspaceApplicatif` porte sa propre `<Routes>` interne, qui matche la
-        portion d'adresse restante — voir ce fichier pour le détail et pour ce
-        que la mesure a décidé d'y enfermer.
-      */}
-      <Route
-        path="/app/*"
-        element={
-          <Suspense fallback={<ChargementEspaceApplicatif />}>
-            <EspaceApplicatif mode="app" />
-          </Suspense>
-        }
-      />
-      <Route
-        path="/demo/*"
-        element={
-          <Suspense fallback={<ChargementEspaceApplicatif />}>
-            <EspaceApplicatif mode="demo" />
-          </Suspense>
-        }
-      />
+        {/*
+          `/*` sur les deux : ce sont désormais des ROUTES DESCENDANTES.
+          `EspaceApplicatif` porte sa propre `<Routes>` interne, qui matche la
+          portion d'adresse restante — voir ce fichier pour le détail et pour ce
+          que la mesure a décidé d'y enfermer.
+        */}
+        <Route
+          path="/app/*"
+          element={
+            <Suspense fallback={<ChargementEspaceApplicatif />}>
+              <EspaceApplicatif mode="app" />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/demo/*"
+          element={
+            <Suspense fallback={<ChargementEspaceApplicatif />}>
+              <EspaceApplicatif mode="demo" />
+            </Suspense>
+          }
+        />
 
-      <Route path="/kitchen-sink" element={<KitchenSink />} />
-      {/* Rendait la landing : une adresse fautive passait alors pour la page
-          d'accueil, sans que rien ne signale l'erreur. */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+        <Route path="/kitchen-sink" element={<KitchenSink />} />
+        {/* Rendait la landing : une adresse fautive passait alors pour la page
+            d'accueil, sans que rien ne signale l'erreur. */}
+          <Route path="*" element={<NotFound />} />
+      </Routes>
+    </FrontiereDErreur>
   )
 }

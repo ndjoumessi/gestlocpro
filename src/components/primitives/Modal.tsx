@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useRef, type ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { cn } from '@/lib/cn'
+import { usePiegeDeFocus } from './piegeDeFocus'
 import { IconButton } from './Button'
 import { useT } from '@/i18n/I18nProvider'
 
@@ -44,114 +46,71 @@ export function Modal({
   dismissible = true,
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
-  const openerRef = useRef<Element | null>(null)
-
-  /**
-   * `onClose` retenu dans une référence, et NON dans les dépendances.
-   *
-   * L'effet ci-dessous ouvre la modale : il masque le défilement, place le
-   * focus sur le premier champ, et — au nettoyage — le rend au bouton
-   * d'ouverture. Le lier à l'identité de `onClose` le faisait rejouer à chaque
-   * fois qu'un appelant recréait sa fonction, c'est-à-dire à chaque rendu pour
-   * une fonction écrite en ligne.
-   *
-   * Conséquence observée, et coûteuse à trouver : un champ contrôlé n'acceptait
-   * QU'UN caractère. La première frappe changeait l'état, le rendu recréait
-   * `onClose`, l'effet se nettoyait et **rendait le focus au bouton
-   * d'ouverture** — les frappes suivantes partaient dans le vide. Un champ non
-   * contrôlé, lui, ne déclenchait aucun rendu et fonctionnait parfaitement :
-   * c'est ce contraste qui a fini par désigner le coupable.
-   *
-   * La modale des locataires y échappait par chance : son `onClose` vient du
-   * parent, qui ne se rend pas pendant la saisie. Une correction chez
-   * l'appelant n'aurait donc protégé que lui, et le prochain appelant serait
-   * retombé dedans.
-   */
-  const fermetureRef = useRef(onClose)
-  fermetureRef.current = onClose
-  const renvoyableRef = useRef(dismissible)
-  renvoyableRef.current = dismissible
   const t = useT()
 
-  const focusables = useCallback(() => {
-    if (!dialogRef.current) return [] as HTMLElement[]
-    return Array.from(
-      dialogRef.current.querySelectorAll<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-      ),
-    ).filter((el) => !el.hasAttribute('disabled') && el.offsetParent !== null)
-  }, [])
+  /*
+    LE PIÈGE DE FOCUS VIT DÉSORMAIS DANS `piegeDeFocus`, ET C'EST LE POINT.
 
-  useEffect(() => {
-    if (!open) return
+    Il était écrit ici, correct et complet, pendant que les deux panneaux de la
+    barre — réglages et compte — portaient le même motif de surface sans rien en
+    dessous : ni piège, ni retour du focus. Mesuré avant ce lot, quatre
+    tabulations sur dix sortaient du panneau des réglages ouvert.
 
-    openerRef.current = document.activeElement
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    Le comportement de cette modale ne change pas d'un pouce : verrou de
+    défilement, focus sur le premier NON-BOUTON — donc jamais sur la croix, ce
+    qui poserait le doigt du clavier sur le geste d'abandon dans toute modale
+    sans champ —, Échap arrêtée même quand elle ne ferme pas, et retour du focus
+    à l'ouvreur. Ce sont les options passées ci-dessous, une par comportement.
 
-    const timer = window.setTimeout(() => {
-      const nodes = focusables()
-      /*
-        LE REPLI ANNONCÉ N'AVAIT JAMAIS ÉTÉ ÉCRIT.
-
-        Le commentaire disait « à défaut le CONTENEUR : jamais le bouton
-        fermer », et le code retombait sur `nodes[0]` — c'est-à-dire la croix,
-        premier focalisable de toute modale. Donc dans TOUTE modale sans champ,
-        et les confirmations n'en ont aucun, le focus se posait sur le geste
-        d'abandon. On ouvre « Retirer cet accès ? » et le doigt du clavier est
-        déjà sur « Fermer ».
-
-        Le conteneur porte `tabIndex={-1}` pour pouvoir le recevoir sans entrer
-        dans l'ordre de tabulation — et le sélecteur ci-dessus l'exclut
-        explicitement, donc le piège de focus ne le compte pas comme une étape.
-      */
-      const target = nodes.find((el) => el.tagName !== 'BUTTON') ?? dialogRef.current
-      target?.focus()
-    }, 0)
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        // La touche est arrêtée MÊME quand la modale ne se ferme pas : sinon
-        // elle remonterait à ce qui l'entoure, et fermerait l'écran d'à côté au
-        // lieu de celui qu'on regarde.
-        event.stopPropagation()
-        if (renvoyableRef.current) fermetureRef.current()
-        return
-      }
-      if (event.key !== 'Tab') return
-
-      const nodes = focusables()
-      if (nodes.length === 0) return
-      const first = nodes[0]
-      const last = nodes[nodes.length - 1]
-
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault()
-        last.focus()
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault()
-        first.focus()
-      } else if (!dialogRef.current?.contains(document.activeElement)) {
-        event.preventDefault()
-        first.focus()
-      }
-    }
-
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      window.clearTimeout(timer)
-      document.removeEventListener('keydown', onKeyDown)
-      document.body.style.overflow = previousOverflow
-      ;(openerRef.current as HTMLElement | null)?.focus?.()
-    }
-  }, [open, focusables])
+    `dismissible` : Échap ne ferme que si la modale se laisse renvoyer. La
+    touche reste arrêtée dans les deux cas — sinon elle remonterait à ce qui
+    entoure et fermerait l'écran d'à côté.
+  */
+  const renvoyableRef = useRef(dismissible)
+  renvoyableRef.current = dismissible
+  usePiegeDeFocus(
+    open,
+    dialogRef,
+    () => {
+      if (renvoyableRef.current) onClose()
+    },
+    { verrouillerLeDefilement: true, focusInitial: 'premier-non-bouton' },
+  )
 
   if (!open) return null
 
+  /*
+    LA MODALE EST PORTÉE DANS `document.body`, ET C'EST UN CORRECTIF MESURÉ.
+
+    LE DÉFAUT. Le conteneur est `fixed inset-0` — il devrait donc couvrir la
+    FENÊTRE. Il ne le faisait pas : `<main>` porte `animate-rise`, et une
+    animation de `transform` laisse au repos une matrice IDENTITÉ, qui est une
+    transformation quand même. Un ancêtre transformé devient le bloc conteneur
+    de tous ses descendants `position: fixed` : le conteneur de la modale
+    mesurait donc 1251 px de haut à partir de y = 122, au lieu de 900 px à
+    partir de 0.
+
+    CE QUE ÇA COÛTAIT. Relevé sur « Ajouter un immeuble », fenêtre de 900 px :
+    la boîte de dialogue se posait à y = 554 et finissait à 941 — quarante et un
+    pixels SOUS le bord de l'écran. Le pied, qui porte l'action principale,
+    était coupé. Le défaut grandit avec la page : plus le contenu est long, plus
+    le faux bloc conteneur est haut, plus la modale descend. C'est le « l'action
+    principale à 700 px du regard » du sujet, et il ne venait pas du contenu de
+    la modale.
+
+    POURQUOI UN PORTAIL PLUTÔT QUE RETIRER LA TRANSFORMATION. Neutraliser
+    `animate-rise` corrigerait ce cas-ci et laisserait le suivant : n'importe
+    quel `transform`, `filter`, `backdrop-filter`, `contain` ou `will-change`
+    posé un jour sur un ancêtre reproduirait exactement le même effet, sans que
+    rien ne le relie à la modale. Le portail rend la modale insensible à ce que
+    ses ancêtres de rendu décident — elle sort de l'arbre de mise en page, pas
+    de l'arbre React : le contexte, les gestionnaires et la propagation des
+    événements la suivent.
+  */
   const titleId = 'modal-title'
   const descId = 'modal-desc'
 
-  return (
+  return createPortal(
     <div
       // Sous `sm`, la modale est une feuille collée en bas, pleine largeur : en
       // portrait les insets latéraux valent 0, il n'y a donc rien à écarter, et
@@ -204,7 +163,7 @@ export function Modal({
               {title}
             </h2>
             {description && (
-              <p id={descId} className="mt-1 text-body-s text-muted">
+              <p id={descId} className="mt-1 text-body text-muted">
                 {description}
               </p>
             )}
@@ -247,6 +206,7 @@ export function Modal({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

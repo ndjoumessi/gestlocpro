@@ -84,7 +84,7 @@ export function Hero() {
               </Button>
             </div>
 
-            <p className="mt-5 flex items-center gap-2 text-body-s text-muted">
+            <p className="mt-5 flex items-center gap-2 text-body text-muted">
               <Icon name="checkCircle" size={15} className="text-gold-ink" />
               {t('marketing.hero.trust')}
             </p>
@@ -190,7 +190,7 @@ function HeroPreview({
           parc. Elle est ce qui autorise la carte à être précise — un chiffre
           exact sur un parc nommé fictif n'induit personne en erreur, un chiffre
           exact sans provenance se lit comme une moyenne de marché. */}
-      <p className="mt-3 text-body-s text-muted">{t('marketing.metrics.note')}</p>
+      <p className="mt-3 text-body text-muted">{t('marketing.metrics.note')}</p>
 
       {/* Une vignette « Relances envoyées » flottait au-dessus de la carte.
           Elle a changé de place trois fois : sur les chiffres d'occupation,
@@ -232,7 +232,7 @@ function MiniStat({
           variation, qui est le cas de toutes les cartes aujourd'hui. */}
       <p className="mt-2 flex flex-wrap items-center gap-2">
         {delta}
-        <span className="text-body-s text-muted">{note}</span>
+        <span className="text-body text-muted">{note}</span>
       </p>
     </div>
   )

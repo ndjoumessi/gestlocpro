@@ -144,7 +144,7 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
               supposition. Tant qu'aucun fournisseur n'est configuré, il dit
               qu'aucun SMS n'est parti — annoncer un envoi qui n'a pas eu lieu
               est le mensonge que ce produit a passé la journée à retirer. */}
-          <p className="text-body-s text-muted">
+          <p className="text-body text-muted">
             {envoye ? t('app.invite.sentBySms') : t('app.invite.notSent')} {t('app.invite.expires')}
           </p>
           <Button
@@ -212,7 +212,7 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
               les cautions, où l'absence de bouton est expliquée plutôt que
               subie. */}
           {role === 'manager' && (
-            <p className="flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body-s text-gold-ink">
+            <p className="flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body text-gold-ink">
               <Icon name="info" size={15} className="mt-0.5 shrink-0" />
               {t('app.invite.managerNotice')}
             </p>
@@ -223,7 +223,7 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
               c'est un réglage qu'il détient. Elle nomme donc l'écran où il se
               change plutôt que de le laisser deviner. */}
           {role === 'owner' && gereSeul && (
-            <p className="flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body-s text-gold-ink">
+            <p className="flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body text-gold-ink">
               <Icon name="info" size={15} className="mt-0.5 shrink-0" />
               {t('app.onboarding.delegationOffNotice')}
             </p>

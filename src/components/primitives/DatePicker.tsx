@@ -583,7 +583,7 @@ export function DatePicker({
                   key={nom}
                   role="columnheader"
                   aria-label={nom}
-                  className="pb-1 text-center text-body-s text-muted"
+                  className="pb-1 text-center text-body text-muted"
                 >
                   {nom}
                 </div>

@@ -34,8 +34,8 @@ export function AttemptedPath() {
 
   return (
     <div className="rounded-lg border border-border bg-surface px-4 py-3">
-      <p className="text-body-s text-muted">{t('notFound.attempted')}</p>
-      <p className="mt-1 text-body-s break-all text-ink">{shown}</p>
+      <p className="text-body text-muted">{t('notFound.attempted')}</p>
+      <p className="mt-1 text-body break-all text-ink">{shown}</p>
     </div>
   )
 }
