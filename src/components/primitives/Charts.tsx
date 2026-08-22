@@ -2,6 +2,7 @@ import { useId, useMemo, useState, type ReactNode } from 'react'
 import { cn } from '@/lib/cn'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
+import { JaugeDePoste, type EtatDePoste } from './StatusPill'
 
 /**
  * Graphes maison, en DOM et en SVG.
@@ -194,6 +195,27 @@ export function StackedBarChart({
 
   return (
     <figure className="m-0" aria-labelledby={titleId}>
+      {/*
+        LA NOTE DE PÉRIODE OUVERTE VIT ICI, EN PERMANENCE, ET C'EST UN CORRECTIF.
+
+        Elle était portée par `LectureFixe` et n'existait QUE pour la dernière
+        colonne : survoler décembre après novembre ajoutait une ligne à la bande,
+        et tout ce qui suit dans la page descendait de 17 px sur téléphone, de
+        26 px au-delà. Mesuré : 0,126 à 0,310 de décalage cumulé à l'interaction
+        selon la largeur, quand le seuil est 0,1 — la page bougeait sous le
+        pointeur.
+
+        Deux gestes en un. La hauteur de la bande cesse de dépendre de la colonne
+        visée, donc plus rien ne se déplace. Et la note devient LISIBLE SANS
+        SURVOL : ce qu'elle explique — la trame de la dernière colonne — est une
+        propriété du graphique, vraie qu'on le survole ou non, et sur un
+        téléphone il n'y a pas de survol. Une explication qu'il faut viser pour
+        obtenir n'explique rien à qui tient l'appareil du marché visé.
+      */}
+      {openPeriodNote && (
+        <p className="mb-2 text-body-s text-muted">{openPeriodNote}</p>
+      )}
+
       {/* Légende interrogeable : chaque entrée masque ou rétablit sa série. */}
       <div className="mb-5 flex flex-wrap items-center gap-2">
         {seriesKeys.map((key) => {
@@ -483,7 +505,6 @@ export function StackedBarChart({
             value: money(s.value),
             color: SERIES_COLORS_ON_DARK[s.key],
           }))}
-        note={lu === bars.length - 1 ? openPeriodNote : undefined}
       />
 
       {/* Alternative textuelle : mêmes données, lisibles au lecteur d'écran.
@@ -543,12 +564,10 @@ function LectureFixe({
   title,
   total,
   rows,
-  note,
 }: {
   title: string
   total: string
   rows: { key: string; label: string; value: string; color: string }[]
-  note?: string
 }) {
   return (
     <div
@@ -567,10 +586,32 @@ function LectureFixe({
         // de rangées ne dépend plus que du nombre de séries, qui ne change pas
         // d'une colonne à l'autre. La hauteur suit le point de rupture, jamais
         // la donnée.
-        'min-h-[7.75rem] sm:min-h-[4.25rem]',
+        //
+        // LES DEUX VALEURS SONT LA HAUTEUR MESURÉE, et non un plancher choisi
+        // au jugé : 133 px sous `sm`, 86 px au-delà, relevés sur les quinze
+        // colonnes dans les deux langues après que la note de période ouverte
+        // a quitté ce bloc. Un plancher inférieur à la hauteur réelle ne réserve
+        // rien — c'était le cas des deux précédents, 124 et 68, qui laissaient
+        // la note dépasser de 17 et 26 px.
+        'min-h-[8.3125rem] sm:min-h-[5.375rem]',
       )}
     >
-      <p className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+      {/*
+        EMPILÉS, ET NON CÔTE À CÔTE — le dernier pixel de décalage à l'interaction.
+
+        En ligne, la période précédait le montant : « mars » fait 37,4 px et
+        « mai » 24,3, donc le montant se déplaçait latéralement de 3 à 12 px à
+        chaque colonne visée. Mesuré : quatorze événements de décalage pour
+        0,0017 cumulé — petit, mais c'est un nombre qui bouge sous l'œil qui le
+        lit, et la règle ne dit pas « peu ».
+
+        Empilés, les deux commencent à la même abscisse quelle que soit la
+        longueur du libellé. Aucune largeur réservée n'est écrite : un plancher
+        en pixels serait juste pour « mars » et faux pour la première étiquette
+        plus longue qu'un appelant lui passerait. La structure tient là où un
+        nombre magique aurait tenu jusqu'au prochain jeu de données.
+      */}
+      <p className="flex flex-col gap-y-0.5">
         <span className="text-caps text-on-dark-faint uppercase">{title}</span>
         <span className="numeric title-m text-on-dark">{total}</span>
       </p>
@@ -592,8 +633,6 @@ function LectureFixe({
           ))}
         </ul>
       )}
-
-      {note && <p className="mt-1.5 text-body-s text-on-dark-faint">{note}</p>}
     </div>
   )
 }
@@ -750,7 +789,23 @@ export function MiniBarChart({
           Les repères de début et de fin restent affichés en permanence. Sans
           eux, la seule façon de savoir de quel mois on parlait était de
           survoler — donc rien au premier regard. */}
-      <div className="mt-3 flex min-h-5 items-baseline justify-between gap-3">
+      {/*
+        HAUTEUR FIXE ET CENTRAGE, ET NON UN PLANCHER ALIGNÉ SUR LA LIGNE DE BASE.
+
+        La case du milieu est vide tant qu'aucune colonne n'est visée : elle
+        n'a donc pas de ligne de base, et `items-baseline` calait les deux
+        repères de début et de fin sur autre chose. Dès qu'elle se remplissait —
+        14 px de corps contre 12 px de surtitre — la ligne de base commune se
+        déplaçait et les deux repères sautaient de 4 px, verticalement, à chaque
+        colonne survolée. Mesuré : deux sources de décalage, dy = ±4, sur la
+        page d'accueil.
+
+        `h-6` couvre la plus haute des deux graisses (14 px × 1,5 = 21 px) et
+        `items-center` ne dépend d'aucune ligne de base : la case peut se
+        remplir et se vider, la rangée garde sa hauteur et ses voisines leur
+        place.
+      */}
+      <div className="mt-3 flex h-6 items-center justify-between gap-3">
         <span
           aria-hidden="true"
           className="text-caps text-muted uppercase"
@@ -783,8 +838,15 @@ export function MiniBarChart({
       </div>
 
       {/* Le mois en cours est encore ouvert : sa colonne est plus basse sans
-          que rien ne l'explique. La note ne s'affiche que lorsqu'on la vise. */}
-      {openPeriodNote && active === bars.length - 1 && (
+          que rien ne l'explique.
+
+          PERMANENTE, et non révélée au survol de la dernière colonne. Sous sa
+          forme conditionnelle, elle apparaissait et disparaissait au passage du
+          pointeur : une ligne de texte qui pousse tout ce qui suit, sur la page
+          d'accueil, sous le curseur de qui lit. Même défaut que celui de
+          `LectureFixe`, même correctif — et pour la même seconde raison : un
+          téléphone n'a pas de survol, donc la note n'y existait jamais. */}
+      {openPeriodNote && (
         <p className="mt-1.5 text-center text-body-s text-muted">{openPeriodNote}</p>
       )}
 
@@ -807,11 +869,87 @@ export function MiniBarChart({
   )
 }
 
+/**
+ * LE PROFIL RADIAL D'UNE PART — la seconde dimension de l'anneau.
+ *
+ * Trois parts, trois teintes, et rien d'autre : mesuré sous simulation, l'écart
+ * CIEDE2000 entre « partiel » et « en retard » tombe à 3,4 en deutéranopie
+ * (30,3 et 22,7 en vision normale). Sous cette distance, deux aplats sont le
+ * même aplat. L'épaississement au survol ne rattrape rien — un téléphone n'a
+ * ni survol ni focus.
+ *
+ * CE QUI EST AJOUTÉ EST UN PROFIL, ET NON UNE COULEUR. La largeur ANGULAIRE
+ * d'une part est la donnée : elle vaut 9° sur cet écran, soit 8 px d'arc, et
+ * rien ne peut s'y inscrire. Sa largeur RADIALE, elle, est constante — 11
+ * unités, 14,1 px CSS — et indépendante des montants. C'est donc là, et
+ * seulement là, que la forme peut porter l'état.
+ *
+ * TROIS FORMES, ET CE SONT CELLES DE `.jauge` : pleine, demie, creuse. La
+ * grille des paiements pose déjà ce vocabulaire sur un disque de 10 px ; le
+ * reprendre sur la bande de l'anneau évite d'en inventer un second pour la
+ * même chose. Le bord creux fait 1,5 unité, comme la bordure de `.jauge`.
+ *
+ * Familles écartées, mesurées et non supposées — voir le rapport du lot :
+ *   · glyphe posé sur l'arc — 10,0 % d'écart de silhouette aux angles réels,
+ *     soit 10,8 px² : sous le plancher de 12 px². Même échec qu'au lot
+ *     précédent, pour une autre raison : 8 px d'arc, pas 10 px de disque ;
+ *   · trame le long de l'arc — passe la mesure (34,5 %) mais coûte 12 nœuds
+ *     SVG contre 4 et 1,2 ms de peinture contre 0,8 : un masque et deux motifs
+ *     pour ce qu'un rayon fait sans rien ajouter ;
+ *   · étagement radial — passe (42,6 %), et défait l'anneau : trois arcs à
+ *     trois rayons ne se lisent plus comme les parts d'un même tout ;
+ *   · épaisseur seule — passe (24,1 %), et l'épaisseur veut déjà dire « part
+ *     visée » dans ce composant. Deux sens pour une dimension n'en font aucun.
+ */
+export type FormeDePart = 'pleine' | 'demie' | 'creuse'
+
+/**
+ * BANDE RADIALE DE CHAQUE FORME, en unités de la boîte de vue.
+ *
+ * La bande pleine est celle d'avant — 36,5 à 47,5 — donc l'anneau ne change
+ * ni de rayon ni d'encombrement. Les deux autres vivent DEDANS : le contour
+ * extérieur de l'anneau reste le même cercle pour les trois parts, et c'est ce
+ * qui le laisse se lire comme un seul objet.
+ */
+const R_INT = 36.5
+const R_EXT = 47.5
+/** Épaisseur du bord creux. 1,5 unité, comme la bordure de `.jauge`. */
+const BORD = 1.5
+
+/** Les segments radiaux `[intérieur, extérieur]` que pose une forme. */
+function bandes(forme: FormeDePart, croissance: number): [number, number][] {
+  const int = R_INT - croissance
+  const ext = R_EXT + croissance
+  if (forme === 'pleine') return [[int, ext]]
+  if (forme === 'demie') return [[(int + ext) / 2, ext]]
+  return [
+    [int, int + BORD],
+    [ext - BORD, ext],
+  ]
+}
+
 export interface DonutSlice {
-  key: string
   label: string
   value: number
-  color: string
+  /**
+   * L'ÉTAT DE RÈGLEMENT, ET NON UNE COULEUR.
+   *
+   * La teinte ET la forme en découlent toutes deux, par la même table. Une
+   * part ne peut donc pas être ambre et pleine : il n'y a pas deux réglages à
+   * accorder, il y en a un. C'est la même raison qui fait que la grille des
+   * paiements et sa légende appellent le même composant — une clé qui n'ouvre
+   * pas la serrure est pire que pas de clé.
+   */
+  etat: EtatDePoste
+}
+
+/** Teinte et forme d'un état, au même endroit et une seule fois. */
+const PARTS: Record<EtatDePoste, { couleur: string; forme: FormeDePart }> = {
+  paid: { couleur: 'var(--color-ok)', forme: 'pleine' },
+  partial: { couleur: 'var(--color-warn)', forme: 'demie' },
+  /* `--color-warn` et non `--color-gold` pour « partiel » : l'or de marque ne
+     tient que 2,87:1 sur blanc, sous le seuil d'une donnée. */
+  overdue: { couleur: 'var(--color-danger)', forme: 'creuse' },
 }
 
 export function DonutChart({
@@ -845,50 +983,68 @@ export function DonutChart({
   const [active, setActive] = useState<string | null>(null)
 
   const total = slices.reduce((sum, slice) => sum + slice.value, 0)
-  const radius = 42
-  const circumference = 2 * Math.PI * radius
 
-  let offset = 0
+  /* Fractions et non longueurs : chaque forme pose ses segments à des rayons
+     DIFFÉRENTS, et une longueur d'arc calculée sur un rayon en décrirait un
+     autre. La part et son départ sont donc gardés sans dimension, et convertis
+     par la circonférence de CHAQUE segment. */
+  let depart = 0
   const arcs = slices.map((slice) => {
     const fraction = total ? slice.value / total : 0
-    const arc = { slice, dash: fraction * circumference, offset, fraction }
-    offset += arc.dash
+    const arc = { slice, fraction, depart }
+    depart += fraction
     return arc
   })
 
-  const shown = arcs.find((a) => a.slice.key === active)
+  const shown = arcs.find((a) => a.slice.etat === active)
 
   return (
     <figure className="m-0 flex flex-wrap items-center gap-6">
       <div className="relative shrink-0">
         <svg width="128" height="128" viewBox="0 0 100 100" aria-hidden="true">
-          {arcs.map(({ slice, dash, offset: arcOffset }) => (
-            <circle
-              key={slice.key}
-              cx="50"
-              cy="50"
-              r={radius}
-              fill="none"
-              stroke={slice.color}
-              // La part visée épaissit vers l'extérieur : l'anneau ne change
-              // pas de rayon, donc rien ne se déplace autour.
-              //
-              // L'ÉPAISSISSEMENT SUFFIT, et les parts qu'on ne vise pas ne
-              // s'effacent plus. Elles passaient à 0,35 d'opacité : composées
-              // sur la carte, les trois teintes du tableau de bord retombaient
-              // entre 1,65:1 et 1,77:1 en clair, entre 1,94:1 et 2,26:1 en
-              // sombre — quand un élément non textuel porteur de sens doit
-              // tenir 3:1, et qu'opaques elles vont de 5,47:1 à 8,51:1. Deux
-              // signaux disaient la même chose ; un seul ne coûte rien aux
-              // voisines.
-              strokeWidth={active === slice.key ? 14 : 11}
-              strokeDasharray={`${dash} ${circumference - dash}`}
-              strokeDashoffset={-arcOffset}
-              className="transition-all duration-150"
-              // -90° pour démarrer à midi plutôt qu'à 3 h.
-              transform="rotate(-90 50 50)"
-            />
-          ))}
+          {arcs.flatMap(({ slice, fraction, depart: debut }) => {
+            const { couleur, forme } = PARTS[slice.etat]
+            /* La part visée épaissit VERS L'EXTÉRIEUR ET VERS L'INTÉRIEUR :
+               l'anneau ne change pas de rayon médian, donc rien ne se déplace
+               autour. La bande pleine passe de 11 à 14, exactement comme avant
+               ce lot ; les deux autres croissent de la même unité et demie de
+               chaque côté, donc le geste est le même pour les trois.
+
+               L'ÉPAISSISSEMENT NE DISTINGUE RIEN. Il n'existe qu'au survol et
+               au focus, et un téléphone n'a ni l'un ni l'autre : ce qui sépare
+               les trois parts est leur profil radial, présent au repos. */
+            const croissance = active === slice.etat ? 1.5 : 0
+            return bandes(forme, croissance).map(([interieur, exterieur], i) => {
+              const r = (interieur + exterieur) / 2
+              const c = 2 * Math.PI * r
+              return (
+                <circle
+                  key={`${slice.etat}-${i}`}
+                  /* Ce n'est pas décoratif : `couleur-non-seule` retrouve les
+                     parts par cet attribut et COMPTE ce qu'elle a regardé. Le
+                     retirer d'une part fait chuter le compte et arrête la
+                     porte — voir l'en-tête du script. */
+                  data-jauge={slice.etat}
+                  cx="50"
+                  cy="50"
+                  r={r}
+                  fill="none"
+                  /* Opaques, et non éclaircies hors visée. À 0,35 d'opacité,
+                     composées sur la carte, les trois teintes retombaient entre
+                     1,65:1 et 1,77:1 en clair et entre 1,94:1 et 2,26:1 en
+                     sombre — quand un élément non textuel porteur de sens doit
+                     tenir 3:1, et qu'opaques elles vont de 5,47:1 à 8,51:1. */
+                  stroke={couleur}
+                  strokeWidth={exterieur - interieur}
+                  strokeDasharray={`${fraction * c} ${(1 - fraction) * c}`}
+                  strokeDashoffset={-debut * c}
+                  className="transition-all duration-150"
+                  // -90° pour démarrer à midi plutôt qu'à 3 h.
+                  transform="rotate(-90 50 50)"
+                />
+              )
+            })
+          })}
         </svg>
 
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
@@ -914,25 +1070,28 @@ export function DonutChart({
           la légende reste à côté du donut comme sur grand écran. */}
       <ul className="flex min-w-52 flex-1 flex-col">
         {arcs.map(({ slice, fraction }) => (
-          <li key={slice.key}>
+          <li key={slice.etat}>
             <button
               type="button"
-              onMouseEnter={() => setActive(slice.key)}
-              onMouseLeave={() => setActive((c) => (c === slice.key ? null : c))}
-              onFocus={() => setActive(slice.key)}
-              onBlur={() => setActive((c) => (c === slice.key ? null : c))}
+              onMouseEnter={() => setActive(slice.etat)}
+              onMouseLeave={() => setActive((c) => (c === slice.etat ? null : c))}
+              onFocus={() => setActive(slice.etat)}
+              onBlur={() => setActive((c) => (c === slice.etat ? null : c))}
               className={cn(
                 'flex min-h-11 w-full cursor-pointer items-center gap-2.5 rounded-md px-2 -mx-2',
                 'text-left text-body transition-colors duration-150',
-                active === slice.key ? 'bg-surface-sunken' : 'hover:bg-surface-sunken',
+                active === slice.etat ? 'bg-surface-sunken' : 'hover:bg-surface-sunken',
               )}
               aria-label={`${slice.label} — ${money(slice.value, { round: true })}, ${Math.round(fraction * 100)} %`}
             >
-              <span
-                aria-hidden="true"
-                className="size-2.5 shrink-0 rounded-full"
-                style={{ background: slice.color }}
-              />
+              {/* LA MÊME JAUGE QUE LA GRILLE DES PAIEMENTS, et c'est le point.
+                  Une légende qui porterait une forme absente de l'anneau
+                  donnerait une clé qui n'ouvre rien : pastille pleine, demie et
+                  creuse répondent ici aux bandes pleine, demie et creuse. La
+                  pastille nue qu'elle remplace ne portait que la teinte — 3,4
+                  de ΔE00 entre « partiel » et « en retard » sous deutéranopie,
+                  sur un disque de 10 px. */}
+              <JaugeDePoste etat={slice.etat} />
               <span className="min-w-0 flex-1 truncate text-muted">{slice.label}</span>
               <span className="numeric shrink-0 font-medium">
                 {money(slice.value, { round: true })}
