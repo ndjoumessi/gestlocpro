@@ -181,16 +181,23 @@ describe('le parc mène au dossier', () => {
   })
 
   /**
-   * Le fil d'Ariane reconnaît une SOUS-route.
+   * LE DOSSIER SE NOMME LUI-MÊME, ET N'EST JAMAIS « ÉCRAN INTROUVABLE ».
    *
-   * Il comparait l'adresse par égalité stricte : le dossier — qui n'est
-   * l'adresse d'aucune entrée de navigation — s'annonçait « Écran introuvable »
-   * sur une page qui s'ouvrait parfaitement.
+   * Ce cas visait le fil d'Ariane, qui comparait l'adresse par égalité
+   * stricte : le dossier — qui n'est l'adresse d'aucune entrée de navigation —
+   * s'y annonçait « Écran introuvable » sur une page qui s'ouvrait
+   * parfaitement. Le lot de la coquille a retiré le fil, et avec lui cette
+   * déduction : le nom de l'écran ne se devine plus, il vient de l'écran.
+   *
+   * CE QUE LE CAS GARDE MAINTENANT, et c'est la moitié qui comptait : le
+   * dossier ne bascule pas sur le 404. Le titre du document est le bon endroit
+   * pour le vérifier — c'est lui qu'on retrouve dans un signet et dans
+   * l'historique, et c'est lui qui portait le mensonge le plus durable.
    */
-  it('situe le dossier dans sa section, et non en « écran introuvable »', async () => {
+  it('se nomme lui-même, et non « écran introuvable »', async () => {
     await ouvrirLeDossier()
-    const fil = screen.getByRole('navigation', { name: 'Fil d’Ariane' })
-    expect(fil).toHaveTextContent('Parc immobilier')
-    expect(fil).not.toHaveTextContent('introuvable')
+    expect(document.title).toContain('Résidence Essos — B7')
+    expect(document.title).not.toContain('introuvable')
+    expect(screen.queryByText('Écran introuvable')).not.toBeInTheDocument()
   })
 })

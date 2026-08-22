@@ -202,6 +202,10 @@ describe('quand le parc est déjà à l’écran', () => {
     await renderApp('/app/parc', { session: SESSION_AVEC_PARC })
     await screen.findByText('A3')
 
+    /* Le sélecteur de langue vit derrière le point d'entrée unique des
+       réglages depuis le lot de la coquille — voir `MenuReglages`. On ouvre
+       comme l'utilisateur ouvre, par le nom accessible du bouton. */
+    await user.click(screen.getByRole('button', { name: /Réglages/ }))
     await user.click(screen.getAllByRole('button', { name: /english/i })[0]!)
 
     // La relecture est en vol — mais elle porte sur le parc DÉJÀ affiché.

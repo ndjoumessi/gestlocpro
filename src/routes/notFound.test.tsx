@@ -69,11 +69,24 @@ describe('adresse inconnue dans l’espace de gestion', () => {
     expect(within(laterale).getByRole('link', { name: 'Tableau de bord' })).toBeInTheDocument()
   })
 
-  it('ne prétend pas dans le fil d’Ariane que l’on est au tableau de bord', async () => {
+  /**
+   * LE FIL D'ARIANE A DISPARU ; L'INVARIANT, LUI, RESTE.
+   *
+   * Ce cas gardait une chose juste : une adresse inconnue ne doit pas
+   * s'annoncer « Tableau de bord ». Il la gardait sur le fil d'Ariane, que le
+   * lot de la coquille a retiré — il répétait, dans un repère de navigation
+   * que les lecteurs d'écran listent à part, le nom que le `<h1>` de la page
+   * disait déjà quinze pixels plus bas.
+   *
+   * Le cas suit l'invariant là où il vit désormais : le TITRE DU DOCUMENT et
+   * le `<h1>`. Ce sont les deux seuls endroits qui nomment l'écran courant, et
+   * ce sont eux qui mentiraient si le repli était mal choisi.
+   */
+  it('ne prétend nulle part que l’on est au tableau de bord', async () => {
     await renderApp('/app/ecran-inexistant')
-    const fil = screen.getByRole('navigation', { name: /fil d’ariane/i })
-    expect(fil).toHaveTextContent('Écran introuvable')
-    expect(fil).not.toHaveTextContent('Tableau de bord')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Écran introuvable')
+    expect(document.title).toContain('Écran introuvable')
+    expect(document.title).not.toContain('Tableau de bord')
   })
 
   it('ramène au tableau de bord', async () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, switchRole, attendreLeChargement } from '@/test/render'
+import { renderApp, screen, switchRole, attendreLeChargement, userEvent } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 
@@ -21,8 +21,28 @@ import type { EtatSession } from '@/api/SessionProvider'
 const PARC = '11111111-2222-4333-8444-555555555555'
 const UNITE = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'
 
-/** Le nom accessible du sélecteur : « Devise » suivi du libellé courant. */
-const selecteurDeDevise = () => screen.queryByRole('button', { name: /Devise/ })
+/**
+ * Le nom accessible du sélecteur : « Devise » suivi du libellé courant.
+ *
+ * IL FAUT OUVRIR LES RÉGLAGES D'ABORD, et c'est le lot de la coquille qui l'a
+ * rendu nécessaire : langue, devise et thème occupaient la moitié droite de la
+ * barre sur les 23 écrans et repliaient l'en-tête sur trois lignes à 360 px.
+ * Ils vivent désormais derrière un point d'entrée unique. L'invariant que ce
+ * fichier garde — le sélecteur existe en démonstration, jamais sur un vrai
+ * parc — n'a pas bougé d'un pouce ; seule sa PROFONDEUR a changé, et le cas
+ * doit descendre au même endroit que l'utilisateur.
+ *
+ * On ouvre par le RÔLE et le nom accessible, jamais par une classe : c'est ce
+ * qui fait que ce cas continuerait de tenir si le panneau changeait de forme.
+ * La coquille du locataire, elle, garde ses trois segmentés dépliés — il n'y a
+ * pas de bouton à ouvrir, et `ouvrirLesReglages` ne trouve alors rien à faire.
+ */
+async function ouvrirLesReglages() {
+  const bouton = screen.queryByRole('button', { name: /Réglages|Settings/ })
+  if (bouton) await userEvent.click(bouton)
+}
+
+const selecteurDeDevise = () => screen.queryByRole('button', { name: /^Devise|^Currency/ })
 
 function sessionReelle(role: 'owner' | 'tenant'): EtatSession {
   return {
@@ -85,6 +105,7 @@ describe('en démonstration, la devise se choisit', () => {
   it('offre le sélecteur au bailleur', async () => {
     await renderApp('/demo')
     await attendreLeChargement()
+    await ouvrirLesReglages()
     expect(selecteurDeDevise()).toBeInTheDocument()
   })
 
@@ -98,6 +119,7 @@ describe('en démonstration, la devise se choisit', () => {
     await renderApp('/demo')
     await switchRole('tenant')
     await attendreLeChargement()
+    await ouvrirLesReglages()
     expect(selecteurDeDevise()).toBeInTheDocument()
   })
 })
@@ -107,6 +129,7 @@ describe('sur un vrai parc, la devise ne se choisit pas', () => {
     serveurReel()
     await renderApp('/app', { session: sessionReelle('owner') })
     await attendreLeChargement()
+    await ouvrirLesReglages()
     expect(selecteurDeDevise()).toBeNull()
   })
 
@@ -114,6 +137,7 @@ describe('sur un vrai parc, la devise ne se choisit pas', () => {
     serveurReel()
     await renderApp('/app/mon-espace', { session: sessionReelle('tenant') })
     await attendreLeChargement()
+    await ouvrirLesReglages()
     expect(selecteurDeDevise()).toBeNull()
   })
 

@@ -236,14 +236,26 @@ describe('devise d’affichage', () => {
     /**
      * Offrir de changer de devise sans convertir n'offre pas un choix : cela
      * ment sur l'unité. Il n'y a qu'une devise juste pour un parc — la sienne.
+     *
+     * ON OUVRE LES RÉGLAGES AVANT DE CONCLURE. Le sélecteur vit derrière un
+     * point d'entrée unique depuis le lot de la coquille ; interroger la barre
+     * fermée rendrait « absent » pour tout le monde, et le cas passerait au
+     * vert même si le sélecteur était offert à l'intérieur.
+     *
+     * Le motif est ANCRÉ (`^Devise`) et non libre : le bouton des réglages
+     * s'appelle « Réglages : langue, devise et thème » — il NOMME la devise
+     * sans en être un, et un `/devise/i` flottant le comptait pour elle. Ce
+     * cas-là échouait pour cette seule raison, sur un produit correct.
      */
-    expect(screen.queryByRole('button', { name: /devise/i })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /Réglages/ }))
+    expect(screen.queryByRole('button', { name: /^Devise/ })).not.toBeInTheDocument()
   })
 
   it('le garde en démonstration, où les montants sont fictifs', async () => {
     await renderApp('/demo/parc')
     await attendreLeChargement()
 
-    expect(screen.getAllByRole('button', { name: /devise/i }).length).toBeGreaterThan(0)
+    await userEvent.click(screen.getByRole('button', { name: /Réglages/ }))
+    expect(screen.getAllByRole('button', { name: /^Devise/ }).length).toBeGreaterThan(0)
   })
 })

@@ -543,15 +543,33 @@ describe('séparateur du fil d’Ariane', () => {
     'sombre (choisi)': corps(":root[data-theme='dark']"),
   }
 
-  it('n’emploie pas un jeton de bordure pour un glyphe', () => {
+  /**
+   * LE SÉPARATEUR A DISPARU AVEC LE FIL D'ARIANE, et ce cas a changé d'objet.
+   *
+   * Il visait UNE ligne : le glyphe « / » entre le nom du parc et celui de
+   * l'écran. Le lot de la coquille a retiré le fil — il annonçait « PARC DE
+   * DÉMONSTRATION / TABLEAU DE BORD » quinze pixels au-dessus d'un `<h1>` qui
+   * disait « Tableau de bord » — et cette assertion cherchait donc une ligne
+   * qui n'existe plus. Elle échouait sur un produit correct, ce qui est la
+   * pire espèce de garde.
+   *
+   * Plutôt que de la supprimer, on l'ÉLARGIT à l'invariant qu'elle défendait
+   * vraiment : un jeton de BORDURE ne peint pas un glyphe, nulle part dans la
+   * coquille. `--color-border-strong` tenait 1,66:1 en clair et 2,42 en
+   * sombre, sous le seuil de 3:1 des éléments non textuels ; le fil n'était
+   * qu'un de ses emplois possibles.
+   *
+   * Le motif de classe est assemblé par FRAGMENTS : ce fichier est balayé par
+   * le générateur d'utilitaires, et un nom écrit en entier serait réellement
+   * produit dans la feuille livrée.
+   */
+  it('n’emploie nulle part un jeton de bordure comme encre', () => {
     const coque = sansCommentaires(
       readFileSync(join(SRC, 'components', 'layout', 'AppShell.tsx'), 'utf8'),
     )
-    const ligne = coque
-      .split('\n')
-      .findIndex((l) => /aria-hidden="true"/.test(l) && /text-/.test(l) && /muted-soft|border-strong/.test(l))
-    expect(ligne, 'séparateur introuvable').toBeGreaterThan(-1)
-    expect(coque.split('\n')[ligne]).not.toContain('border-strong')
+    const encreDeBordure = new RegExp('text' + '-' + 'border' + '-' + 'strong')
+    const fautives = coque.split('\n').filter((l) => encreDeBordure.test(l))
+    expect(fautives, 'jeton de bordure employé comme encre').toEqual([])
   })
 
   for (const [theme, bloc] of Object.entries(BLOCS)) {
