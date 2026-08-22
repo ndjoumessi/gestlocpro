@@ -62,6 +62,18 @@ export const fr = {
      */
     amountUnreadable:
       'Montant illisible. Reprenez-le en chiffres positifs, sans lettre ni symbole.',
+    /* FORME COURTE POUR LE TÉLÉPHONE, et non une troncature de la longue.
+       La bande de démonstration faisait 140 px à 360 px de large : la phrase
+       complète y tombait sur quatre lignes, répétées sur les 23 écrans. Couper
+       la phrase aurait menti par omission ; en écrire une vraie, plus courte,
+       dit la même chose sur une ligne. La longue reste, à partir de `sm`. */
+    /* ASSEZ COURTE POUR TENIR ENTIÈRE À 320 px, et c'est la contrainte.
+       Première rédaction : « Données fictives : rien n'est enregistré. » —
+       mesurée à 230 px pour 155 disponibles une fois la gouttière et le bouton
+       déduits, donc rognée en « Données fictives : rien… ». Une phrase coupée
+       au milieu d'un mot est exactement le mensonge par omission que la forme
+       courte existait pour éviter. Celle-ci tient. */
+    demoNoticeShort: 'Données fictives.',
     demoNotice:
       'Vous parcourez une démonstration : ces immeubles, ces locataires et ces montants sont fictifs.',
     demoCta: 'Créer mon espace',
@@ -194,6 +206,14 @@ export const fr = {
     sectionOperations: 'Opérations',
     sectionAdmin: 'Administration',
     activeProfile: 'Profil actif',
+    /* LE POINT D'ENTRÉE UNIQUE DES RÉGLAGES.
+       Langue, devise et thème occupaient en permanence la moitié droite de la
+       barre sur les 23 écrans, pour des choix qu'on fait une fois — et à 360 px
+       les trois segmentés repliaient l'en-tête sur trois lignes, 185 px de
+       hauteur avant le moindre contenu. Ils vivent désormais derrière un seul
+       bouton, et aucun ne disparaît : le panneau les montre tous les trois. */
+    settings: 'Réglages',
+    settingsOpen: 'Réglages : langue, devise et thème',
     // Trois boutons portaient ce libellé pour trois actions différentes.
     // « Replier ou déplier » ne vaut que pour la barre latérale de bureau, qui
     // bascule entre pleine largeur et rail ; le tiroir mobile, lui, s'ouvre
@@ -205,7 +225,6 @@ export const fr = {
     selectPark: 'Parc regardé',
     primaryNav: 'Navigation principale',
     sectionsNav: 'Sections du produit',
-    breadcrumb: 'Fil d’Ariane',
     // La barre basse ne porte que quatre destinations : « Plus » ouvre le
     // tiroir, qui reste le seul endroit où la navigation est complète.
     quickNav: 'Navigation rapide',
@@ -1449,7 +1468,41 @@ export const fr = {
     offline: {
       title: 'Serveur injoignable',
       body:
-        'Votre session est peut-être toujours valable : ce n’est pas une déconnexion. Vérifiez votre connexion, puis rechargez la page.',
+        'Votre session est peut-être toujours valable : ce n’est pas une déconnexion. Vérifiez votre connexion, puis réessayez.',
+    },
+
+    /* L'échec TERMINAL de la lecture de session. Deux corps pour deux causes :
+       le serveur qui répond de travers, et le serveur qui ne répond pas à
+       temps. Les confondre ferait chercher une panne inexistante. */
+    /* Le repli de la frontière d'erreur. Distinct de `sessionFailure` : là,
+       une requête a échoué ; ici, c'est le RENDU qui s'est interrompu, et
+       l'écran n'existe plus du tout. Deux causes, deux phrases. */
+    /* L'échec du CHARGEMENT DU PARC, rendu dans le cadre de l'écran et non
+       plein écran : la coquille va bien, seules les données manquent. Deux
+       causes, deux gestes — se reconnecter, ou réessayer. */
+    parkFailure: {
+      sessionTitle: 'Votre session a expiré',
+      sessionBody:
+        'Vos données n’ont pas pu être relues. Rien n’est perdu : terminez ce que vous faisiez, puis reconnectez-vous.',
+      signIn: 'Se reconnecter',
+      title: 'Données indisponibles',
+      body:
+        'Le serveur n’a pas rendu votre parc. Ce qui est affiché ailleurs reste valable ; réessayez dans un instant.',
+    },
+
+    crash: {
+      title: 'Cet écran s’est interrompu',
+      body:
+        'Une erreur a arrêté l’affichage. Le reste de l’application fonctionne : réessayez, ou revenez à l’accueil.',
+      details: 'Détail technique',
+    },
+
+    sessionFailure: {
+      title: 'Impossible d’ouvrir votre espace',
+      body:
+        'Le serveur a répondu, mais pas ce qu’il fallait. Votre session n’est pas perdue — réessayez dans un instant.',
+      timeoutBody:
+        'Le serveur n’a pas répondu à temps. La connexion est peut-être lente : réessayez, ou revenez plus tard.',
     },
 
     system: {

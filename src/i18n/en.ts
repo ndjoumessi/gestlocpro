@@ -41,6 +41,7 @@ export const en: Dictionary = {
     actionFailed: 'This action failed for now. Nothing was saved.',
     amountUnreadable:
       'Amount unreadable. Re-enter it in positive digits, without letters or symbols.',
+    demoNoticeShort: 'Sample data.',
     demoNotice:
       'You are browsing a demo: these buildings, tenants and amounts are fictional.',
     demoCta: 'Create my space',
@@ -147,6 +148,8 @@ export const en: Dictionary = {
     sectionOperations: 'Operations',
     sectionAdmin: 'Administration',
     activeProfile: 'Active profile',
+    settings: 'Settings',
+    settingsOpen: 'Settings: language, currency and theme',
     toggleNav: 'Collapse or expand navigation',
     openNav: 'Open navigation',
     closeNav: 'Close navigation',
@@ -154,7 +157,6 @@ export const en: Dictionary = {
     selectPark: 'Park being viewed',
     primaryNav: 'Main navigation',
     sectionsNav: 'Product sections',
-    breadcrumb: 'Breadcrumb',
     quickNav: 'Quick navigation',
     more: 'More',
   },
@@ -1119,7 +1121,41 @@ export const en: Dictionary = {
     offline: {
       title: 'Server unreachable',
       body:
-        'Your session may still be valid — this is not a sign-out. Check your connection, then reload the page.',
+        'Your session may still be valid — this is not a sign-out. Check your connection, then try again.',
+    },
+
+    /* The TERMINAL failure of the session read. Two bodies for two causes: a
+       server that answers wrongly, and a server that does not answer in time.
+       Merging them would send someone hunting a fault that does not exist. */
+    /* The error boundary's fallback. Distinct from `sessionFailure`: there a
+       request failed; here the RENDER itself stopped, and the screen is gone
+       entirely. Two causes, two sentences. */
+    /* The failure of the PARK LOAD, rendered inside the screen's frame rather
+       than full-screen: the shell is fine, only the data is missing. Two
+       causes, two gestures — sign in again, or retry. */
+    parkFailure: {
+      sessionTitle: 'Your session has expired',
+      sessionBody:
+        'Your data could not be re-read. Nothing is lost: finish what you were doing, then sign in again.',
+      signIn: 'Sign in again',
+      title: 'Data unavailable',
+      body:
+        'The server did not return your portfolio. What is shown elsewhere still holds; try again in a moment.',
+    },
+
+    crash: {
+      title: 'This screen stopped',
+      body:
+        'An error halted the display. The rest of the app still works: try again, or go back home.',
+      details: 'Technical detail',
+    },
+
+    sessionFailure: {
+      title: 'Cannot open your workspace',
+      body:
+        'The server answered, but not with what was needed. Your session is not lost — try again in a moment.',
+      timeoutBody:
+        'The server did not answer in time. Your connection may be slow: try again, or come back later.',
     },
 
     system: {

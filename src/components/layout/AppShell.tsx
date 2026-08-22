@@ -8,7 +8,7 @@ import {
   type ReactNode,
   type Ref,
 } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/cn'
 import { GOUTTIERE_LATERALE } from './gouttiere'
 import { LienEvitement } from './LienEvitement'
@@ -27,6 +27,7 @@ import type { Role } from '@/features/auth/signupState'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { useSession } from '@/api/SessionProvider'
 import { lien, useBase } from '@/lib/base'
+import { CadreDuParc } from '@/components/feedback/CadreDuParc'
 
 
 /* -------------------------------------------------------------------------- */
@@ -465,7 +466,7 @@ export function AppShell() {
               GOUTTIERE_LATERALE,
             )}
           >
-            <Outlet />
+            <CadreDuParc />
           </main>
         </div>
       </RoleContext.Provider>
@@ -566,7 +567,7 @@ export function AppShell() {
               GOUTTIERE_LATERALE,
             )}
           >
-            <Outlet />
+            <CadreDuParc />
           </main>
 
           {/*
@@ -803,22 +804,48 @@ function BandeauDemo() {
       // vif au-dessus d'une page noire — l'îlot clair caractéristique d'un
       // jeton oublié, ici d'une couleur qui n'était même pas un jeton. Les
       // tailles suivent l'échelle pour la même raison.
+      /*
+        UNE MENTION, ET NON PLUS UNE BANDE — mesuré, et c'est le plus gros poste
+        de la coquille.
+
+        Repliée (`flex-wrap`), la phrase complète tombait sur quatre lignes à
+        360 px : 140 px de bandeau, répétés sur les 23 écrans, au-dessus d'un
+        en-tête qui en pesait déjà 185. Sur les 325 px que la coquille prenait
+        avant le premier mot, ce bandeau en portait 43 %.
+
+        `flex-nowrap` et une phrase COURTE sous `sm`. Ce n'est pas une
+        troncature : `demoNoticeShort` est une phrase entière, vraie, qui dit la
+        même chose — « données fictives, rien n'est enregistré ». Couper la
+        longue aurait menti par omission, et c'est le téléphone, appareil du
+        marché visé, qui aurait reçu le mensonge.
+      */
       className={cn(
-        'flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-warn-border bg-warn-tint py-2.5 text-body-s text-warn',
+        'flex flex-nowrap items-center gap-x-3 border-b border-warn-border bg-warn-tint py-1.5 text-body-s text-warn',
         GOUTTIERE_LATERALE,
       )}
     >
-      <span className="eyebrow rounded-full bg-warn-border px-2 py-0.5 font-semibold tracking-wide uppercase">
+      {/* La pastille se retire sous `sm`, et c'est mesuré : à 320 px, pastille
+          (100 px) + bouton (153 px) + gouttières débordaient de 4 px — le seul
+          débordement latéral des 23 écrans après ce lot, relevé par
+          `mesure-ui`. Elle est aussi la plus redondante des trois pièces :
+          la phrase courte dit déjà « données fictives », donc la retirer ne
+          retire aucune information, seulement sa répétition en capitales. */}
+      <span className="eyebrow hidden shrink-0 rounded-full bg-warn-border px-2 py-0.5 font-semibold tracking-wide uppercase sm:inline">
         {t('common.demoBadge')}
       </span>
-      {/* `basis-48` et non le `flex-1` seul qu'il y avait ici. `flex-1` vaut
-          `flex: 1 1 0%` : la base nulle autorise le texte à se comprimer
-          indéfiniment plutôt qu'à passer à la ligne, et à 375 px il tombait à
-          un mot par ligne pendant que le bouton lui passait dessus. Une base
-          de 12 rem lui donne une largeur minimale à défendre : en dessous, il
-          renvoie le bouton à la ligne suivante au lieu de s'écraser. */}
-      <span className="min-w-0 flex-1 basis-48 sm:basis-0">{t('common.demoNotice')}</span>
-      <Button size="sm" to="/inscription/proprietaire" iconAfter="arrowRight">
+      {/* Les deux formulations sont RENDUES toutes les deux et l'une est
+          masquée par requête média, jamais par mesure de la fenêtre en JS : une
+          bascule au montage produirait un décalage de mise en page au premier
+          rendu, ce que la porte compte. */}
+      {/* LE POINT DE BASCULE EST `lg`, ET IL EST MESURÉ. À `sm` (640 px), la
+          phrase longue était rognée jusqu'à 900 px inclus — donc la moitié des
+          largeurs recevait la version tronquée, celle-là même qu'on refusait au
+          téléphone. Relevé sur les onze largeurs, dans les deux langues : la
+          longue ne tient qu'à partir de 1280 — à 1024 la barre latérale reprend
+          256 px et la rogne encore —, la courte tient dès 320. */}
+      <span className="min-w-0 flex-1 truncate xl:hidden">{t('common.demoNoticeShort')}</span>
+      <span className="hidden min-w-0 flex-1 truncate xl:block">{t('common.demoNotice')}</span>
+      <Button size="sm" to="/inscription/proprietaire" iconAfter="arrowRight" className="shrink-0">
         {t('common.demoCta')}
       </Button>
     </div>
@@ -1004,7 +1031,26 @@ function Sidebar({
             Le texte fait deux lignes et touchait les deux bords : `py-2.5` lui
             rend l'air que sa hauteur de ligne réclame.
           */}
-          <p className="rounded-md bg-on-dark-hover px-3.5 py-2.5 text-caps leading-relaxed text-on-dark-muted">
+          {/*
+            UNE MENTION RATTACHÉE AU RÔLE ACTIF, ET NON UN QUATRIÈME RÔLE.
+
+            Ce texte portait le MÊME fond que les trois étiquettes de profil
+            au-dessus (`bg-on-dark-hover`), la même largeur, le même arrondi, et
+            se posait juste sous elles. Vérifié dans la source : ce n'est pas un
+            bouton, pas un lien, rien ne l'écoute — et pourtant il avait tout
+            l'appareil visuel d'une quatrième option qu'on n'arrivait pas à
+            cliquer. Le fond disparaît : reste une légende, en retrait, qui
+            décrit le profil retenu.
+
+            `aria-live` : le texte change quand on change de profil, sans que
+            rien d'autre bouge à l'écran. Un lecteur d'écran qui vient de
+            cocher « Gestionnaire » entend ce que ce rôle donne, au lieu de
+            devoir revenir le chercher.
+          */}
+          <p
+            aria-live="polite"
+            className="px-3.5 text-caps leading-relaxed text-on-dark-faint"
+          >
             {t(`roles.${role}.rights` as 'roles.owner.rights')}
           </p>
         </div>
@@ -1131,6 +1177,97 @@ function initiales(nom: string): string {
  * et l'application en a déjà fait les frais (« l'auteur du produit a pris la
  * démonstration pour son espace deux fois dans la même après-midi »).
  */
+/**
+ * LE POINT D'ENTRÉE UNIQUE DES RÉGLAGES — langue, devise, thème.
+ *
+ * LE DÉFAUT. Les trois segmentés vivaient à demeure dans la moitié droite de la
+ * barre, sur les 23 écrans. Mesuré à 360 px : l'en-tête repliait ses commandes
+ * sur trois lignes et faisait 185 px de haut, sur les 325 px que la coquille
+ * mangeait avant le premier mot de contenu — près d'un tiers d'un téléphone,
+ * pour des choix qu'on fait une fois puis plus jamais.
+ *
+ * CE QUI NE DISPARAÎT PAS. Aucun réglage n'est retiré ni caché derrière une
+ * seconde porte : le panneau montre les TROIS d'un coup, chacun sous son
+ * intitulé visible, chacun atteignable au doigt, à la souris et au clavier.
+ * Un geste ouvre, le suivant choisit — c'est un geste de plus qu'avant pour un
+ * réglage annuel, contre 120 px de hauteur rendus à chaque écran.
+ *
+ * Le motif de fermeture est celui de `MenuCompte`, volontairement : écouteurs
+ * de document plutôt qu'un voile `fixed inset-0`, qu'un garde du système de
+ * design refuse parce qu'il ne peut pas distinguer un attrape-clic d'une
+ * surface peinte.
+ *
+ * `role="dialog"` et non `menu` : un menu contient des `menuitem`, or ce
+ * panneau contient trois groupes de boutons à état. Promettre `menu` à un
+ * lecteur d'écran promettrait aussi la navigation aux flèches, qui ne mène
+ * nulle part ici — le dépôt tranche déjà dans ce sens pour la barre du
+ * locataire.
+ */
+/* Pas de `tone` : ce menu ne vit que dans la barre claire. La barre du
+   locataire garde ses trois segmentés — elle n'a pas de barre latérale, donc
+   pas le même budget de hauteur, et son relevé la donne à 71 px. */
+function MenuReglages({ demo }: { demo: boolean }) {
+  const t = useT()
+  const [ouvert, setOuvert] = useState(false)
+  const boite = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!ouvert) return
+    const dehors = (e: MouseEvent) => {
+      if (!boite.current?.contains(e.target as Node)) setOuvert(false)
+    }
+    const echap = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOuvert(false)
+    }
+    document.addEventListener('mousedown', dehors)
+    document.addEventListener('keydown', echap)
+    return () => {
+      document.removeEventListener('mousedown', dehors)
+      document.removeEventListener('keydown', echap)
+    }
+  }, [ouvert])
+
+  return (
+    <div className="relative" ref={boite}>
+      <IconButton
+        /* `sliders` : l'icône de réglages du jeu, `settings` n'existe pas. */
+        icon="sliders"
+        label={t('nav.settingsOpen')}
+        variant="secondary"
+        aria-expanded={ouvert}
+        aria-haspopup="dialog"
+        onClick={() => setOuvert((o) => !o)}
+      />
+
+      {ouvert && (
+        <div
+          role="dialog"
+          aria-label={t('nav.settings')}
+          style={{ zIndex: 'var(--z-popover)' }}
+          className="absolute right-0 mt-2 flex w-64 flex-col gap-4 rounded-md border border-border bg-paper p-4 shadow-lg"
+        >
+          <div className="flex flex-col gap-2">
+            <span className="text-caps text-muted uppercase">{t('common.language')}</span>
+            <LanguageSwitcher />
+          </div>
+          {/* Même règle qu'ailleurs : le sélecteur de devise ne survit qu'en
+              démonstration, faute de conversion des montants. */}
+          {demo && (
+            <div className="flex flex-col gap-2">
+              <span className="text-caps text-muted uppercase">{t('common.currency')}</span>
+              <CurrencySwitcher />
+            </div>
+          )}
+          <div className="flex flex-col gap-2">
+            <span className="text-caps text-muted uppercase">{t('common.theme')}</span>
+            <ThemeSwitcher />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function MenuCompte({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
   const t = useT()
   const { etat, deconnecter } = useSession()
@@ -1342,7 +1479,15 @@ function BarreBasse({ role, onOpenDrawer }: { role: Role; onOpenDrawer: () => vo
       // Sous `var(--z-sticky)`, donc sous le voile du tiroir : quand la
       // navigation complète est ouverte, son abrégé n'a rien à faire par-dessus.
       className={cn(
-        'fixed inset-x-0 bottom-0 grid grid-flow-col auto-cols-fr items-stretch lg:hidden',
+        // `gap-1` : les cinq cibles se touchaient bord à bord — 70 px de large,
+        // zéro pixel entre elles. WCAG 2.5.8 compte l'ESPACEMENT dans la
+        // taille effective d'une cible, et deux cibles jointives se valident
+        // au pixel près tout en produisant la faute qu'elles prétendent
+        // éviter : le doigt qui déborde de « Paiements » atterrit dans
+        // « Travaux » sans jamais rater le vide. Quatre pixels ramènent chaque
+        // cible de 70 à 66 px de large — vingt-deux au-dessus du plancher —
+        // et créent une frontière où le doigt peut se tromper sans conséquence.
+        'fixed inset-x-0 bottom-0 grid grid-flow-col auto-cols-fr items-stretch gap-1 lg:hidden',
         'border-t border-border bg-paper/95 backdrop-blur-md',
         'pt-1 pb-[calc(0.25rem+env(safe-area-inset-bottom))]',
         'pl-[max(0.25rem,env(safe-area-inset-left))] pr-[max(0.25rem,env(safe-area-inset-right))]',
@@ -1437,37 +1582,13 @@ function BottomLink({ item }: { item: NavItem }) {
 
 function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
   const t = useT()
-  const location = useLocation()
-  const base = useBase()
   const { parc, demo } = useIdentite()
-  const { role } = useRole()
 
-  // Repli sur « Écran introuvable » et non sur le tableau de bord : toute
-  // adresse sans entrée de navigation rend le 404 interne, et annoncer le
-  // tableau de bord dans le fil situerait l'utilisateur là où il n'est pas.
-  //
-  // La liste est FILTRÉE comme la navigation l'est : une adresse de vitrine
-  // saisie à la main hors démonstration rend le 404, et le fil doit dire la
-  // même chose que l'écran plutôt que nommer une page qui ne s'affiche pas.
-  /**
-   * L'entrée EXACTE, ou celle dont l'écran courant descend.
-   *
-   * La comparaison était une égalité stricte : le dossier d'un logement —
-   * `/app/parc/<id>`, qui n'est l'adresse d'aucune entrée de navigation —
-   * affichait donc « Écran introuvable » dans son fil, sur une page qui
-   * s'ouvrait parfaitement. Le repli sur le 404 reste juste pour une adresse
-   * inconnue ; il ne l'est pas pour un écran de détail, qui appartient bel et
-   * bien à sa section.
-   *
-   * On retient l'entrée la plus LONGUE parmi les préfixes : sans cela, l'entrée
-   * d'index — chemin vide, donc préfixe de tout — les emporterait toutes.
-   */
-  const visibles = entreesVisibles(toutesLesEntrees(role), role, demo)
-  const crumb =
-    (visibles.find((item) => lien(base, item.to) === location.pathname) ??
-      visibles
-        .filter((item) => item.to !== '' && location.pathname.startsWith(`${lien(base, item.to)}/`))
-        .sort((a, b) => b.to.length - a.to.length)[0])?.labelKey ?? 'notFound.appTitle'
+  /* Le calcul du fil d'Ariane est parti avec lui, et avec lui trois lectures
+     de contexte — l'adresse courante, la base, le rôle. Il déduisait de la
+     liste des entrées de navigation le nom de l'écran, avec un repli sur
+     « Écran introuvable ». Le `<h1>` de chaque page porte ce nom depuis
+     toujours ; le déduire une seconde fois était la source de la redite. */
 
   return (
     <header
@@ -1498,46 +1619,45 @@ function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
         className="lg:hidden"
       />
 
-      <nav aria-label={t('nav.breadcrumb')} className="hidden items-center gap-2 sm:flex">
-        {/* Le fil d'Ariane annonçait « Douala » à tout le monde. Il porte
-            désormais le nom du parc — et rien du tout tant qu'il n'y en a pas,
-            plutôt qu'une ville inventée. */}
-        {parc && (
-          <>
-            <span className="eyebrow text-muted">{parc}</span>
-            {/* `muted-soft` et non `border-strong` : le second est un jeton de
-                BORDURE employé pour un glyphe, et il tenait 1,66:1 en clair,
-                2,42 en sombre — sous le seuil de 3:1 des éléments non textuels,
-                donc un séparateur qu'on devine plutôt qu'on ne le voit. Le fil
-                perdait sa structure.
+      {/*
+        LE FIL D'ARIANE SE FOND DANS L'EN-TÊTE DE PAGE.
 
-                Pas `muted` non plus : il porte déjà le nom du parc, à gauche.
-                Un séparateur aussi appuyé que ce qu'il sépare aplatit la
-                hiérarchie du fil, qui compte trois degrés — parc, séparateur,
-                écran courant. `muted-soft` passe à 4,33 et 5,04 en restant en
-                retrait, et son propre commentaire l'autorise sur du non
-                textuel : ce glyphe est `aria-hidden`. */}
-            <span aria-hidden="true" className="text-muted-soft">
-              /
-            </span>
-          </>
-        )}
-        <span className="eyebrow text-ink">{t(crumb as 'nav.dashboard')}</span>
-      </nav>
+        Il annonçait « PARC DE DÉMONSTRATION / TABLEAU DE BORD » pendant que le
+        `<h1>` de la page, quinze pixels plus bas, disait « Tableau de bord ».
+        Deux fois le même mot, dont l'un dans un repère de navigation que les
+        lecteurs d'écran listent à part : le fil promettait un chemin là où il
+        n'y a qu'un niveau — aucune des 23 adresses n'a de parent cliquable
+        autre que l'écran courant.
 
-      <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-        <LanguageSwitcher />
+        CE QUI RESTE EST LE CONTEXTE, ET NON LE LIEU. Le nom du parc dit sur
+        QUOI l'on travaille, ce que le titre de page ne dit jamais ; il n'est
+        donc pas un doublon et il reste. Ce n'est plus une navigation : plus de
+        repère, plus de séparateur, plus de nom d'écran.
+
+        CE QUE CE GESTE NE RAPPORTE PAS, et il faut le dire : ZÉRO PIXEL de
+        hauteur. Le fil était déjà masqué sous `sm`, donc invisible sur
+        l'appareil du marché visé, et à 1280 la hauteur de la barre est fixée
+        par ses boutons de 44 px, pas par lui — mesuré à 65 px avant comme
+        après. Ce qu'il rend est de la largeur, et une redite en moins.
+      */}
+      {parc && <span className="hidden eyebrow text-muted sm:inline">{parc}</span>}
+
+      {/* UNE SEULE LIGNE, ET C'EST LA MESURE QUI L'EXIGE. `flex-nowrap` remplace
+          `flex-wrap` : avec trois segmentés dépliés, la barre se repliait sur
+          trois lignes à 360 px et pesait 185 px. Derrière un bouton unique,
+          les commandes tiennent sur une ligne à toutes les largeurs. */}
+      <div className="ml-auto flex flex-nowrap items-center justify-end gap-2">
         {/*
-          Le sélecteur ne survit qu'en DÉMONSTRATION, comme celui des profils.
-
-          Le produit ne convertit pas les montants — parti pris assumé, et
-          tenable tant que les sommes sont fictives. Sur un vrai parc, il n'y a
-          qu'une devise juste : la sienne. Offrir d'en changer sans convertir
-          n'offre pas un choix, cela ment sur l'unité — et la quittance imprimée
-          en porte la trace.
+          Langue, devise et thème sont derrière `MenuReglages`. Aucun ne
+          disparaît — voir l'en-tête du composant pour ce que ce geste coûte et
+          ce qu'il rend. Le sélecteur de devise ne survit qu'en DÉMONSTRATION,
+          comme celui des profils : le produit ne convertit pas les montants —
+          parti pris assumé, tenable tant que les sommes sont fictives. Sur un
+          vrai parc, il n'y a qu'une devise juste : la sienne. Offrir d'en
+          changer sans convertir n'offre pas un choix, cela ment sur l'unité —
+          et la quittance imprimée en porte la trace.
         */}
-        {demo && <CurrencySwitcher />}
-        <ThemeSwitcher />
+        <MenuReglages demo={demo} />
         {/*
           L'AVATAR ÉTAIT UN LITTÉRAL, et il n'ouvrait rien.
 
