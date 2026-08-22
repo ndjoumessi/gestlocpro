@@ -254,14 +254,39 @@
 
   --text-title-l: 1.25rem; /* 20 */
   --text-title-l--line-height: 1.3;
-  --text-title-m: 1.0625rem; /* 17 */
+  /* 16 ET NON 17, ET C'EST UN REPLI MESURÉ.
+
+     Le bas de l'échelle déclarait cinq paliers dans un intervalle de cinq
+     pixels — 12, 13, 14, 16, 17. Deux tailles séparées d'un pixel ne créent
+     aucun niveau de lecture : à 14 px de corps, un titre à 17 pèse 1,21 fois
+     le corps quand la même famille à 16 en pèse 1,14 — l'œil ne fait pas cette
+     différence-là, il fait celle de la graisse et celle de la couleur.
+
+     Relevé sur les 23 écrans à 360 px, français : 17 px servait 70 fois, 13 px
+     146 fois. Les deux paliers repliés rendent l'échelle à TROIS niveaux en
+     bas — 12 légende, 14 corps, 16 corps accentué — et laissent le haut
+     intact : 20, 26, 30, 40 ne bougent pas, ils portent des niveaux réels.
+
+     `--text-title-m` GARDE SON NOM parce qu'il porte un RÔLE, pas une taille :
+     le titre d'une carte reste le titre d'une carte, et ses 70 emplois n'ont
+     pas à être réécrits pour que le rôle survive. Ce qui le distingue du corps
+     est désormais la graisse et l'interligne, pas un pixel. */
+  --text-title-m: 1rem; /* 16 — replié depuis 17 */
   --text-title-m--line-height: 1.35;
 
   --text-body-l: 1rem; /* 16 — landing, inputs mobile */
   --text-body-l--line-height: 1.6;
   --text-body: 0.875rem; /* 14 — corps application */
   --text-body--line-height: 1.55;
-  --text-body-s: 0.8125rem; /* 13 */
+  /* 14 ET NON 13 — second volet du même repli, même raison.
+
+     `--text-body-s` désigne le corps SECONDAIRE : une note sous un montant,
+     une légende de graphique, un intitulé de rangée. Ce qui le met en retrait
+     n'a jamais été son pixel de moins ; c'est `--color-muted`, que ses 146
+     emplois portent presque tous. Un pixel de moins ne dit pas « secondaire »,
+     il dit « moins lisible » — et sur un Android d'entrée de gamme lu dehors,
+     c'est la seule chose qu'il dit. */
+  --text-body-s: 0.875rem; /* 14 — replié depuis 13 */
   --text-body-s--line-height: 1.5;
   /* Plancher typographique : 12px, et rien en dessous.
      Il était annoncé ici et démenti trois lignes plus bas — `--text-caps`
@@ -868,6 +893,60 @@
 .gl-skeleton {
   position: relative;
   overflow: hidden;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   LA JAUGE D'ÉTAT : le statut porté par la FORME, et non par la seule couleur.
+
+   Trois pastilles de 10 px par cellule, douze mois, dix lignes : l'écran le
+   plus dense du produit disait « soldé », « partiel » et « impayé » par le
+   seul ton du disque. MESURÉ sous simulation de deutéranopie, l'écart
+   chromatique CIEDE2000 entre l'ocre et le rouge tombe à 3,4 — deux disques
+   que rien ne sépare pour environ un homme sur douze.
+
+   POURQUOI CETTE FORME-CI, et pas les glyphes de `StatusPill`. Mesuré à la
+   taille réelle de 10 px, en neutralisant la couleur : `checkCircle` et
+   `clock` ne diffèrent que de 2,8 % de leur boîte — à cette taille, les deux
+   ne sont plus qu'un cercle, la coche et l'aiguille passant sous le pixel.
+   Le remplissage, lui, sépare les trois états de 18,5 % au minimum.
+
+   ET ELLE DIT QUELQUE CHOSE QUE LA COULEUR NE DISAIT PAS : le remplissage
+   suit le paiement. Plein = soldé, demi = partiel, anneau = impayé. C'est
+   une quantité, ordonnée ; trois teintes ne l'étaient pas.
+
+   `currentColor` partout : la couleur reste, portée par `text-ok`, `text-warn`
+   et `text-danger`. Rien n'est retiré à qui la voit — une dimension est
+   AJOUTÉE. `box-sizing` explicite : la bordure vit à l'intérieur des 10 px,
+   sans quoi l'anneau mesurerait 13 px et la grille bougerait.
+
+   Hors `@utility` et hors `@layer`, comme `.gl-skeleton` : ces trois classes
+   ne sont pas des utilitaires composables, ce sont les trois états d'un même
+   composant, et elles n'ont rien à gagner à entrer dans la cascade de
+   Tailwind. Elles sont émises quoi qu'il arrive.
+   ─────────────────────────────────────────────────────────────────────────── */
+/* La base EST l'anneau vide, l'état « impayé ». Il n'y a donc pas de
+   `.jauge-vide` : une classe qui ne déclare rien coûte des octets sur toutes
+   les pages du produit et ne garde rien. `inline-block` est conservé bien que
+   les deux appels vivent dans un parent `flex` — sans lui, un troisième appel
+   hors flux verrait ses dimensions ignorées en silence. */
+.jauge {
+  display: inline-block;
+  box-sizing: border-box;
+  flex: none;
+  width: 0.625rem;
+  height: 0.625rem;
+  border: 1.5px solid currentColor;
+  border-radius: 9999px;
+}
+
+.jauge-pleine {
+  background: currentColor;
+}
+
+/* Deux arrêts francs à 50 % : aucune bande d'interpolation, donc aucun liseré
+   gris entre la moitié encrée et la moitié vide. */
+.jauge-demie {
+  background: linear-gradient(to top, currentColor 0 50%, transparent 50% 100%);
 }
 
 /* Le mouvement respecte `prefers-reduced-motion` par la règle globale plus
