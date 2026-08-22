@@ -117,7 +117,12 @@ export function PricingSection() {
                   <>
                     {/* Un prix rond s'affiche sans décimales : « 13 $ » plutôt
                         que « 13,00 $ ». */}
-                    <p className="numeric text-[2.25rem] leading-none font-medium">
+                    {/* `text-kpi` et non un littéral de 2,25rem : c'est le
+                        jeton des MONTANTS — celui des indicateurs du tableau de
+                        bord —, et le prix en est un. Le littéral apportait une
+                        taille de plus (36 px) qui n'existait nulle part
+                        ailleurs, pour deux nombres. */}
+                    <p className="numeric text-kpi leading-none font-medium">
                       {money(price, { round: Number.isInteger(price) })}
                     </p>
                     <p className="mt-2 text-body text-muted">

@@ -27,13 +27,32 @@
  *   — le corps ne demande pas plus de défilement qu'un plafond écrit ;
  *   — l'en-tête et le pied ne défilent pas avec le corps.
  *
- * CE QU'IL NE MESURE PAS, ET IL FAUT LE DIRE :
+ * CE QU'IL NE MESURE PAS, ET IL FAUT LE DIRE — c'est la règle enfreinte à sa
+ * première rédaction, qui inspectait CINQ modales sur douze en annonçant
+ * « 20 états » :
+ *
+ *   — DEUX MODALES SUR DOUZE NE S'OUVRENT PAS ICI, nommément `TariffsModal` et
+ *     `ParkSettingsModal`. Leurs boutons sont gardés par `adhesionActive`,
+ *     c'est-à-dire par un COMPTE RÉEL : en démonstration l'adhésion est nulle,
+ *     donc le bouton n'est pas rendu du tout. Aucune manipulation du navigateur
+ *     n'y donne accès sans serveur d'authentification. Elles sont comptées à
+ *     part — `NON_OUVRABLES` — et leur comportement est couvert ailleurs, par
+ *     les cas clavier, qui peuvent injecter une session.
+ *     LEUR GÉOMÉTRIE N'EST DONC MESURÉE PAR PERSONNE. C'est une dette, elle est
+ *     nommée, et elle se lèvera le jour où la démonstration portera une adhésion
+ *     fictive plutôt qu'aucune.
+ *
  *   — le CLAVIER. Piège de focus, Échap, retour du focus : ce sont les cas de
  *     `clavierDesModales.test.tsx`, joués sous jsdom où la tabulation est
  *     simulée fidèlement. Les rejouer ici doublerait la couverture sans rien
  *     ajouter ;
+ *
  *   — la PERTINENCE d'un champ, l'ordre des questions, le bien-fondé d'un
- *     libellé. Aucune garde ne sait cela, et celle-ci ne prétend pas le savoir.
+ *     libellé. Aucune garde ne sait cela, et celle-ci ne prétend pas le savoir ;
+ *
+ *   — ce que devient la modale au-delà de 1280 px, et entre 360 et 1280. Deux
+ *     largeurs, choisies parce que la boîte a deux formes — feuille collée en
+ *     bas sous `sm`, boîte centrée au-delà — et non parce que deux suffisent.
  *
  *   node scripts/modales.mjs
  *
@@ -63,12 +82,31 @@ const BASE = `http://127.0.0.1:${PORT}`
  * est le défilement qui n'achète rien.
  */
 const MODALES = [
-  { nom: 'AddBuilding', adresse: '/demo/parc', bouton: /Ajouter un immeuble|Add a building/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
-  { nom: 'AddUnit', adresse: '/demo/parc', bouton: /Ajouter un logement|Add a unit/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
-  { nom: 'OpenWork', adresse: '/demo/travaux', bouton: /Ouvrir un chantier|Open a job/, defil: { 360: 130, 1280: 0 }, avant: { 360: 1033, 1280: 873 } },
-  { nom: 'RecordPayment', adresse: '/demo/paiements', bouton: /Enregistrer un paiement|Record a payment/, defil: { 360: 460, 1280: 40 }, avant: { 360: 436, 1280: 200 } },
+  { nom: 'AddBuilding', adresse: '/demo/parc', bouton: /^Ajouter un immeuble$|^Add a building$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'AddUnit', adresse: '/demo/parc', bouton: /^Ajouter un logement$|^Add a unit$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'OpenWork', adresse: '/demo/travaux', bouton: /^Ouvrir un chantier$|^Open a job$/, defil: { 360: 130, 1280: 0 }, avant: { 360: 1056, 1280: 913 } },
+  { nom: 'RecordPayment', adresse: '/demo/paiements', bouton: /^Enregistrer un paiement$|^Record a payment$/, defil: { 360: 460, 1280: 40 }, avant: { 360: 522, 1280: 236 } },
   { nom: 'Receipt', adresse: '/demo/paiements', bouton: /Quittance|Receipt/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'Inspection', adresse: '/demo/etats-des-lieux', bouton: /^Établir un état des lieux$|^Record an inspection$/, defil: { 360: 250, 1280: 0 }, avant: { 360: 237, 1280: 0 } },
+  { nom: 'Invite', adresse: '/demo/locataires', bouton: /^Inviter par code$|^Invite by code$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'Announce', adresse: '/demo/locataires', bouton: /^Prévenir les locataires$|^Notify tenants$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'Reply', adresse: '/demo/travaux', bouton: /^Répondre$|^Reply$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  /* Le seul écran de la démonstration où le rôle change ce qui est rendu : la
+     modale du locataire n'existe que pour lui. Le radio de profil est `sr-only`,
+     donc invisible au sens de Playwright — d'où le clic FORCÉ, qui est ici la
+     vérité du geste et non un contournement : à la souris, c'est l'étiquette
+     qu'on vise, et elle est bien visible. */
+  { nom: 'Report', adresse: '/demo/travaux', profil: /Locataire|Tenant/, bouton: /^Signaler un problème$|^Report an issue$/, defil: { 360: 620, 1280: 250 }, avant: { 360: 0, 1280: 0 } },
 ]
+
+/**
+ * LES DEUX QUI NE S'OUVRENT PAS, ET POURQUOI — voir l'en-tête.
+ *
+ * Écrites ici plutôt que passées sous silence : leur nombre entre dans le
+ * compte gardé, donc une troisième modale qui deviendrait inatteignable ferait
+ * rougir, et l'une de ces deux qui redeviendrait atteignable aussi.
+ */
+const NON_OUVRABLES = ['TariffsModal', 'ParkSettingsModal']
 const LARGEURS = [360, 1280]
 const LANGUES = ['fr', 'en']
 /*
@@ -79,9 +117,11 @@ const LANGUES = ['fr', 'en']
   puis se déclarerait verte. La même mutation a trouvé ce piège trois lots de
   suite. Ajouter une modale oblige à toucher ce nombre, et le diff le montre.
 
-  20 = 5 modales × 2 largeurs × 2 langues.
+  40 = 10 modales ouvrables × 2 largeurs × 2 langues.
+  2  = les modales que la démonstration ne rend pas, nommées dans `NON_OUVRABLES`.
 */
-const ATTENDUS = 20
+const ATTENDUS = 40
+const NON_OUVRABLES_ATTENDUES = 2
 
 async function servir() {
   const fils = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--host', '127.0.0.1'], {
@@ -128,6 +168,40 @@ try {
         await page.waitForTimeout(400)
 
         const nom = `${modale.nom}@${largeur}/${langue}`
+
+        if (modale.profil) {
+          /* SOUS `lg`, LE SÉLECTEUR VIT DANS LE TIROIR. La barre latérale n'est
+             rendue qu'à partir de 1024 px ; en dessous, il faut l'ouvrir. Sans
+             ce geste la garde ne trouvait rien à 360 et se plaignait d'un
+             défaut qui n'en est pas un — l'écran est correct, c'est la garde
+             qui ne savait pas y entrer. */
+          const tiroir = page.getByRole('button', { name: /Ouvrir la navigation|Open navigation/ }).first()
+          if ((await tiroir.count()) > 0 && (await tiroir.isVisible())) {
+            await tiroir.click()
+            await page.waitForTimeout(400)
+          }
+          const radio = page.getByRole('radio', { name: modale.profil }).first()
+          if ((await radio.count()) === 0) {
+            plaintes.push(
+              `${nom} : le sélecteur de profil est introuvable — cette modale n'existe que pour ce profil.`,
+            )
+            await contexte.close()
+            continue
+          }
+          /* Clic FORCÉ : le radio est `sr-only`, donc invisible au sens de
+             Playwright. À la souris c'est l'étiquette qu'on vise, et elle est
+             bien visible — le forçage est ici la vérité du geste. */
+          await radio.click({ force: true })
+          await page.waitForTimeout(500)
+          /* Le tiroir se referme : il recouvre l'écran, et la modale s'ouvre
+             derrière lui. */
+          const fermer = page.getByRole('button', { name: /Fermer|Close/ }).first()
+          if ((await fermer.count()) > 0 && (await fermer.isVisible())) {
+            await fermer.click()
+            await page.waitForTimeout(400)
+          }
+        }
+
         const bouton = page.getByRole('button', { name: modale.bouton }).first()
         if ((await bouton.count()) === 0) {
           plaintes.push(
@@ -163,7 +237,28 @@ try {
             if (entete) enteteTenu = enteteTenu && dansLaFenetre(entete)
             corps.scrollTop = 0
           }
+          /*
+            LE PORTAIL, VÉRIFIÉ DIRECTEMENT ET NON PAR COÏNCIDENCE.
+
+            Avant ce contrôle, retirer `createPortal` ne se voyait que TANT QUE
+            `<main>` portait `animate-rise` : les deux retirés ensemble, la
+            modale se replaçait correctement et la garde passait au vert avec le
+            défaut réarmé pour le prochain `transform` posé n'importe où.
+
+            On vérifie donc la STRUCTURE : le conteneur `fixed inset-0` de la
+            modale est un enfant direct de `<body>`. C'est la seule position où
+            aucun ancêtre ne peut lui voler son bloc conteneur, et c'est
+            exactement ce que le portail garantit. La mesure ne dépend plus de
+            ce que `<main>` décide.
+          */
+          const conteneur = d.parentElement
           return {
+            enfantDeBody: conteneur?.parentElement === document.body,
+            profondeur: (() => {
+              let n = 0
+              for (let e = conteneur; e && e !== document.body; e = e.parentElement) n++
+              return n
+            })(),
             boite: Math.round(r.height),
             debordeEnHaut: Math.round(Math.max(0, -r.top)),
             debordeEnBas: Math.round(Math.max(0, r.bottom - window.innerHeight)),
@@ -181,6 +276,14 @@ try {
         inspectees++
         releve.push({ nom, largeur, ...m, plafond: modale.defil[largeur], avant: modale.avant[largeur] })
 
+        if (!m.enfantDeBody) {
+          plaintes.push(
+            `${nom} : la modale n'est PAS un enfant direct de <body> — ${m.profondeur} niveau(x) au-dessus.\n` +
+              "   Son conteneur `fixed` peut alors se faire voler son bloc conteneur par n'importe\n" +
+              '   quel ancêtre portant transform, filter, contain ou will-change. Voir le portail\n' +
+              "   de `Modal` et l'en-tête de ce script.",
+          )
+        }
         if (m.debordeEnHaut > 0 || m.debordeEnBas > 0) {
           plaintes.push(
             `${nom} : la boîte DÉBORDE de la fenêtre — ${m.debordeEnHaut} px en haut, ` +
@@ -218,6 +321,13 @@ if (inspectees === 0) {
     "AUCUNE modale inspectée. Absence d'inspection, et non absence de défaut : la garde refuse.",
   )
 }
+if (NON_OUVRABLES.length !== NON_OUVRABLES_ATTENDUES) {
+  plaintes.push(
+    `${NON_OUVRABLES.length} modale(s) déclarée(s) non ouvrable(s) pour ${NON_OUVRABLES_ATTENDUES} attendue(s).\n` +
+      "   La liste est périmée dans un sens ou dans l'autre : une modale redevenue atteignable\n" +
+      '   doit rejoindre la mesure, une nouvelle inatteignable doit être nommée.',
+  )
+}
 if (inspectees !== ATTENDUS) {
   plaintes.push(
     `${inspectees} état(s) inspecté(s) pour ${ATTENDUS} attendu(s).\n` +
@@ -241,7 +351,8 @@ if (plaintes.length > 0) {
 }
 
 console.log(
-  `\n✓ modales : ${inspectees}/${ATTENDUS} états ouverts et mesurés.\n` +
+  `\n✓ modales : ${inspectees}/${ATTENDUS} états ouverts et mesurés sur ${MODALES.length} modales,\n` +
+    `  plus ${NON_OUVRABLES.length} que la démonstration ne rend pas : ${NON_OUVRABLES.join(', ')}.\n` +
     "  Le CLAVIER est mesuré ailleurs — `clavierDesModales.test.tsx` — et la PERTINENCE\n" +
     "  d'un champ n'est mesurée nulle part : voir l'en-tête.",
 )

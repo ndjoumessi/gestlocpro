@@ -124,6 +124,7 @@ export interface StackedBar {
 export function StackedBarChart({
   bars,
   seriesLabels,
+  secondaires = [],
   caption,
   /** Ligne de repère horizontale, p. ex. l'objectif attendu. */
   target,
@@ -133,6 +134,35 @@ export function StackedBarChart({
 }: {
   bars: StackedBar[]
   seriesLabels: Record<string, string>
+  /**
+   * LES SÉRIES QUI VONT DANS LE SECOND TRACÉ, ET POURQUOI IL EN FAUT UN.
+   *
+   * LE DÉFAUT MESURÉ. Loyer, eau et électricité étaient EMPILÉS sur une seule
+   * échelle. Relevé sur les onze largeurs : le loyer rendait 140 à 171 px, l'eau
+   * 8,7 à 10,5, l'électricité 7,4 à 9,2 — et le plus fin segment de la série,
+   * sur le mois encore ouvert, faisait 0,1 px. Deux séries sur trois valaient
+   * 5 à 6 % de la troisième. Un empilement dont deux tiers sont invisibles
+   * n'encode rien : il décore.
+   *
+   * POURQUOI PAS UN PLANCHER DE HAUTEUR. `cibles.test.ts` l'interdit, et il a
+   * raison : « la hauteur est la donnée, lui imposer un plancher mentirait sur
+   * la mesure ». Un plancher rendrait 62 000 et 48 000 de la même taille.
+   *
+   * POURQUOI DEUX TRACÉS PLUTÔT QU'UNE PILE. Ce ne sont pas deux sommes de même
+   * nature. Le loyer est un REVENU ; l'eau et l'électricité sont des avances
+   * RÉCUPÉRÉES, que le bailleur a payées puis refacturées. Les additionner
+   * gonfle l'encaissement d'un montant qui ne lui appartient pas — et la ligne
+   * d'objectif le disait déjà sans qu'on l'entende : `expected` est la somme des
+   * LOYERS des logements occupés, jamais des charges. La pile se comparait donc
+   * à un objectif qui n'en couvrait qu'un tiers de séries.
+   *
+   * LA HAUTEUR TOTALE NE BOUGE PAS. Le second tracé n'est pas ajouté sous le
+   * premier, il est PRIS DESSUS : 198 px de zone deviennent 126 pour le loyer,
+   * 8 de gouttière et 64 pour les charges. Le loyer passe de 171 à 126 px — il
+   * reste parfaitement lisible —, l'eau et l'électricité de 9 à une trentaine.
+   * Le tableau de bord ne grandit pas d'un pixel.
+   */
+  secondaires?: string[]
   caption: string
   target?: number
   targetLabel?: string
@@ -160,6 +190,31 @@ export function StackedBarChart({
   const seriesKeys = bars[0]?.segments.map((s) => s.key) ?? []
   const visible = (key: string) => !hidden.has(key)
 
+  /* DEUX GROUPES, DEUX ÉCHELLES. `secondaires` nomme les séries qui descendent
+     dans le tracé du bas ; tout le reste monte dans celui du haut. La légende,
+     la lecture fixe et la table restent entières : c'est la seule ÉCHELLE qui
+     se dédouble, pas le vocabulaire. */
+  const clesPrimaires = seriesKeys.filter((k) => !secondaires.includes(k))
+  const clesSecondaires = seriesKeys.filter((k) => secondaires.includes(k))
+  const aDeuxTraces = clesSecondaires.length > 0
+
+  const sommeDe = (bar: StackedBar, cles: string[]) =>
+    bar.segments.reduce(
+      (sum, s) => (hidden.has(s.key) || !cles.includes(s.key) ? sum : sum + s.value),
+      0,
+    )
+
+  const totalsPrimaires = useMemo(
+    () => bars.map((bar) => sommeDe(bar, clesPrimaires)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [bars, hidden, clesPrimaires.join()],
+  )
+  const totalsSecondaires = useMemo(
+    () => bars.map((bar) => sommeDe(bar, clesSecondaires)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [bars, hidden, clesSecondaires.join()],
+  )
+  /** Le total de TOUTES les séries visibles — ce que lit la bande de lecture. */
   const totals = useMemo(
     () =>
       bars.map((bar) =>
@@ -180,8 +235,17 @@ export function StackedBarChart({
    */
   const showTarget = target !== undefined && hidden.size === 0
 
-  /** L'échelle ne se cale que sur ce qui est effectivement tracé. */
-  const max = Math.max(...totals, showTarget ? target : 0, 1) * 1.08
+  /**
+   * L'échelle ne se cale que sur ce qui est effectivement tracé — et il y en a
+   * DEUX quand le second tracé existe.
+   *
+   * L'objectif ne pèse que sur l'échelle du HAUT, et c'est ce qui remet une
+   * incohérence d'aplomb : `expected` est la somme des LOYERS des logements
+   * occupés, jamais des charges. La pile se comparait donc à un objectif qui
+   * ne couvrait qu'une de ses trois séries.
+   */
+  const max = Math.max(...totalsPrimaires, showTarget ? target : 0, 1) * 1.08
+  const maxSecondaire = Math.max(...totalsSecondaires, 1) * 1.08
 
   const toggleSeries = (key: string) =>
     setHidden((current) => {
@@ -370,7 +434,7 @@ export function StackedBarChart({
                     'rounded-t-[3px] transition-shadow duration-150',
                   )}
                   style={{
-                    height: `${(total / max) * 100}%`,
+                    height: `${(totalsPrimaires[index] / max) * 100}%`,
                     animationDelay: `${index * 35}ms`,
                     // L'EMPHASE AJOUTE DE L'ENCRE À LA COLONNE VISÉE au lieu
                     // d'en retirer aux onze autres. Effacer les voisines à 0,40
@@ -386,7 +450,7 @@ export function StackedBarChart({
                   }}
                 >
                   {bar.segments
-                    .filter((segment) => visible(segment.key))
+                    .filter((segment) => visible(segment.key) && clesPrimaires.includes(segment.key))
                     .map((segment, segmentIndex, shownSegments) => (
                       <span
                         key={segment.key}
@@ -395,7 +459,7 @@ export function StackedBarChart({
                           segmentIndex === shownSegments.length - 1 && 'rounded-t-[3px]',
                         )}
                         style={{
-                          height: `${total ? (segment.value / total) * 100 : 0}%`,
+                          height: `${totalsPrimaires[index] ? (segment.value / totalsPrimaires[index]) * 100 : 0}%`,
                           // Le mois en cours est encore ouvert : sa colonne est
                           // HACHURÉE et non atténuée — voir `hachureOuverte`,
                           // qui porte le pourquoi et les ratios.
@@ -423,6 +487,66 @@ export function StackedBarChart({
           })}
 
         </div>
+
+        {/*
+          LE SECOND TRACÉ — les charges refacturées, à leur propre échelle.
+
+          Il est PRIS sur la hauteur du premier, jamais ajouté dessous : le
+          conteneur garde ses 234 px sous `sm` et ses 266 au-delà, le tracé du
+          haut passe en `flex-1` et celui-ci prend 64 px fixes. Mesuré, l'eau
+          passe de 9 px à une trentaine et l'électricité de 8 à environ 27 ; le
+          loyer descend de 171 à environ 120, ce qui ne lui coûte aucune
+          lisibilité. Le tableau de bord ne grandit pas d'un pixel.
+
+          PAS DE LIGNE D'OBJECTIF ICI, et c'est le fond de l'affaire : `expected`
+          est la somme des LOYERS des logements occupés. Une avance récupérée
+          n'a pas d'objectif d'encaissement.
+
+          LES COLONNES SONT LES MÊMES BOUTONS EN HAUT : ce tracé est
+          `aria-hidden` et ne porte aucune cible. Le doubler en boutons ferait
+          vingt-quatre commandes pour douze mois, et deux annonces par colonne
+          au lecteur d'écran. La lecture se fait par la colonne du haut, qui
+          nomme déjà les trois séries, et par la table.
+        */}
+        {aDeuxTraces && (
+          <div
+            aria-hidden="true"
+            className="mt-2 flex h-16 items-stretch gap-1 border-t border-divider pt-2 sm:gap-2.5"
+          >
+            {bars.map((bar, index) => {
+              const totalBas = totalsSecondaires[index]
+              const isLast = index === bars.length - 1
+              return (
+                <span key={bar.label} className="flex min-w-0 flex-1 items-end justify-center">
+                  <span
+                    className="animate-grow-y flex w-full flex-col-reverse rounded-t-[3px] transition-shadow duration-150"
+                    style={{
+                      height: `${(totalBas / maxSecondaire) * 100}%`,
+                      animationDelay: `${index * 35}ms`,
+                      boxShadow: active === index ? '0 0 0 2px var(--color-ink)' : undefined,
+                    }}
+                  >
+                    {bar.segments
+                      .filter((seg) => visible(seg.key) && clesSecondaires.includes(seg.key))
+                      .map((seg, i, montres) => (
+                        <span
+                          key={seg.key}
+                          className={cn('w-full', i === montres.length - 1 && 'rounded-t-[3px]')}
+                          style={{
+                            height: `${totalBas ? (seg.value / totalBas) * 100 : 0}%`,
+                            background: isLast
+                              ? hachureOuverte(SERIES_COLORS[seg.key])
+                              : SERIES_COLORS[seg.key],
+                            boxShadow: i > 0 ? 'inset 0 1px 0 var(--color-surface)' : undefined,
+                          }}
+                        />
+                      ))}
+                  </span>
+                </span>
+              )
+            })}
+          </div>
+        )}
 
         <div className="mt-2.5 flex gap-1 sm:gap-2.5" aria-hidden="true">
           {bars.map((bar, index) => (

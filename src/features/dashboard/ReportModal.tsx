@@ -152,11 +152,9 @@ export function ReportModal({
           )}
         </Field>
 
-        {/* Mêmes pastilles que « Ouvrir un chantier », et pour la même raison
-            mesurée : ces options n'ont ni description ni icône, donc la tuile
-            n'a rien à montrer et rendait six fois la même icône de repli. Les
-            deux écrans posent le même choix ; ils le posent désormais de la
-            même façon. */}
+        {/* LES MÉTIERS EN PASTILLES : `description: ''`, aucune icône. La tuile
+            n'avait rien à montrer et rendait cinq fois la même icône de repli.
+            Même raison mesurée que « Ouvrir un chantier ». */}
         <RadioCards
           legend={t('app.report.trade')}
           name="signalement-metier"
@@ -166,13 +164,33 @@ export function ReportModal({
           variant="puces"
         />
 
+        {/*
+          LES URGENCES RESTENT EN TUILES, ET C'EST UNE CORRECTION DE MA PROPRE
+          MAIN.
+
+          Le lot des modales les avait passées en pastilles PAR SYMÉTRIE avec
+          « Ouvrir un chantier », sans regarder leurs options. Or elles portent
+          une vraie description — « Le logement n'est pas utilisable en l'état »,
+          « Gênant, mais on peut vivre avec quelques jours », « À traiter quand
+          ce sera commode ». Ce sont les seules phrases qui disent au locataire
+          où placer son problème, et la pastille les jetait : trois mots
+          — Bloquant, Normal, Faible — dont il faut deviner le seuil.
+
+          La règle du variant tient donc dans les deux sens, et c'est ce qui en
+          fait une règle : sans description NI icône, la tuile ment ; AVEC une
+          description, la pastille ampute. Le même écran porte les deux cas.
+
+          `columns={1}` : trois lignes empilées plutôt que trois colonnes, parce
+          que ces descriptions font une à deux lignes chacune et qu'en trois
+          colonnes de 176 px elles en feraient quatre.
+        */}
         <RadioCards
           legend={t('app.report.urgency')}
           name="signalement-urgence"
           value={urgence}
           onChange={setUrgence}
           options={urgences}
-          variant="puces"
+          columns={1}
         />
 
         <Field label={t('app.report.detail')} optional hint={t('app.report.detailHint')}>

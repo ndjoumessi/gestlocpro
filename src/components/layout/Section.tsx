@@ -31,11 +31,31 @@ import { GOUTTIERE_LATERALE } from './gouttiere'
  * titre ne serait pas resserrée, elle serait rognée par les bords : le vide se
  * serait déplacé vers l'intérieur au lieu de disparaître.
  */
+/*
+  LE RYTHME N'AVAIT PAS DE TEMPS MOBILE, et c'est ce que ce lot ajoute.
+
+  Les quatre tempos ci-dessus commençaient à `py-20` — 80 px de rembourrage en
+  haut ET en bas — puis montaient à `sm` et à `lg`. La valeur de départ était
+  donc celle du bureau, appliquée telle quelle au téléphone : sur les sept
+  sections de la vitrine, 1 120 px de rembourrage vertical à 360 px de large,
+  sur un document qui en fait 11 497. Près d'un dixième de la page est du vide
+  dimensionné pour un écran qu'on ne tient pas dans la main.
+
+  Les rapports entre les quatre tempos sont CONSERVÉS — 56 / 44 / 64 en base
+  répond à 80 / 64 / 96 à `sm` —, donc la page garde sa respiration relative :
+  on entend toujours qu'une section est un appui et qu'une autre est l'endroit
+  où l'on décide. Ce qui change est l'amplitude, et seulement sur téléphone.
+  À partir de `sm`, pas un pixel ne bouge.
+
+  L'en-tête suit son temps, comme le disait déjà le commentaire ci-dessus : une
+  section resserrée qui garderait sa marge de titre serait rognée par les bords
+  au lieu d'être resserrée.
+*/
 const RYTHMES = {
-  normal: { section: 'py-20 sm:py-24 lg:py-32', entete: 'mb-12 sm:mb-16' },
-  suite: { section: 'pt-12 pb-20 sm:pt-14 sm:pb-24 lg:pt-16 lg:pb-32', entete: 'mb-12 sm:mb-16' },
-  serre: { section: 'py-16 sm:py-20 lg:py-24', entete: 'mb-8 sm:mb-10' },
-  ample: { section: 'py-24 sm:py-28 lg:py-40', entete: 'mb-12 sm:mb-16' },
+  normal: { section: 'py-14 sm:py-24 lg:py-32', entete: 'mb-8 sm:mb-16' },
+  suite: { section: 'pt-8 pb-14 sm:pt-14 sm:pb-24 lg:pt-16 lg:pb-32', entete: 'mb-8 sm:mb-16' },
+  serre: { section: 'py-11 sm:py-20 lg:py-24', entete: 'mb-6 sm:mb-10' },
+  ample: { section: 'py-16 sm:py-28 lg:py-40', entete: 'mb-8 sm:mb-16' },
 } as const
 
 export type Rythme = keyof typeof RYTHMES

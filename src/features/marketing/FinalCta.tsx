@@ -50,7 +50,13 @@ export function FinalCta() {
       */}
       <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1.4fr_1fr] lg:items-center lg:gap-16">
         <div className="min-w-0">
-          <h2 className="display-l text-balance text-on-dark">{t('marketing.finalCta.title')}</h2>
+          {/* `display-m` ET NON `display-l` : c'était la SEULE occurrence de
+              `display-l` de la page, et elle rendait 36,8 px à 360 px — une
+              neuvième taille pour un seul titre, à quatre dixièmes de pixel des
+              36 px voisins. Le titre de cette section n'est pas d'un rang
+              supérieur aux six autres ; il est le dernier, ce que sa place et
+              son fond d'encre disent déjà. */}
+          <h2 className="display-m text-balance text-on-dark">{t('marketing.finalCta.title')}</h2>
           <p className="mt-5 max-w-[52ch] text-body-l text-pretty text-on-dark-muted">
             {t('marketing.finalCta.subtitle')}
           </p>

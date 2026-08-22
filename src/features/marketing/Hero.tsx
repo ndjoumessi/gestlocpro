@@ -144,7 +144,10 @@ function HeroPreview({
             {/* Le montant descend d'un cran sous `sm` : à 32px, un montant de
                 cette taille suivi de sa devise ne se coupe pas et ne tient pas
                 dans 375px. */}
-            <p className="numeric mt-2 text-2xl leading-none font-medium sm:text-[2rem]">
+            {/* Même jeton de montant que les prix et que les indicateurs :
+                `text-2xl` valait 24 px pour UN nombre, et `sm:text-[2rem]` 32
+                pour le même. Deux tailles de plus dans la page, aucune ailleurs. */}
+            <p className="numeric mt-2 text-kpi leading-none font-medium">
               {money(kpis.collected, { round: true })}
             </p>
           </div>

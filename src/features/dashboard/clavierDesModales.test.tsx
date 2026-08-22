@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { attendreLeChargement, renderApp, screen, userEvent } from '@/test/render'
+import { attendreLeChargement, renderApp, screen, userEvent, within } from '@/test/render'
 
 /**
  * TOUTE MODALE S'OUVRE, SE TIENT ET SE REND AU CLAVIER.
@@ -114,12 +114,87 @@ describe('le clavier des modales', () => {
 
       /* Une modale sans champ ne prouverait rien : on exige qu'il y en ait. */
       expect(controles.length, 'aucun champ à vérifier dans cette modale').toBeGreaterThan(0)
-      const anonymes = controles
-        .filter((el) => !el.getAttribute('aria-label') && !document.querySelector(`label[for="${el.id}"]`))
-        .map((el) => `${el.tagName.toLowerCase()}#${el.id}`)
-      expect(anonymes, 'champ(s) sans libellé relié').toEqual([])
+      /*
+        UN LIBELLÉ VISIBLE, ET NON UN `aria-label` SEUL — c'est l'extension.
+
+        La première rédaction acceptait l'un OU l'autre : un champ portant
+        `aria-label="Montant"` sans rien à l'écran la satisfaisait. Or un
+        libellé invisible ne sert QUE le lecteur d'écran ; le voyant qui revient
+        sur un formulaire à moitié rempli n'a plus rien pour savoir ce qu'il
+        remplit, et un `placeholder` disparaît à la première frappe. La règle du
+        sujet est explicite : jamais un texte indicatif seul comme libellé.
+
+        On exige donc un `<label for>` porteur de TEXTE. `aria-label` reste
+        toléré EN PLUS, jamais À LA PLACE.
+      */
+      /*
+        « VISIBLE » SE VÉRIFIE PAR LA CLASSE, ET C'EST UNE LIMITE ASSUMÉE.
+
+        jsdom n'applique aucune feuille de style : `getBoundingClientRect` rend
+        zéro pour tout, et rien n'y distingue un libellé peint d'un libellé
+        masqué. La seule chose observable est donc la classe d'escamotage
+        elle-même — celle qui écrête un pavé d'un pixel pour le laisser au
+        lecteur d'écran et le retirer de l'écran.
+
+        Le nom de la classe est assemblé par FRAGMENTS : ce fichier est balayé
+        par le générateur d'utilitaires, et l'écrire en entier la produirait
+        réellement dans la feuille livrée.
+
+        CE QUE CELA NE VOIT PAS : un libellé masqué autrement — `hidden`, une
+        couleur transparente, une hauteur nulle posée à la main, un parent
+        escamoté. La vérification de VISIBILITÉ RÉELLE demanderait un vrai
+        navigateur, et elle n'existe pas : c'est une dette, elle est nommée ici.
+      */
+      const escamote = 'sr' + '-' + 'only'
+      const sansLibelleVisible = controles
+        .filter((el) => {
+          const lab = el.id ? document.querySelector(`label[for="${el.id}"]`) : null
+          if (!lab || !(lab.textContent ?? '').trim()) return true
+          return lab.classList.contains(escamote)
+        })
+        .map((el) => `${el.tagName.toLowerCase()}#${el.id || '(sans id)'}`)
+      expect(sansLibelleVisible, 'champ(s) sans libellé VISIBLE relié').toEqual([])
     })
   }
+
+  /**
+   * UNE SOUMISSION INVALIDE, ET L'ERREUR APPARAÎT AU CHAMP.
+   *
+   * Le lot précédent affirmait « l'erreur s'affiche au champ » pour l'avoir LU
+   * dans `Field`. Personne ne l'avait déclenchée. Ce cas soumet « Ouvrir un
+   * chantier » avec un intitulé vide — la borne est écrite dans la modale
+   * comme sur le serveur, trois caractères — et vérifie trois choses :
+   *   — un message apparaît ;
+   *   — il est RATTACHÉ au champ par `aria-describedby`, donc annoncé quand on
+   *     revient dessus, et pas seulement posé quelque part dans la boîte ;
+   *   — le champ est marqué `aria-invalid`.
+   * Un message en tête de modale satisferait la première condition et aucune
+   * des deux autres : c'est précisément ce que le sujet interdit.
+   */
+  it('« Ouvrir un chantier » : une soumission invalide affiche l’erreur AU CHAMP', async () => {
+    const user = userEvent.setup()
+    await renderApp('/demo/travaux')
+    await attendreLeChargement()
+    await user.click(screen.getByRole('button', { name: /^Ouvrir un chantier$/ }))
+    const dialogue = await screen.findByRole('dialog')
+
+    const champ = screen.getByRole('textbox', { name: /Que faut-il faire/ })
+    expect(champ).not.toHaveAttribute('aria-invalid', 'true')
+
+    await user.click(within(dialogue).getByRole('button', { name: /^Ouvrir le chantier$/ }))
+
+    expect(champ, 'le champ n’est pas marqué invalide').toHaveAttribute('aria-invalid', 'true')
+    const decritPar = (champ.getAttribute('aria-describedby') ?? '').split(' ').filter(Boolean)
+    expect(decritPar.length, 'le champ ne cite aucune description').toBeGreaterThan(0)
+    const textes = decritPar.map((id) => document.getElementById(id)?.textContent ?? '')
+    expect(
+      textes.some((x) => x.trim().length > 0),
+      'aucun des éléments cités par aria-describedby ne porte de texte',
+    ).toBe(true)
+    /* Le message est DANS la modale, et rattaché : les deux, pas l'un ou
+       l'autre. Un message hors du dialogue serait une bannière. */
+    expect(decritPar.some((id) => dialogue.contains(document.getElementById(id)))).toBe(true)
+  })
 
   /**
    * LA GARDE DU GARDE, ET ELLE COMPTE CE QU'ELLE A JOUÉ.

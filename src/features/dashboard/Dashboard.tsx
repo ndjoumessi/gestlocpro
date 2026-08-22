@@ -281,6 +281,10 @@ export function Dashboard() {
               water: t('app.dashboard.legendWater'),
               power: t('app.dashboard.legendPower'),
             }}
+            /* L'eau et l'électricité descendent dans le second tracé : ce sont
+               des avances RÉCUPÉRÉES, pas un revenu. Empilées sous le loyer,
+               elles rendaient 9 px contre 171 — voir la prop dans `Charts`. */
+            secondaires={['water', 'power']}
             bars={COLLECTIONS.map((month) => ({
               label: d.monthShort(month),
               segments: [

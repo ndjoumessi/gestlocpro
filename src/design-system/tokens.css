@@ -152,7 +152,30 @@
   --color-on-dark-faint: rgba(255, 255, 255, 0.58);
   --color-on-dark-hover: rgba(255, 255, 255, 0.07);
   --color-on-dark-active: rgba(255, 255, 255, 0.14);
-  --color-on-dark-border: rgba(255, 255, 255, 0.1);
+  /**
+   * 0,40 ET NON 0,10 — LA BORDURE D'UN BOUTON EST UN ÉLÉMENT PORTEUR DE SENS.
+   *
+   * Mesuré sur la vitrine, section d'encre `rgb(36, 55, 51)` : composée, cette
+   * bordure rendait `rgb(58, 75, 71)`, soit 1,36:1 sur son fond. WCAG 1.4.11
+   * demande 3:1 pour la limite visuelle d'une commande. Le bouton secondaire du
+   * hero et celui du dernier appel — « Parcourir la démonstration » — n'avaient
+   * donc AUCUN contour perceptible : ils flottaient, et seul leur remplissage à
+   * 14 % (1,55:1) suggérait qu'on pouvait cliquer.
+   *
+   * Ce n'est PAS le texte qui était en cause, et c'est ce qui rendait le défaut
+   * discret : blanc sur le remplissage composé, il tient 8,11:1, très au-dessus
+   * de l'AA. On lisait parfaitement un bouton dont on ne voyait pas le bord.
+   *
+   * 0,40 rend 3,39:1 sur cette encre-là, avec la marge qu'il faut pour les fonds
+   * sombres plus clairs du produit. 0,36 passait tout juste à 3,03 et serait
+   * retombé sous le seuil au premier fond un peu moins noir.
+   *
+   * DEUX DÉCLARATIONS, ET IL FAUT LES DEUX : celle du thème, et celle de
+   * `.on-dark`, qui refixe les jetons pour un îlot sombre posé dans une page
+   * claire. N'en changer qu'une laissait la moitié des boutons sans contour —
+   * et ce sont justement ceux de la vitrine.
+   */
+  --color-on-dark-border: rgba(255, 255, 255, 0.4);
 
   /* ---- Typographie ----------------------------------------------------- */
   /**
@@ -726,7 +749,7 @@
   --color-on-dark-faint: rgba(255, 255, 255, 0.58);
   --color-on-dark-hover: rgba(255, 255, 255, 0.07);
   --color-on-dark-active: rgba(255, 255, 255, 0.14);
-  --color-on-dark-border: rgba(255, 255, 255, 0.1);
+  --color-on-dark-border: rgba(255, 255, 255, 0.4);
 }
 
 /* « L'or ne porte jamais de texte : ici c'est un fond, avec de l'encre
