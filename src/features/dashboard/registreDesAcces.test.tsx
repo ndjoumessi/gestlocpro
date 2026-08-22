@@ -130,10 +130,58 @@ describe('le registre des accès', () => {
      * tombaient, sur cinq cas différents. Ce cas-ci est la garde qui empêche la
      * course de se rouvrir.
      */
+    /*
+      LA RÉPONSE EST RETENUE, et c'est ce qui fait de ce cas une observation
+      plutôt qu'un pari.
+
+      CE QU'IL ASSERTAIT AVANT : « le squelette était encore là quand j'ai
+      regardé ». Mesuré, cela tombait 3 fois sur 40 passages du fichier seul et
+      3 fois sur 20 de la suite complète. Une sonde posée au même point a donné
+      la raison : 4 fois sur 60, le DOM portait déjà les lignes du registre.
+      Zéro fois sur 120 quand le paquet paresseux de `/app` était en cache — le
+      cas exposé est le PREMIER d'un fichier, seul à subir un import dynamique
+      réel. Sur `0e4684d`, juste avant le découpage, zéro échec sur 40 : à
+      l'époque `renderApp` était synchrone et l'assertion tombait forcément sur
+      le premier rendu.
+
+      CE QU'IL ASSERTE MAINTENANT, et c'est la propriété du produit et non un
+      instant de la mécanique : tant que le serveur n'a pas répondu, l'écran
+      annonce son attente ; dès qu'il a répondu, il cesse de l'annoncer. Les
+      deux moitiés sont vraies par construction, à toute vitesse de machine.
+
+      CE QUE JE N'AI PAS FAIT, parce que chacun garde la cause en effaçant le
+      symptôme : rallonger une attente, ajouter un `waitFor`, relancer le cas,
+      ou remplacer `not.toBeNull()` par quelque chose de plus accommodant.
+
+      ── CE QUE VAUT LE VERT, et pourquoi il faut l'écrire ─────────────────
+      Un seul passage vert ne prouve RIEN sur un défaut intermittent : au taux
+      mesuré, il avait déjà quatre-vingt-quatorze chances sur cent de passer
+      AVANT ce lot. Seule une série dit quelque chose, et seulement si on
+      publie l'arithmétique qui la lit.
+
+      Mutation, retenue retirée : 6 rouges sur 100 passages du fichier seul,
+      soit p = 0,06. Après correctif : 150 passages consécutifs, zéro rouge.
+      Si la cause était restée, la probabilité d'une telle série serait
+      0,94^150 ≈ 9,8 × 10⁻⁵ — environ UNE CHANCE SUR DIX MILLE. C'est ce
+      nombre-là, et non le vert, qui autorise à écrire « corrigé ».
+
+      Le raisonnement a une limite, dite plutôt que tue : il vaut à taux de
+      défaut CONSTANT. Le taux dépend de la charge de la machine — la suite
+      complète le doublait, 3 sur 20 contre 3 sur 40 pour le fichier seul —
+      donc une série verte obtenue au repos prouve moins qu'elle n'en a l'air
+      pour une machine chargée. C'est aussi pourquoi le correctif ne repose sur
+      aucune horloge : il n'a pas de taux.
+    */
+    const relacher = serveur.retenir('GET', `/parks/${PARC}/access`, {
+      status: 200,
+      body: REGISTRE,
+    })
+
     await renderApp('/app/acces', { session: sessionDuRole('owner') })
     expect(document.querySelector('[aria-busy="true"]')).not.toBeNull()
 
     // Puis on laisse l'écran finir, pour ne pas laisser un rendu en vol.
+    relacher()
     await attendreLeChargement()
     expect(document.querySelector('[aria-busy="true"]')).toBeNull()
   })

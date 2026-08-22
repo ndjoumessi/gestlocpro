@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { renderApp, screen, switchRole, attendreLeChargement } from './render'
+import { installerFauxServeur } from './api'
 
 /**
  * Vérifie le harnais lui-même : providers montés, routage en mémoire,
@@ -52,5 +53,54 @@ describe('harnais de test', () => {
 
     await attendreLeChargement()
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Résidence Bonamoussadi — A1')
+  })
+})
+
+/**
+ * LA RETENUE DU FAUX SERVEUR.
+ *
+ * POURQUOI CETTE GARDE EXISTE. `retenir` est ce qui permet à un test
+ * d'observer une attente au lieu de la parier — voir le commentaire de
+ * `barrages` dans `api.ts` pour les mesures qui l'ont rendue nécessaire. Or
+ * elle a une manière PARTICULIÈREMENT discrète de cesser de fonctionner :
+ * qu'elle réponde tout de suite. Personne ne verrait rien. Les cas qui
+ * l'emploient redeviendraient des tirages au sort, verts la plupart du temps,
+ * et le prochain à se demander pourquoi la porte clignote repartirait de zéro.
+ *
+ * C'EST LE MÉCANISME QU'ON ÉPROUVE, pas un écran : la retenue tient, ou elle
+ * ne tient pas. Le cas ci-dessous est donc DÉTERMINISTE, sans horloge et sans
+ * rendu — il n'aurait aucun sens qu'un contrôle de la course soit lui-même
+ * couru.
+ *
+ * ON N'EMPLOIE PAS DE `setTimeout` POUR « LAISSER LE TEMPS ». On épuise les
+ * microtâches par des `await` successifs, puis on laisse passer un tour de
+ * boucle : si la retenue ne retenait pas, la promesse du `fetch` — qui n'a
+ * besoin que de microtâches pour aboutir — serait résolue au terme de cette
+ * séquence. C'est ce que la sonde a montré : sans retenue, la réponse arrive
+ * en quelques microtâches, ce qui est exactement plus vite qu'un rendu React.
+ */
+describe('retenue du faux serveur', () => {
+  it('ne répond pas tant qu’on ne la relâche pas, puis répond', async () => {
+    const serveur = installerFauxServeur()
+    const relacher = serveur.retenir('GET', '/sonde', { status: 200, body: { ok: true } })
+
+    let resolue = false
+    const enVol = fetch('/api/sonde').then(() => {
+      resolue = true
+    })
+
+    for (let i = 0; i < 10; i++) await Promise.resolve()
+    await new Promise((suite) => setTimeout(suite, 0))
+
+    // La requête est PARTIE — le faux serveur l'a enregistrée — et elle n'a
+    // pas abouti. Les deux moitiés comptent : une retenue qui empêcherait la
+    // requête de partir ne tiendrait pas l'écran dans son état d'attente, elle
+    // l'empêcherait d'y entrer.
+    expect(serveur.appels.some((a) => a.chemin === '/sonde')).toBe(true)
+    expect(resolue).toBe(false)
+
+    relacher()
+    await enVol
+    expect(resolue).toBe(true)
   })
 })

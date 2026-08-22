@@ -50,6 +50,7 @@
     "src/design-system/plancher.test.ts",
     "src/design-system/rognage.test.ts",
     "src/design-system/squelette.test.ts",
-    "src/design-system/zonesSures.test.ts"
+    "src/design-system/zonesSures.test.ts",
+    "src/test/attentesObservees.test.ts"
   ]
 }

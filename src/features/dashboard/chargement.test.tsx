@@ -108,7 +108,27 @@ describe('tableau de bord pendant le chargement du parc', () => {
   })
 
   it('annonce le chargement sans décrire le décor aux lecteurs d’écran', async () => {
-    serveurAvecParc()
+    /*
+      LA RÉPONSE EST RETENUE, et ce cas ne l'était pas — il pariait.
+
+      Il n'a échoué aucune fois sur vingt passages de la suite complète, ce qui
+      ne l'innocente pas : il assertait le même ordre d'arrivée que le premier
+      cas de `registreDesAcces.test.tsx`, lequel tombait 3 fois sur 20. La
+      différence n'est pas de nature mais d'EXPOSITION — celui-ci n'est pas le
+      premier cas de son fichier, donc le paquet paresseux de `/app` y est déjà
+      en cache et la fenêtre se referme plus vite. Zéro échec sur 120 rendus
+      dans cette configuration, contre 4 sur 60 dans l'autre : c'est de la
+      chance mesurable, pas de la sûreté.
+
+      C'est la garde de `attentesObservees.test.ts` qui l'a désigné, et par
+      construction plutôt qu'en attendant qu'il tombe. C'est tout ce qu'on lui
+      demandait.
+    */
+    const serveur = serveurAvecParc()
+    const relacher = serveur.retenir('GET', `/parks/${PARC}/portfolio`, {
+      status: 200,
+      body: portefeuille(),
+    })
     await renderApp('/app', { session: SESSION_AVEC_PARC })
 
     const region = within(screen.getByRole('main')).getByRole('status')
@@ -120,6 +140,7 @@ describe('tableau de bord pendant le chargement du parc', () => {
 
     // L'annonce disparaît avec l'attente : une région qui reste occupée après
     // l'arrivée des données ment dans l'autre sens.
+    relacher()
     await screen.findByText('Résidence Bonamoussadi')
     expect(within(screen.getByRole('main')).queryByRole('status')).toBeNull()
   })
