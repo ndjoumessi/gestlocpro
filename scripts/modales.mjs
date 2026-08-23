@@ -36,11 +36,12 @@
  *     c'est-à-dire par un COMPTE RÉEL : en démonstration l'adhésion est nulle,
  *     donc le bouton n'est pas rendu du tout. Aucune manipulation du navigateur
  *     n'y donne accès sans serveur d'authentification. Elles sont comptées à
- *     part — `NON_OUVRABLES` — et leur comportement est couvert ailleurs, par
- *     les cas clavier, qui peuvent injecter une session.
- *     LEUR GÉOMÉTRIE N'EST DONC MESURÉE PAR PERSONNE. C'est une dette, elle est
- *     nommée, et elle se lèvera le jour où la démonstration portera une adhésion
- *     fictive plutôt qu'aucune.
+ *     part — `NON_OUVRABLES` — et leur GÉOMÉTRIE N'EST DONC MESURÉE PAR
+ *     PERSONNE. C'est une dette, elle est nommée, et elle se lèvera le jour où la
+ *     démonstration portera une adhésion fictive plutôt qu'aucune.
+ *     `clavierDesModales.test.tsx` NE LES COUVRE PAS : ses quatre cas sont
+ *     « Ajouter un immeuble », « Ajouter un logement », « Ouvrir un chantier »,
+ *     « Enregistrer un paiement ».
  *
  *   — le CLAVIER. Piège de focus, Échap, retour du focus : ce sont les cas de
  *     `clavierDesModales.test.tsx`, joués sous jsdom où la tabulation est
@@ -353,6 +354,8 @@ if (plaintes.length > 0) {
 console.log(
   `\n✓ modales : ${inspectees}/${ATTENDUS} états ouverts et mesurés sur ${MODALES.length} modales,\n` +
     `  plus ${NON_OUVRABLES.length} que la démonstration ne rend pas : ${NON_OUVRABLES.join(', ')}.\n` +
-    "  Le CLAVIER est mesuré ailleurs — `clavierDesModales.test.tsx` — et la PERTINENCE\n" +
-    "  d'un champ n'est mesurée nulle part : voir l'en-tête.",
+    "  Le CLAVIER est mesuré ailleurs — `clavierDesModales.test.tsx` — sur QUATRE modales :\n" +
+    "  Ajouter un immeuble, Ajouter un logement, Ouvrir un chantier, Enregistrer un paiement.\n" +
+    "  TariffsModal et ParkSettingsModal NE SONT PAS COUVERTES par les cas clavier.\n" +
+    "  La PERTINENCE d'un champ n'est mesurée nulle part : voir l'en-tête.",
 )

@@ -116,6 +116,12 @@ function hachureOuverte(couleur: string): string {
   return `repeating-linear-gradient(-45deg, ${couleur} 0 5px, var(--color-surface) 5px 7px)`
 }
 
+function formatMax(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)} M`
+  if (value >= 1_000) return `${(value / 1_000).toFixed(0)} k`
+  return String(value)
+}
+
 export interface StackedBar {
   label: string
   segments: { key: string; value: number }[]
@@ -320,6 +326,35 @@ export function StackedBarChart({
           )
         })}
       </div>
+
+      {/* Échelles des tracés — affichées quand il y a deux tracés. */}
+      {aDeuxTraces && (
+        <div className="mb-3 flex flex-wrap items-center gap-4 text-body text-muted">
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              aria-hidden="true"
+              className="size-2.5 rounded-[2px]"
+              style={{ background: SERIES_COLORS.rent }}
+            />
+            <span>{t('app.dashboard.scalePrimary')}</span>
+            <span className="text-muted-soft">{formatMax(max)}</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              aria-hidden="true"
+              className="size-2.5 rounded-[2px]"
+              style={{ background: SERIES_COLORS.water }}
+            />
+            <span
+              aria-hidden="true"
+              className="size-2.5 rounded-[2px] ml-1"
+              style={{ background: SERIES_COLORS.power }}
+            />
+            <span>{t('app.dashboard.scaleSecondary')}</span>
+            <span className="text-muted-soft">{formatMax(maxSecondaire)}</span>
+          </span>
+        </div>
+      )}
 
       {/* Zone de tracé et rangée d'étiquettes sont deux blocs distincts.
           C'est ce qui rend le calage exact : la ligne d'objectif se positionne

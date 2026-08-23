@@ -216,7 +216,7 @@ function silhouette(png, marge, echelle) {
   const lum = (i) => (0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]) / 255
   const bords = []
   for (let x = 0; x < largeur; x++) {
-    bords.push(lum((0 * largeur + x) * canaux), lum(((hauteur - 1) * largeur + x) * canaux))
+    bords.push(lum(x * canaux), lum(((hauteur - 1) * largeur + x) * canaux))
   }
   bords.sort((a, b) => a - b)
   const fond = bords[bords.length >> 1]

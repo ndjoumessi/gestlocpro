@@ -655,6 +655,8 @@ export const fr = {
       legendRent: 'Loyer',
       legendWater: 'Eau',
       legendPower: 'Électricité',
+      scalePrimary: 'Échelle principale (loyer)',
+      scaleSecondary: 'Échelle secondaire (eau, électricité)',
     },
 
     unitFile: {
