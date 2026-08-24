@@ -375,6 +375,7 @@ model Lease {
   deposit     Deposit?
   inspections Inspection[]
   documentRequests DocumentRequest[]
+  reminderEmails RentReminderEmail[]
 
   @@index([unitId, status])
   @@index([tenantId])
@@ -698,6 +699,38 @@ model NotificationRecipient {
 
   @@id([notificationId, userId])
   @@index([userId, readAt])
+}
+
+/// Trace d'ENVOI d'une relance automatique par e-mail, un jalon à la fois.
+///
+/// Distincte de `Notification` par nécessité, pas par goût. `Notification`
+/// porte le bail dans `params`, du JSON libre sans colonne : aucune contrainte
+/// UNIQUE fiable ne peut s'y adosser. Or la garde de ce lot est justement une
+/// contrainte UNIQUE — `@@unique([leaseId, sentOn])` — parce qu'une lecture
+/// suivie d'une écriture ne protège pas contre deux exécutions SIMULTANÉES :
+/// les deux liraient « pas encore envoyé » avant que l'une n'écrive. Un
+/// planificateur qui double ses envois est pire que pas de planificateur.
+///
+/// `leaseId` est donc une colonne réelle, et la course se tranche en base :
+/// l'INSERT perdant lève une violation de contrainte (P2002), que l'appelant
+/// interprète comme « déjà pris en charge aujourd'hui » plutôt que comme une
+/// erreur.
+model RentReminderEmail {
+  id        String   @id @default(uuid()) @db.Uuid
+  leaseId   String   @db.Uuid
+  lease     Lease    @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  /// Jours de retard au moment de la tentative — 7 pour ce lot, 1 et 15
+  /// rejoindront la colonne le jour où leur cadence sera construite.
+  milestone Int
+  /// Jour UTC de la tentative, borne de l'idempotence quotidienne.
+  sentOn    DateTime @db.Date
+  /// `null` tant que `envoyerEmail` n'a pas rendu `true` — même règle que
+  /// `Notification.sentAt` : une date posée par avance ferait mentir le
+  /// dossier le jour où un locataire contestera avoir été prévenu.
+  deliveredAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@unique([leaseId, sentOn])
 }
 
 /// Piste d'audit des décisions engageantes.

@@ -283,6 +283,26 @@ describe('garde-fou i18n — les envois promis sur un canal absent', () => {
   it('attrape la même phrase sous une clé NON inscrite', () => {
     expect(promesses('fr', dico({ 'app.autre.notice': 'Envoyé par SMS au numéro indiqué.' }))).toHaveLength(1)
   })
+
+  /**
+   * LA PROMESSE DE VITRINE, une tournure que les deux motifs précédents ne
+   * couvrent pas : « SMS et e-mail déclenchés à J+1… » n'affirme pas un envoi
+   * PASSÉ ou FUTUR PASSIF (« envoyé par SMS », « sera envoyé par SMS ») — elle
+   * décrit un calendrier, au présent. C'est exactement la phrase de
+   * `marketing.pricing.features.reminders.body`, mesurée fausse tant que
+   * `envoyerSms` rend `false` sans fournisseur configuré.
+   */
+  it('attrape la promesse de calendrier de la page tarifs, en français et en anglais', () => {
+    expect(
+      promesses(
+        'fr',
+        dico({ x: 'SMS et e-mail déclenchés à J+1, J+7, J+15. Vous fixez le ton.' }),
+      ),
+    ).toHaveLength(1)
+    expect(
+      promesses('en', dico({ x: 'SMS and email triggered at D+1, D+7, D+15. You set the tone.' })),
+    ).toHaveLength(1)
+  })
 })
 
 describe('garde-fou i18n — les aveux ASSUMÉS', () => {

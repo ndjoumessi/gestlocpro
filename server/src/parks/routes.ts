@@ -153,6 +153,16 @@ const schemaRelance = z.object({
 export const JALONS_RELANCE = [1, 7, 15] as const
 
 /**
+ * LE SEUL jalon dont ce lot rend la promesse par e-mail VRAIE.
+ *
+ * J+1 et J+15 restent des jalons de RELANCE (SMS, toujours simulée) — ils
+ * rejoindront le courriel quand un lot séparé les construira. Choisi pour son
+ * absence d'ambiguïté : ni le délai serré de J+1, ni la sévérité de J+15, qui
+ * chevauche le registre de la mise en demeure.
+ */
+export const JALON_EMAIL_AUTOMATIQUE = 7
+
+/**
  * Mise en demeure : le motif est OBLIGATOIRE.
  *
  * C'est l'acte le plus engageant du produit — il précède la résiliation et se
@@ -2681,6 +2691,37 @@ function debutDuJour(maintenant: Date): Date {
 }
 
 /**
+ * Le dû et le retard d'UN bail — PARTAGÉ entre la route manuelle et
+ * `executerRelancesAutomatiques` (le futur cron), pour que les deux ne
+ * puissent jamais diverger sur ce qui compte le plus : combien, et depuis
+ * quand.
+ */
+export function calculerRetard(
+  bail: {
+    charges: { dueOn: Date; rentMinor: number; payments: { amountMinor: number }[] }[]
+  },
+  maintenant: Date,
+): { dûMinor: number; jours: number } {
+  // Le même calcul que `statut()`, délibérément : relancer un locataire que
+  // l'écran affiche à jour serait le pire des défauts possibles ici.
+  const dûMinor = bail.charges.reduce((somme, c) => {
+    const regle = c.payments.reduce((s, p) => s + p.amountMinor, 0)
+    return somme + Math.max(0, c.rentMinor - regle)
+  }, 0)
+
+  // Le retard se compte depuis la PLUS ANCIENNE échéance impayée : c'est celle
+  // qui fait la gravité, et le chiffre que lit le bailleur.
+  const plusAncienne = bail.charges.find(
+    (c) => c.payments.reduce((s, p) => s + p.amountMinor, 0) < c.rentMinor,
+  )
+  const jours = plusAncienne
+    ? Math.floor((maintenant.getTime() - plusAncienne.dueOn.getTime()) / 86_400_000)
+    : 0
+
+  return { dûMinor, jours }
+}
+
+/**
  * Clé de message d'une relance, et marqueur de sa trace.
  *
  * SANS préfixe, comme toutes les autres — `rentOverdue`, `quotePending`,
@@ -2697,6 +2738,105 @@ function debutDuJour(maintenant: Date): Date {
 const CLE_RELANCE = 'rentReminder'
 /** Clé de message d'une mise en demeure. Même règle. */
 const CLE_MISE_EN_DEMEURE = 'formalNotice'
+
+/** Échappe ce qui viendrait d'un locataire avant de l'insérer dans du HTML. */
+function echapperHtml(valeur: string): string {
+  return valeur
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+/**
+ * Un montant en unités mineures, mis en forme pour un lecteur — pas pour une
+ * machine.
+ *
+ * `XAF`/`XOF` n'ont pas de sous-unité : l'unité mineure EST l'unité affichée.
+ * Les autres devises du produit en ont deux : l'unité mineure est le centime.
+ * Même distinction que `CURRENCY_DEFS.decimals` côté client, réécrite ici en
+ * quelques lignes plutôt qu'importée : les deux projets ne partagent pas de
+ * module, et la règle ne bouge pas assez souvent pour justifier d'en créer un.
+ */
+function formaterMontant(minor: number, devise: string): string {
+  const sansSousUnite = devise === 'XAF' || devise === 'XOF'
+  const majeur = sansSousUnite ? minor : minor / 100
+  const nombre = new Intl.NumberFormat('fr-FR', {
+    minimumFractionDigits: sansSousUnite ? 0 : 2,
+    maximumFractionDigits: sansSousUnite ? 0 : 2,
+  }).format(majeur)
+  return `${nombre} ${devise}`
+}
+
+/** Gabarit du courriel de relance automatique — sujet, texte, HTML. */
+function gabaritRelanceEmail(
+  nomLocataire: string,
+  jours: number,
+  dûMinor: number,
+  devise: string,
+): { sujet: string; texte: string; html: string } {
+  const montant = formaterMontant(dûMinor, devise)
+  const sujet = `GestLocPro — loyer en retard de ${jours} jours`
+  const texte =
+    `Bonjour ${nomLocataire},\n\n` +
+    `Votre loyer est en retard de ${jours} jours. Montant dû : ${montant}.\n\n` +
+    `Merci de régulariser dans les meilleurs délais.`
+  const html =
+    `<p>Bonjour ${echapperHtml(nomLocataire)},</p>` +
+    `<p>Votre loyer est en retard de ${jours} jours. Montant dû : ${echapperHtml(montant)}.</p>` +
+    `<p>Merci de régulariser dans les meilleurs délais.</p>`
+  return { sujet, texte, html }
+}
+
+/**
+ * Tente la relance automatique par e-mail d'UN bail, au jalon J+7 — CLAIM PUIS
+ * ENVOI, et dans cet ordre précis.
+ *
+ * La ligne `RentReminderEmail` est insérée AVANT que le courriel ne parte, sous
+ * la contrainte UNIQUE `(leaseId, sentOn)` posée par la migration. Deux
+ * exécutions simultanées — le cron et un déclenchement manuel, ou deux passages
+ * du cron qui se chevauchent — tentent toutes deux cet INSERT ; Postgres n'en
+ * laisse passer qu'une, l'autre lève une violation de contrainte (P2002) que
+ * cette fonction interprète comme « déjà pris en charge aujourd'hui » plutôt
+ * que comme une panne. SEULE la gagnante appelle `envoyerEmail`.
+ *
+ * Vérifier d'abord par une lecture, puis écrire — la forme qu'emploie encore le
+ * volet SMS de cette même route — ne protège PAS contre une vraie course : les
+ * deux exécutions liraient « rien encore » avant que l'une n'écrive. C'est le
+ * défaut que ce lot doit ne pas reproduire, pas seulement ne pas aggraver.
+ */
+export async function tenterRelanceEmailMilestone(
+  bail: { id: string; tenant: { fullName: string; email: string | null } },
+  jours: number,
+  dûMinor: number,
+  devise: string,
+): Promise<'no_email' | 'already_claimed' | 'sent' | 'not_delivered'> {
+  if (!bail.tenant.email) return 'no_email'
+
+  const aujourdHui = debutDuJour(new Date())
+  try {
+    await prisma.rentReminderEmail.create({
+      data: { leaseId: bail.id, milestone: jours, sentOn: aujourdHui },
+    })
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      return 'already_claimed'
+    }
+    throw err
+  }
+
+  const gabarit = gabaritRelanceEmail(bail.tenant.fullName, jours, dûMinor, devise)
+  const parti = await laMessagerie().envoyerEmail(bail.tenant.email, gabarit.sujet, gabarit)
+  if (!parti) return 'not_delivered'
+
+  // `deliveredAt` posé APRÈS coup, sur la ligne que l'INSERT ci-dessus a créée
+  // — jamais par avance, même règle que `Notification.sentAt`.
+  await prisma.rentReminderEmail.updateMany({
+    where: { leaseId: bail.id, sentOn: aujourdHui },
+    data: { deliveredAt: new Date() },
+  })
+  return 'sent'
+}
 
 /**
  * Relance des loyers en retard.
@@ -2740,7 +2880,7 @@ parksRouter.post(
       select: {
         id: true,
         unitId: true,
-        tenant: { select: { fullName: true, userId: true, phoneE164: true } },
+        tenant: { select: { fullName: true, userId: true, phoneE164: true, email: true } },
         // Toutes les échéances EXIGIBLES, pas la dernière : un locataire qui
         // doit juin et juillet est relancé une fois, pour le total.
         charges: {
@@ -2787,36 +2927,58 @@ parksRouter.post(
         .filter((id): id is string => typeof id === 'string'),
     )
 
+    /**
+     * La devise du parc, lue UNE fois : le montant du courriel de relance en a
+     * besoin, et `RentCharge` ne la porte pas — elle appartient au parc, comme
+     * partout ailleurs dans le produit.
+     */
+    const { currency: devise } = await prisma.park.findUniqueOrThrow({
+      where: { id: parkId },
+      select: { currency: true },
+    })
+
     const envoyees: string[] = []
     const ignorees: { leaseId: string; reason: string }[] = []
+    /**
+     * Les baux à J+7 dont le courriel n'est PAS parti, et pourquoi.
+     *
+     * Distinct de `ignorees` : un bail qui y figure a par ailleurs très bien pu
+     * être traité côté SMS/journal — les deux volets sont indépendants, voir
+     * `tenterRelanceEmailMilestone`. Le rendu doit dire QUI est injoignable,
+     * comme `AnnounceModal` le fait déjà pour les signalements.
+     */
+    const courrielsIgnores: { leaseId: string; reason: string }[] = []
 
     for (const bail of baux) {
-      // Le même calcul que `statut()`, délibérément : relancer un locataire que
-      // l'écran affiche à jour serait le pire des défauts possibles ici.
-      const dûMinor = bail.charges.reduce((somme, c) => {
-        const regle = c.payments.reduce((s, p) => s + p.amountMinor, 0)
-        return somme + Math.max(0, c.rentMinor - regle)
-      }, 0)
+      const { dûMinor, jours } = calculerRetard(bail, maintenant)
       if (dûMinor <= 0) {
         ignorees.push({ leaseId: bail.id, reason: 'nothing_due' })
         continue
       }
-      if (bauxDejaVus.has(bail.id)) {
-        ignorees.push({ leaseId: bail.id, reason: 'already_reminded_today' })
-        continue
-      }
 
-      // Le retard se compte depuis la PLUS ANCIENNE échéance impayée : c'est
-      // celle qui fait la gravité, et le chiffre que lit le bailleur.
-      const plusAncienne = bail.charges.find(
-        (c) => c.payments.reduce((s, p) => s + p.amountMinor, 0) < c.rentMinor,
-      )
-      const jours = plusAncienne
-        ? Math.floor((maintenant.getTime() - plusAncienne.dueOn.getTime()) / 86_400_000)
-        : 0
+      /**
+       * LE VOLET E-MAIL, avant toute garde du volet SMS ci-dessous.
+       *
+       * Un bail déjà « relancé aujourd'hui » au sens du journal SMS (ligne
+       * suivante) n'a pas forcément reçu de courriel — ce sont deux traces
+       * distinctes, `Notification` et `RentReminderEmail`. Placer ce volet
+       * APRÈS la garde `bauxDejaVus` l'aurait fait sauter silencieusement dans
+       * ce cas précis ; c'est exactement le genre de couplage qu'un plan
+       * d'exécution ne révèle pas et qu'une relecture ligne à ligne, si.
+       */
+      if (corps.only === 'milestones' && jours === JALON_EMAIL_AUTOMATIQUE) {
+        const issue = await tenterRelanceEmailMilestone(bail, jours, dûMinor, devise)
+        if (issue === 'no_email') {
+          courrielsIgnores.push({ leaseId: bail.id, reason: 'no_email' })
+        }
+      }
 
       if (corps.only === 'milestones' && !JALONS_RELANCE.includes(jours as 1 | 7 | 15)) {
         ignorees.push({ leaseId: bail.id, reason: 'not_a_milestone' })
+        continue
+      }
+      if (bauxDejaVus.has(bail.id)) {
+        ignorees.push({ leaseId: bail.id, reason: 'already_reminded_today' })
         continue
       }
 
@@ -2909,7 +3071,7 @@ parksRouter.post(
 
     // 200 et non 201 : l'appel peut n'avoir rien créé — tout était déjà relancé
     // ce matin — et ce n'est pas une erreur. Le corps dit ce qui a eu lieu.
-    res.json({ sent: envoyees, skipped: ignorees })
+    res.json({ sent: envoyees, skipped: ignorees, emailSkipped: courrielsIgnores })
   },
 )
 

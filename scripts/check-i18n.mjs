@@ -380,6 +380,20 @@ const AVEUX_ASSUMES = new Map([
 const PROMESSES_DE_CANAL = [
   /envoy[ée]e?s? par SMS/i,
   /sent by SMS/i,
+  /**
+   * LA PROMESSE DE CALENDRIER, mesurée sur la page tarifs.
+   *
+   * Les deux motifs ci-dessus n'attrapent qu'une affirmation de départ, passée
+   * ou future passive — « envoyé par SMS », « sera envoyé par SMS ». La page
+   * tarifs promet autrement : « SMS et e-mail déclenchés à J+1, J+7, J+15 »
+   * décrit un calendrier au présent, sans jamais employer « par SMS ». Mesuré
+   * sur les deux dictionnaires au 2026-08-24 : ce motif ne touche que cette
+   * ligne et son équivalent anglais — ni « Aucun SMS n'a été envoyé », ni le
+   * nom de canal seul (`channel_sms: 'SMS'`), ni « reçu par SMS » à la
+   * signature du bail.
+   */
+  /SMS[^.]*d[ée]clench[ée]s?/i,
+  /SMS[^.]*triggered/i,
 ]
 
 /**

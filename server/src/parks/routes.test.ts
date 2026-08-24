@@ -2486,6 +2486,270 @@ describe('relance des loyers', () => {
 })
 
 /**
+ * LA RELANCE AUTOMATIQUE PAR E-MAIL, jalon J+7 — la plus petite tranche VRAIE.
+ *
+ * La grille tarifaire vend « SMS et e-mail déclenchés à J+1, J+7, J+15 » depuis
+ * le premier jour, et rien ne le produisait : `envoyerSms` rend `false` sans
+ * fournisseur, aucun gabarit de courriel n'existait, aucun planificateur non
+ * plus. Ce lot construit un seul jalon, par e-mail seulement — J+7, le seul
+ * sans ambiguïté de délai (J+1) ni de sévérité (J+15, qui chevauche la mise en
+ * demeure) — et le rend VRAI de bout en bout : calcul, garde de course, envoi.
+ *
+ * `only: 'milestones'` est la forme que le futur cron empruntera. Ces cas
+ * n'exercent que cette forme : le geste manuel « Relancer les retards » sans ce
+ * paramètre continue de ne toucher que le SMS, inchangé par ce lot.
+ */
+describe('relance automatique par e-mail — jalon J+7', () => {
+  let parkId: string
+  let proprio: string
+  let leaseId: string
+
+  /** Minuit UTC du jour courant, moins `n` jours — même borne que `debutDuJour`. */
+  function ilYA(joursEntiers: number): Date {
+    const maintenant = new Date()
+    const minuit = new Date(
+      Date.UTC(maintenant.getUTCFullYear(), maintenant.getUTCMonth(), maintenant.getUTCDate()),
+    )
+    return new Date(minuit.getTime() - joursEntiers * 86_400_000)
+  }
+
+  async function echeanceAJours(joursDeRetard: number, rentMinor = 145000) {
+    return prisma.rentCharge.create({
+      data: {
+        leaseId,
+        periodStart: new Date('2026-06-01T00:00:00Z'),
+        dueOn: ilYA(joursDeRetard),
+        rentMinor,
+      },
+      select: { id: true },
+    })
+  }
+
+  beforeEach(async () => {
+    const p = await inscrire('bailleur-email@example.com', { parkName: 'Parc' })
+    proprio = p.cookie
+    const parcs = await request(serveur).get('/api/auth/me').set('Cookie', proprio)
+    parkId = parcs.body.memberships[0].parkId
+
+    const immeuble = await request(serveur)
+      .post(`/api/parks/${parkId}/buildings`)
+      .set('Cookie', proprio)
+      .send({ name: 'Résidence Makepe', district: 'Makepe' })
+    const logement = await request(serveur)
+      .post(`/api/parks/${parkId}/buildings/${immeuble.body.building.id}/units`)
+      .set('Cookie', proprio)
+      .send({ label: 'A1', type: 'T3', surfaceSqm: 78, baseRentMinor: 145000 })
+    const bail = await request(serveur)
+      .post(`/api/parks/${parkId}/tenants`)
+      .set('Cookie', proprio)
+      .send({ unitId: logement.body.unit.id, fullName: 'Paul Kamga', startsOn: '2026-01-01' })
+    leaseId = bail.body.lease.id
+  })
+
+  it('envoie un courriel au jalon J+7, et trace un envoi RÉUSSI', async () => {
+    await prisma.tenant.updateMany({ where: { parkId }, data: { email: 'paul@example.com' } })
+    await echeanceAJours(7)
+
+    const envoyes: { destinataire: string; sujet: string }[] = []
+    const rendre = remplacerMessagerie({
+      async envoyerSms() {
+        return false
+      },
+      async envoyerEmail(destinataire: string, sujet: string) {
+        envoyes.push({ destinataire, sujet })
+        return true
+      },
+    })
+    try {
+      const res = await request(serveur)
+        .post(`/api/parks/${parkId}/reminders`)
+        .set('Cookie', proprio)
+        .send({ leaseIds: [leaseId], only: 'milestones' })
+
+      expect(res.status, JSON.stringify(res.body)).toBe(200)
+      expect(envoyes).toHaveLength(1)
+      expect(envoyes[0]!.destinataire).toBe('paul@example.com')
+
+      const trace = await prisma.rentReminderEmail.findFirstOrThrow({ where: { leaseId } })
+      expect(trace.milestone).toBe(7)
+      // Réellement PARTI : `envoyerEmail` a rendu `true`.
+      expect(trace.deliveredAt).not.toBeNull()
+    } finally {
+      rendre()
+    }
+  })
+
+  it('n’envoie pas deux courriels au même bail dans la même journée', async () => {
+    await prisma.tenant.updateMany({ where: { parkId }, data: { email: 'paul@example.com' } })
+    await echeanceAJours(7)
+
+    let envoyes = 0
+    const rendre = remplacerMessagerie({
+      async envoyerSms() {
+        return false
+      },
+      async envoyerEmail() {
+        envoyes += 1
+        return true
+      },
+    })
+    try {
+      await request(serveur)
+        .post(`/api/parks/${parkId}/reminders`)
+        .set('Cookie', proprio)
+        .send({ leaseIds: [leaseId], only: 'milestones' })
+      await request(serveur)
+        .post(`/api/parks/${parkId}/reminders`)
+        .set('Cookie', proprio)
+        .send({ leaseIds: [leaseId], only: 'milestones' })
+
+      expect(envoyes).toBe(1)
+      expect(await prisma.rentReminderEmail.count({ where: { leaseId } })).toBe(1)
+    } finally {
+      rendre()
+    }
+  })
+
+  /**
+   * LA COURSE, pour de bon — sur le modèle de `auth/routes.test.ts`.
+   *
+   * Un test SÉQUENTIEL, comme le cas précédent, ne prouve rien ici : il ne
+   * peut jamais surprendre deux requêtes en train de lire « rien encore » en
+   * même temps. Seules deux exécutions VRAIMENT simultanées éprouvent la
+   * contrainte UNIQUE de `RentReminderEmail` — c'est elle, et non une garde en
+   * mémoire, qui doit trancher.
+   */
+  it('LA COURSE : deux exécutions simultanées n’envoient qu’UN SEUL courriel', async () => {
+    await prisma.tenant.updateMany({ where: { parkId }, data: { email: 'paul@example.com' } })
+    await echeanceAJours(7)
+
+    let envoyes = 0
+    const rendre = remplacerMessagerie({
+      async envoyerSms() {
+        return false
+      },
+      async envoyerEmail() {
+        envoyes += 1
+        return true
+      },
+    })
+    try {
+      const [a, b] = await Promise.all([
+        request(serveur)
+          .post(`/api/parks/${parkId}/reminders`)
+          .set('Cookie', proprio)
+          .send({ leaseIds: [leaseId], only: 'milestones' }),
+        request(serveur)
+          .post(`/api/parks/${parkId}/reminders`)
+          .set('Cookie', proprio)
+          .send({ leaseIds: [leaseId], only: 'milestones' }),
+      ])
+
+      expect([a.status, b.status], `${a.status}/${JSON.stringify(a.body)} ${b.status}/${JSON.stringify(b.body)}`).toEqual([200, 200])
+      expect(envoyes).toBe(1)
+      expect(await prisma.rentReminderEmail.count({ where: { leaseId } })).toBe(1)
+    } finally {
+      rendre()
+    }
+  })
+
+  it('ne relance jamais un bail soldé, même au jalon', async () => {
+    await prisma.tenant.updateMany({ where: { parkId }, data: { email: 'paul@example.com' } })
+    const charge = await echeanceAJours(7)
+    await prisma.payment.create({
+      data: {
+        chargeId: charge.id,
+        amountMinor: 145000,
+        method: 'cash',
+        paidOn: new Date(),
+        recordedById: (
+          await prisma.userAccount.findUniqueOrThrow({ where: { email: 'bailleur-email@example.com' } })
+        ).id,
+      },
+    })
+
+    let envoyes = 0
+    const rendre = remplacerMessagerie({
+      async envoyerSms() {
+        return false
+      },
+      async envoyerEmail() {
+        envoyes += 1
+        return true
+      },
+    })
+    try {
+      await request(serveur)
+        .post(`/api/parks/${parkId}/reminders`)
+        .set('Cookie', proprio)
+        .send({ leaseIds: [leaseId], only: 'milestones' })
+
+      expect(envoyes).toBe(0)
+      expect(await prisma.rentReminderEmail.count({ where: { leaseId } })).toBe(0)
+    } finally {
+      rendre()
+    }
+  })
+
+  it('ne tente aucun envoi pour un locataire sans adresse, et le rend dans la réponse', async () => {
+    // Pas d'e-mail renseigné : c'est l'état par défaut du jeu de fixtures.
+    await echeanceAJours(7)
+
+    let envoyes = 0
+    const rendre = remplacerMessagerie({
+      async envoyerSms() {
+        return false
+      },
+      async envoyerEmail() {
+        envoyes += 1
+        return true
+      },
+    })
+    try {
+      const res = await request(serveur)
+        .post(`/api/parks/${parkId}/reminders`)
+        .set('Cookie', proprio)
+        .send({ leaseIds: [leaseId], only: 'milestones' })
+
+      expect(envoyes).toBe(0)
+      expect(await prisma.rentReminderEmail.count({ where: { leaseId } })).toBe(0)
+      // Le rendu doit dire QUI est injoignable, comme `AnnounceModal` le fait déjà.
+      expect(res.body.emailSkipped).toEqual([{ leaseId, reason: 'no_email' }])
+    } finally {
+      rendre()
+    }
+  })
+
+  it('ne relance par e-mail que dans un appel « jalons » — le geste manuel reste inchangé', async () => {
+    await prisma.tenant.updateMany({ where: { parkId }, data: { email: 'paul@example.com' } })
+    await echeanceAJours(7)
+
+    let envoyes = 0
+    const rendre = remplacerMessagerie({
+      async envoyerSms() {
+        return false
+      },
+      async envoyerEmail() {
+        envoyes += 1
+        return true
+      },
+    })
+    try {
+      // Aucun `only` : le geste général « Relancer les retards », inchangé.
+      await request(serveur)
+        .post(`/api/parks/${parkId}/reminders`)
+        .set('Cookie', proprio)
+        .send({ leaseIds: [leaseId] })
+
+      expect(envoyes).toBe(0)
+      expect(await prisma.rentReminderEmail.count({ where: { leaseId } })).toBe(0)
+    } finally {
+      rendre()
+    }
+  })
+})
+
+/**
  * LE RANG D'UNE RELANCE, dérivé à la lecture.
  *
  * Le produit comptait déjà — la garde « déjà relancé aujourd'hui » lit ces

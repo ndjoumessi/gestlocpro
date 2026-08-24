@@ -11,6 +11,7 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
+    "relances:auto": "tsx src/scripts/executerRelancesAutomatiques.ts",
     "test": "vitest run",
     "check": "tsc -b && node scripts/verifier-le-chargement-node.mjs && vitest run",
     "db:test:setup": "prisma generate && node scripts/setup-test-db.mjs"

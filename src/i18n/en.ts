@@ -1310,7 +1310,7 @@ export const en: Dictionary = {
       },
       reminders: {
         title: 'Automatic reminders',
-        body: 'SMS and email triggered at D+1, D+7, D+15. You set the tone, the product keeps the calendar. Automatic from the Pro plan up.',
+        body: 'Email triggered at D+1, D+7, D+15. You set the tone, the product keeps the calendar. Automatic from the Pro plan up.',
       },
       inspections: {
         title: 'Inspections',

@@ -1691,7 +1691,7 @@ export const fr = {
       },
       reminders: {
         title: 'Relances automatiques',
-        body: 'SMS et e-mail déclenchés à J+1, J+7, J+15. Vous fixez le ton, le produit tient le calendrier. Automatiques à partir du palier Pro.',
+        body: 'E-mail déclenché à J+1, J+7, J+15. Vous fixez le ton, le produit tient le calendrier. Automatiques à partir du palier Pro.',
       },
       inspections: {
         title: 'États des lieux',
