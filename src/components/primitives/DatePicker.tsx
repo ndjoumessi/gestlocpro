@@ -613,7 +613,9 @@ export function DatePicker({
                         className={cn(
                           'flex size-11 cursor-pointer items-center justify-center rounded-md text-body',
                           'transition-colors duration-150',
-                          horsMois && !estChoisi && 'text-muted-soft',
+                          // `text-muted`, pas `-soft` : ce chiffre de 14px reste
+                          // un texte réel et cliquable — voir tokens.css.
+                          horsMois && !estChoisi && 'text-muted',
                           !estChoisi && 'hover:bg-surface-sunken',
                           estChoisi && 'bg-ink text-on-dark font-medium',
                           // Aujourd'hui se marque par un cerne, jamais par la

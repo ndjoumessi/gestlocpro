@@ -45,7 +45,7 @@
   --color-ink: #14201e; /* texte principal · 15.24 sur --paper */
   --color-ink-2: #243733; /* surface sombre élevée, survol bouton sombre */
   --color-ink-3: #3f4a48;
-  --color-muted: #5c6664; /* texte secondaire · 5.40 sur --paper */
+  --color-muted: #5c6664; /* texte secondaire · 5.40 sur --paper, 5.93 sur --surface */
   --color-muted-soft: #6b7573; /* >=18px ou non-textuel uniquement */
 
   /* ---- Or (marque) ----------------------------------------------------- */

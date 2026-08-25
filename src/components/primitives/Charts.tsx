@@ -302,8 +302,10 @@ export function StackedBarChart({
                 // sous le minimum tactile, sur un produit dont la cible est un
                 // Android d'entrée de gamme tenu à une main.
                 'inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md px-2 -mx-0.5',
-                'text-body transition-colors duration-150 hover:bg-surface-sunken',
-                shown ? 'text-muted' : 'text-muted-soft',
+                // `text-muted` dans les deux états : `-soft` (4,33 sur
+                // --surface en sombre) est réservé au texte >=18px ou au
+                // non-textuel, jamais à ce libellé de 14px — voir tokens.css.
+                'text-body text-muted transition-colors duration-150 hover:bg-surface-sunken',
               )}
             >
               {/* Une série masquée passe en CONTOUR, jamais en transparence.
@@ -337,7 +339,10 @@ export function StackedBarChart({
               style={{ background: SERIES_COLORS.rent }}
             />
             <span>{t('app.dashboard.scalePrimary')}</span>
-            <span className="text-muted-soft">{formatMax(max)}</span>
+            {/* Hérite de `text-muted` du conteneur — voir le commentaire sur
+                `--color-muted-soft` dans tokens.css : ce jeton est réservé au
+                texte >=18px ou au non-textuel, jamais à ces 14px. */}
+            <span>{formatMax(max)}</span>
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span
@@ -351,7 +356,7 @@ export function StackedBarChart({
               style={{ background: SERIES_COLORS.power }}
             />
             <span>{t('app.dashboard.scaleSecondary')}</span>
-            <span className="text-muted-soft">{formatMax(maxSecondaire)}</span>
+            <span>{formatMax(maxSecondaire)}</span>
           </span>
         </div>
       )}
