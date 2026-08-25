@@ -67,7 +67,7 @@
  * machine. Le paquet `playwright` n'embarque pas le navigateur.
  */
 import { spawn } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { gzipSync } from 'node:zlib'
@@ -359,6 +359,225 @@ const THEMES = ['light', 'dark']
  */
 const THEME_DE_GEOMETRIE = 'light'
 const LARGEURS_CONTRASTE = [360, 1280]
+
+/**
+ * LES SURFACES QUI N'EXISTENT QU'APRÈS UN GESTE.
+ *
+ * ── Le trou, et il est PROUVÉ, pas supposé ────────────────────────────────
+ *
+ * Deux mutations d'un lot précédent ont rendu le verdict inverse de l'attendu :
+ * remettre l'encre fautive sur le chiffre hors-mois du calendrier, puis sur le
+ * libellé d'une série masquée, laissait cette porte VERTE. Le calendrier ne
+ * s'ouvre qu'au clic, la série ne se masque qu'au clic, et rien ici n'a jamais
+ * cliqué. Treize mille textes audités, et pas une seule surface interactive :
+ * ce que le premier rendu ne montre pas n'était mesuré par personne.
+ *
+ * ── Ce qu'on ouvre, et ce qu'on laisse ────────────────────────────────────
+ *
+ * SIX surfaces, et le nombre est un arbitrage assumé. La porte dure déjà une
+ * dizaine de minutes, dont sept de navigateur ; chaque ouverture se paie. Mieux
+ * vaut six surfaces ouvertes et prouvées qu'une porte que l'on cesse de lancer.
+ * Les deux premières sont exigées par les mutations qui ont découvert le trou —
+ * elles sont la démonstration que la garde voit désormais ce qu'elle ne voyait
+ * pas. Les quatre autres sont les surfaces que l'utilisateur rencontre le plus.
+ *
+ * NOMMÉ ET LAISSÉ, pour que le trou restant ne se confonde pas avec un oubli :
+ * les DIX MODALES du produit, dont `modales.mjs` mesure déjà la géométrie mais
+ * dont personne n'audite ni le contraste ni les cibles. Les ouvrir ici coûterait
+ * dix ouvertures de plus par thème ; les auditer là-bas exigerait d'en extraire
+ * les deux sondes, donc un module partagé de plus. L'une des deux voies devra
+ * être prise — ce lot dit laquelle manque, il ne la prend pas. Une seule modale
+ * est auditée ici, et par nécessité : le calendrier vit dedans.
+ *
+ * ── Les règles que ce périmètre s'impose ──────────────────────────────────
+ *
+ * AUCUN DÉLAI FIXE. On attend le TÉMOIN — un nœud qui n'existe qu'une fois la
+ * surface ouverte — jamais un élément que le décor porte déjà, et jamais un
+ * nombre de millisecondes. C'est la règle du lot « un test attend une donnée,
+ * pas un décor », transposée au navigateur.
+ *
+ * UNE SURFACE QUI NE S'OUVRE PAS FAIT ROUGIR. Elle n'est pas sautée : « pas
+ * ouverte » ne doit jamais s'écrire comme « sans défaut ». C'est la panne que
+ * ce fichier reproche déjà à `contrast-audit.js`.
+ *
+ * UN SEUL THÈME DE PLUS, PAS UNE LANGUE DE PLUS. La couleur ne dépend pas de la
+ * langue — « Fermer » et « Close » se peignent pareil —, donc on balaie les deux
+ * thèmes et une seule langue. Même raisonnement que les deux largeurs de la
+ * passe de contraste, qui ignore déjà les onze autres.
+ */
+const SURFACES_INTERACTIVES = [
+  /*
+    LES GESTES VISENT LA SÉMANTIQUE, PAS LA TRADUCTION.
+
+    `aria-haspopup` déclare, dans la source même, « ceci ouvre quelque chose » —
+    et les cinq déclencheurs à panneau du produit le portent. Viser cet attribut
+    plutôt qu'un libellé traduit fait survivre le recensement à une retraduction
+    et le fait mourir à une refonte du vocabulaire ARIA, ce qui est le bon sens
+    de la dépendance. Là où aucun attribut ne distingue le déclencheur — la
+    légende, le tiroir — on retombe sur le rôle et le nom accessible, comme
+    `modales.mjs`.
+  */
+  {
+    nom: 'legende-serie-masquee',
+    adresse: '/demo',
+    largeur: 1280,
+    /* LE TÉMOIN EST L'ÉTAT ARIA, PAS LA RATURE.
+       Une entrée de légende expose son état par `aria-pressed` (`Charts.tsx`) :
+       enfoncée = série visible, relâchée = série masquée. `aria-pressed="false"`
+       est donc EXACTEMENT « une série est masquée », et c'est la donnée que le
+       geste produit. La première rédaction visait `.line-through` — une classe
+       utilitaire, donc un détail de style : le jour où le masquage se marque
+       autrement, le témoin disparaîtrait et la garde du garde rougirait pour un
+       non-défaut. Un état ARIA porte du sens, une classe porte une apparence. */
+    temoin: '[aria-pressed="false"]',
+    ouvrir: async (page) => {
+      await page.locator('[aria-pressed="true"]').first().click()
+    },
+  },
+  {
+    nom: 'calendrier-dans-la-modale',
+    adresse: '/demo/paiements',
+    largeur: 1280,
+    temoin: '[role="dialog"][aria-label="Calendar"], [role="dialog"][aria-label="Calendrier"]',
+    ouvrir: async (page) => {
+      await page.getByRole('button', { name: /^Record a payment$|^Enregistrer un paiement$/ }).first().click()
+      await page.locator('[role="dialog"]').first().waitFor({ state: 'visible' })
+      /*
+        PAR L'ÉTIQUETTE DU CHAMP, et deux erreurs successives l'ont imposé.
+
+        La modale de paiement porte DEUX déclencheurs `aria-haspopup="dialog"`,
+        tous deux sans nom accessible propre : la PÉRIODE (choix du mois) puis la
+        DATE. Mesuré : un `.first()` borné à la modale ouvre « Choix du mois »,
+        pas le calendrier — la garde aurait audité une surface en en nommant une
+        autre, ce qui est pire qu'un trou puisque le rapport aurait menti.
+        Un `.nth(1)` marcherait aujourd'hui et se tairait le jour où l'ordre des
+        champs change. On vise donc l'ÉTIQUETTE, qui est ce que l'utilisateur
+        lit et ce que le lecteur d'écran annonce.
+      */
+      await page.getByLabel(/Date du versement|Payment date/).click()
+    },
+  },
+  {
+    nom: 'tiroir-de-navigation',
+    adresse: '/demo',
+    largeur: 360,
+    /* Le tiroir monte un `aside` en `role="dialog"` nommé « Navigation
+       principale » — il n'existe pas tant que le tiroir est replié. Viser ce
+       rôle plutôt que deux classes Tailwind : une classe utilitaire change au
+       premier ajustement de mise en page, un rôle ARIA porte du sens. */
+    temoin: '[role="dialog"][aria-modal="true"]',
+    ouvrir: async (page) => {
+      await page.getByRole('button', { name: /Open navigation|Ouvrir la navigation/ }).first().click()
+    },
+  },
+  {
+    nom: 'panneau-des-reglages',
+    adresse: '/demo',
+    largeur: 1280,
+    temoin: '[role="dialog"]',
+    ouvrir: async (page) => {
+      await page.locator('[aria-haspopup="dialog"]').first().click()
+    },
+  },
+]
+
+/*
+  DEUX SURFACES ÉCARTÉES, ET CE N'EST PAS UN OUBLI.
+
+  Le premier jet les tenait pour acquises ; la mesure les a démenties, et c'est
+  la garde du garde qui l'a dit plutôt qu'un vert silencieux. Relevé sur `/demo`
+  aux deux largeurs : le SEUL déclencheur à panneau présent est celui des
+  réglages. Ni `aria-haspopup="menu"` ni `aria-haspopup="listbox"` n'existent.
+
+  — LE MENU DU COMPTE (`AppShell`, `aria-haspopup="menu"`) n'est pas rendu sous
+    `/demo` : la démonstration n'a pas de compte réel. L'atteindre demanderait
+    `/app` et donc une session, c'est-à-dire un état préalable — précisément ce
+    que ce périmètre s'interdit. Il reste NON AUDITÉ, et c'est dit.
+
+  — LE SÉLECTEUR DE DEVISE vit DANS le panneau des réglages, dont le nom le
+    disait déjà (« Réglages : langue, devise et thème »). Il n'a donc pas de
+    ligne à lui : le panneau des réglages, lui, est ouvert et audité, et la
+    devise l'est avec. Une surface imbriquée n'est pas une surface de plus.
+*/
+
+/**
+ * LE RECENSEMENT SE DÉDUIT, il ne se recopie pas.
+ *
+ * Une liste de surfaces écrite à la main se périme au premier renommage, et
+ * son silence ressemble à un acquittement. On compte donc, DANS LA SOURCE, les
+ * déclencheurs à panneau — `aria-haspopup`, que le produit pose sur chacun — et
+ * l'on exige que ce nombre reste celui qu'un humain a arbitré. En ajouter un
+ * sans toucher ce fichier fait rougir : l'auteur doit alors dire s'il entre dans
+ * le périmètre audité ou s'il en est écarté, et pourquoi.
+ *
+ * CE QUE LE COMPTE NE VOIT PAS, et il faut le dire : `Combobox` n'annonce PAS
+ * `aria-haspopup` — il se déclare par `aria-expanded` et un `role="listbox"`.
+ * Il échappe donc à ce recensement comme il échappe au périmètre. C'est une
+ * incohérence du produit, nommée ici et laissée : la corriger touche l'ARIA
+ * d'un composant, ce qui est un autre sujet que mesurer des surfaces.
+ */
+function declencheursDePanneau() {
+  const trouves = []
+  const parcourir = (dossier) => {
+    for (const entree of readdirSync(dossier, { withFileTypes: true })) {
+      const chemin = join(dossier, entree.name)
+      if (entree.isDirectory()) parcourir(chemin)
+      else if (/\.tsx$/.test(entree.name) && !entree.name.includes('.test.')) {
+        const source = readFileSync(chemin, 'utf8')
+        const n = [...source.matchAll(/aria-haspopup/g)].length
+        if (n > 0) trouves.push({ fichier: chemin.replace(RACINE + '/', ''), n })
+      }
+    }
+  }
+  parcourir(join(RACINE, 'src'))
+  return trouves
+}
+
+/* 5 = deux dans la coquille (réglages, menu du compte), deux dans le sélecteur
+   de date (jour et mois), un dans le sélecteur de devise. */
+const DECLENCHEURS_ATTENDUS = 5
+
+{
+  const trouves = declencheursDePanneau()
+  const total = trouves.reduce((s, t) => s + t.n, 0)
+  if (total !== DECLENCHEURS_ATTENDUS) {
+    console.error(
+      `\n✗ mesure-ui : ${total} déclencheur(s) \`aria-haspopup\` dans la source pour ${DECLENCHEURS_ATTENDUS} recensés.\n` +
+        trouves.map((t) => `   ${t.fichier} × ${t.n}`).join('\n') +
+        "\n   Une surface qui s'ouvre sans entrer dans `SURFACES_INTERACTIVES` ne serait mesurée\n" +
+        '   par personne. Ajoutez-la au périmètre, ou écartez-la en écrivant pourquoi.\n',
+    )
+    process.exit(1)
+  }
+}
+
+/*
+  ATTENDU ÉCRIT, JAMAIS CALCULÉ — même piège que celui de `modales.mjs`.
+
+  `SURFACES_INTERACTIVES.length * THEMES.length` rendrait la garde d'accord avec
+  elle-même : vider la table, et l'on comparerait 0 à 0 avant de se déclarer
+  vert. Le nombre est donc écrit, et l'ajout d'une surface oblige à le toucher.
+
+  8 = 4 surfaces × 2 thèmes.
+*/
+const SURFACES_ATTENDUES = 8
+
+/**
+ * Neutralise ce qui bouge, AVANT de mesurer.
+ *
+ * `contrast-audit.js` documente déjà le piège pour les modales : elles s'ouvrent
+ * en `scale(0.96) → scale(1)`, `getBoundingClientRect` rend la taille APRÈS
+ * transformation, et un bouton de 44 px se mesure alors à 42. Une transition de
+ * couleur en vol fausse de même le contraste. On fige donc animations et
+ * transitions plutôt que d'attendre qu'elles finissent — attendre serait un
+ * délai, et un délai est un pari.
+ */
+const FIGER_LES_ANIMATIONS = `
+  *, *::before, *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+`
 
 /**
  * LE PLANCHER DES CIBLES TACTILES, mesuré par CE QUE LE DOIGT TOUCHE.
@@ -1612,6 +1831,19 @@ const raisonsEmployees = new Set()
 let ciblesSondees = 0
 /** Points (écran × largeur × langue) où la sonde de plancher s'est exécutée. */
 let pointsDeCible = 0
+/* Ce que les SURFACES ont apporté, compté à part de ce que la page nue donne.
+   Fondu dans le total, un apport nul serait invisible : la porte dirait
+   « 13 296 textes audités » avec ou sans les six surfaces, et le jour où les
+   gestes cesseraient d'ouvrir quoi que ce soit, rien ne le signalerait. */
+let surfacesOuvertes = 0
+/* Les surfaces qui n'ont pas voulu s'ouvrir. Déclaré ICI, avec les compteurs
+   qu'il accompagne : la première rédaction de cette passe poussait dans un
+   tableau qui n'existait pas, et la faute ne se serait manifestée qu'au moment
+   EXACT où la garde compte — quand une surface refuse de s'ouvrir. Une garde
+   qui lève une `ReferenceError` au lieu de nommer le défaut ne garde rien. */
+const plaintesDeSurface = []
+let textesDeSurface = 0
+let ciblesDeSurface = 0
 
 try {
   const navigateur = await chromium.launch()
@@ -1872,6 +2104,104 @@ try {
       process.stdout.write(`${((Date.now() - depart) / 1000).toFixed(1)}s\n`)
     }
     await contexte.close()
+  }
+
+  /*
+    ═══ LES SURFACES QUI N'EXISTENT QU'APRÈS UN GESTE ═══
+
+    Quatrième passe, et son axe n'est celui d'aucune autre : deux thèmes, une
+    langue, une largeur par surface — celle où la surface existe. Le tiroir de
+    navigation n'est rendu que sous `lg`, le menu du compte qu'au-dessus ; les
+    balayer aux deux largeurs mesurerait surtout leur absence.
+
+    ELLE VIENT EN DERNIER, après la sonde des cibles, pour la même raison qui a
+    mis celle-ci après le contraste : elle est la seule à CLIQUER, donc à laisser
+    la page dans un état qu'elle n'a pas trouvé. Chaque surface reçoit un
+    contexte neuf, ce qui rend l'ordre des surfaces sans effet sur le résultat —
+    une surface ne peut pas en polluer une autre.
+
+    LES DEUX SONDES SONT CELLES DES AUTRES PASSES, à l'identique : `AUDIT_CONTRASTE`
+    lu depuis `contrast-audit.js`, et `MESURER_CIBLES`. Rien n'est réimplémenté —
+    une seconde rédaction dériverait, et ce dépôt a déjà payé cela.
+  */
+  for (const surface of SURFACES_INTERACTIVES) {
+    for (const theme of THEMES) {
+      const nom = `${surface.nom}@${surface.largeur}/${theme}`
+      process.stdout.write(`   surface  ${nom} … `)
+      const contexte = await navigateur.newContext({
+        viewport: { width: surface.largeur, height: 900 },
+        locale: LANGUES[1],
+        colorScheme: theme,
+      })
+      const page = await contexte.newPage()
+      await page.goto(BASE + surface.adresse, { waitUntil: 'domcontentloaded' })
+      await attendre(page, surface.adresse)
+      await page.addStyleTag({ content: FIGER_LES_ANIMATIONS })
+
+      /*
+        LA GARDE DU GARDE, et elle est le cœur de cette passe.
+
+        Un sélecteur périmé, un composant déplacé, un libellé retraduit : le
+        geste ne ferait plus rien, la surface ne s'ouvrirait pas, et les deux
+        sondes rendraient « aucun défaut » sur la page NUE. Ce serait le pire
+        des verts — celui qui affirme d'autant plus fort qu'il n'a rien
+        regardé. On exige donc le TÉMOIN, et son absence fait rougir.
+      */
+      let ouverte = false
+      try {
+        await surface.ouvrir(page)
+        await page.locator(surface.temoin).first().waitFor({ state: 'visible' })
+        ouverte = true
+      } catch (e) {
+        plaintesDeSurface.push(
+          `${nom} : la surface ne s'est pas ouverte — témoin « ${surface.temoin} » absent.\n` +
+            `   ${String(e).split('\n')[0]}\n` +
+            "   Une surface non ouverte n'est pas une surface sans défaut : le geste qui\n" +
+            '   l’ouvre a changé, et les deux sondes auraient mesuré la page nue.',
+        )
+      }
+
+      if (ouverte) {
+        surfacesOuvertes++
+
+        const audit = await page.evaluate(AUDIT_CONTRASTE)
+        if (!audit || typeof audit.examines !== 'number') {
+          throw new Error(
+            `mesure-ui : \`contrast-audit.js\` n'a rien rendu sur la surface ${nom}.`,
+          )
+        }
+        textesAudites += audit.examines
+        textesDeSurface += audit.examines
+        for (const item of audit.items) {
+          const cle = `${item.text}|${item.color}|${item.bg}`
+          if (!contrastes.has(cle)) contrastes.set(cle, { ...item, ou: `surface ${nom}` })
+        }
+
+        const releve = await page.evaluate(MESURER_CIBLES, {
+          plancher: PLANCHER_CIBLE,
+          rayon: RAYON_SONDAGE,
+        })
+        ciblesSondees += releve.sondees
+        ciblesDeSurface += releve.sondees
+        /* `pointsDeCible` N'EST PAS incrémenté : il compte les points ADRESSE ×
+           largeur × langue, et sa garde exige l'égalité exacte avec ce produit.
+           Y verser les surfaces la ferait rougir pour une bonne nouvelle. Les
+           surfaces ont leur propre compte, et leur propre garde. */
+        for (const raison of releve.raisonsVues) raisonsEmployees.add(raison)
+        for (const defaut of releve.defauts) {
+          if (defaut.raison && CIBLES_EXEMPTES[defaut.raison]) continue
+          const cle = `${defaut.balise}|${defaut.cible}|${defaut.classes}`
+          if (!ciblesTrop_petites.has(cle)) {
+            ciblesTrop_petites.set(cle, { ...defaut, ou: `surface ${nom}` })
+          }
+        }
+        process.stdout.write(`${audit.examines} textes, ${releve.sondees} cibles\n`)
+      } else {
+        process.stdout.write('NON OUVERTE\n')
+      }
+
+      await contexte.close()
+    }
   }
 
   /*
@@ -2259,6 +2589,47 @@ if (pointsDeCible !== POINTS_DE_CIBLE_ATTENDUS) {
       `(${adresses.length} écrans × ${LARGEURS.length} largeurs × ${LANGUES.length} langues).\n` +
       "   Une règle qui ne couvre pas ce que le rapport annonce rend « aucune cible sous le\n" +
       "   plancher » sur des points qu'elle n'a jamais regardés.\n",
+  )
+  process.exit(1)
+}
+
+/*
+  GARDE DU GARDE : les surfaces doivent s'être OUVERTES.
+
+  Le compte, et non un booléen : six surfaces dont une seule s'ouvre est un
+  état parfaitement possible — un libellé retraduit, un composant déplacé — et
+  qui rendrait « aucun défaut sur les surfaces interactives » avec cinq
+  surfaces jamais vues. Chaque échec d'ouverture a déjà déposé sa plainte plus
+  haut ; ce compte est la seconde maille, celle qui attrape le cas où la table
+  elle-même aurait été vidée.
+
+  Et le compte des TEXTES avec, car une surface peut s'ouvrir sur du vide : le
+  témoin apparaît, l'audit ne trouve rien à peser, et le silence repasse pour un
+  acquittement. Le plancher est grossier à dessein — on distingue « il a
+  regardé » de « il n'a rien vu ».
+*/
+if (plaintesDeSurface.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${plaintesDeSurface.length} surface(s) interactive(s) ne se sont pas ouvertes.\n`,
+  )
+  for (const p of plaintesDeSurface) console.error('  ▸ ' + p + '\n')
+  process.exit(1)
+}
+
+if (surfacesOuvertes !== SURFACES_ATTENDUES) {
+  console.error(
+    `\n✗ mesure-ui : ${surfacesOuvertes} surface(s) interactive(s) ouverte(s) pour ${SURFACES_ATTENDUES} attendues.\n` +
+      "   Une surface qu'on n'ouvre pas n'est pas une surface sans défaut. Le geste qui\n" +
+      "   l'ouvre a changé, ou la table les décrivant a été vidée.\n",
+  )
+  process.exit(1)
+}
+
+const TEXTES_DE_SURFACE_ATTENDUS = 60
+if (textesDeSurface < TEXTES_DE_SURFACE_ATTENDUS) {
+  console.error(
+    `\n✗ mesure-ui : ${textesDeSurface} textes audités dans les surfaces, moins que les ${TEXTES_DE_SURFACE_ATTENDUS} attendus.\n` +
+      "   Les surfaces se sont ouvertes sur du vide, ou l'audit ne les lit pas.\n",
   )
   process.exit(1)
 }
@@ -2762,6 +3133,10 @@ console.log(
     `  Grille de tarifs : ${tarifs[0]?.cartes.length} cartes finissant ensemble, ` +
     `${tarifs[0]?.exclues} lignes exclues, aucune raturée.\n` +
     `  ${textesAudites} textes audités en contraste (${THEMES.join(' + ')}, ${LARGEURS_CONTRASTE.join(' et ')} px), aucun sous le seuil WCAG AA.\n` +
+    `  ${surfacesOuvertes} surfaces interactives OUVERTES puis auditées (${THEMES.join(' + ')}) : ` +
+    `${textesDeSurface} textes et ${ciblesDeSurface} cibles qu'aucun premier rendu ne montre.\n` +
+    '  Les DIX modales du produit n’en sont pas : leur géométrie est tenue ailleurs, leur\n' +
+    '  contraste et leurs cibles restent NON audités — dette nommée dans la table des surfaces.\n' +
     `  ${ciblesSondees} cibles sondées au point de contact sur ${pointsDeCible} points ` +
       `(${LARGEURS.length} largeurs × ${LANGUES.length} langues, thème ${THEME_DE_GEOMETRIE}), ` +
       `aucune sous ${PLANCHER_CIBLE} px hors les ${Object.keys(CIBLES_EXEMPTES).length} exemptions motivées.`,
