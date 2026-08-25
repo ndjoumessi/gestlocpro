@@ -32,5 +32,8 @@ server/node_modules
 # sortie de compilation malgré son emplacement : `postinstall` le refabrique,
 # et le versionner ferait entrer 40 fichiers dérivés dans chaque revue.
 server/src/generated
+# Les octets déposés par le dépôt LOCAL — des données de développement, pas des
+# sources. Le dépôt distant les portera en production.
+server/.stockage-local
 .carte-des-paquets.json
 captures/
