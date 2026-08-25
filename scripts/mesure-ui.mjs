@@ -361,6 +361,42 @@ const THEME_DE_GEOMETRIE = 'light'
 const LARGEURS_CONTRASTE = [360, 1280]
 
 /**
+ * OÙ L'ON CONFRONTE NOTRE CALCUL DE NOM À UN VRAI.
+ *
+ * `scripts/noms-accessibles.js` approxime `accname`, et son en-tête écrit les
+ * écarts qu'il connaît. Une liste d'angles morts écrite à la main vieillit
+ * exactement comme la règle qu'elle accompagne : personne ne la relit, et elle
+ * finit par décrire un fichier qui a changé.
+ *
+ * On la rend donc FALSIFIABLE. Playwright implémente accname pour de bon, et
+ * `ariaSnapshot()` l'expose : une commande nommée s'y écrit `- button "Fermer"`,
+ * une commande anonyme `- button` ou `- button:`. En un point par langue, on
+ * compare les deux comptes. Un écart n'est pas forcément un défaut du produit —
+ * c'est un défaut de notre approximation, et c'est bien pour cela qu'on veut
+ * l'apprendre.
+ *
+ * UN SEUL POINT PAR LANGUE, et non tous : `ariaSnapshot` sérialise l'arbre
+ * entier, là où la sonde ne fait que parcourir le DOM. Le payer 506 fois
+ * achèterait la même information cinq cents fois.
+ *
+ * `/demo` à 1280 px porte l'écran le plus dense du produit — la coquille
+ * complète, ses panneaux, ses tableaux. Si un point doit valoir pour tous,
+ * c'est celui-là.
+ */
+const ADRESSE_D_ACCORD = '/demo'
+const LARGEUR_D_ACCORD = 1280
+
+/**
+ * Une ligne d'`ariaSnapshot` pour une commande SANS nom.
+ *
+ * Le nom, quand il existe, suit le rôle entre guillemets. Le deux-points
+ * facultatif introduit les enfants : `- link:` est un lien anonyme qui contient
+ * quelque chose, pas un lien nommé « : ».
+ */
+const LIGNE_SANS_NOM =
+  /^- (button|link|menuitem|menuitemcheckbox|menuitemradio|checkbox|radio|switch|combobox|listbox|tab|textbox|searchbox|spinbutton|option|slider)\s*:?\s*$/
+
+/**
  * LES SURFACES QUI N'EXISTENT QU'APRÈS UN GESTE.
  *
  * ── Le trou, et il est PROUVÉ, pas supposé ────────────────────────────────
@@ -445,9 +481,16 @@ const SURFACES_INTERACTIVES = [
       /*
         PAR L'ÉTIQUETTE DU CHAMP, et deux erreurs successives l'ont imposé.
 
-        La modale de paiement porte DEUX déclencheurs `aria-haspopup="dialog"`,
-        tous deux sans nom accessible propre : la PÉRIODE (choix du mois) puis la
-        DATE. Mesuré : un `.first()` borné à la modale ouvre « Choix du mois »,
+        La modale de paiement porte DEUX déclencheurs `aria-haspopup="dialog"` :
+        la PÉRIODE (choix du mois) puis la DATE. Une première rédaction de ce
+        commentaire les disait « sans nom accessible » parce que leur `aria-label`
+        est vide. C'ÉTAIT FAUX, et mesuré depuis : `Field` leur passe un `id` et
+        rend un `<label for>`, d'où « Période couverte (obligatoire) » et « Date
+        du versement (obligatoire) » — accname de Playwright rend ces deux noms.
+        L'`aria-label` n'est qu'une des sources d'un nom, jamais le nom.
+
+        Ce qui manquait n'était donc pas un nom mais l'usage du nom : un
+        `.first()` borné à la modale ouvre « Choix du mois »,
         pas le calendrier — la garde aurait audité une surface en en nommant une
         autre, ce qui est pire qu'un trou puisque le rapport aurait menti.
         Un `.nth(1)` marcherait aujourd'hui et se tairait le jour où l'ordre des
@@ -1673,6 +1716,7 @@ const adresses = adressesDeLApplication()
   balayage. `readFileSync` jette de lui-même, et c'est le comportement voulu.
 */
 const AUDIT_CONTRASTE = readFileSync(join(RACINE, 'scripts/contrast-audit.js'), 'utf8')
+const AUDIT_NOMS = readFileSync(join(RACINE, 'scripts/noms-accessibles.js'), 'utf8')
 
 await construire()
 
@@ -1844,6 +1888,23 @@ let surfacesOuvertes = 0
 const plaintesDeSurface = []
 let textesDeSurface = 0
 let ciblesDeSurface = 0
+
+/*
+  ═══ LES NOMS ACCESSIBLES ═══
+
+  Dédupliqué sur la FORME de la commande, comme le contraste l'est sur le couple
+  encre/fond : le même bouton anonyme rapporté à onze largeurs et deux langues
+  est UN correctif, et vingt-deux lignes de rapport cachent le second défaut.
+*/
+const commandesAnonymes = new Map()
+let nomsExamines = 0
+/** Points (écran × largeur × langue) où la sonde des noms s'est exécutée. */
+let pointsDeNom = 0
+let nomsDeSurface = 0
+/* L'accord entre notre approximation et l'implémentation accname de Playwright,
+   relevé en un point par langue. Voir la garde plus bas : c'est ce qui rend la
+   liste d'angles morts de `noms-accessibles.js` VÉRIFIABLE et non déclarative. */
+const accordsAccname = []
 
 try {
   const navigateur = await chromium.launch()
@@ -2089,6 +2150,44 @@ try {
         pointsDeCible++
         for (const raison of releve.raisonsVues) raisonsEmployees.add(raison)
 
+        /*
+          LES NOMS VOYAGENT AVEC LES CIBLES, et l'axe est le bon.
+
+          Un nom accessible ne dépend pas du THÈME — repeindre un bouton ne le
+          renomme pas — mais il dépend de la LANGUE, puisqu'il sort des
+          dictionnaires, et de la LARGEUR, qui décide quelles commandes existent :
+          le tiroir n'a son bouton que sous `lg`, la barre de navigation n'a les
+          siens qu'au-dessus. C'est mot pour mot l'axe de la passe des cibles.
+
+          Elle ne coûte donc AUCUN chargement de page : la page est déjà là, à la
+          bonne largeur, dans la bonne langue. Un `page.evaluate` de plus, et le
+          balayage complet des noms est payé.
+        */
+        const noms = await page.evaluate(AUDIT_NOMS)
+        if (!noms || typeof noms.examinees !== 'number') {
+          throw new Error(
+            "mesure-ui : `noms-accessibles.js` n'a pas rendu `{ anonymes, items, examinees }`. " +
+              "Son expression doit rester une IIFE qui s'évalue en cet objet.",
+          )
+        }
+        nomsExamines += noms.examinees
+        pointsDeNom++
+        for (const item of noms.items) {
+          const cle = `${item.balise}|${item.role}|${item.classes}`
+          if (!commandesAnonymes.has(cle)) {
+            commandesAnonymes.set(cle, { ...item, ou: `${adresse} ${largeur}px ${langue}` })
+          }
+        }
+
+        if (adresse === ADRESSE_D_ACCORD && largeur === LARGEUR_D_ACCORD) {
+          const arbre = await page.locator('body').ariaSnapshot()
+          const selonPlaywright = arbre
+            .split('\n')
+            .map((l) => l.trim())
+            .filter((l) => LIGNE_SANS_NOM.test(l)).length
+          accordsAccname.push({ langue, nous: noms.anonymes, playwright: selonPlaywright })
+        }
+
         for (const defaut of releve.defauts) {
           // Une raison DÉCLARÉE mais inconnue n'exempte rien : elle serait une
           // dérogation que personne n'a motivée, exactement ce que la doctrine
@@ -2195,7 +2294,35 @@ try {
             ciblesTrop_petites.set(cle, { ...defaut, ou: `surface ${nom}` })
           }
         }
-        process.stdout.write(`${audit.examines} textes, ${releve.sondees} cibles\n`)
+        /*
+          LA MÊME SONDE, sur ce qui ne s'ouvre qu'au clic.
+
+          C'est ici qu'elle sert le plus : une commande de premier rendu se voit
+          dans n'importe quelle capture, un déclencheur de panneau ne se voit
+          nulle part tant que personne n'a cliqué. Le calendrier et le sélecteur
+          de mois de la modale de paiement ne sont regardés QUE par cette ligne.
+        */
+        const noms = await page.evaluate(AUDIT_NOMS)
+        if (!noms || typeof noms.examinees !== 'number') {
+          throw new Error(
+            `mesure-ui : \`noms-accessibles.js\` n'a rien rendu sur la surface ${nom}.`,
+          )
+        }
+        nomsExamines += noms.examinees
+        nomsDeSurface += noms.examinees
+        /* `pointsDeNom` N'EST PAS incrémenté : sa garde exige l'égalité exacte
+           avec adresses × largeurs × langues, pour la même raison que
+           `pointsDeCible`. Les surfaces ont leur propre compte. */
+        for (const item of noms.items) {
+          const cle = `${item.balise}|${item.role}|${item.classes}`
+          if (!commandesAnonymes.has(cle)) {
+            commandesAnonymes.set(cle, { ...item, ou: `surface ${nom}` })
+          }
+        }
+
+        process.stdout.write(
+          `${audit.examines} textes, ${releve.sondees} cibles, ${noms.examinees} noms\n`,
+        )
       } else {
         process.stdout.write('NON OUVERTE\n')
       }
@@ -2631,6 +2758,131 @@ if (textesDeSurface < TEXTES_DE_SURFACE_ATTENDUS) {
     `\n✗ mesure-ui : ${textesDeSurface} textes audités dans les surfaces, moins que les ${TEXTES_DE_SURFACE_ATTENDUS} attendus.\n` +
       "   Les surfaces se sont ouvertes sur du vide, ou l'audit ne les lit pas.\n",
   )
+  process.exit(1)
+}
+
+/*
+  ═══════════ TOUTE COMMANDE VISIBLE PORTE UN NOM ═══════════
+
+  WCAG 4.1.2. Un bouton sans nom s'annonce « bouton », et rien d'autre : la
+  commande existe pour l'oreille sans exister pour la compréhension.
+
+  LA RÈGLE VISE LA CLASSE, pas un endroit. Elle s'exécute sur les premiers
+  rendus — 23 écrans, 11 largeurs, 2 langues — ET dans les surfaces qui ne
+  s'ouvrent qu'au clic. C'est cette seconde moitié qui manquait : le calendrier
+  et le sélecteur de mois de la modale de paiement ne sont regardés par rien
+  d'autre, puisqu'aucune capture ne les contient.
+*/
+if (commandesAnonymes.size > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${commandesAnonymes.size} forme(s) de commande sans nom accessible, ` +
+      `sur ${nomsExamines} commandes examinées.\n` +
+      "   Un lecteur d'écran annonce « bouton » sans dire lequel (WCAG 4.1.2).\n" +
+      '   Le nom vient d’`aria-label`, d’`aria-labelledby`, d’un `label[for]`, ou du\n' +
+      '   contenu textuel — et il passe par les DEUX dictionnaires, jamais en dur.\n',
+  )
+  for (const c of commandesAnonymes.values()) {
+    console.error(`  ▸ ${c.ou} — <${c.balise}> rôle ${c.role || '(implicite)'}`)
+    if (c.haspopup) console.error(`     aria-haspopup="${c.haspopup}"`)
+    console.error(`     ${c.html}\n`)
+  }
+  process.exit(1)
+}
+
+/*
+  GARDE DU GARDE : la sonde doit être passée PARTOUT où on la croit passée.
+
+  Égalité exacte, comme pour `pointsDeCible`, et pour la même asymétrie : une
+  sonde qui saute un écran fait tomber le compte et arrête tout ; un écran de
+  plus le fait monter et ne dérange personne.
+*/
+const POINTS_DE_NOM_ATTENDUS = adresses.length * LARGEURS.length * LANGUES.length
+if (pointsDeNom !== POINTS_DE_NOM_ATTENDUS) {
+  console.error(
+    `\n✗ mesure-ui : la sonde des noms s'est exécutée en ${pointsDeNom} points ` +
+      `pour ${POINTS_DE_NOM_ATTENDUS} attendus ` +
+      `(${adresses.length} écrans × ${LARGEURS.length} largeurs × ${LANGUES.length} langues).\n` +
+      "   Une commande non regardée n'est pas une commande nommée.\n",
+  )
+  process.exit(1)
+}
+
+/*
+  GARDE DU GARDE : elle doit avoir REGARDÉ des commandes, et dans les surfaces
+  aussi.
+
+  « Zéro commande anonyme » et « zéro commande examinée » s'écrivent pareil dans
+  un journal — c'est la panne exacte que ce dépôt reproche à `contrast-audit.js`
+  d'avoir subie pendant des lots. Le second plancher est celui qui compte : un
+  sélecteur périmé dans `SURFACES_INTERACTIVES` ferait tomber les surfaces à
+  zéro sans faire bouger le total de plus de 1 %.
+
+  Les deux planchers sont GROSSIERS à dessein. On ne devine pas le bon nombre de
+  commandes du produit ; on distingue « elle a travaillé » de « elle n'a rien vu ».
+*/
+const NOMS_ATTENDUS = 4000
+const NOMS_DE_SURFACE_ATTENDUS = 150
+
+if (nomsExamines < NOMS_ATTENDUS) {
+  console.error(
+    `\n✗ mesure-ui : ${nomsExamines} commandes examinées pour les noms, ` +
+      `moins que les ${NOMS_ATTENDUS} attendues.\n` +
+      "   La sonde ne regarde plus rien — ce n'est pas une absence de défaut.\n",
+  )
+  process.exit(1)
+}
+
+if (nomsDeSurface < NOMS_DE_SURFACE_ATTENDUS) {
+  console.error(
+    `\n✗ mesure-ui : ${nomsDeSurface} commandes examinées DANS LES SURFACES, ` +
+      `moins que les ${NOMS_DE_SURFACE_ATTENDUS} attendues.\n` +
+      '   Les déclencheurs de panneau sont exactement ce que cette règle devait couvrir :\n' +
+      "   ils n'apparaissent dans aucun premier rendu.\n",
+  )
+  process.exit(1)
+}
+
+/*
+  GARDE DU GARDE, ET C'EST LA PLUS INTÉRESSANTE : notre approximation doit
+  encore tomber d'accord avec un VRAI calcul de nom accessible.
+
+  `noms-accessibles.js` n'implémente pas `accname` ; il en tient la part qui
+  décide ici, et son en-tête liste ses écarts connus. Une telle liste vieillit
+  comme la règle qu'elle accompagne : personne ne la relit, et elle finit par
+  décrire un fichier qui a changé. On la confronte donc à `ariaSnapshot()` de
+  Playwright, qui, lui, implémente accname.
+
+  Un désaccord ne dit PAS que le produit a un défaut. Il dit que notre
+  approximation en a un — le seul défaut qu'une garde ne peut pas trouver
+  seule, puisqu'elle est l'instrument.
+
+  Mesuré au moment d'écrire ces lignes : 92 points confrontés, 0 désaccord.
+*/
+if (accordsAccname.length !== LANGUES.length) {
+  console.error(
+    `\n✗ mesure-ui : l'accord avec accname a été relevé ${accordsAccname.length} fois ` +
+      `pour ${LANGUES.length} langues.\n` +
+      `   Le point de confrontation (${ADRESSE_D_ACCORD} à ${LARGEUR_D_ACCORD} px) n'existe plus.\n` +
+      "   Sans lui, la liste d'angles morts de `noms-accessibles.js` n'est plus qu'une promesse.\n",
+  )
+  process.exit(1)
+}
+
+const desaccords = accordsAccname.filter((a) => a.nous !== a.playwright)
+if (desaccords.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : notre calcul de nom accessible et celui de Playwright ne s'accordent plus.\n` +
+      "   Ce n'est pas un défaut du produit : c'est un défaut de la sonde.\n" +
+      "   Relire les écarts déclarés dans l'en-tête de `scripts/noms-accessibles.js` —\n" +
+      "   l'un d'eux vient de cesser d'être vrai.\n",
+  )
+  for (const a of desaccords) {
+    console.error(
+      `  ▸ ${ADRESSE_D_ACCORD} ${LARGEUR_D_ACCORD}px ${a.langue} : ` +
+        `nous ${a.nous} anonyme(s), playwright ${a.playwright}`,
+    )
+  }
+  console.error('')
   process.exit(1)
 }
 
@@ -3134,9 +3386,14 @@ console.log(
     `${tarifs[0]?.exclues} lignes exclues, aucune raturée.\n` +
     `  ${textesAudites} textes audités en contraste (${THEMES.join(' + ')}, ${LARGEURS_CONTRASTE.join(' et ')} px), aucun sous le seuil WCAG AA.\n` +
     `  ${surfacesOuvertes} surfaces interactives OUVERTES puis auditées (${THEMES.join(' + ')}) : ` +
-    `${textesDeSurface} textes et ${ciblesDeSurface} cibles qu'aucun premier rendu ne montre.\n` +
+    `${textesDeSurface} textes, ${ciblesDeSurface} cibles et ${nomsDeSurface} commandes ` +
+    `qu'aucun premier rendu ne montre.\n` +
     '  Les DIX modales du produit n’en sont pas : leur géométrie est tenue ailleurs, leur\n' +
     '  contraste et leurs cibles restent NON audités — dette nommée dans la table des surfaces.\n' +
+    `  ${nomsExamines} commandes examinées pour leur NOM ACCESSIBLE sur ${pointsDeNom} points ` +
+    `plus les surfaces, aucune anonyme (WCAG 4.1.2) ;\n` +
+    `  accord avec accname de Playwright vérifié en ${accordsAccname.length} points, ` +
+    `écarts de la sonde déclarés dans \`scripts/noms-accessibles.js\`.\n` +
     `  ${ciblesSondees} cibles sondées au point de contact sur ${pointsDeCible} points ` +
       `(${LARGEURS.length} largeurs × ${LANGUES.length} langues, thème ${THEME_DE_GEOMETRIE}), ` +
       `aucune sous ${PLANCHER_CIBLE} px hors les ${Object.keys(CIBLES_EXEMPTES).length} exemptions motivées.`,
