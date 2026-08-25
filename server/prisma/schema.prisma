@@ -530,7 +530,58 @@ model InspectionFinding {
   /// Coût imputé, figé au moment de l'arbitrage.
   costMinor   Int?
 
+  photos InspectionPhoto[]
+
   @@index([inspectionId])
+}
+
+/// La photo d'une réserve. Une rayure décrite se conteste ; une rayure
+/// photographiée et horodatée par le serveur se chiffre.
+///
+/// Les OCTETS ne sont pas ici : ils vivent dans le dépôt d'objets, sous
+/// `storageKey`. Cette table ne porte que ce qui doit être interrogeable,
+/// cloisonné et daté — c'est-à-dire tout sauf l'image elle-même.
+model InspectionPhoto {
+  id        String @id @default(uuid()) @db.Uuid
+  findingId String @db.Uuid
+  /// CASCADE : une réserve supprimée n'a plus de photo à justifier. Sans elle,
+  /// la ligne survivrait à ce qu'elle documente et pointerait vers une clé que
+  /// plus rien ne relie à un parc — donc que plus aucun contrôle
+  /// d'appartenance ne saurait protéger.
+  finding   InspectionFinding @relation(fields: [findingId], references: [id], onDelete: Cascade)
+
+  /// La clé dans le dépôt d'objets, tirée au hasard sur 128 bits. UNIQUE parce
+  /// que deux lignes visant le même objet feraient d'une suppression une fuite
+  /// pour l'autre.
+  storageKey String @unique
+
+  /// Type et poids. ANNONCÉS par le client à la réservation, REMPLACÉS par ce
+  /// que le serveur a mesuré à la confirmation. Tant que `confirmedAt` est nul,
+  /// ces deux colonnes ne valent que ce que vaut la parole du déposant — et
+  /// c'est exactement pourquoi rien de non confirmé n'est jamais servi.
+  contentType String
+  sizeBytes   Int
+
+  /// L'HORODATAGE QUI FAIT FOI, posé par le SERVEUR.
+  ///
+  /// `InspectionFinding` n'a aucune date : une réserve n'est datée que par
+  /// l'état des lieux qui la porte. La photo, elle, en a une, et sa valeur en
+  /// litige tient entièrement au fait que le client ne l'écrit pas. Une date
+  /// venue du téléphone se change dans les réglages du téléphone.
+  ///
+  /// C'est l'instant où le serveur a CONSTATÉ les octets — le seul dont il
+  /// puisse témoigner. Nul tant que rien n'est monté : une réservation n'est
+  /// pas une preuve.
+  confirmedAt DateTime?
+
+  /// Instant de la réservation. Sert au balayage des réservations mortes.
+  createdAt DateTime @default(now())
+
+  @@index([findingId])
+  /// Les réservations jamais confirmées se retrouvent par cet index, et c'est
+  /// leur seule trace : sans la ligne, un objet monté puis abandonné serait
+  /// payé indéfiniment sans que rien ne sache qu'il existe.
+  @@index([confirmedAt])
 }
 
 // ─── Travaux ─────────────────────────────────────────────────────────────────

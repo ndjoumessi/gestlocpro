@@ -6,8 +6,24 @@ import { creerCode, expirationInvitation, normaliserCode } from './invitations.j
 import { empreinteJeton } from '../auth/token.js'
 import { laMessagerie } from '../messagerie/messagerie.js'
 import { exigerAppartenance, exigerCompte, exigerRole, unitesVisibles } from '../auth/guards.js'
+import { leStockage } from '../stockage/stockage.js'
+import { PLAFOND_DE_TRAVAIL_OCTETS } from '../stockage/contrat.js'
+import { stockageLocalRouter } from '../stockage/routes.js'
 
 export const parksRouter = Router()
+
+/**
+ * Le transport du dépôt LOCAL, monté sous un littéral.
+ *
+ * Sous `/api/parks` faute de mieux : monter un routeur à la racine de l'API est
+ * l'affaire d'`app.ts`, que ce lot ne touche pas. `stockage-local` est un
+ * littéral et les identifiants de parc sont des uuid : aucune collision n'est
+ * possible avec `/:parkId/…`.
+ *
+ * Ces routes ne portent PAS `exigerAppartenance` — voir le commentaire de tête
+ * de `stockage/routes.ts` : elles doublent R2, qui ne connaît pas nos comptes.
+ */
+parksRouter.use('/stockage-local', stockageLocalRouter)
 
 const schemaArbitrage = z
   .object({
@@ -3896,6 +3912,301 @@ parksRouter.post(
     })
 
     res.status(201).json({ inspection: etat })
+  },
+)
+
+/**
+ * ─── LES PHOTOS D'UNE RÉSERVE ────────────────────────────────────────────────
+ *
+ * Une réserve n'est aujourd'hui qu'un texte, et un texte s'oppose mal à une
+ * caution : « rayure profonde sur le plan de travail » vaut ce que vaut la
+ * parole de qui l'a écrit. La photo la rend vérifiable — mais seulement si sa
+ * date ne vient pas du même appareil qu'elle.
+ *
+ * Quatre routes pour les quatre temps du contrat de stockage. Les octets ne
+ * passent par aucune d'elles : le serveur signe une autorisation, le navigateur
+ * dépose directement, puis revient dire « c'est monté ». C'est pour cela que
+ * `réserver` et `confirmer` sont deux appels et non un.
+ *
+ * TOUTES derrière `exigerAppartenance`, qui rend 404 et non 403 : un 403
+ * confirmerait l'existence d'un identifiant qu'on pourrait alors énumérer.
+ *
+ * Et toutes réservées au propriétaire et au gestionnaire. Le locataire est
+ * membre du parc : `exigerAppartenance` seule le laisserait lire les photos
+ * des états des lieux de TOUS ses voisins. Lui ouvrir les siennes demande la
+ * règle de `unitesVisibles`, donc un écran pour l'employer — c'est le lot du
+ * navigateur. Le silence ici est délibéré, et il est fermé, pas ouvert.
+ */
+
+const schemaReservationPhoto = z.object({
+  /**
+   * Le type est CHOISI dans une liste, pas accepté tel quel. Il compose
+   * l'en-tête que le dépôt exigera, et une valeur libre y ferait entrer ce que
+   * le navigateur voudra bien exécuter en la resservant.
+   *
+   * HEIC en est absent : Safari l'affiche, Chrome et Firefox non. Le refus
+   * tombe au dépôt, où l'utilisateur peut encore reprendre la photo.
+   */
+  contentType: z.enum(['image/jpeg', 'image/png', 'image/webp']),
+  /**
+   * La taille ANNONCÉE, qui sera scellée dans l'autorisation d'envoi. Le dépôt
+   * refusera tout ce qui n'en fait pas exactement autant — c'est ce qui borne
+   * la FACTURE, là où le contrôle à la confirmation ne bornait que la base.
+   */
+  sizeBytes: z.number().int().positive().max(PLAFOND_DE_TRAVAIL_OCTETS),
+})
+
+/** Ce qu'une photo montre à l'API. La clé de stockage n'en fait pas partie. */
+const champsPhoto = {
+  id: true,
+  findingId: true,
+  contentType: true,
+  sizeBytes: true,
+  confirmedAt: true,
+  createdAt: true,
+} as const
+
+/**
+ * Retrouve une photo DANS le parc, ou rien.
+ *
+ * Le cloisonnement est une clause de requête et non un filtre appliqué après
+ * coup : la jointure `finding → inspection → unit → building → parkId` fait
+ * qu'une photo d'un autre parc n'est jamais ramenée. Filtrer en mémoire
+ * supposerait de l'avoir d'abord lue, et il suffirait d'un oubli sur un chemin
+ * pour la laisser sortir.
+ */
+async function photoDuParc(photoId: string, parkId: string) {
+  return prisma.inspectionPhoto.findFirst({
+    where: { id: photoId, finding: { inspection: { unit: { building: { parkId } } } } },
+    select: { ...champsPhoto, storageKey: true },
+  })
+}
+
+/**
+ * Réserve une place pour la photo d'une réserve.
+ *
+ * LA LIGNE EST CRÉÉE AVANT QUE LES OCTETS N'ARRIVENT, et c'est un arbitrage.
+ *
+ * Une réservation jamais confirmée — l'onglet fermé pendant la montée, le
+ * réseau qui lâche — laisse un objet payé au gigaoctet-mois. Trois façons d'y
+ * répondre :
+ *
+ *  - Ne rien faire. Le coût n'est pas nul, il est INCONNU : sans trace, le
+ *    serveur ne sait même pas quelles clés il paie, ni combien. C'est le seul
+ *    des trois qui empire tout seul.
+ *  - Une règle de cycle de vie sur le seau. Presque gratuite, mais elle vit
+ *    dans la console du fournisseur : hors du dépôt, non versionnée, non
+ *    éprouvable par une porte, et sans équivalent pour l'adaptateur local.
+ *  - Une ligne marquée « en attente », c'est-à-dire ceci. Elle coûte une
+ *    écriture avant la montée, et elle ouvre une surface : un membre peut
+ *    réserver en boucle et poser des lignes sans jamais déposer.
+ *
+ * Le troisième est retenu parce qu'il est le seul qui rende les autres
+ * possibles : une clé sans ligne est introuvable, une clé avec ligne se
+ * balaie par une requête d'une ligne — `confirmedAt IS NULL AND createdAt <
+ * …`. Ce qu'il ne fait PAS, et qu'il faut dire : il ne balaie rien. Il rend le
+ * balayage écrivable ; le balayage lui-même reste à faire.
+ */
+parksRouter.post(
+  '/:parkId/findings/:findingId/photos',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const findingId = z.string().uuid().parse(req.params.findingId)
+    const corps = schemaReservationPhoto.parse(req.body)
+
+    // Cherchée AVEC le `parkId` : sans cela, une réserve devinée permettrait
+    // d'accrocher une photo à l'état des lieux d'un autre.
+    const reserve = await prisma.inspectionFinding.findFirst({
+      where: { id: findingId, inspection: { unit: { building: { parkId } } } },
+      select: { id: true },
+    })
+    if (!reserve) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const reservation = await leStockage().reserver(corps.contentType, corps.sizeBytes)
+
+    const photo = await prisma.inspectionPhoto.create({
+      data: {
+        findingId: reserve.id,
+        storageKey: reservation.cle,
+        // ANNONCÉS, pas mesurés. `confirmedAt` restant nul le dit, et rien de
+        // non confirmé n'est servi.
+        contentType: corps.contentType,
+        sizeBytes: corps.sizeBytes,
+      },
+      select: champsPhoto,
+    })
+
+    res.status(201).json({
+      photo,
+      /**
+       * De quoi envoyer, rendu au client. La clé de stockage n'apparaît QUE là,
+       * dans une adresse signée et périssable — jamais comme un champ de la
+       * photo, qu'un écran finirait par afficher ou journaliser.
+       */
+      envoi: {
+        url: reservation.url,
+        methode: reservation.methode,
+        entetes: reservation.entetes,
+        expireLe: reservation.expireLe,
+      },
+    })
+  },
+)
+
+/**
+ * Confirme qu'une photo est montée, et POSE SA DATE.
+ *
+ * C'est le seul instant où le serveur peut regarder ce qui a été déposé : il
+ * n'a pas vu les octets passer. Il en tire trois choses — le poids réel, la
+ * nature réelle, et l'heure à laquelle il a lui-même constaté les deux.
+ *
+ * LA DATE VIENT D'ICI, JAMAIS DU CORPS DE LA REQUÊTE. Une date d'appareil se
+ * change dans les réglages de l'appareil ; celle qu'on opposera au locataire
+ * doit venir d'une horloge qu'il ne tient pas. Le schéma de cette route n'a
+ * donc aucun champ de date, et rien ne lit `req.body` : ce qu'un client y
+ * mettrait est ignoré, ce qui est exactement le comportement voulu.
+ */
+parksRouter.post(
+  '/:parkId/photos/:photoId/confirmation',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const photoId = z.string().uuid().parse(req.params.photoId)
+
+    const photo = await photoDuParc(photoId, parkId)
+    if (!photo) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    /**
+     * Confirmer deux fois est refusé. La seconde confirmation réécrirait la
+     * date, c'est-à-dire la seule chose qui donne à cette photo sa valeur en
+     * litige — et elle la réécrirait avec une heure que le déposant choisit en
+     * décidant du moment où il rejoue l'appel.
+     */
+    if (photo.confirmedAt) {
+      res.status(409).json({ error: 'already_confirmed' })
+      return
+    }
+
+    const confirmation = await leStockage().confirmer(photo.storageKey, photo.contentType)
+
+    if (!confirmation.accepte) {
+      /**
+       * Refusée : la ligne et l'objet partent ensemble.
+       *
+       * Garder l'une sans l'autre serait le pire des deux mondes — une ligne
+       * qui promet une photo introuvable, ou des octets que plus rien ne
+       * rattache à un parc, donc que plus aucun contrôle d'appartenance ne
+       * protège.
+       */
+      await leStockage().supprimer(photo.storageKey)
+      await prisma.inspectionPhoto.delete({ where: { id: photo.id } })
+      res.status(422).json({ error: 'photo_rejected', motif: confirmation.motif })
+      return
+    }
+
+    const maj = await prisma.inspectionPhoto.update({
+      where: { id: photo.id },
+      data: {
+        // MESURÉS, ils remplacent l'annonce.
+        contentType: confirmation.typeMime,
+        sizeBytes: confirmation.octets,
+        // L'horloge du SERVEUR. C'est toute la valeur de cette ligne.
+        confirmedAt: new Date(),
+      },
+      select: champsPhoto,
+    })
+
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'inspection.photo',
+        entity: 'InspectionPhoto',
+        entityId: maj.id,
+        payload: { findingId: maj.findingId, sizeBytes: maj.sizeBytes, contentType: maj.contentType },
+      },
+    })
+
+    res.json({ photo: maj })
+  },
+)
+
+/**
+ * Délivre une adresse de lecture, courte et signée.
+ *
+ * Le seau n'est jamais public : il n'existe pas d'adresse stable vers une
+ * photo. Celle-ci est calculée à la demande, APRÈS le contrôle d'appartenance,
+ * et périme en quelques minutes. Une adresse devinable serait une fuite
+ * permanente, et une fuite d'image ne se rattrape pas.
+ *
+ * Une photo non confirmée n'a pas d'adresse. Ses octets n'ont jamais été
+ * regardés par le serveur : les servir reviendrait à publier ce que le client
+ * a bien voulu déposer, sous un type qu'il a bien voulu déclarer.
+ */
+parksRouter.get(
+  '/:parkId/photos/:photoId',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const photoId = z.string().uuid().parse(req.params.photoId)
+
+    const photo = await photoDuParc(photoId, parkId)
+    if (!photo || !photo.confirmedAt) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const adresse = await leStockage().lire(photo.storageKey)
+
+    res.json({
+      photo: {
+        id: photo.id,
+        findingId: photo.findingId,
+        contentType: photo.contentType,
+        sizeBytes: photo.sizeBytes,
+        confirmedAt: photo.confirmedAt,
+        createdAt: photo.createdAt,
+      },
+      lecture: adresse,
+    })
+  },
+)
+
+/**
+ * Supprime une photo — la ligne ET les octets.
+ *
+ * Dans cet ordre : l'objet d'abord, la ligne ensuite. Si l'effacement du dépôt
+ * échoue, la ligne survit et la photo reste retrouvable ; l'inverse laisserait
+ * des octets payés que plus rien ne désigne.
+ */
+parksRouter.delete(
+  '/:parkId/photos/:photoId',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const photoId = z.string().uuid().parse(req.params.photoId)
+
+    const photo = await photoDuParc(photoId, parkId)
+    if (!photo) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    await leStockage().supprimer(photo.storageKey)
+    await prisma.inspectionPhoto.delete({ where: { id: photo.id } })
+
+    res.status(204).end()
   },
 )
 

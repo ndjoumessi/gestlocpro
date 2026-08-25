@@ -13,7 +13,8 @@
  * Ce chemin impose l'aller-retour, et l'interface le porte dès maintenant :
  *
  *  1. `reserver` — le serveur tire une clé et rend de quoi envoyer (adresse,
- *     méthode, en-têtes exigés). Rien n'existe encore côté dépôt.
+ *     méthode, en-têtes exigés). Rien n'existe encore côté dépôt. La TAILLE
+ *     ATTENDUE est scellée dans cette autorisation — voir `reserver`.
  *  2. `confirmer` — le client dit « c'est monté ». C'est le SEUL moment où le
  *     serveur peut regarder ce qui a réellement été déposé : il n'a pas vu les
  *     octets passer. Sans cette étape, le serveur enregistrerait en base une
@@ -40,8 +41,26 @@ export interface Stockage {
    * Aucun nom de fichier d'origine n'entre ici, et c'est structurel : la
    * signature n'en accepte pas. Un nom d'origine dans une clé la rendrait
    * devinable, et rendrait au passage un renseignement sur le déposant.
+   *
+   * `octetsAttendus` EST SCELLÉ DANS L'AUTORISATION, et c'est une extension
+   * assumée du contrat.
+   *
+   * La première version ne pesait qu'à `confirmer`. Le plafond gardait alors la
+   * base de données et rien d'autre : un client pouvait déverser cinq
+   * gigaoctets sur une clé réservée, `confirmer` refusait la ligne, et les
+   * octets restaient — montés, stockés, facturés au gigaoctet-mois. Le refus
+   * arrivait après la dépense, donc trop tard pour l'empêcher.
+   *
+   * Lier la taille à l'autorisation déplace le refus AVANT la montée : le dépôt
+   * lui-même rejette ce qui ne correspond pas, sans que le serveur ait à voir
+   * passer un octet. C'est ce que fait un `PUT` présigné dont la longueur est
+   * signée ; l'implémentation locale reproduit la même règle.
+   *
+   * Cela ne rend PAS `confirmer` inutile : la taille est vérifiée à l'envoi, la
+   * NATURE des octets ne peut l'être qu'après. Un dépôt de la bonne taille
+   * portant du HTML passe l'autorisation et se fait refuser à la confirmation.
    */
-  reserver(typeAnnonce: string): Promise<Reservation>
+  reserver(typeAnnonce: string, octetsAttendus: number): Promise<Reservation>
 
   /**
    * Regarde ce qui est RÉELLEMENT arrivé, et le refuse s'il le faut.
@@ -97,14 +116,21 @@ export type MotifDeRefus =
   | 'type-menti'
 
 /**
- * Plafond par objet.
+ * Plafond par objet — VALEUR DE TRAVAIL, et le nom le dit.
  *
- * Une photo d'état des lieux prise au téléphone tient largement dessous une
- * fois compressée par le navigateur. Le plafond n'est pas là pour cadrer
- * l'usage normal : il est là pour qu'un client qui déverse ne remplisse pas un
- * seau qu'on paie au gigaoctet-mois pendant des années.
+ * Le plafond n'est pas là pour cadrer l'usage normal : il est là pour qu'un
+ * client qui déverse ne remplisse pas un seau qu'on paie au gigaoctet-mois
+ * pendant des années. À ce titre, n'importe quel ordre de grandeur raisonnable
+ * fait le travail.
+ *
+ * Le CHIFFRE, lui, n'est pas mesuré. Huit mébioctets viennent d'une estimation
+ * de ce que pèse une photo de téléphone compressée par le navigateur — pas
+ * d'une photo réellement pesée. Le trancher demande de savoir ce que produit
+ * la compression côté navigateur sur une vraie photo d'état des lieux, ce que
+ * le sous-lot du navigateur saura et que celui-ci ne sait pas. Le nom porte
+ * donc l'aveu, pour qu'on ne prenne pas cette valeur pour un arbitrage rendu.
  */
-export const PLAFOND_OCTETS = 8 * 1024 * 1024
+export const PLAFOND_DE_TRAVAIL_OCTETS = 8 * 1024 * 1024
 
 /**
  * Une clé est 32 caractères hexadécimaux, et RIEN d'autre.

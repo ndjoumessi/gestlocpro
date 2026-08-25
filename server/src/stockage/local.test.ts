@@ -3,8 +3,9 @@ import { createHmac } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { StockageLocal } from './local.js'
-import { PLAFOND_OCTETS } from './contrat.js'
+import { StockageLocal, type AutorisationDEnvoi } from './local.js'
+import { CHEMIN_TRANSPORT_LOCAL } from './local.js'
+import { PLAFOND_DE_TRAVAIL_OCTETS, type Reservation } from './contrat.js'
 
 /**
  * LE DÉPÔT LOCAL.
@@ -29,6 +30,23 @@ function image(type: 'jpeg' | 'png' | 'webp', taille = 64): Uint8Array {
   return octets
 }
 
+/**
+ * Relit l'autorisation DANS l'adresse rendue, plutôt que de la refabriquer.
+ *
+ * Un test qui recalcule lui-même la signature vérifie sa propre copie de la
+ * règle. Ici, ce qui est présenté au dépôt est exactement ce que le dépôt
+ * vient de délivrer — le seul chemin qu'un vrai déposant puisse suivre.
+ */
+function autorisationDe(reservation: Reservation): AutorisationDEnvoi {
+  const q = new URL(reservation.url, 'http://local').searchParams
+  return {
+    type: q.get('type') ?? '',
+    taille: Number(q.get('taille')),
+    expire: Number(q.get('expire')),
+    signature: q.get('signature') ?? '',
+  }
+}
+
 describe('le dépôt sur disque local', () => {
   let racine: string
   let depot: StockageLocal
@@ -44,12 +62,17 @@ describe('le dépôt sur disque local', () => {
 
   describe('la réservation', () => {
     it('rend de quoi envoyer sans faire passer un octet par le serveur', async () => {
-      const reservation = await depot.reserver('image/jpeg')
+      const reservation = await depot.reserver('image/jpeg', 4096)
 
       expect(reservation.methode).toBe('PUT')
-      expect(reservation.url).toBe(`/api/stockage/${reservation.cle}`)
       expect(reservation.entetes['Content-Type']).toBe('image/jpeg')
       expect(reservation.expireLe).toBe(INSTANT + 15 * 60 * 1000)
+
+      const adresse = new URL(reservation.url, 'http://local')
+      expect(adresse.pathname).toBe(`${CHEMIN_TRANSPORT_LOCAL}/${reservation.cle}`)
+      // La taille voyage DANS l'autorisation, et non à côté d'elle.
+      expect(adresse.searchParams.get('taille')).toBe('4096')
+      expect(adresse.searchParams.get('signature')).toMatch(/^[0-9a-f]{64}$/)
     })
 
     /**
@@ -67,7 +90,7 @@ describe('le dépôt sur disque local', () => {
      */
     it('tire une clé imprévisible, position par position', async () => {
       const cles: string[] = []
-      for (let i = 0; i < 200; i++) cles.push((await depot.reserver('image/jpeg')).cle)
+      for (let i = 0; i < 200; i++) cles.push((await depot.reserver('image/jpeg', 64)).cle)
 
       expect(new Set(cles).size).toBe(200)
       for (const cle of cles) expect(cle).toMatch(/^[0-9a-f]{32}$/)
@@ -86,17 +109,18 @@ describe('le dépôt sur disque local', () => {
      * qui accepterait un nom de fichier casserait ce type.
      */
     it('n’accepte aucun nom de fichier d’origine', () => {
-      // @ts-expect-error — un second argument n'existe pas, et ne doit pas exister.
-      const appel = () => depot.reserver('image/jpeg', 'salon-fissure.jpg')
+      // @ts-expect-error — un troisième argument n'existe pas, et ne doit pas exister.
+      const appel = () => depot.reserver('image/jpeg', 64, 'salon-fissure.jpg')
       expect(typeof appel).toBe('function')
     })
   })
 
   describe('la confirmation', () => {
     async function deposer(octets: Uint8Array): Promise<string> {
-      const { cle } = await depot.reserver('image/jpeg')
-      await depot.recevoir(cle, octets)
-      return cle
+      const reservation = await depot.reserver('image/jpeg', octets.length)
+      const resultat = await depot.recevoir(reservation.cle, octets, autorisationDe(reservation))
+      expect(resultat).toEqual({ accepte: true })
+      return reservation.cle
     }
 
     it('rend le poids et le type LUS SUR LE DÉPÔT', async () => {
@@ -108,7 +132,7 @@ describe('le dépôt sur disque local', () => {
     })
 
     it('refuse une clé sur laquelle rien n’est arrivé', async () => {
-      const { cle } = await depot.reserver('image/jpeg')
+      const { cle } = await depot.reserver('image/jpeg', 64)
 
       expect(await depot.confirmer(cle, 'image/jpeg')).toEqual({ accepte: false, motif: 'absent' })
     })
@@ -149,12 +173,12 @@ describe('le dépôt sur disque local', () => {
     })
 
     it('refuse ce qui dépasse le plafond, et accepte ce qui l’atteint', async () => {
-      const pile = image('jpeg', PLAFOND_OCTETS)
-      const trop = image('jpeg', PLAFOND_OCTETS + 1)
+      const pile = image('jpeg', PLAFOND_DE_TRAVAIL_OCTETS)
+      const trop = image('jpeg', PLAFOND_DE_TRAVAIL_OCTETS + 1)
 
       expect(await depot.confirmer(await deposer(pile), 'image/jpeg')).toMatchObject({
         accepte: true,
-        octets: PLAFOND_OCTETS,
+        octets: PLAFOND_DE_TRAVAIL_OCTETS,
       })
       expect(await depot.confirmer(await deposer(trop), 'image/jpeg')).toEqual({
         accepte: false,
@@ -165,7 +189,7 @@ describe('le dépôt sur disque local', () => {
 
   describe('la lecture', () => {
     it('rend une adresse SIGNÉE dont l’échéance est dans le message signé', async () => {
-      const { cle } = await depot.reserver('image/jpeg')
+      const { cle } = await depot.reserver('image/jpeg', 64)
 
       const adresse = await depot.lire(cle)
 
@@ -174,11 +198,13 @@ describe('le dépôt sur disque local', () => {
       const attendue = createHmac('sha256', SECRET)
         .update(`lecture:${cle}:${expireLe}`)
         .digest('hex')
-      expect(adresse.url).toBe(`/api/stockage/${cle}?expire=${expireLe}&signature=${attendue}`)
+      expect(adresse.url).toBe(
+        `${CHEMIN_TRANSPORT_LOCAL}/${cle}?expire=${expireLe}&signature=${attendue}`,
+      )
     })
 
     it('signe autrement dès que l’échéance change — l’adresse n’est pas rejouable', async () => {
-      const { cle } = await depot.reserver('image/jpeg')
+      const { cle } = await depot.reserver('image/jpeg', 64)
       const tot = await depot.lire(cle)
       const tard = await new StockageLocal(racine, SECRET, () => INSTANT + 1000).lire(cle)
 
@@ -188,13 +214,149 @@ describe('le dépôt sur disque local', () => {
 
   describe('la suppression', () => {
     it('efface, et se laisse rejouer sur ce qui n’est plus là', async () => {
-      const { cle } = await depot.reserver('image/jpeg')
-      await depot.recevoir(cle, image('jpeg'))
+      const reservation = await depot.reserver('image/jpeg', 64)
+      const cle = reservation.cle
+      await depot.recevoir(cle, image('jpeg'), autorisationDe(reservation))
 
       await depot.supprimer(cle)
       await depot.supprimer(cle)
 
       expect(await depot.confirmer(cle, 'image/jpeg')).toEqual({ accepte: false, motif: 'absent' })
+    })
+  })
+
+  /**
+   * L'AUTORISATION D'ENVOI — le plafond qui borne la FACTURE et non la base.
+   *
+   * Sans elle, le refus d'un dépôt démesuré n'arrivait qu'à la confirmation,
+   * c'est-à-dire après que les octets ont été montés et stockés. Ces cas
+   * gardent le déplacement du refus : il tombe avant l'écriture.
+   */
+  describe('l’autorisation d’envoi', () => {
+    it('refuse un dépôt d’une AUTRE taille que celle qui a été autorisée', async () => {
+      const reservation = await depot.reserver('image/jpeg', 64)
+      const autorisation = autorisationDe(reservation)
+
+      const trop = await depot.recevoir(reservation.cle, image('jpeg', 65), autorisation)
+      const pasAssez = await depot.recevoir(reservation.cle, image('jpeg', 63), autorisation)
+
+      expect(trop).toEqual({ accepte: false, motif: 'taille' })
+      expect(pasAssez).toEqual({ accepte: false, motif: 'taille' })
+      // Rien n'a été écrit : le refus précède la dépense.
+      expect(await depot.octetsDe(reservation.cle)).toBeNull()
+    })
+
+    it('refuse une taille relevée après coup, signature inchangée', async () => {
+      const reservation = await depot.reserver('image/jpeg', 64)
+
+      /**
+       * Le geste exact qu'on redoute : le déposant relève `taille` dans
+       * l'adresse pour se ménager de la place. La signature, elle, couvre la
+       * valeur d'origine.
+       */
+      const trafiquee = { ...autorisationDe(reservation), taille: 5_000_000 }
+
+      expect(await depot.recevoir(reservation.cle, image('jpeg', 5_000_000), trafiquee)).toEqual({
+        accepte: false,
+        motif: 'signature',
+      })
+    })
+
+    it('refuse une autorisation périmée, même parfaitement signée', async () => {
+      const reservation = await depot.reserver('image/jpeg', 64)
+      const autorisation = autorisationDe(reservation)
+
+      const plusTard = new StockageLocal(racine, SECRET, () => INSTANT + 15 * 60 * 1000 + 1)
+
+      expect(await plusTard.recevoir(reservation.cle, image('jpeg'), autorisation)).toEqual({
+        accepte: false,
+        motif: 'expiree',
+      })
+      expect(await depot.octetsDe(reservation.cle)).toBeNull()
+    })
+
+    /**
+     * Une autorisation d'ENVOI ne doit pas se fabriquer depuis une adresse de
+     * LECTURE. Les deux signatures portent les mêmes champs à un préfixe près ;
+     * sans ce préfixe, le droit de voir vaudrait droit d'écrire.
+     */
+    it('ne confond pas une signature de lecture avec une autorisation d’envoi', async () => {
+      const reservation = await depot.reserver('image/jpeg', 64)
+      const lecture = await depot.lire(reservation.cle)
+      const signatureDeLecture = new URL(lecture.url, 'http://local').searchParams.get('signature')!
+
+      expect(
+        await depot.recevoir(reservation.cle, image('jpeg'), {
+          type: 'image/jpeg',
+          taille: 64,
+          expire: lecture.expireLe,
+          signature: signatureDeLecture,
+        }),
+      ).toEqual({ accepte: false, motif: 'signature' })
+    })
+  })
+
+  /**
+   * LA VÉRIFICATION DE L'ADRESSE DE LECTURE.
+   *
+   * Le lot précédent calculait cette signature sans que rien ne la contrôle —
+   * une décoration correcte. Ces cas la rendent opposable.
+   */
+  describe('la vérification d’une adresse de lecture', () => {
+    async function adresse(cle: string) {
+      const { url, expireLe } = await depot.lire(cle)
+      const q = new URL(url, 'http://local').searchParams
+      return { expire: expireLe, signature: q.get('signature') ?? '' }
+    }
+
+    it('accepte celle qu’elle vient de délivrer', async () => {
+      const { cle } = await depot.reserver('image/jpeg', 64)
+      const { expire, signature } = await adresse(cle)
+
+      expect(depot.verifierLecture(cle, expire, signature)).toEqual({ accepte: true })
+    })
+
+    it('refuse une adresse PÉRIMÉE', async () => {
+      const { cle } = await depot.reserver('image/jpeg', 64)
+      const { expire, signature } = await adresse(cle)
+
+      const plusTard = new StockageLocal(racine, SECRET, () => expire + 1)
+
+      expect(plusTard.verifierLecture(cle, expire, signature)).toEqual({
+        accepte: false,
+        motif: 'expiree',
+      })
+    })
+
+    it('refuse une échéance REPOUSSÉE, ce qui est le seul intérêt de la signer', async () => {
+      const { cle } = await depot.reserver('image/jpeg', 64)
+      const { expire, signature } = await adresse(cle)
+
+      expect(depot.verifierLecture(cle, expire + 3_600_000, signature)).toEqual({
+        accepte: false,
+        motif: 'signature',
+      })
+    })
+
+    it('refuse la signature d’une AUTRE clé', async () => {
+      const premiere = await depot.reserver('image/jpeg', 64)
+      const seconde = await depot.reserver('image/jpeg', 64)
+      const { expire, signature } = await adresse(premiere.cle)
+
+      expect(depot.verifierLecture(seconde.cle, expire, signature)).toEqual({
+        accepte: false,
+        motif: 'signature',
+      })
+    })
+
+    it('refuse une signature vide ou tronquée', async () => {
+      const { cle } = await depot.reserver('image/jpeg', 64)
+      const { expire, signature } = await adresse(cle)
+
+      expect(depot.verifierLecture(cle, expire, '')).toMatchObject({ accepte: false })
+      expect(depot.verifierLecture(cle, expire, signature.slice(0, -1))).toMatchObject({
+        accepte: false,
+      })
     })
   })
 
@@ -213,7 +375,10 @@ describe('le dépôt sur disque local', () => {
         await expect(depot.confirmer(cle, 'image/jpeg')).rejects.toThrow(/invalide/)
         await expect(depot.lire(cle)).rejects.toThrow(/invalide/)
         await expect(depot.supprimer(cle)).rejects.toThrow(/invalide/)
-        await expect(depot.recevoir(cle, image('jpeg'))).rejects.toThrow(/invalide/)
+        await expect(depot.octetsDe(cle)).rejects.toThrow(/invalide/)
+        await expect(
+          depot.recevoir(cle, image('jpeg'), { type: 'image/jpeg', taille: 64, expire: 0, signature: '' }),
+        ).rejects.toThrow(/invalide/)
       }
     })
 
@@ -221,7 +386,14 @@ describe('le dépôt sur disque local', () => {
       const voisin = join(racine, '..', 'temoin-hors-racine')
       await writeFile(voisin, 'intact')
 
-      await expect(depot.recevoir('../temoin-hors-racine', image('jpeg'))).rejects.toThrow()
+      await expect(
+        depot.recevoir('../temoin-hors-racine', image('jpeg'), {
+          type: 'image/jpeg',
+          taille: 64,
+          expire: INSTANT + 1000,
+          signature: '',
+        }),
+      ).rejects.toThrow()
 
       expect(await readFile(voisin, 'utf8')).toBe('intact')
       await rm(voisin, { force: true })

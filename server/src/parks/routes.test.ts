@@ -1,9 +1,16 @@
-import { afterAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest'
 import request from 'supertest'
 import { createApp } from '../app.js'
 import { prisma } from '../db.js'
 import { NOM_COOKIE } from '../auth/session.js'
 import { remplacerMessagerie } from '../messagerie/messagerie.js'
+import { remplacerStockage } from '../stockage/stockage.js'
+import { StockageLocal } from '../stockage/local.js'
+import { PLAFOND_DE_TRAVAIL_OCTETS } from '../stockage/contrat.js'
+import { env } from '../env.js'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 /**
  * Lecture du parc.
@@ -6121,5 +6128,409 @@ describe('la référence et la note d’un versement', () => {
   it('refuse une note plus longue que la colonne', async () => {
     const res = await encaisser({ note: 'x'.repeat(281) })
     expect(res.status).toBe(400)
+  })
+})
+
+/**
+ * ─── LES PHOTOS DE RÉSERVE ───────────────────────────────────────────────────
+ *
+ * Ce que ces cas gardent n'est pas « on peut déposer une image ». C'est que la
+ * photo d'un état des lieux tienne devant un litige : qu'elle soit datée par le
+ * serveur, qu'elle disparaisse avec ce qu'elle documente, et que personne
+ * d'autre que le parc ne puisse l'atteindre — y compris en forgeant l'adresse.
+ *
+ * Le dépôt est SUBSTITUÉ vers un dossier temporaire pour toute la section : la
+ * suite n'a pas à écrire dans l'arbre du dépôt, et l'horloge fixe permet de
+ * faire vieillir une adresse sans attendre.
+ */
+describe('les photos de réserve', () => {
+  let parkId: string
+  let proprio: string
+  let findingId: string
+  let racine: string
+  let restaurerStockage: () => void
+
+  /** Horloge du dépôt, fixe : une adresse ne périme pas au rythme de la machine. */
+  const T0 = 1_700_000_000_000
+
+  function image(taille: number): Buffer {
+    const octets = Buffer.alloc(taille)
+    octets.set([0xff, 0xd8, 0xff], 0) // entête JPEG
+    return octets
+  }
+
+  beforeEach(async () => {
+    racine = await mkdtemp(join(tmpdir(), 'gestlocpro-photos-'))
+    restaurerStockage = remplacerStockage(
+      new StockageLocal(racine, env.SESSION_SECRET, () => T0),
+    )
+
+    const p = await inscrire('photos@example.com', { parkName: 'Parc' })
+    proprio = p.cookie
+    const parcs = await request(serveur).get('/api/auth/me').set('Cookie', proprio)
+    parkId = parcs.body.memberships[0].parkId
+
+    const immeuble = await request(serveur)
+      .post(`/api/parks/${parkId}/buildings`)
+      .set('Cookie', proprio)
+      .send({ name: 'Résidence Makepe', district: 'Makepe' })
+    const logement = await request(serveur)
+      .post(`/api/parks/${parkId}/buildings/${immeuble.body.building.id}/units`)
+      .set('Cookie', proprio)
+      .send({ label: 'A1', type: 'T3', surfaceSqm: 78, baseRentMinor: 145000 })
+
+    const etat = await request(serveur)
+      .post(`/api/parks/${parkId}/units/${logement.body.unit.id}/inspections`)
+      .set('Cookie', proprio)
+      .send({
+        kind: 'entry',
+        rooms: 3,
+        performedOn: '2026-02-01',
+        findings: [{ room: 'Cuisine', description: 'Rayure profonde.', severity: 'major' }],
+      })
+    findingId = etat.body.inspection.findings[0].id
+  })
+
+  afterEach(async () => {
+    restaurerStockage()
+    await rm(racine, { recursive: true, force: true })
+  })
+
+  async function reserver(sizeBytes: number, contentType = 'image/jpeg') {
+    const res = await request(serveur)
+      .post(`/api/parks/${parkId}/findings/${findingId}/photos`)
+      .set('Cookie', proprio)
+      .send({ contentType, sizeBytes })
+    expect(res.status, JSON.stringify(res.body)).toBe(201)
+    return res.body as {
+      photo: { id: string; confirmedAt: string | null }
+      envoi: { url: string; methode: string; entetes: Record<string, string>; expireLe: number }
+    }
+  }
+
+  function deposer(url: string, octets: Buffer, type = 'image/jpeg') {
+    return request(serveur).put(url).set('Content-Type', type).send(octets)
+  }
+
+  function confirmer(photoId: string, corps: Record<string, unknown> = {}) {
+    return request(serveur)
+      .post(`/api/parks/${parkId}/photos/${photoId}/confirmation`)
+      .set('Cookie', proprio)
+      .send(corps)
+  }
+
+  /** Le parcours entier, de la réservation à l'octet servi. */
+  async function photoComplete(taille = 256) {
+    const { photo, envoi } = await reserver(taille)
+    expect((await deposer(envoi.url, image(taille))).status).toBe(204)
+    const confirmee = await confirmer(photo.id)
+    expect(confirmee.status, JSON.stringify(confirmee.body)).toBe(200)
+    return { photoId: photo.id, envoi, taille }
+  }
+
+  it('mène une photo de la réservation à l’octet servi', async () => {
+    const { photoId, taille } = await photoComplete(512)
+
+    const vue = await request(serveur)
+      .get(`/api/parks/${parkId}/photos/${photoId}`)
+      .set('Cookie', proprio)
+    expect(vue.status).toBe(200)
+    expect(vue.body.photo.sizeBytes).toBe(taille)
+    expect(vue.body.photo.contentType).toBe('image/jpeg')
+
+    const octets = await request(serveur).get(vue.body.lecture.url)
+    expect(octets.status).toBe(200)
+    expect(octets.headers['content-type']).toContain('image/jpeg')
+    // Le navigateur ne doit pas ré-interpréter ce que le serveur a reconnu.
+    expect(octets.headers['x-content-type-options']).toBe('nosniff')
+    expect(octets.body.length).toBe(taille)
+  })
+
+  /**
+   * La clé de stockage ne sort JAMAIS comme un champ.
+   *
+   * Elle ne circule que dans des adresses signées et périssables. Rendue comme
+   * une propriété de la photo, elle finirait dans un état de client, un journal
+   * de navigateur, une capture d'écran — et une clé qui traîne annule la
+   * protection de la lecture, puisque c'est elle qu'on ne devine pas.
+   */
+  it('ne rend jamais la clé de stockage comme un champ', async () => {
+    const { photo, envoi } = await reserver(64)
+    const cle = new URL(envoi.url, 'http://local').pathname.split('/').pop()!
+
+    expect(JSON.stringify(photo)).not.toContain(cle)
+
+    const enBase = await prisma.inspectionPhoto.findUniqueOrThrow({ where: { id: photo.id } })
+    expect(enBase.storageKey).toBe(cle)
+  })
+
+  /**
+   * GARDE — L'HORODATAGE VIENT DU SERVEUR.
+   *
+   * C'est ce qui donne sa valeur à la photo le jour d'un litige. Une date
+   * d'appareil se change dans les réglages de l'appareil ; celle-ci vient d'une
+   * horloge que le déposant ne tient pas.
+   *
+   * L'encadrement est mesuré entre deux instants relevés autour de l'appel, et
+   * non comparé à un délai : un test qui tolère « moins de deux secondes »
+   * échoue le jour où la machine est chargée.
+   */
+  it('horodate depuis le serveur, et ignore la date envoyée par le client', async () => {
+    const { photo, envoi } = await reserver(128)
+    await deposer(envoi.url, image(128))
+
+    const avant = new Date()
+    const res = await confirmer(photo.id, {
+      confirmedAt: '1999-01-01T00:00:00.000Z',
+      takenAt: '1999-01-01T00:00:00.000Z',
+      createdAt: '1999-01-01T00:00:00.000Z',
+    })
+    const apres = new Date()
+
+    expect(res.status).toBe(200)
+    const enBase = await prisma.inspectionPhoto.findUniqueOrThrow({ where: { id: photo.id } })
+    expect(enBase.confirmedAt).not.toBeNull()
+    expect(enBase.confirmedAt!.getTime()).toBeGreaterThanOrEqual(avant.getTime())
+    expect(enBase.confirmedAt!.getTime()).toBeLessThanOrEqual(apres.getTime())
+    expect(enBase.confirmedAt!.getUTCFullYear()).not.toBe(1999)
+  })
+
+  it('refuse une seconde confirmation, qui réécrirait la date', async () => {
+    const { photoId } = await photoComplete()
+
+    const rejouee = await confirmer(photoId)
+
+    expect(rejouee.status).toBe(409)
+    expect(rejouee.body.error).toBe('already_confirmed')
+  })
+
+  /**
+   * GARDE — AUCUNE PHOTO ATTEIGNABLE SANS APPARTENANCE.
+   *
+   * Éprouvée avec un VRAI second compte, membre de son propre parc, et non avec
+   * une requête sans jeton : c'est le cas qu'on redoute, celui d'un utilisateur
+   * parfaitement authentifié qui essaie l'identifiant du voisin.
+   *
+   * 404 partout, et non 403 : un 403 confirmerait que la photo existe, et il
+   * suffirait alors d'énumérer pour cartographier les états des lieux des
+   * autres.
+   */
+  describe('un compte étranger', () => {
+    it('ne lit, ne confirme ni ne supprime la photo d’un autre parc', async () => {
+      const { photoId } = await photoComplete()
+
+      const voisin = await inscrire('voisin-photos@example.com', { parkName: 'Parc voisin' })
+      const sesParcs = await request(serveur).get('/api/auth/me').set('Cookie', voisin.cookie)
+      const sonParc = sesParcs.body.memberships[0].parkId
+
+      // Par SON parc : la photo n'y est pas — la jointure ne la ramène pas.
+      for (const chemin of [`/api/parks/${sonParc}/photos/${photoId}`]) {
+        expect((await request(serveur).get(chemin).set('Cookie', voisin.cookie)).status).toBe(404)
+        expect((await request(serveur).delete(chemin).set('Cookie', voisin.cookie)).status).toBe(404)
+      }
+
+      // Par le parc de l'autre : `exigerAppartenance` ne confirme même pas que
+      // ce parc existe.
+      const parLeParcDeLAutre = `/api/parks/${parkId}/photos/${photoId}`
+      expect((await request(serveur).get(parLeParcDeLAutre).set('Cookie', voisin.cookie)).status).toBe(404)
+      expect((await request(serveur).delete(parLeParcDeLAutre).set('Cookie', voisin.cookie)).status).toBe(404)
+      expect(
+        (await request(serveur)
+          .post(`/api/parks/${parkId}/photos/${photoId}/confirmation`)
+          .set('Cookie', voisin.cookie)
+          .send({})).status,
+      ).toBe(404)
+
+      // Rien n'a bougé.
+      expect(await prisma.inspectionPhoto.count({ where: { id: photoId } })).toBe(1)
+    })
+
+    it('n’accroche pas de photo à la réserve d’un autre parc', async () => {
+      const voisin = await inscrire('voisin-reserve@example.com', { parkName: 'Parc voisin' })
+      const sesParcs = await request(serveur).get('/api/auth/me').set('Cookie', voisin.cookie)
+      const sonParc = sesParcs.body.memberships[0].parkId
+
+      const res = await request(serveur)
+        .post(`/api/parks/${sonParc}/findings/${findingId}/photos`)
+        .set('Cookie', voisin.cookie)
+        .send({ contentType: 'image/jpeg', sizeBytes: 64 })
+
+      expect(res.status).toBe(404)
+      expect(await prisma.inspectionPhoto.count()).toBe(0)
+    })
+  })
+
+  /**
+   * GARDE — UNE ADRESSE DE LECTURE PÉRIMÉE OU TRAFIQUÉE EST REFUSÉE.
+   *
+   * Au lot précédent, cette signature était calculée sans que rien ne la
+   * contrôle. Ces cas la rendent opposable.
+   */
+  describe('l’adresse de lecture', () => {
+    async function adresse(photoId: string): Promise<string> {
+      const vue = await request(serveur)
+        .get(`/api/parks/${parkId}/photos/${photoId}`)
+        .set('Cookie', proprio)
+      return vue.body.lecture.url as string
+    }
+
+    it('refuse une adresse PÉRIMÉE', async () => {
+      const { photoId } = await photoComplete()
+      const url = await adresse(photoId)
+      expect((await request(serveur).get(url)).status).toBe(200)
+
+      // Le dépôt vieillit de onze minutes ; l'adresse en valait cinq.
+      restaurerStockage()
+      restaurerStockage = remplacerStockage(
+        new StockageLocal(racine, env.SESSION_SECRET, () => T0 + 11 * 60 * 1000),
+      )
+
+      const res = await request(serveur).get(url)
+      expect(res.status).toBe(403)
+      expect(res.body.error).toBe('expiree')
+    })
+
+    it('refuse une signature TRAFIQUÉE', async () => {
+      const { photoId } = await photoComplete()
+      const url = new URL(await adresse(photoId), 'http://local')
+      const signature = url.searchParams.get('signature')!
+      url.searchParams.set('signature', (signature[0] === '0' ? '1' : '0') + signature.slice(1))
+
+      const res = await request(serveur).get(url.pathname + url.search)
+      expect(res.status).toBe(403)
+      expect(res.body.error).toBe('signature')
+    })
+
+    it('refuse une échéance REPOUSSÉE — c’est le seul intérêt de la signer', async () => {
+      const { photoId } = await photoComplete()
+      const url = new URL(await adresse(photoId), 'http://local')
+      url.searchParams.set('expire', String(T0 + 365 * 24 * 3600 * 1000))
+
+      const res = await request(serveur).get(url.pathname + url.search)
+      expect(res.status).toBe(403)
+      expect(res.body.error).toBe('signature')
+    })
+
+    it('n’a pas d’adresse tant que la photo n’est pas confirmée', async () => {
+      const { photo, envoi } = await reserver(64)
+      await deposer(envoi.url, image(64))
+
+      const vue = await request(serveur)
+        .get(`/api/parks/${parkId}/photos/${photo.id}`)
+        .set('Cookie', proprio)
+
+      expect(vue.status).toBe(404)
+    })
+  })
+
+  /**
+   * GARDE — LE PLAFOND EST LIÉ À L'AUTORISATION.
+   *
+   * Le refus tombe AVANT que les octets ne soient stockés, donc avant qu'ils ne
+   * soient payés. Vérifié à la confirmation seulement, il aurait gardé la base
+   * et laissé la facture courir.
+   */
+  describe('l’autorisation d’envoi', () => {
+    it('refuse un dépôt d’une autre taille que celle autorisée', async () => {
+      const { photo, envoi } = await reserver(256)
+
+      const trop = await deposer(envoi.url, image(1024))
+      const pasAssez = await deposer(envoi.url, image(12))
+
+      expect(trop.status).toBe(413)
+      expect(pasAssez.status).toBe(413)
+
+      // Rien n'a été écrit : la confirmation ne trouve pas d'objet.
+      const res = await confirmer(photo.id)
+      expect(res.status).toBe(422)
+      expect(res.body.motif).toBe('absent')
+    })
+
+    it('refuse une taille relevée dans l’adresse, signature inchangée', async () => {
+      const { envoi } = await reserver(256)
+      const url = new URL(envoi.url, 'http://local')
+      url.searchParams.set('taille', '5000000')
+
+      const res = await deposer(url.pathname + url.search, image(5_000_000))
+
+      expect(res.status).toBe(403)
+      expect(res.body.error).toBe('signature')
+    })
+
+    it('refuse une réservation au-delà du plafond de travail', async () => {
+      const res = await request(serveur)
+        .post(`/api/parks/${parkId}/findings/${findingId}/photos`)
+        .set('Cookie', proprio)
+        .send({ contentType: 'image/jpeg', sizeBytes: PLAFOND_DE_TRAVAIL_OCTETS + 1 })
+
+      expect(res.status).toBe(400)
+      expect(await prisma.inspectionPhoto.count()).toBe(0)
+    })
+
+    /**
+     * La taille passe, la NATURE ne passe pas.
+     *
+     * Le dépôt accepte : la longueur annoncée est exacte. C'est la confirmation
+     * qui regarde les octets et refuse — la preuve que les deux contrôles ne se
+     * remplacent pas l'un l'autre.
+     */
+    it('accepte des octets de la bonne taille, et les refuse à la confirmation', async () => {
+      const html = Buffer.from('<script>alert(1)</script>')
+      const { photo, envoi } = await reserver(html.length)
+
+      expect((await deposer(envoi.url, html)).status).toBe(204)
+
+      const res = await confirmer(photo.id)
+      expect(res.status).toBe(422)
+      expect(res.body.motif).toBe('pas-une-image')
+      // La ligne ET l'objet sont partis ensemble.
+      expect(await prisma.inspectionPhoto.count({ where: { id: photo.id } })).toBe(0)
+    })
+  })
+
+  /**
+   * GARDE — AUCUN ORPHELIN EN BASE.
+   *
+   * Une ligne qui survit à la réserve qu'elle documente n'est pas seulement du
+   * désordre : plus aucune jointure ne la relie à un parc, donc plus aucun
+   * contrôle d'appartenance ne saurait la protéger.
+   */
+  describe('la cascade', () => {
+    it('ne laisse aucune photo derrière une réserve supprimée', async () => {
+      const { photoId } = await photoComplete()
+
+      await prisma.inspectionFinding.delete({ where: { id: findingId } })
+
+      expect(await prisma.inspectionPhoto.count({ where: { id: photoId } })).toBe(0)
+    })
+
+    it('ne laisse aucune photo derrière un état des lieux supprimé', async () => {
+      const { photoId } = await photoComplete()
+
+      const reserve = await prisma.inspectionFinding.findUniqueOrThrow({
+        where: { id: findingId },
+        select: { inspectionId: true },
+      })
+      await prisma.inspection.delete({ where: { id: reserve.inspectionId } })
+
+      expect(await prisma.inspectionPhoto.count({ where: { id: photoId } })).toBe(0)
+    })
+  })
+
+  it('supprime la ligne et les octets ensemble', async () => {
+    const { photoId } = await photoComplete()
+    const url = await request(serveur)
+      .get(`/api/parks/${parkId}/photos/${photoId}`)
+      .set('Cookie', proprio)
+      .then((r) => r.body.lecture.url as string)
+
+    const res = await request(serveur)
+      .delete(`/api/parks/${parkId}/photos/${photoId}`)
+      .set('Cookie', proprio)
+    expect(res.status).toBe(204)
+
+    expect(await prisma.inspectionPhoto.count({ where: { id: photoId } })).toBe(0)
+    // L'adresse était encore valide : ce sont bien les OCTETS qui manquent.
+    expect((await request(serveur).get(url)).status).toBe(404)
   })
 })
