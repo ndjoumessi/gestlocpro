@@ -13,8 +13,22 @@
  *    « après » qui n'existe plus, parce que la capture date d'une exécution
  *    précédente. Ce script tire donc les captures DANS LA MÊME EXÉCUTION que la
  *    mesure, estampille chacune de l'identifiant de la course, et REFUSE si une
- *    capture manque ou porte l'estampille d'une autre. « Régénérée » et « déjà
+ *    capture manque ou n'a pas été réécrite maintenant. « Régénérée » et « déjà
  *    là » s'écrivent alors différemment.
+ *
+ *    Les captures d'une AUTRE course, elles, sont PURGÉES au démarrage plutôt
+ *    que dénoncées : elles ne servaient à aucune comparaison, et comme
+ *    l'estampille change à presque chaque modification de source, les dénoncer
+ *    faisait rougir la porte sans le moindre défaut — ce qui n'apprend qu'à
+ *    relancer. Voir le bloc de la purge pour ce que ce choix perd.
+ *
+ * 2 bis. CE QUE CHAQUE CHOSE COMPARE, ET CONTRE QUOI. C'est le nom de ce
+ *    fichier depuis le lot qui l'a corrigé. Les captures ne se comparent qu'à
+ *    ELLES-MÊMES, entre points de mesure de la même course. Les OCTETS se
+ *    comparent à `plafonds-ecrans.json`, qui porte sa propre estampille de
+ *    course — désormais NOMMÉE dans le rapport, car un écart d'octets dont la
+ *    base est tue ne s'interprète pas : lu sans elle, le cumul de sept lots
+ *    passe pour l'effet du lot en cours.
  *
  * CE QU'IL NE PROUVE PAS, ET IL FAUT LE DIRE : rien sur la HIÉRARCHIE. Aucune
  * garde ne peut établir qu'une mise en page se lit mieux. Ramenez un titre de
@@ -49,7 +63,15 @@
  */
 import { chromium } from 'playwright'
 import { spawn } from 'node:child_process'
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs'
+import {
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  statSync,
+  unlinkSync,
+} from 'node:fs'
 import { createHash } from 'node:crypto'
 import { lirePNG } from './lire-png.mjs'
 import { dirname, join } from 'node:path'
@@ -135,6 +157,40 @@ const course = identifiantDeCourse()
 */
 const debutDeCourse = Date.now()
 if (!existsSync(CAPTURES)) mkdirSync(CAPTURES, { recursive: true })
+
+/*
+  LA PURGE DES COURSES ÉTRANGÈRES, ET POURQUOI ELLE EST LÉGITIME.
+
+  Ce script n'effaçait rien, `captures/` est ignoré par git, et l'estampille
+  dérive du CONTENU du paquet : elle change donc à presque chaque modification
+  de source. Les captures de la course précédente restaient sur le disque et
+  faisaient rougir la course suivante — un rouge SANS DÉFAUT, qui n'apprend
+  qu'une chose : relancer. Ce dépôt vient de consacrer trois lots à ce mécanisme
+  du côté des tests intermittents ; c'était le même, du côté de l'outil.
+
+  CE QUI L'AUTORISE : aucune comparaison de ce script ne lit une capture d'une
+  AUTRE course. Le poids se compare à `plafonds-ecrans.json`, fichier versionné
+  qui porte sa propre estampille. Les trois questions posées aux images —
+  dimensions, non-uniformité, distinction deux à deux — se posent ENTRE les
+  captures de cette course : la boucle parcourt `capturesFaites`, reconstruit à
+  chaque exécution, et la table d'empreintes naît vide. Une capture étrangère
+  n'était donc lue par rien ; elle ne servait qu'à faire rougir.
+
+  AU DÉBUT, et non à la fin d'une course verte. Une course qui échoue laisserait
+  sinon ses captures derrière elle, et la suivante rougirait sur la péremption au
+  pire moment : celui où l'on débogue déjà autre chose. Purger ici rend
+  l'invariant vrai en permanence — après une course verte comme après une rouge.
+
+  CE QUE LE CHOIX PERD, et il faut le dire : les captures de la course
+  précédente disparaissent AVANT que les nouvelles ne soient écrites. Une course
+  interrompue en vol laisse donc un jeu partiel et plus rien d'hier à regarder.
+  C'est un usage manuel — ouvrir l'image de la veille — qui n'a jamais été
+  outillé ni gardé par quoi que ce soit, et non une mesure qu'on perdrait.
+*/
+const purgees = readdirSync(CAPTURES).filter(
+  (f) => f.endsWith('.png') && !f.includes(`.${course}.`),
+)
+for (const f of purgees) unlinkSync(join(CAPTURES, f))
 const serveur = await servir()
 const mesures = {}
 const capturesFaites = []
@@ -255,6 +311,10 @@ const plaintes = []
 /* Ce qui se DIT sans arrêter la porte : le poids, converti en temps de
    chargement. Séparé des plaintes exprès — les deux ne se lisent pas pareil. */
 const rapports = []
+/** L'estampille de course du fichier de plafonds : la BASE des écarts d'octets. */
+let baseDuPoids = null
+/** Combien d'images ont été RELUES — déclaré ici pour que le rapport final le dise. */
+let imagesInspectees = 0
 
 /* ─── 1. Le plafond de poids ─────────────────────────────────────────────── */
 if (!existsSync(PLAFONDS)) {
@@ -263,7 +323,24 @@ if (!existsSync(PLAFONDS)) {
       "   puis relisez le diff : un plafond qu'on inscrit sans le regarder ne garde rien.",
   )
 } else {
-  const { mesures: plafond } = JSON.parse(readFileSync(PLAFONDS, 'utf8'))
+  const { mesures: plafond, course: courseDuPlafond } = JSON.parse(readFileSync(PLAFONDS, 'utf8'))
+  /*
+    LA BASE DE COMPARAISON SE NOMME, et c'est ce qui manquait.
+
+    Un écart d'octets sans base nommée ne vaut rien : le lecteur voyait
+    « +4 138 o » sans pouvoir savoir contre QUOI. Le fichier de plafonds porte
+    pourtant son estampille de course depuis toujours — elle n'était simplement
+    jamais dite. Un lot précédent a buté exactement là-dessus : il a relevé
+    « +4 225 octets que personne n'a su expliquer » alors que ses propres
+    touches allégeaient le texte, et la réponse tenait dans une ligne absente —
+    le plafond datait de sept lots plus tôt, et l'écart était la SOMME de tout
+    ce qui avait atterri depuis, pas l'effet du lot en cours.
+
+    On dit donc toujours la base ; et quand elle vient d'un autre paquet, on dit
+    que l'écart est CUMULÉ. Le nombre ne change pas ; ce qu'on peut en conclure,
+    si.
+  */
+  baseDuPoids = courseDuPlafond ?? null
   /* Un plafond relevé porte son motif : on le REDIT à chaque passage vert.
      Un relèvement qu'on oublie est un relèvement qui devient la norme. */
   for (const [cle, p] of Object.entries(plafond)) {
@@ -375,6 +452,18 @@ if (!existsSync(PLAFONDS)) {
     cliquet, pour un défaut que les trois questions ci-dessus rendent déjà étroit.
   */
   const empreintes = new Map()
+  /*
+    ON COMPTE LES IMAGES RÉELLEMENT OUVERTES, et pas seulement les fautes.
+
+    « Zéro image fautive » et « zéro image ouverte » s'écrivent pareil dans un
+    journal. Les deux `continue` ci-dessous — fichier absent, PNG illisible —
+    sautent une image en silence : si TOUTES sautaient, les trois questions
+    posées au contenu ne seraient posées à personne, et ce bloc rendrait un
+    silence que le lecteur lirait comme un acquittement. C'est la panne exacte
+    que `contrast-audit.js` s'est déjà vu reprocher, et que `mesure-ui.mjs`
+    referme avec son plancher de textes audités. Ici comme là, le compte est la
+    seule chose qui distingue « rien à redire » de « rien regardé ».
+  */
   for (const { nom, largeur } of capturesFaites) {
     const chemin = join(CAPTURES, nom)
     if (!existsSync(chemin)) continue
@@ -385,6 +474,7 @@ if (!existsSync(PLAFONDS)) {
       plaintes.push(`${nom} : illisible comme PNG — ${e.message}`)
       continue
     }
+    imagesInspectees++
     if (png.largeur !== largeur || png.hauteur !== 900) {
       plaintes.push(
         `${nom} : ${png.largeur}×${png.hauteur} px pour ${largeur}×900 attendus.\n` +
@@ -422,12 +512,33 @@ if (!existsSync(PLAFONDS)) {
     empreintes.set(empreinte, nom)
   }
 
-  const perimees = surDisque.filter((f) => !f.includes(`.${course}.`))
+  if (imagesInspectees !== capturesFaites.length) {
+    plaintes.push(
+      `${imagesInspectees} image(s) ouverte(s) pour ${capturesFaites.length} capture(s) tirée(s).\n` +
+        "   Les questions posées au CONTENU — dimensions, aplat, distinction — n'ont donc pas été\n" +
+        '   posées à toutes. Un bloc qui ne regarde rien rend le même silence qu’un bloc satisfait.',
+    )
+  }
+
+  /*
+    LA PÉREMPTION RESTE GARDÉE, bien que la purge du haut la rende improbable.
+
+    Elle n'est plus le rouge quotidien qu'elle était — les captures étrangères
+    sont retirées avant que le navigateur ne démarre — mais la garde demeure,
+    car elle répond maintenant à une autre question : la purge a-t-elle bien eu
+    lieu ? Un droit d'écriture refusé, un fichier réapparu pendant la course,
+    et l'invariant tombe sans que rien ne le dise. Une garde qu'on croit
+    inatteignable est précisément celle qu'il faut garder.
+  */
+  const perimees = readdirSync(CAPTURES)
+    .filter((f) => f.endsWith('.png'))
+    .filter((f) => !f.includes(`.${course}.`))
   if (perimees.length > 0) {
     plaintes.push(
-      `${perimees.length} capture(s) PÉRIMÉE(S) sur le disque : ${perimees.slice(0, 6).join(', ')}` +
+      `${perimees.length} capture(s) PÉRIMÉE(S) ont SURVÉCU à la purge : ${perimees.slice(0, 6).join(', ')}` +
         `${perimees.length > 6 ? '…' : ''}\n` +
-        "   Elles datent d'un autre paquet. Retirez-les : c'est exactement ce qu'on montre par erreur.",
+        '   Elles datent d’un autre paquet et auraient dû être retirées au démarrage.\n' +
+        '   Ce n’est plus un ménage à faire, c’est la purge elle-même qui a échoué.',
     )
   }
 }
@@ -436,8 +547,18 @@ if (!existsSync(PLAFONDS)) {
    qu'un alourdissement passerait inaperçu. Il est écrit AVANT les plaintes pour
    qu'un lecteur pressé le voie même quand quelque chose d'autre a échoué. */
 if (rapports.length > 0) {
-  console.log(`\n  POIDS — ${rapports.length} écran(s) ont changé de taille :`)
+  const memePaquet = baseDuPoids === course
+  console.log(
+    `\n  POIDS — ${rapports.length} écran(s) ont changé de taille, ` +
+      `mesurés contre les plafonds de la course ${baseDuPoids ?? '(inconnue)'} :`,
+  )
   for (const r of rapports) console.log('    · ' + r)
+  if (!memePaquet) {
+    console.log(
+      "    Cette base vient d'un AUTRE paquet que celui qu'on vient de mesurer : chaque écart\n" +
+        '    ci-dessus est donc CUMULÉ depuis son inscription, et non l’effet du seul lot en cours.',
+    )
+  }
   console.log('    Ces lignes ne ferment pas la porte. Elles sont là pour être arbitrées.')
 }
 
@@ -449,7 +570,10 @@ if (plaintes.length > 0) {
 
 console.log(
   `\n✓ poids-ecrans : ${Object.keys(mesures).length} points mesurés, ` +
-    `${capturesFaites.length} captures régénérées (course ${course}).\n` +
+    `${capturesFaites.length} captures régénérées et ${imagesInspectees} relues (course ${course}),\n` +
+    `  ${purgees.length} capture(s) d'une autre course purgée(s) au démarrage.\n` +
+    `  Les octets sont comparés aux plafonds de la course ${baseDuPoids ?? '(inconnue)'} —\n` +
+    '  une base d’un autre paquet rend les écarts CUMULÉS, ce que le rapport ci-dessus dit.\n' +
     '  Les OCTETS se rapportent, les REQUÊTES se refusent — voir le commentaire de la\n' +
     '  comparaison. Ce script ne dit RIEN de la hiérarchie de lecture.',
 )
