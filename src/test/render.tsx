@@ -3,14 +3,13 @@ import {
   render,
   screen,
   waitFor,
-  waitForElementToBeRemoved,
   within,
   type RenderResult,
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { ReactElement } from 'react'
-import { App } from '@/App'
+import { App, chargerEspaceApplicatif } from '@/App'
 import { chargerAnglais, I18nProvider } from '@/i18n/I18nProvider'
 import { ThemeProvider } from '@/theme/ThemeProvider'
 import { CurrencyProvider } from '@/currency/CurrencyProvider'
@@ -118,10 +117,56 @@ function decouper(route: string): { pathname: string; search: string } {
  * aujourd'hui » : c'est précisément le jour où une route repasse en
  * impatient qu'il cesse de l'être, et c'est ce jour-là que les 401 sites
  * d'appel de `renderApp` rougiraient d'un coup pour un non-défaut.
+ *
+ * CE QUI A CHANGÉ, ET POURQUOI CE N'EST PAS UN RÉGLAGE.
+ *
+ * Cette fonction attendait la DISPARITION du repli, par
+ * `waitForElementToBeRemoved`, dont le budget d'horloge par défaut vaut mille
+ * millisecondes. Ce budget est une COURSE : il tient sur une machine au repos
+ * et tombe sur une machine chargée — deux portes de front, une intégration
+ * continue, un portable qui compile. Trois fichiers sont tombés ainsi, et le
+ * vert se rattrapait en relançant, ce qui est exactement le geste que ce
+ * dépôt a passé trois lots à désapprendre.
+ *
+ * Le correctif ne rallonge pas le budget : il le SUPPRIME. On attend
+ * désormais la promesse que la frontière elle-même expose — la technique que
+ * `attendreLaLangue`, vingt lignes plus bas, applique depuis toujours à
+ * l'autre frontière. Le moment cesse d'être probable pour devenir déterminé,
+ * et aucune vitesse de machine ne peut plus le changer.
+ *
+ * MESURÉ : en ramenant le budget à 1 ms sur le fichier d'avant ce lot, 27
+ * tests sur 31 échouaient sur machine au repos — 9/10 dans
+ * `clavierDesModales`, 16/16 dans `origineDesTravaux`, 1/5 dans
+ * `documentTitle`. Après ce correctif il n'y a plus de budget à rétrécir :
+ * la mutation n'a plus de prise, ce qui est une preuve de structure et non
+ * un taux de réussite.
+ *
+ * `act`, pour la même raison qu'`attendreLaLangue` : la résolution de `lazy`
+ * provoque un rendu que React doit purger avant qu'on rende la main, sans
+ * quoi le test lirait le DOM d'avant la substitution.
  */
 async function attendreLEspaceApplicatif(): Promise<void> {
   const repli = screen.queryByTestId('chargement-espace-applicatif')
-  if (repli) await waitForElementToBeRemoved(repli)
+  if (!repli) return
+  await act(async () => {
+    await chargerEspaceApplicatif()
+    /*
+      LE TOUR DE BOUCLE, et il n'est pas un budget.
+
+      Attendre la promesse ne suffit pas : quand elle se résout, React n'a fait
+      que NOTER que le composant paresseux est prêt. Le nouveau rendu de la
+      frontière `Suspense` est programmé dans la boucle d'événements, pas dans
+      la micro-tâche courante — sans ce tour, `renderApp` rendait la main sur un
+      DOM qui portait encore la coquille et pas `<main>`, et deux cas le
+      voyaient.
+
+      `0` : c'est un TOUR CÉDÉ, pas un délai. Il ne mesure rien et ne peut pas
+      expirer, à la différence du budget de mille millisecondes qu'il remplace.
+      C'est la distinction exacte que `budgetsDHorloge.test.ts` encode pour
+      absoudre le `setTimeout(resolve, 0)` de `downloads.ts`.
+    */
+    await new Promise((resoudre) => setTimeout(resoudre, 0))
+  })
 }
 
 /**

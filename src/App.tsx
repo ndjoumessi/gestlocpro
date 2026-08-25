@@ -31,9 +31,36 @@ import { FrontiereDErreur } from './components/feedback/FrontiereDErreur'
  * exige pourtant un module dont la résolution porte un `default` ; ce
  * `.then` fait le pont sans que le fichier lui-même ait à s'y plier.
  */
-const EspaceApplicatif = lazy(() =>
-  import('./app/EspaceApplicatif').then((m) => ({ default: m.EspaceApplicatif })),
-)
+/**
+ * LA PROMESSE DE LA FRONTIÈRE, MÉMORISÉE ET EXPORTÉE.
+ *
+ * Même forme, et pour la même raison, que `chargerAnglais` dans
+ * `I18nProvider` : la frontière paresseuse expose la promesse qu'elle attend,
+ * plutôt que de laisser ses observateurs GUETTER son effet dans le DOM.
+ *
+ * Ce qui l'a rendue nécessaire : `renderApp` attendait la DISPARITION du repli
+ * de chargement, avec le budget d'horloge de mille millisecondes que
+ * `waitForElementToBeRemoved` applique par défaut. Un budget n'est pas un
+ * signal — il gagne quand la machine est rapide et perd quand elle ne l'est
+ * pas, et le vert obtenu en relançant enseigne à relancer. `chargerAnglais`
+ * n'avait jamais eu ce défaut, précisément parce qu'elle donne sa promesse à
+ * attendre ; cette frontière-ci ne la donnait pas, faute de l'avoir extraite.
+ *
+ * `??=` : la promesse est un COUP UNIQUE et partagé. `lazy` en garde une, les
+ * tests en attendent une autre — il faut que ce soit la MÊME, sans quoi on
+ * attendrait un second `import()` pendant que React en résout un premier, et
+ * l'attente redeviendrait une course.
+ */
+let promesseEspaceApplicatif: Promise<{ default: typeof import('./app/EspaceApplicatif').EspaceApplicatif }> | undefined
+
+export function chargerEspaceApplicatif() {
+  promesseEspaceApplicatif ??= import('./app/EspaceApplicatif').then((m) => ({
+    default: m.EspaceApplicatif,
+  }))
+  return promesseEspaceApplicatif
+}
+
+const EspaceApplicatif = lazy(chargerEspaceApplicatif)
 
 /**
  * Le repli du temps de téléchargement, PAS un squelette de données.

@@ -21,6 +21,44 @@ import type { EtatSession } from './SessionProvider'
 /** Personnages du jeu de démonstration, qui n'ont rien à faire ailleurs. */
 const PERSONNAGES = /Arsène N\.|Diane F\.|Charles N\.|Douala/
 
+const PARC_DU_COMPTE = 'a1b2c3d4-0000-4000-8000-000000000002'
+
+/**
+ * Le parc du COMPTE, servi pour de bon.
+ *
+ * Sans cette route, la lecture du portefeuille échoue et l'écran finit sur
+ * « Données indisponibles ». Les cas passaient quand même, et c'est le défaut :
+ * ils visaient le titre « Vue consolidée du parc » que le SQUELETTE porte
+ * pendant le chargement, donc un état TRANSITOIRE. Ils assertaient l'ordre
+ * d'arrivée de deux chaînes parties ensemble — la résolution du module
+ * paresseux et celle de la requête — exactement ce que `test/api.ts` décrit
+ * sous « un test qui observe une attente doit la tenir, pas la parier ».
+ *
+ * Le jour où `renderApp` a cessé de rendre la main au milieu de cette fenêtre,
+ * le titre visé était déjà remplacé. Rien n'avait changé à l'écran réel : la
+ * requête échouait avant comme après, et ces cas n'avaient jamais vu la page
+ * chargée qu'ils croyaient lire.
+ *
+ * Le parc est VIDE et c'est suffisant : ce fichier garde la COQUILLE — le nom
+ * du parc, le sélecteur, le fil d'Ariane — et non le contenu du tableau.
+ */
+function serveurAvecLeParcDuCompte() {
+  const serveur = installerFauxServeur({ authentifie: true })
+  serveur.quand('GET', `/parks/${PARC_DU_COMPTE}/portfolio`, {
+    status: 200,
+    body: {
+      collections: [],
+      buildings: [],
+      works: [],
+      deposits: [],
+      readings: [],
+      inspections: [],
+      notifications: [],
+    },
+  })
+  return serveur
+}
+
 const SESSION_REELLE: EtatSession = {
   statut: 'connecte',
   compte: {
@@ -42,7 +80,7 @@ beforeEach(() => {
 
 describe('identité affichée dans la coquille', () => {
   it('porte le nom du parc du compte, et non celui d’un personnage', async () => {
-    installerFauxServeur({ authentifie: true })
+    serveurAvecLeParcDuCompte()
     await renderApp('/app', { session: SESSION_REELLE })
     await screen.findByRole('heading', { level: 1, name: /vue consolidée/i })
 
@@ -52,7 +90,7 @@ describe('identité affichée dans la coquille', () => {
   it('ne laisse AUCUN nom de démonstration à l’écran d’un compte réel', async () => {
     // Le filet. Il ne dit pas ce qui doit s'afficher — il dit ce qui ne le doit
     // jamais.
-    installerFauxServeur({ authentifie: true })
+    serveurAvecLeParcDuCompte()
     await renderApp('/app', { session: SESSION_REELLE })
     await screen.findByRole('heading', { level: 1, name: /vue consolidée/i })
 
@@ -76,7 +114,7 @@ describe('identité affichée dans la coquille', () => {
    * l'adhésion.
    */
   it('n’offre aucun sélecteur de profil sur un compte réel', async () => {
-    installerFauxServeur({ authentifie: true })
+    serveurAvecLeParcDuCompte()
     await renderApp('/app', { session: SESSION_REELLE })
     await screen.findByRole('heading', { level: 1, name: /vue consolidée/i })
 
@@ -110,7 +148,7 @@ describe('parc vide, tableau de bord d’un compte neuf', () => {
      * imputer quoi que ce soit. Un écran vide qui offre deux actions
      * impraticables décourage plus qu'un écran vide qui n'en offre aucune.
      */
-    const serveur = installerFauxServeur({ authentifie: true })
+    const serveur = serveurAvecLeParcDuCompte()
     serveur.quand('GET', `/parks/${SESSION_REELLE.statut === 'connecte' ? SESSION_REELLE.adhesions[0]!.parkId : ''}/portfolio`, {
       status: 200,
       body: { collections: [], buildings: [], works: [], deposits: [], readings: [], inspections: [], notifications: [] },
@@ -129,7 +167,7 @@ describe('parc vide, tableau de bord d’un compte neuf', () => {
     // le produit ne permet pas ». Le geste existe désormais — écran du parc,
     // modale, route serveur — et l'état vide doit y conduire. Un test qui garde
     // l'ancienne vérité empêcherait la nouvelle.
-    const serveur = installerFauxServeur({ authentifie: true })
+    const serveur = serveurAvecLeParcDuCompte()
     serveur.quand('GET', `/parks/${SESSION_REELLE.statut === 'connecte' ? SESSION_REELLE.adhesions[0]!.parkId : ''}/portfolio`, {
       status: 200,
       body: { collections: [], buildings: [], works: [], deposits: [], readings: [], inspections: [], notifications: [] },
