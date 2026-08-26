@@ -579,9 +579,10 @@ export function Dashboard() {
               // compte, il ne se stocke pas.
               const inBuilding = units.filter((u) => u.buildingId === building.id)
               const occupees = inBuilding.filter((u) => u.status !== 'vacant').length
-              const rate = inBuilding.length
-                ? Math.round((occupees / inBuilding.length) * 100)
-                : 0
+              /* Le TAUX a disparu avec le verdict qu'il servait à rendre : il
+                 n'existait que pour décider `ok` ou `warn`. Le ratio brut,
+                 lui, est ce que la carte montre — et il n'a jamais eu besoin
+                 d'être converti en pourcentage pour se lire. */
               return (
                 <li key={building.id}>
                   <Link
@@ -599,11 +600,33 @@ export function Dashboard() {
                         {building.district}
                       </span>
                     </span>
-                    <StatusPill
-                      tone={rate === 100 ? 'ok' : 'warn'}
-                      size="sm"
-                      icon={rate === 100 ? 'checkCircle' : 'info'}
-                    >
+                    {/*
+                      UN RATIO D'OCCUPATION N'EST PAS UN VERDICT.
+
+                      Cette pastille rendait `ok` à 100 % et `warn` en dessous.
+                      Donc, par construction, TOUJOURS un état : chaque immeuble
+                      du parc, tous les jours, vert ou ambre à perpétuité. C'est
+                      exactement l'alerte permanente que le reste du produit
+                      s'interdit — celle qu'on cesse de lire au bout d'une
+                      semaine, et qui n'est plus là le jour où elle a raison.
+
+                      L'ÉCRAN SE CONTREDISAIT LUI-MÊME, à trois lignes d'écart.
+                      L'indicateur « Taux d'occupation », en haut de cette même
+                      page, écrit « 2 unités vacantes » en gris muet et ne porte
+                      aucun état. Les mêmes vacances redevenaient ambre ici.
+
+                      ET LE PRODUIT AVAIT DÉJÀ TRANCHÉ : `PAYMENT_TONES` associe
+                      `vacant` à `neutral` — ni succès ni alerte. Les quatre
+                      autres endroits où l'occupation s'affiche — les cartes du
+                      Parc, son taux global, les deux miniatures de la vitrine —
+                      la rendent sans état. Celle-ci était la seule des cinq à
+                      juger, et c'est elle qui avait tort.
+
+                      La pastille RESTE : elle sépare le ratio du nom sur une
+                      carte sombre et dense. Elle ne dit plus « bien » ou
+                      « mal », elle dit « voici le compte ».
+                    */}
+                    <StatusPill tone="neutral" size="sm">
                       {occupees}/{inBuilding.length}
                     </StatusPill>
                   </Link>

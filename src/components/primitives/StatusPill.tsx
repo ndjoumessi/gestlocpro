@@ -32,6 +32,13 @@ export function StatusPill({ tone, children, icon, size = 'md', className }: Sta
   const config = TONES[tone]
   return (
     <span
+      /* `data-ton` : un TON doit être interrogeable autrement que par sa
+         peinture. Sans lui, un cas qui vérifie qu'une pastille ne rend pas un
+         verdict doit inspecter `bg-warn-tint` — une assertion qui rougit sur un
+         renommage d'utilitaire et qui passe au vert le jour où le même verdict
+         revient sous une autre classe. Même idiome que `data-jauge` sur la
+         grille des paiements et `data-etat` sur les indicateurs. */
+      data-ton={tone}
       className={cn(
         'inline-flex items-center gap-1.5 rounded-full border font-semibold whitespace-nowrap',
         // Les deux tailles partagent le plancher de 12px : ce qui distingue la
