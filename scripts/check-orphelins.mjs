@@ -30,14 +30,58 @@ const RACINE = new URL('..', import.meta.url).pathname
 const IGNORES = new Set(['node_modules', 'generated', 'dist', '.git', 'coverage'])
 
 /**
+ * UNE EXEMPTION NE SURVIT PAS À CE QU'ELLE EXEMPTE.
+ *
+ * Les trois listes ci-dessous étaient de simples `Set` traversés par un
+ * `continue` muet. Le défaut est celui que ce fichier traque partout ailleurs,
+ * retourné : un maillon qui existe et que plus rien n'appelle — sauf qu'ici le
+ * maillon est l'exemption elle-même. Le jour où l'on écrit l'écran d'une route
+ * exemptée, l'exemption cesse de supprimer une plainte et reste pourtant dans
+ * le fichier, où le lecteur suivant la prendra pour une décision encore vraie.
+ *
+ * Ce registre compte donc les exemptions CONSOMMÉES — celles qui ont réellement
+ * supprimé une plainte — et fait rougir les autres. Corollaire important pour
+ * les sections ci-dessous : l'exemption ne se consulte qu'APRÈS avoir constaté
+ * le défaut, jamais avant. Consultée avant, elle serait « consommée » par un
+ * maillon parfaitement branché et ne périmerait jamais.
+ *
+ * Mesuré à l'écriture de ce registre : `InspectionFinding.inspectionId` était
+ * déjà périmée. Le code nomme `inspectionId`, donc elle ne supprimait rien
+ * depuis un moment ; elle est retirée, et son retrait ne change aucun verdict.
+ */
+function registre(intitule, entrees) {
+  const motifs = new Map(entrees)
+  const consommees = new Set()
+  return {
+    /** Rend le motif si la clé est exemptée, et note la consommation. */
+    couvre(cle) {
+      if (!motifs.has(cle)) return false
+      consommees.add(cle)
+      return true
+    },
+    perimees() {
+      return [...motifs.keys()]
+        .filter((c) => !consommees.has(c))
+        .map(
+          (c) =>
+            `exemption périmée · ${intitule} « ${c} » · elle ne supprime plus aucune plainte : ` +
+            `le maillon est branché, ou son nom a changé. Retirez-la — une exemption qui ne ` +
+            `couvre rien est une décision périmée que le lecteur suivant croira encore vraie. ` +
+            `(motif inscrit : ${motifs.get(c)})`,
+        )
+    },
+  }
+}
+
+/**
  * Champs de schéma qu'on n'attend PAS de voir nommés dans le code.
  *
  * `updatedAt` est tenu par Prisma lui-même (`@updatedAt`) : le nommer serait
  * l'écrire à la main, ce qui est justement ce qu'on ne veut pas.
- * `InspectionFinding.inspectionId` est une clé étrangère parcourue par sa
- * relation `inspection`, jamais par son identifiant.
  */
-const CHAMPS_EXEMPTS = new Set(['updatedAt', 'InspectionFinding.inspectionId'])
+const CHAMPS_EXEMPTS = registre('colonne', [
+  ['updatedAt', 'tenu par Prisma via @updatedAt ; le nommer serait l’écrire à la main'],
+])
 
 /**
  * Méthodes d'API sans écran, et qui n'en veulent pas.
@@ -45,7 +89,37 @@ const CHAMPS_EXEMPTS = new Set(['updatedAt', 'InspectionFinding.inspectionId'])
  * `health` est une sonde : elle sert au déploiement et aux tests de contrat, pas
  * à un utilisateur. Lui exiger un bouton serait inventer une fonctionnalité.
  */
-const API_EXEMPTES = new Set(['health'])
+const API_EXEMPTES = registre('méthode d’API', [
+  ['health', 'sonde de déploiement et de test de contrat, pas une fonctionnalité'],
+])
+
+/**
+ * Routes serveur dont le client est un lot à venir — NOMMÉES UNE PAR UNE.
+ *
+ * Les quatre routes photo sont écrites, testées et cloisonnées ; leur écran est
+ * le lot du navigateur, qui attend une mesure de compression sur de vraies
+ * photos. C'est une avance ASSUMÉE du serveur sur le client, pas un oubli.
+ *
+ * AUCUN MOTIF À JOKERS. Chaque route est une chaîne complète, comparée par
+ * égalité à la forme étoilée produite par `etoiler`. Les `*` qu'on y lit sont
+ * les paramètres de chemin, pas des jokers d'exemption : `POST
+ * /api/parks/*​/photos/*​/confirmation` n'exempte que cette route-là. Une
+ * cinquième route photo écrite demain ne sera couverte par aucune des quatre et
+ * fera rougir la porte, ce qui est exactement le comportement voulu.
+ *
+ * LIMITE, et il faut la dire : la comparaison porte sur la forme étoilée. Deux
+ * routes serveur distinctes qui s'étoileraient en la même chaîne seraient
+ * exemptées ensemble par une seule entrée. Aucune des quatre n'est dans ce cas
+ * aujourd'hui — les vérifier reste à la charge de qui ajoute une entrée.
+ */
+const MOTIF_LOT_NAVIGATEUR = 'le client de ces routes est le lot du navigateur, bloqué sur une mesure'
+
+const ROUTES_EXEMPTES = registre('route', [
+  ['POST /api/parks/*/findings/*/photos', MOTIF_LOT_NAVIGATEUR],
+  ['POST /api/parks/*/photos/*/confirmation', MOTIF_LOT_NAVIGATEUR],
+  ['GET /api/parks/*/photos/*', MOTIF_LOT_NAVIGATEUR],
+  ['DELETE /api/parks/*/photos/*', MOTIF_LOT_NAVIGATEUR],
+])
 
 async function fichiers(depart, extensions) {
   const sortie = []
@@ -108,13 +182,13 @@ const plaintes = []
   const mots = new Set(code.match(/\w+/g) ?? [])
 
   for (const { modele, nom } of champsDeDonnee(schema)) {
-    if (CHAMPS_EXEMPTS.has(nom) || CHAMPS_EXEMPTS.has(`${modele}.${nom}`)) continue
-    if (!mots.has(nom)) {
-      plaintes.push(
-        `colonne orpheline · ${modele}.${nom} · aucun chemin du code ne la nomme. ` +
-          `Branchez-la, ou retirez-la par migration.`,
-      )
-    }
+    // Le défaut D'ABORD, l'exemption ensuite : voir `registre`.
+    if (mots.has(nom)) continue
+    if (CHAMPS_EXEMPTS.couvre(`${modele}.${nom}`) || CHAMPS_EXEMPTS.couvre(nom)) continue
+    plaintes.push(
+      `colonne orpheline · ${modele}.${nom} · aucun chemin du code ne la nomme. ` +
+        `Branchez-la, ou retirez-la par migration.`,
+    )
   }
 }
 
@@ -132,14 +206,13 @@ const plaintes = []
   )
 
   for (const nom of methodes) {
-    if (API_EXEMPTES.has(nom)) continue
     // `.nom(` autant que `.nom<{ … }>(` : le paramètre de type s'intercale.
-    if (!new RegExp(`\\.${nom}\\s*[<(]`).test(ecrans)) {
-      plaintes.push(
-        `méthode d'API orpheline · api.${nom} · aucun écran ni fournisseur ne l'appelle. ` +
-          `Livrez son écran, ou retirez-la.`,
-      )
-    }
+    if (new RegExp(`\\.${nom}\\s*[<(]`).test(ecrans)) continue
+    if (API_EXEMPTES.couvre(nom)) continue
+    plaintes.push(
+      `méthode d'API orpheline · api.${nom} · aucun écran ni fournisseur ne l'appelle. ` +
+        `Livrez son écran, ou retirez-la.`,
+    )
   }
 }
 
@@ -199,12 +272,12 @@ const plaintes = []
     // hors de portée de ce contrôle, et le dire vaut mieux que l'ignorer.
     if (!prefixe) continue
     const complet = `${verbe.toUpperCase()} ${etoiler(prefixe + chemin)}`
-    if (!composables.has(complet)) {
-      plaintes.push(
-        `route orpheline · ${complet} · aucun appel de src/api/client.ts ne compose ` +
-          `ce chemin. Le serveur a pris de l’avance sur le client.`,
-      )
-    }
+    if (composables.has(complet)) continue
+    if (ROUTES_EXEMPTES.couvre(complet)) continue
+    plaintes.push(
+      `route orpheline · ${complet} · aucun appel de src/api/client.ts ne compose ` +
+        `ce chemin. Le serveur a pris de l’avance sur le client.`,
+    )
   }
 }
 
@@ -371,6 +444,12 @@ const plaintes = []
     )
   }
 }
+
+// ─── 6. Une exemption qui ne couvre plus rien ────────────────────────────────
+//
+// Se lit APRÈS les cinq sections, puisqu'il faut les avoir toutes traversées
+// pour savoir laquelle a consommé quoi.
+plaintes.push(...CHAMPS_EXEMPTS.perimees(), ...API_EXEMPTES.perimees(), ...ROUTES_EXEMPTES.perimees())
 
 if (plaintes.length > 0) {
   console.error(`✗ ${plaintes.length} maillon(s) orphelin(s) :\n`)
