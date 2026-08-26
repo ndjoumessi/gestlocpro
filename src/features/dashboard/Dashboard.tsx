@@ -300,133 +300,168 @@ export function Dashboard() {
           </p>
         </Card>
 
-        <Card>
-          <CardHeader title={t('app.dashboard.recoveryTitle')} level={2} />
-          <DonutChart
-            caption={t('app.dashboard.recoveryTableCaption')}
-            centerValue={`${collectedShare} %`}
-            centerLabel={t('app.dashboard.recoveryCollected')}
-            /* L'ÉTAT, ET NON LA COULEUR. La teinte et la forme d'une part
-               découlent toutes deux de `etat`, par une seule table dans
-               `Charts`. Cet écran ne peut donc plus les désaccorder — c'est le
-               même geste que la grille des paiements et sa légende, qui
-               appellent le même composant plutôt que de s'accorder à vue.
-               « en retard » se dit `overdue` ici comme partout ailleurs dans le
-               produit : un second mot pour le même état rouvrait la porte à
-               deux vocabulaires. */
-            slices={[
-              { etat: 'paid', label: t('app.dashboard.recoveryCollected'), value: collected },
-              { etat: 'partial', label: t('app.dashboard.recoveryPartial'), value: kpis.partial },
-              { etat: 'overdue', label: t('app.dashboard.recoveryLate'), value: kpis.late },
-            ]}
-            /**
-             * Ce que l'anneau ne disait pas : à quoi ses parts s'ajoutent.
-             *
-             * Les trois somment exactement à « Loyers attendus », premier
-             * indicateur de la page, et les deux dernières à « Impayés
-             * cumulés », le troisième. Ce sont donc les mêmes nombres, à deux
-             * panneaux d'écart, sans que rien ne l'indique — l'utilisateur
-             * devait poser l'addition pour savoir s'ils parlaient de la même
-             * chose. L'invariant est pourtant écrit dans `kpis.ts` : l'impayé
-             * se ventile en partiel et en retard, et les deux parts somment au
-             * total.
-             *
-             * Les intitulés sont repris À L'IDENTIQUE des indicateurs : c'est
-             * le nom qui referme la boucle, le montant seul se serait encore lu
-             * comme une coïncidence.
-             */
-            reconciliation={[
-              {
-                key: 'outstanding',
-                label: t('app.dashboard.outstanding'),
-                value: outstanding,
-              },
-              {
-                key: 'expected',
-                label: t('app.dashboard.expected'),
-                value: expected,
-                fort: true,
-              },
-            ]}
-          />
+        {/*
+          LA COLONNE DE DROITE PORTE DEUX CARTES, ET C’EST CE QUI FERME UN VIDE.
 
-          <div className="mt-6 flex flex-col gap-3 border-t border-divider pt-5">
-            <p className="eyebrow text-muted">{t('app.dashboard.rebilled')}</p>
-            <ProgressBar label={t('app.dashboard.legendWater')} value={kpis.waterRebilled} />
-            <ProgressBar label={t('app.dashboard.legendPower')} value={kpis.powerRebilled} />
-          </div>
-        </Card>
+          MESURÉ avant de déplacer quoi que ce soit : la grille étire ses deux
+          cellules à la hauteur de la plus haute, et le graphe des douze mois en
+          fait 627 px. Le recouvrement en remplissait 381 — les 246 restants
+          étaient du blanc que rien ne justifiait, 39 % de la carte, à 1512 comme
+          à 1920 px. On ne comble pas un vide en inventant du contenu : on y met
+          ce qui était mal placé ailleurs.
+
+          ET C’EST « CE QUI DEMANDE UNE DÉCISION » QUI ÉTAIT MAL PLACÉ. C’est la
+          seule carte de l’écran qui appelle un GESTE — arbitrer une caution,
+          trancher un devis — et elle vivait en troisième rangée, sous la ligne
+          de flottaison d’un écran de 900 px : il fallait faire défiler pour
+          apprendre qu’on attendait quelque chose de vous. Les deux cartes qui la
+          suivaient — l’échéancier et la répartition — ne demandent rien, elles
+          renseignent ; elles peuvent rester sous le pli, pas elle.
+
+          ELLE SUIT LE RECOUVREMENT, ET PAS L’INVERSE. Le recouvrement dit
+          l’état du mois, les décisions disent ce qu’il reste à en faire :
+          constater précède arbitrer. Sous `xl`, la grille repasse à une colonne
+          et cet ordre devient l’ordre de lecture — graphe, recouvrement,
+          décisions, échéancier, répartition — qui reste le bon.
+        */}
+        {/* `min-w-0` : ce conteneur est une CELLULE de grille, et une cellule
+            hérite de `min-width: auto` — elle refuse donc de descendre sous la
+            largeur intrinsèque de ce qu'elle porte. `Card` se protège déjà de
+            cette façon, mais elle n'est plus la cellule : c'est cette colonne
+            qui l'est. La porte l'a mesuré avant moi — 7 px de débordement local
+            à /demo@320, exactement le défaut que le commentaire de `Card` décrit. */}
+        <div className="flex min-w-0 flex-col gap-4">
+          <Card>
+            <CardHeader title={t('app.dashboard.recoveryTitle')} level={2} />
+            <DonutChart
+              caption={t('app.dashboard.recoveryTableCaption')}
+              centerValue={`${collectedShare} %`}
+              centerLabel={t('app.dashboard.recoveryCollected')}
+              /* L'ÉTAT, ET NON LA COULEUR. La teinte et la forme d'une part
+                 découlent toutes deux de `etat`, par une seule table dans
+                 `Charts`. Cet écran ne peut donc plus les désaccorder — c'est le
+                 même geste que la grille des paiements et sa légende, qui
+                 appellent le même composant plutôt que de s'accorder à vue.
+                 « en retard » se dit `overdue` ici comme partout ailleurs dans le
+                 produit : un second mot pour le même état rouvrait la porte à
+                 deux vocabulaires. */
+              slices={[
+                { etat: 'paid', label: t('app.dashboard.recoveryCollected'), value: collected },
+                { etat: 'partial', label: t('app.dashboard.recoveryPartial'), value: kpis.partial },
+                { etat: 'overdue', label: t('app.dashboard.recoveryLate'), value: kpis.late },
+              ]}
+              /**
+               * Ce que l'anneau ne disait pas : à quoi ses parts s'ajoutent.
+               *
+               * Les trois somment exactement à « Loyers attendus », premier
+               * indicateur de la page, et les deux dernières à « Impayés
+               * cumulés », le troisième. Ce sont donc les mêmes nombres, à deux
+               * panneaux d'écart, sans que rien ne l'indique — l'utilisateur
+               * devait poser l'addition pour savoir s'ils parlaient de la même
+               * chose. L'invariant est pourtant écrit dans `kpis.ts` : l'impayé
+               * se ventile en partiel et en retard, et les deux parts somment au
+               * total.
+               *
+               * Les intitulés sont repris À L'IDENTIQUE des indicateurs : c'est
+               * le nom qui referme la boucle, le montant seul se serait encore lu
+               * comme une coïncidence.
+               */
+              reconciliation={[
+                {
+                  key: 'outstanding',
+                  label: t('app.dashboard.outstanding'),
+                  value: outstanding,
+                },
+                {
+                  key: 'expected',
+                  label: t('app.dashboard.expected'),
+                  value: expected,
+                  fort: true,
+                },
+              ]}
+            />
+
+            <div className="mt-6 flex flex-col gap-3 border-t border-divider pt-5">
+              <p className="eyebrow text-muted">{t('app.dashboard.rebilled')}</p>
+              <ProgressBar label={t('app.dashboard.legendWater')} value={kpis.waterRebilled} />
+              <ProgressBar label={t('app.dashboard.legendPower')} value={kpis.powerRebilled} />
+            </div>
+          </Card>
+
+          <Card>
+            <CardHeader title={t('app.dashboard.decisionsTitle')} level={2} />
+            {rienATrancher ? (
+              <p className="text-body text-muted">{t('app.dashboard.decisionsEmpty')}</p>
+            ) : (
+              <ul className="flex flex-col gap-3">
+                {cautionsAArbitrer.map((caution) => (
+                  <li key={`caution-${caution.unitId}`} className="flex items-start gap-3">
+                    <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-gold-tint text-gold-ink">
+                      <Icon name="shield" size={15} />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-body font-medium">
+                        {t('app.dashboard.decisionDeposit', {
+                          tenant: caution.tenant ?? t('app.deposits.formerTenant'),
+                        })}
+                      </p>
+                      <p className="mt-0.5 text-caps text-muted">
+                        {unitById(caution.unitId)?.label ?? caution.unitId} ·{' '}
+                        {money(caution.held, { round: true })}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+                {devis.map((work) => (
+                  <li key={work.id} className="flex items-start gap-3">
+                    <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-gold-tint text-gold-ink">
+                      <Icon name="wrench" size={15} />
+                    </span>
+                    <div className="min-w-0">
+                      {/* Deux natures d'intitulé cohabitent : une clé pour le jeu
+                          de démonstration, un texte libre dès que le locataire
+                          l'écrit. Sans ce point de passage, l'écran rendrait
+                          `app.works.samples.undefined` — un défaut qui compile. */}
+                      <p className="text-body font-medium">{workTitle(work, t)}</p>
+                      <p className="mt-0.5 text-caps text-muted">
+                        {/* Un signalement ne porte que l'identifiant technique de
+                            l'unité : le libellé se relit depuis le parc. Afficher
+                            `work.unitId` montrerait un uuid le jour où les données
+                            viendront du serveur. */}
+                        {unitById(work.unitId)?.label} · {work.reference ?? work.id} ·{' '}
+                        {/* Le DEVIS, et non le montant qui fait foi : cette carte
+                            ne liste que `status === 'quoted'`, c'est-à-dire ce qui
+                            attend une décision. L'engagé y serait toujours nul. */}
+                        {work.quotedAmount
+                          ? money(work.quotedAmount, { round: true })
+                          : t('app.works.noQuote')}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {/* Deux natures dans la carte, donc deux sorties : renvoyer aux seuls
+                travaux laisserait les cautions listées sans moyen d'agir dessus,
+                ce qui est la même omission que celle qu'on vient de corriger. */}
+            <div className="mt-4 -ml-3.5 flex flex-wrap items-center gap-2">
+              <Button variant="ghost" to={lien(base, 'travaux')} iconAfter="chevronRight">
+                {t('nav.works')}
+              </Button>
+              {cautionsAArbitrer.length > 0 && (
+                <Button variant="ghost" to={lien(base, 'cautions')} iconAfter="chevronRight">
+                  {t('nav.deposits')}
+                </Button>
+              )}
+            </div>
+          </Card>
+        </div>
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-3">
-        <Card>
-          <CardHeader title={t('app.dashboard.decisionsTitle')} level={2} />
-          {rienATrancher ? (
-            <p className="text-body text-muted">{t('app.dashboard.decisionsEmpty')}</p>
-          ) : (
-            <ul className="flex flex-col gap-3">
-              {cautionsAArbitrer.map((caution) => (
-                <li key={`caution-${caution.unitId}`} className="flex items-start gap-3">
-                  <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-gold-tint text-gold-ink">
-                    <Icon name="shield" size={15} />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-body font-medium">
-                      {t('app.dashboard.decisionDeposit', {
-                        tenant: caution.tenant ?? t('app.deposits.formerTenant'),
-                      })}
-                    </p>
-                    <p className="mt-0.5 text-caps text-muted">
-                      {unitById(caution.unitId)?.label ?? caution.unitId} ·{' '}
-                      {money(caution.held, { round: true })}
-                    </p>
-                  </div>
-                </li>
-              ))}
-              {devis.map((work) => (
-                <li key={work.id} className="flex items-start gap-3">
-                  <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-gold-tint text-gold-ink">
-                    <Icon name="wrench" size={15} />
-                  </span>
-                  <div className="min-w-0">
-                    {/* Deux natures d'intitulé cohabitent : une clé pour le jeu
-                        de démonstration, un texte libre dès que le locataire
-                        l'écrit. Sans ce point de passage, l'écran rendrait
-                        `app.works.samples.undefined` — un défaut qui compile. */}
-                    <p className="text-body font-medium">{workTitle(work, t)}</p>
-                    <p className="mt-0.5 text-caps text-muted">
-                      {/* Un signalement ne porte que l'identifiant technique de
-                          l'unité : le libellé se relit depuis le parc. Afficher
-                          `work.unitId` montrerait un uuid le jour où les données
-                          viendront du serveur. */}
-                      {unitById(work.unitId)?.label} · {work.reference ?? work.id} ·{' '}
-                      {/* Le DEVIS, et non le montant qui fait foi : cette carte
-                          ne liste que `status === 'quoted'`, c'est-à-dire ce qui
-                          attend une décision. L'engagé y serait toujours nul. */}
-                      {work.quotedAmount
-                        ? money(work.quotedAmount, { round: true })
-                        : t('app.works.noQuote')}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-          {/* Deux natures dans la carte, donc deux sorties : renvoyer aux seuls
-              travaux laisserait les cautions listées sans moyen d'agir dessus,
-              ce qui est la même omission que celle qu'on vient de corriger. */}
-          <div className="mt-4 -ml-3.5 flex flex-wrap items-center gap-2">
-            <Button variant="ghost" to={lien(base, 'travaux')} iconAfter="chevronRight">
-              {t('nav.works')}
-            </Button>
-            {cautionsAArbitrer.length > 0 && (
-              <Button variant="ghost" to={lien(base, 'cautions')} iconAfter="chevronRight">
-                {t('nav.deposits')}
-              </Button>
-            )}
-          </div>
-        </Card>
-
+      {/* DEUX CARTES, PLUS TROIS : la troisième est montée d’une rangée. Ces
+          deux-ci renseignent sans rien demander, elles tiennent donc la largeur
+          à deux plutôt que de laisser une colonne vide là où il y en avait trois. */}
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader title={t('app.dashboard.scheduleTitle')} level={2} />
           {/*
