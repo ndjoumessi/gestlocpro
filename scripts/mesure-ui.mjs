@@ -113,8 +113,16 @@ const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
  *   14,2 s   7 %   surfaces · navigation et attente          10
  *    6,6 s   3 %   colonnes d'entrée                          2
  *
- * Depuis, deux leviers tirés — colonnes d'entrée et contraste — ramènent la
- * porte de 194 s à 149, sans qu'aucune mesure change de valeur.
+ * TROIS LEVIERS TIRÉS DEPUIS, ET C'ÉTAIT TROIS FOIS LE MÊME : le nombre de
+ * CHARGEMENTS, jamais le calcul. Colonnes d'entrée rechargeait à chaque
+ * hauteur ; le contraste rechargeait à chaque thème ; les cibles rechargeaient
+ * ce que la mise en page venait de charger. **194 s → 108**, et aucun compteur
+ * de cette porte n'a changé de valeur.
+ *
+ * DÉCOMPOSÉ, `attendre` coûte 1 072 ms après un CHARGEMENT — dont 679 de
+ * `networkidle` et 270 d'`aria-busy` — et 7 ms après un REDIMENSIONNEMENT. Voilà
+ * pourquoi c'est toujours le même levier, et pourquoi il n'en reste plus : les
+ * 46 chargements qui subsistent sont ceux qu'il faut bien faire une fois.
  *    …
  *
  * ET LE DÉCOMPTE A DÉJÀ SERVI. « Colonnes d'entrée » est tombé de 6,6 s à 2,3 :
@@ -2526,14 +2534,106 @@ try {
           })
         }
 
+        /*
+          LE `continue` EST DEVENU UN `if`, ET CE N'EST PAS UN GOÛT D'ÉCRITURE.
+
+          Il sautait la fin de l'itération quand la page NE DÉBORDAIT PAS —
+          c'est-à-dire dans l'immense majorité des cas, et c'était sans
+          conséquence tant que rien ne le suivait. Les cibles et les noms le
+          suivent désormais : laissé tel quel, il les aurait sautés sur 484
+          points sur 506, et les deux gardes auraient rendu « aucun défaut »
+          après avoir regardé les vingt-deux écrans qui débordent.
+        */
         const resultat = await chrono('sonde · débordement de page', () => page.evaluate(MESURER))
-        if (!resultat) continue
-        const cle = `${adresse}@${largeur}`
-        if (TOLERES[cle]) {
-          tolerancesUtilisees.add(cle)
-          continue
+        if (resultat) {
+          const cle = `${adresse}@${largeur}`
+          if (TOLERES[cle]) tolerancesUtilisees.add(cle)
+          else echecs.push({ adresse, largeur, langue, ...resultat })
         }
-        echecs.push({ adresse, largeur, langue, ...resultat })
+
+        /*
+          ─── LES CIBLES ET LES NOMS, SUR LA PAGE DÉJÀ CHARGÉE ──────────────
+
+          Ils vivaient dans une TROISIÈME PASSE, qui rechargeait les mêmes 46
+          pages pour les balayer aux mêmes onze largeurs, dans les mêmes deux
+          langues, avec le MÊME `colorScheme`. Deux passes, un seul axe.
+
+          Le chronomètre a chiffré ce doublon : 41 s, dont 39 de navigation.
+          Décomposé, `attendre` coûte 1 072 ms après un chargement et 7 ms
+          après un redimensionnement — le prix n'était pas l'attente, c'était
+          le chargement, comme pour les deux leviers précédents.
+
+          CE QUI JUSTIFIAIT LA SÉPARATION N'EXISTE PLUS. La passe des cibles
+          venait en dernier parce qu'elle est la seule à FAIRE DÉFILER la page
+          — `elementFromPoint` ne répond que dans le cadre visible — et qu'on
+          ne voulait pas qu'une mesure de couleur dépende d'une mesure de
+          géométrie. Mais la passe de contraste crée son propre contexte et
+          navigue elle-même sur chaque écran : un défilement laissé ici ne
+          l'atteint pas. Le risque restant est INTERNE — la sonde défile puis
+          remet à zéro, et les sondes de la largeur suivante travaillent après
+          ce retour. Il a été mesuré plutôt que raisonné : tous les compteurs
+          de la porte sont restés identiques au chiffre près.
+
+          ELLES VIENNENT EN DERNIER DANS L'ITÉRATION, pour la même raison qui
+          les mettait en dernier parmi les passes : ce sont elles qui touchent
+          à l'état de la page, et rien ne doit mesurer après.
+        */
+        const releve = await chrono('audit · cibles', () =>
+          page.evaluate(MESURER_CIBLES, { plancher: PLANCHER_CIBLE, rayon: RAYON_SONDAGE }),
+        )
+        ciblesSondees += releve.sondees
+        pointsDeCible++
+        for (const raison of releve.raisonsVues) raisonsEmployees.add(raison)
+
+        /*
+          LES NOMS VOYAGENT AVEC LES CIBLES, et l'axe est le bon.
+
+          Un nom accessible ne dépend pas du THÈME — repeindre un bouton ne le
+          renomme pas — mais il dépend de la LANGUE, puisqu'il sort des
+          dictionnaires, et de la LARGEUR, qui décide quelles commandes existent :
+          le tiroir n'a son bouton que sous `lg`, la barre de navigation n'a les
+          siens qu'au-dessus. C'est mot pour mot l'axe de la passe des cibles.
+
+          Elle ne coûte donc AUCUN chargement de page : la page est déjà là, à la
+          bonne largeur, dans la bonne langue. Un `page.evaluate` de plus, et le
+          balayage complet des noms est payé.
+        */
+        const noms = await chrono('audit · noms accessibles', () => page.evaluate(AUDIT_NOMS))
+        if (!noms || typeof noms.examinees !== 'number') {
+          throw new Error(
+            "mesure-ui : `noms-accessibles.js` n'a pas rendu `{ anonymes, items, examinees }`. " +
+              "Son expression doit rester une IIFE qui s'évalue en cet objet.",
+          )
+        }
+        nomsExamines += noms.examinees
+        pointsDeNom++
+        for (const item of noms.items) {
+          const cle = `${item.balise}|${item.role}|${item.classes}`
+          if (!commandesAnonymes.has(cle)) {
+            commandesAnonymes.set(cle, { ...item, ou: `${adresse} ${largeur}px ${langue}` })
+          }
+        }
+
+        if (adresse === ADRESSE_D_ACCORD && largeur === LARGEUR_D_ACCORD) {
+          const arbre = await page.locator('body').ariaSnapshot()
+          const selonPlaywright = arbre
+            .split('\n')
+            .map((l) => l.trim())
+            .filter((l) => LIGNE_SANS_NOM.test(l)).length
+          accordsAccname.push({ langue, nous: noms.anonymes, playwright: selonPlaywright })
+        }
+
+        for (const defaut of releve.defauts) {
+          // Une raison DÉCLARÉE mais inconnue n'exempte rien : elle serait une
+          // dérogation que personne n'a motivée, exactement ce que la doctrine
+          // des `TOLERES` interdit. On la laisse donc tomber dans les défauts,
+          // et la garde du garde plus bas la nommera.
+          if (defaut.raison && CIBLES_EXEMPTES[defaut.raison]) continue
+          const cle = `${defaut.balise}|${defaut.cible}|${defaut.classes}`
+          if (!ciblesTrop_petites.has(cle)) {
+            ciblesTrop_petites.set(cle, { ...defaut, ou: `${adresse} ${largeur}px ${langue}` })
+          }
+        }
       }
       process.stdout.write(`${((Date.now() - depart) / 1000).toFixed(1)}s\n`)
     }
@@ -2666,101 +2766,6 @@ try {
     await contexte.close()
   }
 
-
-  /*
-    TROISIÈME PASSE, et son axe n'est ni celui des deux autres.
-
-    Une cible ne dépend pas du THÈME — repeindre un bouton ne le déplace pas —
-    mais elle dépend de la LANGUE, « Tarifs » n'ayant pas la largeur de
-    « Pricing », et de la largeur de fenêtre, qui redistribue les colonnes. Un
-    thème, deux langues, deux largeurs.
-
-    Elle vient EN DERNIER parce qu'elle est la seule à faire défiler la page :
-    `elementFromPoint` ne répond que dans le cadre visible. La sonde remet le
-    défilement à zéro en sortant, mais la passer avant le contraste ferait
-    dépendre une mesure de couleur du travail d'une mesure de géométrie —
-    l'en-tête collant change de fond dès le neuvième pixel de défilement.
-  */
-  for (const langue of LANGUES) {
-    const contexte = await navigateur.newContext({
-      viewport: { width: LARGEURS[0], height: 900 },
-      locale: langue,
-      colorScheme: THEME_DE_GEOMETRIE,
-    })
-    const page = await contexte.newPage()
-    for (const adresse of adresses) {
-      const depart = Date.now()
-      process.stdout.write(`   ${langue}  cibles  ${adresse} … `)
-      for (const largeur of LARGEURS) {
-        await chrono('cibles et noms · navigation et attente', async () => {
-          await page.setViewportSize({ width: largeur, height: 900 })
-          if (largeur === LARGEURS[0]) {
-            await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
-          }
-          await attendre(page, adresse)
-        })
-
-        const releve = await chrono('audit · cibles', () =>
-          page.evaluate(MESURER_CIBLES, { plancher: PLANCHER_CIBLE, rayon: RAYON_SONDAGE }),
-        )
-        ciblesSondees += releve.sondees
-        pointsDeCible++
-        for (const raison of releve.raisonsVues) raisonsEmployees.add(raison)
-
-        /*
-          LES NOMS VOYAGENT AVEC LES CIBLES, et l'axe est le bon.
-
-          Un nom accessible ne dépend pas du THÈME — repeindre un bouton ne le
-          renomme pas — mais il dépend de la LANGUE, puisqu'il sort des
-          dictionnaires, et de la LARGEUR, qui décide quelles commandes existent :
-          le tiroir n'a son bouton que sous `lg`, la barre de navigation n'a les
-          siens qu'au-dessus. C'est mot pour mot l'axe de la passe des cibles.
-
-          Elle ne coûte donc AUCUN chargement de page : la page est déjà là, à la
-          bonne largeur, dans la bonne langue. Un `page.evaluate` de plus, et le
-          balayage complet des noms est payé.
-        */
-        const noms = await chrono('audit · noms accessibles', () => page.evaluate(AUDIT_NOMS))
-        if (!noms || typeof noms.examinees !== 'number') {
-          throw new Error(
-            "mesure-ui : `noms-accessibles.js` n'a pas rendu `{ anonymes, items, examinees }`. " +
-              "Son expression doit rester une IIFE qui s'évalue en cet objet.",
-          )
-        }
-        nomsExamines += noms.examinees
-        pointsDeNom++
-        for (const item of noms.items) {
-          const cle = `${item.balise}|${item.role}|${item.classes}`
-          if (!commandesAnonymes.has(cle)) {
-            commandesAnonymes.set(cle, { ...item, ou: `${adresse} ${largeur}px ${langue}` })
-          }
-        }
-
-        if (adresse === ADRESSE_D_ACCORD && largeur === LARGEUR_D_ACCORD) {
-          const arbre = await page.locator('body').ariaSnapshot()
-          const selonPlaywright = arbre
-            .split('\n')
-            .map((l) => l.trim())
-            .filter((l) => LIGNE_SANS_NOM.test(l)).length
-          accordsAccname.push({ langue, nous: noms.anonymes, playwright: selonPlaywright })
-        }
-
-        for (const defaut of releve.defauts) {
-          // Une raison DÉCLARÉE mais inconnue n'exempte rien : elle serait une
-          // dérogation que personne n'a motivée, exactement ce que la doctrine
-          // des `TOLERES` interdit. On la laisse donc tomber dans les défauts,
-          // et la garde du garde plus bas la nommera.
-          if (defaut.raison && CIBLES_EXEMPTES[defaut.raison]) continue
-          const cle = `${defaut.balise}|${defaut.cible}|${defaut.classes}`
-          if (!ciblesTrop_petites.has(cle)) {
-            ciblesTrop_petites.set(cle, { ...defaut, ou: `${adresse} ${largeur}px ${langue}` })
-          }
-        }
-      }
-      process.stdout.write(`${((Date.now() - depart) / 1000).toFixed(1)}s\n`)
-    }
-    await contexte.close()
-  }
 
   /*
     ═══ LES SURFACES QUI N'EXISTENT QU'APRÈS UN GESTE ═══
