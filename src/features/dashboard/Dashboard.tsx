@@ -274,7 +274,27 @@ export function Dashboard() {
         />
       </div>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-[1.6fr_1fr]">
+      {/*
+        `items-start` : CETTE RANGÉE-CI CESSE D'IMPOSER UNE HAUTEUR COMMUNE.
+
+        Par défaut une cellule de grille s'étire à la hauteur de la plus haute de
+        sa rangée. Entre cartes DE MÊME NATURE c'est ce qu'on veut — la rangée
+        d'indicateurs juste au-dessus garde délibérément l'étirement, et ses
+        31 px de blanc mesurés sur trois cartes sont le prix de leur ALIGNEMENT,
+        pas du gâchis : quatre pairs dont les socles ne se rejoignent pas ne se
+        lisent plus comme une rangée.
+
+        Ici les deux cellules n'ont rien de commun : à gauche un graphe de douze
+        mois, à droite une colonne de deux cartes. Rien ne relie leurs socles, et
+        l'étirement se contentait de faire payer à la plus courte la hauteur de
+        l'autre — 73 px de blanc imposé à la carte du graphe, une fois retiré son
+        propre rembourrage de 21. Une carte finit où son contenu finit.
+
+        MESURÉ, ET C'EST LE MÊME VIDE DEPUIS LE DÉBUT : il valait 246 px et
+        vivait à droite ; le lot précédent l'a ramené à 94 en y logeant les
+        décisions, celui-ci retire les 73 qui restaient imposés.
+      */}
+      <div className="mt-4 grid items-start gap-4 xl:grid-cols-[1.6fr_1fr]">
         <Card>
           <CardHeader title={t('app.dashboard.chartTitle')} level={2} />
           {/* La légende répétait le titre visible : un lecteur d'écran
@@ -634,7 +654,11 @@ function DashboardSkeleton({ title }: { title: string }) {
           ))}
         </div>
 
-        <div className="mt-4 grid gap-4 xl:grid-cols-[1.6fr_1fr]">
+        {/* `items-start`, comme la rangée qu'il remplace. Un squelette étiré
+            au-dessus d'une rangée qui ne l'est plus ferait sauter la page au
+            moment précis où les données arrivent — c'est-à-dire au moment où
+            l'œil s'y pose. */}
+        <div className="mt-4 grid items-start gap-4 xl:grid-cols-[1.6fr_1fr]">
           <Card>
             <Skeleton line="title" className="mb-4 w-56" />
             {/* Légende interrogeable : trois boutons de 36px. */}
