@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, switchRole, within, attendreLeChargement } from '@/test/render'
+import { renderApp, screen, switchRole, waitFor, within, attendreLeChargement } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur, type FauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 
@@ -219,16 +219,35 @@ describe('les preuves que le locataire voit', () => {
    * — donc aucune requête. La dernière assertion est celle qui compte pour
    * `poids-ecrans`, qui refuse tout aller-retour de plus.
    */
-  it('sert la preuve de la démonstration sans aucune requête', async () => {
+  it('sert les preuves de la démonstration sans aucune requête', async () => {
     const faux = installerFauxServeur()
     await renderApp('/demo/etats-des-lieux')
     await attendreLeChargement()
     await switchRole('tenant')
 
-    const image = await within(bloc()).findByRole('img')
-    expect(image.getAttribute('src')).toMatch(/^data:image\/jpeg;base64,/)
-    expect(image).toHaveAccessibleName(/Peinture écaillée derrière la porte/)
-    // Aucune adresse demandée au réseau : l'image est dans le paquet.
+    /**
+     * TROIS, et le nombre est le sujet du cas.
+     *
+     * Une seule vignette ne fait pas de rangée : le repli (`flex-wrap`) n'est
+     * rendu qu'à partir de trois, et ce qui n'est jamais rendu n'est jamais
+     * mesuré. Ces trois-là sont ce qui met `mesure-ui` en position de voir la
+     * rangée déborder à 320 px.
+     */
+    await waitFor(() => expect(within(bloc()).getAllByRole('img')).toHaveLength(3))
+    const images = within(bloc()).getAllByRole('img')
+
+    for (const image of images) {
+      expect(image.getAttribute('src')).toMatch(/^data:image\/jpeg;base64,/)
+    }
+    // TROIS SOURCES DISTINCTES : la même image resservie trois fois serait un
+    // faux, et une garde qui compte sans regarder ne l'aurait pas vu.
+    expect(new Set(images.map((i) => i.getAttribute('src'))).size).toBe(3)
+
+    // Le rang est DIT, sans quoi trois vignettes s'annoncent trois fois pareil.
+    expect(images[0]).toHaveAccessibleName(/1 sur 3.*Peinture écaillée derrière la porte/)
+    expect(images[2]).toHaveAccessibleName(/3 sur 3/)
+
+    // Aucune adresse demandée au réseau : les images sont dans le paquet.
     expect(faux.appels.some((a) => a.chemin.includes('/photos/'))).toBe(false)
   })
 

@@ -377,6 +377,20 @@ function InspectionsSkeleton() {
  * donnée que la démonstration ne porte pas naît HORS de la porte, et son vert
  * ne veut rien dire. Le trou des GESTES avait été comblé par
  * `SURFACES_INTERACTIVES` ; celui-ci est le même trou, côté DONNÉE.
+ *
+ * ─── CE QUI RESTE NON GARDÉ : LE REPLI LUI-MÊME ───────────────────────────
+ *
+ * La rangée porte trois preuves dans la démonstration, précisément pour que son
+ * repli soit RENDU — à 320 px elle montre deux vignettes puis une. Rendu, donc
+ * audité en contraste, en cibles et en noms accessibles.
+ *
+ * MAIS RETIRER `flex-wrap` NE FAIT PAS ROUGIR LA PORTE, et c'est mesuré.
+ * `mesure-ui` ne tient pour débordement que ce qui fait DÉFILER LA PAGE — il
+ * tente `window.scrollTo(400, 0)` et regarde `scrollX`. Sans repli, la rangée
+ * dépasse de 40 px (256 contre 216), la grille de 8, et le rembourrage de
+ * `main` absorbe le reste : la page ne défile pas, la porte reste verte, et la
+ * troisième vignette sort pourtant de la carte. Le défaut se VOIT sur une
+ * capture ; aucune garde ne le dit. C'est nommé ici plutôt que laissé pour vrai.
  */
 function Preuves({ reserves }: { reserves: Finding[] }) {
   const t = useT()
@@ -400,7 +414,18 @@ function Preuves({ reserves }: { reserves: Finding[] }) {
               </p>
               <ul className="mt-1.5 flex flex-wrap gap-2">
                 {photos.map((photo, index) => (
-                  <li key={photo.id}>
+                  /* `shrink-0` VA SUR L'ÉLÉMENT DE LISTE, pas sur l'image, et
+                     c'est une mesure qui l'a dit : posé sur l'`<img>` il ne
+                     changeait RIEN — l'élément flexible est le `<li>`, et le
+                     `max-width: 100%` que le reset pose sur toute image la
+                     ramène ensuite à la largeur du `<li>` écrasé.
+
+                     Pourquoi il faut y être : un élément flexible rétrécit sous
+                     sa largeur AVANT que la ligne ne se replie. Sans lui, une
+                     preuve de trop ne débordait pas — elle écrasait ses voisines
+                     de 80 à 66,7 px, mesuré à 320 px. Un débordement se voit et
+                     se garde ; un écrasement se subit en silence. */
+                  <li key={photo.id} className="shrink-0">
                     <Preuve
                       photo={photo}
                       legende={t('app.inspections.proofAlt', {

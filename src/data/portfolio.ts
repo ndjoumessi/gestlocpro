@@ -14,7 +14,9 @@ import type { PaymentStatus } from '@/components/primitives/StatusPill'
  * Sa provenance, son recadrage et ce qu'il a retiré vivent dans
  * `fixtures/PROVENANCE.md`, versionné avec elle.
  */
-import peintureEcaillee from './fixtures/peinture-ecaillee.jpg?inline'
+import peintureEcaillee1 from './fixtures/peinture-ecaillee-1.jpg?inline'
+import peintureEcaillee2 from './fixtures/peinture-ecaillee-2.jpg?inline'
+import peintureEcaillee3 from './fixtures/peinture-ecaillee-3.jpg?inline'
 
 /**
  * Jeu de démonstration : 3 immeubles, 12 unités, 12 mois d'historique.
@@ -641,24 +643,42 @@ export interface Photo {
 }
 
 /**
- * LA PREUVE QUE LE LOCATAIRE DE LA DÉMONSTRATION VOIT.
+ * LES PREUVES QUE LE LOCATAIRE DE LA DÉMONSTRATION VOIT.
  *
  * A1 est SON logement, et cette réserve d'entrée est celle qui lui a été
- * opposée à la remise des clés. Sans elle, le bloc des preuves n'existait sur
+ * opposée à la remise des clés. Sans elles, le bloc des preuves n'existait sur
  * aucun écran de la démonstration — donc sur aucun des 506 points que
  * `mesure-ui` balaie, donc ni son contraste, ni ses cibles, ni ses noms
  * accessibles n'étaient audités. MESURÉ AVANT : un bouton de 32 px posé dans ce
- * bloc laissait la porte VERTE. C'est ce trou-là que cette photo referme.
+ * bloc laissait la porte VERTE. C'est ce trou-là qu'elles referment.
+ *
+ * ─── POURQUOI TROIS, ET NON UNE ──────────────────────────────────────────
+ *
+ * Une seule vignette ne fait pas de rangée. La rangée des preuves REPLIE
+ * (`flex-wrap`) quand elle déborde, et c'est au téléphone que ce repli compte :
+ * trois vignettes de 80 px et leurs écarts font 256 px, plus large que la place
+ * qui reste dans la carte à 320 px. Avec une seule photo, ce repli n'était
+ * jamais rendu, donc jamais mesuré — le même trou que celui qu'on vient de
+ * refermer, d'un cran plus loin.
+ *
+ * TROIS ZONES DISTINCTES DU MÊME MUR, et les fenêtres NE SE CHEVAUCHENT PAS
+ * (vérifié par intersection de rectangles, voir `fixtures/PROVENANCE.md`). Ce
+ * sont trois endroits différents du même défaut — ce qu'un constat produit
+ * réellement, où l'on photographie la même réserve sous plusieurs cadrages. Ce
+ * qui aurait été un mensonge, c'est de les répartir sur des réserves
+ * différentes : elles restent toutes trois sur celle qu'elles documentent.
  *
  * `confirmedAt` porte la date du constat lui-même : c'est l'horloge du serveur
  * qui la pose en vrai, et la démonstration ne montre pas autre chose que ce que
  * le produit fait.
  */
-const PREUVE_PEINTURE: Photo = {
-  id: 'demo-photo-peinture-ecaillee',
-  contentType: 'image/jpeg',
-  confirmedAt: { year: 2024, month: 5, day: 15 },
-}
+const LE_JOUR_DU_CONSTAT = { year: 2024, month: 5, day: 15 }
+
+const PREUVES_PEINTURE: Photo[] = [
+  { id: 'demo-photo-peinture-1', contentType: 'image/jpeg', confirmedAt: LE_JOUR_DU_CONSTAT },
+  { id: 'demo-photo-peinture-2', contentType: 'image/jpeg', confirmedAt: LE_JOUR_DU_CONSTAT },
+  { id: 'demo-photo-peinture-3', contentType: 'image/jpeg', confirmedAt: LE_JOUR_DU_CONSTAT },
+]
 
 /**
  * OÙ LIRE UNE PHOTO DE DÉMONSTRATION — et pourquoi ce n'est pas un champ.
@@ -674,7 +694,9 @@ const PREUVE_PEINTURE: Photo = {
  * sûre de laisser un défaut d'affichage invisible jusqu'à la production.
  */
 export const PHOTOS_DEMO: Record<string, string> = {
-  [PREUVE_PEINTURE.id]: peintureEcaillee,
+  'demo-photo-peinture-1': peintureEcaillee1,
+  'demo-photo-peinture-2': peintureEcaillee2,
+  'demo-photo-peinture-3': peintureEcaillee3,
 }
 
 /**
@@ -700,7 +722,7 @@ export const INSPECTIONS: Inspection[] = [
        c'est la vérité d'un état des lieux : on ne photographie pas tout.
        L'autre attend une image en domaine public qui la documente
        honnêtement — voir `fixtures/PROVENANCE.md`. */
-    ['Séjour', 'Peinture écaillée derrière la porte', 'minor', undefined, [PREUVE_PEINTURE]],
+    ['Séjour', 'Peinture écaillée derrière la porte', 'minor', undefined, PREUVES_PEINTURE],
   ]),
   etatDesLieux('B4', 'exit', { year: 2026, month: 6, day: 22 }, 4, true, [
     ['Séjour', 'Parquet rayé sur deux lames', 'major', 35000],
