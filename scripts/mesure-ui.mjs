@@ -790,7 +790,7 @@ const TOLERES = {
  * n'aurait su ce qu'elle valait.
  *
  * IL EN RESTE NEUF, ET C'EST LA GARDE DU GARDE QUI A COMPTÉ. Les QUATRE défauts
- * VISIBLES sont réparés — barre basse dont les libellés se chevauchaient, carte
+ * visibles découverts au premier passage sont réparés — barre basse dont les libellés se chevauchaient, carte
  * d'alerte et carte de chantier dont la colonne de titre tombait à zéro, rangée
  * de constat dont la pastille recouvrait la date. Chaque réparation a fait
  * rougir la porte pour la bonne raison : « cette tolérance ne couvre plus
@@ -803,66 +803,110 @@ const TOLERES = {
  * D'ENTRÉES NE MESURE PAS LE NOMBRE DE DÉFAUTS, et il ne faut pas lire les neuf
  * restantes comme neuf choses à faire.
  *
- * LES NEUF QUI RESTENT sont des dépassements de quelques pixels dont je n'ai
- * PAS établi qu'ils se voient. Chacune le dit dans son motif.
+ * LES NEUF QUI RESTENT ONT ÉTÉ REGARDÉES, une par une, à leur point et à leur
+ * largeur. UNE SEULE franchit une frontière visible — le montant d'une tuile de
+ * KPI, qui sort de sa carte de 9 px à 700 px. Les huit autres restent dans leur
+ * carte, avec 3 à 185 px de marge, et aucune ne heurte un voisin.
+ *
+ * L'ŒIL S'EST TROMPÉ TROIS FOIS AVANT LA MESURE, et c'est pour cela que chaque
+ * motif porte désormais une DISTANCE et non un adjectif : sur une capture, un
+ * liseré de débogage marque la boîte et non la carte, et un texte qui déborde
+ * dans le rembourrage de son parent ressemble trait pour trait à un texte qui
+ * sort de la carte.
  */
 const DEBORDS_LOCAUX_TOLERES = {
-
   /*
-    ── NEUF QUE J'AI MESURÉS SANS LES REGARDER ───────────────────────────
-    Le chiffre est relevé ; je n'ai PAS établi que chacun se voie. Les dire
-    « inoffensifs » serait une affirmation gratuite, et les dire « défauts »
-    en serait une autre.
-
-    POUR LIRE LE MAXIMUM RÉEL D'UNE SIGNATURE TOLÉRÉE : abaisser son plafond à
-    1 et lancer `npm run mesure` — la porte l'imprime. C'est le seul moyen, et
-    il en faut un : quand une signature est PARTAGÉE entre deux écrans et qu'on
-    n'en répare qu'un, l'entrée survit avec un plafond devenu trop généreux.
-    Aucune garde ne le réclame ; c'est arrivé une fois, 121 px pour un défaut
-    qui n'en faisait plus que 81.
+    ── LE SEUL QUI FRANCHISSE UNE FRONTIÈRE ───────────────────────────────
   */
   'p.mt-2 flex items-baseline gap-1.5': {
     plafond: 30,
     motif:
-      'Montant d’une carte de synthèse. Un montant est insécable par construction — espaces ' +
-      'fines insécables entre les groupes — et ne peut donc pas se replier. Mesuré, pas regardé.',
+      'Montant d’une tuile de KPI (`StatCard`). LE SEUL DES NEUF QUI SORTE DE SA CARTE : à ' +
+      '700 px sur /demo/paiements, « 1 397 000 FCFA » demande 189 px dans 159 et franchit la ' +
+      'BORDURE de 9 px. Cause : `sm:grid-cols-3` pose trois colonnes dès 640 px, et un montant ' +
+      'en FCFA est insécable de bout en bout — l’espace avant la devise est une espace ' +
+      'insécable posée par `Intl.NumberFormat`, donc `whitespace-nowrap` n’y est pour rien. ' +
+      'Le levier est la grille (`sm:grid-cols-2` puis trois colonnes plus tard), pas la tuile ; ' +
+      'c’est un lot, et il n’est pas fait.',
   },
-  'div.mt-10 flex flex-col gap-3 sm:flex-row sm:items-center': {
-    plafond: 27,
-    motif:
-      'Les deux commandes de l’accroche de la vitrine, à 1024 px seulement — la largeur où ' +
-      'la rangée vient de passer en ligne. Mesuré, pas regardé.',
-  },
+
+  /*
+    ── HUIT QUI RESTENT DANS LEUR CARTE ────────────────────────────────────
+
+    REGARDÉS, et le critère n'est plus l'œil : pour chacun on mesure le bord
+    droit du contenu, celui de la CARTE qui l'entoure, et le bord gauche du
+    VOISIN le plus proche sur la même bande. Aucun ne franchit sa carte, aucun
+    n'en heurte un autre.
+
+    POURQUOI CE CRITÈRE PLUTÔT QU'UNE CAPTURE. Trois de ces huit avaient été
+    jugés « visibles » sur capture d'écran, à tort : le liseré de débogage
+    marque la BOÎTE, pas la carte, et un texte qui sort de sa boîte pour entrer
+    dans le rembourrage de son parent ne se distingue pas, à l'œil, d'un texte
+    qui sort de la carte. La mesure les sépare ; l'œil non.
+
+    QUATRE PORTENT LE MÊME CHIFFRE — trois pixels. Ce n'est pas une coïncidence :
+    le contenu mange exactement le rembourrage de sa carte et s'arrête sur la
+    bordure. C'est la marge la plus mince du lot, et le premier mot de plus la
+    franchira.
+
+    CE QUE CETTE TOLÉRANCE NE DIT PAS : que ces mises en page soient BONNES. Un
+    montant collé à la bordure de sa carte est laid ; il n'est pas coupé, et
+    c'est tout ce que cette règle sait juger.
+  */
   'p.numeric mt-2 text-title-l font-medium': {
     plafond: 18,
-    motif: 'Montant de la vitrine à 320 px. Insécable, comme tous les montants. Mesuré, pas regardé.',
+    motif:
+      '« 447 000 FCFA » sur la vitrine à 320 px : sort de sa boîte de 18 px, mange les 20 px ' +
+      'de rembourrage de la carte, s’arrête 3 PX avant la bordure. Rien n’est coupé ; le ' +
+      'montant est collé au bord.',
   },
   'dd.numeric text-body font-medium': {
     plafond: 14,
     motif:
-      'La commande « Consulter » logée dans un `<dd>`, espace du locataire. Mesuré, pas regardé.',
+      'La commande « Consulter » dans un `<dd>`, /demo/mon-espace à 320 px. 3 PX de marge ' +
+      'avant la bordure de la carte, aucun voisin sur la bande.',
   },
   'div.mt-3 flex flex-wrap items-center justify-between gap-2': {
     plafond: 14,
-    motif: 'Pied d’une quittance — « Payé le 3 août par Mobile Money » et son lien. Mesuré, pas regardé.',
+    motif:
+      'Pied d’une quittance — « Payé le 3 août par Mobile Money » et son lien, à 360 px. ' +
+      '3 PX de marge avant la bordure de la carte.',
   },
   'li.flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 first:pt-0 last:pb-0': {
     plafond: 14,
-    motif: 'Ligne de demande de document, écran des locataires. Mesuré, pas regardé.',
-  },
-  'p.numeric mt-2 text-kpi leading-none font-medium': {
-    plafond: 10,
-    motif: 'Montant en chiffre de tête sur la vitrine à 320 px. Mesuré, pas regardé.',
+    motif:
+      'Ligne de demande de document, /demo/locataires à 320 px. 3 PX de marge avant la ' +
+      'bordure de la carte.',
   },
   'div.flex flex-wrap items-center justify-end gap-2': {
     plafond: 8,
-    motif: '« Mot de passe oublié ? » au-dessus du champ, écran de connexion. Mesuré, pas regardé.',
+    motif:
+      '« Mot de passe oublié ? » au-dessus du champ, écran de connexion à 320 px. 12 px de ' +
+      'marge avant le bord. Ce qui se voit, si l’on cherche : le lien dépasse de 8 px ' +
+      'l’alignement à droite des champs et du bouton. Un défaut d’alignement, pas de ' +
+      'débordement.',
+  },
+  'div.mt-10 flex flex-col gap-3 sm:flex-row sm:items-center': {
+    plafond: 27,
+    motif:
+      'Les deux commandes de l’accroche, vitrine à 1024 px — la largeur où la rangée vient de ' +
+      'passer en ligne. Le second bouton sort de sa RANGÉE de 34 px et entre dans la ' +
+      'gouttière ; la carte d’illustration commence 30 px plus loin. Mesuré parce qu’une ' +
+      'capture donnait à croire le contraire.',
+  },
+  'p.numeric mt-2 text-kpi leading-none font-medium': {
+    plafond: 10,
+    motif:
+      '« 950 000 FCFA » en chiffre de tête sur la vitrine à 320 px : 7 px hors de sa boîte, ' +
+      'et 89 PX de marge avant le bord de la carte. Invisible.',
   },
   'span.block text-body': {
     plafond: 3,
     motif:
-      '« Contrat de bail signé » sur /demo/documents à 320 px, en français seulement. Trois ' +
-      'pixels : c’est la plus petite chose que cette règle sache voir. Mesuré, pas regardé.',
+      '« Contrat de bail signé » sur /demo/documents à 320 px, en français seulement. 3 px ' +
+      'hors de sa boîte, 185 PX avant le bord de la carte, et le voisin — « Aucun document ' +
+      'déposé » — commence 9 px plus loin. C’est la plus petite chose que cette règle sache ' +
+      'voir, et elle ne se voit pas.',
   },
 }
 
