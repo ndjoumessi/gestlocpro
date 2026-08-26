@@ -112,6 +112,9 @@ const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
  *   40,6 s  21 %   cibles et noms · navigation et attente   506
  *   14,2 s   7 %   surfaces · navigation et attente          10
  *    6,6 s   3 %   colonnes d'entrée                          2
+ *
+ * Depuis, deux leviers tirés — colonnes d'entrée et contraste — ramènent la
+ * porte de 194 s à 149, sans qu'aucune mesure change de valeur.
  *    …
  *
  * ET LE DÉCOMPTE A DÉJÀ SERVI. « Colonnes d'entrée » est tombé de 6,6 s à 2,3 :
@@ -130,13 +133,18 @@ const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
  * trop cher » n'a donc pas lieu d'être : AUCUNE ne coûte cher, et en ajouter
  * une ne se voit pas. Ce qui coûte, c'est de charger une page.
  *
- * LE POSTE LE PLUS GROS EST AUSSI LE PLUS SUSPECT. La passe de contraste paie
- * 78 s pour 184 appels — 0,42 s l'un — quand la mise en page paie 41 s pour
- * 552 — 0,074 s l'un. L'écart n'est pas dans la mesure, il est dans le NOMBRE
- * DE CHARGEMENTS : la passe de contraste recharge la page à chaque thème, donc
- * 92 navigations complètes contre 46 pour la mise en page, sur deux fois moins
- * de largeurs. C'est le seul levier sérieux de cette porte, et il n'est pas
- * tiré ici — le noter est déjà autre chose que le supposer.
+ * LE POSTE LE PLUS GROS ÉTAIT AUSSI LE PLUS SUSPECT, ET IL A CÉDÉ. La passe de
+ * contraste payait 78 s pour 184 appels — 0,42 s l'un — quand la mise en page
+ * paie 41 s pour 552 — 0,074 s l'un. L'écart n'était pas dans la mesure mais
+ * dans le NOMBRE DE CHARGEMENTS : elle rechargeait chaque écran une fois PAR
+ * THÈME. Le thème se bascule désormais à chaud, animations gelées — voir cette
+ * passe. 78,4 s → 38,8, 184 appels → 92, et la porte entière de 189 s à 149.
+ * 14 936 textes audités avant, 14 936 après : la mesure est intacte.
+ *
+ * LES DEUX POSTES QUI RESTENT — mise en page et cibles, 41 et 41 s — ne se
+ * réduiront pas de la même façon : eux ne rechargent déjà qu'une fois par
+ * écran, et leurs 552 et 506 appels sont des REDIMENSIONNEMENTS. Le prix y est
+ * celui d'`attendre` sur onze largeurs, pas celui d'un aller-retour réseau.
  *
  * DEUX COMPTEURS POUR LA MÊME CHOSE : la sonde de débordement local est mesurée
  * ici ET par ses compteurs propres, qui la décomposent en parcours du DOM et
@@ -2566,27 +2574,67 @@ try {
     Ce qu'elles PARTAGENT est ce qui coûte cher, et c'est déjà mutualisé : un
     seul `vite build`, un seul serveur, un seul navigateur.
   */
+  /*
+    ─── LE THÈME SE BASCULE À CHAUD, IL NE SE RECHARGE PLUS ────────────────
+
+    Cette passe portait DEUX contextes par langue, un par thème, et rechargeait
+    donc chaque écran deux fois : 92 navigations complètes. Le chronomètre l'a
+    désignée premier poste de la porte — 78 s, 40 % — et l'écart avec la passe
+    de mise en page disait où : 0,42 s par appel contre 0,074, pour deux fois
+    moins de largeurs. Ce n'était pas la mesure qui coûtait, c'était le
+    chargement.
+
+    UN SEUL CONTEXTE PAR LANGUE, et `emulateMedia` bascule
+    `prefers-color-scheme` sur la page DÉJÀ CHARGÉE. C'est légitime parce que le
+    thème de ce produit est du CSS PUR : `ThemeProvider` écrit lui-même qu'`auto`
+    retire l'attribut et « laisse `prefers-color-scheme` décider », « sans qu'on
+    ait à écouter quoi que ce soit ». Un contexte neuf n'a aucune préférence
+    stockée : les deux méthodes partent du même état.
+
+    ── LE GEL N'EST PAS UN DÉTAIL, C'EST LA CONDITION ──────────────────────
+
+    Premier essai SANS geler les animations : 13 points sur 24 rendaient un
+    relevé DIFFÉRENT, et pas un peu — l'audit inventait des fautes qui n'existent
+    pas, encre claire sur fond clair, encre sombre sur surface sombre. Les
+    couleurs de ce produit se transitionnent en 150 ms : juste après la bascule
+    la page est dans un état MIXTE, le fond déjà changé et le texte pas encore.
+    Une passe deux fois plus rapide qui aurait rapporté vingt fautes imaginaires
+    par écran — le pire échange possible.
+
+    Avec `FIGER_LES_ANIMATIONS` — la feuille que la passe des surfaces injecte
+    déjà, pour la même raison — les 24 points redeviennent STRICTEMENT identiques
+    à ceux du contexte par thème, et l'échantillon tombe de 11,8 s à 6,0.
+
+    LE STYLE SE REPOSE APRÈS CHAQUE NAVIGATION : une feuille injectée meurt avec
+    son document. Le redimensionnement, lui, la garde.
+  */
   for (const langue of LANGUES) {
-    for (const theme of THEMES) {
-      const contexte = await navigateur.newContext({
-        viewport: { width: LARGEURS_CONTRASTE[0], height: 900 },
-        locale: langue,
-        colorScheme: theme,
-      })
-      const page = await contexte.newPage()
-      for (const adresse of adresses) {
-        const depart = Date.now()
-        process.stdout.write(`   ${langue}  ${theme}  ${adresse} … `)
-        for (const largeur of LARGEURS_CONTRASTE) {
-          await chrono('contraste · navigation et attente', async () => {
-            await page.setViewportSize({ width: largeur, height: 900 })
-            // On recharge à la première largeur seulement : le reste est un
-            // redimensionnement, comme dans la passe de mise en page.
-            if (largeur === LARGEURS_CONTRASTE[0]) {
-              await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
-            }
+    const contexte = await navigateur.newContext({
+      viewport: { width: LARGEURS_CONTRASTE[0], height: 900 },
+      locale: langue,
+    })
+    const page = await contexte.newPage()
+    for (const adresse of adresses) {
+      const depart = Date.now()
+      process.stdout.write(`   ${langue}  contraste  ${adresse} … `)
+      for (const largeur of LARGEURS_CONTRASTE) {
+        await chrono('contraste · navigation et attente', async () => {
+          await page.setViewportSize({ width: largeur, height: 900 })
+          // On recharge à la première largeur seulement : le reste est un
+          // redimensionnement, comme dans la passe de mise en page.
+          if (largeur === LARGEURS_CONTRASTE[0]) {
+            await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
             await attendre(page, adresse)
-          })
+            await page.addStyleTag({ content: FIGER_LES_ANIMATIONS })
+            return
+          }
+          await attendre(page, adresse)
+        })
+
+        for (const theme of THEMES) {
+          await chrono('contraste · bascule de thème', () =>
+            page.emulateMedia({ colorScheme: theme }),
+          )
 
           if (adresse === '/' && largeur === LARGEURS_CONTRASTE[0]) {
             fondsParTheme.set(
@@ -2612,10 +2660,10 @@ try {
             if (!contrastes.has(cle)) contrastes.set(cle, { ...item, ou: `${adresse} ${largeur}px ${langue} ${theme}` })
           }
         }
-        process.stdout.write(`${((Date.now() - depart) / 1000).toFixed(1)}s\n`)
       }
-      await contexte.close()
+      process.stdout.write(`${((Date.now() - depart) / 1000).toFixed(1)}s\n`)
     }
+    await contexte.close()
   }
 
 
