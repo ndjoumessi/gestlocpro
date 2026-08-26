@@ -222,6 +222,20 @@ interface PortfolioContextValue {
     onProgres: (cle: string, avance: Partial<PhotoLocale>) => void,
   ) => Promise<{ echecs: number; nonConfirmees: number }>
   /**
+   * Demande l'adresse de lecture d'une photo, ou `null`.
+   *
+   * `null` couvre DEUX cas que l'écran traite pareil, et c'est délibéré : le
+   * jeu de démonstration, qui n'a pas de dépôt d'objets, et le refus du serveur.
+   * L'un comme l'autre veut dire « il n'y a rien à afficher ici » — et le
+   * refus, côté serveur, est un 404 précisément pour ne pas distinguer « pas le
+   * droit » de « n'existe pas ».
+   *
+   * ELLE N'EST PAS MISE EN CACHE. L'adresse périme en quelques minutes ; la
+   * retenir la rendrait morte au second affichage, ce qui est pire qu'un appel
+   * de plus. Le composant qui l'affiche la demande à son montage.
+   */
+  lirePhoto: (photoId: string) => Promise<string | null>
+  /**
    * Ouvre un signalement, et rend ce que le SERVEUR en a fait.
    *
    * `Promise<boolean>` et non `void` : les quatre écrans qui l'appellent
@@ -1167,6 +1181,29 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [parkId],
   )
 
+  /**
+   * L'ADRESSE D'UNE PHOTO, demandée au moment d'afficher.
+   *
+   * `signalerEchec` n'est PAS appelé : une vignette qui ne se charge pas n'est
+   * pas un geste que l'utilisateur vient de faire, et poser un toast rouge par
+   * photo manquante ferait clignoter l'écran pour une lecture qu'il n'a pas
+   * demandée. Le composant dit lui-même, à sa place, qu'il n'a pas la preuve.
+   */
+  const lirePhoto = useCallback(
+    async (photoId: string): Promise<string | null> => {
+      // Sans parc serveur, il n'y a pas de dépôt d'objets : le jeu local ne
+      // porte aucune photo, et prétendre en chercher une serait un appel à vide.
+      if (!parkId) return null
+      try {
+        const { lecture } = await api.readPhoto<{ lecture: { url: string } }>(parkId, photoId)
+        return lecture.url
+      } catch {
+        return null
+      }
+    },
+    [parkId],
+  )
+
   const settleDeposit = useCallback(
     (unitId: string, withheld: number, reason?: string) => {
       const local = () =>
@@ -1504,6 +1541,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       unapproveWork,
       addInspection,
       envoyerPhotos,
+      lirePhoto,
       addWork,
       unsettleDeposit,
       settleDeposit,
@@ -1589,6 +1627,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       unapproveWork,
       addInspection,
       envoyerPhotos,
+      lirePhoto,
       addWork,
       unsettleDeposit,
       settleDeposit,

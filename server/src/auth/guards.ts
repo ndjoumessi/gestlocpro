@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express'
-import type { ParkRole } from '../generated/prisma/client.js'
+import type { ParkRole, Prisma } from '../generated/prisma/client.js'
 import { prisma } from '../db.js'
 import { lireSession } from './session.js'
 
@@ -122,4 +122,38 @@ export async function unitesVisibles(
     },
     select: { id: true },
   })
+}
+
+/**
+ * Les états des lieux que le porteur de la session peut LIRE, dans ce parc.
+ *
+ * Rendue en CLAUSE DE REQUÊTE, pour la raison que `unitesVisibles` donne déjà :
+ * un filtre appliqué après lecture suppose d'avoir tout lu, et il suffit d'un
+ * chemin oublié pour que le voisin sorte.
+ *
+ * ─── POURQUOI LE BAIL, ET NON L'UNITÉ ────────────────────────────────────
+ *
+ * `unitesVisibles` borne à l'UNITÉ, et retient le logement d'un locataire même
+ * après son départ — c'est voulu : ses quittances lui restent dues. Mais une
+ * unité a une HISTOIRE. L'état des lieux de sortie du locataire précédent porte
+ * la description et le coût de ce que LUI a abîmé ; celui d'entrée du suivant
+ * décrit un logement que le partant n'occupe plus. Borner à l'unité montrerait
+ * donc à chaque occupant les affaires de tous les autres — et depuis le lot des
+ * photos, leurs photographies.
+ *
+ * `leaseId: null` reste visible, et ce n'est pas un trou. Une entrée précède
+ * souvent la signature — « on constate avant de remettre les clés », dit la
+ * route de création —, et sur SON logement c'est la sienne. Un état des lieux
+ * sans bail ne se rattache à personne : le rendre invisible à tous priverait le
+ * locataire du seul document qui atteste l'état où il a reçu les clés.
+ */
+export function etatsDesLieuxVisibles(
+  compteId: string,
+  role: ParkRole,
+): Prisma.InspectionWhereInput {
+  // Le propriétaire et le gestionnaire lisent tout le parc : l'appartenance,
+  // vérifiée en amont, est la seule frontière qui les concerne.
+  if (role !== 'tenant') return {}
+
+  return { OR: [{ lease: { tenant: { userId: compteId } } }, { leaseId: null }] }
 }

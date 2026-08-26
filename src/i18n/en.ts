@@ -787,6 +787,9 @@ export const en: Dictionary = {
       asGood: 'Good condition',
       major: 'damaged',
       proposed: 'Proposed deduction from the deposit',
+      proofs: 'Evidence',
+      proofAlt: 'Photo {index} of {total} — {finding}',
+      proofMissing: 'Photo unavailable',
     },
 
     works: {

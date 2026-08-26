@@ -96,9 +96,10 @@ const API_EXEMPTES = registre('méthode d’API', [
 /**
  * Routes serveur dont le client est un lot à venir — NOMMÉES UNE PAR UNE.
  *
- * Les quatre routes photo sont écrites, testées et cloisonnées ; leur écran est
- * le lot du navigateur, qui attend une mesure de compression sur de vraies
- * photos. C'est une avance ASSUMÉE du serveur sur le client, pas un oubli.
+ * IL N'EN RESTE QU'UNE des quatre routes photo. Trois ont trouvé leur client :
+ * la réservation et la confirmation au lot de la rangée de photos, la LECTURE
+ * au lot des preuves du locataire. C'était bien une avance assumée du serveur
+ * sur le client, et elle se résorbe route par route.
  *
  * AUCUN MOTIF À JOKERS. Chaque route est une chaîne complète, comparée par
  * égalité à la forme étoilée produite par `etoiler`. Les `*` qu'on y lit sont
@@ -112,23 +113,26 @@ const API_EXEMPTES = registre('méthode d’API', [
  * exemptées ensemble par une seule entrée. Aucune des quatre n'est dans ce cas
  * aujourd'hui — les vérifier reste à la charge de qui ajoute une entrée.
  */
-const MOTIF_LECTURE_LOCATAIRE = 'la lecture d’une photo est le lot du locataire, qui n’est pas écrit'
 const MOTIF_SUPPRESSION = 'aucun écran ne supprime encore une photo confirmée ; le retrait avant envoi est local'
 
 /**
- * DEUX EXEMPTIONS SONT PARTIES, ET C'EST LA GARDE QUI L'A DIT.
+ * TROIS EXEMPTIONS SONT PARTIES, ET C'EST LA GARDE QUI L'A DIT — À CHAQUE FOIS.
  *
- * `POST …/findings/*​/photos` et `POST …/photos/*​/confirmation` avaient leur
- * client écrit au lot de la rangée de photos ; leurs exemptions ont aussitôt
- * cessé de supprimer une plainte, la péremption les a nommées, elles sont
- * retirées. C'est exactement le cycle pour lequel ce registre a été posé.
+ * `POST …/findings/*​/photos` et `POST …/photos/*​/confirmation` au lot de la
+ * rangée de photos ; `GET …/photos/*​` à celui des preuves du locataire, qui
+ * lui a donné son premier appelant. Chaque fois, l'exemption a cessé de
+ * supprimer une plainte, la péremption l'a nommée, elle est retirée. C'est
+ * exactement le cycle pour lequel ce registre a été posé — et il ne s'est
+ * jamais déclenché autrement que par la porte.
  *
- * Les deux qui restent portent chacune SON motif, et non plus un motif commun
- * devenu faux : « bloqué sur une mesure » ne décrivait plus rien une fois la
- * mesure faite.
+ * LA DERNIÈRE porte SON motif, et non plus un motif commun devenu faux :
+ * « bloqué sur une mesure » ne décrivait plus rien une fois la mesure faite, et
+ * « le lot du locataire » ne décrit plus rien maintenant qu'il est écrit. Ce
+ * qui reste est vrai : le locataire REGARDE, il ne supprime pas — lui ouvrir la
+ * suppression lui donnerait d'effacer la pièce qui l'accuse — et aucun écran de
+ * bailleur ne retire encore une photo confirmée.
  */
 const ROUTES_EXEMPTES = registre('route', [
-  ['GET /api/parks/*/photos/*', MOTIF_LECTURE_LOCATAIRE],
   ['DELETE /api/parks/*/photos/*', MOTIF_SUPPRESSION],
 ])
 

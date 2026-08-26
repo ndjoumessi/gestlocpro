@@ -590,6 +590,20 @@ export const api = {
    */
   confirmPhoto: <T>(parkId: string, photoId: string) =>
     requete<T>(`/parks/${parkId}/photos/${photoId}/confirmation`, { method: 'POST' }),
+
+  /**
+   * Demande l'adresse de lecture d'une photo — signée, et courte.
+   *
+   * Elle N'EST PAS dans le portefeuille, et ne peut pas y être : le portefeuille
+   * se lit une fois puis vit en mémoire des heures, l'adresse périme en quelques
+   * minutes. Une adresse scellée dans la vue serait morte avant d'être affichée.
+   *
+   * Un appel PAR PHOTO, donc, et c'est le prix du seau non public. Le
+   * portefeuille borne déjà ce que le locataire peut demander : le serveur rend
+   * 404 sur tout ce qui sort de son bail, y compris sur son propre logement.
+   */
+  readPhoto: <T>(parkId: string, photoId: string) =>
+    requete<T>(`/parks/${parkId}/photos/${photoId}`),
 }
 
 /**

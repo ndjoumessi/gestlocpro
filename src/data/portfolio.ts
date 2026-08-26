@@ -595,6 +595,33 @@ export interface Finding {
   description: string
   severity: 'minor' | 'major'
   costMinor: number | null
+  /**
+   * Les preuves attachées à cette réserve, et seulement celles que le serveur a
+   * CONSTATÉES — une réservation sans octets n'en fait pas partie.
+   *
+   * Vide tant que le serveur ne les rend pas : le jeu de démonstration n'en
+   * porte aucune, faute d'un dépôt d'objets sous la main. L'écran distingue
+   * donc « aucune photo » de « pas de photo servie » exactement comme il ne le
+   * peut pas — voir la note du lot.
+   */
+  photos?: Photo[]
+}
+
+/**
+ * Une photo de réserve, vue du client.
+ *
+ * NI LA CLÉ DE STOCKAGE, NI L'ADRESSE. La clé ne sort d'aucune réponse ;
+ * l'adresse est signée et périssable, et se demande photo par photo au moment
+ * d'afficher.
+ *
+ * `confirmedAt` est la date que le SERVEUR a constatée, et c'est toute la
+ * valeur de cette ligne : une date d'appareil se change dans les réglages de
+ * l'appareil, celle-ci vient d'une horloge que le déposant ne tient pas.
+ */
+export interface Photo {
+  id: string
+  contentType: string
+  confirmedAt: DateParts
 }
 
 /**

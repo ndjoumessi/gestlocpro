@@ -1025,6 +1025,20 @@ export const fr = {
       asGood: 'Bon état',
       major: 'dégradé',
       proposed: 'Retenue proposée sur la caution',
+      /**
+       * LES PREUVES, DU CÔTÉ DE QUI LES REÇOIT.
+       *
+       * Le mot est choisi : ce ne sont pas « les photos », ce sont les pièces
+       * qu'on oppose. Le locataire à qui l'on retient une somme lit ici ce qui
+       * la fonde, et le bailleur relit ce qu'il pourra produire.
+       *
+       * Le texte de remplacement d'une vignette porte le CONSTAT et non « photo
+       * de réserve » : un lecteur d'écran qui annonce trois fois « photo » ne
+       * dit rien de plus qu'un silence.
+       */
+      proofs: 'Preuves',
+      proofAlt: 'Photo {index} sur {total} — {finding}',
+      proofMissing: 'Photo indisponible',
       emptyTitle: 'Aucun état des lieux enregistré',
       emptyBody:
         'Un état des lieux d’entrée se fait à la remise des clés, celui de sortie à leur restitution : c’est leur comparaison qui justifie ce qu’on retient sur la caution.',

@@ -6147,6 +6147,8 @@ describe('les photos de réserve', () => {
   let parkId: string
   let proprio: string
   let findingId: string
+  /** L'unité qui porte l'état des lieux — les cas de portée en ouvrent d'autres. */
+  let unitId: string
   let racine: string
   let restaurerStockage: () => void
 
@@ -6179,8 +6181,10 @@ describe('les photos de réserve', () => {
       .set('Cookie', proprio)
       .send({ label: 'A1', type: 'T3', surfaceSqm: 78, baseRentMinor: 145000 })
 
+    unitId = logement.body.unit.id
+
     const etat = await request(serveur)
-      .post(`/api/parks/${parkId}/units/${logement.body.unit.id}/inspections`)
+      .post(`/api/parks/${parkId}/units/${unitId}/inspections`)
       .set('Cookie', proprio)
       .send({
         kind: 'entry',
@@ -6518,6 +6522,283 @@ describe('les photos de réserve', () => {
       await prisma.inspection.delete({ where: { id: reserve.inspectionId } })
 
       expect(await prisma.inspectionPhoto.count({ where: { id: photoId } })).toBe(0)
+    })
+  })
+
+  /**
+   * ─── LA PORTÉE DU LOCATAIRE ──────────────────────────────────────────────
+   *
+   * C'est la personne dont on arbitre la caution, et la photo est la pièce qui
+   * sert à la retenir : lui fermer la preuve était l'inverse de ce que ce
+   * produit dit faire. Ces cas disent où s'arrête l'ouverture.
+   *
+   * LE CAS NEUF EST LE DEUXIÈME. Le cloisonnement précédent bornait à l'UNITÉ,
+   * et une unité a une histoire : l'état des lieux de sortie du locataire
+   * d'avant porte les photographies de SON occupation. Un locataire qui verrait
+   * tout l'historique de son logement verrait les affaires de quelqu'un
+   * d'autre.
+   */
+  describe('la portée du locataire', () => {
+    /** Le locataire dont le bail porte l'état des lieux du montage. */
+    let locataire: string
+    let sonBail: string
+    /** Un voisin du MÊME parc, sur une AUTRE unité. */
+    let voisin: string
+    /** La réserve de l'état des lieux rattaché au bail SUIVANT, même logement. */
+    let reserveDuSuivant: string
+
+    /** Monte la photo d'une réserve de bout en bout — toujours par le bailleur. */
+    async function photoDe(reserveId: string, taille = 128): Promise<string> {
+      const res = await request(serveur)
+        .post(`/api/parks/${parkId}/findings/${reserveId}/photos`)
+        .set('Cookie', proprio)
+        .send({ contentType: 'image/jpeg', sizeBytes: taille })
+      expect(res.status, JSON.stringify(res.body)).toBe(201)
+      expect((await deposer(res.body.envoi.url, image(taille))).status).toBe(204)
+      const ok = await confirmer(res.body.photo.id)
+      expect(ok.status, JSON.stringify(ok.body)).toBe(200)
+      return res.body.photo.id as string
+    }
+
+    /** Rattache un compte au parc comme locataire, et rend son identifiant. */
+    async function compteLocataire(email: string): Promise<{ cookie: string; id: string }> {
+      const { cookie } = await inscrire(email)
+      const compte = await prisma.userAccount.findUniqueOrThrow({
+        where: { email },
+        select: { id: true },
+      })
+      await prisma.membership.create({ data: { userId: compte.id, parkId, role: 'tenant' } })
+      return { cookie, id: compte.id }
+    }
+
+    beforeEach(async () => {
+      const lui = await compteLocataire('locataire-photos@example.com')
+      locataire = lui.cookie
+      const saFiche = await prisma.tenant.create({
+        data: { parkId, fullName: 'Awa Bello', userId: lui.id },
+      })
+      const sien = await prisma.lease.create({
+        data: {
+          unitId,
+          tenantId: saFiche.id,
+          startsOn: new Date('2024-01-01T00:00:00.000Z'),
+          rentMinor: 145000,
+          status: 'active',
+        },
+      })
+      sonBail = sien.id
+      // L'état des lieux du montage devient LE SIEN : c'est celui qui lui a été
+      // opposé à l'entrée.
+      const saReserve = await prisma.inspectionFinding.findUniqueOrThrow({
+        where: { id: findingId },
+        select: { inspectionId: true },
+      })
+      await prisma.inspection.update({
+        where: { id: saReserve.inspectionId },
+        data: { leaseId: sonBail },
+      })
+
+      // Le bail SUIVANT, sur la MÊME unité. L'index unique partiel n'autorise
+      // qu'un bail en cours par unité : on clôt le sien avant d'installer le
+      // successeur. Son départ ne lui retire rien — `unitesVisibles` retient le
+      // logement, et c'est justement pourquoi la portée par bail est nécessaire.
+      await prisma.lease.update({
+        where: { id: sonBail },
+        data: { status: 'ended', endsOn: new Date() },
+      })
+      const successeur = await prisma.tenant.create({
+        data: { parkId, fullName: 'Locataire suivant' },
+      })
+      const bailSuivant = await prisma.lease.create({
+        data: {
+          unitId,
+          tenantId: successeur.id,
+          startsOn: new Date(),
+          rentMinor: 150000,
+          status: 'active',
+        },
+      })
+      const etatDuSuivant = await prisma.inspection.create({
+        data: {
+          unitId,
+          leaseId: bailSuivant.id,
+          kind: 'entry',
+          performedOn: new Date(),
+          rooms: 3,
+          findings: {
+            create: [
+              {
+                room: 'Chambre du successeur',
+                description: 'Trace d’humidité au plafond.',
+                severity: 'major',
+              },
+            ],
+          },
+        },
+        select: { findings: { select: { id: true } } },
+      })
+      reserveDuSuivant = etatDuSuivant.findings[0]!.id
+
+      // UN VOISIN, dans le même parc, sur une autre unité : membre légitime, et
+      // pourtant étranger à ce logement.
+      const elle = await compteLocataire('voisine-photos@example.com')
+      voisin = elle.cookie
+      const immeuble = await prisma.building.findFirstOrThrow({
+        where: { parkId },
+        select: { id: true },
+      })
+      const autreUnite = await prisma.unit.create({
+        data: {
+          buildingId: immeuble.id,
+          label: 'B2',
+          type: 'T2',
+          surfaceSqm: 52,
+          baseRentMinor: 90000,
+        },
+      })
+      const saFicheAElle = await prisma.tenant.create({
+        data: { parkId, fullName: 'Mireille Fotso', userId: elle.id },
+      })
+      await prisma.lease.create({
+        data: {
+          unitId: autreUnite.id,
+          tenantId: saFicheAElle.id,
+          startsOn: new Date(),
+          rentMinor: 90000,
+          status: 'active',
+        },
+      })
+    })
+
+    it('sert au locataire la photo de l’état des lieux de SON bail', async () => {
+      const photoId = await photoDe(findingId)
+
+      const vue = await request(serveur)
+        .get(`/api/parks/${parkId}/photos/${photoId}`)
+        .set('Cookie', locataire)
+
+      expect(vue.status, JSON.stringify(vue.body)).toBe(200)
+      // L'adresse n'est pas décorative : elle rend les octets.
+      const octets = await request(serveur).get(vue.body.lecture.url)
+      expect(octets.status).toBe(200)
+      expect(octets.headers['content-type']).toContain('image/jpeg')
+    })
+
+    /**
+     * LE CAS NEUF : SA PROPRE UNITÉ, UN AUTRE BAIL.
+     *
+     * L'ancien cloisonnement — par unité — laissait passer celui-ci, et c'est le
+     * seul endroit où les deux règles rendent un verdict différent.
+     */
+    it('rend 404 sur la photo d’un AUTRE bail du MÊME logement', async () => {
+      const photoId = await photoDe(reserveDuSuivant)
+
+      const vue = await request(serveur)
+        .get(`/api/parks/${parkId}/photos/${photoId}`)
+        .set('Cookie', locataire)
+
+      // 404 et non 403 : un 403 confirmerait que cette photo existe, et il
+      // suffirait d'énumérer pour savoir ce que le voisin a abîmé.
+      expect(vue.status).toBe(404)
+      expect(vue.body.error).toBe('not_found')
+      expect(vue.body.lecture).toBeUndefined()
+    })
+
+    it('rend 404 à un locataire voisin du même parc', async () => {
+      const photoId = await photoDe(findingId)
+
+      const vue = await request(serveur)
+        .get(`/api/parks/${parkId}/photos/${photoId}`)
+        .set('Cookie', voisin)
+
+      expect(vue.status).toBe(404)
+    })
+
+    /**
+     * IL REGARDE, IL NE DÉPOSE PAS.
+     *
+     * Un locataire qui pourrait déposer fabriquerait la pièce qu'on lui oppose ;
+     * un locataire qui pourrait supprimer effacerait celle qui l'accuse. 403 et
+     * non 404 : l'existence de la photo lui est déjà acquise par la lecture, il
+     * n'y a plus rien à cacher — seulement un droit à refuser.
+     */
+    it('n’ouvre aucun chemin d’écriture au locataire', async () => {
+      const photoId = await photoDe(findingId)
+
+      const reservation = await request(serveur)
+        .post(`/api/parks/${parkId}/findings/${findingId}/photos`)
+        .set('Cookie', locataire)
+        .send({ contentType: 'image/jpeg', sizeBytes: 64 })
+      const confirmation = await request(serveur)
+        .post(`/api/parks/${parkId}/photos/${photoId}/confirmation`)
+        .set('Cookie', locataire)
+        .send({})
+      const suppression = await request(serveur)
+        .delete(`/api/parks/${parkId}/photos/${photoId}`)
+        .set('Cookie', locataire)
+
+      expect(reservation.status).toBe(403)
+      expect(confirmation.status).toBe(403)
+      expect(suppression.status).toBe(403)
+      // La photo est intacte, et aucune ligne nouvelle n'a été posée.
+      expect(await prisma.inspectionPhoto.count()).toBe(1)
+      expect(await prisma.inspectionPhoto.count({ where: { id: photoId } })).toBe(1)
+    })
+
+    /**
+     * LE PORTEFEUILLE ANNONCE LES PHOTOS, et la même frontière s'y applique.
+     *
+     * Sans elle, la lecture serait gardée et l'INVENTAIRE ne le serait pas : le
+     * locataire n'obtiendrait pas les octets du successeur, mais il saurait
+     * combien de photographies documentent la chambre de quelqu'un d'autre.
+     */
+    it('n’annonce au locataire que les photos de son propre bail', async () => {
+      const sienne = await photoDe(findingId)
+      const celleDuSuivant = await photoDe(reserveDuSuivant)
+
+      const vue = await request(serveur)
+        .get(`/api/parks/${parkId}/portfolio`)
+        .set('Cookie', locataire)
+
+      interface PhotoApi { id: string; contentType: string; confirmedAt: string | null }
+      const photos: PhotoApi[] = vue.body.inspections.flatMap(
+        (i: { findings: { photos: PhotoApi[] }[] }) => i.findings.flatMap((f) => f.photos),
+      )
+
+      expect(photos.map((p) => p.id)).toContain(sienne)
+      expect(photos.map((p) => p.id)).not.toContain(celleDuSuivant)
+      // La date VIENT DU SERVEUR, et c'est elle qu'on oppose : sans elle,
+      // l'écran ne pourrait dater la preuve que par l'appareil qui l'a prise.
+      expect(photos.every((p) => p.confirmedAt !== null)).toBe(true)
+      expect(JSON.stringify(vue.body.inspections)).not.toContain('Chambre du successeur')
+    })
+
+    /**
+     * UNE RÉSERVATION SANS OCTETS N'EST PAS UNE PHOTO.
+     *
+     * L'annoncer poserait dans l'écran une vignette qui ne se chargerait jamais,
+     * et le locataire lirait « preuve manquante » là où il n'y a jamais eu de
+     * preuve. La route de lecture la refuse déjà ; l'inventaire doit dire la
+     * même chose.
+     */
+    it('n’annonce pas une photo réservée dont les octets ne sont jamais arrivés', async () => {
+      const reservee = await request(serveur)
+        .post(`/api/parks/${parkId}/findings/${findingId}/photos`)
+        .set('Cookie', proprio)
+        .send({ contentType: 'image/jpeg', sizeBytes: 64 })
+      expect(reservee.status).toBe(201)
+
+      const vue = await request(serveur)
+        .get(`/api/parks/${parkId}/portfolio`)
+        .set('Cookie', proprio)
+      const ids: string[] = vue.body.inspections.flatMap(
+        (i: { findings: { photos: { id: string }[] }[] }) =>
+          i.findings.flatMap((f) => f.photos.map((p) => p.id)),
+      )
+
+      expect(ids).not.toContain(reservee.body.photo.id)
+      // La ligne existe pourtant : c'est bien la CONFIRMATION qui trie.
+      expect(await prisma.inspectionPhoto.count({ where: { id: reservee.body.photo.id } })).toBe(1)
     })
   })
 

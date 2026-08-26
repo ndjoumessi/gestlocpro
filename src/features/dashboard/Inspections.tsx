@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRole } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/primitives/Button'
@@ -13,7 +13,7 @@ import { TenantScopeNote } from './TenantDashboard'
 import { useT } from '@/i18n/I18nProvider'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useDates } from '@/lib/useDates'
-import type { Finding, Inspection } from '@/data/portfolio'
+import type { Finding, Inspection, Photo } from '@/data/portfolio'
 
 import { usePortfolio } from '@/data/PortfolioProvider'
 
@@ -199,11 +199,20 @@ export function Inspections() {
               </div>
 
               <div className="flex flex-col gap-2.5">
-                {chronological.map((inspection) => (
+                {chronological.map((inspection) => {
+                  /* Les réserves qui portent une preuve, et elles seules : une
+                     rubrique « Preuves » ouverte au-dessus d'un vide annoncerait
+                     des photographies qui n'existent pas — exactement ce que
+                     l'écran des documents refuse déjà de faire. */
+                  const avecPreuves = (inspection.findings ?? []).filter(
+                    (r) => (r.photos ?? []).length > 0,
+                  )
+                  return (
                   <div
                     key={`${inspection.kind}-${inspection.date.year}-${inspection.date.month}`}
-                    className="flex items-center gap-3 rounded-md border border-divider bg-surface-sunken px-3.5 py-3"
+                    className="rounded-md border border-divider bg-surface-sunken"
                   >
+                  <div className="flex items-center gap-3 px-3.5 py-3">
                     <span
                       className={`flex size-9 shrink-0 items-center justify-center rounded-md ${
                         inspection.kind === 'entry'
@@ -243,7 +252,10 @@ export function Inspections() {
                       )}
                     </div>
                   </div>
-                ))}
+                  {avecPreuves.length > 0 && <Preuves reserves={avecPreuves} />}
+                  </div>
+                  )
+                })}
               </div>
 
               {/*
@@ -317,6 +329,145 @@ function InspectionsSkeleton() {
         ))}
       </SkeletonRegion>
     </>
+  )
+}
+
+/**
+ * ─── LES PREUVES D'UN ÉTAT DES LIEUX ────────────────────────────────────────
+ *
+ * LE LOCATAIRE LES VOIT, et c'est la raison d'être de ce bloc.
+ *
+ * La photo d'une réserve est la pièce qui sert à RETENIR sur une caution. Elle
+ * existait depuis le lot du dépôt, déposée par le bailleur, servie au seul
+ * bailleur : la personne dont on arbitre la caution ne pouvait pas regarder ce
+ * qu'on lui opposait. Le serveur borne désormais la lecture au BAIL — pas au
+ * logement : une unité a une histoire, et les photographies de l'occupant
+ * d'avant ne regardent pas celui d'aujourd'hui.
+ *
+ * SOUS LE CONSTAT, ET NON DANS LE TABLEAU DE COMPARAISON. Le tableau ne se
+ * dresse que si l'entrée ET la sortie existent ; un locataire en cours de bail
+ * n'a que son entrée, et c'est précisément lui qui a besoin de voir dans quel
+ * état on a constaté son logement. Les preuves suivent donc le CONSTAT, qui,
+ * lui, existe toujours.
+ *
+ * IL REGARDE, IL NE FAIT RIEN D'AUTRE. Aucune vignette n'est un bouton : pas de
+ * plein écran, pas de zoom, pas de suppression. AUCUNE cible tactile n'entre
+ * donc ici, et c'est cette absence qui est gardée — par un cas d'écran, pas par
+ * `mesure-ui`.
+ *
+ * MESURÉ, ET LE VERDICT EST GÊNANT. Un bouton de 32 px posé dans ce bloc laisse
+ * `npm run mesure` VERT : « 10 482 cibles sondées, aucune sous 44 px ». La sonde
+ * balaie `/demo`, et le jeu de démonstration ne porte AUCUNE photo — il n'a pas
+ * de dépôt d'objets sous la main. Ce bloc n'existe donc sur aucun des 506 points
+ * mesurés, et rien de ce qui s'y écrit n'est audité : ni contraste, ni cible, ni
+ * nom accessible. La même mutation fait rougir `preuvesDuLocataire.test.tsx`,
+ * qui exige zéro commande dans ce bloc. C'est la garde qui tient ; la porte du
+ * navigateur, elle, est aveugle ici, et le dire vaut mieux qu'un vert supposé.
+ */
+function Preuves({ reserves }: { reserves: Finding[] }) {
+  const t = useT()
+
+  return (
+    <div className="border-t border-divider px-3.5 py-3">
+      <p className="eyebrow mb-2 text-muted">{t('app.inspections.proofs')}</p>
+      <ul className="flex flex-col gap-3">
+        {reserves.map((reserve) => {
+          const photos = reserve.photos ?? []
+          return (
+            <li key={reserve.id}>
+              {/* LA RÉSERVE EST NOMMÉE AU-DESSUS DE SES PHOTOS.
+                  Une vignette seule ne dit pas de quoi elle est la preuve, et
+                  c'est la seule chose qui compte quand on conteste : « pièce,
+                  constat » puis l'image qui l'atteste. Le tableau de
+                  comparaison porte déjà ces mots, mais il ne se dresse pas
+                  toujours — voir l'en-tête de ce bloc. */}
+              <p className="text-caps text-muted">
+                {reserve.room} · {reserve.description}
+              </p>
+              <ul className="mt-1.5 flex flex-wrap gap-2">
+                {photos.map((photo, index) => (
+                  <li key={photo.id}>
+                    <Preuve
+                      photo={photo}
+                      legende={t('app.inspections.proofAlt', {
+                        index: index + 1,
+                        total: photos.length,
+                        finding: reserve.description,
+                      })}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
+/**
+ * Une preuve, et l'adresse qu'il faut demander pour la voir.
+ *
+ * LE SEAU N'EST JAMAIS PUBLIC : il n'existe pas d'adresse stable vers une
+ * photo. Celle-ci est signée, périme en quelques minutes, et se demande donc au
+ * MONTAGE plutôt que d'être scellée dans le portefeuille — qui, lui, vit en
+ * mémoire des heures et rendrait l'adresse morte avant d'être affichée.
+ *
+ * TROIS ÉTATS, et le troisième est le seul qui mérite d'être écrit. Tant que
+ * l'adresse est en vol, un squelette de la taille exacte de la vignette : sans
+ * lui, la rangée se remplirait par à-coups et pousserait le texte sous le
+ * doigt. Quand l'adresse ne vient pas — refus du serveur, jeu de démonstration
+ * sans dépôt, octets disparus —, on le DIT. Une case vide se lirait comme une
+ * photo qu'on a oublié d'afficher, là où l'écran doit être le plus clair.
+ *
+ * `onError` compte autant que le refus : l'adresse peut être délivrée et les
+ * octets manquer quand même — c'est exactement ce que fait le dépôt local quand
+ * l'objet a été effacé sous une ligne survivante.
+ */
+function Preuve({ photo, legende }: { photo: Photo; legende: string }) {
+  const t = useT()
+  const { lirePhoto } = usePortfolio()
+  const [url, setUrl] = useState<string | null>(null)
+  const [manquante, setManquante] = useState(false)
+
+  useEffect(() => {
+    // Le drapeau de vie : un composant démonté pendant que l'adresse est en vol
+    // poserait un état sur un arbre qui n'existe plus.
+    let vivant = true
+    setUrl(null)
+    setManquante(false)
+    void lirePhoto(photo.id).then((adresse) => {
+      if (!vivant) return
+      if (adresse) setUrl(adresse)
+      else setManquante(true)
+    })
+    return () => {
+      vivant = false
+    }
+  }, [lirePhoto, photo.id])
+
+  if (manquante) {
+    return (
+      <span className="flex size-20 items-center justify-center rounded-md border border-dashed border-border px-1 text-center text-caps text-muted">
+        {t('app.inspections.proofMissing')}
+      </span>
+    )
+  }
+
+  if (!url) return <Skeleton radius="md" className="size-20" />
+
+  return (
+    <img
+      src={url}
+      alt={legende}
+      /* La rangée s'affiche entière : ne charger que ce qui entre dans la
+         fenêtre évite de payer les octets d'une preuve que personne ne
+         déroulera. */
+      loading="lazy"
+      onError={() => setManquante(true)}
+      className="size-20 rounded-md border border-divider object-cover"
+    />
   )
 }
 

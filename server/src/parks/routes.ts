@@ -5,7 +5,13 @@ import { prisma } from '../db.js'
 import { creerCode, expirationInvitation, normaliserCode } from './invitations.js'
 import { empreinteJeton } from '../auth/token.js'
 import { laMessagerie } from '../messagerie/messagerie.js'
-import { exigerAppartenance, exigerCompte, exigerRole, unitesVisibles } from '../auth/guards.js'
+import {
+  etatsDesLieuxVisibles,
+  exigerAppartenance,
+  exigerCompte,
+  exigerRole,
+  unitesVisibles,
+} from '../auth/guards.js'
 import { leStockage } from '../stockage/stockage.js'
 import { PLAFOND_PAR_OBJET_OCTETS } from '../stockage/contrat.js'
 import { stockageLocalRouter } from '../stockage/routes.js'
@@ -530,22 +536,13 @@ parksRouter.get(
           ...(filtreUnite ? { unitId: filtreUnite } : {}),
           /**
            * Le locataire ne lit QUE les états des lieux de son bail — ou ceux
-           * qui n'en portent aucun.
-           *
-           * `unitesVisibles` retient son logement même après son départ, et le
-           * détail que cette route se met à rendre n'est pas anodin : les
-           * réserves de SORTIE du prédécesseur portent une description et un
-           * coût imputé, celles d'ENTRÉE du successeur décrivent l'état d'un
-           * logement qu'il n'occupe plus. Ni les unes ni les autres ne le
-           * regardent.
-           *
-           * `leaseId: null` reste visible : une entrée précède souvent la
-           * signature — « on constate avant de remettre les clés », dit la
-           * route de création — et sur SON logement c'est la sienne.
+           * qui n'en portent aucun. La règle et son POURQUOI vivent dans
+           * `etatsDesLieuxVisibles` ; elle est écrite là parce que la lecture
+           * d'une PHOTO l'exige mot pour mot, et deux rédactions de la même
+           * frontière finiraient par diverger — la seconde n'étant découverte
+           * que le jour où l'une des deux laisse passer.
            */
-          ...(role === 'tenant'
-            ? { OR: [{ lease: { tenant: { userId: req.compteId! } } }, { leaseId: null }] }
-            : {}),
+          ...etatsDesLieuxVisibles(req.compteId!, role),
         },
         orderBy: { performedOn: 'asc' },
         select: {
@@ -582,6 +579,28 @@ parksRouter.get(
               description: true,
               severity: true,
               costMinor: true,
+              /**
+               * LES PHOTOS, et seulement celles que le serveur a CONSTATÉES.
+               *
+               * `confirmedAt: null` désigne une réservation dont les octets ne
+               * sont jamais arrivés, ou dont personne n'a regardé la nature. La
+               * route de lecture les refuse déjà une par une ; les annoncer ici
+               * poserait dans l'écran une vignette qui ne se chargerait jamais,
+               * et le locataire lirait « preuve manquante » là où il n'y a
+               * jamais eu de preuve.
+               *
+               * NI LA CLÉ, NI L'ADRESSE. La clé de stockage ne sort d'aucune
+               * réponse — c'est la règle de `champsPhoto`. Et l'adresse de
+               * lecture est signée et périssable : la sceller dans le
+               * portefeuille, qui se lit une fois puis vit en mémoire des
+               * heures, la rendrait morte avant d'être cliquée. Le client
+               * demande l'adresse photo par photo, au moment d'afficher.
+               */
+              photos: {
+                where: { confirmedAt: { not: null } },
+                orderBy: { createdAt: 'asc' },
+                select: { id: true, contentType: true, confirmedAt: true },
+              },
             },
           },
         },
@@ -1062,6 +1081,18 @@ parksRouter.get(
           description: r.description,
           severity: r.severity,
           costMinor: r.costMinor,
+          /**
+           * De quoi AFFICHER, pas de quoi lire : l'identifiant sert à demander
+           * l'adresse signée, `confirmedAt` est la date que le serveur a
+           * lui-même constatée — la seule chose qui donne à cette photo sa
+           * valeur en litige, et la seule qu'on puisse opposer à un appareil
+           * dont on règle l'horloge.
+           */
+          photos: r.photos.map((p) => ({
+            id: p.id,
+            contentType: p.contentType,
+            confirmedAt: p.confirmedAt,
+          })),
         })),
         signedAt: i.signedAt,
       })),
@@ -3944,11 +3975,16 @@ parksRouter.post(
  * TOUTES derrière `exigerAppartenance`, qui rend 404 et non 403 : un 403
  * confirmerait l'existence d'un identifiant qu'on pourrait alors énumérer.
  *
- * Et toutes réservées au propriétaire et au gestionnaire. Le locataire est
- * membre du parc : `exigerAppartenance` seule le laisserait lire les photos
- * des états des lieux de TOUS ses voisins. Lui ouvrir les siennes demande la
- * règle de `unitesVisibles`, donc un écran pour l'employer — c'est le lot du
- * navigateur. Le silence ici est délibéré, et il est fermé, pas ouvert.
+ * TROIS sur quatre réservées au propriétaire et au gestionnaire — réserver,
+ * confirmer, supprimer. Ce sont les trois qui ÉCRIVENT, et un locataire qui
+ * écrirait pourrait fabriquer la pièce qu'on lui oppose, ou effacer celle qui
+ * l'accuse.
+ *
+ * La quatrième — LIRE — lui est ouverte, et bornée à son BAIL par
+ * `etatsDesLieuxVisibles`. `exigerAppartenance` seule ne suffirait pas : le
+ * locataire est membre du parc, et le parc contient les états des lieux de tous
+ * ses voisins comme ceux de son propre prédécesseur. C'est la portée qui
+ * tranche, pas l'appartenance.
  */
 
 const schemaReservationPhoto = z.object({
@@ -3980,17 +4016,34 @@ const champsPhoto = {
 } as const
 
 /**
- * Retrouve une photo DANS le parc, ou rien.
+ * Retrouve une photo DANS le parc et DANS la portée du demandeur, ou rien.
  *
  * Le cloisonnement est une clause de requête et non un filtre appliqué après
  * coup : la jointure `finding → inspection → unit → building → parkId` fait
  * qu'une photo d'un autre parc n'est jamais ramenée. Filtrer en mémoire
  * supposerait de l'avoir d'abord lue, et il suffirait d'un oubli sur un chemin
  * pour la laisser sortir.
+ *
+ * `portee` est la MÊME clause que celle du portefeuille — voir
+ * `etatsDesLieuxVisibles`. Sans elle, la seule frontière serait le parc, et le
+ * parc est ce que TOUS les membres partagent : un locataire lirait alors les
+ * photos de l'état des lieux de son prédécesseur sur son propre logement, et
+ * celles de ses voisins.
+ *
+ * Rien ne sort quand la portée exclut : la fonction rend `null`, l'appelant
+ * rend 404. « Cette photo ne vous regarde pas » et « cette photo n'existe pas »
+ * se ressemblent vu de l'extérieur, faute de quoi l'énumération cartographie.
  */
-async function photoDuParc(photoId: string, parkId: string) {
+async function photoDuParc(
+  photoId: string,
+  parkId: string,
+  portee: Prisma.InspectionWhereInput,
+) {
   return prisma.inspectionPhoto.findFirst({
-    where: { id: photoId, finding: { inspection: { unit: { building: { parkId } } } } },
+    where: {
+      id: photoId,
+      finding: { inspection: { unit: { building: { parkId } }, ...portee } },
+    },
     select: { ...champsPhoto, storageKey: true },
   })
 }
@@ -4092,7 +4145,10 @@ parksRouter.post(
     const { parkId } = req.adhesion!
     const photoId = z.string().uuid().parse(req.params.photoId)
 
-    const photo = await photoDuParc(photoId, parkId)
+    // Aucune portée : la route est déjà réservée aux deux rôles de gestion, qui
+    // lisent tout le parc. Passer une clause vide le DIT, là où un paramètre
+    // omis laisserait croire à un oubli.
+    const photo = await photoDuParc(photoId, parkId, {})
     if (!photo) {
       res.status(404).json({ error: 'not_found' })
       return
@@ -4164,16 +4220,33 @@ parksRouter.post(
  * Une photo non confirmée n'a pas d'adresse. Ses octets n'ont jamais été
  * regardés par le serveur : les servir reviendrait à publier ce que le client
  * a bien voulu déposer, sous un type qu'il a bien voulu déclarer.
+ *
+ * ─── LA SEULE ROUTE PHOTO OUVERTE AU LOCATAIRE, ET C'EST UNE LECTURE ──────
+ *
+ * `exigerRole('owner', 'manager')` a été RETIRÉ D'ICI, et de nulle part
+ * ailleurs. Le commentaire d'en-tête de cette section disait le silence
+ * « délibéré, fermé et non ouvert », faute d'un écran pour employer la règle de
+ * portée ; l'écran existe, la règle est écrite, le silence n'a plus lieu
+ * d'être. La personne dont on arbitre la caution est précisément celle à qui
+ * l'on oppose ces photographies : les lui fermer était l'inverse de ce que ce
+ * produit dit faire.
+ *
+ * IL REGARDE, IL NE DÉPOSE PAS. Réserver, confirmer et supprimer gardent leur
+ * `exigerRole` — un locataire qui pourrait déposer pourrait fabriquer la pièce
+ * qu'on lui oppose, et un locataire qui pourrait supprimer effacerait celle qui
+ * l'accuse.
  */
 parksRouter.get(
   '/:parkId/photos/:photoId',
   exigerAppartenance,
-  exigerRole('owner', 'manager'),
   async (req: Request, res: Response) => {
-    const { parkId } = req.adhesion!
+    const { parkId, role } = req.adhesion!
     const photoId = z.string().uuid().parse(req.params.photoId)
 
-    const photo = await photoDuParc(photoId, parkId)
+    // La portée du LOCATAIRE : son bail, et les états des lieux qui n'en
+    // portent aucun. Hors de là, `photoDuParc` ne ramène rien et la réponse est
+    // un 404 — le même que pour une photo inexistante.
+    const photo = await photoDuParc(photoId, parkId, etatsDesLieuxVisibles(req.compteId!, role))
     if (!photo || !photo.confirmedAt) {
       res.status(404).json({ error: 'not_found' })
       return
@@ -4210,7 +4283,9 @@ parksRouter.delete(
     const { parkId } = req.adhesion!
     const photoId = z.string().uuid().parse(req.params.photoId)
 
-    const photo = await photoDuParc(photoId, parkId)
+    // Aucune portée, même raison qu'à la confirmation : la route ne répond
+    // qu'aux deux rôles de gestion.
+    const photo = await photoDuParc(photoId, parkId, {})
     if (!photo) {
       res.status(404).json({ error: 'not_found' })
       return
