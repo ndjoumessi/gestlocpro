@@ -1600,7 +1600,14 @@ function BottomLink({ item }: { item: NavItem }) {
         trait d'union plutôt que de déborder. Un mot cassé se lit mal ; deux
         libellés superposés ne se lisent pas du tout.
       */}
-      <span className="w-full text-caps leading-tight tracking-normal hyphens-auto text-balance break-words">
+      <span
+        /* Marqueur de mesure : `mesure-ui` vérifie qu'aucun de ces libellés ne
+           laisse un ORPHELIN de moins de trois caractères en fin de coupure.
+           Sans lui, la porte ne saurait pas les distinguer du reste du texte —
+           un débordement se voit, une mauvaise coupure non. */
+        data-mesure="libelle-barre-basse"
+        className="w-full text-caps leading-tight tracking-normal hyphens-auto text-balance break-words"
+      >
         {label}
       </span>
     </NavLink>

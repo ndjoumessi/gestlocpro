@@ -126,9 +126,33 @@ export const en: Dictionary = {
   },
 
   nav: {
-    dashboard: 'Dashboard',
+    /**
+     * `\u00AD` — LE TRAIT D'UNION CONDITIONNEL, ET IL N'EST PAS DÉCORATIF.
+     *
+     * Invisible tant que le mot tient sur sa ligne ; il devient un trait
+     * d'union à l'endroit exact où le navigateur doit couper. C'est ce que
+     * `hyphens: auto` fait tout seul — QUAND le moteur a un dictionnaire pour
+     * la langue. Mesuré sur ce Chromium : il en a un pour le FRANÇAIS
+     * (« Signa- / lements ») et pas pour l'ANGLAIS.
+     *
+     * Sans lui, la barre basse retombe sur `break-words` et coupe n'importe où :
+     * « Payment / s », « Dashboar / d ». La cellule fait 51 px à 320 px et
+     * « Dashboard » en réclame 62 — la coupure est inévitable, seul son
+     * ENDROIT se choisit. `mesure-ui` refuse désormais un orphelin de moins de
+     * trois caractères, et c'est cette règle qui a nommé les deux mots.
+     *
+     * SEULS LES DEUX MOTS QUI CASSENT le portent. « Reports » (44 px) et
+     * « Portfolio » (48) tiennent dans la cellule ; leur en poser un serait une
+     * décoration invisible que le lecteur suivant croirait nécessaire.
+     *
+     * C'est un fait de LANGUE, pas de mise en page : « Dash-board » et
+     * « Pay-ments » sont les points de césure de ces mots, quelle que soit la
+     * largeur qui les impose. La barre latérale porte les mêmes chaînes et n'y
+     * coupe jamais — le caractère y reste invisible.
+     */
+    dashboard: 'Dash\u00ADboard',
     portfolio: 'Portfolio',
-    payments: 'Payments',
+    payments: 'Pay\u00ADments',
     meters: 'Meter readings',
     inspections: 'Inspections',
     works: 'Works',

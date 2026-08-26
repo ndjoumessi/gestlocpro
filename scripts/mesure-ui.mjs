@@ -1830,6 +1830,92 @@ const MESURER_DEBORD_LOCAL = () => {
 }
 
 /**
+ * ─── L'ORPHELIN D'UNE COUPURE ────────────────────────────────────────────────
+ *
+ * CE QUE LES DEUX AUTRES RÈGLES DE TEXTE NE VOIENT PAS. Le débordement de page
+ * et le débordement local répondent à « le contenu sort-il de sa boîte ». Un
+ * libellé qui se coupe MAL ne sort de rien : il tient, et il est illisible.
+ * « Payment / s » occupe exactement la même boîte que « Pay- / ments ».
+ *
+ * D'OÙ ELLE VIENT. La barre basse porte cinq cellules de 51 px à 320 px, et
+ * aucun libellé de ce métier n'y tient sur une ligne. Le repli coupe entre les
+ * MOTS ; un libellé d'un seul mot n'offre rien à couper, et le mot sortait de sa
+ * cellule pour se peindre sur la voisine. `hyphens-auto` + `break-words` a
+ * corrigé le CHEVAUCHEMENT — mais mesuré ensuite : ce Chromium a un dictionnaire
+ * de césure FRANÇAIS et pas d'ANGLAIS. « Signalements » se coupe proprement en
+ * « Signa- / lements » ; « Payments » retombe sur `break-words` et donne
+ * « Payment / s », « Dashboard » donne « Dashboa / rd ».
+ *
+ * TROIS CARACTÈRES, ET LE SEUIL EST UN JUGEMENT. En dessous, le fragment ne se
+ * lit plus comme la fin d'un mot mais comme une coquille — un « s » seul sous
+ * « Payment » ressemble à une faute de frappe, pas à une césure. Au-dessus, on
+ * interdirait des coupures que le français produit légitimement : « Parc im- /
+ * mobilier » laisse deux caractères en FIN de première ligne, ce que cette règle
+ * ne regarde pas — elle ne juge que la DERNIÈRE ligne, celle qui reste seule.
+ * Je n'ai pas de mesure qui fonde le trois ; j'ai deux cas à deux caractères qui
+ * se lisent mal et un à cinq qui se lit bien.
+ *
+ * ELLE NE COUVRE QUE LES LIBELLÉS MARQUÉS. `[data-mesure="libelle-barre-basse"]`
+ * et rien d'autre : généraliser à tout le texte de l'application demanderait un
+ * registre de tolérances entier, et le défaut connu vit dans cinq cellules.
+ */
+const MESURER_COUPURES = () => {
+  const defauts = []
+  let mesures = 0
+  for (const el of document.querySelectorAll('[data-mesure="libelle-barre-basse"]')) {
+    const noeud = el.firstChild
+    if (!noeud || noeud.nodeType !== 3) continue
+    const texte = noeud.textContent
+    if (!texte.trim()) continue
+    mesures += 1
+
+    /*
+      LE DÉCOUPAGE SE LIT DANS LES RECTANGLES, caractère par caractère.
+
+      `getClientRects` d'un `Range` d'UN caractère rend la ligne où il tombe ;
+      on regroupe par ordonnée. C'est la seule façon de savoir où le navigateur
+      a coupé — le DOM, lui, ne porte qu'une chaîne d'un seul tenant.
+    */
+    const plage = document.createRange()
+    const lignes = []
+    for (let i = 0; i < texte.length; i++) {
+      plage.setStart(noeud, i)
+      plage.setEnd(noeud, i + 1)
+      /*
+        LE DERNIER RECTANGLE, PAS LE PREMIER, et c'est une correction mesurée.
+
+        À un point de coupure, la plage d'UN caractère rend DEUX rectangles :
+        un de largeur nulle en fin de ligne précédente, puis celui du glyphe sur
+        la ligne suivante. Prendre `[0]` attribuait donc le premier caractère de
+        chaque nouvelle ligne à la ligne d'AVANT — la découpe imprimée valait
+        « Dash­b / oard » là où l'écran montre « Dash- / board », et l'orphelin
+        était compté un caractère trop court. Le verdict tenait par chance ; il
+        aurait basculé sur un orphelin de trois.
+      */
+      const rectangles = plage.getClientRects()
+      const boite = rectangles[rectangles.length - 1]
+      if (!boite) continue
+      const haut = Math.round(boite.top)
+      const derniere = lignes[lignes.length - 1]
+      if (derniere && derniere.haut === haut) derniere.texte += texte[i]
+      else lignes.push({ haut, texte: texte[i] })
+    }
+    if (lignes.length < 2) continue
+
+    // Seule la DERNIÈRE ligne compte : c'est le fragment qui reste seul sous le
+    // reste du mot. Les espaces ne comptent pas — « s » et « s » se lisent pareil.
+    const orphelin = lignes[lignes.length - 1].texte.trim()
+    if (orphelin.length >= 3) continue
+    defauts.push({
+      texte,
+      orphelin,
+      decoupe: lignes.map((l) => l.texte.trim()).join(' / '),
+    })
+  }
+  return { mesures, defauts }
+}
+
+/**
  * LA PAGE A-T-ELLE RENDU ? — la question qu'aucune règle de ce fichier ne posait.
  *
  * POURQUOI ELLE MANQUAIT, ET POURQUOI CE N'EST PAS `if (!resultat) continue`.
@@ -2270,6 +2356,9 @@ const tolerancesUtilisees = new Set()
  */
 const debordsLocaux = []
 const tolerancesLocalesUtilisees = new Set()
+/** Coupures de libellé laissant un orphelin — voir `MESURER_COUPURES`. */
+const coupuresOrphelines = new Map()
+let libellesMesures = 0
 /**
  * Le PIRE débordement RÉELLEMENT vu pour chaque signature, tolérée ou non.
  *
@@ -2578,6 +2667,19 @@ try {
           les mettait en dernier parmi les passes : ce sont elles qui touchent
           à l'état de la page, et rien ne doit mesurer après.
         */
+        const coupures = await chrono('sonde · coupures de libellé', () =>
+          page.evaluate(MESURER_COUPURES),
+        )
+        libellesMesures += coupures.mesures
+        for (const d of coupures.defauts) {
+          // Dédupliqué sur le LIBELLÉ : le même mot mal coupé sur vingt écrans
+          // est un seul correctif, et vingt lignes cacheraient le second.
+          const cle = `${d.texte}|${langue}`
+          if (!coupuresOrphelines.has(cle)) {
+            coupuresOrphelines.set(cle, { ...d, langue, ou: `${adresse} ${largeur}px` })
+          }
+        }
+
         const releve = await chrono('audit · cibles', () =>
           page.evaluate(MESURER_CIBLES, { plancher: PLANCHER_CIBLE, rayon: RAYON_SONDAGE }),
         )
@@ -3224,6 +3326,44 @@ if (debordsLocaux.length > 0) {
   console.error(
     '   Si le débordement est assumé, inscrivez la SIGNATURE dans `DEBORDS_LOCAUX_TOLERES`\n' +
       '   avec son plafond mesuré et son motif. Une tolérance sans plafond est un blanc-seing.',
+  )
+  process.exit(1)
+}
+
+if (coupuresOrphelines.size > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${coupuresOrphelines.size} libellé(s) se coupent en laissant un orphelin` +
+      ` de moins de 3 caractères, sur ${libellesMesures} mesurés.\n` +
+      "   Un fragment d'un ou deux caractères sous le reste du mot se lit comme une coquille,\n" +
+      '   pas comme une césure. Rien ne déborde : aucune autre règle ne peut le voir.\n',
+  )
+  for (const d of coupuresOrphelines.values()) {
+    console.error(
+      `   « ${d.decoupe} »  →  orphelin « ${d.orphelin} »\n` +
+        `      ${d.texte} · ${d.langue} · ${d.ou}\n`,
+    )
+  }
+  console.error(
+    "   Remède : un TRAIT D'UNION CONDITIONNEL (`\\u00AD`) dans le dictionnaire de la langue\n" +
+      "   concernée, au point de césure correct — c'est exactement ce que le dictionnaire du\n" +
+      '   navigateur pose tout seul là où il en a un.',
+  )
+  process.exit(1)
+}
+
+/*
+  GARDE DU GARDE — LA SONDE DES COUPURES DOIT AVOIR TROUVÉ DES LIBELLÉS.
+
+  Le marqueur retiré, renommé, ou la barre basse qui cesse d'être rendue sous
+  `lg` : la sonde rendrait zéro défaut sur zéro libellé, et le rapport dirait
+  « aucune coupure fautive » sans en avoir regardé une seule. C'est la panne que
+  ce fichier reproche déjà à `contrast-audit.js`, et elle vaut ici comme ailleurs.
+*/
+if (libellesMesures === 0) {
+  console.error(
+    "\n✗ mesure-ui : aucun libellé de barre basse mesuré.\n" +
+      "   Le marqueur `data-mesure=\"libelle-barre-basse\"` a-t-il disparu d'`AppShell` ?\n" +
+      '   Une sonde qui ne trouve rien ne prouve rien.',
   )
   process.exit(1)
 }
@@ -4067,6 +4207,7 @@ console.log(
   `\n✓ mesure-ui : ${adresses.length} écrans × ${LARGEURS.length} largeurs × ${LANGUES.length} langues, aucun débordement latéral ni en-tête replié.\n` +
     `  ${elementsSondes} éléments sondés pour le DÉBORDEMENT LOCAL — un contenu qui sort de sa boîte\n` +
     `  sans faire défiler la page — aucun hors des ${Object.keys(DEBORDS_LOCAUX_TOLERES).length} signatures tolérées et motivées.\n` +
+    `  ${libellesMesures} libellés de barre basse mesurés à la COUPURE, aucun orphelin sous 3 caractères.\n` +
     `  Elle coûte ${(tempsSonde / 1000).toFixed(1)} s sur ${appelsDeSonde} appels — ${(tempsSonde / appelsDeSonde).toFixed(1)} ms l'un —, ` +
     `dont ${(tempsDansLaPage / 1000).toFixed(1)} s de parcours du DOM et ${((tempsSonde - tempsDansLaPage) / 1000).toFixed(1)} s d'aller-retour.\n` +
     /*
