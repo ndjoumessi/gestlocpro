@@ -745,6 +745,23 @@ export const en: Dictionary = {
       severity: 'Severity',
       severityMinor: 'Minor',
       severityMajor: 'Damaged',
+      photoAdd: 'Add a photo to finding {rank}',
+      photoCount: '{done} / {max}',
+      photoFull: 'Eight photos per finding is the maximum held in memory. Remove one to add another.',
+      photoRemove: 'Remove photo {index} from finding {rank}',
+      photoAlt: 'Photo {index} of finding {rank}',
+      photoHeic:
+        'This photo is in HEIC format, which no browser can open. Your iPhone can save as JPEG: Settings → Camera → Formats → Most Compatible.',
+      photoUnreadable: 'This file is not an image the browser can open. Choose a JPEG or PNG photo.',
+      photoUploadFailed:
+        'Uploading {count} photos failed. The inspection is saved; its findings do not carry these photos yet. Try again without closing this window.',
+      photoUploadFailed_one:
+        'Uploading one photo failed. The inspection is saved; its finding does not carry this photo yet. Try again without closing this window.',
+      photoConfirmFailed:
+        '{count} photos uploaded but were not confirmed: they are not attached to the finding yet. Try again without closing this window — closing would lose them.',
+      photoConfirmFailed_one:
+        'One photo uploaded but was not confirmed: it is not attached to the finding yet. Try again without closing this window — closing would lose it.',
+      photoRetry: 'Retry photo upload',
       addFinding: 'Add a finding',
       removeFinding: 'Remove finding {rank}',
       title: 'Inspections',

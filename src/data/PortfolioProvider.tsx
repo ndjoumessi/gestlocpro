@@ -58,7 +58,8 @@ import {
   type MonthlyCollection,
   type Receipt,
 } from './portfolio'
-import { ApiError, api } from '@/api/client'
+import { ApiError, api, deposerLesOctets } from '@/api/client'
+import type { PhotoLocale } from '@/features/dashboard/PhotosDeReserve'
 
 /** Les deux façons dont le CHARGEMENT du parc peut échouer, et leurs gestes. */
 export type EchecDuParc = 'session' | 'technique'
@@ -127,6 +128,22 @@ function nouvelleFiche(
   }
 }
 
+/**
+ * Une réserve telle que le serveur vient de la créer.
+ *
+ * `description` en fait partie parce que l'appariement en dépend : sans elle,
+ * deux réserves d'une même pièce, de même gravité et de même coût seraient
+ * indiscernables, et il ne resterait que l'ordre du tableau — une garantie que
+ * Prisma ne donne pas.
+ */
+export interface ReserveCreee {
+  id: string
+  room: string
+  description: string
+  severity: 'minor' | 'major'
+  costMinor: number | null
+}
+
 interface PortfolioContextValue {
   units: Unit[]
   works: WorkOrder[]
@@ -169,6 +186,18 @@ interface PortfolioContextValue {
    * refus serveur, le bailleur lisait le succès PUIS le refus — deux phrases
    * contradictoires — et la saisie était déjà perdue.
    */
+  /**
+   * Enregistre un état des lieux et REND LES RÉSERVES CRÉÉES.
+   *
+   * Il rendait `boolean`, comme `addWork` — assez pour savoir s'il faut
+   * féliciter. Les photos ont changé la question : une réserve n'a
+   * d'identifiant qu'une fois créée, et l'écran tient des photos attachées à
+   * des LIGNES DE FORMULAIRE. Sans les réserves en retour, il ne peut apparier
+   * ni envoyer quoi que ce soit.
+   *
+   * `null` dit l'échec ; un tableau vide dit la démonstration, où rien n'est
+   * créé côté serveur et où il n'y a donc rien à apparier.
+   */
   addInspection: (
     unitId: string,
     etat: {
@@ -178,7 +207,20 @@ interface PortfolioContextValue {
       signedByName?: string
       findings: { room: string; description: string; severity: 'minor' | 'major'; costMinor?: number }[]
     },
-  ) => Promise<boolean>
+  ) => Promise<ReserveCreee[] | null>
+  /**
+   * Envoie les photos d'une réserve, et dit OÙ CHAQUE PHOTO S'EST ARRÊTÉE.
+   *
+   * Trois appels par photo — réserver, déposer, confirmer — et chaque jonction
+   * peut casser. La fonction ne rend donc pas un booléen : elle avance l'état
+   * de chaque photo par `onProgres`, pour qu'une reprise ne refasse que ce qui
+   * manque. Redéposer une photo déjà montée la paierait deux fois ; la
+   * réserver deux fois laisserait une ligne non confirmée de plus en base.
+   */
+  envoyerPhotos: (
+    envois: { findingId: string; photo: PhotoLocale }[],
+    onProgres: (cle: string, avance: Partial<PhotoLocale>) => void,
+  ) => Promise<{ echecs: number; nonConfirmees: number }>
   /**
    * Ouvre un signalement, et rend ce que le SERVEUR en a fait.
    *
@@ -1010,7 +1052,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           costMinor?: number
         }[]
       },
-    ): Promise<boolean> => {
+    ): Promise<ReserveCreee[] | null> => {
       const local = () =>
         setInspections((liste) => [
           {
@@ -1027,20 +1069,102 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         ])
       if (!parkId) {
         // Même raison qu'`addWork` : une démonstration qui rendrait `undefined`
-        // prendrait un chemin que rien n'éprouve.
+        // prendrait un chemin que rien n'éprouve. Le tableau est VIDE et non
+        // inventé : sans serveur, aucune réserve n'a d'identifiant, et en
+        // fabriquer un ferait croire à l'écran qu'il peut envoyer des photos.
         local()
-        return true
+        return []
       }
       try {
-        await api.addInspection(parkId, unitId, etat)
+        const reponse = await api.addInspection<{
+          inspection?: { findings?: ReserveCreee[] }
+        }>(parkId, unitId, etat)
         local()
-        return true
+        /**
+         * Un tableau vide plutôt qu'une exception si la réponse ne porte pas
+         * les réserves. L'état des lieux, lui, EST enregistré — le faire
+         * échouer ici mentirait dans l'autre sens. C'est l'écran qui doit
+         * alors dire que les photos ne sont pas parties, et il le fait :
+         * une photo qu'aucune réserve n'accueille est comptée comme un échec
+         * d'envoi, jamais passée sous silence.
+         */
+        return Array.isArray(reponse.inspection?.findings) ? reponse.inspection.findings : []
       } catch (erreur) {
         signalerEchec(erreur)
-        return false
+        return null
       }
     },
     [parkId, signalerEchec],
+  )
+
+  /**
+   * LA CHAÎNE DES PHOTOS, jonction par jonction.
+   *
+   * Chaque photo traverse trois appels, et l'état avance APRÈS chacun. Ce
+   * n'est pas de la comptabilité : c'est ce qui rend la reprise possible sans
+   * repayer. Une photo dont `deposee` est vrai a déjà coûté sa montée — la
+   * reprise ne refait que la confirmation.
+   *
+   * Les échecs sont COMPTÉS SÉPARÉMENT parce qu'ils ne se disent pas pareil.
+   * Une photo qui n'est pas montée n'existe nulle part et rien n'est perdu à
+   * fermer. Une photo montée mais non confirmée est PAYÉE et invisible : la
+   * fermer la perd pour de bon, et l'écran doit le dire autrement.
+   *
+   * `signalerEchec` n'est PAS appelé ici, et c'est délibéré : il pose un toast,
+   * qui s'efface. La modale garde ces comptes sous le champ, là où ils
+   * survivent au temps qu'il faut pour reprendre.
+   */
+  const envoyerPhotos = useCallback(
+    async (
+      envois: { findingId: string; photo: PhotoLocale }[],
+      onProgres: (cle: string, avance: Partial<PhotoLocale>) => void,
+    ): Promise<{ echecs: number; nonConfirmees: number }> => {
+      if (!parkId) return { echecs: 0, nonConfirmees: 0 }
+      let echecs = 0
+      let nonConfirmees = 0
+
+      for (const { findingId, photo } of envois) {
+        if (photo.confirmee) continue
+        // L'état d'ENTRÉE ne suffit pas : une photo montée à ce tour-ci a
+        // toujours `deposee: false` dans l'objet reçu, puisque l'avance vit
+        // dans le composant. Sans ce drapeau local, une confirmation qui casse
+        // juste après une montée réussie serait comptée comme un échec de
+        // montée — et le message dirait « rien n'est perdu » alors que l'objet
+        // est payé.
+        let deposee = photo.deposee
+        try {
+          let photoId = photo.photoId
+          if (!deposee) {
+            const { photo: ligne, envoi } = await api.reservePhoto<{
+              photo: { id: string }
+              envoi: { url: string; methode: string; entetes: Record<string, string> }
+            }>(parkId, findingId, {
+              contentType: 'image/jpeg',
+              // La taille du blob TRANSCODÉ : elle est scellée dans
+              // l'autorisation, et le dépôt refuse tout ce qui n'en fait pas
+              // exactement autant.
+              sizeBytes: photo.octets.size,
+            })
+            photoId = ligne.id
+            onProgres(photo.cle, { photoId })
+            await deposerLesOctets(envoi, photo.octets)
+            deposee = true
+            onProgres(photo.cle, { deposee: true })
+          }
+          if (!photoId) {
+            echecs += 1
+            continue
+          }
+          await api.confirmPhoto(parkId, photoId)
+          onProgres(photo.cle, { confirmee: true })
+        } catch {
+          if (deposee) nonConfirmees += 1
+          else echecs += 1
+        }
+      }
+      return { echecs, nonConfirmees }
+    },
+    [parkId],
   )
 
   const settleDeposit = useCallback(
@@ -1379,6 +1503,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       reopenWork,
       unapproveWork,
       addInspection,
+      envoyerPhotos,
       addWork,
       unsettleDeposit,
       settleDeposit,
@@ -1463,6 +1588,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       reopenWork,
       unapproveWork,
       addInspection,
+      envoyerPhotos,
       addWork,
       unsettleDeposit,
       settleDeposit,

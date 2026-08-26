@@ -562,4 +562,59 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(corps),
     }),
+
+  /**
+   * Réserve une place pour la photo d'une réserve, et rend de quoi l'envoyer.
+   *
+   * `sizeBytes` est la taille du blob TRANSCODÉ, pas celle du fichier choisi :
+   * elle est scellée dans l'autorisation d'envoi et le dépôt refuse tout ce qui
+   * n'en fait pas exactement autant. Annoncer la taille de l'original ferait
+   * refuser chaque envoi.
+   */
+  reservePhoto: <T>(
+    parkId: string,
+    findingId: string,
+    corps: { contentType: 'image/jpeg'; sizeBytes: number },
+  ) =>
+    requete<T>(`/parks/${parkId}/findings/${findingId}/photos`, {
+      method: 'POST',
+      body: JSON.stringify(corps),
+    }),
+
+  /**
+   * Dit que les octets sont montés. C'est ICI que le serveur les regarde.
+   *
+   * Sans cet appel, la ligne reste non confirmée et rien ne la sert — une photo
+   * déposée mais non confirmée est payée et invisible, ce que l'écran doit
+   * dire plutôt que de refermer sur un succès.
+   */
+  confirmPhoto: <T>(parkId: string, photoId: string) =>
+    requete<T>(`/parks/${parkId}/photos/${photoId}/confirmation`, { method: 'POST' }),
+}
+
+/**
+ * DÉPOSE LES OCTETS, hors de `requete` et c'est délibéré.
+ *
+ * `requete` préfixe `/api` et pose `Content-Type: application/json` ; ni l'un
+ * ni l'autre ne convient. L'adresse vient du serveur, déjà complète et signée,
+ * et le corps est une image — le jour où le dépôt sera R2, cette même adresse
+ * pointera vers un autre domaine et cette fonction n'aura pas à changer.
+ *
+ * `credentials: 'same-origin'` fait exactement ce qu'il faut des deux côtés :
+ * le cookie de session part vers le transport local, et NE PART PAS vers le
+ * seau distant, où il n'aurait rien à faire.
+ */
+export async function deposerLesOctets(
+  envoi: { url: string; methode: string; entetes: Record<string, string> },
+  octets: Blob,
+): Promise<void> {
+  const reponse = await fetch(envoi.url, {
+    method: envoi.methode,
+    headers: envoi.entetes,
+    body: octets,
+    credentials: 'same-origin',
+  })
+  if (!reponse.ok) {
+    throw new ApiError(reponse.status, 'upload_failed')
+  }
 }

@@ -958,6 +958,36 @@ export const fr = {
        */
       severityMinor: 'Léger',
       severityMajor: 'Dégradé',
+      /**
+       * LES PHOTOS D'UNE RÉSERVE.
+       *
+       * Le compte est ÉCRIT en permanence — « 2 / 8 » — et non seulement quand
+       * la limite est atteinte. Une borne qu'on ne découvre qu'en butant dedans
+       * est une borne silencieuse : celle-ci n'est pas mesurée sur un appareil
+       * réel, et la rendre visible est le moins qu'on doive à qui la subira.
+       */
+      photoAdd: 'Ajouter une photo à la réserve n° {rank}',
+      photoCount: '{done} / {max}',
+      photoFull: 'Huit photos par réserve, c’est le maximum tenu en mémoire. Retirez-en une pour en ajouter une autre.',
+      photoRemove: 'Retirer la photo {index} de la réserve n° {rank}',
+      photoAlt: 'Photo {index} de la réserve n° {rank}',
+      /**
+       * LE REFUS DIT QUOI FAIRE. « Format non pris en charge » laisse
+       * l'utilisateur devant un appareil qu'il ne sait pas régler ; le chemin
+       * exact du réglage iOS le débloque en trente secondes.
+       */
+      photoHeic:
+        'Cette photo est au format HEIC, qu’aucun navigateur ne sait ouvrir. Votre iPhone peut enregistrer en JPEG : Réglages → Appareil photo → Formats → Le plus compatible.',
+      photoUnreadable: 'Ce fichier n’est pas une image que le navigateur sait ouvrir. Choisissez une photo JPEG ou PNG.',
+      photoUploadFailed:
+        'L’envoi de {count} photos a échoué. L’état des lieux est enregistré ; ses réserves ne portent pas encore ces photos. Réessayez sans fermer cette fenêtre.',
+      photoUploadFailed_one:
+        'L’envoi d’une photo a échoué. L’état des lieux est enregistré ; sa réserve ne porte pas encore cette photo. Réessayez sans fermer cette fenêtre.',
+      photoConfirmFailed:
+        '{count} photos sont montées mais n’ont pas été confirmées : elles ne sont pas encore attachées à la réserve. Réessayez sans fermer cette fenêtre — fermer les perdrait.',
+      photoConfirmFailed_one:
+        'Une photo est montée mais n’a pas été confirmée : elle n’est pas encore attachée à la réserve. Réessayez sans fermer cette fenêtre — fermer la perdrait.',
+      photoRetry: 'Reprendre l’envoi des photos',
       addFinding: 'Ajouter une réserve',
       removeFinding: 'Retirer la réserve n° {rank}',
       title: 'États des lieux',

@@ -112,13 +112,24 @@ const API_EXEMPTES = registre('méthode d’API', [
  * exemptées ensemble par une seule entrée. Aucune des quatre n'est dans ce cas
  * aujourd'hui — les vérifier reste à la charge de qui ajoute une entrée.
  */
-const MOTIF_LOT_NAVIGATEUR = 'le client de ces routes est le lot du navigateur, bloqué sur une mesure'
+const MOTIF_LECTURE_LOCATAIRE = 'la lecture d’une photo est le lot du locataire, qui n’est pas écrit'
+const MOTIF_SUPPRESSION = 'aucun écran ne supprime encore une photo confirmée ; le retrait avant envoi est local'
 
+/**
+ * DEUX EXEMPTIONS SONT PARTIES, ET C'EST LA GARDE QUI L'A DIT.
+ *
+ * `POST …/findings/*​/photos` et `POST …/photos/*​/confirmation` avaient leur
+ * client écrit au lot de la rangée de photos ; leurs exemptions ont aussitôt
+ * cessé de supprimer une plainte, la péremption les a nommées, elles sont
+ * retirées. C'est exactement le cycle pour lequel ce registre a été posé.
+ *
+ * Les deux qui restent portent chacune SON motif, et non plus un motif commun
+ * devenu faux : « bloqué sur une mesure » ne décrivait plus rien une fois la
+ * mesure faite.
+ */
 const ROUTES_EXEMPTES = registre('route', [
-  ['POST /api/parks/*/findings/*/photos', MOTIF_LOT_NAVIGATEUR],
-  ['POST /api/parks/*/photos/*/confirmation', MOTIF_LOT_NAVIGATEUR],
-  ['GET /api/parks/*/photos/*', MOTIF_LOT_NAVIGATEUR],
-  ['DELETE /api/parks/*/photos/*', MOTIF_LOT_NAVIGATEUR],
+  ['GET /api/parks/*/photos/*', MOTIF_LECTURE_LOCATAIRE],
+  ['DELETE /api/parks/*/photos/*', MOTIF_SUPPRESSION],
 ])
 
 async function fichiers(depart, extensions) {

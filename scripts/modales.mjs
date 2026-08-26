@@ -88,7 +88,24 @@ const MODALES = [
   { nom: 'OpenWork', adresse: '/demo/travaux', bouton: /^Ouvrir un chantier$|^Open a job$/, defil: { 360: 130, 1280: 0 }, avant: { 360: 1056, 1280: 913 } },
   { nom: 'RecordPayment', adresse: '/demo/paiements', bouton: /^Enregistrer un paiement$|^Record a payment$/, defil: { 360: 460, 1280: 40 }, avant: { 360: 522, 1280: 236 } },
   { nom: 'Receipt', adresse: '/demo/paiements', bouton: /Quittance|Receipt/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
-  { nom: 'Inspection', adresse: '/demo/etats-des-lieux', bouton: /^Établir un état des lieux$|^Record an inspection$/, defil: { 360: 250, 1280: 0 }, avant: { 360: 237, 1280: 0 } },
+  /*
+    INSPECTION : LE PLAFOND MONTE, ET VOICI CE QU'IL ACHÈTE.
+
+    Mesuré à 360 px : 237 px de défilement avant la rangée de photos, 323 avec
+    elle dans sa première rédaction, 297 après avoir retiré le titre de rangée
+    — qui répétait ce que le bouton dit déjà et que le lecteur d'écran
+    annonçait deux fois. Les 60 px qui restent sont le BOUTON lui-même, ses
+    44 px de cible et sa marge : ils ne se réduisent pas sans rendre la
+    commande intouchable au doigt, ce que la porte des cibles refuserait à
+    juste titre.
+
+    Le plafond passe donc de 250 à 300, et de 0 à 20 à 1280 px. Ce n'est pas un
+    défilement « qui n'achète rien » : il achète la seule façon de joindre une
+    preuve à une réserve depuis le lieu où on la constate. Une vignette ajoutée
+    coûte en plus sa hauteur, et c'est un choix de l'utilisateur, pas un défaut
+    de l'écran — la mesure ci-dessous se fait sans photo choisie.
+  */
+  { nom: 'Inspection', adresse: '/demo/etats-des-lieux', bouton: /^Établir un état des lieux$|^Record an inspection$/, defil: { 360: 300, 1280: 20 }, avant: { 360: 237, 1280: 0 } },
   { nom: 'Invite', adresse: '/demo/locataires', bouton: /^Inviter par code$|^Invite by code$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'Announce', adresse: '/demo/locataires', bouton: /^Prévenir les locataires$|^Notify tenants$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'Reply', adresse: '/demo/travaux', bouton: /^Répondre$|^Reply$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },

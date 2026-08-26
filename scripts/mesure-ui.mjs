@@ -522,6 +522,44 @@ const SURFACES_INTERACTIVES = [
       await page.locator('[aria-haspopup="dialog"]').first().click()
     },
   },
+  {
+    /*
+      LA RANGÉE DE PHOTOS D'UNE RÉSERVE, ET LE GESTE VA JUSQU'À LA VIGNETTE.
+
+      Ouvrir la modale ne suffirait pas. Tant qu'aucune photo n'est choisie, la
+      rangée ne porte qu'un bouton d'ajout et un compte — le bouton de RETRAIT,
+      lui, n'existe pas, et c'est la cible la plus exposée de toute
+      l'interface : 44 px posés sur le coin d'une vignette, atteints au doigt.
+      Une surface auditée sans lui aurait laissé passer exactement ce que cet
+      audit existe pour voir.
+
+      Le geste dépose donc la FIXTURE VERSIONNÉE dans l'entrée de fichier —
+      celle-là même que `photo-transcodage.mjs` mesure. Elle est sous CC0, elle
+      vit dans le dépôt, et elle traverse le vrai transcodage : la vignette
+      auditée est le produit de la fonction réelle, pas une image posée là pour
+      la garde.
+
+      LARGEUR 360, délibérément. C'est au téléphone que la rangée est le plus à
+      l'étroit et que la vignette pousse ses voisins ; l'auditer à 1280 la
+      montrerait au large, c'est-à-dire là où elle ne pose pas de problème.
+    */
+    nom: 'photos-de-reserve',
+    adresse: '/demo/etats-des-lieux',
+    largeur: 360,
+    temoin: '[role="dialog"] li img',
+    ouvrir: async (page) => {
+      await page
+        .getByRole('button', { name: /^Record an inspection$|^Établir un état des lieux$/ })
+        .first()
+        .click()
+      await page.locator('[role="dialog"]').first().waitFor({ state: 'visible' })
+      await page
+        .locator('[role="dialog"] input[type="file"]')
+        .first()
+        .setInputFiles(join(RACINE, 'server/src/stockage/fixtures/compteur-index.jpg'))
+      await page.locator('[role="dialog"] li img').first().waitFor({ state: 'visible' })
+    },
+  },
 ]
 
 /*
@@ -601,9 +639,9 @@ const DECLENCHEURS_ATTENDUS = 5
   elle-même : vider la table, et l'on comparerait 0 à 0 avant de se déclarer
   vert. Le nombre est donc écrit, et l'ajout d'une surface oblige à le toucher.
 
-  8 = 4 surfaces × 2 thèmes.
+  10 = 5 surfaces × 2 thèmes.
 */
-const SURFACES_ATTENDUES = 8
+const SURFACES_ATTENDUES = 10
 
 /**
  * Neutralise ce qui bouge, AVANT de mesurer.

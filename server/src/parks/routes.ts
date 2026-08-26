@@ -3890,7 +3890,20 @@ parksRouter.post(
         performedOn: true,
         rooms: true,
         signedAt: true,
-        findings: { select: { id: true, room: true, severity: true, costMinor: true } },
+        /**
+         * `description` EST RENDUE, et c'est le client des photos qui l'exige.
+         *
+         * Les réserves n'ont d'identifiant qu'une fois créées ; l'écran, lui,
+         * tient des photos attachées à des LIGNES DE FORMULAIRE. Il doit donc
+         * apparier chaque ligne au `findingId` que cette réponse rend, et sans
+         * `description` il ne lui reste que la pièce, la gravité et le coût —
+         * trois champs que deux réserves d'une même pièce partagent
+         * couramment. L'appariement se ferait alors sur l'ordre du tableau,
+         * c'est-à-dire sur une garantie que Prisma ne donne pas.
+         */
+        findings: {
+          select: { id: true, room: true, description: true, severity: true, costMinor: true },
+        },
       },
     })
 

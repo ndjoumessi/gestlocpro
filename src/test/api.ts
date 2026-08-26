@@ -92,7 +92,26 @@ export function installerFauxServeur(
       const url = typeof entree === 'string' ? entree : entree.toString()
       const methode = (init?.method ?? 'GET').toUpperCase()
       const chemin = url.replace(/^\/api/, '')
-      const corps = init?.body ? JSON.parse(String(init.body)) : undefined
+      /**
+       * TOUT CORPS N'EST PAS DU JSON, depuis que le produit envoie des images.
+       *
+       * `JSON.parse(String(body))` lançait sur un `Blob` — `String(blob)` rend
+       * « [object Blob] » —, et l'exception partait AVANT l'enregistrement de
+       * l'appel : la requête devenait invisible à la double, qui répondait
+       * comme si elle n'avait jamais eu lieu. Un dépôt de photo se comportait
+       * donc en test comme un échec réseau, quel que soit ce que le cas avait
+       * programmé.
+       *
+       * Le corps binaire est gardé TEL QUEL : un test qui veut le peser ou
+       * vérifier son type le peut, et aucun ne se met à parler de JSON là où
+       * il n'y en a pas.
+       */
+      const corps =
+        init?.body === undefined || init?.body === null
+          ? undefined
+          : typeof init.body === 'string'
+            ? JSON.parse(init.body)
+            : init.body
       appels.push({ methode, chemin, corps })
 
       // L'appel est ENREGISTRÉ AVANT la retenue : un test doit pouvoir vérifier
