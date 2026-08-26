@@ -212,7 +212,34 @@ export function Inspections() {
                     key={`${inspection.kind}-${inspection.date.year}-${inspection.date.month}`}
                     className="rounded-md border border-divider bg-surface-sunken"
                   >
-                  <div className="flex items-center gap-3 px-3.5 py-3">
+                  {/*
+                    LA RANGÉE SE REPLIE, ET LE CONSTAT GARDE SON JETON.
+
+                    La pastille — « 2 réserves », 97 px, `shrink-0` — et l'icône
+                    de 36 px ne laissaient que 59 px à la colonne du milieu sur
+                    les 216 utiles à 320 px. Or « 15/06/2024 » est INSÉCABLE et
+                    en réclame 73 : la date sortait de sa boîte et se peignait
+                    sous la pastille. Mesuré, pas supposé : +70 px pour la ligne
+                    de date, +38 px pour « Entrée ».
+
+                    Aucune règle ne le voyait — la page ne défile pas pour
+                    autant. C'est `MESURER_DEBORD_LOCAL` qui l'a nommé, et c'est
+                    le troisième et dernier des défauts VISIBLES qu'elle a
+                    découverts en naissant.
+
+                    `basis-20` — 5 rem, 80 px — ET NON `basis-48` COMME AILLEURS.
+                    Les deux autres cartes réparées portent des TITRES, qui ont
+                    besoin de deux ou trois mots par ligne ; ici la colonne ne
+                    porte que « Entrée » (43 px) et une date. Le plancher n'est
+                    donc pas une largeur de lecture, c'est la largeur du plus
+                    long JETON INSÉCABLE — 73 px —, et 80 est la première marche
+                    au-dessus. Recopier 192 px aurait fait replier la rangée
+                    jusqu'à 420 px de fenêtre, là où elle tient très bien.
+
+                    La ligne de date, elle, veut 141 px pour tenir d'un trait ;
+                    une fois la pastille descendue, la colonne en reçoit 168.
+                  */}
+                  <div className="flex flex-wrap items-center gap-3 px-3.5 py-3">
                     <span
                       className={`flex size-9 shrink-0 items-center justify-center rounded-md ${
                         inspection.kind === 'entry'
@@ -226,7 +253,7 @@ export function Inspections() {
                       />
                     </span>
 
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 flex-1 basis-20">
                       <p className="text-body font-medium">
                         {t(`app.inspections.${inspection.kind}` as 'app.inspections.entry')}
                       </p>
@@ -236,7 +263,9 @@ export function Inspections() {
                       </p>
                     </div>
 
-                    <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    {/* `ml-auto` : descendue d'une ligne, elle reste rangée à
+                        droite plutôt que de se coller sous l'icône. */}
+                    <div className="ml-auto flex shrink-0 flex-col items-end gap-1.5">
                       <StatusPill
                         tone={inspection.issues === 0 ? 'ok' : inspection.issues > 3 ? 'danger' : 'warn'}
                         size="sm"

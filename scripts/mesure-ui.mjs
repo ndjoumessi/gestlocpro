@@ -789,41 +789,38 @@ const TOLERES = {
  * moins vrai — la règle serait née sans avoir rien attrapé, et personne
  * n'aurait su ce qu'elle valait.
  *
- * IL EN RESTE ONZE, ET C'EST LA GARDE DU GARDE QUI A COMPTÉ. Les trois défauts
- * VISIBLES ont été réparés — barre basse dont les libellés se chevauchaient,
- * carte d'alerte et carte de chantier dont la colonne de titre tombait à zéro.
- * Chaque réparation a fait rougir la porte pour la bonne raison : « cette
- * tolérance ne couvre plus rien ». La carte de chantier en a emporté TROIS d'un
- * coup, parce que le titre, la ligne de référence et la ligne d'origine
- * n'étaient qu'un seul défaut vu trois fois.
+ * IL EN RESTE NEUF, ET C'EST LA GARDE DU GARDE QUI A COMPTÉ. Les QUATRE défauts
+ * VISIBLES sont réparés — barre basse dont les libellés se chevauchaient, carte
+ * d'alerte et carte de chantier dont la colonne de titre tombait à zéro, rangée
+ * de constat dont la pastille recouvrait la date. Chaque réparation a fait
+ * rougir la porte pour la bonne raison : « cette tolérance ne couvre plus
+ * rien ».
  *
- * LES ONZE QUI RESTENT sont des dépassements de quelques pixels dont je n'ai
+ * UNE RÉPARATION N'EFFACE PAS UNE ENTRÉE, ELLE EN EFFACE CE QU'ELLE VEUT. La
+ * carte de chantier en a emporté TROIS d'un coup — titre, ligne de référence,
+ * ligne d'origine n'étaient qu'un seul défaut vu trois fois ; la rangée de
+ * constat en a emporté deux. Six entrées pour quatre défauts : LE NOMBRE
+ * D'ENTRÉES NE MESURE PAS LE NOMBRE DE DÉFAUTS, et il ne faut pas lire les neuf
+ * restantes comme neuf choses à faire.
+ *
+ * LES NEUF QUI RESTENT sont des dépassements de quelques pixels dont je n'ai
  * PAS établi qu'ils se voient. Chacune le dit dans son motif.
  */
 const DEBORDS_LOCAUX_TOLERES = {
-  /*
-    ── LE SEUL QUE J'AIE REGARDÉ ET QUI SE VOIE ENCORE ────────────────────
-  */
-  'p.text-caps text-muted': {
-    plafond: 70,
-    motif:
-      'Ligne « date · nombre de pièces » d’un état des lieux. VU à 320 px : la colonne du ' +
-      'milieu tombe à 59 px, « 15/06/2024 » en demande 73 à elle seule, et la pastille ' +
-      '« 2 réserves » (97 px, `shrink-0`) la recouvre.',
-  },
 
   /*
-    ── DIX QUE J'AI MESURÉS SANS LES REGARDER ────────────────────────────
+    ── NEUF QUE J'AI MESURÉS SANS LES REGARDER ───────────────────────────
     Le chiffre est relevé ; je n'ai PAS établi que chacun se voie. Les dire
     « inoffensifs » serait une affirmation gratuite, et les dire « défauts »
     en serait une autre.
+
+    POUR LIRE LE MAXIMUM RÉEL D'UNE SIGNATURE TOLÉRÉE : abaisser son plafond à
+    1 et lancer `npm run mesure` — la porte l'imprime. C'est le seul moyen, et
+    il en faut un : quand une signature est PARTAGÉE entre deux écrans et qu'on
+    n'en répare qu'un, l'entrée survit avec un plafond devenu trop généreux.
+    Aucune garde ne le réclame ; c'est arrivé une fois, 121 px pour un défaut
+    qui n'en faisait plus que 81.
   */
-  'p.text-body font-medium': {
-    plafond: 38,
-    motif:
-      'Le mot « Entrée » / « Move-in » dans la rangée d’un état des lieux, à 320 px. Même ' +
-      'colonne écrasée que la ligne de date ci-dessus. Mesuré, pas regardé.',
-  },
   'p.mt-2 flex items-baseline gap-1.5': {
     plafond: 30,
     motif:
