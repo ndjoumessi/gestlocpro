@@ -223,6 +223,34 @@ export function Dashboard() {
         <StatCard
           label={t('app.dashboard.outstanding')}
           value={money(outstanding, { round: true })}
+          /**
+           * LA SEULE DES QUATRE QUI PORTE UN ÉTAT, et seulement quand il y a
+           * quelque chose à traiter.
+           *
+           * Le commentaire au-dessus de cette rangée affirme depuis plusieurs
+           * lots que « ce sur quoi il agit, c'est le RESTE À PERCEVOIR ». Le
+           * rendu ne le disait nulle part : les quatre cartes étaient
+           * identiques au pixel, et « 4 locataires · jusqu'à 24 jours de
+           * retard » se lisait comme « 2 unités vacantes ». Une hiérarchie qui
+           * n'existe qu'en commentaire n'existe pas.
+           *
+           * `danger` ET NON `warn`, parce que c'est le ton que le produit donne
+           * déjà à `overdue` — voir `PAYMENT_TONES`. Un second vocabulaire de
+           * couleurs pour le même état rouvrirait la porte à deux lectures du
+           * rouge.
+           *
+           * LA CONDITION EST LE CŒUR DU LOT. Sur un parc où tout le monde a
+           * payé, `doivent` est vide, le montant est nul, et la carte redevient
+           * l'une des quatre — grise, sans pastille, sans bordure. Une alerte
+           * permanente cesse d'alerter ; celle-ci ne s'allume que sur la donnée
+           * qui la justifie, et elle s'éteint toute seule quand le travail est
+           * fait.
+           */
+          etat={
+            doivent.length > 0
+              ? { ton: 'danger', libelle: t('status.overdue') }
+              : undefined
+          }
           note={t('app.dashboard.overdueTenants', {
             count: doivent.length,
             days: maxOverdueDays,

@@ -2,7 +2,7 @@ import { useId, useMemo, useState, type ReactNode } from 'react'
 import { cn } from '@/lib/cn'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
-import { JaugeDePoste, type EtatDePoste } from './StatusPill'
+import { JaugeDePoste, StatusPill, type EtatDePoste, type StatusTone } from './StatusPill'
 
 /**
  * Graphes maison, en DOM et en SVG.
@@ -1354,6 +1354,21 @@ export function ProgressBar({
 }
 
 /** Tuile de KPI : libellé, valeur, delta et note. */
+/**
+ * La bordure d'une carte d'indicateur en état, par ton.
+ *
+ * Écrite en classes LITTÉRALES et non composées : Tailwind v4 balaie ce fichier
+ * à la recherche de noms complets, et `border-${ton}-border` ne produirait
+ * aucune règle — la bordure resterait grise sans que rien ne le signale.
+ */
+const BORDURES_D_ETAT: Record<StatusTone, string> = {
+  ok: 'border-ok-border',
+  warn: 'border-warn-border',
+  danger: 'border-danger-border',
+  neutral: 'border-neutral-border',
+  info: 'border-gold-border',
+}
+
 export function StatCard({
   label,
   value,
@@ -1361,6 +1376,7 @@ export function StatCard({
   delta,
   note,
   action,
+  etat,
 }: {
   label: string
   value: string
@@ -1374,9 +1390,59 @@ export function StatCard({
    * donnée, et les loger au même endroit ferait lire l'une pour l'autre.
    */
   action?: ReactNode
+  /**
+   * L'ÉTAT DE CE QUE LE CHIFFRE MESURE — et le fait qu'il soit FACULTATIF est
+   * la moitié de la règle.
+   *
+   * Quatre cartes rigoureusement identiques — même fond, même bordure, même
+   * graisse, note en gris muet — rendaient « 4 locataires · jusqu'à 24 jours
+   * de retard » exactement comme « 2 unités vacantes ». Mesuré sur le tableau
+   * de bord avant ce lot : ZÉRO pastille sur les quatre. La hiérarchie était
+   * écrite en commentaire au-dessus de la rangée, pas en pixels.
+   *
+   * Posé, `etat` fait DEUX choses : une pastille se pose devant la note — donc
+   * une teinte, une icône et un LIBELLÉ, jamais la couleur seule — et la
+   * bordure de la carte prend le même ton. La bordure ne porte rien à elle
+   * seule : elle attire, la pastille dit.
+   *
+   * LA PASTILLE PORTE UN MOT, LA NOTE RESTE DE LA PROSE, et la porte a tranché
+   * cela à ma place. Premier essai : la note ENTIÈRE devenait la pastille.
+   * `StatusPill` est en `whitespace-nowrap` — un statut qui se coupe en deux
+   * lignes n'est plus un statut — et « 4 locataires · jusqu'à 24 jours de
+   * retard » sortait de sa carte de 80 px, plus 20 px de débordement de page à
+   * 320. Une pastille est un MOT ; la phrase qui l'explique n'en est pas une.
+   * C'est aussi pourquoi la rangée porte `flex-wrap` : les deux se rangent
+   * l'une sous l'autre quand la carte se resserre.
+   *
+   * UN SEUL OBJET POUR LE TON ET LE MOT, plutôt que deux `props`. Séparés, rien
+   * n'empêcherait une bordure rouge au-dessus d'un libellé « À jour » — la
+   * désynchronisation serait à un oubli de distance. Ensemble, elle est
+   * impossible à écrire.
+   *
+   * ABSENT, RIEN NE CHANGE, et c'est la raison d'être du `?`. Une carte
+   * d'alerte toujours allumée est une carte qu'on cesse de lire au bout d'une
+   * semaine ; l'appelant ne pose `etat` que lorsque la DONNÉE l'exige — sur un
+   * parc où tout le monde a payé, la carte redevient l'une des quatre. C'est
+   * aussi ce qui laisse les quinze autres appels du produit inchangés.
+   */
+  etat?: { ton: StatusTone; libelle: string }
 }) {
   return (
-    <div className="rounded-lg border border-divider bg-surface p-4 shadow-e1 sm:p-5">
+    <div
+      /* `data-etat` n'est pas décoratif, et c'est la même raison que
+         `data-jauge` sur la grille des paiements : un état doit être
+         INTERROGEABLE autrement que par sa peinture. Les cas le lisent ici
+         plutôt que d'inspecter une classe Tailwind — une assertion sur
+         `border-danger-border` passerait au vert le jour où la carte porte le
+         bon état sous une autre teinte, et rougirait sur un simple renommage
+         d'utilitaire. Ce sont les deux erreurs inverses, et l'attribut les
+         évite toutes les deux. */
+      data-etat={etat?.ton}
+      className={cn(
+        'rounded-lg border bg-surface p-4 shadow-e1 sm:p-5',
+        etat ? BORDURES_D_ETAT[etat.ton] : 'border-divider',
+      )}
+    >
       <div className="flex items-start justify-between gap-2">
         <p className="eyebrow min-w-0 flex-1 truncate text-muted">{label}</p>
         {action}
@@ -1388,6 +1454,11 @@ export function StatCard({
       {(delta || note) && (
         <p className="mt-2 flex flex-wrap items-center gap-2">
           {delta}
+          {etat && (
+            <StatusPill tone={etat.ton} size="sm">
+              {etat.libelle}
+            </StatusPill>
+          )}
           {note && <span className="text-body text-muted">{note}</span>}
         </p>
       )}
