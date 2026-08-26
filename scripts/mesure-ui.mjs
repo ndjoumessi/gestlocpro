@@ -763,6 +763,131 @@ const TOLERES = {
 }
 
 /**
+ * Débordements LOCAUX tolérés, par SIGNATURE et non par point.
+ *
+ * POURQUOI LA CLÉ N'EST PAS `adresse@largeur`, comme celle de `TOLERES`. Un
+ * même défaut de mise en page se répète sur tous les écrans qui portent le
+ * composant fautif : les libellés de la barre basse débordent sur les 23
+ * écrans, à trois largeurs, dans deux langues. Une clé par point aurait demandé
+ * soixante-quatre entrées pour UN défaut, et la soixante-cinquième occurrence —
+ * la régression — se serait perdue dans la liste.
+ *
+ * La signature est `balise.classes`, c'est-à-dire ce que le rapport imprime :
+ * une entrée se recopie depuis le refus sans avoir à traduire.
+ *
+ * CHAQUE ENTRÉE PORTE SON PLAFOND, EN PIXELS MESURÉS. C'est ce qui empêche une
+ * tolérance de devenir un blanc-seing : le défaut connu passe, le même défaut
+ * AGGRAVÉ rougit. Et la garde du garde, plus bas, fait rougir toute entrée qui
+ * ne couvre plus rien.
+ *
+ * ─── CE REGISTRE N'EST PAS VIDE, ET C'EST UN AVEU ────────────────────────
+ *
+ * `TOLERES` porte fièrement « AUCUNE ENTRÉE, et c'est le but ». Celui-ci naît
+ * avec quatorze motifs, parce que la règle qui l'accompagne n'a jamais été
+ * appliquée : elle découvre d'un coup tout ce que quinze lots ont laissé
+ * passer. Les fermer d'abord et poser la règle ensuite aurait été plus joli et
+ * moins vrai — la règle serait née sans avoir rien attrapé, et personne
+ * n'aurait su ce qu'elle valait.
+ *
+ * DEUX DE CES ENTRÉES SONT DES DÉFAUTS VISIBLES, pas des arrondis : la barre
+ * basse dont les libellés se chevauchent, et le titre d'alerte écrasé à un mot
+ * par ligne. Elles sont nommées comme telles. Les autres sont des dépassements
+ * de quelques pixels dont je n'ai pas établi qu'ils se voient.
+ */
+const DEBORDS_LOCAUX_TOLERES = {
+  /*
+    ── TROIS QUE J'AI REGARDÉS, ET QUI SE VOIENT ──────────────────────────
+  */
+  'div.flex flex-wrap items-center gap-2': {
+    plafond: 121,
+    motif:
+      "Rangée « titre + pastille » d'un signalement ou d'un chantier. VU à 375 px sur " +
+      '/demo/signalements : la colonne du titre tombe à 13 px de large et « Bail B1 à ' +
+      "renouveler dans 45 jours » se lit à un mot par ligne pendant que « il y a 2 heures » " +
+      'garde sa place. La pastille est `shrink-0`, le titre ne l’est pas.',
+  },
+  'span.w-full text-caps leading-tight tracking-normal text-balance': {
+    plafond: 29,
+    motif:
+      'Libellés de la barre basse. VU à 320 px : « Signalements » demande 76 px dans 51, et ' +
+      'chevauche « Parc immobilier ». Le libellé le plus long décide, et rien ne le rogne.',
+  },
+  'p.text-caps text-muted': {
+    plafond: 70,
+    motif:
+      'Ligne « date · nombre de pièces » d’un état des lieux. VU à 320 px : la colonne du ' +
+      'milieu tombe à 59 px, « 15/06/2024 » en demande 73 à elle seule, et la pastille ' +
+      '« 2 réserves » (97 px, `shrink-0`) la recouvre.',
+  },
+
+  /*
+    ── DOUZE QUE J'AI MESURÉS SANS LES REGARDER ──────────────────────────
+    Le chiffre est relevé ; je n'ai PAS établi que chacun se voie. Les dire
+    « inoffensifs » serait une affirmation gratuite, et les dire « défauts »
+    en serait une autre.
+  */
+  'p.mt-1 text-body text-muted': {
+    plafond: 80,
+    motif: 'Ligne de détail sous un titre de chantier, /demo/travaux. Mesuré, pas regardé.',
+  },
+  'p.mt-1 text-caps text-muted': {
+    plafond: 60,
+    motif:
+      'Référence de signalement — « SIG-2026-039 · C1 · Cabinet Njoya ». Suite de segments ' +
+      'séparés par des points médians, dont aucun ne se coupe. Mesuré, pas regardé.',
+  },
+  'p.text-body font-medium': {
+    plafond: 38,
+    motif:
+      'Le mot « Entrée » / « Move-in » dans la rangée d’un état des lieux, à 320 px. Même ' +
+      'colonne écrasée que la ligne de date ci-dessus. Mesuré, pas regardé.',
+  },
+  'p.mt-2 flex items-baseline gap-1.5': {
+    plafond: 30,
+    motif:
+      'Montant d’une carte de synthèse. Un montant est insécable par construction — espaces ' +
+      'fines insécables entre les groupes — et ne peut donc pas se replier. Mesuré, pas regardé.',
+  },
+  'div.mt-10 flex flex-col gap-3 sm:flex-row sm:items-center': {
+    plafond: 27,
+    motif:
+      'Les deux commandes de l’accroche de la vitrine, à 1024 px seulement — la largeur où ' +
+      'la rangée vient de passer en ligne. Mesuré, pas regardé.',
+  },
+  'p.numeric mt-2 text-title-l font-medium': {
+    plafond: 18,
+    motif: 'Montant de la vitrine à 320 px. Insécable, comme tous les montants. Mesuré, pas regardé.',
+  },
+  'dd.numeric text-body font-medium': {
+    plafond: 14,
+    motif:
+      'La commande « Consulter » logée dans un `<dd>`, espace du locataire. Mesuré, pas regardé.',
+  },
+  'div.mt-3 flex flex-wrap items-center justify-between gap-2': {
+    plafond: 14,
+    motif: 'Pied d’une quittance — « Payé le 3 août par Mobile Money » et son lien. Mesuré, pas regardé.',
+  },
+  'li.flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 first:pt-0 last:pb-0': {
+    plafond: 14,
+    motif: 'Ligne de demande de document, écran des locataires. Mesuré, pas regardé.',
+  },
+  'p.numeric mt-2 text-kpi leading-none font-medium': {
+    plafond: 10,
+    motif: 'Montant en chiffre de tête sur la vitrine à 320 px. Mesuré, pas regardé.',
+  },
+  'div.flex flex-wrap items-center justify-end gap-2': {
+    plafond: 8,
+    motif: '« Mot de passe oublié ? » au-dessus du champ, écran de connexion. Mesuré, pas regardé.',
+  },
+  'span.block text-body': {
+    plafond: 3,
+    motif:
+      '« Contrat de bail signé » sur /demo/documents à 320 px, en français seulement. Trois ' +
+      'pixels : c’est la plus petite chose que cette règle sache voir. Mesuré, pas regardé.',
+  },
+}
+
+/**
  * Les attentes, et ce qu'elles coûtent quand elles échouent.
  *
  * Chaque `.catch(() => {})` avale un dépassement de délai : c'est voulu — un
@@ -1455,6 +1580,116 @@ const MESURER_REPLI = () => {
 }
 
 /**
+ * ─── LE DÉBORDEMENT LOCAL ────────────────────────────────────────────────────
+ *
+ * POURQUOI UNE SECONDE RÈGLE DE DÉBORDEMENT, ET CE QUE LA PREMIÈRE NE VOIT PAS.
+ *
+ * `MESURER` ne tient pour défaut que ce qui fait DÉFILER LA PAGE — il tente
+ * `window.scrollTo(400, 0)` et lit `scrollX`. C'est un excellent critère, et il
+ * a une frontière nette : un contenu qui sort de SON conteneur mais que le
+ * rembourrage d'un ancêtre absorbe ne fait pas défiler la page, donc ne rougit
+ * pas — même quand il se voit.
+ *
+ * MESURÉ, sur la rangée des preuves d'un état des lieux : `flex-wrap` retiré, la
+ * rangée dépasse de 40 px (256 contre 216), la grille de 8, `main` avale le
+ * reste. La page ne défile pas. La troisième vignette sort pourtant de la carte
+ * et se fait couper par la fenêtre. Verdict de la porte : vert.
+ *
+ * Deux autres défauts VISIBLES vivaient dans le même angle mort, découverts en
+ * posant cette règle : les libellés de la barre basse se chevauchent à 320 px
+ * (« Signalements » demande 76 px dans 51), et le titre d'une alerte tombe à un
+ * mot par ligne à 375 px pendant que « il y a 2 heures » garde sa place.
+ *
+ * ─── CE QUE LA RÈGLE MESURE, ET CE QU'ELLE ÉCARTE ────────────────────────────
+ *
+ * Pour chaque élément qui ne gère pas lui-même son débordement, on prend le
+ * bord droit de SON CONTENU et on le compare au bord droit de sa boîte.
+ *
+ * LE CONTENU, C'EST LE TEXTE ET LES ENFANTS DANS LE FLUX — pas `scrollWidth`.
+ * Trois raisons, chacune payée d'une mesure :
+ *
+ *  1. `scrollWidth` compte les descendants HORS FLUX. Une pastille de compteur
+ *     posée en `absolute` sur le coin d'une icône faisait de son parent un
+ *     coupable : 96 faux positifs sur 219, tous le même « 3 » de la barre
+ *     basse. Un élément absolu sort de son conteneur PAR CONSTRUCTION.
+ *  2. Le TEXTE, lui, doit compter. Une première version ne regardait que les
+ *     enfants éléments : 31 trouvailles au lieu de 123, et elle laissait passer
+ *     le chevauchement de la barre basse, qui est du texte débordant sa boîte.
+ *     C'est le défaut le plus visible des trois.
+ *  3. `clientWidth` vaut zéro sur un élément EN LIGNE : le comparer ferait de
+ *     chaque `<span>` un coupable.
+ *
+ * MÊME CONVENTION QUE `MESURER` POUR LES ANCÊTRES : un contenu logé sous un
+ * ancêtre qui défile ou qui rogne n'est pas un coupable — c'est le motif normal
+ * des tableaux du dépôt. Ce que cette convention COÛTE, et il faut le dire :
+ * `hidden` rogne, donc un contenu perdu sous un `overflow-hidden` passe pour
+ * contenu. `MESURER` fait le même choix ; le changer est un autre sujet que
+ * celui-ci.
+ *
+ * SEUL LE PLUS PROFOND EST NOMMÉ. Un parent déborde parce que son enfant
+ * déborde : nommer la chaîne noierait le coupable sous ses quatre ancêtres.
+ */
+const MESURER_DEBORD_LOCAL = () => {
+  const brut = []
+  const tous = document.querySelectorAll('*')
+  for (const el of tous) {
+    if (el === document.documentElement || el === document.body) continue
+    if (getComputedStyle(el).overflowX !== 'visible') continue
+    // Élément en ligne : pas de boîte à déborder.
+    if (el.clientWidth === 0) continue
+
+    let ancetre = el.parentElement
+    let contenu = false
+    while (ancetre) {
+      const o = getComputedStyle(ancetre).overflowX
+      if (o === 'auto' || o === 'scroll' || o === 'hidden') {
+        contenu = true
+        break
+      }
+      ancetre = ancetre.parentElement
+    }
+    if (contenu) continue
+
+    const boite = el.getBoundingClientRect()
+    const bordInterieur = boite.left + el.clientLeft + el.clientWidth
+    let droite = -Infinity
+    for (const noeud of el.childNodes) {
+      if (noeud.nodeType === 1) {
+        const p = getComputedStyle(noeud).position
+        // `absolute`, `fixed` et `sticky` sortent de leur conteneur par
+        // construction : ce n'est pas un débordement, c'est leur définition.
+        if (p !== 'static' && p !== 'relative') continue
+        const b = noeud.getBoundingClientRect()
+        if (b.width) droite = Math.max(droite, b.right)
+      } else if (noeud.nodeType === 3 && noeud.textContent.trim()) {
+        // Le texte n'a pas de boîte : ses rectangles se lisent par un `Range`.
+        const plage = document.createRange()
+        plage.selectNodeContents(noeud)
+        for (const b of plage.getClientRects()) if (b.width) droite = Math.max(droite, b.right)
+      }
+    }
+
+    const debord = Math.round(droite - bordInterieur)
+    if (!isFinite(debord) || debord <= 1) continue
+    brut.push({ el, debord })
+  }
+
+  return {
+    // Compté pour que le rapport puisse dire ce qu'il a REGARDÉ. Un balayage
+    // dont la sonde cesserait de trouver des éléments rendrait « aucun défaut »
+    // avec la même sérénité qu'un écran sain.
+    sondes: tous.length,
+    coupables: brut
+      .filter(({ el }) => !brut.some((a) => a.el !== el && el.contains(a.el)))
+      .map(({ el, debord }) => ({
+        signature: `${el.tagName.toLowerCase()}.${typeof el.className === 'string' ? el.className : ''}`.slice(0, 120),
+        debord,
+        texte: (el.textContent || '').trim().slice(0, 40),
+      })),
+  }
+}
+
+/**
  * LA PAGE A-T-ELLE RENDU ? — la question qu'aucune règle de ce fichier ne posait.
  *
  * POURQUOI ELLE MANQUAIT, ET POURQUOI CE N'EST PAS `if (!resultat) continue`.
@@ -1884,6 +2119,19 @@ let barreLaPlusGarnie = 0
 let rangeesMesurees = 0
 const tolerancesUtilisees = new Set()
 
+/**
+ * Le débordement LOCAL — voir `MESURER_DEBORD_LOCAL`.
+ *
+ * `elementsSondes` compte ce que la sonde a REGARDÉ, et il est rendu dans la
+ * ligne de succès. Sans ce nombre, une sonde qui cesserait de trouver des
+ * éléments — un sélecteur cassé, une page vide — dirait « aucun débordement »
+ * exactement comme un produit sain. C'est la panne que ce fichier reproche déjà
+ * à `contrast-audit.js`.
+ */
+const debordsLocaux = []
+const tolerancesLocalesUtilisees = new Set()
+let elementsSondes = 0
+
 /** Les points où la page n'a rien rendu, hors adresses exemptées. */
 const nonRendus = []
 /** Les adresses exemptées qui se sont mises à rendre — exemption périmée. */
@@ -2047,6 +2295,31 @@ try {
             interactifs: rendu.interactifs,
             elements: rendu.elements,
             erreurs: erreursDePage.get(`${adresse}|${langue}`) ?? [],
+          })
+        }
+
+        /*
+          LE DÉBORDEMENT LOCAL, mesuré DANS LA MÊME VISITE.
+
+          Pas une passe de plus : la page est déjà chargée, déjà redimensionnée,
+          déjà stabilisée. Une seconde boucle aurait payé 506 navigations pour
+          regarder ce qui est sous les yeux.
+        */
+        const local = await page.evaluate(MESURER_DEBORD_LOCAL)
+        elementsSondes += local.sondes
+        for (const coupable of local.coupables) {
+          const toleree = DEBORDS_LOCAUX_TOLERES[coupable.signature]
+          if (toleree) {
+            tolerancesLocalesUtilisees.add(coupable.signature)
+            // Le défaut CONNU passe ; le même défaut AGGRAVÉ ne passe pas.
+            if (coupable.debord <= toleree.plafond) continue
+          }
+          debordsLocaux.push({
+            adresse,
+            largeur,
+            langue,
+            ...coupable,
+            plafond: toleree ? toleree.plafond : null,
           })
         }
 
@@ -2650,6 +2923,73 @@ console.log(
           .map((a) => `${a} (depuis ${EXEMPTIONS_DE_RENDU[a].depuis}, ${exemptionsEmployees.get(a)} points)`)
           .join(', '),
 )
+
+/*
+  ─── LE DÉBORDEMENT LOCAL, SON VERDICT ─────────────────────────────────────
+
+  Regroupé PAR SIGNATURE et non par point : un même défaut se répète sur des
+  dizaines d'écrans, et l'imprimer autant de fois donnerait un rapport que
+  personne ne lit — donc une porte qu'on désactive.
+
+  Chaque groupe rend ce qu'il faut pour AGIR : le pire dépassement mesuré, le
+  nombre de points touchés, et deux exemples avec leur adresse et leur largeur.
+  Le pire dépassement est aussi ce qu'on recopie en `plafond` si l'on décide de
+  tolérer.
+*/
+if (debordsLocaux.length > 0) {
+  const parSignature = new Map()
+  for (const d of debordsLocaux) {
+    if (!parSignature.has(d.signature)) parSignature.set(d.signature, [])
+    parSignature.get(d.signature).push(d)
+  }
+  const groupes = [...parSignature.entries()].sort(
+    (a, b) => Math.max(...b[1].map((d) => d.debord)) - Math.max(...a[1].map((d) => d.debord)),
+  )
+
+  console.error(
+    `\n✗ mesure-ui : ${parSignature.size} forme(s) débordent LOCALEMENT de leur conteneur,` +
+      ` sur ${debordsLocaux.length} occurrence(s) et ${elementsSondes} éléments sondés.\n` +
+      "   Un contenu qui sort de sa boîte sans faire défiler la page se voit, et ne fait rougir\n" +
+      "   aucune autre règle — c'est l'angle mort que celle-ci couvre.\n",
+  )
+  for (const [signature, liste] of groupes) {
+    const pire = Math.max(...liste.map((d) => d.debord))
+    const plafond = liste[0].plafond
+    const exemples = liste
+      .slice(0, 2)
+      .map((d) => `${d.adresse}@${d.largeur}/${d.langue} « ${d.texte} »`)
+      .join(' · ')
+    console.error(
+      `   +${pire}px  ${signature}\n` +
+        (plafond === null
+          ? ''
+          : `      TOLÉRÉ jusqu'à ${plafond}px — le défaut s'est AGGRAVÉ, la tolérance ne le couvre plus.\n`) +
+        `      ${liste.length} occurrence(s) · ex. ${exemples}\n`,
+    )
+  }
+  console.error(
+    '   Si le débordement est assumé, inscrivez la SIGNATURE dans `DEBORDS_LOCAUX_TOLERES`\n' +
+      '   avec son plafond mesuré et son motif. Une tolérance sans plafond est un blanc-seing.',
+  )
+  process.exit(1)
+}
+
+/*
+  GARDE DU GARDE — une tolérance locale qui ne couvre plus rien doit mourir.
+
+  Même doctrine que pour `TOLERES`, et même raison : la signature d'un défaut
+  réparé continuerait à blanchir tout ce qui reprendrait le même jeu de classes.
+*/
+const localesOrphelines = Object.keys(DEBORDS_LOCAUX_TOLERES).filter(
+  (cle) => !tolerancesLocalesUtilisees.has(cle),
+)
+if (localesOrphelines.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${localesOrphelines.length} tolérance(s) locale(s) ne couvrent plus aucun débordement.\n` +
+      localesOrphelines.map((cle) => `   ${cle} — à retirer de DEBORDS_LOCAUX_TOLERES`).join('\n'),
+  )
+  process.exit(1)
+}
 
 // Garde du garde : une tolérance qui ne couvre plus rien doit mourir, sinon
 // la liste devient un cimetière qui blanchit des défauts à venir.
@@ -3412,6 +3752,8 @@ if (echecs.length > 0) {
 
 console.log(
   `\n✓ mesure-ui : ${adresses.length} écrans × ${LARGEURS.length} largeurs × ${LANGUES.length} langues, aucun débordement latéral ni en-tête replié.\n` +
+    `  ${elementsSondes} éléments sondés pour le DÉBORDEMENT LOCAL — un contenu qui sort de sa boîte\n` +
+    `  sans faire défiler la page — aucun hors des ${Object.keys(DEBORDS_LOCAUX_TOLERES).length} signatures tolérées et motivées.\n` +
     `  ${fuite.reserves.length} modules réservés à l'application, aucun dans un paquet impatient.\n` +
     `  Premier chargement de la vitrine : ${premierChargement.octets} o compressés, sous le budget de ${BUDGET_PREMIER_CHARGEMENT} o.\n` +
     `  ${rangeesMesurees} mesures de la barre de la vitrine, toutes au-dessus de ${JEU_MINIMAL} px de jeu ; réglages atteints au clavier à 1440 px dans les deux langues.\n` +
