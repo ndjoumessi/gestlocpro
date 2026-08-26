@@ -782,32 +782,28 @@ const TOLERES = {
  *
  * ─── CE REGISTRE N'EST PAS VIDE, ET C'EST UN AVEU ────────────────────────
  *
- * `TOLERES` porte fièrement « AUCUNE ENTRÉE, et c'est le but ». Celui-ci naît
- * avec quatorze motifs, parce que la règle qui l'accompagne n'a jamais été
- * appliquée : elle découvre d'un coup tout ce que quinze lots ont laissé
+ * `TOLERES` porte fièrement « AUCUNE ENTRÉE, et c'est le but ». Celui-ci est né
+ * avec QUINZE motifs, parce que la règle qui l'accompagne n'avait jamais été
+ * appliquée : elle a découvert d'un coup tout ce que quinze lots avaient laissé
  * passer. Les fermer d'abord et poser la règle ensuite aurait été plus joli et
  * moins vrai — la règle serait née sans avoir rien attrapé, et personne
  * n'aurait su ce qu'elle valait.
  *
- * DEUX DE CES ENTRÉES SONT DES DÉFAUTS VISIBLES, pas des arrondis : la barre
- * basse dont les libellés se chevauchent, et le titre d'alerte écrasé à un mot
- * par ligne. Elles sont nommées comme telles. Les autres sont des dépassements
- * de quelques pixels dont je n'ai pas établi qu'ils se voient.
+ * IL EN RESTE ONZE, ET C'EST LA GARDE DU GARDE QUI A COMPTÉ. Les trois défauts
+ * VISIBLES ont été réparés — barre basse dont les libellés se chevauchaient,
+ * carte d'alerte et carte de chantier dont la colonne de titre tombait à zéro.
+ * Chaque réparation a fait rougir la porte pour la bonne raison : « cette
+ * tolérance ne couvre plus rien ». La carte de chantier en a emporté TROIS d'un
+ * coup, parce que le titre, la ligne de référence et la ligne d'origine
+ * n'étaient qu'un seul défaut vu trois fois.
+ *
+ * LES ONZE QUI RESTENT sont des dépassements de quelques pixels dont je n'ai
+ * PAS établi qu'ils se voient. Chacune le dit dans son motif.
  */
 const DEBORDS_LOCAUX_TOLERES = {
   /*
-    ── TROIS QUE J'AI REGARDÉS, ET QUI SE VOIENT ──────────────────────────
+    ── LE SEUL QUE J'AIE REGARDÉ ET QUI SE VOIE ENCORE ────────────────────
   */
-  'div.flex flex-wrap items-center gap-2': {
-    plafond: 81,
-    motif:
-      'Rangée « titre + pastille » d’un CHANTIER, /demo/travaux, entre 700 et 768 px — la ' +
-      'bande où la carte vient de passer en ligne et où la colonne de droite prend tout. ' +
-      'RESTE de la même signature après réparation de la carte d’ALERTE, qui la portait ' +
-      'aussi : 121 px sur 74 occurrences avant, 81 sur 11 après, toutes dans `Works.tsx`. ' +
-      'Le défaut est le même — la colonne de droite ne se replie pas — et le remède aussi ; ' +
-      'ce n’est pas le sujet de ce lot-ci.',
-  },
   'p.text-caps text-muted': {
     plafond: 70,
     motif:
@@ -817,21 +813,11 @@ const DEBORDS_LOCAUX_TOLERES = {
   },
 
   /*
-    ── DOUZE QUE J'AI MESURÉS SANS LES REGARDER ──────────────────────────
+    ── DIX QUE J'AI MESURÉS SANS LES REGARDER ────────────────────────────
     Le chiffre est relevé ; je n'ai PAS établi que chacun se voie. Les dire
     « inoffensifs » serait une affirmation gratuite, et les dire « défauts »
     en serait une autre.
   */
-  'p.mt-1 text-body text-muted': {
-    plafond: 80,
-    motif: 'Ligne de détail sous un titre de chantier, /demo/travaux. Mesuré, pas regardé.',
-  },
-  'p.mt-1 text-caps text-muted': {
-    plafond: 60,
-    motif:
-      'Référence de signalement — « SIG-2026-039 · C1 · Cabinet Njoya ». Suite de segments ' +
-      'séparés par des points médians, dont aucun ne se coupe. Mesuré, pas regardé.',
-  },
   'p.text-body font-medium': {
     plafond: 38,
     motif:

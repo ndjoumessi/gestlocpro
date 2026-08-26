@@ -373,7 +373,29 @@ export function Works() {
             <Card
               key={work.id}
               role="listitem"
-              className="flex flex-col gap-4 sm:flex-row sm:items-center"
+              /*
+                LA CARTE SE REPLIE EN RANGÉE, ET LE TITRE GARDE UN PLANCHER.
+
+                Un lot précédent a retiré `shrink-0` de la rangée de commandes,
+                à droite : la page ne défile plus latéralement. Elle a cessé de
+                déborder de la FENÊTRE — pas de la carte. Mesuré à 700 px sur
+                /demo/travaux : la rangée de droite prend 518 px des 636, et la
+                colonne du titre, `min-w-0 flex-1`, tombe à ZÉRO sur deux cartes
+                sur trois. « Disjoncteur qui saute au démarrage du chauffe-eau »
+                se rend alors dans une boîte de largeur nulle, un mot par ligne,
+                et son texte se peint par-dessus la carte suivante.
+
+                Aucune règle ne le voyait : `scrollX` reste à zéro. C'est
+                `MESURER_DEBORD_LOCAL` qui l'a nommé, +81 px, et c'est le même
+                défaut que la carte d'alerte — même remède.
+
+                TOUT EST PRÉFIXÉ `sm:`, ET CE N'EST PAS DÉCORATIF. En dessous,
+                la carte est une COLONNE : `basis-48` y fixerait une HAUTEUR de
+                12 rem, et `ml-auto` pousserait la rangée de commandes contre le
+                bord droit. Les trois classes ne valent que dans la branche
+                rangée.
+              */
+              className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center"
             >
               <span
                 className={`flex size-11 shrink-0 items-center justify-center rounded-md ${
@@ -383,7 +405,13 @@ export function Works() {
                 <Icon name="wrench" size={20} />
               </span>
 
-              <div className="min-w-0 flex-1">
+              {/* `sm:basis-48` — 12 rem, la largeur sous laquelle la colonne ne
+                  descend plus. En dessous, `flex-wrap` renvoie les commandes à
+                  la ligne suivante plutôt que de continuer à écraser le titre.
+                  Même plancher que la carte d'alerte, pour la même raison : le
+                  plus long mot des titres du produit tient dans 85 px, et il en
+                  faut deux à trois par ligne pour qu'un titre se lise. */}
+              <div className="min-w-0 flex-1 sm:basis-48">
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="title-m">{workTitle(work, t)}</h2>
                   {work.urgent && <Badge tone="danger">{t('app.works.urgent')}</Badge>}
@@ -438,7 +466,7 @@ export function Works() {
                   porte déjà `min-w-0 flex-1` : c'est lui qui cède la place, et
                   le titre de l'intervention se replie, ce qu'un titre sait
                   faire. */}
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3 sm:ml-auto">
                 {/*
                   LE MONTANT DIT CE QU'IL EST : proposé, ou engagé.
 
