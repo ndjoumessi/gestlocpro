@@ -85,6 +85,70 @@ import { chromium } from 'playwright'
 import { EXEMPTIONS_DE_RENDU, MAXIMUM_D_EXEMPTIONS } from './exemptions-de-rendu.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
+
+/**
+ * ─── OÙ PASSENT LES TROIS MINUTES ────────────────────────────────────────────
+ *
+ * POURQUOI CE CHRONOMÈTRE EXISTE. Le coût de la sonde de débordement local a
+ * été mesuré — 1,0 s sur 195 — et la mesure a rendu une question plutôt qu'une
+ * réponse : si cette passe-là ne pèse rien, où va le reste ? Une porte dont on
+ * ignore la répartition ne se raccourcit pas, elle se désactive.
+ *
+ * L'HORLOGE MURALE NE PEUT PAS RÉPONDRE, et c'est déjà mesuré : deux exécutions
+ * IDENTIQUES de ce fichier s'écartent de 3,7 secondes. Comparer un passage avec
+ * une passe à un passage sans elle ne distinguerait rien sous ce bruit. On
+ * chronomètre donc CHAQUE APPEL, à l'intérieur, et on additionne.
+ *
+ * LE RESTE EST RENDU, ET C'EST LA PARTIE HONNÊTE. Tout n'est pas instrumenté —
+ * la fermeture des contextes, la lecture des fichiers, les calculs de ce script.
+ * Le rapport imprime donc la somme des postes ET l'écart avec la durée totale,
+ * sous le nom « non imputé ». Un décompte qui ne dirait pas ce qu'il ignore
+ * laisserait croire qu'il explique tout. Relevé : 2,5 s sur 194, soit 1 %.
+ *
+ * ─── CE QUE LE PREMIER RELEVÉ A DIT ───────────────────────────────────────
+ *
+ *   78,0 s  40 %   contraste · navigation et attente        184 appels
+ *   41,0 s  21 %   mise en page · navigation et attente     552
+ *   40,6 s  21 %   cibles et noms · navigation et attente   506
+ *   14,2 s   7 %   surfaces · navigation et attente          10
+ *    6,6 s   3 %   colonnes d'entrée                          2
+ *    …
+ *    2,1 s   1 %   audit · cibles                           516
+ *    1,1 s   1 %   sonde · débordement local                506
+ *
+ * QUATRE-VINGT-NEUF POUR CENT DE CETTE PORTE EST DE L'ATTENTE. Tout ce qu'elle
+ * MESURE — les cinq sondes, les trois audits, les surfaces — tient dans huit
+ * secondes sur cent quatre-vingt-quatorze. Le débat « cette sonde coûte-t-elle
+ * trop cher » n'a donc pas lieu d'être : AUCUNE ne coûte cher, et en ajouter
+ * une ne se voit pas. Ce qui coûte, c'est de charger une page.
+ *
+ * LE POSTE LE PLUS GROS EST AUSSI LE PLUS SUSPECT. La passe de contraste paie
+ * 78 s pour 184 appels — 0,42 s l'un — quand la mise en page paie 41 s pour
+ * 552 — 0,074 s l'un. L'écart n'est pas dans la mesure, il est dans le NOMBRE
+ * DE CHARGEMENTS : la passe de contraste recharge la page à chaque thème, donc
+ * 92 navigations complètes contre 46 pour la mise en page, sur deux fois moins
+ * de largeurs. C'est le seul levier sérieux de cette porte, et il n'est pas
+ * tiré ici — le noter est déjà autre chose que le supposer.
+ *
+ * DEUX COMPTEURS POUR LA MÊME CHOSE : la sonde de débordement local est mesurée
+ * ici ET par ses compteurs propres, qui la décomposent en parcours du DOM et
+ * aller-retour. Les deux chiffres diffèrent d'un dixième de seconde — l'un
+ * enveloppe l'autre — et c'est normal.
+ */
+const DEPART_DU_SCRIPT = performance.now()
+const horloge = new Map()
+
+async function chrono(poste, fn) {
+  const debut = performance.now()
+  try {
+    return await fn()
+  } finally {
+    const vu = horloge.get(poste) ?? { ms: 0, appels: 0 }
+    vu.ms += performance.now() - debut
+    vu.appels += 1
+    horloge.set(poste, vu)
+  }
+}
 const PORT = 4183
 const BASE = `http://127.0.0.1:${PORT}`
 
@@ -2023,7 +2087,7 @@ const adresses = adressesDeLApplication()
 const AUDIT_CONTRASTE = readFileSync(join(RACINE, 'scripts/contrast-audit.js'), 'utf8')
 const AUDIT_NOMS = readFileSync(join(RACINE, 'scripts/noms-accessibles.js'), 'utf8')
 
-await construire()
+await chrono('paquet · vite build', () => construire())
 
 /*
   LA FUITE SE VÉRIFIE AVANT LE POIDS — la question binaire avant la question
@@ -2123,7 +2187,7 @@ if (premierChargement.octets > BUDGET_PREMIER_CHARGEMENT) {
   process.exit(1)
 }
 
-const serveur = await servir()
+const serveur = await chrono('serveur · vite preview', () => servir())
 const echecs = []
 const reproches = []
 const etroitesses = []
@@ -2300,19 +2364,23 @@ try {
       const depart = Date.now()
       process.stdout.write(`   ${langue}  ${adresse} … `)
       await page.setViewportSize({ width: LARGEURS[0], height: 900 })
-      await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
-      await attendre(page, adresse)
-      for (const largeur of LARGEURS) {
-        await page.setViewportSize({ width: largeur, height: 900 })
+      await chrono('mise en page · navigation et attente', async () => {
+        await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
         await attendre(page, adresse)
+      })
+      for (const largeur of LARGEURS) {
+        await chrono('mise en page · navigation et attente', async () => {
+          await page.setViewportSize({ width: largeur, height: 900 })
+          await attendre(page, adresse)
+        })
         if (largeur >= LARGEUR_SANS_REPLI) {
-          const replis = await page.evaluate(MESURER_REPLI)
+          const replis = await chrono('sonde · repli', () => page.evaluate(MESURER_REPLI))
           if (replis) for (const r of replis) reproches.push({ adresse, largeur, langue, ...r })
 
           // Au-delà de la bande, la largeur utile ne bouge plus : c'est là, et
           // là seulement, qu'un plancher en pixels veut dire quelque chose. En
           // dessous, la bande suit la fenêtre et le jeu doit pouvoir fondre.
-          const place = await page.evaluate(MESURER_JEU)
+          const place = await chrono('sonde · jeu de la barre', () => page.evaluate(MESURER_JEU))
           if (place) {
             rangeesMesurees++
             if (place.jeu < JEU_MINIMAL) etroitesses.push({ adresse, largeur, langue, ...place })
@@ -2323,7 +2391,7 @@ try {
         // toutes les largeurs : c'est justement d'une largeur à l'autre que son
         // écart variait.
         if (adresse === '/') {
-          const accroche = await page.evaluate(MESURER_ACCROCHE)
+          const accroche = await chrono('sonde · accroche', () => page.evaluate(MESURER_ACCROCHE))
           if (accroche) accroches.push({ largeur, langue, ...accroche })
 
           // Le rythme se lit là où l'échelle `lg` s'applique : en dessous, les
@@ -2331,13 +2399,13 @@ try {
           // serait celle du téléphone, où elle compte moins — un défilement
           // vertical ne se compare pas d'un bout à l'autre du pouce.
           if (largeur >= LARGEUR_SANS_REPLI) {
-            const releve = await page.evaluate(MESURER_RYTHME)
+            const releve = await chrono('sonde · rythme', () => page.evaluate(MESURER_RYTHME))
             if (releve) rythmes.push({ largeur, langue, sections: releve })
 
             // Au-delà du repli seulement : c'est là que les trois cartes sont
             // côte à côte. Empilées, « elles finissent ensemble » n'a pas de
             // sens — chacune finit où commence la suivante.
-            const grille = await page.evaluate(MESURER_TARIFS)
+            const grille = await chrono('sonde · tarifs', () => page.evaluate(MESURER_TARIFS))
             if (grille) tarifs.push({ largeur, langue, ...grille })
           }
         }
@@ -2354,7 +2422,7 @@ try {
           défaut que « une fois par écran » ne saurait pas dire, et qui coûterait
           le même prix à l'utilisateur.
         */
-        const rendu = await page.evaluate(MESURER_RENDU)
+        const rendu = await chrono('sonde · a-t-il rendu', () => page.evaluate(MESURER_RENDU))
         renduxExamines++
         const exemptee = EXEMPTIONS_DE_RENDU[adresse]
         if (aRendu(rendu)) {
@@ -2388,7 +2456,9 @@ try {
           regarder ce qui est sous les yeux.
         */
         const avantSonde = performance.now()
-        const local = await page.evaluate(MESURER_DEBORD_LOCAL)
+        const local = await chrono('sonde · débordement local', () =>
+          page.evaluate(MESURER_DEBORD_LOCAL),
+        )
         tempsSonde += performance.now() - avantSonde
         tempsDansLaPage += local.ms
         appelsDeSonde += 1
@@ -2420,7 +2490,7 @@ try {
           })
         }
 
-        const resultat = await page.evaluate(MESURER)
+        const resultat = await chrono('sonde · débordement de page', () => page.evaluate(MESURER))
         if (!resultat) continue
         const cle = `${adresse}@${largeur}`
         if (TOLERES[cle]) {
@@ -2435,12 +2505,12 @@ try {
     // Une fois par langue, et non par écran : la barre est la même partout, et
     // la tabulation coûte un aller-retour par touche.
     process.stdout.write(`   ${langue}  réglages au clavier à 1440 px … `)
-    const manque = await reglagesAtteignables(page)
+    const manque = await chrono('clavier · réglages atteignables', () => reglagesAtteignables(page))
     process.stdout.write(manque ? 'ÉCHEC\n' : 'ok\n')
     if (manque) inatteignables.push({ langue, manque })
 
     process.stdout.write(`   ${langue}  panneau sans doublon à 1440 px … `)
-    const doublons = await doublonsDuPanneau(page)
+    const doublons = await chrono('panneau · doublons', () => doublonsDuPanneau(page))
     if (doublons) {
       panneauxMesures++
       barreLaPlusGarnie = Math.max(barreLaPlusGarnie, doublons.barre.length)
@@ -2449,7 +2519,7 @@ try {
     process.stdout.write(doublons?.rejoues.length ? 'ÉCHEC\n' : doublons ? 'ok\n' : 'NON MESURÉ\n')
 
     process.stdout.write(`   ${langue}  colonnes d'entrée à ${HAUTEURS_AUTH.join('/')} px … `)
-    const releves = await colonnesDesEcransDEntree(page)
+    const releves = await chrono('colonnes d’entrée', () => colonnesDesEcransDEntree(page))
     colonnes.push(...releves.map((r) => ({ langue, ...r })))
     process.stdout.write(`${releves.length} relevés\n`)
 
@@ -2480,13 +2550,15 @@ try {
         const depart = Date.now()
         process.stdout.write(`   ${langue}  ${theme}  ${adresse} … `)
         for (const largeur of LARGEURS_CONTRASTE) {
-          await page.setViewportSize({ width: largeur, height: 900 })
-          // On recharge à la première largeur seulement : le reste est un
-          // redimensionnement, comme dans la passe de mise en page.
-          if (largeur === LARGEURS_CONTRASTE[0]) {
-            await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
-          }
-          await attendre(page, adresse)
+          await chrono('contraste · navigation et attente', async () => {
+            await page.setViewportSize({ width: largeur, height: 900 })
+            // On recharge à la première largeur seulement : le reste est un
+            // redimensionnement, comme dans la passe de mise en page.
+            if (largeur === LARGEURS_CONTRASTE[0]) {
+              await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
+            }
+            await attendre(page, adresse)
+          })
 
           if (adresse === '/' && largeur === LARGEURS_CONTRASTE[0]) {
             fondsParTheme.set(
@@ -2495,7 +2567,7 @@ try {
             )
           }
 
-          const audit = await page.evaluate(AUDIT_CONTRASTE)
+          const audit = await chrono('audit · contraste', () => page.evaluate(AUDIT_CONTRASTE))
           if (!audit || typeof audit.examines !== 'number') {
             throw new Error(
               "mesure-ui : `contrast-audit.js` n'a pas rendu `{ failures, items, examines }`. " +
@@ -2544,16 +2616,17 @@ try {
       const depart = Date.now()
       process.stdout.write(`   ${langue}  cibles  ${adresse} … `)
       for (const largeur of LARGEURS) {
-        await page.setViewportSize({ width: largeur, height: 900 })
-        if (largeur === LARGEURS[0]) {
-          await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
-        }
-        await attendre(page, adresse)
-
-        const releve = await page.evaluate(MESURER_CIBLES, {
-          plancher: PLANCHER_CIBLE,
-          rayon: RAYON_SONDAGE,
+        await chrono('cibles et noms · navigation et attente', async () => {
+          await page.setViewportSize({ width: largeur, height: 900 })
+          if (largeur === LARGEURS[0]) {
+            await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
+          }
+          await attendre(page, adresse)
         })
+
+        const releve = await chrono('audit · cibles', () =>
+          page.evaluate(MESURER_CIBLES, { plancher: PLANCHER_CIBLE, rayon: RAYON_SONDAGE }),
+        )
         ciblesSondees += releve.sondees
         pointsDeCible++
         for (const raison of releve.raisonsVues) raisonsEmployees.add(raison)
@@ -2571,7 +2644,7 @@ try {
           bonne largeur, dans la bonne langue. Un `page.evaluate` de plus, et le
           balayage complet des noms est payé.
         */
-        const noms = await page.evaluate(AUDIT_NOMS)
+        const noms = await chrono('audit · noms accessibles', () => page.evaluate(AUDIT_NOMS))
         if (!noms || typeof noms.examinees !== 'number') {
           throw new Error(
             "mesure-ui : `noms-accessibles.js` n'a pas rendu `{ anonymes, items, examinees }`. " +
@@ -2641,9 +2714,11 @@ try {
         colorScheme: theme,
       })
       const page = await contexte.newPage()
-      await page.goto(BASE + surface.adresse, { waitUntil: 'domcontentloaded' })
-      await attendre(page, surface.adresse)
-      await page.addStyleTag({ content: FIGER_LES_ANIMATIONS })
+      await chrono('surfaces · navigation et attente', async () => {
+        await page.goto(BASE + surface.adresse, { waitUntil: 'domcontentloaded' })
+        await attendre(page, surface.adresse)
+        await page.addStyleTag({ content: FIGER_LES_ANIMATIONS })
+      })
 
       /*
         LA GARDE DU GARDE, et elle est le cœur de cette passe.
@@ -2656,8 +2731,10 @@ try {
       */
       let ouverte = false
       try {
-        await surface.ouvrir(page)
-        await page.locator(surface.temoin).first().waitFor({ state: 'visible' })
+        await chrono('surfaces · geste d’ouverture', async () => {
+          await surface.ouvrir(page)
+          await page.locator(surface.temoin).first().waitFor({ state: 'visible' })
+        })
         ouverte = true
       } catch (e) {
         plaintesDeSurface.push(
@@ -2671,7 +2748,7 @@ try {
       if (ouverte) {
         surfacesOuvertes++
 
-        const audit = await page.evaluate(AUDIT_CONTRASTE)
+        const audit = await chrono('audit · contraste', () => page.evaluate(AUDIT_CONTRASTE))
         if (!audit || typeof audit.examines !== 'number') {
           throw new Error(
             `mesure-ui : \`contrast-audit.js\` n'a rien rendu sur la surface ${nom}.`,
@@ -2684,10 +2761,9 @@ try {
           if (!contrastes.has(cle)) contrastes.set(cle, { ...item, ou: `surface ${nom}` })
         }
 
-        const releve = await page.evaluate(MESURER_CIBLES, {
-          plancher: PLANCHER_CIBLE,
-          rayon: RAYON_SONDAGE,
-        })
+        const releve = await chrono('audit · cibles', () =>
+          page.evaluate(MESURER_CIBLES, { plancher: PLANCHER_CIBLE, rayon: RAYON_SONDAGE }),
+        )
         ciblesSondees += releve.sondees
         ciblesDeSurface += releve.sondees
         /* `pointsDeCible` N'EST PAS incrémenté : il compte les points ADRESSE ×
@@ -2710,7 +2786,7 @@ try {
           nulle part tant que personne n'a cliqué. Le calendrier et le sélecteur
           de mois de la modale de paiement ne sont regardés QUE par cette ligne.
         */
-        const noms = await page.evaluate(AUDIT_NOMS)
+        const noms = await chrono('audit · noms accessibles', () => page.evaluate(AUDIT_NOMS))
         if (!noms || typeof noms.examinees !== 'number') {
           throw new Error(
             `mesure-ui : \`noms-accessibles.js\` n'a rien rendu sur la surface ${nom}.`,
@@ -3912,6 +3988,26 @@ console.log(
     `  sans faire défiler la page — aucun hors des ${Object.keys(DEBORDS_LOCAUX_TOLERES).length} signatures tolérées et motivées.\n` +
     `  Elle coûte ${(tempsSonde / 1000).toFixed(1)} s sur ${appelsDeSonde} appels — ${(tempsSonde / appelsDeSonde).toFixed(1)} ms l'un —, ` +
     `dont ${(tempsDansLaPage / 1000).toFixed(1)} s de parcours du DOM et ${((tempsSonde - tempsDansLaPage) / 1000).toFixed(1)} s d'aller-retour.\n` +
+    /*
+      OÙ PASSE LE TEMPS — voir l'en-tête de `chrono`.
+
+      Trié par coût, et le RESTE est nommé : la somme des postes ne fait pas la
+      durée totale, et l'écart s'appelle « non imputé » plutôt que de se dissoudre
+      dans l'arrondi du dernier poste.
+    */
+    (() => {
+      const total = performance.now() - DEPART_DU_SCRIPT
+      const postes = [...horloge.entries()].sort((a, b) => b[1].ms - a[1].ms)
+      const impute = postes.reduce((somme, [, v]) => somme + v.ms, 0)
+      const ligne = (nom, ms, appels) =>
+        `    ${(ms / 1000).toFixed(1).padStart(6)} s  ${String(Math.round((ms / total) * 100)).padStart(3)} %  ` +
+        `${appels === null ? '        ' : String(appels).padStart(5) + ' ×'}  ${nom}\n`
+      return (
+        `  OÙ PASSENT LES ${(total / 1000).toFixed(0)} SECONDES — chaque appel chronométré, le reste avoué :\n` +
+        postes.map(([nom, v]) => ligne(nom, v.ms, v.appels)).join('') +
+        ligne('non imputé (fermetures, lectures, calculs de ce script)', total - impute, null)
+      )
+    })() +
     /*
       LE CHIFFRE RÉEL EST IMPRIMÉ À CHAQUE PASSAGE, à côté du plafond inscrit.
 
