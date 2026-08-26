@@ -210,6 +210,10 @@ export function Portfolio() {
           return (
             <StatCard
               key={b.id}
+              /* Le seul endroit du produit où une carte désigne un immeuble
+                 RÉEL : le glyphe y est donc l'immeuble. Ailleurs, un chiffre
+                 d'occupation prend le cadran. */
+              icone="building"
               /* Le NOM et non le quartier : la carte parle d'un immeuble, et
                  deux immeubles d'un même quartier donnaient deux cartes
                  intitulées « BASTOS ». Le quartier passe en note, où il situe
@@ -236,6 +240,7 @@ export function Portfolio() {
           )
         })}
         <StatCard
+          icone="gauge"
           label={t('app.dashboard.occupancy')}
           /* `computeKpis` borne déjà cette division — « un parc vide donne 0 %
              et non NaN » — et ce second calcul, écrit à la main ici, ne le

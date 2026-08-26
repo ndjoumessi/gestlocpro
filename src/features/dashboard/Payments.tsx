@@ -284,14 +284,17 @@ export function Payments() {
             chercher l'autre.
           */}
           <StatCard
+            icone="clock"
             label={t('app.dashboard.recoveryLate')}
             value={money(kpis.late, { round: true })}
           />
           <StatCard
+            icone="card"
             label={t('app.dashboard.recoveryCollected')}
             value={money(kpis.collected, { round: true })}
           />
           <StatCard
+            icone="layers"
             label={t('app.dashboard.expected')}
             value={money(kpis.expected, { round: true })}
           />

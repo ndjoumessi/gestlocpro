@@ -117,6 +117,7 @@ export function SystemStates() {
                   return (
                     <StatCard
                       key={immeuble.id}
+                      icone="building"
                       label={immeuble.district}
                       value={`${occupes}/${logements.length}`}
                       note={t('app.portfolio.occupancy', {

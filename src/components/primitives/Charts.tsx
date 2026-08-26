@@ -3,6 +3,7 @@ import { cn } from '@/lib/cn'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { JaugeDePoste, StatusPill, type EtatDePoste, type StatusTone } from './StatusPill'
+import { Icon, type IconName } from './Icon'
 
 /**
  * Graphes maison, en DOM et en SVG.
@@ -1361,6 +1362,38 @@ export function ProgressBar({
  * à la recherche de noms complets, et `border-${ton}-border` ne produirait
  * aucune règle — la bordure resterait grise sans que rien ne le signale.
  */
+/**
+ * LA TUILE D'ICÔNE, et pourquoi elle est OR par défaut plutôt que grise.
+ *
+ * Quatre rectangles nus, alignés, sans un seul repère : la rangée
+ * d'indicateurs se lisait de gauche à droite comme un tableur, et rien n'y
+ * accrochait l'œil qui revient sur la page pour la dixième fois de la journée.
+ * Une icône dans une tuile teintée donne à chaque carte un point d'ancrage
+ * qu'on retrouve sans lire — c'est le rôle que joue déjà le même gabarit dans
+ * « ce qui demande une décision », deux rangées plus bas : `size-8`,
+ * `rounded-md`, un lavis et un glyphe de 15 px. Ce n'est donc pas une invention
+ * mais la reprise d'un idiome que le produit avait déjà.
+ *
+ * OR PAR DÉFAUT parce que c'est l'accent de la marque et qu'un lavis neutre
+ * n'aurait rien apporté qu'un gris de plus sur un fond déjà gris. `--gold-ink`
+ * et non `--gold` : l'or nu ne tient que 2,87:1, l'encre du même bleu de
+ * famille en tient 4,80 au pire des fonds — c'est la règle que `Charts` énonce
+ * en tête de fichier pour les séries, et elle ne s'arrête pas aux séries.
+ *
+ * TEINTE DE L'ÉTAT QUAND IL Y EN A UN, plutôt qu'une seconde grammaire de
+ * couleur posée par-dessus la première. Une carte en alerte a déjà une bordure
+ * rouge et une pastille rouge ; une tuile restée or au milieu se lirait comme
+ * une contradiction. Et l'icône ne porte JAMAIS l'information seule : elle est
+ * `aria-hidden`, l'intitulé la dit, la pastille dit l'état.
+ */
+const TUILES_D_ETAT: Record<StatusTone, string> = {
+  ok: 'bg-ok-tint text-ok',
+  warn: 'bg-warn-tint text-warn',
+  danger: 'bg-danger-tint text-danger',
+  neutral: 'bg-neutral-tint text-neutral',
+  info: 'bg-gold-tint text-gold-ink',
+}
+
 const BORDURES_D_ETAT: Record<StatusTone, string> = {
   ok: 'border-ok-border',
   warn: 'border-warn-border',
@@ -1377,6 +1410,7 @@ export function StatCard({
   note,
   action,
   etat,
+  icone,
 }: {
   label: string
   value: string
@@ -1426,6 +1460,19 @@ export function StatCard({
    * aussi ce qui laisse les quinze autres appels du produit inchangés.
    */
   etat?: { ton: StatusTone; libelle: string }
+  /**
+   * Le repère visuel de la carte — DÉCORATIF, et il faut que ça le reste.
+   *
+   * Il est `aria-hidden` par construction (voir `Icon`) : ce que la carte
+   * mesure est dit par son intitulé, et un lecteur d'écran n'a que faire
+   * d'entendre « horloge » avant « reste à percevoir ». Une icône qui porterait
+   * un sens que le texte ne porte pas serait un défaut, pas un ornement.
+   *
+   * Facultatif, comme `etat` : une carte sans icône reste une carte valide, et
+   * le jour où un écran en pose une rangée sans repère naturel, il n'aura pas à
+   * en inventer.
+   */
+  icone?: IconName
 }) {
   return (
     <div
@@ -1437,6 +1484,14 @@ export function StatCard({
          bon état sous une autre teinte, et rougirait sur un simple renommage
          d'utilitaire. Ce sont les deux erreurs inverses, et l'attribut les
          évite toutes les deux. */
+      /* `data-indicateur` dit CE QUE CETTE BOÎTE EST ; `data-etat`, plus bas,
+         ne dit que ce qui lui arrive et n'existe donc pas toujours. Il faut les
+         deux, et le premier manquait : un cas des tarifs remontait jusqu'à la
+         carte en comptant DEUX sauts de parent, et la tuile d'icône de ce lot en
+         a ajouté un — le cas s'est mis à mesurer l'intitulé au lieu de la carte.
+         Un chemin qui compte les sauts casse au premier niveau intermédiaire ;
+         `closest('[data-indicateur]')` survit à tous. */
+      data-indicateur=""
       data-etat={etat?.ton}
       className={cn(
         'rounded-lg border bg-surface p-4 shadow-e1 sm:p-5',
@@ -1444,7 +1499,31 @@ export function StatCard({
       )}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="eyebrow min-w-0 flex-1 truncate text-muted">{label}</p>
+        {/* La tuile et l'intitulé forment UN groupe, centré sur la tuile ;
+            `action` reste aligné en haut. Sans ce niveau intermédiaire, un
+            intitulé de 11 px se collait au sommet d'une tuile de 32 et la
+            rangée paraissait décrochée — et donner `items-center` à la rangée
+            entière aurait fait descendre le bouton de suppression du parc, qui
+            est une cible de 44 px et doit rester dans l'angle. */}
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+          {icone && (
+            <span
+              /* Même raison que `data-etat` sur la racine : la tuile doit être
+                 INTERROGEABLE sans passer par sa peinture. C'est par lui qu'un
+                 cas vérifie qu'une rangée d'indicateurs n'a pas gagné une
+                 cinquième carte sans repère, et que la tuile suit bien l'état
+                 au lieu de rester or au milieu d'une carte en alerte. */
+              data-tuile={etat?.ton ?? 'neutre'}
+              className={cn(
+                'flex size-8 shrink-0 items-center justify-center rounded-md',
+                etat ? TUILES_D_ETAT[etat.ton] : 'bg-gold-tint text-gold-ink',
+              )}
+            >
+              <Icon name={icone} size={15} />
+            </span>
+          )}
+          <p className="eyebrow min-w-0 flex-1 truncate text-muted">{label}</p>
+        </div>
         {action}
       </div>
       <p className="mt-2 flex items-baseline gap-1.5">

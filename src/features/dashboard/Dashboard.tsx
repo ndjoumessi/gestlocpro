@@ -221,6 +221,12 @@ export function Dashboard() {
       */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
+          /* UN VOCABULAIRE D'ICÔNES, PAS QUATRE DÉCORATIONS. Ce qui est encore
+             dû se marque d'une HORLOGE ici comme sur l'écran des paiements ;
+             l'encaissé d'une CARTE, l'attendu d'un EMPILEMENT de baux, un taux
+             d'un CADRAN. Le même concept prend le même glyphe d'un écran à
+             l'autre — sans quoi l'icône n'aide plus à retrouver, elle décore. */
+          icone="clock"
           label={t('app.dashboard.outstanding')}
           value={money(outstanding, { round: true })}
           /**
@@ -257,16 +263,22 @@ export function Dashboard() {
           })}
         />
         <StatCard
+          icone="card"
           label={t('app.dashboard.collected')}
           value={money(collected, { round: true })}
           note={t('app.dashboard.collectedShare', { percent: collectedShare })}
         />
         <StatCard
+          icone="layers"
           label={t('app.dashboard.expected')}
           value={money(expected, { round: true })}
           note={t('app.dashboard.activeLeases', { count: occupied })}
         />
         <StatCard
+          /* `gauge` et non `building` : ce qu'on lit ici est un TAUX, pas un
+             immeuble. Le glyphe de l'immeuble reste à l'écran Parc, où chaque
+             carte en désigne un vrai. */
+          icone="gauge"
           label={t('app.dashboard.occupancy')}
           value={`${occupancy}`}
           unit="%"

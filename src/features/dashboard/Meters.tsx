@@ -228,6 +228,7 @@ export function Meters() {
           et c'est l'information dont le gestionnaire a besoin pour sa tournée.
         */}
         <StatCard
+          icone="gauge"
           label={t('app.meters.totalRebilled')}
           value={aUnPrix ? money(total, { round: true }) : '—'}
           note={t('app.meters.capturedCount', {
@@ -241,6 +242,7 @@ export function Meters() {
             changement de devise. */}
         {prixCourant('waterPrice') !== null && (
           <StatCard
+            icone="droplet"
             label={t('app.meters.water')}
             value={money(prixCourant('waterPrice')!, { round: true })}
             unit="/ m³"
@@ -248,6 +250,7 @@ export function Meters() {
         )}
         {prixCourant('powerPrice') !== null && (
           <StatCard
+            icone="bolt"
             label={t('app.meters.power')}
             value={money(prixCourant('powerPrice')!, { round: true })}
             unit="/ kWh"

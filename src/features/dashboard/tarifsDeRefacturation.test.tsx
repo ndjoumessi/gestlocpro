@@ -117,7 +117,11 @@ describe('les prix affichés sur les relevés', () => {
     // Et le TOTAL disparaît avec eux. Sans prix, la somme retombe à zéro et
     // l'écran annoncerait « 0 FCFA refacturés » — un zéro affirmé, qui a l'air
     // d'un fait mesuré, là où la vérité est qu'on ne sait pas encore combien.
-    const total = screen.getByText('Total refacturé').parentElement!.parentElement!
+    // `closest` et non deux sauts de parent : la carte a gagné un niveau
+    // intermédiaire le jour où les indicateurs ont pris une tuile d'icône, et ce
+    // cas s'est alors mis à lire l'intitulé au lieu de la carte. Un chemin qui
+    // compte les sauts mesure la structure ; celui-ci nomme sa cible.
+    const total = screen.getByText('Total refacturé').closest('[data-indicateur]')!
     expect(total.textContent).toContain('—')
     expect(total.textContent).not.toMatch(/0\s?FCFA/)
   })

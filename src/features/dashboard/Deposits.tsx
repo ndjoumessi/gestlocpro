@@ -122,9 +122,23 @@ export function Deposits() {
           montant. C'est l'arbitrage du tableau de bord et du parc, qui
           attendent `xl` pour passer à quatre.
         */}
-        <StatCard label={t('app.deposits.totalHeld')} value={money(totalHeld, { round: true })} />
-        <StatCard label={t('app.deposits.withheld')} value={money(totalWithheld, { round: true })} />
+        {/* Le BOUCLIER pour ce qui est consigné — le même que porte « caution à
+            arbitrer » sur le tableau de bord —, le CADENAS pour ce qui est
+            retenu, la CARTE pour ce qui repart chez le locataire. Trois états
+            d'un même argent : trois glyphes, sans quoi les trois cartes ne se
+            distinguent que par leur intitulé. */}
         <StatCard
+          icone="shield"
+          label={t('app.deposits.totalHeld')}
+          value={money(totalHeld, { round: true })}
+        />
+        <StatCard
+          icone="lock"
+          label={t('app.deposits.withheld')}
+          value={money(totalWithheld, { round: true })}
+        />
+        <StatCard
+          icone="card"
           label={t('app.deposits.balance')}
           value={money(totalHeld - totalWithheld, { round: true })}
         />
