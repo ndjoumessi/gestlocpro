@@ -1657,6 +1657,10 @@ const MESURER_REPLI = () => {
  * déborde : nommer la chaîne noierait le coupable sous ses quatre ancêtres.
  */
 const MESURER_DEBORD_LOCAL = () => {
+  // Chronométré DANS la page, pour séparer ce que coûte le PARCOURS de ce que
+  // coûte l'aller-retour avec le navigateur. Les deux se paient, mais on ne les
+  // réduit pas de la même façon.
+  const depart = performance.now()
   const brut = []
   const tous = document.querySelectorAll('*')
   for (const el of tous) {
@@ -1706,6 +1710,7 @@ const MESURER_DEBORD_LOCAL = () => {
     // dont la sonde cesserait de trouver des éléments rendrait « aucun défaut »
     // avec la même sérénité qu'un écran sain.
     sondes: tous.length,
+    ms: performance.now() - depart,
     coupables: brut
       .filter(({ el }) => !brut.some((a) => a.el !== el && el.contains(a.el)))
       .map(({ el, debord }) => ({
@@ -2168,6 +2173,46 @@ const tolerancesLocalesUtilisees = new Set()
  */
 const maximaLocaux = new Map()
 let elementsSondes = 0
+/**
+ * CE QUE LA SONDE COÛTE, relevé plutôt que supposé.
+ *
+ * Trois lots de suite ont fini sur l'aveu « je n'ai pas mesuré ce que la sonde
+ * ajoute aux dix minutes de la porte ». Une porte dont on ignore le prix est
+ * une porte qu'on finit par ne plus lancer, et c'est le seul défaut qu'aucune
+ * garde ne rattrape.
+ *
+ * DEUX CHIFFRES, parce qu'ils ne se réduisent pas pareil : `tempsSonde` est le
+ * temps vu de Node, aller-retour avec le navigateur compris ; `tempsDansLaPage`
+ * est le seul parcours du DOM. L'écart entre les deux est le prix du protocole,
+ * qu'aucune optimisation du parcours ne fera baisser.
+ *
+ * ─── LE RELEVÉ ────────────────────────────────────────────────────────────
+ *
+ * Deux exécutions, même paquet, même machine :
+ *
+ *   sonde        1,0 s sur 506 appels — 2,0 puis 2,1 ms l'un
+ *   dont DOM     0,6 s pour 161 106 éléments, soit ~3,7 µs par élément
+ *   dont trajet  0,4 s, c'est-à-dire ~0,8 ms par aller-retour
+ *   porte        196,73 s puis 193,00 s
+ *
+ * Elle pèse donc UN VINGTIÈME DE POUR CENT du balayage — la porte attend le
+ * navigateur, elle ne calcule pas.
+ *
+ * POURQUOI PAS D'A/B, et c'est le résultat le plus utile du relevé : deux
+ * exécutions IDENTIQUES s'écartent de 3,7 secondes. Comparer un passage avec
+ * sonde à un passage sans ne pourrait pas distinguer une seconde de ce bruit —
+ * le chiffre qu'on en tirerait serait une fausse précision. Le chronomètre
+ * interne est le seul instrument assez fin ici ; l'horloge murale sert
+ * uniquement à dire qu'elle ne suffit pas.
+ *
+ * CE QUE CE CHIFFRE NE DIT PAS : ce qu'il deviendra. Il suit le NOMBRE
+ * D'ÉLÉMENTS, pas le nombre d'écrans — 3,7 µs chacun. Un produit qui doublerait
+ * son DOM paierait deux secondes, et ce serait encore négligeable ; c'est le
+ * jour où le parcours cesserait d'être linéaire qu'il faudrait y revenir.
+ */
+let tempsSonde = 0
+let tempsDansLaPage = 0
+let appelsDeSonde = 0
 
 /** Les points où la page n'a rien rendu, hors adresses exemptées. */
 const nonRendus = []
@@ -2342,7 +2387,11 @@ try {
           déjà stabilisée. Une seconde boucle aurait payé 506 navigations pour
           regarder ce qui est sous les yeux.
         */
+        const avantSonde = performance.now()
         const local = await page.evaluate(MESURER_DEBORD_LOCAL)
+        tempsSonde += performance.now() - avantSonde
+        tempsDansLaPage += local.ms
+        appelsDeSonde += 1
         elementsSondes += local.sondes
         for (const coupable of local.coupables) {
           // Relevé d'abord, jugé ensuite : un débordement toléré compte dans le
@@ -3861,6 +3910,8 @@ console.log(
   `\n✓ mesure-ui : ${adresses.length} écrans × ${LARGEURS.length} largeurs × ${LANGUES.length} langues, aucun débordement latéral ni en-tête replié.\n` +
     `  ${elementsSondes} éléments sondés pour le DÉBORDEMENT LOCAL — un contenu qui sort de sa boîte\n` +
     `  sans faire défiler la page — aucun hors des ${Object.keys(DEBORDS_LOCAUX_TOLERES).length} signatures tolérées et motivées.\n` +
+    `  Elle coûte ${(tempsSonde / 1000).toFixed(1)} s sur ${appelsDeSonde} appels — ${(tempsSonde / appelsDeSonde).toFixed(1)} ms l'un —, ` +
+    `dont ${(tempsDansLaPage / 1000).toFixed(1)} s de parcours du DOM et ${((tempsSonde - tempsDansLaPage) / 1000).toFixed(1)} s d'aller-retour.\n` +
     /*
       LE CHIFFRE RÉEL EST IMPRIMÉ À CHAQUE PASSAGE, à côté du plafond inscrit.
 
