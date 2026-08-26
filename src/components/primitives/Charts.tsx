@@ -1374,11 +1374,30 @@ export function ProgressBar({
  * `rounded-md`, un lavis et un glyphe de 15 px. Ce n'est donc pas une invention
  * mais la reprise d'un idiome que le produit avait déjà.
  *
- * OR PAR DÉFAUT parce que c'est l'accent de la marque et qu'un lavis neutre
- * n'aurait rien apporté qu'un gris de plus sur un fond déjà gris. `--gold-ink`
- * et non `--gold` : l'or nu ne tient que 2,87:1, l'encre du même bleu de
- * famille en tient 4,80 au pire des fonds — c'est la règle que `Charts` énonce
- * en tête de fichier pour les séries, et elle ne s'arrête pas aux séries.
+ * NEUTRE PAR DÉFAUT, ET C'EST UN CHOIX QUE J'AI DÛ RETOURNER.
+ *
+ * Le lot qui a posé ces tuiles les voulait OR, « parce que c'est l'accent de la
+ * marque et qu'un lavis neutre n'aurait rien apporté qu'un gris de plus ».
+ * L'argument s'est cassé sur une mesure, au lot suivant : `--color-gold-tint` et
+ * `--color-warn-tint` valent LE MÊME `#fbf3e2`, et `--color-gold-ink` (#8a6218)
+ * ne s'écarte de `--color-warn` (#795415) que d'une nuance. Ce n'est pas une
+ * collision accidentelle — dans ce système, l'ambre d'alerte EST l'or de la
+ * marque, et la bannière des relevés le prouve depuis toujours.
+ *
+ * Conséquence, vue à l'écran puis relevée au pixel : une carte passée en `warn`
+ * rendait une tuile RIGOUREUSEMENT identique à celle de ses voisines calmes. Le
+ * correctif était invisible, et seule la bordure — #ead9b4 contre #e8e2d7 —
+ * le distinguait encore.
+ *
+ * LA RÈGLE QUI EN SORT : la teinte par défaut ne peut être celle d'AUCUN état,
+ * sans quoi l'état qu'elle recouvre ne peut plus se signaler. Le neutre est la
+ * seule du système qui ne signale rien. L'or n'a pas disparu — il reste le ton
+ * `info`, où il veut dire quelque chose au lieu de servir de papier peint.
+ *
+ * `--gold-ink` et non `--gold` là où l'or sert encore : l'or nu ne tient que
+ * 2,87:1, l'encre de la même famille en tient 4,80 au pire des fonds — c'est la
+ * règle que `Charts` énonce en tête de fichier pour les séries, et elle ne
+ * s'arrête pas aux séries.
  *
  * TEINTE DE L'ÉTAT QUAND IL Y EN A UN, plutôt qu'une seconde grammaire de
  * couleur posée par-dessus la première. Une carte en alerte a déjà une bordure
@@ -1453,13 +1472,29 @@ export function StatCard({
    * désynchronisation serait à un oubli de distance. Ensemble, elle est
    * impossible à écrire.
    *
+   * LE MOT EST FACULTATIF, ET LA RÈGLE EST : LA PASTILLE NOMME L'ÉTAT QUAND RIEN
+   * D'AUTRE NE LE NOMME. Deux cartes du produit portent un état dont leur propre
+   * texte parle déjà — celle des paiements s'INTITULE « En retard », celle des
+   * relevés porte en note « 8 sur 10 saisis ». Y ajouter une pastille reviendrait
+   * à écrire deux fois la même chose à quinze pixels d'écart ; ce qui leur
+   * manquait n'était pas un mot de plus, c'était que leur POIDS s'accorde à ce
+   * que leur texte dit. Elles prennent donc le ton sans la pastille.
+   *
+   * CE N'EST PAS UNE PORTE OUVERTE À LA COULEUR SEULE, et c'est la seule chose
+   * qui rend l'omission acceptable. Omettre `libelle` est légitime UNIQUEMENT si
+   * l'on peut pointer le texte de la carte qui dit l'état — son intitulé ou sa
+   * note. `etatNomme.test.tsx` le vérifie carte par carte, sur les trois du
+   * produit qui portent un état : chacune doit contenir en toutes lettres ce que
+   * sa teinte affirme. Sans ce cas, ce `?` serait exactement la régression que
+   * `couleur-non-seule` existe pour empêcher.
+   *
    * ABSENT, RIEN NE CHANGE, et c'est la raison d'être du `?`. Une carte
    * d'alerte toujours allumée est une carte qu'on cesse de lire au bout d'une
    * semaine ; l'appelant ne pose `etat` que lorsque la DONNÉE l'exige — sur un
    * parc où tout le monde a payé, la carte redevient l'une des quatre. C'est
    * aussi ce qui laisse les quinze autres appels du produit inchangés.
    */
-  etat?: { ton: StatusTone; libelle: string }
+  etat?: { ton: StatusTone; libelle?: string }
   /**
    * Le repère visuel de la carte — DÉCORATIF, et il faut que ça le reste.
    *
@@ -1516,7 +1551,7 @@ export function StatCard({
               data-tuile={etat?.ton ?? 'neutre'}
               className={cn(
                 'flex size-8 shrink-0 items-center justify-center rounded-md',
-                etat ? TUILES_D_ETAT[etat.ton] : 'bg-gold-tint text-gold-ink',
+                etat ? TUILES_D_ETAT[etat.ton] : 'bg-neutral-tint text-neutral',
               )}
             >
               <Icon name={icone} size={15} />
@@ -1582,7 +1617,7 @@ export function StatCard({
       {(delta || note) && (
         <p className="mt-2 flex flex-wrap items-center gap-2">
           {delta}
-          {etat && (
+          {etat?.libelle && (
             <StatusPill tone={etat.ton} size="sm">
               {etat.libelle}
             </StatusPill>

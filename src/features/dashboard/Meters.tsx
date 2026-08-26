@@ -229,6 +229,25 @@ export function Meters() {
         */}
         <StatCard
           icone="gauge"
+          /**
+           * LA CARTE S'ACCORDE À LA BANNIÈRE QUI LA SUIT, à quinze pixels.
+           *
+           * « 8 sur 10 saisis » était en gris muet, et la bannière juste
+           * dessous disait le même fait en ambre : « 2 relevés manquants pour
+           * la période ». Deux traitements pour une seule information — l'œil
+           * apprend que la carte est tranquille et que l'alerte est ailleurs,
+           * alors que c'est le TOTAL de la carte qui est faux tant qu'il manque
+           * un relevé.
+           *
+           * `warn` et non `danger` : rien n'est en retard, il manque une
+           * saisie — c'est le ton que la bannière emploie déjà, et il n'y a pas
+           * de raison d'en avoir deux pour un fait.
+           *
+           * SANS PASTILLE : la note de la carte dit « 8 sur 10 saisis », ce qui
+           * nomme le fait en toutes lettres. Une pastille « Relevé manquant »
+           * ferait la TROISIÈME formulation du même manque sur le même écran.
+           */
+          etat={missing.length > 0 ? { ton: 'warn' } : undefined}
           label={t('app.meters.totalRebilled')}
           value={aUnPrix ? money(total, { round: true }) : '—'}
           note={t('app.meters.capturedCount', {

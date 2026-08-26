@@ -285,6 +285,26 @@ export function Payments() {
           */}
           <StatCard
             icone="clock"
+            /**
+             * LE MÊME ARGENT QUE SUR LE TABLEAU DE BORD, DONC LE MÊME POIDS.
+             *
+             * Cette carte était or et calme, quand la même somme est rouge et
+             * pastillée deux écrans plus loin. L'état suivait l'ÉCRAN au lieu de
+             * suivre le CONCEPT : un retard n'est pas moins un retard parce
+             * qu'on le regarde depuis la page des paiements — c'est même la page
+             * d'où l'on relance.
+             *
+             * SANS PASTILLE, et c'est la seule carte du produit où l'omission va
+             * de soi : elle s'INTITULE « En retard ». La pastille du tableau de
+             * bord existe parce que « Reste à percevoir » ne dit rien de
+             * fâcheux ; ici l'intitulé EST le mot d'état, et le répéter à trois
+             * centimètres n'apprendrait rien. La couleur n'est donc pas seule —
+             * le texte qui la double est le titre lui-même.
+             *
+             * La condition est celle d'ailleurs : sur un parc sans retard, la
+             * carte redevient l'une des trois.
+             */
+            etat={kpis.late > 0 ? { ton: 'danger' } : undefined}
             label={t('app.dashboard.recoveryLate')}
             value={money(kpis.late, { round: true })}
           />
