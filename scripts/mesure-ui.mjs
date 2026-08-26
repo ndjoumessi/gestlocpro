@@ -812,8 +812,9 @@ const TOLERES = {
  * AUCUNE DES NEUF N'A DISPARU POUR AUTANT, et c'est le piège de ce registre :
  * réparer le franchissement n'a pas effacé la signature, il a seulement fait
  * baisser son maximum. Une entrée survit à sa propre réparation en devenant
- * MENTEUSE, et rien ne le réclame — il faut abaisser son plafond à 1, relancer,
- * lire le chiffre que la porte imprime, et le réécrire à la main.
+ * MENTEUSE. C'EST DÉSORMAIS GARDÉ : la porte imprime à chaque passage le
+ * maximum RÉELLEMENT mesuré à côté du plafond inscrit, et rougit dès que
+ * l'écart dépasse quatre pixels — voir la garde du plafond menteur.
  *
  * L'ŒIL S'EST TROMPÉ TROIS FOIS AVANT LA MESURE, et c'est pour cela que chaque
  * motif porte désormais une DISTANCE et non un adjectif : sur une capture, un
@@ -2156,6 +2157,16 @@ const tolerancesUtilisees = new Set()
  */
 const debordsLocaux = []
 const tolerancesLocalesUtilisees = new Set()
+/**
+ * Le PIRE débordement RÉELLEMENT vu pour chaque signature, tolérée ou non.
+ *
+ * Relevé même quand la tolérance couvre : c'est ce chiffre, et non le plafond
+ * inscrit, qui dit ce que le produit fait aujourd'hui. Sans lui, la seule façon
+ * de connaître le vrai maximum d'une signature tolérée était d'abaisser son
+ * plafond à 1 et de relancer dix minutes de navigateur — un rituel que personne
+ * n'exécute, donc un chiffre que personne ne vérifie.
+ */
+const maximaLocaux = new Map()
 let elementsSondes = 0
 
 /** Les points où la page n'a rien rendu, hors adresses exemptées. */
@@ -2334,6 +2345,17 @@ try {
         const local = await page.evaluate(MESURER_DEBORD_LOCAL)
         elementsSondes += local.sondes
         for (const coupable of local.coupables) {
+          // Relevé d'abord, jugé ensuite : un débordement toléré compte dans le
+          // maximum au même titre qu'un autre, sans quoi le plafond ne pourrait
+          // être confronté à rien.
+          const vu = maximaLocaux.get(coupable.signature)
+          if (!vu || coupable.debord > vu.debord) {
+            maximaLocaux.set(coupable.signature, {
+              debord: coupable.debord,
+              ou: `${adresse}@${largeur}/${langue}`,
+            })
+          }
+
           const toleree = DEBORDS_LOCAUX_TOLERES[coupable.signature]
           if (toleree) {
             tolerancesLocalesUtilisees.add(coupable.signature)
@@ -2997,6 +3019,65 @@ if (debordsLocaux.length > 0) {
     '   Si le débordement est assumé, inscrivez la SIGNATURE dans `DEBORDS_LOCAUX_TOLERES`\n' +
       '   avec son plafond mesuré et son motif. Une tolérance sans plafond est un blanc-seing.',
   )
+  process.exit(1)
+}
+
+/*
+  ─── GARDE DU GARDE — UN PLAFOND QUI DÉPASSE LA RÉALITÉ EST UN MENSONGE ────
+
+  L'autre garde du garde, juste en dessous, fait mourir une tolérance qui ne
+  couvre PLUS RIEN. Celle-ci s'occupe du cas d'à côté, qui s'est produit deux
+  fois dans la même journée et que rien ne signalait : une tolérance qui couvre
+  ENCORE quelque chose, mais BEAUCOUP PLUS QU'IL NE FAUT.
+
+  MESURÉ, deux fois :
+
+   — la carte d'alerte réparée a fait tomber `div.flex flex-wrap items-center
+     gap-2` de 121 px sur 74 occurrences à 81 sur 11. La signature est PARTAGÉE
+     avec la carte de chantier, donc l'entrée survivait — en blanchissant
+     désormais 40 px de régression que plus rien ne justifiait ;
+   — le montant de KPI réparé a fait tomber son entrée de 30 px sur 28
+     occurrences à 7 sur 8, et la porte est restée VERTE.
+
+  Dans les deux cas il a fallu abaisser le plafond à 1 et relancer dix minutes
+  de navigateur pour apprendre le vrai chiffre. Un rituel qu'aucune garde ne
+  réclame est un rituel que personne n'exécute.
+
+  LA MARGE EST DE QUATRE PIXELS, ET C'EST UNE PRUDENCE NON MESURÉE. Sur cette
+  machine, deux exécutions du même paquet rendent des maxima IDENTIQUES au
+  pixel — le rendu du texte y est déterministe. Ce que je n'ai pas mesuré, c'est
+  une AUTRE machine : des métriques de police différentes déplaceraient chaque
+  maximum de quelques pixels, et une marge nulle ferait rougir la porte partout
+  ailleurs pour un non-défaut. Quatre pixels absorbent ce que je suppose être
+  cette dérive. Le jour où on la mesure, ce paragraphe se remplace par un
+  chiffre.
+
+  CE QU'ELLE NE PEUT PAS FAIRE : corriger le plafond toute seule. Le nombre est
+  écrit à la main, avec son motif, parce que le baisser est une DÉCISION —
+  celle de dire « voilà où en est le produit aujourd'hui ». Une garde qui
+  réécrirait le fichier ferait disparaître la décision en même temps que
+  l'écart.
+*/
+const MARGE_DE_PLAFOND = 4
+
+const plafondsMenteurs = Object.entries(DEBORDS_LOCAUX_TOLERES)
+  .filter(([cle]) => tolerancesLocalesUtilisees.has(cle))
+  .map(([cle, { plafond }]) => ({ cle, plafond, reel: maximaLocaux.get(cle)?.debord ?? 0 }))
+  .filter(({ plafond, reel }) => plafond - reel > MARGE_DE_PLAFOND)
+
+if (plafondsMenteurs.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${plafondsMenteurs.length} plafond(s) local(aux) dépassent la réalité mesurée.\n` +
+      "   Un plafond plus haut que le défaut qu'il couvre blanchit d'avance l'écart entre les deux.\n",
+  )
+  for (const { cle, plafond, reel } of plafondsMenteurs) {
+    const ou = maximaLocaux.get(cle)?.ou ?? '—'
+    console.error(
+      `   ${cle}\n` +
+        `      inscrit ${plafond}px, mesuré ${reel}px — ${plafond - reel}px blanchis pour rien (pire cas : ${ou})\n` +
+        `      Abaissez le plafond à ${reel} et dites dans le motif ce qui a changé.\n`,
+    )
+  }
   process.exit(1)
 }
 
@@ -3780,6 +3861,21 @@ console.log(
   `\n✓ mesure-ui : ${adresses.length} écrans × ${LARGEURS.length} largeurs × ${LANGUES.length} langues, aucun débordement latéral ni en-tête replié.\n` +
     `  ${elementsSondes} éléments sondés pour le DÉBORDEMENT LOCAL — un contenu qui sort de sa boîte\n` +
     `  sans faire défiler la page — aucun hors des ${Object.keys(DEBORDS_LOCAUX_TOLERES).length} signatures tolérées et motivées.\n` +
+    /*
+      LE CHIFFRE RÉEL EST IMPRIMÉ À CHAQUE PASSAGE, à côté du plafond inscrit.
+
+      C'est ce qui remplace le rituel — abaisser un plafond à 1, relancer dix
+      minutes de navigateur, lire, remettre — par lequel il fallait passer pour
+      savoir ce qu'une tolérance couvrait vraiment. Un écart de un à quatre
+      pixels se lit ici ; au-delà, la garde du plafond menteur arrête tout.
+    */
+    Object.keys(DEBORDS_LOCAUX_TOLERES)
+      .map((cle) => {
+        const reel = maximaLocaux.get(cle)?.debord ?? 0
+        const ecart = DEBORDS_LOCAUX_TOLERES[cle].plafond - reel
+        return `    ${String(reel).padStart(3)} px mesurés / ${String(DEBORDS_LOCAUX_TOLERES[cle].plafond).padStart(3)} tolérés${ecart ? ` (${ecart} d'écart)` : ''}  ${cle.slice(0, 58)}\n`
+      })
+      .join('') +
     `  ${fuite.reserves.length} modules réservés à l'application, aucun dans un paquet impatient.\n` +
     `  Premier chargement de la vitrine : ${premierChargement.octets} o compressés, sous le budget de ${BUDGET_PREMIER_CHARGEMENT} o.\n` +
     `  ${rangeesMesurees} mesures de la barre de la vitrine, toutes au-dessus de ${JEU_MINIMAL} px de jeu ; réglages atteints au clavier à 1440 px dans les deux langues.\n` +
