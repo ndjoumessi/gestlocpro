@@ -620,6 +620,13 @@ function BarreLocataire({ setRole }: { setRole: (role: Role) => void }) {
 
   return (
     <header
+      /* Marqueur de mesure : c'est le TÉMOIN de la surface « barre du
+         locataire » de `mesure-ui`. Cette coquille n'existe qu'une fois le
+         profil basculé, donc jamais pendant un balayage ordinaire — la
+         démonstration démarre en propriétaire. Sans témoin, un geste qui
+         cesserait de basculer laisserait la porte auditer la coquille du
+         BAILLEUR en croyant mesurer celle du locataire. */
+      data-mesure="barre-locataire"
       /**
        * `on-dark` sur le conteneur, mais les libellés portent `text-on-dark`
        * EN TOUTES LETTRES.

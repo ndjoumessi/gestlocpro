@@ -648,6 +648,63 @@ const SURFACES_INTERACTIVES = [
       await page.locator('[role="dialog"] li img').first().waitFor({ state: 'visible' })
     },
   },
+  {
+    /*
+      LA COQUILLE DU LOCATAIRE, QUE RIEN N'AVAIT JAMAIS REGARDÉE.
+
+      Ce n'est pas une barre BASSE : le locataire n'en a pas. Il a une barre
+      HAUTE — logo, trois destinations, réglages — un composant entier
+      (`BarreLocataire`) que le balayage ordinaire ne rend JAMAIS, parce que la
+      démonstration démarre en propriétaire et que rien ne change de profil.
+      Contraste, cibles de 44 px, noms accessibles : aucune des trois règles ne
+      l'avait vue une seule fois.
+
+      LE GESTE PASSE PAR 1280 PX, ET C'EST FORCÉ. Le sélecteur de profil vit
+      dans la barre latérale, qui n'existe qu'au-dessus de `lg` ; la coquille du
+      locataire, elle, est intéressante à 320, là où elle empile logo, nav et
+      réglages sur trois rangées. On bascule donc au large, puis on redescend —
+      le rôle est un état React, il survit au redimensionnement et ne survit PAS
+      à une navigation, ce qui évite d'empoisonner la suite du balayage.
+
+      320 PX, LA PLUS ÉTROITE. C'est là que cette barre est le plus contrainte,
+      et la seule largeur où l'auditer apprend quelque chose.
+
+      L'ADRESSE FINALE N'EST PAS `/demo`, ET C'EST VOULU : basculer en locataire
+      redirige vers `/demo/mon-espace`, puisque l'index du tableau de bord ne
+      lui est pas destiné. La coquille auditée est la même — c'est elle le
+      sujet, pas l'écran qu'elle encadre.
+    */
+    nom: 'barre-du-locataire',
+    adresse: '/demo',
+    largeur: 320,
+    temoin: '[data-mesure="barre-locataire"]',
+    ouvrir: async (page) => {
+      await page.setViewportSize({ width: 1280, height: 900 })
+      /*
+        ON CLIQUE L'ÉTIQUETTE, PAS LE BOUTON RADIO — mesuré, pas supposé.
+
+        Le radio est masqué visuellement (`sr-only`), et `check()` attend
+        l'actionnabilité : il expire au bout de trente secondes. `getByRole`
+        ne le trouve pas davantage — les cas de ce dépôt le cherchent
+        d'ailleurs avec `hidden: true`. L'étiquette, elle, est la vraie cible :
+        c'est ce que le doigt touche.
+      */
+      await page.locator('label:has(input[value="tenant"])').click()
+      await page.setViewportSize({ width: 320, height: 900 })
+      /*
+        ON ATTEND QUE LA PAGE SE POSE, et ce n'est pas une précaution de style.
+
+        Basculer en locataire REDIRIGE vers `/demo/mon-espace` : le témoin
+        apparaît dès que la coquille se monte, bien avant que l'écran qu'elle
+        encadre n'ait ses données. Mesuré sans cette attente : 136 textes et
+        42 cibles auditées en thème clair, 9 et 8 en sombre — le même geste, la
+        même surface, un rapport qui varie du simple au quinzième selon qui
+        gagne la course. Le témoin dit que la surface EXISTE ; il ne dit pas
+        qu'elle est PRÊTE.
+      */
+      await attendre(page, 'barre-du-locataire')
+    },
+  },
 ]
 
 /*
@@ -727,9 +784,9 @@ const DECLENCHEURS_ATTENDUS = 5
   elle-même : vider la table, et l'on comparerait 0 à 0 avant de se déclarer
   vert. Le nombre est donc écrit, et l'ajout d'une surface oblige à le toucher.
 
-  10 = 5 surfaces × 2 thèmes.
+  12 = 6 surfaces × 2 thèmes.
 */
-const SURFACES_ATTENDUES = 10
+const SURFACES_ATTENDUES = 12
 
 /**
  * Neutralise ce qui bouge, AVANT de mesurer.
