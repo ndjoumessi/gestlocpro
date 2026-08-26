@@ -113,6 +113,14 @@ const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
  *   14,2 s   7 %   surfaces · navigation et attente          10
  *    6,6 s   3 %   colonnes d'entrée                          2
  *    …
+ *
+ * ET LE DÉCOMPTE A DÉJÀ SERVI. « Colonnes d'entrée » est tombé de 6,6 s à 2,3 :
+ * la fonction rechargeait la page à chaque hauteur — six navigations par langue
+ * pour mesurer deux rectangles — alors que les trois autres passes chargent une
+ * fois puis redimensionnent. Vérifié avant de toucher : les deux méthodes
+ * rendent des relevés STRICTEMENT identiques. C'est le premier gain de ce
+ * chronomètre, et il ne se serait jamais vu sur l'horloge murale, dont le bruit
+ * vaut 3,7 s.
  *    2,1 s   1 %   audit · cibles                           516
  *    1,1 s   1 %   sonde · débordement local                506
  *
@@ -1439,9 +1447,29 @@ const HAUTEURS_AUTH = [1090, 800, 620]
 async function colonnesDesEcransDEntree(page) {
   const releves = []
   for (const adresse of ['/connexion', '/inscription']) {
-    for (const hauteur of HAUTEURS_AUTH) {
+    for (const [rang, hauteur] of HAUTEURS_AUTH.entries()) {
       await page.setViewportSize({ width: 1440, height: hauteur })
-      await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
+      /*
+        ON CHARGE UNE FOIS, PUIS ON REDIMENSIONNE — la convention des trois
+        autres passes de ce fichier, que celle-ci ignorait.
+
+        Elle rechargeait la page à CHAQUE hauteur : six navigations complètes
+        par langue là où deux suffisent. Le chronomètre l'a nommée cinquième
+        poste de la porte — 6,6 s pour deux appels, trois fois plus que toutes
+        les sondes réunies — alors qu'elle ne mesure que deux rectangles.
+
+        MESURÉ AVANT DE TOUCHER, et c'est ce qui autorise le changement : les
+        deux méthodes rendent des relevés STRICTEMENT IDENTIQUES — mêmes hauts,
+        mêmes bas, mêmes axes, sur les six points d'une langue. 3,97 s contre
+        1,16 s. Le rechargement ne mesurait rien de plus ; il attendait.
+
+        Le redimensionnement seul suffit parce que ces écrans n'ont aucune
+        décision de mise en page prise AU CHARGEMENT : leur centrage est du
+        flux, il se recalcule au reflow. Le jour où l'un d'eux lirait sa hauteur
+        en JavaScript au montage, ce raccourci deviendrait faux — et c'est le
+        genre de chose qu'une capture ne dirait pas.
+      */
+      if (rang === 0) await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
       await attendre(page, `${adresse} (colonnes)`)
       const releve = await page.evaluate(MESURER_COLONNES)
       if (releve) releves.push({ adresse, hauteur, ...releve })
