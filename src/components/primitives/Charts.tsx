@@ -1522,7 +1522,56 @@ export function StatCard({
               <Icon name={icone} size={15} />
             </span>
           )}
-          <p className="eyebrow min-w-0 flex-1 truncate text-muted">{label}</p>
+          {/*
+            DEUX LIGNES, PAS UNE, ET C'EST UN DÉFAUT QUE J'AI POSÉ.
+
+            L'intitulé était en `truncate` — une ligne, puis des points de
+            suspension. La tuile d'icône du lot précédent lui a retiré 42 px, et
+            des noms se sont mis à disparaître : à 1280, « Résidence
+            Bonamoussadi » passe de 7 px coupés à 45, « Immeuble Akwa Nord » se
+            met à couper alors qu'elle tenait. Ce sont les deux largeurs de
+            portable les plus courantes.
+
+            J'AVAIS ÉCRIT ICI QUE SEUL L'ÉCRAN PARC ÉTAIT CONCERNÉ, parce que
+            lui seul met une DONNÉE dans cet intitulé — un nom d'immeuble, dont
+            la longueur n'est bornée par rien — quand les autres n'y mettent que
+            du vocabulaire fixe qui « tient partout ». C'ÉTAIT FAUX, et c'est la
+            garde écrite dans le même lot qui l'a montré : « Collected this
+            month » se coupait de 24 px sur le TABLEAU DE BORD à 1280 en
+            anglais. Sept intitulés sur 418 mesurés, là où l'œil en avait trouvé
+            trois. Un vocabulaire fixe n'est fixe que dans la langue où on l'a
+            regardé.
+
+            `break-words` ET `hyphens-auto` pour le cas qu'aucune des deux lignes
+            ne sauve : « Bonamoussadi » demande 110 px dans une boîte de 61, sur
+            la vitrine des états, et c'est UN SEUL MOT — aucun repli ne le coupe.
+            La césure du dictionnaire s'en charge en français ; `break-words`
+            prend le relais en anglais, dont ce navigateur n'a pas le
+            dictionnaire. Coupé sans trait d'union c'est laid ; « Bonamouss… » ne
+            se distingue pas d'un nom tronqué, ce qui est pire.
+
+            LE NOM D'UN IMMEUBLE VAUT MIEUX QU'UNE LIGNE DROITE. Sur trois cartes
+            intitulées « Résidence Bonamouss… », « Immeuble Akwa N… » et
+            « Villa Deïdo », on ne distingue plus les deux premières que par leur
+            longueur. La rangée grandit de treize pixels quand un nom repasse à
+            la ligne, et la grille les aligne toutes — c'est le prix, et il est
+            plus bas que celui d'un nom illisible.
+
+            `line-clamp-2` et non un repli libre : un nom d'immeuble
+            pathologique — vingt mots — ferait sinon une carte de six lignes,
+            et l'intitulé n'est pas le contenu de la carte. Deux lignes, puis on
+            coupe quand même.
+          */}
+          {/* `data-intitule` : la garde `mesure-ui` mesure ce libellé pour
+              vérifier qu'il n'est pas ROGNÉ. Elle ne peut pas le trouver par sa
+              classe — `scripts/` est balayé par le générateur d'utilitaires
+              Tailwind, et y écrire un nom de classe en fabriquerait un. */}
+          <p
+            data-intitule=""
+            className="eyebrow line-clamp-2 min-w-0 flex-1 hyphens-auto break-words text-muted"
+          >
+            {label}
+          </p>
         </div>
         {action}
       </div>

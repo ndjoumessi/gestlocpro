@@ -114,10 +114,24 @@ export function SystemStates() {
                 {buildings.slice(0, 2).map((immeuble) => {
                   const logements = units.filter((u) => u.buildingId === immeuble.id)
                   const occupes = logements.filter((u) => u.tenant).length
+                  /*
+                    PAS DE TUILE ICI, ET C'EST MESURÉ.
+
+                    Ces deux cartes sont des MINIATURES : la vitrine les pose à
+                    deux colonnes dans un panneau déjà étroit, ce qui laisse
+                    103 px à leur intitulé contre 144 sur un vrai écran. Une
+                    tuile en retire 42, et « Bonamoussadi » — 110 px, UN SEUL
+                    MOT — n'entre alors plus, même coupé en deux lignes : la
+                    garde des rognages le refuse d'abord en largeur, puis en
+                    hauteur une fois la coupure autorisée.
+
+                    Ailleurs le repère aide à retrouver une carte dans une
+                    rangée ; ici il n'y a que deux cartes, et il coûterait le nom
+                    du quartier qu'elles servent justement à montrer.
+                  */
                   return (
                     <StatCard
                       key={immeuble.id}
-                      icone="building"
                       label={immeuble.district}
                       value={`${occupes}/${logements.length}`}
                       note={t('app.portfolio.occupancy', {

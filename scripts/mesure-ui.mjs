@@ -1973,6 +1973,59 @@ const MESURER_COUPURES = () => {
 }
 
 /**
+ * UN INTITULÉ D'INDICATEUR NE SE ROGNE PAS.
+ *
+ * CE QU'ELLE COUVRE, ET POURQUOI RIEN D'AUTRE NE LE VOIT. Un texte rogné —
+ * `truncate` en largeur, `line-clamp` en hauteur — ne DÉBORDE de rien : il est
+ * coupé À L'INTÉRIEUR de sa boîte, par un `overflow: hidden` posé exprès. Les
+ * deux règles de débordement, la globale et la locale, le laissent donc passer
+ * par construction. Le contraste le lit très bien. Les cibles ne le regardent
+ * pas. Et le DOM porte la chaîne ENTIÈRE : un cas de rendu qui interroge le
+ * texte la trouve, et passe au vert sur un écran qui n'en montre que la moitié.
+ *
+ * POURQUOI SUR CES LIBELLÉS-LÀ. Tant qu'un intitulé porte du VOCABULAIRE FIXE —
+ * « reste à percevoir », « taux d'occupation » — la coupe reste théorique : ces
+ * mots tiennent partout, et personne ne les allonge. L'écran Parc est le seul du
+ * produit où cet intitulé porte une DONNÉE : le nom d'un immeuble, saisi par
+ * l'utilisateur, dont la longueur n'est bornée par rien. Trois cartes intitulées
+ * « Résidence Bonamouss… », « Immeuble Akwa N… » et « Villa Deïdo » ne se
+ * distinguent plus que par leur longueur.
+ *
+ * CE QUI L'A FAIT ÉCRIRE : une tuile d'icône de 42 px posée devant l'intitulé a
+ * fait basculer deux noms sur trois à 1280 px et un à 1440 — les deux largeurs
+ * de portable les plus courantes — et la porte est restée VERTE. Le défaut a été
+ * trouvé à l'œil, sur un écran, ce qui est exactement la façon dont on ne trouve
+ * pas les dix-neuf autres.
+ *
+ * DEUX AXES, PAS UN. `scrollWidth` attrape le rognage en LARGEUR (`truncate`),
+ * `scrollHeight` celui en HAUTEUR (`line-clamp`). Ne mesurer que le premier
+ * laisserait passer un nom qui demande trois lignes là où deux sont permises —
+ * et c'est justement le réglage actuel, donc le prochain défaut probable.
+ *
+ * LA TOLÉRANCE D'UN PIXEL est du bruit d'arrondi : `scrollWidth` et
+ * `clientWidth` sont entiers, la largeur de boîte ne l'est pas.
+ */
+const MESURER_TRONCATURES = () => {
+  const defauts = []
+  let mesures = 0
+  for (const el of document.querySelectorAll('[data-indicateur] [data-intitule]')) {
+    const texte = el.textContent.trim()
+    if (!texte) continue
+    mesures += 1
+    const enLargeur = el.scrollWidth - el.clientWidth
+    const enHauteur = el.scrollHeight - el.clientHeight
+    if (enLargeur <= 1 && enHauteur <= 1) continue
+    defauts.push({
+      texte,
+      axe: enLargeur > 1 ? 'largeur' : 'hauteur',
+      manque: Math.round(Math.max(enLargeur, enHauteur)),
+      offert: Math.round(enLargeur > 1 ? el.clientWidth : el.clientHeight),
+    })
+  }
+  return { mesures, defauts }
+}
+
+/**
  * LA PAGE A-T-ELLE RENDU ? — la question qu'aucune règle de ce fichier ne posait.
  *
  * POURQUOI ELLE MANQUAIT, ET POURQUOI CE N'EST PAS `if (!resultat) continue`.
@@ -2416,6 +2469,9 @@ const tolerancesLocalesUtilisees = new Set()
 /** Coupures de libellé laissant un orphelin — voir `MESURER_COUPURES`. */
 const coupuresOrphelines = new Map()
 let libellesMesures = 0
+/** Intitulés d'indicateur rognés — voir `MESURER_TRONCATURES`. */
+const troncatures = new Map()
+let intitulesMesures = 0
 /**
  * Le PIRE débordement RÉELLEMENT vu pour chaque signature, tolérée ou non.
  *
@@ -2734,6 +2790,27 @@ try {
           const cle = `${d.texte}|${langue}`
           if (!coupuresOrphelines.has(cle)) {
             coupuresOrphelines.set(cle, { ...d, langue, ou: `${adresse} ${largeur}px` })
+          }
+        }
+
+        /* AUCUN CHARGEMENT DE PLUS : la page est déjà là, à la bonne largeur,
+           dans la bonne langue. C'est la règle de ce fichier depuis le lot qui a
+           fusionné deux passes — ce qui coûte, ce sont les chargements, jamais le
+           calcul. Un `page.evaluate` de plus, et tous les intitulés d'indicateur
+           du produit sont mesurés à onze largeurs et deux langues. */
+        const rognages = await chrono('sonde · intitulés rognés', () =>
+          page.evaluate(MESURER_TRONCATURES),
+        )
+        intitulesMesures += rognages.mesures
+        for (const d of rognages.defauts) {
+          /* Dédupliqué sur le LIBELLÉ et la LANGUE : le même nom rogné à six
+             largeurs est un seul correctif. On garde le PIRE manque et non le
+             premier vu — c'est lui qui dit combien de place il faut trouver, et
+             la première largeur balayée n'est pas la plus serrée. */
+          const cle = `${d.texte}|${langue}`
+          const vu = troncatures.get(cle)
+          if (!vu || d.manque > vu.manque) {
+            troncatures.set(cle, { ...d, langue, ou: `${adresse} ${largeur}px` })
           }
         }
 
@@ -3420,6 +3497,46 @@ if (libellesMesures === 0) {
   console.error(
     "\n✗ mesure-ui : aucun libellé de barre basse mesuré.\n" +
       "   Le marqueur `data-mesure=\"libelle-barre-basse\"` a-t-il disparu d'`AppShell` ?\n" +
+      '   Une sonde qui ne trouve rien ne prouve rien.',
+  )
+  process.exit(1)
+}
+
+if (troncatures.size > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${troncatures.size} intitulé(s) d'indicateur sont ROGNÉS,` +
+      ` sur ${intitulesMesures} mesurés.\n` +
+      "   Un texte rogné ne déborde de rien — il est coupé DANS sa boîte, par un\n" +
+      '   `overflow: hidden` posé exprès. Aucune règle de débordement ne peut le voir, et le\n' +
+      "   DOM porte la chaîne entière : un cas de rendu la trouve et passe au vert.\n",
+  )
+  for (const d of troncatures.values()) {
+    console.error(
+      `   −${d.manque}px en ${d.axe}  « ${d.texte} »\n` +
+        `      ${d.offert}px offerts · ${d.langue} · vu au pire à ${d.ou}\n`,
+    )
+  }
+  console.error(
+    "   Remède : rendre la place, pas raccourcir le texte. Un nom d'immeuble est une\n" +
+      "   DONNÉE — l'abréger dans le dictionnaire ne ferait que déplacer le mensonge du\n" +
+      '   rendu vers la source.',
+  )
+  process.exit(1)
+}
+
+/*
+  GARDE DU GARDE — LA SONDE DES ROGNAGES DOIT AVOIR TROUVÉ DES INTITULÉS.
+
+  Le marqueur retiré de `StatCard`, `data-indicateur` renommé, ou les écrans à
+  indicateurs sortis du balayage : la sonde rendrait zéro défaut sur zéro
+  intitulé, et le rapport écrirait « aucun intitulé rogné » sans en avoir regardé
+  un seul. C'est la même panne que celle que la sonde des coupures se refuse
+  déjà, et elle ne devient pas acceptable parce qu'elle est ailleurs.
+*/
+if (intitulesMesures === 0) {
+  console.error(
+    "\n✗ mesure-ui : aucun intitulé d'indicateur mesuré.\n" +
+      '   Les marqueurs `data-indicateur` et `data-intitule` sont-ils toujours sur `StatCard` ?\n' +
       '   Une sonde qui ne trouve rien ne prouve rien.',
   )
   process.exit(1)
@@ -4265,6 +4382,7 @@ console.log(
     `  ${elementsSondes} éléments sondés pour le DÉBORDEMENT LOCAL — un contenu qui sort de sa boîte\n` +
     `  sans faire défiler la page — aucun hors des ${Object.keys(DEBORDS_LOCAUX_TOLERES).length} signatures tolérées et motivées.\n` +
     `  ${libellesMesures} libellés de barre basse mesurés à la COUPURE, aucun orphelin sous 3 caractères.\n` +
+    `  ${intitulesMesures} intitulés d'indicateur mesurés au ROGNAGE, en largeur comme en hauteur.\n` +
     `  Elle coûte ${(tempsSonde / 1000).toFixed(1)} s sur ${appelsDeSonde} appels — ${(tempsSonde / appelsDeSonde).toFixed(1)} ms l'un —, ` +
     `dont ${(tempsDansLaPage / 1000).toFixed(1)} s de parcours du DOM et ${((tempsSonde - tempsDansLaPage) / 1000).toFixed(1)} s d'aller-retour.\n` +
     /*
