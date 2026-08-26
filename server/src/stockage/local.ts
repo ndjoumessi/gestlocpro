@@ -2,7 +2,7 @@ import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { mkdir, open, readFile, stat, unlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
-  PLAFOND_DE_TRAVAIL_OCTETS,
+  PLAFOND_PAR_OBJET_OCTETS,
   typeDesOctets,
   verifierLaCle,
   type AdresseDeLecture,
@@ -214,7 +214,7 @@ export class StockageLocal implements Stockage {
      * C'est tout l'intérêt de cette étape : le serveur n'a pas vu les octets
      * passer, c'est ici ou nulle part qu'il les pèse.
      */
-    if (octets > PLAFOND_DE_TRAVAIL_OCTETS) return { accepte: false, motif: 'trop-lourd' }
+    if (octets > PLAFOND_PAR_OBJET_OCTETS) return { accepte: false, motif: 'trop-lourd' }
 
     const fichier = await open(this.chemin(cle), 'r')
     let entete: Uint8Array

@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { StockageLocal, type AutorisationDEnvoi } from './local.js'
 import { CHEMIN_TRANSPORT_LOCAL } from './local.js'
-import { PLAFOND_DE_TRAVAIL_OCTETS, type Reservation } from './contrat.js'
+import { PLAFOND_PAR_OBJET_OCTETS, type Reservation } from './contrat.js'
 
 /**
  * LE DÉPÔT LOCAL.
@@ -173,12 +173,12 @@ describe('le dépôt sur disque local', () => {
     })
 
     it('refuse ce qui dépasse le plafond, et accepte ce qui l’atteint', async () => {
-      const pile = image('jpeg', PLAFOND_DE_TRAVAIL_OCTETS)
-      const trop = image('jpeg', PLAFOND_DE_TRAVAIL_OCTETS + 1)
+      const pile = image('jpeg', PLAFOND_PAR_OBJET_OCTETS)
+      const trop = image('jpeg', PLAFOND_PAR_OBJET_OCTETS + 1)
 
       expect(await depot.confirmer(await deposer(pile), 'image/jpeg')).toMatchObject({
         accepte: true,
-        octets: PLAFOND_DE_TRAVAIL_OCTETS,
+        octets: PLAFOND_PAR_OBJET_OCTETS,
       })
       expect(await depot.confirmer(await deposer(trop), 'image/jpeg')).toEqual({
         accepte: false,

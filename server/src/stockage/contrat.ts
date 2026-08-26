@@ -116,21 +116,74 @@ export type MotifDeRefus =
   | 'type-menti'
 
 /**
- * Plafond par objet — VALEUR DE TRAVAIL, et le nom le dit.
+ * Plafond par objet — DEUX MÉBIOCTETS, ET LE CHIFFRE EST MESURÉ.
  *
  * Le plafond n'est pas là pour cadrer l'usage normal : il est là pour qu'un
  * client qui déverse ne remplisse pas un seau qu'on paie au gigaoctet-mois
- * pendant des années. À ce titre, n'importe quel ordre de grandeur raisonnable
- * fait le travail.
+ * pendant des années. Il portait auparavant le nom `PLAFOND_DE_TRAVAIL_OCTETS`
+ * et valait 8 Mio, venus d'une estimation de ce que pèse une photo de téléphone
+ * compressée par le navigateur — pas d'une photo pesée. Le nom portait l'aveu ;
+ * l'aveu n'a plus lieu d'être.
  *
- * Le CHIFFRE, lui, n'est pas mesuré. Huit mébioctets viennent d'une estimation
- * de ce que pèse une photo de téléphone compressée par le navigateur — pas
- * d'une photo réellement pesée. Le trancher demande de savoir ce que produit
- * la compression côté navigateur sur une vraie photo d'état des lieux, ce que
- * le sous-lot du navigateur saura et que celui-ci ne sait pas. Le nom porte
- * donc l'aveu, pour qu'on ne prenne pas cette valeur pour un arbitrage rendu.
+ * IL PORTE SUR LES OCTETS TRANSCODÉS, et rien d'autre. Envoyer un original
+ * d'appareil non transcodé n'est pas un chemin du produit : la taille est
+ * scellée dans l'autorisation présignée et vérifiée par ÉGALITÉ STRICTE depuis
+ * le lot précédent. Un client ne choisit donc pas d'envoyer 2,77 Mio de JPEG
+ * brut sous ce plafond — il envoie exactement ce qu'il a fait autoriser.
+ *
+ * ─── LE RELEVÉ ────────────────────────────────────────────────────────────
+ *
+ * `scripts/mesure-compression-photo.mjs`, sur DEUX PHOTOGRAPHIES RÉELLES sous
+ * CC0 — un compteur d'eau (Samsung Galaxy A54 5G, 4080×2296 stockés, EXIF
+ * Orientation 6) et une façade à fissures structurelles (Galaxy A16, 2576×1932,
+ * Orientation 6). Octets rendus par `canvas.toBlob('image/jpeg', q)` :
+ *
+ *   hauteur   compteur  q0,90 / q0,82 / q0,70   façade  q0,90 / q0,82 / q0,70
+ *   2048 px            386 / 249 / 167 Kio             627 / 444 / 329 Kio
+ *   1600 px            253 / 165 / 113 Kio             433 / 306 / 227 Kio
+ *   1280 px            174 / 116 /  80 Kio             308 / 218 / 161 Kio
+ *   1024 px            121 /  82 /  58 Kio             217 / 154 / 113 Kio
+ *    800 px             83 /  57 /  41 Kio             145 / 104 /  77 Kio
+ *
+ * Le PIRE CAS mesuré est 627 Kio, à 2048 px et qualité 0,90. Deux mébioctets
+ * en font 3,3 fois — assez pour absorber un sujet plus chargé que ces deux-là
+ * sans laisser passer un déversement. Les 8 Mio d'avant en faisaient treize.
+ *
+ * ─── LA LISIBILITÉ, ET DE QUI EST LE JUGEMENT ─────────────────────────────
+ *
+ * Elle ne se mesure pas. J'ai découpé la fenêtre d'index du compteur à
+ * l'échelle 1:1 dans chaque rendu et je l'ai REGARDÉE. `00088,498 m³` se lit
+ * nettement à 2048, 1600 et 1280 px ; ramollit à 1024 ; à 800 px je ne le lis
+ * que parce que je le connais déjà. Le plancher est donc posé à 1280 px, et
+ * c'est MON jugement, sur un écran, en connaissant l'index d'avance — pas
+ * celui d'un gestionnaire lisant un relevé inconnu sur un téléphone au soleil.
+ *
+ * La cible recommandée au lot du navigateur est 1600 px de hauteur : une marche
+ * entière de réserve au-dessus de ce plancher.
+ *
+ * ─── LA QUALITÉ : CE QUE DIT LA MESURE, CE QUE DIT LA PRUDENCE ────────────
+ *
+ * LA MESURE DIT 0,70. À hauteur égale, sur les deux sujets, q0,70 se lit aussi
+ * bien que q0,82 — les chiffres de l'index comme la fissure de la façade. À
+ * 1600 px, cela ferait 113 à 227 Kio au lieu de 165 à 306, soit un tiers de
+ * moins sur le réseau que ce produit vise.
+ *
+ * ON RETIENT POURTANT 0,82, ET CE N'EST PAS UNE CONCLUSION DE MESURE : c'est
+ * une PRUDENCE NON MESURÉE contre les cas que le relevé n'a pas pu couvrir. Des
+ * chiffres d'index sont un signal à fort contraste, et la fissure de la façade
+ * est large ; la microfissure, l'auréole d'humidité et la scène sombre et
+ * bruitée sont exactement ce que q0,70 écraserait en premier, et aucune des
+ * deux photographies ne les portait. Aucun gros plan de fissure ou d'humidité
+ * n'existe en CC0 sur Commons parmi les originaux d'appareil — six recherches.
+ * Le jour où l'on mesure ces cas-là, ce paragraphe se remplace par un chiffre.
+ *
+ * ─── CE QUE LE RELEVÉ NE COUVRE PAS ───────────────────────────────────────
+ *
+ * Deux photographies, deux Samsung. Aucun iPhone, aucun capteur ancien, aucune
+ * scène en basse lumière. Et le temps de transmission cité par le script est
+ * une division par un débit posé, jamais un relevé réseau.
  */
-export const PLAFOND_DE_TRAVAIL_OCTETS = 8 * 1024 * 1024
+export const PLAFOND_PAR_OBJET_OCTETS = 2 * 1024 * 1024
 
 /**
  * Une clé est 32 caractères hexadécimaux, et RIEN d'autre.

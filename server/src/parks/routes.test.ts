@@ -6,7 +6,7 @@ import { NOM_COOKIE } from '../auth/session.js'
 import { remplacerMessagerie } from '../messagerie/messagerie.js'
 import { remplacerStockage } from '../stockage/stockage.js'
 import { StockageLocal } from '../stockage/local.js'
-import { PLAFOND_DE_TRAVAIL_OCTETS } from '../stockage/contrat.js'
+import { PLAFOND_PAR_OBJET_OCTETS } from '../stockage/contrat.js'
 import { env } from '../env.js'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -6449,19 +6449,23 @@ describe('les photos de réserve', () => {
     it('refuse une taille relevée dans l’adresse, signature inchangée', async () => {
       const { envoi } = await reserver(256)
       const url = new URL(envoi.url, 'http://local')
-      url.searchParams.set('taille', '5000000')
+      // SOUS LE PLAFOND, délibérément : ce cas mesure la SIGNATURE, pas la
+      // taille. Une valeur au-dessus du plafond ferait répondre 413 à
+      // `express.raw` avant que la signature soit seulement lue, et le test
+      // passerait au vert en ayant cessé de garder ce qu'il annonce.
+      url.searchParams.set('taille', '5000')
 
-      const res = await deposer(url.pathname + url.search, image(5_000_000))
+      const res = await deposer(url.pathname + url.search, image(5000))
 
       expect(res.status).toBe(403)
       expect(res.body.error).toBe('signature')
     })
 
-    it('refuse une réservation au-delà du plafond de travail', async () => {
+    it('refuse une réservation au-delà du plafond par objet', async () => {
       const res = await request(serveur)
         .post(`/api/parks/${parkId}/findings/${findingId}/photos`)
         .set('Cookie', proprio)
-        .send({ contentType: 'image/jpeg', sizeBytes: PLAFOND_DE_TRAVAIL_OCTETS + 1 })
+        .send({ contentType: 'image/jpeg', sizeBytes: PLAFOND_PAR_OBJET_OCTETS + 1 })
 
       expect(res.status).toBe(400)
       expect(await prisma.inspectionPhoto.count()).toBe(0)

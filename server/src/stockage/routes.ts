@@ -1,6 +1,6 @@
 import express, { Router, type ErrorRequestHandler, type Request, type Response } from 'express'
 import { z } from 'zod'
-import { PLAFOND_DE_TRAVAIL_OCTETS, typeDesOctets } from './contrat.js'
+import { PLAFOND_PAR_OBJET_OCTETS, typeDesOctets } from './contrat.js'
 import { StockageLocal } from './local.js'
 import { leStockage } from './stockage.js'
 
@@ -55,7 +55,7 @@ function depotLocal(): StockageLocal | null {
  * Reçoit les octets — ce que R2 fait contre une URL présignée.
  *
  * `express.raw` et non `express.json` : le corps est une image. Sa limite est
- * le plafond de travail lui-même, si bien qu'un dépôt démesuré est coupé PAR LE
+ * le plafond par objet lui-même, si bien qu'un dépôt démesuré est coupé PAR LE
  * FLUX, avant d'être tenu en mémoire. C'est la seule protection qui vaille
  * ici — `recevoir` compare une taille, mais il faut déjà avoir tout reçu pour
  * la connaître.
@@ -66,7 +66,7 @@ function depotLocal(): StockageLocal | null {
  */
 stockageLocalRouter.put(
   '/:cle',
-  express.raw({ type: '*/*', limit: PLAFOND_DE_TRAVAIL_OCTETS }),
+  express.raw({ type: '*/*', limit: PLAFOND_PAR_OBJET_OCTETS }),
   async (req: Request, res: Response) => {
     const depot = depotLocal()
     if (!depot) {

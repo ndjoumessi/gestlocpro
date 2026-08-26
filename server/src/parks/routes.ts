@@ -7,7 +7,7 @@ import { empreinteJeton } from '../auth/token.js'
 import { laMessagerie } from '../messagerie/messagerie.js'
 import { exigerAppartenance, exigerCompte, exigerRole, unitesVisibles } from '../auth/guards.js'
 import { leStockage } from '../stockage/stockage.js'
-import { PLAFOND_DE_TRAVAIL_OCTETS } from '../stockage/contrat.js'
+import { PLAFOND_PAR_OBJET_OCTETS } from '../stockage/contrat.js'
 import { stockageLocalRouter } from '../stockage/routes.js'
 
 export const parksRouter = Router()
@@ -3953,7 +3953,7 @@ const schemaReservationPhoto = z.object({
    * refusera tout ce qui n'en fait pas exactement autant — c'est ce qui borne
    * la FACTURE, là où le contrôle à la confirmation ne bornait que la base.
    */
-  sizeBytes: z.number().int().positive().max(PLAFOND_DE_TRAVAIL_OCTETS),
+  sizeBytes: z.number().int().positive().max(PLAFOND_PAR_OBJET_OCTETS),
 })
 
 /** Ce qu'une photo montre à l'API. La clé de stockage n'en fait pas partie. */
