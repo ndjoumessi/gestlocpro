@@ -799,18 +799,14 @@ const DEBORDS_LOCAUX_TOLERES = {
     ── TROIS QUE J'AI REGARDÉS, ET QUI SE VOIENT ──────────────────────────
   */
   'div.flex flex-wrap items-center gap-2': {
-    plafond: 121,
+    plafond: 81,
     motif:
-      "Rangée « titre + pastille » d'un signalement ou d'un chantier. VU à 375 px sur " +
-      '/demo/signalements : la colonne du titre tombe à 13 px de large et « Bail B1 à ' +
-      "renouveler dans 45 jours » se lit à un mot par ligne pendant que « il y a 2 heures » " +
-      'garde sa place. La pastille est `shrink-0`, le titre ne l’est pas.',
-  },
-  'span.w-full text-caps leading-tight tracking-normal text-balance': {
-    plafond: 29,
-    motif:
-      'Libellés de la barre basse. VU à 320 px : « Signalements » demande 76 px dans 51, et ' +
-      'chevauche « Parc immobilier ». Le libellé le plus long décide, et rien ne le rogne.',
+      'Rangée « titre + pastille » d’un CHANTIER, /demo/travaux, entre 700 et 768 px — la ' +
+      'bande où la carte vient de passer en ligne et où la colonne de droite prend tout. ' +
+      'RESTE de la même signature après réparation de la carte d’ALERTE, qui la portait ' +
+      'aussi : 121 px sur 74 occurrences avant, 81 sur 11 après, toutes dans `Works.tsx`. ' +
+      'Le défaut est le même — la colonne de droite ne se replie pas — et le remède aussi ; ' +
+      'ce n’est pas le sujet de ce lot-ci.',
   },
   'p.text-caps text-muted': {
     plafond: 70,

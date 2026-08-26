@@ -226,7 +226,34 @@ export function Alerts() {
                 l'ornement : il doit se voir. L'encre dorée reste dans la même
                 famille et monte à 4,98.
               */
-              className={cn('flex items-start gap-4', !alert.read && 'border-l-2 border-l-gold-ink')}
+              /*
+                LA CARTE SE REPLIE, ET LE TITRE GARDE UNE LARGEUR PLANCHER.
+
+                Elle ne se repliait pas : la colonne de droite — « il y a 2
+                heures » et « Ouvrir » — porte `shrink-0`, et prenait donc 187
+                px sur les 239 disponibles à 375 px. La colonne du titre, elle,
+                est `flex-1 min-w-0` : elle acceptait tout ce qu'on lui laissait,
+                c'est-à-dire 13 px. « Bail B1 à renouveler dans 45 jours » se
+                lisait à un mot par ligne, et son texte sortait de sa boîte.
+
+                MESURÉ : 121 px de débordement à 375 px. Aucune règle ne le
+                voyait — la page ne défile pas — jusqu'à `MESURER_DEBORD_LOCAL`.
+
+                `basis-48` (12 rem) est la largeur SOUS LAQUELLE LA COLONNE NE
+                DESCEND PLUS. En dessous de cette base, `flex-wrap` renvoie la
+                colonne de droite à la ligne suivante plutôt que de continuer à
+                comprimer le titre. Le chiffre n'est pas rond par hasard : le
+                plus long mot des titres du produit — « renouveler » — mesure
+                85 px, et 192 px en laisse passer deux à trois par ligne, ce qui
+                est le minimum pour qu'un titre se lise comme une phrase.
+
+                `gap-y-3` : quand la colonne de droite descend, elle a besoin
+                d'un souffle vertical que `gap-4` horizontal ne donnait pas.
+              */
+              className={cn(
+                'flex flex-wrap items-start gap-x-4 gap-y-3',
+                !alert.read && 'border-l-2 border-l-gold-ink',
+              )}
             >
               {/*
                 ET L'ÉTAT SE DIT, au lieu de n'être qu'une couleur.
@@ -257,7 +284,7 @@ export function Alerts() {
                 </span>
               </span>
 
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 basis-48">
                 <div className="flex flex-wrap items-center gap-2">
                   <h2
                     className={cn(
@@ -316,7 +343,9 @@ export function Alerts() {
                 )}
               </div>
 
-              <div className="flex shrink-0 items-center gap-3">
+              {/* `ml-auto` : renvoyée à la ligne, elle reste rangée à droite
+                  plutôt que de se coller sous l'icône. */}
+              <div className="ml-auto flex shrink-0 items-center gap-3">
                 <span className="text-caps text-muted">{d.relative(alert.at)}</span>
                 {/*
                   L'issue vers l'écran où la décision se prend.

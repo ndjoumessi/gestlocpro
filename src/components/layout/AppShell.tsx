@@ -1577,8 +1577,32 @@ function BottomLink({ item }: { item: NavItem }) {
 
         `tracking-normal` annule l'interlettrage de `text-caps`, prévu pour des
         surtitres de trois mots et qui coûte ici une lettre par ligne.
+
+        ── LE REPLI NE SUFFISAIT PAS, ET LA MESURE L'A DIT ──────────────────
+
+        Le repli coupe entre les MOTS. Quand le libellé n'en a qu'un et qu'il
+        est plus large que sa colonne, il n'y a rien à couper : le mot sortait
+        de sa cellule et se peignait par-dessus la voisine. Mesuré à 320 px :
+        « Signalements » demande 76 px dans 51, et chevauche « Parc immobilier ».
+        L'anglais n'en réchappe pas — « Dashboard » et « Payments » débordent
+        aussi. Cinq colonnes de 51 px ne portent aucun libellé de ce métier.
+
+        Aucune autre règle ne le voyait : la page ne défile pas pour autant, et
+        c'est `MESURER_DEBORD_LOCAL` — écrit pour cet angle mort — qui l'a
+        nommé.
+
+        `hyphens-auto` D'ABORD, `break-words` ENSUITE, et l'ordre compte. La
+        césure coupe où la langue l'autorise et pose un trait d'union —
+        « Signale- / ments » —, ce qui se lit. Elle a besoin de la langue du
+        document, que `I18nProvider` écrit sur `<html lang>` à chaque bascule.
+        `break-words` est le filet : quand la césure ne s'applique pas — langue
+        sans dictionnaire, navigateur qui ne la fait pas —, le mot casse sans
+        trait d'union plutôt que de déborder. Un mot cassé se lit mal ; deux
+        libellés superposés ne se lisent pas du tout.
       */}
-      <span className="w-full text-caps leading-tight tracking-normal text-balance">{label}</span>
+      <span className="w-full text-caps leading-tight tracking-normal hyphens-auto text-balance break-words">
+        {label}
+      </span>
     </NavLink>
   )
 }
