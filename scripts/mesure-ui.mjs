@@ -803,10 +803,17 @@ const TOLERES = {
  * D'ENTRÉES NE MESURE PAS LE NOMBRE DE DÉFAUTS, et il ne faut pas lire les neuf
  * restantes comme neuf choses à faire.
  *
- * LES NEUF QUI RESTENT ONT ÉTÉ REGARDÉES, une par une, à leur point et à leur
- * largeur. UNE SEULE franchit une frontière visible — le montant d'une tuile de
- * KPI, qui sort de sa carte de 9 px à 700 px. Les huit autres restent dans leur
- * carte, avec 3 à 185 px de marge, et aucune ne heurte un voisin.
+ * LES NEUF ONT ÉTÉ REGARDÉES, une par une, à leur point et à leur largeur. UNE
+ * SEULE franchissait une frontière visible — le montant d'une tuile de KPI, qui
+ * sortait de sa carte de 9 px à 700 px ; elle est RÉPARÉE, et son entrée est
+ * tombée de 30 px sur 28 occurrences à 7 sur 8. Les huit autres restent dans
+ * leur carte, avec 3 à 185 px de marge, et aucune ne heurte un voisin.
+ *
+ * AUCUNE DES NEUF N'A DISPARU POUR AUTANT, et c'est le piège de ce registre :
+ * réparer le franchissement n'a pas effacé la signature, il a seulement fait
+ * baisser son maximum. Une entrée survit à sa propre réparation en devenant
+ * MENTEUSE, et rien ne le réclame — il faut abaisser son plafond à 1, relancer,
+ * lire le chiffre que la porte imprime, et le réécrire à la main.
  *
  * L'ŒIL S'EST TROMPÉ TROIS FOIS AVANT LA MESURE, et c'est pour cela que chaque
  * motif porte désormais une DISTANCE et non un adjectif : sur une capture, un
@@ -815,23 +822,19 @@ const TOLERES = {
  * sort de la carte.
  */
 const DEBORDS_LOCAUX_TOLERES = {
-  /*
-    ── LE SEUL QUI FRANCHISSE UNE FRONTIÈRE ───────────────────────────────
-  */
   'p.mt-2 flex items-baseline gap-1.5': {
-    plafond: 30,
+    plafond: 7,
     motif:
-      'Montant d’une tuile de KPI (`StatCard`). LE SEUL DES NEUF QUI SORTE DE SA CARTE : à ' +
-      '700 px sur /demo/paiements, « 1 397 000 FCFA » demande 189 px dans 159 et franchit la ' +
-      'BORDURE de 9 px. Cause : `sm:grid-cols-3` pose trois colonnes dès 640 px, et un montant ' +
-      'en FCFA est insécable de bout en bout — l’espace avant la devise est une espace ' +
-      'insécable posée par `Intl.NumberFormat`, donc `whitespace-nowrap` n’y est pour rien. ' +
-      'Le levier est la grille (`sm:grid-cols-2` puis trois colonnes plus tard), pas la tuile ; ' +
-      'c’est un lot, et il n’est pas fait.',
+      'Montant d’une tuile de KPI (`StatCard`). RESTE d’un défaut réparé : il franchissait la ' +
+      'bordure de sa carte de 9 px à 700 px sur les cautions et les paiements, où ' +
+      '`sm:grid-cols-3` posait trois colonnes dès 640 px pour un montant insécable de 189 px ' +
+      'dans 159. Les trois grilles attendent maintenant `lg`. Ce qui subsiste — 7 px sur 8 ' +
+      'occurrences au lieu de 30 sur 28 — est un dépassement de la BOÎTE seule, sur le tableau ' +
+      'de bord à 1280 px, avec 14 à 89 px de marge avant la bordure. Mesuré, et regardé.',
   },
 
   /*
-    ── HUIT QUI RESTENT DANS LEUR CARTE ────────────────────────────────────
+    ── ET LES HUIT AUTRES, QUI RESTENT DANS LEUR CARTE ────────────────────
 
     REGARDÉS, et le critère n'est plus l'œil : pour chacun on mesure le bord
     droit du contenu, celui de la CARTE qui l'entoure, et le bord gauche du
