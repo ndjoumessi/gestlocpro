@@ -46,6 +46,7 @@ import {
   BUILDINGS as IMMEUBLES_DEMO,
   COLLECTIONS as COLLECTIONS_DEMO,
   INSPECTIONS as INSPECTIONS_DEMO,
+  PHOTOS_DEMO,
   READINGS as READINGS_DEMO,
   READING_HISTORY_DEMO,
   TENANT_DOCUMENT_REQUESTS as DEMANDES_DOCUMENTS_DEMO,
@@ -1191,9 +1192,18 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
    */
   const lirePhoto = useCallback(
     async (photoId: string): Promise<string | null> => {
-      // Sans parc serveur, il n'y a pas de dépôt d'objets : le jeu local ne
-      // porte aucune photo, et prétendre en chercher une serait un appel à vide.
-      if (!parkId) return null
+      /**
+       * SANS PARC SERVEUR, LE REGISTRE LOCAL RÉPOND — et il répond `null` pour
+       * tout ce qu'il ne connaît pas.
+       *
+       * La démonstration n'a pas de dépôt d'objets. Elle n'invente pas d'adresse
+       * pour autant : l'écran appelle cette fonction exactement comme sur un
+       * vrai parc, et c'est ici, à la même jonction, que la réponse change. Un
+       * champ d'adresse posé dans la donnée aurait marché en démonstration et
+       * divergé du produit — la façon la plus sûre de laisser un défaut
+       * d'affichage invisible jusqu'à la production.
+       */
+      if (!parkId) return PHOTOS_DEMO[photoId] ?? null
       try {
         const { lecture } = await api.readPhoto<{ lecture: { url: string } }>(parkId, photoId)
         return lecture.url

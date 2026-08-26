@@ -352,17 +352,31 @@ function InspectionsSkeleton() {
  *
  * IL REGARDE, IL NE FAIT RIEN D'AUTRE. Aucune vignette n'est un bouton : pas de
  * plein écran, pas de zoom, pas de suppression. AUCUNE cible tactile n'entre
- * donc ici, et c'est cette absence qui est gardée — par un cas d'écran, pas par
- * `mesure-ui`.
+ * ici, et cette absence est gardée DEUX FOIS — par un cas d'écran qui exige
+ * zéro commande dans ce bloc, et par `mesure-ui`.
  *
- * MESURÉ, ET LE VERDICT EST GÊNANT. Un bouton de 32 px posé dans ce bloc laisse
- * `npm run mesure` VERT : « 10 482 cibles sondées, aucune sous 44 px ». La sonde
- * balaie `/demo`, et le jeu de démonstration ne porte AUCUNE photo — il n'a pas
- * de dépôt d'objets sous la main. Ce bloc n'existe donc sur aucun des 506 points
- * mesurés, et rien de ce qui s'y écrit n'est audité : ni contraste, ni cible, ni
- * nom accessible. La même mutation fait rougir `preuvesDuLocataire.test.tsx`,
- * qui exige zéro commande dans ce bloc. C'est la garde qui tient ; la porte du
- * navigateur, elle, est aveugle ici, et le dire vaut mieux qu'un vert supposé.
+ * ─── CE QUE LA MESURE A COÛTÉ, ET CE QU'ELLE A DIT ────────────────────────
+ *
+ * Au premier jet, `mesure-ui` ÉTAIT AVEUGLE ICI, et c'est une mutation qui l'a
+ * dit : un bouton de 32 px posé dans ce bloc laissait la porte VERTE —
+ * « 10 482 cibles sondées, aucune sous 44 px ». La sonde balaie `/demo`, jamais
+ * `/app` ; et le jeu de démonstration ne portait AUCUNE photo, faute de dépôt
+ * d'objets. Le bloc n'existait donc sur aucun des 506 points mesurés : ni son
+ * contraste, ni ses cibles, ni ses noms accessibles n'étaient audités.
+ *
+ * Une preuve a été versée dans le jeu de démonstration pour refermer ce trou —
+ * une photographie en domaine public, recadrée et INLINÉE (voir
+ * `data/fixtures/PROVENANCE.md`). La même mutation rejouée ensuite fait ROUGIR
+ * la porte, et le rapport nomme la cible, l'écran et la langue :
+ *
+ *   ✗ mesure-ui : 3 forme(s) de cible sous 44 px, sur 10 506 sondées.
+ *      cible 32x33  <button> « Photo 1 of 1 — Peinture écaillée d »
+ *         vu à /demo/etats-des-lieux 320px en-US
+ *
+ * C'EST LA LEÇON GÉNÉRALE, et elle dépasse ce bloc : un écran conditionné à une
+ * donnée que la démonstration ne porte pas naît HORS de la porte, et son vert
+ * ne veut rien dire. Le trou des GESTES avait été comblé par
+ * `SURFACES_INTERACTIVES` ; celui-ci est le même trou, côté DONNÉE.
  */
 function Preuves({ reserves }: { reserves: Finding[] }) {
   const t = useT()

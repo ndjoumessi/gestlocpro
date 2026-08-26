@@ -1,4 +1,20 @@
 import type { PaymentStatus } from '@/components/primitives/StatusPill'
+/**
+ * LA SEULE PREUVE QUE LA DÉMONSTRATION PORTE, et elle est INLINÉE.
+ *
+ * `?inline` n'est pas une préférence : `poids-ecrans` refuse toute REQUÊTE de
+ * plus sur un écran mesuré — « les octets se rapportent, les requêtes se
+ * refusent ». Servie en fichier à part, cette image serait un aller-retour
+ * supplémentaire, donc un veto ; dans le paquet, elle n'est qu'une ligne à
+ * arbitrer. Le suffixe est ÉCRIT plutôt que laissé au seuil d'inlining de Vite
+ * (4 096 o par défaut, et le fichier en fait 4 997) : un seuil ferait basculer
+ * l'image en requête le jour où quelqu'un la retaille, sans que rien ne le
+ * dise avant la porte.
+ *
+ * Sa provenance, son recadrage et ce qu'il a retiré vivent dans
+ * `fixtures/PROVENANCE.md`, versionné avec elle.
+ */
+import peintureEcaillee from './fixtures/peinture-ecaillee.jpg?inline'
 
 /**
  * Jeu de démonstration : 3 immeubles, 12 unités, 12 mois d'historique.
@@ -625,6 +641,43 @@ export interface Photo {
 }
 
 /**
+ * LA PREUVE QUE LE LOCATAIRE DE LA DÉMONSTRATION VOIT.
+ *
+ * A1 est SON logement, et cette réserve d'entrée est celle qui lui a été
+ * opposée à la remise des clés. Sans elle, le bloc des preuves n'existait sur
+ * aucun écran de la démonstration — donc sur aucun des 506 points que
+ * `mesure-ui` balaie, donc ni son contraste, ni ses cibles, ni ses noms
+ * accessibles n'étaient audités. MESURÉ AVANT : un bouton de 32 px posé dans ce
+ * bloc laissait la porte VERTE. C'est ce trou-là que cette photo referme.
+ *
+ * `confirmedAt` porte la date du constat lui-même : c'est l'horloge du serveur
+ * qui la pose en vrai, et la démonstration ne montre pas autre chose que ce que
+ * le produit fait.
+ */
+const PREUVE_PEINTURE: Photo = {
+  id: 'demo-photo-peinture-ecaillee',
+  contentType: 'image/jpeg',
+  confirmedAt: { year: 2024, month: 5, day: 15 },
+}
+
+/**
+ * OÙ LIRE UNE PHOTO DE DÉMONSTRATION — et pourquoi ce n'est pas un champ.
+ *
+ * En vrai, une photo n'a PAS d'adresse stable : le seau n'est jamais public, et
+ * le serveur délivre à la demande une adresse signée qui périme en quelques
+ * minutes. Le client demande donc photo par photo, au moment d'afficher.
+ *
+ * La démonstration n'a pas de dépôt d'objets ; elle imite ce contrat plutôt que
+ * de le contourner — l'écran appelle `lirePhoto` exactement comme sur un vrai
+ * parc, et c'est ce registre qui lui répond. Poser l'adresse dans `Photo` aurait
+ * marché en démonstration et divergé du produit, ce qui est la façon la plus
+ * sûre de laisser un défaut d'affichage invisible jusqu'à la production.
+ */
+export const PHOTOS_DEMO: Record<string, string> = {
+  [PREUVE_PEINTURE.id]: peintureEcaillee,
+}
+
+/**
  * Les états des lieux, avec le DÉTAIL de leurs réserves.
  *
  * `issues` reste, parce que c'est ce que les listes affichent — et il se déduit
@@ -641,7 +694,13 @@ export const INSPECTIONS: Inspection[] = [
   // restait invisible à qui la regardait depuis ce profil.
   etatDesLieux('A1', 'entry', { year: 2024, month: 5, day: 15 }, 4, true, [
     ['Salle de bain', 'Joint de douche noirci', 'minor'],
-    ['Séjour', 'Peinture écaillée derrière la porte', 'minor'],
+    /* Le coût est `undefined` EN TOUTES LETTRES parce qu'une entrée ne se
+       chiffre pas — le serveur refuse en 422 — et qu'il faut le franchir pour
+       atteindre les photos. Une seule des deux réserves porte une preuve, et
+       c'est la vérité d'un état des lieux : on ne photographie pas tout.
+       L'autre attend une image en domaine public qui la documente
+       honnêtement — voir `fixtures/PROVENANCE.md`. */
+    ['Séjour', 'Peinture écaillée derrière la porte', 'minor', undefined, [PREUVE_PEINTURE]],
   ]),
   etatDesLieux('B4', 'exit', { year: 2026, month: 6, day: 22 }, 4, true, [
     ['Séjour', 'Parquet rayé sur deux lames', 'major', 35000],
@@ -678,7 +737,7 @@ function etatDesLieux(
   date: DateParts,
   rooms: number,
   signed: boolean,
-  reserves: [string, string, 'minor' | 'major', number?][],
+  reserves: [string, string, 'minor' | 'major', number?, Photo[]?][],
 ): Inspection {
   return {
     unitId,
@@ -687,12 +746,15 @@ function etatDesLieux(
     rooms,
     issues: reserves.length,
     signed,
-    findings: reserves.map(([room, description, severity, cout], i) => ({
+    findings: reserves.map(([room, description, severity, cout, photos], i) => ({
       id: `${unitId}-${kind}-${i}`,
       room,
       description,
       severity,
       costMinor: kind === 'exit' && cout !== undefined ? cout : null,
+      // Une liste vide, jamais `undefined` : l'écran n'a alors qu'un cas à
+      // traiter, et « aucune preuve » se lit pareil partout.
+      photos: photos ?? [],
     })),
   }
 }

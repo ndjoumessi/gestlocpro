@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, within, attendreLeChargement } from '@/test/render'
+import { renderApp, screen, switchRole, within, attendreLeChargement } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur, type FauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 
@@ -203,6 +203,32 @@ describe('les preuves que le locataire voit', () => {
     // Le constat est bien là — c'est la rubrique, et elle seule, qui manque.
     expect(screen.getByText('1 réserve')).toBeInTheDocument()
     expect(screen.queryByText('Preuves')).not.toBeInTheDocument()
+    expect(faux.appels.some((a) => a.chemin.includes('/photos/'))).toBe(false)
+  })
+
+  /**
+   * LA DÉMONSTRATION PORTE UNE PREUVE — ET C'EST CE QUI REND CE BLOC MESURABLE.
+   *
+   * `mesure-ui` balaie `/demo`, jamais `/app`. Tant que le jeu de démonstration
+   * ne portait aucune photo, ce bloc n'existait sur AUCUN des 506 points
+   * mesurés : ni contraste, ni cible 44 px, ni nom accessible. C'était mesuré,
+   * pas supposé — un bouton de 32 px posé ici laissait la porte verte.
+   *
+   * Ce cas garde la CHAÎNE qui referme le trou : la réserve d'A1 porte une
+   * photo, `lirePhoto` la résout dans le registre local, et l'image est INLINÉE
+   * — donc aucune requête. La dernière assertion est celle qui compte pour
+   * `poids-ecrans`, qui refuse tout aller-retour de plus.
+   */
+  it('sert la preuve de la démonstration sans aucune requête', async () => {
+    const faux = installerFauxServeur()
+    await renderApp('/demo/etats-des-lieux')
+    await attendreLeChargement()
+    await switchRole('tenant')
+
+    const image = await within(bloc()).findByRole('img')
+    expect(image.getAttribute('src')).toMatch(/^data:image\/jpeg;base64,/)
+    expect(image).toHaveAccessibleName(/Peinture écaillée derrière la porte/)
+    // Aucune adresse demandée au réseau : l'image est dans le paquet.
     expect(faux.appels.some((a) => a.chemin.includes('/photos/'))).toBe(false)
   })
 
