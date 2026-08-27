@@ -87,7 +87,7 @@ export function Inspections() {
         }
       />
 
-      {isTenant && <TenantScopeNote />}
+      {isTenant && <TenantScopeNote className="mb-4" />}
 
       {!isTenant && logements[0] && (
         <InspectionModal

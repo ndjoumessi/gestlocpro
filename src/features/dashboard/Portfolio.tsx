@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { useRole } from '@/components/layout/AppShell'
 import { lien, useBase } from '@/lib/base'
 import { DataTable, EmptyState } from '@/components/primitives/DataTable'
 import { PaymentStatusPill } from '@/components/primitives/StatusPill'
@@ -45,14 +46,33 @@ export function Portfolio() {
   const [ajoutOuvert, setAjoutOuvert] = useState(false)
   const [logementOuvert, setLogementOuvert] = useState(false)
   const [correctionOuverte, setCorrectionOuverte] = useState(false)
-  const { adhesionActive } = useSession()
+  const { adhesionActive, estDemo } = useSession()
+  const { role } = useRole()
   /**
    * Corriger le parc engage l'unité de tous ses montants : c'est le
-   * propriétaire, comme pour la validation d'un devis. Sans adhésion il n'y a
-   * pas de parc à qui écrire, et offrir le bouton mènerait à un appel sans
-   * destinataire.
+   * propriétaire, comme pour la validation d'un devis.
+   *
+   * LA CONDITION A CHANGÉ, ET ELLE CONFONDAIT DEUX CHOSES. Elle lisait
+   * `adhesionActive?.role === 'owner'`, avec pour motif « sans adhésion il n'y a
+   * pas de parc à qui écrire ». C'est vrai d'un compte connecté SANS parc — et
+   * faux de la DÉMONSTRATION, où l'absence d'adhésion ne signifie pas qu'il n'y
+   * a personne à qui écrire mais que rien ne s'écrit, ce qui est le cas de tous
+   * les gestes de cet écran.
+   *
+   * CE QUE LA CONFUSION COÛTAIT est plus large qu'un bouton manquant :
+   * `ParkSettingsModal` devenait INATTEIGNABLE dans la démonstration, donc hors
+   * de portée de `scripts/modales.mjs` — qui la comptait en dette sous
+   * `NON_OUVRABLES` — ET de la mesure de contraste, qui ne visite que `/demo`.
+   * Sa géométrie et ses couleurs n'étaient mesurées par PERSONNE, dans aucun
+   * thème. Le lot qui a regardé le sombre à l'œil ne pouvait pas l'ouvrir non
+   * plus. Une modale qu'aucune porte ne peut atteindre est une modale qui dérive.
+   *
+   * Le rôle ACTIF est le bon critère : en démonstration il vient du sélecteur de
+   * profil, sur un vrai compte il est synchronisé sur l'adhésion. La modale, de
+   * son côté, sait déjà qu'elle n'a pas de parc — son envoi commence par un
+   * garde — et le DIT désormais au lieu de ne rien faire.
    */
-  const peutCorrigerLeParc = adhesionActive?.role === 'owner'
+  const peutCorrigerLeParc = role === 'owner' && (adhesionActive !== null || estDemo)
   const t = useT()
   const { money } = useCurrency()
   const { units, buildings: BUILDINGS, buildingById, loading, removeBuilding } = usePortfolio()

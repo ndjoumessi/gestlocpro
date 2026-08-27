@@ -220,7 +220,7 @@ export function Works() {
         }
       />
 
-      {isTenant && <TenantScopeNote />}
+      {isTenant && <TenantScopeNote className="mb-4" />}
 
       {/* Le bouton de validation disparaissait sans un mot pour le
           gestionnaire, alors qu'il voit les devis en attente : il lui restait à

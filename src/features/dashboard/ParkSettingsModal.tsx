@@ -7,13 +7,17 @@ import { Notice } from '@/components/primitives/Notice'
 import { useToast } from '@/components/primitives/Toast'
 import { useT, useI18n } from '@/i18n/I18nProvider'
 import { useSession } from '@/api/SessionProvider'
+import { useCurrency } from '@/currency/CurrencyProvider'
 import { countryOptions } from '@/lib/countries'
 import { ApiError, api, DEVISES_DU_PARC, type DeviseDuParc } from '@/api/client'
+
+/** Rattache le bouton du pied au formulaire du corps — voir le `footer` plus bas. */
+const ID_DU_FORMULAIRE = 'correction-du-parc'
 
 /**
  * CORRIGER LE PARC : SON NOM, SON PAYS, SA DEVISE, SA DÉLÉGATION.
  *
- * Les trois sont posés à la création du parc et n'étaient modifiables nulle
+ * Les quatre sont posés à la création du parc et n'étaient modifiables nulle
  * part. Un propriétaire dont le parc était né dans la mauvaise devise l'était
  * pour toujours, et chaque loyer qu'il saisissait était relu dans une unité qui
  * n'est pas la sienne.
@@ -43,9 +47,35 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
   const t = useT()
   const { locale } = useI18n()
   const { notify } = useToast()
-  const { adhesionActive, rafraichir } = useSession()
+  const { adhesionActive, rafraichir, estDemo } = useSession()
+  const { currency } = useCurrency()
 
   const parkId = adhesionActive?.parkId ?? null
+  /**
+   * EN DÉMONSTRATION, LE FORMULAIRE S'OUVRE SUR CE QUE LA DÉMONSTRATION MONTRE.
+   *
+   * Sans cela il s'ouvrait vide — trois champs blancs et une modale qui ne
+   * ressemble à rien de ce que le produit fait. Le nom est celui que la coquille
+   * affiche déjà en tête de la barre latérale, la devise celle du sélecteur de
+   * l'en-tête ; le pays reste vide, parce qu'aucun n'est choisi et qu'en inventer
+   * un ferait dire à l'écran quelque chose que personne n'a décidé.
+   *
+   * `DEVISES_DU_PARC` FILTRE, ET LE CAS RÉEL EST « CFA ». Le sélecteur de
+   * l'en-tête parle en devises d'AFFICHAGE, où les deux francs partagent un seul
+   * code — même parité, même sigle à l'écran. Le parc, lui, doit trancher entre
+   * `XAF` et `XOF`, parce que ce sont deux monnaies et deux zones. Mesuré : la
+   * démonstration démarre sur `CFA`, qui n'est dans aucune des deux listes du
+   * parc.
+   *
+   * Le repli est donc VIDE, et c'est le seul choix honnête : convertir « CFA »
+   * en `XAF` reviendrait à désigner la CEMAC parce qu'elle vient en premier
+   * dans la liste — le geste exact qui a fait naître « Parc Bastos » en `FR`/`EUR`
+   * et que l'en-tête de ce fichier raconte.
+   */
+  const deviseDeDemo = (DEVISES_DU_PARC as readonly string[]).includes(currency)
+    ? (currency as DeviseDuParc)
+    : ''
+
   /**
    * Les valeurs d'origine, figées à l'ouverture.
    *
@@ -55,9 +85,9 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
    */
   const origine = useMemo(
     () => ({
-      name: adhesionActive?.parkName ?? '',
+      name: adhesionActive?.parkName ?? (estDemo ? t('common.demoPark') : ''),
       countryCode: adhesionActive?.countryCode ?? '',
-      currency: (adhesionActive?.currency ?? '') as DeviseDuParc | '',
+      currency: (adhesionActive?.currency ?? (estDemo ? deviseDeDemo : '')) as DeviseDuParc | '',
       /* `?? 'delegate'` : un serveur antérieur au champ ne le rend pas, et le
          supposer `solo` proposerait de « rétablir » une délégation que le parc
          n'a jamais perdue. C'est le défaut du schéma. */
@@ -68,6 +98,12 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
       adhesionActive?.countryCode,
       adhesionActive?.currency,
       adhesionActive?.delegation,
+      // Les trois de la démonstration : sans elles, le repli se figerait sur la
+      // langue et la devise du premier rendu, et changer l'une des deux dans
+      // l'en-tête laisserait la modale sur l'ancienne.
+      estDemo,
+      deviseDeDemo,
+      t,
     ],
   )
 
@@ -105,7 +141,25 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
 
   const enregistrer = (event: FormEvent) => {
     event.preventDefault()
-    if (!parkId) return
+    /**
+     * SANS PARC, ON LE DIT — on ne rendait rien.
+     *
+     * `if (!parkId) return` était muet : le bouton s'enfonçait, la modale
+     * restait ouverte, et rien n'arrivait. C'est la forme exacte du contrôle
+     * mort que ce dépôt retire partout ailleurs, et elle est devenue visible le
+     * jour où la démonstration a pu ouvrir cette modale — avant, personne ne
+     * pouvait l'atteindre pour s'en apercevoir.
+     *
+     * Le message NOMME ce que la démonstration ne fait pas, et où le geste
+     * existe pour de vrai : la devise se change dans l'en-tête, sur-le-champ,
+     * pour toute la démonstration.
+     */
+    if (!parkId) {
+      notify(t(estDemo ? 'app.parkSettings.demoNoSave' : 'common.actionFailed'), {
+        tone: estDemo ? 'neutral' : 'danger',
+      })
+      return
+    }
 
     if (!nom.trim()) {
       // Le seul champ requis de cette modale : le dire ici plutôt que de
@@ -160,8 +214,50 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
       onClose={onClose}
       title={t('app.parkSettings.title')}
       description={t('app.parkSettings.description')}
+      /*
+        L'ACTION PASSE AU PIED, ET C'ÉTAIT LA SEULE MODALE À NE PAS LE FAIRE.
+
+        Son bouton vivait DANS le corps, sous les quatre champs. Le corps défile
+        quand la fenêtre est courte : l'action s'en allait avec lui, alors que le
+        titre du fichier qui les mesure est « les modales tiennent dans la
+        fenêtre, ET LEUR ACTION RESTE SOUS LES YEUX ». Mesuré à 360 px en
+        français : 35 px de défilement, et le relevé disait « pied — » là où les
+        dix autres disent « pied tenu ». Personne ne l'avait vu — la modale était
+        inatteignable en démonstration, donc jamais mesurée.
+
+        « Annuler » l'accompagne, pour la même raison de conformité : les autres
+        modales de saisie du dossier en portent un, et une modale de correction
+        est précisément celle qu'on ouvre pour renoncer.
+
+        Le bouton est rattaché au `<form>` par `form={ID}` : `Modal` rend le
+        corps et le pied dans deux `<div>` FRÈRES, donc un bouton du pied n'est
+        pas descendant du formulaire et ne le soumettrait pas autrement.
+      */
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button
+            type="submit"
+            form={ID_DU_FORMULAIRE}
+            loading={envoi}
+            variant={deviseChange ? 'danger' : 'primary'}
+          >
+            {/* Le bouton NOMME le geste quand il devient irréversible : on ne
+                clique pas par habitude sur « Enregistrer » quand ce qui part
+                change l'unité de tous les montants du parc. */}
+            {deviseChange ? t('app.parkSettings.confirmCurrency') : t('app.parkSettings.submit')}
+          </Button>
+        </>
+      }
     >
-      <form onSubmit={enregistrer} noValidate className="flex flex-col gap-5">
+      <form
+        id={ID_DU_FORMULAIRE}
+        onSubmit={enregistrer}
+        noValidate
+        className="flex flex-col gap-5"
+      >
         <Field label={t('app.parkSettings.name')} required error={erreurNom}>
           {(props) => (
             <Input
@@ -184,6 +280,31 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
               value={pays}
               onChange={(e) => setPays(e.target.value)}
             >
+              {/*
+                L'OPTION VIDE, ET ELLE MANQUAIT AUX DEUX LISTES.
+
+                Un `<select>` dont la valeur ne correspond à aucune option
+                affiche la PREMIÈRE. Sans parc — ou sur un parc dont le champ
+                n'a jamais été posé — cette modale annonçait donc « Belgique »
+                et « FCFA — Afrique centrale », deux valeurs que personne n'a
+                choisies, sur l'écran dont l'en-tête raconte précisément ce
+                défaut : « Parc Bastos est né FR/EUR parce que le pays se
+                déduisait en prenant le premier pays de la liste qui porte la
+                devise ». L'écran écrit pour réparer ce mensonge le rejouait
+                dans son propre formulaire.
+
+                L'état React, lui, valait bien la chaîne vide : rien n'était
+                ENVOYÉ à tort. Ce qui était faux, c'est ce que l'œil lisait — et
+                c'est le pire des deux, parce qu'on n'a aucun moyen de le
+                soupçonner.
+
+                `disabled` : une fois le pays posé, on n'y revient pas. Le
+                dépôt n'a pas de geste pour « dé-choisir » le pays d'un parc, et
+                offrir l'option ferait croire le contraire.
+              */}
+              <option value="" disabled>
+                {t('app.parkSettings.notSet')}
+              </option>
               {optionsDePays.map((option) => (
                 <option key={option.code} value={option.code}>
                   {option.label}
@@ -201,6 +322,10 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
               value={devise}
               onChange={(e) => setDevise(e.target.value as DeviseDuParc)}
             >
+              {/* Même raison que pour le pays, quelques lignes plus haut. */}
+              <option value="" disabled>
+                {t('app.parkSettings.notSet')}
+              </option>
               {DEVISES_DU_PARC.map((code) => (
                 <option key={code} value={code}>
                   {t(`app.parkSettings.currency${code}` as 'app.parkSettings.currencyXAF')}
@@ -248,12 +373,6 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
           </Notice>
         )}
 
-        <Button type="submit" loading={envoi} variant={deviseChange ? 'danger' : 'primary'}>
-          {/* Le bouton NOMME le geste quand il devient irréversible : on ne
-              clique pas par habitude sur « Enregistrer » quand ce qui part
-              change l'unité de tous les montants du parc. */}
-          {deviseChange ? t('app.parkSettings.confirmCurrency') : t('app.parkSettings.submit')}
-        </Button>
       </form>
     </Modal>
   )

@@ -31,14 +31,20 @@
  * première rédaction, qui inspectait CINQ modales sur douze en annonçant
  * « 20 états » :
  *
- *   — DEUX MODALES SUR DOUZE NE S'OUVRENT PAS ICI, nommément `TariffsModal` et
- *     `ParkSettingsModal`. Leurs boutons sont gardés par `adhesionActive`,
- *     c'est-à-dire par un COMPTE RÉEL : en démonstration l'adhésion est nulle,
- *     donc le bouton n'est pas rendu du tout. Aucune manipulation du navigateur
- *     n'y donne accès sans serveur d'authentification. Elles sont comptées à
- *     part — `NON_OUVRABLES` — et leur GÉOMÉTRIE N'EST DONC MESURÉE PAR
- *     PERSONNE. C'est une dette, elle est nommée, et elle se lèvera le jour où la
- *     démonstration portera une adhésion fictive plutôt qu'aucune.
+ *   — UNE MODALE SUR DOUZE NE S'OUVRE PAS ICI, `TariffsModal`. Son bouton est
+ *     gardé par `adhesionActive`, c'est-à-dire par un COMPTE RÉEL : en
+ *     démonstration l'adhésion est nulle, donc le bouton n'est pas rendu du
+ *     tout. Elle est comptée à part — `NON_OUVRABLES` — et sa GÉOMÉTRIE N'EST
+ *     DONC MESURÉE PAR PERSONNE. C'est une dette, elle est nommée.
+ *
+ *     ELLES ÉTAIENT DEUX. `ParkSettingsModal` a rejoint la liste des ouvrables :
+ *     sa garde confondait « personne à qui écrire » — vrai d'un compte sans parc
+ *     — et « rien ne s'écrit » — vrai de la démonstration, comme de tous les
+ *     gestes de son écran. Elle suit désormais le rôle ACTIF. `TariffsModal`
+ *     demandera le même examen, mais elle écrit des TARIFS par parc et n'a pas
+ *     d'équivalent local : son cas n'est pas le même, et le supposer serait
+ *     recopier une conclusion.
+ *
  *     `clavierDesModales.test.tsx` NE LES COUVRE PAS : ses quatre cas sont
  *     « Ajouter un immeuble », « Ajouter un logement », « Ouvrir un chantier »,
  *     « Enregistrer un paiement ».
@@ -83,6 +89,50 @@ const BASE = `http://127.0.0.1:${PORT}`
  * est le défilement qui n'achète rien.
  */
 const MODALES = [
+  /*
+    PARKSETTINGS ENTRE DANS LA LISTE, ET C'EST UNE DETTE QUI SE LÈVE.
+
+    Elle était comptée sous `NON_OUVRABLES` : son bouton était gardé par
+    `adhesionActive`, c'est-à-dire par un COMPTE RÉEL, donc rien ne la rendait en
+    démonstration et sa géométrie n'était mesurée par personne. L'en-tête de ce
+    fichier annonçait la levée « le jour où la démonstration portera une adhésion
+    fictive » ; ce n'est pas le chemin qui a été pris, et il vaut mieux.
+
+    La condition confondait deux choses : « personne à qui écrire » — vrai d'un
+    compte sans parc — et « rien ne s'écrit » — vrai de la démonstration, comme
+    de TOUS les gestes de cet écran. Le bouton suit désormais le rôle ACTIF, et
+    la modale, qui savait déjà qu'elle n'avait pas de parc, le DIT au lieu de ne
+    rien faire.
+
+    Ce qu'on y a trouvé le jour où elle s'est ouverte : ses deux listes
+    déroulantes n'avaient pas d'option vide, donc elles affichaient la première —
+    « Belgique » et « FCFA — Afrique centrale ». L'écran écrit pour réparer un
+    pays déduit du premier de la liste le rejouait dans son propre formulaire.
+    Personne ne pouvait le voir, faute de pouvoir l'ouvrir.
+  */
+  /*
+    LE PLAFOND DE 48, ET CE QU'IL ACHÈTE.
+
+    Première mesure de cette modale, à 360 px, en français : 35 px de défilement
+    et « pied — » au relevé, c'est-à-dire une action QUI S'EN VA AVEC LE CORPS.
+    Elle était la seule des onze dans ce cas — son bouton vivait sous les quatre
+    champs au lieu du pied.
+
+    Le bouton épinglé, le défilement MONTE à 48 : le pied prend la hauteur que le
+    corps n'a plus. Ces treize pixels sont exactement le prix de la règle que ce
+    fichier porte dans son titre — « leur action reste sous les yeux » — et c'est
+    le meilleur des deux échanges : un corps qui défile de 48 px sur un écran de
+    780 est un corps normal, une action qu'on doit aller chercher ne l'est pas.
+
+    On n'a PAS raboté les indications des champs pour rentrer sous zéro. Elles
+    disent ce que le pays suggère, ce que la devise engage et ce que la
+    délégation borne — sur l'écran où une erreur se paie en relisant tous les
+    montants du parc dans la mauvaise unité.
+
+    `avant` porte le 35 : il ne dit pas « ce lot a coûté », il dit d'où l'on
+    vient et pourquoi le nombre a grandi.
+  */
+  { nom: 'ParkSettings', adresse: '/demo/parc', bouton: /^Corriger le parc$|^Correct the park$/, defil: { 360: 48, 1280: 0 }, avant: { 360: 35, 1280: 0 } },
   { nom: 'AddBuilding', adresse: '/demo/parc', bouton: /^Ajouter un immeuble$|^Add a building$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'AddUnit', adresse: '/demo/parc', bouton: /^Ajouter un logement$|^Add a unit$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'OpenWork', adresse: '/demo/travaux', bouton: /^Ouvrir un chantier$|^Open a job$/, defil: { 360: 130, 1280: 0 }, avant: { 360: 1056, 1280: 913 } },
@@ -124,7 +174,7 @@ const MODALES = [
  * compte gardé, donc une troisième modale qui deviendrait inatteignable ferait
  * rougir, et l'une de ces deux qui redeviendrait atteignable aussi.
  */
-const NON_OUVRABLES = ['TariffsModal', 'ParkSettingsModal']
+const NON_OUVRABLES = ['TariffsModal']
 const LARGEURS = [360, 1280]
 const LANGUES = ['fr', 'en']
 /*
@@ -135,11 +185,15 @@ const LANGUES = ['fr', 'en']
   puis se déclarerait verte. La même mutation a trouvé ce piège trois lots de
   suite. Ajouter une modale oblige à toucher ce nombre, et le diff le montre.
 
-  40 = 10 modales ouvrables × 2 largeurs × 2 langues.
-  2  = les modales que la démonstration ne rend pas, nommées dans `NON_OUVRABLES`.
+  44 = 11 modales ouvrables × 2 largeurs × 2 langues.
+  1  = la modale que la démonstration ne rend pas, nommée dans `NON_OUVRABLES`.
+
+  Les deux nombres ont bougé ENSEMBLE : `ParkSettings` est passée de la seconde
+  ligne à la première. C'est exactement ce que ce compte écrit à la main sert à
+  rendre visible dans un diff.
 */
-const ATTENDUS = 40
-const NON_OUVRABLES_ATTENDUES = 2
+const ATTENDUS = 44
+const NON_OUVRABLES_ATTENDUES = 1
 
 async function servir() {
   const fils = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--host', '127.0.0.1'], {

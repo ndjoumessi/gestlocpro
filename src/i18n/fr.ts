@@ -882,10 +882,12 @@ export const fr = {
       hasManagers: 'Un gestionnaire opère encore ce parc. Retirez son accès au registre des accès avant de passer en gestion seule.',
       open: 'Corriger le parc',
       title: 'Corriger le parc',
-      description:
-        'Le nom, le pays et la devise du parc. Ils ont été posés à sa création et n’étaient modifiables nulle part.',
+      description: 'Le nom, le pays, la devise et la délégation : les quatre choses qu’un parc est.',
       name: 'Nom du parc',
       nameRequired: 'Requis',
+      notSet: '— non renseigné',
+      demoNoSave:
+        'La démonstration n\u2019enregistre rien : ce parc n\u2019existe que le temps de la visite. La devise, elle, se change tout de suite dans l\u2019en-tête — elle s\u2019applique à tous les montants affichés.',
       country: 'Pays',
       countryHint: 'Il détermine la zone monétaire proposée, sans l’imposer.',
       currency: 'Devise',

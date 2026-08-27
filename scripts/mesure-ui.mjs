@@ -589,6 +589,31 @@ const SURFACES_INTERACTIVES = [
     },
   },
   {
+    /*
+      LA CORRECTION DU PARC, ET POURQUOI ELLE ENTRE ICI PLUTÔT QU'AILLEURS.
+
+      `scripts/modales.mjs` mesure la GÉOMÉTRIE des onze modales, mais en thème
+      CLAIR seulement — son contexte est ouvert `colorScheme: 'light'`. Le
+      contraste des modales, lui, ne se mesure que par cette liste-ci, et une
+      seule y figurait : le calendrier. Une modale de saisie a pourtant quatre
+      familles de couleur — champs, indications, bandeau d'avertissement, pied —
+      et aucune n'avait jamais été relevée en sombre.
+
+      Celle-ci est la bonne candidate : elle porte les quatre, plus un `Notice`
+      de ton `warn` qui n'apparaît qu'au changement de devise, et elle vient
+      d'être rendue atteignable en démonstration. Elle était, jusqu'à ce lot,
+      la modale la moins mesurée du produit — ni géométrie, ni couleurs, ni
+      clavier.
+    */
+    nom: 'correction-du-parc',
+    adresse: '/demo/parc',
+    largeur: 1280,
+    temoin: '[role="dialog"] form#correction-du-parc',
+    ouvrir: async (page) => {
+      await page.getByRole('button', { name: /^Corriger le parc$|^Correct the park$/ }).first().click()
+    },
+  },
+  {
     nom: 'tiroir-de-navigation',
     adresse: '/demo',
     largeur: 360,
@@ -784,9 +809,9 @@ const DECLENCHEURS_ATTENDUS = 5
   elle-même : vider la table, et l'on comparerait 0 à 0 avant de se déclarer
   vert. Le nombre est donc écrit, et l'ajout d'une surface oblige à le toucher.
 
-  12 = 6 surfaces × 2 thèmes.
+  14 = 7 surfaces × 2 thèmes.
 */
-const SURFACES_ATTENDUES = 12
+const SURFACES_ATTENDUES = 14
 
 /**
  * Neutralise ce qui bouge, AVANT de mesurer.
@@ -1236,7 +1261,34 @@ const MESURER_CIBLES = (config) => {
   const raisonsVues = []
   let sondees = 0
 
-  for (const el of document.querySelectorAll(SELECTEUR)) {
+  /*
+    UNE MODALE OUVERTE BORNE LE BALAYAGE À ELLE-MÊME.
+
+    LE DÉFAUT DE LA SONDE, trouvé au premier passage où une modale est entrée
+    dans les surfaces auditées. La taille touchable se mesure par
+    `elementFromPoint` : on part du centre de l'élément et l'on s'écarte tant
+    que le point rend toujours cet élément. Derrière une modale, le point rend
+    la COUCHE — et la mesure conclut `0x0`.
+
+    Elle a donc accusé le lien « A1 » du tableau du parc, dont la zone touchable
+    réelle vaut 958 × 68 px, mesurée : sa rangée entière, par un `::after` en
+    `inset-0`. Rien n'était cassé. Ce qui était faux, c'est la QUESTION : « ce
+    lien est-il atteignable au doigt » n'a pas de sens à l'instant où une modale
+    le recouvre exprès.
+
+    ON NE MARQUE PAS LE FOND `inert` POUR AUTANT. Ce serait corriger le produit
+    pour arranger l'instrument : `Modal` porte `aria-modal="true"`, que les
+    technologies d'assistance honorent, et son piège de focus est tenu par
+    `clavierDesModales.test.tsx`. Ajouter `inert` pour faire taire une sonde
+    déguiserait un contournement en amélioration.
+
+    Le fond N'EST PAS pour autant exempté de mesure : il est balayé à chaque
+    passage de page, modale fermée, sur les mêmes onze largeurs.
+  */
+  const modale = document.querySelector('[role="dialog"][aria-modal="true"]')
+  const perimetre = modale ?? document
+
+  for (const el of perimetre.querySelectorAll(SELECTEUR)) {
     const style = getComputedStyle(el)
     if (style.display === 'none' || style.visibility === 'hidden') continue
     if (el.classList.contains('sr-only')) continue

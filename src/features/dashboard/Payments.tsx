@@ -256,7 +256,7 @@ export function Payments() {
       />
 
       {isTenant ? (
-        <TenantScopeNote />
+        <TenantScopeNote className="mb-4" />
       ) : (
         <div className={GRILLE_TROIS_INDICATEURS}>
           {/*

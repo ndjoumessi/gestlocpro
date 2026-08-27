@@ -5,7 +5,7 @@ import { Card, CardHeader } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
 import { Notice } from '@/components/primitives/Notice'
 import { MiniBarChart, ProgressBar } from '@/components/primitives/Charts'
-import { PaymentStatusPill, StatusPill } from '@/components/primitives/StatusPill'
+import { PaymentStatusPill } from '@/components/primitives/StatusPill'
 import { EmptyState } from '@/components/primitives/DataTable'
 import { Skeleton, SkeletonRegion, SkeletonStatRow } from '@/components/primitives/Skeleton'
 import { useCurrency } from '@/currency/CurrencyProvider'
@@ -491,7 +491,7 @@ export function TenantDashboard() {
         />
       )}
 
-      <NoteDeConfidentialite />
+      <TenantScopeNote className="mt-4" />
     </>
   )
 }
@@ -790,7 +790,7 @@ function TenantDashboardSkeleton() {
         </div>
       </SkeletonRegion>
 
-      <NoteDeConfidentialite />
+      <TenantScopeNote className="mt-4" />
     </>
   )
 }
@@ -828,42 +828,36 @@ export function TenantRestricted() {
 }
 
 /**
- * La règle de confidentialité, dite à l'écran et non seulement appliquée.
+ * LE PÉRIMÈTRE DU LOCATAIRE, dit une fois pour les six écrans qui le rappellent.
  *
- * Le locataire doit savoir ce que son bailleur ne voit pas de lui, et
- * inversement. Elle apparaît DEUX fois dans ce fichier — sous les données et
- * sous le squelette — parce que l'attente ne doit pas suspendre la promesse :
- * un écran qui affiche la note seulement une fois chargé la retire pendant les
- * secondes où l'on se demande précisément qui lit quoi.
+ * CE QU'IL REMPLACE, ET LE DÉTOUR QU'IL A FALLU. Deux bandeaux disaient la même
+ * phrase — `app.tenant.privacyNote`, mot pour mot — sous deux écritures : celui-ci,
+ * à la main, avec la liste des unités ; et une copie interne au tableau de bord,
+ * sans elle, écrite deux fois de plus dans le même fichier. Trois rédactions pour
+ * une phrase.
  *
- * Elle était écrite deux fois EN CLASSES, à l'identique. Le glyphe y était vert
- * dans une note grise ; `Notice` le prend au ton, et c'est un progrès et non
- * une perte : le vert ne disait rien que le texte ne dise, et `couleur-non-
- * seule` interdit qu'il le dise seul. Voir `TenantScopeNote` juste dessous pour
- * le cas qui, lui, RÉSISTE à la migration.
+ * IL AVAIT ÉTÉ REFUSÉ À LA MIGRATION, avec un motif juste et une conclusion
+ * fausse. Le motif : sa pastille portait déjà un bouclier, et `Notice` en aurait
+ * posé un second à trois millimètres. La conclusion tirée — « il reste à la
+ * main » — prenait la pastille pour une donnée du problème.
+ *
+ * Elle n'en était pas une. Une `StatusPill` rend un VERDICT ; celle-ci était en
+ * ton `ok`, c'est-à-dire qu'elle peignait en vert de succès une simple liste de
+ * logements. Le bandeau entier l'était avec elle. Or nommer son périmètre n'est
+ * ni une réussite ni une alerte : c'est une borne, et une borne est neutre.
+ *
+ * Le bouclier remonte donc au bandeau, où il dit ce qu'il a toujours voulu dire
+ * — « ceci parle de ce que vous voyez et de ce que vous ne voyez pas » — et les
+ * unités redeviennent ce qu'elles sont, des noms, en gras dans la phrase. Pas de
+ * seconde icône, pas de vert emprunté, pas de pastille sur un lavis.
+ *
+ * PAS DE MARGE PAR DÉFAUT : chaque appelant pose la sienne. `cn` CONCATÈNE — il
+ * n'est pas `tailwind-merge` — donc un `mb-4` de série plus un `mt-4` d'appelant
+ * laisseraient les deux classes dans le balisage, et le jour où quelqu'un voudra
+ * `mb-0` c'est l'ordre d'émission de la feuille qui trancherait. Six appelants,
+ * six marges écrites : le prix est visible, le piège n'existe pas.
  */
-function NoteDeConfidentialite() {
-  const t = useT()
-  return (
-    <Notice tone="neutral" icon="shield" className="mt-4">
-      {t('app.tenant.privacyNote')}
-    </Notice>
-  )
-}
-
-/**
- * Bandeau réutilisable rappelant le périmètre du locataire.
- *
- * IL RESTE ÉCRIT À LA MAIN, et la raison est mesurée : il ne porte pas d'icône
- * propre, parce que la pastille qu'il CONTIENT porte déjà un bouclier. Passé en
- * `Notice`, il en gagnerait un second à trois millimètres du premier — `Notice`
- * pose son glyphe par construction, et lui ouvrir une échappatoire `icon={null}`
- * rouvrirait exactement la dérive que ce composant existe pour fermer.
- *
- * Un bandeau dont le contenu est lui-même un composant à icône n'est pas un
- * bandeau d'information : c'est une pastille sur un lavis.
- */
-export function TenantScopeNote() {
+export function TenantScopeNote({ className }: { className?: string }) {
   const t = useT()
   // Le périmètre vient du provider, qui le tient du serveur. Les identifiants
   // sont techniques : ils servent à retrouver les unités, jamais à être lus —
@@ -872,11 +866,12 @@ export function TenantScopeNote() {
   const n = useNumbers()
   const libelles = tenantUnitIds.map((id) => unitById(id)?.label).filter(Boolean) as string[]
   return (
-    <p className="mb-4 flex items-start gap-2 rounded-md border border-ok-border bg-ok-tint px-3.5 py-2.5 text-body text-ok">
-      <StatusPill tone="ok" size="sm" icon="shield">
-        {n.list(libelles)}
-      </StatusPill>
+    <Notice tone="neutral" icon="shield" className={className}>
+      {/* La liste ne paraît que si le provider a rendu des libellés : sur un
+          compte dont le bail n'est pas encore relié, elle serait vide, et un gras
+          suivi d'une espace annoncerait un périmètre qu'on ne sait pas nommer. */}
+      {libelles.length > 0 && <span className="font-semibold">{n.list(libelles)} · </span>}
       {t('app.tenant.privacyNote')}
-    </p>
+    </Notice>
   )
 }

@@ -29,6 +29,15 @@ const MODALES: { nom: string; adresse: string; bouton: RegExp }[] = [
   { nom: 'Ajouter un logement', adresse: '/demo/parc', bouton: /^Ajouter un logement$/ },
   { nom: 'Ouvrir un chantier', adresse: '/demo/travaux', bouton: /^Ouvrir un chantier$/ },
   { nom: 'Enregistrer un paiement', adresse: '/demo/paiements', bouton: /^Enregistrer un paiement$/ },
+  /*
+    CINQUIÈME, ET ELLE ÉTAIT INATTEIGNABLE. Le bouton de « Corriger le parc »
+    était gardé par `adhesionActive`, c'est-à-dire par un COMPTE RÉEL : la
+    démonstration n'en porte pas, donc il n'était pas rendu, donc ni ce fichier
+    ni `scripts/modales.mjs` ne pouvaient l'ouvrir. Sa géométrie, ses couleurs
+    et son clavier n'étaient vérifiés par personne. La garde suit désormais le
+    rôle ACTIF, qui est connu en démonstration comme sur un vrai compte.
+  */
+  { nom: 'Corriger le parc', adresse: '/demo/parc', bouton: /^Corriger le parc$/ },
 ]
 
 async function parcoursClavier(adresse: string, motif: RegExp) {
@@ -205,8 +214,8 @@ describe('le clavier des modales', () => {
    * rendrait la garde d'accord avec elle-même, piège trouvé par la même
    * mutation trois lots de suite.
    */
-  it('a bien joué les quatre modales déclarées', () => {
-    expect(MODALES.length).toBe(4)
-    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(4)
+  it('a bien joué les cinq modales déclarées', () => {
+    expect(MODALES.length).toBe(5)
+    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(5)
   })
 })

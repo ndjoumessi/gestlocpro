@@ -177,7 +177,7 @@ export function Alerts() {
         {unread > 0 ? t('app.alerts.unread', { count: unread }) : t('app.alerts.allRead')}
       </p>
 
-      {isTenant && <TenantScopeNote />}
+      {isTenant && <TenantScopeNote className="mb-4" />}
 
       {alerts.length === 0 ? (
         // L'écran servait au propriétaire un texte écrit pour le locataire —

@@ -708,10 +708,12 @@ export const en: Dictionary = {
       hasManagers: 'A manager still operates this portfolio. Revoke their access in the access registry before switching to solo management.',
       open: 'Correct the park',
       title: 'Correct the park',
-      description:
-        'The park’s name, country and currency. They were set when it was created and could not be changed anywhere.',
+      description: 'Name, country, currency and delegation: the four things a portfolio is.',
       name: 'Park name',
       nameRequired: 'Required',
+      notSet: '— not set',
+      demoNoSave:
+        'The demo saves nothing: this portfolio only exists for the length of your visit. The currency, though, can be changed right away in the header \u2014 it applies to every amount on screen.',
       country: 'Country',
       countryHint: 'It suggests the monetary zone without imposing it.',
       currency: 'Currency',
