@@ -119,7 +119,7 @@ export function TenantPortal() {
     <>
       <PageHeader title={t('app.portal.title')} description={t('app.portal.subtitle')} />
 
-      <div className="overflow-hidden rounded-xl border border-border-strong bg-surface-sunken shadow-e2">
+      <div className="overflow-hidden rounded-lg border border-border-strong bg-surface-sunken shadow-e2">
         {/* Chrome de navigateur */}
         <div className="flex items-center gap-3 border-b border-border bg-surface px-4 py-2.5">
           <span aria-hidden="true" className="flex gap-1.5">

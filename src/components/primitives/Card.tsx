@@ -59,7 +59,17 @@ export function CardHeader({
   return (
     <div className={cn('mb-4 flex items-start justify-between gap-4', className)}>
       <div className="min-w-0">
-        {eyebrow && <div className="eyebrow mb-1.5 text-muted">{eyebrow}</div>}
+        {/* `break-words` pour la même raison que l'intitulé d'un indicateur, et
+            la porte l'a exigé au même endroit du raisonnement : la gélule a
+            élargi le bouton d'action de 2 px, la colonne du titre s'est
+            resserrée d'autant, et « QUITTANCES » — un seul mot, en capitales
+            interlettrées — a dépassé sa boîte de 3 px à 320. Aucun repli ne
+            coupe un mot unique ; il faut l'autoriser explicitement. Le surtitre
+            n'a pas de plafond de lignes : il est court par nature, et le rogner
+            comme un intitulé de carte n'aurait servi aucun cas réel. */}
+        {eyebrow && (
+          <div className="eyebrow mb-1.5 hyphens-auto break-words text-muted">{eyebrow}</div>
+        )}
         <Heading className="title-m text-balance">{title}</Heading>
         {description && <p className="mt-1 text-body text-muted">{description}</p>}
       </div>

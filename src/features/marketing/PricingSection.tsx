@@ -89,7 +89,7 @@ export function PricingSection() {
             <article
               key={plan.id}
               className={cn(
-                'relative flex flex-col rounded-xl border p-6',
+                'relative flex flex-col rounded-lg border p-6',
                 popular
                   ? 'border-ink bg-surface shadow-e2 lg:-mt-3 lg:pb-8'
                   : 'border-divider bg-surface shadow-e1',

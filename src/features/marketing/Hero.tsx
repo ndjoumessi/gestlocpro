@@ -137,7 +137,7 @@ function HeroPreview({
 
   return (
     <div data-mesure="accroche-illustration" className="relative min-w-0">
-      <div className="animate-rise rounded-2xl border border-divider bg-surface p-5 shadow-e3 sm:p-6">
+      <div className="animate-rise rounded-lg border border-divider bg-surface p-5 shadow-e3 sm:p-6">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="eyebrow text-muted">{t('marketing.metrics.collected')}</p>

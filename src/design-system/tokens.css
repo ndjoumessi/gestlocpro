@@ -406,10 +406,37 @@
   --size-control-group: 3.125rem;
 
   /* ---- Rayons ---------------------------------------------------------- */
+  /* DEUX RAYONS DE DONNÉE, nommés parce qu'ils étaient écrits en dur. Les
+     barres portaient un `[3px]` littéral et les pastilles de légende un `[2px]`,
+     alors que `--radius-bar` existait déjà et servait à personne. Un jeton que
+     le code contourne n'est pas un jeton, c'est un commentaire ; et la garde
+     des rayons refuse maintenant l'arbitraire, ce qui rendait la situation
+     intenable dans les deux sens. */
   --radius-bar: 3px; /* barres de graphe */
+  --radius-legende: 2px; /* pastilles de légende de série */
+  /**
+   * DEUX CRANS FONT NORME, ET UN TROISIÈME S'ÉTAIT INSTALLÉ SANS SE DÉCLARER.
+   *
+   * Compté sur les vingt-sept fichiers de la vitrine et des primitives :
+   * `rounded-md` 27 fois — la norme de ce qui se CLIQUE —, `rounded-lg` 13 fois
+   * — la norme de ce qui CONTIENT —, puis sept `rounded-xl` et un `rounded-2xl`
+   * qui sont TOUS des cartes de vitrine réimplémentées à la main plutôt que
+   * passées par `Card`. Trois crans pour deux rôles : le troisième n'était pas
+   * une décision, c'était une dérive.
+   *
+   * Les cartes montent de 14 à 18 px. C'est la géométrie du modèle qu'on suit,
+   * et elle a une raison au-delà du goût : un rayon plus généreux adoucit la
+   * grille dense d'un écran d'exploitation, où quinze cartes se touchent
+   * presque. Les huit dérives descendent sur ce cran ; l'écart entre 18 et
+   * leurs 20 ou 28 px ne se voyait pas, mais l'existence d'un cran non nommé,
+   * si — c'est par là que le suivant serait entré.
+   *
+   * `--radius-md` monte de 9 à 10 pour rester en proportion : un champ qui garde
+   * son rayon pendant que sa carte s'arrondit paraît plus dur qu'avant.
+   */
   --radius-sm: 6px;
-  --radius-md: 9px; /* boutons, inputs */
-  --radius-lg: 14px; /* cartes */
+  --radius-md: 10px; /* champs */
+  --radius-lg: 18px; /* cartes */
   --radius-xl: 20px; /* panneaux, modales */
   --radius-2xl: 28px; /* blocs hero */
 

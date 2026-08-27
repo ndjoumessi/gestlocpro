@@ -37,7 +37,7 @@ export function ValueProps() {
         {KEYS.map((key, index) => (
           <li
             key={key}
-            className="flex flex-col rounded-xl border border-divider bg-surface p-6 shadow-e1"
+            className="flex flex-col rounded-lg border border-divider bg-surface p-6 shadow-e1"
           >
             <span
               aria-hidden="true"

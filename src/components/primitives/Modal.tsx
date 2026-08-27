@@ -153,7 +153,7 @@ export function Modal({
         aria-describedby={description ? descId : undefined}
         className={cn(
           'animate-pop relative flex max-h-[92dvh] w-full flex-col overflow-hidden',
-          'rounded-t-xl border border-divider bg-surface shadow-e3 sm:rounded-xl',
+          'rounded-t-lg border border-divider bg-surface shadow-e3 sm:rounded-lg',
           SIZES[size],
         )}
       >

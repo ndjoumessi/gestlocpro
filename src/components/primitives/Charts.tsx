@@ -317,7 +317,7 @@ export function StackedBarChart({
                   la forme, en écho au libellé barré qui l'accompagne. */}
               <span
                 aria-hidden="true"
-                className={cn('size-2.5 rounded-[2px] transition-shadow duration-150')}
+                className={cn('size-2.5 rounded-legende transition-shadow duration-150')}
                 style={
                   shown
                     ? { background: SERIES_COLORS[key] }
@@ -336,7 +336,7 @@ export function StackedBarChart({
           <span className="inline-flex items-center gap-1.5">
             <span
               aria-hidden="true"
-              className="size-2.5 rounded-[2px]"
+              className="size-2.5 rounded-legende"
               style={{ background: SERIES_COLORS.rent }}
             />
             <span>{t('app.dashboard.scalePrimary')}</span>
@@ -348,12 +348,12 @@ export function StackedBarChart({
           <span className="inline-flex items-center gap-1.5">
             <span
               aria-hidden="true"
-              className="size-2.5 rounded-[2px]"
+              className="size-2.5 rounded-legende"
               style={{ background: SERIES_COLORS.water }}
             />
             <span
               aria-hidden="true"
-              className="size-2.5 rounded-[2px] ml-1"
+              className="size-2.5 rounded-legende ml-1"
               style={{ background: SERIES_COLORS.power }}
             />
             <span>{t('app.dashboard.scaleSecondary')}</span>
@@ -472,7 +472,7 @@ export function StackedBarChart({
                 <span
                   className={cn(
                     'animate-grow-y flex w-full flex-col-reverse',
-                    'rounded-t-[3px] transition-shadow duration-150',
+                    'rounded-t-bar transition-shadow duration-150',
                   )}
                   style={{
                     height: `${(totalsPrimaires[index] / max) * 100}%`,
@@ -497,7 +497,7 @@ export function StackedBarChart({
                         key={segment.key}
                         className={cn(
                           'w-full',
-                          segmentIndex === shownSegments.length - 1 && 'rounded-t-[3px]',
+                          segmentIndex === shownSegments.length - 1 && 'rounded-t-bar',
                         )}
                         style={{
                           height: `${totalsPrimaires[index] ? (segment.value / totalsPrimaires[index]) * 100 : 0}%`,
@@ -560,7 +560,7 @@ export function StackedBarChart({
               return (
                 <span key={bar.label} className="flex min-w-0 flex-1 items-end justify-center">
                   <span
-                    className="animate-grow-y flex w-full flex-col-reverse rounded-t-[3px] transition-shadow duration-150"
+                    className="animate-grow-y flex w-full flex-col-reverse rounded-t-bar transition-shadow duration-150"
                     style={{
                       height: `${(totalBas / maxSecondaire) * 100}%`,
                       animationDelay: `${index * 35}ms`,
@@ -572,7 +572,7 @@ export function StackedBarChart({
                       .map((seg, i, montres) => (
                         <span
                           key={seg.key}
-                          className={cn('w-full', i === montres.length - 1 && 'rounded-t-[3px]')}
+                          className={cn('w-full', i === montres.length - 1 && 'rounded-t-bar')}
                           style={{
                             height: `${totalBas ? (seg.value / totalBas) * 100 : 0}%`,
                             background: isLast
@@ -789,7 +789,7 @@ function LectureFixe({
           {rows.map((row) => (
             <li key={row.key} className="flex items-center gap-1.5 text-body">
               <span
-                className="size-2 shrink-0 rounded-[2px]"
+                className="size-2 shrink-0 rounded-legende"
                 style={{ background: row.color }}
               />
               <span className="text-on-dark-muted">{row.label}</span>
@@ -898,7 +898,7 @@ export function MiniBarChart({
               aria-label={`${bar.label} — ${bar.value === null ? emptyLabel : lire(bar.value)}`}
             >
               <span
-                className="animate-grow-y w-full rounded-t-[3px] transition-shadow duration-150"
+                className="animate-grow-y w-full rounded-t-bar transition-shadow duration-150"
                 style={{
                   // Une période inconnue garde un filet de 2 px : la colonne
                   // reste visible et cliquable — sans quoi le trou se lirait

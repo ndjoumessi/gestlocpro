@@ -468,7 +468,7 @@ export function PublicHeader() {
                   */
                   cn(
                     'pointer-events-auto ml-auto mt-2 w-max max-w-full',
-                    'rounded-xl border border-divider bg-surface p-4 shadow-e3',
+                    'rounded-lg border border-divider bg-surface p-4 shadow-e3',
                   )
                 : /*
                     LA FEUILLE NE CHANGE PAS : en deçà de `lg` elle est juste.

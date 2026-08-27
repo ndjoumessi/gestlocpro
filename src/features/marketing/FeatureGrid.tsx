@@ -41,7 +41,7 @@ export function FeatureGrid() {
           <article
             key={key}
             className={cn(
-              'group rounded-xl border border-divider bg-surface p-7 sm:p-8',
+              'group rounded-lg border border-divider bg-surface p-7 sm:p-8',
               'shadow-e1 transition-[transform,box-shadow,border-color] duration-200 ease-out',
               'hover:-translate-y-1 hover:border-border-strong hover:shadow-e2',
             )}

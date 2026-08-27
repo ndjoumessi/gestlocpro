@@ -32,7 +32,7 @@ export function RolesSection() {
           <article
             key={key}
             className={cn(
-              'group flex flex-col rounded-xl border border-on-dark-border bg-ink-2 p-7 sm:p-8',
+              'group flex flex-col rounded-lg border border-on-dark-border bg-ink-2 p-7 sm:p-8',
               'transition-[transform,border-color] duration-200 ease-out',
               'hover:-translate-y-1 hover:border-accent-on-dark/45',
             )}

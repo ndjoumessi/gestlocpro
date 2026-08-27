@@ -81,7 +81,7 @@ export function InternationalSection() {
         {facts.map((fact) => (
           <div
             key={fact.key}
-            className="rounded-xl border border-divider bg-surface p-7 shadow-e1 sm:p-8"
+            className="rounded-lg border border-divider bg-surface p-7 shadow-e1 sm:p-8"
           >
             <dt className="eyebrow flex items-center gap-2 text-muted">
               <Icon name="globe" size={13} className="text-accent-ink" />

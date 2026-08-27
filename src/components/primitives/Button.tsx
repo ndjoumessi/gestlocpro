@@ -61,8 +61,18 @@ const ETEINT = 'pointer-events-none opacity-45'
 
 const SIZES: Record<ButtonSize, string> = {
   // min-h-11 = 44px, la cible tactile minimale, sur toutes les tailles.
-  sm: 'min-h-11 px-3 text-label gap-1.5',
-  md: 'min-h-11 px-3.5 text-body gap-2',
+  //
+  // Le rembourrage horizontal a gagné un demi-cran avec la gélule : les angles
+  // arrondis rognent l'espace utile aux extrémités du libellé, ce que des coins
+  // droits ne faisaient pas. La HAUTEUR ne bouge pas — c'est elle qui porte la
+  // cible tactile, et elle est déjà au plancher.
+  sm: 'min-h-11 px-3.5 text-label gap-1.5',
+  md: 'min-h-11 px-4 text-body gap-2',
+  /* `lg` GARDE SON REMBOURRAGE D'ORIGINE, et c'est la porte qui l'a exigé : à
+     px-6, les deux boutons de l'appel à l'action de la vitrine débordaient leur
+     rangée de 43 px à 1024 — une signature déjà tolérée jusqu'à 27, donc un
+     défaut AGGRAVÉ et non nouveau. Le gabarit `lg` a déjà 20 px de chaque côté ;
+     la gélule n'y manque pas d'air, contrairement aux deux plus petits. */
   lg: 'min-h-12 px-5 text-body-l gap-2',
 }
 
@@ -94,7 +104,19 @@ function classes({
   className,
 }: CommonProps & { disabled?: boolean }) {
   return cn(
-    'inline-flex items-center justify-center rounded-md font-semibold no-underline',
+    /*
+      LE BOUTON PASSE EN GÉLULE, et il est le SEUL à le faire.
+      `rounded-md` reste la norme de tout ce qui se clique — champs, cellules de
+      calendrier, segments de choix. Un bouton n'en est pas un cas parmi
+      d'autres : c'est l'objet que l'œil cherche quand il veut agir, et la
+      gélule est ce qui le sépare d'un champ de saisie de même hauteur. Dans le
+      modèle suivi, tout le reste est rectangulaire à coins doux et seules les
+      commandes sont pleinement arrondies — c'est cette distinction-là qu'on
+      reprend, pas l'arrondi pour lui-même.
+      Le rembourrage horizontal suit : une gélule mange ses angles, donc le
+      texte a besoin de plus d'air qu'entre deux coins droits. Voir `SIZES`.
+    */
+    'inline-flex items-center justify-center rounded-full font-semibold no-underline',
     'cursor-pointer select-none whitespace-nowrap',
     'transition-[background-color,border-color,transform,box-shadow] duration-150 ease-out',
     VARIANTS[variant],
@@ -216,7 +238,9 @@ export function IconButton({
       title={label}
       disabled={disabled}
       className={cn(
-        'inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md',
+        /* Rond, et non arrondi : un bouton icône est un bouton, donc une
+           gélule — et une gélule carrée est un cercle. */
+        'inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full',
         'transition-colors duration-150 ease-out',
         VARIANTS[variant],
         disabled && ETEINT,
