@@ -50,8 +50,8 @@
  *
  *   — le CLAVIER. Piège de focus, Échap, retour du focus : ce sont les cas de
  *     `clavierDesModales.test.tsx`, joués sous jsdom où la tabulation est
- *     simulée fidèlement. Les rejouer ici doublerait la couverture sans rien
- *     ajouter ;
+ *     simulée fidèlement, et qui couvrent désormais les DOUZE. Les rejouer ici
+ *     doublerait la couverture sans rien ajouter ;
  *
  *   — la PERTINENCE d'un champ, l'ordre des questions, le bien-fondé d'un
  *     libellé. Aucune garde ne sait cela, et celle-ci ne prétend pas le savoir ;
@@ -225,7 +225,13 @@ const NON_OUVRABLES = []
  * Recopiés et non importés : ce script est un module Node, l'autre un fichier de
  * cas sous jsdom, et les relier ferait dépendre une porte du chargement de
  * l'autre. Le prix est cette liste ; le garde-fou est `COUVERTES_AU_CLAVIER`,
- * qui rougirait si les deux comptes cessaient de s'accorder.
+ * qui rougirait si les deux comptes cessaient de s'accorder, et la vérification
+ * juste dessous, qui refuse un libellé sans modale correspondante ici.
+ *
+ * ELLE LES PORTE TOUTES LES DOUZE depuis que les six dernières sont entrées
+ * dans les cas clavier. Trois d'entre elles demandaient plus qu'un clic : la
+ * quittance et la réponse se répètent PAR LIGNE — dix et quatre boutons
+ * mesurés — et le signalement n'existe que pour le LOCATAIRE.
  */
 const COUVERTS = [
   'Ajouter un immeuble',
@@ -234,6 +240,12 @@ const COUVERTS = [
   'Enregistrer un paiement',
   'Corriger le parc',
   'Prix de refacturation',
+  'Quittance',
+  'Établir un état des lieux',
+  'Inviter par code',
+  'Prévenir les locataires',
+  'Répondre',
+  'Signaler un problème',
 ]
 const LARGEURS = [360, 1280]
 const LANGUES = ['fr', 'en']
@@ -496,7 +508,7 @@ if (plaintes.length > 0) {
   sans compte il se périmerait encore. Le nombre force à toucher cette ligne le
   jour où la couverture bouge.
 */
-const COUVERTES_AU_CLAVIER = 6
+const COUVERTES_AU_CLAVIER = 12
 /*
   GARDE DU GARDE : le nombre écrit et la liste recopiée doivent s'accorder, et
   la liste doit désigner des modales qui EXISTENT. Sans cette vérification, un
@@ -524,6 +536,8 @@ console.log(
       : `  plus ${NON_OUVRABLES.length} que la démonstration ne rend pas : ${NON_OUVRABLES.join(', ')}.\n`) +
     '  Le CLAVIER est mesuré ailleurs — `clavierDesModales.test.tsx` — sur ' +
     `${COUVERTES_AU_CLAVIER} modales ;\n` +
-    `  les ${horsClavier.length} autres ne le sont pas : ${horsClavier.map((m) => m.nom).join(', ')}.\n` +
+    (horsClavier.length === 0
+      ? '  TOUTES y sont — entrée du focus, piège, Échap, retour au bouton.\n'
+      : `  les ${horsClavier.length} autres ne le sont pas : ${horsClavier.map((m) => m.nom).join(', ')}.\n`) +
     "  La PERTINENCE d'un champ n'est mesurée nulle part : voir l'en-tête.",
 )
