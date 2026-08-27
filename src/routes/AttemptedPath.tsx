@@ -26,16 +26,43 @@ const MAX_PATH = 120
  * le lien mort. Elle est coupée, car rien n'empêche une adresse arbitrairement
  * longue de repousser les boutons hors de l'écran ; React échappe le texte,
  * l'afficher est donc sans risque.
+ *
+ * ═══ L'ADRESSE ENTIÈRE, ET NON SEULEMENT LE CHEMIN ═══
+ *
+ * Elle ne rendait que `pathname`. Mesuré au navigateur sur
+ * `/produits/ancienne-page?ref=lettre-2024&utm=mail` : l'écran affichait
+ * « /produits/ancienne-page » sous le mot « Adresse demandée ». Or c'est la
+ * PART SUPPRIMÉE qui dit lequel des liens morts on vient de suivre — une
+ * campagne, un courriel, un message. Les deux usages que l'en-tête ci-dessus
+ * revendique, corriger et signaler, étaient précisément ceux que la coupure
+ * empêchait.
+ *
+ * `search` et `hash` reviennent donc. Ils sont déjà dans la barre d'adresse de
+ * l'utilisateur : les montrer ne divulgue rien qu'il n'ait sous les yeux, et le
+ * plafond de 120 caractères s'applique maintenant à l'ensemble plutôt qu'au seul
+ * chemin — c'est-à-dire à ce qui menace vraiment la mise en page.
+ *
+ * ═══ UN TERME ET SA DÉFINITION, PAS DEUX PARAGRAPHES ═══
+ *
+ * « Adresse demandée » nomme, l'adresse définit. Empilés en deux `<p>`, le lien
+ * entre les deux ne tient qu'à la mise en page — c'est-à-dire à rien, pour qui
+ * ne la voit pas. Un lecteur d'écran annonce le TERME avant sa DÉFINITION quand
+ * le balisage le dit ; c'est la règle que les fiches des écrans-tableaux
+ * appliquent déjà, et elle valait ici aussi.
  */
 export function AttemptedPath() {
   const t = useT()
-  const { pathname } = useLocation()
-  const shown = pathname.length > MAX_PATH ? `${pathname.slice(0, MAX_PATH)}…` : pathname
+  const { pathname, search, hash } = useLocation()
+  const complete = `${pathname}${search}${hash}`
+  const shown = complete.length > MAX_PATH ? `${complete.slice(0, MAX_PATH)}…` : complete
 
   return (
-    <div className="rounded-lg border border-border bg-surface px-4 py-3">
-      <p className="text-body text-muted">{t('notFound.attempted')}</p>
-      <p className="mt-1 text-body break-all text-ink">{shown}</p>
-    </div>
+    <dl className="rounded-lg border border-border bg-surface px-4 py-3">
+      <dt className="text-body text-muted">{t('notFound.attempted')}</dt>
+      {/* `break-all` et non `break-words` : une adresse n'a pas de mots, et la
+          couper à la limite des « mots » la laisserait déborder sur un segment
+          long. C'est l'un des rares endroits où couper n'importe où est juste. */}
+      <dd className="mt-1 text-body break-all text-ink">{shown}</dd>
+    </dl>
   )
 }
