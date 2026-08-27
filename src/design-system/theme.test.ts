@@ -69,9 +69,23 @@ const COULEURS_CLAIRES = [...CLAIR.keys()].filter((n) => n.startsWith('--color-'
 
 describe('thème sombre — couverture des jetons', () => {
   it('le fichier expose bien une palette claire à couvrir', () => {
-    // Garde du garde : un analyseur qui ne trouve rien valide n'importe quoi.
+    /*
+      Garde du garde : un analyseur qui ne trouve rien valide n'importe quoi.
+
+      LA SECONDE ASSERTION N'ÉPINGLE PLUS UN HEX, et c'est un correctif. Elle
+      lisait `toBe('#efebe2')` — la valeur exacte du fond clair — ce qui la
+      faisait tomber au premier repeint de la palette, sans rien dire de plus
+      que « la couleur a changé ». Or ce qu'elle DOIT prouver est autre chose :
+      que l'analyseur a lu le bloc CLAIR et non le sombre, et qu'il en a sorti
+      une couleur réelle. Les deux lignes ci-dessous le disent sans dépendre
+      d'une teinte : un hex bien formé, et surtout DIFFÉRENT de son homologue
+      sombre. Un analyseur qui retomberait sur le mauvais bloc les rendrait
+      identiques. `MEDIA` est le bloc `prefers-color-scheme`, celui que ce
+      fichier compare partout ailleurs.
+    */
     expect(COULEURS_CLAIRES.length).toBeGreaterThan(40)
-    expect(CLAIR.get('--color-canvas')).toBe('#efebe2')
+    expect(CLAIR.get('--color-canvas')).toMatch(/^#[0-9a-f]{6}$/)
+    expect(CLAIR.get('--color-canvas')).not.toBe(MEDIA.get('--color-canvas'))
     expect(MEDIA.size).toBeGreaterThan(40)
   })
 

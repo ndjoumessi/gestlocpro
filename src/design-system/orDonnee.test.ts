@@ -177,10 +177,22 @@ const SITES: [string, string, string, number, Portee][] = [
 
 describe('le jeton retenu tient le seuil dans les DEUX thèmes', () => {
   it('la portée l’emporte bien sur le thème', () => {
-    // Garde du garde : si `resolu` retombait toujours sur le thème, les deux
-    // sites du portail passeraient pour une raison qui n'est pas la bonne.
-    expect(resolu(SOMBRE, null, '--color-ink')).not.toBe('#14201e')
-    expect(resolu(SOMBRE, 'on-dark', '--color-ink')).toBe('#14201e')
+    /*
+      Garde du garde : si `resolu` retombait toujours sur le thème, les deux
+      sites du portail passeraient pour une raison qui n'est pas la bonne.
+
+      PLUS D'HEX ÉPINGLÉ : la seconde ligne lisait `toBe('#14201e')`, l'encre
+      claire d'alors, et tombait au premier repeint. Ce qu'elle prouve est que
+      la PORTÉE l'emporte sur le THÈME — donc que, sous `.on-dark` en thème
+      sombre, l'encre résolue est celle du bloc de portée et non celle du
+      thème. Il suffit de le dire ainsi : les deux résolutions doivent
+      DIFFÉRER, et la portée doit rendre exactement ce que le thème CLAIR rend
+      sans portée, puisque `.on-dark` fige l'encre claire.
+    */
+    expect(resolu(SOMBRE, null, '--color-ink')).not.toBe(
+      resolu(SOMBRE, 'on-dark', '--color-ink'),
+    )
+    expect(resolu(SOMBRE, 'on-dark', '--color-ink')).toBe(resolu(CLAIR, null, '--color-ink'))
   })
 
   for (const [role, encre, fond, seuil, portee] of SITES) {

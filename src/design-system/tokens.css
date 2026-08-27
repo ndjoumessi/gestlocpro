@@ -2,9 +2,18 @@
    GestLocPro — Jetons de design
    Source de vérité unique. Aucun hex en dur dans les composants.
 
+   LA TEMPÉRATURE DU NEUTRE A CHANGÉ, et les relevés avec elle. Les surfaces
+   et les encres étaient CHAUDES — crème, brun, ocre. Elles sont désormais
+   FROIDES, à clarté équivalente : c'est un choix de marque, pas un réglage, et
+   il est mesuré plutôt que jugé. Sur les quinze paires que ce fichier
+   documente, TOUT LE TEXTE gagne du contraste dans les deux thèmes — l'encre
+   principale passe de 15,24 à 16,47 sur le papier clair, le texte en retrait de
+   5,40 à 5,64. Quatre filets décoratifs perdent entre 0,01 et 0,03 sur des
+   rapports de 1,3:1, où aucun seuil ne se joue.
+
    La palette de marque porte quatre corrections de contraste :
-     --muted     #6B7573 -> #5C6664   (4.33 -> 5.40 sur --paper)
-     --gold-ink  #A0722C -> #8A6218   (3.87 -> 4.98 sur --paper)
+     --muted     #6B7573 -> #5C6664   (4.33 -> 5.64 sur --paper)
+     --gold-ink  #A0722C -> #8A6218   (3.87 -> 5.14 sur --paper)
      --gold-on-dark  #C58E3E -> #D2A055 (4.38 -> 5.33 sur --ink-2)
      --warn      #8A6218 -> #795415   (3.93 -> 4.88 sur --warn-border)
 
@@ -22,14 +31,14 @@
 
 @theme {
   /* ---- Surfaces claires ------------------------------------------------ */
-  --color-canvas: #efebe2; /* fond application */
-  --color-paper: #f7f4ee; /* fond zone principale */
+  --color-canvas: #eceef3; /* fond application */
+  --color-paper: #f6f8fb; /* fond zone principale */
   --color-surface: #ffffff; /* cartes */
-  --color-surface-sunken: #f2f0ea; /* zones creusées, en-têtes de table */
-  --color-surface-raised: #fbf9f4; /* survol de ligne, cartes secondaires */
-  --color-border: #e5dfd3;
-  --color-border-strong: #cbbfa6;
-  --color-divider: #e8e2d7;
+  --color-surface-sunken: #f1f3f8; /* zones creusées, en-têtes de table */
+  --color-surface-raised: #fafbfe; /* survol de ligne, cartes secondaires */
+  --color-border: #dbe0e9;
+  --color-border-strong: #b6bfcf;
+  --color-divider: #dee3ec;
 
   /* Crête du balayage de squelette, sur `--color-surface-sunken`.
      Un jeton à elle, et non `--color-border` emprunté : le balayage n'est pas
@@ -39,14 +48,14 @@
      à 16,8 parce que l'écart entre creux et bordure y est bien plus grand.
      Réglée ici à ΔL* -17,1, l'égal perceptif du sombre. Voir squelette.test.ts,
      qui tient les deux thèmes dans la même fourchette. */
-  --color-skeleton-sweep: #cbbfa6;
+  --color-skeleton-sweep: #bac3d3; /* ΔL* 17,3 sur le creux — 17,1 avant */
 
   /* ---- Encres ---------------------------------------------------------- */
-  --color-ink: #14201e; /* texte principal · 15.24 sur --paper */
-  --color-ink-2: #243733; /* surface sombre élevée, survol bouton sombre */
-  --color-ink-3: #3f4a48;
-  --color-muted: #5c6664; /* texte secondaire · 5.40 sur --paper, 5.93 sur --surface */
-  --color-muted-soft: #6b7573; /* >=18px ou non-textuel uniquement */
+  --color-ink: #131a22; /* texte principal · 16.47 sur --paper */
+  --color-ink-2: #232f3b; /* surface sombre élevée, survol bouton sombre */
+  --color-ink-3: #3e4854;
+  --color-muted: #5b646f; /* texte secondaire · 5.64 sur --paper, 6.00 sur --surface */
+  --color-muted-soft: #6a737e; /* >=18px ou non-textuel uniquement */
 
   /* ---- Or (marque) ----------------------------------------------------- */
   --color-gold: #c58e3e; /* accent : fond, bordure, icône, texte sur --ink */
@@ -84,7 +93,7 @@
      gris comme pour une bonne partie des daltonismes. La couleur ne porte de
      toute façon jamais l'information seule : chaque série garde son libellé
      dans la légende et dans l'infobulle. */
-  --color-data-1: #14201e; /* L  1 % — 16,73:1 sur blanc */
+  --color-data-1: #131a22; /* L  1 % — 17,52:1 sur blanc */
   --color-data-2: #5b4a2a; /* L  7 % —  8,54:1 */
   --color-data-3: #8a5a3b; /* L 13 % —  5,82:1 */
   --color-data-4: #4a7f86; /* L 18 % —  4,50:1 */
@@ -93,7 +102,7 @@
 
 
   /* Contreparties pour les graphiques posés sur fond sombre. */
-  --color-data-1-on-dark: #f7f4ee;
+  --color-data-1-on-dark: #f6f8fb;
   --color-data-2-on-dark: #d2a055;
   --color-data-3-on-dark: #c99a7f;
   --color-data-4-on-dark: #8fc0c8;
@@ -139,9 +148,9 @@
   --color-danger-tint: #faedea;
   --color-danger-border: #e4b3aa;
 
-  --color-neutral: #5c6664;
-  --color-neutral-tint: #f2f0ea;
-  --color-neutral-border: #e5dfd3;
+  --color-neutral: #5b646f;
+  --color-neutral-tint: #f1f3f8;
+  --color-neutral-border: #dbe0e9;
 
   /* ---- Sur fond sombre ------------------------------------------------- */
   --color-on-dark: #ffffff;
@@ -524,20 +533,20 @@
     /* L'ordre d'élévation du thème clair est conservé, à l'envers :
        canvas < sunken < paper < raised < surface. Une carte reste ce qu'il y
        a de plus haut, donc de plus clair. */
-    --color-canvas: #100e0b; /* fond application */
-    --color-paper: #17140f; /* fond zone principale */
-    --color-surface: #26221b; /* cartes */
-    --color-surface-sunken: #14110d; /* zones creusées, en-têtes de table */
-    --color-surface-raised: #1e1b15; /* survol de ligne, cartes secondaires */
-    --color-border: #3a342a;
-    --color-border-strong: #5b5343;
-    --color-divider: #302b23;
+    --color-canvas: #0a0d11; /* fond application */
+    --color-paper: #0f1319; /* fond zone principale */
+    --color-surface: #1c2128; /* cartes */
+    --color-surface-sunken: #0d1116; /* zones creusées, en-têtes de table */
+    --color-surface-raised: #171c22; /* survol de ligne, cartes secondaires */
+    --color-border: #2c333c;
+    --color-border-strong: #4b5563;
+    --color-divider: #252b34;
 
     /* Le sombre garde la valeur qui marchait déjà — c'est le clair qui était
        en défaut. `--color-border-strong` y monterait à ΔL* 30, soit une crête
        deux fois plus marquée qu'en clair : le balayage cesserait d'être un
        reflet pour devenir une barre qui passe. */
-    --color-skeleton-sweep: #3a342a;
+    --color-skeleton-sweep: #2e3540; /* ΔL* 17,0 sur le creux — 16,8 avant */
 
     /* ---- Encres ---------------------------------------------------------- */
     /* ATTENTION — `--color-ink` bascule du texte vers une teinte CLAIRE. Il
@@ -546,11 +555,11 @@
        deux ne peuvent pas gagner. Le rôle d'encre l'emporte — il est de loin
        le plus fréquent — et les surfaces qui doivent RESTER sombres figent le
        jeton pour elles-mêmes, voir « Surfaces qui ne basculent pas » plus bas. */
-    --color-ink: #ece7dd; /* texte principal · 14.90 sur --paper, 12.84 sur --surface */
-    --color-ink-2: #d6d0c3; /* survol de la surface inversée · 10.30 sur --surface */
-    --color-ink-3: #b8b2a4; /* 7.49 sur --surface */
-    --color-muted: #a8a091; /* texte secondaire · 7.09 sur --paper, 6.11 sur --surface */
-    --color-muted-soft: #8d8576; /* 4.33 sur --surface — >=18px ou non textuel */
+    --color-ink: #e8eaee; /* texte principal · 15.46 sur --paper, 13.44 sur --surface */
+    --color-ink-2: #d1d5dc; /* survol de la surface inversée · 10.99 sur --surface */
+    --color-ink-3: #b3b9c2; /* 8.20 sur --surface */
+    --color-muted: #a2a8b2; /* texte secondaire · 7.79 sur --paper, 6.77 sur --surface */
+    --color-muted-soft: #878e98; /* 4.90 sur --surface — >=18px ou non textuel */
 
     /* ---- Or (marque) ----------------------------------------------------- */
     /* `--color-gold` ne bouge pas : c'est la couleur de la marque, et le fond
@@ -577,7 +586,7 @@
        lisait : `Charts` n'appelle que `--color-data-1/4/5`. Le thème sombre
        les met enfin en service, en les promouvant sur la série principale.
        Étagement des clartés conservé : la couleur ne porte jamais seule. */
-    --color-data-1: #f7f4ee; /* 14.42 sur --surface */
+    --color-data-1: #f6f8fb; /* 15.10 sur --surface */
     --color-data-2: #d2a055; /*  6.71 */
     --color-data-3: #c99a7f; /*  6.34 */
     --color-data-4: #8fc0c8; /*  7.94 */
@@ -586,7 +595,7 @@
 
 
     /* Inchangées : elles servent les panneaux qui restent sombres. */
-    --color-data-1-on-dark: #f7f4ee;
+    --color-data-1-on-dark: #f6f8fb;
     --color-data-2-on-dark: #d2a055;
     --color-data-3-on-dark: #c99a7f;
     --color-data-4-on-dark: #8fc0c8;
@@ -606,14 +615,14 @@
     --color-warn-border: #54421f;
 
     --color-danger: #e58d7d; /* 6.36 sur --surface */
-    --color-on-danger: #14201e; /* 6.72 sur --danger sombre */
+    --color-on-danger: #131a22; /* 6.97 sur --danger sombre */
     --color-danger-strong: #f2a99b; /* survol : plus clair, non plus sombre · 8.70 */
     --color-danger-tint: #301a17; /* porte --danger à 6.56 */
     --color-danger-border: #5c3128;
 
-    --color-neutral: #a8a091; /* 6.11 sur --surface */
-    --color-neutral-tint: #14110d;
-    --color-neutral-border: #3a342a;
+    --color-neutral: #a2a8b2; /* 6.77 sur --surface */
+    --color-neutral-tint: #0d1116;
+    --color-neutral-border: #2c333c;
 
     /* ---- Sur la surface inversée ----------------------------------------- */
     /* Ce jeu se lit « ce qu'on écrit sur `bg-ink` ». En clair la surface
@@ -623,7 +632,7 @@
        Conséquence voulue : une pastille sélectionnée, un jeton de statut, un
        avatar deviennent les éléments CLAIRS d'une page sombre. C'est bien
        l'emphase inversée qu'ils cherchaient. */
-    --color-on-dark: #14201e; /* 13.58 sur --ink */
+    --color-on-dark: #131a22; /* 14.20 sur --ink */
     --color-on-dark-muted: rgba(20, 32, 30, 0.72); /* aplati #505853 · 5.95 sur --ink */
     --color-on-dark-faint: rgba(20, 32, 30, 0.62); /* aplati #666C67 · 4.36 sur --ink */
     --color-on-dark-hover: rgba(20, 32, 30, 0.08);
@@ -652,21 +661,21 @@
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  --color-canvas: #100e0b;
-  --color-paper: #17140f;
-  --color-surface: #26221b;
-  --color-surface-sunken: #14110d;
-  --color-surface-raised: #1e1b15;
-  --color-border: #3a342a;
-  --color-border-strong: #5b5343;
-  --color-divider: #302b23;
-  --color-skeleton-sweep: #3a342a;
+  --color-canvas: #0a0d11;
+  --color-paper: #0f1319;
+  --color-surface: #1c2128;
+  --color-surface-sunken: #0d1116;
+  --color-surface-raised: #171c22;
+  --color-border: #2c333c;
+  --color-border-strong: #4b5563;
+  --color-divider: #252b34;
+  --color-skeleton-sweep: #2e3540;
 
-  --color-ink: #ece7dd;
-  --color-ink-2: #d6d0c3;
-  --color-ink-3: #b8b2a4;
-  --color-muted: #a8a091;
-  --color-muted-soft: #8d8576;
+  --color-ink: #e8eaee;
+  --color-ink-2: #d1d5dc;
+  --color-ink-3: #b3b9c2;
+  --color-muted: #a2a8b2;
+  --color-muted-soft: #878e98;
 
   --color-gold: #c58e3e;
   --color-scrim: rgba(0, 0, 0, 0.68);
@@ -678,14 +687,14 @@
   --color-gold-tint-2: #3f3120;
   --color-gold-border: #5c4823;
 
-  --color-data-1: #f7f4ee;
+  --color-data-1: #f6f8fb;
   --color-data-2: #d2a055;
   --color-data-3: #c99a7f;
   --color-data-4: #8fc0c8;
   --color-data-5: #c4b89b;
   --color-data-6: #a8bca6;
 
-  --color-data-1-on-dark: #f7f4ee;
+  --color-data-1-on-dark: #f6f8fb;
   --color-data-2-on-dark: #d2a055;
   --color-data-3-on-dark: #c99a7f;
   --color-data-4-on-dark: #8fc0c8;
@@ -701,16 +710,16 @@
   --color-warn-border: #54421f;
 
   --color-danger: #e58d7d;
-  --color-on-danger: #14201e;
+  --color-on-danger: #131a22;
   --color-danger-strong: #f2a99b;
   --color-danger-tint: #301a17;
   --color-danger-border: #5c3128;
 
-  --color-neutral: #a8a091;
-  --color-neutral-tint: #14110d;
-  --color-neutral-border: #3a342a;
+  --color-neutral: #a2a8b2;
+  --color-neutral-tint: #0d1116;
+  --color-neutral-border: #2c333c;
 
-  --color-on-dark: #14201e;
+  --color-on-dark: #131a22;
   --color-on-dark-muted: rgba(20, 32, 30, 0.72);
   --color-on-dark-faint: rgba(20, 32, 30, 0.62);
   --color-on-dark-hover: rgba(20, 32, 30, 0.08);
@@ -742,8 +751,8 @@
    ========================================================================= */
 
 .on-dark {
-  --color-ink: #14201e;
-  --color-ink-2: #243733;
+  --color-ink: #131a22;
+  --color-ink-2: #232f3b;
   --color-on-dark: #ffffff;
   --color-on-dark-muted: rgba(255, 255, 255, 0.68);
   --color-on-dark-faint: rgba(255, 255, 255, 0.58);
@@ -758,7 +767,7 @@
    `.bg-gold` ne touche pas `bg-gold-tint` : un sélecteur de classe compare
    des jetons entiers de l'attribut `class`, pas des préfixes. */
 .bg-gold {
-  --color-ink: #14201e;
+  --color-ink: #131a22;
 }
 
 /* ============================================================================
