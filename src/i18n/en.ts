@@ -215,6 +215,8 @@ export const en: Dictionary = {
       sentBody:
         'If an account exists for {email}, a reset link is on its way. Remember to check your spam folder.',
       resend: 'Send it again',
+      resent: 'Request sent again',
+      wrongEmail: 'Not the right address?',
     },
 
     reset: {

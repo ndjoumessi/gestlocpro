@@ -271,6 +271,8 @@ export const fr = {
       sentBody:
         'Si un compte existe pour {email}, un lien de réinitialisation vient d’y être envoyé. Pensez à regarder dans les indésirables.',
       resend: 'Renvoyer le lien',
+      resent: 'Demande renvoyée',
+      wrongEmail: 'Ce n’est pas la bonne adresse ?',
     },
 
     reset: {
