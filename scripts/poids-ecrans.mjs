@@ -573,7 +573,22 @@ console.log(
     `${capturesFaites.length} captures régénérées et ${imagesInspectees} relues (course ${course}),\n` +
     `  ${purgees.length} capture(s) d'une autre course purgée(s) au démarrage.\n` +
     `  Les octets sont comparés aux plafonds de la course ${baseDuPoids ?? '(inconnue)'} —\n` +
-    '  une base d’un autre paquet rend les écarts CUMULÉS, ce que le rapport ci-dessus dit.\n' +
+    /*
+      LA PHRASE SUIT L'ÉTAT, elle ne l'affirme plus.
+
+      Elle disait « une base d'un autre paquet rend les écarts CUMULÉS » À CHAQUE
+      PASSAGE, y compris quand la base VENAIT d'être réinscrite sur le paquet
+      qu'on mesure. Elle était donc fausse exactement au moment où elle cessait
+      d'être nécessaire — et le lecteur qui vient de réinscrire lit qu'il ne peut
+      pas se fier à ce qu'il vient de faire.
+
+      Ce fichier a pour titre « ce que chaque chose compare, et contre quoi ». La
+      moindre des choses est qu'il dise juste laquelle des deux situations il est
+      dans.
+    */
+    (baseDuPoids === course
+      ? '  la base est celle de CE paquet : les écarts ci-dessus sont imputables au lot en cours.\n'
+      : '  une base d’un autre paquet rend les écarts CUMULÉS, ce que le rapport ci-dessus dit.\n') +
     '  Les OCTETS se rapportent, les REQUÊTES se refusent — voir le commentaire de la\n' +
     '  comparaison. Ce script ne dit RIEN de la hiérarchie de lecture.',
 )
