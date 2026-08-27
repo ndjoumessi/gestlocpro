@@ -144,8 +144,43 @@ export function CardHeader({
 }: CardHeaderProps) {
   const Heading = `h${level}` as 'h2' | 'h3' | 'h4'
   return (
-    <div className={cn('mb-4 flex items-start justify-between gap-4', className)}>
-      <div className="min-w-0">
+    /*
+      LA RANGÉE SE REPLIE, ET SA COLONNE DE TITRE A UN PLANCHER.
+
+      ═══ CE QUE `min-w-0` À CÔTÉ DE `shrink-0` PRODUISAIT ═══
+
+      L'action est `shrink-0` : elle garde sa largeur quoi qu'il arrive, ce qui
+      est juste — un bouton rétréci n'est plus atteignable, une légende rétrécie
+      n'est plus lisible. Le titre, lui, portait `min-w-0`, c'est-à-dire AUCUN
+      plancher : il cédait tout. Les deux ensemble ne négocient pas, ils
+      s'écrasent dans un seul sens.
+
+      Mesuré à 320 sur le portail locataire : le `<h2>` « Mes paiements par
+      période » disposait de 70 px pendant que sa légende à deux entrées en
+      gardait 230. Le titre débordait de 9 px en français, 15 en anglais — un
+      dépassement DANS la carte, que ni la règle de page ni celle des débords
+      locaux ne voient, et que `MESURER_DEBORDEMENT_DE_MOT` a relevé.
+
+      ═══ POURQUOI UN PLANCHER PLUTÔT QU'UNE TRONCATURE ═══
+
+      `truncate` sur le titre aurait rendu « Mes paie… » : la garde se tairait,
+      et l'écran mentirait mieux. Le repli est la seule réponse qui garde les
+      deux — titre entier au-dessus, action dessous — et il ne coûte une rangée
+      que là où les deux ne tenaient de toute façon pas.
+
+      `min-w-48` (192 px) est le déclencheur du repli, pas une largeur voulue :
+      sans plancher, `flex-wrap` ne se déclenche JAMAIS, puisque la colonne
+      accepte de descendre à zéro plutôt que de passer à la ligne. C'est la même
+      leçon que la file du jour, où le texte s'était réduit à dix caractères
+      sous un `flex-wrap` qui n'avait donc jamais eu à s'exercer.
+
+      `gap-y-2` : l'écart vertical du repli, plus court que l'horizontal — deux
+      lignes d'un même en-tête sont plus proches que deux colonnes.
+    */
+    <div
+      className={cn('mb-4 flex flex-wrap items-start justify-between gap-x-4 gap-y-2', className)}
+    >
+      <div className="min-w-48 flex-1">
         {/* `break-words` pour la même raison que l'intitulé d'un indicateur, et
             la porte l'a exigé au même endroit du raisonnement : la gélule a
             élargi le bouton d'action de 2 px, la colonne du titre s'est
@@ -160,7 +195,13 @@ export function CardHeader({
         <Heading className="title-m text-balance">{title}</Heading>
         {description && <p className="mt-1 text-body text-muted">{description}</p>}
       </div>
-      {action && <div className="shrink-0">{action}</div>}
+      {/* `ml-auto` : REPLIÉE, l'action garde sa colonne.
+
+          Sans lui elle tombe à gauche sur sa propre ligne — `justify-between`
+          ne distribue rien quand il n'y a qu'un élément sur la ligne. Le
+          `flex-1` du titre la pousse déjà à droite tant que tout tient : cette
+          marge n'agit donc QUE dans l'état replié. */}
+      {action && <div className="ml-auto shrink-0">{action}</div>}
     </div>
   )
 }

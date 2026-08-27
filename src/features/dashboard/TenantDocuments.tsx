@@ -452,9 +452,16 @@ function LignePiece({
 }) {
   const t = useT()
   return (
-    <li className="flex items-center gap-3 px-4 py-3 sm:px-5">
+    /* MÊME FORME QUE L'EN-TÊTE DE CARTE, MÊME REMÈDE — voir `CardHeader`.
+       Le voisin de droite est `shrink-0`, le libellé était `min-w-0` : rien ne
+       négocie, le libellé cède tout. Mesuré à 320 : 46 px offerts à « Contrat de
+       bail signé », dont le premier mot en réclame 49 — il débordait de 3 px,
+       DANS la carte, sans faire rougir aucune règle de page. Le plancher est
+       plus bas qu'en en-tête (128 contre 192) parce que la ligne porte déjà une
+       icône et vit dans une liste : c'est une ligne, pas un titre. */
+    <li className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 sm:px-5">
       <Icon name="file" size={17} className="shrink-0 text-muted" />
-      <span className="min-w-0 flex-1">
+      <span className="min-w-32 flex-1">
         {/* PAS de `truncate` sur le libellé : à 320px, la case vide
             (« Aucun document déposé », `shrink-0`) est plus large que le
             bouton « Consulter » qu'elle remplace, et coupait le nom de la
@@ -466,13 +473,29 @@ function LignePiece({
         <span className="block text-body">{label}</span>
         {detail && <span className="numeric block text-caps text-muted">{detail}</span>}
       </span>
-      {to ? (
-        <Button to={to} variant="ghost" size="sm">
-          {action}
-        </Button>
-      ) : (
-        <span className="shrink-0 text-caps text-muted">{t('app.documents.none')}</span>
-      )}
+      {/* `ml-auto` : QUAND LA LIGNE SE REPLIE, l'action reste à droite.
+
+          Sans lui elle tombe à gauche, sous l'icône, et les trois lignes de la
+          carte montrent trois « Consulter » alignés sur rien. Le `flex-1` du
+          libellé la pousse déjà à droite tant que tout tient sur une ligne :
+          cette marge automatique n'agit donc QUE dans l'état replié, où elle
+          rend à l'action la colonne qu'elle occupe partout ailleurs.
+
+          `CardHeader` fait le même geste pour la même raison. Une première
+          rédaction ne le donnait qu'ICI, en distinguant le bouton de la légende
+          — « une légende suit son titre, un bouton garde sa colonne ». C'était
+          habiller un oubli : la plupart des actions d'en-tête SONT des boutons,
+          et « Tout télécharger » se retrouvait seul à gauche deux cartes plus
+          bas. La règle est la même partout. */}
+      <div className="ml-auto shrink-0">
+        {to ? (
+          <Button to={to} variant="ghost" size="sm">
+            {action}
+          </Button>
+        ) : (
+          <span className="text-caps text-muted">{t('app.documents.none')}</span>
+        )}
+      </div>
     </li>
   )
 }

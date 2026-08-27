@@ -1159,15 +1159,28 @@ const DEBORDS_LOCAUX_TOLERES = {
       '« 950 000 FCFA » en chiffre de tête sur la vitrine à 320 px : 7 px hors de sa boîte, ' +
       'et 89 PX de marge avant le bord de la carte. Invisible.',
   },
-  'span.block text-body': {
-    plafond: 3,
-    motif:
-      '« Contrat de bail signé » sur /demo/documents à 320 px, en français seulement. 3 px ' +
-      'hors de sa boîte, 185 PX avant le bord de la carte, et le voisin — « Aucun document ' +
-      'déposé » — commence 9 px plus loin. C’est la plus petite chose que cette règle sache ' +
-      'voir, et elle ne se voit pas.',
-  },
 }
+
+/*
+  ═══ UNE TOLÉRANCE RETIRÉE, ET POURQUOI LE JUGEMENT A CHANGÉ ═══
+
+  `span.block text-body` vivait ici, plafonnée à 3 px, avec ce motif : « “Contrat
+  de bail signé” sur /demo/documents à 320 px, en français seulement. 3 px hors
+  de sa boîte, 185 px avant le bord de la carte […] C'est la plus petite chose
+  que cette règle sache voir, et elle ne se voit pas. »
+
+  Le motif était EXACT et le verdict raisonnable : trois pixels de dépassement,
+  loin du bord, invisibles. Ce qu'il ne disait pas — parce que cette règle-ci ne
+  le mesure pas — c'est ce que la boîte OFFRAIT : 46 px, pour un libellé dont le
+  premier mot en réclame 49. Le défaut n'était pas le dépassement, c'était la
+  colonne réduite à un cinquième de sa ligne par un voisin `shrink-0`.
+
+  `MESURER_DEBORDEMENT_DE_MOT` rapporte les deux chiffres — le manque ET l'offert
+  — et c'est le second qui a changé la lecture. Deux règles ont vu le même pixel ;
+  celle qui disait combien de place il restait a fait poser la bonne question.
+
+  L'entrée part parce que le défaut est réparé, non parce qu'on l'a réévalué.
+*/
 
 /**
  * Les attentes, et ce qu'elles coûtent quand elles échouent.
@@ -2501,15 +2514,14 @@ const MOTS_DEBORDANTS_TOLERES = [
   { texte: '447 000 FCFA', plafond: 18, ou: '/ 320px' },
   { texte: '17 622 FCFA', plafond: 10, ou: '/demo/portail 1024px' },
 
-  /* Les deux titres écrasés par l'action de leur `CardHeader`. Mesuré : le
-     `<h2>` du portail dispose de 70 px à 320 pendant que sa légende à deux
-     entrées en garde 230. Remède : laisser la rangée se REPLIER — titre au-dessus,
-     action dessous — au lieu de laisser `min-w-0` écraser la colonne du titre.
-     C'est la même leçon que la file du jour, où `min-w-48` a rendu le repli
-     possible ; elle vaut ici pour tout le produit d'un coup. */
-  { texte: 'Contrat de bail signé', plafond: 3, ou: '/demo/documents 320px' },
-  { texte: 'Mes paiements par période', plafond: 9, ou: '/demo/portail 320px' },
-  { texte: 'My payments by period', plafond: 15, ou: '/demo/portail 320px' },
+  /* LES DEUX TITRES ÉCRASÉS SONT PARTIS, et leur remède mérite d'être gardé ici
+     parce que la même forme reviendra ailleurs : un voisin `shrink-0` à côté
+     d'un texte `min-w-0` ne négocie pas — le texte cède tout, jusqu'à zéro.
+     Mesuré avant : 70 px pour le `<h2>` du portail pendant que sa légende en
+     gardait 230 ; 46 px pour « Contrat de bail signé », dont le premier mot en
+     réclame 49. Le remède n'est pas la troncature, qui ferait taire la garde en
+     laissant l'écran mentir — c'est le REPLI, qu'il faut armer d'un plancher :
+     sans `min-w`, `flex-wrap` ne se déclenche jamais. Voir `CardHeader`. */
 ]
 
 const MESURER_DEBORDEMENT_DE_MOT = () => {
