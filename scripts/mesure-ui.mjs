@@ -652,6 +652,35 @@ const SURFACES_INTERACTIVES = [
   },
   {
     /*
+      LE MÊME PANNEAU, MAIS SUR L'ÉCRAN DE CONNEXION, ET CE N'EST PAS UN DOUBLON.
+
+      Trois choses diffèrent de celui de `/demo`, et chacune suffirait :
+
+      1. LE FOND. Dans la coquille applicative le panneau flotte au-dessus d'une
+         page de travail ; ici il flotte au-dessus de la carte d'authentification,
+         qui est peinte sur `surface-sunken`. Ce n'est pas la même paire, donc pas
+         le même contraste, et le contraste est ce que cette liste mesure.
+
+      2. LA LARGEUR. 360 délibérément : c'est à cette largeur que la rangée de
+         réglages se repliait sur deux lignes et poussait le `<h1>` à 37 % de la
+         fenêtre — le défaut qui a fait naître ce composant. L'auditer à 1280 le
+         montrerait au large, c'est-à-dire là où il n'a jamais posé problème, et
+         `max-w-[calc(100vw-2.5rem)]` ne serait jamais éprouvé.
+
+      3. LE CHEMIN. `/connexion` n'est pas sous `/demo` : aucune des surfaces de
+         cette liste n'y passait, et le balayage ordinaire ne rend pas non plus
+         les écrans d'authentification en sombre.
+    */
+    nom: 'reglages-a-la-connexion',
+    adresse: '/connexion',
+    largeur: 360,
+    temoin: '[data-mesure="reglages-authentification"]',
+    ouvrir: async (page) => {
+      await page.locator('[data-declencheur-reglages]').first().click()
+    },
+  },
+  {
+    /*
       LA RANGÉE DE PHOTOS D'UNE RÉSERVE, ET LE GESTE VA JUSQU'À LA VIGNETTE.
 
       Ouvrir la modale ne suffirait pas. Tant qu'aucune photo n'est choisie, la
@@ -799,9 +828,13 @@ function declencheursDePanneau() {
   return trouves
 }
 
-/* 5 = deux dans la coquille (réglages, menu du compte), deux dans le sélecteur
-   de date (jour et mois), un dans le sélecteur de devise. */
-const DECLENCHEURS_ATTENDUS = 5
+/* 6 = deux dans la coquille (réglages, menu du compte), deux dans le sélecteur
+   de date (jour et mois), un dans le sélecteur de devise, et un sixième depuis
+   que les écrans d'AUTHENTIFICATION replient leurs trois réglages derrière un
+   déclencheur (`PanneauDeReglages`). Ce sixième entre dans le périmètre audité
+   sous le nom `reglages-a-la-connexion` — la ligne qui le décrit dit pourquoi il
+   ne fait pas doublon avec celui de la coquille. */
+const DECLENCHEURS_ATTENDUS = 6
 
 {
   const trouves = declencheursDePanneau()
@@ -824,9 +857,9 @@ const DECLENCHEURS_ATTENDUS = 5
   elle-même : vider la table, et l'on comparerait 0 à 0 avant de se déclarer
   vert. Le nombre est donc écrit, et l'ajout d'une surface oblige à le toucher.
 
-  16 = 8 surfaces × 2 thèmes.
+  18 = 9 surfaces × 2 thèmes.
 */
-const SURFACES_ATTENDUES = 16
+const SURFACES_ATTENDUES = 18
 
 /**
  * Neutralise ce qui bouge, AVANT de mesurer.
@@ -2670,9 +2703,44 @@ function mesurerPremierChargement() {
  * refonte en cours touche encore une vingtaine d'écrans, chacun apportant ses
  * clés : la marge est dimensionnée pour ELLE, pas pour le régime ordinaire.
  *
- * Au prochain rouge, il n'y aura plus rien à mesurer et plus rien à relever :
- * la scission est chiffrée ci-dessus, elle rend 20 Ko, et c'est elle qu'il
- * faudra faire.
+ * ═══ LA SCISSION A ÉTÉ TENTÉE, ET REFUSÉE — VOICI CE QU'ELLE COÛTE ═══
+ *
+ * Le chiffre de 20 223 o tient. Ce qui ne tenait pas, c'est « la frontière
+ * existe déjà, le dictionnaire ne la suit pas » : elle existe, mais le côté
+ * IMPATIENT emprunte le dictionnaire applicatif à VINGT endroits, comptés.
+ *
+ *   app.crash.title / body / details          `FrontiereDErreur`
+ *   app.offline.title / body                  `CadreDuParc`
+ *   app.parkFailure.* (5 clés)                `CadreDuParc`, `RequireAuth`
+ *   app.sessionFailure.* (3 clés)             `RequireAuth`
+ *   app.dashboard.chartTitle / openMonth      `Hero` — la page d'accueil
+ *   app.dashboard.scalePrimary / Secondary    `Charts`, primitive partagée
+ *   app.works.samples.*                       `workTitle`, données de démo
+ *   app.exported                              `useCsvExport`
+ *
+ * LE PREMIER GROUPE EST RÉDHIBITOIRE, et c'est lui qui a arrêté le lot : une
+ * FRONTIÈRE D'ERREUR dont le message d'erreur vivrait dans un morceau chargé
+ * paresseusement est une contradiction. Le cas où elle sert est précisément
+ * celui où un morceau n'a pas pu se charger. Elle rendrait alors ses clés en
+ * clair — « app.crash.title » sur un écran blanc — c'est-à-dire le pire écran
+ * que ce produit puisse montrer, au pire moment.
+ *
+ * CE QU'IL FAUDRAIT VRAIMENT FAIRE, et pourquoi c'est un lot et non un geste :
+ * ces vingt clés ne sont pas mal rangées par accident. Un message de panne, un
+ * libellé d'export, la légende d'un graphique de vitrine ne sont PAS des
+ * chaînes d'application — elles sont sous `app.` parce que tout y était. Les
+ * sortir demande de les renommer, donc de toucher huit modules dont deux
+ * primitives partagées, et de refaire passer `check-i18n` et la parité.
+ *
+ * Une scission faite À MOITIÉ — garder les vingt sous `app.` et fusionner en
+ * profondeur les deux moitiés — marche, et j'ai commencé par là. Elle échoue
+ * SILENCIEUSEMENT si l'on en oublie une : la clé s'affiche en clair, et rien
+ * dans le typage ne le dit, puisque le TYPE reste entier des deux côtés.
+ * Livrer ça en fin de course, sans garde capable de distinguer les modules
+ * impatients des autres, aurait été un mauvais échange.
+ *
+ * Le budget reste donc à 156 000. Le prochain rouge n'aura plus à mesurer —
+ * ni le prix, ni l'obstacle.
  */
 const BUDGET_PREMIER_CHARGEMENT = 156_000
 

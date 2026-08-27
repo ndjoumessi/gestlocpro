@@ -1,9 +1,10 @@
-import { useId, useRef, useState, type KeyboardEvent } from 'react'
+import { useId, useState } from 'react'
 import { DansUnCadre } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Icon } from '@/components/primitives/Icon'
 import { Logo } from '@/components/primitives/Logo'
 import { cn } from '@/lib/cn'
+import { useOngletsAuClavier } from '@/components/primitives/ongletsAuClavier'
 import { useT } from '@/i18n/I18nProvider'
 import { DEMO_TENANT_UNIT, UNITS } from '@/data/portfolio'
 import { TenantDashboard } from './TenantDashboard'
@@ -74,41 +75,12 @@ export function TenantPortal() {
 
   /** Préfixe des identifiants qui lient onglets et panneau. */
   const tabsId = useId()
-  const onglets = useRef<(HTMLButtonElement | null)[]>([])
 
-  /**
-   * Sélection SUIVANT le focus — le comportement recommandé quand changer
-   * d'onglet ne coûte rien, ce qui est le cas ici : les trois vues sont déjà
-   * en mémoire. L'alternative (flèche pour déplacer, Entrée pour activer)
-   * ferait payer deux frappes ce que la souris obtient en un clic.
-   */
-  const allerA = (index: number) => {
-    const cible = TABS[index]
-    if (!cible) return
-    setTab(cible)
-    onglets.current[index]?.focus()
-  }
-
-  const auClavier = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
-    // Bornage, jamais bouclage : voir le commentaire du `tablist`.
-    const destination =
-      e.key === 'ArrowRight'
-        ? Math.min(index + 1, TABS.length - 1)
-        : e.key === 'ArrowLeft'
-          ? Math.max(index - 1, 0)
-          : e.key === 'Home'
-            ? 0
-            : e.key === 'End'
-              ? TABS.length - 1
-              : null
-
-    if (destination === null) return
-    // `Home` et `End` défileraient le document, les flèches le feraient
-    // horizontalement dans la rangée débordante : dans les deux cas la page
-    // bougerait sous une commande qui ne la concerne pas.
-    e.preventDefault()
-    allerA(destination)
-  }
+  /* Le clavier de la rangée — flèches, Home, End, sélection suivant le focus,
+     bornage aux extrémités — vit dans `useOngletsAuClavier`, qui porte aussi le
+     raisonnement de chacun de ces choix. Il a été extrait d'ICI le jour où la
+     grille de tarifs a eu besoin de la même rangée. */
+  const { auClavier, referencer } = useOngletsAuClavier(TABS, setTab)
 
   // L'unité de démonstration ne sert plus qu'au DÉCOR d'identité de la barre :
   // les écrans montés vont chercher la leur par le fournisseur.
@@ -197,9 +169,7 @@ export function TenantPortal() {
                     // tabulation atteint le contenu du panneau, elle ne traverse
                     // pas trois onglets pour y arriver.
                     tabIndex={active ? 0 : -1}
-                    ref={(node) => {
-                      onglets.current[index] = node
-                    }}
+                    ref={(node) => referencer(index, node)}
                     onClick={() => setTab(value)}
                     onKeyDown={(e) => auClavier(e, index)}
                     className={cn(

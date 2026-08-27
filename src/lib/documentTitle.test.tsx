@@ -35,6 +35,12 @@ describe('titre du document', () => {
     const user = userEvent.setup()
     await renderApp('/connexion')
 
+    /* LE PANNEAU S'OUVRE D'ABORD. Les trois réglages des écrans
+       d'authentification vivent derrière un déclencheur depuis que leur rangée
+       a été mesurée à 108 px — deux lignes, 37 % de la fenêtre avant le titre.
+       Ce cas les atteignait directement ; il fait maintenant le geste que fait
+       l'utilisateur, ce qui est plus fidèle et non plus coûteux. */
+    await user.click(screen.getByRole('button', { name: /réglages/i }))
     await user.click(screen.getByRole('button', { name: /english/i }))
     expect(document.title).toBe('Good to see you again · GestLocPro')
   })

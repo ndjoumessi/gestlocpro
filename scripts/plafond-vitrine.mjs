@@ -54,11 +54,31 @@ const BASE = `http://127.0.0.1:${PORT}`
  * lignes, donc de dire pourquoi dans le diff.
  */
 const PLAFONDS = [
-  { largeur: 360, langue: 'fr', plafond: 11112, avant: 11497, origine: 11419 },
-  { largeur: 360, langue: 'en', plafond: 10958, avant: 11343, origine: 11149 },
-  { largeur: 1280, langue: 'fr', plafond: 7080, avant: 7170, origine: 7110 },
-  { largeur: 1280, langue: 'en', plafond: 7119, avant: 7154, origine: 7106 },
+  { largeur: 360, langue: 'fr', plafond: 9869, avant: 11085, origine: 11419 },
+  { largeur: 360, langue: 'en', plafond: 9743, avant: 10956, origine: 11149 },
+  { largeur: 1280, langue: 'fr', plafond: 7017, avant: 7017, origine: 7110 },
+  { largeur: 1280, langue: 'en', plafond: 7091, avant: 7091, origine: 7106 },
 ]
+/*
+  ═══ CE QUE CE RESSERREMENT DIT, ET CE QU'IL NE DIT PAS ═══
+
+  LE TÉLÉPHONE A VRAIMENT MAIGRI, de 1 216 px en français et 1 213 en anglais —
+  environ 11 %. Tout vient d'un seul endroit : la grille de tarifs, qui passait
+  1 992 px à empiler trois cartes que personne ne pouvait comparer, et qui rend
+  désormais une rangée d'onglets portant les trois prix. Le raisonnement est
+  dans `PricingSection`, la garde dans `tarifsComparables.test.tsx`.
+
+  LE BUREAU N'A PAS BOUGÉ, et les deux lignes du bas ne sont pas un gain. Elles
+  étaient à 7 080 et 7 119 pour un mesuré de 7 017 et 7 091 : soixante-trois et
+  vingt-huit pixels de MOU, laissés par un lot antérieur qui avait raccourci la
+  page sans redescendre son plafond. Vérifié en remisant ce lot et en remesurant
+  — la base valait déjà 7 017 / 7 091 sans lui.
+
+  Les deux corrections sont écrites dans le même diff, mais elles ne sont pas de
+  la même nature, et les confondre reviendrait à s'attribuer un gain qu'on n'a
+  pas fait. `avant` porte la mesure réelle d'avant ce lot, y compris là où elle
+  est égale au plafond : une colonne qui ne bouge pas est une information.
+*/
 /*
   ATTENDUS EST UNE CONSTANTE ÉCRITE, JAMAIS `PLAFONDS.length`.
 

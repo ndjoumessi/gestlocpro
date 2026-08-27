@@ -4,9 +4,7 @@ import { cn } from '@/lib/cn'
 import { GOUTTIERE_LATERALE } from './gouttiere'
 import { Logo } from '@/components/primitives/Logo'
 import { Icon } from '@/components/primitives/Icon'
-import { LanguageSwitcher } from '@/components/controls/LanguageSwitcher'
-import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
-import { ThemeSwitcher } from '@/components/controls/ThemeSwitcher'
+import { PanneauDeReglages } from '@/components/controls/PanneauDeReglages'
 import { useT } from '@/i18n/I18nProvider'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
@@ -78,64 +76,29 @@ export function AuthLayout({
             {t('common.backToHome')}
           </Link>
 
-          {/* `flex-wrap justify-end`, et ce n'est pas une invention : c'est mot
-              pour mot la rangée d'`AppShell`, qui la porte deux fois — dont la
-              barre haute, avec les MÊMES trois sélecteurs, et qui ne déborde pas
-              à 320 px. L'en-tête au-dessus savait déjà se replier ; cette
-              rangée-ci, non, et c'est elle qui débordait.
+          {/*
+            LES TROIS RÉGLAGES PASSENT DERRIÈRE UN BOUTON — voir
+            `PanneauDeReglages` pour le raisonnement complet et la mesure.
 
-              Ses trois sélecteurs portent chacun `shrink-0` : 96 px pour la
-              langue et 142 px pour le thème — deux segmentés de boutons à 44 px,
-              bordure et rembourrage compris —, 84 px pour la devise, plus deux
-              écarts de 8. Soit 338 px de min-content que rien ne pouvait
-              entamer. Le repli de l'en-tête descendait donc la rangée à la
-              ligne, où elle réclamait 20 + 338 = 358 px dans une fenêtre de 320.
-              Mesuré `scrollX=38` sur les quatre écrans d'authentification et
-              dans les DEUX langues — pas une affaire de longueur de libellé,
-              une rangée qui ne savait pas se couper.
+            CE QUI ÉTAIT ÉCRIT ICI, ET QUI RESTE VRAI. La rangée portait
+            `flex-wrap justify-end` pour corriger un débordement réel : ses trois
+            sélecteurs réclamaient 338 px de min-content — 96 pour la langue, 142
+            pour le thème, 84 pour la devise, plus deux écarts — dans une fenêtre
+            de 320. Mesuré `scrollX=38` sur les quatre écrans et dans les deux
+            langues. Le repli le réparait, et le prix en était écrit : une rangée
+            de plus, 58 px, à 320, 360 et 375.
 
-              Replier plutôt que rétrécir : le plancher de 44 px est gardé par
-              `cibles.test.ts`, et les trois sélecteurs y sont calés au plus
-              juste. Plutôt que masquer, aussi — `AppShell` retire bien la devise
-              et le thème sous `sm`, mais il alignait QUATRE commandes et près de
-              500 px ; ici trois tiennent dès que la rangée se coupe, et un
-              contrôle absent de 320 à 639 px coûterait plus que la ligne qu'il
-              économise.
+            CE QUE LE PRIX VALAIT VRAIMENT, mesuré après coup à 360 × 900 : la
+            rangée occupait 108 px sur ses deux lignes, l'en-tête 196, et le
+            `<h1>` commençait à 333 px — 37 % de la fenêtre avant que la page ne
+            dise ce qu'elle est.
 
-              CE QU'IL EN COÛTE, écrit plutôt que tu : une rangée de plus, 58 px,
-              à 320, 360 et 375 px. À 360 la rangée finissait 2 px avant le bord
-              physique au lieu des 20 px de gouttière — le repli lui rend aussi
-              cette marge-là. À partir de 414 px elle tient sur une ligne et rien
-              ne bouge.
-
-              `justify-end` va avec `ml-auto` : sans lui, les lignes repliées
-              s'alignent à GAUCHE d'un bloc devenu large de toute la colonne, et
-              la rangée saute d'un bord à l'autre en se coupant.
-
-              ── CE QUE LE REPLI COÛTE EN HIÉRARCHIE, MESURÉ APRÈS COUP ────────
-
-              Le raisonnement ci-dessus pèse deux options — replier ou MASQUER —
-              et refuse la seconde à bon droit. Il en manque une troisième, que
-              la vitrine emploie déjà : REPLIER DERRIÈRE UN DÉCLENCHEUR, ce qui
-              ne retire aucun contrôle et n'en laisse qu'un à l'écran.
-
-              Ce qu'elle coûterait de ne pas la prendre, mesuré à 360 × 900 sur
-              l'écran de connexion : l'en-tête fait 196 px, dont 108 px pour la
-              seule rangée de réglages sur ses deux lignes, et le `<h1>` commence
-              à 333 px — 37 % de la fenêtre AVANT que la page ne dise ce qu'elle
-              est. Un utilisateur qui revient se connecter rencontre d'abord un
-              sélecteur de devise.
-
-              POURQUOI CE LOT NE LE FAIT PAS : le panneau de la vitrine n'est pas
-              un composant, il est écrit dans `PublicHeader` — piège de focus,
-              Échap, retour du focus, ancrage au-delà de `lg`, feuille en deçà.
-              L'extraire est un lot avec sa propre porte, pas une retouche de fin
-              de course. Le chiffre est acquis, il n'y aura pas à le remesurer. */}
-          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-            <LanguageSwitcher />
-            <CurrencySwitcher />
-            <ThemeSwitcher />
-          </div>
+            Le raisonnement d'alors pesait deux options, replier ou MASQUER, et
+            refusait la seconde à bon droit. La troisième — replier derrière un
+            déclencheur — ne retire aucun contrôle et rend l'en-tête à une seule
+            ligne. C'est celle-là.
+          */}
+          <PanneauDeReglages className="ml-auto" />
         </header>
 
         {/*
