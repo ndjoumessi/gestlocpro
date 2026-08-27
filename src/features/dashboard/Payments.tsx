@@ -733,7 +733,7 @@ function PaymentsSkeleton({ isTenant }: { isTenant: boolean }) {
           // encore.
           <Skeleton radius="md" className="mb-4 h-11 w-full max-w-lg" />
         ) : (
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[0, 1, 2].map((carte) => (
               <SkeletonStatCard key={carte} />
             ))}

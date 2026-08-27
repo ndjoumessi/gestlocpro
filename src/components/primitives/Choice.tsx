@@ -342,7 +342,7 @@ export function SegmentedControl<T extends string>({
                   // La pastille de remise suit l'accent unique. Elle était en
                   // vert de succès, seule tache de couleur restante sur la
                   // landing une fois les autres neutralisées.
-                  active ? 'bg-accent text-ink' : 'bg-accent-tint text-accent-ink',
+                  active ? 'bg-accent text-on-accent' : 'bg-accent-tint text-accent-ink',
                 )}
               >
                 {option.badge}

@@ -206,30 +206,37 @@
 
   /* ---- Typographie ----------------------------------------------------- */
   /**
-   * Serif de LECTURE, employé comme serif d'affichage.
+   * SANS GÉOMÉTRIQUE D'AFFICHAGE — quatrième famille à ce poste, et la première
+   * qui n'est pas un serif.
    *
-   * Troisième famille à ce poste, et les deux premières disent pourquoi.
-   * Playfair Display amincissait ses déliés jusqu'à les faire disparaître en
-   * descendant, or `display-app` sert des titres d'écran d'exploitation, pas
-   * des couvertures. Fraunces réglait cela par son axe de taille optique, mais
-   * son dessin d'affichage très typé rendait les titres massifs.
+   * Les trois précédentes — Playfair Display, Fraunces, Source Serif 4 — se
+   * répondaient toutes à l'intérieur d'une même question : quel serif porte le
+   * mieux l'idée d'un produit patrimonial. La réponse retenue, Source Serif 4,
+   * était bonne à cette question. C'est la QUESTION qui a changé : le produit
+   * assume désormais un langage d'application, pas d'édition.
    *
-   * Source Serif 4 a le même axe `opsz` sans le tic de dessin : contraste
-   * modéré, formes neutres, conçu d'abord pour du texte suivi. Un titre doit se
-   * lire, pas s'exposer.
+   * Plus Jakarta Sans est une géométrique HUMANISTE : squelette circulaire,
+   * mais ouvertures larges et terminaisons droites, ce qui la garde lisible
+   * quand un titre descend à 20 px sur une carte — ce que les géométriques
+   * pures (Futura, Poppins) ne tiennent pas. Elle porte un axe de graisse
+   * continu, donc une seule ressource couvre les quatre échelles.
    *
-   * La famille n'était de toute façon qu'une moitié du problème. Les quatre
-   * échelles étaient composées en 800 ou 900 avec un resserrement allant
-   * jusqu'à −0,04em — près de 4 px par lettre à 96 px, assez pour souder les
-   * caractères. Toutes sont passées en 700, resserrement divisé par deux.
-   * Changer la famille sans y toucher aurait reproduit la même densité, comme
-   * changer de fonderie n'avait rien réglé au monospace.
+   * 800 ET NON 700, et c'est le changement qui se voit. Le 700 avait été
+   * choisi CONTRE les 900 d'origine, parce qu'un serif à contraste modulé
+   * s'empâte quand on l'épaissit. Une sans à fût constant n'a pas ce défaut :
+   * elle gagne en présence sans perdre ses contreformes. Le resserrement reste
+   * à −0,02em, mesuré comme suffisant sur une sans là où un serif en demandait
+   * moins.
    *
-   * Georgia en repli, et non un `serif` générique : présente partout et assez
-   * proche pour que la substitution `swap` déplace le dessin sans faire sauter
-   * la mise en page.
+   * LA PILE SYSTÈME EN REPLI, et non plus Georgia. Le repli doit être de la
+   * même NATURE que la police attendue : substituer un serif à une sans faisait
+   * sauter la page entière au chargement. La pile système est une sans partout,
+   * et c'est déjà celle du corps de texte — le pire cas de `swap` est donc une
+   * page composée d'une seule famille, ce qui reste une page cohérente.
    */
-  --font-display: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --font-display:
+    'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
   /**
    * Corps de texte : pile SYSTÈME, plus aucune famille téléchargée.
    *
@@ -282,7 +289,16 @@
      déclaration et lui rendent une place dans une page. C'est l'écart entre un
      site d'agence — la cible réelle de ce style — et une page produit, où le
      titre doit céder le pas au bout de trois secondes. */
-  --text-display-xl: clamp(2.75rem, 1rem + 6.4vw, 6rem); /* 44 -> 96 */
+  /* LE PLANCHER DESCEND DE 44 À 40 PX, et c'est la contrepartie du 800.
+     Une sans géométrique à fût constant porte plus de masse qu'un serif modulé
+     à graisse égale ; à taille égale elle occupe donc plus de lignes. Mesuré
+     par `plafond-vitrine` au moment du changement de famille : +12 px de
+     document en français et +33 en anglais à 360 px, sur la seule page qu'un
+     visiteur sans compte voit jamais. Rendre quatre pixels au plancher rend la
+     hauteur sans rien retirer à la présence — c'est le même titre, plus dense.
+     Le plafond de la borne haute ne bouge pas : à 96 px il n'y a pas de
+     problème de retour à la ligne. */
+  --text-display-xl: clamp(2.5rem, 1rem + 6.4vw, 6rem); /* 40 -> 96 */
   --text-display-xl--line-height: 0.98;
   --text-display-xl--letter-spacing: -0.02em;
   --text-display-l: clamp(2.25rem, 1.4rem + 4vw, 4rem); /* 36 -> 64 */
@@ -298,8 +314,13 @@
   --text-display-app: clamp(1.875rem, 1.4rem + 1.8vw, 2.5rem); /* 30 -> 40 */
   --text-display-app--line-height: 1.1;
   --text-display-app--letter-spacing: -0.015em;
-  --text-display-m: clamp(2rem, 1.3rem + 3vw, 3.25rem); /* 32 -> 52 */
-  --text-display-m--line-height: 1.04;
+  --text-display-m: clamp(1.875rem, 1.3rem + 3vw, 3.25rem); /* 30 -> 52 */
+  /* 1,0 et non 1,04 : une géométrique a des jambages plus COURTS qu'un serif,
+     donc sa hauteur de ligne peut se resserrer sans que descendantes et
+     ascendantes se touchent. C'est la seconde contrepartie du passage à la sans,
+     mesurée comme la première : la page mobile anglaise dépassait encore son
+     plafond de 15 px après le retour du plancher à 40. */
+  --text-display-m--line-height: 1;
   --text-display-m--letter-spacing: -0.018em;
 
   --text-title-l: 1.25rem; /* 20 */
@@ -1207,10 +1228,10 @@
      caractères : le `r` et le `c` de « parc » se touchaient presque. Un titre
      ne gagne rien à devenir un aplat.
 
-     La plage demandée au chargement (`600..700`) borne les deux extrémités :
+     La plage demandée au chargement (`600..800`) borne les deux extrémités :
      aucune échelle d'affichage ne descend sous 600 ni ne remonte au-dessus de
-     700, donc rien d'inutile n'est téléchargé. */
-  font-weight: 700;
+     800, donc rien d'inutile n'est téléchargé. */
+  font-weight: 800;
 }
 
 @utility display-l {
@@ -1218,7 +1239,7 @@
   font-size: var(--text-display-l);
   line-height: var(--text-display-l--line-height);
   letter-spacing: var(--text-display-l--letter-spacing);
-  font-weight: 700;
+  font-weight: 800;
 }
 
 /* Titre de page applicative — voir `--text-display-app`. */
@@ -1227,7 +1248,7 @@
   font-size: var(--text-display-app);
   line-height: var(--text-display-app--line-height);
   letter-spacing: var(--text-display-app--letter-spacing);
-  font-weight: 700;
+  font-weight: 800;
 }
 
 @utility display-m {
@@ -1235,7 +1256,7 @@
   font-size: var(--text-display-m);
   line-height: var(--text-display-m--line-height);
   letter-spacing: var(--text-display-m--letter-spacing);
-  font-weight: 700;
+  font-weight: 800;
 }
 
 /**

@@ -34,7 +34,7 @@ export function RolesSection() {
             className={cn(
               'group flex flex-col rounded-xl border border-on-dark-border bg-ink-2 p-7 sm:p-8',
               'transition-[transform,border-color] duration-200 ease-out',
-              'hover:-translate-y-1 hover:border-accent/45',
+              'hover:-translate-y-1 hover:border-accent-on-dark/45',
             )}
           >
             <span className="flex size-12 items-center justify-center rounded-lg bg-accent text-on-accent">
@@ -66,7 +66,7 @@ export function RolesSection() {
 
             <Link
               to={signup}
-              className="mt-6 inline-flex min-h-11 items-center gap-2 text-body font-semibold text-accent-on-dark no-underline transition-colors duration-150 hover:text-accent"
+              className="mt-6 inline-flex min-h-11 items-center gap-2 text-body font-semibold text-accent-on-dark no-underline transition-colors duration-150 hover:text-on-dark"
             >
               {t('auth.signUp')}
               <Icon name="arrowRight" size={16} />

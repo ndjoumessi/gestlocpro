@@ -130,7 +130,7 @@ describe('la répartition du parc', () => {
     // LE MÊME ton pour les deux : c'est l'assertion. L'ancien code rendait `ok`
     // au plein et `warn` au troué.
     const tons = new Set(pastilles.map((p) => p.getAttribute('data-ton')))
-    expect(tons).toEqual(new Set(['neutral']))
+    expect(tons.size, 'un seul ton pour les deux immeubles').toBe(1)
   })
 
   it('emploie le ton que le produit donne déjà à une vacance', async () => {
@@ -144,8 +144,13 @@ describe('la répartition du parc', () => {
       qu'une vacance mérite un ton, il devra le changer AUX DEUX, ce qui est
       précisément la discussion qu'il faut avoir.
     */
+    /* `onDark` et non `neutral` : la carte est en ton sombre, son fond est figé,
+       et une pastille neutre y devenait invisible en thème sombre — 1,07:1
+       mesuré. Ce qui compte pour CE cas n'a pas changé : le ton employé est
+       celui qui ne rend AUCUN verdict, ni `ok` ni `warn`. */
     for (const p of pastillesDeRatio()) {
-      expect(p).toHaveAttribute('data-ton', 'neutral')
+      expect(p).toHaveAttribute('data-ton', 'onDark')
+      expect(['ok', 'warn', 'danger']).not.toContain(p.getAttribute('data-ton'))
     }
   })
 })

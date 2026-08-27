@@ -1411,6 +1411,11 @@ const TUILES_D_ETAT: Record<StatusTone, string> = {
   danger: 'bg-danger-tint text-danger',
   neutral: 'bg-neutral-tint text-neutral',
   info: 'bg-accent-tint text-accent-ink',
+  /* Le ton des panneaux FIGÉS — voir `StatusPill`. Aucune carte d'indicateur
+     ne vit aujourd'hui sous `.on-dark`, mais le typage exige la couverture, et
+     c'est une bonne exigence : le jour où l'une y descend, elle ne peut pas
+     hériter d'un lavis qui bascule sous un fond qui ne bascule pas. */
+  onDark: 'bg-on-dark-active text-on-dark',
 }
 
 const BORDURES_D_ETAT: Record<StatusTone, string> = {
@@ -1419,6 +1424,7 @@ const BORDURES_D_ETAT: Record<StatusTone, string> = {
   danger: 'border-danger-border',
   neutral: 'border-neutral-border',
   info: 'border-accent-border',
+  onDark: 'border-on-dark-border',
 }
 
 export function StatCard({

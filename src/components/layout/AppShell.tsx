@@ -735,7 +735,7 @@ function LienLocataire({ item }: { item: NavItem }) {
           'inline-flex min-h-11 shrink-0 items-center gap-2 rounded-t-lg border-b-2 px-3 sm:px-4',
           'text-label font-semibold no-underline transition-colors duration-150',
           isActive
-            ? 'border-accent-ink bg-on-dark-hover text-on-dark'
+            ? 'border-accent-on-dark bg-on-dark-hover text-on-dark'
             : 'border-transparent text-on-dark-muted hover:bg-on-dark-hover hover:text-on-dark',
         )
       }
@@ -1016,7 +1016,7 @@ function Sidebar({
                     'has-[:focus-visible]:outline has-[:focus-visible]:outline-2',
                     'has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-accent-on-dark',
                     active
-                      ? 'bg-on-dark-active font-semibold text-on-dark shadow-[inset_2px_0_0_var(--color-accent)]'
+                      ? 'bg-on-dark-active font-semibold text-on-dark shadow-[inset_2px_0_0_var(--color-accent-on-dark)]'
                       : 'text-on-dark-muted hover:bg-on-dark-hover',
                   )}
                 >
@@ -1420,7 +1420,7 @@ function SidebarLink({ item, wide }: { item: NavItem; wide: boolean }) {
           'transition-colors duration-150',
           wide ? 'justify-start' : 'justify-center',
           isActive
-            ? 'bg-on-dark-active font-semibold text-on-dark shadow-[inset_2px_0_0_var(--color-accent)]'
+            ? 'bg-on-dark-active font-semibold text-on-dark shadow-[inset_2px_0_0_var(--color-accent-on-dark)]'
             : 'text-on-dark-muted hover:bg-on-dark-hover hover:text-on-dark',
         )
       }

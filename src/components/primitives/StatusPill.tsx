@@ -2,7 +2,7 @@ import { cn } from '@/lib/cn'
 import { Icon, type IconName } from './Icon'
 import { useT } from '@/i18n/I18nProvider'
 
-export type StatusTone = 'ok' | 'warn' | 'danger' | 'neutral' | 'info'
+export type StatusTone = 'ok' | 'warn' | 'danger' | 'neutral' | 'info' | 'onDark'
 
 /**
  * Pastille de statut.
@@ -17,6 +17,27 @@ const TONES: Record<StatusTone, { classes: string; icon: IconName }> = {
   danger: { classes: 'bg-danger-tint text-danger border-danger-border', icon: 'alert' },
   neutral: { classes: 'bg-neutral-tint text-neutral border-neutral-border', icon: 'info' },
   info: { classes: 'bg-accent-tint text-accent-ink border-accent-border', icon: 'info' },
+  /**
+   * LE TON DES PANNEAUX FIGÉS, et il manquait.
+   *
+   * Les cinq tons ci-dessus posent tous un lavis et une encre qui BASCULENT
+   * avec le thème. Sous `.on-dark` — la carte sombre du tableau de bord, la
+   * barre latérale — le fond, lui, est FIGÉ : `bg-ink` vaut #131a22 dans les
+   * deux thèmes. Mesuré sur la répartition du parc : la pastille neutre rendait
+   * un lavis à #f1f3f8 en clair (14:1, franche) et à #0d1116 en sombre —
+   * 1,07:1 CONTRE SON PROPRE FOND. Elle disparaissait, et sa bordure avec elle
+   * (1,37 pour 3:1 exigés d'une limite visuelle). Le texte restait lisible :
+   * c'est la signature « deux échecs opposés sur un même fond », et aucune
+   * garde ne couvrait ce site.
+   *
+   * Les trois jetons employés ici sont ceux que `.on-dark` fige lui-même, donc
+   * la pastille rend la même chose quel que soit le thème — ce qui est
+   * exactement ce qu'on attend d'un élément posé sur un fond qui ne bouge pas.
+   */
+  onDark: {
+    classes: 'bg-on-dark-active text-on-dark border-on-dark-border',
+    icon: 'info',
+  },
 }
 
 export interface StatusPillProps {

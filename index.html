@@ -72,34 +72,40 @@
       était déjà passée à la pile système pour cette raison ; le corps de texte
       la rejoint.
 
-      Source Serif 4 aux titres, après deux tentatives.
+      PLUS JAKARTA SANS AUX TITRES, après trois serifs.
 
-      Playfair Display est parti pour sa modulation extrême, qui amincit les
-      déliés jusqu'à les faire disparaître quand le corps descend. Fraunces l'a
-      remplacé pour son axe de taille optique, mais son dessin très typé — un
-      serif d'affichage assumé — rendait les titres massifs et bavards.
+      Playfair Display est parti pour sa modulation extrême, qui amincissait
+      les déliés jusqu'à les faire disparaître en descendant. Fraunces l'a
+      remplacé pour son axe de taille optique, mais son dessin très typé rendait
+      les titres massifs. Source Serif 4 a tenu longtemps : un serif de LECTURE,
+      contraste modéré, formes sans tic.
 
-      Source Serif 4 est un serif de LECTURE : contraste modéré, formes sans
-      tic, dessiné pour de longs textes avant de servir de titre. Il ne se
-      remarque pas, ce qui est exactement ce qu'on attend d'un produit
-      patrimonial. Il porte lui aussi un axe `opsz`, donc l'argument qui avait
-      fait choisir Fraunces reste satisfait.
+      Les trois répondaient à la même question — quel serif porte le mieux
+      l'idée d'un produit patrimonial. C'est la QUESTION qui a changé : le
+      produit assume un langage d'application, pas d'édition.
 
-      Plage `600..700` et non `600..900` : les quatre échelles d'affichage sont
-      passées de 800/900 à 700. La graisse extrême était une part au moins
-      égale du problème — un serif sobre en 900 avec un resserrement de
-      −0,04em paraît tout aussi lourd que Fraunces. Le resserrement a donc été
-      divisé par deux dans le même mouvement. Demander une plage plus courte
-      allège aussi le fichier.
+      Plus Jakarta Sans est une géométrique HUMANISTE. Le squelette est
+      circulaire, mais les ouvertures restent larges et les terminaisons
+      droites, ce qui la garde lisible quand un titre de carte descend à 20 px —
+      ce que les géométriques pures ne tiennent pas à cette taille. Axe de
+      graisse continu : une seule ressource couvre les quatre échelles.
+
+      Plage `600..800` et non `600..700` : les échelles d'affichage sont passées
+      à 800. Le 700 avait été retenu CONTRE les 900 d'origine parce qu'un serif
+      à contraste modulé s'empâte quand on l'épaissit ; une sans à fût constant
+      gagne en présence sans perdre ses contreformes. Demander une plage bornée
+      allège quand même le fichier.
 
       `display=swap` : le texte s'affiche dans la police de repli plutôt que de
-      rester invisible pendant le chargement. Le repli des titres est Georgia,
-      un serif présent partout, pour que la substitution déplace le dessin sans
-      changer la nature de la page.
+      rester invisible pendant le chargement. Le repli est désormais la PILE
+      SYSTÈME et non Georgia — un repli doit être de la même nature que la
+      police attendue, et substituer un serif à une sans faisait sauter la page
+      entière. Le pire cas de `swap` est maintenant une page composée d'une
+      seule famille, ce qui reste une page cohérente.
     -->
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600..700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600..800&display=swap"
     />
 
     <title>GestLocPro — La gestion locative, tenue comme un patrimoine</title>

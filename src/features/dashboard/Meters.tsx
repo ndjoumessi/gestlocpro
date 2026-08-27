@@ -421,7 +421,7 @@ function MetersSkeleton() {
       />
 
       <SkeletonRegion>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[0, 1, 2].map((carte) => (
             <SkeletonStatCard key={carte} />
           ))}

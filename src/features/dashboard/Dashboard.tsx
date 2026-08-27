@@ -626,7 +626,14 @@ export function Dashboard() {
                       carte sombre et dense. Elle ne dit plus « bien » ou
                       « mal », elle dit « voici le compte ».
                     */}
-                    <StatusPill tone="neutral" size="sm">
+                    {/* `onDark` et non `neutral` : cette carte est en ton sombre,
+                        donc son fond est FIGÉ par `.on-dark`. Une pastille
+                        neutre y posait un lavis qui bascule — 14:1 en clair,
+                        1,07:1 en sombre contre son propre fond, c'est-à-dire
+                        invisible. Le ton reste le MÊME pour les trois immeubles :
+                        c'est le sujet du lot précédent, un ratio n'est pas un
+                        verdict, et il n'a pas changé. */}
+                    <StatusPill tone="onDark" size="sm">
                       {occupees}/{inBuilding.length}
                     </StatusPill>
                   </Link>

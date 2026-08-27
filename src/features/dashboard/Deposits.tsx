@@ -285,7 +285,7 @@ function DepositsSkeleton({ isManager }: { isManager: boolean }) {
       <PageHeader title={t('app.deposits.title')} description={t('app.deposits.subtitle')} />
 
       <SkeletonRegion>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[0, 1, 2].map((carte) => (
             <SkeletonStatCard key={carte} />
           ))}

@@ -270,7 +270,7 @@ function BrandPanel() {
         <ul className="mt-8 flex flex-col gap-3">
           {points.map((key) => (
             <li key={key} className="flex items-center gap-3 text-body text-on-dark-muted">
-              <Icon name="check" size={16} strokeWidth={2.2} className="shrink-0 text-accent" />
+              <Icon name="check" size={16} strokeWidth={2.2} className="shrink-0 text-accent-on-dark" />
               {t(key)}
             </li>
           ))}

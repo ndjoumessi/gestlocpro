@@ -399,7 +399,7 @@ export function TenantDocuments() {
               lecteur d'écran annonce sans pouvoir le nommer. */}
           <CardHeader title={t('app.documents.privacy')} level={2} className="mb-2" />
           <p className="flex items-start gap-3 text-body text-on-dark-muted">
-            <Icon name="shield" size={17} className="mt-0.5 shrink-0 text-accent" />
+            <Icon name="shield" size={17} className="mt-0.5 shrink-0 text-accent-on-dark" />
             {t('app.documents.privacyBody')}
           </p>
         </Card>
