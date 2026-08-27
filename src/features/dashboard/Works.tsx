@@ -7,12 +7,13 @@ import { StatusPill, type StatusTone } from '@/components/primitives/StatusPill'
 import { Badge } from '@/components/primitives/Badge'
 import { Button } from '@/components/primitives/Button'
 import { Icon } from '@/components/primitives/Icon'
+import { GroupeDeFiltres } from '@/components/controls/GroupeDeFiltres'
+import { Notice } from '@/components/primitives/Notice'
 import { useToast } from '@/components/primitives/Toast'
 import { EmptyState } from '@/components/primitives/DataTable'
 import { Skeleton, SkeletonRegion } from '@/components/primitives/Skeleton'
 import { TenantScopeNote } from './TenantDashboard'
 import { useCurrency } from '@/currency/CurrencyProvider'
-import { cn } from '@/lib/cn'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
 import { montantEngage, type WorkOrder } from '@/data/portfolio'
@@ -227,10 +228,7 @@ export function Works() {
           cautions traite déjà le cas symétrique — les deux se répondent
           maintenant, puisque c'est la même règle de délégation. */}
       {role === 'manager' && works.some((work) => work.status === 'quoted') && (
-        <p className="mb-4 flex items-start gap-2 rounded-md border border-accent-border bg-accent-tint px-3.5 py-3 text-body text-accent-ink">
-          <Icon name="info" size={15} className="mt-0.5 shrink-0" />
-          {t('app.works.managerNotice')}
-        </p>
+        <Notice className="mb-4">{t('app.works.managerNotice')}</Notice>
       )}
 
       {/*
@@ -251,52 +249,25 @@ export function Works() {
       */}
       {!isTenant && duPerimetre.length > 0 && (
         <div className="mt-6 mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div role="group" aria-label={t('app.works.filterOrigin')} className="flex flex-wrap gap-2">
-            {(['all', 'tenantReport', 'ownerInitiative'] as const).map((valeur) => {
-              const actif = origine === valeur
-              const compte =
+          <GroupeDeFiltres
+            libelle={t('app.works.filterOrigin')}
+            valeur={origine}
+            onChange={setOrigine}
+            options={(['all', 'tenantReport', 'ownerInitiative'] as const).map((valeur) => ({
+              valeur,
+              libelle: t(
+                valeur === 'all'
+                  ? 'app.works.filterAll'
+                  : valeur === 'tenantReport'
+                    ? 'app.works.filterReported'
+                    : 'app.works.filterOpened',
+              ),
+              compte:
                 valeur === 'all'
                   ? duPerimetre.length
-                  : duPerimetre.filter((w) => w.origin === valeur).length
-              return (
-                <button
-                  key={valeur}
-                  type="button"
-                  aria-pressed={actif}
-                  onClick={() => setOrigine(valeur)}
-                  className={cn(
-                    'inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3.5',
-                    'text-label font-semibold transition-colors duration-150',
-                    actif
-                      ? 'border-ink bg-ink text-on-dark'
-                      : 'border-border bg-surface text-muted hover:border-border-strong hover:text-ink',
-                  )}
-                >
-                  {t(
-                    valeur === 'all'
-                      ? 'app.works.filterAll'
-                      : valeur === 'tenantReport'
-                        ? 'app.works.filterReported'
-                        : 'app.works.filterOpened',
-                  )}
-                  {/* `accent-on-ink` : le segment actif peint son fond en
-                      `--color-ink`, qui s'inverse avec le thème. À 12 px ce
-                      compteur est du texte, donc il lui faut 4,5:1 — et
-                      `--color-accent` ne s'inverse PAS : il garde la même
-                      valeur dans les deux thèmes, si bien que la paire casse
-                      toujours du côté sombre. Elle n'y rendait que 2,33 du
-                      temps où l'accent était or, et le bleu qui l'a remplacé
-                      hérite du même défaut d'appariement, qui tient à la
-                      FIXITÉ du jeton et non à sa teinte. `accent-on-ink`, lui,
-                      suit le fond qu'il nomme : 6,26 sur l'encre du thème
-                      clair, 5,56 sur celle du thème sombre. */}
-                  <span className={cn('numeric text-caps', actif ? 'text-accent-on-ink' : 'text-muted')}>
-                    {compte}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
+                  : duPerimetre.filter((w) => w.origin === valeur).length,
+            }))}
+          />
 
           {engage > 0 && (
             <p className="flex items-baseline gap-2">

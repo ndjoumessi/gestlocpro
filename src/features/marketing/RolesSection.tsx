@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { cn } from '@/lib/cn'
+import { Card } from '@/components/primitives/Card'
 import { Section } from '@/components/layout/Section'
 import { Icon, type IconName } from '@/components/primitives/Icon'
 import { useT } from '@/i18n/I18nProvider'
@@ -28,11 +29,17 @@ export function RolesSection() {
           délégué » en 52px se disputaient l'attention avec le titre de section,
           et la comparaison — l'objet même de cette section — en pâtissait. */}
       <div className="grid gap-5 lg:grid-cols-3">
+        {/* `tone="darkRaised"` : une carte sombre POSÉE SUR une section sombre.
+              Le ton `dark` peint `--color-ink`, qui est déjà le fond de la
+              section — la carte y disparaîtrait dans son support. */}
         {ROLES.map(({ key, icon, signup }) => (
-          <article
+          <Card
+            as="article"
+            tone="darkRaised"
+            flush
             key={key}
             className={cn(
-              'group flex flex-col rounded-lg border border-on-dark-border bg-ink-2 p-7 sm:p-8',
+              'group flex flex-col p-7 sm:p-8',
               'transition-[transform,border-color] duration-200 ease-out',
               'hover:-translate-y-1 hover:border-accent-on-dark/45',
             )}
@@ -71,7 +78,7 @@ export function RolesSection() {
               {t('auth.signUp')}
               <Icon name="arrowRight" size={16} />
             </Link>
-          </article>
+          </Card>
         ))}
       </div>
     </Section>

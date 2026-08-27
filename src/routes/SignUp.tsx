@@ -12,7 +12,7 @@ import {
 } from "@/components/primitives/Input";
 import { Combobox } from "@/components/primitives/Combobox";
 import { Checkbox, RadioCards } from "@/components/primitives/Choice";
-import { Icon } from "@/components/primitives/Icon";
+import { Notice } from "@/components/primitives/Notice";
 import { Card } from "@/components/primitives/Card";
 import { useI18n, useT, type MessageKey } from "@/i18n/I18nProvider";
 import { ApiError, NetworkError } from "@/api/client";
@@ -629,13 +629,9 @@ export function SignUp() {
             utilisateur de lecteur d'écran entend la fin du chargement du bouton
             et rien d'autre — l'assistant semble n'avoir rien fait. */}
         {echec && (
-          <p
-            role="alert"
-            className="flex items-start gap-2 rounded-md border border-danger-border bg-danger-tint px-3.5 py-3 text-body text-danger"
-          >
-            <Icon name="alert" size={15} className="mt-0.5 shrink-0" />
+          <Notice tone="danger" role="alert">
             {t(echec)}
-          </p>
+          </Notice>
         )}
 
         <div className="flex flex-col-reverse gap-3 border-t border-border pt-6 sm:flex-row sm:justify-between">
@@ -917,10 +913,7 @@ function ContextStep({
 
       {state.role === "tenant" && (
         <div className="flex flex-col gap-5 border-t border-border pt-6">
-          <p className="flex items-start gap-2.5 rounded-md border border-accent-border bg-accent-tint px-4 py-3 text-body text-accent-ink">
-            <Icon name="info" size={16} className="mt-0.5 shrink-0" />
-            {t("auth.signup.tenantNotice")}
-          </p>
+          <Notice>{t("auth.signup.tenantNotice")}</Notice>
 
           <Field
             label={t("auth.signup.inviteCode")}
@@ -1155,14 +1148,13 @@ function SignupSuccess({ role }: { role: Role | null }) {
   return (
     <AuthLayout title={t("auth.signup.successTitle")}>
       <div className="flex flex-col gap-6">
-        <p className="flex items-start gap-3 rounded-lg border border-ok-border bg-ok-tint px-4 py-3.5 text-body text-ok">
-          <Icon name="checkCircle" size={18} className="mt-0.5 shrink-0" />
+        <Notice tone="ok" forte>
           {t("auth.signup.successBody", {
             role: t(
               `roles.${role ?? "owner"}.name` as "roles.owner.name",
             ).toLowerCase(),
           })}
-        </p>
+        </Notice>
 
         <Button size="lg" fullWidth to="/app" iconAfter="arrowRight">
           {t("auth.signup.goToDashboard")}

@@ -3,6 +3,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
 import { Icon } from '@/components/primitives/Icon'
+import { Notice } from '@/components/primitives/Notice'
 import { DataTable, EmptyState } from '@/components/primitives/DataTable'
 import { StatCard } from '@/components/primitives/Charts'
 import {
@@ -231,23 +232,19 @@ export function SystemStates() {
 
         <Card>
           <CardHeader title={t('app.system.offline')} level={2} />
-          <div className="flex items-start gap-3 rounded-lg border border-warn-border bg-warn-tint px-4 py-3.5">
-            <Icon name="globe" size={18} className="mt-0.5 shrink-0 text-warn" />
-            <div className="min-w-0">
-              <p className="text-body font-medium text-warn">{t('app.system.offlineTitle')}</p>
-              <p className="mt-1 text-body text-warn">{t('app.system.offlineBody')}</p>
-            </div>
-          </div>
+          {/* Le glyphe déroge au défaut du ton : ce n'est pas une alerte
+              générique mais une perte de RÉSEAU, et le globe le dit d'un coup
+              d'œil là où le triangle laisserait chercher la cause. */}
+          <Notice tone="warn" icon="globe" titre={t('app.system.offlineTitle')}>
+            {t('app.system.offlineBody')}
+          </Notice>
 
           {/* Les trois autres cartes décrivent des états que l'interface sait
               rendre. Celle-ci décrit en plus un comportement — la
               synchronisation différée — qui n'existe pas encore. On le dit,
               plutôt que de laisser la carte passer pour une fonctionnalité
               livrée. */}
-          <p className="mt-3 flex items-start gap-2 rounded-md border border-accent-border bg-accent-tint px-3.5 py-3 text-body text-accent-ink">
-            <Icon name="info" size={15} className="mt-0.5 shrink-0" />
-            {t('app.system.offlineNotice')}
-          </p>
+          <Notice className="mt-3">{t('app.system.offlineNotice')}</Notice>
         </Card>
       </div>
 

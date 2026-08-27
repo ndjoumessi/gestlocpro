@@ -17,7 +17,7 @@ import { Modal } from '@/components/primitives/Modal'
 import { Icon } from '@/components/primitives/Icon'
 import { useToast } from '@/components/primitives/Toast'
 import type { Immeuble } from '@/data/apiPortfolio'
-import { cn } from '@/lib/cn'
+import { GroupeDeFiltres } from '@/components/controls/GroupeDeFiltres'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { type Unit } from '@/data/portfolio'
@@ -264,34 +264,19 @@ export function Portfolio() {
           />
         </div>
 
-        <div role="group" aria-label={t('app.portfolio.building')} className="flex flex-wrap gap-2">
-          {/*
-            Le bouton porte le NOM de l'immeuble, qui est ce sur quoi il filtre.
-            Il portait le quartier : deux résidences à Bastos auraient donné deux
-            boutons identiques, dont l'un aurait été injoignable — l'utilisateur
-            aurait cliqué le premier en croyant atteindre le second.
-          */}
-          {[{ id: 'all', name: t('app.portfolio.filterAll') }, ...BUILDINGS].map((b) => {
-            const active = building === b.id
-            return (
-              <button
-                key={b.id}
-                type="button"
-                aria-pressed={active}
-                onClick={() => setBuilding(b.id)}
-                className={cn(
-                  'inline-flex min-h-11 cursor-pointer items-center rounded-md border px-3.5',
-                  'text-label font-semibold transition-colors duration-150',
-                  active
-                    ? 'border-ink bg-ink text-on-dark'
-                    : 'border-border bg-surface text-muted hover:border-border-strong hover:text-ink',
-                )}
-              >
-                {b.name}
-              </button>
-            )
-          })}
-        </div>
+        <GroupeDeFiltres
+          libelle={t('app.portfolio.building')}
+          valeur={building}
+          onChange={setBuilding}
+          /* Le bouton porte le NOM de l'immeuble, qui est ce sur quoi il filtre.
+             Il portait le quartier : deux résidences à Bastos auraient donné deux
+             boutons identiques, dont l'un aurait été injoignable — l'utilisateur
+             aurait cliqué le premier en croyant atteindre le second. */
+          options={[{ id: 'all', name: t('app.portfolio.filterAll') }, ...BUILDINGS].map((b) => ({
+            valeur: b.id,
+            libelle: b.name,
+          }))}
+        />
       </div>
 
       <DataTable<Unit>

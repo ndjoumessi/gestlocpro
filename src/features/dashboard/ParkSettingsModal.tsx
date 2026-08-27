@@ -3,7 +3,7 @@ import { Modal } from '@/components/primitives/Modal'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
 import { Input, Select } from '@/components/primitives/Input'
-import { Icon } from '@/components/primitives/Icon'
+import { Notice } from '@/components/primitives/Notice'
 import { useToast } from '@/components/primitives/Toast'
 import { useT, useI18n } from '@/i18n/I18nProvider'
 import { useSession } from '@/api/SessionProvider'
@@ -235,12 +235,17 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
          * cinquante-six fois sa valeur. Le geste n'est pas interdit — le cas qui
          * l'appelle est le parc jeune qu'on resaisit — mais il se dit avant le
          * clic, et non après.
+         *
+         * `icon="info"` : le ton `warn` porte l'alerte par défaut, et ce site-ci
+         * disait `info`. Le glyphe est reporté tel quel ; seuls le rayon et le
+         * rembourrage rejoignent ceux de la forme compacte, qui est la forme de
+         * ce bandeau — une phrase sans titre — et cet écart-là est la dérive que
+         * `Notice` existe pour absorber.
          */}
         {deviseChange && (
-          <p className="flex items-start gap-2 rounded-lg border border-warn-border bg-warn-tint px-4 py-3.5 text-body text-warn">
-            <Icon name="info" size={15} className="mt-0.5 shrink-0" />
+          <Notice tone="warn" icon="info">
             {t('app.parkSettings.currencyWarning')}
-          </p>
+          </Notice>
         )}
 
         <Button type="submit" loading={envoi} variant={deviseChange ? 'danger' : 'primary'}>

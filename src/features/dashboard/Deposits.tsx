@@ -14,7 +14,7 @@ import { Button } from '@/components/primitives/Button'
 import { Modal } from '@/components/primitives/Modal'
 import { Field } from '@/components/primitives/Field'
 import { Input, Textarea } from '@/components/primitives/Input'
-import { Icon } from '@/components/primitives/Icon'
+import { Notice } from '@/components/primitives/Notice'
 import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
@@ -147,10 +147,7 @@ export function Deposits() {
       {/* Le gestionnaire voit les cautions mais ne les arbitre pas. On lui dit
           pourquoi le bouton lui manque, plutôt que de le laisser deviner. */}
       {role === 'manager' && (
-        <p className="mt-6 flex items-start gap-2 rounded-md border border-accent-border bg-accent-tint px-3.5 py-3 text-body text-accent-ink">
-          <Icon name="info" size={15} className="mt-0.5 shrink-0" />
-          {t('app.deposits.managerNotice')}
-        </p>
+        <Notice className="mt-6">{t('app.deposits.managerNotice')}</Notice>
       )}
 
       <div className="mt-6">

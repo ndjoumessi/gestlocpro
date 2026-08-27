@@ -5,6 +5,7 @@ import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
 import { Input } from '@/components/primitives/Input'
 import { Icon } from '@/components/primitives/Icon'
+import { Notice } from '@/components/primitives/Notice'
 import { useT } from '@/i18n/I18nProvider'
 import { validateEmail, type FieldError } from '@/features/auth/validation'
 import { api } from '@/api/client'
@@ -68,13 +69,12 @@ export function ForgotPassword() {
     return (
       <AuthLayout title={t('auth.forgot.sentTitle')} footer={backLink}>
         <div className="flex flex-col gap-6">
-          <p className="flex items-start gap-3 rounded-lg border border-ok-border bg-ok-tint px-4 py-3.5 text-body text-ok">
-            <Icon name="checkCircle" size={18} className="mt-0.5 shrink-0" />
+          <Notice tone="ok" forte>
             {/* Formulation volontairement conditionnelle : confirmer qu'un
                 compte existe pour une adresse donnée renseignerait un attaquant
                 sur la liste des comptes. */}
             {t('auth.forgot.sentBody', { email })}
-          </p>
+          </Notice>
 
           <Button variant="secondary" size="lg" fullWidth onClick={() => setSent(false)}>
             {t('auth.forgot.resend')}

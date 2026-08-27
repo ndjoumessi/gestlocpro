@@ -1,4 +1,5 @@
 import { cn } from '@/lib/cn'
+import { Card } from '@/components/primitives/Card'
 import { Section } from '@/components/layout/Section'
 import { Icon, type IconName } from '@/components/primitives/Icon'
 import { useT } from '@/i18n/I18nProvider'
@@ -37,12 +38,21 @@ export function FeatureGrid() {
           passe de 24 à 32px, l'élévation est plus discrète au repos, et le
           survol soulève la carte au lieu de seulement changer sa bordure. */}
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {/* `Card` avec `as="article"` : ces six cartes portent chacune un titre
+              et un corps, donc un rôle `article` qu'un `<div>` leur retirerait.
+              `flush` plus un rembourrage explicite, et jamais `className="p-7"`
+              seul : `cn` concatène sans fusionner, le `sm:p-5` de la primitive
+              serait émis APRÈS et ferait tomber le rembourrage à 20 px au-delà
+              de 640. Mesuré par l'audit, pas supposé. */}
         {FEATURES.map(({ key, icon }) => (
-          <article
+          <Card
+            as="article"
+            flush
+            elevation="e1"
             key={key}
             className={cn(
-              'group rounded-lg border border-divider bg-surface p-7 sm:p-8',
-              'shadow-e1 transition-[transform,box-shadow,border-color] duration-200 ease-out',
+              'group p-7 sm:p-8',
+              'transition-[transform,box-shadow,border-color] duration-200 ease-out',
               'hover:-translate-y-1 hover:border-border-strong hover:shadow-e2',
             )}
           >
@@ -73,7 +83,7 @@ export function FeatureGrid() {
             <p className="mt-3 text-body text-pretty text-muted">
               {t(`marketing.features.${key}.body` as 'marketing.features.rent.body')}
             </p>
-          </article>
+          </Card>
         ))}
       </div>
     </Section>

@@ -5,6 +5,7 @@ import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
 import { PasswordInput, PasswordStrength } from '@/components/primitives/Input'
 import { Icon } from '@/components/primitives/Icon'
+import { Notice } from '@/components/primitives/Notice'
 import { useT } from '@/i18n/I18nProvider'
 import { api } from '@/api/client'
 import { ApiError } from '@/api/client'
@@ -59,10 +60,11 @@ export function ResetPassword() {
     return (
       <AuthLayout title={t('auth.reset.invalidTitle')}>
         <div className="flex flex-col gap-6">
-          <p className="flex items-start gap-3 rounded-lg border border-warn-border bg-warn-tint px-4 py-3.5 text-body text-warn">
-            <Icon name="clock" size={18} className="mt-0.5 shrink-0" />
+          {/* `clock` et non l'alerte par défaut du ton : le refus porte sur la
+              PÉRIODE de validité du lien, pas sur une faute de l'utilisateur. */}
+          <Notice tone="warn" icon="clock" forte>
             {t('auth.reset.invalidBody')}
-          </p>
+          </Notice>
 
           <Button size="lg" fullWidth to="/mot-de-passe-oublie" iconAfter="arrowRight">
             {t('auth.reset.askAnother')}
@@ -76,10 +78,7 @@ export function ResetPassword() {
     return (
       <AuthLayout title={t('auth.reset.successTitle')}>
         <div className="flex flex-col gap-6">
-          <p className="flex items-start gap-3 rounded-lg border border-ok-border bg-ok-tint px-4 py-3.5 text-body text-ok">
-            <Icon name="checkCircle" size={18} className="mt-0.5 shrink-0" />
-            {t('auth.reset.successBody')}
-          </p>
+          <Notice tone="ok" forte>{t('auth.reset.successBody')}</Notice>
 
           <Button size="lg" fullWidth to="/connexion" iconAfter="arrowRight">
             {t('auth.reset.goToLogin')}

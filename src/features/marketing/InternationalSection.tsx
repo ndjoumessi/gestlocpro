@@ -1,4 +1,5 @@
 import { Section } from '@/components/layout/Section'
+import { Card } from '@/components/primitives/Card'
 import { Icon } from '@/components/primitives/Icon'
 import { CURRENCIES, CURRENCY_DEFS } from '@/currency/currencies'
 import { COUNTRIES } from '@/lib/countries'
@@ -79,10 +80,15 @@ export function InternationalSection() {
           pas à les rattacher les uns aux autres. */}
       <dl className="grid gap-5 sm:grid-cols-3">
         {facts.map((fact) => (
-          <div
-            key={fact.key}
-            className="rounded-lg border border-divider bg-surface p-7 shadow-e1 sm:p-8"
-          >
+          /* Par la primitive, et non recopiée à la main : cette carte EST
+             `tone="default"` au jeton près — `bg-surface`, `border-divider`,
+             `shadow-e1` —, si bien que la réécrire ici la condamnait à être
+             corrigée à part à chaque lot de géométrie. `flush` retire le
+             rembourrage par défaut de la primitive au lieu de le laisser en
+             conflit avec celui d'ici : `cn` concatène, il ne fusionne pas, et
+             deux `p-*` sur le même élément ne se départagent alors que par
+             l'ordre d'émission de la feuille de style. */
+          <Card key={fact.key} flush className="p-7 sm:p-8">
             <dt className="eyebrow flex items-center gap-2 text-muted">
               <Icon name="globe" size={13} className="text-accent-ink" />
               {t(`marketing.international.${fact.key}` as 'marketing.international.currencies')}
@@ -99,7 +105,7 @@ export function InternationalSection() {
                 </ul>
               )}
             </dd>
-          </div>
+          </Card>
         ))}
       </dl>
     </Section>

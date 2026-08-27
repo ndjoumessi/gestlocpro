@@ -3,7 +3,7 @@ import { useRole } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { InviteModal } from './InviteModal'
 import { AnnounceModal } from './AnnounceModal'
-import { Icon } from '@/components/primitives/Icon'
+import { Notice } from '@/components/primitives/Notice'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { DataTable } from '@/components/primitives/DataTable'
 import { Skeleton, SkeletonRegion, SkeletonTable } from '@/components/primitives/Skeleton'
@@ -106,10 +106,7 @@ export function Tenants() {
       {/* Un bouton grisé sans motif laisse deviner. Quand tout est loué, il
           n'y a rien à quoi rattacher un locataire — on le dit. */}
       {vacant.length === 0 && (
-        <p className="mb-4 flex items-start gap-2 rounded-md border border-accent-border bg-accent-tint px-3.5 py-3 text-body text-accent-ink">
-          <Icon name="info" size={15} className="mt-0.5 shrink-0" />
-          {t('app.tenants.noVacantNotice')}
-        </p>
+        <Notice className="mb-4">{t('app.tenants.noVacantNotice')}</Notice>
       )}
 
       {/*

@@ -3,6 +3,7 @@ import { useRole } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { DataTable, EmptyState } from '@/components/primitives/DataTable'
 import { JaugeDePoste, PaymentStatusPill, type PaymentStatus } from '@/components/primitives/StatusPill'
+import { GroupeDeFiltres } from '@/components/controls/GroupeDeFiltres'
 import { StatCard } from '@/components/primitives/Charts'
 import {
   Skeleton,
@@ -321,43 +322,19 @@ export function Payments() {
         </div>
       )}
 
-      <div role="group" aria-label={t('app.portfolio.status')} className="mt-6 mb-4 flex flex-wrap gap-2">
-        {FILTERS.map((value) => {
-          const active = filter === value
-          const count =
-            value === 'all' ? leases.length : leases.filter((u) => u.status === value).length
-          return (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={active}
-              onClick={() => setFilter(value)}
-              className={cn(
-                'inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3.5',
-                'text-label font-semibold transition-colors duration-150',
-                active
-                  ? 'border-ink bg-ink text-on-dark'
-                  : 'border-border bg-surface text-muted hover:border-border-strong hover:text-ink',
-              )}
-            >
-              {value === 'all' ? t('app.payments.filterAll') : t(`status.${value}` as 'status.paid')}
-              {/* `accent-on-ink` : le filtre actif peint son fond en `--color-ink`,
-                  qui s'inverse avec le thème. À 12 px ce compteur est du texte,
-                  donc il lui faut 4,5:1 — et `--color-accent` ne s'inverse PAS :
-                  il garde la même valeur dans les deux thèmes, donc la paire
-                  casse du côté sombre. Elle n'y rendait que 2,33 du temps où
-                  l'accent était or, et le bleu qui l'a remplacé hérite du même
-                  défaut d'appariement, qui tient à la FIXITÉ du jeton et non à
-                  sa teinte. `accent-on-ink`, lui, suit le fond qu'il nomme :
-                  6,26 sur l'encre du thème clair, 5,56 sur celle du thème
-                  sombre. */}
-              <span className={cn('numeric text-caps', active ? 'text-accent-on-ink' : 'text-muted')}>
-                {count}
-              </span>
-            </button>
-          )
-        })}
-      </div>
+      <GroupeDeFiltres
+        libelle={t('app.portfolio.status')}
+        valeur={filter}
+        onChange={setFilter}
+        className="mt-6 mb-4"
+        options={FILTERS.map((value) => ({
+          valeur: value,
+          libelle:
+            value === 'all' ? t('app.payments.filterAll') : t(`status.${value}` as 'status.paid'),
+          compte:
+            value === 'all' ? leases.length : leases.filter((u) => u.status === value).length,
+        }))}
+      />
 
       {/*
         LA LÉGENDE, et elle n'est pas décorative.

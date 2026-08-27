@@ -181,6 +181,11 @@ export function ReplyModal({
           depuis ». La réponse est le focus.
 
           `tabIndex={-1}` : focalisable par programme, jamais à la tabulation.
+
+          ET C'EST POURQUOI CE BANDEAU RESTE ÉCRIT À LA MAIN. `Notice` n'expose
+          ni `ref` ni `tabIndex` : le passer à la primitive ferait perdre la
+          cible de `issueRef.current?.focus()`, donc l'annonce même du résultat.
+          On ne factorise pas au prix du focus.
         */
         <p
           ref={issueRef}

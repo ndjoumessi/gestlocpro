@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/cn'
+import { Card } from '@/components/primitives/Card'
 import { GOUTTIERE_LATERALE } from '@/components/layout/gouttiere'
 import { Button } from '@/components/primitives/Button'
 import { StatusPill } from '@/components/primitives/StatusPill'
@@ -137,7 +138,11 @@ function HeroPreview({
 
   return (
     <div data-mesure="accroche-illustration" className="relative min-w-0">
-      <div className="animate-rise rounded-lg border border-divider bg-surface p-5 shadow-e3 sm:p-6">
+      {/* `elevation="e3"` et non `className="shadow-e3"` : `cn` concatène, donc la
+          seconde écriture laisserait `shadow-e1 shadow-e3` dans le balisage et
+          s'en remettrait à l'ordre d'émission de la feuille. Une règle morte à
+          côté d'une vivante n'est pas une décision. */}
+      <Card flush elevation="e3" className="animate-rise p-5 sm:p-6">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="eyebrow text-muted">{t('marketing.metrics.collected')}</p>
@@ -186,7 +191,7 @@ function HeroPreview({
             note={t('marketing.metrics.overdueNote', { count: doivent.length })}
           />
         </div>
-      </div>
+      </Card>
 
       {/* La mention existait au dictionnaire, traduite, et n'était rendue nulle
           part : la carte donnait donc des chiffres de parc sans dire de quel

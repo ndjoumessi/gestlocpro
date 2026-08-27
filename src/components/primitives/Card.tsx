@@ -1,12 +1,20 @@
 import type { HTMLAttributes, ReactNode } from 'react'
 import { cn } from '@/lib/cn'
 
-export type CardTone = 'default' | 'sunken' | 'dark' | 'accent'
+export type CardTone = 'default' | 'sunken' | 'dark' | 'darkRaised' | 'accent'
+
+/** Le niveau d'élévation — voir `elevation`. */
+export type CardElevation = 'e1' | 'e2' | 'e3'
 
 const TONES: Record<CardTone, string> = {
   default: 'bg-surface border-divider shadow-e1',
   sunken: 'bg-surface-sunken border-border',
   dark: 'bg-ink border-transparent text-on-dark on-dark',
+  /* La carte sombre POSÉE SUR une section sombre. `dark` peint `--color-ink`,
+     qui est déjà le fond d'une section en ton sombre : une carte y disparaîtrait
+     dans son support. Celle-ci monte d'un cran sur `--color-ink-2` et prend une
+     bordure de la famille inversée, ce qui la détache sans l'éclaircir. */
+  darkRaised: 'bg-ink-2 border-on-dark-border text-on-dark on-dark',
   accent: 'bg-accent-tint border-accent-border',
   /* `plain` A ÉTÉ RETIRÉ, et c'est la garde des branches mortes qui l'a trouvé
      — pas l'œil. Une carte sans fond ni bordure n'est plus une carte : c'est un
@@ -14,15 +22,59 @@ const TONES: Record<CardTone, string> = {
      un. Le ton n'avait aucun appelant. */
 }
 
-export interface CardProps extends HTMLAttributes<HTMLDivElement> {
+export interface CardProps extends HTMLAttributes<HTMLElement> {
   tone?: CardTone
   /** Retire le rembourrage interne — pour les tableaux pleine largeur. */
   flush?: boolean
+  /**
+   * L'ÉLÉMENT RENDU, et il fallait le rendre réglable.
+   *
+   * `Card` ne savait produire qu'un `<div>`. Un audit a compté HUIT cartes de
+   * vitrine qui la réimplémentaient à la main, et six d'entre elles ne pouvaient
+   * PAS l'appeler : ce sont un `<article>`, un `<li>` dans un `<ol>`, un
+   * `<details>`. Ce n'est pas du zèle sémantique — un `<div>` enfant direct
+   * d'`<ol>` est du HTML invalide, et six cartes de fonctionnalité perdraient
+   * leur rôle `article` pour un lecteur d'écran.
+   *
+   * Une primitive qu'on ne peut pas appeler sans casser sa page n'est pas une
+   * primitive : c'est un exemple qu'on recopie.
+   */
+  as?: 'div' | 'article' | 'section' | 'li'
+  /**
+   * L'ÉLÉVATION, et pourquoi elle ne se passe pas par `className`.
+   *
+   * `cn` CONCATÈNE, il ne fusionne pas — ce n'est pas `tailwind-merge`, et son
+   * en-tête le dit. Poser `shadow-e3` par-dessus le `shadow-e1` de la carte
+   * laisse donc les DEUX classes dans le balisage, et c'est l'ordre d'ÉMISSION
+   * de la feuille qui tranche. Il se trouve qu'il tranche dans le bon sens
+   * aujourd'hui ; s'y fier, c'est écrire une règle morte à côté d'une vivante et
+   * appeler ça une décision.
+   *
+   * Le même piège vaut, en pire, pour le rembourrage : `flush` plus une valeur
+   * explicite est la seule façon sûre de le changer. Mesuré par l'audit —
+   * `className="p-6"` sur une carte par défaut rend `p-4 p-6 sm:p-5`, et le
+   * rembourrage TOMBE de 24 à 20 px au-delà de 640 px.
+   */
+  elevation?: CardElevation
 }
 
-export function Card({ tone = 'default', flush, className, children, ...props }: CardProps) {
+const ELEVATIONS: Record<CardElevation, string> = {
+  e1: 'shadow-e1',
+  e2: 'shadow-e2',
+  e3: 'shadow-e3',
+}
+
+export function Card({
+  tone = 'default',
+  flush,
+  as: Element = 'div',
+  elevation,
+  className,
+  children,
+  ...props
+}: CardProps) {
   return (
-    <div
+    <Element
       /* `min-w-0` : une carte est un contenant, jamais une règle graduée.
          Posée dans une grille, elle hérite de `min-width: auto` et refuse donc
          de descendre sous la largeur intrinsèque de son contenu. La rangée de
@@ -31,11 +83,17 @@ export function Card({ tone = 'default', flush, className, children, ...props }:
          avec elle — 19px de défilement horizontal sur un écran de 375, avant
          même qu'on touche à la typographie. Le plancher à 12px l'a porté à
          46px, ce qui a eu le mérite de rendre la fuite visible. */
-      className={cn('min-w-0 rounded-lg border', TONES[tone], !flush && 'p-4 sm:p-5', className)}
+      className={cn(
+        'min-w-0 rounded-lg border',
+        TONES[tone],
+        !flush && 'p-4 sm:p-5',
+        elevation && ELEVATIONS[elevation],
+        className,
+      )}
       {...props}
     >
       {children}
-    </div>
+    </Element>
   )
 }
 

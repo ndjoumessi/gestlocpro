@@ -4,6 +4,7 @@ import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
 import { Select, Textarea } from '@/components/primitives/Input'
 import { Icon } from '@/components/primitives/Icon'
+import { Notice } from '@/components/primitives/Notice'
 import { useToast } from '@/components/primitives/Toast'
 import { useT } from '@/i18n/I18nProvider'
 import { useNumbers } from '@/lib/numbers'
@@ -134,10 +135,12 @@ export function AnnounceModal({ open, onClose }: { open: boolean; onClose: () =>
     >
       {issue ? (
         <div className="flex flex-col gap-4" ref={issueRef} tabIndex={-1}>
-          <p className="flex items-start gap-2 rounded-md border border-ok-border bg-ok-tint px-3.5 py-3 text-body text-ok">
-            <Icon name="check" size={15} className="mt-0.5 shrink-0" />
+          {/* `icon="check"` : le ton `ok` porte la coche CERCLÉE par défaut, et ce
+              site-ci disait la coche nue. Le glyphe est un choix d'origine et non
+              une dérive — on le reporte plutôt que de le laisser changer. */}
+          <Notice tone="ok" icon="check">
             {t('app.announce.delivered', { count: issue.delivered })}
-          </p>
+          </Notice>
 
           {/*
             QUI N'A RIEN REÇU, NOMMÉMENT.
@@ -147,6 +150,14 @@ export function AnnounceModal({ open, onClose }: { open: boolean; onClose: () =>
             c'est exactement le mensonge que ce produit retire partout ailleurs :
             le bailleur a besoin de la liste de ceux qu'il lui reste à appeler.
             Les noms, et non un compte — on ne rappelle pas « deux personnes ».
+
+            CE BANDEAU-CI RESTE ÉCRIT À LA MAIN. `Notice` connaît deux formes :
+            une phrase seule, ou un titre en gras suivi d'un corps. Celle-ci
+            n'est ni l'une ni l'autre — la première ligne n'est pas un titre, et
+            la seconde s'aligne sous le TEXTE (`pl-6`), pas sous le glyphe. La
+            passer en forme forte mettrait la phrase en gras et lui donnerait le
+            rembourrage des conteneurs : ce serait redessiner l'objet, pas le
+            factoriser.
           */}
           {issue.unreachable.length > 0 && (
             <div className="rounded-md border border-accent-border bg-accent-tint px-3.5 py-3 text-body text-accent-ink">

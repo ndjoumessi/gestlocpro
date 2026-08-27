@@ -4,7 +4,7 @@ import { AuthLayout } from '@/components/layout/AuthLayout'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
 import { Input, PasswordInput } from '@/components/primitives/Input'
-import { Icon } from '@/components/primitives/Icon'
+import { Notice } from '@/components/primitives/Notice'
 import { useToast } from '@/components/primitives/Toast'
 import { useT, type MessageKey } from '@/i18n/I18nProvider'
 import { ApiError, NetworkError } from '@/api/client'
@@ -129,13 +129,9 @@ export function Login() {
             cela, un utilisateur de lecteur d'écran entend la fin du chargement
             du bouton et rien d'autre — le formulaire semble n'avoir rien fait. */}
         {echec && (
-          <p
-            role="alert"
-            className="flex items-start gap-2 rounded-md border border-danger-border bg-danger-tint px-3.5 py-3 text-body text-danger"
-          >
-            <Icon name="alert" size={15} className="mt-0.5 shrink-0" />
+          <Notice tone="danger" role="alert">
             {t(echec)}
-          </p>
+          </Notice>
         )}
 
         <Field

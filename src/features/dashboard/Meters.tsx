@@ -10,7 +10,7 @@ import {
   SkeletonTable,
 } from '@/components/primitives/Skeleton'
 import { StatusPill } from '@/components/primitives/StatusPill'
-import { Icon } from '@/components/primitives/Icon'
+import { Notice } from '@/components/primitives/Notice'
 import { Button } from '@/components/primitives/Button'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
@@ -278,28 +278,24 @@ export function Meters() {
       </div>
 
       {/* Un relevé manquant a une conséquence concrète : on la nomme, plutôt
-          que d'afficher un simple compteur. */}
-      <div
-        className={`mt-6 mb-4 flex items-start gap-3 rounded-lg border px-4 py-3.5 ${
+          que d'afficher un simple compteur. C'est le TON qui porte le verdict —
+          l'alerte quand il en manque, la coche quand la série est complète — et
+          le glyphe le suit sans qu'on ait à le nommer. */}
+      <Notice
+        tone={missing.length ? 'warn' : 'ok'}
+        titre={
           missing.length
-            ? 'border-warn-border bg-warn-tint text-warn'
-            : 'border-ok-border bg-ok-tint text-ok'
-        }`}
+            ? t('app.meters.missingCount', { count: missing.length })
+            : t('app.meters.complete')
+        }
+        className="mt-6 mb-4"
       >
-        <Icon name={missing.length ? 'alert' : 'checkCircle'} size={18} className="mt-0.5 shrink-0" />
-        <div>
-          <p className="text-body font-medium">
-            {missing.length
-              ? t('app.meters.missingCount', { count: missing.length })
-              : t('app.meters.complete')}
-          </p>
-          {missing.length > 0 && (
-            <p className="mt-0.5 text-body">
-              {t('app.meters.missingHint')} — {n.list(missing.map((r) => unitLabel(r.unitId)))}
-            </p>
-          )}
-        </div>
-      </div>
+        {missing.length > 0 && (
+          <>
+            {t('app.meters.missingHint')} — {n.list(missing.map((r) => unitLabel(r.unitId)))}
+          </>
+        )}
+      </Notice>
 
       <DataTable<MeterReading>
         caption={t('app.meters.title')}

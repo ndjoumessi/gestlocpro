@@ -1,4 +1,5 @@
 import { Section } from '@/components/layout/Section'
+import { Card } from '@/components/primitives/Card'
 import { useT } from '@/i18n/I18nProvider'
 
 const KEYS = ['one', 'two', 'three', 'four'] as const
@@ -34,10 +35,16 @@ export function ValueProps() {
           Sur une grille de quatre et non de deux : en deux colonnes, les
           entrées courtes laissaient des demi-lignes vides sous les longues. */}
       <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* `as="li"` : ces cartes sont les items d'un `<ol>`, et un `<div>`
+              enfant direct d'`<ol>` est du HTML invalide autant qu'une liste
+              sans items pour un lecteur d'écran. */}
         {KEYS.map((key, index) => (
-          <li
+          <Card
+            as="li"
+            flush
+            elevation="e1"
             key={key}
-            className="flex flex-col rounded-lg border border-divider bg-surface p-6 shadow-e1"
+            className="flex flex-col p-6"
           >
             <span
               aria-hidden="true"
@@ -48,7 +55,7 @@ export function ValueProps() {
             <p className="mt-4 text-body-l text-pretty text-ink">
               {t(`marketing.value.before.${key}` as 'marketing.value.before.one')}
             </p>
-          </li>
+          </Card>
         ))}
       </ol>
     </Section>
