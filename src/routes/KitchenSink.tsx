@@ -75,17 +75,34 @@ export function KitchenSink() {
 
         {/* ---- Typographie ---- */}
         <Section title="Échelle typographique">
+          {/*
+            SEPT LIBELLÉS SUR ONZE MENTAIENT, et c'est l'endroit du produit où
+            un mensonge coûte le plus cher : cette page existe pour être lue
+            comme la vérité de l'échelle.
+
+            Ce qui était écrit, et ce que le jeton dit : « 56 / 46 / 32 » pour
+            trois clamps devenus FLUIDES au lot de typographie ; « Manrope 600 »
+            deux fois pour des titres qui prennent `--font-sans`, c'est-à-dire la
+            pile système ; « 17 » pour un `--text-title-m` replié à 16 ; « Body S
+            · 13 » pour un jeton SUPPRIMÉ, rendu ici en `text-body` donc à 14 ;
+            « Mono label » alors que `--font-mono` vaut `initial` et qu'aucune
+            famille à chasse fixe n'existe plus dans ce produit.
+
+            Les tailles fluides s'écrivent en INTERVALLE, pas en valeur : une
+            valeur unique serait fausse à toutes les largeurs sauf une, et c'est
+            précisément ainsi que les trois premières se sont mises à mentir.
+          */}
           <div className="space-y-3">
-            <p className="display-xl">Display XL · 56</p>
-            <p className="display-l">Display L · 46</p>
-            <p className="display-m">Display M · 32</p>
-            <p className="title-l">Title L · 20 · Manrope 600</p>
-            <p className="title-m">Title M · 17 · Manrope 600</p>
+            <p className="display-xl">Display XL · 40 → 96, fluide</p>
+            <p className="display-l">Display L · 36 → 64, fluide</p>
+            <p className="display-m">Display M · 30 → 52, fluide</p>
+            <p className="title-l">Title L · 20 · pile système 600</p>
+            <p className="title-m">Title M · 16 · pile système 600</p>
             <p className="text-body-l">Body L · 16 — corps de la landing et des champs mobiles.</p>
-            <p className="text-body">Body · 14 — corps de l’application.</p>
-            <p className="text-body text-muted">Body S · 13 — annotations, en gris secondaire.</p>
+            <p className="text-body">Body · 14 — corps de l’application, et des annotations.</p>
+            <p className="text-body text-muted">Le même corps, en gris secondaire.</p>
             <p className="text-label text-muted">Label · 12 · plancher typographique</p>
-            <p className="eyebrow text-muted">Mono label · 12 · suréminence</p>
+            <p className="eyebrow text-muted">Suréminence · 12 · capitales interlettrées</p>
             <p className="numeric text-kpi">1 415 000</p>
           </div>
         </Section>

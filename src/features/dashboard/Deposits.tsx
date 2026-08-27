@@ -272,7 +272,7 @@ function DepositsSkeleton({ isManager }: { isManager: boolean }) {
         {/* Même boîte que l'avis : `py-3` autour d'une ligne de corps réduit. */}
         {isManager && (
           <div className="mt-6 rounded-md border border-divider px-3.5 py-3">
-            <Skeleton line="bodyS" className="w-80 max-w-full" />
+            <Skeleton line="body" className="w-80 max-w-full" />
           </div>
         )}
 

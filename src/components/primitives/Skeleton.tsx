@@ -40,13 +40,28 @@ import { useT } from '@/i18n/I18nProvider'
 const LIGNES = {
   /** `eyebrow` — 12px × 1.3 */
   eyebrow: 'h-[0.975rem]',
-  /** `--text-body` — 13px × 1.5 */
-  bodyS: 'h-[1.22rem]',
-  /** `--text-body` — 14px × 1.55 */
+  /**
+   * `--text-body` — 14 px × 1,55.
+   *
+   * `bodyS` A DISPARU, ET IL AVAIT SURVÉCU À SON JETON. Il valait `h-[1.22rem]`,
+   * calé sur un `--text-body-s` de 13 px que le lot de typographie a SUPPRIMÉ en
+   * migrant ses 110 emplois sur `--text-body`. Le pavé est donc resté deux
+   * pixels plus court que le texte qu'il remplace, sur huit emplois, avec un
+   * commentaire qui citait « 13 px » sous un jeton qui en vaut 14. Un squelette
+   * plus court que son contenu est exactement ce que l'en-tête de ce fichier
+   * interdit : la page remonte à l'arrivée des données.
+   */
   body: 'h-[1.35rem]',
-  /** `--text-title-m` — 17px × 1.35 */
-  title: 'h-[1.44rem]',
-  /** `--text-kpi` — 26px × 1 */
+  /**
+   * `--text-title-m` — 16 px × 1,35.
+   *
+   * Valait `h-[1.44rem]`, calé sur 17 px. Le jeton a été REPLIÉ à 16 au lot de
+   * typographie et le pavé est resté : 1,4 px de TROP, cette fois, et la page
+   * descendait d'autant à l'arrivée du titre. Le sens de l'erreur change, le
+   * défaut est le même — une hauteur qui ne suit plus son jeton.
+   */
+  title: 'h-[1.35rem]',
+  /** `--text-kpi` — 26 px × 1 */
   kpi: 'h-[1.625rem]',
 } as const
 
@@ -143,7 +158,7 @@ export function SkeletonStatCard() {
     <div className="rounded-lg border border-divider bg-surface p-4 shadow-e1 sm:p-5">
       <Skeleton line="eyebrow" className="w-24" />
       <Skeleton line="kpi" radius="md" className="mt-2 w-32" />
-      <Skeleton line="bodyS" className="mt-2 w-28" />
+      <Skeleton line="body" className="mt-2 w-28" />
     </div>
   )
 }

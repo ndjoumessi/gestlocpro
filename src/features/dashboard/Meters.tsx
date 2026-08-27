@@ -406,7 +406,7 @@ function MetersSkeleton() {
 
         <div className="mt-6 mb-4 rounded-lg border border-divider px-4 py-3.5">
           <Skeleton line="body" className="w-56" />
-          <Skeleton line="bodyS" className="mt-0.5 w-72 max-w-full" />
+          <Skeleton line="body" className="mt-0.5 w-72 max-w-full" />
         </div>
 
         <SkeletonTable />

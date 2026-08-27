@@ -146,6 +146,82 @@ describe('un squelette de rangée emprunte sa grille', () => {
   })
 })
 
+/**
+ * UN PAVÉ DE SQUELETTE FAIT LA HAUTEUR DE LA LIGNE QU'IL REMPLACE.
+ *
+ * LA PREMIÈRE RÈGLE DE `Skeleton` EST QU'IL TIENT LA PLACE, et son en-tête le
+ * dit en toutes lettres : « un squelette plus court que son contenu ne fait que
+ * déplacer le problème — l'attente cesse, la page sursaute, et le doigt tombe à
+ * côté de ce qu'il visait ». `LIGNES` porte donc des hauteurs CALCULÉES —
+ * taille × interligne — et non choisies à l'œil.
+ *
+ * ELLES AVAIENT DÉRIVÉ, DANS LES DEUX SENS. Le lot de typographie a supprimé
+ * `--text-body-s` (13 px) en migrant ses 110 emplois sur `--text-body` (14) et
+ * a replié `--text-title-m` de 17 à 16. `LIGNES` n'a pas suivi : son `bodyS`
+ * est resté 2 px trop COURT sur huit emplois, son `title` 1,4 px trop HAUT, et
+ * les deux commentaires citaient des tailles qui n'existaient plus. Un jeton se
+ * change en une ligne ; les hauteurs qui en dépendent vivent dans un autre
+ * fichier et ne bronchent pas.
+ *
+ * POURQUOI RIEN NE POUVAIT LE VOIR : un squelette n'apparaît sur AUCUN écran de
+ * la porte — la démonstration n'attend pas, la vitrine n'en montre pas. Il n'y
+ * a que la source pour trancher, et il faut la comparer à `tokens.css`, ce que
+ * seule une règle peut faire à chaque passage.
+ *
+ * LA TOLÉRANCE EST D'UN DEMI-PIXEL. Les hauteurs sont écrites en `rem` à trois
+ * décimales : 12 × 1,3 = 15,6 px = 0,975rem tombe juste, 16 × 1,35 = 21,6 px =
+ * 1,35rem aussi. Un pixel entier laisserait passer le `title` fautif.
+ */
+describe('un pavé de squelette tient la place', () => {
+  const CSS = readFileSync(join(SRC, 'design-system/tokens.css'), 'utf8')
+  const SOURCE = readFileSync(join(SRC, 'components/primitives/Skeleton.tsx'), 'utf8')
+
+  /** Le jeton de taille et son interligne, en pixels, lus dans `tokens.css`. */
+  function styleDeTexte(nom: string): { taille: number; interligne: number } {
+    const taille = new RegExp(String.raw`${nom}:\s*([\d.]+)rem`).exec(CSS)
+    const interligne = new RegExp(String.raw`${nom}--line-height:\s*([\d.]+)`).exec(CSS)
+    if (!taille) throw new Error(`jeton de taille introuvable ou fluide : ${nom}`)
+    if (!interligne) throw new Error(`interligne introuvable : ${nom}`)
+    return { taille: parseFloat(taille[1]) * 16, interligne: parseFloat(interligne[1]) }
+  }
+
+  /** La hauteur écrite dans `LIGNES`, en pixels. */
+  function hauteurDuPave(cle: string): number {
+    const trouve = new RegExp(String.raw`\b${cle}:\s*'h-\[([\d.]+)rem\]'`).exec(SOURCE)
+    if (!trouve) throw new Error(`hauteur introuvable dans LIGNES : ${cle}`)
+    return parseFloat(trouve[1]) * 16
+  }
+
+  /** Le pavé, et le style de texte dont il doit reproduire la boîte de ligne. */
+  const ATTELAGES: { pave: string; jeton: string }[] = [
+    { pave: 'eyebrow', jeton: '--text-caps' },
+    { pave: 'body', jeton: '--text-body' },
+    { pave: 'title', jeton: '--text-title-m' },
+  ]
+
+  it('couvre les pavés calés sur un jeton de texte', () => {
+    // GARDE DE LA GARDE. `kpi` en est absent volontairement : `--text-kpi` n'a
+    // pas d'interligne déclaré et vaut 1 par défaut, donc `styleDeTexte`
+    // lèverait. Le dire ici plutôt que de laisser croire à une couverture
+    // complète — et si `LIGNES` gagne un pavé, le compte doit bouger.
+    const cles = [...SOURCE.matchAll(/^\s{2}(\w+): 'h-\[/gm)].map((m) => m[1])
+    expect(cles.sort()).toEqual(['body', 'eyebrow', 'kpi', 'title'])
+    expect(ATTELAGES).toHaveLength(3)
+  })
+
+  for (const { pave, jeton } of ATTELAGES) {
+    it(`\`${pave}\` fait la boîte de ligne de \`${jeton}\``, () => {
+      const { taille, interligne } = styleDeTexte(jeton)
+      const attendu = taille * interligne
+      const ecrit = hauteurDuPave(pave)
+      expect(
+        Math.abs(ecrit - attendu),
+        `${pave} vaut ${ecrit.toFixed(1)}px, ${jeton} en mesure ${attendu.toFixed(1)}`,
+      ).toBeLessThanOrEqual(0.5)
+    })
+  }
+})
+
 /** Les littéraux de grille responsive d'une portion de source. */
 function grilles(source: string): Set<string> {
   const trouvees = new Set<string>()

@@ -709,7 +709,7 @@ function DashboardSkeleton({ title }: { title: string }) {
             {/* Même hauteur que la zone de tracé de `StackedBarChart`. */}
             <Skeleton radius="lg" className="h-56 sm:h-64" />
             <div className="mt-4 border-t border-divider pt-4">
-              <Skeleton line="bodyS" className="w-3/4" />
+              <Skeleton line="body" className="w-3/4" />
             </div>
           </Card>
 
@@ -720,7 +720,7 @@ function DashboardSkeleton({ title }: { title: string }) {
               <Skeleton className="size-32" />
               <div className="flex min-w-0 flex-1 flex-col gap-2">
                 {[0, 1, 2].map((part) => (
-                  <Skeleton key={part} line="bodyS" className="w-36" />
+                  <Skeleton key={part} line="body" className="w-36" />
                 ))}
               </div>
             </div>
@@ -728,9 +728,9 @@ function DashboardSkeleton({ title }: { title: string }) {
               <Skeleton line="eyebrow" className="w-28" />
               {[0, 1].map((barre) => (
                 <div key={barre} className="flex items-center gap-3">
-                  <Skeleton line="bodyS" className="w-20" />
+                  <Skeleton line="body" className="w-20" />
                   <Skeleton className="h-1.5 min-w-0 flex-1" />
-                  <Skeleton line="bodyS" className="w-10" />
+                  <Skeleton line="body" className="w-10" />
                 </div>
               ))}
             </div>

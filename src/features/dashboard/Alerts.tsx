@@ -432,7 +432,7 @@ function AlertsSkeleton() {
               <Skeleton radius="md" className="size-10" />
               <div className="min-w-0 flex-1">
                 <Skeleton line="title" className="w-72 max-w-full" />
-                <Skeleton line="bodyS" className="mt-1 w-56 max-w-full" />
+                <Skeleton line="body" className="mt-1 w-56 max-w-full" />
               </div>
               <Skeleton line="eyebrow" className="w-12" />
             </div>

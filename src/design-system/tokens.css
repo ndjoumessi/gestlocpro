@@ -35,7 +35,6 @@
   --color-paper: #f6f8fb; /* fond zone principale */
   --color-surface: #ffffff; /* cartes */
   --color-surface-sunken: #f1f3f8; /* zones creusées, en-têtes de table */
-  --color-surface-raised: #fafbfe; /* survol de ligne, cartes secondaires */
   --color-border: #dbe0e9;
   --color-border-strong: #b6bfcf;
   --color-divider: #dee3ec;
@@ -616,10 +615,31 @@
     --color-paper: #0f1319; /* fond zone principale */
     --color-surface: #1c2128; /* cartes */
     --color-surface-sunken: #0d1116; /* zones creusées, en-têtes de table */
-    --color-surface-raised: #171c22; /* survol de ligne, cartes secondaires */
     --color-border: #2c333c;
     --color-border-strong: #4b5563;
-    --color-divider: #252b34;
+    /* SÉPARATEUR RELEVÉ — #252b34 le laissait à ΔL* 4,8 de --color-surface.
+
+       LE DÉFAUT, ET IL EST PROPRE AU SOMBRE. En clair, le séparateur est plus
+       SOMBRE que tous les fonds, et son écart décroît à mesure que le fond
+       fonce : 9,9 sur la carte blanche, 7,4 sur le papier, 5,7 sur le creusé.
+       En sombre il est plus CLAIR que tous les fonds, et l'ordre s'inverse :
+       11,6 sur le papier, 12,4 sur le creusé — et 4,8 seulement sur la carte,
+       qui est le plus clair des fonds sombres. Or c'est là, et presque là
+       seulement, qu'un séparateur travaille : compté dans la page, 30 des 31
+       éléments qui en portent un sur les deux écrans mesurés sont posés sur
+       --color-surface. Le jeton était donc le plus faible exactement où il
+       sert, et il l'était depuis toujours — aucun lot de la refonte n'a
+       regardé le thème sombre à l'œil.
+
+       CE QUE ÇA DONNAIT : les lignes du tableau des paiements se touchaient.
+       Le contenu se lisait, la porte restait verte — un séparateur n'est ni du
+       texte ni un contrôle, aucun seuil de contraste ne le regarde.
+
+       #2f3740 rend ΔL* 10,1 sur la carte, soit la valeur du clair (9,9) au
+       dixième près. Il monte à 16,9 sur le papier et 17,8 sur le creusé, plus
+       haut qu'en clair — c'est le prix de l'inversion, et il se paie sur le
+       seul élément des deux écrans qui y soit posé. */
+    --color-divider: #2f3740;
 
     /* Le sombre garde la valeur qui marchait déjà — c'est le clair qui était
        en défaut. `--color-border-strong` y monterait à ΔL* 30, soit une crête
@@ -749,10 +769,10 @@
   --color-paper: #0f1319;
   --color-surface: #1c2128;
   --color-surface-sunken: #0d1116;
-  --color-surface-raised: #171c22;
   --color-border: #2c333c;
   --color-border-strong: #4b5563;
-  --color-divider: #252b34;
+  /* Voir la note du bloc `prefers-color-scheme: dark` : ΔL* 4,8 sur la carte. */
+  --color-divider: #2f3740;
   --color-skeleton-sweep: #2e3540;
 
   --color-ink: #e8eaee;
