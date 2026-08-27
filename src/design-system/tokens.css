@@ -867,6 +867,81 @@
   --color-on-dark-border: rgba(255, 255, 255, 0.4);
 }
 
+/* ============================================================================
+   LA BANDE INVERSÉE SE RELÈVE EN THÈME SOMBRE — et l'accent bascule avec elle.
+   ============================================================================
+
+   LE DÉFAUT, MESURÉ À LA PREMIÈRE INSPECTION DU SOMBRE À L'ŒIL. `.on-dark`
+   gelait `--color-ink` à #131a22 dans LES DEUX thèmes. En clair, cette bande
+   est un coup de tonnerre — ΔL* 88,6 sur le papier — et c'est elle qui donne
+   son rythme à la vitrine : trois sections d'encre coupent une page blanche de
+   sept mille pixels. En sombre, elle tombait à ΔL* 3,2 du papier. Les trois
+   fonds de la page tenaient dans 5,4 ΔL* : la vitrine se lisait comme un seul
+   aplat, et `Card tone="dark"` y était invisible pour la même raison.
+
+   L'ÉTAU, ET IL ÉTAIT RÉEL. Éclaircir la bande était bloqué par un seul
+   élément : le bouton primaire de l'appel final, `bg-accent` #2563eb, qui tient
+   3,39:1 sur #131a22 et passe SOUS le seuil non textuel de 3:1 dès que le fond
+   s'éclaircit — 3,13 sur la carte, 2,95 un cran plus haut, 2,76 au-delà. La
+   carte posait le plancher (une bande qui vaudrait #1c2128 se confondrait avec
+   elle), le bouton posait le plafond, et il n'existait AUCUNE valeur entre les
+   deux. Cherché par balayage sur toute la famille froide : le meilleur couple
+   bande/bleu plein rendait 4,70 et 3,08 pour 4,5 et 3 exigés — 2,6 % de marge,
+   c'est-à-dire rien.
+
+   LA SORTIE N'EST PAS UN AUTRE BLEU, C'EST L'AUTRE SENS. Un bleu assez clair
+   pour tenir 3:1 sur une bande relevée est trop clair pour porter du BLANC à
+   4,5 : les deux contraintes tirent en sens inverse, et aucun bleu ne les
+   satisfait toutes deux confortablement. On cesse donc d'exiger que l'aplat
+   porte du blanc. Sous `.on-dark`, en sombre, l'accent devient sa CONTREPARTIE
+   CLAIRE — le jeton existe déjà, `--color-accent-on-dark`, et son nom dit
+   exactement ce qu'on lui demande ici — et son encre passe au sombre.
+
+   Les marges cessent alors d'être des marges de justesse :
+     · #93bbfd sur la bande #2a323c ......... 6,65  (seuil 3)
+     · encre #131a22 sur #93bbfd ........... 8,98  (seuil 4,5)
+   soit plus du double des seuils, contre 2,6 % de dépassement par l'autre voie.
+
+   CE QUE ÇA CHANGE À L'ŒIL : le bouton d'appel de la vitrine n'est plus un
+   aplat bleu vif sur du presque-noir, c'est une pastille bleu clair à texte
+   sombre. C'est le même geste que le produit fait déjà pour le TEXTE d'accent
+   sous `.on-dark`, quelques règles plus bas — la contrepartie claire y remplace
+   l'encre d'accent depuis le lot des couleurs. L'aplat suit enfin le texte.
+
+   LA BANDE, ELLE, EST CHOISIE POUR SA PLACE DANS L'ÉCHELLE, pas pour un seuil :
+   ΔL* 14,7 au-dessus du papier — une bande qu'on ne peut pas manquer — et 7,9
+   au-dessus de la carte, soit un cran de plus que ce qui sépare la carte du
+   papier (6,8). L'ordre est celui qu'on veut lire : page, puis carte, puis
+   bande.
+
+   `--color-ink-2` SUIT, sans quoi la carte surélevée passerait SOUS son support
+   (elle valait #232f3b, ΔL* −1,6 sous la nouvelle bande). #38414e la remet à
+   +6,8, le même pas que carte/papier, en gardant 4,92 pour l'encre à 68 %.
+
+   Les onze premiers plans de `.on-dark` ont été remesurés sur la nouvelle
+   bande : le plus serré est l'encre à 58 %, à 5,14 pour 4,5 exigés.
+
+   NON APPLIQUÉ EN CLAIR, et c'est tout le point : en clair la bande fonctionne,
+   l'accent plein y tient, et rien n'est à corriger. */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .on-dark {
+    --color-ink: #2a323c;
+    --color-ink-2: #38414e;
+    --color-accent: #93bbfd;
+    --color-accent-hover: #bfd7fe;
+    --color-on-accent: #131a22;
+  }
+}
+
+:root[data-theme='dark'] .on-dark {
+  --color-ink: #2a323c;
+  --color-ink-2: #38414e;
+  --color-accent: #93bbfd;
+  --color-accent-hover: #bfd7fe;
+  --color-on-accent: #131a22;
+}
+
 /* CETTE RÈGLE A DISPARU AVEC SA CAUSE, et il faut dire laquelle.
 
    Elle refixait l'encre sombre sur l'aplat d'accent, parce que l'or de marque
