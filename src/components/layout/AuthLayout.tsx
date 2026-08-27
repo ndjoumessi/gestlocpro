@@ -142,8 +142,16 @@ export function AuthLayout({
 
             {/* `display-app` et non `display-m` : un formulaire est une tâche,
                 pas une déclaration. À 52px, « Content de vous revoir »
-                disputait l'attention aux champs qu'il surplombe. Le panneau de
-                marque à gauche garde le grand corps — c'est lui qui parle. */}
+                disputait l'attention aux champs qu'il surplombe.
+
+                CE QUI SUIVAIT ICI DISAIT « le panneau de marque à gauche garde
+                le grand corps », et ce n'est plus vrai partout : sa colonne ne
+                peut pas porter 52 px tant qu'elle n'a pas dépassé `xl`, où un
+                mot débordait et se faisait couper. Il le reprend au-delà, et la
+                hiérarchie revient là où il y a la place — le raisonnement et la
+                mesure sont sur la ligne elle-même, dans `BrandPanel`. Sous `xl`
+                les deux corps sont égaux, et c'est l'encre pleine du panneau,
+                pas sa taille, qui le fait parler. */}
             <h1 className="display-app text-balance">{title}</h1>
             {subtitle && <p className="mt-3 text-body-l text-pretty text-muted">{subtitle}</p>}
 
@@ -248,7 +256,31 @@ function BrandPanel() {
           laisser toucher l'argumentaire au pixel près sur la fenêtre exacte où
           elle s'annule. */}
       <div data-mesure="marque-argument" className="relative mt-12 hidden lg:my-auto lg:block">
-        <p className="display-m max-w-sm text-balance text-on-dark">{t('brand.tagline')}.</p>
+        {/*
+          `display-app` JUSQU'À `xl`, ET C'EST UN DÉFAUT MESURÉ QUI L'IMPOSE.
+
+          `--text-display-m` est un `clamp(1.875rem, 1.3rem + 3vw, 3.25rem)` : sa
+          taille suit la FENÊTRE. La colonne, elle, suit `34%` puis se fige à
+          `max-w-md`. Les deux ne grandissent pas ensemble, et le pire point est
+          l'entrée même dans `lg` : à 1024, la colonne offre 284 px utiles quand
+          le clamp rend déjà 51,5 px de corps. « Rental management, held like an
+          estate. » y produisait une ligne rendue de 345 px — mesurée par
+          `getClientRects`, pas déduite — et « management » heurtait le séparateur
+          et se faisait couper.
+
+          Rien ne le voyait : la page ne débordait pas, le mot sortait DANS le
+          panneau. C'est le défaut qui a fait écrire `MESURER_DEBORDEMENT_DE_MOT`,
+          et cette ligne est le premier qu'il a rendu.
+
+          Le remède n'est pas la césure — couper « manage-ment » dans une phrase
+          de marque à 52 px se voit plus que le débordement. C'est de rendre la
+          taille compatible avec la colonne tant que la colonne est étroite :
+          `display-app` plafonne à 40 px, où le même mot tient. Au-delà de `xl`
+          la colonne a atteint son plafond de 448 px et `display-m` y respire.
+        */}
+        <p className="display-app max-w-sm text-balance text-on-dark xl:display-m">
+          {t('brand.tagline')}.
+        </p>
 
         <ul className="mt-8 flex flex-col gap-3">
           {points.map((key) => (

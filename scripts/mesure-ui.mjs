@@ -1052,7 +1052,15 @@ const TOLERES = {
 const BLANCS_IMPOSES_TOLERES = {
   'div.on-dark relative flex shrink-0 flex-col overflow-hidden bg-ink text-on-dark pt-[calc(1.5rem+env(safe-area-inset-top)':
     {
-      plafond: 208,
+      /* 208 → 223, ET C'EST MON GESTE QUI L'A PAYÉ. L'accroche du panneau est
+         passée de `display-m` à `display-app` sous `xl` : elle occupe quinze
+         pixels de moins, donc le creux du bas en gagne autant. Le motif ci-dessous
+         reste vrai mot pour mot — c'est la même couleur sans bord —, mais le
+         chiffre a changé pour une raison qui n'est pas une dérive, et la taire
+         reviendrait à faire passer une aggravation pour l'état d'origine.
+         La contrepartie est écrite dans `AuthLayout` : à 1024, « management »
+         sortait de sa colonne et se faisait couper par le séparateur. */
+      plafond: 223,
       motif:
         'LA BANDE DE MARQUE DES ÉCRANS D’AUTHENTIFICATION. Ce n’est pas une carte creuse, ' +
         'c’est l’encre de la PAGE : sa hauteur vient de la fenêtre, pas de sa voisine, et le ' +
@@ -2391,6 +2399,157 @@ const MESURER_TRONCATURES = () => {
 }
 
 /**
+ * UN MOT PLUS LARGE QUE SA BOÎTE — le débordement qu'aucune des deux règles ne voit.
+ *
+ * ═══ CE QUI A OUVERT CE TROU, ET COMMENT IL A ÉTÉ TROUVÉ ═══
+ *
+ * Le fil d'étapes de l'inscription a reçu ses libellés sous `sm` : quatre
+ * colonnes de 66 px à 320. « Récapitulatif » en demande 71 — treize lettres
+ * qu'aucune espace ne coupe. Le mot sortait donc de sa colonne et passait sous
+ * le voisin. Trouvé À L'ŒIL, au navigateur, sur un écran ; c'est-à-dire de la
+ * façon dont on ne trouve pas les suivants.
+ *
+ * ═══ CE QUE LES TROIS RÈGLES EXISTANTES VOIENT, ET CE QU'ELLES MANQUENT ═══
+ *
+ * La première rédaction de cet en-tête n'en comptait que DEUX et concluait que
+ * rien ne pouvait voir le défaut. C'était faux, et c'est une mutation qui l'a
+ * dit : le fil d'étapes rendu sans césure fait rougir `DEBORDS_LOCAUX`, pas
+ * cette règle-ci. Le partage est plus fin que « il manquait une garde ».
+ *
+ *  — LA RÈGLE DE PAGE mesure `documentElement`. Un mot qui sort DE SA BOÎTE ne
+ *    sort pas du DOCUMENT : la colonne voisine absorbe la sortie, la page reste
+ *    à 360 px. Relevé exactement ainsi ici — `document.scrollWidth -
+ *    clientWidth` valait 0 pendant que le mot dépassait de 5 px.
+ *
+ *  — LA RÈGLE DE ROGNAGE (`MESURER_TRONCATURES`) est bornée à
+ *    `[data-indicateur] [data-intitule]`, et regarde le défaut INVERSE : une
+ *    boîte à `overflow: hidden` qui COUPE ce qu'elle ne peut pas montrer.
+ *
+ *  — LA RÈGLE DES DÉBORDS LOCAUX compare des BOÎTES : une forme dont le
+ *    rectangle sort du rectangle de son conteneur. Elle voit donc le libellé du
+ *    fil d'étapes, dont la boîte elle-même dépassait de son `<li>`.
+ *
+ * CE QU'AUCUNE DES TROIS NE VOIT, et c'est exactement ce trou-ci : une LIGNE DE
+ * TEXTE plus large que sa boîte, quand la boîte, elle, reste sagement dans son
+ * conteneur. L'accroche du panneau de marque en est le cas pur — le `<p>` fait
+ * 284 px et ne dépasse de rien ; c'est la ligne rendue à l'intérieur qui en fait
+ * 345 et vient couper « management » sur le séparateur. La porte était VERTE
+ * avec ce défaut livré. Vérifié par mutation : rendre son `display-m` à cette
+ * accroche fait rougir cette règle-ci, et elle seule.
+ *
+ * ═══ POURQUOI `overflow: visible` EST LE CRITÈRE, ET NON UN OUBLI ═══
+ *
+ * Une boîte qui déclare `hidden`, `auto` ou `scroll` a PRÉVU le débordement :
+ * elle rogne, ou elle laisse défiler, et dans les deux cas quelqu'un l'a voulu.
+ * `visible` est l'aveu contraire — rien n'était prévu, et le contenu sort sur
+ * ses voisins. C'est ce qui distingue un défaut d'un choix, et c'est ce qui rend
+ * cette règle silencieuse partout où le dépôt fait exprès.
+ *
+ * Les trois autres exclusions sont du même ordre :
+ *   `nowrap`/`pre`   — le retour à la ligne est INTERDIT par l'auteur ; la
+ *                      largeur du texte n'est alors plus une question de boîte.
+ *   `display: inline`— une boîte en ligne n'a pas de largeur propre, son
+ *                      `clientWidth` vaut 0, et tout y déborderait.
+ *   les non-feuilles — `scrollWidth` d'un conteneur compte ses descendants, y
+ *                      compris ceux qu'un enfant positionné fait sortir. On
+ *                      mesure le TEXTE, pas la mise en page.
+ *
+ * ═══ CE QUE LA RÈGLE COÛTE, MESURÉ AVANT DE L'ÉCRIRE ═══
+ *
+ * 107 feuilles examinées sur `/demo/parc` à 360, 21 sur `/inscription` : zéro
+ * défaut sur les deux. La règle n'est donc pas un filet à faux positifs qu'il
+ * faudrait aussitôt doter d'un registre de tolérances — elle est muette là où
+ * le produit va bien, ce qui est la seule preuve utile avant d'en ajouter une.
+ *
+ * ═══ CE QU'ELLE NE VOIT PAS ═══
+ *
+ * Le rognage EN HAUTEUR d'une boîte `visible` : un texte trop haut sort par le
+ * bas sans que `scrollHeight` en dise rien, puisque la boîte grandit. C'est un
+ * autre défaut, qui demande de connaître la hauteur ATTENDUE, et rien ici ne la
+ * connaît. Non mesuré, et dit.
+ */
+/**
+ * CE QUE LA RÈGLE A TROUVÉ LE JOUR OÙ ELLE EST NÉE, ET QUI N'EST PAS RÉPARÉ.
+ *
+ * Sept textes distincts sur les 506 points du balayage. Deux ont été corrigés
+ * dans le lot qui écrit cette règle — l'accroche du panneau de marque, qui
+ * coupait « management » sur le séparateur à 1024, et le libellé « Récapitulatif »
+ * du fil d'étapes. Les CINQ QUI RESTENT sont ici, chiffrés, avec leur remède.
+ *
+ * Ils sont tolérés et NON réparés pour une raison qui se dit : leur correctif
+ * n'est pas local. Trois d'entre eux sont des MONTANTS, qu'`Intl` compose avec
+ * des espaces insécables — « 950 000 FCFA » est un seul jeton de douze
+ * caractères qu'aucun repli ne coupe, et qu'on ne DOIT pas couper : une césure
+ * dans un nombre en change la lecture. Leur remède est de rendre la place, donc
+ * de retoucher la géométrie des cartes qui les portent. Les deux autres sont des
+ * titres écrasés par l'action posée à leur droite dans `CardHeader` — un
+ * composant que toutes les cartes du produit partagent, et qu'on ne modifie pas
+ * en marge d'un lot sur l'écran d'inscription.
+ *
+ * LE PLAFOND EST LE MESURÉ, SANS MARGE : chaque ligne est le pire débordement
+ * réellement vu, aux onze largeurs et dans les deux langues. Le faire monter
+ * demande de récrire la ligne, donc de dire pourquoi dans le diff.
+ *
+ * La clé est le TEXTE EXACT. Changer le libellé fait tomber la tolérance et
+ * rougir la garde — ce qui est voulu : un texte réécrit n'hérite pas de la
+ * dispense accordée à un autre.
+ */
+const MOTS_DEBORDANTS_TOLERES = [
+  /* Les trois montants. Remède : élargir la boîte qui les porte, jamais couper
+     le nombre. Vus sur l'accroche de la vitrine et sur le portail locataire. */
+  { texte: '950 000 FCFA', plafond: 10, ou: '/ 320px' },
+  { texte: '447 000 FCFA', plafond: 18, ou: '/ 320px' },
+  { texte: '17 622 FCFA', plafond: 10, ou: '/demo/portail 1024px' },
+
+  /* Les deux titres écrasés par l'action de leur `CardHeader`. Mesuré : le
+     `<h2>` du portail dispose de 70 px à 320 pendant que sa légende à deux
+     entrées en garde 230. Remède : laisser la rangée se REPLIER — titre au-dessus,
+     action dessous — au lieu de laisser `min-w-0` écraser la colonne du titre.
+     C'est la même leçon que la file du jour, où `min-w-48` a rendu le repli
+     possible ; elle vaut ici pour tout le produit d'un coup. */
+  { texte: 'Contrat de bail signé', plafond: 3, ou: '/demo/documents 320px' },
+  { texte: 'Mes paiements par période', plafond: 9, ou: '/demo/portail 320px' },
+  { texte: 'My payments by period', plafond: 15, ou: '/demo/portail 320px' },
+]
+
+const MESURER_DEBORDEMENT_DE_MOT = () => {
+  const defauts = []
+  let mesures = 0
+  for (const el of document.querySelectorAll('body *')) {
+    if (el.children.length) continue
+    /*
+      LES ESPACES SONT NORMALISÉES, et une garde du garde l'a exigé.
+
+      `Intl` compose les montants avec une espace insécable ÉTROITE (U+202F) :
+      « 950 000 FCFA » vu à l'écran s'écrit avec un caractère qu'aucun clavier ne
+      pose et qu'une relecture de diff ne distingue pas d'une espace ordinaire.
+      La première rédaction du registre de tolérances a été écrite avec l'espace
+      ordinaire ; les clés ne correspondaient à rien, la garde du garde a signalé
+      trois dispenses « qui ne couvrent plus rien », et c'est ainsi que le piège
+      a été trouvé plutôt que subi.
+
+      On normalise donc ICI, une fois, pour que la clé du registre soit un texte
+      qu'un humain peut écrire et relire. C'est le seul endroit où la comparaison
+      a lieu, donc le seul endroit où la normalisation doit vivre.
+    */
+    const texte = (el.textContent || '').replace(/\s+/g, ' ').trim()
+    if (!texte) continue
+    const cs = getComputedStyle(el)
+    if (cs.overflowX !== 'visible') continue
+    if (cs.whiteSpace === 'nowrap' || cs.whiteSpace === 'pre') continue
+    if (cs.display === 'inline') continue
+    mesures += 1
+    /* La tolérance d'un pixel est du bruit d'arrondi : `scrollWidth` et
+       `clientWidth` sont entiers, la largeur de boîte ne l'est pas. Même
+       raisonnement que `MESURER_TRONCATURES`. */
+    const trop = el.scrollWidth - el.clientWidth
+    if (trop <= 1) continue
+    defauts.push({ texte, manque: Math.round(trop), offert: Math.round(el.clientWidth) })
+  }
+  return { mesures, defauts }
+}
+
+/**
  * LA PAGE A-T-ELLE RENDU ? — la question qu'aucune règle de ce fichier ne posait.
  *
  * POURQUOI ELLE MANQUAIT, ET POURQUOI CE N'EST PAS `if (!resultat) continue`.
@@ -2929,6 +3088,9 @@ let libellesMesures = 0
 /** Intitulés d'indicateur rognés — voir `MESURER_TRONCATURES`. */
 const troncatures = new Map()
 let intitulesMesures = 0
+/** Mots plus larges que leur boîte — voir `MESURER_DEBORDEMENT_DE_MOT`. */
+const motsDebordants = new Map()
+let feuillesMesurees = 0
 /**
  * Le PIRE débordement RÉELLEMENT vu pour chaque signature, tolérée ou non.
  *
@@ -3293,6 +3455,26 @@ try {
           const vu = troncatures.get(cle)
           if (!vu || d.manque > vu.manque) {
             troncatures.set(cle, { ...d, langue, ou: `${adresse} ${largeur}px` })
+          }
+        }
+
+        /* ENCORE AUCUN CHARGEMENT : même page, même largeur, même langue. La
+           règle du mot débordant tient dans un `evaluate` de plus, et couvre du
+           coup les 506 points du balayage plutôt que le seul écran où le défaut
+           a été trouvé à l'œil. */
+        const sorties = await chrono('sonde · mots débordants', () =>
+          page.evaluate(MESURER_DEBORDEMENT_DE_MOT),
+        )
+        feuillesMesurees += sorties.mesures
+        for (const d of sorties.defauts) {
+          /* Dédupliqué sur le TEXTE et la LANGUE, et l'on garde le pire manque :
+             le même mot trop long à six largeurs est un seul correctif, et c'est
+             la largeur la plus serrée qui dit combien de place il faut trouver.
+             Même raisonnement que les rognages, juste au-dessus. */
+          const cle = `${d.texte}|${langue}`
+          const vu = motsDebordants.get(cle)
+          if (!vu || d.manque > vu.manque) {
+            motsDebordants.set(cle, { ...d, langue, ou: `${adresse} ${largeur}px` })
           }
         }
 
@@ -4019,6 +4201,105 @@ if (intitulesMesures === 0) {
   console.error(
     "\n✗ mesure-ui : aucun intitulé d'indicateur mesuré.\n" +
       '   Les marqueurs `data-indicateur` et `data-intitule` sont-ils toujours sur `StatCard` ?\n' +
+      '   Une sonde qui ne trouve rien ne prouve rien.',
+  )
+  process.exit(1)
+}
+
+/*
+  LA TOLÉRANCE S'APPLIQUE ICI, PAS DANS LA SONDE, et c'est délibéré : la sonde
+  doit rendre TOUT ce qu'elle voit pour que `maximaVus` connaisse le vrai pire,
+  y compris sous une ligne tolérée. Filtrer au relevé rendrait le plafond
+  invérifiable autrement qu'en le baissant à 1 et en relançant le navigateur.
+*/
+const maximaVus = new Map()
+for (const d of motsDebordants.values()) {
+  const vu = maximaVus.get(d.texte)
+  if (vu === undefined || d.manque > vu) maximaVus.set(d.texte, d.manque)
+}
+const nonCouverts = []
+for (const d of motsDebordants.values()) {
+  const dispense = MOTS_DEBORDANTS_TOLERES.find((x) => x.texte === d.texte)
+  if (!dispense || d.manque > dispense.plafond) nonCouverts.push({ ...d, dispense })
+}
+
+/*
+  GARDE DU GARDE — UNE TOLÉRANCE QUI NE COUVRE PLUS RIEN DOIT MOURIR.
+
+  Un libellé réparé, un écran retiré du balayage, un montant qui rétrécit : la
+  ligne resterait, et couvrirait le jour où le défaut revient — sans que personne
+  ne l'ait décidé. Une dispense doit être RÉCLAMÉE à chaque passage.
+*/
+const dispensesInutiles = MOTS_DEBORDANTS_TOLERES.filter((x) => !maximaVus.has(x.texte))
+if (dispensesInutiles.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${dispensesInutiles.length} tolérance(s) de mot débordant ne couvrent plus rien.\n` +
+      '   Le défaut a été réparé, ou le texte a changé. Retirez la ligne de\n' +
+      '   `MOTS_DEBORDANTS_TOLERES` : une dispense qui ne sert plus finira par servir.\n',
+  )
+  for (const x of dispensesInutiles) console.error(`   « ${x.texte} »  (${x.ou})\n`)
+  process.exit(1)
+}
+
+/*
+  GARDE DU GARDE — UN PLAFOND PLUS HAUT QUE LE MESURÉ EST DU MOU.
+
+  Une tolérance inscrite à 18 px pour un défaut qui n'en fait plus que 3 laisse
+  quinze pixels de dérive gratuite. Le plafond doit valoir le mesuré.
+*/
+const plafondsTropHauts = MOTS_DEBORDANTS_TOLERES.filter(
+  (x) => maximaVus.has(x.texte) && maximaVus.get(x.texte) < x.plafond,
+)
+if (plafondsTropHauts.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${plafondsTropHauts.length} plafond(s) de mot débordant dépassent le mesuré.\n`,
+  )
+  for (const x of plafondsTropHauts) {
+    console.error(`   « ${x.texte} » : plafond ${x.plafond}, mesuré ${maximaVus.get(x.texte)}\n`)
+  }
+  process.exit(1)
+}
+
+if (nonCouverts.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${nonCouverts.length} mot(s) plus large(s) que leur boîte,` +
+      ` sur ${feuillesMesurees} feuilles de texte mesurées.\n` +
+      "   Un mot qu'aucune espace ne coupe sort de sa colonne et passe SOUS son voisin. La\n" +
+      '   page, elle, ne déborde pas : la boîte voisine absorbe la sortie. Ni la règle de\n' +
+      "   page ni celle du rognage ne peuvent le voir — voir `MESURER_DEBORDEMENT_DE_MOT`.\n",
+  )
+  for (const d of nonCouverts) {
+    console.error(
+      `   −${d.manque}px  « ${d.texte} »\n` +
+        `      ${d.offert}px offerts · ${d.langue} · vu au pire à ${d.ou}\n`,
+    )
+  }
+  console.error(
+    '   Remèdes, du plus honnête au moins : rendre la place ; annuler un interlettrage\n' +
+      "   hérité d'un jeton de capitales (`tracking-normal`) ; autoriser la CÉSURE\n" +
+      '   (`hyphens-auto`), qui coupe selon la langue du document. Jamais `break-words` sur\n' +
+      "   un montant ou une donnée : il coupe n'importe où, y compris dans un nombre.",
+  )
+  process.exit(1)
+}
+
+/*
+  GARDE DU GARDE — LA SONDE DES MOTS DÉBORDANTS DOIT AVOIR VU DU TEXTE.
+
+  Ses quatre exclusions sont des `continue` : resserrer l'une d'elles par
+  inadvertance — un `display` qui bascule, un `overflow` posé plus haut dans la
+  coquille — viderait la boucle sans rien casser d'autre, et le rapport écrirait
+  « aucun mot débordant » après n'avoir mesuré personne. Même panne que celle
+  que la sonde des rognages se refuse juste au-dessus.
+
+  Le seuil est CATÉGORIQUE et non numérique : rien contre quelque chose. Un
+  minimum chiffré serait un nombre que le premier écran légitimement sobre ferait
+  relever par réflexe.
+*/
+if (feuillesMesurees === 0) {
+  console.error(
+    '\n✗ mesure-ui : aucune feuille de texte mesurée au DÉBORDEMENT DE MOT.\n' +
+      "   Les exclusions de `MESURER_DEBORDEMENT_DE_MOT` ont-elles avalé toute la page ?\n" +
       '   Une sonde qui ne trouve rien ne prouve rien.',
   )
   process.exit(1)
@@ -4956,6 +5237,7 @@ console.log(
     `  sans faire défiler la page — aucun hors des ${Object.keys(DEBORDS_LOCAUX_TOLERES).length} signatures tolérées et motivées.\n` +
     `  ${libellesMesures} libellés de barre basse mesurés à la COUPURE, aucun orphelin sous 3 caractères.\n` +
     `  ${intitulesMesures} intitulés d'indicateur mesurés au ROGNAGE, en largeur comme en hauteur.\n` +
+    `  ${feuillesMesurees} feuilles de texte mesurées au DÉBORDEMENT DE MOT, ${motsDebordants.size} débordement(s) relevé(s), ${MOTS_DEBORDANTS_TOLERES.length} toléré(s) et chiffré(s).\n` +
     `  Elle coûte ${(tempsSonde / 1000).toFixed(1)} s sur ${appelsDeSonde} appels — ${(tempsSonde / appelsDeSonde).toFixed(1)} ms l'un —, ` +
     `dont ${(tempsDansLaPage / 1000).toFixed(1)} s de parcours du DOM et ${((tempsSonde - tempsDansLaPage) / 1000).toFixed(1)} s d'aller-retour.\n` +
     /*
