@@ -39,11 +39,43 @@ export function Faq() {
               )}
             >
               {t(`marketing.faq.${key}.q` as 'marketing.faq.one.q')}
-              <Icon
-                name="chevronDown"
-                size={18}
-                className="shrink-0 text-muted transition-transform duration-200 group-open:rotate-180"
-              />
+              {/*
+                ═══ UNE COMMANDE, ET NON UNE FLÈCHE GRISE ═══
+
+                C'était un chevron de 18 px en `text-muted` — la couleur qu'on
+                donne aux textes SECONDAIRES. Sur une rangée de cinq questions,
+                le seul signe disant « ceci s'ouvre » était donc peint de la
+                teinte réservée à ce qui compte le moins, et rien ne le
+                distinguait d'une décoration.
+
+                Il devient un rond d'accent plein, comme les pastilles des
+                fonctionnalités : la page n'a plus qu'un seul vocabulaire pour
+                « voici une chose sur laquelle agir ».
+
+                LE SIGNE EST UN PLUS, ET C'EST UN CHOIX CONTRE LE CHEVRON. Un
+                chevron dit une DIRECTION — vers le bas, vers le haut — et il
+                faut connaître la convention pour lire « déplier ». Un plus dit
+                une QUANTITÉ : il y a autre chose ici. Sa rotation de 45° le
+                change en croix, c'est-à-dire en « refermer », sans qu'aucun
+                pixel ne soit remplacé : la même forme porte les deux états, et
+                le mouvement les relie.
+
+                `shrink-0` ET `size-9` : le rond ne se comprime pas quand une
+                question est longue. C'est ce qui l'avait laissé passer sous les
+                44 px ailleurs dans ce dépôt — voir le dépliant de la frontière
+                d'erreur. Ici la cible est le `<summary>` ENTIER, haut de 56 px ;
+                le rond n'est qu'un décor à l'intérieur, d'où `aria-hidden`.
+              */}
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'flex size-9 shrink-0 items-center justify-center rounded-full',
+                  'bg-accent text-on-accent',
+                  'transition-transform duration-200 group-open:rotate-45',
+                )}
+              >
+                <Icon name="plus" size={18} />
+              </span>
             </summary>
             {/*
               `text-body-l` ET NON `text-body`.

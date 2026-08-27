@@ -54,10 +54,10 @@ const BASE = `http://127.0.0.1:${PORT}`
  * lignes, donc de dire pourquoi dans le diff.
  */
 const PLAFONDS = [
-  { largeur: 360, langue: 'fr', plafond: 9948, avant: 9869, origine: 11419 },
-  { largeur: 360, langue: 'en', plafond: 9838, avant: 9743, origine: 11149 },
-  { largeur: 1280, langue: 'fr', plafond: 7017, avant: 7017, origine: 7110 },
-  { largeur: 1280, langue: 'en', plafond: 7091, avant: 7091, origine: 7106 },
+  { largeur: 360, langue: 'fr', plafond: 9979, avant: 9948, origine: 11419 },
+  { largeur: 360, langue: 'en', plafond: 9862, avant: 9838, origine: 11149 },
+  { largeur: 1280, langue: 'fr', plafond: 6973, avant: 7017, origine: 7110 },
+  { largeur: 1280, langue: 'en', plafond: 7047, avant: 7091, origine: 7106 },
 ]
 /*
   ═══ CE QUE CE RESSERREMENT DIT, ET CE QU'IL NE DIT PAS ═══
@@ -96,6 +96,27 @@ const PLAFONDS = [
   deux largeurs les plus étroites du marché visé. La page n'a pas grandi par
   négligence : elle a payé une dette que le plafond, seul, aurait laissée courir —
   il ne mesure qu'une somme, et une somme ne dit rien de ce qui déborde dedans.
+
+  ═══ TRENTE ET UN PIXELS DE PLUS POUR UN SIGNE QUI SE VOIT ═══
+
+  Lot suivant : 9 948 → 9 979 en français, 9 838 → 9 862 en anglais. Le dépliant
+  de chaque question était un chevron de 18 px en `text-muted` — la teinte des
+  textes SECONDAIRES, pour le seul signe qui dise « ceci s'ouvre ». Il devient un
+  rond d'accent plein de 36 px, et la rangée passe de 56 à 68 px : douze pixels
+  par question, cinq questions.
+
+  On paie donc six pixels par question, et c'est le sens de l'échange : sur un
+  téléphone, l'affordance de dépliement est ce que le doigt cherche, et un
+  chevron gris de 18 px n'est pas ce qu'on trouve. Le pied, lui, a maigri de
+  484 à 380 px — mais au-delà de `sm` seulement, où ses liens se replient en deux
+  colonnes ; à 360 ils restent empilés, deux cibles de 44 px côte à côte dans
+  360 px de fenêtre étant précisément ce que le plancher existe pour éviter. Le
+  gain ne compense donc pas ici, et il ne doit pas.
+
+  AU BUREAU, EN REVANCHE, LE PIED REND 44 px — et cette fois c'est bien un gain
+  de ce lot, contrairement au resserrement précédent qui n'était que du mou.
+  Vérifié : les deux largeurs de 1280 passent de 7 017 et 7 091 à 6 973 et 7 047,
+  et rien d'autre n'y a changé.
 */
 /*
   ATTENDUS EST UNE CONSTANTE ÉCRITE, JAMAIS `PLAFONDS.length`.

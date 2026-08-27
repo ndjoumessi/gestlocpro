@@ -56,22 +56,45 @@ export function FeatureGrid() {
               'hover:-translate-y-1 hover:border-border-strong hover:shadow-e2',
             )}
           >
+            {/*
+              ═══ LA PASTILLE PORTE L'ACCENT, ELLE NE L'EFFLEURE PLUS ═══
+
+              Elle était `bg-accent-tint text-accent-ink` : un bleu très pâle
+              portant un glyphe bleu. Sur une carte blanche posée sur un gris
+              clair, cela fait TROIS valeurs voisines empilées — la page, la
+              carte, la pastille — et le signe le plus fort de la section, celui
+              qui doit se repérer d'un coup d'œil dans une grille de six,
+              disparaissait dans le fond au lieu d'y ancrer l'œil.
+
+              La pastille est maintenant l'accent PLEIN, glyphe en `on-accent`.
+              Six ronds bleus donnent à la grille sa trame : on compte les
+              fonctionnalités avant de les lire, ce qui est exactement ce qu'une
+              grille de six doit permettre.
+
+              LE SURVOL S'INVERSE EN CONSÉQUENCE. `bg-ink` + `accent-on-ink`
+              gardait son sens tant que la pastille était pâle ; venant du bleu
+              plein, passer à l'encre est un changement de teinte de plus. On
+              assombrit donc l'accent lui-même — `accent-hover`, le jeton qui
+              existe précisément pour cela — et la carte continue de se soulever.
+            */}
             <span
               className={cn(
                 'flex size-12 items-center justify-center rounded-lg',
-                'bg-accent-tint text-accent-ink transition-colors duration-200',
-                // `accent-on-ink` : au survol le fond devient `--color-ink`, qui
-                // s'inverse avec le thème, alors que l'accent de marque, lui, ne
-                // bouge pas. C'était vrai de l'or d'alors — la paire tenait
-                // 7,04:1 au repos et tombait à 2,33:1 au survol en sombre, si
-                // bien que le survol dégradait activement la lisibilité — et ce
-                // l'est resté du bleu qui a remplacé l'or, qui garde délibérément
-                // la même teinte dans les deux thèmes. La règle survit donc au
-                // changement de couleur : n'importe quel accent FIGÉ se casse
-                // contre un fond qui bascule, et `accent-on-ink` est le seul
-                // jeton qui porte une valeur par thème, donc qui suit l'encre
-                // partout où elle va.
-                'group-hover:bg-ink group-hover:text-accent-on-ink',
+                'bg-accent text-on-accent transition-colors duration-200',
+                /* CE QUI ÉTAIT ÉCRIT ICI RESTE VRAI, et vaut d'être gardé : le
+                   survol basculait vers `bg-ink`, dont la teinte s'inverse avec
+                   le thème, alors que l'accent de marque ne bouge pas. La paire
+                   tenait 7,04:1 au repos et tombait à 2,33:1 au survol en sombre
+                   — le survol DÉGRADAIT la lisibilité. `accent-on-ink` était le
+                   seul jeton portant une valeur par thème, donc le seul à suivre
+                   l'encre partout où elle va.
+
+                   Le problème ne se pose plus dans ces termes : la pastille est
+                   désormais l'accent plein, et son survol reste dans la même
+                   famille. `accent-hover` est le jeton de l'accent enfoncé — il
+                   porte 6,70:1 sous du blanc, contre 5,17 au repos, donc le
+                   survol AMÉLIORE le contraste au lieu de l'abîmer. */
+                'group-hover:bg-accent-hover',
               )}
             >
               <Icon name={icon} size={22} />
