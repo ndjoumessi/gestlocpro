@@ -33,8 +33,26 @@ export function validateEmail(value: string): FieldError {
  */
 export const LONGUEUR_MINIMALE_DU_MOT_DE_PASSE = 8
 
+/**
+ * ═══ UN CHAMP VIDE NE SE REPROCHE PAS DE LA MÊME FAÇON SELON L'ÉCRAN ═══
+ *
+ * Le message était unique : « Choisissez un mot de passe. » La CONNEXION
+ * l'affichait donc aussi — on n'y choisit rien, on saisit celui qu'on a déjà, et
+ * s'entendre dire « choisissez » au moment où l'on se connecte évoque une
+ * création de compte. Le mot était juste sur deux écrans et faux sur le
+ * troisième, celui qu'on ouvre le plus souvent.
+ *
+ * `requireStrong` DÉCIDE DONC AUSSI DU VERBE, et ce n'est pas un raccourci : le
+ * drapeau ne dit pas « sois sévère », il dit « ce mot de passe est NOUVEAU ».
+ * Les deux conséquences en découlent ensemble — on exige une longueur parce
+ * qu'on le crée, et on dit « choisissez » pour la même raison. Un futur écran de
+ * changement de mot de passe porterait les deux champs et les deux verbes,
+ * chacun juste, sans rien ajouter ici.
+ */
 export function validatePassword(value: string, { requireStrong = false } = {}): FieldError {
-  if (!value) return 'auth.errors.passwordRequired'
+  if (!value) {
+    return requireStrong ? 'auth.errors.passwordChoose' : 'auth.errors.passwordEnter'
+  }
   if (requireStrong && value.length < LONGUEUR_MINIMALE_DU_MOT_DE_PASSE) {
     return 'auth.errors.passwordShort'
   }

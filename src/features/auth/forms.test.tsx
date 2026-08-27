@@ -25,7 +25,10 @@ describe('connexion', () => {
     const alertes = screen.getAllByRole('alert')
     expect(alertes).toHaveLength(2)
     expect(alertes[0]).toHaveTextContent('Indiquez votre adresse e-mail.')
-    expect(alertes[1]).toHaveTextContent('Choisissez un mot de passe.')
+    /* « Saisissez », et non « Choisissez » : on se connecte avec le mot de passe
+       qu'on a. Le message était unique pour les trois écrans, donc juste sur les
+       deux où l'on en crée un et faux sur celui-ci — voir `validatePassword`. */
+    expect(alertes[1]).toHaveTextContent('Saisissez votre mot de passe.')
   })
 
   it('place le focus sur le premier champ fautif', async () => {
