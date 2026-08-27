@@ -967,6 +967,35 @@ const TOLERES = {
  * dans le rembourrage de son parent ressemble trait pour trait à un texte qui
  * sort de la carte.
  */
+/**
+ * LES CREUX TOLÉRÉS — voir `MESURER_BLANC_IMPOSE`.
+ *
+ * Même doctrine que `DEBORDS_LOCAUX_TOLERES` : le défaut CONNU passe, le même
+ * défaut AGGRAVÉ ne passe pas, et une tolérance qui ne couvre plus rien meurt.
+ * Le plafond est le MESURÉ, sans marge : `MARGE_DE_PLAFOND` refuse un plafond
+ * qui dépasse la réalité, parce qu'un plafond plus haut que son défaut blanchit
+ * d'avance l'écart entre les deux.
+ */
+const BLANCS_IMPOSES_TOLERES = {
+  'div.on-dark relative flex shrink-0 flex-col overflow-hidden bg-ink text-on-dark pt-[calc(1.5rem+env(safe-area-inset-top)':
+    {
+      plafond: 208,
+      motif:
+        'LA BANDE DE MARQUE DES ÉCRANS D’AUTHENTIFICATION. Ce n’est pas une carte creuse, ' +
+        'c’est l’encre de la PAGE : sa hauteur vient de la fenêtre, pas de sa voisine, et le ' +
+        'formulaire d’en face la fixe à `min-h-screen`. Le vide du bas est de la couleur, et il ' +
+        'n’a pas de bord — il n’y a rien à remplir sous l’argumentaire, et le remplir serait ' +
+        'ajouter du texte pour occuper des pixels. ' +
+        'CE N’EST PAS UN AVEU D’IMPUISSANCE : `lg:justify-between` a été essayé et RETIRÉ, ' +
+        'mesuré à 2000 × 1090 — il poussait l’argumentaire tout en bas et les huit cents ' +
+        'premiers pixels de la bande étaient vides, le titre commençant là où le formulaire ' +
+        'd’en face avait déjà fini. Le vide en bas est le moins mauvais des deux, et c’est le ' +
+        'seul relevé du produit où la sonde mesure juste et conclut à faux. ' +
+        'Plafond = mesuré à 1024 px, la largeur où la bande est la plus haute par rapport à ' +
+        'son contenu.',
+    },
+}
+
 const DEBORDS_LOCAUX_TOLERES = {
   'p.mt-2 flex items-baseline gap-1.5': {
     plafond: 7,
@@ -1887,6 +1916,242 @@ const MESURER_DEBORD_LOCAL = () => {
 }
 
 /**
+ * ─── LE BLANC IMPOSÉ ─────────────────────────────────────────────────────────
+ *
+ * CE QU'AUCUNE AUTRE RÈGLE NE VOIT. Toutes les règles de géométrie de ce
+ * fichier répondent à « le contenu SORT-il de sa boîte ». Celle-ci répond à
+ * l'inverse : « la boîte est-elle VIDE en bas, et par la faute de qui ». Une
+ * cellule de grille qu'une voisine plus haute étire ne déborde de rien, ne coûte
+ * aucune requête, ne rate aucun seuil de contraste et n'a pas un caractère de
+ * trop. Elle est simplement creuse, et la porte la déclare saine.
+ *
+ * MESURÉ, DEUX FOIS, PORTE AU VERT. Sur le tableau de bord : 246 px de vide en
+ * bas de la carte « Recouvrement du mois », soit 39 % de sa hauteur — la porte
+ * était verte. Après un premier correctif, 73 px subsistaient — la porte était
+ * encore verte. Le défaut a traversé sept lots de refonte sans qu'une seule
+ * règle puisse seulement le nommer.
+ *
+ * LE PIÈGE, ET IL A FAILLI COÛTER LA RÈGLE. `align-items: stretch` est le
+ * défaut d'une grille, et l'étirement n'est PAS un défaut en soi. Sur une rangée
+ * de PAIRS — les quatre indicateurs d'un tableau de bord — le blanc est le prix
+ * de l'alignement : les quatre cartes se valent, elles doivent finir ensemble,
+ * et la plus courte paie. Une règle qui refuserait tout blanc imposé casserait
+ * cette rangée-là et serait désactivée dans la semaine. Deux exclusions la
+ * rendent utilisable, et TOUTES DEUX sont mesurées, pas supposées :
+ *
+ * 1. LES PAIRS SONT ÉPARGNÉS. Une rangée dont toutes les cellules portent le
+ *    MÊME jeu de classes est une rangée d'objets de même nature. Le critère est
+ *    grossier — deux cartes différentes peuvent partager leurs classes — mais il
+ *    se trompe du bon côté : il épargne, il n'accuse pas.
+ *
+ * 2. UNE BOÎTE QUI DISTRIBUE SON ESPACE NE LE SUBIT PAS. Sans cette exclusion,
+ *    la première rédaction accusait les deux boutons d'appel de la vitrine
+ *    (15 px chacun) et les quatre onglets de la barre basse (8 px) : du contenu
+ *    CENTRÉ, dont la moitié du vide se trouve sous le texte par construction.
+ *    Elle rendait 45 relevés dont 42 étaient l'artefact de sa propre mesure.
+ *    Sont donc écartées les boîtes en `center`, `end`, `space-*`, et celles dont
+ *    un enfant porte `margin-top: auto` — l'idiome par lequel on CONSOMME
+ *    délibérément le blanc en poussant un pied de carte vers le bas.
+ *
+ *    Après exclusion : 19 relevés au lieu de 61, dont TROIS non pairs — le même
+ *    défaut vu à trois largeurs.
+ *
+ * CE QU'ELLE NE DIT PAS. Rien sur le blanc du HAUT ni des CÔTÉS, rien sur une
+ * cellule creuse qui serait seule dans sa rangée, rien sur l'esthétique. Elle
+ * mesure une chose : combien de pixels séparent le bas du dernier descendant en
+ * flux du bas de la boîte de contenu, dans une cellule étirée par une voisine
+ * d'une autre nature.
+ */
+const MESURER_BLANC_IMPOSE = () => {
+  // Inlinée : cette fonction est SÉRIALISÉE vers le navigateur, elle n'emporte
+  // aucune fermeture. Une constante du module y vaudrait `undefined`.
+  const SEUIL_DE_PARITE = 0.8
+  const depart = performance.now()
+  const releves = []
+  let cellulesSondees = 0
+
+  const distribueSonEspace = (el, style) => {
+    if (style.display !== 'flex' && style.display !== 'grid') return false
+    const enColonne = style.flexDirection.startsWith('column')
+    const reparti = enColonne ? style.justifyContent : style.alignItems
+    if (reparti !== 'normal' && reparti !== 'stretch' && !/^(flex-)?start$/.test(reparti)) return true
+    // `mt-auto` : le pied de carte poussé en bas. Le blanc est alors AU-DESSUS
+    // de lui, donc consommé volontairement, et le mesurer sous lui n'a plus de
+    // sens — il vaut zéro par construction.
+    return [...el.children].some((k) => getComputedStyle(k).marginTop === 'auto')
+  }
+
+  for (const grille of document.querySelectorAll('*')) {
+    const style = getComputedStyle(grille)
+    if (style.display !== 'grid' && style.display !== 'flex') continue
+    if (style.display === 'flex' && style.flexDirection.startsWith('column')) continue
+    // Seul l'étirement impose : `center`, `end`, `baseline` laissent la cellule
+    // à sa hauteur naturelle, donc sans vide à l'intérieur.
+    if (style.alignItems !== 'normal' && style.alignItems !== 'stretch') continue
+
+    const cellules = [...grille.children].filter((c) => {
+      const p = getComputedStyle(c).position
+      return p === 'static' || p === 'relative'
+    })
+    if (cellules.length < 2) continue
+
+    /*
+      PAIRS À 80 % DE LEURS CLASSES, et non à l'identique.
+
+      Le critère strict — même chaîne de classes — a rendu un faux positif
+      immédiatement : les trois cartes de rôle de la prise en main portent des
+      classes d'ÉTAT différentes selon celle qui est choisie, et 22 px de blanc
+      leur étaient reprochés. Ce sont pourtant des pairs au sens le plus fort du
+      terme : le même composant, rendu trois fois, dans une rangée de choix.
+
+      Le recouvrement des JETONS les réunit sans réunir n'importe quoi : une
+      carte sélectionnée et sa voisine partagent tout sauf deux ou trois classes
+      de bordure et de fond.
+
+      LE SEUIL EST UN JUGEMENT, ET LES CHIFFRES SONT MESURÉS. Les parités
+      relevées sur le produit : 0 % pour la colonne de marque de la vitrine
+      contre ses colonnes de liens, 10 % pour le panneau de marque de
+      l'inscription, 42 % pour la carte de confidentialité des pièces, 67 % pour
+      les trois cartes de rôle de la prise en main. Aucun seuil ne sépare
+      proprement ces quatre-là : 67 % doit passer et 42 % doit rougir, mais les
+      deux sont des rangées de deux à trois cellules et rien dans leurs classes
+      ne les distingue mieux que ça.
+
+      D'OÙ `data-rangee-de-pairs`. Le seuil reste à 80 % — assez haut pour
+      n'épargner que des cellules quasi identiques — et une rangée dont la
+      parité est vraie mais indémontrable la DÉCLARE. C'est un attribut qui dit
+      quelque chose de vrai sur le produit, pas une tolérance qui blanchit un
+      défaut : la différence est qu'on peut le lire et le contredire.
+    */
+    const jetons = cellules.map((c) =>
+      new Set((typeof c.className === 'string' ? c.className : '').split(/\s+/).filter(Boolean)),
+    )
+    let pireRecouvrement = 1
+    for (const a of jetons)
+      for (const b of jetons) {
+        if (a === b) continue
+        const communs = [...a].filter((x) => b.has(x)).length
+        const total = new Set([...a, ...b]).size
+        if (total) pireRecouvrement = Math.min(pireRecouvrement, communs / total)
+      }
+    // Une rangée peut DÉCLARER sa parité quand les classes ne suffisent pas à
+    // l'établir — voir l'en-tête.
+    if (grille.hasAttribute('data-rangee-de-pairs')) continue
+
+    /*
+      UN MARQUEUR COMMUN VAUT DÉCLARATION, et le produit en pose déjà.
+
+      Les quatre cartes d'une rangée d'indicateurs portent chacune
+      `data-indicateur` — un attribut que `StatCard` émet depuis le lot des
+      tuiles, pour d'autres mesures. Elles n'en restent pas moins des étrangères
+      pour le recouvrement de classes : celle qui porte un ÉTAT prend une
+      bordure de sa famille, et la parité tombe à 75 %. Mesuré : 52 px reprochés
+      à la carte « Encaissé ce mois-ci » d'une rangée de quatre pairs.
+
+      Quand toutes les cellules d'une rangée partagent un même nom d'attribut
+      `data-`, elles sont le même objet rendu N fois — c'est ce qu'un marqueur
+      de mesure signifie. Aucun attribut à inventer, aucune tolérance à écrire.
+    */
+    const marqueurs = cellules.map(
+      (c) => new Set([...c.attributes].map((a) => a.name).filter((n) => n.startsWith('data-'))),
+    )
+    const communs = marqueurs.reduce(
+      (acc, m) => (acc === null ? new Set(m) : new Set([...acc].filter((n) => m.has(n)))),
+      /** @type {Set<string> | null} */ (null),
+    )
+    if (communs && communs.size > 0) continue
+
+    if (pireRecouvrement >= SEUIL_DE_PARITE) continue // rangée de pairs — voir l'en-tête
+
+    /*
+      REGROUPÉES PAR RANGÉE, et non par grille. Une grille de huit cartes sur
+      deux rangées n'étire pas la première sur la seconde : chaque rangée a sa
+      propre hauteur, et comparer une cellule à une voisine d'une autre rangée
+      inventerait un blanc que personne ne subit. Le haut arrondi suffit à les
+      séparer — deux cellules d'une même rangée le partagent exactement.
+    */
+    const rangees = new Map()
+    for (const c of cellules) {
+      const haut = Math.round(c.getBoundingClientRect().top)
+      rangees.set(haut, [...(rangees.get(haut) ?? []), c])
+    }
+
+    for (const [, rangee] of rangees) {
+      if (rangee.length < 2) continue
+      for (const cellule of rangee) {
+        const boite = cellule.getBoundingClientRect()
+        // Une cellule minuscule n'a pas de vide qui se lise : le seuil est la
+        // hauteur d'une carte la plus basse du produit, pas un chiffre rond.
+        if (boite.height < 64) continue
+        const cs = getComputedStyle(cellule)
+        if (distribueSonEspace(cellule, cs)) continue
+        /*
+          UN CREUX QU'ON NE VOIT PAS N'EST PAS UN CREUX.
+
+          La cellule doit PEINDRE quelque chose pour que son vide se lise. Une
+          colonne sans fond ni bordure n'est qu'un repère de mise en page : son
+          bas s'étire dans la couleur de la section, et personne ne peut dire où
+          elle finit. Deux relevés sur six l'étaient — la colonne de marque du
+          pied de page et une colonne d'empilement de l'espace locataire, 202 et
+          143 px de vide invisible sur du fond déjà sombre ou déjà clair.
+
+          Le critère est le fond OPAQUE ou la bordure visible : c'est ce qui
+          dessine le bord bas de la boîte, donc ce qui rend le vide mesurable à
+          l'œil autant qu'à la sonde.
+        */
+        const fond = cs.backgroundColor
+        const peint =
+          fond !== 'transparent' && !/^rgba\(.*,\s*0\)$/.test(fond) && fond !== 'rgba(0, 0, 0, 0)'
+        const borde = parseFloat(cs.borderBottomWidth) > 0 && cs.borderBottomStyle !== 'none'
+        if (!peint && !borde) continue
+        cellulesSondees++
+
+        const basDuContenu =
+          boite.top + cellule.clientTop + cellule.clientHeight - parseFloat(cs.paddingBottom)
+        let bas = -Infinity
+        for (const noeud of cellule.childNodes) {
+          if (noeud.nodeType === 1) {
+            const p = getComputedStyle(noeud).position
+            if (p !== 'static' && p !== 'relative') continue
+            const b = noeud.getBoundingClientRect()
+            if (b.height) bas = Math.max(bas, b.bottom)
+          } else if (noeud.nodeType === 3 && noeud.textContent.trim()) {
+            const plage = document.createRange()
+            plage.selectNodeContents(noeud)
+            for (const b of plage.getClientRects()) if (b.height) bas = Math.max(bas, b.bottom)
+          }
+        }
+        if (!isFinite(bas)) continue
+
+        const blanc = Math.round(basDuContenu - bas)
+        // Quatre pixels : le bruit d'arrondi d'une grille en fractions. Mesuré
+        // sur cinq écrans à quatre largeurs, aucun relevé non pair ne tombe
+        // entre 3 et 200 — la distribution est franchement bimodale.
+        if (blanc <= 4) continue
+
+        releves.push({
+          signature:
+            `${cellule.tagName.toLowerCase()}.${typeof cellule.className === 'string' ? cellule.className : ''}`.slice(
+              0,
+              120,
+            ),
+          blanc,
+          hauteur: Math.round(boite.height),
+          part: Math.round((blanc / boite.height) * 100),
+          texte: (cellule.textContent || '').trim().slice(0, 40),
+          parite: Math.round(pireRecouvrement * 100),
+        })
+      }
+    }
+  }
+
+  // Compté pour que le rapport dise ce qu'il a REGARDÉ : une sonde qui ne
+  // trouverait plus une seule cellule étirée rendrait « aucun blanc imposé »
+  // avec la même sérénité qu'un produit sain.
+  return { cellules: cellulesSondees, ms: performance.now() - depart, releves }
+}
+
+/**
  * ─── L'ORPHELIN D'UNE COUPURE ────────────────────────────────────────────────
  *
  * CE QUE LES DEUX AUTRES RÈGLES DE TEXTE NE VOIENT PAS. Le débordement de page
@@ -2466,6 +2731,17 @@ const tolerancesUtilisees = new Set()
  */
 const debordsLocaux = []
 const tolerancesLocalesUtilisees = new Set()
+/**
+ * Le BLANC IMPOSÉ — voir `MESURER_BLANC_IMPOSE`.
+ *
+ * `cellulesEtirees` compte ce que la sonde a regardé, pour la même raison que
+ * `elementsSondes` juste au-dessus : sans lui, une sonde dont le sélecteur
+ * cesserait de trouver des grilles rendrait « aucun creux » exactement comme un
+ * produit sain. C'est le mode de défaillance que ce fichier refuse partout.
+ */
+const blancsImposes = new Map()
+const tolerancesDeBlancUtilisees = new Set()
+let cellulesEtirees = 0
 /** Coupures de libellé laissant un orphelin — voir `MESURER_COUPURES`. */
 const coupuresOrphelines = new Map()
 let libellesMesures = 0
@@ -2734,6 +3010,31 @@ try {
             ...coupable,
             plafond: toleree ? toleree.plafond : null,
           })
+        }
+
+        /*
+          LE BLANC IMPOSÉ, sur la même visite que le débordement local.
+
+          Même raison : la page est chargée, dimensionnée, stabilisée. Une passe
+          de plus coûterait 506 navigations pour regarder ce qui est déjà sous
+          les yeux — et ce fichier a déjà refusé ce prix une fois.
+        */
+        const creux = await chrono('sonde · blanc imposé', () =>
+          page.evaluate(MESURER_BLANC_IMPOSE),
+        )
+        tempsDansLaPage += creux.ms
+        cellulesEtirees += creux.cellules
+        for (const releve of creux.releves) {
+          // Relevé d'abord, jugé ensuite — comme les débordements locaux : un
+          // creux toléré doit compter dans le maximum, sans quoi le plafond ne
+          // peut être confronté à rien.
+          const vu = blancsImposes.get(releve.signature)
+          if (!vu || releve.blanc > vu.blanc) {
+            blancsImposes.set(releve.signature, {
+              ...releve,
+              ou: `${adresse}@${largeur}/${langue}`,
+            })
+          }
         }
 
         /*
@@ -3600,6 +3901,97 @@ if (plafondsMenteurs.length > 0) {
   }
   process.exit(1)
 }
+
+/* ─── LE BLANC IMPOSÉ ─────────────────────────────────────────────────────── */
+
+/*
+  GARDE DU GARDE, AVANT LE VERDICT. Une sonde qui ne regarderait plus une seule
+  cellule étirée rendrait « aucun creux » avec la même sérénité qu'un produit
+  sain. Le seuil est bas et volontairement grossier : il ne dit pas que la mesure
+  est juste, il dit qu'elle a EU LIEU.
+*/
+if (cellulesEtirees < 50) {
+  console.error(
+    `\n✗ mesure-ui : la sonde du blanc imposé n’a regardé que ${cellulesEtirees} cellule(s) étirée(s).\n` +
+      '   Un produit qui n’en aurait plus n’existe pas ; c’est le sélecteur qui a cessé de trouver.\n' +
+      '   Vérifiez `MESURER_BLANC_IMPOSE` avant de croire à son verdict.\n',
+  )
+  process.exit(1)
+}
+
+const creuxFautifs = [...blancsImposes.entries()]
+  .map(([signature, releve]) => ({ signature, ...releve, toleree: BLANCS_IMPOSES_TOLERES[signature] }))
+  .filter(({ blanc, toleree }) => {
+    if (!toleree) return true
+    return blanc > toleree.plafond
+  })
+
+for (const { signature, toleree } of [...blancsImposes.keys()].map((s) => ({
+  signature: s,
+  toleree: BLANCS_IMPOSES_TOLERES[s],
+}))) {
+  if (toleree) tolerancesDeBlancUtilisees.add(signature)
+}
+
+if (creuxFautifs.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${creuxFautifs.length} cellule(s) portent un BLANC IMPOSÉ non toléré.\n` +
+      '   Une voisine plus haute les étire, et le vide se paie en bas de la boîte. Le défaut ne\n' +
+      '   déborde de rien, ne coûte aucune requête et tient tous les seuils : aucune autre règle\n' +
+      '   de cette porte ne peut le voir.\n' +
+      '   LE REMÈDE N’EST PAS DE RÉDUIRE LA VOISINE. C’est, au choix : donner à la cellule de\n' +
+      '   quoi occuper sa hauteur, la sortir de la rangée, ou déclarer qu’elle distribue son\n' +
+      '   espace — un pied poussé en `mt-auto`, un contenu centré — auquel cas le vide devient\n' +
+      '   une décision et cesse d’être subi.\n',
+  )
+  for (const { signature, blanc, hauteur, part, ou, texte, toleree, parite: releveParite } of creuxFautifs) {
+    console.error(
+      `   ${blanc}px de vide sur ${hauteur}px (${part} %) — ${ou}\n` +
+        `      ${signature}\n` +
+        `      « ${texte} » · parité de rangée ${releveParite}%` +
+        (toleree ? `\n      plafond inscrit : ${toleree.plafond}px — DÉPASSÉ` : '') +
+        '\n',
+    )
+  }
+  process.exit(1)
+}
+
+/*
+  GARDE DU GARDE — une tolérance de creux qui ne couvre plus rien doit mourir.
+  Même raison que pour les débordements : la signature d'un défaut réparé
+  continuerait à blanchir tout ce qui reprendrait le même jeu de classes.
+*/
+const creuxOrphelins = Object.keys(BLANCS_IMPOSES_TOLERES).filter(
+  (cle) => !tolerancesDeBlancUtilisees.has(cle),
+)
+if (creuxOrphelins.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${creuxOrphelins.length} tolérance(s) de blanc ne couvrent plus aucun creux.\n` +
+      creuxOrphelins.map((cle) => `   ${cle} — à retirer de BLANCS_IMPOSES_TOLERES`).join('\n'),
+  )
+  process.exit(1)
+}
+
+const blancsMenteurs = Object.entries(BLANCS_IMPOSES_TOLERES)
+  .filter(([cle]) => tolerancesDeBlancUtilisees.has(cle))
+  .map(([cle, { plafond }]) => ({ cle, plafond, reel: blancsImposes.get(cle)?.blanc ?? 0 }))
+  .filter(({ plafond, reel }) => plafond - reel > MARGE_DE_PLAFOND)
+
+if (blancsMenteurs.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${blancsMenteurs.length} plafond(s) de blanc dépassent la réalité mesurée.\n`,
+  )
+  for (const { cle, plafond, reel } of blancsMenteurs) {
+    console.error(`   ${cle}\n      inscrit ${plafond}px, mesuré ${reel}px — abaissez-le.\n`)
+  }
+  process.exit(1)
+}
+
+console.log(
+  `✓ mesure-ui : ${cellulesEtirees} cellule(s) étirée(s) mesurée(s) au BLANC IMPOSÉ, ` +
+    `${blancsImposes.size} creux relevé(s), ${Object.keys(BLANCS_IMPOSES_TOLERES).length} toléré(s).\n` +
+    '  Les rangées de PAIRS en sont exclues : leur blanc est le prix de l’alignement, pas du gâchis.',
+)
 
 /*
   GARDE DU GARDE — une tolérance locale qui ne couvre plus rien doit mourir.

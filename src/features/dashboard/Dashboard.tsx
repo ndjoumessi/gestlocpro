@@ -9,7 +9,8 @@ import { PaymentStatusPill, StatusPill } from '@/components/primitives/StatusPil
 import { Icon } from '@/components/primitives/Icon'
 import { DonutChart, ProgressBar, StackedBarChart, StatCard } from '@/components/primitives/Charts'
 import { EmptyState } from '@/components/primitives/DataTable'
-import { Skeleton, SkeletonRegion, SkeletonStatCard } from '@/components/primitives/Skeleton'
+import { Skeleton, SkeletonRegion, SkeletonStatRow } from '@/components/primitives/Skeleton'
+import { GRILLE_QUATRE_INDICATEURS } from './grillesDIndicateurs'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
@@ -219,7 +220,7 @@ export function Dashboard() {
         complément immédiat du reste à percevoir — les deux se lisent
         ensemble, et replier l'un des deux forcerait à chercher l'autre.
       */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className={GRILLE_QUATRE_INDICATEURS}>
         <StatCard
           /* UN VOCABULAIRE D'ICÔNES, PAS QUATRE DÉCORATIONS. Ce qui est encore
              dû se marque d'une HORLOGE ici comme sur l'écran des paiements ;
@@ -690,11 +691,7 @@ function DashboardSkeleton({ title }: { title: string }) {
       />
 
       <SkeletonRegion>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {[0, 1, 2, 3].map((carte) => (
-            <SkeletonStatCard key={carte} />
-          ))}
-        </div>
+        <SkeletonStatRow count={4} className={GRILLE_QUATRE_INDICATEURS} />
 
         {/* `items-start`, comme la rangée qu'il remplace. Un squelette étiré
             au-dessus d'une rangée qui ne l'est plus ferait sauter la page au

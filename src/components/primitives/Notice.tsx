@@ -43,7 +43,7 @@ import { Icon, type IconName } from './Icon'
  * TEXTE porte le message, le glyphe le répète pour l'œil.
  */
 
-export type NoticeTone = 'accent' | 'ok' | 'warn' | 'danger'
+export type NoticeTone = 'neutral' | 'accent' | 'ok' | 'warn' | 'danger'
 
 /**
  * Le lavis, la bordure et l'encre vont ENSEMBLE, dans un seul littéral par ton.
@@ -53,6 +53,19 @@ export type NoticeTone = 'accent' | 'ok' | 'warn' | 'danger'
  * quand deux valeurs doivent s'accorder, on ne les expose pas séparément.
  */
 const TONS: Record<NoticeTone, { classes: string; icone: IconName }> = {
+  /* LE TON SANS ÉTAT, et il manquait. Deux notes du tableau de bord locataire
+     ne disent rien d'un état : elles rappellent le périmètre — « vous ne voyez
+     que vos logements ». Faute de ce ton, elles étaient restées écrites à la
+     main, et c'est la même dérive que les vingt-neuf autres, à trois copies
+     près.
+
+     Le lavis ne se détache PRESQUE PAS de son papier — ΔL* 1,7 en clair, 0,8 en
+     sombre — et c'est mesuré, pas concédé. C'est la bordure qui délimite la
+     boîte : ΔL* 8,5 en clair, 15,2 en sombre. Un ton neutre qui trancherait sur
+     la page ne serait plus neutre ; il crierait ce qu'il a pour rôle de
+     murmurer. Le texte, lui, tient les seuils dans les deux thèmes — 5,41 et
+     7,92 pour 4,5 exigés. */
+  neutral: { classes: 'border-neutral-border bg-neutral-tint text-neutral', icone: 'info' },
   accent: { classes: 'border-accent-border bg-accent-tint text-accent-ink', icone: 'info' },
   ok: { classes: 'border-ok-border bg-ok-tint text-ok', icone: 'checkCircle' },
   warn: { classes: 'border-warn-border bg-warn-tint text-warn', icone: 'alert' },

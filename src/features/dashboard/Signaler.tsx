@@ -175,7 +175,17 @@ export function Signaler() {
           </Card>
         )}
 
-        <Card flush>
+        {/*
+          `self-start` : LA LISTE FINIT OÙ FINIT LE DERNIER SIGNALEMENT.
+
+          Le formulaire d'en face est long par nature — quatre champs, une zone
+          de texte, un bouton. Étirée sur sa hauteur, cette carte portait 179 px
+          de vide sous ses trois lignes, 53 % d'elle-même, et le locataire y
+          lisait un cadre à moitié creux là où il n'a que trois signalements.
+          Rien ne relie le socle d'un formulaire à celui d'une liste : une carte
+          finit où son contenu finit. Mesuré par la sonde du BLANC IMPOSÉ.
+        */}
+        <Card flush className="self-start">
           <CardHeader
             title={t('app.report.mine')}
             level={2}

@@ -8,9 +8,10 @@ import { StatCard } from '@/components/primitives/Charts'
 import {
   Skeleton,
   SkeletonRegion,
-  SkeletonStatCard,
+  SkeletonStatRow,
   SkeletonTable,
 } from '@/components/primitives/Skeleton'
+import { GRILLE_QUATRE_INDICATEURS } from './grillesDIndicateurs'
 import { Input } from '@/components/primitives/Input'
 import { Button } from '@/components/primitives/Button'
 import { Modal } from '@/components/primitives/Modal'
@@ -204,7 +205,7 @@ export function Portfolio() {
       )}
       {logementOuvert && <AddUnitModal open onClose={() => setLogementOuvert(false)} />}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className={GRILLE_QUATRE_INDICATEURS}>
         {BUILDINGS.map((b) => {
           const { occupied: occ, total } = occupancyOf(b.id)
           return (
@@ -464,11 +465,7 @@ function PortfolioSkeleton() {
         {/* Quatre cartes : le nombre réel vaut « un par immeuble, plus le
             total », donc il dépend du parc qu'on attend. Quatre remplit
             exactement une rangée de la grille sur grand écran. */}
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {[0, 1, 2, 3].map((carte) => (
-            <SkeletonStatCard key={carte} />
-          ))}
-        </div>
+        <SkeletonStatRow count={4} className={GRILLE_QUATRE_INDICATEURS} />
 
         <div className="mt-6 mb-4 flex flex-wrap items-center gap-3">
           <Skeleton radius="md" className="h-11 w-full max-w-xs" />

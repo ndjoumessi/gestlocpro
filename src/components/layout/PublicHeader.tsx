@@ -465,6 +465,19 @@ export function PublicHeader() {
                     dépôt (`CurrencySwitcher`) : le panneau flotte désormais
                     au-dessus de la page au lieu de la remplacer, et rien ne
                     l'en détacherait sans elles.
+
+                    CE N'EST PAS `Card`, ET LA RÉFÉRENCE N'Y EST POUR RIEN.
+                    `Card` relaie désormais la sienne, donc la référence ne
+                    bloque plus rien — le blocage est ailleurs, et il est
+                    structurel : les DEUX branches ci-contre sont le MÊME
+                    élément. Celui-ci porte la référence, `tabIndex`, le
+                    `data-testid` et toute la navigation ; seule la branche
+                    ancrée ressemble à une carte, l'autre est une feuille pleine
+                    largeur en `bg-paper` sans rayon ni ombre. Appeler `Card`
+                    obligerait à écrire l'élément — et son contenu — deux fois,
+                    ou à l'envelopper d'un conteneur qui n'existe que pour la
+                    moitié des tailles d'écran. Une carte conditionnelle n'est
+                    pas une carte : c'est une des deux peaux d'un panneau.
                   */
                   cn(
                     'pointer-events-auto ml-auto mt-2 w-max max-w-full',

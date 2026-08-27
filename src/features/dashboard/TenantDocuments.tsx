@@ -23,6 +23,20 @@ import { cn } from '@/lib/cn'
 import { useReceiptExport } from './receiptExport'
 
 /**
+ * LA GRILLE DES DEUX COLONNES, nommée pour que l'attente ne s'en écarte pas.
+ *
+ * Elle s'écrivait DEUX fois dans ce fichier : une fois sur la rangée chargée,
+ * une fois sur le squelette qui l'annonce. Deux chaînes que rien ne tenait
+ * ensemble, dans le seul morceau du produit qu'aucune porte ne rend jamais —
+ * la démonstration n'attend pas, la vitrine n'a pas de squelette d'écran, et la
+ * mesure au navigateur mesure la page chargée. C'est ainsi que l'espace
+ * locataire s'est retrouvé à attendre sous quatre cartes pour en charger trois.
+ *
+ * Voir `squelettesFideles.test.ts`, qui tient désormais la règle.
+ */
+const GRILLE_DEUX_COLONNES = 'grid gap-4 lg:grid-cols-2'
+
+/**
  * Documents du locataire — ses pièces contractuelles et ses quittances.
  *
  * L'écran tient une ligne de conduite que le portail avait déjà payée une
@@ -202,7 +216,7 @@ export function TenantDocuments() {
     <>
       <PageHeader title={t('app.documents.title')} description={t('app.documents.subtitle')} />
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className={GRILLE_DEUX_COLONNES}>
         <Card flush>
           <CardHeader
             eyebrow={t('app.documents.contractual')}
@@ -393,7 +407,18 @@ export function TenantDocuments() {
           confidentialité. Une promesse de sécurité inventée est le pire endroit
           où en inventer une.
         */}
-        <Card tone="dark">
+        {/*
+          `self-start` : LA NOTE FINIT OÙ FINIT SON TEXTE.
+
+          Étirée sur la hauteur de la colonne des pièces, cette carte portait
+          349 px de vide sous deux lignes — 71 % de sa hauteur, en encre pleine,
+          soit un pavé sombre presque entièrement creux à côté d'une liste bien
+          remplie. Le défaut ne débordait de rien et tenait tous les seuils :
+          c'est la sonde du BLANC IMPOSÉ qui l'a nommé, et rien d'autre ne le
+          pouvait. Le remède n'est pas d'allonger le texte, c'est de cesser de
+          faire payer à la note la hauteur de sa voisine.
+        */}
+        <Card tone="dark" className="self-start">
           {/* Le titre porte le libellé : `CardHeader` rend son `<h2>` sans
               condition, et le laisser vide posait un en-tête anonyme qu'un
               lecteur d'écran annonce sans pouvoir le nommer. */}
@@ -458,7 +483,7 @@ function TenantDocumentsSkeleton() {
     <>
       <PageHeader title={t('app.documents.title')} description={t('app.documents.subtitle')} />
       <SkeletonRegion label={t('app.documents.title')}>
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className={GRILLE_DEUX_COLONNES}>
           {[0, 1].map((i) => (
             <Card key={i}>
               <Skeleton className="h-4 w-32" />

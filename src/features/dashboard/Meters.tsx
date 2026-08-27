@@ -6,9 +6,10 @@ import { StatCard } from '@/components/primitives/Charts'
 import {
   Skeleton,
   SkeletonRegion,
-  SkeletonStatCard,
+  SkeletonStatRow,
   SkeletonTable,
 } from '@/components/primitives/Skeleton'
+import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
 import { StatusPill } from '@/components/primitives/StatusPill'
 import { Notice } from '@/components/primitives/Notice'
 import { Button } from '@/components/primitives/Button'
@@ -200,23 +201,7 @@ export function Meters() {
 
       {tarifsOuverts && <TariffsModal open onClose={() => setTarifsOuverts(false)} />}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {/*
-          TROIS COLONNES SEULEMENT QUAND LA CARTE PEUT PORTER UN MONTANT.
-      
-          `sm:grid-cols-3` les posait dès 640 px. Mesuré à 700 px : la carte
-          offre 159 px de contenu, « 1 397 000 FCFA » en demande 189, et le
-          montant FRANCHIT la bordure de 9 px — les cautions le font deux fois
-          sur le même écran. Rien ne pouvait le couper : `Intl.NumberFormat`
-          pose une espace INSÉCABLE avant la devise, donc un montant est
-          insécable de bout en bout et `whitespace-nowrap` n'y est pour rien.
-          Le seul levier est la largeur de colonne.
-      
-          Deux colonnes jusqu'à `lg`, trois ensuite : `md` (768 px) ne suffit
-          pas — il en faudrait environ 790 pour que trois cartes portent ce
-          montant. C'est l'arbitrage du tableau de bord et du parc, qui
-          attendent `xl` pour passer à quatre.
-        */}
+      <div className={GRILLE_TROIS_INDICATEURS}>
         {/*
           Le total n'est un total QUE s'il y a un prix.
           `rebilled` rend `null` sans tarif, et la somme retombait alors à zéro :
@@ -417,11 +402,7 @@ function MetersSkeleton() {
       />
 
       <SkeletonRegion>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[0, 1, 2].map((carte) => (
-            <SkeletonStatCard key={carte} />
-          ))}
-        </div>
+        <SkeletonStatRow count={3} className={GRILLE_TROIS_INDICATEURS} />
 
         <div className="mt-6 mb-4 rounded-lg border border-divider px-4 py-3.5">
           <Skeleton line="body" className="w-56" />

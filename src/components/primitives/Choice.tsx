@@ -155,7 +155,16 @@ export function RadioCards<T extends string>({
         {legend}
       </legend>
 
-      <div className={cn('grid gap-3', gridClass)}>
+      {/* `data-rangee-de-pairs` : ces cellules SONT le même composant rendu N
+          fois, et le blanc qu'une description plus longue impose aux autres est
+          le prix de l'alignement, pas du gâchis — un choix dont les cartes ne
+          finiraient pas ensemble ne se lit plus comme un choix.
+
+          La sonde du blanc imposé ne peut pas l'établir seule : elle compare les
+          classes, et une carte SÉLECTIONNÉE n'en partage que 67 % avec sa
+          voisine — bordure, fond et ombre changent avec l'état. L'attribut dit
+          ce que les classes taisent. Voir `MESURER_BLANC_IMPOSE`. */}
+      <div data-rangee-de-pairs="" className={cn('grid gap-3', gridClass)}>
         {options.map((option) => {
           const checked = value === option.value
           return (

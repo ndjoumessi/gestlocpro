@@ -8,6 +8,7 @@ import { Field } from '@/components/primitives/Field'
 import { Input, PasswordInput, PasswordStrength, Select, Textarea } from '@/components/primitives/Input'
 import { Checkbox, RadioCards, SegmentedControl } from '@/components/primitives/Choice'
 import { Modal } from '@/components/primitives/Modal'
+import { Notice } from '@/components/primitives/Notice'
 import { useToast } from '@/components/primitives/Toast'
 import { Logo } from '@/components/primitives/Logo'
 import { Icon } from '@/components/primitives/Icon'
@@ -173,6 +174,37 @@ export function KitchenSink() {
           </p>
         </Section>
 
+        {/*
+          ---- Bandeaux ----
+
+          LA VITRINE EST LA PORTE. `mesure-ui.mjs` ne mesure le contraste que de
+          ce qui S'AFFICHE, sur `/demo`, dans les deux thèmes. `Notice` n'y
+          figurait pas : cinq tons, dix couples encre/lavis, et pas un seul n'a
+          jamais été mesuré au navigateur en sombre — alors même que le composant
+          a remplacé vingt-neuf bandeaux dans dix-sept fichiers. Les poser ici
+          coûte quinze lignes et rend la garde existante compétente sur eux,
+          plutôt que d'en écrire une nouvelle qui dupliquerait sa logique.
+
+          Les DEUX formes y sont : la forte tient le titre, la compacte non, et
+          leurs rembourrages diffèrent. Montrer l'une seulement laisserait la
+          moitié du composant hors mesure — exactement le défaut qu'on répare.
+        */}
+        <Section title="Bandeaux d’information">
+          <div className="flex flex-col gap-3">
+            <Notice tone="neutral" icon="shield">
+              Vous ne voyez que les logements rattachés à votre bail.
+            </Notice>
+            <Notice tone="accent">Le parc sera visible dès la première unité créée.</Notice>
+            <Notice tone="ok" titre="Paiement enregistré">
+              La quittance de septembre est disponible au téléchargement.
+            </Notice>
+            <Notice tone="warn">Deux relevés manquent sur la période.</Notice>
+            <Notice tone="danger" role="alert" titre="Échec de l’envoi">
+              Le serveur n’a pas répondu. Réessayez dans un instant.
+            </Notice>
+          </div>
+        </Section>
+
         {/* ---- Formulaires ---- */}
         <Section title="Champs de formulaire">
           <div className="grid gap-5 sm:grid-cols-2">
@@ -286,15 +318,30 @@ export function KitchenSink() {
             </Card>
 
             <Card tone="accent">
-              <CardHeader title="Ton doré" description="Pour les mises en avant." />
-              <p className="text-body text-muted">Teinte dorée, bordure dorée.</p>
+              <CardHeader title="Ton d’accent" description="Pour les mises en avant." />
+              <p className="text-body text-muted">Lavis d’accent, bordure d’accent.</p>
             </Card>
 
             <Card tone="dark">
               <CardHeader title="Ton sombre" description="Pour les blocs de synthèse." />
               <p className="text-body text-on-dark-muted">
-                L’or passe en <span className="text-accent">accent</span> sur fond sombre.
+                L’accent y passe en{' '}
+                <span className="text-accent-on-dark">contrepartie claire</span>, jamais en bleu
+                plein : le fond ne s’inverse pas avec le thème.
               </p>
+            </Card>
+
+            {/* `darkRaised` n'était montré nulle part — la carte sombre POSÉE
+                SUR une section sombre, c'est-à-dire le seul des cinq tons dont
+                la justesse dépend de son support. Le laisser hors vitrine, c'est
+                le laisser hors mesure. */}
+            <Card tone="dark">
+              <CardHeader title="Ton sombre surélevé" level={4} />
+              <Card tone="darkRaised">
+                <p className="text-body text-on-dark-muted">
+                  Monte d’un cran sur son support et prend une bordure de la famille inversée.
+                </p>
+              </Card>
             </Card>
           </div>
         </Section>

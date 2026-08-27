@@ -17,6 +17,20 @@ import type { Finding, Inspection, Photo } from '@/data/portfolio'
 
 import { usePortfolio } from '@/data/PortfolioProvider'
 
+/**
+ * LA GRILLE DES DEUX COLONNES, nommée pour que l'attente ne s'en écarte pas.
+ *
+ * Elle s'écrivait DEUX fois dans ce fichier : une fois sur la rangée chargée,
+ * une fois sur le squelette qui l'annonce. Deux chaînes que rien ne tenait
+ * ensemble, dans le seul morceau du produit qu'aucune porte ne rend jamais —
+ * la démonstration n'attend pas, la vitrine n'a pas de squelette d'écran, et la
+ * mesure au navigateur mesure la page chargée. C'est ainsi que l'espace
+ * locataire s'est retrouvé à attendre sous quatre cartes pour en charger trois.
+ *
+ * Voir `squelettesFideles.test.ts`, qui tient désormais la règle.
+ */
+const GRILLE_DEUX_COLONNES = 'grid gap-4 lg:grid-cols-2'
+
 export function Inspections() {
   const t = useT()
   const d = useDates()
@@ -131,7 +145,7 @@ export function Inspections() {
       <div
         role="list"
         aria-label={t('app.inspections.byUnit')}
-        className="grid gap-4 lg:grid-cols-2"
+        className={GRILLE_DEUX_COLONNES}
       >
         {Object.entries(byUnit).map(([unitId, inspections]) => {
           const unit = unitById(unitId)
@@ -329,7 +343,7 @@ function InspectionsSkeleton() {
     <>
       <PageHeader title={t('app.inspections.title')} description={t('app.inspections.subtitle')} />
 
-      <SkeletonRegion className="grid gap-4 lg:grid-cols-2">
+      <SkeletonRegion className={GRILLE_DEUX_COLONNES}>
         {[0, 1].map((carte) => (
           <div
             key={carte}

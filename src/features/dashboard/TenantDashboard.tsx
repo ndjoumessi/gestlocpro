@@ -3,11 +3,11 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { lien, useBase } from '@/lib/base'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
-import { Icon } from '@/components/primitives/Icon'
+import { Notice } from '@/components/primitives/Notice'
 import { MiniBarChart, ProgressBar } from '@/components/primitives/Charts'
 import { PaymentStatusPill, StatusPill } from '@/components/primitives/StatusPill'
 import { EmptyState } from '@/components/primitives/DataTable'
-import { Skeleton, SkeletonRegion, SkeletonStatCard } from '@/components/primitives/Skeleton'
+import { Skeleton, SkeletonRegion, SkeletonStatRow } from '@/components/primitives/Skeleton'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
@@ -22,6 +22,28 @@ import {
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { ReceiptModal } from './ReceiptModal'
 import { workTitle } from '@/data/workTitle'
+
+/**
+ * LA GRILLE DES TROIS CARTES DU MOIS, et pourquoi elle ne rejoint pas
+ * `grillesDIndicateurs`.
+ *
+ * Elle est PROPRE à cet écran : la première carte porte le loyer — la seule
+ * somme due d'office, et la plus longue à écrire — les deux autres des
+ * consommations refacturées. `1.4fr` n'est pas un réglage esthétique, c'est
+ * cette asymétrie-là. La ranger avec les deux grilles partagées ferait une
+ * constante à trois cas, c'est-à-dire trois littéraux sous un seul nom.
+ *
+ * Nommée quand même, et c'est le point du lot : la rangée CHARGÉE et son
+ * SQUELETTE la lisent tous deux ici, donc ils ne peuvent plus diverger.
+ */
+const GRILLE_LOCATAIRE = 'grid gap-4 lg:grid-cols-[1.4fr_1fr_1fr]'
+
+/**
+ * Les quittances et les signalements, côte à côte. Nommée pour la même
+ * raison que `GRILLE_LOCATAIRE` : la rangée chargée et son squelette la
+ * lisaient chacun dans sa propre chaîne.
+ */
+const GRILLE_QUITTANCES_ET_SIGNALEMENTS = 'mt-4 grid gap-4 lg:grid-cols-[1.4fr_1fr]'
 
 /**
  * Espace locataire.
@@ -115,7 +137,6 @@ export function TenantDashboard() {
       </>
     )
 
-
   /**
    * Le mois EN COURS, et non la première quittance de la liste.
    *
@@ -193,7 +214,7 @@ export function TenantDashboard() {
           d'office ; l'eau et l'électricité sont REFACTURÉES, et leur montant se
           dérive de la quantité relevée et du tarif, jamais d'un chiffre saisi
           deux fois. */}
-      <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr_1fr]">
+      <div className={GRILLE_LOCATAIRE}>
         <Card className="flex flex-col">
           <div className="flex items-start justify-between gap-3">
             <p className="eyebrow text-muted">
@@ -269,7 +290,7 @@ export function TenantDashboard() {
         />
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+      <div className={GRILLE_QUITTANCES_ET_SIGNALEMENTS}>
         {/* MES PAIEMENTS PAR PÉRIODE.
             Trois colonnes de montants pour une même période : c'est un tableau,
             et non une liste. Les en-têtes portent `scope` — sans quoi un lecteur
@@ -470,13 +491,7 @@ export function TenantDashboard() {
         />
       )}
 
-      {/* La règle de confidentialité est dite à l'écran, pas seulement
-          appliquée : le locataire doit savoir ce que son bailleur ne voit pas
-          de lui, et inversement. */}
-      <p className="mt-4 flex items-start gap-2 rounded-lg border border-divider bg-surface px-4 py-3 text-body text-muted">
-        <Icon name="shield" size={16} className="mt-0.5 shrink-0 text-ok" />
-        {t('app.tenant.privacyNote')}
-      </p>
+      <NoteDeConfidentialite />
     </>
   )
 }
@@ -656,7 +671,6 @@ function Legende({ tone, label }: { tone: string; label: string }) {
   )
 }
 
-
 /**
  * L'espace locataire, le temps que son bail arrive.
  *
@@ -706,13 +720,22 @@ function TenantDashboardSkeleton() {
       />
 
       <SkeletonRegion>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {[0, 1, 2, 3].map((carte) => (
-            <SkeletonStatCard key={carte} />
-          ))}
-        </div>
+        {/* MÊME GRILLE, MÊME COMPTE que la rangée chargée — et c'est un
+            correctif. Ce squelette attendait sous QUATRE cartes égales en
+            `sm:grid-cols-2 xl:grid-cols-4` là où l'écran en charge TROIS,
+            inégales, sans point de rupture avant `lg`. Sur une tablette il
+            montrait deux colonnes pour une, sur un grand écran quatre cartes
+            pour trois : la page se réorganisait entièrement au moment précis où
+            elle cesse d'attendre, et le doigt qui visait la première carte
+            tombait ailleurs.
 
-        <div className="mt-4 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+            Le défaut a survécu à toute la refonte parce qu'AUCUNE porte ne rend
+            jamais un état de chargement — ni la vitrine, ni la mesure au
+            navigateur, ni les tests. C'est le refactoring qui l'a montré, en
+            mettant les deux littéraux côte à côte. */}
+        <SkeletonStatRow count={3} className={GRILLE_LOCATAIRE} />
+
+        <div className={GRILLE_QUITTANCES_ET_SIGNALEMENTS}>
           {/* Les quittances. Six lignes : c'est ce que rend `TENANT_RECEIPTS`,
               et leur nombre ne dépend pas du serveur — seuls les montants en
               dépendent. */}
@@ -767,10 +790,7 @@ function TenantDashboardSkeleton() {
         </div>
       </SkeletonRegion>
 
-      <p className="mt-4 flex items-start gap-2 rounded-lg border border-divider bg-surface px-4 py-3 text-body text-muted">
-        <Icon name="shield" size={16} className="mt-0.5 shrink-0 text-ok" />
-        {t('app.tenant.privacyNote')}
-      </p>
+      <NoteDeConfidentialite />
     </>
   )
 }
@@ -807,7 +827,42 @@ export function TenantRestricted() {
   )
 }
 
-/** Bandeau réutilisable rappelant le périmètre du locataire. */
+/**
+ * La règle de confidentialité, dite à l'écran et non seulement appliquée.
+ *
+ * Le locataire doit savoir ce que son bailleur ne voit pas de lui, et
+ * inversement. Elle apparaît DEUX fois dans ce fichier — sous les données et
+ * sous le squelette — parce que l'attente ne doit pas suspendre la promesse :
+ * un écran qui affiche la note seulement une fois chargé la retire pendant les
+ * secondes où l'on se demande précisément qui lit quoi.
+ *
+ * Elle était écrite deux fois EN CLASSES, à l'identique. Le glyphe y était vert
+ * dans une note grise ; `Notice` le prend au ton, et c'est un progrès et non
+ * une perte : le vert ne disait rien que le texte ne dise, et `couleur-non-
+ * seule` interdit qu'il le dise seul. Voir `TenantScopeNote` juste dessous pour
+ * le cas qui, lui, RÉSISTE à la migration.
+ */
+function NoteDeConfidentialite() {
+  const t = useT()
+  return (
+    <Notice tone="neutral" icon="shield" className="mt-4">
+      {t('app.tenant.privacyNote')}
+    </Notice>
+  )
+}
+
+/**
+ * Bandeau réutilisable rappelant le périmètre du locataire.
+ *
+ * IL RESTE ÉCRIT À LA MAIN, et la raison est mesurée : il ne porte pas d'icône
+ * propre, parce que la pastille qu'il CONTIENT porte déjà un bouclier. Passé en
+ * `Notice`, il en gagnerait un second à trois millimètres du premier — `Notice`
+ * pose son glyphe par construction, et lui ouvrir une échappatoire `icon={null}`
+ * rouvrirait exactement la dérive que ce composant existe pour fermer.
+ *
+ * Un bandeau dont le contenu est lui-même un composant à icône n'est pas un
+ * bandeau d'information : c'est une pastille sur un lavis.
+ */
 export function TenantScopeNote() {
   const t = useT()
   // Le périmètre vient du provider, qui le tient du serveur. Les identifiants

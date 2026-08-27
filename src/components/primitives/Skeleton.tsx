@@ -149,6 +149,40 @@ export function SkeletonStatCard() {
 }
 
 /**
+ * LA RANGÉE D'INDICATEURS EN ATTENTE.
+ *
+ * CE QU'ELLE REMPLACE : six copies du même bloc de cinq lignes, dans six
+ * écrans — tableau de bord, locataire, encaissements, relevés, parc, cautions.
+ * Chacune ouvrait une grille, y déroulait `[0, 1, 2]` ou `[0, 1, 2, 3]` et
+ * posait une `SkeletonStatCard`. Rien à décider, six endroits où se tromper.
+ *
+ * LA GRILLE N'EST PAS UN DÉFAUT DE LA RANGÉE : ELLE VIENT DE L'ÉCRAN, et c'est
+ * tout l'intérêt. Un squelette d'indicateurs n'a pas de gabarit propre — il
+ * emprunte celui de la rangée CHARGÉE, faute de quoi la page se réorganise à
+ * l'arrivée des données. L'appelant passe donc la constante qu'il emploie déjà
+ * pour sa vraie rangée, et les deux ne peuvent plus diverger sans que l'une des
+ * deux perde sa source.
+ *
+ * ELLES AVAIENT DÉJÀ DIVERGÉ, et c'est ce refactoring qui l'a montré. L'espace
+ * locataire attendait sous quatre cartes égales en `sm:grid-cols-2
+ * xl:grid-cols-4`, puis chargeait TROIS cartes inégales en
+ * `lg:grid-cols-[1.4fr_1fr_1fr]` : une carte de trop, un point de rupture qui
+ * n'existait pas, et une réorganisation complète au moment précis où l'écran
+ * cesse d'attendre. Aucune porte ne pouvait le voir — aucune ne rend jamais un
+ * état de chargement. `squelettesFideles.test.ts` le tient désormais à la
+ * source.
+ */
+export function SkeletonStatRow({ count, className }: { count: number; className: string }) {
+  return (
+    <div className={className}>
+      {Array.from({ length: count }, (_, carte) => (
+        <SkeletonStatCard key={carte} />
+      ))}
+    </div>
+  )
+}
+
+/**
  * Tableau en attente.
  *
  * Bâti en `div` et non en `<table>` : les cellules sont vides, et une vraie

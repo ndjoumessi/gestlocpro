@@ -1,4 +1,4 @@
-import type { HTMLAttributes, ReactNode } from 'react'
+import { forwardRef, type HTMLAttributes, type ReactNode } from 'react'
 import { cn } from '@/lib/cn'
 
 export type CardTone = 'default' | 'sunken' | 'dark' | 'darkRaised' | 'accent'
@@ -64,17 +64,43 @@ const ELEVATIONS: Record<CardElevation, string> = {
   e3: 'shadow-e3',
 }
 
-export function Card({
-  tone = 'default',
-  flush,
-  as: Element = 'div',
-  elevation,
-  className,
-  children,
-  ...props
-}: CardProps) {
+/**
+ * LA RÉFÉRENCE EST RELAYÉE, et l'absence se payait ailleurs.
+ *
+ * `Input`, `Select`, `Textarea` et `Button` relaient tous la leur depuis
+ * toujours ; `Card` était la seule primitive de conteneur à l'avaler. Une
+ * primitive qui ne relaie pas sa référence ne peut porter ni focus programmé,
+ * ni mesure, ni détection de clic extérieur — c'est-à-dire rien de ce qu'un
+ * panneau, une modale ou un menu réclament. On la recopie alors à la main, et
+ * c'est ce que l'audit des huit cartes de vitrine a trouvé.
+ *
+ * `HTMLElement` et non `HTMLDivElement` : `as` accepte quatre balises, et un
+ * `<li>` n'est pas un `<div>`. Le type le plus étroit qui les couvre toutes est
+ * leur ancêtre commun.
+ */
+export const Card = forwardRef<HTMLElement, CardProps>(function Card(
+  { tone = 'default', flush, as: balise = 'div', elevation, className, children, ...props },
+  ref,
+) {
+  /* LA BALISE EST RAMENÉE À UNE SEULE, et c'est la conversion qui porte tout le
+     polymorphisme.
+
+     Laissée à son union — `'div' | 'article' | 'section' | 'li'` — JSX exige de
+     la référence qu'elle satisfasse les QUATRE interfaces à la fois, donc leur
+     INTERSECTION : `HTMLDivElement & HTMLLIElement & …`, qu'aucune référence
+     réelle ne peut habiter. Mesuré : `Type '(instance: HTMLDivElement | null)
+     => void' is not assignable to type 'string & ((instance: HTMLLIElement |
+     null) => void)'`. L'union se retourne en intersection dès qu'elle passe en
+     position de paramètre, et c'est ce retournement, pas la référence, qui est
+     le problème.
+
+     Le contrat public reste `HTMLElement` : c'est ce que l'appelant déclare, et
+     c'est vrai des quatre balises. La conversion ne vaut qu'à l'intérieur. */
+  const Element = balise as 'div'
+
   return (
     <Element
+      ref={ref as React.Ref<HTMLDivElement>}
       /* `min-w-0` : une carte est un contenant, jamais une règle graduée.
          Posée dans une grille, elle hérite de `min-width: auto` et refuse donc
          de descendre sous la largeur intrinsèque de son contenu. La rangée de
@@ -95,7 +121,7 @@ export function Card({
       {children}
     </Element>
   )
-}
+})
 
 export interface CardHeaderProps {
   title: ReactNode

@@ -19,6 +19,20 @@ import { usePortfolio } from '@/data/PortfolioProvider'
 import { workTitle } from '@/data/workTitle'
 
 /**
+ * LA GRILLE DES DEUX COLONNES, nommée pour que l'attente ne s'en écarte pas.
+ *
+ * Elle s'écrivait DEUX fois dans ce fichier : une fois sur la rangée chargée,
+ * une fois sur le squelette qui l'annonce. Deux chaînes que rien ne tenait
+ * ensemble, dans le seul morceau du produit qu'aucune porte ne rend jamais —
+ * la démonstration n'attend pas, la vitrine n'a pas de squelette d'écran, et la
+ * mesure au navigateur mesure la page chargée. C'est ainsi que l'espace
+ * locataire s'est retrouvé à attendre sous quatre cartes pour en charger trois.
+ *
+ * Voir `squelettesFideles.test.ts`, qui tient désormais la règle.
+ */
+const GRILLE_DEUX_COLONNES = 'grid gap-4 lg:grid-cols-2'
+
+/**
  * Le dossier d'un logement.
  *
  * La question « que s'est-il passé dans ce logement ? » n'avait aucune réponse
@@ -116,7 +130,7 @@ export function UnitFile() {
         }
       />
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className={GRILLE_DEUX_COLONNES}>
         <Card>
           <CardHeader
             title={t('app.unitFile.occupancy')}
@@ -377,7 +391,7 @@ function DossierSkeleton() {
         description={<Skeleton line="body" className="w-full max-w-xs" />}
       />
       <SkeletonRegion>
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className={GRILLE_DEUX_COLONNES}>
           {[0, 1, 2, 3].map((i) => (
             <Skeleton key={i} radius="lg" className="h-48" />
           ))}
