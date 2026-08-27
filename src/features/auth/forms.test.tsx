@@ -486,17 +486,33 @@ describe('retour à l’accueil depuis l’authentification', () => {
    * n'apprenait donc jamais que le mot de passe qu'on tape est refusable, alors
    * que c'est la seule information du composant.
    *
-   * Ce cas vérifie la RÉGION vivante, pas le mot : citer « faible » reviendrait
-   * à recopier le barème qu'on prétend surveiller.
+   * Ce cas vérifie la RÉGION vivante, pas le mot.
+   *
+   * Sa première rédaction promettait déjà cela et faisait l'inverse : elle
+   * cherchait `/faible|correct|bon|fort/i`, c'est-à-dire le barème qu'elle
+   * prétendait ne pas recopier. Deux conséquences, et les deux se sont
+   * produites. Le barème a dérivé sans qu'elle bronche — les libellés disent
+   * « Moyen » et « Robuste », jamais « correct » ni « fort », si bien qu'elle ne
+   * tenait plus que par « faible ». Puis renommer ce seul niveau en « Trop
+   * court » l'a fait tomber, alors que RIEN de ce qu'elle garde n'avait bougé.
+   *
+   * On vise donc l'apparition de la région : rien d'annoncé tant qu'on n'a pas
+   * tapé, une région polie et non vide dès qu'on tape. Le vocabulaire des
+   * niveaux reste libre ; c'est `jaugeEtRefus.test.ts` qui tient leur SENS.
    */
   it('annonce le niveau du mot de passe au fil de la frappe', async () => {
     const user = userEvent.setup()
     await renderApp('/inscription/proprietaire')
 
+    const parlantes = () =>
+      Array.from(document.querySelectorAll('[aria-live]')).filter((r) => r.textContent?.trim())
+
+    expect(parlantes(), 'une région parle avant toute frappe').toHaveLength(0)
+
     await user.type(screen.getByLabelText(/^Mot de passe/), 'abc')
 
-    const jauge = screen.getByText(/faible|correct|bon|fort/i).closest('[aria-live]')
-    expect(jauge).not.toBeNull()
-    expect(jauge).toHaveAttribute('aria-live', 'polite')
+    const jauge = parlantes()
+    expect(jauge, 'rien n’est annoncé après la frappe').toHaveLength(1)
+    expect(jauge[0]).toHaveAttribute('aria-live', 'polite')
   })
 })

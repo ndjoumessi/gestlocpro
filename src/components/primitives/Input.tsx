@@ -120,7 +120,22 @@ export function PasswordStrength({ value }: { value: string }) {
   if (!value) return null
 
   const levels = [
-    { label: t('auth.strength.weak'), tone: 'bg-danger', text: 'text-danger' },
+    /*
+      LE PREMIER NIVEAU NOMME LE REFUS, PAS UNE QUALITÉ.
+
+      Il disait « Faible ». Les quatre mots se lisaient alors comme une échelle
+      de qualité — faible, moyen, bon, robuste — sur laquelle rien n'indiquait
+      OÙ SE TROUVE LA BARRIÈRE. Or elle est nette : le score 0 vaut exactement
+      « trop court », donc exactement « refusé » (voir `scorePassword`), et les
+      trois autres niveaux sont acceptés.
+
+      Un ambre qui veut dire « accepté, mais on peut mieux » se lit comme un
+      avertissement, c'est-à-dire comme un refus qui n'ose pas se dire. En
+      nommant le seul niveau bloquant par sa CAUSE, le rouge cesse d'être un
+      degré et redevient une barrière — et l'ambre redevient ce qu'il est, un
+      avis.
+    */
+    { label: t('auth.strength.tooShort'), tone: 'bg-danger', text: 'text-danger' },
     { label: t('auth.strength.fair'), tone: 'bg-warn', text: 'text-warn' },
     { label: t('auth.strength.good'), tone: 'bg-ok', text: 'text-ok' },
     { label: t('auth.strength.strong'), tone: 'bg-ok', text: 'text-ok' },

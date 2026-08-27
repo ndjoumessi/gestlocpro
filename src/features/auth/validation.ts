@@ -182,15 +182,30 @@ export function isClean(errors: Record<string, FieldError>): boolean {
 }
 
 /**
- * Robustesse d'un mot de passe : 0 = faible, 3 = robuste.
+ * Robustesse d'un mot de passe : 0 = refusé, 3 = robuste.
  *
  * Vit ici et non dans le composant qui l'affiche : c'est une règle de
  * validation, testable sans monter d'interface, et l'y laisser aurait fini par
  * la faire diverger des autres règles du même formulaire.
+ *
+ * ═══ LE NIVEAU 0 EST EXACTEMENT LE REFUS, ET C'EST STRUCTUREL ═══
+ *
+ * Le premier palier lit `LONGUEUR_MINIMALE_DU_MOT_DE_PASSE`, la constante que
+ * `validatePassword` applique. Score 0 ⟺ trop court ⟺ refusé : l'équivalence
+ * tient par construction et non par coïncidence.
+ *
+ * Elle tenait déjà, mais par un `8` recopié — un troisième littéral à côté de
+ * celui du validateur et de ceux des traductions. Rien n'aurait signalé le jour
+ * où l'un des deux seuils aurait bougé sans l'autre, et la jauge aurait alors
+ * peint en rouge un mot de passe accepté, ou en ambre un mot de passe refusé.
+ *
+ * Le second palier, lui, reste une valeur À PART : douze caractères ne
+ * conditionnent rien, ils distinguent « accepté » de « confortable ». C'est de
+ * l'avis, et l'avis n'a pas à s'aligner sur une règle.
  */
 export function scorePassword(value: string): 0 | 1 | 2 | 3 {
   let score = 0
-  if (value.length >= 8) score++
+  if (value.length >= LONGUEUR_MINIMALE_DU_MOT_DE_PASSE) score++
   if (value.length >= 12) score++
   if (
     /[^a-zA-Z0-9]/.test(value) ||

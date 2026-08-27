@@ -295,7 +295,7 @@ export const fr = {
     },
 
     strength: {
-      weak: 'Faible',
+      tooShort: 'Trop court',
       fair: 'Moyen',
       good: 'Bon',
       strong: 'Robuste',

@@ -239,7 +239,7 @@ export const en: Dictionary = {
     },
 
     strength: {
-      weak: 'Weak',
+      tooShort: 'Too short',
       fair: 'Fair',
       good: 'Good',
       strong: 'Strong',
