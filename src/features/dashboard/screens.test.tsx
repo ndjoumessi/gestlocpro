@@ -265,29 +265,54 @@ describe('indicatif de la fiche locataire', () => {
 })
 
 /**
- * Les cautions n'apparaissent en décision que pour qui peut trancher.
+ * Une décision n'entre dans la file que pour qui peut la prendre.
  *
- * « Ce qui demande une décision » listait les seuls devis de travaux et taisait
- * les cautions à arbitrer — la prérogative qui définit pourtant le propriétaire.
- * En les ajoutant, on ouvre le risque symétrique : les montrer au gestionnaire,
- * qui propose et ne décide pas. Une décision qu'on ne peut pas prendre ne
- * s'affiche pas comme une tâche, elle déplace l'attente.
+ * L'ancienne carte « ce qui demande une décision » listait les seuls devis et
+ * taisait les cautions à arbitrer — la prérogative qui définit pourtant le
+ * propriétaire. En les ajoutant, on a ouvert le risque symétrique : les montrer
+ * au GESTIONNAIRE, qui propose et ne décide pas. Une décision qu'on ne peut pas
+ * prendre ne s'affiche pas comme une tâche, elle déplace l'attente.
+ *
+ * LA CARTE A DISPARU, LA RÈGLE RESTE — et elle compte davantage qu'avant. La
+ * file du jour OUVRE désormais l'écran : une entrée qu'on ne peut pas traiter y
+ * serait la première chose que le gestionnaire lit, tous les matins.
+ *
+ * Les cas visent `[data-file-entree]` plutôt qu'un intitulé : la file marque ses
+ * lignes, et lire un texte rougirait à la première reformulation.
  */
-describe('décisions du tableau de bord', () => {
-  it('liste les cautions à arbitrer au propriétaire', async () => {
+describe('décisions de la file du jour', () => {
+  it('porte les cautions à arbitrer au propriétaire', async () => {
     await renderApp('/app')
-    expect(await screen.findByText(/caution à arbitrer · serge mbarga/i)).toBeInTheDocument()
+    await screen.findByRole('heading', { name: /à traiter/i })
+    expect(document.querySelector('[data-file-entree="cautions"]')).not.toBeNull()
   })
 
-  it('ne les montre pas au gestionnaire, qui ne peut pas les arbitrer', async () => {
+  it('ne les porte pas au gestionnaire, qui ne peut pas les arbitrer', async () => {
     await renderApp('/demo')
     await switchRole('manager')
     await attendreLeChargement()
 
-    expect(screen.queryByText(/caution à arbitrer/i)).not.toBeInTheDocument()
+    expect(document.querySelector('[data-file-entree="cautions"]')).toBeNull()
     // Et l'écran Cautions ne lui offre pas le geste non plus : les deux doivent
-    // dire la même chose, sans quoi la carte promet ce que l'écran refuse.
+    // dire la même chose, sans quoi la file promet ce que l'écran refuse.
     expect(screen.queryByRole('button', { name: /^arbitrer$/i })).not.toBeInTheDocument()
+  })
+
+  /**
+   * LE GESTIONNAIRE N'A PAS UNE FILE VIDE POUR AUTANT.
+   *
+   * Retirer une nature d'entrée à un rôle ouvre un défaut discret : si c'était
+   * la seule, il ouvre son écran sur « rien n'attend de vous » alors qu'il a du
+   * travail. Les impayés et les relevés ne dépendent d'aucun arbitrage, et ce
+   * cas le prouve plutôt que de le supposer.
+   */
+  it('laisse au gestionnaire ce qu’il peut traiter', async () => {
+    await renderApp('/demo')
+    await switchRole('manager')
+    await attendreLeChargement()
+
+    expect(document.querySelectorAll('[data-file-entree]').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Rien n’attend de vous')).not.toBeInTheDocument()
   })
 })
 
@@ -339,7 +364,7 @@ describe('réconciliation du recouvrement', () => {
 })
 
 /**
- * La légende d'un indicateur porte sur la MÊME population que son nombre.
+ * Une légende porte sur la MÊME population que le nombre qu'elle explique.
  *
  * « Impayés cumulés » totalisait les retards ET les règlements partiels, mais
  * sa note ne comptait que les retards : quatre locataires devaient, la note en
@@ -350,20 +375,42 @@ describe('réconciliation du recouvrement', () => {
  * mois, alors que le montant se calcule sur l'appel de loyers courant, comme
  * « encaissé ce mois » à côté ; et « impayés » nommait l'ensemble par sa moitié
  * la plus sévère, durcissant la lecture d'un parc qui se porte mieux.
+ *
+ * LA POPULATION SE LIT DÉSORMAIS DANS LA FILE, et c'est un progrès : elle
+ * n'est plus une légende sous un montant, elle EST le titre du travail. Une
+ * phrase qui compte faux se voit ; une note en gris sous un gros chiffre se
+ * lit rarement, et c'est bien pourquoi l'écart avait tenu si longtemps.
+ *
+ * L'indicateur, lui, a cessé de porter cette note — elle recopiait la file mot
+ * pour mot. Il dit maintenant la PART, qui le réconcilie avec sa voisine.
  */
 describe('reste à percevoir', () => {
   it('compte tous ceux qui doivent, partiels compris', async () => {
     await renderApp('/app')
 
-    // Deux éléments portent ce nom, et c'est voulu : la tuile et la ligne de
-    // réconciliation du recouvrement. On retient celle qui porte une note.
-    const cartes = (await screen.findAllByText(/^reste à percevoir$/i)).map(
-      (n) => n.closest('div[class*="rounded-lg"]') as HTMLElement,
+    const entree = (await screen.findByText(/loyers ne sont pas soldés/i)).closest(
+      '[data-file-entree="impayes"]',
     )
-    const carte = cartes.find((c) => /locataires/.test(c.textContent ?? ''))!
-
     // Trois en retard — A3, B2, C2 — plus un partiel, A5.
-    expect(carte).toHaveTextContent(/4 locataires/)
+    expect(entree).toHaveTextContent(/4 loyers/)
+  })
+
+  /**
+   * ET L'INDICATEUR NE LA RECOPIE PAS. C'est la moitié neuve de cette règle :
+   * la file nomme le travail, la rangée d'indicateurs le SITUE. Le jour où
+   * quelqu'un remettra « 4 locataires · jusqu'à 24 jours » sous le montant, il
+   * aura reconstruit la redondance que ce lot vient de retirer.
+   */
+  it('ne recopie pas la file dans la note de l’indicateur', async () => {
+    await renderApp('/app')
+    await screen.findByText(/loyers ne sont pas soldés/i)
+
+    const cartes = (await screen.findAllByText(/^reste à percevoir$/i)).map(
+      (n) => n.closest('[data-indicateur]') as HTMLElement | null,
+    )
+    const carte = cartes.find(Boolean)!
+    expect(carte).not.toHaveTextContent(/locataires/)
+    expect(carte).toHaveTextContent(/du loyer attendu/i)
   })
 
   it('ne promet plus un arriéré qui s’accumule', async () => {

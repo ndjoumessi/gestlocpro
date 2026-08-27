@@ -39,8 +39,18 @@ const SESSION_PROPRIETAIRE: EtatSession = {
   adhesions: [{ parkId: PARC, role: 'owner', parkName: 'Parc de test', currency: 'XAF' }],
 }
 
+/**
+ * `releveIncomplet` : le relevé dont l'index courant manque.
+ *
+ * C'est la seule donnée du produit qui allume encore un état sur une rangée
+ * d'indicateurs — celle de l'écran des relevés. Le tableau de bord n'en porte
+ * plus depuis que sa file du jour a repris l'urgence, et la règle « le repère
+ * suit l'état sans en fabriquer un second » n'a plus d'autre sujet où
+ * s'observer. Le paramètre existe donc pour cette règle-là, et pour elle seule.
+ */
 function parcAvec(
   logement: { status: 'paid' | 'overdue'; paidMinor: number; overdueDays: number | null },
+  releveIncomplet = false,
 ) {
   const serveur = installerFauxServeur()
   serveur.quand('GET', `/parks/${PARC}/portfolio`, {
@@ -71,7 +81,19 @@ function parcAvec(
       ],
       works: [],
       deposits: [],
-      readings: [],
+      readings: releveIncomplet
+        ? [
+            {
+              unitId: 'bbbbbbbb-2222-4333-8444-555555555555',
+              waterPrevious: 342,
+              waterCurrent: null,
+              powerPrevious: 4120,
+              powerCurrent: null,
+              readAt: null,
+              unitPriceMinor: 520,
+            },
+          ]
+        : [],
       inspections: [],
       notifications: [],
     },
@@ -103,18 +125,36 @@ describe('le repère visuel des indicateurs', () => {
     }
   })
 
+  /**
+   * LE CAS A CHANGÉ D'ÉCRAN, ET IL FAUT DIRE POURQUOI.
+   *
+   * Il s'observait sur le tableau de bord, dont la carte du reste à percevoir
+   * portait un état `danger`. Cette carte n'en porte plus : la FILE DU JOUR qui
+   * ouvre l'écran s'allume désormais sous la même condition, et deux rouges
+   * pour un fait — le même chiffre, à deux cents pixels — étaient la « seconde
+   * grammaire de couleur » que l'en-tête de ce fichier interdit.
+   *
+   * La règle vaut telle quelle sur l'écran des relevés, qui garde une carte en
+   * état à côté de cartes qui renseignent. C'est le dernier endroit du produit
+   * où une rangée d'indicateurs porte un état, donc le seul où la règle 2 peut
+   * encore s'observer — et l'y déplacer plutôt que la retirer est ce qui
+   * distingue une doctrine d'une assertion.
+   */
   it('prend le ton de l’état plutôt que d’en ajouter un second', async () => {
-    parcAvec({ status: 'overdue', paidMinor: 0, overdueDays: 24 })
-    await renderApp('/app', { session: SESSION_PROPRIETAIRE })
+    parcAvec({ status: 'overdue', paidMinor: 0, overdueDays: 24 }, true)
+    await renderApp('/app/releves', { session: SESSION_PROPRIETAIRE })
+    await screen.findByText(/relevé manquant pour la période/i)
 
-    const carte = (await screen.findByText(/1 locataire · jusqu’à 24 jours/i)).closest(
-      '[data-etat]',
+    const carte = document.querySelector('[data-etat]')
+    expect(carte, 'aucune carte en état sur les relevés').not.toBeNull()
+    const ton = carte!.getAttribute('data-etat')
+    expect(carte!.querySelector('[data-tuile]')).toHaveAttribute('data-tuile', ton!)
+
+    // Les voisines restent neutres : un état qui déteint sur elles ne dit plus
+    // laquelle appelle un geste.
+    const teintees = Array.from(document.querySelectorAll('[data-tuile]')).filter(
+      (tuile) => tuile.getAttribute('data-tuile') !== 'neutre',
     )
-    expect(carte?.querySelector('[data-tuile]')).toHaveAttribute('data-tuile', 'danger')
-
-    // Les trois autres restent neutres : un état qui déteint sur ses voisines
-    // ne dit plus laquelle appelle un geste.
-    const neutres = document.querySelectorAll('[data-tuile="neutre"]')
-    expect(neutres).toHaveLength(3)
+    expect(teintees).toHaveLength(1)
   })
 })

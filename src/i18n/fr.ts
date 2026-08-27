@@ -614,6 +614,29 @@ export const fr = {
        * l'appel, sans préjuger de la raison ni de l'ancienneté.
        */
       outstanding: 'Reste à percevoir',
+      outstandingShare: '{percent} % du loyer attendu',
+      queueTitle: 'À traiter',
+      queueCount: '{count} en attente',
+      queueCount_one: '{count} en attente',
+      queueEmptyTitle: 'Rien n’attend de vous',
+      queueEmptyBody:
+        'Aucun loyer en retard, aucun arbitrage en suspens, aucun relevé manquant. Cette liste se remplit d’elle-même dès qu’une échéance passe ou qu’un devis arrive.',
+      queueOverdueTitle: '{count} loyers ne sont pas soldés',
+      queueOverdueTitle_one: '{count} loyer n’est pas soldé',
+      queueOverdueDetail: '{amount} à percevoir · jusqu’à {days} jours de retard',
+      queueOverdueAction: 'Encaisser',
+      queueDepositsTitle: '{count} cautions attendent votre arbitrage',
+      queueDepositsTitle_one: '{count} caution attend votre arbitrage',
+      queueDepositsDetail: '{amount} retenus · {units}',
+      queueDepositsAction: 'Arbitrer',
+      queueQuotesTitle: '{count} devis attendent votre accord',
+      queueQuotesTitle_one: '{count} devis attend votre accord',
+      queueQuotesDetail: '{amount} engagés si vous validez · {units}',
+      queueQuotesAction: 'Décider',
+      queueReadingsTitle: '{count} relevés manquent pour facturer le mois',
+      queueReadingsTitle_one: '{count} relevé manque pour facturer le mois',
+      queueReadingsDetail: 'La refacturation reste incomplète tant qu’ils ne sont pas saisis · {units}',
+      queueReadingsAction: 'Saisir',
       occupancy: 'Taux d’occupation',
       // « vs mois précédent » accompagnait un écart mensuel qui a disparu :
       // il supposait un historique que le produit n'a pas, et l'indicateur

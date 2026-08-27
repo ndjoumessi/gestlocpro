@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { lien, useBase } from '@/lib/base'
+import { cn } from '@/lib/cn'
 import { Link, Navigate } from 'react-router-dom'
 import { useRole } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
-import { PaymentStatusPill, StatusPill } from '@/components/primitives/StatusPill'
-import { Icon } from '@/components/primitives/Icon'
+import { StatusPill } from '@/components/primitives/StatusPill'
 import { DonutChart, ProgressBar, StackedBarChart, StatCard } from '@/components/primitives/Charts'
 import { EmptyState } from '@/components/primitives/DataTable'
 import { Skeleton, SkeletonRegion, SkeletonStatRow } from '@/components/primitives/Skeleton'
@@ -17,8 +17,8 @@ import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
 import { useDates } from '@/lib/useDates'
 import { computeKpis } from '@/data/kpis'
 import { usePortfolio } from '@/data/PortfolioProvider'
-import { workTitle } from '@/data/workTitle'
 import { RecordPaymentModal } from './RecordPaymentModal'
+import { FileDuJour, type EntreeDeFile } from './FileDuJour'
 
 export function Dashboard() {
   const base = useBase()
@@ -108,7 +108,6 @@ export function Dashboard() {
    */
   const devis = works.filter((work) => work.status === 'quoted')
   const cautionsAArbitrer = role === 'owner' ? deposits.filter((d) => d.status === 'settling') : []
-  const rienATrancher = devis.length === 0 && cautionsAArbitrer.length === 0
 
   /**
    * Un parc sans aucun logement.
@@ -120,6 +119,81 @@ export function Dashboard() {
    * impraticables décourage plus qu'un écran vide qui n'en propose aucune.
    */
   const parcVide = units.length === 0
+
+  /**
+   * LA FILE DU JOUR, dérivée des mêmes données que les indicateurs.
+   *
+   * Rien n'est calculé ici qui ne l'était déjà : les retards, les cautions à
+   * arbitrer et les devis vivaient dans la page, en quatrième position, sous
+   * les chiffres. Ce qui change n'est pas la donnée, c'est ce que l'écran en
+   * fait — et l'ordre dans lequel il le dit.
+   *
+   * LE CRITÈRE D'ADMISSION EST STRICT, sans quoi la file redevient une rangée
+   * d'indicateurs sous un autre nom : une ligne n'entre que si elle nomme un
+   * TRAVAIL qu'une personne peut finir, et disparaît quand il l'est. Le taux
+   * d'occupation n'y a donc pas sa place ; les relevés manquants oui, parce
+   * qu'ils bloquent la facturation du mois et qu'on peut aller les saisir.
+   *
+   * L'ORDRE EST CELUI DU COÛT DE L'ATTENTE, pas celui du calcul : l'argent dû
+   * vieillit, un arbitrage laisse quelqu'un en suspens, une saisie manquante
+   * bloque une facture. `filter(Boolean)` en fin : une entrée absente n'est pas
+   * une ligne vide, elle n'existe pas.
+   */
+  const relevesManquants = readings.filter(
+    (r) => r.waterCurrent === null || r.powerCurrent === null,
+  )
+  const cautionsEnAttente = cautionsAArbitrer.reduce((somme, c) => somme + c.held, 0)
+  const devisEnAttente = devis.reduce((somme, w) => somme + (w.quotedAmount ?? 0), 0)
+
+  const file: EntreeDeFile[] = [
+    doivent.length > 0 && {
+      cle: 'impayes',
+      urgence: 'danger' as const,
+      icone: 'clock' as const,
+      titre: t('app.dashboard.queueOverdueTitle', { count: doivent.length }),
+      detail: t('app.dashboard.queueOverdueDetail', {
+        amount: money(outstanding, { round: true }),
+        days: maxOverdueDays,
+      }),
+      action: { libelle: t('app.dashboard.queueOverdueAction'), to: lien(base, 'paiements') },
+    },
+    cautionsAArbitrer.length > 0 && {
+      cle: 'cautions',
+      urgence: 'accent' as const,
+      icone: 'shield' as const,
+      titre: t('app.dashboard.queueDepositsTitle', { count: cautionsAArbitrer.length }),
+      detail: t('app.dashboard.queueDepositsDetail', {
+        amount: money(cautionsEnAttente, { round: true }),
+        units: cautionsAArbitrer
+          .map((c) => unitById(c.unitId)?.label ?? c.unitId)
+          .join(', '),
+      }),
+      action: { libelle: t('app.dashboard.queueDepositsAction'), to: lien(base, 'cautions') },
+    },
+    devis.length > 0 && {
+      cle: 'devis',
+      urgence: 'accent' as const,
+      icone: 'wrench' as const,
+      titre: t('app.dashboard.queueQuotesTitle', { count: devis.length }),
+      detail: t('app.dashboard.queueQuotesDetail', {
+        amount: money(devisEnAttente, { round: true }),
+        units: devis.map((w) => unitById(w.unitId)?.label ?? w.unitId).join(', '),
+      }),
+      action: { libelle: t('app.dashboard.queueQuotesAction'), to: lien(base, 'travaux') },
+    },
+    relevesManquants.length > 0 && {
+      cle: 'releves',
+      urgence: 'warn' as const,
+      icone: 'gauge' as const,
+      titre: t('app.dashboard.queueReadingsTitle', { count: relevesManquants.length }),
+      detail: t('app.dashboard.queueReadingsDetail', {
+        units: relevesManquants
+          .map((r) => unitById(r.unitId)?.label ?? r.unitId)
+          .join(', '),
+      }),
+      action: { libelle: t('app.dashboard.queueReadingsAction'), to: lien(base, 'releves') },
+    },
+  ].filter(Boolean) as EntreeDeFile[]
 
   return (
     <>
@@ -199,6 +273,31 @@ export function Dashboard() {
       ) : (
       <>
       {/*
+        ═══ LA FILE D'ABORD, LES CHIFFRES ENSUITE ═══
+
+        C'est l'inversion qui fait ce lot, et elle ne se mesure pas — aucune
+        porte de ce dépôt ne sait dire qu'un écran répond à la bonne question.
+        Elle s'argumente, donc, et voici l'argument.
+
+        L'écran ouvrait sur quatre indicateurs et un graphe de douze mois : il
+        répondait à « où en est le parc ». Celui qui l'ouvre le matin demande
+        « qu'est-ce que je dois traiter ». Les deux réponses y étaient déjà, mais
+        la seconde arrivait en QUATRIÈME position, sous les chiffres et sous le
+        graphe, coupée en deux cartes qui ne se savaient pas parentes — « ce qui
+        demande une décision » et « échéances du mois ».
+
+        Ce que l'inversion COÛTE, et il faut le dire : sur un parc bien tenu la
+        file est vide, et l'écran ouvre alors sur un état vide. C'est assumé —
+        c'est le seul endroit du produit où le vide est une bonne nouvelle, et il
+        est écrit comme telle plutôt que laissé en zone blanche.
+
+        LES INDICATEURS NE DISPARAISSENT PAS et ne rétrécissent pas. Un reste à
+        percevoir sans le loyer attendu ni le taux d'occupation ne se lit pas :
+        ils SITUENT la file, et c'est très exactement leur place — après elle.
+      */}
+      <FileDuJour entrees={file} />
+
+      {/*
         TROIS NIVEAUX DE LECTURE, ET L'ORDRE EN FAIT PARTIE.
 
         Les quatre cartes étaient égales — même taille, même graisse, même
@@ -220,7 +319,7 @@ export function Dashboard() {
         complément immédiat du reste à percevoir — les deux se lisent
         ensemble, et replier l'un des deux forcerait à chercher l'autre.
       */}
-      <div className={GRILLE_QUATRE_INDICATEURS}>
+      <div className={cn(GRILLE_QUATRE_INDICATEURS, 'mt-4')}>
         <StatCard
           /* UN VOCABULAIRE D'ICÔNES, PAS QUATRE DÉCORATIONS. Ce qui est encore
              dû se marque d'une HORLOGE ici comme sur l'écran des paiements ;
@@ -231,37 +330,42 @@ export function Dashboard() {
           label={t('app.dashboard.outstanding')}
           value={money(outstanding, { round: true })}
           /**
-           * LA SEULE DES QUATRE QUI PORTE UN ÉTAT, et seulement quand il y a
-           * quelque chose à traiter.
+           * L'ÉTAT A ÉTÉ RETIRÉ D'ICI, ET C'EST LA FILE QUI L'A REPRIS.
            *
-           * Le commentaire au-dessus de cette rangée affirme depuis plusieurs
-           * lots que « ce sur quoi il agit, c'est le RESTE À PERCEVOIR ». Le
-           * rendu ne le disait nulle part : les quatre cartes étaient
-           * identiques au pixel, et « 4 locataires · jusqu'à 24 jours de
-           * retard » se lisait comme « 2 unités vacantes ». Une hiérarchie qui
-           * n'existe qu'en commentaire n'existe pas.
+           * Cette carte portait `etat={doivent.length > 0 ? danger : undefined}`
+           * — une pastille rouge et une bordure rouge, conditionnées à ce qui
+           * les justifie. C'était juste tant que rien d'autre ne portait
+           * l'urgence sur cet écran.
            *
-           * `danger` ET NON `warn`, parce que c'est le ton que le produit donne
-           * déjà à `overdue` — voir `PAYMENT_TONES`. Un second vocabulaire de
-           * couleurs pour le même état rouvrirait la porte à deux lectures du
-           * rouge.
+           * LA FILE LA PORTE DÉSORMAIS, sous la MÊME condition : sa première
+           * entrée s'allume sur `doivent.length > 0`, exactement. Les deux ne
+           * pouvaient donc pas diverger — elles s'allumaient et s'éteignaient
+           * ensemble, à deux cents pixels d'écart, pour dire le même fait avec
+           * le même chiffre. Deux rouges pour une chose, c'est précisément la
+           * « seconde lecture du rouge » que le commentaire retiré interdisait
+           * lui-même.
            *
-           * LA CONDITION EST LE CŒUR DU LOT. Sur un parc où tout le monde a
-           * payé, `doivent` est vide, le montant est nul, et la carte redevient
-           * l'une des quatre — grise, sans pastille, sans bordure. Une alerte
-           * permanente cesse d'alerter ; celle-ci ne s'allume que sur la donnée
-           * qui la justifie, et elle s'éteint toute seule quand le travail est
-           * fait.
+           * CE QUI EST GARDÉ N'EST PAS PERDU : la conditionnalité — l'alerte qui
+           * s'allume sur la donnée qui la justifie et s'éteint quand le travail
+           * est fait — est la propriété qui comptait, et `indicateurEnEtat`
+           * l'observe maintenant sur la file. La carte redevient ce qu'elle est
+           * ici : un nombre qui SITUE la file, pas qui la double.
            */
-          etat={
-            doivent.length > 0
-              ? { ton: 'danger', libelle: t('status.overdue') }
-              : undefined
-          }
-          note={t('app.dashboard.overdueTenants', {
-            count: doivent.length,
-            days: maxOverdueDays,
-          })}
+          /**
+           * LA NOTE SITUE, ELLE NE RÉPÈTE PLUS.
+           *
+           * Elle disait « 4 locataires · jusqu'à 24 jours de retard » —
+           * c'est-à-dire, mot pour mot, le détail de la première entrée de la
+           * file, deux cents pixels plus haut. Une rangée d'indicateurs qui
+           * recopie la file ne la situe pas, elle la double.
+           *
+           * La part manquante, elle, dit quelque chose que la file ne dit pas
+           * et RÉCONCILIE la carte avec sa voisine : « encaissé 68 % » et
+           * « reste 32 % » se lisent ensemble et font le loyer attendu de la
+           * troisième. C'est ce que les quatre nombres de cette rangée sont
+           * censés faire, et ce que `screens.test.tsx` garde par ailleurs.
+           */
+          note={t('app.dashboard.outstandingShare', { percent: 100 - collectedShare })}
         />
         <StatCard
           icone="card"
@@ -449,73 +553,36 @@ export function Dashboard() {
             </div>
           </Card>
 
-          <Card>
-            <CardHeader title={t('app.dashboard.decisionsTitle')} level={2} />
-            {rienATrancher ? (
-              <p className="text-body text-muted">{t('app.dashboard.decisionsEmpty')}</p>
-            ) : (
-              <ul className="flex flex-col gap-3">
-                {cautionsAArbitrer.map((caution) => (
-                  <li key={`caution-${caution.unitId}`} className="flex items-start gap-3">
-                    <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-accent-tint text-accent-ink">
-                      <Icon name="shield" size={15} />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-body font-medium">
-                        {t('app.dashboard.decisionDeposit', {
-                          tenant: caution.tenant ?? t('app.deposits.formerTenant'),
-                        })}
-                      </p>
-                      <p className="mt-0.5 text-caps text-muted">
-                        {unitById(caution.unitId)?.label ?? caution.unitId} ·{' '}
-                        {money(caution.held, { round: true })}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-                {devis.map((work) => (
-                  <li key={work.id} className="flex items-start gap-3">
-                    <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-accent-tint text-accent-ink">
-                      <Icon name="wrench" size={15} />
-                    </span>
-                    <div className="min-w-0">
-                      {/* Deux natures d'intitulé cohabitent : une clé pour le jeu
-                          de démonstration, un texte libre dès que le locataire
-                          l'écrit. Sans ce point de passage, l'écran rendrait
-                          `app.works.samples.undefined` — un défaut qui compile. */}
-                      <p className="text-body font-medium">{workTitle(work, t)}</p>
-                      <p className="mt-0.5 text-caps text-muted">
-                        {/* Un signalement ne porte que l'identifiant technique de
-                            l'unité : le libellé se relit depuis le parc. Afficher
-                            `work.unitId` montrerait un uuid le jour où les données
-                            viendront du serveur. */}
-                        {unitById(work.unitId)?.label} · {work.reference ?? work.id} ·{' '}
-                        {/* Le DEVIS, et non le montant qui fait foi : cette carte
-                            ne liste que `status === 'quoted'`, c'est-à-dire ce qui
-                            attend une décision. L'engagé y serait toujours nul. */}
-                        {work.quotedAmount
-                          ? money(work.quotedAmount, { round: true })
-                          : t('app.works.noQuote')}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {/* Deux natures dans la carte, donc deux sorties : renvoyer aux seuls
-                travaux laisserait les cautions listées sans moyen d'agir dessus,
-                ce qui est la même omission que celle qu'on vient de corriger. */}
-            <div className="mt-4 -ml-3.5 flex flex-wrap items-center gap-2">
-              <Button variant="ghost" to={lien(base, 'travaux')} iconAfter="chevronRight">
-                {t('nav.works')}
-              </Button>
-              {cautionsAArbitrer.length > 0 && (
-                <Button variant="ghost" to={lien(base, 'cautions')} iconAfter="chevronRight">
-                  {t('nav.deposits')}
-                </Button>
-              )}
-            </div>
-          </Card>
+        {/*
+          ═══ DEUX CARTES ONT DISPARU ICI, ET C'EST LA FILE QUI LES A PRISES ═══
+
+          « Ce qui demande une décision » listait les cautions à arbitrer et les
+          devis à valider ; « Échéances du mois » listait les quatre premiers
+          logements non soldés. Ce sont, mot pour mot, les lignes 1 à 3 de la
+          file du jour — et elles arrivaient en quatrième position, sous les
+          chiffres et sous le graphe.
+
+          Elles n'étaient pas seulement redondantes : c'étaient des COPIES
+          TRONQUÉES d'écrans qui existent. « Échéances » montrait `slice(0, 4)`
+          d'une liste dont l'écran des encaissements porte l'intégralité, avec
+          ses filtres et son export. Une carte de tableau de bord qui rejoue les
+          quatre premières lignes d'un autre écran n'informe pas, elle diffère.
+
+          La file, elle, ne recopie rien : elle NOMME le travail, en donne
+          l'ampleur — montant, ancienneté, unités — et renvoie à l'écran qui le
+          porte en entier. Le tableau de bord cesse d'être une vitrine de
+          fragments pour devenir une porte d'entrée.
+
+          CE QUE ÇA PERD, et il faut le dire : on ne voit plus d'un coup d'œil
+          QUELS logements sont en retard. Le détail est à un clic, et la file en
+          nomme déjà les unités quand elles sont peu nombreuses. Sur un parc de
+          trois cents lots, aucune de ces deux cartes n'aidait de toute façon.
+
+          Le découpage a été trouvé par une COLLISION DE PROSE, pas par l'œil :
+          l'état vide de la file écrivait « cette liste se remplit d'elle-même »,
+          une phrase que l'échéancier portait déjà. Deux textes qui se
+          ressemblent à ce point disent la même chose.
+        */}
         </div>
       </div>
 
@@ -523,51 +590,6 @@ export function Dashboard() {
           deux-ci renseignent sans rien demander, elles tiennent donc la largeur
           à deux plutôt que de laisser une colonne vide là où il y en avait trois. */}
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader title={t('app.dashboard.scheduleTitle')} level={2} />
-          {/*
-            LA SEULE DES TROIS CARTES SANS ÉTAT VIDE, et sur l'état NORMAL d'un
-            parc bien tenu.
-
-            Ses deux voisines en ont un ; celle-ci se réduisait à un titre
-            au-dessus d'une zone blanche dès que tous les loyers étaient
-            encaissés. Un gestionnaire qui a bien travaillé voyait donc un
-            silence là où il attendait une confirmation, et rien ne distinguait
-            « rien à faire » de « rien ne s'est chargé ».
-
-            Le corps dit AUSSI comment la liste se remplit : sans cela, un
-            compte neuf lit « aucune échéance » et croit à une panne de saisie.
-          */}
-          {units.filter((unit) => unit.status !== 'paid' && unit.status !== 'vacant').length === 0 ? (
-            <EmptyState
-              icon="calendar"
-              title={t('app.dashboard.scheduleEmptyTitle')}
-              body={t('app.dashboard.scheduleEmptyBody')}
-            />
-          ) : (
-          <ul className="flex flex-col gap-3">
-            {units.filter((unit) => unit.status !== 'paid' && unit.status !== 'vacant')
-              .slice(0, 4)
-              .map((unit) => (
-                <li key={unit.id} className="flex items-center gap-3">
-                  <span className="numeric w-9 shrink-0 text-body font-medium">{unit.label}</span>
-                  <span className="min-w-0 flex-1 truncate text-body text-muted">
-                    {unit.tenant}
-                  </span>
-                  <PaymentStatusPill status={unit.status} size="sm" />
-                </li>
-              ))}
-          </ul>
-          )}
-          <Button
-            variant="ghost"
-            to={lien(base, 'paiements')}
-            iconAfter="chevronRight"
-            className="mt-4 -ml-3.5"
-          >
-            {t('nav.payments')}
-          </Button>
-        </Card>
 
         <Card tone="dark">
           <CardHeader title={t('app.dashboard.breakdownTitle')} level={2} />

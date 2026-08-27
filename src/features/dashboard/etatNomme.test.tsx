@@ -111,15 +111,35 @@ function parcEnDefaut() {
 }
 
 describe('une carte en état nomme son état', () => {
-  it('sur le tableau de bord, par sa PASTILLE — « reste à percevoir » ne dit rien de fâcheux', async () => {
+  /**
+   * SUR LE TABLEAU DE BORD, C'EST LA FILE QUI PORTE L'URGENCE — et elle la dit
+   * dans son TITRE, ce qui est plus fort qu'une pastille.
+   *
+   * La carte du reste à percevoir portait un état `danger` et une pastille
+   * « En retard ». Elle n'en porte plus : la file s'allume sous la même
+   * condition, et deux rouges pour un fait valaient une seconde lecture du
+   * rouge.
+   *
+   * Ce que la file fait de mieux : son urgence n'est pas une pastille à côté
+   * d'un nombre, c'est une PHRASE — « 1 loyer n'est pas soldé ». Elle survit
+   * donc à une impression en noir et blanc, à une déficience rouge-vert, et à
+   * un lecteur d'écran, sans qu'aucun mot de statut n'ait à être ajouté.
+   *
+   * Le trait de couleur, lui, est `aria-hidden` par construction : il ne dit
+   * rien que le titre ne dise, ce qu'exige `couleur-non-seule`.
+   */
+  it('sur le tableau de bord, par sa PHRASE — la file nomme le travail', async () => {
     parcEnDefaut()
     await renderApp('/app', { session: SESSION_PROPRIETAIRE })
 
-    const carte = (await screen.findByText(/1 locataire · jusqu’à 24 jours/i)).closest(
-      '[data-etat]',
-    )
-    expect(carte).toHaveAttribute('data-etat', 'danger')
-    expect(carte).toHaveTextContent(/en retard/i)
+    const entree = (await screen.findByText(/n’est pas soldé/i)).closest('[data-file-entree]')
+    expect(entree).toHaveAttribute('data-file-entree', 'impayes')
+    /* Le trait d'urgence est retiré de l'arbre d'accessibilité : ce qui reste,
+       lu à voix haute, doit suffire. */
+    for (const trait of Array.from(entree!.querySelectorAll('span[aria-hidden="true"]'))) {
+      expect(trait).toHaveAttribute('aria-hidden', 'true')
+    }
+    expect(entree).toHaveTextContent(/jours de retard/i)
   })
 
   it('sur les paiements, par son INTITULÉ — la carte s’appelle « En retard »', async () => {

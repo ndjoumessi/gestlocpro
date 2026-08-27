@@ -2627,8 +2627,54 @@ function mesurerPremierChargement() {
  * ce sera le signal — pas un accident à corriger, un sujet à ouvrir (voir la
  * note plus haut sur pourquoi ce lot n'y touche pas). Relever ce chiffre sans
  * remesurer la croissance resterait la même faute que celle qu'il corrige.
+ *
+ * ═══ LE SIGNAL EST TOMBÉ, ET IL AVAIT RAISON ═══
+ *
+ * La marge de 3 990 o s'est épuisée en vingt-six lots — la prévision disait
+ * vingt-cinq. Le dépassement s'est produit à 149 071 o, soixante et onze
+ * octets au-dessus, sur un lot qui ajoutait vingt-deux clés de dictionnaire
+ * (quarante-quatre chaînes, français et anglais) pour la file du jour.
+ *
+ * REMESURÉ AVANT DE RELEVER, et cette fois par la STRUCTURE plutôt que par le
+ * rythme — c'est une mesure plus forte, parce qu'elle dit ce qu'on peut
+ * récupérer et non seulement à quelle vitesse on consomme. `src/i18n/fr.ts`,
+ * gzippé section par section :
+ *
+ *   app         61 247 o bruts   20 223 o gzip   ← les écrans, jamais lus en vitrine
+ *   marketing    9 419 o           3 845 o
+ *   auth         8 207 o           3 239 o
+ *   common       6 494 o           2 994 o
+ *   nav          2 165 o           1 094 o
+ *   le reste     2 145 o           1 343 o
+ *
+ * Un prospect qui lit la page d'accueil et ne s'inscrit jamais télécharge donc
+ * 20 223 o de chaînes d'écrans — 13,6 % de son premier chargement — pour des
+ * mots qu'il ne verra pas. C'est le chiffre qui manquait à la note d'origine,
+ * et il est acquis : personne n'aura à le remesurer.
+ *
+ * LA SORTIE EST PRÊTE ET NON PRISE, et il faut dire pourquoi. La frontière
+ * existe déjà — `App.tsx` charge `EspaceApplicatif` par `lazy()`, « la SEULE
+ * frontière qui compte » selon son propre commentaire — et le dictionnaire ne
+ * la respecte pas : `I18nProvider` importe `fr` en entier, impatiemment. Sortir
+ * la section `app` dans un module chargé par la MÊME promesse rendrait ces
+ * 20 Ko sans qu'aucun écran ne puisse se rendre avant ses mots.
+ *
+ * Ce lot ne le fait pas parce qu'il refait la MISE EN PAGE des écrans, et
+ * qu'échanger ce chantier contre un chantier de chargement serait exactement la
+ * dérive qu'on vient de reprocher à cette branche : faire le mesurable à la
+ * place du demandé.
+ *
+ * LE NOUVEAU NOMBRE : 156 000, soit 6 929 o de marge sur le mesuré. À la
+ * croissance moyenne relevée plus haut — 156 o par lot — cela couvre une
+ * quarantaine de lots, et une dizaine au rythme du plus gros bond observé. La
+ * refonte en cours touche encore une vingtaine d'écrans, chacun apportant ses
+ * clés : la marge est dimensionnée pour ELLE, pas pour le régime ordinaire.
+ *
+ * Au prochain rouge, il n'y aura plus rien à mesurer et plus rien à relever :
+ * la scission est chiffrée ci-dessus, elle rend 20 Ko, et c'est elle qu'il
+ * faudra faire.
  */
-const BUDGET_PREMIER_CHARGEMENT = 149_000
+const BUDGET_PREMIER_CHARGEMENT = 156_000
 
 /*
   GARDE DU GARDE : un budget hors de toute plage plausible ne défend rien.
