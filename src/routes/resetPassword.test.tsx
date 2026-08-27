@@ -104,17 +104,20 @@ describe('formulaire de réinitialisation', () => {
     expect(screen.getByRole('link', { name: /se connecter/i })).toHaveAttribute('href', '/connexion')
   })
 
-  it('annonce que les autres sessions sont déconnectées', async () => {
-    const user = userEvent.setup()
-    await renderApp(AVEC_JETON)
+  /*
+    CE CAS ÉPINGLAIT LA PHRASE, ET LA PHRASE ÉTAIT FAUSSE.
 
-    await user.type(screen.getByLabelText(/^Nouveau mot de passe/), 'Bonamoussadi2026!')
-    await user.type(screen.getByLabelText(/^Confirmez/), 'Bonamoussadi2026!')
-    await user.click(screen.getByRole('button', { name: /enregistrer le mot de passe/i }))
+    Il exigeait « sessions ouvertes ont été déconnectées » au mot près. Deux
+    défauts en un : il cassait à la moindre réécriture, et il a gardé pendant
+    tout ce temps un texte qui parlait des « AUTRES sessions » — alors qu'aucune
+    n'est courante ici, puisqu'on arrive depuis un courriel sans être connecté,
+    et que le serveur les révoque TOUTES.
 
-    // Conséquence non évidente d'un changement de mot de passe : on la dit.
-    expect(await screen.findByText(/sessions ouvertes ont été déconnectées/i)).toBeInTheDocument()
-  })
+    Un cas qui vérifie une chaîne exacte ne garde pas un fait, il garde une
+    rédaction. Ce qui doit tenir est déplacé dans « ce que l'écran annonce des
+    sessions », plus bas : le mot « session » doit paraître, la formulation
+    reste libre, et « les autres » est explicitement refusé.
+  */
 })
 
 describe('ce que le serveur décide', () => {
@@ -202,5 +205,51 @@ describe('la demande de lien', () => {
      */
     expect(await screen.findByText(/Action impossible pour l’instant/)).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /Vérifiez votre boîte mail/ })).not.toBeInTheDocument()
+  })
+})
+
+/**
+ * L'ÉCRAN DOIT DIRE QUE LES SESSIONS TOMBENT.
+ *
+ * `POST /auth/reset` révoque toutes les sessions du compte et n'en rouvre
+ * aucune — le serveur le garde par son cas « éjecte les sessions ouvertes, y
+ * compris celle de l'intrus ». L'écran, lui, promettait l'inverse : « Il
+ * remplacera l'ancien sur tous vos appareils connectés », qui laisse croire que
+ * les appareils restent connectés. Et l'écran de succès parlait des « AUTRES
+ * sessions », alors qu'aucune n'est courante ici : on arrive depuis un
+ * courriel, sans être connecté.
+ *
+ * ═══ CE QUE CES DEUX CAS GARDENT, ET CE QU'ILS NE GARDENT PAS ═══
+ *
+ * Ils gardent le FAIT — que la fermeture des sessions soit dite —, jamais la
+ * formulation : on ne cherche pas une phrase, on cherche que le mot « session »
+ * apparaisse là où l'utilisateur décide et là où on lui rend compte. Récrire la
+ * phrase reste libre ; la vider ne l'est pas.
+ *
+ * Ils ne gardent PAS que la phrase soit vraie. Rien ici ne parle au serveur, et
+ * une prose peut être présente et fausse — c'était précisément le cas d'avant.
+ * C'est le cas serveur cité plus haut qui tient la vérité ; celui-ci tient
+ * seulement qu'on ne la taise pas.
+ */
+describe('ce que l’écran annonce des sessions', () => {
+  it('prévient AVANT, sur le formulaire', async () => {
+    await renderApp(AVEC_JETON)
+    const soustitre = screen.getByRole('heading', { level: 1 }).parentElement!
+    expect(soustitre.textContent).toMatch(/session/i)
+  })
+
+  it('le redit APRÈS, sur la confirmation', async () => {
+    const utilisateur = userEvent.setup()
+    await renderApp(AVEC_JETON)
+
+    await utilisateur.type(screen.getByLabelText(/nouveau mot de passe/i), 'un-mot-de-passe-long')
+    await utilisateur.type(screen.getByLabelText(/confirmez/i), 'un-mot-de-passe-long')
+    await utilisateur.click(screen.getByRole('button', { name: /enregistrer le mot de passe/i }))
+
+    const titre = await screen.findByRole('heading', { level: 1, name: /mot de passe modifié/i })
+    expect(titre.parentElement!.textContent).toMatch(/session/i)
+    /* Et surtout PAS « les autres » : il n'y a pas de session courante dont
+       celles-ci seraient les autres. C'est l'erreur exacte qui vivait ici. */
+    expect(titre.parentElement!.textContent).not.toMatch(/autres sessions/i)
   })
 })

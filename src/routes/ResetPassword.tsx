@@ -28,6 +28,25 @@ import {
  * expiré » avec le moyen d'en redemander un — plutôt qu'un formulaire qui
  * échouerait à l'envoi, après que l'utilisateur a choisi et retapé un mot de
  * passe pour rien.
+ *
+ * ═══ CE QUE L'ÉCRAN DISAIT, ET CE QUE LE SERVEUR FAIT ═══
+ *
+ * Le sous-titre promettait : « Il remplacera l'ancien sur tous vos appareils
+ * connectés. » Il laissait entendre que le nouveau mot de passe se PROPAGE et
+ * que les appareils restent connectés. C'est l'inverse : `POST /auth/reset`
+ * révoque toutes les sessions du compte en une transaction —
+ * `session.updateMany({ userId, revokedAt: null })` — et n'en rouvre AUCUNE,
+ * délibérément, pour ne pas accorder un accès sur la seule preuve d'un lien reçu.
+ *
+ * L'écran de succès se trompait dans l'autre sens : « Les AUTRES sessions
+ * ouvertes ont été déconnectées » suppose qu'il en reste une, la courante. Il
+ * n'y en a pas — on arrive ici depuis un courriel, sans être connecté — et ce
+ * ne sont pas « les autres » mais TOUTES.
+ *
+ * L'erreur du sous-titre était la coûteuse des deux : quelqu'un qui réinitialise
+ * parce qu'un intrus est entré avait besoin de savoir que l'intrus tombe. C'est
+ * précisément ce que le serveur garde par son cas « éjecte les sessions
+ * ouvertes, y compris celle de l'intrus », et que l'écran taisait.
  */
 export function ResetPassword() {
   const t = useT()

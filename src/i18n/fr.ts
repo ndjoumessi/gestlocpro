@@ -277,14 +277,15 @@ export const fr = {
 
     reset: {
       title: 'Choisissez un nouveau mot de passe',
-      subtitle: 'Il remplacera l’ancien sur tous vos appareils connectés.',
+      subtitle:
+        'Toutes vos sessions seront fermées : il faudra vous reconnecter sur chaque appareil.',
       newPassword: 'Nouveau mot de passe',
       confirm: 'Confirmez le mot de passe',
       confirmHint: 'Retapez-le à l’identique.',
       submit: 'Enregistrer le mot de passe',
       successTitle: 'Mot de passe modifié',
       successBody:
-        'Vous pouvez vous connecter avec votre nouveau mot de passe. Les autres sessions ouvertes ont été déconnectées.',
+        'Vous pouvez vous connecter avec votre nouveau mot de passe. Toutes les sessions ouvertes ont été fermées, y compris celles dont vous n’êtes pas à l’origine.',
       goToLogin: 'Se connecter',
       invalidTitle: 'Ce lien n’est plus valable',
       invalidBody:

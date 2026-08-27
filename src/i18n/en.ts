@@ -221,14 +221,15 @@ export const en: Dictionary = {
 
     reset: {
       title: 'Choose a new password',
-      subtitle: 'It replaces the old one on every device you are signed in on.',
+      subtitle:
+        'Every session will be closed: you will need to sign in again on each device.',
       newPassword: 'New password',
       confirm: 'Confirm the password',
       confirmHint: 'Type it again, identically.',
       submit: 'Save the password',
       successTitle: 'Password changed',
       successBody:
-        'You can sign in with your new password. Any other open sessions have been signed out.',
+        'You can sign in with your new password. Every open session has been closed, including any you did not start.',
       goToLogin: 'Sign in',
       invalidTitle: 'This link is no longer valid',
       invalidBody:
