@@ -5,6 +5,7 @@ import { useT } from '@/i18n/I18nProvider'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { formatMoney } from '@/currency/currencies'
 import { useDates } from '@/lib/useDates'
+import { partiesDeDateISO } from '@/lib/dates'
 import { api, ApiError } from '@/api/client'
 import { useSession } from '@/api/SessionProvider'
 import { useRole } from '@/components/layout/AppShell'
@@ -162,12 +163,6 @@ export function ReceiptModal({
 
   const [annee, mois] = periodStart.split('-').map(Number)
 
-  /** `AAAA-MM-JJ` en parties, pour le formateur de dates du produit. */
-  const partsDe = (iso: string) => {
-    const [y, m, j] = iso.split('-').map(Number)
-    return { year: y!, month: m!, day: j! }
-  }
-
   /**
    * Le moyen de paiement en clair.
    *
@@ -259,7 +254,7 @@ export function ReceiptModal({
               {document.payments.map((p) => (
                 <li key={p.id} className="flex flex-wrap items-center justify-between gap-2">
                   <span>
-                    {d.fullDate(partsDe(p.paidOn))} · {libelleMoyen(p.method)}
+                    {d.fullDate(partiesDeDateISO(p.paidOn))} · {libelleMoyen(p.method)}
                     {p.reference ? ` · ${p.reference}` : ''}
                   </span>
                   <span className="flex items-center gap-2">
@@ -300,7 +295,7 @@ export function ReceiptModal({
                           setARetirer({
                             id: p.id,
                             montant: money(p.amountMinor),
-                            date: d.fullDate(partsDe(p.paidOn)),
+                            date: d.fullDate(partiesDeDateISO(p.paidOn)),
                           })
                         }
                       />

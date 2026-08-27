@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import { useLocation } from 'react-router-dom'
+import { partiesDeDateISO } from '@/lib/dates'
 
 /**
  * Durée de l'attente SIMULÉE, en démonstration seulement.
@@ -93,10 +94,7 @@ import { hasStoredState, loadState, resetState, saveState } from './persistence'
  */
 /** `AAAA-MM-JJ` en parties de date, ou aujourd'hui. */
 function dateDuJour(iso?: string): { year: number; month: number; day: number } {
-  if (iso) {
-    const [a, m, j] = iso.split('-').map(Number)
-    return { year: a!, month: m!, day: j! }
-  }
+  if (iso) return partiesDeDateISO(iso)
   const maintenant = new Date()
   return {
     year: maintenant.getFullYear(),

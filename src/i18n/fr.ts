@@ -863,6 +863,8 @@ export const fr = {
       utility: 'Énergie',
       price: 'Prix unitaire',
       priceHint: 'Par mètre cube pour l’eau, par kilowattheure pour l’électricité.',
+      demoNoSave:
+        'La démonstration n’enregistre pas de prix : ceux de l’historique sont ceux qu’elle applique à ses relevés, et ils ne quittent pas la visite.',
       priceInvalid: 'Saisissez un prix entier supérieur à zéro.',
       effectiveFrom: 'À partir du',
       effectiveFromHint:

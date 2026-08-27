@@ -8,15 +8,10 @@ import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
+import { partiesDeDateISO } from '@/lib/dates'
 import { useSession } from '@/api/SessionProvider'
+import { TARIFS_DEMO_DATES } from '@/data/portfolio'
 import { ApiError, api } from '@/api/client'
-
-/** `AAAA-MM-JJ` en parties, pour le formateur de dates du produit — la même
-    conversion que `ReceiptModal`, qui reçoit la même forme du serveur. */
-const partsDe = (iso: string) => {
-  const [y, m, j] = iso.split('-').map(Number)
-  return { year: y!, month: m!, day: j! }
-}
 
 interface TarifApi {
   id: string
@@ -54,7 +49,7 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
     désignent aucun champ.
   */
   const [erreurPrix, setErreurPrix] = useState<string | undefined>(undefined)
-  const { adhesionActive } = useSession()
+  const { adhesionActive, estDemo } = useSession()
   const parkId = adhesionActive?.parkId ?? null
 
   const [tarifs, setTarifs] = useState<TarifApi[]>([])
@@ -72,16 +67,50 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
   const [envoi, setEnvoi] = useState(false)
 
   useEffect(() => {
-    if (!open || !parkId) return
+    if (!open) return
+    /*
+      LA DÉMONSTRATION SERT SES PROPRES PRIX, et ce n'est pas un ornement.
+
+      Sans parc, l'appel ne partait pas et la liste restait vide : la modale
+      affichait « aucun prix posé ». Or l'écran des relevés, juste derrière
+      elle, MONTRE ces deux prix en indicateurs — il les lit sur les relevés de
+      la démonstration. L'éditeur des prix aurait donc démenti la page qui les
+      affiche, à un clic d'écart.
+
+      Les deux listes se dérivent de `TARIFS_DEMO` : elles ne peuvent pas
+      diverger. Voir `portfolio.ts` pour la date d'effet, qui est dérivée du
+      relevé le plus ancien plutôt qu'écrite.
+    */
+    if (!parkId) {
+      setTarifs(estDemo ? TARIFS_DEMO_DATES() : [])
+      return
+    }
     void api
       .tariffs<{ tariffs: TarifApi[] }>(parkId)
       .then((r) => setTarifs(r.tariffs))
       .catch(() => notify(t('common.actionFailed'), { tone: 'danger' }))
-  }, [open, parkId, notify, t])
+  }, [open, parkId, estDemo, notify, t])
 
   const enregistrer = (event: FormEvent) => {
     event.preventDefault()
-    if (!parkId) return
+    /**
+     * SANS PARC, ON LE DIT — on ne rendait rien.
+     *
+     * `if (!parkId) return` était muet : le bouton s'enfonçait, la modale
+     * restait ouverte, et rien n'arrivait. C'est le contrôle mort que ce dépôt
+     * retire partout, et il n'était visible de personne tant que la
+     * démonstration ne pouvait pas ouvrir cette modale.
+     *
+     * Le message dit ce que la démonstration ne fait pas ET ce qu'elle montre
+     * quand même : les deux prix de l'historique sont bien ceux que l'écran des
+     * relevés applique.
+     */
+    if (!parkId) {
+      notify(t(estDemo ? 'app.tariffs.demoNoSave' : 'common.actionFailed'), {
+        tone: estDemo ? 'neutral' : 'danger',
+      })
+      return
+    }
     // Un prix unitaire est un montant : il se lit comme les autres. `Number`
     // refusait « 1 250 » recopié depuis l'historique affiché juste en dessous —
     // le produit rejetait la forme qu'il venait lui-même d'imprimer.
@@ -220,7 +249,7 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
                       français ni en anglais : chaque autre écran de ce
                       périmètre passe par `useDates`, celui-ci l'affichait
                       encore tel quel. */}
-                  <span className="text-muted">{d.fullDate(partsDe(tarif.effectiveFrom))}</span>
+                  <span className="text-muted">{d.fullDate(partiesDeDateISO(tarif.effectiveFrom))}</span>
                 </span>
                 <span className="numeric font-medium">
                   {money(tarif.unitPriceMinor, { round: true })}

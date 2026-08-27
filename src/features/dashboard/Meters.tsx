@@ -40,18 +40,30 @@ export function Meters() {
   const csvMoney = useCsvMoney()
   const { role } = useRole()
   const { unitById, readings: TOUS, isMine, loading } = usePortfolio()
-  const { adhesionActive } = useSession()
+  const { adhesionActive, estDemo } = useSession()
   const [tarifsOuverts, setTarifsOuverts] = useState(false)
 
   /**
    * Poser un prix est un acte de PROPRIÉTAIRE, et il exige un vrai parc.
    *
    * Le rôle d'abord — fixer un prix engage l'argent du locataire, même partage
-   * que la validation d'un devis. Et l'adhésion ensuite : la démonstration n'a
-   * pas de parc à qui écrire, et lui offrir le bouton mènerait à un appel sans
-   * destinataire.
+   * que la validation d'un devis.
+   *
+   * L'ADHÉSION ENSUITE, MAIS PAS TOUTE SEULE. La condition lisait
+   * `adhesionActive !== null`, avec pour motif « la démonstration n'a pas de parc
+   * à qui écrire ». C'est vrai d'un compte connecté SANS parc ; c'est la même
+   * confusion que `Portfolio` portait pour la correction du parc — « personne à
+   * qui écrire » et « rien ne s'écrit » sont deux choses, et la seconde vaut
+   * pour tous les gestes de la démonstration.
+   *
+   * ELLE COÛTAIT PLUS QU'UN BOUTON, ET LE CAS EST PIRE QU'AILLEURS. Cet écran
+   * AFFICHE les deux prix de la démonstration, en indicateurs, lus sur ses
+   * relevés — mais la modale qui existe pour les montrer et les poser était
+   * inatteignable, donc hors de portée de `scripts/modales.mjs`, de la mesure de
+   * contraste et des cas clavier. Ouverte, elle aurait affiché « aucun prix
+   * posé » : l'éditeur des prix démentant, à un clic, la page qui les affiche.
    */
-  const peutPoserUnPrix = role === 'owner' && adhesionActive !== null
+  const peutPoserUnPrix = role === 'owner' && (adhesionActive !== null || estDemo)
 
   /* Le locataire ne voit que SES relevés : l'écran vient de s'ouvrir à lui,
      puisque l'eau et l'électricité lui sont refacturées. */

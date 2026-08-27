@@ -690,6 +690,8 @@ export const en: Dictionary = {
       utility: 'Utility',
       price: 'Unit price',
       priceHint: 'Per cubic metre for water, per kilowatt-hour for power.',
+      demoNoSave:
+        'The demo does not save prices: the ones listed below are those it applies to its own readings, and they never leave your visit.',
       priceInvalid: 'Enter a whole price greater than zero.',
       effectiveFrom: 'Effective from',
       effectiveFromHint:

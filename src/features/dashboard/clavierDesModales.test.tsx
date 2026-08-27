@@ -38,6 +38,9 @@ const MODALES: { nom: string; adresse: string; bouton: RegExp }[] = [
     rôle ACTIF, qui est connu en démonstration comme sur un vrai compte.
   */
   { nom: 'Corriger le parc', adresse: '/demo/parc', bouton: /^Corriger le parc$/ },
+  /* Sixième, et dernière des deux qui étaient inatteignables — même garde, même
+     confusion, même remède. Voir l'en-tête de `scripts/modales.mjs`. */
+  { nom: 'Prix de refacturation', adresse: '/demo/releves', bouton: /^Prix de refacturation$/ },
 ]
 
 async function parcoursClavier(adresse: string, motif: RegExp) {
@@ -214,8 +217,8 @@ describe('le clavier des modales', () => {
    * rendrait la garde d'accord avec elle-même, piège trouvé par la même
    * mutation trois lots de suite.
    */
-  it('a bien joué les cinq modales déclarées', () => {
-    expect(MODALES.length).toBe(5)
-    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(5)
+  it('a bien joué les six modales déclarées', () => {
+    expect(MODALES.length).toBe(6)
+    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(6)
   })
 })

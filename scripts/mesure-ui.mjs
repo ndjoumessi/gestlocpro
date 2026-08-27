@@ -605,6 +605,21 @@ const SURFACES_INTERACTIVES = [
       la modale la moins mesurée du produit — ni géométrie, ni couleurs, ni
       clavier.
     */
+    nom: 'prix-de-refacturation',
+    adresse: '/demo/releves',
+    largeur: 1280,
+    temoin: '[role="dialog"] form#tarif',
+    ouvrir: async (page) => {
+      await page.getByRole('button', { name: /^Prix de refacturation$|^Rebilling prices$/ }).first().click()
+    },
+  },
+  {
+    /*
+      LA SECONDE MODALE DE SAISIE, ET ELLE PORTE CE QUE L'AUTRE N'A PAS : une
+      LISTE de données sous un formulaire. Le contraste d'une ligne d'historique
+      — un libellé, une date en gris secondaire, un montant — n'était relevé
+      dans aucune modale, et celle-ci est la seule du produit à en porter une.
+    */
     nom: 'correction-du-parc',
     adresse: '/demo/parc',
     largeur: 1280,
@@ -809,9 +824,9 @@ const DECLENCHEURS_ATTENDUS = 5
   elle-même : vider la table, et l'on comparerait 0 à 0 avant de se déclarer
   vert. Le nombre est donc écrit, et l'ajout d'une surface oblige à le toucher.
 
-  14 = 7 surfaces × 2 thèmes.
+  16 = 8 surfaces × 2 thèmes.
 */
-const SURFACES_ATTENDUES = 14
+const SURFACES_ATTENDUES = 16
 
 /**
  * Neutralise ce qui bouge, AVANT de mesurer.

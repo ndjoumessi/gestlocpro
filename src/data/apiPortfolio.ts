@@ -1,4 +1,5 @@
 import { api } from '@/api/client'
+import { partiesDeDateISO } from '@/lib/dates'
 import type { PaymentStatus } from '@/components/primitives/StatusPill'
 import type {
   Alert,
@@ -543,10 +544,7 @@ export function consommations(
  * fuseau où la version fautive donne exactement le même résultat. Aucun cas
  * n'aurait pu attraper ce défaut ; seule sa disparition le prévient.
  */
-function jourCalendaire(iso: string) {
-  const [annee, mois, jour] = iso.slice(0, 10).split('-').map(Number)
-  return { year: annee!, month: mois! - 1, day: jour! }
-}
+const jourCalendaire = partiesDeDateISO
 
 /**
  * Décalage relatif depuis une date, en unités que `Intl.RelativeTimeFormat`

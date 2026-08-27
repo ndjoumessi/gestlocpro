@@ -31,23 +31,22 @@
  * première rédaction, qui inspectait CINQ modales sur douze en annonçant
  * « 20 états » :
  *
- *   — UNE MODALE SUR DOUZE NE S'OUVRE PAS ICI, `TariffsModal`. Son bouton est
+ *   — PLUS AUCUNE MODALE N'ÉCHAPPE À CE FICHIER, et c'est récent. Deux d'entre
+ *     elles — `ParkSettingsModal`, puis `TariffsModal` — avaient leur bouton
  *     gardé par `adhesionActive`, c'est-à-dire par un COMPTE RÉEL : en
- *     démonstration l'adhésion est nulle, donc le bouton n'est pas rendu du
- *     tout. Elle est comptée à part — `NON_OUVRABLES` — et sa GÉOMÉTRIE N'EST
- *     DONC MESURÉE PAR PERSONNE. C'est une dette, elle est nommée.
+ *     démonstration l'adhésion est nulle, le bouton n'était pas rendu, et leur
+ *     géométrie n'était mesurée par personne.
  *
- *     ELLES ÉTAIENT DEUX. `ParkSettingsModal` a rejoint la liste des ouvrables :
- *     sa garde confondait « personne à qui écrire » — vrai d'un compte sans parc
- *     — et « rien ne s'écrit » — vrai de la démonstration, comme de tous les
- *     gestes de son écran. Elle suit désormais le rôle ACTIF. `TariffsModal`
- *     demandera le même examen, mais elle écrit des TARIFS par parc et n'a pas
- *     d'équivalent local : son cas n'est pas le même, et le supposer serait
- *     recopier une conclusion.
+ *     La même confusion dans les deux cas : « personne à qui écrire » — vrai
+ *     d'un compte connecté sans parc — et « rien ne s'écrit » — vrai de la
+ *     démonstration, comme de tous les gestes de leurs écrans. Les deux suivent
+ *     désormais le rôle ACTIF.
  *
- *     `clavierDesModales.test.tsx` NE LES COUVRE PAS : ses quatre cas sont
- *     « Ajouter un immeuble », « Ajouter un logement », « Ouvrir un chantier »,
- *     « Enregistrer un paiement ».
+ *     Le second examen a rapporté un défaut de PRODUCTION que le premier n'avait
+ *     pas : l'historique des prix datait chaque ligne d'un mois de trop, et la
+ *     même conversion fautive servait la date de règlement d'une quittance.
+ *
+ *     `clavierDesModales.test.tsx` LES COUVRE TOUTES LES DEUX depuis.
  *
  *   — le CLAVIER. Piège de focus, Échap, retour du focus : ce sont les cas de
  *     `clavierDesModales.test.tsx`, joués sous jsdom où la tabulation est
@@ -132,6 +131,40 @@ const MODALES = [
     `avant` porte le 35 : il ne dit pas « ce lot a coûté », il dit d'où l'on
     vient et pourquoi le nombre a grandi.
   */
+  /*
+    TARIFFS ENTRE À SON TOUR, ET SON EXAMEN A RAPPORTÉ PLUS QUE LE PRÉCÉDENT.
+
+    Sa garde avait la même forme que celle de la correction du parc — `role ===
+    'owner' && adhesionActive !== null` — et le même motif écrit : « la
+    démonstration n'a pas de parc à qui écrire ». Même confusion, même remède.
+
+    MAIS SON CAS ÉTAIT PIRE. L'écran des relevés AFFICHE les deux prix de la
+    démonstration, en indicateurs, lus sur ses relevés. La modale qui existe
+    pour les montrer et les poser était inatteignable — et, ouverte telle
+    quelle, aurait affiché « aucun prix posé » : l'éditeur des prix démentant, à
+    un clic, la page qui les affiche. Elle sert donc en démonstration les prix
+    de la démonstration, dérivés de la même constante que les relevés.
+
+    ET C'EST EN L'OUVRANT QU'ON A VU LE DÉFAUT DE PRODUCTION : son historique
+    datait chaque prix d'un MOIS DE TROP. La conversion `AAAA-MM-JJ` vers les
+    parties de date était recopiée quatre fois dans le dépôt, et trois copies
+    oubliaient que les mois y sont indexés à partir de zéro — la quittance et
+    l'état des lieux frais étaient touchés aussi. Voir `lib/datesISO.test.ts`.
+  */
+  /*
+    LE PLAFOND DE 11, ET CE QU'IL NE GARDE PAS.
+
+    Onze pixels à 360 px, dans les deux langues, pied tenu : c'est la dernière
+    ligne de l'HISTORIQUE des prix qui dépasse. Trois champs et deux lignes de
+    liste, sur un écran de 780 — la modale est courte, et son action ne bouge pas.
+
+    CE CHIFFRE NE VAUT QUE POUR LA DÉMONSTRATION, et il faut le dire : la
+    longueur de l'historique dépend des DONNÉES. La démonstration en porte deux
+    lignes ; un parc qui aurait redaté ses prix vingt fois en porterait vingt, et
+    le corps défilerait d'autant. Ce plafond garde la forme de la modale, pas
+    celle d'un parc — aucune porte de ce dépôt ne visite un parc réel.
+  */
+  { nom: 'Tariffs', adresse: '/demo/releves', bouton: /^Prix de refacturation$|^Rebilling prices$/, defil: { 360: 11, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'ParkSettings', adresse: '/demo/parc', bouton: /^Corriger le parc$|^Correct the park$/, defil: { 360: 48, 1280: 0 }, avant: { 360: 35, 1280: 0 } },
   { nom: 'AddBuilding', adresse: '/demo/parc', bouton: /^Ajouter un immeuble$|^Add a building$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'AddUnit', adresse: '/demo/parc', bouton: /^Ajouter un logement$|^Add a unit$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
@@ -174,7 +207,34 @@ const MODALES = [
  * compte gardé, donc une troisième modale qui deviendrait inatteignable ferait
  * rougir, et l'une de ces deux qui redeviendrait atteignable aussi.
  */
-const NON_OUVRABLES = ['TariffsModal']
+/*
+  VIDE, ET C'EST UN ÉTAT QUI SE GARDE COMME UN AUTRE.
+
+  Les douze modales du produit sont désormais toutes ouvrables en démonstration.
+  La liste reste, avec son compte : une treizième que la démonstration ne
+  rendrait pas devrait s'y inscrire et faire bouger `NON_OUVRABLES_ATTENDUES`,
+  donc apparaître dans un diff. Retirer la liste parce qu'elle est vide, c'est
+  retirer le seul endroit où l'on remarquerait qu'elle a cessé de l'être.
+*/
+const NON_OUVRABLES = []
+
+/**
+ * Les libellés que `clavierDesModales.test.tsx` joue, recopiés pour que la ligne
+ * de succès puisse nommer CE QUI RESTE dehors plutôt que de l'affirmer.
+ *
+ * Recopiés et non importés : ce script est un module Node, l'autre un fichier de
+ * cas sous jsdom, et les relier ferait dépendre une porte du chargement de
+ * l'autre. Le prix est cette liste ; le garde-fou est `COUVERTES_AU_CLAVIER`,
+ * qui rougirait si les deux comptes cessaient de s'accorder.
+ */
+const COUVERTS = [
+  'Ajouter un immeuble',
+  'Ajouter un logement',
+  'Ouvrir un chantier',
+  'Enregistrer un paiement',
+  'Corriger le parc',
+  'Prix de refacturation',
+]
 const LARGEURS = [360, 1280]
 const LANGUES = ['fr', 'en']
 /*
@@ -185,15 +245,15 @@ const LANGUES = ['fr', 'en']
   puis se déclarerait verte. La même mutation a trouvé ce piège trois lots de
   suite. Ajouter une modale oblige à toucher ce nombre, et le diff le montre.
 
-  44 = 11 modales ouvrables × 2 largeurs × 2 langues.
-  1  = la modale que la démonstration ne rend pas, nommée dans `NON_OUVRABLES`.
+  48 = 12 modales ouvrables × 2 largeurs × 2 langues.
+  0  = plus aucune modale hors de portée de la démonstration.
 
-  Les deux nombres ont bougé ENSEMBLE : `ParkSettings` est passée de la seconde
-  ligne à la première. C'est exactement ce que ce compte écrit à la main sert à
-  rendre visible dans un diff.
+  Les deux nombres ont bougé ENSEMBLE, deux fois de suite : `ParkSettings` puis
+  `Tariffs` sont passées de la seconde ligne à la première. C'est exactement ce
+  que ce compte écrit à la main sert à rendre visible dans un diff.
 */
-const ATTENDUS = 44
-const NON_OUVRABLES_ATTENDUES = 1
+const ATTENDUS = 48
+const NON_OUVRABLES_ATTENDUES = 0
 
 async function servir() {
   const fils = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--host', '127.0.0.1'], {
@@ -422,11 +482,48 @@ if (plaintes.length > 0) {
   exit(1)
 }
 
+/*
+  LA LIGNE DE SUCCÈS SUIT L'ÉTAT, elle ne le récite pas.
+
+  Elle disait « TariffsModal et ParkSettingsModal ne sont pas couvertes par les
+  cas clavier » et « sur QUATRE modales » — deux phrases écrites en dur, vraies
+  le jour où on les a tapées et fausses depuis que les deux modales ont rejoint
+  les cas clavier, qui sont six. Une porte dont le rapport se périme apprend à
+  ne plus lire son rapport.
+
+  `COUVERTES_AU_CLAVIER` est donc écrit ICI, à la main, comme `ATTENDUS` — et
+  pour la même raison : dérivé de l'autre fichier il ne dirait rien, recopié
+  sans compte il se périmerait encore. Le nombre force à toucher cette ligne le
+  jour où la couverture bouge.
+*/
+const COUVERTES_AU_CLAVIER = 6
+/*
+  GARDE DU GARDE : le nombre écrit et la liste recopiée doivent s'accorder, et
+  la liste doit désigner des modales qui EXISTENT. Sans cette vérification, un
+  libellé mal recopié sortirait sa modale du compte des couvertes et la ferait
+  passer pour non couverte — un rapport plus faux que celui qu'on vient de
+  corriger, parce qu'il aurait l'air d'avoir été vérifié.
+*/
+const introuvables = COUVERTS.filter((c) => !MODALES.some((m) => m.bouton.test(c)))
+if (COUVERTS.length !== COUVERTES_AU_CLAVIER || introuvables.length > 0) {
+  console.error(
+    `\n✗ modales : la liste des modales couvertes au clavier ne tient pas.\n` +
+      `   ${COUVERTS.length} libellé(s) recopié(s) pour ${COUVERTES_AU_CLAVIER} annoncé(s).\n` +
+      (introuvables.length
+        ? `   Sans modale correspondante ici : ${introuvables.join(', ')}\n`
+        : ''),
+  )
+  exit(1)
+}
+const horsClavier = MODALES.filter((m) => !COUVERTS.some((c) => m.bouton.test(c)))
+
 console.log(
   `\n✓ modales : ${inspectees}/${ATTENDUS} états ouverts et mesurés sur ${MODALES.length} modales,\n` +
-    `  plus ${NON_OUVRABLES.length} que la démonstration ne rend pas : ${NON_OUVRABLES.join(', ')}.\n` +
-    "  Le CLAVIER est mesuré ailleurs — `clavierDesModales.test.tsx` — sur QUATRE modales :\n" +
-    "  Ajouter un immeuble, Ajouter un logement, Ouvrir un chantier, Enregistrer un paiement.\n" +
-    "  TariffsModal et ParkSettingsModal NE SONT PAS COUVERTES par les cas clavier.\n" +
+    (NON_OUVRABLES.length === 0
+      ? '  et AUCUNE que la démonstration ne rende pas — la liste est vide et gardée vide.\n'
+      : `  plus ${NON_OUVRABLES.length} que la démonstration ne rend pas : ${NON_OUVRABLES.join(', ')}.\n`) +
+    '  Le CLAVIER est mesuré ailleurs — `clavierDesModales.test.tsx` — sur ' +
+    `${COUVERTES_AU_CLAVIER} modales ;\n` +
+    `  les ${horsClavier.length} autres ne le sont pas : ${horsClavier.map((m) => m.nom).join(', ')}.\n` +
     "  La PERTINENCE d'un champ n'est mesurée nulle part : voir l'en-tête.",
 )

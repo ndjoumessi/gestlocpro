@@ -248,6 +248,49 @@ export const READINGS: MeterReading[] = [
 ]
 
 /**
+ * LES MÊMES PRIX, DANS LA FORME QUE LE SERVEUR REND.
+ *
+ * POURQUOI CETTE SECONDE ÉCRITURE EXISTE. `TariffsModal` lit l'historique des
+ * prix par `api.tariffs(parkId)` : sans parc, elle n'appelle rien et sa liste
+ * reste vide, ce qui lui fait afficher « aucun prix posé ». Or l'écran des
+ * relevés, deux clics plus haut, AFFICHE ces deux prix en indicateurs, lus sur
+ * les relevés de la démonstration. La modale qui existe pour montrer et poser
+ * les prix aurait donc démenti l'écran qui les montre — le pire genre de
+ * contradiction, puisque c'est l'éditeur qui nie ce que la page affiche.
+ *
+ * ELLE NE PEUT PAS DÉRIVER de son côté : les deux listes se dérivent de
+ * `TARIFS_DEMO`, la même constante que portent les relevés ci-dessous. Changer
+ * un prix les change ensemble.
+ *
+ * LA DATE D'EFFET EST DÉRIVÉE, PAS ÉCRITE. Un prix de ce produit est daté par
+ * construction — c'est ce que le schéma impose et ce qui empêche de réécrire
+ * des quittances déjà remises. La démonstration n'en portait pas ; la prendre au
+ * premier du mois du relevé le plus ANCIEN est la seule valeur cohérente avec ce
+ * qu'elle affiche par ailleurs, et elle suit si les relevés changent de période.
+ *
+ * C'est une invention, et elle est assumée au même titre que les loyers et les
+ * noms de ce fichier : rien de tout cela ne quitte la démonstration, dont chaque
+ * écran porte un bandeau qui le dit.
+ */
+export const TARIFS_DEMO_DATES = () => {
+  const mois = READINGS.map((r) => r.readAt).filter((d) => d !== null) as {
+    year: number
+    month: number
+    day: number
+  }[]
+  const plusAncien = mois.reduce((a, b) =>
+    a.year !== b.year ? (a.year < b.year ? a : b) : a.month <= b.month ? a : b,
+  )
+  /* `month` est indexé à zéro dans tout le produit — `readAt` vient de
+     `getMonth()` — et une date ISO l'écrit à partir de un. */
+  const effectiveFrom = `${plusAncien.year}-${String(plusAncien.month + 1).padStart(2, '0')}-01`
+  return [
+    { id: 'demo-water', utility: 'water' as const, unitPriceMinor: TARIFS_DEMO.water, effectiveFrom },
+    { id: 'demo-power', utility: 'power' as const, unitPriceMinor: TARIFS_DEMO.power, effectiveFrom },
+  ]
+}
+
+/**
  * La consommation d'une période, fluide par fluide.
  *
  * **`null` ne veut pas dire zéro.** Il dit qu'aucune consommation n'est
