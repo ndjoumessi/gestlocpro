@@ -8,7 +8,7 @@ import { Link } from 'react-router-dom'
 import { cn } from '@/lib/cn'
 import { Icon, type IconName } from './Icon'
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'accent' | 'danger' | 'onDark'
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'onDark'
 export type ButtonSize = 'sm' | 'md' | 'lg'
 
 const VARIANTS: Record<ButtonVariant, string> = {
@@ -35,11 +35,14 @@ const VARIANTS: Record<ButtonVariant, string> = {
   secondary:
     'bg-surface text-ink border border-border hover:border-ink active:translate-y-px',
   ghost: 'bg-transparent text-ink hover:bg-surface-sunken active:translate-y-px',
-  /* Le second aplat d'accent, désormais IDENTIQUE au primaire par sa couleur —
-     ce qui pose la question de sa survie. Il est laissé tel quel : le
-     supprimer, c'est retirer une variante de l'API du composant le plus employé
-     du produit, et ce n'est pas le sujet de ce lot. Nommé au rapport. */
-  accent: 'bg-accent text-on-accent hover:bg-accent-hover active:translate-y-px',
+  /* `accent` A ÉTÉ RETIRÉ, et le lot précédent l'avait annoncé.
+     Il valait `bg-accent text-on-accent hover:bg-accent-hover` — c'est-à-dire
+     EXACTEMENT `primary`, au caractère près, depuis que le primaire a pris la
+     couleur de la marque. Deux noms pour une seule apparence, sur le composant
+     le plus employé du produit : le choix entre eux avait cessé d'être une
+     décision, et rien n'aurait dit à personne lequel prendre. Ses trois
+     appelants passent sur `primary`, qui dit ce qu'il EST — l'action — plutôt
+     que de quelle couleur il est peint. */
   danger: 'bg-danger text-on-dark hover:bg-danger-strong active:translate-y-px',
   onDark:
     'bg-on-dark-active text-on-dark border border-on-dark-border hover:bg-on-dark/20 active:translate-y-px',

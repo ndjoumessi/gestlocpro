@@ -21,9 +21,10 @@ import type { EtatSession } from '@/api/SessionProvider'
  *    cinquième carte, oublie `icone`, et rien ne le lui dit.
  *
  * 2. IL NE FABRIQUE PAS UNE SECONDE GRAMMAIRE DE COULEUR. Une carte en alerte
- *    a déjà une bordure rouge et une pastille rouge ; une tuile restée or au
- *    milieu se lirait comme une contradiction — et le lecteur qui distingue mal
- *    le rouge y verrait deux signaux qui se contredisent au lieu d'un.
+ *    a déjà une bordure rouge et une pastille rouge ; une tuile restée à la
+ *    teinte d'accent au milieu se lirait comme une contradiction — et le
+ *    lecteur qui distingue mal le rouge y verrait deux signaux qui se
+ *    contredisent au lieu d'un.
  *
  * Les cas lisent `data-tuile`, jamais une classe : voir le commentaire de
  * `StatCard` pour les deux erreurs inverses qu'une assertion sur la teinte

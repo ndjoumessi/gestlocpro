@@ -25,9 +25,14 @@ import { Icon, type IconName } from './Icon'
 
 /**
  * Teintes de séries, prises dans l'échelle de données et non dans les couleurs
- * de marque : l'or `--color-accent` ne tient que 2,87:1 sur blanc, sous le seuil
- * de 3:1 exigé d'une donnée. Les trois retenues sont espacées en clarté
- * (28 %, 18 %, 13 %) pour rester distinctes en niveaux de gris.
+ * de marque. La règle a été posée quand l'accent était l'or #c58e3e, qui ne
+ * tenait que 2,87:1 sur blanc, sous le seuil de 3:1 exigé d'une donnée ; elle
+ * survit au passage au BLEU `--color-accent` #2563eb, qui franchit désormais ce
+ * seuil sur blanc (5,17:1) mais ne le passe que de justesse sur la carte sombre
+ * (3,13:1) — et surtout, l'accent DÉSIGNE L'ACTION : une série peinte de la
+ * couleur des boutons se lirait comme quelque chose à cliquer. Les trois
+ * retenues sont espacées en clarté (28 %, 18 %, 13 %) pour rester distinctes en
+ * niveaux de gris.
  *
  * LA PLUS GRANDE SURFACE PORTE LE MOINS DE POIDS, et c'est l'inverse qui était
  * fait. Le loyer représente environ 90 % de chaque colonne ; il prenait
@@ -50,8 +55,12 @@ import { Icon, type IconName } from './Icon'
  * une colonne mise en avant, une ligne d'objectif et un remplissage de
  * progression portent de l'information tout autant qu'une série. Là où la
  * couleur de marque doit rester lisible, c'est `--color-accent-ink` qui sert —
- * même famille, 4,80:1 au pire des fonds. `orDonnee.test.ts` relit ce fichier
- * et refuse le retour de l'or nu.
+ * même famille, mais bien plus contrasté : depuis qu'il vaut #1d4ed8, il est
+ * certifié 6,30 sur `--paper`, 5,77 sur `--canvas` et 6,12 sur `--accent-tint`,
+ * là où le #8a6218 de l'ancienne palette n'était relevé que sur le papier.
+ * `orDonnee.test.ts` relit ce fichier et refuse le retour de `--color-accent`
+ * nu — le nom du garde-fou est resté doré, la couleur qu'il garde ne l'est
+ * plus.
  */
 const SERIES_COLORS: Record<string, string> = {
   rent: 'var(--color-data-6)',
@@ -111,7 +120,7 @@ const SERIES_COLORS_ON_DARK: Record<string, string> = {
  *
  * Les creux prennent la couleur de la carte plutôt que d'être transparents : la
  * colonne croise la ligne d'objectif, et un vrai trou y laisserait passer le
- * trait doré au milieu de la donnée.
+ * trait de l'objectif au milieu de la donnée.
  */
 function hachureOuverte(couleur: string): string {
   return `repeating-linear-gradient(-45deg, ${couleur} 0 5px, var(--color-surface) 5px 7px)`
@@ -402,12 +411,16 @@ export function StackedBarChart({
           {showTarget && (
             <div
               aria-hidden="true"
-              // `accent-ink` et non l'or de marque. Une ligne de repère est une
-              // donnée : elle dit où passe l'objectif, et l'or n'y tient que
-              // 2,87:1 sur la carte. `--color-accent-ink` reste dans la famille
-              // et monte à 5,47:1 en clair, 7,32:1 en sombre — et c'est déjà
-              // la couleur du libellé qui la nomme, deux lignes plus bas : le
-              // trait et son étiquette cessent d'être de deux ors différents.
+              // `accent-ink` et non l'accent nu. Une ligne de repère est une
+              // donnée : elle dit où passe l'objectif, et l'accent de marque
+              // n'a jamais eu la marge pour ça — l'or des débuts n'y tenait que
+              // 2,87:1 sur la carte, et le bleu qui lui a succédé retombe à
+              // 3,13:1 sur la carte sombre, au ras du seuil.
+              // `--color-accent-ink` reste dans la famille et se tient loin
+              // au-dessus : 6,30 sur `--paper` en clair, 8,30 sur `--surface`
+              // en sombre — et c'est déjà la couleur du libellé qui la nomme,
+              // deux lignes plus bas : le trait et son étiquette cessent
+              // d'être de deux accents différents.
               className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-accent-ink"
               style={{ bottom: `${(target / max) * 100}%` }}
             >
@@ -419,7 +432,8 @@ export function StackedBarChart({
               {/* Fond opaque et léger retrait : le libellé porte maintenant le
                   montant exact, donc il occupe 41 % de la largeur du graphique
                   au lieu des 15 % de sa forme compacte — et il court sur les
-                  barres, en doré sur fond sombre. Le fond le rend lisible quelle
+                  barres, une encre d'accent posée sur des colonnes sombres. Le
+                  fond le rend lisible quelle
                   que soit la hauteur des barres, ce qu'un simple déplacement ne
                   garantirait pas : elles changent avec les données. */}
               <span className="absolute -top-2.5 left-0 rounded-sm bg-surface px-1.5 py-0.5 numeric text-caps text-accent-ink uppercase">
@@ -906,11 +920,14 @@ export function MiniBarChart({
                   // suggère une quantité.
                   height: bar.value === null ? '2px' : `${(bar.value / max) * 100}%`,
                   // La colonne du mois courant se distingue des onze autres :
-                  // c'est une DONNÉE mise en avant, pas un ornement. L'or de
-                  // marque tombait à 2,87:1 sur la carte, sous le seuil de 3:1
-                  // — et le commentaire d'en-tête de ce fichier l'interdisait
-                  // déjà. `--color-accent-ink` tient 5,47:1 en clair et 7,32:1
-                  // en sombre, en gardant l'écart de clarté avec `data-1` qui
+                  // c'est une DONNÉE mise en avant, pas un ornement. L'accent
+                  // nu n'a jamais pu la porter : l'or de marque tombait à
+                  // 2,87:1 sur la carte, sous le seuil de 3:1, et le bleu qui a
+                  // pris sa place ne rend que 3,13:1 sur la carte sombre — et
+                  // le commentaire d'en-tête de ce fichier l'interdisait déjà.
+                  // `--color-accent-ink` tient 6,30 sur `--paper` en clair et
+                  // 8,30 sur `--surface` en sombre, en gardant l'écart de
+                  // clarté avec `data-1` qui
                   // rend les deux distinguables en niveaux de gris. La hachure
                   // s'y ajoute pour dire la même chose que chez la voisine
                   // empilée : la période n'est pas close.
@@ -934,7 +951,8 @@ export function MiniBarChart({
                   // Même arbitrage que chez la voisine empilée : la colonne
                   // visée reçoit un liseré, les autres ne perdent rien. À 0,40
                   // elles retombaient à 2,47:1 en clair pour `data-1` et 1,79:1
-                  // pour l'or, sous le seuil, au survol comme au focus.
+                  // pour l'or d'alors, sous le seuil, au survol comme au
+                  // focus.
                   boxShadow: isActive ? '0 0 0 2px var(--color-ink)' : undefined,
                 }}
               />
@@ -1112,8 +1130,11 @@ export interface DonutSlice {
 const PARTS: Record<EtatDePoste, { couleur: string; forme: FormeDePart }> = {
   paid: { couleur: 'var(--color-ok)', forme: 'pleine' },
   partial: { couleur: 'var(--color-warn)', forme: 'demie' },
-  /* `--color-warn` et non `--color-accent` pour « partiel » : l'or de marque ne
-     tient que 2,87:1 sur blanc, sous le seuil d'une donnée. */
+  /* `--color-warn` et non `--color-accent` pour « partiel » : l'accent de
+     marque ne dit pas un état. Il ne le pouvait déjà pas du temps de l'or
+     #c58e3e, qui ne tenait que 2,87:1 sur blanc, sous le seuil d'une donnée ;
+     devenu le bleu #2563eb il passe ce seuil, mais un règlement partiel se
+     signale par l'ambre d'alerte, pas par la couleur des boutons. */
   overdue: { couleur: 'var(--color-danger)', forme: 'creuse' },
 }
 
@@ -1328,7 +1349,11 @@ export function ProgressBar({
   // Le remplissage EST la valeur : c'est lui, et lui seul, qui dit 62 % contre
   // 38 %. L'or de marque ne tenait que 2,52:1 sur la piste `surface-sunken`,
   // le pire des quatre emplois recensés — et le ton par défaut, donc celui de
-  // tous les appels. `accent-ink` monte à 4,80:1 en clair et 8,71:1 en sombre.
+  // tous les appels. `accent-ink` a été pris pour cette marge, et il l'a gardée
+  // en passant au bleu : le jeton est certifié 6,30 sur `--paper` en clair et
+  // 8,30 sur `--surface` en sombre. La piste `surface-sunken`, elle, n'a pas
+  // été remesurée depuis le changement de teinte — on la tient pour acquise par
+  // prudence, pas par relevé.
   // Le ton garde son nom : c'est un rôle — « la couleur de marque » — pas une
   // teinte, exactement comme `ok` ne nomme pas un vert.
   const colors = { accent: 'bg-accent-ink', ok: 'bg-ok', danger: 'bg-danger' }
@@ -1363,7 +1388,8 @@ export function ProgressBar({
  * aucune règle — la bordure resterait grise sans que rien ne le signale.
  */
 /**
- * LA TUILE D'ICÔNE, et pourquoi elle est OR par défaut plutôt que grise.
+ * LA TUILE D'ICÔNE, et pourquoi elle est NEUTRE par défaut plutôt qu'à
+ * l'accent.
  *
  * Quatre rectangles nus, alignés, sans un seul repère : la rangée
  * d'indicateurs se lisait de gauche à droite comme un tableur, et rien n'y
@@ -1378,26 +1404,36 @@ export function ProgressBar({
  *
  * Le lot qui a posé ces tuiles les voulait OR, « parce que c'est l'accent de la
  * marque et qu'un lavis neutre n'aurait rien apporté qu'un gris de plus ».
- * L'argument s'est cassé sur une mesure, au lot suivant : `--color-accent-tint` et
- * `--color-warn-tint` valent LE MÊME `#fbf3e2`, et `--color-accent-ink` (#8a6218)
- * ne s'écarte de `--color-warn` (#795415) que d'une nuance. Ce n'est pas une
- * collision accidentelle — dans ce système, l'ambre d'alerte EST l'or de la
- * marque, et la bannière des relevés le prouve depuis toujours.
+ * L'argument s'est cassé sur une mesure, au lot suivant : `--color-accent-tint`
+ * et `--color-warn-tint` valaient alors LE MÊME `#fbf3e2`, et
+ * `--color-accent-ink` (#8a6218) ne s'écartait de `--color-warn` (#795415) que
+ * d'une nuance. Ce n'était pas une collision accidentelle — dans la palette
+ * dorée, l'ambre d'alerte ÉTAIT l'or de la marque, et la bannière des relevés
+ * l'a prouvé tout au long de la vie de cette palette.
  *
  * Conséquence, vue à l'écran puis relevée au pixel : une carte passée en `warn`
  * rendait une tuile RIGOUREUSEMENT identique à celle de ses voisines calmes. Le
  * correctif était invisible, et seule la bordure — #ead9b4 contre #e8e2d7 —
  * le distinguait encore.
  *
- * LA RÈGLE QUI EN SORT : la teinte par défaut ne peut être celle d'AUCUN état,
- * sans quoi l'état qu'elle recouvre ne peut plus se signaler. Le neutre est la
- * seule du système qui ne signale rien. L'or n'a pas disparu — il reste le ton
- * `info`, où il veut dire quelque chose au lieu de servir de papier peint.
+ * LA COLLISION A DISPARU AVEC L'OR, ET LA RÈGLE RESTE. L'accent est le bleu
+ * `--color-accent` #2563eb, `--color-accent-tint` vaut #eff5ff quand
+ * `--color-warn-tint` reste #fbf3e2 : les deux lavis ne se confondent plus, et
+ * une tuile d'accent au milieu d'une carte en alerte se verrait, cette fois.
+ * Ce n'est pas une raison de la remettre par défaut, parce que la règle ne
+ * tenait pas à la collision mais à ce qu'elle a révélé : la teinte par défaut
+ * ne peut être celle d'AUCUN état, sans quoi l'état qu'elle recouvre ne peut
+ * plus se signaler — et `bg-accent-tint text-accent-ink`, quelques lignes plus
+ * bas, EST le ton `info`. Le neutre est la seule teinte du système qui ne
+ * signale rien. L'accent n'a pas disparu — il reste ce ton `info`, où il veut
+ * dire quelque chose au lieu de servir de papier peint.
  *
- * `--accent-ink` et non `--accent` là où l'or sert encore : l'or nu ne tient que
- * 2,87:1, l'encre de la même famille en tient 4,80 au pire des fonds — c'est la
- * règle que `Charts` énonce en tête de fichier pour les séries, et elle ne
- * s'arrête pas aux séries.
+ * `--accent-ink` et non `--accent` là où l'accent sert encore : l'accent nu ne
+ * tenait que 2,87:1 du temps de l'or et ne rend que 3,13:1 sur la carte sombre
+ * depuis qu'il est bleu, quand l'encre de la même famille est certifiée 6,30
+ * sur `--paper` et 6,12 sur `--accent-tint` — c'est la règle que `Charts`
+ * énonce en tête de fichier pour les séries, et elle ne s'arrête pas aux
+ * séries.
  *
  * TEINTE DE L'ÉTAT QUAND IL Y EN A UN, plutôt qu'une seconde grammaire de
  * couleur posée par-dessus la première. Une carte en alerte a déjà une bordure
@@ -1553,7 +1589,8 @@ export function StatCard({
                  INTERROGEABLE sans passer par sa peinture. C'est par lui qu'un
                  cas vérifie qu'une rangée d'indicateurs n'a pas gagné une
                  cinquième carte sans repère, et que la tuile suit bien l'état
-                 au lieu de rester or au milieu d'une carte en alerte. */
+                 au lieu de rester à l'accent au milieu d'une carte en
+                 alerte. */
               data-tuile={etat?.ton ?? 'neutre'}
               className={cn(
                 'flex size-8 shrink-0 items-center justify-center rounded-md',

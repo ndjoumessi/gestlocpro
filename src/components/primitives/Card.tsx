@@ -1,14 +1,17 @@
 import type { HTMLAttributes, ReactNode } from 'react'
 import { cn } from '@/lib/cn'
 
-export type CardTone = 'default' | 'sunken' | 'dark' | 'accent' | 'plain'
+export type CardTone = 'default' | 'sunken' | 'dark' | 'accent'
 
 const TONES: Record<CardTone, string> = {
   default: 'bg-surface border-divider shadow-e1',
   sunken: 'bg-surface-sunken border-border',
   dark: 'bg-ink border-transparent text-on-dark on-dark',
   accent: 'bg-accent-tint border-accent-border',
-  plain: 'bg-transparent border-transparent',
+  /* `plain` A ÉTÉ RETIRÉ, et c'est la garde des branches mortes qui l'a trouvé
+     — pas l'œil. Une carte sans fond ni bordure n'est plus une carte : c'est un
+     `<div>`, et le produit en écrivait un directement partout où il en voulait
+     un. Le ton n'avait aucun appelant. */
 }
 
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {

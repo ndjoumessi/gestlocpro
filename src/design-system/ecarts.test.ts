@@ -77,10 +77,24 @@ const FENETRE = 6
  * une entrée devenue sans objet : une liste d'exceptions qu'on n'élague pas
  * devient le tapis sous lequel on glisse le prochain défaut.
  */
-const TOLERES: { fichier: string; ligne: number; raison: string }[] = [
+/*
+  ELLES SONT INDEXÉES PAR LE CONTENU DE LA LIGNE, ET NON PAR SON NUMÉRO.
+
+  C'est un correctif, et il a été payé deux fois. Une tolérance portait
+  `ligne: 210`, puis `ligne: 319` quand un variant s'est inséré au-dessus, puis
+  a de nouveau rougi quand un lot de PROSE a ajouté cinq lignes de commentaire
+  dans le même fichier — sans qu'aucun pixel ne bouge à l'écran. Une exception
+  qui se périme quand on documente le code pousse à ne pas le documenter.
+
+  La clé est le fichier plus la ligne de classes elle-même : elle survit à tout
+  ce qui s'écrit autour, et ne survit PAS à une modification de la ligne
+  tolérée — ce qui est exactement le comportement voulu, puisque c'est elle que
+  la tolérance couvre.
+*/
+const TOLERES: { fichier: string; signature: string; raison: string }[] = [
   {
     fichier: 'components/controls/LanguageSwitcher.tsx',
-    ligne: 24,
+    signature: "'inline-flex shrink-0 items-center gap-0.5 rounded-md border p-0.5',",
     raison:
       'CONTRÔLE SEGMENTÉ : deux options dans un même cadre bordé, avec son propre ' +
       'rembourrage. Les segments d’un tel contrôle se TOUCHENT par convention — ' +
@@ -91,17 +105,18 @@ const TOLERES: { fichier: string; ligne: number; raison: string }[] = [
   },
   {
     fichier: 'components/controls/ThemeSwitcher.tsx',
-    ligne: 74,
+    signature: "'inline-flex shrink-0 items-center gap-0.5 rounded-md border p-0.5',",
     raison: 'Contrôle segmenté à trois options, même raison que le sélecteur de langue.',
   },
   {
     fichier: 'components/primitives/Choice.tsx',
-    ligne: 319,
+    signature: "'inline-flex items-center gap-1 rounded-md border border-border bg-surface p-0.5',",
     raison:
       'La primitive de contrôle segmenté elle-même — celle dont les deux sélecteurs ' +
-      'ci-dessus reprennent la forme. Passée de la ligne 210 à la 319 quand le ' +
-      'variant en pastilles s’est inséré au-dessus : une tolérance repérée par ' +
-      'un NUMÉRO DE LIGNE se périme au premier ajout dans le fichier, et c’est ' +
+      'ci-dessus reprennent la forme. Elle a migré de la ligne 210 à la 319 quand ' +
+      'le variant en pastilles s’est inséré au-dessus, puis à la 324 quand un lot ' +
+      'de prose a documenté le fichier : une tolérance repérée par un NUMÉRO DE ' +
+      'LIGNE se périme au premier ajout, et c’est ' +
       'la garde du garde — « aucune tolérance devenue sans objet » — qui l’a ' +
       'dit, en même temps que le contrôle principal signalait la ligne 319 ' +
       'comme fautive. Les deux plaintes décrivaient le même déplacement.',
@@ -133,8 +148,18 @@ function sansCommentaires(source: string): string {
     .replace(/(^|[^:])\/\/[^\n]*/g, (_, avant: string) => avant)
 }
 
-/** Les rangées de commandes trop serrées d'une source. */
-export function ecartsTropSerres(relatif: string, brut: string): string[] {
+/**
+ * Les rangées de commandes trop serrées d'une source.
+ *
+ * Rend un SITE lisible — `fichier:ligne`, pour l'humain qui lira l'échec — et
+ * une CLÉ stable, faite du fichier et du contenu de la ligne. Voir `TOLERES`
+ * pour la raison : une tolérance indexée par numéro de ligne se périme au
+ * premier commentaire ajouté au-dessus.
+ */
+export function ecartsTropSerres(
+  relatif: string,
+  brut: string,
+): { site: string; cle: string }[] {
   const lignes = sansCommentaires(brut).split('\n')
 
   return lignes.flatMap((ligne, i) => {
@@ -151,7 +176,7 @@ export function ecartsTropSerres(relatif: string, brut: string): string[] {
     const voisinage = lignes.slice(Math.max(0, i - FENETRE), i + FENETRE).join('\n')
     if (!COMMANDE.test(voisinage)) return []
 
-    return [`${relatif}:${i + 1}`]
+    return [{ site: `${relatif}:${i + 1}`, cle: `${relatif}|${ligne.trim()}` }]
   })
 }
 
@@ -159,9 +184,9 @@ describe('l’écart entre deux cibles', () => {
   it('n’est jamais inférieur au plancher dans une rangée de commandes', () => {
     const fautifs = fichiersSources(SRC).flatMap((chemin) => {
       const relatif = chemin.slice(SRC.length + 1)
-      return ecartsTropSerres(relatif, readFileSync(chemin, 'utf8')).filter(
-        (site) => !TOLERES.some((e) => `${e.fichier}:${e.ligne}` === site),
-      )
+      return ecartsTropSerres(relatif, readFileSync(chemin, 'utf8'))
+        .filter((t) => !TOLERES.some((e) => `${e.fichier}|${e.signature}` === t.cle))
+        .map((t) => t.site)
     })
 
     expect(fautifs).toEqual([])
@@ -181,9 +206,11 @@ describe('l’écart entre deux cibles', () => {
     const rangee = `${'flex'} items-center`
 
     // Une rangée de boutons à 4 px : c'est le défaut.
-    expect(ecartsTropSerres('t.tsx', `<div className="${rangee} ${serre}">\n<Button />`)).toEqual([
-      't.tsx:1',
-    ])
+    expect(
+      ecartsTropSerres('t.tsx', `<div className="${rangee} ${serre}">\n<Button />`).map(
+        (t) => t.site,
+      ),
+    ).toEqual(['t.tsx:1'])
     // La même à 8 px : rien à signaler.
     expect(ecartsTropSerres('t.tsx', `<div className="${rangee} ${large}">\n<Button />`)).toEqual([])
     // Serrée mais SANS commande : deux pastilles décoratives ne se visent pas.
@@ -202,9 +229,9 @@ describe('l’écart entre deux cibles', () => {
   /** Une tolérance qui ne couvre plus rien est une tolérance qui ment. */
   it('ne garde aucune tolérance devenue sans objet', () => {
     const orphelines = TOLERES.filter((e) => {
-      const sites = ecartsTropSerres(e.fichier, readFileSync(join(SRC, e.fichier), 'utf8'))
-      return !sites.includes(`${e.fichier}:${e.ligne}`)
-    }).map((e) => `${e.fichier}:${e.ligne}`)
+      const trouves = ecartsTropSerres(e.fichier, readFileSync(join(SRC, e.fichier), 'utf8'))
+      return !trouves.some((t) => t.cle === `${e.fichier}|${e.signature}`)
+    }).map((e) => `${e.fichier} · ${e.signature}`)
 
     expect(orphelines).toEqual([])
   })

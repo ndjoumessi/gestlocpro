@@ -99,11 +99,24 @@
 
   /* ---- Teintes de données ---------------------------------------------- */
   /* Une série de graphique n'est pas un aplat décoratif : elle porte
-     l'information, et doit donc tenir 3:1 contre le fond de la carte. L'or de
-     marque `--color-accent` n'y arrive pas — 2,87:1 sur blanc — et servait
-     pourtant de série « eau ». D'où cette échelle distincte, dont chaque
-     teinte a été mesurée sur blanc ET sur `--color-ink`, les deux fonds sur
-     lesquels un graphique s'affiche.
+     l'information, et doit donc tenir 3:1 contre le fond de la carte. Du temps
+     où l'accent de marque était l'or #c58e3e, il n'y arrivait pas — 2,87:1 sur
+     blanc — et servait pourtant de série « eau ». D'où cette échelle distincte,
+     dont chaque teinte a été mesurée sur blanc ET sur `--color-ink`, les deux
+     fonds sur lesquels un graphique s'affiche.
+
+     L'ACCENT EST DEVENU BLEU ET L'ÉCHELLE RESTE, pour une raison qui n'est plus
+     celle-là. `--color-accent` #2563eb passe le seuil sur blanc — 5,17 — mais
+     retombe à 3,13 contre la carte du thème sombre, où il ne fait plus
+     qu'effleurer les 3:1. Et surtout il DÉSIGNE L'ACTION depuis qu'il peint le
+     bouton primaire : une série peinte de la couleur des boutons se lirait
+     comme une chose à cliquer. Une raison de contraste a cédé la place à une
+     raison de vocabulaire ; la conclusion, elle, n'a pas bougé.
+
+     C'est cette phrase-là que `Alerts.tsx` citait comme AUTORITÉ pour refuser
+     l'accent à un liseré. Elle était devenue fausse au présent tandis que le
+     même fichier la contredisait plus bas, au passé : une feuille de jetons qui
+     se dément elle-même ne fait plus autorité sur rien.
 
      Les CLARTÉS sont volontairement étagées, et non seulement les teintes :
      1, 7, 13, 18, 26, 28 %. Un premier jeu accrochait le seuil de contraste

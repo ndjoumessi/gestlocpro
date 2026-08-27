@@ -51,9 +51,16 @@ export function FeatureGrid() {
                 'flex size-12 items-center justify-center rounded-lg',
                 'bg-accent-tint text-accent-ink transition-colors duration-200',
                 // `accent-on-ink` : au survol le fond devient `--color-ink`, qui
-                // s'inverse avec le thème. L'or de marque, lui, ne bouge pas —
-                // la paire tenait 7,04:1 au repos et tombait à 2,33:1 au survol
-                // en sombre. Le survol dégradait donc activement la lisibilité.
+                // s'inverse avec le thème, alors que l'accent de marque, lui, ne
+                // bouge pas. C'était vrai de l'or d'alors — la paire tenait
+                // 7,04:1 au repos et tombait à 2,33:1 au survol en sombre, si
+                // bien que le survol dégradait activement la lisibilité — et ce
+                // l'est resté du bleu qui a remplacé l'or, qui garde délibérément
+                // la même teinte dans les deux thèmes. La règle survit donc au
+                // changement de couleur : n'importe quel accent FIGÉ se casse
+                // contre un fond qui bascule, et `accent-on-ink` est le seul
+                // jeton qui porte une valeur par thème, donc qui suit l'encre
+                // partout où elle va.
                 'group-hover:bg-ink group-hover:text-accent-on-ink',
               )}
             >

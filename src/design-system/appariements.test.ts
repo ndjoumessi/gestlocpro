@@ -59,7 +59,8 @@ describe('appariements de couleurs', () => {
     const FOND = ['bg', 'ink'].join('-')
     const PREMIER_PLAN = ['text', 'accent'].join('-')
 
-    // La variante qui s'inverse est légitime : on ne signale QUE l'or fixe,
+    // La variante qui s'inverse est légitime : on ne signale QUE l'accent fixe
+    // — que `orFixe` nomme encore d'après l'or de marque d'alors —,
     // c'est-à-dire `text-accent` non suivi d'un tiret.
     const orFixe = new RegExp(`${PREMIER_PLAN}(?![\\w-])`)
     const fondEncre = new RegExp(`${FOND}(?![\\w-])`)
@@ -85,7 +86,7 @@ describe('appariements de couleurs', () => {
  * Pastilles de série sur l'infobulle des graphiques.
  *
  * Le défaut jumeau du précédent, et plus silencieux encore. La pastille
- * « Loyer » prenait `--color-data-1`, qui vaut `#14201e` en thème clair —
+ * « Loyer » prenait `--color-data-1`, qui vaut `#131a22` en thème clair —
  * exactement la valeur de `--color-ink`, dont l'infobulle fait son fond. Elle
  * était peinte, à la bonne taille, à la bonne place, de la couleur du fond.
  * Les deux autres séries, teintes moyennes, s'en tiraient : une ligne sur trois

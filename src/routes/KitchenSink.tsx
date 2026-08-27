@@ -119,7 +119,7 @@ export function KitchenSink() {
             <Button variant="secondary" icon="download">
               Secondaire
             </Button>
-            <Button variant="accent" icon="sparkle">
+            <Button variant="primary" icon="sparkle">
               Doré
             </Button>
             <Button variant="ghost">Fantôme</Button>
@@ -138,7 +138,7 @@ export function KitchenSink() {
             </Button>
           </div>
           <div className="on-dark mt-4 flex flex-wrap items-center gap-3 rounded-lg bg-ink p-4">
-            <Button variant="accent">Sur fond sombre</Button>
+            <Button variant="primary">Sur fond sombre</Button>
             <Button variant="onDark">Secondaire sombre</Button>
             <LanguageSwitcher tone="dark" />
             <CurrencySwitcher tone="dark" />

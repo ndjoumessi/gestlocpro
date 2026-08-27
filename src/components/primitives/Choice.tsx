@@ -184,10 +184,15 @@ export function RadioCards<T extends string>({
                 <span
                   className={cn(
                     'flex size-9 shrink-0 items-center justify-center rounded-md transition-colors duration-150',
-                    // `accent-on-ink` et non l'or de marque : sur `--color-ink`,
-                    // qui s'inverse avec le thème, l'or fixe tombait à 2,33:1 en
-                    // sombre. L'icône de la tuile SÉLECTIONNÉE était alors
-                    // l'élément le moins lisible de la carte.
+                    // `accent-on-ink` et non l'accent de marque : sur
+                    // `--color-ink`, qui s'inverse avec le thème, un accent figé
+                    // ne peut pas tenir des deux côtés à la fois. L'or d'alors
+                    // tombait à 2,33:1 en sombre, et l'icône de la tuile
+                    // SÉLECTIONNÉE devenait l'élément le moins lisible de la
+                    // carte. Le bleu qui a remplacé l'or ne change rien à la
+                    // règle — il ne bascule pas davantage avec le thème — et seul
+                    // `accent-on-ink`, qui porte une valeur par thème, suit
+                    // l'encre sur laquelle il est posé.
                     checked ? 'bg-ink text-accent-on-ink' : 'bg-surface-sunken text-muted',
                   )}
                 >

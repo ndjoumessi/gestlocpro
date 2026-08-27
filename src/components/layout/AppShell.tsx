@@ -97,7 +97,12 @@ interface NavItem {
    * laissait « 2 » dans la barre latérale, et encaisser un impayé laissait
    * « 3 » à côté des paiements.
    */
-  badge?: { count: 'overdue' | 'unreadAlerts'; tone: 'danger' | 'onDark' }
+  /* `accent` remplace `onDark` : la pastille des signalements non lus n'est
+     pas une alerte — un signalement se lit, il ne se règle pas en retard — mais
+     elle doit se voir. Elle prenait un ton nommé d'après le DÉCOR qui
+     l'entourait, une barre sombre ; la barre est claire, et le ton dit
+     désormais ce qu'il peint. */
+  badge?: { count: 'overdue' | 'unreadAlerts'; tone: 'danger' | 'accent' }
   /** Rôles auxquels l'entrée est proposée. */
   roles?: Role[]
   /**
@@ -147,7 +152,7 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
         to: 'signalements',
         labelKey: 'nav.alerts',
         icon: 'bell',
-        badge: { count: 'unreadAlerts', tone: 'onDark' },
+        badge: { count: 'unreadAlerts', tone: 'accent' },
       },
       { to: 'prise-en-main', labelKey: 'nav.onboarding', icon: 'info', roles: ['owner'] },
     ],
@@ -1194,7 +1199,11 @@ function Sidebar({
  * qu'on imprime sur une quittance. Le sélecteur, lui, ne demande rien de tout
  * cela.
  */
-function SelecteurParc({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
+/* Plus de `tone` : ce sélecteur ne vivait sur fond sombre que dans la barre du
+   locataire, qui est passée au clair. Une branche sans appelant ne se garde pas
+   « au cas où » — elle se rend invisible au premier lecteur, et le jour où on la
+   rallume personne ne sait plus si elle a jamais été juste. */
+function SelecteurParc() {
   const t = useT()
   const { etat, adhesionActive, choisirParc } = useSession()
   if (etat.statut !== 'connecte' || etat.adhesions.length < 2) return null
@@ -1205,12 +1214,7 @@ function SelecteurParc({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
       <select
         value={adhesionActive?.parkId ?? ''}
         onChange={(e) => choisirParc(e.target.value)}
-        className={cn(
-          'min-h-11 cursor-pointer rounded-md border px-2.5 text-label',
-          tone === 'dark'
-            ? 'border-on-dark-border bg-on-dark-hover text-on-dark'
-            : 'border-border bg-paper text-ink',
-        )}
+        className="min-h-11 cursor-pointer rounded-md border border-border bg-paper px-2.5 text-label text-ink"
       >
         {etat.adhesions.map((a) => (
           // La LISTE DÉROULÉE est peinte par le système, pas par la barre : sans
@@ -1340,7 +1344,9 @@ function MenuReglages({ demo }: { demo: boolean }) {
   )
 }
 
-function MenuCompte({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
+/* Plus de `tone`, pour la même raison que `SelecteurParc` : son seul appelant
+   sur fond sombre était la barre du locataire. */
+function MenuCompte() {
   const t = useT()
   const { etat, deconnecter } = useSession()
   const [ouvert, setOuvert] = useState(false)
@@ -1390,11 +1396,9 @@ function MenuCompte({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
           //
           // Seul bouton de la coquille sans survol : `Button` et `IconButton`
           // en portent un chacun, celui-ci recopie leurs classes à la main sans
-          // recopier ce dernier détail. Les jetons de survol sont ceux de leurs
-          // variantes `accent` et `primary`, qui peignent déjà les mêmes fonds.
-          tone === 'dark'
-            ? 'bg-accent text-on-accent hover:bg-accent-hover'
-            : 'bg-ink text-on-dark hover:bg-ink-2',
+          // recopier ce dernier détail. Les jetons de survol sont ceux de la
+          // variante `primary`, qui peint déjà le même fond.
+          'bg-ink text-on-dark hover:bg-ink-2',
         )}
       >
         {initiales(nom)}

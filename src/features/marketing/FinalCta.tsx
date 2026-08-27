@@ -65,7 +65,7 @@ export function FinalCta() {
         {/* `lg:justify-end` seulement : en dessous les boutons s'empilent et
             prennent la largeur, ce qui reste juste sur un téléphone. */}
         <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
-          <Button size="lg" variant="accent" to="/inscription" iconAfter="arrowRight">
+          <Button size="lg" variant="primary" to="/inscription" iconAfter="arrowRight">
             {t('marketing.finalCta.cta')}
           </Button>
           <Button size="lg" variant="onDark" to="/demo">

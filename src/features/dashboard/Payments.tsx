@@ -288,7 +288,7 @@ export function Payments() {
             /**
              * LE MÊME ARGENT QUE SUR LE TABLEAU DE BORD, DONC LE MÊME POIDS.
              *
-             * Cette carte était or et calme, quand la même somme est rouge et
+             * Cette carte était neutre et calme, quand la même somme est rouge et
              * pastillée deux écrans plus loin. L'état suivait l'ÉCRAN au lieu de
              * suivre le CONCEPT : un retard n'est pas moins un retard parce
              * qu'on le regarde depuis la page des paiements — c'est même la page
@@ -343,8 +343,14 @@ export function Payments() {
               {value === 'all' ? t('app.payments.filterAll') : t(`status.${value}` as 'status.paid')}
               {/* `accent-on-ink` : le filtre actif peint son fond en `--color-ink`,
                   qui s'inverse avec le thème. À 12 px ce compteur est du texte,
-                  donc il lui faut 4,5:1 — l'or de marque n'en donnait que 2,33
-                  en sombre. */}
+                  donc il lui faut 4,5:1 — et `--color-accent` ne s'inverse PAS :
+                  il garde la même valeur dans les deux thèmes, donc la paire
+                  casse du côté sombre. Elle n'y rendait que 2,33 du temps où
+                  l'accent était or, et le bleu qui l'a remplacé hérite du même
+                  défaut d'appariement, qui tient à la FIXITÉ du jeton et non à
+                  sa teinte. `accent-on-ink`, lui, suit le fond qu'il nomme :
+                  6,26 sur l'encre du thème clair, 5,56 sur celle du thème
+                  sombre. */}
               <span className={cn('numeric text-caps', active ? 'text-accent-on-ink' : 'text-muted')}>
                 {count}
               </span>

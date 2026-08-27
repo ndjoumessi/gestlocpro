@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/cn'
 
-export type BadgeTone = 'neutral' | 'accent' | 'ok' | 'danger' | 'dark' | 'onDark'
+export type BadgeTone = 'neutral' | 'accent' | 'ok' | 'danger' | 'dark'
 
 const TONES: Record<BadgeTone, string> = {
   neutral: 'bg-surface-sunken text-muted',
@@ -12,7 +12,13 @@ const TONES: Record<BadgeTone, string> = {
   // s'éclaircit en thème sombre.
   danger: 'bg-danger text-on-danger',
   dark: 'bg-ink text-on-dark',
-  onDark: 'bg-accent text-on-accent',
+  /* `onDark` A ÉTÉ RETIRÉ, et son nom disait pourquoi il devait l'être : il
+     valait `bg-accent text-on-accent` et désignait le CONTEXTE où il servait —
+     une barre sombre — plutôt que ce qu'il PEINT. Les deux barres du produit
+     sont passées au clair, il n'avait plus un seul appelant, et son nom était
+     devenu doublement faux : ni sombre, ni employé. Un ton se nomme d'après sa
+     couleur ou son rôle, jamais d'après le décor qui l'entourait le jour où on
+     l'a écrit. */
 }
 
 export interface BadgeProps {

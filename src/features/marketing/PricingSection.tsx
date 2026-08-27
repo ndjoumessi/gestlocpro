@@ -260,8 +260,9 @@ function UnitSlider({ units, onChange }: { units: number; onChange: (n: number) 
           }
           className={cn(
             'h-11 min-w-0 flex-1 cursor-pointer appearance-none bg-transparent',
-            // La piste est peinte en dégradé dur : la portion parcourue en or,
-            // le reste en bordure. Deux préfixes, faute d'API commune.
+            // La piste est peinte en dégradé dur : la portion parcourue en
+            // `--color-accent`, le bleu de l'action, le reste en bordure. Deux
+            // préfixes, faute d'API commune.
             '[&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:rounded-full',
             '[&::-moz-range-track]:h-1.5 [&::-moz-range-track]:rounded-full',
             '[&::-webkit-slider-thumb]:mt-[-7px] [&::-webkit-slider-thumb]:size-5',
@@ -322,7 +323,9 @@ function FeatureLine({ featureKey, value }: { featureKey: string; value: Feature
       {/* Inclus / non inclus repose sur la forme de l'icône, pas sur sa
           couleur — ce qui rend le passage au monochrome sans conséquence pour
           la compréhension. Le vert a laissé place à l'encre : le style retenu
-          n'admet qu'un seul accent, et sur cette page c'est l'or. */}
+          n'admet qu'un seul accent, et cet accent est le bleu de
+          `--color-accent`, qui a succédé à l'or de marque sans que la règle
+          change — c'est le NOMBRE d'accents qui la fonde, jamais la teinte. */}
       <Icon
         name={included ? 'check' : 'close'}
         size={16}

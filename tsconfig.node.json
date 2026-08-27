@@ -33,6 +33,7 @@
     "src/design-system/empilement.test.ts",
     "src/design-system/accentDonnee.test.ts",
     "src/design-system/rayons.test.ts",
+    "src/design-system/branchesMortes.test.ts",
     "src/design-system/paletteAffichee.test.ts",
     "src/design-system/modales.test.ts",
     "src/design-system/longueurs-recopiees.test.ts",

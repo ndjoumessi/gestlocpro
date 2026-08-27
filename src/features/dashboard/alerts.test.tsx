@@ -137,11 +137,14 @@ describe('messages d’alerte', () => {
   /**
    * L'ÉTAT « NON LUE » SE DIT, au lieu de n'être qu'une couleur.
    *
-   * Il n'existait que dans un liseré — et un liseré à 2,87:1, que la feuille de
-   * jetons condamne elle-même pour cet usage. Un lecteur d'écran parcourait
-   * donc douze notifications rigoureusement identiques, sans jamais savoir
-   * lesquelles restaient à traiter : la seule question qu'on se pose sur cet
-   * écran, et celle dont la barre latérale annonce le compte juste à côté.
+   * Il n'existait que dans un liseré — et un liseré qui, du temps où l'accent
+   * de marque était l'or, ne tenait que 2,87:1, ce que la feuille de jetons
+   * condamnait elle-même pour cet usage. Le bleu qui a remplacé l'or a relevé
+   * ce liseré sans rien changer à ce cas-ci : une couleur, si franche
+   * soit-elle, ne se prononce pas. Un lecteur d'écran parcourait donc douze
+   * notifications rigoureusement identiques, sans jamais savoir lesquelles
+   * restaient à traiter : la seule question qu'on se pose sur cet écran, et
+   * celle dont la barre latérale annonce le compte juste à côté.
    */
   it('dit lesquelles restent à lire, et pas seulement en couleur', async () => {
     await renderApp('/demo/signalements')

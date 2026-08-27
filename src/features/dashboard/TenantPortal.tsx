@@ -151,11 +151,16 @@ export function TenantPortal() {
               `:not([class*='bg-'])` : il se retire de lui-même dès que
               l'élément porte son propre fond — ce qui est exactement le cas de
               l'onglet actif et du survol. S'appuyer dessus rendait le libellé
-              actif invisible, encre #14201e sur barre #14201e.
+              actif invisible, encre #131a22 sur barre #131a22.
 
-              La pastille dorée, elle, garde `text-ink` à dessein : `.bg-accent`
-              refixe `--color-ink` sur l'aplat, et c'est précisément ce que la
-              clause `bg-` protège. */}
+              La pastille d'initiales, elle, ne demande plus rien à la cascade :
+              elle NOMME son premier plan, `text-on-accent`, qui vaut blanc dans
+              les deux thèmes. Une règle refixait autrefois `--color-ink` sur
+              l'aplat d'accent — c'est ce que la clause `bg-` mettait à l'abri —
+              parce que l'or de marque d'alors ne pouvait porter que de l'encre
+              sombre ; le bleu qui lui a succédé porte du blanc, la règle a
+              disparu avec sa cause, et la pastille n'a donc plus aucun
+              remappage à protéger. */}
           <div className="on-dark flex flex-wrap items-center gap-x-2 gap-y-1 bg-ink px-4 pt-3">
             <Logo to="" size="sm" tone="dark" className="mr-4 mb-3" />
 

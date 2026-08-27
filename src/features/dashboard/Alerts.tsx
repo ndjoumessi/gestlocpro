@@ -220,11 +220,17 @@ export function Alerts() {
               /*
                 `accent-ink` ET NON `accent` pour le liseré.
 
-                L'or de marque tient 2,87:1 sur la carte — la feuille de jetons
-                le CONDAMNE elle-même en commentaire pour cet usage. Un liseré
-                qui distingue une notification non lue est de la DONNÉE, pas de
-                l'ornement : il doit se voir. L'encre dorée reste dans la même
-                famille et monte à 4,98.
+                L'accent de marque était l'or, et il ne tenait que 2,87:1 sur
+                la carte — la feuille de jetons le CONDAMNAIT elle-même en
+                commentaire pour cet usage. Le bleu qui a pris sa place remonte
+                à 5,17 sous du blanc, mais il retombe à 3,13 sur la carte du
+                thème sombre, où il n'effleure plus que le seuil des éléments
+                non textuels. Un liseré qui distingue une notification non lue
+                est de la DONNÉE, pas de l'ornement : il doit se voir, et pas de
+                justesse. `accent-ink` s'inverse avec le thème — #1d4ed8 sur
+                fond clair, #93bbfd sur fond sombre — et c'est ce qui le tient
+                franc des deux côtés : 6,30 sur le papier clair, 8,30 sur la
+                surface sombre.
               */
               /*
                 LA CARTE SE REPLIE, ET LE TITRE GARDE UNE LARGEUR PLANCHER.
