@@ -959,7 +959,22 @@ function Sidebar({
       // Les `transition-colors` des entrées et des profils restent : la
       // couleur est peinte, elle ne déclenche aucun calcul de disposition.
       className={cn(
-        'on-dark shrink-0 flex-col gap-4 overflow-y-auto bg-ink text-on-dark',
+        /*
+          LA BARRE LATÉRALE PASSE AU CLAIR, et `on-dark` s'en va avec le fond.
+
+          Ce n'est pas un repeint : retirer `on-dark` DÉFIGE `--color-ink`,
+          `--color-ink-2` et toute la famille `--color-on-dark*`, et désactive
+          du même coup les quatre règles de remappage de `tokens.css` ainsi que
+          `.on-dark *:focus-visible`. L'anneau de focus retombe sur
+          `--color-accent-ink`, ce qui est le comportement voulu sur fond clair.
+          Chaque jeton posé plus bas devait donc être rejugé un par un — c'est
+          fait, et aucune valeur n'a été inventée.
+
+          `border-r` EST NÉCESSAIRE, et c'est le piège de l'opération : ce
+          panneau ne se séparait du contenu que par sa COULEUR. Devenu blanc sur
+          un papier presque blanc, il n'aurait plus eu de limite du tout.
+        */
+        'shrink-0 flex-col gap-4 overflow-y-auto border-r border-border bg-surface text-ink',
         'sticky top-0 h-dvh',
         'pt-[calc(1.25rem+env(safe-area-inset-top))] pb-[calc(1.25rem+env(safe-area-inset-bottom))]',
         'pr-3 pl-[max(0.75rem,env(safe-area-inset-left))]',
@@ -970,16 +985,16 @@ function Sidebar({
     >
       <div className="flex items-center gap-2 px-1.5">
         {wide ? (
-          <Logo tone="dark" caption={parc ?? undefined} to={base} />
+          <Logo caption={parc ?? undefined} to={base} />
         ) : (
-          <Logo tone="dark" markOnly to={base} />
+          <Logo markOnly to={base} />
         )}
         <IconButton
           icon="menu"
           // Dans le tiroir, ce bouton ferme ; dans la barre latérale de
           // bureau, il replie. Deux actions, deux libellés.
           label={dialogLabel ? t('nav.closeNav') : t('nav.toggleNav')}
-          variant="onDark"
+          variant="secondary"
           onClick={onToggleRail}
           className={cn('ml-auto', railed && 'hidden')}
         />
@@ -999,11 +1014,11 @@ function Sidebar({
       */}
       {wide && demo && (
         <div className="flex flex-col gap-1.5">
-          <p className="eyebrow px-2 text-on-dark-faint">{t('nav.activeProfile')}</p>
+          <p className="eyebrow px-2 text-muted">{t('nav.activeProfile')}</p>
 
           {/* Vrais boutons radio : la navigation par flèches et l'annonce
               « 2 sur 3 » sont natives, contrairement à des div cliquables. */}
-          <fieldset className="rounded-md border-0 bg-on-dark-hover p-1">
+          <fieldset className="rounded-md border-0 bg-surface-sunken p-1">
             <legend className="sr-only">{t('nav.activeProfile')}</legend>
             {profiles.map((profile) => {
               const active = profile.value === role
@@ -1014,10 +1029,10 @@ function Sidebar({
                     'relative flex min-h-11 cursor-pointer items-center rounded-sm px-2.5 text-label',
                     'transition-colors duration-150',
                     'has-[:focus-visible]:outline has-[:focus-visible]:outline-2',
-                    'has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-accent-on-dark',
+                    'has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-accent-ink',
                     active
-                      ? 'bg-on-dark-active font-semibold text-on-dark shadow-[inset_2px_0_0_var(--color-accent-on-dark)]'
-                      : 'text-on-dark-muted hover:bg-on-dark-hover',
+                      ? 'bg-accent-tint font-semibold text-accent-ink shadow-[inset_2px_0_0_var(--color-accent)]'
+                      : 'text-muted hover:bg-surface-sunken',
                   )}
                 >
                   <input
@@ -1063,7 +1078,7 @@ function Sidebar({
           */}
           <p
             aria-live="polite"
-            className="px-3.5 text-caps leading-relaxed text-on-dark-faint"
+            className="px-3.5 text-caps leading-relaxed text-muted"
           >
             {t(`roles.${role}.rights` as 'roles.owner.rights')}
           </p>
@@ -1091,7 +1106,7 @@ function Sidebar({
           return (
             <div key={section.headingKey} className="flex flex-col gap-0.5">
               {wide && (
-                <p className="eyebrow px-2.5 pb-1 text-on-dark-faint">
+                <p className="eyebrow px-2.5 pb-1 text-muted">
                   {t(section.headingKey as 'nav.sectionSteering')}
                 </p>
               )}
@@ -1109,7 +1124,7 @@ function Sidebar({
       <div
         className={cn(
           'mt-auto flex flex-col gap-0.5',
-          (pied.length > 0 || railed) && 'border-t border-on-dark-border pt-3',
+          (pied.length > 0 || railed) && 'border-t border-border pt-3',
         )}
       >
         {pied.map((item) => (
@@ -1119,7 +1134,7 @@ function Sidebar({
           <IconButton
             icon="menu"
             label={t('nav.toggleNav')}
-            variant="onDark"
+            variant="secondary"
             onClick={onToggleRail}
             className="mt-1 self-center"
           />
@@ -1420,8 +1435,16 @@ function SidebarLink({ item, wide }: { item: NavItem; wide: boolean }) {
           'transition-colors duration-150',
           wide ? 'justify-start' : 'justify-center',
           isActive
-            ? 'bg-on-dark-active font-semibold text-on-dark shadow-[inset_2px_0_0_var(--color-accent-on-dark)]'
-            : 'text-on-dark-muted hover:bg-on-dark-hover hover:text-on-dark',
+            /* L'ACTIF PORTE DU TEXTE D'ACCENT, et non plus l'encre ordinaire.
+               Sur fond sombre, l'entrée courante se distinguait par un lavis
+               blanc à 14 % — la seule chose qui se voie sur du presque-noir. Sur
+               fond clair, le lavis d'accent et l'encre d'accent vont ensemble :
+               6,12 mesuré, et l'œil retrouve l'écran courant à la couleur avant
+               de lire le mot. Le filet de 2 px reste : trois signaux valent
+               mieux qu'un lavis seul pour qui distingue mal le bleu, et il
+               reprend `--color-accent`, qui tient 5,17 sur ce lavis. */
+            ? 'bg-accent-tint font-semibold text-accent-ink shadow-[inset_2px_0_0_var(--color-accent)]'
+            : 'text-muted hover:bg-surface-sunken hover:text-ink',
         )
       }
     >
