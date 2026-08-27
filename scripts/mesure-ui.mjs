@@ -681,6 +681,28 @@ const SURFACES_INTERACTIVES = [
   },
   {
     /*
+      LE MÊME PANNEAU SUR LE 404, et il entre pour la même raison que celui de la
+      connexion : le FOND diffère.
+
+      L'écran 404 n'a pas de carte — le panneau y flotte au-dessus de `bg-canvas`,
+      sous un en-tête bordé, là où celui de l'authentification flotte au-dessus
+      d'une carte peinte sur `surface-sunken`. Ce n'est pas la même paire.
+
+      Il entre aussi parce que ce panneau vient d'y remplacer trois sélecteurs en
+      ligne : l'en-tête passe de 193 à 69 px à 360, et le `<h1>` de 300 à 238 —
+      de 33 % à 26 % de la fenêtre. Un geste qui déplace un tiers d'écran mérite
+      d'être audité là où il agit, pas seulement là où il est né.
+    */
+    nom: 'reglages-sur-le-404',
+    adresse: '/adresse-qui-n-existe-pas',
+    largeur: 360,
+    temoin: '[data-mesure="reglages-authentification"]',
+    ouvrir: async (page) => {
+      await page.locator('[data-declencheur-reglages]').first().click()
+    },
+  },
+  {
+    /*
       LA RANGÉE DE PHOTOS D'UNE RÉSERVE, ET LE GESTE VA JUSQU'À LA VIGNETTE.
 
       Ouvrir la modale ne suffirait pas. Tant qu'aucune photo n'est choisie, la
@@ -857,9 +879,9 @@ const DECLENCHEURS_ATTENDUS = 6
   elle-même : vider la table, et l'on comparerait 0 à 0 avant de se déclarer
   vert. Le nombre est donc écrit, et l'ajout d'une surface oblige à le toucher.
 
-  18 = 9 surfaces × 2 thèmes.
+  20 = 10 surfaces × 2 thèmes.
 */
-const SURFACES_ATTENDUES = 18
+const SURFACES_ATTENDUES = 20
 
 /**
  * Neutralise ce qui bouge, AVANT de mesurer.

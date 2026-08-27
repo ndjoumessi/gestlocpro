@@ -35,17 +35,51 @@ describe('adresse publique inconnue', () => {
     await renderApp('/nimportequoi')
 
     expect(screen.getByRole('link', { name: /retour à l’accueil/i })).toHaveAttribute('href', '/')
-    expect(screen.getByRole('link', { name: /ouvrir la démonstration/i })).toHaveAttribute(
-      'href',
-      '/app',
-    )
     expect(screen.getByRole('link', { name: /se connecter/i })).toHaveAttribute('href', '/connexion')
+  })
+
+  /**
+   * LA DÉMONSTRATION DOIT S'OUVRIR, PAS DEMANDER UN MOT DE PASSE.
+   *
+   * Ce cas existait et épinglait `href === '/app'` : il gardait le défaut au
+   * lieu de la propriété. Suivi au navigateur, ce lien menait à `/connexion` —
+   * `/app` est l'espace AUTHENTIFIÉ, et `RequireAuth` y renvoie tout visiteur
+   * anonyme. Or c'est le seul geste d'exploration de cette page, et celui qui la
+   * voit y est arrivé PAR UN LIEN MORT : il n'a, par définition, aucune raison
+   * d'avoir un compte.
+   *
+   * ═══ POURQUOI ON COMPARE À LA VITRINE PLUTÔT QUE D'ÉCRIRE L'ADRESSE ═══
+   *
+   * Réécrire `'/demo'` ici referait exactement ce qui vient d'échouer : un
+   * littéral qu'on croit juste et que rien ne relie à la vérité. La vitrine, elle,
+   * envoie vers la démonstration depuis toujours et à deux endroits. On lit donc
+   * SA destination et on exige que le 404 rende la même — le jour où la
+   * démonstration déménage, les deux bougent ensemble ou la garde rougit.
+   */
+  it('envoie vers la démonstration, là où la vitrine envoie', async () => {
+    await renderApp('/')
+    const depuisLaVitrine = document.querySelector('a[href^="/demo"]')?.getAttribute('href')
+    expect(depuisLaVitrine, 'la vitrine n’offre plus de lien vers la démonstration').toBeTruthy()
+
+    await renderApp('/nimportequoi')
+    const depuisLe404 = screen.getByRole('link', { name: /ouvrir la démonstration/i })
+    expect(depuisLe404).toHaveAttribute('href', depuisLaVitrine)
+
+    /* Et jamais sous `/app`, quelle que soit l'adresse : c'est la barrière
+       d'authentification, et le nom du bouton promet le contraire. */
+    expect(depuisLe404.getAttribute('href')).not.toMatch(/^\/app(?:[/?]|$)/)
   })
 
   it('traduit l’écran', async () => {
     const user = userEvent.setup()
     await renderApp('/nimportequoi')
 
+    /* Les trois réglages sont repliés derrière un déclencheur depuis que
+       l'en-tête de cet écran a rejoint celui des pages d'authentification : il
+       occupait 193 px à 360, et le `<h1>` commençait à 33 % de la fenêtre. Le
+       sélecteur de langue n'est donc plus au premier rendu — il est à un geste,
+       et ce cas fait ce geste. */
+    await user.click(screen.getByRole('button', { name: /réglages/i }))
     await user.click(screen.getByRole('button', { name: /english/i }))
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('This page does not exist')
   })
