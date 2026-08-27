@@ -37,7 +37,63 @@ import { workTitle } from '@/data/workTitle'
  * Nommée quand même, et c'est le point du lot : la rangée CHARGÉE et son
  * SQUELETTE la lisent tous deux ici, donc ils ne peuvent plus diverger.
  */
-const GRILLE_LOCATAIRE = 'grid gap-4 lg:grid-cols-[1.4fr_1fr_1fr]'
+/*
+  ═══ LE SEUIL EST CELUI DU CONTENEUR, PAS CELUI DE LA FENÊTRE ═══
+
+  `lg:` regardait la fenêtre. Or cette rangée se rend dans DEUX contenants qui
+  n'ont pas la même largeur pour une même fenêtre :
+
+    /demo/mon-espace   l'écran réel du locataire   — grille 689 px à 1024
+    /demo/portail      la prévisualisation, dans un cadre de navigateur
+                       destiné au propriétaire     — grille 632 px à 1024
+
+  À 1024 le seuil `lg` déclenchait donc trois colonnes dans les deux cas, et
+  « 17 622 FCFA » — que `Intl` compose avec des espaces insécables, donc un seul
+  jeton de onze caractères — sortait de sa carte : de 2 px sur l'écran réel, de
+  19 px dans la prévisualisation. Aucun débordement de page : le montant sortait
+  DANS la carte. Relevé par `MESURER_DEBORDEMENT_DE_MOT`.
+
+  AUCUN SEUIL DE FENÊTRE NE POUVAIT LE DIRE, et c'est ce qui a décidé de l'outil.
+  Le rapport cadre/fenêtre vaut 0,62 dans la prévisualisation et 1 sur l'écran
+  réel : monter le seuil à `xl` réparait les deux à 1280 mais retardait sans
+  raison la mise en trois colonnes de l'écran réel ; le descendre à `sm` rendait
+  deux colonnes de 162 px dans la prévisualisation à 640, soit le même défaut
+  trente pixels plus bas. Un seuil unique ne peut pas décrire deux contenants.
+
+  `@container` mesure le PARENT — et il faut le poser SUR le parent, jamais sur
+  la grille elle-même : un élément n'est pas son propre conteneur, et les deux
+  classes sur la même boîte font chercher un ancêtre qui n'existe pas. D'où
+  `ENVELOPPE_LOCATAIRE`, qui n'a pas d'autre raison d'être. Les seuils ci-dessous
+  sont donc des largeurs d'enveloppe, vraies dans les deux contextes :
+
+    @xl   (36rem = 576)  deux colonnes  — chacune ≥ 280 px, soit 240 px utiles
+    @3xl  (48rem = 768)  trois colonnes — la plus étroite ≥ 216 px, soit 176 utiles
+
+  Le montant en réclame 153. Les seuils sont posés sur le MESURÉ et non sur le
+  premier palier disponible : une première rédaction avait pris `@2xl` et `@4xl`,
+  et `@4xl` (896) ratait de HUIT PIXELS l'enveloppe de 888 px que la
+  prévisualisation offre à 1280 — la rangée retombait à deux colonnes là où trois
+  tenaient depuis toujours. Le palier au-dessus n'est pas gratuit ; il faut le
+  choisir contre une largeur réelle.
+
+  `1.4fr` reste ce qu'il était : la première carte porte le loyer, la seule somme
+  due d'office et la plus longue à écrire ; les deux autres des consommations
+  refacturées. Ce n'est pas un réglage esthétique, c'est cette asymétrie-là.
+
+  ═══ POURQUOI ELLE NE REJOINT PAS `grillesDIndicateurs` ═══
+
+  Elle est PROPRE à cet écran, pour la raison qui précède. La ranger avec les
+  deux grilles partagées ferait une constante à trois cas, c'est-à-dire trois
+  littéraux sous un seul nom.
+
+  Nommée quand même : la rangée CHARGÉE et son SQUELETTE la lisent tous deux
+  ici, donc ils ne peuvent plus diverger.
+*/
+/* L'enveloppe n'existe que pour porter `@container` : un élément n'est pas son
+   propre conteneur. Nommée, et non écrite deux fois, pour la même raison que la
+   grille — la rangée chargée et son squelette doivent la lire au même endroit. */
+const ENVELOPPE_LOCATAIRE = '@container'
+const GRILLE_LOCATAIRE = 'grid gap-4 @xl:grid-cols-2 @3xl:grid-cols-[1.4fr_1fr_1fr]'
 
 /**
  * Les quittances et les signalements, côte à côte. Nommée pour la même
@@ -220,80 +276,83 @@ export function TenantDashboard() {
           d'office ; l'eau et l'électricité sont REFACTURÉES, et leur montant se
           dérive de la quantité relevée et du tarif, jamais d'un chiffre saisi
           deux fois. */}
-      <div className={GRILLE_LOCATAIRE}>
-        <Card className="flex flex-col">
-          <div className="flex items-start justify-between gap-3">
-            <p className="eyebrow text-muted">
-              {t('app.tenant.rentFor')} · {d.monthYear(periodeCourante)}
-            </p>
-            <PaymentStatusPill status={unit.status} size="sm" />
-          </div>
-          <p className="numeric mt-2 text-kpi font-medium">{money(unit.rent, { round: true })}</p>
-          {/* La valeur est un POURCENTAGE, pas un montant : passer le montant
-              rendait une piste large de 145 000 % et un libellé « 145000 % ».
-              Le libellé est masqué — le montant juste au-dessus le dit déjà —
-              mais reste annoncé aux lecteurs d'écran. */}
-          <div className="mt-3">
-            {/* Le TON suit le STATUT de la pastille juste au-dessus, et non un
-                vert fixe. Un logement EN RETARD affichait une pastille rouge
-                ET une piste verte pour le même fait — deux couleurs
-                contraires sur la même carte, à un public qui lit d'abord la
-                couleur. `ProgressBar` n'expose que trois tons (`accent`, `ok`,
-                `danger`) : `danger` est le seul qui rejoigne la pastille sans
-                en inventer un quatrième dans un composant partagé. */}
-            <ProgressBar
-              value={unit.rent === 0 ? 0 : Math.round((unit.paid / unit.rent) * 100)}
-              label={t('app.tenant.rentFor')}
-              tone={unit.status === 'overdue' ? 'danger' : 'ok'}
-              hideLabel
-            />
-          </div>
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-            {/* Le jour et le moyen du règlement sont les deux seules choses que
-                la quittance sait et que le portefeuille ignore. Sans quittance
-                pour la période, la ligne disparaît plutôt que d'en inventer
-                une : le statut au-dessus dit déjà où en est le loyer. */}
-            {versementCourant ? (
-              <span className="text-body text-muted">
-                {t('app.tenant.paidOnBy', {
-                  date: d.dayMonth(versementCourant.paidOn),
-                  method: t(
-                    MOYENS_DE_PAIEMENT[versementCourant.method] as 'app.payments.methodCash',
-                  ),
-                })}
-              </span>
-            ) : (
-              <span />
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="-mr-3.5"
-              onClick={() => setQuittanceDe(periodeIso(periodeCourante))}
-            >
-              {t('app.tenant.receipt')}
-            </Button>
-          </div>
-        </Card>
+      {/* L'ENVELOPPE N'EXISTE QUE POUR PORTER `@container` — voir GRILLE_LOCATAIRE. */}
+      <div className={ENVELOPPE_LOCATAIRE}>
+        <div className={GRILLE_LOCATAIRE}>
+          <Card className="flex flex-col">
+            <div className="flex items-start justify-between gap-3">
+              <p className="eyebrow text-muted">
+                {t('app.tenant.rentFor')} · {d.monthYear(periodeCourante)}
+              </p>
+              <PaymentStatusPill status={unit.status} size="sm" />
+            </div>
+            <p className="numeric mt-2 text-kpi font-medium">{money(unit.rent, { round: true })}</p>
+            {/* La valeur est un POURCENTAGE, pas un montant : passer le montant
+                rendait une piste large de 145 000 % et un libellé « 145000 % ».
+                Le libellé est masqué — le montant juste au-dessus le dit déjà —
+                mais reste annoncé aux lecteurs d'écran. */}
+            <div className="mt-3">
+              {/* Le TON suit le STATUT de la pastille juste au-dessus, et non un
+                  vert fixe. Un logement EN RETARD affichait une pastille rouge
+                  ET une piste verte pour le même fait — deux couleurs
+                  contraires sur la même carte, à un public qui lit d'abord la
+                  couleur. `ProgressBar` n'expose que trois tons (`accent`, `ok`,
+                  `danger`) : `danger` est le seul qui rejoigne la pastille sans
+                  en inventer un quatrième dans un composant partagé. */}
+              <ProgressBar
+                value={unit.rent === 0 ? 0 : Math.round((unit.paid / unit.rent) * 100)}
+                label={t('app.tenant.rentFor')}
+                tone={unit.status === 'overdue' ? 'danger' : 'ok'}
+                hideLabel
+              />
+            </div>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+              {/* Le jour et le moyen du règlement sont les deux seules choses que
+                  la quittance sait et que le portefeuille ignore. Sans quittance
+                  pour la période, la ligne disparaît plutôt que d'en inventer
+                  une : le statut au-dessus dit déjà où en est le loyer. */}
+              {versementCourant ? (
+                <span className="text-body text-muted">
+                  {t('app.tenant.paidOnBy', {
+                    date: d.dayMonth(versementCourant.paidOn),
+                    method: t(
+                      MOYENS_DE_PAIEMENT[versementCourant.method] as 'app.payments.methodCash',
+                    ),
+                  })}
+                </span>
+              ) : (
+                <span />
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="-mr-3.5"
+                onClick={() => setQuittanceDe(periodeIso(periodeCourante))}
+              >
+                {t('app.tenant.receipt')}
+              </Button>
+            </div>
+          </Card>
 
-        <CarteCharge
-          label={t('app.tenant.water')}
-          amount={refacture(eauConso, releve?.waterPrice)}
-          note={
-            eauConso === null
-              ? t('app.meters.missing')
-              : t('app.tenant.consumedWater', { n: n.integer(eauConso) })
-          }
-        />
-        <CarteCharge
-          label={t('app.tenant.power')}
-          amount={refacture(elecConso, releve?.powerPrice)}
-          note={
-            elecConso === null
-              ? t('app.meters.missing')
-              : t('app.tenant.consumedPower', { n: n.integer(elecConso) })
-          }
-        />
+          <CarteCharge
+            label={t('app.tenant.water')}
+            amount={refacture(eauConso, releve?.waterPrice)}
+            note={
+              eauConso === null
+                ? t('app.meters.missing')
+                : t('app.tenant.consumedWater', { n: n.integer(eauConso) })
+            }
+          />
+          <CarteCharge
+            label={t('app.tenant.power')}
+            amount={refacture(elecConso, releve?.powerPrice)}
+            note={
+              elecConso === null
+                ? t('app.meters.missing')
+                : t('app.tenant.consumedPower', { n: n.integer(elecConso) })
+            }
+          />
+        </div>
       </div>
 
       <div className={GRILLE_QUITTANCES_ET_SIGNALEMENTS}>
@@ -840,7 +899,15 @@ function TenantDashboardSkeleton() {
             jamais un état de chargement — ni la vitrine, ni la mesure au
             navigateur, ni les tests. C'est le refactoring qui l'a montré, en
             mettant les deux littéraux côte à côte. */}
-        <SkeletonStatRow count={3} className={GRILLE_LOCATAIRE} />
+        {/* L'ENVELOPPE AUSSI, et pas seulement la grille : `@2xl:` et `@4xl:`
+            cherchent un ancêtre déclaré conteneur. Sans elle, le squelette
+            rendrait UNE colonne à toutes les largeurs pendant que la rangée
+            chargée en rend trois — exactement la divergence que ce nom partagé
+            existe pour empêcher, et que rien ne rendrait visible puisqu'aucune
+            porte ne rend jamais un état de chargement. */}
+        <div className={ENVELOPPE_LOCATAIRE}>
+          <SkeletonStatRow count={3} className={GRILLE_LOCATAIRE} />
+        </div>
 
         <div className={GRILLE_QUITTANCES_ET_SIGNALEMENTS}>
           {/* Les quittances. Six lignes : c'est ce que rend `TENANT_RECEIPTS`,

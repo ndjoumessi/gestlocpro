@@ -1112,13 +1112,6 @@ const DEBORDS_LOCAUX_TOLERES = {
     montant collé à la bordure de sa carte est laid ; il n'est pas coupé, et
     c'est tout ce que cette règle sait juger.
   */
-  'p.numeric mt-2 text-title-l font-medium': {
-    plafond: 18,
-    motif:
-      '« 447 000 FCFA » sur la vitrine à 320 px : sort de sa boîte de 18 px, mange les 20 px ' +
-      'de rembourrage de la carte, s’arrête 3 PX avant la bordure. Rien n’est coupé ; le ' +
-      'montant est collé au bord.',
-  },
   'dd.numeric text-body font-medium': {
     plafond: 14,
     motif:
@@ -1153,33 +1146,36 @@ const DEBORDS_LOCAUX_TOLERES = {
       'gouttière ; la carte d’illustration commence 30 px plus loin. Mesuré parce qu’une ' +
       'capture donnait à croire le contraire.',
   },
-  'p.numeric mt-2 text-kpi leading-none font-medium': {
-    plafond: 10,
-    motif:
-      '« 950 000 FCFA » en chiffre de tête sur la vitrine à 320 px : 7 px hors de sa boîte, ' +
-      'et 89 PX de marge avant le bord de la carte. Invisible.',
-  },
 }
 
 /*
-  ═══ UNE TOLÉRANCE RETIRÉE, ET POURQUOI LE JUGEMENT A CHANGÉ ═══
+  ═══ TROIS TOLÉRANCES RETIRÉES, ET POURQUOI LE JUGEMENT A CHANGÉ ═══
 
-  `span.block text-body` vivait ici, plafonnée à 3 px, avec ce motif : « “Contrat
-  de bail signé” sur /demo/documents à 320 px, en français seulement. 3 px hors
-  de sa boîte, 185 px avant le bord de la carte […] C'est la plus petite chose
-  que cette règle sache voir, et elle ne se voit pas. »
+  Trois entrées vivaient ici, chacune exacte et chacune raisonnable :
 
-  Le motif était EXACT et le verdict raisonnable : trois pixels de dépassement,
-  loin du bord, invisibles. Ce qu'il ne disait pas — parce que cette règle-ci ne
-  le mesure pas — c'est ce que la boîte OFFRAIT : 46 px, pour un libellé dont le
-  premier mot en réclame 49. Le défaut n'était pas le dépassement, c'était la
-  colonne réduite à un cinquième de sa ligne par un voisin `shrink-0`.
+    span.block text-body                   3 px  « Contrat de bail signé »,
+      « 185 px avant le bord de la carte […] C'est la plus petite chose que cette
+      règle sache voir, et elle ne se voit pas. »
+    p.numeric mt-2 text-title-l …         18 px  « 447 000 FCFA »,
+      « mange les 20 px de rembourrage, s'arrête 3 px avant la bordure. Rien
+      n'est coupé ; le montant est collé au bord. »
+    p.numeric mt-2 text-kpi …             10 px  « 950 000 FCFA »,
+      « 7 px hors de sa boîte, et 89 px de marge avant le bord. Invisible. »
 
-  `MESURER_DEBORDEMENT_DE_MOT` rapporte les deux chiffres — le manque ET l'offert
-  — et c'est le second qui a changé la lecture. Deux règles ont vu le même pixel ;
+  LES TROIS MOTIFS DISAIENT VRAI, et les trois verdicts se tenaient : ces
+  dépassements ne se voient pas. Ce qu'aucun ne disait — parce que cette règle-ci
+  ne le mesure pas — c'est ce que la boîte OFFRAIT : 46 px pour un libellé dont
+  le premier mot en réclame 49 ; 111 px pour un montant qui en veut 129 ; 160 px
+  pour un montant qui en veut 170.
+
+  Le défaut n'était donc pas le dépassement, c'était la colonne. Et il ne se
+  jugeait pas au pixel qui sort, mais à la place qui reste. `MESURER_DEBORDEMENT_-
+  DE_MOT` rapporte les DEUX chiffres — le manque ET l'offert —, et c'est le
+  second qui a changé la lecture des trois. Deux règles ont vu les mêmes pixels ;
   celle qui disait combien de place il restait a fait poser la bonne question.
 
-  L'entrée part parce que le défaut est réparé, non parce qu'on l'a réévalué.
+  Les entrées partent parce que les défauts sont réparés, non parce qu'on les a
+  réévalués. La garde du garde l'a exigé dès que la sonde a cessé de les voir.
 */
 
 /**
@@ -2484,35 +2480,36 @@ const MESURER_TRONCATURES = () => {
 /**
  * CE QUE LA RÈGLE A TROUVÉ LE JOUR OÙ ELLE EST NÉE, ET QUI N'EST PAS RÉPARÉ.
  *
- * Sept textes distincts sur les 506 points du balayage. Deux ont été corrigés
- * dans le lot qui écrit cette règle — l'accroche du panneau de marque, qui
- * coupait « management » sur le séparateur à 1024, et le libellé « Récapitulatif »
- * du fil d'étapes. Les CINQ QUI RESTENT sont ici, chiffrés, avec leur remède.
+ * ═══ LA TABLE EST VIDE, ET C'EST UN RÉSULTAT, PAS UN OUBLI ═══
  *
- * Ils sont tolérés et NON réparés pour une raison qui se dit : leur correctif
- * n'est pas local. Trois d'entre eux sont des MONTANTS, qu'`Intl` compose avec
- * des espaces insécables — « 950 000 FCFA » est un seul jeton de douze
- * caractères qu'aucun repli ne coupe, et qu'on ne DOIT pas couper : une césure
- * dans un nombre en change la lecture. Leur remède est de rendre la place, donc
- * de retoucher la géométrie des cartes qui les portent. Les deux autres sont des
- * titres écrasés par l'action posée à leur droite dans `CardHeader` — un
- * composant que toutes les cartes du produit partagent, et qu'on ne modifie pas
- * en marge d'un lot sur l'écran d'inscription.
+ * La règle a trouvé SEPT textes distincts à sa naissance, sur les 506 points du
+ * balayage. Les sept ont été réparés, en trois lots, et chacun par un remède
+ * différent — c'est ce qui rend la liste utile à garder ici :
  *
- * LE PLAFOND EST LE MESURÉ, SANS MARGE : chaque ligne est le pire débordement
- * réellement vu, aux onze largeurs et dans les deux langues. Le faire monter
- * demande de récrire la ligne, donc de dire pourquoi dans le diff.
+ *   « Rental management, held like an estate. »   une taille de corps en `vw`
+ *      dans une colonne en `%` : `display-app` jusqu'à `xl`.
+ *   « Récapitulatif »                             un interlettrage de CAPITALES
+ *      appliqué à du bas-de-casse : `tracking-normal`, puis `hyphens-auto`.
+ *   « Mes paiements par période », « Contrat de bail signé »
+ *      un voisin `shrink-0` contre un texte `min-w-0` : repli à plancher.
+ *   « 950 000 FCFA », « 447 000 FCFA »            même forme, dans l'accroche.
+ *   « 17 622 FCFA »                               un seuil de FENÊTRE sur une
+ *      grille rendue dans deux contenants de largeurs différentes : `@container`.
  *
- * La clé est le TEXTE EXACT. Changer le libellé fait tomber la tolérance et
- * rougir la garde — ce qui est voulu : un texte réécrit n'hérite pas de la
- * dispense accordée à un autre.
+ * AUCUN N'A ÉTÉ RÉPARÉ EN COUPANT LE TEXTE, et les trois montants disent pourquoi
+ * la tentation devait être écartée : `Intl` les compose avec des espaces
+ * INSÉCABLES — « 950 000 FCFA » est un seul jeton de douze caractères — et une
+ * césure dans un nombre en change la lecture. Le remède d'un montant qui déborde
+ * est toujours de lui rendre la place.
+ *
+ * ═══ CE QUE LA TABLE ATTEND D'UNE FUTURE LIGNE ═══
+ *
+ * Un plafond ÉGAL au mesuré, sans marge — `plafondsTropHauts` refuse le mou —
+ * et une clé qui est le TEXTE EXACT : un libellé réécrit n'hérite pas de la
+ * dispense accordée à un autre. La table est vide aujourd'hui ; la garde du
+ * garde fait mourir toute ligne qui cesserait de couvrir quelque chose.
  */
 const MOTS_DEBORDANTS_TOLERES = [
-  /* Les trois montants. Remède : élargir la boîte qui les porte, jamais couper
-     le nombre. Vus sur l'accroche de la vitrine et sur le portail locataire. */
-  { texte: '950 000 FCFA', plafond: 10, ou: '/ 320px' },
-  { texte: '447 000 FCFA', plafond: 18, ou: '/ 320px' },
-  { texte: '17 622 FCFA', plafond: 10, ou: '/demo/portail 1024px' },
 
   /* LES DEUX TITRES ÉCRASÉS SONT PARTIS, et leur remède mérite d'être gardé ici
      parce que la même forme reviendra ailleurs : un voisin `shrink-0` à côté

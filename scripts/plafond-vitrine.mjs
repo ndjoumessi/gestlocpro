@@ -54,8 +54,8 @@ const BASE = `http://127.0.0.1:${PORT}`
  * lignes, donc de dire pourquoi dans le diff.
  */
 const PLAFONDS = [
-  { largeur: 360, langue: 'fr', plafond: 9869, avant: 11085, origine: 11419 },
-  { largeur: 360, langue: 'en', plafond: 9743, avant: 10956, origine: 11149 },
+  { largeur: 360, langue: 'fr', plafond: 9948, avant: 9869, origine: 11419 },
+  { largeur: 360, langue: 'en', plafond: 9838, avant: 9743, origine: 11149 },
   { largeur: 1280, langue: 'fr', plafond: 7017, avant: 7017, origine: 7110 },
   { largeur: 1280, langue: 'en', plafond: 7091, avant: 7091, origine: 7106 },
 ]
@@ -78,6 +78,24 @@ const PLAFONDS = [
   la même nature, et les confondre reviendrait à s'attribuer un gain qu'on n'a
   pas fait. `avant` porte la mesure réelle d'avant ce lot, y compris là où elle
   est égale au plafond : une colonne qui ne bouge pas est une information.
+
+  ═══ LE TÉLÉPHONE REPREND 79 PX, ET C'EST UNE DETTE PAYÉE ═══
+
+  Lot suivant, sens inverse : 9 869 → 9 948 en français, 9 743 → 9 838 en
+  anglais. Les deux indicateurs du pied de l'accroche — taux d'occupation et
+  reste à percevoir — cessent d'être divisés sans condition en deux colonnes et
+  se replient sous un plancher.
+
+  CE QUE LA DIVISION RIGIDE COÛTAIT, mesuré : à 320, deux colonnes de 111 px pour
+  « 447 000 FCFA » qui en réclame 129 — le montant sortait de sa boîte de 18 px.
+  À 360, 131 px pour 129 : deux pixels, ce qui n'est pas une marge. Le montant est
+  composé par `Intl` avec des espaces insécables ; on ne le coupe pas, on lui rend
+  la place.
+
+  Quatre-vingts pixels sur près de dix mille, contre un montant qui débordait aux
+  deux largeurs les plus étroites du marché visé. La page n'a pas grandi par
+  négligence : elle a payé une dette que le plafond, seul, aurait laissée courir —
+  il ne mesure qu'une somme, et une somme ne dit rien de ce qui déborde dedans.
 */
 /*
   ATTENDUS EST UNE CONSTANTE ÉCRITE, JAMAIS `PLAFONDS.length`.
