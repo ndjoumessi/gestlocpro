@@ -3,6 +3,18 @@ import { within } from '@testing-library/react'
 import { renderApp, screen, userEvent } from '@/test/render'
 
 /**
+ * LA LARGEUR QUE CES CAS ÉPROUVENT, déclarée plutôt que supposée.
+ *
+ * Ils tiennent des comportements de TÉLÉPHONE — le tiroir, la barre basse, la
+ * feuille du menu — et s'appuyaient jusqu'ici sur le fait que jsdom répond
+ * « faux » à toute requête média : la fenêtre y était donc étroite par accident.
+ * `renderApp` évalue désormais les seuils à partir d'une largeur, et son défaut
+ * est 1280 : au-dessus de `lg`, la coquille referme son tiroir et la vitrine
+ * ancre son panneau, ce qui est juste et ne laissait plus rien à observer ici.
+ */
+const TELEPHONE = 360
+
+/**
  * Tiroir de navigation mobile.
  *
  * Il assombrit la page et bloque le défilement : c'est une fenêtre modale. Il
@@ -43,7 +55,7 @@ describe('tiroir de navigation', () => {
    */
   it('distingue ouvrir, fermer et replier', async () => {
     const user = userEvent.setup()
-    await renderApp('/app')
+    await renderApp('/app', { largeur: TELEPHONE })
 
     expect(screen.getByRole('button', { name: 'Ouvrir la navigation' })).toBeInTheDocument()
     // Barre latérale de bureau : masquée en mobile, mais montée sous jsdom.
@@ -59,7 +71,7 @@ describe('tiroir de navigation', () => {
 
   it('s’annonce comme fenêtre modale', async () => {
     const user = userEvent.setup()
-    await renderApp('/app')
+    await renderApp('/app', { largeur: TELEPHONE })
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     await user.click(ouvrir())
@@ -71,7 +83,7 @@ describe('tiroir de navigation', () => {
 
   it('prend le focus à l’ouverture', async () => {
     const user = userEvent.setup()
-    await renderApp('/app')
+    await renderApp('/app', { largeur: TELEPHONE })
 
     await user.click(ouvrir())
     expect(screen.getByRole('dialog')).toHaveFocus()
@@ -79,7 +91,7 @@ describe('tiroir de navigation', () => {
 
   it('retire l’arrière-plan du parcours de tabulation', async () => {
     const user = userEvent.setup()
-    await renderApp('/app')
+    await renderApp('/app', { largeur: TELEPHONE })
 
     const contenu = screen.getByRole('main').parentElement
     expect(contenu).not.toHaveAttribute('inert')
@@ -92,7 +104,7 @@ describe('tiroir de navigation', () => {
 
   it('rend le focus au bouton d’ouverture à la fermeture', async () => {
     const user = userEvent.setup()
-    await renderApp('/app')
+    await renderApp('/app', { largeur: TELEPHONE })
 
     const declencheur = ouvrir()
     await user.click(declencheur)
@@ -105,7 +117,7 @@ describe('tiroir de navigation', () => {
 
   it('se referme si l’écran passe en grand format', async () => {
     const user = userEvent.setup()
-    await renderApp('/app')
+    await renderApp('/app', { largeur: TELEPHONE })
 
     poserLargeur(true)
     await user.click(ouvrir())

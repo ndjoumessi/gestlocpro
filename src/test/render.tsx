@@ -7,6 +7,7 @@ import {
   type RenderResult,
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import type { ReactElement } from 'react'
 import { App, chargerEspaceApplicatif } from '@/App'
@@ -46,6 +47,36 @@ export interface PreferencesTest {
   session?: EtatSession | null
   /** État de navigation de la route de départ, comme le poserait `RequireAuth`. */
   state?: unknown
+  /**
+   * LA LARGEUR DE FENÊTRE QUE LE CAS ÉPROUVE, en pixels.
+   *
+   * ═══ POURQUOI LE HARNAIS DOIT LA DÉCLARER ═══
+   *
+   * jsdom ne calcule aucune mise en page, et sa `matchMedia` répond `false` à
+   * TOUT. Tant que le produit ne lisait ses points de rupture que dans la
+   * feuille de style, cela ne se voyait pas : les utilitaires responsifs
+   * cachent sans retirer, donc le DOM était le même à toute largeur et les cas
+   * y trouvaient ce qu'ils cherchaient.
+   *
+   * Ce n'est plus vrai. Les écrans-tableaux rendent désormais des FICHES sous
+   * `sm` et un TABLEAU au-dessus — deux arbres différents, choisis au rendu,
+   * précisément pour ne pas laisser la donnée deux fois dans le document. Un
+   * harnais qui répond « faux » à toute requête ne teste alors qu'une des deux
+   * formes, et sans le dire.
+   *
+   * ═══ LE DÉFAUT VAUT 1280, ET C'EST UN CHOIX ═══
+   *
+   * Ce n'est pas la largeur du marché visé — le téléphone l'est, et le dépôt le
+   * répète. C'est la largeur que les cas existants SUPPOSAIENT sans l'écrire :
+   * ils interrogent des `columnheader`, des `cell`, des `rowgroup`. Les faire
+   * basculer en fiches d'un coup aurait réécrit une trentaine de gardes du
+   * tableau — c'est-à-dire perdu la garde de la forme large en croyant gagner
+   * celle de la forme étroite.
+   *
+   * Un cas qui veut le téléphone le DEMANDE, et `fichesDuTableau.test.tsx` le
+   * fait. Les deux formes sont gardées, chacune à sa largeur.
+   */
+  largeur?: number
 }
 
 /**
@@ -225,6 +256,35 @@ export async function renderApp(
   // `I18nProvider` se rabat sur `navigator.language`, que jsdom annonce à
   // `en-US` : les tests basculaient en anglais et dépendaient donc de
   // l'environnement d'exécution plutôt que de ce qu'ils déclarent.
+  /*
+    `matchMedia` RÉPOND PAR LA LARGEUR, au lieu de répondre « faux » à tout.
+
+    Elle n'interprète que `min-width` en `rem` ou en pixels : ce sont les seules
+    requêtes que le produit pose — `useAuDela` les écrit en `rem` exprès, pour
+    suivre la feuille de style quand la police de base grossit. Toute autre
+    requête garde le comportement de jsdom, `false`, plutôt qu'une réponse
+    inventée : un cas qui dépendrait d'une requête non gérée doit rougir, pas
+    recevoir un oui de complaisance.
+
+    `vi.stubGlobal` : `setup.ts` appelle `unstubAllGlobals` après chaque cas, la
+    fuite d'un test à l'autre est donc déjà tenue.
+  */
+  const largeur = preferences.largeur ?? 1280
+  vi.stubGlobal('matchMedia', (requete: string) => {
+    const min = /min-width:\s*([\d.]+)(rem|px)/.exec(requete)
+    const seuil = min ? Number(min[1]) * (min[2] === 'rem' ? 16 : 1) : Infinity
+    return {
+      matches: largeur >= seuil,
+      media: requete,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    } as unknown as MediaQueryList
+  })
+
   window.localStorage.setItem('gestlocpro.locale', preferences.locale ?? 'fr')
   if (preferences.currency) window.localStorage.setItem('gestlocpro.currency', preferences.currency)
   if (preferences.region) window.localStorage.setItem('gestlocpro.region', preferences.region)
@@ -256,6 +316,35 @@ export function renderWithProviders(
   ui: ReactElement,
   preferences: PreferencesTest = {},
 ): RenderResult {
+  /*
+    `matchMedia` RÉPOND PAR LA LARGEUR, au lieu de répondre « faux » à tout.
+
+    Elle n'interprète que `min-width` en `rem` ou en pixels : ce sont les seules
+    requêtes que le produit pose — `useAuDela` les écrit en `rem` exprès, pour
+    suivre la feuille de style quand la police de base grossit. Toute autre
+    requête garde le comportement de jsdom, `false`, plutôt qu'une réponse
+    inventée : un cas qui dépendrait d'une requête non gérée doit rougir, pas
+    recevoir un oui de complaisance.
+
+    `vi.stubGlobal` : `setup.ts` appelle `unstubAllGlobals` après chaque cas, la
+    fuite d'un test à l'autre est donc déjà tenue.
+  */
+  const largeur = preferences.largeur ?? 1280
+  vi.stubGlobal('matchMedia', (requete: string) => {
+    const min = /min-width:\s*([\d.]+)(rem|px)/.exec(requete)
+    const seuil = min ? Number(min[1]) * (min[2] === 'rem' ? 16 : 1) : Infinity
+    return {
+      matches: largeur >= seuil,
+      media: requete,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    } as unknown as MediaQueryList
+  })
+
   window.localStorage.setItem('gestlocpro.locale', preferences.locale ?? 'fr')
   if (preferences.currency) window.localStorage.setItem('gestlocpro.currency', preferences.currency)
   if (preferences.region) window.localStorage.setItem('gestlocpro.region', preferences.region)

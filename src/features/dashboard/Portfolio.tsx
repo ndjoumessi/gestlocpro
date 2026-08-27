@@ -304,6 +304,7 @@ export function Portfolio() {
         caption={t('app.portfolio.title')}
         rows={rows}
         rowKey={(unit) => unit.id}
+        fiches
         empty={
           /* Deux absences, deux messages. Un parc sans aucun logement n'a pas
              « échoué à trouver » : il n'a rien à trouver. L'écran annonçait
@@ -342,6 +343,7 @@ export function Portfolio() {
         columns={[
           {
             key: 'unit',
+            role: 'identite',
             header: t('app.portfolio.unit'),
             width: '5.5rem',
             /**
@@ -434,12 +436,14 @@ export function Portfolio() {
           },
           {
             key: 'rent',
+            role: 'valeur',
             header: t('app.portfolio.rent'),
             numeric: true,
             render: (unit) => money(unit.rent, { round: true }),
           },
           {
             key: 'status',
+            role: 'etat',
             header: t('app.portfolio.status'),
             render: (unit) => <PaymentStatusPill status={unit.status} size="sm" />,
           },

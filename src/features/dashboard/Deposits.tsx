@@ -140,6 +140,7 @@ export function Deposits() {
           caption={t('app.deposits.title')}
           rows={deposits}
           rowKey={(d) => d.unitId}
+          fiches
           /* Sans cela, l'écran servait des en-têtes de colonnes au-dessus du
              vide : ni ligne, ni message, ni indication de ce qui manque. Un
              tableau nu se lit comme une panne. */
@@ -157,6 +158,7 @@ export function Deposits() {
           columns={[
             {
               key: 'unit',
+              role: 'identite',
               header: t('app.portfolio.unit'),
               width: '5.5rem',
               // `unitId` est l'identifiant technique — un `uuid` une fois les
@@ -194,6 +196,7 @@ export function Deposits() {
             },
             {
               key: 'balance',
+              role: 'valeur',
               header: t('app.deposits.balance'),
               numeric: true,
               render: (d) => (
@@ -202,6 +205,7 @@ export function Deposits() {
             },
             {
               key: 'status',
+              role: 'etat',
               header: t('app.portfolio.status'),
               render: (d) => (
                 <div className="flex items-center justify-between gap-3">

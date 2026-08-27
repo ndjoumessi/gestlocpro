@@ -358,6 +358,7 @@ export function Payments() {
         caption={t('app.payments.title')}
         rows={rows}
         rowKey={(unit) => unit.id}
+        fiches
         empty={
           <EmptyState
             icon="card"
@@ -374,6 +375,7 @@ export function Payments() {
         columns={[
           {
             key: 'unit',
+            role: 'identite',
             header: t('app.portfolio.unit'),
             width: '5.5rem',
             render: (unit) => <span className="numeric font-medium">{unit.label}</span>,
@@ -420,6 +422,7 @@ export function Payments() {
           ...(periodes.length > 0
             ? periodes.map((periode) => ({
                 key: `p-${periode.year}-${periode.month}`,
+                role: 'serie' as const,
                 header: d.monthShort(periode),
                 hideOnMobile: true,
                 render: (unit: Unit) => (
@@ -448,6 +451,7 @@ export function Payments() {
               ]),
           {
             key: 'balance',
+            role: 'valeur',
             header: t('app.payments.balanceTotal'),
             numeric: true,
             render: (unit) => {
@@ -467,6 +471,7 @@ export function Payments() {
           },
           {
             key: 'status',
+            role: 'etat',
             header: t('app.portfolio.status'),
             render: (unit) => (
               <div className="flex items-center gap-2">
@@ -490,6 +495,7 @@ export function Payments() {
           },
           {
             key: 'receipt',
+            role: 'geste',
             header: '',
             render: (unit) =>
               // Offert seulement s'il y a quelque chose à attester : sur un

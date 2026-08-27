@@ -298,9 +298,11 @@ export function Meters() {
         caption={t('app.meters.title')}
         rows={READINGS}
         rowKey={(reading) => reading.unitId}
+        fiches
         columns={[
           {
             key: 'unit',
+            role: 'identite',
             header: t('app.portfolio.unit'),
             width: '5.5rem',
             render: (r) => (
@@ -330,8 +332,24 @@ export function Meters() {
                 <span className="text-muted">—</span>
               ) : (
                 <span>
-                  {n.integer(r.waterCurrent - r.waterPrevious)}
-                  <span className="ml-1.5 text-caps text-muted">
+                  {n.integer(r.waterCurrent - r.waterPrevious)}{' '}
+                  {/*
+                    UN VRAI ESPACE, ET NON UNE MARGE. `ml-1.5` posait l'écart
+                    VISUEL entre la consommation et la plage d'index sans créer
+                    la moindre occasion de couper : « 178 » et « 4 120→4 298 »
+                    formaient une seule suite insécable de quinze caractères.
+
+                    Invisible tant que la cellule était large et que le tableau
+                    entier défilait. Devenu visible le jour où la colonne est
+                    passée en fiche : 19 px hors de la boîte à 320 px, seize
+                    fois, trouvés par la sonde du débordement local.
+
+                    L'espace se coupe dans la fiche et PAS dans le tableau, où
+                    `numeric` pose encore `whitespace-nowrap` sur la cellule.
+                    Une même valeur, deux comportements justes, et c'est la
+                    colonne qui décide — pas le rendu.
+                  */}
+                  <span className="text-caps whitespace-nowrap text-muted">
                     {n.integer(r.waterPrevious)}→{n.integer(r.waterCurrent)}
                   </span>
                 </span>
@@ -346,11 +364,13 @@ export function Meters() {
                 <span className="text-muted">—</span>
               ) : (
                 <span>
-                  {n.integer(r.powerCurrent - r.powerPrevious)}
+                  {n.integer(r.powerCurrent - r.powerPrevious)}{' '}
                   {/* Les index d'électricité sont à cinq chiffres : sans
                       groupement ils rendaient « 7640 » dans les deux langues,
-                      là où le français écrit « 7 640 » et l'anglais « 7,640 ». */}
-                  <span className="ml-1.5 text-caps text-muted">
+                      là où le français écrit « 7 640 » et l'anglais « 7,640 ».
+                      L'espace typographique remplace la marge pour la raison
+                      dite au-dessus, sur l'eau. */}
+                  <span className="text-caps whitespace-nowrap text-muted">
                     {n.integer(r.powerPrevious)}→{n.integer(r.powerCurrent)}
                   </span>
                 </span>
@@ -358,6 +378,7 @@ export function Meters() {
           },
           {
             key: 'rebilled',
+            role: 'valeur',
             header: t('app.meters.rebilled'),
             numeric: true,
             render: (r) => {

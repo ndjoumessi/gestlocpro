@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { renderApp, screen, userEvent, within } from '@/test/render'
 
 /**
@@ -19,30 +19,27 @@ import { renderApp, screen, userEvent, within } from '@/test/render'
  * bande de la page » ne veut rien dire sans mise en page. C'est `mesure-ui` qui
  * la tient, au navigateur, à 1440 px — voir sa règle du doublon.
  *
- * POURQUOI ON POSE `matchMedia` PLUTÔT QUE DE REDIMENSIONNER. jsdom fournit
- * bien la fonction mais n'évalue aucune largeur : toute requête y est fausse,
- * quelle que soit la « fenêtre ». Sans ce faux, le composant croirait la barre
- * étroite dans tous les cas, et la moitié grand écran de ce fichier ne
- * mesurerait rien. C'est le pendant assumé de la remarque de
- * `menuMobile.test.tsx` sur `xl:hidden`.
+ * LA LARGEUR SE DÉCLARE AU HARNAIS, et ce fichier avait raison avant lui.
+ *
+ * Il posait son propre `matchMedia` — une table de seuils recopiée, seuil par
+ * seuil — parce que jsdom n'évalue aucune largeur et répond « faux » à tout.
+ * Le raisonnement était juste : sans ce faux, la moitié grand écran de ce
+ * fichier ne mesurerait rien.
+ *
+ * `renderApp` porte désormais l'option `largeur`, pour la même raison et pour
+ * un second appelant — les écrans-tableaux rendent des FICHES sous `sm` et un
+ * TABLEAU au-dessus, deux arbres choisis au rendu. Garder les deux mécanismes
+ * ferait qu'un cas d'ici ignore silencieusement ce que le harnais croit avoir
+ * posé : c'est exactement ce qui est arrivé le jour où le second est né.
+ *
+ * Une largeur en pixels dit d'ailleurs mieux que deux booléens ce que le cas
+ * éprouve — « 1280 » se lit, « 64rem: true, 40rem: true » se décode.
  */
-const AU_DELA = (seuils: Record<string, boolean>) => {
-  vi.stubGlobal('matchMedia', (requete: string) => ({
-    matches: seuils[requete] ?? false,
-    media: requete,
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    addListener: () => {},
-    removeListener: () => {},
-    onchange: null,
-    dispatchEvent: () => false,
-  }))
-}
+const GRAND_ECRAN = 1280
+/** La tablette : la barre montre ses boutons, pas encore ses liens. */
+const TABLETTE = 800
 
 /** Le grand écran : la barre montre ses liens ET ses deux boutons. */
-const GRAND_ECRAN = { '(min-width: 64rem)': true, '(min-width: 40rem)': true }
-/** La tablette : la barre montre ses boutons, pas encore ses liens. */
-const TABLETTE = { '(min-width: 64rem)': false, '(min-width: 40rem)': true }
 
 const ouvrirLesReglages = async () => {
   const user = userEvent.setup()
@@ -61,8 +58,7 @@ describe('panneau de la vitrine au-delà de lg', () => {
     chaînes choisies à la main.
   */
   it('ne rejoue aucun libellé que la barre montre déjà', async () => {
-    AU_DELA(GRAND_ECRAN)
-    await renderApp('/')
+    await renderApp('/', { largeur: GRAND_ECRAN })
 
     // Le MARQUEUR de la rangée, et non `role="banner"` : la page en porte deux
     // — l'en-tête de la vitrine et celui du pied de démonstration — et
@@ -89,8 +85,7 @@ describe('panneau de la vitrine au-delà de lg', () => {
   })
 
   it('ne porte que les trois réglages, et rien d’autre à cliquer', async () => {
-    AU_DELA(GRAND_ECRAN)
-    await renderApp('/')
+    await renderApp('/', { largeur: GRAND_ECRAN })
 
     const { panneau } = await ouvrirLesReglages()
 
@@ -112,8 +107,7 @@ describe('panneau de la vitrine au-delà de lg', () => {
     langue — et figerait le défilement d'une page qu'on n'a même pas recouverte.
   */
   it('laisse la page vivante : ni fond neutralisé, ni défilement figé', async () => {
-    AU_DELA(GRAND_ECRAN)
-    await renderApp('/')
+    await renderApp('/', { largeur: GRAND_ECRAN })
 
     await ouvrirLesReglages()
 
@@ -131,8 +125,7 @@ describe('panneau de la vitrine au-delà de lg', () => {
     l'affirme donc pas : `menuMobile.test.tsx` tient le retour à Échap.
   */
   it('se referme au clic dehors', async () => {
-    AU_DELA(GRAND_ECRAN)
-    await renderApp('/')
+    await renderApp('/', { largeur: GRAND_ECRAN })
 
     const { user } = await ouvrirLesReglages()
     await user.click(screen.getByRole('main'))
@@ -141,8 +134,7 @@ describe('panneau de la vitrine au-delà de lg', () => {
   })
 
   it('rend le focus au déclencheur quand on sort par Échap', async () => {
-    AU_DELA(GRAND_ECRAN)
-    await renderApp('/')
+    await renderApp('/', { largeur: GRAND_ECRAN })
 
     const { user, declencheur } = await ouvrirLesReglages()
     await user.keyboard('{Escape}')
@@ -158,8 +150,7 @@ describe('panneau de la vitrine au-delà de lg', () => {
     ferme jamais. Le défaut ne se voit qu'à l'aller-retour, d'où les deux clics.
   */
   it('se referme au second clic sur son propre déclencheur', async () => {
-    AU_DELA(GRAND_ECRAN)
-    await renderApp('/')
+    await renderApp('/', { largeur: GRAND_ECRAN })
 
     const { user } = await ouvrirLesReglages()
     await user.click(screen.getByRole('button', { name: 'Fermer les réglages' }))
@@ -178,8 +169,7 @@ describe('panneau de la vitrine entre sm et lg', () => {
     des tablettes.
   */
   it('porte les liens de section, mais pas les boutons que la barre montre', async () => {
-    AU_DELA(TABLETTE)
-    await renderApp('/')
+    await renderApp('/', { largeur: TABLETTE })
 
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: 'Ouvrir le menu' }))
@@ -199,8 +189,7 @@ describe('panneau de la vitrine entre sm et lg', () => {
     avec elle en chemin.
   */
   it('reste une modale : le fond est neutralisé', async () => {
-    AU_DELA(TABLETTE)
-    await renderApp('/')
+    await renderApp('/', { largeur: TABLETTE })
 
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: 'Ouvrir le menu' }))
