@@ -45,6 +45,7 @@
     "src/design-system/bandeInversee.test.ts",
     "src/design-system/jetonsMorts.test.ts",
     "src/design-system/squelettesFideles.test.ts",
+    "src/design-system/faviconSuitLaMarque.test.ts",
     "src/design-system/zonesSures.test.ts",
     "src/test/attentesObservees.test.ts",
     "src/test/budgetsDHorloge.test.ts"

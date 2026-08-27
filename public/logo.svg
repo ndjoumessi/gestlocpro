@@ -1,4 +1,36 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="7" fill="#C58E3E"/>
-  <text x="16" y="23" font-family="Georgia, 'Cormorant Garamond', serif" font-size="21" font-weight="600" fill="#14201E" text-anchor="middle">G</text>
+  <!--
+    LA MARQUE, DÉCLINÉE EN FAVICON — voir `src/components/primitives/Logo.tsx`
+    pour ce que le signe veut dire et d'où il vient.
+
+    CE QU'IL REMPLAÇAIT : un « G » en Georgia sur un carré #C58E3E. Cet or était
+    l'accent de marque avant la refonte ; il ne subsistait plus dans le dépôt que
+    dans des commentaires et des cas de test qui RACONTENT son retrait — ce
+    fichier était le dernier endroit où il était encore peint.
+
+    LES NOMBRES REPRODUISENT LA MARQUE DE L'APPLICATION à sa taille moyenne :
+    un conteneur de 32 px, `rounded-md` (--radius-md: 10px), une grille occupant
+    57 % du carré, donc 18,24 px centrés — d'où l'origine à 6,9 et le second rang
+    à 17,5, des carrés de 7,6 et un rayon de 2. Un favicon qui approxime la
+    marque de deux pixels est un second signe, pas une déclinaison.
+
+    LES COULEURS SONT ÉCRITES EN CLAIR, ET C'EST LE SEUL ENDROIT OÙ C'EST JUSTE :
+    ce fichier est servi comme une ressource statique, hors de la feuille de
+    style, et ne peut donc pas lire `--color-accent`. Les valeurs sont celles des
+    jetons — #2563eb et #ffffff — et l'accent de marque ne change pas avec le
+    thème, délibérément. Le composant, lui, n'écrit aucune couleur.
+
+    LES OPACITÉS SONT CELLES DE LA MARQUE, et une mesure l'a décidé contre une
+    prévision. On attendait que le carré à 0,22 disparaisse à 16 px ; échantillonné
+    au pixel sur le rendu réel, il vaut rgb(85,133,239) sur un fond rgb(37,99,235)
+    — 1,47:1, faible mais séparé. Le relever aurait changé le signe pour corriger
+    un défaut qui n'existait pas.
+  -->
+  <rect width="32" height="32" rx="10" fill="#2563eb"/>
+  <g fill="#ffffff">
+    <rect x="6.9" y="6.9" width="7.6" height="7.6" rx="2"/>
+    <rect x="17.5" y="6.9" width="7.6" height="7.6" rx="2"/>
+    <rect x="6.9" y="17.5" width="7.6" height="7.6" rx="2" opacity=".55"/>
+    <rect x="17.5" y="17.5" width="7.6" height="7.6" rx="2" opacity=".22"/>
+  </g>
 </svg>
