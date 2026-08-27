@@ -2,7 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useT } from '@/i18n/I18nProvider'
 import { Button } from '@/components/primitives/Button'
-import { Icon } from '@/components/primitives/Icon'
+import { EcranSysteme } from './EcranSysteme'
 
 /**
  * LA FRONTIÈRE D'ERREUR — parce que sans elle, une exception rend une PAGE BLANCHE.
@@ -121,28 +121,42 @@ class Frontiere extends Component<Props, State> {
 function RepliDErreur({ erreur, reprendre }: { erreur: Error; reprendre: () => void }) {
   const t = useT()
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-canvas px-5">
-      <div className="max-w-md text-center">
-        <span className="inline-flex size-12 items-center justify-center rounded-full bg-danger-tint text-danger">
-          <Icon name="alert" size={22} />
-        </span>
-        <h1 className="mt-4 title-l">{t('app.crash.title')}</h1>
-        <p className="mt-2 text-body text-muted">{t('app.crash.body')}</p>
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+    <EcranSysteme
+      ton="danger"
+      titre={t('app.crash.title')}
+      corps={t('app.crash.body')}
+      actions={
+        <>
           <Button onClick={reprendre}>{t('common.retry')}</Button>
           <Button to="/" variant="ghost">
             {t('common.backToHome')}
           </Button>
-        </div>
-        {/* Replié : personne n'a besoin de lire une pile d'exception pour
-            comprendre qu'il faut réessayer. Mais elle est LÀ, recopiable, pour
-            qui veut dire ce qui s'est passé. */}
-        <details className="mt-6 text-left">
-          <summary className="cursor-pointer text-body text-muted">{t('app.crash.details')}</summary>
-          <p className="mt-2 break-words text-body text-muted">{erreur.message}</p>
-        </details>
-      </div>
-    </div>
+        </>
+      }
+    >
+      {/* Replié : personne n'a besoin de lire une pile d'exception pour
+          comprendre qu'il faut réessayer. Mais elle est LÀ, recopiable, pour
+          qui veut dire ce qui s'est passé. */}
+      <details className="mt-6 text-left">
+        {/*
+          `min-h-11` : UN DÉPLIANT EST UNE COMMANDE.
+
+          Mesuré au navigateur, en atteignant cet écran par une exception
+          injectée : 22 px de haut. La moitié du plancher de 44 que le produit
+          tient partout ailleurs, et que `mesure-ui` vérifie sur 506 points — mais
+          aucun de ces points ne mène ici, puisque aucune adresse ne plante. Le
+          seul contrôle de tout l'écran qui échappait à la règle était celui de
+          l'écran que la règle ne visite pas.
+
+          `inline-flex items-center` et non un simple `block` : sans eux, la
+          hauteur imposée laisserait le texte collé en haut de sa boîte.
+        */}
+        <summary className="inline-flex min-h-11 cursor-pointer items-center text-body text-muted">
+          {t('app.crash.details')}
+        </summary>
+        <p className="mt-2 break-words text-body text-muted">{erreur.message}</p>
+      </details>
+    </EcranSysteme>
   )
 }
 
