@@ -35,7 +35,10 @@ import { describe, expect, it } from 'vitest'
 const ICI = dirname(fileURLToPath(import.meta.url))
 const RACINE = join(ICI, '..', '..')
 
+/* La validité XML de ces fichiers est tenue par `svgAnalysable.test.ts`, du
+   côté jsdom : la vérifier demande un DOM, que ce projet-ci n'a pas. */
 const favicon = readFileSync(join(RACINE, 'public', 'logo.svg'), 'utf8')
+const icone = readFileSync(join(RACINE, 'scripts', 'icone-app.mjs'), 'utf8')
 const marque = readFileSync(join(RACINE, 'src', 'components', 'primitives', 'Logo.tsx'), 'utf8')
 const jetons = readFileSync(join(ICI, 'tokens.css'), 'utf8')
 
@@ -101,5 +104,40 @@ describe('le favicon', () => {
   */
   it('garde des états distincts, sans quoi la comparaison ne compare rien', () => {
     expect(new Set(opacites(favicon).slice(-4)).size).toBeGreaterThan(1)
+  })
+})
+
+/**
+ * L'ICÔNE D'ACCUEIL PART DU MÊME TRACÉ.
+ *
+ * Elle est produite par un script plutôt que déposée en binaire : un fichier
+ * d'image commité ne dit ni d'où il vient, ni s'il a suivi la marque. Le script
+ * porte les mêmes valeurs, et ce cas les compare — sans quoi l'icône de l'écran
+ * d'accueil pourrait garder l'ancien signe pendant des mois sans que personne ne
+ * l'ouvre.
+ */
+describe('l’icône d’accueil', () => {
+  it('peint l’accent des jetons', () => {
+    /* Bornée aux DEUX CONSTANTES NOMMÉES, et une mesure l'a imposé : une
+       première rédaction cherchait n'importe quel triplet `0x..` et attrapait la
+       signature PNG du script, qui en est un. Une garde qui ratisse large ne
+       trouve pas plus, elle trouve autre chose. */
+    const couleurs = [
+      ...sansCommentaires(icone).matchAll(
+        /const (?:SUR_)?ACCENT = \[0x([0-9a-f]{2}), 0x([0-9a-f]{2}), 0x([0-9a-f]{2})\]/g,
+      ),
+    ].map((m) => `#${m[1]}${m[2]}${m[3]}`)
+    expect(couleurs, 'le script ne peint plus rien').not.toHaveLength(0)
+    expect(new Set(couleurs)).toEqual(new Set([jeton('accent'), jeton('on-accent')]))
+  })
+
+  it('porte les mêmes opacités que la marque', () => {
+    const duScript = [...sansCommentaires(icone).matchAll(/opacite:\s*([0-9.]+)/g)].map((m) =>
+      String(Number(m[1])),
+    )
+    const duComposant = opacites(marque)
+      .slice(-4)
+      .map((o) => String(Number(o)))
+    expect(duScript).toEqual(duComposant)
   })
 })

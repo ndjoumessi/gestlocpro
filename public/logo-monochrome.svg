@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="GestLocPro">
+  <!--
+    LA MARQUE EN UNE SEULE ENCRE, pour ce qui sort d'une imprimante.
+
+    POURQUOI LES OPACITÉS NE SURVIVENT PAS AU PAPIER. Le signe dit deux choses :
+    « plusieurs logements » par la grille, « états différents » par des carrés
+    de 0,55 et 0,22 d'opacité. À l'écran, ces valeurs rendent deux bleus pâles
+    parfaitement lisibles. Sur une feuille, elles deviennent des gris tramés :
+    une imprimante laser bon marché rend le second en un semis de points, et une
+    imprimante thermique ne le rend pas du tout. Le second sens du signe
+    disparaîtrait précisément là où le document doit faire foi.
+
+    ON GARDE DONC LE SENS EN CHANGEANT DE MOYEN : deux carrés PLEINS, deux
+    carrés ÉVIDÉS. C'est la même opposition, portée par la forme et non par la
+    densité, donc insensible au rendu de la trame. Le contour du conteneur passe
+    de plein à filet pour la même raison : un aplat noir de cette taille couvre
+    inutilement une quittance et bave sur du papier ordinaire.
+
+    L'ENCRE EST LE NOIR, ÉCRIT. Cette ressource est servie hors de la feuille de
+    style et ne peut lire aucun jeton ; et sa destination est une feuille, où
+    l'encre ne suit pas le thème.
+  -->
+  <rect x=".8" y=".8" width="30.4" height="30.4" rx="9.6" fill="none" stroke="#000000" stroke-width="1.6"/>
+  <g fill="#000000">
+    <rect x="6.9" y="6.9" width="7.6" height="7.6" rx="2"/>
+    <rect x="17.5" y="6.9" width="7.6" height="7.6" rx="2"/>
+  </g>
+  <g fill="none" stroke="#000000" stroke-width="1.3">
+    <rect x="7.55" y="18.15" width="6.3" height="6.3" rx="1.6"/>
+    <rect x="18.15" y="18.15" width="6.3" height="6.3" rx="1.6"/>
+  </g>
+</svg>

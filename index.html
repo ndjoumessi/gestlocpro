@@ -27,6 +27,19 @@
     -->
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <!--
+      L'ICÔNE D'ACCUEIL, 1024 px, ET POURQUOI ELLE N'EST PAS LE FAVICON.
+
+      iOS ne lit PAS le SVG pour `apple-touch-icon` : sans cette ligne, ajouter
+      le site à l'écran d'accueil produit une vignette de la page, illisible.
+      Android la lit aussi, faute de manifeste.
+
+      Elle est PLEINE, sans coins arrondis ni transparence, là où `/logo.svg` en
+      porte : les deux systèmes posent leur propre masque, et une icône déjà
+      arrondie se retrouve composée sur du noir dans ses coins. Le tracé vit dans
+      `scripts/icone-app.mjs`, qui la régénère.
+    -->
+    <link rel="apple-touch-icon" href="/icone-1024.png" />
 
     <!--
       Thème explicite, posé AVANT le premier rendu.

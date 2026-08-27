@@ -13,6 +13,17 @@ export interface LogoProps {
   size?: 'sm' | 'md' | 'lg'
   to?: string
   className?: string
+  /**
+   * Variante D'ENCRE UNIQUE, pour ce qui sort d'une imprimante.
+   *
+   * Elle échange la marque contre `logo-monochrome.svg` et rend le mot-symbole
+   * d'un seul ton. Elle vit ICI plutôt que d'être réécrite par l'appelant parce
+   * que le dépôt n'admet qu'une seule graisse 700 en ligne — celle du
+   * mot-symbole — et que `graisses.test.ts` refuse la seconde. La garde a
+   * d'ailleurs attrapé la première rédaction de l'en-tête de quittance, qui
+   * recopiait le mot au lieu de l'emprunter.
+   */
+  impression?: boolean
 }
 
 const MARK_SIZES = { sm: 'size-6.5', md: 'size-8', lg: 'size-11' }
@@ -55,9 +66,21 @@ export function Logo({
   size = 'md',
   to = '/',
   className,
+  impression,
 }: LogoProps) {
   const content = (
     <>
+      {impression ? (
+        /* La ressource monochrome porte son propre contour : pas de conteneur
+           peint, pas d'encre héritée. Elle est DÉCORATIVE — le nom est porté par
+           le texte à côté, ou par `sr-only` quand le mot-symbole est masqué. */
+        <img
+          src="/logo-monochrome.svg"
+          alt=""
+          aria-hidden="true"
+          className={cn('shrink-0', MARK_SIZES[size])}
+        />
+      ) : (
       <span
         aria-hidden="true"
         className={cn(
@@ -75,6 +98,7 @@ export function Logo({
           <rect x="14" y="14" width="10" height="10" rx="2.6" opacity=".22" />
         </svg>
       </span>
+      )}
 
       {!markOnly && (
         <span className="flex min-w-0 flex-col">
@@ -85,7 +109,21 @@ export function Logo({
               tone === 'dark' ? 'text-on-dark' : 'text-ink',
             )}
           >
-            GestLoc<span className={tone === 'dark' ? 'text-accent-on-dark' : 'text-accent-ink'}>Pro</span>
+            {/* `Pro` porte l'accent — sauf à l'impression, où il n'y a qu'une
+                encre : un bleu clair sorti en gris pâle affaiblirait la moitié du
+                nom sur un document qui atteste. */}
+            GestLoc
+            <span
+              className={
+                impression
+                  ? undefined
+                  : tone === 'dark'
+                    ? 'text-accent-on-dark'
+                    : 'text-accent-ink'
+              }
+            >
+              Pro
+            </span>
           </span>
           {caption && (
             <span

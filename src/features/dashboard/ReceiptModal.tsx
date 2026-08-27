@@ -10,6 +10,7 @@ import { api, ApiError } from '@/api/client'
 import { useSession } from '@/api/SessionProvider'
 import { useRole } from '@/components/layout/AppShell'
 import { useToast } from '@/components/primitives/Toast'
+import { Logo } from '@/components/primitives/Logo'
 
 /**
  * Document de quittance ou de reçu, tel que le SERVEUR l'a arrêté.
@@ -220,6 +221,36 @@ export function ReceiptModal({
            Imprimer la page entière sortirait la barre latérale et la
            navigation, que personne ne veut sur une quittance. */
         <div className="zone-imprimable flex flex-col gap-5 text-body">
+          {/*
+            UN EN-TÊTE, PARCE QU'UNE QUITTANCE DIT QUI L'ÉMET.
+
+            La feuille commençait par un surtitre et un mois. Remise à un
+            locataire, elle n'était signée de personne : rien dessus ne disait
+            d'où elle venait, alors que c'est un document qui atteste.
+
+            LA MARQUE EN UNE SEULE ENCRE, et c'est la raison d'être de
+            `logo-monochrome.svg`. Les quatre carrés de la marque disent « états
+            différents » par des opacités de 0,55 et 0,22 ; sur une feuille,
+            elles deviennent des gris tramés qu'une imprimante laser bon marché
+            rend en semis de points et qu'une thermique ne rend pas. La version
+            imprimée porte donc la même opposition par la FORME — deux carrés
+            pleins, deux évidés.
+
+            Ce qu'on voit ici est ce qui sortira : une seule ressource, pas de
+            bascule entre écran et papier. Un aperçu qui ne ressemble pas à la
+            feuille est un aperçu qui ment.
+
+            ON EMPRUNTE `Logo`, ON NE LE RECOPIE PAS. Une première rédaction
+            réécrivait le mot-symbole ici, avec sa graisse : `graisses.test.ts`
+            l'a refusée, et il avait raison — le dépôt n'admet qu'un seul 700 en
+            ligne, et deux mot-symboles auraient divergé au premier ajustement.
+            `to=""` rend une balise inerte plutôt qu'un lien : sur une feuille,
+            un lien ne mène nulle part.
+          */}
+          <div className="border-b border-border pb-4">
+            <Logo impression size="sm" to="" />
+          </div>
+
           <div>
             <p className="eyebrow text-muted">{t(`app.receipts.${document.kind}`)}</p>
             <p className="text-h3">

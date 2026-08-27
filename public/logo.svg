@@ -9,16 +9,22 @@
     fichier était le dernier endroit où il était encore peint.
 
     LES NOMBRES REPRODUISENT LA MARQUE DE L'APPLICATION à sa taille moyenne :
-    un conteneur de 32 px, `rounded-md` (--radius-md: 10px), une grille occupant
+    un conteneur de 32 px, `rounded-md`, soit le rayon moyen des jetons (10 px), une grille occupant
     57 % du carré, donc 18,24 px centrés — d'où l'origine à 6,9 et le second rang
     à 17,5, des carrés de 7,6 et un rayon de 2. Un favicon qui approxime la
     marque de deux pixels est un second signe, pas une déclinaison.
 
     LES COULEURS SONT ÉCRITES EN CLAIR, ET C'EST LE SEUL ENDROIT OÙ C'EST JUSTE :
     ce fichier est servi comme une ressource statique, hors de la feuille de
-    style, et ne peut donc pas lire `--color-accent`. Les valeurs sont celles des
+    style, et ne peut donc lire aucun jeton de couleur. Les valeurs sont celles des
     jetons — #2563eb et #ffffff — et l'accent de marque ne change pas avec le
     thème, délibérément. Le composant, lui, n'écrit aucune couleur.
+
+    AUCUN « deux tirets » DANS CE COMMENTAIRE : XML les interdit à l'intérieur
+    d'un commentaire, et une première rédaction y citait deux noms de jetons.
+    Le fichier cessait d'être analysable, le navigateur gardait le favicon
+    PRÉCÉDENT en cache, et la porte restait verte — aucune garde ne lisait ce
+    fichier comme du XML. Elle le fait depuis.
 
     LES OPACITÉS SONT CELLES DE LA MARQUE, et une mesure l'a décidé contre une
     prévision. On attendait que le carré à 0,22 disparaisse à 16 px ; échantillonné
