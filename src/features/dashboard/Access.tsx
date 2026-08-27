@@ -130,7 +130,7 @@ export function Access() {
           les devis et les cautions, on lui dit pourquoi le bouton lui manque
           plutôt que de le laisser deviner. */}
       {role === 'manager' && (
-        <p className="mb-6 flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body text-gold-ink">
+        <p className="mb-6 flex items-start gap-2 rounded-md border border-accent-border bg-accent-tint px-3.5 py-3 text-body text-accent-ink">
           <Icon name="info" size={15} className="mt-0.5 shrink-0" />
           {t('app.access.managerNotice')}
         </p>

@@ -31,7 +31,7 @@
     "src/design-system/durees.test.ts",
     "src/design-system/ecarts.test.ts",
     "src/design-system/empilement.test.ts",
-    "src/design-system/orDonnee.test.ts",
+    "src/design-system/accentDonnee.test.ts",
     "src/design-system/paletteAffichee.test.ts",
     "src/design-system/modales.test.ts",
     "src/design-system/longueurs-recopiees.test.ts",

@@ -117,7 +117,7 @@ export function Login() {
           <Link
             to="/inscription"
             data-cible="dans-une-phrase"
-            className="font-semibold text-gold-ink hover:text-gold-ink-hover"
+            className="font-semibold text-accent-ink hover:text-accent-ink-hover"
           >
             {t('auth.signUp')}
           </Link>
@@ -204,7 +204,7 @@ export function Login() {
               que l'exception « lien dans un bloc de texte » couvre. */}
           <Link
             to="/mot-de-passe-oublie"
-            className="-mr-2 inline-flex min-h-11 items-center rounded-md px-2 text-body font-medium text-gold-ink transition-colors duration-150 hover:bg-surface-sunken hover:text-gold-ink-hover"
+            className="-mr-2 inline-flex min-h-11 items-center rounded-md px-2 text-body font-medium text-accent-ink transition-colors duration-150 hover:bg-surface-sunken hover:text-accent-ink-hover"
           >
             {t('auth.forgotPassword')}
           </Link>

@@ -456,7 +456,7 @@ export function Dashboard() {
               <ul className="flex flex-col gap-3">
                 {cautionsAArbitrer.map((caution) => (
                   <li key={`caution-${caution.unitId}`} className="flex items-start gap-3">
-                    <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-gold-tint text-gold-ink">
+                    <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-accent-tint text-accent-ink">
                       <Icon name="shield" size={15} />
                     </span>
                     <div className="min-w-0">
@@ -474,7 +474,7 @@ export function Dashboard() {
                 ))}
                 {devis.map((work) => (
                   <li key={work.id} className="flex items-start gap-3">
-                    <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-gold-tint text-gold-ink">
+                    <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-accent-tint text-accent-ink">
                       <Icon name="wrench" size={15} />
                     </span>
                     <div className="min-w-0">

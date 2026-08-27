@@ -165,7 +165,7 @@ export function RadioCards<T extends string>({
                 'group relative flex cursor-pointer flex-col gap-2 rounded-lg border p-4',
                 'transition-[border-color,background-color,box-shadow] duration-150 ease-out',
                 'has-[:focus-visible]:outline has-[:focus-visible]:outline-2',
-                'has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-gold-ink',
+                'has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent-ink',
                 checked
                   ? 'border-ink bg-surface shadow-e1'
                   : 'border-border bg-surface/60 hover:border-border-strong hover:bg-surface',
@@ -184,11 +184,11 @@ export function RadioCards<T extends string>({
                 <span
                   className={cn(
                     'flex size-9 shrink-0 items-center justify-center rounded-md transition-colors duration-150',
-                    // `gold-on-ink` et non l'or de marque : sur `--color-ink`,
+                    // `accent-on-ink` et non l'or de marque : sur `--color-ink`,
                     // qui s'inverse avec le thème, l'or fixe tombait à 2,33:1 en
                     // sombre. L'icône de la tuile SÉLECTIONNÉE était alors
                     // l'élément le moins lisible de la carte.
-                    checked ? 'bg-ink text-gold-on-ink' : 'bg-surface-sunken text-muted',
+                    checked ? 'bg-ink text-accent-on-ink' : 'bg-surface-sunken text-muted',
                   )}
                 >
                   <Icon name={option.icon ?? 'users'} size={18} />
@@ -270,7 +270,7 @@ function RadioPuces<T extends string>({
                 'inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3',
                 'text-label transition-colors duration-150',
                 'has-[:focus-visible]:outline has-[:focus-visible]:outline-2',
-                'has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-gold-ink',
+                'has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent-ink',
                 checked
                   ? 'border-ink bg-ink text-on-dark'
                   : 'border-border bg-surface text-ink hover:border-border-strong',
@@ -342,7 +342,7 @@ export function SegmentedControl<T extends string>({
                   // La pastille de remise suit l'accent unique. Elle était en
                   // vert de succès, seule tache de couleur restante sur la
                   // landing une fois les autres neutralisées.
-                  active ? 'bg-gold text-ink' : 'bg-gold-tint text-gold-ink',
+                  active ? 'bg-accent text-ink' : 'bg-accent-tint text-accent-ink',
                 )}
               >
                 {option.badge}

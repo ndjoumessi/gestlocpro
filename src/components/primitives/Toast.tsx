@@ -37,7 +37,7 @@ const TONE_ICON: Record<ToastTone, IconName> = {
 }
 
 const TONE_ACCENT: Record<ToastTone, string> = {
-  neutral: 'text-gold',
+  neutral: 'text-accent',
   ok: 'text-ok',
   danger: 'text-danger',
 }
@@ -169,7 +169,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
             la boîte de marge retombe alors sous celle du message. Un doigt vise
             44 px, l'œil voit la ligne de texte qu'il voyait.
           */
-          className="-my-3 inline-flex min-h-11 cursor-pointer items-center rounded-sm px-1 text-label font-semibold text-gold-on-dark underline underline-offset-2 hover:text-gold"
+          className="-my-3 inline-flex min-h-11 cursor-pointer items-center rounded-sm px-1 text-label font-semibold text-accent-on-dark underline underline-offset-2 hover:text-accent"
         >
           {toast.action.label}
         </button>

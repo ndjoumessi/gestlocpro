@@ -149,7 +149,7 @@ export function AnnounceModal({ open, onClose }: { open: boolean; onClose: () =>
             Les noms, et non un compte — on ne rappelle pas « deux personnes ».
           */}
           {issue.unreachable.length > 0 && (
-            <div className="rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body text-gold-ink">
+            <div className="rounded-md border border-accent-border bg-accent-tint px-3.5 py-3 text-body text-accent-ink">
               <p className="flex items-start gap-2">
                 <Icon name="info" size={15} className="mt-0.5 shrink-0" />
                 {t('app.announce.unreachable', { count: issue.unreachable.length })}

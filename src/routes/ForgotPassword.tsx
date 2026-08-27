@@ -57,7 +57,7 @@ export function ForgotPassword() {
   const backLink = (
     <Link
       to="/connexion"
-      className="-ml-2 inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 font-semibold text-gold-ink transition-colors duration-150 hover:bg-surface-sunken hover:text-gold-ink-hover"
+      className="-ml-2 inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 font-semibold text-accent-ink transition-colors duration-150 hover:bg-surface-sunken hover:text-accent-ink-hover"
     >
       <Icon name="chevronLeft" size={15} />
       {t('auth.forgot.backToLogin')}

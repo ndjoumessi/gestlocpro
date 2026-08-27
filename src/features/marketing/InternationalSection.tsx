@@ -84,7 +84,7 @@ export function InternationalSection() {
             className="rounded-xl border border-divider bg-surface p-7 shadow-e1 sm:p-8"
           >
             <dt className="eyebrow flex items-center gap-2 text-muted">
-              <Icon name="globe" size={13} className="text-gold-ink" />
+              <Icon name="globe" size={13} className="text-accent-ink" />
               {t(`marketing.international.${fact.key}` as 'marketing.international.currencies')}
             </dt>
             <dd className="m-0">

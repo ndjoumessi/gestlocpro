@@ -218,7 +218,7 @@ export function Alerts() {
               key={alert.id}
               role="listitem"
               /*
-                `gold-ink` ET NON `gold` pour le liseré.
+                `accent-ink` ET NON `accent` pour le liseré.
 
                 L'or de marque tient 2,87:1 sur la carte — la feuille de jetons
                 le CONDAMNE elle-même en commentaire pour cet usage. Un liseré
@@ -252,7 +252,7 @@ export function Alerts() {
               */
               className={cn(
                 'flex flex-wrap items-start gap-x-4 gap-y-3',
-                !alert.read && 'border-l-2 border-l-gold-ink',
+                !alert.read && 'border-l-2 border-l-accent-ink',
               )}
             >
               {/*

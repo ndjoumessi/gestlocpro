@@ -13,8 +13,8 @@
 
    La palette de marque porte quatre corrections de contraste :
      --muted     #6B7573 -> #5C6664   (4.33 -> 5.64 sur --paper)
-     --gold-ink  #A0722C -> #8A6218   (3.87 -> 5.14 sur --paper)
-     --gold-on-dark  #C58E3E -> #D2A055 (4.38 -> 5.33 sur --ink-2)
+     --accent-ink  #A0722C -> #8A6218   (3.87 -> 5.14 sur --paper)
+     --accent-on-dark  #C58E3E -> #D2A055 (4.38 -> 5.33 sur --ink-2)
      --warn      #8A6218 -> #795415   (3.93 -> 4.88 sur --warn-border)
 
    La quatrième dit ce que les trois premières taisaient : un ratio est écrit
@@ -25,7 +25,7 @@
    et elle est mécanique : `scripts/mesure-ui.mjs` lit `contrast-audit.js` et
    audite chaque texte peint, en deux thèmes et deux langues, à chaque
    `npm run check`. C'est elle qui a trouvé la quatrième.
-   --gold (#C58E3E) reste l'accent de marque mais n'est jamais du texte sur
+   --accent (#C58E3E) reste l'accent de marque mais n'est jamais du texte sur
    fond clair (2.87 sur blanc) : fond, bordure, icône, ou texte sur --ink.
    ========================================================================= */
 
@@ -57,16 +57,34 @@
   --color-muted: #5b646f; /* texte secondaire · 5.64 sur --paper, 6.00 sur --surface */
   --color-muted-soft: #6a737e; /* >=18px ou non-textuel uniquement */
 
-  /* ---- Or (marque) ----------------------------------------------------- */
-  --color-gold: #c58e3e; /* accent : fond, bordure, icône, texte sur --ink */
-  --color-gold-ink: #8a6218; /* liens et labels sur fond clair */
-  --color-gold-ink-hover: #7e571f;
-  --color-gold-on-dark: #d2a055; /* or sur --ink-2 */
+  /* ---- Accent (marque) -------------------------------------------------- */
+  /**
+   * L'ACCENT EST DEVENU BLEU, ET IL A CHANGÉ DE RÔLE EN MÊME TEMPS.
+   *
+   * L'or `#c58e3e` ne tenait que 2,87:1 sur blanc : il ne pouvait JAMAIS porter
+   * de texte sur fond clair, et toute la famille était construite autour de
+   * cette infirmité — un jeton `-ink` bien plus sombre pour les liens, une règle
+   * `.bg-accent` qui refixait l'encre, des contournements sur cinq écrans.
+   *
+   * `#2563eb` tient 5,17:1 SUR BLANC et porte du blanc à 5,17 : il peut être à
+   * la fois le fond d'une action et un texte lisible. C'est ce qui permet au
+   * bouton primaire de cesser d'être presque noir.
+   *
+   * Les vingt et une paires de la famille ont été mesurées dans les DEUX
+   * thèmes avant d'être écrites, contre les surfaces refroidies du lot
+   * précédent : zéro échec. Les ratios ci-dessous sont ces relevés.
+   */
+  --color-accent: #2563eb; /* L'ACTION : fond de bouton, 5.17 sous du blanc */
+  --color-accent-hover: #1d4ed8; /* 6.70 sous du blanc */
+  --color-on-accent: #ffffff; /* ce qui se pose SUR l'accent */
+  --color-accent-ink: #1d4ed8; /* liens et labels · 6.30 sur --paper, 5.77 sur --canvas */
+  --color-accent-ink-hover: #1e40af; /* 8.20 sur --paper */
+  --color-accent-on-dark: #93bbfd; /* accent sur --ink-2 · 6.99 */
   /**
    * Or posé sur `--color-ink`, et qui s'inverse AVEC lui.
    *
-   * `bg-ink text-gold` tenait 5,83:1 en clair et tombait à 2,33:1 en sombre :
-   * `--color-ink` s'inverse avec le thème, `--color-gold` non, donc la paire se
+   * `bg-ink text-accent` tenait 5,83:1 en clair et tombait à 2,33:1 en sombre :
+   * `--color-ink` s'inverse avec le thème, `--color-accent` non, donc la paire se
    * casse à l'inversion. Aucun garde de couverture ne pouvait le voir — les deux
    * jetons ont bien leur contrepartie sombre, c'est leur APPARIEMENT qui échoue.
    * Il a fallu parcourir les écrans pour le trouver.
@@ -74,15 +92,15 @@
    * D'où un jeton nommé d'après le fond qu'il accompagne plutôt que d'après sa
    * couleur : quoi que devienne `--color-ink`, celui-ci suit.
    */
-  --color-gold-on-ink: #c58e3e; /* 5.83 sur --ink clair */
-  --color-gold-tint: #fbf3e2;
-  --color-gold-tint-2: #f7ebd3;
-  --color-gold-border: #e9c68b;
+  --color-accent-on-ink: #609afa; /* 6.26 sur --ink clair */
+  --color-accent-tint: #eff5ff; /* porte --accent-ink à 6.12 */
+  --color-accent-tint-2: #dbe8fe;
+  --color-accent-border: #bfd7fe;
 
   /* ---- Teintes de données ---------------------------------------------- */
   /* Une série de graphique n'est pas un aplat décoratif : elle porte
      l'information, et doit donc tenir 3:1 contre le fond de la carte. L'or de
-     marque `--color-gold` n'y arrive pas — 2,87:1 sur blanc — et servait
+     marque `--color-accent` n'y arrive pas — 2,87:1 sur blanc — et servait
      pourtant de série « eau ». D'où cette échelle distincte, dont chaque
      teinte a été mesurée sur blanc ET sur `--color-ink`, les deux fonds sur
      lesquels un graphique s'affiche.
@@ -131,7 +149,7 @@
   /**
    * Premier plan d'une surface `--color-danger`, et qui s'inverse AVEC elle.
    *
-   * Troisième occurrence du même défaut, après `--color-gold-on-ink` et les
+   * Troisième occurrence du même défaut, après `--color-accent-on-ink` et les
    * séries de l'infobulle. La pastille de comptage était `bg-danger` +
    * `text-on-dark` : juste en thème clair, blanche sur bordeaux. En sombre,
    * `--color-danger` s'éclaircit en saumon — le commentaire de sa version
@@ -389,7 +407,7 @@
   --shadow-e1: 0 1px 2px rgba(20, 32, 30, 0.04), 0 6px 18px -12px rgba(20, 32, 30, 0.1);
   --shadow-e2: 0 2px 6px rgba(20, 32, 30, 0.06), 0 12px 32px -16px rgba(20, 32, 30, 0.16);
   --shadow-e3: 0 8px 24px rgba(20, 32, 30, 0.12), 0 32px 64px -24px rgba(20, 32, 30, 0.28);
-  --shadow-focus: 0 0 0 2px var(--color-paper), 0 0 0 4px var(--color-gold-ink);
+  --shadow-focus: 0 0 0 2px var(--color-paper), 0 0 0 4px var(--color-accent-ink);
 
   /* ---- Mouvement ------------------------------------------------------- */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
@@ -561,24 +579,29 @@
     --color-muted: #a2a8b2; /* texte secondaire · 7.79 sur --paper, 6.77 sur --surface */
     --color-muted-soft: #878e98; /* 4.90 sur --surface — >=18px ou non textuel */
 
-    /* ---- Or (marque) ----------------------------------------------------- */
-    /* `--color-gold` ne bouge pas : c'est la couleur de la marque, et le fond
-       sombre lui rend précisément ce que le fond clair lui refusait — 5.51 sur
-       --surface contre 2.87 sur blanc. L'or redevient lisible en texte ici,
-       même si aucun composant n'en profite encore. */
-    --color-gold: #c58e3e; /* inchangé · 5.51 sur --surface, 6.71 sur --canvas */
+    /* ---- Accent (marque) -------------------------------------------------- */
+    /* `--color-accent` NE BOUGE PAS d'un thème à l'autre, et c'est nouveau :
+       l'or devait s'éclaircir en sombre pour rester lisible, le bleu de
+       l'action n'a pas ce besoin puisqu'il ne porte jamais que du blanc — 5,17
+       dans les deux thèmes. Contre la carte sombre il tient 3,13, au-dessus du
+       seuil de 3:1 exigé d'un élément d'interface : le bouton se détache de son
+       fond sans changer de couleur. Une marque qui garde sa teinte au basculement
+       est une marque, pas deux. */
+    --color-accent: #2563eb; /* 5.17 sous du blanc · 3.13 sur --surface sombre */
+    --color-accent-hover: #1d4ed8; /* 6.70 sous du blanc */
+    --color-on-accent: #ffffff;
     /* Le voile s'ASSOMBRIT en sombre plutôt que de rester identique : posé sur
        une page déjà sombre, un noir à 55 % ne détache plus assez la modale du
        fond. C'est le seul jeton dont la version sombre est plus opaque, et non
        plus claire. */
     --color-scrim: rgba(0, 0, 0, 0.68);
-    --color-gold-ink: #d9a85f; /* liens et labels · 8.50 sur --paper, 7.32 sur --surface */
-    --color-gold-ink-hover: #e6bd80; /* 9.01 sur --surface */
-    --color-gold-on-dark: #d2a055; /* inchangé : sert les panneaux figés */
-    --color-gold-on-ink: #7e571f; /* 5.21 sur --ink sombre, contre 2.33 pour l'or de marque */
-    --color-gold-tint: #2e2417; /* lavis, porte --gold-ink à 7.04 */
-    --color-gold-tint-2: #3f3120; /* fond de ::selection */
-    --color-gold-border: #5c4823;
+    --color-accent-ink: #93bbfd; /* liens et labels · 9.55 sur --paper, 8.30 sur --surface */
+    --color-accent-ink-hover: #bfd7fe; /* 11.07 sur --surface */
+    --color-accent-on-dark: #93bbfd; /* inchangé : sert les panneaux figés, 6.99 sur l'ink-2 figé */
+    --color-accent-on-ink: #1d4ed8; /* 5.56 sur --ink sombre, où l'encre est CLAIRE */
+    --color-accent-tint: #152238; /* lavis, porte --accent-ink à 8.17 */
+    --color-accent-tint-2: #1b2c48; /* fond de ::selection */
+    --color-accent-border: #2b4677;
 
     /* ---- Teintes de données ---------------------------------------------- */
     /* Les contreparties sombres existaient déjà — mesurées sur `--color-ink`,
@@ -647,7 +670,7 @@
     --shadow-e2: 0 2px 6px rgba(0, 0, 0, 0.55), 0 12px 32px -16px rgba(0, 0, 0, 0.75);
     --shadow-e3: 0 8px 24px rgba(0, 0, 0, 0.6), 0 32px 64px -24px rgba(0, 0, 0, 0.85);
     /* `--shadow-focus` n'est pas repris : il est écrit en `var(--color-paper)`
-       et `var(--color-gold-ink)`, donc il suit tout seul. Idem pour l'anneau
+       et `var(--color-accent-ink)`, donc il suit tout seul. Idem pour l'anneau
        `*:focus-visible` et pour `::selection`. */
   }
 }
@@ -677,15 +700,17 @@
   --color-muted: #a2a8b2;
   --color-muted-soft: #878e98;
 
-  --color-gold: #c58e3e;
+  --color-accent: #2563eb;
+  --color-accent-hover: #1d4ed8;
+  --color-on-accent: #ffffff;
   --color-scrim: rgba(0, 0, 0, 0.68);
-  --color-gold-ink: #d9a85f;
-  --color-gold-ink-hover: #e6bd80;
-  --color-gold-on-dark: #d2a055;
-  --color-gold-on-ink: #7e571f; /* 5.21 sur --ink sombre, contre 2.33 pour l'or de marque */
-  --color-gold-tint: #2e2417;
-  --color-gold-tint-2: #3f3120;
-  --color-gold-border: #5c4823;
+  --color-accent-ink: #93bbfd;
+  --color-accent-ink-hover: #bfd7fe;
+  --color-accent-on-dark: #93bbfd;
+  --color-accent-on-ink: #1d4ed8; /* 5.56 sur --ink sombre, où l'encre est CLAIRE */
+  --color-accent-tint: #152238;
+  --color-accent-tint-2: #1b2c48;
+  --color-accent-border: #2b4677;
 
   --color-data-1: #f6f8fb;
   --color-data-2: #d2a055;
@@ -761,14 +786,18 @@
   --color-on-dark-border: rgba(255, 255, 255, 0.4);
 }
 
-/* « L'or ne porte jamais de texte : ici c'est un fond, avec de l'encre
-   dessus » — la règle du bouton doré vaut dans les deux thèmes, or l'encre
-   principale, elle, s'éclaircit. On la refixe sur l'aplat.
-   `.bg-gold` ne touche pas `bg-gold-tint` : un sélecteur de classe compare
-   des jetons entiers de l'attribut `class`, pas des préfixes. */
-.bg-gold {
-  --color-ink: #131a22;
-}
+/* CETTE RÈGLE A DISPARU AVEC SA CAUSE, et il faut dire laquelle.
+
+   Elle refixait l'encre sombre sur l'aplat d'accent, parce que l'or de marque
+   ne tenait que 2,87:1 sur blanc : il ne pouvait porter QUE de l'encre sombre,
+   et cette encre s'éclaircissant en thème sombre, il fallait la rattraper à la
+   main sur le seul aplat qui ne s'inversait pas.
+
+   Le bleu de l'action n'a pas cette infirmité : il porte du BLANC, à 5,17 dans
+   les deux thèmes, par `--color-on-accent`. Il n'y a plus d'encre à rattraper,
+   donc plus de règle. La supprimer plutôt que la renommer est le point : une
+   règle dont la cause est morte et qu'on garde « au cas où » devient une
+   coïncidence que personne n'ose plus toucher. */
 
 /* ============================================================================
    Base
@@ -799,20 +828,20 @@
   }
 
   *:focus-visible {
-    outline: 2px solid var(--color-gold-ink);
+    outline: 2px solid var(--color-accent-ink);
     outline-offset: 2px;
     border-radius: 4px;
   }
 
   /* Le focus sur fond sombre a besoin d'un anneau clair. */
   .on-dark *:focus-visible {
-    outline-color: var(--color-gold-on-dark);
+    outline-color: var(--color-accent-on-dark);
   }
 
   /* La bascule contextuelle sur fond sombre est définie hors couche, plus bas. */
 
   ::selection {
-    background: var(--color-gold-tint-2);
+    background: var(--color-accent-tint-2);
     color: var(--color-ink);
   }
 
@@ -856,8 +885,8 @@
 .on-dark .text-ink:not([class*='bg-']) {
   color: var(--color-on-dark);
 }
-.on-dark .text-gold-ink:not([class*='bg-']) {
-  color: var(--color-gold-on-dark);
+.on-dark .text-accent-ink:not([class*='bg-']) {
+  color: var(--color-accent-on-dark);
 }
 .on-dark .border-divider:not([class*='bg-']),
 .on-dark .border-border:not([class*='bg-']) {

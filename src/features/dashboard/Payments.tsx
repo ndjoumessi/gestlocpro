@@ -341,11 +341,11 @@ export function Payments() {
               )}
             >
               {value === 'all' ? t('app.payments.filterAll') : t(`status.${value}` as 'status.paid')}
-              {/* `gold-on-ink` : le filtre actif peint son fond en `--color-ink`,
+              {/* `accent-on-ink` : le filtre actif peint son fond en `--color-ink`,
                   qui s'inverse avec le thème. À 12 px ce compteur est du texte,
                   donc il lui faut 4,5:1 — l'or de marque n'en donnait que 2,33
                   en sombre. */}
-              <span className={cn('numeric text-caps', active ? 'text-gold-on-ink' : 'text-muted')}>
+              <span className={cn('numeric text-caps', active ? 'text-accent-on-ink' : 'text-muted')}>
                 {count}
               </span>
             </button>

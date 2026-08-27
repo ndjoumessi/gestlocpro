@@ -16,7 +16,7 @@ const TONES: Record<StatusTone, { classes: string; icon: IconName }> = {
   warn: { classes: 'bg-warn-tint text-warn border-warn-border', icon: 'clock' },
   danger: { classes: 'bg-danger-tint text-danger border-danger-border', icon: 'alert' },
   neutral: { classes: 'bg-neutral-tint text-neutral border-neutral-border', icon: 'info' },
-  info: { classes: 'bg-gold-tint text-gold-ink border-gold-border', icon: 'info' },
+  info: { classes: 'bg-accent-tint text-accent-ink border-accent-border', icon: 'info' },
 }
 
 export interface StatusPillProps {

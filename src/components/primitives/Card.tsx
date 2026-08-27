@@ -1,13 +1,13 @@
 import type { HTMLAttributes, ReactNode } from 'react'
 import { cn } from '@/lib/cn'
 
-export type CardTone = 'default' | 'sunken' | 'dark' | 'gold' | 'plain'
+export type CardTone = 'default' | 'sunken' | 'dark' | 'accent' | 'plain'
 
 const TONES: Record<CardTone, string> = {
   default: 'bg-surface border-divider shadow-e1',
   sunken: 'bg-surface-sunken border-border',
   dark: 'bg-ink border-transparent text-on-dark on-dark',
-  gold: 'bg-gold-tint border-gold-border',
+  accent: 'bg-accent-tint border-accent-border',
   plain: 'bg-transparent border-transparent',
 }
 

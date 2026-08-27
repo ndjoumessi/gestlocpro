@@ -195,7 +195,7 @@ export function Inspections() {
                   D'autant que la consigne était redondante : le tableau qui suit
                   porte déjà « Comparaison entrée / sortie » en titre.
                 */}
-                {hasBoth && <Badge tone="gold">{t('app.inspections.compare')}</Badge>}
+                {hasBoth && <Badge tone="accent">{t('app.inspections.compare')}</Badge>}
               </div>
 
               <div className="flex flex-col gap-2.5">
@@ -244,7 +244,7 @@ export function Inspections() {
                       className={`flex size-9 shrink-0 items-center justify-center rounded-md ${
                         inspection.kind === 'entry'
                           ? 'bg-ok-tint text-ok'
-                          : 'bg-gold-tint text-gold-ink'
+                          : 'bg-accent-tint text-accent-ink'
                       }`}
                     >
                       <Icon

@@ -717,7 +717,7 @@ function BarreLocataire({ setRole }: { setRole: (role: Role) => void }) {
  * Une destination du locataire.
  *
  * Le repère de l'entrée courante est un filet DORÉ sous le libellé, et non
- * seulement un fond : `gold-ink` tient au-delà de 3:1 sur l'encre dans les deux
+ * seulement un fond : `accent-ink` tient au-delà de 3:1 sur l'encre dans les deux
  * thèmes, quand l'or de marque n'y atteint que 2,62:1. C'est le seul indice de
  * l'écran où l'on se trouve ; il doit se voir.
  */
@@ -735,7 +735,7 @@ function LienLocataire({ item }: { item: NavItem }) {
           'inline-flex min-h-11 shrink-0 items-center gap-2 rounded-t-lg border-b-2 px-3 sm:px-4',
           'text-label font-semibold no-underline transition-colors duration-150',
           isActive
-            ? 'border-gold-ink bg-on-dark-hover text-on-dark'
+            ? 'border-accent-ink bg-on-dark-hover text-on-dark'
             : 'border-transparent text-on-dark-muted hover:bg-on-dark-hover hover:text-on-dark',
         )
       }
@@ -1014,9 +1014,9 @@ function Sidebar({
                     'relative flex min-h-11 cursor-pointer items-center rounded-sm px-2.5 text-label',
                     'transition-colors duration-150',
                     'has-[:focus-visible]:outline has-[:focus-visible]:outline-2',
-                    'has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-gold-on-dark',
+                    'has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-accent-on-dark',
                     active
-                      ? 'bg-on-dark-active font-semibold text-on-dark shadow-[inset_2px_0_0_var(--color-gold)]'
+                      ? 'bg-on-dark-active font-semibold text-on-dark shadow-[inset_2px_0_0_var(--color-accent)]'
                       : 'text-on-dark-muted hover:bg-on-dark-hover',
                   )}
                 >
@@ -1334,14 +1334,14 @@ function MenuCompte({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
           // Encre sur encre : la pastille disparaissait purement et simplement
           // dans la barre du locataire, qui est de la même couleur. L'or est
           // celui de la maquette du portail, et `text-ink` s'y tient parce que
-          // `.bg-gold` refixe `--color-ink` sur son aplat.
+          // `.bg-accent` refixe `--color-ink` sur son aplat.
           //
           // Seul bouton de la coquille sans survol : `Button` et `IconButton`
           // en portent un chacun, celui-ci recopie leurs classes à la main sans
           // recopier ce dernier détail. Les jetons de survol sont ceux de leurs
-          // variantes `gold` et `primary`, qui peignent déjà les mêmes fonds.
+          // variantes `accent` et `primary`, qui peignent déjà les mêmes fonds.
           tone === 'dark'
-            ? 'bg-gold text-ink hover:bg-gold-on-dark'
+            ? 'bg-accent text-on-accent hover:bg-accent-hover'
             : 'bg-ink text-on-dark hover:bg-ink-2',
         )}
       >
@@ -1420,7 +1420,7 @@ function SidebarLink({ item, wide }: { item: NavItem; wide: boolean }) {
           'transition-colors duration-150',
           wide ? 'justify-start' : 'justify-center',
           isActive
-            ? 'bg-on-dark-active font-semibold text-on-dark shadow-[inset_2px_0_0_var(--color-gold)]'
+            ? 'bg-on-dark-active font-semibold text-on-dark shadow-[inset_2px_0_0_var(--color-accent)]'
             : 'text-on-dark-muted hover:bg-on-dark-hover hover:text-on-dark',
         )
       }
@@ -1554,7 +1554,7 @@ function BottomLink({ item }: { item: NavItem }) {
           // ni pour un daltonien — et c'est précisément dehors, sur un écran
           // bon marché, que ce produit est utilisé.
           isActive
-            ? 'font-semibold text-ink shadow-[inset_0_2px_0_var(--color-gold)]'
+            ? 'font-semibold text-ink shadow-[inset_0_2px_0_var(--color-accent)]'
             : 'text-muted hover:bg-surface-sunken hover:text-ink',
         )
       }

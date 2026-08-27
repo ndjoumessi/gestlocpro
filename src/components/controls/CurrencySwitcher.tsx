@@ -81,7 +81,7 @@ export function CurrencySwitcher({ tone = 'light', className }: CurrencySwitcher
         <span
           className={cn(
             'eyebrow sr-only sm:not-sr-only',
-            tone === 'dark' ? 'text-gold-on-dark' : 'text-gold-ink',
+            tone === 'dark' ? 'text-accent-on-dark' : 'text-accent-ink',
           )}
         >
           {t('common.currency')}
@@ -120,7 +120,7 @@ export function CurrencySwitcher({ tone = 'light', className }: CurrencySwitcher
                     active ? 'bg-surface-sunken font-semibold text-ink' : 'text-ink hover:bg-surface-sunken',
                   )}
                 >
-                  <span className="w-4 shrink-0 text-gold-ink">
+                  <span className="w-4 shrink-0 text-accent-ink">
                     {active && <Icon name="check" size={14} strokeWidth={2.4} />}
                   </span>
                   <span className="flex-1">{def.label}</span>

@@ -8,23 +8,38 @@ import { Link } from 'react-router-dom'
 import { cn } from '@/lib/cn'
 import { Icon, type IconName } from './Icon'
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'gold' | 'danger' | 'onDark'
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'accent' | 'danger' | 'onDark'
 export type ButtonSize = 'sm' | 'md' | 'lg'
 
 const VARIANTS: Record<ButtonVariant, string> = {
   // Une seule action primaire par écran.
-  primary:
-    // `shadow-e1` et non un littéral : l'ombre portait `rgba(20,32,30,.18)`,
-    // c'est-à-dire `--color-ink` figé à 18 %. Une ombre d'encre sombre posée sur
-    // un fond sombre ne se voit pas — le jeton d'élévation, lui, se redéfinit
-    // avec le thème. C'était la dernière couleur en dur du composant le plus
-    // réutilisé du produit.
-    'bg-ink text-on-dark shadow-e1 hover:bg-ink-2 active:translate-y-px',
+  /**
+   * LE PRIMAIRE PREND L'ACCENT, ET IL NE POUVAIT PAS AVANT.
+   *
+   * Il était `bg-ink` — presque noir — et ce n'était pas un choix esthétique
+   * mais une contrainte : l'or de marque ne tenait que 2,87:1 sur blanc, donc
+   * il ne pouvait porter aucune encre lisible et ne pouvait pas être le fond
+   * de l'action. Le geste principal du produit était noir FAUTE de mieux.
+   *
+   * `--color-accent` tient 5,17:1 sous du blanc, dans les deux thèmes, et 3,13
+   * contre la carte sombre — au-dessus du seuil de 3:1 d'un élément
+   * d'interface. La contrainte est levée, le bouton prend la couleur de la
+   * marque, et l'écran dit enfin en couleur où se trouve son action.
+   *
+   * `shadow-e1` et non un littéral : l'ombre portait `rgba(20,32,30,.18)`,
+   * c'est-à-dire `--color-ink` figé à 18 %. Une ombre d'encre sombre posée sur
+   * un fond sombre ne se voit pas — le jeton d'élévation, lui, se redéfinit
+   * avec le thème.
+   */
+  primary: 'bg-accent text-on-accent shadow-e1 hover:bg-accent-hover active:translate-y-px',
   secondary:
     'bg-surface text-ink border border-border hover:border-ink active:translate-y-px',
   ghost: 'bg-transparent text-ink hover:bg-surface-sunken active:translate-y-px',
-  // L'or ne porte jamais de texte : ici c'est un fond, avec de l'encre dessus.
-  gold: 'bg-gold text-ink hover:bg-gold-on-dark active:translate-y-px',
+  /* Le second aplat d'accent, désormais IDENTIQUE au primaire par sa couleur —
+     ce qui pose la question de sa survie. Il est laissé tel quel : le
+     supprimer, c'est retirer une variante de l'API du composant le plus employé
+     du produit, et ce n'est pas le sujet de ce lot. Nommé au rapport. */
+  accent: 'bg-accent text-on-accent hover:bg-accent-hover active:translate-y-px',
   danger: 'bg-danger text-on-dark hover:bg-danger-strong active:translate-y-px',
   onDark:
     'bg-on-dark-active text-on-dark border border-on-dark-border hover:bg-on-dark/20 active:translate-y-px',

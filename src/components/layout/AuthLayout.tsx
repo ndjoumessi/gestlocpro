@@ -241,7 +241,7 @@ function BrandPanel() {
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -top-32 -left-24 size-[30rem] rounded-full opacity-20 blur-3xl"
-        style={{ background: 'radial-gradient(circle, var(--color-gold) 0%, transparent 70%)' }}
+        style={{ background: 'radial-gradient(circle, var(--color-accent) 0%, transparent 70%)' }}
       />
 
       <div className="relative">
@@ -270,7 +270,7 @@ function BrandPanel() {
         <ul className="mt-8 flex flex-col gap-3">
           {points.map((key) => (
             <li key={key} className="flex items-center gap-3 text-body text-on-dark-muted">
-              <Icon name="check" size={16} strokeWidth={2.2} className="shrink-0 text-gold" />
+              <Icon name="check" size={16} strokeWidth={2.2} className="shrink-0 text-accent" />
               {t(key)}
             </li>
           ))}

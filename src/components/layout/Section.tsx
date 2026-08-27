@@ -124,8 +124,20 @@ export function Section({
             )}
           >
             <div>
+              {/* `accent-on-dark` et non `accent` sur fond sombre : une section en
+                  ton `dark` fige son encre par `.on-dark`, donc son fond ne
+                  s'inverse PAS avec le thème. L'accent de marque n'y tenait que
+                  3,39 en clair, et l'accent d'encre 2,61 en sombre — deux échecs
+                  OPPOSÉS sur un seul fond, ce qui est la signature d'un jeton qui
+                  bascule sous un fond qui ne bascule pas. Le jeton des panneaux
+                  figés est clair dans les deux thèmes : 8,98. */}
               {eyebrow && (
-                <p className={cn('eyebrow', tone === 'dark' ? 'text-gold' : 'text-gold-ink')}>
+                <p
+                  className={cn(
+                    'eyebrow',
+                    tone === 'dark' ? 'text-accent-on-dark' : 'text-accent-ink',
+                  )}
+                >
                   {eyebrow}
                 </p>
               )}

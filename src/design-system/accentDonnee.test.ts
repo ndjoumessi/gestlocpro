@@ -4,9 +4,9 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 /**
- * Garde de l'or de marque employé comme DONNÉE.
+ * Garde de l'ACCENT de marque employé comme DONNÉE.
  *
- * `tokens.css` écrit noir sur blanc que `--color-gold` n'est jamais autre chose
+ * `tokens.css` écrit noir sur blanc que `--color-accent` n'est jamais autre chose
  * qu'un fond, une bordure décorative ou une icône : 2,87:1 sur blanc, sous le
  * seuil de 3:1 qu'un élément non textuel porteur de sens doit tenir. Quatre
  * points de code le contredisaient pourtant — la barre du mois courant, la
@@ -76,19 +76,19 @@ const CLAIR = jetons(corps(NU, '@theme'))
 const SOMBRE = jetons(corps(corps(NU, '@media (prefers-color-scheme: dark)'), ':root'))
 
 /** Fragments : jamais de classe Tailwind écrite d'un seul tenant. */
-const OR = 'gold'
-const CLASSES_INTERDITES = [`border-${OR}`, `text-${OR}`]
+const ACCENT = 'accent'
+const CLASSES_INTERDITES = [`border-${ACCENT}`, `text-${ACCENT}`]
 
 /**
- * `bg-gold` fait exception, et une seule : l'aplat doré PORTANT DE L'ENCRE.
+ * `bg-accent` fait exception, et une seule : l'aplat doré PORTANT DE L'ENCRE.
  *
  * C'est le motif que `tokens.css` sanctionne explicitement — « l'or ne porte
  * jamais de texte : ici c'est un fond, avec de l'encre dessus » — et que
- * `.bg-gold` outille en refixant `--color-ink` sur l'aplat. La pastille
+ * `.bg-accent` outille en refixant `--color-ink` sur l'aplat. La pastille
  * d'identité du portail est exactement cela : le doré est décor, la
  * signification est portée par les initiales, en encre, à 5,83:1.
  *
- * La garde interdisait `bg-gold` en bloc dans ces deux fichiers. C'était plus
+ * La garde interdisait `bg-accent` en bloc dans ces deux fichiers. C'était plus
  * large que la règle qu'elle défend : les quatre points de code d'origine
  * peignaient de la DONNÉE en or, pas un fond sous du texte foncé. On resserre
  * donc sur l'intention, sans rouvrir ce qui avait été fermé.
@@ -99,27 +99,33 @@ const CLASSES_INTERDITES = [`border-${OR}`, `text-${OR}`]
  */
 const LITTERAUX = /'[^']*'|"[^"]*"|`[^`]*`/g
 
-describe('l’or de marque ne porte pas de donnée', () => {
+describe('l’accent de marque ne porte pas de donnée', () => {
   it('trouve bien les sources à inspecter', () => {
     // Garde du garde : un lecteur qui rend une chaîne vide valide tout.
     expect(CHARTS).toContain('StackedBarChart')
     expect(PORTAIL).toContain('role="tablist"')
-    expect(CLAIR.get('--color-gold')).toBe('#c58e3e')
+    /* Troisième pin d'un hex retiré dans cette refonte, pour la même raison que
+       les deux autres : il lisait `toBe('#c58e3e')` et ne prouvait que « la
+       couleur n'a pas changé ». Ce qu'il DOIT prouver est que l'analyseur a
+       sorti une couleur réelle du bloc clair. */
+    expect(CLAIR.get('--color-accent')).toMatch(/^#[0-9a-f]{6}$/)
   })
 
   it('sait reconnaître un contraste insuffisant', () => {
     expect(ratio('#ffffff', '#000000')).toBeCloseTo(21, 1)
-    // L'or sur blanc, le cas connu qui a motivé toute la correction.
+    /* L'or sur blanc — 2,87 — le cas connu qui a motivé toute la correction, et
+       qu'on garde comme ÉTALON du calculateur même si l'or a quitté la palette :
+       c'est un fait de colorimétrie, pas un état du produit. */
     expect(ratio('#c58e3e', '#ffffff')).toBeLessThan(3)
   })
 
-  it('n’emploie plus la variable CSS d’or comme remplissage de série', () => {
-    // `var(--color-gold)` dans un `style` de barre : c'est de la donnée peinte.
-    expect(CODE).not.toContain('var(--color-' + OR + ')')
+  it('n’emploie plus la variable CSS d’accent comme remplissage de série', () => {
+    // `var(--color-accent)` dans un `style` de barre : c'est de la donnée peinte.
+    expect(CODE).not.toContain('var(--color-' + ACCENT + ')')
   })
 
   it('n’emploie plus les utilitaires d’or nus dans ces deux fichiers', () => {
-    // `gold-ink`, `gold-tint`, `gold-border` restent permis : ce sont d'autres
+    // `accent-ink`, `accent-tint`, `accent-border` restent permis : ce sont d'autres
     // jetons. Seul l'accent nu est visé, d'où la limite de mot.
     for (const classe of CLASSES_INTERDITES) {
       const motif = new RegExp(`\\b${classe}\\b(?!-)`)
@@ -127,13 +133,24 @@ describe('l’or de marque ne porte pas de donnée', () => {
     }
   })
 
-  it('n’admet l’aplat doré que sous de l’encre', () => {
-    const aplat = new RegExp(`\\bbg-${OR}\\b(?!-)`)
-    const encre = /\btext-ink\b(?!-)/
+  it('n’admet l’aplat d’accent que sous son encre dédiée', () => {
+    /*
+      L'ENCRE ATTENDUE A CHANGÉ AVEC L'ACCENT, et la règle reste la même : un
+      aplat de marque ne se pose JAMAIS nu.
+
+      Elle exigeait `text-ink` — l'encre sombre — parce que l'or, à 2,87:1 sur
+      blanc, ne pouvait recevoir que du sombre. Le bleu de l'action est
+      l'inverse : `text-ink` n'y rend que 3,39, sous le seuil, et c'est
+      `--color-on-accent` qui tient 5,17 dans les deux thèmes. Le cas a rougi
+      sur la pastille d'identité du portail au moment exact où l'aplat a changé
+      de teinte, ce qui est précisément son travail.
+    */
+    const aplat = new RegExp(`\\bbg-${ACCENT}\\b(?!-)`)
+    const encre = /\btext-on-accent\b(?!-)/
     const fautifs = (CODE.match(LITTERAUX) ?? []).filter(
       (litteral) => aplat.test(litteral) && !encre.test(litteral),
     )
-    expect(fautifs, 'aplat doré sans encre dessus').toEqual([])
+    expect(fautifs, 'aplat d’accent sans son encre dessus').toEqual([])
   })
 })
 
@@ -147,7 +164,12 @@ describe('l’or de marque ne porte pas de donnée', () => {
  */
 const PORTEES = {
   'on-dark': jetons(corps(NU, '.on-dark {')),
-  'bg-gold': jetons(corps(NU, '.bg-gold {')),
+  /* `bg-accent` A DISPARU DE CETTE TABLE AVEC SON BLOC CSS, et l'oubli a été
+     instructif : `corps()` lève quand le bloc manque, ce fichier a donc cessé
+     de s'EXÉCUTER — onze gardes tombées d'un coup, et l'échec vit à la
+     COLLECTE, pas sur une assertion. Un filtre de sortie qui ne cherche que
+     « AssertionError » ne le voit pas ; seul le compte des tests le trahit.
+     C'est la panne que ce dépôt reproche partout ailleurs, arrivée ici. */
 } as const
 
 /** Le jeton tel que le voit l'élément : sa portée d'abord, le thème ensuite. */
@@ -165,14 +187,17 @@ type Portee = keyof typeof PORTEES | null
  * dès qu'il s'agit de texte lu.
  */
 const SITES: [string, string, string, number, Portee][] = [
-  ['barre du mois courant (MiniBarChart)', '--color-gold-ink', '--color-surface', 3, null],
-  ['ligne d’objectif (StackedBarChart)', '--color-gold-ink', '--color-surface', 3, null],
-  ['remplissage de progression', '--color-gold-ink', '--color-surface-sunken', 3, null],
+  ['barre du mois courant (MiniBarChart)', '--color-accent-ink', '--color-surface', 3, null],
+  ['ligne d’objectif (StackedBarChart)', '--color-accent-ink', '--color-surface', 3, null],
+  ['remplissage de progression', '--color-accent-ink', '--color-surface-sunken', 3, null],
   // La rangée d'onglets est passée sur fond sombre : elle se lit désormais
   // sous `.on-dark`, qui fige l'encre, et non plus sur `--color-paper`.
-  ['indicateur d’onglet actif (portail)', '--color-gold-ink', '--color-ink', 3, 'on-dark'],
-  // Du TEXTE, donc 4,5:1 : les initiales sont lues, pas devinées.
-  ['initiales sur la pastille d’identité (portail)', '--color-ink', '--color-gold', 4.5, 'bg-gold'],
+  ['indicateur d’onglet actif (portail)', '--color-accent-on-dark', '--color-ink', 3, 'on-dark'],
+  /* Du TEXTE, donc 4,5:1 : les initiales sont lues, pas devinées. L'encre a
+     changé avec l'accent — c'était `--color-ink` refixée par un bloc de classe,
+     parce que l'or ne pouvait recevoir que du sombre ; c'est `--color-on-accent`
+     depuis que l'aplat est bleu, et il n'y a plus de portée à traverser. */
+  ['initiales sur la pastille d’identité (portail)', '--color-on-accent', '--color-accent', 4.5, null],
 ]
 
 describe('le jeton retenu tient le seuil dans les DEUX thèmes', () => {

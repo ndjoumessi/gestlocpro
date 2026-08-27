@@ -211,7 +211,7 @@ export function TenantDashboard() {
                 vert fixe. Un logement EN RETARD affichait une pastille rouge
                 ET une piste verte pour le même fait — deux couleurs
                 contraires sur la même carte, à un public qui lit d'abord la
-                couleur. `ProgressBar` n'expose que trois tons (`gold`, `ok`,
+                couleur. `ProgressBar` n'expose que trois tons (`accent`, `ok`,
                 `danger`) : `danger` est le seul qui rejoigne la pastille sans
                 en inventer un quatrième dans un composant partagé. */}
             <ProgressBar

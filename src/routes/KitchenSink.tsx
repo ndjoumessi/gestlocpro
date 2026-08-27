@@ -64,7 +64,7 @@ export function KitchenSink() {
 
       <main className="mx-auto max-w-6xl space-y-10 px-6 py-10">
         <div>
-          <p className="eyebrow text-gold-ink">Design system</p>
+          <p className="eyebrow text-accent-ink">Design system</p>
           <h1 className="display-l mt-2">Contrôle des primitives</h1>
           <p className="mt-2 max-w-2xl text-body-l text-muted">
             Chaque composant dans ses états. Les montants suivent la devise choisie dans l’en-tête,
@@ -95,8 +95,8 @@ export function KitchenSink() {
             <Swatch name="ink" className="bg-ink" dark />
             <Swatch name="ink-2" className="bg-ink-2" dark />
             <Swatch name="muted" className="bg-muted" dark />
-            <Swatch name="gold" className="bg-gold" />
-            <Swatch name="gold-ink" className="bg-gold-ink" dark />
+            <Swatch name="accent" className="bg-accent" />
+            <Swatch name="accent-ink" className="bg-accent-ink" dark />
             <Swatch name="paper" className="bg-paper" />
             <Swatch name="canvas" className="bg-canvas" />
             <Swatch name="surface-sunken" className="bg-surface-sunken" />
@@ -105,7 +105,7 @@ export function KitchenSink() {
             <Swatch name="ok" className="bg-ok" dark />
             <Swatch name="warn" className="bg-warn" dark />
             <Swatch name="danger" className="bg-danger" dark />
-            <Swatch name="gold-tint" className="bg-gold-tint" />
+            <Swatch name="accent-tint" className="bg-accent-tint" />
             <Swatch name="ok-tint" className="bg-ok-tint" />
           </div>
         </Section>
@@ -119,7 +119,7 @@ export function KitchenSink() {
             <Button variant="secondary" icon="download">
               Secondaire
             </Button>
-            <Button variant="gold" icon="sparkle">
+            <Button variant="accent" icon="sparkle">
               Doré
             </Button>
             <Button variant="ghost">Fantôme</Button>
@@ -138,7 +138,7 @@ export function KitchenSink() {
             </Button>
           </div>
           <div className="on-dark mt-4 flex flex-wrap items-center gap-3 rounded-lg bg-ink p-4">
-            <Button variant="gold">Sur fond sombre</Button>
+            <Button variant="accent">Sur fond sombre</Button>
             <Button variant="onDark">Secondaire sombre</Button>
             <LanguageSwitcher tone="dark" />
             <CurrencySwitcher tone="dark" />
@@ -159,7 +159,7 @@ export function KitchenSink() {
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Badge tone="neutral">12 unités</Badge>
-            <Badge tone="gold">Pro</Badge>
+            <Badge tone="accent">Pro</Badge>
             <Badge tone="ok">Actif</Badge>
             <Badge tone="danger">3</Badge>
             <Badge tone="dark">FCFA</Badge>
@@ -285,7 +285,7 @@ export function KitchenSink() {
               <p className="text-body text-muted">Sans ombre, bordure plus marquée.</p>
             </Card>
 
-            <Card tone="gold">
+            <Card tone="accent">
               <CardHeader title="Ton doré" description="Pour les mises en avant." />
               <p className="text-body text-muted">Teinte dorée, bordure dorée.</p>
             </Card>
@@ -293,7 +293,7 @@ export function KitchenSink() {
             <Card tone="dark">
               <CardHeader title="Ton sombre" description="Pour les blocs de synthèse." />
               <p className="text-body text-on-dark-muted">
-                L’or passe en <span className="text-gold">accent</span> sur fond sombre.
+                L’or passe en <span className="text-accent">accent</span> sur fond sombre.
               </p>
             </Card>
           </div>

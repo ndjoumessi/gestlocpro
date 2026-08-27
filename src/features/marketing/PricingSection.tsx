@@ -132,7 +132,7 @@ export function PricingSection() {
 
                     {/* La formule est affichée : le prix doit être vérifiable
                         par le prospect, pas seulement constaté. */}
-                    <p className="mt-3 flex items-center gap-1.5 text-caps text-gold-ink">
+                    <p className="mt-3 flex items-center gap-1.5 text-caps text-accent-ink">
                       <Icon name="building" size={13} />
                       {t('marketing.pricing.perUnitNote', {
                         base: money(plan.pricing.base[currency], {
@@ -171,7 +171,7 @@ export function PricingSection() {
                   name="check"
                   size={14}
                   strokeWidth={2.2}
-                  className="mt-0.5 shrink-0 text-gold-ink"
+                  className="mt-0.5 shrink-0 text-accent-ink"
                 />
                 {t('marketing.pricing.allIncluded')}
               </p>
@@ -217,7 +217,7 @@ export function PricingSection() {
       </div>
 
       <p className="mx-auto mt-8 flex max-w-xl items-start justify-center gap-2 text-body text-muted">
-        <Icon name="info" size={15} className="mt-0.5 shrink-0 text-gold-ink" />
+        <Icon name="info" size={15} className="mt-0.5 shrink-0 text-accent-ink" />
         {t('marketing.pricing.currencyNote')}
       </p>
     </Section>
@@ -274,7 +274,7 @@ function UnitSlider({ units, onChange }: { units: number; onChange: (n: number) 
           )}
           style={{
             // Variable consommée par les deux pseudo-éléments de piste.
-            backgroundImage: `linear-gradient(to right, var(--color-gold) ${progress}%, var(--color-border) ${progress}%)`,
+            backgroundImage: `linear-gradient(to right, var(--color-accent) ${progress}%, var(--color-border) ${progress}%)`,
             backgroundSize: '100% 6px',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',

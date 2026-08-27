@@ -25,7 +25,7 @@ import { Icon, type IconName } from './Icon'
 
 /**
  * Teintes de séries, prises dans l'échelle de données et non dans les couleurs
- * de marque : l'or `--color-gold` ne tient que 2,87:1 sur blanc, sous le seuil
+ * de marque : l'or `--color-accent` ne tient que 2,87:1 sur blanc, sous le seuil
  * de 3:1 exigé d'une donnée. Les trois retenues sont espacées en clarté
  * (28 %, 18 %, 13 %) pour rester distinctes en niveaux de gris.
  *
@@ -49,7 +49,7 @@ import { Icon, type IconName } from './Icon'
  * La règle vaut au-delà des séries, et ce fichier l'a longtemps contredite :
  * une colonne mise en avant, une ligne d'objectif et un remplissage de
  * progression portent de l'information tout autant qu'une série. Là où la
- * couleur de marque doit rester lisible, c'est `--color-gold-ink` qui sert —
+ * couleur de marque doit rester lisible, c'est `--color-accent-ink` qui sert —
  * même famille, 4,80:1 au pire des fonds. `orDonnee.test.ts` relit ce fichier
  * et refuse le retour de l'or nu.
  */
@@ -402,13 +402,13 @@ export function StackedBarChart({
           {showTarget && (
             <div
               aria-hidden="true"
-              // `gold-ink` et non l'or de marque. Une ligne de repère est une
+              // `accent-ink` et non l'or de marque. Une ligne de repère est une
               // donnée : elle dit où passe l'objectif, et l'or n'y tient que
-              // 2,87:1 sur la carte. `--color-gold-ink` reste dans la famille
+              // 2,87:1 sur la carte. `--color-accent-ink` reste dans la famille
               // et monte à 5,47:1 en clair, 7,32:1 en sombre — et c'est déjà
               // la couleur du libellé qui la nomme, deux lignes plus bas : le
               // trait et son étiquette cessent d'être de deux ors différents.
-              className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-gold-ink"
+              className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-accent-ink"
               style={{ bottom: `${(target / max) * 100}%` }}
             >
               {/* Le montant EXACT, et non sa forme compacte.
@@ -422,7 +422,7 @@ export function StackedBarChart({
                   barres, en doré sur fond sombre. Le fond le rend lisible quelle
                   que soit la hauteur des barres, ce qu'un simple déplacement ne
                   garantirait pas : elles changent avec les données. */}
-              <span className="absolute -top-2.5 left-0 rounded-sm bg-surface px-1.5 py-0.5 numeric text-caps text-gold-ink uppercase">
+              <span className="absolute -top-2.5 left-0 rounded-sm bg-surface px-1.5 py-0.5 numeric text-caps text-accent-ink uppercase">
                 {targetLabel} · {money(target, { round: true })}
               </span>
             </div>
@@ -909,7 +909,7 @@ export function MiniBarChart({
                   // c'est une DONNÉE mise en avant, pas un ornement. L'or de
                   // marque tombait à 2,87:1 sur la carte, sous le seuil de 3:1
                   // — et le commentaire d'en-tête de ce fichier l'interdisait
-                  // déjà. `--color-gold-ink` tient 5,47:1 en clair et 7,32:1
+                  // déjà. `--color-accent-ink` tient 5,47:1 en clair et 7,32:1
                   // en sombre, en gardant l'écart de clarté avec `data-1` qui
                   // rend les deux distinguables en niveaux de gris. La hachure
                   // s'y ajoute pour dire la même chose que chez la voisine
@@ -928,7 +928,7 @@ export function MiniBarChart({
                     bar.value === null
                       ? 'var(--color-muted-soft)'
                       : isLast
-                        ? hachureOuverte('var(--color-gold-ink)')
+                        ? hachureOuverte('var(--color-accent-ink)')
                         : 'var(--color-data-1)',
                   animationDelay: `${index * 40}ms`,
                   // Même arbitrage que chez la voisine empilée : la colonne
@@ -1112,7 +1112,7 @@ export interface DonutSlice {
 const PARTS: Record<EtatDePoste, { couleur: string; forme: FormeDePart }> = {
   paid: { couleur: 'var(--color-ok)', forme: 'pleine' },
   partial: { couleur: 'var(--color-warn)', forme: 'demie' },
-  /* `--color-warn` et non `--color-gold` pour « partiel » : l'or de marque ne
+  /* `--color-warn` et non `--color-accent` pour « partiel » : l'or de marque ne
      tient que 2,87:1 sur blanc, sous le seuil d'une donnée. */
   overdue: { couleur: 'var(--color-danger)', forme: 'creuse' },
 }
@@ -1306,12 +1306,12 @@ export function DonutChart({
 export function ProgressBar({
   value,
   label,
-  tone = 'gold',
+  tone = 'accent',
   hideLabel,
 }: {
   value: number
   label: string
-  tone?: 'gold' | 'ok' | 'danger'
+  tone?: 'accent' | 'ok' | 'danger'
   /**
    * Masque le libellé VISIBLE sans le retirer de l'arbre d'accessibilité.
    *
@@ -1328,10 +1328,10 @@ export function ProgressBar({
   // Le remplissage EST la valeur : c'est lui, et lui seul, qui dit 62 % contre
   // 38 %. L'or de marque ne tenait que 2,52:1 sur la piste `surface-sunken`,
   // le pire des quatre emplois recensés — et le ton par défaut, donc celui de
-  // tous les appels. `gold-ink` monte à 4,80:1 en clair et 8,71:1 en sombre.
+  // tous les appels. `accent-ink` monte à 4,80:1 en clair et 8,71:1 en sombre.
   // Le ton garde son nom : c'est un rôle — « la couleur de marque » — pas une
   // teinte, exactement comme `ok` ne nomme pas un vert.
-  const colors = { gold: 'bg-gold-ink', ok: 'bg-ok', danger: 'bg-danger' }
+  const colors = { accent: 'bg-accent-ink', ok: 'bg-ok', danger: 'bg-danger' }
 
   return (
     <div className="flex items-center gap-3">
@@ -1378,8 +1378,8 @@ export function ProgressBar({
  *
  * Le lot qui a posé ces tuiles les voulait OR, « parce que c'est l'accent de la
  * marque et qu'un lavis neutre n'aurait rien apporté qu'un gris de plus ».
- * L'argument s'est cassé sur une mesure, au lot suivant : `--color-gold-tint` et
- * `--color-warn-tint` valent LE MÊME `#fbf3e2`, et `--color-gold-ink` (#8a6218)
+ * L'argument s'est cassé sur une mesure, au lot suivant : `--color-accent-tint` et
+ * `--color-warn-tint` valent LE MÊME `#fbf3e2`, et `--color-accent-ink` (#8a6218)
  * ne s'écarte de `--color-warn` (#795415) que d'une nuance. Ce n'est pas une
  * collision accidentelle — dans ce système, l'ambre d'alerte EST l'or de la
  * marque, et la bannière des relevés le prouve depuis toujours.
@@ -1394,7 +1394,7 @@ export function ProgressBar({
  * seule du système qui ne signale rien. L'or n'a pas disparu — il reste le ton
  * `info`, où il veut dire quelque chose au lieu de servir de papier peint.
  *
- * `--gold-ink` et non `--gold` là où l'or sert encore : l'or nu ne tient que
+ * `--accent-ink` et non `--accent` là où l'or sert encore : l'or nu ne tient que
  * 2,87:1, l'encre de la même famille en tient 4,80 au pire des fonds — c'est la
  * règle que `Charts` énonce en tête de fichier pour les séries, et elle ne
  * s'arrête pas aux séries.
@@ -1410,7 +1410,7 @@ const TUILES_D_ETAT: Record<StatusTone, string> = {
   warn: 'bg-warn-tint text-warn',
   danger: 'bg-danger-tint text-danger',
   neutral: 'bg-neutral-tint text-neutral',
-  info: 'bg-gold-tint text-gold-ink',
+  info: 'bg-accent-tint text-accent-ink',
 }
 
 const BORDURES_D_ETAT: Record<StatusTone, string> = {
@@ -1418,7 +1418,7 @@ const BORDURES_D_ETAT: Record<StatusTone, string> = {
   warn: 'border-warn-border',
   danger: 'border-danger-border',
   neutral: 'border-neutral-border',
-  info: 'border-gold-border',
+  info: 'border-accent-border',
 }
 
 export function StatCard({

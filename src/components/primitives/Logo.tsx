@@ -36,8 +36,8 @@ export function Logo({
       <span
         aria-hidden="true"
         className={cn(
-          'flex shrink-0 items-center justify-center rounded-md bg-gold font-display',
-          'leading-none font-semibold text-ink',
+          'flex shrink-0 items-center justify-center rounded-md bg-accent font-display',
+          'leading-none font-semibold text-on-accent',
           MARK_SIZES[size],
         )}
       >
@@ -53,7 +53,7 @@ export function Logo({
               tone === 'dark' ? 'text-on-dark' : 'text-ink',
             )}
           >
-            GestLoc<span className={tone === 'dark' ? 'text-gold' : 'text-gold-ink'}>Pro</span>
+            GestLoc<span className={tone === 'dark' ? 'text-accent-on-dark' : 'text-accent-ink'}>Pro</span>
           </span>
           {caption && (
             <span

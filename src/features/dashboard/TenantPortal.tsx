@@ -153,7 +153,7 @@ export function TenantPortal() {
               l'onglet actif et du survol. S'appuyer dessus rendait le libellé
               actif invisible, encre #14201e sur barre #14201e.
 
-              La pastille dorée, elle, garde `text-ink` à dessein : `.bg-gold`
+              La pastille dorée, elle, garde `text-ink` à dessein : `.bg-accent`
               refixe `--color-ink` sur l'aplat, et c'est précisément ce que la
               clause `bg-` protège. */}
           <div className="on-dark flex flex-wrap items-center gap-x-2 gap-y-1 bg-ink px-4 pt-3">
@@ -201,11 +201,17 @@ export function TenantPortal() {
                       'inline-flex min-h-11 shrink-0 cursor-pointer items-center rounded-t-lg border-b-2 px-4',
                       'text-label font-semibold transition-colors duration-150',
                       active
-                        ? // L'or de marque tenait 2,62:1 sur `paper` : cette
-                          // barre est le SEUL repère de l'onglet courant, donc
-                          // de la donnée. `gold-ink` la porte au-delà de 3:1
-                          // sur l'encre de `.on-dark`, dans les deux thèmes.
-                          'border-gold-ink bg-on-dark-hover text-on-dark'
+                        ? /* Cette barre est le SEUL repère de l'onglet courant :
+                             c'est de la DONNÉE, elle doit tenir 3:1.
+
+                             `accent-on-dark` et non `accent-ink`, et la garde
+                             l'a exigé avant moi. `accent-ink` est le bleu des
+                             LIENS SUR FOND CLAIR — il est sombre par
+                             construction, et posé sur l'encre figée de
+                             `.on-dark` il ne rendait que 2,61. Le jeton qui
+                             convient est celui qui existe pour les panneaux
+                             figés, clair dans les DEUX thèmes : 8,98. */
+                          'border-accent-on-dark bg-on-dark-hover text-on-dark'
                         : 'border-transparent text-on-dark-muted hover:bg-on-dark-hover hover:text-on-dark',
                     )}
                   >
@@ -225,7 +231,7 @@ export function TenantPortal() {
                 <Icon name="bell" size={18} className="text-ink" />
                 <span className="absolute top-2 right-2 size-1.5 rounded-full bg-danger" />
               </span>
-              <span className="flex size-8 items-center justify-center rounded-full bg-gold text-label font-semibold text-ink">
+              <span className="flex size-8 items-center justify-center rounded-full bg-accent text-label font-semibold text-on-accent">
                 {initiales}
               </span>
               <span className="hidden text-label font-medium text-ink sm:inline">{court}</span>

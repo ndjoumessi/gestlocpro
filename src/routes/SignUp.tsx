@@ -351,7 +351,7 @@ export function SignUp() {
           <Link
             to="/connexion"
             data-cible="dans-une-phrase"
-            className="font-semibold text-gold-ink hover:text-gold-ink-hover"
+            className="font-semibold text-accent-ink hover:text-accent-ink-hover"
           >
             {t("auth.signIn")}
           </Link>
@@ -917,7 +917,7 @@ function ContextStep({
 
       {state.role === "tenant" && (
         <div className="flex flex-col gap-5 border-t border-border pt-6">
-          <p className="flex items-start gap-2.5 rounded-md border border-gold-border bg-gold-tint px-4 py-3 text-body text-gold-ink">
+          <p className="flex items-start gap-2.5 rounded-md border border-accent-border bg-accent-tint px-4 py-3 text-body text-accent-ink">
             <Icon name="info" size={16} className="mt-0.5 shrink-0" />
             {t("auth.signup.tenantNotice")}
           </p>
@@ -1086,7 +1086,7 @@ function ReviewStep({
                   aria-label={t("auth.signup.editSection", {
                     section: groupe.titre,
                   })}
-                  className="-my-2.5 -mr-2 inline-flex min-h-11 shrink-0 cursor-pointer items-center rounded-sm px-2 text-label font-semibold text-gold-ink hover:text-gold-ink-hover"
+                  className="-my-2.5 -mr-2 inline-flex min-h-11 shrink-0 cursor-pointer items-center rounded-sm px-2 text-label font-semibold text-accent-ink hover:text-accent-ink-hover"
                 >
                   {t("common.edit")}
                 </button>

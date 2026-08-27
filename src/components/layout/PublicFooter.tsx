@@ -91,7 +91,7 @@ export function PublicFooter() {
 
           {COLUMNS.map((column) => (
             <nav key={column.heading} aria-label={t(column.heading as 'marketing.footer.product')}>
-              <h2 className="eyebrow font-sans text-gold">
+              <h2 className="eyebrow font-sans text-accent-on-dark">
                 {t(column.heading as 'marketing.footer.product')}
               </h2>
               <ul className="mt-4 flex flex-col gap-2">

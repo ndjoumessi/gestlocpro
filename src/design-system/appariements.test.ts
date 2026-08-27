@@ -10,17 +10,17 @@ import { describe, expect, it } from 'vitest'
  * bien une contrepartie sombre. Elles ne peuvent pas voir le défaut corrigé ici,
  * et c'est tout l'intérêt de ce fichier.
  *
- * Un fond en `--color-ink` associé à un texte en `--color-gold` tenait 5,83:1 en
+ * Un fond en `--color-ink` associé à un texte en `--color-accent` tenait 5,83:1 en
  * clair et tombait à **2,33:1** en sombre. Les deux jetons étaient pourtant
  * parfaitement définis dans les deux thèmes : `--color-ink` s'inverse — sombre
- * en clair, clair en sombre — tandis que `--color-gold` garde sa valeur. C'est
+ * en clair, clair en sombre — tandis que `--color-accent` garde sa valeur. C'est
  * donc leur MISE EN PAIRE qui casse, pas l'un ni l'autre. Aucune lecture du
  * fichier de jetons ne pouvait le révéler ; il a fallu parcourir les écrans un
  * par un pour le trouver, sur trois sites dont la tuile SÉLECTIONNÉE d'un
  * formulaire d'inscription — l'élément le moins lisible de sa carte.
  *
  * La règle est donc simple et vaut mieux qu'une heuristique : sur un fond qui
- * s'inverse, la couleur de premier plan doit s'inverser aussi. `--color-gold-on-ink`
+ * s'inverse, la couleur de premier plan doit s'inverser aussi. `--color-accent-on-ink`
  * existe pour cela, et son nom dit le fond qu'il accompagne plutôt que sa
  * propre teinte.
  *
@@ -57,10 +57,10 @@ describe('appariements de couleurs', () => {
     // fichiers de test compris, et générerait pour de bon toute classe citée en
     // clair dans ce fichier.
     const FOND = ['bg', 'ink'].join('-')
-    const PREMIER_PLAN = ['text', 'gold'].join('-')
+    const PREMIER_PLAN = ['text', 'accent'].join('-')
 
     // La variante qui s'inverse est légitime : on ne signale QUE l'or fixe,
-    // c'est-à-dire `text-gold` non suivi d'un tiret.
+    // c'est-à-dire `text-accent` non suivi d'un tiret.
     const orFixe = new RegExp(`${PREMIER_PLAN}(?![\\w-])`)
     const fondEncre = new RegExp(`${FOND}(?![\\w-])`)
 
@@ -280,12 +280,12 @@ describe('séries de l’histogramme', () => {
    *
    * Plus large qu'`EMPLOYES`, et à dessein : une opacité ne connaît pas les
    * tables. Elle s'applique à ce qui se trouve sous elle, et l'histogramme
-   * simple — `data-1` pour les mois révolus, `gold-ink` pour le mois courant,
+   * simple — `data-1` pour les mois révolus, `accent-ink` pour le mois courant,
    * `muted-soft` pour une période sans relevé — était le premier concerné.
    */
   const MARQUES = [
     ...new Set(
-      [...CODE.matchAll(/var\(--color-(data-\d|gold-ink|muted-soft)\)/g)].map(
+      [...CODE.matchAll(/var\(--color-(data-\d|accent-ink|muted-soft)\)/g)].map(
         ([, nom]) => `--color-${nom}`,
       ),
     ),

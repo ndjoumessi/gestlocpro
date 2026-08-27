@@ -49,12 +49,12 @@ export function FeatureGrid() {
             <span
               className={cn(
                 'flex size-12 items-center justify-center rounded-lg',
-                'bg-gold-tint text-gold-ink transition-colors duration-200',
-                // `gold-on-ink` : au survol le fond devient `--color-ink`, qui
+                'bg-accent-tint text-accent-ink transition-colors duration-200',
+                // `accent-on-ink` : au survol le fond devient `--color-ink`, qui
                 // s'inverse avec le thème. L'or de marque, lui, ne bouge pas —
                 // la paire tenait 7,04:1 au repos et tombait à 2,33:1 au survol
                 // en sombre. Le survol dégradait donc activement la lisibilité.
-                'group-hover:bg-ink group-hover:text-gold-on-ink',
+                'group-hover:bg-ink group-hover:text-accent-on-ink',
               )}
             >
               <Icon name={icon} size={22} />

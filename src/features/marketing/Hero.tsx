@@ -29,7 +29,7 @@ export function Hero() {
           deux colonnes, il n'avait que la moitié de l'écran et venait buter
           contre la carte d'aperçu. */}
       <div className="relative mx-auto max-w-7xl">
-        <p className="eyebrow flex items-center gap-2 text-gold-ink">
+        <p className="eyebrow flex items-center gap-2 text-accent-ink">
           <Icon name="globe" size={14} />
           {t('marketing.hero.eyebrow')}
         </p>
@@ -85,7 +85,7 @@ export function Hero() {
             </div>
 
             <p className="mt-5 flex items-center gap-2 text-body text-muted">
-              <Icon name="checkCircle" size={15} className="text-gold-ink" />
+              <Icon name="checkCircle" size={15} className="text-accent-ink" />
               {t('marketing.hero.trust')}
             </p>
 

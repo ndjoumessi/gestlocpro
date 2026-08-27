@@ -227,7 +227,7 @@ export function Works() {
           cautions traite déjà le cas symétrique — les deux se répondent
           maintenant, puisque c'est la même règle de délégation. */}
       {role === 'manager' && works.some((work) => work.status === 'quoted') && (
-        <p className="mb-4 flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body text-gold-ink">
+        <p className="mb-4 flex items-start gap-2 rounded-md border border-accent-border bg-accent-tint px-3.5 py-3 text-body text-accent-ink">
           <Icon name="info" size={15} className="mt-0.5 shrink-0" />
           {t('app.works.managerNotice')}
         </p>
@@ -279,11 +279,11 @@ export function Works() {
                         ? 'app.works.filterReported'
                         : 'app.works.filterOpened',
                   )}
-                  {/* `gold-on-ink` : le segment actif peint son fond en
+                  {/* `accent-on-ink` : le segment actif peint son fond en
                       `--color-ink`, qui s'inverse avec le thème. À 12 px ce
                       compteur est du texte, donc il lui faut 4,5:1 — l'or de
                       marque n'en donne que 2,33 en sombre. */}
-                  <span className={cn('numeric text-caps', actif ? 'text-gold-on-ink' : 'text-muted')}>
+                  <span className={cn('numeric text-caps', actif ? 'text-accent-on-ink' : 'text-muted')}>
                     {compte}
                   </span>
                 </button>

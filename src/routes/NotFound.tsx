@@ -68,7 +68,7 @@ export function NotFound() {
 
       <main className={cn('flex flex-1 items-center justify-center py-16', GOUTTIERE_LATERALE)}>
         <div className="w-full max-w-lg">
-          <p className="text-caps text-gold-ink">{t('notFound.code')}</p>
+          <p className="text-caps text-accent-ink">{t('notFound.code')}</p>
 
           <h1 className="display-m mt-3 text-balance">{t('notFound.title')}</h1>
           <p className="mt-4 text-body-l text-pretty text-muted">{t('notFound.body')}</p>
@@ -89,7 +89,7 @@ export function NotFound() {
           <div className="mt-8 border-t border-border pt-6">
             <Link
               to="/connexion"
-              className="-ml-2 inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-body font-semibold text-gold-ink transition-colors duration-150 hover:bg-surface-sunken hover:text-gold-ink-hover"
+              className="-ml-2 inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-body font-semibold text-accent-ink transition-colors duration-150 hover:bg-surface-sunken hover:text-accent-ink-hover"
             >
               <Icon name="lock" size={15} />
               {t('notFound.signIn')}
