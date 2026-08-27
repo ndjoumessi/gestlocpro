@@ -22,9 +22,22 @@ export function validateEmail(value: string): FieldError {
   return EMAIL.test(value.trim()) ? null : 'auth.errors.emailInvalid'
 }
 
+/**
+ * LA LONGUEUR MINIMALE VIT ICI, ET NULLE PART AILLEURS.
+ *
+ * Elle était écrite deux fois : le `8` de ce fichier, et le « 8 » du message
+ * `auth.errors.passwordShort`. Deux littéraux pour une règle, dans deux langues,
+ * donc trois endroits à changer d'un coup et rien pour le rappeler. Le seuil est
+ * maintenant interpolé dans les messages, et les écrans le passent depuis cette
+ * constante — la faire bouger déplace la règle et sa formulation ensemble.
+ */
+export const LONGUEUR_MINIMALE_DU_MOT_DE_PASSE = 8
+
 export function validatePassword(value: string, { requireStrong = false } = {}): FieldError {
   if (!value) return 'auth.errors.passwordRequired'
-  if (requireStrong && value.length < 8) return 'auth.errors.passwordShort'
+  if (requireStrong && value.length < LONGUEUR_MINIMALE_DU_MOT_DE_PASSE) {
+    return 'auth.errors.passwordShort'
+  }
   return null
 }
 

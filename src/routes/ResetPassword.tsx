@@ -12,6 +12,7 @@ import { ApiError } from '@/api/client'
 import { useToast } from '@/components/primitives/Toast'
 import {
   isValidResetToken,
+  LONGUEUR_MINIMALE_DU_MOT_DE_PASSE,
   validatePassword,
   validatePasswordConfirmation,
   type FieldError,
@@ -155,10 +156,28 @@ export function ResetPassword() {
       }
     >
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
+        {/*
+          LA RÈGLE SE DIT AVANT L'ÉCHEC.
+
+          Le champ exigeait huit caractères et ne le disait nulle part : la jauge
+          de force ne rend RIEN tant que la valeur est vide (`if (!value) return
+          null`), et quand elle rend, elle dit « faible / correct / bon / fort »,
+          jamais le seuil qui fait refuser. On découvrait donc la règle en la
+          violant — alors que le champ de confirmation, juste dessous, portait
+          son aide depuis toujours.
+
+          Le seuil vient de `LONGUEUR_MINIMALE_DU_MOT_DE_PASSE`, la constante que
+          le validateur applique : l'aide et le refus ne peuvent pas diverger.
+        */}
         <Field
           label={t('auth.reset.newPassword')}
+          hint={t('common.passwordHint', { n: LONGUEUR_MINIMALE_DU_MOT_DE_PASSE })}
           required
-          error={touched.password && errors.password ? t(errors.password) : undefined}
+          error={
+            touched.password && errors.password
+              ? t(errors.password, { n: LONGUEUR_MINIMALE_DU_MOT_DE_PASSE })
+              : undefined
+          }
         >
           {(props) => (
             <>

@@ -92,6 +92,7 @@ export const fr = {
       'Ce pays n’est pas encore desservi : choisissez vous-même la devise et la langue de votre espace.',
     email: 'Adresse e-mail',
     password: 'Mot de passe',
+    passwordHint: 'Au moins {n} caractères.',
     phone: 'Téléphone',
     dialCode: 'Indicatif téléphonique',
     /**
@@ -400,7 +401,7 @@ export const fr = {
       emailRequired: 'Indiquez votre adresse e-mail.',
       emailInvalid: 'Cette adresse ne semble pas valide. Vérifiez le format : nom@domaine.com',
       passwordRequired: 'Choisissez un mot de passe.',
-      passwordShort: 'Utilisez au moins 8 caractères.',
+      passwordShort: 'Utilisez au moins {n} caractères.',
       phoneRequired: 'Indiquez un numéro de téléphone.',
       phoneInvalid: 'Ce numéro semble incomplet.',
       // Le message dit la CAUSE et la limite : « invalide » laisserait

@@ -37,6 +37,7 @@ import { INDICATIFS, nomDuPays } from "@/lib/indicatifs";
 import {
   formatInviteCode,
   validateEmail,
+  LONGUEUR_MINIMALE_DU_MOT_DE_PASSE,
   validateInviteCode,
   validateCountry,
   validateName,
@@ -306,8 +307,23 @@ export function SignUp() {
     window.scrollTo({ top: 0 });
   };
 
+  /*
+    LE SEUIL EST FOURNI À TOUTES LES ERREURS, et c'est délibéré.
+
+    `auth.errors.passwordShort` interpole désormais `{n}` — le nombre vit dans
+    `LONGUEUR_MINIMALE_DU_MOT_DE_PASSE` et non plus en double dans le validateur
+    et dans les deux traductions. Ce rendu-ci est GÉNÉRIQUE : il ne sait pas
+    quelle clé il traduit. Lui apprendre quel champ réclame quel paramètre
+    ferait remonter la grammaire des messages dans le composant.
+
+    Le passer partout est sans effet ailleurs : l'interpolation ne remplace que
+    les marqueurs présents, et `{n}` n'apparaît dans aucun autre message de ce
+    parcours.
+  */
   const errorFor = (key: string) =>
-    touched[key] && errors[key] ? t(errors[key]!) : undefined;
+    touched[key] && errors[key]
+      ? t(errors[key]!, { n: LONGUEUR_MINIMALE_DU_MOT_DE_PASSE })
+      : undefined;
 
   const blur = (key: string, error: FieldError) => () => {
     setTouched((s) => ({ ...s, [key]: true }));
@@ -537,8 +553,12 @@ export function SignUp() {
               )}
             </Field>
 
+            {/* LA RÈGLE SE DIT AVANT L'ÉCHEC — voir `ResetPassword`, qui porte
+                le même champ et la même aide. La jauge de force ne rend rien
+                tant que le champ est vide, et ne dit jamais le seuil. */}
             <Field
               label={t("common.password")}
+              hint={t("common.passwordHint", { n: LONGUEUR_MINIMALE_DU_MOT_DE_PASSE })}
               required
               error={errorFor("password")}
               className="sm:col-span-2"
