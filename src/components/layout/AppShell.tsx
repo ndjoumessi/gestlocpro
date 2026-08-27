@@ -628,14 +628,20 @@ function BarreLocataire({ setRole }: { setRole: (role: Role) => void }) {
          BAILLEUR en croyant mesurer celle du locataire. */
       data-mesure="barre-locataire"
       /**
-       * `on-dark` sur le conteneur, mais les libellés portent `text-on-dark`
-       * EN TOUTES LETTRES.
+       * CE COMMENTAIRE DÉCRIVAIT UN PIÈGE QUI N'EXISTE PLUS ICI, et il vaut
+       * d'être gardé pour ce qu'il enseigne.
        *
-       * Le remappage de `.on-dark` est écrit `:not([class*='bg-'])` : il se
-       * retire de lui-même dès qu'un élément porte son propre fond — ce qui est
-       * le cas de l'entrée courante et du survol. S'y fier rendait le libellé
-       * actif invisible, encre sur encre. La prévisualisation s'y est déjà
-       * brûlée ; son commentaire le raconte.
+       * Il expliquait pourquoi les libellés portaient `text-on-dark` EN TOUTES
+       * LETTRES sous un conteneur `.on-dark` : le remappage de cette classe est
+       * écrit `:not([class*='bg-'])`, donc il se RETIRE de lui-même dès qu'un
+       * élément porte son propre fond — ce qui était le cas de l'entrée
+       * courante et du survol. S'y fier rendait le libellé actif invisible,
+       * encre sur encre.
+       *
+       * La barre n'est plus sombre, la classe est partie, et le piège avec.
+       * La règle qu'il énonce, elle, reste vraie partout où `.on-dark` survit :
+       * un remappage conditionné par l'absence de fond ne couvre pas ce qui en
+       * pose un.
        *
        * Collante et peinte jusqu'au bord physique : avec `viewport-fit=cover`,
        * `top-0` est le haut de l'écran, et sans le `calc()` le logo se range
@@ -643,14 +649,30 @@ function BarreLocataire({ setRole }: { setRole: (role: Role) => void }) {
        * l'autre — en paysage l'encoche mord d'un côté ou de l'autre.
        */
       className={cn(
-        'on-dark sticky top-0 flex flex-wrap items-center gap-x-2 gap-y-1 bg-ink',
+        /*
+          LA BARRE DU LOCATAIRE SUIT LA COQUILLE, et `on-dark` s'en va aussi.
+
+          DEUX DÉFAUTS DISPARAISSENT AVEC LA CLASSE, et c'est la raison de les
+          traiter ici plutôt que un par un. `.on-dark` remappe `.text-ink`,
+          `.text-muted` et `.text-accent-ink` vers l'encre inversée FIGÉE, et ce
+          remappage gagnait sur deux endroits qui croyaient être en fond clair :
+          les `<option>` du sélecteur natif, peintes en blanc sur le fond clair
+          du menu système, et le panneau du menu de compte, qui pose `bg-paper`
+          — un jeton qui BASCULE — sous des encres figées en blanc. Les deux
+          étaient invisibles en thème clair. Retirer la classe les rend au
+          contexte qu'elles supposaient depuis le début.
+
+          `border-b` pour la même raison que le `border-r` de la barre latérale :
+          une barre blanche sur un papier presque blanc n'a plus de limite.
+        */
+        'sticky top-0 flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border bg-surface',
         'pt-[calc(0.625rem+env(safe-area-inset-top))]',
         'pl-[max(1.25rem,env(safe-area-inset-left))] pr-[max(1.25rem,env(safe-area-inset-right))]',
         'sm:pl-[max(2rem,env(safe-area-inset-left))] sm:pr-[max(2rem,env(safe-area-inset-right))]',
       )}
       style={{ zIndex: 'var(--z-sticky)' }}
     >
-      <Logo to={base} size="sm" tone="dark" className="mr-4 mb-2.5" />
+      <Logo to={base} size="sm" className="mr-4 mb-2.5" />
 
       <nav
         aria-label={t('nav.primaryNav')}
@@ -664,15 +686,24 @@ function BarreLocataire({ setRole }: { setRole: (role: Role) => void }) {
         ))}
       </nav>
 
-      {/* `tone="dark"` sur les trois commandes, et ce n'est pas cosmétique.
-          Elles se peignent sinon dans le thème AMBIANT : en thème sombre, leur
-          fond descend à la couleur du texte de la page et vient se poser sur
-          une barre qui, elle, est encre en permanence. Le sélecteur de devise
-          disparaissait ainsi presque entièrement — vérifié en capture, thème
-          sombre, avant correction. Les trois composants portent ce ton depuis
-          l'origine : il suffisait de le leur passer. */}
+      {/* LE TON SOMBRE EST RETIRÉ DES TROIS COMMANDES, et le défaut qu'il
+          corrigeait s'est retourné exactement.
+
+          Il existait parce que la barre était encre EN PERMANENCE tandis que
+          ces commandes se peignaient dans le thème AMBIANT : en thème sombre
+          leur fond descendait à la couleur du texte de la page et disparaissait
+          sur l'encre. La barre suivant désormais le thème comme elles, le ton
+          forcé produit le défaut INVERSE — et il l'a produit : mesuré sur la
+          barre devenue blanche, « FR » rendait rgba(255,255,255,0.68) sur du
+          blanc et le sélecteur de devise du blanc plein sur un voile blanc à
+          7 %. Deux commandes purement et simplement invisibles.
+
+          Je les avais oubliées en éclaircissant la barre ; c'est la capture,
+          pas la porte, qui me les a montrées. La leçon est celle que ce lot
+          répète : un ton FORCÉ est un pari sur le fond, et il se perd le jour
+          où le fond change de camp. */}
       <div className="mb-2.5 ml-auto flex flex-wrap items-center justify-end gap-2">
-        <LanguageSwitcher tone="dark" />
+        <LanguageSwitcher />
         {/* Même règle qu'ailleurs : le sélecteur de devise ne survit qu'en
             démonstration, faute de conversion. */}
         {/* Le repli est porté par une ENVELOPPE et non par la `className` du
@@ -682,7 +713,7 @@ function BarreLocataire({ setRole }: { setRole: (role: Role) => void }) {
             la chaîne. Le sélecteur de thème restait ainsi affiché. */}
         {demo && (
           <span className="hidden sm:flex">
-            <CurrencySwitcher tone="dark" />
+            <CurrencySwitcher />
           </span>
         )}
         {/**
@@ -699,15 +730,15 @@ function BarreLocataire({ setRole }: { setRole: (role: Role) => void }) {
          * marché.
          */}
         <span className="hidden sm:flex">
-          <ThemeSwitcher tone="dark" />
+          <ThemeSwitcher />
         </span>
         {/* En démonstration, le sélecteur de profil est le propos : c'est par
             lui qu'on entre dans la peau du locataire, et il doit permettre d'en
             sortir. Sans lui, cette barre serait un cul-de-sac — la barre
             latérale qui le portait n'existe plus ici. */}
         {demo && <SelecteurProfilCompact role="tenant" setRole={setRole} />}
-        <SelecteurParc tone="dark" />
-        <MenuCompte tone="dark" />
+        <SelecteurParc />
+        <MenuCompte />
       </div>
     </header>
   )
@@ -735,8 +766,14 @@ function LienLocataire({ item }: { item: NavItem }) {
           'inline-flex min-h-11 shrink-0 items-center gap-2 rounded-t-lg border-b-2 px-3 sm:px-4',
           'text-label font-semibold no-underline transition-colors duration-150',
           isActive
-            ? 'border-accent-on-dark bg-on-dark-hover text-on-dark'
-            : 'border-transparent text-on-dark-muted hover:bg-on-dark-hover hover:text-on-dark',
+            /* Le filet passe de `accent-on-dark` à `accent` : sur une barre
+               blanche, le bleu clair des panneaux figés ne rend que 1,95 — sous
+               les 3:1 d'un repère qui est le SEUL indice de l'écran courant.
+               `--color-accent` en tient 5,17, et l'onglet reprend le couple
+               lavis + encre d'accent de la barre latérale, pour que les deux
+               coquilles du produit désignent l'actif de la même façon. */
+            ? 'border-accent bg-accent-tint text-accent-ink'
+            : 'border-transparent text-muted hover:bg-surface-sunken hover:text-ink',
         )
       }
     >
@@ -773,7 +810,7 @@ function SelecteurProfilCompact({
       <select
         value={role}
         onChange={(e) => setRole(e.target.value as Role)}
-        className="min-h-11 cursor-pointer rounded-md border border-on-dark-border bg-on-dark-hover px-2.5 text-label text-on-dark"
+        className="min-h-11 cursor-pointer rounded-md border border-border bg-surface px-2.5 text-label text-ink"
       >
         {(['owner', 'manager', 'tenant'] as const).map((value) => (
           <option key={value} value={value} className="text-ink">
