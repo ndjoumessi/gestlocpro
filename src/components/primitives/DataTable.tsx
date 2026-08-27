@@ -350,6 +350,14 @@ function ListeDeFiches<T>({
                   pixels à gauche. C'est ce qu'un doigt attend — le bord de la
                   fiche est le bord de la cible.
 
+                  `flex-1` AVEC LE PLANCHER, ET IL FALLAIT LES DEUX. Sans lui, la
+                  boîte se dimensionnait à son CONTENU : sur les locataires, où
+                  l'identité est une pastille d'initiales suivie d'un nom
+                  complet, elle débordait de 7 px à 320 px — quatre fois, trouvé
+                  par la sonde du débordement local. `flex-1` lui donne la place
+                  restante, le nom s'y replie, et le plancher continue de tenir
+                  la cible quand l'identité est courte comme « A1 ».
+
                   `min-w-12` ET NON `min-w-11`, ET C'EST UN COUSSIN ASSUMÉ. À 44
                   la mesure rendait exactement 44 dans le serveur de
                   développement et 41 dans le paquet construit, aux mêmes 320 px
@@ -359,8 +367,25 @@ function ListeDeFiches<T>({
                   une carte qui en fait 280, et couvrent un écart que je ne sais
                   pas encore borner.
                 */
-                <div className="relative -ml-4 flex min-w-12 items-center self-stretch pl-4 text-body font-medium">
-                  {identite.render(row)}
+                <div className="relative -ml-4 flex min-w-12 flex-1 items-center self-stretch pl-4 text-body font-medium">
+                  {/*
+                    UN BLOC `min-w-0` AUTOUR DU RENDU, et il fallait ce troisième
+                    étage.
+
+                    L'identité d'un locataire est une pastille d'initiales et un
+                    nom, dans un `flex` qui n'a pas de `min-w-0` — un élément
+                    flexible refuse par défaut de descendre sous la largeur
+                    intrinsèque de son contenu. La boîte avait beau prendre la
+                    place restante, ce qu'elle contenait débordait quand même :
+                    7 px à 320 px, quatre fois.
+
+                    En l'enveloppant d'un BLOC qui, lui, peut se réduire, la
+                    chaîne se rétablit — le bloc prend la largeur offerte, le
+                    `flex` intérieur la remplit, et le `truncate` du nom
+                    s'applique enfin. Le rendu de la colonne n'a rien à savoir de
+                    tout ça : c'est la fiche qui lui fait de la place.
+                  */}
+                  <div className="min-w-0 flex-1">{identite.render(row)}</div>
                 </div>
               )}
               {valeur && (

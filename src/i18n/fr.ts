@@ -1251,6 +1251,7 @@ export const fr = {
       membersTitle: 'Membres',
       membersHint: 'Les personnes qui accèdent au parc aujourd’hui.',
       member: 'Personne',
+      memberRole: 'Rôle',
       since: 'Membre depuis',
       action: 'Action',
       role_owner: 'Propriétaire',
@@ -1381,6 +1382,9 @@ export const fr = {
        * croire qu'un locataire a été prévenu alors que rien n'est parti.
        */
       rank: 'Rappel n° {n}',
+      rankOfSeries: 'Rappel n° {n} sur {total}',
+      seriesNoneSent: 'Aucune n’est encore partie · visibles ici seulement',
+      seriesDispatch: '{sent} partie(s), la dernière le {date} · {waiting} en attente',
       sentOn: 'Parti par {channel} le {date}',
       /* « Pas encore parti » et non le silence : une relance qui n'a pas quitté
          le produit est une relance que le locataire n'a pas reçue, et c'est

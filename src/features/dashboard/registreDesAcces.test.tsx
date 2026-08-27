@@ -1,5 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { attendreLeChargement, renderApp, screen, userEvent, waitFor, within } from '@/test/render'
+import {
+  attendreLeChargement,
+  renderApp,
+  screen,
+  SESSION_CONNECTEE,
+  userEvent,
+  waitFor,
+  within,
+} from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur, type FauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 import type { Role } from '@/features/auth/signupState'
@@ -335,19 +343,47 @@ describe('l’état vide du registre', () => {
 describe('ce que le registre n’affirme pas', () => {
   it('n’attend pas indéfiniment un parc qui n’existe pas', async () => {
     /**
-     * `/demo` est la session sans adhésion la plus facile à atteindre — mais
-     * ce n'est pas la seule : un compte dont le dernier parc vient d'être
-     * retiré est dans le même état, et c'est là que le défaut se paie.
-     *
      * `charger` retournait avant `setChargement(true)`, et `chargement` naît à
      * `true` : le `finally` qui l'éteint n'était jamais atteint. Le squelette
      * tournait donc pour toujours, en promettant une arrivée.
+     *
+     * LE TÉMOIN A CHANGÉ, ET C'EST UN PROGRÈS. Ce cas montait `/demo/acces`,
+     * « la session sans adhésion la plus facile à atteindre » — son propre
+     * commentaire ajoutait aussitôt que ce n'était pas la seule, et que le
+     * défaut se paie sur un COMPTE RÉEL dont le dernier parc vient d'être
+     * retiré.
+     *
+     * La démonstration a désormais son registre — elle nommait ses trois
+     * membres dans la barre latérale et les cachait sur l'écran qui existe pour
+     * ça — donc elle ne peut plus servir de témoin. On monte le cas que le
+     * commentaire désignait : une session CONNECTÉE sans la moindre adhésion.
+     * C'est celui où l'utilisateur perd quelque chose, et il n'était pas joué.
      */
-    await renderApp('/demo/acces')
+    await renderApp('/app/acces', { session: SESSION_CONNECTEE })
 
     await attendreLeChargement()
     expect(document.querySelector('[aria-busy="true"]')).toBeNull()
     expect(screen.getByText('Aucun parc rattaché à cette session')).toBeInTheDocument()
+  })
+
+  /**
+   * ET LA DÉMONSTRATION, ELLE, MONTRE SON REGISTRE.
+   *
+   * Sans ce cas, rien ne dirait que le geste ci-dessus n'a pas simplement
+   * ÉTEINT l'écran des accès en démonstration : « plus d'impasse » et « plus
+   * rien du tout » s'écriraient pareil dans une porte verte.
+   */
+  it('montre à la démonstration les trois membres qu’elle nomme ailleurs', async () => {
+    await renderApp('/demo/acces')
+    await attendreLeChargement()
+
+    expect(screen.queryByText('Aucun parc rattaché à cette session')).toBeNull()
+    for (const nom of ['Arsène Nkolo', 'Diane Fotso', 'Charles Ngassa']) {
+      expect(screen.getByText(nom), `${nom} manque au registre`).toBeInTheDocument()
+    }
+    /* Et le code en attente : sans lui, la moitié basse de l'écran resterait en
+       état vide et ne serait toujours mesurée par personne. */
+    expect(screen.queryByText('Aucun code en attente')).toBeNull()
   })
 
   it('ne déclare pas la liste vide quand il n’a rien pu lire', async () => {

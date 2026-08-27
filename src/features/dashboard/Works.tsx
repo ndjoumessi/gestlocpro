@@ -414,6 +414,26 @@ export function Works() {
                   Rien ne s'affiche quand l'origine manque : une intervention
                   antérieure à ce champ n'a pas de déclarant connu, et écrire
                   « signalé par » sans nom serait pire que le silence.
+
+                  ELLE PARAÎT MÊME QUAND LE NOM EST DÉJÀ AU-DESSUS, et c'est
+                  une décision revenue sur elle-même.
+
+                  La ligne de référence porte le locataire du logement ; sur
+                  quatre signalements sur cinq de la démonstration, c'est la même
+                  personne, et l'écran écrit donc « … · Serge Mbarga » puis
+                  « Signalé par Serge Mbarga » à une ligne d'intervalle. Ce lot a
+                  d'abord masqué la seconde ligne dans ce cas.
+
+                  `origineDesTravaux.test.tsx` l'a refusé, et il avait raison :
+                  ce ne sont pas deux fois le même fait. « Le logement est loué à
+                  X » et « X a signalé ceci » sont deux affirmations distinctes
+                  qui NOMMENT la même personne. Les confondre oblige le lecteur à
+                  déduire la seconde de la première — or ce que le bailleur
+                  cherche ici est précisément qui rappeler pour faire ouvrir la
+                  porte à l'artisan, et une déduction n'est pas une réponse.
+
+                  Le coût est réel — un nom écrit deux fois — et il est le prix
+                  d'une affirmation qu'aucune autre ligne ne fait.
                 */}
                 {work.origin && (
                   <p className="mt-1 text-body text-muted">

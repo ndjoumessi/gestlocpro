@@ -121,10 +121,68 @@ export function Alerts() {
    */
   const { readAlertIds, markAlertsRead, isMine, alerts: ALERTS, loading } = usePortfolio()
 
-  const alerts = (isTenant ? ALERTS.filter((a) => a.unitId && isMine(a.unitId)) : ALERTS).map((alert) => ({
-    ...alert,
-    read: alert.read || readAlertIds.includes(alert.id),
-  }))
+  const toutes = (isTenant ? ALERTS.filter((a) => a.unitId && isMine(a.unitId)) : ALERTS).map(
+    (alert) => ({
+      ...alert,
+      read: alert.read || readAlertIds.includes(alert.id),
+    }),
+  )
+
+  /**
+   * ═══ LA SÉRIE DE RELANCES SE REPLIE, ET C'EST LA REFONTE DE CET ÉCRAN ═══
+   *
+   * MESURÉ SUR LA DÉMONSTRATION : cinq entrées visibles, dont QUATRE portent la
+   * même dette — la détection « Loyer A3 en retard de 24 jours », puis les
+   * relances 1, 2 et 3, toutes sur Serge Mbarga, toutes pour 115 000 FCFA. Le
+   * devis qui attend une décision, seul autre événement de l'écran, arrivait en
+   * cinquième position, enterré sous 80 % de répétition.
+   *
+   * CE QUE CET ÉCRAN LISTAIT N'ÉTAIT PAS CE QUI EST ARRIVÉ, mais ce que le
+   * PRODUIT A FAIT : chaque relance qu'il émet y prend une carte de la taille de
+   * l'événement qui l'a causée. Sur un parc de trois cents lots, un journal
+   * construit ainsi ne contient plus que ses propres relances.
+   *
+   * LA RÈGLE EST ÉTROITE, ET C'EST VOULU. On ne replie QUE `rentReminder`, et
+   * seulement entre relances du MÊME logement. Ce sont les seules entrées que le
+   * produit émet en série sur un fait unique, et leur `rank` le dit dans la
+   * donnée — on ne devine rien. Tout le reste garde une entrée par événement :
+   * deux impayés distincts sont deux faits, et les confondre serait le défaut
+   * inverse.
+   *
+   * LA PLUS RÉCENTE PORTE LA SÉRIE. Elle est la seule qui appelle un geste — les
+   * précédentes sont de l'historique — et elle garde son rang, son montant et sa
+   * date. Les autres deviennent un COMPTE sur cette carte, ce que `serie` rend
+   * plus bas.
+   *
+   * L'ÉTAT « LU » SUIT LA SÉRIE ENTIÈRE : une carte repliée est non lue si l'une
+   * quelconque de ses relances l'est. Sinon le compteur de la barre latérale
+   * annoncerait des non-lues que l'écran ne montre plus.
+   */
+  const alerts: (typeof toutes)[number][] = []
+  const serieDeRelances = new Map<string, number>()
+  for (const alert of toutes) {
+    const cle = alert.message === 'rentReminder' && alert.unitId ? `relance:${alert.unitId}` : null
+    if (!cle) {
+      alerts.push(alert)
+      continue
+    }
+    const deja = serieDeRelances.get(cle)
+    if (deja === undefined) {
+      serieDeRelances.set(cle, alerts.length)
+      alerts.push(alert)
+      continue
+    }
+    /* La liste arrive du plus récent au plus ancien : la première rencontrée est
+       donc celle qui porte la série, et les suivantes ne font que la compter. */
+    const porteuse = alerts[deja]!
+    alerts[deja] = { ...porteuse, read: porteuse.read && alert.read }
+  }
+
+  /** Les relances que replie une carte, la plus récente en tête. */
+  const serieDe = (alert: (typeof toutes)[number]) =>
+    alert.message === 'rentReminder' && alert.unitId
+      ? toutes.filter((a) => a.message === 'rentReminder' && a.unitId === alert.unitId)
+      : [alert]
 
   const unread = alerts.filter((alert) => !alert.read).length
 
@@ -314,7 +372,25 @@ export function Alerts() {
                     un compteur de relances.
                   */}
                   {alert.rank != null && (
-                    <Badge tone="neutral">{t('app.alerts.rank', { n: n.integer(alert.rank) })}</Badge>
+                    /*
+                      LE RANG DIT AUSSI LA SÉRIE QU'IL REPLIE.
+
+                      « Rappel n° 3 » seul laissait croire à une troisième carte
+                      d'une suite qu'on allait retrouver plus bas — et elle y
+                      était, deux fois. Maintenant que la série tient en une
+                      carte, la pastille doit dire ce qui a disparu de l'écran :
+                      trois relances, dont celle-ci est la dernière. Sans ce
+                      compte, le repli MASQUERAIT de l'information au lieu de la
+                      ranger, ce qui serait pire que la répétition.
+                    */
+                    <Badge tone="neutral">
+                      {serieDe(alert).length > 1
+                        ? t('app.alerts.rankOfSeries', {
+                            n: n.integer(alert.rank),
+                            total: n.integer(serieDe(alert).length),
+                          })
+                        : t('app.alerts.rank', { n: n.integer(alert.rank) })}
+                    </Badge>
                   )}
                   {/* La sévérité est nommée, pas seulement colorée. */}
                   <StatusPill tone={SEVERITY_TONE[alert.severity]} size="sm">
@@ -339,12 +415,43 @@ export function Alerts() {
                 */}
                 {alert.channel && (
                   <p className="mt-1 text-caps text-muted">
-                    {alert.sentAt
-                      ? t('app.alerts.sentOn', {
-                          channel: t(`app.alerts.channel_${alert.channel}` as 'app.alerts.channel_sms'),
-                          date: d.dayMonth(alert.sentAt),
-                        })
-                      : t('app.alerts.notSent')}
+                    {/*
+                      ═══ LE RÉSUMÉ D'EXPÉDITION DE TOUTE LA SÉRIE ═══
+
+                      C'est la condition du repli, et deux gardes l'ont exigée.
+                      Cet écran distingue ce qui est PARTI de ce qui n'est resté
+                      qu'ici — le fournisseur de messagerie ne dépose rien
+                      aujourd'hui, donc « pas encore parti » est le cas ORDINAIRE
+                      et non l'exception. Replier trois relances en une carte qui
+                      n'aurait montré que l'état de la dernière aurait masqué
+                      qu'une seule des trois est réellement sortie : le repli
+                      aurait rangé de l'information en en supprimant.
+
+                      Une carte repliée porte donc les DEUX comptes — parties et
+                      en attente — et la date de la dernière sortie. Une carte
+                      seule garde la phrase qu'elle avait, mot pour mot.
+                    */}
+                    {(() => {
+                      const serie = serieDe(alert)
+                      if (serie.length === 1) {
+                        return alert.sentAt
+                          ? t('app.alerts.sentOn', {
+                              channel: t(
+                                `app.alerts.channel_${alert.channel}` as 'app.alerts.channel_sms',
+                              ),
+                              date: d.dayMonth(alert.sentAt),
+                            })
+                          : t('app.alerts.notSent')
+                      }
+                      const parties = serie.filter((a) => a.sentAt)
+                      const derniere = parties[0]?.sentAt ?? parties[parties.length - 1]?.sentAt
+                      if (parties.length === 0) return t('app.alerts.seriesNoneSent')
+                      return t('app.alerts.seriesDispatch', {
+                        sent: n.integer(parties.length),
+                        waiting: n.integer(serie.length - parties.length),
+                        date: derniere ? d.dayMonth(derniere) : '',
+                      })
+                    })()}
                   </p>
                 )}
               </div>

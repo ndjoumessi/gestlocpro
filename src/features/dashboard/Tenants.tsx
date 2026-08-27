@@ -196,9 +196,11 @@ export function Tenants() {
         caption={t('app.tenants.title')}
         rows={leases}
         rowKey={(unit) => unit.id}
+        fiches
         columns={[
           {
             key: 'tenant',
+            role: 'identite',
             header: t('app.portfolio.tenant'),
             render: (unit) => (
               <div className="flex items-center gap-3">
@@ -267,17 +269,20 @@ export function Tenants() {
           },
           {
             key: 'rent',
+            role: 'valeur',
             header: t('app.portfolio.rent'),
             numeric: true,
             render: (unit) => money(unit.rent, { round: true }),
           },
           {
             key: 'status',
+            role: 'etat',
             header: t('app.portfolio.status'),
             render: (unit) => <PaymentStatusPill status={unit.status} size="sm" />,
           },
           {
             key: 'retrait',
+            role: 'geste',
             header: '',
             render: (unit) =>
               /*

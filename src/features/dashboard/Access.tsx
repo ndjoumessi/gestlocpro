@@ -13,6 +13,7 @@ import { useToast } from '@/components/primitives/Toast'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
 import { useSession } from '@/api/SessionProvider'
+import { ACCES_DEMO } from '@/data/portfolio'
 import { api } from '@/api/client'
 
 /**
@@ -33,7 +34,7 @@ export function Access() {
   const d = useDates()
   const { role } = useRole()
   const { notify } = useToast()
-  const { adhesionActive, etat } = useSession()
+  const { adhesionActive, etat, estDemo } = useSession()
   const monAdresse = etat.statut === 'connecte' ? etat.compte.email : null
   const parkId = adhesionActive?.parkId ?? null
 
@@ -74,6 +75,23 @@ export function Access() {
      * qu'une erreur : il promet que quelque chose arrive. »
      */
     if (!parkId) {
+      /*
+        LA DÉMONSTRATION SERT SON PROPRE REGISTRE, et c'est le troisième écran
+        de cette branche à sortir de l'ombre par le même geste.
+
+        Sans parc, l'écran rendait « vous n'avez pas encore de parc » — dans une
+        démonstration qui affiche trois immeubles, douze logements et dix
+        locataires. La seule impasse du parcours, et surtout : ses deux tableaux
+        n'étaient rendus NULLE PART, donc mesurés par personne, ni en géométrie
+        ni en couleurs. Même motif que `ParkSettingsModal` et `TariffsModal`.
+
+        Le registre n'est pas inventé : ce sont les trois personnages que la
+        coquille nomme déjà dans son sélecteur de profil. Voir `ACCES_DEMO`.
+
+        `estDemo` et non `!parkId` seul : un compte RÉEL sans parc doit continuer
+        de lire « vous n'avez pas encore de parc », qui est vrai pour lui.
+      */
+      if (estDemo) setRegistre(ACCES_DEMO)
       setChargement(false)
       return
     }
@@ -86,7 +104,7 @@ export function Access() {
     } finally {
       setChargement(false)
     }
-  }, [parkId])
+  }, [parkId, estDemo])
 
   useEffect(() => {
     void charger()
@@ -120,7 +138,9 @@ export function Access() {
   if (chargement) return <RegistreEnChargement />
   // L'ordre compte : sans parc, aucune lecture n'a eu lieu, donc aucun échec à
   // dire. On nomme d'abord ce qui manque le plus en amont.
-  if (!parkId) return <RegistreSansParc />
+  /* La démonstration a un registre : elle passe donc au travers de ce garde,
+     qui reste juste pour un compte réel dont le parc n'existe pas encore. */
+  if (!parkId && !estDemo) return <RegistreSansParc />
   if (erreur) return <RegistreIllisible onReessayer={() => void charger()} />
 
   return (
@@ -143,9 +163,11 @@ export function Access() {
           caption={t('app.access.membersTitle')}
           rows={membres}
           rowKey={(m) => m.id}
+          fiches
           columns={[
             {
               key: 'nom',
+              role: 'identite',
               header: t('app.access.member'),
               render: (m) => (
                 <div className="flex flex-col">
@@ -156,7 +178,21 @@ export function Access() {
             },
             {
               key: 'role',
-              header: t('app.invite.role'),
+              role: 'contexte',
+              /*
+                SON RÔLE, ET NON LE RÔLE AVEC LEQUEL ON L'A INVITÉ.
+
+                Cette colonne empruntait `app.invite.role`, « Rôle invité ». Dans
+                un tableau, l'en-tête est écrit une fois tout en haut et se lit
+                comme une étiquette de colonne ; passé en fiche, il se retrouve
+                COLLÉ à chaque personne, et « Rôle invité · Propriétaire » se lit
+                comme une affirmation fausse sur quelqu'un qui est membre depuis
+                deux ans. Le registre des invitations, lui, garde la clé — elle y
+                est juste.
+
+                La forme n'a pas créé le défaut : elle l'a rendu lisible.
+              */
+              header: t('app.access.memberRole'),
               render: (m) => (
                 <StatusPill tone={m.role === 'owner' ? 'info' : 'neutral'} size="sm">
                   {t(`app.access.role_${m.role}` as 'app.access.role_owner')}
@@ -165,12 +201,14 @@ export function Access() {
             },
             {
               key: 'depuis',
+              role: 'contexte',
               header: t('app.access.since'),
               hideOnMobile: true,
               render: (m) => d.fullDate(enParties(m.since)),
             },
             {
               key: 'geste',
+              role: 'geste',
               header: t('app.access.action'),
               render: (m) => {
                 /**
@@ -211,6 +249,7 @@ export function Access() {
             caption={t('app.access.invitesTitle')}
             rows={invitations}
             rowKey={(i) => i.id}
+            fiches
             empty={
               <EmptyState
                 icon="key"
@@ -221,6 +260,7 @@ export function Access() {
             columns={[
               {
                 key: 'code',
+                role: 'identite',
                 header: t('app.access.code'),
                 render: (i) => (
                   <div className="flex flex-col">
@@ -237,6 +277,7 @@ export function Access() {
               },
               {
                 key: 'role',
+                role: 'contexte',
                 header: t('app.invite.role'),
                 render: (i) => (
                   <StatusPill tone="neutral" size="sm">
@@ -246,12 +287,14 @@ export function Access() {
               },
               {
                 key: 'expire',
+                role: 'contexte',
                 header: t('app.access.expires'),
                 hideOnMobile: true,
                 render: (i) => d.fullDate(enParties(i.expiresAt)),
               },
               {
                 key: 'geste',
+                role: 'geste',
                 header: t('app.access.action'),
                 render: (i) => {
                   // Reprendre un code de gestionnaire, c'est décider qui

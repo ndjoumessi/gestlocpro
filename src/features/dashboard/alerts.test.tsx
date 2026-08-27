@@ -30,10 +30,26 @@ describe('les notifications s’annoncent comme une liste', () => {
       escamoter une notification la laissait verte. Le compte n'a de sens que
       rapporté à ce que le parc contient.
 
-      Vu du propriétaire, aucune notification n'est filtrée : l'écran les montre
-      toutes, et c'est précisément ce qu'on vérifie ici.
+      Vu du propriétaire, aucune notification n'est FILTRÉE — mais les relances
+      d'un même bail sont désormais REPLIÉES en une carte. Les deux mots ne
+      disent pas la même chose, et la différence est tout l'objet du repli :
+      filtrer retire, replier range. Ce que le compte doit tenir est donc « rien
+      n'a disparu », et la formule le dit maintenant explicitement plutôt que de
+      compter des lignes qui se trouvaient coïncider avec la donnée.
+
+      Mesuré avant le repli : cinq entrées visibles, dont QUATRE portaient la
+      même dette — la détection plus trois relances. Le devis qui attend une
+      décision arrivait cinquième, enterré sous 80 % de répétition.
     */
-    expect(directs).toHaveLength(ALERTS.length)
+    const relances = ALERTS.filter((a) => a.message === 'rentReminder')
+    const bauxRelances = new Set(relances.map((a) => a.unitId))
+    const attendu = ALERTS.length - relances.length + bauxRelances.size
+    expect(directs).toHaveLength(attendu)
+
+    /* GARDE DE LA GARDE : si le repli cessait d'opérer, `attendu` vaudrait
+       `ALERTS.length` et le cas passerait au vert sur l'écran d'avant. On exige
+       donc qu'il y ait bien quelque chose à replier dans le jeu. */
+    expect(relances.length).toBeGreaterThan(bauxRelances.size)
   })
 })
 

@@ -228,6 +228,76 @@ export interface MeterReading {
 export const TARIFS_DEMO = { water: 520, power: 99 }
 
 /**
+ * LE REGISTRE DES ACCÈS DE LA DÉMONSTRATION.
+ *
+ * POURQUOI IL N'EXISTAIT PAS, ET CE QUE ÇA COÛTAIT. L'écran des accès lit son
+ * registre par `api.access(parkId)`. Sans parc — c'est-à-dire en démonstration
+ * — il n'appelle rien et rend « vous n'avez pas encore de parc ». Un visiteur
+ * qui clique « Accès au parc » dans une démonstration qui affiche trois
+ * immeubles, douze logements et DIX locataires tombe donc sur un écran qui lui
+ * dit qu'il n'a pas de parc. C'est la seule impasse du parcours de
+ * démonstration.
+ *
+ * Conséquence jumelle, et c'est la troisième fois sur cette branche : les deux
+ * tableaux de cet écran n'étaient rendus NULLE PART. Ni la mesure de
+ * géométrie, ni celle du contraste, ni un œil. Après `ParkSettingsModal` et
+ * `TariffsModal`, c'est le même motif — un écran gardé par un compte réel, donc
+ * hors de portée de toutes les portes.
+ *
+ * CE QU'IL CONTIENT N'EST PAS INVENTÉ : ce sont les trois personnages que la
+ * coquille nomme déjà dans son sélecteur de profil — « Propriétaire · Arsène
+ * N. », « Gestionnaire · Diane F. », « Locataire · Charles N. ». Le registre
+ * des accès est très exactement la liste de ces trois-là ; la démonstration la
+ * montrait dans sa barre latérale et la cachait sur l'écran qui existe pour ça.
+ *
+ * Les adresses sont en `example.com`, réservé par la RFC 2606 à cet usage : une
+ * démonstration ne doit pas afficher un domaine que quelqu'un possède.
+ *
+ * LE CODE EN ATTENTE est le second sujet de l'écran, et il faut qu'il y en ait
+ * un : sans lui la moitié basse resterait en état vide, et l'on n'aurait rendu
+ * mesurable que la moitié du problème. Il porte une unité VACANTE du jeu —
+ * inviter un locataire sur un logement déjà occupé n'aurait aucun sens.
+ */
+export const ACCES_DEMO = {
+  members: [
+    {
+      id: 'demo-membre-1',
+      role: 'owner' as const,
+      fullName: 'Arsène Nkolo',
+      email: 'arsene@example.com',
+      since: '2024-03-04',
+    },
+    {
+      id: 'demo-membre-2',
+      role: 'manager' as const,
+      fullName: 'Diane Fotso',
+      email: 'diane@example.com',
+      since: '2025-01-15',
+    },
+    {
+      id: 'demo-membre-3',
+      role: 'tenant' as const,
+      fullName: 'Charles Ngassa',
+      email: 'charles@example.com',
+      since: '2024-06-15',
+    },
+  ],
+  invitations: [
+    {
+      id: 'demo-invitation-1',
+      role: 'tenant' as const,
+      /* Les quatre derniers caractères seulement : c'est ce que le serveur rend
+         d'un code, et l'écran ne doit jamais pouvoir en réafficher un entier. */
+      codeHint: '7Q4M',
+      issuedAt: '2026-08-19',
+      expiresAt: '2026-09-02',
+      unitId: 'A5',
+      unitLabel: 'A5',
+    },
+  ],
+}
+
+/**
  * Les relevés de la démonstration portent les prix de la démonstration.
  *
  * Posés à la construction plutôt que multipliés à l'écran : c'est la même forme
