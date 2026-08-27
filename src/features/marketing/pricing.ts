@@ -115,7 +115,33 @@ export const UNITS_QUOTE_THRESHOLD = UNITS_MAX
 
 export const YEARLY_DISCOUNT = 0.2
 
-export type FeatureValue = boolean | 'manual' | 'auto' | 'email' | 'priority' | 'dedicated' | string
+/**
+ * CE QU'UNE CASE DE LA MATRICE PEUT VALOIR — et l'union est CLOSE.
+ *
+ * Elle finissait par `| string`, ce qui la rendait ouverte à n'importe quoi : le
+ * rendu retombait alors sur `detail = value`, c'est-à-dire sur la donnée servie
+ * telle quelle, hors du dictionnaire. Une seule valeur en profitait, et elle
+ * suffit à dire ce que coûte l'échappatoire — `'illimité'` s'affichait EN
+ * FRANÇAIS dans la grille de tarifs de la page d'accueil ANGLAISE, c'est-à-dire
+ * sur l'écran que lit un prospect anglophone avant tout le reste.
+ *
+ * `check-i18n` ne pouvait pas le voir : il traque les chaînes en dur dans le
+ * JSX, et celle-ci vivait dans un fichier de données.
+ *
+ * Fermer l'union est le vrai correctif. Traduire le mot n'aurait rien empêché :
+ * la prochaine valeur libre serait passée par le même trou. Un NOMBRE reste
+ * admis — il se formate, il ne se traduit pas — et tout le reste doit être une
+ * clé que le rendu résout.
+ */
+export type FeatureValue =
+  | boolean
+  | number
+  | 'manual'
+  | 'auto'
+  | 'email'
+  | 'priority'
+  | 'dedicated'
+  | 'unlimited'
 
 export interface FeatureRow {
   key: string
@@ -137,7 +163,7 @@ export interface FeatureRow {
  */
 export const FEATURE_MATRIX: FeatureRow[] = [
   { key: 'reminders', values: { essential: 'manual', pro: 'auto', cabinet: 'auto' } },
-  { key: 'managers', values: { essential: false, pro: '3', cabinet: 'illimité' } },
+  { key: 'managers', values: { essential: false, pro: 3, cabinet: 'unlimited' } },
   { key: 'exports', values: { essential: false, pro: true, cabinet: true } },
   { key: 'multiCompany', values: { essential: false, pro: false, cabinet: true } },
   { key: 'support', values: { essential: 'email', pro: 'priority', cabinet: 'dedicated' } },

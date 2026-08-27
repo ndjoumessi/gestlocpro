@@ -1465,6 +1465,7 @@ export const en: Dictionary = {
         supportEmail: 'By email',
         supportPriority: 'Priority',
         supportDedicated: 'Dedicated',
+        managersUnlimited: 'unlimited',
       },
     },
 

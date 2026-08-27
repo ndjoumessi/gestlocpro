@@ -116,6 +116,45 @@ describe('les écrans-tableaux sur un téléphone', () => {
   }
 
   /**
+   * L'ESPACE LOCATAIRE SUIT LA MÊME RÈGLE, avec sa propre forme.
+   *
+   * Son tableau de quittances est écrit à la main, dans une carte — il ne passe
+   * pas par `DataTable`, qui poserait une seconde carte autour de la première.
+   * Ce qui est partagé est le RAISONNEMENT, pas le composant, et c'est
+   * exactement pourquoi ce cas existe : rien dans le code ne relie les deux
+   * formes, donc rien ne rougirait si l'une repartait en tableau.
+   *
+   * L'écran compte double ici : c'est celui du LOCATAIRE, c'est-à-dire de celui
+   * qui, dans ce produit, a le moins de chances d'avoir autre chose qu'un
+   * téléphone. Mesuré avant : cinq colonnes, 62 px à faire glisser pour
+   * atteindre le bouton de quittance — donc pour atteindre la seule action.
+   */
+  it('l’espace locataire rend ses quittances en fiches', async () => {
+    await renderApp('/demo/mon-espace', { largeur: TELEPHONE })
+    await attendreLeChargement()
+
+    const fiches = document.querySelectorAll('[data-quittance]')
+    expect(fiches.length, 'aucune quittance en fiche').toBeGreaterThan(0)
+
+    /* Les trois composantes du loyer, nommées. Un montant seul ne se distingue
+       pas d'un autre montant seul. */
+    const premiere = fiches[0] as HTMLElement
+    for (const terme of [/Loyer/i, /Eau/i, /Élec/i]) {
+      expect(within(premiere).getAllByText(terme).length).toBeGreaterThan(0)
+    }
+    /* Et la quittance reste atteignable sans faire glisser quoi que ce soit. */
+    expect(within(premiere).getByRole('button', { name: /quittance/i })).toBeInTheDocument()
+  })
+
+  it('l’espace locataire garde son tableau au-delà du seuil', async () => {
+    await renderApp('/demo/mon-espace', { largeur: BUREAU })
+    await attendreLeChargement()
+
+    expect(document.querySelectorAll('[data-quittance]')).toHaveLength(0)
+    expect(screen.getAllByRole('columnheader').length).toBeGreaterThan(0)
+  })
+
+  /**
    * L'EN-TÊTE EST UN `<dt>`, ET SA VALEUR UN `<dd>`.
    *
    * Le balisage n'est pas un détail de style : un lecteur d'écran annonce le

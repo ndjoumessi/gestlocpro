@@ -110,7 +110,27 @@ export function AuthLayout({
 
               `justify-end` va avec `ml-auto` : sans lui, les lignes repliées
               s'alignent à GAUCHE d'un bloc devenu large de toute la colonne, et
-              la rangée saute d'un bord à l'autre en se coupant. */}
+              la rangée saute d'un bord à l'autre en se coupant.
+
+              ── CE QUE LE REPLI COÛTE EN HIÉRARCHIE, MESURÉ APRÈS COUP ────────
+
+              Le raisonnement ci-dessus pèse deux options — replier ou MASQUER —
+              et refuse la seconde à bon droit. Il en manque une troisième, que
+              la vitrine emploie déjà : REPLIER DERRIÈRE UN DÉCLENCHEUR, ce qui
+              ne retire aucun contrôle et n'en laisse qu'un à l'écran.
+
+              Ce qu'elle coûterait de ne pas la prendre, mesuré à 360 × 900 sur
+              l'écran de connexion : l'en-tête fait 196 px, dont 108 px pour la
+              seule rangée de réglages sur ses deux lignes, et le `<h1>` commence
+              à 333 px — 37 % de la fenêtre AVANT que la page ne dise ce qu'elle
+              est. Un utilisateur qui revient se connecter rencontre d'abord un
+              sélecteur de devise.
+
+              POURQUOI CE LOT NE LE FAIT PAS : le panneau de la vitrine n'est pas
+              un composant, il est écrit dans `PublicHeader` — piège de focus,
+              Échap, retour du focus, ancrage au-delà de `lg`, feuille en deçà.
+              L'extraire est un lot avec sa propre porte, pas une retouche de fin
+              de course. Le chiffre est acquis, il n'y aura pas à le remesurer. */}
           <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
             <LanguageSwitcher />
             <CurrencySwitcher />

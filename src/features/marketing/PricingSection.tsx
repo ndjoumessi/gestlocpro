@@ -8,6 +8,7 @@ import { SegmentedControl } from '@/components/primitives/Choice'
 import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
+import { useNumbers } from '@/lib/numbers'
 import {
   FEATURE_MATRIX,
   PLANS,
@@ -299,17 +300,34 @@ function UnitSlider({ units, onChange }: { units: number; onChange: (n: number) 
 
 function FeatureLine({ featureKey, value }: { featureKey: string; value: FeatureValue }) {
   const t = useT()
+  const n = useNumbers()
   const label = t(`marketing.pricing.features.${featureKey}` as 'marketing.pricing.features.rent')
 
   const included = value !== false
   let detail: string | null = null
 
+  /*
+    CHAQUE VALEUR PASSE PAR LE DICTIONNAIRE OU PAR LE FORMATEUR DE NOMBRES.
+
+    La chaîne finissait par `else if (typeof value === 'string') detail = value`
+    — la donnée rendue telle quelle. Une seule valeur en profitait, et elle
+    suffit : `'illimité'` s'affichait en français dans la grille anglaise.
+
+    L'union de `FeatureValue` est close depuis, donc l'exhaustivité de cette
+    chaîne est vérifiée par le compilateur : ajouter une valeur sans lui donner
+    sa clé ne compile plus.
+
+    Le NOMBRE est le seul cas qui ne se traduit pas — il se FORMATE, et par le
+    formateur de la langue : « 1 000 » et « 1,000 » ne s'écrivent pas pareil, et
+    un palier à mille gestionnaires n'est pas absurde.
+  */
   if (value === 'manual') detail = t('marketing.pricing.features.remindersManual')
   else if (value === 'auto') detail = t('marketing.pricing.features.remindersAuto')
   else if (value === 'email') detail = t('marketing.pricing.features.supportEmail')
   else if (value === 'priority') detail = t('marketing.pricing.features.supportPriority')
   else if (value === 'dedicated') detail = t('marketing.pricing.features.supportDedicated')
-  else if (typeof value === 'string') detail = value
+  else if (value === 'unlimited') detail = t('marketing.pricing.features.managersUnlimited')
+  else if (typeof value === 'number') detail = n.integer(value)
 
   return (
     <li

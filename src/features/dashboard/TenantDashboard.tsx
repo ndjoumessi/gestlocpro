@@ -13,6 +13,7 @@ import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
 import { useNumbers } from '@/lib/numbers'
 import { cn } from '@/lib/cn'
+import { AU_DELA_SM, useAuDela } from '@/lib/useAuDela'
 import {
   dernierVersement,
   imputation,
@@ -55,6 +56,11 @@ const GRILLE_QUITTANCES_ET_SIGNALEMENTS = 'mt-4 grid gap-4 lg:grid-cols-[1.4fr_1
  */
 export function TenantDashboard() {
   const [quittanceDe, setQuittanceDe] = useState<string | null>(null)
+  /* Le tableau des quittances cède la place à des fiches sous `sm` — voir le
+     commentaire au point de bascule. Lu au RENDU et non par la feuille de
+     style : rendre les deux formes laisserait la donnée deux fois dans le
+     document, ce que la famille précédente a payé en trente-quatre cas rouges. */
+  const enTableau = useAuDela(AU_DELA_SM)
   const base = useBase()
   const t = useT()
   const d = useDates()
@@ -322,6 +328,7 @@ export function TenantDashboard() {
               />
             </div>
           ) : (
+          enTableau ? (
           <div className="overflow-x-auto border-t border-divider">
             <table className="w-full border-collapse">
               {/* Le titre vit dans le `CardHeader`, DEHORS de la table : un
@@ -382,6 +389,85 @@ export function TenantDashboard() {
               </tbody>
             </table>
           </div>
+          ) : (
+            /*
+              ═══ LES QUITTANCES EN FICHES, SUR UN TÉLÉPHONE ═══
+
+              C'est l'écran que le LOCATAIRE ouvre, et le locataire est celui du
+              produit qui a le moins de chances d'avoir autre chose qu'un
+              téléphone. Mesuré à 360 px : cinq colonnes, 62 px à faire glisser
+              pour atteindre le bouton de quittance — c'est-à-dire pour atteindre
+              la seule action de la carte.
+
+              Même forme que les écrans-tableaux de la famille précédente : la
+              période nomme la fiche, les trois composantes du loyer deviennent
+              des couples nom/valeur, et la quittance descend au pied. Rien n'est
+              masqué, rien ne défile latéralement.
+
+              PAS `DataTable` POUR AUTANT. Ce tableau vit DANS une carte, et
+              `DataTable` pose la sienne — bordure, ombre, rayon. On aurait rendu
+              une carte dans une carte pour économiser trente lignes. Ce qui est
+              partagé est le RAISONNEMENT, écrit dans `ListeDeFiches` ; la forme
+              locale suit son support.
+
+              `<dl>` pour la même raison que là-bas : « Loyer : 145 000 » est un
+              couple terme/définition, et un lecteur d'écran doit l'entendre
+              comme tel.
+            */
+            <ul className="flex flex-col gap-2 p-4 pt-0">
+              {tenantReceipts.map((receipt) => {
+                const regle = imputation(receipt)
+                return (
+                  <li
+                    key={`${receipt.year}-${receipt.month}`}
+                    data-quittance=""
+                    className="rounded-md border border-divider bg-surface-sunken p-3"
+                  >
+                    <p className="text-body font-medium">{d.monthYear(receipt)}</p>
+                    <dl className="mt-2 flex flex-col gap-1">
+                      {(
+                        [
+                          [t('app.tenant.colRent'), receipt.rentMinor, regle.rent],
+                          [t('app.tenant.colWater'), receipt.waterMinor, regle.water],
+                          [t('app.tenant.colPower'), receipt.powerMinor, regle.power],
+                        ] as const
+                      ).map(([terme, du, paye]) => (
+                        <div key={terme} className="flex items-baseline justify-between gap-3">
+                          <dt className="eyebrow shrink-0 text-muted">{terme}</dt>
+                          <dd
+                            className={cn(
+                              'numeric min-w-0 text-right text-body',
+                              paye >= du ? 'text-ok' : 'text-warn',
+                            )}
+                          >
+                            <MontantRegle du={du} regle={paye} />
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                    {/* PAS DE `-mr-3.5` ICI, à rebours de la cellule du tableau.
+
+                        Dans le tableau, la marge négative rattrape le rembourrage
+                        du bouton fantôme pour que son libellé s'aligne sur le bord
+                        de la cellule. La fiche n'a pas ce rembourrage à rattraper :
+                        la marge y tirait le bouton HORS de sa boîte, 14 px à 320 px
+                        sur quarante-huit occurrences — trouvé par la sonde du
+                        débordement local, pas par l'œil. */}
+                    <div className="mt-2 flex justify-end">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`${t('app.tenant.receipt')} — ${d.monthYear(receipt)}`}
+                        onClick={() => setQuittanceDe(periodeIso(receipt))}
+                      >
+                        {t('app.tenant.receipt')}
+                      </Button>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )
           )}
         </Card>
 
@@ -587,6 +673,22 @@ function SerieFluide({
  * cellule ne dérive plus rien d'un tarif courant.
  */
 function CelluleMontant({ du, regle }: { du: number; regle: number }) {
+  const solde = regle >= du
+  return (
+    <td className={cn('numeric px-3 py-3 text-right text-body', solde ? 'text-ok' : 'text-warn')}>
+      <MontantRegle du={du} regle={regle} />
+    </td>
+  )
+}
+
+/**
+ * Le montant et ce qu'il en reste, SANS sa cellule.
+ *
+ * Extrait de `CelluleMontant` parce que la fiche du téléphone le rend hors d'un
+ * `<td>` — voir `QuittancesEnFiches`. Le rendu est identique au caractère près :
+ * ce lot déplace une forme, il ne change aucun chiffre.
+ */
+function MontantRegle({ du, regle }: { du: number; regle: number }) {
   const t = useT()
   const { money } = useCurrency()
   const solde = regle >= du
@@ -603,11 +705,16 @@ function CelluleMontant({ du, regle }: { du: number; regle: number }) {
     L'écrire dans chaque cellule d'un tableau de trois colonnes la répéterait
     trente-six fois et rendrait la colonne illisible — c'est déjà le choix que
     fait l'export du même tableau.
+
+    ELLE RESTE OMISE DANS LA FICHE, et c'est le seul point où le déplacement a
+    demandé une décision : la fiche ne porte que trois montants au lieu de
+    trente-six, donc l'argument du volume n'y vaut plus. Mais l'en-tête de la
+    carte nomme toujours la devise une fois, et faire diverger les deux formes
+    créerait deux graphies pour la même colonne selon la largeur de l'écran.
   */
   const lireMontant = (v: number) => money(v, { round: true, omitSymbol: true })
-
   return (
-    <td className={cn('numeric px-3 py-3 text-right text-body', solde ? 'text-ok' : 'text-warn')}>
+    <>
       {lireMontant(solde ? du : regle)}
       {!solde && (
         <span className="text-caps">
@@ -615,7 +722,7 @@ function CelluleMontant({ du, regle }: { du: number; regle: number }) {
           {t('app.tenant.remaining', { amount: lireMontant(du - regle) })}
         </span>
       )}
-    </td>
+    </>
   )
 }
 

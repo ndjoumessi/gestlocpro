@@ -1851,6 +1851,7 @@ export const fr = {
         supportEmail: 'Par e-mail',
         supportPriority: 'Prioritaire',
         supportDedicated: 'Dédié',
+        managersUnlimited: 'illimité',
       },
     },
 
