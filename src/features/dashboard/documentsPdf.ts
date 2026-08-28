@@ -10,9 +10,9 @@ import { nomDeFichier } from '@/lib/nomDeFichier'
 import { construirePdf } from '@/lib/pdf'
 import { partiesDeDate } from '@/lib/dates'
 import { useDates } from '@/lib/useDates'
+import { usePortfolio } from '@/data/PortfolioProvider'
 import {
   PAYMENT_METHOD_LABELS,
-  buildingById,
   imputation,
   receiptDue,
   receiptStatus,
@@ -72,6 +72,33 @@ function useEmetteur() {
   return adhesionActive?.parkName ?? t('common.demoPark')
 }
 
+/**
+ * LE NOM DE L'IMMEUBLE, PRIS SUR L'ÉTAT PARTAGÉ ET NON SUR LA DÉMONSTRATION.
+ *
+ * Les documents appelaient le `buildingById` du module de démonstration, qui ne
+ * connaît que « bon », « akw », « des ». Sur un vrai parc les identifiants sont
+ * des `uuid` : la recherche ne trouvait jamais rien, et la quittance sortait en
+ * ne nommant que le numéro du logement — « B7 », sans dire dans quel immeuble.
+ *
+ * Le dépôt avait déjà payé cette confusion deux fois, sur l'état des lieux du
+ * locataire et sur le titre de son espace ; les deux commentaires le racontent.
+ * C'est la troisième, et c'est la garde de mise en page qui l'a nommée — son
+ * jeu d'essai exigeait un nom d'immeuble LONG, et le document n'en portait
+ * aucun.
+ */
+function useNomDeLImmeuble() {
+  const { buildingById } = usePortfolio()
+  /* Mémoïsée pour pouvoir entrer dans les dépendances des `useCallback`
+     ci-dessous : rendue neuve à chaque passage, elle y aurait figé un
+     `buildingById` périmé, ou les aurait tous invalidés à chaque rendu. */
+  return useCallback((unit: Unit) => buildingById(unit.buildingId)?.name, [buildingById])
+}
+
+/** L'identité du logement sur le document : son numéro, puis son immeuble. */
+function logementNomme(unit: Unit, immeuble: string | undefined): string {
+  return [unit.label, immeuble].filter(Boolean).join(' · ')
+}
+
 /** Remet le document et annonce le fichier — dans cet ordre, jamais l'inverse. */
 function useRemise() {
   const t = useT()
@@ -100,6 +127,31 @@ function useRemise() {
  * versements suit la convention du produit : loyer, puis eau, puis électricité.
  * La recalculer ici en aurait fait une seconde convention.
  */
+/**
+ * QUITTANCE OU REÇU — LA RÈGLE EST CELLE DU SERVEUR, ET ELLE Y EST ÉCRITE.
+ *
+ * « Quittance seulement si la période est intégralement soldée. En deçà, on
+ * émet un REÇU, qui n'atteste que le montant reçu. Confondre les deux ferait
+ * signer au bailleur une preuve de paiement qu'il n'a pas reçu. » — la route
+ * d'émission, `POST /:parkId/receipts`, qui calcule `solde <= 0` exactement
+ * comme ici.
+ *
+ * Le document du locataire s'intitulait « Quittance de loyer » sur TOUTES ses
+ * périodes, celles qu'il n'a réglées qu'en partie comprises. Le même mois
+ * portait donc deux noms selon qui le regardait — et c'est le locataire qui
+ * garde le document et le présente.
+ *
+ * LES DEUX CHEMINS LISENT LA MÊME PAIRE DE CLÉS, `app.receipts.quittance` et
+ * `app.receipts.recu`, celles que la modale du gestionnaire emploie déjà. Une
+ * troisième clé au texte identique existait ici ; c'était la divergence en
+ * germe, avec le mot juste par accident.
+ */
+function titreDeQuittance(receipt: Receipt): 'app.receipts.quittance' | 'app.receipts.recu' {
+  return receiptDue(receipt) - receipt.paidMinor <= 0
+    ? 'app.receipts.quittance'
+    : 'app.receipts.recu'
+}
+
 function pagesDeQuittance(
   page: MiseEnPage,
   contexte: {
@@ -108,16 +160,16 @@ function pagesDeQuittance(
     argent: (montant: number) => string
     parc: string
     unit: Unit
+    immeuble: string | undefined
     receipt: Receipt
   },
 ) {
-  const { t, d, argent, parc, unit, receipt } = contexte
-  const immeuble = buildingById(unit.buildingId)?.name
+  const { t, d, argent, parc, unit, immeuble, receipt } = contexte
 
   enTete(page, {
     parc,
-    titre: t('app.documents.pdfReceiptTitle'),
-    logement: [unit.label, immeuble].filter(Boolean).join(' · '),
+    titre: t(titreDeQuittance(receipt)),
+    logement: logementNomme(unit, immeuble),
     ligneDate: t('app.documents.pdfIssuedOn', { date: d.fullDate(partiesDeDate(new Date())) }),
   })
 
@@ -173,6 +225,7 @@ function pagesDeQuittance(
 
 export function useReceiptPdf() {
   const t = useT()
+  const nommerLImmeuble = useNomDeLImmeuble()
   const d = useDates()
   const { money } = useCurrency()
   const parc = useEmetteur()
@@ -182,9 +235,9 @@ export function useReceiptPdf() {
     (unit: Unit, receipt: Receipt): string => {
       const page = nouvelleMiseEnPage()
       const argent = (montant: number) => money(montant, { round: true })
-      pagesDeQuittance(page, { t, d, argent, parc, unit, receipt })
+      pagesDeQuittance(page, { t, d, argent, parc, unit, immeuble: nommerLImmeuble(unit), receipt })
 
-      const titre = t('app.documents.pdfReceiptTitle')
+      const titre = t(titreDeQuittance(receipt))
       return remettre(
         page.pages((numero, total) => piedDePage(t, parc, titre, numero, total)),
         // Le mois de la quittance, et non le jour du téléchargement : c'est la
@@ -193,7 +246,7 @@ export function useReceiptPdf() {
         'app.receiptDownloaded',
       )
     },
-    [d, money, parc, remettre, t],
+    [d, money, nommerLImmeuble, parc, remettre, t],
   )
 }
 
@@ -208,6 +261,7 @@ export function useReceiptPdf() {
  */
 export function useAllReceiptsPdf() {
   const t = useT()
+  const nommerLImmeuble = useNomDeLImmeuble()
   const d = useDates()
   const { money } = useCurrency()
   const parc = useEmetteur()
@@ -217,9 +271,11 @@ export function useAllReceiptsPdf() {
     (unit: Unit, receipts: Receipt[]): string => {
       const page = nouvelleMiseEnPage()
       const argent = (montant: number) => money(montant, { round: true })
+      /* Cherché UNE fois pour tout le carnet : six pages, un seul logement. */
+      const immeuble = nommerLImmeuble(unit)
       receipts.forEach((receipt, index) => {
         if (index > 0) page.pageNeuve()
-        pagesDeQuittance(page, { t, d, argent, parc, unit, receipt })
+        pagesDeQuittance(page, { t, d, argent, parc, unit, immeuble, receipt })
       })
 
       const titre = t('app.documents.allReceipts')
@@ -229,7 +285,7 @@ export function useAllReceiptsPdf() {
         'app.receiptDownloaded',
       )
     },
-    [d, money, parc, remettre, t],
+    [d, money, nommerLImmeuble, parc, remettre, t],
   )
 }
 
@@ -237,6 +293,7 @@ export function useAllReceiptsPdf() {
 
 export function useDepositPdf() {
   const t = useT()
+  const nommerLImmeuble = useNomDeLImmeuble()
   const d = useDates()
   const { money } = useCurrency()
   const parc = useEmetteur()
@@ -251,7 +308,7 @@ export function useDepositPdf() {
       enTete(page, {
         parc,
         titre,
-        logement: [unit.label, buildingById(unit.buildingId)?.name].filter(Boolean).join(' · '),
+        logement: logementNomme(unit, nommerLImmeuble(unit)),
         ligneDate: t('app.documents.pdfIssuedOn', { date: d.fullDate(partiesDeDate(new Date())) }),
       })
 
@@ -279,7 +336,7 @@ export function useDepositPdf() {
         'app.documents.pdfDownloaded',
       )
     },
-    [d, money, parc, remettre, t],
+    [d, money, nommerLImmeuble, parc, remettre, t],
   )
 }
 
@@ -287,6 +344,7 @@ export function useDepositPdf() {
 
 export function useInspectionPdf() {
   const t = useT()
+  const nommerLImmeuble = useNomDeLImmeuble()
   const d = useDates()
   const { money } = useCurrency()
   const parc = useEmetteur()
@@ -304,7 +362,7 @@ export function useInspectionPdf() {
       enTete(page, {
         parc,
         titre,
-        logement: [unit.label, buildingById(unit.buildingId)?.name].filter(Boolean).join(' · '),
+        logement: logementNomme(unit, nommerLImmeuble(unit)),
         ligneDate: t('app.documents.pdfIssuedOn', { date: d.fullDate(partiesDeDate(new Date())) }),
       })
 
@@ -347,7 +405,7 @@ export function useInspectionPdf() {
         'app.documents.pdfDownloaded',
       )
     },
-    [d, money, parc, remettre, t],
+    [d, money, nommerLImmeuble, parc, remettre, t],
   )
 }
 

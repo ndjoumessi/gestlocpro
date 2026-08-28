@@ -409,7 +409,6 @@ export const en: Dictionary = {
       view: 'View',
       download: 'Download',
       none: 'No document uploaded',
-      pdfReceiptTitle: 'Rent receipt',
       pdfExitInspection: 'Move-out inspection',
       pdfIssuedOn: 'Issued on {date}',
       pdfBreakdown: 'Period breakdown',
@@ -429,6 +428,7 @@ export const en: Dictionary = {
       pdfNotSigned: 'Not signed',
       pdfFooter:
         '{park} · {document} · page {page} of {total} · produced from recorded data, unsigned',
+      exportCsv: 'Export as spreadsheet',
       pdfDownloadDeposit: 'Download the deposit receipt',
       pdfDownloadInspection: 'Download the inspection report',
       pdfDownloaded: 'Document downloaded · {file}',

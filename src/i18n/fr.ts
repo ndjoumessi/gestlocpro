@@ -544,7 +544,6 @@ export const fr = {
        * le bouton prétend restituer — le défaut que le portail a déjà payé.
        */
       none: 'Aucun document déposé',
-      pdfReceiptTitle: 'Quittance de loyer',
       pdfExitInspection: 'État des lieux de sortie',
       pdfIssuedOn: 'Émis le {date}',
       pdfBreakdown: 'Détail de la période',
@@ -564,6 +563,7 @@ export const fr = {
       pdfNotSigned: 'Non signé',
       pdfFooter:
         '{park} · {document} · page {page} sur {total} · produit depuis les données enregistrées, sans signature',
+      exportCsv: 'Exporter en tableur',
       pdfDownloadDeposit: 'Télécharger le reçu de caution',
       pdfDownloadInspection: 'Télécharger l’état des lieux',
       pdfDownloaded: 'Document téléchargé · {file}',

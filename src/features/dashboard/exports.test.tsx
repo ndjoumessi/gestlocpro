@@ -289,6 +289,47 @@ describe('quittances du locataire', () => {
     expect(document).toContain('sans signature')
   })
 
+  /**
+   * UNE QUITTANCE N'ATTESTE QUE D'UNE PÉRIODE SOLDÉE, ET LE SERVEUR L'AVAIT
+   * DÉJÀ TRANCHÉ.
+   *
+   * Sa route d'émission porte la règle en toutes lettres : « quittance seulement
+   * si la période est intégralement soldée. En deçà, on émet un REÇU, qui
+   * n'atteste que le montant reçu. Confondre les deux ferait signer au bailleur
+   * une preuve de paiement qu'il n'a pas reçu. »
+   *
+   * Le document du locataire, lui, s'intitulait « Quittance de loyer » sur les
+   * six périodes, celle qu'il n'a réglée qu'en partie comprise. Le même mois
+   * portait donc deux noms selon qui le regardait : un reçu chez le
+   * gestionnaire, une quittance chez le locataire — et c'est le second qui la
+   * garde et la présente.
+   *
+   * Les deux chemins lisent désormais LA MÊME PAIRE DE CLÉS. Mai 2026 est la
+   * période partielle du jeu de démonstration : 160 760 versés sur 165 818 dus.
+   */
+  it('n’appelle « quittance » qu’une période soldée', async () => {
+    capture = captureDownloads()
+    await renderApp('/demo/documents')
+    await switchRole('tenant')
+    await attendreLeChargement()
+
+    const user = userEvent.setup()
+    const boutons = screen.getAllByRole('button', { name: /^Télécharger$/ })
+    // Août soldé, puis mai partiel — quatrième de la liste.
+    await user.click(boutons[0])
+    await user.click(boutons[3])
+    const [solde, partiel] = await capture.settle()
+
+    const lire = (o: Uint8Array) => Array.from(o, (c) => String.fromCharCode(c)).join('')
+    expect(lire(solde.bytes)).toContain('(Quittance de loyer)')
+
+    const document = lire(partiel.bytes)
+    expect(document, 'une période partielle s’intitule quittance').not.toContain(
+      '(Quittance de loyer)',
+    )
+    expect(document).toContain('(Re\xE7u de paiement)')
+  })
+
   it('donne un fichier distinct à chaque période', async () => {
     capture = captureDownloads()
     await renderApp('/demo/documents')
@@ -329,6 +370,34 @@ describe('quittances du locataire', () => {
     const document = enLatin1(file.bytes)
     expect(document).toMatch(/\/Count 6/)
     expect(document).toContain('page 6 sur 6')
+  })
+
+  /**
+   * LE TABLEUR EST REVENU, À CÔTÉ DU CARNET.
+   *
+   * Il avait disparu quand « Tout télécharger » est passé au PDF, et rien ne
+   * l'avait demandé. Les deux fichiers ne servent pourtant pas au même geste :
+   * le carnet se présente, le tableau se calcule — on y trie ses périodes, on y
+   * somme une année, on le colle dans une feuille.
+   *
+   * Le cas garde les deux colonnes qui font sa valeur et qu'un document ne
+   * remplace pas : « réglé », seul chiffre qui distingue une période payée d'une
+   * période en cours, et la référence de l'opérateur, avec laquelle on conteste.
+   */
+  it('offre aussi l’historique en tableur, calculable', async () => {
+    capture = captureDownloads()
+    await renderApp('/demo/documents')
+    await switchRole('tenant')
+    await attendreLeChargement()
+
+    const file = await exporter(/Exporter en tableur/)
+
+    expect(file.name).toMatch(/^gestlocpro-quittances-du-locataire-a1-\d{4}-\d{2}-\d{2}\.csv$/)
+    const [entetes, ...lignes] = file.text.replace(UTF8_BOM, '').trim().split('\r\n')
+    expect(entetes.split(';').at(-1)).toBe('Référence de la transaction')
+    expect(entetes).toContain('Réglé')
+    expect(lignes).toHaveLength(6)
+    expect(lignes.map((l) => l.split(';').at(-1))).toContain('MM-4471')
   })
 
   /**

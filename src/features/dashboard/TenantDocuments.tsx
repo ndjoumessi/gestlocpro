@@ -5,6 +5,7 @@ import { Card, CardHeader } from '@/components/primitives/Card'
 import { RadioCards } from '@/components/primitives/Choice'
 import { Button, IconButton } from '@/components/primitives/Button'
 import { Icon } from '@/components/primitives/Icon'
+import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDebordement'
 import { EmptyState } from '@/components/primitives/DataTable'
 import { Skeleton, SkeletonRegion } from '@/components/primitives/Skeleton'
 import { useCurrency } from '@/currency/CurrencyProvider'
@@ -25,6 +26,7 @@ import {
   useInspectionPdf,
   useReceiptPdf,
 } from './documentsPdf'
+import { useHistoriqueCsv } from './quittancesCsv'
 
 /**
  * LA GRILLE DES DEUX COLONNES, nommée pour que l'attente ne s'en écarte pas.
@@ -84,6 +86,7 @@ export function TenantDocuments() {
   const telechargerToutesLesQuittances = useAllReceiptsPdf()
   const telechargerLaCaution = useDepositPdf()
   const telechargerLEtatDesLieux = useInspectionPdf()
+  const exporterLHistorique = useHistoriqueCsv()
   const {
     unitById,
     tenantUnitIds,
@@ -213,10 +216,38 @@ export function TenantDocuments() {
             level={2}
             className="px-4 pt-4 sm:px-5 sm:pt-5"
             action={
+              /*
+                DEUX FICHIERS, DEUX GESTES, ET LE SECOND EST REPLIÉ.
+
+                Le carnet PDF se PRÉSENTE — à un bailleur suivant, à une
+                administration. Le tableur se CALCULE : on y trie ses périodes,
+                on y somme une année, on le colle dans une feuille. Un PDF ne
+                fait aucun de ces trois gestes, et c'est pourquoi le tableau est
+                revenu après que ce lot l'eut retiré.
+
+                Le premier est visible, le second est dans le menu : c'est la
+                règle des en-têtes — au plus deux commandes offertes, le reste
+                atteignable. Ici l'un des deux est de loin le plus demandé.
+              */
               tenantReceipts.length > 0 ? (
-                <Button variant="ghost" size="sm" icon="download" onClick={() => telechargerToutesLesQuittances(unit, tenantReceipts)}>
-                  {t('app.documents.downloadAll')}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon="download"
+                    onClick={() => telechargerToutesLesQuittances(unit, tenantReceipts)}
+                  >
+                    {t('app.documents.downloadAll')}
+                  </Button>
+                  <MenuDeDebordement libelle={t('common.moreActions')}>
+                    <MenuElement
+                      icone="download"
+                      onClick={() => exporterLHistorique(unit, tenantReceipts)}
+                    >
+                      {t('app.documents.exportCsv')}
+                    </MenuElement>
+                  </MenuDeDebordement>
+                </div>
               ) : undefined
             }
           />

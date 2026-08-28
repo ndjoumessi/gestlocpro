@@ -31,6 +31,9 @@ export const COLONNE = PAGE.largeur - 2 * PAGE.marge
 /** Le bord droit, où finissent les montants. */
 const DROITE = PAGE.largeur - PAGE.marge
 
+/** L'écart minimal entre un intitulé et sa valeur avant que la paire se replie. */
+const GOUTTIERE = 16
+
 export interface MiseEnPage {
   /** Le titre du document, une seule fois, en tête de la première page. */
   titre(contenu: string, surtitre?: string): void
@@ -116,29 +119,50 @@ export function nouvelleMiseEnPage(): MiseEnPage {
 
     paire(libelle, valeur, options = {}) {
       const gras = options.gras ?? false
-      /* LES DEUX MOITIÉS PARTAGENT UNE SEULE LIGNE, et c'est pour cela qu'elles
-         sont posées ensemble : écrites l'une après l'autre, le curseur
-         descendrait entre les deux et la valeur tomberait sous son libellé. */
-      const depart = placer(CORPS * INTERLIGNE)
-      courante().push(
-        {
-          sorte: 'texte',
-          x: PAGE.marge,
-          y: depart + CORPS,
-          taille: CORPS,
-          gras,
-          contenu: libelle,
-        },
-        {
-          sorte: 'texte',
-          x: DROITE,
-          y: depart + CORPS,
-          taille: CORPS,
-          gras,
-          contenu: valeur,
-          aDroite: true,
-        },
-      )
+      const largeurLibelle = largeurDuTexte(libelle, CORPS, gras)
+      const largeurValeur = largeurDuTexte(valeur, CORPS, gras)
+
+      /*
+        ═══ LA PAIRE SE REPLIE, ET LA PORTE A EXIGÉ QU'ELLE LE SACHE ═══
+
+        Les deux moitiés partagent une ligne tant qu'elles y tiennent, gouttière
+        comprise. C'est pour cela qu'elles sont posées ENSEMBLE : écrites l'une
+        après l'autre, le curseur descendrait entre les deux et la valeur
+        tomberait sous son libellé.
+
+        Au-delà, la valeur passe à la ligne suivante, toujours calée à droite.
+        Sans ce repli, une valeur trop longue — alignée à droite, donc composée
+        de la droite vers la gauche — partait sous son propre intitulé puis
+        SORTAIT de la feuille par la gauche. Le fichier restait valide, le texte
+        restait présent, et le document devenait illisible.
+
+        Ce n'est pas une hypothèse : rien ne borne le nom d'un locataire, ni au
+        serveur ni à la fiche, et `documentDansLaPage` mesure le débordement sur
+        un nom d'usage composé. C'est aussi la raison pour laquelle la valeur
+        seule est COUPÉE si elle dépasse encore : à ce point, il n'y a plus de
+        repli possible, seulement une césure ou un débordement.
+      */
+      const surUneLigne = largeurLibelle + GOUTTIERE + largeurValeur <= COLONNE
+      if (surUneLigne) {
+        const depart = placer(CORPS * INTERLIGNE)
+        courante().push(
+          { sorte: 'texte', x: PAGE.marge, y: depart + CORPS, taille: CORPS, gras, contenu: libelle },
+          {
+            sorte: 'texte',
+            x: DROITE,
+            y: depart + CORPS,
+            taille: CORPS,
+            gras,
+            contenu: valeur,
+            aDroite: true,
+          },
+        )
+        return
+      }
+
+      poser(libelle, CORPS, gras)
+      for (const ligne of couper(valeur, COLONNE, CORPS, gras))
+        poser(ligne, CORPS, gras, { x: DROITE, aDroite: true })
     },
 
     paragraphe(contenu, options = {}) {
