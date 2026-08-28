@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useRole } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { StatCard } from '@/components/primitives/Charts'
+import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
+import { cn } from '@/lib/cn'
 import { Button } from '@/components/primitives/Button'
 import { InspectionModal } from './InspectionModal'
 import { Card } from '@/components/primitives/Card'
@@ -53,6 +56,17 @@ export function Inspections() {
     return acc
   }, {})
 
+  /* Les trois populations de la rangée d'indicateurs, tirées du MÊME
+     regroupement que les dossiers affichés : elles ne peuvent donc pas
+     contredire la liste qu'elles surplombent. Exhaustives et disjointes — leur
+     somme est le parc. */
+  const aLesDeux = (id: string) =>
+    (byUnit[id] ?? []).some((i) => i.kind === 'entry') &&
+    (byUnit[id] ?? []).some((i) => i.kind === 'exit')
+  const complets = logements.filter((u) => aLesDeux(u.id))
+  const entreeSeule = logements.filter((u) => !aLesDeux(u.id) && (byUnit[u.id] ?? []).length > 0)
+  const sansDossier = logements.filter((u) => (byUnit[u.id] ?? []).length === 0)
+
   /**
    * Un état des lieux est une pièce contradictoire : il porte des réserves
    * chiffrées, signées ou non, et c'est lui qui justifie ce qu'on retient sur
@@ -88,6 +102,45 @@ export function Inspections() {
       />
 
       {isTenant && <TenantScopeNote className="mb-4" />}
+
+      {/*
+        TROIS ÉTATS D'UN MÊME PARC, ET AUCUN N'ÉTAIT ÉCRIT.
+
+        L'écran alignait des dossiers sans jamais dire combien de logements
+        avaient une pièce contradictoire complète — la seule chose qui décide
+        s'il reste du travail avant une restitution de caution. On le comptait à
+        l'œil, dossier par dossier.
+
+        Les trois populations sont exhaustives et disjointes : un logement a les
+        deux états, l'entrée seule, ou rien. Leur somme est le parc, ce qui rend
+        la rangée vérifiable d'un coup d'œil.
+
+        PAS AU LOCATAIRE : il n'a qu'un logement, et « 1 sur 1 » n'apprend rien
+        à qui vient lire ses propres réserves.
+      */}
+      {!isTenant && logements.length > 0 && (
+        <div className={cn(GRILLE_TROIS_INDICATEURS, 'mb-6')}>
+          <StatCard
+            icone="checkCircle"
+            label={t('app.inspections.kpiComplete')}
+            value={String(complets.length)}
+            note={t('app.inspections.kpiCompleteNote')}
+          />
+          <StatCard
+            icone="clipboard"
+            label={t('app.inspections.kpiPartial')}
+            value={String(entreeSeule.length)}
+            note={t('app.inspections.kpiPartialNote')}
+          />
+          <StatCard
+            icone="alert"
+            label={t('app.inspections.kpiNone')}
+            value={String(sansDossier.length)}
+            etat={sansDossier.length > 0 ? { ton: 'warn' } : undefined}
+            note={t('app.inspections.kpiNoneNote')}
+          />
+        </div>
+      )}
 
       {!isTenant && logements[0] && (
         <InspectionModal

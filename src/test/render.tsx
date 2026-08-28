@@ -390,23 +390,39 @@ export async function cliquerAction(nom: RegExp | string): Promise<void> {
     return
   }
   /*
-    LE DÉCLENCHEUR DE L'EN-TÊTE, ET NON LE PREMIER DE LA PAGE.
+    LES MENUS SONT ESSAYÉS UN À UN, EN COMMENÇANT PAR L'EN-TÊTE.
 
-    La coquille porte déjà un `aria-haspopup="menu"` — le menu de compte, tout
-    en haut. Un `querySelector` global le trouvait EN PREMIER, ouvrait la
-    déconnexion, et concluait que l'action cherchée n'existait nulle part. Le
-    repli doit se chercher là où la rangée d'actions vit.
+    Deux niveaux replient désormais : la rangée d'actions de la page, et les
+    cartes d'intervention. Un même écran peut donc porter six déclencheurs, et
+    l'action cherchée est derrière l'un d'eux sans qu'on sache lequel — c'est
+    aussi vrai pour l'utilisateur, qui ouvre celui de la ligne qui l'intéresse.
+
+    L'EN-TÊTE D'ABORD, ET LA COQUILLE JAMAIS. Le menu de compte porte le même
+    `aria-haspopup` tout en haut du document : ouvert par mégarde, il mène à la
+    déconnexion et fait conclure que l'action n'existe nulle part. Il est écarté
+    par son ancêtre.
+
+    CHAQUE MENU EST REFERMÉ s'il ne portait pas ce qu'on cherchait : en laisser
+    un ouvert poserait un panneau au-dessus du suivant, et le clic d'après
+    tomberait dessus.
   */
-  const declencheur = document
-    .querySelector('[data-en-tete-de-page]')
-    ?.querySelector('[aria-haspopup="menu"][aria-expanded="false"]')
-  if (declencheur) {
+  const enTete = document.querySelector('[data-en-tete-de-page]')
+  /* `Array.from` et non l'étalement : une `NodeListOf` n'est pas itérable sous
+     le `tsc` de ce dépôt — le piège est documenté ailleurs, il se paie ici. */
+  const declencheurs = [
+    ...Array.from(enTete?.querySelectorAll('[aria-haspopup="menu"]') ?? []),
+    ...Array.from(document.querySelectorAll('main [aria-haspopup="menu"]')),
+  ].filter((el, i, tous) => tous.indexOf(el) === i)
+
+  for (const declencheur of declencheurs) {
+    if (declencheur.getAttribute('aria-expanded') === 'true') continue
     await user.click(declencheur as HTMLElement)
     const dansLeMenu = screen.queryByRole('menuitem', { name: nom })
     if (dansLeMenu) {
       await user.click(dansLeMenu)
       return
     }
+    await user.keyboard('{Escape}')
   }
   throw new Error(`action introuvable, ni en clair ni au menu : ${String(nom)}`)
 }

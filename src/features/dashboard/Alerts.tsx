@@ -5,6 +5,7 @@ import { usePortfolio } from '@/data/PortfolioProvider'
 import { Card } from '@/components/primitives/Card'
 import { StatusPill, type StatusTone } from '@/components/primitives/StatusPill'
 import { Button } from '@/components/primitives/Button'
+import { StatCard } from '@/components/primitives/Charts'
 import { Icon, type IconName } from '@/components/primitives/Icon'
 import { EmptyState } from '@/components/primitives/DataTable'
 import { Skeleton, SkeletonRegion } from '@/components/primitives/Skeleton'
@@ -234,6 +235,29 @@ export function Alerts() {
       <p className="mb-4 text-caps text-muted" aria-live="polite">
         {unread > 0 ? t('app.alerts.unread', { count: unread }) : t('app.alerts.allRead')}
       </p>
+
+      {/* LE COMPTE LE PLUS UTILE DE LA PAGE VIVAIT EN PROSE. Il reste dans le
+          paragraphe au-dessus, qui est une région annoncée — « tout marquer
+          comme lu » doit se dire à un lecteur d'écran, et une carte ne
+          l'annoncerait pas. Les deux cartes, elles, donnent l'échelle : non lues
+          SUR combien, et ce qui est déjà traité. */}
+      {alerts.length > 0 && (
+        <div className="mb-6 grid gap-4 sm:grid-cols-2">
+          <StatCard
+            icone="bell"
+            label={t('app.alerts.kpiUnread')}
+            value={String(unread)}
+            etat={unread > 0 ? { ton: 'warn' } : undefined}
+            note={t('app.alerts.kpiUnreadNote', { count: alerts.length })}
+          />
+          <StatCard
+            icone="checkCircle"
+            label={t('app.alerts.kpiRead')}
+            value={String(alerts.length - unread)}
+            note={t('app.alerts.kpiReadNote')}
+          />
+        </div>
+      )}
 
       {isTenant && <TenantScopeNote className="mb-4" />}
 

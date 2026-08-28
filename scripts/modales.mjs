@@ -359,12 +359,25 @@ try {
           déconnexion.
         */
         if ((await page.getByRole('button', { name: modale.bouton }).count()) === 0) {
-          const troisPoints = page
-            .locator('[data-en-tete-de-page] [aria-haspopup="menu"]')
-            .first()
-          if ((await troisPoints.count()) > 0) {
-            await troisPoints.click()
-            await page.waitForTimeout(200)
+          /*
+            DEUX NIVEAUX REPLIENT : la rangée d'actions de la page, et les cartes
+            d'intervention. On essaie donc les déclencheurs un par un, l'en-tête
+            d'abord, et l'on REFERME celui qui ne portait pas ce qu'on cherche —
+            un panneau laissé ouvert se poserait au-dessus du suivant.
+
+            La coquille porte le même attribut tout en haut pour son menu de
+            compte : ouvert par mégarde, il mène à la déconnexion. Les deux
+            sélecteurs l'écartent par son ancêtre.
+          */
+          const candidats = await page
+            .locator('[data-en-tete-de-page] [aria-haspopup="menu"], main [aria-haspopup="menu"]')
+            .all()
+          for (const trois of candidats) {
+            await trois.click()
+            await page.waitForTimeout(150)
+            if ((await page.getByRole('menuitem', { name: modale.bouton }).count()) > 0) break
+            await page.keyboard.press('Escape')
+            await page.waitForTimeout(100)
           }
         }
 

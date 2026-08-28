@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, useState, type ReactNode } from 'react'
+import { Children, createContext, useContext, useRef, useState, type ReactNode } from 'react'
 import { cn } from '@/lib/cn'
 import { Icon } from './Icon'
 import { usePiegeDeFocus } from './piegeDeFocus'
@@ -80,8 +80,20 @@ export function MenuDeDebordement({
     focusInitial: 'premier',
   })
 
-  // Rien à replier, rien à promettre.
-  if (!children) return null
+  /*
+    RIEN À REPLIER, RIEN À PROMETTRE — ET `!children` NE SUFFISAIT PAS.
+
+    Un appelant qui compose ses entrées par conditions passe un TABLEAU, et un
+    tableau de trois `null` est truthy. Les cartes d'intervention font
+    exactement cela : trois gestes optionnels selon l'état, dont aucun sur une
+    intervention devisée que le bailleur s'est ouverte à lui-même. Le menu se
+    serait affiché, vide, sur cette carte-là — le défaut même que ce composant
+    dit refuser deux paragraphes plus haut.
+
+    `Children.toArray` écarte `null`, `undefined` et les booléens : ce qui reste
+    est ce qui sera peint.
+  */
+  if (Children.toArray(children).length === 0) return null
 
   return (
     <div ref={boite} className={cn('relative shrink-0', className)}>

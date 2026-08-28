@@ -1081,6 +1081,15 @@ export const fr = {
       removeFinding: 'Retirer la réserve n° {rank}',
       title: 'États des lieux',
       subtitle: 'Entrée et sortie comparées pièce par pièce, réserves chiffrées et imputées sur la caution.',
+      /* Ni indicateur ni compte : l'écran alignait des dossiers sans dire
+         combien de logements avaient un état des lieux complet — la seule
+         chose qui décide s'il reste du travail avant une restitution. */
+      kpiComplete: 'Dossiers complets',
+      kpiCompleteNote: 'entrée et sortie signées',
+      kpiPartial: 'Entrée seule',
+      kpiPartialNote: 'la sortie reste à faire',
+      kpiNone: 'Sans état des lieux',
+      kpiNoneNote: 'aucune pièce contradictoire',
       entry: 'Entrée',
       exit: 'Sortie',
       rooms: '{count} pièces',
@@ -1483,6 +1492,14 @@ export const fr = {
       title: 'Signalements et notifications',
       subtitle: 'Ce que le produit a détecté ou reçu, du plus récent au plus ancien.',
       markRead: 'Tout marquer comme lu',
+      /* L'écran comptait ses non-lues et les rendait dans un paragraphe gris.
+         Le compte le plus utile de la page vivait en prose, sous l'en-tête,
+         quand ses six voisins ouvrent sur une rangée de cartes. */
+      kpiUnread: 'Non lues',
+      kpiUnreadNote: 'sur {count} notifications',
+      kpiUnreadNote_one: 'sur {count} notification',
+      kpiRead: 'Déjà lues',
+      kpiReadNote: 'rien à faire dessus',
       /**
        * Le RANG d'une relance, et si elle est partie.
        *

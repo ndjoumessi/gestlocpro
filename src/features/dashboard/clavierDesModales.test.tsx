@@ -125,11 +125,24 @@ async function ouvrirLEcran(modale: Modale): Promise<HTMLElement> {
     focus, le piège, Échap, et le retour au bouton qui a ouvert. Ce bouton vit
     simplement une porte plus loin.
   */
-  const declencheur = document
-    .querySelector('[data-en-tete-de-page]')
-    ?.querySelector('[aria-haspopup="menu"][aria-expanded="false"]')
-  if (declencheur && screen.queryAllByRole('button', { name: modale.bouton }).length === 0) {
-    await userEvent.setup().click(declencheur as HTMLElement)
+  if (screen.queryAllByRole('button', { name: modale.bouton }).length === 0) {
+    /* L'en-tête D'ABORD, la zone principale ensuite : deux niveaux replient —
+       la rangée d'actions de la page, et les cartes d'intervention. La coquille
+       porte le même attribut tout en haut pour son menu de compte ; l'ouvrir
+       mènerait à la déconnexion, elle est donc hors du champ des deux
+       sélecteurs. */
+    const user = userEvent.setup()
+    const candidats = [
+      ...Array.from(
+        document.querySelectorAll('[data-en-tete-de-page] [aria-haspopup="menu"]'),
+      ),
+      ...Array.from(document.querySelectorAll('main [aria-haspopup="menu"]')),
+    ]
+    for (const d of candidats) {
+      await user.click(d as HTMLElement)
+      if (screen.queryAllByRole('menuitem', { name: modale.bouton }).length > 0) break
+      await user.keyboard('{Escape}')
+    }
   }
 
   /* Une entrée de menu porte `menuitem` et non `button` : un `menu` n'admet que
@@ -193,12 +206,19 @@ async function parcoursClavier(modale: Modale) {
     Mesuré, et non prévu : la chaîne tient parce que le piège du MENU rend le
     focus à son déclencheur avant que celui de la MODALE ne note qui l'avait.
   */
-  const attendu = ouvreur.isConnected
-    ? ouvreur
-    : document
-        .querySelector('[data-en-tete-de-page]')
-        ?.querySelector('[aria-haspopup="menu"]')
-  expect(document.activeElement, 'le focus n’est pas revenu à portée de main').toBe(attendu)
+  if (ouvreur.isConnected) {
+    expect(document.activeElement, 'le focus n’est pas revenu au bouton d’ouverture').toBe(ouvreur)
+  } else {
+    /* Le geste vivait dans un menu, qui s'est refermé en agissant : son entrée
+       n'existe plus. Le focus doit alors se poser sur LE DÉCLENCHEUR de ce
+       menu — l'endroit d'où l'on est parti, et le seul encore là pour le
+       recevoir. On ne nomme pas lequel : trois points d'en-tête ou trois points
+       de carte, la règle est la même. */
+    expect(
+      (document.activeElement as HTMLElement)?.getAttribute('aria-haspopup'),
+      'le focus n’est pas revenu au menu qui a ouvert',
+    ).toBe('menu')
+  }
 }
 
 describe('le clavier des modales', () => {

@@ -12,6 +12,7 @@ import { Notice } from '@/components/primitives/Notice'
 import { useToast } from '@/components/primitives/Toast'
 import { EmptyState } from '@/components/primitives/DataTable'
 import { StatCard } from '@/components/primitives/Charts'
+import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDebordement'
 import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
 import { cn } from '@/lib/cn'
 import { Skeleton, SkeletonRegion } from '@/components/primitives/Skeleton'
@@ -585,11 +586,6 @@ export function Works() {
                   est passé jeudi » est précisément la réponse qui manque le
                   plus. Le locataire ne la lisait nulle part.
                 */}
-                {work.origin === 'tenantReport' && work.reportedBy && role !== 'tenant' && (
-                  <Button variant="ghost" size="sm" icon="bell" onClick={() => setARepondre(work)}>
-                    {t('app.works.reply')}
-                  </Button>
-                )}
 
                 {work.status === 'reported' && role !== 'tenant' && (
                   <Button
@@ -605,18 +601,6 @@ export function Works() {
                   </Button>
                 )}
 
-                {/* Retirer la validation : réservé à qui a le droit de valider. */}
-                {work.status === 'approved' && canApprove && (
-                  <Button variant="ghost" size="sm" onClick={() => unapprove(work.id)}>
-                    {t('app.works.unapprove')}
-                  </Button>
-                )}
-
-                {work.status === 'done' && role !== 'tenant' && (
-                  <Button variant="ghost" size="sm" onClick={() => reopen(work.id)}>
-                    {t('app.works.reopen')}
-                  </Button>
-                )}
 
                 {work.status === 'quoted' && canApprove && (
                   <Button
@@ -650,6 +634,45 @@ export function Works() {
                       {t('app.works.complete')}
                     </Button>
                   )}
+
+                {/*
+                  CE QUI DÉFAIT ET CE QUI ACCOMPAGNE PASSE DERRIÈRE TROIS POINTS.
+
+                  La rangée alignait le montant, la pastille et jusqu'à TROIS
+                  gestes. Ce fichier porte déjà la mesure du dégât, quelques
+                  lignes plus haut : « 585 px réclamés, bord droit à 714 dans une
+                  fenêtre de 700, scrollX=14 ». Le repli l'a armé depuis — mais
+                  il replie, et la carte grandit d'une ligne, cinq fois.
+
+                  C'est la même question que l'en-tête de page a tranchée, un
+                  niveau plus bas, et rien ne justifiait qu'elle y réponde
+                  autrement sinon que personne ne l'avait posée.
+
+                  CE QUI RESTE FAIT AVANCER : chiffrer, valider, clore. CE QUI SE
+                  REPLIE défait ou accompagne — retirer une validation, rouvrir
+                  un chantier clos, écrire au locataire. Aucun geste n'est
+                  retiré, et le menu disparaît de lui-même quand il n'a rien à
+                  porter : sur une intervention devisée que le bailleur s'est
+                  ouverte à lui-même, il n'y a rien derrière les trois points, et
+                  il n'y a donc pas de trois points.
+                */}
+                <MenuDeDebordement libelle={t('common.moreActions')}>
+                  {work.origin === 'tenantReport' && work.reportedBy && role !== 'tenant' ? (
+                    <MenuElement icone="bell" onClick={() => setARepondre(work)}>
+                      {t('app.works.reply')}
+                    </MenuElement>
+                  ) : null}
+                  {work.status === 'approved' && canApprove ? (
+                    <MenuElement onClick={() => unapprove(work.id)}>
+                      {t('app.works.unapprove')}
+                    </MenuElement>
+                  ) : null}
+                  {work.status === 'done' && role !== 'tenant' ? (
+                    <MenuElement onClick={() => reopen(work.id)}>
+                      {t('app.works.reopen')}
+                    </MenuElement>
+                  ) : null}
+                </MenuDeDebordement>
               </div>
             </Card>
           )
