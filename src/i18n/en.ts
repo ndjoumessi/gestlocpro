@@ -20,6 +20,7 @@ export const en: Dictionary = {
     confirm: 'Confirm',
     retry: 'Try again',
     search: 'Search',
+    moreActions: 'More actions',
     loading: 'Loading…',
     required: 'required',
     optional: 'optional',

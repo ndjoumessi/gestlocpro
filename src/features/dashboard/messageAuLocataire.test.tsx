@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, userEvent, waitFor, within, attendreLeChargement } from '@/test/render'
+import { renderApp, screen, userEvent, waitFor, within, attendreLeChargement, cliquerAction } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur, type FauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 import type { Role } from '@/features/auth/signupState'
@@ -205,7 +205,7 @@ describe('prévenir les locataires', () => {
     // chargé, et l'en-tête est rendu par le squelette autant que par l'écran.
     await screen.findByText('A3')
     const clavier = userEvent.setup()
-    await clavier.click(screen.getByRole('button', { name: /Prévenir les locataires/ }))
+    await cliquerAction(/Prévenir les locataires/)
     return { faux, clavier }
   }
 

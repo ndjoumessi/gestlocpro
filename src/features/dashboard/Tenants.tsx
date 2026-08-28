@@ -14,6 +14,7 @@ import { Field } from '@/components/primitives/Field'
 import { Input, Select } from '@/components/primitives/Input'
 import { Combobox } from '@/components/primitives/Combobox'
 import { StatCard } from '@/components/primitives/Charts'
+import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDebordement'
 import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
 import { DatePicker } from '@/components/primitives/DatePicker'
 import { useToast } from '@/components/primitives/Toast'
@@ -84,14 +85,10 @@ export function Tenants() {
               sur un parc sans bail actif, et un bouton qui ne peut qu'échouer
               vaut moins qu'un bouton qui dit pourquoi.
             */}
-            <Button
-              variant="secondary"
-              icon="bell"
-              onClick={() => setAnnonceOuverte(true)}
-              disabled={leases.length === 0}
-            >
-              {t('app.announce.button')}
-            </Button>
+            {/* PRÉVENIR PASSE DERRIÈRE LES TROIS POINTS. C'est un geste de
+                circonstance — une coupure d'eau, un passage d'artisan —, pas un
+                geste quotidien ; inviter et créer une fiche le sont. Rien n'est
+                retiré : le menu le rend, avec son propre motif de grisement. */}
             <Button variant="secondary" icon="users" onClick={() => setInviteOuverte(true)}>
               {t('app.invite.button')}
             </Button>
@@ -99,6 +96,13 @@ export function Tenants() {
               {t('app.tenants.addTenant')}
             </Button>
           </>
+        }
+        debordement={
+          <MenuDeDebordement libelle={t('common.moreActions')}>
+            <MenuElement icone="bell" onClick={() => setAnnonceOuverte(true)}>
+              {t('app.announce.button')}
+            </MenuElement>
+          </MenuDeDebordement>
         }
       />
 

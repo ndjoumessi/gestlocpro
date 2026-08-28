@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { renderApp, screen, switchRole, attendreLeChargement, userEvent } from '@/test/render'
+import { renderApp, screen, switchRole, attendreLeChargement, userEvent, cliquerAction } from '@/test/render'
 import { captureDownloads } from '@/test/downloads'
 import { UTF8_BOM } from '@/lib/csv'
 import { DEMO_TENANT_UNIT, UNITS } from '@/data/portfolio'
@@ -26,8 +26,12 @@ afterEach(() => {
 
 /** Clique un bouton et rend le fichier qu'il a produit. */
 async function exporter(label: RegExp | string) {
-  const user = userEvent.setup()
-  await user.click(screen.getByRole('button', { name: label }))
+  /* `cliquerAction` et non un clic direct : depuis que l'en-tête ne montre que
+     deux commandes, l'export s'est replié derrière trois points sur les écrans
+     qui en portaient quatre. Le helper reproduit le geste de l'utilisateur —
+     chercher, et ouvrir le menu si ce n'est pas là — donc ce cas reste juste
+     quelle que soit la moitié de la rangée où l'action a atterri. */
+  await cliquerAction(label)
   const files = await capture!.settle()
   expect(files).toHaveLength(1)
   return files[0]

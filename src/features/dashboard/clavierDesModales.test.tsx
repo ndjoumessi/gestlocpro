@@ -116,7 +116,29 @@ async function ouvrirLEcran(modale: Modale): Promise<HTMLElement> {
     await attendreLeChargement()
   }
 
-  const boutons = screen.getAllByRole('button', { name: modale.bouton })
+  /*
+    LE MENU DE DÉBORDEMENT EST OUVERT D'ABORD, s'il y en a un.
+
+    Trois de ces douze modales s'ouvrent depuis une action qui s'est repliée
+    derrière trois points — corriger le parc, poser un prix, prévenir les
+    locataires. Le cas continue de mesurer ce qui l'intéresse : l'entrée du
+    focus, le piège, Échap, et le retour au bouton qui a ouvert. Ce bouton vit
+    simplement une porte plus loin.
+  */
+  const declencheur = document
+    .querySelector('[data-en-tete-de-page]')
+    ?.querySelector('[aria-haspopup="menu"][aria-expanded="false"]')
+  if (declencheur && screen.queryAllByRole('button', { name: modale.bouton }).length === 0) {
+    await userEvent.setup().click(declencheur as HTMLElement)
+  }
+
+  /* Une entrée de menu porte `menuitem` et non `button` : un `menu` n'admet que
+     des `menuitem` parmi ses descendants signifiants, sans quoi il cesse
+     d'annoncer « 2 sur 3 ». Les deux rôles sont donc cherchés. */
+  const boutons = [
+    ...screen.queryAllByRole('button', { name: modale.bouton }),
+    ...screen.queryAllByRole('menuitem', { name: modale.bouton }),
+  ]
   if (modale.rang === undefined) {
     /* Sans `rang` déclaré, le geste doit être UNIQUE : prendre le premier d'une
        liste reviendrait à choisir sans le dire, et le jour où un écran répète un
@@ -159,7 +181,24 @@ async function parcoursClavier(modale: Modale) {
 
   await user.keyboard('{Escape}')
   expect(screen.queryByRole('dialog')).toBeNull()
-  expect(document.activeElement, 'le focus n’est pas revenu au bouton d’ouverture').toBe(ouvreur)
+  /*
+    LE FOCUS REVIENT LÀ OÙ L'ON PEUT ENCORE ALLER.
+
+    Pour neuf de ces douze modales, c'est le bouton qui a ouvert. Pour les trois
+    qui vivent derrière trois points, ce bouton N'EXISTE PLUS : le menu s'est
+    refermé en même temps qu'il agissait, et son entrée avec lui. Le focus
+    remonte alors au déclencheur du menu — c'est-à-dire à l'endroit d'où
+    l'utilisateur est parti, et le seul qui soit encore là pour le recevoir.
+
+    Mesuré, et non prévu : la chaîne tient parce que le piège du MENU rend le
+    focus à son déclencheur avant que celui de la MODALE ne note qui l'avait.
+  */
+  const attendu = ouvreur.isConnected
+    ? ouvreur
+    : document
+        .querySelector('[data-en-tete-de-page]')
+        ?.querySelector('[aria-haspopup="menu"]')
+  expect(document.activeElement, 'le focus n’est pas revenu à portée de main').toBe(attendu)
 }
 
 describe('le clavier des modales', () => {

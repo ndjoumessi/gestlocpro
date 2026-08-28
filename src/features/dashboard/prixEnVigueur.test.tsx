@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, userEvent, within } from '@/test/render'
+import { renderApp, screen, userEvent, within, cliquerAction, attendreLeChargement } from '@/test/render'
 import { statutDuTarif } from './TariffsModal'
 
 /**
@@ -33,11 +33,13 @@ import { statutDuTarif } from './TariffsModal'
  * le sien : que la marque paraisse.
  */
 
-async function ouvrirLesPrix(utilisateur: ReturnType<typeof userEvent.setup>) {
+async function ouvrirLesPrix(_utilisateur: ReturnType<typeof userEvent.setup>) {
   await renderApp('/demo/releves')
-  await utilisateur.click(
-    await screen.findByRole('button', { name: /prix de refacturation/i }),
-  )
+  await attendreLeChargement()
+  /* Le geste est passé derrière les trois points de l'en-tête : poser un prix
+     de refacturation se fait une fois, pas tous les jours. `cliquerAction`
+     reproduit le parcours — chercher, puis ouvrir le menu. */
+  await cliquerAction(/prix de refacturation/i)
   return await screen.findByRole('dialog')
 }
 

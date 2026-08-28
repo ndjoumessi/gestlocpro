@@ -6,6 +6,7 @@ import { lien, useBase } from '@/lib/base'
 import { DataTable, EmptyState } from '@/components/primitives/DataTable'
 import { PaymentStatusPill } from '@/components/primitives/StatusPill'
 import { StatCard } from '@/components/primitives/Charts'
+import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDebordement'
 import {
   Skeleton,
   SkeletonRegion,
@@ -170,14 +171,11 @@ export function Portfolio() {
         // pouvait créer.
         actions={
           <>
-            {/* Le nom, le pays et la devise du parc étaient posés à sa création
-                et modifiables nulle part. Réservé au propriétaire : la devise
-                est l'unité de tout ce qui se compte ici, pas un affichage. */}
-            {peutCorrigerLeParc && (
-              <Button variant="ghost" icon="globe" onClick={() => setCorrectionOuverte(true)}>
-                {t('app.parkSettings.open')}
-              </Button>
-            )}
+            {/* CORRIGER LE PARC PASSE DERRIÈRE LES TROIS POINTS. On règle le
+                nom, le pays et la devise d'un parc une fois — deux, le jour où
+                l'on s'aperçoit qu'il est né dans la mauvaise unité. Ajouter un
+                immeuble ou un logement, en revanche, est le geste de tous les
+                jours de cet écran. */}
             <Button variant="secondary" icon="plus" onClick={() => setAjoutOuvert(true)}>
               {t('app.portfolio.addBuildingTitle')}
             </Button>
@@ -185,6 +183,15 @@ export function Portfolio() {
               {t('app.portfolio.addUnitTitle')}
             </Button>
           </>
+        }
+        debordement={
+          peutCorrigerLeParc ? (
+            <MenuDeDebordement libelle={t('common.moreActions')}>
+              <MenuElement icone="globe" onClick={() => setCorrectionOuverte(true)}>
+                {t('app.parkSettings.open')}
+              </MenuElement>
+            </MenuDeDebordement>
+          ) : undefined
         }
       />
 

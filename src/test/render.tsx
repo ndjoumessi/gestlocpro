@@ -367,6 +367,51 @@ export function renderWithProviders(
 }
 
 /**
+ * CLIQUE UNE ACTION D'ÉCRAN, QU'ELLE SOIT SOUS LES YEUX OU DANS LE MENU.
+ *
+ * Depuis que l'en-tête ne montre plus que deux commandes, les autres vivent
+ * derrière trois points. Un cas qui va chercher son bouton par son nom échoue
+ * alors sur une action qui n'a pas disparu — elle s'est repliée.
+ *
+ * Ce n'est PAS une commodité de harnais : c'est exactement le geste de
+ * l'utilisateur. Il cherche l'action ; si elle n'est pas là, il ouvre le menu.
+ * Un cas qui reproduit ce parcours reste juste quelle que soit la moitié de la
+ * rangée où l'action a atterri, et c'est la seule façon d'éviter que trente
+ * cas se figent sur une décision de mise en page.
+ *
+ * ELLE ÉCHOUE BRUYAMMENT si l'action n'est nulle part : pas de `queryBy`
+ * silencieux, pas de repli muet. Une action introuvable reste une régression.
+ */
+export async function cliquerAction(nom: RegExp | string): Promise<void> {
+  const user = userEvent.setup()
+  const direct = screen.queryByRole('button', { name: nom }) ?? screen.queryByRole('link', { name: nom })
+  if (direct) {
+    await user.click(direct)
+    return
+  }
+  /*
+    LE DÉCLENCHEUR DE L'EN-TÊTE, ET NON LE PREMIER DE LA PAGE.
+
+    La coquille porte déjà un `aria-haspopup="menu"` — le menu de compte, tout
+    en haut. Un `querySelector` global le trouvait EN PREMIER, ouvrait la
+    déconnexion, et concluait que l'action cherchée n'existait nulle part. Le
+    repli doit se chercher là où la rangée d'actions vit.
+  */
+  const declencheur = document
+    .querySelector('[data-en-tete-de-page]')
+    ?.querySelector('[aria-haspopup="menu"][aria-expanded="false"]')
+  if (declencheur) {
+    await user.click(declencheur as HTMLElement)
+    const dansLeMenu = screen.queryByRole('menuitem', { name: nom })
+    if (dansLeMenu) {
+      await user.click(dansLeMenu)
+      return
+    }
+  }
+  throw new Error(`action introuvable, ni en clair ni au menu : ${String(nom)}`)
+}
+
+/**
  * Bascule le profil actif via le sélecteur de la barre latérale, comme le
  * ferait l'utilisateur. Passer par l'interface plutôt que par le contexte
  * garantit que le test échouerait aussi si le sélecteur cessait de fonctionner.

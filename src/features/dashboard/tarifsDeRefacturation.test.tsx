@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { attendreLeChargement, renderApp, screen, userEvent, within } from '@/test/render'
+import { attendreLeChargement, renderApp, screen, userEvent, within, cliquerAction } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur, type FauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 import type { Role } from '@/features/auth/signupState'
@@ -176,7 +176,7 @@ describe('poser un prix', () => {
   async function ouvrirLesTarifs() {
     await renderApp('/app/releves', { session: sessionDuRole('owner') })
     await attendreLeChargement()
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Prix de refacturation' }))
+    await cliquerAction('Prix de refacturation')
     return screen.findByRole('dialog')
   }
 

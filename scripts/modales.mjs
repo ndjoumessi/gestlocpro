@@ -346,7 +346,32 @@ try {
           }
         }
 
-        const bouton = page.getByRole('button', { name: modale.bouton }).first()
+        /*
+          LE MENU DE DÉBORDEMENT EST OUVERT D'ABORD, s'il faut.
+
+          Trois de ces modales s'ouvrent depuis une action que l'en-tête replie
+          derrière trois points — poser un prix, corriger le parc, prévenir les
+          locataires. Le bouton n'a pas disparu : il vit une porte plus loin, et
+          la sonde suit le même chemin que l'utilisateur.
+
+          On ouvre le menu de L'EN-TÊTE, jamais le premier de la page : la
+          coquille en porte déjà un pour le compte, et l'ouvrir mènerait à la
+          déconnexion.
+        */
+        if ((await page.getByRole('button', { name: modale.bouton }).count()) === 0) {
+          const troisPoints = page
+            .locator('[data-en-tete-de-page] [aria-haspopup="menu"]')
+            .first()
+          if ((await troisPoints.count()) > 0) {
+            await troisPoints.click()
+            await page.waitForTimeout(200)
+          }
+        }
+
+        const bouton = page
+          .getByRole('button', { name: modale.bouton })
+          .or(page.getByRole('menuitem', { name: modale.bouton }))
+          .first()
         if ((await bouton.count()) === 0) {
           plaintes.push(
             `${nom} : le bouton qui l'ouvre est introuvable.\n` +

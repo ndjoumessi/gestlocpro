@@ -33,6 +33,9 @@ export const fr = {
     // une vraie lecture après un vrai échec. Deux gestes, deux clés.
     retry: 'Réessayer',
     search: 'Rechercher',
+    /* Le nom accessible du déclencheur à trois points : ils ne se prononcent
+       pas, et « menu » seul ne dirait pas de quoi. */
+    moreActions: 'Autres actions',
     loading: 'Chargement…',
     required: 'obligatoire',
     optional: 'facultatif',

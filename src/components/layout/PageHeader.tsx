@@ -33,10 +33,19 @@ export function PageHeader({
   title,
   description,
   actions,
+  debordement,
 }: {
   title: string
   description?: ReactNode
   actions?: ReactNode
+  /**
+   * Les commandes REPLIÉES derrière trois points.
+   *
+   * Ce qu'on fait tous les jours reste sous les yeux ; ce qu'on fait parfois se
+   * demande. Aucune action n'est retirée par ce repli — c'est la hiérarchie qui
+   * change, pas l'inventaire.
+   */
+  debordement?: ReactNode
 }) {
   /**
    * Monté DANS un cadre, un écran cesse d'être deux choses.
@@ -58,7 +67,14 @@ export function PageHeader({
   const Titre = dansUnCadre ? 'h2' : 'h1'
 
   return (
-    <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div
+      /* `data-en-tete-de-page` : les cas comptent les commandes de cette rangée
+         et ne peuvent pas la reconnaître autrement — `banner` appartient déjà à
+         la coquille, et un saut de parent depuis le titre casse au premier
+         niveau intermédiaire. */
+      data-en-tete-de-page=""
+      className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
+    >
       <div className="min-w-0">
         <Titre className="display-app text-balance">{title}</Titre>
         {description && (
@@ -74,7 +90,26 @@ export function PageHeader({
           860 px de large, c'est-à-dire dans la bande que ni le téléphone ni le
           bureau ne montrent. Le bloc de titre porte déjà `min-w-0` : c'est lui
           qui cède la place, et le titre se replie, ce qu'un titre sait faire. */}
-      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+      {(actions || debordement) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {actions}
+          {/*
+            LE DÉBORDEMENT VIT DANS L'EN-TÊTE, ET NON CHEZ L'APPELANT.
+
+            Trois écrans portaient plus de deux commandes — quatre sur les
+            paiements —, et un quatrième en avait posé une HORS de l'en-tête,
+            sur sa propre ligne sous la description, faute de place. Chacun
+            aurait pu se replier à sa façon ; ils se seraient repliés de quatre
+            façons.
+
+            L'en-tête est le seul endroit qui sait ce qu'une rangée d'actions
+            doit être : deux commandes sous les yeux, le reste à un geste. Le
+            menu se rend `null` tout seul quand on ne lui donne rien — voir
+            `MenuDeDebordement`.
+          */}
+          {debordement}
+        </div>
+      )}
     </div>
   )
 }

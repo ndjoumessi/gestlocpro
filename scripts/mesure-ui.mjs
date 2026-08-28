@@ -529,6 +529,31 @@ const LIGNE_SANS_NOM =
  * thèmes et une seule langue. Même raisonnement que les deux largeurs de la
  * passe de contraste, qui ignore déjà les onze autres.
  */
+/**
+ * OUVRE UNE ACTION D'EN-TÊTE, QU'ELLE SOIT SOUS LES YEUX OU REPLIÉE.
+ *
+ * Depuis que la rangée d'actions ne montre plus que deux commandes, les autres
+ * vivent derrière trois points. Une sonde qui cherche son bouton par son nom
+ * échoue alors sur une action qui n'a pas disparu — elle s'est repliée, et
+ * `mesure-ui` a rapporté « la surface ne s'est pas ouverte » pour quatre
+ * modales parfaitement saines.
+ *
+ * Le geste reproduit celui de l'utilisateur : chercher l'action ; si elle n'est
+ * pas là, ouvrir le menu de L'EN-TÊTE — pas le premier de la page, la coquille
+ * en porte déjà un pour le compte.
+ */
+async function ouvrirUneActionDEnTete(page, nom) {
+  const direct = page.getByRole('button', { name: nom }).first()
+  if (await direct.count().then((n) => n > 0).catch(() => false)) {
+    if (await direct.isVisible().catch(() => false)) {
+      await direct.click()
+      return
+    }
+  }
+  await page.locator('[data-en-tete-de-page] [aria-haspopup="menu"]').first().click()
+  await page.getByRole('menuitem', { name: nom }).first().click()
+}
+
 const SURFACES_INTERACTIVES = [
   /*
     LES GESTES VISENT LA SÉMANTIQUE, PAS LA TRADUCTION.
@@ -610,7 +635,7 @@ const SURFACES_INTERACTIVES = [
     largeur: 1280,
     temoin: '[role="dialog"] form#tarif',
     ouvrir: async (page) => {
-      await page.getByRole('button', { name: /^Prix de refacturation$|^Rebilling prices$/ }).first().click()
+      await ouvrirUneActionDEnTete(page, /^Prix de refacturation$|^Rebilling prices$/)
     },
   },
   {
@@ -625,7 +650,7 @@ const SURFACES_INTERACTIVES = [
     largeur: 1280,
     temoin: '[role="dialog"] form#correction-du-parc',
     ouvrir: async (page) => {
-      await page.getByRole('button', { name: /^Corriger le parc$|^Correct the park$/ }).first().click()
+      await ouvrirUneActionDEnTete(page, /^Corriger le parc$|^Correct the park$/)
     },
   },
   {
@@ -839,7 +864,18 @@ function declencheursDePanneau() {
     for (const entree of readdirSync(dossier, { withFileTypes: true })) {
       const chemin = join(dossier, entree.name)
       if (entree.isDirectory()) parcourir(chemin)
-      else if (/\.tsx$/.test(entree.name) && !entree.name.includes('.test.')) {
+      /* `src/test/` EST ÉCARTÉ, et ce n'est pas un élargissement commode : le
+         harnais y CHERCHE des déclencheurs pour les ouvrir — « le geste de
+         l'utilisateur : chercher l'action, et ouvrir le menu si elle n'est pas
+         là ». Deux occurrences de la CHAÎNE qui ne posent aucun panneau. Les
+         compter ferait dire au recensement qu'il y a deux surfaces de plus à
+         auditer, et l'audit irait les chercher dans le produit, où elles ne
+         sont pas. */
+      else if (
+        /\.tsx$/.test(entree.name) &&
+        !entree.name.includes('.test.') &&
+        !chemin.includes('/src/test/')
+      ) {
         const source = readFileSync(chemin, 'utf8')
         const n = [...source.matchAll(/aria-haspopup/g)].length
         if (n > 0) trouves.push({ fichier: chemin.replace(RACINE + '/', ''), n })
@@ -850,13 +886,19 @@ function declencheursDePanneau() {
   return trouves
 }
 
-/* 6 = deux dans la coquille (réglages, menu du compte), deux dans le sélecteur
-   de date (jour et mois), un dans le sélecteur de devise, et un sixième depuis
+/* 7 = deux dans la coquille (réglages, menu du compte), deux dans le sélecteur
+   de date (jour et mois), un dans le sélecteur de devise, un sixième depuis
    que les écrans d'AUTHENTIFICATION replient leurs trois réglages derrière un
-   déclencheur (`PanneauDeReglages`). Ce sixième entre dans le périmètre audité
-   sous le nom `reglages-a-la-connexion` — la ligne qui le décrit dit pourquoi il
-   ne fait pas doublon avec celui de la coquille. */
-const DECLENCHEURS_ATTENDUS = 6
+   déclencheur (`PanneauDeReglages`) — il entre dans le périmètre audité sous le
+   nom `reglages-a-la-connexion`, et la ligne qui le décrit dit pourquoi il ne
+   fait pas doublon avec celui de la coquille.
+
+   LE SEPTIÈME EST LE MENU DE DÉBORDEMENT DES EN-TÊTES DE PAGE. Une seule
+   occurrence dans la source pour QUATRE écrans — paiements, locataires, parc,
+   relevés —, parce que c'est une primitive et non un panneau recopié : c'est
+   précisément ce que les six premiers n'étaient pas, et la raison pour laquelle
+   ce recensement existe. Il monte de un, pas de quatre. */
+const DECLENCHEURS_ATTENDUS = 7
 
 {
   const trouves = declencheursDePanneau()

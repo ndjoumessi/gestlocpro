@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { attendreLeChargement, renderApp, screen, userEvent, within } from '@/test/render'
+import { attendreLeChargement, renderApp, screen, userEvent, within, cliquerAction } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur, type FauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 import type { Role } from '@/features/auth/signupState'
@@ -78,7 +78,7 @@ async function ouvrirLaCorrection() {
    * courir contre le `fetch`, et le bouton n'existe que chargé.
    */
   await attendreLeChargement()
-  await userEvent.setup().click(screen.getByRole('button', { name: 'Corriger le parc' }))
+  await cliquerAction('Corriger le parc')
   return screen.findByRole('dialog')
 }
 

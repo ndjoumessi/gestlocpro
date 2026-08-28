@@ -6,6 +6,7 @@ import { JaugeDePoste, PaymentStatusPill, type PaymentStatus } from '@/component
 import { GroupeDeFiltres } from '@/components/controls/GroupeDeFiltres'
 import { StatCard } from '@/components/primitives/Charts'
 import { DeltaBadge } from '@/components/primitives/Badge'
+import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDebordement'
 import { variationDesEncaissements } from '@/data/kpis'
 import {
   Skeleton,
@@ -146,6 +147,75 @@ export function Payments() {
    */
   if (loading) return <PaymentsSkeleton isTenant={isTenant} />
 
+
+  /*
+    LES DEUX GESTES DE FIN DE MOIS, SORTIS DE LEUR BOUTON.
+
+    Ils vivaient en `onClick` dans la rangée d'actions ; ils vivent maintenant
+    derrière les trois points, et leur corps ne pouvait pas les suivre en ligne
+    sans rendre le menu illisible. Les nommer ici les rend aussi lisibles depuis
+    l'en-tête : « exporter le relevé », « appeler les loyers ».
+  */
+  const exporterLeReleve = () =>
+    exportCsv({
+        // Le filtre actif est dit par le nom du fichier : deux exports
+        // successifs d'un même mois ne se recouvrent pas en silence.
+        name:
+          filter === 'all'
+            ? t('app.files.payments')
+            : [t('app.files.payments'), t(`status.${filter}` as 'status.paid')],
+        headers: [
+          t('app.portfolio.unit'),
+          t('app.portfolio.tenant'),
+          csvMoney.header(t('app.payments.due')),
+          csvMoney.header(t('app.payments.paid')),
+          csvMoney.header(t('app.payments.balanceTotal')),
+          t('app.portfolio.status'),
+          t('app.payments.lateDays'),
+        ],
+        rows: rows.map((unit) => [
+          // Le libellé, pas l'identifiant technique : un fichier de
+          // suivi qui listerait des uuid serait inexploitable.
+          unit.label,
+          unit.tenant ?? t('app.portfolio.noTenant'),
+          csvMoney.amount(unit.rent),
+          csvMoney.amount(unit.paid),
+          /*
+            LE MÊME SOLDE QUE LE TABLEAU, et non l'écart du mois.
+
+            L'export écrivait `loyer − encaissé`, c'est-à-dire le mois
+            COURANT, sous un en-tête qui disait « Solde » — pendant
+            que la colonne à l'écran montre le solde CUMULÉ depuis le
+            début du bail. Sur un locataire en retard de plusieurs
+            mois, les deux chiffres divergent de tout l'arriéré, et
+            c'est le fichier exporté qui sert à réclamer.
+
+            Un export qui ne dit pas la même chose que l'écran dont il
+            part est pire qu'une absence d'export : on l'a lu à
+            l'écran, on le croit sur parole dans le tableur.
+          */
+          csvMoney.amount(
+            periodes.length > 0 ? soldeCumule(unit) : unit.rent - unit.paid,
+          ),
+          t(`status.${unit.status}` as 'status.paid'),
+          // Un nombre de jours n'est pas de l'argent, mais il se
+          // calcule aussi : groupé, il deviendrait du texte.
+          unit.overdueDays ?? null,
+        ]),
+      })
+
+  const appelerLesLoyers = async () => {
+    const maintenant = new Date()
+    const mois = `${maintenant.getFullYear()}-${String(maintenant.getMonth() + 1).padStart(2, '0')}-01`
+    const emises = await callRent(mois)
+    notify(
+      emises > 0
+        ? t('app.payments.rentCalled', { count: emises })
+        : t('app.payments.rentAlreadyCalled'),
+      { tone: emises > 0 ? 'ok' : 'neutral' },
+    )
+  }
+
   return (
     <>
       <PageHeader
@@ -153,100 +223,17 @@ export function Payments() {
         description={t('app.payments.subtitle')}
         actions={
           <>
-            {/* L'export part de `rows` et non de `units` : le filtre de statut
-                et le périmètre du locataire sont déjà posés dessus. Exporter la
-                source aurait sorti du fichier ce que l'écran refuse de montrer
-                — y compris les baux des voisins, pour un locataire. */}
-            <Button
-              variant="secondary"
-              icon="download"
-              onClick={() =>
-                exportCsv({
-                  // Le filtre actif est dit par le nom du fichier : deux exports
-                  // successifs d'un même mois ne se recouvrent pas en silence.
-                  name:
-                    filter === 'all'
-                      ? t('app.files.payments')
-                      : [t('app.files.payments'), t(`status.${filter}` as 'status.paid')],
-                  headers: [
-                    t('app.portfolio.unit'),
-                    t('app.portfolio.tenant'),
-                    csvMoney.header(t('app.payments.due')),
-                    csvMoney.header(t('app.payments.paid')),
-                    csvMoney.header(t('app.payments.balanceTotal')),
-                    t('app.portfolio.status'),
-                    t('app.payments.lateDays'),
-                  ],
-                  rows: rows.map((unit) => [
-                    // Le libellé, pas l'identifiant technique : un fichier de
-                    // suivi qui listerait des uuid serait inexploitable.
-                    unit.label,
-                    unit.tenant ?? t('app.portfolio.noTenant'),
-                    csvMoney.amount(unit.rent),
-                    csvMoney.amount(unit.paid),
-                    /*
-                      LE MÊME SOLDE QUE LE TABLEAU, et non l'écart du mois.
+            {/* DEUX COMMANDES SOUS LES YEUX, LE RESTE À UN GESTE.
 
-                      L'export écrivait `loyer − encaissé`, c'est-à-dire le mois
-                      COURANT, sous un en-tête qui disait « Solde » — pendant
-                      que la colonne à l'écran montre le solde CUMULÉ depuis le
-                      début du bail. Sur un locataire en retard de plusieurs
-                      mois, les deux chiffres divergent de tout l'arriéré, et
-                      c'est le fichier exporté qui sert à réclamer.
+                L'écran en portait quatre — mesuré par `PageHeader` lui-même :
+                « 812 px de boutons dans 700 px de fenêtre ». À 360 px elles
+                s'empilaient sur ~250 px, un tiers de la hauteur utile d'un
+                téléphone avant le premier chiffre.
 
-                      Un export qui ne dit pas la même chose que l'écran dont il
-                      part est pire qu'une absence d'export : on l'a lu à
-                      l'écran, on le croit sur parole dans le tableur.
-                    */
-                    csvMoney.amount(
-                      periodes.length > 0 ? soldeCumule(unit) : unit.rent - unit.paid,
-                    ),
-                    t(`status.${unit.status}` as 'status.paid'),
-                    // Un nombre de jours n'est pas de l'argent, mais il se
-                    // calcule aussi : groupé, il deviendrait du texte.
-                    unit.overdueDays ?? null,
-                  ]),
-                })
-              }
-            >
-              {t('app.exportStatement')}
-            </Button>
-            {/* Enregistrer un encaissement est un geste de gestion : le
-                locataire consulte, il ne saisit pas. */}
-            {/* Proposé seulement s'il y a des retards : un bouton qui ne peut
-                rien faire occupe la place d'une action utile, et la grille
-                tarifaire vend justement cette fonction. */}
-            {/*
-              APPELER LES LOYERS : le geste sans lequel rien n'est jamais dû.
-
-              Une échéance n'existait que comme effet de bord d'un encaissement.
-              Le locataire qui ne paie pas n'en avait donc aucune, et n'était
-              JAMAIS en retard : ni reste à percevoir, ni relance, ni mise en
-              demeure. Un loyer est dû parce que le mois est là, pas parce que
-              quelqu'un a payé.
-
-              Sans effet s'il a déjà été passé : le compte rendu le dit plutôt
-              que de laisser croire à une seconde dette.
-            */}
-            {!isTenant && (
-              <Button
-                variant="secondary"
-                icon="calendar"
-                onClick={async () => {
-                  const maintenant = new Date()
-                  const mois = `${maintenant.getFullYear()}-${String(maintenant.getMonth() + 1).padStart(2, '0')}-01`
-                  const emises = await callRent(mois)
-                  notify(
-                    emises > 0
-                      ? t('app.payments.rentCalled', { count: emises })
-                      : t('app.payments.rentAlreadyCalled'),
-                    { tone: emises > 0 ? 'ok' : 'neutral' },
-                  )
-                }}
-              >
-                {t('app.payments.callRent')}
-              </Button>
-            )}
+                Ce qui reste est ce qu'on fait tous les jours : relancer un
+                retard, encaisser. L'export et l'appel des loyers sont des
+                gestes de fin de mois — ils passent derrière les trois points,
+                sans rien perdre. */}
             {!isTenant && retards.length > 0 && (
               <Button variant="secondary" icon="bell" onClick={() => setRelanceOuverte(true)}>
                 {t('app.payments.remind')}
@@ -258,6 +245,18 @@ export function Payments() {
               </Button>
             )}
           </>
+        }
+        debordement={
+          <MenuDeDebordement libelle={t('common.moreActions')}>
+            <MenuElement icone="download" onClick={exporterLeReleve}>
+              {t('app.exportStatement')}
+            </MenuElement>
+            {!isTenant && (
+              <MenuElement icone="calendar" onClick={appelerLesLoyers}>
+                {t('app.payments.callRent')}
+              </MenuElement>
+            )}
+          </MenuDeDebordement>
         }
       />
 

@@ -3,6 +3,7 @@ import { useRole } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { DataTable } from '@/components/primitives/DataTable'
 import { StatCard } from '@/components/primitives/Charts'
+import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDebordement'
 import {
   Skeleton,
   SkeletonRegion,
@@ -201,15 +202,22 @@ export function Meters() {
             {t('app.exportStatement')}
           </Button>
         }
+        debordement={
+          /* LA SECONDE ACTION RENTRE À LA MAISON. Elle vivait sur sa propre
+             ligne, sous la description, dans un `<div className="mb-6">` — une
+             barre d'outils d'un seul bouton, à un endroit où l'écran n'en
+             attend aucun. Poser un prix de refacturation est un geste rare : il
+             se demande, il ne s'affiche pas. */
+          peutPoserUnPrix ? (
+            <MenuDeDebordement libelle={t('common.moreActions')}>
+              <MenuElement icone="card" onClick={() => setTarifsOuverts(true)}>
+                {t('app.tariffs.open')}
+              </MenuElement>
+            </MenuDeDebordement>
+          ) : undefined
+        }
       />
 
-      {peutPoserUnPrix && (
-        <div className="mb-6">
-          <Button variant="secondary" icon="card" onClick={() => setTarifsOuverts(true)}>
-            {t('app.tariffs.open')}
-          </Button>
-        </div>
-      )}
 
       {tarifsOuverts && <TariffsModal open onClose={() => setTarifsOuverts(false)} />}
 
