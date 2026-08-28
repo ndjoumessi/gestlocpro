@@ -2,6 +2,7 @@ import { useCallback, useMemo } from 'react'
 import { useToast } from '@/components/primitives/Toast'
 import { useI18n, type MessageKey } from '@/i18n/I18nProvider'
 import { useCurrency } from '@/currency/CurrencyProvider'
+import { enUniteDUsage } from '@/currency/currencies'
 import { csvDelimiter, csvFilename, csvNumber, isoDay, serializeCsv, type CsvCell } from './csv'
 import { downloadTextFile } from './download'
 
@@ -41,16 +42,24 @@ export interface CsvExportRequest {
  */
 export function useCsvMoney() {
   const { locale } = useI18n()
-  const { definition } = useCurrency()
+  const { currency, definition } = useCurrency()
 
   return useMemo(
     () => ({
-      /** Montant calculable : sans groupement ni symbole. */
-      amount: (value: number): string => csvNumber(value, locale, definition.decimals),
+      /**
+       * Montant calculable : sans groupement ni symbole, et EN UNITÉS D'USAGE.
+       *
+       * Les montants arrivent du serveur en mineures. Sans cette conversion, le
+       * tableur écrirait « 145000,00 » là où l'écran affiche « 1 450,00 € » —
+       * un fichier qui contredit la page dont il est l'export, et qui fausse
+       * toute somme qu'on en tire.
+       */
+      amount: (value: number): string =>
+        csvNumber(enUniteDUsage(value, currency), locale, definition.decimals),
       /** En-tête portant la devise : « Loyer (FCFA) ». */
       header: (label: string): string => `${label} (${definition.label})`,
     }),
-    [locale, definition],
+    [currency, locale, definition],
   )
 }
 

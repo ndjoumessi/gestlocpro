@@ -98,9 +98,17 @@ describe('messages d’alerte', () => {
 
   it('formate les montants dans la devise choisie', async () => {
     await renderApp('/app/signalements', { locale: 'en', currency: 'USD' })
-    // Le montant était « 45 000 » en clair dans la chaîne : ni symbole, ni
-    // groupement anglais, et insensible au changement de devise.
-    expect(screen.getByText(/\$\s?45,000 proposed by the manager/)).toBeInTheDocument()
+    /*
+      Le montant était « 45 000 » en clair dans la chaîne : ni symbole, ni
+      groupement anglais, et insensible au changement de devise.
+
+      LES CHIFFRES ONT CHANGÉ AVEC L'UNITÉ, pas avec le message. Le jeu de
+      démonstration compte en francs CFA, où la mineure vaut l'usage ; lus en
+      dollars, ses 45 000 sont 45 000 cents, donc 450,00 $. Ce que le cas garde
+      — le symbole, sa position, la ponctuation décimale de l'anglais — est
+      intact ; le groupement des milliers, lui, est tenu par `currencies.test`.
+    */
+    expect(screen.getByText(/\$\s?450 proposed by the manager/)).toBeInTheDocument()
   })
 
   it('énumère les unités avec la conjonction de la langue', async () => {

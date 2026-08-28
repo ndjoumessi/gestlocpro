@@ -324,12 +324,11 @@ describe('la quittance du gestionnaire', () => {
         la police du système et les métriques historiques ; le fichier la déclare
         désormais lui-même.
 
-        Le montant est passé TEL QUEL, comme partout ailleurs dans le produit :
-        `money` met en forme sans convertir. Ce cas mesure la DEVISE, pas la
-        conversion des unités mineures — laquelle n'existe nulle part et
-        n'appartient pas à ce lot.
+        Le montant est en unités MINEURES, comme partout : 77 777 centimes font
+        777,77 €. C'est ce cas qui a mis au jour la contradiction entre les deux
+        moitiés du produit — voir `unités mineures` dans `currencies.test.ts`.
       */
-      expect(document).toMatch(/77\s?777,00\s?\x80/)
+      expect(document).toMatch(/777,77\s?\x80/)
       /* Et surtout PAS la devise de l'adhésion, qui annonce des francs CFA :
          c'est elle qui gagnerait si le document ne portait pas la sienne. */
       expect(document, 'la devise de l’écran a pris le pas sur celle du document').not.toContain(

@@ -121,6 +121,22 @@ export interface FormatMoneyOptions {
  * montant. L'usage français veut de toute façon une espace pleine devant une
  * unité, et une fine seulement entre les tranches de chiffres.
  */
+/**
+ * D'UNITÉS MINEURES EN UNITÉS D'USAGE.
+ *
+ * Le serveur compte en mineures — colonnes `Int`, schémas `z.number().int()`,
+ * champs `…Minor`. Les écrans lisent des unités d'usage. La division vit ici,
+ * nommée, parce que deux appelants en ont besoin : la mise en forme et l'export
+ * calculable. Écrite deux fois, elle aurait donné un tableur qui ne dit pas ce
+ * que l'écran affiche.
+ *
+ * En franc CFA, `10 ** 0` vaut un : la fonction est l'identité, et c'est
+ * pourquoi tout le reste du produit ne bronche pas.
+ */
+export function enUniteDUsage(mineur: number, currency: CurrencyCode): number {
+  return mineur / 10 ** CURRENCY_DEFS[currency].decimals
+}
+
 export function formatMoney(
   amount: number,
   currency: CurrencyCode,
@@ -133,7 +149,7 @@ export function formatMoney(
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   })
-    .format(amount)
+    .format(enUniteDUsage(amount, currency))
     // Uniformise les séparateurs de milliers en espace insécable étroit.
     .replace(/[  \s]/g, ' ')
 
@@ -144,7 +160,11 @@ export function formatMoney(
 }
 
 /**
- * Lit un montant saisi au clavier, selon les conventions de la devise active.
+ * Lit un montant saisi au clavier et le rend en UNITÉS MINEURES.
+ *
+ * La conversion vit ici et dans `formatMoney`, les deux fonctions par lesquelles
+ * tout montant du produit passe déjà — voir l'en-tête d'`unités mineures` dans
+ * les cas. En franc CFA, `10 ** 0` vaut un : rien ne change.
  *
  * Le code appelait `amount.replace(',', '.')` : la virgule était traitée comme
  * un séparateur décimal, toujours. En français c'est exact — « 1 450,50 ». En
@@ -180,5 +200,11 @@ export function parseMoney(input: string, currency: CurrencyCode): number | null
 
   if (!/\d/.test(cleaned)) return null
   const value = Number(cleaned)
-  return Number.isFinite(value) ? value : null
+  if (!Number.isFinite(value)) return null
+
+  /* ARRONDI, ET NON TRONQUÉ : une saisie « 900,505 » vaut 90 051 centimes et
+     non 90 050. Sur une devise sans sous-unité, l'arrondi ramène « 900,50 » à
+     901 — un centime de franc CFA n'a pas cours, et transmettre 900,5 dans un
+     champ que le serveur exige entier le ferait refuser sans explication. */
+  return Math.round(value * 10 ** def.decimals)
 }

@@ -34,7 +34,11 @@ describe('harnais de test', () => {
     // exactement ce total sans le nommer nulle part. Répéter le montant sous
     // son propre intitulé est ce qui permet de lire les parts comme une
     // addition — la répétition coûte moins que le rapprochement de tête.
-    expect(screen.getAllByText(/1 397 000/).length).toBe(3)
+    /* LE MONTANT EST LU EN EURO, donc en centimes : 1 397 000 mineures font
+       13 970,00 €. Le cas mesure que la PRÉFÉRENCE de devise est honorée par le
+       harnais — c'est son sujet — et la somme qu'il vérifie reste celle des dix
+       unités occupées, exprimée dans l'unité que la devise impose. */
+    expect(screen.getAllByText(/13\s?970/).length).toBe(3)
   })
 
   /**
