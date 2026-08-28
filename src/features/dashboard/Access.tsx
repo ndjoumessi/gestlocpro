@@ -6,6 +6,7 @@ import { Card, CardHeader } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
 import { Icon } from '@/components/primitives/Icon'
 import { Notice } from '@/components/primitives/Notice'
+import { StatCard } from '@/components/primitives/Charts'
 import { Modal } from '@/components/primitives/Modal'
 import { StatusPill } from '@/components/primitives/StatusPill'
 import { SkeletonRegion, SkeletonTable } from '@/components/primitives/Skeleton'
@@ -153,6 +154,27 @@ export function Access() {
       {role === 'manager' && (
         <Notice className="mb-6">{t('app.access.managerNotice')}</Notice>
       )}
+
+      {/* LE REGISTRE COMPTAIT SANS JAMAIS ÉCRIRE. `membres` et `invitations`
+          existaient en variables et ne servaient qu'à remplir deux tableaux :
+          pour savoir combien de personnes ont une clé du parc, il fallait
+          compter les lignes à l'œil. Deux cartes, parce qu'il y a deux
+          populations — celles qui entrent aujourd'hui, et celles qui le
+          pourraient. */}
+      <div className="mb-6 grid gap-4 sm:grid-cols-2">
+        <StatCard
+          icone="users"
+          label={t('app.access.kpiMembers')}
+          value={String(membres.length)}
+          note={t('app.access.kpiMembersNote')}
+        />
+        <StatCard
+          icone="key"
+          label={t('app.access.kpiInvitations')}
+          value={String(invitations.length)}
+          note={t('app.access.kpiInvitationsNote')}
+        />
+      </div>
 
       <Card flush>
         <CardHeader

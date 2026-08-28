@@ -1295,6 +1295,16 @@ export const fr = {
       withheld: 'Retenu',
       balance: 'À restituer',
       totalHeld: 'Total consigné',
+      /* Les trois cartes étaient NUES — un intitulé, un montant, rien dessous —
+         quand celles des cinq autres écrans portent une ligne qui dit sur quoi
+         le montant porte. « 1 226 000 FCFA » ne disait pas sur combien de
+         cautions. */
+      kpiHeldNote: 'sur {count} cautions',
+      kpiHeldNote_one: 'sur {count} caution',
+      kpiWithheldNote: '{count} en cours d’arbitrage',
+      kpiWithheldNote_one: '{count} en cours d’arbitrage',
+      kpiBalanceNote: '{count} déjà restituées',
+      kpiBalanceNote_one: '{count} déjà restituée',
       settle: 'Arbitrer',
       settleTitle: 'Arbitrer la caution',
       settleDescription:
@@ -1324,6 +1334,13 @@ export const fr = {
         'Seul le propriétaire retire un accès. Vous voyez le registre et reprenez les codes de locataire.',
       membersTitle: 'Membres',
       membersHint: 'Les personnes qui accèdent au parc aujourd’hui.',
+      /* Le registre comptait ses membres et ses invitations sans jamais les
+         écrire : pour savoir combien de personnes ont une clé, il fallait
+         compter les lignes à l'œil. */
+      kpiMembers: 'Personnes avec un accès',
+      kpiMembersNote: 'vous compris',
+      kpiInvitations: 'Codes en attente',
+      kpiInvitationsNote: 'pas encore utilisés',
       member: 'Personne',
       memberRole: 'Rôle',
       since: 'Membre depuis',
@@ -1401,6 +1418,22 @@ export const fr = {
     tenants: {
       title: 'Locataires et baux',
       subtitle: 'Chaque locataire est rattaché à une unité par un bail actif.',
+      /**
+       * LA RANGÉE D'INDICATEURS QUI MANQUAIT À CET ÉCRAN.
+       *
+       * Il comptait déjà les trois : les baux, le loyer qu'ils portent, les
+       * demandes de pièces en attente. `vacant` ne servait qu'à griser un
+       * bouton, `demandesEnAttente` qu'à décider d'afficher une carte. On
+       * arrivait sur un tableau de dix lignes sans un seul nombre, quand les
+       * six écrans voisins ouvrent sur une rangée de cartes.
+       */
+      kpiLeases: 'Baux actifs',
+      kpiLeasesNote: '{count} logements vacants',
+      kpiLeasesNote_one: '{count} logement vacant',
+      kpiRent: 'Loyer mensuel',
+      kpiRentNote: 'appelé sur les baux actifs',
+      kpiRequests: 'Pièces demandées',
+      kpiRequestsNote: 'en attente de votre réponse',
       addTenant: 'Créer une fiche locataire',
       leaseStart: 'Début du bail',
       leaseStartHint: 'Laissez vide pour aujourd’hui. Renseignez la vraie date pour un locataire déjà en place.',

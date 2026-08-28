@@ -66,6 +66,11 @@ export function Deposits() {
 
   const totalHeld = deposits.reduce((sum, d) => sum + d.held, 0)
   const totalWithheld = deposits.reduce((sum, d) => sum + d.withheld, 0)
+  /* Les deux dénombrements que les notes portent. Comptés ici, à côté des
+     sommes qu'ils qualifient : une note et son montant ne doivent pas pouvoir
+     être calculés sur deux populations différentes. */
+  const enArbitrage = deposits.filter((d) => d.status === 'settling').length
+  const restituees = deposits.filter((d) => d.status === 'returned').length
 
   const settle = (unitId: string, withheld: number, reason?: string) => {
     // La justification traverse jusqu'au serveur, qui l'exige dès qu'il y a une
@@ -112,20 +117,28 @@ export function Deposits() {
             retenu, la CARTE pour ce qui repart chez le locataire. Trois états
             d'un même argent : trois glyphes, sans quoi les trois cartes ne se
             distinguent que par leur intitulé. */}
+        {/* CHAQUE MONTANT DIT SUR QUOI IL PORTE. Les trois cartes étaient nues
+            — un intitulé, un montant, rien dessous — quand celles des cinq
+            autres écrans portent une ligne de contexte. « 1 226 000 FCFA » ne
+            disait pas sur combien de cautions, et un total sans son
+            dénombrement ne se rapporte à rien. */}
         <StatCard
           icone="shield"
           label={t('app.deposits.totalHeld')}
           value={money(totalHeld, { round: true })}
+          note={t('app.deposits.kpiHeldNote', { count: deposits.length })}
         />
         <StatCard
           icone="lock"
           label={t('app.deposits.withheld')}
           value={money(totalWithheld, { round: true })}
+          note={t('app.deposits.kpiWithheldNote', { count: enArbitrage })}
         />
         <StatCard
           icone="card"
           label={t('app.deposits.balance')}
           value={money(totalHeld - totalWithheld, { round: true })}
+          note={t('app.deposits.kpiBalanceNote', { count: restituees })}
         />
       </div>
 

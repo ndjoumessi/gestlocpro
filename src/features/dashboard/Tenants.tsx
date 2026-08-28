@@ -13,6 +13,8 @@ import { Modal } from '@/components/primitives/Modal'
 import { Field } from '@/components/primitives/Field'
 import { Input, Select } from '@/components/primitives/Input'
 import { Combobox } from '@/components/primitives/Combobox'
+import { StatCard } from '@/components/primitives/Charts'
+import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
 import { DatePicker } from '@/components/primitives/DatePicker'
 import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
@@ -102,6 +104,47 @@ export function Tenants() {
 
       {inviteOuverte && <InviteModal open onClose={() => setInviteOuverte(false)} />}
       {annonceOuverte && <AnnounceModal open onClose={() => setAnnonceOuverte(false)} />}
+
+      {/*
+        L'ÉCRAN COMPTAIT TROIS CHOSES ET N'EN MONTRAIT AUCUNE.
+
+        Les baux, le loyer qu'ils appellent, les pièces demandées : les trois
+        étaient déjà calculés au-dessus. `vacant` ne servait qu'à griser un
+        bouton, `demandesEnAttente` qu'à décider d'afficher une carte. On
+        arrivait donc sur un tableau de dix lignes sans un seul nombre, quand
+        les six écrans voisins ouvrent tous sur une rangée de cartes.
+
+        LE LOYER MENSUEL EST CELUI DES BAUX ACTIFS, et non du parc : un logement
+        vacant n'appelle rien. C'est aussi ce qui rend la note du premier
+        indicateur utile — le vacant est la différence entre les deux.
+
+        L'ÉTAT SUR LES DEMANDES, et sur elles seules : une pièce demandée attend
+        une réponse de l'utilisateur. Zéro demande rend la carte neutre.
+      */}
+      <div className={`${GRILLE_TROIS_INDICATEURS} mb-6`}>
+        <StatCard
+          icone="users"
+          label={t('app.tenants.kpiLeases')}
+          value={String(leases.length)}
+          note={t('app.tenants.kpiLeasesNote', { count: vacant.length })}
+        />
+        <StatCard
+          icone="card"
+          label={t('app.tenants.kpiRent')}
+          value={money(
+            leases.reduce((somme, unit) => somme + unit.rent, 0),
+            { round: true },
+          )}
+          note={t('app.tenants.kpiRentNote')}
+        />
+        <StatCard
+          icone="file"
+          label={t('app.tenants.kpiRequests')}
+          value={String(demandesEnAttente.length)}
+          etat={demandesEnAttente.length > 0 ? { ton: 'warn' } : undefined}
+          note={t('app.tenants.kpiRequestsNote')}
+        />
+      </div>
 
       {/* Un bouton grisé sans motif laisse deviner. Quand tout est loué, il
           n'y a rien à quoi rattacher un locataire — on le dit. */}
