@@ -101,6 +101,14 @@ export const Card = forwardRef<HTMLElement, CardProps>(function Card(
   return (
     <Element
       ref={ref as React.Ref<HTMLDivElement>}
+      /* LE MARQUEUR SERT À COMPTER LES CARTES DES DEUX CÔTÉS DE L'ATTENTE.
+         Un squelette et la page qu'il annonce n'ont en commun ni classe, ni
+         texte, ni rôle : rien ne permettait de dire « il en promet deux, il en
+         rendra quatre ». Un attribut de données le permet, et il vaut mieux
+         qu'un sélecteur de classe — `scripts/` et les tests sont lus par
+         Tailwind, qui fabriquerait pour de bon toute classe citée. Voir
+         `attenteFidele.test.tsx`. */
+      data-carte=""
       /* `min-w-0` : une carte est un contenant, jamais une règle graduée.
          Posée dans une grille, elle hérite de `min-width: auto` et refuse donc
          de descendre sous la largeur intrinsèque de son contenu. La rangée de

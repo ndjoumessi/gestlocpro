@@ -91,8 +91,10 @@ export function TenantDocuments() {
   /** Mono-unité, comme l'espace locataire — et pour la même raison. */
   const monUnite = tenantUnitIds[0] ?? ''
   const tenantReceipts = receiptsForUnit(monUnite)
-  /* Les siennes, et dans l'ordre où il les a faites. */
-  const mesDemandes = documentRequests.filter((d) => d.unitId === monUnite)
+  /* Les siennes, et dans l'ordre où il les a faites.
+     Le paramètre ne s'appelle pas `d` : ce nom est pris trente lignes plus haut
+     par les formats de date, et une demande de pièce n'est pas une date. */
+  const mesDemandes = documentRequests.filter((demande) => demande.unitId === monUnite)
   const unit = unitById(monUnite)
   const deposit = depositForUnit(monUnite)
   const entree = inspectionForUnit(monUnite, 'entry')
@@ -277,7 +279,11 @@ export function TenantDocuments() {
         </Card>
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      {/* La MÊME grille que la rangée du dessus, lue au même endroit. Elle
+          s'écrivait ici à la main — `'mt-4 grid gap-4 lg:grid-cols-2'` —, à
+          trente lignes de la constante déclarée pour exactement cela. La marge
+          se compose, la grille se nomme. */}
+      <div className={cn('mt-4', GRILLE_DEUX_COLONNES)}>
         {/*
           DEMANDER UN DOCUMENT.
 
@@ -334,7 +340,9 @@ export function TenantDocuments() {
                  serveur le refuse, et le choix doit dire la même chose avant le
                  clic. Le suivi juste en dessous montre la demande en cours — la
                  case n'est pas grisée sans explication. */
-              disabled: mesDemandes.some((d) => d.kind === demande && d.status === 'pending'),
+              disabled: mesDemandes.some(
+                (enCours) => enCours.kind === demande && enCours.status === 'pending',
+              ),
             }))}
           />
           <Button className="mt-4" onClick={envoyerLaDemande} disabled={!choix}>
@@ -474,6 +482,28 @@ function LignePiece({
   )
 }
 
+/**
+ * L'ATTENTE, ET CE QU'ELLE ANNONÇAIT DE FAUX.
+ *
+ * Elle dessinait DEUX cartes dans UNE grille pour un écran qui en rend QUATRE
+ * dans DEUX : la page doublait de hauteur à la seconde où elle cesse d'attendre,
+ * et le doigt posé sur ce qu'on croyait avoir vu tombait à côté. C'est très
+ * exactement le défaut que `Skeleton` interdit dans sa première règle — « un
+ * squelette plus court que son contenu ne fait que déplacer le problème ».
+ *
+ * Les deux cartes annoncées étaient en outre PLEINES là où les vraies sont
+ * `flush` : leur rembourrage propre s'ajoutait à celui des lignes, et les pavés
+ * portaient des hauteurs choisies à l'œil — `h-4`, `h-5` — au lieu des jetons
+ * `line=` que `squelettesFideles.test.ts` cale sur les boîtes de ligne réelles.
+ * Trois façons de ne pas tenir la place, dans quinze lignes.
+ *
+ * LE TON N'EST PAS REPRODUIT, et c'est délibéré. La note de confidentialité est
+ * une carte sombre ; la peindre ici la ferait passer pour chargée, et les pavés
+ * de substitution — en `bg-surface-sunken` — y disparaîtraient. Un squelette
+ * tient la GÉOMÉTRIE, pas la couleur. `self-start` en revanche est repris tel
+ * quel : c'est de la géométrie, et sans lui la quatrième carte s'étire sur la
+ * hauteur de sa voisine, ce que la page chargée refuse justement de faire.
+ */
 function TenantDocumentsSkeleton() {
   const t = useT()
   return (
@@ -481,19 +511,70 @@ function TenantDocumentsSkeleton() {
       <PageHeader title={t('app.documents.title')} description={t('app.documents.subtitle')} />
       <SkeletonRegion label={t('app.documents.title')}>
         <div className={GRILLE_DEUX_COLONNES}>
-          {[0, 1].map((i) => (
-            <Card key={i}>
-              <Skeleton className="h-4 w-32" />
-              <div className="mt-4 flex flex-col gap-3">
-                {[0, 1, 2].map((j) => (
-                  <Skeleton key={j} className="h-5 w-full" />
+          {/* Les pièces contractuelles : trois lignes fixes. Les quittances :
+              autant que de périodes, et le squelette n'en sait rien — trois est
+              le compte de la carte voisine, ce qui donne deux colonnes de même
+              hauteur plutôt qu'un décrochement inventé. */}
+          {[0, 1].map((carte) => (
+            <Card key={carte} flush>
+              <EnTeteEnAttente />
+              <ul className="divide-y divide-divider border-t border-divider">
+                {[0, 1, 2].map((ligne) => (
+                  <li key={ligne} className="flex items-center gap-3 px-4 py-3 sm:px-5">
+                    {/* La boîte de l'icône, à sa taille rendue. */}
+                    <Skeleton radius="md" className="size-[17px]" />
+                    <Skeleton line="body" className="min-w-0 flex-1" />
+                    {/* La colonne de droite — « Consulter », « Télécharger » —
+                        garde sa place, comme dans la ligne chargée. */}
+                    <Skeleton radius="md" className="h-7 w-24 shrink-0" />
+                  </li>
                 ))}
-              </div>
+              </ul>
             </Card>
           ))}
         </div>
+
+        <div className={cn('mt-4', GRILLE_DEUX_COLONNES)}>
+          <Card>
+            <div className="mb-4">
+              <Skeleton line="title" className="w-44" />
+              <Skeleton line="body" className="mt-1 w-full max-w-xs" />
+            </div>
+            {/* Les trois pièces demandables, puis le bouton d'envoi. */}
+            <div className="flex flex-col gap-2">
+              {[0, 1, 2].map((piece) => (
+                <Skeleton key={piece} radius="md" className="h-11" />
+              ))}
+            </div>
+            <Skeleton radius="md" className="mt-4 h-9 w-40" />
+          </Card>
+
+          <Card className="self-start">
+            <Skeleton line="title" className="mb-4 w-32" />
+            <div className="flex flex-col gap-1.5">
+              <Skeleton line="body" />
+              <Skeleton line="body" className="w-2/3" />
+            </div>
+          </Card>
+        </div>
       </SkeletonRegion>
     </>
+  )
+}
+
+/**
+ * L'en-tête d'une carte `flush` en attente.
+ *
+ * Le rembourrage est celui que les deux `CardHeader` de l'écran reçoivent en
+ * `className`, et `mb-4` celui que `CardHeader` porte lui-même : c'est de là que
+ * vient la hauteur, et l'écrire ailleurs la ferait dériver.
+ */
+function EnTeteEnAttente() {
+  return (
+    <div className="mb-4 px-4 pt-4 sm:px-5 sm:pt-5">
+      <Skeleton line="eyebrow" className="mb-1.5 w-24" />
+      <Skeleton line="title" className="w-40" />
+    </div>
   )
 }
 
