@@ -107,3 +107,19 @@ export function partiesDeDateISO(iso: string): { year: number; month: number; da
   const [annee, mois, jour] = iso.slice(0, 10).split('-').map(Number)
   return { year: annee!, month: mois! - 1, day: jour! }
 }
+
+/**
+ * Les parties d'une date du navigateur.
+ *
+ * Le produit range ses dates en `{ year, month, day }` — jamais en `Date`, dont
+ * le décalage horaire déplace le jour d'un fuseau à l'autre. `new Date()` reste
+ * pourtant la seule source de l'instant présent, et les documents émis portent
+ * leur date d'émission. La conversion vit donc ici, à côté de sa jumelle qui
+ * part d'une chaîne ISO, plutôt qu'écrite au vol dans chaque appelant.
+ *
+ * Les composantes sont LOCALES, comme celles de `partiesDeDateISO` : c'est le
+ * jour qu'affiche l'horloge de qui télécharge.
+ */
+export function partiesDeDate(date: Date): { year: number; month: number; day: number } {
+  return { year: date.getFullYear(), month: date.getMonth(), day: date.getDate() }
+}

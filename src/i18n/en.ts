@@ -364,6 +364,8 @@ export const en: Dictionary = {
       collections: 'collections',
       meters: 'meter-readings',
       receipt: 'receipt',
+      deposit: 'deposit-receipt',
+      inspection: 'inspection-report',
     },
     paymentSaved: 'Payment recorded · receipt sent',
     roleNotice: 'You are viewing this space as {role}. Switch profile in the sidebar.',
@@ -407,6 +409,29 @@ export const en: Dictionary = {
       view: 'View',
       download: 'Download',
       none: 'No document uploaded',
+      pdfReceiptTitle: 'Rent receipt',
+      pdfExitInspection: 'Move-out inspection',
+      pdfIssuedOn: 'Issued on {date}',
+      pdfBreakdown: 'Period breakdown',
+      pdfRemaining: 'Still owed',
+      pdfPayments: 'Payments received',
+      pdfNoPayment: 'No payment recorded for this period.',
+      pdfImputation:
+        'The payment cleared {rent} of rent, {water} of water and {power} of power. Allocation follows that order.',
+      pdfWithheldNote:
+        'Itemised deductions appear on the settlement statement issued by the owner. This receipt carries the amounts, not the reasons.',
+      pdfNoFinding: 'No findings.',
+      pdfFindingsWithheld:
+        '{count} findings recorded. Their detail is not served by this portfolio and therefore does not appear here.',
+      pdfFindingsWithheld_one:
+        'One finding recorded. Its detail is not served by this portfolio and therefore does not appear here.',
+      pdfSigned: 'Signed',
+      pdfNotSigned: 'Not signed',
+      pdfFooter:
+        '{park} · {document} · page {page} of {total} · produced from recorded data, unsigned',
+      pdfDownloadDeposit: 'Download the deposit receipt',
+      pdfDownloadInspection: 'Download the inspection report',
+      pdfDownloaded: 'Document downloaded · {file}',
     },
 
     tenant: {

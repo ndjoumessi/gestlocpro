@@ -15,10 +15,10 @@ import { useNumbers } from '@/lib/numbers'
 import { cn } from '@/lib/cn'
 import { AU_DELA_SM, useAuDela } from '@/lib/useAuDela'
 import {
+  PAYMENT_METHOD_LABELS,
   dernierVersement,
   imputation,
   type ConsumptionPoint,
-  type Receipt,
 } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { ReceiptModal } from './ReceiptModal'
@@ -333,7 +333,7 @@ export function TenantDashboard() {
                   {t('app.tenant.paidOnBy', {
                     date: d.dayMonth(versementCourant.paidOn),
                     method: t(
-                      MOYENS_DE_PAIEMENT[versementCourant.method] as 'app.payments.methodCash',
+                      PAYMENT_METHOD_LABELS[versementCourant.method] as 'app.payments.methodCash',
                     ),
                   })}
                 </span>
@@ -823,19 +823,6 @@ function MontantRegle({ du, regle }: { du: number; regle: number }) {
   )
 }
 
-/**
- * Le dictionnaire des moyens de paiement, aux valeurs du serveur.
- *
- * Une table plutôt qu'une clé construite : `app.payments.method${method}`
- * imposerait une majuscule à la volée, et `check-i18n` ne verrait plus quelles
- * clés sont employées.
- */
-const MOYENS_DE_PAIEMENT: Record<Receipt['payments'][number]['method'], string> = {
-  mobile: 'app.payments.methodMobile',
-  cash: 'app.payments.methodCash',
-  transfer: 'app.payments.methodTransfer',
-  check: 'app.payments.methodCheck',
-}
 
 /** Un terme du bail : un intitulé, et soit une valeur, soit un renvoi. */
 function LigneBail({

@@ -479,6 +479,8 @@ export const fr = {
       collections: 'encaissements',
       meters: 'releves-compteurs',
       receipt: 'quittance',
+      deposit: 'recu-caution',
+      inspection: 'etat-des-lieux',
     },
     paymentSaved: 'Paiement enregistré · quittance envoyée',
     roleNotice: 'Vous consultez l’espace en tant que {role}. Changez de profil dans la barre latérale.',
@@ -542,6 +544,29 @@ export const fr = {
        * le bouton prétend restituer — le défaut que le portail a déjà payé.
        */
       none: 'Aucun document déposé',
+      pdfReceiptTitle: 'Quittance de loyer',
+      pdfExitInspection: 'État des lieux de sortie',
+      pdfIssuedOn: 'Émis le {date}',
+      pdfBreakdown: 'Détail de la période',
+      pdfRemaining: 'Reste à régler',
+      pdfPayments: 'Versements reçus',
+      pdfNoPayment: 'Aucun versement enregistré sur cette période.',
+      pdfImputation:
+        'Le versement a soldé le loyer à hauteur de {rent}, l’eau de {water} et l’électricité de {power}. L’imputation suit cet ordre.',
+      pdfWithheldNote:
+        'Le détail des retenues figure sur le décompte d’arbitrage remis par le propriétaire. Ce reçu en porte les montants, non les motifs.',
+      pdfNoFinding: 'Aucune réserve.',
+      pdfFindingsWithheld:
+        '{count} réserves relevées. Leur détail n’est pas servi par le parc et ne figure donc pas ici.',
+      pdfFindingsWithheld_one:
+        'Une réserve relevée. Son détail n’est pas servi par le parc et ne figure donc pas ici.',
+      pdfSigned: 'Signé',
+      pdfNotSigned: 'Non signé',
+      pdfFooter:
+        '{park} · {document} · page {page} sur {total} · produit depuis les données enregistrées, sans signature',
+      pdfDownloadDeposit: 'Télécharger le reçu de caution',
+      pdfDownloadInspection: 'Télécharger l’état des lieux',
+      pdfDownloaded: 'Document téléchargé · {file}',
     },
 
     tenant: {

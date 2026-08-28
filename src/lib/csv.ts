@@ -1,4 +1,5 @@
 import type { Locale } from '@/i18n/locales'
+import { nomDeFichier } from './nomDeFichier'
 
 /**
  * Sérialisation CSV.
@@ -175,35 +176,14 @@ export function isoMonth(period: { year: number; month: number }): string {
   return `${period.year}-${String(period.month + 1).padStart(2, '0')}`
 }
 
-/** Prénom du fichier. Nom de marque, il ne se traduit pas. */
-const PREFIX = 'gestlocpro'
-
 /**
- * Réduit un libellé traduit à un segment de nom de fichier.
+ * Nom de fichier d'un CSV.
  *
- * Les segments viennent du dictionnaire — donc de la traduction — et rien ne
- * garantit qu'ils soient sûrs pour un système de fichiers : « Relevés
- * compteurs » porte un accent et une espace, et Windows refuse une bonne
- * partie de la ponctuation. On enlève les diacritiques plutôt que de les
- * interdire au traducteur.
- */
-function slug(value: string | number): string {
-  return String(value)
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}
-
-/**
- * Nom de fichier parlant et daté : `gestlocpro-paiements-2026-08-16.csv`.
- *
- * L'horodatage est en ISO et non au format du pays : c'est un nom de fichier,
- * il doit se trier dans un dossier de téléchargements et ne jamais contenir de
- * barre oblique — ce que « 16/08/2026 » ferait.
+ * LA RÉDUCTION DES LIBELLÉS A DÉMÉNAGÉ dans `nomDeFichier` : elle n'avait rien
+ * de propre au CSV, et les documents PDF en ont exactement le même besoin. Deux
+ * copies auraient donné deux façons de nommer le même dossier de
+ * téléchargements. Ne reste ici que ce qui est vrai du CSV : son extension.
  */
 export function csvFilename(parts: readonly (string | number)[], stamp: string): string {
-  const segments = [PREFIX, ...parts, stamp].map(slug).filter((part) => part.length > 0)
-  return `${segments.join('-')}.csv`
+  return nomDeFichier(parts, stamp, 'csv')
 }

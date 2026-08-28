@@ -1161,6 +1161,26 @@ export interface ReceiptPayment {
  */
 export type PaymentMethodKey = 'mobile' | 'cash' | 'transfer' | 'check'
 
+/**
+ * L'intitulé de chaque moyen de paiement, à côté des valeurs qu'il nomme.
+ *
+ * IL EXISTAIT EN DEUX EXEMPLAIRES — un dans l'espace locataire, un dans la
+ * modale de quittance — et le troisième allait être écrit pour les documents
+ * PDF. Deux tables ne divergent pas sur les valeurs, elles divergent sur ce
+ * qu'on ajoute : une cinquième façon de payer serait entrée dans l'une et pas
+ * dans l'autre, et un versement aurait été rendu sans son moyen.
+ *
+ * Une TABLE et non une clé construite : `app.payments.method${methode}`
+ * imposerait une majuscule à la volée, et `check-i18n` ne verrait plus quelles
+ * clés sont employées.
+ */
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethodKey, string> = {
+  mobile: 'app.payments.methodMobile',
+  cash: 'app.payments.methodCash',
+  transfer: 'app.payments.methodTransfer',
+  check: 'app.payments.methodCheck',
+}
+
 /** Ce que la période doit, tous postes confondus. */
 export function receiptDue(receipt: Receipt): number {
   return receipt.rentMinor + receipt.waterMinor + receipt.powerMinor

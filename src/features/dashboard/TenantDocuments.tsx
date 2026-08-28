@@ -3,7 +3,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { lien, useBase } from '@/lib/base'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { RadioCards } from '@/components/primitives/Choice'
-import { Button } from '@/components/primitives/Button'
+import { Button, IconButton } from '@/components/primitives/Button'
 import { Icon } from '@/components/primitives/Icon'
 import { EmptyState } from '@/components/primitives/DataTable'
 import { Skeleton, SkeletonRegion } from '@/components/primitives/Skeleton'
@@ -12,16 +12,19 @@ import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
 import {
   DOCUMENT_KIND_LABELS,
-  dernierVersement,
   receiptDue,
   type DocumentKind,
   type DocumentRequest,
 } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { useToast } from '@/components/primitives/Toast'
-import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
 import { cn } from '@/lib/cn'
-import { useReceiptExport } from './receiptExport'
+import {
+  useAllReceiptsPdf,
+  useDepositPdf,
+  useInspectionPdf,
+  useReceiptPdf,
+} from './documentsPdf'
 
 /**
  * LA GRILLE DES DEUX COLONNES, nommée pour que l'attente ne s'en écarte pas.
@@ -43,10 +46,16 @@ const GRILLE_DEUX_COLONNES = 'grid gap-4 lg:grid-cols-2'
  * L'écran tient une ligne de conduite que le portail avait déjà payée une
  * fois : **on n'affiche pas un bouton qui ne peut rien produire**. Le bail
  * signé, l'état des lieux et le reçu de caution sont annoncés « PDF » par les
- * maquettes ; ce produit ne sait ni recevoir un fichier déposé, ni fabriquer un
- * PDF opposable — `receiptExport` le dit dans son propre commentaire. Chaque
- * ligne dit donc ce qu'elle sait faire : consulter la pièce à l'écran quand la
- * donnée existe, et annoncer la case vide quand elle n'existe pas.
+ * maquettes ; le produit ne savait alors ni recevoir un fichier déposé, ni en
+ * fabriquer un, et chaque ligne disait donc la case vide.
+ *
+ * IL SAIT FABRIQUER DEPUIS `lib/pdf.ts`, et la règle n'a pas changé pour
+ * autant — c'est ce qu'elle autorise qui a changé. Deux des trois lignes ont
+ * leurs DONNÉES : une caution porte son consigné, son retenu et son solde ; un
+ * état des lieux porte sa date, ses pièces et ses réserves. Elles produisent
+ * donc. Le bail n'a rien : aucun texte n'en est enregistré, et le mettre en page
+ * reviendrait à fabriquer la pièce qu'on prétend restituer. Il reste la case
+ * vide, seul des trois.
  *
  * Les deux renvois — état des lieux, caution — pointent vers des adresses que
  * le locataire ne trouve plus dans sa navigation depuis qu'elle est passée à
@@ -71,7 +80,10 @@ export function TenantDocuments() {
   const t = useT()
   const d = useDates()
   const { money } = useCurrency()
-  const downloadReceipt = useReceiptExport()
+  const telechargerLaQuittance = useReceiptPdf()
+  const telechargerToutesLesQuittances = useAllReceiptsPdf()
+  const telechargerLaCaution = useDepositPdf()
+  const telechargerLEtatDesLieux = useInspectionPdf()
   const {
     unitById,
     tenantUnitIds,
@@ -83,8 +95,6 @@ export function TenantDocuments() {
     loading,
   } = usePortfolio()
   const { notify } = useToast()
-  const exportCsv = useCsvExport()
-  const csvMoney = useCsvMoney()
   const [choix, setChoix] = useState<DocumentKind | null>(null)
 
   const suiviId = useId()
@@ -103,64 +113,7 @@ export function TenantDocuments() {
   // L'attente AVANT le garde `!unit` : pendant le chargement, le jeu de
   // démonstration fournit toujours une unité, et l'écran montrerait le dossier
   // d'un autre. Même ordre, même raison que l'espace locataire.
-  /**
-   * Toutes les périodes en UN fichier, et non six téléchargements.
-   *
-   * « Tout télécharger » qui déclencherait six enregistrements successifs se
-   * ferait arrêter par le navigateur dès le deuxième, et le locataire
-   * repartirait avec une quittance sur six en croyant les avoir toutes.
-   */
-  function toutTelecharger() {
-    if (!unit) return
-    exportCsv({
-      name: [t('app.documents.allReceipts'), unit.label],
-      headers: [
-        t('app.period'),
-        csvMoney.header(t('app.tenant.colRent')),
-        csvMoney.header(t('app.tenant.colWater')),
-        csvMoney.header(t('app.tenant.colPower')),
-        csvMoney.header(t('app.payments.paid')),
-        t('app.payments.date'),
-        t('app.payments.reference'),
-      ],
-      /**
-       * Les montants de CHAQUE période, pris tels que le serveur les a figés.
-       *
-       * Le loyer sortait de `unit.rent` — celui du bail d'aujourd'hui, recopié
-       * sur les six lignes —, et l'eau comme l'électricité se recalculaient au
-       * tarif courant. Un fichier téléchargé en octobre n'aurait donc pas dit
-       * la même chose que le même fichier téléchargé en juillet.
-       *
-       * La colonne « réglé » manquait, et son absence laissait croire chaque
-       * ligne soldée : c'est le seul chiffre qui distingue une période payée
-       * d'une période en cours.
-       */
-      rows: tenantReceipts.map((receipt) => {
-        const versement = dernierVersement(receipt)
-        return [
-          d.monthYear(receipt),
-          csvMoney.amount(receipt.rentMinor),
-          csvMoney.amount(receipt.waterMinor),
-          csvMoney.amount(receipt.powerMinor),
-          csvMoney.amount(receipt.paidMinor),
-          // Pas de versement, pas de date : inventer celle de l'échéance
-          // laisserait croire à un règlement reçu.
-          versement ? d.fullDate(versement.paidOn) : null,
-          /*
-            LA RÉFÉRENCE DE L'OPÉRATEUR, dans le fichier que le locataire garde.
-            C'est avec elle qu'il conteste : sans elle, l'export lui demande de
-            croire sur parole un encaissement qu'il ne peut pas retrouver chez
-            son opérateur. Elle était écrite en base et rendue à personne.
 
-            La NOTE du bailleur n'y est pas, et ne peut pas y être : le serveur
-            ne la sert pas à un locataire.
-          */
-          versement?.reference ?? null,
-        ]
-      }),
-      notice: 'app.receiptDownloaded',
-    })
-  }
 
   /*
     « DEMANDE ENVOYÉE » ATTEND QUE LE SERVEUR L'AIT ACCEPTÉE.
@@ -210,9 +163,15 @@ export function TenantDocuments() {
             className="px-4 pt-4 sm:px-5 sm:pt-5"
           />
           <ul className="divide-y divide-divider border-t border-divider">
-            {/* Aucun dépôt de fichier n'existe dans le produit : la ligne dit
-                la case vide plutôt que d'offrir un téléchargement qui
-                fabriquerait le document qu'il prétend restituer. */}
+            {/* LE BAIL RESTE LA CASE VIDE, et c'est le seul des trois.
+
+                Ses deux voisines se téléchargent depuis que le produit sait
+                fabriquer un PDF, parce que LEURS DONNÉES existent — une caution
+                porte son consigné, son retenu et son solde ; un état des lieux
+                porte sa date, ses pièces et ses réserves. Rien n'enregistre le
+                TEXTE d'un bail : le produire reviendrait à fabriquer, sous une
+                mise en page qui lui donnerait l'apparence d'une pièce, un
+                document que rien n'atteste. */}
             <LignePiece label={t('app.documents.lease')} />
 
             <LignePiece
@@ -220,6 +179,14 @@ export function TenantDocuments() {
               detail={entree ? d.fullDate(entree.date) : undefined}
               to={entree ? lien(base, 'etats-des-lieux') : undefined}
               action={t('app.documents.view')}
+              telecharger={
+                entree
+                  ? {
+                      nom: t('app.documents.pdfDownloadInspection'),
+                      faire: () => telechargerLEtatDesLieux(unit, entree),
+                    }
+                  : undefined
+              }
             />
 
             <LignePiece
@@ -227,6 +194,14 @@ export function TenantDocuments() {
               detail={deposit ? money(deposit.held, { round: true }) : undefined}
               to={deposit ? lien(base, 'cautions') : undefined}
               action={t('app.documents.view')}
+              telecharger={
+                deposit
+                  ? {
+                      nom: t('app.documents.pdfDownloadDeposit'),
+                      faire: () => telechargerLaCaution(unit, deposit),
+                    }
+                  : undefined
+              }
             />
           </ul>
         </Card>
@@ -239,7 +214,7 @@ export function TenantDocuments() {
             className="px-4 pt-4 sm:px-5 sm:pt-5"
             action={
               tenantReceipts.length > 0 ? (
-                <Button variant="ghost" size="sm" icon="download" onClick={toutTelecharger}>
+                <Button variant="ghost" size="sm" icon="download" onClick={() => telechargerToutesLesQuittances(unit, tenantReceipts)}>
                   {t('app.documents.downloadAll')}
                 </Button>
               ) : undefined
@@ -298,7 +273,7 @@ export function TenantDocuments() {
                     variant="ghost"
                     size="sm"
                     icon="download"
-                    onClick={() => downloadReceipt(unit, receipt)}
+                    onClick={() => telechargerLaQuittance(unit, receipt)}
                   >
                     {t('app.documents.download')}
                   </Button>
@@ -457,11 +432,25 @@ function LignePiece({
   detail,
   to,
   action,
+  telecharger,
 }: {
   label: string
   detail?: string
   to?: string
   action?: string
+  /**
+   * Le document lui-même, quand le produit sait le fabriquer.
+   *
+   * SÉPARÉ DE `to`, et les deux cohabitent : consulter mène à l'écran qui
+   * montre la pièce — ses photos, ses réserves —, télécharger rend le fichier
+   * qu'on garde ou qu'on présente. Fondre les deux aurait obligé à choisir
+   * laquelle des deux on retire, et aucune des deux n'est de trop.
+   *
+   * Un bouton ICÔNE et non un second libellé : la ligne porte déjà « Consulter »
+   * et se replie à 320 px. Deux libellés côte à côte y coûtaient une troisième
+   * rangée à chacune des trois lignes de la carte.
+   */
+  telecharger?: { nom: string; faire: () => void }
 }) {
   const t = useT()
   return (
@@ -500,13 +489,16 @@ function LignePiece({
           habiller un oubli : la plupart des actions d'en-tête SONT des boutons,
           et « Tout télécharger » se retrouvait seul à gauche deux cartes plus
           bas. La règle est la même partout. */}
-      <div className="ml-auto shrink-0">
+      <div className="ml-auto flex shrink-0 items-center gap-2">
         {to ? (
           <Button to={to} variant="ghost" size="sm">
             {action}
           </Button>
         ) : (
           <span className="text-caps text-muted">{t('app.documents.none')}</span>
+        )}
+        {telecharger && (
+          <IconButton icon="download" label={telecharger.nom} onClick={telecharger.faire} />
         )}
       </div>
     </li>

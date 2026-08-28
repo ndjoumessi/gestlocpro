@@ -11,6 +11,7 @@ import { useSession } from '@/api/SessionProvider'
 import { useRole } from '@/components/layout/AppShell'
 import { useToast } from '@/components/primitives/Toast'
 import { Logo } from '@/components/primitives/Logo'
+import { PAYMENT_METHOD_LABELS, type PaymentMethodKey } from '@/data/portfolio'
 
 /**
  * Document de quittance ou de reçu, tel que le SERVEUR l'a arrêté.
@@ -52,11 +53,19 @@ interface DocumentEmis {
  * « quittance » ferait signer au bailleur une preuve de paiement qu'il n'a pas
  * reçu — et une quittance ne se reprend pas.
  *
- * L'impression passe par `window.print()` et une feuille de style dédiée
- * plutôt que par un générateur de PDF : le navigateur sait déjà produire un
- * PDF depuis sa boîte d'impression, et une bibliothèque de plus signifierait
- * des polices à embarquer, des accents à vérifier et une mise en page qui
- * diverge de ce qu'on voit à l'écran.
+ * L'impression passe par `window.print()` et une feuille de style dédiée, et ce
+ * choix a survécu à l'arrivée d'un émetteur PDF dans le produit — mais pas pour
+ * la raison qu'il donnait. Il opposait « une bibliothèque de plus », ses polices
+ * à embarquer et ses accents à vérifier : `lib/pdf.ts` n'est pas une
+ * bibliothèque, n'embarque aucune police, et ses accents sont gardés.
+ *
+ * CE QUI SÉPARE VRAIMENT LES DEUX CHEMINS EST LA SOURCE. Ce document-ci est
+ * ARRÊTÉ PAR LE SERVEUR — `api.issueReceipt`, avec sa propre devise, et aucun
+ * montant recalculé ici. Les PDF de `documentsPdf` sont produits depuis les
+ * données que le client détient. Deux sources, deux documents, et les fondre
+ * demanderait de porter le document du serveur jusqu'à l'émetteur, ce qui est un
+ * autre travail. En attendant, le locataire télécharge et le gestionnaire
+ * imprime — et les deux pièces peuvent différer de mise en page.
  */
 export function ReceiptModal({
   unitId,
@@ -170,13 +179,13 @@ export function ReceiptModal({
    * Le code brut — « mobile », « transfer » — n'a rien à faire sur un document
    * remis à un locataire : il n'est ni traduit ni compréhensible.
    */
-  const libelleMoyen = (code: string) =>
-    ({
-      mobile: t('app.payments.methodMobile'),
-      cash: t('app.payments.methodCash'),
-      transfer: t('app.payments.methodTransfer'),
-      check: t('app.payments.methodCheck'),
-    })[code] ?? code
+  /* La TABLE PARTAGÉE, et non une troisième copie : elle vit auprès du type
+     qu'elle nomme. Un code inconnu ressort tel quel — mieux vaut « mobile » à
+     l'écran qu'une case vide, et cela se voit assez pour être corrigé. */
+  const libelleMoyen = (code: string) => {
+    const cle = PAYMENT_METHOD_LABELS[code as PaymentMethodKey]
+    return cle ? t(cle as 'app.payments.methodCash') : code
+  }
 
   return (
     <>
