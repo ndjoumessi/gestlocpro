@@ -551,6 +551,15 @@ export const en: Dictionary = {
 
     unitFile: {
       back: 'Back to portfolio',
+      kpiBalance: 'Still owed',
+      kpiBalanceNote: 'across {count} billed periods',
+      kpiBalanceNote_one: 'across {count} billed period',
+      kpiDeposit: 'Deposit held',
+      kpiDepositNote: 'to return at the end of the lease',
+      kpiDepositNone: 'no deposit on record',
+      kpiWorks: 'Works committed',
+      kpiWorksNote: 'across {count} jobs',
+      kpiWorksNote_one: 'across {count} job',
       open: 'Open the file for unit {unit}',
       loadingTitle: 'Unit file',
       notFoundTitle: 'This unit cannot be found',

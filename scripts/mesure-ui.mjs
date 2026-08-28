@@ -365,8 +365,30 @@ function adressesDeLApplication() {
   */
   const ADRESSE_404 = '/adresse-qui-n-existe-pas'
 
+  /*
+    LE DOSSIER D'UN LOGEMENT, AJOUTÉ À LA MAIN — SECONDE ADRESSE À L'ÊTRE.
+
+    Les chemins À PARAMÈTRE sont écartés du balayage, et pour une bonne raison :
+    `/demo/parc/:unite` n'est pas une adresse qu'on visite. Mais l'ÉCRAN qu'elle
+    rend, lui, se visite — c'est le dossier qu'on ouvre depuis chaque ligne du
+    parc, et il n'était mesuré par RIEN.
+
+    Ce qu'il cachait, relevé à l'ouverture : 217 px de blanc imposé sous la carte
+    « Occupation », 149 sous « Travaux du logement ». Les deux rangées étirent
+    leurs cellules à la hauteur de la plus haute, et cet écran-là n'avait aucune
+    sonde pour le dire. C'est exactement le raisonnement qui a fait ajouter le
+    404 quelques lignes plus haut : « il portait le même débordement de 38 px à
+    320, et il l'a gardé plus longtemps que les autres précisément parce que rien
+    ne le regardait ».
+
+    `A1` est le premier logement du jeu de démonstration : occupé, avec un bail,
+    un historique de quittances, un chantier et une caution. C'est le dossier le
+    plus FOURNI, donc celui qui met le plus de choses sous la sonde.
+  */
+  const DOSSIER_D_UN_LOGEMENT = '/demo/parc/A1'
+
   const adresses = [
-    ...new Set([...publiques, '/app', '/demo', ...internes, ADRESSE_404]),
+    ...new Set([...publiques, '/app', '/demo', ...internes, DOSSIER_D_UN_LOGEMENT, ADRESSE_404]),
   ].filter((c) => !HORS_PRODUIT.includes(c))
 
   /*

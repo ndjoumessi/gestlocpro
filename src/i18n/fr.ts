@@ -729,6 +729,24 @@ export const fr = {
        * côté, réuni autour d'une seule unité.
        */
       back: 'Retour au parc',
+      /**
+       * LES TROIS CHIFFRES QUE LE DOSSIER CALCULAIT SANS LES DIRE.
+       *
+       * Le reste dû se calculait PAR LIGNE dans la carte des périodes — « reste
+       * 5 058 FCFA » — et n'était jamais totalisé. Le montant des travaux se
+       * calculait par ligne et n'était jamais sommé. La caution était affichée
+       * en petit, dans une liste de pièces. Trois nombres qui disent l'état d'un
+       * logement, dispersés.
+       */
+      kpiBalance: 'Reste dû',
+      kpiBalanceNote: 'sur {count} périodes facturées',
+      kpiBalanceNote_one: 'sur {count} période facturée',
+      kpiDeposit: 'Caution consignée',
+      kpiDepositNote: 'à restituer en fin de bail',
+      kpiDepositNone: 'aucune caution enregistrée',
+      kpiWorks: 'Travaux engagés',
+      kpiWorksNote: 'sur {count} interventions',
+      kpiWorksNote_one: 'sur {count} intervention',
       open: 'Ouvrir le dossier du logement {unit}',
       loadingTitle: 'Dossier du logement',
       notFoundTitle: 'Ce logement est introuvable',
