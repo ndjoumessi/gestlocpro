@@ -424,6 +424,110 @@ export function Payments() {
            * existent : sur un parc dont aucune échéance n'est enregistrée, une
            * grille de tirets se lirait comme une panne.
            */
+          /*
+            LE VERDICT ET LE SOLDE PASSENT DEVANT L'HISTOIRE, et c'est une
+            décision de mise en page autant que de lecture.
+
+            Ils vivaient à droite, après les six périodes — la place
+            habituelle d'un statut dans un tableau. Mesuré : la table fait
+            1063 px dans un conteneur de 958 à 1280 px de fenêtre. Tout ce qui
+            est à droite des périodes tombe donc hors champ, et c'est
+            précisément ce qu'on vient lire : combien, et où on en est.
+
+            Rendre le geste COLLANT l'a ramené sous les yeux, mais il
+            recouvrait alors la pastille — « À j… », « En… ». Le remède avait
+            déplacé le défaut d'une colonne.
+
+            Ce qui doit défiler, c'est L'HISTOIRE. Une suite de six mois est
+            faite pour être parcourue ; un verdict et un solde sont faits pour
+            être vus. L'ordre suit donc la question qu'on se pose : qui, où il
+            en est, combien, puis depuis quand. Le geste reste au bord droit,
+            collant, et ce sont les mois qui passent dessous.
+          */
+          {
+            key: 'status',
+            role: 'etat',
+            /*
+              LA COLONNE NOMME SA PORTÉE, et c'est le seul écran du produit où
+              elle le doit. Ailleurs — le Parc, les locataires — « Statut » est
+              sans ambiguïté : rien à côté ne parle d'une autre période. Ici la
+              colonne voisine annonce le solde du BAIL ENTIER et la pastille
+              celui du MOIS ; deux portées côte à côte, dont une seule était
+              nommée, avec un rouge d'un côté et un vert de l'autre.
+
+              Le Parc résout la même ambiguïté par une phrase de sous-titre —
+              « Le statut porte sur le mois affiché ». L'en-tête vaut mieux : il
+              reste sous les yeux quand on lit la vingtième ligne.
+            */
+            header: t('app.payments.statusMonth'),
+            render: (unit) => (
+              <div className="flex items-center gap-2">
+                <PaymentStatusPill status={unit.status} size="sm" />
+                {/* Le « j » d'abréviation restait français en anglais, et le
+                    `&&` sur un nombre aurait affiché « 0 » plutôt que rien si
+                    le retard tombait à zéro.
+                    `whitespace-nowrap` : « +24 j » se coupait à l'espace et
+                    s'empilait sur deux lignes à côté de la pastille, ce qui
+                    décalait la hauteur de la ligne du tableau. Le retard est
+                    une valeur unique, elle se lit d'un bloc. Le tableau défile
+                    déjà dans sa propre boîte : la douzaine de pixels que cela
+                    coûte ne se paie pas sur la page. */}
+                {unit.overdueDays ? (
+                  <span className="numeric text-caps whitespace-nowrap text-muted">
+                    {t('app.payments.overdueDays', { days: unit.overdueDays })}
+                  </span>
+                ) : null}
+                {/*
+                  CE QUE LA PASTILLE VERTE NE DIT PAS.
+
+                  Un bail dont le mois courant est réglé mais qui traîne un
+                  reliquat d'une période antérieure affichait « −5 058 FCFA » en
+                  rouge d'alerte et « À jour » en vert de succès, sur la même
+                  ligne, sans un mot. Les deux sont exacts et ne répondent pas à
+                  la même question ; le lecteur, lui, en conclut que l'un des
+                  deux se trompe.
+
+                  La mention va où va déjà « +24 j » — le qualificatif de la
+                  pastille — et pour la même raison : la pastille rend un verdict
+                  sur le mois, ce mot dit ce qu'il faut savoir de plus pour le
+                  lire juste. Un seul mot, comme son voisin : le montant est dans
+                  la colonne d'à côté, et le répéter ici ferait deux fois le même
+                  chiffre sur la même ligne.
+
+                  UNIQUEMENT SUR LE VERT. Une pastille « Partiel » ou « En
+                  retard » annonce déjà qu'il reste dû : y ajouter « reliquat »
+                  serait la mention permanente que ce dépôt refuse partout
+                  ailleurs. La contradiction n'existe que quand l'état dit
+                  « rien à faire » et que le solde dit le contraire.
+                */}
+                {unit.status === 'paid' && soldeCumule(unit) > 0 ? (
+                  <span className="text-caps whitespace-nowrap text-muted">
+                    {t('app.payments.carried')}
+                  </span>
+                ) : null}
+              </div>
+            ),
+          },
+          {
+            key: 'balance',
+            role: 'valeur',
+            header: t('app.payments.balanceTotal'),
+            numeric: true,
+            render: (unit) => {
+              // Cumulé quand l'historique existe, sinon l'écart du mois — la
+              // seule chose que l'on sache alors.
+              const balance = periodes.length > 0 ? soldeCumule(unit) : unit.rent - unit.paid
+              if (balance === 0) return <span className="text-muted">{money(0, { round: true })}</span>
+              // Une AVANCE n'est pas une dette : elle se lit en clair, avec son
+              // signe, et jamais en rouge.
+              return (
+                <span className={cn(balance > 0 ? 'font-medium text-danger' : 'text-ok')}>
+                  {balance > 0 ? '−' : '+'}
+                  {money(Math.abs(balance), { round: true })}
+                </span>
+              )
+            },
+          },
           ...(periodes.length > 0
             ? periodes.map((periode) => ({
                 key: `p-${periode.year}-${periode.month}`,
@@ -454,50 +558,6 @@ export function Payments() {
                   render: (unit: Unit) => money(unit.paid, { round: true }),
                 },
               ]),
-          {
-            key: 'balance',
-            role: 'valeur',
-            header: t('app.payments.balanceTotal'),
-            numeric: true,
-            render: (unit) => {
-              // Cumulé quand l'historique existe, sinon l'écart du mois — la
-              // seule chose que l'on sache alors.
-              const balance = periodes.length > 0 ? soldeCumule(unit) : unit.rent - unit.paid
-              if (balance === 0) return <span className="text-muted">{money(0, { round: true })}</span>
-              // Une AVANCE n'est pas une dette : elle se lit en clair, avec son
-              // signe, et jamais en rouge.
-              return (
-                <span className={cn(balance > 0 ? 'font-medium text-danger' : 'text-ok')}>
-                  {balance > 0 ? '−' : '+'}
-                  {money(Math.abs(balance), { round: true })}
-                </span>
-              )
-            },
-          },
-          {
-            key: 'status',
-            role: 'etat',
-            header: t('app.portfolio.status'),
-            render: (unit) => (
-              <div className="flex items-center gap-2">
-                <PaymentStatusPill status={unit.status} size="sm" />
-                {/* Le « j » d'abréviation restait français en anglais, et le
-                    `&&` sur un nombre aurait affiché « 0 » plutôt que rien si
-                    le retard tombait à zéro.
-                    `whitespace-nowrap` : « +24 j » se coupait à l'espace et
-                    s'empilait sur deux lignes à côté de la pastille, ce qui
-                    décalait la hauteur de la ligne du tableau. Le retard est
-                    une valeur unique, elle se lit d'un bloc. Le tableau défile
-                    déjà dans sa propre boîte : la douzaine de pixels que cela
-                    coûte ne se paie pas sur la page. */}
-                {unit.overdueDays ? (
-                  <span className="numeric text-caps whitespace-nowrap text-muted">
-                    {t('app.payments.overdueDays', { days: unit.overdueDays })}
-                  </span>
-                ) : null}
-              </div>
-            ),
-          },
           {
             key: 'receipt',
             role: 'geste',

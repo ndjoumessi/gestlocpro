@@ -842,6 +842,25 @@ export const fr = {
        * ans — la seule chose qui change la démarche à engager.
        */
       balanceTotal: 'Solde cumulé',
+      /**
+       * LA COLONNE D'ÉTAT NOMME SA PORTÉE, et c'est le seul écran où elle le doit.
+       *
+       * Ailleurs — le Parc, les locataires — « Statut » est sans ambiguïté : rien
+       * à côté ne parle d'une autre période. Ici la colonne voisine annonce le
+       * solde du BAIL ENTIER, et la pastille celui du MOIS. Deux portées côte à
+       * côte dont une seule était nommée, avec un rouge d'un côté et un vert de
+       * l'autre : la ligne avait l'air de se contredire.
+       */
+      statusMonth: 'Statut du mois',
+      /**
+       * Ce que la pastille verte ne dit pas.
+       *
+       * Elle va au même endroit que « +24 j » — le qualificatif de la pastille —
+       * et pour la même raison : la pastille rend un verdict sur le mois, ce
+       * mot dit ce qu'il faut savoir de plus pour le lire juste. Un seul mot,
+       * comme son voisin : le montant est dans la colonne d'à côté.
+       */
+      carried: 'reliquat',
       outOfLease: 'hors bail',
       legendPosts: 'Par cellule : loyer · eau · électricité',
       state: {

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/cn'
-import { AU_DELA_SM, useAuDela } from '@/lib/useAuDela'
+import { AU_DELA_LG, useAuDela } from '@/lib/useAuDela'
 import { Icon } from './Icon'
 
 /**
@@ -118,6 +118,117 @@ export interface DataTableProps<T> {
  * réponse juste sera un vrai lien dans une cellule — focalisable, ouvrable dans
  * un nouvel onglet, annoncé par sa destination — et non une rangée piégée.
  */
+/**
+ * LA COLONNE DES GESTES RESTE SOUS LES YEUX, QUOI QUE FASSE LE DÉFILEMENT.
+ *
+ * ═══ CE QU'ELLE RÉPARE ═══
+ *
+ * La grille des paiements porte une dernière colonne sans en-tête : « Quittance »
+ * et, sur un bail en retard, « Mise en demeure ». Mesuré au navigateur : la
+ * table fait 1063 px dans un conteneur de 958 à 1280 px de fenêtre — la largeur
+ * d'écran la plus courante —, de 702 à 1024, et de 636 à 700. Quatre cent
+ * vingt-huit pixels de gestes hors champ au pire.
+ *
+ * RIEN NE LE DISAIT. `overflow-x-auto` ne peint aucune barre tant qu'on ne
+ * défile pas ; la colonne n'a pas d'intitulé qui dépasserait pour trahir sa
+ * présence — et pour une bonne raison, écrite plus haut dans ce fichier : « une
+ * colonne d'action n'a pas de nom parce que son bouton porte le sien ». Sauf que
+ * le bouton, lui, était dehors. L'écran avait donc l'air complet, et on ne
+ * cherche pas ce dont on ignore l'existence.
+ *
+ * ═══ POURQUOI COLLANTE PLUTÔT QUE PLUS ÉTROITE ═══
+ *
+ * Rétrécir la table aurait voulu dire retirer des périodes : à 1024, les
+ * colonnes fixes en réclament 643 sur 702 disponibles, il ne reste pas de quoi
+ * en afficher UNE. Le remède aurait donc consisté à choisir entre l'histoire et
+ * l'action, alors que l'écran a besoin des deux.
+ *
+ * La colonne collante ne choisit pas : les périodes défilent SOUS elle, le geste
+ * reste au bord droit. C'est aussi ce qui rend le défilement visible pour la
+ * première fois — on voit les mois passer derrière une colonne fixe, ce qu'aucune
+ * barre absente n'annonçait.
+ *
+ * ═══ TROIS DÉTAILS QUI NE SONT PAS DES DÉTAILS ═══
+ *
+ * LE FOND EST OBLIGATOIRE. Une cellule collante transparente laisse défiler le
+ * contenu SOUS elle en restant lisible au travers : deux textes superposés. Le
+ * fond suit celui de sa rangée — creusé pour l'en-tête, surface pour le corps.
+ *
+ * AUCUN `z-index` ÉCRIT À LA MAIN, et ce n'est pas un oubli : la colonne des
+ * gestes est la DERNIÈRE du tableau, donc la dernière du DOM, donc déjà peinte
+ * par-dessus ses voisines à altitude égale. `altitudes.test.ts` refuse de toute
+ * façon tout niveau écrit à la main, et le barreau qu'il aurait fallu nommer
+ * n'existe pas — ce n'est pas un objet flottant, c'est une cellule.
+ *
+ * LE FILET DE GAUCHE reste quand rien ne défile. Il ne signale pas le
+ * défilement — il sépare ce qu'on LIT de ce qu'on FAIT, et cette frontière-là
+ * vaut à toutes les largeurs.
+ */
+const COLONNE_COLLANTE = 'sticky right-0 border-l border-divider'
+
+/**
+ * ET L'IDENTITÉ RESTE À GAUCHE, pour la raison symétrique.
+ *
+ * Une fois le geste épinglé à droite, ce sont les périodes qui défilent — et
+ * c'est bien ce qu'on veut d'une suite de mois. Sauf qu'au repos le tableau
+ * montre les plus ANCIENS : pour atteindre août, il faut défiler, et le nom du
+ * locataire s'en va avec le reste. On se retrouve à lire une ligne de pastilles
+ * sans savoir de qui elle parle.
+ *
+ * La colonne d'identité est donc tenue, elle aussi. C'est la forme classique
+ * d'un tableau plus large que sa boîte : ce qui NOMME et ce qui AGIT restent,
+ * ce qui se PARCOURT défile entre les deux.
+ *
+ * Le verdict et le solde, eux, défilent. Ils sont visibles au repos — c'est
+ * l'ordre des colonnes qui s'en charge — et les épingler aussi aurait laissé
+ * moins de 315 px aux six mois, soit une fenêtre plus étroite que ce qu'elle
+ * fait défiler.
+ */
+/**
+ * L'IDENTITÉ N'EST PAS TENUE À GAUCHE, ET L'ESSAI VAUT D'ÊTRE GARDÉ.
+ *
+ * L'idée se tenait : une fois le geste épinglé à droite, ce sont les périodes
+ * qui défilent, et pour atteindre août il faut pousser la table — emportant le
+ * nom du locataire. La forme classique d'un tableau plus large que sa boîte
+ * épingle donc les deux bords.
+ *
+ * MESURÉ À L'ÉCRAN, ÇA NE MARCHE PAS ICI, et pour une raison de MODÈLE et non
+ * de mise en page : sur cet écran, l'identité d'une ligne tient dans DEUX
+ * colonnes — « A1 » et « Charles Ngassa ». Seule la première porte le rôle
+ * `identite`. Épinglée, elle couvre 72 px, la seconde glisse dessous, et les
+ * 28 px qui dépassent laissent voir « …sa », « …a », « …ba » à droite de la
+ * case. Une identité coupée en deux dont on n'épingle que la moitié est pire
+ * que rien.
+ *
+ * Le remède serait de faire de l'unité ET du locataire UNE seule colonne
+ * d'identité — ce qu'ils sont, en vérité. Cela change aussi la forme en fiches,
+ * où le titre et sa ligne de locataire vivent séparés. C'est un lot, pas un
+ * détail de style.
+ *
+ * L'altitude, elle, reste posée : c'est elle qui a rendu le défaut VISIBLE au
+ * lieu de le laisser se superposer, et le geste de droite s'en sert.
+ */
+
+/**
+ * L'ALTITUDE D'UNE COLONNE TENUE.
+ *
+ * `position: sticky` crée un contexte d'empilement, mais À ALTITUDE ÉGALE c'est
+ * l'ORDRE DU DOCUMENT qui tranche. La colonne de geste est la dernière du
+ * tableau, donc déjà peinte par-dessus ce qui défile sous elle — l'altitude ne
+ * lui est pas indispensable aujourd'hui. Elle la porte quand même, et nommée :
+ * l'ordre des colonnes est le choix d'un appelant, pas une propriété du
+ * composant, et le jour où un écran posera un geste ailleurs qu'en dernier, la
+ * cellule ne doit pas se mettre à disparaître sous sa voisine.
+ *
+ * `--z-sticky` ET NON UN NOMBRE : le dépôt tient une échelle d'altitudes
+ * déclarée, `altitudes.test.ts` refuse tout niveau écrit à la main, et ce
+ * barreau-ci porte exactement ce nom — une colonne collante est très exactement
+ * ce qu'il nomme.
+ */
+function ALTITUDE_TENUE(role?: RoleDeColonne) {
+  return role === 'geste' ? ({ zIndex: 'var(--z-sticky)' } as const) : undefined
+}
+
 export function DataTable<T>({
   caption,
   columns,
@@ -147,7 +258,38 @@ export function DataTable<T>({
     est le seul moment où l'écran passe de vide à plein. React n'aurait pas
     pardonné, et aucun de nos cas ne montait un tableau vide PUIS rempli.
   */
-  const enTableau = useAuDela(AU_DELA_SM)
+  /*
+    LE SEUIL EST PASSÉ DE `sm` À `lg`, ET C'EST UNE MESURE QUI L'A DÉPLACÉ.
+
+    Il valait 640 px — la largeur à partir de laquelle un tableau CESSE d'être
+    absurde. Ce n'est pas celle à partir de laquelle il TIENT. Mesuré au
+    navigateur, à 700 px de fenêtre :
+
+      /demo/cautions     table 832 px dans 636   →  197 px hors champ
+      /demo/locataires   table 841 px dans 636   →  174 px hors champ
+      /demo/parc         table 686 px dans 636   →   51 px hors champ
+
+    Et ce qui tombait hors champ, à chaque fois, était la COLONNE D'ÉTAT — la
+    dernière du tableau, donc la première à sortir. « Consignée », « À jour »,
+    « En retard » : le verdict de chaque ligne, invisible, derrière un
+    défilement qu'aucune barre n'annonçait.
+
+    La bande 640–1023 px n'est pas une curiosité : c'est une tablette en
+    portrait, une fenêtre à moitié d'écran, un portable en écran partagé. Elle
+    recevait la forme la plus dense du produit dans la largeur qui la supporte
+    le moins.
+
+    LES FICHES, ELLES, N'ONT PAS DE LARGEUR MINIMALE : elles empilent, et leur
+    seule suite horizontale — l'axe des périodes — défile dans sa propre boîte.
+    À 700 px elles montrent TOUT ce que le tableau cachait.
+
+    `fiches` reste demandé écran par écran, et cet arbitrage-là n'a pas changé :
+    deux grilles du produit sont des matrices de comparaison qu'on ne peut pas
+    empiler. Elles n'appellent pas `fiches`, et gardent leur tableau à toute
+    largeur — c'est leur défilement qui les sert, et il porte sur des colonnes
+    équivalentes, pas sur un verdict.
+  */
+  const enTableau = useAuDela(AU_DELA_LG)
 
   if (rows.length === 0 && empty) {
     return <>{empty}</>
@@ -160,6 +302,12 @@ export function DataTable<T>({
 
   return (
       <div
+        /* `data-defilant` : la garde `mesure-ui` mesure les gestes contre le
+           bord VISIBLE de cette boîte. Elle ne peut pas la reconnaître par sa
+           classe — `scripts/` est balayé par le générateur d'utilitaires
+           Tailwind, et y écrire un nom de classe en fabriquerait un. Même
+           raison que `data-intitule` sur `StatCard`. */
+        data-defilant=""
         className={cn(
           'relative overflow-x-auto rounded-lg border border-divider bg-surface shadow-e1',
         )}
@@ -172,11 +320,16 @@ export function DataTable<T>({
               <th
                 key={column.key}
                 scope="col"
-                style={{ width: column.width }}
+                data-colonne-tenue={
+                  column.role === 'etat' || column.role === 'geste' ? column.role : undefined
+                }
+                style={{ width: column.width, ...ALTITUDE_TENUE(column.role) }}
                 className={cn(
                   'eyebrow px-4 py-3 text-left font-normal whitespace-nowrap text-muted',
                   column.numeric && 'text-right',
                   column.hideOnMobile && 'hidden sm:table-cell',
+                  column.role === 'geste' && COLONNE_COLLANTE,
+                  column.role === 'geste' && 'bg-surface-sunken',
                 )}
               >
                 {column.header}
@@ -194,6 +347,8 @@ export function DataTable<T>({
               {columns.map((column) => (
                 <td
                   key={column.key}
+                  data-colonne-tenue={column.role === 'geste' ? column.role : undefined}
+                  style={ALTITUDE_TENUE(column.role)}
                   className={cn(
                     /*
                       `relative` : la cellule est le bloc conteneur de ce qu'elle
@@ -212,6 +367,8 @@ export function DataTable<T>({
                     'relative px-4 py-3 align-middle',
                     column.numeric && 'numeric text-right whitespace-nowrap',
                     column.hideOnMobile && 'hidden sm:table-cell',
+                    column.role === 'geste' && COLONNE_COLLANTE,
+                    column.role === 'geste' && 'bg-surface',
                   )}
                 >
                   {column.render(row)}

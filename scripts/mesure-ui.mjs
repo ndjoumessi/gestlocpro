@@ -2498,6 +2498,121 @@ const MESURER_TRONCATURES = ({ racine }) => {
 }
 
 /**
+ * CE QUI DÉCIDE ET CE QUI AGIT NE SE CACHENT PAS DERRIÈRE UN DÉFILEMENT.
+ *
+ * ═══ CE QUI L'A FAIT ÉCRIRE ═══
+ *
+ * La grille des paiements porte une dernière colonne SANS EN-TÊTE : elle tient
+ * « Quittance » et, pour le propriétaire d'un bail en retard, « Mise en
+ * demeure ». Mesuré : la table fait 1063 px dans un conteneur de 958 à 1280 px
+ * de fenêtre, et de 702 à 1024. Cent cinq pixels de gestes hors champ à la
+ * largeur d'écran la plus courante, trois cent soixante et un à la précédente.
+ *
+ * Rien ne le dit. `overflow-x-auto` ne peint aucune barre tant qu'on ne défile
+ * pas, la colonne n'a pas d'intitulé qui dépasserait pour trahir sa présence, et
+ * les six colonnes de période qui la poussent dehors, elles, se voient très
+ * bien. L'écran a donc l'air complet. On ne cherche pas ce dont on ignore
+ * l'existence.
+ *
+ * ═══ POURQUOI AUCUNE AUTRE RÈGLE NE LE VOIT ═══
+ *
+ * Ce n'est PAS un débordement : la table défile dans sa propre boîte, ce que le
+ * dépôt exige partout — le document ne bouge pas d'un pixel, et c'est la règle
+ * de page comme celle des débords locaux qui le certifient. Ce n'est pas un
+ * ROGNAGE non plus : rien n'est coupé, tout est peint, simplement en dehors de
+ * la fenêtre de défilement. Et ce n'est pas une CIBLE trop petite : le bouton
+ * fait ses 44 px, là où personne ne le voit.
+ *
+ * Trois règles passent au vert sur une action introuvable. La différence tient
+ * en un mot : les autres mesurent ce qui SORT, celle-ci mesure ce qui n'entre
+ * jamais.
+ *
+ * ═══ CE QU'ELLE MESURE, ET CE QU'ELLE ADMET ═══
+ *
+ * Le bord droit de chaque cellule de geste contre le bord droit VISIBLE de sa
+ * boîte de défilement, à la position de repos — c'est-à-dire ce que l'écran
+ * montre avant qu'on ait touché à quoi que ce soit.
+ *
+ * Une colonne COLLANTE satisfait la règle par construction : son rectangle reste
+ * dans la fenêtre quel que soit le défilement, ce qui est exactement la
+ * propriété demandée. La règle ne prescrit donc pas le remède — elle décrit ce
+ * qu'un geste doit être, et laisse la mise en page s'en arranger.
+ *
+ * ═══ LE VERDICT SUBIT LE MÊME SORT, ET IL N'EST PAS GARDÉ ICI ═══
+ *
+ * Rendre la colonne d'action collante a ramené les gestes sous les yeux — et
+ * elle recouvrait alors la pastille d'état : « À j… », « En… ». Le correctif
+ * avait déplacé le défaut d'une colonne. Les paiements l'ont réglé en passant le
+ * verdict et le solde DEVANT l'histoire ; les autres écrans, non.
+ *
+ * Élargie aux cellules d'état, cette règle a mesuré, à 1024 px exactement — la
+ * fenêtre fait 1024, la barre latérale en prend 256, le contenu tombe à 704 :
+ *
+ *     /demo/locataires   table 841 px (fr) / 812 (en)  →  137 / 108 hors champ
+ *     /demo/cautions     table 832 px (fr) / 791 (en)  →  129 /  88 hors champ
+ *
+ * ELLE N'EST PAS GARDÉE, ET C'EST UN CHOIX ASSUMÉ. Deux tentatives ont été
+ * écartées :
+ *
+ *   · une table de dispenses plafonnées, comme les mots débordants. Elle a
+ *     CLIGNOTÉ : trois passages successifs du balayage ont rendu trois
+ *     ensembles différents, les libellés anglais des cautions apparaissant et
+ *     disparaissant. Une garde qui n'est pas reproductible ne garde rien, et
+ *     une dispense qu'on rechargerait à chaque flottement est pire que pas de
+ *     dispense du tout. La cause du flottement n'est pas établie.
+ *   · remonter la bascule fiche/tableau à `xl`. Elle réglerait ces deux-là et
+ *     en casserait d'autres : à 1279 px le contenu vaut 959, et les tableaux du
+ *     Parc comme des Relevés y tiennent très bien.
+ *
+ * La vraie réponse est de mesurer le CONTENANT et non la fenêtre : une largeur
+ * de fenêtre ne peut pas décider pour un tableau dont la place dépend de la
+ * barre latérale ET de son propre nombre de colonnes. Le dépôt sait le faire —
+ * il l'a fait pour le tableau de bord du locataire, avec cet argument exact —
+ * mais ici la forme se choisit AU RENDU et non dans la feuille de style, donc
+ * il faut observer la boîte plutôt que déclarer une requête. C'est un lot.
+ *
+ * Ce qui est gardé ici est donc ce qui est TENU : le geste. Le verdict est
+ * mesuré, écrit, et attend.
+ *
+ * `data-colonne-tenue` plutôt qu'un sélecteur de classe : `scripts/` est balayé
+ * par le générateur d'utilitaires Tailwind, et y écrire un nom de classe en
+ * fabriquerait un. Même raison que `data-intitule`.
+ */
+const MESURER_GESTES_ATTEIGNABLES = () => {
+  const defauts = []
+  let mesures = 0
+  for (const cellule of document.querySelectorAll('[data-colonne-tenue="geste"]')) {
+    /* L'en-tête d'une colonne de gestes est souvent VIDE — il n'y a rien à
+       intituler, « une colonne d'action n'a pas de nom parce que son bouton
+       porte le sien ». Une cellule sans contenu ne montre rien et ne prouve
+       rien : on ne juge que ce qui a quelque chose à cacher. */
+    if (!(cellule.textContent || '').trim() && !cellule.querySelector('a, button')) continue
+    const boite = cellule.closest('[data-defilant]')
+    if (!boite) continue
+    mesures += 1
+    const c = cellule.getBoundingClientRect()
+    const b = boite.getBoundingClientRect()
+    const cache = Math.round(c.right - b.right)
+    if (cache <= 1) continue
+    const commande = cellule.querySelector('a, button')
+    defauts.push({
+      geste: `${cellule.dataset.colonneTenue} · ${(
+        commande?.textContent ||
+        commande?.getAttribute('aria-label') ||
+        cellule.textContent ||
+        '?'
+      )
+        .trim()
+        .slice(0, 40)}`,
+      cache,
+      largeurVue: Math.round(b.width),
+      largeurTable: Math.round(boite.scrollWidth),
+    })
+  }
+  return { mesures, defauts }
+}
+
+/**
  * La police de base AGRANDIE sous laquelle le balayage repasse.
  *
  * 22 px, soit 137 % de la valeur par défaut. Ce n'est pas un extrême : c'est le
@@ -3197,6 +3312,10 @@ let libellesMesures = 0
 /** Intitulés d'indicateur rognés — voir `MESURER_TRONCATURES`. */
 const troncatures = new Map()
 let intitulesMesures = 0
+/** Gestes hors de la fenêtre de défilement — voir `MESURER_GESTES_ATTEIGNABLES`. */
+const gestesHorsChamp = new Map()
+let gestesMesures = 0
+
 /** Mots plus larges que leur boîte — voir `MESURER_DEBORDEMENT_DE_MOT`. */
 const motsDebordants = new Map()
 let feuillesMesurees = 0
@@ -3570,6 +3689,23 @@ try {
             if (!vu || d.manque > vu.manque) {
               troncatures.set(cle, { ...d, langue, ou: `${adresse} ${largeur}px` })
             }
+          }
+        }
+
+        /* ENCORE AUCUN CHARGEMENT : les gestes hors champ se mesurent sur la
+           même page, à la position de repos. Voir `MESURER_GESTES_ATTEIGNABLES`. */
+        const gestes = await chrono('sonde · gestes atteignables', () =>
+          page.evaluate(MESURER_GESTES_ATTEIGNABLES),
+        )
+        gestesMesures += gestes.mesures
+        for (const d of gestes.defauts) {
+          /* Dédupliqué sur le GESTE et la LANGUE, et l'on garde le pire : le
+             même bouton hors champ à trois largeurs est un seul correctif, et
+             c'est la plus serrée qui dit combien de place il manque. */
+          const cle = `${d.geste}|${langue}`
+          const vu = gestesHorsChamp.get(cle)
+          if (!vu || d.cache > vu.cache) {
+            gestesHorsChamp.set(cle, { ...d, langue, ou: `${adresse} ${largeur}px` })
           }
         }
 
@@ -4300,6 +4436,44 @@ if (troncatures.size > 0) {
       "   DONNÉE — l'abréger dans le dictionnaire ne ferait que déplacer le mensonge du\n" +
       '   rendu vers la source. Une donnée, elle, se DÉCLARE : `data-donnee` sur la boîte\n' +
       "   qui rogne ou sur un ancêtre. Le vocabulaire du produit, jamais.",
+  )
+  process.exit(1)
+}
+
+if (gestesHorsChamp.size > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${gestesHorsChamp.size} geste(s) sont HORS CHAMP au repos,` +
+      ` sur ${gestesMesures} mesurés.\n` +
+      "   Le bouton est peint, à la bonne taille, dans une boîte qui défile — mais en dehors\n" +
+      '   de ce que la fenêtre montre, et rien ne dit qu’il existe. Aucune règle de\n' +
+      '   débordement, de rognage ou de cible ne peut le voir : elles mesurent ce qui SORT,\n' +
+      "   celle-ci mesure ce qui n’entre jamais.\n",
+  )
+  for (const d of gestesHorsChamp.values()) {
+    console.error(
+      `   ${d.cache}px hors champ  « ${d.geste} »\n` +
+        `      table ${d.largeurTable}px dans ${d.largeurVue}px · ${d.langue} · vu au pire à ${d.ou}\n`,
+    )
+  }
+  console.error(
+    '   Remède : rendre le geste atteignable sans découvrir un défilement — une colonne\n' +
+      '   COLLANTE satisfait la règle par construction, une table qui rétrécit aussi.',
+  )
+  process.exit(1)
+}
+
+/*
+  GARDE DU GARDE — LA SONDE DES GESTES DOIT AVOIR TROUVÉ DES GESTES.
+
+  `data-colonne-tenue` retiré de `DataTable`, `data-defilant` renommé, ou les écrans à
+  tableau sortis du balayage : la sonde rendrait zéro défaut sur zéro geste et
+  le rapport écrirait « aucun geste hors champ » sans en avoir regardé un seul.
+*/
+if (gestesMesures === 0) {
+  console.error(
+    '\n✗ mesure-ui : aucun geste de tableau mesuré.\n' +
+      '   Les marqueurs `data-colonne-tenue` et `data-defilant` sont-ils toujours sur `DataTable` ?\n' +
+      '   Une sonde qui ne trouve rien ne prouve rien.',
   )
   process.exit(1)
 }
@@ -5357,6 +5531,7 @@ console.log(
     `  ${elementsSondes} éléments sondés pour le DÉBORDEMENT LOCAL — un contenu qui sort de sa boîte\n` +
     `  sans faire défiler la page — aucun hors des ${Object.keys(DEBORDS_LOCAUX_TOLERES).length} signatures tolérées et motivées.\n` +
     `  ${libellesMesures} libellés de barre basse mesurés à la COUPURE, aucun orphelin sous 3 caractères.\n` +
+    `  ${gestesMesures} gestes de tableau mesurés, tous ATTEIGNABLES sans découvrir un défilement.\n` +
     `  ${intitulesMesures} textes rognables mesurés au ROGNAGE, en largeur comme en hauteur,\n` +
     `  à ${16}px de police racine ET à ${RACINE_AGRANDIE}px — la seconde dimension du balayage.\n` +
     `  ${feuillesMesurees} feuilles de texte mesurées au DÉBORDEMENT DE MOT, ${motsDebordants.size} débordement(s) relevé(s), ${MOTS_DEBORDANTS_TOLERES.length} toléré(s) et chiffré(s).\n` +

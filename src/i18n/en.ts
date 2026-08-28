@@ -661,6 +661,8 @@ export const en: Dictionary = {
       paid: 'Paid',
       balance: 'Balance',
       balanceTotal: 'Running balance',
+      statusMonth: 'Status this month',
+      carried: 'arrears',
       outOfLease: 'outside lease',
       legendPosts: 'Per cell: rent · water · electricity',
       state: {
