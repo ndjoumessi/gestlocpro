@@ -139,11 +139,26 @@ const DOCUMENT = {
 
 const enLatin1 = (octets: Uint8Array) => Array.from(octets, (o) => String.fromCharCode(o)).join('')
 
-/** La suite des textes posés par un document, dans l'ordre de la page. */
+/**
+ * Les textes posés par un document, AVEC LEUR POSITION.
+ *
+ * La première rédaction ne relevait que les chaînes, et sa réserve le disait :
+ * deux documents qui diraient la même chose à des endroits différents seraient
+ * passés. La position tient en trois nombres — l'abscisse, l'ordonnée, la
+ * taille — et c'est tout ce qui distingue une feuille d'une autre une fois les
+ * mots identiques.
+ *
+ * On ne compare PAS les octets bruts : ils diffèrent par la table de références
+ * croisées, dont les positions dépendent de la longueur du nom du parc et du
+ * pied de page. Deux fichiers peuvent porter la même page sans être le même
+ * fichier.
+ */
 function textesDe(octets: Uint8Array): string[] {
   const fichier = enLatin1(octets)
-  return [...fichier.matchAll(/Td \(([\s\S]*?)\) Tj/g)].map(([, brut]) =>
-    brut.replace(/\\([()\\])/g, '$1'),
+  const motif = /BT \/(F1|F2) ([\d.]+) Tf ([\d.]+) ([\d.]+) Td \(([\s\S]*?)\) Tj ET/g
+  return [...fichier.matchAll(motif)].map(
+    ([, police, taille, x, y, brut]) =>
+      `${x} ${y} ${taille} ${police} ${brut.replace(/\\([()\\])/g, '$1')}`,
   )
 }
 
