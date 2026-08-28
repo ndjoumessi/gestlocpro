@@ -137,6 +137,18 @@ export function enUniteDUsage(mineur: number, currency: CurrencyCode): number {
   return mineur / 10 ** CURRENCY_DEFS[currency].decimals
 }
 
+/**
+ * Le montant tombe-t-il juste dans l'unité d'usage ?
+ *
+ * Sert à décider si l'on montre les décimales : « 4 € » quand elles sont nulles,
+ * « 6,40 € » sinon. `Number.isInteger` remplissait cet office du temps où les
+ * montants étaient en unités d'usage ; en mineures il est toujours vrai, et la
+ * page des tarifs affichait « 6 € » pour six euros quarante.
+ */
+export function estRondEnUniteDUsage(mineur: number, currency: CurrencyCode): boolean {
+  return mineur % 10 ** CURRENCY_DEFS[currency].decimals === 0
+}
+
 export function formatMoney(
   amount: number,
   currency: CurrencyCode,

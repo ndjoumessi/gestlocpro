@@ -7,6 +7,7 @@ import { Badge } from '@/components/primitives/Badge'
 import { SegmentedControl } from '@/components/primitives/Choice'
 import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
 import { useCurrency } from '@/currency/CurrencyProvider'
+import { estRondEnUniteDUsage } from '@/currency/currencies'
 import { useT } from '@/i18n/I18nProvider'
 import { useNumbers } from '@/lib/numbers'
 import { useAuDela, AU_DELA_LG } from '@/lib/useAuDela'
@@ -262,7 +263,7 @@ const BoutonDePalier = forwardRef<
       >
         {price === null
           ? t('marketing.pricing.quote')
-          : money(price, { round: Number.isInteger(price) })}
+          : money(price, { round: estRondEnUniteDUsage(price, currency) })}
       </span>
     </button>
   )
@@ -344,7 +345,7 @@ function CartePalier({
                 taille de plus (36 px) qui n'existait nulle part
                 ailleurs, pour deux nombres. */}
             <p className="numeric text-kpi leading-none font-medium">
-              {money(price, { round: Number.isInteger(price) })}
+              {money(price, { round: estRondEnUniteDUsage(price, currency) })}
             </p>
             <p className="mt-2 text-body text-muted">
               {t('common.perMonth')}
@@ -370,7 +371,7 @@ function CartePalier({
             {priceIsRounded(plan, currency, period, units) && (
               <p className="mt-1.5 text-body text-muted">
                 {t('marketing.pricing.roundingNote', {
-                  exact: money(exact ?? 0, { round: Number.isInteger(exact) }),
+                  exact: money(exact ?? 0, { round: estRondEnUniteDUsage(exact ?? 0, currency) }),
                 })}
               </p>
             )}

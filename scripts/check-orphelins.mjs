@@ -81,6 +81,13 @@ function registre(intitule, entrees) {
  */
 const CHAMPS_EXEMPTS = registre('colonne', [
   ['updatedAt', 'tenu par Prisma via @updatedAt ; le nommer serait l’écrire à la main'],
+  [
+    'amountsAreMinor',
+    'garde de migration lue en SQL, jamais par le produit : la conversion des ' +
+      'montants en unités mineures multiplie par cent, et l’appliquer deux fois ' +
+      'est irréparable. Un drapeau en base est la seule protection contre une ' +
+      'exécution manuelle, que le registre de Prisma ne couvre pas',
+  ],
 ])
 
 /**
