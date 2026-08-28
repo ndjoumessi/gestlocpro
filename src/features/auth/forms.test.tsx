@@ -202,9 +202,15 @@ describe('inscription', () => {
     await user.type(pays, 'France')
     await user.click(screen.getByRole('option', { name: 'France' }))
 
-    // La France emporte l'euro : le pré-remplissage doit se voir CHANGER, sinon
-    // le test se contenterait de la valeur par défaut du Cameroun.
-    expect(screen.getByLabelText(/devise/i)).toHaveValue('EUR')
+    /* La France emporte l'euro : le pré-remplissage doit se voir CHANGER, sinon
+       le test se contenterait de la valeur par défaut du Cameroun.
+
+       `/^devise/i` ANCRÉ AU DÉBUT, comme `/^pays/i` deux lignes plus haut. Le
+       motif libre attrapait aussi le déclencheur des réglages, dont le nom
+       accessible est « Réglages : langue, devise et thème » — deux choses qui
+       portent le mot sur le même écran, et qui n'ont rien à voir : celle-ci est
+       la devise du PARC qu'on crée, celle-là celle dans laquelle on LIT. */
+    expect(screen.getByLabelText(/^devise/i)).toHaveValue('EUR')
 
     await user.click(pays)
     await user.type(pays, 'Sénég')
@@ -212,7 +218,7 @@ describe('inscription', () => {
 
     // Le Sénégal relevait du XOF et le Cameroun du XAF ; les deux zones franc
     // sont désormais regroupées sous une seule devise.
-    expect(screen.getByLabelText(/devise/i)).toHaveValue('CFA')
+    expect(screen.getByLabelText(/^devise/i)).toHaveValue('CFA')
   })
 
   /**
@@ -246,7 +252,7 @@ describe('inscription', () => {
     // Le pays a suivi l'indicatif, et avec lui la devise du pays servi.
     const pays = await screen.findByLabelText(/^pays/i)
     expect(pays).toHaveValue('France')
-    expect(screen.getByLabelText(/devise/i)).toHaveValue('EUR')
+    expect(screen.getByLabelText(/^devise/i)).toHaveValue('EUR')
   })
 
   /**
@@ -277,7 +283,7 @@ describe('inscription', () => {
     expect(pays).toHaveValue('Zimbabwe')
     // Le Cameroun par défaut tient : deviner une devise pour le Zimbabwe serait
     // une invention, et une invention fausse coûte plus qu'un champ à régler.
-    expect(screen.getByLabelText(/devise/i)).toHaveValue('CFA')
+    expect(screen.getByLabelText(/^devise/i)).toHaveValue('CFA')
   })
 
   /**
@@ -339,7 +345,7 @@ describe('inscription', () => {
     // Un pays hors du marché servi ne porte ni devise ni langue : le choix
     // précédent tient, et l'utilisateur tranche lui-même. Deviner « dollar »
     // pour le Zimbabwe serait une invention, pas un pré-remplissage.
-    expect(screen.getByLabelText(/devise/i)).toHaveValue('CFA')
+    expect(screen.getByLabelText(/^devise/i)).toHaveValue('CFA')
   })
 
   it('garde le jeton de remplissage automatique sur le pays', async () => {

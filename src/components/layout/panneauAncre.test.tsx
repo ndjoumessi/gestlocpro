@@ -43,7 +43,7 @@ const TABLETTE = 800
 
 const ouvrirLesReglages = async () => {
   const user = userEvent.setup()
-  const declencheur = screen.getByRole('button', { name: 'Ouvrir les réglages' })
+  const declencheur = screen.getByRole('button', { name: 'Réglages : langue, devise et thème' })
   await user.click(declencheur)
   return { user, declencheur, panneau: screen.getByTestId('menu-mobile') }
 }

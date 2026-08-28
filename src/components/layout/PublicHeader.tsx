@@ -4,9 +4,7 @@ import { GOUTTIERE_LATERALE } from './gouttiere'
 import { LienEvitement } from './LienEvitement'
 import { Logo } from '@/components/primitives/Logo'
 import { Button, IconButton } from '@/components/primitives/Button'
-import { LanguageSwitcher } from '@/components/controls/LanguageSwitcher'
-import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
-import { ThemeSwitcher } from '@/components/controls/ThemeSwitcher'
+import { ListeDeReglages } from '@/components/controls/ListeDeReglages'
 import { useT } from '@/i18n/I18nProvider'
 import { AU_DELA_LG, AU_DELA_SM, useAuDela } from '@/lib/useAuDela'
 
@@ -385,8 +383,8 @@ export function PublicHeader() {
               label={
                 ancre
                   ? menuOpen
-                    ? t('marketing.nav.closeSettings')
-                    : t('marketing.nav.openSettings')
+                    ? t('nav.settingsClose')
+                    : t('nav.settingsOpen')
                   : menuOpen
                     ? t('marketing.nav.closeMenu')
                     : t('marketing.nav.openMenu')
@@ -534,11 +532,13 @@ export function PublicHeader() {
                     menu, une garde doit pouvoir vérifier au navigateur qu'ils y
                     sont VRAIMENT atteignables au clavier à 1440 px — sans quoi le
                     retrait ne serait qu'une disparition. */}
-                <div data-mesure="reglages-vitrine" className="flex flex-wrap items-center gap-2">
-                  <LanguageSwitcher />
-                  <CurrencySwitcher />
-                  <ThemeSwitcher />
-                </div>
+                {/* LA RANGÉE EST DEVENUE UNE LISTE, et le même bloc sert les
+                    quatre surfaces — voir `ListeDeReglages`. Ici la rangée
+                    n'avait aucun intitulé : trois commandes nues, dont un
+                    segment « FR | EN » qu'il faut reconnaître pour savoir ce
+                    qu'on y règle. Le témoin de mesure ne bouge pas : c'est la
+                    surface qui est nommée, pas le contenu. */}
+                <ListeDeReglages mesure="reglages-vitrine" />
 
                 {/*
                   Mêmes règles pour les deux boutons, à leur propre seuil : la

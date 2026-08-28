@@ -185,6 +185,7 @@ export const en: Dictionary = {
     activeProfile: 'Active profile',
     settings: 'Settings',
     settingsOpen: 'Settings: language, currency and theme',
+    settingsClose: 'Close settings',
     toggleNav: 'Collapse or expand navigation',
     openNav: 'Open navigation',
     closeNav: 'Close navigation',

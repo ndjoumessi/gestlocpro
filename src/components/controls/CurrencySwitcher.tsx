@@ -67,6 +67,14 @@ export function CurrencySwitcher({ tone = 'light', className }: CurrencySwitcher
         }}
         aria-expanded={open}
         aria-haspopup="listbox"
+        /* NOMMÉ SANS ÊTRE ÉTIQUETÉ. Le bouton portait le mot « Devise » en
+           surtitre. Il est désormais posé par la ligne qui l'accueille
+           (`ListeDeReglages`), et l'écrire ici le répétait à quinze pixels
+           d'écart — « DEVISE / DEVISE Euro (€) ». Ce que le bouton MONTRE est
+           la valeur choisie, qui se suffit : « Euro (€) » n'a pas besoin qu'on
+           lui dise que c'est une devise. Le nom accessible, lui, reste — un
+           lecteur d'écran n'a pas la ligne sous les yeux. */
+        aria-label={t('common.currency')}
         className={cn(
           // Hauteur alignée sur le sélecteur de langue, qui est un contrôle
           // groupé et fait donc 50px et non 44. Voir --size-control-group.
@@ -77,22 +85,6 @@ export function CurrencySwitcher({ tone = 'light', className }: CurrencySwitcher
             : 'border-border bg-surface text-ink hover:border-ink',
         )}
       >
-        {/* Le mot « Devise » est masqué visuellement sous sm : avec lui, le
-            bouton, la bascule de langue et l'avatar ne tenaient pas sur une
-            ligne dans la barre applicative d'un téléphone.
-            `sr-only sm:not-sr-only` plutôt que `hidden sm:inline` + un second
-            span `sr-only` : cette dernière combinaison laissait DEUX fois le
-            libellé dans l'arbre d'accessibilité au-dessus de sm, annoncé
-            « Devise Devise ». Ici l'élément est unique et change seulement de
-            visibilité. */}
-        <span
-          className={cn(
-            'eyebrow sr-only sm:not-sr-only',
-            tone === 'dark' ? 'text-accent-on-dark' : 'text-accent-ink',
-          )}
-        >
-          {t('common.currency')}
-        </span>
         {/*
           LE BOUTON PORTE CE QU'ON A DEMANDÉ, pas ce qui a pu être honoré.
 

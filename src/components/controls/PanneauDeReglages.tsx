@@ -1,9 +1,7 @@
 import { useRef, useState } from 'react'
 import { IconButton } from '@/components/primitives/Button'
 import { usePiegeDeFocus } from '@/components/primitives/piegeDeFocus'
-import { LanguageSwitcher } from './LanguageSwitcher'
-import { CurrencySwitcher } from './CurrencySwitcher'
-import { ThemeSwitcher } from './ThemeSwitcher'
+import { ListeDeReglages } from './ListeDeReglages'
 import { useT } from '@/i18n/I18nProvider'
 
 /**
@@ -37,15 +35,21 @@ import { useT } from '@/i18n/I18nProvider'
  * ancrée à son bouton ne fige pas la page derrière elle. C'est exactement la
  * distinction que le crochet expose, et pour laquelle il l'expose.
  *
- * ═══ CE QU'IL NE REMPLACE PAS, ET POURQUOI ═══
+ * ═══ CE QU'IL PARTAGE, ET CE QU'IL NE PARTAGE PAS ═══
  *
- * Le panneau de `PublicHeader` reste où il est. Il porte DEUX choses de plus
- * qu'une liste de réglages : les liens de section sous `lg`, et une feuille
- * pleine page qui neutralise l'arrière-plan par `inert`. Les écrans
- * d'authentification n'ont ni liens de section ni besoin d'une modale pour
- * changer de langue. Les unifier reviendrait à donner à l'un les devoirs de
- * l'autre — et c'est le sens de l'unification qui compte : on partage le
- * crochet, pas la mise en page.
+ * Le CONTENU est commun aux quatre surfaces : `ListeDeReglages`, écrit une
+ * fois. Ce paragraphe disait l'inverse — « on partage le crochet, pas la mise
+ * en page » — et c'était vrai tant que la mise en page ÉTAIT la divergence :
+ * quatre `className` autour des mêmes trois composants, dont deux sans le
+ * moindre intitulé. Partager le crochet ne suffisait pas à rendre le produit
+ * cohérent ; c'est ce que la capture a montré.
+ *
+ * La MISE EN SCÈNE, elle, reste propre à chacun, et c'est délibéré. Le panneau
+ * de `PublicHeader` porte deux choses de plus : les liens de section sous `lg`,
+ * et une feuille pleine page qui neutralise l'arrière-plan par `inert`. Les
+ * écrans d'authentification n'ont ni liens de section ni besoin d'une modale
+ * pour changer de langue. Leur donner la même mécanique reviendrait à donner à
+ * l'un les devoirs de l'autre.
  */
 export function PanneauDeReglages({ className }: { className?: string }) {
   const t = useT()
@@ -69,7 +73,13 @@ export function PanneauDeReglages({ className }: { className?: string }) {
             en diverger. `IconButton` ne relaie d'ailleurs pas les siennes. */}
         <IconButton
           icon={ouvert ? 'close' : 'sliders'}
-          label={ouvert ? t('marketing.nav.closeSettings') : t('marketing.nav.openSettings')}
+          /* LE MÊME VOCABULAIRE QUE LES AUTRES PANNEAUX. Ce déclencheur
+             s'annonçait « Ouvrir les réglages » quand celui de la coquille
+             disait « Réglages : langue, devise et thème ». Deux noms pour le
+             même bouton, dont un seul dit ce qu'il y a derrière — et les clés
+             vivaient sous `marketing`, pour un composant que servent aussi
+             l'authentification, l'écran introuvable et la barre du locataire. */
+          label={ouvert ? t('nav.settingsClose') : t('nav.settingsOpen')}
           variant="secondary"
           onClick={() => setOuvert((o) => !o)}
           aria-expanded={ouvert}
@@ -85,7 +95,7 @@ export function PanneauDeReglages({ className }: { className?: string }) {
           <div
             ref={panneauRef}
             role="dialog"
-            aria-label={t('marketing.nav.openSettings')}
+            aria-label={t('nav.settings')}
             /* `tabIndex={-1}` : sans lui le panneau ne peut pas recevoir le
                focus à l'ouverture, et la tabulation suivante repartirait du haut
                du document plutôt que du premier réglage. */
@@ -110,30 +120,22 @@ export function PanneauDeReglages({ className }: { className?: string }) {
                rédaction. Une liste déroulante est très exactement ce que ce
                barreau nomme. */
             style={{ zIndex: 'var(--z-dropdown)' }}
-            className="absolute top-full right-0 mt-2 w-max max-w-[calc(100vw-2.5rem)] rounded-lg border border-divider bg-surface p-4 shadow-e3"
+            className="absolute top-full right-0 mt-2 w-max min-w-60 max-w-[calc(100vw-2.5rem)] rounded-lg border border-divider bg-surface p-4 shadow-e3"
           >
             {/*
-              EN COLONNE, ET NON EN RANGÉE REPLIÉE.
+              LE CONTENU VIENT DE `ListeDeReglages`, ÉCRIT UNE FOIS.
 
-              La première rédaction reprenait la rangée de l'en-tête telle
-              quelle — `flex-wrap justify-end`. Dans une liste déroulante de
-              320 px, ses trois sélecteurs se replient sur deux lignes et se
-              collent à droite : la langue et la devise en haut, le thème seul
-              dessous, avec du vide à gauche. Un repli hérité d'une contrainte
-              qui n'existe plus ici a l'air d'un accident.
+              Ce panneau composait sa propre colonne — `flex-col items-start
+              gap-2`, trois commandes nues. La vitrine en avait une autre, la
+              coquille une troisième avec des intitulés, la barre du locataire
+              une quatrième en rangée. Quatre `className` autour des mêmes trois
+              composants, et rien pour les tenir ensemble : c'est ainsi qu'on se
+              retrouve avec le même réglage sous quatre apparences.
 
-              Une colonne est ce qu'est une liste de réglages. Elle rend aussi le
-              panneau plus étroit : `w-max` vaut alors la largeur du plus large
-              des trois — le thème, 142 px — au lieu de la somme de deux.
+              Ce qui reste ici est ce qui appartient VRAIMENT à cette surface :
+              l'ancrage sous le bouton, la largeur, le piège de focus.
             */}
-            <div
-              data-mesure="reglages-authentification"
-              className="flex flex-col items-start gap-2"
-            >
-              <LanguageSwitcher />
-              <CurrencySwitcher />
-              <ThemeSwitcher />
-            </div>
+            <ListeDeReglages mesure="reglages-authentification" />
           </div>
         )}
       </div>

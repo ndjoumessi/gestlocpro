@@ -33,9 +33,16 @@ async function choisirLaDevise(nom: RegExp) {
   await user.click(screen.getByRole('option', { name: nom }))
 }
 
-/** Le panneau des réglages, où vit l'avis de conversion. */
-const panneau = () => screen.getByRole('button', { name: /^Devise|^Currency/ }).closest('div')!
-  .parentElement!
+/**
+ * Le bloc des réglages, où vit l'avis de conversion.
+ *
+ * NOMMÉ, ET NON REMONTÉ DEPUIS LE BOUTON. Ce repère était `closest('div')
+ * .parentElement` à partir du sélecteur de devise : il désignait le panneau par
+ * la FORME du DOM, si bien qu'unifier les quatre panneaux derrière un même
+ * composant l'a fait pointer ailleurs. Un cas qui décrit une hiérarchie de
+ * `div` mesure la mise en page, pas la règle.
+ */
+const panneau = () => document.querySelector<HTMLElement>('[data-reglages]')!
 
 describe('le choix d’une devise', () => {
   it('convertit les montants quand les cours sont là', async () => {

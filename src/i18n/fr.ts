@@ -252,6 +252,7 @@ export const fr = {
        bouton, et aucun ne disparaît : le panneau les montre tous les trois. */
     settings: 'Réglages',
     settingsOpen: 'Réglages : langue, devise et thème',
+    settingsClose: 'Fermer les réglages',
     // Trois boutons portaient ce libellé pour trois actions différentes.
     // « Replier ou déplier » ne vaut que pour la barre latérale de bureau, qui
     // bascule entre pleine largeur et rail ; le tiroir mobile, lui, s'ouvre

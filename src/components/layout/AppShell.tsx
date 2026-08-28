@@ -18,14 +18,10 @@ import { Icon, type IconName } from '@/components/primitives/Icon'
 import { Badge } from '@/components/primitives/Badge'
 import { Button, IconButton } from '@/components/primitives/Button'
 import { usePiegeDeFocus } from '@/components/primitives/piegeDeFocus'
-import { LanguageSwitcher } from '@/components/controls/LanguageSwitcher'
-import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
+import { ListeDeReglages } from '@/components/controls/ListeDeReglages'
+import { PanneauDeReglages } from '@/components/controls/PanneauDeReglages'
 import { useCurrency } from '@/currency/CurrencyProvider'
-import { CURRENCY_DEFS } from '@/currency/currencies'
-import { useDates } from '@/lib/useDates'
-import { partiesDeDateISO } from '@/lib/dates'
 import type { CurrencyCode } from '@/currency/currencies'
-import { ThemeSwitcher } from '@/components/controls/ThemeSwitcher'
 import { useT } from '@/i18n/I18nProvider'
 import type { Role } from '@/features/auth/signupState'
 import { usePortfolio } from '@/data/PortfolioProvider'
@@ -711,40 +707,23 @@ function BarreLocataire({ setRole }: { setRole: (role: Role) => void }) {
           pas la porte, qui me les a montrées. La leçon est celle que ce lot
           répète : un ton FORCÉ est un pari sur le fond, et il se perd le jour
           où le fond change de camp. */}
+      {/*
+        LA RANGÉE DE RÉGLAGES EST DEVENUE UN PANNEAU, comme sur les écrans
+        d'authentification et pour la même raison mesurée.
+
+        Elle alignait langue, devise et thème EN LIGNE, et le commentaire qu'elle
+        portait disait déjà le prix : « les quatre commandes alignées mesurent
+        près de 500 px ; sur les 390 px d'un téléphone la barre passait à quatre
+        lignes ». La réponse d'alors fut de MASQUER la devise et le thème sous
+        `sm` — un contrôle absent coûte plus que la ligne qu'il économise, et
+        `PanneauDeReglages` a été écrit contre ce raccourci exact.
+
+        Derrière un déclencheur, rien n'est retiré : le locataire d'un téléphone
+        retrouve ses trois réglages, la barre retombe sur une ligne, et c'est le
+        même panneau que partout ailleurs.
+      */}
       <div className="mb-2.5 ml-auto flex flex-wrap items-center justify-end gap-2">
-        <LanguageSwitcher />
-        {/* LE SÉLECTEUR N'EST PLUS RÉSERVÉ À LA DÉMONSTRATION. Il l'était
-            « faute de conversion » : changer de devise ne faisait que
-            ré-étiqueter des montants, et les quatre devises affichaient les
-            mêmes chiffres. Elles se convertissent maintenant. */}
-        {/* Le repli est porté par une ENVELOPPE et non par la `className` du
-            composant : celle-ci est concaténée à ses propres classes, où un
-            `flex` figure déjà — deux utilitaires de `display` dans le même
-            attribut, et c'est l'ordre de la feuille qui tranche, pas celui de
-            la chaîne. Le sélecteur de thème restait ainsi affiché. */}
-        <span className="hidden sm:flex">
-          <CurrencySwitcher />
-        </span>
-        {/**
-         * Devise et thème se retirent sous `sm`, la langue reste.
-         *
-         * Les quatre commandes alignées mesurent près de 500 px : sur les
-         * 390 px d'un téléphone — la cible matérielle du produit — la barre
-         * passait à quatre lignes et mangeait le tiers de l'écran, en restant
-         * collée. Mesuré en capture avant correction.
-         *
-         * Le thème est celui qui se retire le mieux : par défaut il SUIT le
-         * système, qui a déjà son propre réglage sur un téléphone. La langue,
-         * elle, n'a pas ce recours et reste la commande la plus demandée sur ce
-         * marché.
-         */}
-        <span className="hidden sm:flex">
-          <ThemeSwitcher />
-        </span>
-        {/* En démonstration, le sélecteur de profil est le propos : c'est par
-            lui qu'on entre dans la peau du locataire, et il doit permettre d'en
-            sortir. Sans lui, cette barre serait un cul-de-sac — la barre
-            latérale qui le portait n'existe plus ici. */}
+        <PanneauDeReglages />
         {demo && <SelecteurProfilCompact role="tenant" setRole={setRole} />}
         <SelecteurParc />
         <MenuCompte />
@@ -1288,65 +1267,6 @@ function initiales(nom: string): string {
 /* Pas de `tone` : ce menu ne vit que dans la barre claire. La barre du
    locataire garde ses trois segmentés — elle n'a pas de barre latérale, donc
    pas le même budget de hauteur, et son relevé la donne à 71 px. */
-/**
- * CE QUE LA CONVERSION A FAIT, OU N'A PAS PU FAIRE.
- *
- * ═══ QUAND ELLE A EU LIEU ═══
- *
- * Un montant converti n'est pas le montant enregistré : c'est une lecture, à un
- * cours, un jour donné. Le taire laisserait croire que le parc est tenu dans la
- * devise affichée — et le chiffre changerait demain sans que rien ne l'explique.
- *
- * ═══ QUAND ELLE N'A PAS PU ═══
- *
- * C'est le cas qui manquait, et il est plus grave que l'autre. Sans cours, la
- * devise demandée est inatteignable : le choix était enregistré, l'écran restait
- * dans la monnaie du parc, et RIEN ne l'expliquait. On choisissait le dollar
- * canadien et il ne se passait rien — un contrôle qui a l'air cassé, ce qui est
- * pire qu'un contrôle absent.
- *
- * Le produit ne peut pas convertir sans cours et ne doit pas inventer ; la seule
- * chose qui lui reste est de DIRE ce qu'il affiche à la place.
- *
- * Sur un parc lu dans sa propre devise, il n'y a ni conversion ni manque : la
- * mention se tait, et l'annoncer serait du bruit.
- */
-function MentionDeConversion() {
-  const t = useT()
-  const d = useDates()
-  const { converti, coursIndisponibles, dateDesCours, deviseSource } = useCurrency()
-
-  if (coursIndisponibles)
-    return (
-      <span className="text-caps text-warn">
-        {t('common.currencyUnavailable', { currency: CURRENCY_DEFS[deviseSource].label })}
-      </span>
-    )
-
-  if (!converti) return null
-
-  /*
-    UNE CONVERSION SANS DATE EST UNE PARITÉ, ET ELLE SE DIT AINSI.
-
-    La parité du franc CFA est fixée par traité : elle n'a pas de jour de
-    publication, et annoncer une date qu'on n'a pas serait le seul mensonge
-    possible ici. Mais se taire n'est pas mieux — l'écran affiche alors des euros
-    sur un parc tenu en francs sans dire d'où vient le nombre.
-
-    LE TEST EST SÛR parce que les deux moitiés ne se mélangent pas : les cours
-    flottants n'arrivent JAMAIS sans leur date (voir `taux.ts`, où l'absence de
-    date fait tomber la réponse entière). Une conversion sans date n'a donc pu
-    passer que par la parité.
-  */
-  if (!dateDesCours) return <span className="text-caps text-muted">{t('common.currencyPegged')}</span>
-
-  return (
-    <span className="text-caps text-muted">
-      {t('common.currencyConverted', { date: d.fullDate(partiesDeDateISO(dateDesCours)) })}
-    </span>
-  )
-}
-
 function MenuReglages() {
   const t = useT()
   const [ouvert, setOuvert] = useState(false)
@@ -1384,6 +1304,12 @@ function MenuReglages() {
         aria-expanded={ouvert}
         aria-haspopup="dialog"
         onClick={() => setOuvert((o) => !o)}
+        /* LE MÊME SÉLECTEUR QUE LES AUTRES SURFACES. Il manquait ici, et son
+           absence rendait les trois panneaux incomparables : ni la garde
+           d'uniformité ni `mesure-ui` ne pouvaient les ouvrir de la même
+           façon. Un déclencheur qui s'appelle autrement d'un écran à l'autre
+           est déjà une divergence, avant même que le contenu ne diverge. */
+        data-declencheur-reglages=""
       />
 
       {ouvert && (
@@ -1391,21 +1317,18 @@ function MenuReglages() {
           role="dialog"
           aria-label={t('nav.settings')}
           style={{ zIndex: 'var(--z-popover)' }}
-          className="absolute right-0 mt-2 flex w-64 flex-col gap-4 rounded-md border border-border bg-paper p-4 shadow-lg"
+          /* `w-max` plutôt qu'une largeur fixe : le panneau prenait 256 px quel
+             que soit son contenu, ce qui serrait le libellé de la devise en
+             anglais et laissait du vide en français. La liste réclame ce qu'il
+             lui faut, entre un plancher lisible et le filet du bord d'écran. */
+          className="absolute right-0 mt-2 w-max min-w-60 max-w-[calc(100vw-2.5rem)] rounded-md border border-border bg-paper p-4 shadow-lg"
         >
-          <div className="flex flex-col gap-2">
-            <span className="text-caps text-muted uppercase">{t('common.language')}</span>
-            <LanguageSwitcher />
-          </div>
-          <div className="flex flex-col gap-2">
-            <span className="text-caps text-muted uppercase">{t('common.currency')}</span>
-            <CurrencySwitcher />
-            <MentionDeConversion />
-          </div>
-          <div className="flex flex-col gap-2">
-            <span className="text-caps text-muted uppercase">{t('common.theme')}</span>
-            <ThemeSwitcher />
-          </div>
+          {/* TROIS SECTIONS ÉCRITES À LA MAIN EN MOINS. Elles portaient chacune
+              leur intitulé en capitales au-dessus de sa commande, et l'avis de
+              conversion vivait ici — donc nulle part ailleurs : la vitrine et
+              les écrans d'authentification laissaient une conversion sans
+              provenance. Tout cela appartient au réglage, pas au panneau. */}
+          <ListeDeReglages />
         </div>
       )}
     </div>
