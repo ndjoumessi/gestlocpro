@@ -217,6 +217,21 @@ const COURS_SANS_FLUX: Readonly<Partial<Record<string, number>>> = {
 }
 
 /**
+ * CETTE DEVISE A-T-ELLE BESOIN DU FLUX, ou le client sait-il déjà ?
+ *
+ * L'euro et les deux francs sont dans `COURS_SANS_FLUX` : leur rapport est une
+ * constante de traité. Tout le reste FLOTTE et se publie.
+ *
+ * La question sert à décider quand redemander : un parc lu en euros n'a aucune
+ * raison d'interroger la Banque centrale, même une fois par jour, alors qu'un
+ * parc lu en dollars canadiens en a une par jour ouvré. Elle se déduit de la
+ * table plutôt que d'une seconde liste, qui pourrait en diverger.
+ */
+export function exigeUnFluxDeCours(devise: CurrencyCode): boolean {
+  return !(CODE_ISO[devise] in COURS_SANS_FLUX)
+}
+
+/**
  * CONVERTIR UN MONTANT D'UNE DEVISE VERS UNE AUTRE, en unités mineures.
  *
  * ═══ LE CHEMIN PASSE PAR L'EURO, ET C'EST VOULU ═══

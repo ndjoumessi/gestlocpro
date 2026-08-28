@@ -12,6 +12,7 @@ import {
   CURRENCY_DEFS,
   DEFAULT_CURRENCY,
   convertir,
+  exigeUnFluxDeCours,
   formatMoney,
   parseMoney,
   type CurrencyCode,
@@ -69,6 +70,72 @@ const CurrencyContext = createContext<CurrencyContextValue | null>(null)
 
 const STORAGE_KEY = 'gestlocpro.currency'
 
+/**
+ * LES COURS SURVIVENT À L'ONGLET, ET C'EST LE POINT.
+ *
+ * ═══ LE DÉFAUT ═══
+ *
+ * Le client ne retenait rien. Chaque rechargement repartait sans cours, et la
+ * moindre interruption — API redémarrée, réseau qui bronche, service déployé —
+ * faisait retomber le dollar canadien et l'américain dans la monnaie du parc,
+ * sous « Cours indisponibles ». Vu en capture sur les deux dollars à la fois,
+ * quelques minutes après que le produit les eut servis.
+ *
+ * Le franc et l'euro ne bronchaient pas : leur parité est une constante que le
+ * client tient. Le défaut ne frappait donc QUE les monnaies sans repli.
+ *
+ * ═══ POURQUOI SERVIR UN COURS D'HIER N'EST PAS MENTIR ═══
+ *
+ * Parce que l'écran DIT de quand il date. C'est la règle que `taux.ts` pose
+ * déjà — « la réponse porte toujours sa DATE » — et elle vaut des deux côtés.
+ * Le mensonge serait de servir un cours ancien en le faisant passer pour celui
+ * du jour ; la perte sèche est de n'en servir aucun quand on en a un de la
+ * veille.
+ *
+ * ═══ SEPT JOURS, ET LA RAISON DU CHIFFRE ═══
+ *
+ * La Banque centrale européenne publie chaque jour OUVRÉ : un cours du vendredi
+ * est le cours courant jusqu'au lundi, et un pont de fin d'année ouvre quatre
+ * jours sans publication. Sept jours couvrent la plus longue interruption
+ * normale sans jamais couvrir une panne durable — au-delà, ce n'est plus « le
+ * flux n'a pas publié », c'est « le flux est perdu », et l'aveu vaut mieux que
+ * la conversion. Un cours d'il y a trois semaines sur un relevé de loyer est
+ * faux, date ou pas : personne ne lit la mention avant le montant.
+ */
+const MEMOIRE_DES_COURS = 'gestlocpro.rates'
+const AGE_MAXIMAL_JOURS = 7
+
+type Cours = { date: string | null; parEuro: Partial<Record<string, number>> }
+
+const SANS_COURS: Cours = { date: null, parEuro: {} }
+
+/** Le jour courant en ISO, pour décider si les cours en mémoire sont d'aujourd'hui. */
+const jourISO = () => new Date().toISOString().slice(0, 10)
+
+/**
+ * Ce qu'une session précédente a laissé, s'il est encore utilisable.
+ *
+ * TOUT ÉCHEC REND `null` PLUTÔT QUE DE LANCER. Un `localStorage` illisible —
+ * navigation privée, quota, contenu d'une version antérieure du produit — ne
+ * doit pas empêcher l'application de se monter : sans cours, on affiche la
+ * monnaie du parc, ce que le produit sait déjà faire.
+ */
+function coursRetenus(): Cours | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const brut = window.localStorage.getItem(MEMOIRE_DES_COURS)
+    if (!brut) return null
+    const lu = JSON.parse(brut) as Cours
+    if (typeof lu?.date !== 'string' || typeof lu?.parEuro !== 'object' || !lu.parEuro) return null
+
+    const age = (Date.now() - Date.parse(`${lu.date}T00:00:00Z`)) / 86_400_000
+    if (!Number.isFinite(age) || age > AGE_MAXIMAL_JOURS) return null
+    return { date: lu.date, parEuro: lu.parEuro }
+  } catch {
+    return null
+  }
+}
+
 function readStoredCurrency(): CurrencyCode {
   if (typeof window === 'undefined') return DEFAULT_CURRENCY
   const stored = window.localStorage.getItem(STORAGE_KEY)
@@ -88,9 +155,10 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
    * moindre des deux torts.
    */
   const [deviseSource, setDeviseSource] = useState<CurrencyCode>(DEFAULT_CURRENCY)
-  const [cours, setCours] = useState<{ date: string | null; parEuro: Partial<Record<string, number>> }>(
-    { date: null, parEuro: {} },
-  )
+  /* SEMÉ DEPUIS LA MÉMOIRE, et non vide : c'est ce qui fait qu'un rechargement
+     ne perd pas les deux dollars. Une fonction d'initialisation et non une
+     valeur — sans cela, `localStorage` serait lu à chaque rendu. */
+  const [cours, setCours] = useState<Cours>(() => coursRetenus() ?? SANS_COURS)
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, currency)
@@ -117,35 +185,83 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     toute façon celle des données.
   */
   const [demande, setDemande] = useState(false)
-  const coursConnus = Object.keys(cours.parEuro).length > 0
   /*
-    ON NE DEMANDE QUE CE QU'ON N'A PAS.
+    TROIS RAISONS DE DEMANDER, ET PAS UNE DE PLUS.
 
-    La parité du franc CFA vit dans le client (voir `COURS_SANS_FLUX`) : un parc
-    de Douala lu en euros n'a plus rien à demander à personne. La condition
-    interroge donc `convertir` plutôt que de comparer deux codes — sinon un
-    visiteur ayant choisi l'euro une fois paierait une requête sur CHAQUE page,
-    vitrine comprise, pour un nombre que le paquet transporte déjà.
+    On a demandé — le sélecteur s'ouvre, et la liste doit savoir ce qu'elle peut
+    offrir. Ou l'on ne sait pas faire ce qui est demandé. Ou l'on sait le faire,
+    mais avec un cours qui n'est pas du jour ET une paire qui dépend vraiment du
+    flux.
 
-    L'ouverture du sélecteur charge quand même : la liste doit savoir si elle
-    peut offrir les deux dollars avant qu'on ait choisi, et eux seuls flottent.
+    La condition interroge `convertir` plutôt que de comparer deux codes : la
+    parité du franc CFA vit dans le client, donc un parc de Douala lu en euros
+    n'a rien à demander à personne — sinon un visiteur ayant choisi l'euro une
+    fois paierait une requête sur CHAQUE page, vitrine comprise.
+
+    Et `exigeUnFluxDeCours` porte le même soin sur la fraîcheur : sans lui, ce
+    même parc en euros redemanderait les cours chaque jour pour une constante de
+    traité qui ne changera pas.
   */
-  const besoinDeCours = demande || convertir(0, deviseSource, currency, cours.parEuro) === null
+  const parLeFlux = exigeUnFluxDeCours(deviseSource) || exigeUnFluxDeCours(currency)
+
+  /*
+    UNE RÉPONSE REÇUE ARRÊTE DE DEMANDER — et c'est un garde-fou, pas une
+    optimisation.
+
+    La condition ci-dessous compare la date des cours au jour courant. Or la
+    Banque centrale ne publie pas le week-end : le dimanche, un cours du vendredi
+    n'est PAS du jour et ne le deviendra jamais. Sans ce drapeau, la réponse du
+    serveur relancerait donc la condition qui l'a demandée — une requête par
+    rendu, en boucle, précisément le jour où le flux va bien.
+
+    IL N'EST POSÉ QU'AU SUCCÈS. Un échec le laisse à faux, ce qui ne boucle pas
+    pour autant : l'effet ne se rejoue que si `besoinDeCours` ou la raison de
+    demander changent, et un échec ne change ni l'un ni l'autre. Ouvrir le
+    sélecteur, lui, change la raison — et c'est ainsi qu'on retente après une API
+    trouvée en train de redémarrer.
+
+    Une PREMIÈRE rédaction employait une référence retenant la dernière
+    signature tentée. Elle se retournait contre le double montage de
+    `StrictMode` : la première passe lançait la requête et posait la référence,
+    son démontage simulé invalidait la réponse, et la seconde passe se voyait
+    refuser la requête par sa propre référence. Résultat mesuré au navigateur —
+    aucun cours en développement, sur un poste où l'API répondait 200.
+  */
+  const [repondu, setRepondu] = useState(false)
+  const besoinDeCours =
+    !repondu &&
+    (demande ||
+      convertir(0, deviseSource, currency, cours.parEuro) === null ||
+      (parLeFlux && cours.date !== jourISO()))
   const chargerLesCours = useCallback(() => setDemande(true), [])
 
   useEffect(() => {
-    if (!besoinDeCours || coursConnus) return
+    if (!besoinDeCours) return
+
     let vivant = true
     void api
       .rates()
       .then((recu) => {
-        if (vivant) setCours(recu)
+        if (!vivant) return
+        setCours(recu)
+        setRepondu(true)
+        /* ON NE RETIENT QUE CE QUI PORTE UNE DATE. Une réponse sans cours
+           flottants ne contient que la parité, que le client tient déjà ; la
+           garder écraserait des cours utilisables par rien du tout. */
+        if (recu.date) {
+          try {
+            window.localStorage.setItem(MEMOIRE_DES_COURS, JSON.stringify(recu))
+          } catch {
+            /* Quota plein ou stockage refusé : la session courante garde ses
+               cours en mémoire vive, la suivante les redemandera. */
+          }
+        }
       })
       .catch(() => {})
     return () => {
       vivant = false
     }
-  }, [besoinDeCours, coursConnus])
+  }, [besoinDeCours])
 
   const setCurrency = useCallback((next: CurrencyCode) => setCurrencyState(next), [])
 
