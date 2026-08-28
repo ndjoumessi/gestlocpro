@@ -240,6 +240,11 @@ export function Portfolio() {
                  intitulées « BASTOS ». Le quartier passe en note, où il situe
                  sans prétendre nommer. */
               label={b.name}
+              /* Le seul intitulé de carte du produit qui porte une DONNÉE,
+                 avec celui de la vitrine des états : un nom d'immeuble n'a pas
+                 de longueur maximale, donc il se coupe, et la garde du rognage
+                 sait que cette coupe-là est assumée. */
+              donnee
               value={`${occ}/${total}`}
               note={`${b.district} · ${t('app.portfolio.occupancy', { occupied: occ, total })}`}
               action={

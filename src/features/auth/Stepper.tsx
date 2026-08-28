@@ -83,13 +83,22 @@ export function Stepper({ steps, current }: StepperProps) {
               </span>
 
               {/*
-                PAS DE `truncate` SOUS `sm`, et c'est le point du lot : une
-                troncature rendrait « Récapitul… » là où l'on vient justement de
-                rétablir le mot. La colonne fait 76 px à 360 ; les libellés y
-                passent sur une ou deux lignes, centrés. Au-delà de `sm` la
-                troncature revient, parce que le libellé y partage sa ligne avec
-                la pastille et le trait, et qu'un retour à la ligne y casserait
-                l'alignement du fil.
+                PAS DE `truncate` SOUS `sm`, et c'est le point du lot qui l'a
+                écrit : une troncature rendrait « Récapitul… » là où l'on vient
+                justement de rétablir le mot. La colonne fait 76 px à 360 ; les
+                libellés y passent sur une ou deux lignes, centrés.
+
+                ET PLUS AU-DELÀ DE `sm` NON PLUS. La troncature y revenait,
+                « parce que le libellé partage sa ligne avec la pastille et le
+                trait, et qu'un retour à la ligne casserait l'alignement du
+                fil ». L'argument tenait tant qu'aucun libellé ne demandait deux
+                lignes à cette largeur ; à 22 px de police racine, les QUATRE le
+                demandent — « Votre contexte » manque 47 px, « Récapitulatif »
+                4 px, et l'écran rendait « Votre conte… ». Le fil, lui, ne casse
+                pas : le trait est un `h-px flex-1` centré par `items-center`,
+                donc il descend d'une demi-ligne et reste aligné sur les autres
+                rangées de la même hauteur. On a préféré une prédiction à une
+                mesure, et c'est la mesure qui avait raison.
 
                 `tracking-normal` ANNULE L'INTERLETTRAGE DE `text-caps`, et il a
                 fallu le mesurer pour le voir : « Récapitulatif » débordait sa
@@ -106,7 +115,7 @@ export function Stepper({ steps, current }: StepperProps) {
               <span
                 className={cn(
                   'w-full hyphens-auto text-center text-caps tracking-normal leading-tight',
-                  'sm:w-auto sm:truncate sm:text-left sm:text-label sm:tracking-normal',
+                  'sm:w-auto sm:text-left sm:text-label sm:tracking-normal',
                   active ? 'font-semibold text-ink' : 'text-muted',
                 )}
               >

@@ -57,12 +57,37 @@ const RESERVE: Record<string, string> = {
     'six clartés mesurées (1 %, 7 %, 13 %, 18 %, 26 %, 28 %) la rendrait illisible : ce qui ' +
     'reste ne se lirait plus comme une échelle mais comme quatre couleurs.',
   'data-5': 'Même raison que `data-2` — barreau de l’échelle, non employé.',
+  /*
+    LA FAMILLE `-on-dark` DE `data` EST ENTRÉE EN RÉSERVE AU COMPLET, et le
+    motif a changé de nature — il faut le dire, parce que trois de ces six
+    lignes portaient auparavant « les trois séries rendues ont la leur et s'en
+    servent ».
+
+    Elles ne s'en servent plus : le seul composant qui peignait des séries sur
+    un fond sombre était la LECTURE FIXE du graphe empilé, et elle est passée
+    sur la surface de la carte (voir `Charts.tsx`, `LectureFixe`). Ses pastilles
+    prennent depuis la palette des barres — ce qui a du même coup supprimé
+    l'écart entre la couleur d'une série et celle de la barre qu'elle nomme.
+
+    POURQUOI GARDER LES SIX PLUTÔT QUE LES SUPPRIMER. Ce n'est pas la symétrie
+    pour elle-même : `.on-dark` est toujours la portée de cinq blocs du produit
+    — le pied, le panneau de marque, les sections d'encre de la vitrine, les
+    toasts, `Card tone="dark"`. Le jour où une série y sera peinte, la question
+    posée sera exactement celle que ces jetons ont déjà tranchée, et à laquelle
+    on a déjà répondu de travers une fois : des jetons `-on-ink` inversants
+    avaient d'abord été essayés, ils réparaient le clair et rendaient la
+    pastille invisible en sombre. Reconstituer l'échelle mesurée coûterait plus
+    que de la garder ; la reconstituer DE MÉMOIRE coûterait le même bug.
+  */
   'data-1-on-dark':
-    'Contrepartie claire de `data-1`. Les trois séries rendues ont la leur et s’en servent ; ' +
-    'celle-ci suit la même règle par symétrie, et son absence ferait de la famille ' +
-    '`-on-dark` une liste à trous.',
+    'Contrepartie claire de `data-1`, et plus aucune n’est employée depuis que la lecture du ' +
+    'graphe a quitté le fond encre. L’échelle inversée est gardée entière : ses six clartés ' +
+    'sont mesurées, et une famille à trous ne se rattrape pas au jugé.',
   'data-2-on-dark': 'Contrepartie de `data-2` — même raison.',
+  'data-3-on-dark': 'Contrepartie de `data-3` — même raison.',
+  'data-4-on-dark': 'Contrepartie de `data-4` — même raison.',
   'data-5-on-dark': 'Contrepartie de `data-5` — même raison.',
+  'data-6-on-dark': 'Contrepartie de `data-6` — même raison.',
   'ink-3':
     'Troisième cran de l’échelle d’encre. `ink` et `ink-2` servent ; ce cran documente le pas ' +
     'de l’échelle et son plancher avant `muted`. Une échelle garde ses barreaux.',

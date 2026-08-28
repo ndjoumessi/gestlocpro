@@ -106,7 +106,14 @@ export function TenantPortal() {
               longue (`portail.gestlocpro.com/documents`) débordait de la
               barre sans le point de suspension qui dirait qu'elle est
               coupée ; seul le cadre arrondi l'empêchait de pousser la page. */}
-          <span className="numeric min-w-0 truncate rounded-md bg-surface-sunken px-3 py-1 text-caps text-muted">
+          {/* `data-donnee` : c'est une ADRESSE, et cette barre imite celle du
+              navigateur — qui coupe elle aussi ce qui ne tient pas. Lui « rendre
+              la place » n'a pas de sens : une adresse n'a pas de longueur
+              maximale, et la barre en a une. */}
+          <span
+            data-donnee
+            className="numeric min-w-0 truncate rounded-md bg-surface-sunken px-3 py-1 text-caps text-muted"
+          >
             {t(URL_PAR_ONGLET[tab])}
           </span>
         </div>

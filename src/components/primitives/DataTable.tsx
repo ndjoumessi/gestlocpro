@@ -444,18 +444,31 @@ function ListeDeFiches<T>({
               LA SUITE GARDE SON AXE, en grille plutôt qu'en liste.
               `grid-flow-col` répartit les colonnes également : les six périodes
               y occupent la même largeur, ce qui est la condition pour qu'on
-              compare leurs marques d'un coup d'œil. `auto-cols-fr` les laisse
-              se resserrer plutôt que déborder — à 320 px, six périodes tiennent
-              dans 256 px de contenu, soit 42 px chacune.
+              compare leurs marques d'un coup d'œil.
+
+              LE PLANCHER EST EN `rem`, ET IL REMPLACE UNE TRONCATURE. `auto-cols-fr`
+              laissait les colonnes se resserrer jusqu'à 42 px à 320, et
+              l'en-tête portait `truncate` pour absorber le reste. Mesuré à 22 px
+              de police racine : « mars » manque 19 px, « août » 18, et six mois
+              sur douze s'affichaient rabotés — un axe dont on ne lit plus les
+              graduations. `minmax(2.75rem,1fr)` grandit AVEC la police, puisqu'il
+              est exprimé dans la même unité qu'elle ; c'est la seule façon pour
+              qu'un axe reste lisible quand son lecteur agrandit son texte.
+
+              Et la rangée DÉFILE plutôt que de couper — `overflow-x-auto`, comme
+              le graphe empilé le fait déjà pour ses douze colonnes, et pour la
+              même raison : au-delà d'un certain nombre de graduations, la
+              largeur qui manque se rend en défilement, jamais en points de
+              suspension.
 
               Pas de `<dl>` ici : ce n'est pas une suite de couples nom/valeur,
               c'est une SÉRIE dont l'en-tête est un axe. Un `<dl>` annoncerait
               six définitions indépendantes.
             */
-            <div className="mt-3 grid auto-cols-fr grid-flow-col gap-1 border-t border-divider pt-3">
+            <div className="mt-3 grid auto-cols-[minmax(2.75rem,1fr)] grid-flow-col gap-1 overflow-x-auto border-t border-divider pt-3">
               {serie.map((column) => (
                 <div key={column.key} className="min-w-0 text-center">
-                  <div className="eyebrow truncate text-muted">{column.header}</div>
+                  <div className="eyebrow text-muted">{column.header}</div>
                   <div className="mt-1 flex justify-center">{column.render(row)}</div>
                 </div>
               ))}

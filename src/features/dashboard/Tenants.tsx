@@ -214,7 +214,12 @@ export function Tenants() {
                     .slice(0, 2)
                     .join('')}
                 </span>
-                <span className="min-w-0 truncate font-medium">{unit.tenant}</span>
+                {/* `data-donnee` : un nom de locataire est saisi, sa longueur
+                    n'est bornée par rien, et la colonne d'un tableau l'est. La
+                    coupe est donc assumée — voir `MESURER_TRONCATURES`. */}
+                <span data-donnee className="min-w-0 truncate font-medium">
+                  {unit.tenant}
+                </span>
               </div>
             ),
           },

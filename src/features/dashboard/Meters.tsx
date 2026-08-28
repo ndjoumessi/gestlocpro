@@ -308,7 +308,10 @@ export function Meters() {
             render: (r) => (
               <div>
                 <span className="numeric font-medium">{unitLabel(r.unitId)}</span>
-                <span className="block truncate text-body text-muted sm:hidden">
+                {/* `data-donnee` : un nom de locataire est saisi, sa longueur
+                    n'est bornée par rien — la coupe est assumée, contrairement
+                    au vocabulaire du produit. Voir `MESURER_TRONCATURES`. */}
+                <span data-donnee className="block truncate text-body text-muted sm:hidden">
                   {unitById(r.unitId)?.tenant}
                 </span>
               </div>

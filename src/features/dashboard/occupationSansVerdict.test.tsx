@@ -144,12 +144,22 @@ describe('la répartition du parc', () => {
       qu'une vacance mérite un ton, il devra le changer AUX DEUX, ce qui est
       précisément la discussion qu'il faut avoir.
     */
-    /* `onDark` et non `neutral` : la carte est en ton sombre, son fond est figé,
-       et une pastille neutre y devenait invisible en thème sombre — 1,07:1
-       mesuré. Ce qui compte pour CE cas n'a pas changé : le ton employé est
-       celui qui ne rend AUCUN verdict, ni `ok` ni `warn`. */
+    /*
+      `neutral` REVIENT, et le détour vaut d'être gardé : il dit que ce cas
+      surveille une RÈGLE et non une valeur.
+
+      Le ton était passé à `onDark` le jour où cette carte a été peinte en ton
+      sombre — son fond y était figé par `.on-dark`, et un lavis neutre y
+      devenait invisible, 1,07:1 mesuré. La carte suit de nouveau la surface de
+      la page, donc le lavis bascule avec elle et `neutral` est de nouveau juste.
+
+      Deux fois le ton a changé, deux fois pour la même raison — le FOND —, et
+      jamais parce que le verdict aurait changé. C'est ce dernier point que ce
+      cas tient, et c'est pourquoi la seconde assertion est la vraie : quel que
+      soit le ton, il n'est ni `ok`, ni `warn`, ni `danger`.
+    */
     for (const p of pastillesDeRatio()) {
-      expect(p).toHaveAttribute('data-ton', 'onDark')
+      expect(p).toHaveAttribute('data-ton', 'neutral')
       expect(['ok', 'warn', 'danger']).not.toContain(p.getAttribute('data-ton'))
     }
   })

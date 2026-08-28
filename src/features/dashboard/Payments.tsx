@@ -394,7 +394,12 @@ export function Payments() {
              */
             render: (unit) => (
               <div className="min-w-0">
-                <p className="truncate">{unit.tenant}</p>
+                {/* `data-donnee` : un nom de locataire est saisi, sa longueur
+                    n'est bornée par rien — la coupe est assumée, contrairement
+                    au vocabulaire du produit. Voir `MESURER_TRONCATURES`. */}
+                <p data-donnee className="truncate">
+                  {unit.tenant}
+                </p>
                 <p className="numeric mt-0.5 text-caps text-muted">
                   {money(unit.rent, { round: true })}
                 </p>

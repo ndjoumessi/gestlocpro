@@ -586,14 +586,25 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* DEUX CARTES, PLUS TROIS : la troisième est montée d’une rangée. Ces
-          deux-ci renseignent sans rien demander, elles tiennent donc la largeur
-          à deux plutôt que de laisser une colonne vide là où il y en avait trois. */}
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      {/*
+        LA RANGÉE À DEUX COLONNES N'EN AVAIT PLUS QU'UNE, ET LA PROSE DISAIT
+        ENCORE « DEUX CARTES ».
 
-        <Card tone="dark">
+        Elle en portait deux ; « Ce qui demande une décision » est partie dans la
+        file du jour, le lot qui l'a retirée a laissé le `lg:grid-cols-2`. À
+        1280 px, la répartition du parc occupait donc la moitié gauche et
+        laissait un trou de 600 px à sa droite — sur la dernière rangée de
+        l'écran, c'est-à-dire la dernière image qu'on en garde.
+
+        Elle prend la largeur. Les immeubles y passent en GRILLE plutôt qu'en
+        liste : une répartition se compare, et trois lignes de 1200 px de long
+        pour un nom et un ratio n'étaient une liste que par défaut.
+      */}
+      <div className="mt-4">
+
+        <Card>
           <CardHeader title={t('app.dashboard.breakdownTitle')} level={2} />
-          <ul className="flex flex-col gap-3">
+          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {BUILDINGS.map((building) => {
               // Compté sur l'état vivant, comme l'écran Parc. Cette carte
               // divisait encore `building.occupied / building.units`, deux
@@ -607,21 +618,40 @@ export function Dashboard() {
                  lui, est ce que la carte montre — et il n'a jamais eu besoin
                  d'être converti en pourcentage pour se lire. */
               return (
-                <li key={building.id}>
+                /* `min-w-0` : une cellule de grille hérite de
+                   `min-width: auto` — elle refuse donc de descendre sous la
+                   largeur intrinsèque de son contenu, et « Résidence
+                   Bonamoussadi » faisait déborder la liste de 15 px à 320.
+                   C'est le même défaut que `Card` documente, arrivé une
+                   ligne plus bas parce que le `<li>` est devenu la cellule. */
+                <li key={building.id} className="min-w-0">
                   <Link
                     to={lien(base, 'parc')}
                     /* `min-h-11` : les deux lignes de texte frôlaient déjà le
                        plancher sans que rien ne le garantisse — un immeuble au nom
                        court et sans quartier serait passé dessous. */
-                    className="flex min-h-11 items-center gap-3 rounded-md py-1 no-underline"
+                    className={cn(
+                      // La tuile REMPLACE la ligne : chaque immeuble occupe sa
+                      // cellule entière, bordée, plutôt qu'une ligne de texte
+                      // dans une colonne. C'est ce qui rend la rangée
+                      // comparable d'un coup d'œil — trois objets de même
+                      // forme, dont seuls le nom et le compte diffèrent.
+                      'flex min-h-11 items-center gap-3 rounded-md border border-divider px-3 py-2.5',
+                      'no-underline transition-colors duration-150 hover:bg-surface-sunken',
+                    )}
                   >
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-body font-medium text-on-dark">
+                      {/* `data-donnee` : le nom d'un immeuble est saisi, sa
+                          longueur n'est bornée par rien, et la tuile l'est.
+                          Voir `MESURER_TRONCATURES` — le vocabulaire du produit
+                          ne se coupe pas, une donnée si. */}
+                      <span
+                        data-donnee
+                        className="block truncate text-body font-medium text-ink"
+                      >
                         {building.name}
                       </span>
-                      <span className="text-caps text-on-dark-faint">
-                        {building.district}
-                      </span>
+                      <span className="text-caps text-muted">{building.district}</span>
                     </span>
                     {/*
                       UN RATIO D'OCCUPATION N'EST PAS UN VERDICT.
@@ -645,18 +675,19 @@ export function Dashboard() {
                       la rendent sans état. Celle-ci était la seule des cinq à
                       juger, et c'est elle qui avait tort.
 
-                      La pastille RESTE : elle sépare le ratio du nom sur une
-                      carte sombre et dense. Elle ne dit plus « bien » ou
-                      « mal », elle dit « voici le compte ».
+                      La pastille RESTE : elle sépare le ratio du nom. Elle ne
+                      dit plus « bien » ou « mal », elle dit « voici le compte ».
                     */}
-                    {/* `onDark` et non `neutral` : cette carte est en ton sombre,
-                        donc son fond est FIGÉ par `.on-dark`. Une pastille
-                        neutre y posait un lavis qui bascule — 14:1 en clair,
-                        1,07:1 en sombre contre son propre fond, c'est-à-dire
-                        invisible. Le ton reste le MÊME pour les trois immeubles :
-                        c'est le sujet du lot précédent, un ratio n'est pas un
-                        verdict, et il n'a pas changé. */}
-                    <StatusPill tone="onDark" size="sm">
+                    {/* `neutral` REVIENT, et c'est la carte qui a changé, pas la
+                        règle. Le ton `onDark` avait été posé parce que la carte
+                        était en ton sombre : son fond y était FIGÉ par
+                        `.on-dark`, et un lavis neutre y basculait — 14:1 en
+                        clair, 1,07:1 en sombre contre son propre fond,
+                        c'est-à-dire invisible. La carte suit maintenant la
+                        surface de la page, donc le lavis bascule AVEC elle et
+                        `neutral` est de nouveau le ton juste. Le même pour les
+                        trois immeubles : un ratio n'est pas un verdict. */}
+                    <StatusPill tone="neutral" size="sm">
                       {occupees}/{inBuilding.length}
                     </StatusPill>
                   </Link>

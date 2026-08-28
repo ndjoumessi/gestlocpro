@@ -893,14 +893,22 @@ function BandeauDemo() {
           téléphone. Relevé sur les onze largeurs, dans les deux langues : la
           longue ne tient qu'à partir de 1280 — à 1024 la barre latérale reprend
           256 px et la rogne encore —, la courte tient dès 320. */}
-      {/* PAS DE `truncate` SUR LA COURTE : elle nomme ce qui est fictif, et
-          couper « Immeubles, locataires et mon… » rendrait la phrase pauvre
-          qu'elle vient remplacer. Elle passe donc à la ligne quand il le faut —
-          mesuré à deux lignes sous 700 px, une au-delà. La longue garde son
-          `truncate` : à partir de 1280 px elle tient, et le garder est une
-          ceinture pour une langue future plus bavarde. */}
+      {/* AUCUNE DES DEUX NE SE COUPE, et la longue vient de perdre son
+          `truncate`.
+
+          Elle nomme ce qui est fictif : couper « Immeubles, locataires et
+          mon… » rendrait la phrase pauvre qu'elle vient remplacer. La courte
+          l'avait compris depuis le début et passe à la ligne quand il le faut —
+          mesuré à deux lignes sous 700 px, une au-delà.
+
+          LA LONGUE GARDAIT LE SIEN « comme une ceinture pour une langue future
+          plus bavarde ». La ceinture a serré, et pas sur une langue : à 22 px de
+          police racine — le cran « très grand » d'Android —, la phrase manque
+          375 px à 1280 et s'affiche « Vous parcourez une démonstration : ces
+          imm… ». Une ceinture qui coupe la phrase qu'elle protège n'en est pas
+          une. Elle se replie donc, comme sa jumelle. */}
       <span className="min-w-0 flex-1 xl:hidden">{t('common.demoNoticeShort')}</span>
-      <span className="hidden min-w-0 flex-1 truncate xl:block">{t('common.demoNotice')}</span>
+      <span className="hidden min-w-0 flex-1 xl:block">{t('common.demoNotice')}</span>
       <Button size="sm" to="/inscription/proprietaire" iconAfter="arrowRight" className="shrink-0">
         {t('common.demoCta')}
       </Button>
@@ -1416,7 +1424,11 @@ function MenuCompte() {
           >
             <div className="px-2 py-1.5">
               <p className="text-label font-semibold text-ink">{nom}</p>
-              <p className="truncate text-caps text-muted">{etat.compte.email}</p>
+              {/* Une adresse électronique n'a pas de longueur maximale : la
+                  couper dans un menu de 256 px est le seul comportement tenable. */}
+              <p data-donnee className="truncate text-caps text-muted">
+                {etat.compte.email}
+              </p>
             </div>
             <button
               type="button"

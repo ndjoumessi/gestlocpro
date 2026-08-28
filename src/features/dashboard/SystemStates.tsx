@@ -134,6 +134,9 @@ export function SystemStates() {
                     <StatCard
                       key={immeuble.id}
                       label={immeuble.district}
+                      /* Un nom de quartier est une donnée — voir `donnee` sur
+                         `StatCard`, et son jumeau sur l'écran Parc. */
+                      donnee
                       value={`${occupes}/${logements.length}`}
                       note={t('app.portfolio.occupancy', {
                         occupied: occupes,

@@ -69,38 +69,27 @@ const SERIES_COLORS: Record<string, string> = {
 }
 
 /**
- * Les mêmes séries, pour l'INFOBULLE — dont le fond reste SOMBRE dans les deux
- * thèmes.
+ * LA PALETTE INVERSÉE DES SÉRIES A ÉTÉ RETIRÉE D'ICI, ET SON HISTOIRE VAUT
+ * D'ÊTRE GARDÉE — c'est elle qui explique pourquoi les jetons `-on-dark` de la
+ * famille `data` sont aujourd'hui en réserve (voir `jetonsMorts.test.ts`).
  *
- * La pastille « Loyer » avait disparu, et pour la pire des raisons : en thème
- * clair, `--color-data-1` vaut `#14201e`, soit exactement la valeur de
- * `--color-ink` dont l'infobulle fait son fond. La pastille était peinte, à la
- * bonne taille, à la bonne place — de la couleur du fond. « Eau » et
- * « Électricité », teintes moyennes, s'en tiraient ; seule la série la plus
- * sombre s'effaçait, et une ligne sur trois perdait son repère sans que rien ne
- * signale l'absence.
+ * Elle existait pour un seul appelant : la LECTURE FIXE du graphe empilé, dont
+ * le fond restait sombre dans les deux thèmes. Elle y était nécessaire, et pour
+ * une raison qui s'était payée : en thème clair, `--color-data-1` valait
+ * exactement `--color-ink`, donc la pastille « Loyer » était peinte, à la bonne
+ * taille, à la bonne place — de la couleur du fond. Une ligne sur trois perdait
+ * son repère sans que rien ne signale l'absence.
  *
- * La bascule `.on-dark` ne pouvait pas rattraper le coup : elle redirige des
- * CLASSES utilitaires — `.text-muted`, `.text-ink` — et la pastille reçoit sa
- * couleur par un `style` en ligne, hors de portée de toute règle CSS.
+ * La lecture fixe a quitté le fond encre (voir `LectureFixe`). Ses pastilles
+ * prennent désormais la palette des BARRES, sur la surface de la carte, ce qui
+ * retire du même geste le dernier écart : la pastille d'une série et la barre
+ * qu'elle nomme n'étaient pas de la même couleur.
  *
- * Le piège est de croire que ce fond bascule. `--color-ink` s'inverse bien avec
- * le thème — mais la classe `.on-dark`, que l'infobulle porte, la REFIXE à sa
- * valeur sombre pour tout ce qui vit dessous. L'infobulle est donc de celles
- * « qui restent sombres », et c'est précisément le public des jetons
- * `-on-dark`, identiques dans les trois blocs de palette.
- *
- * L'erreur a été commise puis corrigée : des jetons `-on-ink` inversants ont
- * d'abord remplacé ceux-ci, ce qui réparait le thème clair et rendait la
- * pastille invisible en sombre — le même défaut, déplacé. La leçon tient en une
- * ligne : le fond d'un composant se lit là où il est PEINT, pas dans la palette
- * dont il tire son nom.
+ * LA LEÇON RESTE, et elle est plus générale que la palette qui la portait : le
+ * fond d'un composant se lit là où il est PEINT, pas dans la palette dont il
+ * tire son nom.
  */
-const SERIES_COLORS_ON_DARK: Record<string, string> = {
-  rent: 'var(--color-data-6-on-dark)',
-  water: 'var(--color-data-4-on-dark)',
-  power: 'var(--color-data-3-on-dark)',
-}
+
 
 /**
  * La HACHURE d'une période encore OUVERTE.
@@ -622,6 +611,31 @@ export function StackedBarChart({
                 // et une valeur défendue au centième dans la feuille de jetons
                 // ne se corrige pas en passant.
                 'min-w-0 flex-1 text-center text-caps tracking-wide uppercase',
+                /*
+                  AU-DELÀ DE `sm`, L'ÉTIQUETTE RÉCLAME SA PROPRE LARGEUR.
+
+                  Le commentaire ci-dessus disait « PAS de plancher ici, et
+                  c'est mesuré » : poser `min-w-6` ne déplaçait rien, puisque
+                  24 px tiennent sous n'importe quelle colonne. C'était vrai —
+                  à 16 px de police racine. À 22 px, la même colonne vaut 34 px
+                  quand « SEPT » en demande 41, et six mois sur douze
+                  s'affichent rabotés. Le plancher testé alors était celui des
+                  BARRES ; celui qu'il fallait est celui du TEXTE.
+
+                  `min-w-max` le prend au mot : la rangée d'étiquettes réclame
+                  sa largeur intrinsèque, le conteneur `min-w-max` qui porte les
+                  deux rangées grandit d'autant, `flex-1` redécoupe les colonnes
+                  à l'identique dans les deux, et la zone de tracé — déjà
+                  `overflow-x-auto` — défile de la différence. Aucune graduation
+                  n'est coupée, et l'alignement barre/étiquette est conservé par
+                  construction.
+
+                  SOUS `sm`, RIEN NE CHANGE : les étiquettes y débordent déjà
+                  sur une voisine `invisible` qui leur prête sa place, et leur
+                  donner une largeur propre ferait défiler le téléphone pour
+                  douze mois dont on n'en montre que six.
+                */
+                'sm:min-w-max',
                 // Chaque étiquette garde sa colonne — c'est ce qui la tient
                 // centrée sous SA barre — mais sur téléphone elle a le droit
                 // de déborder sur la voisine. La voisine est `invisible` : elle
@@ -682,7 +696,10 @@ export function StackedBarChart({
             key: s.key,
             label: seriesLabels[s.key],
             value: money(s.value),
-            color: SERIES_COLORS_ON_DARK[s.key],
+            /* La MÊME palette que les barres, depuis que la lecture vit sur
+               la surface de la carte : la pastille est exactement la couleur
+               de la barre qu'elle nomme. */
+            color: SERIES_COLORS[s.key],
           }))}
       />
 
@@ -752,7 +769,43 @@ function LectureFixe({
     <div
       aria-hidden="true"
       className={cn(
-        'on-dark mt-3 rounded-lg bg-ink px-3.5 py-2.5 text-on-dark',
+        /*
+          ═══ LA LECTURE N'EST PLUS UN PAVÉ NOIR ═══
+
+          Elle était peinte `bg-ink` — #131a22, l'ENCRE principale du produit,
+          détournée en surface. Dans une carte blanche, cela en faisait l'objet
+          le plus lourd de l'écran : une bande d'un noir absolu, entre l'axe des
+          mois et la note, plus appuyée que le graphe qu'elle annote. Or une
+          lecture est SUBORDONNÉE à ce qu'elle lit. Le noir plein reste ce qu'il
+          était avant d'être emprunté ici : ce qui est CHOISI (un filtre actif,
+          un jour retenu) ou ce qui BORNE la page (le pied, le panneau de
+          marque).
+
+          ═══ ET LES PASTILLES CESSENT D'ÊTRE D'UNE AUTRE PALETTE ═══
+
+          C'est le vrai gain, et le fichier l'avait vu venir. Le commentaire qui
+          pose cette lecture disait, mot pour mot : « le fond encre reste celui
+          de l'infobulle : les jetons de série y sont mesurés pour ce fond, et
+          les porter sur la carte claire demanderait l'autre palette — UN SUJET
+          À SOI, QUE CE LOT N'OUVRE PAS. » Il s'ouvre ici.
+
+          Conséquence : la pastille « Loyer » de la lecture était `--color-data-6-on-dark`
+          quand la barre au-dessus d'elle et la légende à côté sont
+          `--color-data-6`. Trois repères pour trois teintes différentes,
+          désignant la même série, dans la même carte. Sur fond clair, les trois
+          convergent — la pastille de la lecture est EXACTEMENT la couleur de la
+          barre qu'elle nomme.
+
+          ═══ LE FOND EST CELUI DE LA CARTE, ET C'EST UNE CONTRAINTE MESURÉE ═══
+
+          `bg-surface-sunken` aurait mieux détaché le cadre. Mesuré : la série
+          la plus claire, `--color-data-6` (#899485), y tombe à 2,85:1 — sous le
+          seuil de 3:1 d'un élément non textuel porteur de sens. Sur la surface
+          de la carte elle tient 3,16 en clair et 8,02 en sombre : c'est le
+          couple DÉJÀ certifié, celui des barres elles-mêmes. Le cadre se fait
+          donc par la bordure, pas par le fond.
+        */
+        'mt-3 rounded-lg border border-border px-3.5 py-2.5',
         // La hauteur est PRÉVISIBLE, ce qui est plus fort que réservée. Un
         // simple plancher n'aurait tenu que le cas court : mesuré, la bande
         // passait de 68 px à 640 de large à 92 puis 115 quand la carte se
@@ -791,8 +844,8 @@ function LectureFixe({
         nombre magique aurait tenu jusqu'au prochain jeu de données.
       */}
       <p className="flex flex-col gap-y-0.5">
-        <span className="text-caps text-on-dark-faint uppercase">{title}</span>
-        <span className="numeric title-m text-on-dark">{total}</span>
+        <span className="text-caps text-muted uppercase">{title}</span>
+        <span className="numeric title-m text-ink">{total}</span>
       </p>
 
       {/* Le détail disparaît quand la série est unique : un filet et un
@@ -806,8 +859,8 @@ function LectureFixe({
                 className="size-2 shrink-0 rounded-legende"
                 style={{ background: row.color }}
               />
-              <span className="text-on-dark-muted">{row.label}</span>
-              <span className="numeric text-on-dark">{row.value}</span>
+              <span className="text-muted">{row.label}</span>
+              <span className="numeric text-ink">{row.value}</span>
             </li>
           ))}
         </ul>
@@ -1278,7 +1331,12 @@ export function DonutChart({
                   de ΔE00 entre « partiel » et « en retard » sous deutéranopie,
                   sur un disque de 10 px. */}
               <JaugeDePoste etat={slice.etat} />
-              <span className="min-w-0 flex-1 truncate text-muted">{slice.label}</span>
+              {/* PAS DE TRONCATURE : ces trois libellés sont du vocabulaire —
+                  « Payé », « Partiel », « En retard » — et le montant à leur
+                  droite est `shrink-0`. Une part d'anneau qu'on ne sait plus
+                  nommer ne se lit plus du tout. Voir le même choix sur la
+                  réconciliation, quelques lignes plus bas. */}
+              <span className="min-w-0 flex-1 text-left text-muted">{slice.label}</span>
               <span className="numeric shrink-0 font-medium">
                 {money(slice.value, { round: true })}
               </span>
@@ -1295,9 +1353,30 @@ export function DonutChart({
                       les montants restent dans la même colonne que ceux de la
                       légende, ce qui est la seule façon de les lire comme une
                       addition. */}
+                  {/*
+                    LE LIBELLÉ SE REPLIE, IL NE SE COUPE PLUS.
+
+                    « Reste à percevoir » et « Loyers attendus » s'affichaient
+                    « Reste à perc… » et « Loyers att… ». Ce sont les DEUX
+                    intitulés que cette réconciliation reprend À L'IDENTIQUE des
+                    indicateurs du haut de page — c'est tout son objet, refermer
+                    la boucle entre les mêmes nombres à deux panneaux d'écart —
+                    et le nom coupé est précisément ce qui rendait la reprise
+                    illisible.
+
+                    Mesuré à 22 px de police racine : −47 px et −52 px, dans une
+                    colonne qui en offre 100 et 84. La garde du rognage ne
+                    regardait alors que les intitulés d'indicateur, et sa propre
+                    justification citait « reste à percevoir » comme l'exemple du
+                    vocabulaire qui « tient partout ».
+
+                    `items-baseline` sur la rangée aligne la PREMIÈRE ligne du
+                    libellé sur le montant : le repli descend, l'addition reste
+                    lisible ligne à ligne.
+                  */}
                   <dt
                     className={cn(
-                      'ml-[1.25rem] min-w-0 flex-1 truncate',
+                      'ml-[1.25rem] min-w-0 flex-1',
                       ligne.fort ? 'text-body text-ink' : 'text-body text-muted',
                     )}
                   >
@@ -1472,6 +1551,7 @@ export function StatCard({
   action,
   etat,
   icone,
+  donnee,
 }: {
   label: string
   value: string
@@ -1550,6 +1630,29 @@ export function StatCard({
    * en inventer.
    */
   icone?: IconName
+  /**
+   * L'INTITULÉ EST UNE DONNÉE, et non du vocabulaire du produit.
+   *
+   * Deux appels du dépôt le posent : les cartes d'immeuble du Parc et celles de
+   * la vitrine des états, où l'intitulé porte un nom saisi par l'utilisateur.
+   * Partout ailleurs il porte « reste à percevoir » ou « taux d'occupation » —
+   * du vocabulaire, borné, traduit, et qu'on peut donc laisser se replier
+   * librement.
+   *
+   * CE QUE LE DRAPEAU CHANGE, ET POURQUOI IL FAUT LES DEUX :
+   *
+   *   · `line-clamp-2` NE S'APPLIQUE QU'ICI. La coupe à deux lignes existait
+   *     pour « un nom d'immeuble pathologique — vingt mots », donc pour une
+   *     donnée. Imposée au vocabulaire, elle le coupait sans raison : mesuré à
+   *     22 px de police racine, « Encaissé ce mois », « Taux d'occupation »,
+   *     « Total refacturé » et cinq autres demandent trois lignes et n'en
+   *     reçoivent que deux. Un vocabulaire fixe n'a pas besoin d'être borné —
+   *     il l'est par le dictionnaire.
+   *   · `data-donnee` DIT À LA GARDE que cette coupe-là est assumée. Une
+   *     donnée n'a pas de longueur maximale : lui « rendre la place » n'a pas
+   *     de sens, il n'y a pas de « assez ».
+   */
+  donnee?: boolean
 }) {
   return (
     <div
@@ -1646,7 +1749,14 @@ export function StatCard({
               Tailwind, et y écrire un nom de classe en fabriquerait un. */}
           <p
             data-intitule=""
-            className="eyebrow line-clamp-2 min-w-0 flex-1 hyphens-auto break-words text-muted"
+            data-donnee={donnee ? '' : undefined}
+            className={cn(
+              'eyebrow min-w-0 flex-1 hyphens-auto break-words text-muted',
+              // La coupe à deux lignes n'existe que pour une DONNÉE — voir la
+              // prop `donnee`. Le vocabulaire, lui, se replie autant qu'il en a
+              // besoin : c'est le dictionnaire qui le borne, pas la carte.
+              donnee && 'line-clamp-2',
+            )}
           >
             {label}
           </p>
