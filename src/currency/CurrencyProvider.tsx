@@ -46,6 +46,16 @@ interface CurrencyContextValue {
   dateDesCours: string | null
   /** `true` quand ce qui s'affiche a été converti — donc daté, donc à dire. */
   converti: boolean
+  /**
+   * `true` quand on a DEMANDÉ une devise qu'aucun cours ne permet d'atteindre.
+   *
+   * C'est le seul état où le produit n'obéit pas, et il doit donc se voir. Sans
+   * lui, le sélecteur enregistrait le choix, l'écran restait dans la devise du
+   * parc, et rien n'expliquait pourquoi — un contrôle qui a l'air cassé.
+   */
+  coursIndisponibles: boolean
+  /** Demande les cours maintenant — à l'ouverture du sélecteur, par exemple. */
+  chargerLesCours: () => void
   /** Formate un montant, DONNÉ DANS LA DEVISE DU PARC, dans celle qu'on affiche. */
   money: (amount: number, options?: FormatMoneyOptions) => string
   /**
@@ -106,8 +116,14 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     lit comme « aucune conversion possible » : la devise du parc, qui est de
     toute façon celle des données.
   */
-  const besoinDeCours = currency !== deviseSource
+  const [demande, setDemande] = useState(false)
   const coursConnus = Object.keys(cours.parEuro).length > 0
+  /* On charge dès qu'on DEMANDE une autre devise, et dès qu'on ouvre le
+     sélecteur : sans le second, la liste ne saurait pas ce qu'elle peut
+     offrir avant qu'on ait déjà choisi. */
+  const besoinDeCours = demande || currency !== deviseSource
+  const chargerLesCours = useCallback(() => setDemande(true), [])
+
   useEffect(() => {
     if (!besoinDeCours || coursConnus) return
     let vivant = true
@@ -143,6 +159,8 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
       devisesAtteignables,
       dateDesCours: cours.date,
       converti,
+      coursIndisponibles: currency !== deviseAffichee,
+      chargerLesCours,
       money: (amount, options) => {
         const montant = convertir(amount, deviseSource, deviseAffichee, cours.parEuro)
         /* `convertir` ne rend `null` que si un cours manque, ce que
@@ -160,7 +178,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
         return lu === null ? null : convertir(lu, deviseAffichee, deviseSource, cours.parEuro)
       },
     }
-  }, [currency, deviseSource, cours, setCurrency])
+  }, [currency, deviseSource, cours, setCurrency, chargerLesCours])
 
   return <CurrencyContext.Provider value={value}>{children}</CurrencyContext.Provider>
 }

@@ -37,6 +37,7 @@ export const en: Dictionary = {
     dialZoneCfa: 'CFA franc zone',
     dialZoneOther: 'Other countries',
     demoBadge: 'Demo',
+    currencyUnavailable: 'Rates unavailable · amounts in {currency}',
     currencyConverted: 'Converted at the {date} rate',
     demoPark: 'Demo portfolio',
     emptyParkTitle: 'Your portfolio is still empty',

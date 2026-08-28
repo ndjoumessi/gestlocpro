@@ -21,6 +21,7 @@ import { usePiegeDeFocus } from '@/components/primitives/piegeDeFocus'
 import { LanguageSwitcher } from '@/components/controls/LanguageSwitcher'
 import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
 import { useCurrency } from '@/currency/CurrencyProvider'
+import { CURRENCY_DEFS } from '@/currency/currencies'
 import { useDates } from '@/lib/useDates'
 import { partiesDeDateISO } from '@/lib/dates'
 import type { CurrencyCode } from '@/currency/currencies'
@@ -1288,24 +1289,44 @@ function initiales(nom: string): string {
    locataire garde ses trois segmentés — elle n'a pas de barre latérale, donc
    pas le même budget de hauteur, et son relevé la donne à 71 px. */
 /**
- * LA CONVERSION SE DIT, AVEC SA DATE.
+ * CE QUE LA CONVERSION A FAIT, OU N'A PAS PU FAIRE.
+ *
+ * ═══ QUAND ELLE A EU LIEU ═══
  *
  * Un montant converti n'est pas le montant enregistré : c'est une lecture, à un
  * cours, un jour donné. Le taire laisserait croire que le parc est tenu dans la
  * devise affichée — et le chiffre changerait demain sans que rien ne l'explique.
  *
- * Elle ne paraît QUE si l'on convertit : sur un parc lu dans sa propre devise,
- * il n'y a pas de taux, et l'annoncer serait du bruit.
+ * ═══ QUAND ELLE N'A PAS PU ═══
  *
- * La parité du franc CFA n'a pas de date — elle est fixée par traité — mais la
- * réponse en porte une dès que les cours flottants sont arrivés. Sans eux,
- * `dateDesCours` est `null` et seule la paire franc/euro est atteignable :
- * la mention se tait plutôt que d'inventer un jour.
+ * C'est le cas qui manquait, et il est plus grave que l'autre. Sans cours, la
+ * devise demandée est inatteignable : le choix était enregistré, l'écran restait
+ * dans la monnaie du parc, et RIEN ne l'expliquait. On choisissait le dollar
+ * canadien et il ne se passait rien — un contrôle qui a l'air cassé, ce qui est
+ * pire qu'un contrôle absent.
+ *
+ * Le produit ne peut pas convertir sans cours et ne doit pas inventer ; la seule
+ * chose qui lui reste est de DIRE ce qu'il affiche à la place.
+ *
+ * Sur un parc lu dans sa propre devise, il n'y a ni conversion ni manque : la
+ * mention se tait, et l'annoncer serait du bruit.
  */
 function MentionDeConversion() {
   const t = useT()
   const d = useDates()
-  const { converti, dateDesCours } = useCurrency()
+  const { converti, coursIndisponibles, dateDesCours, deviseSource } = useCurrency()
+
+  if (coursIndisponibles)
+    return (
+      <span className="text-caps text-warn">
+        {t('common.currencyUnavailable', { currency: CURRENCY_DEFS[deviseSource].label })}
+      </span>
+    )
+
+  /* La parité du franc CFA n'a pas de date — elle est fixée par traité — et la
+     réponse n'en porte une que si les cours flottants sont arrivés. Convertir
+     franc contre euro sans eux est légitime ; annoncer un jour qu'on n'a pas ne
+     l'est pas. */
   if (!converti || !dateDesCours) return null
 
   return (

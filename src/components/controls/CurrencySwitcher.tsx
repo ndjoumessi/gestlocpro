@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/cn'
 import { useI18n } from '@/i18n/I18nProvider'
 import { useCurrency } from '@/currency/CurrencyProvider'
-import { CURRENCIES, type CurrencyCode } from '@/currency/currencies'
+import { CURRENCIES, CURRENCY_DEFS, type CurrencyCode } from '@/currency/currencies'
 import { Icon } from '@/components/primitives/Icon'
 
 export interface CurrencySwitcherProps {
@@ -19,7 +19,7 @@ export interface CurrencySwitcherProps {
  * devise — le seul symbole confondrait le dollar canadien et l'américain.
  */
 export function CurrencySwitcher({ tone = 'light', className }: CurrencySwitcherProps) {
-  const { currency, setCurrency, definition } = useCurrency()
+  const { currency, setCurrency, chargerLesCours } = useCurrency()
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -57,7 +57,14 @@ export function CurrencySwitcher({ tone = 'light', className }: CurrencySwitcher
       <button
         ref={buttonRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          /* Les cours sont demandés À L'OUVERTURE, et non au choix : la liste
+             doit savoir ce qu'elle peut offrir avant qu'on ait choisi, et le
+             chemin par défaut — lire le parc dans sa monnaie — n'en paie
+             toujours rien. */
+          if (!open) chargerLesCours()
+          setOpen((v) => !v)
+        }}
         aria-expanded={open}
         aria-haspopup="listbox"
         className={cn(
@@ -86,7 +93,17 @@ export function CurrencySwitcher({ tone = 'light', className }: CurrencySwitcher
         >
           {t('common.currency')}
         </span>
-        <span>{definition.label}</span>
+        {/*
+          LE BOUTON PORTE CE QU'ON A DEMANDÉ, pas ce qui a pu être honoré.
+
+          Il lisait la devise RENDUE. Quand les cours manquaient, l'écran
+          retombait sur celle du parc et le bouton avec lui : la liste montrait
+          « Dollar canadien » coché, le bouton affichait « FCFA », et le contrôle
+          se contredisait à quinze pixels d'écart. Un seul état, celui de
+          l'utilisateur ; ce qui n'a pas pu être fait se dit à côté, en toutes
+          lettres — voir `MentionDeConversion`.
+        */}
+        <span>{CURRENCY_DEFS[currency].label}</span>
         <Icon
           name="chevronDown"
           size={14}
