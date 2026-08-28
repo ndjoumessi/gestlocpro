@@ -1753,7 +1753,6 @@ export const fr = {
       // « Rejouer » et non « Recharger » : rien n'est demandé au serveur, on
       // remontre un état. Le verbe dit qu'on est dans une vitrine.
       replayLoading: 'Rejouer le chargement',
-      retried: 'Nouvelle tentative · données rechargées',
       emptyTitle: 'Aucun paiement sur cette période',
       emptyBody: 'Dès qu’un règlement est enregistré, il apparaît ici avec sa quittance.',
       offlineTitle: 'Mode hors ligne',

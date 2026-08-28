@@ -816,10 +816,7 @@ function WorksSkeleton() {
 
       <SkeletonRegion className="flex flex-col gap-3">
         {[0, 1, 2].map((carte) => (
-          <div
-            key={carte}
-            className="flex min-w-0 items-center gap-4 rounded-lg border border-divider bg-surface p-4 shadow-e1 sm:p-5"
-          >
+          <Card key={carte} className="flex items-center gap-4">
             <Skeleton radius="md" className="size-11" />
             <div className="min-w-0 flex-1">
               <Skeleton line="title" className="w-64 max-w-full" />
@@ -827,7 +824,7 @@ function WorksSkeleton() {
             </div>
             <Skeleton line="title" radius="md" className="hidden w-28 sm:block" />
             <Skeleton radius="md" className="hidden h-7 w-24 sm:block" />
-          </div>
+          </Card>
         ))}
       </SkeletonRegion>
     </>

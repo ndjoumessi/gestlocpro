@@ -138,9 +138,19 @@ export function SystemStates() {
                          `StatCard`, et son jumeau sur l'écran Parc. */
                       donnee
                       value={`${occupes}/${logements.length}`}
-                      note={t('app.portfolio.occupancy', {
-                        occupied: occupes,
-                        total: logements.length,
+                      /* LA NOTE AJOUTE, elle ne redit pas. Elle portait
+                         « {occupés}/{total} occupés » sous une valeur qui vaut
+                         déjà `${occupes}/${logements.length}` : les deux mêmes
+                         nombres à quinze pixels d'écart, dans une carte qui en
+                         mesure quatre-vingts de haut. Son jumeau de l'écran Parc
+                         y ajoute au moins le quartier ; ici le quartier EST
+                         l'intitulé, et il ne restait donc rien.
+
+                         Le nombre de logements libres est ce que le rapport ne
+                         dit pas d'un coup d'œil, et c'est celui sur lequel on
+                         agit. */
+                      note={t('app.dashboard.vacantUnits', {
+                        count: logements.length - occupes,
                       })}
                     />
                   )
@@ -242,7 +252,15 @@ export function SystemStates() {
               size="sm"
               icon="arrowRight"
               className="mt-3"
-              onClick={() => notify(t('app.system.retried'), { tone: 'ok' })}
+              /* RÉESSAYER RÉESSAIE, et n'annonce plus. Ce bouton émettait
+                 « réessayé » sans que rien ne soit réessayé — sur l'écran dont
+                 le rôle est d'être la référence des quatre états, c'est-à-dire
+                 à l'endroit exact où l'on vient lire ce qu'un geste doit faire.
+                 Il ramène donc à l'attente, qui est ce que réessayer veut dire,
+                 et c'est le même geste que « Rejouer le chargement » sur la
+                 carte voisine — dont un commentaire promettait déjà que les
+                 deux se lisent pareil. */
+              onClick={rejouer}
             >
               {t('app.system.retry')}
             </Button>

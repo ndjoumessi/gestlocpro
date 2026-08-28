@@ -556,17 +556,14 @@ function AlertsSkeleton() {
 
         <div className="flex flex-col gap-3">
           {[0, 1, 2, 3].map((carte) => (
-            <div
-              key={carte}
-              className="flex min-w-0 items-start gap-4 rounded-lg border border-divider bg-surface p-4 shadow-e1 sm:p-5"
-            >
+            <Card key={carte} className="flex items-start gap-4">
               <Skeleton radius="md" className="size-10" />
               <div className="min-w-0 flex-1">
                 <Skeleton line="title" className="w-72 max-w-full" />
                 <Skeleton line="body" className="mt-1 w-56 max-w-full" />
               </div>
               <Skeleton line="eyebrow" className="w-12" />
-            </div>
+            </Card>
           ))}
         </div>
       </SkeletonRegion>

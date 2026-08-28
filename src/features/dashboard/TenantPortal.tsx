@@ -208,15 +208,25 @@ export function TenantPortal() {
                 notifications à ouvrir — en faire un bouton promettrait un
                 panneau qui n'existe pas, le défaut que les « Télécharger » de
                 l'onglet Documents ont déjà coûté une fois. */}
+            {/* LES DEUX PREMIERS PLANS SONT NOMMÉS, comme ceux des onglets.
+                Ils portaient `text-ink` et comptaient sur le remappage de
+                `.on-dark` — celui-là même que le commentaire de la barre, trente
+                lignes plus haut, décrit comme se retirant de lui-même dès qu'un
+                élément porte son propre fond. Le glyphe et le nom court
+                marchaient donc par la clause `:not([class*='bg-'])`, et non
+                parce qu'on l'avait décidé : poser un fond sur l'un des deux — un
+                survol, un état actif, une pastille — les faisait passer à
+                l'encre sur l'encre, exactement la panne que ce même commentaire
+                raconte avoir déjà payée sur l'onglet actif. */}
             <div aria-hidden="true" className="ml-auto mb-3 flex items-center gap-3">
               <span className="relative flex size-9 items-center justify-center rounded-lg bg-on-dark-hover">
-                <Icon name="bell" size={18} className="text-ink" />
+                <Icon name="bell" size={18} className="text-on-dark" />
                 <span className="absolute top-2 right-2 size-1.5 rounded-full bg-danger" />
               </span>
               <span className="flex size-8 items-center justify-center rounded-full bg-accent text-label font-semibold text-on-accent">
                 {initiales}
               </span>
-              <span className="hidden text-label font-medium text-ink sm:inline">{court}</span>
+              <span className="hidden text-label font-medium text-on-dark sm:inline">{court}</span>
             </div>
           </div>
 

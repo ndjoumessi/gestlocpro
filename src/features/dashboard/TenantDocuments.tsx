@@ -13,6 +13,7 @@ import { useDates } from '@/lib/useDates'
 import {
   DOCUMENT_KIND_LABELS,
   dernierVersement,
+  receiptDue,
   type DocumentKind,
   type DocumentRequest,
 } from '@/data/portfolio'
@@ -260,18 +261,48 @@ export function TenantDocuments() {
             {tenantReceipts.map((receipt) => (
               <li
                 key={`${receipt.year}-${receipt.month}`}
-                className="flex items-center gap-3 px-4 py-3 sm:px-5"
+                /* LA MÊME RANGÉE REPLIABLE QUE `LignePiece`, et la porte a
+                   exigé le changement à la ligne près. Le montant ajouté à
+                   cette ligne déborde de 6 px à 320 px : « 170 942 FCFA » en
+                   capitales interlettrées ne tient pas dans ce que le bouton
+                   « Télécharger » laisse, et un nombre ne se coupe pas. Le
+                   remède est celui que la carte du dessus applique déjà —
+                   plancher sur la colonne de texte, repli, action rendue à
+                   droite par `ml-auto`. */
+                className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 sm:px-5"
               >
                 <Icon name="file" size={17} className="shrink-0 text-muted" />
-                <span className="min-w-0 flex-1 text-body">{d.monthYear(receipt)}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon="download"
-                  onClick={() => downloadReceipt(unit, receipt)}
-                >
-                  {t('app.documents.download')}
-                </Button>
+                {/* LE MOIS ET SON MONTANT, sur deux lignes comme `LignePiece`
+                    juste au-dessus — et pour la même raison qu'elle : à 320 px,
+                    une seconde valeur posée sur la même ligne pousse le bouton
+                    et coupe le nom du mois.
+
+                    Six lignes ne portaient QUE le nom d'un mois : rien ne
+                    distinguait la période à 101 300 de celle à 103 800, et il
+                    fallait télécharger pour savoir ce qu'on téléchargeait. Le
+                    chiffre existait — l'export de cette même carte l'écrit déjà
+                    dans son fichier.
+
+                    LE TOTAL DÛ, ce que la quittance couvre, et non le réglé :
+                    sur une période partiellement soldée, le versement se
+                    lirait comme le montant de la pièce. Le reste dû a son
+                    écran, avec la primitive qui distingue les deux. */}
+                <span className="min-w-32 flex-1">
+                  <span className="block text-body">{d.monthYear(receipt)}</span>
+                  <span className="numeric block text-caps text-muted">
+                    {money(receiptDue(receipt), { round: true })}
+                  </span>
+                </span>
+                <div className="ml-auto shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon="download"
+                    onClick={() => downloadReceipt(unit, receipt)}
+                  >
+                    {t('app.documents.download')}
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>
@@ -287,15 +318,15 @@ export function TenantDocuments() {
         {/*
           DEMANDER UN DOCUMENT.
 
-          La demande part par le canal des signalements — `addWork` —, le seul
-          que le gestionnaire relève réellement. Elle lui arrive donc, il la voit
-          et peut la clore, ce qu'un simple toast n'aurait jamais fait.
+          LA DETTE DE MODÈLE A ÉTÉ SOLDÉE, et ce commentaire décrivait encore
+          l'ancien montage. La demande partait par le canal des signalements —
+          `addWork` —, faute d'objet à elle : elle apparaissait dans « Travaux
+          dans mon logement » aux côtés d'une fuite d'évier, ce qui était faux.
 
-          DETTE DE MODÈLE, assumée et à solder : une demande de pièce n'est pas
-          une intervention. Elle apparaîtra dans « Travaux dans mon logement »
-          aux côtés d'une fuite d'évier, ce qui est faux. Le produit n'a pas
-          d'objet « demande » ; en fabriquer un dépasse cet écran, et faire
-          semblant d'envoyer aurait été pire que de mal ranger.
+          Le produit a désormais un objet `DocumentRequest` : `requestDocument`
+          le crée, `resolveDocumentRequest` le clôt en « fournie » ou
+          « impossible à fournir », et le suivi juste en dessous le lit. Une
+          demande de pièce n'est plus rangée parmi les interventions.
         */}
         <Card>
           <CardHeader
@@ -497,12 +528,20 @@ function LignePiece({
  * `line=` que `squelettesFideles.test.ts` cale sur les boîtes de ligne réelles.
  * Trois façons de ne pas tenir la place, dans quinze lignes.
  *
- * LE TON N'EST PAS REPRODUIT, et c'est délibéré. La note de confidentialité est
- * une carte sombre ; la peindre ici la ferait passer pour chargée, et les pavés
- * de substitution — en `bg-surface-sunken` — y disparaîtraient. Un squelette
- * tient la GÉOMÉTRIE, pas la couleur. `self-start` en revanche est repris tel
- * quel : c'est de la géométrie, et sans lui la quatrième carte s'étire sur la
- * hauteur de sa voisine, ce que la page chargée refuse justement de faire.
+ * LE TON EST REPRODUIT, ET J'AVAIS TRANCHÉ L'INVERSE AU LOT PRÉCÉDENT. La note
+ * de confidentialité est une carte sombre ; je l'avais laissée claire en
+ * attente, au motif que les pavés de substitution — en `bg-surface-sunken` — y
+ * disparaîtraient. Vérifié depuis dans `tokens.css` : `.on-dark` ne remappe PAS
+ * ce jeton, les pavés gardent donc leur valeur claire et se voient sur l'encre.
+ * Le motif était une prudence, pas une mesure.
+ *
+ * L'espace locataire, lui, peignait déjà son aplat d'encre en attente, avec sa
+ * raison écrite. Deux attentes voisines qui traitaient une carte sombre de deux
+ * façons : c'est la divergence même que ce travail poursuit.
+ *
+ * `self-start` est repris pour une autre raison, purement géométrique : sans
+ * lui la quatrième carte s'étire sur la hauteur de sa voisine, ce que la page
+ * chargée refuse justement de faire.
  */
 function TenantDocumentsSkeleton() {
   const t = useT()
@@ -549,7 +588,7 @@ function TenantDocumentsSkeleton() {
             <Skeleton radius="md" className="mt-4 h-9 w-40" />
           </Card>
 
-          <Card className="self-start">
+          <Card tone="dark" className="self-start">
             <Skeleton line="title" className="mb-4 w-32" />
             <div className="flex flex-col gap-1.5">
               <Skeleton line="body" />

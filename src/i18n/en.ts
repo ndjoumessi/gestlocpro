@@ -1304,7 +1304,6 @@ export const en: Dictionary = {
       errorBody: 'The connection was interrupted. Your local data is intact.',
       retry: 'Try again',
       replayLoading: 'Replay loading',
-      retried: 'Retried · data reloaded',
       emptyTitle: 'No payment for this period',
       emptyBody: 'As soon as a settlement is recorded, it appears here with its receipt.',
       offlineTitle: 'Offline mode',

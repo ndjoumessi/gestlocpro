@@ -398,10 +398,7 @@ function InspectionsSkeleton() {
 
       <SkeletonRegion className={GRILLE_DEUX_COLONNES}>
         {[0, 1].map((carte) => (
-          <div
-            key={carte}
-            className="min-w-0 rounded-lg border border-divider bg-surface p-4 shadow-e1 sm:p-5"
-          >
+          <Card key={carte}>
             <div className="mb-4">
               <Skeleton line="title" className="w-40" />
               <Skeleton line="eyebrow" className="mt-1 w-32" />
@@ -421,7 +418,7 @@ function InspectionsSkeleton() {
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
         ))}
       </SkeletonRegion>
     </>

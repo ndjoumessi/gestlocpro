@@ -474,6 +474,35 @@ describe('vitrine des états', () => {
   })
 
   /**
+   * « RÉESSAYER » RÉESSAIE.
+   *
+   * Le bouton de la carte d'erreur n'émettait qu'un message — « réessayé » —
+   * sans que rien ne soit réessayé. Sur l'écran dont le RÔLE est d'être la
+   * référence des quatre états, c'est le pire endroit possible pour un geste qui
+   * dit avoir agi : ce qu'on y lit est ce que les huit écrans réels sont censés
+   * faire.
+   *
+   * Sa voisine avait déjà tranché la question — « elle ABOUTIT, ce qui a fini
+   * par être le vrai sujet », dit son commentaire, et « la TRANSITION est
+   * précisément ce que vit l'utilisateur ». Un commentaire promettait même que
+   * les deux boutons se lisent pareil : même place, même forme. Il manquait
+   * qu'ils fassent pareil.
+   *
+   * Réessayer, c'est retourner à l'attente. Le cas ne demande rien de plus, et
+   * surtout pas un message : c'est l'état qui doit changer.
+   */
+  it('réessaie pour de bon depuis la carte d’erreur', async () => {
+    const user = userEvent.setup()
+    await renderApp('/demo/systeme')
+    await waitFor(() => expect(attente()).toBeNull(), { timeout: 4000 })
+
+    await user.click(screen.getByRole('button', { name: /^réessayer/i }))
+
+    expect(attente(), 'le geste annonce un essai sans en faire un').not.toBeNull()
+    await waitFor(() => expect(attente()).toBeNull(), { timeout: 4000 })
+  })
+
+  /**
    * LE SQUELETTE DU LOCATAIRE POINTE OÙ SON ÉCRAN POINTE.
    *
    * Il offrait « Signaler un incident » vers la boîte du BAILLEUR, quand

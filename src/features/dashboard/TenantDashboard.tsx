@@ -951,7 +951,7 @@ function TenantDashboardSkeleton() {
           {/* Les quittances. Six lignes : c'est ce que rend `TENANT_RECEIPTS`,
               et leur nombre ne dépend pas du serveur — seuls les montants en
               dépendent. */}
-          <div className="min-w-0 rounded-lg border border-divider bg-surface shadow-e1">
+          <Card flush>
             <div className="p-4 sm:p-5">
               <Skeleton line="title" className="w-40" />
             </div>
@@ -965,10 +965,10 @@ function TenantDashboardSkeleton() {
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
 
           <div className="flex flex-col gap-4">
-            <div className="min-w-0 rounded-lg border border-divider bg-surface p-4 shadow-e1 sm:p-5">
+            <Card>
               <Skeleton line="title" className="mb-4 w-44" />
               <div className="flex flex-col gap-3">
                 {[0, 1].map((travaux) => (
@@ -982,12 +982,22 @@ function TenantDashboardSkeleton() {
                 ))}
               </div>
               <Skeleton radius="md" className="mt-4 h-9 w-28" />
-            </div>
+            </Card>
 
             {/* La carte du gestionnaire ne porte aucune donnée de parc, mais
                 elle est prise dans le même bloc : la reproduire évite que la
-                colonne de droite ne s'allonge d'un coup à l'arrivée du bail. */}
-            <div className="min-w-0 rounded-lg border border-divider bg-ink p-4 shadow-e1 sm:p-5">
+                colonne de droite ne s'allonge d'un coup à l'arrivée du bail.
+
+                ELLE AVAIT DÉRIVÉ, et c'est la seule des six recopies qui l'ait
+                fait : elle portait `border-divider` et `shadow-e1` là où
+                `Card tone="dark"` pose une bordure TRANSPARENTE et aucune
+                ombre. Un filet clair et un relief autour d'un aplat d'encre, à
+                la place d'une carte qui n'en a ni l'un ni l'autre — puis les
+                deux disparaissaient à l'arrivée des données.
+
+                Les pavés restent visibles dessus : `.on-dark` ne remappe pas
+                `--color-surface-sunken`, vérifié dans `tokens.css`. */}
+            <Card tone="dark">
               <Skeleton line="title" className="mb-4 w-36" />
               <div className="flex items-center gap-3">
                 <Skeleton className="size-10" />
@@ -997,7 +1007,7 @@ function TenantDashboardSkeleton() {
                 </div>
               </div>
               <Skeleton radius="md" className="mt-4 h-11 w-full" />
-            </div>
+            </Card>
           </div>
         </div>
       </SkeletonRegion>

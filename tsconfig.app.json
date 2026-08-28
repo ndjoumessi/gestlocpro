@@ -62,6 +62,7 @@
     "src/design-system/listeMondialeCherchable.test.ts",
     "src/design-system/indicateurNonRecopie.test.ts",
     "src/design-system/choixNonRecopie.test.ts",
+    "src/design-system/carteNonRecopiee.test.ts",
     "src/design-system/faviconSuitLaMarque.test.ts",
     "src/design-system/zonesSures.test.ts",
     "src/test/attentesObservees.test.ts",

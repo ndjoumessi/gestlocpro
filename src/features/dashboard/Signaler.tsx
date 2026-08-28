@@ -29,10 +29,17 @@ import type { TradeKey, UrgencyKey, WorkOrder } from '@/data/portfolio'
  * deux objets pour un seul fait, et la chaîne « signalé → chiffré → validé →
  * clos » est celle que le bailleur voit de son côté.
  *
- * La modale survit pour le bailleur, dans l'écran des travaux : il déclare pour
- * un logement qu'il choisit, le locataire pour le sien. Le VOCABULAIRE des
- * corps de métier est importé et non recopié — deux présentations, une seule
- * source.
+ * DEUX MODALES SURVIVENT DANS L'ÉCRAN DES TRAVAUX, et ce n'est pas ce que cette
+ * phrase disait. Elle annonçait que « la modale survit pour le bailleur » ;
+ * `ReportModal` y est en réalité montée sous `role === 'tenant'`, c'est-à-dire
+ * pour le locataire qui passe par les travaux plutôt que par ici. Le bailleur,
+ * lui, ouvre `OpenWorkModal` — une autre modale, avec un choix de logement dans
+ * TOUT le parc, ce qui est précisément la différence de forme qui interdisait de
+ * partager la première. Le commentaire attribuait à l'un ce qui appartient à
+ * l'autre.
+ *
+ * Le VOCABULAIRE des corps de métier est importé et non recopié — deux
+ * présentations, une seule source.
  */
 
 const TONE: Record<WorkOrder['status'], StatusTone> = {

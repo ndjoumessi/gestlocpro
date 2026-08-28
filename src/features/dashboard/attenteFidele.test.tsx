@@ -41,10 +41,11 @@ import type { EtatSession } from '@/api/SessionProvider'
  * données, et une règle qui exigerait l'égalité partout serait fausse partout :
  * un squelette ne peut pas savoir combien d'immeubles le serveur va rendre.
  *
- * Cet écran-ci en dessine quatre, toujours les mêmes, quel que soit le dossier :
- * les pièces contractuelles, les quittances, la demande, la confidentialité. Le
- * compte est donc une propriété de l'écran et non de la réponse, et c'est ce qui
- * rend la comparaison légitime ici et nulle part au hasard.
+ * L'espace documents en dessine quatre, toujours les mêmes, quel que soit le
+ * dossier : les pièces contractuelles, les quittances, la demande, la
+ * confidentialité. Le compte est donc une propriété de l'écran et non de la
+ * réponse, et c'est ce qui rend la comparaison légitime ici et nulle part au
+ * hasard. Voir `ECRANS`, plus bas, pour le second.
  */
 
 const PARC = '11111111-2222-4333-8444-555555555555'
@@ -103,14 +104,32 @@ function grilles(): number {
   return screen.getByRole('main').querySelectorAll(`[class*="${DEUX_COLONNES}"]`).length
 }
 
-describe('l’attente de l’espace documents', () => {
+/**
+ * Les écrans dont le nombre de cartes est une propriété de l'ÉCRAN.
+ *
+ * L'espace locataire en dessine trois sous sa rangée d'indicateurs — les
+ * quittances, les travaux, le gestionnaire — et l'espace documents quatre. Ni
+ * l'un ni l'autre ne dépend de ce que le serveur rend : seuls les CONTENUS en
+ * dépendent. Partout ailleurs le compte vient des données, et la comparaison
+ * n'aurait aucun sens.
+ *
+ * L'espace locataire n'était pas comparable avant ce lot : son attente
+ * redessinait ses trois cartes à la main, sans le marqueur. Voir
+ * `carteNonRecopiee.test.ts`.
+ */
+const ECRANS = [
+  { nom: 'espace documents', adresse: '/app/documents' },
+  { nom: 'espace locataire', adresse: '/app/mon-espace' },
+]
+
+describe.each(ECRANS)('l’attente de l’$nom', ({ adresse }) => {
   it('annonce la page qui va venir, et non la moitié', async () => {
     const faux = installerFauxServeur()
     const relacher = faux.retenir('GET', `/parks/${PARC}/portfolio`, {
       status: 200,
       body: PORTEFEUILLE,
     })
-    await renderApp('/app/documents', { session: sessionLocataire() })
+    await renderApp(adresse, { session: sessionLocataire() })
 
     /* GARDE DE LA GARDE. Une réponse déjà arrivée rendrait la page chargée des
        deux côtés, l'égalité serait vraie et n'aurait rien mesuré. La région
@@ -120,6 +139,11 @@ describe('l’attente de l’espace documents', () => {
 
     const cartesAnnoncees = cartes()
     const grillesAnnoncees = grilles()
+
+    /* GARDE DE LA GARDE, SECOND VERROU : une égalité entre deux zéros est vraie
+       et ne mesure rien. Un squelette qui cesserait d'appeler `Card` — le défaut
+       que `carteNonRecopiee.test.ts` poursuit — rendrait exactement ce cas. */
+    expect(cartesAnnoncees, 'aucune carte marquée dans l’attente').toBeGreaterThan(0)
 
     relacher()
     await attendreLeChargement()
