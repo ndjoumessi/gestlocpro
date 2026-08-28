@@ -727,6 +727,8 @@ export const en: Dictionary = {
       submit: 'Save this price',
       saved: 'Price saved',
       duplicate: 'A price already exists for this utility on that date. Change the effective date.',
+      inForce: 'In force',
+      scheduled: 'Scheduled',
       historyTitle: 'Prices already set',
       empty: 'No price set. Readings show the quantities recorded, with no rebilled amount.',
       open: 'Rebilling prices',

@@ -900,6 +900,8 @@ export const fr = {
       submit: 'Enregistrer ce prix',
       saved: 'Prix enregistré',
       duplicate: 'Un prix existe déjà pour cette énergie à cette date. Changez la date d’effet.',
+      inForce: 'En vigueur',
+      scheduled: 'À venir',
       historyTitle: 'Prix déjà posés',
       empty:
         'Aucun prix posé. Les relevés affichent les quantités relevées, sans montant refacturé.',
