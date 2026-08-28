@@ -1323,11 +1323,22 @@ function MentionDeConversion() {
       </span>
     )
 
-  /* La parité du franc CFA n'a pas de date — elle est fixée par traité — et la
-     réponse n'en porte une que si les cours flottants sont arrivés. Convertir
-     franc contre euro sans eux est légitime ; annoncer un jour qu'on n'a pas ne
-     l'est pas. */
-  if (!converti || !dateDesCours) return null
+  if (!converti) return null
+
+  /*
+    UNE CONVERSION SANS DATE EST UNE PARITÉ, ET ELLE SE DIT AINSI.
+
+    La parité du franc CFA est fixée par traité : elle n'a pas de jour de
+    publication, et annoncer une date qu'on n'a pas serait le seul mensonge
+    possible ici. Mais se taire n'est pas mieux — l'écran affiche alors des euros
+    sur un parc tenu en francs sans dire d'où vient le nombre.
+
+    LE TEST EST SÛR parce que les deux moitiés ne se mélangent pas : les cours
+    flottants n'arrivent JAMAIS sans leur date (voir `taux.ts`, où l'absence de
+    date fait tomber la réponse entière). Une conversion sans date n'a donc pu
+    passer que par la parité.
+  */
+  if (!dateDesCours) return <span className="text-caps text-muted">{t('common.currencyPegged')}</span>
 
   return (
     <span className="text-caps text-muted">

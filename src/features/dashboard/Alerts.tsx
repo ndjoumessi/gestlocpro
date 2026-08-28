@@ -78,8 +78,8 @@ function useAlertMessage() {
     // `count` porte l'accord en nombre, d'où son nom : voir la convention
     // `_one` / `_other` de `I18nProvider`.
     if (data.count !== undefined) vars.count = data.count
-    if (data.amount !== undefined) vars.amount = money(data.amount, { round: true })
-    if (data.total !== undefined) vars.total = money(data.total, { round: true })
+    if (data.amount !== undefined) vars.amount = money(data.amount, { compact: true })
+    if (data.total !== undefined) vars.total = money(data.total, { compact: true })
     if (data.on) vars.date = d.dayMonth(data.on)
     // Une échéance de bail porte l'année : « 30/09 » sans millésime ne dit pas
     // si le préavis court cette année ou la suivante.

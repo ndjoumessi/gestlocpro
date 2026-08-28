@@ -47,13 +47,13 @@ describe('relevés de compteurs', () => {
     // Ils étaient interpolés directement : « 520 » sans devise ni groupement,
     // à côté d'un total correctement formaté, et insensibles à la devise.
     await renderApp('/app/releves', { locale: 'en', currency: 'USD' })
-    /* 520 francs valent 0,95 $ au cours figé du faux serveur, et l'écran
-       ARRONDIT à « 1 $ » : les tarifs unitaires passent par `round`, ce qui
-       convient à un prix au mètre cube en francs et efface tout d'un prix en
-       dollars. Le cas garde ce qu'il gardait — un montant mis en forme, avec sa
-       devise, et non un nombre interpolé — et nomme au passage un défaut que la
-       conversion rend criant sans le créer. */
-    expect(screen.getByText(/\$\s?1\b/)).toBeInTheDocument()
+    /* 520 francs valent 0,95 $ au cours figé du faux serveur.
+       LA RÉSERVE QUE CE CAS PORTAIT EST LEVÉE. Il assertait « 1 $ » et disait
+       pourquoi : les tarifs passaient par `round`, qui forçait zéro décimale —
+       inoffensif sur un prix au mètre cube en francs, ruineux sur le même prix
+       en dollars, où il ne restait rien. La forme compacte ne tait plus que les
+       décimales NULLES ; un prix unitaire garde donc les siennes. */
+    expect(screen.getByText(/\$\s?0\.95\b/)).toBeInTheDocument()
   })
 
   it('groupe les index de compteur', async () => {

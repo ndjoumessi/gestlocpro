@@ -194,7 +194,7 @@ export function TenantDocuments() {
 
             <LignePiece
               label={t('app.documents.depositReceipt')}
-              detail={deposit ? money(deposit.held, { round: true }) : undefined}
+              detail={deposit ? money(deposit.held, { compact: true }) : undefined}
               to={deposit ? lien(base, 'cautions') : undefined}
               action={t('app.documents.view')}
               telecharger={
@@ -296,7 +296,7 @@ export function TenantDocuments() {
                 <span className="min-w-32 flex-1">
                   <span className="block text-body">{d.monthYear(receipt)}</span>
                   <span className="numeric block text-caps text-muted">
-                    {money(receiptDue(receipt), { round: true })}
+                    {money(receiptDue(receipt), { compact: true })}
                   </span>
                 </span>
                 <div className="ml-auto shrink-0">

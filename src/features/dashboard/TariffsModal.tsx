@@ -320,7 +320,7 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
                     </Badge>
                   )}
                   <span className="numeric font-medium">
-                    {money(tarif.unitPriceMinor, { round: true })}
+                    {money(tarif.unitPriceMinor, { compact: true })}
                   </span>
                 </span>
               </li>

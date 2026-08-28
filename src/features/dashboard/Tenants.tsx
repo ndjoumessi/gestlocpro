@@ -137,7 +137,7 @@ export function Tenants() {
           label={t('app.tenants.kpiRent')}
           value={money(
             leases.reduce((somme, unit) => somme + unit.rent, 0),
-            { round: true },
+            { compact: true },
           )}
           note={t('app.tenants.kpiRentNote')}
         />
@@ -324,7 +324,7 @@ export function Tenants() {
             role: 'valeur',
             header: t('app.portfolio.rent'),
             numeric: true,
-            render: (unit) => money(unit.rent, { round: true }),
+            render: (unit) => money(unit.rent, { compact: true }),
           },
           {
             key: 'status',

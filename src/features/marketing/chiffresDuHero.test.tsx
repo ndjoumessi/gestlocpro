@@ -54,7 +54,7 @@ describe('la vitrine n’écrit aucun chiffre à la main', () => {
   it('attrape le littéral qui vient d’être retiré, et pas le récit qui l’entoure', () => {
     // Le témoin est la ligne exacte d'avant le correctif : sans lui, une garde
     // qui ne trouve plus rien ne prouve pas qu'elle regarde encore.
-    expect(litterauxLongs('  <p>{money(1040000, { round: true })}</p>')).toEqual(['1040000'])
+    expect(litterauxLongs('  <p>{money(1040000, { compact: true })}</p>')).toEqual(['1040000'])
     expect(litterauxLongs('  // money(1040000) valait 1 040 000\n  <p>{money(x)}</p>')).toEqual([])
     expect(litterauxLongs('  {/* money(1040000) */}\n  <p>{money(x)}</p>')).toEqual([])
     // Ce qui relève de la mise en page passe : un `slice(0, 4)`, une taille.
@@ -103,18 +103,18 @@ describe('les chiffres du hero sortent du même calcul que le produit', () => {
     await renderApp('/')
 
     expect(
-      screen.getByText(commeALEcran(formatMoney(kpis.collected, 'CFA', { round: true }))),
+      screen.getByText(commeALEcran(formatMoney(kpis.collected, 'CFA', { compact: true }))),
     ).toBeInTheDocument()
     expect(
-      screen.getByText(commeALEcran(formatMoney(kpis.outstanding, 'CFA', { round: true }))),
+      screen.getByText(commeALEcran(formatMoney(kpis.outstanding, 'CFA', { compact: true }))),
     ).toBeInTheDocument()
 
     // Les deux valeurs de l'ancienne constante, qui ne se recoupaient avec rien.
     expect(
-      screen.queryByText(commeALEcran(formatMoney(1040000, 'CFA', { round: true }))),
+      screen.queryByText(commeALEcran(formatMoney(1040000, 'CFA', { compact: true }))),
     ).toBeNull()
     expect(
-      screen.queryByText(commeALEcran(formatMoney(375000, 'CFA', { round: true }))),
+      screen.queryByText(commeALEcran(formatMoney(375000, 'CFA', { compact: true }))),
     ).toBeNull()
   })
 

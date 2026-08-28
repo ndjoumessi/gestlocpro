@@ -7,7 +7,7 @@ import { Badge } from '@/components/primitives/Badge'
 import { SegmentedControl } from '@/components/primitives/Choice'
 import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
 import { useCurrency } from '@/currency/CurrencyProvider'
-import { estRondEnUniteDUsage, formatMoney } from '@/currency/currencies'
+import { formatMoney } from '@/currency/currencies'
 import { useT } from '@/i18n/I18nProvider'
 import { useNumbers } from '@/lib/numbers'
 import { useAuDela, AU_DELA_LG } from '@/lib/useAuDela'
@@ -263,7 +263,7 @@ const BoutonDePalier = forwardRef<
       >
         {price === null
           ? t('marketing.pricing.quote')
-          : formatMoney(price, currency, { round: estRondEnUniteDUsage(price, currency) })}
+          : formatMoney(price, currency, { compact: true })}
       </span>
     </button>
   )
@@ -345,7 +345,7 @@ function CartePalier({
                 taille de plus (36 px) qui n'existait nulle part
                 ailleurs, pour deux nombres. */}
             <p className="numeric text-kpi leading-none font-medium">
-              {formatMoney(price, currency, { round: estRondEnUniteDUsage(price, currency) })}
+              {formatMoney(price, currency, { compact: true })}
             </p>
             <p className="mt-2 text-body text-muted">
               {t('common.perMonth')}
@@ -357,9 +357,11 @@ function CartePalier({
             <p className="mt-3 flex items-center gap-1.5 text-caps text-accent-ink">
               <Icon name="building" size={13} />
               {t('marketing.pricing.perUnitNote', {
-                base: formatMoney(plan.pricing.base[currency], currency, {
-                  round: Number.isInteger(plan.pricing.base[currency]),
-                }),
+                /* `round: Number.isInteger(...)` visait « 4 € » plutôt que
+                   « 4,00 € ». Sur une grille en unités MINEURES le test est
+                   toujours vrai, donc l'option était toujours posée : c'est la
+                   forme compacte, et elle porte désormais cette règle. */
+                base: formatMoney(plan.pricing.base[currency], currency, { compact: true }),
                 perUnit: formatMoney(plan.pricing.perUnit[currency], currency),
               })}
             </p>
@@ -371,7 +373,7 @@ function CartePalier({
             {priceIsRounded(plan, currency, period, units) && (
               <p className="mt-1.5 text-body text-muted">
                 {t('marketing.pricing.roundingNote', {
-                  exact: formatMoney(exact ?? 0, currency, { round: estRondEnUniteDUsage(exact ?? 0, currency) }),
+                  exact: formatMoney(exact ?? 0, currency, { compact: true }),
                 })}
               </p>
             )}

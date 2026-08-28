@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { renderApp, screen } from '@/test/render'
-import { estRondEnUniteDUsage, formatMoney, type CurrencyCode } from '@/currency/currencies'
+import { formatMoney, type CurrencyCode } from '@/currency/currencies'
 import { PLANS, planPrice } from './pricing'
 
 /**
@@ -70,7 +70,7 @@ describe('les prix de la vitrine', () => {
     for (const { devise, mensuel } of ATTENDUS) {
       const prix = planPrice(essentiel, devise, 'monthly', 12)!
       // Un prix rond ne porte pas ses décimales : « 4 € », pas « 4,00 € ».
-      const rendu = formatMoney(prix, devise, { round: estRondEnUniteDUsage(prix, devise) })
+      const rendu = formatMoney(prix, devise, { compact: true })
       expect(rendu.replace(/[\s  ]/g, ' '), `grille contre attendu en ${devise}`).toBe(
         mensuel,
       )

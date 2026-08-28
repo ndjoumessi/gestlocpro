@@ -107,8 +107,13 @@ describe('messages d’alerte', () => {
       légal, soit 82,32 $ au cours figé du faux serveur. Ce que le cas garde —
       le symbole, sa position, la ponctuation décimale de l'anglais — est
       intact ; le groupement des milliers, lui, est tenu par `currencies.test`.
+
+      LES CENTS SONT RÉ-ANCRÉS. Le cas assertait « $ 82 » : la forme compacte
+      tronquait, et un devis de 82,32 $ s'annonçait 82 $ à celui qui doit
+      l'accepter. Trente-deux cents sur un devis, c'est peu ; la même règle
+      s'appliquait au solde d'une caution posé à côté de ses deux termes.
     */
-    expect(screen.getByText(/\$\s?82 proposed by the manager/)).toBeInTheDocument()
+    expect(screen.getByText(/\$\s?82\.32 proposed by the manager/)).toBeInTheDocument()
   })
 
   it('énumère les unités avec la conjonction de la langue', async () => {

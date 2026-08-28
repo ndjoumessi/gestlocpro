@@ -72,6 +72,7 @@ export const fr = {
     demoBadge: 'Démonstration',
     currencyUnavailable: 'Cours indisponibles · montants en {currency}',
     currencyConverted: 'Convertis au taux du {date}',
+    currencyPegged: 'Convertis à la parité légale',
     demoPark: 'Parc de démonstration',
     emptyParkTitle: 'Votre parc est encore vide',
     emptyParkBody:

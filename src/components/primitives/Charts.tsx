@@ -426,7 +426,7 @@ export function StackedBarChart({
                   que soit la hauteur des barres, ce qu'un simple déplacement ne
                   garantirait pas : elles changent avec les données. */}
               <span className="absolute -top-2.5 left-0 rounded-sm bg-surface px-1.5 py-0.5 numeric text-caps text-accent-ink uppercase">
-                {targetLabel} · {money(target, { round: true })}
+                {targetLabel} · {money(target, { compact: true })}
               </span>
             </div>
           )}
@@ -915,7 +915,7 @@ export function MiniBarChart({
   const titleId = useId()
   const [active, setActive] = useState<number | null>(null)
 
-  const lire = format ?? ((v: number) => money(v, { round: true }))
+  const lire = format ?? ((v: number) => money(v, { compact: true }))
   // Les périodes inconnues ne pèsent pas sur l'échelle : une barre absente ne
   // doit ni écraser ni gonfler les autres.
   const max = Math.max(...bars.map((b) => b.value ?? 0), 1) * 1.04
@@ -1321,7 +1321,7 @@ export function DonutChart({
                 'text-left text-body transition-colors duration-150',
                 active === slice.etat ? 'bg-surface-sunken' : 'hover:bg-surface-sunken',
               )}
-              aria-label={`${slice.label} — ${money(slice.value, { round: true })}, ${Math.round(fraction * 100)} %`}
+              aria-label={`${slice.label} — ${money(slice.value, { compact: true })}, ${Math.round(fraction * 100)} %`}
             >
               {/* LA MÊME JAUGE QUE LA GRILLE DES PAIEMENTS, et c'est le point.
                   Une légende qui porterait une forme absente de l'anneau
@@ -1338,7 +1338,7 @@ export function DonutChart({
                   réconciliation, quelques lignes plus bas. */}
               <span className="min-w-0 flex-1 text-left text-muted">{slice.label}</span>
               <span className="numeric shrink-0 font-medium">
-                {money(slice.value, { round: true })}
+                {money(slice.value, { compact: true })}
               </span>
             </button>
           </li>
@@ -1388,7 +1388,7 @@ export function DonutChart({
                       ligne.fort ? 'text-body font-medium' : 'text-body text-muted',
                     )}
                   >
-                    {money(ligne.value, { round: true })}
+                    {money(ligne.value, { compact: true })}
                   </dd>
                 </div>
               ))}

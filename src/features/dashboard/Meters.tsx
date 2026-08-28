@@ -254,7 +254,7 @@ export function Meters() {
            */
           etat={missing.length > 0 ? { ton: 'warn' } : undefined}
           label={t('app.meters.totalRebilled')}
-          value={aUnPrix ? money(total, { round: true }) : '—'}
+          value={aUnPrix ? money(total, { compact: true }) : '—'}
           note={t('app.meters.capturedCount', {
             done: READINGS.length - missing.length,
             total: READINGS.length,
@@ -268,7 +268,7 @@ export function Meters() {
           <StatCard
             icone="droplet"
             label={t('app.meters.water')}
-            value={money(prixCourant('waterPrice')!, { round: true })}
+            value={money(prixCourant('waterPrice')!, { compact: true })}
             unit="/ m³"
           />
         )}
@@ -276,7 +276,7 @@ export function Meters() {
           <StatCard
             icone="bolt"
             label={t('app.meters.power')}
-            value={money(prixCourant('powerPrice')!, { round: true })}
+            value={money(prixCourant('powerPrice')!, { compact: true })}
             unit="/ kWh"
           />
         )}
@@ -395,7 +395,7 @@ export function Meters() {
             render: (r) => {
               const r2 = rebilled(r)
               if ('montant' in r2) {
-                return <span className="font-medium">{money(r2.montant, { round: true })}</span>
+                return <span className="font-medium">{money(r2.montant, { compact: true })}</span>
               }
               // Le libellé DIT la cause : une tournée d'un côté, une saisie de
               // tarif de l'autre.

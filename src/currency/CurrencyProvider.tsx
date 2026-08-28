@@ -118,10 +118,19 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   */
   const [demande, setDemande] = useState(false)
   const coursConnus = Object.keys(cours.parEuro).length > 0
-  /* On charge dès qu'on DEMANDE une autre devise, et dès qu'on ouvre le
-     sélecteur : sans le second, la liste ne saurait pas ce qu'elle peut
-     offrir avant qu'on ait déjà choisi. */
-  const besoinDeCours = demande || currency !== deviseSource
+  /*
+    ON NE DEMANDE QUE CE QU'ON N'A PAS.
+
+    La parité du franc CFA vit dans le client (voir `COURS_SANS_FLUX`) : un parc
+    de Douala lu en euros n'a plus rien à demander à personne. La condition
+    interroge donc `convertir` plutôt que de comparer deux codes — sinon un
+    visiteur ayant choisi l'euro une fois paierait une requête sur CHAQUE page,
+    vitrine comprise, pour un nombre que le paquet transporte déjà.
+
+    L'ouverture du sélecteur charge quand même : la liste doit savoir si elle
+    peut offrir les deux dollars avant qu'on ait choisi, et eux seuls flottent.
+  */
+  const besoinDeCours = demande || convertir(0, deviseSource, currency, cours.parEuro) === null
   const chargerLesCours = useCallback(() => setDemande(true), [])
 
   useEffect(() => {

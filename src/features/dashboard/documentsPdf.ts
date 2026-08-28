@@ -430,7 +430,7 @@ export function useReceiptPdf() {
   return useCallback(
     (unit: Unit, receipt: Receipt): string => {
       const page = nouvelleMiseEnPage()
-      const argent = (montant: number) => formatMoney(montant, deviseSource, { round: true })
+      const argent = (montant: number) => formatMoney(montant, deviseSource, { compact: true })
       const contenu = composerLaQuittance(
         t,
         argent,
@@ -472,7 +472,7 @@ export function useAllReceiptsPdf() {
   return useCallback(
     (unit: Unit, receipts: Receipt[]): string => {
       const page = nouvelleMiseEnPage()
-      const argent = (montant: number) => formatMoney(montant, deviseSource, { round: true })
+      const argent = (montant: number) => formatMoney(montant, deviseSource, { compact: true })
       /* Cherché UNE fois pour tout le carnet : six pages, un seul logement. */
       const immeuble = nommerLImmeuble(unit)
       receipts.forEach((receipt, index) => {
@@ -609,7 +609,7 @@ export function useDepositPdf() {
   return useCallback(
     (unit: Unit, deposit: Deposit): string => {
       const page = nouvelleMiseEnPage()
-      const argent = (montant: number) => formatMoney(montant, deviseSource, { round: true })
+      const argent = (montant: number) => formatMoney(montant, deviseSource, { compact: true })
       const titre = t('app.documents.depositReceipt')
 
       enTete(page, {
@@ -702,7 +702,7 @@ export function useInspectionPdf() {
           t(`app.inspections.severity${reserve.severity === 'minor' ? 'Minor' : 'Major'}` as 'app.inspections.severityMinor'),
           reserve.costMinor === null
             ? null
-            : `${t('app.inspections.cost')} ${formatMoney(reserve.costMinor, deviseSource, { round: true })}`,
+            : `${t('app.inspections.cost')} ${formatMoney(reserve.costMinor, deviseSource, { compact: true })}`,
         ].filter(Boolean)
         page.paragraphe(marges.join(' · '), { petit: true, retrait: 12 })
       }

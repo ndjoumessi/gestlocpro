@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
 import request from 'supertest'
 import { createApp } from '../app.js'
 import { PARITE_FRANC_CFA, creerServiceDeTaux, type Devise, type SourceDeTaux } from './taux.js'
@@ -107,6 +108,39 @@ describe('le service de taux', () => {
 
     expect(lectures()).toBe(2)
     expect(repris.date, 'les cours ne reviennent pas après la panne').toBe('2026-08-28')
+  })
+})
+
+/**
+ * DEUX EXEMPLAIRES D'UNE CONSTANTE, ET RIEN POUR LES TENIR ENSEMBLE.
+ *
+ * Le client tient désormais la parité lui-même : elle est fixée par traité, et
+ * la demander par le réseau ajoutait une panne possible à un nombre qui ne peut
+ * pas changer — un poste sans API annonçait « cours indisponibles » pour
+ * convertir des francs en euros. Voir `src/currency/pariteSansServeur`.
+ *
+ * Le prix est une constante écrite deux fois, dans deux paquets sans code
+ * commun. Elle ne bougera pas — sa dernière révision date du passage à l'euro —
+ * mais une faute de frappe ne prévient pas, et le montant qui en sortirait
+ * resterait plausible.
+ *
+ * LA GARDE VIT ICI parce que ce paquet a les types de Node : lire un fichier
+ * depuis un cas jsdom, côté client, ne compile pas. On lit le TEXTE plutôt que
+ * d'importer — le module du client est du TSX résolu par un alias que ce
+ * paquet-ci ne connaît pas.
+ */
+describe('la parité, des deux côtés', () => {
+  it('vaut chez le client ce qu’elle vaut ici', () => {
+    const source = readFileSync(
+      new URL('../../../src/currency/currencies.ts', import.meta.url),
+      'utf8',
+    )
+    const declaree = source.match(/PARITE_FRANC_CFA\s*=\s*([\d.]+)/)?.[1]
+
+    expect(declaree, 'la constante a disparu ou changé de nom chez le client').toBeDefined()
+    expect(Number(declaree), 'client et serveur ne disent pas la même parité').toBe(
+      PARITE_FRANC_CFA,
+    )
   })
 })
 

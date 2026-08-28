@@ -322,7 +322,7 @@ export function KitchenSink() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card>
               <div className="eyebrow text-muted">Loyers attendus</div>
-              <div className="mt-2 numeric text-kpi">{money(1415000, { round: true })}</div>
+              <div className="mt-2 numeric text-kpi">{money(1415000, { compact: true })}</div>
               <div className="mt-2 flex items-center gap-2">
                 <DeltaBadge value={165000} />
                 <span className="text-body text-muted">12 baux actifs</span>

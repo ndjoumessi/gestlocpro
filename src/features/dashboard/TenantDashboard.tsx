@@ -242,7 +242,7 @@ export function TenantDashboard() {
   const refacture = (conso: number | null, prix: number | null | undefined) =>
     conso === null || prix === null || prix === undefined
       ? '—'
-      : money(conso * prix, { round: true })
+      : money(conso * prix, { compact: true })
 
   return (
     <>
@@ -300,7 +300,7 @@ export function TenantDashboard() {
           <StatCard
             icone="card"
             label={`${t('app.tenant.rentFor')} · ${d.monthYear(periodeCourante)}`}
-            value={money(unit.rent, { round: true })}
+            value={money(unit.rent, { compact: true })}
             etat={{ ton: PAYMENT_TONES[unit.status], libelle: t(`status.${unit.status}` as 'status.paid') }}
             bas={
               <>
@@ -563,11 +563,11 @@ export function TenantDashboard() {
             <dl className="flex flex-col">
               <LigneBail
                 terme={t('app.tenant.leaseRent')}
-                valeur={money(unit.rent, { round: true })}
+                valeur={money(unit.rent, { compact: true })}
               />
               <LigneBail
                 terme={t('app.tenant.leaseDeposit')}
-                valeur={deposit ? money(deposit.held, { round: true }) : '—'}
+                valeur={deposit ? money(deposit.held, { compact: true }) : '—'}
               />
               {/* L'état des lieux EXISTE comme fiche, pas comme fichier : aucun
                   dépôt ne le crée, et ce produit ne fabrique pas de PDF
@@ -809,7 +809,7 @@ function MontantRegle({ du, regle }: { du: number; regle: number }) {
     carte nomme toujours la devise une fois, et faire diverger les deux formes
     créerait deux graphies pour la même colonne selon la largeur de l'écran.
   */
-  const lireMontant = (v: number) => money(v, { round: true, omitSymbol: true })
+  const lireMontant = (v: number) => money(v, { compact: true, omitSymbol: true })
   return (
     <>
       {lireMontant(solde ? du : regle)}

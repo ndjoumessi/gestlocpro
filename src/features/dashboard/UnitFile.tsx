@@ -152,7 +152,7 @@ export function UnitFile() {
     <>
       <PageHeader
         title={immeuble ? `${immeuble.name} — ${unit.label}` : unit.label}
-        description={`${t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')} · ${unit.surface} m² · ${money(unit.rent, { round: true })}`}
+        description={`${t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')} · ${unit.surface} m² · ${money(unit.rent, { compact: true })}`}
         actions={
           <>
             <Button variant="secondary" icon="chevronLeft" to={retour}>
@@ -199,14 +199,14 @@ export function UnitFile() {
         <StatCard
           icone="clock"
           label={t('app.unitFile.kpiBalance')}
-          value={money(resteDu, { round: true })}
+          value={money(resteDu, { compact: true })}
           etat={resteDu > 0 ? { ton: 'danger' } : undefined}
           note={t('app.unitFile.kpiBalanceNote', { count: periodes.length })}
         />
         <StatCard
           icone="shield"
           label={t('app.unitFile.kpiDeposit')}
-          value={money(caution?.held ?? 0, { round: true })}
+          value={money(caution?.held ?? 0, { compact: true })}
           note={
             caution
               ? t('app.unitFile.kpiDepositNote')
@@ -216,7 +216,7 @@ export function UnitFile() {
         <StatCard
           icone="wrench"
           label={t('app.unitFile.kpiWorks')}
-          value={money(travauxEngages, { round: true })}
+          value={money(travauxEngages, { compact: true })}
           note={t('app.unitFile.kpiWorksNote', { count: travaux.length })}
         />
       </div>
@@ -337,13 +337,13 @@ export function UnitFile() {
                       )}
                     </span>
                     <span className="numeric text-body">
-                      {money(du, { round: true })}
+                      {money(du, { compact: true })}
                       {/* Le reste dû, et lui seul, appelle un geste : une
                           période soldée n'a pas à porter un « reste 0 ». */}
                       {reste > 0 && (
                         <span className="text-warn">
                           {' · '}
-                          {t('app.tenant.remaining', { amount: money(reste, { round: true }) })}
+                          {t('app.tenant.remaining', { amount: money(reste, { compact: true }) })}
                         </span>
                       )}
                     </span>
@@ -386,7 +386,7 @@ export function UnitFile() {
                         un sous-objet `status`. */}
                     {t(`app.works.${work.status}` as 'app.works.reported')}
                     {montantEngage(work).montant !== null &&
-                      ` · ${money(montantEngage(work).montant!, { round: true })}`}
+                      ` · ${money(montantEngage(work).montant!, { compact: true })}`}
                   </span>
                 </li>
               ))}
@@ -415,7 +415,7 @@ export function UnitFile() {
           >
             <LignePiece
               label={t('app.deposits.title')}
-              valeur={caution ? money(caution.held, { round: true }) : null}
+              valeur={caution ? money(caution.held, { compact: true }) : null}
               absence={t('app.unitFile.noDeposit')}
             />
             <LignePiece
@@ -475,7 +475,7 @@ function LigneOccupation({ bail }: { bail: Occupation }) {
             : t('app.unitFile.since', { date: d.fullDate(bail.startsOn) })}
         </p>
       </div>
-      <span className="numeric text-body text-muted">{money(bail.rentMinor, { round: true })}</span>
+      <span className="numeric text-body text-muted">{money(bail.rentMinor, { compact: true })}</span>
     </li>
   )
 }

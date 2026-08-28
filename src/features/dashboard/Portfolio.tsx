@@ -451,7 +451,7 @@ export function Portfolio() {
             role: 'valeur',
             header: t('app.portfolio.rent'),
             numeric: true,
-            render: (unit) => money(unit.rent, { round: true }),
+            render: (unit) => money(unit.rent, { compact: true }),
           },
           {
             key: 'status',

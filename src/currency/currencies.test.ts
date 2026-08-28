@@ -106,7 +106,7 @@ describe('unités mineures', () => {
 describe('formatage', () => {
   it('n’applique aucune conversion de change', () => {
     // La valeur numérique est identique partout ; seule la présentation varie.
-    // `round` est nécessaire : sans lui, l'euro rend « 1 000,00 » et retirer
+    // La forme compacte est nécessaire : sans lui, l'euro rend « 1 000,00 » et retirer
     // les non-chiffres concatènerait la partie décimale en « 100000 ».
     const rendus = CURRENCIES.map((code) =>
       // Mille unités d'usage, exprimées dans la mineure de chaque devise : la
@@ -114,7 +114,7 @@ describe('formatage', () => {
       // comme mille francs.
       formatMoney(1000 * 10 ** CURRENCY_DEFS[code].decimals, code, {
         omitSymbol: true,
-        round: true,
+        compact: true,
       }),
     )
     const chiffres = rendus.map((r) => r.replace(/\D/g, ''))
@@ -129,10 +129,10 @@ describe('formatage', () => {
     // espaces comprises. En police proportionnelle la fine retombe à 1,7 px et
     // la devise se soude au montant. Insécables l'une comme l'autre : « 1 000 »
     // ne doit jamais se retrouver séparé de « FCFA » en fin de ligne.
-    expect(formatMoney(1000, 'CFA', { round: true })).toBe('1\u202f000\u00a0FCFA')
+    expect(formatMoney(1000, 'CFA', { compact: true })).toBe('1\u202f000\u00a0FCFA')
     // Le dollar suit `en-US` et sépare donc les milliers par une virgule, là
     // où le franc CFA et l'euro emploient une espace.
-    expect(formatMoney(100000, 'USD', { round: true })).toBe('$\u00a01,000')
+    expect(formatMoney(100000, 'USD', { compact: true })).toBe('$\u00a01,000')
   })
 
   it('n’ajoute pas de sous-unité au franc CFA', () => {
@@ -144,14 +144,26 @@ describe('formatage', () => {
     expect(formatMoney(150050, 'EUR')).toContain('1\u202f500,50')
   })
 
-  it('arrondit sur demande, pour les indicateurs compacts', () => {
-    expect(formatMoney(150050, 'EUR', { round: true })).not.toContain(',50')
+  /**
+   * RÉ-ANCRÉ, et la raison compte plus que le chiffre.
+   *
+   * Ce cas assertait que `round: true` SUPPRIMAIT « ,50 ». C'était le contrat de
+   * l'option tant que la seule devise en service n'avait pas de sous-unité :
+   * l'assertion était vraie en franc CFA sans rien prouver, et fausse dès qu'un
+   * euro s'affichait. Un « reste à percevoir » de 681,45 € annoncé « 681 € » est
+   * un montant qu'on ne retrouvera sur aucun relevé.
+   *
+   * La forme compacte ne tronque plus : elle tait les décimales NULLES.
+   */
+  it('ne tait que les décimales nulles', () => {
+    expect(formatMoney(150050, 'EUR', { compact: true })).toContain(',50')
+    expect(formatMoney(150000, 'EUR', { compact: true })).not.toContain(',')
   })
 
   it('sépare les milliers par une espace insécable étroite', () => {
     // Une espace ordinaire autoriserait une coupure de ligne au milieu d'un
     // montant, dans un tableau où les colonnes sont déjà serrées.
-    const rendu = formatMoney(1415000, 'CFA', { round: true })
+    const rendu = formatMoney(1415000, 'CFA', { compact: true })
     expect(rendu).toContain('\u202f')
     expect(rendu).not.toMatch(/\d \d/)
   })
@@ -183,12 +195,12 @@ describe('lecture d’un montant saisi', () => {
     // Un montant recopié depuis l'écran doit pouvoir être resaisi tel quel,
     // espaces insécables étroites et symbole compris.
     for (const code of CURRENCIES) {
-      /* `round` retire les sous-unités à l'affichage : on part donc d'un
+      /* La forme compacte tait les décimales nulles : on part donc d'un
          montant ROND dans l'unité d'usage, sans quoi l'aller-retour perdrait
          les centimes que la présentation a masqués — ce qui mesurerait
          l'arrondi et non la relecture. */
       const mineur = 1450 * 10 ** CURRENCY_DEFS[code].decimals
-      const rendu = formatMoney(mineur, code, { round: true })
+      const rendu = formatMoney(mineur, code, { compact: true })
       expect(parseMoney(rendu, code), `aller-retour en ${code}`).toBe(mineur)
     }
   })

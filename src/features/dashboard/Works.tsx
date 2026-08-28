@@ -319,7 +319,7 @@ export function Works() {
           <StatCard
             icone="card"
             label={t('app.works.totalCommitted')}
-            value={money(engage, { round: true })}
+            value={money(engage, { compact: true })}
             note={t('app.works.kpiCommittedNote')}
           />
           <StatCard
@@ -330,7 +330,7 @@ export function Works() {
             note={t('app.works.kpiQuotedNote', {
               amount: money(
                 aArbitrer.reduce((somme, w) => somme + (w.quotedAmount ?? 0), 0),
-                { round: true },
+                { compact: true },
               ),
             })}
           />
@@ -855,13 +855,13 @@ function Montant({ work }: { work: WorkOrder }) {
 
   return (
     <span className="flex flex-col items-end">
-      <span className="numeric text-title-m font-medium">{money(montant, { round: true })}</span>
+      <span className="numeric text-title-m font-medium">{money(montant, { compact: true })}</span>
       <span className="text-caps text-muted">
         {t(nature === 'approved' ? 'app.works.amountApproved' : 'app.works.amountQuoted')}
       </span>
       {revise && (
         <span className="numeric text-caps text-muted">
-          {t('app.works.amountWasQuoted', { amount: money(work.quotedAmount!, { round: true }) })}
+          {t('app.works.amountWasQuoted', { amount: money(work.quotedAmount!, { compact: true }) })}
         </span>
       )}
     </span>

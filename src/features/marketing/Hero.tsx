@@ -109,7 +109,7 @@ function HeroPreview({
   money,
   t,
 }: {
-  money: (amount: number, options?: { round?: boolean }) => string
+  money: (amount: number, options?: { compact?: boolean }) => string
   t: ReturnType<typeof useT>
 }) {
   const d = useDates()
@@ -180,7 +180,7 @@ function HeroPreview({
                 justement remplacé : plus aucune classe ne fait descendre quoi que
                 ce soit, et la promesse survivait au mécanisme. Retirée. */}
             <p className="numeric mt-2 text-kpi leading-none font-medium">
-              {money(kpis.collected, { round: true })}
+              {money(kpis.collected, { compact: true })}
             </p>
           </div>
           {/* Couleurs de statut rétablies. Le motif retenu pour ce produit —
@@ -231,7 +231,7 @@ function HeroPreview({
           />
           <MiniStat
             label={t('marketing.metrics.overdue')}
-            value={money(kpis.outstanding, { round: true })}
+            value={money(kpis.outstanding, { compact: true })}
             note={t('marketing.metrics.overdueNote', { count: doivent.length })}
           />
         </div>

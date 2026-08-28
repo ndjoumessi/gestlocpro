@@ -673,7 +673,7 @@ function Comparaison({ inspections }: { inspections: Inspection[] }) {
                   <CelluleReserves reserves={apres} />
                   <td className="numeric py-2.5 pl-3 text-right text-body">
                     {cout > 0 ? (
-                      <span className="font-medium text-danger">{money(cout, { round: true })}</span>
+                      <span className="font-medium text-danger">{money(cout, { compact: true })}</span>
                     ) : (
                       /* Rien à retenir se DIT : une cellule vide se lirait comme
                          un montant qu'on a oublié de porter. */
@@ -690,7 +690,7 @@ function Comparaison({ inspections }: { inspections: Inspection[] }) {
       {retenue > 0 && (
         <p className="mt-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <span className="text-body text-muted">{t('app.inspections.proposed')}</span>
-          <span className="numeric text-body font-medium">{money(retenue, { round: true })}</span>
+          <span className="numeric text-body font-medium">{money(retenue, { compact: true })}</span>
         </p>
       )}
     </div>

@@ -125,19 +125,19 @@ export function Deposits() {
         <StatCard
           icone="shield"
           label={t('app.deposits.totalHeld')}
-          value={money(totalHeld, { round: true })}
+          value={money(totalHeld, { compact: true })}
           note={t('app.deposits.kpiHeldNote', { count: deposits.length })}
         />
         <StatCard
           icone="lock"
           label={t('app.deposits.withheld')}
-          value={money(totalWithheld, { round: true })}
+          value={money(totalWithheld, { compact: true })}
           note={t('app.deposits.kpiWithheldNote', { count: enArbitrage })}
         />
         <StatCard
           icone="card"
           label={t('app.deposits.balance')}
-          value={money(totalHeld - totalWithheld, { round: true })}
+          value={money(totalHeld - totalWithheld, { compact: true })}
           note={t('app.deposits.kpiBalanceNote', { count: restituees })}
         />
       </div>
@@ -191,7 +191,7 @@ export function Deposits() {
               key: 'held',
               header: t('app.deposits.amountHeld'),
               numeric: true,
-              render: (d) => money(d.held, { round: true }),
+              render: (d) => money(d.held, { compact: true }),
             },
             {
               key: 'withheld',
@@ -201,7 +201,7 @@ export function Deposits() {
               render: (d) =>
                 d.withheld ? (
                   <span className="font-medium text-danger">
-                    −{money(d.withheld, { round: true })}
+                    −{money(d.withheld, { compact: true })}
                   </span>
                 ) : (
                   <span className="text-muted">—</span>
@@ -213,7 +213,7 @@ export function Deposits() {
               header: t('app.deposits.balance'),
               numeric: true,
               render: (d) => (
-                <span className="font-medium">{money(d.held - d.withheld, { round: true })}</span>
+                <span className="font-medium">{money(d.held - d.withheld, { compact: true })}</span>
               ),
             },
             {
@@ -366,7 +366,7 @@ function SettleModal({
     const next: typeof errors = {}
     if (parsed > deposit.held) {
       next.withheld = t('app.deposits.errorTooHigh', {
-        amount: money(deposit.held, { round: true }),
+        amount: money(deposit.held, { compact: true }),
       })
     }
     if (parsed > 0 && reason.trim().length < 3) {
@@ -401,7 +401,7 @@ function SettleModal({
             {deposit.tenant ?? t('app.deposits.formerTenant')}
           </span>
           <span className="numeric text-body font-medium">
-            {money(deposit.held, { round: true })}
+            {money(deposit.held, { compact: true })}
           </span>
         </div>
 
@@ -451,7 +451,7 @@ function SettleModal({
           {/* `money()` porte déjà le symbole : en ajouter un second donnait
               « 185 000 FCFA FCFA ». */}
           <span className="numeric text-title-l font-medium">
-            {money(balance, { round: true })}
+            {money(balance, { compact: true })}
           </span>
         </div>
       </div>

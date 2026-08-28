@@ -100,8 +100,22 @@ export const DEFAULT_CURRENCY: CurrencyCode = 'CFA'
 export interface FormatMoneyOptions {
   /** Masque le symbole — utile quand une colonne le porte déjà en en-tête. */
   omitSymbol?: boolean
-  /** Force l'absence de décimales (KPI compacts). */
-  round?: boolean
+  /**
+   * FORME COMPACTE : les décimales tombent quand elles sont NULLES.
+   *
+   * L'option s'appelait `round` et forçait zéro décimale. Elle est employée à
+   * soixante-treize endroits — partout où le produit montre un montant — et
+   * personne ne l'a jamais choisie contre les centimes : en franc CFA elle est
+   * SANS EFFET, `decimals` y valant zéro. L'idiome s'est donc répandu sous une
+   * monnaie où il ne coûtait rien, et la première conversion en euros a montré
+   * ce qu'il coûtait ailleurs : « 681 € » pour 681,45 € dus, et un tableau de
+   * cautions où la différence affichée ne tombe plus juste sous les termes qui
+   * la produisent.
+   *
+   * L'intention — ne pas encombrer un chiffre-clé de « ,00 » — survit ; la
+   * troncature, non.
+   */
+  compact?: boolean
 }
 
 /**
@@ -162,6 +176,47 @@ export const CODE_ISO: Record<CurrencyCode, 'XAF' | 'EUR' | 'CAD' | 'USD'> = {
 }
 
 /**
+ * LA PARITÉ LÉGALE DU FRANC CFA, ET POURQUOI LE CLIENT LA TIENT.
+ *
+ * 1 EUR = 655,957 XAF, autant de XOF, fixé par le traité de coopération
+ * monétaire. Ce n'est pas un cours : le nombre est exact, il n'a pas de date, et
+ * sa dernière révision date du passage à l'euro en 1999.
+ *
+ * ═══ LE DÉFAUT QUE CETTE CONSTANTE SUPPRIME ═══
+ *
+ * Elle ne vivait que chez le serveur, servie par `/api/rates` avec les cours
+ * flottants. Un client dont l'API ne répond pas — le développement seul, un
+ * incident réseau, un service qui tarde à démarrer — annonçait donc « Cours
+ * indisponibles » pour une conversion qu'il savait faire de tête. Et cela
+ * frappait exactement la paire du marché visé : un parc de Douala qu'on veut
+ * lire en euros.
+ *
+ * Faire dépendre d'une requête un nombre qui ne peut pas changer, c'est ajouter
+ * une panne possible à un calcul qui n'en avait aucune.
+ *
+ * ═══ LE PRIX, ET IL EST PAYÉ ═══
+ *
+ * La constante existe désormais des DEUX côtés — client et serveur sont deux
+ * paquets sans code commun. `pariteSansServeur` lit celle du serveur et compare
+ * les deux : une divergence rougit, au lieu de rendre un montant plausible.
+ */
+export const PARITE_FRANC_CFA = 655.957
+
+/**
+ * Ce que le client sait SANS RIEN DEMANDER : l'euro pivot, et les deux francs.
+ *
+ * Rien d'autre n'y entre jamais. Le dollar canadien et le dollar américain
+ * flottent — leur cours se publie, il ne se déduit pas — et les poser ici à une
+ * valeur quelconque recréerait le défaut d'origine : quatre devises affichant le
+ * même nombre, la fausseté rendue plausible par la mise en forme.
+ */
+const COURS_SANS_FLUX: Readonly<Partial<Record<string, number>>> = {
+  EUR: 1,
+  XAF: PARITE_FRANC_CFA,
+  XOF: PARITE_FRANC_CFA,
+}
+
+/**
  * CONVERTIR UN MONTANT D'UNE DEVISE VERS UNE AUTRE, en unités mineures.
  *
  * ═══ LE CHEMIN PASSE PAR L'EURO, ET C'EST VOULU ═══
@@ -192,8 +247,12 @@ export function convertir(
 ): number | null {
   if (depuis === vers) return mineur
 
-  const coursDepuis = parEuro[CODE_ISO[depuis]]
-  const coursVers = parEuro[CODE_ISO[vers]]
+  /* LA PARITÉ D'ABORD, LE FLUX PAR-DESSUS. L'ordre compte peu — le serveur
+     publie la même constante — mais il donne le dernier mot à la réponse reçue
+     plutôt qu'à une valeur figée dans un paquet déployé il y a six mois. */
+  const cours = { ...COURS_SANS_FLUX, ...parEuro }
+  const coursDepuis = cours[CODE_ISO[depuis]]
+  const coursVers = cours[CODE_ISO[vers]]
   if (!coursDepuis || !coursVers) return null
 
   const enEuros = enUniteDUsage(mineur, depuis) / coursDepuis
@@ -210,7 +269,7 @@ export function formatMoney(
   options: FormatMoneyOptions = {},
 ): string {
   const def = CURRENCY_DEFS[currency]
-  const decimals = options.round ? 0 : def.decimals
+  const decimals = options.compact && estRondEnUniteDUsage(amount, currency) ? 0 : def.decimals
 
   const number = new Intl.NumberFormat(def.locale, {
     minimumFractionDigits: decimals,

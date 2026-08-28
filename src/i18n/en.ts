@@ -39,6 +39,7 @@ export const en: Dictionary = {
     demoBadge: 'Demo',
     currencyUnavailable: 'Rates unavailable · amounts in {currency}',
     currencyConverted: 'Converted at the {date} rate',
+    currencyPegged: 'Converted at the legal parity',
     demoPark: 'Demo portfolio',
     emptyParkTitle: 'Your portfolio is still empty',
     emptyParkBody:

@@ -297,7 +297,7 @@ export function Payments() {
              */
             etat={kpis.late > 0 ? { ton: 'danger' } : undefined}
             label={t('app.dashboard.recoveryLate')}
-            value={money(kpis.late, { round: true })}
+            value={money(kpis.late, { compact: true })}
           />
           {/* LA MÊME COMPARAISON QUE SUR LE TABLEAU DE BORD, et calculée au même
               endroit : les deux écrans affichent le MÊME nombre — `collected` —
@@ -306,18 +306,18 @@ export function Payments() {
           <StatCard
             icone="card"
             label={t('app.dashboard.recoveryCollected')}
-            value={money(kpis.collected, { round: true })}
+            value={money(kpis.collected, { compact: true })}
             delta={variation ? <DeltaBadge value={variation.pourcentage} suffix="%" /> : undefined}
             note={
               variation
-                ? t('app.dashboard.vsPrevious', { amount: money(variation.base, { round: true }) })
+                ? t('app.dashboard.vsPrevious', { amount: money(variation.base, { compact: true }) })
                 : undefined
             }
           />
           <StatCard
             icone="layers"
             label={t('app.dashboard.expected')}
-            value={money(kpis.expected, { round: true })}
+            value={money(kpis.expected, { compact: true })}
           />
         </div>
       )}
@@ -416,7 +416,7 @@ export function Payments() {
                   {unit.tenant}
                 </p>
                 <p className="numeric mt-0.5 text-caps text-muted">
-                  {money(unit.rent, { round: true })}
+                  {money(unit.rent, { compact: true })}
                 </p>
               </div>
             ),
@@ -532,13 +532,13 @@ export function Payments() {
               // Cumulé quand l'historique existe, sinon l'écart du mois — la
               // seule chose que l'on sache alors.
               const balance = periodes.length > 0 ? soldeCumule(unit) : unit.rent - unit.paid
-              if (balance === 0) return <span className="text-muted">{money(0, { round: true })}</span>
+              if (balance === 0) return <span className="text-muted">{money(0, { compact: true })}</span>
               // Une AVANCE n'est pas une dette : elle se lit en clair, avec son
               // signe, et jamais en rouge.
               return (
                 <span className={cn(balance > 0 ? 'font-medium text-danger' : 'text-ok')}>
                   {balance > 0 ? '−' : '+'}
-                  {money(Math.abs(balance), { round: true })}
+                  {money(Math.abs(balance), { compact: true })}
                 </span>
               )
             },
@@ -564,13 +564,13 @@ export function Payments() {
                   header: t('app.payments.due'),
                   numeric: true,
                   hideOnMobile: true,
-                  render: (unit: Unit) => money(unit.rent, { round: true }),
+                  render: (unit: Unit) => money(unit.rent, { compact: true }),
                 },
                 {
                   key: 'paid',
                   header: t('app.payments.paid'),
                   numeric: true,
-                  render: (unit: Unit) => money(unit.paid, { round: true }),
+                  render: (unit: Unit) => money(unit.paid, { compact: true }),
                 },
               ]),
           {

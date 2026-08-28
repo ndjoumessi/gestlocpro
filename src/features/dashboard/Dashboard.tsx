@@ -156,7 +156,7 @@ export function Dashboard() {
       icone: 'clock' as const,
       titre: t('app.dashboard.queueOverdueTitle', { count: doivent.length }),
       detail: t('app.dashboard.queueOverdueDetail', {
-        amount: money(outstanding, { round: true }),
+        amount: money(outstanding, { compact: true }),
         days: maxOverdueDays,
       }),
       action: { libelle: t('app.dashboard.queueOverdueAction'), to: lien(base, 'paiements') },
@@ -167,7 +167,7 @@ export function Dashboard() {
       icone: 'shield' as const,
       titre: t('app.dashboard.queueDepositsTitle', { count: cautionsAArbitrer.length }),
       detail: t('app.dashboard.queueDepositsDetail', {
-        amount: money(cautionsEnAttente, { round: true }),
+        amount: money(cautionsEnAttente, { compact: true }),
         units: cautionsAArbitrer
           .map((c) => unitById(c.unitId)?.label ?? c.unitId)
           .join(', '),
@@ -180,7 +180,7 @@ export function Dashboard() {
       icone: 'wrench' as const,
       titre: t('app.dashboard.queueQuotesTitle', { count: devis.length }),
       detail: t('app.dashboard.queueQuotesDetail', {
-        amount: money(devisEnAttente, { round: true }),
+        amount: money(devisEnAttente, { compact: true }),
         units: devis.map((w) => unitById(w.unitId)?.label ?? w.unitId).join(', '),
       }),
       action: { libelle: t('app.dashboard.queueQuotesAction'), to: lien(base, 'travaux') },
@@ -332,7 +332,7 @@ export function Dashboard() {
              l'autre — sans quoi l'icône n'aide plus à retrouver, elle décore. */
           icone="clock"
           label={t('app.dashboard.outstanding')}
-          value={money(outstanding, { round: true })}
+          value={money(outstanding, { compact: true })}
           /**
            * L'ÉTAT A ÉTÉ RETIRÉ D'ICI, ET C'EST LA FILE QUI L'A REPRIS.
            *
@@ -396,12 +396,12 @@ export function Dashboard() {
         <StatCard
           icone="card"
           label={t('app.dashboard.collected')}
-          value={money(collected, { round: true })}
+          value={money(collected, { compact: true })}
           delta={variation ? <DeltaBadge value={variation.pourcentage} suffix="%" /> : undefined}
           note={
             variation
               ? t('app.dashboard.vsPrevious', {
-                  amount: money(variation.base, { round: true }),
+                  amount: money(variation.base, { compact: true }),
                 })
               : t('app.dashboard.collectedShare', { percent: collectedShare })
           }
@@ -409,7 +409,7 @@ export function Dashboard() {
         <StatCard
           icone="layers"
           label={t('app.dashboard.expected')}
-          value={money(expected, { round: true })}
+          value={money(expected, { compact: true })}
           note={t('app.dashboard.activeLeases', { count: occupied })}
         />
         <StatCard
