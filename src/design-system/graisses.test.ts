@@ -66,7 +66,18 @@ function lignes(predicat: (ligne: string) => boolean): string[] {
 // Motifs assemblés par fragments : Tailwind lit les sources comme du texte,
 // fichiers de test compris, et générerait pour de bon toute classe citée ici en
 // clair — le piège a déjà coûté une classe fantôme dans le CSS livré.
-const TAILLE_TITRE = new RegExp(['text', 'title', '(l|m)'].join('-'))
+/*
+  LES DEUX ÉCRITURES D'UN RÔLE DE TITRE, et la règle n'en voyait qu'une.
+
+  Le dépôt expose `title-l` / `title-m` comme UTILITAIRES, et Tailwind les rend
+  aussi sous leur forme longue `text-title-l` / `text-title-m`. La règle ne
+  cherchait que la seconde : `className="title-m font-semibold"` passait donc
+  sans être vu — et c'était le SEUL site du dépôt à poser une graisse en ligne à
+  côté d'un rôle de titre, c'est-à-dire exactement ce que cette règle existe pour
+  interdire. Une garde qui ne connaît qu'une des deux orthographes de ce qu'elle
+  garde ne garde que la moitié du produit.
+*/
+const TAILLE_TITRE = new RegExp(`(?:text-)?${['title', '(l|m)'].join('-')}`)
 const LOURD = new RegExp(`\\bfont-(${['semibold', 'bold'].join('|')})\\b`)
 const CORPS = new RegExp(['text', 'body'].join('-') + '\\b')
 const GRAS = new RegExp('\\bfont-' + 'bold' + '\\b')

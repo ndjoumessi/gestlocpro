@@ -22,10 +22,20 @@ describe('écran Signaler', () => {
     // cosmétique — la modale masquait « Mes signalements » à l'instant précis
     // où elle sert, et le locataire redéclarait ce qui était en cours.
     expect(screen.getByRole('button', { name: /envoyer le signalement/i })).toBeInTheDocument()
-    // Les deux choix exclusifs sont des `radiogroup` et non des rangées de
-    // boutons : l'exclusivité est portée par la sémantique, et un lecteur
-    // d'écran annonce « 3 sur 5 » plutôt que cinq boutons sans lien.
-    expect(screen.getAllByRole('radiogroup')).toHaveLength(2)
+    /*
+      LES DEUX CHOIX EXCLUSIFS SONT DE VRAIS GROUPES DE BOUTONS RADIO, et non
+      des rangées de boutons : l'exclusivité est portée par la sémantique, et un
+      lecteur d'écran annonce « 3 sur 5 » plutôt que cinq boutons sans lien.
+
+      DÉSIGNÉS PAR LEUR NOM, et non comptés. Ils étaient des `radiogroup` posés à
+      la main ; ce sont maintenant des `<fieldset>`, dont le rôle implicite est
+      `group` — le balisage natif, celui que le `radiogroup` imitait. Or `group`
+      est aussi le rôle d'autres choses de la page, et compter « deux » y
+      mélangeait des objets qui n'ont rien à voir. On nomme donc les deux qu'on
+      veut, ce qui dit en plus qu'ils portent bien leur légende.
+    */
+    expect(screen.getByRole('group', { name: /de quoi s’agit-il/i })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: /à quel point est-ce urgent/i })).toBeInTheDocument()
     expect(screen.getByRole('main')).toHaveTextContent(/mes signalements/i)
   })
 

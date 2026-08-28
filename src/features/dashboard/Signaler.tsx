@@ -1,16 +1,16 @@
-import { useRef, useState, type KeyboardEvent } from 'react'
+import { useState } from 'react'
 import { useRole } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/primitives/Button'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { Field } from '@/components/primitives/Field'
+import { RadioCards } from '@/components/primitives/Choice'
 import { Input, Textarea } from '@/components/primitives/Input'
 import { StatusPill, type StatusTone } from '@/components/primitives/StatusPill'
 import { EmptyState } from '@/components/primitives/DataTable'
 import { useToast } from '@/components/primitives/Toast'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
-import { cn } from '@/lib/cn'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { workTitle } from '@/data/workTitle'
 import { TRADES_REPORTABLE } from '@/data/portfolio'
@@ -118,7 +118,34 @@ export function Signaler() {
 
       <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
         {peutDeclarer ? (
-          <Card className="flex flex-col gap-5">
+          /*
+            UN VRAI `<form>`, ET IL N'Y EN AVAIT PAS.
+
+            Quatre champs et un `<Button onClick>` dans une carte nue : Entrée
+            dans « Que se passe-t-il ? » ne validait rien, et le clavier virtuel
+            d'un téléphone — l'appareil du marché visé — perdait sa touche
+            d'action, qui n'a de sens que si le champ appartient à un formulaire.
+
+            La modale jumelle porte le récit complet de ce défaut : « faute de
+            l'avoir résolu, cette modale n'avait pas de formulaire du tout ». Le
+            correctif ne l'avait pas quittée.
+
+            `noValidate` : la validation est celle du produit — trois caractères
+            minimum, la même borne que le serveur — et non celle du navigateur,
+            dont les bulles ne se traduisent ni ne se stylent.
+            `flush` : le rembourrage passe au `<form>`, sans quoi `cn` laisserait
+            les deux jeux de classes cohabiter — il concatène, il ne fusionne
+            pas, et c'est l'ordre du CSS émis qui trancherait.
+          */
+          <Card flush>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                void envoyer()
+              }}
+              noValidate
+              className="flex flex-col gap-5 p-4 sm:p-5"
+            >
             <Field
               label={t('app.report.what')}
               hint={t('app.report.whatHint')}
@@ -145,23 +172,59 @@ export function Signaler() {
                 EXCLUSIFS, et le rôle le dit au lecteur d'écran, qui annonce
                 « 3 sur 5 ». `aria-checked` porte l'état ; la couleur ne le porte
                 jamais seule. */}
-            <Choix
-              legende={t('app.report.trade')}
-              valeurs={[...TRADES_REPORTABLE]}
-              valeur={metier}
+            {/*
+              LA PRIMITIVE, ET NON UNE TROISIÈME COPIE.
+
+              Ce groupe était refait à la main sur des `<button role="radio">`
+              avec un clavier maison. `RadioCards variant="puces"` existe pour ce
+              cas précis — son commentaire cite « six métiers et trois urgences »
+              — et apporte trois choses que la copie n'avait pas : la COCHE, dont
+              la raison est écrite (« sous deutéranopie, deux teintes de statut
+              sont à 3,4 de ΔE00 »), l'ANNEAU DE FOCUS, et le clavier NATIF d'un
+              vrai `input[type=radio]` — flèches, annonce « 3 sur 5 », saut des
+              entrées désactivées, groupe atteignable à la tabulation.
+            */}
+            <RadioCards
+              variant="puces"
+              legend={t('app.report.trade')}
+              name="metier"
+              value={metier}
               onChange={setMetier}
-              libelle={(cle) => t(`app.trades.${cle}` as 'app.trades.plumbing')}
+              options={TRADES_REPORTABLE.map((cle) => ({
+                value: cle,
+                title: t(`app.trades.${cle}` as 'app.trades.plumbing'),
+                description: '',
+              }))}
             />
 
-            <Choix
-              legende={t('app.report.urgency')}
-              valeurs={URGENCES}
-              valeur={urgence}
+            {/*
+              ET LES TROIS DESCRIPTIONS D'URGENCE REVIENNENT.
+
+              Elles sont traduites, chargées, et affichées par la modale jumelle
+              — `app.report.urgency_*` : « Le logement n'est pas utilisable en
+              l'état », « Gênant, mais on peut vivre avec quelques jours ». Son
+              commentaire les appelle « les seules phrases qui disent au locataire
+              où placer son problème ». Cet écran-ci les jetait et ne rendait
+              qu'un mot par urgence, laissant le choix au flair.
+
+              `cartes` et non `puces` : trois options qui portent deux lignes
+              d'explication sont exactement ce que le variant en tuiles sert, et
+              c'est l'arbitrage que la primitive écrit elle-même.
+            */}
+            <RadioCards
+              legend={t('app.report.urgency')}
+              name="urgence"
+              value={urgence}
               onChange={setUrgence}
-              libelle={(cle) => t(`app.works.urgency_${cle}` as 'app.works.urgency_blocking')}
-              // L'urgence maximale se distingue par sa TEINTE autant que par son
-              // état : c'est le seul choix du formulaire qui engage un délai.
-              tonPourValeur={(cle) => (cle === 'blocking' ? 'danger' : 'neutre')}
+              columns={3}
+              options={URGENCES.map((cle) => ({
+                value: cle,
+                /* Le MÊME couple de clés que la modale jumelle : le titre vient
+                   de `app.works.urgency_*`, la description de
+                   `app.report.urgency_*`. Deux écrans, un vocabulaire. */
+                title: t(`app.works.urgency_${cle}` as 'app.works.urgency_blocking'),
+                description: t(`app.report.urgency_${cle}` as 'app.report.urgency_blocking'),
+              }))}
             />
 
             <Field label={t('app.report.detail')} optional hint={t('app.report.detailHint')}>
@@ -171,10 +234,13 @@ export function Signaler() {
             </Field>
 
             <div>
-              <Button onClick={() => void envoyer()} loading={envoi}>
+              {/* `type="submit"` : c'est lui qui relie la touche Entrée au
+                  geste, et qui donne au clavier virtuel sa touche d'action. */}
+              <Button type="submit" loading={envoi}>
                 {t('app.report.send')}
               </Button>
             </div>
+            </form>
           </Card>
         ) : (
           /* Le bailleur atteint cet écran depuis sa navigation : il y lit ce
@@ -260,112 +326,3 @@ export function Signaler() {
   )
 }
 
-/**
- * Un choix exclusif rendu en rangée de pastilles.
- *
- * `role="radiogroup"` et `role="radio"` plutôt qu'une rangée de `<button>` :
- * l'exclusivité est portée par la SÉMANTIQUE, et un lecteur d'écran annonce
- * « 3 sur 5 » au lieu de cinq boutons sans lien entre eux.
- *
- * Le motif est tenu EN ENTIER, et ce n'est pas une politesse. Première
- * version : `tabIndex` roulant, aucun gestionnaire de touches. La tabulation
- * entrait sur la pastille active, les flèches ne faisaient rien, et les autres
- * portaient `tabIndex={-1}` — donc la tabulation les sautait. Les deux choix
- * du formulaire étaient purement et simplement INUTILISABLES au clavier :
- * impossible de déclarer autre chose qu'une plomberie d'urgence normale sans
- * souris. C'est exactement ce que le portail avait déjà payé avec ses onglets,
- * et son commentaire le dit — annoncer une navigation aux flèches sans la
- * câbler est pire qu'une rangée de boutons ordinaires, qui au moins ne promet
- * rien et garde ses arrêts de tabulation.
- *
- * BORNAGE et non bouclage : la convention du dépôt, posée par `Combobox` et
- * reprise par les onglets du portail.
- */
-function Choix<T extends string>({
-  legende,
-  valeurs,
-  valeur,
-  onChange,
-  libelle,
-  tonPourValeur,
-}: {
-  legende: string
-  valeurs: T[]
-  valeur: T
-  onChange: (v: T) => void
-  libelle: (v: T) => string
-  tonPourValeur?: (v: T) => 'danger' | 'neutre'
-}) {
-  const boutons = useRef<(HTMLButtonElement | null)[]>([])
-
-  /**
-   * La sélection SUIT le focus, comme les onglets du portail : les cinq choix
-   * sont déjà en mémoire, changer d'avis ne coûte rien, et exiger une seconde
-   * frappe pour valider ferait payer deux touches ce que la souris obtient en
-   * un clic.
-   */
-  const allerA = (index: number) => {
-    const cible = valeurs[index]
-    if (cible === undefined) return
-    onChange(cible)
-    boutons.current[index]?.focus()
-  }
-
-  const auClavier = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
-    const destination =
-      e.key === 'ArrowRight' || e.key === 'ArrowDown'
-        ? Math.min(index + 1, valeurs.length - 1)
-        : e.key === 'ArrowLeft' || e.key === 'ArrowUp'
-          ? Math.max(index - 1, 0)
-          : e.key === 'Home'
-            ? 0
-            : e.key === 'End'
-              ? valeurs.length - 1
-              : null
-
-    if (destination === null) return
-    // Les flèches feraient défiler la rangée débordante, `Début` et `Fin` le
-    // document : dans les deux cas la page bougerait sous une commande qui ne
-    // la concerne pas.
-    e.preventDefault()
-    allerA(destination)
-  }
-
-  return (
-    <div>
-      <p className="mb-2 text-label font-semibold">{legende}</p>
-      <div role="radiogroup" aria-label={legende} className="flex flex-wrap gap-2">
-        {valeurs.map((v, index) => {
-          const actif = v === valeur
-          const danger = tonPourValeur?.(v) === 'danger'
-          return (
-            <button
-              key={v}
-              type="button"
-              role="radio"
-              aria-checked={actif}
-              // Un seul arrêt de tabulation pour le groupe, comme les onglets :
-              // la tabulation traverse le formulaire, pas cinq métiers. Il ne
-              // tient que parce que les flèches, elles, atteignent les autres.
-              tabIndex={actif ? 0 : -1}
-              ref={(node) => {
-                boutons.current[index] = node
-              }}
-              onClick={() => onChange(v)}
-              onKeyDown={(e) => auClavier(e, index)}
-              className={cn(
-                'inline-flex min-h-11 cursor-pointer items-center rounded-md border px-3.5',
-                'text-label font-medium transition-colors duration-150',
-                actif && danger && 'border-danger-border bg-danger-tint text-danger',
-                actif && !danger && 'border-ink bg-ink text-on-dark',
-                !actif && 'border-border bg-surface-sunken text-ink hover:border-border-strong',
-              )}
-            >
-              {libelle(v)}
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}

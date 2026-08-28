@@ -82,6 +82,22 @@ export interface RadioCardOption<T extends string> {
   icon?: IconName
   /** Ligne d'appui affichée en bas de la carte, en mono. */
   footnote?: string
+  /**
+   * L'OPTION EXISTE MAIS NE PEUT PAS ÊTRE CHOISIE.
+   *
+   * Le cas réel : une pièce déjà demandée et sans réponse. Le serveur la refuse
+   * — 409 `already_pending` — et l'écran doit dire la même chose AVANT le clic.
+   *
+   * C'EST UN VRAI `disabled`, ET C'EST TOUT L'INTÉRÊT. Un `input[type=radio]`
+   * désactivé est sauté par les flèches, refusé au clic et annoncé comme
+   * indisponible, sans qu'une ligne soit écrite. La copie manuelle que ce
+   * variant remplace y avait perdu deux fois : sa navigation aux flèches
+   * SÉLECTIONNAIT quand même l'entrée désactivée — le bouton d'envoi s'activait
+   * alors et partait chercher le 409 qu'on voulait éviter —, et le groupe
+   * entier devenait inatteignable à la tabulation quand c'était la PREMIÈRE
+   * entrée qui était désactivée, puisque c'est elle qui portait le seul arrêt.
+   */
+  disabled?: boolean
 }
 
 export interface RadioCardsProps<T extends string> {
@@ -189,7 +205,32 @@ export function RadioCards<T extends string>({
                 className="sr-only"
               />
 
-              <div className="flex items-start justify-between gap-3">
+              {/*
+                `justify-end` QUAND IL N'Y A PAS D'ICÔNE : sans tuile, la marque
+                de sélection resterait collée à gauche, seule sur sa ligne.
+              */}
+              <div
+                className={cn(
+                  'flex items-start gap-3',
+                  option.icon ? 'justify-between' : 'justify-end',
+                )}
+              >
+                {/*
+                  PAS D'ICÔNE DE REPLI, ET C'EST UN DÉFAUT QUI EXISTAIT.
+
+                  La tuile rendait `option.icon ?? 'users'` : un appelant qui
+                  n'en fournit aucune obtenait la MÊME silhouette sur toutes ses
+                  cartes. Le variant `puces` a été écrit contre ce défaut et son
+                  commentaire le nomme — « les six tuiles affichaient la même
+                  icône de repli : une distinction promise inexistante » — mais
+                  le correctif n'avait pas traversé jusqu'au variant en tuiles,
+                  où les trois urgences de la modale de signalement portaient
+                  trois fois le même glyphe.
+
+                  Sans icône, pas de tuile : une carte sans repère est plus
+                  honnête qu'une carte qui en promet un faux.
+                */}
+                {option.icon && (
                 <span
                   className={cn(
                     'flex size-9 shrink-0 items-center justify-center rounded-md transition-colors duration-150',
@@ -205,8 +246,9 @@ export function RadioCards<T extends string>({
                     checked ? 'bg-ink text-accent-on-ink' : 'bg-surface-sunken text-muted',
                   )}
                 >
-                  <Icon name={option.icon ?? 'users'} size={18} />
+                  <Icon name={option.icon} size={18} />
                 </span>
+                )}
 
                 {/* Marque de sélection : forme + couleur, jamais la couleur seule. */}
                 <span
@@ -281,10 +323,16 @@ function RadioPuces<T extends string>({
             <label
               key={option.value}
               className={cn(
-                'inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3',
+                'inline-flex min-h-11 items-center gap-2 rounded-md border px-3',
                 'text-label transition-colors duration-150',
                 'has-[:focus-visible]:outline has-[:focus-visible]:outline-2',
                 'has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent-ink',
+                /* L'ÉTAT INDISPONIBLE SE VOIT, et il ne se voit pas comme un
+                   choix pâle : le curseur le dit aussi. Même écriture que la
+                   copie qu'il remplace, pour que rien ne change à l'œil. */
+                option.disabled
+                  ? 'cursor-not-allowed opacity-55'
+                  : 'cursor-pointer',
                 checked
                   ? 'border-ink bg-ink text-on-dark'
                   : 'border-border bg-surface text-ink hover:border-border-strong',
@@ -295,6 +343,7 @@ function RadioPuces<T extends string>({
                 name={name}
                 value={option.value}
                 checked={checked}
+                disabled={option.disabled}
                 onChange={() => onChange(option.value)}
                 className="sr-only"
               />

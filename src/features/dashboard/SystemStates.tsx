@@ -210,27 +210,43 @@ export function SystemStates() {
 
         <Card>
           <CardHeader title={t('app.system.error')} level={2} />
-          {/* Une erreur dit ce qui a échoué, ce qui est préservé, et propose
-              une sortie — pas seulement « une erreur est survenue ». */}
-          <div
+          {/*
+            `Notice`, ET NON SA RECOPIE — sur l'écran dont le rôle déclaré est
+            d'être la référence des quatre états.
+
+            La carte peignait à la main ce que la primitive fait : `flex
+            items-start gap-3 rounded-lg border-danger-border bg-danger-tint
+            px-4 py-3.5`, un glyphe `alert` en 18 px avec son `mt-0.5 shrink-0`,
+            un titre en `font-medium`, un corps dessous. C'est `Notice` avec
+            `tone="danger"` et `role="alert"` — deux propriétés qu'elle accepte
+            depuis toujours.
+
+            ET LA COPIE AVAIT DÉJÀ DÉRIVÉ : `mt-1` sur le corps contre `mt-0.5`
+            dans la primitive. Un demi-pixel, invisible seul, mais c'est la forme
+            que prend une divergence quand personne ne compare — et la carte
+            VOISINE, elle, appelait `Notice` correctement. Deux bandeaux d'état
+            côte à côte, deux écritures.
+
+            Une erreur dit ce qui a échoué, ce qui est préservé, et propose une
+            sortie — pas seulement « une erreur est survenue ». Le geste vit donc
+            dans le corps du bandeau.
+          */}
+          <Notice
+            tone="danger"
             role="alert"
-            className="flex items-start gap-3 rounded-lg border border-danger-border bg-danger-tint px-4 py-3.5"
+            titre={t('app.system.errorTitle')}
           >
-            <Icon name="alert" size={18} className="mt-0.5 shrink-0 text-danger" />
-            <div className="min-w-0">
-              <p className="text-body font-medium text-danger">{t('app.system.errorTitle')}</p>
-              <p className="mt-1 text-body text-danger">{t('app.system.errorBody')}</p>
-              <Button
-                variant="secondary"
-                size="sm"
-                icon="arrowRight"
-                className="mt-3"
-                onClick={() => notify(t('app.system.retried'), { tone: 'ok' })}
-              >
-                {t('app.system.retry')}
-              </Button>
-            </div>
-          </div>
+            {t('app.system.errorBody')}
+            <Button
+              variant="secondary"
+              size="sm"
+              icon="arrowRight"
+              className="mt-3"
+              onClick={() => notify(t('app.system.retried'), { tone: 'ok' })}
+            >
+              {t('app.system.retry')}
+            </Button>
+          </Notice>
         </Card>
 
         <Card>

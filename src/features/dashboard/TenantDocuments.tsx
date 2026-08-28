@@ -1,8 +1,8 @@
-import { useId, useRef, useState } from 'react'
-import type { KeyboardEvent } from 'react'
+import { useId, useState } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { lien, useBase } from '@/lib/base'
 import { Card, CardHeader } from '@/components/primitives/Card'
+import { RadioCards } from '@/components/primitives/Choice'
 import { Button } from '@/components/primitives/Button'
 import { Icon } from '@/components/primitives/Icon'
 import { EmptyState } from '@/components/primitives/DataTable'
@@ -85,38 +85,7 @@ export function TenantDocuments() {
   const exportCsv = useCsvExport()
   const csvMoney = useCsvMoney()
   const [choix, setChoix] = useState<DocumentKind | null>(null)
-  const boutons = useRef<(HTMLButtonElement | null)[]>([])
 
-  /*
-    UN CHOIX EXCLUSIF SE DIT `radiogroup`, et pas trois boutons pressés.
-
-    `aria-pressed` décrit un interrupteur — chacun indépendant des autres. Ici
-    les trois s'excluent : un lecteur d'écran annonçait donc trois bascules sans
-    lien, quand il doit annoncer « 2 sur 3 ». Le motif complet vit déjà dans le
-    formulaire de signalement, et son commentaire pose l'avertissement qu'on
-    suit ici : annoncer une navigation aux flèches sans la câbler est PIRE
-    qu'une rangée de boutons ordinaires, qui au moins ne promet rien.
-
-    BORNAGE et non bouclage, comme partout dans ce dépôt.
-  */
-  const auClavier = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
-    const destination =
-      e.key === 'ArrowRight' || e.key === 'ArrowDown'
-        ? Math.min(index + 1, DEMANDES.length - 1)
-        : e.key === 'ArrowLeft' || e.key === 'ArrowUp'
-          ? Math.max(index - 1, 0)
-          : e.key === 'Home'
-            ? 0
-            : e.key === 'End'
-              ? DEMANDES.length - 1
-              : null
-
-    if (destination === null) return
-    // Les flèches feraient défiler la rangée, `Début` et `Fin` le document.
-    e.preventDefault()
-    setChoix(DEMANDES[destination])
-    boutons.current[destination]?.focus()
-  }
   const suiviId = useId()
 
   /** Mono-unité, comme l'espace locataire — et pour la même raison. */
@@ -328,54 +297,46 @@ export function TenantDocuments() {
             description={t('app.documents.requestHint')}
             level={2}
           />
-          <div role="radiogroup" aria-label={t('app.documents.request')} className="flex flex-wrap gap-2">
-            {DEMANDES.map((demande, index) => {
-              const actif = demande === choix
-              /**
-               * Une pièce DÉJÀ demandée et sans réponse ne se redemande pas.
-               *
-               * Le serveur le refuse — 409 `already_pending`, garanti par un
-               * index unique partiel —, et le bouton doit dire la même chose
-               * AVANT le clic : proposer un geste dont on sait qu'il échouera
-               * n'offre pas un choix, il fabrique une erreur. Le suivi juste en
-               * dessous montre la demande en cours ; la case n'est pas grisée
-               * sans explication.
-               */
-              const enAttente = mesDemandes.some(
-                (d) => d.kind === demande && d.status === 'pending',
-              )
-              return (
-                <button
-                  key={demande}
-                  type="button"
-                  role="radio"
-                  aria-checked={actif}
-                  // Un seul arrêt de tabulation pour le groupe : la tabulation
-                  // traverse le formulaire, pas trois pièces. Il ne tient que
-                  // parce que les flèches, elles, atteignent les autres. À
-                  // défaut d'un choix fait, c'est la première qui l'accueille.
-                  tabIndex={actif || (choix === null && index === 0) ? 0 : -1}
-                  ref={(node) => {
-                    boutons.current[index] = node
-                  }}
-                  disabled={enAttente}
-                  onClick={() => setChoix(demande)}
-                  onKeyDown={(event) => auClavier(event, index)}
-                  className={cn(
-                    'inline-flex min-h-11 items-center rounded-md border px-3.5',
-                    'text-label font-medium transition-colors duration-150',
-                    'disabled:cursor-not-allowed disabled:opacity-55',
-                    !enAttente && 'cursor-pointer',
-                    actif
-                      ? 'border-ink bg-ink text-on-dark'
-                      : 'border-border bg-surface-sunken text-ink hover:border-border-strong',
-                  )}
-                >
-                  {t(DOCUMENT_KIND_LABELS[demande] as 'app.documents.reqResidence')}
-                </button>
-              )
-            })}
-          </div>
+          {/*
+            LA PRIMITIVE, ET DEUX DÉFAUTS DE CLAVIER QUI DISPARAISSENT AVEC ELLE.
+
+            Ce groupe était refait à la main sur des `<button role="radio">` avec
+            une navigation aux flèches écrite ici. Elle avait deux trous, et tous
+            deux tenaient à ce qu'un faux bouton radio ignore ce qu'un vrai sait :
+
+              · les flèches SÉLECTIONNAIENT une pièce déjà demandée — le
+                `disabled` n'était consulté nulle part dans `auClavier`. Le
+                bouton d'envoi s'activait alors et partait chercher le 409
+                `already_pending` que ce même écran s'emploie à éviter avant le
+                clic ;
+              · le groupe entier devenait INATTEIGNABLE à la tabulation quand la
+                première pièce était déjà demandée : elle portait le seul arrêt
+                (`tabIndex={0}`) et était `disabled`, les deux autres portaient
+                `-1`.
+
+            Un `input[type=radio][disabled]` est sauté par les flèches et refusé
+            au clic sans qu'une ligne soit écrite, et le navigateur pose l'arrêt
+            de tabulation sur une entrée qui peut le recevoir. Il n'y avait rien
+            à réparer, seulement à cesser de réécrire.
+          */}
+          <RadioCards
+            variant="puces"
+            legend={t('app.documents.request')}
+            hideLegend
+            name="piece"
+            value={choix}
+            onChange={setChoix}
+            options={DEMANDES.map((demande) => ({
+              value: demande,
+              title: t(DOCUMENT_KIND_LABELS[demande] as 'app.documents.reqResidence'),
+              description: '',
+              /* Une pièce déjà demandée et sans réponse ne se redemande pas : le
+                 serveur le refuse, et le choix doit dire la même chose avant le
+                 clic. Le suivi juste en dessous montre la demande en cours — la
+                 case n'est pas grisée sans explication. */
+              disabled: mesDemandes.some((d) => d.kind === demande && d.status === 'pending'),
+            }))}
+          />
           <Button className="mt-4" onClick={envoyerLaDemande} disabled={!choix}>
             {t('app.documents.requestSend')}
           </Button>

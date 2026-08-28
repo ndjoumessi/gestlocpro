@@ -108,11 +108,24 @@ function RejoindreUnParc() {
   if (etat.statut !== 'connecte' || etat.adhesions.length > 0) return null
 
   return (
-    <Card className="flex flex-col gap-4">
-      <div>
-        <h2 className="title-m font-semibold">{t('app.onboarding.joinTitle')}</h2>
-        <p className="mt-1 text-body text-muted">{t('app.onboarding.joinBody')}</p>
-      </div>
+    <Card className="mt-6 flex flex-col gap-4">
+      {/*
+        `CardHeader` PLUTÔT QU'UN EN-TÊTE ÉCRIT À LA MAIN.
+
+        Il était recopié — un `<h2>` et un paragraphe gris — dans un fichier qui
+        importe et appelle `CardHeader` quelques dizaines de lignes plus bas. La
+        copie avait dérivé dans les deux sens : elle perdait `text-balance`, et
+        elle ajoutait `font-semibold` alors que l'utilitaire `title-m` déclare
+        déjà cette graisse. C'était le seul site du dépôt à poser une graisse en
+        ligne à côté d'un rôle de titre — ce que `graisses.test.ts` interdit
+        depuis toujours, et qu'il ne voyait pas parce qu'il ne connaissait que
+        l'autre orthographe de l'utilitaire.
+      */}
+      <CardHeader
+        title={t('app.onboarding.joinTitle')}
+        description={t('app.onboarding.joinBody')}
+        className="mb-0"
+      />
       <Field
         label={t('auth.signup.inviteCode')}
         {...(erreur ? { error: erreur } : {})}
@@ -216,9 +229,11 @@ export function Onboarding() {
     <>
       <PageHeader title={t('app.onboarding.title')} description={t('app.onboarding.subtitle')} />
 
-      <div className="mt-6">
+      {/* SANS ESPACEUR. `RejoindreUnParc` rend `null` dès qu'on appartient à
+            un parc — la quasi-totalité des visiteurs de cet écran — et son
+            enveloppe, elle, gardait ses 24 px de marge. Un blanc qui ne sépare
+            rien de rien. La carte porte sa propre marge quand elle existe. */}
         <RejoindreUnParc />
-      </div>
 
       <Card className="mb-4">
         {/*

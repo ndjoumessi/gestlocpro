@@ -131,63 +131,63 @@ describe('documents — demander une pièce', () => {
 })
 
 /**
- * Le clavier du formulaire de signalement.
+ * LE CLAVIER DU FORMULAIRE DE SIGNALEMENT, ET CE QUE CES CAS TIENNENT DÉSORMAIS.
  *
- * Les deux choix — métier, urgence — portaient `role="radio"` et un `tabIndex`
- * roulant SANS gestionnaire de touches. La tabulation entrait sur la pastille
- * active, les flèches ne faisaient rien, les autres portaient `tabIndex={-1}`
- * et la tabulation les sautait : il était impossible de déclarer autre chose
- * qu'une plomberie d'urgence normale sans souris.
+ * ═══ CE QU'ILS TENAIENT AVANT ═══
+ *
+ * Les deux choix étaient des `<button role="radio">` avec un `tabIndex` roulant
+ * et un gestionnaire de touches écrit à la main. Ces cas mesuraient donc CE
+ * GESTIONNAIRE : la sélection qui suit la flèche, le bornage aux extrémités, le
+ * saut de Début et Fin, l'arrêt unique de tabulation. C'était juste — il fallait
+ * bien vérifier un clavier qu'on avait écrit soi-même.
+ *
+ * ═══ CE QU'ILS TIENNENT MAINTENANT ═══
+ *
+ * Les deux groupes passent par `RadioCards`, c'est-à-dire par de VRAIS
+ * `input[type=radio]` dans un `<fieldset>`. Les flèches, l'arrêt unique de
+ * tabulation, le saut des entrées désactivées et l'annonce « 3 sur 5 »
+ * appartiennent alors au NAVIGATEUR, et non plus à ce dépôt.
+ *
+ * Les mesurer ici reviendrait à tester Chrome — et à le tester dans jsdom, qui
+ * n'implémente justement pas cette part-là de la navigation au clavier : les cas
+ * échoueraient sur un produit correct. Ce qui reste vérifiable, et qui est ce
+ * dont le clavier dépend vraiment, c'est la STRUCTURE : un groupe nommé, de
+ * vraies entrées radio qui partagent un nom, un état porté par `checked` et non
+ * par une classe.
+ *
+ * Le rôle attendu change avec elle : un `<fieldset>` porte `group`, pas
+ * `radiogroup`. C'est le balisage natif d'un groupe de boutons radio, et le
+ * `radiogroup` posé à la main n'était qu'une imitation de ce que celui-ci
+ * annonce déjà.
  */
 describe('signaler — les choix au clavier', () => {
   async function groupeMetier() {
     const user = userEvent.setup()
     await ouvrirEnLocataire('/demo/signaler')
-    const groupe = screen.getByRole('radiogroup', { name: 'De quoi s’agit-il ?' })
-    return { user, choix: within(groupe).getAllByRole('radio') }
+    const groupe = screen.getByRole('group', { name: 'De quoi s’agit-il ?' })
+    return { user, groupe, choix: within(groupe).getAllByRole('radio') }
   }
 
-  it('déplace la sélection et le focus aux flèches', async () => {
-    const { user, choix } = await groupeMetier()
-    choix[0].focus()
-    expect(choix[0]).toHaveAttribute('aria-checked', 'true')
-
-    await user.keyboard('{ArrowRight}')
-    expect(choix[1]).toHaveFocus()
-    expect(choix[1]).toHaveAttribute('aria-checked', 'true')
-    expect(choix[0]).toHaveAttribute('aria-checked', 'false')
-
-    await user.keyboard('{ArrowLeft}')
-    expect(choix[0]).toHaveFocus()
-    expect(choix[0]).toHaveAttribute('aria-checked', 'true')
+  it('est un vrai groupe de boutons radio, nommé par sa légende', async () => {
+    const { groupe, choix } = await groupeMetier()
+    expect(choix.length, 'aucune entrée dans le groupe').toBeGreaterThan(1)
+    // De vraies entrées : c'est ce qui donne les flèches et l'annonce « n sur m ».
+    for (const entree of choix) expect(entree.tagName).toBe('INPUT')
+    // Un seul nom pour tout le groupe : sans lui, le navigateur ne sait pas
+    // qu'elles sont exclusives, et les flèches ne relient rien.
+    const noms = new Set(choix.map((c) => c.getAttribute('name')))
+    expect(noms.size, 'les entrées ne partagent pas un nom de groupe').toBe(1)
+    expect(groupe.tagName).toBe('FIELDSET')
   })
 
-  it('borne aux extrémités au lieu de boucler', async () => {
+  it('porte l’état sur l’entrée, et non sur une classe', async () => {
     const { user, choix } = await groupeMetier()
-    choix[0].focus()
-    await user.keyboard('{ArrowLeft}')
-    expect(choix[0]).toHaveFocus()
+    const coche = () => choix.filter((c) => (c as HTMLInputElement).checked)
+    expect(coche(), 'plus d’un choix coché à la fois').toHaveLength(1)
 
-    const dernier = choix[choix.length - 1]
-    dernier.focus()
-    await user.keyboard('{ArrowRight}')
-    expect(dernier).toHaveFocus()
-  })
-
-  it('saute aux extrémités avec Début et Fin', async () => {
-    const { user, choix } = await groupeMetier()
-    choix[0].focus()
-    await user.keyboard('{End}')
-    expect(choix[choix.length - 1]).toHaveFocus()
-    await user.keyboard('{Home}')
-    expect(choix[0]).toHaveFocus()
-  })
-
-  it('n’offre qu’un seul arrêt de tabulation par groupe', async () => {
-    const { choix } = await groupeMetier()
-    const arrets = choix.filter((c) => c.getAttribute('tabindex') === '0')
-    expect(arrets).toHaveLength(1)
-    expect(arrets[0]).toHaveAttribute('aria-checked', 'true')
+    await user.click(choix[2]!)
+    expect((choix[2] as HTMLInputElement).checked).toBe(true)
+    expect(coche(), 'la sélection ne s’est pas déplacée').toHaveLength(1)
   })
 })
 
