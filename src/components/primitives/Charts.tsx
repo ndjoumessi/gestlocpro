@@ -1,5 +1,6 @@
 import { useId, useMemo, useState, type ReactNode } from 'react'
 import { cn } from '@/lib/cn'
+import { useNumbers } from '@/lib/numbers'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { JaugeDePoste, StatusPill, type EtatDePoste, type StatusTone } from './StatusPill'
@@ -1218,6 +1219,7 @@ export function DonutChart({
    */
   reconciliation?: { key: string; label: string; value: number; fort?: boolean }[]
 }) {
+  const nombres = useNumbers()
   const { money } = useCurrency()
   const [active, setActive] = useState<string | null>(null)
 
@@ -1291,7 +1293,7 @@ export function DonutChart({
               d'ensemble dès qu'on relâche — sans quoi il faudrait lire la
               légende et le centre en même temps pour comprendre. */}
           <span className="numeric text-title-l font-medium">
-            {shown ? `${Math.round(shown.fraction * 100)} %` : centerValue}
+            {shown ? nombres.percent(Math.round(shown.fraction * 100)) : centerValue}
           </span>
           <span className="max-w-[6rem] text-caps text-muted uppercase">
             {shown ? shown.slice.label : centerLabel}
@@ -1321,7 +1323,7 @@ export function DonutChart({
                 'text-left text-body transition-colors duration-150',
                 active === slice.etat ? 'bg-surface-sunken' : 'hover:bg-surface-sunken',
               )}
-              aria-label={`${slice.label} — ${money(slice.value, { compact: true })}, ${Math.round(fraction * 100)} %`}
+              aria-label={`${slice.label} — ${money(slice.value, { compact: true })}, ${nombres.percent(Math.round(fraction * 100))}`}
             >
               {/* LA MÊME JAUGE QUE LA GRILLE DES PAIEMENTS, et c'est le point.
                   Une légende qui porterait une forme absente de l'anneau
@@ -1425,6 +1427,7 @@ export function ProgressBar({
    */
   hideLabel?: boolean
 }) {
+  const nombres = useNumbers()
   // Le remplissage EST la valeur : c'est lui, et lui seul, qui dit 62 % contre
   // 38 %. L'or de marque ne tenait que 2,52:1 sur la piste `surface-sunken`,
   // le pire des quatre emplois recensés — et le ton par défaut, donc celui de
@@ -1453,7 +1456,19 @@ export function ProgressBar({
           style={{ width: `${value}%` }}
         />
       </div>
-      <span className="numeric w-10 shrink-0 text-right text-body text-muted">{value} %</span>
+      {/*
+        `w-12` ET NON `w-10`, et la raison est la même que celle du séparateur.
+
+        Quarante pixels suffisaient à « 83 % » et pas à « 100 % » : le signe
+        passait à la ligne sous le nombre, dans la carte du loyer de l'espace
+        locataire. `formatPercent` interdit désormais la coupure — l'espace y est
+        insécable — ce qui, à largeur inchangée, aurait produit un débordement au
+        lieu d'un repli. On corrige donc les deux : la colonne tient trois
+        chiffres, et le signe ne peut plus s'en détacher.
+      */}
+      <span className="numeric w-12 shrink-0 text-right text-body text-muted">
+        {nombres.percent(value)}
+      </span>
     </div>
   )
 }

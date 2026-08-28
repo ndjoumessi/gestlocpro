@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Modal } from '@/components/primitives/Modal'
 import { Button, IconButton } from '@/components/primitives/Button'
 import { useT } from '@/i18n/I18nProvider'
 import { useCurrency } from '@/currency/CurrencyProvider'
+import { usePortfolio } from '@/data/PortfolioProvider'
+import { receiptDue } from '@/data/portfolio'
 import { formatMoney } from '@/currency/currencies'
 import { useDates } from '@/lib/useDates'
 import { partiesDeDateISO } from '@/lib/dates'
@@ -68,6 +70,11 @@ interface DocumentEmis {
  * autre travail. En attendant, le locataire télécharge et le gestionnaire
  * imprime — et les deux pièces peuvent différer de mise en page.
  */
+/** Des parties de date vers l'ISO du document — l'inverse de `partiesDeDateISO`. */
+function enISO({ year, month, day }: { year: number; month: number; day: number }): string {
+  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
 export function ReceiptModal({
   unitId,
   periodStart,
@@ -84,6 +91,78 @@ export function ReceiptModal({
   const d = useDates()
   const { adhesionActive } = useSession()
   const parkId = adhesionActive?.parkId ?? null
+  const { units, buildingById, receiptsForUnit } = usePortfolio()
+
+  /*
+    ═══ LE DOCUMENT DE LA DÉMONSTRATION, COMPOSÉ ICI ═══
+
+    LE DÉFAUT : l'effet ci-dessous sortait sur `if (!open || !parkId) return`.
+    En démonstration il n'y a pas d'adhésion, donc pas de `parkId` : la modale
+    s'ouvrait, ne demandait RIEN — zéro requête, mesuré au navigateur — et
+    n'obtenait ni document ni échec. Donc « Chargement… » pour toujours, et ses
+    deux boutons éteints. Une porte sans pièce derrière.
+
+    POURQUOI COMPOSER PLUTÔT QUE D'AVOUER. La démonstration existe pour montrer
+    le produit sans compte, et une quittance est ce que ce produit remet. La
+    refuser sur l'écran qui sert à convaincre reviendrait à démontrer un cahier
+    des charges. Les faits sont d'ailleurs là : c'est avec eux que l'espace
+    LOCATAIRE compose ses quittances depuis plusieurs lots.
+
+    ET LE `kind` EST DÉCIDÉ ICI, ce que l'en-tête de ce fichier interdit — « le
+    mot affiché n'est jamais choisi par l'écran ». L'interdit vaut, et sa raison
+    aussi : le serveur seul connaît l'échéance. Mais en démonstration il n'y a
+    pas de serveur, et le registre EST le jeu de données du client, échéance
+    comprise (`receipt.dueOn`). Ce n'est pas l'écran qui tranche à la place du
+    registre : c'est le même registre, tenu ailleurs. Sur un parc réel, `parkId`
+    existe et rien de ceci ne s'exécute — le troisième cas de
+    `quittanceEnDemonstration` le tient.
+  */
+  const documentLocal = useMemo<DocumentEmis | null>(() => {
+    if (parkId || !open) return null
+
+    const logement = units.find((u) => u.id === unitId)
+    if (!logement) return null
+
+    const [an, moisISO] = periodStart.split('-').map(Number)
+    const echeance = receiptsForUnit(unitId).find((r) => r.year === an && r.month === moisISO - 1)
+    if (!echeance) return null
+
+    const du = receiptDue(echeance)
+    return {
+      kind: echeance.paidMinor >= du ? 'quittance' : 'recu',
+      periodStart,
+      tenant: logement.tenant ?? t('app.portfolio.noTenant'),
+      unit: logement.label,
+      building: buildingById(logement.buildingId)?.name ?? '',
+      district: buildingById(logement.buildingId)?.district ?? '',
+      rentMinor: echeance.rentMinor,
+      waterMinor: echeance.waterMinor,
+      powerMinor: echeance.powerMinor,
+      dueMinor: du,
+      paidMinor: echeance.paidMinor,
+      balanceMinor: du - echeance.paidMinor,
+      /* Le jeu de démonstration compte en francs CFA — c'est écrit dans
+         `CurrencyProvider`, dont c'est la devise par défaut. */
+      currency: 'XAF',
+      /* LE REGISTRE DU CLIENT RANGE SES DATES EN PARTIES, jamais en `Date` ni
+         en chaîne — c'est la règle de `lib/dates`, posée contre le décalage
+         horaire. Le document du serveur, lui, les porte en ISO. La conversion
+         est ici, à la frontière, et non dans les trois endroits qui affichent
+         ensuite `partiesDeDateISO(versement.paidOn)`.
+
+         `id` N'EXISTE PAS côté client : ce registre ne l'expose pas. On en
+         fabrique un stable à partir du rang, qui suffit à `key` — et le retrait
+         d'un versement, lui, est retiré en démonstration (voir plus bas) : il
+         appelle le serveur, qui n'est pas là. */
+      payments: echeance.payments.map((versement, rang) => ({
+        id: `demo-${periodStart}-${rang}`,
+        amountMinor: versement.amountMinor,
+        method: versement.method,
+        paidOn: enISO(versement.paidOn),
+        reference: versement.reference ?? null,
+      })),
+    }
+  }, [buildingById, open, parkId, periodStart, receiptsForUnit, t, unitId, units])
 
   /**
    * Le document se met en forme dans SA devise, pas dans celle de l'écran.
@@ -92,7 +171,7 @@ export function ReceiptModal({
    * document n'est pas revenu du serveur, on retombe sur l'affichage — il n'y a
    * alors aucun montant à mettre en forme.
    */
-  const [document, setDocument] = useState<DocumentEmis | null>(null)
+  const [documentServeur, setDocumentServeur] = useState<DocumentEmis | null>(null)
   const [echec, setEchec] = useState<string | null>(null)
   /*
     LE RETRAIT SE CONFIRME, comme partout ailleurs dans ce produit.
@@ -148,15 +227,20 @@ export function ReceiptModal({
         ])
       : moneyAffichage(montant)
 
+  /* Le document affiché : celui du serveur quand il y a un parc, celui composé
+     localement en démonstration. Jamais les deux — `documentLocal` ne se
+     compose que si `parkId` est absent. */
+  const document = documentServeur ?? documentLocal
+
   useEffect(() => {
     if (!open || !parkId) return
     let annule = false
-    setDocument(null)
+    setDocumentServeur(null)
     setEchec(null)
     void api
       .issueReceipt<{ document: DocumentEmis }>(parkId, { unitId, periodStart })
       .then(({ document: doc }) => {
-        if (!annule) setDocument(doc)
+        if (!annule) setDocumentServeur(doc)
       })
       .catch((err: unknown) => {
         if (annule) return
@@ -174,6 +258,9 @@ export function ReceiptModal({
   }, [open, parkId, unitId, periodStart, t])
 
   const [annee, mois] = periodStart.split('-').map(Number)
+  /* La période du document, convertie UNE fois. Deux appelants la voulaient —
+     l'aperçu et le PDF — et l'un des deux avait oublié le décalage. */
+  const periode = { year: annee!, month: mois! - 1 }
 
   /**
    * Le moyen de paiement en clair.
@@ -195,7 +282,11 @@ export function ReceiptModal({
       open={open}
       onClose={onClose}
       title={document ? t(`app.receipts.${document.kind}`) : t('app.receipts.title')}
-      description={t('app.receipts.description')}
+      /* LA MENTION DIT D'OÙ VIENT LA PIÈCE, et elle mentait en démonstration :
+         « Émis par le serveur » sous un document que le client venait de
+         composer. C'est la phrase qui donne son autorité au papier ; la laisser
+         inchangée aurait fait passer un jeu de données fictif pour un registre. */
+      description={t(parkId ? 'app.receipts.description' : 'app.receipts.descriptionDemo')}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
@@ -225,7 +316,7 @@ export function ReceiptModal({
                 unit: document.unit,
                 building: document.building,
                 tenant: document.tenant,
-                periode: d.monthYear({ year: annee, month: mois - 1 }),
+                periode: d.monthYear(periode),
                 moisISO: periodStart.slice(0, 7),
                 rentMinor: document.rentMinor,
                 waterMinor: document.waterMinor,
@@ -312,7 +403,15 @@ export function ReceiptModal({
           <div>
             <p className="eyebrow text-muted">{t(`app.receipts.${document.kind}`)}</p>
             <p className="text-h3">
-              {d.monthYear({ year: annee!, month: mois! })}
+              {/* `mois - 1`, ET LE PDF LE FAISAIT DÉJÀ. Le mois d'une chaîne
+                  ISO se compte à partir de UN, `monthYear` à partir de ZÉRO :
+                  sans le décalage, l'écran titrait « Septembre 2026 » au-dessus
+                  d'un versement du 3 août. Le bouton « Télécharger », quinze
+                  lignes plus haut, passait la même valeur par `mois - 1` — la
+                  feuille était donc juste et l'aperçu faux, sur un document qui
+                  atteste d'une période. Deux fois la même conversion : elle est
+                  désormais faite une seule fois, au-dessus. */}
+              {d.monthYear(periode)}
             </p>
           </div>
 
@@ -360,7 +459,7 @@ export function ReceiptModal({
                       une dette — c'est de l'argent qu'on déclare ne plus avoir
                       reçu. Le journal, lui, garde le montant retiré.
                     */}
-                    {role === 'owner' && (
+                    {role === 'owner' && parkId && (
                       <IconButton
                         /*
                           LA GOMME NE SORT PAS DE L'IMPRIMANTE.

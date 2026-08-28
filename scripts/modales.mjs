@@ -170,7 +170,22 @@ const MODALES = [
   { nom: 'AddUnit', adresse: '/demo/parc', bouton: /^Ajouter un logement$|^Add a unit$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'OpenWork', adresse: '/demo/travaux', bouton: /^Ouvrir un chantier$|^Open a job$/, defil: { 360: 130, 1280: 0 }, avant: { 360: 1056, 1280: 913 } },
   { nom: 'RecordPayment', adresse: '/demo/paiements', bouton: /^Enregistrer un paiement$|^Record a payment$/, defil: { 360: 460, 1280: 40 }, avant: { 360: 522, 1280: 236 } },
-  { nom: 'Receipt', adresse: '/demo/paiements', bouton: /Quittance|Receipt/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  /*
+    LE PLAFOND DE 0 ÉTAIT VACUEUX, et ce script vient de le prouver en rougissant.
+
+    En démonstration, cette modale n'affichait rien : elle demandait son document
+    au serveur, et il n'y a pas de parc serveur sous `/demo`. Elle rendait donc
+    le mot « Chargement… », qui tient dans n'importe quelle fenêtre — d'où un
+    plafond de zéro mesuré sur une modale VIDE, et une garde qui gardait le
+    squelette d'une pièce plutôt que la pièce.
+
+    Elle compose désormais son document localement. Six pixels de défilement à
+    360 px pour une quittance complète — émetteur, période, locataire, logement,
+    trois montants et la liste des versements — est ce que coûte un vrai
+    document sur un téléphone. Ce n'est pas « du défilement qui n'achète rien » :
+    c'est la pièce elle-même.
+  */
+  { nom: 'Receipt', adresse: '/demo/paiements', bouton: /Quittance|Receipt/, defil: { 360: 6, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /*
     INSPECTION : LE PLAFOND MONTE, ET VOICI CE QU'IL ACHÈTE.
 

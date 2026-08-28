@@ -676,6 +676,8 @@ export const en: Dictionary = {
     receipts: {
       title: 'Document',
       description: 'Issued by the server: amounts come from the register, not from the screen.',
+      descriptionDemo:
+        'Built from the demonstration data: these amounts are fictional, and no register is kept.',
       quittance: 'Rent receipt',
       recu: 'Payment receipt',
       tenant: 'Tenant',

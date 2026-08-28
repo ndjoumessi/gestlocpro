@@ -875,6 +875,8 @@ export const fr = {
     receipts: {
       title: 'Document',
       description: 'Émis par le serveur : les montants sont ceux du registre, pas ceux de l’écran.',
+      descriptionDemo:
+        'Établi depuis le jeu de démonstration : ces montants sont fictifs, et aucun registre n’est tenu.',
       quittance: 'Quittance de loyer',
       recu: 'Reçu de paiement',
       tenant: 'Locataire',

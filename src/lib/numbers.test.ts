@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatInteger, formatList } from './numbers'
+import { formatInteger, formatList, formatPercent } from './numbers'
 
 /**
  * Formatage des nombres qui ne sont pas des montants.
@@ -48,5 +48,52 @@ describe('énumération', () => {
 
   it('rend un élément seul sans conjonction', () => {
     expect(formatList(['A5'], 'fr-FR')).toBe('A5')
+  })
+})
+
+/**
+ * UN POURCENTAGE NE SE COUPE PAS EN DEUX LIGNES.
+ *
+ * ═══ CE QUI ÉTAIT À L'ÉCRAN ═══
+ *
+ * « 100 » sur une ligne, « % » sur la suivante, dans la carte du loyer de
+ * l'espace locataire. Le signe était collé au nombre par une espace ORDINAIRE,
+ * écrite à la main dans le JSX — `{value} %` — donc sécable, dans une colonne
+ * large de quarante pixels qui suffisait à « 83 % » et pas à « 100 % ».
+ *
+ * AUCUNE GARDE NE POUVAIT LE VOIR. `mesure-ui` mesure les DÉBORDEMENTS : un
+ * texte qui passe à la ligne ne déborde de rien, il est parfaitement dans sa
+ * boîte, en deux morceaux. C'est le même angle mort que le rognage.
+ *
+ * ═══ ET L'ANGLAIS N'ÉCRIT PAS COMME LE FRANÇAIS ═══
+ *
+ * « 100 % » est français ; l'anglais écrit « 100% », sans espace. La chaîne
+ * écrite à la main donnait donc la ponctuation française aux deux langues — un
+ * second défaut, celui-là jamais signalé, que le passage par `Intl` corrige du
+ * même geste. C'est la doctrine de ce fichier : les séparateurs se DEMANDENT,
+ * ils ne s'écrivent pas.
+ */
+describe('pourcentages', () => {
+  it('sépare selon la langue, et l’anglais ne sépare pas', () => {
+    /* L'insécable PLEINE, et non la fine qu'`Intl` compose : `formatMoney` a
+       mesuré la seconde à 1,7 px en police proportionnelle et l'a refusée devant
+       une unité — « 231 178FCFA ». Le même produit ne peut pas espacer ses
+       pourcentages autrement que ses montants. */
+    expect(formatPercent(100, 'fr-FR')).toBe('100\u00a0%')
+    expect(formatPercent(100, 'en-US')).toBe('100%')
+  })
+
+  it('n’emploie aucune espace sécable', () => {
+    /* LE CŒUR DU DÉFAUT. Une espace ordinaire autorise la coupure ; l'insécable
+       l'interdit, quelle que soit la largeur de la colonne. On refuse donc
+       l'espace ORDINAIRE, et non « toute espace » — la fine insécable en est
+       une, et c'est précisément celle qu'on veut. */
+    for (const tag of ['fr-FR', 'en-US', 'fr-CA'])
+      expect(formatPercent(100, tag), `séparateur sécable en ${tag}`).not.toMatch(/ /)
+  })
+
+  it('rend un entier, sans décimale inventée', () => {
+    expect(formatPercent(83, 'fr-FR')).toBe('83\u00a0%')
+    expect(formatPercent(0, 'fr-FR')).toBe('0\u00a0%')
   })
 })

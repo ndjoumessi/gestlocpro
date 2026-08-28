@@ -14,6 +14,7 @@ import { Skeleton, SkeletonRegion, SkeletonStatRow } from '@/components/primitiv
 import { GRILLE_QUATRE_INDICATEURS } from './grillesDIndicateurs'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
+import { useNumbers } from '@/lib/numbers'
 import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
 import { useDates } from '@/lib/useDates'
 import { computeKpis, variationDesEncaissements } from '@/data/kpis'
@@ -40,6 +41,12 @@ export function Dashboard() {
     loading,
   } = usePortfolio()
   const [payOpen, setPayOpen] = useState(false)
+  /* AVANT LES DEUX RETOURS ANTICIPÉS qui suivent — la redirection du locataire
+     et l'attente. Un crochet posé après l'un d'eux n'est appelé qu'à certains
+     rendus : React l'a refusé à l'exécution (« Rendered more hooks than during
+     the previous render », 57 cas rouges d'un coup) et `oxlint` le refuse à la
+     lecture. J'ai fait l'erreur deux fois de suite, une porte pour chaque. */
+  const nombres = useNumbers()
 
   // Le locataire n'a pas une version filtrée de cet écran : il en a un autre.
   // Les indicateurs de parc — encaissé consolidé, taux d'occupation, impayés de
@@ -533,7 +540,7 @@ export function Dashboard() {
             <CardHeader title={t('app.dashboard.recoveryTitle')} level={2} />
             <DonutChart
               caption={t('app.dashboard.recoveryTableCaption')}
-              centerValue={`${collectedShare} %`}
+              centerValue={nombres.percent(collectedShare)}
               centerLabel={t('app.dashboard.recoveryCollected')}
               /* L'ÉTAT, ET NON LA COULEUR. La teinte et la forme d'une part
                  découlent toutes deux de `etat`, par une seule table dans
