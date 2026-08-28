@@ -81,7 +81,18 @@ export function StatusPill({ tone, children, icon, size = 'md', className }: Sta
 /** Statuts de paiement du domaine, traduits et tonalisés au même endroit. */
 export type PaymentStatus = 'paid' | 'partial' | 'overdue' | 'vacant' | 'pending'
 
-const PAYMENT_TONES: Record<PaymentStatus, StatusTone> = {
+/**
+ * EXPORTÉE, et pour une raison qui vaut mieux que la commodité.
+ *
+ * La carte du loyer de l'espace locataire porte le statut de paiement dans son
+ * `etat`, qui attend un TON et non un statut. Le déduire chez elle recopierait
+ * cette table — et le jour où « bail qui démarre » cesserait d'être `info`, les
+ * deux se contrediraient sur le même écran, la pastille d'une ligne disant
+ * autre chose que la bordure de la carte au-dessus.
+ *
+ * Une table de correspondance vit à un seul endroit ou elle diverge.
+ */
+export const PAYMENT_TONES: Record<PaymentStatus, StatusTone> = {
   paid: 'ok',
   partial: 'warn',
   overdue: 'danger',

@@ -4,8 +4,8 @@ import { lien, useBase } from '@/lib/base'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
 import { Notice } from '@/components/primitives/Notice'
-import { MiniBarChart, ProgressBar } from '@/components/primitives/Charts'
-import { PaymentStatusPill } from '@/components/primitives/StatusPill'
+import { MiniBarChart, ProgressBar, StatCard } from '@/components/primitives/Charts'
+import { PAYMENT_TONES } from '@/components/primitives/StatusPill'
 import { EmptyState } from '@/components/primitives/DataTable'
 import { Skeleton, SkeletonRegion, SkeletonStatRow } from '@/components/primitives/Skeleton'
 import { useCurrency } from '@/currency/CurrencyProvider'
@@ -279,14 +279,31 @@ export function TenantDashboard() {
       {/* L'ENVELOPPE N'EXISTE QUE POUR PORTER `@container` — voir GRILLE_LOCATAIRE. */}
       <div className={ENVELOPPE_LOCATAIRE}>
         <div className={GRILLE_LOCATAIRE}>
-          <Card className="flex flex-col">
-            <div className="flex items-start justify-between gap-3">
-              <p className="eyebrow text-muted">
-                {t('app.tenant.rentFor')} · {d.monthYear(periodeCourante)}
-              </p>
-              <PaymentStatusPill status={unit.status} size="sm" />
-            </div>
-            <p className="numeric mt-2 text-kpi font-medium">{money(unit.rent, { round: true })}</p>
+          {/*
+            LA CARTE DU LOYER PASSE PAR LA PRIMITIVE, comme ses deux voisines.
+
+            Elle recopiait `StatCard` à la main — surtitre, `text-kpi`, note
+            grise — et se retrouvait donc SANS `data-indicateur`, invisible à
+            toutes les gardes qui interrogent ce marqueur. C'était le seul écran
+            que le LOCATAIRE voit, et le seul que rien ne mesurait de ce côté-là.
+
+            Elle est la seule carte du produit qui continue SOUS son nombre : une
+            piste de progression, la date et le moyen du dernier règlement, le
+            bouton de quittance. `StatCard` a reçu pour cela un emplacement
+            nommé, `bas`, et non un `children` — voir sa prop, qui dit pourquoi.
+
+            L'ÉTAT REMPLACE LA PASTILLE POSÉE À LA MAIN : `etat` porte le ton ET
+            son libellé, et il peint en plus la bordure et la tuile. Le statut du
+            paiement est le même, il est simplement dit une fois au lieu de
+            deux.
+          */}
+          <StatCard
+            icone="card"
+            label={`${t('app.tenant.rentFor')} · ${d.monthYear(periodeCourante)}`}
+            value={money(unit.rent, { round: true })}
+            etat={{ ton: PAYMENT_TONES[unit.status], libelle: t(`status.${unit.status}` as 'status.paid') }}
+            bas={
+              <>
             {/* La valeur est un POURCENTAGE, pas un montant : passer le montant
                 rendait une piste large de 145 000 % et un libellé « 145000 % ».
                 Le libellé est masqué — le montant juste au-dessus le dit déjà —
@@ -332,9 +349,12 @@ export function TenantDashboard() {
                 {t('app.tenant.receipt')}
               </Button>
             </div>
-          </Card>
+              </>
+            }
+          />
 
           <CarteCharge
+            icone="droplet"
             label={t('app.tenant.water')}
             amount={refacture(eauConso, releve?.waterPrice)}
             note={
@@ -344,6 +364,7 @@ export function TenantDashboard() {
             }
           />
           <CarteCharge
+            icone="bolt"
             label={t('app.tenant.power')}
             amount={refacture(elecConso, releve?.powerPrice)}
             note={
@@ -656,15 +677,32 @@ function periodeIso(periode: { year: number; month: number }): string {
   return `${periode.year}-${String(periode.month + 1).padStart(2, '0')}-01`
 }
 
-/** Une charge du mois : son montant, et le volume qu'elle facture. */
-function CarteCharge({ label, amount, note }: { label: string; amount: string; note: string }) {
-  return (
-    <Card>
-      <p className="eyebrow text-muted">{label}</p>
-      <p className="numeric mt-2 text-kpi font-medium">{amount}</p>
-      <p className="mt-2 text-body text-muted">{note}</p>
-    </Card>
-  )
+/**
+ * Une charge du mois : son montant, et le volume qu'elle facture.
+ *
+ * ELLE RECOPIAIT `StatCard` — surtitre en `eyebrow`, grand nombre en `text-kpi`,
+ * note grise dessous — au lieu de l'appeler. Elle se voyait pareil et n'était
+ * pas pareil : pas de `data-indicateur`, donc invisible à toutes les gardes qui
+ * interrogent ce marqueur ; pas de `data-intitule`, donc son libellé n'était pas
+ * mesuré au rognage ; ni tuile d'icône, ni bordure d'état, ni pastille de
+ * variation à sa disposition.
+ *
+ * La fonction survit parce qu'elle NOMME quelque chose que la primitive ignore :
+ * une charge refacturée, avec son glyphe de fluide. C'est la seule chose qu'elle
+ * ajoute désormais.
+ */
+function CarteCharge({
+  label,
+  amount,
+  note,
+  icone,
+}: {
+  label: string
+  amount: string
+  note: string
+  icone: 'droplet' | 'bolt'
+}) {
+  return <StatCard icone={icone} label={label} value={amount} note={note} />
 }
 
 /**

@@ -1552,6 +1552,7 @@ export function StatCard({
   etat,
   icone,
   donnee,
+  bas,
 }: {
   label: string
   value: string
@@ -1653,6 +1654,25 @@ export function StatCard({
    *     de sens, il n'y a pas de « assez ».
    */
   donnee?: boolean
+  /**
+   * CE QUI CONTINUE SOUS LE NOMBRE — et pourquoi ce n'est pas `children`.
+   *
+   * Une carte d'indicateur s'arrête presque toujours à son nombre et sa note.
+   * Une seule du produit va plus loin : le loyer du mois, dans l'espace du
+   * locataire, qui porte sous son montant une piste de progression, la date et
+   * le moyen du dernier règlement, et le bouton de quittance. Elle était pour
+   * cela ÉCRITE À LA MAIN — surtitre, `text-kpi`, note grise recopiés — donc
+   * sans `data-indicateur`, donc invisible à toutes les gardes qui
+   * l'interrogent.
+   *
+   * `bas` PLUTÔT QUE `children` : `children` ferait de cette primitive un
+   * `<div>` que chaque écran remplirait à sa façon, et il n'y aurait plus de
+   * carte d'indicateur, seulement une bordure partagée. Un emplacement nommé dit
+   * ce qu'il est — ce qui vient APRÈS le nombre — et laisse le haut de la carte
+   * hors d'atteinte : l'intitulé, la tuile, le nombre et la note restent
+   * l'affaire du composant.
+   */
+  bas?: ReactNode
 }) {
   return (
     <div
@@ -1778,6 +1798,7 @@ export function StatCard({
           {note && <span className="text-body text-muted">{note}</span>}
         </p>
       )}
+      {bas}
     </div>
   )
 }

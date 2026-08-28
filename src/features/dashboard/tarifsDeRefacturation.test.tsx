@@ -161,7 +161,17 @@ describe('ce que le locataire lit de ses charges', () => {
      * Un motif de vérification doit désigner ce qu'il vise, faute de quoi il
      * finit par juger autre chose.
      */
-    const eau = screen.getByText('Eau').parentElement!
+    /*
+      ON REMONTE À LA CARTE PAR SON MARQUEUR, et c'est le gain de ce lot.
+
+      `parentElement` désignait la boîte qui entoure l'intitulé — une carte
+      écrite à la main n'offrait rien de mieux. Elle passe désormais par
+      `StatCard`, donc elle PORTE `data-indicateur`, et le cas peut viser la
+      carte plutôt qu'un saut de parent qui casse au premier niveau
+      intermédiaire. C'est exactement ce que ce commentaire réclamait juste
+      au-dessus : « un motif de vérification doit désigner ce qu'il vise ».
+    */
+    const eau = screen.getByText('Eau').closest('[data-indicateur]')!
     expect(eau.textContent).toContain('—')
     expect(eau.textContent).not.toContain('FCFA')
   })
