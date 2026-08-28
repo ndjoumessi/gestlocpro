@@ -68,12 +68,23 @@ export function nouvelleMiseEnPage(): MiseEnPage {
 
   const courante = () => pages[pages.length - 1]
 
-  /** Réserve la hauteur demandée, en changeant de page si elle ne tient pas. */
-  const placer = (hauteur: number): number => {
+  /**
+   * Ouvre une page si la hauteur demandée ne tient plus, sans rien consommer.
+   *
+   * Séparé de `placer` pour un besoin qu'il ne couvrait pas : un intertitre doit
+   * emmener sa suite. Il faut donc pouvoir demander « y a-t-il la place pour
+   * MOI ET la ligne d'après ? » avant de poser quoi que ce soit.
+   */
+  const reserver = (hauteur: number) => {
     if (y + hauteur > BAS && courante().length > 0) {
       pages.push([])
       y = PAGE.marge
     }
+  }
+
+  /** Réserve la hauteur demandée, en changeant de page si elle ne tient pas. */
+  const placer = (hauteur: number): number => {
+    reserver(hauteur)
     const depart = y
     y += hauteur
     return depart
@@ -108,6 +119,24 @@ export function nouvelleMiseEnPage(): MiseEnPage {
     },
 
     section(contenu) {
+      /*
+        UN INTERTITRE N'EST JAMAIS SEUL EN BAS D'UNE PAGE.
+
+        Il emmène sa première ligne : on réserve d'un coup le blanc qui le
+        précède, sa propre boîte, le blanc qui le suit et une ligne de corps. Si
+        l'ensemble ne tient pas, la page tourne AVANT le titre plutôt qu'après.
+
+        Sans cela, « Réserves » atterrissait en dernière ligne d'une feuille et
+        la première réserve commençait sur la suivante : le lecteur tourne la
+        page pour savoir de quoi on lui parle. Mesuré à trois lignes du bas, sur
+        `miseEnPage.test.ts` — et à cette hauteur-là seulement, ce qui est la
+        raison pour laquelle un cas posé à une seule position ne le voyait pas.
+
+        C'est le SEUL endroit du document où deux blocs sont liés. Une règle
+        générale d'orphelines demanderait à la mise en page de connaître les
+        rapports entre ses lignes ; elle n'en connaît qu'un, et il est écrit ici.
+      */
+      reserver(10 + SOUS_TITRE * INTERLIGNE + 2 + CORPS * INTERLIGNE)
       this.saut(10)
       poser(contenu, SOUS_TITRE, true)
       this.saut(2)

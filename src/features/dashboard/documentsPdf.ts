@@ -13,9 +13,8 @@ import { useDates } from '@/lib/useDates'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import {
   PAYMENT_METHOD_LABELS,
-  imputation,
+  imputationDesPostes,
   receiptDue,
-  receiptStatus,
   type Deposit,
   type Inspection,
   type Receipt,
@@ -167,6 +166,25 @@ export interface ContenuDeQuittance {
 }
 
 /**
+ * LES FAITS D'UNE PÉRIODE, avant qu'on en fasse un document.
+ *
+ * C'est ce que les DEUX sources savent dire — le portefeuille du client et le
+ * document arrêté du serveur. Tout le reste — le titre, le statut, le reste dû,
+ * l'imputation — s'en DÉDUIT, et se déduit au même endroit.
+ */
+export interface FaitsDeLaPeriode {
+  logement: string
+  periode: string
+  locataire: string
+  rentMinor: number
+  waterMinor: number
+  powerMinor: number
+  dueMinor: number
+  paidMinor: number
+  versements: { trace: string; amountMinor: number }[]
+}
+
+/**
  * QUITTANCE OU REÇU — LA RÈGLE EST CELLE DU SERVEUR, ET ELLE Y EST ÉCRITE.
  *
  * « Quittance seulement si la période est intégralement soldée. En deçà, on
@@ -182,6 +200,125 @@ export interface ContenuDeQuittance {
 export function titreDuDocument(solde: number): ContenuDeQuittance['titre'] {
   return solde <= 0 ? 'app.receipts.quittance' : 'app.receipts.recu'
 }
+
+/**
+ * LE STATUT D'UNE PIÈCE NE CONNAÎT PAS LE RETARD, et c'est un choix.
+ *
+ * `receiptStatus` en distingue quatre, dont `overdue` — qui demande une date
+ * d'échéance. Le document arrêté par le serveur n'en porte pas : le chemin du
+ * gestionnaire ne pouvait donc pas rendre le même mot que celui du locataire,
+ * et les deux feuilles divergeaient sur un mois en retard.
+ *
+ * On aurait pu porter l'échéance jusqu'ici. On ne l'a pas fait, parce qu'une
+ * PIÈCE atteste de ce qui a été reçu, pas de la diligence de qui devait payer.
+ * Le retard est un état de gestion : il vit sur les écrans, où il appelle un
+ * geste. Sur la feuille, « reste à régler » dit tout ce que le document a à
+ * dire, et il le dit sans juger.
+ */
+function statutDeLaPiece(du: number, paye: number): 'status.paid' | 'status.partial' | 'status.pending' {
+  if (paye >= du) return 'status.paid'
+  return paye > 0 ? 'status.partial' : 'status.pending'
+}
+
+/**
+ * LA COMPOSITION, UNE FOIS POUR LES DEUX SOURCES.
+ *
+ * Elle existe parce que la comparaison des deux feuilles a montré qu'elles
+ * différaient : celle du locataire portait l'imputation poste par poste, celle
+ * du gestionnaire non — même mois, mêmes chiffres, deux documents. Chaque
+ * déduction faite d'un côté seulement est une divergence en attente ; il n'y a
+ * donc plus qu'un endroit où déduire.
+ */
+export function composerLaQuittance(
+  t: ReturnType<typeof useT>,
+  argent: (montant: number) => string,
+  faits: FaitsDeLaPeriode,
+): ContenuDeQuittance {
+  const solde = faits.dueMinor - faits.paidMinor
+  const part = imputationDesPostes(faits, faits.paidMinor)
+
+  return {
+    titre: titreDuDocument(solde),
+    logement: faits.logement,
+    periode: faits.periode,
+    locataire: faits.locataire,
+    postes: {
+      rent: argent(faits.rentMinor),
+      water: argent(faits.waterMinor),
+      power: argent(faits.powerMinor),
+    },
+    du: argent(faits.dueMinor),
+    paye: argent(faits.paidMinor),
+    reste: solde > 0 ? argent(solde) : undefined,
+    statut: t(statutDeLaPiece(faits.dueMinor, faits.paidMinor)),
+    versements: faits.versements.map((versement) => ({
+      trace: versement.trace,
+      montant: argent(versement.amountMinor),
+    })),
+    /* L'imputation, seulement là où elle apprend quelque chose : sur une période
+       partiellement réglée, elle dit QUEL poste reste ouvert. */
+    imputation:
+      solde > 0 && faits.paidMinor > 0
+        ? t('app.documents.pdfImputation', {
+            rent: argent(part.rent),
+            water: argent(part.water),
+            power: argent(part.power),
+          })
+        : undefined,
+  }
+}
+
+/**
+ * Une quittance, une page.
+ *
+ * ELLE REMPLACE UN CSV D'UNE SEULE LIGNE. Celui-ci était honnête faute de mieux
+ * — son commentaire disait « le vrai document est un PDF que ce produit ne sait
+ * pas encore fabriquer » — mais un tableur d'une ligne n'est pas ce qu'un
+ * locataire présente à qui lui demande une quittance.
+ *
+ * LE DÉTAIL DE LA PÉRIODE Y FIGURE, poste par poste, et l'imputation des
+ * versements suit la convention du produit : loyer, puis eau, puis électricité.
+ * La recalculer ici en aurait fait une seconde convention.
+ */
+
+/**
+ * LE CONTENU D'UNE QUITTANCE, INDÉPENDANT DE SA SOURCE.
+ *
+ * ═══ POURQUOI CETTE FORME NEUTRE EXISTE ═══
+ *
+ * Le produit émet la même pièce par DEUX chemins, et c'était la réserve écrite
+ * au lot précédent : le gestionnaire ouvre un document ARRÊTÉ PAR LE SERVEUR —
+ * `POST /:parkId/receipts`, avec la devise du parc et aucun montant recalculé —
+ * pendant que le locataire télécharge ce que le client compose depuis les
+ * données du portefeuille. Deux sources, et jusqu'ici deux mises en page.
+ *
+ * Les fondre en une seule SOURCE demanderait d'ouvrir la route d'émission au
+ * locataire pour son propre bail : un lot serveur, avec sa garde
+ * d'autorisation. Les fondre en une seule MISE EN PAGE ne demande que ceci —
+ * une forme que les deux sources savent remplir. Le même mois rend désormais la
+ * même feuille, quel que soit celui qui la demande.
+ *
+ * Les montants sont déjà MIS EN FORME par l'appelant, et c'est délibéré : le
+ * document du serveur porte SA devise, celle du parc à l'émission, tandis que
+ * l'espace locataire emploie la devise d'affichage. Composer ici aurait
+ * réintroduit la divergence par la petite porte.
+ */
+export interface ContenuDeQuittance {
+  titre: 'app.receipts.quittance' | 'app.receipts.recu'
+  logement: string
+  periode: string
+  locataire: string
+  postes: { rent: string; water: string; power: string }
+  du: string
+  paye: string
+  /** Absent quand la période est soldée — voir plus bas. */
+  reste?: string
+  statut: string
+  versements: { trace: string; montant: string }[]
+  /** L'imputation, seulement là où elle apprend quelque chose. */
+  imputation?: string
+}
+
 
 /**
  * Une quittance, une page.
@@ -232,43 +369,28 @@ function pagesDeQuittance(
 }
 
 /**
- * Ce que l'espace locataire sait d'une période, mis à la forme du document.
- *
- * L'imputation ne figure que sur une période PARTIELLEMENT réglée : c'est là
- * qu'elle apprend quelque chose — quel poste reste ouvert — et elle suit la
- * convention du produit, loyer puis eau puis électricité. La recalculer ici en
- * aurait fait une seconde convention.
+ * Ce que l'espace locataire sait d'une période, réduit à des FAITS.
  *
  * LA RÉFÉRENCE DE L'OPÉRATEUR EST SUR LA PIÈCE. C'est avec elle qu'un locataire
  * conteste un encaissement ; l'export en tableur la porte déjà, et un document
  * qui l'omettrait vaudrait moins que le fichier qu'il accompagne.
  */
-function contenuDuPortefeuille(
+function faitsDuPortefeuille(
   t: ReturnType<typeof useT>,
   d: ReturnType<typeof useDates>,
-  argent: (montant: number) => string,
   unit: Unit,
   immeuble: string | undefined,
   receipt: Receipt,
-): ContenuDeQuittance {
-  const du = receiptDue(receipt)
-  const solde = du - receipt.paidMinor
-  const part = imputation(receipt)
-
+): FaitsDeLaPeriode {
   return {
-    titre: titreDuDocument(solde),
     logement: logementNomme(unit, immeuble),
     periode: d.monthYear(receipt),
     locataire: unit.tenant ?? t('app.portfolio.noTenant'),
-    postes: {
-      rent: argent(receipt.rentMinor),
-      water: argent(receipt.waterMinor),
-      power: argent(receipt.powerMinor),
-    },
-    du: argent(du),
-    paye: argent(receipt.paidMinor),
-    reste: solde > 0 ? argent(solde) : undefined,
-    statut: t(`status.${receiptStatus(receipt, new Date())}` as 'status.paid'),
+    rentMinor: receipt.rentMinor,
+    waterMinor: receipt.waterMinor,
+    powerMinor: receipt.powerMinor,
+    dueMinor: receiptDue(receipt),
+    paidMinor: receipt.paidMinor,
     versements: receipt.payments.map((versement) => ({
       trace: [
         d.fullDate(versement.paidOn),
@@ -277,16 +399,8 @@ function contenuDuPortefeuille(
       ]
         .filter(Boolean)
         .join(' · '),
-      montant: argent(versement.amountMinor),
+      amountMinor: versement.amountMinor,
     })),
-    imputation:
-      solde > 0 && receipt.paidMinor > 0
-        ? t('app.documents.pdfImputation', {
-            rent: argent(part.rent),
-            water: argent(part.water),
-            power: argent(part.power),
-          })
-        : undefined,
   }
 }
 
@@ -309,7 +423,11 @@ export function useReceiptPdf() {
     (unit: Unit, receipt: Receipt): string => {
       const page = nouvelleMiseEnPage()
       const argent = (montant: number) => money(montant, { round: true })
-      const contenu = contenuDuPortefeuille(t, d, argent, unit, nommerLImmeuble(unit), receipt)
+      const contenu = composerLaQuittance(
+        t,
+        argent,
+        faitsDuPortefeuille(t, d, unit, nommerLImmeuble(unit), receipt),
+      )
       pagesDeQuittance(page, t, parc, emisLe, contenu)
 
       const titre = t(contenu.titre)
@@ -356,7 +474,7 @@ export function useAllReceiptsPdf() {
           t,
           parc,
           emisLe,
-          contenuDuPortefeuille(t, d, argent, unit, immeuble, receipt),
+          composerLaQuittance(t, argent, faitsDuPortefeuille(t, d, unit, immeuble, receipt)),
         )
       })
 
@@ -398,27 +516,39 @@ export function useDocumentEmisPdf() {
   return useCallback(
     (document: DocumentEmisPdf): string => {
       const page = nouvelleMiseEnPage()
-      const contenu: ContenuDeQuittance = {
-        /* Le serveur a DÉJÀ tranché entre quittance et reçu ; on lit son
-           verdict au lieu de le recalculer. C'est lui qui connaît l'échéance. */
-        titre: document.kind === 'quittance' ? 'app.receipts.quittance' : 'app.receipts.recu',
+      /*
+        LA MÊME COMPOSITION QUE LE LOCATAIRE, à partir des faits du serveur.
+
+        Cette branche déduisait autrefois son titre et son statut à part, et
+        n'offrait pas l'imputation : le même mois rendait deux feuilles
+        différentes. Ce qui est PROPRE au serveur reste ici — les montants
+        arrêtés, leur devise, et son verdict entre quittance et reçu — le reste
+        se déduit au seul endroit où il se déduit.
+      */
+      const contenu = composerLaQuittance(t, document.argent, {
         logement: [document.unit, document.building].filter(Boolean).join(' · '),
         periode: document.periode,
         locataire: document.tenant,
-        postes: {
-          rent: document.argent(document.rentMinor),
-          water: document.argent(document.waterMinor),
-          power: document.argent(document.powerMinor),
-        },
-        du: document.argent(document.dueMinor),
-        paye: document.argent(document.paidMinor),
-        reste: document.balanceMinor > 0 ? document.argent(document.balanceMinor) : undefined,
-        statut: t(document.kind === 'quittance' ? 'status.paid' : 'status.partial'),
+        rentMinor: document.rentMinor,
+        waterMinor: document.waterMinor,
+        powerMinor: document.powerMinor,
+        dueMinor: document.dueMinor,
+        paidMinor: document.paidMinor,
         versements: document.payments.map((versement) => ({
           trace: [versement.date, versement.moyen, versement.reference].filter(Boolean).join(' · '),
-          montant: document.argent(versement.amountMinor),
+          amountMinor: versement.amountMinor,
         })),
-      }
+      })
+
+      /*
+        LE VERDICT DU SERVEUR PRIME SUR LE CALCUL, et c'est le seul endroit où
+        les deux chemins ont le droit de différer. Il connaît l'échéance et ses
+        règles ; le client ne connaît que des montants. Ils s'accordent sur tous
+        les cas ordinaires — c'est `solde <= 0` des deux côtés — et le jour où
+        ils divergeraient, c'est le serveur qui a raison.
+      */
+      contenu.titre = document.kind === 'quittance' ? 'app.receipts.quittance' : 'app.receipts.recu'
+
       pagesDeQuittance(page, t, parc, emisLe, contenu)
 
       const titre = t(contenu.titre)

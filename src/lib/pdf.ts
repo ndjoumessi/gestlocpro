@@ -115,6 +115,14 @@ const HORS_LATIN1: Record<string, number> = {
 /** Ce qu'on trace quand la police de base ne sait pas tracer. */
 const REMPLACEMENT = 0x3f
 
+/** Le caractère que WinAnsi place à ce code, ou `null` s'il n'en place aucun. */
+function caractereDuCode(code: number): string | null {
+  if (code >= 0x20 && code <= 0x7e) return String.fromCharCode(code)
+  if (code >= 0xa0 && code <= 0xff) return String.fromCharCode(code)
+  const trouve = Object.entries(HORS_LATIN1).find(([, place]) => place === code)
+  return trouve ? trouve[0] : null
+}
+
 /**
  * Un texte en octets WinAnsi, parenthèses et contre-obliques échappées.
  *
@@ -235,6 +243,36 @@ function chasse(caractere: string, gras: boolean): number {
   return table[REMPLACEMENT - 0x20]
 }
 
+/**
+ * LES CHASSES DÉCLARÉES DANS LE DOCUMENT, code par code.
+ *
+ * ═══ POURQUOI LE FICHIER PORTE SES PROPRES LARGEURS ═══
+ *
+ * Sans tableau `/Widths`, un lecteur applique les métriques de SA police — celle
+ * qu'il substitue à Helvetica. Elles s'accordent avec les nôtres sur tout
+ * l'ASCII, et divergent sur trois signes : `€` vaut 744 dans l'Helvetica du
+ * système et 556 dans les métriques historiques d'Adobe, `±` et `÷` 549 contre
+ * 584. Le document se composait donc sur une largeur et se rendait sur une
+ * autre, selon le lecteur — un pari, assumé mais jamais gagné.
+ *
+ * Déclarées, elles ne se discutent plus : le lecteur avance de ce que le fichier
+ * dit, et l'alignement calculé EST l'alignement rendu. Sur un parc en zone euro,
+ * où le symbole termine chaque montant, l'écart valait deux points par ligne.
+ *
+ * Le prix est d'environ 1,5 Ko dans le fichier pour deux graisses. C'est ce que
+ * coûte une pièce qui se rend partout de la même façon.
+ */
+function chassesDeclarees(gras: boolean): number[] {
+  return Array.from({ length: 0xff - 0x20 + 1 }, (_, i) => {
+    const caractere = caractereDuCode(0x20 + i)
+    /* Les cinq codes que WinAnsi laisse vides — 0x81, 0x8d, 0x8f, 0x90, 0x9d —
+       n'ont pas de glyphe et ne sortent jamais de `versWinAnsi`. On leur donne
+       la chasse du caractère de remplacement plutôt que zéro : une avance nulle
+       est le genre de valeur qui fait diverger deux lecteurs. */
+    return Math.round(chasse(caractere ?? '?', gras))
+  })
+}
+
 /** La largeur d'un texte, en points, à une taille et une graisse données. */
 export function largeurDuTexte(contenu: string, taille: number, gras = false): number {
   let millièmes = 0
@@ -334,12 +372,16 @@ export function construirePdf(pages: Commande[][]): Uint8Array {
   ascii(`<< /Type /Pages /Kids [${enfants}] /Count ${pages.length} >>\n`)
   fermer()
 
+  const police = (nom: string, gras: boolean) =>
+    `<< /Type /Font /Subtype /Type1 /BaseFont /${nom} /Encoding /WinAnsiEncoding ` +
+    `/FirstChar 32 /LastChar 255 /Widths [${chassesDeclarees(gras).join(' ')}] >>\n`
+
   ouvrir(3)
-  ascii('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>\n')
+  ascii(police('Helvetica', false))
   fermer()
 
   ouvrir(4)
-  ascii('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>\n')
+  ascii(police('Helvetica-Bold', true))
   fermer()
 
   pages.forEach((commandes, index) => {

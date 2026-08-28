@@ -89,6 +89,38 @@ describe('l’émetteur PDF', () => {
     }
   })
 
+  /**
+   * LE DOCUMENT DÉCLARE SES PROPRES CHASSES.
+   *
+   * Sans `/Widths`, un lecteur avance selon les métriques de SA police, qui
+   * divergent des nôtres sur `€`, `±` et `÷` — le document se composait sur une
+   * largeur et se rendait sur une autre, selon le lecteur. Déclarées, elles ne
+   * se discutent plus.
+   *
+   * Le cas ne se contente pas de constater le tableau : il en RELIT une valeur
+   * et la confronte à ce que `largeurDuTexte` calcule. Un tableau juste mais
+   * décalé d'un code — la faute que `/FirstChar` invite à faire — rendrait tout
+   * le document approximativement bon, ce qui est la pire des façons d'échouer.
+   */
+  it('déclare les chasses au lieu de les laisser deviner', () => {
+    const declare = /\/BaseFont \/Helvetica \/Encoding \/WinAnsiEncoding \/FirstChar 32 \/LastChar 255 \/Widths \[([^\]]+)\]/.exec(
+      texte,
+    )
+    expect(declare, 'la police ne déclare aucune chasse').not.toBeNull()
+
+    const chasses = declare![1].split(' ').map(Number)
+    expect(chasses, 'de 32 à 255 inclus').toHaveLength(224)
+
+    /* Trois sondes, à des endroits qui cassent différemment : le début du
+       tableau, un chiffre au milieu, et une lettre accentuée du haut du jeu. */
+    for (const code of [0x20, 0x35, 0xe9]) {
+      const caractere = String.fromCharCode(code)
+      expect(chasses[code - 32], `chasse déclarée de « ${caractere} »`).toBe(
+        Math.round(largeurDuTexte(caractere, 1000)),
+      )
+    }
+  })
+
   it('porte le texte qu’on lui a confié', () => {
     expect(texte).toContain('(Quittance)')
     expect(texte).toContain('(Re\xE7u)')

@@ -72,6 +72,36 @@ const PORTEFEUILLE = {
   readings: [],
   inspections: [],
   notifications: [],
+  /* LES MÊMES CHIFFRES QUE `DOCUMENT`, à l'unité près. C'est la condition du
+     cas de comparaison : deux feuilles composées sur des données différentes
+     différeraient pour une raison qui n'est pas celle qu'on mesure. */
+  leaseCharges: [
+    {
+      leaseId: 'bail-1',
+      periodStart: '2026-08-01T00:00:00.000Z',
+      dueOn: '2026-08-05T00:00:00.000Z',
+      rentMinor: 77777,
+      waterMinor: 3333,
+      powerMinor: 4444,
+      paidMinor: 60000,
+      payments: [
+        {
+          amountMinor: 60000,
+          method: 'mobile',
+          paidOn: '2026-08-03T00:00:00.000Z',
+          reference: 'MM-9021',
+        },
+      ],
+    },
+  ],
+}
+
+function sessionLocataire(): EtatSession {
+  return {
+    statut: 'connecte',
+    compte: { ...COMPTE_FICTIF, id: 'loc-1' },
+    adhesions: [{ parkId: PARC, role: 'tenant', parkName: 'Parc Bonamoussadi', currency: 'XAF' }],
+  }
 }
 
 /**
@@ -109,6 +139,14 @@ const DOCUMENT = {
 
 const enLatin1 = (octets: Uint8Array) => Array.from(octets, (o) => String.fromCharCode(o)).join('')
 
+/** La suite des textes posés par un document, dans l'ordre de la page. */
+function textesDe(octets: Uint8Array): string[] {
+  const fichier = enLatin1(octets)
+  return [...fichier.matchAll(/Td \(([\s\S]*?)\) Tj/g)].map(([, brut]) =>
+    brut.replace(/\\([()\\])/g, '$1'),
+  )
+}
+
 describe('la quittance du gestionnaire', () => {
   it('se télécharge en PDF, avec les montants du serveur', async () => {
     const faux = installerFauxServeur()
@@ -145,6 +183,143 @@ describe('la quittance du gestionnaire', () => {
       // Et la pièce dit ce qu'elle n'est pas, comme celle du locataire.
       expect(document).toContain('sans signature')
       expect(document).toContain('Parc Bonamoussadi')
+    } finally {
+      capture.restore()
+    }
+  })
+
+  /**
+   * LES DEUX FEUILLES, CÔTE À CÔTE.
+   *
+   * Elles partagent une fonction de composition, ce qui devrait les rendre
+   * identiques par construction. « Devrait » n'est pas une garde : une
+   * divergence introduite dans un SEUL des deux appelants — un intitulé, un
+   * statut, un montant pris ailleurs — passerait sans que rien ne bronche, et
+   * c'était la réserve écrite au lot précédent.
+   *
+   * Le cas donne aux deux sources les mêmes chiffres, puis compare la suite des
+   * textes posés. Ce qu'il refuse n'est pas que les deux documents disent la
+   * même chose — c'est qu'ils la disent DIFFÉREMMENT alors que rien ne les y
+   * oblige.
+   */
+  /*
+    DEUX ÉTATS DE LA PÉRIODE, et le second n'est pas décoratif.
+
+    Sans versement du tout, le statut de la pièce n'est ni « payé » ni
+    « partiel » : c'est le cas où les deux chemins déduisaient autrefois deux
+    mots différents, le gestionnaire n'ayant que le verdict binaire du serveur —
+    quittance ou reçu — pour trancher un état qui en compte trois.
+  */
+  const CAS = [
+    { nom: 'partiellement réglée', paidMinor: 60000, versements: true },
+    { nom: 'sans aucun versement', paidMinor: 0, versements: false },
+  ]
+
+  it.each(CAS)('rend la même feuille des deux côtés, période $nom', async ({ paidMinor, versements }) => {
+    const capture = captureDownloads()
+    try {
+      const versementsDuMois = versements
+        ? [
+            {
+              amountMinor: 60000,
+              method: 'mobile',
+              paidOn: '2026-08-03T00:00:00.000Z',
+              reference: 'MM-9021',
+            },
+          ]
+        : []
+      const faux = installerFauxServeur()
+      faux.quand('GET', `/parks/${PARC}/portfolio`, {
+        status: 200,
+        body: {
+          ...PORTEFEUILLE,
+          leaseCharges: [{ ...PORTEFEUILLE.leaseCharges[0], paidMinor, payments: versementsDuMois }],
+        },
+      })
+      faux.quand('POST', `/parks/${PARC}/receipts`, {
+        status: 200,
+        body: {
+          document: {
+            ...DOCUMENT,
+            paidMinor,
+            balanceMinor: DOCUMENT.dueMinor - paidMinor,
+            payments: versementsDuMois.map((v, i) => ({ id: `v-${i}`, ...v })),
+          },
+        },
+      })
+
+      const user = userEvent.setup()
+
+      // Le gestionnaire, depuis le document arrêté par le serveur.
+      const bailleur = await renderApp('/app/paiements', { session: sessionBailleur() })
+      await attendreLeChargement()
+      await user.click(screen.getAllByRole('button', { name: /^Quittance$/ })[0])
+      await user.click(await screen.findByRole('button', { name: /^Télécharger$/ }))
+      bailleur.unmount()
+
+      // Le locataire, depuis son portefeuille.
+      await renderApp('/app/documents', { session: sessionLocataire() })
+      await attendreLeChargement()
+      await user.click(screen.getAllByRole('button', { name: /^Télécharger$/ })[0])
+
+      const [duBailleur, duLocataire] = await capture.settle()
+      expect(textesDe(duLocataire.bytes)).toEqual(textesDe(duBailleur.bytes))
+    } finally {
+      capture.restore()
+    }
+  })
+
+  /**
+   * LA DEVISE VIENT DU DOCUMENT, PAS DE L'ÉCRAN.
+   *
+   * Le serveur pose la devise du parc à l'émission, et la modale la respecte
+   * depuis toujours : « le même versement imprimé sur deux postes réglés
+   * différemment portait deux monnaies — sur le seul papier que le locataire
+   * gardera pour prouver qu'il a payé ».
+   *
+   * Le PDF passe par cette mise en forme-là, et je m'y appuyais sans l'avoir
+   * éprouvée : c'était la dernière réserve du lot précédent. Un parc en zone
+   * euro est le cas qui la met à nu — l'adhésion annonce XAF, le document dit
+   * EUR, et c'est le document qui doit gagner.
+   *
+   * C'est aussi le seul cas où le symbole `€` est tracé, et donc le seul qui
+   * exerce la chasse que le fichier déclare désormais lui-même.
+   */
+  it('met en forme dans la devise du document, et non celle de l’adhésion', async () => {
+    const faux = installerFauxServeur()
+    faux.quand('GET', `/parks/${PARC}/portfolio`, { status: 200, body: PORTEFEUILLE })
+    faux.quand('POST', `/parks/${PARC}/receipts`, {
+      status: 200,
+      body: { document: { ...DOCUMENT, currency: 'EUR' } },
+    })
+
+    const capture = captureDownloads()
+    try {
+      await renderApp('/app/paiements', { session: sessionBailleur() })
+      await attendreLeChargement()
+      const user = userEvent.setup()
+      await user.click(screen.getAllByRole('button', { name: /^Quittance$/ })[0])
+      await user.click(await screen.findByRole('button', { name: /^Télécharger$/ }))
+      const [fichier] = await capture.settle()
+
+      const document = enLatin1(fichier.bytes)
+      /*
+        LE SYMBOLE EST CELUI DE WINANSI — 0x80, que le latin-1 ne place pas.
+        C'est aussi le seul caractère du produit dont la chasse divergeait entre
+        la police du système et les métriques historiques ; le fichier la déclare
+        désormais lui-même.
+
+        Le montant est passé TEL QUEL, comme partout ailleurs dans le produit :
+        `money` met en forme sans convertir. Ce cas mesure la DEVISE, pas la
+        conversion des unités mineures — laquelle n'existe nulle part et
+        n'appartient pas à ce lot.
+      */
+      expect(document).toMatch(/77\s?777,00\s?\x80/)
+      /* Et surtout PAS la devise de l'adhésion, qui annonce des francs CFA :
+         c'est elle qui gagnerait si le document ne portait pas la sienne. */
+      expect(document, 'la devise de l’écran a pris le pas sur celle du document').not.toContain(
+        'FCFA',
+      )
     } finally {
       capture.restore()
     }

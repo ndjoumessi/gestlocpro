@@ -1199,10 +1199,26 @@ export function receiptDue(receipt: Receipt): number {
  * appelle un geste. Sans elle, une période à moitié réglée s'affichait soldée.
  */
 export function imputation(receipt: Receipt): { rent: number; water: number; power: number } {
-  const rent = Math.min(receipt.paidMinor, receipt.rentMinor)
-  const reste = receipt.paidMinor - rent
-  const water = Math.max(0, Math.min(reste, receipt.waterMinor))
-  const power = Math.max(0, Math.min(reste - receipt.waterMinor, receipt.powerMinor))
+  return imputationDesPostes(receipt, receipt.paidMinor)
+}
+
+/**
+ * La même convention, sur des POSTES NUS.
+ *
+ * Le document arrêté par le serveur n'est pas un `Receipt` : il porte les mêmes
+ * trois postes et le même encaissé, sous d'autres noms et sans les versements.
+ * Il a donc besoin de l'imputation, et la lui refuser produisait deux feuilles
+ * différentes pour un seul mois — le locataire lisait quel poste restait ouvert,
+ * le gestionnaire non.
+ */
+export function imputationDesPostes(
+  postes: { rentMinor: number; waterMinor: number; powerMinor: number },
+  encaisse: number,
+): { rent: number; water: number; power: number } {
+  const rent = Math.min(encaisse, postes.rentMinor)
+  const reste = encaisse - rent
+  const water = Math.max(0, Math.min(reste, postes.waterMinor))
+  const power = Math.max(0, Math.min(reste - postes.waterMinor, postes.powerMinor))
   return { rent, water, power }
 }
 
