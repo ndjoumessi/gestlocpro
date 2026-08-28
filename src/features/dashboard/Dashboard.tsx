@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
 import { StatusPill } from '@/components/primitives/StatusPill'
+import { DeltaBadge } from '@/components/primitives/Badge'
 import { DonutChart, ProgressBar, StackedBarChart, StatCard } from '@/components/primitives/Charts'
 import { EmptyState } from '@/components/primitives/DataTable'
 import { Skeleton, SkeletonRegion, SkeletonStatRow } from '@/components/primitives/Skeleton'
@@ -15,7 +16,7 @@ import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
 import { useDates } from '@/lib/useDates'
-import { computeKpis } from '@/data/kpis'
+import { computeKpis, variationDesEncaissements } from '@/data/kpis'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { RecordPaymentModal } from './RecordPaymentModal'
 import { FileDuJour, type EntreeDeFile } from './FileDuJour'
@@ -77,6 +78,9 @@ export function Dashboard() {
   const kpis = computeKpis(units, readings)
   const { expected, collected, outstanding, occupied, vacant, occupancy, maxOverdueDays } = kpis
   const collectedShare = expected === 0 ? 0 : Math.round((collected / expected) * 100)
+  /* La variation du mois sur le mois précédent, quand il y en a un — voir
+     `variationDesEncaissements`, qui rend `null` plutôt qu'un zéro trompeur. */
+  const variation = variationDesEncaissements(collected, COLLECTIONS)
   /**
    * Ceux qui doivent encore quelque chose — retards ET partiels.
    *
@@ -367,11 +371,40 @@ export function Dashboard() {
            */
           note={t('app.dashboard.outstandingShare', { percent: 100 - collectedShare })}
         />
+        {/*
+          LA SEULE CARTE DU PRODUIT QUI AIT UN PASSÉ, ET ELLE LE MONTRE.
+
+          Trois pièces existaient sans s'être jamais rencontrées : `DeltaBadge`,
+          une pastille de variation soignée qu'aucun écran n'appelait ;
+          `StatCard.delta`, une propriété déclarée pour l'accueillir et passée
+          nulle part dans le dépôt ; et douze mois d'encaissements, déjà en main
+          de cet écran, qui ne servaient qu'au graphique et à l'export.
+
+          Un nombre sans échelle ne se lit pas : 950 000 F encaissés, est-ce
+          beaucoup ? La réponse était dans la page, trois cents pixels plus bas,
+          dans le tracé — jamais à côté du chiffre qui la pose.
+
+          `invert` N'EST PAS POSÉ ICI, et c'est un choix : une hausse de
+          l'encaissé est une bonne nouvelle. Il le serait sur le retard, et c'est
+          exactement pour ce cas que la pastille l'offre — une flèche vers le
+          haut n'est pas verte par nature.
+
+          LA PART DU DÛ CÈDE LA PLACE. Elle disait « 68 % du dû », que l'anneau
+          de recouvrement de la même page annonce déjà en grand, au centre. La
+          comparaison au mois précédent, elle, ne se lit nulle part ailleurs.
+        */}
         <StatCard
           icone="card"
           label={t('app.dashboard.collected')}
           value={money(collected, { round: true })}
-          note={t('app.dashboard.collectedShare', { percent: collectedShare })}
+          delta={variation ? <DeltaBadge value={variation.pourcentage} suffix="%" /> : undefined}
+          note={
+            variation
+              ? t('app.dashboard.vsPrevious', {
+                  amount: money(variation.base, { round: true }),
+                })
+              : t('app.dashboard.collectedShare', { percent: collectedShare })
+          }
         />
         <StatCard
           icone="layers"

@@ -5,6 +5,8 @@ import { DataTable, EmptyState } from '@/components/primitives/DataTable'
 import { JaugeDePoste, PaymentStatusPill, type PaymentStatus } from '@/components/primitives/StatusPill'
 import { GroupeDeFiltres } from '@/components/controls/GroupeDeFiltres'
 import { StatCard } from '@/components/primitives/Charts'
+import { DeltaBadge } from '@/components/primitives/Badge'
+import { variationDesEncaissements } from '@/data/kpis'
 import {
   Skeleton,
   SkeletonRegion,
@@ -53,6 +55,7 @@ export function Payments() {
     callRent,
     serveFormalNotice,
     receiptsForUnit,
+    collections,
   } = usePortfolio()
   const { notify } = useToast()
   const isTenant = role === 'tenant'
@@ -76,6 +79,9 @@ export function Payments() {
     [role, units, isMine],
   )
   const kpis = computeKpis(leases, readings)
+  /* La variation du mois sur le mois précédent — la même règle que le tableau de
+     bord, appelée au même endroit pour qu'elles ne puissent pas diverger. */
+  const variation = variationDesEncaissements(kpis.collected, collections)
 
   /**
    * Les six dernières périodes CONNUES, toutes unités confondues.
@@ -294,10 +300,20 @@ export function Payments() {
             label={t('app.dashboard.recoveryLate')}
             value={money(kpis.late, { round: true })}
           />
+          {/* LA MÊME COMPARAISON QUE SUR LE TABLEAU DE BORD, et calculée au même
+              endroit : les deux écrans affichent le MÊME nombre — `collected` —
+              et une variation calculée deux fois pourrait diverger deux fois.
+              Voir `variationDesEncaissements`. */}
           <StatCard
             icone="card"
             label={t('app.dashboard.recoveryCollected')}
             value={money(kpis.collected, { round: true })}
+            delta={variation ? <DeltaBadge value={variation.pourcentage} suffix="%" /> : undefined}
+            note={
+              variation
+                ? t('app.dashboard.vsPrevious', { amount: money(variation.base, { round: true }) })
+                : undefined
+            }
           />
           <StatCard
             icone="layers"

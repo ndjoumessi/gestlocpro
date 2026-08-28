@@ -225,9 +225,7 @@ const COLONNE_COLLANTE = 'sticky right-0 border-l border-divider'
  * barreau-ci porte exactement ce nom — une colonne collante est très exactement
  * ce qu'il nomme.
  */
-function ALTITUDE_TENUE(role?: RoleDeColonne) {
-  return role === 'geste' ? ({ zIndex: 'var(--z-sticky)' } as const) : undefined
-}
+const ALTITUDE_TENUE = { zIndex: 'var(--z-sticky)' } as const
 
 export function DataTable<T>({
   caption,
@@ -300,6 +298,33 @@ export function DataTable<T>({
     return <ListeDeFiches caption={caption} columns={columns} rows={rows} rowKey={rowKey} />
   }
 
+  /**
+   * LES COLONNES DE GESTE QUI NE RENDENT RIEN DU TOUT.
+   *
+   * Une colonne d'action n'offre pas toujours son geste : le registre des
+   * locataires ne propose le retrait d'une fiche qu'au propriétaire, et
+   * seulement sur une ligne occupée. Sur une démonstration vue en gestionnaire,
+   * les dix lignes rendent `null`.
+   *
+   * Tant que la colonne était ordinaire, cela ne se voyait pas : une colonne
+   * vide est du blanc parmi du blanc. Elle est devenue COLLANTE et BORDÉE au
+   * lot précédent, et le vide s'est mis à se voir — un filet vertical sur toute
+   * la hauteur du tableau, épinglé au bord droit, ne contenant rien. Un
+   * séparateur qui ne sépare rien de rien.
+   *
+   * On regarde donc si la colonne rend quelque chose SUR AU MOINS UNE LIGNE. Si
+   * elle ne rend rien, elle cesse d'être tenue : il n'y a rien à garder sous les
+   * yeux, et rien dont il faille séparer le reste. `render` est rappelé une fois
+   * par ligne pour le savoir — dix appels d'une fonction pure, contre un défaut
+   * visible sur toute la hauteur de l'écran.
+   */
+  const colonnesSansGeste = new Set(
+    columns
+      .filter((c) => c.role === 'geste' && rows.every((row) => !c.render(row)))
+      .map((c) => c.key),
+  )
+  const estTenue = (c: Column<T>) => c.role === 'geste' && !colonnesSansGeste.has(c.key)
+
   return (
       <div
         /* `data-defilant` : la garde `mesure-ui` mesure les gestes contre le
@@ -320,16 +345,14 @@ export function DataTable<T>({
               <th
                 key={column.key}
                 scope="col"
-                data-colonne-tenue={
-                  column.role === 'etat' || column.role === 'geste' ? column.role : undefined
-                }
-                style={{ width: column.width, ...ALTITUDE_TENUE(column.role) }}
+                data-colonne-tenue={estTenue(column) ? column.role : undefined}
+                style={{ width: column.width, ...(estTenue(column) ? ALTITUDE_TENUE : {}) }}
                 className={cn(
                   'eyebrow px-4 py-3 text-left font-normal whitespace-nowrap text-muted',
                   column.numeric && 'text-right',
                   column.hideOnMobile && 'hidden sm:table-cell',
-                  column.role === 'geste' && COLONNE_COLLANTE,
-                  column.role === 'geste' && 'bg-surface-sunken',
+                  estTenue(column) && COLONNE_COLLANTE,
+                  estTenue(column) && 'bg-surface-sunken',
                 )}
               >
                 {column.header}
@@ -347,8 +370,8 @@ export function DataTable<T>({
               {columns.map((column) => (
                 <td
                   key={column.key}
-                  data-colonne-tenue={column.role === 'geste' ? column.role : undefined}
-                  style={ALTITUDE_TENUE(column.role)}
+                  data-colonne-tenue={estTenue(column) ? column.role : undefined}
+                  style={estTenue(column) ? ALTITUDE_TENUE : undefined}
                   className={cn(
                     /*
                       `relative` : la cellule est le bloc conteneur de ce qu'elle
@@ -367,8 +390,8 @@ export function DataTable<T>({
                     'relative px-4 py-3 align-middle',
                     column.numeric && 'numeric text-right whitespace-nowrap',
                     column.hideOnMobile && 'hidden sm:table-cell',
-                    column.role === 'geste' && COLONNE_COLLANTE,
-                    column.role === 'geste' && 'bg-surface',
+                    estTenue(column) && COLONNE_COLLANTE,
+                    estTenue(column) && 'bg-surface',
                   )}
                 >
                   {column.render(row)}

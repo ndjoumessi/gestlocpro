@@ -343,12 +343,24 @@ describe('travaux — tri par origine et total engagé', () => {
     // 78 000 + 32 000 + 340 000 = 450 000. Les 45 000 de la fuite sont un devis
     // que personne n'a validé : les compter ferait passer pour engagé ce qui
     // attend encore un arbitrage.
-    const totalTous = screen.getByText('Total engagé').parentElement!
-    expect(totalTous).toHaveTextContent('450 000')
-    expect(totalTous).not.toHaveTextContent('495 000')
+    /*
+      ON REMONTE À LA CARTE PAR SON MARQUEUR, et non par un saut de parent.
+
+      Le total vivait dans un `<p>` de texte libre à côté des filtres ; il est
+      devenu une CARTE D'INDICATEUR, comme sur les cinq écrans voisins, et son
+      intitulé est désormais deux niveaux plus bas. `parentElement` désignait
+      alors la rangée icône + intitulé, qui ne porte pas le montant — le cas
+      rougissait sur un déplacement de balisage, pas sur une régression de
+      calcul. `data-indicateur` existe pour cela, et son en-tête le dit :
+      « un chemin qui compte les sauts casse au premier niveau intermédiaire ;
+      `closest` survit à tous ».
+    */
+    const carteDuTotal = () => screen.getByText('Total engagé').closest('[data-indicateur]')!
+    expect(carteDuTotal()).toHaveTextContent('450 000')
+    expect(carteDuTotal()).not.toHaveTextContent('495 000')
 
     await userEvent.click(segment(/^À mon initiative/))
-    expect(screen.getByText('Total engagé').parentElement).toHaveTextContent('340 000')
+    expect(carteDuTotal()).toHaveTextContent('340 000')
   })
 
   /**

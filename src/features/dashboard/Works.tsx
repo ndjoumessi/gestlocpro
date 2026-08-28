@@ -11,6 +11,9 @@ import { GroupeDeFiltres } from '@/components/controls/GroupeDeFiltres'
 import { Notice } from '@/components/primitives/Notice'
 import { useToast } from '@/components/primitives/Toast'
 import { EmptyState } from '@/components/primitives/DataTable'
+import { StatCard } from '@/components/primitives/Charts'
+import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
+import { cn } from '@/lib/cn'
 import { Skeleton, SkeletonRegion } from '@/components/primitives/Skeleton'
 import { TenantScopeNote } from './TenantDashboard'
 import { useCurrency } from '@/currency/CurrencyProvider'
@@ -122,6 +125,17 @@ export function Works() {
    * initiative » répond à « combien m'ont coûté mes propres décisions ».
    */
   const engage = visible.reduce((somme, w) => somme + (w.approvedAmount ?? 0), 0)
+
+  /* Les trois populations de la rangée d'indicateurs, tirées du MÊME `visible`
+     que le total : elles suivent donc le filtre, et ne peuvent pas le
+     contredire. */
+  const aArbitrer = visible.filter((w) => w.status === 'quoted')
+  const enCours = visible.filter((w) => w.status === 'approved')
+  /* `signales` et non `aChiffrer` : ce nom-là désigne déjà, plus haut, la
+     fiche que la modale de chiffrage est en train d'éditer. Deux notions
+     voisines sous un même mot dans un même fichier finiraient par se
+     confondre à la relecture. */
+  const signales = visible.filter((w) => w.status === 'reported')
 
   const approve = (id: string) => {
     approveWork(id)
@@ -269,14 +283,62 @@ export function Works() {
             }))}
           />
 
-          {engage > 0 && (
-            <p className="flex items-baseline gap-2">
-              <span className="text-body text-muted">{t('app.works.totalCommitted')}</span>
-              <span className="numeric text-title-m font-medium">
-                {money(engage, { round: true })}
-              </span>
-            </p>
-          )}
+        </div>
+      )}
+
+      {/*
+        LA RANGÉE D'INDICATEURS QUI MANQUAIT, et le total engagé y rentre.
+
+        Il vivait en texte libre à droite des filtres — « Total engagé
+        450 000 FCFA » —, seul chiffre d'un écran qui en compte trois. Les cinq
+        écrans voisins ouvrent tous sur une rangée de cartes ; celui-ci
+        demandait de lire cinq fiches pour savoir combien il y avait à arbitrer,
+        alors que la donnée était déjà calculée.
+
+        LES TROIS SUIVENT LE FILTRE, comme le total le faisait déjà : basculer
+        sur « à mon initiative » répond à « combien m'ont coûté mes propres
+        décisions », et il serait incohérent que deux cartes sur trois
+        l'ignorent.
+
+        L'ÉTAT SUR LES DEVIS, et sur eux seuls : un devis en attente est un
+        travail qui n'avance pas tant que personne ne tranche. Zéro devis rend
+        la carte neutre — c'est la règle que le retard applique déjà sur les
+        paiements, une alerte permanente cesse d'être lue.
+
+        PAS AU LOCATAIRE, et c'est une garde du dépôt qui me l'a rappelé plutôt
+        que ma relecture. Le total engagé vivait dans le bloc réservé au
+        bailleur ; en le sortant pour en faire une carte, je l'ai offert à tout
+        le monde — et avec lui les montants proposés et le nombre de devis en
+        attente. Un locataire a droit à savoir si SON chantier avance, pas à ce
+        que le parc dépense. `origineDesTravaux.test.tsx` dit exactement cela
+        depuis un lot antérieur : « n'expose ni devis ni engagé au locataire ».
+      */}
+      {!isTenant && visible.length > 0 && (
+        <div className={cn(GRILLE_TROIS_INDICATEURS, 'mt-6')}>
+          <StatCard
+            icone="card"
+            label={t('app.works.totalCommitted')}
+            value={money(engage, { round: true })}
+            note={t('app.works.kpiCommittedNote')}
+          />
+          <StatCard
+            icone="wrench"
+            label={t('app.works.kpiQuoted')}
+            value={String(aArbitrer.length)}
+            etat={aArbitrer.length > 0 ? { ton: 'warn' } : undefined}
+            note={t('app.works.kpiQuotedNote', {
+              amount: money(
+                aArbitrer.reduce((somme, w) => somme + (w.quotedAmount ?? 0), 0),
+                { round: true },
+              ),
+            })}
+          />
+          <StatCard
+            icone="clipboard"
+            label={t('app.works.kpiOngoing')}
+            value={String(enCours.length)}
+            note={t('app.works.kpiOngoingNote', { count: signales.length })}
+          />
         </div>
       )}
 

@@ -627,6 +627,15 @@ export const fr = {
       expected: 'Loyers attendus',
       collected: 'Encaissé ce mois',
       /**
+       * LA BASE DE LA VARIATION, NOMMÉE.
+       *
+       * Une pastille « −16,8 % » sans son point de départ est un pourcentage
+       * flottant : on ne peut ni le vérifier, ni le retrouver dans le graphique
+       * qui vit trois cents pixels plus bas. La ligne dit à quoi la carte se
+       * compare, et c'est ce qui la rend lisible.
+       */
+      vsPrevious: 'vs. {amount} le mois dernier',
+      /**
        * « Impayés cumulés » disait deux choses fausses.
        *
        * Rien n'est CUMULÉ : c'est le reste de l'appel de loyers courant, calculé
@@ -1197,6 +1206,21 @@ export const fr = {
          mot pour la somme et pour ses termes — c'est la troisième fois que ce
          motif se présente, et la première où il est vu avant livraison. */
       totalCommitted: 'Total engagé',
+      /**
+       * LA RANGÉE D'INDICATEURS QUI MANQUAIT À CET ÉCRAN.
+       *
+       * Il comptait déjà tout — le total engagé, les devis en attente, les
+       * chantiers ouverts — et n'en montrait qu'un seul, en texte libre à côté
+       * des filtres. Ses cinq écrans voisins ouvrent tous sur une rangée de
+       * cartes ; celui-ci demandait de lire cinq fiches pour savoir combien il
+       * y avait à arbitrer.
+       */
+      kpiQuoted: 'Devis à arbitrer',
+      kpiQuotedNote: '{amount} proposés',
+      kpiOngoing: 'Chantiers en cours',
+      kpiOngoingNote: '{count} encore à chiffrer',
+      kpiOngoingNote_one: '{count} encore à chiffrer',
+      kpiCommittedNote: 'sur les interventions affichées',
       /* L'état vide s'adresse au bailleur, à qui le geste est désormais
          offert. La phrase disait « une intervention naît d'un signalement de
          locataire » : c'était vrai, ça ne l'est plus. */
