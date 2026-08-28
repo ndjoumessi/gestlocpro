@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/cn'
 import { useI18n } from '@/i18n/I18nProvider'
 import { useCurrency } from '@/currency/CurrencyProvider'
-import { CURRENCIES, CURRENCY_DEFS, type CurrencyCode } from '@/currency/currencies'
+import { CURRENCIES, type CurrencyCode } from '@/currency/currencies'
 import { Icon } from '@/components/primitives/Icon'
 
 export interface CurrencySwitcherProps {
@@ -99,13 +99,15 @@ export function CurrencySwitcher({ tone = 'light', className }: CurrencySwitcher
           role="listbox"
           aria-label={t('common.currency')}
           className={cn(
-            'animate-pop absolute right-0 mt-1.5 min-w-52 overflow-hidden rounded-md',
+            // 52 → 64 : la ligne porte désormais un nom et non plus un code,
+            // et « Dollar américain ($) » suivi de « USD » ne tenait pas dans
+            // 208 px sans se couper.
+            'animate-pop absolute right-0 mt-1.5 min-w-64 overflow-hidden rounded-md',
             'border border-divider bg-surface p-1 shadow-e2',
           )}
           style={{ zIndex: 'var(--z-dropdown)' }}
         >
           {CURRENCIES.map((code) => {
-            const def = CURRENCY_DEFS[code]
             const active = code === currency
             return (
               <li key={code}>
@@ -123,7 +125,16 @@ export function CurrencySwitcher({ tone = 'light', className }: CurrencySwitcher
                   <span className="w-4 shrink-0 text-accent-ink">
                     {active && <Icon name="check" size={14} strokeWidth={2.4} />}
                   </span>
-                  <span className="flex-1">{def.label}</span>
+                  {/* LE NOM À GAUCHE, LE CODE À DROITE — et deux choses
+                      différentes. La colonne de droite portait déjà le code
+                      quand celle de gauche affichait « CAD ($) » : la ligne
+                      l'écrivait deux fois et ne nommait rien, laissant
+                      départager les deux dollars par trois lettres qu'il faut
+                      déjà connaître. Le nom vient du dictionnaire, comme
+                      partout ailleurs où une devise se lit en toutes lettres. */}
+                  <span className="flex-1">
+                    {t(`common.currencyNames.${code}` as 'common.currencyNames.CFA')}
+                  </span>
                   <span className="text-caps text-muted">{code}</span>
                 </button>
               </li>

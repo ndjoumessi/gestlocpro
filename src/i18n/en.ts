@@ -24,6 +24,12 @@ export const en: Dictionary = {
     required: 'required',
     optional: 'optional',
     currency: 'Currency',
+    currencyNames: {
+      CFA: 'CFA franc (FCFA)',
+      EUR: 'Euro (€)',
+      CAD: 'Canadian dollar ($)',
+      USD: 'US dollar ($)',
+    },
     language: 'Language',
     theme: 'Theme',
     country: 'Country',
@@ -752,9 +758,6 @@ export const en: Dictionary = {
       currencyHint: 'The unit of every amount in the park: rents, payments, rebilled charges.',
       currencyXAF: 'CFA franc — Central Africa (CEMAC)',
       currencyXOF: 'CFA franc — West Africa (WAEMU)',
-      currencyEUR: 'Euro (€)',
-      currencyCAD: 'Canadian dollar ($)',
-      currencyUSD: 'US dollar ($)',
       submit: 'Save',
       confirmCurrency: 'Change the currency',
       currencyWarning:

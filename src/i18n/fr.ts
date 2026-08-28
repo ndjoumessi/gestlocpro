@@ -37,6 +37,30 @@ export const fr = {
     required: 'obligatoire',
     optional: 'facultatif',
     currency: 'Devise',
+    /**
+     * LE NOM DES DEVISES, ET C'EST LA SEULE LISTE QUI LES NOMME.
+     *
+     * Elles vivaient en dur dans `currency/currencies.ts`, hors du
+     * dictionnaire : `t()` ne les voyait pas, `check-i18n` non plus — il
+     * contrôle le JSX, pas un module de données. Deux d'entre elles se
+     * désignaient d'ailleurs par leur propre code — « CAD ($) » — dans un menu
+     * qui affiche ce code juste à côté.
+     *
+     * Le symbole reste entre parenthèses : les deux dollars le partagent, il ne
+     * distingue rien seul, mais il ancre le nom sur ce qu'on lit ensuite à côté
+     * des montants.
+     *
+     * `CFA` couvre les DEUX zones franc — l'écran n'en affiche qu'une devise,
+     * même parité, même sigle. Le parc, lui, doit trancher pour le stockage :
+     * ses deux entrées qualifiées vivent dans `app.parkSettings`, et elles sont
+     * les seules à ne pas venir d'ici.
+     */
+    currencyNames: {
+      CFA: 'Franc CFA (FCFA)',
+      EUR: 'Euro (€)',
+      CAD: 'Dollar canadien ($)',
+      USD: 'Dollar américain ($)',
+    },
     language: 'Langue',
     theme: 'Thème',
     country: 'Pays',
@@ -928,9 +952,9 @@ export const fr = {
       // distinctes. Le stockage doit trancher, la zone le dit.
       currencyXAF: 'FCFA — Afrique centrale (CEMAC)',
       currencyXOF: 'FCFA — Afrique de l’Ouest (UEMOA)',
-      currencyEUR: 'Euro (€)',
-      currencyCAD: 'Dollar canadien ($)',
-      currencyUSD: 'Dollar américain ($)',
+      // Les trois autres devises du parc sont celles que l'en-tête et
+      // l'inscription proposent aussi : leur nom vit à `common.currencyNames`,
+      // seul endroit d'où une devise se nomme.
       submit: 'Enregistrer',
       /**
        * Le second clic. Le libellé NOMME le geste au lieu de le confirmer :

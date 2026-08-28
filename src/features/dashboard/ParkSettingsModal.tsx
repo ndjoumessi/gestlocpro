@@ -3,6 +3,7 @@ import { Modal } from '@/components/primitives/Modal'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
 import { Input, Select } from '@/components/primitives/Input'
+import { Combobox } from '@/components/primitives/Combobox'
 import { Notice } from '@/components/primitives/Notice'
 import { useToast } from '@/components/primitives/Toast'
 import { useT, useI18n } from '@/i18n/I18nProvider'
@@ -274,43 +275,50 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
 
         <Field label={t('app.parkSettings.country')} hint={t('app.parkSettings.countryHint')}>
           {(props) => (
-            <Select
-              {...props}
+            /*
+              DEUX CENT QUARANTE-DEUX PAYS DANS UN `<select>` : LE PANNEAU DU
+              SYSTÈME, PAR-DESSUS LA MODALE.
+
+              Mesuré : il s'ouvrait du haut de la fenêtre jusqu'en bas et
+              recouvrait le titre, la description, le nom du parc et les deux
+              champs suivants. On choisissait son pays à l'aveugle, dans un
+              formulaire dont on ne voyait plus rien — le défaut exact que le
+              lot précédent a retiré du dernier calendrier natif du produit,
+              sous un autre nom.
+
+              Et il ne se cherchait pas : le saut à la frappe du natif est un
+              préfixe strict, sans filtre ni retour visible, et la souris comme
+              le tactile n'y ont pas droit. `SignUp` avait déjà tranché la même
+              question, avec la même liste, en posant la règle : « le champ
+              cherchable est déjà celui de l'indicatif, deux champs plus haut —
+              la même notion mérite le même geste. » Cette modale avait été
+              écrite après, et ne l'a pas suivi.
+
+              L'OPTION VIDE DISPARAÎT SANS QUE SA RAISON D'ÊTRE S'EN AILLE. Elle
+              existait parce qu'un `<select>` dont la valeur ne correspond à
+              aucune option affiche LA PREMIÈRE : sans elle, la modale annonçait
+              « Belgique » sur un parc dont personne n'avait posé le pays — le
+              mensonge même que l'en-tête de ce fichier raconte. Un combobox n'a
+              pas ce travers : sans choix, il affiche son texte d'invite, qui
+              porte les mêmes mots. La contrainte tombe donc avec le contrôle
+              qui la portait, et non par oubli.
+            */
+            <Combobox
+              id={props.id}
+              aria-describedby={props['aria-describedby']}
               name="countryCode"
+              /* `country` : le champ ENVOIE le code ISO — celui que porte
+                 l'entrée cachée du combobox et que le serveur attend. */
+              autoComplete="country"
+              placeholder={t('app.parkSettings.notSet')}
+              options={optionsDePays.map(({ code, label, servi }) => ({
+                value: code,
+                label,
+                groupe: t(servi ? 'common.countryGroupServed' : 'common.countryGroupOther'),
+              }))}
               value={pays}
-              onChange={(e) => setPays(e.target.value)}
-            >
-              {/*
-                L'OPTION VIDE, ET ELLE MANQUAIT AUX DEUX LISTES.
-
-                Un `<select>` dont la valeur ne correspond à aucune option
-                affiche la PREMIÈRE. Sans parc — ou sur un parc dont le champ
-                n'a jamais été posé — cette modale annonçait donc « Belgique »
-                et « FCFA — Afrique centrale », deux valeurs que personne n'a
-                choisies, sur l'écran dont l'en-tête raconte précisément ce
-                défaut : « Parc Bastos est né FR/EUR parce que le pays se
-                déduisait en prenant le premier pays de la liste qui porte la
-                devise ». L'écran écrit pour réparer ce mensonge le rejouait
-                dans son propre formulaire.
-
-                L'état React, lui, valait bien la chaîne vide : rien n'était
-                ENVOYÉ à tort. Ce qui était faux, c'est ce que l'œil lisait — et
-                c'est le pire des deux, parce qu'on n'a aucun moyen de le
-                soupçonner.
-
-                `disabled` : une fois le pays posé, on n'y revient pas. Le
-                dépôt n'a pas de geste pour « dé-choisir » le pays d'un parc, et
-                offrir l'option ferait croire le contraire.
-              */}
-              <option value="" disabled>
-                {t('app.parkSettings.notSet')}
-              </option>
-              {optionsDePays.map((option) => (
-                <option key={option.code} value={option.code}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
+              onChange={setPays}
+            />
           )}
         </Field>
 
@@ -326,9 +334,24 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
               <option value="" disabled>
                 {t('app.parkSettings.notSet')}
               </option>
+              {/*
+                DEUX ORIGINES POUR CINQ LIBELLÉS, et la frontière a un sens.
+
+                `XAF` et `XOF` n'existent QUE pour le stockage : l'écran ne
+                connaît qu'un franc, le parc doit en choisir un des deux. Leurs
+                libellés qualifient la zone et ne servent qu'ici.
+
+                Les trois autres sont les mêmes devises que le menu de
+                l'en-tête et que l'inscription proposent — elles se nomment
+                donc au même endroit qu'eux. Elles avaient ici leur propre jeu
+                de clés, jumeau et indépendant : deux vocabulaires pour la même
+                notion, dont l'un pouvait dériver sans que rien ne le dise.
+              */}
               {DEVISES_DU_PARC.map((code) => (
                 <option key={code} value={code}>
-                  {t(`app.parkSettings.currency${code}` as 'app.parkSettings.currencyXAF')}
+                  {code === 'XAF' || code === 'XOF'
+                    ? t(`app.parkSettings.currency${code}` as 'app.parkSettings.currencyXAF')
+                    : t(`common.currencyNames.${code}` as 'common.currencyNames.CFA')}
                 </option>
               ))}
             </Select>

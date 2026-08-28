@@ -40,7 +40,15 @@ export interface CurrencyDef {
   code: CurrencyCode
   /** Symbole compact affiché à côté des montants. */
   symbol: string
-  /** Libellé du sélecteur. */
+  /**
+   * Forme COMPACTE — le déclencheur du menu, la pastille de la vitrine.
+   *
+   * Ce n'est PAS le nom de la devise. Le nom se traduit, donc il vit dans le
+   * dictionnaire (`common.currencyNames`) et c'est lui que portent les LISTES :
+   * l'en-tête, l'inscription, la correction du parc. Ici on ne cherche qu'une
+   * étiquette courte pour un espace contraint, où le code fait l'affaire parce
+   * que le choix courant est déjà connu de celui qui l'a fait.
+   */
   label: string
   /** Locale utilisée pour le groupement des milliers. */
   locale: string

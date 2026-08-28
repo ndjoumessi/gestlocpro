@@ -783,9 +783,12 @@ function ContextStep({
               value={state.currency}
               onChange={(e) => onCurrencyChange(e.target.value as CurrencyCode)}
             >
+              {/* Le NOM, pas le code : c'est une liste, et les listes de
+                  devises parlent toutes le même vocabulaire depuis qu'il vit
+                  au dictionnaire. Voir `common.currencyNames`. */}
               {CURRENCIES.map((code) => (
                 <option key={code} value={code}>
-                  {CURRENCY_DEFS[code].label}
+                  {t(`common.currencyNames.${code}` as 'common.currencyNames.CFA')}
                 </option>
               ))}
             </Select>
