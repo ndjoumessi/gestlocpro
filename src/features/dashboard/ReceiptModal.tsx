@@ -12,6 +12,7 @@ import { useRole } from '@/components/layout/AppShell'
 import { useToast } from '@/components/primitives/Toast'
 import { Logo } from '@/components/primitives/Logo'
 import { PAYMENT_METHOD_LABELS, type PaymentMethodKey } from '@/data/portfolio'
+import { useDocumentEmisPdf } from './documentsPdf'
 
 /**
  * Document de quittance ou de reçu, tel que le SERVEUR l'a arrêté.
@@ -112,6 +113,7 @@ export function ReceiptModal({
   const [retraitEnCours, setRetraitEnCours] = useState(false)
   const { role } = useRole()
   const { notify } = useToast()
+  const telechargerLePdf = useDocumentEmisPdf()
 
   /**
    * Le document se referme après le retrait, plutôt que de se recalculer ici.
@@ -199,8 +201,55 @@ export function ReceiptModal({
           <Button variant="secondary" onClick={onClose}>
             {t('common.close')}
           </Button>
+          {/*
+            LE PDF, ET L'IMPRESSION À CÔTÉ.
+
+            La modale n'offrait que `window.print()`. La boîte d'impression sait
+            produire un PDF, mais elle y ajoute ses en-têtes, le nom du fichier
+            échappe au produit, et son comportement est inégal sur Android — la
+            cible principale. Surtout, la feuille ainsi obtenue ne ressemblait
+            pas à celle que le LOCATAIRE télécharge du même mois : deux pièces
+            pour un seul fait.
+
+            Les deux passent maintenant par la même mise en page. L'impression
+            survit parce que remettre du papier reste un geste du métier.
+          */}
           <Button
+            variant="secondary"
             icon="download"
+            disabled={!document || Boolean(echec)}
+            onClick={() =>
+              document &&
+              telechargerLePdf({
+                kind: document.kind,
+                unit: document.unit,
+                building: document.building,
+                tenant: document.tenant,
+                periode: d.monthYear({ year: annee, month: mois - 1 }),
+                moisISO: periodStart.slice(0, 7),
+                rentMinor: document.rentMinor,
+                waterMinor: document.waterMinor,
+                powerMinor: document.powerMinor,
+                dueMinor: document.dueMinor,
+                paidMinor: document.paidMinor,
+                balanceMinor: document.balanceMinor,
+                /* La devise DU DOCUMENT, celle que le serveur a posée à
+                   l'émission — pas celle de l'écran. Le même versement imprimé
+                   sur deux postes réglés différemment portait deux monnaies. */
+                argent: money,
+                payments: document.payments.map((versement) => ({
+                  date: d.fullDate(partiesDeDateISO(versement.paidOn)),
+                  moyen: libelleMoyen(versement.method),
+                  reference: versement.reference,
+                  amountMinor: versement.amountMinor,
+                })),
+              })
+            }
+          >
+            {t('app.documents.download')}
+          </Button>
+          <Button
+            icon="file"
             onClick={() => window.print()}
             /*
               ÉTEINT AUSSI QUAND LE RETRAIT A ÉCHOUÉ.

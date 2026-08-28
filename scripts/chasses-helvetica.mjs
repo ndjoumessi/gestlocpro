@@ -19,14 +19,30 @@
  * directement des millièmes de cadratin, sans conversion ni arrondi à faire.
  * C'est la seule source indépendante disponible sans réseau ni dépendance.
  *
+ * IL COÛTE UN LANCEMENT DE NAVIGATEUR, ET IL A ÉTÉ MESURÉ : 0,45 à 0,50 s,
+ * contre environ trois minutes pour la porte entière — trois millièmes. La page
+ * est vide et rien n'est navigué ; c'est le prix d'un `chromium.launch()` seul.
+ * La réserve du lot précédent s'inquiétait d'un coût qu'elle n'avait pas
+ * chiffré ; le voici.
+ *
  * ═══ CE QUE CE SCRIPT NE DIT PAS ═══
  *
  * Il ne dit rien de la mise en page : deux tables justes ne garantissent pas
  * qu'une réserve trop longue tienne dans sa colonne — voir
- * `documentDansLaPage.test.tsx`. Il ne dit rien non plus des caractères hors
- * ASCII : la chasse d'une lettre accentuée est déduite de sa lettre nue, et
- * cette déduction-là est une propriété d'Helvetica que le script vérifie sur
- * deux témoins, pas un tableau de plus.
+ * `documentDansLaPage.test.tsx`.
+ *
+ * ═══ CE QU'IL A FINI PAR DIRE ═══
+ *
+ * Sa première rédaction s'arrêtait à l'ASCII et laissait DEUX ZONES d'ombre,
+ * dites en réserve : la table des signes particuliers — guillemets français,
+ * tiret cadratin, degré, espaces insécables —, et la déduction par
+ * décomposition, qui donne à `é` la chasse de `e`. La première n'était pas
+ * mesurée du tout ; la seconde l'était sur deux témoins.
+ *
+ * Ces deux zones sont celles où le produit écrit le plus souvent : le
+ * dictionnaire est français, `Intl` compose ses milliers avec une espace fine,
+ * et le point médian sépare les segments d'une ligne de versement. Elles sont
+ * mesurées comme le reste.
  *
  * ═══ UNE POLICE ABSENTE N'EST PAS UNE TABLE JUSTE ═══
  *
@@ -82,13 +98,65 @@ const ECRITES = {
   grasse: tableDeLaSource('GRASSE'),
 }
 
+/**
+ * La table des signes que la décomposition ne sait pas ramener à une lettre.
+ *
+ * Relue dans la source plutôt que recopiée ici : une seconde liste dériverait
+ * de la première au premier signe ajouté, et c'est exactement le genre de
+ * divergence que ce dépôt paie ailleurs.
+ */
+function signesParticuliers() {
+  const bloc = /const CHASSES_PARTICULIERES: Record<string, readonly \[number, number\]> = \{([\s\S]*?)\n\}/.exec(
+    SOURCE,
+  )
+  if (!bloc) throw new Error('table des signes particuliers introuvable dans lib/pdf.ts')
+  const trouves = [...bloc[1].matchAll(/'(?:(.)|\\u([0-9a-f]{4}))': \[(\d+), (\d+)\],/g)].map(
+    ([, litteral, point, romaine, grasse]) => {
+      const signe = litteral ?? String.fromCharCode(parseInt(point, 16))
+      return {
+        signe,
+    /*
+      CE QUI SERA RÉELLEMENT TRACÉ, et ce n'est pas toujours le signe d'entrée.
+
+      `versWinAnsi` REMAPPE les deux espaces insécables — la fine et l'ordinaire
+      — sur l'unique espace insécable de WinAnsi. C'est donc la chasse de
+      celle-là qu'un lecteur appliquera, et non celle de l'espace fine, que le
+      navigateur mesure pourtant volontiers à 139 millièmes. Comparer le signe
+      d'entrée reviendrait à mesurer un glyphe qui ne sera jamais tracé.
+    */
+        trace: signe === '\u202f' ? '\u00a0' : signe,
+        ecrites: [Number(romaine), Number(grasse)],
+      }
+    },
+  )
+  if (trouves.length < 15)
+    throw new Error(`${trouves.length} signe(s) relu(s) : le motif ne reconnaît plus la table`)
+  return trouves
+}
+
+const SIGNES = signesParticuliers()
+
+/**
+ * Les lettres accentuées du latin-1, celles dont la chasse est DÉDUITE.
+ *
+ * `chasse()` ramène chacune à sa lettre nue par décomposition canonique, sans
+ * table — c'est vrai d'Helvetica, où l'accent ne pousse pas la chasse. « Vrai »
+ * était jusqu'ici une affirmation vérifiée sur `é` et `À`. On les prend toutes.
+ */
+const ACCENTUEES = Array.from({ length: 0x100 - 0xc0 }, (_, i) => String.fromCharCode(0xc0 + i))
+  .filter((lettre) => /[a-z]/i.test(lettre.normalize('NFD')[0]))
+  /* Celles que la table NOMME ne sont plus déduites : les quatre `i` accentués
+     y sont, parce que l'accent y remplace le point et élargit le glyphe. Les
+     laisser ici ferait rougir la règle sur l'exception qu'elle a fait écrire. */
+  .filter((lettre) => !SIGNES.some((s) => s.signe === lettre))
+
 const navigateur = await chromium.launch()
 let mesurees
 try {
   const page = await (await navigateur.newContext()).newPage()
   await page.setContent('<canvas></canvas>')
   mesurees = await page.evaluate(
-    async ({ premier, nombre }) => {
+    async ({ premier, nombre, signes, accentuees }) => {
       // Les polices d'abord : une mesure prise avant leur disponibilité serait
       // celle de la substitution, c'est-à-dire la mauvaise réponse à la bonne
       // question. La leçon est celle de `plafond-coquille`.
@@ -101,19 +169,45 @@ try {
           (_, i) => dessin.measureText(String.fromCharCode(premier + i)).width,
         )
       }
+      // 1000 pixels de corps : la mesure EST le millième de cadratin.
+      const romaine = serie('1000px Helvetica')
+      const grasse = serie('bold 1000px Helvetica')
+
+      /* LA GRAISSE EST REMISE EN ROMAINE avant tout le reste. `serie` laisse la
+         fonte du contexte sur son dernier réglage : sans cette ligne, les
+         signes et les déductions étaient mesurés en GRASSE, et huit d'entre eux
+         paraissaient faux pour cette seule raison. */
+      /* Les signes et les déductions sont relevés DANS LES DEUX GRAISSES : la
+         table en porte deux valeurs depuis qu'on a mesuré que la moitié de ses
+         entrées changent de chasse en gras. */
+      const dansLesDeux = (mesure) =>
+        ['1000px Helvetica', 'bold 1000px Helvetica'].map((police) => {
+          dessin.font = police
+          return mesure()
+        })
+
       return {
-        // 1000 pixels de corps : la mesure EST le millième de cadratin.
-        romaine: serie('1000px Helvetica'),
-        grasse: serie('bold 1000px Helvetica'),
-        // Les deux témoins de la déduction par décomposition : dans Helvetica,
-        // l'accent ne pousse pas la chasse.
-        accentuees: [
-          dessin.measureText('é').width,
-          (dessin.font = '1000px Helvetica') && dessin.measureText('e').width,
-        ],
+        romaine,
+        grasse,
+        signes: dansLesDeux(() =>
+          Object.fromEntries(signes.map(([source, trace]) => [source, dessin.measureText(trace).width])),
+        ),
+        deductions: dansLesDeux(() =>
+          Object.fromEntries(
+            accentuees.map((lettre) => [
+              lettre,
+              [dessin.measureText(lettre).width, dessin.measureText(lettre.normalize('NFD')[0]).width],
+            ]),
+          ),
+        ),
       }
     },
-    { premier: PREMIER, nombre: NOMBRE },
+    {
+      premier: PREMIER,
+      nombre: NOMBRE,
+      signes: SIGNES.map((s) => [s.signe, s.trace]),
+      accentuees: ACCENTUEES,
+    },
   )
 } finally {
   await navigateur.close()
@@ -162,13 +256,55 @@ for (const [graisse, ecrites] of Object.entries(ECRITES)) {
 if (comparees !== 2 * NOMBRE)
   plaintes.push(`${comparees} chasse(s) comparée(s) pour ${2 * NOMBRE} attendue(s).`)
 
-/* La déduction par décomposition, sur ses deux témoins : `é` mesure `e`. */
-const [accentuee, nue] = mesurees.accentuees
-if (Math.abs(accentuee - nue) > TOLERANCE)
+/* Les signes particuliers : la seule table du haut du jeu, et elle était écrite
+   sans qu'aucune mesure ne la contredise. */
+const GRAISSES = ['romaine', 'grasse']
+const signesFaux = SIGNES.flatMap(({ signe, ecrites }) =>
+  GRAISSES.flatMap((nom, i) =>
+    Math.abs(mesurees.signes[i][signe] - ecrites[i]) > TOLERANCE
+      ? [
+          `« ${signe} » en ${nom} : écrit ${ecrites[i]}, mesuré ${Math.round(mesurees.signes[i][signe])}`,
+        ]
+      : [],
+  ),
+)
+
+if (signesFaux.length > 0)
   plaintes.push(
-    `l’accent pousse la chasse : « é » mesure ${Math.round(accentuee)}, « e » ${Math.round(nue)}.\n` +
-      '   `chasse()` déduit la largeur d’une lettre accentuée de sa lettre nue ; cette\n' +
-      '   déduction cesse d’être vraie, et il faut une table pour le haut du jeu.',
+    `signes particuliers : ${signesFaux.length} chasse(s) fausse(s).\n     · ` +
+      signesFaux.join('\n     · ') +
+      '\n   Ce sont les signes que le produit écrit le plus — guillemets, tiret cadratin,\n' +
+      '   espace fine des milliers. Corrigez `CHASSES_PARTICULIERES`, jamais la mesure.',
+  )
+
+/*
+  LA DÉDUCTION PAR DÉCOMPOSITION, sur TOUTES les accentuées du latin-1.
+
+  `chasse()` ramène `é` à `e` sans table, au motif que l'accent ne pousse pas la
+  chasse dans Helvetica. C'était vrai de deux témoins ; on le demande des
+  trente-et-une.
+*/
+const deductionsFausses = GRAISSES.flatMap((nom, i) =>
+  Object.entries(mesurees.deductions[i])
+    .filter(([, [accentuee, nue]]) => Math.abs(accentuee - nue) > TOLERANCE)
+    .map(
+      ([lettre, [accentuee, nue]]) =>
+        `« ${lettre} » en ${nom} mesure ${Math.round(accentuee)}, sa lettre nue ${Math.round(nue)}`,
+    ),
+)
+
+if (deductionsFausses.length > 0)
+  plaintes.push(
+    `déduction par décomposition : ${deductionsFausses.length} lettre(s) en défaut.\n     · ` +
+      deductionsFausses.join('\n     · ') +
+      '\n   `chasse()` déduit la largeur d’une lettre accentuée de sa lettre nue. La\n' +
+      '   déduction cesse d’être vraie : il faut une table pour ces lettres-là.',
+  )
+
+/* GARDE DE LA GARDE, seconde moitié : un jeu vide passerait sans rien mesurer. */
+if (ACCENTUEES.length < 25 || SIGNES.length < 15)
+  plaintes.push(
+    `${ACCENTUEES.length} accentuée(s) et ${SIGNES.length} signe(s) : le jeu s’est vidé.`,
   )
 
 if (plaintes.length > 0) {
@@ -178,6 +314,7 @@ if (plaintes.length > 0) {
 }
 
 console.log(
-  `\n✓ chasses-helvetica : ${comparees} chasses confrontées à la police réelle, deux graisses.\n` +
-    '  Ce script ne dit RIEN de la mise en page ni des caractères hors ASCII — voir son en-tête.',
+  `\n✓ chasses-helvetica : ${comparees} chasses confrontées à la police réelle, deux graisses,\n` +
+    `  plus ${SIGNES.length} signes particuliers et ${ACCENTUEES.length} déductions par décomposition.\n` +
+    '  Ce script ne dit RIEN de la mise en page — voir son en-tête.',
 )

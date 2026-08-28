@@ -127,105 +127,179 @@ function useRemise() {
  * versements suit la convention du produit : loyer, puis eau, puis électricité.
  * La recalculer ici en aurait fait une seconde convention.
  */
+
+/**
+ * LE CONTENU D'UNE QUITTANCE, INDÉPENDANT DE SA SOURCE.
+ *
+ * ═══ POURQUOI CETTE FORME NEUTRE EXISTE ═══
+ *
+ * Le produit émet la même pièce par DEUX chemins, et c'était la réserve écrite
+ * au lot précédent : le gestionnaire ouvre un document ARRÊTÉ PAR LE SERVEUR —
+ * `POST /:parkId/receipts`, avec la devise du parc et aucun montant recalculé —
+ * pendant que le locataire télécharge ce que le client compose depuis les
+ * données du portefeuille. Deux sources, et jusqu'ici deux mises en page.
+ *
+ * Les fondre en une seule SOURCE demanderait d'ouvrir la route d'émission au
+ * locataire pour son propre bail : un lot serveur, avec sa garde
+ * d'autorisation. Les fondre en une seule MISE EN PAGE ne demande que ceci —
+ * une forme que les deux sources savent remplir. Le même mois rend désormais la
+ * même feuille, quel que soit celui qui la demande.
+ *
+ * Les montants sont déjà MIS EN FORME par l'appelant, et c'est délibéré : le
+ * document du serveur porte SA devise, celle du parc à l'émission, tandis que
+ * l'espace locataire emploie la devise d'affichage. Composer ici aurait
+ * réintroduit la divergence par la petite porte.
+ */
+export interface ContenuDeQuittance {
+  titre: 'app.receipts.quittance' | 'app.receipts.recu'
+  logement: string
+  periode: string
+  locataire: string
+  postes: { rent: string; water: string; power: string }
+  du: string
+  paye: string
+  /** Absent quand la période est soldée — voir plus bas. */
+  reste?: string
+  statut: string
+  versements: { trace: string; montant: string }[]
+  /** L'imputation, seulement là où elle apprend quelque chose. */
+  imputation?: string
+}
+
 /**
  * QUITTANCE OU REÇU — LA RÈGLE EST CELLE DU SERVEUR, ET ELLE Y EST ÉCRITE.
  *
  * « Quittance seulement si la période est intégralement soldée. En deçà, on
  * émet un REÇU, qui n'atteste que le montant reçu. Confondre les deux ferait
  * signer au bailleur une preuve de paiement qu'il n'a pas reçu. » — la route
- * d'émission, `POST /:parkId/receipts`, qui calcule `solde <= 0` exactement
- * comme ici.
+ * d'émission, qui calcule `solde <= 0` exactement comme ici.
  *
  * Le document du locataire s'intitulait « Quittance de loyer » sur TOUTES ses
  * périodes, celles qu'il n'a réglées qu'en partie comprises. Le même mois
  * portait donc deux noms selon qui le regardait — et c'est le locataire qui
  * garde le document et le présente.
- *
- * LES DEUX CHEMINS LISENT LA MÊME PAIRE DE CLÉS, `app.receipts.quittance` et
- * `app.receipts.recu`, celles que la modale du gestionnaire emploie déjà. Une
- * troisième clé au texte identique existait ici ; c'était la divergence en
- * germe, avec le mot juste par accident.
  */
-function titreDeQuittance(receipt: Receipt): 'app.receipts.quittance' | 'app.receipts.recu' {
-  return receiptDue(receipt) - receipt.paidMinor <= 0
-    ? 'app.receipts.quittance'
-    : 'app.receipts.recu'
+export function titreDuDocument(solde: number): ContenuDeQuittance['titre'] {
+  return solde <= 0 ? 'app.receipts.quittance' : 'app.receipts.recu'
 }
 
+/**
+ * Une quittance, une page.
+ *
+ * ELLE REMPLACE UN CSV D'UNE SEULE LIGNE. Celui-ci était honnête faute de mieux
+ * — son commentaire disait « le vrai document est un PDF que ce produit ne sait
+ * pas encore fabriquer » — mais un tableur d'une ligne n'est pas ce qu'un
+ * locataire présente à qui lui demande une quittance.
+ */
 function pagesDeQuittance(
   page: MiseEnPage,
-  contexte: {
-    t: ReturnType<typeof useT>
-    d: ReturnType<typeof useDates>
-    argent: (montant: number) => string
-    parc: string
-    unit: Unit
-    immeuble: string | undefined
-    receipt: Receipt
-  },
+  t: ReturnType<typeof useT>,
+  parc: string,
+  emisLe: string,
+  contenu: ContenuDeQuittance,
 ) {
-  const { t, d, argent, parc, unit, immeuble, receipt } = contexte
-
   enTete(page, {
     parc,
-    titre: t(titreDeQuittance(receipt)),
-    logement: logementNomme(unit, immeuble),
-    ligneDate: t('app.documents.pdfIssuedOn', { date: d.fullDate(partiesDeDate(new Date())) }),
+    titre: t(contenu.titre),
+    logement: contenu.logement,
+    ligneDate: t('app.documents.pdfIssuedOn', { date: emisLe }),
   })
 
-  page.paire(t('app.period'), d.monthYear(receipt), { gras: true })
-  page.paire(t('app.portfolio.tenant'), unit.tenant ?? t('app.portfolio.noTenant'))
+  page.paire(t('app.period'), contenu.periode, { gras: true })
+  page.paire(t('app.portfolio.tenant'), contenu.locataire)
 
   page.section(t('app.documents.pdfBreakdown'))
-  page.paire(t('app.tenant.colRent'), argent(receipt.rentMinor))
-  page.paire(t('app.tenant.colWater'), argent(receipt.waterMinor))
-  page.paire(t('app.tenant.colPower'), argent(receipt.powerMinor))
+  page.paire(t('app.tenant.colRent'), contenu.postes.rent)
+  page.paire(t('app.tenant.colWater'), contenu.postes.water)
+  page.paire(t('app.tenant.colPower'), contenu.postes.power)
   page.filet()
 
-  const du = receiptDue(receipt)
-  page.paire(t('app.payments.due'), argent(du), { gras: true })
-  page.paire(t('app.payments.paid'), argent(receipt.paidMinor))
+  page.paire(t('app.payments.due'), contenu.du, { gras: true })
+  page.paire(t('app.payments.paid'), contenu.paye)
   /* LE RESTE N'APPARAÎT QUE S'IL EXISTE. « Reste à régler : 0 » sur une période
      soldée est un chiffre qu'il faut lire pour constater qu'il ne dit rien. */
-  if (du > receipt.paidMinor)
-    page.paire(t('app.documents.pdfRemaining'), argent(du - receipt.paidMinor), { gras: true })
-  page.paire(t('app.portfolio.status'), t(`status.${receiptStatus(receipt, new Date())}` as 'status.paid'))
+  if (contenu.reste) page.paire(t('app.documents.pdfRemaining'), contenu.reste, { gras: true })
+  page.paire(t('app.portfolio.status'), contenu.statut)
 
   page.section(t('app.documents.pdfPayments'))
-  if (receipt.payments.length === 0) page.ligne(t('app.documents.pdfNoPayment'))
-  for (const versement of receipt.payments) {
-    /* LA RÉFÉRENCE DE L'OPÉRATEUR EST SUR LA PIÈCE. C'est avec elle qu'un
-       locataire conteste un encaissement ; l'export CSV la portait déjà, et un
-       document qui l'omettrait vaudrait moins que le tableur qu'il remplace. */
-    const trace = [
-      d.fullDate(versement.paidOn),
-      t(PAYMENT_METHOD_LABELS[versement.method] as 'app.payments.methodCash'),
-      versement.reference,
-    ]
-      .filter(Boolean)
-      .join(' · ')
-    page.paire(trace, argent(versement.amountMinor))
-  }
+  if (contenu.versements.length === 0) page.ligne(t('app.documents.pdfNoPayment'))
+  for (const versement of contenu.versements) page.paire(versement.trace, versement.montant)
 
-  /* L'imputation, seulement là où elle apprend quelque chose : sur une période
-     partiellement réglée, elle dit QUEL poste reste ouvert. */
-  if (du > receipt.paidMinor && receipt.paidMinor > 0) {
-    const part = imputation(receipt)
+  if (contenu.imputation) {
     page.saut(4)
-    page.paragraphe(
-      t('app.documents.pdfImputation', {
-        rent: argent(part.rent),
-        water: argent(part.water),
-        power: argent(part.power),
-      }),
-      { petit: true },
-    )
+    page.paragraphe(contenu.imputation, { petit: true })
   }
+}
+
+/**
+ * Ce que l'espace locataire sait d'une période, mis à la forme du document.
+ *
+ * L'imputation ne figure que sur une période PARTIELLEMENT réglée : c'est là
+ * qu'elle apprend quelque chose — quel poste reste ouvert — et elle suit la
+ * convention du produit, loyer puis eau puis électricité. La recalculer ici en
+ * aurait fait une seconde convention.
+ *
+ * LA RÉFÉRENCE DE L'OPÉRATEUR EST SUR LA PIÈCE. C'est avec elle qu'un locataire
+ * conteste un encaissement ; l'export en tableur la porte déjà, et un document
+ * qui l'omettrait vaudrait moins que le fichier qu'il accompagne.
+ */
+function contenuDuPortefeuille(
+  t: ReturnType<typeof useT>,
+  d: ReturnType<typeof useDates>,
+  argent: (montant: number) => string,
+  unit: Unit,
+  immeuble: string | undefined,
+  receipt: Receipt,
+): ContenuDeQuittance {
+  const du = receiptDue(receipt)
+  const solde = du - receipt.paidMinor
+  const part = imputation(receipt)
+
+  return {
+    titre: titreDuDocument(solde),
+    logement: logementNomme(unit, immeuble),
+    periode: d.monthYear(receipt),
+    locataire: unit.tenant ?? t('app.portfolio.noTenant'),
+    postes: {
+      rent: argent(receipt.rentMinor),
+      water: argent(receipt.waterMinor),
+      power: argent(receipt.powerMinor),
+    },
+    du: argent(du),
+    paye: argent(receipt.paidMinor),
+    reste: solde > 0 ? argent(solde) : undefined,
+    statut: t(`status.${receiptStatus(receipt, new Date())}` as 'status.paid'),
+    versements: receipt.payments.map((versement) => ({
+      trace: [
+        d.fullDate(versement.paidOn),
+        t(PAYMENT_METHOD_LABELS[versement.method] as 'app.payments.methodCash'),
+        versement.reference,
+      ]
+        .filter(Boolean)
+        .join(' · '),
+      montant: argent(versement.amountMinor),
+    })),
+    imputation:
+      solde > 0 && receipt.paidMinor > 0
+        ? t('app.documents.pdfImputation', {
+            rent: argent(part.rent),
+            water: argent(part.water),
+            power: argent(part.power),
+          })
+        : undefined,
+  }
+}
+
+/** La date d'émission, celle du jour où l'on télécharge. */
+function useEmisLe() {
+  const d = useDates()
+  return d.fullDate(partiesDeDate(new Date()))
 }
 
 export function useReceiptPdf() {
   const t = useT()
   const nommerLImmeuble = useNomDeLImmeuble()
+  const emisLe = useEmisLe()
   const d = useDates()
   const { money } = useCurrency()
   const parc = useEmetteur()
@@ -235,9 +309,10 @@ export function useReceiptPdf() {
     (unit: Unit, receipt: Receipt): string => {
       const page = nouvelleMiseEnPage()
       const argent = (montant: number) => money(montant, { round: true })
-      pagesDeQuittance(page, { t, d, argent, parc, unit, immeuble: nommerLImmeuble(unit), receipt })
+      const contenu = contenuDuPortefeuille(t, d, argent, unit, nommerLImmeuble(unit), receipt)
+      pagesDeQuittance(page, t, parc, emisLe, contenu)
 
-      const titre = t(titreDeQuittance(receipt))
+      const titre = t(contenu.titre)
       return remettre(
         page.pages((numero, total) => piedDePage(t, parc, titre, numero, total)),
         // Le mois de la quittance, et non le jour du téléchargement : c'est la
@@ -246,7 +321,7 @@ export function useReceiptPdf() {
         'app.receiptDownloaded',
       )
     },
-    [d, money, nommerLImmeuble, parc, remettre, t],
+    [d, emisLe, money, nommerLImmeuble, parc, remettre, t],
   )
 }
 
@@ -262,6 +337,7 @@ export function useReceiptPdf() {
 export function useAllReceiptsPdf() {
   const t = useT()
   const nommerLImmeuble = useNomDeLImmeuble()
+  const emisLe = useEmisLe()
   const d = useDates()
   const { money } = useCurrency()
   const parc = useEmetteur()
@@ -275,7 +351,13 @@ export function useAllReceiptsPdf() {
       const immeuble = nommerLImmeuble(unit)
       receipts.forEach((receipt, index) => {
         if (index > 0) page.pageNeuve()
-        pagesDeQuittance(page, { t, d, argent, parc, unit, immeuble, receipt })
+        pagesDeQuittance(
+          page,
+          t,
+          parc,
+          emisLe,
+          contenuDuPortefeuille(t, d, argent, unit, immeuble, receipt),
+        )
       })
 
       const titre = t('app.documents.allReceipts')
@@ -285,8 +367,94 @@ export function useAllReceiptsPdf() {
         'app.receiptDownloaded',
       )
     },
-    [d, money, nommerLImmeuble, parc, remettre, t],
+    [d, emisLe, money, nommerLImmeuble, parc, remettre, t],
   )
+}
+
+/**
+ * LA QUITTANCE DU GESTIONNAIRE, depuis le document que le SERVEUR a arrêté.
+ *
+ * C'est le second chemin, et il rend désormais la même feuille que le premier.
+ * Il gardait `window.print()` pour seule issue : la boîte d'impression du
+ * navigateur sait produire un PDF, mais elle y ajoute ses en-têtes, le nom du
+ * fichier échappe au produit, et le comportement est inégal sur Android — la
+ * cible principale. Un document remis à un locataire ne se remet pas au hasard
+ * du réglage d'impression de qui l'émet.
+ *
+ * L'IMPRESSION SURVIT à côté : remettre une feuille de papier reste un geste du
+ * métier, et une agence sans imprimante n'est pas la règle sur ce marché.
+ *
+ * LES MONTANTS NE SONT PAS RECALCULÉS, et c'est toute la valeur de ce
+ * chemin-ci : ils viennent du document arrêté, dans SA devise — celle du parc à
+ * l'émission — pour qu'une pièce réémise en octobre rende exactement celle de
+ * juillet.
+ */
+export function useDocumentEmisPdf() {
+  const t = useT()
+  const parc = useEmetteur()
+  const emisLe = useEmisLe()
+  const remettre = useRemise()
+
+  return useCallback(
+    (document: DocumentEmisPdf): string => {
+      const page = nouvelleMiseEnPage()
+      const contenu: ContenuDeQuittance = {
+        /* Le serveur a DÉJÀ tranché entre quittance et reçu ; on lit son
+           verdict au lieu de le recalculer. C'est lui qui connaît l'échéance. */
+        titre: document.kind === 'quittance' ? 'app.receipts.quittance' : 'app.receipts.recu',
+        logement: [document.unit, document.building].filter(Boolean).join(' · '),
+        periode: document.periode,
+        locataire: document.tenant,
+        postes: {
+          rent: document.argent(document.rentMinor),
+          water: document.argent(document.waterMinor),
+          power: document.argent(document.powerMinor),
+        },
+        du: document.argent(document.dueMinor),
+        paye: document.argent(document.paidMinor),
+        reste: document.balanceMinor > 0 ? document.argent(document.balanceMinor) : undefined,
+        statut: t(document.kind === 'quittance' ? 'status.paid' : 'status.partial'),
+        versements: document.payments.map((versement) => ({
+          trace: [versement.date, versement.moyen, versement.reference].filter(Boolean).join(' · '),
+          montant: document.argent(versement.amountMinor),
+        })),
+      }
+      pagesDeQuittance(page, t, parc, emisLe, contenu)
+
+      const titre = t(contenu.titre)
+      return remettre(
+        page.pages((numero, total) => piedDePage(t, parc, titre, numero, total)),
+        nomDeFichier([titre, document.unit], document.moisISO, 'pdf'),
+        'app.receiptDownloaded',
+      )
+    },
+    [emisLe, parc, remettre, t],
+  )
+}
+
+/**
+ * Le document arrêté par le serveur, réduit à ce que la mise en page demande.
+ *
+ * La modale garde la forme complète — versements retirables, identifiants — et
+ * ne passe ici que ce qui s'imprime. Les montants arrivent avec leur fonction de
+ * mise en forme : c'est la devise DU DOCUMENT, pas celle de l'écran.
+ */
+export interface DocumentEmisPdf {
+  kind: 'quittance' | 'recu'
+  unit: string
+  building: string
+  tenant: string
+  periode: string
+  /** Le mois en ISO, pour le nom du fichier : c'est la période qui identifie. */
+  moisISO: string
+  rentMinor: number
+  waterMinor: number
+  powerMinor: number
+  dueMinor: number
+  paidMinor: number
+  balanceMinor: number
+  argent: (montant: number) => string
+  payments: { date: string; moyen: string; reference: string | null; amountMinor: number }[]
 }
 
 /* ─── LE REÇU DE CAUTION ──────────────────────────────────────────────────── */
@@ -294,6 +462,7 @@ export function useAllReceiptsPdf() {
 export function useDepositPdf() {
   const t = useT()
   const nommerLImmeuble = useNomDeLImmeuble()
+  const emisLe = useEmisLe()
   const d = useDates()
   const { money } = useCurrency()
   const parc = useEmetteur()
@@ -309,7 +478,7 @@ export function useDepositPdf() {
         parc,
         titre,
         logement: logementNomme(unit, nommerLImmeuble(unit)),
-        ligneDate: t('app.documents.pdfIssuedOn', { date: d.fullDate(partiesDeDate(new Date())) }),
+        ligneDate: t('app.documents.pdfIssuedOn', { date: emisLe }),
       })
 
       page.paire(t('app.portfolio.tenant'), deposit.tenant ?? t('app.deposits.formerTenant'))
@@ -336,7 +505,7 @@ export function useDepositPdf() {
         'app.documents.pdfDownloaded',
       )
     },
-    [d, money, nommerLImmeuble, parc, remettre, t],
+    [d, emisLe, money, nommerLImmeuble, parc, remettre, t],
   )
 }
 
@@ -345,6 +514,7 @@ export function useDepositPdf() {
 export function useInspectionPdf() {
   const t = useT()
   const nommerLImmeuble = useNomDeLImmeuble()
+  const emisLe = useEmisLe()
   const d = useDates()
   const { money } = useCurrency()
   const parc = useEmetteur()
@@ -363,7 +533,7 @@ export function useInspectionPdf() {
         parc,
         titre,
         logement: logementNomme(unit, nommerLImmeuble(unit)),
-        ligneDate: t('app.documents.pdfIssuedOn', { date: d.fullDate(partiesDeDate(new Date())) }),
+        ligneDate: t('app.documents.pdfIssuedOn', { date: emisLe }),
       })
 
       page.paire(t('app.inspections.performedOn'), d.fullDate(inspection.date), { gras: true })
@@ -405,7 +575,7 @@ export function useInspectionPdf() {
         'app.documents.pdfDownloaded',
       )
     },
-    [d, money, nommerLImmeuble, parc, remettre, t],
+    [d, emisLe, money, nommerLImmeuble, parc, remettre, t],
   )
 }
 

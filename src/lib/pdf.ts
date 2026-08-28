@@ -158,32 +158,64 @@ const GRASSE =
     .map(Number)
 
 /**
- * Les signes hors ASCII dont la chasse ne se déduit pas d'une lettre latine.
- * Les lettres accentuées, elles, ne sont pas ici : dans Helvetica l'accent ne
- * pousse pas la chasse, et `é` mesure exactement `e` — la décomposition
- * canonique le donne sans table.
+ * LES SIGNES HORS ASCII, EN ROMAINE ET EN GRASSE.
+ *
+ * ═══ POURQUOI DEUX VALEURS ET NON UNE ═══
+ *
+ * La table n'en portait qu'une, appliquée aux deux graisses. C'était faux pour
+ * la moitié de ses entrées : l'apostrophe typographique du dictionnaire vaut 222
+ * en romaine et 278 en grasse, les guillemets anglais 333 contre 500. Un titre
+ * en gras portant une apostrophe se calait donc sur une largeur qui n'était pas
+ * la sienne. Mesuré, pas supposé — voir `chasses-helvetica`.
+ *
+ * ═══ LES `i` ACCENTUÉS SONT ICI, ET C'EST UNE EXCEPTION MESURÉE ═══
+ *
+ * `chasse()` déduit la largeur d'une lettre accentuée de sa lettre nue, au motif
+ * que l'accent ne pousse pas la chasse. C'est vrai de trente et une lettres du
+ * latin-1 et FAUX des quatre `i` : `i` vaut 222 en romaine, `ì í î ï` valent 278.
+ * L'accent y remplace le point, et le glyphe est dessiné plus large pour le
+ * loger. La règle générale reste, l'exception est nommée.
+ *
+ * ═══ TROIS VALEURS DIVERGENT DES MÉTRIQUES D'ADOBE ═══
+ *
+ * `€`, `±` et `÷` sont ici à leur valeur MESURÉE dans la police du système —
+ * 744, 549, 549 — là où les métriques historiques d'Adobe donnent 556, 584 et
+ * 584. Un lecteur qui substitue une police aux métriques standard appliquera les
+ * secondes, un lecteur qui emploie l'Helvetica du système les premières.
+ *
+ * On retient la valeur MESURÉE, et pour une raison de méthode : c'est la seule
+ * que ce dépôt peut re-vérifier à chaque passage. Écrire un nombre qu'aucune
+ * garde ne sait contredire, c'est reconduire exactement le défaut que ces tables
+ * ont eu à leur naissance. L'écart se paie au pire 35 millièmes de cadratin sur
+ * un caractère que trois documents de gestion locative n'écrivent jamais — sauf
+ * l'euro, sur un parc en zone euro, où il vaut deux points de décalage.
  */
-const CHASSES_PARTICULIERES: Record<string, number> = {
-  ' ': 278,
-  ' ': 278,
-  '«': 556,
-  '»': 556,
-  '·': 278,
-  '°': 400,
-  '’': 222,
-  '‘': 222,
-  '“': 333,
-  '”': 333,
-  '–': 556,
-  '—': 1000,
-  '…': 1000,
-  '•': 350,
-  '€': 556,
-  '©': 737,
-  '®': 737,
-  '±': 584,
-  '×': 584,
-  '÷': 584,
+const CHASSES_PARTICULIERES: Record<string, readonly [number, number]> = {
+  '\u202f': [278, 278],
+  '\u00a0': [278, 278],
+  '«': [556, 556],
+  '»': [556, 556],
+  '·': [278, 278],
+  '°': [400, 400],
+  '’': [222, 278],
+  '‘': [222, 278],
+  '“': [333, 500],
+  '”': [333, 500],
+  '–': [556, 556],
+  '—': [1000, 1000],
+  '…': [1000, 1000],
+  '•': [350, 350],
+  '€': [744, 744],
+  '©': [737, 737],
+  '®': [737, 737],
+  '±': [549, 549],
+  '×': [584, 584],
+  '÷': [549, 549],
+  // Les quatre exceptions à la déduction — voir l'en-tête.
+  'ì': [278, 278],
+  'í': [278, 278],
+  'î': [278, 278],
+  'ï': [278, 278],
 }
 
 function chasse(caractere: string, gras: boolean): number {
@@ -192,7 +224,7 @@ function chasse(caractere: string, gras: boolean): number {
   if (point >= 0x20 && point <= 0x7e) return table[point - 0x20]
 
   const particuliere = CHASSES_PARTICULIERES[caractere]
-  if (particuliere !== undefined) return particuliere
+  if (particuliere !== undefined) return particuliere[gras ? 1 : 0]
 
   // La lettre sous l'accent : `é` → `e`, `Ç` → `C`.
   const nue = caractere.normalize('NFD').codePointAt(0) ?? 0
