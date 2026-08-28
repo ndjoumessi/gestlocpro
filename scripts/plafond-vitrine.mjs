@@ -54,10 +54,10 @@ const BASE = `http://127.0.0.1:${PORT}`
  * lignes, donc de dire pourquoi dans le diff.
  */
 const PLAFONDS = [
-  { largeur: 360, langue: 'fr', plafond: 9979, avant: 9948, origine: 11419 },
-  { largeur: 360, langue: 'en', plafond: 9862, avant: 9838, origine: 11149 },
-  { largeur: 1280, langue: 'fr', plafond: 6973, avant: 7017, origine: 7110 },
-  { largeur: 1280, langue: 'en', plafond: 7047, avant: 7091, origine: 7106 },
+  { largeur: 360, langue: 'fr', plafond: 10209, avant: 9979, origine: 11419 },
+  { largeur: 360, langue: 'en', plafond: 10070, avant: 9862, origine: 11149 },
+  { largeur: 1280, langue: 'fr', plafond: 7092, avant: 6973, origine: 7110 },
+  { largeur: 1280, langue: 'en', plafond: 7166, avant: 7047, origine: 7106 },
 ]
 /*
   ═══ CE QUE CE RESSERREMENT DIT, ET CE QU'IL NE DIT PAS ═══
@@ -117,6 +117,31 @@ const PLAFONDS = [
   de ce lot, contrairement au resserrement précédent qui n'était que du mou.
   Vérifié : les deux largeurs de 1280 passent de 7 017 et 7 091 à 6 973 et 7 047,
   et rien d'autre n'y a changé.
+
+  ═══ +230 px À 360, +119 AU BUREAU : TROIS SECTIONS ENRICHIES ═══
+
+  Lot suivant, et c'est la plus forte hausse depuis la refonte. Elle est
+  DEMANDÉE : trois sections dont le défaut était d'être maigres.
+
+    LES QUATRE FRICTIONS — le numéro passe de `text-caps` à `text-kpi`, soit de
+    douze à vingt-six pixels, et la carte gagne un filet d'accent de 4 px. Le
+    chiffre était rendu au rang d'un SURTITRE, c'est-à-dire de ce qui nomme une
+    section, alors qu'il ne nomme rien : il compte. À 360 les quatre cartes
+    s'empilent, donc l'écart s'y multiplie par quatre.
+
+    LES TROIS CHIFFRES DE COUVERTURE — les valeurs deviennent des gélules
+    bordées. Quatre noms de pays posés côte à côte se repliaient en deux lignes
+    ragées où « Congo-Brazzaville Tchad » se lisait comme une seule entrée. Une
+    bordure par valeur rend le compte VISIBLE, au prix d'un rembourrage.
+
+    LA CLÔTURE — l'appel est borné par un panneau. Il partageait l'encre du pied
+    sans rien entre eux : le lecteur arrivait au bout de la page devant une masse
+    indistincte. Le panneau coûte son rembourrage, et c'est ce rembourrage qui
+    fait exister la limite.
+
+  Deux virgule trois pour cent à 360. La page reste à 1 210 px sous son état
+  d'avant la refonte, et c'est le seul repère qui compte ici : ce plafond garde
+  une somme, il ne dit rien de ce que cette somme achète.
 */
 /*
   ATTENDUS EST UNE CONSTANTE ÉCRITE, JAMAIS `PLAFONDS.length`.

@@ -44,17 +44,46 @@ export function ValueProps() {
             flush
             elevation="e1"
             key={key}
-            className="flex flex-col p-6"
+            /*
+              UN FILET D'ACCENT EN TÊTE DE CARTE.
+
+              Quatre cartes blanches sur un gris clair, portant chacune une
+              phrase et un petit label bleu, se lisaient comme quatre fragments
+              posés là. Rien ne les reliait, rien ne disait qu'elles s'ajoutent.
+              Le filet donne à la rangée sa trame : on voit une SÉRIE avant de
+              lire, ce qui est exactement ce qu'une énumération de frictions doit
+              produire — l'accumulation est l'argument.
+
+              `overflow-hidden` : sans lui le filet dépasse des coins arrondis de
+              la carte, et ce sont eux qui portent la forme.
+            */
+            className="flex flex-col overflow-hidden p-0"
           >
-            <span
-              aria-hidden="true"
-              className="numeric text-caps text-accent-ink"
-            >
-              {String(index + 1).padStart(2, '0')}
+            <span aria-hidden="true" className="block h-1 bg-accent" />
+            <span className="flex flex-1 flex-col p-6">
+              {/*
+                LE NUMÉRO EST LE REPÈRE, PAS UNE ÉTIQUETTE.
+
+                Il était en `text-caps` — douze pixels, la taille des surtitres,
+                donc le rang de ce qui NOMME une section. Or ces quatre chiffres
+                ne nomment rien : ils comptent, et c'est toute leur fonction. À
+                `text-kpi` ils prennent le rang qui leur revient, celui d'un
+                repère qu'on parcourt du regard avant de lire.
+
+                `text-accent-ink` et non `text-accent` : c'est du TEXTE sur une
+                surface claire, et le jeton d'action ne tient que 5,17:1 quand
+                celui-ci est fait pour être lu.
+              */}
+              <span
+                aria-hidden="true"
+                className="numeric text-kpi leading-none font-medium text-accent-ink"
+              >
+                {String(index + 1).padStart(2, '0')}
+              </span>
+              <p className="mt-4 text-body-l text-pretty text-ink">
+                {t(`marketing.value.before.${key}` as 'marketing.value.before.one')}
+              </p>
             </span>
-            <p className="mt-4 text-body-l text-pretty text-ink">
-              {t(`marketing.value.before.${key}` as 'marketing.value.before.one')}
-            </p>
           </Card>
         ))}
       </ol>
