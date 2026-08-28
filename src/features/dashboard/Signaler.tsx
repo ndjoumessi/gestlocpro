@@ -60,7 +60,21 @@ export function Signaler() {
      ferait naître deux fiches d'intervention de la même fuite. */
   const [envoi, setEnvoi] = useState(false)
 
-  const mesUnites = units.filter((u) => isMine(u.id))
+  /*
+    L'ATTENTE PASSE AVANT LE FORMULAIRE, et pas seulement avant la liste.
+
+    Le fournisseur sert le parc de DÉMONSTRATION tant que le vrai n'est pas
+    arrivé — `TenantDocuments` le pose en toutes lettres : « pendant le
+    chargement, le jeu de démonstration fournit toujours une unité, et l'écran
+    montrerait le dossier d'un autre ». Ici c'était pire qu'un affichage : le
+    formulaire restait vivant et postait sur `mesUnites[0]`, c'est-à-dire sur un
+    logement qui n'est pas celui du locataire. Une fiche d'intervention ouverte
+    chez quelqu'un d'autre.
+
+    La liste, elle, attendait déjà. Le correctif n'avait traversé que la moitié
+    de l'écran.
+  */
+  const mesUnites = loading ? [] : units.filter((u) => isMine(u.id))
   const miens = works.filter((w) => isMine(w.unitId))
   /* Le geste appartient au locataire : le bailleur ne signale pas un problème
      chez quelqu'un d'autre, il le reçoit. */

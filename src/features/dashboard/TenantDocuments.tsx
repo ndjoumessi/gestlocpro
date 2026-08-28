@@ -190,9 +190,22 @@ export function TenantDocuments() {
     })
   }
 
-  function envoyerLaDemande() {
+  /*
+    « DEMANDE ENVOYÉE » ATTEND QUE LE SERVEUR L'AIT ACCEPTÉE.
+
+    La phrase partait avec l'appel : sur le 409 `already_pending` que cet écran
+    s'emploie justement à éviter avant le clic, le locataire lisait que sa
+    demande était partie PUIS le message d'échec du fournisseur. Deux annonces
+    contraires pour un seul geste.
+
+    Le choix SURVIT au refus, pour la même raison que la saisie du signalement :
+    le remettre à `null` punirait le locataire d'une panne qui n'est pas la
+    sienne, et il lui faudrait recommencer sa sélection.
+  */
+  async function envoyerLaDemande() {
     if (!choix || !unit) return
-    requestDocument(unit.id, choix)
+    const acceptee = await requestDocument(unit.id, choix)
+    if (!acceptee) return
     setChoix(null)
     notify(t('app.documents.requestSent'), { tone: 'ok' })
   }

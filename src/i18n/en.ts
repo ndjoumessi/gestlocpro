@@ -293,6 +293,7 @@ export const en: Dictionary = {
         'The owner shares it from their space. Format: GES-XXXX-XXXX.',
 
       inviteCode: 'Invitation code',
+      inviteCodePlaceholder: 'LOC-4A7B-92CD',
       inviteCodeHint:
         'You received it by SMS or email when your lease was signed. Format: LOC-XXXX-XXXX.',
       tenantNotice:

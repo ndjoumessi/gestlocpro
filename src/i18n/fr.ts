@@ -369,6 +369,11 @@ export const fr = {
         'Le propriétaire vous le communique depuis son espace. Format : GES-XXXX-XXXX.',
 
       inviteCode: 'Code d’invitation',
+      /* Un GABARIT, et il vaut mieux qu'il soit réel : « LOC-XXXX-XXXX »
+         apprend la longueur, « LOC-4A7B-92CD » apprend en plus qu'on peut y
+         mettre des chiffres. Les deux écrans qui demandent ce code en
+         montraient deux formes différentes, dont une écrite en dur. */
+      inviteCodePlaceholder: 'LOC-4A7B-92CD',
       inviteCodeHint:
         'Vous l’avez reçu par SMS ou par e-mail à la signature de votre bail. Format : LOC-XXXX-XXXX.',
       tenantNotice:

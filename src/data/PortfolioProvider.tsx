@@ -412,7 +412,7 @@ interface PortfolioContextValue {
    */
   leasesForUnit: (unitId: string) => Occupation[]
   /** Le locataire demande une pièce. Refusée en double tant qu'elle est en attente. */
-  requestDocument: (unitId: string, kind: DocumentKind) => void
+  requestDocument: (unitId: string, kind: DocumentKind) => Promise<boolean>
   /** Le gestionnaire répond : fournie, ou impossible à fournir. */
   resolveDocumentRequest: (id: string, status: 'fulfilled' | 'declined') => void
   readingForUnit: (unitId: string) => MeterReading | undefined
@@ -1010,12 +1010,30 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       })
       if (!parkId) {
         setDocumentRequests((liste) => [local(`LOCAL-${liste.length + 1}`), ...liste])
-        return
+        return Promise.resolve(true)
       }
-      void api
+      /*
+        ELLE REND MAINTENANT CE QUE LE SERVEUR A DIT.
+
+        Elle partait en `void`, et l'écran annonçait « Demande envoyée » avec
+        l'appel. Sur un refus — le 409 `already_pending` que ce même écran
+        s'emploie à éviter avant le clic —, le locataire lisait donc que sa
+        demande était partie PUIS qu'elle avait échoué.
+
+        C'est le défaut que `Signaler` raconte avoir corrigé chez lui : « la
+        phrase partait avec l'appel et non avec sa réponse ». `addWork` rend un
+        booléen depuis ce jour-là ; celle-ci le rend enfin aussi.
+      */
+      return api
         .requestDocument<{ request: { id: string } }>(parkId, unitId, kind)
-        .then(({ request }) => setDocumentRequests((liste) => [local(request.id), ...liste]))
-        .catch(signalerEchec)
+        .then(({ request }) => {
+          setDocumentRequests((liste) => [local(request.id), ...liste])
+          return true
+        })
+        .catch((cause: unknown) => {
+          signalerEchec(cause)
+          return false
+        })
     },
     [parkId, signalerEchec],
   )

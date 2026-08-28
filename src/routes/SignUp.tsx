@@ -949,7 +949,7 @@ function ContextStep({
                 {...props}
                 name="inviteCode"
                 icon="key"
-                placeholder="LOC-4A7B-92CD"
+                placeholder={t('auth.signup.inviteCodePlaceholder')}
                 autoCapitalize="characters"
                 spellCheck={false}
                 value={state.inviteCode}

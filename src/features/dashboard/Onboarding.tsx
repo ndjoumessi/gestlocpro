@@ -13,6 +13,7 @@ import { Input } from '@/components/primitives/Input'
 import { useToast } from '@/components/primitives/Toast'
 import { useSession } from '@/api/SessionProvider'
 import { api } from '@/api/client'
+import { formatInviteCode, validateInviteCode } from '@/features/auth/validation'
 
 /** Droits par rôle. `false` = action refusée. */
 /**
@@ -121,11 +122,32 @@ function RejoindreUnParc() {
             {...props}
             name="joinCode"
             autoCapitalize="characters"
-            placeholder="LOC-XXXX-XXXX"
+            /*
+              LE PLACEHOLDER VIENT DU DICTIONNAIRE, comme partout ailleurs.
+
+              Il était écrit en dur — le seul littéral non traduit de cet écran —
+              et il divergeait de celui de l'inscription : « LOC-XXXX-XXXX »
+              ici, la forme réelle là-bas. Deux gabarits pour un même code.
+            */
+            placeholder={t('auth.signup.inviteCodePlaceholder')}
             value={code}
             invalid={Boolean(erreur)}
+            /*
+              LA SAISIE EST REGROUPÉE AU FIL DE LA FRAPPE, comme à l'inscription.
+
+              Elle partait telle quelle. Le serveur, lui, normalise par
+              `trim().toUpperCase().replace(/\s+/g, '')` et NE RÉTABLIT PAS les
+              tirets : « loc4a7b92cd » devient « LOC4A7B92CD », qui ne
+              correspond à aucun code stocké. Le même code, tapé de la même
+              façon, ouvrait donc un compte à l'inscription et se faisait
+              refuser une adhésion ici — et l'utilisateur en concluait que son
+              code était mauvais.
+
+              `formatInviteCode` existait, exporté, employé par `SignUp`. Il n'y
+              avait rien à écrire.
+            */
             onChange={(e) => {
-              setCode(e.target.value)
+              setCode(formatInviteCode(e.target.value))
               setErreur(null)
             }}
           />
@@ -133,7 +155,11 @@ function RejoindreUnParc() {
       </Field>
       <div>
         <Button
-          disabled={envoi || code.trim().length < 4}
+          /* LA MÊME BORNE QUE L'INSCRIPTION, et non un seuil local de quatre
+             caractères : `validateInviteCode` connaît la forme exacte du code,
+             préfixe compris. Un seuil inventé ici laisserait partir « LOC- »
+             seul, pour un aller-retour dont la réponse est déjà connue. */
+          disabled={envoi || validateInviteCode(code) !== null}
           onClick={async () => {
             setEnvoi(true)
             try {
