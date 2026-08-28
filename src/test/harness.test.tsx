@@ -34,11 +34,17 @@ describe('harnais de test', () => {
     // exactement ce total sans le nommer nulle part. Répéter le montant sous
     // son propre intitulé est ce qui permet de lire les parts comme une
     // addition — la répétition coûte moins que le rapprochement de tête.
-    /* LE MONTANT EST LU EN EURO, donc en centimes : 1 397 000 mineures font
-       13 970,00 €. Le cas mesure que la PRÉFÉRENCE de devise est honorée par le
-       harnais — c'est son sujet — et la somme qu'il vérifie reste celle des dix
-       unités occupées, exprimée dans l'unité que la devise impose. */
-    expect(screen.getAllByText(/13\s?970/).length).toBe(3)
+    /*
+      LE MONTANT EST CONVERTI, et c'est le sujet depuis que le produit sait le
+      faire : 1 397 000 francs au taux légal de 655,957 font 2 130 €. Le cas
+      mesure que la préférence de devise est honorée par le harnais, et il
+      mesure désormais aussi qu'elle l'est POUR DE BON — la somme qu'il vérifie
+      reste celle des dix unités occupées, dite dans une autre monnaie.
+
+      Les cours viennent du faux serveur, figés : un cas dont le résultat
+      dépendrait du cours du jour échouerait demain sans qu'une ligne ait bougé.
+    */
+    expect(screen.getAllByText(/2\s?130/).length).toBe(3)
   })
 
   /**

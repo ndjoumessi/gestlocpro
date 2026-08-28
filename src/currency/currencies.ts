@@ -145,6 +145,61 @@ export function enUniteDUsage(mineur: number, currency: CurrencyCode): number {
  * montants étaient en unités d'usage ; en mineures il est toujours vrai, et la
  * page des tarifs affichait « 6 € » pour six euros quarante.
  */
+/**
+ * LE CODE ISO DE LA DEVISE, pour interroger les cours.
+ *
+ * `CFA` est un nom d'USAGE : il recouvre le XAF et le XOF, deux monnaies
+ * distinctes de même parité, que l'écran ne distingue pas. Les cours, eux, sont
+ * publiés par code ISO. On prend le XAF — la parité étant identique, le choix ne
+ * porte que sur l'étiquette, et `lib/countries` garde le rattachement par zone
+ * pour le jour d'une intégration de paiement.
+ */
+export const CODE_ISO: Record<CurrencyCode, 'XAF' | 'EUR' | 'CAD' | 'USD'> = {
+  CFA: 'XAF',
+  EUR: 'EUR',
+  CAD: 'CAD',
+  USD: 'USD',
+}
+
+/**
+ * CONVERTIR UN MONTANT D'UNE DEVISE VERS UNE AUTRE, en unités mineures.
+ *
+ * ═══ LE CHEMIN PASSE PAR L'EURO, ET C'EST VOULU ═══
+ *
+ * Les cours sont tous publiés pour un euro : celui de la BCE comme la parité du
+ * franc CFA. Convertir de source vers euro puis d'euro vers cible n'introduit
+ * aucune inversion — l'endroit où l'on se trompe — et fait tomber les deux cas
+ * triviaux tout seuls : source égale cible, ou l'une des deux étant l'euro.
+ *
+ * ═══ LES UNITÉS MINEURES SE DÉFONT PUIS SE REFONT ═══
+ *
+ * Un cours porte sur des unités d'USAGE : 655,957 francs pour un euro, et non
+ * 655,957 centimes. Le montant quitte donc sa mineure, traverse, et reprend
+ * celle de la cible — dont le nombre de décimales n'est pas le même. C'est
+ * l'unique endroit du produit où les deux échelles se croisent.
+ *
+ * ═══ SANS COURS, PAS DE CONVERSION ═══
+ *
+ * Rend `null` plutôt qu'un montant. Un appelant qui recevrait le montant
+ * d'origine sous un autre symbole afficherait exactement le défaut que cette
+ * fonction existe pour supprimer.
+ */
+export function convertir(
+  mineur: number,
+  depuis: CurrencyCode,
+  vers: CurrencyCode,
+  parEuro: Partial<Record<string, number>>,
+): number | null {
+  if (depuis === vers) return mineur
+
+  const coursDepuis = parEuro[CODE_ISO[depuis]]
+  const coursVers = parEuro[CODE_ISO[vers]]
+  if (!coursDepuis || !coursVers) return null
+
+  const enEuros = enUniteDUsage(mineur, depuis) / coursDepuis
+  return Math.round(enEuros * coursVers * 10 ** CURRENCY_DEFS[vers].decimals)
+}
+
 export function estRondEnUniteDUsage(mineur: number, currency: CurrencyCode): boolean {
   return mineur % 10 ** CURRENCY_DEFS[currency].decimals === 0
 }

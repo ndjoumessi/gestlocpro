@@ -86,6 +86,24 @@ export function installerFauxServeur(
       : { status: 401, body: { error: 'unauthenticated' } },
   )
 
+  /**
+   * LES COURS DE CHANGE, SERVIS PAR DÉFAUT ET FIGÉS.
+   *
+   * Le fournisseur de devises les demande dès le premier rendu ; sans réponse,
+   * aucune conversion n'est possible et chaque écran retombe sur la devise du
+   * parc. Les cas qui demandent l'euro liraient alors des francs, et
+   * croiraient mesurer une préférence qui n'a pas été honorée.
+   *
+   * Les valeurs sont FIGÉES, jamais celles du jour : un cas dont le résultat
+   * dépend du cours d'aujourd'hui échoue demain sans qu'une ligne ait bougé. La
+   * parité du franc CFA, elle, est la vraie — elle est fixée par traité et ne
+   * bouge pas.
+   */
+  routes.set('GET /rates', {
+    status: 200,
+    body: { date: '2026-08-28', parEuro: { XAF: 655.957, XOF: 655.957, EUR: 1, CAD: 1.6, USD: 1.2 } },
+  })
+
   vi.stubGlobal(
     'fetch',
     vi.fn(async (entree: string | URL | Request, init?: RequestInit) => {

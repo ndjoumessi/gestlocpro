@@ -47,12 +47,13 @@ describe('relevés de compteurs', () => {
     // Ils étaient interpolés directement : « 520 » sans devise ni groupement,
     // à côté d'un total correctement formaté, et insensibles à la devise.
     await renderApp('/app/releves', { locale: 'en', currency: 'USD' })
-    /* 520 mineures lues en dollars font 5,20 $, et l'écran les ARRONDIT à
-       « 5 $ » : les tarifs unitaires passent par `round`, ce qui convient à un
-       prix au mètre cube en francs et efface tout d'un prix en dollars. Le cas
-       garde ce qu'il gardait — un montant mis en forme, avec sa devise, et non
-       un nombre interpolé — et nomme au passage un défaut qu'il ne corrige pas. */
-    expect(screen.getByText(/\$\s?5\b/)).toBeInTheDocument()
+    /* 520 francs valent 0,95 $ au cours figé du faux serveur, et l'écran
+       ARRONDIT à « 1 $ » : les tarifs unitaires passent par `round`, ce qui
+       convient à un prix au mètre cube en francs et efface tout d'un prix en
+       dollars. Le cas garde ce qu'il gardait — un montant mis en forme, avec sa
+       devise, et non un nombre interpolé — et nomme au passage un défaut que la
+       conversion rend criant sans le créer. */
+    expect(screen.getByText(/\$\s?1\b/)).toBeInTheDocument()
   })
 
   it('groupe les index de compteur', async () => {
@@ -99,8 +100,8 @@ describe('groupement monétaire', () => {
     await renderApp('/app/paiements', { locale: 'en', currency: 'USD' })
     // Symbole AVANT le montant pour le dollar, mais la même espace pleine :
     // c'est la position qui change d'une devise à l'autre, pas la césure.
-    // Le groupement survit au changement d'unité : 145 000 cents font 1 450,00 $.
-    expect(texte()).toContain(`$${PLEINE}1,450`)
+    // 145 000 francs valent 265 $ au cours figé du faux serveur.
+    expect(texte()).toContain(`$${PLEINE}265`)
   })
 })
 

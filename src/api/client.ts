@@ -217,6 +217,17 @@ export const api = {
 
   health: () => requete<{ ok: boolean }>('/health'),
 
+  /**
+   * Les cours de change, publics et sans session.
+   *
+   * Le franc CFA y est par sa PARITÉ LÉGALE — 655,957 pour un euro, exacte et
+   * permanente — et les deux dollars par les cours de la Banque centrale
+   * européenne, avec leur date. `date: null` dit que le flux n'a pas répondu :
+   * ce n'est pas une panne du produit, c'est l'absence des seules devises qui
+   * flottent.
+   */
+  rates: () => requete<TauxApi>('/rates'),
+
   // ─── Parc ──────────────────────────────────────────────────────────────────
 
   /**
@@ -631,4 +642,17 @@ export async function deposerLesOctets(
   if (!reponse.ok) {
     throw new ApiError(reponse.status, 'upload_failed')
   }
+}
+
+/**
+ * Les cours servis par `/rates`, tous exprimés POUR UN EURO.
+ *
+ * L'euro sert de pivot parce que c'est la base de la publication de la BCE et
+ * celle de la parité du franc CFA : n'importe quelle autre exigerait une
+ * inversion, c'est-à-dire l'endroit où l'on se trompe.
+ */
+export interface TauxApi {
+  /** Jour de publication des cours flottants. `null` quand le flux n'a rien rendu. */
+  date: string | null
+  parEuro: Partial<Record<'XAF' | 'XOF' | 'EUR' | 'CAD' | 'USD', number>>
 }

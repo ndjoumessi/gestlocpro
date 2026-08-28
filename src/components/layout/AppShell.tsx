@@ -21,6 +21,8 @@ import { usePiegeDeFocus } from '@/components/primitives/piegeDeFocus'
 import { LanguageSwitcher } from '@/components/controls/LanguageSwitcher'
 import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
 import { useCurrency } from '@/currency/CurrencyProvider'
+import { useDates } from '@/lib/useDates'
+import { partiesDeDateISO } from '@/lib/dates'
 import type { CurrencyCode } from '@/currency/currencies'
 import { ThemeSwitcher } from '@/components/controls/ThemeSwitcher'
 import { useT } from '@/i18n/I18nProvider'
@@ -304,20 +306,21 @@ export function AppShell() {
    * part le parcours, et le sélecteur reste là pour en changer.
    */
   const { etat: session, adhesionActive } = useSession()
-  const { setCurrency } = useCurrency()
+  const { setDeviseSource } = useCurrency()
 
   /**
-   * La devise vient du PARC, pas d'une préférence de navigateur.
+   * LA DEVISE DU PARC EST DÉCLARÉE, ELLE NE FORCE PLUS L'AFFICHAGE.
    *
    * `CurrencyProvider` ne lisait que `localStorage` : la devise du parc, portée
    * par l'adhésion depuis toujours, n'était lue nulle part. Un parc camerounais
    * s'affichait donc dans la dernière devise choisie sur cette machine — et une
-   * QUITTANCE imprimait « 50,00 € » pour 50 000 FCFA, soit un écart de 655 fois
-   * sur un document opposable au locataire.
+   * QUITTANCE imprimait « 50,00 € » pour 50 000 FCFA.
    *
-   * Le produit ne convertit rien, et c'est un parti pris assumé du module de
-   * devises. Il ne tient que si la devise affichée EST celle du parc : sans
-   * conversion, en changer ne fait que mentir sur l'unité.
+   * Le remède d'alors était d'IMPOSER la devise du parc, faute de conversion.
+   * Elle existe désormais — parité légale pour le franc CFA, cours de la BCE
+   * pour les deux dollars — et cette devise redevient ce qu'elle est vraiment :
+   * celle des DONNÉES, le point de départ de toute conversion. Ce qu'on affiche
+   * peut en différer, et c'est le sujet du sélecteur.
    *
    * `XAF` et `XOF` partagent le même « CFA » à l'écran — deux monnaies
    * distinctes, même parité, et le produit n'affiche que des montants.
@@ -330,8 +333,8 @@ export function AppShell() {
       : null
 
   useEffect(() => {
-    if (deviseDuParc) setCurrency(deviseDuParc)
-  }, [deviseDuParc, setCurrency])
+    if (deviseDuParc) setDeviseSource(deviseDuParc)
+  }, [deviseDuParc, setDeviseSource])
   const roleDuCompte: Role =
     session.statut === 'connecte' ? (adhesionActive?.role ?? 'owner') : 'owner'
 
@@ -709,18 +712,18 @@ function BarreLocataire({ setRole }: { setRole: (role: Role) => void }) {
           où le fond change de camp. */}
       <div className="mb-2.5 ml-auto flex flex-wrap items-center justify-end gap-2">
         <LanguageSwitcher />
-        {/* Même règle qu'ailleurs : le sélecteur de devise ne survit qu'en
-            démonstration, faute de conversion. */}
+        {/* LE SÉLECTEUR N'EST PLUS RÉSERVÉ À LA DÉMONSTRATION. Il l'était
+            « faute de conversion » : changer de devise ne faisait que
+            ré-étiqueter des montants, et les quatre devises affichaient les
+            mêmes chiffres. Elles se convertissent maintenant. */}
         {/* Le repli est porté par une ENVELOPPE et non par la `className` du
             composant : celle-ci est concaténée à ses propres classes, où un
             `flex` figure déjà — deux utilitaires de `display` dans le même
             attribut, et c'est l'ordre de la feuille qui tranche, pas celui de
             la chaîne. Le sélecteur de thème restait ainsi affiché. */}
-        {demo && (
-          <span className="hidden sm:flex">
-            <CurrencySwitcher />
-          </span>
-        )}
+        <span className="hidden sm:flex">
+          <CurrencySwitcher />
+        </span>
         {/**
          * Devise et thème se retirent sous `sm`, la langue reste.
          *
@@ -1284,7 +1287,35 @@ function initiales(nom: string): string {
 /* Pas de `tone` : ce menu ne vit que dans la barre claire. La barre du
    locataire garde ses trois segmentés — elle n'a pas de barre latérale, donc
    pas le même budget de hauteur, et son relevé la donne à 71 px. */
-function MenuReglages({ demo }: { demo: boolean }) {
+/**
+ * LA CONVERSION SE DIT, AVEC SA DATE.
+ *
+ * Un montant converti n'est pas le montant enregistré : c'est une lecture, à un
+ * cours, un jour donné. Le taire laisserait croire que le parc est tenu dans la
+ * devise affichée — et le chiffre changerait demain sans que rien ne l'explique.
+ *
+ * Elle ne paraît QUE si l'on convertit : sur un parc lu dans sa propre devise,
+ * il n'y a pas de taux, et l'annoncer serait du bruit.
+ *
+ * La parité du franc CFA n'a pas de date — elle est fixée par traité — mais la
+ * réponse en porte une dès que les cours flottants sont arrivés. Sans eux,
+ * `dateDesCours` est `null` et seule la paire franc/euro est atteignable :
+ * la mention se tait plutôt que d'inventer un jour.
+ */
+function MentionDeConversion() {
+  const t = useT()
+  const d = useDates()
+  const { converti, dateDesCours } = useCurrency()
+  if (!converti || !dateDesCours) return null
+
+  return (
+    <span className="text-caps text-muted">
+      {t('common.currencyConverted', { date: d.fullDate(partiesDeDateISO(dateDesCours)) })}
+    </span>
+  )
+}
+
+function MenuReglages() {
   const t = useT()
   const [ouvert, setOuvert] = useState(false)
   const boite = useRef<HTMLDivElement>(null)
@@ -1334,14 +1365,11 @@ function MenuReglages({ demo }: { demo: boolean }) {
             <span className="text-caps text-muted uppercase">{t('common.language')}</span>
             <LanguageSwitcher />
           </div>
-          {/* Même règle qu'ailleurs : le sélecteur de devise ne survit qu'en
-              démonstration, faute de conversion des montants. */}
-          {demo && (
-            <div className="flex flex-col gap-2">
-              <span className="text-caps text-muted uppercase">{t('common.currency')}</span>
-              <CurrencySwitcher />
-            </div>
-          )}
+          <div className="flex flex-col gap-2">
+            <span className="text-caps text-muted uppercase">{t('common.currency')}</span>
+            <CurrencySwitcher />
+            <MentionDeConversion />
+          </div>
           <div className="flex flex-col gap-2">
             <span className="text-caps text-muted uppercase">{t('common.theme')}</span>
             <ThemeSwitcher />
@@ -1701,7 +1729,7 @@ function BottomLink({ item }: { item: NavItem }) {
 
 function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
   const t = useT()
-  const { parc, demo } = useIdentite()
+  const { parc } = useIdentite()
 
   /* Le calcul du fil d'Ariane est parti avec lui, et avec lui trois lectures
      de contexte — l'adresse courante, la base, le rôle. Il déduisait de la
@@ -1776,7 +1804,7 @@ function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
           changer sans convertir n'offre pas un choix, cela ment sur l'unité —
           et la quittance imprimée en porte la trace.
         */}
-        <MenuReglages demo={demo} />
+        <MenuReglages />
         {/*
           L'AVATAR ÉTAIT UN LITTÉRAL, et il n'ouvrait rien.
 

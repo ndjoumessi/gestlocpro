@@ -12,9 +12,11 @@ import type { EtatSession } from '@/api/SessionProvider'
  * QUITTANCE imprimait « 50,00 € » pour 50 000 FCFA, soit un écart de 655 fois
  * sur un document opposable au locataire.
  *
- * Le produit ne convertit rien, et c'est un parti pris assumé du module de
- * devises. Il ne tient que si la devise affichée EST celle du parc : sans
- * conversion, en changer ne fait que mentir sur l'unité.
+ * LE PRODUIT CONVERTIT DEPUIS, et la règle a changé de forme sans changer de
+ * fond. La devise du parc n'est plus ce qu'on IMPOSE à l'écran : c'est la
+ * devise des DONNÉES, le point de départ de toute conversion. Ce qu'on affiche
+ * peut en différer — parité légale pour le franc CFA, cours de la BCE pour les
+ * deux dollars — et la quittance, elle, reste dans celle du parc.
  */
 
 const PARC = '11111111-2222-4333-8444-555555555555'
@@ -206,50 +208,65 @@ describe('devise de la quittance', () => {
   })
 })
 
+/**
+ * CE QUE LA DEVISE DU PARC DÉCIDE, ET CE QU'ELLE NE DÉCIDE PLUS.
+ *
+ * Elle IMPOSAIT l'affichage, faute de conversion : offrir un autre symbole sur
+ * les mêmes chiffres n'était pas un choix, c'était un mensonge sur l'unité.
+ *
+ * Elle décide maintenant la SOURCE — la devise dans laquelle les données sont
+ * tenues, le point de départ de toute conversion. Ce qu'on affiche s'en déduit
+ * par un cours, et l'écran dit lequel et de quand.
+ */
 describe('devise d’affichage', () => {
-  it('suit le parc, et non la dernière préférence de la machine', async () => {
-    // La préférence stockée dit euro ; le parc dit franc CFA. C'est le parc qui
-    // décide : les montants ne sont pas convertis.
+  it('convertit vers la devise demandée, au lieu de l’imposer', async () => {
+    // La préférence dit euro ; le parc dit franc CFA. Les montants sont
+    // convertis à la parité légale — 655,957 — et non ré-étiquetés.
     parcVide()
     await renderApp('/app/parc', { session: session('XAF'), currency: 'EUR' })
-    await screen.findByText('A1')
-
-    expect(screen.getByRole('main').textContent).toMatch(/FCFA|CFA/)
-    expect(screen.getByRole('main').textContent).not.toMatch(/€/)
-  })
-
-  it('affiche l’euro pour un parc en euro', async () => {
-    // Le pendant positif : sans lui, un produit qui n'afficherait JAMAIS l'euro
-    // satisferait le cas précédent.
-    parcVide()
-    await renderApp('/app/parc', { session: session('EUR'), currency: 'CFA' })
     await screen.findByText('A1')
 
     expect(screen.getByRole('main').textContent).toMatch(/€/)
   })
 
-  it('n’offre pas d’en changer sur un compte réel', async () => {
+  it('convertit dans l’autre sens tout aussi bien', async () => {
+    // Le pendant : sans lui, un produit qui n'afficherait JAMAIS le franc CFA
+    // satisferait le cas précédent.
+    parcVide()
+    await renderApp('/app/parc', { session: session('EUR'), currency: 'CFA' })
+    await screen.findByText('A1')
+
+    expect(screen.getByRole('main').textContent).toMatch(/FCFA/)
+  })
+
+
+
+  /**
+   * ON PEUT EN CHANGER, ET C'EST NOUVEAU.
+   *
+   * Le sélecteur était retiré des comptes réels « faute de conversion » :
+   * l'offrir sans convertir ne proposait pas un choix, cela mentait sur
+   * l'unité. La conversion existe, le choix redevient un choix.
+   *
+   * CE QUI NE CHANGE PAS est ce que la règle protégeait vraiment : la QUITTANCE
+   * reste dans la devise du parc, quoi que l'écran affiche. Le cas
+   * « imprime celle du DOCUMENT, pas celle de l'écran », plus haut, la garde —
+   * et il vaut mieux que celui-ci, parce qu'il vise la pièce plutôt que le
+   * bouton qui aurait pu la corrompre.
+   */
+  it('offre d’en changer, depuis que le produit convertit', async () => {
     parcVide()
     await renderApp('/app/parc', { session: session('XAF') })
     await screen.findByText('A1')
 
-    /**
-     * Offrir de changer de devise sans convertir n'offre pas un choix : cela
-     * ment sur l'unité. Il n'y a qu'une devise juste pour un parc — la sienne.
-     *
-     * ON OUVRE LES RÉGLAGES AVANT DE CONCLURE. Le sélecteur vit derrière un
-     * point d'entrée unique depuis le lot de la coquille ; interroger la barre
-     * fermée rendrait « absent » pour tout le monde, et le cas passerait au
-     * vert même si le sélecteur était offert à l'intérieur.
-     *
-     * Le motif est ANCRÉ (`^Devise`) et non libre : le bouton des réglages
-     * s'appelle « Réglages : langue, devise et thème » — il NOMME la devise
-     * sans en être un, et un `/devise/i` flottant le comptait pour elle. Ce
-     * cas-là échouait pour cette seule raison, sur un produit correct.
-     */
+    /* Le motif est ANCRÉ (`^Devise`) et non libre : le bouton des réglages
+       s'appelle « Réglages : langue, devise et thème » — il NOMME la devise
+       sans en être un, et un `/devise/i` flottant le comptait pour elle. */
     await userEvent.click(screen.getByRole('button', { name: /Réglages/ }))
-    expect(screen.queryByRole('button', { name: /^Devise/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Devise/ })).toBeInTheDocument()
   })
+
+
 
   it('le garde en démonstration, où les montants sont fictifs', async () => {
     await renderApp('/demo/parc')

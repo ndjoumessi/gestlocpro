@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { env } from './env.js'
 import { authRouter } from './auth/routes.js'
 import { parksRouter, rejoindreRouter } from './parks/routes.js'
+import { SourceBCE, creerServiceDeTaux, type SourceDeTaux } from './taux/taux.js'
 
 /**
  * Répertoire du client construit.
@@ -57,8 +58,22 @@ function paquetServi(): string | null {
  * réellement écouter finit par attendre des délais et par échouer selon la
  * charge de la machine — le port est un détail du déploiement, pas du produit.
  */
-export function createApp() {
+export function createApp(options: { taux?: SourceDeTaux } = {}) {
   const app = express()
+
+  /**
+   * LE SERVICE DE TAUX, créé UNE FOIS par application.
+   *
+   * Son cache vit dans cette clôture : une instance par serveur, et non une par
+   * requête. Le créer dans la route donnerait un cache neuf à chaque appel,
+   * c'est-à-dire pas de cache — et un appel à la Banque centrale européenne par
+   * chargement d'écran.
+   *
+   * La SOURCE est injectable pour que les cas n'appellent jamais l'extérieur :
+   * un test qui dépend d'un tiers échoue le jour où ce tiers est en panne, et
+   * l'on croit alors que c'est le produit.
+   */
+  const taux = creerServiceDeTaux(options.taux ?? new SourceBCE())
 
   // Express annonce sa présence dans un en-tête. C'est une information gratuite
   // offerte à qui cherche une version vulnérable.
@@ -181,6 +196,24 @@ export function createApp() {
   // d'erreurs : pas besoin d'envelopper chaque route asynchrone. C'était la
   // principale verrue d'Express 4, et l'oublier une seule fois y laissait une
   // requête suspendue jusqu'au délai d'expiration du client.
+  /**
+   * LES TAUX, PUBLICS ET SANS SESSION.
+   *
+   * La page des tarifs les emploie avant toute inscription, et la démonstration
+   * n'a pas de compte. Exiger un jeton reviendrait à réserver la conversion à
+   * ceux qui sont déjà entrés.
+   *
+   * Ils ne portent aucune donnée du produit : ce sont des cours publics, servis
+   * tels que la BCE les publie.
+   */
+  app.get('/api/rates', async (_req: Request, res: Response) => {
+    const cours = await taux.lire()
+    /* Un quart d'heure côté client : les cours ne bougent qu'une fois par jour
+       ouvré, et le cache du serveur porte déjà la fraîcheur réelle. */
+    res.set('Cache-Control', 'public, max-age=900')
+    res.json(cours)
+  })
+
   app.use('/api/auth', authRouter)
   // Hors de `/api/parks/:parkId` : on ne peut pas exiger l'appartenance à un
   // parc pour demander à le rejoindre.

@@ -70,6 +70,7 @@ export const fr = {
     dialZoneCfa: 'Zone franc CFA',
     dialZoneOther: 'Autres pays',
     demoBadge: 'Démonstration',
+    currencyConverted: 'Convertis au taux du {date}',
     demoPark: 'Parc de démonstration',
     emptyParkTitle: 'Votre parc est encore vide',
     emptyParkBody:

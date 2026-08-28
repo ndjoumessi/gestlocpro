@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { useSession } from '@/api/SessionProvider'
 import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
+import { formatMoney } from '@/currency/currencies'
 import { useT } from '@/i18n/I18nProvider'
 import { isoDay, isoMonth } from '@/lib/csv'
 import { PDF_MIME, downloadBinaryFile } from '@/lib/download'
@@ -39,6 +40,13 @@ import {
  * l'apparence d'une pièce. La ligne continue donc de dire la case vide.
  *
  * ═══ CE QUE CES PDF SONT, ET CE QU'ILS NE SONT PAS ═══
+ *
+ * ILS SONT ÉMIS DANS LA DEVISE DU PARC, jamais dans celle qu'on affiche. Le
+ * produit convertit désormais à l'écran — parité légale pour le franc CFA, cours
+ * de la BCE pour les deux dollars — et une PIÈCE ne se convertit pas : le
+ * locataire a versé 145 000 francs, une quittance qui atteste 221,05 € atteste
+ * d'un fait qui n'a pas eu lieu, et le montant changerait au cours du lendemain.
+ * Un document dit ce qui s'est passé ; un écran aide à le lire.
  *
  * Ils sont produits par l'application À PARTIR DES DONNÉES ENREGISTRÉES dans le
  * parc, et chacun le dit en pied de page. Ils ne portent AUCUNE signature, et le
@@ -415,14 +423,14 @@ export function useReceiptPdf() {
   const nommerLImmeuble = useNomDeLImmeuble()
   const emisLe = useEmisLe()
   const d = useDates()
-  const { money } = useCurrency()
+  const { deviseSource } = useCurrency()
   const parc = useEmetteur()
   const remettre = useRemise()
 
   return useCallback(
     (unit: Unit, receipt: Receipt): string => {
       const page = nouvelleMiseEnPage()
-      const argent = (montant: number) => money(montant, { round: true })
+      const argent = (montant: number) => formatMoney(montant, deviseSource, { round: true })
       const contenu = composerLaQuittance(
         t,
         argent,
@@ -439,7 +447,7 @@ export function useReceiptPdf() {
         'app.receiptDownloaded',
       )
     },
-    [d, emisLe, money, nommerLImmeuble, parc, remettre, t],
+    [d, deviseSource, emisLe, nommerLImmeuble, parc, remettre, t],
   )
 }
 
@@ -457,14 +465,14 @@ export function useAllReceiptsPdf() {
   const nommerLImmeuble = useNomDeLImmeuble()
   const emisLe = useEmisLe()
   const d = useDates()
-  const { money } = useCurrency()
+  const { deviseSource } = useCurrency()
   const parc = useEmetteur()
   const remettre = useRemise()
 
   return useCallback(
     (unit: Unit, receipts: Receipt[]): string => {
       const page = nouvelleMiseEnPage()
-      const argent = (montant: number) => money(montant, { round: true })
+      const argent = (montant: number) => formatMoney(montant, deviseSource, { round: true })
       /* Cherché UNE fois pour tout le carnet : six pages, un seul logement. */
       const immeuble = nommerLImmeuble(unit)
       receipts.forEach((receipt, index) => {
@@ -485,7 +493,7 @@ export function useAllReceiptsPdf() {
         'app.receiptDownloaded',
       )
     },
-    [d, emisLe, money, nommerLImmeuble, parc, remettre, t],
+    [d, deviseSource, emisLe, nommerLImmeuble, parc, remettre, t],
   )
 }
 
@@ -594,14 +602,14 @@ export function useDepositPdf() {
   const nommerLImmeuble = useNomDeLImmeuble()
   const emisLe = useEmisLe()
   const d = useDates()
-  const { money } = useCurrency()
+  const { deviseSource } = useCurrency()
   const parc = useEmetteur()
   const remettre = useRemise()
 
   return useCallback(
     (unit: Unit, deposit: Deposit): string => {
       const page = nouvelleMiseEnPage()
-      const argent = (montant: number) => money(montant, { round: true })
+      const argent = (montant: number) => formatMoney(montant, deviseSource, { round: true })
       const titre = t('app.documents.depositReceipt')
 
       enTete(page, {
@@ -635,7 +643,7 @@ export function useDepositPdf() {
         'app.documents.pdfDownloaded',
       )
     },
-    [d, emisLe, money, nommerLImmeuble, parc, remettre, t],
+    [d, deviseSource, emisLe, nommerLImmeuble, parc, remettre, t],
   )
 }
 
@@ -646,7 +654,7 @@ export function useInspectionPdf() {
   const nommerLImmeuble = useNomDeLImmeuble()
   const emisLe = useEmisLe()
   const d = useDates()
-  const { money } = useCurrency()
+  const { deviseSource } = useCurrency()
   const parc = useEmetteur()
   const remettre = useRemise()
 
@@ -694,7 +702,7 @@ export function useInspectionPdf() {
           t(`app.inspections.severity${reserve.severity === 'minor' ? 'Minor' : 'Major'}` as 'app.inspections.severityMinor'),
           reserve.costMinor === null
             ? null
-            : `${t('app.inspections.cost')} ${money(reserve.costMinor, { round: true })}`,
+            : `${t('app.inspections.cost')} ${formatMoney(reserve.costMinor, deviseSource, { round: true })}`,
         ].filter(Boolean)
         page.paragraphe(marges.join(' · '), { petit: true, retrait: 12 })
       }
@@ -705,7 +713,7 @@ export function useInspectionPdf() {
         'app.documents.pdfDownloaded',
       )
     },
-    [d, emisLe, money, nommerLImmeuble, parc, remettre, t],
+    [d, deviseSource, emisLe, nommerLImmeuble, parc, remettre, t],
   )
 }
 

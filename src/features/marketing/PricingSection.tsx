@@ -7,7 +7,7 @@ import { Badge } from '@/components/primitives/Badge'
 import { SegmentedControl } from '@/components/primitives/Choice'
 import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
 import { useCurrency } from '@/currency/CurrencyProvider'
-import { estRondEnUniteDUsage } from '@/currency/currencies'
+import { estRondEnUniteDUsage, formatMoney } from '@/currency/currencies'
 import { useT } from '@/i18n/I18nProvider'
 import { useNumbers } from '@/lib/numbers'
 import { useAuDela, AU_DELA_LG } from '@/lib/useAuDela'
@@ -218,7 +218,7 @@ const BoutonDePalier = forwardRef<
   }
 >(function BoutonDePalier({ plan, period, units, actif, ...reste }, ref) {
   const t = useT()
-  const { currency, money } = useCurrency()
+  const { currency } = useCurrency()
   const price = planPrice(plan, currency, period, units)
 
   return (
@@ -263,7 +263,7 @@ const BoutonDePalier = forwardRef<
       >
         {price === null
           ? t('marketing.pricing.quote')
-          : money(price, { round: estRondEnUniteDUsage(price, currency) })}
+          : formatMoney(price, currency, { round: estRondEnUniteDUsage(price, currency) })}
       </span>
     </button>
   )
@@ -294,7 +294,7 @@ function CartePalier({
   idOnglet?: string
 }) {
   const t = useT()
-  const { currency, money } = useCurrency()
+  const { currency } = useCurrency()
   const price = planPrice(plan, currency, period, units)
   const exact = exactPlanPrice(plan, currency, period, units)
   const popular = plan.popular
@@ -345,7 +345,7 @@ function CartePalier({
                 taille de plus (36 px) qui n'existait nulle part
                 ailleurs, pour deux nombres. */}
             <p className="numeric text-kpi leading-none font-medium">
-              {money(price, { round: estRondEnUniteDUsage(price, currency) })}
+              {formatMoney(price, currency, { round: estRondEnUniteDUsage(price, currency) })}
             </p>
             <p className="mt-2 text-body text-muted">
               {t('common.perMonth')}
@@ -357,10 +357,10 @@ function CartePalier({
             <p className="mt-3 flex items-center gap-1.5 text-caps text-accent-ink">
               <Icon name="building" size={13} />
               {t('marketing.pricing.perUnitNote', {
-                base: money(plan.pricing.base[currency], {
+                base: formatMoney(plan.pricing.base[currency], currency, {
                   round: Number.isInteger(plan.pricing.base[currency]),
                 }),
-                perUnit: money(plan.pricing.perUnit[currency]),
+                perUnit: formatMoney(plan.pricing.perUnit[currency], currency),
               })}
             </p>
 
@@ -371,7 +371,7 @@ function CartePalier({
             {priceIsRounded(plan, currency, period, units) && (
               <p className="mt-1.5 text-body text-muted">
                 {t('marketing.pricing.roundingNote', {
-                  exact: money(exact ?? 0, { round: estRondEnUniteDUsage(exact ?? 0, currency) }),
+                  exact: formatMoney(exact ?? 0, currency, { round: estRondEnUniteDUsage(exact ?? 0, currency) }),
                 })}
               </p>
             )}
