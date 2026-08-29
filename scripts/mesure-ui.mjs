@@ -843,6 +843,62 @@ const SURFACES_INTERACTIVES = [
       await attendre(page, 'barre-du-locataire')
     },
   },
+  {
+    /*
+      LE GESTE DU LOCATAIRE, ET NON PLUS SEULEMENT SA COQUILLE.
+
+      La surface `barre-du-locataire`, juste au-dessus, a fermé la COQUILLE du
+      locataire. Elle n'a pas fermé ses ÉCRANS, et la nuance a coûté un trou
+      entier : `Signaler.tsx` garde son formulaire derrière
+      `peutDeclarer = role === 'tenant' && mesUnites[0]`, et le balayage
+      ordinaire tourne en propriétaire.
+
+      MESURÉ AVANT D'ÉCRIRE CETTE ENTRÉE, à 1280 px, en comptant les commandes
+      dans `<main>` : propriétaire 430 caractères et ZÉRO commande, locataire
+      684 et ONZE. Onze commandes — un champ de titre, un groupe de métiers en
+      `radiogroup`, un groupe d'urgence, une zone de texte, l'envoi — que ni le
+      contraste, ni la sonde des cibles, ni les noms accessibles n'avaient
+      jamais vues. Le témoin de cette entrée l'a prouvé en rougissant d'abord :
+      posée sur `/demo/signaler` SANS bascule de rôle, elle a rendu « la surface
+      ne s'est pas ouverte » aux deux thèmes. C'est le rôle qui manquait, pas le
+      sélecteur.
+
+      LA NAVIGATION SE FAIT AU CLIC, ET C'EST OBLIGATOIRE. L'entrée du dessus
+      l'écrit déjà : « le rôle est un état React, il survit au redimensionnement
+      et ne survit PAS à une navigation ». Un `page.goto('/demo/signaler')`
+      après la bascule rechargerait le document et retomberait en propriétaire —
+      la surface s'ouvrirait sur la page NUE, et la porte auditerait 430
+      caractères sans commande en croyant tenir le formulaire. Le témoin le
+      refuserait, mais un témoin qui rattrape une erreur de geste vaut moins
+      qu'un geste juste.
+
+      1280 POUR LE GESTE, 360 POUR LA MESURE, comme la surface du dessus et pour
+      la même raison : le sélecteur de profil vit dans la barre latérale, qui
+      n'existe qu'au-dessus de `lg`. La mesure, elle, se fait à la largeur où ces
+      onze commandes sont le plus contraintes — c'est celle du marché visé, pas
+      celle du bureau.
+    */
+    nom: 'declaration-du-locataire',
+    adresse: '/demo',
+    largeur: 360,
+    temoin: '[data-mesure="declaration-du-locataire"]',
+    ouvrir: async (page) => {
+      await page.setViewportSize({ width: 1280, height: 900 })
+      /* L'ÉTIQUETTE, PAS LE BOUTON RADIO — le radio est `sr-only`, et `check()`
+         attend l'actionnabilité : il expire. Voir `barre-du-locataire`. */
+      await page.locator('label:has(input[value="tenant"])').click()
+      /* La bascule REDIRIGE vers `/demo/mon-espace`. On attend que cet écran se
+         pose avant de viser son lien : le témoin dit qu'une surface existe, pas
+         qu'elle est prête, et la coquille se monte bien avant ses données. */
+      await attendre(page, 'declaration-du-locataire')
+      await page
+        .getByRole('link', { name: /^Signaler$|^Report$/ })
+        .first()
+        .click()
+      await page.setViewportSize({ width: 360, height: 900 })
+      await attendre(page, 'declaration-du-locataire')
+    },
+  },
 ]
 
 /*
@@ -943,9 +999,9 @@ const DECLENCHEURS_ATTENDUS = 7
   elle-même : vider la table, et l'on comparerait 0 à 0 avant de se déclarer
   vert. Le nombre est donc écrit, et l'ajout d'une surface oblige à le toucher.
 
-  20 = 10 surfaces × 2 thèmes.
+  22 = 11 surfaces × 2 thèmes.
 */
-const SURFACES_ATTENDUES = 20
+const SURFACES_ATTENDUES = 22
 
 /**
  * Neutralise ce qui bouge, AVANT de mesurer.

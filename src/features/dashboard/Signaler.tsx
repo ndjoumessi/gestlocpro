@@ -145,7 +145,31 @@ export function Signaler() {
             pas, et c'est l'ordre du CSS émis qui trancherait.
           */
           <Card flush>
+            {/*
+              `data-mesure` PARCE QUE CE FORMULAIRE N'EXISTE QUE POUR UN RÔLE.
+
+              `peutDeclarer` le garde derrière `role === 'tenant'`, et le
+              balayage de `scripts/mesure-ui.mjs` tourne en PROPRIÉTAIRE : mesuré
+              le 2026-08-30 à 1280 px, cet écran rend 430 caractères et ZÉRO
+              commande dans `<main>` pour le bailleur, contre 684 et ONZE pour le
+              locataire. Onze commandes — dont ce groupe d'urgence et cette zone
+              de texte — qu'aucune porte au navigateur n'avait jamais peintes :
+              ni contraste, ni cible de 44 px, ni nom accessible.
+
+              L'attribut est le TÉMOIN de la surface `declaration-du-locataire`,
+              qui bascule le rôle avant de mesurer. Il porte le même rôle que
+              `data-mesure="barre-locataire"` dans `AppShell.tsx`, et pour la même
+              raison : une classe utilitaire change au premier ajustement de mise
+              en page, un attribut de mesure dit ce qu'il est.
+
+              Un sélecteur sémantique — `main form` — aurait suffi AUJOURD'HUI,
+              puisque le bailleur ne rend aucun formulaire sur cet écran. Il
+              deviendrait menteur le jour où il en rend un : la surface
+              s'ouvrirait sur le mauvais formulaire et la porte se déclarerait
+              verte en ayant audité autre chose. Un témoin nomme sa cible.
+            */}
             <form
+              data-mesure="declaration-du-locataire"
               onSubmit={(e) => {
                 e.preventDefault()
                 void envoyer()
