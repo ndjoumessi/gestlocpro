@@ -295,6 +295,33 @@ const HAUTEUR_TRACE_SEUL = 198
  * graduation « 1 M » du franc CFA. À 16, il retombe à 25 et elle revient.
  */
 const GOUTTIERE_ENTRE_TRACES = 16
+
+/**
+ * LA GOUTTIÈRE D'AXE — la colonne de gauche où vivent les montants.
+ *
+ * LE DÉFAUT MESURÉ. Les étiquettes de graduation étaient posées SUR la première
+ * colonne, derrière un fond opaque : 2 % de l'encre du tracé, et 16 % de la
+ * colonne de septembre. Petit en moyenne, entièrement payé par un seul mois —
+ * le plus ancien, celui que personne ne défend. C'est le même défaut que le
+ * second tracé a déjà fait corriger, à une échelle qui le rendait criant.
+ *
+ * TROIS RANGÉES LA PORTENT, ET IL LE FAUT. Le tracé du haut, celui du bas et la
+ * rangée des mois découpent leurs colonnes par `flex-1` dans un même conteneur
+ * `min-w-max` : elles sont alignées PARCE QU'ELLES PARTENT DU MÊME BORD. Une
+ * gouttière sur une seule décalerait les mois de leurs barres — le défaut le
+ * plus grave qu'un graphe puisse porter, et l'un des plus discrets : rien ne
+ * déborde, rien ne manque, et chaque colonne annonce le mois d'à côté.
+ *
+ * EN `rem` ET NON EN PIXELS. L'étiquette la plus large du produit — « 500 k »
+ * avec sa pastille — vaut 46 px à 16 px de police racine ; à 22 px, le cran
+ * « très grand » d'Android, elle en vaut 63. Une gouttière en pixels serait
+ * dépassée là exactement où le texte grandit. Trois `rem` suivent le texte.
+ *
+ * CE QU'ELLE COÛTE : trois `rem` de largeur, prises aux colonnes au-delà du
+ * repli, et ajoutées au défilement en deçà — la zone défile déjà, et son
+ * conteneur réclame sa largeur intrinsèque.
+ */
+const GOUTTIERE_D_AXE = 'pl-12'
 const HAUTEUR_TRACE_AVEC_SECOND =
   HAUTEUR_TRACE_SEUL - HAUTEUR_TRACE_SECONDAIRE - GOUTTIERE_ENTRE_TRACES
 
@@ -712,7 +739,11 @@ export function StackedBarChart({
         <div
           data-trace="principal"
           data-max={maxAffiche}
-          className="relative flex min-h-0 flex-1 items-stretch gap-1 sm:gap-2.5"
+          data-rangee-de-colonnes=""
+          className={cn(
+            'relative flex min-h-0 flex-1 items-stretch gap-1 sm:gap-2.5',
+            GOUTTIERE_D_AXE,
+          )}
         >
           {/*
             LES GRADUATIONS VIENNENT AVANT L'OBJECTIF DANS LE DOM, et c'est la
@@ -924,7 +955,11 @@ export function StackedBarChart({
             aria-hidden="true"
             data-trace="secondaire"
             data-max={maxSecondaireAffiche}
-            className="relative flex h-16 items-stretch gap-1 border-t border-divider pt-2 sm:gap-2.5"
+            data-rangee-de-colonnes=""
+            className={cn(
+              'relative flex h-16 items-stretch gap-1 border-t border-divider pt-2 sm:gap-2.5',
+              GOUTTIERE_D_AXE,
+            )}
           >
             {bars.map((bar, index) => {
               const totalBas = totalsSecondaires[index]
@@ -962,7 +997,11 @@ export function StackedBarChart({
           </>
         )}
 
-        <div className="mt-2.5 flex gap-1 sm:gap-2.5" aria-hidden="true">
+        <div
+          className={cn('mt-2.5 flex gap-1 sm:gap-2.5', GOUTTIERE_D_AXE)}
+          data-rangee-de-colonnes=""
+          aria-hidden="true"
+        >
           {bars.map((bar, index) => (
             <span
               key={bar.label}

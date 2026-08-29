@@ -239,4 +239,49 @@ describe('l’échelle du graphe d’encaissements', () => {
       }
     })
   }
+
+  /*
+    ═══ LA GOUTTIÈRE D'AXE EST LA MÊME POUR LES TROIS RANGÉES ═══
+
+    Les étiquettes de graduation étaient posées SUR la première colonne, derrière
+    un fond opaque : 2 % de l'encre du tracé, et 16 % de la colonne de septembre.
+    Petit en moyenne, entièrement payé par un seul mois — le plus ancien, celui
+    que personne ne défend. Elles vivent désormais dans une gouttière à gauche.
+
+    CE QUE CE DÉPLACEMENT MET EN JEU. Le tracé du haut, celui du bas et la rangée
+    des mois découpent leurs colonnes par `flex-1` dans un même conteneur
+    `min-w-max` : elles sont alignées PARCE QU'ELLES PARTENT DU MÊME BORD. Une
+    gouttière posée sur une seule décalerait les mois de leurs barres — le défaut
+    le plus grave qu'un graphe puisse porter, et l'un des plus discrets : rien ne
+    déborde, rien ne manque, et chaque colonne annonce le mois d'à côté.
+
+    JSDOM NE MET RIEN EN PAGE, donc l'alignement lui-même n'est pas mesurable
+    ici. Ce qui l'est, c'est sa CAUSE : le même retrait déclaré sur les trois
+    rangées, et le même nombre de colonnes dans chacune. Mesuré au navigateur
+    après ce lot : désalignement maximal de 0 px sur les douze colonnes.
+  */
+  it('pose la même gouttière sur les trois rangées de colonnes', async () => {
+    await renderApp('/demo')
+    await attendreLeChargement()
+
+    const rangees = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-rangee-de-colonnes]'),
+    )
+    expect(rangees.length, 'les rangées de colonnes ne se déclarent pas').toBe(3)
+
+    const retraits = rangees.map(
+      (r) => r.className.split(/\s+/).find((c) => /^p[lx]-/.test(c)) ?? '(aucun)',
+    )
+    expect(new Set(retraits).size, `retraits différents : ${retraits.join(' · ')}`).toBe(1)
+
+    /* ET LE MÊME NOMBRE DE COLONNES. Une gouttière identique n'aligne rien si
+       une rangée en compte onze et l'autre douze. */
+    const comptes = rangees.map(
+      (r) =>
+        Array.from(r.children).filter(
+          (e) => !e.hasAttribute('data-graduation') && !e.hasAttribute('data-repere'),
+        ).length,
+    )
+    expect(new Set(comptes).size, `colonnes : ${comptes.join(' · ')}`).toBe(1)
+  })
 })
