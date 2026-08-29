@@ -7,6 +7,25 @@ import { controlClasses } from './Field'
 export interface OptionCombobox {
   value: string
   label: string
+  /**
+   * CE QU'ON MONTRE UNE FOIS LE CHOIX FAIT, quand le libellé est trop long
+   * pour le champ.
+   *
+   * Un libellé de liste peut être long sans dommage : la liste a la largeur de
+   * la page. Le CHAMP, lui, a la sienne, et un libellé qui la dépasse s'y coupe
+   * sans ellipse et sans que rien ne déborde — donc sans qu'aucune garde de
+   * mise en page le voie.
+   *
+   * Mesuré sur l'indicatif téléphonique : « Congo-Brazzaville · +242 » dans
+   * 176 px rognait le « +242 », c'est-à-dire la seule partie qui sert. Et le
+   * libellé peut aller jusqu'à « Canada, États-Unis, Anguilla… · +1 » — aucune
+   * largeur fixe ne tiendra cela. Élargir, c'est perdre la même course plus
+   * tard.
+   *
+   * Facultatif : sans lui, le champ montre le libellé, ce qui reste juste pour
+   * les listes dont les entrées tiennent.
+   */
+  resume?: string
   /** Intitulé de groupe, affiché au-dessus de la première option du groupe. */
   groupe?: string
 }
@@ -279,7 +298,7 @@ export function Combobox({
           className={controlClasses(invalid, 'pr-9')}
           // Le libellé du choix courant s'affiche tant qu'on ne cherche pas :
           // un champ vide ferait croire qu'aucun choix n'est fait.
-          value={ouvert ? saisie : (selectionne?.label ?? '')}
+          value={ouvert ? saisie : (selectionne?.resume ?? selectionne?.label ?? '')}
           placeholder={placeholder}
           onChange={(e) => {
             setSaisie(e.target.value)

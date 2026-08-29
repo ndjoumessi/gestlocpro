@@ -464,10 +464,20 @@ export function SignUp() {
                       départagent par l'ordre du CSS généré, pas par l'ordre des
                       classes. Le champ tombait à 68px pour 52px de rembourrage,
                       et « +237 » n'avait plus la place de s'afficher. */}
-                  {/* Élargi de 112 à 176px : l'étiquette porte désormais le
-                      pays avant l'indicatif, et « Cameroun · +237 » ne tient
-                      pas dans la largeur d'un nombre à quatre caractères. */}
-                  <div className="w-44 shrink-0">
+                  {/*
+                    RESSERRÉ DE 176 À 104 px, ET C'EST LE CONTRAIRE D'UN RECUL.
+
+                    Le champ avait été élargi pour loger « Cameroun · +237 ». La
+                    course était perdue d'avance : le libellé va jusqu'à
+                    « Canada, États-Unis, Anguilla… · +1 », et « Congo-Brazzaville
+                    · +242 » rognait déjà le +242 — la seule partie qui sert.
+
+                    Fermé, le contrôle montre l'INDICATIF seul : cinq caractères
+                    au plus, quel que soit le pays. Le nom du pays vit dans la
+                    liste, là où l'on choisit et où la place existe. Les 72 px
+                    rendus vont au NUMÉRO, qui en manquait.
+                  */}
+                  <div className="w-26 shrink-0">
                     <Combobox
                       aria-label={t("common.dialCode")}
                       autoComplete="tel-country-code"
@@ -480,6 +490,9 @@ export function SignUp() {
                         ({ dial, label, zone }) => ({
                           value: dial,
                           label,
+                          // Voir `OptionCombobox.resume` : le champ fermé porte
+                          // l'indicatif, la liste porte les pays.
+                          resume: dial,
                           groupe: t(
                             zone === "cfa"
                               ? "common.dialZoneCfa"

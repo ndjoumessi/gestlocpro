@@ -176,7 +176,9 @@ export function countryOptions(locale: Locale): OptionPays[] {
  * peut résider en France ou au Canada et louer à Douala : l'écarter serait le
  * défaut inverse.
  */
-export function dialOptions(locale: Locale): { dial: string; label: string; zone: 'cfa' | 'autre' }[] {
+export function dialOptions(
+  locale: Locale,
+): { dial: string; label: string; zone: 'cfa' | 'autre' }[] {
   /**
    * La liste couvre désormais TOUS les pays, pas les vingt-deux servis.
    *

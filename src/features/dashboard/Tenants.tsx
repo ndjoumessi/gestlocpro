@@ -616,7 +616,11 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
         >
           {(props) => (
             <div className="flex gap-2">
-              <div className="w-44 shrink-0">
+              {/* Resserré comme à l'inscription, et pour la même mesure : le
+                  libellé « Congo-Brazzaville · +242 » rognait son indicatif
+                  dans 176 px. Fermé, le champ porte l'indicatif ; la liste
+                  porte les pays. Voir `OptionCombobox.resume`. */}
+              <div className="w-26 shrink-0">
                 {/* Cherchable, comme à l'inscription.
                     Le menu natif alignait ici les deux cent quatre indicatifs
                     sans moyen d'en atteindre un : le correctif qui les a rendus
@@ -630,6 +634,7 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
                   options={dialOptions(locale).map(({ dial: code, label, zone }) => ({
                     value: code,
                     label,
+                    resume: code,
                     groupe: t(zone === 'cfa' ? 'common.dialZoneCfa' : 'common.dialZoneOther'),
                   }))}
                   value={dial}

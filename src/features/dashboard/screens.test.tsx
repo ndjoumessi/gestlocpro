@@ -258,7 +258,12 @@ describe('indicatif de la fiche locataire', () => {
     const options = within(screen.getByRole('listbox')).getAllByRole('option')
     expect(options).toHaveLength(1)
     await user.click(options[0])
-    expect(indicatif).toHaveValue('Zimbabwe · +263')
+    /* On CHERCHE par le nom du pays et l'on RETIENT l'indicatif : le champ
+       fermé ne porte plus que « +263 ». Le libellé long rognait dans 176 px —
+       « Congo-Brazzaville · +242 » y perdait son indicatif —, et aucune largeur
+       ne tiendrait « Canada, États-Unis, Anguilla… · +1 ». Voir
+       `OptionCombobox.resume`. */
+    expect(indicatif).toHaveValue('+263')
   })
 
   it('garde le jeton de remplissage automatique', async () => {
