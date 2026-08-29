@@ -645,7 +645,36 @@ try {
             ce que `<main>` décide.
           */
           const conteneur = d.parentElement
+          /*
+            UNE VALEUR COUPÉE DANS SON CHAMP, mesurée ICI aussi.
+
+            `mesure-ui` porte la même règle depuis ce lot, sur 88 champs — mais
+            il ne pousse aucune porte : les champs qui vivent DANS une modale
+            lui échappent, et ce sont les plus contraints du produit, puisqu'ils
+            partagent une boîte de 360 px avec un pied et un en-tête.
+
+            `scrollWidth > clientWidth` est la mesure exacte du texte qui
+            n'entre pas dans sa boîte de contenu. Un texte coupé DANS sa boîte
+            ne déborde de rien : la page ne défile pas, le conteneur ne grandit
+            pas, et le DOM porte la chaîne entière.
+          */
+          const valeursRognees = []
+          for (const champ of d.querySelectorAll('input, select')) {
+            if (['hidden', 'checkbox', 'radio'].includes(champ.type)) continue
+            if (!champ.getClientRects().length) continue
+            const montre = champ.value || champ.placeholder || ''
+            if (!montre.trim()) continue
+            const manque = Math.round(champ.scrollWidth - champ.clientWidth)
+            if (manque <= 2) continue
+            valeursRognees.push({
+              texte: montre.trim().slice(0, 44),
+              manque,
+              offert: Math.round(champ.clientWidth),
+            })
+          }
+
           return {
+            valeursRognees,
             enfantDeBody: conteneur?.parentElement === document.body,
             profondeur: (() => {
               let n = 0
@@ -733,6 +762,15 @@ try {
           plaintes.push(
             `${nom} : le corps tient entier et annonce pourtant une suite ` +
               `(${m.voilesEnHaut.haut ? 'au-dessus' : ''}${m.voilesEnHaut.bas ? ' en dessous' : ''}).`,
+          )
+        }
+        for (const v of m.valeursRognees) {
+          plaintes.push(
+            `${nom} : « ${v.texte} » est COUPÉ dans son champ — ${v.manque} px de trop pour ` +
+              `${v.offert} px offerts.\n` +
+              '   Un texte coupé DANS sa boîte ne déborde de rien : aucune autre règle ne le voit.\n' +
+              "   Remèdes : élargir le champ ; raccourcir ce qu'il MONTRE une fois fermé, en\n" +
+              '   gardant la forme longue dans sa liste (`OptionCombobox.resume`).',
           )
         }
         if (m.defil > modale.defil[largeur]) {

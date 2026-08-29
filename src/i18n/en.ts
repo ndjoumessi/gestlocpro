@@ -191,6 +191,7 @@ export const en: Dictionary = {
     openNav: 'Open navigation',
     closeNav: 'Close navigation',
     searchPlaceholder: 'Search a unit, a tenant…',
+    searchShort: 'Unit, tenant…',
     selectPark: 'Park being viewed',
     primaryNav: 'Main navigation',
     sectionsNav: 'Product sections',

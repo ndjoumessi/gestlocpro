@@ -262,6 +262,8 @@ export const fr = {
     openNav: 'Ouvrir la navigation',
     closeNav: 'Fermer la navigation',
     searchPlaceholder: 'Rechercher un logement, un locataire…',
+    /* Le GABARIT, plus court que le nom accessible : voir `Portfolio`. */
+    searchShort: 'Logement, locataire…',
     selectPark: 'Parc regardé',
     primaryNav: 'Navigation principale',
     sectionsNav: 'Sections du produit',

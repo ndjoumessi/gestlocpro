@@ -290,8 +290,23 @@ export function Portfolio() {
           <Input
             icon="search"
             type="search"
+            /*
+              LE NOM RESTE ENTIER, LE GABARIT RACCOURCIT.
+
+              « Rechercher un logement, un locataire… » était coupé de 55 px à
+              320 px : le champ n'offre que 228 px une fois l'icône et les
+              rembourrages retirés. Un gabarit tronqué ne se voit pas — rien ne
+              déborde, la page ne défile pas — et c'est la sonde du rognage de
+              valeur qui l'a relevé, la seule à mesurer le TEXTE plutôt que la
+              boîte.
+
+              Le nom accessible garde la phrase entière : c'est lui qu'un
+              lecteur d'écran annonce, et il n'a pas de largeur. Ce qui rétrécit
+              est ce qui s'affiche, où deux mots suffisent à dire sur quoi
+              porte la recherche.
+            */
             aria-label={t('nav.searchPlaceholder')}
-            placeholder={t('nav.searchPlaceholder')}
+            placeholder={t('nav.searchShort')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />

@@ -2162,6 +2162,92 @@ const MESURER_DEBORD_LOCAL = () => {
  * flux du bas de la boîte de contenu, dans une cellule étirée par une voisine
  * d'une autre nature.
  */
+/**
+ * UNE VALEUR COUPÉE DANS SON CHAMP — le rognage que rien ne voyait.
+ *
+ * ═══ LE CAS QUI L'A FAIT ÉCRIRE ═══
+ *
+ * Le champ d'indicatif téléphonique portait « Congo-Brazzaville · +242 » dans
+ * 176 px : l'indicatif — la seule partie qui sert — était coupé hors du champ.
+ * Personne ne le voyait, et pour une raison structurelle : un texte coupé DANS
+ * sa boîte ne déborde de rien. La page ne défile pas, le conteneur ne grandit
+ * pas, et le DOM porte la chaîne entière. Toutes les règles voisines mesurent
+ * ce qui SORT ; celle-ci mesure ce qui n'entre pas.
+ *
+ * ═══ CE QU'ON MESURE, ET POURQUOI PAS `scrollWidth` ═══
+ *
+ * Première rédaction : `scrollWidth > clientWidth`. Elle ne mordait PAS, et le
+ * témoin l'a dit — un champ de recherche ramené à 96 px pour un gabarit de
+ * trente-six caractères laissait la porte verte. `scrollWidth` ne grandit que
+ * pour une VALEUR ; un champ vide qui affiche un gabarit mesure toujours zéro
+ * écart, quelle que soit la longueur du gabarit. Et le balayage ne tape rien,
+ * donc la plupart des champs y sont vides.
+ *
+ * On MESURE DONC LE TEXTE : un `<span>` détaché prend la police calculée du
+ * champ et rend la largeur réelle des glyphes, comparée à la boîte de contenu —
+ * `clientWidth` moins les rembourrages, moins la place du chevron pour un
+ * `<select>`.
+ *
+ * ON MESURE LA VALEUR OU LE GABARIT, jamais une saisie en cours : le balayage
+ * ne tape rien, donc ce qu'on trouve est ce qu'un visiteur voit EN ARRIVANT —
+ * une valeur par défaut trop longue, un `placeholder` qui ne tient pas.
+ *
+ * ═══ CE QU'ELLE NE VOIT PAS ═══
+ *
+ * Les valeurs que l'utilisateur tape ensuite. Un champ de saisie fait défiler
+ * son texte sous le curseur et c'est le comportement attendu — la règle ne peut
+ * pas distinguer « trop long par nature » de « trop long parce qu'on écrit ».
+ * Elle attrape ce que le produit AFFICHE de lui-même.
+ */
+const MESURER_VALEUR_ROGNEE = () => {
+  const defauts = []
+  let mesures = 0
+  const regle = document.createElement('span')
+  regle.style.cssText =
+    'position:absolute;visibility:hidden;white-space:pre;left:-9999px;top:0;pointer-events:none'
+  document.body.appendChild(regle)
+
+  for (const champ of document.querySelectorAll('input, select')) {
+    if (champ.type === 'hidden' || champ.type === 'checkbox' || champ.type === 'radio') continue
+    if (!champ.getClientRects().length) continue
+    /* Ce que le champ MONTRE : sa valeur, ou son gabarit quand il est vide. Un
+       `<select>` montre le libellé de son option retenue. */
+    const montre =
+      champ.tagName === 'SELECT'
+        ? (champ.options[champ.selectedIndex]?.textContent ?? '')
+        : champ.value || champ.placeholder || ''
+    if (!montre.trim()) continue
+    mesures += 1
+
+    const style = getComputedStyle(champ)
+    regle.style.font = style.font
+    regle.style.letterSpacing = style.letterSpacing
+    regle.textContent = montre
+    const largeurDuTexte = regle.getBoundingClientRect().width
+
+    /* LA BOÎTE DE CONTENU : `clientWidth` porte encore les rembourrages. Un
+       `<select>` réserve en plus la place de son chevron, que le navigateur
+       n'expose pas — seize pixels, la valeur de tous ceux du produit. */
+    const offert =
+      champ.clientWidth -
+      parseFloat(style.paddingLeft || '0') -
+      parseFloat(style.paddingRight || '0') -
+      (champ.tagName === 'SELECT' ? 16 : 0)
+
+    const manque = Math.round(largeurDuTexte - offert)
+    /* DEUX PIXELS DE MARGE : les largeurs sont fractionnaires dès qu'un zoom ou
+       une densité d'écran s'en mêle, et un demi-pixel n'a coupé aucune lettre. */
+    if (manque <= 2) continue
+    defauts.push({
+      texte: montre.trim().slice(0, 48),
+      manque,
+      offert: Math.round(offert),
+    })
+  }
+  regle.remove()
+  return { mesures, defauts }
+}
+
 const MESURER_BLANC_IMPOSE = () => {
   // Inlinée : cette fonction est SÉRIALISÉE vers le navigateur, elle n'emporte
   // aucune fermeture. Une constante du module y vaudrait `undefined`.
@@ -3408,6 +3494,8 @@ let libellesMesures = 0
 const troncatures = new Map()
 let intitulesMesures = 0
 /** Gestes hors de la fenêtre de défilement — voir `MESURER_GESTES_ATTEIGNABLES`. */
+const valeursRognees = new Map()
+let valeursMesurees = 0
 const gestesHorsChamp = new Map()
 const gestesNus = new Map()
 let gestesMesures = 0
@@ -3786,6 +3874,22 @@ try {
             if (!vu || d.manque > vu.manque) {
               troncatures.set(cle, { ...d, langue, ou: `${adresse} ${largeur}px` })
             }
+          }
+        }
+
+        /* ENCORE AUCUN CHARGEMENT : même page, même largeur, même langue. */
+        const valeurs = await chrono('sonde · valeurs rognées', () =>
+          page.evaluate(MESURER_VALEUR_ROGNEE),
+        )
+        valeursMesurees += valeurs.mesures
+        for (const d of valeurs.defauts) {
+          /* Dédupliqué sur le TEXTE et la LANGUE, et l'on garde le PIRE manque :
+             le même champ trop étroit à onze largeurs est un seul correctif, et
+             c'est la largeur la plus serrée qui dit combien il faut trouver. */
+          const cle = `${d.texte}|${langue}`
+          const vu = valeursRognees.get(cle)
+          if (!vu || d.manque > vu.manque) {
+            valeursRognees.set(cle, { ...d, langue, ou: `${adresse} ${largeur}px` })
           }
         }
 
@@ -4563,6 +4667,42 @@ if (gestesHorsChamp.size > 0) {
   console.error(
     '   Remède : rendre le geste atteignable sans découvrir un défilement — une colonne\n' +
       '   COLLANTE satisfait la règle par construction, une table qui rétrécit aussi.',
+  )
+  process.exit(1)
+}
+
+if (valeursRognees.size > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${valeursRognees.size} valeur(s) COUPÉE(S) dans leur champ,` +
+      ` sur ${valeursMesurees} mesurée(s).\n` +
+      '   Un texte coupé DANS sa boîte ne déborde de rien : la page ne défile pas, le\n' +
+      '   conteneur ne grandit pas, et le DOM porte la chaîne entière. Les règles voisines\n' +
+      "   mesurent ce qui SORT ; celle-ci mesure ce qui n'entre pas.\n",
+  )
+  for (const d of valeursRognees.values()) {
+    console.error(
+      `   −${d.manque}px  « ${d.texte} »\n` +
+        `      ${d.offert}px offerts · ${d.langue} · vu au pire à ${d.ou}\n`,
+    )
+  }
+  console.error(
+    '   Remèdes : élargir le champ ; raccourcir ce qu’il MONTRE une fois fermé, en gardant\n' +
+      '   la forme longue dans sa liste (`OptionCombobox.resume`) ; raccourcir un gabarit.',
+  )
+  process.exit(1)
+}
+
+/*
+  GARDE DU GARDE — LA SONDE DES VALEURS DOIT AVOIR VU DES CHAMPS.
+
+  Ses trois exclusions sont des `continue` : resserrer l'une d'elles par
+  inadvertance viderait la boucle sans rien casser, et le rapport écrirait
+  « aucune valeur coupée » après n'avoir mesuré personne.
+*/
+if (valeursMesurees === 0) {
+  console.error(
+    '\n✗ mesure-ui : aucune valeur de champ mesurée au ROGNAGE.\n' +
+      '   Une sonde qui ne trouve rien ne prouve rien.',
   )
   process.exit(1)
 }
@@ -5654,6 +5794,8 @@ console.log(
     `  ${elementsSondes} éléments sondés pour le DÉBORDEMENT LOCAL — un contenu qui sort de sa boîte\n` +
     `  sans faire défiler la page — aucun hors des ${Object.keys(DEBORDS_LOCAUX_TOLERES).length} signatures tolérées et motivées.\n` +
     `  ${libellesMesures} libellés de barre basse mesurés à la COUPURE, aucun orphelin sous 3 caractères.\n` +
+    `  ${valeursMesurees} valeur(s) de champ mesurée(s) au ROGNAGE — une valeur ou un gabarit\n` +
+    `  coupé dans sa boîte ne déborde de rien, et aucune autre règle ne le voit.\n` +
     `  ${gestesMesures} gestes de tableau mesurés, tous ATTEIGNABLES sans découvrir un défilement,\n` +
     `  et ${commandesDeGeste} commande(s) de geste, toutes porteuses d'un GLYPHE — une colonne sans\n` +
     `  intitulé n'a que lui pour dire, au repos, qu'on entre dans des commandes.\n` +
