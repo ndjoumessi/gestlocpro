@@ -581,17 +581,32 @@ export function Payments() {
               // Offert seulement s'il y a quelque chose à attester : sur un
               // logement vacant, le bouton n'aurait aucun sens.
               unit.tenant ? (
-                <div className="flex justify-end gap-1">
+                /* `flex-wrap` : deux gestes sur une ligne de fiche, et à 320 px
+                   ils ne tiennent pas côte à côte — mesuré, 28 px de
+                   débordement LOCAL, celui qui sort de la carte sans faire
+                   défiler la page. Sans repli, le groupe impose sa largeur de
+                   contenu à une carte qui, elle, ne peut pas s'élargir.
+
+                   Le défaut préexistait en français et se cachait derrière un
+                   libellé anglais plus long, qui le rendait plus visible : ce
+                   lot n'a fait que le sortir en offrant le geste sur toutes les
+                   lignes en retard. */
+                <div className="flex flex-wrap justify-end gap-1">
                   {/* Droit du seul PROPRIÉTAIRE, comme la validation d'un devis
                       et l'arbitrage d'une caution : le gestionnaire propose, il
                       ne décide pas. Le serveur le refuse aussi — ce masquage
                       évite d'offrir un geste voué au refus, il ne le remplace
                       pas.
 
-                      `leaseId` conditionne l'affichage : en démonstration aucun
-                      bail ne porte d'identifiant serveur, et il n'y a rien à
-                      mettre en demeure. */}
-                  {role === 'owner' && (unit.overdueDays ?? 0) > 0 && unit.leaseId ? (
+                      LE GESTE S'OFFRE AUSSI EN DÉMONSTRATION. `leaseId`
+                      conditionnait l'affichage, et le motif tenait : sans parc
+                      serveur la confirmation ne faisait rien. Le fournisseur
+                      nomme désormais cette issue — voir `serveFormalNotice` —
+                      donc la boîte peut s'ouvrir et RÉPONDRE. Le bail est
+                      désigné comme dans la relance en masse, quelques lignes
+                      plus bas : son identifiant serveur s'il existe, celui de
+                      l'unité sinon. */}
+                  {role === 'owner' && (unit.overdueDays ?? 0) > 0 ? (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -715,11 +730,25 @@ export function Payments() {
                     return
                   }
                   setEnCours(true)
-                  const ok = await serveFormalNotice(enDemeure.leaseId!, motif.trim())
+                  const issue = await serveFormalNotice(
+                    enDemeure.leaseId ?? enDemeure.id,
+                    motif.trim(),
+                  )
                   setEnCours(false)
-                  if (!ok) return
+                  if (issue === 'echec') return
                   setEnDemeure(null)
-                  notify(t('app.payments.noticeDone'), { tone: 'ok' })
+                  /* LA PHRASE SUIT CE QUI A EU LIEU. « Enregistrée au dossier
+                     du bail » serait faux en démonstration, où aucun dossier
+                     n'existe : on y dit ce qu'on ne fait pas, du ton neutre
+                     réservé à ce qui n'est ni un succès ni un échec. */
+                  notify(
+                    t(
+                      issue === 'demonstration'
+                        ? 'app.payments.noticeDemo'
+                        : 'app.payments.noticeDone',
+                    ),
+                    { tone: issue === 'demonstration' ? 'neutral' : 'ok' },
+                  )
                 }}
               >
                 {t('common.confirm')}

@@ -130,6 +130,9 @@ const MODALES: Modale[] = [
   { nom: 'Retirer une fiche', adresse: '/demo/locataires', bouton: /^Retirer$/, rang: 0, forme: 'lecture' },
   { nom: 'Retirer un accès', adresse: '/demo/acces', bouton: /^Retirer l’accès$/, rang: 0, forme: 'lecture' },
   { nom: 'Relancer les retards', adresse: '/demo/paiements', bouton: /^Relancer les retards$/, forme: 'lecture' },
+  /* La cinquième confirmation, entrée quand la démonstration a cessé de masquer
+     le geste. `saisie` : elle porte un motif, qui est tout l'acte. */
+  { nom: 'Mettre en demeure', adresse: '/demo/paiements', bouton: /^Mettre en demeure$/, rang: 0, forme: 'saisie' },
 ]
 
 /**
@@ -419,9 +422,9 @@ describe('le clavier des modales', () => {
    * rendrait la garde d'accord avec elle-même, piège trouvé par la même
    * mutation trois lots de suite.
    */
-  it('a bien joué les seize modales déclarées', () => {
-    expect(MODALES.length).toBe(16)
-    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(16)
+  it('a bien joué les dix-sept modales déclarées', () => {
+    expect(MODALES.length).toBe(17)
+    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(17)
     /* LES `lecture` SONT NOMMÉES, et l'écrire ici les protège : passer une
        modale de saisie en `lecture` pour faire taire un champ mal libellé est
        le contournement le plus facile de ce fichier. Il ferait rougir.

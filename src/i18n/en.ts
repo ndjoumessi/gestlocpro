@@ -762,7 +762,12 @@ export const en: Dictionary = {
       remindSkipped: '{count} already chased today',
       remindSkipped_one: '1 already chased today',
       remindNothing: 'Nothing sent: all of them were already chased today',
-      notice: 'Serve formal notice',
+      /* « Serve notice » ET NON « Serve formal notice » : mesuré à 320 px, le
+         libellé long débordait de 28 px de sa rangée d'actions, sur les six
+         lignes en retard — le français, plus court, tenait. La formule
+         raccourcie est celle de l'usage juridique anglais ; le nom complet
+         reste dans le titre de la boîte, où la place existe. */
+      notice: 'Serve notice',
       noticeTitle: 'Serve formal notice to {tenant}?',
       noticeBody:
         'A binding step, ahead of termination. The reason and the amount owed are filed as they stand and will be produced in a dispute.',
@@ -770,6 +775,7 @@ export const en: Dictionary = {
       noticeReasonHint: 'At least 10 characters. This is the text that will defend the decision.',
       noticeReasonError: 'A reason of at least 10 characters is required',
       noticeDone: 'Formal notice filed against the lease',
+      noticeDemo: 'Nothing is recorded in the demo: a formal notice needs a real lease.',
       lateDays: 'Days late',
     },
 

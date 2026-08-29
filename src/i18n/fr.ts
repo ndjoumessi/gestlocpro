@@ -999,6 +999,8 @@ export const fr = {
       noticeReasonHint: 'Au moins 10 caractères. C’est le texte qui défendra la décision.',
       noticeReasonError: 'Un motif d’au moins 10 caractères est requis',
       noticeDone: 'Mise en demeure enregistrée au dossier du bail',
+      noticeDemo:
+        'En démonstration, rien n’est enregistré : une mise en demeure suppose un bail réel.',
       // En-tête de colonne de l'export : « +24 j » est une abréviation
       // d'affichage, illisible en tête d'une colonne de tableur.
       lateDays: 'Jours de retard',

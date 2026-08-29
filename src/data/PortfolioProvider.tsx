@@ -311,7 +311,10 @@ interface PortfolioContextValue {
    */
   callRent: (periodStart: string) => Promise<number>
   /** Met en demeure. Droit du seul propriétaire, motif obligatoire. */
-  serveFormalNotice: (leaseId: string, reason: string) => Promise<boolean>
+  serveFormalNotice: (
+    leaseId: string,
+    reason: string,
+  ) => Promise<'enregistree' | 'demonstration' | 'echec'>
   /**
    * Enregistre un encaissement sur une période.
    *
@@ -1358,15 +1361,34 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [parkId, signalerEchec],
   )
 
+  /*
+    TROIS ISSUES ET NON DEUX, et c'est ce qui rend le geste JOUABLE en
+    démonstration sans qu'elle mente.
+
+    Un booléen ne distingue pas « le serveur a refusé » de « il n'y a pas de
+    serveur ». L'écran retombait donc sur le même silence dans les deux cas, et
+    c'est pourquoi le bouton était masqué en démonstration : mieux valait pas de
+    bouton qu'une confirmation qui ne fait rien.
+
+    Nommer la troisième issue déplace la décision là où elle se prend — seul le
+    fournisseur sait s'il y a un parc — et laisse l'écran écrire la phrase
+    juste. Même partition que `remindRent`, qui rend un bilan plutôt qu'un
+    succès, et dont l'écran dit « rien n'est parti » au lieu d'annoncer trois
+    relances.
+  */
   const serveFormalNotice = useCallback(
-    async (leaseId: string, reason: string): Promise<boolean> => {
-      if (!parkId) return false
+    async (leaseId: string, reason: string): Promise<'enregistree' | 'demonstration' | 'echec'> => {
+      /* RIEN À ÉCRIRE LOCALEMENT, et ce n'est pas un oubli : l'acte est un
+         enregistrement au dossier du bail PLUS une notification au compte du
+         locataire. La démonstration n'a ni l'un ni l'autre — même raisonnement
+         que la réponse à un signalement, dont le commentaire le dit déjà. */
+      if (!parkId) return 'demonstration'
       try {
         await api.serveFormalNotice(parkId, leaseId, reason)
-        return true
+        return 'enregistree'
       } catch (erreur) {
         signalerEchec(erreur)
-        return false
+        return 'echec'
       }
     },
     [parkId, signalerEchec],

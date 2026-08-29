@@ -315,6 +315,20 @@ const MODALES = [
     avant: { 360: 0, 1280: 0 },
   },
   { nom: 'RemindOverdue', adresse: '/demo/paiements', bouton: /^Relancer les retards$|^Chase arrears$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  /*
+    LA MISE EN DEMEURE ENTRE, ET C'EST UN LOT QUI L'A OUVERTE.
+
+    Elle était la seule inscrite `NON_OUVRABLES` : son bouton était masqué en
+    démonstration parce que `serveFormalNotice` rendait `false` sans parc, donc
+    la boîte se serait ouverte sur une confirmation qui ne fait rien. Le
+    fournisseur nomme maintenant cette troisième issue, l'écran écrit la phrase
+    juste — « rien n'est enregistré » —, et le geste se joue entier.
+
+    C'est le seul de ces gestes dont la démonstration ne peut RIEN retenir :
+    l'acte est un enregistrement au dossier plus une notification à un compte,
+    et elle n'a ni l'un ni l'autre. Elle le dit, au lieu de se taire.
+  */
+  { nom: 'FormalNotice', adresse: '/demo/paiements', bouton: /^Mettre en demeure$|^Serve notice$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
 ]
 
 /**
@@ -325,7 +339,20 @@ const MODALES = [
  * rougir, et l'une de ces deux qui redeviendrait atteignable aussi.
  */
 /*
-  UNE SEULE, ET ELLE NE DOIT PAS S'OUVRIR.
+  REDEVENUE VIDE, ET C'EST UN ÉTAT QUI SE GARDE COMME UN AUTRE.
+
+  La mise en demeure y a passé un lot : son bouton était masqué en démonstration
+  faute d'un chemin local honnête. Elle en est sortie par le haut — le
+  fournisseur nomme désormais l'issue « démonstration », l'écran écrit « rien
+  n'est enregistré », et la boîte s'ouvre. Les dix-huit modales du produit sont
+  de nouveau toutes ouvrables.
+
+  La liste reste, avec son compte : une dix-neuvième que la démonstration ne
+  rendrait pas devrait s'y inscrire et faire bouger `NON_OUVRABLES_ATTENDUES`,
+  donc apparaître dans un diff. Retirer la liste parce qu'elle est vide, c'est
+  retirer le seul endroit où l'on remarquerait qu'elle a cessé de l'être.
+
+  ANCIEN MOTIF, GARDÉ POUR MÉMOIRE.
 
   La mise en demeure est conditionnée à `unit.leaseId`, qu'aucun bail de la
   démonstration ne porte. C'est DÉLIBÉRÉ et il faut que ça le reste :
@@ -338,7 +365,7 @@ const MODALES = [
   local existait : là-bas la donnée manquait sans raison, ici son absence EST la
   raison. La géométrie de cette boîte reste donc non mesurée, et c'est écrit.
 */
-const NON_OUVRABLES = ['FormalNotice']
+const NON_OUVRABLES = []
 
 /**
  * Les libellés que `clavierDesModales.test.tsx` joue, recopiés pour que la ligne
@@ -376,6 +403,7 @@ const COUVERTS = [
   'Retirer',
   'Retirer l’accès',
   'Relancer les retards',
+  'Mettre en demeure',
 ]
 const LARGEURS = [360, 1280]
 const LANGUES = ['fr', 'en']
@@ -394,8 +422,8 @@ const LANGUES = ['fr', 'en']
   `Tariffs` sont passées de la seconde ligne à la première. C'est exactement ce
   que ce compte écrit à la main sert à rendre visible dans un diff.
 */
-const ATTENDUS = 68
-const NON_OUVRABLES_ATTENDUES = 1
+const ATTENDUS = 72
+const NON_OUVRABLES_ATTENDUES = 0
 
 async function servir() {
   const fils = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--host', '127.0.0.1'], {
@@ -770,7 +798,7 @@ if (plaintes.length > 0) {
   sans compte il se périmerait encore. Le nombre force à toucher cette ligne le
   jour où la couverture bouge.
 */
-const COUVERTES_AU_CLAVIER = 16
+const COUVERTES_AU_CLAVIER = 17
 /*
   GARDE DU GARDE : le nombre écrit et la liste recopiée doivent s'accorder, et
   la liste doit désigner des modales qui EXISTENT. Sans cette vérification, un
