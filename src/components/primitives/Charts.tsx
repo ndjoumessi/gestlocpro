@@ -144,6 +144,37 @@ function hachureOuverte(couleur: string): string {
  * mis trois libellés dans 64 px sur le seul jeu de données qu'on a sous la
  * main, ce qu'aucune garde n'aurait dit.
  */
+/** L'échelle des pas « ronds » : 1 · 2 · 5 × 10ⁿ, du plus fin au plus large. */
+function pasRonds(): number[] {
+  const pas: number[] = []
+  for (let exposant = -2; exposant <= 12; exposant++) {
+    for (const facteur of [1, 2, 5]) pas.push(facteur * 10 ** exposant)
+  }
+  return pas
+}
+
+/**
+ * LE PLAFOND D'UN TRACÉ, ARRONDI À UN NOMBRE QU'ON PEUT LIRE.
+ *
+ * Les deux tracés se donnaient pour plafond `plus haute colonne × 1,08` — un
+ * nombre que rien ne porte, dont l'unique fonction est d'empêcher la plus haute
+ * colonne de toucher le haut. On ne peut pas l'écrire : « 168 480 » ne dit rien,
+ * et c'est le reproche exact qu'on a fait à la phrase d'échelle qu'on a retirée.
+ *
+ * Arrondi au pas rond supérieur, il devient LISIBLE — donc affichable —, et il
+ * fait le même travail : un plafond strictement au-dessus du maximum laisse la
+ * même respiration, sans coefficient inventé.
+ *
+ * C'est ce qui permet au SECOND TRACÉ de porter son échelle EN DEHORS de ses
+ * barres : son repère n'est plus une ligne posée en travers, c'est son propre
+ * bord supérieur, et l'étiquette monte dans la gouttière.
+ */
+function plafondArrondi(max: number): number {
+  if (!Number.isFinite(max) || max <= 0) return 1
+  for (const pas of pasRonds()) if (pas >= max) return pas
+  return max
+}
+
 function graduationsDe(
   max: number,
   bornes: { min: number; max: number },
@@ -168,10 +199,7 @@ function graduationsDe(
 ): number[] {
   if (!Number.isFinite(max) || max <= 0) return []
 
-  const pasCandidats: number[] = []
-  for (let exposant = -2; exposant <= 12; exposant++) {
-    for (const facteur of [1, 2, 5]) pasCandidats.push(facteur * 10 ** exposant)
-  }
+  const pasCandidats = pasRonds()
 
   /*
     LE PLUS PETIT PAS QUI RESPIRE ENCORE, et la première rédaction prenait le
@@ -255,7 +283,20 @@ const ECART_MINIMAL_EN_PIXELS = 30
  */
 const HAUTEUR_TRACE_SECONDAIRE = 64
 const HAUTEUR_TRACE_SEUL = 198
-const HAUTEUR_TRACE_AVEC_SECOND = HAUTEUR_TRACE_SEUL - HAUTEUR_TRACE_SECONDAIRE - 8
+/**
+ * La gouttière entre les deux tracés — `mt-4`, et elle loge l'étiquette du
+ * plafond du second : une ligne de `text-caps` nue, quatorze pixels, plus deux
+ * de jeu.
+ *
+ * CHAQUE PIXEL SE PAIE SUR LE TRACÉ DU HAUT, qui est en `flex-1` : la gouttière
+ * lui est PRISE. Et il ne la paie pas seulement en hauteur de colonnes — elle
+ * réduit aussi la place où poser des graduations, donc elle en retire. Mesuré :
+ * à 24 px de gouttière, l'écart minimal passait à 27 points et emportait la
+ * graduation « 1 M » du franc CFA. À 16, il retombe à 25 et elle revient.
+ */
+const GOUTTIERE_ENTRE_TRACES = 16
+const HAUTEUR_TRACE_AVEC_SECOND =
+  HAUTEUR_TRACE_SEUL - HAUTEUR_TRACE_SECONDAIRE - GOUTTIERE_ENTRE_TRACES
 
 /** L'écart minimal EN POINTS de la hauteur d'un tracé donné. */
 function ecartMinimal(hauteurDuTrace: number): number {
@@ -489,7 +530,23 @@ export function StackedBarChart({
    * ne couvrait qu'une de ses trois séries.
    */
   const max = Math.max(...totalsPrimaires, showTarget ? target : 0, 1) * 1.08
-  const maxSecondaire = Math.max(...totalsSecondaires, 1) * 1.08
+  /*
+    LE SECOND TRACÉ SE DONNE UN PLAFOND ROND, ET C'EST LUI SON ÉCHELLE.
+
+    Il prenait `plus haute colonne × 1,08`, comme celui du haut. Un tel plafond
+    ne s'écrit pas — d'où une graduation posée EN TRAVERS des bandes, dont
+    l'étiquette en couvrait 41 % sur un segment de dix-sept pixels.
+
+    Arrondi, le plafond devient lisible : le repère est le BORD SUPÉRIEUR du
+    tracé, que sa bordure dessine déjà, et l'étiquette monte dans la gouttière.
+    Zéro encre couverte, et un nombre de plus qu'avant — le plafond était tu.
+
+    LE FACTEUR PLUTÔT QUE LA VALEUR. La géométrie reste en unités mineures (voir
+    `enAffichage`) ; on arrondit donc DANS l'unité affichée, puis on reporte le
+    rapport sur le maximum en mineures. Arrondir directement les mineures
+    donnerait un plafond rond en francs et biscornu en dollars.
+  */
+  const vraiMaxSecondaire = Math.max(...totalsSecondaires, 1)
 
   /*
     ─── L'AXE REMPLACE LA PHRASE QUI EN TENAIT LIEU ───────────────────────
@@ -514,7 +571,9 @@ export function StackedBarChart({
     `ECART_MINIMAL_A_L_OBJECTIF`.
   */
   const maxAffiche = enAffichage(max)
-  const maxSecondaireAffiche = enAffichage(maxSecondaire)
+  const maxSecondaireAffiche = plafondArrondi(enAffichage(vraiMaxSecondaire))
+  const maxSecondaire =
+    vraiMaxSecondaire * (maxSecondaireAffiche / Math.max(enAffichage(vraiMaxSecondaire), 1e-9))
   /*
     L'OBJECTIF EST UN REPÈRE DE L'AXE, ET IL COMPTE DANS LE MINIMUM.
 
@@ -536,12 +595,6 @@ export function StackedBarChart({
     (valeur) =>
       showTarget && Math.abs((valeur - enAffichage(target)) / maxAffiche) * 100 < ecartPrimaire,
     ecartPrimaire,
-  )
-  const graduationsSecondaires = graduationsDe(
-    maxSecondaireAffiche,
-    { min: 1, max: 2 },
-    () => false,
-    ecartMinimal(HAUTEUR_TRACE_SECONDAIRE),
   )
 
   const toggleSeries = (key: string) =>
@@ -839,24 +892,40 @@ export function StackedBarChart({
           nomme déjà les trois séries, et par la table.
         */}
         {aDeuxTraces && (
+          <>
+          {/*
+            SUR 64 px, L'ÉCHELLE EST UNE LÉGENDE, PAS UNE GRADUATION.
+
+            Une ligne posée en travers de ce tracé y coûte plus qu'elle ne
+            rapporte : mesuré, l'étiquette d'une graduation couvrait 41 % d'une
+            bande de dix-sept pixels — une bonne part de ce que ce second tracé
+            existait pour rendre lisible, lui qui fait passer l'électricité « de
+            8 px à environ 27 ».
+
+            Le repère devient donc le PLAFOND du tracé, que sa bordure
+            supérieure dessine déjà, et son montant se lit au-dessus. Zéro encre
+            couverte, et un nombre de plus qu'avant : le plafond était tu.
+
+            DANS LE FLUX, ET NON EN ABSOLU. Un `bottom-full` aurait fait la même
+            image — et `rognage.test.ts` l'aurait refusé, à juste titre : ce
+            fichier porte un `overflow-x-auto`, et c'est précisément la
+            cohabitation qui a rogné l'infobulle de ce graphe à quatre pixels
+            sur cent cinquante-huit. Une légende dans le flux n'a pas de bord à
+            franchir.
+          */}
+          <p
+            aria-hidden="true"
+            data-plafond={maxSecondaireAffiche}
+            className="numeric mt-3 mb-0.5 text-caps text-muted"
+          >
+            {abreger(maxSecondaireAffiche)}
+          </p>
           <div
             aria-hidden="true"
             data-trace="secondaire"
             data-max={maxSecondaireAffiche}
-            className="relative mt-2 flex h-16 items-stretch gap-1 border-t border-divider pt-2 sm:gap-2.5"
+            className="relative flex h-16 items-stretch gap-1 border-t border-divider pt-2 sm:gap-2.5"
           >
-            {/* UNE OU DEUX, PAS TROIS. Ce tracé fait 64 px : trois libellés de
-                `text-caps` y tiendraient à peine et se toucheraient. Le nombre
-                se règle par les bornes, pas par un pas écrit à la main — voir
-                `graduationsDe`. */}
-            {graduationsSecondaires.map((valeur) => (
-              <Graduation
-                key={valeur}
-                valeur={valeur}
-                hauteur={(valeur / maxSecondaireAffiche) * 100}
-                texte={abreger(valeur)}
-              />
-            ))}
             {bars.map((bar, index) => {
               const totalBas = totalsSecondaires[index]
               const isLast = index === bars.length - 1
@@ -890,6 +959,7 @@ export function StackedBarChart({
               )
             })}
           </div>
+          </>
         )}
 
         <div className="mt-2.5 flex gap-1 sm:gap-2.5" aria-hidden="true">

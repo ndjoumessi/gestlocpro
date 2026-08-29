@@ -51,12 +51,13 @@ function maximum(trace: string): number {
  * Le jour où le composant descend sous cette valeur, ce cas rougit et l'on
  * vient écrire ici POURQUOI.
  *
- * Trente pixels sur les 126 du tracé principal quand un second tracé lui prend
+ * Trente pixels sur les 118 du tracé principal quand un second tracé lui prend
  * sa place — le cas de ce graphe. Les trente pixels sont les vingt d'une ligne
- * de `text-caps` et dix de respiration ; les 126 sont la hauteur que la mise en
- * page laisse au tracé du haut.
+ * de `text-caps` et dix de respiration ; les 110 sont ce que la mise en page
+ * laisse au tracé du haut une fois retirés les 64 px du second et les 24 de
+ * gouttière, qui logent l'étiquette de son plafond.
  */
-const ECART_MINIMAL_ENTRE_REPERES = (30 / 126) * 100
+const ECART_MINIMAL_ENTRE_REPERES = (30 / 118) * 100
 
 /**
  * Les hauteurs de TOUS les repères d'un tracé — graduations et objectif.
@@ -92,7 +93,28 @@ describe('l’échelle du graphe d’encaissements', () => {
        plus objectif — est tenu par les cas de devise plus bas, qui sont les
        seuls à savoir que l'objectif en est un. */
     expect(graduations('principal').length, 'le tracé du haut n’a pas d’échelle').toBeGreaterThan(0)
-    expect(graduations('secondaire').length, 'le tracé du bas n’a pas d’échelle').toBeGreaterThan(0)
+
+    /*
+      LE TRACÉ DU BAS PORTE UNE LÉGENDE, PAS UNE GRADUATION, et c'est une
+      décision mesurée : sur 64 px, l'étiquette d'une ligne posée en travers
+      couvrait 41 % d'une bande de dix-sept pixels. Son échelle est donc son
+      PLAFOND, que sa bordure supérieure dessine déjà, et le montant se lit
+      au-dessus. On vérifie que les deux disent la même chose — une légende qui
+      annoncerait un autre nombre que le plafond du tracé serait pire que pas de
+      légende du tout.
+    */
+    const bas = document.querySelector('[data-trace="secondaire"]') as HTMLElement
+    const legende = document.querySelector('[data-plafond]') as HTMLElement
+    expect(legende, 'le tracé du bas n’annonce pas son plafond').not.toBeNull()
+    expect(Number(legende.dataset.plafond)).toBe(Number(bas.dataset.max))
+    expect(legende.textContent?.trim().length, 'la légende du plafond est vide').toBeGreaterThan(0)
+
+    /* ET IL EST ROND. Un plafond de `plus haute colonne × 1,08` ne s'écrit pas :
+       « 168 480 » ne dit rien, et c'est le reproche fait à la phrase d'échelle
+       qu'on a retirée. */
+    const plafond = Number(bas.dataset.max)
+    const mantisse = plafond / 10 ** Math.floor(Math.log10(plafond))
+    expect([1, 2, 5], `plafond non rond : ${plafond}`).toContain(Math.round(mantisse))
   })
 
   it('place ses graduations à la hauteur qu’elles annoncent', async () => {
