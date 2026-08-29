@@ -373,6 +373,7 @@ export const fr = {
       ownerCodeHint:
         'Le propriétaire vous le communique depuis son espace. Format : GES-XXXX-XXXX.',
 
+      roleRequired: 'Choisissez le rôle qui vous correspond pour continuer',
       inviteCode: 'Code d’invitation',
       /* Un GABARIT, et il vaut mieux qu'il soit réel : « LOC-XXXX-XXXX »
          apprend la longueur, « LOC-4A7B-92CD » apprend en plus qu'on peut y

@@ -129,9 +129,26 @@ describe('mot de passe oublié', () => {
 })
 
 describe('inscription', () => {
+  /**
+   * L'EXIGENCE RESTE, LA FAÇON DE LA DIRE A CHANGÉ.
+   *
+   * Le bouton était ÉTEINT tant qu'aucun rôle n'était choisi : une porte fermée
+   * sans écriteau, qui ne prend pas le focus et n'énonce rien. Il reste
+   * cliquable, et le refus s'écrit au groupe de rôles — voir
+   * `routes/refusLisible.test.tsx`, qui tient les deux moitiés.
+   *
+   * Ce cas garde la moitié qui compte ici : on ne passe pas sans rôle.
+   */
   it('exige un rôle avant de continuer', async () => {
+    const user = userEvent.setup()
     await renderApp('/inscription')
-    expect(screen.getByRole('button', { name: /continuer/i })).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: /continuer/i }))
+
+    expect(
+      screen.getByRole('heading', { level: 1 }),
+      'la première étape a été franchie sans rôle',
+    ).toHaveTextContent(/Qui êtes-vous/)
   })
 
   it('saute le choix de rôle quand l’URL le porte déjà', async () => {

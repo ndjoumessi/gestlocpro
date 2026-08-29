@@ -130,6 +130,18 @@ export interface RadioCardsProps<T extends string> {
    * mensonge de mise en page.
    */
   variant?: 'cartes' | 'puces'
+  /**
+   * LE REFUS DU GROUPE, quand rien n'est choisi et qu'il fallait choisir.
+   *
+   * Un groupe de choix n'avait pas où l'écrire, alors que `Field` et `Checkbox`
+   * le portent depuis toujours. L'écran d'inscription s'en passait en
+   * ÉTEIGNANT son bouton — une porte fermée sans écriteau, qui ne prend pas le
+   * focus et n'énonce rien.
+   *
+   * `role="alert"` et un identifiant cité par le `fieldset` : le refus est
+   * annoncé quand il paraît, et rattaché au groupe pour qui y revient ensuite.
+   */
+  error?: string
   className?: string
 }
 
@@ -147,6 +159,7 @@ export function RadioCards<T extends string>({
   options,
   columns = 3,
   variant = 'cartes',
+  error,
   className,
 }: RadioCardsProps<T>) {
   if (variant === 'puces') {
@@ -166,10 +179,30 @@ export function RadioCards<T extends string>({
     columns === 1 ? 'grid-cols-1' : columns === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-2 lg:grid-cols-3'
 
   return (
-    <fieldset className={cn('min-w-0 border-0 p-0', className)}>
+    <fieldset
+      data-champ={name}
+      aria-describedby={error ? `${name}-refus` : undefined}
+      aria-invalid={error ? true : undefined}
+      className={cn('min-w-0 border-0 p-0', className)}
+    >
       <legend className={cn('mb-3 text-label font-semibold text-ink', hideLegend && 'sr-only')}>
         {legend}
       </legend>
+
+      {/* AVANT les cartes, et non après : le refus dit ce qu'il faut faire de
+          ce qui suit. Placé dessous, il se lirait après le geste qu'il
+          commande — et sous trois cartes, il tomberait hors du champ de vision
+          sur un téléphone. */}
+      {error && (
+        <p
+          id={`${name}-refus`}
+          role="alert"
+          className="mb-3 flex items-start gap-1.5 text-body font-medium text-danger"
+        >
+          <Icon name="alert" size={14} className="mt-0.5 shrink-0" />
+          {error}
+        </p>
+      )}
 
       {/* `data-rangee-de-pairs` : ces cellules SONT le même composant rendu N
           fois, et le blanc qu'une description plus longue impose aux autres est

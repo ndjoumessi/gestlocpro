@@ -297,6 +297,7 @@ export const en: Dictionary = {
       ownerCodeHint:
         'The owner shares it from their space. Format: GES-XXXX-XXXX.',
 
+      roleRequired: 'Choose the role that fits you to continue',
       inviteCode: 'Invitation code',
       inviteCodePlaceholder: 'LOC-4A7B-92CD',
       inviteCodeHint:

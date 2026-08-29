@@ -160,6 +160,30 @@ export function Login() {
         <Field
           label={t('common.password')}
           required
+          /* LE LIEN REJOINT SON CHAMP. Il flottait seul entre le champ et le
+             bouton d'envoi, à mi-chemin des deux, séparant le dernier champ de
+             l'action qui le suit. Sur la ligne d'étiquette, il désigne le mot
+             de passe dont il parle et ne coupe plus rien.
+
+             LE LIEN GARDE SES 44 px, ET LA RANGÉE LES PREND. Une première
+             rédaction les rattrapait par `-my-2`, pour ne pas écarter
+             l'étiquette du champ : mesuré, le lien débordait alors de 8 px de
+             sa rangée, en haut comme en bas, sur vingt-deux points du balayage.
+             Une marge négative ne réduit pas une cible, elle la fait sortir.
+
+             `-mr-2` est parti pour la même raison, et c'était lui le coupable :
+             il tirait le lien huit pixels au-delà du bord droit de sa rangée
+             pour aligner optiquement son rembourrage sur celui du champ. Le
+             rembourrage l'écarte donc un peu du bord ; c'est le prix d'une
+             boîte qui reste dans la sienne. */
+          action={
+            <Link
+              to="/mot-de-passe-oublie"
+              className="inline-flex min-h-11 items-center rounded-md px-2 text-body font-medium text-accent-ink transition-colors duration-150 hover:bg-surface-sunken hover:text-accent-ink-hover"
+            >
+              {t('auth.forgotPassword')}
+            </Link>
+          }
           error={touched.password ? (errors.password ? t(errors.password) : undefined) : undefined}
         >
           {(props) => (
@@ -194,18 +218,6 @@ export function Login() {
           Elle reviendra le jour où la session longue existera, avec son état et
           son gestionnaire ; `caseControlee.test.tsx` tient la porte d'ici là.
         */}
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          {/* Lien autonome et non inséré dans une phrase : il porte donc une
-              cible de 44px, contrairement aux liens en ligne du pied de carte
-              que l'exception « lien dans un bloc de texte » couvre. */}
-          <Link
-            to="/mot-de-passe-oublie"
-            className="-mr-2 inline-flex min-h-11 items-center rounded-md px-2 text-body font-medium text-accent-ink transition-colors duration-150 hover:bg-surface-sunken hover:text-accent-ink-hover"
-          >
-            {t('auth.forgotPassword')}
-          </Link>
-        </div>
-
         <Button type="submit" size="lg" fullWidth loading={submitting}>
           {t('auth.login.submit')}
         </Button>

@@ -103,7 +103,12 @@ export function SignUp() {
   /** Erreurs de l'étape courante. */
   function validateStep(current: StepKey): Record<string, FieldError> {
     if (current === "role") {
-      return {};
+      /* LE RÔLE EST UN CHAMP COMME LES AUTRES. Cette étape rendait un objet
+         VIDE et le bouton était éteint à la place : un primaire pâle qui ne
+         prend pas le focus et n'énonce rien. La machinerie de refus de
+         `goNext` — amener le champ fautif à l'écran, lui donner le focus —
+         existait déjà et sautait celle-ci. */
+      return { role: state.role ? null : "auth.signup.roleRequired" };
     }
 
     if (current === "identity") {
@@ -243,8 +248,6 @@ export function SignUp() {
   };
 
   const goNext = () => {
-    if (step === "role" && !state.role) return;
-
     const next = validateStep(step);
     setErrors(next);
     setTouched((s) => ({
@@ -386,6 +389,9 @@ export function SignUp() {
           <RadioCards
             legend={t("auth.signup.roleTitle")}
             hideLegend
+            error={
+              touched.role && errors.role ? t(errors.role) : undefined
+            }
             name="role"
             value={state.role}
             onChange={(role: Role) => patch({ role })}
@@ -686,7 +692,6 @@ export function SignUp() {
             size="lg"
             iconAfter={step === "review" ? undefined : "arrowRight"}
             loading={submitting}
-            disabled={step === "role" && !state.role}
           >
             {step === "review" ? t("auth.signup.submit") : t("common.next")}
           </Button>

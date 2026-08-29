@@ -1216,14 +1216,11 @@ const DEBORDS_LOCAUX_TOLERES = {
       'Ligne de demande de document, /demo/locataires à 320 px. 3 PX de marge avant la ' +
       'bordure de la carte.',
   },
-  'div.flex flex-wrap items-center justify-end gap-2': {
-    plafond: 8,
-    motif:
-      '« Mot de passe oublié ? » au-dessus du champ, écran de connexion à 320 px. 12 px de ' +
-      'marge avant le bord. Ce qui se voit, si l’on cherche : le lien dépasse de 8 px ' +
-      'l’alignement à droite des champs et du bouton. Un défaut d’alignement, pas de ' +
-      'débordement.',
-  },
+  /* RETIRÉE, ET LE DÉFAUT AVEC. Elle tolérait « Mot de passe oublié ? » posé
+     entre le champ et le bouton, dont le `-mr-2` dépassait de 8 px
+     l'alignement des champs — « un défaut d'alignement, pas de débordement »,
+     disait le motif. Le lien a rejoint la rangée d'étiquette de son champ et a
+     perdu sa marge négative : il n'y a plus rien à tolérer. */
   'div.mt-10 flex flex-col gap-3 sm:flex-row sm:items-center': {
     plafond: 27,
     motif:
