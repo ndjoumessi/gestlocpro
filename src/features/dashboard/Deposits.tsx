@@ -93,6 +93,21 @@ export function Deposits() {
   const resteARestituer = deposits
     .filter((d) => d.status !== 'returned')
     .reduce((sum, d) => sum + soldeDeCaution(d), 0)
+  /*
+    CE QUI EST DÉJÀ REPARTI, et pourquoi la note le porte désormais.
+
+    Les trois cartes montrent trois nombres côte à côte — 1 226 000 consignés,
+    163 000 retenus, 813 000 dus. Qui les soustrait tombe à 1 063 000 et
+    conclut à une erreur. La note disait « 1 déjà restituée » : un
+    DÉNOMBREMENT, qui nomme la raison de l'écart sans en donner la taille. On y
+    apprenait qu'il manque quelque chose, jamais de combien.
+
+    Même correctif que sur l'état des cautions en PDF, et pour le même lecteur :
+    les deux surfaces portent les mêmes trois nombres.
+  */
+  const dejaRestitue = deposits
+    .filter((d) => d.status === 'returned')
+    .reduce((sum, d) => sum + soldeDeCaution(d), 0)
   /* Les deux dénombrements que les notes portent. Comptés ici, à côté des
      sommes qu'ils qualifient : une note et son montant ne doivent pas pouvoir
      être calculés sur deux populations différentes. */
@@ -245,7 +260,10 @@ export function Deposits() {
           icone="card"
           label={t('app.deposits.balance')}
           value={money(resteARestituer, { compact: true })}
-          note={t('app.deposits.kpiBalanceNote', { count: restituees })}
+          note={t('app.deposits.kpiBalanceNote', {
+            count: restituees,
+            amount: money(dejaRestitue, { compact: true }),
+          })}
         />
       </div>
 

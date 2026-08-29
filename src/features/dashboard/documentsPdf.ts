@@ -827,6 +827,11 @@ export function useDepositsStatementPdf() {
       const consigne = cautions.reduce((somme, { deposit }) => somme + deposit.held, 0)
       const retenu = cautions.reduce((somme, { deposit }) => somme + deposit.withheld, 0)
       const du = detenues.reduce((somme, { deposit }) => somme + soldeDeCaution(deposit), 0)
+      /* CE QUI EST DÉJÀ REPARTI CHEZ LE LOCATAIRE — le terme qui manquait pour
+         que la feuille se recoupe ; voir le bloc de totaux ci-dessous. */
+      const rendu = cautions
+        .filter(({ deposit }) => deposit.status === 'returned')
+        .reduce((somme, { deposit }) => somme + soldeDeCaution(deposit), 0)
 
       enTete(page, {
         parc,
@@ -837,8 +842,25 @@ export function useDepositsStatementPdf() {
         ligneDate: t('app.documents.pdfIssuedOn', { date: emisLe }),
       })
 
+      /*
+        LES QUATRE TERMES, ET LA SOUSTRACTION SE FERME.
+
+        La feuille en portait trois : consigné, retenu, filet, dette en gras. Un
+        filet au-dessus d'un total en gras est une PROMESSE DE CALCUL — 1 869,02
+        moins 248,49 font 1 620,53, et la feuille annonçait 1 239,41. L'écart
+        était exactement la caution rendue : entrée dans le consigné parce
+        qu'elle a été versée, sortie de la dette parce qu'elle a été remboursée.
+        Le total était juste et rien sur le papier ne le disait, sur le document
+        qui sert précisément à JUSTIFIER ce qu'on détient pour autrui.
+
+        ELLE N'APPARAÎT QUE SI ELLE MANQUE. Sans caution rendue — ou avec une
+        caution rendue intégralement retenue, dont le solde est nul — la
+        soustraction tombe juste à trois termes, et une ligne à zéro n'y
+        ajouterait qu'un statut de plus à lire.
+      */
       page.paire(t('app.deposits.totalHeld'), argent(consigne))
       page.paire(t('app.deposits.withheld'), argent(retenu))
+      if (rendu > 0) page.paire(t('app.deposits.alreadyReturned'), argent(rendu))
       page.filet()
       /* LA DETTE EN GRAS, parce que c'est la seule ligne qu'on cherche en
          ouvrant ce document. Elle exclut les cautions rendues — voir

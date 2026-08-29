@@ -171,6 +171,137 @@ describe('l’état des cautions', () => {
 })
 
 /**
+ * LA SOUSTRACTION DE L'ÉTAT DES CAUTIONS SE FERME.
+ *
+ * ═══ CE QUE LA FEUILLE MONTRAIT ═══
+ *
+ * Trois lignes empilées, un filet, un total en gras :
+ *
+ *     Total consigné                                    1 869,02 €
+ *     Retenu                                              248,49 €
+ *     ────────────────────────────────────────────────────────────
+ *     À restituer                                       1 239,41 €
+ *
+ * 1 869,02 moins 248,49 font 1 620,53. La feuille annonce 1 239,41.
+ *
+ * ═══ LE TOTAL EST JUSTE, ET C'EST BIEN LE PROBLÈME ═══
+ *
+ * L'écart est exactement la caution de C3, rendue : elle entre dans le consigné
+ * — elle a été versée — et sort de la dette — elle a été remboursée. C'est la
+ * règle posée au lot précédent, et le total en gras est le bon chiffre.
+ *
+ * Mais RIEN SUR LE PAPIER NE LE DIT. Un filet au-dessus d'un total en gras est
+ * une promesse de calcul : le lecteur soustrait, tombe à côté, et conclut à une
+ * erreur — sur le document qui sert précisément à JUSTIFIER ce qu'on détient
+ * pour autrui. Un document qu'on remet ne peut pas demander qu'on lui fasse
+ * confiance sur un chiffre qui, écrit à côté des deux autres, semble faux.
+ *
+ * ═══ CE QUI FERME LA SOUSTRACTION ═══
+ *
+ * Une ligne de plus, avec le terme manquant : ce qui a DÉJÀ été rendu. Les
+ * quatre nombres se recoupent alors sans qu'on ait à savoir quelle règle
+ * s'applique — et c'est ce que ce cas mesure, sur les nombres et non sur la
+ * présence d'un libellé.
+ *
+ * LE MAUVAIS CORRECTIF EST À PORTÉE : refaire entrer les cautions rendues dans
+ * la dette ferme la soustraction aussi, et remet le bailleur en dette de ce
+ * qu'il a déjà remboursé. Le contrepoids ci-dessous le retient.
+ */
+describe('les totaux de l’état des cautions', () => {
+  async function feuilleDesCautions() {
+    installerFauxServeur()
+    await renderApp('/demo/cautions')
+    await attendreLeChargement()
+
+    const capture = captureDownloads()
+    try {
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: /état des cautions|deposits statement/i }))
+      const [fichier] = await capture.settle()
+      return new TextDecoder('latin1').decode(fichier.bytes)
+    } finally {
+      capture.restore()
+    }
+  }
+
+  /**
+   * Le montant écrit EN FACE d'un intitulé.
+   *
+   * `page.paire` pose deux textes : l'intitulé à gauche, la valeur à droite,
+   * dans cet ordre. On prend donc le premier montant qui suit l'intitulé dans
+   * le flux — et l'on ne se contente pas de chercher un nombre quelque part,
+   * qui tomberait aussi bien sur la ligne d'une caution.
+   */
+  function montantEnFaceDe(feuille: string, intitule: string): number {
+    const trouve = feuille.match(
+      new RegExp(`\\(${intitule}\\) Tj[\\s\\S]*?\\(([^)]+)\\) Tj`),
+    )
+    expect(trouve, `« ${intitule} » ne figure pas sur la feuille`).not.toBeNull()
+    return Number((trouve?.[1] ?? '').replace(/\D/g, ''))
+  }
+
+  it('recoupent ce qu’ils affichent', async () => {
+    const feuille = await feuilleDesCautions()
+
+    const consigne = montantEnFaceDe(feuille, 'Total consigné')
+    const retenu = montantEnFaceDe(feuille, 'Retenu')
+    const rendu = montantEnFaceDe(feuille, 'Déjà restituée')
+    const du = montantEnFaceDe(feuille, 'À restituer')
+
+    /* LES NOMBRES, ET NON LES LIBELLÉS : une ligne « Déjà restituée » portant
+       un autre montant que celui qui manque laisserait la feuille aussi fausse
+       à lire, en ayant l'air d'avoir été corrigée. */
+    expect(consigne - retenu - rendu, 'la soustraction de la feuille ne tombe pas juste').toBe(du)
+    /* Et les valeurs elles-mêmes, sans quoi une feuille de quatre zéros
+       passerait. */
+    expect([consigne, retenu, rendu, du]).toEqual([1_226_000, 163_000, 250_000, 813_000])
+  })
+
+  /**
+   * LE CONTREPOIDS. Fermer la soustraction ne rouvre pas la dette.
+   *
+   * L'autre manière de faire tomber le calcul juste est de remettre les
+   * cautions rendues dans « à restituer ». Le document redeviendrait cohérent
+   * avec lui-même ET faux sur le seul chiffre qu'on vient y chercher — le
+   * défaut que le lot des cautions a corrigé, réintroduit par sa réparation.
+   */
+  it('ne remettent pas la caution rendue dans la dette', async () => {
+    const feuille = await feuilleDesCautions()
+
+    expect(montantEnFaceDe(feuille, 'À restituer'), 'la dette a repris la caution rendue').toBe(
+      813_000,
+    )
+    expect(feuille, 'l’ancien total est revenu').not.toMatch(/1\s?063\s?000/)
+  })
+
+  /**
+   * ET L'ÉCRAN DIT LA MÊME CHOSE, parce que c'est le même lecteur.
+   *
+   * Les trois cartes portent les trois mêmes nombres, côte à côte : 1 226 000,
+   * 163 000, 813 000. La note de la troisième disait « 1 déjà restituée » — un
+   * DÉNOMBREMENT, qui nomme la raison de l'écart sans en donner la taille. On y
+   * apprend qu'il manque quelque chose, pas de combien.
+   */
+  it('se recoupent aussi sur les trois cartes de l’écran', async () => {
+    installerFauxServeur()
+    await renderApp('/demo/cautions')
+    await attendreLeChargement()
+
+    /* Les cartes se désignent par `data-indicateur`, le témoin que `StatCard`
+       pose sur chacune — c'est déjà par lui que les gardes d'indicateur les
+       trouvent. */
+    const carte = Array.from(document.querySelectorAll('[data-indicateur]')).find((c) =>
+      /À restituer|To return/.test(c.textContent ?? ''),
+    )
+    expect(carte, 'la carte de la dette est introuvable').toBeDefined()
+
+    const texte = (carte?.textContent ?? '').replace(/[\s ]/g, ' ')
+    expect(texte, 'la note ne dit pas de combien la dette a été réduite').toContain('250 000')
+  })
+})
+
+/**
  * L'ÉTAT DES CAUTIONS EN TABLEUR, à côté du document.
  *
  * ═══ DEUX SORTIES POUR DEUX GESTES ═══

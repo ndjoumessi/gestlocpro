@@ -1372,6 +1372,7 @@ export const fr = {
       withheld: 'Retenu',
       balance: 'À restituer',
       totalHeld: 'Total consigné',
+      alreadyReturned: 'Déjà restituée',
       /* Les trois cartes étaient NUES — un intitulé, un montant, rien dessous —
          quand celles des cinq autres écrans portent une ligne qui dit sur quoi
          le montant porte. « 1 226 000 FCFA » ne disait pas sur combien de
@@ -1380,8 +1381,8 @@ export const fr = {
       kpiHeldNote_one: 'sur {count} caution',
       kpiWithheldNote: '{count} en cours d’arbitrage',
       kpiWithheldNote_one: '{count} en cours d’arbitrage',
-      kpiBalanceNote: '{count} déjà restituées',
-      kpiBalanceNote_one: '{count} déjà restituée',
+      kpiBalanceNote: '{count} déjà restituées · {amount}',
+      kpiBalanceNote_one: '{count} déjà restituée · {amount}',
       settle: 'Arbitrer',
       settleTitle: 'Arbitrer la caution',
       settleDescription:
