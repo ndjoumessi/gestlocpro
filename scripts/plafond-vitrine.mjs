@@ -56,8 +56,28 @@ const BASE = `http://127.0.0.1:${PORT}`
 const PLAFONDS = [
   { largeur: 360, langue: 'fr', plafond: 10209, avant: 9979, origine: 11419 },
   { largeur: 360, langue: 'en', plafond: 10070, avant: 9862, origine: 11149 },
-  { largeur: 1280, langue: 'fr', plafond: 7092, avant: 6973, origine: 7110 },
-  { largeur: 1280, langue: 'en', plafond: 7166, avant: 7047, origine: 7106 },
+  /*
+    +73 px AU BUREAU, ET C'EST LE PRIX D'UNE GRILLE COMPARABLE.
+
+    Les trois paliers partagent désormais leurs rangées — `grid-rows-subgrid` —
+    donc chaque bande prend la hauteur de la plus haute des trois. Le palier sur
+    devis réserve ainsi la place d'une mention d'arrondi et d'une ligne d'essai
+    qu'il n'a pas.
+
+    CE QU'ON ACHÈTE : les cinq lignes de caractéristiques étaient décalées de
+    103 px d'une carte à l'autre, dans les deux langues. Une grille de prix se
+    lit EN TRAVERS ; désalignée, elle demande au lecteur de faire lui-même le
+    rapprochement qu'elle promet, sur la page dont c'est l'unique fonction.
+
+    CE QU'ON A RENDU AVANT DE DEMANDER : `min-h-10` sur l'accroche réservait
+    deux lignes à la main pour le même alignement. La rangée partagée le fait
+    mieux — hauteur de la plus haute plutôt que minimum posé à l'œil — et rend
+    dix-neuf pixels. Le solde net est celui-ci.
+
+    Le mobile ne bouge pas : empilées, les cartes n'ont pas de rangées communes.
+  */
+  { largeur: 1280, langue: 'fr', plafond: 7170, avant: 7092, origine: 7110 },
+  { largeur: 1280, langue: 'en', plafond: 7245, avant: 7166, origine: 7106 },
 ]
 /*
   ═══ CE QUE CE RESSERREMENT DIT, ET CE QU'IL NE DIT PAS ═══
@@ -215,10 +235,54 @@ try {
         const r = a.getBoundingClientRect()
         return s.backgroundColor !== 'rgba(0, 0, 0, 0)' && r.height > 20
       })
+      /*
+        LES TROIS PALIERS SE COMPARENT LIGNE À LIGNE, OU NE SE COMPARENT PAS.
+
+        Une grille de prix existe pour qu'on lise EN TRAVERS : « Relances » chez
+        l'un, en face de « Relances » chez les deux autres. Mesuré avant ce lot :
+        les cinq lignes de caractéristiques étaient à cinq hauteurs différentes
+        d'une carte à l'autre — le bloc de prix n'a pas la même hauteur partout
+        (la mention d'arrondi n'existe que sur un palier, l'essai n'existe pas
+        sur celui qui est sur devis), et tout ce qui suit glissait d'autant.
+
+        L'œil doit alors faire le rapprochement lui-même, sur la page dont c'est
+        l'unique fonction.
+
+        On ne mesure QU'EN TROIS COLONNES : empilées, les cartes n'ont pas de
+        rangées communes et la question ne se pose pas.
+      */
+      const grille = document.querySelector('[data-mesure="tarifs-grille"]')
+      const cartes = grille ? [...grille.querySelectorAll('article')] : []
+      const enColonnes =
+        cartes.length === 3 &&
+        Math.abs(
+          cartes[0].getBoundingClientRect().top - cartes[2].getBoundingClientRect().top,
+        ) < 40
+      const desalignees = []
+      let rangsCompares = 0
+      if (enColonnes) {
+        const listes = cartes.map((c) => [...c.querySelectorAll('ul > li')])
+        const rangs = Math.min(...listes.map((l) => l.length))
+        for (let k = 0; k < rangs; k++) {
+          const hauts = listes.map((l) => l[k].getBoundingClientRect().top)
+          rangsCompares++
+          const ecart = Math.round(Math.max(...hauts) - Math.min(...hauts))
+          if (ecart > 1)
+            desalignees.push({
+              rang: k + 1,
+              libelle: (listes[0][k].textContent || '').trim().slice(0, 28),
+              ecart,
+            })
+        }
+      }
+
       return {
         hDoc: document.documentElement.scrollHeight,
         sections: main ? main.children.length : 0,
         actionY: cta ? Math.round(cta.getBoundingClientRect().top + window.scrollY) : null,
+        enColonnes,
+        rangsCompares,
+        desalignees,
       }
     })
     await contexte.close()
@@ -243,6 +307,13 @@ try {
     }
     if (m.actionY === null) {
       plaintes.push(`${nom} : aucune action principale trouvée dans le contenu.`)
+    }
+    for (const d of m.desalignees) {
+      plaintes.push(
+        `${nom} : la ligne ${d.rang} des paliers — « ${d.libelle} » — est décalée de ${d.ecart} px\n` +
+          "   d'une carte à l'autre. Une grille de prix se lit EN TRAVERS ; désalignée, elle\n" +
+          '   demande au lecteur de faire lui-même le rapprochement qu’elle promet.',
+      )
     }
   }
   await navigateur.close()
@@ -275,6 +346,8 @@ if (plaintes.length > 0) {
 
 console.log(
   `\n✓ plafond-vitrine : ${inspectes}/${ATTENDUS} états sous leur plafond, ${SECTIONS_ATTENDUES} sections intactes.\n` +
+  `  ${releve.reduce((n, r) => n + (r.rangsCompares ?? 0), 0)} rangée(s) de paliers comparées d'une carte à l'autre,\n` +
+  `  toutes ALIGNÉES — une grille de prix se lit en travers.\n` +
     "  Ce script garde une SOMME, pas une composition, et ne dit rien de la lisibilité —\n" +
     '  voir son en-tête.',
 )

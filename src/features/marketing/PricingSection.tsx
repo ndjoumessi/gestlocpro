@@ -134,7 +134,37 @@ export function PricingSection() {
           lève toujours de douze pixels au-dessus des deux autres, qu'elle
           dépasse désormais en haut sans les dépasser en bas.
         */
-        <div data-mesure="tarifs-grille" className="grid gap-4 lg:grid-cols-3">
+        /*
+          LES SIX BANDES SONT DES RANGÉES PARTAGÉES, et c'est ce qui rend la
+          grille comparable.
+
+          Une grille de prix existe pour qu'on lise EN TRAVERS : « Relances »
+          chez l'un, en face de « Relances » chez les deux autres. Mesuré avant
+          ce lot : les cinq lignes de caractéristiques étaient décalées de
+          103 px d'une carte à l'autre, dans les deux langues. Le bloc de prix
+          n'a pas la même hauteur partout — la mention d'arrondi n'existe que
+          sur un palier, l'essai n'existe pas sur celui qui est sur devis — et
+          tout ce qui suit glissait d'autant. L'œil devait faire lui-même le
+          rapprochement que la page promet.
+
+          `grid-rows-subgrid` est exactement l'outil de ce problème : chaque
+          carte reprend les rangées de la grille au lieu d'empiler les siennes,
+          donc la hauteur d'une bande est celle de la plus haute des trois, pour
+          les trois. Six bandes : titre, accroche, prix, socle commun,
+          caractéristiques, action.
+
+          `1fr` SUR LA CINQUIÈME : c'est la liste qui absorbe le reste, pour que
+          les trois actions finissent à la même hauteur — elles le faisaient
+          déjà par `flex-1`, et ce serait le premier alignement perdu.
+
+          EMPILÉES, RIEN DE TOUT CELA : sous `lg` il n'y a pas de rangées
+          communes, la question ne se pose pas, et les cartes restent en
+          colonne flexible.
+        */
+        <div
+          data-mesure="tarifs-grille"
+          className="grid gap-4 lg:grid-cols-3 lg:grid-rows-[auto_auto_auto_auto_1fr_auto]"
+        >
           {PLANS.map((plan) => (
             <CartePalier key={plan.id} plan={plan} period={period} units={units} />
           ))}
@@ -311,7 +341,11 @@ function CartePalier({
          trois, et un arrêt de tabulation de plus serait du bruit. */
       tabIndex={idPanneau ? 0 : undefined}
       className={cn(
+        /* `lg:grid` prend le pas sur `flex` : voir le commentaire de la grille.
+           En colonne — sous `lg` — la carte reste une pile flexible, où
+           `flex-1` sur la liste tient l'action en bas. */
         'relative flex flex-col rounded-lg border p-6',
+        'lg:grid lg:grid-rows-subgrid lg:row-span-6',
         popular
           ? 'border-ink bg-surface shadow-e2 lg:-mt-3 lg:pb-8'
           : 'border-divider bg-surface shadow-e1',
@@ -326,7 +360,12 @@ function CartePalier({
       <h3 className="title-l">
         {t(`marketing.pricing.${plan.id}.name` as 'marketing.pricing.pro.name')}
       </h3>
-      <p className="mt-1.5 min-h-10 text-body text-muted">
+      {/* `min-h-10` EST PARTI : il réservait deux lignes pour que les accroches
+          finissent à la même hauteur d'une carte à l'autre. C'est exactement ce
+          que la rangée partagée fait maintenant, et mieux — elle prend la
+          hauteur de la plus haute au lieu d'un minimum posé à la main, qui
+          gaspillait seize pixels quand les trois tenaient sur une ligne. */}
+      <p className="mt-1.5 text-body text-muted">
         {t(`marketing.pricing.${plan.id}.pitch` as 'marketing.pricing.pro.pitch')}
       </p>
 
