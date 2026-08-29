@@ -190,6 +190,7 @@ export const en: Dictionary = {
     toggleNav: 'Collapse or expand navigation',
     openNav: 'Open navigation',
     closeNav: 'Close navigation',
+    backToSite: 'Back to the website',
     searchPlaceholder: 'Search a unit, a tenant…',
     searchShort: 'Unit, tenant…',
     selectPark: 'Park being viewed',

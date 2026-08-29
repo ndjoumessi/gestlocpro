@@ -261,6 +261,16 @@ export const fr = {
     toggleNav: 'Replier ou déplier la navigation',
     openNav: 'Ouvrir la navigation',
     closeNav: 'Fermer la navigation',
+    /*
+      « AU SITE » ET NON « À L'ACCUEIL ».
+
+      La coquille a déjà un accueil — le tableau de bord, première entrée de la
+      navigation, et destination du logo. Un second libellé « Accueil » dans la
+      même barre désignerait un autre lieu sous le même mot, ce qui est le
+      défaut que le fil d'Ariane a coûté une fois ici. « Le site » nomme ce
+      qu'on quitte l'application pour retrouver : la vitrine publique.
+    */
+    backToSite: 'Retour au site',
     searchPlaceholder: 'Rechercher un logement, un locataire…',
     /* Le GABARIT, plus court que le nom accessible : voir `Portfolio`. */
     searchShort: 'Logement, locataire…',

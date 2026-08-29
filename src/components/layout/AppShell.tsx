@@ -8,7 +8,7 @@ import {
   type ReactNode,
   type Ref,
 } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/cn'
 import { GOUTTIERE_LATERALE } from './gouttiere'
 import { LienEvitement } from './LienEvitement'
@@ -732,6 +732,7 @@ function BarreLocataire({ setRole }: { setRole: (role: Role) => void }) {
         {demo && <SelecteurProfilCompact role="tenant" setRole={setRole} />}
         <SelecteurParc />
         <MenuCompte />
+        <RetourAuSite />
       </div>
     </header>
   )
@@ -1340,6 +1341,44 @@ function MenuReglages() {
   )
 }
 
+/**
+ * LA SORTIE VERS LA VITRINE, quand aucun compte ne la porte.
+ *
+ * LE MANQUE. La coquille n'offrait aucun chemin vers la page d'accueil. Le logo
+ * mène au tableau de bord — comme la première entrée de la navigation, qui le
+ * dit déjà — et le menu du compte ne proposait que « Se déconnecter ». Se
+ * déconnecter n'est pas un chemin : c'est la seule sortie qui DÉTRUISE la
+ * session pour arriver quelque part. Et en démonstration, où il n'y a pas de
+ * compte, `MenuCompte` ne rend rien : la sortie n'existait pas du tout.
+ *
+ * DEUX CONTEXTES, UNE SEULE COMMANDE À LA FOIS. Connecté, elle vit DANS le menu
+ * du compte, à côté de la déconnexion : aller voir le site public est alors un
+ * geste rare et délibéré, et une commande rare ne s'installe pas à demeure dans
+ * une barre qu'on a mesurée à 185 px de haut le jour où on l'a laissée faire.
+ * En démonstration, c'est l'inverse — on est entré depuis la page d'accueil
+ * pour essayer, et repartir est le geste le plus attendu de tous : elle prend
+ * alors la PLACE QUE L'AVATAR LAISSE VIDE, au même endroit, à la même taille.
+ *
+ * Les deux états sont exclusifs (`connecte` contre `demo`), donc les deux
+ * commandes ne se rendent jamais ensemble. C'est la règle que la barre de la
+ * vitrine tient déjà : deux navigations identiques côte à côte sont un défaut.
+ *
+ * `globe` et non une flèche : la flèche dit « en arrière », qui est faux — on
+ * ne revient pas d'où l'on vient, on va au site public, et beaucoup arrivent
+ * ici par un lien direct. Le globe nomme la destination.
+ */
+function RetourAuSite() {
+  const t = useT()
+  const { etat } = useSession()
+  /* Le menu du compte porte la commande dès qu'il existe. Ce n'est pas une
+     préférence : c'est ce qui empêche le doublon. */
+  if (etat.statut === 'connecte') return null
+
+  return (
+    <IconButton icon="globe" label={t('nav.backToSite')} variant="secondary" to="/" />
+  )
+}
+
 /* Plus de `tone`, pour la même raison que `SelecteurParc` : son seul appelant
    sur fond sombre était la barre du locataire. */
 function MenuCompte() {
@@ -1418,6 +1457,25 @@ function MenuCompte() {
                 {etat.compte.email}
               </p>
             </div>
+            {/* LA SORTIE QUI NE DÉTRUIT RIEN, avant celle qui détruit — voir
+                `RetourAuSite` pour pourquoi elle est ici et non dans la barre.
+                Elle vient EN PREMIER parce que c'est le geste réversible : un
+                menu qui range la déconnexion au-dessus la met sous le doigt qui
+                vise la ligne suivante. */}
+            <Link
+              role="menuitem"
+              to="/"
+              onClick={() => setOuvert(false)}
+              className="flex min-h-11 items-center gap-2 rounded-sm px-2 text-label text-ink no-underline hover:bg-surface-sunken"
+            >
+              <Icon name="globe" size={16} />
+              {t('nav.backToSite')}
+            </Link>
+            {/* LE FILET SÉPARE DEUX NATURES, et il n'est pas décoratif : au
+                dessus on navigue, en dessous on met fin à la session. Sans lui,
+                deux lignes de même forme proposent deux gestes dont un seul se
+                défait. */}
+            <div className="my-1 h-px bg-border" />
             <button
               type="button"
               role="menuitem"
@@ -1427,7 +1485,10 @@ function MenuCompte() {
               }}
               className="flex min-h-11 cursor-pointer items-center gap-2 rounded-sm px-2 text-label text-ink hover:bg-surface-sunken"
             >
-              <Icon name="arrowRight" size={16} />
+              {/* `logout` et non `arrowRight` : le jeu porte le glyphe exact, et
+                  une flèche générique redisait celle de la ligne au-dessus. Deux
+                  gestes de nature opposée ne se signalent pas du même trait. */}
+              <Icon name="logout" size={16} />
               {t('auth.logout')}
             </button>
           </div>
@@ -1782,6 +1843,7 @@ function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
         */}
         <SelecteurParc />
         <MenuCompte />
+        <RetourAuSite />
       </div>
     </header>
   )

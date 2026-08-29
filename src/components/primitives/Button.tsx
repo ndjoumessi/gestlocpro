@@ -223,6 +223,20 @@ export interface IconButtonProps
   variant?: ButtonVariant
   size?: number
   className?: string
+  /**
+   * Destination interne — la même branche que `Button`, et pour la même raison.
+   *
+   * `Button` sait rendre une ancre depuis `to` ; celui-ci ne savait rendre
+   * qu'un `<button>`. Une commande ronde qui NAVIGUE devait donc s'écrire soit
+   * en `<button onClick={navigate}>` — qui perd le clic milieu, le « ouvrir
+   * dans un nouvel onglet », l'adresse au survol et l'annonce « lien » —, soit
+   * en `Button` avec un libellé masqué, qui n'a ni la taille ni la forme des
+   * autres commandes de la barre.
+   *
+   * Ni `href` ni l'état désactivé : aucun appelant n'en a besoin, et une
+   * branche sans appelant se périme sans que personne l'apprenne.
+   */
+  to?: string
 }
 
 export function IconButton({
@@ -232,23 +246,39 @@ export function IconButton({
   size = 16,
   className,
   disabled,
+  to,
   ...props
 }: IconButtonProps) {
+  const classes = cn(
+    /* Rond, et non arrondi : un bouton icône est un bouton, donc une
+       gélule — et une gélule carrée est un cercle. */
+    'inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full',
+    'transition-colors duration-150 ease-out',
+    VARIANTS[variant],
+    disabled && ETEINT,
+    className,
+  )
+
+  if (to) {
+    /* Même conversion bornée que les branches « lien » de `Button`, et le même
+       motif : le type restant décrit un `<button>`, quelques attributs n'ont
+       pas de sens sur une ancre, et dupliquer la signature pour une branche
+       coûterait plus que cette ligne. */
+    const reste = props as unknown as AnchorHTMLAttributes<HTMLAnchorElement>
+    return (
+      <Link to={to} aria-label={label} title={label} className={classes} {...reste}>
+        <Icon name={icon} size={size} />
+      </Link>
+    )
+  }
+
   return (
     <button
       type="button"
       aria-label={label}
       title={label}
       disabled={disabled}
-      className={cn(
-        /* Rond, et non arrondi : un bouton icône est un bouton, donc une
-           gélule — et une gélule carrée est un cercle. */
-        'inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full',
-        'transition-colors duration-150 ease-out',
-        VARIANTS[variant],
-        disabled && ETEINT,
-        className,
-      )}
+      className={classes}
       {...props}
     >
       <Icon name={icon} size={size} />
