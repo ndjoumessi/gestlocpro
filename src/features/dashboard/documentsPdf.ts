@@ -5,7 +5,7 @@ import { useCurrency } from '@/currency/CurrencyProvider'
 import { formatMoney } from '@/currency/currencies'
 import { useT } from '@/i18n/I18nProvider'
 import { isoDay, isoMonth } from '@/lib/csv'
-import { PDF_MIME, downloadBinaryFile } from '@/lib/download'
+import { PDF_MIME, downloadBinaryFile, printBinaryFile } from '@/lib/download'
 import { nouvelleMiseEnPage, type MiseEnPage } from '@/lib/miseEnPage'
 import { nomDeFichier } from '@/lib/nomDeFichier'
 import { construirePdf } from '@/lib/pdf'
@@ -515,14 +515,22 @@ export function useAllReceiptsPdf() {
  * l'émission — pour qu'une pièce réémise en octobre rende exactement celle de
  * juillet.
  */
-export function useDocumentEmisPdf() {
+/**
+ * LE DOCUMENT ÉMIS, COMPOSÉ — ses pages et son nom, sans le remettre.
+ *
+ * Séparé de sa remise parce que DEUX gestes le veulent : « Télécharger » et
+ * « Imprimer ». Ce dernier passait par `window.print()` et une feuille
+ * `@media print`, donc par le DOM — et sortait la quittance coupée là où le
+ * défilement de la modale s'arrêtait, sur deux pages portant chacune le même
+ * haut de document. Les deux boutons partagent maintenant la composition, ce
+ * que le commentaire du premier affirmait déjà sans que rien ne le tienne.
+ */
+function useCompositionDuDocumentEmis() {
   const t = useT()
   const parc = useEmetteur()
   const emisLe = useEmisLe()
-  const remettre = useRemise()
-
   return useCallback(
-    (document: DocumentEmisPdf): string => {
+    (document: DocumentEmisPdf) => {
       const page = nouvelleMiseEnPage()
       /*
         LA MÊME COMPOSITION QUE LE LOCATAIRE, à partir des faits du serveur.
@@ -560,13 +568,42 @@ export function useDocumentEmisPdf() {
       pagesDeQuittance(page, t, parc, emisLe, contenu)
 
       const titre = t(contenu.titre)
-      return remettre(
-        page.pages((numero, total) => piedDePage(t, parc, titre, numero, total)),
-        nomDeFichier([titre, document.unit], document.moisISO, 'pdf'),
-        'app.receiptDownloaded',
-      )
+      return {
+        pages: page.pages((numero, total) => piedDePage(t, parc, titre, numero, total)),
+        nom: nomDeFichier([titre, document.unit], document.moisISO, 'pdf'),
+      }
     },
-    [emisLe, parc, remettre, t],
+    [emisLe, parc, t],
+  )
+}
+
+/** Remet le document émis en fichier. */
+export function useDocumentEmisPdf() {
+  const composer = useCompositionDuDocumentEmis()
+  const remettre = useRemise()
+  return useCallback(
+    (document: DocumentEmisPdf): string => {
+      const { pages, nom } = composer(document)
+      return remettre(pages, nom, 'app.receiptDownloaded')
+    },
+    [composer, remettre],
+  )
+}
+
+/**
+ * ENVOIE LE DOCUMENT ÉMIS À L'IMPRIMANTE — la pièce, pas l'écran.
+ *
+ * Aucun avis n'est levé, à la différence de la remise : un téléchargement se
+ * termine hors de la vue, dans un dossier, et doit donc s'annoncer ; la boîte
+ * d'impression, elle, s'ouvre par-dessus tout et s'annonce d'elle-même.
+ */
+export function useImpressionDuDocumentEmis() {
+  const composer = useCompositionDuDocumentEmis()
+  return useCallback(
+    (document: DocumentEmisPdf): void => {
+      printBinaryFile(construirePdf(composer(document).pages), PDF_MIME)
+    },
+    [composer],
   )
 }
 

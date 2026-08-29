@@ -14,7 +14,11 @@ import { useRole } from '@/components/layout/AppShell'
 import { useToast } from '@/components/primitives/Toast'
 import { Logo } from '@/components/primitives/Logo'
 import { PAYMENT_METHOD_LABELS, type PaymentMethodKey } from '@/data/portfolio'
-import { composerLaQuittance, useDocumentEmisPdf } from './documentsPdf'
+import {
+  composerLaQuittance,
+  useDocumentEmisPdf,
+  useImpressionDuDocumentEmis,
+} from './documentsPdf'
 import { StatusPill } from '@/components/primitives/StatusPill'
 import { cn } from '@/lib/cn'
 import { partiesDeDate } from '@/lib/dates'
@@ -59,11 +63,18 @@ interface DocumentEmis {
  * « quittance » ferait signer au bailleur une preuve de paiement qu'il n'a pas
  * reçu — et une quittance ne se reprend pas.
  *
- * L'impression passe par `window.print()` et une feuille de style dédiée, et ce
- * choix a survécu à l'arrivée d'un émetteur PDF dans le produit — mais pas pour
- * la raison qu'il donnait. Il opposait « une bibliothèque de plus », ses polices
- * à embarquer et ses accents à vérifier : `lib/pdf.ts` n'est pas une
- * bibliothèque, n'embarque aucune police, et ses accents sont gardés.
+ * L'IMPRESSION EST PASSÉE AU PDF, ELLE AUSSI. Elle employait `window.print()` et
+ * une feuille `@media print`, et ce choix avait survécu à l'arrivée d'un
+ * émetteur PDF dans le produit — pour une raison qui ne tenait pas : il
+ * opposait « une bibliothèque de plus », ses polices à embarquer et ses accents
+ * à vérifier, quand `lib/pdf.ts` n'est pas une bibliothèque, n'embarque aucune
+ * police, et garde ses accents.
+ *
+ * Ce qui l'a tranché est une capture d'aperçu d'impression : deux pages portant
+ * chacune la même quittance COUPÉE après « Détail de la période ». La feuille
+ * éteignait la page par `visibility: hidden`, qui conserve la géométrie des
+ * ancêtres — le corps de la modale restait donc un conteneur de défilement
+ * borné, et rognait le document qu'il contenait.
  *
  * CE QUI SÉPARE VRAIMENT LES DEUX CHEMINS EST LA SOURCE. Ce document-ci est
  * ARRÊTÉ PAR LE SERVEUR — `api.issueReceipt`, avec sa propre devise, et aucun
@@ -243,6 +254,7 @@ export function ReceiptModal({
   const { role } = useRole()
   const { notify } = useToast()
   const telechargerLePdf = useDocumentEmisPdf()
+  const imprimerLePdf = useImpressionDuDocumentEmis()
 
   /**
    * Le document se referme après le retrait, plutôt que de se recalculer ici.
@@ -281,6 +293,7 @@ export function ReceiptModal({
      localement en démonstration. Jamais les deux — `documentLocal` ne se
      compose que si `parkId` est absent. */
   const document = documentServeur ?? documentLocal
+
 
   useEffect(() => {
     if (!open || !parkId) return
@@ -365,6 +378,45 @@ export function ReceiptModal({
     [d, document, periode.month, periode.year, t],
   )
 
+  /*
+    LA PIÈCE, TELLE QU'ELLE PART — en fichier ou à l'imprimante.
+
+    Elle était décrite dans le `onClick` du téléchargement, en dix-huit lignes,
+    et l'impression n'y avait pas accès : elle appelait `window.print()`. Décrite
+    ici, les deux boutons remettent le MÊME document, ce qui est la seule façon
+    de tenir la promesse écrite à côté d'eux.
+
+    `null` porte les deux refus à la fois — pas encore de document, ou un retrait
+    qui a échoué et démonté la quittance — et c'est lui qui éteint les boutons.
+  */
+  const piece =
+    document && !echec
+      ? {
+          kind: document.kind,
+          unit: document.unit,
+          building: document.building,
+          tenant: document.tenant,
+          periode: d.monthYear(periode),
+          moisISO: periodStart.slice(0, 7),
+          rentMinor: document.rentMinor,
+          waterMinor: document.waterMinor,
+          powerMinor: document.powerMinor,
+          dueMinor: document.dueMinor,
+          paidMinor: document.paidMinor,
+          balanceMinor: document.balanceMinor,
+          /* La devise DU DOCUMENT, celle que le serveur a posée à l'émission —
+             pas celle de l'écran. Le même versement imprimé sur deux postes
+             réglés différemment portait deux monnaies. */
+          argent: money,
+          payments: document.payments.map((versement) => ({
+            date: d.fullDate(partiesDeDateISO(versement.paidOn)),
+            moyen: libelleMoyen(versement.method),
+            reference: versement.reference,
+            amountMinor: versement.amountMinor,
+          })),
+        }
+      : null
+
 
   return (
     <>
@@ -383,7 +435,7 @@ export function ReceiptModal({
             {t('common.close')}
           </Button>
           {/*
-            LE PDF, ET L'IMPRESSION À CÔTÉ.
+            LE PDF, ET L'IMPRESSION QUI PASSE PAR LUI.
 
             La modale n'offrait que `window.print()`. La boîte d'impression sait
             produire un PDF, mais elle y ajoute ses en-têtes, le nom du fichier
@@ -392,57 +444,35 @@ export function ReceiptModal({
             pas à celle que le LOCATAIRE télécharge du même mois : deux pièces
             pour un seul fait.
 
-            Les deux passent maintenant par la même mise en page. L'impression
-            survit parce que remettre du papier reste un geste du métier.
+            CE COMMENTAIRE DISAIT « les deux passent maintenant par la même mise
+            en page », ET C'ÉTAIT FAUX de l'impression : seul le téléchargement
+            était passé au PDF, le bouton d'à côté imprimant toujours le DOM.
+            Ce qui sortait de l'imprimante était donc la quittance COUPÉE là où
+            le défilement de la modale s'arrêtait — deux pages portant chacune
+            le même haut de document. Les deux boutons partagent désormais la
+            même pièce ; voir `printBinaryFile` pour le cadre invisible et
+            `useImpressionDuDocumentEmis` pour la composition.
           */}
           <Button
             variant="secondary"
             icon="download"
-            disabled={!document || Boolean(echec)}
-            onClick={() =>
-              document &&
-              telechargerLePdf({
-                kind: document.kind,
-                unit: document.unit,
-                building: document.building,
-                tenant: document.tenant,
-                periode: d.monthYear(periode),
-                moisISO: periodStart.slice(0, 7),
-                rentMinor: document.rentMinor,
-                waterMinor: document.waterMinor,
-                powerMinor: document.powerMinor,
-                dueMinor: document.dueMinor,
-                paidMinor: document.paidMinor,
-                balanceMinor: document.balanceMinor,
-                /* La devise DU DOCUMENT, celle que le serveur a posée à
-                   l'émission — pas celle de l'écran. Le même versement imprimé
-                   sur deux postes réglés différemment portait deux monnaies. */
-                argent: money,
-                payments: document.payments.map((versement) => ({
-                  date: d.fullDate(partiesDeDateISO(versement.paidOn)),
-                  moyen: libelleMoyen(versement.method),
-                  reference: versement.reference,
-                  amountMinor: versement.amountMinor,
-                })),
-              })
-            }
+            disabled={!piece}
+            onClick={() => piece && telechargerLePdf(piece)}
           >
             {t('app.documents.download')}
           </Button>
           <Button
             icon="file"
-            onClick={() => window.print()}
+            onClick={() => piece && imprimerLePdf(piece)}
             /*
-              ÉTEINT AUSSI QUAND LE RETRAIT A ÉCHOUÉ.
-
-              La branche d'erreur DÉMONTE la quittance entière et affiche le
-              motif à sa place ; le bouton, lui, ne regardait que la présence du
-              document. On pouvait donc imprimer sur un corps qui n'existe plus
-              — la feuille sortait blanche, `.zone-imprimable` n'étant plus
-              montée. Un bouton actif qui ne peut rien produire est pire qu'un
-              bouton absent : il fait croire à une panne de l'imprimante.
+              ÉTEINT QUAND IL N'Y A PAS DE PIÈCE — parce qu'il n'y a rien à
+              composer, et non plus parce que le DOM ne serait pas monté. C'est
+              `piece` qui porte la condition maintenant : elle vaut `null` tant
+              que le document n'est pas là, et quand le retrait a échoué (la
+              branche d'erreur démonte la quittance entière). Un bouton actif
+              qui ne peut rien produire fait croire à une panne d'imprimante.
             */
-            disabled={!document || Boolean(echec)}
+            disabled={!piece}
           >
             {t('app.receipts.print')}
           </Button>
@@ -456,15 +486,17 @@ export function ReceiptModal({
       ) : !document || !contenu ? (
         <p className="text-body text-muted">{t('common.loading')}</p>
       ) : (
-        /* `zone-imprimable` : la feuille d'impression ne garde que ce bloc.
-           Imprimer la page entière sortirait la barre latérale et la
-           navigation, que personne ne veut sur une quittance.
+        /* PLUS DE `zone-imprimable` : l'impression ne passe plus par le DOM,
+           donc plus par une feuille `@media print` qui éteignait la page pour
+           rallumer ce bloc. Elle a été retirée d'`index.css`, dont cette modale
+           était la seule cliente — et c'est elle qui rognait le document, les
+           ancêtres gardant leur géométrie sous `visibility: hidden`.
 
            `gap-5` et non `gap-6` : un document se compose SERRÉ. Le relevé
            bancaire, la facture, la quittance rapprochent tous leurs lignes,
            parce que l'œil y descend une colonne plutôt qu'il ne parcourt des
            blocs. */
-        <div className="zone-imprimable flex flex-col gap-5 text-body">
+        <div className="flex flex-col gap-5 text-body">
           {/*
             L'APERÇU EST LE DOCUMENT, et il ne l'était pas.
 
@@ -594,20 +626,12 @@ export function ReceiptModal({
                     */}
                     {role === 'owner' && parkId && (
                       <IconButton
-                        /*
-                          LA GOMME NE SORT PAS DE L'IMPRIMANTE.
-
-                          La feuille d'impression dit « seule la zone marquée
-                          sort », et c'est vrai des ancêtres — mais elle rallume
-                          TOUT ce que cette zone contient, `zone-imprimable *`.
-                          Le bouton de retrait vit dedans : il s'imprimait donc
-                          sur la quittance remise au locataire, une croix grise
-                          au bout de chaque ligne de versement.
-
-                          Un document qui atteste ne porte pas les commandes de
-                          celui qui le consulte.
-                        */
-                        className="print:hidden"
+                        /* PLUS DE `print:hidden` : la gomme ne pouvait sortir
+                           de l'imprimante que parce qu'on imprimait le DOM. On
+                           imprime la pièce, qui ne porte aucune commande — un
+                           document qui atteste ne porte pas les boutons de qui
+                           le consulte, et il n'y a plus à le rappeler classe
+                           par classe. */
                         icon="close"
                         label={t('app.receipts.removePayment')}
                         variant="ghost"

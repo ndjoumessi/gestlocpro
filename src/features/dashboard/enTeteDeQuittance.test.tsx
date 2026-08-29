@@ -7,10 +7,10 @@ import { Logo } from '@/components/primitives/Logo'
  *
  * ═══ CE QUE LA FEUILLE PORTAIT ═══
  *
- * Rien. `.zone-imprimable` commençait par un surtitre et un mois. Remise à un
- * locataire, la feuille n'était signée de personne : aucune ligne dessus ne
- * disait d'où elle venait, alors que c'est le seul document du produit qui sorte
- * d'une imprimante et change de mains.
+ * Rien. Le document commençait par un surtitre et un mois. Remis à un
+ * locataire, il n'était signé de personne : aucune ligne dessus ne disait d'où
+ * il venait, alors que c'est le seul document du produit qui sorte d'une
+ * imprimante et change de mains.
  *
  * ═══ POURQUOI UNE MARQUE EN UNE SEULE ENCRE ═══
  *
@@ -23,10 +23,10 @@ import { Logo } from '@/components/primitives/Logo'
  * ═══ CE QUI EST ÉPROUVÉ ICI, ET CE QUI NE L'EST QUE PAR LECTURE ═══
  *
  * La VARIANTE est montée et interrogée : c'est du comportement, et il ne coûte
- * rien à rendre. Son EMPLACEMENT — dans la zone imprimable et non au-dessus —
- * n'est vérifié que sur la source, et il faut le dire : monter la modale
- * demanderait une session, un parc, un portefeuille et une réponse de document,
- * soit un jeu de fixtures entier pour une assertion de placement.
+ * rien à rendre. Sa PRÉSENCE dans l'aperçu n'est vérifiée que sur la source, et
+ * il faut le dire : monter la modale demanderait une session, un parc, un
+ * portefeuille et une réponse de document, soit un jeu de fixtures entier pour
+ * une assertion de placement.
  *
  * Rien de tout cela n'est vu par le balayage : `mesure-ui` visite des adresses,
  * aucune n'ouvre cette modale, et la feuille imprimée n'est de toute façon pas
@@ -86,27 +86,34 @@ describe('l’en-tête de la quittance', () => {
     expect(source).toContain('<Logo impression')
   })
 
-  it('est DANS la zone imprimable, sans quoi la feuille sort nue', () => {
-    /*
-      LES COMMENTAIRES SONT RETIRÉS D'ABORD, et une mutation l'a exigé.
-
-      La première rédaction cherchait `indexOf('zone-imprimable')` dans la source
-      brute. Or ce nom apparaît TROIS FOIS avant le JSX, dans des commentaires qui
-      racontent son rôle : l'index trouvé était celui d'une phrase, pas celui de
-      la balise. Déplacer l'en-tête HORS de la zone laissait donc la garde au
-      vert — elle comparait une position à une prose.
-
-      On vise donc l'attribut lui-même, dans une source débarrassée de ses
-      commentaires. Cela reste un contrôle de TEXTE et non de rendu ; l'en-tête
-      de ce fichier dit pourquoi.
-    */
+  /**
+   * CE CAS A CHANGÉ DE SUJET, PARCE QUE LA FEUILLE A CHANGÉ DE SOURCE.
+   *
+   * Il vérifiait que la marque était posée DANS `.zone-imprimable` — le bloc
+   * que l'ancienne feuille `@media print` rallumait pour imprimer le DOM. Ce
+   * procédé est retiré : il rognait le document au bord du conteneur de
+   * défilement, et l'imprimante sortait la quittance coupée. On imprime
+   * désormais le PDF, celui-là même que « Télécharger » remet.
+   *
+   * L'INVARIANT, LUI, N'A PAS BOUGÉ : la feuille dit qui l'émet. Ce qui le tient
+   * n'est plus une position dans du JSX mais `enTete()` dans `pagesDeQuittance`,
+   * qui écrit le nom du parc en tête de page — et `memeQuittanceDesDeuxCotes`
+   * mesure déjà que les deux chemins rendent la même feuille.
+   *
+   * Ce qui reste ici est ce que ce fichier peut voir sans monter un parc : que
+   * l'APERÇU porte l'émetteur, lui aussi. Une modale qui montrerait un document
+   * anonyme puis en imprimerait un signé serait un aperçu qui ment — le défaut
+   * que ce fichier existe pour interdire, dans l'autre sens.
+   */
+  it('reste porté par l’aperçu, la feuille l’ayant par `enTete`', () => {
     const propre = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
-    const zone = propre.indexOf('className="zone-imprimable')
-    const marque = propre.indexOf('<Logo impression')
-    expect(zone, 'la zone imprimable a disparu').toBeGreaterThan(-1)
-    expect(marque, 'la marque a disparu').toBeGreaterThan(-1)
-    /* Après l'ouverture de la zone : posée avant, elle resterait à l'écran
-       pendant que le papier sortirait anonyme. */
-    expect(marque).toBeGreaterThan(zone)
+
+    expect(propre, 'la marque a disparu de l’aperçu').toContain('<Logo impression')
+    /* ET LA ZONE IMPRIMABLE N'EST PLUS LÀ. Sans cette moitié, le cas resterait
+       vert le jour où quelqu'un ramènerait `window.print()` et sa feuille — donc
+       le document rogné. */
+    expect(propre, 'le DOM est redevenu la source de l’impression').not.toContain(
+      'className="zone-imprimable',
+    )
   })
 })

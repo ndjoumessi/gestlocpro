@@ -70,3 +70,57 @@ export function downloadBinaryFile(octets: Uint8Array, filename: string, mime: s
 
   window.setTimeout(() => URL.revokeObjectURL(url), 0)
 }
+
+/**
+ * ENVOIE DES OCTETS À L'IMPRIMANTE, sans passer par la page.
+ *
+ * ═══ CE QUE `window.print()` IMPRIMAIT ═══
+ *
+ * Le DOM. La modale de quittance l'employait avec une feuille `@media print`
+ * qui éteignait la page pour ne rallumer que la zone du document — mais
+ * `visibility: hidden` CONSERVE la géométrie des ancêtres. Le corps de la
+ * modale restait un conteneur de défilement à hauteur bornée, et il rognait la
+ * zone qu'il contenait : sortaient deux pages portant chacune la même quittance
+ * coupée après « Détail de la période ».
+ *
+ * ═══ POURQUOI UN CADRE, ET NON UNE FENÊTRE ═══
+ *
+ * `window.open` sur une adresse d'objet est bloqué comme fenêtre surgissante
+ * dès que le clic n'est plus jugé « direct » — ce qui arrive après un `await`.
+ * Un cadre invisible n'est pas une fenêtre : il ne demande rien, et son
+ * `print()` porte sur SON document, donc sur le PDF seul.
+ *
+ * ═══ CE QUI N'EST PAS RÉVOQUÉ TOUT DE SUITE ═══
+ *
+ * Ni l'adresse ni le cadre. La boîte d'impression est modale et rend la main
+ * immédiatement : révoquer aussitôt viderait le document sous les yeux de qui
+ * choisit son imprimante. On attend `afterprint`, et un délai de repli couvre
+ * les navigateurs qui ne l'émettent pas — Safari, notamment.
+ */
+export function printBinaryFile(octets: Uint8Array, mime: string): void {
+  const url = URL.createObjectURL(new Blob([new Uint8Array(octets)], { type: mime }))
+
+  const cadre = document.createElement('iframe')
+  /* Hors champ plutôt que `display: none` : un cadre non rendu ne charge pas
+     son document dans certains navigateurs, et son `contentWindow` reste vide. */
+  cadre.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;'
+  cadre.src = url
+
+  const nettoyer = () => {
+    URL.revokeObjectURL(url)
+    cadre.remove()
+  }
+
+  cadre.onload = () => {
+    const fenetre = cadre.contentWindow
+    if (!fenetre) return nettoyer()
+    fenetre.addEventListener('afterprint', nettoyer, { once: true })
+    fenetre.focus()
+    fenetre.print()
+    // Repli : trois minutes suffisent à choisir une imprimante, et rien ne
+    // justifie de garder un document en mémoire au-delà.
+    window.setTimeout(nettoyer, 180_000)
+  }
+
+  document.body.append(cadre)
+}
