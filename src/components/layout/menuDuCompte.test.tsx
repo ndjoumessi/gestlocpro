@@ -32,10 +32,14 @@ import type { EtatSession } from '@/api/SessionProvider'
  *
  * ═══ CE QUE CETTE GARDE TIENT ═══
  *
- *   1. le `menu` ne contient QUE des `menuitem` et des `separator` ;
- *   2. l'identité n'est pas perdue : elle sort du `menu` et reste à l'écran ;
- *   3. et elle est RENDUE AU MENU par son nom accessible, sans quoi la sortir
+ *   1. l'identité n'est pas perdue : elle sort du `menu` et reste à l'écran ;
+ *   2. et elle est RENDUE AU MENU par son nom accessible, sans quoi la sortir
  *      l'aurait seulement déplacée hors de portée.
+ *
+ * QUE LE `menu` NE CONTIENNE QUE DES ENTRÉES est tenu AILLEURS, et mieux :
+ * `primitives/menusLicites.test.tsx` pose la règle pour les huit menus du
+ * produit — ce fichier n'en garderait qu'un, et avec un prédicat plus faible.
+ * Ce qui reste ici est ce qui n'appartient qu'au menu du compte : l'identité.
  */
 
 const PARC = '11111111-2222-4333-8444-555555555555'
@@ -69,17 +73,6 @@ async function ouvrirLeMenu(): Promise<HTMLElement> {
 }
 
 describe('le menu du compte', () => {
-  it('ne contient que des entrées de menu et des séparateurs', async () => {
-    const menu = await ouvrirLeMenu()
-
-    const intrus = Array.from(menu.querySelectorAll('*'))
-      .filter((el) => !el.closest('[role="menuitem"]'))
-      .map((el) => el.getAttribute('role'))
-      .filter((role) => role !== 'menuitem' && role !== 'separator')
-
-    expect(intrus, 'un descendant du menu ne déclare ni menuitem ni separator').toEqual([])
-  })
-
   it('garde l’identité à l’écran, hors du menu', async () => {
     const menu = await ouvrirLeMenu()
 
