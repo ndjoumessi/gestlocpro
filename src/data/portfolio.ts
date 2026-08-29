@@ -117,20 +117,41 @@ export interface Unit {
   tenantId?: string
 }
 
-export const UNITS: Unit[] = [
-  { id: 'A1', buildingId: 'bon', label: 'A1', type: 'T3', surface: 78, rent: 145000, tenant: 'Charles Ngassa', phone: '+237 6 77 21 44 08', leaseStart: { year: 2024, month: 5, day: 15 }, paid: 145000, status: 'paid' },
-  { id: 'A2', buildingId: 'bon', label: 'A2', type: 'T2', surface: 54, rent: 110000, tenant: 'Mireille Fotso', phone: '+237 6 99 03 51 72', leaseStart: { year: 2023, month: 9, day: 1 }, paid: 110000, status: 'paid' },
-  { id: 'A3', buildingId: 'bon', label: 'A3', type: 'T2', surface: 56, rent: 115000, tenant: 'Serge Mbarga', phone: '+237 6 55 84 20 31', leaseStart: { year: 2025, month: 2, day: 1 }, paid: 0, status: 'overdue', overdueDays: 24 },
-  { id: 'A4', buildingId: 'bon', label: 'A4', type: 'T4', surface: 96, rent: 180000, tenant: 'Famille Owona', phone: '+237 6 70 12 96 45', leaseStart: { year: 2026, month: 2, day: 15 }, paid: 180000, status: 'paid' },
-  { id: 'A5', buildingId: 'bon', label: 'A5', type: 'T1', surface: 38, rent: 75000, tenant: 'Aline Tchoumi', phone: '+237 6 94 37 08 12', leaseStart: { year: 2026, month: 1, day: 2 }, paid: 40000, status: 'partial' },
+/**
+ * LES UNITÉS OCCUPÉES DE LA DÉMONSTRATION PORTENT UN `tenantId`, et ce n'est
+ * pas de la décoration.
+ *
+ * « Retirer la fiche » n'est offert que si l'unité en porte un — le serveur
+ * supprime par identifiant de LOCATAIRE, pas par logement, et proposer un geste
+ * sans de quoi l'exécuter ferait un bouton qui échoue. La règle est juste ;
+ * aucune unité de démonstration n'en portait, si bien que le bouton
+ * n'apparaissait JAMAIS hors d'un vrai parc.
+ *
+ * Conséquence, et elle a été mesurée : toute la colonne de geste des locataires
+ * échappait au balayage — `mesure-ui` ne mesure que ce que la démonstration
+ * rend. Trouvée par une mutation qui a ÉCHOUÉ : icône retirée de ce bouton-ci,
+ * la garde du glyphe est restée verte.
+ *
+ * `loc-<unité>` reprend la forme déjà employée par les cas — « loc-B2 »,
+ * « loc-C1 » dans `messageAuLocataire`. Sur un vrai parc, c'est un `uuid` : ce
+ * que la démonstration doit rendre vrai, c'est qu'il EXISTE et qu'il est
+ * distinct par personne, pas sa forme.
+ */
 
-  { id: 'B1', buildingId: 'akw', label: 'B1', type: 'T3', surface: 82, rent: 160000, tenant: 'Jean-Paul Eboa', phone: '+237 6 78 45 11 90', leaseStart: { year: 2023, month: 7, day: 1 }, paid: 160000, status: 'paid' },
-  { id: 'B2', buildingId: 'akw', label: 'B2', type: 'T3', surface: 80, rent: 155000, tenant: 'Nadia Belinga', phone: '+237 6 51 60 73 24', leaseStart: { year: 2024, month: 10, day: 1 }, paid: 0, status: 'overdue', overdueDays: 9 },
-  { id: 'B3', buildingId: 'akw', label: 'B3', type: 'T2', surface: 58, rent: 120000, tenant: 'Éric Ndongo', phone: '+237 6 96 82 30 57', leaseStart: { year: 2025, month: 5, day: 1 }, paid: 120000, status: 'paid' },
+export const UNITS: Unit[] = [
+  { id: 'A1', buildingId: 'bon', label: 'A1', type: 'T3', surface: 78, rent: 145000, tenant: 'Charles Ngassa', tenantId: 'loc-A1', phone: '+237 6 77 21 44 08', leaseStart: { year: 2024, month: 5, day: 15 }, paid: 145000, status: 'paid' },
+  { id: 'A2', buildingId: 'bon', label: 'A2', type: 'T2', surface: 54, rent: 110000, tenant: 'Mireille Fotso', tenantId: 'loc-A2', phone: '+237 6 99 03 51 72', leaseStart: { year: 2023, month: 9, day: 1 }, paid: 110000, status: 'paid' },
+  { id: 'A3', buildingId: 'bon', label: 'A3', type: 'T2', surface: 56, rent: 115000, tenant: 'Serge Mbarga', tenantId: 'loc-A3', phone: '+237 6 55 84 20 31', leaseStart: { year: 2025, month: 2, day: 1 }, paid: 0, status: 'overdue', overdueDays: 24 },
+  { id: 'A4', buildingId: 'bon', label: 'A4', type: 'T4', surface: 96, rent: 180000, tenant: 'Famille Owona', tenantId: 'loc-A4', phone: '+237 6 70 12 96 45', leaseStart: { year: 2026, month: 2, day: 15 }, paid: 180000, status: 'paid' },
+  { id: 'A5', buildingId: 'bon', label: 'A5', type: 'T1', surface: 38, rent: 75000, tenant: 'Aline Tchoumi', tenantId: 'loc-A5', phone: '+237 6 94 37 08 12', leaseStart: { year: 2026, month: 1, day: 2 }, paid: 40000, status: 'partial' },
+
+  { id: 'B1', buildingId: 'akw', label: 'B1', type: 'T3', surface: 82, rent: 160000, tenant: 'Jean-Paul Eboa', tenantId: 'loc-B1', phone: '+237 6 78 45 11 90', leaseStart: { year: 2023, month: 7, day: 1 }, paid: 160000, status: 'paid' },
+  { id: 'B2', buildingId: 'akw', label: 'B2', type: 'T3', surface: 80, rent: 155000, tenant: 'Nadia Belinga', tenantId: 'loc-B2', phone: '+237 6 51 60 73 24', leaseStart: { year: 2024, month: 10, day: 1 }, paid: 0, status: 'overdue', overdueDays: 9 },
+  { id: 'B3', buildingId: 'akw', label: 'B3', type: 'T2', surface: 58, rent: 120000, tenant: 'Éric Ndongo', tenantId: 'loc-B3', phone: '+237 6 96 82 30 57', leaseStart: { year: 2025, month: 5, day: 1 }, paid: 120000, status: 'paid' },
   { id: 'B4', buildingId: 'akw', label: 'B4', type: 'T2', surface: 57, rent: 118000, tenant: null, phone: null, leaseStart: null, paid: 0, status: 'vacant' },
 
-  { id: 'C1', buildingId: 'des', label: 'C1', type: 'T4', surface: 104, rent: 195000, tenant: 'Cabinet Njoya', phone: '+237 6 73 55 41 86', leaseStart: { year: 2022, month: 3, day: 1 }, paid: 195000, status: 'paid' },
-  { id: 'C2', buildingId: 'des', label: 'C2', type: 'T3', surface: 76, rent: 142000, tenant: 'Sylvie Manga', phone: '+237 6 82 19 64 03', leaseStart: { year: 2025, month: 8, day: 1 }, paid: 0, status: 'overdue', overdueDays: 3 },
+  { id: 'C1', buildingId: 'des', label: 'C1', type: 'T4', surface: 104, rent: 195000, tenant: 'Cabinet Njoya', tenantId: 'loc-C1', phone: '+237 6 73 55 41 86', leaseStart: { year: 2022, month: 3, day: 1 }, paid: 195000, status: 'paid' },
+  { id: 'C2', buildingId: 'des', label: 'C2', type: 'T3', surface: 76, rent: 142000, tenant: 'Sylvie Manga', tenantId: 'loc-C2', phone: '+237 6 82 19 64 03', leaseStart: { year: 2025, month: 8, day: 1 }, paid: 0, status: 'overdue', overdueDays: 3 },
   { id: 'C3', buildingId: 'des', label: 'C3', type: 'T2', surface: 60, rent: 125000, tenant: null, phone: null, leaseStart: null, paid: 0, status: 'vacant' },
 ]
 

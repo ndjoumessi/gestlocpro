@@ -60,8 +60,20 @@ import { DEPOSITS, UNITS, WORKS, type Deposit, type Unit, type WorkOrder } from 
  * toutes ses interventions s'afficheraient « pas encore chiffré », y compris
  * celles dont le devis est validé. L'origine, elle, se serait simplement tue —
  * ce que l'écran sait faire.
+ *
+ * Version 8 : l'unité occupée porte l'IDENTIFIANT de son locataire. « Retirer
+ * la fiche » n'est offert que si elle en porte un — le serveur supprime par
+ * identifiant de locataire, pas par logement — donc un enregistrement antérieur
+ * cache ce geste, DÉFINITIVEMENT et sans un mot : rien ne repose l'identifiant
+ * sur une unité déjà en mémoire.
+ *
+ * C'est le cas limite que la version 7 avait laissé passer dans l'autre sens :
+ * l'origine d'une intervention « se serait simplement tue, ce que l'écran sait
+ * faire ». Une donnée absente qu'on n'affiche pas se tait ; une donnée absente
+ * qui retire une COMMANDE ne se tait pas, elle ampute — et personne ne peut
+ * deviner qu'un bouton manque.
  */
-const VERSION = 7
+const VERSION = 8
 const CLE = 'gestlocpro.portfolio'
 
 export interface EtatPersiste {
