@@ -60,6 +60,16 @@ interface CurrencyContextValue {
   /** Formate un montant, DONNÉ DANS LA DEVISE DU PARC, dans celle qu'on affiche. */
   money: (amount: number, options?: FormatMoneyOptions) => string
   /**
+   * Le montant CONVERTI, en unités mineures de la devise affichée — sans mise
+   * en forme.
+   *
+   * Les exports en ont besoin : un tableur veut un nombre calculable, pas
+   * « 39,55 € ». Ils appelaient jusqu'ici `enUniteDUsage` sur la devise
+   * demandée, ce qui change l'échelle sans convertir — un parc de Douala lu en
+   * euros exportait 259,42 pour 39,55 €, sous un en-tête annonçant des euros.
+   */
+  enDeviseAffichee: (amount: number, depuis?: CurrencyCode) => number
+  /**
    * Le même, pour un montant dont la devise d'origine est DÉCLARÉE.
    *
    * Les DOCUMENTS en ont besoin : une pièce arrêtée par le serveur porte la
@@ -322,6 +332,8 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
         const parLeFlux = exigeUnFluxDeCours(depuis) || exigeUnFluxDeCours(deviseAffichee)
         return { depuis, date: parLeFlux ? cours.date : null }
       },
+      enDeviseAffichee: (amount, depuis = deviseSource) =>
+        convertir(amount, depuis, deviseAffichee, cours.parEuro) ?? amount,
       money: (amount, options) => {
         const montant = convertir(amount, deviseSource, deviseAffichee, cours.parEuro)
         /* `convertir` ne rend `null` que si un cours manque, ce que

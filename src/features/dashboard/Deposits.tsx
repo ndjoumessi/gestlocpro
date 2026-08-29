@@ -13,6 +13,7 @@ import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
 import { StatusPill, type StatusTone } from '@/components/primitives/StatusPill'
 import { Button } from '@/components/primitives/Button'
 import { useDepositsStatementPdf } from './documentsPdf'
+import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
 import { Modal } from '@/components/primitives/Modal'
 import { Field } from '@/components/primitives/Field'
 import { Input, Textarea } from '@/components/primitives/Input'
@@ -65,6 +66,8 @@ export function Deposits() {
    */
   const canSettle = role === 'owner'
   const exporterLEtat = useDepositsStatementPdf()
+  const exporterEnTableur = useCsvExport()
+  const csvMoney = useCsvMoney()
 
   const totalHeld = deposits.reduce((sum, d) => sum + d.held, 0)
   const totalWithheld = deposits.reduce((sum, d) => sum + d.withheld, 0)
@@ -148,23 +151,70 @@ export function Deposits() {
           aucun autre écran, il EST cette table à une date. Un rapport qui
           rassemble plusieurs écrans appellerait autre chose.
         */
+        /*
+          DEUX SORTIES POUR DEUX GESTES, et elles ne se remplacent pas.
+
+          Le document se REMET — à un locataire qui part, à un associé, à un
+          contrôle : il est mis en page, daté, signé de l'émetteur. Le tableur se
+          RECOUPE : c'est avec lui qu'on rapproche ses cautions d'un relevé
+          bancaire, et cette colonne-là ne se somme pas sur un papier.
+
+          Le tableur en variante secondaire et le document en premier : c'est le
+          document qu'on demande à ce produit, le tableur est l'outil de qui
+          tient déjà ses comptes ailleurs.
+        */
         actions={
-          <Button
-            variant="secondary"
-            icon="download"
-            disabled={deposits.length === 0}
-            onClick={() =>
-              exporterLEtat(
-                deposits.map((caution) => ({
-                  unite: unitById(caution.unitId)?.label ?? caution.unitId,
-                  locataire: caution.tenant ?? t('app.deposits.formerTenant'),
-                  deposit: caution,
-                })),
-              )
-            }
-          >
-            {t('app.documents.exportDeposits')}
-          </Button>
+          <>
+            <Button
+              variant="ghost"
+              icon="download"
+              disabled={deposits.length === 0}
+              onClick={() =>
+                exporterEnTableur({
+                  name: t('app.files.deposits'),
+                  headers: [
+                    t('app.portfolio.unit'),
+                    t('app.portfolio.tenant'),
+                    csvMoney.header(t('app.deposits.amountHeld')),
+                    csvMoney.header(t('app.deposits.withheld')),
+                    csvMoney.header(t('app.deposits.balance')),
+                    t('app.portfolio.status'),
+                  ],
+                  rows: deposits.map((caution) => [
+                    unitById(caution.unitId)?.label ?? caution.unitId,
+                    caution.tenant ?? t('app.deposits.formerTenant'),
+                    csvMoney.amount(caution.held),
+                    csvMoney.amount(caution.withheld),
+                    /* LA MÊME RÈGLE QUE L'ÉCRAN : une caution rendue n'a pas de
+                       solde, et la cellule reste VIDE. Écrire son montant ici
+                       remettrait la dette éteinte dans la colonne qu'on somme —
+                       le défaut qu'on vient de corriger, dans le format où il
+                       coûte le plus cher. */
+                    caution.status === 'returned' ? '' : csvMoney.amount(soldeDeCaution(caution)),
+                    t(`app.deposits.${caution.status}` as 'app.deposits.held'),
+                  ]),
+                })
+              }
+            >
+              {t('app.documents.exportCsv')}
+            </Button>
+            <Button
+              variant="secondary"
+              icon="download"
+              disabled={deposits.length === 0}
+              onClick={() =>
+                exporterLEtat(
+                  deposits.map((caution) => ({
+                    unite: unitById(caution.unitId)?.label ?? caution.unitId,
+                    locataire: caution.tenant ?? t('app.deposits.formerTenant'),
+                    deposit: caution,
+                  })),
+                )
+              }
+            >
+              {t('app.documents.exportDeposits')}
+            </Button>
+          </>
         }
       />
 

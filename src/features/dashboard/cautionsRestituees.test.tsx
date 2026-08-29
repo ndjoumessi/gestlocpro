@@ -169,3 +169,69 @@ describe('l’état des cautions', () => {
     }
   })
 })
+
+/**
+ * L'ÉTAT DES CAUTIONS EN TABLEUR, à côté du document.
+ *
+ * ═══ DEUX SORTIES POUR DEUX GESTES ═══
+ *
+ * Le PDF se REMET — à un locataire qui part, à un associé, à un contrôle. Le
+ * tableur se RECOUPE : c'est avec lui qu'un bailleur rapproche ses cautions de
+ * son relevé bancaire, et cette colonne-là ne se lit pas sur un papier mis en
+ * page. Les paiements et les relevés offrent le tableur depuis longtemps ; les
+ * cautions, qui sont pourtant l'argent qu'on détient POUR QUELQU'UN D'AUTRE,
+ * n'avaient ni l'un ni l'autre.
+ *
+ * ═══ ET IL PORTE LA MÊME RÈGLE ═══
+ *
+ * Une caution rendue n'a pas de solde. Un tableur qui reprendrait
+ * `held − withheld` sur toutes les lignes remettrait la dette éteinte dans la
+ * colonne qu'on somme — le défaut que ce fichier vient de corriger à l'écran,
+ * dans le format où il se somme justement.
+ */
+describe('l’état des cautions en tableur', () => {
+  async function exporter() {
+    installerFauxServeur()
+    await renderApp('/demo/cautions')
+    await attendreLeChargement()
+
+    const capture = captureDownloads()
+    try {
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: /tableur|spreadsheet/i }))
+      const [fichier] = await capture.settle()
+      return new TextDecoder().decode(fichier.bytes)
+    } finally {
+      capture.restore()
+    }
+  }
+
+  it('porte chaque caution, son statut et son solde', async () => {
+    const tableur = await exporter()
+
+    /* Les cinq cautions, la rendue comprise : un tableur qui en cacherait une
+       ne se recouperait pas avec l'écran dont il sort. */
+    for (const unite of ['A1', 'A2', 'A3', 'B4', 'C3'])
+      expect(tableur, `la caution ${unite} manque`).toContain(unite)
+
+    /* A3 : 230 000 consignés, 45 000 retenus, 185 000 dus. Les trois colonnes,
+       parce que c'est leur rapprochement qui fait l'intérêt du fichier. */
+    expect(tableur).toContain('230000')
+    expect(tableur).toContain('45000')
+    expect(tableur).toContain('185000')
+  })
+
+  it('n’écrit aucun solde sur une caution rendue', async () => {
+    const tableur = await exporter()
+    const ligne = tableur.split('\n').find((l) => l.startsWith('C3'))
+
+    expect(ligne, 'la caution rendue est absente du tableur').toBeDefined()
+    /* Le montant CONSIGNÉ reste — la caution valait bien 250 000 — mais la
+       colonne du solde est vide. Écrire 250000 deux fois sur cette ligne
+       remettrait la dette éteinte dans la colonne qu'on somme. */
+    expect((ligne!.match(/250000/g) ?? []).length, 'le solde d’une caution rendue est écrit').toBe(
+      1,
+    )
+  })
+})

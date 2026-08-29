@@ -42,7 +42,7 @@ export interface CsvExportRequest {
  */
 export function useCsvMoney() {
   const { locale } = useI18n()
-  const { currency, definition } = useCurrency()
+  const { deviseAffichee, definition, enDeviseAffichee } = useCurrency()
 
   return useMemo(
     () => ({
@@ -53,13 +53,23 @@ export function useCsvMoney() {
        * tableur écrirait « 145000,00 » là où l'écran affiche « 1 450,00 € » —
        * un fichier qui contredit la page dont il est l'export, et qui fausse
        * toute somme qu'on en tire.
+       *
+       * ET IL FAUT CONVERTIR AVANT DE CHANGER D'ÉCHELLE. Cette fonction faisait
+       * `enUniteDUsage(value, currency)` : elle divisait par les décimales de la
+       * devise DEMANDÉE sans jamais appliquer le cours. Un parc de Douala lu en
+       * euros exportait donc 259,42 pour 25 942 FCFA — qui valent 39,55 € — sous
+       * un en-tête annonçant des euros. Un facteur 6,5, et le même reproche que
+       * le paragraphe ci-dessus : le fichier contredisait sa page.
+       *
+       * Le défaut ne se voyait pas parce que la démonstration tourne en franc
+       * CFA, où la conversion est l'identité et `10 ** 0` vaut un.
        */
       amount: (value: number): string =>
-        csvNumber(enUniteDUsage(value, currency), locale, definition.decimals),
+        csvNumber(enUniteDUsage(enDeviseAffichee(value), deviseAffichee), locale, definition.decimals),
       /** En-tête portant la devise : « Loyer (FCFA) ». */
       header: (label: string): string => `${label} (${definition.label})`,
     }),
-    [currency, locale, definition],
+    [deviseAffichee, enDeviseAffichee, locale, definition],
   )
 }
 

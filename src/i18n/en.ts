@@ -369,6 +369,7 @@ export const en: Dictionary = {
       collections: 'collections',
       meters: 'meter-readings',
       receipt: 'receipt',
+      deposits: 'deposits-statement',
       deposit: 'deposit-receipt',
       inspection: 'inspection-report',
     },

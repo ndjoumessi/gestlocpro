@@ -484,6 +484,7 @@ export const fr = {
       collections: 'encaissements',
       meters: 'releves-compteurs',
       receipt: 'quittance',
+      deposits: 'etat-des-cautions',
       deposit: 'recu-caution',
       inspection: 'etat-des-lieux',
     },
