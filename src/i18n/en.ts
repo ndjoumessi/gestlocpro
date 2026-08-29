@@ -181,6 +181,7 @@ export const en: Dictionary = {
     sectionMySpace: 'My space',
     sectionSteering: 'Steering',
     sectionOperations: 'Operations',
+    decisions: 'Decisions',
     sectionAdmin: 'Administration',
     activeProfile: 'Active profile',
     settings: 'Settings',
@@ -1034,6 +1035,76 @@ export const en: Dictionary = {
         'Only the owner settles deposits. You prepare the statement, they approve it.',
     },
 
+    decisions: {
+      title: 'Decision log',
+      subtitle: 'What the portfolio recorded, and who recorded it.',
+      empty: 'No decision recorded yet.',
+      emptyHint:
+        'Quote approvals, deposit rulings, payments and corrections are written here as they happen.',
+      failed: 'The log could not be read.',
+      colWhen: 'When',
+      colWhat: 'Decision',
+      colWho: 'By',
+      unknownActor: 'Deleted account',
+      more: 'Show older decisions',
+      /*
+        LE DICTIONNAIRE ÉPOUSE L'ESPACE DE NOMS DES ACTIONS, et ce n'est pas
+        un choix de rangement : `t` découpe sa clé sur les POINTS. Écrites à
+        plat — `'deposit.settle'` — les clés étaient introuvables, et l'écran
+        rendait « Décision enregistrée » pour toutes. Imbriquées, la clé du
+        serveur devient le chemin du dictionnaire sans conversion.
+      */
+      actions: {
+        access: {
+          revoke: 'Access revoked',
+        },
+        deposit: {
+          settle: 'Deposit settled',
+          unsettle: 'Deposit ruling reversed',
+        },
+        document: {
+          fulfilled: 'Document provided',
+          refused: 'Document request refused',
+        },
+        inspection: {
+          record: 'Inspection recorded',
+          photo: 'Photo added to the file',
+          photo_delete: 'Photo removed from the file',
+        },
+        lease: {
+          formal_notice: 'Formal notice served',
+        },
+        park: {
+          update: 'Portfolio corrected',
+        },
+        payment: {
+          record: 'Payment recorded',
+          delete: 'Payment removed',
+        },
+        receipt: {
+          issued: 'Receipt issued',
+        },
+        rent: {
+          call: 'Rent called',
+          remind: 'Reminder sent',
+        },
+        tariff: {
+          set: 'Rebilling price set',
+        },
+        tenant: {
+          create: 'Tenant record opened',
+          delete: 'Tenant record removed',
+        },
+        work: {
+          quote: 'Job quoted',
+          approve: 'Quote approved',
+          unapprove: 'Quote approval reversed',
+          complete: 'Job completed',
+          reopen: 'Job reopened',
+        },
+        unknown: 'Decision recorded',
+      },
+    },
     access: {
       title: 'Portfolio access',
       subtitle: 'Who holds a key, and which codes are still waiting to be used.',

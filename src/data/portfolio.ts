@@ -298,6 +298,51 @@ export const ACCES_DEMO = {
 }
 
 /**
+ * LE REGISTRE DES DÉCISIONS DE LA DÉMONSTRATION.
+ *
+ * Sans lui, l'écran est une impasse dans un parcours qui montre trois immeubles
+ * et douze logements — et surtout, il n'est mesuré par PERSONNE : ni `mesure-ui`
+ * en géométrie, ni `couleur-non-seule` en contraste, puisque les deux ne
+ * visitent que la démonstration. C'est la leçon déjà payée par `Access`,
+ * `TariffsModal` et `ParkSettingsModal`.
+ *
+ * Les décisions ne sont pas inventées : ce sont celles que les écrans de la
+ * démonstration montrent déjà — la caution de A3 arbitrée, le devis du groupe
+ * de sécurité validé, l'encaissement de Charles Ngassa. Deux acteurs, le
+ * propriétaire et le gestionnaire délégué, qui sont les deux profils que la
+ * coquille propose.
+ *
+ * LES DATES SONT RELATIVES AU JOUR COURANT, comme le reste du jeu : un registre
+ * figé au 28 août dirait « il y a huit mois » sur un écran qui se veut vivant.
+ */
+export function decisionsDemo(aujourdhui: Date): DecisionDemo[] {
+  const ilYA = (heures: number) =>
+    new Date(aujourdhui.getTime() - heures * 3_600_000).toISOString()
+
+  return [
+    { id: 'demo-d-1', action: 'deposit.settle', at: ilYA(3), actor: 'Arsène Nkolo' },
+    { id: 'demo-d-2', action: 'work.approve', at: ilYA(9), actor: 'Arsène Nkolo' },
+    { id: 'demo-d-3', action: 'payment.record', at: ilYA(26), actor: 'Diane Fotso' },
+    { id: 'demo-d-4', action: 'receipt.issued', at: ilYA(27), actor: 'Diane Fotso' },
+    { id: 'demo-d-5', action: 'rent.remind', at: ilYA(50), actor: 'Diane Fotso' },
+    { id: 'demo-d-6', action: 'tariff.set', at: ilYA(74), actor: 'Arsène Nkolo' },
+    { id: 'demo-d-7', action: 'inspection.record', at: ilYA(98), actor: 'Diane Fotso' },
+    /* UN ACTEUR NUL, et il n'est pas décoratif : `actorId` est en `SetNull`
+       pour que le registre survive à la suppression d'un compte. C'est le seul
+       cas où l'écran doit écrire « compte supprimé » plutôt qu'un nom, et sans
+       cette ligne il ne serait rendu nulle part. */
+    { id: 'demo-d-8', action: 'access.revoke', at: ilYA(220), actor: null },
+  ]
+}
+
+export interface DecisionDemo {
+  id: string
+  action: string
+  at: string
+  actor: string | null
+}
+
+/**
  * Les relevés de la démonstration portent les prix de la démonstration.
  *
  * Posés à la construction plutôt que multipliés à l'écran : c'est la même forme

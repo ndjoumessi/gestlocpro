@@ -20,6 +20,7 @@ import { Alerts } from '@/features/dashboard/Alerts'
 import { Signaler } from '@/features/dashboard/Signaler'
 import { Access } from '@/features/dashboard/Access'
 import { Onboarding } from '@/features/dashboard/Onboarding'
+import { Decisions } from '@/features/dashboard/Decisions'
 import { SystemStates } from '@/features/dashboard/SystemStates'
 import { TenantPortal } from '@/features/dashboard/TenantPortal'
 import { TenantDashboard, TenantRestricted } from '@/features/dashboard/TenantDashboard'
@@ -126,6 +127,11 @@ function ecransDeLApplication() {
           qu'il ne peut pas faire — retirer un accès, reprendre un code de
           gestionnaire — l'écran ne le lui propose pas. */}
       <Route path="acces" element={<Restricted allow={['owner', 'manager']}><Access /></Restricted>} />
+      {/* LE PROPRIÉTAIRE SEUL. Le registre existe pour qu'il contrôle ce qu'il
+          délègue ; le gestionnaire n'y trouverait que ses propres actes
+          rassemblés pour son employeur, et le serveur le lui refuse déjà par un
+          403 — un écran qui l'offrirait promettrait ce que la porte refuse. */}
+      <Route path="decisions" element={<Restricted allow={['owner']}><Decisions /></Restricted>} />
       <Route path="prise-en-main" element={<Restricted allow={['owner']}><Onboarding /></Restricted>} />
 
       {/* Vitrines : le même garde que dans la barre latérale, où elles portent

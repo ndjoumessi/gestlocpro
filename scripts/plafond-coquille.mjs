@@ -142,10 +142,14 @@ const ADRESSE_404 = '/adresse-qui-n-existe-pas'
   trouvé ce piège trois lots de suite. Ajouter un écran ou une largeur oblige
   donc à toucher ce nombre, et le diff le montre.
 
-  66 = (23 écrans déduits du routeur − 1 sans écran) × 3 largeurs.
+  69 = (24 écrans déduits du routeur − 1 sans écran) × 3 largeurs.
   3  = la route `/app`, redirection sans `<main>`, à ses trois largeurs.
+
+  Passé de 66 à 69 avec le registre des décisions. Ce nombre doit être touché à
+  la main, et c'est le but : le diff montre alors qu'un écran est apparu, là où
+  un compte dérivé de l'inventaire se serait mis d'accord avec lui-même.
 */
-const ATTENDUS = 66
+const ATTENDUS = 69
 const SAUTEES_ATTENDUES = 3
 
 async function servir() {

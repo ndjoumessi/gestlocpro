@@ -242,6 +242,7 @@ export const fr = {
     sectionMySpace: 'Mon espace',
     sectionSteering: 'Pilotage',
     sectionOperations: 'Opérations',
+    decisions: 'Décisions',
     sectionAdmin: 'Administration',
     activeProfile: 'Profil actif',
     /* LE POINT D'ENTRÉE UNIQUE DES RÉGLAGES.
@@ -1395,6 +1396,76 @@ export const fr = {
         'Seul le propriétaire arbitre les cautions. Vous préparez le décompte, il le valide.',
     },
 
+    decisions: {
+      title: 'Registre des décisions',
+      subtitle: 'Ce que le parc a écrit, et qui l’a écrit.',
+      empty: 'Aucune décision enregistrée pour l’instant.',
+      emptyHint:
+        'Les validations de devis, arbitrages de caution, encaissements et corrections s’inscrivent ici au fur et à mesure.',
+      failed: 'Le registre n’a pas pu être lu.',
+      colWhen: 'Quand',
+      colWhat: 'Décision',
+      colWho: 'Par qui',
+      unknownActor: 'Compte supprimé',
+      more: 'Voir les décisions plus anciennes',
+      /*
+        LE DICTIONNAIRE ÉPOUSE L'ESPACE DE NOMS DES ACTIONS, et ce n'est pas
+        un choix de rangement : `t` découpe sa clé sur les POINTS. Écrites à
+        plat — `'deposit.settle'` — les clés étaient introuvables, et l'écran
+        rendait « Décision enregistrée » pour toutes. Imbriquées, la clé du
+        serveur devient le chemin du dictionnaire sans conversion.
+      */
+      actions: {
+        access: {
+          revoke: 'Accès repris',
+        },
+        deposit: {
+          settle: 'Caution arbitrée',
+          unsettle: 'Arbitrage de caution repris',
+        },
+        document: {
+          fulfilled: 'Pièce remise',
+          refused: 'Demande de pièce refusée',
+        },
+        inspection: {
+          record: 'État des lieux établi',
+          photo: 'Photo versée au dossier',
+          photo_delete: 'Photo retirée du dossier',
+        },
+        lease: {
+          formal_notice: 'Mise en demeure signifiée',
+        },
+        park: {
+          update: 'Parc corrigé',
+        },
+        payment: {
+          record: 'Encaissement saisi',
+          delete: 'Encaissement retiré',
+        },
+        receipt: {
+          issued: 'Quittance émise',
+        },
+        rent: {
+          call: 'Appel de loyers émis',
+          remind: 'Relance envoyée',
+        },
+        tariff: {
+          set: 'Tarif de refacturation posé',
+        },
+        tenant: {
+          create: 'Fiche de locataire ouverte',
+          delete: 'Fiche de locataire retirée',
+        },
+        work: {
+          quote: 'Devis chiffré',
+          approve: 'Devis validé',
+          unapprove: 'Validation de devis reprise',
+          complete: 'Chantier soldé',
+          reopen: 'Chantier rouvert',
+        },
+        unknown: 'Décision enregistrée',
+      },
+    },
     access: {
       title: 'Accès au parc',
       subtitle: 'Qui détient une clé, et quels codes attendent encore d’être utilisés.',

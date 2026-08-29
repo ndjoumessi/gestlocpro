@@ -49,11 +49,42 @@ interface ReponseErreur {
   fields?: { path: string; message: string }[]
 }
 
-async function requete<T>(chemin: string, init: RequestInit = {}): Promise<T> {
+/**
+ * LES PARAMÈTRES DE REQUÊTE PASSENT PAR UNE OPTION, jamais par le gabarit.
+ *
+ * Le premier chemin paginé du produit les composait à la main —
+ * `` `/parks/${id}/decisions${avant ? `?avant=…` : ''}` `` — et deux choses en
+ * ont souffert. `check-orphelins` lit la SOURCE de ce fichier pour vérifier
+ * qu'aucune route du serveur ne reste sans appelant : il compare des chemins
+ * étoilés, et un gabarit qui se termine par une expression rend `/decisions*`,
+ * qui ne correspond à rien. Un outil qu'on rend aveugle ne proteste plus.
+ *
+ * Et l'encodage se serait répété à chaque appelant, jusqu'à ce que l'un d'eux
+ * l'oublie. Ici il est fait une fois, par `URLSearchParams`, qui connaît les
+ * règles mieux qu'un `encodeURIComponent` posé au bon endroit par habitude.
+ *
+ * Une valeur `undefined` n'est pas envoyée : c'est ce qui permet d'écrire
+ * `{ avant }` sans tester d'abord, et donc de ne pas retrouver la
+ * concaténation conditionnelle chez l'appelant.
+ */
+type Parametres = Record<string, string | undefined>
+
+async function requete<T>(
+  chemin: string,
+  init: RequestInit & { query?: Parametres } = {},
+): Promise<T> {
+  const { query, ...reste } = init
+  const parametres = new URLSearchParams(
+    Object.entries(query ?? {}).flatMap(([cle, valeur]) =>
+      valeur === undefined ? [] : [[cle, valeur] as [string, string]],
+    ),
+  ).toString()
+  const adresse = `/api${chemin}${parametres ? `?${parametres}` : ''}`
+
   let reponse: Response
   try {
-    reponse = await fetch(`/api${chemin}`, {
-      ...init,
+    reponse = await fetch(adresse, {
+      ...reste,
       /**
        * Sans cela, le navigateur n'envoie ni ne reçoit le cookie de session, et
        * chaque requête repart anonyme. Le défaut est silencieux : on obtient un
@@ -61,8 +92,8 @@ async function requete<T>(chemin: string, init: RequestInit = {}): Promise<T> {
        */
       credentials: 'same-origin',
       headers: {
-        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
-        ...init.headers,
+        ...(reste.body ? { 'Content-Type': 'application/json' } : {}),
+        ...reste.headers,
       },
     })
   } catch (cause) {
@@ -440,6 +471,19 @@ export const api = {
    * afficher une moitié à jour et l'autre périmée.
    */
   access: <T>(parkId: string) => requete<T>(`/parks/${parkId}/access`),
+  /**
+   * Le registre des DÉCISIONS : ce que le parc a écrit, et qui l'a écrit.
+   *
+   * Distinct du registre des accès, qui répond à « qui a le droit » quand
+   * celui-ci répond à « qui a fait ». Réservé au propriétaire — le serveur rend
+   * 403 aux autres, et l'écran ne s'offre pas à eux.
+   *
+   * `avant` est un curseur, et non un numéro de page : un registre s'allonge
+   * par le haut, et une pagination par décalage rejouerait ou sauterait une
+   * ligne entre deux lectures.
+   */
+  decisions: <T>(parkId: string, avant?: string) =>
+    requete<T>(`/parks/${parkId}/decisions`, { query: { avant } }),
 
   /**
    * Les prix de refacturation, historique compris.

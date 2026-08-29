@@ -1502,6 +1502,19 @@ parksRouter.post(
       })
     })
 
+    /* LA CRÉATION SE TRACE COMME LE RETRAIT. Le registre montrait des
+       suppressions sans leurs créations — voir `registreDesDecisions`. */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'payment.record',
+        entity: 'Payment',
+        entityId: paiement.id,
+        payload: { amountMinor: paiement.amountMinor, method: paiement.method, unitId: corps.unitId },
+      },
+    })
+
     res.status(201).json({ payment: paiement })
   },
 )
@@ -2278,6 +2291,25 @@ parksRouter.patch(
       select: { id: true, name: true, countryCode: true, currency: true, delegation: true },
     })
 
+    /* CHANGER LA DEVISE D'UN PARC change la lecture de tout son historique, et
+       la délégation change qui peut engager une dépense. Deux décisions plus
+       lourdes que la plupart de celles déjà tracées, et aucune ne l'était. */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'park.update',
+        entity: 'Park',
+        entityId: parc.id,
+        payload: {
+          name: parc.name,
+          currency: parc.currency,
+          countryCode: parc.countryCode,
+          delegation: parc.delegation,
+        },
+      },
+    })
+
     res.json({ park: parc })
   },
 )
@@ -2376,6 +2408,24 @@ parksRouter.post(
         select: { id: true, utility: true, unitPriceMinor: true, effectiveFrom: true },
       })
 
+      /* LE TARIF PRODUIT LES MONTANTS DES QUITTANCES, qui sont tracées. Le
+         registre suivait donc l'effet sans sa cause : une refacturation d'eau
+         qui double se lisait dans les quittances, jamais dans la décision. */
+      await prisma.auditEvent.create({
+        data: {
+          parkId,
+          actorId: req.compteId!,
+          action: 'tariff.set',
+          entity: 'UtilityTariff',
+          entityId: tarif.id,
+          payload: {
+            utility: tarif.utility,
+            unitPriceMinor: tarif.unitPriceMinor,
+            effectiveFrom: tarif.effectiveFrom.toISOString().slice(0, 10),
+          },
+        },
+      })
+
       res.status(201).json({
         tariff: {
           id: tarif.id,
@@ -2400,6 +2450,82 @@ parksRouter.post(
       }
       throw err
     }
+  },
+)
+
+/**
+ * ─── LE REGISTRE DES DÉCISIONS ───────────────────────────────────────────────
+ *
+ * CE QUI EXISTAIT, ET QUI NE SERVAIT À PERSONNE. `AuditEvent` est écrit à seize
+ * endroits de ce fichier depuis plusieurs lots, et LU nulle part — sauf par les
+ * tests. Le produit tenait une piste d'audit qu'il n'ouvrait jamais : un
+ * propriétaire ne pouvait pas savoir qui avait arbitré une caution, validé un
+ * devis, ou retiré un versement de son registre.
+ *
+ * LE PROPRIÉTAIRE SEUL. C'est lui qui délègue, et ce registre existe pour qu'il
+ * contrôle ce qu'il a délégué. Le gestionnaire n'y trouverait que ses propres
+ * actes ; le locataire n'a rien à voir dans le journal d'un parc entier — les
+ * décisions qui le concernent lui sont notifiées.
+ *
+ * PAGINÉ PAR CURSEUR, ET NON PAR NUMÉRO DE PAGE. Un registre s'allonge par le
+ * haut : entre deux pages lues, une décision écrite décale toutes les suivantes
+ * et une pagination par décalage rejouerait ou sauterait une ligne. Le curseur
+ * est la date de la dernière ligne rendue, ce que l'index `[parkId, createdAt]`
+ * sert déjà sans travail supplémentaire.
+ *
+ * L'ACTEUR PEUT ÊTRE NUL, et ce n'est pas un défaut : `actorId` est en
+ * `SetNull`, pour que le registre survive à la suppression d'un compte. Une
+ * décision dont l'auteur a fermé son compte reste une décision prise — la
+ * masquer effacerait l'histoire pour protéger un nom qui n'existe plus.
+ */
+parksRouter.get(
+  '/:parkId/decisions',
+  exigerAppartenance,
+  exigerRole('owner'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const curseur = z.string().datetime().optional().parse(req.query.avant)
+
+    /* CENT PAR PAGE, et le client demande la suite s'il la veut. Un registre
+       d'un an sur un parc actif se compte en milliers de lignes : les rendre
+       toutes ferait payer à chaque ouverture d'écran une lecture que personne
+       ne fait défiler. */
+    const TAILLE = 100
+
+    const evenements = await prisma.auditEvent.findMany({
+      where: { parkId, ...(curseur ? { createdAt: { lt: new Date(curseur) } } : {}) },
+      orderBy: { createdAt: 'desc' },
+      take: TAILLE + 1,
+      select: {
+        id: true,
+        action: true,
+        entity: true,
+        entityId: true,
+        payload: true,
+        createdAt: true,
+        actor: { select: { fullName: true } },
+      },
+    })
+
+    /* UNE LIGNE DE PLUS EST DEMANDÉE, PAS RENDUE : c'est elle qui dit s'il y a
+       une suite, sans un second appel de comptage sur une table qui s'allonge. */
+    const suite = evenements.length > TAILLE
+    const page = suite ? evenements.slice(0, TAILLE) : evenements
+
+    res.json({
+      decisions: page.map((e) => ({
+        id: e.id,
+        action: e.action,
+        entity: e.entity,
+        entityId: e.entityId,
+        payload: e.payload,
+        at: e.createdAt.toISOString(),
+        actor: e.actor?.fullName ?? null,
+      })),
+      /* La borne de la page suivante, `null` quand il n'y en a pas. Le client
+         n'a donc rien à calculer, et ne peut pas se tromper de curseur. */
+      suivant: suite ? page[page.length - 1]!.createdAt.toISOString() : null,
+    })
   },
 )
 
@@ -2583,6 +2709,21 @@ parksRouter.patch(
       return
     }
 
+    /* REPRENDRE UN ACCÈS EST UNE DÉCISION, et elle ne laissait aucune trace.
+       Le registre des ACCÈS dit qui a le droit aujourd'hui ; il ne dit pas qui
+       l'avait hier ni qui le lui a repris. C'est au registre des décisions de
+       le porter. */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'access.revoke',
+        entity: 'Invitation',
+        entityId: invitation.id,
+        payload: { role: invitation.role },
+      },
+    })
+
     res.status(204).end()
   },
 )
@@ -2716,6 +2857,28 @@ parksRouter.post(
 
         return bail
       })
+
+      /* LA CRÉATION D'UNE FICHE SE TRACE COMME SON RETRAIT. `tenant.delete`
+         existait seul : le registre pouvait dire « cette fiche a été
+         supprimée » sans dire qui l'avait ouverte, ni quand le bail avait
+         commencé. Hors transaction, et c'est voulu : le journal ne doit pas
+         pouvoir faire échouer l'écriture qu'il décrit. */
+      await prisma.auditEvent.create({
+        data: {
+          parkId,
+          actorId: req.compteId!,
+          action: 'tenant.create',
+          entity: 'Lease',
+          entityId: bail.id,
+          payload: {
+            unitId: corps.unitId,
+            fullName: corps.fullName,
+            rentMinor: corps.rentMinor,
+            startsOn: corps.startsOn,
+          },
+        },
+      })
+
       res.status(201).json({ lease: bail })
     } catch {
       /**
@@ -4293,6 +4456,22 @@ parksRouter.delete(
 
     await leStockage().supprimer(photo.storageKey)
     await prisma.inspectionPhoto.delete({ where: { id: photo.id } })
+
+    /* SUPPRIMER UNE PREUVE EST LE GESTE À TRACER, pas l'ajouter. L'ajout était
+       journalisé et le retrait non — l'inverse exact de ce qu'il faut : une
+       photo ajoutée se voit dans le dossier, une photo retirée ne se voit
+       nulle part. L'identifiant est celui de la RÉSERVE, la photo n'existant
+       plus : un `entityId` qui ne désigne rien ne se rattache à aucun écran. */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'inspection.photo_delete',
+        entity: 'InspectionFinding',
+        entityId: photo.findingId,
+        payload: { photoId: photo.id },
+      },
+    })
 
     res.status(204).end()
   },

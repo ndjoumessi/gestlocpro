@@ -153,6 +153,11 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
         icon: 'bell',
         badge: { count: 'unreadAlerts', tone: 'accent' },
       },
+      /* Le registre des DÉCISIONS, à côté de celui des ACCÈS et pas dedans :
+         l'un répond à « qui a le droit », l'autre à « qui a fait ». Propriétaire
+         seul — c'est lui qui délègue, et le registre est son moyen de contrôler
+         ce qu'il a délégué. */
+      { to: 'decisions', labelKey: 'nav.decisions', icon: 'clipboard', roles: ['owner'] },
       { to: 'prise-en-main', labelKey: 'nav.onboarding', icon: 'info', roles: ['owner'] },
     ],
   },
