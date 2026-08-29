@@ -716,7 +716,41 @@ export function StackedBarChart({
         {showTarget && (
           <span
             data-legende-objectif=""
-            className="inline-flex min-h-11 items-center gap-2 px-2 text-body text-muted"
+            /*
+              PAS DE `min-h-11` ICI, ET C'EST LA DIFFÉRENCE ENTRE UNE COMMANDE
+              ET UNE LÉGENDE.
+
+              Ses trois voisines le portent parce qu'elles se TOUCHENT : ce sont
+              des boutons qui masquent une série, et 44 px est le plancher
+              tactile du dépôt. Celle-ci ne se touche pas. Lui donner la même
+              hauteur revient à réserver une cible pour un geste qui n'existe
+              pas — et à la payer là où la place manque le plus.
+
+              MESURÉ À 320 px, l'appareil du marché visé : la rangée passait à
+              96 px sur deux lignes, et à 204 px sur trois au cran « très
+              grand » d'Android (22 px de police racine), pour trois libellés et
+              une phrase. Rendue à sa hauteur naturelle, la légende retombe.
+            */
+            /*
+              `text-caps` ET NON `text-body` — la taille des GRADUATIONS.
+
+              Deux raisons, et la seconde est mesurée. La première est de rang :
+              ses trois voisines sont des COMMANDES, elles gardent la taille du
+              corps ; celle-ci est une annotation d'axe, et elle prend la taille
+              des montants qui bordent le tracé. Le vocabulaire de l'axe devient
+              le même partout.
+
+              La seconde : à 320 px, « Loyers attendus · 1 397 000 FCFA » en
+              taille de corps réclame 270 px pour 246 disponibles, et passait
+              donc sur DEUX lignes. En taille de graduation il tient sur une, et
+              la rangée retombe de 95 px à 72.
+            */
+            /* SANS RETRAIT LATÉRAL, contrairement à ses voisines. Le leur —
+               `px-2` — agrandit une CIBLE ; celle-ci n'en est pas une, et ces
+               seize pixels étaient précisément ceux qui manquaient : mesuré à
+               320 px, la phrase réclame 257 px pour 246 disponibles et passait
+               sur deux lignes. Sans le retrait il lui en faut 241. */
+            className="inline-flex items-center gap-1.5 text-caps text-muted"
           >
             <span
               aria-hidden="true"
