@@ -2644,13 +2644,47 @@ const MESURER_TRONCATURES = ({ racine }) => {
  */
 const MESURER_GESTES_ATTEIGNABLES = () => {
   const defauts = []
+  const nus = []
   let mesures = 0
+  let commandes = 0
   for (const cellule of document.querySelectorAll('[data-colonne-tenue="geste"]')) {
     /* L'en-tête d'une colonne de gestes est souvent VIDE — il n'y a rien à
        intituler, « une colonne d'action n'a pas de nom parce que son bouton
        porte le sien ». Une cellule sans contenu ne montre rien et ne prouve
        rien : on ne juge que ce qui a quelque chose à cacher. */
     if (!(cellule.textContent || '').trim() && !cellule.querySelector('a, button')) continue
+    /*
+      ET LA COMMANDE PORTE UN GLYPHE.
+
+      Mesuré sur le registre des accès : « Retirer l'accès » et « Reprendre »
+      étaient des boutons fantômes NUS — encre pleine, sans bord, sans fond,
+      sans signe. Dans une colonne de tableau, entre un nom et une date, cela se
+      lit comme une donnée de plus, et le SURVOL est le premier moment où l'on
+      apprend que c'en est une commande. Trois fois de suite sur la colonne.
+
+      Les autres colonnes de geste du produit portaient déjà une icône ; ces
+      deux-là étaient les seules sans, et ce sont celles qui retirent un accès.
+      La règle existait donc en fait et pas en garde : je l'ai vérifiée à la
+      main sur trois colonnes, ce qui ne dit rien de la quatrième qu'on écrira.
+
+      CE N'EST PAS UNE RÈGLE DE DÉCORATION. Une colonne de geste n'a pas
+      d'intitulé — « son bouton porte le sien », dit `DataTable` — donc rien
+      au-dessus ne prévient qu'on entre dans des commandes. Le glyphe est le
+      seul signe qui reste, et il est là AU REPOS, ce qu'aucun état de survol
+      ne peut offrir à un doigt.
+
+      On ne juge que ce qui est peint : un bouton `sr-only` ou masqué n'est pas
+      une commande qu'on lit.
+    */
+    for (const commande of cellule.querySelectorAll('a, button')) {
+      if (!commande.getClientRects().length) continue
+      commandes += 1
+      if (commande.querySelector('svg')) continue
+      nus.push(
+        (commande.textContent || commande.getAttribute('aria-label') || '?').trim().slice(0, 40),
+      )
+    }
+
     const boite = cellule.closest('[data-defilant]')
     if (!boite) continue
     mesures += 1
@@ -2673,7 +2707,7 @@ const MESURER_GESTES_ATTEIGNABLES = () => {
       largeurTable: Math.round(boite.scrollWidth),
     })
   }
-  return { mesures, defauts }
+  return { mesures, defauts, nus, commandes }
 }
 
 /**
@@ -3378,7 +3412,9 @@ const troncatures = new Map()
 let intitulesMesures = 0
 /** Gestes hors de la fenêtre de défilement — voir `MESURER_GESTES_ATTEIGNABLES`. */
 const gestesHorsChamp = new Map()
+const gestesNus = new Map()
 let gestesMesures = 0
+let commandesDeGeste = 0
 
 /** Mots plus larges que leur boîte — voir `MESURER_DEBORDEMENT_DE_MOT`. */
 const motsDebordants = new Map()
@@ -3762,6 +3798,14 @@ try {
           page.evaluate(MESURER_GESTES_ATTEIGNABLES),
         )
         gestesMesures += gestes.mesures
+        commandesDeGeste += gestes.commandes
+        /* Dédupliqué sur le LIBELLÉ et la LANGUE : le même bouton nu à onze
+           largeurs est un seul correctif, et son libellé suffit à le désigner —
+           il n'y a pas de « pire cas » à retenir, un glyphe est là ou non. */
+        for (const nu of gestes.nus) {
+          const cle = `${nu}|${langue}`
+          if (!gestesNus.has(cle)) gestesNus.set(cle, { nu, langue, ou: `${adresse} ${largeur}px` })
+        }
         for (const d of gestes.defauts) {
           /* Dédupliqué sur le GESTE et la LANGUE, et l'on garde le pire : le
              même bouton hors champ à trois largeurs est un seul correctif, et
@@ -4526,6 +4570,24 @@ if (gestesHorsChamp.size > 0) {
   process.exit(1)
 }
 
+if (gestesNus.size > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${gestesNus.size} commande(s) de tableau SANS GLYPHE,` +
+      ` sur ${commandesDeGeste} mesurée(s).\n` +
+      "   Une colonne de geste n’a pas d’intitulé — « son bouton porte le sien » — donc rien\n" +
+      '   au-dessus ne prévient qu’on entre dans des commandes. Un bouton fantôme nu, entre un\n' +
+      '   nom et une date, se lit comme une donnée de plus : le survol devient le premier\n' +
+      '   moment où l’on apprend que c’en est une, et un doigt n’a pas de survol.\n',
+  )
+  for (const d of gestesNus.values()) {
+    console.error(`   « ${d.nu} »  ·  ${d.langue}  ·  vu à ${d.ou}\n`)
+  }
+  console.error(
+    '   Remède : une `icon` sur le bouton, comme les autres colonnes de geste du produit.',
+  )
+  process.exit(1)
+}
+
 /*
   GARDE DU GARDE — LA SONDE DES GESTES DOIT AVOIR TROUVÉ DES GESTES.
 
@@ -4533,7 +4595,7 @@ if (gestesHorsChamp.size > 0) {
   tableau sortis du balayage : la sonde rendrait zéro défaut sur zéro geste et
   le rapport écrirait « aucun geste hors champ » sans en avoir regardé un seul.
 */
-if (gestesMesures === 0) {
+if (gestesMesures === 0 || commandesDeGeste === 0) {
   console.error(
     '\n✗ mesure-ui : aucun geste de tableau mesuré.\n' +
       '   Les marqueurs `data-colonne-tenue` et `data-defilant` sont-ils toujours sur `DataTable` ?\n' +
@@ -5595,7 +5657,9 @@ console.log(
     `  ${elementsSondes} éléments sondés pour le DÉBORDEMENT LOCAL — un contenu qui sort de sa boîte\n` +
     `  sans faire défiler la page — aucun hors des ${Object.keys(DEBORDS_LOCAUX_TOLERES).length} signatures tolérées et motivées.\n` +
     `  ${libellesMesures} libellés de barre basse mesurés à la COUPURE, aucun orphelin sous 3 caractères.\n` +
-    `  ${gestesMesures} gestes de tableau mesurés, tous ATTEIGNABLES sans découvrir un défilement.\n` +
+    `  ${gestesMesures} gestes de tableau mesurés, tous ATTEIGNABLES sans découvrir un défilement,\n` +
+    `  et ${commandesDeGeste} commande(s) de geste, toutes porteuses d'un GLYPHE — une colonne sans\n` +
+    `  intitulé n'a que lui pour dire, au repos, qu'on entre dans des commandes.\n` +
     `  ${intitulesMesures} textes rognables mesurés au ROGNAGE, en largeur comme en hauteur,\n` +
     `  à ${16}px de police racine ET à ${RACINE_AGRANDIE}px — la seconde dimension du balayage.\n` +
     `  ${feuillesMesurees} feuilles de texte mesurées au DÉBORDEMENT DE MOT, ${motsDebordants.size} débordement(s) relevé(s), ${MOTS_DEBORDANTS_TOLERES.length} toléré(s) et chiffré(s).\n` +
