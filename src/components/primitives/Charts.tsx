@@ -2,7 +2,8 @@ import { useId, useMemo, useState, type ReactNode } from 'react'
 import { cn } from '@/lib/cn'
 import { useNumbers } from '@/lib/numbers'
 import { useCurrency } from '@/currency/CurrencyProvider'
-import { useT } from '@/i18n/I18nProvider'
+import { enUniteDUsage } from '@/currency/currencies'
+import { useI18n, useT } from '@/i18n/I18nProvider'
 import { JaugeDePoste, StatusPill, type EtatDePoste, type StatusTone } from './StatusPill'
 import { Icon, type IconName } from './Icon'
 
@@ -116,10 +117,106 @@ function hachureOuverte(couleur: string): string {
   return `repeating-linear-gradient(-45deg, ${couleur} 0 5px, var(--color-surface) 5px 7px)`
 }
 
-function formatMax(value: number): string {
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)} M`
-  if (value >= 1_000) return `${(value / 1_000).toFixed(0)} k`
-  return String(value)
+/**
+ * LES GRADUATIONS D'UN AXE — des nombres RONDS, et jamais le maximum.
+ *
+ * ═══ POURQUOI DES NOMBRES RONDS ═══
+ *
+ * Une graduation sert à ESTIMER une colonne qu'on ne vise pas. « 1 000 000 » se
+ * divise et se multiplie de tête ; « 1 397 000 » ne se compare à rien. Le pas
+ * se prend donc dans la suite 1 · 2 · 5 × 10ⁿ, la seule qui rende des repères
+ * qu'on manipule sans calculer.
+ *
+ * ═══ POURQUOI PAS LE MAXIMUM ═══
+ *
+ * C'est ce que faisait la phrase qu'on retire : « Échelle principale (loyer)
+ * 1.4 M ». Le maximum de l'échelle vaut `plus haute colonne × 1,08` — un nombre
+ * que rien ne porte, posé au-dessus de tout, et qui ne dit donc la hauteur
+ * d'AUCUNE colonne. Une graduation à 1 000 000 en dit plus : on voit
+ * immédiatement quels mois passent la barre.
+ *
+ * ═══ LE NOMBRE DÉPEND DE LA HAUTEUR DU TRACÉ, ET C'EST POURQUOI IL SE PASSE ═══
+ *
+ * Trop peu ne fait pas une échelle — une seule graduation répète ce que le
+ * sommet de la plus haute colonne dit déjà. Trop serre les libellés : chacun
+ * réclame une ligne de texte, et le tracé du bas fait 64 px. Le haut en accepte
+ * donc deux à quatre, le bas une ou deux. Un nombre écrit en dur ici aurait
+ * mis trois libellés dans 64 px sur le seul jeu de données qu'on a sous la
+ * main, ce qu'aucune garde n'aurait dit.
+ */
+function graduationsDe(max: number, bornes: { min: number; max: number }): number[] {
+  if (!Number.isFinite(max) || max <= 0) return []
+
+  const pasCandidats: number[] = []
+  for (let exposant = -2; exposant <= 12; exposant++) {
+    for (const facteur of [1, 2, 5]) pasCandidats.push(facteur * 10 ** exposant)
+  }
+
+  /* On prend le PLUS GRAND pas qui tienne dans les bornes. Partir du plus petit
+     donnerait un axe à quarante traits sur le premier essai. */
+  for (const pas of [...pasCandidats].reverse()) {
+    const valeurs: number[] = []
+    for (let v = pas; v < max && valeurs.length <= bornes.max; v += pas) valeurs.push(v)
+    if (valeurs.length >= bornes.min && valeurs.length <= bornes.max) return valeurs
+  }
+  return []
+}
+
+/**
+ * L'écart, en points de pourcentage de la hauteur du tracé, sous lequel une
+ * graduation ne se pose pas à côté de la ligne d'objectif.
+ *
+ * Les deux portent une étiquette à `-top-2.5`, donc à la même hauteur et au
+ * même bord : posées à trois pixels l'une de l'autre, elles se recouvrent. Ce
+ * n'est pas une marge esthétique — c'est la place que prend un libellé, et
+ * c'est l'OBJECTIF qui gagne : lui seul répond à la question qu'on se pose
+ * devant ce graphe.
+ *
+ * Huit points valent seize pixels sur les 198 px du tracé, soit la hauteur
+ * d'une ligne de `text-caps`.
+ */
+const ECART_MINIMAL_A_L_OBJECTIF = 8
+
+/**
+ * UNE GRADUATION : un filet sur toute la largeur, et son montant au bord.
+ *
+ * MÊME TRAITEMENT QUE LA LIGNE D'OBJECTIF, délibérément. Les deux sont des
+ * repères posés sur les mêmes colonnes, avec le même problème — un trait qui
+ * passerait DERRIÈRE les barres ne se verrait que dans les creux, et son
+ * étiquette disparaîtrait sous la colonne la plus haute. L'objectif avait déjà
+ * réglé cela : `z-10`, tiret, et un fond de carte sous l'étiquette. Une seconde
+ * réponse à la même question aurait été une divergence, pas un choix.
+ *
+ * CE QUI LES DISTINGUE EST LA COULEUR, ET ELLE PORTE DU SENS : l'objectif est
+ * une DONNÉE — combien on attend — et prend `accent-ink` ; une graduation n'est
+ * qu'une règle graduée, elle prend le filet de séparation du produit. Deux
+ * traits de même valeur visuelle auraient mis sur le même plan « ce qu'on
+ * attend » et « un million ».
+ *
+ * L'ÉTIQUETTE EST À GAUCHE, COMME CELLE DE L'OBJECTIF, et le premier essai la
+ * mettait à droite. L'argument était d'éviter qu'elles se recouvrent ; la
+ * capture a montré le vrai prix : au bord droit, les pastilles se posent sur la
+ * colonne du MOIS EN COURS — celle qu'on vient regarder, celle que la hachure
+ * distingue déjà. À gauche, elles couvrent le mois le plus ancien.
+ *
+ * Le recouvrement, lui, ne dépendait pas du bord : deux étiquettes à la même
+ * hauteur se lisent mal des deux côtés. C'est `ECART_MINIMAL_A_L_OBJECTIF` qui
+ * le traite, et lui seul. Alignées au même bord, les trois se lisent en outre
+ * comme UNE échelle, ce que deux gouttières opposées empêchaient.
+ */
+function Graduation({ valeur, hauteur, texte }: { valeur: number; hauteur: number; texte: string }) {
+  return (
+    <div
+      aria-hidden="true"
+      data-graduation={valeur}
+      className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-divider"
+      style={{ bottom: `${hauteur}%` }}
+    >
+      <span className="numeric absolute -top-2.5 left-0 rounded-sm bg-surface px-1.5 py-0.5 text-caps text-muted">
+        {texte}
+      </span>
+    </div>
+  )
 }
 
 export interface StackedBar {
@@ -174,9 +271,65 @@ export function StackedBarChart({
   targetLabel?: string
   openPeriodNote?: string
 }) {
-  const { money } = useCurrency()
+  const { money, deviseAffichee, enDeviseAffichee } = useCurrency()
   const t = useT()
+  const { locale } = useI18n()
   const titleId = useId()
+
+  /**
+   * DES DONNÉES À CE QUI EST ÉCRIT — les deux conversions que l'axe doit faire.
+   *
+   * Les montants arrivent en UNITÉS MINEURES de la devise SOURCE. `money()` les
+   * convertit deux fois avant de les écrire : au taux de change, puis des
+   * centimes aux unités d'usage. Une graduation calculée sur la valeur brute
+   * saute les deux.
+   *
+   * CE QUE ÇA DONNAIT, rapporté par un utilisateur au premier changement de
+   * devise : « 1 M » et « 500 k » sur un graphe dont les colonnes valaient
+   * 2 795,89 $. Trois cent cinquante fois trop haut, et sur l'axe même qui
+   * venait remplacer une phrase parce qu'elle ne disait pas assez.
+   *
+   * INVISIBLE EN DÉMONSTRATION, ET C'EST LA LEÇON : le parc de démonstration
+   * compte en francs CFA, où les deux conversions valent l'IDENTITÉ — zéro
+   * décimale, et un taux de 1 vers soi-même. Le graphe était juste dans la
+   * seule devise sous laquelle on l'avait regardé, et faux dans les trois
+   * autres. Même forme exacte que le défaut du tableur, écrit dans
+   * `useCsvExport` : « Le défaut ne se voyait pas parce que la démonstration
+   * tourne en franc CFA, où la conversion est l'identité et 10⁰ vaut un. »
+   *
+   * LA GÉOMÉTRIE, ELLE, RESTE EN MINEURES. Les hauteurs de barres sont des
+   * RAPPORTS — `total / max` — et un rapport est invariant par changement
+   * d'unité. Les convertir n'ajouterait que des arrondis.
+   */
+  const enAffichage = (mineurSource: number) =>
+    enUniteDUsage(enDeviseAffichee(mineurSource), deviseAffichee)
+
+  /**
+   * LE LIBELLÉ D'UNE GRADUATION EST ABRÉGÉ, ET SANS DEVISE.
+   *
+   * SANS DEVISE, parce qu'un axe énonce son unité UNE FOIS et non à chaque
+   * trait : le sous-titre de la carte dit déjà « montants en FCFA », la bande
+   * de lecture et l'infobulle rendent les montants complets, et la table
+   * `sr-only` porte les valeurs exactes. Répéter « FCFA » deux ou trois fois
+   * dans le tracé n'ajoute rien et coûte cher — mesuré, « 1 000 000 FCFA »
+   * occupait un tiers de la largeur du graphique et recouvrait deux colonnes.
+   *
+   * ABRÉGÉ PAR `Intl`, et non par un formateur maison. Le fichier en portait
+   * un — « 1.4 M », « 156 k », les suffixes écrits en dur — qui rendait la même
+   * chose dans les deux langues. `notation: 'compact'` connaît la convention de
+   * chacune, et c'est le genre de détail qu'un dépôt bilingue ne peut pas se
+   * permettre de deviner.
+   *
+   * ATTENTION AU MOT « COMPACT », QUI DIT DEUX CHOSES ICI. `money(…, { compact:
+   * true })` du produit ne raccourcit RIEN : il tait les décimales nulles, et
+   * `centimesConserves.test.tsx` veille à ce qu'il ne fasse jamais plus. Cette
+   * abréviation-ci est un tout autre geste, réservé à un repère d'échelle
+   * qu'on ne paie pas.
+   */
+  const abreger = useMemo(() => {
+    const format = new Intl.NumberFormat(locale, { notation: 'compact', maximumFractionDigits: 1 })
+    return (valeur: number) => format.format(valeur).replace(/[\u00a0\u202f\s]/g, '\u202f')
+  }, [locale])
 
   /** Séries masquées depuis la légende. */
   const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set())
@@ -252,6 +405,37 @@ export function StackedBarChart({
    */
   const max = Math.max(...totalsPrimaires, showTarget ? target : 0, 1) * 1.08
   const maxSecondaire = Math.max(...totalsSecondaires, 1) * 1.08
+
+  /*
+    ─── L'AXE REMPLACE LA PHRASE QUI EN TENAIT LIEU ───────────────────────
+
+    Le graphe portait, sous sa légende, une seconde ligne : « Échelle
+    principale (loyer) 1.4 M · Échelle secondaire (eau, électricité) 156 k ».
+    Elle reprenait les pastilles de couleur de la légende juste au-dessus pour
+    leur faire dire tout autre chose — trois vocabulaires de couleur sur un
+    graphique, dont un qui devait s'expliquer en toutes lettres.
+
+    Et elle ne donnait qu'un nombre par tracé : le maximum, qui vaut la plus
+    haute colonne majorée de 8 %, donc la hauteur d'aucune colonne. Hors ce
+    nombre-là et l'objectif, AUCUN montant n'était obtenable sans viser une
+    colonne — c'est-à-dire aucun sur un téléphone, qui n'a pas de survol, et qui
+    est l'appareil du marché visé.
+
+    Les graduations disent la même chose et davantage, à la place où on la
+    cherche, et sans un mot : deux à quatre repères ronds sur le tracé du haut,
+    un ou deux sur celui du bas.
+
+    ELLES SE RETIRENT PRÈS DE L'OBJECTIF, jamais l'inverse — voir
+    `ECART_MINIMAL_A_L_OBJECTIF`.
+  */
+  const maxAffiche = enAffichage(max)
+  const maxSecondaireAffiche = enAffichage(maxSecondaire)
+  const graduationsPrimaires = graduationsDe(maxAffiche, { min: 2, max: 4 }).filter(
+    (valeur) =>
+      !showTarget ||
+      Math.abs((valeur - enAffichage(target)) / maxAffiche) * 100 >= ECART_MINIMAL_A_L_OBJECTIF,
+  )
+  const graduationsSecondaires = graduationsDe(maxSecondaireAffiche, { min: 1, max: 2 })
 
   const toggleSeries = (key: string) =>
     setHidden((current) => {
@@ -329,38 +513,6 @@ export function StackedBarChart({
         })}
       </div>
 
-      {/* Échelles des tracés — affichées quand il y a deux tracés. */}
-      {aDeuxTraces && (
-        <div className="mb-3 flex flex-wrap items-center gap-4 text-body text-muted">
-          <span className="inline-flex items-center gap-1.5">
-            <span
-              aria-hidden="true"
-              className="size-2.5 rounded-legende"
-              style={{ background: SERIES_COLORS.rent }}
-            />
-            <span>{t('app.dashboard.scalePrimary')}</span>
-            {/* Hérite de `text-muted` du conteneur — voir le commentaire sur
-                `--color-muted-soft` dans tokens.css : ce jeton est réservé au
-                texte >=18px ou au non-textuel, jamais à ces 14px. */}
-            <span>{formatMax(max)}</span>
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span
-              aria-hidden="true"
-              className="size-2.5 rounded-legende"
-              style={{ background: SERIES_COLORS.water }}
-            />
-            <span
-              aria-hidden="true"
-              className="size-2.5 rounded-legende ml-1"
-              style={{ background: SERIES_COLORS.power }}
-            />
-            <span>{t('app.dashboard.scaleSecondary')}</span>
-            <span>{formatMax(maxSecondaire)}</span>
-          </span>
-        </div>
-      )}
-
       {/* Zone de tracé et rangée d'étiquettes sont deux blocs distincts.
           C'est ce qui rend le calage exact : la ligne d'objectif se positionne
           en pourcentage de la seule zone de tracé, sans avoir à compenser à la
@@ -397,7 +549,27 @@ export function StackedBarChart({
       */}
       <div className="flex h-[14.625rem] flex-col overflow-x-auto pt-2.5 sm:h-[16.625rem]">
         <div className="flex min-w-max flex-1 flex-col">
-        <div className="relative flex min-h-0 flex-1 items-stretch gap-1 sm:gap-2.5">
+        <div
+          data-trace="principal"
+          data-max={maxAffiche}
+          className="relative flex min-h-0 flex-1 items-stretch gap-1 sm:gap-2.5"
+        >
+          {/*
+            LES GRADUATIONS VIENNENT AVANT L'OBJECTIF DANS LE DOM, et c'est la
+            seule chose qui les départage quand elles se croisent : à `z-10`
+            égal, c'est l'ordre du document qui décide, et l'objectif doit
+            passer dessus. Voir `ECART_MINIMAL_A_L_OBJECTIF` pour les
+            étiquettes, que l'ordre de peinture ne sauverait pas.
+          */}
+          {graduationsPrimaires.map((valeur) => (
+            <Graduation
+              key={valeur}
+              valeur={valeur}
+              hauteur={(valeur / maxAffiche) * 100}
+              texte={abreger(valeur)}
+            />
+          ))}
+
           {showTarget && (
             <div
               aria-hidden="true"
@@ -556,8 +728,22 @@ export function StackedBarChart({
         {aDeuxTraces && (
           <div
             aria-hidden="true"
-            className="mt-2 flex h-16 items-stretch gap-1 border-t border-divider pt-2 sm:gap-2.5"
+            data-trace="secondaire"
+            data-max={maxSecondaireAffiche}
+            className="relative mt-2 flex h-16 items-stretch gap-1 border-t border-divider pt-2 sm:gap-2.5"
           >
+            {/* UNE OU DEUX, PAS TROIS. Ce tracé fait 64 px : trois libellés de
+                `text-caps` y tiendraient à peine et se toucheraient. Le nombre
+                se règle par les bornes, pas par un pas écrit à la main — voir
+                `graduationsDe`. */}
+            {graduationsSecondaires.map((valeur) => (
+              <Graduation
+                key={valeur}
+                valeur={valeur}
+                hauteur={(valeur / maxSecondaireAffiche) * 100}
+                texte={abreger(valeur)}
+              />
+            ))}
             {bars.map((bar, index) => {
               const totalBas = totalsSecondaires[index]
               const isLast = index === bars.length - 1

@@ -591,8 +591,6 @@ export const en: Dictionary = {
       legendRent: 'Rent',
       legendWater: 'Water',
       legendPower: 'Electricity',
-      scalePrimary: 'Primary scale (rent)',
-      scaleSecondary: 'Secondary scale (water, electricity)',
     },
 
     unitFile: {
