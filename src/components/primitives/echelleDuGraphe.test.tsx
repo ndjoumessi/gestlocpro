@@ -43,6 +43,36 @@ function maximum(trace: string): number {
   return Number(zone!.dataset.max)
 }
 
+/**
+ * L'écart minimal entre deux repères, RECOPIÉ du composant et non lu chez lui.
+ *
+ * Délibéré : lu depuis `Charts.tsx`, la garde suivrait n'importe quel
+ * relâchement sans un mot — « une garde qui lit sa propre cible ne garde rien ».
+ * Le jour où le composant descend sous cette valeur, ce cas rougit et l'on
+ * vient écrire ici POURQUOI.
+ *
+ * Trente pixels sur les 126 du tracé principal quand un second tracé lui prend
+ * sa place — le cas de ce graphe. Les trente pixels sont les vingt d'une ligne
+ * de `text-caps` et dix de respiration ; les 126 sont la hauteur que la mise en
+ * page laisse au tracé du haut.
+ */
+const ECART_MINIMAL_ENTRE_REPERES = (30 / 126) * 100
+
+/**
+ * Les hauteurs de TOUS les repères d'un tracé — graduations et objectif.
+ *
+ * L'objectif porte `data-repere="objectif"` pour exactement cette raison : il
+ * est un repère de l'axe, pas un ornement posé dessus, et une garde qui ne
+ * compterait que les graduations vérifierait la moitié de la règle.
+ */
+function hauteursDesReperes(trace: string): number[] {
+  const zone = document.querySelector(`[data-trace="${trace}"]`)
+  expect(zone, `tracé « ${trace} » introuvable`).not.toBeNull()
+  return Array.from(
+    zone!.querySelectorAll<HTMLElement>('[data-graduation], [data-repere="objectif"]'),
+  ).map((el) => parseFloat(el.style.bottom))
+}
+
 /** Les graduations d'un tracé, valeur et hauteur relevées ensemble. */
 function graduations(trace: string): { valeur: number; hauteur: number }[] {
   const zone = document.querySelector(`[data-trace="${trace}"]`)
@@ -58,10 +88,10 @@ describe('l’échelle du graphe d’encaissements', () => {
     await renderApp('/demo')
     await attendreLeChargement()
 
-    /* DEUX, ET NON UNE. Une seule graduation ne fait pas une échelle : elle
-       répète ce que le sommet de la plus haute colonne dit déjà. Il en faut
-       deux pour qu'un espace entre elles ait un sens. */
-    expect(graduations('principal').length, 'le tracé du haut n’a pas d’échelle').toBeGreaterThan(1)
+    /* AU MOINS UNE DE CHAQUE CÔTÉ ICI ; le compte de REPÈRES — graduations
+       plus objectif — est tenu par les cas de devise plus bas, qui sont les
+       seuls à savoir que l'objectif en est un. */
+    expect(graduations('principal').length, 'le tracé du haut n’a pas d’échelle').toBeGreaterThan(0)
     expect(graduations('secondaire').length, 'le tracé du bas n’a pas d’échelle').toBeGreaterThan(0)
   })
 
@@ -139,4 +169,52 @@ describe('l’échelle du graphe d’encaissements', () => {
        monterait aurait converti à l'envers. */
     expect(enDollar, 'l’échelle n’a pas suivi le change').toBeLessThan(enFranc / 10)
   })
+
+  /*
+    ═══ DEUX GRADUATIONS DANS LES QUATRE DEVISES, ET PAS SEULEMENT DANS UNE ═══
+
+    LE DÉFAUT, TROUVÉ EN REGARDANT L'EURO. Les graduations près de la ligne
+    d'objectif se retirent — deux étiquettes à la même hauteur se recouvrent, et
+    c'est l'objectif qui gagne. Ce retrait avait lieu APRÈS le choix du pas :
+    en euro, le pas de 1 000 rendait 1 000 et 2 000, l'objectif à 2 129,71 €
+    emportait le second, et le tracé restait avec UNE graduation. Or une seule
+    ne fait pas une échelle : elle répète ce que le sommet de la plus haute
+    colonne dit déjà — c'est écrit deux cas plus haut, et le produit le
+    contredisait dans trois devises sur quatre.
+
+    Le pas se choisit donc en comptant ce qui SURVIT au retrait, pas ce qui est
+    produit avant lui.
+
+    LES QUATRE DEVISES, ET NON UNE. C'est le second temps de la leçon du lot :
+    la démonstration compte en francs CFA, et tout ce qui ne se vérifie que là
+    n'est vérifié que dans un quart des cas.
+  */
+  for (const currency of ['CFA', 'EUR', 'USD', 'CAD'] as const) {
+    it(`garde une échelle lisible en ${currency}`, async () => {
+      await renderApp('/demo', { currency })
+      await attendreLeChargement()
+
+      const reperes = hauteursDesReperes('principal')
+
+      /* DEUX REPÈRES, ET L'OBJECTIF EN EST UN. Il porte un montant exact, au
+         même bord, dans la même gouttière : une graduation et lui font une
+         échelle. Exiger deux GRADUATIONS forçait le pas d'un cran vers le bas
+         dès que l'objectif en emportait une, et serrait les étiquettes. */
+      expect(reperes.length, `pas d’échelle en ${currency}`).toBeGreaterThan(1)
+
+      /* ET JAMAIS DEUX QUI SE FRÔLENT. C'est ce que le navigateur a montré et
+         que la garde ne disait pas : en dollar américain, trois graduations
+         tombaient à 23 px l'une de l'autre sur un tracé de 126 px, pour des
+         étiquettes de 20. jsdom ne met rien en page — mais les hauteurs sont
+         écrites en pourcentage dans le style, et c'est en pourcentage que la
+         règle est posée. */
+      const tries = [...reperes].sort((a, b) => a - b)
+      for (let i = 1; i < tries.length; i++) {
+        expect(
+          tries[i] - tries[i - 1],
+          `deux repères à ${(tries[i] - tries[i - 1]).toFixed(1)} points en ${currency}`,
+        ).toBeGreaterThanOrEqual(ECART_MINIMAL_ENTRE_REPERES)
+      }
+    })
+  }
 })

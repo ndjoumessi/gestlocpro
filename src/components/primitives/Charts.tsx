@@ -144,7 +144,28 @@ function hachureOuverte(couleur: string): string {
  * mis trois libellés dans 64 px sur le seul jeu de données qu'on a sous la
  * main, ce qu'aucune garde n'aurait dit.
  */
-function graduationsDe(max: number, bornes: { min: number; max: number }): number[] {
+function graduationsDe(
+  max: number,
+  bornes: { min: number; max: number },
+  /**
+   * LE RETRAIT SE COMPTE DANS LE CHOIX DU PAS, ET NON APRÈS LUI.
+   *
+   * Une graduation trop proche de la ligne d'objectif se retire — leurs deux
+   * étiquettes se recouvrent, et c'est l'objectif qui gagne. Ce retrait était
+   * appliqué au RÉSULTAT de cette fonction, donc après que les bornes eurent
+   * été vérifiées : en euro, le pas de 1 000 rendait deux graduations, l'objectif
+   * à 2 129,71 € emportait la seconde, et le tracé restait avec UNE — c'est-à-
+   * dire sans échelle, puisqu'une seule répète le sommet de la plus haute
+   * colonne.
+   *
+   * Passer le prédicat ICI fait descendre le pas jusqu'à ce qu'il reste assez
+   * de graduations APRÈS retrait : 500 au lieu de 1 000, et l'euro retrouve
+   * 500 · 1 000 · 1 500.
+   */
+  exclue: (valeur: number) => boolean,
+  /** L'écart minimal EN POINTS, propre à la hauteur de CE tracé. */
+  ecart: number,
+): number[] {
   if (!Number.isFinite(max) || max <= 0) return []
 
   const pasCandidats: number[] = []
@@ -152,30 +173,94 @@ function graduationsDe(max: number, bornes: { min: number; max: number }): numbe
     for (const facteur of [1, 2, 5]) pasCandidats.push(facteur * 10 ** exposant)
   }
 
-  /* On prend le PLUS GRAND pas qui tienne dans les bornes. Partir du plus petit
-     donnerait un axe à quarante traits sur le premier essai. */
-  for (const pas of [...pasCandidats].reverse()) {
-    const valeurs: number[] = []
-    for (let v = pas; v < max && valeurs.length <= bornes.max; v += pas) valeurs.push(v)
-    if (valeurs.length >= bornes.min && valeurs.length <= bornes.max) return valeurs
+  /*
+    LE PLUS PETIT PAS QUI RESPIRE ENCORE, et la première rédaction prenait le
+    plus grand.
+
+    Elle avait raison tant que rien ne garantissait l'espacement : le plus grand
+    pas était la seule façon d'éviter quarante traits. Depuis que le pas porte
+    lui-même la contrainte d'écart, l'argument s'inverse — tout pas retenu
+    respire par construction, et c'est alors le plus PETIT qui rend le meilleur
+    axe, puisqu'il couvre le tracé de repères au lieu d'en laisser les deux
+    tiers nus. Mesuré en franc CFA : le plus grand pas ne posait qu'un repère à
+    66 %, sous lequel il n'y avait plus rien.
+  */
+  const essai = (filtrer: boolean): number[] => {
+    for (const pas of pasCandidats) {
+      /* LE PAS PORTE LA MÊME CONTRAINTE QUE L'OBJECTIF. Deux graduations
+         consécutives sont séparées d'exactement un pas : un pas plus étroit que
+         l'écart minimal produit mécaniquement des étiquettes qui se frôlent,
+         quel que soit leur nombre. C'est ce qui manquait. */
+      if ((pas / max) * 100 < ecart) continue
+      const valeurs: number[] = []
+      for (let v = pas; v < max && valeurs.length <= bornes.max + 2; v += pas) {
+        if (filtrer && exclue(v)) continue
+        valeurs.push(v)
+      }
+      if (valeurs.length >= bornes.min && valeurs.length <= bornes.max) return valeurs
+    }
+    return []
   }
-  return []
+
+  /* SANS LE FILTRE EN DERNIER RECOURS. Un objectif posé de telle sorte qu'aucun
+     pas ne laisse assez de graduations vaut mieux avec une étiquette serrée
+     qu'avec pas d'échelle du tout — et l'on saura, en le voyant, qu'il y a un
+     cas de plus à traiter. */
+  const avec = essai(true)
+  return avec.length > 0 ? avec : essai(false)
 }
 
 /**
- * L'écart, en points de pourcentage de la hauteur du tracé, sous lequel une
- * graduation ne se pose pas à côté de la ligne d'objectif.
+ * ═══ CE QU'IL FAUT DE PLACE ENTRE DEUX REPÈRES D'AXE ═══
  *
- * Les deux portent une étiquette à `-top-2.5`, donc à la même hauteur et au
- * même bord : posées à trois pixels l'une de l'autre, elles se recouvrent. Ce
- * n'est pas une marge esthétique — c'est la place que prend un libellé, et
- * c'est l'OBJECTIF qui gagne : lui seul répond à la question qu'on se pose
- * devant ce graphe.
+ * Un repère — une graduation, ou la ligne d'objectif — porte une étiquette à
+ * `-top-2.5`, au même bord que les autres. Deux étiquettes trop proches se
+ * lisent comme une seule : ce n'est pas une marge esthétique, c'est la place
+ * qu'un libellé occupe.
  *
- * Huit points valent seize pixels sur les 198 px du tracé, soit la hauteur
- * d'une ligne de `text-caps`.
+ * ENTRE TOUS LES REPÈRES, et la première rédaction ne le tenait qu'entre une
+ * graduation et l'objectif. Le PAS lui-même n'était pas contraint : mesuré au
+ * navigateur en dollar américain, trois graduations tombaient à 23 px d'écart
+ * pour des étiquettes de 20. La règle protégeait l'objectif et laissait les
+ * graduations se serrer entre elles.
+ *
+ * ═══ EN PIXELS, PUIS CONVERTI — ET NON L'INVERSE ═══
+ *
+ * La constante a d'abord été écrite en POINTS DE POURCENTAGE, « huit points,
+ * soit seize pixels sur les 198 px du tracé ». Elle était fausse dès qu'il y a
+ * deux tracés : le premier cède alors 72 px au second et n'en fait plus que 126
+ * — c'est écrit plus bas, dans le commentaire du second tracé — et huit points
+ * n'y valaient plus seize pixels mais dix.
+ *
+ * Un écart de lisibilité se pense en PIXELS, parce que c'est en pixels qu'un
+ * libellé occupe la place. Le pourcentage s'en déduit, tracé par tracé, avec sa
+ * hauteur. Trente pixels : les vingt d'une ligne de `text-caps` avec son
+ * rembourrage, plus dix de respiration.
+ *
+ * Ce qui donne 24 points sur le tracé principal quand il y a deux tracés, 15
+ * quand il est seul, et 47 sur le second — où un seul repère tient, ce qui est
+ * exactement ce qu'on veut d'un tracé de 64 px.
  */
-const ECART_MINIMAL_A_L_OBJECTIF = 8
+const ECART_MINIMAL_EN_PIXELS = 30
+
+/**
+ * Les hauteurs de tracé, en pixels, telles que la mise en page les fixe.
+ *
+ * RECOPIÉES DEPUIS LES CLASSES, ET C'EST LA FAIBLESSE DE CE BLOC : `h-16` et le
+ * `flex-1` qui lui fait face décident de ces nombres, pas ces constantes. Elles
+ * servent à convertir une contrainte de lisibilité en pourcentage, et une
+ * dérive ne se verrait qu'à l'œil — des étiquettes un peu plus serrées qu'on ne
+ * croyait. Le jour où la hauteur du graphe change, ces deux lignes changent
+ * avec elle.
+ */
+const HAUTEUR_TRACE_SECONDAIRE = 64
+const HAUTEUR_TRACE_SEUL = 198
+const HAUTEUR_TRACE_AVEC_SECOND = HAUTEUR_TRACE_SEUL - HAUTEUR_TRACE_SECONDAIRE - 8
+
+/** L'écart minimal EN POINTS de la hauteur d'un tracé donné. */
+function ecartMinimal(hauteurDuTrace: number): number {
+  return (ECART_MINIMAL_EN_PIXELS / hauteurDuTrace) * 100
+}
 
 /**
  * UNE GRADUATION : un filet sur toute la largeur, et son montant au bord.
@@ -430,12 +515,34 @@ export function StackedBarChart({
   */
   const maxAffiche = enAffichage(max)
   const maxSecondaireAffiche = enAffichage(maxSecondaire)
-  const graduationsPrimaires = graduationsDe(maxAffiche, { min: 2, max: 4 }).filter(
-    (valeur) =>
-      !showTarget ||
-      Math.abs((valeur - enAffichage(target)) / maxAffiche) * 100 >= ECART_MINIMAL_A_L_OBJECTIF,
+  /*
+    L'OBJECTIF EST UN REPÈRE DE L'AXE, ET IL COMPTE DANS LE MINIMUM.
+
+    On exigeait deux graduations « parce qu'une seule répète ce que le sommet de
+    la plus haute colonne dit déjà ». C'était vrai d'un axe nu ; ça ne l'est pas
+    ici. La ligne d'objectif porte un montant EXACT, au même bord, dans la même
+    gouttière : une graduation et elle font deux repères, donc une échelle.
+
+    Le nier coûtait cher, et en euro cela se voyait : pour tenir « deux
+    graduations » alors que l'objectif en emportait une, le pas descendait d'un
+    cran et trois étiquettes se serraient là où deux respiraient.
+  */
+  const ecartPrimaire = ecartMinimal(
+    aDeuxTraces ? HAUTEUR_TRACE_AVEC_SECOND : HAUTEUR_TRACE_SEUL,
   )
-  const graduationsSecondaires = graduationsDe(maxSecondaireAffiche, { min: 1, max: 2 })
+  const graduationsPrimaires = graduationsDe(
+    maxAffiche,
+    { min: showTarget ? 1 : 2, max: 4 },
+    (valeur) =>
+      showTarget && Math.abs((valeur - enAffichage(target)) / maxAffiche) * 100 < ecartPrimaire,
+    ecartPrimaire,
+  )
+  const graduationsSecondaires = graduationsDe(
+    maxSecondaireAffiche,
+    { min: 1, max: 2 },
+    () => false,
+    ecartMinimal(HAUTEUR_TRACE_SECONDAIRE),
+  )
 
   const toggleSeries = (key: string) =>
     setHidden((current) => {
@@ -583,6 +690,12 @@ export function StackedBarChart({
               // en sombre — et c'est déjà la couleur du libellé qui la nomme,
               // deux lignes plus bas : le trait et son étiquette cessent
               // d'être de deux accents différents.
+              /* MARQUEUR DE MESURE : l'objectif est un repère de l'axe au même
+                 titre qu'une graduation — c'est ce que dit `min: showTarget ? 1
+                 : 2` ci-dessus. La garde de l'échelle doit donc pouvoir le
+                 compter et lire sa hauteur, sans quoi elle ne vérifierait que la
+                 moitié des repères. */
+              data-repere="objectif"
               className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-accent-ink"
               style={{ bottom: `${(target / max) * 100}%` }}
             >
