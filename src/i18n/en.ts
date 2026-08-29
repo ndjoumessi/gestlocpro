@@ -205,6 +205,7 @@ export const en: Dictionary = {
     signUp: 'Create account',
     signUpFree: 'Start free',
     accountMenu: 'Account of {name} — open menu',
+    accountOf: 'Account of {name}',
     logout: 'Sign out',
     noAccount: 'No account yet?',
     hasAccount: 'Already have an account?',

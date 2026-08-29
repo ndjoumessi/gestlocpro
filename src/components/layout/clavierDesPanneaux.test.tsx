@@ -29,12 +29,29 @@ import {
  * au bouton d'ouverture plutôt que de sauter derrière lui.
  */
 
-/** Le conteneur qui doit retenir le focus : l'enveloppe du panneau. */
-function enveloppe(): HTMLElement {
-  const panneau = document.querySelector('[role="dialog"],[role="menu"]')
-  expect(panneau, 'panneau introuvable — rien à mesurer').not.toBeNull()
-  const env = panneau!.parentElement
-  expect(env, 'panneau sans enveloppe').not.toBeNull()
+/**
+ * Le conteneur qui doit retenir le focus : l'enveloppe du panneau.
+ *
+ * ELLE SE PREND DEPUIS LE DÉCLENCHEUR, et non depuis le panneau.
+ *
+ * Elle se lisait `panneau.parentElement`, ce qui supposait le panneau à un seul
+ * niveau sous l'enveloppe. La supposition a tenu jusqu'au jour où le menu du
+ * compte a séparé sa boîte flottante du `role="menu"` qu'elle contient : le
+ * parent du menu devenait la boîte, qui ne contient PAS le déclencheur, et
+ * revenir au bouton d'ouverture à Maj+Tab — le comportement que ce fichier
+ * exige nommément deux paragraphes plus haut — se lisait comme une évasion.
+ *
+ * Le déclencheur, lui, est l'enfant direct de l'enveloppe dans les deux
+ * composants : c'est le conteneur que `usePiegeDeFocus` reçoit en référence.
+ * Partir de lui décrit l'invariant au lieu d'une profondeur.
+ */
+function enveloppe(bouton: HTMLElement): HTMLElement {
+  const env = bouton.parentElement
+  expect(env, 'déclencheur sans enveloppe').not.toBeNull()
+  expect(
+    env!.querySelector('[role="dialog"],[role="menu"]'),
+    'panneau introuvable — rien à mesurer',
+  ).not.toBeNull()
   return env!
 }
 
@@ -53,7 +70,7 @@ async function parcoursComplet(nomDuBouton: RegExp) {
   expect(document.activeElement).toBe(bouton)
 
   await user.keyboard('{Enter}')
-  const env = enveloppe()
+  const env = enveloppe(bouton)
 
   /* LE PIÈGE. Douze tabulations : plus que le panneau n'a de commandes, donc
      le tour est bouclé au moins une fois. Une seule évasion suffit à casser

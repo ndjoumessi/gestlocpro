@@ -288,6 +288,17 @@ export const fr = {
     signUp: 'Créer un compte',
     signUpFree: 'Essayer gratuitement',
     accountMenu: 'Compte de {name} — ouvrir le menu',
+    /*
+      LE MENU SE NOMME AUTREMENT QUE SON DÉCLENCHEUR, et il le faut.
+
+      Le déclencheur nomme un GESTE — « ouvrir le menu » —, ce qui est juste sur
+      un bouton. Posé sur le panneau lui-même, ce libellé s'annonçait « Compte
+      de Sarah Ngassa — ouvrir le menu, menu, 2 éléments » : le menu ouvert
+      proposait de s'ouvrir. Celui-ci ne nomme que la chose, parce qu'une fois
+      là on n'a plus rien à ouvrir — on a la réponse à « qui est connecté ? »,
+      seule raison d'être de ce panneau.
+    */
+    accountOf: 'Compte de {name}',
     logout: 'Se déconnecter',
     noAccount: 'Pas encore de compte ?',
     hasAccount: 'Vous avez déjà un compte ?',

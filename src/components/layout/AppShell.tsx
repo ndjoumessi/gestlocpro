@@ -1442,13 +1442,34 @@ function MenuCompte() {
       {ouvert && (
         <>
           <div
-            role="menu"
             // Troisième site du même 50 écrit à la main, et le même remède : un
             // menu ancré à son bouton est un panneau flottant, il se nomme
             // comme les deux autres.
             style={{ zIndex: 'var(--z-popover)' }}
             className="absolute right-0 mt-2 flex w-64 flex-col gap-1 rounded-md border border-border bg-paper p-2 shadow-lg"
           >
+            {/*
+              L'IDENTITÉ EST SORTIE DU `role="menu"`, ET C'EST TOUT LE LOT.
+
+              Elle vivait dedans, dans un `div` ordinaire. Or `MenuDeDebordement`
+              énonce déjà la règle pour tout le dépôt : « un `menu` n'admet que
+              des `menuitem` parmi ses descendants signifiants ». Un lecteur
+              d'écran n'expose donc de ce conteneur que ses entrées — ce panneau
+              annonçait « menu, 2 éléments », et rien de plus.
+
+              Ce qui disparaissait ainsi est la RAISON D'ÊTRE du menu, écrite
+              quinze lignes plus haut : « l'avatar doit d'abord dire QUI est
+              connecté — la question qu'on se pose sur un poste partagé avant de
+              se déconnecter ». Elle était effacée pour ceux qui ne peuvent pas
+              lire l'écran, c'est-à-dire pour qui elle est le plus difficile à
+              obtenir autrement.
+
+              LE PANNEAU N'EST PAS LE MENU. C'est la structure canonique : une
+              boîte flottante qui porte un en-tête, et le `menu` à l'intérieur.
+              La boîte ne prend aucun rôle — lui en donner un (`dialog`) la
+              ferait annoncer comme une fenêtre et promettrait ce que le rôle
+              `menu` promet déjà mieux ici, une liste de commandes.
+            */}
             <div className="px-2 py-1.5">
               <p className="text-label font-semibold text-ink">{nom}</p>
               {/* Une adresse électronique n'a pas de longueur maximale : la
@@ -1457,40 +1478,63 @@ function MenuCompte() {
                 {etat.compte.email}
               </p>
             </div>
-            {/* LA SORTIE QUI NE DÉTRUIT RIEN, avant celle qui détruit — voir
-                `RetourAuSite` pour pourquoi elle est ici et non dans la barre.
-                Elle vient EN PREMIER parce que c'est le geste réversible : un
-                menu qui range la déconnexion au-dessus la met sous le doigt qui
-                vise la ligne suivante. */}
-            <Link
-              role="menuitem"
-              to="/"
-              onClick={() => setOuvert(false)}
-              className="flex min-h-11 items-center gap-2 rounded-sm px-2 text-label text-ink no-underline hover:bg-surface-sunken"
+
+            {/* ET LE NOM REVIENT PAR LE NOM ACCESSIBLE. Sortir l'identité du
+                menu sans cela l'aurait seulement déplacée hors de portée : rien
+                n'oblige un lecteur d'écran à lire le texte qui PRÉCÈDE un menu
+                qu'on vient d'ouvrir au clavier. Nommé, le menu s'annonce
+                « Compte de Sarah Ngassa, menu, 2 éléments » — la réponse à la
+                question, au moment où on la pose.
+
+                ET PAS LE LIBELLÉ DU DÉCLENCHEUR : celui-là nomme un geste,
+                « ouvrir le menu », ce qui est juste sur un bouton et absurde sur
+                le panneau déjà ouvert. Voir `auth.accountOf`. */}
+            <div
+              role="menu"
+              aria-label={t('auth.accountOf', { name: nom })}
+              className="flex flex-col gap-1"
             >
-              <Icon name="globe" size={16} />
-              {t('nav.backToSite')}
-            </Link>
-            {/* LE FILET SÉPARE DEUX NATURES, et il n'est pas décoratif : au
-                dessus on navigue, en dessous on met fin à la session. Sans lui,
-                deux lignes de même forme proposent deux gestes dont un seul se
-                défait. */}
-            <div className="my-1 h-px bg-border" />
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setOuvert(false)
-                void deconnecter()
-              }}
-              className="flex min-h-11 cursor-pointer items-center gap-2 rounded-sm px-2 text-label text-ink hover:bg-surface-sunken"
-            >
-              {/* `logout` et non `arrowRight` : le jeu porte le glyphe exact, et
-                  une flèche générique redisait celle de la ligne au-dessus. Deux
-                  gestes de nature opposée ne se signalent pas du même trait. */}
-              <Icon name="logout" size={16} />
-              {t('auth.logout')}
-            </button>
+              {/* LA SORTIE QUI NE DÉTRUIT RIEN, avant celle qui détruit — voir
+                  `RetourAuSite` pour pourquoi elle est ici et non dans la barre.
+                  Elle vient EN PREMIER parce que c'est le geste réversible : un
+                  menu qui range la déconnexion au-dessus la met sous le doigt qui
+                  vise la ligne suivante. */}
+              <Link
+                role="menuitem"
+                to="/"
+                onClick={() => setOuvert(false)}
+                className="flex min-h-11 items-center gap-2 rounded-sm px-2 text-label text-ink no-underline hover:bg-surface-sunken"
+              >
+                <Icon name="globe" size={16} />
+                {t('nav.backToSite')}
+              </Link>
+              {/* LE FILET SÉPARE DEUX NATURES, et il n'est pas décoratif : au
+                  dessus on navigue, en dessous on met fin à la session. Sans lui,
+                  deux lignes de même forme proposent deux gestes dont un seul se
+                  défait.
+
+                  `role="separator"` PARCE QU'IL SÉPARE VRAIMENT. Un `div` nu
+                  tombait sous la même règle que l'identité — contenu illicite d'un
+                  `menu` — et son trait n'était visible que des voyants. Déclaré,
+                  il devient la seule forme de coupure qu'un `menu` accepte, et
+                  l'annonce se fait des deux côtés. */}
+              <div role="separator" className="my-1 h-px bg-border" />
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOuvert(false)
+                  void deconnecter()
+                }}
+                className="flex min-h-11 cursor-pointer items-center gap-2 rounded-sm px-2 text-label text-ink hover:bg-surface-sunken"
+              >
+                {/* `logout` et non `arrowRight` : le jeu porte le glyphe exact, et
+                    une flèche générique redisait celle de la ligne au-dessus. Deux
+                    gestes de nature opposée ne se signalent pas du même trait. */}
+                <Icon name="logout" size={16} />
+                {t('auth.logout')}
+              </button>
+            </div>
           </div>
         </>
       )}
