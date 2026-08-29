@@ -220,7 +220,27 @@ const MODALES = [
     coûte en plus sa hauteur, et c'est un choix de l'utilisateur, pas un défaut
     de l'écran — la mesure ci-dessous se fait sans photo choisie.
   */
-  { nom: 'Inspection', adresse: '/demo/etats-des-lieux', bouton: /^Établir un état des lieux$|^Record an inspection$/, defil: { 360: 300, 1280: 20 }, avant: { 360: 237, 1280: 0 } },
+  /*
+     PLAFOND RELEVÉ — 300 → 345 à 360, 20 → 60 à 1280 — ET LE MOTIF EST ÉCRIT.
+
+     Les réserves étaient une rangée de champs qui se replie, sans bord : trois
+     réserves saisies, et rien ne disait où l'une finissait. Le rang n'existait
+     que dans le nom accessible de la croix de retrait — « Retirer la réserve
+     n° 2 » — donc pour l'oreille et pas pour l'œil.
+
+     Chaque réserve est devenue un ÉLÉMENT DE LISTE : un filet à gauche, et une
+     ligne d'en-tête portant le rang et le retrait. Cette ligne coûte 43 px par
+     réserve à 360, et c'est tout le dépassement. Mesuré : la même chose en
+     CARTE — bord complet et rembourrage — coûtait 50 px de plus, le
+     rembourrage horizontal resserrant les champs et provoquant un repli
+     supplémentaire. Le filet groupe autant pour un tiers du prix.
+
+     43 px sur un formulaire qui en défile déjà 300, pour qu'un formulaire à
+     trois réserves cesse d'être une file de champs indistincts : c'est le
+     genre d'arbitrage que ce plafond existe pour faire écrire, et il est fait
+     dans ce sens-là.
+  */
+  { nom: 'Inspection', adresse: '/demo/etats-des-lieux', bouton: /^Établir un état des lieux$|^Record an inspection$/, defil: { 360: 345, 1280: 60 }, avant: { 360: 237, 1280: 0 } },
   { nom: 'Invite', adresse: '/demo/locataires', bouton: /^Inviter par code$|^Invite by code$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'Announce', adresse: '/demo/locataires', bouton: /^Prévenir les locataires$|^Notify tenants$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'Reply', adresse: '/demo/travaux', bouton: /^Répondre$|^Reply$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
@@ -429,13 +449,41 @@ try {
         await bouton.click().catch(() => {})
         await page.waitForTimeout(350)
 
-        const m = await page.evaluate(() => {
+        const m = await page.evaluate(async () => {
           const d = document.querySelector('[role="dialog"],[role="alertdialog"]')
           if (!d) return null
           const enfants = [...d.children]
-          const corps = enfants.find((e) => getComputedStyle(e).overflowY === 'auto')
-          const pied = enfants[enfants.length - 1] !== corps ? enfants[enfants.length - 1] : null
-          const entete = enfants[0] !== corps ? enfants[0] : null
+          /*
+            LES TROIS BANDES SE NOMMENT, ELLES NE SE DEVINENT PLUS.
+
+            On cherchait le corps par son `overflow-y: auto` calculé, l'en-tête
+            par « le premier enfant s'il n'est pas le corps », le pied par « le
+            dernier, même règle ». Trois heuristiques qui tenaient tant que la
+            modale avait exactement trois enfants à plat — et qui se seraient
+            trompées SANS RIEN DIRE le jour où l'une des bandes gagne un
+            enveloppe : le corps devenait introuvable, `defil` retombait à zéro,
+            et le plafond de défilement passait au vert sur une mesure vide.
+
+            `Modal` pose maintenant `data-entete-de-modale`,
+            `data-corps-de-modale` et `data-pied-de-modale`. Le repli reste pour
+            qu'un composant tiers reste mesurable.
+          */
+          const corps =
+            d.querySelector('[data-corps-de-modale]') ??
+            enfants.find((e) => getComputedStyle(e).overflowY === 'auto')
+          const pied =
+            d.querySelector('[data-pied-de-modale]') ??
+            (enfants[enfants.length - 1] !== corps ? enfants[enfants.length - 1] : null)
+          const entete =
+            d.querySelector('[data-entete-de-modale]') ??
+            (enfants[0] !== corps ? enfants[0] : null)
+          /* Deux trames : l'état vient d'un écouteur de défilement puis d'un
+             rendu React, et le lire tout de suite lirait celui d'avant. */
+          const peint = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+          const voiles = () => ({
+            haut: corps ? corps.hasAttribute('data-suite-au-dessus') : null,
+            bas: corps ? corps.hasAttribute('data-suite-en-dessous') : null,
+          })
           const r = d.getBoundingClientRect()
           const dansLaFenetre = (el) => {
             const b = el.getBoundingClientRect()
@@ -445,10 +493,15 @@ try {
              qui suit le contenu sort du champ à la première molette. */
           let piedTenu = pied ? dansLaFenetre(pied) : null
           let enteteTenu = entete ? dansLaFenetre(entete) : null
+          await peint()
+          const voilesEnHaut = voiles()
+          let voilesEnBas = voilesEnHaut
           if (corps) {
             corps.scrollTop = corps.scrollHeight
             if (pied) piedTenu = piedTenu && dansLaFenetre(pied)
             if (entete) enteteTenu = enteteTenu && dansLaFenetre(entete)
+            await peint()
+            voilesEnBas = voiles()
             corps.scrollTop = 0
           }
           /*
@@ -479,6 +532,8 @@ try {
             defil: corps ? Math.max(0, corps.scrollHeight - corps.clientHeight) : 0,
             piedTenu,
             enteteTenu,
+            voilesEnHaut,
+            voilesEnBas,
           }
         })
         await contexte.close()
@@ -514,6 +569,45 @@ try {
         }
         if (m.enteteTenu === false) {
           plaintes.push(`${nom} : l'en-tête sort du champ quand le corps défile.`)
+        }
+        /*
+          LE CORPS DIT-IL QU'IL CONTINUE ?
+
+          La coupe est NETTE aux deux bords : une ligne tranchée à mi-hauteur
+          sous l'en-tête, un champ disparu sous le pied, et rien pour
+          distinguer « le formulaire s'arrête là » de « il reste six champs ».
+          Le liseré des bandes ne dit rien de la direction — posé en haut d'un
+          corps déjà défilé, il ressemble même à un début.
+
+          Cette mesure ne peut vivre qu'ICI : dans le rendu d'essai, un corps
+          n'a ni hauteur ni défilement, donc la question n'a pas de réponse.
+
+          On l'exige DANS LES DEUX SENS, et le second est celui qu'on oublie :
+          un voile du bas qui ne s'éteint jamais annonce une suite qui n'existe
+          pas, en bas d'un formulaire dont on cherche justement le bouton.
+        */
+        if (m.defil > 0) {
+          if (m.voilesEnHaut.bas !== true)
+            plaintes.push(
+              `${nom} : ${m.defil} px à lire plus bas, et le corps ne le dit pas.\n` +
+                '   La coupe sous le pied ne distingue pas la fin du formulaire de sa suite.',
+            )
+          if (m.voilesEnHaut.haut !== false)
+            plaintes.push(`${nom} : le corps annonce une suite au-dessus alors qu'il est en haut.`)
+          if (m.voilesEnBas.haut !== true)
+            plaintes.push(
+              `${nom} : défilé jusqu'en bas, le corps ne dit pas que quelque chose reste au-dessus.`,
+            )
+          if (m.voilesEnBas.bas !== false)
+            plaintes.push(
+              `${nom} : arrivé en bas, le corps annonce encore une suite.\n` +
+                "   Un voile qui ne s'éteint pas fait chercher un contenu qui n'existe pas.",
+            )
+        } else if (m.voilesEnHaut.haut || m.voilesEnHaut.bas) {
+          plaintes.push(
+            `${nom} : le corps tient entier et annonce pourtant une suite ` +
+              `(${m.voilesEnHaut.haut ? 'au-dessus' : ''}${m.voilesEnHaut.bas ? ' en dessous' : ''}).`,
+          )
         }
         if (m.defil > modale.defil[largeur]) {
           plaintes.push(

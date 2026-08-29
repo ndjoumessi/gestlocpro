@@ -1143,6 +1143,7 @@ export const fr = {
         'Une photo est montée mais n’a pas été confirmée : elle n’est pas encore attachée à la réserve. Réessayez sans fermer cette fenêtre — fermer la perdrait.',
       photoRetry: 'Reprendre l’envoi des photos',
       addFinding: 'Ajouter une réserve',
+      findingRank: 'Réserve n° {rank}',
       removeFinding: 'Retirer la réserve n° {rank}',
       title: 'États des lieux',
       subtitle: 'Entrée et sortie comparées pièce par pièce, réserves chiffrées et imputées sur la caution.',

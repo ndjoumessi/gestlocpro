@@ -880,6 +880,7 @@ export const en: Dictionary = {
         'One photo uploaded but was not confirmed: it is not attached to the finding yet. Try again without closing this window — closing would lose it.',
       photoRetry: 'Retry photo upload',
       addFinding: 'Add a finding',
+      findingRank: 'Finding no. {rank}',
       removeFinding: 'Remove finding {rank}',
       title: 'Inspections',
       subtitle: 'Move-in and move-out compared room by room, issues costed against the deposit.',

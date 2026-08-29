@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@/lib/cn'
 import { usePiegeDeFocus } from './piegeDeFocus'
@@ -47,6 +47,53 @@ export function Modal({
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const t = useT()
+
+  /*
+    RESTE-T-IL QUELQUE CHOSE AU-DESSUS, EN DESSOUS ?
+
+    Trois événements changent la réponse, et il faut les trois : le DÉFILEMENT,
+    le REDIMENSIONNEMENT du corps — rotation, clavier virtuel — et la
+    croissance du CONTENU. Le troisième est le moins évident et le plus
+    fréquent : « Ajouter une réserve » allonge le formulaire sans qu'on ait
+    défilé ni redimensionné quoi que ce soit, et sans lui le voile du bas
+    resterait éteint sur un corps devenu trop grand.
+
+    `ResizeObserver` est interrogé avant d'être employé : l'environnement de
+    test n'en a pas, et une garde qui tombe sur un observateur absent ne dit
+    rien de la modale qu'elle prétend mesurer. Sans lui, on garde le
+    défilement — l'affichage initial reste juste, seule la croissance échappe.
+  */
+  const corps = useRef<HTMLDivElement>(null)
+  const [suite, setSuite] = useState({ haut: false, bas: false })
+
+  useEffect(() => {
+    const boite = corps.current
+    if (!open || !boite) return
+
+    const mesurer = () => {
+      /* UN PIXEL DE MARGE, ET IL SERT. Les hauteurs sont fractionnaires dès
+         qu'un zoom ou une densité d'écran s'en mêle : `scrollHeight` dépasse
+         alors `clientHeight` d'un demi-pixel sur un corps qui tient
+         entièrement, et le voile du bas s'allumerait sur toutes les modales. */
+      const restant = boite.scrollHeight - boite.clientHeight - boite.scrollTop
+      setSuite({ haut: boite.scrollTop > 1, bas: restant > 1 })
+    }
+
+    mesurer()
+    boite.addEventListener('scroll', mesurer, { passive: true })
+
+    let observateur: ResizeObserver | undefined
+    if (typeof ResizeObserver !== 'undefined') {
+      observateur = new ResizeObserver(mesurer)
+      observateur.observe(boite)
+      for (const enfant of Array.from(boite.children)) observateur.observe(enfant)
+    }
+
+    return () => {
+      boite.removeEventListener('scroll', mesurer)
+      observateur?.disconnect()
+    }
+  }, [open])
 
   /*
     LE PIÈGE DE FOCUS VIT DÉSORMAIS DANS `piegeDeFocus`, ET C'EST LE POINT.
@@ -157,7 +204,10 @@ export function Modal({
           SIZES[size],
         )}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-divider p-5">
+        <div
+          data-entete-de-modale=""
+          className="flex items-start justify-between gap-4 border-b border-divider p-5"
+        >
           <div className="min-w-0">
             <h2 id={titleId} className="title-l">
               {title}
@@ -186,17 +236,73 @@ export function Modal({
           conteneur l'a déjà écartée du bord. Sans ce retour, un dialogue de
           bureau traînerait un pied de 34 px de trop.
         */}
-        <div
-          className={cn(
-            'min-h-0 flex-1 overflow-y-auto px-5 pt-5',
-            footer ? 'pb-5' : 'pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-5',
-          )}
-        >
-          {children}
+        {/*
+          LE CORPS DIT QU'IL CONTINUE.
+
+          ═══ CE QUE LES DEUX BANDES FIXES FAISAIENT ═══
+
+          Un en-tête à liseré, un pied à liseré, un corps qui défile entre les
+          deux — et la coupe était NETTE aux deux bords. Une ligne de texte se
+          tranchait à mi-hauteur sous l'en-tête, un champ disparaissait sous le
+          pied, et rien ne distinguait « le formulaire s'arrête là » de « il
+          reste six champs ». Le liseré ment dans les deux sens : posé en haut
+          d'un corps déjà défilé, il ressemble à un début.
+
+          Vu sur huit des onze modales du produit, à la première capture.
+
+          ═══ DEUX VOILES, ET SEULEMENT QUAND ILS DISENT QUELQUE CHOSE ═══
+
+          Un dégradé du fond vers le transparent, sur vingt pixels, du côté où
+          il RESTE quelque chose. Il ne masque rien qu'on pourrait lire — ce
+          qu'il estompe est déjà à demi coupé par le bord — et il rend visible
+          la seule chose que la coupe nette taisait : la direction.
+
+          Ils sont posés en absolu SUR le corps et non dedans, pour que le
+          défilement ne les emporte pas, et ils ne prennent pas le pointeur.
+
+          ═══ ET L'ÉTAT SE LIT DE L'EXTÉRIEUR ═══
+
+          `data-suite-au-dessus` / `data-suite-en-dessous` ne servent pas le
+          rendu — les classes suffisent — mais la MESURE : `scripts/modales.mjs`
+          ouvre les douze modales dans un vrai navigateur, où seul un rendu réel
+          peut dire s'il reste du contenu. Sans ces marques, la garde devrait
+          deviner à quoi ressemble un dégradé.
+        */}
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <div
+            ref={corps}
+            data-corps-de-modale=""
+            data-suite-au-dessus={suite.haut ? '' : undefined}
+            data-suite-en-dessous={suite.bas ? '' : undefined}
+            className={cn(
+              'min-h-0 flex-1 overflow-y-auto px-5 pt-5',
+              footer ? 'pb-5' : 'pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-5',
+            )}
+          >
+            {children}
+          </div>
+
+          <span
+            aria-hidden="true"
+            className={cn(
+              'pointer-events-none absolute inset-x-0 top-0 h-5 transition-opacity duration-150',
+              'bg-gradient-to-b from-surface to-transparent',
+              suite.haut ? 'opacity-100' : 'opacity-0',
+            )}
+          />
+          <span
+            aria-hidden="true"
+            className={cn(
+              'pointer-events-none absolute inset-x-0 bottom-0 h-6 transition-opacity duration-150',
+              'bg-gradient-to-t from-surface to-transparent',
+              suite.bas ? 'opacity-100' : 'opacity-0',
+            )}
+          />
         </div>
 
         {footer && (
           <div
+            data-pied-de-modale=""
             className={cn(
               'flex flex-wrap justify-end gap-2 border-t border-divider bg-surface-sunken',
               'px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4',

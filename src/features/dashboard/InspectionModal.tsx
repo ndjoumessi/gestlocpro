@@ -597,8 +597,60 @@ export function InspectionModal({
           <legend className="text-label font-semibold text-ink">
             {t('app.inspections.findings')}
           </legend>
+          {/*
+            UNE LISTE ORDONNÉE, UN BLOC PAR RÉSERVE.
+
+            C'était une rangée qui se replie, sans bord : trois réserves saisies,
+            et rien ne disait où l'une finissait — sinon l'ordre des champs, qui
+            change de forme avec la largeur puisque la rangée se replie. La
+            croix de retrait flottait entre la gravité et les photos, à une
+            place qui n'appartenait visiblement à aucune des deux.
+
+            LE RANG EXISTAIT POUR L'OREILLE ET PAS POUR L'ŒIL. « Retirer la
+            réserve n° 2 » est le nom accessible de la croix, et le commentaire
+            plus bas dit pourquoi il le faut. L'œil, lui, n'avait d'équivalent
+            nulle part — le seul rang visible était celui qu'affichait, par
+            accident, le bouton d'ajout de photo.
+
+            `<ol>` et non des `<div>` : le rang, le groupement et le compte sont
+            alors portés par la structure. Un lecteur d'écran annonce « liste,
+            3 éléments » là où il ne trouvait que des champs à la file.
+          */}
+          <ol className="flex flex-col gap-3">
           {reserves.map((reserve, index) => (
-            <div key={index} className="flex flex-wrap items-end gap-2">
+            <li
+              key={index}
+              className="flex flex-wrap items-end gap-x-2 gap-y-1.5 border-l-2 border-border-strong pl-3"
+            >
+              {/* L'en-tête du bloc : le rang à gauche, le retrait à droite. Sur
+                  sa propre ligne — `basis-full` — pour que le repliement des
+                  champs ne vienne jamais s'intercaler entre un numéro et ce
+                  qu'il numérote. */}
+              <div className="-mx-1 flex basis-full items-center justify-between gap-2">
+                <span className="eyebrow text-muted">
+                  {t('app.inspections.findingRank', { rank: index + 1 })}
+                </span>
+                <IconButton
+                  icon="close"
+                  label={t('app.inspections.removeFinding', { rank: index + 1 })}
+                  variant="ghost"
+                  onClick={() => {
+                    // Retirer une ligne renumérote celles qui suivent : garder
+                    // le repère du refus l'aurait fait désigner une voisine
+                    // innocente.
+                    setCoutFautif(null)
+                    setLacune(null)
+                    // Les aperçus de la ligne qui part sont libérés ici : sans
+                    // cela, leurs blobs resteraient vivants jusqu'à la fermeture
+                    // de la modale, invisibles et payés en mémoire.
+                    for (const photo of reserve.photos) {
+                      URL.revokeObjectURL(photo.apercu)
+                      urlsVivantes.current.delete(photo.apercu)
+                    }
+                    setReserves((l) => l.filter((_, i) => i !== index))
+                  }}
+                />
+              </div>
               <Field
                 label={t('app.inspections.room')}
                 className="min-w-28 flex-1"
@@ -671,41 +723,23 @@ export function InspectionModal({
                 </Field>
               )}
               {/*
-                RETIRER RETIRE, et le bouton dit LAQUELLE.
+                LE RETRAIT EST REMONTÉ DANS L'EN-TÊTE DU BLOC, et son libellé ne
+                change pas.
 
-                Deux défauts sous un seul contrôle. Il portait « Retirer cette
-                réserve » sur chaque ligne : à la lecture d'écran, trois boutons
-                d'un même nom dans un même formulaire, sans rien pour les
-                distinguer — la liste des contrôles annonçait trois fois la même
-                commande. Le rang les sépare, et c'est le seul repère qu'ait le
-                lecteur puisque les champs, eux, sont vides.
+                Deux défauts avaient été réglés sous ce contrôle et le restent.
+                Il portait « Retirer cette réserve » sur chaque ligne : à la
+                lecture d'écran, trois boutons d'un même nom dans un même
+                formulaire, sans rien pour les distinguer. Le rang les sépare, et
+                il se voit désormais aussi. Et sur la DERNIÈRE ligne il ne
+                retirait rien : il la vidait, sous un libellé qui promettait un
+                retrait. La ligne s'en va pour de bon ; « Ajouter une réserve »
+                la rappelle, et l'ouverture suivante en repose une.
 
-                Et sur la DERNIÈRE ligne il ne retirait rien : il la vidait, sous
-                un libellé qui promettait un retrait. Une pièce et un constat
-                effacés d'un clic ressemblent à s'y méprendre à une ligne retirée,
-                sauf qu'elle reste — et qu'un montant retapé à côté repart avec
-                elle. La ligne s'en va pour de bon ; « Ajouter une réserve » la
-                rappelle, et l'ouverture suivante en repose une.
+                Ce qui change ici est sa PLACE : il flottait entre la gravité et
+                les photos, sur une rangée qui se replie — donc à un endroit qui
+                n'appartenait visiblement à aucune des deux, et qui se déplaçait
+                avec la largeur.
               */}
-              <IconButton
-                icon="close"
-                label={t('app.inspections.removeFinding', { rank: index + 1 })}
-                variant="ghost"
-                onClick={() => {
-                  // Retirer une ligne renumérote celles qui suivent : garder le
-                  // repère du refus l'aurait fait désigner une voisine innocente.
-                  setCoutFautif(null)
-                  setLacune(null)
-                  // Les aperçus de la ligne qui part sont libérés ici : sans
-                  // cela, leurs blobs resteraient vivants jusqu'à la fermeture
-                  // de la modale, invisibles et payés en mémoire.
-                  for (const photo of reserve.photos) {
-                    URL.revokeObjectURL(photo.apercu)
-                    urlsVivantes.current.delete(photo.apercu)
-                  }
-                  setReserves((l) => l.filter((_, i) => i !== index))
-                }}
-              />
               <PhotosDeReserve
                 rang={index + 1}
                 photos={reserve.photos}
@@ -713,8 +747,9 @@ export function InspectionModal({
                 onChoisir={(fichiers) => void choisirPhotos(index, fichiers)}
                 onRetirer={(cle) => retirerPhoto(index, cle)}
               />
-            </div>
+            </li>
           ))}
+          </ol>
           <Button
             variant="secondary"
             size="sm"
