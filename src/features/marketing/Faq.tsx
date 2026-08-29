@@ -8,6 +8,22 @@ const QUESTIONS = ['one', 'two', 'three', 'four', 'five'] as const
 /**
  * FAQ en `<details>` natifs : ouverture au clavier, indexables par les moteurs
  * de recherche et lisibles sans JavaScript. Aucun état React n'est nécessaire.
+ *
+ * ═══ ACCORDÉON EXCLUSIF : UNE RÉPONSE OUVERTE À LA FOIS ═══
+ *
+ * Les cinq replis s'ouvraient et restaient ouverts. Deux réponses dépliées
+ * poussent déjà la question suivante hors de l'écran ; cinq font de la liste un
+ * mur de prose qu'on parcourt à la molette pour retrouver l'intitulé qu'on
+ * cherchait. C'est la LISTE qu'on lit dans une FAQ, pas une réponse.
+ *
+ * `name` PARTAGÉ SUR `<details>` est l'accordéon exclusif du standard : le
+ * navigateur referme les autres, sans une ligne de JavaScript et sans que rien
+ * ne soit perdu — ni le clavier, ni l'indexation, ni la lecture sans script.
+ * Un état React aurait fait, ici, exactement ce que le navigateur fait mieux.
+ *
+ * LE REPLI EST GRACIEUX. Sur un navigateur qui ignore `name` — avant fin 2023 —
+ * les replis restent indépendants, c'est-à-dire le comportement d'hier : on
+ * perd l'exclusivité, jamais l'accès aux réponses.
  */
 export function Faq() {
   const t = useT()
@@ -29,6 +45,7 @@ export function Faq() {
         {QUESTIONS.map((key) => (
           <details
             key={key}
+            name="faq"
             className="group rounded-lg border border-divider bg-surface px-5 shadow-e1 open:shadow-e2"
           >
             <summary

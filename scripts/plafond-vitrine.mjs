@@ -285,11 +285,51 @@ try {
         desalignees,
       }
     })
+    /*
+      UNE QUESTION OUVERTE EN FERME UNE AUTRE.
+
+      Mesuré APRÈS la hauteur du document, et il le faut : ouvrir un repli
+      allonge la page, et mesurer le plafond sur une FAQ dépliée mesurerait
+      autre chose que ce qu'un visiteur voit en arrivant.
+
+      La règle n'est pas décorative. Cinq réponses ouvertes en même temps
+      poussent la suivante hors de l'écran : on cherche la question n° 4 en
+      faisant défiler trois réponses qu'on a déjà lues. Un accordéon exclusif
+      garde la LISTE lisible, qui est ce qu'on parcourt.
+
+      Le geste est celui de l'utilisateur — deux clics sur deux résumés — et non
+      la lecture d'un attribut : `name` sur `<details>` est l'accordéon exclusif
+      du standard, mais c'est son EFFET qu'on garde, pas son orthographe.
+    */
+    const resumes = page.locator('#faq details > summary')
+    let ouvertes = null
+    if ((await resumes.count()) >= 2) {
+      await resumes.nth(0).click()
+      await page.waitForTimeout(200)
+      await resumes.nth(1).click()
+      await page.waitForTimeout(200)
+      ouvertes = await page.evaluate(
+        () => [...document.querySelectorAll('#faq details')].filter((d) => d.open).length,
+      )
+    }
     await contexte.close()
 
     const nom = `${point.langue}@${point.largeur}`
     inspectes++
-    releve.push({ nom, ...m, ...point })
+    releve.push({ nom, ...m, ...point, ouvertes })
+
+    if (ouvertes === null) {
+      plaintes.push(
+        `${nom} : moins de deux questions dépliables dans la FAQ — rien à mesurer.\n` +
+          "   Une sonde qui ne trouve pas son sujet ne prouve pas qu'il va bien.",
+      )
+    } else if (ouvertes !== 1) {
+      plaintes.push(
+        `${nom} : ${ouvertes} question(s) ouverte(s) après avoir déplié la seconde.\n` +
+          '   Une réponse lue devrait se replier quand on en ouvre une autre : empilées, elles\n' +
+          '   poussent les questions suivantes hors de l’écran, et c’est la LISTE qu’on parcourt.',
+      )
+    }
 
     if (m.hDoc > point.plafond) {
       plaintes.push(
@@ -348,6 +388,7 @@ console.log(
   `\n✓ plafond-vitrine : ${inspectes}/${ATTENDUS} états sous leur plafond, ${SECTIONS_ATTENDUES} sections intactes.\n` +
   `  ${releve.reduce((n, r) => n + (r.rangsCompares ?? 0), 0)} rangée(s) de paliers comparées d'une carte à l'autre,\n` +
   `  toutes ALIGNÉES — une grille de prix se lit en travers.\n` +
+  `  FAQ dépliée deux fois sur ${releve.length} états : une seule réponse ouverte à la fois.\n` +
     "  Ce script garde une SOMME, pas une composition, et ne dit rien de la lisibilité —\n" +
     '  voir son en-tête.',
 )
