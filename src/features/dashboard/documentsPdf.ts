@@ -828,10 +828,10 @@ export function useDepositsStatementPdf() {
       const retenu = cautions.reduce((somme, { deposit }) => somme + deposit.withheld, 0)
       const du = detenues.reduce((somme, { deposit }) => somme + soldeDeCaution(deposit), 0)
       /* CE QUI EST DÉJÀ REPARTI CHEZ LE LOCATAIRE — le terme qui manquait pour
-         que la feuille se recoupe ; voir le bloc de totaux ci-dessous. */
-      const rendu = cautions
-        .filter(({ deposit }) => deposit.status === 'returned')
-        .reduce((somme, { deposit }) => somme + soldeDeCaution(deposit), 0)
+         que la feuille se recoupe ; voir le bloc de totaux ci-dessous. On garde
+         la LISTE et pas seulement la somme : son intitulé s'accorde avec elle. */
+      const rendues = cautions.filter(({ deposit }) => deposit.status === 'returned')
+      const rendu = rendues.reduce((somme, { deposit }) => somme + soldeDeCaution(deposit), 0)
 
       enTete(page, {
         parc,
@@ -860,7 +860,14 @@ export function useDepositsStatementPdf() {
       */
       page.paire(t('app.deposits.totalHeld'), argent(consigne))
       page.paire(t('app.deposits.withheld'), argent(retenu))
-      if (rendu > 0) page.paire(t('app.deposits.alreadyReturned'), argent(rendu))
+      if (rendu > 0)
+        /* L'INTITULÉ S'ACCORDE. Ce n'est pas une pastille de statut mais un
+           TOTAL : il porte autant de cautions qu'il y en a eu de rendues, et sur
+           un parc qui tourne, plusieurs est le cas ordinaire. */
+        page.paire(
+          t('app.deposits.alreadyReturned', { count: rendues.length }),
+          argent(rendu),
+        )
       page.filet()
       /* LA DETTE EN GRAS, parce que c'est la seule ligne qu'on cherche en
          ouvrant ce document. Elle exclut les cautions rendues — voir

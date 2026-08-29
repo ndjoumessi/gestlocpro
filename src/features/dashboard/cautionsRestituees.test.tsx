@@ -212,7 +212,11 @@ describe('les totaux de l’état des cautions', () => {
     installerFauxServeur()
     await renderApp('/demo/cautions')
     await attendreLeChargement()
+    return await exporterLaFeuille()
+  }
 
+  /** L'export seul — pour les cas qui doivent AGIR sur le parc avant. */
+  async function exporterLaFeuille() {
     const capture = captureDownloads()
     try {
       await userEvent
@@ -246,7 +250,7 @@ describe('les totaux de l’état des cautions', () => {
 
     const consigne = montantEnFaceDe(feuille, 'Total consigné')
     const retenu = montantEnFaceDe(feuille, 'Retenu')
-    const rendu = montantEnFaceDe(feuille, 'Déjà restituée')
+    const rendu = montantEnFaceDe(feuille, 'Déjà restituées?')
     const du = montantEnFaceDe(feuille, 'À restituer')
 
     /* LES NOMBRES, ET NON LES LIBELLÉS : une ligne « Déjà restituée » portant
@@ -256,6 +260,72 @@ describe('les totaux de l’état des cautions', () => {
     /* Et les valeurs elles-mêmes, sans quoi une feuille de quatre zéros
        passerait. */
     expect([consigne, retenu, rendu, du]).toEqual([1_226_000, 163_000, 250_000, 813_000])
+  })
+
+  /**
+   * L'INTITULÉ S'ACCORDE AVEC CE QU'IL COMPTE.
+   *
+   * « Déjà restituée » est écrit au singulier, comme les trois pastilles de
+   * statut dont il reprend le mot. Mais ce n'est pas une pastille : c'est un
+   * TOTAL, et il porte autant de cautions qu'il y en a eu de rendues. Sur un
+   * parc qui tourne, ce sera le cas ordinaire — les restitutions s'accumulent
+   * là où les cautions en cours se renouvellent.
+   *
+   * ═══ POURQUOI CE CAS ARBITRE UNE CAUTION ═══
+   *
+   * Le jeu de démonstration n'en porte qu'une de rendue : le singulier y est
+   * juste, et aucune lecture de la feuille telle qu'elle sort ne peut montrer
+   * le défaut. Le cas FABRIQUE donc la seconde restitution par le geste du
+   * produit — arbitrer A3 sans rien retenir, ce que le champ d'aide appelle le
+   * cas normal — plutôt que par une donnée d'essai posée à côté. C'est aussi ce
+   * qui le rend sûr : si `settleDeposit` cessait de faire passer une caution en
+   * « restituée », ce cas tomberait au lieu de continuer à mesurer une fiction.
+   */
+  it('accorde son intitulé quand deux cautions ont été rendues', async () => {
+    installerFauxServeur()
+    await renderApp('/demo/cautions')
+    await attendreLeChargement()
+    const utilisateur = userEvent.setup()
+
+    await utilisateur.click(screen.getAllByRole('button', { name: /Arbitrer|Settle/ })[0])
+    const modale = await screen.findByRole('dialog')
+    /* LE CHAMP EST VIDÉ, et il faut le faire : la modale le PRÉ-REMPLIT avec
+       les réserves de sortie — 45 000 pour A3 — et une retenue non nulle exige
+       une justification, donc valider sans y toucher ne fait rien. Vidé, il
+       vaut zéro : la caution repart entière, ce que le libellé d'aide du champ
+       appelle le cas normal. */
+    const retenue = modale.querySelector('input[name="withheld"]')
+    expect(retenue, 'le champ de retenue est introuvable').not.toBeNull()
+    await utilisateur.clear(retenue as HTMLInputElement)
+    await utilisateur.click(
+      within(modale).getByRole('button', { name: /Valider l’arbitrage|Confirm/ }),
+    )
+
+    const feuille = await exporterLaFeuille()
+
+    expect(feuille, 'l’intitulé est resté au singulier').toContain('(Déjà restituées)')
+    /* ET LA SOUSTRACTION TIENT TOUJOURS. Un accord posé sans regarder les
+       nombres laisserait la feuille bien écrite et fausse. */
+    expect(
+      montantEnFaceDe(feuille, 'Total consigné') -
+        montantEnFaceDe(feuille, 'Retenu') -
+        montantEnFaceDe(feuille, 'Déjà restituées?'),
+      'la soustraction ne tombe plus après un arbitrage',
+    ).toBe(montantEnFaceDe(feuille, 'À restituer'))
+  })
+
+  /**
+   * LE CONTREPOIDS DE L'ACCORD. Une seule rendue garde le singulier.
+   *
+   * Mettre l'intitulé au pluriel une fois pour toutes ferme le défaut et en
+   * ouvre le symétrique, sur le chemin le plus courant : la première
+   * restitution d'un parc.
+   */
+  it('garde le singulier sur une seule restitution', async () => {
+    const feuille = await feuilleDesCautions()
+
+    expect(feuille, 'le pluriel est écrit pour une seule caution').toContain('(Déjà restituée)')
+    expect(feuille).not.toContain('(Déjà restituées)')
   })
 
   /**

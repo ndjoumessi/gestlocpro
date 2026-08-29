@@ -1372,7 +1372,8 @@ export const fr = {
       withheld: 'Retenu',
       balance: 'À restituer',
       totalHeld: 'Total consigné',
-      alreadyReturned: 'Déjà restituée',
+      alreadyReturned: 'Déjà restituées',
+      alreadyReturned_one: 'Déjà restituée',
       /* Les trois cartes étaient NUES — un intitulé, un montant, rien dessous —
          quand celles des cinq autres écrans portent une ligne qui dit sur quoi
          le montant porte. « 1 226 000 FCFA » ne disait pas sur combien de

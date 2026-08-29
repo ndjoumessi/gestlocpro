@@ -1016,6 +1016,7 @@ export const en: Dictionary = {
       balance: 'To return',
       totalHeld: 'Total held',
       alreadyReturned: 'Already returned',
+      alreadyReturned_one: 'Already returned',
       kpiHeldNote: 'across {count} deposits',
       kpiHeldNote_one: 'across {count} deposit',
       kpiWithheldNote: '{count} being settled',
