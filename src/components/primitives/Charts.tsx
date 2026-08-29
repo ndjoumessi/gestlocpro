@@ -698,6 +698,39 @@ export function StackedBarChart({
             </button>
           )
         })}
+
+        {/*
+          L'OBJECTIF DANS LA LÉGENDE, ET IL N'EST PAS UN BOUTON.
+
+          Les trois entrées qui le précèdent MASQUENT une série ; celle-ci ne
+          commande rien — la ligne se retire d'elle-même dès qu'une série est
+          masquée, parce qu'elle se compare à un total qui n'est plus tracé. Un
+          bouton de plus dans cette rangée promettrait un geste qui n'existe pas.
+
+          Il porte donc `<span>` et non `<button>`, sans `aria-pressed`, avec le
+          même rythme vertical que ses voisins pour que la rangée reste une
+          rangée. Le témoin visuel est un TIRET, pas une pastille : c'est la
+          forme de la marque qu'il nomme, et c'est ce qui le distingue des trois
+          séries sans avoir à l'écrire.
+        */}
+        {showTarget && (
+          <span
+            data-legende-objectif=""
+            className="inline-flex min-h-11 items-center gap-2 px-2 text-body text-muted"
+          >
+            <span
+              aria-hidden="true"
+              /* QUATRE UNITÉS ET NON DEUX ET DEMIE — la largeur d'une pastille
+                 de série. À 10 px, un tiret de deux pixels ne montre qu'un seul
+                 trait : la marque cesse d'être tiretée, donc cesse de désigner
+                 la ligne qu'elle nomme. */
+              className="w-4 border-t-2 border-dashed border-accent-ink"
+            />
+            <span>
+              {targetLabel} · <span className="numeric">{money(target, { compact: true })}</span>
+            </span>
+          </span>
+        )}
       </div>
 
       {/* Zone de tracé et rangée d'étiquettes sont deux blocs distincts.
@@ -764,41 +797,41 @@ export function StackedBarChart({
           {showTarget && (
             <div
               aria-hidden="true"
-              // `accent-ink` et non l'accent nu. Une ligne de repère est une
-              // donnée : elle dit où passe l'objectif, et l'accent de marque
-              // n'a jamais eu la marge pour ça — l'or des débuts n'y tenait que
-              // 2,87:1 sur la carte, et le bleu qui lui a succédé retombe à
-              // 3,13:1 sur la carte sombre, au ras du seuil.
-              // `--color-accent-ink` reste dans la famille et se tient loin
-              // au-dessus : 6,30 sur `--paper` en clair, 8,30 sur `--surface`
-              // en sombre — et c'est déjà la couleur du libellé qui la nomme,
-              // deux lignes plus bas : le trait et son étiquette cessent
-              // d'être de deux accents différents.
               /* MARQUEUR DE MESURE : l'objectif est un repère de l'axe au même
                  titre qu'une graduation — c'est ce que dit `min: showTarget ? 1
-                 : 2` ci-dessus. La garde de l'échelle doit donc pouvoir le
-                 compter et lire sa hauteur, sans quoi elle ne vérifierait que la
-                 moitié des repères. */
+                 : 2` plus haut. La garde de l'échelle doit donc pouvoir le
+                 compter et lire sa hauteur. */
               data-repere="objectif"
+              /*
+                LA LIGNE EST NUE, ET SON NOM EST DANS LA LÉGENDE.
+
+                Elle portait « Loyers attendus · 1 397 000 FCFA » : 222 px de
+                texte pour 48 de gouttière, donc forcément par-dessus les
+                colonnes. Un fond opaque le rendait lisible, ce qui rendait la
+                donnée illisible dessous.
+
+                Ça ne se voyait pas, et c'est le pire cas : la ligne flotte
+                d'ordinaire AU-DESSUS de la plus haute colonne — 93 % contre
+                85 % sur le jeu de démonstration. Mais c'est une propriété des
+                DONNÉES, pas de la mise en page : un mois qui dépasse
+                l'objectif, ce qui arrive dès qu'un arriéré rentre, et
+                l'étiquette se pose sur la colonne qui vient justement de faire
+                l'événement. Aucune garde de mise en page ne peut le dire,
+                puisque la mise en page est correcte.
+
+                LE NOM D'UNE MARQUE SE LIT DANS LA LÉGENDE — c'est déjà vrai des
+                trois séries. La ligne d'objectif était la seule marque de ce
+                graphe à s'expliquer ailleurs, et cet ailleurs était par-dessus
+                la donnée.
+
+                `accent-ink` et non l'accent nu : une ligne de repère est une
+                donnée, et l'accent de marque n'a jamais eu la marge — l'or des
+                débuts n'y tenait que 2,87:1 sur la carte, le bleu qui lui a
+                succédé retombe à 3,13:1 sur la carte sombre.
+              */
               className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-accent-ink"
               style={{ bottom: `${(target / max) * 100}%` }}
-            >
-              {/* Le montant EXACT, et non sa forme compacte.
-                  « 1,4 M » côtoyait « 1 397 000 FCFA » sur la même vue : les
-                  deux disent le même chiffre, mais leur voisinage invite à les
-                  comparer — et l'arrondi fait douter de celui qui ne l'est
-                  pas. */}
-              {/* Fond opaque et léger retrait : le libellé porte maintenant le
-                  montant exact, donc il occupe 41 % de la largeur du graphique
-                  au lieu des 15 % de sa forme compacte — et il court sur les
-                  barres, une encre d'accent posée sur des colonnes sombres. Le
-                  fond le rend lisible quelle
-                  que soit la hauteur des barres, ce qu'un simple déplacement ne
-                  garantirait pas : elles changent avec les données. */}
-              <span className="absolute -top-2.5 left-0 rounded-sm bg-surface px-1.5 py-0.5 numeric text-caps text-accent-ink uppercase">
-                {targetLabel} · {money(target, { compact: true })}
-              </span>
-            </div>
+            />
           )}
 
           {bars.map((bar, index) => {

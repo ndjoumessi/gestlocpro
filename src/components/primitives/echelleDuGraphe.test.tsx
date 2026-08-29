@@ -284,4 +284,41 @@ describe('l’échelle du graphe d’encaissements', () => {
     )
     expect(new Set(comptes).size, `colonnes : ${comptes.join(' · ')}`).toBe(1)
   })
+
+  /*
+    ═══ LA LIGNE D'OBJECTIF NE PORTE PLUS SON NOM DANS LE TRACÉ ═══
+
+    LE DERNIER TEXTE POSÉ SUR LES COLONNES. « Loyers attendus · 1 397 000 FCFA »
+    fait 222 px pour 48 de gouttière : il déborde forcément sur les barres. Il
+    ne couvrait rien tant que la ligne flottait au-dessus de la plus haute
+    colonne — 93 % contre 85 % — mais c'est une propriété des DONNÉES, pas de la
+    mise en page. Un mois qui dépasse l'objectif, ce qui arrive dès qu'un arriéré
+    rentre, et l'étiquette se pose dessus. Aucune garde de mise en page ne peut
+    le dire, puisque la mise en page est correcte.
+
+    LE NOM D'UNE MARQUE SE LIT DANS LA LÉGENDE. C'est déjà vrai des trois
+    séries ; la ligne d'objectif était la seule marque du graphe à s'expliquer
+    ailleurs — dans le tracé, par-dessus la donnée. Elle rejoint les autres, et
+    le tracé ne porte plus AUCUN texte au-dessus des colonnes.
+
+    CE QUE CETTE GARDE TIENT : la ligne existe, elle est nue, et son nom comme
+    son montant se lisent hors du tracé.
+  */
+  it('nomme la ligne d’objectif hors du tracé, jamais sur les colonnes', async () => {
+    await renderApp('/demo')
+    await attendreLeChargement()
+
+    const ligne = document.querySelector('[data-repere="objectif"]')
+    expect(ligne, 'aucune ligne d’objectif — rien à mesurer').not.toBeNull()
+    expect(
+      ligne!.textContent?.trim(),
+      'la ligne d’objectif porte encore un texte par-dessus les colonnes',
+    ).toBe('')
+
+    /* ET LE NOM N'EST PAS PERDU POUR AUTANT : le sortir du tracé sans le
+       reposer ailleurs aurait laissé un tiret sans explication. */
+    const legende = document.querySelector('[data-legende-objectif]')
+    expect(legende, 'la ligne d’objectif n’est nommée nulle part').not.toBeNull()
+    expect(legende!.textContent).toMatch(/1\s*397\s*000/)
+  })
 })
