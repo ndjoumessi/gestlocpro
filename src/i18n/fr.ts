@@ -1415,6 +1415,18 @@ export const fr = {
         rendait « Décision enregistrée » pour toutes. Imbriquées, la clé du
         serveur devient le chemin du dictionnaire sans conversion.
       */
+      units: {
+        reminders: '{count} relances',
+        reminders_one: '{count} relance',
+        findings: '{count} constats',
+        findings_one: '{count} constat',
+        charges: '{count} échéances',
+        charges_one: '{count} échéance',
+      },
+      utilities: {
+        water: 'Eau',
+        power: 'Électricité',
+      },
       actions: {
         access: {
           revoke: 'Accès repris',

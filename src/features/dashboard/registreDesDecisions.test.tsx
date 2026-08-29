@@ -126,6 +126,80 @@ describe('le registre des décisions', () => {
   })
 
   /**
+   * CE QUI A CHANGÉ, ET PAS SEULEMENT QU'IL S'EST PASSÉ QUELQUE CHOSE.
+   *
+   * Chaque décision porte un `payload` — le montant retenu sur une caution, le
+   * moyen d'un encaissement, le prix du mètre cube posé. Il était rendu par la
+   * route et ignoré par l'écran : « Caution arbitrée » sans le montant retenu
+   * est une demi-information, et un registre d'audit qui ne dit pas COMBIEN ne
+   * sert pas à auditer.
+   */
+  it('dit ce qui a changé, et pas seulement qu’il s’est passé quelque chose', async () => {
+    const { session: etat } = serveur()
+    await renderApp('/app/decisions', { session: etat })
+    await attendreLeChargement()
+
+    const texte = (screen.getByRole('main').textContent ?? '').replace(/[\s ]/g, ' ')
+    /* La caution : le montant retenu ET le motif. Le second est ce qu'on
+       conteste, le premier ce qu'on vérifie. */
+    expect(texte, 'le montant retenu manque').toMatch(/40 000/)
+    expect(texte, 'le motif de la retenue manque').toMatch(/Peinture du séjour/)
+    /* L'encaissement : son montant et son moyen, en toutes lettres. */
+    expect(texte, 'le montant encaissé manque').toMatch(/145 000/)
+    expect(texte, 'le moyen de paiement manque').toMatch(/Mobile Money/)
+  })
+
+  /**
+   * ET LE DÉTAIL NE DÉBORDE PAS EN JSON.
+   *
+   * `payload` est un `Json` dont la forme varie selon l'action : un rendu
+   * générique produirait `{"withheldMinor":40000,...}` à l'écran, ce qui est
+   * exact et illisible. Une action sans détail utile n'en montre AUCUN — mieux
+   * vaut une ligne muette qu'une accolade.
+   */
+  it('ne déverse jamais la forme brute du serveur', async () => {
+    const faux = installerFauxServeur()
+    faux.quand('GET', `/parks/${PARC}/decisions`, {
+      status: 200,
+      body: {
+        decisions: [
+          {
+            id: 'd-x',
+            /* Une action que le dictionnaire ne connaît pas, avec un contenu
+               qu'aucune recette ne sait lire : le pire cas, et le seul qui
+               puisse laisser fuir la forme du serveur. */
+            action: 'chose.inconnue',
+            entity: 'Chose',
+            entityId: '00000000-0000-4000-8000-0000000000dd',
+            payload: { machin: 42, truc: { imbrique: true } },
+            at: '2026-08-28T14:05:00.000Z',
+            actor: 'Arsène Nkolo',
+          },
+        ],
+        suivant: null,
+      },
+    })
+    faux.quand('GET', `/parks/${PARC}/portfolio`, {
+      status: 200,
+      body: {
+        collections: [],
+        buildings: [],
+        works: [],
+        deposits: [],
+        readings: [],
+        inspections: [],
+        notifications: [],
+      },
+    })
+
+    await renderApp('/app/decisions', { session: session('owner') })
+    await attendreLeChargement()
+
+    const texte = screen.getByRole('main').textContent ?? ''
+    expect(texte, 'la forme brute du serveur est à l’écran').not.toMatch(/[{}]|machin|imbrique/)
+  })
+
+  /**
    * LE CONTREPOIDS, et il porte le sujet du lot.
    *
    * Le registre existe pour que le propriétaire contrôle ce qu'il délègue. Un

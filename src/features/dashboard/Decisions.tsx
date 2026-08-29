@@ -7,6 +7,9 @@ import { SkeletonRegion, SkeletonTable } from '@/components/primitives/Skeleton'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
 import { partiesDeDateISO } from '@/lib/dates'
+import { useCurrency } from '@/currency/CurrencyProvider'
+import { CURRENCY_DEFS } from '@/currency/currencies'
+import { PAYMENT_METHOD_LABELS, type PaymentMethodKey } from '@/data/portfolio'
 import { useSession } from '@/api/SessionProvider'
 import { decisionsDemo } from '@/data/portfolio'
 import { api } from '@/api/client'
@@ -37,6 +40,105 @@ import { api } from '@/api/client'
  * écran qui promet ce que la porte refuse est pire qu'un écran absent.
  */
 
+
+/**
+ * CE QUE CHAQUE DÉCISION A CHANGÉ, et comment le lire.
+ *
+ * ═══ POURQUOI UNE TABLE DE CHAMPS ET NON VINGT-DEUX PHRASES ═══
+ *
+ * `payload` est un `Json` dont la forme varie selon l'action — c'est écrit dans
+ * le schéma, et c'est juste : figer des colonnes obligerait à migrer la base à
+ * chaque nouvelle décision traçable. Le prix est ici : vingt-deux formes à
+ * rendre.
+ *
+ * Écrire vingt-deux phrases donnerait vingt-deux endroits à corriger le jour où
+ * un `payload` gagne un champ, et vingt-deux occasions d'oublier de mettre un
+ * montant en forme. La table nomme, pour chaque action, les CHAMPS à montrer et
+ * leur NATURE ; six fonctions savent rendre une nature. Ajouter une décision
+ * traçable est une ligne.
+ *
+ * ═══ CE QUI EST OMIS EST OMIS EXPRÈS ═══
+ *
+ * Un champ absent du payload ne rend rien — pas « undefined », pas une case
+ * vide. Un champ d'une nature qu'on ne sait pas lire non plus. Le rendu se
+ * DÉGRADE vers le silence, jamais vers l'accolade : le pire résultat possible
+ * est une ligne muette, et c'est encore une ligne juste.
+ *
+ * Les natures techniques ne figurent pas dans cette table — le type MIME d'une
+ * photo, l'identifiant d'une réserve, le statut interne d'un chantier. Elles
+ * sont exactes et n'apprennent rien à qui relit son parc.
+ */
+type Nature = 'argent' | 'date' | 'mois' | 'texte' | 'moyen' | 'devise' | 'piece' | 'service'
+
+/**
+ * UN NOMBRE NU NE DIT RIEN. « Relance envoyée · 4 » : quatre quoi ?
+ *
+ * Une première rédaction avait une nature `nombre` sans unité, et l'écran
+ * rendait des chiffres orphelins sous des libellés qui ne les expliquaient pas.
+ * Un décompte porte donc SA clé — accordée en nombre par le dictionnaire, comme
+ * partout ailleurs dans ce produit.
+ */
+type Decompte = 'reminders' | 'findings' | 'charges'
+
+type Champ = { champ: string; nature: Nature } | { champ: string; decompte: Decompte }
+
+const DETAIL: Record<string, Champ[]> = {
+  'payment.record': [
+    { champ: 'amountMinor', nature: 'argent' },
+    { champ: 'method', nature: 'moyen' },
+  ],
+  'payment.delete': [
+    { champ: 'amountMinor', nature: 'argent' },
+    { champ: 'method', nature: 'moyen' },
+    { champ: 'paidOn', nature: 'date' },
+  ],
+  'receipt.issued': [
+    { champ: 'kind', nature: 'piece' },
+    { champ: 'periodStart', nature: 'mois' },
+    { champ: 'paidMinor', nature: 'argent' },
+  ],
+  /* LE MOTIF APRÈS LE MONTANT, et il compte autant : le montant est ce qu'on
+     vérifie, le motif ce qu'on conteste. */
+  'deposit.settle': [
+    { champ: 'withheldMinor', nature: 'argent' },
+    { champ: 'reason', nature: 'texte' },
+  ],
+  'deposit.unsettle': [{ champ: 'withheldMinor', nature: 'argent' }],
+  'work.quote': [{ champ: 'quotedAmountMinor', nature: 'argent' }],
+  'work.approve': [{ champ: 'approvedAmountMinor', nature: 'argent' }],
+  'work.complete': [{ champ: 'completedOn', nature: 'date' }],
+  'inspection.record': [
+    { champ: 'findings', decompte: 'findings' },
+    { champ: 'billableMinor', nature: 'argent' },
+  ],
+  /* L'ÉNERGIE D'ABORD : un prix au mètre cube et un prix au kilowattheure ne se
+     comparent pas, et le second n'a de sens qu'avec son unité. */
+  'tariff.set': [
+    { champ: 'utility', nature: 'service' },
+    { champ: 'unitPriceMinor', nature: 'argent' },
+    { champ: 'effectiveFrom', nature: 'date' },
+  ],
+  'park.update': [
+    { champ: 'name', nature: 'texte' },
+    { champ: 'currency', nature: 'devise' },
+  ],
+  'tenant.create': [
+    { champ: 'fullName', nature: 'texte' },
+    { champ: 'rentMinor', nature: 'argent' },
+    { champ: 'startsOn', nature: 'date' },
+  ],
+  'tenant.delete': [{ champ: 'fullName', nature: 'texte' }],
+  'rent.call': [
+    { champ: 'periodStart', nature: 'mois' },
+    { champ: 'count', decompte: 'charges' },
+  ],
+  'rent.remind': [{ champ: 'count', decompte: 'reminders' }],
+  'lease.formal_notice': [
+    { champ: 'dueMinor', nature: 'argent' },
+    { champ: 'reason', nature: 'texte' },
+  ],
+}
+
 interface DecisionApi {
   id: string
   action: string
@@ -56,6 +158,7 @@ interface RegistreApi {
 export function Decisions() {
   const t = useT()
   const d = useDates()
+  const { money } = useCurrency()
   const { adhesionActive, estDemo } = useSession()
   const parkId = adhesionActive?.parkId ?? null
 
@@ -133,6 +236,77 @@ export function Decisions() {
    * peut donc pas prétendre les connaître toutes, et une action inconnue vaut
    * mieux dite « Décision enregistrée » que rendue en `snake.case` de base.
    */
+  /**
+   * CE QU'A CHANGÉ UNE DÉCISION, en une ligne — ou rien.
+   *
+   * SIX NATURES, ET AUCUNE FUITE. Chaque valeur est vérifiée avant d'être
+   * rendue : un nombre là où on attend un nombre, une chaîne là où on attend du
+   * texte. Une valeur d'un autre type est ÉCARTÉE plutôt que convertie, parce
+   * qu'un `String(objet)` rendrait « [object Object] » sur la seule ligne d'un
+   * registre censé faire autorité.
+   *
+   * Les MONTANTS suivent la devise choisie, comme partout ailleurs : ils sont
+   * écrits en unités mineures dans la devise du parc, et `money` fait le reste.
+   */
+  const detail = (decision: DecisionApi): string => {
+    const recette = DETAIL[decision.action]
+    const payload = decision.payload
+    if (!recette || typeof payload !== 'object' || payload === null) return ''
+    const champs = payload as Record<string, unknown>
+
+    const morceaux = recette.map((regle) => {
+      const valeur = champs[regle.champ]
+      if (valeur === undefined || valeur === null) return ''
+
+      /* Un DÉCOMPTE porte son unité, accordée en nombre : « 4 relances »,
+         « 1 constat ». Le dictionnaire fait l'accord, comme partout. */
+      if ('decompte' in regle)
+        return typeof valeur === 'number'
+          ? t(`app.decisions.units.${regle.decompte}` as 'app.decisions.units.reminders', {
+              count: valeur,
+            })
+          : ''
+
+      switch (regle.nature) {
+        case 'argent':
+          return typeof valeur === 'number' ? money(valeur, { compact: true }) : ''
+        case 'service':
+          return valeur === 'water' || valeur === 'power'
+            ? t(`app.decisions.utilities.${valeur}` as 'app.decisions.utilities.water')
+            : ''
+        case 'texte':
+          /* Le texte du serveur passe tel quel — un motif de retenue, un nom.
+             React échappe ; ce qui est refusé ici est ce qui n'est PAS du
+             texte, et qui trahirait la forme interne du payload. */
+          return typeof valeur === 'string' ? valeur : ''
+        case 'date':
+          return typeof valeur === 'string' ? d.fullDate(partiesDeDateISO(valeur)) : ''
+        case 'mois':
+          return typeof valeur === 'string' ? d.monthYear(partiesDeDateISO(valeur)) : ''
+        case 'moyen': {
+          const cle = PAYMENT_METHOD_LABELS[valeur as PaymentMethodKey]
+          return cle ? t(cle as 'app.payments.methodCash') : ''
+        }
+        case 'devise': {
+          /* Le serveur écrit un code ISO — `XAF` — que l'écran ne montre nulle
+             part ailleurs : il réunit les deux francs sous « FCFA ». */
+          const code = ({ XAF: 'CFA', XOF: 'CFA', EUR: 'EUR', CAD: 'CAD', USD: 'USD' } as const)[
+            valeur as 'XAF'
+          ]
+          return code ? CURRENCY_DEFS[code].label : ''
+        }
+        case 'piece':
+          /* « Quittance » ou « Reçu » : le serveur seul tranche, et le mot
+             qu'il a choisi est ce que le locataire a reçu. */
+          return valeur === 'quittance' || valeur === 'recu'
+            ? t(`app.receipts.${valeur}` as 'app.receipts.quittance')
+            : ''
+      }
+    })
+
+    return morceaux.filter(Boolean).join(' · ')
+  }
+
   const libelle = (action: string) => {
     const cle = `app.decisions.actions.${action}` as 'app.decisions.actions.unknown'
     const rendu = t(cle)
@@ -182,7 +356,20 @@ export function Decisions() {
               {
                 key: 'what',
                 header: t('app.decisions.colWhat'),
-                render: (decision) => <span className="font-medium">{libelle(decision.action)}</span>,
+                /* LE DÉTAIL SOUS L'ACTION, et non dans une quatrième colonne :
+                   il n'existe pas pour toutes les décisions, et une colonne à
+                   moitié vide se lit comme une donnée manquante. Sous le
+                   libellé, son absence ne se voit pas — c'est le motif des
+                   lignes d'alerte du tableau de bord. */
+                render: (decision) => {
+                  const quoi = detail(decision)
+                  return (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-medium">{libelle(decision.action)}</span>
+                      {quoi && <span className="text-caption text-muted">{quoi}</span>}
+                    </div>
+                  )
+                },
               },
               {
                 key: 'who',

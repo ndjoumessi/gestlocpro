@@ -1054,6 +1054,18 @@ export const en: Dictionary = {
         rendait « Décision enregistrée » pour toutes. Imbriquées, la clé du
         serveur devient le chemin du dictionnaire sans conversion.
       */
+      units: {
+        reminders: '{count} reminders',
+        reminders_one: '{count} reminder',
+        findings: '{count} findings',
+        findings_one: '{count} finding',
+        charges: '{count} charges',
+        charges_one: '{count} charge',
+      },
+      utilities: {
+        water: 'Water',
+        power: 'Electricity',
+      },
       actions: {
         access: {
           revoke: 'Access revoked',

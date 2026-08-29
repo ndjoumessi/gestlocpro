@@ -319,19 +319,72 @@ export function decisionsDemo(aujourdhui: Date): DecisionDemo[] {
   const ilYA = (heures: number) =>
     new Date(aujourdhui.getTime() - heures * 3_600_000).toISOString()
 
+  /* LES PAYLOADS SONT SERVIS, ET C'EST LA MOITIÉ DU JEU. Sans eux le registre
+     de démonstration montrerait des libellés nus — « Caution arbitrée » sans le
+     montant retenu — et le détail ne serait mesuré par personne : `mesure-ui`
+     et `couleur-non-seule` ne visitent que la démonstration. Les montants sont
+     ceux du jeu, en unités mineures et en francs, comme le serveur les écrit. */
+  const mois = `${aujourdhui.toISOString().slice(0, 7)}-01`
+
   return [
-    { id: 'demo-d-1', action: 'deposit.settle', at: ilYA(3), actor: 'Arsène Nkolo' },
-    { id: 'demo-d-2', action: 'work.approve', at: ilYA(9), actor: 'Arsène Nkolo' },
-    { id: 'demo-d-3', action: 'payment.record', at: ilYA(26), actor: 'Diane Fotso' },
-    { id: 'demo-d-4', action: 'receipt.issued', at: ilYA(27), actor: 'Diane Fotso' },
-    { id: 'demo-d-5', action: 'rent.remind', at: ilYA(50), actor: 'Diane Fotso' },
-    { id: 'demo-d-6', action: 'tariff.set', at: ilYA(74), actor: 'Arsène Nkolo' },
-    { id: 'demo-d-7', action: 'inspection.record', at: ilYA(98), actor: 'Diane Fotso' },
+    {
+      id: 'demo-d-1',
+      action: 'deposit.settle',
+      at: ilYA(3),
+      actor: 'Arsène Nkolo',
+      payload: { withheldMinor: 40000, reason: 'Peinture du séjour' },
+    },
+    {
+      id: 'demo-d-2',
+      action: 'work.approve',
+      at: ilYA(9),
+      actor: 'Arsène Nkolo',
+      payload: { approvedAmountMinor: 110660 },
+    },
+    {
+      id: 'demo-d-3',
+      action: 'payment.record',
+      at: ilYA(26),
+      actor: 'Diane Fotso',
+      payload: { amountMinor: 170942, method: 'mobile' },
+    },
+    {
+      id: 'demo-d-4',
+      action: 'receipt.issued',
+      at: ilYA(27),
+      actor: 'Diane Fotso',
+      payload: { kind: 'quittance', periodStart: mois, paidMinor: 170942 },
+    },
+    {
+      id: 'demo-d-5',
+      action: 'rent.remind',
+      at: ilYA(50),
+      actor: 'Diane Fotso',
+      payload: { count: 4 },
+    },
+    {
+      id: 'demo-d-6',
+      action: 'tariff.set',
+      at: ilYA(74),
+      actor: 'Arsène Nkolo',
+      payload: { utility: 'water', unitPriceMinor: 520, effectiveFrom: mois },
+    },
+    {
+      id: 'demo-d-7',
+      action: 'inspection.record',
+      at: ilYA(98),
+      actor: 'Diane Fotso',
+      payload: { kind: 'entry', findings: 3, billableMinor: 25000 },
+    },
     /* UN ACTEUR NUL, et il n'est pas décoratif : `actorId` est en `SetNull`
        pour que le registre survive à la suppression d'un compte. C'est le seul
        cas où l'écran doit écrire « compte supprimé » plutôt qu'un nom, et sans
        cette ligne il ne serait rendu nulle part. */
-    { id: 'demo-d-8', action: 'access.revoke', at: ilYA(220), actor: null },
+    /* CELLE-CI N'A PAS DE DÉTAIL UTILE — le rôle repris est une nature que la
+       table ne sait pas lire, et c'est voulu. Elle rend donc une ligne MUETTE,
+       ce qui est l'autre état à mesurer : sans elle, on ne verrait jamais à
+       quoi ressemble une décision sans détail. */
+    { id: 'demo-d-8', action: 'access.revoke', at: ilYA(220), actor: null, payload: { role: 'manager' } },
   ]
 }
 
@@ -340,6 +393,8 @@ export interface DecisionDemo {
   action: string
   at: string
   actor: string | null
+  /** Ce qui a changé — même forme que celle du serveur, `Json` compris. */
+  payload: Record<string, unknown>
 }
 
 /**
