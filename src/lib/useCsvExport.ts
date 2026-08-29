@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react'
 import { useToast } from '@/components/primitives/Toast'
 import { useI18n, type MessageKey } from '@/i18n/I18nProvider'
 import { useCurrency } from '@/currency/CurrencyProvider'
-import { CURRENCY_DEFS, enUniteDUsage } from '@/currency/currencies'
+import { CURRENCY_DEFS, enUniteDUsage, formatTaux, libelleCourt } from '@/currency/currencies'
 import { useDates } from './useDates'
 import { partiesDeDateISO } from './dates'
 import { csvDelimiter, csvFilename, csvNumber, isoDay, serializeCsv, type CsvCell } from './csv'
@@ -42,16 +42,6 @@ export interface CsvExportRequest {
  * ; la mettre en en-tête la dit une fois, à l'endroit où elle vaut pour toute
  * la colonne. C'est aussi ce que fait n'importe quel export comptable.
  */
-/**
- * La devise en forme COURTE, pour un en-tête de colonne.
- *
- * « FCFA », « Euro », « CAD », « USD » — le libellé du produit débarrassé de son
- * symbole entre parenthèses. Dans « Consigné (CAD ($)) », la parenthèse
- * imbriquée n'ajoute rien à un lecteur de tableur, qui reconnaît le code.
- */
-const deviseCourte = (definition: { label: string }): string =>
-  definition.label.replace(/\s*\([^)]*\)\s*$/, '')
-
 export function useCsvMoney() {
   const { locale, t } = useI18n()
   const dates = useDates()
@@ -95,7 +85,7 @@ export function useCsvMoney() {
        * en-tête de colonne, le symbole n'ajoute rien et ouvre une parenthèse
        * dans une parenthèse.
        */
-      header: (label: string): string => `${label} (${deviseCourte(definition)})`,
+      header: (label: string): string => `${label} (${libelleCourt(deviseAffichee)})`,
     }),
     [baseDeConversion, dates, deviseAffichee, deviseSource, enDeviseAffichee, locale, definition, t],
   )
@@ -119,19 +109,32 @@ export function useCsvExport() {
    * La parité du franc CFA n'a pas de date : elle est fixée par traité. Lui en
    * donner une inventerait une péremption — même règle que les documents, servie
    * par le même `baseDeConversion`.
+   *
+   * ET LE TAUX Y FIGURE, pas seulement sa date. C'est ce qui rend le fichier
+   * RECALCULABLE : sans le nombre, on ne peut ni remonter aux montants reçus, ni
+   * recouper une somme, ni retrouver plus tard quel cours a servi — le cours du
+   * 28/08/2026 ne se repêche pas dans six mois, sur un fichier archivé, par
+   * quelqu'un qui n'a pas ce produit. Et c'est le taux QUI A SERVI : il vient de
+   * `coursEntre`, celui-là même dont sortent les montants des colonnes.
    */
   const mentionDeConversion = useCallback((): string | null => {
     const base = baseDeConversion(deviseSource)
     if (!base) return null
     const depuis = CURRENCY_DEFS[base.depuis].label
+    const rate = formatTaux(base.taux, locale)
     return base.date
       ? t('app.documents.csvConverted', {
           currency: definition.label,
           from: depuis,
           date: dates.fullDate(partiesDeDateISO(base.date)),
+          rate,
         })
-      : t('app.documents.csvConvertedPegged', { currency: definition.label, from: depuis })
-  }, [baseDeConversion, dates, definition, deviseSource, t])
+      : t('app.documents.csvConvertedPegged', {
+          currency: definition.label,
+          from: depuis,
+          rate,
+        })
+  }, [baseDeConversion, dates, definition, deviseSource, locale, t])
 
   return useCallback(
     ({ name, stamp, headers, rows, notice }: CsvExportRequest): string => {

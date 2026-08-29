@@ -86,6 +86,10 @@ describe('une pièce lue en euros', () => {
     expect(texte, 'la pièce convertit sans dire depuis quoi').toMatch(/FCFA/)
     expect(texte, 'la parité n’est pas nommée').toMatch(/parité légale|legal parity/)
     expect(texte, 'une date a été inventée pour une parité').not.toMatch(/28\/08\/2026/)
+    /* ET LE NOMBRE. Une pièce se remet, se classe et se relit ailleurs : sans le
+       taux, « convertis depuis le FCFA » ne se recalcule pas, et 260,60 € reste
+       un chiffre qu'il faut croire sur parole. */
+    expect(texte, 'la pièce nomme la parité sans l’écrire').toMatch(/1 Euro = 655,957 FCFA/)
   })
 
   it('date le cours quand la devise flotte', async () => {
@@ -99,6 +103,9 @@ describe('une pièce lue en euros', () => {
     /* Le cours figé du faux serveur est daté du 28/08/2026. Un montant converti
        sans date se ferait passer pour celui du jour. */
     expect(texte, 'le cours flottant n’est pas daté').toMatch(/28\/08\/2026/)
+    /* Et le cours lui-même : 1,6 dollar canadien pour un euro, 655,957 francs
+       pour ce même euro — donc 409,973 francs pour un dollar canadien. */
+    expect(texte, 'la pièce date un cours sans le donner').toMatch(/1 CAD = 409,973 FCFA/)
   })
 
   /**

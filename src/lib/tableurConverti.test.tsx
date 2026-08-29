@@ -156,7 +156,76 @@ describe('la mention de conversion dans le tableur', () => {
       /* Le franc et l'euro sont liés par traité : 655,957, sans date. Dater une
          parité inventerait une péremption — même règle que les documents. */
       expect(fichierTexte).toMatch(/parité légale|legal parity/)
+      expect(fichierTexte, 'la parité est nommée sans être écrite').toContain(
+        '1 Euro = 655,957 FCFA',
+      )
+      /* ET DANS CE SENS-LÀ. « 1 FCFA = 0,00152 Euro » est le même fait, illisible
+         : un taux se lit sur l'unité qui vaut le plus, sans quoi le lecteur
+         compte des zéros après la virgule pour savoir de quel ordre il parle. */
+      expect(fichierTexte, 'le taux est écrit à l’envers').not.toMatch(/1 FCFA =/)
       expect(fichierTexte, 'une date a été inventée pour une parité').not.toContain('28/08/2026')
+    } finally {
+      capture.restore()
+    }
+  })
+
+  /**
+   * ET LE TAUX LUI-MÊME, pas seulement sa date.
+   *
+   * ═══ CE QUE LA NOTE DISAIT ═══
+   *
+   * « Montants convertis du FCFA vers le CAD ($), au taux du 28/08/2026. » La
+   * phrase nomme la devise d'origine et DATE le cours — mais elle ne donne pas
+   * le NOMBRE, et sans lui rien n'est recalculable : on ne peut ni remonter aux
+   * montants reçus, ni recouper une somme, ni retrouver plus tard quel cours a
+   * servi. Le cours du 28/08/2026 ne se repêche pas dans six mois, sur un
+   * fichier archivé, par quelqu'un qui n'a pas ce produit.
+   *
+   * C'est ce qui manquait à la promesse écrite dans `CurrencyProvider` : « la
+   * devise d'origine, LE TAUX EMPLOYÉ et sa date ». Deux termes sur trois.
+   *
+   * ═══ LE CAS PORTE SUR LE NOMBRE, ET NON SUR SA PRÉSENCE ═══
+   *
+   * Il applique le taux annoncé au montant du fichier et exige de retomber sur
+   * la somme d'origine. Un taux écrit à CÔTÉ de celui qui a servi — inversé,
+   * arrondi trop court, pris sur une autre paire — serait pire que pas de taux
+   * du tout : il donnerait de quoi « vérifier », et ferait conclure à une erreur
+   * là où il n'y en a pas.
+   */
+  it('donne le taux, et c’est celui qui a servi', async () => {
+    installerFauxServeur()
+    await renderApp('/demo/cautions', { currency: 'CAD' })
+    await attendreLeChargement()
+
+    const capture = captureDownloads()
+    try {
+      await userEvent.setup().click(screen.getByRole('button', { name: /tableur|spreadsheet/i }))
+      const [fichier] = await capture.settle()
+      const lignes = new TextDecoder().decode(fichier.bytes).split('\r\n')
+      const note = lignes.find((l) => /convertis|converted/i.test(l)) ?? ''
+
+      /* Le faux serveur fige 1,6 dollar canadien pour un euro, et le franc en
+         vaut 655,957 : un dollar canadien vaut donc 409,973 francs. */
+      expect(note, 'la note ne donne pas le taux').toContain('1 CAD = 409,973 FCFA')
+
+      /* ET C'EST LE TAUX QUI A SERVI. A1 porte 290 000 francs consignés,
+         exportés en dollars ; le nombre lu dans la note doit les rendre. */
+      const taux = Number(note.match(/= ([\d,.]+) FCFA/)?.[1]?.replace(',', '.'))
+      const consigne = Number(
+        (lignes.find((l) => l.startsWith('A1'))?.split(';')[2] ?? '')
+          .replace(/"/g, '')
+          .replace(',', '.'),
+      )
+      /* LA TOLÉRANCE EST UN CENTIME DE DOLLAR, converti en francs. Le fichier
+         porte 707,36 — arrondi au centime, comme tout montant — et ce centime
+         vaut quatre francs : exiger mieux serait exiger du fichier une
+         précision qu'il n'a pas. Elle reste étroite là où il faut : un taux
+         inversé se trompe d'un facteur 168 000, un taux arrondi à quatre
+         chiffres significatifs manque de cinquante francs. */
+      expect(
+        Math.abs(consigne * taux - 290_000),
+        'le taux annoncé ne rend pas le montant d’origine',
+      ).toBeLessThan(taux / 100)
     } finally {
       capture.restore()
     }

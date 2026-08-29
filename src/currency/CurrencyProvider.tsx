@@ -15,9 +15,11 @@ import {
   exigeUnFluxDeCours,
   formatMoney,
   parseMoney,
+  tauxLisible,
   type CurrencyCode,
   type CurrencyDef,
   type FormatMoneyOptions,
+  type TauxLisible,
 } from './currencies'
 import { api } from '@/api/client'
 
@@ -83,8 +85,15 @@ interface CurrencyContextValue {
    * Une quittance convertie sans dire depuis quoi ni à quel taux affirme qu'on
    * a reçu des euros là où des francs ont été encaissés. C'est la différence
    * entre convertir et falsifier, et elle tient en une ligne de bas de page.
+   *
+   * LES TROIS TERMES : d'où, à quel taux, de quand. Cette promesse était écrite
+   * ici et tenue aux deux tiers — le `taux` manquait, si bien qu'une pièce
+   * archivée n'était plus recalculable par personne : le cours du 28/08/2026 ne
+   * se repêche pas dans six mois par un lecteur qui n'a pas ce produit.
    */
-  baseDeConversion: (depuis: CurrencyCode) => { depuis: CurrencyCode; date: string | null } | null
+  baseDeConversion: (
+    depuis: CurrencyCode,
+  ) => { depuis: CurrencyCode; date: string | null; taux: TauxLisible } | null
   /**
    * Lit un montant saisi, selon les conventions de la devise active.
    * Rend `null` quand la saisie ne contient aucun nombre lisible.
@@ -318,7 +327,8 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
       },
       baseDeConversion: (depuis) => {
         if (depuis === deviseAffichee) return null
-        if (convertir(0, depuis, deviseAffichee, cours.parEuro) === null) return null
+        const taux = tauxLisible(depuis, deviseAffichee, cours.parEuro)
+        if (taux === null) return null
         /*
           LA DATE SUIT LA PAIRE, PAS LA MÉMOIRE.
 
@@ -330,7 +340,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
           il n'a pas de date, et lui en donner une invente une péremption.
         */
         const parLeFlux = exigeUnFluxDeCours(depuis) || exigeUnFluxDeCours(deviseAffichee)
-        return { depuis, date: parLeFlux ? cours.date : null }
+        return { depuis, date: parLeFlux ? cours.date : null, taux }
       },
       enDeviseAffichee: (amount, depuis = deviseSource) =>
         convertir(amount, depuis, deviseAffichee, cours.parEuro) ?? amount,

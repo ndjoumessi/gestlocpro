@@ -232,35 +232,34 @@ export function exigeUnFluxDeCours(devise: CurrencyCode): boolean {
 }
 
 /**
- * CONVERTIR UN MONTANT D'UNE DEVISE VERS UNE AUTRE, en unités mineures.
+ * LE RAPPORT ENTRE DEUX MONNAIES : combien de `vers` pour UNE unité de `depuis`.
  *
  * ═══ LE CHEMIN PASSE PAR L'EURO, ET C'EST VOULU ═══
  *
  * Les cours sont tous publiés pour un euro : celui de la BCE comme la parité du
- * franc CFA. Convertir de source vers euro puis d'euro vers cible n'introduit
- * aucune inversion — l'endroit où l'on se trompe — et fait tomber les deux cas
+ * franc CFA. Passer de source à euro puis d'euro à cible n'introduit aucune
+ * inversion — l'endroit où l'on se trompe — et fait tomber les deux cas
  * triviaux tout seuls : source égale cible, ou l'une des deux étant l'euro.
  *
- * ═══ LES UNITÉS MINEURES SE DÉFONT PUIS SE REFONT ═══
+ * ═══ POURQUOI CE CALCUL EST SORTI DE `convertir` ═══
  *
- * Un cours porte sur des unités d'USAGE : 655,957 francs pour un euro, et non
- * 655,957 centimes. Le montant quitte donc sa mineure, traverse, et reprend
- * celle de la cible — dont le nombre de décimales n'est pas le même. C'est
- * l'unique endroit du produit où les deux échelles se croisent.
+ * Parce que le taux s'ÉCRIT, désormais : les documents et les exports le
+ * portent en toutes lettres, à côté des montants qu'il a produits. Un second
+ * calcul du même rapport, ailleurs, aurait pu diverger de celui qui a servi —
+ * et un taux faux à côté de montants justes est pire que pas de taux : il donne
+ * de quoi « vérifier » et fait conclure à une erreur qui n'existe pas.
  *
- * ═══ SANS COURS, PAS DE CONVERSION ═══
+ * ═══ SANS COURS, PAS DE RAPPORT ═══
  *
- * Rend `null` plutôt qu'un montant. Un appelant qui recevrait le montant
- * d'origine sous un autre symbole afficherait exactement le défaut que cette
- * fonction existe pour supprimer.
+ * Rend `null` plutôt qu'un nombre. Un appelant qui recevrait 1 par défaut
+ * afficherait quatre devises au même montant — le défaut d'origine du produit.
  */
-export function convertir(
-  mineur: number,
+export function coursEntre(
   depuis: CurrencyCode,
   vers: CurrencyCode,
   parEuro: Partial<Record<string, number>>,
 ): number | null {
-  if (depuis === vers) return mineur
+  if (depuis === vers) return 1
 
   /* LA PARITÉ D'ABORD, LE FLUX PAR-DESSUS. L'ordre compte peu — le serveur
      publie la même constante — mais il donne le dernier mot à la réponse reçue
@@ -270,8 +269,97 @@ export function convertir(
   const coursVers = cours[CODE_ISO[vers]]
   if (!coursDepuis || !coursVers) return null
 
-  const enEuros = enUniteDUsage(mineur, depuis) / coursDepuis
-  return Math.round(enEuros * coursVers * 10 ** CURRENCY_DEFS[vers].decimals)
+  return coursVers / coursDepuis
+}
+
+/**
+ * CONVERTIR UN MONTANT D'UNE DEVISE VERS UNE AUTRE, en unités mineures.
+ *
+ * ═══ LES UNITÉS MINEURES SE DÉFONT PUIS SE REFONT ═══
+ *
+ * Un cours porte sur des unités d'USAGE : 655,957 francs pour un euro, et non
+ * 655,957 centimes. Le montant quitte donc sa mineure, traverse, et reprend
+ * celle de la cible — dont le nombre de décimales n'est pas le même. C'est
+ * l'unique endroit du produit où les deux échelles se croisent.
+ *
+ * Le rapport, lui, vient de `coursEntre` : c'est celui que les pièces et les
+ * exports ÉCRIVENT, et il ne se calcule donc qu'une fois.
+ */
+export function convertir(
+  mineur: number,
+  depuis: CurrencyCode,
+  vers: CurrencyCode,
+  parEuro: Partial<Record<string, number>>,
+): number | null {
+  if (depuis === vers) return mineur
+
+  const taux = coursEntre(depuis, vers, parEuro)
+  if (taux === null) return null
+
+  return Math.round(enUniteDUsage(mineur, depuis) * taux * 10 ** CURRENCY_DEFS[vers].decimals)
+}
+
+/** « Un `un` vaut `vaut` `en` » — le taux dans le sens où on l'écrit. */
+export interface TauxLisible {
+  un: CurrencyCode
+  vaut: number
+  en: CurrencyCode
+}
+
+/**
+ * LE TAUX DANS LE SENS OÙ IL SE LIT.
+ *
+ * Un rapport entre deux monnaies s'écrit dans les deux sens, et l'un des deux
+ * est illisible. « 1 FCFA = 0,00152 Euro » et « 1 Euro = 655,957 FCFA » disent
+ * le même fait ; le premier oblige à compter les zéros après la virgule pour
+ * savoir de quel ordre on parle. On retient donc le sens dont le nombre est
+ * SUPÉRIEUR À UN — règle qui ne dépend d'aucune liste à tenir à jour et qui
+ * tombe juste sur les quatre paires du produit.
+ *
+ * CE N'EST PAS LE SENS DE LA CONVERSION, et c'est voulu : on convertit des
+ * francs en dollars, et l'on écrit ce que vaut un dollar. Un taux se lit, il ne
+ * se suit pas — celui qui veut refaire le calcul divise, et il sait le faire.
+ */
+export function tauxLisible(
+  depuis: CurrencyCode,
+  vers: CurrencyCode,
+  parEuro: Partial<Record<string, number>>,
+): TauxLisible | null {
+  const direct = coursEntre(depuis, vers, parEuro)
+  const inverse = coursEntre(vers, depuis, parEuro)
+  if (direct === null || inverse === null) return null
+  return direct >= 1 ? { un: depuis, vaut: direct, en: vers } : { un: vers, vaut: inverse, en: depuis }
+}
+
+/**
+ * La devise en forme COURTE : « FCFA », « Euro », « CAD », « USD ».
+ *
+ * Le libellé du produit débarrassé de son symbole entre parenthèses. Dans un
+ * en-tête de colonne — « Consigné (CAD ($)) » — ou dans un taux — « 1 CAD ($) =
+ * 409,973 FCFA » — la parenthèse imbriquée n'ajoute rien à qui reconnaît déjà
+ * le code.
+ */
+export function libelleCourt(currency: CurrencyCode): string {
+  return CURRENCY_DEFS[currency].label.replace(/\s*\([^)]*\)\s*$/, '')
+}
+
+/**
+ * Le taux en toutes lettres : « 1 CAD = 409,973 FCFA ».
+ *
+ * SIX CHIFFRES SIGNIFICATIFS, et le nombre est choisi. La parité du franc en
+ * demande exactement six — 655,957 — et l'arrondir plus court la fausserait,
+ * sur la seule paire du produit dont la valeur est EXACTE. Au-delà, on
+ * publierait des décimales que le flux lui-même n'a pas.
+ *
+ * La locale est celle de la LANGUE et non de la devise : le taux est une phrase
+ * avant d'être un montant, et il se lit dans le texte qui l'entoure.
+ */
+export function formatTaux(taux: TauxLisible, locale: string): string {
+  const nombre = new Intl.NumberFormat(locale, { maximumSignificantDigits: 6 })
+    .format(taux.vaut)
+    // Le même traitement que `formatMoney` : les milliers prennent la fine.
+    .replace(/[\u00a0\u202f\s]/g, '\u202f')
+  return `1 ${libelleCourt(taux.un)} = ${nombre} ${libelleCourt(taux.en)}`
 }
 
 export function estRondEnUniteDUsage(mineur: number, currency: CurrencyCode): boolean {

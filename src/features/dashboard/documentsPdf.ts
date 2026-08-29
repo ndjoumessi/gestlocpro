@@ -2,8 +2,8 @@ import { useCallback } from 'react'
 import { useSession } from '@/api/SessionProvider'
 import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
-import { CURRENCY_DEFS, type CurrencyCode } from '@/currency/currencies'
-import { useT } from '@/i18n/I18nProvider'
+import { CURRENCY_DEFS, formatTaux, type CurrencyCode } from '@/currency/currencies'
+import { useI18n, useT } from '@/i18n/I18nProvider'
 import { isoDay, isoMonth } from '@/lib/csv'
 import { PDF_MIME, downloadBinaryFile, printBinaryFile } from '@/lib/download'
 import { nouvelleMiseEnPage, type MiseEnPage } from '@/lib/miseEnPage'
@@ -444,7 +444,7 @@ function faitsDuPortefeuille(
  * d'annoncer un jour qu'on n'a pas.
  */
 export function useMentionDeConversion() {
-  const t = useT()
+  const { locale, t } = useI18n()
   const d = useDates()
   const { baseDeConversion } = useCurrency()
 
@@ -453,14 +453,21 @@ export function useMentionDeConversion() {
       const base = baseDeConversion(depuis)
       if (!base) return undefined
       const currency = CURRENCY_DEFS[base.depuis].label
+      /* LE TAUX EN TOUTES LETTRES, et pas seulement sa date. Une pièce se
+         remet, se classe et se relit ailleurs : « convertis depuis le FCFA au
+         taux du 28/08/2026 » ne se recalcule par personne — ni le locataire qui
+         la reçoit, ni le comptable qui la ressort dans six mois, parce que ce
+         cours-là ne se repêche pas. Avec le nombre, la pièce se suffit. */
+      const rate = formatTaux(base.taux, locale)
       return base.date
         ? t('app.documents.pdfConverted', {
             currency,
             date: d.fullDate(partiesDeDateISO(base.date)),
+            rate,
           })
-        : t('app.documents.pdfConvertedPegged', { currency })
+        : t('app.documents.pdfConvertedPegged', { currency, rate })
     },
-    [baseDeConversion, d, t],
+    [baseDeConversion, d, locale, t],
   )
 }
 

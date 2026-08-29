@@ -556,10 +556,11 @@ export const fr = {
       pdfRemaining: 'Reste à régler',
       pdfPayments: 'Versements reçus',
       pdfNoPayment: 'Aucun versement enregistré sur cette période.',
-      csvConverted: 'Montants convertis du {from} vers le {currency}, au taux du {date}.',
-      csvConvertedPegged: 'Montants convertis du {from} vers le {currency}, à la parité légale.',
-      pdfConverted: 'Montants convertis depuis le {currency} au taux du {date}.',
-      pdfConvertedPegged: 'Montants convertis depuis le {currency} à la parité légale.',
+      csvConverted: 'Montants convertis du {from} vers le {currency}, au taux du {date} : {rate}.',
+      csvConvertedPegged:
+        'Montants convertis du {from} vers le {currency}, à la parité légale : {rate}.',
+      pdfConverted: 'Montants convertis depuis le {currency} au taux du {date} : {rate}.',
+      pdfConvertedPegged: 'Montants convertis depuis le {currency} à la parité légale : {rate}.',
       pdfImputation:
         'Le versement a soldé le loyer à hauteur de {rent}, l’eau de {water} et l’électricité de {power}. L’imputation suit cet ordre.',
       pdfWithheldNote:
