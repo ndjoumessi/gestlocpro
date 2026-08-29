@@ -156,8 +156,12 @@ describe('l’état des cautions', () => {
       const feuille = new TextDecoder('latin1').decode(fichier.bytes)
 
       /* TROIS SECTIONS, TROIS OBLIGATIONS : dette entière, dette en litige,
-         dette éteinte. Les mêler ferait un tableau exact et inutilisable. */
-      for (const section of ['Consignée', 'En cours', 'Restituée'])
+         dette éteinte. Les mêler ferait un tableau exact et inutilisable.
+
+         Les titres portaient le libellé de STATUT — « Consignée », accordé avec
+         une caution, au-dessus de deux. Ils nomment désormais l'ensemble qu'ils
+         coiffent ; voir la garde des sections, plus bas. */
+      for (const section of ['Cautions consignées', 'Cautions en cours', 'Cautions restituées'])
         expect(feuille, `la section « ${section} » manque`).toContain(section)
 
       /* ET LA RENDUE FIGURE QUAND MÊME, hors du total : la retirer ferait un
@@ -368,6 +372,82 @@ describe('les totaux de l’état des cautions', () => {
 
     const texte = (carte?.textContent ?? '').replace(/[\s ]/g, ' ')
     expect(texte, 'la note ne dit pas de combien la dette a été réduite').toContain('250 000')
+  })
+})
+
+/**
+ * LES TITRES DE SECTION NOMMENT CE QU'ILS COIFFENT.
+ *
+ * ═══ LE LIBELLÉ SERVAIT DEUX FOIS ═══
+ *
+ * `app.deposits.held` vaut « Consignée » : féminin SINGULIER, accordé avec
+ * *caution*. C'est juste sur une pastille de statut, qui qualifie une ligne.
+ * Le document s'en servait aussi comme TITRE DE SECTION, au-dessus de deux
+ * cautions — « Consignée » coiffant A1 et A2.
+ *
+ * Le défaut est celui du lot précédent, à trente lignes de là, sur le même
+ * document : un mot accordé avec une caution posé au-dessus de plusieurs.
+ *
+ * ═══ POURQUOI DES CLÉS À PART, ET PAS L'ACCORD EN NOMBRE ═══
+ *
+ * Accorder aurait demandé de faire porter `count` aux QUATRE appelants du
+ * libellé de statut — pastille de l'écran, colonne du tableur, ligne « Statut »
+ * du reçu de caution, titre de section — et de mettre la forme de base au
+ * pluriel. Un cinquième appelant qui oublierait `count` écrirait alors
+ * « Consignées » sur une ligne unique, sans que rien dans le texte de la clé
+ * n'ait pu le lui rappeler : elle ne contient aucun nombre.
+ *
+ * Un titre de section n'est pas un statut : il nomme un ENSEMBLE. « Cautions
+ * consignées » le dit, reste vrai à un comme à dix, et lève au passage
+ * l'ellipse — « Consignée » seul, en tête de rubrique, ne dit pas de quoi.
+ */
+describe('les sections de l’état des cautions', () => {
+  async function feuille() {
+    installerFauxServeur()
+    await renderApp('/demo/cautions')
+    await attendreLeChargement()
+
+    const capture = captureDownloads()
+    try {
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: /état des cautions|deposits statement/i }))
+      const [fichier] = await capture.settle()
+      return new TextDecoder('latin1').decode(fichier.bytes)
+    } finally {
+      capture.restore()
+    }
+  }
+
+  it('coiffent leurs cautions d’un titre qui les nomme', async () => {
+    const sheet = await feuille()
+
+    for (const titre of ['Cautions consignées', 'Cautions restituées'])
+      expect(sheet, `la section « ${titre} » manque`).toContain(`(${titre})`)
+
+    /* ET LE MOT ACCORDÉ AU SINGULIER A QUITTÉ LES TITRES. Ajouter les nouveaux
+       sans retirer les anciens laisserait le document dire les deux. Les
+       parenthèses sont celles du format : elles délimitent un texte tracé, donc
+       on vise le titre entier et non une sous-chaîne. */
+    expect(sheet, 'le titre au singulier est resté').not.toContain('(Consignée)')
+    expect(sheet, 'le titre au singulier est resté').not.toContain('(Restituée)')
+  })
+
+  /**
+   * LE CONTREPOIDS, et c'est lui qui retient le correctif paresseux.
+   *
+   * Mettre « Consignée » au pluriel dans le dictionnaire réglait la section en
+   * une ligne — et faisait dire « Consignées » à la pastille d'UNE caution, sur
+   * l'écran le plus regardé des deux.
+   */
+  it('laissent la pastille d’une caution au singulier', async () => {
+    installerFauxServeur()
+    await renderApp('/demo/cautions')
+    await attendreLeChargement()
+
+    const ligne = screen.getAllByRole('row').find((r) => /Charles Ngassa/.test(r.textContent ?? ''))
+    expect(ligne, 'la ligne de A1 est introuvable').toBeDefined()
+    expect(within(ligne!).getByText('Consignée'), 'la pastille a été mise au pluriel').toBeVisible()
   })
 })
 

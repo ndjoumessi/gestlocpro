@@ -808,6 +808,31 @@ export function useDepositPdf() {
  * document qui ne se recoupe pas avec l'écran dont il sort, et l'on chercherait
  * la caution manquante.
  */
+/**
+ * LE TITRE DE SECTION DE CHAQUE STATUT — et pourquoi ce n'est PAS le libellé du
+ * statut lui-même.
+ *
+ * `app.deposits.held` vaut « Consignée » : féminin singulier, accordé avec
+ * *caution*. Juste sur une pastille, qui qualifie UNE ligne ; faux en tête
+ * d'une section qui en coiffe deux, et c'est ce que le document écrivait.
+ *
+ * On aurait pu accorder en nombre. Il aurait fallu faire porter `count` aux
+ * quatre appelants du libellé de statut — pastille de l'écran, colonne du
+ * tableur, ligne « Statut » du reçu, titre de section — et mettre la forme de
+ * base au pluriel : le cinquième appelant qui l'oublierait écrirait
+ * « Consignées » sur une ligne unique, sans que le texte de la clé, qui ne
+ * contient aucun nombre, ait pu le lui rappeler.
+ *
+ * Un titre de section n'est pas un statut : il nomme un ENSEMBLE. « Cautions
+ * consignées » reste vrai à un comme à dix, et lève l'ellipse — « Consignée »
+ * seul, en tête de rubrique, ne dit pas de quoi il parle.
+ */
+const SECTION_DE_STATUT = {
+  held: 'app.deposits.sectionHeld',
+  settling: 'app.deposits.sectionSettling',
+  returned: 'app.deposits.sectionReturned',
+} as const
+
 export function useDepositsStatementPdf() {
   const t = useT()
   const emisLe = useEmisLe()
@@ -878,7 +903,7 @@ export function useDepositsStatementPdf() {
         const lignes = cautions.filter(({ deposit }) => deposit.status === statut)
         if (lignes.length === 0) continue
 
-        page.section(t(`app.deposits.${statut}` as 'app.deposits.held'))
+        page.section(t(SECTION_DE_STATUT[statut]))
         for (const { unite, locataire, deposit } of lignes) {
           /* LA RETENUE SUR LA LIGNE QUI LA SUBIT. Une colonne de retenues à
              part obligerait à rapprocher deux listes de tête ; ici le montant

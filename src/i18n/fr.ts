@@ -1373,6 +1373,12 @@ export const fr = {
       balance: 'À restituer',
       totalHeld: 'Total consigné',
       alreadyReturned: 'Déjà restituées',
+      /* Les TITRES DE SECTION de l'état des cautions. Distincts des libellés
+         de statut ci-dessus, qui qualifient UNE caution : voir
+         `SECTION_DE_STATUT` dans `documentsPdf`. */
+      sectionHeld: 'Cautions consignées',
+      sectionSettling: 'Cautions en cours d’arbitrage',
+      sectionReturned: 'Cautions restituées',
       alreadyReturned_one: 'Déjà restituée',
       /* Les trois cartes étaient NUES — un intitulé, un montant, rien dessous —
          quand celles des cinq autres écrans portent une ligne qui dit sur quoi
