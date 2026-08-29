@@ -250,6 +250,71 @@ const MODALES = [
      vérité du geste et non un contournement : à la souris, c'est l'étiquette
      qu'on vise, et elle est bien visible. */
   { nom: 'Report', adresse: '/demo/travaux', profil: /Locataire|Tenant/, bouton: /^Signaler un problème$|^Report an issue$/, defil: { 360: 620, 1280: 250 }, avant: { 360: 0, 1280: 0 } },
+  /*
+    LES CONFIRMATIONS ENTRENT, ET C'ÉTAIT LE PLUS GRAND TROU DE CETTE PORTE.
+
+    Douze modales étaient mesurées : celles qu'un bouton d'en-tête ou de ligne
+    ouvre du premier coup. Les CONFIRMATIONS ne s'ouvrent qu'après un premier
+    geste — arbitrer une caution, retirer une fiche, retirer un accès, supprimer
+    un immeuble, relancer les retards — et aucune des deux portes navigateur ne
+    les atteignait. Or ce sont exactement celles qui engagent un geste
+    irréversible : la seule famille de modales dont la géométrie compte parce
+    qu'on y décide, et la seule que personne ne regardait.
+
+    Trouvées par un relevé qui croisait les libellés de commande écrits dans
+    `src/features` et les noms accessibles réellement rendus par un balayage de
+    la démonstration. Elles y figuraient comme « jamais rendues », au milieu de
+    faux positifs — et c'est en triant que le motif est apparu : toutes des
+    confirmations, toutes destructrices.
+
+    ELLES N'EXIGENT QU'UN CLIC, comme les autres : leur déclencheur est un
+    bouton de LIGNE au lieu d'un bouton d'en-tête. Rien à ajouter à la mécanique
+    d'ouverture ; il manquait seulement de les inscrire.
+
+    « Reprendre » — le retrait d'un code d'invitation — ouvre la MÊME boîte que
+    « Retirer l'accès », par le même état. Une entrée suffit donc pour les deux ;
+    en ajouter une seconde mesurerait deux fois la même géométrie.
+  */
+  { nom: 'SettleDeposit', adresse: '/demo/cautions', bouton: /^Arbitrer$|^Settle$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'RemoveTenant', adresse: '/demo/locataires', bouton: /^Retirer$|^Remove$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'RevokeAccess', adresse: '/demo/acces', bouton: /^Retirer l’accès$|^Remove access$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  /*
+    SUPPRIMER UN IMMEUBLE : LA SONDE EN CRÉE UN D'ABORD.
+
+    L'issue n'apparaît que sur un immeuble VIDE — « le serveur refuse les
+    autres, et offrir un geste qu'il refusera revient à promettre ce qu'on ne
+    tient pas ». Les trois immeubles de la démonstration portent tous des
+    logements, donc le déclencheur n'existe nulle part.
+
+    DEUX RÉPONSES ÉTAIENT POSSIBLES, et le choix compte. Poser un quatrième
+    immeuble vide dans `portfolio.ts` aurait rendu le geste mesurable — au prix
+    de changer la forme du parc de démonstration pour la commodité d'une garde,
+    et de faire bouger tous les comptes qui en dépendent. Le préalable, lui, ne
+    touche à aucune donnée : il suit le chemin RÉEL — déclarer un immeuble,
+    puis se raviser —, qui est exactement le cas que cette issue existe pour
+    servir.
+
+    Le prix est écrit : ce préalable dépend d'une autre modale — celle de
+    l'ajout — donc il tombera si elle change. C'est une dépendance de garde à
+    écran, et elle est visible ici plutôt que cachée dans une fixture.
+  */
+  {
+    nom: 'DeleteBuilding',
+    adresse: '/demo/parc',
+    bouton: /^Supprimer l’immeuble |^Delete building /,
+    prealable: async (page) => {
+      await page.getByRole('button', { name: /^Ajouter un immeuble$|^Add a building$/ }).first().click()
+      await page.waitForTimeout(300)
+      const boite = page.getByRole('dialog')
+      await boite.getByLabel(/Nom de l’immeuble|Building name/).fill('Immeuble sonde')
+      await boite.getByLabel(/Quartier|District/).fill('Sonde')
+      await boite.getByRole('button', { name: /^Enregistrer$|^Save$/ }).click()
+      await page.waitForTimeout(400)
+    },
+    defil: { 360: 0, 1280: 0 },
+    avant: { 360: 0, 1280: 0 },
+  },
+  { nom: 'RemindOverdue', adresse: '/demo/paiements', bouton: /^Relancer les retards$|^Chase arrears$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
 ]
 
 /**
@@ -260,15 +325,20 @@ const MODALES = [
  * rougir, et l'une de ces deux qui redeviendrait atteignable aussi.
  */
 /*
-  VIDE, ET C'EST UN ÉTAT QUI SE GARDE COMME UN AUTRE.
+  UNE SEULE, ET ELLE NE DOIT PAS S'OUVRIR.
 
-  Les douze modales du produit sont désormais toutes ouvrables en démonstration.
-  La liste reste, avec son compte : une treizième que la démonstration ne
-  rendrait pas devrait s'y inscrire et faire bouger `NON_OUVRABLES_ATTENDUES`,
-  donc apparaître dans un diff. Retirer la liste parce qu'elle est vide, c'est
-  retirer le seul endroit où l'on remarquerait qu'elle a cessé de l'être.
+  La mise en demeure est conditionnée à `unit.leaseId`, qu'aucun bail de la
+  démonstration ne porte. C'est DÉLIBÉRÉ et il faut que ça le reste :
+  `serveFormalNotice` rend `false` sans parc serveur, donc le bouton ouvrirait
+  une boîte dont la confirmation ne ferait rien — un cul-de-sac sous un libellé
+  qui promet un acte. Poser un `leaseId` fictif pour la faire entrer dans cette
+  garde échangerait un trou de mesure contre un mensonge d'écran.
+
+  C'est la différence avec le `tenantId` du lot précédent, où le chemin
+  local existait : là-bas la donnée manquait sans raison, ici son absence EST la
+  raison. La géométrie de cette boîte reste donc non mesurée, et c'est écrit.
 */
-const NON_OUVRABLES = []
+const NON_OUVRABLES = ['FormalNotice']
 
 /**
  * Les libellés que `clavierDesModales.test.tsx` joue, recopiés pour que la ligne
@@ -298,6 +368,14 @@ const COUVERTS = [
   'Prévenir les locataires',
   'Répondre',
   'Signaler un problème',
+  /* LES QUATRE CONFIRMATIONS entrées avec elles : arbitrer, retirer une fiche,
+     retirer un accès, relancer. La cinquième — supprimer un immeuble — demande
+     qu'on en CRÉE un d'abord, ce que le fichier de cas ne sait pas faire ; elle
+     reste donc mesurée ici et hors clavier, et la ligne de succès le dit. */
+  'Arbitrer',
+  'Retirer',
+  'Retirer l’accès',
+  'Relancer les retards',
 ]
 const LARGEURS = [360, 1280]
 const LANGUES = ['fr', 'en']
@@ -316,8 +394,8 @@ const LANGUES = ['fr', 'en']
   `Tariffs` sont passées de la seconde ligne à la première. C'est exactement ce
   que ce compte écrit à la main sert à rendre visible dans un diff.
 */
-const ATTENDUS = 48
-const NON_OUVRABLES_ATTENDUES = 0
+const ATTENDUS = 68
+const NON_OUVRABLES_ATTENDUES = 1
 
 async function servir() {
   const fils = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--host', '127.0.0.1'], {
@@ -395,6 +473,26 @@ try {
           if ((await fermer.count()) > 0 && (await fermer.isVisible())) {
             await fermer.click()
             await page.waitForTimeout(400)
+          }
+        }
+
+        /*
+          LE PRÉALABLE, quand la modale n'a rien à ouvrir sans lui.
+
+          Une seule s'en sert : la suppression d'un immeuble, dont l'issue
+          n'existe que sur un immeuble VIDE — voir son entrée. La sonde suit
+          alors le chemin de l'utilisateur au lieu qu'on maquille les données.
+        */
+        if (modale.prealable) {
+          try {
+            await modale.prealable(page)
+          } catch (erreur) {
+            plaintes.push(
+              `${nom} : le préalable a échoué — ${String(erreur).split('\n')[0]}\n` +
+                "   La modale n'a pas pu être amenée à l'écran, donc rien n'a été mesuré.",
+            )
+            await contexte.close()
+            continue
           }
         }
 
@@ -672,7 +770,7 @@ if (plaintes.length > 0) {
   sans compte il se périmerait encore. Le nombre force à toucher cette ligne le
   jour où la couverture bouge.
 */
-const COUVERTES_AU_CLAVIER = 12
+const COUVERTES_AU_CLAVIER = 16
 /*
   GARDE DU GARDE : le nombre écrit et la liste recopiée doivent s'accorder, et
   la liste doit désigner des modales qui EXISTENT. Sans cette vérification, un
@@ -702,6 +800,7 @@ console.log(
     `${COUVERTES_AU_CLAVIER} modales ;\n` +
     (horsClavier.length === 0
       ? '  TOUTES y sont — entrée du focus, piège, Échap, retour au bouton.\n'
-      : `  les ${horsClavier.length} autres ne le sont pas : ${horsClavier.map((m) => m.nom).join(', ')}.\n`) +
+      : `  ${horsClavier.length === 1 ? "l'autre non" : `les ${horsClavier.length} autres non`} : ` +
+        `${horsClavier.map((m) => m.nom).join(', ')}.\n`) +
     "  La PERTINENCE d'un champ n'est mesurée nulle part : voir l'en-tête.",
 )

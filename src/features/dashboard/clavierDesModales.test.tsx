@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { attendreLeChargement, renderApp, screen, switchRole, userEvent, within } from '@/test/render'
+import {
+  attendreLeChargement,
+  renderApp,
+  screen,
+  switchRole,
+  userEvent,
+  waitFor,
+  within,
+} from '@/test/render'
 import type { Role } from '@/features/auth/signupState'
 
 /**
@@ -99,7 +107,50 @@ const MODALES: Modale[] = [
   { nom: 'Prévenir les locataires', adresse: '/demo/locataires', bouton: /^Prévenir les locataires$/, forme: 'saisie' },
   { nom: 'Répondre', adresse: '/demo/travaux', bouton: /^Répondre$/, rang: 0, forme: 'saisie' },
   { nom: 'Signaler un problème', adresse: '/demo/travaux', bouton: /^Signaler un problème$/, profil: 'tenant', forme: 'saisie' },
+  /*
+    ═══ LES CONFIRMATIONS, ET C'ÉTAIT LE PLUS GRAND TROU ═══
+
+    Douze modales étaient jouées : celles qu'un bouton ouvre du premier coup.
+    Les CONFIRMATIONS ne s'ouvrent qu'après un premier geste — arbitrer une
+    caution, retirer une fiche, retirer un accès, relancer les retards — et
+    aucune garde ne les atteignait, ni celle-ci ni `scripts/modales.mjs`.
+
+    Or ce sont celles où le clavier compte LE PLUS : on y décide d'un geste
+    irréversible, et Échap y est la sortie de secours. Un piège de focus qui
+    fuit sur un `alertdialog` de suppression laisse la tabulation derrière la
+    boîte, sur l'écran qu'on est en train de modifier.
+
+    TROIS SONT DES `lecture` : elles n'ont pas un champ, seulement une phrase et
+    deux boutons. L'arbitrage, lui, est un formulaire — montant retenu et
+    justification — donc ses champs doivent porter leur libellé.
+
+    Elles se répètent PAR LIGNE, comme la quittance : d'où leur `rang`.
+  */
+  { nom: 'Arbitrer', adresse: '/demo/cautions', bouton: /^Arbitrer$/, rang: 0, forme: 'saisie' },
+  { nom: 'Retirer une fiche', adresse: '/demo/locataires', bouton: /^Retirer$/, rang: 0, forme: 'lecture' },
+  { nom: 'Retirer un accès', adresse: '/demo/acces', bouton: /^Retirer l’accès$/, rang: 0, forme: 'lecture' },
+  { nom: 'Relancer les retards', adresse: '/demo/paiements', bouton: /^Relancer les retards$/, forme: 'lecture' },
 ]
+
+/**
+ * LA BOÎTE, QUEL QUE SOIT SON RÔLE.
+ *
+ * Ce fichier ne cherchait que `role="dialog"`. Les CONFIRMATIONS portent
+ * `role="alertdialog"` — c'est le rôle juste, « pour les confirmations
+ * destructives » dit `Modal` — si bien qu'aucune n'était trouvable ici. Le jour
+ * où on a voulu les jouer, elles ont rougi sur « boîte introuvable », ce qui ne
+ * disait rien de leur clavier.
+ *
+ * `waitFor` et non `findByRole` : ce dernier ne prend qu'un rôle, et enchaîner
+ * deux attentes ferait payer le délai de la première à chaque confirmation.
+ */
+async function trouverLaBoite(): Promise<HTMLElement> {
+  return await waitFor(() => {
+    const boite = document.querySelector('[role="dialog"],[role="alertdialog"]')
+    if (!boite) throw new Error('aucune boîte de dialogue ouverte')
+    return boite as HTMLElement
+  })
+}
 
 /**
  * Monte l'écran, pose le profil s'il en faut un, et rend le bouton d'ouverture.
@@ -174,7 +225,7 @@ async function parcoursClavier(modale: Modale) {
 
   /* Ouvert au CLAVIER, pas à la souris : c'est le chemin qu'on garde. */
   await user.keyboard('{Enter}')
-  const dialogue = await screen.findByRole('dialog')
+  const dialogue = await trouverLaBoite()
 
   /* LE FOCUS EST ENTRÉ. Une modale qui s'ouvre en laissant le focus derrière
      elle oblige à tabuler à travers toute la page pour l'atteindre. */
@@ -193,7 +244,7 @@ async function parcoursClavier(modale: Modale) {
   expect(evasions, 'le focus est sorti de la modale ouverte').toEqual([])
 
   await user.keyboard('{Escape}')
-  expect(screen.queryByRole('dialog')).toBeNull()
+  expect(document.querySelector('[role="dialog"],[role="alertdialog"]')).toBeNull()
   /*
     LE FOCUS REVIENT LÀ OÙ L'ON PEUT ENCORE ALLER.
 
@@ -252,7 +303,7 @@ describe('le clavier des modales', () => {
     it(`« ${modale.nom} » : chaque champ porte le nom de son libellé`, async () => {
       const ouvreur = await ouvrirLEcran(modale)
       await userEvent.click(ouvreur)
-      const dialogue = await screen.findByRole('dialog')
+      const dialogue = await trouverLaBoite()
 
       /* `type="hidden"` EXCLU, et c'est mesuré, pas supposé : `DatePicker` et
          `MonthPicker` posent chacun un champ caché qui porte la valeur pour la
@@ -339,7 +390,7 @@ describe('le clavier des modales', () => {
     await renderApp('/demo/travaux')
     await attendreLeChargement()
     await user.click(screen.getByRole('button', { name: /^Ouvrir un chantier$/ }))
-    const dialogue = await screen.findByRole('dialog')
+    const dialogue = await trouverLaBoite()
 
     const champ = screen.getByRole('textbox', { name: /Que faut-il faire/ })
     expect(champ).not.toHaveAttribute('aria-invalid', 'true')
@@ -368,12 +419,20 @@ describe('le clavier des modales', () => {
    * rendrait la garde d'accord avec elle-même, piège trouvé par la même
    * mutation trois lots de suite.
    */
-  it('a bien joué les douze modales déclarées', () => {
-    expect(MODALES.length).toBe(12)
-    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(12)
-    /* UNE SEULE `lecture`, et l'écrire ici la protège : passer une modale de
-       saisie en `lecture` pour faire taire un champ mal libellé est le
-       contournement le plus facile de ce fichier. Il ferait rougir. */
-    expect(MODALES.filter((m) => m.forme === 'lecture').map((m) => m.nom)).toEqual(['Quittance'])
+  it('a bien joué les seize modales déclarées', () => {
+    expect(MODALES.length).toBe(16)
+    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(16)
+    /* LES `lecture` SONT NOMMÉES, et l'écrire ici les protège : passer une
+       modale de saisie en `lecture` pour faire taire un champ mal libellé est
+       le contournement le plus facile de ce fichier. Il ferait rougir.
+
+       Trois des quatre confirmations en sont : une phrase et deux boutons, pas
+       un champ. L'arbitrage n'y est pas — il en porte deux. */
+    expect(MODALES.filter((m) => m.forme === 'lecture').map((m) => m.nom)).toEqual([
+      'Quittance',
+      'Retirer une fiche',
+      'Retirer un accès',
+      'Relancer les retards',
+    ])
   })
 })
