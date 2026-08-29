@@ -118,7 +118,7 @@ function Reglage({
 function MentionDeConversion() {
   const t = useT()
   const d = useDates()
-  const { converti, coursIndisponibles, dateDesCours, deviseSource } = useCurrency()
+  const { coursIndisponibles, deviseSource, baseDeConversion } = useCurrency()
 
   if (coursIndisponibles)
     return (
@@ -127,14 +127,28 @@ function MentionDeConversion() {
       </span>
     )
 
-  if (!converti) return null
+  /*
+    LA BASE DE LA PAIRE, ET NON « A-T-ON REÇU UN COURS ? ».
 
-  if (!dateDesCours)
-    return <span className="text-caps text-muted">{t('common.currencyPegged')}</span>
+    Cette fonction lisait `dateDesCours` : dès qu'une réponse du serveur portait
+    une date, elle annonçait « Convertis au taux du 28/08 » — y compris pour un
+    franc lu en euros, qui n'emploie AUCUN cours mais la parité de traité. Le
+    même écran datait donc une constante. `baseDeConversion` regarde la paire :
+    elle rend une date quand la conversion en dépend, et rien quand la parité
+    suffit.
+
+    C'est la règle que les DOCUMENTS appliquaient déjà — `useMentionDeConversion`
+    dans `documentsPdf` — et deux formulations d'un même fait sur deux surfaces
+    du même produit, c'est exactement ce que ce fichier existe pour supprimer.
+  */
+  const base = baseDeConversion(deviseSource)
+  if (!base) return null
 
   return (
     <span className="text-caps text-muted">
-      {t('common.currencyConverted', { date: d.fullDate(partiesDeDateISO(dateDesCours)) })}
+      {base.date
+        ? t('common.currencyConverted', { date: d.fullDate(partiesDeDateISO(base.date)) })
+        : t('common.currencyPegged')}
     </span>
   )
 }

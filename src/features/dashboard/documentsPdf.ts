@@ -2,14 +2,14 @@ import { useCallback } from 'react'
 import { useSession } from '@/api/SessionProvider'
 import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
-import { formatMoney } from '@/currency/currencies'
+import { CURRENCY_DEFS, type CurrencyCode } from '@/currency/currencies'
 import { useT } from '@/i18n/I18nProvider'
 import { isoDay, isoMonth } from '@/lib/csv'
 import { PDF_MIME, downloadBinaryFile, printBinaryFile } from '@/lib/download'
 import { nouvelleMiseEnPage, type MiseEnPage } from '@/lib/miseEnPage'
 import { nomDeFichier } from '@/lib/nomDeFichier'
 import { construirePdf } from '@/lib/pdf'
-import { partiesDeDate } from '@/lib/dates'
+import { partiesDeDate, partiesDeDateISO } from '@/lib/dates'
 import { useDates } from '@/lib/useDates'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import {
@@ -171,6 +171,16 @@ export interface ContenuDeQuittance {
   versements: { trace: string; montant: string }[]
   /** L'imputation, seulement là où elle apprend quelque chose. */
   imputation?: string
+  /**
+   * D'OÙ VIENNENT LES MONTANTS, quand ils ont été convertis.
+   *
+   * Une quittance atteste d'un encaissement. Écrire « 260,60 € » là où
+   * 170 942 FCFA ont été reçus n'est vrai que si la pièce dit qu'elle convertit,
+   * depuis quoi et à quel taux. Absent quand rien n'a été converti : une mention
+   * sur un document exact jetterait un doute sur des montants qui n'en méritent
+   * pas.
+   */
+  conversion?: string
 }
 
 /**
@@ -190,6 +200,8 @@ export interface FaitsDeLaPeriode {
   dueMinor: number
   paidMinor: number
   versements: { trace: string; amountMinor: number }[]
+  /** La base de la conversion, s'il y en a eu une — voir `ContenuDeQuittance`. */
+  conversion?: string
 }
 
 /**
@@ -247,6 +259,7 @@ export function composerLaQuittance(
 
   return {
     titre: titreDuDocument(solde),
+    conversion: faits.conversion,
     logement: faits.logement,
     periode: faits.periode,
     locataire: faits.locataire,
@@ -370,6 +383,14 @@ function pagesDeQuittance(
   if (contenu.versements.length === 0) page.ligne(t('app.documents.pdfNoPayment'))
   for (const versement of contenu.versements) page.paire(versement.trace, versement.montant)
 
+  /* LA BASE DE LA CONVERSION, en bas et en petit — mais SUR la pièce. Elle n'a
+     pas sa place dans le corps, où elle passerait pour un poste ; elle en a une
+     ici, où l'on lit les mentions qui qualifient ce qu'on vient de lire. */
+  if (contenu.conversion) {
+    page.saut(4)
+    page.paragraphe(contenu.conversion, { petit: true })
+  }
+
   if (contenu.imputation) {
     page.saut(4)
     page.paragraphe(contenu.imputation, { petit: true })
@@ -389,8 +410,10 @@ function faitsDuPortefeuille(
   unit: Unit,
   immeuble: string | undefined,
   receipt: Receipt,
+  conversion?: string,
 ): FaitsDeLaPeriode {
   return {
+    conversion,
     logement: logementNomme(unit, immeuble),
     periode: d.monthYear(receipt),
     locataire: unit.tenant ?? t('app.portfolio.noTenant'),
@@ -412,6 +435,34 @@ function faitsDuPortefeuille(
   }
 }
 
+/**
+ * LA MENTION DE CONVERSION D'UN DOCUMENT — ou rien, s'il n'a rien converti.
+ *
+ * Elle nomme la devise D'ORIGINE et date le cours. La parité du franc CFA n'a
+ * pas de date — elle est fixée par traité — et la phrase change alors plutôt que
+ * d'annoncer un jour qu'on n'a pas.
+ */
+export function useMentionDeConversion() {
+  const t = useT()
+  const d = useDates()
+  const { baseDeConversion } = useCurrency()
+
+  return useCallback(
+    (depuis: CurrencyCode): string | undefined => {
+      const base = baseDeConversion(depuis)
+      if (!base) return undefined
+      const currency = CURRENCY_DEFS[base.depuis].label
+      return base.date
+        ? t('app.documents.pdfConverted', {
+            currency,
+            date: d.fullDate(partiesDeDateISO(base.date)),
+          })
+        : t('app.documents.pdfConvertedPegged', { currency })
+    },
+    [baseDeConversion, d, t],
+  )
+}
+
 /** La date d'émission, celle du jour où l'on télécharge. */
 function useEmisLe() {
   const d = useDates()
@@ -423,18 +474,23 @@ export function useReceiptPdf() {
   const nommerLImmeuble = useNomDeLImmeuble()
   const emisLe = useEmisLe()
   const d = useDates()
-  const { deviseSource } = useCurrency()
+  const { money, deviseSource } = useCurrency()
+  const mentionner = useMentionDeConversion()
   const parc = useEmetteur()
   const remettre = useRemise()
 
   return useCallback(
     (unit: Unit, receipt: Receipt): string => {
       const page = nouvelleMiseEnPage()
-      const argent = (montant: number) => formatMoney(montant, deviseSource, { compact: true })
+      /* LA DEVISE CHOISIE, ET NON PLUS CELLE DU PARC. Les documents étaient
+         épinglés à `deviseSource` : on lisait ses loyers en euros et l'on
+         téléchargeait une pièce en francs. La conversion se dit sur la feuille,
+         voir `useMentionDeConversion`. */
+      const argent = (montant: number) => money(montant, { compact: true })
       const contenu = composerLaQuittance(
         t,
         argent,
-        faitsDuPortefeuille(t, d, unit, nommerLImmeuble(unit), receipt),
+        faitsDuPortefeuille(t, d, unit, nommerLImmeuble(unit), receipt, mentionner(deviseSource)),
       )
       pagesDeQuittance(page, t, parc, emisLe, contenu)
 
@@ -447,7 +503,7 @@ export function useReceiptPdf() {
         'app.receiptDownloaded',
       )
     },
-    [d, deviseSource, emisLe, nommerLImmeuble, parc, remettre, t],
+    [d, deviseSource, emisLe, mentionner, money, nommerLImmeuble, parc, remettre, t],
   )
 }
 
@@ -465,14 +521,19 @@ export function useAllReceiptsPdf() {
   const nommerLImmeuble = useNomDeLImmeuble()
   const emisLe = useEmisLe()
   const d = useDates()
-  const { deviseSource } = useCurrency()
+  const { money, deviseSource } = useCurrency()
+  const mentionner = useMentionDeConversion()
   const parc = useEmetteur()
   const remettre = useRemise()
 
   return useCallback(
     (unit: Unit, receipts: Receipt[]): string => {
       const page = nouvelleMiseEnPage()
-      const argent = (montant: number) => formatMoney(montant, deviseSource, { compact: true })
+      /* LA DEVISE CHOISIE, ET NON PLUS CELLE DU PARC. Les documents étaient
+         épinglés à `deviseSource` : on lisait ses loyers en euros et l'on
+         téléchargeait une pièce en francs. La conversion se dit sur la feuille,
+         voir `useMentionDeConversion`. */
+      const argent = (montant: number) => money(montant, { compact: true })
       /* Cherché UNE fois pour tout le carnet : six pages, un seul logement. */
       const immeuble = nommerLImmeuble(unit)
       receipts.forEach((receipt, index) => {
@@ -482,7 +543,11 @@ export function useAllReceiptsPdf() {
           t,
           parc,
           emisLe,
-          composerLaQuittance(t, argent, faitsDuPortefeuille(t, d, unit, immeuble, receipt)),
+          composerLaQuittance(
+            t,
+            argent,
+            faitsDuPortefeuille(t, d, unit, immeuble, receipt, mentionner(deviseSource)),
+          ),
         )
       })
 
@@ -493,7 +558,7 @@ export function useAllReceiptsPdf() {
         'app.receiptDownloaded',
       )
     },
-    [d, deviseSource, emisLe, nommerLImmeuble, parc, remettre, t],
+    [d, deviseSource, emisLe, mentionner, money, nommerLImmeuble, parc, remettre, t],
   )
 }
 
@@ -529,6 +594,7 @@ function useCompositionDuDocumentEmis() {
   const t = useT()
   const parc = useEmetteur()
   const emisLe = useEmisLe()
+  const mentionner = useMentionDeConversion()
   return useCallback(
     (document: DocumentEmisPdf) => {
       const page = nouvelleMiseEnPage()
@@ -542,6 +608,7 @@ function useCompositionDuDocumentEmis() {
         se déduit au seul endroit où il se déduit.
       */
       const contenu = composerLaQuittance(t, document.argent, {
+        conversion: mentionner(document.devise),
         logement: [document.unit, document.building].filter(Boolean).join(' · '),
         periode: document.periode,
         locataire: document.tenant,
@@ -573,7 +640,7 @@ function useCompositionDuDocumentEmis() {
         nom: nomDeFichier([titre, document.unit], document.moisISO, 'pdf'),
       }
     },
-    [emisLe, parc, t],
+    [emisLe, mentionner, parc, t],
   )
 }
 
@@ -629,6 +696,14 @@ export interface DocumentEmisPdf {
   paidMinor: number
   balanceMinor: number
   argent: (montant: number) => string
+  /**
+   * La devise D'ORIGINE de la pièce — celle du parc à l'émission.
+   *
+   * Elle sert à la mention de conversion, pas à la mise en forme : celle-ci
+   * vient déjà d'`argent`. Sans elle, la feuille dirait « convertis » sans dire
+   * depuis quoi, ce qui n'est pas une mention mais un aveu.
+   */
+  devise: CurrencyCode
   payments: { date: string; moyen: string; reference: string | null; amountMinor: number }[]
 }
 
@@ -639,14 +714,19 @@ export function useDepositPdf() {
   const nommerLImmeuble = useNomDeLImmeuble()
   const emisLe = useEmisLe()
   const d = useDates()
-  const { deviseSource } = useCurrency()
+  const { money, deviseSource } = useCurrency()
+  const mentionner = useMentionDeConversion()
   const parc = useEmetteur()
   const remettre = useRemise()
 
   return useCallback(
     (unit: Unit, deposit: Deposit): string => {
       const page = nouvelleMiseEnPage()
-      const argent = (montant: number) => formatMoney(montant, deviseSource, { compact: true })
+      /* LA DEVISE CHOISIE, ET NON PLUS CELLE DU PARC. Les documents étaient
+         épinglés à `deviseSource` : on lisait ses loyers en euros et l'on
+         téléchargeait une pièce en francs. La conversion se dit sur la feuille,
+         voir `useMentionDeConversion`. */
+      const argent = (montant: number) => money(montant, { compact: true })
       const titre = t('app.documents.depositReceipt')
 
       enTete(page, {
@@ -680,7 +760,7 @@ export function useDepositPdf() {
         'app.documents.pdfDownloaded',
       )
     },
-    [d, deviseSource, emisLe, nommerLImmeuble, parc, remettre, t],
+    [d, deviseSource, emisLe, mentionner, money, nommerLImmeuble, parc, remettre, t],
   )
 }
 
@@ -691,7 +771,8 @@ export function useInspectionPdf() {
   const nommerLImmeuble = useNomDeLImmeuble()
   const emisLe = useEmisLe()
   const d = useDates()
-  const { deviseSource } = useCurrency()
+  const { money, deviseSource } = useCurrency()
+  const mentionner = useMentionDeConversion()
   const parc = useEmetteur()
   const remettre = useRemise()
 
@@ -739,7 +820,7 @@ export function useInspectionPdf() {
           t(`app.inspections.severity${reserve.severity === 'minor' ? 'Minor' : 'Major'}` as 'app.inspections.severityMinor'),
           reserve.costMinor === null
             ? null
-            : `${t('app.inspections.cost')} ${formatMoney(reserve.costMinor, deviseSource, { compact: true })}`,
+            : `${t('app.inspections.cost')} ${money(reserve.costMinor, { compact: true })}`,
         ].filter(Boolean)
         page.paragraphe(marges.join(' · '), { petit: true, retrait: 12 })
       }
@@ -750,7 +831,7 @@ export function useInspectionPdf() {
         'app.documents.pdfDownloaded',
       )
     },
-    [d, deviseSource, emisLe, nommerLImmeuble, parc, remettre, t],
+    [d, deviseSource, emisLe, mentionner, money, nommerLImmeuble, parc, remettre, t],
   )
 }
 

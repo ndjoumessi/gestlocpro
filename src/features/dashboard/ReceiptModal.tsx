@@ -5,7 +5,6 @@ import { useT } from '@/i18n/I18nProvider'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { receiptDue } from '@/data/portfolio'
-import { formatMoney } from '@/currency/currencies'
 import { useDates } from '@/lib/useDates'
 import { partiesDeDateISO } from '@/lib/dates'
 import { api, ApiError } from '@/api/client'
@@ -18,6 +17,7 @@ import {
   composerLaQuittance,
   useDocumentEmisPdf,
   useImpressionDuDocumentEmis,
+  useMentionDeConversion,
 } from './documentsPdf'
 import { StatusPill } from '@/components/primitives/StatusPill'
 import { cn } from '@/lib/cn'
@@ -148,7 +148,7 @@ export function ReceiptModal({
   onClose: () => void
 }) {
   const t = useT()
-  const { money: moneyAffichage } = useCurrency()
+  const { argentDepuis, deviseSource } = useCurrency()
   const d = useDates()
   const { adhesionActive } = useSession()
   const parkId = adhesionActive?.parkId ?? null
@@ -255,6 +255,7 @@ export function ReceiptModal({
   const { notify } = useToast()
   const telechargerLePdf = useDocumentEmisPdf()
   const imprimerLePdf = useImpressionDuDocumentEmis()
+  const mentionnerLaConversion = useMentionDeConversion()
 
   /**
    * Le document se referme après le retrait, plutôt que de se recalculer ici.
@@ -282,17 +283,37 @@ export function ReceiptModal({
       })
   }
 
-  const money = (montant: number) =>
-    document
-      ? formatMoney(montant, ({ XAF: 'CFA', XOF: 'CFA', EUR: 'EUR', CAD: 'CAD', USD: 'USD' } as const)[
-          document.currency
-        ])
-      : moneyAffichage(montant)
+
 
   /* Le document affiché : celui du serveur quand il y a un parc, celui composé
      localement en démonstration. Jamais les deux — `documentLocal` ne se
      compose que si `parkId` est absent. */
   const document = documentServeur ?? documentLocal
+
+  /**
+   * La devise D'ORIGINE de la pièce : celle du parc à l'émission.
+   *
+   * `XAF` et `XOF` sont deux monnaies distinctes de même parité que l'écran ne
+   * distingue pas — le produit les affiche toutes deux sous « FCFA ».
+   */
+  const deviseDuDocument = document
+    ? ({ XAF: 'CFA', XOF: 'CFA', EUR: 'EUR', CAD: 'CAD', USD: 'USD' } as const)[document.currency]
+    : deviseSource
+
+  /*
+    LES MONTANTS SUIVENT LA DEVISE CHOISIE, ET NON PLUS CELLE DE LA PIÈCE.
+
+    Ils étaient épinglés : l'écran réglé sur l'euro, la quittance en francs. Le
+    motif écrit ici — « le même versement imprimé sur deux postes réglés
+    différemment portait deux monnaies » — reste vrai, et c'est pourquoi la
+    conversion se DIT sur la feuille plutôt que de se faire en silence : une
+    pièce qui écrit « 260,60 € » là où 170 942 FCFA ont été reçus n'est honnête
+    qu'en nommant sa base. Voir `useMentionDeConversion`.
+
+    `argentDepuis` et non `money` : la pièce déclare SA devise d'origine, celle
+    du parc à l'émission, qui n'est pas forcément celle du parc aujourd'hui.
+  */
+  const money = (montant: number) => argentDepuis(montant, deviseDuDocument)
 
 
   useEffect(() => {
@@ -354,6 +375,7 @@ export function ReceiptModal({
     () =>
       document
         ? composerLaQuittance(t, money, {
+            conversion: mentionnerLaConversion(deviseDuDocument),
             logement: [document.unit, document.building].filter(Boolean).join(' · '),
             periode: d.monthYear(periode),
             locataire: document.tenant,
@@ -375,7 +397,7 @@ export function ReceiptModal({
           })
         : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [d, document, periode.month, periode.year, t],
+    [d, deviseDuDocument, document, mentionnerLaConversion, periode.month, periode.year, t],
   )
 
   /*
@@ -408,6 +430,7 @@ export function ReceiptModal({
              pas celle de l'écran. Le même versement imprimé sur deux postes
              réglés différemment portait deux monnaies. */
           argent: money,
+          devise: deviseDuDocument,
           payments: document.payments.map((versement) => ({
             date: d.fullDate(partiesDeDateISO(versement.paidOn)),
             moyen: libelleMoyen(versement.method),
@@ -587,6 +610,13 @@ export function ReceiptModal({
                 montants qu'elle explique. */}
             {contenu.imputation && (
               <p className="text-caption text-muted">{contenu.imputation}</p>
+            )}
+
+            {/* LA BASE DE LA CONVERSION, sur l'aperçu comme sur la feuille. Une
+                pièce convertie qui ne dit pas depuis quoi ni à quel taux affirme
+                qu'on a reçu des euros là où des francs ont été encaissés. */}
+            {contenu.conversion && (
+              <p className="text-caption text-muted">{contenu.conversion}</p>
             )}
           </section>
 

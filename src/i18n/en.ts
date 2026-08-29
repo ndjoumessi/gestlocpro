@@ -419,6 +419,8 @@ export const en: Dictionary = {
       pdfRemaining: 'Still owed',
       pdfPayments: 'Payments received',
       pdfNoPayment: 'No payment recorded for this period.',
+      pdfConverted: 'Amounts converted from {currency} at the {date} rate.',
+      pdfConvertedPegged: 'Amounts converted from {currency} at the legal parity.',
       pdfImputation:
         'The payment cleared {rent} of rent, {water} of water and {power} of power. Allocation follows that order.',
       pdfWithheldNote:

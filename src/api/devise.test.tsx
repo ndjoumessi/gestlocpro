@@ -100,15 +100,26 @@ function parcVide() {
 }
 
 describe('devise de la quittance', () => {
-  it('imprime celle du DOCUMENT, pas celle de l’écran', async () => {
-    /**
-     * Une quittance atteste d'un fait passé. Le parc pourrait changer de devise
-     * demain sans que ce fait change — et deux postes réglés différemment ne
-     * doivent pas imprimer deux monnaies pour un seul versement.
-     *
-     * Ici tout pousse vers l'euro : la préférence de la machine ET la devise du
-     * parc. Le document, lui, dit franc CFA. C'est lui qui gagne.
-     */
+  /**
+   * CE CAS A CHANGÉ DE CONTRAT, ET LA RAISON D'ORIGINE EST TOUJOURS SERVIE.
+   *
+   * Il assertait l'inverse : « imprime celle du DOCUMENT, pas celle de l'écran ».
+   * Le motif était bon — une quittance atteste d'un fait passé, et deux postes
+   * réglés différemment ne doivent pas imprimer deux monnaies pour un seul
+   * versement.
+   *
+   * Ce qui l'a renversé est une incohérence dans le PRODUIT, pas dans le code :
+   * on lisait ses loyers en euros et l'on téléchargeait une pièce en francs. La
+   * décision prise pour ce produit est « convertir partout, taux à jour », et
+   * les documents en étaient exclus sans que rien ne le dise à l'écran.
+   *
+   * LE MOTIF D'ORIGINE EST SERVI AUTREMENT, et mieux : la pièce PORTE sa base —
+   * la devise d'origine, la parité ou le cours, et sa date. Deux postes réglés
+   * différemment rendent donc deux mises en forme du MÊME fait, chacune disant
+   * de quoi elle part. C'est ce que la version épinglée ne disait pas : elle
+   * affichait des francs à qui lisait des euros, sans un mot.
+   */
+  it('convertit dans la devise lue, en nommant celle du document', async () => {
     const serveur = parcVide()
     serveur.quand('POST', `/parks/${PARC}/receipts`, {
       status: 201,
@@ -146,8 +157,14 @@ describe('devise de la quittance', () => {
     await user.click(screen.getByRole('button', { name: /quittance/i }))
 
     const dialogue = await screen.findByRole('dialog')
-    expect(dialogue.textContent).toMatch(/FCFA|CFA/)
-    expect(dialogue.textContent).not.toMatch(/€/)
+    /* 145 000 francs valent 221,05 € à la parité légale. Le NOMBRE converti, et
+       non un ré-étiquetage — c'est ce que ce fichier a toujours mesuré. */
+    expect(dialogue.textContent?.replace(/[\s ]/g, ' ')).toMatch(/221,05/)
+    expect(dialogue.textContent).toMatch(/€/)
+    /* ET LA PIÈCE DIT DEPUIS QUOI. Sans cette moitié, le cas approuverait une
+       quittance affirmant qu'on a reçu 221,05 € quand des francs ont été
+       encaissés — exactement ce que la version épinglée protégeait. */
+    expect(dialogue.textContent).toMatch(/FCFA/)
   })
 
   it('offre au propriétaire de retirer un versement fautif', async () => {

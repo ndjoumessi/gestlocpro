@@ -60,6 +60,22 @@ interface CurrencyContextValue {
   /** Formate un montant, DONNÉ DANS LA DEVISE DU PARC, dans celle qu'on affiche. */
   money: (amount: number, options?: FormatMoneyOptions) => string
   /**
+   * Le même, pour un montant dont la devise d'origine est DÉCLARÉE.
+   *
+   * Les DOCUMENTS en ont besoin : une pièce arrêtée par le serveur porte la
+   * devise du parc AU MOMENT DE L'ÉMISSION, qui n'est pas forcément celle du
+   * parc aujourd'hui. `money` suppose la seconde ; celle-ci ne suppose rien.
+   */
+  argentDepuis: (amount: number, depuis: CurrencyCode, options?: FormatMoneyOptions) => string
+  /**
+   * La base de la conversion, à écrire SUR la pièce — `null` s'il n'y en a pas.
+   *
+   * Une quittance convertie sans dire depuis quoi ni à quel taux affirme qu'on
+   * a reçu des euros là où des francs ont été encaissés. C'est la différence
+   * entre convertir et falsifier, et elle tient en une ligne de bas de page.
+   */
+  baseDeConversion: (depuis: CurrencyCode) => { depuis: CurrencyCode; date: string | null } | null
+  /**
    * Lit un montant saisi, selon les conventions de la devise active.
    * Rend `null` quand la saisie ne contient aucun nombre lisible.
    */
@@ -286,6 +302,26 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
       converti,
       coursIndisponibles: currency !== deviseAffichee,
       chargerLesCours,
+      argentDepuis: (amount, depuis, options) => {
+        const montant = convertir(amount, depuis, deviseAffichee, cours.parEuro)
+        return formatMoney(montant ?? amount, montant === null ? depuis : deviseAffichee, options)
+      },
+      baseDeConversion: (depuis) => {
+        if (depuis === deviseAffichee) return null
+        if (convertir(0, depuis, deviseAffichee, cours.parEuro) === null) return null
+        /*
+          LA DATE SUIT LA PAIRE, PAS LA MÉMOIRE.
+
+          Une première rédaction rendait `cours.date` dès qu'une conversion avait
+          lieu. Le franc lu en euros s'annonçait donc « au taux du 28/08 » quand
+          des cours flottants traînaient en mémoire, et « à la parité légale »
+          quand il n'y en avait pas — deux phrases pour un seul fait, selon un
+          état qui ne concerne pas cette paire. Or 655,957 est fixé par traité :
+          il n'a pas de date, et lui en donner une invente une péremption.
+        */
+        const parLeFlux = exigeUnFluxDeCours(depuis) || exigeUnFluxDeCours(deviseAffichee)
+        return { depuis, date: parLeFlux ? cours.date : null }
+      },
       money: (amount, options) => {
         const montant = convertir(amount, deviseSource, deviseAffichee, cours.parEuro)
         /* `convertir` ne rend `null` que si un cours manque, ce que

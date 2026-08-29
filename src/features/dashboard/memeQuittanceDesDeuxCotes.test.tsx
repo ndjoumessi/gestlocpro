@@ -285,22 +285,25 @@ describe('la quittance du gestionnaire', () => {
   })
 
   /**
-   * LA DEVISE VIENT DU DOCUMENT, PAS DE L'ÉCRAN.
+   * LA DEVISE DU DOCUMENT EST LA SOURCE, CELLE DE L'ÉCRAN LA CIBLE.
    *
-   * Le serveur pose la devise du parc à l'émission, et la modale la respecte
-   * depuis toujours : « le même versement imprimé sur deux postes réglés
-   * différemment portait deux monnaies — sur le seul papier que le locataire
-   * gardera pour prouver qu'il a payé ».
+   * Ce cas assertait que la pièce ignorait l'écran : « met en forme dans la
+   * devise du document, et non celle de l'adhésion ». Le motif était bon — deux
+   * postes réglés différemment ne doivent pas imprimer deux monnaies pour un
+   * seul versement.
    *
-   * Le PDF passe par cette mise en forme-là, et je m'y appuyais sans l'avoir
-   * éprouvée : c'était la dernière réserve du lot précédent. Un parc en zone
-   * euro est le cas qui la met à nu — l'adhésion annonce XAF, le document dit
-   * EUR, et c'est le document qui doit gagner.
+   * Il a été renversé par une incohérence de PRODUIT : on lisait ses loyers en
+   * euros et l'on téléchargeait une pièce en francs. Les documents suivent
+   * maintenant la devise lue, ET NOMMENT LEUR SOURCE — ce que la version
+   * épinglée ne faisait pas.
    *
-   * C'est aussi le seul cas où le symbole `€` est tracé, et donc le seul qui
-   * exerce la chasse que le fichier déclare désormais lui-même.
+   * ICI L'ÉCRAN EST RÉGLÉ SUR L'EURO, COMME LE DOCUMENT. Source et cible se
+   * rejoignent, donc rien n'est converti et rien ne s'explique : c'est le cas
+   * qui garde le symbole `€` TRACÉ, seul emploi de la chasse 0x80 que ce
+   * fichier déclare. Le cas suivant prend l'autre moitié — les deux devises
+   * séparées.
    */
-  it('met en forme dans la devise du document, et non celle de l’adhésion', async () => {
+  it('trace l’euro quand la pièce et l’écran s’accordent', async () => {
     const faux = installerFauxServeur()
     faux.quand('GET', `/parks/${PARC}/portfolio`, { status: 200, body: PORTEFEUILLE })
     faux.quand('POST', `/parks/${PARC}/receipts`, {
@@ -310,7 +313,7 @@ describe('la quittance du gestionnaire', () => {
 
     const capture = captureDownloads()
     try {
-      await renderApp('/app/paiements', { session: sessionBailleur() })
+      await renderApp('/app/paiements', { session: sessionBailleur(), currency: 'EUR' })
       await attendreLeChargement()
       const user = userEvent.setup()
       await user.click(screen.getAllByRole('button', { name: /^Quittance$/ })[0])
@@ -329,11 +332,49 @@ describe('la quittance du gestionnaire', () => {
         moitiés du produit — voir `unités mineures` dans `currencies.test.ts`.
       */
       expect(document).toMatch(/777,77\s?\x80/)
-      /* Et surtout PAS la devise de l'adhésion, qui annonce des francs CFA :
-         c'est elle qui gagnerait si le document ne portait pas la sienne. */
-      expect(document, 'la devise de l’écran a pris le pas sur celle du document').not.toContain(
-        'FCFA',
+      /* Source et cible confondues : aucune conversion, donc aucune mention.
+         Une pièce exacte qui s'expliquerait jetterait un doute sur ses propres
+         montants. */
+      expect(document, 'la pièce s’explique sans avoir rien converti').not.toMatch(
+        /convertis|converted/i,
       )
+    } finally {
+      capture.restore()
+    }
+  })
+
+  /**
+   * L'AUTRE MOITIÉ : la pièce est en euros, l'écran en francs.
+   *
+   * C'est la situation que la version épinglée traitait en ignorant l'écran.
+   * Elle se traite maintenant en convertissant ET en nommant la source — sans
+   * quoi la feuille affirmerait qu'on a reçu des francs quand des euros ont été
+   * encaissés, ce qui est le défaut d'origine dans l'autre sens.
+   */
+  it('convertit vers la devise lue, en nommant celle de la pièce', async () => {
+    const faux = installerFauxServeur()
+    faux.quand('GET', `/parks/${PARC}/portfolio`, { status: 200, body: PORTEFEUILLE })
+    faux.quand('POST', `/parks/${PARC}/receipts`, {
+      status: 200,
+      body: { document: { ...DOCUMENT, currency: 'EUR' } },
+    })
+
+    const capture = captureDownloads()
+    try {
+      await renderApp('/app/paiements', { session: sessionBailleur(), currency: 'CFA' })
+      await attendreLeChargement()
+      const user = userEvent.setup()
+      await user.click(screen.getAllByRole('button', { name: /^Quittance$/ })[0])
+      await user.click(await screen.findByRole('button', { name: /^Télécharger$/ }))
+      const [fichier] = await capture.settle()
+
+      const document = enLatin1(fichier.bytes)
+      /* 777,77 € valent 510 184 FCFA à la parité légale — 777,77 × 655,957.
+         Le nombre converti, et non le même sous un autre symbole. */
+      expect(document).toMatch(/510\s?184/)
+      /* ET LA SOURCE EST NOMMÉE. Sans cette moitié, la feuille dirait qu'on a
+         encaissé des francs. */
+      expect(document, 'la pièce convertit sans nommer sa source').toMatch(/Euro/)
     } finally {
       capture.restore()
     }

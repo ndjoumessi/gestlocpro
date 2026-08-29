@@ -554,6 +554,8 @@ export const fr = {
       pdfRemaining: 'Reste à régler',
       pdfPayments: 'Versements reçus',
       pdfNoPayment: 'Aucun versement enregistré sur cette période.',
+      pdfConverted: 'Montants convertis depuis le {currency} au taux du {date}.',
+      pdfConvertedPegged: 'Montants convertis depuis le {currency} à la parité légale.',
       pdfImputation:
         'Le versement a soldé le loyer à hauteur de {rent}, l’eau de {water} et l’électricité de {power}. L’imputation suit cet ordre.',
       pdfWithheldNote:
