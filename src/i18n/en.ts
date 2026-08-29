@@ -421,8 +421,8 @@ export const en: Dictionary = {
       pdfRemaining: 'Still owed',
       pdfPayments: 'Payments received',
       pdfNoPayment: 'No payment recorded for this period.',
-      csvConverted: '{currency}, converted from {from} at the {date} rate',
-      csvConvertedPegged: '{currency}, converted from {from} at the legal parity',
+      csvConverted: 'Amounts converted from {from} to {currency}, at the {date} rate.',
+      csvConvertedPegged: 'Amounts converted from {from} to {currency}, at the legal parity.',
       pdfConverted: 'Amounts converted from {currency} at the {date} rate.',
       pdfConvertedPegged: 'Amounts converted from {currency} at the legal parity.',
       pdfImputation:

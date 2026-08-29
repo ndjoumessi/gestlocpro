@@ -45,7 +45,7 @@ describe('l’export tableur', () => {
       expect(tableur, 'le montant d’avant est encore là').not.toContain('259,42')
       /* Et l'en-tête porte la devise, comme avant — c'est elle qui donne son
          unité à toute la colonne. */
-      expect(tableur).toMatch(/Refacturé \(Euro/)
+      expect(tableur).toMatch(/Refacturé \(Euro\)/)
     } finally {
       capture.restore()
     }
@@ -78,25 +78,37 @@ describe('l’export tableur', () => {
 })
 
 /**
- * LE TABLEUR DIT SUR QUOI IL A CONVERTI — dans son EN-TÊTE.
+ * LE TABLEUR DIT SUR QUOI IL A CONVERTI — EN BAS, pas dans chaque en-tête.
  *
- * ═══ UN CSV N'A AUCUNE PLACE POUR DE LA PROSE ═══
+ * ═══ CE QUE LA PREMIÈRE RÉDACTION A DONNÉ ═══
  *
- * Les documents portent leur mention en bas de feuille, en petit. Un tableur
- * n'a pas de bas de feuille : une ligne ajoutée avant l'en-tête casse tout
- * analyseur qui suppose que la première ligne nomme les colonnes, et une ligne
- * ajoutée après les données entre dans les colonnes qu'on somme.
+ * J'avais écrit qu'un CSV n'a pas de bas de feuille, et posé la mention dans
+ * l'en-tête de CHAQUE colonne d'argent. Ouvert dans un tableur, l'état des
+ * cautions rendait ceci :
  *
- * Le seul endroit à la fois SÛR et attaché à ce qu'il qualifie est l'en-tête de
- * colonne. Il portait déjà la devise — « Loyer (FCFA) » —, et c'est la même
- * phrase qu'il faut prolonger : cette colonne est en euros, convertis de telle
- * monnaie à telle date.
+ *   Consigné (CAD ($), converti du FCFA au taux du 28/08/2026) │ Retenu (CAD…
  *
- * ═══ POURQUOI CELA COMPTE PLUS ICI QU'AILLEURS ═══
+ * Trois fois la même phrase, deux cents caractères de ligne d'en-tête, et un
+ * tableau qui ne tient plus dans une fenêtre. La mention était juste et sa
+ * place ne l'était pas.
  *
- * Un tableur se somme, se recoupe et se TRANSMET. Il quitte le produit, arrive
- * chez un comptable ou dans un dossier, et personne ne se souvient alors des
- * réglages de l'écran d'où il sort. La colonne doit se suffire.
+ * ═══ UN CSV A UN BAS DE FEUILLE ═══
+ *
+ * L'affirmation était fausse. Une ligne VIDE puis une note, après les données,
+ * ne touchent pas la table : les tableurs les affichent sous elle, `SUM` ignore
+ * une cellule de texte, et un analyseur qui lit ligne à ligne rencontre une
+ * ligne vide — la fin naturelle d'un enregistrement.
+ *
+ * Ce qui reste dans l'en-tête est l'UNITÉ, courte : « Consigné (CAD) ». C'est ce
+ * qu'une colonne doit porter, et rien de plus.
+ *
+ * ═══ POURQUOI LA MENTION EXISTE QUAND MÊME ═══
+ *
+ * Les cautions ont été versées en FRANCS. Les 713,11 $ sont une conversion, pas
+ * ce qui a été reçu : un fichier qui l'oublie affirme un encaissement qui n'a
+ * pas eu lieu. Un tableur se somme, se recoupe et se TRANSMET — il arrive chez
+ * un comptable, et personne ne se souvient alors des réglages de l'écran d'où
+ * il sort.
  */
 describe('la mention de conversion dans le tableur', () => {
   it('nomme la devise d’origine et date le cours', async () => {
@@ -108,12 +120,23 @@ describe('la mention de conversion dans le tableur', () => {
     try {
       await userEvent.setup().click(screen.getByRole('button', { name: /tableur|spreadsheet/i }))
       const [fichier] = await capture.settle()
-      const entete = new TextDecoder().decode(fichier.bytes).split('\r\n')[0] ?? ''
+      const lignes = new TextDecoder().decode(fichier.bytes).split('\r\n')
+      const entete = lignes[0] ?? ''
+      const pied = lignes.slice(-3).join(' ')
 
-      /* Le dollar canadien FLOTTE : son cours se publie, et la colonne doit
+      /* L'EN-TÊTE NE PORTE QUE L'UNITÉ. Une colonne dit ce qu'elle mesure ; la
+         provenance des chiffres vaut pour le fichier entier. */
+      expect(entete, 'l’en-tête reprend la mention').not.toMatch(/converti|converted/i)
+      expect(entete).toContain('Consigné (CAD)')
+
+      /* Le dollar canadien FLOTTE : son cours se publie, et le fichier doit
          dire de quel jour il date. Le faux serveur le fige au 28/08/2026. */
-      expect(entete, 'la devise d’origine n’est pas nommée').toContain('FCFA')
-      expect(entete, 'le cours n’est pas daté').toContain('28/08/2026')
+      expect(pied, 'la devise d’origine n’est pas nommée').toContain('FCFA')
+      expect(pied, 'le cours n’est pas daté').toContain('28/08/2026')
+
+      /* UNE LIGNE VIDE SÉPARE LA NOTE DES DONNÉES : sans elle, la mention est
+         une ligne du tableau, et elle entre dans ce qu'on somme. */
+      expect(lignes[lignes.length - 3], 'la note colle aux données').toBe('')
     } finally {
       capture.restore()
     }
@@ -128,12 +151,12 @@ describe('la mention de conversion dans le tableur', () => {
     try {
       await userEvent.setup().click(screen.getByRole('button', { name: /tableur|spreadsheet/i }))
       const [fichier] = await capture.settle()
-      const entete = new TextDecoder().decode(fichier.bytes).split('\r\n')[0] ?? ''
+      const fichierTexte = new TextDecoder().decode(fichier.bytes)
 
       /* Le franc et l'euro sont liés par traité : 655,957, sans date. Dater une
          parité inventerait une péremption — même règle que les documents. */
-      expect(entete).toMatch(/parité légale|legal parity/)
-      expect(entete, 'une date a été inventée pour une parité').not.toContain('28/08/2026')
+      expect(fichierTexte).toMatch(/parité légale|legal parity/)
+      expect(fichierTexte, 'une date a été inventée pour une parité').not.toContain('28/08/2026')
     } finally {
       capture.restore()
     }
@@ -155,10 +178,15 @@ describe('la mention de conversion dans le tableur', () => {
     try {
       await userEvent.setup().click(screen.getByRole('button', { name: /tableur|spreadsheet/i }))
       const [fichier] = await capture.settle()
-      const entete = new TextDecoder().decode(fichier.bytes).split('\r\n')[0] ?? ''
+      const fichierTexte = new TextDecoder().decode(fichier.bytes)
 
-      expect(entete).toContain('Consigné (FCFA)')
-      expect(entete, 'un fichier exact s’explique').not.toMatch(/converti|converted/i)
+      expect(fichierTexte).toContain('Consigné (FCFA)')
+      expect(fichierTexte, 'un fichier exact s’explique').not.toMatch(/converti|converted/i)
+      /* ET AUCUNE LIGNE VIDE EN QUEUE : sans conversion, il n'y a pas de note,
+         donc pas de séparateur qui la précède. */
+      expect(fichierTexte.trimEnd().split('\r\n').at(-1), 'un pied vide a été posé').toMatch(
+        /^C3;/,
+      )
     } finally {
       capture.restore()
     }

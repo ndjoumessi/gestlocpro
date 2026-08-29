@@ -556,8 +556,8 @@ export const fr = {
       pdfRemaining: 'Reste à régler',
       pdfPayments: 'Versements reçus',
       pdfNoPayment: 'Aucun versement enregistré sur cette période.',
-      csvConverted: '{currency}, converti du {from} au taux du {date}',
-      csvConvertedPegged: '{currency}, converti du {from} à la parité légale',
+      csvConverted: 'Montants convertis du {from} vers le {currency}, au taux du {date}.',
+      csvConvertedPegged: 'Montants convertis du {from} vers le {currency}, à la parité légale.',
       pdfConverted: 'Montants convertis depuis le {currency} au taux du {date}.',
       pdfConvertedPegged: 'Montants convertis depuis le {currency} à la parité légale.',
       pdfImputation:

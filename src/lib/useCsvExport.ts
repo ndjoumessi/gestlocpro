@@ -42,6 +42,16 @@ export interface CsvExportRequest {
  * ; la mettre en en-tête la dit une fois, à l'endroit où elle vaut pour toute
  * la colonne. C'est aussi ce que fait n'importe quel export comptable.
  */
+/**
+ * La devise en forme COURTE, pour un en-tête de colonne.
+ *
+ * « FCFA », « Euro », « CAD », « USD » — le libellé du produit débarrassé de son
+ * symbole entre parenthèses. Dans « Consigné (CAD ($)) », la parenthèse
+ * imbriquée n'ajoute rien à un lecteur de tableur, qui reconnaît le code.
+ */
+const deviseCourte = (definition: { label: string }): string =>
+  definition.label.replace(/\s*\([^)]*\)\s*$/, '')
+
 export function useCsvMoney() {
   const { locale, t } = useI18n()
   const dates = useDates()
@@ -71,40 +81,21 @@ export function useCsvMoney() {
       amount: (value: number): string =>
         csvNumber(enUniteDUsage(enDeviseAffichee(value), deviseAffichee), locale, definition.decimals),
       /**
-       * En-tête portant la devise : « Loyer (FCFA) ».
+       * En-tête portant l'UNITÉ, et rien de plus : « Loyer (FCFA) ».
        *
-       * ET SA BASE, QUAND IL Y A CONVERSION : « Loyer (Euro (€), converti du
-       * FCFA à la parité légale) ».
+       * Une première rédaction y logeait aussi la base de conversion —
+       * « Loyer (CAD ($), converti du FCFA au taux du 28/08/2026) ». Ouvert dans
+       * un tableur, l'état des cautions rendait trois fois cette phrase sur une
+       * ligne d'en-tête de deux cents caractères, et le tableau ne tenait plus
+       * dans une fenêtre. La mention était juste, sa place ne l'était pas :
+       * elle vaut pour le FICHIER, pas pour chaque colonne. Elle est passée en
+       * pied, voir `useCsvExport`.
        *
-       * UN CSV N'A AUCUNE PLACE POUR DE LA PROSE. Les documents portent leur
-       * mention en bas de feuille ; un tableur n'a pas de bas de feuille. Une
-       * ligne ajoutée avant l'en-tête casse tout analyseur qui suppose que la
-       * première ligne nomme les colonnes ; une ligne ajoutée après les données
-       * entre dans les colonnes qu'on somme. Le seul endroit à la fois sûr et
-       * attaché à ce qu'il qualifie est l'en-tête lui-même.
-       *
-       * ET C'EST ICI QUE ÇA COMPTE LE PLUS. Un tableur se somme, se recoupe et
-       * se TRANSMET : il quitte le produit, arrive chez un comptable, et
-       * personne ne se souvient alors des réglages de l'écran d'où il sort. La
-       * colonne doit se suffire.
-       *
-       * Sans conversion, l'en-tête ne s'allonge pas : une mention sur un fichier
-       * exact jetterait un doute sur des montants qui n'en méritent pas.
+       * La forme COURTE de la devise — « CAD » plutôt que « CAD ($) » : dans un
+       * en-tête de colonne, le symbole n'ajoute rien et ouvre une parenthèse
+       * dans une parenthèse.
        */
-      header: (label: string): string => {
-        const base = baseDeConversion(deviseSource)
-        if (!base) return `${label} (${definition.label})`
-
-        const depuis = CURRENCY_DEFS[base.depuis].label
-        const mention = base.date
-          ? t('app.documents.csvConverted', {
-              currency: definition.label,
-              from: depuis,
-              date: dates.fullDate(partiesDeDateISO(base.date)),
-            })
-          : t('app.documents.csvConvertedPegged', { currency: definition.label, from: depuis })
-        return `${label} (${mention})`
-      },
+      header: (label: string): string => `${label} (${deviseCourte(definition)})`,
     }),
     [baseDeConversion, dates, deviseAffichee, deviseSource, enDeviseAffichee, locale, definition, t],
   )
@@ -113,8 +104,34 @@ export function useCsvMoney() {
 /** Rend une fonction d'export : sérialise, télécharge, puis annonce. */
 export function useCsvExport() {
   const { locale, t } = useI18n()
-  const { deviseAffichee } = useCurrency()
+  const dates = useDates()
+  const { deviseAffichee, deviseSource, definition, baseDeConversion } = useCurrency()
   const { notify } = useToast()
+
+  /**
+   * D'où viennent les montants du fichier — ou rien, s'ils n'ont pas bougé.
+   *
+   * Les cautions ont été versées en francs : les 713,11 $ sont une conversion,
+   * pas ce qui a été reçu. Un fichier qui l'oublie affirme un encaissement qui
+   * n'a pas eu lieu, et il se transmet — il arrive chez un comptable, où
+   * personne ne se souvient des réglages de l'écran d'où il sort.
+   *
+   * La parité du franc CFA n'a pas de date : elle est fixée par traité. Lui en
+   * donner une inventerait une péremption — même règle que les documents, servie
+   * par le même `baseDeConversion`.
+   */
+  const mentionDeConversion = useCallback((): string | null => {
+    const base = baseDeConversion(deviseSource)
+    if (!base) return null
+    const depuis = CURRENCY_DEFS[base.depuis].label
+    return base.date
+      ? t('app.documents.csvConverted', {
+          currency: definition.label,
+          from: depuis,
+          date: dates.fullDate(partiesDeDateISO(base.date)),
+        })
+      : t('app.documents.csvConvertedPegged', { currency: definition.label, from: depuis })
+  }, [baseDeConversion, dates, definition, deviseSource, t])
 
   return useCallback(
     ({ name, stamp, headers, rows, notice }: CsvExportRequest): string => {
@@ -124,13 +141,30 @@ export function useCsvExport() {
          qui quitte le produit doit se suffire, nom compris. */
       const parts = [...(typeof name === 'string' ? [name] : name), deviseAffichee]
       const filename = csvFilename(parts, stamp ?? isoDay(new Date()))
-      const content = serializeCsv([headers, ...rows], { delimiter: csvDelimiter(locale) })
+      /*
+        LA NOTE DE CONVERSION EN PIED, séparée par une ligne VIDE.
+
+        J'avais écrit qu'un CSV n'a pas de bas de feuille et posé la mention dans
+        chaque en-tête de colonne : ouvert dans un tableur, l'état des cautions
+        rendait trois fois la même phrase sur une ligne de deux cents caractères.
+        L'affirmation était fausse. Une ligne vide puis une note ne touchent pas
+        la table — les tableurs les affichent sous elle, `SUM` ignore une cellule
+        de texte, et un analyseur qui lit ligne à ligne rencontre une ligne vide,
+        qui est la fin naturelle d'un enregistrement.
+
+        ELLE N'APPARAÎT QUE S'IL Y A CONVERSION. Un pied sur un fichier exact
+        jetterait un doute sur des montants qui n'en méritent pas, et ajouterait
+        deux lignes à tous les exports du chemin ordinaire.
+      */
+      const note = mentionDeConversion()
+      const lignes = note ? [headers, ...rows, [], [note]] : [headers, ...rows]
+      const content = serializeCsv(lignes, { delimiter: csvDelimiter(locale) })
 
       downloadTextFile(content, filename)
       notify(t(notice ?? 'app.exported', { file: filename }), { tone: 'ok' })
 
       return filename
     },
-    [deviseAffichee, locale, notify, t],
+    [deviseAffichee, locale, mentionDeConversion, notify, t],
   )
 }
