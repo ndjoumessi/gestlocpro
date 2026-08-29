@@ -142,6 +142,45 @@ describe('la quittance en démonstration', () => {
     expect(texte, `il porte ${suivant}, un mois trop loin`).not.toContain(suivant.toLowerCase())
   })
 
+  /**
+   * L'APERÇU MONTRE CE QUE LA FEUILLE MONTRE.
+   *
+   * Le fichier le promet en toutes lettres — « ce qu'on voit ici est ce qui
+   * sortira […] un aperçu qui ne ressemble pas à la feuille est un aperçu qui
+   * ment » — et la promesse n'était pas tenue. Mises côte à côte, les deux
+   * pièces du MÊME mois disaient :
+   *
+   *   feuille : logement, date d'émission, période, locataire, loyer, eau,
+   *             électricité, dû, réglé, statut, versements
+   *   aperçu  : période, locataire, logement, dû, réglé, solde, versements
+   *
+   * L'aperçu perdait le DÉTAIL — quelle part est du loyer, quelle part de
+   * l'eau — qui est justement ce qu'un locataire conteste, et le STATUT, qui
+   * est ce qu'un gestionnaire vérifie avant de remettre la pièce.
+   *
+   * Ce n'était pas une omission de mise en page : les deux composaient leur
+   * contenu SÉPARÉMENT. C'est ainsi que le mois avait divergé d'un cran entre
+   * l'écran et la feuille. Les deux passent désormais par
+   * `composerLaQuittance`, et ce cas tient le raccord.
+   */
+  it('montre le détail poste par poste, comme la feuille', async () => {
+    installerFauxServeur()
+    await renderApp('/demo/paiements')
+    await attendreLeChargement()
+
+    const modale = await ouvrirLaQuittance()
+    const texte = (modale.textContent ?? '').replace(/[\s ]/g, ' ')
+
+    /* Les trois postes de la période, et non le seul total : c'est la
+       ventilation qui permet de contester une refacturation. */
+    for (const poste of [/Loyer/, /Eau/, /Élec/])
+      expect(texte, `le poste manque à l’aperçu`).toMatch(poste)
+
+    /* Le statut de la pièce — « À jour », « Partiel », « En attente ». La
+       feuille le porte ; l'écran l'ignorait. */
+    expect(texte).toMatch(/À jour|Partiel|En attente|Paid|Partial|Pending/)
+  })
+
   it('laisse télécharger et imprimer', async () => {
     installerFauxServeur()
     await renderApp('/demo/paiements')

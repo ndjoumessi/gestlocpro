@@ -14,7 +14,10 @@ import { useRole } from '@/components/layout/AppShell'
 import { useToast } from '@/components/primitives/Toast'
 import { Logo } from '@/components/primitives/Logo'
 import { PAYMENT_METHOD_LABELS, type PaymentMethodKey } from '@/data/portfolio'
-import { useDocumentEmisPdf } from './documentsPdf'
+import { composerLaQuittance, useDocumentEmisPdf } from './documentsPdf'
+import { StatusPill } from '@/components/primitives/StatusPill'
+import { cn } from '@/lib/cn'
+import { partiesDeDate } from '@/lib/dates'
 
 /**
  * Document de quittance ou de reçu, tel que le SERVEUR l'a arrêté.
@@ -74,6 +77,53 @@ interface DocumentEmis {
 function enISO({ year, month, day }: { year: number; month: number; day: number }): string {
   return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
+
+/**
+ * UNE LIGNE DE DOCUMENT : ce qu'on nomme à gauche, ce qu'on chiffre à droite.
+ *
+ * C'est la `paire` de `miseEnPage`, rendue en HTML — même géométrie, mêmes
+ * règles. Elle existe pour que l'aperçu et la feuille ne puissent pas dériver
+ * l'un de l'autre par accident de mise en page : cinq appels ici, cinq `paire`
+ * là-bas, dans le même ordre.
+ *
+ * `numeric` sur le montant, jamais sur le libellé : les chiffres tabulaires
+ * gardent la même chasse d'une ligne à l'autre, sans quoi un « 1 » décale toute
+ * la colonne et l'œil ne peut plus comparer deux montants d'un coup.
+ */
+function LigneDeDocument({
+  libelle,
+  valeur,
+  montant,
+  fort,
+  ton,
+}: {
+  libelle: string
+  /** Un texte ordinaire — un nom de locataire. */
+  valeur?: string
+  /** Un montant déjà mis en forme dans la devise DU DOCUMENT. */
+  montant?: string
+  fort?: boolean
+  ton?: 'danger'
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-4">
+      <span className={cn('text-muted', fort && 'font-semibold text-ink')}>{libelle}</span>
+      <span
+        className={cn(
+          'text-right',
+          montant && 'numeric',
+          fort && 'font-semibold',
+          ton === 'danger' && 'text-danger',
+        )}
+      >
+        {montant ?? valeur}
+      </span>
+    </div>
+  )
+}
+
+/** Le ton de la pastille : soldé, ou pas encore. */
+const TONS_DE_PIECE = { paid: 'ok', other: 'warn' } as const
 
 export function ReceiptModal({
   unitId,
@@ -257,11 +307,6 @@ export function ReceiptModal({
     }
   }, [open, parkId, unitId, periodStart, t])
 
-  const [annee, mois] = periodStart.split('-').map(Number)
-  /* La période du document, convertie UNE fois. Deux appelants la voulaient —
-     l'aperçu et le PDF — et l'un des deux avait oublié le décalage. */
-  const periode = { year: annee!, month: mois! - 1 }
-
   /**
    * Le moyen de paiement en clair.
    *
@@ -275,6 +320,51 @@ export function ReceiptModal({
     const cle = PAYMENT_METHOD_LABELS[code as PaymentMethodKey]
     return cle ? t(cle as 'app.payments.methodCash') : code
   }
+
+  const [annee, mois] = periodStart.split('-').map(Number)
+  /* La période du document, convertie UNE fois. Deux appelants la voulaient —
+     l'aperçu et le PDF — et l'un des deux avait oublié le décalage. */
+  const periode = { year: annee!, month: mois! - 1 }
+  /** La date d'émission : celle du jour où l'on regarde la pièce, comme sur la feuille. */
+  const emisLe = d.fullDate(partiesDeDate(new Date()))
+
+  /*
+    LE CONTENU, COMPOSÉ UNE FOIS POUR L'APERÇU ET POUR LA FEUILLE.
+
+    `composerLaQuittance` existe justement parce que « chaque déduction faite
+    d'un côté seulement est une divergence en attente ». L'aperçu la contournait
+    et refaisait la sienne, à la main, en oubliant la moitié des lignes — et en
+    se trompant d'un mois. Il passe désormais par elle, comme le bouton
+    « Télécharger » juste à côté.
+  */
+  const contenu = useMemo(
+    () =>
+      document
+        ? composerLaQuittance(t, money, {
+            logement: [document.unit, document.building].filter(Boolean).join(' · '),
+            periode: d.monthYear(periode),
+            locataire: document.tenant,
+            rentMinor: document.rentMinor,
+            waterMinor: document.waterMinor,
+            powerMinor: document.powerMinor,
+            dueMinor: document.dueMinor,
+            paidMinor: document.paidMinor,
+            versements: document.payments.map((versement) => ({
+              trace: [
+                d.fullDate(partiesDeDateISO(versement.paidOn)),
+                libelleMoyen(versement.method),
+                versement.reference,
+              ]
+                .filter(Boolean)
+                .join(' · '),
+              amountMinor: versement.amountMinor,
+            })),
+          })
+        : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [d, document, periode.month, periode.year, t],
+  )
+
 
   return (
     <>
@@ -363,90 +453,133 @@ export function ReceiptModal({
         <p role="alert" className="text-body text-danger">
           {echec}
         </p>
-      ) : !document ? (
+      ) : !document || !contenu ? (
         <p className="text-body text-muted">{t('common.loading')}</p>
       ) : (
         /* `zone-imprimable` : la feuille d'impression ne garde que ce bloc.
            Imprimer la page entière sortirait la barre latérale et la
-           navigation, que personne ne veut sur une quittance. */
+           navigation, que personne ne veut sur une quittance.
+
+           `gap-5` et non `gap-6` : un document se compose SERRÉ. Le relevé
+           bancaire, la facture, la quittance rapprochent tous leurs lignes,
+           parce que l'œil y descend une colonne plutôt qu'il ne parcourt des
+           blocs. */
         <div className="zone-imprimable flex flex-col gap-5 text-body">
           {/*
-            UN EN-TÊTE, PARCE QU'UNE QUITTANCE DIT QUI L'ÉMET.
+            L'APERÇU EST LE DOCUMENT, et il ne l'était pas.
 
-            La feuille commençait par un surtitre et un mois. Remise à un
-            locataire, elle n'était signée de personne : rien dessus ne disait
-            d'où elle venait, alors que c'est un document qui atteste.
+            Ce fichier promet en toutes lettres — dix lignes plus haut — que
+            « ce qu'on voit ici est ce qui sortira » et qu'« un aperçu qui ne
+            ressemble pas à la feuille est un aperçu qui ment ». Mises côte à
+            côte, les deux pièces du MÊME mois disaient :
 
-            LA MARQUE EN UNE SEULE ENCRE, et c'est la raison d'être de
-            `logo-monochrome.svg`. Les quatre carrés de la marque disent « états
-            différents » par des opacités de 0,55 et 0,22 ; sur une feuille,
-            elles deviennent des gris tramés qu'une imprimante laser bon marché
-            rend en semis de points et qu'une thermique ne rend pas. La version
-            imprimée porte donc la même opposition par la FORME — deux carrés
-            pleins, deux évidés.
+              feuille : logement, date d'émission, période, locataire, loyer,
+                        eau, électricité, dû, réglé, statut, versements
+              aperçu  : période, locataire, logement, dû, réglé, solde
 
-            Ce qu'on voit ici est ce qui sortira : une seule ressource, pas de
-            bascule entre écran et papier. Un aperçu qui ne ressemble pas à la
-            feuille est un aperçu qui ment.
+            L'aperçu perdait le DÉTAIL — quelle part est du loyer, quelle part
+            de l'eau —, qui est précisément ce qu'un locataire conteste, et le
+            STATUT, que le gestionnaire vérifie avant de remettre la pièce.
 
-            ON EMPRUNTE `Logo`, ON NE LE RECOPIE PAS. Une première rédaction
-            réécrivait le mot-symbole ici, avec sa graisse : `graisses.test.ts`
-            l'a refusée, et il avait raison — le dépôt n'admet qu'un seul 700 en
-            ligne, et deux mot-symboles auraient divergé au premier ajustement.
-            `to=""` rend une balise inerte plutôt qu'un lien : sur une feuille,
-            un lien ne mène nulle part.
+            Ce n'était pas une omission de mise en page : les deux composaient
+            leur contenu SÉPARÉMENT. C'est ainsi que le mois avait divergé d'un
+            cran entre l'écran et la feuille — un défaut corrigé à la main, que
+            cette rédaction rend impossible. Les deux passent maintenant par
+            `composerLaQuittance`, dans le même ORDRE que `pagesDeQuittance`.
+
+            CE QUE L'ÉCRAN AJOUTE, et que le papier ne peut pas : le statut en
+            pastille colorée plutôt qu'en mot, et le reste dû en ton d'alerte.
+            Ce n'est pas de l'ornement — c'est l'information la plus lue de la
+            pièce, et sur papier elle se cherche ligne à ligne.
           */}
-          <div className="border-b border-border pb-4">
+          <div className="flex items-center justify-between gap-4 border-b border-border pb-3">
             <Logo impression size="sm" to="" />
+            <span className="text-caption text-muted">
+              {t('app.documents.pdfIssuedOn', { date: emisLe })}
+            </span>
           </div>
 
-          <div>
-            <p className="eyebrow text-muted">{t(`app.receipts.${document.kind}`)}</p>
-            <p className="text-h3">
-              {/* `mois - 1`, ET LE PDF LE FAISAIT DÉJÀ. Le mois d'une chaîne
-                  ISO se compte à partir de UN, `monthYear` à partir de ZÉRO :
-                  sans le décalage, l'écran titrait « Septembre 2026 » au-dessus
-                  d'un versement du 3 août. Le bouton « Télécharger », quinze
-                  lignes plus haut, passait la même valeur par `mois - 1` — la
-                  feuille était donc juste et l'aperçu faux, sur un document qui
-                  atteste d'une période. Deux fois la même conversion : elle est
-                  désormais faite une seule fois, au-dessus. */}
-              {d.monthYear(periode)}
-            </p>
+          <div className="flex flex-col gap-0.5">
+            <p className="eyebrow text-muted">{t(contenu.titre)}</p>
+            <p className="text-h3">{contenu.periode}</p>
+            <p className="text-body text-muted">{contenu.logement}</p>
           </div>
 
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-2">
-            <dt className="text-muted">{t('app.receipts.tenant')}</dt>
-            <dd>{document.tenant}</dd>
-            <dt className="text-muted">{t('app.receipts.unit')}</dt>
-            <dd>
-              {document.unit} · {document.building} ({document.district})
-            </dd>
-            <dt className="text-muted">{t('app.receipts.due')}</dt>
-            <dd className="numeric">{money(document.dueMinor)}</dd>
-            <dt className="text-muted">{t('app.receipts.paid')}</dt>
-            <dd className="numeric">{money(document.paidMinor)}</dd>
-            <dt className="text-muted">{t('app.receipts.balance')}</dt>
-            <dd className="numeric">
-              {/* Un solde négatif est une AVANCE, et se dit comme telle : le
-                  laisser en « -55 000 » ferait lire un impayé à l'envers. */}
-              {document.balanceMinor < 0
-                ? t('app.receipts.credit', { amount: money(-document.balanceMinor) })
-                : money(document.balanceMinor)}
-            </dd>
-          </dl>
+          <LigneDeDocument libelle={t('app.portfolio.tenant')} valeur={contenu.locataire} />
 
-          <div>
-            <p className="eyebrow text-muted">{t('app.receipts.payments')}</p>
-            <ul className="mt-2 flex flex-col gap-1">
-              {document.payments.map((p) => (
-                <li key={p.id} className="flex flex-wrap items-center justify-between gap-2">
-                  <span>
-                    {d.fullDate(partiesDeDateISO(p.paidOn))} · {libelleMoyen(p.method)}
-                    {p.reference ? ` · ${p.reference}` : ''}
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <span className="numeric">{money(p.amountMinor)}</span>
+          {/*
+            LES MONTANTS EN COLONNE, alignés à droite et en chiffres tabulaires.
+
+            La rédaction précédente les posait dans une grille à deux colonnes
+            égales, calés à GAUCHE : « 8 320 FCFA » et « 170 942 FCFA »
+            commençaient au même pixel et se comparaient chiffre à chiffre. Un
+            document d'argent se lit par la droite — c'est là que les unités
+            s'alignent — et `numeric` donne aux chiffres la même chasse, sans
+            quoi un 1 déplace toute la colonne.
+          */}
+          <section className="flex flex-col gap-2">
+            <p className="eyebrow text-muted">{t('app.documents.pdfBreakdown')}</p>
+            <LigneDeDocument libelle={t('app.tenant.colRent')} montant={contenu.postes.rent} />
+            <LigneDeDocument libelle={t('app.tenant.colWater')} montant={contenu.postes.water} />
+            <LigneDeDocument libelle={t('app.tenant.colPower')} montant={contenu.postes.power} />
+
+            {/* Le filet de la feuille : ce qui suit TOTALISE ce qui précède. */}
+            <div className="mt-1 flex flex-col gap-2 border-t border-border pt-2.5">
+              <LigneDeDocument fort libelle={t('app.payments.due')} montant={contenu.du} />
+              <LigneDeDocument libelle={t('app.payments.paid')} montant={contenu.paye} />
+              {/* LE RESTE N'APPARAÎT QUE S'IL EXISTE — même règle que la feuille :
+                  « Reste à régler : 0 » sur une période soldée est un chiffre
+                  qu'il faut lire pour constater qu'il ne dit rien. */}
+              {contenu.reste && (
+                <LigneDeDocument
+                  fort
+                  ton="danger"
+                  libelle={t('app.documents.pdfRemaining')}
+                  montant={contenu.reste}
+                />
+              )}
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-muted">{t('app.portfolio.status')}</span>
+                {/* LA PASTILLE À L'ÉCRAN, LE MOT SUR LE PAPIER. `impression`
+                    rend la pastille en texte à l'impression : la feuille garde
+                    donc exactement ce que `pagesDeQuittance` écrit. */}
+                <StatusPill tone={TONS_DE_PIECE[document.kind === 'quittance' ? 'paid' : 'other']}>
+                  {contenu.statut}
+                </StatusPill>
+              </div>
+            </div>
+
+            {/* L'imputation, seulement là où elle apprend quelque chose : sur
+                une période partiellement réglée, elle dit QUEL poste reste
+                ouvert. La feuille la pose en petit, en bas ; ici elle suit les
+                montants qu'elle explique. */}
+            {contenu.imputation && (
+              <p className="text-caption text-muted">{contenu.imputation}</p>
+            )}
+          </section>
+
+          <section className="flex flex-col gap-2">
+            {/* LE MÊME INTITULÉ QUE LA FEUILLE — « Versements reçus » — et non
+                « Versements ». Deux mots pour la même liste sur deux pièces du
+                même document, c'était le reste de la divergence. */}
+            <p className="eyebrow text-muted">{t('app.documents.pdfPayments')}</p>
+            {contenu.versements.length === 0 ? (
+              /* La feuille écrit cette ligne ; l'aperçu laissait un intitulé
+                 suivi de rien, qui se lit comme un défaut d'affichage. */
+              <p className="text-muted">{t('app.documents.pdfNoPayment')}</p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {contenu.versements.map((versement, rang) => (
+                  <li
+                    key={document.payments[rang]!.id}
+                    className="flex items-baseline justify-between gap-4"
+                  >
+                    {/* LA TRACE VIENT DE LA COMPOSITION, comme sur la feuille :
+                        date, moyen, référence, dans cet ordre et joints de la
+                        même façon. Elle était réassemblée ici à la main. */}
+                    <span className="text-muted">{versement.trace}</span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <span className="numeric">{versement.montant}</span>
                     {/*
                       La gomme, à l'endroit où l'erreur se découvre.
 
@@ -481,18 +614,21 @@ export function ReceiptModal({
                         disabled={retraitEnCours}
                         onClick={() =>
                           setARetirer({
-                            id: p.id,
-                            montant: money(p.amountMinor),
-                            date: d.fullDate(partiesDeDateISO(p.paidOn)),
+                            id: document.payments[rang]!.id,
+                            montant: versement.montant,
+                            date: d.fullDate(
+                              partiesDeDateISO(document.payments[rang]!.paidOn),
+                            ),
                           })
                         }
                       />
                     )}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         </div>
       )}
     </Modal>

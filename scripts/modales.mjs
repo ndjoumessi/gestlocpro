@@ -179,13 +179,30 @@ const MODALES = [
     plafond de zéro mesuré sur une modale VIDE, et une garde qui gardait le
     squelette d'une pièce plutôt que la pièce.
 
-    Elle compose désormais son document localement. Six pixels de défilement à
-    360 px pour une quittance complète — émetteur, période, locataire, logement,
-    trois montants et la liste des versements — est ce que coûte un vrai
-    document sur un téléphone. Ce n'est pas « du défilement qui n'achète rien » :
-    c'est la pièce elle-même.
+    Elle compose désormais son document localement, ET l'aperçu montre ce que la
+    feuille montre : le détail poste par poste — loyer, eau, électricité —, le
+    reste dû quand il existe, le statut, l'imputation des versements partiels.
+    L'aperçu s'arrêtait à trois montants ; le fichier promettait pourtant que
+    « ce qu'on voit ici est ce qui sortira ».
+
+    91 px À 360 px, ET CE QU'ILS ACHÈTENT. Le détail est ce qu'un locataire
+    conteste, le statut ce qu'un gestionnaire vérifie avant de remettre la
+    pièce. Ce n'est donc pas « du défilement qui n'achète rien » : c'est le
+    document. Le rythme a d'abord été resserré — `gap-5` au lieu de `gap-6`,
+    comme se compose un relevé bancaire — ce qui a rendu 22 px des 113 mesurés
+    à la première rédaction.
+
+    ET LES ACTIONS NE DÉFILENT PAS : le pied de la modale est fixe, donc
+    « Télécharger » et « Imprimer » restent atteignables sans lire la pièce.
+    C'est ce qui distingue un document qu'on parcourt d'un formulaire dont le
+    bouton se dérobe.
+
+    L'ÉCART FRANÇAIS/ANGLAIS est réel et mesuré : 91 contre 39. La phrase
+    d'imputation passe à trois lignes en français et à deux en anglais, et les
+    intitulés français sont plus longs. On ne moyenne pas les deux — le plafond
+    est déclaré par langue, comme partout dans ce fichier.
   */
-  { nom: 'Receipt', adresse: '/demo/paiements', bouton: /Quittance|Receipt/, defil: { 360: 6, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'Receipt', adresse: '/demo/paiements', bouton: /Quittance|Receipt/, defil: { 360: 91, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /*
     INSPECTION : LE PLAFOND MONTE, ET VOICI CE QU'IL ACHÈTE.
 
