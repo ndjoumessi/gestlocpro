@@ -1281,6 +1281,22 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethodKey, string> = {
   check: 'app.payments.methodCheck',
 }
 
+/**
+ * CE QU'UNE CAUTION DOIT ENCORE, une fois la retenue déduite.
+ *
+ * Nommée parce que trois endroits la calculaient — l'écran, sa ligne, et le
+ * document — et qu'une formule d'argent recopiée finit par diverger. C'est le
+ * même motif que `receiptDue`, juste en dessous.
+ *
+ * Elle ne dit rien du STATUT : une caution restituée a le même solde
+ * arithmétique que la veille de sa restitution. C'est à l'appelant d'écarter
+ * `returned`, parce que la question « combien reste-t-il dû » n'a de sens que
+ * sur ce qu'on détient encore.
+ */
+export function soldeDeCaution(deposit: Pick<Deposit, 'held' | 'withheld'>): number {
+  return deposit.held - deposit.withheld
+}
+
 /** Ce que la période doit, tous postes confondus. */
 export function receiptDue(receipt: Receipt): number {
   return receipt.rentMinor + receipt.waterMinor + receipt.powerMinor

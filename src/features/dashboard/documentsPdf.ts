@@ -12,6 +12,7 @@ import { construirePdf } from '@/lib/pdf'
 import { partiesDeDate, partiesDeDateISO } from '@/lib/dates'
 import { useDates } from '@/lib/useDates'
 import { usePortfolio } from '@/data/PortfolioProvider'
+import { soldeDeCaution } from '@/data/portfolio'
 import {
   PAYMENT_METHOD_LABELS,
   imputationDesPostes,
@@ -765,6 +766,120 @@ export function useDepositPdf() {
 }
 
 /* ─── L'ÉTAT DES LIEUX ────────────────────────────────────────────────────── */
+
+/**
+ * L'ÉTAT DES CAUTIONS — ce que le parc détient, pour le compte de qui.
+ *
+ * ═══ POURQUOI CE DOCUMENT, ET SUR CET ÉCRAN ═══
+ *
+ * Une caution n'est pas l'argent du bailleur : c'est celui du locataire, détenu
+ * pour lui. C'est donc la seule ligne du produit qu'on doit pouvoir JUSTIFIER
+ * sur demande — à un locataire qui part, à un associé, à un contrôle — et
+ * l'écran qui la porte n'avait aucun export, quand les paiements et les relevés
+ * en ont un depuis longtemps.
+ *
+ * Il vit ici et non dans une page de rapports parce qu'il ne traverse AUCUN
+ * autre écran : il est exactement la table des cautions, à une date. Un rapport
+ * qui rassemble plusieurs écrans — le relevé annuel — appellerait autre chose ;
+ * celui-ci s'exporte là où on le lit.
+ *
+ * ═══ UNE DATE, PAS UNE PÉRIODE ═══
+ *
+ * « Au 29/08/2026 » et non « du … au … ». Une caution ne se consomme pas sur un
+ * mois : elle est détenue ou elle ne l'est plus. Un état daté se compare à un
+ * autre état daté, ce qu'une période ne permettrait pas.
+ *
+ * ═══ TROIS SECTIONS, TROIS OBLIGATIONS ═══
+ *
+ * Consignée, en arbitrage, restituée ne sont pas trois nuances d'un même état :
+ * la première est une dette entière, la deuxième une dette en litige, la
+ * troisième une dette éteinte. Les mêler dans une liste triée par logement
+ * ferait un tableau exact et inutilisable — c'est le total par section qui
+ * répond à « combien dois-je ».
+ *
+ * LES RESTITUÉES FIGURENT QUAND MÊME, hors du total. Les retirer ferait un
+ * document qui ne se recoupe pas avec l'écran dont il sort, et l'on chercherait
+ * la caution manquante.
+ */
+export function useDepositsStatementPdf() {
+  const t = useT()
+  const emisLe = useEmisLe()
+  const { money } = useCurrency()
+  const { deviseSource } = useCurrency()
+  const mentionner = useMentionDeConversion()
+  const parc = useEmetteur()
+  const remettre = useRemise()
+
+  return useCallback(
+    (cautions: { unite: string; locataire: string; deposit: Deposit }[]): string => {
+      const page = nouvelleMiseEnPage()
+      const argent = (montant: number) => money(montant, { compact: true })
+      const titre = t('app.documents.depositsStatement')
+
+      const detenues = cautions.filter(({ deposit }) => deposit.status !== 'returned')
+      const consigne = cautions.reduce((somme, { deposit }) => somme + deposit.held, 0)
+      const retenu = cautions.reduce((somme, { deposit }) => somme + deposit.withheld, 0)
+      const du = detenues.reduce((somme, { deposit }) => somme + soldeDeCaution(deposit), 0)
+
+      enTete(page, {
+        parc,
+        titre,
+        /* La DATE prend la place que la quittance donne au logement : cet état
+           porte sur le parc entier, il n'a pas de logement. */
+        logement: t('app.documents.statementAsOf', { date: emisLe }),
+        ligneDate: t('app.documents.pdfIssuedOn', { date: emisLe }),
+      })
+
+      page.paire(t('app.deposits.totalHeld'), argent(consigne))
+      page.paire(t('app.deposits.withheld'), argent(retenu))
+      page.filet()
+      /* LA DETTE EN GRAS, parce que c'est la seule ligne qu'on cherche en
+         ouvrant ce document. Elle exclut les cautions rendues — voir
+         `Deposits`, où l'écran les comptait encore. */
+      page.paire(t('app.deposits.balance'), argent(du), { gras: true })
+
+      for (const statut of ['held', 'settling', 'returned'] as const) {
+        const lignes = cautions.filter(({ deposit }) => deposit.status === statut)
+        if (lignes.length === 0) continue
+
+        page.section(t(`app.deposits.${statut}` as 'app.deposits.held'))
+        for (const { unite, locataire, deposit } of lignes) {
+          /* LA RETENUE SUR LA LIGNE QUI LA SUBIT. Une colonne de retenues à
+             part obligerait à rapprocher deux listes de tête ; ici le montant
+             rendu porte à côté de lui ce qui en a été ôté. */
+          const trace = [
+            unite,
+            locataire,
+            deposit.withheld > 0
+              ? t('app.documents.statementWithheld', { amount: argent(deposit.withheld) })
+              : '',
+          ]
+            .filter(Boolean)
+            .join(' · ')
+          page.paire(
+            trace,
+            /* Une caution rendue n'a plus de solde : on montre ce qu'elle
+               VALAIT, qui est le seul chiffre qu'elle porte encore. */
+            argent(statut === 'returned' ? deposit.held : soldeDeCaution(deposit)),
+          )
+        }
+      }
+
+      const conversion = mentionner(deviseSource)
+      if (conversion) {
+        page.saut(4)
+        page.paragraphe(conversion, { petit: true })
+      }
+
+      return remettre(
+        page.pages((numero, total) => piedDePage(t, parc, titre, numero, total)),
+        nomDeFichier([titre], isoDay(new Date()), 'pdf'),
+        'app.documents.pdfDownloaded',
+      )
+    },
+    [deviseSource, emisLe, mentionner, money, parc, remettre, t],
+  )
+}
 
 export function useInspectionPdf() {
   const t = useT()

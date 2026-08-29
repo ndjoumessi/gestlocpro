@@ -436,6 +436,10 @@ export const en: Dictionary = {
       pdfFooter:
         '{park} · {document} · page {page} of {total} · produced from recorded data, unsigned',
       exportCsv: 'Export as spreadsheet',
+      depositsStatement: 'Deposits statement',
+      statementAsOf: 'As of {date}',
+      statementWithheld: '{amount} withheld',
+      exportDeposits: 'Export the deposits statement',
       pdfDownloadDeposit: 'Download the deposit receipt',
       pdfDownloadInspection: 'Download the inspection report',
       pdfDownloaded: 'Document downloaded · {file}',

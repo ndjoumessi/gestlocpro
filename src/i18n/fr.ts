@@ -571,6 +571,10 @@ export const fr = {
       pdfFooter:
         '{park} · {document} · page {page} sur {total} · produit depuis les données enregistrées, sans signature',
       exportCsv: 'Exporter en tableur',
+      depositsStatement: 'État des cautions',
+      statementAsOf: 'Au {date}',
+      statementWithheld: '{amount} retenus',
+      exportDeposits: 'Exporter l’état des cautions',
       pdfDownloadDeposit: 'Télécharger le reçu de caution',
       pdfDownloadInspection: 'Télécharger l’état des lieux',
       pdfDownloaded: 'Document téléchargé · {file}',
