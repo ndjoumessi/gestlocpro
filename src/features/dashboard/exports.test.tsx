@@ -44,7 +44,11 @@ describe('export des paiements', () => {
 
     const file = await exporter(/Exporter le relevé/)
 
-    expect(file.name).toMatch(/^gestlocpro-paiements-\d{4}-\d{2}-\d{2}\.csv$/)
+    /* LE NOM PORTE LA DEVISE LUE, entre le sujet et la date. Deux exports du
+       même parc dans deux monnaies rendaient deux fichiers de MÊME NOM : le
+       second écrasait le premier dans le dossier des téléchargements, sans un
+       mot. Un fichier qui quitte le produit doit se suffire, nom compris. */
+    expect(file.name).toMatch(/^gestlocpro-paiements-cfa-\d{4}-\d{2}-\d{2}\.csv$/)
     expect(file.type).toContain('text/csv')
     // Sans BOM, « Deïdo » et « Réglé » arrivent illisibles dans Excel. On le
     // vérifie sur les OCTETS : c'est ce que le tableur lira.
@@ -392,7 +396,12 @@ describe('quittances du locataire', () => {
 
     const file = await exporter(/Exporter en tableur/)
 
-    expect(file.name).toMatch(/^gestlocpro-quittances-du-locataire-a1-\d{4}-\d{2}-\d{2}\.csv$/)
+    /* La devise s'intercale, comme sur tous les tableurs — le PDF, lui, garde
+       son nom : il porte sa devise EN TOUTES LETTRES sur la feuille, où un
+       lecteur la voit. Un tableur ne montre que des nombres. */
+    expect(file.name).toMatch(
+      /^gestlocpro-quittances-du-locataire-a1-cfa-\d{4}-\d{2}-\d{2}\.csv$/,
+    )
     const [entetes, ...lignes] = file.text.replace(UTF8_BOM, '').trim().split('\r\n')
     expect(entetes.split(';').at(-1)).toBe('Référence de la transaction')
     expect(entetes).toContain('Réglé')

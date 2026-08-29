@@ -2,7 +2,9 @@ import { useCallback, useMemo } from 'react'
 import { useToast } from '@/components/primitives/Toast'
 import { useI18n, type MessageKey } from '@/i18n/I18nProvider'
 import { useCurrency } from '@/currency/CurrencyProvider'
-import { enUniteDUsage } from '@/currency/currencies'
+import { CURRENCY_DEFS, enUniteDUsage } from '@/currency/currencies'
+import { useDates } from './useDates'
+import { partiesDeDateISO } from './dates'
 import { csvDelimiter, csvFilename, csvNumber, isoDay, serializeCsv, type CsvCell } from './csv'
 import { downloadTextFile } from './download'
 
@@ -41,8 +43,10 @@ export interface CsvExportRequest {
  * la colonne. C'est aussi ce que fait n'importe quel export comptable.
  */
 export function useCsvMoney() {
-  const { locale } = useI18n()
-  const { deviseAffichee, definition, enDeviseAffichee } = useCurrency()
+  const { locale, t } = useI18n()
+  const dates = useDates()
+  const { deviseAffichee, deviseSource, definition, enDeviseAffichee, baseDeConversion } =
+    useCurrency()
 
   return useMemo(
     () => ({
@@ -66,21 +70,59 @@ export function useCsvMoney() {
        */
       amount: (value: number): string =>
         csvNumber(enUniteDUsage(enDeviseAffichee(value), deviseAffichee), locale, definition.decimals),
-      /** En-tête portant la devise : « Loyer (FCFA) ». */
-      header: (label: string): string => `${label} (${definition.label})`,
+      /**
+       * En-tête portant la devise : « Loyer (FCFA) ».
+       *
+       * ET SA BASE, QUAND IL Y A CONVERSION : « Loyer (Euro (€), converti du
+       * FCFA à la parité légale) ».
+       *
+       * UN CSV N'A AUCUNE PLACE POUR DE LA PROSE. Les documents portent leur
+       * mention en bas de feuille ; un tableur n'a pas de bas de feuille. Une
+       * ligne ajoutée avant l'en-tête casse tout analyseur qui suppose que la
+       * première ligne nomme les colonnes ; une ligne ajoutée après les données
+       * entre dans les colonnes qu'on somme. Le seul endroit à la fois sûr et
+       * attaché à ce qu'il qualifie est l'en-tête lui-même.
+       *
+       * ET C'EST ICI QUE ÇA COMPTE LE PLUS. Un tableur se somme, se recoupe et
+       * se TRANSMET : il quitte le produit, arrive chez un comptable, et
+       * personne ne se souvient alors des réglages de l'écran d'où il sort. La
+       * colonne doit se suffire.
+       *
+       * Sans conversion, l'en-tête ne s'allonge pas : une mention sur un fichier
+       * exact jetterait un doute sur des montants qui n'en méritent pas.
+       */
+      header: (label: string): string => {
+        const base = baseDeConversion(deviseSource)
+        if (!base) return `${label} (${definition.label})`
+
+        const depuis = CURRENCY_DEFS[base.depuis].label
+        const mention = base.date
+          ? t('app.documents.csvConverted', {
+              currency: definition.label,
+              from: depuis,
+              date: dates.fullDate(partiesDeDateISO(base.date)),
+            })
+          : t('app.documents.csvConvertedPegged', { currency: definition.label, from: depuis })
+        return `${label} (${mention})`
+      },
     }),
-    [deviseAffichee, enDeviseAffichee, locale, definition],
+    [baseDeConversion, dates, deviseAffichee, deviseSource, enDeviseAffichee, locale, definition, t],
   )
 }
 
 /** Rend une fonction d'export : sérialise, télécharge, puis annonce. */
 export function useCsvExport() {
   const { locale, t } = useI18n()
+  const { deviseAffichee } = useCurrency()
   const { notify } = useToast()
 
   return useCallback(
     ({ name, stamp, headers, rows, notice }: CsvExportRequest): string => {
-      const parts = typeof name === 'string' ? [name] : name
+      /* LE NOM PORTE LA DEVISE LUE. Deux exports du même parc dans deux
+         monnaies rendaient deux fichiers de MÊME NOM : le second écrasait le
+         premier dans le dossier des téléchargements, sans un mot. Un fichier
+         qui quitte le produit doit se suffire, nom compris. */
+      const parts = [...(typeof name === 'string' ? [name] : name), deviseAffichee]
       const filename = csvFilename(parts, stamp ?? isoDay(new Date()))
       const content = serializeCsv([headers, ...rows], { delimiter: csvDelimiter(locale) })
 
@@ -89,6 +131,6 @@ export function useCsvExport() {
 
       return filename
     },
-    [locale, notify, t],
+    [deviseAffichee, locale, notify, t],
   )
 }
