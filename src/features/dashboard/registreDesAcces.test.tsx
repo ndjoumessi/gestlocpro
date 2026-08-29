@@ -419,3 +419,40 @@ describe('ce que le registre n’affirme pas', () => {
     await waitFor(() => expect(serveur.appels.some((a) => a.methode === 'PATCH')).toBe(true))
   })
 })
+
+/**
+ * UN GESTE IRRÉVERSIBLE SE VOIT COMME UN GESTE.
+ *
+ * ═══ CE QUE LA CELLULE MONTRAIT ═══
+ *
+ * « Retirer l'accès » et « Reprendre » étaient des boutons fantômes NUS : de
+ * l'encre pleine, sans bord, sans fond, sans glyphe. Dans une colonne de
+ * tableau, à côté d'une date et d'un nom, cela se lit comme une donnée de plus
+ * — et le survol est le premier moment où l'on apprend que c'en est une
+ * commande. Trois fois de suite sur la même colonne, dans la capture.
+ *
+ * ═══ CE N'EST PAS UNE QUESTION DE GOÛT, ET LE DÉPÔT LE DIT AILLEURS ═══
+ *
+ * Les deux autres colonnes de geste du produit — retirer une fiche locataire,
+ * mettre en demeure — sont le MÊME bouton fantôme, à ceci près qu'elles portent
+ * une icône. C'est elle qui les fait lire comme des commandes. Ces deux-ci
+ * étaient les seules sans, et ce sont les seules qui retirent un accès.
+ *
+ * On ne les repeint pas en rouge : le rouge du produit est celui de la
+ * CONFIRMATION, dans la modale qui suit, et l'avancer d'un cran ferait de la
+ * couleur le signal — ce que `couleur-non-seule` refuse partout ailleurs.
+ */
+describe('les gestes du registre', () => {
+  it('portent un glyphe, comme les autres colonnes de geste', async () => {
+    await ouvrir('owner')
+
+    for (const nom of [/Retirer l’accès/, /Reprendre/]) {
+      const bouton = screen.getAllByRole('button', { name: nom })[0]
+      expect(bouton, `aucun bouton « ${nom} »`).toBeDefined()
+      expect(
+        bouton!.querySelector('svg'),
+        `« ${nom} » n’a que du texte : dans un tableau, cela se lit comme une donnée.`,
+      ).not.toBeNull()
+    }
+  })
+})

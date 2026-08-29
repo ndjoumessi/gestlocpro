@@ -246,9 +246,30 @@ export function Access() {
                 const soiMeme = monAdresse === m.email
                 if (!estProprietaire || soiMeme) return null
                 return (
+                  /*
+                    LE GLYPHE FAIT LIRE LA COMMANDE COMME UNE COMMANDE.
+
+                    Ce bouton était fantôme et NU : de l'encre pleine, sans
+                    bord, sans fond, sans signe. Dans une colonne de tableau, à
+                    côté d'un nom et d'une date, cela se lit comme une donnée de
+                    plus — et le survol est le premier moment où l'on apprend
+                    que c'en est une. Trois fois de suite sur la même colonne.
+
+                    Les deux autres colonnes de geste du produit — retirer une
+                    fiche locataire, mettre en demeure — sont le MÊME bouton
+                    fantôme AVEC une icône. Celles du registre étaient les
+                    seules sans, et ce sont les seules qui retirent un accès.
+
+                    PAS DE ROUGE ICI : le rouge du produit est celui de la
+                    CONFIRMATION, dans la modale qui suit. L'avancer d'un cran
+                    ferait de la couleur le signal, ce que `couleur-non-seule`
+                    refuse partout ailleurs — et peindrait en danger une colonne
+                    entière qu'on ne fait que lire, la plupart du temps.
+                  */
                   <Button
                     variant="ghost"
                     size="sm"
+                    icon="close"
                     loading={enCours === m.id}
                     onClick={() => setARetirer({ genre: 'membre', membre: m })}
                   >
@@ -328,6 +349,7 @@ export function Access() {
                     <Button
                       variant="ghost"
                       size="sm"
+                      icon="close"
                       loading={enCours === i.id}
                       onClick={() => setARetirer({ genre: 'code', code: i })}
                     >

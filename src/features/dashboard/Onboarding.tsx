@@ -308,7 +308,28 @@ export function Onboarding() {
 
       <Card flush>
         <div className="p-4 sm:p-5">
-          <CardHeader title={t('app.onboarding.matrixTitle')} level={2} className="mb-0" />
+          {/*
+            LA LÉGENDE SORT DU `<caption>` ET SE LIT.
+
+            « Actions autorisées pour chaque rôle, SELON LE MODE DE DÉLÉGATION
+            choisi ci-dessus » vivait en `sr-only`, et le commentaire qui l'y
+            avait mise disait pourquoi : le titre visible ne le dit pas. La
+            conclusion s'arrêtait à mi-chemin — si le titre ne le dit pas, ce
+            n'est pas au seul lecteur d'écran qu'il manque.
+
+            C'est la phrase qui compte le plus sur cet écran : sans elle, rien
+            ne relie ce tableau au choix de délégation posé juste au-dessus,
+            dont il dépend pourtant colonne par colonne. Le lecteur voyant
+            n'avait qu'un titre seul, surmontant trente-deux pixels de blanc,
+            quand toutes les autres sections du produit portent un titre ET une
+            ligne qui l'explique.
+          */}
+          <CardHeader
+            title={t('app.onboarding.matrixTitle')}
+            description={t('app.onboarding.matrixCaption')}
+            level={2}
+            className="mb-0"
+          />
         </div>
 
         {/* `relative` n'est pas décoratif : sans lui, le tableau fait défiler
@@ -323,11 +344,28 @@ export function Onboarding() {
             Même mécanisme que celui documenté dans `Charts.tsx` sur la table
             alternative du graphe — la leçon y avait été tirée, pas ici. */}
         <div className="relative overflow-x-auto">
-          {/* Le `<caption>` répétait le titre rendu juste au-dessus : un
-              lecteur d'écran entendait « Matrice des droits » deux fois. Il
-              porte maintenant ce que le titre visible ne dit pas. */}
-          <table className="w-full border-collapse text-body">
-            <caption className="sr-only">{t('app.onboarding.matrixCaption')}</caption>
+          {/*
+            LE NOM DE LA TABLE PASSE EN `aria-label`, ET LA LÉGENDE REMONTE.
+
+            Le `<caption>` a porté successivement les deux : d'abord le titre —
+            qu'un lecteur d'écran entendait alors deux fois, puisque le `<h2>`
+            le rend juste au-dessus —, puis l'explication, qui a suivi le même
+            chemin en sens inverse et se lit maintenant sous le titre.
+
+            Reste à nommer la table, et un `aria-label` le fait sans rien
+            ajouter à la prose : il n'est pas rendu, il n'est pas lu à la file,
+            il ne se prononce qu'en ENTRANT dans la table — le moment où l'on a
+            justement besoin de savoir dans quoi l'on entre. Une table sans nom
+            aurait été un défaut déplacé, pas un défaut fermé.
+
+            La légende ne pouvait pas rester ici en devenant visible : ce bloc
+            défile horizontalement, et une phrase de deux lignes s'en irait avec
+            le tableau sur un écran étroit.
+          */}
+          <table
+            className="w-full border-collapse text-body"
+            aria-label={t('app.onboarding.matrixTitle')}
+          >
             <thead>
               <tr className="border-y border-divider bg-surface-sunken">
                 <th scope="col" className="eyebrow px-4 py-3 text-left font-normal text-muted">
