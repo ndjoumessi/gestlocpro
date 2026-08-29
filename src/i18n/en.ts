@@ -386,6 +386,7 @@ export const en: Dictionary = {
       allReceipts: 'Tenant receipts',
       request: 'Request a document',
       requestHint: 'The manager receives the request and replies in this space.',
+      reqNoChoice: 'Choose the document to request',
       requestSend: 'Send the request',
       requestSent: 'Request sent to the manager',
       reqResidence: 'Proof of residence',

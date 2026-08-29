@@ -80,8 +80,11 @@ describe('rejoindre un parc', () => {
 
     await user.type(await screen.findByLabelText(/code d’invitation/i), 'LO')
 
-    // Un aller-retour pour deux caractères apprend le refus au lieu de la règle.
-    expect(screen.getByRole('button', { name: /^rejoindre$/i })).toBeDisabled()
+    /* Un aller-retour pour deux caractères apprend le refus au lieu de la
+       règle : RIEN NE PART, et c'est ce que ce cas tient. Le bouton, lui, n'est
+       plus éteint — il l'était en silence, la validation locale ne posant
+       jamais d'erreur. Il répond maintenant ; voir `refusEnonce.test.tsx`. */
+    await user.click(screen.getByRole('button', { name: /^rejoindre$/i }))
     expect(serveur.appels.some((a) => a.chemin === '/join')).toBe(false)
   })
 })

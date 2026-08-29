@@ -507,6 +507,7 @@ export const fr = {
         * l'avait pas suivie.
         */
       requestHint: 'Le gestionnaire reçoit la demande et vous répond dans cet espace.',
+      reqNoChoice: 'Choisissez la pièce à demander',
       requestSend: 'Envoyer la demande',
       requestSent: 'Demande envoyée au gestionnaire',
       reqResidence: 'Attestation de résidence',

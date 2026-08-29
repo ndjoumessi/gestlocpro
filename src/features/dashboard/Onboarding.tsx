@@ -168,12 +168,25 @@ function RejoindreUnParc() {
       </Field>
       <div>
         <Button
-          /* LA MÊME BORNE QUE L'INSCRIPTION, et non un seuil local de quatre
-             caractères : `validateInviteCode` connaît la forme exacte du code,
-             préfixe compris. Un seuil inventé ici laisserait partir « LOC- »
-             seul, pour un aller-retour dont la réponse est déjà connue. */
-          disabled={envoi || validateInviteCode(code) !== null}
+          /* LA BORNE PARLE AU LIEU D'ÉTEINDRE.
+
+             `validateInviteCode` connaît la forme exacte du code, préfixe
+             compris — c'est la même borne qu'à l'inscription, et elle reste.
+             Ce qui change : elle éteignait le bouton en silence. L'erreur du
+             champ n'était posée qu'APRÈS un refus SERVEUR, jamais par la
+             validation locale ; on tapait un code incomplet, le bouton mourait,
+             et rien ne disait pourquoi. Le `placeholder` suggérait bien un
+             gabarit — et il disparaît à la première frappe.
+
+             `envoi` reste : un bouton éteint pendant son propre envoi n'est pas
+             muet, l'action voisine porte `loading`. */
+          disabled={envoi}
           onClick={async () => {
+            const forme = validateInviteCode(code)
+            if (forme) {
+              setErreur(t(forme))
+              return
+            }
             setEnvoi(true)
             try {
               await api.joinPark(code.trim())

@@ -99,9 +99,20 @@ describe('coquille du locataire — adresses', () => {
  * pas affiché parce que rien ne le journalise.
  */
 describe('documents — demander une pièce', () => {
+  /**
+   * L'EXIGENCE RESTE, LA FAÇON DE LA DIRE A CHANGÉ. Le bouton était ÉTEINT dès
+   * l'arrivée, et muet — le groupe de choix porte `hideLegend`, donc même son
+   * intitulé était masqué. Il reste cliquable et le refus s'écrit au groupe ;
+   * voir `refusEnonce.test.tsx`, qui tient les deux moitiés. Ce cas-ci garde
+   * celle qui compte ici : rien ne part sans objet.
+   */
   it('ne laisse pas envoyer une demande sans objet', async () => {
+    const user = userEvent.setup()
     await ouvrirEnLocataire('/demo/documents')
-    expect(screen.getByRole('button', { name: 'Envoyer la demande' })).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: 'Envoyer la demande' }))
+
+    expect(screen.queryByText(/Demande envoyée/i), 'une demande est partie sans objet').toBeNull()
   })
 
   /**

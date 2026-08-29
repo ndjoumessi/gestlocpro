@@ -130,8 +130,21 @@ export function TenantDocuments() {
     le remettre à `null` punirait le locataire d'une panne qui n'est pas la
     sienne, et il lui faudrait recommencer sa sélection.
   */
+  /* Le refus du groupe : posé au clic, levé dès qu'une pièce est désignée. */
+  const [sansChoix, setSansChoix] = useState(false)
+
   async function envoyerLaDemande() {
-    if (!choix || !unit) return
+    /* LE REFUS S'ÉCRIT AU LIEU D'ÉTEINDRE LE BOUTON. Il était `disabled` tant
+       qu'aucune pièce n'était choisie — donc mort dès l'arrivée, avant tout
+       geste, et muet : le groupe de choix porte `hideLegend`, si bien que même
+       son intitulé était masqué. Rien à l'écran ne reliait l'extinction au
+       choix qui manquait. Même correctif que « Continuer » à l'inscription. */
+    if (!choix) {
+      setSansChoix(true)
+      return
+    }
+    if (!unit) return
+    setSansChoix(false)
     const acceptee = await requestDocument(unit.id, choix)
     if (!acceptee) return
     setChoix(null)
@@ -368,7 +381,11 @@ export function TenantDocuments() {
             hideLegend
             name="piece"
             value={choix}
-            onChange={setChoix}
+            error={sansChoix ? t('app.documents.reqNoChoice') : undefined}
+            onChange={(kind) => {
+              setChoix(kind)
+              setSansChoix(false)
+            }}
             options={DEMANDES.map((demande) => ({
               value: demande,
               title: t(DOCUMENT_KIND_LABELS[demande] as 'app.documents.reqResidence'),
@@ -382,7 +399,7 @@ export function TenantDocuments() {
               ),
             }))}
           />
-          <Button className="mt-4" onClick={envoyerLaDemande} disabled={!choix}>
+          <Button className="mt-4" onClick={envoyerLaDemande}>
             {t('app.documents.requestSend')}
           </Button>
 

@@ -171,6 +171,7 @@ export function RadioCards<T extends string>({
         value={value}
         onChange={onChange}
         options={options}
+        error={error}
         className={className}
       />
     )
@@ -341,13 +342,34 @@ function RadioPuces<T extends string>({
   value,
   onChange,
   options,
+  error,
   className,
 }: Omit<RadioCardsProps<T>, 'columns' | 'variant'>) {
   return (
-    <fieldset className={cn('min-w-0 border-0 p-0', className)}>
+    <fieldset
+      data-champ={name}
+      aria-describedby={error ? `${name}-refus` : undefined}
+      aria-invalid={error ? true : undefined}
+      className={cn('min-w-0 border-0 p-0', className)}
+    >
       <legend className={cn('mb-2 text-label font-semibold text-ink', hideLegend && 'sr-only')}>
         {legend}
       </legend>
+
+      {/* LE REFUS VAUT POUR LES DEUX VARIANTES. Ne le poser que sur les tuiles
+          aurait laissé muettes les rangées de pastilles — dont la demande de
+          pièce du locataire, qui est justement l'un des deux boutons éteints
+          que ce lot corrige. */}
+      {error && (
+        <p
+          id={`${name}-refus`}
+          role="alert"
+          className="mb-2 flex items-start gap-1.5 text-body font-medium text-danger"
+        >
+          <Icon name="alert" size={14} className="mt-0.5 shrink-0" />
+          {error}
+        </p>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {options.map((option) => {
