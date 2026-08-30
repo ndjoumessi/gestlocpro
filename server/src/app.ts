@@ -1,4 +1,5 @@
 import express, { type ErrorRequestHandler, type Request, type Response } from 'express'
+import compression from 'compression'
 import cookieParser from 'cookie-parser'
 import { ZodError } from 'zod'
 import { join } from 'node:path'
@@ -78,6 +79,45 @@ export function createApp(options: { taux?: SourceDeTaux } = {}) {
   // Express annonce sa présence dans un en-tête. C'est une information gratuite
   // offerte à qui cherche une version vulnérable.
   app.disable('x-powered-by')
+
+  /**
+   * TOUT CE QUI PART SUR LE FIL EST COMPRESSÉ — et c'est le plus gros gain
+   * mesuré de ce dépôt.
+   *
+   * LE DÉFAUT. Ce serveur sert le client construit par `express.static`, plus
+   * bas, et rien ne le compressait : ni intergiciel ici, ni mandataire dans le
+   * `Dockerfile`. Le paquet partait BRUT. Mesuré le 2026-08-30 sur la
+   * construction du jour, octets servis contre octets gzippés :
+   *
+   *   JS de la vitrine         426 674  ->  142 284   (−284 390)
+   *   feuille de style          71 435  ->   13 146   ( −58 289)
+   *   index.html                 6 977  ->    3 390   (  −3 587)
+   *   JS de l'espace applicatif 227 189 ->   59 980   (−167 209)
+   *
+   * La vitrine seule tombe de 505 086 à 158 820 octets, soit environ SEPT
+   * SECONDES à 400 kb/s — le débit que tout ce dépôt retient comme profil du
+   * marché visé, et le premier écran que voit un prospect.
+   *
+   * POURQUOI PERSONNE NE L'AVAIT VU. Les deux gardes de poids du client pèsent
+   * dans deux unités différentes : `BUDGET_PREMIER_CHARGEMENT` gzippe avant de
+   * compter — donc décrivait une compression que personne n'effectuait — quand
+   * `poids-ecrans` compte les corps réels. Les deux étaient exactes, et le
+   * produit vivait dans leur écart. Aucune ne pouvait voir cet écart, parce
+   * qu'aucune ne parle à CE serveur : elles mesurent `vite preview`.
+   *
+   * AVANT LES ROUTES, ET NON JUSTE AVANT LES FICHIERS. Posé plus bas, cet
+   * intergiciel ne servirait que le client. Le JSON de l'API compresse mieux
+   * que tout le reste, et c'est le locataire qui le télécharge — la liste de
+   * ses quittances, ses relevés, ses signalements — sur le même réseau.
+   *
+   * LA NÉGOCIATION EST LA FONCTIONNALITÉ : `compression` ne touche rien tant
+   * que le client n'a pas dit qu'il l'accepte, et laisse passer ce qui pèse
+   * moins de 1 024 octets, où l'en-tête coûterait plus que le gain. Les deux
+   * comportements sont gardés dans `compression.test.ts`, qui garde le FAIT de
+   * l'en-tête et jamais un TAUX — un taux dépend du contenu, et le verrouiller
+   * ferait rougir la porte au premier actif incompressible.
+   */
+  app.use(compression())
 
   app.use(express.json({ limit: '256kb' }))
   app.use(cookieParser(env.SESSION_SECRET))
