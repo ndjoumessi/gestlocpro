@@ -7,51 +7,87 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "88cc882c",
+ "course": "a7e9cd1f",
  "mesures": {
   "/@360": {
-   "octets": 506708,
-   "requetes": 6
+   "octets": 534066,
+   "requetes": 6,
+   "releve": {
+    "de": 506708,
+    "requetesDe": 6,
+    "motif": "RÉINSCRIPTION, ET CETTE FOIS L’ÉCART EST ATTRIBUÉ POSTE PAR POSTE. La réinscription précédente (88cc882c) finissait sur une promesse : « le prochain écart, lui, sera imputable à un geste ». Quatre-vingt-neuf commits plus tard l’écart est là, et la promesse est tenue autrement que prévu — pas par commit, mais par MORCEAU, ce qui suffit à décider. Méthode : construction du paquet à d60b32d (le commit qui a inscrit la base courante) dans un arbre séparé, puis comparaison octet à octet avec le paquet de 981a47b. Rien n’est estimé. JS de la vitrine 404074 -> 426674 (+22600). Feuille de style partagée 67336 -> 71435 (+4099). index.html 6318 -> 6977 (+659). JS de l’espace applicatif 194593 -> 227189 (+32596). La somme des trois premiers vaut EXACTEMENT le +27358 rapporté sur « / » ; le quatrième plus l’index vaut +33255 sur « /demo », contre +33214 rapportés — 41 octets d’écart entre deux constructions du même arbre, que je ne sais pas expliquer et que je ne masque pas. CE QUE CES OCTETS ACHÈTENT : quatre-vingt-neuf lots de la refonte, dont l’axe et la ligne d’objectif du graphe, les modales de tarifs et de correction du parc devenues atteignables, le registre des décisions, les quittances en PDF, les quatre devises converties, et la garde du formulaire du locataire posée au lot précédent. CE QUE JE NE TRANCHE PAS, et qui est la vraie question que cette attribution fait apparaître : les 22600 octets de la vitrine sont payés par un PROSPECT, avant la première phrase de vente, sur le réseau le plus lent du marché visé — +452 ms à 400 kb/s. Or « Hero.tsx » importe « MiniBarChart » de « components/primitives/Charts », donc du code de graphique voyage dans le morceau impatient. Le rendre paresseux est un lot à lui seul ; il est nommé ici, il n’est pas fait. Les deux autres postes ne se discutent pas de la même façon : la feuille de style est partagée par tous les écrans, et l’espace applicatif n’est jamais téléchargé par qui ne se connecte pas.",
+    "course": "a7e9cd1f"
+   }
   },
   "/demo@360": {
-   "octets": 202619,
+   "octets": 235874,
    "requetes": 4,
    "releve": {
-    "de": 197784,
+    "de": 202619,
     "requetesDe": 4,
-    "motif": "RÉINSCRIPTION DE LA BASE, et c'est ce geste-ci que le motif doit expliquer, pas les octets. Les plafonds dataient de la course dfbe12e2, d'AVANT la refonte : depuis, chaque passage rapportait des écarts CUMULÉS sur sept lots — le script le disait lui-même à chaque fois — donc non imputables au lot en cours. Un écart qu'on ne peut attribuer à rien n'est plus une mesure, c'est un chiffre. Ce qui MONTE ici : /demo, +4835 o (197784 -> 202619), soit +97 ms à 400 kb/s. C'est le solde de toute la refonte sur cet écran — jetons, tuiles d'indicateur, pastilles d'état, primitives Notice et GroupeDeFiltres — et il est en baisse de 812 o par rapport au relevé d'il y a deux lots, où il valait +5647 : la mise en commun a rendu plus qu'elle n'a coûté. Je ne peux PAS l'attribuer plus finement, et c'est exactement pourquoi la base est réinscrite maintenant : le prochain écart, lui, sera imputable à un geste. Ce qui DESCEND, à titre de contexte : / de 66483 o (-1330 ms), /demo/paiements et /demo/prise-en-main de 215 o chacun.",
-    "course": "88cc882c"
+    "motif": "RÉINSCRIPTION, ET CETTE FOIS L’ÉCART EST ATTRIBUÉ POSTE PAR POSTE. La réinscription précédente (88cc882c) finissait sur une promesse : « le prochain écart, lui, sera imputable à un geste ». Quatre-vingt-neuf commits plus tard l’écart est là, et la promesse est tenue autrement que prévu — pas par commit, mais par MORCEAU, ce qui suffit à décider. Méthode : construction du paquet à d60b32d (le commit qui a inscrit la base courante) dans un arbre séparé, puis comparaison octet à octet avec le paquet de 981a47b. Rien n’est estimé. JS de la vitrine 404074 -> 426674 (+22600). Feuille de style partagée 67336 -> 71435 (+4099). index.html 6318 -> 6977 (+659). JS de l’espace applicatif 194593 -> 227189 (+32596). La somme des trois premiers vaut EXACTEMENT le +27358 rapporté sur « / » ; le quatrième plus l’index vaut +33255 sur « /demo », contre +33214 rapportés — 41 octets d’écart entre deux constructions du même arbre, que je ne sais pas expliquer et que je ne masque pas. CE QUE CES OCTETS ACHÈTENT : quatre-vingt-neuf lots de la refonte, dont l’axe et la ligne d’objectif du graphe, les modales de tarifs et de correction du parc devenues atteignables, le registre des décisions, les quittances en PDF, les quatre devises converties, et la garde du formulaire du locataire posée au lot précédent. CE QUE JE NE TRANCHE PAS, et qui est la vraie question que cette attribution fait apparaître : les 22600 octets de la vitrine sont payés par un PROSPECT, avant la première phrase de vente, sur le réseau le plus lent du marché visé — +452 ms à 400 kb/s. Or « Hero.tsx » importe « MiniBarChart » de « components/primitives/Charts », donc du code de graphique voyage dans le morceau impatient. Le rendre paresseux est un lot à lui seul ; il est nommé ici, il n’est pas fait. Les deux autres postes ne se discutent pas de la même façon : la feuille de style est partagée par tous les écrans, et l’espace applicatif n’est jamais téléchargé par qui ne se connecte pas.",
+    "course": "a7e9cd1f"
    }
   },
   "/demo/paiements@360": {
-   "octets": 8026,
-   "requetes": 3
+   "octets": 8685,
+   "requetes": 3,
+   "releve": {
+    "de": 8026,
+    "requetesDe": 3,
+    "motif": "RÉINSCRIPTION, ET CETTE FOIS L’ÉCART EST ATTRIBUÉ POSTE PAR POSTE. La réinscription précédente (88cc882c) finissait sur une promesse : « le prochain écart, lui, sera imputable à un geste ». Quatre-vingt-neuf commits plus tard l’écart est là, et la promesse est tenue autrement que prévu — pas par commit, mais par MORCEAU, ce qui suffit à décider. Méthode : construction du paquet à d60b32d (le commit qui a inscrit la base courante) dans un arbre séparé, puis comparaison octet à octet avec le paquet de 981a47b. Rien n’est estimé. JS de la vitrine 404074 -> 426674 (+22600). Feuille de style partagée 67336 -> 71435 (+4099). index.html 6318 -> 6977 (+659). JS de l’espace applicatif 194593 -> 227189 (+32596). La somme des trois premiers vaut EXACTEMENT le +27358 rapporté sur « / » ; le quatrième plus l’index vaut +33255 sur « /demo », contre +33214 rapportés — 41 octets d’écart entre deux constructions du même arbre, que je ne sais pas expliquer et que je ne masque pas. CE QUE CES OCTETS ACHÈTENT : quatre-vingt-neuf lots de la refonte, dont l’axe et la ligne d’objectif du graphe, les modales de tarifs et de correction du parc devenues atteignables, le registre des décisions, les quittances en PDF, les quatre devises converties, et la garde du formulaire du locataire posée au lot précédent. CE QUE JE NE TRANCHE PAS, et qui est la vraie question que cette attribution fait apparaître : les 22600 octets de la vitrine sont payés par un PROSPECT, avant la première phrase de vente, sur le réseau le plus lent du marché visé — +452 ms à 400 kb/s. Or « Hero.tsx » importe « MiniBarChart » de « components/primitives/Charts », donc du code de graphique voyage dans le morceau impatient. Le rendre paresseux est un lot à lui seul ; il est nommé ici, il n’est pas fait. Les deux autres postes ne se discutent pas de la même façon : la feuille de style est partagée par tous les écrans, et l’espace applicatif n’est jamais téléchargé par qui ne se connecte pas.",
+    "course": "a7e9cd1f"
+   }
   },
   "/demo/prise-en-main@360": {
-   "octets": 8026,
-   "requetes": 3
+   "octets": 8685,
+   "requetes": 3,
+   "releve": {
+    "de": 8026,
+    "requetesDe": 3,
+    "motif": "RÉINSCRIPTION, ET CETTE FOIS L’ÉCART EST ATTRIBUÉ POSTE PAR POSTE. La réinscription précédente (88cc882c) finissait sur une promesse : « le prochain écart, lui, sera imputable à un geste ». Quatre-vingt-neuf commits plus tard l’écart est là, et la promesse est tenue autrement que prévu — pas par commit, mais par MORCEAU, ce qui suffit à décider. Méthode : construction du paquet à d60b32d (le commit qui a inscrit la base courante) dans un arbre séparé, puis comparaison octet à octet avec le paquet de 981a47b. Rien n’est estimé. JS de la vitrine 404074 -> 426674 (+22600). Feuille de style partagée 67336 -> 71435 (+4099). index.html 6318 -> 6977 (+659). JS de l’espace applicatif 194593 -> 227189 (+32596). La somme des trois premiers vaut EXACTEMENT le +27358 rapporté sur « / » ; le quatrième plus l’index vaut +33255 sur « /demo », contre +33214 rapportés — 41 octets d’écart entre deux constructions du même arbre, que je ne sais pas expliquer et que je ne masque pas. CE QUE CES OCTETS ACHÈTENT : quatre-vingt-neuf lots de la refonte, dont l’axe et la ligne d’objectif du graphe, les modales de tarifs et de correction du parc devenues atteignables, le registre des décisions, les quittances en PDF, les quatre devises converties, et la garde du formulaire du locataire posée au lot précédent. CE QUE JE NE TRANCHE PAS, et qui est la vraie question que cette attribution fait apparaître : les 22600 octets de la vitrine sont payés par un PROSPECT, avant la première phrase de vente, sur le réseau le plus lent du marché visé — +452 ms à 400 kb/s. Or « Hero.tsx » importe « MiniBarChart » de « components/primitives/Charts », donc du code de graphique voyage dans le morceau impatient. Le rendre paresseux est un lot à lui seul ; il est nommé ici, il n’est pas fait. Les deux autres postes ne se discutent pas de la même façon : la feuille de style est partagée par tous les écrans, et l’espace applicatif n’est jamais téléchargé par qui ne se connecte pas.",
+    "course": "a7e9cd1f"
+   }
   },
   "/@1280": {
-   "octets": 506708,
-   "requetes": 6
+   "octets": 534066,
+   "requetes": 6,
+   "releve": {
+    "de": 506708,
+    "requetesDe": 6,
+    "motif": "RÉINSCRIPTION, ET CETTE FOIS L’ÉCART EST ATTRIBUÉ POSTE PAR POSTE. La réinscription précédente (88cc882c) finissait sur une promesse : « le prochain écart, lui, sera imputable à un geste ». Quatre-vingt-neuf commits plus tard l’écart est là, et la promesse est tenue autrement que prévu — pas par commit, mais par MORCEAU, ce qui suffit à décider. Méthode : construction du paquet à d60b32d (le commit qui a inscrit la base courante) dans un arbre séparé, puis comparaison octet à octet avec le paquet de 981a47b. Rien n’est estimé. JS de la vitrine 404074 -> 426674 (+22600). Feuille de style partagée 67336 -> 71435 (+4099). index.html 6318 -> 6977 (+659). JS de l’espace applicatif 194593 -> 227189 (+32596). La somme des trois premiers vaut EXACTEMENT le +27358 rapporté sur « / » ; le quatrième plus l’index vaut +33255 sur « /demo », contre +33214 rapportés — 41 octets d’écart entre deux constructions du même arbre, que je ne sais pas expliquer et que je ne masque pas. CE QUE CES OCTETS ACHÈTENT : quatre-vingt-neuf lots de la refonte, dont l’axe et la ligne d’objectif du graphe, les modales de tarifs et de correction du parc devenues atteignables, le registre des décisions, les quittances en PDF, les quatre devises converties, et la garde du formulaire du locataire posée au lot précédent. CE QUE JE NE TRANCHE PAS, et qui est la vraie question que cette attribution fait apparaître : les 22600 octets de la vitrine sont payés par un PROSPECT, avant la première phrase de vente, sur le réseau le plus lent du marché visé — +452 ms à 400 kb/s. Or « Hero.tsx » importe « MiniBarChart » de « components/primitives/Charts », donc du code de graphique voyage dans le morceau impatient. Le rendre paresseux est un lot à lui seul ; il est nommé ici, il n’est pas fait. Les deux autres postes ne se discutent pas de la même façon : la feuille de style est partagée par tous les écrans, et l’espace applicatif n’est jamais téléchargé par qui ne se connecte pas.",
+    "course": "a7e9cd1f"
+   }
   },
   "/demo@1280": {
-   "octets": 202619,
+   "octets": 235874,
    "requetes": 4,
    "releve": {
-    "de": 197784,
+    "de": 202619,
     "requetesDe": 4,
-    "motif": "RÉINSCRIPTION DE LA BASE, et c'est ce geste-ci que le motif doit expliquer, pas les octets. Les plafonds dataient de la course dfbe12e2, d'AVANT la refonte : depuis, chaque passage rapportait des écarts CUMULÉS sur sept lots — le script le disait lui-même à chaque fois — donc non imputables au lot en cours. Un écart qu'on ne peut attribuer à rien n'est plus une mesure, c'est un chiffre. Ce qui MONTE ici : /demo, +4835 o (197784 -> 202619), soit +97 ms à 400 kb/s. C'est le solde de toute la refonte sur cet écran — jetons, tuiles d'indicateur, pastilles d'état, primitives Notice et GroupeDeFiltres — et il est en baisse de 812 o par rapport au relevé d'il y a deux lots, où il valait +5647 : la mise en commun a rendu plus qu'elle n'a coûté. Je ne peux PAS l'attribuer plus finement, et c'est exactement pourquoi la base est réinscrite maintenant : le prochain écart, lui, sera imputable à un geste. Ce qui DESCEND, à titre de contexte : / de 66483 o (-1330 ms), /demo/paiements et /demo/prise-en-main de 215 o chacun.",
-    "course": "88cc882c"
+    "motif": "RÉINSCRIPTION, ET CETTE FOIS L’ÉCART EST ATTRIBUÉ POSTE PAR POSTE. La réinscription précédente (88cc882c) finissait sur une promesse : « le prochain écart, lui, sera imputable à un geste ». Quatre-vingt-neuf commits plus tard l’écart est là, et la promesse est tenue autrement que prévu — pas par commit, mais par MORCEAU, ce qui suffit à décider. Méthode : construction du paquet à d60b32d (le commit qui a inscrit la base courante) dans un arbre séparé, puis comparaison octet à octet avec le paquet de 981a47b. Rien n’est estimé. JS de la vitrine 404074 -> 426674 (+22600). Feuille de style partagée 67336 -> 71435 (+4099). index.html 6318 -> 6977 (+659). JS de l’espace applicatif 194593 -> 227189 (+32596). La somme des trois premiers vaut EXACTEMENT le +27358 rapporté sur « / » ; le quatrième plus l’index vaut +33255 sur « /demo », contre +33214 rapportés — 41 octets d’écart entre deux constructions du même arbre, que je ne sais pas expliquer et que je ne masque pas. CE QUE CES OCTETS ACHÈTENT : quatre-vingt-neuf lots de la refonte, dont l’axe et la ligne d’objectif du graphe, les modales de tarifs et de correction du parc devenues atteignables, le registre des décisions, les quittances en PDF, les quatre devises converties, et la garde du formulaire du locataire posée au lot précédent. CE QUE JE NE TRANCHE PAS, et qui est la vraie question que cette attribution fait apparaître : les 22600 octets de la vitrine sont payés par un PROSPECT, avant la première phrase de vente, sur le réseau le plus lent du marché visé — +452 ms à 400 kb/s. Or « Hero.tsx » importe « MiniBarChart » de « components/primitives/Charts », donc du code de graphique voyage dans le morceau impatient. Le rendre paresseux est un lot à lui seul ; il est nommé ici, il n’est pas fait. Les deux autres postes ne se discutent pas de la même façon : la feuille de style est partagée par tous les écrans, et l’espace applicatif n’est jamais téléchargé par qui ne se connecte pas.",
+    "course": "a7e9cd1f"
    }
   },
   "/demo/paiements@1280": {
-   "octets": 8026,
-   "requetes": 3
+   "octets": 8685,
+   "requetes": 3,
+   "releve": {
+    "de": 8026,
+    "requetesDe": 3,
+    "motif": "RÉINSCRIPTION, ET CETTE FOIS L’ÉCART EST ATTRIBUÉ POSTE PAR POSTE. La réinscription précédente (88cc882c) finissait sur une promesse : « le prochain écart, lui, sera imputable à un geste ». Quatre-vingt-neuf commits plus tard l’écart est là, et la promesse est tenue autrement que prévu — pas par commit, mais par MORCEAU, ce qui suffit à décider. Méthode : construction du paquet à d60b32d (le commit qui a inscrit la base courante) dans un arbre séparé, puis comparaison octet à octet avec le paquet de 981a47b. Rien n’est estimé. JS de la vitrine 404074 -> 426674 (+22600). Feuille de style partagée 67336 -> 71435 (+4099). index.html 6318 -> 6977 (+659). JS de l’espace applicatif 194593 -> 227189 (+32596). La somme des trois premiers vaut EXACTEMENT le +27358 rapporté sur « / » ; le quatrième plus l’index vaut +33255 sur « /demo », contre +33214 rapportés — 41 octets d’écart entre deux constructions du même arbre, que je ne sais pas expliquer et que je ne masque pas. CE QUE CES OCTETS ACHÈTENT : quatre-vingt-neuf lots de la refonte, dont l’axe et la ligne d’objectif du graphe, les modales de tarifs et de correction du parc devenues atteignables, le registre des décisions, les quittances en PDF, les quatre devises converties, et la garde du formulaire du locataire posée au lot précédent. CE QUE JE NE TRANCHE PAS, et qui est la vraie question que cette attribution fait apparaître : les 22600 octets de la vitrine sont payés par un PROSPECT, avant la première phrase de vente, sur le réseau le plus lent du marché visé — +452 ms à 400 kb/s. Or « Hero.tsx » importe « MiniBarChart » de « components/primitives/Charts », donc du code de graphique voyage dans le morceau impatient. Le rendre paresseux est un lot à lui seul ; il est nommé ici, il n’est pas fait. Les deux autres postes ne se discutent pas de la même façon : la feuille de style est partagée par tous les écrans, et l’espace applicatif n’est jamais téléchargé par qui ne se connecte pas.",
+    "course": "a7e9cd1f"
+   }
   },
   "/demo/prise-en-main@1280": {
-   "octets": 8026,
-   "requetes": 3
+   "octets": 8685,
+   "requetes": 3,
+   "releve": {
+    "de": 8026,
+    "requetesDe": 3,
+    "motif": "RÉINSCRIPTION, ET CETTE FOIS L’ÉCART EST ATTRIBUÉ POSTE PAR POSTE. La réinscription précédente (88cc882c) finissait sur une promesse : « le prochain écart, lui, sera imputable à un geste ». Quatre-vingt-neuf commits plus tard l’écart est là, et la promesse est tenue autrement que prévu — pas par commit, mais par MORCEAU, ce qui suffit à décider. Méthode : construction du paquet à d60b32d (le commit qui a inscrit la base courante) dans un arbre séparé, puis comparaison octet à octet avec le paquet de 981a47b. Rien n’est estimé. JS de la vitrine 404074 -> 426674 (+22600). Feuille de style partagée 67336 -> 71435 (+4099). index.html 6318 -> 6977 (+659). JS de l’espace applicatif 194593 -> 227189 (+32596). La somme des trois premiers vaut EXACTEMENT le +27358 rapporté sur « / » ; le quatrième plus l’index vaut +33255 sur « /demo », contre +33214 rapportés — 41 octets d’écart entre deux constructions du même arbre, que je ne sais pas expliquer et que je ne masque pas. CE QUE CES OCTETS ACHÈTENT : quatre-vingt-neuf lots de la refonte, dont l’axe et la ligne d’objectif du graphe, les modales de tarifs et de correction du parc devenues atteignables, le registre des décisions, les quittances en PDF, les quatre devises converties, et la garde du formulaire du locataire posée au lot précédent. CE QUE JE NE TRANCHE PAS, et qui est la vraie question que cette attribution fait apparaître : les 22600 octets de la vitrine sont payés par un PROSPECT, avant la première phrase de vente, sur le réseau le plus lent du marché visé — +452 ms à 400 kb/s. Or « Hero.tsx » importe « MiniBarChart » de « components/primitives/Charts », donc du code de graphique voyage dans le morceau impatient. Le rendre paresseux est un lot à lui seul ; il est nommé ici, il n’est pas fait. Les deux autres postes ne se discutent pas de la même façon : la feuille de style est partagée par tous les écrans, et l’espace applicatif n’est jamais téléchargé par qui ne se connecte pas.",
+    "course": "a7e9cd1f"
+   }
   }
  }
 }
