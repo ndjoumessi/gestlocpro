@@ -45,12 +45,109 @@ import { chromium } from 'playwright'
 import { spawn } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { mkdir } from 'node:fs/promises'
 import { exit } from 'node:process'
 import { inventaireDesRoutes, exigerUnInventairePlein } from './inventaire/routes.mjs'
 import { POLICE_LARGE, imposerLaPoliceLarge } from './police-large.mjs'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
+
+/**
+ * CE QU'ON RELÈVE QUAND LA PORTE REFUSE — parce qu'un nombre nu ne s'explique
+ * pas, et qu'un rouge rare ne se rejoue pas sur commande.
+ *
+ * ═══ POURQUOI CECI EXISTE ═══
+ *
+ * Trois fois en deux lots, cette garde a rendu 128 px là où elle rend 122 au
+ * passage suivant. La première fois, on a diagnostiqué la POLICE — « six pixels,
+ * l'écart entre la boîte de ligne d'un titre dans la police de repli et la même
+ * dans la police chargée » — et l'on a ajouté l'attente de `document.fonts`.
+ *
+ * CE DIAGNOSTIC EST DÉMENTI. Mesuré le 2026-08-30, à 1280 px sur
+ * `/demo/portail` et `/demo/cautions` : la fonte ENTIÈREMENT bloquée, la
+ * coquille rend 122 px. Ces écrans ne dépendent pas de la police à cette
+ * largeur. L'attente ajoutée alors ne corrigeait donc probablement rien ; le
+ * rouge n'est simplement pas revenu.
+ *
+ * Cent cinquante mesures contrôlées n'ont pas rejoué le 128 : ni fonte bloquée,
+ * ni bridage du processeur jusqu'à trente fois, ni largeurs de 1240 à 1280, ni
+ * police large, ni la séquence complète des vingt-quatre adresses répétée quatre
+ * fois dans une seule page, comme la porte la parcourt.
+ *
+ * ═══ CE QU'ON FAIT DE CETTE IGNORANCE ═══
+ *
+ * On cesse de deviner. La cause est INCONNUE, et une seconde hypothèse écrite
+ * dans un commentaire aurait exactement la valeur de la première — c'est-à-dire
+ * celle d'un rouge qu'on ne peut plus lire.
+ *
+ * À la place, le prochain refus PORTE SON DOSSIER : la composition de la
+ * coquille pièce par pièce, la police réellement rendue, l'état de `fonts`, la
+ * position de défilement, et une capture déposée dans `captures/` — que le
+ * workflow téléverse déjà en cas d'échec. La prochaine fois, on lira ce qui
+ * s'est passé au lieu de le supposer.
+ *
+ * Ce relevé ne coûte rien tant que la porte est verte : il n'est fait QUE sur
+ * refus.
+ */
+async function releverLaCoquille(page) {
+  return page.evaluate(() => {
+    const main = document.querySelector('main')
+    const haut = main ? main.getBoundingClientRect().top + window.scrollY : null
+    /* Les frères de `<main>` : ce sont eux qui empilent la hauteur mesurée. */
+    const pieces = []
+    for (let n = main?.parentElement?.firstElementChild; n && n !== main; n = n.nextElementSibling) {
+      const b = n.getBoundingClientRect()
+      pieces.push({
+        balise: n.tagName.toLowerCase(),
+        classe: (n.className || '').toString().slice(0, 60),
+        hauteur: Math.round(b.height),
+        position: getComputedStyle(n).position,
+      })
+    }
+    const titre = document.querySelector('h1, h2')
+    return {
+      haut: haut === null ? null : Math.round(haut),
+      defilement: Math.round(window.scrollY),
+      pieces,
+      police: titre ? getComputedStyle(titre).fontFamily.slice(0, 60) : null,
+      corps: titre ? getComputedStyle(titre).fontSize : null,
+      interligne: titre ? getComputedStyle(titre).lineHeight : null,
+      fontes: document.fonts.status,
+      /* Chargées SUR QUATRE déclarées : `status === 'loaded'` dit qu'aucun
+         chargement n'est en cours, pas que toutes les fontes sont là. La
+         distinction est mesurée — au vert, une seule des quatre l'est. */
+      fontesChargees: [...document.fonts].filter((f) => f.status === 'loaded').length,
+      fontesDeclarees: document.fonts.size,
+      largeurVue: window.innerWidth,
+      largeurDocument: document.documentElement.clientWidth,
+    }
+  })
+}
+
+/**
+ * La capture du refus — dans un SOUS-RÉPERTOIRE, et ce détail n'en est pas un.
+ *
+ * `captures/` est ce que le workflow téléverse `if: always()`, donc la seule
+ * sortie regardable d'un échec survenu sur une machine qui n'existe plus quand
+ * on lit le journal. C'est aussi le répertoire que `poids-ecrans` PURGE au
+ * démarrage : il efface tout `.png` qui ne porte pas l'estampille de sa course.
+ * Une preuve déposée à la racine y passerait — vérifié dans son code, pas
+ * supposé.
+ *
+ * `readdirSync` ne descend pas dans les sous-répertoires, et son filtre exige
+ * `.png` : `captures/coquille/` est donc hors de portée de la purge, tandis que
+ * le téléversement, lui, prend l'arborescence entière.
+ */
+async function consignerLaCapture(page, nom) {
+  const fichier = join(RACINE, 'captures', 'coquille', `${nom.replace(/[^\w@-]+/g, '_')}.png`)
+  await mkdir(dirname(fichier), { recursive: true }).catch(() => {})
+  await page.screenshot({ path: fichier, fullPage: false }).catch(() => {})
+  return fichier
+}
+
+/** Les refus, avec leur dossier — imprimés à la fin plutôt qu'au fil. */
+const instables = []
 const PORT = 4191
 const BASE = `http://127.0.0.1:${PORT}`
 
@@ -241,27 +338,38 @@ try {
       await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
       await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {})
       /*
-        ON ATTEND LES POLICES, PARCE QUE CETTE GARDE A RENDU UN FAUX ROUGE.
+        ON ATTEND LES POLICES — MAIS PLUS POUR LA RAISON QU'ON CROYAIT.
 
-        Mesuré : sur la première passe suivant une reconstruction, ce script a
-        rendu 128 px de coquille sur `/demo/cautions@1280` et
-        `/demo/locataires@1280` pour un plafond de 122 — puis 122 aux quatre
-        passages suivants, sans qu'une ligne de source ait bougé entre les deux.
-        Six pixels, soit l'écart entre la boîte de ligne d'un titre rendu dans la
-        police de repli et la même dans la police chargée.
+        CE QUE CE COMMENTAIRE AFFIRMAIT, ET QUI EST DÉMENTI. Il disait que les
+        128 px rendus sur `/demo/cautions@1280` et `/demo/locataires@1280`
+        valaient « six pixels, soit l'écart entre la boîte de ligne d'un titre
+        rendu dans la police de repli et la même dans la police chargée ».
 
-        `networkidle` ne suffit pas : il dit que le réseau s'est tu, pas que le
-        navigateur a fini de reconstruire ses boîtes avec la fonte arrivée. Le
-        délai de 300 ms qui suit non plus — c'est un pari sur une machine, et il
-        se perd exactement quand la machine est chargée. `mesure-ui.mjs` attend
-        cet état depuis toujours, et c'est la seule des gardes au navigateur qui
-        le faisait.
+        Mesuré le 2026-08-30, la fonte ENTIÈREMENT BLOQUÉE par `page.route` : la
+        coquille rend 122 px à 1280. Ces écrans ne dépendent PAS de la police à
+        cette largeur. L'attente ajoutée alors ne corrigeait donc probablement
+        rien ; le rouge n'est simplement pas revenu, et on a pris l'absence pour
+        une guérison.
+
+        ELLE RESTE, et pour deux raisons qui tiennent : à 320 et 360 px la
+        coquille applicative DÉPEND bel et bien de la police — 143 contre 165 en
+        police large, mesuré — et `networkidle` ne dit que le silence du réseau,
+        pas que les boîtes sont refaites. Une attente juste dont la
+        justification était fausse se garde ; c'est la justification qu'on
+        remplace.
+
+        LA CAUSE DU 128 PX EST INCONNUE. Cent cinquante mesures contrôlées ne
+        l'ont pas rejouée : ni fonte bloquée, ni bridage du processeur jusqu'à
+        trente fois, ni largeurs de 1240 à 1280, ni police large, ni la séquence
+        complète des vingt-quatre adresses répétée quatre fois dans une seule
+        page. On cesse donc de deviner : le refus PORTE SON DOSSIER — voir
+        `releverLaCoquille` — et la prochaine occurrence s'expliquera au lieu
+        d'être supposée.
 
         UNE GARDE QUI ROUGIT POUR UNE RAISON QUI N'EST PAS DANS LE CODE est pire
         qu'une garde absente : elle apprend à relancer jusqu'au vert, et le jour
         où le rouge est vrai, il est relancé aussi. L'échec de l'attente est donc
-        COMPTÉ et dit à la fin, plutôt qu'avalé — une police qui n'arrive jamais
-        ferait revenir le même faux rouge en silence.
+        COMPTÉ et dit à la fin, plutôt qu'avalé.
       */
       await page
         .waitForFunction(() => document.fonts.status === 'loaded', null, { timeout: 3000 })
@@ -312,10 +420,39 @@ try {
       releve.push({ nom, h, famille, ...p, plafond: plafondDe(p) })
       const plafond = plafondDe(p)
       if (h > plafond) {
+        /*
+          ON REMESURE, ET LES DEUX LECTURES SONT DITES — SANS QUE LA SECONDE
+          SAUVE LA PREMIÈRE.
+
+          Cette garde a rendu 128 px là où elle rend 122 au passage suivant,
+          trois fois en deux lots, sans qu'une ligne de source ait bougé. La
+          seconde lecture ne lève donc PAS la plainte : refuser sur la meilleure
+          des deux serait apprendre à relancer jusqu'au vert, ce que l'en-tête
+          de cette garde nomme déjà comme le pire état.
+
+          Elle sert à DIRE LAQUELLE des deux pannes on regarde. « 128 puis 128 »
+          est une régression de mise en page : le code a grandi. « 128 puis
+          122 » est une instabilité de la mesure : la porte se trompe, et c'est
+          elle qu'il faut réparer. Sans ces deux nombres côte à côte, les deux
+          se lisent pareil, et l'on répare la mauvaise.
+        */
+        await page.waitForTimeout(1200)
+        const encore = await page.evaluate(() => {
+          const main = document.querySelector('main')
+          return main ? Math.round(main.getBoundingClientRect().top + window.scrollY) : null
+        })
+        const dossier = await releverLaCoquille(page)
+        await consignerLaCapture(page, nom)
+        instables.push({ nom, h, encore, plafond, dossier })
         plaintes.push(
           `${nom} (${famille}) : ${h} px de coquille avant le contenu, pour un plafond de ${plafond}.\n` +
             `   Avant la refonte : ${p.avant} px. Ce qui remonte ici est repris sur le contenu,\n` +
-            '   sur tous les écrans de cette famille à la fois.',
+            '   sur tous les écrans de cette famille à la fois.\n' +
+            `   SECONDE LECTURE, 1,2 s plus tard : ${encore} px — ` +
+            (encore === h
+              ? 'la même. La hauteur est STABLE, donc le code a grandi.'
+              : "DIFFÉRENTE. La mesure est INSTABLE : c'est la porte qu'il faut réparer,\n" +
+                '   pas la mise en page. Le dossier ci-dessous dit avec quoi.'),
         )
       }
     }
@@ -359,6 +496,29 @@ for (const [cle, r] of Object.entries(parFamille)) {
 if (plaintes.length > 0) {
   console.error(`\n✗ plafond-coquille : ${plaintes.length} plainte(s).\n`)
   for (const p of plaintes) console.error('  ▸ ' + p + '\n')
+
+  /* LE DOSSIER, pour que ce refus-ci n'ait pas à être rejoué pour être compris.
+     La cause du 128 px est inconnue — voir `releverLaCoquille`. Ces lignes
+     existent pour qu'elle cesse de l'être à la prochaine occurrence, sur une
+     machine qui n'existera plus quand on lira le journal. */
+  for (const { nom, h, encore, plafond, dossier } of instables) {
+    console.error(`  ── DOSSIER ${nom} : ${h} px puis ${encore} px, plafond ${plafond} ──`)
+    console.error(
+      `     vue ${dossier.largeurVue} px · document ${dossier.largeurDocument} px · ` +
+        `défilement ${dossier.defilement} px`,
+    )
+    console.error(
+      `     fontes ${dossier.fontes} · ${dossier.fontesChargees}/${dossier.fontesDeclarees} chargées`,
+    )
+    console.error(`     titre : ${dossier.police} · ${dossier.corps} / ${dossier.interligne}`)
+    console.error(`     la coquille, pièce par pièce (somme = la hauteur mesurée) :`)
+    for (const piece of dossier.pieces) {
+      console.error(
+        `       ${String(piece.hauteur).padStart(4)} px  ${piece.balise} (${piece.position})  ${piece.classe}`,
+      )
+    }
+    console.error(`     capture dans captures/coquille/ — le workflow la téléverse.\n`)
+  }
   exit(1)
 }
 
