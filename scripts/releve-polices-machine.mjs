@@ -71,6 +71,7 @@ await page.setContent('<!doctype html><meta charset="utf-8"><body></body>')
 
 const releve = await page.evaluate(
   ({ chaines, pile, termes }) => {
+    const MOTS_CLES = new Set(['system-ui', '-apple-system', 'sans-serif', 'serif', 'monospace'])
     const mesure = (texte, famille, taille = 16) => {
       const boite = document.createElement('span')
       boite.style.cssText = `position:absolute;white-space:pre;font:${taille}px ${famille}`
@@ -88,7 +89,14 @@ const releve = await page.evaluate(
          la pile est celle que le système a choisie. */
       familles: termes.map((famille) => ({
         famille,
-        largeur: mesure('Créer mon espace', `"${famille}"`),
+        /* LES MOTS-CLES NE SE GUILLEMETENT PAS. `system-ui`, `-apple-system` et
+           `sans-serif` sont des MOTS-CLES CSS ; entre guillemets ils deviennent
+           des noms de famille ordinaires, que rien ne resout, et la ligne rend
+           la largeur du repli par defaut au lieu de celle qu'on interroge.
+           Mesure : `"sans-serif"` rendait 114,61 px sur les deux machines, la
+           meme valeur que toutes les familles absentes — un nombre qui ne dit
+           rien. Seuls les noms propres portent des guillemets. */
+        largeur: mesure('Créer mon espace', MOTS_CLES.has(famille) ? famille : `"${famille}"`),
       })),
       pileSurLeTemoin: mesure('Créer mon espace', pile),
     }

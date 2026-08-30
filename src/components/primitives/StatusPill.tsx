@@ -62,13 +62,13 @@ export function StatusPill({ tone, children, icon, size = 'md', className }: Sta
       data-ton={tone}
       className={cn(
         /* PAS DE `whitespace-nowrap`, ET C'EST LE MÊME MOTIF QUE `Button`. Une
-       pastille dont l'étiquette ne peut pas se replier devient un atome
-       insécable : « En cours d'arbitrage » mesure 265 px dans une fiche de
-       246 à 320 px de large, en police système large, et sort de la carte.
-       Repliée sur deux lignes elle reste une pastille ; débordante, elle est
-       un défaut. La rangée qui la porte a déjà `flex-wrap` — encore
-       fallait-il que son contenu accepte de plier. */
-    'inline-flex items-center gap-1.5 rounded-full border font-semibold',
+           pastille dont l'étiquette ne peut pas se replier devient un atome
+           insécable : « En cours d'arbitrage » mesure 265 px dans une fiche de
+           246 à 320 px de large, en police système large, et sort de la carte.
+           Repliée sur deux lignes elle reste une pastille ; débordante, elle
+           est un défaut. La rangée qui la porte a déjà `flex-wrap` — encore
+           fallait-il que son contenu accepte de plier. */
+        'inline-flex items-center gap-1.5 rounded-full border font-semibold',
         // Les deux tailles partagent le plancher de 12px : ce qui distingue la
         // pastille compacte n'est pas un texte plus petit — un statut se lit ou
         // ne sert à rien — mais son rembourrage et son icône. `text-label`

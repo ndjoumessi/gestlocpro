@@ -47,7 +47,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { exit } from 'node:process'
 import { inventaireDesRoutes, exigerUnInventairePlein } from './inventaire/routes.mjs'
-import { imposerLaPoliceLarge } from './police-large.mjs'
+import { POLICE_LARGE, imposerLaPoliceLarge } from './police-large.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
 const PORT = 4191
@@ -87,11 +87,15 @@ const FAMILLES = {
     /* 320 : la mention de démonstration passe à deux lignes, +21 px. C'est le
        prix d'une phrase courte QUI NOMME ce qui est fictif, plutôt qu'une
        « Données fictives. » qui tient sur une ligne et n'apprend rien. */
-    320: { plafond: 143, avant: 325 },
-    360: { plafond: 122, avant: 325 },
-    1280: { plafond: 122, avant: 136 },
+    320: { plafond: 143, plafondLarge: 165, avant: 325 },
+    360: { plafond: 122, plafondLarge: 143, avant: 325 },
+    1280: { plafond: 122, plafondLarge: 122, avant: 136 },
   },
-  publique: { 320: { plafond: 69, avant: 69 }, 360: { plafond: 69, avant: 69 }, 1280: { plafond: 69, avant: 69 } },
+  publique: {
+    320: { plafond: 69, plafondLarge: 69, avant: 69 },
+    360: { plafond: 69, plafondLarge: 69, avant: 69 },
+    1280: { plafond: 69, plafondLarge: 69, avant: 69 },
+  },
   /* QUATRIÈME FAMILLE, TROUVÉE EN ÉLARGISSANT — et c'est ce que l'élargissement
      valait. L'écran introuvable porte son propre en-tête, plus haut que celui
      de la vitrine : 193 px à 320 et 360, 75 px à 1280. Les cinq points de la
@@ -99,17 +103,55 @@ const FAMILLES = {
      s'il avait été rangé au jugé. Valeurs entérinées, non bénies : cet écran
      n'a pas été refondu. */
   introuvable: {
-    320: { plafond: 193, avant: 193 },
-    360: { plafond: 193, avant: 193 },
-    1280: { plafond: 75, avant: 75 },
+    320: { plafond: 193, plafondLarge: 69, avant: 193 },
+    360: { plafond: 193, plafondLarge: 69, avant: 193 },
+    1280: { plafond: 75, plafondLarge: 69, avant: 75 },
   },
   /* Non touchée par la refonte : la valeur est celle d'avant, et le plafond
      l'entérine sans la bénir. C'est le prochain lot qui aura à la défendre. */
   authentification: {
-    320: { plafond: 288, avant: 288 },
-    360: { plafond: 288, avant: 288 },
-    1280: { plafond: 82, avant: 82 },
+    320: { plafond: 288, plafondLarge: 168, avant: 288 },
+    360: { plafond: 288, plafondLarge: 168, avant: 288 },
+    1280: { plafond: 82, plafondLarge: 76, avant: 82 },
   },
+}
+
+/**
+ * UN PLAFOND, DEUX POLICES — et deux nombres plutot qu'un compromis.
+ *
+ * `--font-sans` commence par `system-ui`, qui designe un dessin DIFFERENT par
+ * systeme : « Creer mon espace » rend 132,61 px sur macOS et 146,14 px sur
+ * l'executeur Ubuntu, ou il vaut DejaVu Sans. La coquille applicative grandit de
+ * 21 px a 360 px sous la police large — non parce qu'une rangee de commandes se
+ * replie, mais parce que la DESCRIPTION de page passe de deux lignes a trois.
+ * Du texte qui est du texte : un cout, pas un defaut.
+ *
+ * TROIS ISSUES ETAIENT POSSIBLES, ET DEUX ETAIENT MAUVAISES. Relever le plafond
+ * unique a 143 aurait donne 21 px de mou a la mesure locale, qui aurait cesse de
+ * voir une vraie regression — le « plafond menteur » que ce depot refuse
+ * ailleurs. Rogner la description a deux lignes aurait cache du texte a qui a
+ * une police large, c'est-a-dire au marche vise.
+ *
+ * On garde donc LES DEUX MESURES VRAIES. Sans commutateur, le plafond est celui
+ * de cette machine, serre. Avec `MESURER_EN_POLICE_LARGE=1`, c'est celui de la
+ * police large — et c'est ce mode que l'integration continue emploie, pour que
+ * les deux machines comparent la meme chose au meme nombre.
+ *
+ * LES DEUX SONT MESURES, SANS MARGE, comme le plafond simple l'etait deja.
+ * `plafondLarge` est parfois PLUS BAS que `plafond` : l'ecran introuvable et
+ * l'authentification portent des plafonds herites d'avant la refonte, non
+ * remesures depuis ; sous police large ils ont ete releves pour de bon.
+ */
+function plafondDe(p) {
+  if (!POLICE_LARGE) return p.plafond
+  if (typeof p.plafondLarge !== 'number') {
+    throw new Error(
+      'plafond-coquille : une entree de FAMILLES n\'a pas de `plafondLarge`.\n' +
+        '  Chaque plafond a deux valeurs depuis que les deux polices sont mesurees ;\n' +
+        '  une entree qui n\'en porte qu\'une passerait au vert sans etre gardee.',
+    )
+  }
+  return p.plafondLarge
 }
 
 /** À quelle famille appartient une adresse. Déduit, jamais recopié. */
@@ -262,10 +304,14 @@ try {
       const famille = familleDe(adresse)
       const p = FAMILLES[famille][largeur]
       inspectes++
-      releve.push({ nom, h, famille, ...p })
-      if (h > p.plafond) {
+      /* Le releve porte le plafond EFFECTIF, celui contre lequel la comparaison
+         vient d'etre faite — sans quoi le rapport imprimerait le plafond serre
+         a cote d'une hauteur mesuree en police large, et se contredirait. */
+      releve.push({ nom, h, famille, ...p, plafond: plafondDe(p) })
+      const plafond = plafondDe(p)
+      if (h > plafond) {
         plaintes.push(
-          `${nom} (${famille}) : ${h} px de coquille avant le contenu, pour un plafond de ${p.plafond}.\n` +
+          `${nom} (${famille}) : ${h} px de coquille avant le contenu, pour un plafond de ${plafond}.\n` +
             `   Avant la refonte : ${p.avant} px. Ce qui remonte ici est repris sur le contenu,\n` +
             '   sur tous les écrans de cette famille à la fois.',
         )

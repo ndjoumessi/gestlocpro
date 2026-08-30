@@ -19,6 +19,11 @@
 #   serveur   ~3 min   à chaque poussée, avec un Postgres
 #   complet  ~15 min   sur `main` seulement, et seulement si les deux passent
 #
+# Plus `polices`, qui n'est pas un étage : c'est un RELEVÉ, lancé à la demande
+# (`workflow_dispatch`) et non à chaque poussée. Il a servi une fois, pour nommer
+# ce que l'exécuteur met derrière `system-ui` ; le garder automatique paierait un
+# `playwright install` indéfiniment pour une réponse déjà connue.
+#
 # Le retour immédiat sans payer un quart d'heure à chaque commit. Les portes au
 # navigateur sont les lentes — elles ouvrent Chromium sur onze largeurs et deux
 # langues — et ce sont aussi celles qui ne changent d'avis qu'à la refonte.
@@ -34,16 +39,29 @@
 
 name: portes
 
+# `push` SEUL, ET `pull_request` RETIRE. Les deux ensemble faisaient tourner
+# chaque travail DEUX FOIS sur toute branche de ce depot : les evenements
+# produisent des `github.ref` differents — `refs/heads/x` contre
+# `refs/pull/N/merge` — donc deux groupes de concurrence distincts, dont aucun
+# n'annule l'autre. Une poussee sur une branche est deja couverte par `push` ;
+# ce qu'on perdrait est la couverture des propositions venues d'un fork, que ce
+# depot n'a pas.
 on:
   push:
-  pull_request:
+  workflow_dispatch:
 
 # Une poussée qui en remplace une autre annule la précédente : sur une branche
 # active, laisser tourner trois exécutions périmées coûte des minutes pour un
 # verdict que personne ne lira.
+# ANNULER, MAIS JAMAIS SUR `main`. Une poussee qui en remplace une autre sur une
+# branche de travail annule la precedente, et c'est ce qu'on veut. Sur `main`,
+# non : `complet` dure un quart d'heure, et deux fusions rapprochees
+# annuleraient les portes au navigateur du PREMIER commit — deja en production,
+# et dont la mise en page n'aurait jamais ete jugee. « Annule » se lit alors
+# comme ni vert ni rouge, ce qui est la pire des trois reponses.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   # La version du `Dockerfile`, à la mineure près. Son commentaire dit pourquoi :
@@ -125,6 +143,8 @@ jobs:
 
   polices:
     name: polices — ce que la machine met derrière system-ui
+    # À LA DEMANDE SEULEMENT. Voir l'en-tête : c'est un relevé, pas une porte.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -164,7 +184,16 @@ jobs:
       - run: npx playwright install --with-deps chromium
       # `mesure-ui` construit `dist/` lui-même, en premier — les portes
       # suivantes servent ce paquet-là. Rien à construire avant.
+      #
+      # EN POLICE LARGE, ET C'EST TOUT L'INTÉRÊT. `system-ui` vaut DejaVu Sans
+      # sur cet exécuteur ; le commutateur impose Verdana, qui y retombe sur
+      # DejaVu faute d'être installée — et surtout, il SÉLECTIONNE les plafonds
+      # mesurés sous police large. Les deux machines comparent alors la même
+      # chose au même nombre : ici et sur la machine de développement,
+      # `MESURER_EN_POLICE_LARGE=1 npm run check:navigateur` rend le même verdict.
       - run: npm run check:navigateur
+        env:
+          MESURER_EN_POLICE_LARGE: '1'
       # Les captures que `poids-ecrans` régénère : c'est la seule sortie
       # regardable d'un échec de mise en page, et elle disparaît avec la machine.
       - if: always()

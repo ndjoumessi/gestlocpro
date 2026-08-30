@@ -30,9 +30,11 @@
  * devise, donc un montant est insécable de bout en bout et `whitespace-nowrap`
  * n'y est pour rien. Le seul levier est la largeur de colonne.
  *
- * Deux colonnes jusqu'à `lg`, trois ensuite : `md` (768 px) ne suffit pas — il
- * en faudrait environ 790 pour que trois cartes portent ce montant. C'est
- * l'arbitrage de `GRILLE_QUATRE_INDICATEURS`, qui attend `xl`.
+ * Deux colonnes jusqu'à `xl`, trois ensuite. `md` (768 px) ne suffisait deja pas —
+ * il en faudrait environ 790 pour que trois cartes portent ce montant avec la
+ * police la plus etroite — et `lg` ne suffit plus avec la plus large : voir le
+ * bloc juste au-dessus de la constante. C'est l'arbitrage de
+ * `GRILLE_QUATRE_INDICATEURS`, qui attend `xl` puis `2xl`.
  *
  * Employée par les relevés, les encaissements et les cautions.
  */
@@ -58,18 +60,32 @@
 export const GRILLE_TROIS_INDICATEURS = 'grid gap-4 sm:grid-cols-2 xl:grid-cols-3'
 
 /**
- * QUATRE COLONNES SEULEMENT À `xl`, pour la raison ci-dessus portée d'un cran :
- * quatre cartes qui doivent chacune loger un montant réclament ~1050 px, et
- * `lg` (1024 px) n'y suffit pas tout à fait.
+ * TROIS COLONNES À `xl`, QUATRE À `2xl`, pour la raison ci-dessus portée d'un
+ * cran : quatre cartes qui doivent chacune loger un montant reclament ~1050 px
+ * avec la police la plus etroite, et sensiblement plus avec la plus large.
  *
  * Employée par le tableau de bord et le parc.
  */
 /*
-  PORTE D'UN CRAN LUI AUSSI, POUR LA RAISON ECRITE AU-DESSUS.
+  PORTE D'UN CRAN LUI AUSSI, MAIS AVEC UN PAS INTERMEDIAIRE — ET LE PREMIER JET
+  N'EN AVAIT PAS.
 
   Mesure a 1280 px en police large : la carte offre 186 px de contenu et
   « 1 397 000 FCFA » en demande 199 — treize pixels dehors, huit fois sur le
   tableau de bord et les encaissements. A 1536, la meme carte offre environ
   223 px. Les quatre colonnes attendent donc `2xl`.
+
+  LE PREMIER JET ALLAIT DE `sm:grid-cols-2` A `2xl:grid-cols-4` SANS ESCALE, et
+  c'etait un mauvais echange : entre 1280 et 1535 px — un portable ordinaire, et
+  une largeur que la porte mesure — le tableau de bord serait tombe a DEUX cartes
+  de six cents pixels portant chacune un montant de deux cents. On repare treize
+  pixels en gachant la moitie d'une rangee. `xl:grid-cols-3` tient l'entre-deux :
+  trois colonnes a 1280, ou la carte offre largement de quoi.
+
+  ET `2xl` DOIT ETRE MESURE, sans quoi la regle est vide. `LARGEURS`, dans
+  `scripts/mesure-ui.mjs`, s'arretait a 1440 : porter les quatre colonnes a 1536
+  les mettait hors de portee de toute mesure, et un debordement futur y serait
+  passe inapercu. C'est exactement ce que la garde de `LARGEUR_SANS_REPLI`
+  refuse dans le meme fichier. 1536 est donc entre dans les largeurs balayees.
 */
-export const GRILLE_QUATRE_INDICATEURS = 'grid gap-4 sm:grid-cols-2 2xl:grid-cols-4'
+export const GRILLE_QUATRE_INDICATEURS = 'grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4'

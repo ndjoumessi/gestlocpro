@@ -159,9 +159,17 @@ export const en: Dictionary = {
      * o », « Report / s ». Le point de cesure est desormais ecrit pour eux
      * aussi. Le francais n'en a pas besoin : ce Chromium a son dictionnaire.
      *
-     * SEULS LES DEUX MOTS QUI CASSENT le portent. « Reports » (44 px) et
-     * « Portfolio » (48) tiennent dans la cellule ; leur en poser un serait une
-     * décoration invisible que le lecteur suivant croirait nécessaire.
+     * LA REGLE RESTE « SEULS LES MOTS QUI CASSENT LE PORTENT », mais la liste a
+     * CHANGE, et le paragraphe qui suivait ici disait le contraire du code trois
+     * lignes plus bas — il nommait « Reports » (44 px) et « Portfolio » (48)
+     * comme tenant dans la cellule. C'etait vrai a 44 et 48 px ; ils en font 49
+     * et 53 sous une police 11 % plus large, et la cellule en offre 51. Un
+     * commentaire garde apres que sa mesure a bouge est pire qu'un commentaire
+     * absent : le lecteur suivant y lit une regle ET sa violation.
+     *
+     * Ce qui ne change pas : on n'en pose toujours PAS sur un mot qui tient. Une
+     * cesure invisible que rien n'impose est une decoration que le lecteur
+     * suivant croirait necessaire.
      *
      * C'est un fait de LANGUE, pas de mise en page : « Dash-board » et
      * « Pay-ments » sont les points de césure de ces mots, quelle que soit la

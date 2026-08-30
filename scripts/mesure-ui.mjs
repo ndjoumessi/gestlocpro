@@ -185,7 +185,15 @@ const BASE = `http://127.0.0.1:${PORT}`
  * personne ne regarde : ni téléphone, ni bureau. 1440 est le poste de travail
  * du gestionnaire.
  */
-const LARGEURS = [320, 360, 375, 414, 700, 768, 800, 900, 1024, 1280, 1440]
+/* 1536 EST ENTRE PARCE QU'UNE REGLE Y VIT DESORMAIS. `GRILLE_QUATRE_INDICATEURS`
+   pose ses quatre colonnes a `2xl`, c'est-a-dire au-dela de 1440 : sans cette
+   largeur, la rangee a quatre colonnes du tableau de bord et du parc ne serait
+   rendue par AUCUN point de mesure, et un debordement y passerait inapercu.
+   C'est la panne que la garde de `LARGEUR_SANS_REPLI` refuse quelques centaines
+   de lignes plus bas — « porte au-dela de la plus large, il viderait la regle
+   sans que rien ne rougisse ». Une regle qui vit a un point de rupture oblige a
+   mesurer ce point de rupture. */
+const LARGEURS = [320, 360, 375, 414, 700, 768, 800, 900, 1024, 1280, 1440, 1536]
 
 /**
  * LES DEUX LANGUES, et aucune n'est « la large » partout.

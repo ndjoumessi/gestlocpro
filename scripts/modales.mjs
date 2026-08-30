@@ -70,7 +70,7 @@ import { spawn } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { exit } from 'node:process'
-import { imposerLaPoliceLarge } from './police-large.mjs'
+import { POLICE_LARGE, imposerLaPoliceLarge } from './police-large.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
 const PORT = 4192
@@ -165,12 +165,12 @@ const MODALES = [
     le corps défilerait d'autant. Ce plafond garde la forme de la modale, pas
     celle d'un parc — aucune porte de ce dépôt ne visite un parc réel.
   */
-  { nom: 'Tariffs', adresse: '/demo/releves', bouton: /^Prix de refacturation$|^Rebilling prices$/, defil: { 360: 11, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
-  { nom: 'ParkSettings', adresse: '/demo/parc', bouton: /^Corriger le parc$|^Correct the park$/, defil: { 360: 48, 1280: 0 }, avant: { 360: 35, 1280: 0 } },
-  { nom: 'AddBuilding', adresse: '/demo/parc', bouton: /^Ajouter un immeuble$|^Add a building$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
-  { nom: 'AddUnit', adresse: '/demo/parc', bouton: /^Ajouter un logement$|^Add a unit$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
-  { nom: 'OpenWork', adresse: '/demo/travaux', bouton: /^Ouvrir un chantier$|^Open a job$/, defil: { 360: 130, 1280: 0 }, avant: { 360: 1056, 1280: 913 } },
-  { nom: 'RecordPayment', adresse: '/demo/paiements', bouton: /^Enregistrer un paiement$|^Record a payment$/, defil: { 360: 460, 1280: 40 }, avant: { 360: 522, 1280: 236 } },
+  { nom: 'Tariffs', adresse: '/demo/releves', bouton: /^Prix de refacturation$|^Rebilling prices$/, defil: { 360: 11, 1280: 0 }, defilLarge: { 360: 76, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'ParkSettings', adresse: '/demo/parc', bouton: /^Corriger le parc$|^Correct the park$/, defil: { 360: 48, 1280: 0 }, defilLarge: { 360: 48, 1280: 0 }, avant: { 360: 35, 1280: 0 } },
+  { nom: 'AddBuilding', adresse: '/demo/parc', bouton: /^Ajouter un immeuble$|^Add a building$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'AddUnit', adresse: '/demo/parc', bouton: /^Ajouter un logement$|^Add a unit$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'OpenWork', adresse: '/demo/travaux', bouton: /^Ouvrir un chantier$|^Open a job$/, defil: { 360: 130, 1280: 0 }, defilLarge: { 360: 138, 1280: 0 }, avant: { 360: 1056, 1280: 913 } },
+  { nom: 'RecordPayment', adresse: '/demo/paiements', bouton: /^Enregistrer un paiement$|^Record a payment$/, defil: { 360: 460, 1280: 40 }, defilLarge: { 360: 493, 1280: 47 }, avant: { 360: 522, 1280: 236 } },
   /*
     LE PLAFOND DE 0 ÉTAIT VACUEUX, et ce script vient de le prouver en rougissant.
 
@@ -203,7 +203,7 @@ const MODALES = [
     intitulés français sont plus longs. On ne moyenne pas les deux — le plafond
     est déclaré par langue, comme partout dans ce fichier.
   */
-  { nom: 'Receipt', adresse: '/demo/paiements', bouton: /Quittance|Receipt/, defil: { 360: 91, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'Receipt', adresse: '/demo/paiements', bouton: /Quittance|Receipt/, defil: { 360: 91, 1280: 0 }, defilLarge: { 360: 91, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /*
     INSPECTION : LE PLAFOND MONTE, ET VOICI CE QU'IL ACHÈTE.
 
@@ -241,16 +241,16 @@ const MODALES = [
      genre d'arbitrage que ce plafond existe pour faire écrire, et il est fait
      dans ce sens-là.
   */
-  { nom: 'Inspection', adresse: '/demo/etats-des-lieux', bouton: /^Établir un état des lieux$|^Record an inspection$/, defil: { 360: 345, 1280: 60 }, avant: { 360: 237, 1280: 0 } },
-  { nom: 'Invite', adresse: '/demo/locataires', bouton: /^Inviter par code$|^Invite by code$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
-  { nom: 'Announce', adresse: '/demo/locataires', bouton: /^Prévenir les locataires$|^Notify tenants$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
-  { nom: 'Reply', adresse: '/demo/travaux', bouton: /^Répondre$|^Reply$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'Inspection', adresse: '/demo/etats-des-lieux', bouton: /^Établir un état des lieux$|^Record an inspection$/, defil: { 360: 345, 1280: 60 }, defilLarge: { 360: 425, 1280: 54 }, avant: { 360: 237, 1280: 0 } },
+  { nom: 'Invite', adresse: '/demo/locataires', bouton: /^Inviter par code$|^Invite by code$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'Announce', adresse: '/demo/locataires', bouton: /^Prévenir les locataires$|^Notify tenants$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'Reply', adresse: '/demo/travaux', bouton: /^Répondre$|^Reply$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /* Le seul écran de la démonstration où le rôle change ce qui est rendu : la
      modale du locataire n'existe que pour lui. Le radio de profil est `sr-only`,
      donc invisible au sens de Playwright — d'où le clic FORCÉ, qui est ici la
      vérité du geste et non un contournement : à la souris, c'est l'étiquette
      qu'on vise, et elle est bien visible. */
-  { nom: 'Report', adresse: '/demo/travaux', profil: /Locataire|Tenant/, bouton: /^Signaler un problème$|^Report an issue$/, defil: { 360: 620, 1280: 250 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'Report', adresse: '/demo/travaux', profil: /Locataire|Tenant/, bouton: /^Signaler un problème$|^Report an issue$/, defil: { 360: 620, 1280: 250 }, defilLarge: { 360: 486, 1280: 189 }, avant: { 360: 0, 1280: 0 } },
   /*
     LES CONFIRMATIONS ENTRENT, ET C'ÉTAIT LE PLUS GRAND TROU DE CETTE PORTE.
 
@@ -276,9 +276,9 @@ const MODALES = [
     « Retirer l'accès », par le même état. Une entrée suffit donc pour les deux ;
     en ajouter une seconde mesurerait deux fois la même géométrie.
   */
-  { nom: 'SettleDeposit', adresse: '/demo/cautions', bouton: /^Arbitrer$|^Settle$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
-  { nom: 'RemoveTenant', adresse: '/demo/locataires', bouton: /^Retirer$|^Remove$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
-  { nom: 'RevokeAccess', adresse: '/demo/acces', bouton: /^Retirer l’accès$|^Remove access$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'SettleDeposit', adresse: '/demo/cautions', bouton: /^Arbitrer$|^Settle$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 10, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'RemoveTenant', adresse: '/demo/locataires', bouton: /^Retirer$|^Remove$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'RevokeAccess', adresse: '/demo/acces', bouton: /^Retirer l’accès$|^Remove access$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /*
     SUPPRIMER UN IMMEUBLE : LA SONDE EN CRÉE UN D'ABORD.
 
@@ -312,10 +312,10 @@ const MODALES = [
       await boite.getByRole('button', { name: /^Enregistrer$|^Save$/ }).click()
       await page.waitForTimeout(400)
     },
-    defil: { 360: 0, 1280: 0 },
+    defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 },
     avant: { 360: 0, 1280: 0 },
   },
-  { nom: 'RemindOverdue', adresse: '/demo/paiements', bouton: /^Relancer les retards$|^Chase arrears$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'RemindOverdue', adresse: '/demo/paiements', bouton: /^Relancer les retards$|^Chase arrears$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /*
     LA MISE EN DEMEURE ENTRE, ET C'EST UN LOT QUI L'A OUVERTE.
 
@@ -329,7 +329,7 @@ const MODALES = [
     l'acte est un enregistrement au dossier plus une notification à un compte,
     et elle n'a ni l'un ni l'autre. Elle le dit, au lieu de se taire.
   */
-  { nom: 'FormalNotice', adresse: '/demo/paiements', bouton: /^Mettre en demeure$|^Serve notice$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'FormalNotice', adresse: '/demo/paiements', bouton: /^Mettre en demeure$|^Serve notice$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
 ]
 
 /**
@@ -406,6 +406,26 @@ const COUVERTS = [
   'Relancer les retards',
   'Mettre en demeure',
 ]
+/**
+ * UN PLAFOND, DEUX POLICES — meme arbitrage que `plafond-coquille`.
+ *
+ * `--font-sans` commence par `system-ui`, qui designe un dessin DIFFERENT par
+ * systeme : « Creer mon espace » rend 132,61 px sur macOS et 146,14 px sur
+ * l'executeur Ubuntu, ou il vaut DejaVu Sans. Un corps de modale se compose de
+ * texte : plus large, il est plus haut, et il defile davantage. Neuf des
+ * trente-six etats depassaient leur plafond sous police large, jusqu'a +80 px
+ * sur l'etat des lieux.
+ *
+ * CE N'EST PAS UN DEFAUT, C'EST UN COUT — le pied reste tenu, l'action reste
+ * sous les yeux, et c'est ce que ce fichier garde. Relever le plafond unique
+ * aurait donne du mou a la mesure locale ; rogner le contenu aurait cache des
+ * indications qui disent ce qu'un champ engage. On garde donc LES DEUX MESURES
+ * VRAIES, et `defilLarge` porte celle de la police large.
+ *
+ * LES TRENTE-SIX SONT MESUREES, sans marge, pas seulement les neuf qui
+ * depassaient : un plafond recopie d'une autre colonne serait un nombre, pas un
+ * releve.
+ */
 const LARGEURS = [360, 1280]
 const LANGUES = ['fr', 'en']
 /*
@@ -425,6 +445,26 @@ const LANGUES = ['fr', 'en']
 */
 const ATTENDUS = 72
 const NON_OUVRABLES_ATTENDUES = 0
+
+/**
+ * Le plafond effectif, selon la police imposee.
+ *
+ * La garde refuse une entree sans `defilLarge` : une modale ajoutee demain qui
+ * n'en porterait qu'un passerait au vert en mode police large sans etre gardee,
+ * ce qui est exactement le silence que ce fichier existe pour empecher.
+ */
+function plafondDe(modale, largeur) {
+  if (!POLICE_LARGE) return modale.defil[largeur]
+  if (!modale.defilLarge || typeof modale.defilLarge[largeur] !== 'number') {
+    console.error(
+      `\n✗ modales : « ${modale.nom} » n'a pas de \`defilLarge\` pour ${largeur} px.\n` +
+        '   Chaque plafond a deux valeurs depuis que les deux polices sont mesurees.\n' +
+        '   Relancez `MESURER_EN_POLICE_LARGE=1 node scripts/modales.mjs` et inscrivez le releve.\n',
+    )
+    exit(1)
+  }
+  return modale.defilLarge[largeur]
+}
 
 async function servir() {
   const fils = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--host', '127.0.0.1'], {
@@ -700,7 +740,7 @@ try {
           continue
         }
         inspectees++
-        releve.push({ nom, largeur, ...m, plafond: modale.defil[largeur], avant: modale.avant[largeur] })
+        releve.push({ nom, largeur, ...m, plafond: plafondDe(modale, largeur), avant: modale.avant[largeur] })
 
         if (!m.enfantDeBody) {
           plaintes.push(
@@ -775,9 +815,9 @@ try {
               '   gardant la forme longue dans sa liste (`OptionCombobox.resume`).',
           )
         }
-        if (m.defil > modale.defil[largeur]) {
+        if (m.defil > plafondDe(modale, largeur)) {
           plaintes.push(
-            `${nom} : ${m.defil} px de défilement pour un plafond de ${modale.defil[largeur]}.\n` +
+            `${nom} : ${m.defil} px de défilement pour un plafond de ${plafondDe(modale, largeur)}.\n` +
               `   Avant ce lot : ${modale.avant[largeur]} px.`,
           )
         }

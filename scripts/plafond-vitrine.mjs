@@ -42,7 +42,7 @@ import { spawn } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { exit } from 'node:process'
-import { imposerLaPoliceLarge } from './police-large.mjs'
+import { POLICE_LARGE, imposerLaPoliceLarge } from './police-large.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
 const PORT = 4193
@@ -60,8 +60,8 @@ const BASE = `http://127.0.0.1:${PORT}`
  * lignes, donc de dire pourquoi dans le diff.
  */
 const PLAFONDS = [
-  { largeur: 360, langue: 'fr', plafond: 10209, avant: 9979, origine: 11419 },
-  { largeur: 360, langue: 'en', plafond: 10070, avant: 9862, origine: 11149 },
+  { largeur: 360, langue: 'fr', plafond: 10209, plafondLarge: 10524, avant: 9979, origine: 11419 },
+  { largeur: 360, langue: 'en', plafond: 10070, plafondLarge: 10285, avant: 9862, origine: 11149 },
   /*
     +73 px AU BUREAU, ET C'EST LE PRIX D'UNE GRILLE COMPARABLE.
 
@@ -82,8 +82,8 @@ const PLAFONDS = [
 
     Le mobile ne bouge pas : empilées, les cartes n'ont pas de rangées communes.
   */
-  { largeur: 1280, langue: 'fr', plafond: 7170, avant: 7092, origine: 7110 },
-  { largeur: 1280, langue: 'en', plafond: 7245, avant: 7166, origine: 7106 },
+  { largeur: 1280, langue: 'fr', plafond: 7170, plafondLarge: 7213, avant: 7092, origine: 7110 },
+  { largeur: 1280, langue: 'en', plafond: 7245, plafondLarge: 7291, avant: 7166, origine: 7106 },
 ]
 /*
   ═══ CE QUE CE RESSERREMENT DIT, ET CE QU'IL NE DIT PAS ═══
@@ -188,7 +188,33 @@ const ATTENDUS = 4
  * n'est pas ce qu'on veut : on veut la même page, plus dense. Le compte est
  * écrit, pas dérivé.
  */
+/**
+ * UN PLAFOND, DEUX POLICES — comme `plafond-coquille` et `modales`.
+ *
+ * `system-ui` designe un dessin different par systeme : « Creer mon espace »
+ * rend 132,61 px sur macOS, 146,14 sur l'executeur Ubuntu ou il vaut DejaVu
+ * Sans. Une page faite de texte est plus haute quand le texte est plus large —
+ * de 315 px en francais a 360, de 43 a 1280.
+ *
+ * CE N'EST PAS UN DEFAUT : les huit sections sont la, la grille de prix se lit
+ * toujours en travers, et l'action reste a 504 px du haut. C'est un COUT, et le
+ * garder sous un plafond unique reviendrait soit a donner du mou a la mesure
+ * locale, soit a refuser une page correcte. Les deux valeurs sont MESUREES.
+ */
 const SECTIONS_ATTENDUES = 8
+
+/** Le plafond effectif, selon la police imposee — et une entree sans son second
+ *  plafond ne passe pas en silence. */
+function plafondDe(point) {
+  if (!POLICE_LARGE) return point.plafond
+  if (typeof point.plafondLarge !== 'number') {
+    console.error(
+      `\n✗ plafond-vitrine : le point ${point.langue}@${point.largeur} n'a pas de \`plafondLarge\`.\n`,
+    )
+    exit(1)
+  }
+  return point.plafondLarge
+}
 
 /**
  * LA FAMILLE D'AFFICHAGE, ET POURQUOI SON ABSENCE DOIT ARRÊTER LE RELEVÉ.
@@ -439,9 +465,10 @@ try {
       )
     }
 
-    if (m.hDoc > point.plafond) {
+    const plafond = plafondDe(point)
+    if (m.hDoc > plafond) {
       plaintes.push(
-        `${nom} : ${m.hDoc} px de document pour un plafond de ${point.plafond}.\n` +
+        `${nom} : ${m.hDoc} px de document pour un plafond de ${plafond}.\n` +
           `   Avant ce lot : ${point.avant}. Avant la refonte : ${point.origine}.\n` +
           "   C'est le seul écran que voit un visiteur sans compte, et celui qui décide\n" +
           "   s'il en ouvre un.",
@@ -489,7 +516,7 @@ for (const r of releve) {
     continue
   }
   console.log(
-    `  ${r.nom.padEnd(10)} ${String(r.hDoc).padStart(6)} px  (plafond ${String(r.plafond).padStart(6)} · ` +
+    `  ${r.nom.padEnd(10)} ${String(r.hDoc).padStart(6)} px  (plafond ${String(plafondDe(r)).padStart(6)} · ` +
       `avant ce lot ${String(r.avant).padStart(6)} · avant la refonte ${String(r.origine).padStart(6)})  ` +
       `${r.sections} sections · action à ${r.actionY} px`,
   )
