@@ -46,13 +46,31 @@
  *
  * ═══ UNE POLICE ABSENTE N'EST PAS UNE TABLE JUSTE ═══
  *
- * Si le navigateur ne trouve pas Helvetica, il rend une substitution. Arial et
- * Liberation Sans sont métriquement COMPATIBLES — la mesure reste valable, et
- * c'est voulu par leurs auteurs. Une substitution qui ne l'est pas ferait
- * diverger presque tous les caractères à la fois : le script le dit alors comme
- * tel, plutôt que d'accuser les tables d'une faute qui n'est pas la leur. Dans
- * les deux cas il ROUGIT — une mesure impossible ne s'écrit jamais comme une
- * absence de défaut.
+ * Si le navigateur ne trouve pas Helvetica, il rend une substitution. Cette
+ * phrase-ci disait ensuite : « Arial et Liberation Sans sont métriquement
+ * COMPATIBLES, la mesure reste valable ». ELLE ÉTAIT FAUSSE, et l'intégration
+ * continue l'a démontrée trois exécutions de suite — « · » à 333 au lieu de 278,
+ * « € » à 556 au lieu de 744. La compatibilité vaut pour l'ASCII, où elle est
+ * totale ; elle ne vaut pas pour la table des signes particuliers, qui est
+ * arrivée dans ce script APRÈS que la phrase a été écrite, et que personne n'a
+ * rouverte.
+ *
+ * Ce que le script fait maintenant : il MESURE quelle famille lui a été servie,
+ * et n'affirme que ce que cette famille peut témoigner. Le détail, les nombres
+ * et les deux glyphes concernés sont au-dessus de `SIGNATURES`.
+ *
+ * Une substitution qui n'est compatible sur rien fait diverger presque tous les
+ * caractères à la fois : le script le dit alors comme tel, plutôt que d'accuser
+ * les tables d'une faute qui n'est pas la leur. Dans ce cas il ROUGIT — une
+ * mesure impossible ne s'écrit jamais comme une absence de défaut.
+ *
+ * ═══ LE COMMUTATEUR ═══
+ *
+ *   MESURER_SANS_HELVETICA=1 node scripts/chasses-helvetica.mjs
+ *
+ * Demande Arial, donc reproduit ici, en une seconde, ce que rend un exécuteur
+ * sans Helvetica. Il a été écrit AVANT le correctif et a rendu les quatre mêmes
+ * lignes que l'intégration continue, au nombre près.
  */
 
 import { chromium } from 'playwright'
@@ -150,13 +168,24 @@ const ACCENTUEES = Array.from({ length: 0x100 - 0xc0 }, (_, i) => String.fromCha
      laisser ici ferait rougir la règle sur l'exception qu'elle a fait écrire. */
   .filter((lettre) => !SIGNES.some((s) => s.signe === lettre))
 
+/**
+ * LA FAMILLE QU'ON DEMANDE AU NAVIGATEUR — et le commutateur qui joue l'autre.
+ *
+ * `MESURER_SANS_HELVETICA=1` demande Arial à la place. Ce n'est pas un caprice :
+ * c'est ce que l'exécuteur Ubuntu SERT déjà quand on lui demande Helvetica,
+ * qu'il n'a pas — il substitue Liberation Sans, métriquement calée sur Arial.
+ * Le commutateur reproduit donc ici, en une seconde, le verdict qu'on n'obtenait
+ * qu'en poussant. Même geste que `MESURER_EN_POLICE_LARGE`, même raison.
+ */
+const FAMILLE_DEMANDEE = process.env.MESURER_SANS_HELVETICA === '1' ? 'Arial' : 'Helvetica'
+
 const navigateur = await chromium.launch()
 let mesurees
 try {
   const page = await (await navigateur.newContext()).newPage()
   await page.setContent('<canvas></canvas>')
   mesurees = await page.evaluate(
-    async ({ premier, nombre, signes, accentuees }) => {
+    async ({ premier, nombre, signes, accentuees, famille }) => {
       // Les polices d'abord : une mesure prise avant leur disponibilité serait
       // celle de la substitution, c'est-à-dire la mauvaise réponse à la bonne
       // question. La leçon est celle de `plafond-coquille`.
@@ -170,8 +199,8 @@ try {
         )
       }
       // 1000 pixels de corps : la mesure EST le millième de cadratin.
-      const romaine = serie('1000px Helvetica')
-      const grasse = serie('bold 1000px Helvetica')
+      const romaine = serie(`1000px ${famille}`)
+      const grasse = serie(`bold 1000px ${famille}`)
 
       /* LA GRAISSE EST REMISE EN ROMAINE avant tout le reste. `serie` laisse la
          fonte du contexte sur son dernier réglage : sans cette ligne, les
@@ -181,7 +210,7 @@ try {
          table en porte deux valeurs depuis qu'on a mesuré que la moitié de ses
          entrées changent de chasse en gras. */
       const dansLesDeux = (mesure) =>
-        ['1000px Helvetica', 'bold 1000px Helvetica'].map((police) => {
+        [`1000px ${famille}`, `bold 1000px ${famille}`].map((police) => {
           dessin.font = police
           return mesure()
         })
@@ -207,6 +236,7 @@ try {
       nombre: NOMBRE,
       signes: SIGNES.map((s) => [s.signe, s.trace]),
       accentuees: ACCENTUEES,
+      famille: FAMILLE_DEMANDEE,
     },
   )
 } finally {
@@ -256,17 +286,94 @@ for (const [graisse, ecrites] of Object.entries(ECRITES)) {
 if (comparees !== 2 * NOMBRE)
   plaintes.push(`${comparees} chasse(s) comparée(s) pour ${2 * NOMBRE} attendue(s).`)
 
+const GRAISSES = ['romaine', 'grasse']
+
+/**
+ * QUELLE HELVETICA LE NAVIGATEUR A-T-IL SERVIE, ET CE QU'ELLE PEUT TÉMOIGNER.
+ *
+ * ═══ LE DÉFAUT QUE CECI RÉPARE, ET COMBIEN DE TEMPS IL A COURU ═══
+ *
+ * Trois exécutions de l'intégration continue de suite ont rougi ici, sur QUATRE
+ * lignes : « · » écrit 278 mesuré 333, « € » écrit 744 mesuré 556, dans les deux
+ * graisses. L'exécuteur Ubuntu n'a PAS Helvetica — personne ne l'a, elle est
+ * propriétaire — et sert Liberation Sans, calée sur les métriques d'Arial.
+ *
+ * L'en-tête de ce fichier affirmait : « Arial et Liberation Sans sont
+ * métriquement COMPATIBLES, la mesure reste valable ». C'est vrai de l'ASCII, et
+ * FAUX de deux signes du haut du jeu. L'affirmation datait d'un temps où ce
+ * script s'arrêtait à l'ASCII ; la table des signes est arrivée après, et
+ * personne n'a rouvert la phrase.
+ *
+ * La garde de substitution ne rattrapait rien : elle attend qu'une PART du jeu
+ * diverge, et deux caractères sur quatre-vingt-quinze passent sous son seuil.
+ * Une incompatibilité PARTIELLE ne ressemble pas à une substitution.
+ *
+ * ═══ CE QUE CHAQUE FAMILLE PEUT DIRE, MESURÉ LE 2026-08-30 ═══
+ *
+ *   95 chasses ASCII × 2 graisses     0 divergence entre Helvetica et Arial
+ *   22 des 24 signes particuliers     0 divergence
+ *   31 déductions par décomposition   0 fausse chez Arial
+ *   « · » et « € »                    LES SEULS QU'ARIAL NE PEUT PAS TÉMOIGNER
+ *
+ * Deux glyphes sur cent cinquante. On ne renonce donc pas à la porte sur une
+ * machine sans Helvetica : on renonce à DEUX LIGNES, et on le dit.
+ *
+ * ═══ POURQUOI ON NE COMPARE PAS À LA TABLE D'ARIAL ═══
+ *
+ * Parce que le produit n'écrit pas de l'Arial. `lib/pdf.ts` déclare Helvetica
+ * dans le document, et c'est la table AFM d'Helvetica que TOUT lecteur PDF
+ * appliquera. Confronter la table à des chasses d'Arial vérifierait qu'elle est
+ * une bonne table d'Arial — une phrase vraie et sans emploi.
+ *
+ * ═══ LE NOM DE LA POLICE NE FAIT PAS FOI ═══
+ *
+ * On ne demande pas au navigateur ce qu'il a servi, on le MESURE. « · » et « € »
+ * suffisent à séparer les deux familles, et les quatre nombres ci-dessous sont
+ * des relevés : si une version future de Chromium changeait l'un d'eux, la
+ * famille deviendrait INCONNUE et la porte refuserait, au lieu de comparer sans
+ * savoir contre quoi.
+ */
+const SIGNATURES = {
+  helvetica: { '·': [278, 278], '€': [744, 744] },
+  arial: { '·': [333, 333], '€': [556, 556] },
+}
+
+/** Les signes qu'une famille ne peut pas témoigner : ceux où elle diffère. */
+const HORS_TEMOIGNAGE = { helvetica: [], arial: ['·', '€'] }
+
+function familleServie() {
+  for (const [nom, signature] of Object.entries(SIGNATURES)) {
+    const colle = Object.entries(signature).every(([signe, valeurs]) =>
+      valeurs.every((v, i) => Math.abs(mesurees.signes[i][signe] - v) <= TOLERANCE),
+    )
+    if (colle) return nom
+  }
+  return 'inconnue'
+}
+
+const FAMILLE = familleServie()
+
+if (FAMILLE === 'inconnue')
+  plaintes.push(
+    'la POLICE SERVIE n’est ni Helvetica ni une famille calée sur Arial.\n' +
+      `     · « · » mesuré ${Math.round(mesurees.signes[0]['·'])}, attendu 278 (Helvetica) ou 333 (Arial)\n` +
+      `     · « € » mesuré ${Math.round(mesurees.signes[0]['€'])}, attendu 744 (Helvetica) ou 556 (Arial)\n` +
+      '   La mesure est impossible ici : on ne sait pas contre quelle police on compare,\n' +
+      '   et une mesure impossible ne s’écrit jamais comme une absence de défaut.',
+  )
+
 /* Les signes particuliers : la seule table du haut du jeu, et elle était écrite
    sans qu'aucune mesure ne la contredise. */
-const GRAISSES = ['romaine', 'grasse']
-const signesFaux = SIGNES.flatMap(({ signe, ecrites }) =>
-  GRAISSES.flatMap((nom, i) =>
-    Math.abs(mesurees.signes[i][signe] - ecrites[i]) > TOLERANCE
-      ? [
-          `« ${signe} » en ${nom} : écrit ${ecrites[i]}, mesuré ${Math.round(mesurees.signes[i][signe])}`,
-        ]
-      : [],
-  ),
+const NON_TEMOIGNES = FAMILLE === 'inconnue' ? [] : HORS_TEMOIGNAGE[FAMILLE]
+const signesFaux = SIGNES.filter(({ signe }) => !NON_TEMOIGNES.includes(signe)).flatMap(
+  ({ signe, ecrites }) =>
+    GRAISSES.flatMap((nom, i) =>
+      Math.abs(mesurees.signes[i][signe] - ecrites[i]) > TOLERANCE
+        ? [
+            `« ${signe} » en ${nom} : écrit ${ecrites[i]}, mesuré ${Math.round(mesurees.signes[i][signe])}`,
+          ]
+        : [],
+    ),
 )
 
 if (signesFaux.length > 0)
@@ -313,8 +420,28 @@ if (plaintes.length > 0) {
   exit(1)
 }
 
+/*
+  CE QUI N'A PAS ÉTÉ TÉMOIGNÉ SE DIT DANS LE RAPPORT, ET NON DANS UN COMMENTAIRE.
+
+  Une porte qui rétrécit sur certaines machines et rend le même « ✓ » que
+  partout ailleurs est un piège : elle apprend à lire un vert qui ne couvre plus
+  ce qu'il couvrait. Le compte des signes comparés BAISSE visiblement, et les
+  glyphes écartés sont nommés un par un.
+
+  Ces deux-là ne sont pas perdus pour autant : ils SONT témoignés sur toute
+  machine portant une vraie Helvetica — la machine de développement en est une,
+  et `npm run chasses` y compare les vingt-quatre. Ce que l'exécuteur ne peut
+  pas dire, quelqu'un d'autre le dit.
+*/
+const temoignes = SIGNES.length - NON_TEMOIGNES.length
 console.log(
   `\n✓ chasses-helvetica : ${comparees} chasses confrontées à la police réelle, deux graisses,\n` +
-    `  plus ${SIGNES.length} signes particuliers et ${ACCENTUEES.length} déductions par décomposition.\n` +
-    '  Ce script ne dit RIEN de la mise en page — voir son en-tête.',
+    `  plus ${temoignes} signes particuliers et ${ACCENTUEES.length} déductions par décomposition.\n` +
+    `  Police servie : ${FAMILLE === 'helvetica' ? 'une vraie Helvetica' : 'une famille calée sur Arial (Helvetica est absente ici)'}.` +
+    (NON_TEMOIGNES.length > 0
+      ? `\n  NON TÉMOIGNÉS sur cette machine : ${NON_TEMOIGNES.map((s) => `« ${s} »`).join(', ')} —\n` +
+        `  Arial diffère d'Helvetica sur ces ${NON_TEMOIGNES.length} glyphes, et c'est Helvetica que le PDF\n` +
+        '  déclare. Ils sont comparés là où une vraie Helvetica est installée.'
+      : '') +
+    '\n  Ce script ne dit RIEN de la mise en page — voir son en-tête.',
 )
