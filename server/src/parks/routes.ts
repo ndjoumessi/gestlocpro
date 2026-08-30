@@ -2,7 +2,12 @@ import { Router, type Request, type Response } from 'express'
 import { z } from 'zod'
 import { Prisma } from '../generated/prisma/client.js'
 import { prisma } from '../db.js'
-import { creerCode, expirationInvitation, normaliserCode } from './invitations.js'
+import {
+  creerCode,
+  expirationInvitation,
+  normaliserCode,
+  rattacherLaFicheLocataire,
+} from './invitations.js'
 import { empreinteJeton } from '../auth/token.js'
 import { laMessagerie } from '../messagerie/messagerie.js'
 import {
@@ -4758,6 +4763,12 @@ rejoindreRouter.post('/', async (req: Request, res: Response) => {
       where: { id: invitation.id, acceptedAt: null },
       data: { acceptedAt: maintenant },
     })
+    /* LE MÊME RATTACHEMENT QU'À L'INSCRIPTION, et il doit être ici aussi.
+       Ce chemin sert le locataire qui avait DÉJÀ un compte — celui qui s'était
+       inscrit avant de recevoir son code. Ne corriger que l'autre laisserait
+       la moitié des locataires devant un espace vide, avec un symptôme
+       rigoureusement identique et aucune raison apparente de différer. */
+    await rattacherLaFicheLocataire(tx, { invitationId: invitation.id, userId: req.compteId! })
   })
 
   res.status(201).json({ parkId: invitation.parkId, role: invitation.role })

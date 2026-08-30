@@ -1597,6 +1597,8 @@ export const fr = {
       roleManager: 'Gestionnaire délégué',
       managerNotice:
         'Seul le propriétaire recrute un gestionnaire. Vous invitez des locataires.',
+      unitNone: 'Aucun logement pour l’instant',
+      unitVacant: 'vacant',
       unit: 'Logement concerné',
       unitHint:
         'Le locataire rejoindra ce logement. Sans logement, il rejoint le parc sans bail — vous l’y rattacherez ensuite.',

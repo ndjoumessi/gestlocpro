@@ -1228,6 +1228,8 @@ export const en: Dictionary = {
       roleTenant: 'Tenant',
       roleManager: 'Delegated manager',
       managerNotice: 'Only the owner recruits a manager. You invite tenants.',
+      unitNone: 'No unit for now',
+      unitVacant: 'vacant',
       unit: 'Unit concerned',
       unitHint:
         'The tenant will join this unit. Without one, they join the portfolio with no lease — you will attach them afterwards.',

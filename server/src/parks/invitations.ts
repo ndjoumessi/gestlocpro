@@ -1,4 +1,5 @@
 import { randomInt } from 'node:crypto'
+import type { Prisma } from '../generated/prisma/client.js'
 import { empreinteJeton } from '../auth/token.js'
 
 /**
@@ -68,4 +69,80 @@ export function expirationInvitation(maintenant: Date): Date {
  */
 export function normaliserCode(saisie: string): string {
   return saisie.trim().toUpperCase().replace(/\s+/g, '')
+}
+
+/**
+ * LE CODE RATTACHE LA FICHE, ET PAS SEULEMENT L'ADHÉSION.
+ *
+ * ═══ CE QUI MANQUAIT, ET DEPUIS L'ORIGINE ═══
+ *
+ * Les deux chemins qui consomment un code — l'inscription et `/api/join` —
+ * créaient une `Membership` et rien d'autre. `Invitation.unitId` était écrit à
+ * l'émission et n'était RELU nulle part.
+ *
+ * Or tout ce qu'un locataire voit passe par `tenant: { userId }` — `guards.ts`
+ * et une douzaine de lectures de `parks/routes.ts`. Sa fiche gardant
+ * `userId: null`, chacune de ces requêtes ne trouvait rien : compte valide,
+ * adhésion valide, bail existant, et un espace vide. Signalé sur la production
+ * dans ces termes, et le schéma le promettait déjà — `Tenant.userId` porte
+ * « renseigné quand l'invitation a été utilisée ».
+ *
+ * ═══ CE QU'ELLE RATTACHE, ET CE QU'ELLE REFUSE DE TOUCHER ═══
+ *
+ * Le bail du logement VISÉ par l'invitation, dont la fiche n'a pas encore de
+ * compte. Trois conditions, chacune pour une raison distincte :
+ *
+ *  · `role === 'tenant'` — un gestionnaire opère tout le parc et n'a pas de
+ *    fiche ; lui en attacher une lui donnerait le périmètre d'un locataire ;
+ *  · `userId: null` sur la fiche — une fiche déjà rattachée appartient à
+ *    quelqu'un, et la réécrire retirerait son espace à cette personne-là ;
+ *  · le compte n'a AUCUNE fiche ailleurs — `Tenant.userId` est unique sur toute
+ *    la base, donc un même compte ne peut être locataire que d'un seul parc.
+ *    C'est une limite du schéma, pas un choix de ce lot : sans ce contrôle,
+ *    Prisma lèverait un P2002 qui ferait échouer toute l'inscription.
+ *
+ * ═══ ELLE NE HURLE PAS QUAND ELLE NE TROUVE RIEN ═══
+ *
+ * Une invitation sans unité est LICITE — la modale le dit : « sans logement, il
+ * rejoint le parc sans bail, vous l'y rattacherez ensuite ». Un logement vacant
+ * l'est tout autant. Faire échouer l'inscription dans ces cas retirerait un
+ * parcours que le produit propose, pour une donnée qui n'a jamais existé.
+ */
+export async function rattacherLaFicheLocataire(
+  tx: Prisma.TransactionClient,
+  { invitationId, userId }: { invitationId: string; userId: string },
+): Promise<string | null> {
+  const invitation = await tx.invitation.findUnique({
+    where: { id: invitationId },
+    select: { role: true, unitId: true },
+  })
+  if (!invitation || invitation.role !== 'tenant' || !invitation.unitId) return null
+
+  // Un compte n'a qu'une fiche sur toute la base : voir l'en-tête.
+  const dejaLocataire = await tx.tenant.findFirst({ where: { userId }, select: { id: true } })
+  if (dejaLocataire) return null
+
+  /* Le bail le PLUS RÉCENT du logement, parmi ceux qui courent ou vont courir.
+     Un logement relouté en porte plusieurs, dont d'anciens `ended` : rattacher
+     le nouvel arrivant à la fiche de l'ancien occupant lui donnerait l'historique
+     de quelqu'un d'autre. */
+  const bail = await tx.lease.findFirst({
+    where: {
+      unitId: invitation.unitId,
+      status: { in: ['active', 'pending'] },
+      tenant: { userId: null },
+    },
+    orderBy: { startsOn: 'desc' },
+    select: { tenantId: true },
+  })
+  if (!bail) return null
+
+  /* `updateMany` avec `userId: null` DANS le filtre, et non `update` : entre la
+     lecture et l'écriture, un second code peut avoir rattaché la même fiche.
+     Le compteur à zéro dit alors « quelqu'un est passé avant », sans lever. */
+  const { count } = await tx.tenant.updateMany({
+    where: { id: bail.tenantId, userId: null },
+    data: { userId },
+  })
+  return count === 1 ? bail.tenantId : null
 }

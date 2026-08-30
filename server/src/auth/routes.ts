@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { creerJeton, empreinteJeton } from './token.js'
 import { env } from '../env.js'
 import { laMessagerie } from '../messagerie/messagerie.js'
-import { normaliserCode } from '../parks/invitations.js'
+import { normaliserCode, rattacherLaFicheLocataire } from '../parks/invitations.js'
 import { Prisma } from '../generated/prisma/client.js'
 import type { ParkRole } from '../generated/prisma/client.js'
 import { prisma } from '../db.js'
@@ -299,6 +299,13 @@ authRouter.post('/signup', async (req: Request, res: Response) => {
           data: { acceptedAt: new Date() },
         })
         if (count === 0) throw new CodeDejaConsomme()
+
+        /* L'ADHÉSION NE SUFFIT PAS : elle dit que la personne appartient au
+           parc, pas QUI elle y est. Tout ce qu'un locataire voit passe par
+           `tenant: { userId }`, et sans ce rattachement il entre dans un espace
+           vide — voir `rattacherLaFicheLocataire`. DANS la transaction : un
+           compte créé sans sa fiche est exactement le défaut qu'on répare. */
+        await rattacherLaFicheLocataire(tx, { invitationId: invitation.id, userId: cree.id })
       } else if (donnees.parkName) {
         const park = await tx.park.create({
           data: {

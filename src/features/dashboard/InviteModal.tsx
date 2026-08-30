@@ -51,14 +51,35 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
   const gereSeul = (adhesionActive?.delegation ?? 'delegate') === 'solo'
   const peutRecruter = role === 'owner' && !gereSeul
 
-  const vacants = units.filter((u) => !u.tenant)
+  /**
+   * TOUS LES LOGEMENTS DU PARC, ET NON LES SEULS VACANTS.
+   *
+   * Le filtre `units.filter((u) => !u.tenant)` racontait une lecture : inviter,
+   * ce serait faire ENTRER quelqu'un dans un logement libre. C'est un des deux
+   * cas. L'autre — celui de tout parc existant, donc de tout nouveau compte —
+   * est un locataire DÉJÀ EN PLACE à qui l'on ouvre son espace.
+   *
+   * Et le produit prescrivait ce second geste tout en le rendant impossible :
+   * la modale de création d'une fiche dit « pour lui ouvrir son espace, émettez
+   * ensuite un code depuis Inviter par code », après quoi le logement qu'on
+   * vient de rattacher avait disparu de cette liste-ci.
+   *
+   * Le serveur n'a jamais rien exigé de tel : il vérifie que l'unité appartient
+   * au parc, et c'est tout. Le filtre était une règle du client seul.
+   *
+   * L'OCCUPANT EST NOMMÉ DANS L'OPTION. Les logements s'appellent « A1 »,
+   * « B2 » : une liste d'étiquettes nues obligerait à se rappeler qui habite où
+   * avant d'émettre un code qui n'est lisible qu'une seule fois. Le nom est ce
+   * qui distingue le bon choix du mauvais.
+   */
+  const logements = units
 
   // `roleInvite` est le rôle du FUTUR membre, à ne pas confondre avec `role`,
   // celui de la personne qui invite. Sa valeur initiale — locataire — est aussi
   // la seule qu'un gestionnaire puisse émettre : privé du champ, il n'a aucun
   // moyen de la changer, et l'appel part avec le seul rôle qu'on lui accorde.
   const [roleInvite, setRoleInvite] = useState<'tenant' | 'manager'>('tenant')
-  const [unitId, setUnitId] = useState(vacants[0]?.id ?? '')
+  const [unitId, setUnitId] = useState(logements[0]?.id ?? '')
   const [code, setCode] = useState<string | null>(null)
   const codeRef = useRef<HTMLDivElement>(null)
 
@@ -227,7 +248,7 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
               marquer requis serait faux — on peut légitimement inviter d'abord
               et rattacher ensuite. L'aide porte la conséquence, ce qu'aucune
               étiquette ne sait dire. */}
-          {roleInvite === 'tenant' && vacants.length > 0 && (
+          {roleInvite === 'tenant' && logements.length > 0 && (
             <Field label={t('app.invite.unit')} hint={t('app.invite.unitHint')}>
               {(props) => (
                 <Select
@@ -236,9 +257,17 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
                   value={unitId}
                   onChange={(e) => setUnitId(e.target.value)}
                 >
-                  {vacants.map((u) => (
+                  {/* L'AIDE DU CHAMP PROMET CE CHOIX — « sans logement, il rejoint
+                      le parc sans bail, vous l'y rattacherez ensuite » — et il
+                      n'était atteignable que par accident : quand AUCUN logement
+                      n'était vacant, le champ disparaissait et l'invitation
+                      partait sans unité. Ouvrir la liste à tout le parc aurait
+                      donc supprimé un parcours que le produit décrit, en
+                      réparant l'autre. */}
+                  <option value="">{t('app.invite.unitNone')}</option>
+                  {logements.map((u) => (
                     <option key={u.id} value={u.id}>
-                      {u.label}
+                      {u.tenant ? `${u.label} — ${u.tenant}` : `${u.label} — ${t('app.invite.unitVacant')}`}
                     </option>
                   ))}
                 </Select>
