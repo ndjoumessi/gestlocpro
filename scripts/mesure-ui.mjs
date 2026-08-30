@@ -3438,16 +3438,79 @@ function mesurerPremierChargement() {
   const scripts = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map((m) => m[1])
   const styles = [...html.matchAll(/<link[^>]+rel="stylesheet"[^>]+href="([^"]+)"/g)].map((m) => m[1])
 
-  // Locaux seulement : la police Google Fonts est un lien externe, déjà
-  // mesurée et tranchée ailleurs — `index.html` porte l'argumentaire complet
-  // de ce choix. Ce budget porte sur ce que CE dépôt construit et sert.
-  const locaux = [...scripts, ...styles].filter((href) => href.startsWith('/'))
+  /*
+    LOCAUX SEULEMENT, ET L'EXCLUSION EST DÉSORMAIS CHIFFRÉE.
+
+    Ce budget porte sur ce que CE dépôt construit et sert : une ressource d'une
+    autre origine n'est pas dans `dist/`, donc `readFileSync` ne peut pas la
+    peser. La règle est juste et elle reste.
+
+    CE QUI NE L'ÉTAIT PAS : la ligne d'avant écartait la police en renvoyant à
+    « l'argumentaire complet » d'`index.html`, en la disant « déjà mesurée et
+    tranchée ailleurs ». L'argumentaire existe bel et bien — une seule famille,
+    plage de graisse bornée, repli de même nature, `display=swap` — mais il
+    argumente un CHOIX DE DESSIN et ne pèse rien. Aucun octet n'était écrit nulle
+    part. Ce budget excluait donc un poids réel en s'appuyant sur un renvoi vers
+    une mesure qui n'existait pas, ce qui est exactement la forme de silence que
+    ce fichier reproche ailleurs à une garde qu'on ne lance pas.
+
+    `RESSOURCES_EXTERNES_PESEES`, plus bas, porte les octets et la méthode. Ils
+    ne sont pas ADDITIONNÉS au budget — le seuil de dérive garde la croissance
+    des dictionnaires, pas le poids d'une fonderie qui ne bouge pas d'un lot à
+    l'autre — mais ils sont IMPRIMÉS à côté de lui, à chaque passage, et une
+    garde refuse dès que l'adresse pesée n'est plus celle qui est servie.
+  */
+  const tous = [...scripts, ...styles]
+  const locaux = tous.filter((href) => href.startsWith('/'))
+  const externes = tous.filter((href) => !href.startsWith('/'))
 
   const detail = locaux.map((href) => {
     const octets = gzipSync(readFileSync(join(RACINE, 'dist', href.replace(/^\//, '')))).length
     return { href, octets }
   })
-  return { octets: detail.reduce((a, d) => a + d.octets, 0), detail }
+  return { octets: detail.reduce((a, d) => a + d.octets, 0), detail, externes }
+}
+
+/**
+ * CE QUE LE BUDGET N'EMBARQUE PAS, PESÉ ET DATÉ.
+ *
+ * MESURÉ LE 2026-08-30, agent utilisateur Android d'entrée de gamme, langue
+ * française — c'est-à-dire le visiteur du marché visé :
+ *
+ *   1 708 o   la feuille `css2` elle-même, qui déclare QUATRE `@font-face`
+ *             découpés par `unicode-range` ;
+ *  27 272 o   le seul sous-ensemble que le français et l'anglais emploient
+ *             (`U+0000-00FF`), en woff2 ;
+ *  ────────
+ *  28 980 o   ce qu'un premier visiteur télécharge EN PLUS des 155 430 o que
+ *             cette garde compte — soit 19 % de plus, invisibles à elle.
+ *
+ * Les trois autres sous-ensembles — cyrillique, grec, vietnamien — ne sont
+ * jamais demandés par ces deux langues, et ne sont donc pas comptés ici. Ils
+ * le deviendraient le jour où le produit parlerait une de ces langues.
+ *
+ * CE QUE CES OCTETS COÛTENT EN PLUS DE LEUR TAILLE, et qui ne se mesure pas en
+ * octets : DEUX origines à résoudre avant la première peinture
+ * (`fonts.googleapis.com` puis `fonts.gstatic.com`), et une feuille de style
+ * BLOQUANTE — `display=swap` gouverne le fichier de police, jamais la requête
+ * CSS qui le déclare. Sur le réseau visé, c'est ce délai-là qui se voit, pas
+ * les vingt-neuf kilo-octets.
+ *
+ * POURQUOI CE NOMBRE EST ÉCRIT ET NON MESURÉ À CHAQUE PASSAGE. Le mesurer
+ * demanderait d'aller le chercher sur le réseau, donc de rendre cette porte
+ * dépendante d'une sortie vers un tiers — exactement le défaut que
+ * `plafond-vitrine.mjs` vient de fermer de l'autre côté. Un nombre écrit se
+ * périme ; c'est pourquoi il ne vit pas seul, et que la garde ci-dessous refuse
+ * dès que l'ADRESSE change. On ne peut pas oublier de remesurer sans que le
+ * diff le dise.
+ *
+ * CE QU'IL RESTE À TRANCHER, et ce lot ne le tranche pas : héberger cette police
+ * dans `dist/` la ferait entrer dans le budget, supprimerait les deux origines
+ * et la feuille bloquante. C'est un choix de dessin et d'infrastructure, pas une
+ * garde ; il se pose, il ne se décide pas dans un fichier de mesure.
+ */
+const RESSOURCES_EXTERNES_PESEES = {
+  'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600..800&display=swap': 28_980,
 }
 
 /**
@@ -3681,6 +3744,46 @@ if (premierChargement.detail.length === 0) {
       "   La lecture ne regarde plus rien — ce n'est pas une absence de défaut.\n",
   )
   process.exit(1)
+}
+
+/*
+  L'ADRESSE PESÉE EST CELLE QUI EST SERVIE, ou la garde refuse.
+
+  `RESSOURCES_EXTERNES_PESEES` porte des octets relevés À LA MAIN, un jour donné,
+  contre une adresse précise. Un nombre écrit ne se périme pas tout seul : il se
+  périme en silence, et c'est le seul mode de panne d'un relevé qui vit dans un
+  commentaire. Changer la plage de graisse, ajouter une famille, retirer le lien
+  — chacun de ces gestes change l'adresse dans `index.html` et rendrait le nombre
+  faux sans rien casser.
+
+  On compare donc l'ENSEMBLE des adresses externes que le HTML construit porte à
+  l'ensemble de celles qui ont été pesées. Toute différence, dans un sens comme
+  dans l'autre, arrête la porte : soit une ressource tierce est arrivée sans être
+  pesée, soit celle qui l'a été n'est plus servie.
+
+  RETIRER LA POLICE TIERCE FAIT DONC ROUGIR CE BLOC, et c'est voulu : ce serait
+  une excellente nouvelle, et elle mérite qu'on vienne effacer son entrée à la
+  main plutôt qu'un vert qui ne dirait rien.
+*/
+{
+  const servies = [...premierChargement.externes].sort()
+  const pesees = Object.keys(RESSOURCES_EXTERNES_PESEES).sort()
+  const manquantes = servies.filter((h) => !pesees.includes(h))
+  const orphelines = pesees.filter((h) => !servies.includes(h))
+  if (manquantes.length > 0 || orphelines.length > 0) {
+    console.error(
+      '\n✗ mesure-ui : les ressources externes servies ne sont plus celles qui ont été pesées.\n',
+    )
+    for (const h of manquantes) console.error(`   SERVIE, JAMAIS PESÉE  ${h}`)
+    for (const h of orphelines) console.error(`   PESÉE, PLUS SERVIE    ${h}`)
+    console.error(
+      '\n   Le budget de premier chargement ne compte que ce que ce dépôt construit ; ce qu\'il\n' +
+        "   EXCLUT doit rester chiffré, sinon l'exclusion redevient un silence. Pesez la\n" +
+        '   nouvelle adresse — ou effacez celle qui ne sert plus — dans\n' +
+        '   `RESSOURCES_EXTERNES_PESEES`, avec sa date et sa méthode.\n',
+    )
+    process.exit(1)
+  }
 }
 
 if (premierChargement.octets > BUDGET_PREMIER_CHARGEMENT) {
@@ -6242,6 +6345,9 @@ console.log(
       .join('') +
     `  ${fuite.reserves.length} modules réservés à l'application, aucun dans un paquet impatient.\n` +
     `  Premier chargement de la vitrine : ${premierChargement.octets} o compressés, sous le budget de ${BUDGET_PREMIER_CHARGEMENT} o.\n` +
+    `  EXCLUS de ce budget, et pesés à part : ${Object.values(RESSOURCES_EXTERNES_PESEES).reduce((a, b) => a + b, 0)} o servis par ` +
+    `${premierChargement.externes.length} origine(s) tierce(s) — la police d'affichage. Relevé du 2026-08-30, voir\n` +
+    `  \`RESSOURCES_EXTERNES_PESEES\`. Ce budget ne les compte pas ; il ne les tait plus.\n` +
     `  ${rangeesMesurees} mesures de la barre de la vitrine, toutes au-dessus de ${JEU_MINIMAL} px de jeu ; réglages atteints au clavier à 1440 px dans les deux langues.\n` +
     `  Panneau ouvert à 1440 px dans ${panneauxMesures} langues face à une barre de ${barreLaPlusGarnie} commandes, aucune rejouée.\n` +
     `  Bloc d'accroche : ${accroches.length} mesures, un seul écart titre–lecture (${accroches[0]?.ecart} px) des deux côtés du point de rupture.\n` +
