@@ -1500,6 +1500,16 @@ const MESURER_CIBLES = (config) => {
   const modale = document.querySelector('[role="dialog"][aria-modal="true"]')
   const perimetre = modale ?? document
 
+  /**
+   * L'étiquette qui ENVELOPPE ce champ, s'il en a une.
+   *
+   * `el.labels` ne rend que les étiquettes qui commandent réellement le champ —
+   * l'enveloppante, ou celle qui le cite par `for`. On ne retient que la
+   * première : voir l'argument au point de sondage.
+   */
+  const etiquetteDe = (n) =>
+    typeof n.labels === 'object' && n.labels ? [...n.labels].find((e) => e.contains(n)) : undefined
+
   for (const el of perimetre.querySelectorAll(SELECTEUR)) {
     const style = getComputedStyle(el)
     if (style.display === 'none' || style.visibility === 'hidden') continue
@@ -1519,11 +1529,58 @@ const MESURER_CIBLES = (config) => {
 
     el.scrollIntoView({ block: 'center', inline: 'center' })
     boite = el.getBoundingClientRect()
-    const cx = Math.round(boite.left + boite.width / 2)
-    const cy = Math.round(boite.top + boite.height / 2)
+    /* Le centre est celui de la CIBLE — voir juste dessous. `boite` reste celle
+       du champ : c'est elle que le rapport affiche, et c'est bien elle qu'on
+       veut lire à côté de la cible mesurée. */
+    const boiteCible = (etiquetteDe(el) ?? el).getBoundingClientRect()
+    const cx = Math.round(boiteCible.left + boiteCible.width / 2)
+    const cy = Math.round(boiteCible.top + boiteCible.height / 2)
+    /*
+      UNE ÉTIQUETTE FAIT PARTIE DE LA CIBLE DE SON CHAMP.
+
+      TROISIÈME ANGLE MORT DE CETTE RÈGLE, et le symétrique exact du second
+      écrit plus haut. « Une boîte n'est pas une cible » disait qu'un élément
+      peut être touchable BIEN AU-DELÀ de sa boîte, par un `::after` étendu —
+      un DESCENDANT, donc attrapé par `el.contains`. Une case à cocher est
+      touchable au-delà de sa boîte par son `<label>`, qui est un ANCÊTRE : la
+      condition le rejetait, et la sonde s'arrêtait au bord des 20 px peints.
+
+      Mesuré : la case « rester connecté sur cet appareil » rendait 20 × 21 px
+      à /connexion, sur 320 et 360, dans les deux thèmes et les deux polices.
+      Son étiquette fait 44 px de haut — `Checkbox` la pose ainsi depuis
+      toujours — et cliquer n'importe où dessus coche la case. Rien n'était
+      cassé ; la question était mal posée, comme elle l'avait déjà été derrière
+      une modale.
+
+      ON N'ÉLARGIT QU'À CE QUI ACTIVE. `el.labels` ne rend que les étiquettes
+      qui commandent RÉELLEMENT ce champ — l'enveloppante, ou celle qui le cite
+      par `for`. Un `<div>` parent n'y entre pas, un `<label>` d'un autre champ
+      non plus. C'est la même exigence que partout ici : on mesure ce que le
+      doigt obtient, pas ce que le balisage suggère.
+
+      ON SONDE DEPUIS LE CENTRE DE L'ÉTIQUETTE, PAS DE CELUI DU CHAMP. Payé au
+      passage suivant : élargir la seule condition d'acceptation a porté la
+      hauteur à 45 px et laissé la largeur à 33. La sonde s'écarte de part et
+      d'autre d'un centre, et le centre du champ est collé au bord GAUCHE de
+      son étiquette — dix pixels à gauche, vingt-deux à droite. Elle mesurait un
+      voisinage, pas une cible. WCAG 2.5.8 désigne la cible : c'est l'étiquette.
+
+      SEULEMENT L'ENVELOPPANTE. Une étiquette qui cite son champ par `for` sans
+      le contenir — la forme de `Field`, au-dessus des champs de saisie — occupe
+      une AUTRE région de l'écran. Créditer un champ de la taille d'un libellé
+      posé ailleurs déclarerait touchable une surface qui ne l'est pas d'un seul
+      geste. On ne prend donc que l'étiquette CONTIGUË, celle qui enveloppe.
+
+      CE QU'ELLE PEUT ENCORE MANQUER : une étiquette qui contient un SECOND
+      élément interactif — un lien dans le libellé d'une case. Le clic y va au
+      lien, pas à la case, et la sonde créditerait quand même la surface. Le
+      dépôt n'en porte aucune ; le jour où il en portera, c'est ici qu'il
+      faudra le dire.
+    */
+    const cibleReelle = etiquetteDe(el) ?? el
     const touche = (x, y) => {
       const cible = document.elementFromPoint(x, y)
-      return !!cible && (cible === el || el.contains(cible))
+      return !!cible && (cible === cibleReelle || cibleReelle.contains(cible))
     }
 
     let largeurUtile = 0

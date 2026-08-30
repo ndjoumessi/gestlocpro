@@ -54,9 +54,27 @@ export function memeJeton(a: string, b: string): boolean {
   return timingSafeEqual(ba, bb)
 }
 
-/** Durée de vie d'une session : 30 jours, glissante à chaque requête servie. */
+/** Durée de vie d'une session retenue : 30 jours, glissante à chaque requête. */
 export const DUREE_SESSION_MS = 30 * 24 * 60 * 60 * 1000
 
-export function expirationDepuis(maintenant: Date): Date {
-  return new Date(maintenant.getTime() + DUREE_SESSION_MS)
+/**
+ * Durée d'une session qu'on ne veut PAS retenir : douze heures.
+ *
+ * Le chiffre est un arbitrage, et il vaut d'être écrit. Plus court — deux ou
+ * quatre heures — couperait une journée de travail au milieu, et le produit se
+ * ferait détester par ceux-là mêmes qui ont pris la précaution de décocher.
+ * Plus long ferait recouvrir la nuit, donc le lendemain, donc la personne
+ * suivante devant le poste partagé : c'est précisément ce qu'on ferme.
+ *
+ * Douze heures couvrent la plus longue journée ouvrée et jamais deux.
+ */
+export const DUREE_SESSION_COURTE_MS = 12 * 60 * 60 * 1000
+
+/** La durée d'une session selon qu'on retient l'appareil ou non. */
+export function dureeSession(persistante: boolean): number {
+  return persistante ? DUREE_SESSION_MS : DUREE_SESSION_COURTE_MS
+}
+
+export function expirationDepuis(maintenant: Date, persistante = true): Date {
+  return new Date(maintenant.getTime() + dureeSession(persistante))
 }

@@ -50,9 +50,14 @@ describe('connexion', () => {
 
     const appel = serveur.appels.find((a) => a.chemin === '/auth/login')
     expect(appel).toBeDefined()
+    /* `toEqual` et non `toMatchObject` : ce cas garde aussi qu'AUCUN champ de
+       trop ne part vers `/auth/login`. `persistent` est le choix de la case
+       « rester connecté sur cet appareil » — voir `sessionDeCetAppareil`, des
+       deux côtés — et il est nommé ici parce qu'il doit l'être. */
     expect(appel?.corps).toEqual({
       email: 'sarah@example.com',
       password: 'un-mot-de-passe-assez-long',
+      persistent: true,
     })
 
     expect(await screen.findByRole('heading', { level: 1, name: /vue consolidée/i })).toBeInTheDocument()

@@ -150,6 +150,16 @@ model Session {
   /// cookie.
   tokenHash    String   @unique
   expiresAt    DateTime
+  /// « Rester connecté sur cet appareil ». `false` quand l'utilisateur a
+  /// décoché la case : le cookie meurt avec le navigateur ET l'échéance
+  /// ci-dessus se compte en heures. Écrite ici parce qu'un cookie de session
+  /// ne suffit pas — les navigateurs les restaurent quand « reprendre là où
+  /// vous en étiez » est actif, et il l'est souvent par défaut.
+  ///
+  /// Le défaut vaut `true` : les sessions déjà ouvertes gardent exactement la
+  /// durée qu'elles avaient, et un client plus ancien qui n'envoie pas le
+  /// champ ne déconnecte personne.
+  persistent   Boolean  @default(true)
   /// Glissante : rafraîchie à chaque requête servie.
   lastSeenAt   DateTime @default(now())
   createdAt    DateTime @default(now())

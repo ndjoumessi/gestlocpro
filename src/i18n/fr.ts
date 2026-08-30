@@ -308,6 +308,8 @@ export const fr = {
       title: 'Content de vous revoir',
       subtitle: 'Reprenez la main sur votre parc.',
       submit: 'Se connecter',
+      remember: 'Rester connecté sur cet appareil',
+      rememberHint: 'Décochez sur un poste partagé : la session se ferme au bout de douze heures.',
       success: 'Connexion réussie — bienvenue.',
       // Un seul message pour « compte inconnu » et « mot de passe faux » : les
       // distinguer ferait du formulaire un oracle d'existence de comptes, et

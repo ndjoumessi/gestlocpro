@@ -109,6 +109,20 @@ const schemaConnexion = z.object({
   // Pas de contrainte de longueur ici : refuser un mot de passe trop court à la
   // connexion renseignerait sur la politique en vigueur lors de l'inscription.
   password: z.string().min(1),
+  /**
+   * « Rester connecté sur cet appareil ».
+   *
+   * `z.boolean()` et non une coercition : `"false"` est VRAI en JavaScript, et
+   * un client qui sérialiserait la case en chaîne obtiendrait trente jours à
+   * l'instant précis où son utilisateur demande le contraire. Un champ mal
+   * formé est refusé, jamais deviné.
+   *
+   * Optionnel, et le défaut vaut `true` : les paquets déjà installés — la
+   * version applicative sur les téléphones garde son ancien code un moment —
+   * n'envoient pas ce champ, et les raccourcir en silence serait le seul effet
+   * de ce lot qu'ils constateraient.
+   */
+  persistent: z.boolean().optional(),
 })
 
 function contexte(req: Request) {
@@ -342,7 +356,7 @@ authRouter.post('/signup', async (req: Request, res: Response) => {
 })
 
 authRouter.post('/login', async (req: Request, res: Response) => {
-  const { email: adresse, password } = schemaConnexion.parse(req.body)
+  const { email: adresse, password, persistent } = schemaConnexion.parse(req.body)
 
   const compte = await prisma.userAccount.findUnique({ where: { email: adresse } })
 
@@ -378,7 +392,7 @@ authRouter.post('/login', async (req: Request, res: Response) => {
     })
   }
 
-  await ouvrirSession(res, compte.id, contexte(req))
+  await ouvrirSession(res, compte.id, { ...contexte(req), persistante: persistent ?? true })
   res.json({ user: vueCompte(compte) })
 })
 

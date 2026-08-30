@@ -113,7 +113,8 @@ interface SessionContextValue {
   echecDeSession: EchecDeSession | null
   /** Relance la première lecture. Déclenchée par l'utilisateur, jamais en boucle. */
   reprendreLaSession: () => void
-  connecter: (email: string, motDePasse: string) => Promise<void>
+  /** `persistante` : « rester connecté sur cet appareil », tel que l'écran l'a demandé. */
+  connecter: (email: string, motDePasse: string, persistante: boolean) => Promise<void>
   inscrire: (donnees: DemandeInscription) => Promise<void>
   deconnecter: () => Promise<void>
   rafraichir: () => Promise<void>
@@ -265,8 +266,8 @@ export function SessionProvider({
   }, [etatInitial, chargerLaSession])
 
   const connecter = useCallback(
-    async (email: string, motDePasse: string) => {
-      await api.login(email, motDePasse)
+    async (email: string, motDePasse: string, persistante: boolean) => {
+      await api.login(email, motDePasse, persistante)
       // On relit la session plutôt que de se fier au corps de la réponse : les
       // adhésions n'y sont pas, et deux chemins d'hydratation divergeraient.
       await rafraichir()

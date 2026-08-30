@@ -230,6 +230,8 @@ export const en: Dictionary = {
       title: 'Good to see you again',
       subtitle: 'Pick your portfolio back up.',
       submit: 'Sign in',
+      remember: 'Stay signed in on this device',
+      rememberHint: 'Untick on a shared computer: the session closes after twelve hours.',
       success: 'Signed in — welcome back.',
       errorCredentials: 'Incorrect email address or password.',
       errorOffline: 'The server is unreachable. Check your connection and try again.',

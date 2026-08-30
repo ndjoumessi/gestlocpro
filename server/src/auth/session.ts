@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express'
 import { prisma } from '../db.js'
 import { env } from '../env.js'
-import { creerJeton, empreinteJeton, expirationDepuis, DUREE_SESSION_MS } from './token.js'
+import { creerJeton, empreinteJeton, expirationDepuis, dureeSession } from './token.js'
 
 /**
  * Cycle de vie d'une session.
@@ -29,36 +29,58 @@ export const NOM_COOKIE = 'gestlocpro_session'
  *
  * `secure` seulement hors développement : un cookie `secure` n'est pas posé sur
  * `http://localhost`, et la connexion échouerait sans rien dire.
+ *
+ * `expires` SEULEMENT si l'appareil est retenu. Sans lui, le navigateur pose un
+ * cookie de session, qu'il jette en se fermant. Ce n'est pas une garantie —
+ * plusieurs navigateurs les restaurent quand « reprendre là où vous en étiez »
+ * est actif —, et c'est pourquoi l'échéance courte est écrite AUSSI en base,
+ * où aucun réglage de navigateur ne l'atteint. Le cookie fait le cas ordinaire,
+ * la base tient la promesse.
  */
-function optionsCookie(maintenant = new Date()) {
+function optionsCookie(maintenant = new Date(), persistante = true) {
   return {
     httpOnly: true,
     sameSite: 'lax' as const,
     secure: env.NODE_ENV === 'production',
     path: '/',
-    expires: expirationDepuis(maintenant),
+    ...(persistante ? { expires: expirationDepuis(maintenant, true) } : {}),
   }
 }
 
 export async function ouvrirSession(
   res: Response,
   userId: string,
-  contexte: { userAgent?: string | undefined; ipAddress?: string | undefined } = {},
+  contexte: {
+    userAgent?: string | undefined
+    ipAddress?: string | undefined
+    /**
+     * « Rester connecté sur cet appareil », tel que l'écran l'a demandé.
+     *
+     * Le défaut vaut `true`, et il porte tous les appelants qui ne posent pas
+     * la question : l'inscription, l'acceptation d'invitation, la
+     * réinitialisation de mot de passe. Aucun de ces trois écrans n'offre la
+     * case — on vient d'y saisir un secret sur un appareil qu'on a choisi —, et
+     * un défaut inverse les aurait tous raccourcis en silence.
+     */
+    persistante?: boolean
+  } = {},
 ): Promise<void> {
   const { clair, empreinte } = creerJeton()
   const maintenant = new Date()
+  const persistante = contexte.persistante ?? true
 
   await prisma.session.create({
     data: {
       userId,
       tokenHash: empreinte,
-      expiresAt: expirationDepuis(maintenant),
+      expiresAt: expirationDepuis(maintenant, persistante),
+      persistent: persistante,
       userAgent: contexte.userAgent ?? null,
       ipAddress: contexte.ipAddress ?? null,
     },
   })
 
-  res.cookie(NOM_COOKIE, clair, optionsCookie(maintenant))
+  res.cookie(NOM_COOKIE, clair, optionsCookie(maintenant, persistante))
 }
 
 /**
@@ -73,6 +95,20 @@ export async function ouvrirSession(
  * repousse qu'au-delà d'un seuil.
  */
 const SEUIL_PROLONGATION_MS = 24 * 60 * 60 * 1000
+
+/**
+ * Le seuil d'une session COURTE ne peut pas être celui d'une longue.
+ *
+ * Vingt-quatre heures dépassent les douze d'une session non retenue : la
+ * condition « il reste moins que la durée moins le seuil » deviendrait « il
+ * reste moins que moins douze heures », donc jamais vraie. La session ne
+ * glisserait plus du tout et mourrait douze heures après la connexion, en
+ * pleine action. On prend donc la moitié de la durée quand elle est plus
+ * serrée : six heures ici, vingt-quatre pour les trente jours.
+ */
+function seuilDeProlongation(duree: number): number {
+  return Math.min(SEUIL_PROLONGATION_MS, duree / 2)
+}
 
 export async function lireSession(req: Request) {
   const brut: unknown = req.cookies?.[NOM_COOKIE]
@@ -89,10 +125,16 @@ export async function lireSession(req: Request) {
   // Un compte désactivé garde ses sessions en base ; il ne doit plus passer.
   if (session.user.disabledAt) return null
 
-  if (session.expiresAt.getTime() - maintenant.getTime() < DUREE_SESSION_MS - SEUIL_PROLONGATION_MS) {
+  // Chaque session glisse selon SA durée : celle qu'on a demandé de ne pas
+  // retenir ne doit jamais se voir reconduite de trente jours.
+  const duree = dureeSession(session.persistent)
+  if (session.expiresAt.getTime() - maintenant.getTime() < duree - seuilDeProlongation(duree)) {
     await prisma.session.update({
       where: { id: session.id },
-      data: { expiresAt: expirationDepuis(maintenant), lastSeenAt: maintenant },
+      data: {
+        expiresAt: expirationDepuis(maintenant, session.persistent),
+        lastSeenAt: maintenant,
+      },
     })
   }
 

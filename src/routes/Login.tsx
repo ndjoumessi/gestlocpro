@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { AuthLayout } from '@/components/layout/AuthLayout'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
+import { Checkbox } from '@/components/primitives/Choice'
 import { Input, PasswordInput } from '@/components/primitives/Input'
 import { Notice } from '@/components/primitives/Notice'
 import { useToast } from '@/components/primitives/Toast'
@@ -33,6 +34,20 @@ export function Login() {
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  /**
+   * « RESTER CONNECTÉ SUR CET APPAREIL », ET ELLE COMMANDE VRAIMENT.
+   *
+   * Une case du même libellé a vécu ici, cochable, que rien ne lisait — voir
+   * `caseControlee.test.tsx`, qui garde cette leçon et refuse toute case du
+   * formulaire dont l'état n'est pas lu. Celle-ci porte son `checked`, son
+   * `onChange`, et son choix voyage jusqu'au serveur.
+   *
+   * COCHÉE D'ABORD, et c'est assumé. La session dure trente jours pour tout le
+   * monde aujourd'hui : naître décochée raccourcirait tout le parc installé
+   * sans que personne ne l'ait demandé ni ne sache pourquoi. La case ne fait
+   * que RETIRER de l'exposition, à la demande de qui la décoche.
+   */
+  const [persistante, setPersistante] = useState(true)
   const [errors, setErrors] = useState<{ email: FieldError; password: FieldError }>({
     email: null,
     password: null,
@@ -65,7 +80,7 @@ export function Login() {
     setSubmitting(true)
     setEchec(null)
     try {
-      await connecter(email, password)
+      await connecter(email, password, persistante)
       notify(t('auth.login.success'), { tone: 'ok' })
       /**
        * Retour à l'adresse demandée, posée par la barrière d'accès.
@@ -202,22 +217,25 @@ export function Login() {
         </Field>
 
         {/*
-          « RESTER CONNECTÉ SUR CET APPAREIL » n'est plus proposé ici.
+          LA CASE VIT ENTRE LE MOT DE PASSE ET L'ENVOI, et pas ailleurs.
 
-          La case se cochait et rien ne la lisait : ni état, ni `onChange`, et
-          `connecter` ne prend que l'adresse et le mot de passe. `grep -rn
-          "remember" src/` rendait trois lignes — celle-ci et ses deux
-          traductions. Elle promettait donc une durée de session que personne
-          n'avait écrite, à l'endroit précis où l'on confie son mot de passe :
-          le pire moment du produit pour une promesse en l'air.
+          C'est le dernier choix avant de confier ses identifiants, et il porte
+          sur ce qu'il advient d'eux. Le poser après le bouton le ferait lire
+          APRÈS la décision qu'il informe ; le poser plus haut le séparerait de
+          l'action qu'il modifie.
 
-          Sa clé part des deux dictionnaires avec elle. La garder aurait laissé
-          un libellé sans appelant, prêt à être recoché par le premier qui le
-          retrouve — c'est ainsi que la promesse était née.
-
-          Elle reviendra le jour où la session longue existera, avec son état et
-          son gestionnaire ; `caseControlee.test.tsx` tient la porte d'ici là.
+          `Checkbox` fournit déjà la cible de 44 px et rattache son aide par
+          `aria-describedby` — l'aide dit la durée, parce qu'une case dont on
+          ignore ce qu'elle change est une case qu'on laisse comme on la
+          trouve.
         */}
+        <Checkbox
+          label={t('auth.login.remember')}
+          hint={t('auth.login.rememberHint')}
+          checked={persistante}
+          onChange={(e) => setPersistante(e.target.checked)}
+        />
+
         <Button type="submit" size="lg" fullWidth loading={submitting}>
           {t('auth.login.submit')}
         </Button>

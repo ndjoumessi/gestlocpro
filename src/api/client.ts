@@ -206,10 +206,19 @@ export const api = {
       body: JSON.stringify(donnees),
     }),
 
-  login: (email: string, password: string) =>
+  /**
+   * `persistent` est REQUIS ici, alors que le serveur l'accepte absent.
+   *
+   * Son défaut y vaut `true`, pour les paquets déjà installés qui ne
+   * l'envoient pas. Le reprendre à l'identique côté client rendrait l'omission
+   * indolore : un écran qui oublierait de transmettre la case obtiendrait
+   * trente jours en silence, et rien ne le dirait. En le rendant obligatoire,
+   * l'oubli devient une erreur de compilation.
+   */
+  login: (email: string, password: string, persistent: boolean) =>
     requete<{ user: CompteApi }>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, persistent }),
     }),
 
   logout: () => requete<void>('/auth/logout', { method: 'POST' }),
