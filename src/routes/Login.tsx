@@ -11,6 +11,20 @@ import { useT, type MessageKey } from '@/i18n/I18nProvider'
 import { ApiError, NetworkError } from '@/api/client'
 import { useSession } from '@/api/SessionProvider'
 import { validateEmail, validatePassword, type FieldError } from '@/features/auth/validation'
+import { ecrireStockage, lireStockage } from '@/lib/stockage'
+
+/**
+ * La mémoire du choix, sur CETTE machine.
+ *
+ * `local` et non `session` : `sessionStorage` meurt avec l'onglet, donc la
+ * préférence serait oubliée juste avant le moment où elle sert. Les trois accès
+ * passent par `lib/stockage`, qui absorbe le refus d'accès — navigation privée,
+ * blocage des données de site — plutôt que de faire échouer le montage de
+ * l'écran de connexion pour une préférence.
+ */
+const CLE_APPAREIL_RETENU = 'gestlocpro.session.persistante'
+const OUI = 'oui'
+const NON = 'non'
 
 export function Login() {
   const t = useT()
@@ -42,12 +56,29 @@ export function Login() {
    * formulaire dont l'état n'est pas lu. Celle-ci porte son `checked`, son
    * `onChange`, et son choix voyage jusqu'au serveur.
    *
-   * COCHÉE D'ABORD, et c'est assumé. La session dure trente jours pour tout le
-   * monde aujourd'hui : naître décochée raccourcirait tout le parc installé
-   * sans que personne ne l'ait demandé ni ne sache pourquoi. La case ne fait
-   * que RETIRER de l'exposition, à la demande de qui la décoche.
+   * ═══ LE CHOIX APPARTIENT À L'APPAREIL, PAS À LA VISITE ═══
+   *
+   * DÉFAUT SIGNALÉ EN PRODUCTION, ET PAYÉ DANS LE LOT PRÉCÉDENT : la case
+   * naissait cochée à CHAQUE montage. Décochée, déconnexion, rechargement —
+   * elle revenait cochée, à côté de champs vides qui, eux, n'avaient rien
+   * gardé. Or cette case n'existe QUE pour le poste partagé, c'est-à-dire
+   * exactement la machine où le choix doit tenir : pour que celui qui a décoché
+   * hier ne recommence pas chaque matin, et pour que le SUIVANT n'hérite pas
+   * d'une case cochée sur un poste déjà déclaré partagé.
+   *
+   * Une préférence qu'il faut redire à chaque visite n'est pas une préférence.
+   *
+   * L'absence vaut « oui » : une machine qui n'a jamais rien dit est une
+   * machine ordinaire, et le défaut du produit reste la continuité.
+   *
+   * ON NE RETIENT QUE CE BOOLÉEN. Pas l'adresse : la garder sur la machine
+   * qu'on vient de déclarer partagée dirait au suivant qui s'y connecte, ce qui
+   * est le contraire exact de ce que la case demande. Le gestionnaire de mots
+   * de passe du navigateur le fait déjà, sous le contrôle de son propriétaire.
    */
-  const [persistante, setPersistante] = useState(true)
+  const [persistante, setPersistante] = useState(
+    () => lireStockage('local', CLE_APPAREIL_RETENU) !== NON,
+  )
   const [errors, setErrors] = useState<{ email: FieldError; password: FieldError }>({
     email: null,
     password: null,
@@ -233,7 +264,13 @@ export function Login() {
           label={t('auth.login.remember')}
           hint={t('auth.login.rememberHint')}
           checked={persistante}
-          onChange={(e) => setPersistante(e.target.checked)}
+          onChange={(e) => {
+            setPersistante(e.target.checked)
+            /* Écrit au CHANGEMENT et non à l'envoi : quelqu'un qui décoche puis
+               renonce à se connecter a tout de même déclaré la machine. C'est
+               le renseignement qui compte, pas la connexion qui le suit. */
+            ecrireStockage('local', CLE_APPAREIL_RETENU, e.target.checked ? OUI : NON)
+          }}
         />
 
         <Button type="submit" size="lg" fullWidth loading={submitting}>
