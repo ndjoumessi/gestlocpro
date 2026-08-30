@@ -181,6 +181,7 @@ import { gzipSync } from 'node:zlib'
 import { chromium } from 'playwright'
 
 import { RACINE, exigerUnInventairePlein, inventaireDesRoutes, nommerRoles } from './routes.mjs'
+import { SANS_AGENT_DE_SERVICE } from '../mesure-sans-agent.mjs'
 
 /**
  * Assemble un motif de classe utilitaire par FRAGMENTS.
@@ -1113,6 +1114,7 @@ export async function releverAuNavigateur(options = {}) {
         journal(`   ${langue}  ${adresse} … `)
 
         const contexte = await navigateur.newContext({
+          ...SANS_AGENT_DE_SERVICE,
           viewport: { width: LARGEURS_CLS[0], height: HAUTEUR },
           locale: langue,
         })
@@ -1311,6 +1313,7 @@ export async function releverAuNavigateur(options = {}) {
     for (const langue of LANGUES) {
       for (const theme of THEMES) {
         const contexte = await navigateur.newContext({
+          ...SANS_AGENT_DE_SERVICE,
           viewport: { width: LARGEURS_COULEUR[0], height: HAUTEUR },
           locale: langue,
           colorScheme: theme,

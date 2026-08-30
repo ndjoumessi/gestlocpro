@@ -37,6 +37,7 @@ import { isAbsolute, join } from 'node:path'
 import { argv, exit } from 'node:process'
 import { inventaireDesRoutes, exigerUnInventairePlein, RACINE } from './inventaire/routes.mjs'
 import { imposerLaPoliceLarge } from './police-large.mjs'
+import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
 
 const PORT = Number(process.env.PORT_RELEVE || 4220)
 const BASE = `http://127.0.0.1:${PORT}`
@@ -217,14 +218,7 @@ try {
   /* ── Mise en page : 23 écrans × 11 largeurs × 2 langues, thème clair ──── */
   for (const [langue, locale] of LANGUES) {
     const contexte = await navigateur.newContext({
-    /* L'AGENT DE SERVICE EST BLOQUÉ PENDANT LA MESURE.
-       `main.tsx` l'enregistre en production, donc sur le paquet que ces portes
-       servent. Installé, il répondrait à la place du réseau dès la deuxième
-       navigation : les octets et les requêtes tomberaient, la porte annoncerait
-       un gain, et ce gain serait celui d'un cache local que l'utilisateur n'a
-       pas au premier chargement. On mesure le réseau, donc on écarte ce qui le
-       masque. */
-    serviceWorkers: 'block',
+      ...SANS_AGENT_DE_SERVICE,
       viewport: { width: LARGEURS[0], height: 900 },
       locale,
       colorScheme: 'light',
@@ -255,7 +249,11 @@ try {
 
   /* ── Octets et requêtes À FROID, un contexte neuf par écran ───────────── */
   for (const adresse of ADRESSES) {
-    const contexte = await navigateur.newContext({ viewport: { width: 360, height: 900 }, locale: 'fr-FR' })
+    const contexte = await navigateur.newContext({
+      ...SANS_AGENT_DE_SERVICE,
+      viewport: { width: 360, height: 900 },
+      locale: 'fr-FR',
+    })
     await imposerLaPoliceLarge(contexte)
     const page = await contexte.newPage()
     let octets = 0
@@ -279,14 +277,7 @@ try {
   /* ── Couleurs : 23 écrans × 2 largeurs × 2 thèmes, français ───────────── */
   for (const theme of THEMES) {
     const contexte = await navigateur.newContext({
-    /* L'AGENT DE SERVICE EST BLOQUÉ PENDANT LA MESURE.
-       `main.tsx` l'enregistre en production, donc sur le paquet que ces portes
-       servent. Installé, il répondrait à la place du réseau dès la deuxième
-       navigation : les octets et les requêtes tomberaient, la porte annoncerait
-       un gain, et ce gain serait celui d'un cache local que l'utilisateur n'a
-       pas au premier chargement. On mesure le réseau, donc on écarte ce qui le
-       masque. */
-    serviceWorkers: 'block',
+      ...SANS_AGENT_DE_SERVICE,
       viewport: { width: 1280, height: 900 },
       locale: 'fr-FR',
       colorScheme: theme,

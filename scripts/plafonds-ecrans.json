@@ -7,11 +7,11 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "a7e9cd1f",
+ "course": "7b8cf0d3",
  "mesures": {
   "/@360": {
-   "octets": 534066,
-   "octetsFil": 187800,
+   "octets": 529491,
+   "octetsFil": 185513,
    "requetes": 6,
    "releve": {
     "de": 506708,
@@ -21,8 +21,8 @@
    }
   },
   "/demo@360": {
-   "octets": 235874,
-   "octetsFil": 65078,
+   "octets": 230609,
+   "octetsFil": 62541,
    "requetes": 4,
    "releve": {
     "de": 202619,
@@ -32,8 +32,8 @@
    }
   },
   "/demo/paiements@360": {
-   "octets": 8685,
-   "octetsFil": 5098,
+   "octets": 3404,
+   "octetsFil": 2555,
    "requetes": 3,
    "releve": {
     "de": 8026,
@@ -43,8 +43,8 @@
    }
   },
   "/demo/prise-en-main@360": {
-   "octets": 8685,
-   "octetsFil": 5098,
+   "octets": 3404,
+   "octetsFil": 2555,
    "requetes": 3,
    "releve": {
     "de": 8026,
@@ -54,8 +54,8 @@
    }
   },
   "/@1280": {
-   "octets": 534066,
-   "octetsFil": 187800,
+   "octets": 529491,
+   "octetsFil": 185513,
    "requetes": 6,
    "releve": {
     "de": 506708,
@@ -65,8 +65,8 @@
    }
   },
   "/demo@1280": {
-   "octets": 235874,
-   "octetsFil": 65078,
+   "octets": 230609,
+   "octetsFil": 62541,
    "requetes": 4,
    "releve": {
     "de": 202619,
@@ -76,8 +76,8 @@
    }
   },
   "/demo/paiements@1280": {
-   "octets": 8685,
-   "octetsFil": 5098,
+   "octets": 3404,
+   "octetsFil": 2555,
    "requetes": 3,
    "releve": {
     "de": 8026,
@@ -87,8 +87,8 @@
    }
   },
   "/demo/prise-en-main@1280": {
-   "octets": 8685,
-   "octetsFil": 5098,
+   "octets": 3404,
+   "octetsFil": 2555,
    "requetes": 3,
    "releve": {
     "de": 8026,

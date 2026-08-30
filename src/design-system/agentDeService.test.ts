@@ -149,3 +149,57 @@ describe('l’enregistrement de l’agent', () => {
     )
   })
 })
+
+/**
+ * CE QUE L'AGENT CONSENT À RANGER.
+ *
+ * Le routage dit QUELLE stratégie s'applique ; ces cas-ci disent ce qui entre
+ * dans le cache une fois la stratégie choisie, et c'est là que vit la panne la
+ * plus chère du fichier — une réponse fautive rangée SURVIT au correctif.
+ *
+ * On les éprouve sur la SOURCE et non à l'exécution : les deux `cache.put` sont
+ * dans des écouteurs `fetch`, qu'aucun test sans navigateur ne déclenche.
+ * Lire la source dit moins que l'exécuter, et le dire est plus honnête que de
+ * laisser croire le contraire ; mais une garde qui refuse le retrait de la
+ * condition vaut mieux que rien du tout, et c'est exactement ce qui manquait
+ * quand la branche de navigation rangeait les 502.
+ */
+describe('ce que l’agent range', () => {
+  const agent = readFileSync(join(RACINE, 'public', 'sw.js'), 'utf8')
+
+  /* Les deux branches, découpées sur le mot qui les sépare. */
+  const [navigation, actifs] = agent.split("if (strategie === 'reseau-d-abord')")[1]!.split(
+    'evenement.respondWith(\n    (async () => {',
+  )
+
+  it('ne range une NAVIGATION que si elle a abouti', () => {
+    /* Pendant un déploiement, le bord rend une page d'erreur en 502. Rangée,
+       elle écrase la dernière coquille valide, et c'est elle que l'utilisateur
+       retrouverait hors ligne — figée, des jours après que le déploiement a
+       réussi. */
+    expect(navigation, 'la branche de navigation est introuvable').toBeDefined()
+    expect(
+      /if \(reponse\.ok\)[\s\S]{0,240}cache\.put/.test(navigation!),
+      'la branche de navigation range sans vérifier `reponse.ok`',
+    ).toBe(true)
+  })
+
+  it('ne range un ACTIF que s’il a abouti', () => {
+    /* Une 404 rangée sous un nom haché survivrait au correctif qui la produit :
+       le nom ne changera plus, donc le cache ne se rafraîchira jamais. */
+    expect(actifs, 'la branche des actifs est introuvable').toBeDefined()
+    expect(
+      /if \(reponse\.ok\)[\s\S]{0,240}cache\.put/.test(actifs!),
+      'la branche des actifs range sans vérifier `reponse.ok`',
+    ).toBe(true)
+  })
+
+  it('ne range JAMAIS une réponse d’API', () => {
+    /* Garde du garde : la discipline ci-dessus ne vaut que si `/api/` n'atteint
+       aucune des deux branches. `strategiePour` le dit déjà — on le redit ici
+       parce que ces deux cas parlent de `cache.put`, et qu'un lecteur qui les
+       lit seuls doit voir que l'API n'y arrive pas. */
+    const strategiePour = routageDeLAgent()
+    expect(strategiePour(requete(`${ORIGINE}/api/parks`), ORIGINE)).toBe('ignorer')
+  })
+})

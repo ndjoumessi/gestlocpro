@@ -102,10 +102,23 @@ self.addEventListener('fetch', (evenement) => {
       (async () => {
         try {
           const reponse = await fetch(evenement.request)
-          /* On range une COPIE : un corps de réponse ne se lit qu'une fois, et
-             c'est l'original que la page doit recevoir. */
-          const cache = await caches.open(COQUILLE)
-          await cache.put(evenement.request, reponse.clone())
+          /* ON NE RANGE QUE CE QUI A ABOUTI, comme la branche des actifs plus
+             bas, et l'oubli aurait coûté cher : pendant un déploiement, le bord
+             rend une page d'erreur en 502. Rangée, elle ÉCRASE la dernière
+             coquille valide, et c'est elle que l'utilisateur retrouverait hors
+             ligne — un « l'application ne répond pas » figé, des jours après que
+             le déploiement a réussi. Exactement la panne que l'en-tête de ce
+             fichier annonce : un cache qui survit à son correctif.
+
+             La réponse est rendue telle quelle dans les deux cas. En ligne, ce
+             que le serveur dit vaut mieux qu'une page d'hier qui masquerait la
+             panne. */
+          if (reponse.ok) {
+            /* On range une COPIE : un corps de réponse ne se lit qu'une fois, et
+               c'est l'original que la page doit recevoir. */
+            const cache = await caches.open(COQUILLE)
+            await cache.put(evenement.request, reponse.clone())
+          }
           return reponse
         } catch {
           const range = await caches.match(evenement.request)

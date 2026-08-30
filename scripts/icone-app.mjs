@@ -71,11 +71,11 @@ function dansLeCarre(u, v, { x, y, c, r }) {
   return (u - cx) ** 2 + (v - cy) ** 2 <= r * r
 }
 
-function pixels(COTE) {
-  const donnees = Buffer.alloc(COTE * COTE * 3)
-  const pas = 32 / COTE / ECHANTILLONS
-  for (let ligne = 0; ligne < COTE; ligne++) {
-    for (let colonne = 0; colonne < COTE; colonne++) {
+function pixels(cote) {
+  const donnees = Buffer.alloc(cote * cote * 3)
+  const pas = 32 / cote / ECHANTILLONS
+  for (let ligne = 0; ligne < cote; ligne++) {
+    for (let colonne = 0; colonne < cote; colonne++) {
       /* La couverture de chaque carré, accumulée séparément : deux carrés ne se
          chevauchent jamais dans ce tracé, mais les additionner sans distinguer
          leurs opacités mélangerait un carré plein avec un carré à 0,22. */
@@ -91,7 +91,7 @@ function pixels(COTE) {
         }
         couverture += (touches / (ECHANTILLONS * ECHANTILLONS)) * carre.opacite
       }
-      const base = (ligne * COTE + colonne) * 3
+      const base = (ligne * cote + colonne) * 3
       for (let canal = 0; canal < 3; canal++) {
         donnees[base + canal] = Math.round(
           SUR_ACCENT[canal] * couverture + ACCENT[canal] * (1 - couverture),
@@ -130,19 +130,19 @@ function bloc(nom, donnees) {
   return Buffer.concat([longueur, corps, somme])
 }
 
-function png(donnees, COTE) {
+function png(donnees, cote) {
   const entete = Buffer.alloc(13)
-  entete.writeUInt32BE(COTE, 0)
-  entete.writeUInt32BE(COTE, 4)
+  entete.writeUInt32BE(cote, 0)
+  entete.writeUInt32BE(cote, 4)
   entete[8] = 8 // 8 bits par canal
   entete[9] = 2 // couleur vraie, sans alpha
   /* Chaque ligne est précédée de son octet de FILTRE. `0` — aucun filtre — est
      le bon choix ici : l'image est faite d'aplats, que zlib comprime déjà très
      bien, et un filtre par différence n'y gagnerait rien. */
-  const lignes = Buffer.alloc(COTE * (COTE * 3 + 1))
-  for (let ligne = 0; ligne < COTE; ligne++) {
-    lignes[ligne * (COTE * 3 + 1)] = 0
-    donnees.copy(lignes, ligne * (COTE * 3 + 1) + 1, ligne * COTE * 3, (ligne + 1) * COTE * 3)
+  const lignes = Buffer.alloc(cote * (cote * 3 + 1))
+  for (let ligne = 0; ligne < cote; ligne++) {
+    lignes[ligne * (cote * 3 + 1)] = 0
+    donnees.copy(lignes, ligne * (cote * 3 + 1) + 1, ligne * cote * 3, (ligne + 1) * cote * 3)
   }
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),

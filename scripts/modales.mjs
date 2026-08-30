@@ -71,6 +71,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { exit } from 'node:process'
 import { POLICE_LARGE, imposerLaPoliceLarge } from './police-large.mjs'
+import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
 const PORT = 4192
@@ -494,14 +495,7 @@ try {
     for (const largeur of LARGEURS) {
       for (const langue of LANGUES) {
         const contexte = await navigateur.newContext({
-    /* L'AGENT DE SERVICE EST BLOQUÉ PENDANT LA MESURE.
-       `main.tsx` l'enregistre en production, donc sur le paquet que ces portes
-       servent. Installé, il répondrait à la place du réseau dès la deuxième
-       navigation : les octets et les requêtes tomberaient, la porte annoncerait
-       un gain, et ce gain serait celui d'un cache local que l'utilisateur n'a
-       pas au premier chargement. On mesure le réseau, donc on écarte ce qui le
-       masque. */
-    serviceWorkers: 'block',
+          ...SANS_AGENT_DE_SERVICE,
           viewport: { width: largeur, height: largeur === 360 ? 780 : 900 },
           locale: langue === 'fr' ? 'fr-FR' : 'en-US',
           colorScheme: 'light',

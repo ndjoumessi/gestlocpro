@@ -3,16 +3,24 @@
  *
  * ═══ CE QUE LA MESURE A DIT ═══
  *
- * Relevé le 2026-08-30 sur le paquet construit :
+ * Deux constructions du MÊME arbre, l'une avec le greffon et l'autre sans,
+ * mesurées le 2026-08-30 — rien n'est estimé :
  *
- *   index.html servi        9 423 o bruts   4 524 gzip
- *   sans les commentaires   1 721 o bruts     866 gzip
- *   ────────────────────────────────────────────────
- *   les commentaires        7 702 o bruts   3 658 sur le fil
+ *   index.html construit sans retrait   9 620 o bruts   4 523 gzip
+ *   avec le retrait                     1 696 o bruts     847 gzip
+ *   ──────────────────────────────────────────────────────────────
+ *   la prose                            7 924 o bruts   3 676 SUR LE FIL
  *
- * **Quatre-vingt-deux pour cent du fichier**, soit 73 ms à 400 kb/s — le débit
- * que tout ce dépôt retient comme profil du marché visé — et ce prix se paie sur
- * CHAQUE écran, puisque chaque adresse rend le même document.
+ * **Quatre-vingt-deux pour cent du document**, soit 74 ms à 400 kb/s — le débit
+ * que tout ce dépôt retient comme profil du marché visé — et ce prix se paierait
+ * sur CHAQUE écran, puisque chaque adresse rend le même document.
+ *
+ * ET CE QUE L'UTILISATEUR CESSE VRAIMENT DE PAYER EST UN AUTRE NOMBRE : 5 281 o
+ * bruts, 2 543 sur le fil, 51 ms. `poids-ecrans` le mesure écran par écran. Il
+ * est plus petit parce que le lot qui pose ce greffon AJOUTE aussi de la prose —
+ * celle du manifeste et des deux `theme-color`. Les deux chiffres sont vrais et
+ * ne répondent pas à la même question : 74 ms est ce que la prose coûterait si
+ * elle partait, 51 ms est ce que ce lot-ci rend au réseau.
  *
  * ═══ CE N'EST PAS UN ARGUMENT CONTRE LES COMMENTAIRES ═══
  *
