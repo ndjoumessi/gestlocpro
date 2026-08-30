@@ -624,7 +624,42 @@ export function Works() {
 
 
                 {work.status === 'quoted' && canApprove && (
+                  /*
+                    UNE ACTION DE RANGÉE N'EST PAS L'ACTION DE LA PAGE.
+
+                    Ce bouton était le seul du produit à porter la variante
+                    PRIMAIRE à l'intérieur d'une liste. Mesuré le 2026-08-30 à
+                    1660 px, en comptant les fonds pleins de la marque :
+                    `/demo/paiements`, `/demo/locataires` et `/demo/acces` en
+                    portent un par page — plus celui du bandeau de
+                    démonstration. `/demo/travaux` en portait TROIS.
+
+                    Et le compte grandit avec la donnée : la démonstration n'a
+                    qu'un devis en attente, un parc réel en aurait cinq, donc
+                    cinq bleus qui se disputeraient l'œil entre eux ET avec
+                    « Ouvrir un chantier ».
+
+                    CE QUI SIGNALE DÉJÀ CETTE RANGÉE, ce n'est pas le bouton :
+                    c'est la pastille ambre « Devis proposé », qui est faite pour
+                    ça et qui reste. Le bleu ajoutait un second signal au même
+                    endroit, ce qui n'en fait pas un plus fort — cela en fait un
+                    plus bruyant.
+
+                    ET L'ACTION EST RÉVERSIBLE, ce qui achève l'argument.
+                    VÉRIFIÉ DANS `approve()` plutôt que supposé : il n'y a
+                    AUCUNE modale de confirmation — le devis est validé sur-le-
+                    champ, et le toast offre un RETRAIT qui « rend le devis à
+                    l'arbitrage sans effacer la proposition ». Une action qu'on
+                    défait d'un geste n'a pas besoin d'un bouton qui crie ; c'est
+                    l'irréversible qui mérite du bleu, et il n'y en a pas ici.
+
+                    La première rédaction de ce commentaire disait « c'est la
+                    modale de confirmation qui porte cette gravité ». Elle
+                    n'existe pas. La phrase est remplacée plutôt que corrigée à
+                    demi.
+                  */
                   <Button
+                    variant="secondary"
                     size="sm"
                     onClick={() => approve(work.id)}
                   >

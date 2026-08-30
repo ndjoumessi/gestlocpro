@@ -66,3 +66,28 @@ describe('les rangées d’indicateurs', () => {
     ).toBe(trois)
   })
 })
+
+/**
+ * UNE ACTION DE RANGÉE N'EST PAS L'ACTION DE LA PAGE.
+ *
+ * « Valider le devis » était le seul bouton du produit à porter la variante
+ * PRIMAIRE dans une liste. Mesuré à 1660 px en comptant les fonds pleins de la
+ * marque : `/demo/acces` en porte 1, `/demo/paiements` et `/demo/locataires` 2 —
+ * un par page, plus celui du bandeau de démonstration — et `/demo/travaux` 3.
+ *
+ * Le compte GRANDIT AVEC LA DONNÉE : la démonstration n'a qu'un devis en
+ * attente, un parc réel en aurait cinq.
+ */
+describe('les actions de rangée', () => {
+  it('ne reprennent pas la variante primaire, qui appartient à la page', () => {
+    const source = lire('features/dashboard/Works.tsx')
+    const debut = source.indexOf("work.status === 'quoted' && canApprove")
+    expect(debut, 'le bouton de validation est introuvable').toBeGreaterThan(-1)
+    const bloc = source.slice(debut, source.indexOf('</Button>', debut))
+    expect(
+      bloc,
+      'la validation d’un devis reprend la variante primaire ; la pastille ambre ' +
+        '« Devis proposé » signale déjà cette rangée',
+    ).toContain('variant="secondary"')
+  })
+})
