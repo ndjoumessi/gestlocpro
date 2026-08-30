@@ -1,1 +1,148 @@
+# LES PORTES TOURNENT AILLEURS QUE SUR LA MACHINE QUI LES A ÉCRITES.
+#
+# ═══ CE QUE CE FICHIER FERME ═══
+#
+# Ce dépôt a une culture de mesure peu commune — quatorze portes, des gardes du
+# garde, des mutations. Elles ne tournaient QUE là où quelqu'un tapait
+# `npm run check`, et quand il y pensait. Un oubli ne se voyait nulle part ; une
+# machine différente n'était jamais essayée.
+#
+# Ce dernier point n'est pas théorique. `mesure-ui-aveugle-hors-demo` note déjà
+# que la marge de 4 px des plafonds de débordement est « une prudence NON
+# MESURÉE : sur cette machine deux exécutions rendent des maxima identiques au
+# pixel ; une autre machine, avec d'autres métriques de police, n'a pas été
+# essayée. » Voilà l'autre machine.
+#
+# ═══ TROIS ÉTAGES, ET LE DÉCOUPAGE EST CELUI DU TEMPS ═══
+#
+#   rapide    ~3 min   à chaque poussée, sur toute branche
+#   serveur   ~3 min   à chaque poussée, avec un Postgres
+#   complet  ~15 min   sur `main` seulement, et seulement si les deux passent
+#
+# Le retour immédiat sans payer un quart d'heure à chaque commit. Les portes au
+# navigateur sont les lentes — elles ouvrent Chromium sur onze largeurs et deux
+# langues — et ce sont aussi celles qui ne changent d'avis qu'à la refonte.
+#
+# ═══ LA LISTE DES PORTES N'EST PAS RECOPIÉE ICI, ET C'EST DÉLIBÉRÉ ═══
+#
+# Une liste recopiée se périme en silence : c'est la panne qu'`appariements.test.ts`
+# a payée « pendant des lots », et que `mesure-ui` évite en LISANT ses adresses
+# dans deux fichiers plutôt qu'en les écrivant. Le même raisonnement vaut ici.
+# `package.json` porte donc `check:rapide` et `check:navigateur`, dont `check`
+# est la composition ; ce fichier n'appelle que ces noms. Une porte ajoutée
+# demain entre dans l'intégration continue sans que personne y touche.
 
+name: portes
+
+on:
+  push:
+  pull_request:
+
+# Une poussée qui en remplace une autre annule la précédente : sur une branche
+# active, laisser tourner trois exécutions périmées coûte des minutes pour un
+# verdict que personne ne lira.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # La version du `Dockerfile`, à la mineure près. Son commentaire dit pourquoi :
+  # « construire avec un autre Node que celui où l'on éprouve les tests, c'est
+  # déployer du code que personne n'a exécuté ». Une intégration continue qui
+  # éprouverait sur une autre version démentirait cette phrase.
+  NODE_VERSION: '20'
+
+jobs:
+  rapide:
+    name: rapide — types, style, i18n, unités
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run check:rapide
+
+  serveur:
+    name: serveur — 425 cas, sur un vrai Postgres
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        # La même image que `docker-compose.yml` sert en développement. Éprouver
+        # sur une autre version de Postgres que celle qu'on lance chez soi ferait
+        # de l'intégration continue un second environnement à déboguer.
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: gestlocpro
+          POSTGRES_PASSWORD: gestlocpro
+          # Le nom DOIT finir par `_test` : `src/test/setupEnv.ts` refuse de
+          # démarrer autrement, parce que la suite EFFACE la base qu'elle vise.
+          POSTGRES_DB: gestlocpro_test
+        options: >-
+          --health-cmd "pg_isready -U gestlocpro -d gestlocpro_test"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+        ports:
+          - 5432:5432
+    env:
+      # `server/.env.test` est versionné et vise `localhost:5433`, le port du
+      # `docker compose` local. Il ne gêne PAS ici : `process.loadEnvFile`
+      # n'écrase jamais une variable déjà posée dans l'environnement — vérifié
+      # plutôt que supposé — donc celle-ci l'emporte.
+      DATABASE_URL: postgresql://gestlocpro:gestlocpro@localhost:5432/gestlocpro_test
+      SESSION_SECRET: un-secret-d-integration-continue-assez-long
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm --prefix server ci
+      # Le client Prisma est GÉNÉRÉ, pas versionné : sans lui, `tsc -b` ne trouve
+      # pas `src/generated/prisma` et rien ne compile.
+      - run: npm --prefix server exec prisma generate
+      # `migrate deploy` et non `db push` : c'est le geste de la production, et
+      # c'est lui qu'on veut voir échouer ici si une migration est mal formée.
+      - run: npm --prefix server exec prisma migrate deploy
+      - run: npm run check:server
+
+  complet:
+    name: complet — les portes au navigateur
+    # SEULEMENT SUR `main`, et seulement après les deux autres. Un quart d'heure
+    # de Chromium à chaque poussée de branche coûterait plus que ce qu'il
+    # rapporte : ces portes gardent la mise en page, qui ne bouge qu'aux lots de
+    # refonte, et `main` est ce qui part en production.
+    if: github.ref == 'refs/heads/main'
+    needs: [rapide, serveur]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      # `--with-deps` installe les bibliothèques système de Chromium, que
+      # l'image d'exécution ne porte pas. Sans elles, le navigateur se lance et
+      # meurt sur une erreur de lien dynamique.
+      - run: npx playwright install --with-deps chromium
+      # `mesure-ui` construit `dist/` lui-même, en premier — les portes
+      # suivantes servent ce paquet-là. Rien à construire avant.
+      - run: npm run check:navigateur
+      # Les captures que `poids-ecrans` régénère : c'est la seule sortie
+      # regardable d'un échec de mise en page, et elle disparaît avec la machine.
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: captures
+          path: captures/
+          retention-days: 7
+          if-no-files-found: ignore
