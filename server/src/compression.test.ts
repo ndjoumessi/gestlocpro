@@ -5,59 +5,45 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 /**
- * CE QUI PART SUR LE FIL EST COMPRESSÉ, ou le marché visé paie la différence.
+ * CE SERVEUR COMPRESSE, QUEL QUE SOIT CE QUI LE PRÉCÈDE.
  *
- * ═══ LE DÉFAUT, MESURÉ LE 2026-08-30 ═══
+ * ═══ CE QUE CE FICHIER GARDE, ET CE QU'IL NE PROUVE PAS ═══
  *
- * `app.ts` sert le client construit par `express.static`, et rien ne le
- * compressait. Ni intergiciel, ni mandataire dans le `Dockerfile`, ni en-tête
- * `Content-Encoding` nulle part. Le paquet partait donc BRUT, et voici ce que
- * cela coûtait sur la construction du jour :
+ * Il garde une propriété de CE PROCESSUS : une réponse assez grosse et
+ * compressible part encodée quand le client l'accepte, et brute quand il ne
+ * l'accepte pas. Il ne prouve RIEN sur ce qu'un visiteur reçoit — entre les
+ * deux il y a un bord, un cache, un domaine, dont ce dépôt ne sait rien.
  *
- *   JS de la vitrine        426 674 o  ->  142 284 gzippés   (−284 390)
- *   feuille de style         71 435 o  ->   13 146           ( −58 289)
- *   index.html                6 977 o  ->    3 390           (  −3 587)
- *   JS de l'espace applicatif 227 189 o ->   59 980           (−167 209)
+ * LA DISTINCTION A ÉTÉ PAYÉE. Ces cas ont d'abord été écrits sur le constat
+ * qu'« aucune compression n'existait », tiré de la lecture d'`app.ts` et du
+ * `Dockerfile`. Le constat valait pour le processus et pas pour le site :
+ * relevé sur la production le 2026-08-30, `railway-hikari` gzippait déjà,
+ * 380 925 octets de JavaScript partant à 121 310. Lire le code ne dit pas ce
+ * que reçoit l'utilisateur ; seule une requête vers l'adresse servie le dit.
  *
- * La vitrine seule passe de 505 086 à 158 820 octets : **environ sept secondes
- * de moins à 400 kb/s**, le débit que tout ce dépôt retient comme profil du
- * marché visé. Aucune autre garde de ce dépôt ne déplace un tel nombre.
+ * ═══ POURQUOI CETTE GARDE VAUT MALGRÉ TOUT ═══
  *
- * ═══ POURQUOI PERSONNE NE L'AVAIT VU, ET C'EST LE PLUS INSTRUCTIF ═══
+ * Parce que la propriété qu'elle tient est justement celle qui n'existait pas :
+ * la compression du site reposait entièrement sur un comportement de bord que
+ * rien ne configure et que rien ne garde. Un hébergeur qui change, un bord qui
+ * cesse, et le site triple de poids en silence. Ces trois cas font de la
+ * compression une propriété du dépôt plutôt qu'une propriété de la plateforme.
  *
- * Deux gardes pèsent ce produit, et elles pèsent dans DEUX UNITÉS différentes.
- * `BUDGET_PREMIER_CHARGEMENT`, dans `scripts/mesure-ui.mjs`, GZIPPE les
- * fichiers de `dist/` avant de les compter, et rendait donc « 155 430 o
- * compressés, sous le budget » — un relevé exact, d'une compression que
- * personne n'effectuait. `scripts/poids-ecrans.mjs` compte les corps de réponse
- * RÉELS, donc décompressés, et rendait 534 066 o sur la même page.
- *
- * Les deux avaient raison, et le produit tombait dans l'écart : le budget
- * décrivait un monde où l'on compresse, la mesure de poids décrivait le monde
- * réel, et aucune des deux ne pouvait dire que les deux mondes différaient. Une
- * garde qui mesure la bonne chose dans la mauvaise unité ne ment pas — elle
- * rassure, ce qui est pire.
- *
- * ═══ POURQUOI CETTE GARDE VIT ICI, ET NON DANS `scripts/` ═══
+ * ═══ POURQUOI ICI, ET NON DANS `scripts/` ═══
  *
  * Les portes du client mesurent `dist/` servi par `vite preview`, qui n'est pas
- * le serveur de production. Elles ne peuvent donc RIEN dire de la compression :
- * mesurer la compression du serveur de prévisualisation apprendrait ce que fait
- * un outil de développement. Le seul endroit d'où cette question se pose est
- * celui qui répond aux vraies requêtes.
+ * ce serveur : elles ne peuvent rien dire de sa compression. Et une porte qui
+ * interrogerait la production ferait dépendre `npm run check` d'un réseau et
+ * d'un déploiement — le défaut que `plafond-vitrine.mjs` vient de fermer pour
+ * les polices. Le seul endroit d'où cette question se pose sans rien emprunter
+ * au dehors est le processus lui-même.
  *
- * ═══ CE QUE CE FICHIER NE GARDE PAS ═══
+ * ═══ CE QU'ON NE GARDE PAS ═══
  *
- * Le TAUX de compression, jamais : il dépend du contenu, et le verrouiller
- * ferait rougir cette porte le jour où un actif incompressible entre dans le
- * paquet. On garde le FAIT — l'en-tête est là quand le client l'accepte, il
- * n'est pas là quand le client ne l'accepte pas — parce que c'est le fait qui a
- * manqué, pas le taux.
- *
- * Et il ne dit rien de ce qu'un bord de plateforme ajouterait par-dessus. Si
- * Railway compressait déjà, cette garde resterait juste et le gain serait
- * simplement déjà acquis ; elle ne prétend pas savoir ce qui se passe hors de
- * ce processus.
+ * Le TAUX, jamais : il dépend du contenu, et le verrouiller ferait rougir cette
+ * porte au premier actif incompressible. On garde le FAIT — l'en-tête est là
+ * quand le client l'accepte, absent quand il ne l'accepte pas — parce que c'est
+ * le fait qui peut disparaître, pas le taux.
  */
 
 // `env.ts` charge `.env` à son import ; ce fichier monte l'application AVANT

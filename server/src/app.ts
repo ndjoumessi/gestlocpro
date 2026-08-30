@@ -81,41 +81,63 @@ export function createApp(options: { taux?: SourceDeTaux } = {}) {
   app.disable('x-powered-by')
 
   /**
-   * TOUT CE QUI PART SUR LE FIL EST COMPRESSÉ — et c'est le plus gros gain
-   * mesuré de ce dépôt.
+   * LA COMPRESSION EST FAITE ICI AUSSI, ET LA RAISON N'EST PAS CELLE QU'ON A
+   * CRUE.
    *
-   * LE DÉFAUT. Ce serveur sert le client construit par `express.static`, plus
-   * bas, et rien ne le compressait : ni intergiciel ici, ni mandataire dans le
-   * `Dockerfile`. Le paquet partait BRUT. Mesuré le 2026-08-30 sur la
-   * construction du jour, octets servis contre octets gzippés :
+   * ═══ LA PRÉMISSE ÉTAIT FAUSSE, ET ELLE EST TOMBÉE PAR MESURE ═══
    *
-   *   JS de la vitrine         426 674  ->  142 284   (−284 390)
-   *   feuille de style          71 435  ->   13 146   ( −58 289)
-   *   index.html                 6 977  ->    3 390   (  −3 587)
-   *   JS de l'espace applicatif 227 189 ->   59 980   (−167 209)
+   * Ce bloc a d'abord été posé sur le constat qu'aucune compression n'existait :
+   * pas d'intergiciel ici, pas de mandataire dans le `Dockerfile`. Le constat
+   * était juste POUR CE PROCESSUS, et faux pour le site livré. Relevé sur la
+   * production le 2026-08-30, sur le paquet alors déployé :
    *
-   * La vitrine seule tombe de 505 086 à 158 820 octets, soit environ SEPT
-   * SECONDES à 400 kb/s — le débit que tout ce dépôt retient comme profil du
-   * marché visé, et le premier écran que voit un prospect.
+   *   Accept-Encoding: gzip       ->  content-encoding: gzip    121 310 o
+   *   Accept-Encoding: identity   ->                            380 925 o
+   *   server: railway-hikari
    *
-   * POURQUOI PERSONNE NE L'AVAIT VU. Les deux gardes de poids du client pèsent
-   * dans deux unités différentes : `BUDGET_PREMIER_CHARGEMENT` gzippe avant de
-   * compter — donc décrivait une compression que personne n'effectuait — quand
-   * `poids-ecrans` compte les corps réels. Les deux étaient exactes, et le
-   * produit vivait dans leur écart. Aucune ne pouvait voir cet écart, parce
-   * qu'aucune ne parle à CE serveur : elles mesurent `vite preview`.
+   * Le bord de Railway gzippe déjà, HTML comme JavaScript, et le faisait avant
+   * ce fichier. Les « sept secondes » annoncées au lot qui a introduit cet
+   * intergiciel n'ont jamais été disponibles : elles étaient acquises. Ce
+   * commentaire remplace cette affirmation plutôt que de la corriger d'un mot,
+   * parce qu'un chiffre faux dans une prose qui explique un choix contamine le
+   * choix lui-même.
    *
-   * AVANT LES ROUTES, ET NON JUSTE AVANT LES FICHIERS. Posé plus bas, cet
-   * intergiciel ne servirait que le client. Le JSON de l'API compresse mieux
-   * que tout le reste, et c'est le locataire qui le télécharge — la liste de
-   * ses quittances, ses relevés, ses signalements — sur le même réseau.
+   * ═══ POURQUOI IL RESTE MALGRÉ TOUT ═══
    *
-   * LA NÉGOCIATION EST LA FONCTIONNALITÉ : `compression` ne touche rien tant
-   * que le client n'a pas dit qu'il l'accepte, et laisse passer ce qui pèse
-   * moins de 1 024 octets, où l'en-tête coûterait plus que le gain. Les deux
-   * comportements sont gardés dans `compression.test.ts`, qui garde le FAIT de
-   * l'en-tête et jamais un TAUX — un taux dépend du contenu, et le verrouiller
-   * ferait rougir la porte au premier actif incompressible.
+   * Ce qu'il achète n'est pas des octets, c'est une INDÉPENDANCE. La
+   * compression du site reposait entièrement sur un comportement de bord que
+   * personne ne configure, que rien ne garde, et qui n'appartient pas à ce
+   * dépôt. Un changement d'hébergeur, un domaine servi autrement, un bord qui
+   * cesse de le faire : le site triplerait de poids sans qu'aucune porte ne
+   * bronche, sur le réseau le plus lent du marché visé. La propriété tenue ici
+   * est « ce serveur compresse, quel que soit ce qui le précède ».
+   *
+   * ═══ CE QU'IL COÛTE, MESURÉ ET NON SUPPOSÉ ═══
+   *
+   * 7,9 ms de gzip pour le paquet de 426 674 octets — moyenne sur cinq passes,
+   * sur la machine de développement ; un conteneur modeste sera plus lent. Ce
+   * n'est pas du temps de BOUCLE : `compression` emploie le flux zlib
+   * asynchrone, que Node exécute sur son groupe de fils. Le coût est du
+   * processeur, pas de la latence servie, et il ne se paie que sur ce que le
+   * bord n'a pas déjà en cache.
+   *
+   * Le bord ne sert PAS de brotli — vérifié, `Accept-Encoding: br` ne rend
+   * rien. Poser gzip ici ne prive donc aujourd'hui d'aucun encodage meilleur.
+   * Le jour où Railway proposera brotli, cette ligne deviendra ce qui l'empêche,
+   * et il faudra la reprendre : c'est écrit ici pour que ce jour-là se voie.
+   *
+   * ═══ AVANT LES ROUTES, ET NON JUSTE AVANT LES FICHIERS ═══
+   *
+   * Posé plus bas, cet intergiciel ne servirait que le client. Le JSON de l'API
+   * compresse mieux que tout le reste, et c'est le locataire qui le télécharge —
+   * la liste de ses quittances, ses relevés — sur le même réseau.
+   *
+   * La NÉGOCIATION est la fonctionnalité : rien n'est touché tant que le client
+   * n'a pas dit qu'il l'accepte, et rien sous 1 024 octets, où l'en-tête
+   * coûterait plus que le gain. Les deux comportements sont gardés dans
+   * `compression.test.ts`, qui garde le FAIT de l'en-tête et jamais un TAUX —
+   * un taux dépend du contenu, et le verrouiller ferait rougir la porte au
+   * premier actif incompressible.
    */
   app.use(compression())
 
