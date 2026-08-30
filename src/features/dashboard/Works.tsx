@@ -221,13 +221,34 @@ export function Works() {
             Le jour où il en occupera deux, il faudra le lui demander — et le
             serveur, lui, revérifie déjà que le logement est bien le sien.
           */
+          /*
+            UN SEUL BOUTON À L'ÉCRAN, ET C'EST L'ÉCRAN QUI DIT LEQUEL.
+
+            L'état vide porte le MÊME geste — « le même geste que l'en-tête, à
+            l'endroit où il manque le plus », dit son commentaire, et il a
+            raison. Mais les deux s'affichaient ENSEMBLE : sur un parc sans
+            intervention, deux boutons primaires identiques, l'un en haut à
+            droite et l'autre au centre, se disputaient le même clic. Vu sur une
+            capture de production, jamais par une porte — la démonstration
+            remplit toujours cet écran.
+
+            L'arbitrage garde l'argument et supprime la concurrence : quand la
+            liste est VIDE, le geste vit dans l'état vide, là où l'œil se pose ;
+            dès qu'elle porte quelque chose, il remonte en en-tête, où il est
+            atteignable sans défiler. Un seul bouton primaire par écran, à sa
+            place selon ce que l'écran montre.
+
+            Le locataire n'est pas concerné : son geste à lui — SIGNALER — n'est
+            pas celui de l'état vide, qui le ramène à son espace. Les deux ne se
+            recouvrent pas, donc rien ne les départage.
+          */
           isTenant ? (
             mesUnites[0] ? (
               <Button icon="bell" onClick={() => setSignalementOuvert(true)}>
                 {t('app.report.cta')}
               </Button>
             ) : undefined
-          ) : (
+          ) : visible.length === 0 ? undefined : (
             <Button icon="wrench" onClick={() => setChantierOuvert(true)}>
               {t('app.works.openCta')}
             </Button>
