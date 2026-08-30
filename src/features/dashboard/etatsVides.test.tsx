@@ -248,4 +248,137 @@ describe('les cautions, quand il n’y en a aucune', () => {
        entrée résiduelle sous un état vide serait le pire des deux. */
     expect(document.querySelectorAll('[data-file-entree]')).toHaveLength(0)
   })
+
+  /**
+   * ET ELLE LE DIT EN UNE LIGNE, PAS EN UN ÉCRAN.
+   *
+   * ═══ CE QUE LA MESURE A DIT ═══
+   *
+   * `EmptyState` porte `py-14` et un cercle de 48 px. Relevé le 2026-08-30, la
+   * file forcée vide comme la production la rend :
+   *
+   *   1280×800   état vide 273 px   1er indicateur à 624 px   vue 800
+   *   360×640    état vide 316 px   1er indicateur à 786 px   vue 640
+   *
+   * À 360 px — le téléphone du marché visé — les quatre indicateurs étaient
+   * ENTIÈREMENT sous la ligne de flottaison. Après ce lot : 421 px sur un poste
+   * de bureau, 604 px à 360. La rangée commence au-dessus du pli.
+   *
+   * ═══ CE QUE CE CAS GARDE, ET CE QU'IL NE PEUT PAS GARDER ═══
+   *
+   * Il garde le CHOIX : la file vide n'appelle pas `EmptyState`, dont la
+   * bordure en pointillés est la signature. Il ne garde PAS la hauteur — jsdom
+   * ne met rien en page, et aucune porte au navigateur ne voit cet écran :
+   * `mesure-ui` ne visite que `/demo`, où la démonstration remplit toujours la
+   * file. C'est l'angle mort connu de ce dépôt, et ce lot y ajoute une pièce
+   * plutôt que de le refermer.
+   *
+   * La primitive reste JUSTE ailleurs : sur travaux, cautions et signalements
+   * le vide occupe tout l'écran parce qu'il EST tout l'écran. Les cas
+   * ci-dessus le vérifient, et ils passeraient encore si quelqu'un rendait la
+   * primitive compacte pour tout le monde — d'où celui-ci, qui dit que la file
+   * ne l'emploie PAS.
+   */
+  it('n’emploie pas la boîte pleine hauteur pour une bonne nouvelle', async () => {
+    parcSansRien()
+    await renderApp('/app', { session: SESSION_PROPRIETAIRE })
+
+    const file = await screen.findByText('Rien n’attend de vous')
+    const section = file.closest('[data-file]')
+    expect(section, 'la file du jour est introuvable').not.toBeNull()
+    expect(
+      section!.querySelector('.border-dashed'),
+      'la file vide rend une boîte en pointillés pleine hauteur — 273 px sur un ' +
+        'poste, 316 à 360, qui repoussaient les indicateurs sous le pli',
+    ).toBeNull()
+  })
+
+  /**
+   * UN SEUL BOUTON PRIMAIRE À L'ÉCRAN, ET C'EST L'ÉTAT QUI DIT OÙ.
+   *
+   * Sur un parc sans intervention, `Works` rendait « Ouvrir un chantier » DEUX
+   * FOIS : en en-tête et au centre de l'état vide, même libellé, même poids,
+   * même clic. Vu sur une capture de production ; aucune porte ne le voyait,
+   * la démonstration remplissant toujours cet écran.
+   *
+   * L'argument de l'état vide tient — « le même geste que l'en-tête, à
+   * l'endroit où il manque le plus » — et c'est l'en-tête qui cède, tant que la
+   * liste est vide. Dès qu'elle porte quelque chose, il revient : on ne défile
+   * pas pour retrouver une action.
+   */
+  it('n’offre pas deux fois le même geste sur un écran de travaux vide', async () => {
+    parcSansRien()
+    await renderApp('/app/travaux', { session: SESSION_PROPRIETAIRE })
+
+    await screen.findByText(/Aucune intervention/)
+    expect(
+      screen.getAllByRole('button', { name: /Ouvrir un chantier/i }),
+      'deux boutons primaires identiques se disputent le même clic',
+    ).toHaveLength(1)
+  })
+
+  /**
+   * LE VIDE NE SE DIT PAS DEUX FOIS.
+   *
+   * `Alerts` rendait « Toutes les notifications sont lues. » au-dessus de
+   * « Rien à signaler sur le parc. » La première est une région ANNONCÉE, dont
+   * l'existence est justifiée : « tout marquer comme lu » doit se dire à un
+   * lecteur d'écran. Mais sans aucune notification, elle n'a jamais rien à
+   * annoncer, et son texte devenait un doublon.
+   *
+   * Le nœud reste monté — c'est ce dont l'annonce a besoin — et c'est son
+   * TEXTE qui disparaît. Ce cas garde les deux moitiés.
+   */
+  it('ne dit pas deux fois qu’il n’y a rien à signaler', async () => {
+    parcSansRien()
+    await renderApp('/app/signalements', { session: SESSION_PROPRIETAIRE })
+
+    await screen.findByText(/Rien à signaler/)
+    expect(
+      screen.queryByText('Toutes les notifications sont lues.'),
+      'le vide est annoncé deux fois, dont une hors de la boîte',
+    ).toBeNull()
+    /* La région ANNONCÉE, elle, reste : sans elle, « tout marquer comme lu »
+       n'aurait plus de voix le jour où des notifications existent. */
+    expect(
+      document.querySelector('[aria-live="polite"]'),
+      'la région annoncée a disparu avec son texte',
+    ).not.toBeNull()
+  })
+
+  /**
+   * TROIS ZÉROS NE SE RENDENT PAS AU-DESSUS D'UN ÉTAT VIDE.
+   *
+   * `Dashboard.tsx` porte la règle depuis longtemps — « l'état vide REMPLACE
+   * les indicateurs, il ne s'y ajoute pas ; quatre cartes à zéro donnent
+   * l'impression d'un produit en panne ». `Deposits` l'ignorait : sur un parc
+   * sans caution il rendait trois montants à zéro, puis une boîte disant qu'il
+   * n'y a aucune caution. Quatre fois la même information, dont trois en
+   * chiffres qui ressemblent à une panne.
+   */
+  it('ne montre pas trois montants à zéro au-dessus d’un écran de cautions vide', async () => {
+    parcSansRien()
+    await renderApp('/app/cautions', { session: SESSION_PROPRIETAIRE })
+
+    await screen.findByText(/Aucune caution consignée/)
+    expect(
+      document.querySelectorAll('[data-indicateur]'),
+      'les indicateurs à zéro se rendent au-dessus de l’état vide',
+    ).toHaveLength(0)
+  })
+
+  it('garde la boîte pleine hauteur là où le vide EST tout l’écran', async () => {
+    /* Garde du garde, et l'autre moitié du choix : si quelqu'un rendait
+       `EmptyState` compact pour tout le monde, le cas ci-dessus resterait vert
+       et les trois écrans de plein vide deviendraient une ligne perdue au
+       milieu d'une page blanche. */
+    parcSansRien()
+    await renderApp('/app/travaux', { session: SESSION_PROPRIETAIRE })
+
+    await screen.findByText(/Aucune intervention/)
+    expect(
+      document.querySelector('.border-dashed'),
+      'l’écran des travaux a perdu sa boîte de plein vide',
+    ).not.toBeNull()
+  })
 })

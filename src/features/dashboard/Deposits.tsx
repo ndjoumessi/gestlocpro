@@ -233,6 +233,27 @@ export function Deposits() {
         }
       />
 
+      {/*
+        LES TROIS ZÉROS NE SE RENDENT PAS AU-DESSUS DU VIDE.
+
+        `Dashboard.tsx` porte déjà la règle, avec son argument : « l'état vide
+        REMPLACE les indicateurs, il ne s'y ajoute pas. Quatre cartes à zéro, un
+        graphique plat et un échéancier vide donnent l'impression d'un produit
+        en panne. Rien n'est en panne : le parc est neuf, et il faut le dire
+        avec des mots plutôt qu'avec douze zéros. »
+
+        Cet écran-ci l'ignorait. Sur un parc sans caution, il rendait « 0 FCFA
+        sur 0 caution », « 0 FCFA · 0 en cours d'arbitrage », « 0 FCFA · 0 déjà
+        restituée » — puis, dessous, une boîte disant « Aucune caution
+        consignée ». Quatre fois la même information, dont trois en chiffres qui
+        ressemblent à une panne. Vu sur une capture de production ; aucune porte
+        ne regarde cet écran vide, la démonstration le remplissant toujours.
+
+        Les indicateurs REVIENNENT dès la première caution : ils situent un
+        montant, et un montant sans son échelle ne se lit pas. C'est le zéro
+        qu'on retire, pas la mesure.
+      */}
+      {deposits.length > 0 && (
       <div className={GRILLE_TROIS_INDICATEURS}>
         {/* Le BOUCLIER pour ce qui est consigné — le même que porte « caution à
             arbitrer » sur le tableau de bord —, le CADENAS pour ce qui est
@@ -266,6 +287,7 @@ export function Deposits() {
           })}
         />
       </div>
+      )}
 
       {/* Le gestionnaire voit les cautions mais ne les arbitre pas. On lui dit
           pourquoi le bouton lui manque, plutôt que de le laisser deviner. */}
