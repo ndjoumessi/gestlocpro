@@ -1,4 +1,4 @@
-import { forwardRef, useState, type InputHTMLAttributes, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
+import { forwardRef, useRef, useState, type InputHTMLAttributes, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
 import { cn } from '@/lib/cn'
 import { controlClasses } from './Field'
 import { Icon, type IconName } from './Icon'
@@ -10,12 +10,70 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   icon?: IconName
 }
 
+/**
+ * CE QU'UN CHAMP NUMÉRIQUE ACCEPTE, PAR MODE DE SAISIE.
+ *
+ * `inputMode` ne filtre RIEN : il choisit le clavier d'un téléphone, et sur un
+ * clavier physique toutes les touches passent. Onze champs du produit le
+ * portaient — loyer, caution, devis, surface, pièces, index de compteur, prix,
+ * téléphone — et acceptaient donc « 1o3 ».
+ *
+ * LE FILTRE SUIT CET ATTRIBUT PLUTÔT QU'UN COMPOSANT DE PLUS. Un `NumericInput`
+ * séparé serait un composant qu'il faut PENSER à employer, et ces onze champs
+ * sont la preuve qu'on n'y pense pas. Ici, poser `inputMode="numeric"` suffit,
+ * et le douzième champ écrit demain est correct sans que personne le sache.
+ *
+ * CE QUI PASSE : les chiffres, les espaces sous toutes leurs formes — y compris
+ * l'insécable étroite que `formatMoney` produit — la virgule, le point et le
+ * signe. Un montant s'écrit « 145 000 » ou « 900,50 » selon la langue, et
+ * `parseMoney` sait lire les deux. Pour `tel`, le plus et les parenthèses en
+ * plus : un indicatif s'écrit « +237 ».
+ */
+const CARACTERES_PERMIS: Partial<Record<string, RegExp>> = {
+  numeric: /^[\d\s\u00a0\u202f.,-]*$/,
+  decimal: /^[\d\s\u00a0\u202f.,-]*$/,
+  tel: /^[\d\s\u00a0\u202f+()-]*$/,
+}
+
+/**
+ * Refuse la frappe qui sortirait du mode de saisie déclaré.
+ *
+ * ON REFUSE EN BLOC, ON NE FILTRE PAS CARACTÈRE PAR CARACTÈRE. Absorber la
+ * moitié d'un collage laisserait dans le champ un nombre AUTRE que celui qu'on
+ * a collé — c'est exactement le défaut que `parseMoney` vient de fermer, déplacé
+ * d'un cran. Le prix est que coller « 145 000 FCFA » depuis l'écran ne passe
+ * plus, alors que `parseMoney` sait le lire ; on perd le collage du symbole, on
+ * garde la frappe du nombre.
+ *
+ * LA REMISE EN PLACE DE `e.target.value` N'EST PAS UNE PRÉCAUTION. Sur un champ
+ * CONTRÔLÉ, ne pas appeler `onChange` ne change aucun état, donc React ne
+ * re-rend pas, donc le caractère refusé RESTE affiché dans le DOM. Il faut
+ * écrire la valeur précédente à la main pour que le refus se voie.
+ */
+function useSaisieFiltree({ inputMode, value, onChange }: InputProps) {
+  const dernier = useRef('')
+  const permis = inputMode ? CARACTERES_PERMIS[inputMode] : undefined
+  if (!permis) return onChange
+  return (evenement: React.ChangeEvent<HTMLInputElement>) => {
+    if (permis.test(evenement.target.value)) {
+      dernier.current = evenement.target.value
+      onChange?.(evenement)
+      return
+    }
+    evenement.target.value = typeof value === 'string' ? value : dernier.current
+  }
+}
+
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   { invalid, icon, className, ...props },
   ref,
 ) {
+  const onChange = useSaisieFiltree(props)
+
   if (!icon) {
-    return <input ref={ref} className={controlClasses(invalid, className)} {...props} />
+    return (
+      <input ref={ref} className={controlClasses(invalid, className)} {...props} onChange={onChange} />
+    )
   }
 
   return (
@@ -25,7 +83,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         size={16}
         className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted"
       />
-      <input ref={ref} className={controlClasses(invalid, cn('pl-9.5', className))} {...props} />
+      <input
+        ref={ref}
+        className={controlClasses(invalid, cn('pl-9.5', className))}
+        {...props}
+        onChange={onChange}
+      />
     </div>
   )
 })
