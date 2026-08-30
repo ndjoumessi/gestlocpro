@@ -11,7 +11,7 @@ import { useT, type MessageKey } from '@/i18n/I18nProvider'
 import { ApiError, NetworkError } from '@/api/client'
 import { useSession } from '@/api/SessionProvider'
 import { validateEmail, validatePassword, type FieldError } from '@/features/auth/validation'
-import { ecrireStockage, lireStockage } from '@/lib/stockage'
+import { ecrireStockage, effacerStockage, lireStockage } from '@/lib/stockage'
 
 /**
  * La mémoire du choix, sur CETTE machine.
@@ -25,6 +25,25 @@ import { ecrireStockage, lireStockage } from '@/lib/stockage'
 const CLE_APPAREIL_RETENU = 'gestlocpro.session.persistante'
 const OUI = 'oui'
 const NON = 'non'
+
+/**
+ * L'ADRESSE RETENUE — et le mot de passe JAMAIS.
+ *
+ * Le lot précédent refusait de la garder : « retenir l'identifiant sur la
+ * machine qu'on vient de déclarer partagée le dirait au suivant ». L'argument
+ * est juste, et il ne vaut QUE dans le cas décoché. Cochée, la case dit
+ * l'inverse — cet appareil est à moi. Refuser là aussi offrait une case qui
+ * promet la continuité sans la donner, ce qui est le défaut que cet écran a
+ * mis trois lots à perdre.
+ *
+ * LE MOT DE PASSE N'EST PAS ICI, et ne le sera pas. Un secret rangé dans
+ * `localStorage` est à la portée de la première injection de script — c'est
+ * l'argument même qui fait porter la session par un cookie `httpOnly` plutôt
+ * que par ce stockage, écrit dans `auth/session.ts`. Le gestionnaire du
+ * navigateur le garde déjà, chiffré, sous le contrôle de son propriétaire ; les
+ * attributs `autoComplete` de ce formulaire sont posés pour qu'il le puisse.
+ */
+const CLE_ADRESSE_RETENUE = 'gestlocpro.session.adresse'
 
 export function Login() {
   const t = useT()
@@ -46,7 +65,7 @@ export function Login() {
   const destination =
     typeof demandee === 'string' && /^\/app(?:[/?]|$)/.test(demandee) ? demandee : '/app'
 
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(() => lireStockage('local', CLE_ADRESSE_RETENUE) ?? '')
   const [password, setPassword] = useState('')
   /**
    * « RESTER CONNECTÉ SUR CET APPAREIL », ET ELLE COMMANDE VRAIMENT.
@@ -112,6 +131,11 @@ export function Login() {
     setEchec(null)
     try {
       await connecter(email, password, persistante)
+      /* ON RETIENT APRÈS COUP, JAMAIS À LA FRAPPE. Une adresse rangée avant
+         d'être éprouvée serait une faute de frappe conservée pour toujours,
+         resservie à chaque visite — et l'écran reprocherait alors un
+         identifiant qu'il a lui-même proposé. */
+      if (persistante) ecrireStockage('local', CLE_ADRESSE_RETENUE, email)
       notify(t('auth.login.success'), { tone: 'ok' })
       /**
        * Retour à l'adresse demandée, posée par la barrière d'accès.
@@ -270,6 +294,22 @@ export function Login() {
                renonce à se connecter a tout de même déclaré la machine. C'est
                le renseignement qui compte, pas la connexion qui le suit. */
             ecrireStockage('local', CLE_APPAREIL_RETENU, e.target.checked ? OUI : NON)
+            /* DÉCOCHER EFFACE LA TRACE, il ne se contente pas de cesser
+               d'écrire. C'est un geste de RETRAIT : sans cela, quelqu'un qui
+               décoche par prudence laisserait quand même son identifiant
+               derrière lui, et la case mentirait dans la direction la plus
+               grave qui soit.
+
+               MAIS IL NE TOUCHE PAS AU CHAMP, et la première rédaction s'y est
+               trompée — elle le vidait « pour donner à voir ce qui vient d'être
+               fait ». `sessionDeCetAppareil.test.tsx` l'a dit aussitôt : son
+               cas tape l'adresse, tape le mot de passe, puis décoche, et la
+               connexion n'est jamais partie. C'est le geste ORDINAIRE — on
+               décoche au milieu de sa saisie parce qu'on se souvient que le
+               poste est partagé — et il effaçait le travail en cours. Ce qui
+               est à l'écran appartient à celui qui le tape ; ce qui est rangé
+               sur la machine, non. */
+            if (!e.target.checked) effacerStockage('local', CLE_ADRESSE_RETENUE)
           }}
         />
 
