@@ -33,7 +33,23 @@ import { fileURLToPath } from 'node:url'
  * On rend donc un carré plein, sans canal alpha, et le système découpe.
  */
 
-const COTE = 1024
+/**
+ * LES TROIS CÔTÉS, ET POURQUOI CE N'EST PLUS UN SEUL.
+ *
+ * 1024 servait l'`apple-touch-icon`, seul consommateur d'icône du produit tant
+ * qu'il n'y avait pas de manifeste. Un manifeste en réclame deux autres : 192
+ * est la taille qu'Android pose sur l'écran d'accueil, 512 celle qu'il emploie
+ * pour l'écran de démarrage et les grandes densités. Les servir depuis le 1024
+ * par redimensionnement du navigateur donnerait un tracé mou — ces carrés ont
+ * des bords droits et un arrondi de 2 unités sur 32, ce qu'un rééchantillonnage
+ * approximatif salit tout de suite.
+ *
+ * On les REND donc, à leur taille, avec le même antialiasage. Le fichier reste
+ * un générateur : aucune de ces trois images n'est relue par un humain, et
+ * `faviconSuitLaMarque.test.ts` vérifie que le manifeste ne cite que des tailles
+ * qui sortent d'ici.
+ */
+const COTES = [192, 512, 1024]
 const ECHANTILLONS = 4
 
 /** Le tracé, dans les 32 unités de la marque — voir `public/logo.svg`. */
@@ -55,7 +71,7 @@ function dansLeCarre(u, v, { x, y, c, r }) {
   return (u - cx) ** 2 + (v - cy) ** 2 <= r * r
 }
 
-function pixels() {
+function pixels(COTE) {
   const donnees = Buffer.alloc(COTE * COTE * 3)
   const pas = 32 / COTE / ECHANTILLONS
   for (let ligne = 0; ligne < COTE; ligne++) {
@@ -114,7 +130,7 @@ function bloc(nom, donnees) {
   return Buffer.concat([longueur, corps, somme])
 }
 
-function png(donnees) {
+function png(donnees, COTE) {
   const entete = Buffer.alloc(13)
   entete.writeUInt32BE(COTE, 0)
   entete.writeUInt32BE(COTE, 4)
@@ -137,7 +153,9 @@ function png(donnees) {
 }
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
-const cible = join(RACINE, 'public', 'icone-1024.png')
-const image = png(pixels())
-writeFileSync(cible, image)
-console.log(`✓ icone-app : ${COTE}×${COTE}, ${image.length} o → public/icone-1024.png`)
+const rendus = COTES.map((cote) => {
+  const image = png(pixels(cote), cote)
+  writeFileSync(join(RACINE, 'public', `icone-${cote}.png`), image)
+  return `${cote}×${cote} ${image.length} o`
+})
+console.log(`✓ icone-app : ${rendus.join(' · ')} → public/icone-{${COTES.join(',')}}.png`)

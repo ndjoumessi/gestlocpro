@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
@@ -139,5 +139,70 @@ describe('l’icône d’accueil', () => {
       .slice(-4)
       .map((o) => String(Number(o)))
     expect(duScript).toEqual(duComposant)
+  })
+})
+
+
+/**
+ * LE MANIFESTE NE CITE QUE CE QUI EXISTE, ET LES COULEURS DES JETONS.
+ *
+ * ═══ DEUX RECOPIES DE PLUS, DONC DEUX FAÇONS DE DIVERGER ═══
+ *
+ * `public/manifest.webmanifest` et les métas `theme-color` d'`index.html` sont
+ * lus par le SYSTÈME, avant toute feuille de style : ils ne peuvent lire aucun
+ * jeton, et leurs couleurs sont donc écrites en clair. C'est le même prix que
+ * `logo.svg` paie déjà, et il se garde de la même façon.
+ *
+ * ═══ CELUI QUI COMPTE VRAIMENT EST LE SECOND ═══
+ *
+ * Un manifeste qui cite `/icone-256.png` quand le générateur produit 192, 512 et
+ * 1024 ne casse RIEN de visible : la page se charge, l'application s'installe, et
+ * l'icône est celle que le système a pu trouver — ou une capture de la page. Le
+ * défaut ne se voit que sur l'écran d'accueil de quelqu'un d'autre, des semaines
+ * plus tard. On confronte donc la liste du manifeste à `COTES`, la constante du
+ * générateur, ET aux fichiers réellement présents dans `public/`.
+ */
+describe('le manifeste', () => {
+  const manifeste = JSON.parse(
+    readFileSync(join(RACINE, 'public', 'manifest.webmanifest'), 'utf8'),
+  ) as { background_color: string; theme_color: string; icons: { src: string; sizes: string }[] }
+  const page = readFileSync(join(RACINE, 'index.html'), 'utf8')
+
+  it('peint le fond de la zone principale, dans les deux thèmes', () => {
+    /* `jeton()` lit le bloc clair — le premier du fichier. Le sombre est la
+       SECONDE occurrence, celle de `@media (prefers-color-scheme: dark)`. */
+    const toutes = [...jetons.matchAll(/--color-paper:\s*(#[0-9a-fA-F]{3,8})/g)].map((m) =>
+      m[1]!.toLowerCase(),
+    )
+    expect(toutes.length, 'le jeton --color-paper est introuvable').toBeGreaterThanOrEqual(2)
+    const [clair, sombre] = toutes
+
+    expect(manifeste.background_color.toLowerCase()).toBe(clair)
+    expect(manifeste.theme_color.toLowerCase()).toBe(clair)
+
+    const metas = [...page.matchAll(/<meta name="theme-color"[^>]*content="(#[0-9a-fA-F]{3,8})"/g)]
+      .map((m) => m[1]!.toLowerCase())
+    expect(metas, 'les deux métas `theme-color` d’`index.html`').toEqual([clair, sombre])
+  })
+
+  it('ne cite que des icônes que le générateur rend et que `public/` porte', () => {
+    const rendues = /const COTES = \[([^\]]+)\]/
+      .exec(sansCommentaires(icone))?.[1]
+      ?.split(',')
+      .map((n) => n.trim())
+    expect(rendues, '`COTES` est introuvable dans le générateur').toBeDefined()
+
+    for (const { src, sizes } of manifeste.icons) {
+      const cote = /^(\d+)x\1$/.exec(sizes)?.[1]
+      expect(cote, `\`sizes\` malformé pour ${src}`).toBeDefined()
+      expect(rendues, `le manifeste cite ${sizes}, que \`icone-app.mjs\` ne rend pas`).toContain(
+        cote,
+      )
+      expect(src, 'le nom du fichier doit suivre sa taille').toBe(`/icone-${cote}.png`)
+      expect(
+        existsSync(join(RACINE, 'public', src.slice(1))),
+        `${src} est cité par le manifeste mais absent de public/ — relancez \`node scripts/icone-app.mjs\``,
+      ).toBe(true)
+    }
   })
 })

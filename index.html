@@ -32,7 +32,7 @@
 
       iOS ne lit PAS le SVG pour `apple-touch-icon` : sans cette ligne, ajouter
       le site à l'écran d'accueil produit une vignette de la page, illisible.
-      Android la lit aussi, faute de manifeste.
+      Android ne la lit plus : il a désormais le manifeste, juste en dessous.
 
       Elle est PLEINE, sans coins arrondis ni transparence, là où `/logo.svg` en
       porte : les deux systèmes posent leur propre masque, et une icône déjà
@@ -40,6 +40,53 @@
       `scripts/icone-app.mjs`, qui la régénère.
     -->
     <link rel="apple-touch-icon" href="/icone-1024.png" />
+
+    <!--
+      LE MANIFESTE, QUI FAIT DE CETTE PAGE UNE APPLICATION QU'ON INSTALLE.
+
+      CE QU'IL CHANGE, ET POURQUOI ÇA COMPTE ICI PLUS QU'AILLEURS. Le marché
+      visé est un téléphone Android d'entrée de gamme sur réseau lent. Sans
+      manifeste, ce produit est une adresse qu'on retape ; avec lui, c'est une
+      icône sur l'écran d'accueil qui s'ouvre en plein écran, sans la barre du
+      navigateur — soit une soixantaine de pixels de hauteur rendus au contenu,
+      sur un écran qui en a 640.
+
+      LES ICÔNES SONT RENDUES, PAS REDIMENSIONNÉES. `scripts/icone-app.mjs`
+      produit les trois tailles à leur taille propre : 192 pour l'écran
+      d'accueil, 512 pour l'écran de démarrage et les grandes densités, 1024
+      pour iOS ci-dessus. Ces carrés ont des bords droits et un arrondi de deux
+      unités sur trente-deux, qu'un rééchantillonnage de navigateur salit.
+
+      `maskable` EST UNE MESURE, PAS UNE ESPÉRANCE. Android découpe l'icône dans
+      un masque dont la zone sûre est le cercle central de 80 %. Le tracé occupe
+      57 % du carré, centré — il tient donc, quel que soit le masque du
+      constructeur, et le fond est plein jusqu'aux bords. C'est exactement la
+      condition que `purpose: "maskable"` promet.
+
+      `display: standalone` ET NON `fullscreen` : le second masque aussi la barre
+      d'état, donc l'heure et la batterie. Un gestionnaire qui relève des index
+      dans une cage d'escalier veut savoir l'heure.
+
+      L'ORIENTATION N'EST PAS VERROUILLÉE. Le produit rend à 320 comme à 1440, et
+      ses tableaux se lisent mieux en paysage sur une tablette. La verrouiller
+      choisirait à la place de l'utilisateur pour un gain nul.
+    -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!--
+      LA TEINTE DE LA COQUILLE SYSTÈME, DANS LES DEUX THÈMES.
+
+      Sans cette ligne, Android peint la barre d'état en blanc au-dessus d'une
+      page sombre, ou l'inverse : une bande étrangère collée en haut de
+      l'application installée. Les deux valeurs sont celles de `--color-paper`,
+      le fond de la zone principale — c'est la couleur que la barre prolonge.
+
+      Écrites en clair, comme dans `logo.svg` et pour la même raison : une méta
+      est lue par le système AVANT toute feuille de style, et ne peut donc lire
+      aucun jeton. `faviconSuitLaMarque.test.ts` les confronte aux jetons.
+    -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f6f8fb" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f1319" />
 
     <!--
       Thème explicite, posé AVANT le premier rendu.
