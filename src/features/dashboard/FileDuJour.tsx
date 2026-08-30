@@ -1,7 +1,6 @@
 import { Card } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
 import { Icon, type IconName } from '@/components/primitives/Icon'
-import { EmptyState } from '@/components/primitives/DataTable'
 import { cn } from '@/lib/cn'
 import { useT } from '@/i18n/I18nProvider'
 
@@ -110,11 +109,59 @@ export function FileDuJour({ entrees }: { entrees: EntreeDeFile[] }) {
       </div>
 
       {entrees.length === 0 ? (
-        <EmptyState
-          icon="checkCircle"
-          title={t('app.dashboard.queueEmptyTitle')}
-          body={t('app.dashboard.queueEmptyBody')}
-        />
+        /*
+          UNE FILE VIDE TIENT EN UNE LIGNE, PAS EN UN ÉCRAN.
+
+          ═══ CE QUE LA MESURE A DIT ═══
+
+          `EmptyState` porte `py-14` et un cercle de 48 px : 273 px de haut sur
+          un poste de bureau, 316 px à 360 px de large. Relevé le 2026-08-30, la
+          file forcée vide comme la production la rend :
+
+            1280×800   état vide 273 px   1er indicateur à 624 px   vue 800
+            360×640    état vide 316 px   1er indicateur à 786 px   vue 640
+
+          À 360 px — le téléphone du marché visé — les quatre indicateurs sont
+          donc ENTIÈREMENT sous la ligne de flottaison. Un gestionnaire qui
+          ouvre son tableau de bord le matin voit un titre et une boîte en
+          pointillés ; il défile cent cinquante pixels pour son premier chiffre.
+
+          ═══ CE QU'ON NE CHANGE PAS ═══
+
+          NI L'ORDRE, ni les mots. L'en-tête de `Dashboard.tsx` argumente que la
+          file passe AVANT les chiffres — celui qui ouvre cet écran demande
+          « qu'est-ce que je dois traiter », pas « où en est le parc » — et
+          prévoit même que « sur un parc bien tenu la file est vide, et l'écran
+          ouvre alors sur un état vide ; c'est assumé ». L'argument tient.
+
+          Ce qu'il n'avait pas prévu est la HAUTEUR. Une file vide occupait
+          autant de place qu'une file pleine, et le même paragraphe promettait
+          que « les indicateurs ne disparaissent pas et ne rétrécissent pas ».
+          Sur un téléphone, ils disparaissaient.
+
+          ═══ POURQUOI PAS `EmptyState` AVEC MOINS DE REMBOURRAGE ═══
+
+          Parce que la primitive a raison AILLEURS. Sur `/app/travaux`,
+          `/app/cautions`, `/app/signalements`, le vide occupe tout l'écran
+          parce qu'il EST tout l'écran : il n'y a rien d'autre à montrer. Ici il
+          est une section parmi quatre, et la seule dont le vide soit une bonne
+          nouvelle. Rétrécir la primitive pour ce cas-ci abîmerait les trois
+          autres ; on ne l'appelle simplement pas.
+
+          Le cercle et l'icône restent — c'est le même vocabulaire —, la mise en
+          page passe en ligne. 273 px deviennent une rangée.
+        */
+        <div className="flex items-start gap-3">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-muted">
+            <Icon name="checkCircle" className="size-5" />
+          </span>
+          <div className="min-w-0">
+            <p className="title-m">{t('app.dashboard.queueEmptyTitle')}</p>
+            <p className="mt-1 text-body text-pretty text-muted">
+              {t('app.dashboard.queueEmptyBody')}
+            </p>
+          </div>
+        </div>
       ) : (
         <ul className="flex flex-col gap-2">
           {entrees.map((entree) => {
