@@ -123,6 +123,24 @@ jobs:
       # SCRIPT, et npm exécute un script dans le répertoire de son paquet.
       - run: npm run check:server
 
+  polices:
+    name: polices — ce que la machine met derrière system-ui
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # Un RELEVÉ, pas une porte : il imprime des largeurs et ne refuse rien.
+      # Il existe pour répondre à une question précise — `mesure-ui` rougit ici
+      # sur cinq débordements que la machine de développement ne voit pas, et
+      # seule la largeur du texte peut expliquer une dissymétrie pareille.
+      - run: node scripts/releve-polices-machine.mjs
+
   complet:
     name: complet — les portes au navigateur
     # SEULEMENT SUR `main`, et seulement après les deux autres. Un quart d'heure
