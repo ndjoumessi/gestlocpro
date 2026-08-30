@@ -56,6 +56,16 @@ const schema = z.object({
    * code.
    */
   EMAIL_FROM: z.string().min(3).default('GestLocPro <onboarding@resend.dev>'),
+  /**
+   * Où le stockage des pièces pose ses octets. FACULTATIVE ICI, EXIGÉE PLUS BAS
+   * EN PRODUCTION.
+   *
+   * Elle n'est pas facultative par indulgence : un dépôt fraîchement cloné doit
+   * marcher sans configuration, et le repli local sert exactement à cela. C'est
+   * en production que l'absence devient une perte de données — voir le refus
+   * dans `charger()`.
+   */
+  STOCKAGE_RACINE: z.string().min(1).optional(),
 })
 
 function charger() {
@@ -82,6 +92,31 @@ function charger() {
     throw new Error(
       'SESSION_SECRET vaut encore la valeur d’exemple. Tirez-en une au hasard :\n' +
         '  node -e "console.log(require(\'node:crypto\').randomBytes(32).toString(\'hex\'))"',
+    )
+  }
+
+  /**
+   * En production, le stockage doit dire OÙ il écrit.
+   *
+   * LE DÉFAUT QUE CE REFUS FERME. `StockageLocal` retombait sur
+   * `process.cwd() + '/.stockage-local'`, c'est-à-dire dans le conteneur. Aucun
+   * volume n'y étant monté, ce répertoire disparaissait à chaque redéploiement,
+   * emportant les photos d'état des lieux — la preuve qu'un locataire verse pour
+   * ne pas payer une dégradation qu'il n'a pas faite.
+   *
+   * Rien ne le signalait : l'envoi réussit, la vignette s'affiche, la page se
+   * recharge et l'image est là. Elle n'y est plus une semaine après.
+   *
+   * LE CODE NE PEUT PAS VÉRIFIER LA PERSISTANCE. `/data` monté et `/data` créé à
+   * la volée sont indiscernables depuis l'intérieur. Ce qu'on peut exiger, c'est
+   * que quelqu'un l'ait DÉCLARÉ : le refus transforme un oubli silencieux en une
+   * panne bruyante, au déploiement, avant qu'un seul fichier ne soit écrit.
+   */
+  if (env.NODE_ENV === 'production' && !env.STOCKAGE_RACINE) {
+    throw new Error(
+      'STOCKAGE_RACINE est requis en production : sans lui, les pièces envoyées\n' +
+        "  s'écrivent dans le conteneur et disparaissent au prochain déploiement.\n" +
+        '  Montez un volume et pointez-la dessus, par exemple /data/stockage.',
     )
   }
 

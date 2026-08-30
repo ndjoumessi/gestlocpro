@@ -74,6 +74,11 @@ async function appEnProduction(clientDist: string) {
   process.env.NODE_ENV = 'production'
   process.env.CLIENT_DIST = clientDist
   process.env.SESSION_SECRET = 'un-secret-de-test-assez-long-pour-passer'
+  /* Comme le secret ci-dessus, et pour la même raison : `env.ts` refuse de
+     démarrer en production sans dire OÙ le stockage écrit — sans quoi les
+     pièces s'écriraient dans un conteneur qui les perd. Un chemin de test
+     suffit ici ; ce cas ne stocke rien. */
+  process.env.STOCKAGE_RACINE = '/tmp/gestlocpro-stockage-de-test'
   const { createApp } = await import('./app.js')
   return createApp()
 }

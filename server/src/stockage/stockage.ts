@@ -17,11 +17,31 @@ import type { Stockage } from './contrat.js'
 /**
  * Où l'implémentation locale pose ses octets.
  *
- * Hors de `src`, hors du dépôt git : ce sont des données, pas des sources. Le
- * dossier est créé à la volée — un développement qui n'envoie aucune photo n'a
- * pas à en trouver un vide.
+ * EN DÉVELOPPEMENT : hors de `src`, hors du dépôt git — ce sont des données, pas
+ * des sources. Le dossier est créé à la volée, et un clone frais marche sans
+ * configuration.
+ *
+ * EN PRODUCTION : ce chemin-là est un piège, et il a coûté des photos. Le
+ * répertoire de travail vit DANS le conteneur ; sans volume monté, il disparaît
+ * à chaque redéploiement. `STOCKAGE_RACINE` dit donc où écrire, et `env.ts`
+ * refuse de démarrer sans elle hors développement — le raisonnement complet est
+ * à côté de ce refus.
+ *
+ * La variable l'emporte partout où elle est posée, y compris en développement :
+ * qui veut éprouver un montage n'a pas à modifier ce fichier pour l'essayer.
  */
-const RACINE_LOCALE = resolve(process.cwd(), '.stockage-local')
+const RACINE_LOCALE = env.STOCKAGE_RACINE ?? resolve(process.cwd(), '.stockage-local')
+
+/**
+ * Le chemin réellement employé, pour qui veut le vérifier.
+ *
+ * Exporté parce qu'une garde doit pouvoir le lire : `racine` est privé dans
+ * `StockageLocal`, et un contrôle qui se contenterait de relire la variable
+ * d'environnement se vérifierait contre lui-même plutôt que contre le code.
+ */
+export function racineDuStockage(): string {
+  return RACINE_LOCALE
+}
 
 /**
  * Choisit l'implémentation.
