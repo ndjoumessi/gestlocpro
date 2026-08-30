@@ -105,12 +105,22 @@ jobs:
           cache: npm
           cache-dependency-path: server/package-lock.json
       - run: npm --prefix server ci
+      # `working-directory` ET NON `--prefix`, et la distinction a coûté une
+      # exécution rouge : `--prefix` change où npm cherche le paquet, pas le
+      # RÉPERTOIRE COURANT du programme lancé. Prisma cherchait donc son schéma
+      # à la racine du dépôt — « prisma/schema.prisma: file not found ». Le
+      # `Dockerfile` fait `cd server` pour exactement cette raison.
+      #
       # Le client Prisma est GÉNÉRÉ, pas versionné : sans lui, `tsc -b` ne trouve
       # pas `src/generated/prisma` et rien ne compile.
-      - run: npm --prefix server exec prisma generate
+      - run: npx prisma generate
+        working-directory: server
       # `migrate deploy` et non `db push` : c'est le geste de la production, et
       # c'est lui qu'on veut voir échouer ici si une migration est mal formée.
-      - run: npm --prefix server exec prisma migrate deploy
+      - run: npx prisma migrate deploy
+        working-directory: server
+      # Celui-ci reste à la racine : `npm --prefix server run check` lance un
+      # SCRIPT, et npm exécute un script dans le répertoire de son paquet.
       - run: npm run check:server
 
   complet:
