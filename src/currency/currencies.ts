@@ -418,14 +418,48 @@ export function parseMoney(input: string, currency: CurrencyCode): number | null
   const decimal = parts.find((p) => p.type === 'decimal')?.value ?? '.'
 
   let cleaned = input.trim()
+
+  /*
+    LE SYMBOLE DE CETTE DEVISE SE RETIRE — et lui seul.
+
+    Un montant affiché doit pouvoir être resaisi tel quel : « 145 000 FCFA »
+    recopié depuis l'écran est une saisie légitime, et le symbole n'y est pas
+    une faute de frappe. On l'enlève donc explicitement, par son nom, au lieu de
+    balayer toutes les lettres.
+  */
+  if (def.symbol) cleaned = cleaned.split(def.symbol).join('')
+
   // Les espaces sous toutes leurs formes servent de séparateur de milliers en
-  // français, y compris l'insécable étroite que `formatMoney` produit : un
-  // montant recopié depuis l'écran doit pouvoir être resaisi tel quel.
+  // français, y compris l'insécable étroite que `formatMoney` produit.
   if (group) cleaned = cleaned.split(group).join('')
-  cleaned = cleaned.replace(/[\s  ]/g, '')
+  cleaned = cleaned.replace(/[\s\u00a0\u202f\u2009]/g, '')
   cleaned = cleaned.split(decimal).join('.')
-  // Tout le reste — symbole monétaire, lettres, ponctuation — est écarté.
-  cleaned = cleaned.replace(/[^\d.-]/g, '')
+
+  /*
+    ═══ CE QUI RESTE DOIT ÊTRE UN NOMBRE, SANS QUOI ON REFUSE ═══
+
+    LA RÉDACTION PRÉCÉDENTE GOMMAIT : `cleaned.replace(/[^\d.-]/g, '')`, sous le
+    commentaire « tout le reste — symbole monétaire, lettres, ponctuation — est
+    écarté ». L'intention était juste pour le SYMBOLE ; appliquée aux lettres,
+    elle recollait les deux moitiés du nombre et rendait un montant PLAUSIBLE
+    que rien ne signalait. Mesuré sur l'ancienne rédaction :
+   
+      « 1o3 »   -> 13     un « o » tapé pour un zéro, et le loyer perd un ordre
+      « 12abc » -> 12
+      « 1a2b3 » -> 123
+   
+    Aucune de ces saisies ne rendait `null`. Elles partaient au serveur, et
+    l'écran confirmait un chiffre que personne n'avait tapé. Sur un loyer, une
+    caution ou un devis, c'est le pire mode de panne : il ne se voit pas.
+   
+    UN REFUS N'EST PAS UNE GÊNE, c'est la seule réponse honnête. L'appelant rend
+    déjà « montant invalide » sur `null` — le chemin existe, il n'était
+    simplement jamais emprunté. Et le symbole d'une AUTRE devise tombe ici aussi,
+    ce qui est voulu : « 100 € » saisi sur un parc en francs n'est pas « cent »,
+    c'est une question que seul l'écran peut trancher, puisque lui seul sait
+    quelle devise il affiche.
+  */
+  if (!/^-?\d*\.?\d*$/.test(cleaned)) return null
 
   if (!/\d/.test(cleaned)) return null
   const value = Number(cleaned)

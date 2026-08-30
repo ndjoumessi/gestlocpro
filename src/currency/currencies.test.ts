@@ -205,9 +205,55 @@ describe('lecture d’un montant saisi', () => {
     }
   })
 
-  it('écarte le symbole monétaire et les lettres', () => {
+  it('écarte le symbole monétaire, qui n’est pas une lettre de trop', () => {
     expect(parseMoney('145 000 FCFA', 'CFA')).toBe(145000)
     expect(parseMoney('$ 1,450', 'USD')).toBe(145000)
+  })
+
+  /**
+   * UNE LETTRE DANS LE NOMBRE REFUSE, ELLE NE S'EFFACE PAS.
+   *
+   * LE DÉFAUT, ET C'EST DE LA CORRUPTION SILENCIEUSE, pas une gêne de saisie.
+   * `parseMoney` écartait « tout le reste » par `replace(/[^\d.-]/g, '')` : une
+   * lettre au MILIEU des chiffres disparaissait et les deux moitiés se
+   * recollaient. Mesuré sur l'ancienne rédaction :
+   *
+   *   « 1o3 »    -> 13     (un o pour un zéro, et le montant perd un ordre)
+   *   « 12abc »  -> 12
+   *   « 1a2b3 »  -> 123
+   *   « 12e3 »   -> 123
+   *
+   * Aucune de ces saisies n'est rendue `null` : elles rendent un montant
+   * PLAUSIBLE, que rien ne signale, et qui part au serveur. Sur un loyer, une
+   * caution ou un devis, c'est le pire mode de panne possible — l'écran
+   * confirme un chiffre que personne n'a tapé.
+   *
+   * LA DISTINCTION QUI FAIT LA RÈGLE : le SYMBOLE se retire, le reste refuse.
+   * « 145 000 FCFA » doit se resaisir tel qu'il s'affiche — c'est ce que le cas
+   * du dessus tient, et il ne bouge pas. Ce qui change est le sort de ce qui
+   * n'est ni un chiffre, ni un séparateur, ni le symbole de LA devise en cours.
+   */
+  it('refuse une lettre au milieu des chiffres au lieu de la gommer', () => {
+    expect(parseMoney('1o3', 'CFA')).toBeNull()
+    expect(parseMoney('12abc', 'CFA')).toBeNull()
+    expect(parseMoney('1a2b3', 'CFA')).toBeNull()
+    expect(parseMoney('12e3', 'CFA')).toBeNull()
+    expect(parseMoney('900,5O', 'EUR')).toBeNull()
+  })
+
+  /**
+   * LE SYMBOLE D'UNE AUTRE DEVISE N'EST PAS LE SIEN.
+   *
+   * Saisir « 100 € » dans un parc en francs devait déjà revenir en francs par
+   * `parseAmount`, qui convertit. Mais `parseMoney`, lui, ne connaît qu'UNE
+   * devise : lui présenter le symbole d'une autre est une saisie qu'il ne sait
+   * pas lire, et la gommer rendrait « cent » là où l'utilisateur a écrit « cent
+   * euros ». Un refus renvoie la question à l'écran, qui sait quelle devise il
+   * affiche.
+   */
+  it('refuse le symbole d’une devise qui n’est pas celle demandée', () => {
+    expect(parseMoney('100 €', 'CFA')).toBeNull()
+    expect(parseMoney('100 FCFA', 'EUR')).toBeNull()
   })
 
   it('distingue une saisie vide d’un zéro', () => {
