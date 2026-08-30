@@ -115,11 +115,29 @@ export function createApp(options: { taux?: SourceDeTaux } = {}) {
    * ═══ CE QU'IL COÛTE, MESURÉ ET NON SUPPOSÉ ═══
    *
    * 7,9 ms de gzip pour le paquet de 426 674 octets — moyenne sur cinq passes,
-   * sur la machine de développement ; un conteneur modeste sera plus lent. Ce
-   * n'est pas du temps de BOUCLE : `compression` emploie le flux zlib
-   * asynchrone, que Node exécute sur son groupe de fils. Le coût est du
-   * processeur, pas de la latence servie, et il ne se paie que sur ce que le
-   * bord n'a pas déjà en cache.
+   * sur la machine de développement ; un conteneur modeste sera plus lent, et
+   * ce facteur-là n'est PAS mesuré. Ce n'est pas du temps de BOUCLE :
+   * `compression` emploie le flux zlib asynchrone, que Node exécute sur son
+   * groupe de fils. Le coût est du processeur, pas de la latence servie.
+   *
+   * LE BORD NE MET RIEN EN CACHE, et c'est ce qui donne son prix à la ligne
+   * ci-dessus. Relevé le 2026-08-30 sur deux requêtes successives : aucun
+   * en-tête `age`, `x-cache` ni `via`. Le `cache-control: public, max-age=3600`
+   * que rend la production vient d'`express.static`, plus bas, et gouverne le
+   * NAVIGATEUR, pas le bord. Chaque visiteur froid atteint donc l'origine, et
+   * ces 7,9 ms se paient à chaque fois.
+   *
+   * D'OÙ CE QUE CET INTERGICIEL FAIT VRAIMENT AU BILAN : il ne double pas le
+   * travail de gzip — le bord retransmet une réponse déjà encodée sans y
+   * toucher — il le DÉPLACE, du bord de Railway vers ce conteneur. Une seule
+   * compression dans la chaîne, sur la machine que vous payez plutôt que sur la
+   * leur. C'est le prix de l'indépendance décrite plus haut, et c'est un
+   * arbitrage, pas une évidence.
+   *
+   * LA VOIE QUI RENDRAIT LES DEUX — précompresser les actifs à la construction
+   * et les servir tels quels — n'est pas prise ici : elle demande une étape de
+   * build, un service statique qui sache choisir le `.gz`, et sa propre garde.
+   * Elle est nommée pour qu'on sache qu'elle existe.
    *
    * Le bord ne sert PAS de brotli — vérifié, `Accept-Encoding: br` ne rend
    * rien. Poser gzip ici ne prive donc aujourd'hui d'aucun encodage meilleur.
