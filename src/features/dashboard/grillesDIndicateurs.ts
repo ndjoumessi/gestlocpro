@@ -67,25 +67,52 @@ export const GRILLE_TROIS_INDICATEURS = 'grid gap-4 sm:grid-cols-2 xl:grid-cols-
  * Employée par le tableau de bord et le parc.
  */
 /*
-  PORTE D'UN CRAN LUI AUSSI, MAIS AVEC UN PAS INTERMEDIAIRE — ET LE PREMIER JET
-  N'EN AVAIT PAS.
+  DEUX COLONNES, PUIS QUATRE. JAMAIS TROIS — et le premier jet s'y était trompé.
 
-  Mesure a 1280 px en police large : la carte offre 186 px de contenu et
-  « 1 397 000 FCFA » en demande 199 — treize pixels dehors, huit fois sur le
-  tableau de bord et les encaissements. A 1536, la meme carte offre environ
-  223 px. Les quatre colonnes attendent donc `2xl`.
+  ═══ POURQUOI PAS TROIS ═══
 
-  LE PREMIER JET ALLAIT DE `sm:grid-cols-2` A `2xl:grid-cols-4` SANS ESCALE, et
-  c'etait un mauvais echange : entre 1280 et 1535 px — un portable ordinaire, et
-  une largeur que la porte mesure — le tableau de bord serait tombe a DEUX cartes
-  de six cents pixels portant chacune un montant de deux cents. On repare treize
-  pixels en gachant la moitie d'une rangee. `xl:grid-cols-3` tient l'entre-deux :
-  trois colonnes a 1280, ou la carte offre largement de quoi.
+  QUATRE CARTES NE SE RANGENT PAS EN TROIS COLONNES. La quatrième reste seule
+  sur sa ligne, et ce n'est pas une imperfection de goût : une rangée
+  d'indicateurs se lit EN TRAVERS, et l'orpheline se lit comme une cinquième
+  chose, d'une autre nature.
 
-  ET `2xl` DOIT ETRE MESURE, sans quoi la regle est vide. `LARGEURS`, dans
-  `scripts/mesure-ui.mjs`, s'arretait a 1440 : porter les quatre colonnes a 1536
-  les mettait hors de portee de toute mesure, et un debordement futur y serait
-  passe inapercu. C'est exactement ce que la garde de `LARGEUR_SANS_REPLI`
-  refuse dans le meme fichier. 1536 est donc entre dans les largeurs balayees.
+  Ce cran a pourtant été posé ici, ce matin même, pour une raison qui était
+  bonne — éviter deux cartes de six cents pixels entre 1280 et 1535 — et sans
+  regarder ce qu'il produisait. Vu ensuite sur une CAPTURE DE PRODUCTION, à
+  1440 px : trois cartes, puis « Taux d'occupation » tout seul dessous.
+
+  ═══ LES DEUX MESURES QUI ENCADRENT LE CHOIX ═══
+
+  Relevé le 2026-08-30 en police large, sur `/demo` :
+
+    largeur   deux colonnes   quatre colonnes
+     1280        472 px          186 px de contenu — « 1 397 000 FCFA » en
+                                 demande 199 : DÉBORDE de treize pixels
+     1440        552 px          tiendrait, mais voir ci-dessous
+     1536        600 px          292 px de carte — tient largement
+
+  Quatre colonnes ne peuvent donc pas commencer à `xl`. Elles commenceraient
+  volontiers vers 1400, où elles cessent de déborder ; ESSAYÉ ET ABANDONNÉ.
+  Tailwind range les points de rupture personnalisés AVANT les siens, quelle que
+  soit leur position dans `@theme` : la règle était bien émise en
+  `@media(min-width:1400px)` — vérifié dans la feuille livrée — et
+  `sm:grid-cols-2`, écrite plus loin, l'emportait dans la cascade. Un jeton mort
+  vaut moins que rien ; il a été retiré.
+
+  ═══ CE QUE CE CHOIX COÛTE, ET IL EST RÉEL ═══
+
+  De 1280 à 1535, chaque carte porte un nombre de deux cents pixels dans une
+  boîte de cinq cents. C'est large. C'est aussi ce que la garde du BLANC IMPOSÉ
+  de `mesure-ui` surveille, et elle balaie ces largeurs.
+
+  On échange donc du blanc contre une rangée qui se lit. Entre une carte trop
+  généreuse et une carte esseulée, la seconde est la seule qui fasse douter le
+  lecteur de ce qu'il regarde.
+
+  ═══ ET `2xl` DOIT ÊTRE MESURÉ ═══
+
+  `LARGEURS`, dans `scripts/mesure-ui.mjs`, s'arrêtait à 1440 : porter les
+  quatre colonnes à 1536 les mettait hors de portée de toute mesure. 1536 est
+  entré dans les largeurs balayées le même jour.
 */
-export const GRILLE_QUATRE_INDICATEURS = 'grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4'
+export const GRILLE_QUATRE_INDICATEURS = 'grid gap-4 sm:grid-cols-2 2xl:grid-cols-4'
