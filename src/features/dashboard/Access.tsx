@@ -16,6 +16,8 @@ import { useDates } from '@/lib/useDates'
 import { useSession } from '@/api/SessionProvider'
 import { ACCES_DEMO } from '@/data/portfolio'
 import { api } from '@/api/client'
+import { GRILLE_DEUX_INDICATEURS } from './grillesDIndicateurs'
+import { cn } from '@/lib/cn'
 
 /**
  * QUI PEUT ENTRER DANS CE PARC.
@@ -161,7 +163,7 @@ export function Access() {
           compter les lignes à l'œil. Deux cartes, parce qu'il y a deux
           populations — celles qui entrent aujourd'hui, et celles qui le
           pourraient. */}
-      <div className="mb-6 grid gap-4 sm:grid-cols-2">
+      <div className={cn(GRILLE_DEUX_INDICATEURS, 'mb-6')}>
         <StatCard
           icone="users"
           label={t('app.access.kpiMembers')}

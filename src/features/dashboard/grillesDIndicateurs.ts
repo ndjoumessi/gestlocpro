@@ -1,5 +1,5 @@
 /**
- * LES DEUX GRILLES DE RANGÉE D'INDICATEURS, écrites une fois.
+ * LES TROIS GRILLES DE RANGÉE D'INDICATEURS, écrites une fois.
  *
  * CE QU'ELLES REMPLACENT : douze littéraux de classes dans six écrans — la
  * rangée CHARGÉE et son SQUELETTE, deux fois par écran — et TROIS copies de la
@@ -57,6 +57,36 @@
   pas les polices d'Apple — c'est-a-dire, sur le marche vise, presque tout le
   monde.
 */
+/**
+ * DEUX INDICATEURS PRENNENT LA TAILLE DE TROIS, ET LAISSENT LA PLACE VIDE.
+ *
+ * ═══ CE QUE ÇA RÉPARE ═══
+ *
+ * `Access.tsx` écrivait sa propre grille — `sm:grid-cols-2`, sans plafond — et
+ * ses deux cartes s'étiraient donc sur TOUTE la largeur. Mesuré le 2026-08-30 à
+ * 1660 px : deux cartes de 662 px portant 255 et 195 px de contenu, soit
+ * SOIXANTE ET UN et SOIXANTE ET ONZE POUR CENT de vide. Le chiffre « 3 » y
+ * flottait dans deux tiers de boîte.
+ *
+ * Les autres écrans du produit rendent leurs cartes à 436 px à la même largeur.
+ * La taille d'une carte d'indicateur devenait donc fonction de leur NOMBRE, ce
+ * qui n'a aucun sens : elle porte toujours un intitulé, un nombre et une note.
+ *
+ * ═══ POURQUOI LE MÊME GABARIT, ET NON UN PLAFOND DE LARGEUR ═══
+ *
+ * Un `max-w-[900px]` aurait marché et aurait été un nombre de plus à accorder à
+ * la main avec les deux autres grilles. En reprenant EXACTEMENT le gabarit de
+ * `GRILLE_TROIS_INDICATEURS`, les cartes d'un écran à deux indicateurs sont au
+ * pixel celles d'un écran à trois : la troisième colonne reste simplement vide.
+ * Une carte a une taille dans ce produit ; elle ne l'emprunte pas à ses voisines.
+ *
+ * ═══ CE QUE ÇA COÛTE ═══
+ *
+ * Une colonne vide à droite, au-dessus de `xl`. C'est visible, et c'est le prix
+ * assumé : un blanc RÉGULIER, à la place d'un blanc qui gonfle les cartes.
+ */
+export const GRILLE_DEUX_INDICATEURS = 'grid gap-4 sm:grid-cols-2 xl:grid-cols-3'
+
 export const GRILLE_TROIS_INDICATEURS = 'grid gap-4 sm:grid-cols-2 xl:grid-cols-3'
 
 /**
