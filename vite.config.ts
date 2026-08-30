@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'node:path'
 import { writeFileSync } from 'node:fs'
+import { retirerLesCommentairesHtml } from './scripts/sansCommentairesHtml.mjs'
 
 /**
  * ÉCRIT LA CARTE DES PAQUETS, pour que `scripts/mesure-ui.mjs` sache quel
@@ -46,7 +47,14 @@ function carteDesPaquets(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), carteDesPaquets()],
+  /*
+    `retirerLesCommentairesHtml` EN DERNIER, et son en-tête dit pourquoi il
+    existe : `index.html` est le seul fichier du produit dont la prose part sur
+    le fil — 7 702 octets bruts, 3 658 sur le fil, 73 ms à 400 kb/s, et sur
+    CHAQUE écran. Les commentaires de `.ts` disparaissent au paquet depuis
+    toujours ; celui-ci partait tel quel, faute qu'une garde le pèse à part.
+  */
+  plugins: [react(), tailwindcss(), carteDesPaquets(), retirerLesCommentairesHtml() as Plugin],
   resolve: {
     alias: { '@': path.resolve(__dirname, 'src') },
   },
