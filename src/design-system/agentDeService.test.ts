@@ -172,6 +172,25 @@ describe('ce que l’agent range', () => {
     'evenement.respondWith(\n    (async () => {',
   )
 
+  /**
+   * L'ORDRE, ET NON LA DISTANCE.
+   *
+   * Ces deux cas mesuraient d'abord un ÉCART : `if (reponse.ok)` suivi d'un
+   * `cache.put` à moins de 240 caractères. Ils ont rougi au lot suivant parce
+   * qu'un commentaire s'était allongé entre les deux — un faux rouge, pour une
+   * raison qui n'est pas dans le code, exactement ce que ce dépôt refuse
+   * ailleurs.
+   *
+   * La propriété qu'on veut n'est pas une distance : c'est qu'AUCUN `cache.put`
+   * ne précède la garde. On la mesure donc telle quelle, et la prose peut
+   * grandir autant qu'elle veut.
+   */
+  const rangeApresLaGarde = (branche: string) => {
+    const garde = branche.indexOf('if (reponse.ok)')
+    const premierRangement = branche.indexOf('cache.put')
+    return garde > -1 && premierRangement > garde
+  }
+
   it('ne range une NAVIGATION que si elle a abouti', () => {
     /* Pendant un déploiement, le bord rend une page d'erreur en 502. Rangée,
        elle écrase la dernière coquille valide, et c'est elle que l'utilisateur
@@ -179,8 +198,8 @@ describe('ce que l’agent range', () => {
        réussi. */
     expect(navigation, 'la branche de navigation est introuvable').toBeDefined()
     expect(
-      /if \(reponse\.ok\)[\s\S]{0,240}cache\.put/.test(navigation!),
-      'la branche de navigation range sans vérifier `reponse.ok`',
+      rangeApresLaGarde(navigation!),
+      'la branche de navigation range AVANT de vérifier `reponse.ok`',
     ).toBe(true)
   })
 
@@ -189,9 +208,31 @@ describe('ce que l’agent range', () => {
        le nom ne changera plus, donc le cache ne se rafraîchira jamais. */
     expect(actifs, 'la branche des actifs est introuvable').toBeDefined()
     expect(
-      /if \(reponse\.ok\)[\s\S]{0,240}cache\.put/.test(actifs!),
-      'la branche des actifs range sans vérifier `reponse.ok`',
+      rangeApresLaGarde(actifs!),
+      'la branche des actifs range AVANT de vérifier `reponse.ok`',
     ).toBe(true)
+  })
+
+  it('range la coquille SOUS UNE CLÉ FIXE, en plus de son adresse', () => {
+    /* Sans cette seconde écriture, l'agent ne peut ouvrir hors ligne que les
+       adresses EXACTEMENT visitées — alors que le document à servir est le même
+       pour toutes, mesuré. */
+    expect(agent, '`CLE_DE_COQUILLE` a disparu').toMatch(/const CLE_DE_COQUILLE = '[^']+'/)
+    expect(
+      /cache\.put\(CLE_DE_COQUILLE, reponse\.clone\(\)\)/.test(navigation!),
+      'la navigation ne range plus la coquille sous sa clé fixe',
+    ).toBe(true)
+  })
+
+  it('sert cette coquille quand l’adresse exacte n’a jamais été visitée', () => {
+    /* La moitié qui compte : ranger sans resservir ne sert personne. L'ordre est
+       gardé aussi — l'adresse exacte D'ABORD, la coquille ensuite — sans quoi un
+       écran visité recevrait la coquille d'un autre alors que la sienne est là. */
+    const exacte = navigation!.indexOf('caches.match(evenement.request)')
+    const repli = navigation!.indexOf('caches.match(CLE_DE_COQUILLE)')
+    expect(repli, 'le repli sur la coquille a disparu').toBeGreaterThan(-1)
+    expect(exacte, "l'adresse exacte n'est plus cherchée").toBeGreaterThan(-1)
+    expect(repli, "la coquille est servie AVANT l'adresse exacte").toBeGreaterThan(exacte)
   })
 
   it('ne range JAMAIS une réponse d’API', () => {
