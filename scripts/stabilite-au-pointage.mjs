@@ -144,6 +144,14 @@ try {
   const navigateur = await chromium.launch()
   for (const point of POINTS) {
     const contexte = await navigateur.newContext({
+    /* L'AGENT DE SERVICE EST BLOQUÉ PENDANT LA MESURE.
+       `main.tsx` l'enregistre en production, donc sur le paquet que ces portes
+       servent. Installé, il répondrait à la place du réseau dès la deuxième
+       navigation : les octets et les requêtes tomberaient, la porte annoncerait
+       un gain, et ce gain serait celui d'un cache local que l'utilisateur n'a
+       pas au premier chargement. On mesure le réseau, donc on écarte ce qui le
+       masque. */
+    serviceWorkers: 'block',
       viewport: { width: point.largeur, height: 900 },
       locale: point.langue === 'fr' ? 'fr-FR' : 'en-US',
       colorScheme: 'light',

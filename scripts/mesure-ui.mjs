@@ -4003,6 +4003,14 @@ try {
   const navigateur = await chromium.launch()
   for (const langue of LANGUES) {
     const contexte = await navigateur.newContext({
+    /* L'AGENT DE SERVICE EST BLOQUÉ PENDANT LA MESURE.
+       `main.tsx` l'enregistre en production, donc sur le paquet que ces portes
+       servent. Installé, il répondrait à la place du réseau dès la deuxième
+       navigation : les octets et les requêtes tomberaient, la porte annoncerait
+       un gain, et ce gain serait celui d'un cache local que l'utilisateur n'a
+       pas au premier chargement. On mesure le réseau, donc on écarte ce qui le
+       masque. */
+    serviceWorkers: 'block',
       viewport: { width: LARGEURS[0], height: 900 },
       locale: langue,
       colorScheme: THEME_DE_GEOMETRIE,
@@ -4463,6 +4471,14 @@ try {
   */
   for (const langue of LANGUES) {
     const contexte = await navigateur.newContext({
+    /* L'AGENT DE SERVICE EST BLOQUÉ PENDANT LA MESURE.
+       `main.tsx` l'enregistre en production, donc sur le paquet que ces portes
+       servent. Installé, il répondrait à la place du réseau dès la deuxième
+       navigation : les octets et les requêtes tomberaient, la porte annoncerait
+       un gain, et ce gain serait celui d'un cache local que l'utilisateur n'a
+       pas au premier chargement. On mesure le réseau, donc on écarte ce qui le
+       masque. */
+    serviceWorkers: 'block',
       viewport: { width: LARGEURS_CONTRASTE[0], height: 900 },
       locale: langue,
     })
@@ -4543,6 +4559,14 @@ try {
       const nom = `${surface.nom}@${surface.largeur}/${theme}`
       process.stdout.write(`   surface  ${nom} … `)
       const contexte = await navigateur.newContext({
+    /* L'AGENT DE SERVICE EST BLOQUÉ PENDANT LA MESURE.
+       `main.tsx` l'enregistre en production, donc sur le paquet que ces portes
+       servent. Installé, il répondrait à la place du réseau dès la deuxième
+       navigation : les octets et les requêtes tomberaient, la porte annoncerait
+       un gain, et ce gain serait celui d'un cache local que l'utilisateur n'a
+       pas au premier chargement. On mesure le réseau, donc on écarte ce qui le
+       masque. */
+    serviceWorkers: 'block',
         viewport: { width: surface.largeur, height: 900 },
         locale: LANGUES[1],
         colorScheme: theme,
@@ -4680,6 +4704,14 @@ try {
     }
 
     const contexte = await navigateur.newContext({
+    /* L'AGENT DE SERVICE EST BLOQUÉ PENDANT LA MESURE.
+       `main.tsx` l'enregistre en production, donc sur le paquet que ces portes
+       servent. Installé, il répondrait à la place du réseau dès la deuxième
+       navigation : les octets et les requêtes tomberaient, la porte annoncerait
+       un gain, et ce gain serait celui d'un cache local que l'utilisateur n'a
+       pas au premier chargement. On mesure le réseau, donc on écarte ce qui le
+       masque. */
+    serviceWorkers: 'block',
       viewport: { width: 390, height: 844 },
       locale: LANGUES[1],
       colorScheme: THEME_DE_GEOMETRIE,

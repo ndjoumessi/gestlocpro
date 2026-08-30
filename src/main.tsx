@@ -10,6 +10,36 @@ import { ToastProvider } from './components/primitives/Toast'
 import { SessionProvider } from './api/SessionProvider'
 import { BandeauVersion } from './components/feedback/BandeauVersion'
 
+/**
+ * L'AGENT DE SERVICE, ET LES TROIS CONDITIONS DE SON ENREGISTREMENT.
+ *
+ * IL N'EXISTE QU'EN PRODUCTION. En développement, un cache entre le serveur de
+ * Vite et la page rendrait le rechargement à chaud imprévisible — et c'est le
+ * genre de doute qui coûte une heure avant qu'on y pense.
+ *
+ * APRÈS `load`, jamais avant. L'enregistrement est du réseau et du travail ; le
+ * faire pendant que la page se peint retarde le premier rendu pour un bénéfice
+ * qui ne sert qu'à la visite SUIVANTE.
+ *
+ * `updateViaCache: 'none'` — l'agent lui-même ne se lit jamais depuis le cache
+ * HTTP. `express.static` pose `max-age=1h` sur tout ce qu'il sert, y compris
+ * `/sw.js` : sans cette option, une correction d'agent pourrait attendre une
+ * heure avant d'être seulement TÉLÉCHARGÉE. C'est exactement le genre de délai
+ * qu'on ne veut pas entre une bévue de cache et son remède.
+ *
+ * L'ÉCHEC EST AVALÉ. Un navigateur qui refuse — mode privé, réglage
+ * d'entreprise, contexte non sécurisé — doit rendre une application qui marche,
+ * simplement sans sa moitié hors ligne. Rien ici n'est nécessaire au produit.
+ */
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    void navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch(() => {
+      /* Sans agent, le produit fonctionne : il ne s'ouvre simplement pas hors
+         ligne. Ce n'est pas une panne à signaler à l'utilisateur. */
+    })
+  })
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>

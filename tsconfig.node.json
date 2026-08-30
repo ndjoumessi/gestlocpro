@@ -43,6 +43,7 @@
     "src/design-system/separateurs.test.ts",
     "src/design-system/saisieNumeriqueParLaPrimitive.test.ts",
     "src/design-system/sansCommentairesHtml.test.ts",
+    "src/design-system/agentDeService.test.ts",
     "src/lib/datesISO.test.ts",
     "src/design-system/bandeInversee.test.ts",
     "src/design-system/jetonsMorts.test.ts",
