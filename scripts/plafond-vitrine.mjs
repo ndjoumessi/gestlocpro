@@ -27,6 +27,11 @@
  *     Ils tiennent en une fenêtre et leur hauteur est portée par leur
  *     formulaire, pas par une composition éditoriale.
  *
+ * CE QU'IL REFUSE AVANT DE MESURER : une page dont les titres sont rendus dans
+ * la police de REPLI. Voir `FAMILLE_ATTENDUE` — sans cette garde du garde, une
+ * machine sans sortie réseau rendait un verdict de plafond sur une page qui
+ * n'est pas celle du visiteur, et se trompait dans les deux sens.
+ *
  *   node scripts/plafond-vitrine.mjs
  *
  * PIÈGE TAILWIND v4 : `scripts/` est balayé comme source. Aucun nom
@@ -184,6 +189,78 @@ const ATTENDUS = 4
  */
 const SECTIONS_ATTENDUES = 8
 
+/**
+ * LA FAMILLE D'AFFICHAGE, ET POURQUOI SON ABSENCE DOIT ARRÊTER LE RELEVÉ.
+ *
+ * LE DÉFAUT, MESURÉ LE 2026-08-30. Ce script attend `networkidle` puis 800 ms,
+ * et le `.catch(() => {})` posé sur cette attente AVALE l'échec. Réseau coupé —
+ * intégration continue, pare-feu, train — la requête vers `fonts.googleapis.com`
+ * meurt, la page rend ses titres dans la pile système, et le relevé sortait
+ * quand même. Sur `/` à 360 px en français, avec exactement l'attente de ce
+ * script, les deux origines de police routées vers `abort()` contre servies :
+ *
+ *   police servie   10191 px de document, h1 de 157 px, 4 faces
+ *   police bloquée  10152 px de document, h1 de 118 px, 0 face
+ *
+ * Trente-neuf pixels, et ils viennent d'une ligne de titre en moins : la sans de
+ * la fonderie est plus large que la pile système, donc l'accroche française se
+ * replie une fois de plus avec elle que sans elle.
+ *
+ * UN POINT SUR QUATRE BOUGE, ET IL FAUT LE DIRE. Aux trois autres — en@360,
+ * fr@1280, en@1280 — les deux relevés sont IDENTIQUES au pixel : 10052, 7165 et
+ * 7240 dans les deux conditions. Les titres y tiennent sur le même nombre de
+ * lignes avec l'une ou l'autre police, et une hauteur de ligne est portée par le
+ * jeton, pas par la fonte. Cette garde n'attrape donc pas un écart permanent :
+ * elle attrape le point, et le jour, où un titre se replie autrement.
+ *
+ * AUCUN VERDICT NE S'INVERSE AUJOURD'HUI, et l'écrire est le seul moyen de ne
+ * pas vendre cette garde plus cher qu'elle ne vaut. À fr@360, 10191 comme 10152
+ * passent sous le plafond de 10209. Le danger n'est pas le verdict : c'est la
+ * RÉINSCRIPTION. Un plafond relevé depuis une exécution sans police vaudrait ici
+ * 10152 ; la vraie page en fait 10191, et la porte rougirait ensuite POUR
+ * TOUJOURS sur une vitrine dont rien n'aurait bougé. C'est ce que dit le message
+ * de refus, et c'est la vraie dette que cette garde éteint.
+ *
+ * LE SENS DE L'ÉCART N'EST PAS UNE PROPRIÉTÉ DU MONDE. Il dépend du couple
+ * famille/repli, donc d'un choix de marque, et il a déjà changé de signe dans ce
+ * dépôt : du temps de Source Serif 4 sur un repli Georgia, la page SANS police
+ * était plus HAUTE — l'absence de police faisait rougir ce script en désignant
+ * la vitrine. Aujourd'hui elle est plus BASSE. Une garde calibrée sur le signe
+ * observé un jour donné se serait retournée à la refonte typographique suivante.
+ *
+ * D'OÙ LE REFUS PLUTÔT QUE LA COMPARAISON. On ne compare pas la hauteur à son
+ * plafond quand la police manque : le verdict porterait sur une page que
+ * personne ne voit, et il peut se tromper dans les deux sens selon la fonderie
+ * du moment. Le point n'est pas non plus compté comme inspecté — absence de
+ * mesure valable, et non mesure sans défaut, ce que `ATTENDUS` fait alors
+ * remonter tout seul.
+ *
+ * LE SEUL TÉMOIN QUI TRANCHE, et trois candidats mentent. Essayés dans les deux
+ * conditions ci-dessus, sur cette base :
+ *   — `getComputedStyle(h1).fontFamily` rend la DÉCLARATION, identique au
+ *     caractère près : c'est le nom demandé, jamais le nom servi ;
+ *   — `document.fonts.status` vaut `'loaded'` des deux côtés — il dit que plus
+ *     rien n'est en vol, pas que quelque chose est arrivé ;
+ *   — `document.fonts.check('700 40px "Plus Jakarta Sans"')` rend `true` des
+ *     deux côtés : il répond sur la capacité à PEINDRE le texte, or le repli en
+ *     est parfaitement capable.
+ * Reste `document.fonts` lui-même, qui n'est peuplé que des faces réellement
+ * livrées par la feuille de la fonderie : 4 contre 0.
+ *
+ * LA FAMILLE EST ÉCRITE ICI, ET NON LUE DANS `--font-display`. La dériver du
+ * jeton reviendrait à demander à la page sous mesure ce qu'elle doit prouver :
+ * renommer le jeton sans toucher au `<link>` d'`index.html` rendrait la garde
+ * d'accord avec elle-même. C'est le piège que `ATTENDUS` documente déjà deux
+ * écrans plus haut. Changer de fonderie oblige donc à récrire cette ligne, donc
+ * à le dire dans un diff.
+ *
+ * CE QU'ELLE NE VOIT PAS : une police qui arrive mais DIFFÈRE de celle qu'on
+ * croyait — graisse tronquée, sous-ensemble amputé, axe absent. Elle constate
+ * qu'une face de ce nom est chargée, ce qui est vérifiable ; elle ne compare
+ * aucun dessin.
+ */
+const FAMILLE_ATTENDUE = 'Plus Jakarta Sans'
+
 async function servir() {
   const fils = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--host', '127.0.0.1'], {
     cwd: RACINE,
@@ -226,7 +303,10 @@ try {
     await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {})
     await page.waitForTimeout(800)
 
-    const m = await page.evaluate(() => {
+    const m = await page.evaluate((famille) => {
+      /* Les faces RÉELLEMENT livrées, seule source qui distingue une police
+         arrivée d'une police attendue — voir `FAMILLE_ATTENDUE`. */
+      const faces = [...document.fonts]
       const main = document.querySelector('main')
       /* La première action visible du contenu : c'est elle qu'un visiteur doit
          atteindre sans défiler longtemps. */
@@ -283,8 +363,34 @@ try {
         enColonnes,
         rangsCompares,
         desalignees,
+        policeChargee: faces.some((f) => f.family === famille && f.status === 'loaded'),
+        faces: faces.length,
       }
-    })
+    }, FAMILLE_ATTENDUE)
+
+    /*
+      LA POLICE D'ABORD, AVANT LA FAQ ET AVANT LE PLAFOND.
+
+      Tout ce qui suit se mesure en pixels, et ces pixels ne veulent dire quelque
+      chose que si la page rendue est celle du visiteur. On ferme le contexte, on
+      se plaint, et l'on passe : le point n'est PAS compté comme inspecté, et sa
+      hauteur n'est comparée à aucun plafond.
+    */
+    if (!m.policeChargee) {
+      await contexte.close()
+      releve.push({ nom: `${point.langue}@${point.largeur}`, ...m, ...point, repli: true })
+      plaintes.push(
+        `${point.langue}@${point.largeur} : aucune face chargée de « ${FAMILLE_ATTENDUE} » ` +
+          `(${m.faces} face(s) dans document.fonts).\n` +
+          `   Les titres ont été rendus dans le repli, et les ${m.hDoc} px relevés sont ceux de\n` +
+          '   CETTE page-là, pas de la vitrine. Ne les lisez ni comme un plafond tenu ni comme\n' +
+          '   un dépassement : ils ne disent rien, dans aucun des deux sens.\n' +
+          '   Cause la plus probable : pas de sortie vers fonts.googleapis.com — intégration\n' +
+          "   continue, pare-feu, hors ligne. Rétablissez l'accès et remesurez ; ne réinscrivez\n" +
+          '   JAMAIS un plafond depuis une exécution sans police.',
+      )
+      continue
+    }
     /*
       UNE QUESTION OUVERTE EN FERME UNE AUTRE.
 
@@ -371,6 +477,15 @@ if (inspectes !== ATTENDUS) {
 }
 
 for (const r of releve) {
+  /* Le nombre est montré parce que le taire ferait croire à une panne de sonde,
+     mais il est nommé pour ce qu'il est : un relevé de repli, sans valeur. */
+  if (r.repli) {
+    console.log(
+      `  ${r.nom.padEnd(10)} ${String(r.hDoc).padStart(6)} px  RELEVÉ DE REPLI, sans valeur — ` +
+        `« ${FAMILLE_ATTENDUE} » n'était pas là (plafond ${r.plafond}, NON comparé).`,
+    )
+    continue
+  }
   console.log(
     `  ${r.nom.padEnd(10)} ${String(r.hDoc).padStart(6)} px  (plafond ${String(r.plafond).padStart(6)} · ` +
       `avant ce lot ${String(r.avant).padStart(6)} · avant la refonte ${String(r.origine).padStart(6)})  ` +
@@ -385,7 +500,8 @@ if (plaintes.length > 0) {
 }
 
 console.log(
-  `\n✓ plafond-vitrine : ${inspectes}/${ATTENDUS} états sous leur plafond, ${SECTIONS_ATTENDUES} sections intactes.\n` +
+  `\n✓ plafond-vitrine : ${inspectes}/${ATTENDUS} états sous leur plafond, ${SECTIONS_ATTENDUES} sections intactes,\n` +
+  `  « ${FAMILLE_ATTENDUE} » chargée sur chacun — le relevé porte donc sur la vraie page.\n` +
   `  ${releve.reduce((n, r) => n + (r.rangsCompares ?? 0), 0)} rangée(s) de paliers comparées d'une carte à l'autre,\n` +
   `  toutes ALIGNÉES — une grille de prix se lit en travers.\n` +
   `  FAQ dépliée deux fois sur ${releve.length} états : une seule réponse ouverte à la fois.\n` +
