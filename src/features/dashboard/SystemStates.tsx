@@ -3,6 +3,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
 import { Icon } from '@/components/primitives/Icon'
+import { Notice } from '@/components/primitives/Notice'
 import { DataTable, EmptyState } from '@/components/primitives/DataTable'
 import { StatCard } from '@/components/primitives/Charts'
 import {
@@ -114,14 +115,42 @@ export function SystemStates() {
                 {buildings.slice(0, 2).map((immeuble) => {
                   const logements = units.filter((u) => u.buildingId === immeuble.id)
                   const occupes = logements.filter((u) => u.tenant).length
+                  /*
+                    PAS DE TUILE ICI, ET C'EST MESURÉ.
+
+                    Ces deux cartes sont des MINIATURES : la vitrine les pose à
+                    deux colonnes dans un panneau déjà étroit, ce qui laisse
+                    103 px à leur intitulé contre 144 sur un vrai écran. Une
+                    tuile en retire 42, et « Bonamoussadi » — 110 px, UN SEUL
+                    MOT — n'entre alors plus, même coupé en deux lignes : la
+                    garde des rognages le refuse d'abord en largeur, puis en
+                    hauteur une fois la coupure autorisée.
+
+                    Ailleurs le repère aide à retrouver une carte dans une
+                    rangée ; ici il n'y a que deux cartes, et il coûterait le nom
+                    du quartier qu'elles servent justement à montrer.
+                  */
                   return (
                     <StatCard
                       key={immeuble.id}
                       label={immeuble.district}
+                      /* Un nom de quartier est une donnée — voir `donnee` sur
+                         `StatCard`, et son jumeau sur l'écran Parc. */
+                      donnee
                       value={`${occupes}/${logements.length}`}
-                      note={t('app.portfolio.occupancy', {
-                        occupied: occupes,
-                        total: logements.length,
+                      /* LA NOTE AJOUTE, elle ne redit pas. Elle portait
+                         « {occupés}/{total} occupés » sous une valeur qui vaut
+                         déjà `${occupes}/${logements.length}` : les deux mêmes
+                         nombres à quinze pixels d'écart, dans une carte qui en
+                         mesure quatre-vingts de haut. Son jumeau de l'écran Parc
+                         y ajoute au moins le quartier ; ici le quartier EST
+                         l'intitulé, et il ne restait donc rien.
+
+                         Le nombre de logements libres est ce que le rapport ne
+                         dit pas d'un coup d'œil, et c'est celui sur lequel on
+                         agit. */
+                      note={t('app.dashboard.vacantUnits', {
+                        count: logements.length - occupes,
                       })}
                     />
                   )
@@ -191,48 +220,68 @@ export function SystemStates() {
 
         <Card>
           <CardHeader title={t('app.system.error')} level={2} />
-          {/* Une erreur dit ce qui a échoué, ce qui est préservé, et propose
-              une sortie — pas seulement « une erreur est survenue ». */}
-          <div
+          {/*
+            `Notice`, ET NON SA RECOPIE — sur l'écran dont le rôle déclaré est
+            d'être la référence des quatre états.
+
+            La carte peignait à la main ce que la primitive fait : `flex
+            items-start gap-3 rounded-lg border-danger-border bg-danger-tint
+            px-4 py-3.5`, un glyphe `alert` en 18 px avec son `mt-0.5 shrink-0`,
+            un titre en `font-medium`, un corps dessous. C'est `Notice` avec
+            `tone="danger"` et `role="alert"` — deux propriétés qu'elle accepte
+            depuis toujours.
+
+            ET LA COPIE AVAIT DÉJÀ DÉRIVÉ : `mt-1` sur le corps contre `mt-0.5`
+            dans la primitive. Un demi-pixel, invisible seul, mais c'est la forme
+            que prend une divergence quand personne ne compare — et la carte
+            VOISINE, elle, appelait `Notice` correctement. Deux bandeaux d'état
+            côte à côte, deux écritures.
+
+            Une erreur dit ce qui a échoué, ce qui est préservé, et propose une
+            sortie — pas seulement « une erreur est survenue ». Le geste vit donc
+            dans le corps du bandeau.
+          */}
+          <Notice
+            tone="danger"
             role="alert"
-            className="flex items-start gap-3 rounded-lg border border-danger-border bg-danger-tint px-4 py-3.5"
+            titre={t('app.system.errorTitle')}
           >
-            <Icon name="alert" size={18} className="mt-0.5 shrink-0 text-danger" />
-            <div className="min-w-0">
-              <p className="text-body font-medium text-danger">{t('app.system.errorTitle')}</p>
-              <p className="mt-1 text-body text-danger">{t('app.system.errorBody')}</p>
-              <Button
-                variant="secondary"
-                size="sm"
-                icon="arrowRight"
-                className="mt-3"
-                onClick={() => notify(t('app.system.retried'), { tone: 'ok' })}
-              >
-                {t('app.system.retry')}
-              </Button>
-            </div>
-          </div>
+            {t('app.system.errorBody')}
+            <Button
+              variant="secondary"
+              size="sm"
+              icon="arrowRight"
+              className="mt-3"
+              /* RÉESSAYER RÉESSAIE, et n'annonce plus. Ce bouton émettait
+                 « réessayé » sans que rien ne soit réessayé — sur l'écran dont
+                 le rôle est d'être la référence des quatre états, c'est-à-dire
+                 à l'endroit exact où l'on vient lire ce qu'un geste doit faire.
+                 Il ramène donc à l'attente, qui est ce que réessayer veut dire,
+                 et c'est le même geste que « Rejouer le chargement » sur la
+                 carte voisine — dont un commentaire promettait déjà que les
+                 deux se lisent pareil. */
+              onClick={rejouer}
+            >
+              {t('app.system.retry')}
+            </Button>
+          </Notice>
         </Card>
 
         <Card>
           <CardHeader title={t('app.system.offline')} level={2} />
-          <div className="flex items-start gap-3 rounded-lg border border-warn-border bg-warn-tint px-4 py-3.5">
-            <Icon name="globe" size={18} className="mt-0.5 shrink-0 text-warn" />
-            <div className="min-w-0">
-              <p className="text-body font-medium text-warn">{t('app.system.offlineTitle')}</p>
-              <p className="mt-1 text-body text-warn">{t('app.system.offlineBody')}</p>
-            </div>
-          </div>
+          {/* Le glyphe déroge au défaut du ton : ce n'est pas une alerte
+              générique mais une perte de RÉSEAU, et le globe le dit d'un coup
+              d'œil là où le triangle laisserait chercher la cause. */}
+          <Notice tone="warn" icon="globe" titre={t('app.system.offlineTitle')}>
+            {t('app.system.offlineBody')}
+          </Notice>
 
           {/* Les trois autres cartes décrivent des états que l'interface sait
               rendre. Celle-ci décrit en plus un comportement — la
               synchronisation différée — qui n'existe pas encore. On le dit,
               plutôt que de laisser la carte passer pour une fonctionnalité
               livrée. */}
-          <p className="mt-3 flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body text-gold-ink">
-            <Icon name="info" size={15} className="mt-0.5 shrink-0" />
-            {t('app.system.offlineNotice')}
-          </p>
+          <Notice className="mt-3">{t('app.system.offlineNotice')}</Notice>
         </Card>
       </div>
 

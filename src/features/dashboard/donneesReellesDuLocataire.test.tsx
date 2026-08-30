@@ -255,6 +255,34 @@ describe('historique des quittances servi par le serveur', () => {
     expect(main).toHaveTextContent('Juin 2026')
     expect(main).toHaveTextContent('Juillet 2026')
   })
+
+  /**
+   * UNE QUITTANCE PORTE UN MONTANT, sinon elle n'est qu'une date.
+   *
+   * La liste ne rendait que le mois et un bouton. Six lignes identiques à
+   * l'exception d'un nom de mois : rien ne distinguait la période à 101 300 de
+   * celle à 103 800, et le locataire téléchargeait pour savoir ce qu'il
+   * téléchargeait. La donnée était là — `receiptDue` la calcule pour les deux
+   * autres écrans, et l'export de cette carte-ci l'écrit déjà dans son fichier.
+   *
+   * C'est le TOTAL DÛ de la période, ce que la quittance couvre — et non le
+   * réglé. Juillet est partiellement soldé : 99 500 versés sur 103 800. Afficher
+   * le versement ici ferait lire « 99 500 » comme le montant du document. Le
+   * reste dû a son écran, avec la primitive qui distingue les deux ; celui-ci
+   * identifie une pièce.
+   *
+   * Les nombres sont cherchés avec un séparateur souple : `Intl` compose les
+   * milliers avec une espace fine insécable, qui n'est pas l'espace ordinaire.
+   */
+  it('nomme le montant de chaque quittance', async () => {
+    await ouvrir('/app/documents', HISTORIQUE)
+    const main = screen.getByRole('main')
+    expect(main, 'juillet ne porte pas son total').toHaveTextContent(/103\s?800/)
+    expect(main, 'juin ne porte pas son total').toHaveTextContent(/101\s?300/)
+    /* Le versement partiel de juillet ne doit PAS passer pour le montant de la
+       pièce : c'est le chiffre qu'on lirait si la ligne montrait le réglé. */
+    expect(main, 'la ligne montre le versement au lieu du dû').not.toHaveTextContent(/99\s?500/)
+  })
 })
 
 /**

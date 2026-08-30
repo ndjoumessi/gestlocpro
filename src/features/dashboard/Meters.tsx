@@ -3,14 +3,16 @@ import { useRole } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { DataTable } from '@/components/primitives/DataTable'
 import { StatCard } from '@/components/primitives/Charts'
+import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDebordement'
 import {
   Skeleton,
   SkeletonRegion,
-  SkeletonStatCard,
+  SkeletonStatRow,
   SkeletonTable,
 } from '@/components/primitives/Skeleton'
+import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
 import { StatusPill } from '@/components/primitives/StatusPill'
-import { Icon } from '@/components/primitives/Icon'
+import { Notice } from '@/components/primitives/Notice'
 import { Button } from '@/components/primitives/Button'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
@@ -39,18 +41,30 @@ export function Meters() {
   const csvMoney = useCsvMoney()
   const { role } = useRole()
   const { unitById, readings: TOUS, isMine, loading } = usePortfolio()
-  const { adhesionActive } = useSession()
+  const { adhesionActive, estDemo } = useSession()
   const [tarifsOuverts, setTarifsOuverts] = useState(false)
 
   /**
    * Poser un prix est un acte de PROPRIÉTAIRE, et il exige un vrai parc.
    *
    * Le rôle d'abord — fixer un prix engage l'argent du locataire, même partage
-   * que la validation d'un devis. Et l'adhésion ensuite : la démonstration n'a
-   * pas de parc à qui écrire, et lui offrir le bouton mènerait à un appel sans
-   * destinataire.
+   * que la validation d'un devis.
+   *
+   * L'ADHÉSION ENSUITE, MAIS PAS TOUTE SEULE. La condition lisait
+   * `adhesionActive !== null`, avec pour motif « la démonstration n'a pas de parc
+   * à qui écrire ». C'est vrai d'un compte connecté SANS parc ; c'est la même
+   * confusion que `Portfolio` portait pour la correction du parc — « personne à
+   * qui écrire » et « rien ne s'écrit » sont deux choses, et la seconde vaut
+   * pour tous les gestes de la démonstration.
+   *
+   * ELLE COÛTAIT PLUS QU'UN BOUTON, ET LE CAS EST PIRE QU'AILLEURS. Cet écran
+   * AFFICHE les deux prix de la démonstration, en indicateurs, lus sur ses
+   * relevés — mais la modale qui existe pour les montrer et les poser était
+   * inatteignable, donc hors de portée de `scripts/modales.mjs`, de la mesure de
+   * contraste et des cas clavier. Ouverte, elle aurait affiché « aucun prix
+   * posé » : l'éditeur des prix démentant, à un clic, la page qui les affiche.
    */
-  const peutPoserUnPrix = role === 'owner' && adhesionActive !== null
+  const peutPoserUnPrix = role === 'owner' && (adhesionActive !== null || estDemo)
 
   /* Le locataire ne voit que SES relevés : l'écran vient de s'ouvrir à lui,
      puisque l'eau et l'électricité lui sont refacturées. */
@@ -188,19 +202,26 @@ export function Meters() {
             {t('app.exportStatement')}
           </Button>
         }
+        debordement={
+          /* LA SECONDE ACTION RENTRE À LA MAISON. Elle vivait sur sa propre
+             ligne, sous la description, dans un `<div className="mb-6">` — une
+             barre d'outils d'un seul bouton, à un endroit où l'écran n'en
+             attend aucun. Poser un prix de refacturation est un geste rare : il
+             se demande, il ne s'affiche pas. */
+          peutPoserUnPrix ? (
+            <MenuDeDebordement libelle={t('common.moreActions')}>
+              <MenuElement icone="card" onClick={() => setTarifsOuverts(true)}>
+                {t('app.tariffs.open')}
+              </MenuElement>
+            </MenuDeDebordement>
+          ) : undefined
+        }
       />
 
-      {peutPoserUnPrix && (
-        <div className="mb-6">
-          <Button variant="secondary" icon="card" onClick={() => setTarifsOuverts(true)}>
-            {t('app.tariffs.open')}
-          </Button>
-        </div>
-      )}
 
       {tarifsOuverts && <TariffsModal open onClose={() => setTarifsOuverts(false)} />}
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className={GRILLE_TROIS_INDICATEURS}>
         {/*
           Le total n'est un total QUE s'il y a un prix.
           `rebilled` rend `null` sans tarif, et la somme retombait alors à zéro :
@@ -212,8 +233,28 @@ export function Meters() {
           et c'est l'information dont le gestionnaire a besoin pour sa tournée.
         */}
         <StatCard
+          icone="gauge"
+          /**
+           * LA CARTE S'ACCORDE À LA BANNIÈRE QUI LA SUIT, à quinze pixels.
+           *
+           * « 8 sur 10 saisis » était en gris muet, et la bannière juste
+           * dessous disait le même fait en ambre : « 2 relevés manquants pour
+           * la période ». Deux traitements pour une seule information — l'œil
+           * apprend que la carte est tranquille et que l'alerte est ailleurs,
+           * alors que c'est le TOTAL de la carte qui est faux tant qu'il manque
+           * un relevé.
+           *
+           * `warn` et non `danger` : rien n'est en retard, il manque une
+           * saisie — c'est le ton que la bannière emploie déjà, et il n'y a pas
+           * de raison d'en avoir deux pour un fait.
+           *
+           * SANS PASTILLE : la note de la carte dit « 8 sur 10 saisis », ce qui
+           * nomme le fait en toutes lettres. Une pastille « Relevé manquant »
+           * ferait la TROISIÈME formulation du même manque sur le même écran.
+           */
+          etat={missing.length > 0 ? { ton: 'warn' } : undefined}
           label={t('app.meters.totalRebilled')}
-          value={aUnPrix ? money(total, { round: true }) : '—'}
+          value={aUnPrix ? money(total, { compact: true }) : '—'}
           note={t('app.meters.capturedCount', {
             done: READINGS.length - missing.length,
             total: READINGS.length,
@@ -225,57 +266,60 @@ export function Meters() {
             changement de devise. */}
         {prixCourant('waterPrice') !== null && (
           <StatCard
+            icone="droplet"
             label={t('app.meters.water')}
-            value={money(prixCourant('waterPrice')!, { round: true })}
+            value={money(prixCourant('waterPrice')!, { compact: true })}
             unit="/ m³"
           />
         )}
         {prixCourant('powerPrice') !== null && (
           <StatCard
+            icone="bolt"
             label={t('app.meters.power')}
-            value={money(prixCourant('powerPrice')!, { round: true })}
+            value={money(prixCourant('powerPrice')!, { compact: true })}
             unit="/ kWh"
           />
         )}
       </div>
 
       {/* Un relevé manquant a une conséquence concrète : on la nomme, plutôt
-          que d'afficher un simple compteur. */}
-      <div
-        className={`mt-6 mb-4 flex items-start gap-3 rounded-lg border px-4 py-3.5 ${
+          que d'afficher un simple compteur. C'est le TON qui porte le verdict —
+          l'alerte quand il en manque, la coche quand la série est complète — et
+          le glyphe le suit sans qu'on ait à le nommer. */}
+      <Notice
+        tone={missing.length ? 'warn' : 'ok'}
+        titre={
           missing.length
-            ? 'border-warn-border bg-warn-tint text-warn'
-            : 'border-ok-border bg-ok-tint text-ok'
-        }`}
+            ? t('app.meters.missingCount', { count: missing.length })
+            : t('app.meters.complete')
+        }
+        className="mt-6 mb-4"
       >
-        <Icon name={missing.length ? 'alert' : 'checkCircle'} size={18} className="mt-0.5 shrink-0" />
-        <div>
-          <p className="text-body font-medium">
-            {missing.length
-              ? t('app.meters.missingCount', { count: missing.length })
-              : t('app.meters.complete')}
-          </p>
-          {missing.length > 0 && (
-            <p className="mt-0.5 text-body">
-              {t('app.meters.missingHint')} — {n.list(missing.map((r) => unitLabel(r.unitId)))}
-            </p>
-          )}
-        </div>
-      </div>
+        {missing.length > 0 && (
+          <>
+            {t('app.meters.missingHint')} — {n.list(missing.map((r) => unitLabel(r.unitId)))}
+          </>
+        )}
+      </Notice>
 
       <DataTable<MeterReading>
         caption={t('app.meters.title')}
         rows={READINGS}
         rowKey={(reading) => reading.unitId}
+        fiches
         columns={[
           {
             key: 'unit',
+            role: 'identite',
             header: t('app.portfolio.unit'),
             width: '5.5rem',
             render: (r) => (
               <div>
                 <span className="numeric font-medium">{unitLabel(r.unitId)}</span>
-                <span className="block truncate text-body text-muted sm:hidden">
+                {/* `data-donnee` : un nom de locataire est saisi, sa longueur
+                    n'est bornée par rien — la coupe est assumée, contrairement
+                    au vocabulaire du produit. Voir `MESURER_TRONCATURES`. */}
+                <span data-donnee className="block truncate text-body text-muted sm:hidden">
                   {unitById(r.unitId)?.tenant}
                 </span>
               </div>
@@ -299,8 +343,24 @@ export function Meters() {
                 <span className="text-muted">—</span>
               ) : (
                 <span>
-                  {n.integer(r.waterCurrent - r.waterPrevious)}
-                  <span className="ml-1.5 text-caps text-muted">
+                  {n.integer(r.waterCurrent - r.waterPrevious)}{' '}
+                  {/*
+                    UN VRAI ESPACE, ET NON UNE MARGE. `ml-1.5` posait l'écart
+                    VISUEL entre la consommation et la plage d'index sans créer
+                    la moindre occasion de couper : « 178 » et « 4 120→4 298 »
+                    formaient une seule suite insécable de quinze caractères.
+
+                    Invisible tant que la cellule était large et que le tableau
+                    entier défilait. Devenu visible le jour où la colonne est
+                    passée en fiche : 19 px hors de la boîte à 320 px, seize
+                    fois, trouvés par la sonde du débordement local.
+
+                    L'espace se coupe dans la fiche et PAS dans le tableau, où
+                    `numeric` pose encore `whitespace-nowrap` sur la cellule.
+                    Une même valeur, deux comportements justes, et c'est la
+                    colonne qui décide — pas le rendu.
+                  */}
+                  <span className="text-caps whitespace-nowrap text-muted">
                     {n.integer(r.waterPrevious)}→{n.integer(r.waterCurrent)}
                   </span>
                 </span>
@@ -315,11 +375,13 @@ export function Meters() {
                 <span className="text-muted">—</span>
               ) : (
                 <span>
-                  {n.integer(r.powerCurrent - r.powerPrevious)}
+                  {n.integer(r.powerCurrent - r.powerPrevious)}{' '}
                   {/* Les index d'électricité sont à cinq chiffres : sans
                       groupement ils rendaient « 7640 » dans les deux langues,
-                      là où le français écrit « 7 640 » et l'anglais « 7,640 ». */}
-                  <span className="ml-1.5 text-caps text-muted">
+                      là où le français écrit « 7 640 » et l'anglais « 7,640 ».
+                      L'espace typographique remplace la marge pour la raison
+                      dite au-dessus, sur l'eau. */}
+                  <span className="text-caps whitespace-nowrap text-muted">
                     {n.integer(r.powerPrevious)}→{n.integer(r.powerCurrent)}
                   </span>
                 </span>
@@ -327,12 +389,13 @@ export function Meters() {
           },
           {
             key: 'rebilled',
+            role: 'valeur',
             header: t('app.meters.rebilled'),
             numeric: true,
             render: (r) => {
               const r2 = rebilled(r)
               if ('montant' in r2) {
-                return <span className="font-medium">{money(r2.montant, { round: true })}</span>
+                return <span className="font-medium">{money(r2.montant, { compact: true })}</span>
               }
               // Le libellé DIT la cause : une tournée d'un côté, une saisie de
               // tarif de l'autre.
@@ -383,15 +446,11 @@ function MetersSkeleton() {
       />
 
       <SkeletonRegion>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {[0, 1, 2].map((carte) => (
-            <SkeletonStatCard key={carte} />
-          ))}
-        </div>
+        <SkeletonStatRow count={3} className={GRILLE_TROIS_INDICATEURS} />
 
         <div className="mt-6 mb-4 rounded-lg border border-divider px-4 py-3.5">
           <Skeleton line="body" className="w-56" />
-          <Skeleton line="bodyS" className="mt-0.5 w-72 max-w-full" />
+          <Skeleton line="body" className="mt-0.5 w-72 max-w-full" />
         </div>
 
         <SkeletonTable />

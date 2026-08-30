@@ -3,7 +3,7 @@ import { useRole } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { InviteModal } from './InviteModal'
 import { AnnounceModal } from './AnnounceModal'
-import { Icon } from '@/components/primitives/Icon'
+import { Notice } from '@/components/primitives/Notice'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { DataTable } from '@/components/primitives/DataTable'
 import { Skeleton, SkeletonRegion, SkeletonTable } from '@/components/primitives/Skeleton'
@@ -13,6 +13,9 @@ import { Modal } from '@/components/primitives/Modal'
 import { Field } from '@/components/primitives/Field'
 import { Input, Select } from '@/components/primitives/Input'
 import { Combobox } from '@/components/primitives/Combobox'
+import { StatCard } from '@/components/primitives/Charts'
+import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDebordement'
+import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
 import { DatePicker } from '@/components/primitives/DatePicker'
 import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
@@ -82,14 +85,10 @@ export function Tenants() {
               sur un parc sans bail actif, et un bouton qui ne peut qu'échouer
               vaut moins qu'un bouton qui dit pourquoi.
             */}
-            <Button
-              variant="secondary"
-              icon="bell"
-              onClick={() => setAnnonceOuverte(true)}
-              disabled={leases.length === 0}
-            >
-              {t('app.announce.button')}
-            </Button>
+            {/* PRÉVENIR PASSE DERRIÈRE LES TROIS POINTS. C'est un geste de
+                circonstance — une coupure d'eau, un passage d'artisan —, pas un
+                geste quotidien ; inviter et créer une fiche le sont. Rien n'est
+                retiré : le menu le rend, avec son propre motif de grisement. */}
             <Button variant="secondary" icon="users" onClick={() => setInviteOuverte(true)}>
               {t('app.invite.button')}
             </Button>
@@ -98,18 +97,63 @@ export function Tenants() {
             </Button>
           </>
         }
+        debordement={
+          <MenuDeDebordement libelle={t('common.moreActions')}>
+            <MenuElement icone="bell" onClick={() => setAnnonceOuverte(true)}>
+              {t('app.announce.button')}
+            </MenuElement>
+          </MenuDeDebordement>
+        }
       />
 
       {inviteOuverte && <InviteModal open onClose={() => setInviteOuverte(false)} />}
       {annonceOuverte && <AnnounceModal open onClose={() => setAnnonceOuverte(false)} />}
 
+      {/*
+        L'ÉCRAN COMPTAIT TROIS CHOSES ET N'EN MONTRAIT AUCUNE.
+
+        Les baux, le loyer qu'ils appellent, les pièces demandées : les trois
+        étaient déjà calculés au-dessus. `vacant` ne servait qu'à griser un
+        bouton, `demandesEnAttente` qu'à décider d'afficher une carte. On
+        arrivait donc sur un tableau de dix lignes sans un seul nombre, quand
+        les six écrans voisins ouvrent tous sur une rangée de cartes.
+
+        LE LOYER MENSUEL EST CELUI DES BAUX ACTIFS, et non du parc : un logement
+        vacant n'appelle rien. C'est aussi ce qui rend la note du premier
+        indicateur utile — le vacant est la différence entre les deux.
+
+        L'ÉTAT SUR LES DEMANDES, et sur elles seules : une pièce demandée attend
+        une réponse de l'utilisateur. Zéro demande rend la carte neutre.
+      */}
+      <div className={`${GRILLE_TROIS_INDICATEURS} mb-6`}>
+        <StatCard
+          icone="users"
+          label={t('app.tenants.kpiLeases')}
+          value={String(leases.length)}
+          note={t('app.tenants.kpiLeasesNote', { count: vacant.length })}
+        />
+        <StatCard
+          icone="card"
+          label={t('app.tenants.kpiRent')}
+          value={money(
+            leases.reduce((somme, unit) => somme + unit.rent, 0),
+            { compact: true },
+          )}
+          note={t('app.tenants.kpiRentNote')}
+        />
+        <StatCard
+          icone="file"
+          label={t('app.tenants.kpiRequests')}
+          value={String(demandesEnAttente.length)}
+          etat={demandesEnAttente.length > 0 ? { ton: 'warn' } : undefined}
+          note={t('app.tenants.kpiRequestsNote')}
+        />
+      </div>
+
       {/* Un bouton grisé sans motif laisse deviner. Quand tout est loué, il
           n'y a rien à quoi rattacher un locataire — on le dit. */}
       {vacant.length === 0 && (
-        <p className="mb-4 flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body text-gold-ink">
-          <Icon name="info" size={15} className="mt-0.5 shrink-0" />
-          {t('app.tenants.noVacantNotice')}
-        </p>
+        <Notice className="mb-4">{t('app.tenants.noVacantNotice')}</Notice>
       )}
 
       {/*
@@ -199,9 +243,11 @@ export function Tenants() {
         caption={t('app.tenants.title')}
         rows={leases}
         rowKey={(unit) => unit.id}
+        fiches
         columns={[
           {
             key: 'tenant',
+            role: 'identite',
             header: t('app.portfolio.tenant'),
             render: (unit) => (
               <div className="flex items-center gap-3">
@@ -215,7 +261,12 @@ export function Tenants() {
                     .slice(0, 2)
                     .join('')}
                 </span>
-                <span className="min-w-0 truncate font-medium">{unit.tenant}</span>
+                {/* `data-donnee` : un nom de locataire est saisi, sa longueur
+                    n'est bornée par rien, et la colonne d'un tableau l'est. La
+                    coupe est donc assumée — voir `MESURER_TRONCATURES`. */}
+                <span data-donnee className="min-w-0 truncate font-medium">
+                  {unit.tenant}
+                </span>
               </div>
             ),
           },
@@ -270,17 +321,20 @@ export function Tenants() {
           },
           {
             key: 'rent',
+            role: 'valeur',
             header: t('app.portfolio.rent'),
             numeric: true,
-            render: (unit) => money(unit.rent, { round: true }),
+            render: (unit) => money(unit.rent, { compact: true }),
           },
           {
             key: 'status',
+            role: 'etat',
             header: t('app.portfolio.status'),
             render: (unit) => <PaymentStatusPill status={unit.status} size="sm" />,
           },
           {
             key: 'retrait',
+            role: 'geste',
             header: '',
             render: (unit) =>
               /*
@@ -562,7 +616,11 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
         >
           {(props) => (
             <div className="flex gap-2">
-              <div className="w-44 shrink-0">
+              {/* Resserré comme à l'inscription, et pour la même mesure : le
+                  libellé « Congo-Brazzaville · +242 » rognait son indicatif
+                  dans 176 px. Fermé, le champ porte l'indicatif ; la liste
+                  porte les pays. Voir `OptionCombobox.resume`. */}
+              <div className="w-26 shrink-0">
                 {/* Cherchable, comme à l'inscription.
                     Le menu natif alignait ici les deux cent quatre indicatifs
                     sans moyen d'en atteindre un : le correctif qui les a rendus
@@ -576,6 +634,7 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
                   options={dialOptions(locale).map(({ dial: code, label, zone }) => ({
                     value: code,
                     label,
+                    resume: code,
                     groupe: t(zone === 'cfa' ? 'common.dialZoneCfa' : 'common.dialZoneOther'),
                   }))}
                   value={dial}

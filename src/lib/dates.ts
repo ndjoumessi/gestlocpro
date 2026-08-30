@@ -73,3 +73,53 @@ export function formatRelative(
 ): string {
   return new Intl.RelativeTimeFormat(tag, { numeric: 'auto' }).format(value, unit)
 }
+
+/**
+ * UNE DATE ISO EN PARTIES, ET ELLE VIT ICI POUR UNE RAISON PRÉCISE.
+ *
+ * `AAAA-MM-JJ` compte ses mois à partir de UN ; tout le reste de ce produit les
+ * compte à partir de ZÉRO, parce que c'est la convention de `new Date(y, m, d)`
+ * que les formateurs ci-dessus emploient, et celle que `getMonth()` rend. La
+ * conversion doit donc retrancher un, et l'endroit où l'écrire est le fichier
+ * qui DÉFINIT la convention — pas les quatre écrans qui la subissent.
+ *
+ * ELLE ÉTAIT RECOPIÉE QUATRE FOIS, ET TROIS COPIES AVAIENT LE BUG. Seul
+ * `apiPortfolio.ts` retranchait le un ; `TariffsModal`, `ReceiptModal` et
+ * `PortfolioProvider` passaient le mois ISO tel quel à `formatFullDate`, qui le
+ * relit comme un index. Résultat : un mois de trop, partout.
+ *
+ * CE QUE ÇA DONNAIT À L'ÉCRAN, mesuré : un prix de refacturation posé au
+ * 1ᵉʳ août s'affichait « 01/09/2026 » dans l'historique de la modale des prix —
+ * sur l'écran dont toute la doctrine est qu'un prix n'est jamais modifié mais
+ * REDATÉ. Le même décalage frappait la date de règlement d'une QUITTANCE, que le
+ * locataire garde comme preuve, et la date d'un état des lieux fraîchement
+ * enregistré.
+ *
+ * PERSONNE NE POUVAIT LE VOIR. La modale des prix était inatteignable — son
+ * bouton était gardé par une adhésion réelle — donc hors de portée des trois
+ * portes et de tout regard. Il a fallu la rendre ouvrable en démonstration pour
+ * que le défaut se montre, à la première capture.
+ *
+ * `slice(0, 10)` : le serveur rend parfois un horodatage complet, et `split`
+ * sur `2026-08-01T00:00:00Z` mettrait l'heure dans le jour.
+ */
+export function partiesDeDateISO(iso: string): { year: number; month: number; day: number } {
+  const [annee, mois, jour] = iso.slice(0, 10).split('-').map(Number)
+  return { year: annee!, month: mois! - 1, day: jour! }
+}
+
+/**
+ * Les parties d'une date du navigateur.
+ *
+ * Le produit range ses dates en `{ year, month, day }` — jamais en `Date`, dont
+ * le décalage horaire déplace le jour d'un fuseau à l'autre. `new Date()` reste
+ * pourtant la seule source de l'instant présent, et les documents émis portent
+ * leur date d'émission. La conversion vit donc ici, à côté de sa jumelle qui
+ * part d'une chaîne ISO, plutôt qu'écrite au vol dans chaque appelant.
+ *
+ * Les composantes sont LOCALES, comme celles de `partiesDeDateISO` : c'est le
+ * jour qu'affiche l'horloge de qui télécharge.
+ */
+export function partiesDeDate(date: Date): { year: number; month: number; day: number } {
+  return { year: date.getFullYear(), month: date.getMonth(), day: date.getDate() }
+}

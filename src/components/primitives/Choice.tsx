@@ -82,6 +82,22 @@ export interface RadioCardOption<T extends string> {
   icon?: IconName
   /** Ligne d'appui affichée en bas de la carte, en mono. */
   footnote?: string
+  /**
+   * L'OPTION EXISTE MAIS NE PEUT PAS ÊTRE CHOISIE.
+   *
+   * Le cas réel : une pièce déjà demandée et sans réponse. Le serveur la refuse
+   * — 409 `already_pending` — et l'écran doit dire la même chose AVANT le clic.
+   *
+   * C'EST UN VRAI `disabled`, ET C'EST TOUT L'INTÉRÊT. Un `input[type=radio]`
+   * désactivé est sauté par les flèches, refusé au clic et annoncé comme
+   * indisponible, sans qu'une ligne soit écrite. La copie manuelle que ce
+   * variant remplace y avait perdu deux fois : sa navigation aux flèches
+   * SÉLECTIONNAIT quand même l'entrée désactivée — le bouton d'envoi s'activait
+   * alors et partait chercher le 409 qu'on voulait éviter —, et le groupe
+   * entier devenait inatteignable à la tabulation quand c'était la PREMIÈRE
+   * entrée qui était désactivée, puisque c'est elle qui portait le seul arrêt.
+   */
+  disabled?: boolean
 }
 
 export interface RadioCardsProps<T extends string> {
@@ -114,6 +130,18 @@ export interface RadioCardsProps<T extends string> {
    * mensonge de mise en page.
    */
   variant?: 'cartes' | 'puces'
+  /**
+   * LE REFUS DU GROUPE, quand rien n'est choisi et qu'il fallait choisir.
+   *
+   * Un groupe de choix n'avait pas où l'écrire, alors que `Field` et `Checkbox`
+   * le portent depuis toujours. L'écran d'inscription s'en passait en
+   * ÉTEIGNANT son bouton — une porte fermée sans écriteau, qui ne prend pas le
+   * focus et n'énonce rien.
+   *
+   * `role="alert"` et un identifiant cité par le `fieldset` : le refus est
+   * annoncé quand il paraît, et rattaché au groupe pour qui y revient ensuite.
+   */
+  error?: string
   className?: string
 }
 
@@ -131,6 +159,7 @@ export function RadioCards<T extends string>({
   options,
   columns = 3,
   variant = 'cartes',
+  error,
   className,
 }: RadioCardsProps<T>) {
   if (variant === 'puces') {
@@ -142,6 +171,7 @@ export function RadioCards<T extends string>({
         value={value}
         onChange={onChange}
         options={options}
+        error={error}
         className={className}
       />
     )
@@ -150,12 +180,41 @@ export function RadioCards<T extends string>({
     columns === 1 ? 'grid-cols-1' : columns === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-2 lg:grid-cols-3'
 
   return (
-    <fieldset className={cn('min-w-0 border-0 p-0', className)}>
+    <fieldset
+      data-champ={name}
+      aria-describedby={error ? `${name}-refus` : undefined}
+      aria-invalid={error ? true : undefined}
+      className={cn('min-w-0 border-0 p-0', className)}
+    >
       <legend className={cn('mb-3 text-label font-semibold text-ink', hideLegend && 'sr-only')}>
         {legend}
       </legend>
 
-      <div className={cn('grid gap-3', gridClass)}>
+      {/* AVANT les cartes, et non après : le refus dit ce qu'il faut faire de
+          ce qui suit. Placé dessous, il se lirait après le geste qu'il
+          commande — et sous trois cartes, il tomberait hors du champ de vision
+          sur un téléphone. */}
+      {error && (
+        <p
+          id={`${name}-refus`}
+          role="alert"
+          className="mb-3 flex items-start gap-1.5 text-body font-medium text-danger"
+        >
+          <Icon name="alert" size={14} className="mt-0.5 shrink-0" />
+          {error}
+        </p>
+      )}
+
+      {/* `data-rangee-de-pairs` : ces cellules SONT le même composant rendu N
+          fois, et le blanc qu'une description plus longue impose aux autres est
+          le prix de l'alignement, pas du gâchis — un choix dont les cartes ne
+          finiraient pas ensemble ne se lit plus comme un choix.
+
+          La sonde du blanc imposé ne peut pas l'établir seule : elle compare les
+          classes, et une carte SÉLECTIONNÉE n'en partage que 67 % avec sa
+          voisine — bordure, fond et ombre changent avec l'état. L'attribut dit
+          ce que les classes taisent. Voir `MESURER_BLANC_IMPOSE`. */}
+      <div data-rangee-de-pairs="" className={cn('grid gap-3', gridClass)}>
         {options.map((option) => {
           const checked = value === option.value
           return (
@@ -165,7 +224,7 @@ export function RadioCards<T extends string>({
                 'group relative flex cursor-pointer flex-col gap-2 rounded-lg border p-4',
                 'transition-[border-color,background-color,box-shadow] duration-150 ease-out',
                 'has-[:focus-visible]:outline has-[:focus-visible]:outline-2',
-                'has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-gold-ink',
+                'has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent-ink',
                 checked
                   ? 'border-ink bg-surface shadow-e1'
                   : 'border-border bg-surface/60 hover:border-border-strong hover:bg-surface',
@@ -180,19 +239,50 @@ export function RadioCards<T extends string>({
                 className="sr-only"
               />
 
-              <div className="flex items-start justify-between gap-3">
+              {/*
+                `justify-end` QUAND IL N'Y A PAS D'ICÔNE : sans tuile, la marque
+                de sélection resterait collée à gauche, seule sur sa ligne.
+              */}
+              <div
+                className={cn(
+                  'flex items-start gap-3',
+                  option.icon ? 'justify-between' : 'justify-end',
+                )}
+              >
+                {/*
+                  PAS D'ICÔNE DE REPLI, ET C'EST UN DÉFAUT QUI EXISTAIT.
+
+                  La tuile rendait `option.icon ?? 'users'` : un appelant qui
+                  n'en fournit aucune obtenait la MÊME silhouette sur toutes ses
+                  cartes. Le variant `puces` a été écrit contre ce défaut et son
+                  commentaire le nomme — « les six tuiles affichaient la même
+                  icône de repli : une distinction promise inexistante » — mais
+                  le correctif n'avait pas traversé jusqu'au variant en tuiles,
+                  où les trois urgences de la modale de signalement portaient
+                  trois fois le même glyphe.
+
+                  Sans icône, pas de tuile : une carte sans repère est plus
+                  honnête qu'une carte qui en promet un faux.
+                */}
+                {option.icon && (
                 <span
                   className={cn(
                     'flex size-9 shrink-0 items-center justify-center rounded-md transition-colors duration-150',
-                    // `gold-on-ink` et non l'or de marque : sur `--color-ink`,
-                    // qui s'inverse avec le thème, l'or fixe tombait à 2,33:1 en
-                    // sombre. L'icône de la tuile SÉLECTIONNÉE était alors
-                    // l'élément le moins lisible de la carte.
-                    checked ? 'bg-ink text-gold-on-ink' : 'bg-surface-sunken text-muted',
+                    // `accent-on-ink` et non l'accent de marque : sur
+                    // `--color-ink`, qui s'inverse avec le thème, un accent figé
+                    // ne peut pas tenir des deux côtés à la fois. L'or d'alors
+                    // tombait à 2,33:1 en sombre, et l'icône de la tuile
+                    // SÉLECTIONNÉE devenait l'élément le moins lisible de la
+                    // carte. Le bleu qui a remplacé l'or ne change rien à la
+                    // règle — il ne bascule pas davantage avec le thème — et seul
+                    // `accent-on-ink`, qui porte une valeur par thème, suit
+                    // l'encre sur laquelle il est posé.
+                    checked ? 'bg-ink text-accent-on-ink' : 'bg-surface-sunken text-muted',
                   )}
                 >
-                  <Icon name={option.icon ?? 'users'} size={18} />
+                  <Icon name={option.icon} size={18} />
                 </span>
+                )}
 
                 {/* Marque de sélection : forme + couleur, jamais la couleur seule. */}
                 <span
@@ -252,13 +342,34 @@ function RadioPuces<T extends string>({
   value,
   onChange,
   options,
+  error,
   className,
 }: Omit<RadioCardsProps<T>, 'columns' | 'variant'>) {
   return (
-    <fieldset className={cn('min-w-0 border-0 p-0', className)}>
+    <fieldset
+      data-champ={name}
+      aria-describedby={error ? `${name}-refus` : undefined}
+      aria-invalid={error ? true : undefined}
+      className={cn('min-w-0 border-0 p-0', className)}
+    >
       <legend className={cn('mb-2 text-label font-semibold text-ink', hideLegend && 'sr-only')}>
         {legend}
       </legend>
+
+      {/* LE REFUS VAUT POUR LES DEUX VARIANTES. Ne le poser que sur les tuiles
+          aurait laissé muettes les rangées de pastilles — dont la demande de
+          pièce du locataire, qui est justement l'un des deux boutons éteints
+          que ce lot corrige. */}
+      {error && (
+        <p
+          id={`${name}-refus`}
+          role="alert"
+          className="mb-2 flex items-start gap-1.5 text-body font-medium text-danger"
+        >
+          <Icon name="alert" size={14} className="mt-0.5 shrink-0" />
+          {error}
+        </p>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {options.map((option) => {
@@ -267,10 +378,16 @@ function RadioPuces<T extends string>({
             <label
               key={option.value}
               className={cn(
-                'inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3',
+                'inline-flex min-h-11 items-center gap-2 rounded-md border px-3',
                 'text-label transition-colors duration-150',
                 'has-[:focus-visible]:outline has-[:focus-visible]:outline-2',
-                'has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-gold-ink',
+                'has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent-ink',
+                /* L'ÉTAT INDISPONIBLE SE VOIT, et il ne se voit pas comme un
+                   choix pâle : le curseur le dit aussi. Même écriture que la
+                   copie qu'il remplace, pour que rien ne change à l'œil. */
+                option.disabled
+                  ? 'cursor-not-allowed opacity-55'
+                  : 'cursor-pointer',
                 checked
                   ? 'border-ink bg-ink text-on-dark'
                   : 'border-border bg-surface text-ink hover:border-border-strong',
@@ -281,6 +398,7 @@ function RadioPuces<T extends string>({
                 name={name}
                 value={option.value}
                 checked={checked}
+                disabled={option.disabled}
                 onChange={() => onChange(option.value)}
                 className="sr-only"
               />
@@ -342,7 +460,7 @@ export function SegmentedControl<T extends string>({
                   // La pastille de remise suit l'accent unique. Elle était en
                   // vert de succès, seule tache de couleur restante sur la
                   // landing une fois les autres neutralisées.
-                  active ? 'bg-gold text-ink' : 'bg-gold-tint text-gold-ink',
+                  active ? 'bg-accent text-on-accent' : 'bg-accent-tint text-accent-ink',
                 )}
               >
                 {option.badge}

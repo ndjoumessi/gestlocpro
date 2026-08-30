@@ -49,11 +49,42 @@ interface ReponseErreur {
   fields?: { path: string; message: string }[]
 }
 
-async function requete<T>(chemin: string, init: RequestInit = {}): Promise<T> {
+/**
+ * LES PARAMÈTRES DE REQUÊTE PASSENT PAR UNE OPTION, jamais par le gabarit.
+ *
+ * Le premier chemin paginé du produit les composait à la main —
+ * `` `/parks/${id}/decisions${avant ? `?avant=…` : ''}` `` — et deux choses en
+ * ont souffert. `check-orphelins` lit la SOURCE de ce fichier pour vérifier
+ * qu'aucune route du serveur ne reste sans appelant : il compare des chemins
+ * étoilés, et un gabarit qui se termine par une expression rend `/decisions*`,
+ * qui ne correspond à rien. Un outil qu'on rend aveugle ne proteste plus.
+ *
+ * Et l'encodage se serait répété à chaque appelant, jusqu'à ce que l'un d'eux
+ * l'oublie. Ici il est fait une fois, par `URLSearchParams`, qui connaît les
+ * règles mieux qu'un `encodeURIComponent` posé au bon endroit par habitude.
+ *
+ * Une valeur `undefined` n'est pas envoyée : c'est ce qui permet d'écrire
+ * `{ avant }` sans tester d'abord, et donc de ne pas retrouver la
+ * concaténation conditionnelle chez l'appelant.
+ */
+type Parametres = Record<string, string | undefined>
+
+async function requete<T>(
+  chemin: string,
+  init: RequestInit & { query?: Parametres } = {},
+): Promise<T> {
+  const { query, ...reste } = init
+  const parametres = new URLSearchParams(
+    Object.entries(query ?? {}).flatMap(([cle, valeur]) =>
+      valeur === undefined ? [] : [[cle, valeur] as [string, string]],
+    ),
+  ).toString()
+  const adresse = `/api${chemin}${parametres ? `?${parametres}` : ''}`
+
   let reponse: Response
   try {
-    reponse = await fetch(`/api${chemin}`, {
-      ...init,
+    reponse = await fetch(adresse, {
+      ...reste,
       /**
        * Sans cela, le navigateur n'envoie ni ne reçoit le cookie de session, et
        * chaque requête repart anonyme. Le défaut est silencieux : on obtient un
@@ -61,8 +92,8 @@ async function requete<T>(chemin: string, init: RequestInit = {}): Promise<T> {
        */
       credentials: 'same-origin',
       headers: {
-        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
-        ...init.headers,
+        ...(reste.body ? { 'Content-Type': 'application/json' } : {}),
+        ...reste.headers,
       },
     })
   } catch (cause) {
@@ -216,6 +247,17 @@ export const api = {
   me: () => requete<SessionApi>('/auth/me'),
 
   health: () => requete<{ ok: boolean }>('/health'),
+
+  /**
+   * Les cours de change, publics et sans session.
+   *
+   * Le franc CFA y est par sa PARITÉ LÉGALE — 655,957 pour un euro, exacte et
+   * permanente — et les deux dollars par les cours de la Banque centrale
+   * européenne, avec leur date. `date: null` dit que le flux n'a pas répondu :
+   * ce n'est pas une panne du produit, c'est l'absence des seules devises qui
+   * flottent.
+   */
+  rates: () => requete<TauxApi>('/rates'),
 
   // ─── Parc ──────────────────────────────────────────────────────────────────
 
@@ -429,6 +471,19 @@ export const api = {
    * afficher une moitié à jour et l'autre périmée.
    */
   access: <T>(parkId: string) => requete<T>(`/parks/${parkId}/access`),
+  /**
+   * Le registre des DÉCISIONS : ce que le parc a écrit, et qui l'a écrit.
+   *
+   * Distinct du registre des accès, qui répond à « qui a le droit » quand
+   * celui-ci répond à « qui a fait ». Réservé au propriétaire — le serveur rend
+   * 403 aux autres, et l'écran ne s'offre pas à eux.
+   *
+   * `avant` est un curseur, et non un numéro de page : un registre s'allonge
+   * par le haut, et une pagination par décalage rejouerait ou sauterait une
+   * ligne entre deux lectures.
+   */
+  decisions: <T>(parkId: string, avant?: string) =>
+    requete<T>(`/parks/${parkId}/decisions`, { query: { avant } }),
 
   /**
    * Les prix de refacturation, historique compris.
@@ -562,4 +617,86 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(corps),
     }),
+
+  /**
+   * Réserve une place pour la photo d'une réserve, et rend de quoi l'envoyer.
+   *
+   * `sizeBytes` est la taille du blob TRANSCODÉ, pas celle du fichier choisi :
+   * elle est scellée dans l'autorisation d'envoi et le dépôt refuse tout ce qui
+   * n'en fait pas exactement autant. Annoncer la taille de l'original ferait
+   * refuser chaque envoi.
+   */
+  reservePhoto: <T>(
+    parkId: string,
+    findingId: string,
+    corps: { contentType: 'image/jpeg'; sizeBytes: number },
+  ) =>
+    requete<T>(`/parks/${parkId}/findings/${findingId}/photos`, {
+      method: 'POST',
+      body: JSON.stringify(corps),
+    }),
+
+  /**
+   * Dit que les octets sont montés. C'est ICI que le serveur les regarde.
+   *
+   * Sans cet appel, la ligne reste non confirmée et rien ne la sert — une photo
+   * déposée mais non confirmée est payée et invisible, ce que l'écran doit
+   * dire plutôt que de refermer sur un succès.
+   */
+  confirmPhoto: <T>(parkId: string, photoId: string) =>
+    requete<T>(`/parks/${parkId}/photos/${photoId}/confirmation`, { method: 'POST' }),
+
+  /**
+   * Demande l'adresse de lecture d'une photo — signée, et courte.
+   *
+   * Elle N'EST PAS dans le portefeuille, et ne peut pas y être : le portefeuille
+   * se lit une fois puis vit en mémoire des heures, l'adresse périme en quelques
+   * minutes. Une adresse scellée dans la vue serait morte avant d'être affichée.
+   *
+   * Un appel PAR PHOTO, donc, et c'est le prix du seau non public. Le
+   * portefeuille borne déjà ce que le locataire peut demander : le serveur rend
+   * 404 sur tout ce qui sort de son bail, y compris sur son propre logement.
+   */
+  readPhoto: <T>(parkId: string, photoId: string) =>
+    requete<T>(`/parks/${parkId}/photos/${photoId}`),
+}
+
+/**
+ * DÉPOSE LES OCTETS, hors de `requete` et c'est délibéré.
+ *
+ * `requete` préfixe `/api` et pose `Content-Type: application/json` ; ni l'un
+ * ni l'autre ne convient. L'adresse vient du serveur, déjà complète et signée,
+ * et le corps est une image — le jour où le dépôt sera R2, cette même adresse
+ * pointera vers un autre domaine et cette fonction n'aura pas à changer.
+ *
+ * `credentials: 'same-origin'` fait exactement ce qu'il faut des deux côtés :
+ * le cookie de session part vers le transport local, et NE PART PAS vers le
+ * seau distant, où il n'aurait rien à faire.
+ */
+export async function deposerLesOctets(
+  envoi: { url: string; methode: string; entetes: Record<string, string> },
+  octets: Blob,
+): Promise<void> {
+  const reponse = await fetch(envoi.url, {
+    method: envoi.methode,
+    headers: envoi.entetes,
+    body: octets,
+    credentials: 'same-origin',
+  })
+  if (!reponse.ok) {
+    throw new ApiError(reponse.status, 'upload_failed')
+  }
+}
+
+/**
+ * Les cours servis par `/rates`, tous exprimés POUR UN EURO.
+ *
+ * L'euro sert de pivot parce que c'est la base de la publication de la BCE et
+ * celle de la parité du franc CFA : n'importe quelle autre exigerait une
+ * inversion, c'est-à-dire l'endroit où l'on se trompe.
+ */
+export interface TauxApi {
+  /** Jour de publication des cours flottants. `null` quand le flux n'a rien rendu. */
+  date: string | null
+  parEuro: Partial<Record<'XAF' | 'XOF' | 'EUR' | 'CAD' | 'USD', number>>
 }

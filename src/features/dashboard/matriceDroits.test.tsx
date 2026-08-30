@@ -141,3 +141,61 @@ describe('matrice des droits', () => {
     expect(roles(ligne(/renommer ou supprimer/i))[1]).toBe('Non autorisé')
   })
 })
+
+/**
+ * CE QUE LA MATRICE EXPLIQUE, ELLE L'EXPLIQUE AUSSI À L'ŒIL.
+ *
+ * ═══ LA PHRASE EXISTAIT, CACHÉE ═══
+ *
+ * « Actions autorisées pour chaque rôle, SELON LE MODE DE DÉLÉGATION CHOISI
+ * ci-dessus » vivait dans le `<caption>` de la table, en `sr-only`. Le
+ * commentaire qui l'y avait mise dit exactement pourquoi : le titre visible ne
+ * le dit pas. Sauf que la conclusion s'arrête à mi-chemin — si le titre ne le
+ * dit pas, ce n'est pas au seul lecteur d'écran qu'il manque.
+ *
+ * Et c'est la phrase qui compte le plus sur cet écran : sans elle, rien ne
+ * relie le tableau au choix de délégation posé juste au-dessus, dont il dépend
+ * pourtant colonne par colonne. Le lecteur voyant avait un titre seul,
+ * surmontant trente-deux pixels de blanc — toutes les autres sections du
+ * produit portent un titre ET une ligne qui l'explique.
+ *
+ * ═══ CE QUE LE CAS TIENT, ET CE QU'IL REFUSE ═══
+ *
+ * La phrase est VISIBLE. Et elle n'est pas dite deux fois : le `<caption>` la
+ * répéterait à l'oreille, ce que ce même fichier a déjà corrigé une fois — « un
+ * lecteur d'écran entendait Matrice des droits deux fois ».
+ */
+describe('la légende de la matrice', () => {
+  it('se lit à l’écran, et ne se dit qu’une fois', async () => {
+    await renderApp('/app/prise-en-main')
+    await screen.findByRole('heading', { level: 1, name: /prise en main/i })
+
+    const phrase = /selon le mode de délégation choisi/i
+    const trouvees = screen.getAllByText(phrase)
+    expect(trouvees, 'la légende n’est nulle part, ou elle y est deux fois').toHaveLength(1)
+
+    /*
+      PAS DANS LE `<caption>`, ET C'EST LA SEULE FORMULATION QUI MORD.
+
+      `toBeVisible` ne sert à rien ici : `sr-only` masque par `clip-path` et une
+      taille d'un pixel, que le rendu d'essai ne calcule pas — le nœud reste
+      « visible » à ses yeux. Une première rédaction de ce cas passait donc au
+      vert sur le défaut qu'elle prétendait tenir.
+
+      On vise donc l'ENDROIT : tant que la phrase vit dans la légende de la
+      table, elle est réservée au lecteur d'écran.
+    */
+    expect(
+      trouvees[0]!.closest('caption'),
+      'la légende est restée dans le `<caption>` réservé au lecteur d’écran',
+    ).toBeNull()
+
+    /* ET LA TABLE GARDE UN NOM. Sortir la phrase du `<caption>` sans rien
+       mettre à la place laisserait une table anonyme — on aurait déplacé un
+       défaut au lieu de le fermer. */
+    expect(
+      screen.getByRole('table', { name: /matrice des droits/i }),
+      'la table a perdu son nom en perdant sa légende',
+    ).toBeInTheDocument()
+  })
+})

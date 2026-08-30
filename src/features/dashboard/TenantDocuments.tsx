@@ -1,10 +1,11 @@
-import { useId, useRef, useState } from 'react'
-import type { KeyboardEvent } from 'react'
+import { useId, useState } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { lien, useBase } from '@/lib/base'
 import { Card, CardHeader } from '@/components/primitives/Card'
-import { Button } from '@/components/primitives/Button'
+import { RadioCards } from '@/components/primitives/Choice'
+import { Button, IconButton } from '@/components/primitives/Button'
 import { Icon } from '@/components/primitives/Icon'
+import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDebordement'
 import { EmptyState } from '@/components/primitives/DataTable'
 import { Skeleton, SkeletonRegion } from '@/components/primitives/Skeleton'
 import { useCurrency } from '@/currency/CurrencyProvider'
@@ -12,15 +13,34 @@ import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
 import {
   DOCUMENT_KIND_LABELS,
-  dernierVersement,
+  receiptDue,
   type DocumentKind,
   type DocumentRequest,
 } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { useToast } from '@/components/primitives/Toast'
-import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
 import { cn } from '@/lib/cn'
-import { useReceiptExport } from './receiptExport'
+import {
+  useAllReceiptsPdf,
+  useDepositPdf,
+  useInspectionPdf,
+  useReceiptPdf,
+} from './documentsPdf'
+import { useHistoriqueCsv } from './quittancesCsv'
+
+/**
+ * LA GRILLE DES DEUX COLONNES, nommée pour que l'attente ne s'en écarte pas.
+ *
+ * Elle s'écrivait DEUX fois dans ce fichier : une fois sur la rangée chargée,
+ * une fois sur le squelette qui l'annonce. Deux chaînes que rien ne tenait
+ * ensemble, dans le seul morceau du produit qu'aucune porte ne rend jamais —
+ * la démonstration n'attend pas, la vitrine n'a pas de squelette d'écran, et la
+ * mesure au navigateur mesure la page chargée. C'est ainsi que l'espace
+ * locataire s'est retrouvé à attendre sous quatre cartes pour en charger trois.
+ *
+ * Voir `squelettesFideles.test.ts`, qui tient désormais la règle.
+ */
+const GRILLE_DEUX_COLONNES = 'grid gap-4 lg:grid-cols-2'
 
 /**
  * Documents du locataire — ses pièces contractuelles et ses quittances.
@@ -28,10 +48,16 @@ import { useReceiptExport } from './receiptExport'
  * L'écran tient une ligne de conduite que le portail avait déjà payée une
  * fois : **on n'affiche pas un bouton qui ne peut rien produire**. Le bail
  * signé, l'état des lieux et le reçu de caution sont annoncés « PDF » par les
- * maquettes ; ce produit ne sait ni recevoir un fichier déposé, ni fabriquer un
- * PDF opposable — `receiptExport` le dit dans son propre commentaire. Chaque
- * ligne dit donc ce qu'elle sait faire : consulter la pièce à l'écran quand la
- * donnée existe, et annoncer la case vide quand elle n'existe pas.
+ * maquettes ; le produit ne savait alors ni recevoir un fichier déposé, ni en
+ * fabriquer un, et chaque ligne disait donc la case vide.
+ *
+ * IL SAIT FABRIQUER DEPUIS `lib/pdf.ts`, et la règle n'a pas changé pour
+ * autant — c'est ce qu'elle autorise qui a changé. Deux des trois lignes ont
+ * leurs DONNÉES : une caution porte son consigné, son retenu et son solde ; un
+ * état des lieux porte sa date, ses pièces et ses réserves. Elles produisent
+ * donc. Le bail n'a rien : aucun texte n'en est enregistré, et le mettre en page
+ * reviendrait à fabriquer la pièce qu'on prétend restituer. Il reste la case
+ * vide, seul des trois.
  *
  * Les deux renvois — état des lieux, caution — pointent vers des adresses que
  * le locataire ne trouve plus dans sa navigation depuis qu'elle est passée à
@@ -56,7 +82,11 @@ export function TenantDocuments() {
   const t = useT()
   const d = useDates()
   const { money } = useCurrency()
-  const downloadReceipt = useReceiptExport()
+  const telechargerLaQuittance = useReceiptPdf()
+  const telechargerToutesLesQuittances = useAllReceiptsPdf()
+  const telechargerLaCaution = useDepositPdf()
+  const telechargerLEtatDesLieux = useInspectionPdf()
+  const exporterLHistorique = useHistoriqueCsv()
   const {
     unitById,
     tenantUnitIds,
@@ -68,48 +98,17 @@ export function TenantDocuments() {
     loading,
   } = usePortfolio()
   const { notify } = useToast()
-  const exportCsv = useCsvExport()
-  const csvMoney = useCsvMoney()
   const [choix, setChoix] = useState<DocumentKind | null>(null)
-  const boutons = useRef<(HTMLButtonElement | null)[]>([])
 
-  /*
-    UN CHOIX EXCLUSIF SE DIT `radiogroup`, et pas trois boutons pressés.
-
-    `aria-pressed` décrit un interrupteur — chacun indépendant des autres. Ici
-    les trois s'excluent : un lecteur d'écran annonçait donc trois bascules sans
-    lien, quand il doit annoncer « 2 sur 3 ». Le motif complet vit déjà dans le
-    formulaire de signalement, et son commentaire pose l'avertissement qu'on
-    suit ici : annoncer une navigation aux flèches sans la câbler est PIRE
-    qu'une rangée de boutons ordinaires, qui au moins ne promet rien.
-
-    BORNAGE et non bouclage, comme partout dans ce dépôt.
-  */
-  const auClavier = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
-    const destination =
-      e.key === 'ArrowRight' || e.key === 'ArrowDown'
-        ? Math.min(index + 1, DEMANDES.length - 1)
-        : e.key === 'ArrowLeft' || e.key === 'ArrowUp'
-          ? Math.max(index - 1, 0)
-          : e.key === 'Home'
-            ? 0
-            : e.key === 'End'
-              ? DEMANDES.length - 1
-              : null
-
-    if (destination === null) return
-    // Les flèches feraient défiler la rangée, `Début` et `Fin` le document.
-    e.preventDefault()
-    setChoix(DEMANDES[destination])
-    boutons.current[destination]?.focus()
-  }
   const suiviId = useId()
 
   /** Mono-unité, comme l'espace locataire — et pour la même raison. */
   const monUnite = tenantUnitIds[0] ?? ''
   const tenantReceipts = receiptsForUnit(monUnite)
-  /* Les siennes, et dans l'ordre où il les a faites. */
-  const mesDemandes = documentRequests.filter((d) => d.unitId === monUnite)
+  /* Les siennes, et dans l'ordre où il les a faites.
+     Le paramètre ne s'appelle pas `d` : ce nom est pris trente lignes plus haut
+     par les formats de date, et une demande de pièce n'est pas une date. */
+  const mesDemandes = documentRequests.filter((demande) => demande.unitId === monUnite)
   const unit = unitById(monUnite)
   const deposit = depositForUnit(monUnite)
   const entree = inspectionForUnit(monUnite, 'entry')
@@ -117,68 +116,37 @@ export function TenantDocuments() {
   // L'attente AVANT le garde `!unit` : pendant le chargement, le jeu de
   // démonstration fournit toujours une unité, et l'écran montrerait le dossier
   // d'un autre. Même ordre, même raison que l'espace locataire.
-  /**
-   * Toutes les périodes en UN fichier, et non six téléchargements.
-   *
-   * « Tout télécharger » qui déclencherait six enregistrements successifs se
-   * ferait arrêter par le navigateur dès le deuxième, et le locataire
-   * repartirait avec une quittance sur six en croyant les avoir toutes.
-   */
-  function toutTelecharger() {
+
+
+  /*
+    « DEMANDE ENVOYÉE » ATTEND QUE LE SERVEUR L'AIT ACCEPTÉE.
+
+    La phrase partait avec l'appel : sur le 409 `already_pending` que cet écran
+    s'emploie justement à éviter avant le clic, le locataire lisait que sa
+    demande était partie PUIS le message d'échec du fournisseur. Deux annonces
+    contraires pour un seul geste.
+
+    Le choix SURVIT au refus, pour la même raison que la saisie du signalement :
+    le remettre à `null` punirait le locataire d'une panne qui n'est pas la
+    sienne, et il lui faudrait recommencer sa sélection.
+  */
+  /* Le refus du groupe : posé au clic, levé dès qu'une pièce est désignée. */
+  const [sansChoix, setSansChoix] = useState(false)
+
+  async function envoyerLaDemande() {
+    /* LE REFUS S'ÉCRIT AU LIEU D'ÉTEINDRE LE BOUTON. Il était `disabled` tant
+       qu'aucune pièce n'était choisie — donc mort dès l'arrivée, avant tout
+       geste, et muet : le groupe de choix porte `hideLegend`, si bien que même
+       son intitulé était masqué. Rien à l'écran ne reliait l'extinction au
+       choix qui manquait. Même correctif que « Continuer » à l'inscription. */
+    if (!choix) {
+      setSansChoix(true)
+      return
+    }
     if (!unit) return
-    exportCsv({
-      name: [t('app.documents.allReceipts'), unit.label],
-      headers: [
-        t('app.period'),
-        csvMoney.header(t('app.tenant.colRent')),
-        csvMoney.header(t('app.tenant.colWater')),
-        csvMoney.header(t('app.tenant.colPower')),
-        csvMoney.header(t('app.payments.paid')),
-        t('app.payments.date'),
-        t('app.payments.reference'),
-      ],
-      /**
-       * Les montants de CHAQUE période, pris tels que le serveur les a figés.
-       *
-       * Le loyer sortait de `unit.rent` — celui du bail d'aujourd'hui, recopié
-       * sur les six lignes —, et l'eau comme l'électricité se recalculaient au
-       * tarif courant. Un fichier téléchargé en octobre n'aurait donc pas dit
-       * la même chose que le même fichier téléchargé en juillet.
-       *
-       * La colonne « réglé » manquait, et son absence laissait croire chaque
-       * ligne soldée : c'est le seul chiffre qui distingue une période payée
-       * d'une période en cours.
-       */
-      rows: tenantReceipts.map((receipt) => {
-        const versement = dernierVersement(receipt)
-        return [
-          d.monthYear(receipt),
-          csvMoney.amount(receipt.rentMinor),
-          csvMoney.amount(receipt.waterMinor),
-          csvMoney.amount(receipt.powerMinor),
-          csvMoney.amount(receipt.paidMinor),
-          // Pas de versement, pas de date : inventer celle de l'échéance
-          // laisserait croire à un règlement reçu.
-          versement ? d.fullDate(versement.paidOn) : null,
-          /*
-            LA RÉFÉRENCE DE L'OPÉRATEUR, dans le fichier que le locataire garde.
-            C'est avec elle qu'il conteste : sans elle, l'export lui demande de
-            croire sur parole un encaissement qu'il ne peut pas retrouver chez
-            son opérateur. Elle était écrite en base et rendue à personne.
-
-            La NOTE du bailleur n'y est pas, et ne peut pas y être : le serveur
-            ne la sert pas à un locataire.
-          */
-          versement?.reference ?? null,
-        ]
-      }),
-      notice: 'app.receiptDownloaded',
-    })
-  }
-
-  function envoyerLaDemande() {
-    if (!choix || !unit) return
-    requestDocument(unit.id, choix)
+    setSansChoix(false)
+    const acceptee = await requestDocument(unit.id, choix)
+    if (!acceptee) return
     setChoix(null)
     notify(t('app.documents.requestSent'), { tone: 'ok' })
   }
@@ -202,7 +170,7 @@ export function TenantDocuments() {
     <>
       <PageHeader title={t('app.documents.title')} description={t('app.documents.subtitle')} />
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className={GRILLE_DEUX_COLONNES}>
         <Card flush>
           <CardHeader
             eyebrow={t('app.documents.contractual')}
@@ -211,9 +179,15 @@ export function TenantDocuments() {
             className="px-4 pt-4 sm:px-5 sm:pt-5"
           />
           <ul className="divide-y divide-divider border-t border-divider">
-            {/* Aucun dépôt de fichier n'existe dans le produit : la ligne dit
-                la case vide plutôt que d'offrir un téléchargement qui
-                fabriquerait le document qu'il prétend restituer. */}
+            {/* LE BAIL RESTE LA CASE VIDE, et c'est le seul des trois.
+
+                Ses deux voisines se téléchargent depuis que le produit sait
+                fabriquer un PDF, parce que LEURS DONNÉES existent — une caution
+                porte son consigné, son retenu et son solde ; un état des lieux
+                porte sa date, ses pièces et ses réserves. Rien n'enregistre le
+                TEXTE d'un bail : le produire reviendrait à fabriquer, sous une
+                mise en page qui lui donnerait l'apparence d'une pièce, un
+                document que rien n'atteste. */}
             <LignePiece label={t('app.documents.lease')} />
 
             <LignePiece
@@ -221,13 +195,29 @@ export function TenantDocuments() {
               detail={entree ? d.fullDate(entree.date) : undefined}
               to={entree ? lien(base, 'etats-des-lieux') : undefined}
               action={t('app.documents.view')}
+              telecharger={
+                entree
+                  ? {
+                      nom: t('app.documents.pdfDownloadInspection'),
+                      faire: () => telechargerLEtatDesLieux(unit, entree),
+                    }
+                  : undefined
+              }
             />
 
             <LignePiece
               label={t('app.documents.depositReceipt')}
-              detail={deposit ? money(deposit.held, { round: true }) : undefined}
+              detail={deposit ? money(deposit.held, { compact: true }) : undefined}
               to={deposit ? lien(base, 'cautions') : undefined}
               action={t('app.documents.view')}
+              telecharger={
+                deposit
+                  ? {
+                      nom: t('app.documents.pdfDownloadDeposit'),
+                      faire: () => telechargerLaCaution(unit, deposit),
+                    }
+                  : undefined
+              }
             />
           </ul>
         </Card>
@@ -239,10 +229,38 @@ export function TenantDocuments() {
             level={2}
             className="px-4 pt-4 sm:px-5 sm:pt-5"
             action={
+              /*
+                DEUX FICHIERS, DEUX GESTES, ET LE SECOND EST REPLIÉ.
+
+                Le carnet PDF se PRÉSENTE — à un bailleur suivant, à une
+                administration. Le tableur se CALCULE : on y trie ses périodes,
+                on y somme une année, on le colle dans une feuille. Un PDF ne
+                fait aucun de ces trois gestes, et c'est pourquoi le tableau est
+                revenu après que ce lot l'eut retiré.
+
+                Le premier est visible, le second est dans le menu : c'est la
+                règle des en-têtes — au plus deux commandes offertes, le reste
+                atteignable. Ici l'un des deux est de loin le plus demandé.
+              */
               tenantReceipts.length > 0 ? (
-                <Button variant="ghost" size="sm" icon="download" onClick={toutTelecharger}>
-                  {t('app.documents.downloadAll')}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon="download"
+                    onClick={() => telechargerToutesLesQuittances(unit, tenantReceipts)}
+                  >
+                    {t('app.documents.downloadAll')}
+                  </Button>
+                  <MenuDeDebordement libelle={t('common.moreActions')}>
+                    <MenuElement
+                      icone="download"
+                      onClick={() => exporterLHistorique(unit, tenantReceipts)}
+                    >
+                      {t('app.documents.exportCsv')}
+                    </MenuElement>
+                  </MenuDeDebordement>
+                </div>
               ) : undefined
             }
           />
@@ -262,18 +280,48 @@ export function TenantDocuments() {
             {tenantReceipts.map((receipt) => (
               <li
                 key={`${receipt.year}-${receipt.month}`}
-                className="flex items-center gap-3 px-4 py-3 sm:px-5"
+                /* LA MÊME RANGÉE REPLIABLE QUE `LignePiece`, et la porte a
+                   exigé le changement à la ligne près. Le montant ajouté à
+                   cette ligne déborde de 6 px à 320 px : « 170 942 FCFA » en
+                   capitales interlettrées ne tient pas dans ce que le bouton
+                   « Télécharger » laisse, et un nombre ne se coupe pas. Le
+                   remède est celui que la carte du dessus applique déjà —
+                   plancher sur la colonne de texte, repli, action rendue à
+                   droite par `ml-auto`. */
+                className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 sm:px-5"
               >
                 <Icon name="file" size={17} className="shrink-0 text-muted" />
-                <span className="min-w-0 flex-1 text-body">{d.monthYear(receipt)}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon="download"
-                  onClick={() => downloadReceipt(unit, receipt)}
-                >
-                  {t('app.documents.download')}
-                </Button>
+                {/* LE MOIS ET SON MONTANT, sur deux lignes comme `LignePiece`
+                    juste au-dessus — et pour la même raison qu'elle : à 320 px,
+                    une seconde valeur posée sur la même ligne pousse le bouton
+                    et coupe le nom du mois.
+
+                    Six lignes ne portaient QUE le nom d'un mois : rien ne
+                    distinguait la période à 101 300 de celle à 103 800, et il
+                    fallait télécharger pour savoir ce qu'on téléchargeait. Le
+                    chiffre existait — l'export de cette même carte l'écrit déjà
+                    dans son fichier.
+
+                    LE TOTAL DÛ, ce que la quittance couvre, et non le réglé :
+                    sur une période partiellement soldée, le versement se
+                    lirait comme le montant de la pièce. Le reste dû a son
+                    écran, avec la primitive qui distingue les deux. */}
+                <span className="min-w-32 flex-1">
+                  <span className="block text-body">{d.monthYear(receipt)}</span>
+                  <span className="numeric block text-caps text-muted">
+                    {money(receiptDue(receipt), { compact: true })}
+                  </span>
+                </span>
+                <div className="ml-auto shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon="download"
+                    onClick={() => telechargerLaQuittance(unit, receipt)}
+                  >
+                    {t('app.documents.download')}
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>
@@ -281,19 +329,23 @@ export function TenantDocuments() {
         </Card>
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      {/* La MÊME grille que la rangée du dessus, lue au même endroit. Elle
+          s'écrivait ici à la main — `'mt-4 grid gap-4 lg:grid-cols-2'` —, à
+          trente lignes de la constante déclarée pour exactement cela. La marge
+          se compose, la grille se nomme. */}
+      <div className={cn('mt-4', GRILLE_DEUX_COLONNES)}>
         {/*
           DEMANDER UN DOCUMENT.
 
-          La demande part par le canal des signalements — `addWork` —, le seul
-          que le gestionnaire relève réellement. Elle lui arrive donc, il la voit
-          et peut la clore, ce qu'un simple toast n'aurait jamais fait.
+          LA DETTE DE MODÈLE A ÉTÉ SOLDÉE, et ce commentaire décrivait encore
+          l'ancien montage. La demande partait par le canal des signalements —
+          `addWork` —, faute d'objet à elle : elle apparaissait dans « Travaux
+          dans mon logement » aux côtés d'une fuite d'évier, ce qui était faux.
 
-          DETTE DE MODÈLE, assumée et à solder : une demande de pièce n'est pas
-          une intervention. Elle apparaîtra dans « Travaux dans mon logement »
-          aux côtés d'une fuite d'évier, ce qui est faux. Le produit n'a pas
-          d'objet « demande » ; en fabriquer un dépasse cet écran, et faire
-          semblant d'envoyer aurait été pire que de mal ranger.
+          Le produit a désormais un objet `DocumentRequest` : `requestDocument`
+          le crée, `resolveDocumentRequest` le clôt en « fournie » ou
+          « impossible à fournir », et le suivi juste en dessous le lit. Une
+          demande de pièce n'est plus rangée parmi les interventions.
         */}
         <Card>
           <CardHeader
@@ -301,55 +353,53 @@ export function TenantDocuments() {
             description={t('app.documents.requestHint')}
             level={2}
           />
-          <div role="radiogroup" aria-label={t('app.documents.request')} className="flex flex-wrap gap-2">
-            {DEMANDES.map((demande, index) => {
-              const actif = demande === choix
-              /**
-               * Une pièce DÉJÀ demandée et sans réponse ne se redemande pas.
-               *
-               * Le serveur le refuse — 409 `already_pending`, garanti par un
-               * index unique partiel —, et le bouton doit dire la même chose
-               * AVANT le clic : proposer un geste dont on sait qu'il échouera
-               * n'offre pas un choix, il fabrique une erreur. Le suivi juste en
-               * dessous montre la demande en cours ; la case n'est pas grisée
-               * sans explication.
-               */
-              const enAttente = mesDemandes.some(
-                (d) => d.kind === demande && d.status === 'pending',
-              )
-              return (
-                <button
-                  key={demande}
-                  type="button"
-                  role="radio"
-                  aria-checked={actif}
-                  // Un seul arrêt de tabulation pour le groupe : la tabulation
-                  // traverse le formulaire, pas trois pièces. Il ne tient que
-                  // parce que les flèches, elles, atteignent les autres. À
-                  // défaut d'un choix fait, c'est la première qui l'accueille.
-                  tabIndex={actif || (choix === null && index === 0) ? 0 : -1}
-                  ref={(node) => {
-                    boutons.current[index] = node
-                  }}
-                  disabled={enAttente}
-                  onClick={() => setChoix(demande)}
-                  onKeyDown={(event) => auClavier(event, index)}
-                  className={cn(
-                    'inline-flex min-h-11 items-center rounded-md border px-3.5',
-                    'text-label font-medium transition-colors duration-150',
-                    'disabled:cursor-not-allowed disabled:opacity-55',
-                    !enAttente && 'cursor-pointer',
-                    actif
-                      ? 'border-ink bg-ink text-on-dark'
-                      : 'border-border bg-surface-sunken text-ink hover:border-border-strong',
-                  )}
-                >
-                  {t(DOCUMENT_KIND_LABELS[demande] as 'app.documents.reqResidence')}
-                </button>
-              )
-            })}
-          </div>
-          <Button className="mt-4" onClick={envoyerLaDemande} disabled={!choix}>
+          {/*
+            LA PRIMITIVE, ET DEUX DÉFAUTS DE CLAVIER QUI DISPARAISSENT AVEC ELLE.
+
+            Ce groupe était refait à la main sur des `<button role="radio">` avec
+            une navigation aux flèches écrite ici. Elle avait deux trous, et tous
+            deux tenaient à ce qu'un faux bouton radio ignore ce qu'un vrai sait :
+
+              · les flèches SÉLECTIONNAIENT une pièce déjà demandée — le
+                `disabled` n'était consulté nulle part dans `auClavier`. Le
+                bouton d'envoi s'activait alors et partait chercher le 409
+                `already_pending` que ce même écran s'emploie à éviter avant le
+                clic ;
+              · le groupe entier devenait INATTEIGNABLE à la tabulation quand la
+                première pièce était déjà demandée : elle portait le seul arrêt
+                (`tabIndex={0}`) et était `disabled`, les deux autres portaient
+                `-1`.
+
+            Un `input[type=radio][disabled]` est sauté par les flèches et refusé
+            au clic sans qu'une ligne soit écrite, et le navigateur pose l'arrêt
+            de tabulation sur une entrée qui peut le recevoir. Il n'y avait rien
+            à réparer, seulement à cesser de réécrire.
+          */}
+          <RadioCards
+            variant="puces"
+            legend={t('app.documents.request')}
+            hideLegend
+            name="piece"
+            value={choix}
+            error={sansChoix ? t('app.documents.reqNoChoice') : undefined}
+            onChange={(kind) => {
+              setChoix(kind)
+              setSansChoix(false)
+            }}
+            options={DEMANDES.map((demande) => ({
+              value: demande,
+              title: t(DOCUMENT_KIND_LABELS[demande] as 'app.documents.reqResidence'),
+              description: '',
+              /* Une pièce déjà demandée et sans réponse ne se redemande pas : le
+                 serveur le refuse, et le choix doit dire la même chose avant le
+                 clic. Le suivi juste en dessous montre la demande en cours — la
+                 case n'est pas grisée sans explication. */
+              disabled: mesDemandes.some(
+                (enCours) => enCours.kind === demande && enCours.status === 'pending',
+              ),
+            }))}
+          />
+          <Button className="mt-4" onClick={envoyerLaDemande}>
             {t('app.documents.requestSend')}
           </Button>
 
@@ -393,13 +443,24 @@ export function TenantDocuments() {
           confidentialité. Une promesse de sécurité inventée est le pire endroit
           où en inventer une.
         */}
-        <Card tone="dark">
+        {/*
+          `self-start` : LA NOTE FINIT OÙ FINIT SON TEXTE.
+
+          Étirée sur la hauteur de la colonne des pièces, cette carte portait
+          349 px de vide sous deux lignes — 71 % de sa hauteur, en encre pleine,
+          soit un pavé sombre presque entièrement creux à côté d'une liste bien
+          remplie. Le défaut ne débordait de rien et tenait tous les seuils :
+          c'est la sonde du BLANC IMPOSÉ qui l'a nommé, et rien d'autre ne le
+          pouvait. Le remède n'est pas d'allonger le texte, c'est de cesser de
+          faire payer à la note la hauteur de sa voisine.
+        */}
+        <Card tone="dark" className="self-start">
           {/* Le titre porte le libellé : `CardHeader` rend son `<h2>` sans
               condition, et le laisser vide posait un en-tête anonyme qu'un
               lecteur d'écran annonce sans pouvoir le nommer. */}
           <CardHeader title={t('app.documents.privacy')} level={2} className="mb-2" />
           <p className="flex items-start gap-3 text-body text-on-dark-muted">
-            <Icon name="shield" size={17} className="mt-0.5 shrink-0 text-gold" />
+            <Icon name="shield" size={17} className="mt-0.5 shrink-0 text-accent-on-dark" />
             {t('app.documents.privacyBody')}
           </p>
         </Card>
@@ -419,17 +480,38 @@ function LignePiece({
   detail,
   to,
   action,
+  telecharger,
 }: {
   label: string
   detail?: string
   to?: string
   action?: string
+  /**
+   * Le document lui-même, quand le produit sait le fabriquer.
+   *
+   * SÉPARÉ DE `to`, et les deux cohabitent : consulter mène à l'écran qui
+   * montre la pièce — ses photos, ses réserves —, télécharger rend le fichier
+   * qu'on garde ou qu'on présente. Fondre les deux aurait obligé à choisir
+   * laquelle des deux on retire, et aucune des deux n'est de trop.
+   *
+   * Un bouton ICÔNE et non un second libellé : la ligne porte déjà « Consulter »
+   * et se replie à 320 px. Deux libellés côte à côte y coûtaient une troisième
+   * rangée à chacune des trois lignes de la carte.
+   */
+  telecharger?: { nom: string; faire: () => void }
 }) {
   const t = useT()
   return (
-    <li className="flex items-center gap-3 px-4 py-3 sm:px-5">
+    /* MÊME FORME QUE L'EN-TÊTE DE CARTE, MÊME REMÈDE — voir `CardHeader`.
+       Le voisin de droite est `shrink-0`, le libellé était `min-w-0` : rien ne
+       négocie, le libellé cède tout. Mesuré à 320 : 46 px offerts à « Contrat de
+       bail signé », dont le premier mot en réclame 49 — il débordait de 3 px,
+       DANS la carte, sans faire rougir aucune règle de page. Le plancher est
+       plus bas qu'en en-tête (128 contre 192) parce que la ligne porte déjà une
+       icône et vit dans une liste : c'est une ligne, pas un titre. */
+    <li className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 sm:px-5">
       <Icon name="file" size={17} className="shrink-0 text-muted" />
-      <span className="min-w-0 flex-1">
+      <span className="min-w-32 flex-1">
         {/* PAS de `truncate` sur le libellé : à 320px, la case vide
             (« Aucun document déposé », `shrink-0`) est plus large que le
             bouton « Consulter » qu'elle remplace, et coupait le nom de la
@@ -441,37 +523,137 @@ function LignePiece({
         <span className="block text-body">{label}</span>
         {detail && <span className="numeric block text-caps text-muted">{detail}</span>}
       </span>
-      {to ? (
-        <Button to={to} variant="ghost" size="sm">
-          {action}
-        </Button>
-      ) : (
-        <span className="shrink-0 text-caps text-muted">{t('app.documents.none')}</span>
-      )}
+      {/* `ml-auto` : QUAND LA LIGNE SE REPLIE, l'action reste à droite.
+
+          Sans lui elle tombe à gauche, sous l'icône, et les trois lignes de la
+          carte montrent trois « Consulter » alignés sur rien. Le `flex-1` du
+          libellé la pousse déjà à droite tant que tout tient sur une ligne :
+          cette marge automatique n'agit donc QUE dans l'état replié, où elle
+          rend à l'action la colonne qu'elle occupe partout ailleurs.
+
+          `CardHeader` fait le même geste pour la même raison. Une première
+          rédaction ne le donnait qu'ICI, en distinguant le bouton de la légende
+          — « une légende suit son titre, un bouton garde sa colonne ». C'était
+          habiller un oubli : la plupart des actions d'en-tête SONT des boutons,
+          et « Tout télécharger » se retrouvait seul à gauche deux cartes plus
+          bas. La règle est la même partout. */}
+      <div className="ml-auto flex shrink-0 items-center gap-2">
+        {to ? (
+          <Button to={to} variant="ghost" size="sm">
+            {action}
+          </Button>
+        ) : (
+          <span className="text-caps text-muted">{t('app.documents.none')}</span>
+        )}
+        {telecharger && (
+          <IconButton icon="download" label={telecharger.nom} onClick={telecharger.faire} />
+        )}
+      </div>
     </li>
   )
 }
 
+/**
+ * L'ATTENTE, ET CE QU'ELLE ANNONÇAIT DE FAUX.
+ *
+ * Elle dessinait DEUX cartes dans UNE grille pour un écran qui en rend QUATRE
+ * dans DEUX : la page doublait de hauteur à la seconde où elle cesse d'attendre,
+ * et le doigt posé sur ce qu'on croyait avoir vu tombait à côté. C'est très
+ * exactement le défaut que `Skeleton` interdit dans sa première règle — « un
+ * squelette plus court que son contenu ne fait que déplacer le problème ».
+ *
+ * Les deux cartes annoncées étaient en outre PLEINES là où les vraies sont
+ * `flush` : leur rembourrage propre s'ajoutait à celui des lignes, et les pavés
+ * portaient des hauteurs choisies à l'œil — `h-4`, `h-5` — au lieu des jetons
+ * `line=` que `squelettesFideles.test.ts` cale sur les boîtes de ligne réelles.
+ * Trois façons de ne pas tenir la place, dans quinze lignes.
+ *
+ * LE TON EST REPRODUIT, ET J'AVAIS TRANCHÉ L'INVERSE AU LOT PRÉCÉDENT. La note
+ * de confidentialité est une carte sombre ; je l'avais laissée claire en
+ * attente, au motif que les pavés de substitution — en `bg-surface-sunken` — y
+ * disparaîtraient. Vérifié depuis dans `tokens.css` : `.on-dark` ne remappe PAS
+ * ce jeton, les pavés gardent donc leur valeur claire et se voient sur l'encre.
+ * Le motif était une prudence, pas une mesure.
+ *
+ * L'espace locataire, lui, peignait déjà son aplat d'encre en attente, avec sa
+ * raison écrite. Deux attentes voisines qui traitaient une carte sombre de deux
+ * façons : c'est la divergence même que ce travail poursuit.
+ *
+ * `self-start` est repris pour une autre raison, purement géométrique : sans
+ * lui la quatrième carte s'étire sur la hauteur de sa voisine, ce que la page
+ * chargée refuse justement de faire.
+ */
 function TenantDocumentsSkeleton() {
   const t = useT()
   return (
     <>
       <PageHeader title={t('app.documents.title')} description={t('app.documents.subtitle')} />
       <SkeletonRegion label={t('app.documents.title')}>
-        <div className="grid gap-4 lg:grid-cols-2">
-          {[0, 1].map((i) => (
-            <Card key={i}>
-              <Skeleton className="h-4 w-32" />
-              <div className="mt-4 flex flex-col gap-3">
-                {[0, 1, 2].map((j) => (
-                  <Skeleton key={j} className="h-5 w-full" />
+        <div className={GRILLE_DEUX_COLONNES}>
+          {/* Les pièces contractuelles : trois lignes fixes. Les quittances :
+              autant que de périodes, et le squelette n'en sait rien — trois est
+              le compte de la carte voisine, ce qui donne deux colonnes de même
+              hauteur plutôt qu'un décrochement inventé. */}
+          {[0, 1].map((carte) => (
+            <Card key={carte} flush>
+              <EnTeteEnAttente />
+              <ul className="divide-y divide-divider border-t border-divider">
+                {[0, 1, 2].map((ligne) => (
+                  <li key={ligne} className="flex items-center gap-3 px-4 py-3 sm:px-5">
+                    {/* La boîte de l'icône, à sa taille rendue. */}
+                    <Skeleton radius="md" className="size-[17px]" />
+                    <Skeleton line="body" className="min-w-0 flex-1" />
+                    {/* La colonne de droite — « Consulter », « Télécharger » —
+                        garde sa place, comme dans la ligne chargée. */}
+                    <Skeleton radius="md" className="h-7 w-24 shrink-0" />
+                  </li>
                 ))}
-              </div>
+              </ul>
             </Card>
           ))}
         </div>
+
+        <div className={cn('mt-4', GRILLE_DEUX_COLONNES)}>
+          <Card>
+            <div className="mb-4">
+              <Skeleton line="title" className="w-44" />
+              <Skeleton line="body" className="mt-1 w-full max-w-xs" />
+            </div>
+            {/* Les trois pièces demandables, puis le bouton d'envoi. */}
+            <div className="flex flex-col gap-2">
+              {[0, 1, 2].map((piece) => (
+                <Skeleton key={piece} radius="md" className="h-11" />
+              ))}
+            </div>
+            <Skeleton radius="md" className="mt-4 h-9 w-40" />
+          </Card>
+
+          <Card tone="dark" className="self-start">
+            <Skeleton line="title" className="mb-4 w-32" />
+            <div className="flex flex-col gap-1.5">
+              <Skeleton line="body" />
+              <Skeleton line="body" className="w-2/3" />
+            </div>
+          </Card>
+        </div>
       </SkeletonRegion>
     </>
+  )
+}
+
+/**
+ * L'en-tête d'une carte `flush` en attente.
+ *
+ * Le rembourrage est celui que les deux `CardHeader` de l'écran reçoivent en
+ * `className`, et `mb-4` celui que `CardHeader` porte lui-même : c'est de là que
+ * vient la hauteur, et l'écrire ailleurs la ferait dériver.
+ */
+function EnTeteEnAttente() {
+  return (
+    <div className="mb-4 px-4 pt-4 sm:px-5 sm:pt-5">
+      <Skeleton line="eyebrow" className="mb-1.5 w-24" />
+      <Skeleton line="title" className="w-40" />
+    </div>
   )
 }
 

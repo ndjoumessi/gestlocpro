@@ -4,9 +4,7 @@ import { cn } from '@/lib/cn'
 import { GOUTTIERE_LATERALE } from './gouttiere'
 import { Logo } from '@/components/primitives/Logo'
 import { Icon } from '@/components/primitives/Icon'
-import { LanguageSwitcher } from '@/components/controls/LanguageSwitcher'
-import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
-import { ThemeSwitcher } from '@/components/controls/ThemeSwitcher'
+import { PanneauDeReglages } from '@/components/controls/PanneauDeReglages'
 import { useT } from '@/i18n/I18nProvider'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
@@ -78,44 +76,29 @@ export function AuthLayout({
             {t('common.backToHome')}
           </Link>
 
-          {/* `flex-wrap justify-end`, et ce n'est pas une invention : c'est mot
-              pour mot la rangée d'`AppShell`, qui la porte deux fois — dont la
-              barre haute, avec les MÊMES trois sélecteurs, et qui ne déborde pas
-              à 320 px. L'en-tête au-dessus savait déjà se replier ; cette
-              rangée-ci, non, et c'est elle qui débordait.
+          {/*
+            LES TROIS RÉGLAGES PASSENT DERRIÈRE UN BOUTON — voir
+            `PanneauDeReglages` pour le raisonnement complet et la mesure.
 
-              Ses trois sélecteurs portent chacun `shrink-0` : 96 px pour la
-              langue et 142 px pour le thème — deux segmentés de boutons à 44 px,
-              bordure et rembourrage compris —, 84 px pour la devise, plus deux
-              écarts de 8. Soit 338 px de min-content que rien ne pouvait
-              entamer. Le repli de l'en-tête descendait donc la rangée à la
-              ligne, où elle réclamait 20 + 338 = 358 px dans une fenêtre de 320.
-              Mesuré `scrollX=38` sur les quatre écrans d'authentification et
-              dans les DEUX langues — pas une affaire de longueur de libellé,
-              une rangée qui ne savait pas se couper.
+            CE QUI ÉTAIT ÉCRIT ICI, ET QUI RESTE VRAI. La rangée portait
+            `flex-wrap justify-end` pour corriger un débordement réel : ses trois
+            sélecteurs réclamaient 338 px de min-content — 96 pour la langue, 142
+            pour le thème, 84 pour la devise, plus deux écarts — dans une fenêtre
+            de 320. Mesuré `scrollX=38` sur les quatre écrans et dans les deux
+            langues. Le repli le réparait, et le prix en était écrit : une rangée
+            de plus, 58 px, à 320, 360 et 375.
 
-              Replier plutôt que rétrécir : le plancher de 44 px est gardé par
-              `cibles.test.ts`, et les trois sélecteurs y sont calés au plus
-              juste. Plutôt que masquer, aussi — `AppShell` retire bien la devise
-              et le thème sous `sm`, mais il alignait QUATRE commandes et près de
-              500 px ; ici trois tiennent dès que la rangée se coupe, et un
-              contrôle absent de 320 à 639 px coûterait plus que la ligne qu'il
-              économise.
+            CE QUE LE PRIX VALAIT VRAIMENT, mesuré après coup à 360 × 900 : la
+            rangée occupait 108 px sur ses deux lignes, l'en-tête 196, et le
+            `<h1>` commençait à 333 px — 37 % de la fenêtre avant que la page ne
+            dise ce qu'elle est.
 
-              CE QU'IL EN COÛTE, écrit plutôt que tu : une rangée de plus, 58 px,
-              à 320, 360 et 375 px. À 360 la rangée finissait 2 px avant le bord
-              physique au lieu des 20 px de gouttière — le repli lui rend aussi
-              cette marge-là. À partir de 414 px elle tient sur une ligne et rien
-              ne bouge.
-
-              `justify-end` va avec `ml-auto` : sans lui, les lignes repliées
-              s'alignent à GAUCHE d'un bloc devenu large de toute la colonne, et
-              la rangée saute d'un bord à l'autre en se coupant. */}
-          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-            <LanguageSwitcher />
-            <CurrencySwitcher />
-            <ThemeSwitcher />
-          </div>
+            Le raisonnement d'alors pesait deux options, replier ou MASQUER, et
+            refusait la seconde à bon droit. La troisième — replier derrière un
+            déclencheur — ne retire aucun contrôle et rend l'en-tête à une seule
+            ligne. C'est celle-là.
+          */}
+          <PanneauDeReglages className="ml-auto" />
         </header>
 
         {/*
@@ -159,8 +142,16 @@ export function AuthLayout({
 
             {/* `display-app` et non `display-m` : un formulaire est une tâche,
                 pas une déclaration. À 52px, « Content de vous revoir »
-                disputait l'attention aux champs qu'il surplombe. Le panneau de
-                marque à gauche garde le grand corps — c'est lui qui parle. */}
+                disputait l'attention aux champs qu'il surplombe.
+
+                CE QUI SUIVAIT ICI DISAIT « le panneau de marque à gauche garde
+                le grand corps », et ce n'est plus vrai partout : sa colonne ne
+                peut pas porter 52 px tant qu'elle n'a pas dépassé `xl`, où un
+                mot débordait et se faisait couper. Il le reprend au-delà, et la
+                hiérarchie revient là où il y a la place — le raisonnement et la
+                mesure sont sur la ligne elle-même, dans `BrandPanel`. Sous `xl`
+                les deux corps sont égaux, et c'est l'encre pleine du panneau,
+                pas sa taille, qui le fait parler. */}
             <h1 className="display-app text-balance">{title}</h1>
             {subtitle && <p className="mt-3 text-body-l text-pretty text-muted">{subtitle}</p>}
 
@@ -241,7 +232,7 @@ function BrandPanel() {
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -top-32 -left-24 size-[30rem] rounded-full opacity-20 blur-3xl"
-        style={{ background: 'radial-gradient(circle, var(--color-gold) 0%, transparent 70%)' }}
+        style={{ background: 'radial-gradient(circle, var(--color-accent) 0%, transparent 70%)' }}
       />
 
       <div className="relative">
@@ -265,12 +256,36 @@ function BrandPanel() {
           laisser toucher l'argumentaire au pixel près sur la fenêtre exacte où
           elle s'annule. */}
       <div data-mesure="marque-argument" className="relative mt-12 hidden lg:my-auto lg:block">
-        <p className="display-m max-w-sm text-balance text-on-dark">{t('brand.tagline')}.</p>
+        {/*
+          `display-app` JUSQU'À `xl`, ET C'EST UN DÉFAUT MESURÉ QUI L'IMPOSE.
+
+          `--text-display-m` est un `clamp(1.875rem, 1.3rem + 3vw, 3.25rem)` : sa
+          taille suit la FENÊTRE. La colonne, elle, suit `34%` puis se fige à
+          `max-w-md`. Les deux ne grandissent pas ensemble, et le pire point est
+          l'entrée même dans `lg` : à 1024, la colonne offre 284 px utiles quand
+          le clamp rend déjà 51,5 px de corps. « Rental management, held like an
+          estate. » y produisait une ligne rendue de 345 px — mesurée par
+          `getClientRects`, pas déduite — et « management » heurtait le séparateur
+          et se faisait couper.
+
+          Rien ne le voyait : la page ne débordait pas, le mot sortait DANS le
+          panneau. C'est le défaut qui a fait écrire `MESURER_DEBORDEMENT_DE_MOT`,
+          et cette ligne est le premier qu'il a rendu.
+
+          Le remède n'est pas la césure — couper « manage-ment » dans une phrase
+          de marque à 52 px se voit plus que le débordement. C'est de rendre la
+          taille compatible avec la colonne tant que la colonne est étroite :
+          `display-app` plafonne à 40 px, où le même mot tient. Au-delà de `xl`
+          la colonne a atteint son plafond de 448 px et `display-m` y respire.
+        */}
+        <p className="display-app max-w-sm text-balance text-on-dark xl:display-m">
+          {t('brand.tagline')}.
+        </p>
 
         <ul className="mt-8 flex flex-col gap-3">
           {points.map((key) => (
             <li key={key} className="flex items-center gap-3 text-body text-on-dark-muted">
-              <Icon name="check" size={16} strokeWidth={2.2} className="shrink-0 text-gold" />
+              <Icon name="check" size={16} strokeWidth={2.2} className="shrink-0 text-accent-on-dark" />
               {t(key)}
             </li>
           ))}

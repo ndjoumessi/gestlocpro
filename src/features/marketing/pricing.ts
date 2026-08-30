@@ -53,10 +53,25 @@ import type { CurrencyCode } from '@/currency/currencies'
  */
 export type PlanId = 'essential' | 'pro' | 'cabinet'
 
+/**
+ * LA GRILLE EST EN UNITÉS MINEURES, comme tout montant du produit.
+ *
+ * Elle était en unités d'USAGE — `EUR: 4` voulait dire quatre euros — et c'était
+ * cohérent tant que `money` ne convertissait pas. Depuis que la mise en forme
+ * divise par cent, la page annonçait quatre CENTIMES par mois.
+ *
+ * Aucun des vingt-sept cas de la vitrine ne l'a vu : ils mesurent la FORMULE,
+ * c'est-à-dire des nombres, jamais leur mise en forme — et le franc CFA, où la
+ * mineure vaut l'usage, ne bronche pas. Voir `prixLisibles.test.tsx`, qui tient
+ * désormais le raccord.
+ *
+ * Tous les coefficients deviennent ENTIERS au passage, y compris le 1,12 du
+ * dollar canadien : une grille de prix n'a plus de flottant.
+ */
 export interface PlanPricing {
-  /** Abonnement mensuel, indépendant du nombre d'unités. */
+  /** Abonnement mensuel, en unités mineures, indépendant du nombre d'unités. */
   base: Record<CurrencyCode, number>
-  /** Coût mensuel de chaque unité gérée. */
+  /** Coût mensuel de chaque unité gérée, en unités mineures. */
   perUnit: Record<CurrencyCode, number>
 }
 
@@ -75,8 +90,8 @@ export const PLANS: Plan[] = [
       // juste, et la formule affichée sous le prix se vérifie. Cela ne vaut que
       // pour le mensuel — voir `priceIsRounded`.
       //
-      base: { CFA: 1200, EUR: 4, CAD: 6, USD: 4 },
-      perUnit: { CFA: 100, EUR: 0.5, CAD: 0.7, USD: 0.5 },
+      base: { CFA: 1200, EUR: 400, CAD: 600, USD: 400 },
+      perUnit: { CFA: 100, EUR: 50, CAD: 70, USD: 50 },
     },
   },
   {
@@ -98,8 +113,8 @@ export const PLANS: Plan[] = [
     // portait déjà sur 48 positions, le prix unitaire de 160 suffisant à le
     // produire.
     pricing: {
-      base: { CFA: 1920, EUR: 6.4, CAD: 9.6, USD: 6.4 },
-      perUnit: { CFA: 160, EUR: 0.8, CAD: 1.12, USD: 0.8 },
+      base: { CFA: 1920, EUR: 640, CAD: 960, USD: 640 },
+      perUnit: { CFA: 160, EUR: 80, CAD: 112, USD: 80 },
     },
   },
   { id: 'cabinet', pricing: null },
@@ -115,7 +130,33 @@ export const UNITS_QUOTE_THRESHOLD = UNITS_MAX
 
 export const YEARLY_DISCOUNT = 0.2
 
-export type FeatureValue = boolean | 'manual' | 'auto' | 'email' | 'priority' | 'dedicated' | string
+/**
+ * CE QU'UNE CASE DE LA MATRICE PEUT VALOIR — et l'union est CLOSE.
+ *
+ * Elle finissait par `| string`, ce qui la rendait ouverte à n'importe quoi : le
+ * rendu retombait alors sur `detail = value`, c'est-à-dire sur la donnée servie
+ * telle quelle, hors du dictionnaire. Une seule valeur en profitait, et elle
+ * suffit à dire ce que coûte l'échappatoire — `'illimité'` s'affichait EN
+ * FRANÇAIS dans la grille de tarifs de la page d'accueil ANGLAISE, c'est-à-dire
+ * sur l'écran que lit un prospect anglophone avant tout le reste.
+ *
+ * `check-i18n` ne pouvait pas le voir : il traque les chaînes en dur dans le
+ * JSX, et celle-ci vivait dans un fichier de données.
+ *
+ * Fermer l'union est le vrai correctif. Traduire le mot n'aurait rien empêché :
+ * la prochaine valeur libre serait passée par le même trou. Un NOMBRE reste
+ * admis — il se formate, il ne se traduit pas — et tout le reste doit être une
+ * clé que le rendu résout.
+ */
+export type FeatureValue =
+  | boolean
+  | number
+  | 'manual'
+  | 'auto'
+  | 'email'
+  | 'priority'
+  | 'dedicated'
+  | 'unlimited'
 
 export interface FeatureRow {
   key: string
@@ -137,7 +178,7 @@ export interface FeatureRow {
  */
 export const FEATURE_MATRIX: FeatureRow[] = [
   { key: 'reminders', values: { essential: 'manual', pro: 'auto', cabinet: 'auto' } },
-  { key: 'managers', values: { essential: false, pro: '3', cabinet: 'illimité' } },
+  { key: 'managers', values: { essential: false, pro: 3, cabinet: 'unlimited' } },
   { key: 'exports', values: { essential: false, pro: true, cabinet: true } },
   { key: 'multiCompany', values: { essential: false, pro: false, cabinet: true } },
   { key: 'support', values: { essential: 'email', pro: 'priority', cabinet: 'dedicated' } },
@@ -156,10 +197,12 @@ export function planPrice(
   const value = exactPlanPrice(plan, currency, period, units)
   if (value === null) return null
 
-  // Les francs CFA n'ont pas de sous-unité : on arrondit à la centaine, sans
-  // quoi la formule produirait des montants comme « 3 062 FCFA », qui ne
-  // ressemblent pas à un prix.
-  return currency === 'CFA' ? Math.round(value / 100) * 100 : Math.round(value * 100) / 100
+  /* Les francs CFA n'ont pas de sous-unité : on arrondit à la centaine, sans
+     quoi la formule produirait des montants comme « 3 062 FCFA », qui ne
+     ressemblent pas à un prix. Ailleurs, on arrondit à l'unité MINEURE — au
+     centime — ce qui s'écrivait `Math.round(value * 100) / 100` du temps où la
+     grille comptait en unités d'usage. */
+  return currency === 'CFA' ? Math.round(value / 100) * 100 : Math.round(value)
 }
 
 /** Résultat brut de la formule, avant tout arrondi d'affichage. */
@@ -191,8 +234,12 @@ export function exactPlanPrice(
  * seule période annuelle.
  *
  * La tolérance écarte le bruit de la virgule flottante : en euros, la remise
- * annuelle produit des valeurs comme 8.000000000000002, qui ne sont pas un
+ * annuelle produit des valeurs comme 800.0000000000002, qui ne sont pas un
  * arrondi visible et ne doivent donc rien déclencher.
+ *
+ * Un DEMI-CENTIME, et c'est exactement ce que valait le `0,005` d'avant, du
+ * temps où la grille comptait en unités d'usage. Le bruit se compte en 1e-12 ;
+ * un arrondi visible, lui, dépasse toujours la moitié de l'unité la plus fine.
  */
 export function priceIsRounded(
   plan: Plan,
@@ -203,5 +250,5 @@ export function priceIsRounded(
   const exact = exactPlanPrice(plan, currency, period, units)
   const shown = planPrice(plan, currency, period, units)
   if (exact === null || shown === null) return false
-  return Math.abs(shown - exact) > 0.005
+  return Math.abs(shown - exact) > 0.5
 }

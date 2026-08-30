@@ -69,9 +69,23 @@ const COULEURS_CLAIRES = [...CLAIR.keys()].filter((n) => n.startsWith('--color-'
 
 describe('thème sombre — couverture des jetons', () => {
   it('le fichier expose bien une palette claire à couvrir', () => {
-    // Garde du garde : un analyseur qui ne trouve rien valide n'importe quoi.
+    /*
+      Garde du garde : un analyseur qui ne trouve rien valide n'importe quoi.
+
+      LA SECONDE ASSERTION N'ÉPINGLE PLUS UN HEX, et c'est un correctif. Elle
+      lisait `toBe('#efebe2')` — la valeur exacte du fond clair — ce qui la
+      faisait tomber au premier repeint de la palette, sans rien dire de plus
+      que « la couleur a changé ». Or ce qu'elle DOIT prouver est autre chose :
+      que l'analyseur a lu le bloc CLAIR et non le sombre, et qu'il en a sorti
+      une couleur réelle. Les deux lignes ci-dessous le disent sans dépendre
+      d'une teinte : un hex bien formé, et surtout DIFFÉRENT de son homologue
+      sombre. Un analyseur qui retomberait sur le mauvais bloc les rendrait
+      identiques. `MEDIA` est le bloc `prefers-color-scheme`, celui que ce
+      fichier compare partout ailleurs.
+    */
     expect(COULEURS_CLAIRES.length).toBeGreaterThan(40)
-    expect(CLAIR.get('--color-canvas')).toBe('#efebe2')
+    expect(CLAIR.get('--color-canvas')).toMatch(/^#[0-9a-f]{6}$/)
+    expect(CLAIR.get('--color-canvas')).not.toBe(MEDIA.get('--color-canvas'))
     expect(MEDIA.size).toBeGreaterThan(40)
   })
 
@@ -96,7 +110,6 @@ describe('thème sombre — couverture des jetons', () => {
       '--color-paper',
       '--color-surface',
       '--color-surface-sunken',
-      '--color-surface-raised',
       '--color-border',
       '--color-divider',
       '--color-ink',
@@ -180,18 +193,16 @@ const PAIRES: [string, string, number][] = [
   ['--color-ink', '--color-paper', 4.5],
   ['--color-ink', '--color-surface', 4.5],
   ['--color-ink', '--color-surface-sunken', 4.5],
-  ['--color-ink', '--color-surface-raised', 4.5],
   ['--color-ink-2', '--color-surface', 4.5],
   ['--color-ink-3', '--color-surface', 4.5],
   ['--color-muted', '--color-canvas', 4.5],
   ['--color-muted', '--color-paper', 4.5],
   ['--color-muted', '--color-surface', 4.5],
   ['--color-muted', '--color-surface-sunken', 4.5],
-  ['--color-muted', '--color-surface-raised', 4.5],
-  ['--color-gold-ink', '--color-paper', 4.5],
-  ['--color-gold-ink', '--color-surface', 4.5],
-  ['--color-gold-ink', '--color-gold-tint', 4.5],
-  ['--color-gold-ink-hover', '--color-surface', 4.5],
+  ['--color-accent-ink', '--color-paper', 4.5],
+  ['--color-accent-ink', '--color-surface', 4.5],
+  ['--color-accent-ink', '--color-accent-tint', 4.5],
+  ['--color-accent-ink-hover', '--color-surface', 4.5],
   ['--color-ok', '--color-surface', 4.5],
   ['--color-ok', '--color-ok-tint', 4.5],
   ['--color-warn', '--color-surface', 4.5],
@@ -205,12 +216,18 @@ const PAIRES: [string, string, number][] = [
   ['--color-on-dark', '--color-ok', 4.5],
   ['--color-on-dark', '--color-danger', 4.5],
   ['--color-on-dark', '--color-danger-strong', 4.5],
-  ['--color-on-dark', '--color-gold', 4.5],
+  /* C'ÉTAIT `--color-on-dark` SUR L'ACCENT, et la paire a changé de nom avec sa
+     réalité. L'aplat d'accent portait l'encre inversée parce que l'or, à
+     2,87:1 sur blanc, ne pouvait recevoir que du sombre. Le bleu de l'action
+     porte du BLANC — `--color-on-accent` — et c'est cette paire-là qu'il faut
+     tenir. Laisser l'ancienne aurait certifié un appariement que plus aucun
+     composant ne pose : une garde verte sur une combinaison morte. */
+  ['--color-on-accent', '--color-accent', 4.5],
   ['--color-on-dark-muted', '--color-ink', 4.5],
   // Non textuel : icônes, séries de graphique, accents.
   ['--color-muted-soft', '--color-surface', 3],
-  ['--color-gold', '--color-surface', 3],
-  ['--color-gold', '--color-canvas', 3],
+  ['--color-accent', '--color-surface', 3],
+  ['--color-accent', '--color-canvas', 3],
   ['--color-on-dark-faint', '--color-ink', 3],
   ['--color-data-1', '--color-surface', 3],
   ['--color-data-2', '--color-surface', 3],
@@ -247,7 +264,6 @@ describe('thème sombre — contrastes', () => {
       '--color-canvas',
       '--color-surface-sunken',
       '--color-paper',
-      '--color-surface-raised',
       '--color-surface',
     ].map((nom) => luminance(MEDIA.get(nom)!))
 

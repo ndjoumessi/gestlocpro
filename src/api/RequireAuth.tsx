@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useSession } from './SessionProvider'
 import { useT } from '@/i18n/I18nProvider'
-import { Icon } from '@/components/primitives/Icon'
+import { EcranSysteme } from '@/components/feedback/EcranSysteme'
 import { Button } from '@/components/primitives/Button'
 
 /**
@@ -119,23 +119,19 @@ function EchecDeLaSession({
 }) {
   const t = useT()
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-canvas px-5">
-      <div className="max-w-md text-center">
-        <span className="inline-flex size-12 items-center justify-center rounded-full bg-danger-tint text-danger">
-          <Icon name="alert" size={22} />
-        </span>
-        <h1 className="mt-4 title-l">{t('app.sessionFailure.title')}</h1>
-        <p className="mt-2 text-body text-muted">
-          {genre === 'delai' ? t('app.sessionFailure.timeoutBody') : t('app.sessionFailure.body')}
-        </p>
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+    <EcranSysteme
+      ton="danger"
+      titre={t('app.sessionFailure.title')}
+      corps={genre === 'delai' ? t('app.sessionFailure.timeoutBody') : t('app.sessionFailure.body')}
+      actions={
+        <>
           <Button onClick={reprendre}>{t('common.retry')}</Button>
           <Button to="/" variant="ghost">
             {t('common.backToHome')}
           </Button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    />
   )
 }
 
@@ -149,24 +145,22 @@ function EchecDeLaSession({
 function ServeurInjoignable({ reprendre }: { reprendre: () => void }) {
   const t = useT()
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-canvas px-5">
-      <div className="max-w-md text-center">
-        <span className="inline-flex size-12 items-center justify-center rounded-full bg-warn-tint text-warn">
-          <Icon name="alert" size={22} />
-        </span>
-        <h1 className="mt-4 title-l">{t('app.offline.title')}</h1>
-        <p className="mt-2 text-body text-muted">{t('app.offline.body')}</p>
-        {/* Il était TERMINAL mais FERMÉ : un titre, un paragraphe, et rien à
-            toucher — mesuré, zéro élément interactif. « Rechargez la page », que
-            dit son texte, demandait un geste de navigateur pour un problème
-            d'application. */}
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+    <EcranSysteme
+      ton="warn"
+      titre={t('app.offline.title')}
+      corps={t('app.offline.body')}
+      /* Il était TERMINAL mais FERMÉ : un titre, un paragraphe, et rien à
+         toucher — mesuré, zéro élément interactif. « Rechargez la page », que
+         disait son texte, demandait un geste de navigateur pour un problème
+         d'application. */
+      actions={
+        <>
           <Button onClick={reprendre}>{t('common.retry')}</Button>
           <Button to="/" variant="ghost">
             {t('common.backToHome')}
           </Button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    />
   )
 }

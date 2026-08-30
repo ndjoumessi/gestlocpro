@@ -37,7 +37,7 @@ const TONE_ICON: Record<ToastTone, IconName> = {
 }
 
 const TONE_ACCENT: Record<ToastTone, string> = {
-  neutral: 'text-gold',
+  neutral: 'text-accent-on-dark',
   ok: 'text-ok',
   danger: 'text-danger',
 }
@@ -169,7 +169,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
             la boîte de marge retombe alors sous celle du message. Un doigt vise
             44 px, l'œil voit la ligne de texte qu'il voyait.
           */
-          className="-my-3 inline-flex min-h-11 cursor-pointer items-center rounded-sm px-1 text-label font-semibold text-gold-on-dark underline underline-offset-2 hover:text-gold"
+          className="-my-3 inline-flex min-h-11 cursor-pointer items-center rounded-sm px-1 text-label font-semibold text-accent-on-dark underline underline-offset-2 hover:text-on-dark"
         >
           {toast.action.label}
         </button>
@@ -183,9 +183,18 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
           `onDark` et non la variante fantôme par défaut : celle-ci peint
           `bg-transparent`, et la bascule `.on-dark` de `tokens.css` s'arrête
           délibérément à la première surface rencontrée — `:not([class*='bg-'])`
-          — pour ne pas repeindre en blanc le libellé d'un bouton doré. Son
-          `text-ink` serait donc resté encre sombre sur l'encre du toast :
-          une croix invisible. La variante sombre porte sa propre couleur. */}
+          — pour ne jamais repeindre le libellé d'un élément qui porte SON PROPRE
+          fond. Du temps de l'or, c'était le bouton d'accent que cette exclusion
+          protégeait : son libellé restait encre sombre, et le blanc l'aurait
+          détruit. L'aplat d'accent porte aujourd'hui `--color-on-accent`, donc
+          du blanc, et cet argument-là est tombé ; celui qui le remplace tient
+          au même mécanisme et vaut pour toutes les autres surfaces — une
+          surface CLAIRE posée dans un panneau sombre garde son encre sombre, et
+          la bascule n'a d'autre moyen de la reconnaître que la classe `bg-*`
+          que Tailwind lui donne. Le bouton fantôme, lui, n'a justement aucun
+          fond : son `text-ink` serait donc resté encre sombre sur l'encre du
+          toast, une croix invisible. La variante sombre porte sa propre
+          couleur. */}
       <IconButton
         icon="close"
         variant="onDark"

@@ -178,6 +178,16 @@ const PATHS = {
   plus: <path d="M12 5v14M5 12h14" />,
   sparkle: <path d="M12 3l2.2 5.9L20 11l-5.8 2.1L12 19l-2.2-5.9L4 11l5.8-2.1z" />,
   trendUp: <path d="M3.5 16.5l6-6 4 4 7-7.5M15 7h5.5v5.5" />,
+  /**
+   * LES TROIS POINTS D'UN MENU DE DÉBORDEMENT.
+   *
+   * Dessinés en TRAITS et non en disques pleins : le jeu entier est rendu en
+   * `stroke` avec une épaisseur commune, et un glyphe plein au milieu de
+   * quarante contours se lirait plus lourd que ses voisins à taille égale. Un
+   * segment de longueur nulle, terminé en rond, donne un point de l'épaisseur
+   * exacte du trait — donc du même poids optique que le reste.
+   */
+  more: <path d="M6 12h.01M12 12h.01M18 12h.01" />,
   file: (
     <>
       <path d="M13.5 3.5H7a2 2 0 00-2 2v13a2 2 0 002 2h10a2 2 0 002-2V9z" />

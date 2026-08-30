@@ -172,6 +172,40 @@ describe('le dépôt sur disque local', () => {
       })
     })
 
+    /**
+     * LA FRONTIÈRE, EN OCTETS RÉELS PLUTÔT QU'EN MULTIPLES DE LA CONSTANTE.
+     *
+     * Le cas voisin dit `PLAFOND` et `PLAFOND + 1` : il garde la RELATION, et
+     * il suit la constante partout où on la déplace. Celui-ci écrit deux poids
+     * ABSOLUS, tous deux relevés :
+     *
+     *   — 313 344 octets, soit les 306 Kio de la façade transcodée à 1600 px et
+     *     q0,82, c'est-à-dire le plus lourd que la cible recommandée produise.
+     *     Le plafond doit le laisser passer, sinon le produit refuse sa propre
+     *     sortie normale ;
+     *   — 2 905 974 octets, le compteur d'eau CC0 tel qu'il sort du téléphone.
+     *     Le plafond doit le refuser, parce qu'un original d'appareil non
+     *     transcodé n'est pas un chemin du produit.
+     *
+     * Les deux chiffres sont dans `fixtures/PROVENANCE.md` et dans le
+     * commentaire de la constante. Serrer le plafond sous le premier ou le
+     * relâcher au-dessus du second fait rougir ce cas — ce que les multiples de
+     * la constante ne savent pas faire.
+     */
+    it('laisse passer un transcodage mesuré et refuse un original d’appareil', async () => {
+      const TRANSCODE_LE_PLUS_LOURD_OCTETS = 313_344
+      const ORIGINAL_DAPPAREIL_OCTETS = 2_905_974
+
+      expect(await depot.confirmer(await deposer(image('jpeg', TRANSCODE_LE_PLUS_LOURD_OCTETS)), 'image/jpeg')).toMatchObject({
+        accepte: true,
+        octets: TRANSCODE_LE_PLUS_LOURD_OCTETS,
+      })
+      expect(await depot.confirmer(await deposer(image('jpeg', ORIGINAL_DAPPAREIL_OCTETS)), 'image/jpeg')).toEqual({
+        accepte: false,
+        motif: 'trop-lourd',
+      })
+    })
+
     it('refuse ce qui dépasse le plafond, et accepte ce qui l’atteint', async () => {
       const pile = image('jpeg', PLAFOND_PAR_OBJET_OCTETS)
       const trop = image('jpeg', PLAFOND_PAR_OBJET_OCTETS + 1)

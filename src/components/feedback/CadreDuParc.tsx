@@ -2,7 +2,7 @@ import { Outlet } from 'react-router-dom'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { Button } from '@/components/primitives/Button'
-import { Icon } from '@/components/primitives/Icon'
+import { EcranSysteme } from './EcranSysteme'
 
 /**
  * L'ÉCHEC DU CHARGEMENT DU PARC, RENDU DANS LE CADRE DE CE QUI A ÉCHOUÉ.
@@ -28,6 +28,11 @@ import { Icon } from '@/components/primitives/Icon'
  * Corollaire : la question « trois requêtes qui rendent 401 ensemble
  * déclenchent-elles trois redirections ? » n'a pas d'objet ici — il n'y en a
  * aucune. Et l'état lui-même est idempotent, voir le `catch` du fournisseur.
+ *
+ * L'`aria-live="polite"` qui vivait ici est parti pour le FOCUS SUR LE TITRE,
+ * que `EcranSysteme` pose pour les quatre écrans système d'un coup. La raison
+ * écrite alors — « la bascule est silencieuse sans cela » — reste la bonne ;
+ * c'est le remède qui a changé, et son en-tête dit pourquoi.
  */
 export function CadreDuParc() {
   const { echecDuParc, reprendreLeParc } = usePortfolio()
@@ -37,45 +42,25 @@ export function CadreDuParc() {
 
   const session = echecDuParc === 'session'
   return (
-    <section
-      // `aria-live` : la bascule est silencieuse sans cela, et quelqu'un qui
-      // lit à la voix ne saurait pas que l'écran a cessé de charger.
-      aria-live="polite"
-      className="mx-auto max-w-md py-10 text-center"
-    >
-      <span
-        className={
-          session
-            ? 'inline-flex size-12 items-center justify-center rounded-full bg-warn-tint text-warn'
-            : 'inline-flex size-12 items-center justify-center rounded-full bg-danger-tint text-danger'
-        }
-      >
-        <Icon name="alert" size={22} />
-      </span>
-      {/*  et non  : quand le chargement échoue, ce texte EST le titre
-          principal de la page — l'écran qu'il remplace emportait le sien. Le
-          laisser en  retirait son  à l'écran, et le dépôt en comptait
-          zéro jusqu'ici (mesuré au lot 0, sur les 23 routes). */}
-      <h1 className="mt-4 title-l">
-        {session ? t('app.parkFailure.sessionTitle') : t('app.parkFailure.title')}
-      </h1>
-      <p className="mt-2 text-body text-muted">
-        {session ? t('app.parkFailure.sessionBody') : t('app.parkFailure.body')}
-      </p>
-      <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-        {/*
+    <EcranSysteme
+      dansLaCoquille
+      ton={session ? 'warn' : 'danger'}
+      titre={session ? t('app.parkFailure.sessionTitle') : t('app.parkFailure.title')}
+      corps={session ? t('app.parkFailure.sessionBody') : t('app.parkFailure.body')}
+      actions={
+        /*
           Deux gestes distincts pour deux causes. Sur une session expirée,
-          « Réessayer » relirait le parc avec le même cookie périmé et
-          échouerait pareil : le geste utile est d'aller se reconnecter — par un
-          LIEN, que l'utilisateur suit quand il veut, et non par une redirection
-          qui l'emporte au milieu d'une saisie.
-        */}
-        {session ? (
+          « Réessayer » relirait le parc avec le même cookie périmé et échouerait
+          pareil : le geste utile est d'aller se reconnecter — par un LIEN, que
+          l'utilisateur suit quand il veut, et non par une redirection qui
+          l'emporte au milieu d'une saisie.
+        */
+        session ? (
           <Button to="/connexion">{t('app.parkFailure.signIn')}</Button>
         ) : (
           <Button onClick={reprendreLeParc}>{t('common.retry')}</Button>
-        )}
-      </div>
-    </section>
+        )
+      }
+    />
   )
 }

@@ -221,23 +221,31 @@ describe('les cautions, quand il n’y en a aucune', () => {
    */
 
   /**
-   * L'ÉCHÉANCIER DIT QU'IL EST VIDE, sur l'état NORMAL d'un parc bien tenu.
+   * LA FILE DU JOUR DIT QU'ELLE EST VIDE, et c'est le seul endroit du produit
+   * où le vide est une BONNE nouvelle.
    *
-   * C'était la seule des trois cartes de sa rangée sans état vide : elle se
-   * réduisait à un titre au-dessus d'une zone blanche dès que tous les loyers
-   * étaient encaissés. Un gestionnaire qui a bien travaillé voyait un silence là
-   * où il attendait une confirmation, et rien ne distinguait « rien à faire » de
-   * « rien ne s'est chargé ».
+   * L'échéancier portait ce cas avant elle. Il a disparu — c'était une copie
+   * tronquée de l'écran des encaissements, que la file remplace en NOMMANT le
+   * travail au lieu d'en rejouer les quatre premières lignes.
    *
-   * Le cas passe par le tableau de bord, seul écran que ce jeu ne visitait pas.
+   * Ce qui se garde est plus fort qu'avant, parce que la file OUVRE l'écran :
+   * un parc bien tenu voit donc son accueil commencer par un état vide, et il
+   * faut qu'il se lise comme une confirmation et non comme un chargement qui
+   * n'a pas abouti. Le corps dit ce que le vide SIGNIFIE — les trois natures
+   * nommées une à une — ce qu'aucune zone blanche ne saurait dire.
    */
-  it('dit à l’échéancier qu’il n’a rien à appeler', async () => {
+  it('dit à la file du jour qu’elle n’a rien à traiter', async () => {
     parcSansRien()
     await renderApp('/app', { session: SESSION_PROPRIETAIRE })
 
-    expect(await screen.findByText('Aucune échéance en attente')).toBeInTheDocument()
-    // Et il dit COMMENT la liste se remplira : sans cela, un compte neuf croit
-    // à une panne de saisie.
-    expect(screen.getByText(/se remplit d’elle-même/)).toBeInTheDocument()
+    expect(await screen.findByText('Rien n’attend de vous')).toBeInTheDocument()
+    /* Le corps NOMME les trois natures. Un « tout va bien » les tairait, et le
+       lecteur ne saurait pas ce que l'écran a vérifié pour le dire. */
+    const corps = screen.getByText(/Aucun loyer en retard/)
+    expect(corps).toHaveTextContent('aucun arbitrage en suspens')
+    expect(corps).toHaveTextContent('aucun relevé manquant')
+    /* Et la file est bien VIDE, pas seulement accompagnée d'un texte : une
+       entrée résiduelle sous un état vide serait le pire des deux. */
+    expect(document.querySelectorAll('[data-file-entree]')).toHaveLength(0)
   })
 })

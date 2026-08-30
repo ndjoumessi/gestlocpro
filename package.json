@@ -9,7 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "lint:i18n": "node scripts/check-i18n.mjs",
-    "check": "tsc -b && oxlint && node scripts/check-i18n.mjs && node scripts/check-orphelins.mjs && node scripts/check-montants.mjs && vitest run && node scripts/mesure-ui.mjs && node scripts/couleur-non-seule.mjs && node scripts/stabilite-au-pointage.mjs && node scripts/plafond-coquille.mjs && node scripts/modales.mjs && node scripts/plafond-vitrine.mjs && node scripts/series-lisibles.mjs && node scripts/poids-ecrans.mjs",
+    "check": "tsc -b && oxlint && node scripts/check-i18n.mjs && node scripts/check-orphelins.mjs && node scripts/check-montants.mjs && vitest run && node scripts/mesure-ui.mjs && node scripts/couleur-non-seule.mjs && node scripts/stabilite-au-pointage.mjs && node scripts/plafond-coquille.mjs && node scripts/modales.mjs && node scripts/plafond-vitrine.mjs && node scripts/series-lisibles.mjs && node scripts/photo-transcodage.mjs && node scripts/chasses-helvetica.mjs && node scripts/decisions-nommees.mjs && node scripts/poids-ecrans.mjs",
     "check:server": "npm --prefix server run check",
     "check:all": "npm run check && npm run check:server",
     "db:up": "docker compose up -d",
@@ -27,7 +27,9 @@
     "releve": "node scripts/releve-refonte.mjs",
     "modales": "node scripts/modales.mjs",
     "vitrine": "node scripts/plafond-vitrine.mjs",
-    "series": "node scripts/series-lisibles.mjs"
+    "series": "node scripts/series-lisibles.mjs",
+    "chasses": "node scripts/chasses-helvetica.mjs",
+    "decisions": "node scripts/decisions-nommees.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

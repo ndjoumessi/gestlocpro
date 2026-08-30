@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, userEvent, within } from '@/test/render'
+import { renderApp, screen, userEvent, within, cliquerAction } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 import type { Role } from '@/features/auth/signupState'
@@ -254,11 +254,10 @@ describe('appel de loyers', () => {
   it('dit combien d’échéances sont ÉMISES, pas combien de baux existent', async () => {
     const serveur = parc()
     serveur.quand('POST', `/parks/${PARC}/charges`, { status: 200, body: { issued: 1, leases: 2 } })
-    const user = userEvent.setup()
     await renderApp('/app/paiements', { session: session('owner') })
     await screen.findByText('Paul Kamga')
 
-    await user.click(bouton(/appeler les loyers/i))
+    await cliquerAction(/appeler les loyers/i)
 
     // `issued` et non `leases` : deux baux, une seule échéance nouvelle — la
     // seconde existait déjà. Annoncer deux ferait croire à une dette doublée.
@@ -268,11 +267,10 @@ describe('appel de loyers', () => {
   it('ne laisse pas croire à une seconde dette quand le mois est déjà appelé', async () => {
     const serveur = parc()
     serveur.quand('POST', `/parks/${PARC}/charges`, { status: 200, body: { issued: 0, leases: 2 } })
-    const user = userEvent.setup()
     await renderApp('/app/paiements', { session: session('owner') })
     await screen.findByText('Paul Kamga')
 
-    await user.click(bouton(/appeler les loyers/i))
+    await cliquerAction(/appeler les loyers/i)
 
     expect(await screen.findByText(/déjà été appelés/i)).toBeInTheDocument()
   })

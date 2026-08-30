@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, userEvent, waitFor, within, attendreLeChargement } from '@/test/render'
+import { renderApp, screen, userEvent, waitFor, within, attendreLeChargement, cliquerAction } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur, type FauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 import type { Role } from '@/features/auth/signupState'
@@ -106,6 +106,30 @@ function installer(options: { works?: unknown[]; notifications?: unknown[] } = {
 const carte = (titre: RegExp) =>
   screen.getByRole('heading', { name: titre }).closest<HTMLElement>('[role="listitem"]')!
 
+/** La carte offre-t-elle de répondre — bouton visible ou entrée de menu ? */
+async function offreLaReponse(carte: HTMLElement): Promise<boolean> {
+  if (carte.textContent?.includes('Répondre')) return true
+  const trois = carte.querySelector('[aria-haspopup="menu"]')
+  if (!trois) return false
+  const user = userEvent.setup()
+  await user.click(trois as HTMLElement)
+  const trouve = within(carte).queryAllByRole('menuitem', { name: 'Répondre' }).length > 0
+  await user.keyboard('{Escape}')
+  return trouve
+}
+
+/** Ouvre la réponse depuis une carte, que le geste soit visible ou replié. */
+async function ouvrirLaReponse(carte: HTMLElement): Promise<void> {
+  const user = userEvent.setup()
+  const direct = within(carte).queryByRole('button', { name: 'Répondre' })
+  if (direct) {
+    await user.click(direct)
+    return
+  }
+  await user.click(carte.querySelector('[aria-haspopup="menu"]') as HTMLElement)
+  await user.click(within(carte).getByRole('menuitem', { name: 'Répondre' }))
+}
+
 describe('répondre au locataire qui a signalé', () => {
   it('n’offre le geste que là où le serveur a quelqu’un à qui répondre', async () => {
     installer()
@@ -114,10 +138,17 @@ describe('répondre au locataire qui a signalé', () => {
     // arrivée, et une seule ligne la porte.
     await screen.findByText(/SIG-2026-042/)
 
-    // Les DEUX moitiés. Sans la seconde, le cas serait vrai d'un écran qui
-    // n'affiche aucun bouton du tout.
-    expect(carte(/évier/i).textContent).toContain('Répondre')
-    expect(carte(/séjour/i).textContent).not.toContain('Répondre')
+    /*
+      LES DEUX MOITIÉS. Sans la seconde, le cas serait vrai d'un écran qui
+      n'affiche aucun bouton du tout.
+
+      Le geste s'est replié derrière les trois points de sa carte — il défait ou
+      accompagne, il ne fait pas avancer —, donc son libellé n'est plus dans le
+      texte de la carte tant que le menu est fermé. Ce qu'on interroge est ce que
+      la carte OFFRE, et c'est le menu qui le dit.
+    */
+    expect(await offreLaReponse(carte(/évier/i))).toBe(true)
+    expect(await offreLaReponse(carte(/séjour/i))).toBe(false)
   })
 
   it('ne le propose pas au locataire : c’est lui qui a signalé', async () => {
@@ -126,6 +157,10 @@ describe('répondre au locataire qui a signalé', () => {
     await attendreLeChargement()
 
     expect(screen.queryByRole('button', { name: 'Répondre' })).not.toBeInTheDocument()
+    /* Et rien derrière les trois points non plus : sur les cartes d'un
+       locataire, les trois gestes repliés sont tous réservés au bailleur, donc
+       le menu ne se rend pas du tout. */
+    expect(document.querySelectorAll('main [aria-haspopup="menu"]')).toHaveLength(0)
   })
 
   it('envoie le message et dit qui le lira', async () => {
@@ -140,7 +175,7 @@ describe('répondre au locataire qui a signalé', () => {
     await screen.findByText(/SIG-2026-042/)
 
     const clavier = userEvent.setup()
-    await clavier.click(screen.getByRole('button', { name: 'Répondre' }))
+    await ouvrirLaReponse(carte(/évier/i))
     await clavier.type(screen.getByRole('textbox'), 'Le plombier passe jeudi matin.')
     await clavier.click(screen.getByRole('button', { name: 'Envoyer la réponse' }))
 
@@ -172,7 +207,7 @@ describe('répondre au locataire qui a signalé', () => {
     await screen.findByText(/SIG-2026-042/)
 
     const clavier = userEvent.setup()
-    await clavier.click(screen.getByRole('button', { name: 'Répondre' }))
+    await ouvrirLaReponse(carte(/évier/i))
     await clavier.type(screen.getByRole('textbox'), 'Le plombier passe jeudi matin.')
     await clavier.click(screen.getByRole('button', { name: 'Envoyer la réponse' }))
 
@@ -188,7 +223,7 @@ describe('répondre au locataire qui a signalé', () => {
     await screen.findByText(/SIG-2026-042/)
 
     const clavier = userEvent.setup()
-    await clavier.click(screen.getByRole('button', { name: 'Répondre' }))
+    await ouvrirLaReponse(carte(/évier/i))
     await clavier.type(screen.getByRole('textbox'), 'ok')
     await clavier.click(screen.getByRole('button', { name: 'Envoyer la réponse' }))
 
@@ -205,7 +240,7 @@ describe('prévenir les locataires', () => {
     // chargé, et l'en-tête est rendu par le squelette autant que par l'écran.
     await screen.findByText('A3')
     const clavier = userEvent.setup()
-    await clavier.click(screen.getByRole('button', { name: /Prévenir les locataires/ }))
+    await cliquerAction(/Prévenir les locataires/)
     return { faux, clavier }
   }
 

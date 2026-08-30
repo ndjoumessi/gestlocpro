@@ -31,22 +31,27 @@
  * première rédaction, qui inspectait CINQ modales sur douze en annonçant
  * « 20 états » :
  *
- *   — DEUX MODALES SUR DOUZE NE S'OUVRENT PAS ICI, nommément `TariffsModal` et
- *     `ParkSettingsModal`. Leurs boutons sont gardés par `adhesionActive`,
- *     c'est-à-dire par un COMPTE RÉEL : en démonstration l'adhésion est nulle,
- *     donc le bouton n'est pas rendu du tout. Aucune manipulation du navigateur
- *     n'y donne accès sans serveur d'authentification. Elles sont comptées à
- *     part — `NON_OUVRABLES` — et leur GÉOMÉTRIE N'EST DONC MESURÉE PAR
- *     PERSONNE. C'est une dette, elle est nommée, et elle se lèvera le jour où la
- *     démonstration portera une adhésion fictive plutôt qu'aucune.
- *     `clavierDesModales.test.tsx` NE LES COUVRE PAS : ses quatre cas sont
- *     « Ajouter un immeuble », « Ajouter un logement », « Ouvrir un chantier »,
- *     « Enregistrer un paiement ».
+ *   — PLUS AUCUNE MODALE N'ÉCHAPPE À CE FICHIER, et c'est récent. Deux d'entre
+ *     elles — `ParkSettingsModal`, puis `TariffsModal` — avaient leur bouton
+ *     gardé par `adhesionActive`, c'est-à-dire par un COMPTE RÉEL : en
+ *     démonstration l'adhésion est nulle, le bouton n'était pas rendu, et leur
+ *     géométrie n'était mesurée par personne.
+ *
+ *     La même confusion dans les deux cas : « personne à qui écrire » — vrai
+ *     d'un compte connecté sans parc — et « rien ne s'écrit » — vrai de la
+ *     démonstration, comme de tous les gestes de leurs écrans. Les deux suivent
+ *     désormais le rôle ACTIF.
+ *
+ *     Le second examen a rapporté un défaut de PRODUCTION que le premier n'avait
+ *     pas : l'historique des prix datait chaque ligne d'un mois de trop, et la
+ *     même conversion fautive servait la date de règlement d'une quittance.
+ *
+ *     `clavierDesModales.test.tsx` LES COUVRE TOUTES LES DEUX depuis.
  *
  *   — le CLAVIER. Piège de focus, Échap, retour du focus : ce sont les cas de
  *     `clavierDesModales.test.tsx`, joués sous jsdom où la tabulation est
- *     simulée fidèlement. Les rejouer ici doublerait la couverture sans rien
- *     ajouter ;
+ *     simulée fidèlement, et qui couvrent désormais les DOUZE. Les rejouer ici
+ *     doublerait la couverture sans rien ajouter ;
  *
  *   — la PERTINENCE d'un champ, l'ordre des questions, le bien-fondé d'un
  *     libellé. Aucune garde ne sait cela, et celle-ci ne prétend pas le savoir ;
@@ -83,12 +88,159 @@ const BASE = `http://127.0.0.1:${PORT}`
  * est le défilement qui n'achète rien.
  */
 const MODALES = [
+  /*
+    PARKSETTINGS ENTRE DANS LA LISTE, ET C'EST UNE DETTE QUI SE LÈVE.
+
+    Elle était comptée sous `NON_OUVRABLES` : son bouton était gardé par
+    `adhesionActive`, c'est-à-dire par un COMPTE RÉEL, donc rien ne la rendait en
+    démonstration et sa géométrie n'était mesurée par personne. L'en-tête de ce
+    fichier annonçait la levée « le jour où la démonstration portera une adhésion
+    fictive » ; ce n'est pas le chemin qui a été pris, et il vaut mieux.
+
+    La condition confondait deux choses : « personne à qui écrire » — vrai d'un
+    compte sans parc — et « rien ne s'écrit » — vrai de la démonstration, comme
+    de TOUS les gestes de cet écran. Le bouton suit désormais le rôle ACTIF, et
+    la modale, qui savait déjà qu'elle n'avait pas de parc, le DIT au lieu de ne
+    rien faire.
+
+    Ce qu'on y a trouvé le jour où elle s'est ouverte : ses deux listes
+    déroulantes n'avaient pas d'option vide, donc elles affichaient la première —
+    « Belgique » et « FCFA — Afrique centrale ». L'écran écrit pour réparer un
+    pays déduit du premier de la liste le rejouait dans son propre formulaire.
+    Personne ne pouvait le voir, faute de pouvoir l'ouvrir.
+  */
+  /*
+    LE PLAFOND DE 48, ET CE QU'IL ACHÈTE.
+
+    Première mesure de cette modale, à 360 px, en français : 35 px de défilement
+    et « pied — » au relevé, c'est-à-dire une action QUI S'EN VA AVEC LE CORPS.
+    Elle était la seule des onze dans ce cas — son bouton vivait sous les quatre
+    champs au lieu du pied.
+
+    Le bouton épinglé, le défilement MONTE à 48 : le pied prend la hauteur que le
+    corps n'a plus. Ces treize pixels sont exactement le prix de la règle que ce
+    fichier porte dans son titre — « leur action reste sous les yeux » — et c'est
+    le meilleur des deux échanges : un corps qui défile de 48 px sur un écran de
+    780 est un corps normal, une action qu'on doit aller chercher ne l'est pas.
+
+    On n'a PAS raboté les indications des champs pour rentrer sous zéro. Elles
+    disent ce que le pays suggère, ce que la devise engage et ce que la
+    délégation borne — sur l'écran où une erreur se paie en relisant tous les
+    montants du parc dans la mauvaise unité.
+
+    `avant` porte le 35 : il ne dit pas « ce lot a coûté », il dit d'où l'on
+    vient et pourquoi le nombre a grandi.
+  */
+  /*
+    TARIFFS ENTRE À SON TOUR, ET SON EXAMEN A RAPPORTÉ PLUS QUE LE PRÉCÉDENT.
+
+    Sa garde avait la même forme que celle de la correction du parc — `role ===
+    'owner' && adhesionActive !== null` — et le même motif écrit : « la
+    démonstration n'a pas de parc à qui écrire ». Même confusion, même remède.
+
+    MAIS SON CAS ÉTAIT PIRE. L'écran des relevés AFFICHE les deux prix de la
+    démonstration, en indicateurs, lus sur ses relevés. La modale qui existe
+    pour les montrer et les poser était inatteignable — et, ouverte telle
+    quelle, aurait affiché « aucun prix posé » : l'éditeur des prix démentant, à
+    un clic, la page qui les affiche. Elle sert donc en démonstration les prix
+    de la démonstration, dérivés de la même constante que les relevés.
+
+    ET C'EST EN L'OUVRANT QU'ON A VU LE DÉFAUT DE PRODUCTION : son historique
+    datait chaque prix d'un MOIS DE TROP. La conversion `AAAA-MM-JJ` vers les
+    parties de date était recopiée quatre fois dans le dépôt, et trois copies
+    oubliaient que les mois y sont indexés à partir de zéro — la quittance et
+    l'état des lieux frais étaient touchés aussi. Voir `lib/datesISO.test.ts`.
+  */
+  /*
+    LE PLAFOND DE 11, ET CE QU'IL NE GARDE PAS.
+
+    Onze pixels à 360 px, dans les deux langues, pied tenu : c'est la dernière
+    ligne de l'HISTORIQUE des prix qui dépasse. Trois champs et deux lignes de
+    liste, sur un écran de 780 — la modale est courte, et son action ne bouge pas.
+
+    CE CHIFFRE NE VAUT QUE POUR LA DÉMONSTRATION, et il faut le dire : la
+    longueur de l'historique dépend des DONNÉES. La démonstration en porte deux
+    lignes ; un parc qui aurait redaté ses prix vingt fois en porterait vingt, et
+    le corps défilerait d'autant. Ce plafond garde la forme de la modale, pas
+    celle d'un parc — aucune porte de ce dépôt ne visite un parc réel.
+  */
+  { nom: 'Tariffs', adresse: '/demo/releves', bouton: /^Prix de refacturation$|^Rebilling prices$/, defil: { 360: 11, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'ParkSettings', adresse: '/demo/parc', bouton: /^Corriger le parc$|^Correct the park$/, defil: { 360: 48, 1280: 0 }, avant: { 360: 35, 1280: 0 } },
   { nom: 'AddBuilding', adresse: '/demo/parc', bouton: /^Ajouter un immeuble$|^Add a building$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'AddUnit', adresse: '/demo/parc', bouton: /^Ajouter un logement$|^Add a unit$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'OpenWork', adresse: '/demo/travaux', bouton: /^Ouvrir un chantier$|^Open a job$/, defil: { 360: 130, 1280: 0 }, avant: { 360: 1056, 1280: 913 } },
   { nom: 'RecordPayment', adresse: '/demo/paiements', bouton: /^Enregistrer un paiement$|^Record a payment$/, defil: { 360: 460, 1280: 40 }, avant: { 360: 522, 1280: 236 } },
-  { nom: 'Receipt', adresse: '/demo/paiements', bouton: /Quittance|Receipt/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
-  { nom: 'Inspection', adresse: '/demo/etats-des-lieux', bouton: /^Établir un état des lieux$|^Record an inspection$/, defil: { 360: 250, 1280: 0 }, avant: { 360: 237, 1280: 0 } },
+  /*
+    LE PLAFOND DE 0 ÉTAIT VACUEUX, et ce script vient de le prouver en rougissant.
+
+    En démonstration, cette modale n'affichait rien : elle demandait son document
+    au serveur, et il n'y a pas de parc serveur sous `/demo`. Elle rendait donc
+    le mot « Chargement… », qui tient dans n'importe quelle fenêtre — d'où un
+    plafond de zéro mesuré sur une modale VIDE, et une garde qui gardait le
+    squelette d'une pièce plutôt que la pièce.
+
+    Elle compose désormais son document localement, ET l'aperçu montre ce que la
+    feuille montre : le détail poste par poste — loyer, eau, électricité —, le
+    reste dû quand il existe, le statut, l'imputation des versements partiels.
+    L'aperçu s'arrêtait à trois montants ; le fichier promettait pourtant que
+    « ce qu'on voit ici est ce qui sortira ».
+
+    91 px À 360 px, ET CE QU'ILS ACHÈTENT. Le détail est ce qu'un locataire
+    conteste, le statut ce qu'un gestionnaire vérifie avant de remettre la
+    pièce. Ce n'est donc pas « du défilement qui n'achète rien » : c'est le
+    document. Le rythme a d'abord été resserré — `gap-5` au lieu de `gap-6`,
+    comme se compose un relevé bancaire — ce qui a rendu 22 px des 113 mesurés
+    à la première rédaction.
+
+    ET LES ACTIONS NE DÉFILENT PAS : le pied de la modale est fixe, donc
+    « Télécharger » et « Imprimer » restent atteignables sans lire la pièce.
+    C'est ce qui distingue un document qu'on parcourt d'un formulaire dont le
+    bouton se dérobe.
+
+    L'ÉCART FRANÇAIS/ANGLAIS est réel et mesuré : 91 contre 39. La phrase
+    d'imputation passe à trois lignes en français et à deux en anglais, et les
+    intitulés français sont plus longs. On ne moyenne pas les deux — le plafond
+    est déclaré par langue, comme partout dans ce fichier.
+  */
+  { nom: 'Receipt', adresse: '/demo/paiements', bouton: /Quittance|Receipt/, defil: { 360: 91, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  /*
+    INSPECTION : LE PLAFOND MONTE, ET VOICI CE QU'IL ACHÈTE.
+
+    Mesuré à 360 px : 237 px de défilement avant la rangée de photos, 323 avec
+    elle dans sa première rédaction, 297 après avoir retiré le titre de rangée
+    — qui répétait ce que le bouton dit déjà et que le lecteur d'écran
+    annonçait deux fois. Les 60 px qui restent sont le BOUTON lui-même, ses
+    44 px de cible et sa marge : ils ne se réduisent pas sans rendre la
+    commande intouchable au doigt, ce que la porte des cibles refuserait à
+    juste titre.
+
+    Le plafond passe donc de 250 à 300, et de 0 à 20 à 1280 px. Ce n'est pas un
+    défilement « qui n'achète rien » : il achète la seule façon de joindre une
+    preuve à une réserve depuis le lieu où on la constate. Une vignette ajoutée
+    coûte en plus sa hauteur, et c'est un choix de l'utilisateur, pas un défaut
+    de l'écran — la mesure ci-dessous se fait sans photo choisie.
+  */
+  /*
+     PLAFOND RELEVÉ — 300 → 345 à 360, 20 → 60 à 1280 — ET LE MOTIF EST ÉCRIT.
+
+     Les réserves étaient une rangée de champs qui se replie, sans bord : trois
+     réserves saisies, et rien ne disait où l'une finissait. Le rang n'existait
+     que dans le nom accessible de la croix de retrait — « Retirer la réserve
+     n° 2 » — donc pour l'oreille et pas pour l'œil.
+
+     Chaque réserve est devenue un ÉLÉMENT DE LISTE : un filet à gauche, et une
+     ligne d'en-tête portant le rang et le retrait. Cette ligne coûte 43 px par
+     réserve à 360, et c'est tout le dépassement. Mesuré : la même chose en
+     CARTE — bord complet et rembourrage — coûtait 50 px de plus, le
+     rembourrage horizontal resserrant les champs et provoquant un repli
+     supplémentaire. Le filet groupe autant pour un tiers du prix.
+
+     43 px sur un formulaire qui en défile déjà 300, pour qu'un formulaire à
+     trois réserves cesse d'être une file de champs indistincts : c'est le
+     genre d'arbitrage que ce plafond existe pour faire écrire, et il est fait
+     dans ce sens-là.
+  */
+  { nom: 'Inspection', adresse: '/demo/etats-des-lieux', bouton: /^Établir un état des lieux$|^Record an inspection$/, defil: { 360: 345, 1280: 60 }, avant: { 360: 237, 1280: 0 } },
   { nom: 'Invite', adresse: '/demo/locataires', bouton: /^Inviter par code$|^Invite by code$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'Announce', adresse: '/demo/locataires', bouton: /^Prévenir les locataires$|^Notify tenants$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'Reply', adresse: '/demo/travaux', bouton: /^Répondre$|^Reply$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
@@ -98,6 +250,85 @@ const MODALES = [
      vérité du geste et non un contournement : à la souris, c'est l'étiquette
      qu'on vise, et elle est bien visible. */
   { nom: 'Report', adresse: '/demo/travaux', profil: /Locataire|Tenant/, bouton: /^Signaler un problème$|^Report an issue$/, defil: { 360: 620, 1280: 250 }, avant: { 360: 0, 1280: 0 } },
+  /*
+    LES CONFIRMATIONS ENTRENT, ET C'ÉTAIT LE PLUS GRAND TROU DE CETTE PORTE.
+
+    Douze modales étaient mesurées : celles qu'un bouton d'en-tête ou de ligne
+    ouvre du premier coup. Les CONFIRMATIONS ne s'ouvrent qu'après un premier
+    geste — arbitrer une caution, retirer une fiche, retirer un accès, supprimer
+    un immeuble, relancer les retards — et aucune des deux portes navigateur ne
+    les atteignait. Or ce sont exactement celles qui engagent un geste
+    irréversible : la seule famille de modales dont la géométrie compte parce
+    qu'on y décide, et la seule que personne ne regardait.
+
+    Trouvées par un relevé qui croisait les libellés de commande écrits dans
+    `src/features` et les noms accessibles réellement rendus par un balayage de
+    la démonstration. Elles y figuraient comme « jamais rendues », au milieu de
+    faux positifs — et c'est en triant que le motif est apparu : toutes des
+    confirmations, toutes destructrices.
+
+    ELLES N'EXIGENT QU'UN CLIC, comme les autres : leur déclencheur est un
+    bouton de LIGNE au lieu d'un bouton d'en-tête. Rien à ajouter à la mécanique
+    d'ouverture ; il manquait seulement de les inscrire.
+
+    « Reprendre » — le retrait d'un code d'invitation — ouvre la MÊME boîte que
+    « Retirer l'accès », par le même état. Une entrée suffit donc pour les deux ;
+    en ajouter une seconde mesurerait deux fois la même géométrie.
+  */
+  { nom: 'SettleDeposit', adresse: '/demo/cautions', bouton: /^Arbitrer$|^Settle$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'RemoveTenant', adresse: '/demo/locataires', bouton: /^Retirer$|^Remove$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'RevokeAccess', adresse: '/demo/acces', bouton: /^Retirer l’accès$|^Remove access$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  /*
+    SUPPRIMER UN IMMEUBLE : LA SONDE EN CRÉE UN D'ABORD.
+
+    L'issue n'apparaît que sur un immeuble VIDE — « le serveur refuse les
+    autres, et offrir un geste qu'il refusera revient à promettre ce qu'on ne
+    tient pas ». Les trois immeubles de la démonstration portent tous des
+    logements, donc le déclencheur n'existe nulle part.
+
+    DEUX RÉPONSES ÉTAIENT POSSIBLES, et le choix compte. Poser un quatrième
+    immeuble vide dans `portfolio.ts` aurait rendu le geste mesurable — au prix
+    de changer la forme du parc de démonstration pour la commodité d'une garde,
+    et de faire bouger tous les comptes qui en dépendent. Le préalable, lui, ne
+    touche à aucune donnée : il suit le chemin RÉEL — déclarer un immeuble,
+    puis se raviser —, qui est exactement le cas que cette issue existe pour
+    servir.
+
+    Le prix est écrit : ce préalable dépend d'une autre modale — celle de
+    l'ajout — donc il tombera si elle change. C'est une dépendance de garde à
+    écran, et elle est visible ici plutôt que cachée dans une fixture.
+  */
+  {
+    nom: 'DeleteBuilding',
+    adresse: '/demo/parc',
+    bouton: /^Supprimer l’immeuble |^Delete building /,
+    prealable: async (page) => {
+      await page.getByRole('button', { name: /^Ajouter un immeuble$|^Add a building$/ }).first().click()
+      await page.waitForTimeout(300)
+      const boite = page.getByRole('dialog')
+      await boite.getByLabel(/Nom de l’immeuble|Building name/).fill('Immeuble sonde')
+      await boite.getByLabel(/Quartier|District/).fill('Sonde')
+      await boite.getByRole('button', { name: /^Enregistrer$|^Save$/ }).click()
+      await page.waitForTimeout(400)
+    },
+    defil: { 360: 0, 1280: 0 },
+    avant: { 360: 0, 1280: 0 },
+  },
+  { nom: 'RemindOverdue', adresse: '/demo/paiements', bouton: /^Relancer les retards$|^Chase arrears$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  /*
+    LA MISE EN DEMEURE ENTRE, ET C'EST UN LOT QUI L'A OUVERTE.
+
+    Elle était la seule inscrite `NON_OUVRABLES` : son bouton était masqué en
+    démonstration parce que `serveFormalNotice` rendait `false` sans parc, donc
+    la boîte se serait ouverte sur une confirmation qui ne fait rien. Le
+    fournisseur nomme maintenant cette troisième issue, l'écran écrit la phrase
+    juste — « rien n'est enregistré » —, et le geste se joue entier.
+
+    C'est le seul de ces gestes dont la démonstration ne peut RIEN retenir :
+    l'acte est un enregistrement au dossier plus une notification à un compte,
+    et elle n'a ni l'un ni l'autre. Elle le dit, au lieu de se taire.
+  */
+  { nom: 'FormalNotice', adresse: '/demo/paiements', bouton: /^Mettre en demeure$|^Serve notice$/, defil: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
 ]
 
 /**
@@ -107,7 +338,73 @@ const MODALES = [
  * compte gardé, donc une troisième modale qui deviendrait inatteignable ferait
  * rougir, et l'une de ces deux qui redeviendrait atteignable aussi.
  */
-const NON_OUVRABLES = ['TariffsModal', 'ParkSettingsModal']
+/*
+  REDEVENUE VIDE, ET C'EST UN ÉTAT QUI SE GARDE COMME UN AUTRE.
+
+  La mise en demeure y a passé un lot : son bouton était masqué en démonstration
+  faute d'un chemin local honnête. Elle en est sortie par le haut — le
+  fournisseur nomme désormais l'issue « démonstration », l'écran écrit « rien
+  n'est enregistré », et la boîte s'ouvre. Les dix-huit modales du produit sont
+  de nouveau toutes ouvrables.
+
+  La liste reste, avec son compte : une dix-neuvième que la démonstration ne
+  rendrait pas devrait s'y inscrire et faire bouger `NON_OUVRABLES_ATTENDUES`,
+  donc apparaître dans un diff. Retirer la liste parce qu'elle est vide, c'est
+  retirer le seul endroit où l'on remarquerait qu'elle a cessé de l'être.
+
+  ANCIEN MOTIF, GARDÉ POUR MÉMOIRE.
+
+  La mise en demeure est conditionnée à `unit.leaseId`, qu'aucun bail de la
+  démonstration ne porte. C'est DÉLIBÉRÉ et il faut que ça le reste :
+  `serveFormalNotice` rend `false` sans parc serveur, donc le bouton ouvrirait
+  une boîte dont la confirmation ne ferait rien — un cul-de-sac sous un libellé
+  qui promet un acte. Poser un `leaseId` fictif pour la faire entrer dans cette
+  garde échangerait un trou de mesure contre un mensonge d'écran.
+
+  C'est la différence avec le `tenantId` du lot précédent, où le chemin
+  local existait : là-bas la donnée manquait sans raison, ici son absence EST la
+  raison. La géométrie de cette boîte reste donc non mesurée, et c'est écrit.
+*/
+const NON_OUVRABLES = []
+
+/**
+ * Les libellés que `clavierDesModales.test.tsx` joue, recopiés pour que la ligne
+ * de succès puisse nommer CE QUI RESTE dehors plutôt que de l'affirmer.
+ *
+ * Recopiés et non importés : ce script est un module Node, l'autre un fichier de
+ * cas sous jsdom, et les relier ferait dépendre une porte du chargement de
+ * l'autre. Le prix est cette liste ; le garde-fou est `COUVERTES_AU_CLAVIER`,
+ * qui rougirait si les deux comptes cessaient de s'accorder, et la vérification
+ * juste dessous, qui refuse un libellé sans modale correspondante ici.
+ *
+ * ELLE LES PORTE TOUTES LES DOUZE depuis que les six dernières sont entrées
+ * dans les cas clavier. Trois d'entre elles demandaient plus qu'un clic : la
+ * quittance et la réponse se répètent PAR LIGNE — dix et quatre boutons
+ * mesurés — et le signalement n'existe que pour le LOCATAIRE.
+ */
+const COUVERTS = [
+  'Ajouter un immeuble',
+  'Ajouter un logement',
+  'Ouvrir un chantier',
+  'Enregistrer un paiement',
+  'Corriger le parc',
+  'Prix de refacturation',
+  'Quittance',
+  'Établir un état des lieux',
+  'Inviter par code',
+  'Prévenir les locataires',
+  'Répondre',
+  'Signaler un problème',
+  /* LES QUATRE CONFIRMATIONS entrées avec elles : arbitrer, retirer une fiche,
+     retirer un accès, relancer. La cinquième — supprimer un immeuble — demande
+     qu'on en CRÉE un d'abord, ce que le fichier de cas ne sait pas faire ; elle
+     reste donc mesurée ici et hors clavier, et la ligne de succès le dit. */
+  'Arbitrer',
+  'Retirer',
+  'Retirer l’accès',
+  'Relancer les retards',
+  'Mettre en demeure',
+]
 const LARGEURS = [360, 1280]
 const LANGUES = ['fr', 'en']
 /*
@@ -118,11 +415,15 @@ const LANGUES = ['fr', 'en']
   puis se déclarerait verte. La même mutation a trouvé ce piège trois lots de
   suite. Ajouter une modale oblige à toucher ce nombre, et le diff le montre.
 
-  40 = 10 modales ouvrables × 2 largeurs × 2 langues.
-  2  = les modales que la démonstration ne rend pas, nommées dans `NON_OUVRABLES`.
+  48 = 12 modales ouvrables × 2 largeurs × 2 langues.
+  0  = plus aucune modale hors de portée de la démonstration.
+
+  Les deux nombres ont bougé ENSEMBLE, deux fois de suite : `ParkSettings` puis
+  `Tariffs` sont passées de la seconde ligne à la première. C'est exactement ce
+  que ce compte écrit à la main sert à rendre visible dans un diff.
 */
-const ATTENDUS = 40
-const NON_OUVRABLES_ATTENDUES = 2
+const ATTENDUS = 72
+const NON_OUVRABLES_ATTENDUES = 0
 
 async function servir() {
   const fils = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--host', '127.0.0.1'], {
@@ -203,7 +504,65 @@ try {
           }
         }
 
-        const bouton = page.getByRole('button', { name: modale.bouton }).first()
+        /*
+          LE PRÉALABLE, quand la modale n'a rien à ouvrir sans lui.
+
+          Une seule s'en sert : la suppression d'un immeuble, dont l'issue
+          n'existe que sur un immeuble VIDE — voir son entrée. La sonde suit
+          alors le chemin de l'utilisateur au lieu qu'on maquille les données.
+        */
+        if (modale.prealable) {
+          try {
+            await modale.prealable(page)
+          } catch (erreur) {
+            plaintes.push(
+              `${nom} : le préalable a échoué — ${String(erreur).split('\n')[0]}\n` +
+                "   La modale n'a pas pu être amenée à l'écran, donc rien n'a été mesuré.",
+            )
+            await contexte.close()
+            continue
+          }
+        }
+
+        /*
+          LE MENU DE DÉBORDEMENT EST OUVERT D'ABORD, s'il faut.
+
+          Trois de ces modales s'ouvrent depuis une action que l'en-tête replie
+          derrière trois points — poser un prix, corriger le parc, prévenir les
+          locataires. Le bouton n'a pas disparu : il vit une porte plus loin, et
+          la sonde suit le même chemin que l'utilisateur.
+
+          On ouvre le menu de L'EN-TÊTE, jamais le premier de la page : la
+          coquille en porte déjà un pour le compte, et l'ouvrir mènerait à la
+          déconnexion.
+        */
+        if ((await page.getByRole('button', { name: modale.bouton }).count()) === 0) {
+          /*
+            DEUX NIVEAUX REPLIENT : la rangée d'actions de la page, et les cartes
+            d'intervention. On essaie donc les déclencheurs un par un, l'en-tête
+            d'abord, et l'on REFERME celui qui ne portait pas ce qu'on cherche —
+            un panneau laissé ouvert se poserait au-dessus du suivant.
+
+            La coquille porte le même attribut tout en haut pour son menu de
+            compte : ouvert par mégarde, il mène à la déconnexion. Les deux
+            sélecteurs l'écartent par son ancêtre.
+          */
+          const candidats = await page
+            .locator('[data-en-tete-de-page] [aria-haspopup="menu"], main [aria-haspopup="menu"]')
+            .all()
+          for (const trois of candidats) {
+            await trois.click()
+            await page.waitForTimeout(150)
+            if ((await page.getByRole('menuitem', { name: modale.bouton }).count()) > 0) break
+            await page.keyboard.press('Escape')
+            await page.waitForTimeout(100)
+          }
+        }
+
+        const bouton = page
+          .getByRole('button', { name: modale.bouton })
+          .or(page.getByRole('menuitem', { name: modale.bouton }))
+          .first()
         if ((await bouton.count()) === 0) {
           plaintes.push(
             `${nom} : le bouton qui l'ouvre est introuvable.\n` +
@@ -216,13 +575,41 @@ try {
         await bouton.click().catch(() => {})
         await page.waitForTimeout(350)
 
-        const m = await page.evaluate(() => {
+        const m = await page.evaluate(async () => {
           const d = document.querySelector('[role="dialog"],[role="alertdialog"]')
           if (!d) return null
           const enfants = [...d.children]
-          const corps = enfants.find((e) => getComputedStyle(e).overflowY === 'auto')
-          const pied = enfants[enfants.length - 1] !== corps ? enfants[enfants.length - 1] : null
-          const entete = enfants[0] !== corps ? enfants[0] : null
+          /*
+            LES TROIS BANDES SE NOMMENT, ELLES NE SE DEVINENT PLUS.
+
+            On cherchait le corps par son `overflow-y: auto` calculé, l'en-tête
+            par « le premier enfant s'il n'est pas le corps », le pied par « le
+            dernier, même règle ». Trois heuristiques qui tenaient tant que la
+            modale avait exactement trois enfants à plat — et qui se seraient
+            trompées SANS RIEN DIRE le jour où l'une des bandes gagne un
+            enveloppe : le corps devenait introuvable, `defil` retombait à zéro,
+            et le plafond de défilement passait au vert sur une mesure vide.
+
+            `Modal` pose maintenant `data-entete-de-modale`,
+            `data-corps-de-modale` et `data-pied-de-modale`. Le repli reste pour
+            qu'un composant tiers reste mesurable.
+          */
+          const corps =
+            d.querySelector('[data-corps-de-modale]') ??
+            enfants.find((e) => getComputedStyle(e).overflowY === 'auto')
+          const pied =
+            d.querySelector('[data-pied-de-modale]') ??
+            (enfants[enfants.length - 1] !== corps ? enfants[enfants.length - 1] : null)
+          const entete =
+            d.querySelector('[data-entete-de-modale]') ??
+            (enfants[0] !== corps ? enfants[0] : null)
+          /* Deux trames : l'état vient d'un écouteur de défilement puis d'un
+             rendu React, et le lire tout de suite lirait celui d'avant. */
+          const peint = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+          const voiles = () => ({
+            haut: corps ? corps.hasAttribute('data-suite-au-dessus') : null,
+            bas: corps ? corps.hasAttribute('data-suite-en-dessous') : null,
+          })
           const r = d.getBoundingClientRect()
           const dansLaFenetre = (el) => {
             const b = el.getBoundingClientRect()
@@ -232,10 +619,15 @@ try {
              qui suit le contenu sort du champ à la première molette. */
           let piedTenu = pied ? dansLaFenetre(pied) : null
           let enteteTenu = entete ? dansLaFenetre(entete) : null
+          await peint()
+          const voilesEnHaut = voiles()
+          let voilesEnBas = voilesEnHaut
           if (corps) {
             corps.scrollTop = corps.scrollHeight
             if (pied) piedTenu = piedTenu && dansLaFenetre(pied)
             if (entete) enteteTenu = enteteTenu && dansLaFenetre(entete)
+            await peint()
+            voilesEnBas = voiles()
             corps.scrollTop = 0
           }
           /*
@@ -253,7 +645,36 @@ try {
             ce que `<main>` décide.
           */
           const conteneur = d.parentElement
+          /*
+            UNE VALEUR COUPÉE DANS SON CHAMP, mesurée ICI aussi.
+
+            `mesure-ui` porte la même règle depuis ce lot, sur 88 champs — mais
+            il ne pousse aucune porte : les champs qui vivent DANS une modale
+            lui échappent, et ce sont les plus contraints du produit, puisqu'ils
+            partagent une boîte de 360 px avec un pied et un en-tête.
+
+            `scrollWidth > clientWidth` est la mesure exacte du texte qui
+            n'entre pas dans sa boîte de contenu. Un texte coupé DANS sa boîte
+            ne déborde de rien : la page ne défile pas, le conteneur ne grandit
+            pas, et le DOM porte la chaîne entière.
+          */
+          const valeursRognees = []
+          for (const champ of d.querySelectorAll('input, select')) {
+            if (['hidden', 'checkbox', 'radio'].includes(champ.type)) continue
+            if (!champ.getClientRects().length) continue
+            const montre = champ.value || champ.placeholder || ''
+            if (!montre.trim()) continue
+            const manque = Math.round(champ.scrollWidth - champ.clientWidth)
+            if (manque <= 2) continue
+            valeursRognees.push({
+              texte: montre.trim().slice(0, 44),
+              manque,
+              offert: Math.round(champ.clientWidth),
+            })
+          }
+
           return {
+            valeursRognees,
             enfantDeBody: conteneur?.parentElement === document.body,
             profondeur: (() => {
               let n = 0
@@ -266,6 +687,8 @@ try {
             defil: corps ? Math.max(0, corps.scrollHeight - corps.clientHeight) : 0,
             piedTenu,
             enteteTenu,
+            voilesEnHaut,
+            voilesEnBas,
           }
         })
         await contexte.close()
@@ -301,6 +724,54 @@ try {
         }
         if (m.enteteTenu === false) {
           plaintes.push(`${nom} : l'en-tête sort du champ quand le corps défile.`)
+        }
+        /*
+          LE CORPS DIT-IL QU'IL CONTINUE ?
+
+          La coupe est NETTE aux deux bords : une ligne tranchée à mi-hauteur
+          sous l'en-tête, un champ disparu sous le pied, et rien pour
+          distinguer « le formulaire s'arrête là » de « il reste six champs ».
+          Le liseré des bandes ne dit rien de la direction — posé en haut d'un
+          corps déjà défilé, il ressemble même à un début.
+
+          Cette mesure ne peut vivre qu'ICI : dans le rendu d'essai, un corps
+          n'a ni hauteur ni défilement, donc la question n'a pas de réponse.
+
+          On l'exige DANS LES DEUX SENS, et le second est celui qu'on oublie :
+          un voile du bas qui ne s'éteint jamais annonce une suite qui n'existe
+          pas, en bas d'un formulaire dont on cherche justement le bouton.
+        */
+        if (m.defil > 0) {
+          if (m.voilesEnHaut.bas !== true)
+            plaintes.push(
+              `${nom} : ${m.defil} px à lire plus bas, et le corps ne le dit pas.\n` +
+                '   La coupe sous le pied ne distingue pas la fin du formulaire de sa suite.',
+            )
+          if (m.voilesEnHaut.haut !== false)
+            plaintes.push(`${nom} : le corps annonce une suite au-dessus alors qu'il est en haut.`)
+          if (m.voilesEnBas.haut !== true)
+            plaintes.push(
+              `${nom} : défilé jusqu'en bas, le corps ne dit pas que quelque chose reste au-dessus.`,
+            )
+          if (m.voilesEnBas.bas !== false)
+            plaintes.push(
+              `${nom} : arrivé en bas, le corps annonce encore une suite.\n` +
+                "   Un voile qui ne s'éteint pas fait chercher un contenu qui n'existe pas.",
+            )
+        } else if (m.voilesEnHaut.haut || m.voilesEnHaut.bas) {
+          plaintes.push(
+            `${nom} : le corps tient entier et annonce pourtant une suite ` +
+              `(${m.voilesEnHaut.haut ? 'au-dessus' : ''}${m.voilesEnHaut.bas ? ' en dessous' : ''}).`,
+          )
+        }
+        for (const v of m.valeursRognees) {
+          plaintes.push(
+            `${nom} : « ${v.texte} » est COUPÉ dans son champ — ${v.manque} px de trop pour ` +
+              `${v.offert} px offerts.\n` +
+              '   Un texte coupé DANS sa boîte ne déborde de rien : aucune autre règle ne le voit.\n' +
+              "   Remèdes : élargir le champ ; raccourcir ce qu'il MONTRE une fois fermé, en\n" +
+              '   gardant la forme longue dans sa liste (`OptionCombobox.resume`).',
+          )
         }
         if (m.defil > modale.defil[largeur]) {
           plaintes.push(
@@ -351,11 +822,51 @@ if (plaintes.length > 0) {
   exit(1)
 }
 
+/*
+  LA LIGNE DE SUCCÈS SUIT L'ÉTAT, elle ne le récite pas.
+
+  Elle disait « TariffsModal et ParkSettingsModal ne sont pas couvertes par les
+  cas clavier » et « sur QUATRE modales » — deux phrases écrites en dur, vraies
+  le jour où on les a tapées et fausses depuis que les deux modales ont rejoint
+  les cas clavier, qui sont six. Une porte dont le rapport se périme apprend à
+  ne plus lire son rapport.
+
+  `COUVERTES_AU_CLAVIER` est donc écrit ICI, à la main, comme `ATTENDUS` — et
+  pour la même raison : dérivé de l'autre fichier il ne dirait rien, recopié
+  sans compte il se périmerait encore. Le nombre force à toucher cette ligne le
+  jour où la couverture bouge.
+*/
+const COUVERTES_AU_CLAVIER = 17
+/*
+  GARDE DU GARDE : le nombre écrit et la liste recopiée doivent s'accorder, et
+  la liste doit désigner des modales qui EXISTENT. Sans cette vérification, un
+  libellé mal recopié sortirait sa modale du compte des couvertes et la ferait
+  passer pour non couverte — un rapport plus faux que celui qu'on vient de
+  corriger, parce qu'il aurait l'air d'avoir été vérifié.
+*/
+const introuvables = COUVERTS.filter((c) => !MODALES.some((m) => m.bouton.test(c)))
+if (COUVERTS.length !== COUVERTES_AU_CLAVIER || introuvables.length > 0) {
+  console.error(
+    `\n✗ modales : la liste des modales couvertes au clavier ne tient pas.\n` +
+      `   ${COUVERTS.length} libellé(s) recopié(s) pour ${COUVERTES_AU_CLAVIER} annoncé(s).\n` +
+      (introuvables.length
+        ? `   Sans modale correspondante ici : ${introuvables.join(', ')}\n`
+        : ''),
+  )
+  exit(1)
+}
+const horsClavier = MODALES.filter((m) => !COUVERTS.some((c) => m.bouton.test(c)))
+
 console.log(
   `\n✓ modales : ${inspectees}/${ATTENDUS} états ouverts et mesurés sur ${MODALES.length} modales,\n` +
-    `  plus ${NON_OUVRABLES.length} que la démonstration ne rend pas : ${NON_OUVRABLES.join(', ')}.\n` +
-    "  Le CLAVIER est mesuré ailleurs — `clavierDesModales.test.tsx` — sur QUATRE modales :\n" +
-    "  Ajouter un immeuble, Ajouter un logement, Ouvrir un chantier, Enregistrer un paiement.\n" +
-    "  TariffsModal et ParkSettingsModal NE SONT PAS COUVERTES par les cas clavier.\n" +
+    (NON_OUVRABLES.length === 0
+      ? '  et AUCUNE que la démonstration ne rende pas — la liste est vide et gardée vide.\n'
+      : `  plus ${NON_OUVRABLES.length} que la démonstration ne rend pas : ${NON_OUVRABLES.join(', ')}.\n`) +
+    '  Le CLAVIER est mesuré ailleurs — `clavierDesModales.test.tsx` — sur ' +
+    `${COUVERTES_AU_CLAVIER} modales ;\n` +
+    (horsClavier.length === 0
+      ? '  TOUTES y sont — entrée du focus, piège, Échap, retour au bouton.\n'
+      : `  ${horsClavier.length === 1 ? "l'autre non" : `les ${horsClavier.length} autres non`} : ` +
+        `${horsClavier.map((m) => m.nom).join(', ')}.\n`) +
     "  La PERTINENCE d'un champ n'est mesurée nulle part : voir l'en-tête.",
 )

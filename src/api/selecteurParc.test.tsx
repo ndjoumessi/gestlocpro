@@ -112,16 +112,31 @@ describe('sélecteur de parc', () => {
     })
     await screen.findByText('A1')
     expect(screen.getByRole('main').textContent).toMatch(/FCFA|CFA/)
+    // Le parc de Douala est déjà dans la devise demandée : rien à convertir.
+    expect(screen.getByRole('main').textContent?.replace(/[\s ]/g, ' ')).toMatch(/145 000/)
 
     await user.selectOptions(screen.getByLabelText(/parc regardé/i), B)
     await screen.findByText('B1')
 
-    /**
-     * Chaque parc dans SA devise. Rien n'est converti : c'est ce qui rend le
-     * sélecteur honnête là où une vue consolidée devrait d'abord répondre à la
-     * question du taux et de sa date.
-     */
-    expect(screen.getByRole('main').textContent).toMatch(/€/)
+    /*
+      CHAQUE PARC EST UNE SOURCE, ET L'ÉCRAN GARDE SA DEVISE.
+
+      Le cas gardait l'inverse : chaque parc dans SA devise, rien n'étant
+      converti — « ce qui rend le sélecteur honnête là où une vue consolidée
+      devrait d'abord répondre à la question du taux et de sa date ». Elle y
+      répond depuis : la mention du cours et de son jour vit sous le sélecteur.
+
+      Les deux parcs se lisent donc dans la MÊME devise, celle qu'on a demandée,
+      et c'est ce qui les rend comparables. Le montant, lui, change : 1 450 €
+      valent 951 138 francs à la parité légale, là où le parc de Douala en porte
+      145 000. Le cas vérifie le CHIFFRE — un ré-étiquetage rendrait le même des
+      deux côtés, et passerait une assertion qui ne regarderait que le symbole.
+    */
+    const apres = screen.getByRole('main').textContent ?? ''
+    expect(apres).toMatch(/FCFA/)
+    expect(apres.replace(/[\s ]/g, ' '), 'le loyer du parc parisien n’est pas converti').toMatch(
+      /951 138/,
+    )
   })
 
   it('nomme le parc regardé dans la barre latérale', async () => {

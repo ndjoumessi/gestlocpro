@@ -2,10 +2,19 @@
    GestLocPro — Jetons de design
    Source de vérité unique. Aucun hex en dur dans les composants.
 
+   LA TEMPÉRATURE DU NEUTRE A CHANGÉ, et les relevés avec elle. Les surfaces
+   et les encres étaient CHAUDES — crème, brun, ocre. Elles sont désormais
+   FROIDES, à clarté équivalente : c'est un choix de marque, pas un réglage, et
+   il est mesuré plutôt que jugé. Sur les quinze paires que ce fichier
+   documente, TOUT LE TEXTE gagne du contraste dans les deux thèmes — l'encre
+   principale passe de 15,24 à 16,47 sur le papier clair, le texte en retrait de
+   5,40 à 5,64. Quatre filets décoratifs perdent entre 0,01 et 0,03 sur des
+   rapports de 1,3:1, où aucun seuil ne se joue.
+
    La palette de marque porte quatre corrections de contraste :
-     --muted     #6B7573 -> #5C6664   (4.33 -> 5.40 sur --paper)
-     --gold-ink  #A0722C -> #8A6218   (3.87 -> 4.98 sur --paper)
-     --gold-on-dark  #C58E3E -> #D2A055 (4.38 -> 5.33 sur --ink-2)
+     --muted     #6B7573 -> #5C6664   (4.33 -> 5.64 sur --paper)
+     --accent-ink  #A0722C -> #8A6218   (3.87 -> 5.14 sur --paper)
+     --accent-on-dark  #C58E3E -> #D2A055 (4.38 -> 5.33 sur --ink-2)
      --warn      #8A6218 -> #795415   (3.93 -> 4.88 sur --warn-border)
 
    La quatrième dit ce que les trois premières taisaient : un ratio est écrit
@@ -16,20 +25,19 @@
    et elle est mécanique : `scripts/mesure-ui.mjs` lit `contrast-audit.js` et
    audite chaque texte peint, en deux thèmes et deux langues, à chaque
    `npm run check`. C'est elle qui a trouvé la quatrième.
-   --gold (#C58E3E) reste l'accent de marque mais n'est jamais du texte sur
+   --accent (#C58E3E) reste l'accent de marque mais n'est jamais du texte sur
    fond clair (2.87 sur blanc) : fond, bordure, icône, ou texte sur --ink.
    ========================================================================= */
 
 @theme {
   /* ---- Surfaces claires ------------------------------------------------ */
-  --color-canvas: #efebe2; /* fond application */
-  --color-paper: #f7f4ee; /* fond zone principale */
+  --color-canvas: #eceef3; /* fond application */
+  --color-paper: #f6f8fb; /* fond zone principale */
   --color-surface: #ffffff; /* cartes */
-  --color-surface-sunken: #f2f0ea; /* zones creusées, en-têtes de table */
-  --color-surface-raised: #fbf9f4; /* survol de ligne, cartes secondaires */
-  --color-border: #e5dfd3;
-  --color-border-strong: #cbbfa6;
-  --color-divider: #e8e2d7;
+  --color-surface-sunken: #f1f3f8; /* zones creusées, en-têtes de table */
+  --color-border: #dbe0e9;
+  --color-border-strong: #b6bfcf;
+  --color-divider: #dee3ec;
 
   /* Crête du balayage de squelette, sur `--color-surface-sunken`.
      Un jeton à elle, et non `--color-border` emprunté : le balayage n'est pas
@@ -39,25 +47,43 @@
      à 16,8 parce que l'écart entre creux et bordure y est bien plus grand.
      Réglée ici à ΔL* -17,1, l'égal perceptif du sombre. Voir squelette.test.ts,
      qui tient les deux thèmes dans la même fourchette. */
-  --color-skeleton-sweep: #cbbfa6;
+  --color-skeleton-sweep: #bac3d3; /* ΔL* 17,3 sur le creux — 17,1 avant */
 
   /* ---- Encres ---------------------------------------------------------- */
-  --color-ink: #14201e; /* texte principal · 15.24 sur --paper */
-  --color-ink-2: #243733; /* surface sombre élevée, survol bouton sombre */
-  --color-ink-3: #3f4a48;
-  --color-muted: #5c6664; /* texte secondaire · 5.40 sur --paper, 5.93 sur --surface */
-  --color-muted-soft: #6b7573; /* >=18px ou non-textuel uniquement */
+  --color-ink: #131a22; /* texte principal · 16.47 sur --paper */
+  --color-ink-2: #232f3b; /* surface sombre élevée, survol bouton sombre */
+  --color-ink-3: #3e4854;
+  --color-muted: #5b646f; /* texte secondaire · 5.64 sur --paper, 6.00 sur --surface */
+  --color-muted-soft: #6a737e; /* >=18px ou non-textuel uniquement */
 
-  /* ---- Or (marque) ----------------------------------------------------- */
-  --color-gold: #c58e3e; /* accent : fond, bordure, icône, texte sur --ink */
-  --color-gold-ink: #8a6218; /* liens et labels sur fond clair */
-  --color-gold-ink-hover: #7e571f;
-  --color-gold-on-dark: #d2a055; /* or sur --ink-2 */
+  /* ---- Accent (marque) -------------------------------------------------- */
+  /**
+   * L'ACCENT EST DEVENU BLEU, ET IL A CHANGÉ DE RÔLE EN MÊME TEMPS.
+   *
+   * L'or `#c58e3e` ne tenait que 2,87:1 sur blanc : il ne pouvait JAMAIS porter
+   * de texte sur fond clair, et toute la famille était construite autour de
+   * cette infirmité — un jeton `-ink` bien plus sombre pour les liens, une règle
+   * `.bg-accent` qui refixait l'encre, des contournements sur cinq écrans.
+   *
+   * `#2563eb` tient 5,17:1 SUR BLANC et porte du blanc à 5,17 : il peut être à
+   * la fois le fond d'une action et un texte lisible. C'est ce qui permet au
+   * bouton primaire de cesser d'être presque noir.
+   *
+   * Les vingt et une paires de la famille ont été mesurées dans les DEUX
+   * thèmes avant d'être écrites, contre les surfaces refroidies du lot
+   * précédent : zéro échec. Les ratios ci-dessous sont ces relevés.
+   */
+  --color-accent: #2563eb; /* L'ACTION : fond de bouton, 5.17 sous du blanc */
+  --color-accent-hover: #1d4ed8; /* 6.70 sous du blanc */
+  --color-on-accent: #ffffff; /* ce qui se pose SUR l'accent */
+  --color-accent-ink: #1d4ed8; /* liens et labels · 6.30 sur --paper, 5.77 sur --canvas */
+  --color-accent-ink-hover: #1e40af; /* 8.20 sur --paper */
+  --color-accent-on-dark: #93bbfd; /* accent sur --ink-2 · 6.99 */
   /**
    * Or posé sur `--color-ink`, et qui s'inverse AVEC lui.
    *
-   * `bg-ink text-gold` tenait 5,83:1 en clair et tombait à 2,33:1 en sombre :
-   * `--color-ink` s'inverse avec le thème, `--color-gold` non, donc la paire se
+   * `bg-ink text-accent` tenait 5,83:1 en clair et tombait à 2,33:1 en sombre :
+   * `--color-ink` s'inverse avec le thème, `--color-accent` non, donc la paire se
    * casse à l'inversion. Aucun garde de couverture ne pouvait le voir — les deux
    * jetons ont bien leur contrepartie sombre, c'est leur APPARIEMENT qui échoue.
    * Il a fallu parcourir les écrans pour le trouver.
@@ -65,18 +91,31 @@
    * D'où un jeton nommé d'après le fond qu'il accompagne plutôt que d'après sa
    * couleur : quoi que devienne `--color-ink`, celui-ci suit.
    */
-  --color-gold-on-ink: #c58e3e; /* 5.83 sur --ink clair */
-  --color-gold-tint: #fbf3e2;
-  --color-gold-tint-2: #f7ebd3;
-  --color-gold-border: #e9c68b;
+  --color-accent-on-ink: #609afa; /* 6.26 sur --ink clair */
+  --color-accent-tint: #eff5ff; /* porte --accent-ink à 6.12 */
+  --color-accent-tint-2: #dbe8fe;
+  --color-accent-border: #bfd7fe;
 
   /* ---- Teintes de données ---------------------------------------------- */
   /* Une série de graphique n'est pas un aplat décoratif : elle porte
-     l'information, et doit donc tenir 3:1 contre le fond de la carte. L'or de
-     marque `--color-gold` n'y arrive pas — 2,87:1 sur blanc — et servait
-     pourtant de série « eau ». D'où cette échelle distincte, dont chaque
-     teinte a été mesurée sur blanc ET sur `--color-ink`, les deux fonds sur
-     lesquels un graphique s'affiche.
+     l'information, et doit donc tenir 3:1 contre le fond de la carte. Du temps
+     où l'accent de marque était l'or #c58e3e, il n'y arrivait pas — 2,87:1 sur
+     blanc — et servait pourtant de série « eau ». D'où cette échelle distincte,
+     dont chaque teinte a été mesurée sur blanc ET sur `--color-ink`, les deux
+     fonds sur lesquels un graphique s'affiche.
+
+     L'ACCENT EST DEVENU BLEU ET L'ÉCHELLE RESTE, pour une raison qui n'est plus
+     celle-là. `--color-accent` #2563eb passe le seuil sur blanc — 5,17 — mais
+     retombe à 3,13 contre la carte du thème sombre, où il ne fait plus
+     qu'effleurer les 3:1. Et surtout il DÉSIGNE L'ACTION depuis qu'il peint le
+     bouton primaire : une série peinte de la couleur des boutons se lirait
+     comme une chose à cliquer. Une raison de contraste a cédé la place à une
+     raison de vocabulaire ; la conclusion, elle, n'a pas bougé.
+
+     C'est cette phrase-là que `Alerts.tsx` citait comme AUTORITÉ pour refuser
+     l'accent à un liseré. Elle était devenue fausse au présent tandis que le
+     même fichier la contredisait plus bas, au passé : une feuille de jetons qui
+     se dément elle-même ne fait plus autorité sur rien.
 
      Les CLARTÉS sont volontairement étagées, et non seulement les teintes :
      1, 7, 13, 18, 26, 28 %. Un premier jeu accrochait le seuil de contraste
@@ -84,7 +123,7 @@
      gris comme pour une bonne partie des daltonismes. La couleur ne porte de
      toute façon jamais l'information seule : chaque série garde son libellé
      dans la légende et dans l'infobulle. */
-  --color-data-1: #14201e; /* L  1 % — 16,73:1 sur blanc */
+  --color-data-1: #131a22; /* L  1 % — 17,52:1 sur blanc */
   --color-data-2: #5b4a2a; /* L  7 % —  8,54:1 */
   --color-data-3: #8a5a3b; /* L 13 % —  5,82:1 */
   --color-data-4: #4a7f86; /* L 18 % —  4,50:1 */
@@ -93,7 +132,7 @@
 
 
   /* Contreparties pour les graphiques posés sur fond sombre. */
-  --color-data-1-on-dark: #f7f4ee;
+  --color-data-1-on-dark: #f6f8fb;
   --color-data-2-on-dark: #d2a055;
   --color-data-3-on-dark: #c99a7f;
   --color-data-4-on-dark: #8fc0c8;
@@ -122,7 +161,7 @@
   /**
    * Premier plan d'une surface `--color-danger`, et qui s'inverse AVEC elle.
    *
-   * Troisième occurrence du même défaut, après `--color-gold-on-ink` et les
+   * Troisième occurrence du même défaut, après `--color-accent-on-ink` et les
    * séries de l'infobulle. La pastille de comptage était `bg-danger` +
    * `text-on-dark` : juste en thème clair, blanche sur bordeaux. En sombre,
    * `--color-danger` s'éclaircit en saumon — le commentaire de sa version
@@ -139,9 +178,9 @@
   --color-danger-tint: #faedea;
   --color-danger-border: #e4b3aa;
 
-  --color-neutral: #5c6664;
-  --color-neutral-tint: #f2f0ea;
-  --color-neutral-border: #e5dfd3;
+  --color-neutral: #5b646f;
+  --color-neutral-tint: #f1f3f8;
+  --color-neutral-border: #dbe0e9;
 
   /* ---- Sur fond sombre ------------------------------------------------- */
   --color-on-dark: #ffffff;
@@ -179,30 +218,37 @@
 
   /* ---- Typographie ----------------------------------------------------- */
   /**
-   * Serif de LECTURE, employé comme serif d'affichage.
+   * SANS GÉOMÉTRIQUE D'AFFICHAGE — quatrième famille à ce poste, et la première
+   * qui n'est pas un serif.
    *
-   * Troisième famille à ce poste, et les deux premières disent pourquoi.
-   * Playfair Display amincissait ses déliés jusqu'à les faire disparaître en
-   * descendant, or `display-app` sert des titres d'écran d'exploitation, pas
-   * des couvertures. Fraunces réglait cela par son axe de taille optique, mais
-   * son dessin d'affichage très typé rendait les titres massifs.
+   * Les trois précédentes — Playfair Display, Fraunces, Source Serif 4 — se
+   * répondaient toutes à l'intérieur d'une même question : quel serif porte le
+   * mieux l'idée d'un produit patrimonial. La réponse retenue, Source Serif 4,
+   * était bonne à cette question. C'est la QUESTION qui a changé : le produit
+   * assume désormais un langage d'application, pas d'édition.
    *
-   * Source Serif 4 a le même axe `opsz` sans le tic de dessin : contraste
-   * modéré, formes neutres, conçu d'abord pour du texte suivi. Un titre doit se
-   * lire, pas s'exposer.
+   * Plus Jakarta Sans est une géométrique HUMANISTE : squelette circulaire,
+   * mais ouvertures larges et terminaisons droites, ce qui la garde lisible
+   * quand un titre descend à 20 px sur une carte — ce que les géométriques
+   * pures (Futura, Poppins) ne tiennent pas. Elle porte un axe de graisse
+   * continu, donc une seule ressource couvre les quatre échelles.
    *
-   * La famille n'était de toute façon qu'une moitié du problème. Les quatre
-   * échelles étaient composées en 800 ou 900 avec un resserrement allant
-   * jusqu'à −0,04em — près de 4 px par lettre à 96 px, assez pour souder les
-   * caractères. Toutes sont passées en 700, resserrement divisé par deux.
-   * Changer la famille sans y toucher aurait reproduit la même densité, comme
-   * changer de fonderie n'avait rien réglé au monospace.
+   * 800 ET NON 700, et c'est le changement qui se voit. Le 700 avait été
+   * choisi CONTRE les 900 d'origine, parce qu'un serif à contraste modulé
+   * s'empâte quand on l'épaissit. Une sans à fût constant n'a pas ce défaut :
+   * elle gagne en présence sans perdre ses contreformes. Le resserrement reste
+   * à −0,02em, mesuré comme suffisant sur une sans là où un serif en demandait
+   * moins.
    *
-   * Georgia en repli, et non un `serif` générique : présente partout et assez
-   * proche pour que la substitution `swap` déplace le dessin sans faire sauter
-   * la mise en page.
+   * LA PILE SYSTÈME EN REPLI, et non plus Georgia. Le repli doit être de la
+   * même NATURE que la police attendue : substituer un serif à une sans faisait
+   * sauter la page entière au chargement. La pile système est une sans partout,
+   * et c'est déjà celle du corps de texte — le pire cas de `swap` est donc une
+   * page composée d'une seule famille, ce qui reste une page cohérente.
    */
-  --font-display: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --font-display:
+    'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
   /**
    * Corps de texte : pile SYSTÈME, plus aucune famille téléchargée.
    *
@@ -255,7 +301,16 @@
      déclaration et lui rendent une place dans une page. C'est l'écart entre un
      site d'agence — la cible réelle de ce style — et une page produit, où le
      titre doit céder le pas au bout de trois secondes. */
-  --text-display-xl: clamp(2.75rem, 1rem + 6.4vw, 6rem); /* 44 -> 96 */
+  /* LE PLANCHER DESCEND DE 44 À 40 PX, et c'est la contrepartie du 800.
+     Une sans géométrique à fût constant porte plus de masse qu'un serif modulé
+     à graisse égale ; à taille égale elle occupe donc plus de lignes. Mesuré
+     par `plafond-vitrine` au moment du changement de famille : +12 px de
+     document en français et +33 en anglais à 360 px, sur la seule page qu'un
+     visiteur sans compte voit jamais. Rendre quatre pixels au plancher rend la
+     hauteur sans rien retirer à la présence — c'est le même titre, plus dense.
+     Le plafond de la borne haute ne bouge pas : à 96 px il n'y a pas de
+     problème de retour à la ligne. */
+  --text-display-xl: clamp(2.5rem, 1rem + 6.4vw, 6rem); /* 40 -> 96 */
   --text-display-xl--line-height: 0.98;
   --text-display-xl--letter-spacing: -0.02em;
   --text-display-l: clamp(2.25rem, 1.4rem + 4vw, 4rem); /* 36 -> 64 */
@@ -271,8 +326,13 @@
   --text-display-app: clamp(1.875rem, 1.4rem + 1.8vw, 2.5rem); /* 30 -> 40 */
   --text-display-app--line-height: 1.1;
   --text-display-app--letter-spacing: -0.015em;
-  --text-display-m: clamp(2rem, 1.3rem + 3vw, 3.25rem); /* 32 -> 52 */
-  --text-display-m--line-height: 1.04;
+  --text-display-m: clamp(1.875rem, 1.3rem + 3vw, 3.25rem); /* 30 -> 52 */
+  /* 1,0 et non 1,04 : une géométrique a des jambages plus COURTS qu'un serif,
+     donc sa hauteur de ligne peut se resserrer sans que descendantes et
+     ascendantes se touchent. C'est la seconde contrepartie du passage à la sans,
+     mesurée comme la première : la page mobile anglaise dépassait encore son
+     plafond de 15 px après le retour du plancher à 40. */
+  --text-display-m--line-height: 1;
   --text-display-m--letter-spacing: -0.018em;
 
   --text-title-l: 1.25rem; /* 20 */
@@ -358,10 +418,37 @@
   --size-control-group: 3.125rem;
 
   /* ---- Rayons ---------------------------------------------------------- */
+  /* DEUX RAYONS DE DONNÉE, nommés parce qu'ils étaient écrits en dur. Les
+     barres portaient un `[3px]` littéral et les pastilles de légende un `[2px]`,
+     alors que `--radius-bar` existait déjà et servait à personne. Un jeton que
+     le code contourne n'est pas un jeton, c'est un commentaire ; et la garde
+     des rayons refuse maintenant l'arbitraire, ce qui rendait la situation
+     intenable dans les deux sens. */
   --radius-bar: 3px; /* barres de graphe */
+  --radius-legende: 2px; /* pastilles de légende de série */
+  /**
+   * DEUX CRANS FONT NORME, ET UN TROISIÈME S'ÉTAIT INSTALLÉ SANS SE DÉCLARER.
+   *
+   * Compté sur les vingt-sept fichiers de la vitrine et des primitives :
+   * `rounded-md` 27 fois — la norme de ce qui se CLIQUE —, `rounded-lg` 13 fois
+   * — la norme de ce qui CONTIENT —, puis sept `rounded-xl` et un `rounded-2xl`
+   * qui sont TOUS des cartes de vitrine réimplémentées à la main plutôt que
+   * passées par `Card`. Trois crans pour deux rôles : le troisième n'était pas
+   * une décision, c'était une dérive.
+   *
+   * Les cartes montent de 14 à 18 px. C'est la géométrie du modèle qu'on suit,
+   * et elle a une raison au-delà du goût : un rayon plus généreux adoucit la
+   * grille dense d'un écran d'exploitation, où quinze cartes se touchent
+   * presque. Les huit dérives descendent sur ce cran ; l'écart entre 18 et
+   * leurs 20 ou 28 px ne se voyait pas, mais l'existence d'un cran non nommé,
+   * si — c'est par là que le suivant serait entré.
+   *
+   * `--radius-md` monte de 9 à 10 pour rester en proportion : un champ qui garde
+   * son rayon pendant que sa carte s'arrondit paraît plus dur qu'avant.
+   */
   --radius-sm: 6px;
-  --radius-md: 9px; /* boutons, inputs */
-  --radius-lg: 14px; /* cartes */
+  --radius-md: 10px; /* champs */
+  --radius-lg: 18px; /* cartes */
   --radius-xl: 20px; /* panneaux, modales */
   --radius-2xl: 28px; /* blocs hero */
 
@@ -380,7 +467,7 @@
   --shadow-e1: 0 1px 2px rgba(20, 32, 30, 0.04), 0 6px 18px -12px rgba(20, 32, 30, 0.1);
   --shadow-e2: 0 2px 6px rgba(20, 32, 30, 0.06), 0 12px 32px -16px rgba(20, 32, 30, 0.16);
   --shadow-e3: 0 8px 24px rgba(20, 32, 30, 0.12), 0 32px 64px -24px rgba(20, 32, 30, 0.28);
-  --shadow-focus: 0 0 0 2px var(--color-paper), 0 0 0 4px var(--color-gold-ink);
+  --shadow-focus: 0 0 0 2px var(--color-paper), 0 0 0 4px var(--color-accent-ink);
 
   /* ---- Mouvement ------------------------------------------------------- */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
@@ -524,20 +611,41 @@
     /* L'ordre d'élévation du thème clair est conservé, à l'envers :
        canvas < sunken < paper < raised < surface. Une carte reste ce qu'il y
        a de plus haut, donc de plus clair. */
-    --color-canvas: #100e0b; /* fond application */
-    --color-paper: #17140f; /* fond zone principale */
-    --color-surface: #26221b; /* cartes */
-    --color-surface-sunken: #14110d; /* zones creusées, en-têtes de table */
-    --color-surface-raised: #1e1b15; /* survol de ligne, cartes secondaires */
-    --color-border: #3a342a;
-    --color-border-strong: #5b5343;
-    --color-divider: #302b23;
+    --color-canvas: #0a0d11; /* fond application */
+    --color-paper: #0f1319; /* fond zone principale */
+    --color-surface: #1c2128; /* cartes */
+    --color-surface-sunken: #0d1116; /* zones creusées, en-têtes de table */
+    --color-border: #2c333c;
+    --color-border-strong: #4b5563;
+    /* SÉPARATEUR RELEVÉ — #252b34 le laissait à ΔL* 4,8 de --color-surface.
+
+       LE DÉFAUT, ET IL EST PROPRE AU SOMBRE. En clair, le séparateur est plus
+       SOMBRE que tous les fonds, et son écart décroît à mesure que le fond
+       fonce : 9,9 sur la carte blanche, 7,4 sur le papier, 5,7 sur le creusé.
+       En sombre il est plus CLAIR que tous les fonds, et l'ordre s'inverse :
+       11,6 sur le papier, 12,4 sur le creusé — et 4,8 seulement sur la carte,
+       qui est le plus clair des fonds sombres. Or c'est là, et presque là
+       seulement, qu'un séparateur travaille : compté dans la page, 30 des 31
+       éléments qui en portent un sur les deux écrans mesurés sont posés sur
+       --color-surface. Le jeton était donc le plus faible exactement où il
+       sert, et il l'était depuis toujours — aucun lot de la refonte n'a
+       regardé le thème sombre à l'œil.
+
+       CE QUE ÇA DONNAIT : les lignes du tableau des paiements se touchaient.
+       Le contenu se lisait, la porte restait verte — un séparateur n'est ni du
+       texte ni un contrôle, aucun seuil de contraste ne le regarde.
+
+       #2f3740 rend ΔL* 10,1 sur la carte, soit la valeur du clair (9,9) au
+       dixième près. Il monte à 16,9 sur le papier et 17,8 sur le creusé, plus
+       haut qu'en clair — c'est le prix de l'inversion, et il se paie sur le
+       seul élément des deux écrans qui y soit posé. */
+    --color-divider: #2f3740;
 
     /* Le sombre garde la valeur qui marchait déjà — c'est le clair qui était
        en défaut. `--color-border-strong` y monterait à ΔL* 30, soit une crête
        deux fois plus marquée qu'en clair : le balayage cesserait d'être un
        reflet pour devenir une barre qui passe. */
-    --color-skeleton-sweep: #3a342a;
+    --color-skeleton-sweep: #2e3540; /* ΔL* 17,0 sur le creux — 16,8 avant */
 
     /* ---- Encres ---------------------------------------------------------- */
     /* ATTENTION — `--color-ink` bascule du texte vers une teinte CLAIRE. Il
@@ -546,30 +654,35 @@
        deux ne peuvent pas gagner. Le rôle d'encre l'emporte — il est de loin
        le plus fréquent — et les surfaces qui doivent RESTER sombres figent le
        jeton pour elles-mêmes, voir « Surfaces qui ne basculent pas » plus bas. */
-    --color-ink: #ece7dd; /* texte principal · 14.90 sur --paper, 12.84 sur --surface */
-    --color-ink-2: #d6d0c3; /* survol de la surface inversée · 10.30 sur --surface */
-    --color-ink-3: #b8b2a4; /* 7.49 sur --surface */
-    --color-muted: #a8a091; /* texte secondaire · 7.09 sur --paper, 6.11 sur --surface */
-    --color-muted-soft: #8d8576; /* 4.33 sur --surface — >=18px ou non textuel */
+    --color-ink: #e8eaee; /* texte principal · 15.46 sur --paper, 13.44 sur --surface */
+    --color-ink-2: #d1d5dc; /* survol de la surface inversée · 10.99 sur --surface */
+    --color-ink-3: #b3b9c2; /* 8.20 sur --surface */
+    --color-muted: #a2a8b2; /* texte secondaire · 7.79 sur --paper, 6.77 sur --surface */
+    --color-muted-soft: #878e98; /* 4.90 sur --surface — >=18px ou non textuel */
 
-    /* ---- Or (marque) ----------------------------------------------------- */
-    /* `--color-gold` ne bouge pas : c'est la couleur de la marque, et le fond
-       sombre lui rend précisément ce que le fond clair lui refusait — 5.51 sur
-       --surface contre 2.87 sur blanc. L'or redevient lisible en texte ici,
-       même si aucun composant n'en profite encore. */
-    --color-gold: #c58e3e; /* inchangé · 5.51 sur --surface, 6.71 sur --canvas */
+    /* ---- Accent (marque) -------------------------------------------------- */
+    /* `--color-accent` NE BOUGE PAS d'un thème à l'autre, et c'est nouveau :
+       l'or devait s'éclaircir en sombre pour rester lisible, le bleu de
+       l'action n'a pas ce besoin puisqu'il ne porte jamais que du blanc — 5,17
+       dans les deux thèmes. Contre la carte sombre il tient 3,13, au-dessus du
+       seuil de 3:1 exigé d'un élément d'interface : le bouton se détache de son
+       fond sans changer de couleur. Une marque qui garde sa teinte au basculement
+       est une marque, pas deux. */
+    --color-accent: #2563eb; /* 5.17 sous du blanc · 3.13 sur --surface sombre */
+    --color-accent-hover: #1d4ed8; /* 6.70 sous du blanc */
+    --color-on-accent: #ffffff;
     /* Le voile s'ASSOMBRIT en sombre plutôt que de rester identique : posé sur
        une page déjà sombre, un noir à 55 % ne détache plus assez la modale du
        fond. C'est le seul jeton dont la version sombre est plus opaque, et non
        plus claire. */
     --color-scrim: rgba(0, 0, 0, 0.68);
-    --color-gold-ink: #d9a85f; /* liens et labels · 8.50 sur --paper, 7.32 sur --surface */
-    --color-gold-ink-hover: #e6bd80; /* 9.01 sur --surface */
-    --color-gold-on-dark: #d2a055; /* inchangé : sert les panneaux figés */
-    --color-gold-on-ink: #7e571f; /* 5.21 sur --ink sombre, contre 2.33 pour l'or de marque */
-    --color-gold-tint: #2e2417; /* lavis, porte --gold-ink à 7.04 */
-    --color-gold-tint-2: #3f3120; /* fond de ::selection */
-    --color-gold-border: #5c4823;
+    --color-accent-ink: #93bbfd; /* liens et labels · 9.55 sur --paper, 8.30 sur --surface */
+    --color-accent-ink-hover: #bfd7fe; /* 11.07 sur --surface */
+    --color-accent-on-dark: #93bbfd; /* inchangé : sert les panneaux figés, 6.99 sur l'ink-2 figé */
+    --color-accent-on-ink: #1d4ed8; /* 5.56 sur --ink sombre, où l'encre est CLAIRE */
+    --color-accent-tint: #152238; /* lavis, porte --accent-ink à 8.17 */
+    --color-accent-tint-2: #1b2c48; /* fond de ::selection */
+    --color-accent-border: #2b4677;
 
     /* ---- Teintes de données ---------------------------------------------- */
     /* Les contreparties sombres existaient déjà — mesurées sur `--color-ink`,
@@ -577,7 +690,7 @@
        lisait : `Charts` n'appelle que `--color-data-1/4/5`. Le thème sombre
        les met enfin en service, en les promouvant sur la série principale.
        Étagement des clartés conservé : la couleur ne porte jamais seule. */
-    --color-data-1: #f7f4ee; /* 14.42 sur --surface */
+    --color-data-1: #f6f8fb; /* 15.10 sur --surface */
     --color-data-2: #d2a055; /*  6.71 */
     --color-data-3: #c99a7f; /*  6.34 */
     --color-data-4: #8fc0c8; /*  7.94 */
@@ -586,7 +699,7 @@
 
 
     /* Inchangées : elles servent les panneaux qui restent sombres. */
-    --color-data-1-on-dark: #f7f4ee;
+    --color-data-1-on-dark: #f6f8fb;
     --color-data-2-on-dark: #d2a055;
     --color-data-3-on-dark: #c99a7f;
     --color-data-4-on-dark: #8fc0c8;
@@ -606,14 +719,14 @@
     --color-warn-border: #54421f;
 
     --color-danger: #e58d7d; /* 6.36 sur --surface */
-    --color-on-danger: #14201e; /* 6.72 sur --danger sombre */
+    --color-on-danger: #131a22; /* 6.97 sur --danger sombre */
     --color-danger-strong: #f2a99b; /* survol : plus clair, non plus sombre · 8.70 */
     --color-danger-tint: #301a17; /* porte --danger à 6.56 */
     --color-danger-border: #5c3128;
 
-    --color-neutral: #a8a091; /* 6.11 sur --surface */
-    --color-neutral-tint: #14110d;
-    --color-neutral-border: #3a342a;
+    --color-neutral: #a2a8b2; /* 6.77 sur --surface */
+    --color-neutral-tint: #0d1116;
+    --color-neutral-border: #2c333c;
 
     /* ---- Sur la surface inversée ----------------------------------------- */
     /* Ce jeu se lit « ce qu'on écrit sur `bg-ink` ». En clair la surface
@@ -623,7 +736,7 @@
        Conséquence voulue : une pastille sélectionnée, un jeton de statut, un
        avatar deviennent les éléments CLAIRS d'une page sombre. C'est bien
        l'emphase inversée qu'ils cherchaient. */
-    --color-on-dark: #14201e; /* 13.58 sur --ink */
+    --color-on-dark: #131a22; /* 14.20 sur --ink */
     --color-on-dark-muted: rgba(20, 32, 30, 0.72); /* aplati #505853 · 5.95 sur --ink */
     --color-on-dark-faint: rgba(20, 32, 30, 0.62); /* aplati #666C67 · 4.36 sur --ink */
     --color-on-dark-hover: rgba(20, 32, 30, 0.08);
@@ -638,7 +751,7 @@
     --shadow-e2: 0 2px 6px rgba(0, 0, 0, 0.55), 0 12px 32px -16px rgba(0, 0, 0, 0.75);
     --shadow-e3: 0 8px 24px rgba(0, 0, 0, 0.6), 0 32px 64px -24px rgba(0, 0, 0, 0.85);
     /* `--shadow-focus` n'est pas repris : il est écrit en `var(--color-paper)`
-       et `var(--color-gold-ink)`, donc il suit tout seul. Idem pour l'anneau
+       et `var(--color-accent-ink)`, donc il suit tout seul. Idem pour l'anneau
        `*:focus-visible` et pour `::selection`. */
   }
 }
@@ -652,40 +765,42 @@
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  --color-canvas: #100e0b;
-  --color-paper: #17140f;
-  --color-surface: #26221b;
-  --color-surface-sunken: #14110d;
-  --color-surface-raised: #1e1b15;
-  --color-border: #3a342a;
-  --color-border-strong: #5b5343;
-  --color-divider: #302b23;
-  --color-skeleton-sweep: #3a342a;
+  --color-canvas: #0a0d11;
+  --color-paper: #0f1319;
+  --color-surface: #1c2128;
+  --color-surface-sunken: #0d1116;
+  --color-border: #2c333c;
+  --color-border-strong: #4b5563;
+  /* Voir la note du bloc `prefers-color-scheme: dark` : ΔL* 4,8 sur la carte. */
+  --color-divider: #2f3740;
+  --color-skeleton-sweep: #2e3540;
 
-  --color-ink: #ece7dd;
-  --color-ink-2: #d6d0c3;
-  --color-ink-3: #b8b2a4;
-  --color-muted: #a8a091;
-  --color-muted-soft: #8d8576;
+  --color-ink: #e8eaee;
+  --color-ink-2: #d1d5dc;
+  --color-ink-3: #b3b9c2;
+  --color-muted: #a2a8b2;
+  --color-muted-soft: #878e98;
 
-  --color-gold: #c58e3e;
+  --color-accent: #2563eb;
+  --color-accent-hover: #1d4ed8;
+  --color-on-accent: #ffffff;
   --color-scrim: rgba(0, 0, 0, 0.68);
-  --color-gold-ink: #d9a85f;
-  --color-gold-ink-hover: #e6bd80;
-  --color-gold-on-dark: #d2a055;
-  --color-gold-on-ink: #7e571f; /* 5.21 sur --ink sombre, contre 2.33 pour l'or de marque */
-  --color-gold-tint: #2e2417;
-  --color-gold-tint-2: #3f3120;
-  --color-gold-border: #5c4823;
+  --color-accent-ink: #93bbfd;
+  --color-accent-ink-hover: #bfd7fe;
+  --color-accent-on-dark: #93bbfd;
+  --color-accent-on-ink: #1d4ed8; /* 5.56 sur --ink sombre, où l'encre est CLAIRE */
+  --color-accent-tint: #152238;
+  --color-accent-tint-2: #1b2c48;
+  --color-accent-border: #2b4677;
 
-  --color-data-1: #f7f4ee;
+  --color-data-1: #f6f8fb;
   --color-data-2: #d2a055;
   --color-data-3: #c99a7f;
   --color-data-4: #8fc0c8;
   --color-data-5: #c4b89b;
   --color-data-6: #a8bca6;
 
-  --color-data-1-on-dark: #f7f4ee;
+  --color-data-1-on-dark: #f6f8fb;
   --color-data-2-on-dark: #d2a055;
   --color-data-3-on-dark: #c99a7f;
   --color-data-4-on-dark: #8fc0c8;
@@ -701,16 +816,16 @@
   --color-warn-border: #54421f;
 
   --color-danger: #e58d7d;
-  --color-on-danger: #14201e;
+  --color-on-danger: #131a22;
   --color-danger-strong: #f2a99b;
   --color-danger-tint: #301a17;
   --color-danger-border: #5c3128;
 
-  --color-neutral: #a8a091;
-  --color-neutral-tint: #14110d;
-  --color-neutral-border: #3a342a;
+  --color-neutral: #a2a8b2;
+  --color-neutral-tint: #0d1116;
+  --color-neutral-border: #2c333c;
 
-  --color-on-dark: #14201e;
+  --color-on-dark: #131a22;
   --color-on-dark-muted: rgba(20, 32, 30, 0.72);
   --color-on-dark-faint: rgba(20, 32, 30, 0.62);
   --color-on-dark-hover: rgba(20, 32, 30, 0.08);
@@ -742,8 +857,8 @@
    ========================================================================= */
 
 .on-dark {
-  --color-ink: #14201e;
-  --color-ink-2: #243733;
+  --color-ink: #131a22;
+  --color-ink-2: #232f3b;
   --color-on-dark: #ffffff;
   --color-on-dark-muted: rgba(255, 255, 255, 0.68);
   --color-on-dark-faint: rgba(255, 255, 255, 0.58);
@@ -752,14 +867,93 @@
   --color-on-dark-border: rgba(255, 255, 255, 0.4);
 }
 
-/* « L'or ne porte jamais de texte : ici c'est un fond, avec de l'encre
-   dessus » — la règle du bouton doré vaut dans les deux thèmes, or l'encre
-   principale, elle, s'éclaircit. On la refixe sur l'aplat.
-   `.bg-gold` ne touche pas `bg-gold-tint` : un sélecteur de classe compare
-   des jetons entiers de l'attribut `class`, pas des préfixes. */
-.bg-gold {
-  --color-ink: #14201e;
+/* ============================================================================
+   LA BANDE INVERSÉE SE RELÈVE EN THÈME SOMBRE — et l'accent bascule avec elle.
+   ============================================================================
+
+   LE DÉFAUT, MESURÉ À LA PREMIÈRE INSPECTION DU SOMBRE À L'ŒIL. `.on-dark`
+   gelait `--color-ink` à #131a22 dans LES DEUX thèmes. En clair, cette bande
+   est un coup de tonnerre — ΔL* 88,6 sur le papier — et c'est elle qui donne
+   son rythme à la vitrine : trois sections d'encre coupent une page blanche de
+   sept mille pixels. En sombre, elle tombait à ΔL* 3,2 du papier. Les trois
+   fonds de la page tenaient dans 5,4 ΔL* : la vitrine se lisait comme un seul
+   aplat, et `Card tone="dark"` y était invisible pour la même raison.
+
+   L'ÉTAU, ET IL ÉTAIT RÉEL. Éclaircir la bande était bloqué par un seul
+   élément : le bouton primaire de l'appel final, `bg-accent` #2563eb, qui tient
+   3,39:1 sur #131a22 et passe SOUS le seuil non textuel de 3:1 dès que le fond
+   s'éclaircit — 3,13 sur la carte, 2,95 un cran plus haut, 2,76 au-delà. La
+   carte posait le plancher (une bande qui vaudrait #1c2128 se confondrait avec
+   elle), le bouton posait le plafond, et il n'existait AUCUNE valeur entre les
+   deux. Cherché par balayage sur toute la famille froide : le meilleur couple
+   bande/bleu plein rendait 4,70 et 3,08 pour 4,5 et 3 exigés — 2,6 % de marge,
+   c'est-à-dire rien.
+
+   LA SORTIE N'EST PAS UN AUTRE BLEU, C'EST L'AUTRE SENS. Un bleu assez clair
+   pour tenir 3:1 sur une bande relevée est trop clair pour porter du BLANC à
+   4,5 : les deux contraintes tirent en sens inverse, et aucun bleu ne les
+   satisfait toutes deux confortablement. On cesse donc d'exiger que l'aplat
+   porte du blanc. Sous `.on-dark`, en sombre, l'accent devient sa CONTREPARTIE
+   CLAIRE — le jeton existe déjà, `--color-accent-on-dark`, et son nom dit
+   exactement ce qu'on lui demande ici — et son encre passe au sombre.
+
+   Les marges cessent alors d'être des marges de justesse :
+     · #93bbfd sur la bande #2a323c ......... 6,65  (seuil 3)
+     · encre #131a22 sur #93bbfd ........... 8,98  (seuil 4,5)
+   soit plus du double des seuils, contre 2,6 % de dépassement par l'autre voie.
+
+   CE QUE ÇA CHANGE À L'ŒIL : le bouton d'appel de la vitrine n'est plus un
+   aplat bleu vif sur du presque-noir, c'est une pastille bleu clair à texte
+   sombre. C'est le même geste que le produit fait déjà pour le TEXTE d'accent
+   sous `.on-dark`, quelques règles plus bas — la contrepartie claire y remplace
+   l'encre d'accent depuis le lot des couleurs. L'aplat suit enfin le texte.
+
+   LA BANDE, ELLE, EST CHOISIE POUR SA PLACE DANS L'ÉCHELLE, pas pour un seuil :
+   ΔL* 14,7 au-dessus du papier — une bande qu'on ne peut pas manquer — et 7,9
+   au-dessus de la carte, soit un cran de plus que ce qui sépare la carte du
+   papier (6,8). L'ordre est celui qu'on veut lire : page, puis carte, puis
+   bande.
+
+   `--color-ink-2` SUIT, sans quoi la carte surélevée passerait SOUS son support
+   (elle valait #232f3b, ΔL* −1,6 sous la nouvelle bande). #38414e la remet à
+   +6,8, le même pas que carte/papier, en gardant 4,92 pour l'encre à 68 %.
+
+   Les onze premiers plans de `.on-dark` ont été remesurés sur la nouvelle
+   bande : le plus serré est l'encre à 58 %, à 5,14 pour 4,5 exigés.
+
+   NON APPLIQUÉ EN CLAIR, et c'est tout le point : en clair la bande fonctionne,
+   l'accent plein y tient, et rien n'est à corriger. */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .on-dark {
+    --color-ink: #2a323c;
+    --color-ink-2: #38414e;
+    --color-accent: #93bbfd;
+    --color-accent-hover: #bfd7fe;
+    --color-on-accent: #131a22;
+  }
 }
+
+:root[data-theme='dark'] .on-dark {
+  --color-ink: #2a323c;
+  --color-ink-2: #38414e;
+  --color-accent: #93bbfd;
+  --color-accent-hover: #bfd7fe;
+  --color-on-accent: #131a22;
+}
+
+/* CETTE RÈGLE A DISPARU AVEC SA CAUSE, et il faut dire laquelle.
+
+   Elle refixait l'encre sombre sur l'aplat d'accent, parce que l'or de marque
+   ne tenait que 2,87:1 sur blanc : il ne pouvait porter QUE de l'encre sombre,
+   et cette encre s'éclaircissant en thème sombre, il fallait la rattraper à la
+   main sur le seul aplat qui ne s'inversait pas.
+
+   Le bleu de l'action n'a pas cette infirmité : il porte du BLANC, à 5,17 dans
+   les deux thèmes, par `--color-on-accent`. Il n'y a plus d'encre à rattraper,
+   donc plus de règle. La supprimer plutôt que la renommer est le point : une
+   règle dont la cause est morte et qu'on garde « au cas où » devient une
+   coïncidence que personne n'ose plus toucher. */
 
 /* ============================================================================
    Base
@@ -790,20 +984,20 @@
   }
 
   *:focus-visible {
-    outline: 2px solid var(--color-gold-ink);
+    outline: 2px solid var(--color-accent-ink);
     outline-offset: 2px;
     border-radius: 4px;
   }
 
   /* Le focus sur fond sombre a besoin d'un anneau clair. */
   .on-dark *:focus-visible {
-    outline-color: var(--color-gold-on-dark);
+    outline-color: var(--color-accent-on-dark);
   }
 
   /* La bascule contextuelle sur fond sombre est définie hors couche, plus bas. */
 
   ::selection {
-    background: var(--color-gold-tint-2);
+    background: var(--color-accent-tint-2);
     color: var(--color-ink);
   }
 
@@ -847,8 +1041,8 @@
 .on-dark .text-ink:not([class*='bg-']) {
   color: var(--color-on-dark);
 }
-.on-dark .text-gold-ink:not([class*='bg-']) {
-  color: var(--color-gold-on-dark);
+.on-dark .text-accent-ink:not([class*='bg-']) {
+  color: var(--color-accent-on-dark);
 }
 .on-dark .border-divider:not([class*='bg-']),
 .on-dark .border-border:not([class*='bg-']) {
@@ -1169,10 +1363,10 @@
      caractères : le `r` et le `c` de « parc » se touchaient presque. Un titre
      ne gagne rien à devenir un aplat.
 
-     La plage demandée au chargement (`600..700`) borne les deux extrémités :
+     La plage demandée au chargement (`600..800`) borne les deux extrémités :
      aucune échelle d'affichage ne descend sous 600 ni ne remonte au-dessus de
-     700, donc rien d'inutile n'est téléchargé. */
-  font-weight: 700;
+     800, donc rien d'inutile n'est téléchargé. */
+  font-weight: 800;
 }
 
 @utility display-l {
@@ -1180,7 +1374,7 @@
   font-size: var(--text-display-l);
   line-height: var(--text-display-l--line-height);
   letter-spacing: var(--text-display-l--letter-spacing);
-  font-weight: 700;
+  font-weight: 800;
 }
 
 /* Titre de page applicative — voir `--text-display-app`. */
@@ -1189,7 +1383,7 @@
   font-size: var(--text-display-app);
   line-height: var(--text-display-app--line-height);
   letter-spacing: var(--text-display-app--letter-spacing);
-  font-weight: 700;
+  font-weight: 800;
 }
 
 @utility display-m {
@@ -1197,7 +1391,7 @@
   font-size: var(--text-display-m);
   line-height: var(--text-display-m--line-height);
   letter-spacing: var(--text-display-m--letter-spacing);
-  font-weight: 700;
+  font-weight: 800;
 }
 
 /**

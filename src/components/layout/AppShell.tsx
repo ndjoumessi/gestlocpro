@@ -8,7 +8,7 @@ import {
   type ReactNode,
   type Ref,
 } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/cn'
 import { GOUTTIERE_LATERALE } from './gouttiere'
 import { LienEvitement } from './LienEvitement'
@@ -18,11 +18,10 @@ import { Icon, type IconName } from '@/components/primitives/Icon'
 import { Badge } from '@/components/primitives/Badge'
 import { Button, IconButton } from '@/components/primitives/Button'
 import { usePiegeDeFocus } from '@/components/primitives/piegeDeFocus'
-import { LanguageSwitcher } from '@/components/controls/LanguageSwitcher'
-import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
+import { ListeDeReglages } from '@/components/controls/ListeDeReglages'
+import { PanneauDeReglages } from '@/components/controls/PanneauDeReglages'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import type { CurrencyCode } from '@/currency/currencies'
-import { ThemeSwitcher } from '@/components/controls/ThemeSwitcher'
 import { useT } from '@/i18n/I18nProvider'
 import type { Role } from '@/features/auth/signupState'
 import { usePortfolio } from '@/data/PortfolioProvider'
@@ -97,7 +96,12 @@ interface NavItem {
    * laissait « 2 » dans la barre latérale, et encaisser un impayé laissait
    * « 3 » à côté des paiements.
    */
-  badge?: { count: 'overdue' | 'unreadAlerts'; tone: 'danger' | 'onDark' }
+  /* `accent` remplace `onDark` : la pastille des signalements non lus n'est
+     pas une alerte — un signalement se lit, il ne se règle pas en retard — mais
+     elle doit se voir. Elle prenait un ton nommé d'après le DÉCOR qui
+     l'entourait, une barre sombre ; la barre est claire, et le ton dit
+     désormais ce qu'il peint. */
+  badge?: { count: 'overdue' | 'unreadAlerts'; tone: 'danger' | 'accent' }
   /** Rôles auxquels l'entrée est proposée. */
   roles?: Role[]
   /**
@@ -147,8 +151,13 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
         to: 'signalements',
         labelKey: 'nav.alerts',
         icon: 'bell',
-        badge: { count: 'unreadAlerts', tone: 'onDark' },
+        badge: { count: 'unreadAlerts', tone: 'accent' },
       },
+      /* Le registre des DÉCISIONS, à côté de celui des ACCÈS et pas dedans :
+         l'un répond à « qui a le droit », l'autre à « qui a fait ». Propriétaire
+         seul — c'est lui qui délègue, et le registre est son moyen de contrôler
+         ce qu'il a délégué. */
+      { to: 'decisions', labelKey: 'nav.decisions', icon: 'clipboard', roles: ['owner'] },
       { to: 'prise-en-main', labelKey: 'nav.onboarding', icon: 'info', roles: ['owner'] },
     ],
   },
@@ -299,20 +308,21 @@ export function AppShell() {
    * part le parcours, et le sélecteur reste là pour en changer.
    */
   const { etat: session, adhesionActive } = useSession()
-  const { setCurrency } = useCurrency()
+  const { setDeviseSource } = useCurrency()
 
   /**
-   * La devise vient du PARC, pas d'une préférence de navigateur.
+   * LA DEVISE DU PARC EST DÉCLARÉE, ELLE NE FORCE PLUS L'AFFICHAGE.
    *
    * `CurrencyProvider` ne lisait que `localStorage` : la devise du parc, portée
    * par l'adhésion depuis toujours, n'était lue nulle part. Un parc camerounais
    * s'affichait donc dans la dernière devise choisie sur cette machine — et une
-   * QUITTANCE imprimait « 50,00 € » pour 50 000 FCFA, soit un écart de 655 fois
-   * sur un document opposable au locataire.
+   * QUITTANCE imprimait « 50,00 € » pour 50 000 FCFA.
    *
-   * Le produit ne convertit rien, et c'est un parti pris assumé du module de
-   * devises. Il ne tient que si la devise affichée EST celle du parc : sans
-   * conversion, en changer ne fait que mentir sur l'unité.
+   * Le remède d'alors était d'IMPOSER la devise du parc, faute de conversion.
+   * Elle existe désormais — parité légale pour le franc CFA, cours de la BCE
+   * pour les deux dollars — et cette devise redevient ce qu'elle est vraiment :
+   * celle des DONNÉES, le point de départ de toute conversion. Ce qu'on affiche
+   * peut en différer, et c'est le sujet du sélecteur.
    *
    * `XAF` et `XOF` partagent le même « CFA » à l'écran — deux monnaies
    * distinctes, même parité, et le produit n'affiche que des montants.
@@ -325,8 +335,8 @@ export function AppShell() {
       : null
 
   useEffect(() => {
-    if (deviseDuParc) setCurrency(deviseDuParc)
-  }, [deviseDuParc, setCurrency])
+    if (deviseDuParc) setDeviseSource(deviseDuParc)
+  }, [deviseDuParc, setDeviseSource])
   const roleDuCompte: Role =
     session.statut === 'connecte' ? (adhesionActive?.role ?? 'owner') : 'owner'
 
@@ -620,15 +630,28 @@ function BarreLocataire({ setRole }: { setRole: (role: Role) => void }) {
 
   return (
     <header
+      /* Marqueur de mesure : c'est le TÉMOIN de la surface « barre du
+         locataire » de `mesure-ui`. Cette coquille n'existe qu'une fois le
+         profil basculé, donc jamais pendant un balayage ordinaire — la
+         démonstration démarre en propriétaire. Sans témoin, un geste qui
+         cesserait de basculer laisserait la porte auditer la coquille du
+         BAILLEUR en croyant mesurer celle du locataire. */
+      data-mesure="barre-locataire"
       /**
-       * `on-dark` sur le conteneur, mais les libellés portent `text-on-dark`
-       * EN TOUTES LETTRES.
+       * CE COMMENTAIRE DÉCRIVAIT UN PIÈGE QUI N'EXISTE PLUS ICI, et il vaut
+       * d'être gardé pour ce qu'il enseigne.
        *
-       * Le remappage de `.on-dark` est écrit `:not([class*='bg-'])` : il se
-       * retire de lui-même dès qu'un élément porte son propre fond — ce qui est
-       * le cas de l'entrée courante et du survol. S'y fier rendait le libellé
-       * actif invisible, encre sur encre. La prévisualisation s'y est déjà
-       * brûlée ; son commentaire le raconte.
+       * Il expliquait pourquoi les libellés portaient `text-on-dark` EN TOUTES
+       * LETTRES sous un conteneur `.on-dark` : le remappage de cette classe est
+       * écrit `:not([class*='bg-'])`, donc il se RETIRE de lui-même dès qu'un
+       * élément porte son propre fond — ce qui était le cas de l'entrée
+       * courante et du survol. S'y fier rendait le libellé actif invisible,
+       * encre sur encre.
+       *
+       * La barre n'est plus sombre, la classe est partie, et le piège avec.
+       * La règle qu'il énonce, elle, reste vraie partout où `.on-dark` survit :
+       * un remappage conditionné par l'absence de fond ne couvre pas ce qui en
+       * pose un.
        *
        * Collante et peinte jusqu'au bord physique : avec `viewport-fit=cover`,
        * `top-0` est le haut de l'écran, et sans le `calc()` le logo se range
@@ -636,14 +659,30 @@ function BarreLocataire({ setRole }: { setRole: (role: Role) => void }) {
        * l'autre — en paysage l'encoche mord d'un côté ou de l'autre.
        */
       className={cn(
-        'on-dark sticky top-0 flex flex-wrap items-center gap-x-2 gap-y-1 bg-ink',
+        /*
+          LA BARRE DU LOCATAIRE SUIT LA COQUILLE, et `on-dark` s'en va aussi.
+
+          DEUX DÉFAUTS DISPARAISSENT AVEC LA CLASSE, et c'est la raison de les
+          traiter ici plutôt que un par un. `.on-dark` remappe `.text-ink`,
+          `.text-muted` et `.text-accent-ink` vers l'encre inversée FIGÉE, et ce
+          remappage gagnait sur deux endroits qui croyaient être en fond clair :
+          les `<option>` du sélecteur natif, peintes en blanc sur le fond clair
+          du menu système, et le panneau du menu de compte, qui pose `bg-paper`
+          — un jeton qui BASCULE — sous des encres figées en blanc. Les deux
+          étaient invisibles en thème clair. Retirer la classe les rend au
+          contexte qu'elles supposaient depuis le début.
+
+          `border-b` pour la même raison que le `border-r` de la barre latérale :
+          une barre blanche sur un papier presque blanc n'a plus de limite.
+        */
+        'sticky top-0 flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border bg-surface',
         'pt-[calc(0.625rem+env(safe-area-inset-top))]',
         'pl-[max(1.25rem,env(safe-area-inset-left))] pr-[max(1.25rem,env(safe-area-inset-right))]',
         'sm:pl-[max(2rem,env(safe-area-inset-left))] sm:pr-[max(2rem,env(safe-area-inset-right))]',
       )}
       style={{ zIndex: 'var(--z-sticky)' }}
     >
-      <Logo to={base} size="sm" tone="dark" className="mr-4 mb-2.5" />
+      <Logo to={base} size="sm" className="mr-4 mb-2.5" />
 
       <nav
         aria-label={t('nav.primaryNav')}
@@ -657,50 +696,43 @@ function BarreLocataire({ setRole }: { setRole: (role: Role) => void }) {
         ))}
       </nav>
 
-      {/* `tone="dark"` sur les trois commandes, et ce n'est pas cosmétique.
-          Elles se peignent sinon dans le thème AMBIANT : en thème sombre, leur
-          fond descend à la couleur du texte de la page et vient se poser sur
-          une barre qui, elle, est encre en permanence. Le sélecteur de devise
-          disparaissait ainsi presque entièrement — vérifié en capture, thème
-          sombre, avant correction. Les trois composants portent ce ton depuis
-          l'origine : il suffisait de le leur passer. */}
+      {/* LE TON SOMBRE EST RETIRÉ DES TROIS COMMANDES, et le défaut qu'il
+          corrigeait s'est retourné exactement.
+
+          Il existait parce que la barre était encre EN PERMANENCE tandis que
+          ces commandes se peignaient dans le thème AMBIANT : en thème sombre
+          leur fond descendait à la couleur du texte de la page et disparaissait
+          sur l'encre. La barre suivant désormais le thème comme elles, le ton
+          forcé produit le défaut INVERSE — et il l'a produit : mesuré sur la
+          barre devenue blanche, « FR » rendait rgba(255,255,255,0.68) sur du
+          blanc et le sélecteur de devise du blanc plein sur un voile blanc à
+          7 %. Deux commandes purement et simplement invisibles.
+
+          Je les avais oubliées en éclaircissant la barre ; c'est la capture,
+          pas la porte, qui me les a montrées. La leçon est celle que ce lot
+          répète : un ton FORCÉ est un pari sur le fond, et il se perd le jour
+          où le fond change de camp. */}
+      {/*
+        LA RANGÉE DE RÉGLAGES EST DEVENUE UN PANNEAU, comme sur les écrans
+        d'authentification et pour la même raison mesurée.
+
+        Elle alignait langue, devise et thème EN LIGNE, et le commentaire qu'elle
+        portait disait déjà le prix : « les quatre commandes alignées mesurent
+        près de 500 px ; sur les 390 px d'un téléphone la barre passait à quatre
+        lignes ». La réponse d'alors fut de MASQUER la devise et le thème sous
+        `sm` — un contrôle absent coûte plus que la ligne qu'il économise, et
+        `PanneauDeReglages` a été écrit contre ce raccourci exact.
+
+        Derrière un déclencheur, rien n'est retiré : le locataire d'un téléphone
+        retrouve ses trois réglages, la barre retombe sur une ligne, et c'est le
+        même panneau que partout ailleurs.
+      */}
       <div className="mb-2.5 ml-auto flex flex-wrap items-center justify-end gap-2">
-        <LanguageSwitcher tone="dark" />
-        {/* Même règle qu'ailleurs : le sélecteur de devise ne survit qu'en
-            démonstration, faute de conversion. */}
-        {/* Le repli est porté par une ENVELOPPE et non par la `className` du
-            composant : celle-ci est concaténée à ses propres classes, où un
-            `flex` figure déjà — deux utilitaires de `display` dans le même
-            attribut, et c'est l'ordre de la feuille qui tranche, pas celui de
-            la chaîne. Le sélecteur de thème restait ainsi affiché. */}
-        {demo && (
-          <span className="hidden sm:flex">
-            <CurrencySwitcher tone="dark" />
-          </span>
-        )}
-        {/**
-         * Devise et thème se retirent sous `sm`, la langue reste.
-         *
-         * Les quatre commandes alignées mesurent près de 500 px : sur les
-         * 390 px d'un téléphone — la cible matérielle du produit — la barre
-         * passait à quatre lignes et mangeait le tiers de l'écran, en restant
-         * collée. Mesuré en capture avant correction.
-         *
-         * Le thème est celui qui se retire le mieux : par défaut il SUIT le
-         * système, qui a déjà son propre réglage sur un téléphone. La langue,
-         * elle, n'a pas ce recours et reste la commande la plus demandée sur ce
-         * marché.
-         */}
-        <span className="hidden sm:flex">
-          <ThemeSwitcher tone="dark" />
-        </span>
-        {/* En démonstration, le sélecteur de profil est le propos : c'est par
-            lui qu'on entre dans la peau du locataire, et il doit permettre d'en
-            sortir. Sans lui, cette barre serait un cul-de-sac — la barre
-            latérale qui le portait n'existe plus ici. */}
+        <PanneauDeReglages />
         {demo && <SelecteurProfilCompact role="tenant" setRole={setRole} />}
-        <SelecteurParc tone="dark" />
-        <MenuCompte tone="dark" />
+        <SelecteurParc />
+        <MenuCompte />
+        <RetourAuSite />
       </div>
     </header>
   )
@@ -710,7 +742,7 @@ function BarreLocataire({ setRole }: { setRole: (role: Role) => void }) {
  * Une destination du locataire.
  *
  * Le repère de l'entrée courante est un filet DORÉ sous le libellé, et non
- * seulement un fond : `gold-ink` tient au-delà de 3:1 sur l'encre dans les deux
+ * seulement un fond : `accent-ink` tient au-delà de 3:1 sur l'encre dans les deux
  * thèmes, quand l'or de marque n'y atteint que 2,62:1. C'est le seul indice de
  * l'écran où l'on se trouve ; il doit se voir.
  */
@@ -728,8 +760,14 @@ function LienLocataire({ item }: { item: NavItem }) {
           'inline-flex min-h-11 shrink-0 items-center gap-2 rounded-t-lg border-b-2 px-3 sm:px-4',
           'text-label font-semibold no-underline transition-colors duration-150',
           isActive
-            ? 'border-gold-ink bg-on-dark-hover text-on-dark'
-            : 'border-transparent text-on-dark-muted hover:bg-on-dark-hover hover:text-on-dark',
+            /* Le filet passe de `accent-on-dark` à `accent` : sur une barre
+               blanche, le bleu clair des panneaux figés ne rend que 1,95 — sous
+               les 3:1 d'un repère qui est le SEUL indice de l'écran courant.
+               `--color-accent` en tient 5,17, et l'onglet reprend le couple
+               lavis + encre d'accent de la barre latérale, pour que les deux
+               coquilles du produit désignent l'actif de la même façon. */
+            ? 'border-accent bg-accent-tint text-accent-ink'
+            : 'border-transparent text-muted hover:bg-surface-sunken hover:text-ink',
         )
       }
     >
@@ -766,7 +804,7 @@ function SelecteurProfilCompact({
       <select
         value={role}
         onChange={(e) => setRole(e.target.value as Role)}
-        className="min-h-11 cursor-pointer rounded-md border border-on-dark-border bg-on-dark-hover px-2.5 text-label text-on-dark"
+        className="min-h-11 cursor-pointer rounded-md border border-border bg-surface px-2.5 text-label text-ink"
       >
         {(['owner', 'manager', 'tenant'] as const).map((value) => (
           <option key={value} value={value} className="text-ink">
@@ -844,14 +882,22 @@ function BandeauDemo() {
           téléphone. Relevé sur les onze largeurs, dans les deux langues : la
           longue ne tient qu'à partir de 1280 — à 1024 la barre latérale reprend
           256 px et la rogne encore —, la courte tient dès 320. */}
-      {/* PAS DE `truncate` SUR LA COURTE : elle nomme ce qui est fictif, et
-          couper « Immeubles, locataires et mon… » rendrait la phrase pauvre
-          qu'elle vient remplacer. Elle passe donc à la ligne quand il le faut —
-          mesuré à deux lignes sous 700 px, une au-delà. La longue garde son
-          `truncate` : à partir de 1280 px elle tient, et le garder est une
-          ceinture pour une langue future plus bavarde. */}
+      {/* AUCUNE DES DEUX NE SE COUPE, et la longue vient de perdre son
+          `truncate`.
+
+          Elle nomme ce qui est fictif : couper « Immeubles, locataires et
+          mon… » rendrait la phrase pauvre qu'elle vient remplacer. La courte
+          l'avait compris depuis le début et passe à la ligne quand il le faut —
+          mesuré à deux lignes sous 700 px, une au-delà.
+
+          LA LONGUE GARDAIT LE SIEN « comme une ceinture pour une langue future
+          plus bavarde ». La ceinture a serré, et pas sur une langue : à 22 px de
+          police racine — le cran « très grand » d'Android —, la phrase manque
+          375 px à 1280 et s'affiche « Vous parcourez une démonstration : ces
+          imm… ». Une ceinture qui coupe la phrase qu'elle protège n'en est pas
+          une. Elle se replie donc, comme sa jumelle. */}
       <span className="min-w-0 flex-1 xl:hidden">{t('common.demoNoticeShort')}</span>
-      <span className="hidden min-w-0 flex-1 truncate xl:block">{t('common.demoNotice')}</span>
+      <span className="hidden min-w-0 flex-1 xl:block">{t('common.demoNotice')}</span>
       <Button size="sm" to="/inscription/proprietaire" iconAfter="arrowRight" className="shrink-0">
         {t('common.demoCta')}
       </Button>
@@ -952,7 +998,22 @@ function Sidebar({
       // Les `transition-colors` des entrées et des profils restent : la
       // couleur est peinte, elle ne déclenche aucun calcul de disposition.
       className={cn(
-        'on-dark shrink-0 flex-col gap-4 overflow-y-auto bg-ink text-on-dark',
+        /*
+          LA BARRE LATÉRALE PASSE AU CLAIR, et `on-dark` s'en va avec le fond.
+
+          Ce n'est pas un repeint : retirer `on-dark` DÉFIGE `--color-ink`,
+          `--color-ink-2` et toute la famille `--color-on-dark*`, et désactive
+          du même coup les quatre règles de remappage de `tokens.css` ainsi que
+          `.on-dark *:focus-visible`. L'anneau de focus retombe sur
+          `--color-accent-ink`, ce qui est le comportement voulu sur fond clair.
+          Chaque jeton posé plus bas devait donc être rejugé un par un — c'est
+          fait, et aucune valeur n'a été inventée.
+
+          `border-r` EST NÉCESSAIRE, et c'est le piège de l'opération : ce
+          panneau ne se séparait du contenu que par sa COULEUR. Devenu blanc sur
+          un papier presque blanc, il n'aurait plus eu de limite du tout.
+        */
+        'shrink-0 flex-col gap-4 overflow-y-auto border-r border-border bg-surface text-ink',
         'sticky top-0 h-dvh',
         'pt-[calc(1.25rem+env(safe-area-inset-top))] pb-[calc(1.25rem+env(safe-area-inset-bottom))]',
         'pr-3 pl-[max(0.75rem,env(safe-area-inset-left))]',
@@ -963,16 +1024,16 @@ function Sidebar({
     >
       <div className="flex items-center gap-2 px-1.5">
         {wide ? (
-          <Logo tone="dark" caption={parc ?? undefined} to={base} />
+          <Logo caption={parc ?? undefined} to={base} />
         ) : (
-          <Logo tone="dark" markOnly to={base} />
+          <Logo markOnly to={base} />
         )}
         <IconButton
           icon="menu"
           // Dans le tiroir, ce bouton ferme ; dans la barre latérale de
           // bureau, il replie. Deux actions, deux libellés.
           label={dialogLabel ? t('nav.closeNav') : t('nav.toggleNav')}
-          variant="onDark"
+          variant="secondary"
           onClick={onToggleRail}
           className={cn('ml-auto', railed && 'hidden')}
         />
@@ -992,11 +1053,11 @@ function Sidebar({
       */}
       {wide && demo && (
         <div className="flex flex-col gap-1.5">
-          <p className="eyebrow px-2 text-on-dark-faint">{t('nav.activeProfile')}</p>
+          <p className="eyebrow px-2 text-muted">{t('nav.activeProfile')}</p>
 
           {/* Vrais boutons radio : la navigation par flèches et l'annonce
               « 2 sur 3 » sont natives, contrairement à des div cliquables. */}
-          <fieldset className="rounded-md border-0 bg-on-dark-hover p-1">
+          <fieldset className="rounded-md border-0 bg-surface-sunken p-1">
             <legend className="sr-only">{t('nav.activeProfile')}</legend>
             {profiles.map((profile) => {
               const active = profile.value === role
@@ -1007,10 +1068,10 @@ function Sidebar({
                     'relative flex min-h-11 cursor-pointer items-center rounded-sm px-2.5 text-label',
                     'transition-colors duration-150',
                     'has-[:focus-visible]:outline has-[:focus-visible]:outline-2',
-                    'has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-gold-on-dark',
+                    'has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-accent-ink',
                     active
-                      ? 'bg-on-dark-active font-semibold text-on-dark shadow-[inset_2px_0_0_var(--color-gold)]'
-                      : 'text-on-dark-muted hover:bg-on-dark-hover',
+                      ? 'bg-accent-tint font-semibold text-accent-ink shadow-[inset_2px_0_0_var(--color-accent)]'
+                      : 'text-muted hover:bg-surface-sunken',
                   )}
                 >
                   <input
@@ -1056,7 +1117,7 @@ function Sidebar({
           */}
           <p
             aria-live="polite"
-            className="px-3.5 text-caps leading-relaxed text-on-dark-faint"
+            className="px-3.5 text-caps leading-relaxed text-muted"
           >
             {t(`roles.${role}.rights` as 'roles.owner.rights')}
           </p>
@@ -1084,7 +1145,7 @@ function Sidebar({
           return (
             <div key={section.headingKey} className="flex flex-col gap-0.5">
               {wide && (
-                <p className="eyebrow px-2.5 pb-1 text-on-dark-faint">
+                <p className="eyebrow px-2.5 pb-1 text-muted">
                   {t(section.headingKey as 'nav.sectionSteering')}
                 </p>
               )}
@@ -1102,7 +1163,7 @@ function Sidebar({
       <div
         className={cn(
           'mt-auto flex flex-col gap-0.5',
-          (pied.length > 0 || railed) && 'border-t border-on-dark-border pt-3',
+          (pied.length > 0 || railed) && 'border-t border-border pt-3',
         )}
       >
         {pied.map((item) => (
@@ -1112,7 +1173,7 @@ function Sidebar({
           <IconButton
             icon="menu"
             label={t('nav.toggleNav')}
-            variant="onDark"
+            variant="secondary"
             onClick={onToggleRail}
             className="mt-1 self-center"
           />
@@ -1135,7 +1196,11 @@ function Sidebar({
  * qu'on imprime sur une quittance. Le sélecteur, lui, ne demande rien de tout
  * cela.
  */
-function SelecteurParc({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
+/* Plus de `tone` : ce sélecteur ne vivait sur fond sombre que dans la barre du
+   locataire, qui est passée au clair. Une branche sans appelant ne se garde pas
+   « au cas où » — elle se rend invisible au premier lecteur, et le jour où on la
+   rallume personne ne sait plus si elle a jamais été juste. */
+function SelecteurParc() {
   const t = useT()
   const { etat, adhesionActive, choisirParc } = useSession()
   if (etat.statut !== 'connecte' || etat.adhesions.length < 2) return null
@@ -1146,12 +1211,7 @@ function SelecteurParc({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
       <select
         value={adhesionActive?.parkId ?? ''}
         onChange={(e) => choisirParc(e.target.value)}
-        className={cn(
-          'min-h-11 cursor-pointer rounded-md border px-2.5 text-label',
-          tone === 'dark'
-            ? 'border-on-dark-border bg-on-dark-hover text-on-dark'
-            : 'border-border bg-paper text-ink',
-        )}
+        className="min-h-11 cursor-pointer rounded-md border border-border bg-paper px-2.5 text-label text-ink"
       >
         {etat.adhesions.map((a) => (
           // La LISTE DÉROULÉE est peinte par le système, pas par la barre : sans
@@ -1213,7 +1273,7 @@ function initiales(nom: string): string {
 /* Pas de `tone` : ce menu ne vit que dans la barre claire. La barre du
    locataire garde ses trois segmentés — elle n'a pas de barre latérale, donc
    pas le même budget de hauteur, et son relevé la donne à 71 px. */
-function MenuReglages({ demo }: { demo: boolean }) {
+function MenuReglages() {
   const t = useT()
   const [ouvert, setOuvert] = useState(false)
   const boite = useRef<HTMLDivElement>(null)
@@ -1250,6 +1310,12 @@ function MenuReglages({ demo }: { demo: boolean }) {
         aria-expanded={ouvert}
         aria-haspopup="dialog"
         onClick={() => setOuvert((o) => !o)}
+        /* LE MÊME SÉLECTEUR QUE LES AUTRES SURFACES. Il manquait ici, et son
+           absence rendait les trois panneaux incomparables : ni la garde
+           d'uniformité ni `mesure-ui` ne pouvaient les ouvrir de la même
+           façon. Un déclencheur qui s'appelle autrement d'un écran à l'autre
+           est déjà une divergence, avant même que le contenu ne diverge. */
+        data-declencheur-reglages=""
       />
 
       {ouvert && (
@@ -1257,31 +1323,65 @@ function MenuReglages({ demo }: { demo: boolean }) {
           role="dialog"
           aria-label={t('nav.settings')}
           style={{ zIndex: 'var(--z-popover)' }}
-          className="absolute right-0 mt-2 flex w-64 flex-col gap-4 rounded-md border border-border bg-paper p-4 shadow-lg"
+          /* `w-max` plutôt qu'une largeur fixe : le panneau prenait 256 px quel
+             que soit son contenu, ce qui serrait le libellé de la devise en
+             anglais et laissait du vide en français. La liste réclame ce qu'il
+             lui faut, entre un plancher lisible et le filet du bord d'écran. */
+          className="absolute right-0 mt-2 w-max min-w-60 max-w-[calc(100vw-2.5rem)] rounded-md border border-border bg-paper p-4 shadow-lg"
         >
-          <div className="flex flex-col gap-2">
-            <span className="text-caps text-muted uppercase">{t('common.language')}</span>
-            <LanguageSwitcher />
-          </div>
-          {/* Même règle qu'ailleurs : le sélecteur de devise ne survit qu'en
-              démonstration, faute de conversion des montants. */}
-          {demo && (
-            <div className="flex flex-col gap-2">
-              <span className="text-caps text-muted uppercase">{t('common.currency')}</span>
-              <CurrencySwitcher />
-            </div>
-          )}
-          <div className="flex flex-col gap-2">
-            <span className="text-caps text-muted uppercase">{t('common.theme')}</span>
-            <ThemeSwitcher />
-          </div>
+          {/* TROIS SECTIONS ÉCRITES À LA MAIN EN MOINS. Elles portaient chacune
+              leur intitulé en capitales au-dessus de sa commande, et l'avis de
+              conversion vivait ici — donc nulle part ailleurs : la vitrine et
+              les écrans d'authentification laissaient une conversion sans
+              provenance. Tout cela appartient au réglage, pas au panneau. */}
+          <ListeDeReglages />
         </div>
       )}
     </div>
   )
 }
 
-function MenuCompte({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
+/**
+ * LA SORTIE VERS LA VITRINE, quand aucun compte ne la porte.
+ *
+ * LE MANQUE. La coquille n'offrait aucun chemin vers la page d'accueil. Le logo
+ * mène au tableau de bord — comme la première entrée de la navigation, qui le
+ * dit déjà — et le menu du compte ne proposait que « Se déconnecter ». Se
+ * déconnecter n'est pas un chemin : c'est la seule sortie qui DÉTRUISE la
+ * session pour arriver quelque part. Et en démonstration, où il n'y a pas de
+ * compte, `MenuCompte` ne rend rien : la sortie n'existait pas du tout.
+ *
+ * DEUX CONTEXTES, UNE SEULE COMMANDE À LA FOIS. Connecté, elle vit DANS le menu
+ * du compte, à côté de la déconnexion : aller voir le site public est alors un
+ * geste rare et délibéré, et une commande rare ne s'installe pas à demeure dans
+ * une barre qu'on a mesurée à 185 px de haut le jour où on l'a laissée faire.
+ * En démonstration, c'est l'inverse — on est entré depuis la page d'accueil
+ * pour essayer, et repartir est le geste le plus attendu de tous : elle prend
+ * alors la PLACE QUE L'AVATAR LAISSE VIDE, au même endroit, à la même taille.
+ *
+ * Les deux états sont exclusifs (`connecte` contre `demo`), donc les deux
+ * commandes ne se rendent jamais ensemble. C'est la règle que la barre de la
+ * vitrine tient déjà : deux navigations identiques côte à côte sont un défaut.
+ *
+ * `globe` et non une flèche : la flèche dit « en arrière », qui est faux — on
+ * ne revient pas d'où l'on vient, on va au site public, et beaucoup arrivent
+ * ici par un lien direct. Le globe nomme la destination.
+ */
+function RetourAuSite() {
+  const t = useT()
+  const { etat } = useSession()
+  /* Le menu du compte porte la commande dès qu'il existe. Ce n'est pas une
+     préférence : c'est ce qui empêche le doublon. */
+  if (etat.statut === 'connecte') return null
+
+  return (
+    <IconButton icon="globe" label={t('nav.backToSite')} variant="secondary" to="/" />
+  )
+}
+
+/* Plus de `tone`, pour la même raison que `SelecteurParc` : son seul appelant
+   sur fond sombre était la barre du locataire. */
+function MenuCompte() {
   const t = useT()
   const { etat, deconnecter } = useSession()
   const [ouvert, setOuvert] = useState(false)
@@ -1327,15 +1427,13 @@ function MenuCompte({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
           // Encre sur encre : la pastille disparaissait purement et simplement
           // dans la barre du locataire, qui est de la même couleur. L'or est
           // celui de la maquette du portail, et `text-ink` s'y tient parce que
-          // `.bg-gold` refixe `--color-ink` sur son aplat.
+          // `.bg-accent` refixe `--color-ink` sur son aplat.
           //
           // Seul bouton de la coquille sans survol : `Button` et `IconButton`
           // en portent un chacun, celui-ci recopie leurs classes à la main sans
-          // recopier ce dernier détail. Les jetons de survol sont ceux de leurs
-          // variantes `gold` et `primary`, qui peignent déjà les mêmes fonds.
-          tone === 'dark'
-            ? 'bg-gold text-ink hover:bg-gold-on-dark'
-            : 'bg-ink text-on-dark hover:bg-ink-2',
+          // recopier ce dernier détail. Les jetons de survol sont ceux de la
+          // variante `primary`, qui peint déjà le même fond.
+          'bg-ink text-on-dark hover:bg-ink-2',
         )}
       >
         {initiales(nom)}
@@ -1344,29 +1442,99 @@ function MenuCompte({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
       {ouvert && (
         <>
           <div
-            role="menu"
             // Troisième site du même 50 écrit à la main, et le même remède : un
             // menu ancré à son bouton est un panneau flottant, il se nomme
             // comme les deux autres.
             style={{ zIndex: 'var(--z-popover)' }}
             className="absolute right-0 mt-2 flex w-64 flex-col gap-1 rounded-md border border-border bg-paper p-2 shadow-lg"
           >
+            {/*
+              L'IDENTITÉ EST SORTIE DU `role="menu"`, ET C'EST TOUT LE LOT.
+
+              Elle vivait dedans, dans un `div` ordinaire. Or `MenuDeDebordement`
+              énonce déjà la règle pour tout le dépôt : « un `menu` n'admet que
+              des `menuitem` parmi ses descendants signifiants ». Un lecteur
+              d'écran n'expose donc de ce conteneur que ses entrées — ce panneau
+              annonçait « menu, 2 éléments », et rien de plus.
+
+              Ce qui disparaissait ainsi est la RAISON D'ÊTRE du menu, écrite
+              quinze lignes plus haut : « l'avatar doit d'abord dire QUI est
+              connecté — la question qu'on se pose sur un poste partagé avant de
+              se déconnecter ». Elle était effacée pour ceux qui ne peuvent pas
+              lire l'écran, c'est-à-dire pour qui elle est le plus difficile à
+              obtenir autrement.
+
+              LE PANNEAU N'EST PAS LE MENU. C'est la structure canonique : une
+              boîte flottante qui porte un en-tête, et le `menu` à l'intérieur.
+              La boîte ne prend aucun rôle — lui en donner un (`dialog`) la
+              ferait annoncer comme une fenêtre et promettrait ce que le rôle
+              `menu` promet déjà mieux ici, une liste de commandes.
+            */}
             <div className="px-2 py-1.5">
               <p className="text-label font-semibold text-ink">{nom}</p>
-              <p className="truncate text-caps text-muted">{etat.compte.email}</p>
+              {/* Une adresse électronique n'a pas de longueur maximale : la
+                  couper dans un menu de 256 px est le seul comportement tenable. */}
+              <p data-donnee className="truncate text-caps text-muted">
+                {etat.compte.email}
+              </p>
             </div>
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setOuvert(false)
-                void deconnecter()
-              }}
-              className="flex min-h-11 cursor-pointer items-center gap-2 rounded-sm px-2 text-label text-ink hover:bg-surface-sunken"
+
+            {/* ET LE NOM REVIENT PAR LE NOM ACCESSIBLE. Sortir l'identité du
+                menu sans cela l'aurait seulement déplacée hors de portée : rien
+                n'oblige un lecteur d'écran à lire le texte qui PRÉCÈDE un menu
+                qu'on vient d'ouvrir au clavier. Nommé, le menu s'annonce
+                « Compte de Sarah Ngassa, menu, 2 éléments » — la réponse à la
+                question, au moment où on la pose.
+
+                ET PAS LE LIBELLÉ DU DÉCLENCHEUR : celui-là nomme un geste,
+                « ouvrir le menu », ce qui est juste sur un bouton et absurde sur
+                le panneau déjà ouvert. Voir `auth.accountOf`. */}
+            <div
+              role="menu"
+              aria-label={t('auth.accountOf', { name: nom })}
+              className="flex flex-col gap-1"
             >
-              <Icon name="arrowRight" size={16} />
-              {t('auth.logout')}
-            </button>
+              {/* LA SORTIE QUI NE DÉTRUIT RIEN, avant celle qui détruit — voir
+                  `RetourAuSite` pour pourquoi elle est ici et non dans la barre.
+                  Elle vient EN PREMIER parce que c'est le geste réversible : un
+                  menu qui range la déconnexion au-dessus la met sous le doigt qui
+                  vise la ligne suivante. */}
+              <Link
+                role="menuitem"
+                to="/"
+                onClick={() => setOuvert(false)}
+                className="flex min-h-11 items-center gap-2 rounded-sm px-2 text-label text-ink no-underline hover:bg-surface-sunken"
+              >
+                <Icon name="globe" size={16} />
+                {t('nav.backToSite')}
+              </Link>
+              {/* LE FILET SÉPARE DEUX NATURES, et il n'est pas décoratif : au
+                  dessus on navigue, en dessous on met fin à la session. Sans lui,
+                  deux lignes de même forme proposent deux gestes dont un seul se
+                  défait.
+
+                  `role="separator"` PARCE QU'IL SÉPARE VRAIMENT. Un `div` nu
+                  tombait sous la même règle que l'identité — contenu illicite d'un
+                  `menu` — et son trait n'était visible que des voyants. Déclaré,
+                  il devient la seule forme de coupure qu'un `menu` accepte, et
+                  l'annonce se fait des deux côtés. */}
+              <div role="separator" className="my-1 h-px bg-border" />
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOuvert(false)
+                  void deconnecter()
+                }}
+                className="flex min-h-11 cursor-pointer items-center gap-2 rounded-sm px-2 text-label text-ink hover:bg-surface-sunken"
+              >
+                {/* `logout` et non `arrowRight` : le jeu porte le glyphe exact, et
+                    une flèche générique redisait celle de la ligne au-dessus. Deux
+                    gestes de nature opposée ne se signalent pas du même trait. */}
+                <Icon name="logout" size={16} />
+                {t('auth.logout')}
+              </button>
+            </div>
           </div>
         </>
       )}
@@ -1413,8 +1581,16 @@ function SidebarLink({ item, wide }: { item: NavItem; wide: boolean }) {
           'transition-colors duration-150',
           wide ? 'justify-start' : 'justify-center',
           isActive
-            ? 'bg-on-dark-active font-semibold text-on-dark shadow-[inset_2px_0_0_var(--color-gold)]'
-            : 'text-on-dark-muted hover:bg-on-dark-hover hover:text-on-dark',
+            /* L'ACTIF PORTE DU TEXTE D'ACCENT, et non plus l'encre ordinaire.
+               Sur fond sombre, l'entrée courante se distinguait par un lavis
+               blanc à 14 % — la seule chose qui se voie sur du presque-noir. Sur
+               fond clair, le lavis d'accent et l'encre d'accent vont ensemble :
+               6,12 mesuré, et l'œil retrouve l'écran courant à la couleur avant
+               de lire le mot. Le filet de 2 px reste : trois signaux valent
+               mieux qu'un lavis seul pour qui distingue mal le bleu, et il
+               reprend `--color-accent`, qui tient 5,17 sur ce lavis. */
+            ? 'bg-accent-tint font-semibold text-accent-ink shadow-[inset_2px_0_0_var(--color-accent)]'
+            : 'text-muted hover:bg-surface-sunken hover:text-ink',
         )
       }
     >
@@ -1547,7 +1723,7 @@ function BottomLink({ item }: { item: NavItem }) {
           // ni pour un daltonien — et c'est précisément dehors, sur un écran
           // bon marché, que ce produit est utilisé.
           isActive
-            ? 'font-semibold text-ink shadow-[inset_0_2px_0_var(--color-gold)]'
+            ? 'font-semibold text-ink shadow-[inset_0_2px_0_var(--color-accent)]'
             : 'text-muted hover:bg-surface-sunken hover:text-ink',
         )
       }
@@ -1577,8 +1753,39 @@ function BottomLink({ item }: { item: NavItem }) {
 
         `tracking-normal` annule l'interlettrage de `text-caps`, prévu pour des
         surtitres de trois mots et qui coûte ici une lettre par ligne.
+
+        ── LE REPLI NE SUFFISAIT PAS, ET LA MESURE L'A DIT ──────────────────
+
+        Le repli coupe entre les MOTS. Quand le libellé n'en a qu'un et qu'il
+        est plus large que sa colonne, il n'y a rien à couper : le mot sortait
+        de sa cellule et se peignait par-dessus la voisine. Mesuré à 320 px :
+        « Signalements » demande 76 px dans 51, et chevauche « Parc immobilier ».
+        L'anglais n'en réchappe pas — « Dashboard » et « Payments » débordent
+        aussi. Cinq colonnes de 51 px ne portent aucun libellé de ce métier.
+
+        Aucune autre règle ne le voyait : la page ne défile pas pour autant, et
+        c'est `MESURER_DEBORD_LOCAL` — écrit pour cet angle mort — qui l'a
+        nommé.
+
+        `hyphens-auto` D'ABORD, `break-words` ENSUITE, et l'ordre compte. La
+        césure coupe où la langue l'autorise et pose un trait d'union —
+        « Signale- / ments » —, ce qui se lit. Elle a besoin de la langue du
+        document, que `I18nProvider` écrit sur `<html lang>` à chaque bascule.
+        `break-words` est le filet : quand la césure ne s'applique pas — langue
+        sans dictionnaire, navigateur qui ne la fait pas —, le mot casse sans
+        trait d'union plutôt que de déborder. Un mot cassé se lit mal ; deux
+        libellés superposés ne se lisent pas du tout.
       */}
-      <span className="w-full text-caps leading-tight tracking-normal text-balance">{label}</span>
+      <span
+        /* Marqueur de mesure : `mesure-ui` vérifie qu'aucun de ces libellés ne
+           laisse un ORPHELIN de moins de trois caractères en fin de coupure.
+           Sans lui, la porte ne saurait pas les distinguer du reste du texte —
+           un débordement se voit, une mauvaise coupure non. */
+        data-mesure="libelle-barre-basse"
+        className="w-full text-caps leading-tight tracking-normal hyphens-auto text-balance break-words"
+      >
+        {label}
+      </span>
     </NavLink>
   )
 }
@@ -1587,7 +1794,7 @@ function BottomLink({ item }: { item: NavItem }) {
 
 function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
   const t = useT()
-  const { parc, demo } = useIdentite()
+  const { parc } = useIdentite()
 
   /* Le calcul du fil d'Ariane est parti avec lui, et avec lui trois lectures
      de contexte — l'adresse courante, la base, le rôle. Il déduisait de la
@@ -1662,7 +1869,7 @@ function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
           changer sans convertir n'offre pas un choix, cela ment sur l'unité —
           et la quittance imprimée en porte la trace.
         */}
-        <MenuReglages demo={demo} />
+        <MenuReglages />
         {/*
           L'AVATAR ÉTAIT UN LITTÉRAL, et il n'ouvrait rien.
 
@@ -1680,6 +1887,7 @@ function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
         */}
         <SelecteurParc />
         <MenuCompte />
+        <RetourAuSite />
       </div>
     </header>
   )

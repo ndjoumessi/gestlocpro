@@ -1,9 +1,10 @@
-import { useId, useRef, useState, type KeyboardEvent } from 'react'
+import { useId, useState } from 'react'
 import { DansUnCadre } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Icon } from '@/components/primitives/Icon'
 import { Logo } from '@/components/primitives/Logo'
 import { cn } from '@/lib/cn'
+import { useOngletsAuClavier } from '@/components/primitives/ongletsAuClavier'
 import { useT } from '@/i18n/I18nProvider'
 import { DEMO_TENANT_UNIT, UNITS } from '@/data/portfolio'
 import { TenantDashboard } from './TenantDashboard'
@@ -74,41 +75,12 @@ export function TenantPortal() {
 
   /** Préfixe des identifiants qui lient onglets et panneau. */
   const tabsId = useId()
-  const onglets = useRef<(HTMLButtonElement | null)[]>([])
 
-  /**
-   * Sélection SUIVANT le focus — le comportement recommandé quand changer
-   * d'onglet ne coûte rien, ce qui est le cas ici : les trois vues sont déjà
-   * en mémoire. L'alternative (flèche pour déplacer, Entrée pour activer)
-   * ferait payer deux frappes ce que la souris obtient en un clic.
-   */
-  const allerA = (index: number) => {
-    const cible = TABS[index]
-    if (!cible) return
-    setTab(cible)
-    onglets.current[index]?.focus()
-  }
-
-  const auClavier = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
-    // Bornage, jamais bouclage : voir le commentaire du `tablist`.
-    const destination =
-      e.key === 'ArrowRight'
-        ? Math.min(index + 1, TABS.length - 1)
-        : e.key === 'ArrowLeft'
-          ? Math.max(index - 1, 0)
-          : e.key === 'Home'
-            ? 0
-            : e.key === 'End'
-              ? TABS.length - 1
-              : null
-
-    if (destination === null) return
-    // `Home` et `End` défileraient le document, les flèches le feraient
-    // horizontalement dans la rangée débordante : dans les deux cas la page
-    // bougerait sous une commande qui ne la concerne pas.
-    e.preventDefault()
-    allerA(destination)
-  }
+  /* Le clavier de la rangée — flèches, Home, End, sélection suivant le focus,
+     bornage aux extrémités — vit dans `useOngletsAuClavier`, qui porte aussi le
+     raisonnement de chacun de ces choix. Il a été extrait d'ICI le jour où la
+     grille de tarifs a eu besoin de la même rangée. */
+  const { auClavier, referencer } = useOngletsAuClavier(TABS, setTab)
 
   // L'unité de démonstration ne sert plus qu'au DÉCOR d'identité de la barre :
   // les écrans montés vont chercher la leur par le fournisseur.
@@ -119,7 +91,7 @@ export function TenantPortal() {
     <>
       <PageHeader title={t('app.portal.title')} description={t('app.portal.subtitle')} />
 
-      <div className="overflow-hidden rounded-xl border border-border-strong bg-surface-sunken shadow-e2">
+      <div className="overflow-hidden rounded-lg border border-border-strong bg-surface-sunken shadow-e2">
         {/* Chrome de navigateur */}
         <div className="flex items-center gap-3 border-b border-border bg-surface px-4 py-2.5">
           <span aria-hidden="true" className="flex gap-1.5">
@@ -134,7 +106,14 @@ export function TenantPortal() {
               longue (`portail.gestlocpro.com/documents`) débordait de la
               barre sans le point de suspension qui dirait qu'elle est
               coupée ; seul le cadre arrondi l'empêchait de pousser la page. */}
-          <span className="numeric min-w-0 truncate rounded-md bg-surface-sunken px-3 py-1 text-caps text-muted">
+          {/* `data-donnee` : c'est une ADRESSE, et cette barre imite celle du
+              navigateur — qui coupe elle aussi ce qui ne tient pas. Lui « rendre
+              la place » n'a pas de sens : une adresse n'a pas de longueur
+              maximale, et la barre en a une. */}
+          <span
+            data-donnee
+            className="numeric min-w-0 truncate rounded-md bg-surface-sunken px-3 py-1 text-caps text-muted"
+          >
             {t(URL_PAR_ONGLET[tab])}
           </span>
         </div>
@@ -151,11 +130,16 @@ export function TenantPortal() {
               `:not([class*='bg-'])` : il se retire de lui-même dès que
               l'élément porte son propre fond — ce qui est exactement le cas de
               l'onglet actif et du survol. S'appuyer dessus rendait le libellé
-              actif invisible, encre #14201e sur barre #14201e.
+              actif invisible, encre #131a22 sur barre #131a22.
 
-              La pastille dorée, elle, garde `text-ink` à dessein : `.bg-gold`
-              refixe `--color-ink` sur l'aplat, et c'est précisément ce que la
-              clause `bg-` protège. */}
+              La pastille d'initiales, elle, ne demande plus rien à la cascade :
+              elle NOMME son premier plan, `text-on-accent`, qui vaut blanc dans
+              les deux thèmes. Une règle refixait autrefois `--color-ink` sur
+              l'aplat d'accent — c'est ce que la clause `bg-` mettait à l'abri —
+              parce que l'or de marque d'alors ne pouvait porter que de l'encre
+              sombre ; le bleu qui lui a succédé porte du blanc, la règle a
+              disparu avec sa cause, et la pastille n'a donc plus aucun
+              remappage à protéger. */}
           <div className="on-dark flex flex-wrap items-center gap-x-2 gap-y-1 bg-ink px-4 pt-3">
             <Logo to="" size="sm" tone="dark" className="mr-4 mb-3" />
 
@@ -192,20 +176,24 @@ export function TenantPortal() {
                     // tabulation atteint le contenu du panneau, elle ne traverse
                     // pas trois onglets pour y arriver.
                     tabIndex={active ? 0 : -1}
-                    ref={(node) => {
-                      onglets.current[index] = node
-                    }}
+                    ref={(node) => referencer(index, node)}
                     onClick={() => setTab(value)}
                     onKeyDown={(e) => auClavier(e, index)}
                     className={cn(
                       'inline-flex min-h-11 shrink-0 cursor-pointer items-center rounded-t-lg border-b-2 px-4',
                       'text-label font-semibold transition-colors duration-150',
                       active
-                        ? // L'or de marque tenait 2,62:1 sur `paper` : cette
-                          // barre est le SEUL repère de l'onglet courant, donc
-                          // de la donnée. `gold-ink` la porte au-delà de 3:1
-                          // sur l'encre de `.on-dark`, dans les deux thèmes.
-                          'border-gold-ink bg-on-dark-hover text-on-dark'
+                        ? /* Cette barre est le SEUL repère de l'onglet courant :
+                             c'est de la DONNÉE, elle doit tenir 3:1.
+
+                             `accent-on-dark` et non `accent-ink`, et la garde
+                             l'a exigé avant moi. `accent-ink` est le bleu des
+                             LIENS SUR FOND CLAIR — il est sombre par
+                             construction, et posé sur l'encre figée de
+                             `.on-dark` il ne rendait que 2,61. Le jeton qui
+                             convient est celui qui existe pour les panneaux
+                             figés, clair dans les DEUX thèmes : 8,98. */
+                          'border-accent-on-dark bg-on-dark-hover text-on-dark'
                         : 'border-transparent text-on-dark-muted hover:bg-on-dark-hover hover:text-on-dark',
                     )}
                   >
@@ -220,15 +208,25 @@ export function TenantPortal() {
                 notifications à ouvrir — en faire un bouton promettrait un
                 panneau qui n'existe pas, le défaut que les « Télécharger » de
                 l'onglet Documents ont déjà coûté une fois. */}
+            {/* LES DEUX PREMIERS PLANS SONT NOMMÉS, comme ceux des onglets.
+                Ils portaient `text-ink` et comptaient sur le remappage de
+                `.on-dark` — celui-là même que le commentaire de la barre, trente
+                lignes plus haut, décrit comme se retirant de lui-même dès qu'un
+                élément porte son propre fond. Le glyphe et le nom court
+                marchaient donc par la clause `:not([class*='bg-'])`, et non
+                parce qu'on l'avait décidé : poser un fond sur l'un des deux — un
+                survol, un état actif, une pastille — les faisait passer à
+                l'encre sur l'encre, exactement la panne que ce même commentaire
+                raconte avoir déjà payée sur l'onglet actif. */}
             <div aria-hidden="true" className="ml-auto mb-3 flex items-center gap-3">
               <span className="relative flex size-9 items-center justify-center rounded-lg bg-on-dark-hover">
-                <Icon name="bell" size={18} className="text-ink" />
+                <Icon name="bell" size={18} className="text-on-dark" />
                 <span className="absolute top-2 right-2 size-1.5 rounded-full bg-danger" />
               </span>
-              <span className="flex size-8 items-center justify-center rounded-full bg-gold text-label font-semibold text-ink">
+              <span className="flex size-8 items-center justify-center rounded-full bg-accent text-label font-semibold text-on-accent">
                 {initiales}
               </span>
-              <span className="hidden text-label font-medium text-ink sm:inline">{court}</span>
+              <span className="hidden text-label font-medium text-on-dark sm:inline">{court}</span>
             </div>
           </div>
 

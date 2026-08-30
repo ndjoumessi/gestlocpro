@@ -3,6 +3,18 @@ import { within } from '@testing-library/react'
 import { renderApp, screen, switchRole, attendreLeChargement, userEvent } from '@/test/render'
 
 /**
+ * LA LARGEUR QUE CES CAS ÉPROUVENT, déclarée plutôt que supposée.
+ *
+ * Ils tiennent des comportements de TÉLÉPHONE — le tiroir, la barre basse, la
+ * feuille du menu — et s'appuyaient jusqu'ici sur le fait que jsdom répond
+ * « faux » à toute requête média : la fenêtre y était donc étroite par accident.
+ * `renderApp` évalue désormais les seuils à partir d'une largeur, et son défaut
+ * est 1280 : au-dessus de `lg`, la coquille referme son tiroir et la vitrine
+ * ancre son panneau, ce qui est juste et ne laissait plus rien à observer ici.
+ */
+const TELEPHONE = 360
+
+/**
  * Barre de navigation basse.
  *
  * Toute la navigation mobile tenait dans un tiroir déclenché par un hamburger
@@ -40,14 +52,14 @@ describe('barre de navigation basse', () => {
   beforeEach(() => poserLargeur(false))
 
   it('n’existe qu’en deçà de `lg`, comme le tiroir', async () => {
-    await renderApp('/app')
+    await renderApp('/app', { largeur: TELEPHONE })
     // Ce que jsdom permet d'affirmer : la classe qui la retire en grand écran
     // est bien posée. Qu'elle produise l'effet attendu relève du navigateur.
     expect(barre().className).toMatch(/(?<![-\w])lg:hidden(?![-\w])/)
   })
 
   it('tient en cinq cibles au plus, dont une sortie vers le reste', async () => {
-    await renderApp('/app')
+    await renderApp('/app', { largeur: TELEPHONE })
 
     // Au-delà de cinq, les cibles passent sous les 44 px à 360 px de large.
     expect(entrees().length).toBeLessThanOrEqual(4)
@@ -55,7 +67,7 @@ describe('barre de navigation basse', () => {
   })
 
   it('donne à chaque cible un libellé visible, pas une icône seule', async () => {
-    await renderApp('/app')
+    await renderApp('/app', { largeur: TELEPHONE })
     for (const lien of entrees()) expect(lien.textContent?.trim()).not.toBe('')
   })
 
@@ -71,7 +83,7 @@ describe('barre de navigation basse', () => {
   it('n’existe pas dans la coquille du locataire', async () => {
     // Sous `/demo`, où vit le sélecteur de profil : ce cas a besoin de changer
     // de rôle sans remonter, et c'est ce que la démonstration offre.
-    await renderApp('/demo')
+    await renderApp('/demo', { largeur: TELEPHONE })
     expect(libelles()).toContain('Parc immobilier')
 
     await switchRole('tenant')
@@ -87,7 +99,7 @@ describe('barre de navigation basse', () => {
   })
 
   it('signale l’entrée courante autrement que par la seule couleur', async () => {
-    await renderApp('/app/paiements')
+    await renderApp('/app/paiements', { largeur: TELEPHONE })
 
     const courante = within(barre()).getByRole('link', { current: 'page' })
     expect(courante).toHaveTextContent('Paiements')
@@ -97,7 +109,7 @@ describe('barre de navigation basse', () => {
   })
 
   it('porte les mêmes pastilles que la barre latérale', async () => {
-    await renderApp('/app')
+    await renderApp('/app', { largeur: TELEPHONE })
 
     const laterale = screen.getByRole('navigation', { name: 'Sections du produit' })
     const attendu = within(laterale)
@@ -114,7 +126,7 @@ describe('barre de navigation basse', () => {
 
   it('ouvre le tiroir par « Plus » sans lui retirer son traitement clavier', async () => {
     const user = userEvent.setup()
-    await renderApp('/app')
+    await renderApp('/app', { largeur: TELEPHONE })
 
     const plus = within(barre()).getByRole('button', { name: 'Plus' })
     await user.click(plus)

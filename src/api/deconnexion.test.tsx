@@ -59,9 +59,23 @@ describe('déconnexion', () => {
     await renderApp('/app', { session: SESSION })
 
     await user.click(avatar())
-    const menu = screen.getByRole('menu')
-    expect(menu).toHaveTextContent('Nelson Djoumessi')
-    expect(menu).toHaveTextContent('nelson@example.com')
+    /*
+      LE PANNEAU, ET NON LE `menu` QU'IL CONTIENT.
+
+      Ce cas lisait `getByRole('menu')` — et il passait au vert justement parce
+      que l'identité était logée dans un `div` nu à l'intérieur d'un conteneur
+      `menu`, qui n'expose que ses `menuitem`. Le texte était bien là pour cette
+      requête, qui lit le DOM ; il ne l'était pas pour un lecteur d'écran, qui
+      lit l'arbre d'accessibilité. La garde attestait donc l'inverse de ce
+      qu'elle promet — voir `menuDuCompte.test.tsx`, qui tient la structure.
+
+      L'identité vit désormais dans le panneau, au-dessus du menu. Ce que ce cas
+      vérifie n'a pas bougé : avant de fermer une session, on voit à qui elle
+      appartient.
+    */
+    const panneau = avatar().parentElement!
+    expect(panneau).toHaveTextContent('Nelson Djoumessi')
+    expect(panneau).toHaveTextContent('nelson@example.com')
   })
 
   it('n’en propose pas en démonstration, où il n’y a pas de compte', async () => {

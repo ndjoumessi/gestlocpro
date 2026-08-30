@@ -1,4 +1,5 @@
 import { api } from '@/api/client'
+import { partiesDeDateISO } from '@/lib/dates'
 import type { PaymentStatus } from '@/components/primitives/StatusPill'
 import type {
   Alert,
@@ -137,6 +138,8 @@ interface PortefeuilleApi {
       description: string
       severity: 'minor' | 'major'
       costMinor: number | null
+      /** Optionnel : un serveur antérieur à ce champ ne le rend pas. */
+      photos?: { id: string; contentType: string; confirmedAt: string }[]
     }[]
     signedAt: string | null
   }[]
@@ -358,7 +361,16 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
       // Le détail quand il vient, une liste vide sinon : l'écran distingue
       // « aucune réserve » de « détail non rendu » par le COMPTE, qui lui est
       // là depuis toujours.
-      findings: i.findings ?? [],
+      findings: (i.findings ?? []).map((r) => ({
+        ...r,
+        /* La date de constat passe en valeurs machine, comme toutes les autres :
+           la garder en ISO figerait un format dans une interface bilingue. */
+        photos: (r.photos ?? []).map((p) => ({
+          id: p.id,
+          contentType: p.contentType,
+          confirmedAt: enParties(p.confirmedAt),
+        })),
+      })),
       // `signedAt` porte qui et quand ; l'écran n'affiche encore que le fait.
       signed: i.signedAt !== null,
     })),
@@ -532,10 +544,7 @@ export function consommations(
  * fuseau où la version fautive donne exactement le même résultat. Aucun cas
  * n'aurait pu attraper ce défaut ; seule sa disparition le prévient.
  */
-function jourCalendaire(iso: string) {
-  const [annee, mois, jour] = iso.slice(0, 10).split('-').map(Number)
-  return { year: annee!, month: mois! - 1, day: jour! }
-}
+const jourCalendaire = partiesDeDateISO
 
 /**
  * Décalage relatif depuis une date, en unités que `Intl.RelativeTimeFormat`

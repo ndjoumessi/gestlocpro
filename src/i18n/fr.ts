@@ -33,16 +33,46 @@ export const fr = {
     // une vraie lecture après un vrai échec. Deux gestes, deux clés.
     retry: 'Réessayer',
     search: 'Rechercher',
+    /* Le nom accessible du déclencheur à trois points : ils ne se prononcent
+       pas, et « menu » seul ne dirait pas de quoi. */
+    moreActions: 'Autres actions',
     loading: 'Chargement…',
     required: 'obligatoire',
     optional: 'facultatif',
     currency: 'Devise',
+    /**
+     * LE NOM DES DEVISES, ET C'EST LA SEULE LISTE QUI LES NOMME.
+     *
+     * Elles vivaient en dur dans `currency/currencies.ts`, hors du
+     * dictionnaire : `t()` ne les voyait pas, `check-i18n` non plus — il
+     * contrôle le JSX, pas un module de données. Deux d'entre elles se
+     * désignaient d'ailleurs par leur propre code — « CAD ($) » — dans un menu
+     * qui affiche ce code juste à côté.
+     *
+     * Le symbole reste entre parenthèses : les deux dollars le partagent, il ne
+     * distingue rien seul, mais il ancre le nom sur ce qu'on lit ensuite à côté
+     * des montants.
+     *
+     * `CFA` couvre les DEUX zones franc — l'écran n'en affiche qu'une devise,
+     * même parité, même sigle. Le parc, lui, doit trancher pour le stockage :
+     * ses deux entrées qualifiées vivent dans `app.parkSettings`, et elles sont
+     * les seules à ne pas venir d'ici.
+     */
+    currencyNames: {
+      CFA: 'Franc CFA (FCFA)',
+      EUR: 'Euro (€)',
+      CAD: 'Dollar canadien ($)',
+      USD: 'Dollar américain ($)',
+    },
     language: 'Langue',
     theme: 'Thème',
     country: 'Pays',
     dialZoneCfa: 'Zone franc CFA',
     dialZoneOther: 'Autres pays',
     demoBadge: 'Démonstration',
+    currencyUnavailable: 'Cours indisponibles · montants en {currency}',
+    currencyConverted: 'Convertis au taux du {date}',
+    currencyPegged: 'Convertis à la parité légale',
     demoPark: 'Parc de démonstration',
     emptyParkTitle: 'Votre parc est encore vide',
     emptyParkBody:
@@ -92,6 +122,7 @@ export const fr = {
       'Ce pays n’est pas encore desservi : choisissez vous-même la devise et la langue de votre espace.',
     email: 'Adresse e-mail',
     password: 'Mot de passe',
+    passwordHint: 'Au moins {n} caractères.',
     phone: 'Téléphone',
     dialCode: 'Indicatif téléphonique',
     /**
@@ -211,6 +242,7 @@ export const fr = {
     sectionMySpace: 'Mon espace',
     sectionSteering: 'Pilotage',
     sectionOperations: 'Opérations',
+    decisions: 'Décisions',
     sectionAdmin: 'Administration',
     activeProfile: 'Profil actif',
     /* LE POINT D'ENTRÉE UNIQUE DES RÉGLAGES.
@@ -221,6 +253,7 @@ export const fr = {
        bouton, et aucun ne disparaît : le panneau les montre tous les trois. */
     settings: 'Réglages',
     settingsOpen: 'Réglages : langue, devise et thème',
+    settingsClose: 'Fermer les réglages',
     // Trois boutons portaient ce libellé pour trois actions différentes.
     // « Replier ou déplier » ne vaut que pour la barre latérale de bureau, qui
     // bascule entre pleine largeur et rail ; le tiroir mobile, lui, s'ouvre
@@ -228,7 +261,19 @@ export const fr = {
     toggleNav: 'Replier ou déplier la navigation',
     openNav: 'Ouvrir la navigation',
     closeNav: 'Fermer la navigation',
+    /*
+      « AU SITE » ET NON « À L'ACCUEIL ».
+
+      La coquille a déjà un accueil — le tableau de bord, première entrée de la
+      navigation, et destination du logo. Un second libellé « Accueil » dans la
+      même barre désignerait un autre lieu sous le même mot, ce qui est le
+      défaut que le fil d'Ariane a coûté une fois ici. « Le site » nomme ce
+      qu'on quitte l'application pour retrouver : la vitrine publique.
+    */
+    backToSite: 'Retour au site',
     searchPlaceholder: 'Rechercher un logement, un locataire…',
+    /* Le GABARIT, plus court que le nom accessible : voir `Portfolio`. */
+    searchShort: 'Logement, locataire…',
     selectPark: 'Parc regardé',
     primaryNav: 'Navigation principale',
     sectionsNav: 'Sections du produit',
@@ -243,6 +288,17 @@ export const fr = {
     signUp: 'Créer un compte',
     signUpFree: 'Essayer gratuitement',
     accountMenu: 'Compte de {name} — ouvrir le menu',
+    /*
+      LE MENU SE NOMME AUTREMENT QUE SON DÉCLENCHEUR, et il le faut.
+
+      Le déclencheur nomme un GESTE — « ouvrir le menu » —, ce qui est juste sur
+      un bouton. Posé sur le panneau lui-même, ce libellé s'annonçait « Compte
+      de Sarah Ngassa — ouvrir le menu, menu, 2 éléments » : le menu ouvert
+      proposait de s'ouvrir. Celui-ci ne nomme que la chose, parce qu'une fois
+      là on n'a plus rien à ouvrir — on a la réponse à « qui est connecté ? »,
+      seule raison d'être de ce panneau.
+    */
+    accountOf: 'Compte de {name}',
     logout: 'Se déconnecter',
     noAccount: 'Pas encore de compte ?',
     hasAccount: 'Vous avez déjà un compte ?',
@@ -271,18 +327,21 @@ export const fr = {
       sentBody:
         'Si un compte existe pour {email}, un lien de réinitialisation vient d’y être envoyé. Pensez à regarder dans les indésirables.',
       resend: 'Renvoyer le lien',
+      resent: 'Demande renvoyée',
+      wrongEmail: 'Ce n’est pas la bonne adresse ?',
     },
 
     reset: {
       title: 'Choisissez un nouveau mot de passe',
-      subtitle: 'Il remplacera l’ancien sur tous vos appareils connectés.',
+      subtitle:
+        'Toutes vos sessions seront fermées : il faudra vous reconnecter sur chaque appareil.',
       newPassword: 'Nouveau mot de passe',
       confirm: 'Confirmez le mot de passe',
       confirmHint: 'Retapez-le à l’identique.',
       submit: 'Enregistrer le mot de passe',
       successTitle: 'Mot de passe modifié',
       successBody:
-        'Vous pouvez vous connecter avec votre nouveau mot de passe. Les autres sessions ouvertes ont été déconnectées.',
+        'Vous pouvez vous connecter avec votre nouveau mot de passe. Toutes les sessions ouvertes ont été fermées, y compris celles dont vous n’êtes pas à l’origine.',
       goToLogin: 'Se connecter',
       invalidTitle: 'Ce lien n’est plus valable',
       invalidBody:
@@ -291,7 +350,7 @@ export const fr = {
     },
 
     strength: {
-      weak: 'Faible',
+      tooShort: 'Trop court',
       fair: 'Moyen',
       good: 'Bon',
       strong: 'Robuste',
@@ -337,7 +396,13 @@ export const fr = {
       ownerCodeHint:
         'Le propriétaire vous le communique depuis son espace. Format : GES-XXXX-XXXX.',
 
+      roleRequired: 'Choisissez le rôle qui vous correspond pour continuer',
       inviteCode: 'Code d’invitation',
+      /* Un GABARIT, et il vaut mieux qu'il soit réel : « LOC-XXXX-XXXX »
+         apprend la longueur, « LOC-4A7B-92CD » apprend en plus qu'on peut y
+         mettre des chiffres. Les deux écrans qui demandent ce code en
+         montraient deux formes différentes, dont une écrite en dur. */
+      inviteCodePlaceholder: 'LOC-4A7B-92CD',
       inviteCodeHint:
         'Vous l’avez reçu par SMS ou par e-mail à la signature de votre bail. Format : LOC-XXXX-XXXX.',
       tenantNotice:
@@ -396,8 +461,9 @@ export const fr = {
       nameRequired: 'Indiquez votre nom complet.',
       emailRequired: 'Indiquez votre adresse e-mail.',
       emailInvalid: 'Cette adresse ne semble pas valide. Vérifiez le format : nom@domaine.com',
-      passwordRequired: 'Choisissez un mot de passe.',
-      passwordShort: 'Utilisez au moins 8 caractères.',
+      passwordChoose: 'Choisissez un mot de passe.',
+      passwordEnter: 'Saisissez votre mot de passe.',
+      passwordShort: 'Utilisez au moins {n} caractères.',
       phoneRequired: 'Indiquez un numéro de téléphone.',
       phoneInvalid: 'Ce numéro semble incomplet.',
       // Le message dit la CAUSE et la limite : « invalide » laisserait
@@ -442,6 +508,9 @@ export const fr = {
       collections: 'encaissements',
       meters: 'releves-compteurs',
       receipt: 'quittance',
+      deposits: 'etat-des-cautions',
+      deposit: 'recu-caution',
+      inspection: 'etat-des-lieux',
     },
     paymentSaved: 'Paiement enregistré · quittance envoyée',
     roleNotice: 'Vous consultez l’espace en tant que {role}. Changez de profil dans la barre latérale.',
@@ -461,6 +530,7 @@ export const fr = {
         * l'avait pas suivie.
         */
       requestHint: 'Le gestionnaire reçoit la demande et vous répond dans cet espace.',
+      reqNoChoice: 'Choisissez la pièce à demander',
       requestSend: 'Envoyer la demande',
       requestSent: 'Demande envoyée au gestionnaire',
       reqResidence: 'Attestation de résidence',
@@ -505,6 +575,38 @@ export const fr = {
        * le bouton prétend restituer — le défaut que le portail a déjà payé.
        */
       none: 'Aucun document déposé',
+      pdfExitInspection: 'État des lieux de sortie',
+      pdfIssuedOn: 'Émis le {date}',
+      pdfBreakdown: 'Détail de la période',
+      pdfRemaining: 'Reste à régler',
+      pdfPayments: 'Versements reçus',
+      pdfNoPayment: 'Aucun versement enregistré sur cette période.',
+      csvConverted: 'Montants convertis du {from} vers le {currency}, au taux du {date} : {rate}.',
+      csvConvertedPegged:
+        'Montants convertis du {from} vers le {currency}, à la parité légale : {rate}.',
+      pdfConverted: 'Montants convertis depuis le {currency} au taux du {date} : {rate}.',
+      pdfConvertedPegged: 'Montants convertis depuis le {currency} à la parité légale : {rate}.',
+      pdfImputation:
+        'Le versement a soldé le loyer à hauteur de {rent}, l’eau de {water} et l’électricité de {power}. L’imputation suit cet ordre.',
+      pdfWithheldNote:
+        'Le détail des retenues figure sur le décompte d’arbitrage remis par le propriétaire. Ce reçu en porte les montants, non les motifs.',
+      pdfNoFinding: 'Aucune réserve.',
+      pdfFindingsWithheld:
+        '{count} réserves relevées. Leur détail n’est pas servi par le parc et ne figure donc pas ici.',
+      pdfFindingsWithheld_one:
+        'Une réserve relevée. Son détail n’est pas servi par le parc et ne figure donc pas ici.',
+      pdfSigned: 'Signé',
+      pdfNotSigned: 'Non signé',
+      pdfFooter:
+        '{park} · {document} · page {page} sur {total} · produit depuis les données enregistrées, sans signature',
+      exportCsv: 'Exporter en tableur',
+      depositsStatement: 'État des cautions',
+      statementAsOf: 'Au {date}',
+      statementWithheld: '{amount} retenus',
+      exportDeposits: 'Exporter l’état des cautions',
+      pdfDownloadDeposit: 'Télécharger le reçu de caution',
+      pdfDownloadInspection: 'Télécharger l’état des lieux',
+      pdfDownloaded: 'Document téléchargé · {file}',
     },
 
     tenant: {
@@ -598,6 +700,15 @@ export const fr = {
       expected: 'Loyers attendus',
       collected: 'Encaissé ce mois',
       /**
+       * LA BASE DE LA VARIATION, NOMMÉE.
+       *
+       * Une pastille « −16,8 % » sans son point de départ est un pourcentage
+       * flottant : on ne peut ni le vérifier, ni le retrouver dans le graphique
+       * qui vit trois cents pixels plus bas. La ligne dit à quoi la carte se
+       * compare, et c'est ce qui la rend lisible.
+       */
+      vsPrevious: 'vs. {amount} le mois dernier',
+      /**
        * « Impayés cumulés » disait deux choses fausses.
        *
        * Rien n'est CUMULÉ : c'est le reste de l'appel de loyers courant, calculé
@@ -614,6 +725,29 @@ export const fr = {
        * l'appel, sans préjuger de la raison ni de l'ancienneté.
        */
       outstanding: 'Reste à percevoir',
+      outstandingShare: '{percent} % du loyer attendu',
+      queueTitle: 'À traiter',
+      queueCount: '{count} en attente',
+      queueCount_one: '{count} en attente',
+      queueEmptyTitle: 'Rien n’attend de vous',
+      queueEmptyBody:
+        'Aucun loyer en retard, aucun arbitrage en suspens, aucun relevé manquant. Cette liste se remplit d’elle-même dès qu’une échéance passe ou qu’un devis arrive.',
+      queueOverdueTitle: '{count} loyers ne sont pas soldés',
+      queueOverdueTitle_one: '{count} loyer n’est pas soldé',
+      queueOverdueDetail: '{amount} à percevoir · jusqu’à {days} jours de retard',
+      queueOverdueAction: 'Encaisser',
+      queueDepositsTitle: '{count} cautions attendent votre arbitrage',
+      queueDepositsTitle_one: '{count} caution attend votre arbitrage',
+      queueDepositsDetail: '{amount} retenus · {units}',
+      queueDepositsAction: 'Arbitrer',
+      queueQuotesTitle: '{count} devis attendent votre accord',
+      queueQuotesTitle_one: '{count} devis attend votre accord',
+      queueQuotesDetail: '{amount} engagés si vous validez · {units}',
+      queueQuotesAction: 'Décider',
+      queueReadingsTitle: '{count} relevés manquent pour facturer le mois',
+      queueReadingsTitle_one: '{count} relevé manque pour facturer le mois',
+      queueReadingsDetail: 'La refacturation reste incomplète tant qu’ils ne sont pas saisis · {units}',
+      queueReadingsAction: 'Saisir',
       occupancy: 'Taux d’occupation',
       // « vs mois précédent » accompagnait un écart mensuel qui a disparu :
       // il supposait un historique que le produit n'a pas, et l'indicateur
@@ -655,8 +789,6 @@ export const fr = {
       legendRent: 'Loyer',
       legendWater: 'Eau',
       legendPower: 'Électricité',
-      scalePrimary: 'Échelle principale (loyer)',
-      scaleSecondary: 'Échelle secondaire (eau, électricité)',
     },
 
     unitFile: {
@@ -665,6 +797,24 @@ export const fr = {
        * côté, réuni autour d'une seule unité.
        */
       back: 'Retour au parc',
+      /**
+       * LES TROIS CHIFFRES QUE LE DOSSIER CALCULAIT SANS LES DIRE.
+       *
+       * Le reste dû se calculait PAR LIGNE dans la carte des périodes — « reste
+       * 5 058 FCFA » — et n'était jamais totalisé. Le montant des travaux se
+       * calculait par ligne et n'était jamais sommé. La caution était affichée
+       * en petit, dans une liste de pièces. Trois nombres qui disent l'état d'un
+       * logement, dispersés.
+       */
+      kpiBalance: 'Reste dû',
+      kpiBalanceNote: 'sur {count} périodes facturées',
+      kpiBalanceNote_one: 'sur {count} période facturée',
+      kpiDeposit: 'Caution consignée',
+      kpiDepositNote: 'à restituer en fin de bail',
+      kpiDepositNone: 'aucune caution enregistrée',
+      kpiWorks: 'Travaux engagés',
+      kpiWorksNote: 'sur {count} interventions',
+      kpiWorksNote_one: 'sur {count} intervention',
       open: 'Ouvrir le dossier du logement {unit}',
       loadingTitle: 'Dossier du logement',
       notFoundTitle: 'Ce logement est introuvable',
@@ -759,6 +909,8 @@ export const fr = {
     receipts: {
       title: 'Document',
       description: 'Émis par le serveur : les montants sont ceux du registre, pas ceux de l’écran.',
+      descriptionDemo:
+        'Établi depuis le jeu de démonstration : ces montants sont fictifs, et aucun registre n’est tenu.',
       quittance: 'Quittance de loyer',
       recu: 'Reçu de paiement',
       tenant: 'Locataire',
@@ -790,6 +942,25 @@ export const fr = {
        * ans — la seule chose qui change la démarche à engager.
        */
       balanceTotal: 'Solde cumulé',
+      /**
+       * LA COLONNE D'ÉTAT NOMME SA PORTÉE, et c'est le seul écran où elle le doit.
+       *
+       * Ailleurs — le Parc, les locataires — « Statut » est sans ambiguïté : rien
+       * à côté ne parle d'une autre période. Ici la colonne voisine annonce le
+       * solde du BAIL ENTIER, et la pastille celui du MOIS. Deux portées côte à
+       * côte dont une seule était nommée, avec un rouge d'un côté et un vert de
+       * l'autre : la ligne avait l'air de se contredire.
+       */
+      statusMonth: 'Statut du mois',
+      /**
+       * Ce que la pastille verte ne dit pas.
+       *
+       * Elle va au même endroit que « +24 j » — le qualificatif de la pastille —
+       * et pour la même raison : la pastille rend un verdict sur le mois, ce
+       * mot dit ce qu'il faut savoir de plus pour le lire juste. Un seul mot,
+       * comme son voisin : le montant est dans la colonne d'à côté.
+       */
+      carried: 'reliquat',
       outOfLease: 'hors bail',
       legendPosts: 'Par cellule : loyer · eau · électricité',
       state: {
@@ -851,6 +1022,8 @@ export const fr = {
       noticeReasonHint: 'Au moins 10 caractères. C’est le texte qui défendra la décision.',
       noticeReasonError: 'Un motif d’au moins 10 caractères est requis',
       noticeDone: 'Mise en demeure enregistrée au dossier du bail',
+      noticeDemo:
+        'En démonstration, rien n’est enregistré : une mise en demeure suppose un bail réel.',
       // En-tête de colonne de l'export : « +24 j » est une abréviation
       // d'affichage, illisible en tête d'une colonne de tableur.
       lateDays: 'Jours de retard',
@@ -863,6 +1036,8 @@ export const fr = {
       utility: 'Énergie',
       price: 'Prix unitaire',
       priceHint: 'Par mètre cube pour l’eau, par kilowattheure pour l’électricité.',
+      demoNoSave:
+        'La démonstration n’enregistre pas de prix : ceux de l’historique sont ceux qu’elle applique à ses relevés, et ils ne quittent pas la visite.',
       priceInvalid: 'Saisissez un prix entier supérieur à zéro.',
       effectiveFrom: 'À partir du',
       effectiveFromHint:
@@ -870,6 +1045,8 @@ export const fr = {
       submit: 'Enregistrer ce prix',
       saved: 'Prix enregistré',
       duplicate: 'Un prix existe déjà pour cette énergie à cette date. Changez la date d’effet.',
+      inForce: 'En vigueur',
+      scheduled: 'À venir',
       historyTitle: 'Prix déjà posés',
       empty:
         'Aucun prix posé. Les relevés affichent les quantités relevées, sans montant refacturé.',
@@ -882,10 +1059,12 @@ export const fr = {
       hasManagers: 'Un gestionnaire opère encore ce parc. Retirez son accès au registre des accès avant de passer en gestion seule.',
       open: 'Corriger le parc',
       title: 'Corriger le parc',
-      description:
-        'Le nom, le pays et la devise du parc. Ils ont été posés à sa création et n’étaient modifiables nulle part.',
+      description: 'Le nom, le pays, la devise et la délégation : les quatre choses qu’un parc est.',
       name: 'Nom du parc',
       nameRequired: 'Requis',
+      notSet: '— non renseigné',
+      demoNoSave:
+        'La démonstration n\u2019enregistre rien : ce parc n\u2019existe que le temps de la visite. La devise, elle, se change tout de suite dans l\u2019en-tête — elle s\u2019applique à tous les montants affichés.',
       country: 'Pays',
       countryHint: 'Il détermine la zone monétaire proposée, sans l’imposer.',
       currency: 'Devise',
@@ -894,9 +1073,9 @@ export const fr = {
       // distinctes. Le stockage doit trancher, la zone le dit.
       currencyXAF: 'FCFA — Afrique centrale (CEMAC)',
       currencyXOF: 'FCFA — Afrique de l’Ouest (UEMOA)',
-      currencyEUR: 'Euro (€)',
-      currencyCAD: 'Dollar canadien ($)',
-      currencyUSD: 'Dollar américain ($)',
+      // Les trois autres devises du parc sont celles que l'en-tête et
+      // l'inscription proposent aussi : leur nom vit à `common.currencyNames`,
+      // seul endroit d'où une devise se nomme.
       submit: 'Enregistrer',
       /**
        * Le second clic. Le libellé NOMME le geste au lieu de le confirmer :
@@ -958,10 +1137,50 @@ export const fr = {
        */
       severityMinor: 'Léger',
       severityMajor: 'Dégradé',
+      /**
+       * LES PHOTOS D'UNE RÉSERVE.
+       *
+       * Le compte est ÉCRIT en permanence — « 2 / 8 » — et non seulement quand
+       * la limite est atteinte. Une borne qu'on ne découvre qu'en butant dedans
+       * est une borne silencieuse : celle-ci n'est pas mesurée sur un appareil
+       * réel, et la rendre visible est le moins qu'on doive à qui la subira.
+       */
+      photoAdd: 'Ajouter une photo à la réserve n° {rank}',
+      photoCount: '{done} / {max}',
+      photoFull: 'Huit photos par réserve, c’est le maximum tenu en mémoire. Retirez-en une pour en ajouter une autre.',
+      photoRemove: 'Retirer la photo {index} de la réserve n° {rank}',
+      photoAlt: 'Photo {index} de la réserve n° {rank}',
+      /**
+       * LE REFUS DIT QUOI FAIRE. « Format non pris en charge » laisse
+       * l'utilisateur devant un appareil qu'il ne sait pas régler ; le chemin
+       * exact du réglage iOS le débloque en trente secondes.
+       */
+      photoHeic:
+        'Cette photo est au format HEIC, qu’aucun navigateur ne sait ouvrir. Votre iPhone peut enregistrer en JPEG : Réglages → Appareil photo → Formats → Le plus compatible.',
+      photoUnreadable: 'Ce fichier n’est pas une image que le navigateur sait ouvrir. Choisissez une photo JPEG ou PNG.',
+      photoUploadFailed:
+        'L’envoi de {count} photos a échoué. L’état des lieux est enregistré ; ses réserves ne portent pas encore ces photos. Réessayez sans fermer cette fenêtre.',
+      photoUploadFailed_one:
+        'L’envoi d’une photo a échoué. L’état des lieux est enregistré ; sa réserve ne porte pas encore cette photo. Réessayez sans fermer cette fenêtre.',
+      photoConfirmFailed:
+        '{count} photos sont montées mais n’ont pas été confirmées : elles ne sont pas encore attachées à la réserve. Réessayez sans fermer cette fenêtre — fermer les perdrait.',
+      photoConfirmFailed_one:
+        'Une photo est montée mais n’a pas été confirmée : elle n’est pas encore attachée à la réserve. Réessayez sans fermer cette fenêtre — fermer la perdrait.',
+      photoRetry: 'Reprendre l’envoi des photos',
       addFinding: 'Ajouter une réserve',
+      findingRank: 'Réserve n° {rank}',
       removeFinding: 'Retirer la réserve n° {rank}',
       title: 'États des lieux',
       subtitle: 'Entrée et sortie comparées pièce par pièce, réserves chiffrées et imputées sur la caution.',
+      /* Ni indicateur ni compte : l'écran alignait des dossiers sans dire
+         combien de logements avaient un état des lieux complet — la seule
+         chose qui décide s'il reste du travail avant une restitution. */
+      kpiComplete: 'Dossiers complets',
+      kpiCompleteNote: 'entrée et sortie signées',
+      kpiPartial: 'Entrée seule',
+      kpiPartialNote: 'la sortie reste à faire',
+      kpiNone: 'Sans état des lieux',
+      kpiNoneNote: 'aucune pièce contradictoire',
       entry: 'Entrée',
       exit: 'Sortie',
       rooms: '{count} pièces',
@@ -995,6 +1214,20 @@ export const fr = {
       asGood: 'Bon état',
       major: 'dégradé',
       proposed: 'Retenue proposée sur la caution',
+      /**
+       * LES PREUVES, DU CÔTÉ DE QUI LES REÇOIT.
+       *
+       * Le mot est choisi : ce ne sont pas « les photos », ce sont les pièces
+       * qu'on oppose. Le locataire à qui l'on retient une somme lit ici ce qui
+       * la fonde, et le bailleur relit ce qu'il pourra produire.
+       *
+       * Le texte de remplacement d'une vignette porte le CONSTAT et non « photo
+       * de réserve » : un lecteur d'écran qui annonce trois fois « photo » ne
+       * dit rien de plus qu'un silence.
+       */
+      proofs: 'Preuves',
+      proofAlt: 'Photo {index} sur {total} — {finding}',
+      proofMissing: 'Photo indisponible',
       emptyTitle: 'Aucun état des lieux enregistré',
       emptyBody:
         'Un état des lieux d’entrée se fait à la remise des clés, celui de sortie à leur restitution : c’est leur comparaison qui justifie ce qu’on retient sur la caution.',
@@ -1076,6 +1309,21 @@ export const fr = {
          mot pour la somme et pour ses termes — c'est la troisième fois que ce
          motif se présente, et la première où il est vu avant livraison. */
       totalCommitted: 'Total engagé',
+      /**
+       * LA RANGÉE D'INDICATEURS QUI MANQUAIT À CET ÉCRAN.
+       *
+       * Il comptait déjà tout — le total engagé, les devis en attente, les
+       * chantiers ouverts — et n'en montrait qu'un seul, en texte libre à côté
+       * des filtres. Ses cinq écrans voisins ouvrent tous sur une rangée de
+       * cartes ; celui-ci demandait de lire cinq fiches pour savoir combien il
+       * y avait à arbitrer.
+       */
+      kpiQuoted: 'Devis à arbitrer',
+      kpiQuotedNote: '{amount} proposés',
+      kpiOngoing: 'Chantiers en cours',
+      kpiOngoingNote: '{count} encore à chiffrer',
+      kpiOngoingNote_one: '{count} encore à chiffrer',
+      kpiCommittedNote: 'sur les interventions affichées',
       /* L'état vide s'adresse au bailleur, à qui le geste est désormais
          offert. La phrase disait « une intervention naît d'un signalement de
          locataire » : c'était vrai, ça ne l'est plus. */
@@ -1150,6 +1398,24 @@ export const fr = {
       withheld: 'Retenu',
       balance: 'À restituer',
       totalHeld: 'Total consigné',
+      alreadyReturned: 'Déjà restituées',
+      /* Les TITRES DE SECTION de l'état des cautions. Distincts des libellés
+         de statut ci-dessus, qui qualifient UNE caution : voir
+         `SECTION_DE_STATUT` dans `documentsPdf`. */
+      sectionHeld: 'Cautions consignées',
+      sectionSettling: 'Cautions en cours d’arbitrage',
+      sectionReturned: 'Cautions restituées',
+      alreadyReturned_one: 'Déjà restituée',
+      /* Les trois cartes étaient NUES — un intitulé, un montant, rien dessous —
+         quand celles des cinq autres écrans portent une ligne qui dit sur quoi
+         le montant porte. « 1 226 000 FCFA » ne disait pas sur combien de
+         cautions. */
+      kpiHeldNote: 'sur {count} cautions',
+      kpiHeldNote_one: 'sur {count} caution',
+      kpiWithheldNote: '{count} en cours d’arbitrage',
+      kpiWithheldNote_one: '{count} en cours d’arbitrage',
+      kpiBalanceNote: '{count} déjà restituées · {amount}',
+      kpiBalanceNote_one: '{count} déjà restituée · {amount}',
       settle: 'Arbitrer',
       settleTitle: 'Arbitrer la caution',
       settleDescription:
@@ -1172,6 +1438,88 @@ export const fr = {
         'Seul le propriétaire arbitre les cautions. Vous préparez le décompte, il le valide.',
     },
 
+    decisions: {
+      title: 'Registre des décisions',
+      subtitle: 'Ce que le parc a écrit, et qui l’a écrit.',
+      empty: 'Aucune décision enregistrée pour l’instant.',
+      emptyHint:
+        'Les validations de devis, arbitrages de caution, encaissements et corrections s’inscrivent ici au fur et à mesure.',
+      failed: 'Le registre n’a pas pu être lu.',
+      colWhen: 'Quand',
+      colWhat: 'Décision',
+      colWho: 'Par qui',
+      unknownActor: 'Compte supprimé',
+      more: 'Voir les décisions plus anciennes',
+      /*
+        LE DICTIONNAIRE ÉPOUSE L'ESPACE DE NOMS DES ACTIONS, et ce n'est pas
+        un choix de rangement : `t` découpe sa clé sur les POINTS. Écrites à
+        plat — `'deposit.settle'` — les clés étaient introuvables, et l'écran
+        rendait « Décision enregistrée » pour toutes. Imbriquées, la clé du
+        serveur devient le chemin du dictionnaire sans conversion.
+      */
+      units: {
+        reminders: '{count} relances',
+        reminders_one: '{count} relance',
+        findings: '{count} constats',
+        findings_one: '{count} constat',
+        charges: '{count} échéances',
+        charges_one: '{count} échéance',
+      },
+      utilities: {
+        water: 'Eau',
+        power: 'Électricité',
+      },
+      actions: {
+        access: {
+          revoke: 'Accès repris',
+        },
+        deposit: {
+          settle: 'Caution arbitrée',
+          unsettle: 'Arbitrage de caution repris',
+        },
+        document: {
+          fulfilled: 'Pièce remise',
+          refused: 'Demande de pièce refusée',
+        },
+        inspection: {
+          record: 'État des lieux établi',
+          photo: 'Photo versée au dossier',
+          photo_delete: 'Photo retirée du dossier',
+        },
+        lease: {
+          formal_notice: 'Mise en demeure signifiée',
+        },
+        park: {
+          update: 'Parc corrigé',
+        },
+        payment: {
+          record: 'Encaissement saisi',
+          delete: 'Encaissement retiré',
+        },
+        receipt: {
+          issued: 'Quittance émise',
+        },
+        rent: {
+          call: 'Appel de loyers émis',
+          remind: 'Relance envoyée',
+        },
+        tariff: {
+          set: 'Tarif de refacturation posé',
+        },
+        tenant: {
+          create: 'Fiche de locataire ouverte',
+          delete: 'Fiche de locataire retirée',
+        },
+        work: {
+          quote: 'Devis chiffré',
+          approve: 'Devis validé',
+          unapprove: 'Validation de devis reprise',
+          complete: 'Chantier soldé',
+          reopen: 'Chantier rouvert',
+        },
+        unknown: 'Décision enregistrée',
+      },
+    },
     access: {
       title: 'Accès au parc',
       subtitle: 'Qui détient une clé, et quels codes attendent encore d’être utilisés.',
@@ -1179,7 +1527,15 @@ export const fr = {
         'Seul le propriétaire retire un accès. Vous voyez le registre et reprenez les codes de locataire.',
       membersTitle: 'Membres',
       membersHint: 'Les personnes qui accèdent au parc aujourd’hui.',
+      /* Le registre comptait ses membres et ses invitations sans jamais les
+         écrire : pour savoir combien de personnes ont une clé, il fallait
+         compter les lignes à l'œil. */
+      kpiMembers: 'Personnes avec un accès',
+      kpiMembersNote: 'vous compris',
+      kpiInvitations: 'Codes en attente',
+      kpiInvitationsNote: 'pas encore utilisés',
       member: 'Personne',
+      memberRole: 'Rôle',
       since: 'Membre depuis',
       action: 'Action',
       role_owner: 'Propriétaire',
@@ -1255,6 +1611,22 @@ export const fr = {
     tenants: {
       title: 'Locataires et baux',
       subtitle: 'Chaque locataire est rattaché à une unité par un bail actif.',
+      /**
+       * LA RANGÉE D'INDICATEURS QUI MANQUAIT À CET ÉCRAN.
+       *
+       * Il comptait déjà les trois : les baux, le loyer qu'ils portent, les
+       * demandes de pièces en attente. `vacant` ne servait qu'à griser un
+       * bouton, `demandesEnAttente` qu'à décider d'afficher une carte. On
+       * arrivait sur un tableau de dix lignes sans un seul nombre, quand les
+       * six écrans voisins ouvrent sur une rangée de cartes.
+       */
+      kpiLeases: 'Baux actifs',
+      kpiLeasesNote: '{count} logements vacants',
+      kpiLeasesNote_one: '{count} logement vacant',
+      kpiRent: 'Loyer mensuel',
+      kpiRentNote: 'appelé sur les baux actifs',
+      kpiRequests: 'Pièces demandées',
+      kpiRequestsNote: 'en attente de votre réponse',
       addTenant: 'Créer une fiche locataire',
       leaseStart: 'Début du bail',
       leaseStartHint: 'Laissez vide pour aujourd’hui. Renseignez la vraie date pour un locataire déjà en place.',
@@ -1301,6 +1673,14 @@ export const fr = {
       title: 'Signalements et notifications',
       subtitle: 'Ce que le produit a détecté ou reçu, du plus récent au plus ancien.',
       markRead: 'Tout marquer comme lu',
+      /* L'écran comptait ses non-lues et les rendait dans un paragraphe gris.
+         Le compte le plus utile de la page vivait en prose, sous l'en-tête,
+         quand ses six voisins ouvrent sur une rangée de cartes. */
+      kpiUnread: 'Non lues',
+      kpiUnreadNote: 'sur {count} notifications',
+      kpiUnreadNote_one: 'sur {count} notification',
+      kpiRead: 'Déjà lues',
+      kpiReadNote: 'rien à faire dessus',
       /**
        * Le RANG d'une relance, et si elle est partie.
        *
@@ -1310,6 +1690,9 @@ export const fr = {
        * croire qu'un locataire a été prévenu alors que rien n'est parti.
        */
       rank: 'Rappel n° {n}',
+      rankOfSeries: 'Rappel n° {n} sur {total}',
+      seriesNoneSent: 'Aucune n’est encore partie · visibles ici seulement',
+      seriesDispatch: '{sent} partie(s), la dernière le {date} · {waiting} en attente',
       sentOn: 'Parti par {channel} le {date}',
       /* « Pas encore parti » et non le silence : une relance qui n'a pas quitté
          le produit est une relance que le locataire n'a pas reçue, et c'est
@@ -1528,7 +1911,6 @@ export const fr = {
       // « Rejouer » et non « Recharger » : rien n'est demandé au serveur, on
       // remontre un état. Le verbe dit qu'on est dans une vitrine.
       replayLoading: 'Rejouer le chargement',
-      retried: 'Nouvelle tentative · données rechargées',
       emptyTitle: 'Aucun paiement sur cette période',
       emptyBody: 'Dès qu’un règlement est enregistré, il apparaît ici avec sa quittance.',
       offlineTitle: 'Mode hors ligne',
@@ -1776,6 +2158,7 @@ export const fr = {
         supportEmail: 'Par e-mail',
         supportPriority: 'Prioritaire',
         supportDedicated: 'Dédié',
+        managersUnlimited: 'illimité',
       },
     },
 

@@ -1,23 +1,26 @@
 import { useMemo, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { useRole } from '@/components/layout/AppShell'
 import { lien, useBase } from '@/lib/base'
 import { DataTable, EmptyState } from '@/components/primitives/DataTable'
 import { PaymentStatusPill } from '@/components/primitives/StatusPill'
 import { StatCard } from '@/components/primitives/Charts'
+import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDebordement'
 import {
   Skeleton,
   SkeletonRegion,
-  SkeletonStatCard,
+  SkeletonStatRow,
   SkeletonTable,
 } from '@/components/primitives/Skeleton'
+import { GRILLE_QUATRE_INDICATEURS } from './grillesDIndicateurs'
 import { Input } from '@/components/primitives/Input'
 import { Button } from '@/components/primitives/Button'
 import { Modal } from '@/components/primitives/Modal'
 import { Icon } from '@/components/primitives/Icon'
 import { useToast } from '@/components/primitives/Toast'
 import type { Immeuble } from '@/data/apiPortfolio'
-import { cn } from '@/lib/cn'
+import { GroupeDeFiltres } from '@/components/controls/GroupeDeFiltres'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { type Unit } from '@/data/portfolio'
@@ -44,14 +47,33 @@ export function Portfolio() {
   const [ajoutOuvert, setAjoutOuvert] = useState(false)
   const [logementOuvert, setLogementOuvert] = useState(false)
   const [correctionOuverte, setCorrectionOuverte] = useState(false)
-  const { adhesionActive } = useSession()
+  const { adhesionActive, estDemo } = useSession()
+  const { role } = useRole()
   /**
    * Corriger le parc engage l'unité de tous ses montants : c'est le
-   * propriétaire, comme pour la validation d'un devis. Sans adhésion il n'y a
-   * pas de parc à qui écrire, et offrir le bouton mènerait à un appel sans
-   * destinataire.
+   * propriétaire, comme pour la validation d'un devis.
+   *
+   * LA CONDITION A CHANGÉ, ET ELLE CONFONDAIT DEUX CHOSES. Elle lisait
+   * `adhesionActive?.role === 'owner'`, avec pour motif « sans adhésion il n'y a
+   * pas de parc à qui écrire ». C'est vrai d'un compte connecté SANS parc — et
+   * faux de la DÉMONSTRATION, où l'absence d'adhésion ne signifie pas qu'il n'y
+   * a personne à qui écrire mais que rien ne s'écrit, ce qui est le cas de tous
+   * les gestes de cet écran.
+   *
+   * CE QUE LA CONFUSION COÛTAIT est plus large qu'un bouton manquant :
+   * `ParkSettingsModal` devenait INATTEIGNABLE dans la démonstration, donc hors
+   * de portée de `scripts/modales.mjs` — qui la comptait en dette sous
+   * `NON_OUVRABLES` — ET de la mesure de contraste, qui ne visite que `/demo`.
+   * Sa géométrie et ses couleurs n'étaient mesurées par PERSONNE, dans aucun
+   * thème. Le lot qui a regardé le sombre à l'œil ne pouvait pas l'ouvrir non
+   * plus. Une modale qu'aucune porte ne peut atteindre est une modale qui dérive.
+   *
+   * Le rôle ACTIF est le bon critère : en démonstration il vient du sélecteur de
+   * profil, sur un vrai compte il est synchronisé sur l'adhésion. La modale, de
+   * son côté, sait déjà qu'elle n'a pas de parc — son envoi commence par un
+   * garde — et le DIT désormais au lieu de ne rien faire.
    */
-  const peutCorrigerLeParc = adhesionActive?.role === 'owner'
+  const peutCorrigerLeParc = role === 'owner' && (adhesionActive !== null || estDemo)
   const t = useT()
   const { money } = useCurrency()
   const { units, buildings: BUILDINGS, buildingById, loading, removeBuilding } = usePortfolio()
@@ -149,14 +171,11 @@ export function Portfolio() {
         // pouvait créer.
         actions={
           <>
-            {/* Le nom, le pays et la devise du parc étaient posés à sa création
-                et modifiables nulle part. Réservé au propriétaire : la devise
-                est l'unité de tout ce qui se compte ici, pas un affichage. */}
-            {peutCorrigerLeParc && (
-              <Button variant="ghost" icon="globe" onClick={() => setCorrectionOuverte(true)}>
-                {t('app.parkSettings.open')}
-              </Button>
-            )}
+            {/* CORRIGER LE PARC PASSE DERRIÈRE LES TROIS POINTS. On règle le
+                nom, le pays et la devise d'un parc une fois — deux, le jour où
+                l'on s'aperçoit qu'il est né dans la mauvaise unité. Ajouter un
+                immeuble ou un logement, en revanche, est le geste de tous les
+                jours de cet écran. */}
             <Button variant="secondary" icon="plus" onClick={() => setAjoutOuvert(true)}>
               {t('app.portfolio.addBuildingTitle')}
             </Button>
@@ -164,6 +183,15 @@ export function Portfolio() {
               {t('app.portfolio.addUnitTitle')}
             </Button>
           </>
+        }
+        debordement={
+          peutCorrigerLeParc ? (
+            <MenuDeDebordement libelle={t('common.moreActions')}>
+              <MenuElement icone="globe" onClick={() => setCorrectionOuverte(true)}>
+                {t('app.parkSettings.open')}
+              </MenuElement>
+            </MenuDeDebordement>
+          ) : undefined
         }
       />
 
@@ -204,17 +232,26 @@ export function Portfolio() {
       )}
       {logementOuvert && <AddUnitModal open onClose={() => setLogementOuvert(false)} />}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className={GRILLE_QUATRE_INDICATEURS}>
         {BUILDINGS.map((b) => {
           const { occupied: occ, total } = occupancyOf(b.id)
           return (
             <StatCard
               key={b.id}
+              /* Le seul endroit du produit où une carte désigne un immeuble
+                 RÉEL : le glyphe y est donc l'immeuble. Ailleurs, un chiffre
+                 d'occupation prend le cadran. */
+              icone="building"
               /* Le NOM et non le quartier : la carte parle d'un immeuble, et
                  deux immeubles d'un même quartier donnaient deux cartes
                  intitulées « BASTOS ». Le quartier passe en note, où il situe
                  sans prétendre nommer. */
               label={b.name}
+              /* Le seul intitulé de carte du produit qui porte une DONNÉE,
+                 avec celui de la vitrine des états : un nom d'immeuble n'a pas
+                 de longueur maximale, donc il se coupe, et la garde du rognage
+                 sait que cette coupe-là est assumée. */
+              donnee
               value={`${occ}/${total}`}
               note={`${b.district} · ${t('app.portfolio.occupancy', { occupied: occ, total })}`}
               action={
@@ -236,6 +273,7 @@ export function Portfolio() {
           )
         })}
         <StatCard
+          icone="gauge"
           label={t('app.dashboard.occupancy')}
           /* `computeKpis` borne déjà cette division — « un parc vide donne 0 %
              et non NaN » — et ce second calcul, écrit à la main ici, ne le
@@ -252,47 +290,48 @@ export function Portfolio() {
           <Input
             icon="search"
             type="search"
+            /*
+              LE NOM RESTE ENTIER, LE GABARIT RACCOURCIT.
+
+              « Rechercher un logement, un locataire… » était coupé de 55 px à
+              320 px : le champ n'offre que 228 px une fois l'icône et les
+              rembourrages retirés. Un gabarit tronqué ne se voit pas — rien ne
+              déborde, la page ne défile pas — et c'est la sonde du rognage de
+              valeur qui l'a relevé, la seule à mesurer le TEXTE plutôt que la
+              boîte.
+
+              Le nom accessible garde la phrase entière : c'est lui qu'un
+              lecteur d'écran annonce, et il n'a pas de largeur. Ce qui rétrécit
+              est ce qui s'affiche, où deux mots suffisent à dire sur quoi
+              porte la recherche.
+            */
             aria-label={t('nav.searchPlaceholder')}
-            placeholder={t('nav.searchPlaceholder')}
+            placeholder={t('nav.searchShort')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
 
-        <div role="group" aria-label={t('app.portfolio.building')} className="flex flex-wrap gap-2">
-          {/*
-            Le bouton porte le NOM de l'immeuble, qui est ce sur quoi il filtre.
-            Il portait le quartier : deux résidences à Bastos auraient donné deux
-            boutons identiques, dont l'un aurait été injoignable — l'utilisateur
-            aurait cliqué le premier en croyant atteindre le second.
-          */}
-          {[{ id: 'all', name: t('app.portfolio.filterAll') }, ...BUILDINGS].map((b) => {
-            const active = building === b.id
-            return (
-              <button
-                key={b.id}
-                type="button"
-                aria-pressed={active}
-                onClick={() => setBuilding(b.id)}
-                className={cn(
-                  'inline-flex min-h-11 cursor-pointer items-center rounded-md border px-3.5',
-                  'text-label font-semibold transition-colors duration-150',
-                  active
-                    ? 'border-ink bg-ink text-on-dark'
-                    : 'border-border bg-surface text-muted hover:border-border-strong hover:text-ink',
-                )}
-              >
-                {b.name}
-              </button>
-            )
-          })}
-        </div>
+        <GroupeDeFiltres
+          libelle={t('app.portfolio.building')}
+          valeur={building}
+          onChange={setBuilding}
+          /* Le bouton porte le NOM de l'immeuble, qui est ce sur quoi il filtre.
+             Il portait le quartier : deux résidences à Bastos auraient donné deux
+             boutons identiques, dont l'un aurait été injoignable — l'utilisateur
+             aurait cliqué le premier en croyant atteindre le second. */
+          options={[{ id: 'all', name: t('app.portfolio.filterAll') }, ...BUILDINGS].map((b) => ({
+            valeur: b.id,
+            libelle: b.name,
+          }))}
+        />
       </div>
 
       <DataTable<Unit>
         caption={t('app.portfolio.title')}
         rows={rows}
         rowKey={(unit) => unit.id}
+        fiches
         empty={
           /* Deux absences, deux messages. Un parc sans aucun logement n'a pas
              « échoué à trouver » : il n'a rien à trouver. L'écran annonçait
@@ -331,6 +370,7 @@ export function Portfolio() {
         columns={[
           {
             key: 'unit',
+            role: 'identite',
             header: t('app.portfolio.unit'),
             width: '5.5rem',
             /**
@@ -423,12 +463,14 @@ export function Portfolio() {
           },
           {
             key: 'rent',
+            role: 'valeur',
             header: t('app.portfolio.rent'),
             numeric: true,
-            render: (unit) => money(unit.rent, { round: true }),
+            render: (unit) => money(unit.rent, { compact: true }),
           },
           {
             key: 'status',
+            role: 'etat',
             header: t('app.portfolio.status'),
             render: (unit) => <PaymentStatusPill status={unit.status} size="sm" />,
           },
@@ -474,11 +516,7 @@ function PortfolioSkeleton() {
         {/* Quatre cartes : le nombre réel vaut « un par immeuble, plus le
             total », donc il dépend du parc qu'on attend. Quatre remplit
             exactement une rangée de la grille sur grand écran. */}
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {[0, 1, 2, 3].map((carte) => (
-            <SkeletonStatCard key={carte} />
-          ))}
-        </div>
+        <SkeletonStatRow count={4} className={GRILLE_QUATRE_INDICATEURS} />
 
         <div className="mt-6 mb-4 flex flex-wrap items-center gap-3">
           <Skeleton radius="md" className="h-11 w-full max-w-xs" />

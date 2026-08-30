@@ -2,20 +2,41 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Modal } from '@/components/primitives/Modal'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
+import { DatePicker } from '@/components/primitives/DatePicker'
 import { Input, Select } from '@/components/primitives/Input'
 import { Icon } from '@/components/primitives/Icon'
+import { Badge } from '@/components/primitives/Badge'
 import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
+import { partiesDeDateISO } from '@/lib/dates'
 import { useSession } from '@/api/SessionProvider'
+import { TARIFS_DEMO_DATES } from '@/data/portfolio'
 import { ApiError, api } from '@/api/client'
 
-/** `AAAA-MM-JJ` en parties, pour le formateur de dates du produit — la même
-    conversion que `ReceiptModal`, qui reçoit la même forme du serveur. */
-const partsDe = (iso: string) => {
-  const [y, m, j] = iso.split('-').map(Number)
-  return { year: y!, month: m!, day: j! }
+/**
+ * Le statut d'un prix : celui qui s'applique, celui qui attend, ceux qui ont
+ * servi. Voir le commentaire de la liste pour le raisonnement.
+ *
+ * EXPORTÉE POUR ÊTRE ÉPROUVÉE, et c'est une mesure qui l'a décidé. La
+ * démonstration ne porte que DEUX prix — un par fluide, à la même date — et deux
+ * mutations franches passaient au vert contre l'écran : « tous en vigueur » y
+ * est indistinguable du juste, et « le plus récent tous fluides confondus »
+ * laisse simplement un fluide sans marque, ce qu'un compte par fluide ne voit
+ * pas s'il ne compte que les fluides marqués.
+ *
+ * Un jeu de données ne se fabrique pas pour faire passer un test. On éprouve
+ * donc la RÈGLE, sur des cas construits, et l'écran garde le sien : que la
+ * marque paraisse.
+ */
+export function statutDuTarif(tarif: TarifApi, tous: TarifApi[]): 'vigueur' | 'aVenir' | 'passe' {
+  const aujourdhui = new Date().toISOString().slice(0, 10)
+  if (tarif.effectiveFrom > aujourdhui) return 'aVenir'
+  const dernierPasse = tous
+    .filter((t) => t.utility === tarif.utility && t.effectiveFrom <= aujourdhui)
+    .reduce((a, b) => (a.effectiveFrom >= b.effectiveFrom ? a : b))
+  return dernierPasse.id === tarif.id ? 'vigueur' : 'passe'
 }
 
 interface TarifApi {
@@ -54,7 +75,7 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
     désignent aucun champ.
   */
   const [erreurPrix, setErreurPrix] = useState<string | undefined>(undefined)
-  const { adhesionActive } = useSession()
+  const { adhesionActive, estDemo } = useSession()
   const parkId = adhesionActive?.parkId ?? null
 
   const [tarifs, setTarifs] = useState<TarifApi[]>([])
@@ -72,16 +93,50 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
   const [envoi, setEnvoi] = useState(false)
 
   useEffect(() => {
-    if (!open || !parkId) return
+    if (!open) return
+    /*
+      LA DÉMONSTRATION SERT SES PROPRES PRIX, et ce n'est pas un ornement.
+
+      Sans parc, l'appel ne partait pas et la liste restait vide : la modale
+      affichait « aucun prix posé ». Or l'écran des relevés, juste derrière
+      elle, MONTRE ces deux prix en indicateurs — il les lit sur les relevés de
+      la démonstration. L'éditeur des prix aurait donc démenti la page qui les
+      affiche, à un clic d'écart.
+
+      Les deux listes se dérivent de `TARIFS_DEMO` : elles ne peuvent pas
+      diverger. Voir `portfolio.ts` pour la date d'effet, qui est dérivée du
+      relevé le plus ancien plutôt qu'écrite.
+    */
+    if (!parkId) {
+      setTarifs(estDemo ? TARIFS_DEMO_DATES() : [])
+      return
+    }
     void api
       .tariffs<{ tariffs: TarifApi[] }>(parkId)
       .then((r) => setTarifs(r.tariffs))
       .catch(() => notify(t('common.actionFailed'), { tone: 'danger' }))
-  }, [open, parkId, notify, t])
+  }, [open, parkId, estDemo, notify, t])
 
   const enregistrer = (event: FormEvent) => {
     event.preventDefault()
-    if (!parkId) return
+    /**
+     * SANS PARC, ON LE DIT — on ne rendait rien.
+     *
+     * `if (!parkId) return` était muet : le bouton s'enfonçait, la modale
+     * restait ouverte, et rien n'arrivait. C'est le contrôle mort que ce dépôt
+     * retire partout, et il n'était visible de personne tant que la
+     * démonstration ne pouvait pas ouvrir cette modale.
+     *
+     * Le message dit ce que la démonstration ne fait pas ET ce qu'elle montre
+     * quand même : les deux prix de l'historique sont bien ceux que l'écran des
+     * relevés applique.
+     */
+    if (!parkId) {
+      notify(t(estDemo ? 'app.tariffs.demoNoSave' : 'common.actionFailed'), {
+        tone: estDemo ? 'neutral' : 'danger',
+      })
+      return
+    }
     // Un prix unitaire est un montant : il se lit comme les autres. `Number`
     // refusait « 1 250 » recopié depuis l'historique affiché juste en dessous —
     // le produit rejetait la forme qu'il venait lui-même d'imprimer.
@@ -186,15 +241,27 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
           )}
         </Field>
 
+        {/*
+          LE DERNIER `type="date"` DU PRODUIT.
+
+          Ce champ ouvrait le calendrier du SYSTÈME — ses polices, son bleu, ses
+          flèches, sa géométrie — qu'aucune feuille de style n'atteint. C'est la
+          raison d'être de `DatePicker`, dont l'en-tête le dit ; la migration qui
+          l'a écrit a simplement manqué ce champ-ci.
+
+          Le symptôme était déjà NOMMÉ dans le dépôt avant d'être vu : « il
+          ouvrait donc le panneau du navigateur dans la modale même »
+          (`gestures.test.tsx`). Ici, le panneau s'ouvrait VERS LE HAUT et
+          recouvrait le titre, la description et le champ du dessus — on perdait
+          de vue ce qu'on était en train de renseigner.
+
+          `aucuneDateNative.test.ts` interdit désormais la reprise, sur toute la
+          source : la migration précédente était racontée par trois commentaires
+          et vérifiée par aucun.
+        */}
         <Field label={t('app.tariffs.effectiveFrom')} hint={t('app.tariffs.effectiveFromHint')} required>
           {(props) => (
-            <Input
-              {...props}
-              name="effectiveFrom"
-              type="date"
-              value={effet}
-              onChange={(e) => setEffet(e.target.value)}
-            />
+            <DatePicker {...props} name="effectiveFrom" value={effet} onChange={setEffet} />
           )}
         </Field>
 
@@ -210,6 +277,26 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
             {t('app.tariffs.empty')}
           </p>
         ) : (
+          /*
+            ═══ LE PRIX EN VIGUEUR EST NOMMÉ, ET IL NE L'ÉTAIT PAS ═══
+
+            La description de cette modale dit : « un prix ne vaut pas pour le
+            passé : les relevés antérieurs gardent celui qui ÉTAIT EN VIGUEUR ».
+            La notion est donc annoncée en toutes lettres — et l'historique la
+            taisait. Une liste plate de « eau · date · montant » ne dit pas lequel
+            de ces prix s'applique AUJOURD'HUI, alors que c'est la seule question
+            qu'on se pose avant d'en poser un nouveau.
+
+            Est en vigueur, par fluide, le prix dont la date d'effet est la plus
+            RÉCENTE parmi celles déjà passées. Un prix daté du mois prochain est
+            déjà posé mais ne s'applique pas encore : il est distingué lui aussi,
+            faute de quoi on croirait avoir changé un tarif qui ne bougera que
+            dans trois semaines.
+
+            La comparaison porte sur des chaînes `AAAA-MM-JJ`, dont l'ordre
+            lexicographique EST l'ordre chronologique — c'est la propriété de ce
+            format, et elle évite de fabriquer des dates pour les comparer.
+          */
           <ul className="mt-3 flex flex-col gap-2">
             {tarifs.map((tarif) => (
               <li key={tarif.id} className="flex items-baseline justify-between gap-3 text-body">
@@ -220,10 +307,21 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
                       français ni en anglais : chaque autre écran de ce
                       périmètre passe par `useDates`, celui-ci l'affichait
                       encore tel quel. */}
-                  <span className="text-muted">{d.fullDate(partsDe(tarif.effectiveFrom))}</span>
+                  <span className="text-muted">{d.fullDate(partiesDeDateISO(tarif.effectiveFrom))}</span>
                 </span>
-                <span className="numeric font-medium">
-                  {money(tarif.unitPriceMinor, { round: true })}
+                <span className="flex items-baseline gap-2.5">
+                  {statutDuTarif(tarif, tarifs) !== 'passe' && (
+                    <Badge tone={statutDuTarif(tarif, tarifs) === 'vigueur' ? 'ok' : 'neutral'}>
+                      {t(
+                        statutDuTarif(tarif, tarifs) === 'vigueur'
+                          ? 'app.tariffs.inForce'
+                          : 'app.tariffs.scheduled',
+                      )}
+                    </Badge>
+                  )}
+                  <span className="numeric font-medium">
+                    {money(tarif.unitPriceMinor, { compact: true })}
+                  </span>
                 </span>
               </li>
             ))}

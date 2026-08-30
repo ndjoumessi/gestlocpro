@@ -6,19 +6,22 @@ import { StatCard } from '@/components/primitives/Charts'
 import {
   Skeleton,
   SkeletonRegion,
-  SkeletonStatCard,
+  SkeletonStatRow,
   SkeletonTable,
 } from '@/components/primitives/Skeleton'
+import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
 import { StatusPill, type StatusTone } from '@/components/primitives/StatusPill'
 import { Button } from '@/components/primitives/Button'
+import { useDepositsStatementPdf } from './documentsPdf'
+import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
 import { Modal } from '@/components/primitives/Modal'
 import { Field } from '@/components/primitives/Field'
 import { Input, Textarea } from '@/components/primitives/Input'
-import { Icon } from '@/components/primitives/Icon'
+import { Notice } from '@/components/primitives/Notice'
 import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
-import { type Deposit } from '@/data/portfolio'
+import { soldeDeCaution, type Deposit } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 
 const TONE: Record<Deposit['status'], StatusTone> = {
@@ -62,9 +65,54 @@ export function Deposits() {
    * sans moyen de les arbitrer.
    */
   const canSettle = role === 'owner'
+  const exporterLEtat = useDepositsStatementPdf()
+  const exporterEnTableur = useCsvExport()
+  const csvMoney = useCsvMoney()
 
   const totalHeld = deposits.reduce((sum, d) => sum + d.held, 0)
   const totalWithheld = deposits.reduce((sum, d) => sum + d.withheld, 0)
+  /*
+    CE QU'IL RESTE À RESTITUER EST UNE DETTE, et une caution rendue n'en est
+    plus une.
+
+    Le total valait `totalHeld − totalWithheld` sur TOUTES les cautions,
+    restituées comprises : l'écran annonçait devoir 1 063 000 FCFA dont 250 000
+    déjà rendus, avec en note « 1 déjà restituée ». Il SAVAIT — il compte les
+    restitutions pour écrire cette note — et les faisait quand même entrer dans
+    la dette.
+
+    Ce n'est pas une approximation : le chiffre grandit à chaque départ et ne
+    redescend jamais. Sur un parc qui tourne cinq ans, il n'a plus aucun rapport
+    avec ce qui est dû.
+
+    L'ARBITRAGE EN COURS RESTE COMPTÉ, lui, et c'est l'autre moitié : une caution
+    dont on retient une part n'est pas rendue, le solde est toujours dû. Seul le
+    statut `returned` sort — `held − withheld` par caution, sommé sur celles
+    qu'on détient encore.
+  */
+  const resteARestituer = deposits
+    .filter((d) => d.status !== 'returned')
+    .reduce((sum, d) => sum + soldeDeCaution(d), 0)
+  /*
+    CE QUI EST DÉJÀ REPARTI, et pourquoi la note le porte désormais.
+
+    Les trois cartes montrent trois nombres côte à côte — 1 226 000 consignés,
+    163 000 retenus, 813 000 dus. Qui les soustrait tombe à 1 063 000 et
+    conclut à une erreur. La note disait « 1 déjà restituée » : un
+    DÉNOMBREMENT, qui nomme la raison de l'écart sans en donner la taille. On y
+    apprenait qu'il manque quelque chose, jamais de combien.
+
+    Même correctif que sur l'état des cautions en PDF, et pour le même lecteur :
+    les deux surfaces portent les mêmes trois nombres.
+  */
+  const dejaRestitue = deposits
+    .filter((d) => d.status === 'returned')
+    .reduce((sum, d) => sum + soldeDeCaution(d), 0)
+  /* Les deux dénombrements que les notes portent. Comptés ici, à côté des
+     sommes qu'ils qualifient : une note et son montant ne doivent pas pouvoir
+     être calculés sur deux populations différentes. */
+  const enArbitrage = deposits.filter((d) => d.status === 'settling').length
+  const restituees = deposits.filter((d) => d.status === 'returned').length
 
   const settle = (unitId: string, withheld: number, reason?: string) => {
     // La justification traverse jusqu'au serveur, qui l'exige dès qu'il y a une
@@ -103,24 +151,126 @@ export function Deposits() {
 
   return (
     <>
-      <PageHeader title={t('app.deposits.title')} description={t('app.deposits.subtitle')} />
+      <PageHeader
+        title={t('app.deposits.title')}
+        description={t('app.deposits.subtitle')}
+        /*
+          LE SEUL ÉCRAN D'ARGENT SANS EXPORT, et c'était le plus mal choisi.
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label={t('app.deposits.totalHeld')} value={money(totalHeld, { round: true })} />
-        <StatCard label={t('app.deposits.withheld')} value={money(totalWithheld, { round: true })} />
+          Une caution n'est pas l'argent du bailleur : c'est celui du locataire,
+          détenu pour lui. C'est donc la ligne qu'on doit pouvoir JUSTIFIER sur
+          demande — à un locataire qui part, à un associé, à un contrôle — quand
+          les paiements et les relevés, eux, s'exportent depuis longtemps.
+
+          Le document sort d'ICI et non d'une page de rapports : il ne traverse
+          aucun autre écran, il EST cette table à une date. Un rapport qui
+          rassemble plusieurs écrans appellerait autre chose.
+        */
+        /*
+          DEUX SORTIES POUR DEUX GESTES, et elles ne se remplacent pas.
+
+          Le document se REMET — à un locataire qui part, à un associé, à un
+          contrôle : il est mis en page, daté, signé de l'émetteur. Le tableur se
+          RECOUPE : c'est avec lui qu'on rapproche ses cautions d'un relevé
+          bancaire, et cette colonne-là ne se somme pas sur un papier.
+
+          Le tableur en variante secondaire et le document en premier : c'est le
+          document qu'on demande à ce produit, le tableur est l'outil de qui
+          tient déjà ses comptes ailleurs.
+        */
+        actions={
+          <>
+            <Button
+              variant="ghost"
+              icon="download"
+              disabled={deposits.length === 0}
+              onClick={() =>
+                exporterEnTableur({
+                  name: t('app.files.deposits'),
+                  headers: [
+                    t('app.portfolio.unit'),
+                    t('app.portfolio.tenant'),
+                    csvMoney.header(t('app.deposits.amountHeld')),
+                    csvMoney.header(t('app.deposits.withheld')),
+                    csvMoney.header(t('app.deposits.balance')),
+                    t('app.portfolio.status'),
+                  ],
+                  rows: deposits.map((caution) => [
+                    unitById(caution.unitId)?.label ?? caution.unitId,
+                    caution.tenant ?? t('app.deposits.formerTenant'),
+                    csvMoney.amount(caution.held),
+                    csvMoney.amount(caution.withheld),
+                    /* LA MÊME RÈGLE QUE L'ÉCRAN : une caution rendue n'a pas de
+                       solde, et la cellule reste VIDE. Écrire son montant ici
+                       remettrait la dette éteinte dans la colonne qu'on somme —
+                       le défaut qu'on vient de corriger, dans le format où il
+                       coûte le plus cher. */
+                    caution.status === 'returned' ? '' : csvMoney.amount(soldeDeCaution(caution)),
+                    t(`app.deposits.${caution.status}` as 'app.deposits.held'),
+                  ]),
+                })
+              }
+            >
+              {t('app.documents.exportCsv')}
+            </Button>
+            <Button
+              variant="secondary"
+              icon="download"
+              disabled={deposits.length === 0}
+              onClick={() =>
+                exporterLEtat(
+                  deposits.map((caution) => ({
+                    unite: unitById(caution.unitId)?.label ?? caution.unitId,
+                    locataire: caution.tenant ?? t('app.deposits.formerTenant'),
+                    deposit: caution,
+                  })),
+                )
+              }
+            >
+              {t('app.documents.exportDeposits')}
+            </Button>
+          </>
+        }
+      />
+
+      <div className={GRILLE_TROIS_INDICATEURS}>
+        {/* Le BOUCLIER pour ce qui est consigné — le même que porte « caution à
+            arbitrer » sur le tableau de bord —, le CADENAS pour ce qui est
+            retenu, la CARTE pour ce qui repart chez le locataire. Trois états
+            d'un même argent : trois glyphes, sans quoi les trois cartes ne se
+            distinguent que par leur intitulé. */}
+        {/* CHAQUE MONTANT DIT SUR QUOI IL PORTE. Les trois cartes étaient nues
+            — un intitulé, un montant, rien dessous — quand celles des cinq
+            autres écrans portent une ligne de contexte. « 1 226 000 FCFA » ne
+            disait pas sur combien de cautions, et un total sans son
+            dénombrement ne se rapporte à rien. */}
         <StatCard
+          icone="shield"
+          label={t('app.deposits.totalHeld')}
+          value={money(totalHeld, { compact: true })}
+          note={t('app.deposits.kpiHeldNote', { count: deposits.length })}
+        />
+        <StatCard
+          icone="lock"
+          label={t('app.deposits.withheld')}
+          value={money(totalWithheld, { compact: true })}
+          note={t('app.deposits.kpiWithheldNote', { count: enArbitrage })}
+        />
+        <StatCard
+          icone="card"
           label={t('app.deposits.balance')}
-          value={money(totalHeld - totalWithheld, { round: true })}
+          value={money(resteARestituer, { compact: true })}
+          note={t('app.deposits.kpiBalanceNote', {
+            count: restituees,
+            amount: money(dejaRestitue, { compact: true }),
+          })}
         />
       </div>
 
       {/* Le gestionnaire voit les cautions mais ne les arbitre pas. On lui dit
           pourquoi le bouton lui manque, plutôt que de le laisser deviner. */}
       {role === 'manager' && (
-        <p className="mt-6 flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body text-gold-ink">
-          <Icon name="info" size={15} className="mt-0.5 shrink-0" />
-          {t('app.deposits.managerNotice')}
-        </p>
+        <Notice className="mt-6">{t('app.deposits.managerNotice')}</Notice>
       )}
 
       <div className="mt-6">
@@ -128,6 +278,7 @@ export function Deposits() {
           caption={t('app.deposits.title')}
           rows={deposits}
           rowKey={(d) => d.unitId}
+          fiches
           /* Sans cela, l'écran servait des en-têtes de colonnes au-dessus du
              vide : ni ligne, ni message, ni indication de ce qui manque. Un
              tableau nu se lit comme une panne. */
@@ -145,6 +296,7 @@ export function Deposits() {
           columns={[
             {
               key: 'unit',
+              role: 'identite',
               header: t('app.portfolio.unit'),
               width: '5.5rem',
               // `unitId` est l'identifiant technique — un `uuid` une fois les
@@ -164,7 +316,7 @@ export function Deposits() {
               key: 'held',
               header: t('app.deposits.amountHeld'),
               numeric: true,
-              render: (d) => money(d.held, { round: true }),
+              render: (d) => money(d.held, { compact: true }),
             },
             {
               key: 'withheld',
@@ -174,7 +326,7 @@ export function Deposits() {
               render: (d) =>
                 d.withheld ? (
                   <span className="font-medium text-danger">
-                    −{money(d.withheld, { round: true })}
+                    −{money(d.withheld, { compact: true })}
                   </span>
                 ) : (
                   <span className="text-muted">—</span>
@@ -182,14 +334,24 @@ export function Deposits() {
             },
             {
               key: 'balance',
+              role: 'valeur',
               header: t('app.deposits.balance'),
               numeric: true,
-              render: (d) => (
-                <span className="font-medium">{money(d.held - d.withheld, { round: true })}</span>
-              ),
+              /* LA LIGNE NE SE CONTREDIT PLUS. Elle portait « À restituer
+                 250 000 FCFA » à côté d'une pastille « Restituée » — le même
+                 fait nié à trois centimètres d'écart. Corriger le seul total
+                 aurait laissé chaque ligne mentir, et c'est la moitié qu'on
+                 oublie parce qu'elle ne se voit qu'en descendant le tableau. */
+              render: (d) =>
+                d.status === 'returned' ? (
+                  <span className="text-muted">—</span>
+                ) : (
+                  <span className="font-medium">{money(soldeDeCaution(d), { compact: true })}</span>
+                ),
             },
             {
               key: 'status',
+              role: 'etat',
               header: t('app.portfolio.status'),
               render: (d) => (
                 <div className="flex items-center justify-between gap-3">
@@ -252,19 +414,18 @@ function DepositsSkeleton({ isManager }: { isManager: boolean }) {
 
   return (
     <>
+      {/* PAS DE BOUTON D'EXPORT PENDANT L'ATTENTE : il n'y a rien à exporter,
+          et un bouton actif au-dessus d'un squelette promet une action qui
+          échouerait. Le squelette annonce ce qui arrive, il ne l'offre pas. */}
       <PageHeader title={t('app.deposits.title')} description={t('app.deposits.subtitle')} />
 
       <SkeletonRegion>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {[0, 1, 2].map((carte) => (
-            <SkeletonStatCard key={carte} />
-          ))}
-        </div>
+        <SkeletonStatRow count={3} className={GRILLE_TROIS_INDICATEURS} />
 
         {/* Même boîte que l'avis : `py-3` autour d'une ligne de corps réduit. */}
         {isManager && (
           <div className="mt-6 rounded-md border border-divider px-3.5 py-3">
-            <Skeleton line="bodyS" className="w-80 max-w-full" />
+            <Skeleton line="body" className="w-80 max-w-full" />
           </div>
         )}
 
@@ -341,7 +502,7 @@ function SettleModal({
     const next: typeof errors = {}
     if (parsed > deposit.held) {
       next.withheld = t('app.deposits.errorTooHigh', {
-        amount: money(deposit.held, { round: true }),
+        amount: money(deposit.held, { compact: true }),
       })
     }
     if (parsed > 0 && reason.trim().length < 3) {
@@ -376,7 +537,7 @@ function SettleModal({
             {deposit.tenant ?? t('app.deposits.formerTenant')}
           </span>
           <span className="numeric text-body font-medium">
-            {money(deposit.held, { round: true })}
+            {money(deposit.held, { compact: true })}
           </span>
         </div>
 
@@ -426,7 +587,7 @@ function SettleModal({
           {/* `money()` porte déjà le symbole : en ajouter un second donnait
               « 185 000 FCFA FCFA ». */}
           <span className="numeric text-title-l font-medium">
-            {money(balance, { round: true })}
+            {money(balance, { compact: true })}
           </span>
         </div>
       </div>

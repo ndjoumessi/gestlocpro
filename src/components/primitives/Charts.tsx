@@ -1,8 +1,11 @@
 import { useId, useMemo, useState, type ReactNode } from 'react'
 import { cn } from '@/lib/cn'
+import { useNumbers } from '@/lib/numbers'
 import { useCurrency } from '@/currency/CurrencyProvider'
-import { useT } from '@/i18n/I18nProvider'
-import { JaugeDePoste, type EtatDePoste } from './StatusPill'
+import { enUniteDUsage } from '@/currency/currencies'
+import { useI18n, useT } from '@/i18n/I18nProvider'
+import { JaugeDePoste, StatusPill, type EtatDePoste, type StatusTone } from './StatusPill'
+import { Icon, type IconName } from './Icon'
 
 /**
  * Graphes maison, en DOM et en SVG.
@@ -24,9 +27,14 @@ import { JaugeDePoste, type EtatDePoste } from './StatusPill'
 
 /**
  * Teintes de séries, prises dans l'échelle de données et non dans les couleurs
- * de marque : l'or `--color-gold` ne tient que 2,87:1 sur blanc, sous le seuil
- * de 3:1 exigé d'une donnée. Les trois retenues sont espacées en clarté
- * (28 %, 18 %, 13 %) pour rester distinctes en niveaux de gris.
+ * de marque. La règle a été posée quand l'accent était l'or #c58e3e, qui ne
+ * tenait que 2,87:1 sur blanc, sous le seuil de 3:1 exigé d'une donnée ; elle
+ * survit au passage au BLEU `--color-accent` #2563eb, qui franchit désormais ce
+ * seuil sur blanc (5,17:1) mais ne le passe que de justesse sur la carte sombre
+ * (3,13:1) — et surtout, l'accent DÉSIGNE L'ACTION : une série peinte de la
+ * couleur des boutons se lirait comme quelque chose à cliquer. Les trois
+ * retenues sont espacées en clarté (28 %, 18 %, 13 %) pour rester distinctes en
+ * niveaux de gris.
  *
  * LA PLUS GRANDE SURFACE PORTE LE MOINS DE POIDS, et c'est l'inverse qui était
  * fait. Le loyer représente environ 90 % de chaque colonne ; il prenait
@@ -48,9 +56,13 @@ import { JaugeDePoste, type EtatDePoste } from './StatusPill'
  * La règle vaut au-delà des séries, et ce fichier l'a longtemps contredite :
  * une colonne mise en avant, une ligne d'objectif et un remplissage de
  * progression portent de l'information tout autant qu'une série. Là où la
- * couleur de marque doit rester lisible, c'est `--color-gold-ink` qui sert —
- * même famille, 4,80:1 au pire des fonds. `orDonnee.test.ts` relit ce fichier
- * et refuse le retour de l'or nu.
+ * couleur de marque doit rester lisible, c'est `--color-accent-ink` qui sert —
+ * même famille, mais bien plus contrasté : depuis qu'il vaut #1d4ed8, il est
+ * certifié 6,30 sur `--paper`, 5,77 sur `--canvas` et 6,12 sur `--accent-tint`,
+ * là où le #8a6218 de l'ancienne palette n'était relevé que sur le papier.
+ * `orDonnee.test.ts` relit ce fichier et refuse le retour de `--color-accent`
+ * nu — le nom du garde-fou est resté doré, la couleur qu'il garde ne l'est
+ * plus.
  */
 const SERIES_COLORS: Record<string, string> = {
   rent: 'var(--color-data-6)',
@@ -59,38 +71,27 @@ const SERIES_COLORS: Record<string, string> = {
 }
 
 /**
- * Les mêmes séries, pour l'INFOBULLE — dont le fond reste SOMBRE dans les deux
- * thèmes.
+ * LA PALETTE INVERSÉE DES SÉRIES A ÉTÉ RETIRÉE D'ICI, ET SON HISTOIRE VAUT
+ * D'ÊTRE GARDÉE — c'est elle qui explique pourquoi les jetons `-on-dark` de la
+ * famille `data` sont aujourd'hui en réserve (voir `jetonsMorts.test.ts`).
  *
- * La pastille « Loyer » avait disparu, et pour la pire des raisons : en thème
- * clair, `--color-data-1` vaut `#14201e`, soit exactement la valeur de
- * `--color-ink` dont l'infobulle fait son fond. La pastille était peinte, à la
- * bonne taille, à la bonne place — de la couleur du fond. « Eau » et
- * « Électricité », teintes moyennes, s'en tiraient ; seule la série la plus
- * sombre s'effaçait, et une ligne sur trois perdait son repère sans que rien ne
- * signale l'absence.
+ * Elle existait pour un seul appelant : la LECTURE FIXE du graphe empilé, dont
+ * le fond restait sombre dans les deux thèmes. Elle y était nécessaire, et pour
+ * une raison qui s'était payée : en thème clair, `--color-data-1` valait
+ * exactement `--color-ink`, donc la pastille « Loyer » était peinte, à la bonne
+ * taille, à la bonne place — de la couleur du fond. Une ligne sur trois perdait
+ * son repère sans que rien ne signale l'absence.
  *
- * La bascule `.on-dark` ne pouvait pas rattraper le coup : elle redirige des
- * CLASSES utilitaires — `.text-muted`, `.text-ink` — et la pastille reçoit sa
- * couleur par un `style` en ligne, hors de portée de toute règle CSS.
+ * La lecture fixe a quitté le fond encre (voir `LectureFixe`). Ses pastilles
+ * prennent désormais la palette des BARRES, sur la surface de la carte, ce qui
+ * retire du même geste le dernier écart : la pastille d'une série et la barre
+ * qu'elle nomme n'étaient pas de la même couleur.
  *
- * Le piège est de croire que ce fond bascule. `--color-ink` s'inverse bien avec
- * le thème — mais la classe `.on-dark`, que l'infobulle porte, la REFIXE à sa
- * valeur sombre pour tout ce qui vit dessous. L'infobulle est donc de celles
- * « qui restent sombres », et c'est précisément le public des jetons
- * `-on-dark`, identiques dans les trois blocs de palette.
- *
- * L'erreur a été commise puis corrigée : des jetons `-on-ink` inversants ont
- * d'abord remplacé ceux-ci, ce qui réparait le thème clair et rendait la
- * pastille invisible en sombre — le même défaut, déplacé. La leçon tient en une
- * ligne : le fond d'un composant se lit là où il est PEINT, pas dans la palette
- * dont il tire son nom.
+ * LA LEÇON RESTE, et elle est plus générale que la palette qui la portait : le
+ * fond d'un composant se lit là où il est PEINT, pas dans la palette dont il
+ * tire son nom.
  */
-const SERIES_COLORS_ON_DARK: Record<string, string> = {
-  rent: 'var(--color-data-6-on-dark)',
-  water: 'var(--color-data-4-on-dark)',
-  power: 'var(--color-data-3-on-dark)',
-}
+
 
 /**
  * La HACHURE d'une période encore OUVERTE.
@@ -110,16 +111,265 @@ const SERIES_COLORS_ON_DARK: Record<string, string> = {
  *
  * Les creux prennent la couleur de la carte plutôt que d'être transparents : la
  * colonne croise la ligne d'objectif, et un vrai trou y laisserait passer le
- * trait doré au milieu de la donnée.
+ * trait de l'objectif au milieu de la donnée.
  */
 function hachureOuverte(couleur: string): string {
   return `repeating-linear-gradient(-45deg, ${couleur} 0 5px, var(--color-surface) 5px 7px)`
 }
 
-function formatMax(value: number): string {
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)} M`
-  if (value >= 1_000) return `${(value / 1_000).toFixed(0)} k`
-  return String(value)
+/**
+ * LES GRADUATIONS D'UN AXE — des nombres RONDS, et jamais le maximum.
+ *
+ * ═══ POURQUOI DES NOMBRES RONDS ═══
+ *
+ * Une graduation sert à ESTIMER une colonne qu'on ne vise pas. « 1 000 000 » se
+ * divise et se multiplie de tête ; « 1 397 000 » ne se compare à rien. Le pas
+ * se prend donc dans la suite 1 · 2 · 5 × 10ⁿ, la seule qui rende des repères
+ * qu'on manipule sans calculer.
+ *
+ * ═══ POURQUOI PAS LE MAXIMUM ═══
+ *
+ * C'est ce que faisait la phrase qu'on retire : « Échelle principale (loyer)
+ * 1.4 M ». Le maximum de l'échelle vaut `plus haute colonne × 1,08` — un nombre
+ * que rien ne porte, posé au-dessus de tout, et qui ne dit donc la hauteur
+ * d'AUCUNE colonne. Une graduation à 1 000 000 en dit plus : on voit
+ * immédiatement quels mois passent la barre.
+ *
+ * ═══ LE NOMBRE DÉPEND DE LA HAUTEUR DU TRACÉ, ET C'EST POURQUOI IL SE PASSE ═══
+ *
+ * Trop peu ne fait pas une échelle — une seule graduation répète ce que le
+ * sommet de la plus haute colonne dit déjà. Trop serre les libellés : chacun
+ * réclame une ligne de texte, et le tracé du bas fait 64 px. Le haut en accepte
+ * donc deux à quatre, le bas une ou deux. Un nombre écrit en dur ici aurait
+ * mis trois libellés dans 64 px sur le seul jeu de données qu'on a sous la
+ * main, ce qu'aucune garde n'aurait dit.
+ */
+/** L'échelle des pas « ronds » : 1 · 2 · 5 × 10ⁿ, du plus fin au plus large. */
+function pasRonds(): number[] {
+  const pas: number[] = []
+  for (let exposant = -2; exposant <= 12; exposant++) {
+    for (const facteur of [1, 2, 5]) pas.push(facteur * 10 ** exposant)
+  }
+  return pas
+}
+
+/**
+ * LE PLAFOND D'UN TRACÉ, ARRONDI À UN NOMBRE QU'ON PEUT LIRE.
+ *
+ * Les deux tracés se donnaient pour plafond `plus haute colonne × 1,08` — un
+ * nombre que rien ne porte, dont l'unique fonction est d'empêcher la plus haute
+ * colonne de toucher le haut. On ne peut pas l'écrire : « 168 480 » ne dit rien,
+ * et c'est le reproche exact qu'on a fait à la phrase d'échelle qu'on a retirée.
+ *
+ * Arrondi au pas rond supérieur, il devient LISIBLE — donc affichable —, et il
+ * fait le même travail : un plafond strictement au-dessus du maximum laisse la
+ * même respiration, sans coefficient inventé.
+ *
+ * C'est ce qui permet au SECOND TRACÉ de porter son échelle EN DEHORS de ses
+ * barres : son repère n'est plus une ligne posée en travers, c'est son propre
+ * bord supérieur, et l'étiquette monte dans la gouttière.
+ */
+function plafondArrondi(max: number): number {
+  if (!Number.isFinite(max) || max <= 0) return 1
+  for (const pas of pasRonds()) if (pas >= max) return pas
+  return max
+}
+
+function graduationsDe(
+  max: number,
+  bornes: { min: number; max: number },
+  /**
+   * LE RETRAIT SE COMPTE DANS LE CHOIX DU PAS, ET NON APRÈS LUI.
+   *
+   * Une graduation trop proche de la ligne d'objectif se retire — leurs deux
+   * étiquettes se recouvrent, et c'est l'objectif qui gagne. Ce retrait était
+   * appliqué au RÉSULTAT de cette fonction, donc après que les bornes eurent
+   * été vérifiées : en euro, le pas de 1 000 rendait deux graduations, l'objectif
+   * à 2 129,71 € emportait la seconde, et le tracé restait avec UNE — c'est-à-
+   * dire sans échelle, puisqu'une seule répète le sommet de la plus haute
+   * colonne.
+   *
+   * Passer le prédicat ICI fait descendre le pas jusqu'à ce qu'il reste assez
+   * de graduations APRÈS retrait : 500 au lieu de 1 000, et l'euro retrouve
+   * 500 · 1 000 · 1 500.
+   */
+  exclue: (valeur: number) => boolean,
+  /** L'écart minimal EN POINTS, propre à la hauteur de CE tracé. */
+  ecart: number,
+): number[] {
+  if (!Number.isFinite(max) || max <= 0) return []
+
+  const pasCandidats = pasRonds()
+
+  /*
+    LE PLUS PETIT PAS QUI RESPIRE ENCORE, et la première rédaction prenait le
+    plus grand.
+
+    Elle avait raison tant que rien ne garantissait l'espacement : le plus grand
+    pas était la seule façon d'éviter quarante traits. Depuis que le pas porte
+    lui-même la contrainte d'écart, l'argument s'inverse — tout pas retenu
+    respire par construction, et c'est alors le plus PETIT qui rend le meilleur
+    axe, puisqu'il couvre le tracé de repères au lieu d'en laisser les deux
+    tiers nus. Mesuré en franc CFA : le plus grand pas ne posait qu'un repère à
+    66 %, sous lequel il n'y avait plus rien.
+  */
+  const essai = (filtrer: boolean): number[] => {
+    for (const pas of pasCandidats) {
+      /* LE PAS PORTE LA MÊME CONTRAINTE QUE L'OBJECTIF. Deux graduations
+         consécutives sont séparées d'exactement un pas : un pas plus étroit que
+         l'écart minimal produit mécaniquement des étiquettes qui se frôlent,
+         quel que soit leur nombre. C'est ce qui manquait. */
+      if ((pas / max) * 100 < ecart) continue
+      const valeurs: number[] = []
+      for (let v = pas; v < max && valeurs.length <= bornes.max + 2; v += pas) {
+        if (filtrer && exclue(v)) continue
+        valeurs.push(v)
+      }
+      if (valeurs.length >= bornes.min && valeurs.length <= bornes.max) return valeurs
+    }
+    return []
+  }
+
+  /* SANS LE FILTRE EN DERNIER RECOURS. Un objectif posé de telle sorte qu'aucun
+     pas ne laisse assez de graduations vaut mieux avec une étiquette serrée
+     qu'avec pas d'échelle du tout — et l'on saura, en le voyant, qu'il y a un
+     cas de plus à traiter. */
+  const avec = essai(true)
+  return avec.length > 0 ? avec : essai(false)
+}
+
+/**
+ * ═══ CE QU'IL FAUT DE PLACE ENTRE DEUX REPÈRES D'AXE ═══
+ *
+ * Un repère — une graduation, ou la ligne d'objectif — porte une étiquette à
+ * `-top-2.5`, au même bord que les autres. Deux étiquettes trop proches se
+ * lisent comme une seule : ce n'est pas une marge esthétique, c'est la place
+ * qu'un libellé occupe.
+ *
+ * ENTRE TOUS LES REPÈRES, et la première rédaction ne le tenait qu'entre une
+ * graduation et l'objectif. Le PAS lui-même n'était pas contraint : mesuré au
+ * navigateur en dollar américain, trois graduations tombaient à 23 px d'écart
+ * pour des étiquettes de 20. La règle protégeait l'objectif et laissait les
+ * graduations se serrer entre elles.
+ *
+ * ═══ EN PIXELS, PUIS CONVERTI — ET NON L'INVERSE ═══
+ *
+ * La constante a d'abord été écrite en POINTS DE POURCENTAGE, « huit points,
+ * soit seize pixels sur les 198 px du tracé ». Elle était fausse dès qu'il y a
+ * deux tracés : le premier cède alors 72 px au second et n'en fait plus que 126
+ * — c'est écrit plus bas, dans le commentaire du second tracé — et huit points
+ * n'y valaient plus seize pixels mais dix.
+ *
+ * Un écart de lisibilité se pense en PIXELS, parce que c'est en pixels qu'un
+ * libellé occupe la place. Le pourcentage s'en déduit, tracé par tracé, avec sa
+ * hauteur. Trente pixels : les vingt d'une ligne de `text-caps` avec son
+ * rembourrage, plus dix de respiration.
+ *
+ * Ce qui donne 24 points sur le tracé principal quand il y a deux tracés, 15
+ * quand il est seul, et 47 sur le second — où un seul repère tient, ce qui est
+ * exactement ce qu'on veut d'un tracé de 64 px.
+ */
+const ECART_MINIMAL_EN_PIXELS = 30
+
+/**
+ * Les hauteurs de tracé, en pixels, telles que la mise en page les fixe.
+ *
+ * RECOPIÉES DEPUIS LES CLASSES, ET C'EST LA FAIBLESSE DE CE BLOC : `h-16` et le
+ * `flex-1` qui lui fait face décident de ces nombres, pas ces constantes. Elles
+ * servent à convertir une contrainte de lisibilité en pourcentage, et une
+ * dérive ne se verrait qu'à l'œil — des étiquettes un peu plus serrées qu'on ne
+ * croyait. Le jour où la hauteur du graphe change, ces deux lignes changent
+ * avec elle.
+ */
+const HAUTEUR_TRACE_SECONDAIRE = 64
+const HAUTEUR_TRACE_SEUL = 198
+/**
+ * La gouttière entre les deux tracés — `mt-4`, et elle loge l'étiquette du
+ * plafond du second : une ligne de `text-caps` nue, quatorze pixels, plus deux
+ * de jeu.
+ *
+ * CHAQUE PIXEL SE PAIE SUR LE TRACÉ DU HAUT, qui est en `flex-1` : la gouttière
+ * lui est PRISE. Et il ne la paie pas seulement en hauteur de colonnes — elle
+ * réduit aussi la place où poser des graduations, donc elle en retire. Mesuré :
+ * à 24 px de gouttière, l'écart minimal passait à 27 points et emportait la
+ * graduation « 1 M » du franc CFA. À 16, il retombe à 25 et elle revient.
+ */
+const GOUTTIERE_ENTRE_TRACES = 16
+
+/**
+ * LA GOUTTIÈRE D'AXE — la colonne de gauche où vivent les montants.
+ *
+ * LE DÉFAUT MESURÉ. Les étiquettes de graduation étaient posées SUR la première
+ * colonne, derrière un fond opaque : 2 % de l'encre du tracé, et 16 % de la
+ * colonne de septembre. Petit en moyenne, entièrement payé par un seul mois —
+ * le plus ancien, celui que personne ne défend. C'est le même défaut que le
+ * second tracé a déjà fait corriger, à une échelle qui le rendait criant.
+ *
+ * TROIS RANGÉES LA PORTENT, ET IL LE FAUT. Le tracé du haut, celui du bas et la
+ * rangée des mois découpent leurs colonnes par `flex-1` dans un même conteneur
+ * `min-w-max` : elles sont alignées PARCE QU'ELLES PARTENT DU MÊME BORD. Une
+ * gouttière sur une seule décalerait les mois de leurs barres — le défaut le
+ * plus grave qu'un graphe puisse porter, et l'un des plus discrets : rien ne
+ * déborde, rien ne manque, et chaque colonne annonce le mois d'à côté.
+ *
+ * EN `rem` ET NON EN PIXELS. L'étiquette la plus large du produit — « 500 k »
+ * avec sa pastille — vaut 46 px à 16 px de police racine ; à 22 px, le cran
+ * « très grand » d'Android, elle en vaut 63. Une gouttière en pixels serait
+ * dépassée là exactement où le texte grandit. Trois `rem` suivent le texte.
+ *
+ * CE QU'ELLE COÛTE : trois `rem` de largeur, prises aux colonnes au-delà du
+ * repli, et ajoutées au défilement en deçà — la zone défile déjà, et son
+ * conteneur réclame sa largeur intrinsèque.
+ */
+const GOUTTIERE_D_AXE = 'pl-12'
+const HAUTEUR_TRACE_AVEC_SECOND =
+  HAUTEUR_TRACE_SEUL - HAUTEUR_TRACE_SECONDAIRE - GOUTTIERE_ENTRE_TRACES
+
+/** L'écart minimal EN POINTS de la hauteur d'un tracé donné. */
+function ecartMinimal(hauteurDuTrace: number): number {
+  return (ECART_MINIMAL_EN_PIXELS / hauteurDuTrace) * 100
+}
+
+/**
+ * UNE GRADUATION : un filet sur toute la largeur, et son montant au bord.
+ *
+ * MÊME TRAITEMENT QUE LA LIGNE D'OBJECTIF, délibérément. Les deux sont des
+ * repères posés sur les mêmes colonnes, avec le même problème — un trait qui
+ * passerait DERRIÈRE les barres ne se verrait que dans les creux, et son
+ * étiquette disparaîtrait sous la colonne la plus haute. L'objectif avait déjà
+ * réglé cela : `z-10`, tiret, et un fond de carte sous l'étiquette. Une seconde
+ * réponse à la même question aurait été une divergence, pas un choix.
+ *
+ * CE QUI LES DISTINGUE EST LA COULEUR, ET ELLE PORTE DU SENS : l'objectif est
+ * une DONNÉE — combien on attend — et prend `accent-ink` ; une graduation n'est
+ * qu'une règle graduée, elle prend le filet de séparation du produit. Deux
+ * traits de même valeur visuelle auraient mis sur le même plan « ce qu'on
+ * attend » et « un million ».
+ *
+ * L'ÉTIQUETTE EST À GAUCHE, COMME CELLE DE L'OBJECTIF, et le premier essai la
+ * mettait à droite. L'argument était d'éviter qu'elles se recouvrent ; la
+ * capture a montré le vrai prix : au bord droit, les pastilles se posent sur la
+ * colonne du MOIS EN COURS — celle qu'on vient regarder, celle que la hachure
+ * distingue déjà. À gauche, elles couvrent le mois le plus ancien.
+ *
+ * Le recouvrement, lui, ne dépendait pas du bord : deux étiquettes à la même
+ * hauteur se lisent mal des deux côtés. C'est `ECART_MINIMAL_A_L_OBJECTIF` qui
+ * le traite, et lui seul. Alignées au même bord, les trois se lisent en outre
+ * comme UNE échelle, ce que deux gouttières opposées empêchaient.
+ */
+function Graduation({ valeur, hauteur, texte }: { valeur: number; hauteur: number; texte: string }) {
+  return (
+    <div
+      aria-hidden="true"
+      data-graduation={valeur}
+      className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-divider"
+      style={{ bottom: `${hauteur}%` }}
+    >
+      <span className="numeric absolute -top-2.5 left-0 rounded-sm bg-surface px-1.5 py-0.5 text-caps text-muted">
+        {texte}
+      </span>
+    </div>
+  )
 }
 
 export interface StackedBar {
@@ -174,9 +424,65 @@ export function StackedBarChart({
   targetLabel?: string
   openPeriodNote?: string
 }) {
-  const { money } = useCurrency()
+  const { money, deviseAffichee, enDeviseAffichee } = useCurrency()
   const t = useT()
+  const { locale } = useI18n()
   const titleId = useId()
+
+  /**
+   * DES DONNÉES À CE QUI EST ÉCRIT — les deux conversions que l'axe doit faire.
+   *
+   * Les montants arrivent en UNITÉS MINEURES de la devise SOURCE. `money()` les
+   * convertit deux fois avant de les écrire : au taux de change, puis des
+   * centimes aux unités d'usage. Une graduation calculée sur la valeur brute
+   * saute les deux.
+   *
+   * CE QUE ÇA DONNAIT, rapporté par un utilisateur au premier changement de
+   * devise : « 1 M » et « 500 k » sur un graphe dont les colonnes valaient
+   * 2 795,89 $. Trois cent cinquante fois trop haut, et sur l'axe même qui
+   * venait remplacer une phrase parce qu'elle ne disait pas assez.
+   *
+   * INVISIBLE EN DÉMONSTRATION, ET C'EST LA LEÇON : le parc de démonstration
+   * compte en francs CFA, où les deux conversions valent l'IDENTITÉ — zéro
+   * décimale, et un taux de 1 vers soi-même. Le graphe était juste dans la
+   * seule devise sous laquelle on l'avait regardé, et faux dans les trois
+   * autres. Même forme exacte que le défaut du tableur, écrit dans
+   * `useCsvExport` : « Le défaut ne se voyait pas parce que la démonstration
+   * tourne en franc CFA, où la conversion est l'identité et 10⁰ vaut un. »
+   *
+   * LA GÉOMÉTRIE, ELLE, RESTE EN MINEURES. Les hauteurs de barres sont des
+   * RAPPORTS — `total / max` — et un rapport est invariant par changement
+   * d'unité. Les convertir n'ajouterait que des arrondis.
+   */
+  const enAffichage = (mineurSource: number) =>
+    enUniteDUsage(enDeviseAffichee(mineurSource), deviseAffichee)
+
+  /**
+   * LE LIBELLÉ D'UNE GRADUATION EST ABRÉGÉ, ET SANS DEVISE.
+   *
+   * SANS DEVISE, parce qu'un axe énonce son unité UNE FOIS et non à chaque
+   * trait : le sous-titre de la carte dit déjà « montants en FCFA », la bande
+   * de lecture et l'infobulle rendent les montants complets, et la table
+   * `sr-only` porte les valeurs exactes. Répéter « FCFA » deux ou trois fois
+   * dans le tracé n'ajoute rien et coûte cher — mesuré, « 1 000 000 FCFA »
+   * occupait un tiers de la largeur du graphique et recouvrait deux colonnes.
+   *
+   * ABRÉGÉ PAR `Intl`, et non par un formateur maison. Le fichier en portait
+   * un — « 1.4 M », « 156 k », les suffixes écrits en dur — qui rendait la même
+   * chose dans les deux langues. `notation: 'compact'` connaît la convention de
+   * chacune, et c'est le genre de détail qu'un dépôt bilingue ne peut pas se
+   * permettre de deviner.
+   *
+   * ATTENTION AU MOT « COMPACT », QUI DIT DEUX CHOSES ICI. `money(…, { compact:
+   * true })` du produit ne raccourcit RIEN : il tait les décimales nulles, et
+   * `centimesConserves.test.tsx` veille à ce qu'il ne fasse jamais plus. Cette
+   * abréviation-ci est un tout autre geste, réservé à un repère d'échelle
+   * qu'on ne paie pas.
+   */
+  const abreger = useMemo(() => {
+    const format = new Intl.NumberFormat(locale, { notation: 'compact', maximumFractionDigits: 1 })
+    return (valeur: number) => format.format(valeur).replace(/[\u00a0\u202f\s]/g, '\u202f')
+  }, [locale])
 
   /** Séries masquées depuis la légende. */
   const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set())
@@ -251,7 +557,72 @@ export function StackedBarChart({
    * ne couvrait qu'une de ses trois séries.
    */
   const max = Math.max(...totalsPrimaires, showTarget ? target : 0, 1) * 1.08
-  const maxSecondaire = Math.max(...totalsSecondaires, 1) * 1.08
+  /*
+    LE SECOND TRACÉ SE DONNE UN PLAFOND ROND, ET C'EST LUI SON ÉCHELLE.
+
+    Il prenait `plus haute colonne × 1,08`, comme celui du haut. Un tel plafond
+    ne s'écrit pas — d'où une graduation posée EN TRAVERS des bandes, dont
+    l'étiquette en couvrait 41 % sur un segment de dix-sept pixels.
+
+    Arrondi, le plafond devient lisible : le repère est le BORD SUPÉRIEUR du
+    tracé, que sa bordure dessine déjà, et l'étiquette monte dans la gouttière.
+    Zéro encre couverte, et un nombre de plus qu'avant — le plafond était tu.
+
+    LE FACTEUR PLUTÔT QUE LA VALEUR. La géométrie reste en unités mineures (voir
+    `enAffichage`) ; on arrondit donc DANS l'unité affichée, puis on reporte le
+    rapport sur le maximum en mineures. Arrondir directement les mineures
+    donnerait un plafond rond en francs et biscornu en dollars.
+  */
+  const vraiMaxSecondaire = Math.max(...totalsSecondaires, 1)
+
+  /*
+    ─── L'AXE REMPLACE LA PHRASE QUI EN TENAIT LIEU ───────────────────────
+
+    Le graphe portait, sous sa légende, une seconde ligne : « Échelle
+    principale (loyer) 1.4 M · Échelle secondaire (eau, électricité) 156 k ».
+    Elle reprenait les pastilles de couleur de la légende juste au-dessus pour
+    leur faire dire tout autre chose — trois vocabulaires de couleur sur un
+    graphique, dont un qui devait s'expliquer en toutes lettres.
+
+    Et elle ne donnait qu'un nombre par tracé : le maximum, qui vaut la plus
+    haute colonne majorée de 8 %, donc la hauteur d'aucune colonne. Hors ce
+    nombre-là et l'objectif, AUCUN montant n'était obtenable sans viser une
+    colonne — c'est-à-dire aucun sur un téléphone, qui n'a pas de survol, et qui
+    est l'appareil du marché visé.
+
+    Les graduations disent la même chose et davantage, à la place où on la
+    cherche, et sans un mot : deux à quatre repères ronds sur le tracé du haut,
+    un ou deux sur celui du bas.
+
+    ELLES SE RETIRENT PRÈS DE L'OBJECTIF, jamais l'inverse — voir
+    `ECART_MINIMAL_A_L_OBJECTIF`.
+  */
+  const maxAffiche = enAffichage(max)
+  const maxSecondaireAffiche = plafondArrondi(enAffichage(vraiMaxSecondaire))
+  const maxSecondaire =
+    vraiMaxSecondaire * (maxSecondaireAffiche / Math.max(enAffichage(vraiMaxSecondaire), 1e-9))
+  /*
+    L'OBJECTIF EST UN REPÈRE DE L'AXE, ET IL COMPTE DANS LE MINIMUM.
+
+    On exigeait deux graduations « parce qu'une seule répète ce que le sommet de
+    la plus haute colonne dit déjà ». C'était vrai d'un axe nu ; ça ne l'est pas
+    ici. La ligne d'objectif porte un montant EXACT, au même bord, dans la même
+    gouttière : une graduation et elle font deux repères, donc une échelle.
+
+    Le nier coûtait cher, et en euro cela se voyait : pour tenir « deux
+    graduations » alors que l'objectif en emportait une, le pas descendait d'un
+    cran et trois étiquettes se serraient là où deux respiraient.
+  */
+  const ecartPrimaire = ecartMinimal(
+    aDeuxTraces ? HAUTEUR_TRACE_AVEC_SECOND : HAUTEUR_TRACE_SEUL,
+  )
+  const graduationsPrimaires = graduationsDe(
+    maxAffiche,
+    { min: showTarget ? 1 : 2, max: 4 },
+    (valeur) =>
+      showTarget && Math.abs((valeur - enAffichage(target)) / maxAffiche) * 100 < ecartPrimaire,
+    ecartPrimaire,
+  )
 
   const toggleSeries = (key: string) =>
     setHidden((current) => {
@@ -316,7 +687,7 @@ export function StackedBarChart({
                   la forme, en écho au libellé barré qui l'accompagne. */}
               <span
                 aria-hidden="true"
-                className={cn('size-2.5 rounded-[2px] transition-shadow duration-150')}
+                className={cn('size-2.5 rounded-legende transition-shadow duration-150')}
                 style={
                   shown
                     ? { background: SERIES_COLORS[key] }
@@ -327,39 +698,74 @@ export function StackedBarChart({
             </button>
           )
         })}
-      </div>
 
-      {/* Échelles des tracés — affichées quand il y a deux tracés. */}
-      {aDeuxTraces && (
-        <div className="mb-3 flex flex-wrap items-center gap-4 text-body text-muted">
-          <span className="inline-flex items-center gap-1.5">
+        {/*
+          L'OBJECTIF DANS LA LÉGENDE, ET IL N'EST PAS UN BOUTON.
+
+          Les trois entrées qui le précèdent MASQUENT une série ; celle-ci ne
+          commande rien — la ligne se retire d'elle-même dès qu'une série est
+          masquée, parce qu'elle se compare à un total qui n'est plus tracé. Un
+          bouton de plus dans cette rangée promettrait un geste qui n'existe pas.
+
+          Il porte donc `<span>` et non `<button>`, sans `aria-pressed`, avec le
+          même rythme vertical que ses voisins pour que la rangée reste une
+          rangée. Le témoin visuel est un TIRET, pas une pastille : c'est la
+          forme de la marque qu'il nomme, et c'est ce qui le distingue des trois
+          séries sans avoir à l'écrire.
+        */}
+        {showTarget && (
+          <span
+            data-legende-objectif=""
+            /*
+              PAS DE `min-h-11` ICI, ET C'EST LA DIFFÉRENCE ENTRE UNE COMMANDE
+              ET UNE LÉGENDE.
+
+              Ses trois voisines le portent parce qu'elles se TOUCHENT : ce sont
+              des boutons qui masquent une série, et 44 px est le plancher
+              tactile du dépôt. Celle-ci ne se touche pas. Lui donner la même
+              hauteur revient à réserver une cible pour un geste qui n'existe
+              pas — et à la payer là où la place manque le plus.
+
+              MESURÉ À 320 px, l'appareil du marché visé : la rangée passait à
+              96 px sur deux lignes, et à 204 px sur trois au cran « très
+              grand » d'Android (22 px de police racine), pour trois libellés et
+              une phrase. Rendue à sa hauteur naturelle, la légende retombe.
+            */
+            /*
+              `text-caps` ET NON `text-body` — la taille des GRADUATIONS.
+
+              Deux raisons, et la seconde est mesurée. La première est de rang :
+              ses trois voisines sont des COMMANDES, elles gardent la taille du
+              corps ; celle-ci est une annotation d'axe, et elle prend la taille
+              des montants qui bordent le tracé. Le vocabulaire de l'axe devient
+              le même partout.
+
+              La seconde : à 320 px, « Loyers attendus · 1 397 000 FCFA » en
+              taille de corps réclame 270 px pour 246 disponibles, et passait
+              donc sur DEUX lignes. En taille de graduation il tient sur une, et
+              la rangée retombe de 95 px à 72.
+            */
+            /* SANS RETRAIT LATÉRAL, contrairement à ses voisines. Le leur —
+               `px-2` — agrandit une CIBLE ; celle-ci n'en est pas une, et ces
+               seize pixels étaient précisément ceux qui manquaient : mesuré à
+               320 px, la phrase réclame 257 px pour 246 disponibles et passait
+               sur deux lignes. Sans le retrait il lui en faut 241. */
+            className="inline-flex items-center gap-1.5 text-caps text-muted"
+          >
             <span
               aria-hidden="true"
-              className="size-2.5 rounded-[2px]"
-              style={{ background: SERIES_COLORS.rent }}
+              /* QUATRE UNITÉS ET NON DEUX ET DEMIE — la largeur d'une pastille
+                 de série. À 10 px, un tiret de deux pixels ne montre qu'un seul
+                 trait : la marque cesse d'être tiretée, donc cesse de désigner
+                 la ligne qu'elle nomme. */
+              className="w-4 border-t-2 border-dashed border-accent-ink"
             />
-            <span>{t('app.dashboard.scalePrimary')}</span>
-            {/* Hérite de `text-muted` du conteneur — voir le commentaire sur
-                `--color-muted-soft` dans tokens.css : ce jeton est réservé au
-                texte >=18px ou au non-textuel, jamais à ces 14px. */}
-            <span>{formatMax(max)}</span>
+            <span>
+              {targetLabel} · <span className="numeric">{money(target, { compact: true })}</span>
+            </span>
           </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span
-              aria-hidden="true"
-              className="size-2.5 rounded-[2px]"
-              style={{ background: SERIES_COLORS.water }}
-            />
-            <span
-              aria-hidden="true"
-              className="size-2.5 rounded-[2px] ml-1"
-              style={{ background: SERIES_COLORS.power }}
-            />
-            <span>{t('app.dashboard.scaleSecondary')}</span>
-            <span>{formatMax(maxSecondaire)}</span>
-          </span>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Zone de tracé et rangée d'étiquettes sont deux blocs distincts.
           C'est ce qui rend le calage exact : la ligne d'objectif se positionne
@@ -397,34 +803,69 @@ export function StackedBarChart({
       */}
       <div className="flex h-[14.625rem] flex-col overflow-x-auto pt-2.5 sm:h-[16.625rem]">
         <div className="flex min-w-max flex-1 flex-col">
-        <div className="relative flex min-h-0 flex-1 items-stretch gap-1 sm:gap-2.5">
+        <div
+          data-trace="principal"
+          data-max={maxAffiche}
+          data-rangee-de-colonnes=""
+          className={cn(
+            'relative flex min-h-0 flex-1 items-stretch gap-1 sm:gap-2.5',
+            GOUTTIERE_D_AXE,
+          )}
+        >
+          {/*
+            LES GRADUATIONS VIENNENT AVANT L'OBJECTIF DANS LE DOM, et c'est la
+            seule chose qui les départage quand elles se croisent : à `z-10`
+            égal, c'est l'ordre du document qui décide, et l'objectif doit
+            passer dessus. Voir `ECART_MINIMAL_A_L_OBJECTIF` pour les
+            étiquettes, que l'ordre de peinture ne sauverait pas.
+          */}
+          {graduationsPrimaires.map((valeur) => (
+            <Graduation
+              key={valeur}
+              valeur={valeur}
+              hauteur={(valeur / maxAffiche) * 100}
+              texte={abreger(valeur)}
+            />
+          ))}
+
           {showTarget && (
             <div
               aria-hidden="true"
-              // `gold-ink` et non l'or de marque. Une ligne de repère est une
-              // donnée : elle dit où passe l'objectif, et l'or n'y tient que
-              // 2,87:1 sur la carte. `--color-gold-ink` reste dans la famille
-              // et monte à 5,47:1 en clair, 7,32:1 en sombre — et c'est déjà
-              // la couleur du libellé qui la nomme, deux lignes plus bas : le
-              // trait et son étiquette cessent d'être de deux ors différents.
-              className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-gold-ink"
+              /* MARQUEUR DE MESURE : l'objectif est un repère de l'axe au même
+                 titre qu'une graduation — c'est ce que dit `min: showTarget ? 1
+                 : 2` plus haut. La garde de l'échelle doit donc pouvoir le
+                 compter et lire sa hauteur. */
+              data-repere="objectif"
+              /*
+                LA LIGNE EST NUE, ET SON NOM EST DANS LA LÉGENDE.
+
+                Elle portait « Loyers attendus · 1 397 000 FCFA » : 222 px de
+                texte pour 48 de gouttière, donc forcément par-dessus les
+                colonnes. Un fond opaque le rendait lisible, ce qui rendait la
+                donnée illisible dessous.
+
+                Ça ne se voyait pas, et c'est le pire cas : la ligne flotte
+                d'ordinaire AU-DESSUS de la plus haute colonne — 93 % contre
+                85 % sur le jeu de démonstration. Mais c'est une propriété des
+                DONNÉES, pas de la mise en page : un mois qui dépasse
+                l'objectif, ce qui arrive dès qu'un arriéré rentre, et
+                l'étiquette se pose sur la colonne qui vient justement de faire
+                l'événement. Aucune garde de mise en page ne peut le dire,
+                puisque la mise en page est correcte.
+
+                LE NOM D'UNE MARQUE SE LIT DANS LA LÉGENDE — c'est déjà vrai des
+                trois séries. La ligne d'objectif était la seule marque de ce
+                graphe à s'expliquer ailleurs, et cet ailleurs était par-dessus
+                la donnée.
+
+                `accent-ink` et non l'accent nu : une ligne de repère est une
+                donnée, et l'accent de marque n'a jamais eu la marge — l'or des
+                débuts n'y tenait que 2,87:1 sur la carte, le bleu qui lui a
+                succédé retombe à 3,13:1 sur la carte sombre.
+              */
+              className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-accent-ink"
               style={{ bottom: `${(target / max) * 100}%` }}
-            >
-              {/* Le montant EXACT, et non sa forme compacte.
-                  « 1,4 M » côtoyait « 1 397 000 FCFA » sur la même vue : les
-                  deux disent le même chiffre, mais leur voisinage invite à les
-                  comparer — et l'arrondi fait douter de celui qui ne l'est
-                  pas. */}
-              {/* Fond opaque et léger retrait : le libellé porte maintenant le
-                  montant exact, donc il occupe 41 % de la largeur du graphique
-                  au lieu des 15 % de sa forme compacte — et il court sur les
-                  barres, en doré sur fond sombre. Le fond le rend lisible quelle
-                  que soit la hauteur des barres, ce qu'un simple déplacement ne
-                  garantirait pas : elles changent avec les données. */}
-              <span className="absolute -top-2.5 left-0 rounded-sm bg-surface px-1.5 py-0.5 numeric text-caps text-gold-ink uppercase">
-                {targetLabel} · {money(target, { round: true })}
-              </span>
-            </div>
+            />
           )}
 
           {bars.map((bar, index) => {
@@ -471,7 +912,7 @@ export function StackedBarChart({
                 <span
                   className={cn(
                     'animate-grow-y flex w-full flex-col-reverse',
-                    'rounded-t-[3px] transition-shadow duration-150',
+                    'rounded-t-bar transition-shadow duration-150',
                   )}
                   style={{
                     height: `${(totalsPrimaires[index] / max) * 100}%`,
@@ -496,7 +937,7 @@ export function StackedBarChart({
                         key={segment.key}
                         className={cn(
                           'w-full',
-                          segmentIndex === shownSegments.length - 1 && 'rounded-t-[3px]',
+                          segmentIndex === shownSegments.length - 1 && 'rounded-t-bar',
                         )}
                         style={{
                           height: `${totalsPrimaires[index] ? (segment.value / totalsPrimaires[index]) * 100 : 0}%`,
@@ -549,9 +990,43 @@ export function StackedBarChart({
           nomme déjà les trois séries, et par la table.
         */}
         {aDeuxTraces && (
+          <>
+          {/*
+            SUR 64 px, L'ÉCHELLE EST UNE LÉGENDE, PAS UNE GRADUATION.
+
+            Une ligne posée en travers de ce tracé y coûte plus qu'elle ne
+            rapporte : mesuré, l'étiquette d'une graduation couvrait 41 % d'une
+            bande de dix-sept pixels — une bonne part de ce que ce second tracé
+            existait pour rendre lisible, lui qui fait passer l'électricité « de
+            8 px à environ 27 ».
+
+            Le repère devient donc le PLAFOND du tracé, que sa bordure
+            supérieure dessine déjà, et son montant se lit au-dessus. Zéro encre
+            couverte, et un nombre de plus qu'avant : le plafond était tu.
+
+            DANS LE FLUX, ET NON EN ABSOLU. Un `bottom-full` aurait fait la même
+            image — et `rognage.test.ts` l'aurait refusé, à juste titre : ce
+            fichier porte un `overflow-x-auto`, et c'est précisément la
+            cohabitation qui a rogné l'infobulle de ce graphe à quatre pixels
+            sur cent cinquante-huit. Une légende dans le flux n'a pas de bord à
+            franchir.
+          */}
+          <p
+            aria-hidden="true"
+            data-plafond={maxSecondaireAffiche}
+            className="numeric mt-3 mb-0.5 text-caps text-muted"
+          >
+            {abreger(maxSecondaireAffiche)}
+          </p>
           <div
             aria-hidden="true"
-            className="mt-2 flex h-16 items-stretch gap-1 border-t border-divider pt-2 sm:gap-2.5"
+            data-trace="secondaire"
+            data-max={maxSecondaireAffiche}
+            data-rangee-de-colonnes=""
+            className={cn(
+              'relative flex h-16 items-stretch gap-1 border-t border-divider pt-2 sm:gap-2.5',
+              GOUTTIERE_D_AXE,
+            )}
           >
             {bars.map((bar, index) => {
               const totalBas = totalsSecondaires[index]
@@ -559,7 +1034,7 @@ export function StackedBarChart({
               return (
                 <span key={bar.label} className="flex min-w-0 flex-1 items-end justify-center">
                   <span
-                    className="animate-grow-y flex w-full flex-col-reverse rounded-t-[3px] transition-shadow duration-150"
+                    className="animate-grow-y flex w-full flex-col-reverse rounded-t-bar transition-shadow duration-150"
                     style={{
                       height: `${(totalBas / maxSecondaire) * 100}%`,
                       animationDelay: `${index * 35}ms`,
@@ -571,7 +1046,7 @@ export function StackedBarChart({
                       .map((seg, i, montres) => (
                         <span
                           key={seg.key}
-                          className={cn('w-full', i === montres.length - 1 && 'rounded-t-[3px]')}
+                          className={cn('w-full', i === montres.length - 1 && 'rounded-t-bar')}
                           style={{
                             height: `${totalBas ? (seg.value / totalBas) * 100 : 0}%`,
                             background: isLast
@@ -586,9 +1061,14 @@ export function StackedBarChart({
               )
             })}
           </div>
+          </>
         )}
 
-        <div className="mt-2.5 flex gap-1 sm:gap-2.5" aria-hidden="true">
+        <div
+          className={cn('mt-2.5 flex gap-1 sm:gap-2.5', GOUTTIERE_D_AXE)}
+          data-rangee-de-colonnes=""
+          aria-hidden="true"
+        >
           {bars.map((bar, index) => (
             <span
               key={bar.label}
@@ -607,6 +1087,31 @@ export function StackedBarChart({
                 // et une valeur défendue au centième dans la feuille de jetons
                 // ne se corrige pas en passant.
                 'min-w-0 flex-1 text-center text-caps tracking-wide uppercase',
+                /*
+                  AU-DELÀ DE `sm`, L'ÉTIQUETTE RÉCLAME SA PROPRE LARGEUR.
+
+                  Le commentaire ci-dessus disait « PAS de plancher ici, et
+                  c'est mesuré » : poser `min-w-6` ne déplaçait rien, puisque
+                  24 px tiennent sous n'importe quelle colonne. C'était vrai —
+                  à 16 px de police racine. À 22 px, la même colonne vaut 34 px
+                  quand « SEPT » en demande 41, et six mois sur douze
+                  s'affichent rabotés. Le plancher testé alors était celui des
+                  BARRES ; celui qu'il fallait est celui du TEXTE.
+
+                  `min-w-max` le prend au mot : la rangée d'étiquettes réclame
+                  sa largeur intrinsèque, le conteneur `min-w-max` qui porte les
+                  deux rangées grandit d'autant, `flex-1` redécoupe les colonnes
+                  à l'identique dans les deux, et la zone de tracé — déjà
+                  `overflow-x-auto` — défile de la différence. Aucune graduation
+                  n'est coupée, et l'alignement barre/étiquette est conservé par
+                  construction.
+
+                  SOUS `sm`, RIEN NE CHANGE : les étiquettes y débordent déjà
+                  sur une voisine `invisible` qui leur prête sa place, et leur
+                  donner une largeur propre ferait défiler le téléphone pour
+                  douze mois dont on n'en montre que six.
+                */
+                'sm:min-w-max',
                 // Chaque étiquette garde sa colonne — c'est ce qui la tient
                 // centrée sous SA barre — mais sur téléphone elle a le droit
                 // de déborder sur la voisine. La voisine est `invisible` : elle
@@ -667,7 +1172,10 @@ export function StackedBarChart({
             key: s.key,
             label: seriesLabels[s.key],
             value: money(s.value),
-            color: SERIES_COLORS_ON_DARK[s.key],
+            /* La MÊME palette que les barres, depuis que la lecture vit sur
+               la surface de la carte : la pastille est exactement la couleur
+               de la barre qu'elle nomme. */
+            color: SERIES_COLORS[s.key],
           }))}
       />
 
@@ -737,7 +1245,43 @@ function LectureFixe({
     <div
       aria-hidden="true"
       className={cn(
-        'on-dark mt-3 rounded-lg bg-ink px-3.5 py-2.5 text-on-dark',
+        /*
+          ═══ LA LECTURE N'EST PLUS UN PAVÉ NOIR ═══
+
+          Elle était peinte `bg-ink` — #131a22, l'ENCRE principale du produit,
+          détournée en surface. Dans une carte blanche, cela en faisait l'objet
+          le plus lourd de l'écran : une bande d'un noir absolu, entre l'axe des
+          mois et la note, plus appuyée que le graphe qu'elle annote. Or une
+          lecture est SUBORDONNÉE à ce qu'elle lit. Le noir plein reste ce qu'il
+          était avant d'être emprunté ici : ce qui est CHOISI (un filtre actif,
+          un jour retenu) ou ce qui BORNE la page (le pied, le panneau de
+          marque).
+
+          ═══ ET LES PASTILLES CESSENT D'ÊTRE D'UNE AUTRE PALETTE ═══
+
+          C'est le vrai gain, et le fichier l'avait vu venir. Le commentaire qui
+          pose cette lecture disait, mot pour mot : « le fond encre reste celui
+          de l'infobulle : les jetons de série y sont mesurés pour ce fond, et
+          les porter sur la carte claire demanderait l'autre palette — UN SUJET
+          À SOI, QUE CE LOT N'OUVRE PAS. » Il s'ouvre ici.
+
+          Conséquence : la pastille « Loyer » de la lecture était `--color-data-6-on-dark`
+          quand la barre au-dessus d'elle et la légende à côté sont
+          `--color-data-6`. Trois repères pour trois teintes différentes,
+          désignant la même série, dans la même carte. Sur fond clair, les trois
+          convergent — la pastille de la lecture est EXACTEMENT la couleur de la
+          barre qu'elle nomme.
+
+          ═══ LE FOND EST CELUI DE LA CARTE, ET C'EST UNE CONTRAINTE MESURÉE ═══
+
+          `bg-surface-sunken` aurait mieux détaché le cadre. Mesuré : la série
+          la plus claire, `--color-data-6` (#899485), y tombe à 2,85:1 — sous le
+          seuil de 3:1 d'un élément non textuel porteur de sens. Sur la surface
+          de la carte elle tient 3,16 en clair et 8,02 en sombre : c'est le
+          couple DÉJÀ certifié, celui des barres elles-mêmes. Le cadre se fait
+          donc par la bordure, pas par le fond.
+        */
+        'mt-3 rounded-lg border border-border px-3.5 py-2.5',
         // La hauteur est PRÉVISIBLE, ce qui est plus fort que réservée. Un
         // simple plancher n'aurait tenu que le cas court : mesuré, la bande
         // passait de 68 px à 640 de large à 92 puis 115 quand la carte se
@@ -776,8 +1320,8 @@ function LectureFixe({
         nombre magique aurait tenu jusqu'au prochain jeu de données.
       */}
       <p className="flex flex-col gap-y-0.5">
-        <span className="text-caps text-on-dark-faint uppercase">{title}</span>
-        <span className="numeric title-m text-on-dark">{total}</span>
+        <span className="text-caps text-muted uppercase">{title}</span>
+        <span className="numeric title-m text-ink">{total}</span>
       </p>
 
       {/* Le détail disparaît quand la série est unique : un filet et un
@@ -788,11 +1332,11 @@ function LectureFixe({
           {rows.map((row) => (
             <li key={row.key} className="flex items-center gap-1.5 text-body">
               <span
-                className="size-2 shrink-0 rounded-[2px]"
+                className="size-2 shrink-0 rounded-legende"
                 style={{ background: row.color }}
               />
-              <span className="text-on-dark-muted">{row.label}</span>
-              <span className="numeric text-on-dark">{row.value}</span>
+              <span className="text-muted">{row.label}</span>
+              <span className="numeric text-ink">{row.value}</span>
             </li>
           ))}
         </ul>
@@ -847,7 +1391,7 @@ export function MiniBarChart({
   const titleId = useId()
   const [active, setActive] = useState<number | null>(null)
 
-  const lire = format ?? ((v: number) => money(v, { round: true }))
+  const lire = format ?? ((v: number) => money(v, { compact: true }))
   // Les périodes inconnues ne pèsent pas sur l'échelle : une barre absente ne
   // doit ni écraser ni gonfler les autres.
   const max = Math.max(...bars.map((b) => b.value ?? 0), 1) * 1.04
@@ -897,7 +1441,7 @@ export function MiniBarChart({
               aria-label={`${bar.label} — ${bar.value === null ? emptyLabel : lire(bar.value)}`}
             >
               <span
-                className="animate-grow-y w-full rounded-t-[3px] transition-shadow duration-150"
+                className="animate-grow-y w-full rounded-t-bar transition-shadow duration-150"
                 style={{
                   // Une période inconnue garde un filet de 2 px : la colonne
                   // reste visible et cliquable — sans quoi le trou se lirait
@@ -905,11 +1449,14 @@ export function MiniBarChart({
                   // suggère une quantité.
                   height: bar.value === null ? '2px' : `${(bar.value / max) * 100}%`,
                   // La colonne du mois courant se distingue des onze autres :
-                  // c'est une DONNÉE mise en avant, pas un ornement. L'or de
-                  // marque tombait à 2,87:1 sur la carte, sous le seuil de 3:1
-                  // — et le commentaire d'en-tête de ce fichier l'interdisait
-                  // déjà. `--color-gold-ink` tient 5,47:1 en clair et 7,32:1
-                  // en sombre, en gardant l'écart de clarté avec `data-1` qui
+                  // c'est une DONNÉE mise en avant, pas un ornement. L'accent
+                  // nu n'a jamais pu la porter : l'or de marque tombait à
+                  // 2,87:1 sur la carte, sous le seuil de 3:1, et le bleu qui a
+                  // pris sa place ne rend que 3,13:1 sur la carte sombre — et
+                  // le commentaire d'en-tête de ce fichier l'interdisait déjà.
+                  // `--color-accent-ink` tient 6,30 sur `--paper` en clair et
+                  // 8,30 sur `--surface` en sombre, en gardant l'écart de
+                  // clarté avec `data-1` qui
                   // rend les deux distinguables en niveaux de gris. La hachure
                   // s'y ajoute pour dire la même chose que chez la voisine
                   // empilée : la période n'est pas close.
@@ -927,13 +1474,14 @@ export function MiniBarChart({
                     bar.value === null
                       ? 'var(--color-muted-soft)'
                       : isLast
-                        ? hachureOuverte('var(--color-gold-ink)')
+                        ? hachureOuverte('var(--color-accent-ink)')
                         : 'var(--color-data-1)',
                   animationDelay: `${index * 40}ms`,
                   // Même arbitrage que chez la voisine empilée : la colonne
                   // visée reçoit un liseré, les autres ne perdent rien. À 0,40
                   // elles retombaient à 2,47:1 en clair pour `data-1` et 1,79:1
-                  // pour l'or, sous le seuil, au survol comme au focus.
+                  // pour l'or d'alors, sous le seuil, au survol comme au
+                  // focus.
                   boxShadow: isActive ? '0 0 0 2px var(--color-ink)' : undefined,
                 }}
               />
@@ -1111,8 +1659,11 @@ export interface DonutSlice {
 const PARTS: Record<EtatDePoste, { couleur: string; forme: FormeDePart }> = {
   paid: { couleur: 'var(--color-ok)', forme: 'pleine' },
   partial: { couleur: 'var(--color-warn)', forme: 'demie' },
-  /* `--color-warn` et non `--color-gold` pour « partiel » : l'or de marque ne
-     tient que 2,87:1 sur blanc, sous le seuil d'une donnée. */
+  /* `--color-warn` et non `--color-accent` pour « partiel » : l'accent de
+     marque ne dit pas un état. Il ne le pouvait déjà pas du temps de l'or
+     #c58e3e, qui ne tenait que 2,87:1 sur blanc, sous le seuil d'une donnée ;
+     devenu le bleu #2563eb il passe ce seuil, mais un règlement partiel se
+     signale par l'ambre d'alerte, pas par la couleur des boutons. */
   overdue: { couleur: 'var(--color-danger)', forme: 'creuse' },
 }
 
@@ -1143,6 +1694,7 @@ export function DonutChart({
    */
   reconciliation?: { key: string; label: string; value: number; fort?: boolean }[]
 }) {
+  const nombres = useNumbers()
   const { money } = useCurrency()
   const [active, setActive] = useState<string | null>(null)
 
@@ -1216,7 +1768,7 @@ export function DonutChart({
               d'ensemble dès qu'on relâche — sans quoi il faudrait lire la
               légende et le centre en même temps pour comprendre. */}
           <span className="numeric text-title-l font-medium">
-            {shown ? `${Math.round(shown.fraction * 100)} %` : centerValue}
+            {shown ? nombres.percent(Math.round(shown.fraction * 100)) : centerValue}
           </span>
           <span className="max-w-[6rem] text-caps text-muted uppercase">
             {shown ? shown.slice.label : centerLabel}
@@ -1246,7 +1798,7 @@ export function DonutChart({
                 'text-left text-body transition-colors duration-150',
                 active === slice.etat ? 'bg-surface-sunken' : 'hover:bg-surface-sunken',
               )}
-              aria-label={`${slice.label} — ${money(slice.value, { round: true })}, ${Math.round(fraction * 100)} %`}
+              aria-label={`${slice.label} — ${money(slice.value, { compact: true })}, ${nombres.percent(Math.round(fraction * 100))}`}
             >
               {/* LA MÊME JAUGE QUE LA GRILLE DES PAIEMENTS, et c'est le point.
                   Une légende qui porterait une forme absente de l'anneau
@@ -1256,9 +1808,14 @@ export function DonutChart({
                   de ΔE00 entre « partiel » et « en retard » sous deutéranopie,
                   sur un disque de 10 px. */}
               <JaugeDePoste etat={slice.etat} />
-              <span className="min-w-0 flex-1 truncate text-muted">{slice.label}</span>
+              {/* PAS DE TRONCATURE : ces trois libellés sont du vocabulaire —
+                  « Payé », « Partiel », « En retard » — et le montant à leur
+                  droite est `shrink-0`. Une part d'anneau qu'on ne sait plus
+                  nommer ne se lit plus du tout. Voir le même choix sur la
+                  réconciliation, quelques lignes plus bas. */}
+              <span className="min-w-0 flex-1 text-left text-muted">{slice.label}</span>
               <span className="numeric shrink-0 font-medium">
-                {money(slice.value, { round: true })}
+                {money(slice.value, { compact: true })}
               </span>
             </button>
           </li>
@@ -1273,9 +1830,30 @@ export function DonutChart({
                       les montants restent dans la même colonne que ceux de la
                       légende, ce qui est la seule façon de les lire comme une
                       addition. */}
+                  {/*
+                    LE LIBELLÉ SE REPLIE, IL NE SE COUPE PLUS.
+
+                    « Reste à percevoir » et « Loyers attendus » s'affichaient
+                    « Reste à perc… » et « Loyers att… ». Ce sont les DEUX
+                    intitulés que cette réconciliation reprend À L'IDENTIQUE des
+                    indicateurs du haut de page — c'est tout son objet, refermer
+                    la boucle entre les mêmes nombres à deux panneaux d'écart —
+                    et le nom coupé est précisément ce qui rendait la reprise
+                    illisible.
+
+                    Mesuré à 22 px de police racine : −47 px et −52 px, dans une
+                    colonne qui en offre 100 et 84. La garde du rognage ne
+                    regardait alors que les intitulés d'indicateur, et sa propre
+                    justification citait « reste à percevoir » comme l'exemple du
+                    vocabulaire qui « tient partout ».
+
+                    `items-baseline` sur la rangée aligne la PREMIÈRE ligne du
+                    libellé sur le montant : le repli descend, l'addition reste
+                    lisible ligne à ligne.
+                  */}
                   <dt
                     className={cn(
-                      'ml-[1.25rem] min-w-0 flex-1 truncate',
+                      'ml-[1.25rem] min-w-0 flex-1',
                       ligne.fort ? 'text-body text-ink' : 'text-body text-muted',
                     )}
                   >
@@ -1287,7 +1865,7 @@ export function DonutChart({
                       ligne.fort ? 'text-body font-medium' : 'text-body text-muted',
                     )}
                   >
-                    {money(ligne.value, { round: true })}
+                    {money(ligne.value, { compact: true })}
                   </dd>
                 </div>
               ))}
@@ -1305,12 +1883,12 @@ export function DonutChart({
 export function ProgressBar({
   value,
   label,
-  tone = 'gold',
+  tone = 'accent',
   hideLabel,
 }: {
   value: number
   label: string
-  tone?: 'gold' | 'ok' | 'danger'
+  tone?: 'accent' | 'ok' | 'danger'
   /**
    * Masque le libellé VISIBLE sans le retirer de l'arbre d'accessibilité.
    *
@@ -1324,13 +1902,18 @@ export function ProgressBar({
    */
   hideLabel?: boolean
 }) {
+  const nombres = useNumbers()
   // Le remplissage EST la valeur : c'est lui, et lui seul, qui dit 62 % contre
   // 38 %. L'or de marque ne tenait que 2,52:1 sur la piste `surface-sunken`,
   // le pire des quatre emplois recensés — et le ton par défaut, donc celui de
-  // tous les appels. `gold-ink` monte à 4,80:1 en clair et 8,71:1 en sombre.
+  // tous les appels. `accent-ink` a été pris pour cette marge, et il l'a gardée
+  // en passant au bleu : le jeton est certifié 6,30 sur `--paper` en clair et
+  // 8,30 sur `--surface` en sombre. La piste `surface-sunken`, elle, n'a pas
+  // été remesurée depuis le changement de teinte — on la tient pour acquise par
+  // prudence, pas par relevé.
   // Le ton garde son nom : c'est un rôle — « la couleur de marque » — pas une
   // teinte, exactement comme `ok` ne nomme pas un vert.
-  const colors = { gold: 'bg-gold-ink', ok: 'bg-ok', danger: 'bg-danger' }
+  const colors = { accent: 'bg-accent-ink', ok: 'bg-ok', danger: 'bg-danger' }
 
   return (
     <div className="flex items-center gap-3">
@@ -1348,12 +1931,107 @@ export function ProgressBar({
           style={{ width: `${value}%` }}
         />
       </div>
-      <span className="numeric w-10 shrink-0 text-right text-body text-muted">{value} %</span>
+      {/*
+        `w-12` ET NON `w-10`, et la raison est la même que celle du séparateur.
+
+        Quarante pixels suffisaient à « 83 % » et pas à « 100 % » : le signe
+        passait à la ligne sous le nombre, dans la carte du loyer de l'espace
+        locataire. `formatPercent` interdit désormais la coupure — l'espace y est
+        insécable — ce qui, à largeur inchangée, aurait produit un débordement au
+        lieu d'un repli. On corrige donc les deux : la colonne tient trois
+        chiffres, et le signe ne peut plus s'en détacher.
+      */}
+      <span className="numeric w-12 shrink-0 text-right text-body text-muted">
+        {nombres.percent(value)}
+      </span>
     </div>
   )
 }
 
 /** Tuile de KPI : libellé, valeur, delta et note. */
+/**
+ * La bordure d'une carte d'indicateur en état, par ton.
+ *
+ * Écrite en classes LITTÉRALES et non composées : Tailwind v4 balaie ce fichier
+ * à la recherche de noms complets, et `border-${ton}-border` ne produirait
+ * aucune règle — la bordure resterait grise sans que rien ne le signale.
+ */
+/**
+ * LA TUILE D'ICÔNE, et pourquoi elle est NEUTRE par défaut plutôt qu'à
+ * l'accent.
+ *
+ * Quatre rectangles nus, alignés, sans un seul repère : la rangée
+ * d'indicateurs se lisait de gauche à droite comme un tableur, et rien n'y
+ * accrochait l'œil qui revient sur la page pour la dixième fois de la journée.
+ * Une icône dans une tuile teintée donne à chaque carte un point d'ancrage
+ * qu'on retrouve sans lire — c'est le rôle que joue déjà le même gabarit dans
+ * « ce qui demande une décision », deux rangées plus bas : `size-8`,
+ * `rounded-md`, un lavis et un glyphe de 15 px. Ce n'est donc pas une invention
+ * mais la reprise d'un idiome que le produit avait déjà.
+ *
+ * NEUTRE PAR DÉFAUT, ET C'EST UN CHOIX QUE J'AI DÛ RETOURNER.
+ *
+ * Le lot qui a posé ces tuiles les voulait OR, « parce que c'est l'accent de la
+ * marque et qu'un lavis neutre n'aurait rien apporté qu'un gris de plus ».
+ * L'argument s'est cassé sur une mesure, au lot suivant : `--color-accent-tint`
+ * et `--color-warn-tint` valaient alors LE MÊME `#fbf3e2`, et
+ * `--color-accent-ink` (#8a6218) ne s'écartait de `--color-warn` (#795415) que
+ * d'une nuance. Ce n'était pas une collision accidentelle — dans la palette
+ * dorée, l'ambre d'alerte ÉTAIT l'or de la marque, et la bannière des relevés
+ * l'a prouvé tout au long de la vie de cette palette.
+ *
+ * Conséquence, vue à l'écran puis relevée au pixel : une carte passée en `warn`
+ * rendait une tuile RIGOUREUSEMENT identique à celle de ses voisines calmes. Le
+ * correctif était invisible, et seule la bordure — #ead9b4 contre #e8e2d7 —
+ * le distinguait encore.
+ *
+ * LA COLLISION A DISPARU AVEC L'OR, ET LA RÈGLE RESTE. L'accent est le bleu
+ * `--color-accent` #2563eb, `--color-accent-tint` vaut #eff5ff quand
+ * `--color-warn-tint` reste #fbf3e2 : les deux lavis ne se confondent plus, et
+ * une tuile d'accent au milieu d'une carte en alerte se verrait, cette fois.
+ * Ce n'est pas une raison de la remettre par défaut, parce que la règle ne
+ * tenait pas à la collision mais à ce qu'elle a révélé : la teinte par défaut
+ * ne peut être celle d'AUCUN état, sans quoi l'état qu'elle recouvre ne peut
+ * plus se signaler — et `bg-accent-tint text-accent-ink`, quelques lignes plus
+ * bas, EST le ton `info`. Le neutre est la seule teinte du système qui ne
+ * signale rien. L'accent n'a pas disparu — il reste ce ton `info`, où il veut
+ * dire quelque chose au lieu de servir de papier peint.
+ *
+ * `--accent-ink` et non `--accent` là où l'accent sert encore : l'accent nu ne
+ * tenait que 2,87:1 du temps de l'or et ne rend que 3,13:1 sur la carte sombre
+ * depuis qu'il est bleu, quand l'encre de la même famille est certifiée 6,30
+ * sur `--paper` et 6,12 sur `--accent-tint` — c'est la règle que `Charts`
+ * énonce en tête de fichier pour les séries, et elle ne s'arrête pas aux
+ * séries.
+ *
+ * TEINTE DE L'ÉTAT QUAND IL Y EN A UN, plutôt qu'une seconde grammaire de
+ * couleur posée par-dessus la première. Une carte en alerte a déjà une bordure
+ * rouge et une pastille rouge ; une tuile restée or au milieu se lirait comme
+ * une contradiction. Et l'icône ne porte JAMAIS l'information seule : elle est
+ * `aria-hidden`, l'intitulé la dit, la pastille dit l'état.
+ */
+const TUILES_D_ETAT: Record<StatusTone, string> = {
+  ok: 'bg-ok-tint text-ok',
+  warn: 'bg-warn-tint text-warn',
+  danger: 'bg-danger-tint text-danger',
+  neutral: 'bg-neutral-tint text-neutral',
+  info: 'bg-accent-tint text-accent-ink',
+  /* Le ton des panneaux FIGÉS — voir `StatusPill`. Aucune carte d'indicateur
+     ne vit aujourd'hui sous `.on-dark`, mais le typage exige la couverture, et
+     c'est une bonne exigence : le jour où l'une y descend, elle ne peut pas
+     hériter d'un lavis qui bascule sous un fond qui ne bascule pas. */
+  onDark: 'bg-on-dark-active text-on-dark',
+}
+
+const BORDURES_D_ETAT: Record<StatusTone, string> = {
+  ok: 'border-ok-border',
+  warn: 'border-warn-border',
+  danger: 'border-danger-border',
+  neutral: 'border-neutral-border',
+  info: 'border-accent-border',
+  onDark: 'border-on-dark-border',
+}
+
 export function StatCard({
   label,
   value,
@@ -1361,6 +2039,10 @@ export function StatCard({
   delta,
   note,
   action,
+  etat,
+  icone,
+  donnee,
+  bas,
 }: {
   label: string
   value: string
@@ -1374,11 +2056,221 @@ export function StatCard({
    * donnée, et les loger au même endroit ferait lire l'une pour l'autre.
    */
   action?: ReactNode
+  /**
+   * L'ÉTAT DE CE QUE LE CHIFFRE MESURE — et le fait qu'il soit FACULTATIF est
+   * la moitié de la règle.
+   *
+   * Quatre cartes rigoureusement identiques — même fond, même bordure, même
+   * graisse, note en gris muet — rendaient « 4 locataires · jusqu'à 24 jours
+   * de retard » exactement comme « 2 unités vacantes ». Mesuré sur le tableau
+   * de bord avant ce lot : ZÉRO pastille sur les quatre. La hiérarchie était
+   * écrite en commentaire au-dessus de la rangée, pas en pixels.
+   *
+   * Posé, `etat` fait DEUX choses : une pastille se pose devant la note — donc
+   * une teinte, une icône et un LIBELLÉ, jamais la couleur seule — et la
+   * bordure de la carte prend le même ton. La bordure ne porte rien à elle
+   * seule : elle attire, la pastille dit.
+   *
+   * LA PASTILLE PORTE UN MOT, LA NOTE RESTE DE LA PROSE, et la porte a tranché
+   * cela à ma place. Premier essai : la note ENTIÈRE devenait la pastille.
+   * `StatusPill` est en `whitespace-nowrap` — un statut qui se coupe en deux
+   * lignes n'est plus un statut — et « 4 locataires · jusqu'à 24 jours de
+   * retard » sortait de sa carte de 80 px, plus 20 px de débordement de page à
+   * 320. Une pastille est un MOT ; la phrase qui l'explique n'en est pas une.
+   * C'est aussi pourquoi la rangée porte `flex-wrap` : les deux se rangent
+   * l'une sous l'autre quand la carte se resserre.
+   *
+   * UN SEUL OBJET POUR LE TON ET LE MOT, plutôt que deux `props`. Séparés, rien
+   * n'empêcherait une bordure rouge au-dessus d'un libellé « À jour » — la
+   * désynchronisation serait à un oubli de distance. Ensemble, elle est
+   * impossible à écrire.
+   *
+   * LE MOT EST FACULTATIF, ET LA RÈGLE EST : LA PASTILLE NOMME L'ÉTAT QUAND RIEN
+   * D'AUTRE NE LE NOMME. Deux cartes du produit portent un état dont leur propre
+   * texte parle déjà — celle des paiements s'INTITULE « En retard », celle des
+   * relevés porte en note « 8 sur 10 saisis ». Y ajouter une pastille reviendrait
+   * à écrire deux fois la même chose à quinze pixels d'écart ; ce qui leur
+   * manquait n'était pas un mot de plus, c'était que leur POIDS s'accorde à ce
+   * que leur texte dit. Elles prennent donc le ton sans la pastille.
+   *
+   * CE N'EST PAS UNE PORTE OUVERTE À LA COULEUR SEULE, et c'est la seule chose
+   * qui rend l'omission acceptable. Omettre `libelle` est légitime UNIQUEMENT si
+   * l'on peut pointer le texte de la carte qui dit l'état — son intitulé ou sa
+   * note. `etatNomme.test.tsx` le vérifie carte par carte, sur les trois du
+   * produit qui portent un état : chacune doit contenir en toutes lettres ce que
+   * sa teinte affirme. Sans ce cas, ce `?` serait exactement la régression que
+   * `couleur-non-seule` existe pour empêcher.
+   *
+   * ABSENT, RIEN NE CHANGE, et c'est la raison d'être du `?`. Une carte
+   * d'alerte toujours allumée est une carte qu'on cesse de lire au bout d'une
+   * semaine ; l'appelant ne pose `etat` que lorsque la DONNÉE l'exige — sur un
+   * parc où tout le monde a payé, la carte redevient l'une des quatre. C'est
+   * aussi ce qui laisse les quinze autres appels du produit inchangés.
+   */
+  etat?: { ton: StatusTone; libelle?: string }
+  /**
+   * Le repère visuel de la carte — DÉCORATIF, et il faut que ça le reste.
+   *
+   * Il est `aria-hidden` par construction (voir `Icon`) : ce que la carte
+   * mesure est dit par son intitulé, et un lecteur d'écran n'a que faire
+   * d'entendre « horloge » avant « reste à percevoir ». Une icône qui porterait
+   * un sens que le texte ne porte pas serait un défaut, pas un ornement.
+   *
+   * Facultatif, comme `etat` : une carte sans icône reste une carte valide, et
+   * le jour où un écran en pose une rangée sans repère naturel, il n'aura pas à
+   * en inventer.
+   */
+  icone?: IconName
+  /**
+   * L'INTITULÉ EST UNE DONNÉE, et non du vocabulaire du produit.
+   *
+   * Deux appels du dépôt le posent : les cartes d'immeuble du Parc et celles de
+   * la vitrine des états, où l'intitulé porte un nom saisi par l'utilisateur.
+   * Partout ailleurs il porte « reste à percevoir » ou « taux d'occupation » —
+   * du vocabulaire, borné, traduit, et qu'on peut donc laisser se replier
+   * librement.
+   *
+   * CE QUE LE DRAPEAU CHANGE, ET POURQUOI IL FAUT LES DEUX :
+   *
+   *   · `line-clamp-2` NE S'APPLIQUE QU'ICI. La coupe à deux lignes existait
+   *     pour « un nom d'immeuble pathologique — vingt mots », donc pour une
+   *     donnée. Imposée au vocabulaire, elle le coupait sans raison : mesuré à
+   *     22 px de police racine, « Encaissé ce mois », « Taux d'occupation »,
+   *     « Total refacturé » et cinq autres demandent trois lignes et n'en
+   *     reçoivent que deux. Un vocabulaire fixe n'a pas besoin d'être borné —
+   *     il l'est par le dictionnaire.
+   *   · `data-donnee` DIT À LA GARDE que cette coupe-là est assumée. Une
+   *     donnée n'a pas de longueur maximale : lui « rendre la place » n'a pas
+   *     de sens, il n'y a pas de « assez ».
+   */
+  donnee?: boolean
+  /**
+   * CE QUI CONTINUE SOUS LE NOMBRE — et pourquoi ce n'est pas `children`.
+   *
+   * Une carte d'indicateur s'arrête presque toujours à son nombre et sa note.
+   * Une seule du produit va plus loin : le loyer du mois, dans l'espace du
+   * locataire, qui porte sous son montant une piste de progression, la date et
+   * le moyen du dernier règlement, et le bouton de quittance. Elle était pour
+   * cela ÉCRITE À LA MAIN — surtitre, `text-kpi`, note grise recopiés — donc
+   * sans `data-indicateur`, donc invisible à toutes les gardes qui
+   * l'interrogent.
+   *
+   * `bas` PLUTÔT QUE `children` : `children` ferait de cette primitive un
+   * `<div>` que chaque écran remplirait à sa façon, et il n'y aurait plus de
+   * carte d'indicateur, seulement une bordure partagée. Un emplacement nommé dit
+   * ce qu'il est — ce qui vient APRÈS le nombre — et laisse le haut de la carte
+   * hors d'atteinte : l'intitulé, la tuile, le nombre et la note restent
+   * l'affaire du composant.
+   */
+  bas?: ReactNode
 }) {
   return (
-    <div className="rounded-lg border border-divider bg-surface p-4 shadow-e1 sm:p-5">
+    <div
+      /* `data-etat` n'est pas décoratif, et c'est la même raison que
+         `data-jauge` sur la grille des paiements : un état doit être
+         INTERROGEABLE autrement que par sa peinture. Les cas le lisent ici
+         plutôt que d'inspecter une classe Tailwind — une assertion sur
+         `border-danger-border` passerait au vert le jour où la carte porte le
+         bon état sous une autre teinte, et rougirait sur un simple renommage
+         d'utilitaire. Ce sont les deux erreurs inverses, et l'attribut les
+         évite toutes les deux. */
+      /* `data-indicateur` dit CE QUE CETTE BOÎTE EST ; `data-etat`, plus bas,
+         ne dit que ce qui lui arrive et n'existe donc pas toujours. Il faut les
+         deux, et le premier manquait : un cas des tarifs remontait jusqu'à la
+         carte en comptant DEUX sauts de parent, et la tuile d'icône de ce lot en
+         a ajouté un — le cas s'est mis à mesurer l'intitulé au lieu de la carte.
+         Un chemin qui compte les sauts casse au premier niveau intermédiaire ;
+         `closest('[data-indicateur]')` survit à tous. */
+      data-indicateur=""
+      data-etat={etat?.ton}
+      className={cn(
+        'rounded-lg border bg-surface p-4 shadow-e1 sm:p-5',
+        etat ? BORDURES_D_ETAT[etat.ton] : 'border-divider',
+      )}
+    >
       <div className="flex items-start justify-between gap-2">
-        <p className="eyebrow min-w-0 flex-1 truncate text-muted">{label}</p>
+        {/* La tuile et l'intitulé forment UN groupe, centré sur la tuile ;
+            `action` reste aligné en haut. Sans ce niveau intermédiaire, un
+            intitulé de 11 px se collait au sommet d'une tuile de 32 et la
+            rangée paraissait décrochée — et donner `items-center` à la rangée
+            entière aurait fait descendre le bouton de suppression du parc, qui
+            est une cible de 44 px et doit rester dans l'angle. */}
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+          {icone && (
+            <span
+              /* Même raison que `data-etat` sur la racine : la tuile doit être
+                 INTERROGEABLE sans passer par sa peinture. C'est par lui qu'un
+                 cas vérifie qu'une rangée d'indicateurs n'a pas gagné une
+                 cinquième carte sans repère, et que la tuile suit bien l'état
+                 au lieu de rester à l'accent au milieu d'une carte en
+                 alerte. */
+              data-tuile={etat?.ton ?? 'neutre'}
+              className={cn(
+                'flex size-8 shrink-0 items-center justify-center rounded-md',
+                etat ? TUILES_D_ETAT[etat.ton] : 'bg-neutral-tint text-neutral',
+              )}
+            >
+              <Icon name={icone} size={15} />
+            </span>
+          )}
+          {/*
+            DEUX LIGNES, PAS UNE, ET C'EST UN DÉFAUT QUE J'AI POSÉ.
+
+            L'intitulé était en `truncate` — une ligne, puis des points de
+            suspension. La tuile d'icône du lot précédent lui a retiré 42 px, et
+            des noms se sont mis à disparaître : à 1280, « Résidence
+            Bonamoussadi » passe de 7 px coupés à 45, « Immeuble Akwa Nord » se
+            met à couper alors qu'elle tenait. Ce sont les deux largeurs de
+            portable les plus courantes.
+
+            J'AVAIS ÉCRIT ICI QUE SEUL L'ÉCRAN PARC ÉTAIT CONCERNÉ, parce que
+            lui seul met une DONNÉE dans cet intitulé — un nom d'immeuble, dont
+            la longueur n'est bornée par rien — quand les autres n'y mettent que
+            du vocabulaire fixe qui « tient partout ». C'ÉTAIT FAUX, et c'est la
+            garde écrite dans le même lot qui l'a montré : « Collected this
+            month » se coupait de 24 px sur le TABLEAU DE BORD à 1280 en
+            anglais. Sept intitulés sur 418 mesurés, là où l'œil en avait trouvé
+            trois. Un vocabulaire fixe n'est fixe que dans la langue où on l'a
+            regardé.
+
+            `break-words` ET `hyphens-auto` pour le cas qu'aucune des deux lignes
+            ne sauve : « Bonamoussadi » demande 110 px dans une boîte de 61, sur
+            la vitrine des états, et c'est UN SEUL MOT — aucun repli ne le coupe.
+            La césure du dictionnaire s'en charge en français ; `break-words`
+            prend le relais en anglais, dont ce navigateur n'a pas le
+            dictionnaire. Coupé sans trait d'union c'est laid ; « Bonamouss… » ne
+            se distingue pas d'un nom tronqué, ce qui est pire.
+
+            LE NOM D'UN IMMEUBLE VAUT MIEUX QU'UNE LIGNE DROITE. Sur trois cartes
+            intitulées « Résidence Bonamouss… », « Immeuble Akwa N… » et
+            « Villa Deïdo », on ne distingue plus les deux premières que par leur
+            longueur. La rangée grandit de treize pixels quand un nom repasse à
+            la ligne, et la grille les aligne toutes — c'est le prix, et il est
+            plus bas que celui d'un nom illisible.
+
+            `line-clamp-2` et non un repli libre : un nom d'immeuble
+            pathologique — vingt mots — ferait sinon une carte de six lignes,
+            et l'intitulé n'est pas le contenu de la carte. Deux lignes, puis on
+            coupe quand même.
+          */}
+          {/* `data-intitule` : la garde `mesure-ui` mesure ce libellé pour
+              vérifier qu'il n'est pas ROGNÉ. Elle ne peut pas le trouver par sa
+              classe — `scripts/` est balayé par le générateur d'utilitaires
+              Tailwind, et y écrire un nom de classe en fabriquerait un. */}
+          <p
+            data-intitule=""
+            data-donnee={donnee ? '' : undefined}
+            className={cn(
+              'eyebrow min-w-0 flex-1 hyphens-auto break-words text-muted',
+              // La coupe à deux lignes n'existe que pour une DONNÉE — voir la
+              // prop `donnee`. Le vocabulaire, lui, se replie autant qu'il en a
+              // besoin : c'est le dictionnaire qui le borne, pas la carte.
+              donnee && 'line-clamp-2',
+            )}
+          >
+            {label}
+          </p>
+        </div>
         {action}
       </div>
       <p className="mt-2 flex items-baseline gap-1.5">
@@ -1388,9 +2280,15 @@ export function StatCard({
       {(delta || note) && (
         <p className="mt-2 flex flex-wrap items-center gap-2">
           {delta}
+          {etat?.libelle && (
+            <StatusPill tone={etat.ton} size="sm">
+              {etat.libelle}
+            </StatusPill>
+          )}
           {note && <span className="text-body text-muted">{note}</span>}
         </p>
       )}
+      {bas}
     </div>
   )
 }

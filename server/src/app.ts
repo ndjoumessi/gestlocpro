@@ -1,4 +1,5 @@
 import express, { type ErrorRequestHandler, type Request, type Response } from 'express'
+import compression from 'compression'
 import cookieParser from 'cookie-parser'
 import { ZodError } from 'zod'
 import { join } from 'node:path'
@@ -7,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 import { env } from './env.js'
 import { authRouter } from './auth/routes.js'
 import { parksRouter, rejoindreRouter } from './parks/routes.js'
+import { SourceBCE, creerServiceDeTaux, type SourceDeTaux } from './taux/taux.js'
 
 /**
  * Répertoire du client construit.
@@ -57,12 +59,105 @@ function paquetServi(): string | null {
  * réellement écouter finit par attendre des délais et par échouer selon la
  * charge de la machine — le port est un détail du déploiement, pas du produit.
  */
-export function createApp() {
+export function createApp(options: { taux?: SourceDeTaux } = {}) {
   const app = express()
+
+  /**
+   * LE SERVICE DE TAUX, créé UNE FOIS par application.
+   *
+   * Son cache vit dans cette clôture : une instance par serveur, et non une par
+   * requête. Le créer dans la route donnerait un cache neuf à chaque appel,
+   * c'est-à-dire pas de cache — et un appel à la Banque centrale européenne par
+   * chargement d'écran.
+   *
+   * La SOURCE est injectable pour que les cas n'appellent jamais l'extérieur :
+   * un test qui dépend d'un tiers échoue le jour où ce tiers est en panne, et
+   * l'on croit alors que c'est le produit.
+   */
+  const taux = creerServiceDeTaux(options.taux ?? new SourceBCE())
 
   // Express annonce sa présence dans un en-tête. C'est une information gratuite
   // offerte à qui cherche une version vulnérable.
   app.disable('x-powered-by')
+
+  /**
+   * LA COMPRESSION EST FAITE ICI AUSSI, ET LA RAISON N'EST PAS CELLE QU'ON A
+   * CRUE.
+   *
+   * ═══ LA PRÉMISSE ÉTAIT FAUSSE, ET ELLE EST TOMBÉE PAR MESURE ═══
+   *
+   * Ce bloc a d'abord été posé sur le constat qu'aucune compression n'existait :
+   * pas d'intergiciel ici, pas de mandataire dans le `Dockerfile`. Le constat
+   * était juste POUR CE PROCESSUS, et faux pour le site livré. Relevé sur la
+   * production le 2026-08-30, sur le paquet alors déployé :
+   *
+   *   Accept-Encoding: gzip       ->  content-encoding: gzip    121 310 o
+   *   Accept-Encoding: identity   ->                            380 925 o
+   *   server: railway-hikari
+   *
+   * Le bord de Railway gzippe déjà, HTML comme JavaScript, et le faisait avant
+   * ce fichier. Les « sept secondes » annoncées au lot qui a introduit cet
+   * intergiciel n'ont jamais été disponibles : elles étaient acquises. Ce
+   * commentaire remplace cette affirmation plutôt que de la corriger d'un mot,
+   * parce qu'un chiffre faux dans une prose qui explique un choix contamine le
+   * choix lui-même.
+   *
+   * ═══ POURQUOI IL RESTE MALGRÉ TOUT ═══
+   *
+   * Ce qu'il achète n'est pas des octets, c'est une INDÉPENDANCE. La
+   * compression du site reposait entièrement sur un comportement de bord que
+   * personne ne configure, que rien ne garde, et qui n'appartient pas à ce
+   * dépôt. Un changement d'hébergeur, un domaine servi autrement, un bord qui
+   * cesse de le faire : le site triplerait de poids sans qu'aucune porte ne
+   * bronche, sur le réseau le plus lent du marché visé. La propriété tenue ici
+   * est « ce serveur compresse, quel que soit ce qui le précède ».
+   *
+   * ═══ CE QU'IL COÛTE, MESURÉ ET NON SUPPOSÉ ═══
+   *
+   * 7,9 ms de gzip pour le paquet de 426 674 octets — moyenne sur cinq passes,
+   * sur la machine de développement ; un conteneur modeste sera plus lent, et
+   * ce facteur-là n'est PAS mesuré. Ce n'est pas du temps de BOUCLE :
+   * `compression` emploie le flux zlib asynchrone, que Node exécute sur son
+   * groupe de fils. Le coût est du processeur, pas de la latence servie.
+   *
+   * LE BORD NE MET RIEN EN CACHE, et c'est ce qui donne son prix à la ligne
+   * ci-dessus. Relevé le 2026-08-30 sur deux requêtes successives : aucun
+   * en-tête `age`, `x-cache` ni `via`. Le `cache-control: public, max-age=3600`
+   * que rend la production vient d'`express.static`, plus bas, et gouverne le
+   * NAVIGATEUR, pas le bord. Chaque visiteur froid atteint donc l'origine, et
+   * ces 7,9 ms se paient à chaque fois.
+   *
+   * D'OÙ CE QUE CET INTERGICIEL FAIT VRAIMENT AU BILAN : il ne double pas le
+   * travail de gzip — le bord retransmet une réponse déjà encodée sans y
+   * toucher — il le DÉPLACE, du bord de Railway vers ce conteneur. Une seule
+   * compression dans la chaîne, sur la machine que vous payez plutôt que sur la
+   * leur. C'est le prix de l'indépendance décrite plus haut, et c'est un
+   * arbitrage, pas une évidence.
+   *
+   * LA VOIE QUI RENDRAIT LES DEUX — précompresser les actifs à la construction
+   * et les servir tels quels — n'est pas prise ici : elle demande une étape de
+   * build, un service statique qui sache choisir le `.gz`, et sa propre garde.
+   * Elle est nommée pour qu'on sache qu'elle existe.
+   *
+   * Le bord ne sert PAS de brotli — vérifié, `Accept-Encoding: br` ne rend
+   * rien. Poser gzip ici ne prive donc aujourd'hui d'aucun encodage meilleur.
+   * Le jour où Railway proposera brotli, cette ligne deviendra ce qui l'empêche,
+   * et il faudra la reprendre : c'est écrit ici pour que ce jour-là se voie.
+   *
+   * ═══ AVANT LES ROUTES, ET NON JUSTE AVANT LES FICHIERS ═══
+   *
+   * Posé plus bas, cet intergiciel ne servirait que le client. Le JSON de l'API
+   * compresse mieux que tout le reste, et c'est le locataire qui le télécharge —
+   * la liste de ses quittances, ses relevés — sur le même réseau.
+   *
+   * La NÉGOCIATION est la fonctionnalité : rien n'est touché tant que le client
+   * n'a pas dit qu'il l'accepte, et rien sous 1 024 octets, où l'en-tête
+   * coûterait plus que le gain. Les deux comportements sont gardés dans
+   * `compression.test.ts`, qui garde le FAIT de l'en-tête et jamais un TAUX —
+   * un taux dépend du contenu, et le verrouiller ferait rougir la porte au
+   * premier actif incompressible.
+   */
+  app.use(compression())
 
   app.use(express.json({ limit: '256kb' }))
   app.use(cookieParser(env.SESSION_SECRET))
@@ -181,6 +276,24 @@ export function createApp() {
   // d'erreurs : pas besoin d'envelopper chaque route asynchrone. C'était la
   // principale verrue d'Express 4, et l'oublier une seule fois y laissait une
   // requête suspendue jusqu'au délai d'expiration du client.
+  /**
+   * LES TAUX, PUBLICS ET SANS SESSION.
+   *
+   * La page des tarifs les emploie avant toute inscription, et la démonstration
+   * n'a pas de compte. Exiger un jeton reviendrait à réserver la conversion à
+   * ceux qui sont déjà entrés.
+   *
+   * Ils ne portent aucune donnée du produit : ce sont des cours publics, servis
+   * tels que la BCE les publie.
+   */
+  app.get('/api/rates', async (_req: Request, res: Response) => {
+    const cours = await taux.lire()
+    /* Un quart d'heure côté client : les cours ne bougent qu'une fois par jour
+       ouvré, et le cache du serveur porte déjà la fraîcheur réelle. */
+    res.set('Cache-Control', 'public, max-age=900')
+    res.json(cours)
+  })
+
   app.use('/api/auth', authRouter)
   // Hors de `/api/parks/:parkId` : on ne peut pas exiger l'appartenance à un
   // parc pour demander à le rejoindre.

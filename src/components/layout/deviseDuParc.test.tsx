@@ -4,18 +4,21 @@ import { COMPTE_FICTIF, installerFauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 
 /**
- * La devise vient du PARC, et le sélecteur ne survit qu'en démonstration.
+ * LA DEVISE SE CHOISIT PARTOUT, ET LES MONTANTS SE CONVERTISSENT.
  *
- * L'invariant est écrit trois fois en prose — dans `currencies.ts`, et au-dessus
- * de chacune des deux coquilles d'`AppShell` — et il ne tenait que sur deux
- * `{demo && …}`. Aucun cas du dépôt ne mentionnait ce sélecteur : la coquille du
- * locataire, écrite après la correction, a remis la garde par mémoire d'auteur.
- * C'est ce filet-là qui manquait.
+ * Ce fichier gardait l'inverse : le sélecteur ne survivait qu'en démonstration,
+ * parce que le produit ne convertissait rien. Un parc camerounais lu en euros
+ * affichait les mêmes chiffres sous un autre symbole — 655 fois d'écart — et
+ * une quittance imprimait « 50,00 € » pour 50 000 FCFA.
  *
- * Ce qu'il a déjà coûté : le produit ne convertit rien, un parc camerounais
- * s'affichait dans la dernière devise retenue par le navigateur, et une
- * quittance imprimait « 50,00 € » pour 50 000 FCFA — 655 fois d'écart sur un
- * document opposable au locataire.
+ * LA CONVERSION EXISTE : parité légale pour le franc CFA, cours de la Banque
+ * centrale européenne pour les deux dollars. Le choix redevient un choix, et ce
+ * fichier garde ce que la règle protégeait vraiment — QUE LE COMPTE Y SOIT.
+ *
+ * Les deux coquilles ont chacune leur appel au sélecteur : celle du bailleur,
+ * en barre latérale, et celle du locataire, horizontale. C'est exactement
+ * l'endroit où une règle se perd d'un côté sans qu'aucun cas ne bronche, et
+ * c'est pourquoi les deux sont éprouvées.
  */
 
 const PARC = '11111111-2222-4333-8444-555555555555'
@@ -124,42 +127,41 @@ describe('en démonstration, la devise se choisit', () => {
   })
 })
 
-describe('sur un vrai parc, la devise ne se choisit pas', () => {
-  it('ne propose pas d’en changer au bailleur', async () => {
+describe('sur un vrai parc, la devise se choisit aussi', () => {
+  it('offre le sélecteur au bailleur', async () => {
     serveurReel()
     await renderApp('/app', { session: sessionReelle('owner') })
     await attendreLeChargement()
     await ouvrirLesReglages()
-    expect(selecteurDeDevise()).toBeNull()
+    expect(selecteurDeDevise()).toBeInTheDocument()
   })
 
-  it('ne propose pas d’en changer au locataire', async () => {
+  it('offre le sélecteur au locataire, dans sa coquille distincte', async () => {
     serveurReel()
     await renderApp('/app/mon-espace', { session: sessionReelle('tenant') })
     await attendreLeChargement()
     await ouvrirLesReglages()
-    expect(selecteurDeDevise()).toBeNull()
+    expect(selecteurDeDevise()).toBeInTheDocument()
   })
 
   /**
-   * Retirer le sélecteur NE SUFFIT PAS.
+   * LE CHOIX CONVERTIT, IL NE RÉ-ÉTIQUETTE PAS.
    *
-   * Le choix vit dans `localStorage` et survit à la navigation. Un locataire
-   * arrivé par la vitrine — où le sélecteur est légitime, les tarifs y étant
-   * ancrés par devise — porterait l'euro jusque dans son espace sans avoir rien
-   * demandé, et lirait « 50,00 € » là où son bail dit 50 000 FCFA.
+   * C'est toute la différence avec ce que ce fichier interdisait. Le parc est en
+   * francs, le navigateur arrive avec l'euro en mémoire : l'écran affiche des
+   * euros, et le montant n'est pas le même nombre.
    *
-   * Le parc est en `XAF` ; le navigateur, lui, arrive avec `EUR` en mémoire.
-   * C'est le parc qui doit gagner.
+   * 50 000 francs valent 76,22 € à la parité légale. Le cas vérifie les DEUX —
+   * le symbole ET le chiffre — parce que le symbole seul repasserait au vert le
+   * jour où la conversion se remettrait à ré-étiqueter.
    */
-  it('affiche les montants dans la devise du parc', async () => {
+  it('convertit les montants au lieu de changer le symbole', async () => {
     serveurReel()
     await renderApp('/app', { session: sessionReelle('owner'), currency: 'EUR' })
     await attendreLeChargement()
 
     const main = screen.getByRole('main')
-    expect(main).toHaveTextContent('FCFA')
-    // Le symbole, explicitement : c'est lui qu'une quittance imprimait.
-    expect(main).not.toHaveTextContent('€')
+    expect(main).toHaveTextContent('€')
+    expect(main.textContent, 'le montant du parc n’a pas été converti').not.toMatch(/50\s?000/)
   })
 })

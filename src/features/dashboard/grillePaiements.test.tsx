@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, attendreLeChargement, userEvent } from '@/test/render'
+import { renderApp, screen, attendreLeChargement, cliquerAction } from '@/test/render'
 import { captureDownloads } from '@/test/downloads'
 import { COMPTE_FICTIF, installerFauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
@@ -185,8 +185,7 @@ describe('grille des paiements — les périodes', () => {
 
     const capture = captureDownloads()
     try {
-      const user = userEvent.setup()
-      await user.click(screen.getByRole('button', { name: /exporter le relevé/i }))
+      await cliquerAction(/exporter le relevé/i)
 
       const fichiers = await capture.settle()
       expect(fichiers).toHaveLength(1)

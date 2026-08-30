@@ -8,23 +8,41 @@ import { Link } from 'react-router-dom'
 import { cn } from '@/lib/cn'
 import { Icon, type IconName } from './Icon'
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'gold' | 'danger' | 'onDark'
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'onDark'
 export type ButtonSize = 'sm' | 'md' | 'lg'
 
 const VARIANTS: Record<ButtonVariant, string> = {
   // Une seule action primaire par écran.
-  primary:
-    // `shadow-e1` et non un littéral : l'ombre portait `rgba(20,32,30,.18)`,
-    // c'est-à-dire `--color-ink` figé à 18 %. Une ombre d'encre sombre posée sur
-    // un fond sombre ne se voit pas — le jeton d'élévation, lui, se redéfinit
-    // avec le thème. C'était la dernière couleur en dur du composant le plus
-    // réutilisé du produit.
-    'bg-ink text-on-dark shadow-e1 hover:bg-ink-2 active:translate-y-px',
+  /**
+   * LE PRIMAIRE PREND L'ACCENT, ET IL NE POUVAIT PAS AVANT.
+   *
+   * Il était `bg-ink` — presque noir — et ce n'était pas un choix esthétique
+   * mais une contrainte : l'or de marque ne tenait que 2,87:1 sur blanc, donc
+   * il ne pouvait porter aucune encre lisible et ne pouvait pas être le fond
+   * de l'action. Le geste principal du produit était noir FAUTE de mieux.
+   *
+   * `--color-accent` tient 5,17:1 sous du blanc, dans les deux thèmes, et 3,13
+   * contre la carte sombre — au-dessus du seuil de 3:1 d'un élément
+   * d'interface. La contrainte est levée, le bouton prend la couleur de la
+   * marque, et l'écran dit enfin en couleur où se trouve son action.
+   *
+   * `shadow-e1` et non un littéral : l'ombre portait `rgba(20,32,30,.18)`,
+   * c'est-à-dire `--color-ink` figé à 18 %. Une ombre d'encre sombre posée sur
+   * un fond sombre ne se voit pas — le jeton d'élévation, lui, se redéfinit
+   * avec le thème.
+   */
+  primary: 'bg-accent text-on-accent shadow-e1 hover:bg-accent-hover active:translate-y-px',
   secondary:
     'bg-surface text-ink border border-border hover:border-ink active:translate-y-px',
   ghost: 'bg-transparent text-ink hover:bg-surface-sunken active:translate-y-px',
-  // L'or ne porte jamais de texte : ici c'est un fond, avec de l'encre dessus.
-  gold: 'bg-gold text-ink hover:bg-gold-on-dark active:translate-y-px',
+  /* `accent` A ÉTÉ RETIRÉ, et le lot précédent l'avait annoncé.
+     Il valait `bg-accent text-on-accent hover:bg-accent-hover` — c'est-à-dire
+     EXACTEMENT `primary`, au caractère près, depuis que le primaire a pris la
+     couleur de la marque. Deux noms pour une seule apparence, sur le composant
+     le plus employé du produit : le choix entre eux avait cessé d'être une
+     décision, et rien n'aurait dit à personne lequel prendre. Ses trois
+     appelants passent sur `primary`, qui dit ce qu'il EST — l'action — plutôt
+     que de quelle couleur il est peint. */
   danger: 'bg-danger text-on-dark hover:bg-danger-strong active:translate-y-px',
   onDark:
     'bg-on-dark-active text-on-dark border border-on-dark-border hover:bg-on-dark/20 active:translate-y-px',
@@ -46,8 +64,18 @@ const ETEINT = 'pointer-events-none opacity-45'
 
 const SIZES: Record<ButtonSize, string> = {
   // min-h-11 = 44px, la cible tactile minimale, sur toutes les tailles.
-  sm: 'min-h-11 px-3 text-label gap-1.5',
-  md: 'min-h-11 px-3.5 text-body gap-2',
+  //
+  // Le rembourrage horizontal a gagné un demi-cran avec la gélule : les angles
+  // arrondis rognent l'espace utile aux extrémités du libellé, ce que des coins
+  // droits ne faisaient pas. La HAUTEUR ne bouge pas — c'est elle qui porte la
+  // cible tactile, et elle est déjà au plancher.
+  sm: 'min-h-11 px-3.5 text-label gap-1.5',
+  md: 'min-h-11 px-4 text-body gap-2',
+  /* `lg` GARDE SON REMBOURRAGE D'ORIGINE, et c'est la porte qui l'a exigé : à
+     px-6, les deux boutons de l'appel à l'action de la vitrine débordaient leur
+     rangée de 43 px à 1024 — une signature déjà tolérée jusqu'à 27, donc un
+     défaut AGGRAVÉ et non nouveau. Le gabarit `lg` a déjà 20 px de chaque côté ;
+     la gélule n'y manque pas d'air, contrairement aux deux plus petits. */
   lg: 'min-h-12 px-5 text-body-l gap-2',
 }
 
@@ -79,7 +107,19 @@ function classes({
   className,
 }: CommonProps & { disabled?: boolean }) {
   return cn(
-    'inline-flex items-center justify-center rounded-md font-semibold no-underline',
+    /*
+      LE BOUTON PASSE EN GÉLULE, et il est le SEUL à le faire.
+      `rounded-md` reste la norme de tout ce qui se clique — champs, cellules de
+      calendrier, segments de choix. Un bouton n'en est pas un cas parmi
+      d'autres : c'est l'objet que l'œil cherche quand il veut agir, et la
+      gélule est ce qui le sépare d'un champ de saisie de même hauteur. Dans le
+      modèle suivi, tout le reste est rectangulaire à coins doux et seules les
+      commandes sont pleinement arrondies — c'est cette distinction-là qu'on
+      reprend, pas l'arrondi pour lui-même.
+      Le rembourrage horizontal suit : une gélule mange ses angles, donc le
+      texte a besoin de plus d'air qu'entre deux coins droits. Voir `SIZES`.
+    */
+    'inline-flex items-center justify-center rounded-full font-semibold no-underline',
     'cursor-pointer select-none whitespace-nowrap',
     'transition-[background-color,border-color,transform,box-shadow] duration-150 ease-out',
     VARIANTS[variant],
@@ -183,6 +223,20 @@ export interface IconButtonProps
   variant?: ButtonVariant
   size?: number
   className?: string
+  /**
+   * Destination interne — la même branche que `Button`, et pour la même raison.
+   *
+   * `Button` sait rendre une ancre depuis `to` ; celui-ci ne savait rendre
+   * qu'un `<button>`. Une commande ronde qui NAVIGUE devait donc s'écrire soit
+   * en `<button onClick={navigate}>` — qui perd le clic milieu, le « ouvrir
+   * dans un nouvel onglet », l'adresse au survol et l'annonce « lien » —, soit
+   * en `Button` avec un libellé masqué, qui n'a ni la taille ni la forme des
+   * autres commandes de la barre.
+   *
+   * Ni `href` ni l'état désactivé : aucun appelant n'en a besoin, et une
+   * branche sans appelant se périme sans que personne l'apprenne.
+   */
+  to?: string
 }
 
 export function IconButton({
@@ -192,21 +246,39 @@ export function IconButton({
   size = 16,
   className,
   disabled,
+  to,
   ...props
 }: IconButtonProps) {
+  const classes = cn(
+    /* Rond, et non arrondi : un bouton icône est un bouton, donc une
+       gélule — et une gélule carrée est un cercle. */
+    'inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full',
+    'transition-colors duration-150 ease-out',
+    VARIANTS[variant],
+    disabled && ETEINT,
+    className,
+  )
+
+  if (to) {
+    /* Même conversion bornée que les branches « lien » de `Button`, et le même
+       motif : le type restant décrit un `<button>`, quelques attributs n'ont
+       pas de sens sur une ancre, et dupliquer la signature pour une branche
+       coûterait plus que cette ligne. */
+    const reste = props as unknown as AnchorHTMLAttributes<HTMLAnchorElement>
+    return (
+      <Link to={to} aria-label={label} title={label} className={classes} {...reste}>
+        <Icon name={icon} size={size} />
+      </Link>
+    )
+  }
+
   return (
     <button
       type="button"
       aria-label={label}
       title={label}
       disabled={disabled}
-      className={cn(
-        'inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md',
-        'transition-colors duration-150 ease-out',
-        VARIANTS[variant],
-        disabled && ETEINT,
-        className,
-      )}
+      className={classes}
       {...props}
     >
       <Icon name={icon} size={size} />

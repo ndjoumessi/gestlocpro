@@ -142,10 +142,14 @@ const ADRESSE_404 = '/adresse-qui-n-existe-pas'
   trouvé ce piège trois lots de suite. Ajouter un écran ou une largeur oblige
   donc à toucher ce nombre, et le diff le montre.
 
-  66 = (23 écrans déduits du routeur − 1 sans écran) × 3 largeurs.
+  69 = (24 écrans déduits du routeur − 1 sans écran) × 3 largeurs.
   3  = la route `/app`, redirection sans `<main>`, à ses trois largeurs.
+
+  Passé de 66 à 69 avec le registre des décisions. Ce nombre doit être touché à
+  la main, et c'est le but : le diff montre alors qu'un écran est apparu, là où
+  un compte dérivé de l'inventaire se serait mis d'accord avec lui-même.
 */
-const ATTENDUS = 66
+const ATTENDUS = 69
 const SAUTEES_ATTENDUES = 3
 
 async function servir() {
@@ -175,6 +179,8 @@ const releve = []
 let inspectes = 0
 /** Les routes déclarées sans écran, comptées pour que leur nombre soit gardé. */
 let sautees = 0
+/** Les points mesurés avant que les polices soient prêtes — voir plus bas. */
+const policesEnRetard = []
 
 try {
   const navigateur = await chromium.launch()
@@ -188,6 +194,32 @@ try {
     for (const adresse of ADRESSES) {
       await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
       await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {})
+      /*
+        ON ATTEND LES POLICES, PARCE QUE CETTE GARDE A RENDU UN FAUX ROUGE.
+
+        Mesuré : sur la première passe suivant une reconstruction, ce script a
+        rendu 128 px de coquille sur `/demo/cautions@1280` et
+        `/demo/locataires@1280` pour un plafond de 122 — puis 122 aux quatre
+        passages suivants, sans qu'une ligne de source ait bougé entre les deux.
+        Six pixels, soit l'écart entre la boîte de ligne d'un titre rendu dans la
+        police de repli et la même dans la police chargée.
+
+        `networkidle` ne suffit pas : il dit que le réseau s'est tu, pas que le
+        navigateur a fini de reconstruire ses boîtes avec la fonte arrivée. Le
+        délai de 300 ms qui suit non plus — c'est un pari sur une machine, et il
+        se perd exactement quand la machine est chargée. `mesure-ui.mjs` attend
+        cet état depuis toujours, et c'est la seule des gardes au navigateur qui
+        le faisait.
+
+        UNE GARDE QUI ROUGIT POUR UNE RAISON QUI N'EST PAS DANS LE CODE est pire
+        qu'une garde absente : elle apprend à relancer jusqu'au vert, et le jour
+        où le rouge est vrai, il est relancé aussi. L'échec de l'attente est donc
+        COMPTÉ et dit à la fin, plutôt qu'avalé — une police qui n'arrive jamais
+        ferait revenir le même faux rouge en silence.
+      */
+      await page
+        .waitForFunction(() => document.fonts.status === 'loaded', null, { timeout: 3000 })
+        .catch(() => policesEnRetard.push(`${adresse}@${largeur}`))
       await page.waitForTimeout(300)
 
       const h = await page.evaluate(() => {
@@ -282,5 +314,10 @@ if (plaintes.length > 0) {
 
 console.log(
   `\n✓ plafond-coquille : ${inspectes}/${ATTENDUS} écrans sous leur plafond de hauteur avant contenu.\n` +
-    '  Ce script ne dit RIEN de ce que cette hauteur contient — voir son en-tête.',
+    '  Ce script ne dit RIEN de ce que cette hauteur contient — voir son en-tête.' +
+    (policesEnRetard.length > 0
+      ? `\n  ⚠ ${policesEnRetard.length} point(s) mesuré(s) SANS que les polices soient prêtes : ` +
+        `${policesEnRetard.join(', ')}.\n` +
+        '  Les hauteurs de ces points sont celles de la police de repli, et le verdict ne vaut rien.'
+      : ''),
 )

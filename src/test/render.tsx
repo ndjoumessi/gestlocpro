@@ -7,6 +7,7 @@ import {
   type RenderResult,
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import type { ReactElement } from 'react'
 import { App, chargerEspaceApplicatif } from '@/App'
@@ -46,6 +47,36 @@ export interface PreferencesTest {
   session?: EtatSession | null
   /** État de navigation de la route de départ, comme le poserait `RequireAuth`. */
   state?: unknown
+  /**
+   * LA LARGEUR DE FENÊTRE QUE LE CAS ÉPROUVE, en pixels.
+   *
+   * ═══ POURQUOI LE HARNAIS DOIT LA DÉCLARER ═══
+   *
+   * jsdom ne calcule aucune mise en page, et sa `matchMedia` répond `false` à
+   * TOUT. Tant que le produit ne lisait ses points de rupture que dans la
+   * feuille de style, cela ne se voyait pas : les utilitaires responsifs
+   * cachent sans retirer, donc le DOM était le même à toute largeur et les cas
+   * y trouvaient ce qu'ils cherchaient.
+   *
+   * Ce n'est plus vrai. Les écrans-tableaux rendent désormais des FICHES sous
+   * `sm` et un TABLEAU au-dessus — deux arbres différents, choisis au rendu,
+   * précisément pour ne pas laisser la donnée deux fois dans le document. Un
+   * harnais qui répond « faux » à toute requête ne teste alors qu'une des deux
+   * formes, et sans le dire.
+   *
+   * ═══ LE DÉFAUT VAUT 1280, ET C'EST UN CHOIX ═══
+   *
+   * Ce n'est pas la largeur du marché visé — le téléphone l'est, et le dépôt le
+   * répète. C'est la largeur que les cas existants SUPPOSAIENT sans l'écrire :
+   * ils interrogent des `columnheader`, des `cell`, des `rowgroup`. Les faire
+   * basculer en fiches d'un coup aurait réécrit une trentaine de gardes du
+   * tableau — c'est-à-dire perdu la garde de la forme large en croyant gagner
+   * celle de la forme étroite.
+   *
+   * Un cas qui veut le téléphone le DEMANDE, et `fichesDuTableau.test.tsx` le
+   * fait. Les deux formes sont gardées, chacune à sa largeur.
+   */
+  largeur?: number
 }
 
 /**
@@ -225,6 +256,35 @@ export async function renderApp(
   // `I18nProvider` se rabat sur `navigator.language`, que jsdom annonce à
   // `en-US` : les tests basculaient en anglais et dépendaient donc de
   // l'environnement d'exécution plutôt que de ce qu'ils déclarent.
+  /*
+    `matchMedia` RÉPOND PAR LA LARGEUR, au lieu de répondre « faux » à tout.
+
+    Elle n'interprète que `min-width` en `rem` ou en pixels : ce sont les seules
+    requêtes que le produit pose — `useAuDela` les écrit en `rem` exprès, pour
+    suivre la feuille de style quand la police de base grossit. Toute autre
+    requête garde le comportement de jsdom, `false`, plutôt qu'une réponse
+    inventée : un cas qui dépendrait d'une requête non gérée doit rougir, pas
+    recevoir un oui de complaisance.
+
+    `vi.stubGlobal` : `setup.ts` appelle `unstubAllGlobals` après chaque cas, la
+    fuite d'un test à l'autre est donc déjà tenue.
+  */
+  const largeur = preferences.largeur ?? 1280
+  vi.stubGlobal('matchMedia', (requete: string) => {
+    const min = /min-width:\s*([\d.]+)(rem|px)/.exec(requete)
+    const seuil = min ? Number(min[1]) * (min[2] === 'rem' ? 16 : 1) : Infinity
+    return {
+      matches: largeur >= seuil,
+      media: requete,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    } as unknown as MediaQueryList
+  })
+
   window.localStorage.setItem('gestlocpro.locale', preferences.locale ?? 'fr')
   if (preferences.currency) window.localStorage.setItem('gestlocpro.currency', preferences.currency)
   if (preferences.region) window.localStorage.setItem('gestlocpro.region', preferences.region)
@@ -256,6 +316,35 @@ export function renderWithProviders(
   ui: ReactElement,
   preferences: PreferencesTest = {},
 ): RenderResult {
+  /*
+    `matchMedia` RÉPOND PAR LA LARGEUR, au lieu de répondre « faux » à tout.
+
+    Elle n'interprète que `min-width` en `rem` ou en pixels : ce sont les seules
+    requêtes que le produit pose — `useAuDela` les écrit en `rem` exprès, pour
+    suivre la feuille de style quand la police de base grossit. Toute autre
+    requête garde le comportement de jsdom, `false`, plutôt qu'une réponse
+    inventée : un cas qui dépendrait d'une requête non gérée doit rougir, pas
+    recevoir un oui de complaisance.
+
+    `vi.stubGlobal` : `setup.ts` appelle `unstubAllGlobals` après chaque cas, la
+    fuite d'un test à l'autre est donc déjà tenue.
+  */
+  const largeur = preferences.largeur ?? 1280
+  vi.stubGlobal('matchMedia', (requete: string) => {
+    const min = /min-width:\s*([\d.]+)(rem|px)/.exec(requete)
+    const seuil = min ? Number(min[1]) * (min[2] === 'rem' ? 16 : 1) : Infinity
+    return {
+      matches: largeur >= seuil,
+      media: requete,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    } as unknown as MediaQueryList
+  })
+
   window.localStorage.setItem('gestlocpro.locale', preferences.locale ?? 'fr')
   if (preferences.currency) window.localStorage.setItem('gestlocpro.currency', preferences.currency)
   if (preferences.region) window.localStorage.setItem('gestlocpro.region', preferences.region)
@@ -275,6 +364,67 @@ export function renderWithProviders(
       </I18nProvider>
     </MemoryRouter>,
   )
+}
+
+/**
+ * CLIQUE UNE ACTION D'ÉCRAN, QU'ELLE SOIT SOUS LES YEUX OU DANS LE MENU.
+ *
+ * Depuis que l'en-tête ne montre plus que deux commandes, les autres vivent
+ * derrière trois points. Un cas qui va chercher son bouton par son nom échoue
+ * alors sur une action qui n'a pas disparu — elle s'est repliée.
+ *
+ * Ce n'est PAS une commodité de harnais : c'est exactement le geste de
+ * l'utilisateur. Il cherche l'action ; si elle n'est pas là, il ouvre le menu.
+ * Un cas qui reproduit ce parcours reste juste quelle que soit la moitié de la
+ * rangée où l'action a atterri, et c'est la seule façon d'éviter que trente
+ * cas se figent sur une décision de mise en page.
+ *
+ * ELLE ÉCHOUE BRUYAMMENT si l'action n'est nulle part : pas de `queryBy`
+ * silencieux, pas de repli muet. Une action introuvable reste une régression.
+ */
+export async function cliquerAction(nom: RegExp | string): Promise<void> {
+  const user = userEvent.setup()
+  const direct = screen.queryByRole('button', { name: nom }) ?? screen.queryByRole('link', { name: nom })
+  if (direct) {
+    await user.click(direct)
+    return
+  }
+  /*
+    LES MENUS SONT ESSAYÉS UN À UN, EN COMMENÇANT PAR L'EN-TÊTE.
+
+    Deux niveaux replient désormais : la rangée d'actions de la page, et les
+    cartes d'intervention. Un même écran peut donc porter six déclencheurs, et
+    l'action cherchée est derrière l'un d'eux sans qu'on sache lequel — c'est
+    aussi vrai pour l'utilisateur, qui ouvre celui de la ligne qui l'intéresse.
+
+    L'EN-TÊTE D'ABORD, ET LA COQUILLE JAMAIS. Le menu de compte porte le même
+    `aria-haspopup` tout en haut du document : ouvert par mégarde, il mène à la
+    déconnexion et fait conclure que l'action n'existe nulle part. Il est écarté
+    par son ancêtre.
+
+    CHAQUE MENU EST REFERMÉ s'il ne portait pas ce qu'on cherchait : en laisser
+    un ouvert poserait un panneau au-dessus du suivant, et le clic d'après
+    tomberait dessus.
+  */
+  const enTete = document.querySelector('[data-en-tete-de-page]')
+  /* `Array.from` et non l'étalement : une `NodeListOf` n'est pas itérable sous
+     le `tsc` de ce dépôt — le piège est documenté ailleurs, il se paie ici. */
+  const declencheurs = [
+    ...Array.from(enTete?.querySelectorAll('[aria-haspopup="menu"]') ?? []),
+    ...Array.from(document.querySelectorAll('main [aria-haspopup="menu"]')),
+  ].filter((el, i, tous) => tous.indexOf(el) === i)
+
+  for (const declencheur of declencheurs) {
+    if (declencheur.getAttribute('aria-expanded') === 'true') continue
+    await user.click(declencheur as HTMLElement)
+    const dansLeMenu = screen.queryByRole('menuitem', { name: nom })
+    if (dansLeMenu) {
+      await user.click(dansLeMenu)
+      return
+    }
+    await user.keyboard('{Escape}')
+  }
+  throw new Error(`action introuvable, ni en clair ni au menu : ${String(nom)}`)
 }
 
 /**

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, userEvent, waitFor, within, attendreLeChargement } from '@/test/render'
+import { renderApp, screen, userEvent, waitFor, within, attendreLeChargement, cliquerAction } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur, type FauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 import type { Role } from '@/features/auth/signupState'
@@ -59,7 +59,7 @@ async function ouvrirLesReglages(delegation: 'solo' | 'delegate') {
   await renderApp('/app/parc', { session: session('owner', delegation) })
   await attendreLeChargement()
   const clavier = userEvent.setup()
-  await clavier.click(screen.getByRole('button', { name: /Corriger le parc/ }))
+  await cliquerAction(/Corriger le parc/)
   return clavier
 }
 
@@ -145,7 +145,7 @@ describe('la délégation se règle avec le reste du parc', () => {
     await renderApp('/app/parc', { session: session('owner', 'delegate') })
     await attendreLeChargement()
     const clavier = userEvent.setup()
-    await clavier.click(screen.getByRole('button', { name: /Corriger le parc/ }))
+    await cliquerAction(/Corriger le parc/)
 
     await clavier.selectOptions(
       await screen.findByRole('combobox', { name: /Délégation/i }),
@@ -173,7 +173,7 @@ describe('la délégation se règle avec le reste du parc', () => {
     await renderApp('/app/parc', { session: session('owner', 'delegate') })
     await attendreLeChargement()
     const clavier = userEvent.setup()
-    await clavier.click(screen.getByRole('button', { name: /Corriger le parc/ }))
+    await cliquerAction(/Corriger le parc/)
 
     await clavier.selectOptions(
       await screen.findByRole('combobox', { name: /Délégation/i }),

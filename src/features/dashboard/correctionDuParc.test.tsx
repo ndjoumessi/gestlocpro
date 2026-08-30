@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { attendreLeChargement, renderApp, screen, userEvent, within } from '@/test/render'
+import { attendreLeChargement, renderApp, screen, userEvent, within, cliquerAction } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur, type FauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 import type { Role } from '@/features/auth/signupState'
@@ -78,7 +78,7 @@ async function ouvrirLaCorrection() {
    * courir contre le `fetch`, et le bouton n'existe que chargé.
    */
   await attendreLeChargement()
-  await userEvent.setup().click(screen.getByRole('button', { name: 'Corriger le parc' }))
+  await cliquerAction('Corriger le parc')
   return screen.findByRole('dialog')
 }
 
@@ -109,7 +109,18 @@ describe('corriger le parc', () => {
      * pas pu lire, et poserait « France » une seconde fois sans le savoir.
      */
     expect(within(dialogue).getByLabelText(/Nom du parc/)).toHaveValue('Parc Bastos')
-    expect(within(dialogue).getByLabelText(/Pays/)).toHaveValue('FR')
+    /**
+     * LE PAYS SE LIT EN TOUTES LETTRES, et le code voyage à côté.
+     *
+     * Le champ était un `<select>` et portait « FR » ; c'est un champ CHERCHABLE
+     * depuis que deux cent quarante-deux pays y tiennent, et il affiche donc le
+     * nom. Le cas s'en trouve plus juste que ce qu'il vérifiait avant : ce que
+     * ce test veut prouver, c'est que le propriétaire LIT le pays de son parc,
+     * et « FR » n'était pas ce qu'il lisait. Le code ISO, lui, reste ce qui part
+     * au serveur — l'entrée cachée le porte, et le cas suivant l'envoie.
+     */
+    expect(within(dialogue).getByLabelText(/Pays/)).toHaveValue('France')
+    expect(dialogue.querySelector('input[name="countryCode"]')).toHaveValue('FR')
     expect(within(dialogue).getByLabelText(/Devise/)).toHaveValue('EUR')
   })
 

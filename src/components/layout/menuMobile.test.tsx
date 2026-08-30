@@ -2,6 +2,18 @@ import { describe, expect, it } from 'vitest'
 import { renderApp, screen, userEvent, within } from '@/test/render'
 
 /**
+ * LA LARGEUR QUE CES CAS ÉPROUVENT, déclarée plutôt que supposée.
+ *
+ * Ils tiennent des comportements de TÉLÉPHONE — le tiroir, la barre basse, la
+ * feuille du menu — et s'appuyaient jusqu'ici sur le fait que jsdom répond
+ * « faux » à toute requête média : la fenêtre y était donc étroite par accident.
+ * `renderApp` évalue désormais les seuils à partir d'une largeur, et son défaut
+ * est 1280 : au-dessus de `lg`, la coquille referme son tiroir et la vitrine
+ * ancre son panneau, ce qui est juste et ne laissait plus rien à observer ici.
+ */
+const TELEPHONE = 360
+
+/**
  * Menu mobile de la vitrine.
  *
  * Il recouvre la page et bloque le défilement, exactement comme le tiroir de
@@ -27,7 +39,7 @@ const ouvrir = () => screen.getByRole('button', { name: 'Ouvrir le menu' })
 describe('menu mobile de la vitrine', () => {
   it('retire l’arrière-plan du parcours de tabulation, sans toucher à l’en-tête', async () => {
     const user = userEvent.setup()
-    await renderApp('/')
+    await renderApp('/', { largeur: TELEPHONE })
 
     expect(screen.getByRole('main')).not.toHaveAttribute('inert')
 
@@ -46,7 +58,7 @@ describe('menu mobile de la vitrine', () => {
 
   it('prend le focus à l’ouverture', async () => {
     const user = userEvent.setup()
-    await renderApp('/')
+    await renderApp('/', { largeur: TELEPHONE })
 
     await user.click(ouvrir())
     expect(screen.getByTestId('menu-mobile')).toHaveFocus()
@@ -69,7 +81,7 @@ describe('menu mobile de la vitrine', () => {
   */
   it('porte les trois réglages, et la barre ne les porte plus', async () => {
     const user = userEvent.setup()
-    await renderApp('/')
+    await renderApp('/', { largeur: TELEPHONE })
 
     const declencheur = ouvrir()
     const barre = declencheur.closest('header') as HTMLElement
@@ -98,7 +110,7 @@ describe('menu mobile de la vitrine', () => {
 
   it('rend le focus au bouton d’ouverture à la fermeture', async () => {
     const user = userEvent.setup()
-    await renderApp('/')
+    await renderApp('/', { largeur: TELEPHONE })
 
     const declencheur = ouvrir()
     await user.click(declencheur)

@@ -3,13 +3,18 @@ import { useRole } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { DataTable, EmptyState } from '@/components/primitives/DataTable'
 import { JaugeDePoste, PaymentStatusPill, type PaymentStatus } from '@/components/primitives/StatusPill'
+import { GroupeDeFiltres } from '@/components/controls/GroupeDeFiltres'
 import { StatCard } from '@/components/primitives/Charts'
+import { DeltaBadge } from '@/components/primitives/Badge'
+import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDebordement'
+import { variationDesEncaissements } from '@/data/kpis'
 import {
   Skeleton,
   SkeletonRegion,
-  SkeletonStatCard,
+  SkeletonStatRow,
   SkeletonTable,
 } from '@/components/primitives/Skeleton'
+import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
 import { Button } from '@/components/primitives/Button'
 import { Modal } from '@/components/primitives/Modal'
 import { Field } from '@/components/primitives/Field'
@@ -51,6 +56,7 @@ export function Payments() {
     callRent,
     serveFormalNotice,
     receiptsForUnit,
+    collections,
   } = usePortfolio()
   const { notify } = useToast()
   const isTenant = role === 'tenant'
@@ -74,6 +80,9 @@ export function Payments() {
     [role, units, isMine],
   )
   const kpis = computeKpis(leases, readings)
+  /* La variation du mois sur le mois précédent — la même règle que le tableau de
+     bord, appelée au même endroit pour qu'elles ne puissent pas diverger. */
+  const variation = variationDesEncaissements(kpis.collected, collections)
 
   /**
    * Les six dernières périodes CONNUES, toutes unités confondues.
@@ -138,6 +147,75 @@ export function Payments() {
    */
   if (loading) return <PaymentsSkeleton isTenant={isTenant} />
 
+
+  /*
+    LES DEUX GESTES DE FIN DE MOIS, SORTIS DE LEUR BOUTON.
+
+    Ils vivaient en `onClick` dans la rangée d'actions ; ils vivent maintenant
+    derrière les trois points, et leur corps ne pouvait pas les suivre en ligne
+    sans rendre le menu illisible. Les nommer ici les rend aussi lisibles depuis
+    l'en-tête : « exporter le relevé », « appeler les loyers ».
+  */
+  const exporterLeReleve = () =>
+    exportCsv({
+        // Le filtre actif est dit par le nom du fichier : deux exports
+        // successifs d'un même mois ne se recouvrent pas en silence.
+        name:
+          filter === 'all'
+            ? t('app.files.payments')
+            : [t('app.files.payments'), t(`status.${filter}` as 'status.paid')],
+        headers: [
+          t('app.portfolio.unit'),
+          t('app.portfolio.tenant'),
+          csvMoney.header(t('app.payments.due')),
+          csvMoney.header(t('app.payments.paid')),
+          csvMoney.header(t('app.payments.balanceTotal')),
+          t('app.portfolio.status'),
+          t('app.payments.lateDays'),
+        ],
+        rows: rows.map((unit) => [
+          // Le libellé, pas l'identifiant technique : un fichier de
+          // suivi qui listerait des uuid serait inexploitable.
+          unit.label,
+          unit.tenant ?? t('app.portfolio.noTenant'),
+          csvMoney.amount(unit.rent),
+          csvMoney.amount(unit.paid),
+          /*
+            LE MÊME SOLDE QUE LE TABLEAU, et non l'écart du mois.
+
+            L'export écrivait `loyer − encaissé`, c'est-à-dire le mois
+            COURANT, sous un en-tête qui disait « Solde » — pendant
+            que la colonne à l'écran montre le solde CUMULÉ depuis le
+            début du bail. Sur un locataire en retard de plusieurs
+            mois, les deux chiffres divergent de tout l'arriéré, et
+            c'est le fichier exporté qui sert à réclamer.
+
+            Un export qui ne dit pas la même chose que l'écran dont il
+            part est pire qu'une absence d'export : on l'a lu à
+            l'écran, on le croit sur parole dans le tableur.
+          */
+          csvMoney.amount(
+            periodes.length > 0 ? soldeCumule(unit) : unit.rent - unit.paid,
+          ),
+          t(`status.${unit.status}` as 'status.paid'),
+          // Un nombre de jours n'est pas de l'argent, mais il se
+          // calcule aussi : groupé, il deviendrait du texte.
+          unit.overdueDays ?? null,
+        ]),
+      })
+
+  const appelerLesLoyers = async () => {
+    const maintenant = new Date()
+    const mois = `${maintenant.getFullYear()}-${String(maintenant.getMonth() + 1).padStart(2, '0')}-01`
+    const emises = await callRent(mois)
+    notify(
+      emises > 0
+        ? t('app.payments.rentCalled', { count: emises })
+        : t('app.payments.rentAlreadyCalled'),
+      { tone: emises > 0 ? 'ok' : 'neutral' },
+    )
+  }
+
   return (
     <>
       <PageHeader
@@ -145,100 +223,17 @@ export function Payments() {
         description={t('app.payments.subtitle')}
         actions={
           <>
-            {/* L'export part de `rows` et non de `units` : le filtre de statut
-                et le périmètre du locataire sont déjà posés dessus. Exporter la
-                source aurait sorti du fichier ce que l'écran refuse de montrer
-                — y compris les baux des voisins, pour un locataire. */}
-            <Button
-              variant="secondary"
-              icon="download"
-              onClick={() =>
-                exportCsv({
-                  // Le filtre actif est dit par le nom du fichier : deux exports
-                  // successifs d'un même mois ne se recouvrent pas en silence.
-                  name:
-                    filter === 'all'
-                      ? t('app.files.payments')
-                      : [t('app.files.payments'), t(`status.${filter}` as 'status.paid')],
-                  headers: [
-                    t('app.portfolio.unit'),
-                    t('app.portfolio.tenant'),
-                    csvMoney.header(t('app.payments.due')),
-                    csvMoney.header(t('app.payments.paid')),
-                    csvMoney.header(t('app.payments.balanceTotal')),
-                    t('app.portfolio.status'),
-                    t('app.payments.lateDays'),
-                  ],
-                  rows: rows.map((unit) => [
-                    // Le libellé, pas l'identifiant technique : un fichier de
-                    // suivi qui listerait des uuid serait inexploitable.
-                    unit.label,
-                    unit.tenant ?? t('app.portfolio.noTenant'),
-                    csvMoney.amount(unit.rent),
-                    csvMoney.amount(unit.paid),
-                    /*
-                      LE MÊME SOLDE QUE LE TABLEAU, et non l'écart du mois.
+            {/* DEUX COMMANDES SOUS LES YEUX, LE RESTE À UN GESTE.
 
-                      L'export écrivait `loyer − encaissé`, c'est-à-dire le mois
-                      COURANT, sous un en-tête qui disait « Solde » — pendant
-                      que la colonne à l'écran montre le solde CUMULÉ depuis le
-                      début du bail. Sur un locataire en retard de plusieurs
-                      mois, les deux chiffres divergent de tout l'arriéré, et
-                      c'est le fichier exporté qui sert à réclamer.
+                L'écran en portait quatre — mesuré par `PageHeader` lui-même :
+                « 812 px de boutons dans 700 px de fenêtre ». À 360 px elles
+                s'empilaient sur ~250 px, un tiers de la hauteur utile d'un
+                téléphone avant le premier chiffre.
 
-                      Un export qui ne dit pas la même chose que l'écran dont il
-                      part est pire qu'une absence d'export : on l'a lu à
-                      l'écran, on le croit sur parole dans le tableur.
-                    */
-                    csvMoney.amount(
-                      periodes.length > 0 ? soldeCumule(unit) : unit.rent - unit.paid,
-                    ),
-                    t(`status.${unit.status}` as 'status.paid'),
-                    // Un nombre de jours n'est pas de l'argent, mais il se
-                    // calcule aussi : groupé, il deviendrait du texte.
-                    unit.overdueDays ?? null,
-                  ]),
-                })
-              }
-            >
-              {t('app.exportStatement')}
-            </Button>
-            {/* Enregistrer un encaissement est un geste de gestion : le
-                locataire consulte, il ne saisit pas. */}
-            {/* Proposé seulement s'il y a des retards : un bouton qui ne peut
-                rien faire occupe la place d'une action utile, et la grille
-                tarifaire vend justement cette fonction. */}
-            {/*
-              APPELER LES LOYERS : le geste sans lequel rien n'est jamais dû.
-
-              Une échéance n'existait que comme effet de bord d'un encaissement.
-              Le locataire qui ne paie pas n'en avait donc aucune, et n'était
-              JAMAIS en retard : ni reste à percevoir, ni relance, ni mise en
-              demeure. Un loyer est dû parce que le mois est là, pas parce que
-              quelqu'un a payé.
-
-              Sans effet s'il a déjà été passé : le compte rendu le dit plutôt
-              que de laisser croire à une seconde dette.
-            */}
-            {!isTenant && (
-              <Button
-                variant="secondary"
-                icon="calendar"
-                onClick={async () => {
-                  const maintenant = new Date()
-                  const mois = `${maintenant.getFullYear()}-${String(maintenant.getMonth() + 1).padStart(2, '0')}-01`
-                  const emises = await callRent(mois)
-                  notify(
-                    emises > 0
-                      ? t('app.payments.rentCalled', { count: emises })
-                      : t('app.payments.rentAlreadyCalled'),
-                    { tone: emises > 0 ? 'ok' : 'neutral' },
-                  )
-                }}
-              >
-                {t('app.payments.callRent')}
-              </Button>
-            )}
+                Ce qui reste est ce qu'on fait tous les jours : relancer un
+                retard, encaisser. L'export et l'appel des loyers sont des
+                gestes de fin de mois — ils passent derrière les trois points,
+                sans rien perdre. */}
             {!isTenant && retards.length > 0 && (
               <Button variant="secondary" icon="bell" onClick={() => setRelanceOuverte(true)}>
                 {t('app.payments.remind')}
@@ -251,12 +246,24 @@ export function Payments() {
             )}
           </>
         }
+        debordement={
+          <MenuDeDebordement libelle={t('common.moreActions')}>
+            <MenuElement icone="download" onClick={exporterLeReleve}>
+              {t('app.exportStatement')}
+            </MenuElement>
+            {!isTenant && (
+              <MenuElement icone="calendar" onClick={appelerLesLoyers}>
+                {t('app.payments.callRent')}
+              </MenuElement>
+            )}
+          </MenuDeDebordement>
+        }
       />
 
       {isTenant ? (
-        <TenantScopeNote />
+        <TenantScopeNote className="mb-4" />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className={GRILLE_TROIS_INDICATEURS}>
           {/*
             MÊME HIÉRARCHIE QUE LE TABLEAU DE BORD, et le décideur change parce
             que le geste change. Ici l'écran monte la relance et la mise en
@@ -268,51 +275,66 @@ export function Payments() {
             chercher l'autre.
           */}
           <StatCard
+            icone="clock"
+            /**
+             * LE MÊME ARGENT QUE SUR LE TABLEAU DE BORD, DONC LE MÊME POIDS.
+             *
+             * Cette carte était neutre et calme, quand la même somme est rouge et
+             * pastillée deux écrans plus loin. L'état suivait l'ÉCRAN au lieu de
+             * suivre le CONCEPT : un retard n'est pas moins un retard parce
+             * qu'on le regarde depuis la page des paiements — c'est même la page
+             * d'où l'on relance.
+             *
+             * SANS PASTILLE, et c'est la seule carte du produit où l'omission va
+             * de soi : elle s'INTITULE « En retard ». La pastille du tableau de
+             * bord existe parce que « Reste à percevoir » ne dit rien de
+             * fâcheux ; ici l'intitulé EST le mot d'état, et le répéter à trois
+             * centimètres n'apprendrait rien. La couleur n'est donc pas seule —
+             * le texte qui la double est le titre lui-même.
+             *
+             * La condition est celle d'ailleurs : sur un parc sans retard, la
+             * carte redevient l'une des trois.
+             */
+            etat={kpis.late > 0 ? { ton: 'danger' } : undefined}
             label={t('app.dashboard.recoveryLate')}
-            value={money(kpis.late, { round: true })}
+            value={money(kpis.late, { compact: true })}
           />
+          {/* LA MÊME COMPARAISON QUE SUR LE TABLEAU DE BORD, et calculée au même
+              endroit : les deux écrans affichent le MÊME nombre — `collected` —
+              et une variation calculée deux fois pourrait diverger deux fois.
+              Voir `variationDesEncaissements`. */}
           <StatCard
+            icone="card"
             label={t('app.dashboard.recoveryCollected')}
-            value={money(kpis.collected, { round: true })}
+            value={money(kpis.collected, { compact: true })}
+            delta={variation ? <DeltaBadge value={variation.pourcentage} suffix="%" /> : undefined}
+            note={
+              variation
+                ? t('app.dashboard.vsPrevious', { amount: money(variation.base, { compact: true }) })
+                : undefined
+            }
           />
           <StatCard
+            icone="layers"
             label={t('app.dashboard.expected')}
-            value={money(kpis.expected, { round: true })}
+            value={money(kpis.expected, { compact: true })}
           />
         </div>
       )}
 
-      <div role="group" aria-label={t('app.portfolio.status')} className="mt-6 mb-4 flex flex-wrap gap-2">
-        {FILTERS.map((value) => {
-          const active = filter === value
-          const count =
-            value === 'all' ? leases.length : leases.filter((u) => u.status === value).length
-          return (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={active}
-              onClick={() => setFilter(value)}
-              className={cn(
-                'inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3.5',
-                'text-label font-semibold transition-colors duration-150',
-                active
-                  ? 'border-ink bg-ink text-on-dark'
-                  : 'border-border bg-surface text-muted hover:border-border-strong hover:text-ink',
-              )}
-            >
-              {value === 'all' ? t('app.payments.filterAll') : t(`status.${value}` as 'status.paid')}
-              {/* `gold-on-ink` : le filtre actif peint son fond en `--color-ink`,
-                  qui s'inverse avec le thème. À 12 px ce compteur est du texte,
-                  donc il lui faut 4,5:1 — l'or de marque n'en donnait que 2,33
-                  en sombre. */}
-              <span className={cn('numeric text-caps', active ? 'text-gold-on-ink' : 'text-muted')}>
-                {count}
-              </span>
-            </button>
-          )
-        })}
-      </div>
+      <GroupeDeFiltres
+        libelle={t('app.portfolio.status')}
+        valeur={filter}
+        onChange={setFilter}
+        className="mt-6 mb-4"
+        options={FILTERS.map((value) => ({
+          valeur: value,
+          libelle:
+            value === 'all' ? t('app.payments.filterAll') : t(`status.${value}` as 'status.paid'),
+          compte:
+            value === 'all' ? leases.length : leases.filter((u) => u.status === value).length,
+        }))}
+      />
 
       {/*
         LA LÉGENDE, et elle n'est pas décorative.
@@ -351,6 +373,7 @@ export function Payments() {
         caption={t('app.payments.title')}
         rows={rows}
         rowKey={(unit) => unit.id}
+        fiches
         empty={
           <EmptyState
             icon="card"
@@ -367,6 +390,7 @@ export function Payments() {
         columns={[
           {
             key: 'unit',
+            role: 'identite',
             header: t('app.portfolio.unit'),
             width: '5.5rem',
             render: (unit) => <span className="numeric font-medium">{unit.label}</span>,
@@ -385,9 +409,14 @@ export function Payments() {
              */
             render: (unit) => (
               <div className="min-w-0">
-                <p className="truncate">{unit.tenant}</p>
+                {/* `data-donnee` : un nom de locataire est saisi, sa longueur
+                    n'est bornée par rien — la coupe est assumée, contrairement
+                    au vocabulaire du produit. Voir `MESURER_TRONCATURES`. */}
+                <p data-donnee className="truncate">
+                  {unit.tenant}
+                </p>
                 <p className="numeric mt-0.5 text-caps text-muted">
-                  {money(unit.rent, { round: true })}
+                  {money(unit.rent, { compact: true })}
                 </p>
               </div>
             ),
@@ -410,57 +439,42 @@ export function Payments() {
            * existent : sur un parc dont aucune échéance n'est enregistrée, une
            * grille de tirets se lirait comme une panne.
            */
-          ...(periodes.length > 0
-            ? periodes.map((periode) => ({
-                key: `p-${periode.year}-${periode.month}`,
-                header: d.monthShort(periode),
-                hideOnMobile: true,
-                render: (unit: Unit) => (
-                  <CellulePeriode
-                    receipt={receiptsForUnit(unit.id).find(
-                      (r) => r.year === periode.year && r.month === periode.month,
-                    )}
-                    periode={d.monthYear(periode)}
-                  />
-                ),
-              }))
-            : [
-                {
-                  key: 'due',
-                  header: t('app.payments.due'),
-                  numeric: true,
-                  hideOnMobile: true,
-                  render: (unit: Unit) => money(unit.rent, { round: true }),
-                },
-                {
-                  key: 'paid',
-                  header: t('app.payments.paid'),
-                  numeric: true,
-                  render: (unit: Unit) => money(unit.paid, { round: true }),
-                },
-              ]),
-          {
-            key: 'balance',
-            header: t('app.payments.balanceTotal'),
-            numeric: true,
-            render: (unit) => {
-              // Cumulé quand l'historique existe, sinon l'écart du mois — la
-              // seule chose que l'on sache alors.
-              const balance = periodes.length > 0 ? soldeCumule(unit) : unit.rent - unit.paid
-              if (balance === 0) return <span className="text-muted">{money(0, { round: true })}</span>
-              // Une AVANCE n'est pas une dette : elle se lit en clair, avec son
-              // signe, et jamais en rouge.
-              return (
-                <span className={cn(balance > 0 ? 'font-medium text-danger' : 'text-ok')}>
-                  {balance > 0 ? '−' : '+'}
-                  {money(Math.abs(balance), { round: true })}
-                </span>
-              )
-            },
-          },
+          /*
+            LE VERDICT ET LE SOLDE PASSENT DEVANT L'HISTOIRE, et c'est une
+            décision de mise en page autant que de lecture.
+
+            Ils vivaient à droite, après les six périodes — la place
+            habituelle d'un statut dans un tableau. Mesuré : la table fait
+            1063 px dans un conteneur de 958 à 1280 px de fenêtre. Tout ce qui
+            est à droite des périodes tombe donc hors champ, et c'est
+            précisément ce qu'on vient lire : combien, et où on en est.
+
+            Rendre le geste COLLANT l'a ramené sous les yeux, mais il
+            recouvrait alors la pastille — « À j… », « En… ». Le remède avait
+            déplacé le défaut d'une colonne.
+
+            Ce qui doit défiler, c'est L'HISTOIRE. Une suite de six mois est
+            faite pour être parcourue ; un verdict et un solde sont faits pour
+            être vus. L'ordre suit donc la question qu'on se pose : qui, où il
+            en est, combien, puis depuis quand. Le geste reste au bord droit,
+            collant, et ce sont les mois qui passent dessous.
+          */
           {
             key: 'status',
-            header: t('app.portfolio.status'),
+            role: 'etat',
+            /*
+              LA COLONNE NOMME SA PORTÉE, et c'est le seul écran du produit où
+              elle le doit. Ailleurs — le Parc, les locataires — « Statut » est
+              sans ambiguïté : rien à côté ne parle d'une autre période. Ici la
+              colonne voisine annonce le solde du BAIL ENTIER et la pastille
+              celui du MOIS ; deux portées côte à côte, dont une seule était
+              nommée, avec un rouge d'un côté et un vert de l'autre.
+
+              Le Parc résout la même ambiguïté par une phrase de sous-titre —
+              « Le statut porte sur le mois affiché ». L'en-tête vaut mieux : il
+              reste sous les yeux quand on lit la vingtième ligne.
+            */
+            header: t('app.payments.statusMonth'),
             render: (unit) => (
               <div className="flex items-center gap-2">
                 <PaymentStatusPill status={unit.status} size="sm" />
@@ -478,27 +492,121 @@ export function Payments() {
                     {t('app.payments.overdueDays', { days: unit.overdueDays })}
                   </span>
                 ) : null}
+                {/*
+                  CE QUE LA PASTILLE VERTE NE DIT PAS.
+
+                  Un bail dont le mois courant est réglé mais qui traîne un
+                  reliquat d'une période antérieure affichait « −5 058 FCFA » en
+                  rouge d'alerte et « À jour » en vert de succès, sur la même
+                  ligne, sans un mot. Les deux sont exacts et ne répondent pas à
+                  la même question ; le lecteur, lui, en conclut que l'un des
+                  deux se trompe.
+
+                  La mention va où va déjà « +24 j » — le qualificatif de la
+                  pastille — et pour la même raison : la pastille rend un verdict
+                  sur le mois, ce mot dit ce qu'il faut savoir de plus pour le
+                  lire juste. Un seul mot, comme son voisin : le montant est dans
+                  la colonne d'à côté, et le répéter ici ferait deux fois le même
+                  chiffre sur la même ligne.
+
+                  UNIQUEMENT SUR LE VERT. Une pastille « Partiel » ou « En
+                  retard » annonce déjà qu'il reste dû : y ajouter « reliquat »
+                  serait la mention permanente que ce dépôt refuse partout
+                  ailleurs. La contradiction n'existe que quand l'état dit
+                  « rien à faire » et que le solde dit le contraire.
+                */}
+                {unit.status === 'paid' && soldeCumule(unit) > 0 ? (
+                  <span className="text-caps whitespace-nowrap text-muted">
+                    {t('app.payments.carried')}
+                  </span>
+                ) : null}
               </div>
             ),
           },
           {
+            key: 'balance',
+            role: 'valeur',
+            header: t('app.payments.balanceTotal'),
+            numeric: true,
+            render: (unit) => {
+              // Cumulé quand l'historique existe, sinon l'écart du mois — la
+              // seule chose que l'on sache alors.
+              const balance = periodes.length > 0 ? soldeCumule(unit) : unit.rent - unit.paid
+              if (balance === 0) return <span className="text-muted">{money(0, { compact: true })}</span>
+              // Une AVANCE n'est pas une dette : elle se lit en clair, avec son
+              // signe, et jamais en rouge.
+              return (
+                <span className={cn(balance > 0 ? 'font-medium text-danger' : 'text-ok')}>
+                  {balance > 0 ? '−' : '+'}
+                  {money(Math.abs(balance), { compact: true })}
+                </span>
+              )
+            },
+          },
+          ...(periodes.length > 0
+            ? periodes.map((periode) => ({
+                key: `p-${periode.year}-${periode.month}`,
+                role: 'serie' as const,
+                header: d.monthShort(periode),
+                hideOnMobile: true,
+                render: (unit: Unit) => (
+                  <CellulePeriode
+                    receipt={receiptsForUnit(unit.id).find(
+                      (r) => r.year === periode.year && r.month === periode.month,
+                    )}
+                    periode={d.monthYear(periode)}
+                  />
+                ),
+              }))
+            : [
+                {
+                  key: 'due',
+                  header: t('app.payments.due'),
+                  numeric: true,
+                  hideOnMobile: true,
+                  render: (unit: Unit) => money(unit.rent, { compact: true }),
+                },
+                {
+                  key: 'paid',
+                  header: t('app.payments.paid'),
+                  numeric: true,
+                  render: (unit: Unit) => money(unit.paid, { compact: true }),
+                },
+              ]),
+          {
             key: 'receipt',
+            role: 'geste',
             header: '',
             render: (unit) =>
               // Offert seulement s'il y a quelque chose à attester : sur un
               // logement vacant, le bouton n'aurait aucun sens.
               unit.tenant ? (
-                <div className="flex justify-end gap-1">
+                /* `flex-wrap` : deux gestes sur une ligne de fiche, et à 320 px
+                   ils ne tiennent pas côte à côte — mesuré, 28 px de
+                   débordement LOCAL, celui qui sort de la carte sans faire
+                   défiler la page. Sans repli, le groupe impose sa largeur de
+                   contenu à une carte qui, elle, ne peut pas s'élargir.
+
+                   Le défaut préexistait en français et se cachait derrière un
+                   libellé anglais plus long, qui le rendait plus visible : ce
+                   lot n'a fait que le sortir en offrant le geste sur toutes les
+                   lignes en retard. */
+                <div className="flex flex-wrap justify-end gap-1">
                   {/* Droit du seul PROPRIÉTAIRE, comme la validation d'un devis
                       et l'arbitrage d'une caution : le gestionnaire propose, il
                       ne décide pas. Le serveur le refuse aussi — ce masquage
                       évite d'offrir un geste voué au refus, il ne le remplace
                       pas.
 
-                      `leaseId` conditionne l'affichage : en démonstration aucun
-                      bail ne porte d'identifiant serveur, et il n'y a rien à
-                      mettre en demeure. */}
-                  {role === 'owner' && (unit.overdueDays ?? 0) > 0 && unit.leaseId ? (
+                      LE GESTE S'OFFRE AUSSI EN DÉMONSTRATION. `leaseId`
+                      conditionnait l'affichage, et le motif tenait : sans parc
+                      serveur la confirmation ne faisait rien. Le fournisseur
+                      nomme désormais cette issue — voir `serveFormalNotice` —
+                      donc la boîte peut s'ouvrir et RÉPONDRE. Le bail est
+                      désigné comme dans la relance en masse, quelques lignes
+                      plus bas : son identifiant serveur s'il existe, celui de
+                      l'unité sinon. */}
+                  {role === 'owner' && (unit.overdueDays ?? 0) > 0 ? (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -622,11 +730,25 @@ export function Payments() {
                     return
                   }
                   setEnCours(true)
-                  const ok = await serveFormalNotice(enDemeure.leaseId!, motif.trim())
+                  const issue = await serveFormalNotice(
+                    enDemeure.leaseId ?? enDemeure.id,
+                    motif.trim(),
+                  )
                   setEnCours(false)
-                  if (!ok) return
+                  if (issue === 'echec') return
                   setEnDemeure(null)
-                  notify(t('app.payments.noticeDone'), { tone: 'ok' })
+                  /* LA PHRASE SUIT CE QUI A EU LIEU. « Enregistrée au dossier
+                     du bail » serait faux en démonstration, où aucun dossier
+                     n'existe : on y dit ce qu'on ne fait pas, du ton neutre
+                     réservé à ce qui n'est ni un succès ni un échec. */
+                  notify(
+                    t(
+                      issue === 'demonstration'
+                        ? 'app.payments.noticeDemo'
+                        : 'app.payments.noticeDone',
+                    ),
+                    { tone: issue === 'demonstration' ? 'neutral' : 'ok' },
+                  )
                 }}
               >
                 {t('common.confirm')}
@@ -694,11 +816,7 @@ function PaymentsSkeleton({ isTenant }: { isTenant: boolean }) {
           // encore.
           <Skeleton radius="md" className="mb-4 h-11 w-full max-w-lg" />
         ) : (
-          <div className="grid gap-4 sm:grid-cols-3">
-            {[0, 1, 2].map((carte) => (
-              <SkeletonStatCard key={carte} />
-            ))}
-          </div>
+          <SkeletonStatRow count={3} className={GRILLE_TROIS_INDICATEURS} />
         )}
 
         {/* Quatre filtres, exactement comme `FILTERS` : leur nombre ne dépend

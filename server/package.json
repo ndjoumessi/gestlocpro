@@ -19,11 +19,13 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
+    "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "express": "^5.1.0",
     "zod": "^4.1.13"
   },
   "devDependencies": {
+    "@types/compression": "^1.8.1",
     "@types/cookie-parser": "^1.4.9",
     "@types/express": "^5.0.5",
     "@types/node": "^24.13.3",

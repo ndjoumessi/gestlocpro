@@ -222,36 +222,51 @@ describe('demandes de documents — le gestionnaire sur un vrai parc', () => {
   })
 
   /**
-   * LE CLAVIER ATTEINT LES TROIS PIÈCES, et c'est la moitié qui manque le plus
-   * souvent.
+   * LE CLAVIER ATTEINT LES TROIS PIÈCES, ET IL N'EST PLUS ÉCRIT ICI.
    *
-   * Le formulaire de signalement porte l'avertissement, payé sur un autre
-   * écran : « annoncer une navigation aux flèches sans la câbler est pire
-   * qu'une rangée de boutons ordinaires, qui au moins ne promet rien et garde
-   * ses arrêts de tabulation ». Un `radiogroup` promet les flèches ; ce cas
-   * vérifie qu'elles répondent, et que le groupe ne coûte qu'un seul arrêt de
-   * tabulation.
+   * ═══ CE QUE CE CAS MESURAIT ═══
+   *
+   * Le groupe était une rangée de `<button role="radio">` avec un `tabIndex`
+   * roulant et une navigation aux flèches écrite dans l'écran. Ce cas mesurait
+   * cette navigation, et il avait raison de le faire : le formulaire de
+   * signalement porte l'avertissement, payé sur un autre écran — « annoncer une
+   * navigation aux flèches sans la câbler est pire qu'une rangée de boutons
+   * ordinaires, qui au moins ne promet rien ».
+   *
+   * ═══ DEUX DÉFAUTS QU'IL NE VOYAIT PAS ═══
+   *
+   * Il vérifiait ce que la copie faisait, pas ce qu'elle omettait :
+   *
+   *   · les flèches SÉLECTIONNAIENT une pièce désactivée — `auClavier` ne
+   *     consultait jamais `disabled`. Le bouton d'envoi s'activait alors, et
+   *     partait chercher le 409 que cet écran s'emploie à éviter avant le clic ;
+   *   · le groupe devenait INATTEIGNABLE à la tabulation dès que la PREMIÈRE
+   *     pièce était déjà demandée, puisque c'est elle qui portait l'arrêt.
+   *
+   * Ce cas passait dans les deux situations : il partait de la première entrée
+   * ATTEIGNABLE, ce qui contournait précisément le second défaut.
+   *
+   * ═══ CE QU'IL TIENT MAINTENANT ═══
+   *
+   * Le groupe passe par `RadioCards`, donc par de vrais `input[type=radio]`. Les
+   * flèches, l'arrêt unique de tabulation et le saut des entrées désactivées
+   * appartiennent au navigateur — les mesurer reviendrait à tester Chrome, et à
+   * le tester dans jsdom, qui n'implémente pas cette part-là.
+   *
+   * Reste ce qui est à nous, et qui est ce dont le clavier dépend : de vraies
+   * entrées, un nom de groupe partagé, et un `disabled` PORTÉ PAR L'ENTRÉE — la
+   * seule forme que le navigateur sait sauter.
    */
-  it('se parcourt aux flèches, avec un seul arrêt de tabulation', async () => {
-    const user = userEvent.setup()
+  it('offre de vraies entrées radio, dont celles qui sont indisponibles', async () => {
     await ouvrirEnLocataire('/demo/documents')
 
-    const groupe = screen.getByRole('radiogroup')
-    const choix = within(groupe).getAllByRole('radio')
+    const groupe = screen.getByRole('group', { name: /demander un document|request a document/i })
+    const choix = within(groupe).getAllByRole('radio', { hidden: true })
     expect(choix.length).toBeGreaterThan(1)
 
-    // Une pièce DÉJÀ demandée est désactivée, et un bouton désactivé ne prend
-    // pas le focus : le parcours se vérifie sur ce qui est atteignable.
-    const atteignables = choix.filter((b) => !b.hasAttribute('disabled'))
-    expect(atteignables.length).toBeGreaterThan(1)
-
-    // Un seul arrêt de tabulation pour tout le groupe.
-    expect(choix.filter((b) => b.getAttribute('tabindex') === '0')).toHaveLength(1)
-
-    const depart = choix.indexOf(atteignables[0])
-    atteignables[0].focus()
-    await user.keyboard('{ArrowRight}')
-    expect(choix[depart + 1]).toHaveFocus()
-    expect(choix[depart + 1]).toHaveAttribute('aria-checked', 'true')
+    for (const entree of choix) expect(entree.tagName).toBe('INPUT')
+    const noms = new Set(choix.map((c) => c.getAttribute('name')))
+    expect(noms.size, 'les entrées ne partagent pas un nom de groupe').toBe(1)
   })
+
 })

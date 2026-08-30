@@ -1,4 +1,22 @@
 import type { PaymentStatus } from '@/components/primitives/StatusPill'
+/**
+ * LA SEULE PREUVE QUE LA DÉMONSTRATION PORTE, et elle est INLINÉE.
+ *
+ * `?inline` n'est pas une préférence : `poids-ecrans` refuse toute REQUÊTE de
+ * plus sur un écran mesuré — « les octets se rapportent, les requêtes se
+ * refusent ». Servie en fichier à part, cette image serait un aller-retour
+ * supplémentaire, donc un veto ; dans le paquet, elle n'est qu'une ligne à
+ * arbitrer. Le suffixe est ÉCRIT plutôt que laissé au seuil d'inlining de Vite
+ * (4 096 o par défaut, et le fichier en fait 4 997) : un seuil ferait basculer
+ * l'image en requête le jour où quelqu'un la retaille, sans que rien ne le
+ * dise avant la porte.
+ *
+ * Sa provenance, son recadrage et ce qu'il a retiré vivent dans
+ * `fixtures/PROVENANCE.md`, versionné avec elle.
+ */
+import peintureEcaillee1 from './fixtures/peinture-ecaillee-1.jpg?inline'
+import peintureEcaillee2 from './fixtures/peinture-ecaillee-2.jpg?inline'
+import peintureEcaillee3 from './fixtures/peinture-ecaillee-3.jpg?inline'
 
 /**
  * Jeu de démonstration : 3 immeubles, 12 unités, 12 mois d'historique.
@@ -99,20 +117,41 @@ export interface Unit {
   tenantId?: string
 }
 
-export const UNITS: Unit[] = [
-  { id: 'A1', buildingId: 'bon', label: 'A1', type: 'T3', surface: 78, rent: 145000, tenant: 'Charles Ngassa', phone: '+237 6 77 21 44 08', leaseStart: { year: 2024, month: 5, day: 15 }, paid: 145000, status: 'paid' },
-  { id: 'A2', buildingId: 'bon', label: 'A2', type: 'T2', surface: 54, rent: 110000, tenant: 'Mireille Fotso', phone: '+237 6 99 03 51 72', leaseStart: { year: 2023, month: 9, day: 1 }, paid: 110000, status: 'paid' },
-  { id: 'A3', buildingId: 'bon', label: 'A3', type: 'T2', surface: 56, rent: 115000, tenant: 'Serge Mbarga', phone: '+237 6 55 84 20 31', leaseStart: { year: 2025, month: 2, day: 1 }, paid: 0, status: 'overdue', overdueDays: 24 },
-  { id: 'A4', buildingId: 'bon', label: 'A4', type: 'T4', surface: 96, rent: 180000, tenant: 'Famille Owona', phone: '+237 6 70 12 96 45', leaseStart: { year: 2026, month: 2, day: 15 }, paid: 180000, status: 'paid' },
-  { id: 'A5', buildingId: 'bon', label: 'A5', type: 'T1', surface: 38, rent: 75000, tenant: 'Aline Tchoumi', phone: '+237 6 94 37 08 12', leaseStart: { year: 2026, month: 1, day: 2 }, paid: 40000, status: 'partial' },
+/**
+ * LES UNITÉS OCCUPÉES DE LA DÉMONSTRATION PORTENT UN `tenantId`, et ce n'est
+ * pas de la décoration.
+ *
+ * « Retirer la fiche » n'est offert que si l'unité en porte un — le serveur
+ * supprime par identifiant de LOCATAIRE, pas par logement, et proposer un geste
+ * sans de quoi l'exécuter ferait un bouton qui échoue. La règle est juste ;
+ * aucune unité de démonstration n'en portait, si bien que le bouton
+ * n'apparaissait JAMAIS hors d'un vrai parc.
+ *
+ * Conséquence, et elle a été mesurée : toute la colonne de geste des locataires
+ * échappait au balayage — `mesure-ui` ne mesure que ce que la démonstration
+ * rend. Trouvée par une mutation qui a ÉCHOUÉ : icône retirée de ce bouton-ci,
+ * la garde du glyphe est restée verte.
+ *
+ * `loc-<unité>` reprend la forme déjà employée par les cas — « loc-B2 »,
+ * « loc-C1 » dans `messageAuLocataire`. Sur un vrai parc, c'est un `uuid` : ce
+ * que la démonstration doit rendre vrai, c'est qu'il EXISTE et qu'il est
+ * distinct par personne, pas sa forme.
+ */
 
-  { id: 'B1', buildingId: 'akw', label: 'B1', type: 'T3', surface: 82, rent: 160000, tenant: 'Jean-Paul Eboa', phone: '+237 6 78 45 11 90', leaseStart: { year: 2023, month: 7, day: 1 }, paid: 160000, status: 'paid' },
-  { id: 'B2', buildingId: 'akw', label: 'B2', type: 'T3', surface: 80, rent: 155000, tenant: 'Nadia Belinga', phone: '+237 6 51 60 73 24', leaseStart: { year: 2024, month: 10, day: 1 }, paid: 0, status: 'overdue', overdueDays: 9 },
-  { id: 'B3', buildingId: 'akw', label: 'B3', type: 'T2', surface: 58, rent: 120000, tenant: 'Éric Ndongo', phone: '+237 6 96 82 30 57', leaseStart: { year: 2025, month: 5, day: 1 }, paid: 120000, status: 'paid' },
+export const UNITS: Unit[] = [
+  { id: 'A1', buildingId: 'bon', label: 'A1', type: 'T3', surface: 78, rent: 145000, tenant: 'Charles Ngassa', tenantId: 'loc-A1', phone: '+237 6 77 21 44 08', leaseStart: { year: 2024, month: 5, day: 15 }, paid: 145000, status: 'paid' },
+  { id: 'A2', buildingId: 'bon', label: 'A2', type: 'T2', surface: 54, rent: 110000, tenant: 'Mireille Fotso', tenantId: 'loc-A2', phone: '+237 6 99 03 51 72', leaseStart: { year: 2023, month: 9, day: 1 }, paid: 110000, status: 'paid' },
+  { id: 'A3', buildingId: 'bon', label: 'A3', type: 'T2', surface: 56, rent: 115000, tenant: 'Serge Mbarga', tenantId: 'loc-A3', phone: '+237 6 55 84 20 31', leaseStart: { year: 2025, month: 2, day: 1 }, paid: 0, status: 'overdue', overdueDays: 24 },
+  { id: 'A4', buildingId: 'bon', label: 'A4', type: 'T4', surface: 96, rent: 180000, tenant: 'Famille Owona', tenantId: 'loc-A4', phone: '+237 6 70 12 96 45', leaseStart: { year: 2026, month: 2, day: 15 }, paid: 180000, status: 'paid' },
+  { id: 'A5', buildingId: 'bon', label: 'A5', type: 'T1', surface: 38, rent: 75000, tenant: 'Aline Tchoumi', tenantId: 'loc-A5', phone: '+237 6 94 37 08 12', leaseStart: { year: 2026, month: 1, day: 2 }, paid: 40000, status: 'partial' },
+
+  { id: 'B1', buildingId: 'akw', label: 'B1', type: 'T3', surface: 82, rent: 160000, tenant: 'Jean-Paul Eboa', tenantId: 'loc-B1', phone: '+237 6 78 45 11 90', leaseStart: { year: 2023, month: 7, day: 1 }, paid: 160000, status: 'paid' },
+  { id: 'B2', buildingId: 'akw', label: 'B2', type: 'T3', surface: 80, rent: 155000, tenant: 'Nadia Belinga', tenantId: 'loc-B2', phone: '+237 6 51 60 73 24', leaseStart: { year: 2024, month: 10, day: 1 }, paid: 0, status: 'overdue', overdueDays: 9 },
+  { id: 'B3', buildingId: 'akw', label: 'B3', type: 'T2', surface: 58, rent: 120000, tenant: 'Éric Ndongo', tenantId: 'loc-B3', phone: '+237 6 96 82 30 57', leaseStart: { year: 2025, month: 5, day: 1 }, paid: 120000, status: 'paid' },
   { id: 'B4', buildingId: 'akw', label: 'B4', type: 'T2', surface: 57, rent: 118000, tenant: null, phone: null, leaseStart: null, paid: 0, status: 'vacant' },
 
-  { id: 'C1', buildingId: 'des', label: 'C1', type: 'T4', surface: 104, rent: 195000, tenant: 'Cabinet Njoya', phone: '+237 6 73 55 41 86', leaseStart: { year: 2022, month: 3, day: 1 }, paid: 195000, status: 'paid' },
-  { id: 'C2', buildingId: 'des', label: 'C2', type: 'T3', surface: 76, rent: 142000, tenant: 'Sylvie Manga', phone: '+237 6 82 19 64 03', leaseStart: { year: 2025, month: 8, day: 1 }, paid: 0, status: 'overdue', overdueDays: 3 },
+  { id: 'C1', buildingId: 'des', label: 'C1', type: 'T4', surface: 104, rent: 195000, tenant: 'Cabinet Njoya', tenantId: 'loc-C1', phone: '+237 6 73 55 41 86', leaseStart: { year: 2022, month: 3, day: 1 }, paid: 195000, status: 'paid' },
+  { id: 'C2', buildingId: 'des', label: 'C2', type: 'T3', surface: 76, rent: 142000, tenant: 'Sylvie Manga', tenantId: 'loc-C2', phone: '+237 6 82 19 64 03', leaseStart: { year: 2025, month: 8, day: 1 }, paid: 0, status: 'overdue', overdueDays: 3 },
   { id: 'C3', buildingId: 'des', label: 'C3', type: 'T2', surface: 60, rent: 125000, tenant: null, phone: null, leaseStart: null, paid: 0, status: 'vacant' },
 ]
 
@@ -210,6 +249,176 @@ export interface MeterReading {
 export const TARIFS_DEMO = { water: 520, power: 99 }
 
 /**
+ * LE REGISTRE DES ACCÈS DE LA DÉMONSTRATION.
+ *
+ * POURQUOI IL N'EXISTAIT PAS, ET CE QUE ÇA COÛTAIT. L'écran des accès lit son
+ * registre par `api.access(parkId)`. Sans parc — c'est-à-dire en démonstration
+ * — il n'appelle rien et rend « vous n'avez pas encore de parc ». Un visiteur
+ * qui clique « Accès au parc » dans une démonstration qui affiche trois
+ * immeubles, douze logements et DIX locataires tombe donc sur un écran qui lui
+ * dit qu'il n'a pas de parc. C'est la seule impasse du parcours de
+ * démonstration.
+ *
+ * Conséquence jumelle, et c'est la troisième fois sur cette branche : les deux
+ * tableaux de cet écran n'étaient rendus NULLE PART. Ni la mesure de
+ * géométrie, ni celle du contraste, ni un œil. Après `ParkSettingsModal` et
+ * `TariffsModal`, c'est le même motif — un écran gardé par un compte réel, donc
+ * hors de portée de toutes les portes.
+ *
+ * CE QU'IL CONTIENT N'EST PAS INVENTÉ : ce sont les trois personnages que la
+ * coquille nomme déjà dans son sélecteur de profil — « Propriétaire · Arsène
+ * N. », « Gestionnaire · Diane F. », « Locataire · Charles N. ». Le registre
+ * des accès est très exactement la liste de ces trois-là ; la démonstration la
+ * montrait dans sa barre latérale et la cachait sur l'écran qui existe pour ça.
+ *
+ * Les adresses sont en `example.com`, réservé par la RFC 2606 à cet usage : une
+ * démonstration ne doit pas afficher un domaine que quelqu'un possède.
+ *
+ * LE CODE EN ATTENTE est le second sujet de l'écran, et il faut qu'il y en ait
+ * un : sans lui la moitié basse resterait en état vide, et l'on n'aurait rendu
+ * mesurable que la moitié du problème. Il porte une unité VACANTE du jeu —
+ * inviter un locataire sur un logement déjà occupé n'aurait aucun sens.
+ */
+export const ACCES_DEMO = {
+  members: [
+    {
+      id: 'demo-membre-1',
+      role: 'owner' as const,
+      fullName: 'Arsène Nkolo',
+      email: 'arsene@example.com',
+      since: '2024-03-04',
+    },
+    {
+      id: 'demo-membre-2',
+      role: 'manager' as const,
+      fullName: 'Diane Fotso',
+      email: 'diane@example.com',
+      since: '2025-01-15',
+    },
+    {
+      id: 'demo-membre-3',
+      role: 'tenant' as const,
+      fullName: 'Charles Ngassa',
+      email: 'charles@example.com',
+      since: '2024-06-15',
+    },
+  ],
+  invitations: [
+    {
+      id: 'demo-invitation-1',
+      role: 'tenant' as const,
+      /* Les quatre derniers caractères seulement : c'est ce que le serveur rend
+         d'un code, et l'écran ne doit jamais pouvoir en réafficher un entier. */
+      codeHint: '7Q4M',
+      issuedAt: '2026-08-19',
+      expiresAt: '2026-09-02',
+      unitId: 'A5',
+      unitLabel: 'A5',
+    },
+  ],
+}
+
+/**
+ * LE REGISTRE DES DÉCISIONS DE LA DÉMONSTRATION.
+ *
+ * Sans lui, l'écran est une impasse dans un parcours qui montre trois immeubles
+ * et douze logements — et surtout, il n'est mesuré par PERSONNE : ni `mesure-ui`
+ * en géométrie, ni `couleur-non-seule` en contraste, puisque les deux ne
+ * visitent que la démonstration. C'est la leçon déjà payée par `Access`,
+ * `TariffsModal` et `ParkSettingsModal`.
+ *
+ * Les décisions ne sont pas inventées : ce sont celles que les écrans de la
+ * démonstration montrent déjà — la caution de A3 arbitrée, le devis du groupe
+ * de sécurité validé, l'encaissement de Charles Ngassa. Deux acteurs, le
+ * propriétaire et le gestionnaire délégué, qui sont les deux profils que la
+ * coquille propose.
+ *
+ * LES DATES SONT RELATIVES AU JOUR COURANT, comme le reste du jeu : un registre
+ * figé au 28 août dirait « il y a huit mois » sur un écran qui se veut vivant.
+ */
+export function decisionsDemo(aujourdhui: Date): DecisionDemo[] {
+  const ilYA = (heures: number) =>
+    new Date(aujourdhui.getTime() - heures * 3_600_000).toISOString()
+
+  /* LES PAYLOADS SONT SERVIS, ET C'EST LA MOITIÉ DU JEU. Sans eux le registre
+     de démonstration montrerait des libellés nus — « Caution arbitrée » sans le
+     montant retenu — et le détail ne serait mesuré par personne : `mesure-ui`
+     et `couleur-non-seule` ne visitent que la démonstration. Les montants sont
+     ceux du jeu, en unités mineures et en francs, comme le serveur les écrit. */
+  const mois = `${aujourdhui.toISOString().slice(0, 7)}-01`
+
+  return [
+    {
+      id: 'demo-d-1',
+      action: 'deposit.settle',
+      at: ilYA(3),
+      actor: 'Arsène Nkolo',
+      payload: { withheldMinor: 40000, reason: 'Peinture du séjour' },
+    },
+    {
+      id: 'demo-d-2',
+      action: 'work.approve',
+      at: ilYA(9),
+      actor: 'Arsène Nkolo',
+      payload: { approvedAmountMinor: 110660 },
+    },
+    {
+      id: 'demo-d-3',
+      action: 'payment.record',
+      at: ilYA(26),
+      actor: 'Diane Fotso',
+      payload: { amountMinor: 170942, method: 'mobile' },
+    },
+    {
+      id: 'demo-d-4',
+      action: 'receipt.issued',
+      at: ilYA(27),
+      actor: 'Diane Fotso',
+      payload: { kind: 'quittance', periodStart: mois, paidMinor: 170942 },
+    },
+    {
+      id: 'demo-d-5',
+      action: 'rent.remind',
+      at: ilYA(50),
+      actor: 'Diane Fotso',
+      payload: { count: 4 },
+    },
+    {
+      id: 'demo-d-6',
+      action: 'tariff.set',
+      at: ilYA(74),
+      actor: 'Arsène Nkolo',
+      payload: { utility: 'water', unitPriceMinor: 520, effectiveFrom: mois },
+    },
+    {
+      id: 'demo-d-7',
+      action: 'inspection.record',
+      at: ilYA(98),
+      actor: 'Diane Fotso',
+      payload: { kind: 'entry', findings: 3, billableMinor: 25000 },
+    },
+    /* UN ACTEUR NUL, et il n'est pas décoratif : `actorId` est en `SetNull`
+       pour que le registre survive à la suppression d'un compte. C'est le seul
+       cas où l'écran doit écrire « compte supprimé » plutôt qu'un nom, et sans
+       cette ligne il ne serait rendu nulle part. */
+    /* CELLE-CI N'A PAS DE DÉTAIL UTILE — le rôle repris est une nature que la
+       table ne sait pas lire, et c'est voulu. Elle rend donc une ligne MUETTE,
+       ce qui est l'autre état à mesurer : sans elle, on ne verrait jamais à
+       quoi ressemble une décision sans détail. */
+    { id: 'demo-d-8', action: 'access.revoke', at: ilYA(220), actor: null, payload: { role: 'manager' } },
+  ]
+}
+
+export interface DecisionDemo {
+  id: string
+  action: string
+  at: string
+  actor: string | null
+  /** Ce qui a changé — même forme que celle du serveur, `Json` compris. */
+  payload: Record<string, unknown>
+}
+
+/**
  * Les relevés de la démonstration portent les prix de la démonstration.
  *
  * Posés à la construction plutôt que multipliés à l'écran : c'est la même forme
@@ -228,6 +437,49 @@ export const READINGS: MeterReading[] = [
   { unitId: 'C1', waterPrevious: 611, waterCurrent: 644, powerPrevious: 7320, powerCurrent: 7640, readAt: { year: 2026, month: 7, day: 18 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
   { unitId: 'C2', waterPrevious: 334, waterCurrent: null, powerPrevious: 4010, powerCurrent: null, readAt: null, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
 ]
+
+/**
+ * LES MÊMES PRIX, DANS LA FORME QUE LE SERVEUR REND.
+ *
+ * POURQUOI CETTE SECONDE ÉCRITURE EXISTE. `TariffsModal` lit l'historique des
+ * prix par `api.tariffs(parkId)` : sans parc, elle n'appelle rien et sa liste
+ * reste vide, ce qui lui fait afficher « aucun prix posé ». Or l'écran des
+ * relevés, deux clics plus haut, AFFICHE ces deux prix en indicateurs, lus sur
+ * les relevés de la démonstration. La modale qui existe pour montrer et poser
+ * les prix aurait donc démenti l'écran qui les montre — le pire genre de
+ * contradiction, puisque c'est l'éditeur qui nie ce que la page affiche.
+ *
+ * ELLE NE PEUT PAS DÉRIVER de son côté : les deux listes se dérivent de
+ * `TARIFS_DEMO`, la même constante que portent les relevés ci-dessous. Changer
+ * un prix les change ensemble.
+ *
+ * LA DATE D'EFFET EST DÉRIVÉE, PAS ÉCRITE. Un prix de ce produit est daté par
+ * construction — c'est ce que le schéma impose et ce qui empêche de réécrire
+ * des quittances déjà remises. La démonstration n'en portait pas ; la prendre au
+ * premier du mois du relevé le plus ANCIEN est la seule valeur cohérente avec ce
+ * qu'elle affiche par ailleurs, et elle suit si les relevés changent de période.
+ *
+ * C'est une invention, et elle est assumée au même titre que les loyers et les
+ * noms de ce fichier : rien de tout cela ne quitte la démonstration, dont chaque
+ * écran porte un bandeau qui le dit.
+ */
+export const TARIFS_DEMO_DATES = () => {
+  const mois = READINGS.map((r) => r.readAt).filter((d) => d !== null) as {
+    year: number
+    month: number
+    day: number
+  }[]
+  const plusAncien = mois.reduce((a, b) =>
+    a.year !== b.year ? (a.year < b.year ? a : b) : a.month <= b.month ? a : b,
+  )
+  /* `month` est indexé à zéro dans tout le produit — `readAt` vient de
+     `getMonth()` — et une date ISO l'écrit à partir de un. */
+  const effectiveFrom = `${plusAncien.year}-${String(plusAncien.month + 1).padStart(2, '0')}-01`
+  return [
+    { id: 'demo-water', utility: 'water' as const, unitPriceMinor: TARIFS_DEMO.water, effectiveFrom },
+    { id: 'demo-power', utility: 'power' as const, unitPriceMinor: TARIFS_DEMO.power, effectiveFrom },
+  ]
+}
 
 /**
  * La consommation d'une période, fluide par fluide.
@@ -595,6 +847,90 @@ export interface Finding {
   description: string
   severity: 'minor' | 'major'
   costMinor: number | null
+  /**
+   * Les preuves attachées à cette réserve, et seulement celles que le serveur a
+   * CONSTATÉES — une réservation sans octets n'en fait pas partie.
+   *
+   * Vide tant que le serveur ne les rend pas : le jeu de démonstration n'en
+   * porte aucune, faute d'un dépôt d'objets sous la main. L'écran distingue
+   * donc « aucune photo » de « pas de photo servie » exactement comme il ne le
+   * peut pas — voir la note du lot.
+   */
+  photos?: Photo[]
+}
+
+/**
+ * Une photo de réserve, vue du client.
+ *
+ * NI LA CLÉ DE STOCKAGE, NI L'ADRESSE. La clé ne sort d'aucune réponse ;
+ * l'adresse est signée et périssable, et se demande photo par photo au moment
+ * d'afficher.
+ *
+ * `confirmedAt` est la date que le SERVEUR a constatée, et c'est toute la
+ * valeur de cette ligne : une date d'appareil se change dans les réglages de
+ * l'appareil, celle-ci vient d'une horloge que le déposant ne tient pas.
+ */
+export interface Photo {
+  id: string
+  contentType: string
+  confirmedAt: DateParts
+}
+
+/**
+ * LES PREUVES QUE LE LOCATAIRE DE LA DÉMONSTRATION VOIT.
+ *
+ * A1 est SON logement, et cette réserve d'entrée est celle qui lui a été
+ * opposée à la remise des clés. Sans elles, le bloc des preuves n'existait sur
+ * aucun écran de la démonstration — donc sur aucun des 506 points que
+ * `mesure-ui` balaie, donc ni son contraste, ni ses cibles, ni ses noms
+ * accessibles n'étaient audités. MESURÉ AVANT : un bouton de 32 px posé dans ce
+ * bloc laissait la porte VERTE. C'est ce trou-là qu'elles referment.
+ *
+ * ─── POURQUOI TROIS, ET NON UNE ──────────────────────────────────────────
+ *
+ * Une seule vignette ne fait pas de rangée. La rangée des preuves REPLIE
+ * (`flex-wrap`) quand elle déborde, et c'est au téléphone que ce repli compte :
+ * trois vignettes de 80 px et leurs écarts font 256 px, plus large que la place
+ * qui reste dans la carte à 320 px. Avec une seule photo, ce repli n'était
+ * jamais rendu, donc jamais mesuré — le même trou que celui qu'on vient de
+ * refermer, d'un cran plus loin.
+ *
+ * TROIS ZONES DISTINCTES DU MÊME MUR, et les fenêtres NE SE CHEVAUCHENT PAS
+ * (vérifié par intersection de rectangles, voir `fixtures/PROVENANCE.md`). Ce
+ * sont trois endroits différents du même défaut — ce qu'un constat produit
+ * réellement, où l'on photographie la même réserve sous plusieurs cadrages. Ce
+ * qui aurait été un mensonge, c'est de les répartir sur des réserves
+ * différentes : elles restent toutes trois sur celle qu'elles documentent.
+ *
+ * `confirmedAt` porte la date du constat lui-même : c'est l'horloge du serveur
+ * qui la pose en vrai, et la démonstration ne montre pas autre chose que ce que
+ * le produit fait.
+ */
+const LE_JOUR_DU_CONSTAT = { year: 2024, month: 5, day: 15 }
+
+const PREUVES_PEINTURE: Photo[] = [
+  { id: 'demo-photo-peinture-1', contentType: 'image/jpeg', confirmedAt: LE_JOUR_DU_CONSTAT },
+  { id: 'demo-photo-peinture-2', contentType: 'image/jpeg', confirmedAt: LE_JOUR_DU_CONSTAT },
+  { id: 'demo-photo-peinture-3', contentType: 'image/jpeg', confirmedAt: LE_JOUR_DU_CONSTAT },
+]
+
+/**
+ * OÙ LIRE UNE PHOTO DE DÉMONSTRATION — et pourquoi ce n'est pas un champ.
+ *
+ * En vrai, une photo n'a PAS d'adresse stable : le seau n'est jamais public, et
+ * le serveur délivre à la demande une adresse signée qui périme en quelques
+ * minutes. Le client demande donc photo par photo, au moment d'afficher.
+ *
+ * La démonstration n'a pas de dépôt d'objets ; elle imite ce contrat plutôt que
+ * de le contourner — l'écran appelle `lirePhoto` exactement comme sur un vrai
+ * parc, et c'est ce registre qui lui répond. Poser l'adresse dans `Photo` aurait
+ * marché en démonstration et divergé du produit, ce qui est la façon la plus
+ * sûre de laisser un défaut d'affichage invisible jusqu'à la production.
+ */
+export const PHOTOS_DEMO: Record<string, string> = {
+  'demo-photo-peinture-1': peintureEcaillee1,
+  'demo-photo-peinture-2': peintureEcaillee2,
+  'demo-photo-peinture-3': peintureEcaillee3,
 }
 
 /**
@@ -614,7 +950,13 @@ export const INSPECTIONS: Inspection[] = [
   // restait invisible à qui la regardait depuis ce profil.
   etatDesLieux('A1', 'entry', { year: 2024, month: 5, day: 15 }, 4, true, [
     ['Salle de bain', 'Joint de douche noirci', 'minor'],
-    ['Séjour', 'Peinture écaillée derrière la porte', 'minor'],
+    /* Le coût est `undefined` EN TOUTES LETTRES parce qu'une entrée ne se
+       chiffre pas — le serveur refuse en 422 — et qu'il faut le franchir pour
+       atteindre les photos. Une seule des deux réserves porte une preuve, et
+       c'est la vérité d'un état des lieux : on ne photographie pas tout.
+       L'autre attend une image en domaine public qui la documente
+       honnêtement — voir `fixtures/PROVENANCE.md`. */
+    ['Séjour', 'Peinture écaillée derrière la porte', 'minor', undefined, PREUVES_PEINTURE],
   ]),
   etatDesLieux('B4', 'exit', { year: 2026, month: 6, day: 22 }, 4, true, [
     ['Séjour', 'Parquet rayé sur deux lames', 'major', 35000],
@@ -651,7 +993,7 @@ function etatDesLieux(
   date: DateParts,
   rooms: number,
   signed: boolean,
-  reserves: [string, string, 'minor' | 'major', number?][],
+  reserves: [string, string, 'minor' | 'major', number?, Photo[]?][],
 ): Inspection {
   return {
     unitId,
@@ -660,12 +1002,15 @@ function etatDesLieux(
     rooms,
     issues: reserves.length,
     signed,
-    findings: reserves.map(([room, description, severity, cout], i) => ({
+    findings: reserves.map(([room, description, severity, cout, photos], i) => ({
       id: `${unitId}-${kind}-${i}`,
       room,
       description,
       severity,
       costMinor: kind === 'exit' && cout !== undefined ? cout : null,
+      // Une liste vide, jamais `undefined` : l'écran n'a alors qu'un cas à
+      // traiter, et « aucune preuve » se lit pareil partout.
+      photos: photos ?? [],
     })),
   }
 }
@@ -937,6 +1282,42 @@ export interface ReceiptPayment {
  */
 export type PaymentMethodKey = 'mobile' | 'cash' | 'transfer' | 'check'
 
+/**
+ * L'intitulé de chaque moyen de paiement, à côté des valeurs qu'il nomme.
+ *
+ * IL EXISTAIT EN DEUX EXEMPLAIRES — un dans l'espace locataire, un dans la
+ * modale de quittance — et le troisième allait être écrit pour les documents
+ * PDF. Deux tables ne divergent pas sur les valeurs, elles divergent sur ce
+ * qu'on ajoute : une cinquième façon de payer serait entrée dans l'une et pas
+ * dans l'autre, et un versement aurait été rendu sans son moyen.
+ *
+ * Une TABLE et non une clé construite : `app.payments.method${methode}`
+ * imposerait une majuscule à la volée, et `check-i18n` ne verrait plus quelles
+ * clés sont employées.
+ */
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethodKey, string> = {
+  mobile: 'app.payments.methodMobile',
+  cash: 'app.payments.methodCash',
+  transfer: 'app.payments.methodTransfer',
+  check: 'app.payments.methodCheck',
+}
+
+/**
+ * CE QU'UNE CAUTION DOIT ENCORE, une fois la retenue déduite.
+ *
+ * Nommée parce que trois endroits la calculaient — l'écran, sa ligne, et le
+ * document — et qu'une formule d'argent recopiée finit par diverger. C'est le
+ * même motif que `receiptDue`, juste en dessous.
+ *
+ * Elle ne dit rien du STATUT : une caution restituée a le même solde
+ * arithmétique que la veille de sa restitution. C'est à l'appelant d'écarter
+ * `returned`, parce que la question « combien reste-t-il dû » n'a de sens que
+ * sur ce qu'on détient encore.
+ */
+export function soldeDeCaution(deposit: Pick<Deposit, 'held' | 'withheld'>): number {
+  return deposit.held - deposit.withheld
+}
+
 /** Ce que la période doit, tous postes confondus. */
 export function receiptDue(receipt: Receipt): number {
   return receipt.rentMinor + receipt.waterMinor + receipt.powerMinor
@@ -955,10 +1336,26 @@ export function receiptDue(receipt: Receipt): number {
  * appelle un geste. Sans elle, une période à moitié réglée s'affichait soldée.
  */
 export function imputation(receipt: Receipt): { rent: number; water: number; power: number } {
-  const rent = Math.min(receipt.paidMinor, receipt.rentMinor)
-  const reste = receipt.paidMinor - rent
-  const water = Math.max(0, Math.min(reste, receipt.waterMinor))
-  const power = Math.max(0, Math.min(reste - receipt.waterMinor, receipt.powerMinor))
+  return imputationDesPostes(receipt, receipt.paidMinor)
+}
+
+/**
+ * La même convention, sur des POSTES NUS.
+ *
+ * Le document arrêté par le serveur n'est pas un `Receipt` : il porte les mêmes
+ * trois postes et le même encaissé, sous d'autres noms et sans les versements.
+ * Il a donc besoin de l'imputation, et la lui refuser produisait deux feuilles
+ * différentes pour un seul mois — le locataire lisait quel poste restait ouvert,
+ * le gestionnaire non.
+ */
+export function imputationDesPostes(
+  postes: { rentMinor: number; waterMinor: number; powerMinor: number },
+  encaisse: number,
+): { rent: number; water: number; power: number } {
+  const rent = Math.min(encaisse, postes.rentMinor)
+  const reste = encaisse - rent
+  const water = Math.max(0, Math.min(reste, postes.waterMinor))
+  const power = Math.max(0, Math.min(reste - postes.waterMinor, postes.powerMinor))
   return { rent, water, power }
 }
 

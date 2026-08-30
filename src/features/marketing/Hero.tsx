@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/cn'
+import { Card } from '@/components/primitives/Card'
 import { GOUTTIERE_LATERALE } from '@/components/layout/gouttiere'
 import { Button } from '@/components/primitives/Button'
 import { StatusPill } from '@/components/primitives/StatusPill'
@@ -29,7 +30,7 @@ export function Hero() {
           deux colonnes, il n'avait que la moitié de l'écran et venait buter
           contre la carte d'aperçu. */}
       <div className="relative mx-auto max-w-7xl">
-        <p className="eyebrow flex items-center gap-2 text-gold-ink">
+        <p className="eyebrow flex items-center gap-2 text-accent-ink">
           <Icon name="globe" size={14} />
           {t('marketing.hero.eyebrow')}
         </p>
@@ -85,7 +86,7 @@ export function Hero() {
             </div>
 
             <p className="mt-5 flex items-center gap-2 text-body text-muted">
-              <Icon name="checkCircle" size={15} className="text-gold-ink" />
+              <Icon name="checkCircle" size={15} className="text-accent-ink" />
               {t('marketing.hero.trust')}
             </p>
 
@@ -108,7 +109,7 @@ function HeroPreview({
   money,
   t,
 }: {
-  money: (amount: number, options?: { round?: boolean }) => string
+  money: (amount: number, options?: { compact?: boolean }) => string
   t: ReturnType<typeof useT>
 }) {
   const d = useDates()
@@ -137,18 +138,49 @@ function HeroPreview({
 
   return (
     <div data-mesure="accroche-illustration" className="relative min-w-0">
-      <div className="animate-rise rounded-2xl border border-divider bg-surface p-5 shadow-e3 sm:p-6">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
+      {/* `elevation="e3"` et non `className="shadow-e3"` : `cn` concatène, donc la
+          seconde écriture laisserait `shadow-e1 shadow-e3` dans le balisage et
+          s'en remettrait à l'ordre d'émission de la feuille. Une règle morte à
+          côté d'une vivante n'est pas une décision. */}
+      <Card flush elevation="e3" className="animate-rise p-5 sm:p-6">
+        {/*
+          LA RANGÉE SE REPLIE, ET LE MONTANT A UN PLANCHER.
+
+          Mesuré à 320 : la carte offre 238 px, la gélule de pourcentage en garde
+          66 — elle est `shrink-0`, à raison, un état rétréci ne se lit plus — et
+          il en restait 160 pour un montant qui en réclame 170. « 950 000 FCFA »
+          sortait de sa colonne de 10 px, DANS la carte : ni la règle de page ni
+          celle des débords locaux ne pouvaient le voir.
+
+          `Intl` compose ce montant avec des espaces INSÉCABLES : c'est un seul
+          jeton de douze caractères, et il ne faut surtout pas le couper — une
+          césure dans un nombre en change la lecture. Le remède est donc de
+          rendre la place, jamais de casser la chaîne.
+
+          `min-w-44` (176 px) est le déclencheur du repli, pas une largeur voulue :
+          sans plancher, `flex-wrap` ne se déclenche jamais, la colonne acceptant
+          de descendre à zéro plutôt que de passer à la ligne. À 360 la carte offre
+          278 px et rien ne se replie ; à 320 la gélule passe dessous, et le montant
+          récupère les 238.
+
+          Aucune requête de conteneur ici, contrairement à la grille du locataire :
+          un repli à plancher est relatif au conteneur PAR NATURE. On ne demande
+          une requête que lorsqu'on doit changer la RÈGLE de mise en page selon la
+          place, pas seulement l'occuper.
+        */}
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <div className="min-w-44 flex-1">
             <p className="eyebrow text-muted">{t('marketing.metrics.collected')}</p>
-            {/* Le montant descend d'un cran sous `sm` : à 32px, un montant de
-                cette taille suivi de sa devise ne se coupe pas et ne tient pas
-                dans 375px. */}
             {/* Même jeton de montant que les prix et que les indicateurs :
                 `text-2xl` valait 24 px pour UN nombre, et `sm:text-[2rem]` 32
-                pour le même. Deux tailles de plus dans la page, aucune ailleurs. */}
+                pour le même. Deux tailles de plus dans la page, aucune ailleurs.
+
+                Un commentaire voisin promettait ici que « le montant descend d'un
+                cran sous `sm` ». Il décrivait le `sm:text-[2rem]` que ce jeton a
+                justement remplacé : plus aucune classe ne fait descendre quoi que
+                ce soit, et la promesse survivait au mécanisme. Retirée. */}
             <p className="numeric mt-2 text-kpi leading-none font-medium">
-              {money(kpis.collected, { round: true })}
+              {money(kpis.collected, { compact: true })}
             </p>
           </div>
           {/* Couleurs de statut rétablies. Le motif retenu pour ce produit —
@@ -158,9 +190,13 @@ function HeroPreview({
               à situer un parc. La règle de l'accent unique valait pour le
               discours de la page, pas pour l'échantillon de produit qu'elle
               montre. */}
-          <StatusPill tone="ok" size="sm">
-            {t('marketing.metrics.percent', { value: partEncaissee })}
-          </StatusPill>
+          {/* `ml-auto` : repliée, la gélule garde la colonne qu'elle occupe
+              partout ailleurs — même geste qu'en en-tête de carte. */}
+          <div className="ml-auto shrink-0">
+            <StatusPill tone="ok" size="sm">
+              {t('marketing.metrics.percent', { value: partEncaissee })}
+            </StatusPill>
+          </div>
         </div>
 
         <div className="mt-6">
@@ -171,7 +207,20 @@ function HeroPreview({
           />
         </div>
 
-        <div className="mt-6 grid grid-cols-2 gap-4 border-t border-divider pt-5">
+        {/*
+          DEUX COLONNES QUAND ELLES TIENNENT, UNE QUAND ELLES NE TIENNENT PAS.
+
+          `grid-cols-2` divisait sans condition : à 320, 238 px de carte donnaient
+          deux colonnes de 111 px, et « 447 000 FCFA » — 20 px de corps — en
+          réclame 129. Il débordait de 18 px. À 360 les colonnes valent 131 pour
+          un besoin de 129 : DEUX PIXELS de marge, ce qui n'est pas une marge.
+
+          Le repli à plancher remplace la division rigide. `min-w-36` (144 px) sur
+          chaque indicateur : deux colonnes demandent 304 px, la carte n'en offre
+          238 à 320 et 278 à 360, donc un seul indicateur par ligne jusque vers
+          400 px de fenêtre — au-delà, deux colonnes d'au moins 152 px.
+        */}
+        <div className="mt-6 flex flex-wrap gap-4 border-t border-divider pt-5">
           <MiniStat
             label={t('marketing.metrics.occupancy')}
             value={t('marketing.metrics.percent', { value: kpis.occupancy })}
@@ -182,11 +231,11 @@ function HeroPreview({
           />
           <MiniStat
             label={t('marketing.metrics.overdue')}
-            value={money(kpis.outstanding, { round: true })}
+            value={money(kpis.outstanding, { compact: true })}
             note={t('marketing.metrics.overdueNote', { count: doivent.length })}
           />
         </div>
-      </div>
+      </Card>
 
       {/* La mention existait au dictionnaire, traduite, et n'était rendue nulle
           part : la carte donnait donc des chiffres de parc sans dire de quel
@@ -227,7 +276,9 @@ function MiniStat({
   delta?: ReactNode
 }) {
   return (
-    <div className="min-w-0">
+    /* `min-w-36 flex-1` et non `min-w-0` : le plancher est ce qui DÉCLENCHE le
+       repli de la rangée — voir la grille qui monte ces indicateurs. */
+    <div className="min-w-36 flex-1">
       <p className="eyebrow text-muted">{label}</p>
       <p className="numeric mt-2 text-title-l font-medium">{value}</p>
       {/* Variation et effectif sur une seule ligne : empilés, ils faisaient

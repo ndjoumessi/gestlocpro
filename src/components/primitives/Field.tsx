@@ -14,6 +14,19 @@ export interface FieldProps {
   /** Texte d'aide persistant — pas un placeholder. */
   hint?: string
   error?: string
+  /**
+   * COMMANDE ATTACHÉE AU CHAMP, posée en regard de son libellé.
+   *
+   * Le cas réel : « Mot de passe oublié ? » sur l'écran de connexion. Il
+   * flottait seul sur une ligne, aligné à droite, ENTRE le champ et le bouton
+   * d'envoi — donc à mi-chemin des deux, n'appartenant visiblement ni à l'un ni
+   * à l'autre, et séparant le dernier champ de l'action qui le suit, la seule
+   * paire que l'œil doit lire d'un trait.
+   *
+   * Sur la ligne d'étiquette, il désigne sans ambiguïté le champ dont il parle,
+   * et il ne coupe plus rien.
+   */
+  action?: ReactNode
   required?: boolean
   optional?: boolean
   className?: string
@@ -31,6 +44,7 @@ export function Field({
   children,
   hint,
   error,
+  action,
   required,
   optional,
   className,
@@ -42,20 +56,54 @@ export function Field({
 
   const describedBy = [hint && hintId, error && errorId].filter(Boolean).join(' ') || undefined
 
+  /* Le CONTENU de l'étiquette, écrit une fois : la rangée et l'étiquette nue le
+     rendent toutes deux, et deux copies auraient divergé au premier ajout. */
+  const etiquette = (
+    <>
+      {label}
+      {required && (
+        <span className="ml-1 text-danger" aria-hidden="true">
+          *
+        </span>
+      )}
+      {required && <span className="sr-only"> ({t('common.required')})</span>}
+      {optional && (
+        <span className="ml-1.5 font-normal text-muted">({t('common.optional')})</span>
+      )}
+    </>
+  )
+
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
-      <label htmlFor={id} className="text-label font-semibold text-ink">
-        {label}
-        {required && (
-          <span className="ml-1 text-danger" aria-hidden="true">
-            *
-          </span>
-        )}
-        {required && <span className="sr-only"> ({t('common.required')})</span>}
-        {optional && (
-          <span className="ml-1.5 font-normal text-muted">({t('common.optional')})</span>
-        )}
-      </label>
+      {/*
+        LA RANGÉE N'EXISTE QUE S'IL Y A UNE COMMANDE, et ce n'est pas une
+        économie de balisage.
+
+        Une première rédaction enveloppait TOUJOURS l'étiquette, la classe de
+        rangée n'étant posée que sous condition. Mesuré : treize à
+        quatre-vingt-quatre pixels de défilement en plus sur six modales.
+        L'étiquette était un élément de la pile flexible, donc blockifiée ;
+        enveloppée dans un bloc, elle redevient en ligne et fabrique une boîte
+        de ligne plus haute. Un conteneur « neutre » ne l'est pas.
+
+        `items-center` ET NON `items-baseline` : mesuré aussi, l'alignement sur
+        la ligne de base laissait la commande — 44 px de cible — dépasser de
+        8 px sa rangée, en haut comme en bas. Une boîte alignée par sa base peut
+        sortir de la sienne ; centrée, la rangée prend la hauteur de la plus
+        haute.
+      */}
+      {action ? (
+        <div className="flex flex-wrap items-center justify-between gap-x-3">
+          <label htmlFor={id} className="text-label font-semibold text-ink">
+            {etiquette}
+          </label>
+          {action}
+        </div>
+      ) : (
+        <label htmlFor={id} className="text-label font-semibold text-ink">
+          {etiquette}
+        </label>
+      )}
 
       {children({
         id,

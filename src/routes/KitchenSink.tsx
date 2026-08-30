@@ -8,6 +8,7 @@ import { Field } from '@/components/primitives/Field'
 import { Input, PasswordInput, PasswordStrength, Select, Textarea } from '@/components/primitives/Input'
 import { Checkbox, RadioCards, SegmentedControl } from '@/components/primitives/Choice'
 import { Modal } from '@/components/primitives/Modal'
+import { Notice } from '@/components/primitives/Notice'
 import { useToast } from '@/components/primitives/Toast'
 import { Logo } from '@/components/primitives/Logo'
 import { Icon } from '@/components/primitives/Icon'
@@ -64,7 +65,7 @@ export function KitchenSink() {
 
       <main className="mx-auto max-w-6xl space-y-10 px-6 py-10">
         <div>
-          <p className="eyebrow text-gold-ink">Design system</p>
+          <p className="eyebrow text-accent-ink">Design system</p>
           <h1 className="display-l mt-2">Contrôle des primitives</h1>
           <p className="mt-2 max-w-2xl text-body-l text-muted">
             Chaque composant dans ses états. Les montants suivent la devise choisie dans l’en-tête,
@@ -74,17 +75,34 @@ export function KitchenSink() {
 
         {/* ---- Typographie ---- */}
         <Section title="Échelle typographique">
+          {/*
+            SEPT LIBELLÉS SUR ONZE MENTAIENT, et c'est l'endroit du produit où
+            un mensonge coûte le plus cher : cette page existe pour être lue
+            comme la vérité de l'échelle.
+
+            Ce qui était écrit, et ce que le jeton dit : « 56 / 46 / 32 » pour
+            trois clamps devenus FLUIDES au lot de typographie ; « Manrope 600 »
+            deux fois pour des titres qui prennent `--font-sans`, c'est-à-dire la
+            pile système ; « 17 » pour un `--text-title-m` replié à 16 ; « Body S
+            · 13 » pour un jeton SUPPRIMÉ, rendu ici en `text-body` donc à 14 ;
+            « Mono label » alors que `--font-mono` vaut `initial` et qu'aucune
+            famille à chasse fixe n'existe plus dans ce produit.
+
+            Les tailles fluides s'écrivent en INTERVALLE, pas en valeur : une
+            valeur unique serait fausse à toutes les largeurs sauf une, et c'est
+            précisément ainsi que les trois premières se sont mises à mentir.
+          */}
           <div className="space-y-3">
-            <p className="display-xl">Display XL · 56</p>
-            <p className="display-l">Display L · 46</p>
-            <p className="display-m">Display M · 32</p>
-            <p className="title-l">Title L · 20 · Manrope 600</p>
-            <p className="title-m">Title M · 17 · Manrope 600</p>
+            <p className="display-xl">Display XL · 40 → 96, fluide</p>
+            <p className="display-l">Display L · 36 → 64, fluide</p>
+            <p className="display-m">Display M · 30 → 52, fluide</p>
+            <p className="title-l">Title L · 20 · pile système 600</p>
+            <p className="title-m">Title M · 16 · pile système 600</p>
             <p className="text-body-l">Body L · 16 — corps de la landing et des champs mobiles.</p>
-            <p className="text-body">Body · 14 — corps de l’application.</p>
-            <p className="text-body text-muted">Body S · 13 — annotations, en gris secondaire.</p>
+            <p className="text-body">Body · 14 — corps de l’application, et des annotations.</p>
+            <p className="text-body text-muted">Le même corps, en gris secondaire.</p>
             <p className="text-label text-muted">Label · 12 · plancher typographique</p>
-            <p className="eyebrow text-muted">Mono label · 12 · suréminence</p>
+            <p className="eyebrow text-muted">Suréminence · 12 · capitales interlettrées</p>
             <p className="numeric text-kpi">1 415 000</p>
           </div>
         </Section>
@@ -95,8 +113,8 @@ export function KitchenSink() {
             <Swatch name="ink" className="bg-ink" dark />
             <Swatch name="ink-2" className="bg-ink-2" dark />
             <Swatch name="muted" className="bg-muted" dark />
-            <Swatch name="gold" className="bg-gold" />
-            <Swatch name="gold-ink" className="bg-gold-ink" dark />
+            <Swatch name="accent" className="bg-accent" />
+            <Swatch name="accent-ink" className="bg-accent-ink" dark />
             <Swatch name="paper" className="bg-paper" />
             <Swatch name="canvas" className="bg-canvas" />
             <Swatch name="surface-sunken" className="bg-surface-sunken" />
@@ -105,7 +123,7 @@ export function KitchenSink() {
             <Swatch name="ok" className="bg-ok" dark />
             <Swatch name="warn" className="bg-warn" dark />
             <Swatch name="danger" className="bg-danger" dark />
-            <Swatch name="gold-tint" className="bg-gold-tint" />
+            <Swatch name="accent-tint" className="bg-accent-tint" />
             <Swatch name="ok-tint" className="bg-ok-tint" />
           </div>
         </Section>
@@ -119,7 +137,7 @@ export function KitchenSink() {
             <Button variant="secondary" icon="download">
               Secondaire
             </Button>
-            <Button variant="gold" icon="sparkle">
+            <Button variant="primary" icon="sparkle">
               Doré
             </Button>
             <Button variant="ghost">Fantôme</Button>
@@ -138,7 +156,7 @@ export function KitchenSink() {
             </Button>
           </div>
           <div className="on-dark mt-4 flex flex-wrap items-center gap-3 rounded-lg bg-ink p-4">
-            <Button variant="gold">Sur fond sombre</Button>
+            <Button variant="primary">Sur fond sombre</Button>
             <Button variant="onDark">Secondaire sombre</Button>
             <LanguageSwitcher tone="dark" />
             <CurrencySwitcher tone="dark" />
@@ -159,7 +177,7 @@ export function KitchenSink() {
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Badge tone="neutral">12 unités</Badge>
-            <Badge tone="gold">Pro</Badge>
+            <Badge tone="accent">Pro</Badge>
             <Badge tone="ok">Actif</Badge>
             <Badge tone="danger">3</Badge>
             <Badge tone="dark">FCFA</Badge>
@@ -171,6 +189,37 @@ export function KitchenSink() {
             Chaque pastille porte une icône <em>et</em> un libellé : l’information ne repose jamais
             sur la seule couleur.
           </p>
+        </Section>
+
+        {/*
+          ---- Bandeaux ----
+
+          LA VITRINE EST LA PORTE. `mesure-ui.mjs` ne mesure le contraste que de
+          ce qui S'AFFICHE, sur `/demo`, dans les deux thèmes. `Notice` n'y
+          figurait pas : cinq tons, dix couples encre/lavis, et pas un seul n'a
+          jamais été mesuré au navigateur en sombre — alors même que le composant
+          a remplacé vingt-neuf bandeaux dans dix-sept fichiers. Les poser ici
+          coûte quinze lignes et rend la garde existante compétente sur eux,
+          plutôt que d'en écrire une nouvelle qui dupliquerait sa logique.
+
+          Les DEUX formes y sont : la forte tient le titre, la compacte non, et
+          leurs rembourrages diffèrent. Montrer l'une seulement laisserait la
+          moitié du composant hors mesure — exactement le défaut qu'on répare.
+        */}
+        <Section title="Bandeaux d’information">
+          <div className="flex flex-col gap-3">
+            <Notice tone="neutral" icon="shield">
+              Vous ne voyez que les logements rattachés à votre bail.
+            </Notice>
+            <Notice tone="accent">Le parc sera visible dès la première unité créée.</Notice>
+            <Notice tone="ok" titre="Paiement enregistré">
+              La quittance de septembre est disponible au téléchargement.
+            </Notice>
+            <Notice tone="warn">Deux relevés manquent sur la période.</Notice>
+            <Notice tone="danger" role="alert" titre="Échec de l’envoi">
+              Le serveur n’a pas répondu. Réessayez dans un instant.
+            </Notice>
+          </div>
         </Section>
 
         {/* ---- Formulaires ---- */}
@@ -273,7 +322,7 @@ export function KitchenSink() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card>
               <div className="eyebrow text-muted">Loyers attendus</div>
-              <div className="mt-2 numeric text-kpi">{money(1415000, { round: true })}</div>
+              <div className="mt-2 numeric text-kpi">{money(1415000, { compact: true })}</div>
               <div className="mt-2 flex items-center gap-2">
                 <DeltaBadge value={165000} />
                 <span className="text-body text-muted">12 baux actifs</span>
@@ -285,16 +334,31 @@ export function KitchenSink() {
               <p className="text-body text-muted">Sans ombre, bordure plus marquée.</p>
             </Card>
 
-            <Card tone="gold">
-              <CardHeader title="Ton doré" description="Pour les mises en avant." />
-              <p className="text-body text-muted">Teinte dorée, bordure dorée.</p>
+            <Card tone="accent">
+              <CardHeader title="Ton d’accent" description="Pour les mises en avant." />
+              <p className="text-body text-muted">Lavis d’accent, bordure d’accent.</p>
             </Card>
 
             <Card tone="dark">
               <CardHeader title="Ton sombre" description="Pour les blocs de synthèse." />
               <p className="text-body text-on-dark-muted">
-                L’or passe en <span className="text-gold">accent</span> sur fond sombre.
+                L’accent y passe en{' '}
+                <span className="text-accent-on-dark">contrepartie claire</span>, jamais en bleu
+                plein : le fond ne s’inverse pas avec le thème.
               </p>
+            </Card>
+
+            {/* `darkRaised` n'était montré nulle part — la carte sombre POSÉE
+                SUR une section sombre, c'est-à-dire le seul des cinq tons dont
+                la justesse dépend de son support. Le laisser hors vitrine, c'est
+                le laisser hors mesure. */}
+            <Card tone="dark">
+              <CardHeader title="Ton sombre surélevé" level={4} />
+              <Card tone="darkRaised">
+                <p className="text-body text-on-dark-muted">
+                  Monte d’un cran sur son support et prend une bordure de la famille inversée.
+                </p>
+              </Card>
             </Card>
           </div>
         </Section>

@@ -252,7 +252,7 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
           label={t('app.payments.amount')}
           hint={
             unit
-              ? t('app.payments.dueAmount', { amount: money(unit.rent, { round: true }) })
+              ? t('app.payments.dueAmount', { amount: money(unit.rent, { compact: true }) })
               : t('app.payments.amountHint')
           }
           required
@@ -264,7 +264,7 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
               name="amount"
               inputMode="decimal"
               value={amount}
-              placeholder={unit ? money(unit.rent, { round: true, omitSymbol: true }) : ''}
+              placeholder={unit ? money(unit.rent, { compact: true, omitSymbol: true }) : ''}
               onChange={(e) => setAmount(e.target.value)}
               className="numeric"
             />

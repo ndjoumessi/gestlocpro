@@ -118,14 +118,23 @@ async function ouvrir(notifications: NotifApi[]) {
 }
 
 describe('journal des relances — le rang', () => {
-  it('numérote chaque rappel du bail', async () => {
+  /**
+   * LE RANG SURVIT AU REPLI, et c'est ce qu'il faut garder de ce cas.
+   *
+   * Il exigeait trois pastilles — 3, 2, 1 — sur trois cartes. Les trois relances
+   * d'un même bail tiennent désormais en une seule, celle de la plus récente,
+   * qui porte son rang ET le total de la série. Ce que le rang dit n'a pas
+   * changé : à quelle relance on en est. Ce qui change est qu'on lit aussi
+   * combien il y en a eu, sans les compter à l'œil.
+   */
+  it('numérote le rappel le plus récent et dit la taille de la série', async () => {
     await ouvrir([
       relance({ id: 'n3', rank: 3, createdAt: '2026-08-18T08:00:00.000Z' }),
       relance({ id: 'n2', rank: 2, createdAt: '2026-08-11T08:00:00.000Z' }),
       relance({ id: 'n1', rank: 1, createdAt: '2026-08-04T08:00:00.000Z' }),
     ])
-    const rangs = screen.getAllByText(/^Rappel n° \d+$/).map((e) => e.textContent)
-    expect(rangs).toEqual(['Rappel n° 3', 'Rappel n° 2', 'Rappel n° 1'])
+    expect(screen.getByText('Rappel n° 3 sur 3')).toBeInTheDocument()
+    expect(screen.getAllByText(/Rappel n°/)).toHaveLength(1)
   })
 
   /**
@@ -252,7 +261,21 @@ describe('journal des relances — en démonstration', () => {
    * fois.
    */
   it('ne dit pas « envoyée » sur une relance qui n’est pas partie', async () => {
-    await ouvrirDemo()
+    /*
+      UNE SEULE RELANCE, ET C'EST LE POINT DU CAS.
+
+      Il montait la démonstration, dont les trois relances se replient désormais
+      en une carte au résumé — « 1 partie, 2 en attente » — où « Pas encore
+      parti » ne figure plus. La contradiction qu'il garde vit dans la carte
+      d'une relance SEULE : titre « Relance envoyée » au-dessus de « Pas encore
+      parti ». On monte donc ce cas-là, qui est celui que le défaut habitait.
+    */
+    /* `channel` explicite : la ligne d'expédition ne se rend que sur une
+       relance qui en porte un — une notification de relevé manquant n'est
+       envoyée à personne. Le gabarit ne le pose pas. */
+    await ouvrir([
+      relance({ id: 'n1', rank: 1, channel: 'sms', createdAt: '2026-08-04T08:00:00.000Z' }),
+    ])
     const enAttente = screen.getAllByText(/Pas encore parti/)
     expect(enAttente.length).toBeGreaterThan(0)
     for (const ligne of enAttente) {
@@ -264,13 +287,27 @@ describe('journal des relances — en démonstration', () => {
     }
   })
 
-  it('montre les trois rappels, numérotés', async () => {
+  /**
+   * LA SÉRIE SE REPLIE, ET LA CARTE DIT CE QU'ELLE REPLIE.
+   *
+   * Ce cas exigeait trois cartes numérotées 3, 2, 1. Mesuré sur la
+   * démonstration : cinq entrées visibles, dont QUATRE portaient la même dette
+   * — la détection plus ces trois relances — et le devis qui attend une
+   * décision arrivait en cinquième position, enterré sous 80 % de répétition.
+   * Sur un parc de trois cents lots, cet écran ne contiendrait plus que ses
+   * propres relances.
+   *
+   * Elles tiennent désormais en UNE carte, celle de la plus récente, qui porte
+   * son rang ET le total. Ce que ce cas garde n'a pas changé de nature : le
+   * numéro reste visible, et l'on sait combien de relances il y a eu. Ce qui
+   * change est qu'on le lit d'un coup au lieu de le compter à l'œil.
+   */
+  it('replie les trois rappels en une carte qui dit leur nombre', async () => {
     await ouvrirDemo()
-    expect(screen.getAllByText(/^Rappel n° \d+$/).map((e) => e.textContent)).toEqual([
-      'Rappel n° 3',
-      'Rappel n° 2',
-      'Rappel n° 1',
-    ])
+    expect(screen.getByText('Rappel n° 3 sur 3')).toBeInTheDocument()
+    /* Et les deux autres ne sont PLUS des cartes : c'est le repli lui-même. */
+    expect(screen.queryByText('Rappel n° 2')).toBeNull()
+    expect(screen.queryByText('Rappel n° 1')).toBeNull()
   })
 
   /**
@@ -281,9 +318,25 @@ describe('journal des relances — en démonstration', () => {
    * fournisseur qui tourne aujourd'hui — `MessagerieDeJournal` — rend toujours
    * faux, donc « resté ici » est le cas ORDINAIRE, pas l'exception.
    */
-  it('distingue celle qui est partie des deux qui attendent', async () => {
+  /**
+   * ET LE REPLI NE MASQUE PAS CE QUI EST PARTI — c'est sa condition.
+   *
+   * Ce cas lisait « deux en attente » et « une partie par SMS » sur trois
+   * cartes. Une carte repliée qui n'aurait montré que l'état de la DERNIÈRE
+   * relance aurait affirmé « pas encore parti » et tu que la première était
+   * bien sortie : le repli aurait rangé de l'information en en supprimant, ce
+   * qui est pire que la répétition qu'il corrige.
+   *
+   * La carte porte donc les deux comptes et la date de la dernière sortie. La
+   * propriété gardée est exactement celle d'avant — on distingue ce qui est
+   * parti de ce qui n'est resté qu'ici — sur une seule ligne au lieu de trois.
+   */
+  it('dit, sur la carte repliée, ce qui est parti et ce qui attend', async () => {
     await ouvrirDemo()
-    expect(screen.getAllByText(/Pas encore parti/)).toHaveLength(2)
-    expect(screen.getByText(/Parti par SMS le 4 août/)).toBeInTheDocument()
+    const resume = screen.getByText(/1 partie\(s\), la dernière le 4 août · 2 en attente/)
+    expect(resume).toBeInTheDocument()
+    /* La carte repliée est bien UNE carte : sans cette borne, le cas passerait
+       aussi sur trois cartes dont l'une porterait le résumé. */
+    expect(screen.getAllByText(/Rappel n°/)).toHaveLength(1)
   })
 })

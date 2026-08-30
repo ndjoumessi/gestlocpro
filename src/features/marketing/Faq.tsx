@@ -8,6 +8,22 @@ const QUESTIONS = ['one', 'two', 'three', 'four', 'five'] as const
 /**
  * FAQ en `<details>` natifs : ouverture au clavier, indexables par les moteurs
  * de recherche et lisibles sans JavaScript. Aucun état React n'est nécessaire.
+ *
+ * ═══ ACCORDÉON EXCLUSIF : UNE RÉPONSE OUVERTE À LA FOIS ═══
+ *
+ * Les cinq replis s'ouvraient et restaient ouverts. Deux réponses dépliées
+ * poussent déjà la question suivante hors de l'écran ; cinq font de la liste un
+ * mur de prose qu'on parcourt à la molette pour retrouver l'intitulé qu'on
+ * cherchait. C'est la LISTE qu'on lit dans une FAQ, pas une réponse.
+ *
+ * `name` PARTAGÉ SUR `<details>` est l'accordéon exclusif du standard : le
+ * navigateur referme les autres, sans une ligne de JavaScript et sans que rien
+ * ne soit perdu — ni le clavier, ni l'indexation, ni la lecture sans script.
+ * Un état React aurait fait, ici, exactement ce que le navigateur fait mieux.
+ *
+ * LE REPLI EST GRACIEUX. Sur un navigateur qui ignore `name` — avant fin 2023 —
+ * les replis restent indépendants, c'est-à-dire le comportement d'hier : on
+ * perd l'exclusivité, jamais l'accès aux réponses.
  */
 export function Faq() {
   const t = useT()
@@ -29,6 +45,7 @@ export function Faq() {
         {QUESTIONS.map((key) => (
           <details
             key={key}
+            name="faq"
             className="group rounded-lg border border-divider bg-surface px-5 shadow-e1 open:shadow-e2"
           >
             <summary
@@ -39,11 +56,43 @@ export function Faq() {
               )}
             >
               {t(`marketing.faq.${key}.q` as 'marketing.faq.one.q')}
-              <Icon
-                name="chevronDown"
-                size={18}
-                className="shrink-0 text-muted transition-transform duration-200 group-open:rotate-180"
-              />
+              {/*
+                ═══ UNE COMMANDE, ET NON UNE FLÈCHE GRISE ═══
+
+                C'était un chevron de 18 px en `text-muted` — la couleur qu'on
+                donne aux textes SECONDAIRES. Sur une rangée de cinq questions,
+                le seul signe disant « ceci s'ouvre » était donc peint de la
+                teinte réservée à ce qui compte le moins, et rien ne le
+                distinguait d'une décoration.
+
+                Il devient un rond d'accent plein, comme les pastilles des
+                fonctionnalités : la page n'a plus qu'un seul vocabulaire pour
+                « voici une chose sur laquelle agir ».
+
+                LE SIGNE EST UN PLUS, ET C'EST UN CHOIX CONTRE LE CHEVRON. Un
+                chevron dit une DIRECTION — vers le bas, vers le haut — et il
+                faut connaître la convention pour lire « déplier ». Un plus dit
+                une QUANTITÉ : il y a autre chose ici. Sa rotation de 45° le
+                change en croix, c'est-à-dire en « refermer », sans qu'aucun
+                pixel ne soit remplacé : la même forme porte les deux états, et
+                le mouvement les relie.
+
+                `shrink-0` ET `size-9` : le rond ne se comprime pas quand une
+                question est longue. C'est ce qui l'avait laissé passer sous les
+                44 px ailleurs dans ce dépôt — voir le dépliant de la frontière
+                d'erreur. Ici la cible est le `<summary>` ENTIER, haut de 56 px ;
+                le rond n'est qu'un décor à l'intérieur, d'où `aria-hidden`.
+              */}
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'flex size-9 shrink-0 items-center justify-center rounded-full',
+                  'bg-accent text-on-accent',
+                  'transition-transform duration-200 group-open:rotate-45',
+                )}
+              >
+                <Icon name="plus" size={18} />
+              </span>
             </summary>
             {/*
               `text-body-l` ET NON `text-body`.

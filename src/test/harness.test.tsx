@@ -34,7 +34,21 @@ describe('harnais de test', () => {
     // exactement ce total sans le nommer nulle part. Répéter le montant sous
     // son propre intitulé est ce qui permet de lire les parts comme une
     // addition — la répétition coûte moins que le rapprochement de tête.
-    expect(screen.getAllByText(/1 397 000/).length).toBe(3)
+    /*
+      LE MONTANT EST CONVERTI, et c'est le sujet depuis que le produit sait le
+      faire : 1 397 000 francs au taux légal de 655,957 font 2 129,71 €. Les
+      centimes sont LÀ, et ils n'y étaient pas : la forme compacte tronquait à
+      l'euro, ce qui ne se voyait pas en franc CFA — où il n'y a rien à
+      tronquer — et faisait de chaque montant du produit un à-peu-près dès
+      qu'une devise à sous-unité s'affichait. Le cas
+      mesure que la préférence de devise est honorée par le harnais, et il
+      mesure désormais aussi qu'elle l'est POUR DE BON — la somme qu'il vérifie
+      reste celle des dix unités occupées, dite dans une autre monnaie.
+
+      Les cours viennent du faux serveur, figés : un cas dont le résultat
+      dépendrait du cours du jour échouerait demain sans qu'une ligne ait bougé.
+    */
+    expect(screen.getAllByText(/2\s?129,71/).length).toBe(3)
   })
 
   /**

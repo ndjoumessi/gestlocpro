@@ -7,12 +7,17 @@ import { StatusPill, type StatusTone } from '@/components/primitives/StatusPill'
 import { Badge } from '@/components/primitives/Badge'
 import { Button } from '@/components/primitives/Button'
 import { Icon } from '@/components/primitives/Icon'
+import { GroupeDeFiltres } from '@/components/controls/GroupeDeFiltres'
+import { Notice } from '@/components/primitives/Notice'
 import { useToast } from '@/components/primitives/Toast'
 import { EmptyState } from '@/components/primitives/DataTable'
+import { StatCard } from '@/components/primitives/Charts'
+import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDebordement'
+import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
+import { cn } from '@/lib/cn'
 import { Skeleton, SkeletonRegion } from '@/components/primitives/Skeleton'
 import { TenantScopeNote } from './TenantDashboard'
 import { useCurrency } from '@/currency/CurrencyProvider'
-import { cn } from '@/lib/cn'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
 import { montantEngage, type WorkOrder } from '@/data/portfolio'
@@ -122,6 +127,17 @@ export function Works() {
    */
   const engage = visible.reduce((somme, w) => somme + (w.approvedAmount ?? 0), 0)
 
+  /* Les trois populations de la rangée d'indicateurs, tirées du MÊME `visible`
+     que le total : elles suivent donc le filtre, et ne peuvent pas le
+     contredire. */
+  const aArbitrer = visible.filter((w) => w.status === 'quoted')
+  const enCours = visible.filter((w) => w.status === 'approved')
+  /* `signales` et non `aChiffrer` : ce nom-là désigne déjà, plus haut, la
+     fiche que la modale de chiffrage est en train d'éditer. Deux notions
+     voisines sous un même mot dans un même fichier finiraient par se
+     confondre à la relecture. */
+  const signales = visible.filter((w) => w.status === 'reported')
+
   const approve = (id: string) => {
     approveWork(id)
     // Valider engage une dépense, et se tromper de ligne dans une liste de
@@ -219,7 +235,7 @@ export function Works() {
         }
       />
 
-      {isTenant && <TenantScopeNote />}
+      {isTenant && <TenantScopeNote className="mb-4" />}
 
       {/* Le bouton de validation disparaissait sans un mot pour le
           gestionnaire, alors qu'il voit les devis en attente : il lui restait à
@@ -227,10 +243,7 @@ export function Works() {
           cautions traite déjà le cas symétrique — les deux se répondent
           maintenant, puisque c'est la même règle de délégation. */}
       {role === 'manager' && works.some((work) => work.status === 'quoted') && (
-        <p className="mb-4 flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body text-gold-ink">
-          <Icon name="info" size={15} className="mt-0.5 shrink-0" />
-          {t('app.works.managerNotice')}
-        </p>
+        <Notice className="mb-4">{t('app.works.managerNotice')}</Notice>
       )}
 
       {/*
@@ -251,54 +264,82 @@ export function Works() {
       */}
       {!isTenant && duPerimetre.length > 0 && (
         <div className="mt-6 mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div role="group" aria-label={t('app.works.filterOrigin')} className="flex flex-wrap gap-2">
-            {(['all', 'tenantReport', 'ownerInitiative'] as const).map((valeur) => {
-              const actif = origine === valeur
-              const compte =
+          <GroupeDeFiltres
+            libelle={t('app.works.filterOrigin')}
+            valeur={origine}
+            onChange={setOrigine}
+            options={(['all', 'tenantReport', 'ownerInitiative'] as const).map((valeur) => ({
+              valeur,
+              libelle: t(
+                valeur === 'all'
+                  ? 'app.works.filterAll'
+                  : valeur === 'tenantReport'
+                    ? 'app.works.filterReported'
+                    : 'app.works.filterOpened',
+              ),
+              compte:
                 valeur === 'all'
                   ? duPerimetre.length
-                  : duPerimetre.filter((w) => w.origin === valeur).length
-              return (
-                <button
-                  key={valeur}
-                  type="button"
-                  aria-pressed={actif}
-                  onClick={() => setOrigine(valeur)}
-                  className={cn(
-                    'inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3.5',
-                    'text-label font-semibold transition-colors duration-150',
-                    actif
-                      ? 'border-ink bg-ink text-on-dark'
-                      : 'border-border bg-surface text-muted hover:border-border-strong hover:text-ink',
-                  )}
-                >
-                  {t(
-                    valeur === 'all'
-                      ? 'app.works.filterAll'
-                      : valeur === 'tenantReport'
-                        ? 'app.works.filterReported'
-                        : 'app.works.filterOpened',
-                  )}
-                  {/* `gold-on-ink` : le segment actif peint son fond en
-                      `--color-ink`, qui s'inverse avec le thème. À 12 px ce
-                      compteur est du texte, donc il lui faut 4,5:1 — l'or de
-                      marque n'en donne que 2,33 en sombre. */}
-                  <span className={cn('numeric text-caps', actif ? 'text-gold-on-ink' : 'text-muted')}>
-                    {compte}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
+                  : duPerimetre.filter((w) => w.origin === valeur).length,
+            }))}
+          />
 
-          {engage > 0 && (
-            <p className="flex items-baseline gap-2">
-              <span className="text-body text-muted">{t('app.works.totalCommitted')}</span>
-              <span className="numeric text-title-m font-medium">
-                {money(engage, { round: true })}
-              </span>
-            </p>
-          )}
+        </div>
+      )}
+
+      {/*
+        LA RANGÉE D'INDICATEURS QUI MANQUAIT, et le total engagé y rentre.
+
+        Il vivait en texte libre à droite des filtres — « Total engagé
+        450 000 FCFA » —, seul chiffre d'un écran qui en compte trois. Les cinq
+        écrans voisins ouvrent tous sur une rangée de cartes ; celui-ci
+        demandait de lire cinq fiches pour savoir combien il y avait à arbitrer,
+        alors que la donnée était déjà calculée.
+
+        LES TROIS SUIVENT LE FILTRE, comme le total le faisait déjà : basculer
+        sur « à mon initiative » répond à « combien m'ont coûté mes propres
+        décisions », et il serait incohérent que deux cartes sur trois
+        l'ignorent.
+
+        L'ÉTAT SUR LES DEVIS, et sur eux seuls : un devis en attente est un
+        travail qui n'avance pas tant que personne ne tranche. Zéro devis rend
+        la carte neutre — c'est la règle que le retard applique déjà sur les
+        paiements, une alerte permanente cesse d'être lue.
+
+        PAS AU LOCATAIRE, et c'est une garde du dépôt qui me l'a rappelé plutôt
+        que ma relecture. Le total engagé vivait dans le bloc réservé au
+        bailleur ; en le sortant pour en faire une carte, je l'ai offert à tout
+        le monde — et avec lui les montants proposés et le nombre de devis en
+        attente. Un locataire a droit à savoir si SON chantier avance, pas à ce
+        que le parc dépense. `origineDesTravaux.test.tsx` dit exactement cela
+        depuis un lot antérieur : « n'expose ni devis ni engagé au locataire ».
+      */}
+      {!isTenant && visible.length > 0 && (
+        <div className={cn(GRILLE_TROIS_INDICATEURS, 'mt-6')}>
+          <StatCard
+            icone="card"
+            label={t('app.works.totalCommitted')}
+            value={money(engage, { compact: true })}
+            note={t('app.works.kpiCommittedNote')}
+          />
+          <StatCard
+            icone="wrench"
+            label={t('app.works.kpiQuoted')}
+            value={String(aArbitrer.length)}
+            etat={aArbitrer.length > 0 ? { ton: 'warn' } : undefined}
+            note={t('app.works.kpiQuotedNote', {
+              amount: money(
+                aArbitrer.reduce((somme, w) => somme + (w.quotedAmount ?? 0), 0),
+                { compact: true },
+              ),
+            })}
+          />
+          <StatCard
+            icone="clipboard"
+            label={t('app.works.kpiOngoing')}
+            value={String(enCours.length)}
+            note={t('app.works.kpiOngoingNote', { count: signales.length })}
+          />
         </div>
       )}
 
@@ -373,7 +414,29 @@ export function Works() {
             <Card
               key={work.id}
               role="listitem"
-              className="flex flex-col gap-4 sm:flex-row sm:items-center"
+              /*
+                LA CARTE SE REPLIE EN RANGÉE, ET LE TITRE GARDE UN PLANCHER.
+
+                Un lot précédent a retiré `shrink-0` de la rangée de commandes,
+                à droite : la page ne défile plus latéralement. Elle a cessé de
+                déborder de la FENÊTRE — pas de la carte. Mesuré à 700 px sur
+                /demo/travaux : la rangée de droite prend 518 px des 636, et la
+                colonne du titre, `min-w-0 flex-1`, tombe à ZÉRO sur deux cartes
+                sur trois. « Disjoncteur qui saute au démarrage du chauffe-eau »
+                se rend alors dans une boîte de largeur nulle, un mot par ligne,
+                et son texte se peint par-dessus la carte suivante.
+
+                Aucune règle ne le voyait : `scrollX` reste à zéro. C'est
+                `MESURER_DEBORD_LOCAL` qui l'a nommé, +81 px, et c'est le même
+                défaut que la carte d'alerte — même remède.
+
+                TOUT EST PRÉFIXÉ `sm:`, ET CE N'EST PAS DÉCORATIF. En dessous,
+                la carte est une COLONNE : `basis-48` y fixerait une HAUTEUR de
+                12 rem, et `ml-auto` pousserait la rangée de commandes contre le
+                bord droit. Les trois classes ne valent que dans la branche
+                rangée.
+              */
+              className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center"
             >
               <span
                 className={`flex size-11 shrink-0 items-center justify-center rounded-md ${
@@ -383,7 +446,13 @@ export function Works() {
                 <Icon name="wrench" size={20} />
               </span>
 
-              <div className="min-w-0 flex-1">
+              {/* `sm:basis-48` — 12 rem, la largeur sous laquelle la colonne ne
+                  descend plus. En dessous, `flex-wrap` renvoie les commandes à
+                  la ligne suivante plutôt que de continuer à écraser le titre.
+                  Même plancher que la carte d'alerte, pour la même raison : le
+                  plus long mot des titres du produit tient dans 85 px, et il en
+                  faut deux à trois par ligne pour qu'un titre se lise. */}
+              <div className="min-w-0 flex-1 sm:basis-48">
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="title-m">{workTitle(work, t)}</h2>
                   {work.urgent && <Badge tone="danger">{t('app.works.urgent')}</Badge>}
@@ -408,6 +477,26 @@ export function Works() {
                   Rien ne s'affiche quand l'origine manque : une intervention
                   antérieure à ce champ n'a pas de déclarant connu, et écrire
                   « signalé par » sans nom serait pire que le silence.
+
+                  ELLE PARAÎT MÊME QUAND LE NOM EST DÉJÀ AU-DESSUS, et c'est
+                  une décision revenue sur elle-même.
+
+                  La ligne de référence porte le locataire du logement ; sur
+                  quatre signalements sur cinq de la démonstration, c'est la même
+                  personne, et l'écran écrit donc « … · Serge Mbarga » puis
+                  « Signalé par Serge Mbarga » à une ligne d'intervalle. Ce lot a
+                  d'abord masqué la seconde ligne dans ce cas.
+
+                  `origineDesTravaux.test.tsx` l'a refusé, et il avait raison :
+                  ce ne sont pas deux fois le même fait. « Le logement est loué à
+                  X » et « X a signalé ceci » sont deux affirmations distinctes
+                  qui NOMMENT la même personne. Les confondre oblige le lecteur à
+                  déduire la seconde de la première — or ce que le bailleur
+                  cherche ici est précisément qui rappeler pour faire ouvrir la
+                  porte à l'artisan, et une déduction n'est pas une réponse.
+
+                  Le coût est réel — un nom écrit deux fois — et il est le prix
+                  d'une affirmation qu'aucune autre ligne ne fait.
                 */}
                 {work.origin && (
                   <p className="mt-1 text-body text-muted">
@@ -438,7 +527,7 @@ export function Works() {
                   porte déjà `min-w-0 flex-1` : c'est lui qui cède la place, et
                   le titre de l'intervention se replie, ce qu'un titre sait
                   faire. */}
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3 sm:ml-auto">
                 {/*
                   LE MONTANT DIT CE QU'IL EST : proposé, ou engagé.
 
@@ -497,11 +586,6 @@ export function Works() {
                   est passé jeudi » est précisément la réponse qui manque le
                   plus. Le locataire ne la lisait nulle part.
                 */}
-                {work.origin === 'tenantReport' && work.reportedBy && role !== 'tenant' && (
-                  <Button variant="ghost" size="sm" icon="bell" onClick={() => setARepondre(work)}>
-                    {t('app.works.reply')}
-                  </Button>
-                )}
 
                 {work.status === 'reported' && role !== 'tenant' && (
                   <Button
@@ -517,18 +601,6 @@ export function Works() {
                   </Button>
                 )}
 
-                {/* Retirer la validation : réservé à qui a le droit de valider. */}
-                {work.status === 'approved' && canApprove && (
-                  <Button variant="ghost" size="sm" onClick={() => unapprove(work.id)}>
-                    {t('app.works.unapprove')}
-                  </Button>
-                )}
-
-                {work.status === 'done' && role !== 'tenant' && (
-                  <Button variant="ghost" size="sm" onClick={() => reopen(work.id)}>
-                    {t('app.works.reopen')}
-                  </Button>
-                )}
 
                 {work.status === 'quoted' && canApprove && (
                   <Button
@@ -562,6 +634,45 @@ export function Works() {
                       {t('app.works.complete')}
                     </Button>
                   )}
+
+                {/*
+                  CE QUI DÉFAIT ET CE QUI ACCOMPAGNE PASSE DERRIÈRE TROIS POINTS.
+
+                  La rangée alignait le montant, la pastille et jusqu'à TROIS
+                  gestes. Ce fichier porte déjà la mesure du dégât, quelques
+                  lignes plus haut : « 585 px réclamés, bord droit à 714 dans une
+                  fenêtre de 700, scrollX=14 ». Le repli l'a armé depuis — mais
+                  il replie, et la carte grandit d'une ligne, cinq fois.
+
+                  C'est la même question que l'en-tête de page a tranchée, un
+                  niveau plus bas, et rien ne justifiait qu'elle y réponde
+                  autrement sinon que personne ne l'avait posée.
+
+                  CE QUI RESTE FAIT AVANCER : chiffrer, valider, clore. CE QUI SE
+                  REPLIE défait ou accompagne — retirer une validation, rouvrir
+                  un chantier clos, écrire au locataire. Aucun geste n'est
+                  retiré, et le menu disparaît de lui-même quand il n'a rien à
+                  porter : sur une intervention devisée que le bailleur s'est
+                  ouverte à lui-même, il n'y a rien derrière les trois points, et
+                  il n'y a donc pas de trois points.
+                */}
+                <MenuDeDebordement libelle={t('common.moreActions')}>
+                  {work.origin === 'tenantReport' && work.reportedBy && role !== 'tenant' ? (
+                    <MenuElement icone="bell" onClick={() => setARepondre(work)}>
+                      {t('app.works.reply')}
+                    </MenuElement>
+                  ) : null}
+                  {work.status === 'approved' && canApprove ? (
+                    <MenuElement onClick={() => unapprove(work.id)}>
+                      {t('app.works.unapprove')}
+                    </MenuElement>
+                  ) : null}
+                  {work.status === 'done' && role !== 'tenant' ? (
+                    <MenuElement onClick={() => reopen(work.id)}>
+                      {t('app.works.reopen')}
+                    </MenuElement>
+                  ) : null}
+                </MenuDeDebordement>
               </div>
             </Card>
           )
@@ -705,10 +816,7 @@ function WorksSkeleton() {
 
       <SkeletonRegion className="flex flex-col gap-3">
         {[0, 1, 2].map((carte) => (
-          <div
-            key={carte}
-            className="flex min-w-0 items-center gap-4 rounded-lg border border-divider bg-surface p-4 shadow-e1 sm:p-5"
-          >
+          <Card key={carte} className="flex items-center gap-4">
             <Skeleton radius="md" className="size-11" />
             <div className="min-w-0 flex-1">
               <Skeleton line="title" className="w-64 max-w-full" />
@@ -716,7 +824,7 @@ function WorksSkeleton() {
             </div>
             <Skeleton line="title" radius="md" className="hidden w-28 sm:block" />
             <Skeleton radius="md" className="hidden h-7 w-24 sm:block" />
-          </div>
+          </Card>
         ))}
       </SkeletonRegion>
     </>
@@ -747,13 +855,13 @@ function Montant({ work }: { work: WorkOrder }) {
 
   return (
     <span className="flex flex-col items-end">
-      <span className="numeric text-title-m font-medium">{money(montant, { round: true })}</span>
+      <span className="numeric text-title-m font-medium">{money(montant, { compact: true })}</span>
       <span className="text-caps text-muted">
         {t(nature === 'approved' ? 'app.works.amountApproved' : 'app.works.amountQuoted')}
       </span>
       {revise && (
         <span className="numeric text-caps text-muted">
-          {t('app.works.amountWasQuoted', { amount: money(work.quotedAmount!, { round: true }) })}
+          {t('app.works.amountWasQuoted', { amount: money(work.quotedAmount!, { compact: true }) })}
         </span>
       )}
     </span>

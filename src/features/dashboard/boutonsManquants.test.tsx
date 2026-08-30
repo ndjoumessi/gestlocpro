@@ -18,6 +18,42 @@ import { renderApp, screen, switchRole, userEvent, within, attendreLeChargement 
  * Ces cas interrogent donc l'écran AU REPOS, sans qu'aucun toast soit ouvert.
  */
 
+/**
+ * UN GESTE, QU'IL SOIT SOUS LES YEUX OU REPLIÉ.
+ *
+ * Ces cas tiennent une règle d'EXISTENCE — « le geste existe par lui-même, hors
+ * de tout message » —, pas une règle de forme. Trois d'entre eux vivent
+ * désormais derrière les trois points d'une carte : ils portent `menuitem` et
+ * non `button`, ce qui ne change rien à ce que le cas veut dire.
+ *
+ * Les entrées d'un menu fermé ne sont pas rendues : on ouvre donc tous les
+ * déclencheurs de la zone principale avant de compter. C'est le geste de
+ * l'utilisateur qui cherche ce qu'une ligne lui permet.
+ */
+async function geste(nom: RegExp): Promise<HTMLElement[]> {
+  /* `userEvent` et non `element.click()` : un clic brut hors d'`act` laisse la
+     mise à jour de React non appliquée, et la requête qui suit lit un DOM
+     d'avant l'ouverture. Le cas rougissait alors sur un menu bel et bien
+     rempli. */
+  const user = userEvent.setup()
+  const trouves = [...screen.queryAllByRole('button', { name: nom })]
+
+  /*
+    UN MENU À LA FOIS, ET ON REFERME.
+
+    Les ouvrir tous d'affilée ne marche pas : le clic sur le second déclencheur
+    est un clic EXTÉRIEUR pour le premier menu, qui se referme aussitôt. Seul le
+    dernier restait ouvert, et le cas concluait que « Rouvrir » n'existait
+    nulle part — sur un écran qui le portait.
+  */
+  for (const d of Array.from(document.querySelectorAll('main [aria-haspopup="menu"]'))) {
+    await user.click(d as HTMLElement)
+    trouves.push(...screen.queryAllByRole('menuitem', { name: nom }))
+    await user.keyboard('{Escape}')
+  }
+  return trouves
+}
+
 describe('gestes atteignables sans le toast', () => {
   it('offre de chiffrer une intervention déclarée', async () => {
     const user = userEvent.setup()
@@ -57,16 +93,14 @@ describe('gestes atteignables sans le toast', () => {
 
     // Aucun toast n'a été déclenché : le geste doit exister par lui-même.
     expect(screen.queryByRole('status')).not.toHaveTextContent(/annuler/i)
-    expect(screen.getAllByRole('button', { name: /^rouvrir$/i }).length).toBeGreaterThan(0)
+    expect((await geste(/^rouvrir$/i)).length).toBeGreaterThan(0)
   })
 
   it('offre de retirer une validation, hors de tout message', async () => {
     await renderApp('/demo/travaux')
     await attendreLeChargement()
 
-    expect(
-      screen.getAllByRole('button', { name: /retirer la validation/i }).length,
-    ).toBeGreaterThan(0)
+    expect((await geste(/retirer la validation/i)).length).toBeGreaterThan(0)
   })
 
   it('ne propose ni chiffrage ni réouverture au locataire', async () => {
@@ -76,7 +110,19 @@ describe('gestes atteignables sans le toast', () => {
     await attendreLeChargement()
 
     expect(screen.queryByRole('button', { name: /^chiffrer$/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /^rouvrir$/i })).not.toBeInTheDocument()
+    expect(await geste(/^rouvrir$/i)).toHaveLength(0)
+    /*
+      ET AUCUN MENU NON PLUS, ce qui dit plus que l'absence d'un bouton.
+
+      Les trois gestes repliés — répondre, retirer une validation, rouvrir —
+      sont tous réservés au bailleur ou au gestionnaire. Sur les cartes d'un
+      locataire, le menu n'a donc rien à porter, et il ne se rend pas : c'est
+      exactement ce que `MenuDeDebordement` promet quand ses enfants sont tous
+      absents. Vérifier l'absence du DÉCLENCHEUR est plus fort que vérifier
+      l'absence d'un libellé : un menu fermé ne rend pas ses entrées, donc un
+      `queryByRole` seul passerait au vert sur un menu plein.
+    */
+    expect(document.querySelectorAll('main [aria-haspopup="menu"]')).toHaveLength(0)
   })
 })
 

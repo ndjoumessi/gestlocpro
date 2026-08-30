@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import { useLocation } from 'react-router-dom'
+import { partiesDeDateISO } from '@/lib/dates'
 
 /**
  * Durée de l'attente SIMULÉE, en démonstration seulement.
@@ -46,6 +47,7 @@ import {
   BUILDINGS as IMMEUBLES_DEMO,
   COLLECTIONS as COLLECTIONS_DEMO,
   INSPECTIONS as INSPECTIONS_DEMO,
+  PHOTOS_DEMO,
   READINGS as READINGS_DEMO,
   READING_HISTORY_DEMO,
   TENANT_DOCUMENT_REQUESTS as DEMANDES_DOCUMENTS_DEMO,
@@ -58,7 +60,8 @@ import {
   type MonthlyCollection,
   type Receipt,
 } from './portfolio'
-import { ApiError, api } from '@/api/client'
+import { ApiError, api, deposerLesOctets } from '@/api/client'
+import type { PhotoLocale } from '@/features/dashboard/PhotosDeReserve'
 
 /** Les deux façons dont le CHARGEMENT du parc peut échouer, et leurs gestes. */
 export type EchecDuParc = 'session' | 'technique'
@@ -91,10 +94,7 @@ import { hasStoredState, loadState, resetState, saveState } from './persistence'
  */
 /** `AAAA-MM-JJ` en parties de date, ou aujourd'hui. */
 function dateDuJour(iso?: string): { year: number; month: number; day: number } {
-  if (iso) {
-    const [a, m, j] = iso.split('-').map(Number)
-    return { year: a!, month: m!, day: j! }
-  }
+  if (iso) return partiesDeDateISO(iso)
   const maintenant = new Date()
   return {
     year: maintenant.getFullYear(),
@@ -125,6 +125,22 @@ function nouvelleFiche(
     },
     urgent: signalement.urgency === 'blocking',
   }
+}
+
+/**
+ * Une réserve telle que le serveur vient de la créer.
+ *
+ * `description` en fait partie parce que l'appariement en dépend : sans elle,
+ * deux réserves d'une même pièce, de même gravité et de même coût seraient
+ * indiscernables, et il ne resterait que l'ordre du tableau — une garantie que
+ * Prisma ne donne pas.
+ */
+export interface ReserveCreee {
+  id: string
+  room: string
+  description: string
+  severity: 'minor' | 'major'
+  costMinor: number | null
 }
 
 interface PortfolioContextValue {
@@ -169,6 +185,18 @@ interface PortfolioContextValue {
    * refus serveur, le bailleur lisait le succès PUIS le refus — deux phrases
    * contradictoires — et la saisie était déjà perdue.
    */
+  /**
+   * Enregistre un état des lieux et REND LES RÉSERVES CRÉÉES.
+   *
+   * Il rendait `boolean`, comme `addWork` — assez pour savoir s'il faut
+   * féliciter. Les photos ont changé la question : une réserve n'a
+   * d'identifiant qu'une fois créée, et l'écran tient des photos attachées à
+   * des LIGNES DE FORMULAIRE. Sans les réserves en retour, il ne peut apparier
+   * ni envoyer quoi que ce soit.
+   *
+   * `null` dit l'échec ; un tableau vide dit la démonstration, où rien n'est
+   * créé côté serveur et où il n'y a donc rien à apparier.
+   */
   addInspection: (
     unitId: string,
     etat: {
@@ -178,7 +206,34 @@ interface PortfolioContextValue {
       signedByName?: string
       findings: { room: string; description: string; severity: 'minor' | 'major'; costMinor?: number }[]
     },
-  ) => Promise<boolean>
+  ) => Promise<ReserveCreee[] | null>
+  /**
+   * Envoie les photos d'une réserve, et dit OÙ CHAQUE PHOTO S'EST ARRÊTÉE.
+   *
+   * Trois appels par photo — réserver, déposer, confirmer — et chaque jonction
+   * peut casser. La fonction ne rend donc pas un booléen : elle avance l'état
+   * de chaque photo par `onProgres`, pour qu'une reprise ne refasse que ce qui
+   * manque. Redéposer une photo déjà montée la paierait deux fois ; la
+   * réserver deux fois laisserait une ligne non confirmée de plus en base.
+   */
+  envoyerPhotos: (
+    envois: { findingId: string; photo: PhotoLocale }[],
+    onProgres: (cle: string, avance: Partial<PhotoLocale>) => void,
+  ) => Promise<{ echecs: number; nonConfirmees: number }>
+  /**
+   * Demande l'adresse de lecture d'une photo, ou `null`.
+   *
+   * `null` couvre DEUX cas que l'écran traite pareil, et c'est délibéré : le
+   * jeu de démonstration, qui n'a pas de dépôt d'objets, et le refus du serveur.
+   * L'un comme l'autre veut dire « il n'y a rien à afficher ici » — et le
+   * refus, côté serveur, est un 404 précisément pour ne pas distinguer « pas le
+   * droit » de « n'existe pas ».
+   *
+   * ELLE N'EST PAS MISE EN CACHE. L'adresse périme en quelques minutes ; la
+   * retenir la rendrait morte au second affichage, ce qui est pire qu'un appel
+   * de plus. Le composant qui l'affiche la demande à son montage.
+   */
+  lirePhoto: (photoId: string) => Promise<string | null>
   /**
    * Ouvre un signalement, et rend ce que le SERVEUR en a fait.
    *
@@ -256,7 +311,10 @@ interface PortfolioContextValue {
    */
   callRent: (periodStart: string) => Promise<number>
   /** Met en demeure. Droit du seul propriétaire, motif obligatoire. */
-  serveFormalNotice: (leaseId: string, reason: string) => Promise<boolean>
+  serveFormalNotice: (
+    leaseId: string,
+    reason: string,
+  ) => Promise<'enregistree' | 'demonstration' | 'echec'>
   /**
    * Enregistre un encaissement sur une période.
    *
@@ -357,7 +415,7 @@ interface PortfolioContextValue {
    */
   leasesForUnit: (unitId: string) => Occupation[]
   /** Le locataire demande une pièce. Refusée en double tant qu'elle est en attente. */
-  requestDocument: (unitId: string, kind: DocumentKind) => void
+  requestDocument: (unitId: string, kind: DocumentKind) => Promise<boolean>
   /** Le gestionnaire répond : fournie, ou impossible à fournir. */
   resolveDocumentRequest: (id: string, status: 'fulfilled' | 'declined') => void
   readingForUnit: (unitId: string) => MeterReading | undefined
@@ -955,12 +1013,30 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       })
       if (!parkId) {
         setDocumentRequests((liste) => [local(`LOCAL-${liste.length + 1}`), ...liste])
-        return
+        return Promise.resolve(true)
       }
-      void api
+      /*
+        ELLE REND MAINTENANT CE QUE LE SERVEUR A DIT.
+
+        Elle partait en `void`, et l'écran annonçait « Demande envoyée » avec
+        l'appel. Sur un refus — le 409 `already_pending` que ce même écran
+        s'emploie à éviter avant le clic —, le locataire lisait donc que sa
+        demande était partie PUIS qu'elle avait échoué.
+
+        C'est le défaut que `Signaler` raconte avoir corrigé chez lui : « la
+        phrase partait avec l'appel et non avec sa réponse ». `addWork` rend un
+        booléen depuis ce jour-là ; celle-ci le rend enfin aussi.
+      */
+      return api
         .requestDocument<{ request: { id: string } }>(parkId, unitId, kind)
-        .then(({ request }) => setDocumentRequests((liste) => [local(request.id), ...liste]))
-        .catch(signalerEchec)
+        .then(({ request }) => {
+          setDocumentRequests((liste) => [local(request.id), ...liste])
+          return true
+        })
+        .catch((cause: unknown) => {
+          signalerEchec(cause)
+          return false
+        })
     },
     [parkId, signalerEchec],
   )
@@ -1010,7 +1086,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           costMinor?: number
         }[]
       },
-    ): Promise<boolean> => {
+    ): Promise<ReserveCreee[] | null> => {
       const local = () =>
         setInspections((liste) => [
           {
@@ -1027,20 +1103,134 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         ])
       if (!parkId) {
         // Même raison qu'`addWork` : une démonstration qui rendrait `undefined`
-        // prendrait un chemin que rien n'éprouve.
+        // prendrait un chemin que rien n'éprouve. Le tableau est VIDE et non
+        // inventé : sans serveur, aucune réserve n'a d'identifiant, et en
+        // fabriquer un ferait croire à l'écran qu'il peut envoyer des photos.
         local()
-        return true
+        return []
       }
       try {
-        await api.addInspection(parkId, unitId, etat)
+        const reponse = await api.addInspection<{
+          inspection?: { findings?: ReserveCreee[] }
+        }>(parkId, unitId, etat)
         local()
-        return true
+        /**
+         * Un tableau vide plutôt qu'une exception si la réponse ne porte pas
+         * les réserves. L'état des lieux, lui, EST enregistré — le faire
+         * échouer ici mentirait dans l'autre sens. C'est l'écran qui doit
+         * alors dire que les photos ne sont pas parties, et il le fait :
+         * une photo qu'aucune réserve n'accueille est comptée comme un échec
+         * d'envoi, jamais passée sous silence.
+         */
+        return Array.isArray(reponse.inspection?.findings) ? reponse.inspection.findings : []
       } catch (erreur) {
         signalerEchec(erreur)
-        return false
+        return null
       }
     },
     [parkId, signalerEchec],
+  )
+
+  /**
+   * LA CHAÎNE DES PHOTOS, jonction par jonction.
+   *
+   * Chaque photo traverse trois appels, et l'état avance APRÈS chacun. Ce
+   * n'est pas de la comptabilité : c'est ce qui rend la reprise possible sans
+   * repayer. Une photo dont `deposee` est vrai a déjà coûté sa montée — la
+   * reprise ne refait que la confirmation.
+   *
+   * Les échecs sont COMPTÉS SÉPARÉMENT parce qu'ils ne se disent pas pareil.
+   * Une photo qui n'est pas montée n'existe nulle part et rien n'est perdu à
+   * fermer. Une photo montée mais non confirmée est PAYÉE et invisible : la
+   * fermer la perd pour de bon, et l'écran doit le dire autrement.
+   *
+   * `signalerEchec` n'est PAS appelé ici, et c'est délibéré : il pose un toast,
+   * qui s'efface. La modale garde ces comptes sous le champ, là où ils
+   * survivent au temps qu'il faut pour reprendre.
+   */
+  const envoyerPhotos = useCallback(
+    async (
+      envois: { findingId: string; photo: PhotoLocale }[],
+      onProgres: (cle: string, avance: Partial<PhotoLocale>) => void,
+    ): Promise<{ echecs: number; nonConfirmees: number }> => {
+      if (!parkId) return { echecs: 0, nonConfirmees: 0 }
+      let echecs = 0
+      let nonConfirmees = 0
+
+      for (const { findingId, photo } of envois) {
+        if (photo.confirmee) continue
+        // L'état d'ENTRÉE ne suffit pas : une photo montée à ce tour-ci a
+        // toujours `deposee: false` dans l'objet reçu, puisque l'avance vit
+        // dans le composant. Sans ce drapeau local, une confirmation qui casse
+        // juste après une montée réussie serait comptée comme un échec de
+        // montée — et le message dirait « rien n'est perdu » alors que l'objet
+        // est payé.
+        let deposee = photo.deposee
+        try {
+          let photoId = photo.photoId
+          if (!deposee) {
+            const { photo: ligne, envoi } = await api.reservePhoto<{
+              photo: { id: string }
+              envoi: { url: string; methode: string; entetes: Record<string, string> }
+            }>(parkId, findingId, {
+              contentType: 'image/jpeg',
+              // La taille du blob TRANSCODÉ : elle est scellée dans
+              // l'autorisation, et le dépôt refuse tout ce qui n'en fait pas
+              // exactement autant.
+              sizeBytes: photo.octets.size,
+            })
+            photoId = ligne.id
+            onProgres(photo.cle, { photoId })
+            await deposerLesOctets(envoi, photo.octets)
+            deposee = true
+            onProgres(photo.cle, { deposee: true })
+          }
+          if (!photoId) {
+            echecs += 1
+            continue
+          }
+          await api.confirmPhoto(parkId, photoId)
+          onProgres(photo.cle, { confirmee: true })
+        } catch {
+          if (deposee) nonConfirmees += 1
+          else echecs += 1
+        }
+      }
+      return { echecs, nonConfirmees }
+    },
+    [parkId],
+  )
+
+  /**
+   * L'ADRESSE D'UNE PHOTO, demandée au moment d'afficher.
+   *
+   * `signalerEchec` n'est PAS appelé : une vignette qui ne se charge pas n'est
+   * pas un geste que l'utilisateur vient de faire, et poser un toast rouge par
+   * photo manquante ferait clignoter l'écran pour une lecture qu'il n'a pas
+   * demandée. Le composant dit lui-même, à sa place, qu'il n'a pas la preuve.
+   */
+  const lirePhoto = useCallback(
+    async (photoId: string): Promise<string | null> => {
+      /**
+       * SANS PARC SERVEUR, LE REGISTRE LOCAL RÉPOND — et il répond `null` pour
+       * tout ce qu'il ne connaît pas.
+       *
+       * La démonstration n'a pas de dépôt d'objets. Elle n'invente pas d'adresse
+       * pour autant : l'écran appelle cette fonction exactement comme sur un
+       * vrai parc, et c'est ici, à la même jonction, que la réponse change. Un
+       * champ d'adresse posé dans la donnée aurait marché en démonstration et
+       * divergé du produit — la façon la plus sûre de laisser un défaut
+       * d'affichage invisible jusqu'à la production.
+       */
+      if (!parkId) return PHOTOS_DEMO[photoId] ?? null
+      try {
+        const { lecture } = await api.readPhoto<{ lecture: { url: string } }>(parkId, photoId)
+        return lecture.url
+      } catch {
+        return null
+      }
+    },
+    [parkId],
   )
 
   const settleDeposit = useCallback(
@@ -1171,15 +1361,34 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [parkId, signalerEchec],
   )
 
+  /*
+    TROIS ISSUES ET NON DEUX, et c'est ce qui rend le geste JOUABLE en
+    démonstration sans qu'elle mente.
+
+    Un booléen ne distingue pas « le serveur a refusé » de « il n'y a pas de
+    serveur ». L'écran retombait donc sur le même silence dans les deux cas, et
+    c'est pourquoi le bouton était masqué en démonstration : mieux valait pas de
+    bouton qu'une confirmation qui ne fait rien.
+
+    Nommer la troisième issue déplace la décision là où elle se prend — seul le
+    fournisseur sait s'il y a un parc — et laisse l'écran écrire la phrase
+    juste. Même partition que `remindRent`, qui rend un bilan plutôt qu'un
+    succès, et dont l'écran dit « rien n'est parti » au lieu d'annoncer trois
+    relances.
+  */
   const serveFormalNotice = useCallback(
-    async (leaseId: string, reason: string): Promise<boolean> => {
-      if (!parkId) return false
+    async (leaseId: string, reason: string): Promise<'enregistree' | 'demonstration' | 'echec'> => {
+      /* RIEN À ÉCRIRE LOCALEMENT, et ce n'est pas un oubli : l'acte est un
+         enregistrement au dossier du bail PLUS une notification au compte du
+         locataire. La démonstration n'a ni l'un ni l'autre — même raisonnement
+         que la réponse à un signalement, dont le commentaire le dit déjà. */
+      if (!parkId) return 'demonstration'
       try {
         await api.serveFormalNotice(parkId, leaseId, reason)
-        return true
+        return 'enregistree'
       } catch (erreur) {
         signalerEchec(erreur)
-        return false
+        return 'echec'
       }
     },
     [parkId, signalerEchec],
@@ -1379,6 +1588,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       reopenWork,
       unapproveWork,
       addInspection,
+      envoyerPhotos,
+      lirePhoto,
       addWork,
       unsettleDeposit,
       settleDeposit,
@@ -1463,6 +1674,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       reopenWork,
       unapproveWork,
       addInspection,
+      envoyerPhotos,
+      lirePhoto,
       addWork,
       unsettleDeposit,
       settleDeposit,

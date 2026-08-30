@@ -20,16 +20,26 @@ export const en: Dictionary = {
     confirm: 'Confirm',
     retry: 'Try again',
     search: 'Search',
+    moreActions: 'More actions',
     loading: 'Loading…',
     required: 'required',
     optional: 'optional',
     currency: 'Currency',
+    currencyNames: {
+      CFA: 'CFA franc (FCFA)',
+      EUR: 'Euro (€)',
+      CAD: 'Canadian dollar ($)',
+      USD: 'US dollar ($)',
+    },
     language: 'Language',
     theme: 'Theme',
     country: 'Country',
     dialZoneCfa: 'CFA franc zone',
     dialZoneOther: 'Other countries',
     demoBadge: 'Demo',
+    currencyUnavailable: 'Rates unavailable · amounts in {currency}',
+    currencyConverted: 'Converted at the {date} rate',
+    currencyPegged: 'Converted at the legal parity',
     demoPark: 'Demo portfolio',
     emptyParkTitle: 'Your portfolio is still empty',
     emptyParkBody:
@@ -51,6 +61,7 @@ export const en: Dictionary = {
       'This country is not supported yet: choose the currency and language of your space yourself.',
     email: 'Email address',
     password: 'Password',
+    passwordHint: 'At least {n} characters.',
     phone: 'Phone',
     dialCode: 'Dial code',
     buildingCount: '{count} buildings',
@@ -126,9 +137,33 @@ export const en: Dictionary = {
   },
 
   nav: {
-    dashboard: 'Dashboard',
+    /**
+     * `\u00AD` — LE TRAIT D'UNION CONDITIONNEL, ET IL N'EST PAS DÉCORATIF.
+     *
+     * Invisible tant que le mot tient sur sa ligne ; il devient un trait
+     * d'union à l'endroit exact où le navigateur doit couper. C'est ce que
+     * `hyphens: auto` fait tout seul — QUAND le moteur a un dictionnaire pour
+     * la langue. Mesuré sur ce Chromium : il en a un pour le FRANÇAIS
+     * (« Signa- / lements ») et pas pour l'ANGLAIS.
+     *
+     * Sans lui, la barre basse retombe sur `break-words` et coupe n'importe où :
+     * « Payment / s », « Dashboar / d ». La cellule fait 51 px à 320 px et
+     * « Dashboard » en réclame 62 — la coupure est inévitable, seul son
+     * ENDROIT se choisit. `mesure-ui` refuse désormais un orphelin de moins de
+     * trois caractères, et c'est cette règle qui a nommé les deux mots.
+     *
+     * SEULS LES DEUX MOTS QUI CASSENT le portent. « Reports » (44 px) et
+     * « Portfolio » (48) tiennent dans la cellule ; leur en poser un serait une
+     * décoration invisible que le lecteur suivant croirait nécessaire.
+     *
+     * C'est un fait de LANGUE, pas de mise en page : « Dash-board » et
+     * « Pay-ments » sont les points de césure de ces mots, quelle que soit la
+     * largeur qui les impose. La barre latérale porte les mêmes chaînes et n'y
+     * coupe jamais — le caractère y reste invisible.
+     */
+    dashboard: 'Dash\u00ADboard',
     portfolio: 'Portfolio',
-    payments: 'Payments',
+    payments: 'Pay\u00ADments',
     meters: 'Meter readings',
     inspections: 'Inspections',
     works: 'Works',
@@ -146,14 +181,18 @@ export const en: Dictionary = {
     sectionMySpace: 'My space',
     sectionSteering: 'Steering',
     sectionOperations: 'Operations',
+    decisions: 'Decisions',
     sectionAdmin: 'Administration',
     activeProfile: 'Active profile',
     settings: 'Settings',
     settingsOpen: 'Settings: language, currency and theme',
+    settingsClose: 'Close settings',
     toggleNav: 'Collapse or expand navigation',
     openNav: 'Open navigation',
     closeNav: 'Close navigation',
+    backToSite: 'Back to the website',
     searchPlaceholder: 'Search a unit, a tenant…',
+    searchShort: 'Unit, tenant…',
     selectPark: 'Park being viewed',
     primaryNav: 'Main navigation',
     sectionsNav: 'Product sections',
@@ -166,6 +205,7 @@ export const en: Dictionary = {
     signUp: 'Create account',
     signUpFree: 'Start free',
     accountMenu: 'Account of {name} — open menu',
+    accountOf: 'Account of {name}',
     logout: 'Sign out',
     noAccount: 'No account yet?',
     hasAccount: 'Already have an account?',
@@ -191,18 +231,21 @@ export const en: Dictionary = {
       sentBody:
         'If an account exists for {email}, a reset link is on its way. Remember to check your spam folder.',
       resend: 'Send it again',
+      resent: 'Request sent again',
+      wrongEmail: 'Not the right address?',
     },
 
     reset: {
       title: 'Choose a new password',
-      subtitle: 'It replaces the old one on every device you are signed in on.',
+      subtitle:
+        'Every session will be closed: you will need to sign in again on each device.',
       newPassword: 'New password',
       confirm: 'Confirm the password',
       confirmHint: 'Type it again, identically.',
       submit: 'Save the password',
       successTitle: 'Password changed',
       successBody:
-        'You can sign in with your new password. Any other open sessions have been signed out.',
+        'You can sign in with your new password. Every open session has been closed, including any you did not start.',
       goToLogin: 'Sign in',
       invalidTitle: 'This link is no longer valid',
       invalidBody:
@@ -211,7 +254,7 @@ export const en: Dictionary = {
     },
 
     strength: {
-      weak: 'Weak',
+      tooShort: 'Too short',
       fair: 'Fair',
       good: 'Good',
       strong: 'Strong',
@@ -257,7 +300,9 @@ export const en: Dictionary = {
       ownerCodeHint:
         'The owner shares it from their space. Format: GES-XXXX-XXXX.',
 
+      roleRequired: 'Choose the role that fits you to continue',
       inviteCode: 'Invitation code',
+      inviteCodePlaceholder: 'LOC-4A7B-92CD',
       inviteCodeHint:
         'You received it by SMS or email when your lease was signed. Format: LOC-XXXX-XXXX.',
       tenantNotice:
@@ -297,8 +342,9 @@ export const en: Dictionary = {
       nameRequired: 'Enter your full name.',
       emailRequired: 'Enter your email address.',
       emailInvalid: 'That address doesn’t look valid. Check the format: name@domain.com',
-      passwordRequired: 'Choose a password.',
-      passwordShort: 'Use at least 8 characters.',
+      passwordChoose: 'Choose a password.',
+      passwordEnter: 'Enter your password.',
+      passwordShort: 'Use at least {n} characters.',
       phoneRequired: 'Enter a phone number.',
       phoneInvalid: 'That number looks incomplete.',
       phoneTooLong: 'That number is too long, dial code included.',
@@ -327,6 +373,9 @@ export const en: Dictionary = {
       collections: 'collections',
       meters: 'meter-readings',
       receipt: 'receipt',
+      deposits: 'deposits-statement',
+      deposit: 'deposit-receipt',
+      inspection: 'inspection-report',
     },
     paymentSaved: 'Payment recorded · receipt sent',
     roleNotice: 'You are viewing this space as {role}. Switch profile in the sidebar.',
@@ -340,6 +389,7 @@ export const en: Dictionary = {
       allReceipts: 'Tenant receipts',
       request: 'Request a document',
       requestHint: 'The manager receives the request and replies in this space.',
+      reqNoChoice: 'Choose the document to request',
       requestSend: 'Send the request',
       requestSent: 'Request sent to the manager',
       reqResidence: 'Proof of residence',
@@ -370,6 +420,38 @@ export const en: Dictionary = {
       view: 'View',
       download: 'Download',
       none: 'No document uploaded',
+      pdfExitInspection: 'Move-out inspection',
+      pdfIssuedOn: 'Issued on {date}',
+      pdfBreakdown: 'Period breakdown',
+      pdfRemaining: 'Still owed',
+      pdfPayments: 'Payments received',
+      pdfNoPayment: 'No payment recorded for this period.',
+      csvConverted: 'Amounts converted from {from} to {currency}, at the {date} rate: {rate}.',
+      csvConvertedPegged:
+        'Amounts converted from {from} to {currency}, at the legal parity: {rate}.',
+      pdfConverted: 'Amounts converted from {currency} at the {date} rate: {rate}.',
+      pdfConvertedPegged: 'Amounts converted from {currency} at the legal parity: {rate}.',
+      pdfImputation:
+        'The payment cleared {rent} of rent, {water} of water and {power} of power. Allocation follows that order.',
+      pdfWithheldNote:
+        'Itemised deductions appear on the settlement statement issued by the owner. This receipt carries the amounts, not the reasons.',
+      pdfNoFinding: 'No findings.',
+      pdfFindingsWithheld:
+        '{count} findings recorded. Their detail is not served by this portfolio and therefore does not appear here.',
+      pdfFindingsWithheld_one:
+        'One finding recorded. Its detail is not served by this portfolio and therefore does not appear here.',
+      pdfSigned: 'Signed',
+      pdfNotSigned: 'Not signed',
+      pdfFooter:
+        '{park} · {document} · page {page} of {total} · produced from recorded data, unsigned',
+      exportCsv: 'Export as spreadsheet',
+      depositsStatement: 'Deposits statement',
+      statementAsOf: 'As of {date}',
+      statementWithheld: '{amount} withheld',
+      exportDeposits: 'Export the deposits statement',
+      pdfDownloadDeposit: 'Download the deposit receipt',
+      pdfDownloadInspection: 'Download the inspection report',
+      pdfDownloaded: 'Document downloaded · {file}',
     },
 
     tenant: {
@@ -454,7 +536,31 @@ export const en: Dictionary = {
       chartEmptyBody: 'The twelve-month curve fills in from your first recorded payment.',
       expected: 'Rent due',
       collected: 'Collected this month',
+      vsPrevious: 'vs. {amount} last month',
       outstanding: 'Still to collect',
+      outstandingShare: '{percent}% of the rent due',
+      queueTitle: 'To handle',
+      queueCount: '{count} waiting',
+      queueCount_one: '{count} waiting',
+      queueEmptyTitle: 'Nothing is waiting on you',
+      queueEmptyBody:
+        'No rent overdue, no arbitration pending, no reading missing. This list fills itself the moment a due date passes or a quote comes in.',
+      queueOverdueTitle: '{count} rents are not settled',
+      queueOverdueTitle_one: '{count} rent is not settled',
+      queueOverdueDetail: '{amount} to collect · up to {days} days late',
+      queueOverdueAction: 'Collect',
+      queueDepositsTitle: '{count} deposits await your arbitration',
+      queueDepositsTitle_one: '{count} deposit awaits your arbitration',
+      queueDepositsDetail: '{amount} held · {units}',
+      queueDepositsAction: 'Arbitrate',
+      queueQuotesTitle: '{count} quotes await your approval',
+      queueQuotesTitle_one: '{count} quote awaits your approval',
+      queueQuotesDetail: '{amount} committed if you approve · {units}',
+      queueQuotesAction: 'Decide',
+      queueReadingsTitle: '{count} readings are missing to bill the month',
+      queueReadingsTitle_one: '{count} reading is missing to bill the month',
+      queueReadingsDetail: 'Rebilling stays incomplete until they are captured · {units}',
+      queueReadingsAction: 'Capture',
       occupancy: 'Occupancy rate',
       activeLeases: '{count} active leases',
       activeLeases_one: '{count} active lease',
@@ -485,12 +591,19 @@ export const en: Dictionary = {
       legendRent: 'Rent',
       legendWater: 'Water',
       legendPower: 'Electricity',
-      scalePrimary: 'Primary scale (rent)',
-      scaleSecondary: 'Secondary scale (water, electricity)',
     },
 
     unitFile: {
       back: 'Back to portfolio',
+      kpiBalance: 'Still owed',
+      kpiBalanceNote: 'across {count} billed periods',
+      kpiBalanceNote_one: 'across {count} billed period',
+      kpiDeposit: 'Deposit held',
+      kpiDepositNote: 'to return at the end of the lease',
+      kpiDepositNone: 'no deposit on record',
+      kpiWorks: 'Works committed',
+      kpiWorksNote: 'across {count} jobs',
+      kpiWorksNote_one: 'across {count} job',
       open: 'Open the file for unit {unit}',
       loadingTitle: 'Unit file',
       notFoundTitle: 'This unit cannot be found',
@@ -577,6 +690,8 @@ export const en: Dictionary = {
     receipts: {
       title: 'Document',
       description: 'Issued by the server: amounts come from the register, not from the screen.',
+      descriptionDemo:
+        'Built from the demonstration data: these amounts are fictional, and no register is kept.',
       quittance: 'Rent receipt',
       recu: 'Payment receipt',
       tenant: 'Tenant',
@@ -603,6 +718,8 @@ export const en: Dictionary = {
       paid: 'Paid',
       balance: 'Balance',
       balanceTotal: 'Running balance',
+      statusMonth: 'Status this month',
+      carried: 'arrears',
       outOfLease: 'outside lease',
       legendPosts: 'Per cell: rent · water · electricity',
       state: {
@@ -648,7 +765,12 @@ export const en: Dictionary = {
       remindSkipped: '{count} already chased today',
       remindSkipped_one: '1 already chased today',
       remindNothing: 'Nothing sent: all of them were already chased today',
-      notice: 'Serve formal notice',
+      /* « Serve notice » ET NON « Serve formal notice » : mesuré à 320 px, le
+         libellé long débordait de 28 px de sa rangée d'actions, sur les six
+         lignes en retard — le français, plus court, tenait. La formule
+         raccourcie est celle de l'usage juridique anglais ; le nom complet
+         reste dans le titre de la boîte, où la place existe. */
+      notice: 'Serve notice',
       noticeTitle: 'Serve formal notice to {tenant}?',
       noticeBody:
         'A binding step, ahead of termination. The reason and the amount owed are filed as they stand and will be produced in a dispute.',
@@ -656,6 +778,7 @@ export const en: Dictionary = {
       noticeReasonHint: 'At least 10 characters. This is the text that will defend the decision.',
       noticeReasonError: 'A reason of at least 10 characters is required',
       noticeDone: 'Formal notice filed against the lease',
+      noticeDemo: 'Nothing is recorded in the demo: a formal notice needs a real lease.',
       lateDays: 'Days late',
     },
 
@@ -666,6 +789,8 @@ export const en: Dictionary = {
       utility: 'Utility',
       price: 'Unit price',
       priceHint: 'Per cubic metre for water, per kilowatt-hour for power.',
+      demoNoSave:
+        'The demo does not save prices: the ones listed below are those it applies to its own readings, and they never leave your visit.',
       priceInvalid: 'Enter a whole price greater than zero.',
       effectiveFrom: 'Effective from',
       effectiveFromHint:
@@ -673,6 +798,8 @@ export const en: Dictionary = {
       submit: 'Save this price',
       saved: 'Price saved',
       duplicate: 'A price already exists for this utility on that date. Change the effective date.',
+      inForce: 'In force',
+      scheduled: 'Scheduled',
       historyTitle: 'Prices already set',
       empty: 'No price set. Readings show the quantities recorded, with no rebilled amount.',
       open: 'Rebilling prices',
@@ -684,19 +811,18 @@ export const en: Dictionary = {
       hasManagers: 'A manager still operates this portfolio. Revoke their access in the access registry before switching to solo management.',
       open: 'Correct the park',
       title: 'Correct the park',
-      description:
-        'The park’s name, country and currency. They were set when it was created and could not be changed anywhere.',
+      description: 'Name, country, currency and delegation: the four things a portfolio is.',
       name: 'Park name',
       nameRequired: 'Required',
+      notSet: '— not set',
+      demoNoSave:
+        'The demo saves nothing: this portfolio only exists for the length of your visit. The currency, though, can be changed right away in the header \u2014 it applies to every amount on screen.',
       country: 'Country',
       countryHint: 'It suggests the monetary zone without imposing it.',
       currency: 'Currency',
       currencyHint: 'The unit of every amount in the park: rents, payments, rebilled charges.',
       currencyXAF: 'CFA franc — Central Africa (CEMAC)',
       currencyXOF: 'CFA franc — West Africa (WAEMU)',
-      currencyEUR: 'Euro (€)',
-      currencyCAD: 'Canadian dollar ($)',
-      currencyUSD: 'US dollar ($)',
       submit: 'Save',
       confirmCurrency: 'Change the currency',
       currencyWarning:
@@ -745,10 +871,34 @@ export const en: Dictionary = {
       severity: 'Severity',
       severityMinor: 'Minor',
       severityMajor: 'Damaged',
+      photoAdd: 'Add a photo to finding {rank}',
+      photoCount: '{done} / {max}',
+      photoFull: 'Eight photos per finding is the maximum held in memory. Remove one to add another.',
+      photoRemove: 'Remove photo {index} from finding {rank}',
+      photoAlt: 'Photo {index} of finding {rank}',
+      photoHeic:
+        'This photo is in HEIC format, which no browser can open. Your iPhone can save as JPEG: Settings → Camera → Formats → Most Compatible.',
+      photoUnreadable: 'This file is not an image the browser can open. Choose a JPEG or PNG photo.',
+      photoUploadFailed:
+        'Uploading {count} photos failed. The inspection is saved; its findings do not carry these photos yet. Try again without closing this window.',
+      photoUploadFailed_one:
+        'Uploading one photo failed. The inspection is saved; its finding does not carry this photo yet. Try again without closing this window.',
+      photoConfirmFailed:
+        '{count} photos uploaded but were not confirmed: they are not attached to the finding yet. Try again without closing this window — closing would lose them.',
+      photoConfirmFailed_one:
+        'One photo uploaded but was not confirmed: it is not attached to the finding yet. Try again without closing this window — closing would lose it.',
+      photoRetry: 'Retry photo upload',
       addFinding: 'Add a finding',
+      findingRank: 'Finding no. {rank}',
       removeFinding: 'Remove finding {rank}',
       title: 'Inspections',
       subtitle: 'Move-in and move-out compared room by room, issues costed against the deposit.',
+      kpiComplete: 'Complete records',
+      kpiCompleteNote: 'move-in and move-out signed',
+      kpiPartial: 'Move-in only',
+      kpiPartialNote: 'the move-out is still due',
+      kpiNone: 'No inspection',
+      kpiNoneNote: 'no contradictory record',
       entry: 'Move-in',
       exit: 'Move-out',
       rooms: '{count} rooms',
@@ -770,6 +920,9 @@ export const en: Dictionary = {
       asGood: 'Good condition',
       major: 'damaged',
       proposed: 'Proposed deduction from the deposit',
+      proofs: 'Evidence',
+      proofAlt: 'Photo {index} of {total} — {finding}',
+      proofMissing: 'Photo unavailable',
     },
 
     works: {
@@ -802,6 +955,12 @@ export const en: Dictionary = {
       filterReported: 'Reported',
       filterOpened: 'My initiative',
       totalCommitted: 'Total committed',
+      kpiQuoted: 'Quotes to settle',
+      kpiQuotedNote: '{amount} proposed',
+      kpiOngoing: 'Jobs under way',
+      kpiOngoingNote: '{count} still to be priced',
+      kpiOngoingNote_one: '{count} still to be priced',
+      kpiCommittedNote: 'across the jobs shown',
       emptyBodyOwner: 'A tenant reports what they notice, and you open what you decide. Both land here.',
       approve: 'Approve quote',
       complete: 'Mark as done',
@@ -866,6 +1025,17 @@ export const en: Dictionary = {
       withheld: 'Withheld',
       balance: 'To return',
       totalHeld: 'Total held',
+      alreadyReturned: 'Already returned',
+      sectionHeld: 'Deposits held',
+      sectionSettling: 'Deposits being settled',
+      sectionReturned: 'Deposits returned',
+      alreadyReturned_one: 'Already returned',
+      kpiHeldNote: 'across {count} deposits',
+      kpiHeldNote_one: 'across {count} deposit',
+      kpiWithheldNote: '{count} being settled',
+      kpiWithheldNote_one: '{count} being settled',
+      kpiBalanceNote: '{count} already returned · {amount}',
+      kpiBalanceNote_one: '{count} already returned · {amount}',
       settle: 'Settle',
       settleTitle: 'Settle the deposit',
       settleDescription:
@@ -888,6 +1058,88 @@ export const en: Dictionary = {
         'Only the owner settles deposits. You prepare the statement, they approve it.',
     },
 
+    decisions: {
+      title: 'Decision log',
+      subtitle: 'What the portfolio recorded, and who recorded it.',
+      empty: 'No decision recorded yet.',
+      emptyHint:
+        'Quote approvals, deposit rulings, payments and corrections are written here as they happen.',
+      failed: 'The log could not be read.',
+      colWhen: 'When',
+      colWhat: 'Decision',
+      colWho: 'By',
+      unknownActor: 'Deleted account',
+      more: 'Show older decisions',
+      /*
+        LE DICTIONNAIRE ÉPOUSE L'ESPACE DE NOMS DES ACTIONS, et ce n'est pas
+        un choix de rangement : `t` découpe sa clé sur les POINTS. Écrites à
+        plat — `'deposit.settle'` — les clés étaient introuvables, et l'écran
+        rendait « Décision enregistrée » pour toutes. Imbriquées, la clé du
+        serveur devient le chemin du dictionnaire sans conversion.
+      */
+      units: {
+        reminders: '{count} reminders',
+        reminders_one: '{count} reminder',
+        findings: '{count} findings',
+        findings_one: '{count} finding',
+        charges: '{count} charges',
+        charges_one: '{count} charge',
+      },
+      utilities: {
+        water: 'Water',
+        power: 'Electricity',
+      },
+      actions: {
+        access: {
+          revoke: 'Access revoked',
+        },
+        deposit: {
+          settle: 'Deposit settled',
+          unsettle: 'Deposit ruling reversed',
+        },
+        document: {
+          fulfilled: 'Document provided',
+          refused: 'Document request refused',
+        },
+        inspection: {
+          record: 'Inspection recorded',
+          photo: 'Photo added to the file',
+          photo_delete: 'Photo removed from the file',
+        },
+        lease: {
+          formal_notice: 'Formal notice served',
+        },
+        park: {
+          update: 'Portfolio corrected',
+        },
+        payment: {
+          record: 'Payment recorded',
+          delete: 'Payment removed',
+        },
+        receipt: {
+          issued: 'Receipt issued',
+        },
+        rent: {
+          call: 'Rent called',
+          remind: 'Reminder sent',
+        },
+        tariff: {
+          set: 'Rebilling price set',
+        },
+        tenant: {
+          create: 'Tenant record opened',
+          delete: 'Tenant record removed',
+        },
+        work: {
+          quote: 'Job quoted',
+          approve: 'Quote approved',
+          unapprove: 'Quote approval reversed',
+          complete: 'Job completed',
+          reopen: 'Job reopened',
+        },
+        unknown: 'Decision recorded',
+      },
+    },
     access: {
       title: 'Portfolio access',
       subtitle: 'Who holds a key, and which codes are still waiting to be used.',
@@ -895,7 +1147,12 @@ export const en: Dictionary = {
         'Only the owner removes access. You can see the register and take back tenant codes.',
       membersTitle: 'Members',
       membersHint: 'The people who can reach the portfolio today.',
+      kpiMembers: 'People with access',
+      kpiMembersNote: 'including you',
+      kpiInvitations: 'Codes pending',
+      kpiInvitationsNote: 'not used yet',
       member: 'Person',
+      memberRole: 'Role',
       since: 'Member since',
       action: 'Action',
       role_owner: 'Owner',
@@ -970,6 +1227,13 @@ export const en: Dictionary = {
     tenants: {
       title: 'Tenants and leases',
       subtitle: 'Every tenant is attached to a unit through an active lease.',
+      kpiLeases: 'Active leases',
+      kpiLeasesNote: '{count} vacant units',
+      kpiLeasesNote_one: '{count} vacant unit',
+      kpiRent: 'Monthly rent',
+      kpiRentNote: 'billed on active leases',
+      kpiRequests: 'Documents requested',
+      kpiRequestsNote: 'awaiting your reply',
       addTenant: 'Create a tenant record',
       leaseStart: 'Lease start',
       leaseStartHint: 'Leave empty for today. Enter the real date for a tenant already in place.',
@@ -998,7 +1262,15 @@ export const en: Dictionary = {
       title: 'Reports and notifications',
       subtitle: 'What the product detected or received, newest first.',
       markRead: 'Mark all as read',
+      kpiUnread: 'Unread',
+      kpiUnreadNote: 'of {count} notifications',
+      kpiUnreadNote_one: 'of {count} notification',
+      kpiRead: 'Already read',
+      kpiReadNote: 'nothing to do there',
       rank: 'Reminder no. {n}',
+      rankOfSeries: 'Reminder {n} of {total}',
+      seriesNoneSent: 'None has been sent yet · visible here only',
+      seriesDispatch: '{sent} sent, the last on {date} · {waiting} still waiting',
       sentOn: 'Sent by {channel} on {date}',
       notSent: 'Not sent yet · visible here only',
       channel_in_app: 'the app',
@@ -1171,7 +1443,6 @@ export const en: Dictionary = {
       errorBody: 'The connection was interrupted. Your local data is intact.',
       retry: 'Try again',
       replayLoading: 'Replay loading',
-      retried: 'Retried · data reloaded',
       emptyTitle: 'No payment for this period',
       emptyBody: 'As soon as a settlement is recorded, it appears here with its receipt.',
       offlineTitle: 'Offline mode',
@@ -1390,6 +1661,7 @@ export const en: Dictionary = {
         supportEmail: 'By email',
         supportPriority: 'Priority',
         supportDedicated: 'Dedicated',
+        managersUnlimited: 'unlimited',
       },
     },
 

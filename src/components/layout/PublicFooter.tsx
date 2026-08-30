@@ -91,10 +91,30 @@ export function PublicFooter() {
 
           {COLUMNS.map((column) => (
             <nav key={column.heading} aria-label={t(column.heading as 'marketing.footer.product')}>
-              <h2 className="eyebrow font-sans text-gold">
+              <h2 className="eyebrow font-sans text-accent-on-dark">
                 {t(column.heading as 'marketing.footer.product')}
               </h2>
-              <ul className="mt-4 flex flex-col gap-2">
+              {/*
+                ═══ DEUX COLONNES DE LIENS, ET C'EST UNE MESURE ═══
+
+                La liste était une pile unique. Chaque lien porte à juste titre
+                une cible de 44 px ; cinq d'entre eux, espacés de 52 px, faisaient
+                donc 260 px de haut à eux seuls. Le pied entier mesurait 484 px
+                pour un logo, une phrase et cinq liens — et sa colonne de gauche,
+                qui n'en contient que deux lignes, se retrouvait avec deux cents
+                pixels de vide sous elle. Le déséquilibre ne venait pas d'un
+                rembourrage mal réglé : il venait de la FORME de la liste.
+
+                `sm:grid-cols-2` la replie en deux colonnes dès qu'il y a la
+                place. Cinq liens y tiennent en trois rangs — la moitié de la
+                hauteur — et les deux moitiés du pied se répondent enfin.
+
+                Sous `sm`, la pile revient : deux colonnes de 44 px dans une
+                fenêtre de 360 rapprocheraient deux cibles tactiles à quelques
+                pixels l'une de l'autre, ce qui est exactement ce que le plancher
+                de 44 existe pour éviter.
+              */}
+              <ul className="mt-4 grid gap-2 sm:grid-cols-2">
                 {column.links.map((link) => {
                   const cible = link.to
                   /*

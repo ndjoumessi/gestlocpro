@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { attendreLeChargement, renderApp, screen, userEvent, within } from '@/test/render'
+import { attendreLeChargement, renderApp, screen, userEvent, within, cliquerAction } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur, type FauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 import type { Role } from '@/features/auth/signupState'
@@ -117,7 +117,11 @@ describe('les prix affichés sur les relevés', () => {
     // Et le TOTAL disparaît avec eux. Sans prix, la somme retombe à zéro et
     // l'écran annoncerait « 0 FCFA refacturés » — un zéro affirmé, qui a l'air
     // d'un fait mesuré, là où la vérité est qu'on ne sait pas encore combien.
-    const total = screen.getByText('Total refacturé').parentElement!.parentElement!
+    // `closest` et non deux sauts de parent : la carte a gagné un niveau
+    // intermédiaire le jour où les indicateurs ont pris une tuile d'icône, et ce
+    // cas s'est alors mis à lire l'intitulé au lieu de la carte. Un chemin qui
+    // compte les sauts mesure la structure ; celui-ci nomme sa cible.
+    const total = screen.getByText('Total refacturé').closest('[data-indicateur]')!
     expect(total.textContent).toContain('—')
     expect(total.textContent).not.toMatch(/0\s?FCFA/)
   })
@@ -157,7 +161,17 @@ describe('ce que le locataire lit de ses charges', () => {
      * Un motif de vérification doit désigner ce qu'il vise, faute de quoi il
      * finit par juger autre chose.
      */
-    const eau = screen.getByText('Eau').parentElement!
+    /*
+      ON REMONTE À LA CARTE PAR SON MARQUEUR, et c'est le gain de ce lot.
+
+      `parentElement` désignait la boîte qui entoure l'intitulé — une carte
+      écrite à la main n'offrait rien de mieux. Elle passe désormais par
+      `StatCard`, donc elle PORTE `data-indicateur`, et le cas peut viser la
+      carte plutôt qu'un saut de parent qui casse au premier niveau
+      intermédiaire. C'est exactement ce que ce commentaire réclamait juste
+      au-dessus : « un motif de vérification doit désigner ce qu'il vise ».
+    */
+    const eau = screen.getByText('Eau').closest('[data-indicateur]')!
     expect(eau.textContent).toContain('—')
     expect(eau.textContent).not.toContain('FCFA')
   })
@@ -172,7 +186,7 @@ describe('poser un prix', () => {
   async function ouvrirLesTarifs() {
     await renderApp('/app/releves', { session: sessionDuRole('owner') })
     await attendreLeChargement()
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Prix de refacturation' }))
+    await cliquerAction('Prix de refacturation')
     return screen.findByRole('dialog')
   }
 

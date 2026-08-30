@@ -4,9 +4,7 @@ import { GOUTTIERE_LATERALE } from '@/components/layout/gouttiere'
 import { Button } from '@/components/primitives/Button'
 import { Icon } from '@/components/primitives/Icon'
 import { Logo } from '@/components/primitives/Logo'
-import { LanguageSwitcher } from '@/components/controls/LanguageSwitcher'
-import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
-import { ThemeSwitcher } from '@/components/controls/ThemeSwitcher'
+import { PanneauDeReglages } from '@/components/controls/PanneauDeReglages'
 import { useT } from '@/i18n/I18nProvider'
 import { AttemptedPath } from './AttemptedPath'
 
@@ -48,27 +46,32 @@ export function NotFound() {
         )}
       >
         <Logo />
-        {/* `flex-wrap justify-end`, comme la rangée jumelle d'`AuthLayout`, et
-            pour la même mesure : les trois sélecteurs réclament 338 px dans une
-            fenêtre de 320, et aucun ne peut se comprimer — ils sont au plancher
-            de 44 px. Sans repli, la page défilait latéralement de 38 px.
+        {/*
+          LES TROIS RÉGLAGES PASSENT DERRIÈRE UN BOUTON, comme sur les écrans
+          d'authentification — voir `PanneauDeReglages` pour le raisonnement.
 
-            Cet écran l'avait gardé plus longtemps que ses jumeaux pour une
-            raison qui n'en est pas une : la mesure au navigateur lit les
-            adresses dans `App.tsx` et écartait les chemins `*`. Le 404 n'était
-            donc surveillé par rien. Il l'est maintenant, et c'est la moitié qui
-            manquait — corriger ce que rien ne garde revient à laisser le défaut
-            revenir. */}
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-          <LanguageSwitcher />
-          <CurrencySwitcher />
-          <ThemeSwitcher />
-        </div>
+          CE QUI ÉTAIT ÉCRIT ICI RESTE VRAI : les trois sélecteurs réclament
+          338 px de min-content dans une fenêtre de 320, aucun ne peut se
+          comprimer — ils sont au plancher de 44 px —, et sans repli la page
+          défilait latéralement de 38 px. Le `flex-wrap` réparait cela, et son
+          prix était une rangée de plus.
+
+          CE QUE LE PRIX VALAIT ICI, mesuré à 360 × 900 : l'en-tête occupait
+          193 px et le `<h1>` commençait à 300 — 33 % de la fenêtre avant que la
+          page ne dise ce qu'elle est. Sur un écran dont TOUT le propos est de
+          dire « vous n'êtes pas où vous croyiez », c'est un tiers de la fenêtre
+          dépensé avant l'information.
+
+          Le déclencheur ne retire aucun contrôle : les trois réglages restent à
+          un geste. C'est la troisième option que le commentaire d'alors n'avait
+          pas — replier, masquer, ou replier DERRIÈRE UN DÉCLENCHEUR.
+        */}
+        <PanneauDeReglages className="ml-auto" />
       </header>
 
       <main className={cn('flex flex-1 items-center justify-center py-16', GOUTTIERE_LATERALE)}>
         <div className="w-full max-w-lg">
-          <p className="text-caps text-gold-ink">{t('notFound.code')}</p>
+          <p className="text-caps text-accent-ink">{t('notFound.code')}</p>
 
           <h1 className="display-m mt-3 text-balance">{t('notFound.title')}</h1>
           <p className="mt-4 text-body-l text-pretty text-muted">{t('notFound.body')}</p>
@@ -81,7 +84,22 @@ export function NotFound() {
             <Button size="lg" to="/" iconAfter="arrowRight">
               {t('notFound.home')}
             </Button>
-            <Button variant="secondary" size="lg" to="/app">
+            {/*
+              « OUVRIR LA DÉMONSTRATION » MENAIT À LA CONNEXION.
+
+              Le bouton pointait `/app` — l'espace AUTHENTIFIÉ. Suivi au
+              navigateur depuis le 404 public : `RequireAuth` renvoie un visiteur
+              anonyme sur `/connexion`, et l'écran obtenu est un formulaire de mot
+              de passe. Or c'est le seul geste d'exploration de cette page, et
+              celui qui la voit y est arrivé PAR UN LIEN MORT : il n'a, par
+              définition, aucune raison d'avoir un compte.
+
+              La démonstration est ouverte, elle vit à `/demo`, et c'est là que la
+              vitrine envoie depuis toujours — `Hero` et `FinalCta` portent le même
+              bouton avec la bonne destination. Le 404 était le seul endroit du
+              produit à promettre une démonstration en pointant ailleurs.
+            */}
+            <Button variant="secondary" size="lg" to="/demo">
               {t('notFound.demo')}
             </Button>
           </div>
@@ -89,7 +107,7 @@ export function NotFound() {
           <div className="mt-8 border-t border-border pt-6">
             <Link
               to="/connexion"
-              className="-ml-2 inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-body font-semibold text-gold-ink transition-colors duration-150 hover:bg-surface-sunken hover:text-gold-ink-hover"
+              className="-ml-2 inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-body font-semibold text-accent-ink transition-colors duration-150 hover:bg-surface-sunken hover:text-accent-ink-hover"
             >
               <Icon name="lock" size={15} />
               {t('notFound.signIn')}

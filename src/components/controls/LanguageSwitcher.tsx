@@ -44,7 +44,7 @@ export function LanguageSwitcher({ tone = 'light', className }: LanguageSwitcher
               'text-caps font-semibold transition-colors duration-150 ease-out',
               active
                 ? tone === 'dark'
-                  ? 'bg-gold text-ink'
+                  ? 'bg-accent text-on-accent'
                   : 'bg-ink text-on-dark'
                 : tone === 'dark'
                   ? 'text-on-dark-muted hover:bg-on-dark-hover hover:text-on-dark'

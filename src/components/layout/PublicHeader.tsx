@@ -4,9 +4,7 @@ import { GOUTTIERE_LATERALE } from './gouttiere'
 import { LienEvitement } from './LienEvitement'
 import { Logo } from '@/components/primitives/Logo'
 import { Button, IconButton } from '@/components/primitives/Button'
-import { LanguageSwitcher } from '@/components/controls/LanguageSwitcher'
-import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
-import { ThemeSwitcher } from '@/components/controls/ThemeSwitcher'
+import { ListeDeReglages } from '@/components/controls/ListeDeReglages'
 import { useT } from '@/i18n/I18nProvider'
 import { AU_DELA_LG, AU_DELA_SM, useAuDela } from '@/lib/useAuDela'
 
@@ -385,8 +383,8 @@ export function PublicHeader() {
               label={
                 ancre
                   ? menuOpen
-                    ? t('marketing.nav.closeSettings')
-                    : t('marketing.nav.openSettings')
+                    ? t('nav.settingsClose')
+                    : t('nav.settingsOpen')
                   : menuOpen
                     ? t('marketing.nav.closeMenu')
                     : t('marketing.nav.openMenu')
@@ -465,10 +463,23 @@ export function PublicHeader() {
                     dépôt (`CurrencySwitcher`) : le panneau flotte désormais
                     au-dessus de la page au lieu de la remplacer, et rien ne
                     l'en détacherait sans elles.
+
+                    CE N'EST PAS `Card`, ET LA RÉFÉRENCE N'Y EST POUR RIEN.
+                    `Card` relaie désormais la sienne, donc la référence ne
+                    bloque plus rien — le blocage est ailleurs, et il est
+                    structurel : les DEUX branches ci-contre sont le MÊME
+                    élément. Celui-ci porte la référence, `tabIndex`, le
+                    `data-testid` et toute la navigation ; seule la branche
+                    ancrée ressemble à une carte, l'autre est une feuille pleine
+                    largeur en `bg-paper` sans rayon ni ombre. Appeler `Card`
+                    obligerait à écrire l'élément — et son contenu — deux fois,
+                    ou à l'envelopper d'un conteneur qui n'existe que pour la
+                    moitié des tailles d'écran. Une carte conditionnelle n'est
+                    pas une carte : c'est une des deux peaux d'un panneau.
                   */
                   cn(
                     'pointer-events-auto ml-auto mt-2 w-max max-w-full',
-                    'rounded-xl border border-divider bg-surface p-4 shadow-e3',
+                    'rounded-lg border border-divider bg-surface p-4 shadow-e3',
                   )
                 : /*
                     LA FEUILLE NE CHANGE PAS : en deçà de `lg` elle est juste.
@@ -521,11 +532,13 @@ export function PublicHeader() {
                     menu, une garde doit pouvoir vérifier au navigateur qu'ils y
                     sont VRAIMENT atteignables au clavier à 1440 px — sans quoi le
                     retrait ne serait qu'une disparition. */}
-                <div data-mesure="reglages-vitrine" className="flex flex-wrap items-center gap-2">
-                  <LanguageSwitcher />
-                  <CurrencySwitcher />
-                  <ThemeSwitcher />
-                </div>
+                {/* LA RANGÉE EST DEVENUE UNE LISTE, et le même bloc sert les
+                    quatre surfaces — voir `ListeDeReglages`. Ici la rangée
+                    n'avait aucun intitulé : trois commandes nues, dont un
+                    segment « FR | EN » qu'il faut reconnaître pour savoir ce
+                    qu'on y règle. Le témoin de mesure ne bouge pas : c'est la
+                    surface qui est nommée, pas le contenu. */}
+                <ListeDeReglages mesure="reglages-vitrine" />
 
                 {/*
                   Mêmes règles pour les deux boutons, à leur propre seuil : la

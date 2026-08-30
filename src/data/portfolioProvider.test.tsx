@@ -6,8 +6,17 @@ import { renderApp, screen, userEvent, attendreLeChargement } from '@/test/rende
  *
  * Chaque écran gardait sa propre copie des travaux, des cautions et des unités.
  * Valider un devis laissait donc le tableau de bord réclamer la même décision
- * dans sa carte « Ce qui demande une décision » — le propriétaire venait de
- * trancher et l'accueil lui redemandait de trancher.
+ * — le propriétaire venait de trancher et l'accueil lui redemandait de trancher.
+ *
+ * CE QUE CES CAS OBSERVENT A CHANGÉ DE FORME, PAS DE NATURE. Ils lisaient la
+ * carte « ce qui demande une décision » ; elle a disparu, remplacée par la FILE
+ * DU JOUR qui ouvre désormais l'écran. La propriété gardée est la même, et elle
+ * est la seule qui compte : un travail traité DISPARAÎT de l'accueil, et
+ * l'accueil ne se déclare tranquille qu'une fois les DEUX natures traitées.
+ *
+ * Ils visent `[data-file-entree]` plutôt qu'un texte de carte : la file marque
+ * ses lignes, et un cas qui lirait un intitulé rougirait à la première
+ * reformulation sans qu'aucun défaut n'existe.
  *
  * Ces tests naviguent d'un écran à l'autre **sans remonter l'application** :
  * c'est la seule façon de vérifier que l'état circule. Recharger masquerait le
@@ -22,28 +31,31 @@ async function allerA(nom: RegExp) {
 }
 
 describe('validation d’un devis', () => {
-  it('retire l’arbitrage de la carte du tableau de bord', async () => {
+  it('retire le devis de la file du jour une fois validé', async () => {
     const user = userEvent.setup()
     await renderApp('/app')
 
-    // Le tableau de bord réclame bien la décision au départ.
-    expect(screen.getByRole('main')).toHaveTextContent('SIG-2026-042')
+    // L'accueil réclame bien la décision au départ.
+    expect(document.querySelector('[data-file-entree="devis"]')).not.toBeNull()
 
     await allerA(/^travaux/i)
     await user.click(screen.getByRole('button', { name: /valider le devis/i }))
 
     await allerA(/tableau de bord/i)
-    expect(screen.getByRole('main')).not.toHaveTextContent('SIG-2026-042')
+    expect(
+      document.querySelector('[data-file-entree="devis"]'),
+      'le devis validé réclame encore une décision',
+    ).toBeNull()
 
     /**
-     * La carte ne se VIDE pas pour autant, et c'est le correctif :
-     * « ce qui demande une décision » listait les seuls devis de travaux et
-     * taisait les cautions à arbitrer — la prérogative qui définit pourtant le
-     * propriétaire. Deux attendent dans le jeu de démonstration. L'état vide
-     * ment tant qu'il en reste une.
+     * La file ne se VIDE pas pour autant, et c'est le correctif d'origine :
+     * l'ancienne carte listait les seuls devis et taisait les cautions à
+     * arbitrer — la prérogative qui définit pourtant le propriétaire. Deux
+     * attendent dans le jeu de démonstration. L'état vide ment tant qu'il en
+     * reste une.
      */
-    expect(screen.getByRole('main')).not.toHaveTextContent('Rien à arbitrer pour le moment')
-    expect(screen.getByRole('main')).toHaveTextContent('Caution à arbitrer · Serge Mbarga')
+    expect(document.querySelector('[data-file-entree="cautions"]')).not.toBeNull()
+    expect(screen.getByRole('main')).not.toHaveTextContent('Rien n’attend de vous')
   })
 
   it('ne montre l’état vide qu’une fois les DEUX natures traitées', async () => {
@@ -62,7 +74,12 @@ describe('validation d’un devis', () => {
     }
 
     await allerA(/tableau de bord/i)
-    expect(screen.getByRole('main')).toHaveTextContent('Rien à arbitrer pour le moment')
+    /* Les DEUX natures traitées : plus une seule entrée d'arbitrage dans la
+       file. Les impayés et les relevés manquants, eux, y restent — ils ne
+       relèvent pas de l'arbitrage, et les confondre ferait passer ce cas pour
+       une garde de la file entière alors qu'il ne garde que la propagation. */
+    expect(document.querySelector('[data-file-entree="devis"]')).toBeNull()
+    expect(document.querySelector('[data-file-entree="cautions"]')).toBeNull()
   })
 
   it('fait disparaître le bouton, puisqu’il n’y a plus rien à valider', async () => {

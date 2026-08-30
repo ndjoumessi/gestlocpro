@@ -37,6 +37,50 @@ export function formatInteger(value: number, tag: string): string {
  * c'est une liste anglaise en français et une liste française en anglais.
  * `Intl.ListFormat` connaît la conjonction de chaque langue.
  */
+/**
+ * UN POURCENTAGE, AVEC LA PONCTUATION DE SA LANGUE.
+ *
+ * Le produit écrivait `{value} %` à la main, dans le JSX. Deux défauts d'un
+ * coup, et le second n'a jamais été signalé :
+ *
+ * L'ESPACE ÉTAIT SÉCABLE. « 100 » restait sur une ligne et « % » passait à la
+ * suivante, dans la carte du loyer de l'espace locataire — une colonne de
+ * quarante pixels qui suffisait à « 83 % » et pas à « 100 % ». `mesure-ui` ne
+ * pouvait pas le voir : un texte qui passe à la ligne ne DÉBORDE de rien, il
+ * est parfaitement dans sa boîte, en deux morceaux.
+ *
+ * ET LA PONCTUATION ÉTAIT FRANÇAISE DANS LES DEUX LANGUES. L'anglais écrit
+ * « 100% », sans espace. `Intl` connaît la règle de chaque langue et pose une
+ * espace INSÉCABLE là où il en faut une : le passage par lui corrige les deux à
+ * la fois, et c'est déjà la doctrine de ce fichier — les séparateurs se
+ * demandent, ils ne s'écrivent pas.
+ *
+ * La valeur est reçue en POINTS (83 pour 83 %), et non en fraction : c'est sous
+ * cette forme que tous les appelants la tiennent — `aria-valuenow`, la largeur
+ * de la piste, la part d'un anneau. Diviser ici évite quatre divisions ailleurs.
+ */
+export function formatPercent(points: number, tag: string): string {
+  return (
+    new Intl.NumberFormat(tag, { style: 'percent', maximumFractionDigits: 0 })
+      .format(points / 100)
+      /*
+        LA FINE DEVIENT PLEINE, et c'est une décision déjà prise et mesurée.
+
+        `Intl` compose la française en U+202F, la fine insécable — ce que
+        prescrit la typographie. `formatMoney` l'a essayée devant le symbole
+        monétaire et l'a refusée, avec son relevé : « 1,7 px contre 3,6 pour la
+        pleine », si bien que « 231 178 FCFA » se lisait « 231 178FCFA ». La
+        fine ne tient qu'en chasse FIXE, où toute espace vaut un chiffre.
+
+        Le même produit ne peut pas espacer « 100 % » autrement que
+        « 447 000 FCFA ». On garde donc d'`Intl` ce qu'on lui demande — SAVOIR
+        s'il faut une espace, ce que l'anglais tranche par la négative — et l'on
+        impose seulement laquelle.
+      */
+      .replace(/\u202f/g, '\u00a0')
+  )
+}
+
 export function formatList(items: string[], tag: string): string {
   return new Intl.ListFormat(tag, { style: 'long', type: 'conjunction' }).format(items)
 }
@@ -48,6 +92,8 @@ export function useNumbers() {
   return useMemo(
     () => ({
       integer: (value: number) => formatInteger(value, dateLocale),
+      /** « 83 % » en français, « 83% » en anglais — et jamais coupé en deux lignes. */
+      percent: (points: number) => formatPercent(points, dateLocale),
       list: (items: string[]) => formatList(items, dateLocale),
     }),
     [dateLocale],

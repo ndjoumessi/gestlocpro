@@ -73,6 +73,7 @@ import {
   unlinkSync,
 } from 'node:fs'
 import { createHash } from 'node:crypto'
+import { gzipSync } from 'node:zlib'
 import { lirePNG } from './lire-png.mjs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -83,6 +84,75 @@ const PLAFONDS = join(RACINE, 'scripts/plafonds-ecrans.json')
 const CAPTURES = join(RACINE, 'captures')
 const PORT = 4187
 const BASE = `http://127.0.0.1:${PORT}`
+
+/**
+ * CE QUE LE FIL PORTE VRAIMENT — et pourquoi ce n'est pas ce qu'on comptait.
+ *
+ * ═══ LE DÉFAUT, ET IL EST NÉ D'UN CORRECTIF ═══
+ *
+ * Ce script compte les CORPS de réponse, c'est-à-dire des octets décompressés,
+ * et les convertit en millisecondes à 400 kb/s. C'était exact tant que le
+ * serveur n'avait aucune compression : les octets comptés étaient les octets
+ * transmis. Depuis `a78b8f4`, `server/src/app.ts` porte `compression()`, et la
+ * conversion s'est mise à décrire un monde disparu — elle SURESTIME désormais le
+ * temps réel d'un facteur mesuré entre 3,0 et 5,4 selon la ressource.
+ *
+ * Un chiffre trois fois trop gros n'est pas prudent, il est faux, et il l'est
+ * dans le sens le plus coûteux : il ferait refuser un lot qui ne coûte rien.
+ *
+ * ═══ CE QUE CE MODÈLE FAIT, ET CE QU'IL N'EST PAS ═══
+ *
+ * Il n'y a pas d'autre voie que le MODÈLE. Ces mesures passent par
+ * `vite preview`, qui n'est pas le serveur de production : lui demander ce que
+ * pèse une réponse compressée apprendrait ce que fait un outil de
+ * développement. On reproduit donc les deux règles de `compression`, telles que
+ * `server/src/app.ts` les emploie sans les configurer :
+ *
+ *   1. RIEN sous 1 024 octets. Comprimer plus petit coûte plus de temps
+ *      processeur qu'il ne rend d'octets, et l'en-tête dépasse le gain.
+ *   2. RIEN qui ne soit compressible — texte, JSON, JavaScript, CSS, SVG. Une
+ *      image ou une police woff2 est déjà compressée ; la regzipper la ferait
+ *      grossir, et `compression` ne l'essaie pas.
+ *
+ * LA SECONDE RÈGLE EST UNE APPROXIMATION ASSUMÉE. `compression` interroge le
+ * module `compressible`, qui porte une table de types MIME ; on emploie ici une
+ * expression régulière sur les familles que ce produit sert réellement. Un type
+ * exotique servi un jour par ce serveur serait donc classé à côté — sans casser
+ * le veto sur les requêtes, qui ne dépend pas de ceci, et sans toucher aux
+ * octets bruts, qui restent le nombre GARDÉ. Seule la lecture en millisecondes
+ * s'en trouverait décalée.
+ *
+ * ═══ LE TIERS N'EST PAS MODÉLISÉ, ET C'EST SANS CONSÉQUENCE ICI ═══
+ *
+ * Une réponse d'une autre origine — la police servie par Google — ne passe pas
+ * par notre serveur : notre intergiciel n'a rien à y faire, et son vrai poids
+ * sur le fil ne se lit pas depuis ici. On garde donc son corps tel quel. Ça ne
+ * fausse aucun ARBITRAGE, parce que ce script ne rapporte que des ÉCARTS : une
+ * ressource tierce constante d'un passage à l'autre s'annule des deux côtés de
+ * la soustraction. Elle ne fausserait un écart que le jour où la fonderie
+ * changerait de poids, et ce jour-là c'est l'adresse qui bougerait — ce que
+ * `RESSOURCES_EXTERNES_PESEES`, dans `mesure-ui.mjs`, refuse déjà.
+ *
+ * ═══ LES OCTETS BRUTS RESTENT LE NOMBRE GARDÉ ═══
+ *
+ * Le plafond continue de porter sur `octets`, pas sur `octetsFil`. Deux
+ * raisons. Le brut ne dépend d'aucun modèle, donc d'aucune hypothèse sur le
+ * serveur : c'est la mesure la plus dure du fichier, et une garde de
+ * non-régression a intérêt à s'appuyer sur elle. Et le taux de compression
+ * varie avec le CONTENU — un lot qui n'ajouterait que du texte très répétitif
+ * grossirait le paquet sans grossir le fil, et se cacherait derrière le modèle.
+ * `octetsFil` est une LECTURE, `octets` est la garde.
+ */
+const SEUIL_DE_COMPRESSION = 1024
+const TYPES_COMPRESSIBLES =
+  /^(?:text\/|application\/(?:javascript|ecmascript|json|xml|manifest)|image\/svg\+xml)/
+
+function octetsSurLeFil(url, corps, type) {
+  if (!url.startsWith(BASE)) return corps.length
+  if (corps.length < SEUIL_DE_COMPRESSION) return corps.length
+  if (!TYPES_COMPRESSIBLES.test(type)) return corps.length
+  return gzipSync(corps).length
+}
 
 /** Les écrans dont ce lot a touché la hiérarchie, et leurs deux largeurs. */
 const ECRANS = ['/', '/demo', '/demo/paiements', '/demo/prise-en-main']
@@ -209,7 +279,11 @@ try {
       page.removeAllListeners('response')
       page.on('response', async (r) => {
         try {
-          actifs.push((await r.body()).length)
+          const corps = await r.body()
+          actifs.push({
+            octets: corps.length,
+            fil: octetsSurLeFil(r.url(), corps, r.headers()['content-type'] ?? ''),
+          })
         } catch {
           /* corps indisponible : redirection, ou réponse déjà consommée */
         }
@@ -220,7 +294,11 @@ try {
       await page.waitForTimeout(400)
 
       const cle = `${adresse}@${largeur}`
-      mesures[cle] = { octets: actifs.reduce((s, o) => s + o, 0), requetes: actifs.length }
+      mesures[cle] = {
+        octets: actifs.reduce((s, a) => s + a.octets, 0),
+        octetsFil: actifs.reduce((s, a) => s + a.fil, 0),
+        requetes: actifs.length,
+      }
 
       const nom = `${adresse.replace(/\//g, '_') || '_racine'}@${largeur}.${course}.png`
       await page.screenshot({ path: join(CAPTURES, nom), fullPage: false })
@@ -275,7 +353,27 @@ if (iInscrire >= 0 || iRelever >= 0) {
     }
     sortie[cle] = monte
       ? { ...v, releve: { de: p.octets, requetesDe: p.requetes, motif, course } }
-      : { octets: v.octets, requetes: v.requetes }
+      : {
+          octets: v.octets,
+          octetsFil: v.octetsFil,
+          requetes: v.requetes,
+          /*
+            LE MOTIF GRAVÉ SURVIT À UNE RÉINSCRIPTION QUI NE MONTE PAS.
+
+            DÉFAUT PAYÉ EN LE FAISANT, dans ce lot même : `--inscrire` a effacé
+            d'un coup les huit motifs du lot précédent. La branche qui ne monte
+            pas reconstruisait l'entrée à partir des seules mesures, et le
+            `releve` — la phrase que quelqu'un a dû taper, et que le cliquet
+            existe pour conserver — disparaissait sans un mot.
+
+            C'est la mémoire du cliquet, pas une décoration : un plafond relevé
+            dont on a perdu la raison redevient un nombre, exactement ce que le
+            motif précédent nommait comme le pire état. On le REPORTE donc, sans
+            le récrire — il documente la hausse qui a eu lieu, et cette hausse
+            reste vraie même quand un passage ultérieur ne bouge pas.
+          */
+          ...(p?.releve ? { releve: p.releve } : {}),
+        }
   }
 
   if (hausses.length > 0 && !motif) {
@@ -375,19 +473,34 @@ if (!existsSync(PLAFONDS)) {
       n'existe aucun cas où l'on veuille en ajouter une sans le décider
       explicitement.
     */
+    /*
+      LES MILLISECONDES SE CALCULENT SUR LE FIL, LES PLAFONDS SUR LE BRUT.
+
+      Voir `octetsSurLeFil`, en tête de fichier, pour ce que « fil » modélise et
+      ce qu'il n'est pas. L'écart des deux nombres est imprimé côte à côte plutôt
+      que réduit à un seul : le brut dit ce que le paquet a pris, le fil dit ce
+      que l'utilisateur attend, et confondre les deux est exactement la panne que
+      ce lot répare.
+
+      UNE BASE SANS `octetsFil` NE SE DEVINE PAS. Un plafond inscrit avant ce lot
+      ne porte que des octets bruts ; en tirer des millisecondes demanderait
+      d'appliquer le taux de compression D'AUJOURD'HUI à un paquet d'HIER, donc
+      d'inventer. On le dit, et l'on s'arrête là — une réinscription rend le
+      nombre au passage suivant.
+    */
     const MS_PAR_OCTET = 8 / 400000 // 400 kb/s, le profil du marché visé
-    if (v.octets > p.octets) {
-      const dOctets = v.octets - p.octets
-      rapports.push(
-        `${cle} : +${dOctets} o (${p.octets} → ${v.octets}), ` +
-          `soit +${Math.round(dOctets * MS_PAR_OCTET * 1000)} ms à 400 kb/s.`,
-      )
-    } else if (v.octets < p.octets) {
-      const dOctets = p.octets - v.octets
-      rapports.push(
-        `${cle} : −${dOctets} o (${p.octets} → ${v.octets}), ` +
-          `soit −${Math.round(dOctets * MS_PAR_OCTET * 1000)} ms à 400 kb/s.`,
-      )
+    const ms = (o) => Math.round(o * MS_PAR_OCTET * 1000)
+    if (v.octets !== p.octets) {
+      const monte = v.octets > p.octets
+      const signe = monte ? '+' : '−'
+      const dOctets = Math.abs(v.octets - p.octets)
+      const surLeFil =
+        typeof p.octetsFil === 'number'
+          ? `soit ${signe}${Math.abs(v.octetsFil - p.octetsFil)} o sur le fil, ` +
+            `${signe}${ms(Math.abs(v.octetsFil - p.octetsFil))} ms à 400 kb/s.`
+          : 'temps non calculé : le plafond date d’avant la mesure du fil, et appliquer le ' +
+            'taux du jour à un paquet d’hier serait une invention. Réinscrivez pour l’obtenir.'
+      rapports.push(`${cle} : ${signe}${dOctets} o bruts (${p.octets} → ${v.octets}), ${surLeFil}`)
     }
     if (v.requetes > p.requetes) {
       plaintes.push(
@@ -573,7 +686,22 @@ console.log(
     `${capturesFaites.length} captures régénérées et ${imagesInspectees} relues (course ${course}),\n` +
     `  ${purgees.length} capture(s) d'une autre course purgée(s) au démarrage.\n` +
     `  Les octets sont comparés aux plafonds de la course ${baseDuPoids ?? '(inconnue)'} —\n` +
-    '  une base d’un autre paquet rend les écarts CUMULÉS, ce que le rapport ci-dessus dit.\n' +
+    /*
+      LA PHRASE SUIT L'ÉTAT, elle ne l'affirme plus.
+
+      Elle disait « une base d'un autre paquet rend les écarts CUMULÉS » À CHAQUE
+      PASSAGE, y compris quand la base VENAIT d'être réinscrite sur le paquet
+      qu'on mesure. Elle était donc fausse exactement au moment où elle cessait
+      d'être nécessaire — et le lecteur qui vient de réinscrire lit qu'il ne peut
+      pas se fier à ce qu'il vient de faire.
+
+      Ce fichier a pour titre « ce que chaque chose compare, et contre quoi ». La
+      moindre des choses est qu'il dise juste laquelle des deux situations il est
+      dans.
+    */
+    (baseDuPoids === course
+      ? '  la base est celle de CE paquet : les écarts ci-dessus sont imputables au lot en cours.\n'
+      : '  une base d’un autre paquet rend les écarts CUMULÉS, ce que le rapport ci-dessus dit.\n') +
     '  Les OCTETS se rapportent, les REQUÊTES se refusent — voir le commentaire de la\n' +
     '  comparaison. Ce script ne dit RIEN de la hiérarchie de lecture.',
 )

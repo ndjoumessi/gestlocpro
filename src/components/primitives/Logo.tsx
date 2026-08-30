@@ -13,15 +13,51 @@ export interface LogoProps {
   size?: 'sm' | 'md' | 'lg'
   to?: string
   className?: string
+  /**
+   * Variante D'ENCRE UNIQUE, pour ce qui sort d'une imprimante.
+   *
+   * Elle échange la marque contre `logo-monochrome.svg` et rend le mot-symbole
+   * d'un seul ton. Elle vit ICI plutôt que d'être réécrite par l'appelant parce
+   * que le dépôt n'admet qu'une seule graisse 700 en ligne — celle du
+   * mot-symbole — et que `graisses.test.ts` refuse la seconde. La garde a
+   * d'ailleurs attrapé la première rédaction de l'en-tête de quittance, qui
+   * recopiait le mot au lieu de l'emprunter.
+   */
+  impression?: boolean
 }
 
-const MARK_SIZES = { sm: 'size-6.5 text-[15px]', md: 'size-8 text-[19px]', lg: 'size-11 text-[26px]' }
+const MARK_SIZES = { sm: 'size-6.5', md: 'size-8', lg: 'size-11' }
 const WORD_SIZES = { sm: 'text-[15px]', md: 'text-[18px]', lg: 'text-[24px]' }
 
 /**
- * Marque GestLocPro : un « G » en Cormorant dans un carré doré, suivi du
- * mot-symbole. Le carré doré porte de l'encre, jamais l'inverse — l'or en
- * texte sur fond clair ne passe pas le contraste.
+ * ═══ LA MARQUE : QUATRE UNITÉS DANS UN CARRÉ, ET NON PLUS UNE LETTRE ═══
+ *
+ * Elle portait un « G » en Cormorant. Le commentaire qui l'accompagnait parlait
+ * encore d'un « carré DORÉ » et de « l'or en texte sur fond clair » : l'accent
+ * de marque est bleu depuis la refonte, et cette prose décrivait une couleur qui
+ * n'existait plus nulle part dans le dépôt.
+ *
+ * La grille de quatre carrés vient du document de recherche de marque, où elle
+ * est la direction RECOMMANDÉE, pour une raison qui se vérifie ici : c'est le
+ * seul signe qui dise à la fois « plusieurs logements » et « états différents »,
+ * les deux idées qui structurent le produit. Les opacités décroissantes — 1, 1,
+ * 0,55, 0,22 — sont ce second sens ; sans elles, ce ne serait qu'une grille.
+ *
+ * ═══ LES COULEURS SONT DES JETONS, ET ELLES TOMBAIENT DÉJÀ JUSTE ═══
+ *
+ * Le tracé proposé peint son fond en `#2563EB` et ses carrés en `#FFFFFF`. Ce
+ * sont, au caractère près, `--color-accent` et `--color-on-accent`. On garde donc
+ * le conteneur existant — `rounded-md bg-accent text-on-accent` — et le SVG ne
+ * porte QUE les quatre carrés, en `currentColor`. Deux conséquences : la marque
+ * suit le thème sans le savoir, et le rayon de coin reste défini à un seul
+ * endroit au lieu de vivre aussi dans un `rx` recopié.
+ *
+ * ═══ CE QUE CE N'EST PAS ═══
+ *
+ * Le document dont elle vient le dit lui-même : « ce sont des esquisses
+ * vectorielles, pas des logos livrables ». Il reste, d'après lui, à vérifier
+ * l'antériorité de marque, à faire dessiner la version finale, et à décliner en
+ * favicon 16 px et en icône 1024 px. Rien de tout cela n'est fait ici.
  */
 export function Logo({
   tone = 'light',
@@ -30,19 +66,39 @@ export function Logo({
   size = 'md',
   to = '/',
   className,
+  impression,
 }: LogoProps) {
   const content = (
     <>
+      {impression ? (
+        /* La ressource monochrome porte son propre contour : pas de conteneur
+           peint, pas d'encre héritée. Elle est DÉCORATIVE — le nom est porté par
+           le texte à côté, ou par `sr-only` quand le mot-symbole est masqué. */
+        <img
+          src="/logo-monochrome.svg"
+          alt=""
+          aria-hidden="true"
+          className={cn('shrink-0', MARK_SIZES[size])}
+        />
+      ) : (
       <span
         aria-hidden="true"
         className={cn(
-          'flex shrink-0 items-center justify-center rounded-md bg-gold font-display',
-          'leading-none font-semibold text-ink',
+          'flex shrink-0 items-center justify-center rounded-md bg-accent text-on-accent',
           MARK_SIZES[size],
         )}
       >
-        G
+        {/* `size-[57%]` : la proportion du tracé d'origine — une grille de 24
+            dans un carré de 42. Exprimée en pourcentage, elle survit aux trois
+            tailles de marque sans qu'aucune ne redessine quoi que ce soit. */}
+        <svg viewBox="0 0 24 24" fill="currentColor" className="size-[57%]">
+          <rect width="10" height="10" rx="2.6" />
+          <rect x="14" width="10" height="10" rx="2.6" />
+          <rect y="14" width="10" height="10" rx="2.6" opacity=".55" />
+          <rect x="14" y="14" width="10" height="10" rx="2.6" opacity=".22" />
+        </svg>
       </span>
+      )}
 
       {!markOnly && (
         <span className="flex min-w-0 flex-col">
@@ -53,7 +109,21 @@ export function Logo({
               tone === 'dark' ? 'text-on-dark' : 'text-ink',
             )}
           >
-            GestLoc<span className={tone === 'dark' ? 'text-gold' : 'text-gold-ink'}>Pro</span>
+            {/* `Pro` porte l'accent — sauf à l'impression, où il n'y a qu'une
+                encre : un bleu clair sorti en gris pâle affaiblirait la moitié du
+                nom sur un document qui atteste. */}
+            GestLoc
+            <span
+              className={
+                impression
+                  ? undefined
+                  : tone === 'dark'
+                    ? 'text-accent-on-dark'
+                    : 'text-accent-ink'
+              }
+            >
+              Pro
+            </span>
           </span>
           {caption && (
             <span

@@ -85,6 +85,94 @@ import { chromium } from 'playwright'
 import { EXEMPTIONS_DE_RENDU, MAXIMUM_D_EXEMPTIONS } from './exemptions-de-rendu.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
+
+/**
+ * ─── OÙ PASSENT LES TROIS MINUTES ────────────────────────────────────────────
+ *
+ * POURQUOI CE CHRONOMÈTRE EXISTE. Le coût de la sonde de débordement local a
+ * été mesuré — 1,0 s sur 195 — et la mesure a rendu une question plutôt qu'une
+ * réponse : si cette passe-là ne pèse rien, où va le reste ? Une porte dont on
+ * ignore la répartition ne se raccourcit pas, elle se désactive.
+ *
+ * L'HORLOGE MURALE NE PEUT PAS RÉPONDRE, et c'est déjà mesuré : deux exécutions
+ * IDENTIQUES de ce fichier s'écartent de 3,7 secondes. Comparer un passage avec
+ * une passe à un passage sans elle ne distinguerait rien sous ce bruit. On
+ * chronomètre donc CHAQUE APPEL, à l'intérieur, et on additionne.
+ *
+ * LE RESTE EST RENDU, ET C'EST LA PARTIE HONNÊTE. Tout n'est pas instrumenté —
+ * la fermeture des contextes, la lecture des fichiers, les calculs de ce script.
+ * Le rapport imprime donc la somme des postes ET l'écart avec la durée totale,
+ * sous le nom « non imputé ». Un décompte qui ne dirait pas ce qu'il ignore
+ * laisserait croire qu'il explique tout. Relevé : 2,5 s sur 194, soit 1 %.
+ *
+ * ─── CE QUE LE PREMIER RELEVÉ A DIT ───────────────────────────────────────
+ *
+ *   78,0 s  40 %   contraste · navigation et attente        184 appels
+ *   41,0 s  21 %   mise en page · navigation et attente     552
+ *   40,6 s  21 %   cibles et noms · navigation et attente   506
+ *   14,2 s   7 %   surfaces · navigation et attente          10
+ *    6,6 s   3 %   colonnes d'entrée                          2
+ *
+ * TROIS LEVIERS TIRÉS DEPUIS, ET C'ÉTAIT TROIS FOIS LE MÊME : le nombre de
+ * CHARGEMENTS, jamais le calcul. Colonnes d'entrée rechargeait à chaque
+ * hauteur ; le contraste rechargeait à chaque thème ; les cibles rechargeaient
+ * ce que la mise en page venait de charger. **194 s → 108**, et aucun compteur
+ * de cette porte n'a changé de valeur.
+ *
+ * DÉCOMPOSÉ, `attendre` coûte 1 072 ms après un CHARGEMENT — dont 679 de
+ * `networkidle` et 270 d'`aria-busy` — et 7 ms après un REDIMENSIONNEMENT. Voilà
+ * pourquoi c'est toujours le même levier, et pourquoi il n'en reste plus : les
+ * 46 chargements qui subsistent sont ceux qu'il faut bien faire une fois.
+ *    …
+ *
+ * ET LE DÉCOMPTE A DÉJÀ SERVI. « Colonnes d'entrée » est tombé de 6,6 s à 2,3 :
+ * la fonction rechargeait la page à chaque hauteur — six navigations par langue
+ * pour mesurer deux rectangles — alors que les trois autres passes chargent une
+ * fois puis redimensionnent. Vérifié avant de toucher : les deux méthodes
+ * rendent des relevés STRICTEMENT identiques. C'est le premier gain de ce
+ * chronomètre, et il ne se serait jamais vu sur l'horloge murale, dont le bruit
+ * vaut 3,7 s.
+ *    2,1 s   1 %   audit · cibles                           516
+ *    1,1 s   1 %   sonde · débordement local                506
+ *
+ * QUATRE-VINGT-NEUF POUR CENT DE CETTE PORTE EST DE L'ATTENTE. Tout ce qu'elle
+ * MESURE — les cinq sondes, les trois audits, les surfaces — tient dans huit
+ * secondes sur cent quatre-vingt-quatorze. Le débat « cette sonde coûte-t-elle
+ * trop cher » n'a donc pas lieu d'être : AUCUNE ne coûte cher, et en ajouter
+ * une ne se voit pas. Ce qui coûte, c'est de charger une page.
+ *
+ * LE POSTE LE PLUS GROS ÉTAIT AUSSI LE PLUS SUSPECT, ET IL A CÉDÉ. La passe de
+ * contraste payait 78 s pour 184 appels — 0,42 s l'un — quand la mise en page
+ * paie 41 s pour 552 — 0,074 s l'un. L'écart n'était pas dans la mesure mais
+ * dans le NOMBRE DE CHARGEMENTS : elle rechargeait chaque écran une fois PAR
+ * THÈME. Le thème se bascule désormais à chaud, animations gelées — voir cette
+ * passe. 78,4 s → 38,8, 184 appels → 92, et la porte entière de 189 s à 149.
+ * 14 936 textes audités avant, 14 936 après : la mesure est intacte.
+ *
+ * LES DEUX POSTES QUI RESTENT — mise en page et cibles, 41 et 41 s — ne se
+ * réduiront pas de la même façon : eux ne rechargent déjà qu'une fois par
+ * écran, et leurs 552 et 506 appels sont des REDIMENSIONNEMENTS. Le prix y est
+ * celui d'`attendre` sur onze largeurs, pas celui d'un aller-retour réseau.
+ *
+ * DEUX COMPTEURS POUR LA MÊME CHOSE : la sonde de débordement local est mesurée
+ * ici ET par ses compteurs propres, qui la décomposent en parcours du DOM et
+ * aller-retour. Les deux chiffres diffèrent d'un dixième de seconde — l'un
+ * enveloppe l'autre — et c'est normal.
+ */
+const DEPART_DU_SCRIPT = performance.now()
+const horloge = new Map()
+
+async function chrono(poste, fn) {
+  const debut = performance.now()
+  try {
+    return await fn()
+  } finally {
+    const vu = horloge.get(poste) ?? { ms: 0, appels: 0 }
+    vu.ms += performance.now() - debut
+    vu.appels += 1
+    horloge.set(poste, vu)
+  }
+}
 const PORT = 4183
 const BASE = `http://127.0.0.1:${PORT}`
 
@@ -277,8 +365,30 @@ function adressesDeLApplication() {
   */
   const ADRESSE_404 = '/adresse-qui-n-existe-pas'
 
+  /*
+    LE DOSSIER D'UN LOGEMENT, AJOUTÉ À LA MAIN — SECONDE ADRESSE À L'ÊTRE.
+
+    Les chemins À PARAMÈTRE sont écartés du balayage, et pour une bonne raison :
+    `/demo/parc/:unite` n'est pas une adresse qu'on visite. Mais l'ÉCRAN qu'elle
+    rend, lui, se visite — c'est le dossier qu'on ouvre depuis chaque ligne du
+    parc, et il n'était mesuré par RIEN.
+
+    Ce qu'il cachait, relevé à l'ouverture : 217 px de blanc imposé sous la carte
+    « Occupation », 149 sous « Travaux du logement ». Les deux rangées étirent
+    leurs cellules à la hauteur de la plus haute, et cet écran-là n'avait aucune
+    sonde pour le dire. C'est exactement le raisonnement qui a fait ajouter le
+    404 quelques lignes plus haut : « il portait le même débordement de 38 px à
+    320, et il l'a gardé plus longtemps que les autres précisément parce que rien
+    ne le regardait ».
+
+    `A1` est le premier logement du jeu de démonstration : occupé, avec un bail,
+    un historique de quittances, un chantier et une caution. C'est le dossier le
+    plus FOURNI, donc celui qui met le plus de choses sous la sonde.
+  */
+  const DOSSIER_D_UN_LOGEMENT = '/demo/parc/A1'
+
   const adresses = [
-    ...new Set([...publiques, '/app', '/demo', ...internes, ADRESSE_404]),
+    ...new Set([...publiques, '/app', '/demo', ...internes, DOSSIER_D_UN_LOGEMENT, ADRESSE_404]),
   ].filter((c) => !HORS_PRODUIT.includes(c))
 
   /*
@@ -441,6 +551,31 @@ const LIGNE_SANS_NOM =
  * thèmes et une seule langue. Même raisonnement que les deux largeurs de la
  * passe de contraste, qui ignore déjà les onze autres.
  */
+/**
+ * OUVRE UNE ACTION D'EN-TÊTE, QU'ELLE SOIT SOUS LES YEUX OU REPLIÉE.
+ *
+ * Depuis que la rangée d'actions ne montre plus que deux commandes, les autres
+ * vivent derrière trois points. Une sonde qui cherche son bouton par son nom
+ * échoue alors sur une action qui n'a pas disparu — elle s'est repliée, et
+ * `mesure-ui` a rapporté « la surface ne s'est pas ouverte » pour quatre
+ * modales parfaitement saines.
+ *
+ * Le geste reproduit celui de l'utilisateur : chercher l'action ; si elle n'est
+ * pas là, ouvrir le menu de L'EN-TÊTE — pas le premier de la page, la coquille
+ * en porte déjà un pour le compte.
+ */
+async function ouvrirUneActionDEnTete(page, nom) {
+  const direct = page.getByRole('button', { name: nom }).first()
+  if (await direct.count().then((n) => n > 0).catch(() => false)) {
+    if (await direct.isVisible().catch(() => false)) {
+      await direct.click()
+      return
+    }
+  }
+  await page.locator('[data-en-tete-de-page] [aria-haspopup="menu"]').first().click()
+  await page.getByRole('menuitem', { name: nom }).first().click()
+}
+
 const SURFACES_INTERACTIVES = [
   /*
     LES GESTES VISENT LA SÉMANTIQUE, PAS LA TRADUCTION.
@@ -501,6 +636,46 @@ const SURFACES_INTERACTIVES = [
     },
   },
   {
+    /*
+      LA CORRECTION DU PARC, ET POURQUOI ELLE ENTRE ICI PLUTÔT QU'AILLEURS.
+
+      `scripts/modales.mjs` mesure la GÉOMÉTRIE des onze modales, mais en thème
+      CLAIR seulement — son contexte est ouvert `colorScheme: 'light'`. Le
+      contraste des modales, lui, ne se mesure que par cette liste-ci, et une
+      seule y figurait : le calendrier. Une modale de saisie a pourtant quatre
+      familles de couleur — champs, indications, bandeau d'avertissement, pied —
+      et aucune n'avait jamais été relevée en sombre.
+
+      Celle-ci est la bonne candidate : elle porte les quatre, plus un `Notice`
+      de ton `warn` qui n'apparaît qu'au changement de devise, et elle vient
+      d'être rendue atteignable en démonstration. Elle était, jusqu'à ce lot,
+      la modale la moins mesurée du produit — ni géométrie, ni couleurs, ni
+      clavier.
+    */
+    nom: 'prix-de-refacturation',
+    adresse: '/demo/releves',
+    largeur: 1280,
+    temoin: '[role="dialog"] form#tarif',
+    ouvrir: async (page) => {
+      await ouvrirUneActionDEnTete(page, /^Prix de refacturation$|^Rebilling prices$/)
+    },
+  },
+  {
+    /*
+      LA SECONDE MODALE DE SAISIE, ET ELLE PORTE CE QUE L'AUTRE N'A PAS : une
+      LISTE de données sous un formulaire. Le contraste d'une ligne d'historique
+      — un libellé, une date en gris secondaire, un montant — n'était relevé
+      dans aucune modale, et celle-ci est la seule du produit à en porter une.
+    */
+    nom: 'correction-du-parc',
+    adresse: '/demo/parc',
+    largeur: 1280,
+    temoin: '[role="dialog"] form#correction-du-parc',
+    ouvrir: async (page) => {
+      await ouvrirUneActionDEnTete(page, /^Corriger le parc$|^Correct the park$/)
+    },
+  },
+  {
     nom: 'tiroir-de-navigation',
     adresse: '/demo',
     largeur: 360,
@@ -520,6 +695,208 @@ const SURFACES_INTERACTIVES = [
     temoin: '[role="dialog"]',
     ouvrir: async (page) => {
       await page.locator('[aria-haspopup="dialog"]').first().click()
+    },
+  },
+  {
+    /*
+      LE MÊME PANNEAU, MAIS SUR L'ÉCRAN DE CONNEXION, ET CE N'EST PAS UN DOUBLON.
+
+      Trois choses diffèrent de celui de `/demo`, et chacune suffirait :
+
+      1. LE FOND. Dans la coquille applicative le panneau flotte au-dessus d'une
+         page de travail ; ici il flotte au-dessus de la carte d'authentification,
+         qui est peinte sur `surface-sunken`. Ce n'est pas la même paire, donc pas
+         le même contraste, et le contraste est ce que cette liste mesure.
+
+      2. LA LARGEUR. 360 délibérément : c'est à cette largeur que la rangée de
+         réglages se repliait sur deux lignes et poussait le `<h1>` à 37 % de la
+         fenêtre — le défaut qui a fait naître ce composant. L'auditer à 1280 le
+         montrerait au large, c'est-à-dire là où il n'a jamais posé problème, et
+         `max-w-[calc(100vw-2.5rem)]` ne serait jamais éprouvé.
+
+      3. LE CHEMIN. `/connexion` n'est pas sous `/demo` : aucune des surfaces de
+         cette liste n'y passait, et le balayage ordinaire ne rend pas non plus
+         les écrans d'authentification en sombre.
+    */
+    nom: 'reglages-a-la-connexion',
+    adresse: '/connexion',
+    largeur: 360,
+    temoin: '[data-mesure="reglages-authentification"]',
+    ouvrir: async (page) => {
+      await page.locator('[data-declencheur-reglages]').first().click()
+    },
+  },
+  {
+    /*
+      LE MÊME PANNEAU SUR LE 404, et il entre pour la même raison que celui de la
+      connexion : le FOND diffère.
+
+      L'écran 404 n'a pas de carte — le panneau y flotte au-dessus de `bg-canvas`,
+      sous un en-tête bordé, là où celui de l'authentification flotte au-dessus
+      d'une carte peinte sur `surface-sunken`. Ce n'est pas la même paire.
+
+      Il entre aussi parce que ce panneau vient d'y remplacer trois sélecteurs en
+      ligne : l'en-tête passe de 193 à 69 px à 360, et le `<h1>` de 300 à 238 —
+      de 33 % à 26 % de la fenêtre. Un geste qui déplace un tiers d'écran mérite
+      d'être audité là où il agit, pas seulement là où il est né.
+    */
+    nom: 'reglages-sur-le-404',
+    adresse: '/adresse-qui-n-existe-pas',
+    largeur: 360,
+    temoin: '[data-mesure="reglages-authentification"]',
+    ouvrir: async (page) => {
+      await page.locator('[data-declencheur-reglages]').first().click()
+    },
+  },
+  {
+    /*
+      LA RANGÉE DE PHOTOS D'UNE RÉSERVE, ET LE GESTE VA JUSQU'À LA VIGNETTE.
+
+      Ouvrir la modale ne suffirait pas. Tant qu'aucune photo n'est choisie, la
+      rangée ne porte qu'un bouton d'ajout et un compte — le bouton de RETRAIT,
+      lui, n'existe pas, et c'est la cible la plus exposée de toute
+      l'interface : 44 px posés sur le coin d'une vignette, atteints au doigt.
+      Une surface auditée sans lui aurait laissé passer exactement ce que cet
+      audit existe pour voir.
+
+      Le geste dépose donc la FIXTURE VERSIONNÉE dans l'entrée de fichier —
+      celle-là même que `photo-transcodage.mjs` mesure. Elle est sous CC0, elle
+      vit dans le dépôt, et elle traverse le vrai transcodage : la vignette
+      auditée est le produit de la fonction réelle, pas une image posée là pour
+      la garde.
+
+      LARGEUR 360, délibérément. C'est au téléphone que la rangée est le plus à
+      l'étroit et que la vignette pousse ses voisins ; l'auditer à 1280 la
+      montrerait au large, c'est-à-dire là où elle ne pose pas de problème.
+    */
+    nom: 'photos-de-reserve',
+    adresse: '/demo/etats-des-lieux',
+    largeur: 360,
+    temoin: '[role="dialog"] li img',
+    ouvrir: async (page) => {
+      await page
+        .getByRole('button', { name: /^Record an inspection$|^Établir un état des lieux$/ })
+        .first()
+        .click()
+      await page.locator('[role="dialog"]').first().waitFor({ state: 'visible' })
+      await page
+        .locator('[role="dialog"] input[type="file"]')
+        .first()
+        .setInputFiles(join(RACINE, 'server/src/stockage/fixtures/compteur-index.jpg'))
+      await page.locator('[role="dialog"] li img').first().waitFor({ state: 'visible' })
+    },
+  },
+  {
+    /*
+      LA COQUILLE DU LOCATAIRE, QUE RIEN N'AVAIT JAMAIS REGARDÉE.
+
+      Ce n'est pas une barre BASSE : le locataire n'en a pas. Il a une barre
+      HAUTE — logo, trois destinations, réglages — un composant entier
+      (`BarreLocataire`) que le balayage ordinaire ne rend JAMAIS, parce que la
+      démonstration démarre en propriétaire et que rien ne change de profil.
+      Contraste, cibles de 44 px, noms accessibles : aucune des trois règles ne
+      l'avait vue une seule fois.
+
+      LE GESTE PASSE PAR 1280 PX, ET C'EST FORCÉ. Le sélecteur de profil vit
+      dans la barre latérale, qui n'existe qu'au-dessus de `lg` ; la coquille du
+      locataire, elle, est intéressante à 320, là où elle empile logo, nav et
+      réglages sur trois rangées. On bascule donc au large, puis on redescend —
+      le rôle est un état React, il survit au redimensionnement et ne survit PAS
+      à une navigation, ce qui évite d'empoisonner la suite du balayage.
+
+      320 PX, LA PLUS ÉTROITE. C'est là que cette barre est le plus contrainte,
+      et la seule largeur où l'auditer apprend quelque chose.
+
+      L'ADRESSE FINALE N'EST PAS `/demo`, ET C'EST VOULU : basculer en locataire
+      redirige vers `/demo/mon-espace`, puisque l'index du tableau de bord ne
+      lui est pas destiné. La coquille auditée est la même — c'est elle le
+      sujet, pas l'écran qu'elle encadre.
+    */
+    nom: 'barre-du-locataire',
+    adresse: '/demo',
+    largeur: 320,
+    temoin: '[data-mesure="barre-locataire"]',
+    ouvrir: async (page) => {
+      await page.setViewportSize({ width: 1280, height: 900 })
+      /*
+        ON CLIQUE L'ÉTIQUETTE, PAS LE BOUTON RADIO — mesuré, pas supposé.
+
+        Le radio est masqué visuellement (`sr-only`), et `check()` attend
+        l'actionnabilité : il expire au bout de trente secondes. `getByRole`
+        ne le trouve pas davantage — les cas de ce dépôt le cherchent
+        d'ailleurs avec `hidden: true`. L'étiquette, elle, est la vraie cible :
+        c'est ce que le doigt touche.
+      */
+      await page.locator('label:has(input[value="tenant"])').click()
+      await page.setViewportSize({ width: 320, height: 900 })
+      /*
+        ON ATTEND QUE LA PAGE SE POSE, et ce n'est pas une précaution de style.
+
+        Basculer en locataire REDIRIGE vers `/demo/mon-espace` : le témoin
+        apparaît dès que la coquille se monte, bien avant que l'écran qu'elle
+        encadre n'ait ses données. Mesuré sans cette attente : 136 textes et
+        42 cibles auditées en thème clair, 9 et 8 en sombre — le même geste, la
+        même surface, un rapport qui varie du simple au quinzième selon qui
+        gagne la course. Le témoin dit que la surface EXISTE ; il ne dit pas
+        qu'elle est PRÊTE.
+      */
+      await attendre(page, 'barre-du-locataire')
+    },
+  },
+  {
+    /*
+      LE GESTE DU LOCATAIRE, ET NON PLUS SEULEMENT SA COQUILLE.
+
+      La surface `barre-du-locataire`, juste au-dessus, a fermé la COQUILLE du
+      locataire. Elle n'a pas fermé ses ÉCRANS, et la nuance a coûté un trou
+      entier : `Signaler.tsx` garde son formulaire derrière
+      `peutDeclarer = role === 'tenant' && mesUnites[0]`, et le balayage
+      ordinaire tourne en propriétaire.
+
+      MESURÉ AVANT D'ÉCRIRE CETTE ENTRÉE, à 1280 px, en comptant les commandes
+      dans `<main>` : propriétaire 430 caractères et ZÉRO commande, locataire
+      684 et ONZE. Onze commandes — un champ de titre, un groupe de métiers en
+      `radiogroup`, un groupe d'urgence, une zone de texte, l'envoi — que ni le
+      contraste, ni la sonde des cibles, ni les noms accessibles n'avaient
+      jamais vues. Le témoin de cette entrée l'a prouvé en rougissant d'abord :
+      posée sur `/demo/signaler` SANS bascule de rôle, elle a rendu « la surface
+      ne s'est pas ouverte » aux deux thèmes. C'est le rôle qui manquait, pas le
+      sélecteur.
+
+      LA NAVIGATION SE FAIT AU CLIC, ET C'EST OBLIGATOIRE. L'entrée du dessus
+      l'écrit déjà : « le rôle est un état React, il survit au redimensionnement
+      et ne survit PAS à une navigation ». Un `page.goto('/demo/signaler')`
+      après la bascule rechargerait le document et retomberait en propriétaire —
+      la surface s'ouvrirait sur la page NUE, et la porte auditerait 430
+      caractères sans commande en croyant tenir le formulaire. Le témoin le
+      refuserait, mais un témoin qui rattrape une erreur de geste vaut moins
+      qu'un geste juste.
+
+      1280 POUR LE GESTE, 360 POUR LA MESURE, comme la surface du dessus et pour
+      la même raison : le sélecteur de profil vit dans la barre latérale, qui
+      n'existe qu'au-dessus de `lg`. La mesure, elle, se fait à la largeur où ces
+      onze commandes sont le plus contraintes — c'est celle du marché visé, pas
+      celle du bureau.
+    */
+    nom: 'declaration-du-locataire',
+    adresse: '/demo',
+    largeur: 360,
+    temoin: '[data-mesure="declaration-du-locataire"]',
+    ouvrir: async (page) => {
+      await page.setViewportSize({ width: 1280, height: 900 })
+      /* L'ÉTIQUETTE, PAS LE BOUTON RADIO — le radio est `sr-only`, et `check()`
+         attend l'actionnabilité : il expire. Voir `barre-du-locataire`. */
+      await page.locator('label:has(input[value="tenant"])').click()
+      /* La bascule REDIRIGE vers `/demo/mon-espace`. On attend que cet écran se
+         pose avant de viser son lien : le témoin dit qu'une surface existe, pas
+         qu'elle est prête, et la coquille se monte bien avant ses données. */
+      await attendre(page, 'declaration-du-locataire')
+      await page
+        .getByRole('link', { name: /^Signaler$|^Report$/ })
+        .first()
+        .click()
+      await page.setViewportSize({ width: 360, height: 900 })
+      await attendre(page, 'declaration-du-locataire')
     },
   },
 ]
@@ -565,7 +942,18 @@ function declencheursDePanneau() {
     for (const entree of readdirSync(dossier, { withFileTypes: true })) {
       const chemin = join(dossier, entree.name)
       if (entree.isDirectory()) parcourir(chemin)
-      else if (/\.tsx$/.test(entree.name) && !entree.name.includes('.test.')) {
+      /* `src/test/` EST ÉCARTÉ, et ce n'est pas un élargissement commode : le
+         harnais y CHERCHE des déclencheurs pour les ouvrir — « le geste de
+         l'utilisateur : chercher l'action, et ouvrir le menu si elle n'est pas
+         là ». Deux occurrences de la CHAÎNE qui ne posent aucun panneau. Les
+         compter ferait dire au recensement qu'il y a deux surfaces de plus à
+         auditer, et l'audit irait les chercher dans le produit, où elles ne
+         sont pas. */
+      else if (
+        /\.tsx$/.test(entree.name) &&
+        !entree.name.includes('.test.') &&
+        !chemin.includes('/src/test/')
+      ) {
         const source = readFileSync(chemin, 'utf8')
         const n = [...source.matchAll(/aria-haspopup/g)].length
         if (n > 0) trouves.push({ fichier: chemin.replace(RACINE + '/', ''), n })
@@ -576,9 +964,19 @@ function declencheursDePanneau() {
   return trouves
 }
 
-/* 5 = deux dans la coquille (réglages, menu du compte), deux dans le sélecteur
-   de date (jour et mois), un dans le sélecteur de devise. */
-const DECLENCHEURS_ATTENDUS = 5
+/* 7 = deux dans la coquille (réglages, menu du compte), deux dans le sélecteur
+   de date (jour et mois), un dans le sélecteur de devise, un sixième depuis
+   que les écrans d'AUTHENTIFICATION replient leurs trois réglages derrière un
+   déclencheur (`PanneauDeReglages`) — il entre dans le périmètre audité sous le
+   nom `reglages-a-la-connexion`, et la ligne qui le décrit dit pourquoi il ne
+   fait pas doublon avec celui de la coquille.
+
+   LE SEPTIÈME EST LE MENU DE DÉBORDEMENT DES EN-TÊTES DE PAGE. Une seule
+   occurrence dans la source pour QUATRE écrans — paiements, locataires, parc,
+   relevés —, parce que c'est une primitive et non un panneau recopié : c'est
+   précisément ce que les six premiers n'étaient pas, et la raison pour laquelle
+   ce recensement existe. Il monte de un, pas de quatre. */
+const DECLENCHEURS_ATTENDUS = 7
 
 {
   const trouves = declencheursDePanneau()
@@ -601,9 +999,9 @@ const DECLENCHEURS_ATTENDUS = 5
   elle-même : vider la table, et l'on comparerait 0 à 0 avant de se déclarer
   vert. Le nombre est donc écrit, et l'ajout d'une surface oblige à le toucher.
 
-  8 = 4 surfaces × 2 thèmes.
+  22 = 11 surfaces × 2 thèmes.
 */
-const SURFACES_ATTENDUES = 8
+const SURFACES_ATTENDUES = 22
 
 /**
  * Neutralise ce qui bouge, AVANT de mesurer.
@@ -723,6 +1121,201 @@ const CONTRASTES_TOLERES = {
  */
 const TOLERES = {
 }
+
+/**
+ * Débordements LOCAUX tolérés, par SIGNATURE et non par point.
+ *
+ * POURQUOI LA CLÉ N'EST PAS `adresse@largeur`, comme celle de `TOLERES`. Un
+ * même défaut de mise en page se répète sur tous les écrans qui portent le
+ * composant fautif : les libellés de la barre basse débordent sur les 23
+ * écrans, à trois largeurs, dans deux langues. Une clé par point aurait demandé
+ * soixante-quatre entrées pour UN défaut, et la soixante-cinquième occurrence —
+ * la régression — se serait perdue dans la liste.
+ *
+ * La signature est `balise.classes`, c'est-à-dire ce que le rapport imprime :
+ * une entrée se recopie depuis le refus sans avoir à traduire.
+ *
+ * CHAQUE ENTRÉE PORTE SON PLAFOND, EN PIXELS MESURÉS. C'est ce qui empêche une
+ * tolérance de devenir un blanc-seing : le défaut connu passe, le même défaut
+ * AGGRAVÉ rougit. Et la garde du garde, plus bas, fait rougir toute entrée qui
+ * ne couvre plus rien.
+ *
+ * ─── CE REGISTRE N'EST PAS VIDE, ET C'EST UN AVEU ────────────────────────
+ *
+ * `TOLERES` porte fièrement « AUCUNE ENTRÉE, et c'est le but ». Celui-ci est né
+ * avec QUINZE motifs, parce que la règle qui l'accompagne n'avait jamais été
+ * appliquée : elle a découvert d'un coup tout ce que quinze lots avaient laissé
+ * passer. Les fermer d'abord et poser la règle ensuite aurait été plus joli et
+ * moins vrai — la règle serait née sans avoir rien attrapé, et personne
+ * n'aurait su ce qu'elle valait.
+ *
+ * IL EN RESTE NEUF, ET C'EST LA GARDE DU GARDE QUI A COMPTÉ. Les QUATRE défauts
+ * visibles découverts au premier passage sont réparés — barre basse dont les libellés se chevauchaient, carte
+ * d'alerte et carte de chantier dont la colonne de titre tombait à zéro, rangée
+ * de constat dont la pastille recouvrait la date. Chaque réparation a fait
+ * rougir la porte pour la bonne raison : « cette tolérance ne couvre plus
+ * rien ».
+ *
+ * UNE RÉPARATION N'EFFACE PAS UNE ENTRÉE, ELLE EN EFFACE CE QU'ELLE VEUT. La
+ * carte de chantier en a emporté TROIS d'un coup — titre, ligne de référence,
+ * ligne d'origine n'étaient qu'un seul défaut vu trois fois ; la rangée de
+ * constat en a emporté deux. Six entrées pour quatre défauts : LE NOMBRE
+ * D'ENTRÉES NE MESURE PAS LE NOMBRE DE DÉFAUTS, et il ne faut pas lire les neuf
+ * restantes comme neuf choses à faire.
+ *
+ * LES NEUF ONT ÉTÉ REGARDÉES, une par une, à leur point et à leur largeur. UNE
+ * SEULE franchissait une frontière visible — le montant d'une tuile de KPI, qui
+ * sortait de sa carte de 9 px à 700 px ; elle est RÉPARÉE, et son entrée est
+ * tombée de 30 px sur 28 occurrences à 7 sur 8. Les huit autres restent dans
+ * leur carte, avec 3 à 185 px de marge, et aucune ne heurte un voisin.
+ *
+ * AUCUNE DES NEUF N'A DISPARU POUR AUTANT, et c'est le piège de ce registre :
+ * réparer le franchissement n'a pas effacé la signature, il a seulement fait
+ * baisser son maximum. Une entrée survit à sa propre réparation en devenant
+ * MENTEUSE. C'EST DÉSORMAIS GARDÉ : la porte imprime à chaque passage le
+ * maximum RÉELLEMENT mesuré à côté du plafond inscrit, et rougit dès que
+ * l'écart dépasse quatre pixels — voir la garde du plafond menteur.
+ *
+ * L'ŒIL S'EST TROMPÉ TROIS FOIS AVANT LA MESURE, et c'est pour cela que chaque
+ * motif porte désormais une DISTANCE et non un adjectif : sur une capture, un
+ * liseré de débogage marque la boîte et non la carte, et un texte qui déborde
+ * dans le rembourrage de son parent ressemble trait pour trait à un texte qui
+ * sort de la carte.
+ */
+/**
+ * LES CREUX TOLÉRÉS — voir `MESURER_BLANC_IMPOSE`.
+ *
+ * Même doctrine que `DEBORDS_LOCAUX_TOLERES` : le défaut CONNU passe, le même
+ * défaut AGGRAVÉ ne passe pas, et une tolérance qui ne couvre plus rien meurt.
+ * Le plafond est le MESURÉ, sans marge : `MARGE_DE_PLAFOND` refuse un plafond
+ * qui dépasse la réalité, parce qu'un plafond plus haut que son défaut blanchit
+ * d'avance l'écart entre les deux.
+ */
+const BLANCS_IMPOSES_TOLERES = {
+  'div.on-dark relative flex shrink-0 flex-col overflow-hidden bg-ink text-on-dark pt-[calc(1.5rem+env(safe-area-inset-top)':
+    {
+      /* 208 → 223, ET C'EST MON GESTE QUI L'A PAYÉ. L'accroche du panneau est
+         passée de `display-m` à `display-app` sous `xl` : elle occupe quinze
+         pixels de moins, donc le creux du bas en gagne autant. Le motif ci-dessous
+         reste vrai mot pour mot — c'est la même couleur sans bord —, mais le
+         chiffre a changé pour une raison qui n'est pas une dérive, et la taire
+         reviendrait à faire passer une aggravation pour l'état d'origine.
+         La contrepartie est écrite dans `AuthLayout` : à 1024, « management »
+         sortait de sa colonne et se faisait couper par le séparateur. */
+      plafond: 223,
+      motif:
+        'LA BANDE DE MARQUE DES ÉCRANS D’AUTHENTIFICATION. Ce n’est pas une carte creuse, ' +
+        'c’est l’encre de la PAGE : sa hauteur vient de la fenêtre, pas de sa voisine, et le ' +
+        'formulaire d’en face la fixe à `min-h-screen`. Le vide du bas est de la couleur, et il ' +
+        'n’a pas de bord — il n’y a rien à remplir sous l’argumentaire, et le remplir serait ' +
+        'ajouter du texte pour occuper des pixels. ' +
+        'CE N’EST PAS UN AVEU D’IMPUISSANCE : `lg:justify-between` a été essayé et RETIRÉ, ' +
+        'mesuré à 2000 × 1090 — il poussait l’argumentaire tout en bas et les huit cents ' +
+        'premiers pixels de la bande étaient vides, le titre commençant là où le formulaire ' +
+        'd’en face avait déjà fini. Le vide en bas est le moins mauvais des deux, et c’est le ' +
+        'seul relevé du produit où la sonde mesure juste et conclut à faux. ' +
+        'Plafond = mesuré à 1024 px, la largeur où la bande est la plus haute par rapport à ' +
+        'son contenu.',
+    },
+}
+
+const DEBORDS_LOCAUX_TOLERES = {
+  'p.mt-2 flex items-baseline gap-1.5': {
+    plafond: 7,
+    motif:
+      'Montant d’une tuile de KPI (`StatCard`). RESTE d’un défaut réparé : il franchissait la ' +
+      'bordure de sa carte de 9 px à 700 px sur les cautions et les paiements, où ' +
+      '`sm:grid-cols-3` posait trois colonnes dès 640 px pour un montant insécable de 189 px ' +
+      'dans 159. Les trois grilles attendent maintenant `lg`. Ce qui subsiste — 7 px sur 8 ' +
+      'occurrences au lieu de 30 sur 28 — est un dépassement de la BOÎTE seule, sur le tableau ' +
+      'de bord à 1280 px, avec 14 à 89 px de marge avant la bordure. Mesuré, et regardé.',
+  },
+
+  /*
+    ── ET LES HUIT AUTRES, QUI RESTENT DANS LEUR CARTE ────────────────────
+
+    REGARDÉS, et le critère n'est plus l'œil : pour chacun on mesure le bord
+    droit du contenu, celui de la CARTE qui l'entoure, et le bord gauche du
+    VOISIN le plus proche sur la même bande. Aucun ne franchit sa carte, aucun
+    n'en heurte un autre.
+
+    POURQUOI CE CRITÈRE PLUTÔT QU'UNE CAPTURE. Trois de ces huit avaient été
+    jugés « visibles » sur capture d'écran, à tort : le liseré de débogage
+    marque la BOÎTE, pas la carte, et un texte qui sort de sa boîte pour entrer
+    dans le rembourrage de son parent ne se distingue pas, à l'œil, d'un texte
+    qui sort de la carte. La mesure les sépare ; l'œil non.
+
+    QUATRE PORTENT LE MÊME CHIFFRE — trois pixels. Ce n'est pas une coïncidence :
+    le contenu mange exactement le rembourrage de sa carte et s'arrête sur la
+    bordure. C'est la marge la plus mince du lot, et le premier mot de plus la
+    franchira.
+
+    CE QUE CETTE TOLÉRANCE NE DIT PAS : que ces mises en page soient BONNES. Un
+    montant collé à la bordure de sa carte est laid ; il n'est pas coupé, et
+    c'est tout ce que cette règle sait juger.
+  */
+  'dd.numeric text-body font-medium': {
+    plafond: 14,
+    motif:
+      'La commande « Consulter » dans un `<dd>`, /demo/mon-espace à 320 px. 3 PX de marge ' +
+      'avant la bordure de la carte, aucun voisin sur la bande.',
+  },
+  'div.mt-3 flex flex-wrap items-center justify-between gap-2': {
+    plafond: 14,
+    motif:
+      'Pied d’une quittance — « Payé le 3 août par Mobile Money » et son lien, à 360 px. ' +
+      '3 PX de marge avant la bordure de la carte.',
+  },
+  'li.flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 first:pt-0 last:pb-0': {
+    plafond: 14,
+    motif:
+      'Ligne de demande de document, /demo/locataires à 320 px. 3 PX de marge avant la ' +
+      'bordure de la carte.',
+  },
+  /* RETIRÉE, ET LE DÉFAUT AVEC. Elle tolérait « Mot de passe oublié ? » posé
+     entre le champ et le bouton, dont le `-mr-2` dépassait de 8 px
+     l'alignement des champs — « un défaut d'alignement, pas de débordement »,
+     disait le motif. Le lien a rejoint la rangée d'étiquette de son champ et a
+     perdu sa marge négative : il n'y a plus rien à tolérer. */
+  'div.mt-10 flex flex-col gap-3 sm:flex-row sm:items-center': {
+    plafond: 27,
+    motif:
+      'Les deux commandes de l’accroche, vitrine à 1024 px — la largeur où la rangée vient de ' +
+      'passer en ligne. Le second bouton sort de sa RANGÉE de 34 px et entre dans la ' +
+      'gouttière ; la carte d’illustration commence 30 px plus loin. Mesuré parce qu’une ' +
+      'capture donnait à croire le contraire.',
+  },
+}
+
+/*
+  ═══ TROIS TOLÉRANCES RETIRÉES, ET POURQUOI LE JUGEMENT A CHANGÉ ═══
+
+  Trois entrées vivaient ici, chacune exacte et chacune raisonnable :
+
+    span.block text-body                   3 px  « Contrat de bail signé »,
+      « 185 px avant le bord de la carte […] C'est la plus petite chose que cette
+      règle sache voir, et elle ne se voit pas. »
+    p.numeric mt-2 text-title-l …         18 px  « 447 000 FCFA »,
+      « mange les 20 px de rembourrage, s'arrête 3 px avant la bordure. Rien
+      n'est coupé ; le montant est collé au bord. »
+    p.numeric mt-2 text-kpi …             10 px  « 950 000 FCFA »,
+      « 7 px hors de sa boîte, et 89 px de marge avant le bord. Invisible. »
+
+  LES TROIS MOTIFS DISAIENT VRAI, et les trois verdicts se tenaient : ces
+  dépassements ne se voient pas. Ce qu'aucun ne disait — parce que cette règle-ci
+  ne le mesure pas — c'est ce que la boîte OFFRAIT : 46 px pour un libellé dont
+  le premier mot en réclame 49 ; 111 px pour un montant qui en veut 129 ; 160 px
+  pour un montant qui en veut 170.
+
+  Le défaut n'était donc pas le dépassement, c'était la colonne. Et il ne se
+  jugeait pas au pixel qui sort, mais à la place qui reste. `MESURER_DEBORDEMENT_-
+  DE_MOT` rapporte les DEUX chiffres — le manque ET l'offert —, et c'est le
+  second qui a changé la lecture des trois. Deux règles ont vu les mêmes pixels ;
+  celle qui disait combien de place il restait a fait poser la bonne question.
+
+  Les entrées partent parce que les défauts sont réparés, non parce qu'on les a
+  réévalués. La garde du garde l'a exigé dès que la sonde a cessé de les voir.
+*/
 
 /**
  * Les attentes, et ce qu'elles coûtent quand elles échouent.
@@ -872,7 +1465,34 @@ const MESURER_CIBLES = (config) => {
   const raisonsVues = []
   let sondees = 0
 
-  for (const el of document.querySelectorAll(SELECTEUR)) {
+  /*
+    UNE MODALE OUVERTE BORNE LE BALAYAGE À ELLE-MÊME.
+
+    LE DÉFAUT DE LA SONDE, trouvé au premier passage où une modale est entrée
+    dans les surfaces auditées. La taille touchable se mesure par
+    `elementFromPoint` : on part du centre de l'élément et l'on s'écarte tant
+    que le point rend toujours cet élément. Derrière une modale, le point rend
+    la COUCHE — et la mesure conclut `0x0`.
+
+    Elle a donc accusé le lien « A1 » du tableau du parc, dont la zone touchable
+    réelle vaut 958 × 68 px, mesurée : sa rangée entière, par un `::after` en
+    `inset-0`. Rien n'était cassé. Ce qui était faux, c'est la QUESTION : « ce
+    lien est-il atteignable au doigt » n'a pas de sens à l'instant où une modale
+    le recouvre exprès.
+
+    ON NE MARQUE PAS LE FOND `inert` POUR AUTANT. Ce serait corriger le produit
+    pour arranger l'instrument : `Modal` porte `aria-modal="true"`, que les
+    technologies d'assistance honorent, et son piège de focus est tenu par
+    `clavierDesModales.test.tsx`. Ajouter `inert` pour faire taire une sonde
+    déguiserait un contournement en amélioration.
+
+    Le fond N'EST PAS pour autant exempté de mesure : il est balayé à chaque
+    passage de page, modale fermée, sur les mêmes onze largeurs.
+  */
+  const modale = document.querySelector('[role="dialog"][aria-modal="true"]')
+  const perimetre = modale ?? document
+
+  for (const el of perimetre.querySelectorAll(SELECTEUR)) {
     const style = getComputedStyle(el)
     if (style.display === 'none' || style.visibility === 'hidden') continue
     if (el.classList.contains('sr-only')) continue
@@ -1185,15 +1805,240 @@ const HAUTEURS_AUTH = [1090, 800, 620]
 async function colonnesDesEcransDEntree(page) {
   const releves = []
   for (const adresse of ['/connexion', '/inscription']) {
-    for (const hauteur of HAUTEURS_AUTH) {
+    for (const [rang, hauteur] of HAUTEURS_AUTH.entries()) {
       await page.setViewportSize({ width: 1440, height: hauteur })
-      await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
+      /*
+        ON CHARGE UNE FOIS, PUIS ON REDIMENSIONNE — la convention des trois
+        autres passes de ce fichier, que celle-ci ignorait.
+
+        Elle rechargeait la page à CHAQUE hauteur : six navigations complètes
+        par langue là où deux suffisent. Le chronomètre l'a nommée cinquième
+        poste de la porte — 6,6 s pour deux appels, trois fois plus que toutes
+        les sondes réunies — alors qu'elle ne mesure que deux rectangles.
+
+        MESURÉ AVANT DE TOUCHER, et c'est ce qui autorise le changement : les
+        deux méthodes rendent des relevés STRICTEMENT IDENTIQUES — mêmes hauts,
+        mêmes bas, mêmes axes, sur les six points d'une langue. 3,97 s contre
+        1,16 s. Le rechargement ne mesurait rien de plus ; il attendait.
+
+        Le redimensionnement seul suffit parce que ces écrans n'ont aucune
+        décision de mise en page prise AU CHARGEMENT : leur centrage est du
+        flux, il se recalcule au reflow. Le jour où l'un d'eux lirait sa hauteur
+        en JavaScript au montage, ce raccourci deviendrait faux — et c'est le
+        genre de chose qu'une capture ne dirait pas.
+      */
+      if (rang === 0) await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
       await attendre(page, `${adresse} (colonnes)`)
       const releve = await page.evaluate(MESURER_COLONNES)
       if (releve) releves.push({ adresse, hauteur, ...releve })
     }
   }
   return releves
+}
+
+/**
+ * ═══ LES TROIS ÉTAPES INTÉRIEURES DE L'INSCRIPTION ═══
+ *
+ * Le balayage visite des ADRESSES. `/inscription` en est une, et elle rend
+ * l'étape 1 — le choix du rôle. Les trois suivantes — identité, contexte,
+ * récapitulatif — vivent dans l'état d'un composant : aucune adresse ne les
+ * atteint, aucune porte ne les avait jamais regardées. Trois écrans du parcours
+ * le plus exposé du produit, celui par lequel tout le monde entre, et dont on
+ * ne savait rien.
+ *
+ * LE LOT PRÉCÉDENT LE DISAIT DÉJÀ, en réserve : la sonde du rognage « couvre ce
+ * que le produit affiche de lui-même, pas ce qui apparaît après une saisie ».
+ * C'était vrai de cette sonde-là, et de toutes les autres de ce fichier.
+ *
+ * ─── CE QU'ELLE MESURE, ET CE QU'ELLE A TROUVÉ ────────────────────────────
+ *
+ * Trois règles, sur les 198 points du parcours (3 rôles × 3 étapes × 11
+ * largeurs × 2 langues) : le rognage d'une valeur dans son champ, le
+ * débordement de la page, le débordement local. Zéro défaut. La garde naît
+ * VERTE, et c'est la mutation qui prouve qu'elle mord — voir la note en pied.
+ *
+ * ─── LES SONDES QU'ON A ESSAYÉES ET QU'ON NE BRANCHE PAS ──────────────────
+ *
+ * Les cinq autres sondes de la boucle principale ont tourné ici avant d'écrire
+ * ce bloc — coupures de libellé, troncatures aux deux tailles de police,
+ * gestes atteignables, débordement de mot, blanc imposé. Quatre n'ont rien
+ * rapporté sur les 198 points. La cinquième, le blanc imposé, en rapporte
+ * partout : 207 à 296 px sous la colonne de marque sombre, à 1024 et 1280.
+ *
+ * ON NE LA BRANCHE PAS, et ce n'est pas un renoncement. Ce blanc est celui de
+ * la colonne d'ARGUMENTAIRE, qui est plus courte que le formulaire et le sera
+ * toujours ; il est déjà relevé sur `/inscription` par la boucle principale,
+ * déjà arbitré, et il grandit ici mécaniquement — de 223 à 296 px — parce que
+ * le formulaire grandit d'une étape à l'autre. Brancher la sonde reviendrait à
+ * remonter un plafond de 73 px pour redire ce que la première étape dit déjà.
+ * Le jour où l'on voudra ce blanc-là, c'est la colonne qu'il faudra changer,
+ * pas la mesure.
+ *
+ * ─── LE TÉMOIN DU PARCOURS : LE FIL D'ÉTAPES ──────────────────────────────
+ *
+ * Un parcours qui n'avance pas mesurerait trois fois l'étape 2 et rendrait
+ * « trois étapes couvertes ». C'est la panne exacte que ce fichier a déjà payée
+ * ailleurs — une garde qui passe à vide ressemble à une garde qui passe. Avant
+ * chaque relevé, on lit donc le rang que le fil d'étapes DÉCLARE
+ * (`aria-current="step"`), et il doit valoir celui qu'on croit mesurer. Ce
+ * témoin est indépendant du clic qui l'a produit : il vient du composant, pas
+ * de nous. Une marche ratée arrête le parcours de ce rôle plutôt que de le
+ * poursuivre sur un écran qu'on nommerait mal.
+ */
+const ROLES_DE_L_INSCRIPTION = [
+  /* Chaque rôle a son champ propre à l'étape 3, et sans lui on n'atteint pas la
+     4 : `validateStep('context')` les exige nommément. */
+  { slug: 'proprietaire', champ: 'parkName', valeur: 'Résidence Bonanjo' },
+  { slug: 'gestionnaire', champ: 'ownerCode', valeur: 'GES-4A7B-92CD' },
+  { slug: 'locataire', champ: 'inviteCode', valeur: 'LOC-4A7B-92CD' },
+]
+
+/**
+ * LES TROIS ÉTAPES, et le rang que le fil doit annoncer sur chacune.
+ *
+ * On entre par `/inscription/:role`, qui saute l'étape 1 — c'est le produit qui
+ * l'offre, pour la landing, et non un raccourci inventé ici. Le rang commence
+ * donc à 2.
+ */
+const ETAPES_INTERIEURES = [
+  { rang: 2, nom: 'identité' },
+  { rang: 3, nom: 'contexte' },
+  { rang: 4, nom: 'récapitulatif' },
+]
+
+/**
+ * LES VALEURS SAISIES, choisies pour PASSER la validation, pas pour la sonder.
+ *
+ * Ce n'est pas une garde de validation — il y en a une, en test unitaire, et
+ * elle est mieux placée. Ici la saisie n'est qu'un péage : sans elle, l'étape
+ * suivante n'existe pas. On prend donc des valeurs justes du premier coup, et
+ * plutôt celles du marché que sert la démonstration.
+ */
+async function remplirLIdentite(page) {
+  await page.fill('input[name="name"]', 'Amina Fotso Ngassa')
+  await page.fill('input[name="email"]', 'amina.fotso@example.cm')
+  await page.fill('input[name="phone"]', '699 00 00 00')
+  await page.fill('input[name="password"]', 'Kribi-Douala-2026!')
+}
+
+/**
+ * LE PAYS SE CHOISIT COMME ON LE CHOISIT — au clavier, dans le champ cherchable.
+ *
+ * `input[name="country"]` est un champ CACHÉ : le combobox le porte pour que le
+ * navigateur remplisse et que le formulaire envoie le code ISO. Le remplir
+ * directement ne réglerait rien à l'écran, et la sonde du rognage mesurerait un
+ * champ resté vide — un vert obtenu en ne montrant rien.
+ *
+ * On tape les quatre premières lettres du Cameroun, qui filtrent dans les deux
+ * langues (« Cameroun », « Cameroon »), et on valide. Le témoin est le champ
+ * caché : s'il reste vide, le choix n'a pas pris.
+ */
+async function choisirLePays(page) {
+  await page.locator('input[role="combobox"]').first().click()
+  await page.keyboard.type('Came')
+  await page.waitForFunction(
+    () => document.querySelectorAll('[role="option"]').length > 0,
+    null,
+    { timeout: 3000 },
+  )
+  await page.keyboard.press('Enter')
+  return page.evaluate(() => document.querySelector('input[name="country"]')?.value ?? '')
+}
+
+/**
+ * Parcourt l'assistant pour les trois rôles et relève à chaque étape.
+ *
+ * UNE NAVIGATION PAR RÔLE, et le reste au redimensionnement — la règle de ce
+ * fichier depuis le lot qui a fusionné deux passes : ce qui coûte, c'est le
+ * chargement. L'état de l'assistant vit dans le composant, donc il SURVIT au
+ * redimensionnement ; recharger à chaque largeur voudrait dire refaire les
+ * quatre saisies onze fois par rôle.
+ */
+async function etapesDeLInscription(page) {
+  const rognages = []
+  const debordsDePage = []
+  const debordsLocaux = []
+  const marchesRatees = []
+  let points = 0
+  let champsMesures = 0
+
+  /*
+    CINQ SECONDES, ET NON TRENTE. Ce parcours est le seul de ce fichier à
+    DÉSIGNER des champs par leur `name` ; le jour où l'un d'eux est renommé,
+    Playwright attend son délai par défaut sur chacun — trois minutes par
+    langue, pour finir sur une trace de pile là où il faut une phrase. Cinq
+    secondes suffisent largement à une page déjà chargée et stabilisée, et
+    l'échec arrive assez tôt pour être RACONTÉ.
+
+    Le contexte se ferme juste après cette passe : le réglage ne survit à rien.
+  */
+  page.setDefaultTimeout(5000)
+
+  for (const role of ROLES_DE_L_INSCRIPTION) {
+    const adresse = `/inscription/${role.slug}`
+    try {
+      await page.setViewportSize({ width: LARGEURS[0], height: 900 })
+    await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
+    await attendre(page, adresse)
+    await remplirLIdentite(page)
+
+    for (const etape of ETAPES_INTERIEURES) {
+      if (etape.rang > 2) {
+        await page.locator('form button[type="submit"]').click()
+        await attendre(page, `${adresse} (étape ${etape.rang})`)
+      }
+
+      const rang = await page.evaluate(() => {
+        const pastille = document.querySelector('[aria-current="step"]')
+        return pastille ? pastille.textContent.trim() : ''
+      })
+      if (rang !== String(etape.rang)) {
+        marchesRatees.push({ adresse, attendu: etape.rang, lu: rang || '(aucun fil)' })
+        break
+      }
+
+      if (etape.rang === 3) {
+        const pays = await choisirLePays(page)
+        if (!pays) {
+          marchesRatees.push({ adresse, attendu: 'un pays choisi', lu: '(champ vide)' })
+          break
+        }
+        await page.fill(`input[name="${role.champ}"]`, role.valeur)
+      }
+
+      for (const largeur of LARGEURS) {
+        await page.setViewportSize({ width: largeur, height: 900 })
+        await attendre(page, `${adresse} (étape ${etape.rang})`)
+        points += 1
+        const ou = `${adresse} · étape ${etape.rang} (${etape.nom}) ${largeur}px`
+
+        const valeurs = await page.evaluate(MESURER_VALEUR_ROGNEE)
+        champsMesures += valeurs.mesures
+        for (const d of valeurs.defauts) rognages.push({ ...d, ou })
+
+        const page_ = await page.evaluate(MESURER)
+        if (page_) debordsDePage.push({ ...page_, ou })
+
+        const local = await page.evaluate(MESURER_DEBORD_LOCAL)
+        for (const c of local.coupables) debordsLocaux.push({ ...c, ou })
+      }
+      await page.setViewportSize({ width: LARGEURS[0], height: 900 })
+      }
+    } catch (erreur) {
+      /* UN GESTE QUI ÉCHOUE EST UNE MARCHE RATÉE, pas une panne de la porte.
+         Un champ renommé, un bouton qui change de forme, une liste qui ne
+         s'ouvre plus : tout cela retire de la couverture, et c'est ce qu'il
+         faut lire — la trace de pile, elle, ne dit pas quels écrans ont cessé
+         d'être mesurés. */
+      marchesRatees.push({
+        adresse,
+        attendu: 'un parcours complet',
+        lu: String(erreur.message ?? erreur).split('\n')[0].slice(0, 120),
+      })
+    }
+  }
+
+  return { points, champsMesures, rognages, debordsDePage, debordsLocaux, marchesRatees }
 }
 
 /**
@@ -1414,6 +2259,960 @@ const MESURER_REPLI = () => {
     }
   }
   return replies.length > 0 ? replies : null
+}
+
+/**
+ * ─── LE DÉBORDEMENT LOCAL ────────────────────────────────────────────────────
+ *
+ * POURQUOI UNE SECONDE RÈGLE DE DÉBORDEMENT, ET CE QUE LA PREMIÈRE NE VOIT PAS.
+ *
+ * `MESURER` ne tient pour défaut que ce qui fait DÉFILER LA PAGE — il tente
+ * `window.scrollTo(400, 0)` et lit `scrollX`. C'est un excellent critère, et il
+ * a une frontière nette : un contenu qui sort de SON conteneur mais que le
+ * rembourrage d'un ancêtre absorbe ne fait pas défiler la page, donc ne rougit
+ * pas — même quand il se voit.
+ *
+ * MESURÉ, sur la rangée des preuves d'un état des lieux : `flex-wrap` retiré, la
+ * rangée dépasse de 40 px (256 contre 216), la grille de 8, `main` avale le
+ * reste. La page ne défile pas. La troisième vignette sort pourtant de la carte
+ * et se fait couper par la fenêtre. Verdict de la porte : vert.
+ *
+ * Deux autres défauts VISIBLES vivaient dans le même angle mort, découverts en
+ * posant cette règle : les libellés de la barre basse se chevauchent à 320 px
+ * (« Signalements » demande 76 px dans 51), et le titre d'une alerte tombe à un
+ * mot par ligne à 375 px pendant que « il y a 2 heures » garde sa place.
+ *
+ * ─── CE QUE LA RÈGLE MESURE, ET CE QU'ELLE ÉCARTE ────────────────────────────
+ *
+ * Pour chaque élément qui ne gère pas lui-même son débordement, on prend le
+ * bord droit de SON CONTENU et on le compare au bord droit de sa boîte.
+ *
+ * LE CONTENU, C'EST LE TEXTE ET LES ENFANTS DANS LE FLUX — pas `scrollWidth`.
+ * Trois raisons, chacune payée d'une mesure :
+ *
+ *  1. `scrollWidth` compte les descendants HORS FLUX. Une pastille de compteur
+ *     posée en `absolute` sur le coin d'une icône faisait de son parent un
+ *     coupable : 96 faux positifs sur 219, tous le même « 3 » de la barre
+ *     basse. Un élément absolu sort de son conteneur PAR CONSTRUCTION.
+ *  2. Le TEXTE, lui, doit compter. Une première version ne regardait que les
+ *     enfants éléments : 31 trouvailles au lieu de 123, et elle laissait passer
+ *     le chevauchement de la barre basse, qui est du texte débordant sa boîte.
+ *     C'est le défaut le plus visible des trois.
+ *  3. `clientWidth` vaut zéro sur un élément EN LIGNE : le comparer ferait de
+ *     chaque `<span>` un coupable.
+ *
+ * MÊME CONVENTION QUE `MESURER` POUR LES ANCÊTRES : un contenu logé sous un
+ * ancêtre qui défile ou qui rogne n'est pas un coupable — c'est le motif normal
+ * des tableaux du dépôt. Ce que cette convention COÛTE, et il faut le dire :
+ * `hidden` rogne, donc un contenu perdu sous un `overflow-hidden` passe pour
+ * contenu. `MESURER` fait le même choix ; le changer est un autre sujet que
+ * celui-ci.
+ *
+ * SEUL LE PLUS PROFOND EST NOMMÉ. Un parent déborde parce que son enfant
+ * déborde : nommer la chaîne noierait le coupable sous ses quatre ancêtres.
+ */
+const MESURER_DEBORD_LOCAL = () => {
+  // Chronométré DANS la page, pour séparer ce que coûte le PARCOURS de ce que
+  // coûte l'aller-retour avec le navigateur. Les deux se paient, mais on ne les
+  // réduit pas de la même façon.
+  const depart = performance.now()
+  const brut = []
+  const tous = document.querySelectorAll('*')
+  for (const el of tous) {
+    if (el === document.documentElement || el === document.body) continue
+    if (getComputedStyle(el).overflowX !== 'visible') continue
+    // Élément en ligne : pas de boîte à déborder.
+    if (el.clientWidth === 0) continue
+
+    let ancetre = el.parentElement
+    let contenu = false
+    while (ancetre) {
+      const o = getComputedStyle(ancetre).overflowX
+      if (o === 'auto' || o === 'scroll' || o === 'hidden') {
+        contenu = true
+        break
+      }
+      ancetre = ancetre.parentElement
+    }
+    if (contenu) continue
+
+    const boite = el.getBoundingClientRect()
+    const bordInterieur = boite.left + el.clientLeft + el.clientWidth
+    let droite = -Infinity
+    for (const noeud of el.childNodes) {
+      if (noeud.nodeType === 1) {
+        const p = getComputedStyle(noeud).position
+        // `absolute`, `fixed` et `sticky` sortent de leur conteneur par
+        // construction : ce n'est pas un débordement, c'est leur définition.
+        if (p !== 'static' && p !== 'relative') continue
+        const b = noeud.getBoundingClientRect()
+        if (b.width) droite = Math.max(droite, b.right)
+      } else if (noeud.nodeType === 3 && noeud.textContent.trim()) {
+        // Le texte n'a pas de boîte : ses rectangles se lisent par un `Range`.
+        const plage = document.createRange()
+        plage.selectNodeContents(noeud)
+        for (const b of plage.getClientRects()) if (b.width) droite = Math.max(droite, b.right)
+      }
+    }
+
+    const debord = Math.round(droite - bordInterieur)
+    if (!isFinite(debord) || debord <= 1) continue
+    brut.push({ el, debord })
+  }
+
+  return {
+    // Compté pour que le rapport puisse dire ce qu'il a REGARDÉ. Un balayage
+    // dont la sonde cesserait de trouver des éléments rendrait « aucun défaut »
+    // avec la même sérénité qu'un écran sain.
+    sondes: tous.length,
+    ms: performance.now() - depart,
+    coupables: brut
+      .filter(({ el }) => !brut.some((a) => a.el !== el && el.contains(a.el)))
+      .map(({ el, debord }) => ({
+        signature: `${el.tagName.toLowerCase()}.${typeof el.className === 'string' ? el.className : ''}`.slice(0, 120),
+        debord,
+        texte: (el.textContent || '').trim().slice(0, 40),
+      })),
+  }
+}
+
+/**
+ * ─── LE BLANC IMPOSÉ ─────────────────────────────────────────────────────────
+ *
+ * CE QU'AUCUNE AUTRE RÈGLE NE VOIT. Toutes les règles de géométrie de ce
+ * fichier répondent à « le contenu SORT-il de sa boîte ». Celle-ci répond à
+ * l'inverse : « la boîte est-elle VIDE en bas, et par la faute de qui ». Une
+ * cellule de grille qu'une voisine plus haute étire ne déborde de rien, ne coûte
+ * aucune requête, ne rate aucun seuil de contraste et n'a pas un caractère de
+ * trop. Elle est simplement creuse, et la porte la déclare saine.
+ *
+ * MESURÉ, DEUX FOIS, PORTE AU VERT. Sur le tableau de bord : 246 px de vide en
+ * bas de la carte « Recouvrement du mois », soit 39 % de sa hauteur — la porte
+ * était verte. Après un premier correctif, 73 px subsistaient — la porte était
+ * encore verte. Le défaut a traversé sept lots de refonte sans qu'une seule
+ * règle puisse seulement le nommer.
+ *
+ * LE PIÈGE, ET IL A FAILLI COÛTER LA RÈGLE. `align-items: stretch` est le
+ * défaut d'une grille, et l'étirement n'est PAS un défaut en soi. Sur une rangée
+ * de PAIRS — les quatre indicateurs d'un tableau de bord — le blanc est le prix
+ * de l'alignement : les quatre cartes se valent, elles doivent finir ensemble,
+ * et la plus courte paie. Une règle qui refuserait tout blanc imposé casserait
+ * cette rangée-là et serait désactivée dans la semaine. Deux exclusions la
+ * rendent utilisable, et TOUTES DEUX sont mesurées, pas supposées :
+ *
+ * 1. LES PAIRS SONT ÉPARGNÉS. Une rangée dont toutes les cellules portent le
+ *    MÊME jeu de classes est une rangée d'objets de même nature. Le critère est
+ *    grossier — deux cartes différentes peuvent partager leurs classes — mais il
+ *    se trompe du bon côté : il épargne, il n'accuse pas.
+ *
+ * 2. UNE BOÎTE QUI DISTRIBUE SON ESPACE NE LE SUBIT PAS. Sans cette exclusion,
+ *    la première rédaction accusait les deux boutons d'appel de la vitrine
+ *    (15 px chacun) et les quatre onglets de la barre basse (8 px) : du contenu
+ *    CENTRÉ, dont la moitié du vide se trouve sous le texte par construction.
+ *    Elle rendait 45 relevés dont 42 étaient l'artefact de sa propre mesure.
+ *    Sont donc écartées les boîtes en `center`, `end`, `space-*`, et celles dont
+ *    un enfant porte `margin-top: auto` — l'idiome par lequel on CONSOMME
+ *    délibérément le blanc en poussant un pied de carte vers le bas.
+ *
+ *    Après exclusion : 19 relevés au lieu de 61, dont TROIS non pairs — le même
+ *    défaut vu à trois largeurs.
+ *
+ * CE QU'ELLE NE DIT PAS. Rien sur le blanc du HAUT ni des CÔTÉS, rien sur une
+ * cellule creuse qui serait seule dans sa rangée, rien sur l'esthétique. Elle
+ * mesure une chose : combien de pixels séparent le bas du dernier descendant en
+ * flux du bas de la boîte de contenu, dans une cellule étirée par une voisine
+ * d'une autre nature.
+ */
+/**
+ * UNE VALEUR COUPÉE DANS SON CHAMP — le rognage que rien ne voyait.
+ *
+ * ═══ LE CAS QUI L'A FAIT ÉCRIRE ═══
+ *
+ * Le champ d'indicatif téléphonique portait « Congo-Brazzaville · +242 » dans
+ * 176 px : l'indicatif — la seule partie qui sert — était coupé hors du champ.
+ * Personne ne le voyait, et pour une raison structurelle : un texte coupé DANS
+ * sa boîte ne déborde de rien. La page ne défile pas, le conteneur ne grandit
+ * pas, et le DOM porte la chaîne entière. Toutes les règles voisines mesurent
+ * ce qui SORT ; celle-ci mesure ce qui n'entre pas.
+ *
+ * ═══ CE QU'ON MESURE, ET POURQUOI PAS `scrollWidth` ═══
+ *
+ * Première rédaction : `scrollWidth > clientWidth`. Elle ne mordait PAS, et le
+ * témoin l'a dit — un champ de recherche ramené à 96 px pour un gabarit de
+ * trente-six caractères laissait la porte verte. `scrollWidth` ne grandit que
+ * pour une VALEUR ; un champ vide qui affiche un gabarit mesure toujours zéro
+ * écart, quelle que soit la longueur du gabarit. Et le balayage ne tape rien,
+ * donc la plupart des champs y sont vides.
+ *
+ * On MESURE DONC LE TEXTE : un `<span>` détaché prend la police calculée du
+ * champ et rend la largeur réelle des glyphes, comparée à la boîte de contenu —
+ * `clientWidth` moins les rembourrages, moins la place du chevron pour un
+ * `<select>`.
+ *
+ * ON MESURE LA VALEUR OU LE GABARIT, jamais une saisie en cours : le balayage
+ * ne tape rien, donc ce qu'on trouve est ce qu'un visiteur voit EN ARRIVANT —
+ * une valeur par défaut trop longue, un `placeholder` qui ne tient pas.
+ *
+ * ═══ CE QU'ELLE NE VOIT PAS ═══
+ *
+ * Les valeurs que l'utilisateur tape ensuite. Un champ de saisie fait défiler
+ * son texte sous le curseur et c'est le comportement attendu — la règle ne peut
+ * pas distinguer « trop long par nature » de « trop long parce qu'on écrit ».
+ * Elle attrape ce que le produit AFFICHE de lui-même.
+ */
+const MESURER_VALEUR_ROGNEE = () => {
+  const defauts = []
+  let mesures = 0
+  const regle = document.createElement('span')
+  regle.style.cssText =
+    'position:absolute;visibility:hidden;white-space:pre;left:-9999px;top:0;pointer-events:none'
+  document.body.appendChild(regle)
+
+  for (const champ of document.querySelectorAll('input, select')) {
+    if (champ.type === 'hidden' || champ.type === 'checkbox' || champ.type === 'radio') continue
+    if (!champ.getClientRects().length) continue
+    /* Ce que le champ MONTRE : sa valeur, ou son gabarit quand il est vide. Un
+       `<select>` montre le libellé de son option retenue. */
+    const montre =
+      champ.tagName === 'SELECT'
+        ? (champ.options[champ.selectedIndex]?.textContent ?? '')
+        : champ.value || champ.placeholder || ''
+    if (!montre.trim()) continue
+    mesures += 1
+
+    const style = getComputedStyle(champ)
+    regle.style.font = style.font
+    regle.style.letterSpacing = style.letterSpacing
+    regle.textContent = montre
+    const largeurDuTexte = regle.getBoundingClientRect().width
+
+    /* LA BOÎTE DE CONTENU : `clientWidth` porte encore les rembourrages. Un
+       `<select>` réserve en plus la place de son chevron, que le navigateur
+       n'expose pas — seize pixels, la valeur de tous ceux du produit. */
+    const offert =
+      champ.clientWidth -
+      parseFloat(style.paddingLeft || '0') -
+      parseFloat(style.paddingRight || '0') -
+      (champ.tagName === 'SELECT' ? 16 : 0)
+
+    const manque = Math.round(largeurDuTexte - offert)
+    /* DEUX PIXELS DE MARGE : les largeurs sont fractionnaires dès qu'un zoom ou
+       une densité d'écran s'en mêle, et un demi-pixel n'a coupé aucune lettre. */
+    if (manque <= 2) continue
+    defauts.push({
+      texte: montre.trim().slice(0, 48),
+      manque,
+      offert: Math.round(offert),
+    })
+  }
+  regle.remove()
+  return { mesures, defauts }
+}
+
+const MESURER_BLANC_IMPOSE = () => {
+  // Inlinée : cette fonction est SÉRIALISÉE vers le navigateur, elle n'emporte
+  // aucune fermeture. Une constante du module y vaudrait `undefined`.
+  const SEUIL_DE_PARITE = 0.8
+  const depart = performance.now()
+  const releves = []
+  let cellulesSondees = 0
+
+  const distribueSonEspace = (el, style) => {
+    if (style.display !== 'flex' && style.display !== 'grid') return false
+    const enColonne = style.flexDirection.startsWith('column')
+    const reparti = enColonne ? style.justifyContent : style.alignItems
+    if (reparti !== 'normal' && reparti !== 'stretch' && !/^(flex-)?start$/.test(reparti)) return true
+    // `mt-auto` : le pied de carte poussé en bas. Le blanc est alors AU-DESSUS
+    // de lui, donc consommé volontairement, et le mesurer sous lui n'a plus de
+    // sens — il vaut zéro par construction.
+    return [...el.children].some((k) => getComputedStyle(k).marginTop === 'auto')
+  }
+
+  for (const grille of document.querySelectorAll('*')) {
+    const style = getComputedStyle(grille)
+    if (style.display !== 'grid' && style.display !== 'flex') continue
+    if (style.display === 'flex' && style.flexDirection.startsWith('column')) continue
+    // Seul l'étirement impose : `center`, `end`, `baseline` laissent la cellule
+    // à sa hauteur naturelle, donc sans vide à l'intérieur.
+    if (style.alignItems !== 'normal' && style.alignItems !== 'stretch') continue
+
+    const cellules = [...grille.children].filter((c) => {
+      const p = getComputedStyle(c).position
+      return p === 'static' || p === 'relative'
+    })
+    if (cellules.length < 2) continue
+
+    /*
+      PAIRS À 80 % DE LEURS CLASSES, et non à l'identique.
+
+      Le critère strict — même chaîne de classes — a rendu un faux positif
+      immédiatement : les trois cartes de rôle de la prise en main portent des
+      classes d'ÉTAT différentes selon celle qui est choisie, et 22 px de blanc
+      leur étaient reprochés. Ce sont pourtant des pairs au sens le plus fort du
+      terme : le même composant, rendu trois fois, dans une rangée de choix.
+
+      Le recouvrement des JETONS les réunit sans réunir n'importe quoi : une
+      carte sélectionnée et sa voisine partagent tout sauf deux ou trois classes
+      de bordure et de fond.
+
+      LE SEUIL EST UN JUGEMENT, ET LES CHIFFRES SONT MESURÉS. Les parités
+      relevées sur le produit : 0 % pour la colonne de marque de la vitrine
+      contre ses colonnes de liens, 10 % pour le panneau de marque de
+      l'inscription, 42 % pour la carte de confidentialité des pièces, 67 % pour
+      les trois cartes de rôle de la prise en main. Aucun seuil ne sépare
+      proprement ces quatre-là : 67 % doit passer et 42 % doit rougir, mais les
+      deux sont des rangées de deux à trois cellules et rien dans leurs classes
+      ne les distingue mieux que ça.
+
+      D'OÙ `data-rangee-de-pairs`. Le seuil reste à 80 % — assez haut pour
+      n'épargner que des cellules quasi identiques — et une rangée dont la
+      parité est vraie mais indémontrable la DÉCLARE. C'est un attribut qui dit
+      quelque chose de vrai sur le produit, pas une tolérance qui blanchit un
+      défaut : la différence est qu'on peut le lire et le contredire.
+    */
+    const jetons = cellules.map((c) =>
+      new Set((typeof c.className === 'string' ? c.className : '').split(/\s+/).filter(Boolean)),
+    )
+    let pireRecouvrement = 1
+    for (const a of jetons)
+      for (const b of jetons) {
+        if (a === b) continue
+        const communs = [...a].filter((x) => b.has(x)).length
+        const total = new Set([...a, ...b]).size
+        if (total) pireRecouvrement = Math.min(pireRecouvrement, communs / total)
+      }
+    // Une rangée peut DÉCLARER sa parité quand les classes ne suffisent pas à
+    // l'établir — voir l'en-tête.
+    if (grille.hasAttribute('data-rangee-de-pairs')) continue
+
+    /*
+      UN MARQUEUR COMMUN VAUT DÉCLARATION, et le produit en pose déjà.
+
+      Les quatre cartes d'une rangée d'indicateurs portent chacune
+      `data-indicateur` — un attribut que `StatCard` émet depuis le lot des
+      tuiles, pour d'autres mesures. Elles n'en restent pas moins des étrangères
+      pour le recouvrement de classes : celle qui porte un ÉTAT prend une
+      bordure de sa famille, et la parité tombe à 75 %. Mesuré : 52 px reprochés
+      à la carte « Encaissé ce mois-ci » d'une rangée de quatre pairs.
+
+      Quand toutes les cellules d'une rangée partagent un même nom d'attribut
+      `data-`, elles sont le même objet rendu N fois — c'est ce qu'un marqueur
+      de mesure signifie. Aucun attribut à inventer, aucune tolérance à écrire.
+    */
+    const marqueurs = cellules.map(
+      (c) => new Set([...c.attributes].map((a) => a.name).filter((n) => n.startsWith('data-'))),
+    )
+    const communs = marqueurs.reduce(
+      (acc, m) => (acc === null ? new Set(m) : new Set([...acc].filter((n) => m.has(n)))),
+      /** @type {Set<string> | null} */ (null),
+    )
+    if (communs && communs.size > 0) continue
+
+    if (pireRecouvrement >= SEUIL_DE_PARITE) continue // rangée de pairs — voir l'en-tête
+
+    /*
+      REGROUPÉES PAR RANGÉE, et non par grille. Une grille de huit cartes sur
+      deux rangées n'étire pas la première sur la seconde : chaque rangée a sa
+      propre hauteur, et comparer une cellule à une voisine d'une autre rangée
+      inventerait un blanc que personne ne subit. Le haut arrondi suffit à les
+      séparer — deux cellules d'une même rangée le partagent exactement.
+    */
+    const rangees = new Map()
+    for (const c of cellules) {
+      const haut = Math.round(c.getBoundingClientRect().top)
+      rangees.set(haut, [...(rangees.get(haut) ?? []), c])
+    }
+
+    for (const [, rangee] of rangees) {
+      if (rangee.length < 2) continue
+      for (const cellule of rangee) {
+        const boite = cellule.getBoundingClientRect()
+        // Une cellule minuscule n'a pas de vide qui se lise : le seuil est la
+        // hauteur d'une carte la plus basse du produit, pas un chiffre rond.
+        if (boite.height < 64) continue
+        const cs = getComputedStyle(cellule)
+        if (distribueSonEspace(cellule, cs)) continue
+        /*
+          UN CREUX QU'ON NE VOIT PAS N'EST PAS UN CREUX.
+
+          La cellule doit PEINDRE quelque chose pour que son vide se lise. Une
+          colonne sans fond ni bordure n'est qu'un repère de mise en page : son
+          bas s'étire dans la couleur de la section, et personne ne peut dire où
+          elle finit. Deux relevés sur six l'étaient — la colonne de marque du
+          pied de page et une colonne d'empilement de l'espace locataire, 202 et
+          143 px de vide invisible sur du fond déjà sombre ou déjà clair.
+
+          Le critère est le fond OPAQUE ou la bordure visible : c'est ce qui
+          dessine le bord bas de la boîte, donc ce qui rend le vide mesurable à
+          l'œil autant qu'à la sonde.
+        */
+        const fond = cs.backgroundColor
+        const peint =
+          fond !== 'transparent' && !/^rgba\(.*,\s*0\)$/.test(fond) && fond !== 'rgba(0, 0, 0, 0)'
+        const borde = parseFloat(cs.borderBottomWidth) > 0 && cs.borderBottomStyle !== 'none'
+        if (!peint && !borde) continue
+        cellulesSondees++
+
+        const basDuContenu =
+          boite.top + cellule.clientTop + cellule.clientHeight - parseFloat(cs.paddingBottom)
+        let bas = -Infinity
+        for (const noeud of cellule.childNodes) {
+          if (noeud.nodeType === 1) {
+            const p = getComputedStyle(noeud).position
+            if (p !== 'static' && p !== 'relative') continue
+            const b = noeud.getBoundingClientRect()
+            if (b.height) bas = Math.max(bas, b.bottom)
+          } else if (noeud.nodeType === 3 && noeud.textContent.trim()) {
+            const plage = document.createRange()
+            plage.selectNodeContents(noeud)
+            for (const b of plage.getClientRects()) if (b.height) bas = Math.max(bas, b.bottom)
+          }
+        }
+        if (!isFinite(bas)) continue
+
+        const blanc = Math.round(basDuContenu - bas)
+        // Quatre pixels : le bruit d'arrondi d'une grille en fractions. Mesuré
+        // sur cinq écrans à quatre largeurs, aucun relevé non pair ne tombe
+        // entre 3 et 200 — la distribution est franchement bimodale.
+        if (blanc <= 4) continue
+
+        releves.push({
+          signature:
+            `${cellule.tagName.toLowerCase()}.${typeof cellule.className === 'string' ? cellule.className : ''}`.slice(
+              0,
+              120,
+            ),
+          blanc,
+          hauteur: Math.round(boite.height),
+          part: Math.round((blanc / boite.height) * 100),
+          texte: (cellule.textContent || '').trim().slice(0, 40),
+          parite: Math.round(pireRecouvrement * 100),
+        })
+      }
+    }
+  }
+
+  // Compté pour que le rapport dise ce qu'il a REGARDÉ : une sonde qui ne
+  // trouverait plus une seule cellule étirée rendrait « aucun blanc imposé »
+  // avec la même sérénité qu'un produit sain.
+  return { cellules: cellulesSondees, ms: performance.now() - depart, releves }
+}
+
+/**
+ * ─── L'ORPHELIN D'UNE COUPURE ────────────────────────────────────────────────
+ *
+ * CE QUE LES DEUX AUTRES RÈGLES DE TEXTE NE VOIENT PAS. Le débordement de page
+ * et le débordement local répondent à « le contenu sort-il de sa boîte ». Un
+ * libellé qui se coupe MAL ne sort de rien : il tient, et il est illisible.
+ * « Payment / s » occupe exactement la même boîte que « Pay- / ments ».
+ *
+ * D'OÙ ELLE VIENT. La barre basse porte cinq cellules de 51 px à 320 px, et
+ * aucun libellé de ce métier n'y tient sur une ligne. Le repli coupe entre les
+ * MOTS ; un libellé d'un seul mot n'offre rien à couper, et le mot sortait de sa
+ * cellule pour se peindre sur la voisine. `hyphens-auto` + `break-words` a
+ * corrigé le CHEVAUCHEMENT — mais mesuré ensuite : ce Chromium a un dictionnaire
+ * de césure FRANÇAIS et pas d'ANGLAIS. « Signalements » se coupe proprement en
+ * « Signa- / lements » ; « Payments » retombe sur `break-words` et donne
+ * « Payment / s », « Dashboard » donne « Dashboa / rd ».
+ *
+ * TROIS CARACTÈRES, ET LE SEUIL EST UN JUGEMENT. En dessous, le fragment ne se
+ * lit plus comme la fin d'un mot mais comme une coquille — un « s » seul sous
+ * « Payment » ressemble à une faute de frappe, pas à une césure. Au-dessus, on
+ * interdirait des coupures que le français produit légitimement : « Parc im- /
+ * mobilier » laisse deux caractères en FIN de première ligne, ce que cette règle
+ * ne regarde pas — elle ne juge que la DERNIÈRE ligne, celle qui reste seule.
+ * Je n'ai pas de mesure qui fonde le trois ; j'ai deux cas à deux caractères qui
+ * se lisent mal et un à cinq qui se lit bien.
+ *
+ * ELLE NE COUVRE QUE LES LIBELLÉS MARQUÉS. `[data-mesure="libelle-barre-basse"]`
+ * et rien d'autre : généraliser à tout le texte de l'application demanderait un
+ * registre de tolérances entier, et le défaut connu vit dans cinq cellules.
+ */
+const MESURER_COUPURES = () => {
+  const defauts = []
+  let mesures = 0
+  for (const el of document.querySelectorAll('[data-mesure="libelle-barre-basse"]')) {
+    const noeud = el.firstChild
+    if (!noeud || noeud.nodeType !== 3) continue
+    const texte = noeud.textContent
+    if (!texte.trim()) continue
+    mesures += 1
+
+    /*
+      LE DÉCOUPAGE SE LIT DANS LES RECTANGLES, caractère par caractère.
+
+      `getClientRects` d'un `Range` d'UN caractère rend la ligne où il tombe ;
+      on regroupe par ordonnée. C'est la seule façon de savoir où le navigateur
+      a coupé — le DOM, lui, ne porte qu'une chaîne d'un seul tenant.
+    */
+    const plage = document.createRange()
+    const lignes = []
+    for (let i = 0; i < texte.length; i++) {
+      plage.setStart(noeud, i)
+      plage.setEnd(noeud, i + 1)
+      /*
+        LE DERNIER RECTANGLE, PAS LE PREMIER, et c'est une correction mesurée.
+
+        À un point de coupure, la plage d'UN caractère rend DEUX rectangles :
+        un de largeur nulle en fin de ligne précédente, puis celui du glyphe sur
+        la ligne suivante. Prendre `[0]` attribuait donc le premier caractère de
+        chaque nouvelle ligne à la ligne d'AVANT — la découpe imprimée valait
+        « Dash­b / oard » là où l'écran montre « Dash- / board », et l'orphelin
+        était compté un caractère trop court. Le verdict tenait par chance ; il
+        aurait basculé sur un orphelin de trois.
+      */
+      const rectangles = plage.getClientRects()
+      const boite = rectangles[rectangles.length - 1]
+      if (!boite) continue
+      const haut = Math.round(boite.top)
+      const derniere = lignes[lignes.length - 1]
+      if (derniere && derniere.haut === haut) derniere.texte += texte[i]
+      else lignes.push({ haut, texte: texte[i] })
+    }
+    if (lignes.length < 2) continue
+
+    // Seule la DERNIÈRE ligne compte : c'est le fragment qui reste seul sous le
+    // reste du mot. Les espaces ne comptent pas — « s » et « s » se lisent pareil.
+    const orphelin = lignes[lignes.length - 1].texte.trim()
+    if (orphelin.length >= 3) continue
+    defauts.push({
+      texte,
+      orphelin,
+      decoupe: lignes.map((l) => l.texte.trim()).join(' / '),
+    })
+  }
+  return { mesures, defauts }
+}
+
+/**
+ * UN TEXTE QUE LE PRODUIT ÉCRIT NE SE ROGNE PAS.
+ *
+ * CE QU'ELLE COUVRE, ET POURQUOI RIEN D'AUTRE NE LE VOIT. Un texte rogné —
+ * `truncate` en largeur, `line-clamp` en hauteur — ne DÉBORDE de rien : il est
+ * coupé À L'INTÉRIEUR de sa boîte, par un `overflow: hidden` posé exprès. Les
+ * deux règles de débordement, la globale et la locale, le laissent donc passer
+ * par construction. Le contraste le lit très bien. Les cibles ne le regardent
+ * pas. Et le DOM porte la chaîne ENTIÈRE : un cas de rendu qui interroge le
+ * texte la trouve, et passe au vert sur un écran qui n'en montre que la moitié.
+ *
+ * ═══ ELLE NE REGARDAIT QUE LES INTITULÉS D'INDICATEUR, ET SA PROPRE
+ *     JUSTIFICATION EST CE QUI L'A FAIT ÉLARGIR ═══
+ *
+ * Sa rédaction d'origine bornait le balayage à `[data-indicateur]
+ * [data-intitule]` et motivait ce bornage ainsi, mot pour mot :
+ *
+ *   « Tant qu'un intitulé porte du VOCABULAIRE FIXE — reste à percevoir, taux
+ *     d'occupation — la coupe reste théorique : ces mots tiennent partout, et
+ *     personne ne les allonge. »
+ *
+ * « Reste à percevoir » a été trouvé ROGNÉ, à l'écran, dans la réconciliation
+ * de l'anneau de recouvrement — c'est-à-dire à l'endroit exact où ce libellé est
+ * REPRIS À L'IDENTIQUE de l'indicateur, délibérément, pour que le lecteur
+ * referme la boucle entre les deux. Le contre-exemple choisi pour prouver que la
+ * règle pouvait rester étroite était le défaut.
+ *
+ * Ce qui n'était pas faux dans le raisonnement : un vocabulaire fixe ne
+ * s'allonge pas. Ce qui l'était : sa boîte, elle, RÉTRÉCIT — une colonne de
+ * grille, une police de base agrandie, une traduction plus longue. La longueur
+ * du texte n'est qu'un des deux termes de la comparaison.
+ *
+ * ═══ LA POLICE DE BASE AGRANDIE — LA DIMENSION QUI MANQUAIT ═══
+ *
+ * Le balayage mesurait onze largeurs à UNE seule taille de police racine. Or ce
+ * dépôt écrit ses requêtes de média en `rem` EXPRÈS — `useAuDela` le dit :
+ * « pour suivre la feuille de style quand la police de base grossit ». Une
+ * configuration qu'on déclare supporter et qu'on ne mesure jamais n'est pas
+ * supportée, elle est espérée.
+ *
+ * Mesuré : à 22 px de racine, « Reste à percevoir » manque 14 px à 1280, et le
+ * bandeau de démonstration manque 109 px. À 16 px, les deux tiennent. C'est le
+ * seul réglage sous lequel le défaut rapporté se reproduit.
+ *
+ * AUCUN CHARGEMENT DE PLUS : la sonde change `font-size` sur la racine, relit la
+ * géométrie, et REPOSE la valeur d'origine dans un `finally`. Ce qui coûte, ce
+ * sont les navigations, jamais les reflows.
+ *
+ * ═══ CE QUI A LE DROIT D'ÊTRE ROGNÉ, ET COMMENT IL LE DIT ═══
+ *
+ * Une DONNÉE — un nom de locataire, un nom d'immeuble — n'a pas de longueur
+ * bornée : la rogner est le seul comportement tenable, et lui rendre la place
+ * n'a pas de sens puisqu'il n'y a pas de « assez ». Ces textes se déclarent par
+ * `data-donnee` sur leur boîte ou sur un ancêtre.
+ *
+ * UN ATTRIBUT PLUTÔT QU'UNE LISTE DE TEXTES TOLÉRÉS, et c'est un choix contre le
+ * précédent de `MOTS_DEBORDANTS_TOLERES` : les textes en question sont ceux du
+ * jeu de démonstration — « Charles Ngassa », « Résidence Bonamoussadi ». Une
+ * liste les recopierait ici, et le jour où la démonstration change de locataire,
+ * la garde rougirait sur un défaut qui n'existe pas pendant que le vrai passerait.
+ * L'attribut, lui, vit là où la décision se prend, et se relit avec le composant.
+ *
+ * DEUX AXES, PAS UN. `scrollWidth` attrape le rognage en LARGEUR (`truncate`),
+ * `scrollHeight` celui en HAUTEUR (`line-clamp`).
+ *
+ * LA TOLÉRANCE D'UN PIXEL est du bruit d'arrondi : `scrollWidth` et
+ * `clientWidth` sont entiers, la largeur de boîte ne l'est pas.
+ */
+const MESURER_TRONCATURES = ({ racine }) => {
+  const html = document.documentElement
+  const avant = html.style.fontSize
+  if (racine) html.style.fontSize = `${racine}px`
+  try {
+    const defauts = []
+    let mesures = 0
+    for (const el of document.querySelectorAll('body *')) {
+      const cs = getComputedStyle(el)
+      /* Les DEUX façons de rogner un texte. `webkitLineClamp` rend la chaîne
+         `'none'` quand il n'est pas posé — c'est la seule propriété calculée qui
+         dise si un `line-clamp` est en vigueur. */
+      const clamp = cs.webkitLineClamp !== 'none'
+      if (cs.textOverflow !== 'ellipsis' && !clamp) continue
+      const texte = (el.textContent || '').replace(/\s+/g, ' ').trim()
+      if (!texte) continue
+      // La déclaration vaut pour le sous-arbre : une cellule de tableau porte
+      // souvent le marqueur pour le `<span>` qui rogne à l'intérieur.
+      if (el.closest('[data-donnee]')) continue
+      mesures += 1
+      /*
+        `text-ellipsis` NE COUPE RIEN TANT QUE LA BOÎTE LAISSE SORTIR, et la
+        première rédaction de cette sonde l'ignorait — elle a rendu douze faux
+        positifs sur les étiquettes de mois du graphe.
+
+        Celles-ci portent `text-ellipsis` en permanence mais `overflow-visible`
+        sous `sm` : le mot dépasse alors sur la colonne voisine, qui est
+        `invisible` et lui laisse la place — c'est un réglage DÉLIBÉRÉ, écrit et
+        mesuré dans `Charts.tsx`. Le texte y est entier à l'écran. Une sonde qui
+        lit la seule déclaration `text-overflow` accuse un composant d'un défaut
+        qu'il a précisément pris soin d'éviter.
+
+        On exige donc que la boîte ROGNE VRAIMENT sur l'axe considéré. Un
+        `line-clamp` implique son propre `overflow: hidden`, et se juge seul.
+      */
+      const enLargeur = cs.overflowX === 'visible' ? 0 : el.scrollWidth - el.clientWidth
+      const enHauteur =
+        !clamp && cs.overflowY === 'visible' ? 0 : el.scrollHeight - el.clientHeight
+      if (enLargeur <= 1 && enHauteur <= 1) continue
+      defauts.push({
+        texte,
+        axe: enLargeur > 1 ? 'largeur' : 'hauteur',
+        manque: Math.round(Math.max(enLargeur, enHauteur)),
+        offert: Math.round(enLargeur > 1 ? el.clientWidth : el.clientHeight),
+        racine: racine || 16,
+      })
+    }
+    return { mesures, defauts }
+  } finally {
+    html.style.fontSize = avant
+  }
+}
+
+/**
+ * CE QUI DÉCIDE ET CE QUI AGIT NE SE CACHENT PAS DERRIÈRE UN DÉFILEMENT.
+ *
+ * ═══ CE QUI L'A FAIT ÉCRIRE ═══
+ *
+ * La grille des paiements porte une dernière colonne SANS EN-TÊTE : elle tient
+ * « Quittance » et, pour le propriétaire d'un bail en retard, « Mise en
+ * demeure ». Mesuré : la table fait 1063 px dans un conteneur de 958 à 1280 px
+ * de fenêtre, et de 702 à 1024. Cent cinq pixels de gestes hors champ à la
+ * largeur d'écran la plus courante, trois cent soixante et un à la précédente.
+ *
+ * Rien ne le dit. `overflow-x-auto` ne peint aucune barre tant qu'on ne défile
+ * pas, la colonne n'a pas d'intitulé qui dépasserait pour trahir sa présence, et
+ * les six colonnes de période qui la poussent dehors, elles, se voient très
+ * bien. L'écran a donc l'air complet. On ne cherche pas ce dont on ignore
+ * l'existence.
+ *
+ * ═══ POURQUOI AUCUNE AUTRE RÈGLE NE LE VOIT ═══
+ *
+ * Ce n'est PAS un débordement : la table défile dans sa propre boîte, ce que le
+ * dépôt exige partout — le document ne bouge pas d'un pixel, et c'est la règle
+ * de page comme celle des débords locaux qui le certifient. Ce n'est pas un
+ * ROGNAGE non plus : rien n'est coupé, tout est peint, simplement en dehors de
+ * la fenêtre de défilement. Et ce n'est pas une CIBLE trop petite : le bouton
+ * fait ses 44 px, là où personne ne le voit.
+ *
+ * Trois règles passent au vert sur une action introuvable. La différence tient
+ * en un mot : les autres mesurent ce qui SORT, celle-ci mesure ce qui n'entre
+ * jamais.
+ *
+ * ═══ CE QU'ELLE MESURE, ET CE QU'ELLE ADMET ═══
+ *
+ * Le bord droit de chaque cellule de geste contre le bord droit VISIBLE de sa
+ * boîte de défilement, à la position de repos — c'est-à-dire ce que l'écran
+ * montre avant qu'on ait touché à quoi que ce soit.
+ *
+ * Une colonne COLLANTE satisfait la règle par construction : son rectangle reste
+ * dans la fenêtre quel que soit le défilement, ce qui est exactement la
+ * propriété demandée. La règle ne prescrit donc pas le remède — elle décrit ce
+ * qu'un geste doit être, et laisse la mise en page s'en arranger.
+ *
+ * ═══ LE VERDICT SUBIT LE MÊME SORT, ET IL N'EST PAS GARDÉ ICI ═══
+ *
+ * Rendre la colonne d'action collante a ramené les gestes sous les yeux — et
+ * elle recouvrait alors la pastille d'état : « À j… », « En… ». Le correctif
+ * avait déplacé le défaut d'une colonne. Les paiements l'ont réglé en passant le
+ * verdict et le solde DEVANT l'histoire ; les autres écrans, non.
+ *
+ * Élargie aux cellules d'état, cette règle a mesuré, à 1024 px exactement — la
+ * fenêtre fait 1024, la barre latérale en prend 256, le contenu tombe à 704 :
+ *
+ *     /demo/locataires   table 841 px (fr) / 812 (en)  →  137 / 108 hors champ
+ *     /demo/cautions     table 832 px (fr) / 791 (en)  →  129 /  88 hors champ
+ *
+ * ELLE N'EST PAS GARDÉE, ET C'EST UN CHOIX ASSUMÉ. Deux tentatives ont été
+ * écartées :
+ *
+ *   · une table de dispenses plafonnées, comme les mots débordants. Elle a
+ *     CLIGNOTÉ : trois passages successifs du balayage ont rendu trois
+ *     ensembles différents, les libellés anglais des cautions apparaissant et
+ *     disparaissant. Une garde qui n'est pas reproductible ne garde rien, et
+ *     une dispense qu'on rechargerait à chaque flottement est pire que pas de
+ *     dispense du tout. La cause du flottement n'est pas établie.
+ *   · remonter la bascule fiche/tableau à `xl`. Elle réglerait ces deux-là et
+ *     en casserait d'autres : à 1279 px le contenu vaut 959, et les tableaux du
+ *     Parc comme des Relevés y tiennent très bien.
+ *
+ * La vraie réponse est de mesurer le CONTENANT et non la fenêtre : une largeur
+ * de fenêtre ne peut pas décider pour un tableau dont la place dépend de la
+ * barre latérale ET de son propre nombre de colonnes. Le dépôt sait le faire —
+ * il l'a fait pour le tableau de bord du locataire, avec cet argument exact —
+ * mais ici la forme se choisit AU RENDU et non dans la feuille de style, donc
+ * il faut observer la boîte plutôt que déclarer une requête. C'est un lot.
+ *
+ * Ce qui est gardé ici est donc ce qui est TENU : le geste. Le verdict est
+ * mesuré, écrit, et attend.
+ *
+ * `data-colonne-tenue` plutôt qu'un sélecteur de classe : `scripts/` est balayé
+ * par le générateur d'utilitaires Tailwind, et y écrire un nom de classe en
+ * fabriquerait un. Même raison que `data-intitule`.
+ */
+const MESURER_GESTES_ATTEIGNABLES = () => {
+  const defauts = []
+  const nus = []
+  let mesures = 0
+  let commandes = 0
+  for (const cellule of document.querySelectorAll('[data-colonne-tenue="geste"]')) {
+    /* L'en-tête d'une colonne de gestes est souvent VIDE — il n'y a rien à
+       intituler, « une colonne d'action n'a pas de nom parce que son bouton
+       porte le sien ». Une cellule sans contenu ne montre rien et ne prouve
+       rien : on ne juge que ce qui a quelque chose à cacher. */
+    if (!(cellule.textContent || '').trim() && !cellule.querySelector('a, button')) continue
+    /*
+      ET LA COMMANDE PORTE UN GLYPHE.
+
+      Mesuré sur le registre des accès : « Retirer l'accès » et « Reprendre »
+      étaient des boutons fantômes NUS — encre pleine, sans bord, sans fond,
+      sans signe. Dans une colonne de tableau, entre un nom et une date, cela se
+      lit comme une donnée de plus, et le SURVOL est le premier moment où l'on
+      apprend que c'en est une commande. Trois fois de suite sur la colonne.
+
+      Les autres colonnes de geste du produit portaient déjà une icône ; ces
+      deux-là étaient les seules sans, et ce sont celles qui retirent un accès.
+      La règle existait donc en fait et pas en garde : je l'ai vérifiée à la
+      main sur trois colonnes, ce qui ne dit rien de la quatrième qu'on écrira.
+
+      CE N'EST PAS UNE RÈGLE DE DÉCORATION. Une colonne de geste n'a pas
+      d'intitulé — « son bouton porte le sien », dit `DataTable` — donc rien
+      au-dessus ne prévient qu'on entre dans des commandes. Le glyphe est le
+      seul signe qui reste, et il est là AU REPOS, ce qu'aucun état de survol
+      ne peut offrir à un doigt.
+
+      On ne juge que ce qui est peint : un bouton `sr-only` ou masqué n'est pas
+      une commande qu'on lit.
+    */
+    for (const commande of cellule.querySelectorAll('a, button')) {
+      if (!commande.getClientRects().length) continue
+      commandes += 1
+      if (commande.querySelector('svg')) continue
+      nus.push(
+        (commande.textContent || commande.getAttribute('aria-label') || '?').trim().slice(0, 40),
+      )
+    }
+
+    const boite = cellule.closest('[data-defilant]')
+    if (!boite) continue
+    mesures += 1
+    const c = cellule.getBoundingClientRect()
+    const b = boite.getBoundingClientRect()
+    const cache = Math.round(c.right - b.right)
+    if (cache <= 1) continue
+    const commande = cellule.querySelector('a, button')
+    defauts.push({
+      geste: `${cellule.dataset.colonneTenue} · ${(
+        commande?.textContent ||
+        commande?.getAttribute('aria-label') ||
+        cellule.textContent ||
+        '?'
+      )
+        .trim()
+        .slice(0, 40)}`,
+      cache,
+      largeurVue: Math.round(b.width),
+      largeurTable: Math.round(boite.scrollWidth),
+    })
+  }
+  return { mesures, defauts, nus, commandes }
+}
+
+/**
+ * La police de base AGRANDIE sous laquelle le balayage repasse.
+ *
+ * 22 px, soit 137 % de la valeur par défaut. Ce n'est pas un extrême : c'est le
+ * cran « très grand » des réglages de police d'Android et le milieu de la plage
+ * de Safari. Un produit dont les points de rupture sont écrits en `rem` doit
+ * tenir là.
+ */
+const RACINE_AGRANDIE = 22
+
+/**
+ * UN MOT PLUS LARGE QUE SA BOÎTE — le débordement qu'aucune des deux règles ne voit.
+ *
+ * ═══ CE QUI A OUVERT CE TROU, ET COMMENT IL A ÉTÉ TROUVÉ ═══
+ *
+ * Le fil d'étapes de l'inscription a reçu ses libellés sous `sm` : quatre
+ * colonnes de 66 px à 320. « Récapitulatif » en demande 71 — treize lettres
+ * qu'aucune espace ne coupe. Le mot sortait donc de sa colonne et passait sous
+ * le voisin. Trouvé À L'ŒIL, au navigateur, sur un écran ; c'est-à-dire de la
+ * façon dont on ne trouve pas les suivants.
+ *
+ * ═══ CE QUE LES TROIS RÈGLES EXISTANTES VOIENT, ET CE QU'ELLES MANQUENT ═══
+ *
+ * La première rédaction de cet en-tête n'en comptait que DEUX et concluait que
+ * rien ne pouvait voir le défaut. C'était faux, et c'est une mutation qui l'a
+ * dit : le fil d'étapes rendu sans césure fait rougir `DEBORDS_LOCAUX`, pas
+ * cette règle-ci. Le partage est plus fin que « il manquait une garde ».
+ *
+ *  — LA RÈGLE DE PAGE mesure `documentElement`. Un mot qui sort DE SA BOÎTE ne
+ *    sort pas du DOCUMENT : la colonne voisine absorbe la sortie, la page reste
+ *    à 360 px. Relevé exactement ainsi ici — `document.scrollWidth -
+ *    clientWidth` valait 0 pendant que le mot dépassait de 5 px.
+ *
+ *  — LA RÈGLE DE ROGNAGE (`MESURER_TRONCATURES`) est bornée à
+ *    `[data-indicateur] [data-intitule]`, et regarde le défaut INVERSE : une
+ *    boîte à `overflow: hidden` qui COUPE ce qu'elle ne peut pas montrer.
+ *
+ *  — LA RÈGLE DES DÉBORDS LOCAUX compare des BOÎTES : une forme dont le
+ *    rectangle sort du rectangle de son conteneur. Elle voit donc le libellé du
+ *    fil d'étapes, dont la boîte elle-même dépassait de son `<li>`.
+ *
+ * CE QU'AUCUNE DES TROIS NE VOIT, et c'est exactement ce trou-ci : une LIGNE DE
+ * TEXTE plus large que sa boîte, quand la boîte, elle, reste sagement dans son
+ * conteneur. L'accroche du panneau de marque en est le cas pur — le `<p>` fait
+ * 284 px et ne dépasse de rien ; c'est la ligne rendue à l'intérieur qui en fait
+ * 345 et vient couper « management » sur le séparateur. La porte était VERTE
+ * avec ce défaut livré. Vérifié par mutation : rendre son `display-m` à cette
+ * accroche fait rougir cette règle-ci, et elle seule.
+ *
+ * ═══ POURQUOI `overflow: visible` EST LE CRITÈRE, ET NON UN OUBLI ═══
+ *
+ * Une boîte qui déclare `hidden`, `auto` ou `scroll` a PRÉVU le débordement :
+ * elle rogne, ou elle laisse défiler, et dans les deux cas quelqu'un l'a voulu.
+ * `visible` est l'aveu contraire — rien n'était prévu, et le contenu sort sur
+ * ses voisins. C'est ce qui distingue un défaut d'un choix, et c'est ce qui rend
+ * cette règle silencieuse partout où le dépôt fait exprès.
+ *
+ * Les trois autres exclusions sont du même ordre :
+ *   `nowrap`/`pre`   — le retour à la ligne est INTERDIT par l'auteur ; la
+ *                      largeur du texte n'est alors plus une question de boîte.
+ *   `display: inline`— une boîte en ligne n'a pas de largeur propre, son
+ *                      `clientWidth` vaut 0, et tout y déborderait.
+ *   les non-feuilles — `scrollWidth` d'un conteneur compte ses descendants, y
+ *                      compris ceux qu'un enfant positionné fait sortir. On
+ *                      mesure le TEXTE, pas la mise en page.
+ *
+ * ═══ CE QUE LA RÈGLE COÛTE, MESURÉ AVANT DE L'ÉCRIRE ═══
+ *
+ * 107 feuilles examinées sur `/demo/parc` à 360, 21 sur `/inscription` : zéro
+ * défaut sur les deux. La règle n'est donc pas un filet à faux positifs qu'il
+ * faudrait aussitôt doter d'un registre de tolérances — elle est muette là où
+ * le produit va bien, ce qui est la seule preuve utile avant d'en ajouter une.
+ *
+ * ═══ CE QU'ELLE NE VOIT PAS ═══
+ *
+ * Le rognage EN HAUTEUR d'une boîte `visible` : un texte trop haut sort par le
+ * bas sans que `scrollHeight` en dise rien, puisque la boîte grandit. C'est un
+ * autre défaut, qui demande de connaître la hauteur ATTENDUE, et rien ici ne la
+ * connaît. Non mesuré, et dit.
+ */
+/**
+ * CE QUE LA RÈGLE A TROUVÉ LE JOUR OÙ ELLE EST NÉE, ET QUI N'EST PAS RÉPARÉ.
+ *
+ * ═══ LA TABLE EST VIDE, ET C'EST UN RÉSULTAT, PAS UN OUBLI ═══
+ *
+ * La règle a trouvé SEPT textes distincts à sa naissance, sur les 506 points du
+ * balayage. Les sept ont été réparés, en trois lots, et chacun par un remède
+ * différent — c'est ce qui rend la liste utile à garder ici :
+ *
+ *   « Rental management, held like an estate. »   une taille de corps en `vw`
+ *      dans une colonne en `%` : `display-app` jusqu'à `xl`.
+ *   « Récapitulatif »                             un interlettrage de CAPITALES
+ *      appliqué à du bas-de-casse : `tracking-normal`, puis `hyphens-auto`.
+ *   « Mes paiements par période », « Contrat de bail signé »
+ *      un voisin `shrink-0` contre un texte `min-w-0` : repli à plancher.
+ *   « 950 000 FCFA », « 447 000 FCFA »            même forme, dans l'accroche.
+ *   « 17 622 FCFA »                               un seuil de FENÊTRE sur une
+ *      grille rendue dans deux contenants de largeurs différentes : `@container`.
+ *
+ * AUCUN N'A ÉTÉ RÉPARÉ EN COUPANT LE TEXTE, et les trois montants disent pourquoi
+ * la tentation devait être écartée : `Intl` les compose avec des espaces
+ * INSÉCABLES — « 950 000 FCFA » est un seul jeton de douze caractères — et une
+ * césure dans un nombre en change la lecture. Le remède d'un montant qui déborde
+ * est toujours de lui rendre la place.
+ *
+ * ═══ CE QUE LA TABLE ATTEND D'UNE FUTURE LIGNE ═══
+ *
+ * Un plafond ÉGAL au mesuré, sans marge — `plafondsTropHauts` refuse le mou —
+ * et une clé qui est le TEXTE EXACT : un libellé réécrit n'hérite pas de la
+ * dispense accordée à un autre. La table est vide aujourd'hui ; la garde du
+ * garde fait mourir toute ligne qui cesserait de couvrir quelque chose.
+ */
+const MOTS_DEBORDANTS_TOLERES = [
+
+  /* LES DEUX TITRES ÉCRASÉS SONT PARTIS, et leur remède mérite d'être gardé ici
+     parce que la même forme reviendra ailleurs : un voisin `shrink-0` à côté
+     d'un texte `min-w-0` ne négocie pas — le texte cède tout, jusqu'à zéro.
+     Mesuré avant : 70 px pour le `<h2>` du portail pendant que sa légende en
+     gardait 230 ; 46 px pour « Contrat de bail signé », dont le premier mot en
+     réclame 49. Le remède n'est pas la troncature, qui ferait taire la garde en
+     laissant l'écran mentir — c'est le REPLI, qu'il faut armer d'un plancher :
+     sans `min-w`, `flex-wrap` ne se déclenche jamais. Voir `CardHeader`. */
+]
+
+const MESURER_DEBORDEMENT_DE_MOT = () => {
+  const defauts = []
+  let mesures = 0
+  for (const el of document.querySelectorAll('body *')) {
+    if (el.children.length) continue
+    /*
+      LES ESPACES SONT NORMALISÉES, et une garde du garde l'a exigé.
+
+      `Intl` compose les montants avec une espace insécable ÉTROITE (U+202F) :
+      « 950 000 FCFA » vu à l'écran s'écrit avec un caractère qu'aucun clavier ne
+      pose et qu'une relecture de diff ne distingue pas d'une espace ordinaire.
+      La première rédaction du registre de tolérances a été écrite avec l'espace
+      ordinaire ; les clés ne correspondaient à rien, la garde du garde a signalé
+      trois dispenses « qui ne couvrent plus rien », et c'est ainsi que le piège
+      a été trouvé plutôt que subi.
+
+      On normalise donc ICI, une fois, pour que la clé du registre soit un texte
+      qu'un humain peut écrire et relire. C'est le seul endroit où la comparaison
+      a lieu, donc le seul endroit où la normalisation doit vivre.
+    */
+    const texte = (el.textContent || '').replace(/\s+/g, ' ').trim()
+    if (!texte) continue
+    const cs = getComputedStyle(el)
+    if (cs.overflowX !== 'visible') continue
+    if (cs.whiteSpace === 'nowrap' || cs.whiteSpace === 'pre') continue
+    if (cs.display === 'inline') continue
+    mesures += 1
+    /* La tolérance d'un pixel est du bruit d'arrondi : `scrollWidth` et
+       `clientWidth` sont entiers, la largeur de boîte ne l'est pas. Même
+       raisonnement que `MESURER_TRONCATURES`. */
+    const trop = el.scrollWidth - el.clientWidth
+    if (trop <= 1) continue
+    defauts.push({ texte, manque: Math.round(trop), offert: Math.round(el.clientWidth) })
+  }
+  return { mesures, defauts }
 }
 
 /**
@@ -1639,16 +3438,79 @@ function mesurerPremierChargement() {
   const scripts = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map((m) => m[1])
   const styles = [...html.matchAll(/<link[^>]+rel="stylesheet"[^>]+href="([^"]+)"/g)].map((m) => m[1])
 
-  // Locaux seulement : la police Google Fonts est un lien externe, déjà
-  // mesurée et tranchée ailleurs — `index.html` porte l'argumentaire complet
-  // de ce choix. Ce budget porte sur ce que CE dépôt construit et sert.
-  const locaux = [...scripts, ...styles].filter((href) => href.startsWith('/'))
+  /*
+    LOCAUX SEULEMENT, ET L'EXCLUSION EST DÉSORMAIS CHIFFRÉE.
+
+    Ce budget porte sur ce que CE dépôt construit et sert : une ressource d'une
+    autre origine n'est pas dans `dist/`, donc `readFileSync` ne peut pas la
+    peser. La règle est juste et elle reste.
+
+    CE QUI NE L'ÉTAIT PAS : la ligne d'avant écartait la police en renvoyant à
+    « l'argumentaire complet » d'`index.html`, en la disant « déjà mesurée et
+    tranchée ailleurs ». L'argumentaire existe bel et bien — une seule famille,
+    plage de graisse bornée, repli de même nature, `display=swap` — mais il
+    argumente un CHOIX DE DESSIN et ne pèse rien. Aucun octet n'était écrit nulle
+    part. Ce budget excluait donc un poids réel en s'appuyant sur un renvoi vers
+    une mesure qui n'existait pas, ce qui est exactement la forme de silence que
+    ce fichier reproche ailleurs à une garde qu'on ne lance pas.
+
+    `RESSOURCES_EXTERNES_PESEES`, plus bas, porte les octets et la méthode. Ils
+    ne sont pas ADDITIONNÉS au budget — le seuil de dérive garde la croissance
+    des dictionnaires, pas le poids d'une fonderie qui ne bouge pas d'un lot à
+    l'autre — mais ils sont IMPRIMÉS à côté de lui, à chaque passage, et une
+    garde refuse dès que l'adresse pesée n'est plus celle qui est servie.
+  */
+  const tous = [...scripts, ...styles]
+  const locaux = tous.filter((href) => href.startsWith('/'))
+  const externes = tous.filter((href) => !href.startsWith('/'))
 
   const detail = locaux.map((href) => {
     const octets = gzipSync(readFileSync(join(RACINE, 'dist', href.replace(/^\//, '')))).length
     return { href, octets }
   })
-  return { octets: detail.reduce((a, d) => a + d.octets, 0), detail }
+  return { octets: detail.reduce((a, d) => a + d.octets, 0), detail, externes }
+}
+
+/**
+ * CE QUE LE BUDGET N'EMBARQUE PAS, PESÉ ET DATÉ.
+ *
+ * MESURÉ LE 2026-08-30, agent utilisateur Android d'entrée de gamme, langue
+ * française — c'est-à-dire le visiteur du marché visé :
+ *
+ *   1 708 o   la feuille `css2` elle-même, qui déclare QUATRE `@font-face`
+ *             découpés par `unicode-range` ;
+ *  27 272 o   le seul sous-ensemble que le français et l'anglais emploient
+ *             (`U+0000-00FF`), en woff2 ;
+ *  ────────
+ *  28 980 o   ce qu'un premier visiteur télécharge EN PLUS des 155 430 o que
+ *             cette garde compte — soit 19 % de plus, invisibles à elle.
+ *
+ * Les trois autres sous-ensembles — cyrillique, grec, vietnamien — ne sont
+ * jamais demandés par ces deux langues, et ne sont donc pas comptés ici. Ils
+ * le deviendraient le jour où le produit parlerait une de ces langues.
+ *
+ * CE QUE CES OCTETS COÛTENT EN PLUS DE LEUR TAILLE, et qui ne se mesure pas en
+ * octets : DEUX origines à résoudre avant la première peinture
+ * (`fonts.googleapis.com` puis `fonts.gstatic.com`), et une feuille de style
+ * BLOQUANTE — `display=swap` gouverne le fichier de police, jamais la requête
+ * CSS qui le déclare. Sur le réseau visé, c'est ce délai-là qui se voit, pas
+ * les vingt-neuf kilo-octets.
+ *
+ * POURQUOI CE NOMBRE EST ÉCRIT ET NON MESURÉ À CHAQUE PASSAGE. Le mesurer
+ * demanderait d'aller le chercher sur le réseau, donc de rendre cette porte
+ * dépendante d'une sortie vers un tiers — exactement le défaut que
+ * `plafond-vitrine.mjs` vient de fermer de l'autre côté. Un nombre écrit se
+ * périme ; c'est pourquoi il ne vit pas seul, et que la garde ci-dessous refuse
+ * dès que l'ADRESSE change. On ne peut pas oublier de remesurer sans que le
+ * diff le dise.
+ *
+ * CE QU'IL RESTE À TRANCHER, et ce lot ne le tranche pas : héberger cette police
+ * dans `dist/` la ferait entrer dans le budget, supprimerait les deux origines
+ * et la feuille bloquante. C'est un choix de dessin et d'infrastructure, pas une
+ * garde ; il se pose, il ne se décide pas dans un fichier de mesure.
+ */
+const RESSOURCES_EXTERNES_PESEES = {
+  'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600..800&display=swap': 28_980,
 }
 
 /**
@@ -1686,8 +3548,89 @@ function mesurerPremierChargement() {
  * ce sera le signal — pas un accident à corriger, un sujet à ouvrir (voir la
  * note plus haut sur pourquoi ce lot n'y touche pas). Relever ce chiffre sans
  * remesurer la croissance resterait la même faute que celle qu'il corrige.
+ *
+ * ═══ LE SIGNAL EST TOMBÉ, ET IL AVAIT RAISON ═══
+ *
+ * La marge de 3 990 o s'est épuisée en vingt-six lots — la prévision disait
+ * vingt-cinq. Le dépassement s'est produit à 149 071 o, soixante et onze
+ * octets au-dessus, sur un lot qui ajoutait vingt-deux clés de dictionnaire
+ * (quarante-quatre chaînes, français et anglais) pour la file du jour.
+ *
+ * REMESURÉ AVANT DE RELEVER, et cette fois par la STRUCTURE plutôt que par le
+ * rythme — c'est une mesure plus forte, parce qu'elle dit ce qu'on peut
+ * récupérer et non seulement à quelle vitesse on consomme. `src/i18n/fr.ts`,
+ * gzippé section par section :
+ *
+ *   app         61 247 o bruts   20 223 o gzip   ← les écrans, jamais lus en vitrine
+ *   marketing    9 419 o           3 845 o
+ *   auth         8 207 o           3 239 o
+ *   common       6 494 o           2 994 o
+ *   nav          2 165 o           1 094 o
+ *   le reste     2 145 o           1 343 o
+ *
+ * Un prospect qui lit la page d'accueil et ne s'inscrit jamais télécharge donc
+ * 20 223 o de chaînes d'écrans — 13,6 % de son premier chargement — pour des
+ * mots qu'il ne verra pas. C'est le chiffre qui manquait à la note d'origine,
+ * et il est acquis : personne n'aura à le remesurer.
+ *
+ * LA SORTIE EST PRÊTE ET NON PRISE, et il faut dire pourquoi. La frontière
+ * existe déjà — `App.tsx` charge `EspaceApplicatif` par `lazy()`, « la SEULE
+ * frontière qui compte » selon son propre commentaire — et le dictionnaire ne
+ * la respecte pas : `I18nProvider` importe `fr` en entier, impatiemment. Sortir
+ * la section `app` dans un module chargé par la MÊME promesse rendrait ces
+ * 20 Ko sans qu'aucun écran ne puisse se rendre avant ses mots.
+ *
+ * Ce lot ne le fait pas parce qu'il refait la MISE EN PAGE des écrans, et
+ * qu'échanger ce chantier contre un chantier de chargement serait exactement la
+ * dérive qu'on vient de reprocher à cette branche : faire le mesurable à la
+ * place du demandé.
+ *
+ * LE NOUVEAU NOMBRE : 156 000, soit 6 929 o de marge sur le mesuré. À la
+ * croissance moyenne relevée plus haut — 156 o par lot — cela couvre une
+ * quarantaine de lots, et une dizaine au rythme du plus gros bond observé. La
+ * refonte en cours touche encore une vingtaine d'écrans, chacun apportant ses
+ * clés : la marge est dimensionnée pour ELLE, pas pour le régime ordinaire.
+ *
+ * ═══ LA SCISSION A ÉTÉ TENTÉE, ET REFUSÉE — VOICI CE QU'ELLE COÛTE ═══
+ *
+ * Le chiffre de 20 223 o tient. Ce qui ne tenait pas, c'est « la frontière
+ * existe déjà, le dictionnaire ne la suit pas » : elle existe, mais le côté
+ * IMPATIENT emprunte le dictionnaire applicatif à VINGT endroits, comptés.
+ *
+ *   app.crash.title / body / details          `FrontiereDErreur`
+ *   app.offline.title / body                  `CadreDuParc`
+ *   app.parkFailure.* (5 clés)                `CadreDuParc`, `RequireAuth`
+ *   app.sessionFailure.* (3 clés)             `RequireAuth`
+ *   app.dashboard.chartTitle / openMonth      `Hero` — la page d'accueil
+ *   app.dashboard.scalePrimary / Secondary    `Charts`, primitive partagée
+ *   app.works.samples.*                       `workTitle`, données de démo
+ *   app.exported                              `useCsvExport`
+ *
+ * LE PREMIER GROUPE EST RÉDHIBITOIRE, et c'est lui qui a arrêté le lot : une
+ * FRONTIÈRE D'ERREUR dont le message d'erreur vivrait dans un morceau chargé
+ * paresseusement est une contradiction. Le cas où elle sert est précisément
+ * celui où un morceau n'a pas pu se charger. Elle rendrait alors ses clés en
+ * clair — « app.crash.title » sur un écran blanc — c'est-à-dire le pire écran
+ * que ce produit puisse montrer, au pire moment.
+ *
+ * CE QU'IL FAUDRAIT VRAIMENT FAIRE, et pourquoi c'est un lot et non un geste :
+ * ces vingt clés ne sont pas mal rangées par accident. Un message de panne, un
+ * libellé d'export, la légende d'un graphique de vitrine ne sont PAS des
+ * chaînes d'application — elles sont sous `app.` parce que tout y était. Les
+ * sortir demande de les renommer, donc de toucher huit modules dont deux
+ * primitives partagées, et de refaire passer `check-i18n` et la parité.
+ *
+ * Une scission faite À MOITIÉ — garder les vingt sous `app.` et fusionner en
+ * profondeur les deux moitiés — marche, et j'ai commencé par là. Elle échoue
+ * SILENCIEUSEMENT si l'on en oublie une : la clé s'affiche en clair, et rien
+ * dans le typage ne le dit, puisque le TYPE reste entier des deux côtés.
+ * Livrer ça en fin de course, sans garde capable de distinguer les modules
+ * impatients des autres, aurait été un mauvais échange.
+ *
+ * Le budget reste donc à 156 000. Le prochain rouge n'aura plus à mesurer —
+ * ni le prix, ni l'obstacle.
  */
-const BUDGET_PREMIER_CHARGEMENT = 149_000
+const BUDGET_PREMIER_CHARGEMENT = 156_000
 
 /*
   GARDE DU GARDE : un budget hors de toute plage plausible ne défend rien.
@@ -1718,7 +3661,7 @@ const adresses = adressesDeLApplication()
 const AUDIT_CONTRASTE = readFileSync(join(RACINE, 'scripts/contrast-audit.js'), 'utf8')
 const AUDIT_NOMS = readFileSync(join(RACINE, 'scripts/noms-accessibles.js'), 'utf8')
 
-await construire()
+await chrono('paquet · vite build', () => construire())
 
 /*
   LA FUITE SE VÉRIFIE AVANT LE POIDS — la question binaire avant la question
@@ -1803,6 +3746,46 @@ if (premierChargement.detail.length === 0) {
   process.exit(1)
 }
 
+/*
+  L'ADRESSE PESÉE EST CELLE QUI EST SERVIE, ou la garde refuse.
+
+  `RESSOURCES_EXTERNES_PESEES` porte des octets relevés À LA MAIN, un jour donné,
+  contre une adresse précise. Un nombre écrit ne se périme pas tout seul : il se
+  périme en silence, et c'est le seul mode de panne d'un relevé qui vit dans un
+  commentaire. Changer la plage de graisse, ajouter une famille, retirer le lien
+  — chacun de ces gestes change l'adresse dans `index.html` et rendrait le nombre
+  faux sans rien casser.
+
+  On compare donc l'ENSEMBLE des adresses externes que le HTML construit porte à
+  l'ensemble de celles qui ont été pesées. Toute différence, dans un sens comme
+  dans l'autre, arrête la porte : soit une ressource tierce est arrivée sans être
+  pesée, soit celle qui l'a été n'est plus servie.
+
+  RETIRER LA POLICE TIERCE FAIT DONC ROUGIR CE BLOC, et c'est voulu : ce serait
+  une excellente nouvelle, et elle mérite qu'on vienne effacer son entrée à la
+  main plutôt qu'un vert qui ne dirait rien.
+*/
+{
+  const servies = [...premierChargement.externes].sort()
+  const pesees = Object.keys(RESSOURCES_EXTERNES_PESEES).sort()
+  const manquantes = servies.filter((h) => !pesees.includes(h))
+  const orphelines = pesees.filter((h) => !servies.includes(h))
+  if (manquantes.length > 0 || orphelines.length > 0) {
+    console.error(
+      '\n✗ mesure-ui : les ressources externes servies ne sont plus celles qui ont été pesées.\n',
+    )
+    for (const h of manquantes) console.error(`   SERVIE, JAMAIS PESÉE  ${h}`)
+    for (const h of orphelines) console.error(`   PESÉE, PLUS SERVIE    ${h}`)
+    console.error(
+      '\n   Le budget de premier chargement ne compte que ce que ce dépôt construit ; ce qu\'il\n' +
+        "   EXCLUT doit rester chiffré, sinon l'exclusion redevient un silence. Pesez la\n" +
+        '   nouvelle adresse — ou effacez celle qui ne sert plus — dans\n' +
+        '   `RESSOURCES_EXTERNES_PESEES`, avec sa date et sa méthode.\n',
+    )
+    process.exit(1)
+  }
+}
+
 if (premierChargement.octets > BUDGET_PREMIER_CHARGEMENT) {
   console.error(
     `\n✗ mesure-ui : premier chargement de la vitrine à ${premierChargement.octets} o compressés, ` +
@@ -1818,7 +3801,7 @@ if (premierChargement.octets > BUDGET_PREMIER_CHARGEMENT) {
   process.exit(1)
 }
 
-const serveur = await servir()
+const serveur = await chrono('serveur · vite preview', () => servir())
 const echecs = []
 const reproches = []
 const etroitesses = []
@@ -1832,6 +3815,25 @@ const rythmes = []
 const colonnes = []
 /** La grille de tarifs, relevée au-delà du repli où les cartes sont côte à côte. */
 const tarifs = []
+/*
+  ─── LE PARCOURS D'INSCRIPTION, ACCUMULATEURS SÉPARÉS ────────────────────
+
+  Ils ne se déversent PAS dans ceux de la boucle principale, et c'est délibéré.
+  Les tolérances de ce fichier sont indexées par ADRESSE (`TOLERES`) ou par
+  SIGNATURE de classes (`DEBORDS_LOCAUX_TOLERES`) ; les étapes intérieures n'ont
+  pas d'adresse, et leurs signatures sont celles des composants de formulaire
+  qu'on retrouve partout ailleurs. Verser ici reviendrait à laisser un défaut de
+  l'étape 3 s'abriter derrière une tolérance écrite pour un tout autre écran —
+  ou, dans l'autre sens, à faire monter un maximum partagé et rougir un plafond
+  qui ne parle pas de cette page.
+*/
+const valeursRogneesDeLInscription = []
+const debordsDeLInscription = []
+const debordsLocauxDeLInscription = []
+/** Une marche que le fil d'étapes n'a pas confirmée : le parcours s'y arrête. */
+const marchesRatees = []
+let pointsDInscription = 0
+let champsDInscription = 0
 // Même raison qu'`ATTENDUES` et que `rangeesMesurees` : « le panneau ne rejoue
 // rien » et « on n'a pas ouvert le panneau » s'écrivent pareil dans un journal.
 // Compte les langues où la mesure a VRAIMENT eu lieu, panneau ouvert.
@@ -1845,6 +3847,97 @@ let barreLaPlusGarnie = 0
 // déjà pour la liste des adresses, et la garde du garde plus bas pour le seuil.
 let rangeesMesurees = 0
 const tolerancesUtilisees = new Set()
+
+/**
+ * Le débordement LOCAL — voir `MESURER_DEBORD_LOCAL`.
+ *
+ * `elementsSondes` compte ce que la sonde a REGARDÉ, et il est rendu dans la
+ * ligne de succès. Sans ce nombre, une sonde qui cesserait de trouver des
+ * éléments — un sélecteur cassé, une page vide — dirait « aucun débordement »
+ * exactement comme un produit sain. C'est la panne que ce fichier reproche déjà
+ * à `contrast-audit.js`.
+ */
+const debordsLocaux = []
+const tolerancesLocalesUtilisees = new Set()
+/**
+ * Le BLANC IMPOSÉ — voir `MESURER_BLANC_IMPOSE`.
+ *
+ * `cellulesEtirees` compte ce que la sonde a regardé, pour la même raison que
+ * `elementsSondes` juste au-dessus : sans lui, une sonde dont le sélecteur
+ * cesserait de trouver des grilles rendrait « aucun creux » exactement comme un
+ * produit sain. C'est le mode de défaillance que ce fichier refuse partout.
+ */
+const blancsImposes = new Map()
+const tolerancesDeBlancUtilisees = new Set()
+let cellulesEtirees = 0
+/** Coupures de libellé laissant un orphelin — voir `MESURER_COUPURES`. */
+const coupuresOrphelines = new Map()
+let libellesMesures = 0
+/** Intitulés d'indicateur rognés — voir `MESURER_TRONCATURES`. */
+const troncatures = new Map()
+let intitulesMesures = 0
+/** Gestes hors de la fenêtre de défilement — voir `MESURER_GESTES_ATTEIGNABLES`. */
+const valeursRognees = new Map()
+let valeursMesurees = 0
+const gestesHorsChamp = new Map()
+const gestesNus = new Map()
+let gestesMesures = 0
+let commandesDeGeste = 0
+
+/** Mots plus larges que leur boîte — voir `MESURER_DEBORDEMENT_DE_MOT`. */
+const motsDebordants = new Map()
+let feuillesMesurees = 0
+/**
+ * Le PIRE débordement RÉELLEMENT vu pour chaque signature, tolérée ou non.
+ *
+ * Relevé même quand la tolérance couvre : c'est ce chiffre, et non le plafond
+ * inscrit, qui dit ce que le produit fait aujourd'hui. Sans lui, la seule façon
+ * de connaître le vrai maximum d'une signature tolérée était d'abaisser son
+ * plafond à 1 et de relancer dix minutes de navigateur — un rituel que personne
+ * n'exécute, donc un chiffre que personne ne vérifie.
+ */
+const maximaLocaux = new Map()
+let elementsSondes = 0
+/**
+ * CE QUE LA SONDE COÛTE, relevé plutôt que supposé.
+ *
+ * Trois lots de suite ont fini sur l'aveu « je n'ai pas mesuré ce que la sonde
+ * ajoute aux dix minutes de la porte ». Une porte dont on ignore le prix est
+ * une porte qu'on finit par ne plus lancer, et c'est le seul défaut qu'aucune
+ * garde ne rattrape.
+ *
+ * DEUX CHIFFRES, parce qu'ils ne se réduisent pas pareil : `tempsSonde` est le
+ * temps vu de Node, aller-retour avec le navigateur compris ; `tempsDansLaPage`
+ * est le seul parcours du DOM. L'écart entre les deux est le prix du protocole,
+ * qu'aucune optimisation du parcours ne fera baisser.
+ *
+ * ─── LE RELEVÉ ────────────────────────────────────────────────────────────
+ *
+ * Deux exécutions, même paquet, même machine :
+ *
+ *   sonde        1,0 s sur 506 appels — 2,0 puis 2,1 ms l'un
+ *   dont DOM     0,6 s pour 161 106 éléments, soit ~3,7 µs par élément
+ *   dont trajet  0,4 s, c'est-à-dire ~0,8 ms par aller-retour
+ *   porte        196,73 s puis 193,00 s
+ *
+ * Elle pèse donc UN VINGTIÈME DE POUR CENT du balayage — la porte attend le
+ * navigateur, elle ne calcule pas.
+ *
+ * POURQUOI PAS D'A/B, et c'est le résultat le plus utile du relevé : deux
+ * exécutions IDENTIQUES s'écartent de 3,7 secondes. Comparer un passage avec
+ * sonde à un passage sans ne pourrait pas distinguer une seconde de ce bruit —
+ * le chiffre qu'on en tirerait serait une fausse précision. Le chronomètre
+ * interne est le seul instrument assez fin ici ; l'horloge murale sert
+ * uniquement à dire qu'elle ne suffit pas.
+ *
+ * CE QUE CE CHIFFRE NE DIT PAS : ce qu'il deviendra. Il suit le NOMBRE
+ * D'ÉLÉMENTS, pas le nombre d'écrans — 3,7 µs chacun. Un produit qui doublerait
+ * son DOM paierait deux secondes, et ce serait encore négligeable ; c'est le
+ * jour où le parcours cesserait d'être linéaire qu'il faudrait y revenir.
+ */
+let tempsSonde = 0
+let tempsDansLaPage = 0
+let appelsDeSonde = 0
 
 /** Les points où la page n'a rien rendu, hors adresses exemptées. */
 const nonRendus = []
@@ -1932,19 +4025,23 @@ try {
       const depart = Date.now()
       process.stdout.write(`   ${langue}  ${adresse} … `)
       await page.setViewportSize({ width: LARGEURS[0], height: 900 })
-      await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
-      await attendre(page, adresse)
-      for (const largeur of LARGEURS) {
-        await page.setViewportSize({ width: largeur, height: 900 })
+      await chrono('mise en page · navigation et attente', async () => {
+        await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
         await attendre(page, adresse)
+      })
+      for (const largeur of LARGEURS) {
+        await chrono('mise en page · navigation et attente', async () => {
+          await page.setViewportSize({ width: largeur, height: 900 })
+          await attendre(page, adresse)
+        })
         if (largeur >= LARGEUR_SANS_REPLI) {
-          const replis = await page.evaluate(MESURER_REPLI)
+          const replis = await chrono('sonde · repli', () => page.evaluate(MESURER_REPLI))
           if (replis) for (const r of replis) reproches.push({ adresse, largeur, langue, ...r })
 
           // Au-delà de la bande, la largeur utile ne bouge plus : c'est là, et
           // là seulement, qu'un plancher en pixels veut dire quelque chose. En
           // dessous, la bande suit la fenêtre et le jeu doit pouvoir fondre.
-          const place = await page.evaluate(MESURER_JEU)
+          const place = await chrono('sonde · jeu de la barre', () => page.evaluate(MESURER_JEU))
           if (place) {
             rangeesMesurees++
             if (place.jeu < JEU_MINIMAL) etroitesses.push({ adresse, largeur, langue, ...place })
@@ -1955,7 +4052,7 @@ try {
         // toutes les largeurs : c'est justement d'une largeur à l'autre que son
         // écart variait.
         if (adresse === '/') {
-          const accroche = await page.evaluate(MESURER_ACCROCHE)
+          const accroche = await chrono('sonde · accroche', () => page.evaluate(MESURER_ACCROCHE))
           if (accroche) accroches.push({ largeur, langue, ...accroche })
 
           // Le rythme se lit là où l'échelle `lg` s'applique : en dessous, les
@@ -1963,13 +4060,13 @@ try {
           // serait celle du téléphone, où elle compte moins — un défilement
           // vertical ne se compare pas d'un bout à l'autre du pouce.
           if (largeur >= LARGEUR_SANS_REPLI) {
-            const releve = await page.evaluate(MESURER_RYTHME)
+            const releve = await chrono('sonde · rythme', () => page.evaluate(MESURER_RYTHME))
             if (releve) rythmes.push({ largeur, langue, sections: releve })
 
             // Au-delà du repli seulement : c'est là que les trois cartes sont
             // côte à côte. Empilées, « elles finissent ensemble » n'a pas de
             // sens — chacune finit où commence la suivante.
-            const grille = await page.evaluate(MESURER_TARIFS)
+            const grille = await chrono('sonde · tarifs', () => page.evaluate(MESURER_TARIFS))
             if (grille) tarifs.push({ largeur, langue, ...grille })
           }
         }
@@ -1986,7 +4083,7 @@ try {
           défaut que « une fois par écran » ne saurait pas dire, et qui coûterait
           le même prix à l'utilisateur.
         */
-        const rendu = await page.evaluate(MESURER_RENDU)
+        const rendu = await chrono('sonde · a-t-il rendu', () => page.evaluate(MESURER_RENDU))
         renduxExamines++
         const exemptee = EXEMPTIONS_DE_RENDU[adresse]
         if (aRendu(rendu)) {
@@ -2012,140 +4109,221 @@ try {
           })
         }
 
-        const resultat = await page.evaluate(MESURER)
-        if (!resultat) continue
-        const cle = `${adresse}@${largeur}`
-        if (TOLERES[cle]) {
-          tolerancesUtilisees.add(cle)
-          continue
+        /*
+          LE DÉBORDEMENT LOCAL, mesuré DANS LA MÊME VISITE.
+
+          Pas une passe de plus : la page est déjà chargée, déjà redimensionnée,
+          déjà stabilisée. Une seconde boucle aurait payé 506 navigations pour
+          regarder ce qui est sous les yeux.
+        */
+        const avantSonde = performance.now()
+        const local = await chrono('sonde · débordement local', () =>
+          page.evaluate(MESURER_DEBORD_LOCAL),
+        )
+        tempsSonde += performance.now() - avantSonde
+        tempsDansLaPage += local.ms
+        appelsDeSonde += 1
+        elementsSondes += local.sondes
+        for (const coupable of local.coupables) {
+          // Relevé d'abord, jugé ensuite : un débordement toléré compte dans le
+          // maximum au même titre qu'un autre, sans quoi le plafond ne pourrait
+          // être confronté à rien.
+          const vu = maximaLocaux.get(coupable.signature)
+          if (!vu || coupable.debord > vu.debord) {
+            maximaLocaux.set(coupable.signature, {
+              debord: coupable.debord,
+              ou: `${adresse}@${largeur}/${langue}`,
+            })
+          }
+
+          const toleree = DEBORDS_LOCAUX_TOLERES[coupable.signature]
+          if (toleree) {
+            tolerancesLocalesUtilisees.add(coupable.signature)
+            // Le défaut CONNU passe ; le même défaut AGGRAVÉ ne passe pas.
+            if (coupable.debord <= toleree.plafond) continue
+          }
+          debordsLocaux.push({
+            adresse,
+            largeur,
+            langue,
+            ...coupable,
+            plafond: toleree ? toleree.plafond : null,
+          })
         }
-        echecs.push({ adresse, largeur, langue, ...resultat })
-      }
-      process.stdout.write(`${((Date.now() - depart) / 1000).toFixed(1)}s\n`)
-    }
 
-    // Une fois par langue, et non par écran : la barre est la même partout, et
-    // la tabulation coûte un aller-retour par touche.
-    process.stdout.write(`   ${langue}  réglages au clavier à 1440 px … `)
-    const manque = await reglagesAtteignables(page)
-    process.stdout.write(manque ? 'ÉCHEC\n' : 'ok\n')
-    if (manque) inatteignables.push({ langue, manque })
+        /*
+          LE BLANC IMPOSÉ, sur la même visite que le débordement local.
 
-    process.stdout.write(`   ${langue}  panneau sans doublon à 1440 px … `)
-    const doublons = await doublonsDuPanneau(page)
-    if (doublons) {
-      panneauxMesures++
-      barreLaPlusGarnie = Math.max(barreLaPlusGarnie, doublons.barre.length)
-      if (doublons.rejoues.length > 0) rejouements.push({ langue, ...doublons })
-    }
-    process.stdout.write(doublons?.rejoues.length ? 'ÉCHEC\n' : doublons ? 'ok\n' : 'NON MESURÉ\n')
-
-    process.stdout.write(`   ${langue}  colonnes d'entrée à ${HAUTEURS_AUTH.join('/')} px … `)
-    const releves = await colonnesDesEcransDEntree(page)
-    colonnes.push(...releves.map((r) => ({ langue, ...r })))
-    process.stdout.write(`${releves.length} relevés\n`)
-
-    await contexte.close()
-  }
-
-  /*
-    PASSE SÉPARÉE, et non une règle de plus dans la boucle ci-dessus.
-
-    Les deux passes n'ont pas les mêmes axes : la mise en page balaie onze
-    largeurs et ignore le thème (les boîtes ne changent pas de taille selon la
-    couleur) ; le contraste balaie deux thèmes et se contente de deux largeurs.
-    Les fondre donnerait le produit des deux — 506 arrêts au lieu de 322 — pour
-    mesurer partout des choses qui ne varient que quelque part.
-
-    Ce qu'elles PARTAGENT est ce qui coûte cher, et c'est déjà mutualisé : un
-    seul `vite build`, un seul serveur, un seul navigateur.
-  */
-  for (const langue of LANGUES) {
-    for (const theme of THEMES) {
-      const contexte = await navigateur.newContext({
-        viewport: { width: LARGEURS_CONTRASTE[0], height: 900 },
-        locale: langue,
-        colorScheme: theme,
-      })
-      const page = await contexte.newPage()
-      for (const adresse of adresses) {
-        const depart = Date.now()
-        process.stdout.write(`   ${langue}  ${theme}  ${adresse} … `)
-        for (const largeur of LARGEURS_CONTRASTE) {
-          await page.setViewportSize({ width: largeur, height: 900 })
-          // On recharge à la première largeur seulement : le reste est un
-          // redimensionnement, comme dans la passe de mise en page.
-          if (largeur === LARGEURS_CONTRASTE[0]) {
-            await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
-          }
-          await attendre(page, adresse)
-
-          if (adresse === '/' && largeur === LARGEURS_CONTRASTE[0]) {
-            fondsParTheme.set(
-              theme,
-              await page.evaluate(() => getComputedStyle(document.body).backgroundColor),
-            )
-          }
-
-          const audit = await page.evaluate(AUDIT_CONTRASTE)
-          if (!audit || typeof audit.examines !== 'number') {
-            throw new Error(
-              "mesure-ui : `contrast-audit.js` n'a pas rendu `{ failures, items, examines }`. " +
-                "Son expression doit rester une IIFE qui s'évalue en cet objet.",
-            )
-          }
-          textesAudites += audit.examines
-
-          for (const item of audit.items) {
-            // Dédupliqué sur la FORME du défaut, pas sur l'endroit : le même
-            // couple encre/fond rapporté vingt fois est un seul correctif, et
-            // vingt lignes de rapport cachent le deuxième défaut.
-            const cle = `${item.text}|${item.color}|${item.bg}`
-            if (!contrastes.has(cle)) contrastes.set(cle, { ...item, ou: `${adresse} ${largeur}px ${langue} ${theme}` })
+          Même raison : la page est chargée, dimensionnée, stabilisée. Une passe
+          de plus coûterait 506 navigations pour regarder ce qui est déjà sous
+          les yeux — et ce fichier a déjà refusé ce prix une fois.
+        */
+        const creux = await chrono('sonde · blanc imposé', () =>
+          page.evaluate(MESURER_BLANC_IMPOSE),
+        )
+        tempsDansLaPage += creux.ms
+        cellulesEtirees += creux.cellules
+        for (const releve of creux.releves) {
+          // Relevé d'abord, jugé ensuite — comme les débordements locaux : un
+          // creux toléré doit compter dans le maximum, sans quoi le plafond ne
+          // peut être confronté à rien.
+          const vu = blancsImposes.get(releve.signature)
+          if (!vu || releve.blanc > vu.blanc) {
+            blancsImposes.set(releve.signature, {
+              ...releve,
+              ou: `${adresse}@${largeur}/${langue}`,
+            })
           }
         }
-        process.stdout.write(`${((Date.now() - depart) / 1000).toFixed(1)}s\n`)
-      }
-      await contexte.close()
-    }
-  }
 
+        /*
+          LE `continue` EST DEVENU UN `if`, ET CE N'EST PAS UN GOÛT D'ÉCRITURE.
 
-  /*
-    TROISIÈME PASSE, et son axe n'est ni celui des deux autres.
-
-    Une cible ne dépend pas du THÈME — repeindre un bouton ne le déplace pas —
-    mais elle dépend de la LANGUE, « Tarifs » n'ayant pas la largeur de
-    « Pricing », et de la largeur de fenêtre, qui redistribue les colonnes. Un
-    thème, deux langues, deux largeurs.
-
-    Elle vient EN DERNIER parce qu'elle est la seule à faire défiler la page :
-    `elementFromPoint` ne répond que dans le cadre visible. La sonde remet le
-    défilement à zéro en sortant, mais la passer avant le contraste ferait
-    dépendre une mesure de couleur du travail d'une mesure de géométrie —
-    l'en-tête collant change de fond dès le neuvième pixel de défilement.
-  */
-  for (const langue of LANGUES) {
-    const contexte = await navigateur.newContext({
-      viewport: { width: LARGEURS[0], height: 900 },
-      locale: langue,
-      colorScheme: THEME_DE_GEOMETRIE,
-    })
-    const page = await contexte.newPage()
-    for (const adresse of adresses) {
-      const depart = Date.now()
-      process.stdout.write(`   ${langue}  cibles  ${adresse} … `)
-      for (const largeur of LARGEURS) {
-        await page.setViewportSize({ width: largeur, height: 900 })
-        if (largeur === LARGEURS[0]) {
-          await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
+          Il sautait la fin de l'itération quand la page NE DÉBORDAIT PAS —
+          c'est-à-dire dans l'immense majorité des cas, et c'était sans
+          conséquence tant que rien ne le suivait. Les cibles et les noms le
+          suivent désormais : laissé tel quel, il les aurait sautés sur 484
+          points sur 506, et les deux gardes auraient rendu « aucun défaut »
+          après avoir regardé les vingt-deux écrans qui débordent.
+        */
+        const resultat = await chrono('sonde · débordement de page', () => page.evaluate(MESURER))
+        if (resultat) {
+          const cle = `${adresse}@${largeur}`
+          if (TOLERES[cle]) tolerancesUtilisees.add(cle)
+          else echecs.push({ adresse, largeur, langue, ...resultat })
         }
-        await attendre(page, adresse)
 
-        const releve = await page.evaluate(MESURER_CIBLES, {
-          plancher: PLANCHER_CIBLE,
-          rayon: RAYON_SONDAGE,
-        })
+        /*
+          ─── LES CIBLES ET LES NOMS, SUR LA PAGE DÉJÀ CHARGÉE ──────────────
+
+          Ils vivaient dans une TROISIÈME PASSE, qui rechargeait les mêmes 46
+          pages pour les balayer aux mêmes onze largeurs, dans les mêmes deux
+          langues, avec le MÊME `colorScheme`. Deux passes, un seul axe.
+
+          Le chronomètre a chiffré ce doublon : 41 s, dont 39 de navigation.
+          Décomposé, `attendre` coûte 1 072 ms après un chargement et 7 ms
+          après un redimensionnement — le prix n'était pas l'attente, c'était
+          le chargement, comme pour les deux leviers précédents.
+
+          CE QUI JUSTIFIAIT LA SÉPARATION N'EXISTE PLUS. La passe des cibles
+          venait en dernier parce qu'elle est la seule à FAIRE DÉFILER la page
+          — `elementFromPoint` ne répond que dans le cadre visible — et qu'on
+          ne voulait pas qu'une mesure de couleur dépende d'une mesure de
+          géométrie. Mais la passe de contraste crée son propre contexte et
+          navigue elle-même sur chaque écran : un défilement laissé ici ne
+          l'atteint pas. Le risque restant est INTERNE — la sonde défile puis
+          remet à zéro, et les sondes de la largeur suivante travaillent après
+          ce retour. Il a été mesuré plutôt que raisonné : tous les compteurs
+          de la porte sont restés identiques au chiffre près.
+
+          ELLES VIENNENT EN DERNIER DANS L'ITÉRATION, pour la même raison qui
+          les mettait en dernier parmi les passes : ce sont elles qui touchent
+          à l'état de la page, et rien ne doit mesurer après.
+        */
+        const coupures = await chrono('sonde · coupures de libellé', () =>
+          page.evaluate(MESURER_COUPURES),
+        )
+        libellesMesures += coupures.mesures
+        for (const d of coupures.defauts) {
+          // Dédupliqué sur le LIBELLÉ : le même mot mal coupé sur vingt écrans
+          // est un seul correctif, et vingt lignes cacheraient le second.
+          const cle = `${d.texte}|${langue}`
+          if (!coupuresOrphelines.has(cle)) {
+            coupuresOrphelines.set(cle, { ...d, langue, ou: `${adresse} ${largeur}px` })
+          }
+        }
+
+        /* AUCUN CHARGEMENT DE PLUS : la page est déjà là, à la bonne largeur,
+           dans la bonne langue. C'est la règle de ce fichier depuis le lot qui a
+           fusionné deux passes — ce qui coûte, ce sont les chargements, jamais le
+           calcul. Un `page.evaluate` de plus, et tous les intitulés d'indicateur
+           du produit sont mesurés à onze largeurs et deux langues. */
+        /* DEUX PASSES, UNE SEULE PAGE : la taille de police racine est la
+           seconde dimension du balayage, et elle ne coûte qu'un reflow. Voir
+           l'en-tête de la sonde pour ce qu'elle a trouvé. */
+        for (const racine of [null, RACINE_AGRANDIE]) {
+          const rognages = await chrono(
+            racine ? 'sonde · textes rognés (racine agrandie)' : 'sonde · textes rognés',
+            () => page.evaluate(MESURER_TRONCATURES, { racine }),
+          )
+          intitulesMesures += rognages.mesures
+          for (const d of rognages.defauts) {
+            /* Dédupliqué sur le LIBELLÉ et la LANGUE : le même nom rogné à six
+               largeurs est un seul correctif. On garde le PIRE manque et non le
+               premier vu — c'est lui qui dit combien de place il faut trouver, et
+               la première largeur balayée n'est pas la plus serrée. */
+            const cle = `${d.texte}|${langue}`
+            const vu = troncatures.get(cle)
+            if (!vu || d.manque > vu.manque) {
+              troncatures.set(cle, { ...d, langue, ou: `${adresse} ${largeur}px` })
+            }
+          }
+        }
+
+        /* ENCORE AUCUN CHARGEMENT : même page, même largeur, même langue. */
+        const valeurs = await chrono('sonde · valeurs rognées', () =>
+          page.evaluate(MESURER_VALEUR_ROGNEE),
+        )
+        valeursMesurees += valeurs.mesures
+        for (const d of valeurs.defauts) {
+          /* Dédupliqué sur le TEXTE et la LANGUE, et l'on garde le PIRE manque :
+             le même champ trop étroit à onze largeurs est un seul correctif, et
+             c'est la largeur la plus serrée qui dit combien il faut trouver. */
+          const cle = `${d.texte}|${langue}`
+          const vu = valeursRognees.get(cle)
+          if (!vu || d.manque > vu.manque) {
+            valeursRognees.set(cle, { ...d, langue, ou: `${adresse} ${largeur}px` })
+          }
+        }
+
+        /* ENCORE AUCUN CHARGEMENT : les gestes hors champ se mesurent sur la
+           même page, à la position de repos. Voir `MESURER_GESTES_ATTEIGNABLES`. */
+        const gestes = await chrono('sonde · gestes atteignables', () =>
+          page.evaluate(MESURER_GESTES_ATTEIGNABLES),
+        )
+        gestesMesures += gestes.mesures
+        commandesDeGeste += gestes.commandes
+        /* Dédupliqué sur le LIBELLÉ et la LANGUE : le même bouton nu à onze
+           largeurs est un seul correctif, et son libellé suffit à le désigner —
+           il n'y a pas de « pire cas » à retenir, un glyphe est là ou non. */
+        for (const nu of gestes.nus) {
+          const cle = `${nu}|${langue}`
+          if (!gestesNus.has(cle)) gestesNus.set(cle, { nu, langue, ou: `${adresse} ${largeur}px` })
+        }
+        for (const d of gestes.defauts) {
+          /* Dédupliqué sur le GESTE et la LANGUE, et l'on garde le pire : le
+             même bouton hors champ à trois largeurs est un seul correctif, et
+             c'est la plus serrée qui dit combien de place il manque. */
+          const cle = `${d.geste}|${langue}`
+          const vu = gestesHorsChamp.get(cle)
+          if (!vu || d.cache > vu.cache) {
+            gestesHorsChamp.set(cle, { ...d, langue, ou: `${adresse} ${largeur}px` })
+          }
+        }
+
+        /* ENCORE AUCUN CHARGEMENT : même page, même largeur, même langue. La
+           règle du mot débordant tient dans un `evaluate` de plus, et couvre du
+           coup les 506 points du balayage plutôt que le seul écran où le défaut
+           a été trouvé à l'œil. */
+        const sorties = await chrono('sonde · mots débordants', () =>
+          page.evaluate(MESURER_DEBORDEMENT_DE_MOT),
+        )
+        feuillesMesurees += sorties.mesures
+        for (const d of sorties.defauts) {
+          /* Dédupliqué sur le TEXTE et la LANGUE, et l'on garde le pire manque :
+             le même mot trop long à six largeurs est un seul correctif, et c'est
+             la largeur la plus serrée qui dit combien de place il faut trouver.
+             Même raisonnement que les rognages, juste au-dessus. */
+          const cle = `${d.texte}|${langue}`
+          const vu = motsDebordants.get(cle)
+          if (!vu || d.manque > vu.manque) {
+            motsDebordants.set(cle, { ...d, langue, ou: `${adresse} ${largeur}px` })
+          }
+        }
+
+        const releve = await chrono('audit · cibles', () =>
+          page.evaluate(MESURER_CIBLES, { plancher: PLANCHER_CIBLE, rayon: RAYON_SONDAGE }),
+        )
         ciblesSondees += releve.sondees
         pointsDeCible++
         for (const raison of releve.raisonsVues) raisonsEmployees.add(raison)
@@ -2163,7 +4341,7 @@ try {
           bonne largeur, dans la bonne langue. Un `page.evaluate` de plus, et le
           balayage complet des noms est payé.
         */
-        const noms = await page.evaluate(AUDIT_NOMS)
+        const noms = await chrono('audit · noms accessibles', () => page.evaluate(AUDIT_NOMS))
         if (!noms || typeof noms.examinees !== 'number') {
           throw new Error(
             "mesure-ui : `noms-accessibles.js` n'a pas rendu `{ anonymes, items, examinees }`. " +
@@ -2202,8 +4380,145 @@ try {
       }
       process.stdout.write(`${((Date.now() - depart) / 1000).toFixed(1)}s\n`)
     }
+
+    // Une fois par langue, et non par écran : la barre est la même partout, et
+    // la tabulation coûte un aller-retour par touche.
+    process.stdout.write(`   ${langue}  réglages au clavier à 1440 px … `)
+    const manque = await chrono('clavier · réglages atteignables', () => reglagesAtteignables(page))
+    process.stdout.write(manque ? 'ÉCHEC\n' : 'ok\n')
+    if (manque) inatteignables.push({ langue, manque })
+
+    process.stdout.write(`   ${langue}  panneau sans doublon à 1440 px … `)
+    const doublons = await chrono('panneau · doublons', () => doublonsDuPanneau(page))
+    if (doublons) {
+      panneauxMesures++
+      barreLaPlusGarnie = Math.max(barreLaPlusGarnie, doublons.barre.length)
+      if (doublons.rejoues.length > 0) rejouements.push({ langue, ...doublons })
+    }
+    process.stdout.write(doublons?.rejoues.length ? 'ÉCHEC\n' : doublons ? 'ok\n' : 'NON MESURÉ\n')
+
+    process.stdout.write(`   ${langue}  colonnes d'entrée à ${HAUTEURS_AUTH.join('/')} px … `)
+    const releves = await chrono('colonnes d’entrée', () => colonnesDesEcransDEntree(page))
+    colonnes.push(...releves.map((r) => ({ langue, ...r })))
+    process.stdout.write(`${releves.length} relevés\n`)
+
+    process.stdout.write(`   ${langue}  étapes intérieures de l'inscription … `)
+    const parcours = await chrono("étapes de l'inscription", () => etapesDeLInscription(page))
+    pointsDInscription += parcours.points
+    champsDInscription += parcours.champsMesures
+    for (const d of parcours.rognages) valeursRogneesDeLInscription.push({ langue, ...d })
+    for (const d of parcours.debordsDePage) debordsDeLInscription.push({ langue, ...d })
+    for (const d of parcours.debordsLocaux) debordsLocauxDeLInscription.push({ langue, ...d })
+    for (const d of parcours.marchesRatees) marchesRatees.push({ langue, ...d })
+    process.stdout.write(`${parcours.points} points, ${parcours.champsMesures} champs\n`)
+
     await contexte.close()
   }
+
+  /*
+    PASSE SÉPARÉE, et non une règle de plus dans la boucle ci-dessus.
+
+    Les deux passes n'ont pas les mêmes axes : la mise en page balaie onze
+    largeurs et ignore le thème (les boîtes ne changent pas de taille selon la
+    couleur) ; le contraste balaie deux thèmes et se contente de deux largeurs.
+    Les fondre donnerait le produit des deux — 506 arrêts au lieu de 322 — pour
+    mesurer partout des choses qui ne varient que quelque part.
+
+    Ce qu'elles PARTAGENT est ce qui coûte cher, et c'est déjà mutualisé : un
+    seul `vite build`, un seul serveur, un seul navigateur.
+  */
+  /*
+    ─── LE THÈME SE BASCULE À CHAUD, IL NE SE RECHARGE PLUS ────────────────
+
+    Cette passe portait DEUX contextes par langue, un par thème, et rechargeait
+    donc chaque écran deux fois : 92 navigations complètes. Le chronomètre l'a
+    désignée premier poste de la porte — 78 s, 40 % — et l'écart avec la passe
+    de mise en page disait où : 0,42 s par appel contre 0,074, pour deux fois
+    moins de largeurs. Ce n'était pas la mesure qui coûtait, c'était le
+    chargement.
+
+    UN SEUL CONTEXTE PAR LANGUE, et `emulateMedia` bascule
+    `prefers-color-scheme` sur la page DÉJÀ CHARGÉE. C'est légitime parce que le
+    thème de ce produit est du CSS PUR : `ThemeProvider` écrit lui-même qu'`auto`
+    retire l'attribut et « laisse `prefers-color-scheme` décider », « sans qu'on
+    ait à écouter quoi que ce soit ». Un contexte neuf n'a aucune préférence
+    stockée : les deux méthodes partent du même état.
+
+    ── LE GEL N'EST PAS UN DÉTAIL, C'EST LA CONDITION ──────────────────────
+
+    Premier essai SANS geler les animations : 13 points sur 24 rendaient un
+    relevé DIFFÉRENT, et pas un peu — l'audit inventait des fautes qui n'existent
+    pas, encre claire sur fond clair, encre sombre sur surface sombre. Les
+    couleurs de ce produit se transitionnent en 150 ms : juste après la bascule
+    la page est dans un état MIXTE, le fond déjà changé et le texte pas encore.
+    Une passe deux fois plus rapide qui aurait rapporté vingt fautes imaginaires
+    par écran — le pire échange possible.
+
+    Avec `FIGER_LES_ANIMATIONS` — la feuille que la passe des surfaces injecte
+    déjà, pour la même raison — les 24 points redeviennent STRICTEMENT identiques
+    à ceux du contexte par thème, et l'échantillon tombe de 11,8 s à 6,0.
+
+    LE STYLE SE REPOSE APRÈS CHAQUE NAVIGATION : une feuille injectée meurt avec
+    son document. Le redimensionnement, lui, la garde.
+  */
+  for (const langue of LANGUES) {
+    const contexte = await navigateur.newContext({
+      viewport: { width: LARGEURS_CONTRASTE[0], height: 900 },
+      locale: langue,
+    })
+    const page = await contexte.newPage()
+    for (const adresse of adresses) {
+      const depart = Date.now()
+      process.stdout.write(`   ${langue}  contraste  ${adresse} … `)
+      for (const largeur of LARGEURS_CONTRASTE) {
+        await chrono('contraste · navigation et attente', async () => {
+          await page.setViewportSize({ width: largeur, height: 900 })
+          // On recharge à la première largeur seulement : le reste est un
+          // redimensionnement, comme dans la passe de mise en page.
+          if (largeur === LARGEURS_CONTRASTE[0]) {
+            await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
+            await attendre(page, adresse)
+            await page.addStyleTag({ content: FIGER_LES_ANIMATIONS })
+            return
+          }
+          await attendre(page, adresse)
+        })
+
+        for (const theme of THEMES) {
+          await chrono('contraste · bascule de thème', () =>
+            page.emulateMedia({ colorScheme: theme }),
+          )
+
+          if (adresse === '/' && largeur === LARGEURS_CONTRASTE[0]) {
+            fondsParTheme.set(
+              theme,
+              await page.evaluate(() => getComputedStyle(document.body).backgroundColor),
+            )
+          }
+
+          const audit = await chrono('audit · contraste', () => page.evaluate(AUDIT_CONTRASTE))
+          if (!audit || typeof audit.examines !== 'number') {
+            throw new Error(
+              "mesure-ui : `contrast-audit.js` n'a pas rendu `{ failures, items, examines }`. " +
+                "Son expression doit rester une IIFE qui s'évalue en cet objet.",
+            )
+          }
+          textesAudites += audit.examines
+
+          for (const item of audit.items) {
+            // Dédupliqué sur la FORME du défaut, pas sur l'endroit : le même
+            // couple encre/fond rapporté vingt fois est un seul correctif, et
+            // vingt lignes de rapport cachent le deuxième défaut.
+            const cle = `${item.text}|${item.color}|${item.bg}`
+            if (!contrastes.has(cle)) contrastes.set(cle, { ...item, ou: `${adresse} ${largeur}px ${langue} ${theme}` })
+          }
+        }
+      }
+      process.stdout.write(`${((Date.now() - depart) / 1000).toFixed(1)}s\n`)
+    }
+    await contexte.close()
+  }
+
 
   /*
     ═══ LES SURFACES QUI N'EXISTENT QU'APRÈS UN GESTE ═══
@@ -2233,9 +4548,11 @@ try {
         colorScheme: theme,
       })
       const page = await contexte.newPage()
-      await page.goto(BASE + surface.adresse, { waitUntil: 'domcontentloaded' })
-      await attendre(page, surface.adresse)
-      await page.addStyleTag({ content: FIGER_LES_ANIMATIONS })
+      await chrono('surfaces · navigation et attente', async () => {
+        await page.goto(BASE + surface.adresse, { waitUntil: 'domcontentloaded' })
+        await attendre(page, surface.adresse)
+        await page.addStyleTag({ content: FIGER_LES_ANIMATIONS })
+      })
 
       /*
         LA GARDE DU GARDE, et elle est le cœur de cette passe.
@@ -2248,8 +4565,10 @@ try {
       */
       let ouverte = false
       try {
-        await surface.ouvrir(page)
-        await page.locator(surface.temoin).first().waitFor({ state: 'visible' })
+        await chrono('surfaces · geste d’ouverture', async () => {
+          await surface.ouvrir(page)
+          await page.locator(surface.temoin).first().waitFor({ state: 'visible' })
+        })
         ouverte = true
       } catch (e) {
         plaintesDeSurface.push(
@@ -2263,7 +4582,7 @@ try {
       if (ouverte) {
         surfacesOuvertes++
 
-        const audit = await page.evaluate(AUDIT_CONTRASTE)
+        const audit = await chrono('audit · contraste', () => page.evaluate(AUDIT_CONTRASTE))
         if (!audit || typeof audit.examines !== 'number') {
           throw new Error(
             `mesure-ui : \`contrast-audit.js\` n'a rien rendu sur la surface ${nom}.`,
@@ -2276,10 +4595,9 @@ try {
           if (!contrastes.has(cle)) contrastes.set(cle, { ...item, ou: `surface ${nom}` })
         }
 
-        const releve = await page.evaluate(MESURER_CIBLES, {
-          plancher: PLANCHER_CIBLE,
-          rayon: RAYON_SONDAGE,
-        })
+        const releve = await chrono('audit · cibles', () =>
+          page.evaluate(MESURER_CIBLES, { plancher: PLANCHER_CIBLE, rayon: RAYON_SONDAGE }),
+        )
         ciblesSondees += releve.sondees
         ciblesDeSurface += releve.sondees
         /* `pointsDeCible` N'EST PAS incrémenté : il compte les points ADRESSE ×
@@ -2302,7 +4620,7 @@ try {
           nulle part tant que personne n'a cliqué. Le calendrier et le sélecteur
           de mois de la modale de paiement ne sont regardés QUE par cette ligne.
         */
-        const noms = await page.evaluate(AUDIT_NOMS)
+        const noms = await chrono('audit · noms accessibles', () => page.evaluate(AUDIT_NOMS))
         if (!noms || typeof noms.examinees !== 'number') {
           throw new Error(
             `mesure-ui : \`noms-accessibles.js\` n'a rien rendu sur la surface ${nom}.`,
@@ -2612,6 +4930,607 @@ console.log(
           .map((a) => `${a} (depuis ${EXEMPTIONS_DE_RENDU[a].depuis}, ${exemptionsEmployees.get(a)} points)`)
           .join(', '),
 )
+
+/*
+  ─── LE DÉBORDEMENT LOCAL, SON VERDICT ─────────────────────────────────────
+
+  Regroupé PAR SIGNATURE et non par point : un même défaut se répète sur des
+  dizaines d'écrans, et l'imprimer autant de fois donnerait un rapport que
+  personne ne lit — donc une porte qu'on désactive.
+
+  Chaque groupe rend ce qu'il faut pour AGIR : le pire dépassement mesuré, le
+  nombre de points touchés, et deux exemples avec leur adresse et leur largeur.
+  Le pire dépassement est aussi ce qu'on recopie en `plafond` si l'on décide de
+  tolérer.
+*/
+if (debordsLocaux.length > 0) {
+  const parSignature = new Map()
+  for (const d of debordsLocaux) {
+    if (!parSignature.has(d.signature)) parSignature.set(d.signature, [])
+    parSignature.get(d.signature).push(d)
+  }
+  const groupes = [...parSignature.entries()].sort(
+    (a, b) => Math.max(...b[1].map((d) => d.debord)) - Math.max(...a[1].map((d) => d.debord)),
+  )
+
+  console.error(
+    `\n✗ mesure-ui : ${parSignature.size} forme(s) débordent LOCALEMENT de leur conteneur,` +
+      ` sur ${debordsLocaux.length} occurrence(s) et ${elementsSondes} éléments sondés.\n` +
+      "   Un contenu qui sort de sa boîte sans faire défiler la page se voit, et ne fait rougir\n" +
+      "   aucune autre règle — c'est l'angle mort que celle-ci couvre.\n",
+  )
+  for (const [signature, liste] of groupes) {
+    const pire = Math.max(...liste.map((d) => d.debord))
+    const plafond = liste[0].plafond
+    const exemples = liste
+      .slice(0, 2)
+      .map((d) => `${d.adresse}@${d.largeur}/${d.langue} « ${d.texte} »`)
+      .join(' · ')
+    console.error(
+      `   +${pire}px  ${signature}\n` +
+        (plafond === null
+          ? ''
+          : `      TOLÉRÉ jusqu'à ${plafond}px — le défaut s'est AGGRAVÉ, la tolérance ne le couvre plus.\n`) +
+        `      ${liste.length} occurrence(s) · ex. ${exemples}\n`,
+    )
+  }
+  console.error(
+    '   Si le débordement est assumé, inscrivez la SIGNATURE dans `DEBORDS_LOCAUX_TOLERES`\n' +
+      '   avec son plafond mesuré et son motif. Une tolérance sans plafond est un blanc-seing.',
+  )
+  process.exit(1)
+}
+
+if (coupuresOrphelines.size > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${coupuresOrphelines.size} libellé(s) se coupent en laissant un orphelin` +
+      ` de moins de 3 caractères, sur ${libellesMesures} mesurés.\n` +
+      "   Un fragment d'un ou deux caractères sous le reste du mot se lit comme une coquille,\n" +
+      '   pas comme une césure. Rien ne déborde : aucune autre règle ne peut le voir.\n',
+  )
+  for (const d of coupuresOrphelines.values()) {
+    console.error(
+      `   « ${d.decoupe} »  →  orphelin « ${d.orphelin} »\n` +
+        `      ${d.texte} · ${d.langue} · ${d.ou}\n`,
+    )
+  }
+  console.error(
+    "   Remède : un TRAIT D'UNION CONDITIONNEL (`\\u00AD`) dans le dictionnaire de la langue\n" +
+      "   concernée, au point de césure correct — c'est exactement ce que le dictionnaire du\n" +
+      '   navigateur pose tout seul là où il en a un.',
+  )
+  process.exit(1)
+}
+
+/*
+  GARDE DU GARDE — LA SONDE DES COUPURES DOIT AVOIR TROUVÉ DES LIBELLÉS.
+
+  Le marqueur retiré, renommé, ou la barre basse qui cesse d'être rendue sous
+  `lg` : la sonde rendrait zéro défaut sur zéro libellé, et le rapport dirait
+  « aucune coupure fautive » sans en avoir regardé une seule. C'est la panne que
+  ce fichier reproche déjà à `contrast-audit.js`, et elle vaut ici comme ailleurs.
+*/
+if (libellesMesures === 0) {
+  console.error(
+    "\n✗ mesure-ui : aucun libellé de barre basse mesuré.\n" +
+      "   Le marqueur `data-mesure=\"libelle-barre-basse\"` a-t-il disparu d'`AppShell` ?\n" +
+      '   Une sonde qui ne trouve rien ne prouve rien.',
+  )
+  process.exit(1)
+}
+
+if (troncatures.size > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${troncatures.size} texte(s) du produit sont ROGNÉS,` +
+      ` sur ${intitulesMesures} mesurés.\n` +
+      "   Un texte rogné ne déborde de rien — il est coupé DANS sa boîte, par un\n" +
+      '   `overflow: hidden` posé exprès. Aucune règle de débordement ne peut le voir, et le\n' +
+      "   DOM porte la chaîne entière : un cas de rendu la trouve et passe au vert.\n",
+  )
+  for (const d of troncatures.values()) {
+    console.error(
+      `   −${d.manque}px en ${d.axe}  « ${d.texte} »\n` +
+        `      ${d.offert}px offerts · ${d.langue} · racine ${d.racine}px · vu au pire à ${d.ou}\n`,
+    )
+  }
+  console.error(
+    "   Remède : rendre la place, pas raccourcir le texte. Un nom d'immeuble est une\n" +
+      "   DONNÉE — l'abréger dans le dictionnaire ne ferait que déplacer le mensonge du\n" +
+      '   rendu vers la source. Une donnée, elle, se DÉCLARE : `data-donnee` sur la boîte\n' +
+      "   qui rogne ou sur un ancêtre. Le vocabulaire du produit, jamais.",
+  )
+  process.exit(1)
+}
+
+if (gestesHorsChamp.size > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${gestesHorsChamp.size} geste(s) sont HORS CHAMP au repos,` +
+      ` sur ${gestesMesures} mesurés.\n` +
+      "   Le bouton est peint, à la bonne taille, dans une boîte qui défile — mais en dehors\n" +
+      '   de ce que la fenêtre montre, et rien ne dit qu’il existe. Aucune règle de\n' +
+      '   débordement, de rognage ou de cible ne peut le voir : elles mesurent ce qui SORT,\n' +
+      "   celle-ci mesure ce qui n’entre jamais.\n",
+  )
+  for (const d of gestesHorsChamp.values()) {
+    console.error(
+      `   ${d.cache}px hors champ  « ${d.geste} »\n` +
+        `      table ${d.largeurTable}px dans ${d.largeurVue}px · ${d.langue} · vu au pire à ${d.ou}\n`,
+    )
+  }
+  console.error(
+    '   Remède : rendre le geste atteignable sans découvrir un défilement — une colonne\n' +
+      '   COLLANTE satisfait la règle par construction, une table qui rétrécit aussi.',
+  )
+  process.exit(1)
+}
+
+if (valeursRognees.size > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${valeursRognees.size} valeur(s) COUPÉE(S) dans leur champ,` +
+      ` sur ${valeursMesurees} mesurée(s).\n` +
+      '   Un texte coupé DANS sa boîte ne déborde de rien : la page ne défile pas, le\n' +
+      '   conteneur ne grandit pas, et le DOM porte la chaîne entière. Les règles voisines\n' +
+      "   mesurent ce qui SORT ; celle-ci mesure ce qui n'entre pas.\n",
+  )
+  for (const d of valeursRognees.values()) {
+    console.error(
+      `   −${d.manque}px  « ${d.texte} »\n` +
+        `      ${d.offert}px offerts · ${d.langue} · vu au pire à ${d.ou}\n`,
+    )
+  }
+  console.error(
+    '   Remèdes : élargir le champ ; raccourcir ce qu’il MONTRE une fois fermé, en gardant\n' +
+      '   la forme longue dans sa liste (`OptionCombobox.resume`) ; raccourcir un gabarit.',
+  )
+  process.exit(1)
+}
+
+/*
+  GARDE DU GARDE — LA SONDE DES VALEURS DOIT AVOIR VU DES CHAMPS.
+
+  Ses trois exclusions sont des `continue` : resserrer l'une d'elles par
+  inadvertance viderait la boucle sans rien casser, et le rapport écrirait
+  « aucune valeur coupée » après n'avoir mesuré personne.
+*/
+if (valeursMesurees === 0) {
+  console.error(
+    '\n✗ mesure-ui : aucune valeur de champ mesurée au ROGNAGE.\n' +
+      '   Une sonde qui ne trouve rien ne prouve rien.',
+  )
+  process.exit(1)
+}
+
+/*
+  ═══ LE PARCOURS D'INSCRIPTION ═══
+
+  L'ORDRE COMPTE : les marches ratées d'abord, les défauts ensuite. Un parcours
+  qui n'a pas avancé n'a pas mesuré les écrans qu'il nomme, et ses relevés — même
+  vides — ne disent rien. Les lire en premier serait lire un verdict rendu sur
+  une autre page que celle du titre.
+*/
+if (marchesRatees.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${marchesRatees.length} marche(s) de l'inscription non franchie(s).\n` +
+      "   Le fil d'étapes n'a pas confirmé le rang qu'on croyait mesurer. Les écrans qui\n" +
+      "   suivaient cette marche N'ONT PAS ÉTÉ MESURÉS : ce n'est pas une absence de défaut.\n",
+  )
+  for (const m of marchesRatees) {
+    console.error(`   ${m.adresse}  ·  ${m.langue}  ·  attendu ${m.attendu}, lu ${m.lu}\n`)
+  }
+  console.error(
+    '   Causes probables : un champ renommé (le parcours remplit `name`, `email`, `phone`,\n' +
+      '   `password`, puis le champ propre au rôle), une règle de validation nouvelle, ou le\n' +
+      '   bouton de progression qui a changé de forme.',
+  )
+  process.exit(1)
+}
+
+if (valeursRogneesDeLInscription.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${valeursRogneesDeLInscription.length} valeur(s) COUPÉE(S) dans les étapes\n` +
+      `   intérieures de l'inscription, sur ${champsDInscription} champ(s) mesuré(s).\n` +
+      "   Ces trois écrans n'ont pas d'adresse : le balayage ne les voit pas, et c'est\n" +
+      '   ce parcours qui les lui montre.\n',
+  )
+  for (const d of valeursRogneesDeLInscription) {
+    console.error(
+      `   −${d.manque}px  « ${d.texte} »  ·  ${d.offert}px offerts  ·  ${d.langue} ${d.ou}\n`,
+    )
+  }
+  process.exit(1)
+}
+
+if (debordsDeLInscription.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${debordsDeLInscription.length} débordement(s) de page dans les étapes\n` +
+      "   intérieures de l'inscription.\n",
+  )
+  for (const d of debordsDeLInscription) {
+    console.error(
+      `   ${d.langue} ${d.ou}  ·  ${d.decalage}px hors de ${d.largeurVue}px\n` +
+        d.coupables
+          .map((c) => `      ${c.balise}.${c.classes} — ${c.largeur}px, bord ${c.bordDroit}\n`)
+          .join(''),
+    )
+  }
+  process.exit(1)
+}
+
+if (debordsLocauxDeLInscription.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${debordsLocauxDeLInscription.length} débordement(s) local/locaux dans les\n` +
+      "   étapes intérieures de l'inscription.\n",
+  )
+  for (const d of debordsLocauxDeLInscription) {
+    console.error(`   +${d.debord}px  ${d.signature}  ·  ${d.langue} ${d.ou}\n`)
+  }
+  process.exit(1)
+}
+
+/*
+  GARDE DU GARDE — LE PARCOURS DOIT AVOIR EU LIEU EN ENTIER.
+
+  C'est la garde qui compte le plus de ce lot, parce que le parcours est la
+  seule sonde de ce fichier dont la COUVERTURE dépend d'une suite de gestes.
+  Toutes les autres visitent une adresse : si elle disparaît, `ATTENDUES` le
+  dit. Celle-ci remplit quatre champs, clique deux fois et lit un fil ; chacune
+  de ces cinq choses peut cesser de fonctionner sans que rien ne casse, et le
+  rapport écrirait alors « aucun défaut » sur des écrans qu'il n'a pas ouverts.
+
+  Le compte est EXACT et non un plancher : 3 rôles × 3 étapes × 11 largeurs × 2
+  langues. Un parcours interrompu rend moins, un rôle ajouté rend plus, et les
+  deux méritent qu'on relise ce bloc.
+*/
+const POINTS_D_INSCRIPTION_ATTENDUS =
+  ROLES_DE_L_INSCRIPTION.length * ETAPES_INTERIEURES.length * LARGEURS.length * LANGUES.length
+if (pointsDInscription !== POINTS_D_INSCRIPTION_ATTENDUS) {
+  console.error(
+    `\n✗ mesure-ui : ${pointsDInscription} point(s) relevé(s) dans les étapes intérieures de\n` +
+      `   l'inscription, pour ${POINTS_D_INSCRIPTION_ATTENDUS} attendus ` +
+      `(${ROLES_DE_L_INSCRIPTION.length} rôles × ${ETAPES_INTERIEURES.length} étapes × ` +
+      `${LARGEURS.length} largeurs × ${LANGUES.length} langues).\n` +
+      "   Un parcours qui s'arrête en chemin ne mesure pas les écrans qu'il annonce.",
+  )
+  process.exit(1)
+}
+
+/*
+  ET LES CHAMPS AVEC. Les 198 points pourraient tous être relevés sur un écran
+  qui ne rend AUCUN champ — le récapitulatif n'en a aucun, et c'est normal ; les
+  deux autres étapes en portent quatre et cinq. Zéro champ sur tout le parcours
+  voudrait dire que la sonde du rognage n'a rien eu à mesurer, donc que son
+  verdict est vide.
+*/
+if (champsDInscription === 0) {
+  console.error(
+    "\n✗ mesure-ui : aucun champ mesuré au rognage dans les étapes de l'inscription.\n" +
+      '   Une sonde qui ne trouve rien ne prouve rien.',
+  )
+  process.exit(1)
+}
+
+if (gestesNus.size > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${gestesNus.size} commande(s) de tableau SANS GLYPHE,` +
+      ` sur ${commandesDeGeste} mesurée(s).\n` +
+      "   Une colonne de geste n’a pas d’intitulé — « son bouton porte le sien » — donc rien\n" +
+      '   au-dessus ne prévient qu’on entre dans des commandes. Un bouton fantôme nu, entre un\n' +
+      '   nom et une date, se lit comme une donnée de plus : le survol devient le premier\n' +
+      '   moment où l’on apprend que c’en est une, et un doigt n’a pas de survol.\n',
+  )
+  for (const d of gestesNus.values()) {
+    console.error(`   « ${d.nu} »  ·  ${d.langue}  ·  vu à ${d.ou}\n`)
+  }
+  console.error(
+    '   Remède : une `icon` sur le bouton, comme les autres colonnes de geste du produit.',
+  )
+  process.exit(1)
+}
+
+/*
+  GARDE DU GARDE — LA SONDE DES GESTES DOIT AVOIR TROUVÉ DES GESTES.
+
+  `data-colonne-tenue` retiré de `DataTable`, `data-defilant` renommé, ou les écrans à
+  tableau sortis du balayage : la sonde rendrait zéro défaut sur zéro geste et
+  le rapport écrirait « aucun geste hors champ » sans en avoir regardé un seul.
+*/
+if (gestesMesures === 0 || commandesDeGeste === 0) {
+  console.error(
+    '\n✗ mesure-ui : aucun geste de tableau mesuré.\n' +
+      '   Les marqueurs `data-colonne-tenue` et `data-defilant` sont-ils toujours sur `DataTable` ?\n' +
+      '   Une sonde qui ne trouve rien ne prouve rien.',
+  )
+  process.exit(1)
+}
+
+/*
+  GARDE DU GARDE — LA SONDE DES ROGNAGES DOIT AVOIR TROUVÉ DES TEXTES.
+
+  Un `truncate` disparu du produit, `data-donnee` posé trop haut, ou la sonde
+  détournée : elle rendrait zéro défaut sur zéro texte, et le rapport écrirait
+  « aucun texte rogné » sans en avoir regardé un seul. C'est la même panne que
+  celle que la sonde des coupures se refuse déjà, et elle ne devient pas
+  acceptable parce qu'elle est ailleurs.
+
+  LE PLANCHER SUIT LE RÉEL. Mesuré sur ce dépôt : le balayage voit plusieurs
+  centaines de textes rognables par passe. Zéro ne peut donc venir que d'une
+  sonde cassée.
+*/
+if (intitulesMesures === 0) {
+  console.error(
+    '\n✗ mesure-ui : aucun texte rognable mesuré.\n' +
+      '   La sonde cherche `text-overflow: ellipsis` et `-webkit-line-clamp` sur toute la page ;\n' +
+      "   `data-donnee` a-t-il été posé sur un ancêtre trop haut ?\n" +
+      '   Une sonde qui ne trouve rien ne prouve rien.',
+  )
+  process.exit(1)
+}
+
+/*
+  LA TOLÉRANCE S'APPLIQUE ICI, PAS DANS LA SONDE, et c'est délibéré : la sonde
+  doit rendre TOUT ce qu'elle voit pour que `maximaVus` connaisse le vrai pire,
+  y compris sous une ligne tolérée. Filtrer au relevé rendrait le plafond
+  invérifiable autrement qu'en le baissant à 1 et en relançant le navigateur.
+*/
+const maximaVus = new Map()
+for (const d of motsDebordants.values()) {
+  const vu = maximaVus.get(d.texte)
+  if (vu === undefined || d.manque > vu) maximaVus.set(d.texte, d.manque)
+}
+const nonCouverts = []
+for (const d of motsDebordants.values()) {
+  const dispense = MOTS_DEBORDANTS_TOLERES.find((x) => x.texte === d.texte)
+  if (!dispense || d.manque > dispense.plafond) nonCouverts.push({ ...d, dispense })
+}
+
+/*
+  GARDE DU GARDE — UNE TOLÉRANCE QUI NE COUVRE PLUS RIEN DOIT MOURIR.
+
+  Un libellé réparé, un écran retiré du balayage, un montant qui rétrécit : la
+  ligne resterait, et couvrirait le jour où le défaut revient — sans que personne
+  ne l'ait décidé. Une dispense doit être RÉCLAMÉE à chaque passage.
+*/
+const dispensesInutiles = MOTS_DEBORDANTS_TOLERES.filter((x) => !maximaVus.has(x.texte))
+if (dispensesInutiles.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${dispensesInutiles.length} tolérance(s) de mot débordant ne couvrent plus rien.\n` +
+      '   Le défaut a été réparé, ou le texte a changé. Retirez la ligne de\n' +
+      '   `MOTS_DEBORDANTS_TOLERES` : une dispense qui ne sert plus finira par servir.\n',
+  )
+  for (const x of dispensesInutiles) console.error(`   « ${x.texte} »  (${x.ou})\n`)
+  process.exit(1)
+}
+
+/*
+  GARDE DU GARDE — UN PLAFOND PLUS HAUT QUE LE MESURÉ EST DU MOU.
+
+  Une tolérance inscrite à 18 px pour un défaut qui n'en fait plus que 3 laisse
+  quinze pixels de dérive gratuite. Le plafond doit valoir le mesuré.
+*/
+const plafondsTropHauts = MOTS_DEBORDANTS_TOLERES.filter(
+  (x) => maximaVus.has(x.texte) && maximaVus.get(x.texte) < x.plafond,
+)
+if (plafondsTropHauts.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${plafondsTropHauts.length} plafond(s) de mot débordant dépassent le mesuré.\n`,
+  )
+  for (const x of plafondsTropHauts) {
+    console.error(`   « ${x.texte} » : plafond ${x.plafond}, mesuré ${maximaVus.get(x.texte)}\n`)
+  }
+  process.exit(1)
+}
+
+if (nonCouverts.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${nonCouverts.length} mot(s) plus large(s) que leur boîte,` +
+      ` sur ${feuillesMesurees} feuilles de texte mesurées.\n` +
+      "   Un mot qu'aucune espace ne coupe sort de sa colonne et passe SOUS son voisin. La\n" +
+      '   page, elle, ne déborde pas : la boîte voisine absorbe la sortie. Ni la règle de\n' +
+      "   page ni celle du rognage ne peuvent le voir — voir `MESURER_DEBORDEMENT_DE_MOT`.\n",
+  )
+  for (const d of nonCouverts) {
+    console.error(
+      `   −${d.manque}px  « ${d.texte} »\n` +
+        `      ${d.offert}px offerts · ${d.langue} · vu au pire à ${d.ou}\n`,
+    )
+  }
+  console.error(
+    '   Remèdes, du plus honnête au moins : rendre la place ; annuler un interlettrage\n' +
+      "   hérité d'un jeton de capitales (`tracking-normal`) ; autoriser la CÉSURE\n" +
+      '   (`hyphens-auto`), qui coupe selon la langue du document. Jamais `break-words` sur\n' +
+      "   un montant ou une donnée : il coupe n'importe où, y compris dans un nombre.",
+  )
+  process.exit(1)
+}
+
+/*
+  GARDE DU GARDE — LA SONDE DES MOTS DÉBORDANTS DOIT AVOIR VU DU TEXTE.
+
+  Ses quatre exclusions sont des `continue` : resserrer l'une d'elles par
+  inadvertance — un `display` qui bascule, un `overflow` posé plus haut dans la
+  coquille — viderait la boucle sans rien casser d'autre, et le rapport écrirait
+  « aucun mot débordant » après n'avoir mesuré personne. Même panne que celle
+  que la sonde des rognages se refuse juste au-dessus.
+
+  Le seuil est CATÉGORIQUE et non numérique : rien contre quelque chose. Un
+  minimum chiffré serait un nombre que le premier écran légitimement sobre ferait
+  relever par réflexe.
+*/
+if (feuillesMesurees === 0) {
+  console.error(
+    '\n✗ mesure-ui : aucune feuille de texte mesurée au DÉBORDEMENT DE MOT.\n' +
+      "   Les exclusions de `MESURER_DEBORDEMENT_DE_MOT` ont-elles avalé toute la page ?\n" +
+      '   Une sonde qui ne trouve rien ne prouve rien.',
+  )
+  process.exit(1)
+}
+
+/*
+  ─── GARDE DU GARDE — UN PLAFOND QUI DÉPASSE LA RÉALITÉ EST UN MENSONGE ────
+
+  L'autre garde du garde, juste en dessous, fait mourir une tolérance qui ne
+  couvre PLUS RIEN. Celle-ci s'occupe du cas d'à côté, qui s'est produit deux
+  fois dans la même journée et que rien ne signalait : une tolérance qui couvre
+  ENCORE quelque chose, mais BEAUCOUP PLUS QU'IL NE FAUT.
+
+  MESURÉ, deux fois :
+
+   — la carte d'alerte réparée a fait tomber `div.flex flex-wrap items-center
+     gap-2` de 121 px sur 74 occurrences à 81 sur 11. La signature est PARTAGÉE
+     avec la carte de chantier, donc l'entrée survivait — en blanchissant
+     désormais 40 px de régression que plus rien ne justifiait ;
+   — le montant de KPI réparé a fait tomber son entrée de 30 px sur 28
+     occurrences à 7 sur 8, et la porte est restée VERTE.
+
+  Dans les deux cas il a fallu abaisser le plafond à 1 et relancer dix minutes
+  de navigateur pour apprendre le vrai chiffre. Un rituel qu'aucune garde ne
+  réclame est un rituel que personne n'exécute.
+
+  LA MARGE EST DE QUATRE PIXELS, ET C'EST UNE PRUDENCE NON MESURÉE. Sur cette
+  machine, deux exécutions du même paquet rendent des maxima IDENTIQUES au
+  pixel — le rendu du texte y est déterministe. Ce que je n'ai pas mesuré, c'est
+  une AUTRE machine : des métriques de police différentes déplaceraient chaque
+  maximum de quelques pixels, et une marge nulle ferait rougir la porte partout
+  ailleurs pour un non-défaut. Quatre pixels absorbent ce que je suppose être
+  cette dérive. Le jour où on la mesure, ce paragraphe se remplace par un
+  chiffre.
+
+  CE QU'ELLE NE PEUT PAS FAIRE : corriger le plafond toute seule. Le nombre est
+  écrit à la main, avec son motif, parce que le baisser est une DÉCISION —
+  celle de dire « voilà où en est le produit aujourd'hui ». Une garde qui
+  réécrirait le fichier ferait disparaître la décision en même temps que
+  l'écart.
+*/
+const MARGE_DE_PLAFOND = 4
+
+const plafondsMenteurs = Object.entries(DEBORDS_LOCAUX_TOLERES)
+  .filter(([cle]) => tolerancesLocalesUtilisees.has(cle))
+  .map(([cle, { plafond }]) => ({ cle, plafond, reel: maximaLocaux.get(cle)?.debord ?? 0 }))
+  .filter(({ plafond, reel }) => plafond - reel > MARGE_DE_PLAFOND)
+
+if (plafondsMenteurs.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${plafondsMenteurs.length} plafond(s) local(aux) dépassent la réalité mesurée.\n` +
+      "   Un plafond plus haut que le défaut qu'il couvre blanchit d'avance l'écart entre les deux.\n",
+  )
+  for (const { cle, plafond, reel } of plafondsMenteurs) {
+    const ou = maximaLocaux.get(cle)?.ou ?? '—'
+    console.error(
+      `   ${cle}\n` +
+        `      inscrit ${plafond}px, mesuré ${reel}px — ${plafond - reel}px blanchis pour rien (pire cas : ${ou})\n` +
+        `      Abaissez le plafond à ${reel} et dites dans le motif ce qui a changé.\n`,
+    )
+  }
+  process.exit(1)
+}
+
+/* ─── LE BLANC IMPOSÉ ─────────────────────────────────────────────────────── */
+
+/*
+  GARDE DU GARDE, AVANT LE VERDICT. Une sonde qui ne regarderait plus une seule
+  cellule étirée rendrait « aucun creux » avec la même sérénité qu'un produit
+  sain. Le seuil est bas et volontairement grossier : il ne dit pas que la mesure
+  est juste, il dit qu'elle a EU LIEU.
+*/
+if (cellulesEtirees < 50) {
+  console.error(
+    `\n✗ mesure-ui : la sonde du blanc imposé n’a regardé que ${cellulesEtirees} cellule(s) étirée(s).\n` +
+      '   Un produit qui n’en aurait plus n’existe pas ; c’est le sélecteur qui a cessé de trouver.\n' +
+      '   Vérifiez `MESURER_BLANC_IMPOSE` avant de croire à son verdict.\n',
+  )
+  process.exit(1)
+}
+
+const creuxFautifs = [...blancsImposes.entries()]
+  .map(([signature, releve]) => ({ signature, ...releve, toleree: BLANCS_IMPOSES_TOLERES[signature] }))
+  .filter(({ blanc, toleree }) => {
+    if (!toleree) return true
+    return blanc > toleree.plafond
+  })
+
+for (const { signature, toleree } of [...blancsImposes.keys()].map((s) => ({
+  signature: s,
+  toleree: BLANCS_IMPOSES_TOLERES[s],
+}))) {
+  if (toleree) tolerancesDeBlancUtilisees.add(signature)
+}
+
+if (creuxFautifs.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${creuxFautifs.length} cellule(s) portent un BLANC IMPOSÉ non toléré.\n` +
+      '   Une voisine plus haute les étire, et le vide se paie en bas de la boîte. Le défaut ne\n' +
+      '   déborde de rien, ne coûte aucune requête et tient tous les seuils : aucune autre règle\n' +
+      '   de cette porte ne peut le voir.\n' +
+      '   LE REMÈDE N’EST PAS DE RÉDUIRE LA VOISINE. C’est, au choix : donner à la cellule de\n' +
+      '   quoi occuper sa hauteur, la sortir de la rangée, ou déclarer qu’elle distribue son\n' +
+      '   espace — un pied poussé en `mt-auto`, un contenu centré — auquel cas le vide devient\n' +
+      '   une décision et cesse d’être subi.\n',
+  )
+  for (const { signature, blanc, hauteur, part, ou, texte, toleree, parite: releveParite } of creuxFautifs) {
+    console.error(
+      `   ${blanc}px de vide sur ${hauteur}px (${part} %) — ${ou}\n` +
+        `      ${signature}\n` +
+        `      « ${texte} » · parité de rangée ${releveParite}%` +
+        (toleree ? `\n      plafond inscrit : ${toleree.plafond}px — DÉPASSÉ` : '') +
+        '\n',
+    )
+  }
+  process.exit(1)
+}
+
+/*
+  GARDE DU GARDE — une tolérance de creux qui ne couvre plus rien doit mourir.
+  Même raison que pour les débordements : la signature d'un défaut réparé
+  continuerait à blanchir tout ce qui reprendrait le même jeu de classes.
+*/
+const creuxOrphelins = Object.keys(BLANCS_IMPOSES_TOLERES).filter(
+  (cle) => !tolerancesDeBlancUtilisees.has(cle),
+)
+if (creuxOrphelins.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${creuxOrphelins.length} tolérance(s) de blanc ne couvrent plus aucun creux.\n` +
+      creuxOrphelins.map((cle) => `   ${cle} — à retirer de BLANCS_IMPOSES_TOLERES`).join('\n'),
+  )
+  process.exit(1)
+}
+
+const blancsMenteurs = Object.entries(BLANCS_IMPOSES_TOLERES)
+  .filter(([cle]) => tolerancesDeBlancUtilisees.has(cle))
+  .map(([cle, { plafond }]) => ({ cle, plafond, reel: blancsImposes.get(cle)?.blanc ?? 0 }))
+  .filter(({ plafond, reel }) => plafond - reel > MARGE_DE_PLAFOND)
+
+if (blancsMenteurs.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${blancsMenteurs.length} plafond(s) de blanc dépassent la réalité mesurée.\n`,
+  )
+  for (const { cle, plafond, reel } of blancsMenteurs) {
+    console.error(`   ${cle}\n      inscrit ${plafond}px, mesuré ${reel}px — abaissez-le.\n`)
+  }
+  process.exit(1)
+}
+
+console.log(
+  `✓ mesure-ui : ${cellulesEtirees} cellule(s) étirée(s) mesurée(s) au BLANC IMPOSÉ, ` +
+    `${blancsImposes.size} creux relevé(s), ${Object.keys(BLANCS_IMPOSES_TOLERES).length} toléré(s).\n` +
+    '  Les rangées de PAIRS en sont exclues : leur blanc est le prix de l’alignement, pas du gâchis.',
+)
+
+/*
+  GARDE DU GARDE — une tolérance locale qui ne couvre plus rien doit mourir.
+
+  Même doctrine que pour `TOLERES`, et même raison : la signature d'un défaut
+  réparé continuerait à blanchir tout ce qui reprendrait le même jeu de classes.
+*/
+const localesOrphelines = Object.keys(DEBORDS_LOCAUX_TOLERES).filter(
+  (cle) => !tolerancesLocalesUtilisees.has(cle),
+)
+if (localesOrphelines.length > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${localesOrphelines.length} tolérance(s) locale(s) ne couvrent plus aucun débordement.\n` +
+      localesOrphelines.map((cle) => `   ${cle} — à retirer de DEBORDS_LOCAUX_TOLERES`).join('\n'),
+  )
+  process.exit(1)
+}
 
 // Garde du garde : une tolérance qui ne couvre plus rien doit mourir, sinon
 // la liste devient un cimetière qui blanchit des défauts à venir.
@@ -3374,8 +6293,61 @@ if (echecs.length > 0) {
 
 console.log(
   `\n✓ mesure-ui : ${adresses.length} écrans × ${LARGEURS.length} largeurs × ${LANGUES.length} langues, aucun débordement latéral ni en-tête replié.\n` +
+    `  ${elementsSondes} éléments sondés pour le DÉBORDEMENT LOCAL — un contenu qui sort de sa boîte\n` +
+    `  sans faire défiler la page — aucun hors des ${Object.keys(DEBORDS_LOCAUX_TOLERES).length} signatures tolérées et motivées.\n` +
+    `  ${libellesMesures} libellés de barre basse mesurés à la COUPURE, aucun orphelin sous 3 caractères.\n` +
+    `  ${valeursMesurees} valeur(s) de champ mesurée(s) au ROGNAGE — une valeur ou un gabarit\n` +
+    `  coupé dans sa boîte ne déborde de rien, et aucune autre règle ne le voit.\n` +
+    `  ${pointsDInscription} points relevés dans les TROIS ÉTAPES INTÉRIEURES de l'inscription\n` +
+    `  (${champsDInscription} champs) — trois écrans sans adresse, qu'aucune porte ne regardait.\n` +
+    `  ${gestesMesures} gestes de tableau mesurés, tous ATTEIGNABLES sans découvrir un défilement,\n` +
+    `  et ${commandesDeGeste} commande(s) de geste, toutes porteuses d'un GLYPHE — une colonne sans\n` +
+    `  intitulé n'a que lui pour dire, au repos, qu'on entre dans des commandes.\n` +
+    `  ${intitulesMesures} textes rognables mesurés au ROGNAGE, en largeur comme en hauteur,\n` +
+    `  à ${16}px de police racine ET à ${RACINE_AGRANDIE}px — la seconde dimension du balayage.\n` +
+    `  ${feuillesMesurees} feuilles de texte mesurées au DÉBORDEMENT DE MOT, ${motsDebordants.size} débordement(s) relevé(s), ${MOTS_DEBORDANTS_TOLERES.length} toléré(s) et chiffré(s).\n` +
+    `  Elle coûte ${(tempsSonde / 1000).toFixed(1)} s sur ${appelsDeSonde} appels — ${(tempsSonde / appelsDeSonde).toFixed(1)} ms l'un —, ` +
+    `dont ${(tempsDansLaPage / 1000).toFixed(1)} s de parcours du DOM et ${((tempsSonde - tempsDansLaPage) / 1000).toFixed(1)} s d'aller-retour.\n` +
+    /*
+      OÙ PASSE LE TEMPS — voir l'en-tête de `chrono`.
+
+      Trié par coût, et le RESTE est nommé : la somme des postes ne fait pas la
+      durée totale, et l'écart s'appelle « non imputé » plutôt que de se dissoudre
+      dans l'arrondi du dernier poste.
+    */
+    (() => {
+      const total = performance.now() - DEPART_DU_SCRIPT
+      const postes = [...horloge.entries()].sort((a, b) => b[1].ms - a[1].ms)
+      const impute = postes.reduce((somme, [, v]) => somme + v.ms, 0)
+      const ligne = (nom, ms, appels) =>
+        `    ${(ms / 1000).toFixed(1).padStart(6)} s  ${String(Math.round((ms / total) * 100)).padStart(3)} %  ` +
+        `${appels === null ? '        ' : String(appels).padStart(5) + ' ×'}  ${nom}\n`
+      return (
+        `  OÙ PASSENT LES ${(total / 1000).toFixed(0)} SECONDES — chaque appel chronométré, le reste avoué :\n` +
+        postes.map(([nom, v]) => ligne(nom, v.ms, v.appels)).join('') +
+        ligne('non imputé (fermetures, lectures, calculs de ce script)', total - impute, null)
+      )
+    })() +
+    /*
+      LE CHIFFRE RÉEL EST IMPRIMÉ À CHAQUE PASSAGE, à côté du plafond inscrit.
+
+      C'est ce qui remplace le rituel — abaisser un plafond à 1, relancer dix
+      minutes de navigateur, lire, remettre — par lequel il fallait passer pour
+      savoir ce qu'une tolérance couvrait vraiment. Un écart de un à quatre
+      pixels se lit ici ; au-delà, la garde du plafond menteur arrête tout.
+    */
+    Object.keys(DEBORDS_LOCAUX_TOLERES)
+      .map((cle) => {
+        const reel = maximaLocaux.get(cle)?.debord ?? 0
+        const ecart = DEBORDS_LOCAUX_TOLERES[cle].plafond - reel
+        return `    ${String(reel).padStart(3)} px mesurés / ${String(DEBORDS_LOCAUX_TOLERES[cle].plafond).padStart(3)} tolérés${ecart ? ` (${ecart} d'écart)` : ''}  ${cle.slice(0, 58)}\n`
+      })
+      .join('') +
     `  ${fuite.reserves.length} modules réservés à l'application, aucun dans un paquet impatient.\n` +
     `  Premier chargement de la vitrine : ${premierChargement.octets} o compressés, sous le budget de ${BUDGET_PREMIER_CHARGEMENT} o.\n` +
+    `  EXCLUS de ce budget, et pesés à part : ${Object.values(RESSOURCES_EXTERNES_PESEES).reduce((a, b) => a + b, 0)} o servis par ` +
+    `${premierChargement.externes.length} origine(s) tierce(s) — la police d'affichage. Relevé du 2026-08-30, voir\n` +
+    `  \`RESSOURCES_EXTERNES_PESEES\`. Ce budget ne les compte pas ; il ne les tait plus.\n` +
     `  ${rangeesMesurees} mesures de la barre de la vitrine, toutes au-dessus de ${JEU_MINIMAL} px de jeu ; réglages atteints au clavier à 1440 px dans les deux langues.\n` +
     `  Panneau ouvert à 1440 px dans ${panneauxMesures} langues face à une barre de ${barreLaPlusGarnie} commandes, aucune rejouée.\n` +
     `  Bloc d'accroche : ${accroches.length} mesures, un seul écart titre–lecture (${accroches[0]?.ecart} px) des deux côtés du point de rupture.\n` +

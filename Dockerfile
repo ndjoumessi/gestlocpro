@@ -9,6 +9,17 @@
 # La version est celle de développement, à la mineure près. Construire avec un
 # autre Node que celui où l'on éprouve les tests, c'est déployer du code que
 # personne n'a exécuté.
+#
+# C'EST BIEN CE FICHIER QUI CONSTRUIT LA PRODUCTION, et il a fallu le vérifier
+# plutôt que le supposer. La configuration du service Railway annonce le
+# constructeur `RAILPACK`, ce qui laisse croire que ce Dockerfile est ignoré ;
+# c'est le réglage de tableau de bord, et `railway.json` — qui déclare
+# `"builder": "DOCKERFILE"` — le remplace à la construction. Le journal du
+# déploiement du 2026-08-26 le prouve étape par étape : « [5/9] RUN npm ci »,
+# « [7/9] RUN npm --prefix server ci », « [9/9] RUN npm run build && cd server
+# && prisma generate && npm run build » — les instructions de ce fichier, dans
+# cet ordre. Lire une configuration ne dit pas ce qui s'exécute ; le journal de
+# build, si.
 FROM node:20-bookworm-slim
 
 # Prisma se lie à OpenSSL pour joindre Postgres en TLS. L'image `slim` ne le

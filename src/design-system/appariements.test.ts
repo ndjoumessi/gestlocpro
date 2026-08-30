@@ -10,17 +10,17 @@ import { describe, expect, it } from 'vitest'
  * bien une contrepartie sombre. Elles ne peuvent pas voir le défaut corrigé ici,
  * et c'est tout l'intérêt de ce fichier.
  *
- * Un fond en `--color-ink` associé à un texte en `--color-gold` tenait 5,83:1 en
+ * Un fond en `--color-ink` associé à un texte en `--color-accent` tenait 5,83:1 en
  * clair et tombait à **2,33:1** en sombre. Les deux jetons étaient pourtant
  * parfaitement définis dans les deux thèmes : `--color-ink` s'inverse — sombre
- * en clair, clair en sombre — tandis que `--color-gold` garde sa valeur. C'est
+ * en clair, clair en sombre — tandis que `--color-accent` garde sa valeur. C'est
  * donc leur MISE EN PAIRE qui casse, pas l'un ni l'autre. Aucune lecture du
  * fichier de jetons ne pouvait le révéler ; il a fallu parcourir les écrans un
  * par un pour le trouver, sur trois sites dont la tuile SÉLECTIONNÉE d'un
  * formulaire d'inscription — l'élément le moins lisible de sa carte.
  *
  * La règle est donc simple et vaut mieux qu'une heuristique : sur un fond qui
- * s'inverse, la couleur de premier plan doit s'inverser aussi. `--color-gold-on-ink`
+ * s'inverse, la couleur de premier plan doit s'inverser aussi. `--color-accent-on-ink`
  * existe pour cela, et son nom dit le fond qu'il accompagne plutôt que sa
  * propre teinte.
  *
@@ -57,10 +57,11 @@ describe('appariements de couleurs', () => {
     // fichiers de test compris, et générerait pour de bon toute classe citée en
     // clair dans ce fichier.
     const FOND = ['bg', 'ink'].join('-')
-    const PREMIER_PLAN = ['text', 'gold'].join('-')
+    const PREMIER_PLAN = ['text', 'accent'].join('-')
 
-    // La variante qui s'inverse est légitime : on ne signale QUE l'or fixe,
-    // c'est-à-dire `text-gold` non suivi d'un tiret.
+    // La variante qui s'inverse est légitime : on ne signale QUE l'accent fixe
+    // — que `orFixe` nomme encore d'après l'or de marque d'alors —,
+    // c'est-à-dire `text-accent` non suivi d'un tiret.
     const orFixe = new RegExp(`${PREMIER_PLAN}(?![\\w-])`)
     const fondEncre = new RegExp(`${FOND}(?![\\w-])`)
 
@@ -85,7 +86,7 @@ describe('appariements de couleurs', () => {
  * Pastilles de série sur l'infobulle des graphiques.
  *
  * Le défaut jumeau du précédent, et plus silencieux encore. La pastille
- * « Loyer » prenait `--color-data-1`, qui vaut `#14201e` en thème clair —
+ * « Loyer » prenait `--color-data-1`, qui vaut `#131a22` en thème clair —
  * exactement la valeur de `--color-ink`, dont l'infobulle fait son fond. Elle
  * était peinte, à la bonne taille, à la bonne place, de la couleur du fond.
  * Les deux autres séries, teintes moyennes, s'en tiraient : une ligne sur trois
@@ -98,7 +99,7 @@ describe('appariements de couleurs', () => {
  * qu'elle occupe, dans les deux thèmes — c'est le seul angle qui attrape une
  * pastille invisible, aucune couverture de jetons ne pouvant la voir.
  */
-describe('pastilles de l’infobulle', () => {
+describe('pastilles de la lecture du graphe', () => {
   const CSS = readFileSync(join(SRC, 'design-system', 'tokens.css'), 'utf8')
   const NU = CSS.replace(/\/\*[\s\S]*?\*\//g, '')
   const CODE = sansCommentaires(
@@ -142,42 +143,51 @@ describe('pastilles de l’infobulle', () => {
   }
 
   /**
-   * Le fond RÉEL, lu là où il est peint.
+   * Le fond RÉEL, lu là où il est peint — ET IL A CHANGÉ DE CÔTÉ.
    *
-   * C'est le piège qui a coûté une correction fausse. `--color-ink` s'inverse
-   * avec le thème dans les blocs de palette — mais l'infobulle porte `.on-dark`,
-   * et cette classe la REFIXE à sa valeur sombre pour tout ce qui vit dessous.
-   * Un garde qui lit la palette mesure donc un fond que ce composant n'a jamais.
-   * Il avait ainsi « prouvé » qu'il fallait des jetons inversants, ce qui a
-   * réparé le thème clair en rendant la pastille invisible en sombre.
+   * ═══ CE QUE CE GARDE TENAIT, ET POURQUOI IL LE TIENT ENCORE ═══
    *
-   * On lit le bloc `.on-dark` lui-même : une seule valeur, pour les deux thèmes,
-   * ce qui est exactement ce que le composant voit.
+   * La lecture du graphe était peinte sur `--color-ink` sous la portée
+   * `.on-dark`, qui refixe cette encre à sa valeur SOMBRE dans les deux thèmes.
+   * Un garde qui lisait `--color-ink` dans la palette mesurait donc un fond que
+   * le composant n'avait jamais — il avait ainsi « prouvé » qu'il fallait des
+   * jetons inversants, ce qui réparait le clair en rendant la pastille
+   * invisible en sombre.
+   *
+   * ═══ CE QUI A CHANGÉ ═══
+   *
+   * La lecture a quitté le fond encre : elle vit sur la SURFACE DE LA CARTE,
+   * bordée, et ses pastilles prennent la palette des barres. La règle, elle,
+   * n'a pas bougé d'un mot — c'est la même phrase qui la porte : « le fond d'un
+   * composant se lit là où il est PEINT, pas dans la palette dont il tire son
+   * nom. » Seul le fond qu'on va lire est l'autre.
+   *
+   * `--color-surface` s'inverse AVEC le thème et aucune portée ne le refixe : on
+   * le lit donc dans chaque bloc de palette, et non une fois pour toutes comme
+   * `.on-dark` l'imposait. C'est le sens du `FOND` devenu une fonction.
    */
-  const FOND = jeton(corps('.on-dark'), '--color-ink')
+  const fondDe = (bloc: string) => jeton(bloc, '--color-surface')
 
   /**
-   * Les séries de l'infobulle, lues DANS SA TABLE plutôt que recopiées.
+   * Les séries de la lecture, lues DANS SA TABLE plutôt que recopiées.
    *
    * Cette liste était figée à la main, et elle a périmé sans bruit. Le lot qui a
    * inversé l'ordre des teintes — la plus grande surface porte le moins de poids
-   * — a repeint l'infobulle en `data-6`, `data-4` et `data-3`, pendant que le
+   * — a repeint la lecture en `data-6`, `data-4` et `data-3`, pendant que le
    * garde continuait de mesurer `data-1`, `data-4` et `data-5`. UNE SEULE des
    * trois séries affichées était donc surveillée ; les deux autres passaient
    * sans contrôle, et deux jetons que plus personne ne peint étaient déclarés
    * sains à chaque exécution.
    *
    * C'est le défaut le plus insidieux d'un garde : il n'échoue pas, il achète de
-   * la confiance sans rien tenir. Le bloc frère, plus bas, extrayait déjà sa
-   * table à la source par expression régulière, précisément pour n'avoir pas à
-   * la maintenir — la technique existait quand cette liste a été figée. On la
-   * reprend ici, avec la même garde du garde.
+   * la confiance sans rien tenir. On extrait donc la table à la source, avec sa
+   * garde du garde.
    */
   const TABLE =
-    /const SERIES_COLORS_ON_DARK: Record<string, string> = \{([\s\S]*?)\}/.exec(CODE)?.[1] ?? ''
-  const SERIES = [...TABLE.matchAll(/var\((--color-data-\d-on-dark)\)/g)].map(([, nom]) => nom)
+    /const SERIES_COLORS: Record<string, string> = \{([\s\S]*?)\}/.exec(CODE)?.[1] ?? ''
+  const SERIES = [...TABLE.matchAll(/var\((--color-data-\d)\)/g)].map(([, nom]) => nom)
 
-  it('lit bien les trois séries de l’infobulle', () => {
+  it('lit bien les trois séries de la lecture', () => {
     // Une extraction qui rend une liste vide ne mesure rien et passe au vert :
     // exactement le silence qu'on vient de corriger.
     expect(SERIES).toHaveLength(3)
@@ -185,26 +195,40 @@ describe('pastilles de l’infobulle', () => {
 
   for (const [theme, bloc] of Object.entries(BLOCS)) {
     for (const serie of SERIES) {
-      it(`détache ${serie} du fond de l’infobulle en ${theme}`, () => {
+      it(`détache ${serie} du fond de la lecture en ${theme}`, () => {
         const pastille = jeton(bloc, serie)
-        const ecart = Math.abs(clarte(pastille) - clarte(FOND))
+        const fond = fondDe(bloc)
+        const ecart = Math.abs(clarte(pastille) - clarte(fond))
         expect(
           ecart,
-          `${theme} : ${serie} ${pastille} sur ${FOND} — ΔL* ${ecart.toFixed(1)}`,
+          `${theme} : ${serie} ${pastille} sur ${fond} — ΔL* ${ecart.toFixed(1)}`,
         ).toBeGreaterThan(20)
       })
     }
   }
 
-  it('peint l’infobulle avec les contreparties, jamais avec les teintes claires', () => {
-    // La correction consiste à choisir la BONNE table ; l'oubli consiste à
-    // reprendre celle des barres, qui vivent sur une carte claire.
+  it('peint la lecture avec la palette de ses propres barres', () => {
+    /*
+      UNE SEULE TABLE POUR LA CARTE, et c'est l'inverse exact de ce que ce cas
+      exigeait hier.
+
+      Il demandait `SERIES_COLORS_ON_DARK` — la palette inversée — parce que la
+      lecture était le seul objet à fond sombre de la carte. Elle ne l'est plus,
+      et la conséquence saute aux yeux dès qu'on la nomme : la pastille « Loyer »
+      de la lecture était d'une AUTRE teinte que la barre juste au-dessus d'elle
+      et que la légende juste à côté. Trois repères, trois couleurs, une seule
+      série.
+
+      La règle qu'on tient est donc la même à un mot près : la pastille prend la
+      palette du fond sur lequel elle se pose. Ce fond est désormais celui de la
+      carte, et c'est `SERIES_COLORS` qui le sert — celle des barres.
+    */
     const code = sansCommentaires(readFileSync(join(SRC, 'components', 'primitives', 'Charts.tsx'), 'utf8'))
-    const lignesInfobulle = code
-      .split('\n')
-      .filter((l) => /color:\s*SERIES_COLORS/.test(l))
-    expect(lignesInfobulle.length, 'aucune pastille d’infobulle trouvée').toBeGreaterThan(0)
-    for (const ligne of lignesInfobulle) expect(ligne).toContain('SERIES_COLORS_ON_DARK')
+    const lignes = code.split('\n').filter((l) => /color:\s*SERIES_COLORS/.test(l))
+    expect(lignes.length, 'aucune pastille de lecture trouvée').toBeGreaterThan(0)
+    for (const ligne of lignes) {
+      expect(ligne).not.toContain(['SERIES_COLORS', 'ON_DARK'].join('_'))
+    }
   })
 })
 
@@ -280,12 +304,12 @@ describe('séries de l’histogramme', () => {
    *
    * Plus large qu'`EMPLOYES`, et à dessein : une opacité ne connaît pas les
    * tables. Elle s'applique à ce qui se trouve sous elle, et l'histogramme
-   * simple — `data-1` pour les mois révolus, `gold-ink` pour le mois courant,
+   * simple — `data-1` pour les mois révolus, `accent-ink` pour le mois courant,
    * `muted-soft` pour une période sans relevé — était le premier concerné.
    */
   const MARQUES = [
     ...new Set(
-      [...CODE.matchAll(/var\(--color-(data-\d|gold-ink|muted-soft)\)/g)].map(
+      [...CODE.matchAll(/var\(--color-(data-\d|accent-ink|muted-soft)\)/g)].map(
         ([, nom]) => `--color-${nom}`,
       ),
     ),

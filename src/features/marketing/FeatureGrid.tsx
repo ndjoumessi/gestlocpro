@@ -1,4 +1,5 @@
 import { cn } from '@/lib/cn'
+import { Card } from '@/components/primitives/Card'
 import { Section } from '@/components/layout/Section'
 import { Icon, type IconName } from '@/components/primitives/Icon'
 import { useT } from '@/i18n/I18nProvider'
@@ -37,24 +38,63 @@ export function FeatureGrid() {
           passe de 24 à 32px, l'élévation est plus discrète au repos, et le
           survol soulève la carte au lieu de seulement changer sa bordure. */}
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {/* `Card` avec `as="article"` : ces six cartes portent chacune un titre
+              et un corps, donc un rôle `article` qu'un `<div>` leur retirerait.
+              `flush` plus un rembourrage explicite, et jamais `className="p-7"`
+              seul : `cn` concatène sans fusionner, le `sm:p-5` de la primitive
+              serait émis APRÈS et ferait tomber le rembourrage à 20 px au-delà
+              de 640. Mesuré par l'audit, pas supposé. */}
         {FEATURES.map(({ key, icon }) => (
-          <article
+          <Card
+            as="article"
+            flush
+            elevation="e1"
             key={key}
             className={cn(
-              'group rounded-xl border border-divider bg-surface p-7 sm:p-8',
-              'shadow-e1 transition-[transform,box-shadow,border-color] duration-200 ease-out',
+              'group p-7 sm:p-8',
+              'transition-[transform,box-shadow,border-color] duration-200 ease-out',
               'hover:-translate-y-1 hover:border-border-strong hover:shadow-e2',
             )}
           >
+            {/*
+              ═══ LA PASTILLE PORTE L'ACCENT, ELLE NE L'EFFLEURE PLUS ═══
+
+              Elle était `bg-accent-tint text-accent-ink` : un bleu très pâle
+              portant un glyphe bleu. Sur une carte blanche posée sur un gris
+              clair, cela fait TROIS valeurs voisines empilées — la page, la
+              carte, la pastille — et le signe le plus fort de la section, celui
+              qui doit se repérer d'un coup d'œil dans une grille de six,
+              disparaissait dans le fond au lieu d'y ancrer l'œil.
+
+              La pastille est maintenant l'accent PLEIN, glyphe en `on-accent`.
+              Six ronds bleus donnent à la grille sa trame : on compte les
+              fonctionnalités avant de les lire, ce qui est exactement ce qu'une
+              grille de six doit permettre.
+
+              LE SURVOL S'INVERSE EN CONSÉQUENCE. `bg-ink` + `accent-on-ink`
+              gardait son sens tant que la pastille était pâle ; venant du bleu
+              plein, passer à l'encre est un changement de teinte de plus. On
+              assombrit donc l'accent lui-même — `accent-hover`, le jeton qui
+              existe précisément pour cela — et la carte continue de se soulever.
+            */}
             <span
               className={cn(
                 'flex size-12 items-center justify-center rounded-lg',
-                'bg-gold-tint text-gold-ink transition-colors duration-200',
-                // `gold-on-ink` : au survol le fond devient `--color-ink`, qui
-                // s'inverse avec le thème. L'or de marque, lui, ne bouge pas —
-                // la paire tenait 7,04:1 au repos et tombait à 2,33:1 au survol
-                // en sombre. Le survol dégradait donc activement la lisibilité.
-                'group-hover:bg-ink group-hover:text-gold-on-ink',
+                'bg-accent text-on-accent transition-colors duration-200',
+                /* CE QUI ÉTAIT ÉCRIT ICI RESTE VRAI, et vaut d'être gardé : le
+                   survol basculait vers `bg-ink`, dont la teinte s'inverse avec
+                   le thème, alors que l'accent de marque ne bouge pas. La paire
+                   tenait 7,04:1 au repos et tombait à 2,33:1 au survol en sombre
+                   — le survol DÉGRADAIT la lisibilité. `accent-on-ink` était le
+                   seul jeton portant une valeur par thème, donc le seul à suivre
+                   l'encre partout où elle va.
+
+                   Le problème ne se pose plus dans ces termes : la pastille est
+                   désormais l'accent plein, et son survol reste dans la même
+                   famille. `accent-hover` est le jeton de l'accent enfoncé — il
+                   porte 6,70:1 sous du blanc, contre 5,17 au repos, donc le
+                   survol AMÉLIORE le contraste au lieu de l'abîmer. */
+                'group-hover:bg-accent-hover',
               )}
             >
               <Icon name={icon} size={22} />
@@ -66,7 +106,7 @@ export function FeatureGrid() {
             <p className="mt-3 text-body text-pretty text-muted">
               {t(`marketing.features.${key}.body` as 'marketing.features.rent.body')}
             </p>
-          </article>
+          </Card>
         ))}
       </div>
     </Section>

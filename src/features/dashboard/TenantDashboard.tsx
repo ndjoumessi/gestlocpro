@@ -3,25 +3,104 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { lien, useBase } from '@/lib/base'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
-import { Icon } from '@/components/primitives/Icon'
-import { MiniBarChart, ProgressBar } from '@/components/primitives/Charts'
-import { PaymentStatusPill, StatusPill } from '@/components/primitives/StatusPill'
+import { Notice } from '@/components/primitives/Notice'
+import { MiniBarChart, ProgressBar, StatCard } from '@/components/primitives/Charts'
+import { PAYMENT_TONES } from '@/components/primitives/StatusPill'
 import { EmptyState } from '@/components/primitives/DataTable'
-import { Skeleton, SkeletonRegion, SkeletonStatCard } from '@/components/primitives/Skeleton'
+import { Skeleton, SkeletonRegion, SkeletonStatRow } from '@/components/primitives/Skeleton'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
 import { useNumbers } from '@/lib/numbers'
 import { cn } from '@/lib/cn'
+import { AU_DELA_SM, useAuDela } from '@/lib/useAuDela'
 import {
+  PAYMENT_METHOD_LABELS,
   dernierVersement,
   imputation,
   type ConsumptionPoint,
-  type Receipt,
 } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { ReceiptModal } from './ReceiptModal'
 import { workTitle } from '@/data/workTitle'
+
+/**
+ * LA GRILLE DES TROIS CARTES DU MOIS, et pourquoi elle ne rejoint pas
+ * `grillesDIndicateurs`.
+ *
+ * Elle est PROPRE à cet écran : la première carte porte le loyer — la seule
+ * somme due d'office, et la plus longue à écrire — les deux autres des
+ * consommations refacturées. `1.4fr` n'est pas un réglage esthétique, c'est
+ * cette asymétrie-là. La ranger avec les deux grilles partagées ferait une
+ * constante à trois cas, c'est-à-dire trois littéraux sous un seul nom.
+ *
+ * Nommée quand même, et c'est le point du lot : la rangée CHARGÉE et son
+ * SQUELETTE la lisent tous deux ici, donc ils ne peuvent plus diverger.
+ */
+/*
+  ═══ LE SEUIL EST CELUI DU CONTENEUR, PAS CELUI DE LA FENÊTRE ═══
+
+  `lg:` regardait la fenêtre. Or cette rangée se rend dans DEUX contenants qui
+  n'ont pas la même largeur pour une même fenêtre :
+
+    /demo/mon-espace   l'écran réel du locataire   — grille 689 px à 1024
+    /demo/portail      la prévisualisation, dans un cadre de navigateur
+                       destiné au propriétaire     — grille 632 px à 1024
+
+  À 1024 le seuil `lg` déclenchait donc trois colonnes dans les deux cas, et
+  « 17 622 FCFA » — que `Intl` compose avec des espaces insécables, donc un seul
+  jeton de onze caractères — sortait de sa carte : de 2 px sur l'écran réel, de
+  19 px dans la prévisualisation. Aucun débordement de page : le montant sortait
+  DANS la carte. Relevé par `MESURER_DEBORDEMENT_DE_MOT`.
+
+  AUCUN SEUIL DE FENÊTRE NE POUVAIT LE DIRE, et c'est ce qui a décidé de l'outil.
+  Le rapport cadre/fenêtre vaut 0,62 dans la prévisualisation et 1 sur l'écran
+  réel : monter le seuil à `xl` réparait les deux à 1280 mais retardait sans
+  raison la mise en trois colonnes de l'écran réel ; le descendre à `sm` rendait
+  deux colonnes de 162 px dans la prévisualisation à 640, soit le même défaut
+  trente pixels plus bas. Un seuil unique ne peut pas décrire deux contenants.
+
+  `@container` mesure le PARENT — et il faut le poser SUR le parent, jamais sur
+  la grille elle-même : un élément n'est pas son propre conteneur, et les deux
+  classes sur la même boîte font chercher un ancêtre qui n'existe pas. D'où
+  `ENVELOPPE_LOCATAIRE`, qui n'a pas d'autre raison d'être. Les seuils ci-dessous
+  sont donc des largeurs d'enveloppe, vraies dans les deux contextes :
+
+    @xl   (36rem = 576)  deux colonnes  — chacune ≥ 280 px, soit 240 px utiles
+    @3xl  (48rem = 768)  trois colonnes — la plus étroite ≥ 216 px, soit 176 utiles
+
+  Le montant en réclame 153. Les seuils sont posés sur le MESURÉ et non sur le
+  premier palier disponible : une première rédaction avait pris `@2xl` et `@4xl`,
+  et `@4xl` (896) ratait de HUIT PIXELS l'enveloppe de 888 px que la
+  prévisualisation offre à 1280 — la rangée retombait à deux colonnes là où trois
+  tenaient depuis toujours. Le palier au-dessus n'est pas gratuit ; il faut le
+  choisir contre une largeur réelle.
+
+  `1.4fr` reste ce qu'il était : la première carte porte le loyer, la seule somme
+  due d'office et la plus longue à écrire ; les deux autres des consommations
+  refacturées. Ce n'est pas un réglage esthétique, c'est cette asymétrie-là.
+
+  ═══ POURQUOI ELLE NE REJOINT PAS `grillesDIndicateurs` ═══
+
+  Elle est PROPRE à cet écran, pour la raison qui précède. La ranger avec les
+  deux grilles partagées ferait une constante à trois cas, c'est-à-dire trois
+  littéraux sous un seul nom.
+
+  Nommée quand même : la rangée CHARGÉE et son SQUELETTE la lisent tous deux
+  ici, donc ils ne peuvent plus diverger.
+*/
+/* L'enveloppe n'existe que pour porter `@container` : un élément n'est pas son
+   propre conteneur. Nommée, et non écrite deux fois, pour la même raison que la
+   grille — la rangée chargée et son squelette doivent la lire au même endroit. */
+const ENVELOPPE_LOCATAIRE = '@container'
+const GRILLE_LOCATAIRE = 'grid gap-4 @xl:grid-cols-2 @3xl:grid-cols-[1.4fr_1fr_1fr]'
+
+/**
+ * Les quittances et les signalements, côte à côte. Nommée pour la même
+ * raison que `GRILLE_LOCATAIRE` : la rangée chargée et son squelette la
+ * lisaient chacun dans sa propre chaîne.
+ */
+const GRILLE_QUITTANCES_ET_SIGNALEMENTS = 'mt-4 grid gap-4 lg:grid-cols-[1.4fr_1fr]'
 
 /**
  * Espace locataire.
@@ -33,6 +112,11 @@ import { workTitle } from '@/data/workTitle'
  */
 export function TenantDashboard() {
   const [quittanceDe, setQuittanceDe] = useState<string | null>(null)
+  /* Le tableau des quittances cède la place à des fiches sous `sm` — voir le
+     commentaire au point de bascule. Lu au RENDU et non par la feuille de
+     style : rendre les deux formes laisserait la donnée deux fois dans le
+     document, ce que la famille précédente a payé en trente-quatre cas rouges. */
+  const enTableau = useAuDela(AU_DELA_SM)
   const base = useBase()
   const t = useT()
   const d = useDates()
@@ -115,7 +199,6 @@ export function TenantDashboard() {
       </>
     )
 
-
   /**
    * Le mois EN COURS, et non la première quittance de la liste.
    *
@@ -159,7 +242,7 @@ export function TenantDashboard() {
   const refacture = (conso: number | null, prix: number | null | undefined) =>
     conso === null || prix === null || prix === undefined
       ? '—'
-      : money(conso * prix, { round: true })
+      : money(conso * prix, { compact: true })
 
   return (
     <>
@@ -193,83 +276,107 @@ export function TenantDashboard() {
           d'office ; l'eau et l'électricité sont REFACTURÉES, et leur montant se
           dérive de la quantité relevée et du tarif, jamais d'un chiffre saisi
           deux fois. */}
-      <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr_1fr]">
-        <Card className="flex flex-col">
-          <div className="flex items-start justify-between gap-3">
-            <p className="eyebrow text-muted">
-              {t('app.tenant.rentFor')} · {d.monthYear(periodeCourante)}
-            </p>
-            <PaymentStatusPill status={unit.status} size="sm" />
-          </div>
-          <p className="numeric mt-2 text-kpi font-medium">{money(unit.rent, { round: true })}</p>
-          {/* La valeur est un POURCENTAGE, pas un montant : passer le montant
-              rendait une piste large de 145 000 % et un libellé « 145000 % ».
-              Le libellé est masqué — le montant juste au-dessus le dit déjà —
-              mais reste annoncé aux lecteurs d'écran. */}
-          <div className="mt-3">
-            {/* Le TON suit le STATUT de la pastille juste au-dessus, et non un
-                vert fixe. Un logement EN RETARD affichait une pastille rouge
-                ET une piste verte pour le même fait — deux couleurs
-                contraires sur la même carte, à un public qui lit d'abord la
-                couleur. `ProgressBar` n'expose que trois tons (`gold`, `ok`,
-                `danger`) : `danger` est le seul qui rejoigne la pastille sans
-                en inventer un quatrième dans un composant partagé. */}
-            <ProgressBar
-              value={unit.rent === 0 ? 0 : Math.round((unit.paid / unit.rent) * 100)}
-              label={t('app.tenant.rentFor')}
-              tone={unit.status === 'overdue' ? 'danger' : 'ok'}
-              hideLabel
-            />
-          </div>
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-            {/* Le jour et le moyen du règlement sont les deux seules choses que
-                la quittance sait et que le portefeuille ignore. Sans quittance
-                pour la période, la ligne disparaît plutôt que d'en inventer
-                une : le statut au-dessus dit déjà où en est le loyer. */}
-            {versementCourant ? (
-              <span className="text-body text-muted">
-                {t('app.tenant.paidOnBy', {
-                  date: d.dayMonth(versementCourant.paidOn),
-                  method: t(
-                    MOYENS_DE_PAIEMENT[versementCourant.method] as 'app.payments.methodCash',
-                  ),
-                })}
-              </span>
-            ) : (
-              <span />
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="-mr-3.5"
-              onClick={() => setQuittanceDe(periodeIso(periodeCourante))}
-            >
-              {t('app.tenant.receipt')}
-            </Button>
-          </div>
-        </Card>
+      {/* L'ENVELOPPE N'EXISTE QUE POUR PORTER `@container` — voir GRILLE_LOCATAIRE. */}
+      <div className={ENVELOPPE_LOCATAIRE}>
+        <div className={GRILLE_LOCATAIRE}>
+          {/*
+            LA CARTE DU LOYER PASSE PAR LA PRIMITIVE, comme ses deux voisines.
 
-        <CarteCharge
-          label={t('app.tenant.water')}
-          amount={refacture(eauConso, releve?.waterPrice)}
-          note={
-            eauConso === null
-              ? t('app.meters.missing')
-              : t('app.tenant.consumedWater', { n: n.integer(eauConso) })
-          }
-        />
-        <CarteCharge
-          label={t('app.tenant.power')}
-          amount={refacture(elecConso, releve?.powerPrice)}
-          note={
-            elecConso === null
-              ? t('app.meters.missing')
-              : t('app.tenant.consumedPower', { n: n.integer(elecConso) })
-          }
-        />
+            Elle recopiait `StatCard` à la main — surtitre, `text-kpi`, note
+            grise — et se retrouvait donc SANS `data-indicateur`, invisible à
+            toutes les gardes qui interrogent ce marqueur. C'était le seul écran
+            que le LOCATAIRE voit, et le seul que rien ne mesurait de ce côté-là.
+
+            Elle est la seule carte du produit qui continue SOUS son nombre : une
+            piste de progression, la date et le moyen du dernier règlement, le
+            bouton de quittance. `StatCard` a reçu pour cela un emplacement
+            nommé, `bas`, et non un `children` — voir sa prop, qui dit pourquoi.
+
+            L'ÉTAT REMPLACE LA PASTILLE POSÉE À LA MAIN : `etat` porte le ton ET
+            son libellé, et il peint en plus la bordure et la tuile. Le statut du
+            paiement est le même, il est simplement dit une fois au lieu de
+            deux.
+          */}
+          <StatCard
+            icone="card"
+            label={`${t('app.tenant.rentFor')} · ${d.monthYear(periodeCourante)}`}
+            value={money(unit.rent, { compact: true })}
+            etat={{ ton: PAYMENT_TONES[unit.status], libelle: t(`status.${unit.status}` as 'status.paid') }}
+            bas={
+              <>
+            {/* La valeur est un POURCENTAGE, pas un montant : passer le montant
+                rendait une piste large de 145 000 % et un libellé « 145000 % ».
+                Le libellé est masqué — le montant juste au-dessus le dit déjà —
+                mais reste annoncé aux lecteurs d'écran. */}
+            <div className="mt-3">
+              {/* Le TON suit le STATUT de la pastille juste au-dessus, et non un
+                  vert fixe. Un logement EN RETARD affichait une pastille rouge
+                  ET une piste verte pour le même fait — deux couleurs
+                  contraires sur la même carte, à un public qui lit d'abord la
+                  couleur. `ProgressBar` n'expose que trois tons (`accent`, `ok`,
+                  `danger`) : `danger` est le seul qui rejoigne la pastille sans
+                  en inventer un quatrième dans un composant partagé. */}
+              <ProgressBar
+                value={unit.rent === 0 ? 0 : Math.round((unit.paid / unit.rent) * 100)}
+                label={t('app.tenant.rentFor')}
+                tone={unit.status === 'overdue' ? 'danger' : 'ok'}
+                hideLabel
+              />
+            </div>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+              {/* Le jour et le moyen du règlement sont les deux seules choses que
+                  la quittance sait et que le portefeuille ignore. Sans quittance
+                  pour la période, la ligne disparaît plutôt que d'en inventer
+                  une : le statut au-dessus dit déjà où en est le loyer. */}
+              {versementCourant ? (
+                <span className="text-body text-muted">
+                  {t('app.tenant.paidOnBy', {
+                    date: d.dayMonth(versementCourant.paidOn),
+                    method: t(
+                      PAYMENT_METHOD_LABELS[versementCourant.method] as 'app.payments.methodCash',
+                    ),
+                  })}
+                </span>
+              ) : (
+                <span />
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="-mr-3.5"
+                onClick={() => setQuittanceDe(periodeIso(periodeCourante))}
+              >
+                {t('app.tenant.receipt')}
+              </Button>
+            </div>
+              </>
+            }
+          />
+
+          <CarteCharge
+            icone="droplet"
+            label={t('app.tenant.water')}
+            amount={refacture(eauConso, releve?.waterPrice)}
+            note={
+              eauConso === null
+                ? t('app.meters.missing')
+                : t('app.tenant.consumedWater', { n: n.integer(eauConso) })
+            }
+          />
+          <CarteCharge
+            icone="bolt"
+            label={t('app.tenant.power')}
+            amount={refacture(elecConso, releve?.powerPrice)}
+            note={
+              elecConso === null
+                ? t('app.meters.missing')
+                : t('app.tenant.consumedPower', { n: n.integer(elecConso) })
+            }
+          />
+        </div>
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+      <div className={GRILLE_QUITTANCES_ET_SIGNALEMENTS}>
         {/* MES PAIEMENTS PAR PÉRIODE.
             Trois colonnes de montants pour une même période : c'est un tableau,
             et non une liste. Les en-têtes portent `scope` — sans quoi un lecteur
@@ -301,6 +408,7 @@ export function TenantDashboard() {
               />
             </div>
           ) : (
+          enTableau ? (
           <div className="overflow-x-auto border-t border-divider">
             <table className="w-full border-collapse">
               {/* Le titre vit dans le `CardHeader`, DEHORS de la table : un
@@ -361,6 +469,85 @@ export function TenantDashboard() {
               </tbody>
             </table>
           </div>
+          ) : (
+            /*
+              ═══ LES QUITTANCES EN FICHES, SUR UN TÉLÉPHONE ═══
+
+              C'est l'écran que le LOCATAIRE ouvre, et le locataire est celui du
+              produit qui a le moins de chances d'avoir autre chose qu'un
+              téléphone. Mesuré à 360 px : cinq colonnes, 62 px à faire glisser
+              pour atteindre le bouton de quittance — c'est-à-dire pour atteindre
+              la seule action de la carte.
+
+              Même forme que les écrans-tableaux de la famille précédente : la
+              période nomme la fiche, les trois composantes du loyer deviennent
+              des couples nom/valeur, et la quittance descend au pied. Rien n'est
+              masqué, rien ne défile latéralement.
+
+              PAS `DataTable` POUR AUTANT. Ce tableau vit DANS une carte, et
+              `DataTable` pose la sienne — bordure, ombre, rayon. On aurait rendu
+              une carte dans une carte pour économiser trente lignes. Ce qui est
+              partagé est le RAISONNEMENT, écrit dans `ListeDeFiches` ; la forme
+              locale suit son support.
+
+              `<dl>` pour la même raison que là-bas : « Loyer : 145 000 » est un
+              couple terme/définition, et un lecteur d'écran doit l'entendre
+              comme tel.
+            */
+            <ul className="flex flex-col gap-2 p-4 pt-0">
+              {tenantReceipts.map((receipt) => {
+                const regle = imputation(receipt)
+                return (
+                  <li
+                    key={`${receipt.year}-${receipt.month}`}
+                    data-quittance=""
+                    className="rounded-md border border-divider bg-surface-sunken p-3"
+                  >
+                    <p className="text-body font-medium">{d.monthYear(receipt)}</p>
+                    <dl className="mt-2 flex flex-col gap-1">
+                      {(
+                        [
+                          [t('app.tenant.colRent'), receipt.rentMinor, regle.rent],
+                          [t('app.tenant.colWater'), receipt.waterMinor, regle.water],
+                          [t('app.tenant.colPower'), receipt.powerMinor, regle.power],
+                        ] as const
+                      ).map(([terme, du, paye]) => (
+                        <div key={terme} className="flex items-baseline justify-between gap-3">
+                          <dt className="eyebrow shrink-0 text-muted">{terme}</dt>
+                          <dd
+                            className={cn(
+                              'numeric min-w-0 text-right text-body',
+                              paye >= du ? 'text-ok' : 'text-warn',
+                            )}
+                          >
+                            <MontantRegle du={du} regle={paye} />
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                    {/* PAS DE `-mr-3.5` ICI, à rebours de la cellule du tableau.
+
+                        Dans le tableau, la marge négative rattrape le rembourrage
+                        du bouton fantôme pour que son libellé s'aligne sur le bord
+                        de la cellule. La fiche n'a pas ce rembourrage à rattraper :
+                        la marge y tirait le bouton HORS de sa boîte, 14 px à 320 px
+                        sur quarante-huit occurrences — trouvé par la sonde du
+                        débordement local, pas par l'œil. */}
+                    <div className="mt-2 flex justify-end">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`${t('app.tenant.receipt')} — ${d.monthYear(receipt)}`}
+                        onClick={() => setQuittanceDe(periodeIso(receipt))}
+                      >
+                        {t('app.tenant.receipt')}
+                      </Button>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )
           )}
         </Card>
 
@@ -376,11 +563,11 @@ export function TenantDashboard() {
             <dl className="flex flex-col">
               <LigneBail
                 terme={t('app.tenant.leaseRent')}
-                valeur={money(unit.rent, { round: true })}
+                valeur={money(unit.rent, { compact: true })}
               />
               <LigneBail
                 terme={t('app.tenant.leaseDeposit')}
-                valeur={deposit ? money(deposit.held, { round: true }) : '—'}
+                valeur={deposit ? money(deposit.held, { compact: true }) : '—'}
               />
               {/* L'état des lieux EXISTE comme fiche, pas comme fichier : aucun
                   dépôt ne le crée, et ce produit ne fabrique pas de PDF
@@ -470,13 +657,7 @@ export function TenantDashboard() {
         />
       )}
 
-      {/* La règle de confidentialité est dite à l'écran, pas seulement
-          appliquée : le locataire doit savoir ce que son bailleur ne voit pas
-          de lui, et inversement. */}
-      <p className="mt-4 flex items-start gap-2 rounded-lg border border-divider bg-surface px-4 py-3 text-body text-muted">
-        <Icon name="shield" size={16} className="mt-0.5 shrink-0 text-ok" />
-        {t('app.tenant.privacyNote')}
-      </p>
+      <TenantScopeNote className="mt-4" />
     </>
   )
 }
@@ -496,15 +677,32 @@ function periodeIso(periode: { year: number; month: number }): string {
   return `${periode.year}-${String(periode.month + 1).padStart(2, '0')}-01`
 }
 
-/** Une charge du mois : son montant, et le volume qu'elle facture. */
-function CarteCharge({ label, amount, note }: { label: string; amount: string; note: string }) {
-  return (
-    <Card>
-      <p className="eyebrow text-muted">{label}</p>
-      <p className="numeric mt-2 text-kpi font-medium">{amount}</p>
-      <p className="mt-2 text-body text-muted">{note}</p>
-    </Card>
-  )
+/**
+ * Une charge du mois : son montant, et le volume qu'elle facture.
+ *
+ * ELLE RECOPIAIT `StatCard` — surtitre en `eyebrow`, grand nombre en `text-kpi`,
+ * note grise dessous — au lieu de l'appeler. Elle se voyait pareil et n'était
+ * pas pareil : pas de `data-indicateur`, donc invisible à toutes les gardes qui
+ * interrogent ce marqueur ; pas de `data-intitule`, donc son libellé n'était pas
+ * mesuré au rognage ; ni tuile d'icône, ni bordure d'état, ni pastille de
+ * variation à sa disposition.
+ *
+ * La fonction survit parce qu'elle NOMME quelque chose que la primitive ignore :
+ * une charge refacturée, avec son glyphe de fluide. C'est la seule chose qu'elle
+ * ajoute désormais.
+ */
+function CarteCharge({
+  label,
+  amount,
+  note,
+  icone,
+}: {
+  label: string
+  amount: string
+  note: string
+  icone: 'droplet' | 'bolt'
+}) {
+  return <StatCard icone={icone} label={label} value={amount} note={note} />
 }
 
 /**
@@ -572,6 +770,22 @@ function SerieFluide({
  * cellule ne dérive plus rien d'un tarif courant.
  */
 function CelluleMontant({ du, regle }: { du: number; regle: number }) {
+  const solde = regle >= du
+  return (
+    <td className={cn('numeric px-3 py-3 text-right text-body', solde ? 'text-ok' : 'text-warn')}>
+      <MontantRegle du={du} regle={regle} />
+    </td>
+  )
+}
+
+/**
+ * Le montant et ce qu'il en reste, SANS sa cellule.
+ *
+ * Extrait de `CelluleMontant` parce que la fiche du téléphone le rend hors d'un
+ * `<td>` — voir `QuittancesEnFiches`. Le rendu est identique au caractère près :
+ * ce lot déplace une forme, il ne change aucun chiffre.
+ */
+function MontantRegle({ du, regle }: { du: number; regle: number }) {
   const t = useT()
   const { money } = useCurrency()
   const solde = regle >= du
@@ -588,11 +802,16 @@ function CelluleMontant({ du, regle }: { du: number; regle: number }) {
     L'écrire dans chaque cellule d'un tableau de trois colonnes la répéterait
     trente-six fois et rendrait la colonne illisible — c'est déjà le choix que
     fait l'export du même tableau.
-  */
-  const lireMontant = (v: number) => money(v, { round: true, omitSymbol: true })
 
+    ELLE RESTE OMISE DANS LA FICHE, et c'est le seul point où le déplacement a
+    demandé une décision : la fiche ne porte que trois montants au lieu de
+    trente-six, donc l'argument du volume n'y vaut plus. Mais l'en-tête de la
+    carte nomme toujours la devise une fois, et faire diverger les deux formes
+    créerait deux graphies pour la même colonne selon la largeur de l'écran.
+  */
+  const lireMontant = (v: number) => money(v, { compact: true, omitSymbol: true })
   return (
-    <td className={cn('numeric px-3 py-3 text-right text-body', solde ? 'text-ok' : 'text-warn')}>
+    <>
       {lireMontant(solde ? du : regle)}
       {!solde && (
         <span className="text-caps">
@@ -600,23 +819,10 @@ function CelluleMontant({ du, regle }: { du: number; regle: number }) {
           {t('app.tenant.remaining', { amount: lireMontant(du - regle) })}
         </span>
       )}
-    </td>
+    </>
   )
 }
 
-/**
- * Le dictionnaire des moyens de paiement, aux valeurs du serveur.
- *
- * Une table plutôt qu'une clé construite : `app.payments.method${method}`
- * imposerait une majuscule à la volée, et `check-i18n` ne verrait plus quelles
- * clés sont employées.
- */
-const MOYENS_DE_PAIEMENT: Record<Receipt['payments'][number]['method'], string> = {
-  mobile: 'app.payments.methodMobile',
-  cash: 'app.payments.methodCash',
-  transfer: 'app.payments.methodTransfer',
-  check: 'app.payments.methodCheck',
-}
 
 /** Un terme du bail : un intitulé, et soit une valeur, soit un renvoi. */
 function LigneBail({
@@ -655,7 +861,6 @@ function Legende({ tone, label }: { tone: string; label: string }) {
     </span>
   )
 }
-
 
 /**
  * L'espace locataire, le temps que son bail arrive.
@@ -706,17 +911,34 @@ function TenantDashboardSkeleton() {
       />
 
       <SkeletonRegion>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {[0, 1, 2, 3].map((carte) => (
-            <SkeletonStatCard key={carte} />
-          ))}
+        {/* MÊME GRILLE, MÊME COMPTE que la rangée chargée — et c'est un
+            correctif. Ce squelette attendait sous QUATRE cartes égales en
+            `sm:grid-cols-2 xl:grid-cols-4` là où l'écran en charge TROIS,
+            inégales, sans point de rupture avant `lg`. Sur une tablette il
+            montrait deux colonnes pour une, sur un grand écran quatre cartes
+            pour trois : la page se réorganisait entièrement au moment précis où
+            elle cesse d'attendre, et le doigt qui visait la première carte
+            tombait ailleurs.
+
+            Le défaut a survécu à toute la refonte parce qu'AUCUNE porte ne rend
+            jamais un état de chargement — ni la vitrine, ni la mesure au
+            navigateur, ni les tests. C'est le refactoring qui l'a montré, en
+            mettant les deux littéraux côte à côte. */}
+        {/* L'ENVELOPPE AUSSI, et pas seulement la grille : `@2xl:` et `@4xl:`
+            cherchent un ancêtre déclaré conteneur. Sans elle, le squelette
+            rendrait UNE colonne à toutes les largeurs pendant que la rangée
+            chargée en rend trois — exactement la divergence que ce nom partagé
+            existe pour empêcher, et que rien ne rendrait visible puisqu'aucune
+            porte ne rend jamais un état de chargement. */}
+        <div className={ENVELOPPE_LOCATAIRE}>
+          <SkeletonStatRow count={3} className={GRILLE_LOCATAIRE} />
         </div>
 
-        <div className="mt-4 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+        <div className={GRILLE_QUITTANCES_ET_SIGNALEMENTS}>
           {/* Les quittances. Six lignes : c'est ce que rend `TENANT_RECEIPTS`,
               et leur nombre ne dépend pas du serveur — seuls les montants en
               dépendent. */}
-          <div className="min-w-0 rounded-lg border border-divider bg-surface shadow-e1">
+          <Card flush>
             <div className="p-4 sm:p-5">
               <Skeleton line="title" className="w-40" />
             </div>
@@ -730,10 +952,10 @@ function TenantDashboardSkeleton() {
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
 
           <div className="flex flex-col gap-4">
-            <div className="min-w-0 rounded-lg border border-divider bg-surface p-4 shadow-e1 sm:p-5">
+            <Card>
               <Skeleton line="title" className="mb-4 w-44" />
               <div className="flex flex-col gap-3">
                 {[0, 1].map((travaux) => (
@@ -747,12 +969,22 @@ function TenantDashboardSkeleton() {
                 ))}
               </div>
               <Skeleton radius="md" className="mt-4 h-9 w-28" />
-            </div>
+            </Card>
 
             {/* La carte du gestionnaire ne porte aucune donnée de parc, mais
                 elle est prise dans le même bloc : la reproduire évite que la
-                colonne de droite ne s'allonge d'un coup à l'arrivée du bail. */}
-            <div className="min-w-0 rounded-lg border border-divider bg-ink p-4 shadow-e1 sm:p-5">
+                colonne de droite ne s'allonge d'un coup à l'arrivée du bail.
+
+                ELLE AVAIT DÉRIVÉ, et c'est la seule des six recopies qui l'ait
+                fait : elle portait `border-divider` et `shadow-e1` là où
+                `Card tone="dark"` pose une bordure TRANSPARENTE et aucune
+                ombre. Un filet clair et un relief autour d'un aplat d'encre, à
+                la place d'une carte qui n'en a ni l'un ni l'autre — puis les
+                deux disparaissaient à l'arrivée des données.
+
+                Les pavés restent visibles dessus : `.on-dark` ne remappe pas
+                `--color-surface-sunken`, vérifié dans `tokens.css`. */}
+            <Card tone="dark">
               <Skeleton line="title" className="mb-4 w-36" />
               <div className="flex items-center gap-3">
                 <Skeleton className="size-10" />
@@ -762,15 +994,12 @@ function TenantDashboardSkeleton() {
                 </div>
               </div>
               <Skeleton radius="md" className="mt-4 h-11 w-full" />
-            </div>
+            </Card>
           </div>
         </div>
       </SkeletonRegion>
 
-      <p className="mt-4 flex items-start gap-2 rounded-lg border border-divider bg-surface px-4 py-3 text-body text-muted">
-        <Icon name="shield" size={16} className="mt-0.5 shrink-0 text-ok" />
-        {t('app.tenant.privacyNote')}
-      </p>
+      <TenantScopeNote className="mt-4" />
     </>
   )
 }
@@ -807,8 +1036,37 @@ export function TenantRestricted() {
   )
 }
 
-/** Bandeau réutilisable rappelant le périmètre du locataire. */
-export function TenantScopeNote() {
+/**
+ * LE PÉRIMÈTRE DU LOCATAIRE, dit une fois pour les six écrans qui le rappellent.
+ *
+ * CE QU'IL REMPLACE, ET LE DÉTOUR QU'IL A FALLU. Deux bandeaux disaient la même
+ * phrase — `app.tenant.privacyNote`, mot pour mot — sous deux écritures : celui-ci,
+ * à la main, avec la liste des unités ; et une copie interne au tableau de bord,
+ * sans elle, écrite deux fois de plus dans le même fichier. Trois rédactions pour
+ * une phrase.
+ *
+ * IL AVAIT ÉTÉ REFUSÉ À LA MIGRATION, avec un motif juste et une conclusion
+ * fausse. Le motif : sa pastille portait déjà un bouclier, et `Notice` en aurait
+ * posé un second à trois millimètres. La conclusion tirée — « il reste à la
+ * main » — prenait la pastille pour une donnée du problème.
+ *
+ * Elle n'en était pas une. Une `StatusPill` rend un VERDICT ; celle-ci était en
+ * ton `ok`, c'est-à-dire qu'elle peignait en vert de succès une simple liste de
+ * logements. Le bandeau entier l'était avec elle. Or nommer son périmètre n'est
+ * ni une réussite ni une alerte : c'est une borne, et une borne est neutre.
+ *
+ * Le bouclier remonte donc au bandeau, où il dit ce qu'il a toujours voulu dire
+ * — « ceci parle de ce que vous voyez et de ce que vous ne voyez pas » — et les
+ * unités redeviennent ce qu'elles sont, des noms, en gras dans la phrase. Pas de
+ * seconde icône, pas de vert emprunté, pas de pastille sur un lavis.
+ *
+ * PAS DE MARGE PAR DÉFAUT : chaque appelant pose la sienne. `cn` CONCATÈNE — il
+ * n'est pas `tailwind-merge` — donc un `mb-4` de série plus un `mt-4` d'appelant
+ * laisseraient les deux classes dans le balisage, et le jour où quelqu'un voudra
+ * `mb-0` c'est l'ordre d'émission de la feuille qui trancherait. Six appelants,
+ * six marges écrites : le prix est visible, le piège n'existe pas.
+ */
+export function TenantScopeNote({ className }: { className?: string }) {
   const t = useT()
   // Le périmètre vient du provider, qui le tient du serveur. Les identifiants
   // sont techniques : ils servent à retrouver les unités, jamais à être lus —
@@ -817,11 +1075,12 @@ export function TenantScopeNote() {
   const n = useNumbers()
   const libelles = tenantUnitIds.map((id) => unitById(id)?.label).filter(Boolean) as string[]
   return (
-    <p className="mb-4 flex items-start gap-2 rounded-md border border-ok-border bg-ok-tint px-3.5 py-2.5 text-body text-ok">
-      <StatusPill tone="ok" size="sm" icon="shield">
-        {n.list(libelles)}
-      </StatusPill>
+    <Notice tone="neutral" icon="shield" className={className}>
+      {/* La liste ne paraît que si le provider a rendu des libellés : sur un
+          compte dont le bail n'est pas encore relié, elle serait vide, et un gras
+          suivi d'une espace annoncerait un périmètre qu'on ne sait pas nommer. */}
+      {libelles.length > 0 && <span className="font-semibold">{n.list(libelles)} · </span>}
       {t('app.tenant.privacyNote')}
-    </p>
+    </Notice>
   )
 }

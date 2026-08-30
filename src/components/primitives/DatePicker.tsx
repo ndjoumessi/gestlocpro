@@ -252,7 +252,7 @@ function GrilleAnnees({
               'numeric min-h-11 cursor-pointer rounded-md px-2 text-body transition-colors duration-150',
               !estChoisie && 'hover:bg-surface-sunken',
               estChoisie && 'bg-ink font-medium text-on-dark',
-              estCourante && !estChoisie && 'ring-1 ring-gold-border',
+              estCourante && !estChoisie && 'ring-1 ring-accent-border',
             )}
           >
             {annee}
@@ -622,7 +622,7 @@ export function DatePicker({
                           // seule couleur : le jour choisi porte déjà un fond
                           // plein, et deux aplats voisins ne se distingueraient
                           // pas en niveaux de gris.
-                          estAujourdHui && !estChoisi && 'ring-1 ring-gold-border',
+                          estAujourdHui && !estChoisi && 'ring-1 ring-accent-border',
                         )}
                       >
                         {j.jour}
@@ -638,7 +638,7 @@ export function DatePicker({
             <button
               type="button"
               onClick={() => choisir(aujourdHui)}
-              className="min-h-11 cursor-pointer rounded-md px-2 text-label font-semibold text-gold-ink hover:text-gold-ink-hover"
+              className="min-h-11 cursor-pointer rounded-md px-2 text-label font-semibold text-accent-ink hover:text-accent-ink-hover"
             >
               {t('common.dateToday')}
             </button>
@@ -857,7 +857,7 @@ export function MonthPicker({
                       // Le mois courant se cerne, il ne se colore pas : le mois
                       // choisi porte déjà un fond plein, et deux aplats voisins
                       // ne se distingueraient pas en niveaux de gris.
-                      estCourant && !estChoisi && 'ring-1 ring-gold-border',
+                      estCourant && !estChoisi && 'ring-1 ring-accent-border',
                     )}
                   >
                     {nom}
@@ -870,7 +870,7 @@ export function MonthPicker({
               <button
                 type="button"
                 onClick={() => choisir(courant.mois, courant.annee)}
-                className="min-h-11 cursor-pointer rounded-md px-2 text-label font-semibold text-gold-ink hover:text-gold-ink-hover"
+                className="min-h-11 cursor-pointer rounded-md px-2 text-label font-semibold text-accent-ink hover:text-accent-ink-hover"
               >
                 {t('common.monthCurrent')}
               </button>

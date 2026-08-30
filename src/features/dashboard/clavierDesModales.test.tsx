@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { attendreLeChargement, renderApp, screen, userEvent, within } from '@/test/render'
+import {
+  attendreLeChargement,
+  renderApp,
+  screen,
+  switchRole,
+  userEvent,
+  waitFor,
+  within,
+} from '@/test/render'
+import type { Role } from '@/features/auth/signupState'
 
 /**
  * TOUTE MODALE S'OUVRE, SE TIENT ET SE REND AU CLAVIER.
@@ -23,26 +32,203 @@ import { attendreLeChargement, renderApp, screen, userEvent, within } from '@/te
  * était donc réel des deux côtés.
  */
 
+interface Modale {
+  nom: string
+  adresse: string
+  bouton: RegExp
+  /**
+   * Le rang du bouton quand le geste se RÉPÈTE par ligne.
+   *
+   * Absent, le bouton doit être UNIQUE et la garde le vérifie : viser
+   * silencieusement le premier d'une liste laisserait un geste devenu ambigu
+   * passer pour un geste précis. Mesuré : « Quittance » rend dix boutons sur
+   * l'écran des encaissements, « Répondre » quatre sur celui des travaux — un
+   * par ligne, ce qui est juste et n'a pas à être corrigé.
+   */
+  rang?: number
+  /** Le profil sous lequel l'écran rend ce geste. Par défaut, celui du montage. */
+  profil?: Role
+  /**
+   * CE QUE LA MODALE EST, et ce n'est pas une commodité de test.
+   *
+   * `saisie` : un formulaire. Ses champs doivent tous porter un libellé visible
+   * relié — c'est le second cas de ce fichier.
+   *
+   * `lecture` : une pièce qu'on CONSULTE. La quittance n'a aucun champ, et
+   * exiger qu'elle en porte ferait rougir un montage correct. Le déclarer
+   * plutôt que sauter la vérification quand la liste est vide : ainsi un
+   * formulaire qui perdrait ses champs rougit, au lieu d'être silencieusement
+   * traité comme une pièce à lire.
+   */
+  forme: 'saisie' | 'lecture'
+}
+
 /** Où chaque modale s'ouvre, et par quel bouton. Une ligne par modale. */
-const MODALES: { nom: string; adresse: string; bouton: RegExp }[] = [
-  { nom: 'Ajouter un immeuble', adresse: '/demo/parc', bouton: /^Ajouter un immeuble$/ },
-  { nom: 'Ajouter un logement', adresse: '/demo/parc', bouton: /^Ajouter un logement$/ },
-  { nom: 'Ouvrir un chantier', adresse: '/demo/travaux', bouton: /^Ouvrir un chantier$/ },
-  { nom: 'Enregistrer un paiement', adresse: '/demo/paiements', bouton: /^Enregistrer un paiement$/ },
+const MODALES: Modale[] = [
+  { nom: 'Ajouter un immeuble', adresse: '/demo/parc', bouton: /^Ajouter un immeuble$/, forme: 'saisie' },
+  { nom: 'Ajouter un logement', adresse: '/demo/parc', bouton: /^Ajouter un logement$/, forme: 'saisie' },
+  { nom: 'Ouvrir un chantier', adresse: '/demo/travaux', bouton: /^Ouvrir un chantier$/, forme: 'saisie' },
+  { nom: 'Enregistrer un paiement', adresse: '/demo/paiements', bouton: /^Enregistrer un paiement$/, forme: 'saisie' },
+  /*
+    CINQUIÈME, ET ELLE ÉTAIT INATTEIGNABLE. Le bouton de « Corriger le parc »
+    était gardé par `adhesionActive`, c'est-à-dire par un COMPTE RÉEL : la
+    démonstration n'en porte pas, donc il n'était pas rendu, donc ni ce fichier
+    ni `scripts/modales.mjs` ne pouvaient l'ouvrir. Sa géométrie, ses couleurs
+    et son clavier n'étaient vérifiés par personne. La garde suit désormais le
+    rôle ACTIF, qui est connu en démonstration comme sur un vrai compte.
+  */
+  { nom: 'Corriger le parc', adresse: '/demo/parc', bouton: /^Corriger le parc$/, forme: 'saisie' },
+  /* Sixième, et dernière des deux qui étaient inatteignables — même garde, même
+     confusion, même remède. Voir l'en-tête de `scripts/modales.mjs`. */
+  { nom: 'Prix de refacturation', adresse: '/demo/releves', bouton: /^Prix de refacturation$/, forme: 'saisie' },
+  /*
+    ═══ LES SIX DERNIÈRES, ET POURQUOI ELLES ARRIVENT EN DERNIER ═══
+
+    Ce fichier en jouait quatre, puis six. Les six qui manquaient n'étaient pas
+    inatteignables — `scripts/modales.mjs` les ouvre depuis toujours — elles
+    étaient simplement HORS DE CE FICHIER, et la ligne de succès de la porte
+    l'annonçait à chaque passage. Leur clavier n'était vérifié nulle part : ni
+    l'entrée du focus, ni le piège, ni Échap, ni le retour au bouton.
+
+    Trois d'entre elles demandent plus qu'un clic sur un libellé, et c'est ce
+    qui les avait laissées de côté :
+
+      · « Quittance » et « Répondre » se répètent PAR LIGNE — dix et quatre
+        boutons mesurés. Elles déclarent leur `rang` ;
+      · « Signaler un problème » n'existe que pour le LOCATAIRE : l'écran des
+        travaux ne le rend pas au bailleur. Elle déclare son `profil`.
+
+    La quittance est la seule `lecture` des douze : une pièce qu'on consulte,
+    sans un champ à remplir.
+  */
+  { nom: 'Quittance', adresse: '/demo/paiements', bouton: /^Quittance$/, rang: 0, forme: 'lecture' },
+  { nom: 'Établir un état des lieux', adresse: '/demo/etats-des-lieux', bouton: /^Établir un état des lieux$/, forme: 'saisie' },
+  { nom: 'Inviter par code', adresse: '/demo/locataires', bouton: /^Inviter par code$/, forme: 'saisie' },
+  { nom: 'Prévenir les locataires', adresse: '/demo/locataires', bouton: /^Prévenir les locataires$/, forme: 'saisie' },
+  { nom: 'Répondre', adresse: '/demo/travaux', bouton: /^Répondre$/, rang: 0, forme: 'saisie' },
+  { nom: 'Signaler un problème', adresse: '/demo/travaux', bouton: /^Signaler un problème$/, profil: 'tenant', forme: 'saisie' },
+  /*
+    ═══ LES CONFIRMATIONS, ET C'ÉTAIT LE PLUS GRAND TROU ═══
+
+    Douze modales étaient jouées : celles qu'un bouton ouvre du premier coup.
+    Les CONFIRMATIONS ne s'ouvrent qu'après un premier geste — arbitrer une
+    caution, retirer une fiche, retirer un accès, relancer les retards — et
+    aucune garde ne les atteignait, ni celle-ci ni `scripts/modales.mjs`.
+
+    Or ce sont celles où le clavier compte LE PLUS : on y décide d'un geste
+    irréversible, et Échap y est la sortie de secours. Un piège de focus qui
+    fuit sur un `alertdialog` de suppression laisse la tabulation derrière la
+    boîte, sur l'écran qu'on est en train de modifier.
+
+    TROIS SONT DES `lecture` : elles n'ont pas un champ, seulement une phrase et
+    deux boutons. L'arbitrage, lui, est un formulaire — montant retenu et
+    justification — donc ses champs doivent porter leur libellé.
+
+    Elles se répètent PAR LIGNE, comme la quittance : d'où leur `rang`.
+  */
+  { nom: 'Arbitrer', adresse: '/demo/cautions', bouton: /^Arbitrer$/, rang: 0, forme: 'saisie' },
+  { nom: 'Retirer une fiche', adresse: '/demo/locataires', bouton: /^Retirer$/, rang: 0, forme: 'lecture' },
+  { nom: 'Retirer un accès', adresse: '/demo/acces', bouton: /^Retirer l’accès$/, rang: 0, forme: 'lecture' },
+  { nom: 'Relancer les retards', adresse: '/demo/paiements', bouton: /^Relancer les retards$/, forme: 'lecture' },
+  /* La cinquième confirmation, entrée quand la démonstration a cessé de masquer
+     le geste. `saisie` : elle porte un motif, qui est tout l'acte. */
+  { nom: 'Mettre en demeure', adresse: '/demo/paiements', bouton: /^Mettre en demeure$/, rang: 0, forme: 'saisie' },
 ]
 
-async function parcoursClavier(adresse: string, motif: RegExp) {
-  const user = userEvent.setup()
-  await renderApp(adresse)
-  await attendreLeChargement()
+/**
+ * LA BOÎTE, QUEL QUE SOIT SON RÔLE.
+ *
+ * Ce fichier ne cherchait que `role="dialog"`. Les CONFIRMATIONS portent
+ * `role="alertdialog"` — c'est le rôle juste, « pour les confirmations
+ * destructives » dit `Modal` — si bien qu'aucune n'était trouvable ici. Le jour
+ * où on a voulu les jouer, elles ont rougi sur « boîte introuvable », ce qui ne
+ * disait rien de leur clavier.
+ *
+ * `waitFor` et non `findByRole` : ce dernier ne prend qu'un rôle, et enchaîner
+ * deux attentes ferait payer le délai de la première à chaque confirmation.
+ */
+async function trouverLaBoite(): Promise<HTMLElement> {
+  return await waitFor(() => {
+    const boite = document.querySelector('[role="dialog"],[role="alertdialog"]')
+    if (!boite) throw new Error('aucune boîte de dialogue ouverte')
+    return boite as HTMLElement
+  })
+}
 
-  const ouvreur = screen.getByRole('button', { name: motif })
+/**
+ * Monte l'écran, pose le profil s'il en faut un, et rend le bouton d'ouverture.
+ *
+ * Le montage est partagé par les deux cas de ce fichier : ils ouvraient la même
+ * modale par deux chemins écrits séparément, et l'un des deux aurait pu cesser
+ * de l'ouvrir sans que l'autre le dise.
+ */
+async function ouvrirLEcran(modale: Modale): Promise<HTMLElement> {
+  await renderApp(modale.adresse)
+  await attendreLeChargement()
+  if (modale.profil) {
+    await switchRole(modale.profil)
+    await attendreLeChargement()
+  }
+
+  /*
+    LE MENU DE DÉBORDEMENT EST OUVERT D'ABORD, s'il y en a un.
+
+    Trois de ces douze modales s'ouvrent depuis une action qui s'est repliée
+    derrière trois points — corriger le parc, poser un prix, prévenir les
+    locataires. Le cas continue de mesurer ce qui l'intéresse : l'entrée du
+    focus, le piège, Échap, et le retour au bouton qui a ouvert. Ce bouton vit
+    simplement une porte plus loin.
+  */
+  if (screen.queryAllByRole('button', { name: modale.bouton }).length === 0) {
+    /* L'en-tête D'ABORD, la zone principale ensuite : deux niveaux replient —
+       la rangée d'actions de la page, et les cartes d'intervention. La coquille
+       porte le même attribut tout en haut pour son menu de compte ; l'ouvrir
+       mènerait à la déconnexion, elle est donc hors du champ des deux
+       sélecteurs. */
+    const user = userEvent.setup()
+    const candidats = [
+      ...Array.from(
+        document.querySelectorAll('[data-en-tete-de-page] [aria-haspopup="menu"]'),
+      ),
+      ...Array.from(document.querySelectorAll('main [aria-haspopup="menu"]')),
+    ]
+    for (const d of candidats) {
+      await user.click(d as HTMLElement)
+      if (screen.queryAllByRole('menuitem', { name: modale.bouton }).length > 0) break
+      await user.keyboard('{Escape}')
+    }
+  }
+
+  /* Une entrée de menu porte `menuitem` et non `button` : un `menu` n'admet que
+     des `menuitem` parmi ses descendants signifiants, sans quoi il cesse
+     d'annoncer « 2 sur 3 ». Les deux rôles sont donc cherchés. */
+  const boutons = [
+    ...screen.queryAllByRole('button', { name: modale.bouton }),
+    ...screen.queryAllByRole('menuitem', { name: modale.bouton }),
+  ]
+  if (modale.rang === undefined) {
+    /* Sans `rang` déclaré, le geste doit être UNIQUE : prendre le premier d'une
+       liste reviendrait à choisir sans le dire, et le jour où un écran répète un
+       bouton la garde doit le signaler plutôt que viser au hasard. */
+    expect(boutons, `« ${modale.nom} » n’est pas unique sur son écran`).toHaveLength(1)
+    return boutons[0]!
+  }
+  expect(
+    boutons.length,
+    `« ${modale.nom} » : rang ${modale.rang} demandé, ${boutons.length} bouton(s) rendus`,
+  ).toBeGreaterThan(modale.rang)
+  return boutons[modale.rang]!
+}
+
+async function parcoursClavier(modale: Modale) {
+  const user = userEvent.setup()
+  const ouvreur = await ouvrirLEcran(modale)
   ouvreur.focus()
   expect(document.activeElement).toBe(ouvreur)
 
   /* Ouvert au CLAVIER, pas à la souris : c'est le chemin qu'on garde. */
   await user.keyboard('{Enter}')
-  const dialogue = await screen.findByRole('dialog')
+  const dialogue = await trouverLaBoite()
 
   /* LE FOCUS EST ENTRÉ. Une modale qui s'ouvre en laissant le focus derrière
      elle oblige à tabuler à travers toute la page pour l'atteindre. */
@@ -61,14 +247,38 @@ async function parcoursClavier(adresse: string, motif: RegExp) {
   expect(evasions, 'le focus est sorti de la modale ouverte').toEqual([])
 
   await user.keyboard('{Escape}')
-  expect(screen.queryByRole('dialog')).toBeNull()
-  expect(document.activeElement, 'le focus n’est pas revenu au bouton d’ouverture').toBe(ouvreur)
+  expect(document.querySelector('[role="dialog"],[role="alertdialog"]')).toBeNull()
+  /*
+    LE FOCUS REVIENT LÀ OÙ L'ON PEUT ENCORE ALLER.
+
+    Pour neuf de ces douze modales, c'est le bouton qui a ouvert. Pour les trois
+    qui vivent derrière trois points, ce bouton N'EXISTE PLUS : le menu s'est
+    refermé en même temps qu'il agissait, et son entrée avec lui. Le focus
+    remonte alors au déclencheur du menu — c'est-à-dire à l'endroit d'où
+    l'utilisateur est parti, et le seul qui soit encore là pour le recevoir.
+
+    Mesuré, et non prévu : la chaîne tient parce que le piège du MENU rend le
+    focus à son déclencheur avant que celui de la MODALE ne note qui l'avait.
+  */
+  if (ouvreur.isConnected) {
+    expect(document.activeElement, 'le focus n’est pas revenu au bouton d’ouverture').toBe(ouvreur)
+  } else {
+    /* Le geste vivait dans un menu, qui s'est refermé en agissant : son entrée
+       n'existe plus. Le focus doit alors se poser sur LE DÉCLENCHEUR de ce
+       menu — l'endroit d'où l'on est parti, et le seul encore là pour le
+       recevoir. On ne nomme pas lequel : trois points d'en-tête ou trois points
+       de carte, la règle est la même. */
+    expect(
+      (document.activeElement as HTMLElement)?.getAttribute('aria-haspopup'),
+      'le focus n’est pas revenu au menu qui a ouvert',
+    ).toBe('menu')
+  }
 }
 
 describe('le clavier des modales', () => {
   for (const modale of MODALES) {
     it(`« ${modale.nom} » : ouverture, piège, Échap, retour du focus`, async () => {
-      await parcoursClavier(modale.adresse, modale.bouton)
+      await parcoursClavier(modale)
     })
   }
 
@@ -94,10 +304,9 @@ describe('le clavier des modales', () => {
    */
   for (const modale of MODALES) {
     it(`« ${modale.nom} » : chaque champ porte le nom de son libellé`, async () => {
-      await renderApp(modale.adresse)
-      await attendreLeChargement()
-      await userEvent.click(screen.getByRole('button', { name: modale.bouton }))
-      const dialogue = await screen.findByRole('dialog')
+      const ouvreur = await ouvrirLEcran(modale)
+      await userEvent.click(ouvreur)
+      const dialogue = await trouverLaBoite()
 
       /* `type="hidden"` EXCLU, et c'est mesuré, pas supposé : `DatePicker` et
          `MonthPicker` posent chacun un champ caché qui porte la valeur pour la
@@ -112,7 +321,15 @@ describe('le clavier des modales', () => {
         ),
       ).filter((el) => !el.classList.contains('sr-only'))
 
-      /* Une modale sans champ ne prouverait rien : on exige qu'il y en ait. */
+      if (modale.forme === 'lecture') {
+        /* Une pièce qu'on CONSULTE n'a rien à faire remplir. On ne saute pas la
+           vérification : on exige l'inverse, sans quoi une modale de saisie qui
+           perdrait ses champs passerait pour une pièce à lire. */
+        expect(controles.map((el) => el.tagName.toLowerCase())).toEqual([])
+        return
+      }
+
+      /* Une modale de saisie sans champ ne prouverait rien : on exige qu'il y en ait. */
       expect(controles.length, 'aucun champ à vérifier dans cette modale').toBeGreaterThan(0)
       /*
         UN LIBELLÉ VISIBLE, ET NON UN `aria-label` SEUL — c'est l'extension.
@@ -176,7 +393,7 @@ describe('le clavier des modales', () => {
     await renderApp('/demo/travaux')
     await attendreLeChargement()
     await user.click(screen.getByRole('button', { name: /^Ouvrir un chantier$/ }))
-    const dialogue = await screen.findByRole('dialog')
+    const dialogue = await trouverLaBoite()
 
     const champ = screen.getByRole('textbox', { name: /Que faut-il faire/ })
     expect(champ).not.toHaveAttribute('aria-invalid', 'true')
@@ -205,8 +422,20 @@ describe('le clavier des modales', () => {
    * rendrait la garde d'accord avec elle-même, piège trouvé par la même
    * mutation trois lots de suite.
    */
-  it('a bien joué les quatre modales déclarées', () => {
-    expect(MODALES.length).toBe(4)
-    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(4)
+  it('a bien joué les dix-sept modales déclarées', () => {
+    expect(MODALES.length).toBe(17)
+    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(17)
+    /* LES `lecture` SONT NOMMÉES, et l'écrire ici les protège : passer une
+       modale de saisie en `lecture` pour faire taire un champ mal libellé est
+       le contournement le plus facile de ce fichier. Il ferait rougir.
+
+       Trois des quatre confirmations en sont : une phrase et deux boutons, pas
+       un champ. L'arbitrage n'y est pas — il en porte deux. */
+    expect(MODALES.filter((m) => m.forme === 'lecture').map((m) => m.nom)).toEqual([
+      'Quittance',
+      'Retirer une fiche',
+      'Retirer un accès',
+      'Relancer les retards',
+    ])
   })
 })

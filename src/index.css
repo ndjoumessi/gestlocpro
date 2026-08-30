@@ -1,31 +1,19 @@
 @import 'tailwindcss';
 @import './design-system/tokens.css';
 
-/**
- * Impression d'un document qui atteste.
+/*
+ * PLUS DE FEUILLE `@media print`, et c'est un retrait, pas un oubli.
  *
- * Seule la zone marquée sort de l'imprimante. Sans cela, une quittance
- * emporterait la barre latérale, la navigation et les boutons de la modale —
- * personne ne remet cela à un locataire.
+ * Elle éteignait la page — `body * { visibility: hidden }` — pour ne rallumer
+ * que `.zone-imprimable`, le corps de la modale de quittance. Le procédé avait
+ * un défaut que seul un vrai document révélait : `visibility: hidden` CONSERVE
+ * la géométrie des ancêtres. Le corps de la modale restait donc un conteneur de
+ * défilement à hauteur bornée, et il rognait la zone qu'il contenait. Ce qui
+ * sortait de l'imprimante était la quittance coupée là où le défilement
+ * s'arrêtait, sur deux pages portant chacune le même haut de document.
  *
- * `visibility` et non `display: none` sur les ancêtres : masquer un ancêtre
- * masquerait aussi la zone qu'il contient. On éteint donc tout, puis on
- * rallume la zone et sa descendance.
+ * Cette modale était la SEULE cliente. L'impression passe maintenant par le PDF
+ * que le produit fabrique déjà — `printBinaryFile` dans `lib/download` — donc
+ * par la pièce elle-même, identique au fichier que le locataire reçoit. Il n'y
+ * a plus rien à masquer : on n'imprime plus la page.
  */
-@media print {
-  body * {
-    visibility: hidden;
-  }
-
-  .zone-imprimable,
-  .zone-imprimable * {
-    visibility: visible;
-  }
-
-  .zone-imprimable {
-    position: absolute;
-    inset: 0 auto auto 0;
-    width: 100%;
-    padding: 0;
-  }
-}

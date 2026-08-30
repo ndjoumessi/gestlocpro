@@ -192,6 +192,15 @@ model Park {
   /// Devise de tenue des comptes. Elle appartient au parc : un loyer de Douala
   /// est en francs CFA, quelle que soit la langue de celui qui le regarde.
   currency Currency
+
+  /// Les montants de ce parc sont-ils écrits en unités MINEURES ?
+  ///
+  /// Vrai partout depuis la migration `montants_en_unites_mineures`, et c'est un
+  /// TÉMOIN de conversion, pas un réglage : le client ne compte que d'une façon
+  /// à la fois. Il existe parce qu'une multiplication par cent n'est pas
+  /// rejouable — l'appliquer deux fois est irréparable sans sauvegarde — et
+  /// qu'une garde en base vaut mieux qu'une consigne dans un fichier.
+  amountsAreMinor Boolean @default(true)
   /// Politique de délégation. Lue aujourd'hui dans un `useState` local de
   /// l'écran d'onboarding, alors qu'elle commande deux droits réels — valider
   /// un devis, arbitrer une caution. Le serveur s'en sert pour autoriser.

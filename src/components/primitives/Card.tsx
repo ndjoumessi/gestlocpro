@@ -1,25 +1,114 @@
-import type { HTMLAttributes, ReactNode } from 'react'
+import { forwardRef, type HTMLAttributes, type ReactNode } from 'react'
 import { cn } from '@/lib/cn'
 
-export type CardTone = 'default' | 'sunken' | 'dark' | 'gold' | 'plain'
+export type CardTone = 'default' | 'sunken' | 'dark' | 'darkRaised' | 'accent'
+
+/** Le niveau d'élévation — voir `elevation`. */
+export type CardElevation = 'e1' | 'e2' | 'e3'
 
 const TONES: Record<CardTone, string> = {
   default: 'bg-surface border-divider shadow-e1',
   sunken: 'bg-surface-sunken border-border',
   dark: 'bg-ink border-transparent text-on-dark on-dark',
-  gold: 'bg-gold-tint border-gold-border',
-  plain: 'bg-transparent border-transparent',
+  /* La carte sombre POSÉE SUR une section sombre. `dark` peint `--color-ink`,
+     qui est déjà le fond d'une section en ton sombre : une carte y disparaîtrait
+     dans son support. Celle-ci monte d'un cran sur `--color-ink-2` et prend une
+     bordure de la famille inversée, ce qui la détache sans l'éclaircir. */
+  darkRaised: 'bg-ink-2 border-on-dark-border text-on-dark on-dark',
+  accent: 'bg-accent-tint border-accent-border',
+  /* `plain` A ÉTÉ RETIRÉ, et c'est la garde des branches mortes qui l'a trouvé
+     — pas l'œil. Une carte sans fond ni bordure n'est plus une carte : c'est un
+     `<div>`, et le produit en écrivait un directement partout où il en voulait
+     un. Le ton n'avait aucun appelant. */
 }
 
-export interface CardProps extends HTMLAttributes<HTMLDivElement> {
+export interface CardProps extends HTMLAttributes<HTMLElement> {
   tone?: CardTone
   /** Retire le rembourrage interne — pour les tableaux pleine largeur. */
   flush?: boolean
+  /**
+   * L'ÉLÉMENT RENDU, et il fallait le rendre réglable.
+   *
+   * `Card` ne savait produire qu'un `<div>`. Un audit a compté HUIT cartes de
+   * vitrine qui la réimplémentaient à la main, et six d'entre elles ne pouvaient
+   * PAS l'appeler : ce sont un `<article>`, un `<li>` dans un `<ol>`, un
+   * `<details>`. Ce n'est pas du zèle sémantique — un `<div>` enfant direct
+   * d'`<ol>` est du HTML invalide, et six cartes de fonctionnalité perdraient
+   * leur rôle `article` pour un lecteur d'écran.
+   *
+   * Une primitive qu'on ne peut pas appeler sans casser sa page n'est pas une
+   * primitive : c'est un exemple qu'on recopie.
+   */
+  as?: 'div' | 'article' | 'section' | 'li'
+  /**
+   * L'ÉLÉVATION, et pourquoi elle ne se passe pas par `className`.
+   *
+   * `cn` CONCATÈNE, il ne fusionne pas — ce n'est pas `tailwind-merge`, et son
+   * en-tête le dit. Poser `shadow-e3` par-dessus le `shadow-e1` de la carte
+   * laisse donc les DEUX classes dans le balisage, et c'est l'ordre d'ÉMISSION
+   * de la feuille qui tranche. Il se trouve qu'il tranche dans le bon sens
+   * aujourd'hui ; s'y fier, c'est écrire une règle morte à côté d'une vivante et
+   * appeler ça une décision.
+   *
+   * Le même piège vaut, en pire, pour le rembourrage : `flush` plus une valeur
+   * explicite est la seule façon sûre de le changer. Mesuré par l'audit —
+   * `className="p-6"` sur une carte par défaut rend `p-4 p-6 sm:p-5`, et le
+   * rembourrage TOMBE de 24 à 20 px au-delà de 640 px.
+   */
+  elevation?: CardElevation
 }
 
-export function Card({ tone = 'default', flush, className, children, ...props }: CardProps) {
+const ELEVATIONS: Record<CardElevation, string> = {
+  e1: 'shadow-e1',
+  e2: 'shadow-e2',
+  e3: 'shadow-e3',
+}
+
+/**
+ * LA RÉFÉRENCE EST RELAYÉE, et l'absence se payait ailleurs.
+ *
+ * `Input`, `Select`, `Textarea` et `Button` relaient tous la leur depuis
+ * toujours ; `Card` était la seule primitive de conteneur à l'avaler. Une
+ * primitive qui ne relaie pas sa référence ne peut porter ni focus programmé,
+ * ni mesure, ni détection de clic extérieur — c'est-à-dire rien de ce qu'un
+ * panneau, une modale ou un menu réclament. On la recopie alors à la main, et
+ * c'est ce que l'audit des huit cartes de vitrine a trouvé.
+ *
+ * `HTMLElement` et non `HTMLDivElement` : `as` accepte quatre balises, et un
+ * `<li>` n'est pas un `<div>`. Le type le plus étroit qui les couvre toutes est
+ * leur ancêtre commun.
+ */
+export const Card = forwardRef<HTMLElement, CardProps>(function Card(
+  { tone = 'default', flush, as: balise = 'div', elevation, className, children, ...props },
+  ref,
+) {
+  /* LA BALISE EST RAMENÉE À UNE SEULE, et c'est la conversion qui porte tout le
+     polymorphisme.
+
+     Laissée à son union — `'div' | 'article' | 'section' | 'li'` — JSX exige de
+     la référence qu'elle satisfasse les QUATRE interfaces à la fois, donc leur
+     INTERSECTION : `HTMLDivElement & HTMLLIElement & …`, qu'aucune référence
+     réelle ne peut habiter. Mesuré : `Type '(instance: HTMLDivElement | null)
+     => void' is not assignable to type 'string & ((instance: HTMLLIElement |
+     null) => void)'`. L'union se retourne en intersection dès qu'elle passe en
+     position de paramètre, et c'est ce retournement, pas la référence, qui est
+     le problème.
+
+     Le contrat public reste `HTMLElement` : c'est ce que l'appelant déclare, et
+     c'est vrai des quatre balises. La conversion ne vaut qu'à l'intérieur. */
+  const Element = balise as 'div'
+
   return (
-    <div
+    <Element
+      ref={ref as React.Ref<HTMLDivElement>}
+      /* LE MARQUEUR SERT À COMPTER LES CARTES DES DEUX CÔTÉS DE L'ATTENTE.
+         Un squelette et la page qu'il annonce n'ont en commun ni classe, ni
+         texte, ni rôle : rien ne permettait de dire « il en promet deux, il en
+         rendra quatre ». Un attribut de données le permet, et il vaut mieux
+         qu'un sélecteur de classe — `scripts/` et les tests sont lus par
+         Tailwind, qui fabriquerait pour de bon toute classe citée. Voir
+         `attenteFidele.test.tsx`. */
+      data-carte=""
       /* `min-w-0` : une carte est un contenant, jamais une règle graduée.
          Posée dans une grille, elle hérite de `min-width: auto` et refuse donc
          de descendre sous la largeur intrinsèque de son contenu. La rangée de
@@ -28,13 +117,19 @@ export function Card({ tone = 'default', flush, className, children, ...props }:
          avec elle — 19px de défilement horizontal sur un écran de 375, avant
          même qu'on touche à la typographie. Le plancher à 12px l'a porté à
          46px, ce qui a eu le mérite de rendre la fuite visible. */
-      className={cn('min-w-0 rounded-lg border', TONES[tone], !flush && 'p-4 sm:p-5', className)}
+      className={cn(
+        'min-w-0 rounded-lg border',
+        TONES[tone],
+        !flush && 'p-4 sm:p-5',
+        elevation && ELEVATIONS[elevation],
+        className,
+      )}
       {...props}
     >
       {children}
-    </div>
+    </Element>
   )
-}
+})
 
 export interface CardHeaderProps {
   title: ReactNode
@@ -57,13 +152,64 @@ export function CardHeader({
 }: CardHeaderProps) {
   const Heading = `h${level}` as 'h2' | 'h3' | 'h4'
   return (
-    <div className={cn('mb-4 flex items-start justify-between gap-4', className)}>
-      <div className="min-w-0">
-        {eyebrow && <div className="eyebrow mb-1.5 text-muted">{eyebrow}</div>}
+    /*
+      LA RANGÉE SE REPLIE, ET SA COLONNE DE TITRE A UN PLANCHER.
+
+      ═══ CE QUE `min-w-0` À CÔTÉ DE `shrink-0` PRODUISAIT ═══
+
+      L'action est `shrink-0` : elle garde sa largeur quoi qu'il arrive, ce qui
+      est juste — un bouton rétréci n'est plus atteignable, une légende rétrécie
+      n'est plus lisible. Le titre, lui, portait `min-w-0`, c'est-à-dire AUCUN
+      plancher : il cédait tout. Les deux ensemble ne négocient pas, ils
+      s'écrasent dans un seul sens.
+
+      Mesuré à 320 sur le portail locataire : le `<h2>` « Mes paiements par
+      période » disposait de 70 px pendant que sa légende à deux entrées en
+      gardait 230. Le titre débordait de 9 px en français, 15 en anglais — un
+      dépassement DANS la carte, que ni la règle de page ni celle des débords
+      locaux ne voient, et que `MESURER_DEBORDEMENT_DE_MOT` a relevé.
+
+      ═══ POURQUOI UN PLANCHER PLUTÔT QU'UNE TRONCATURE ═══
+
+      `truncate` sur le titre aurait rendu « Mes paie… » : la garde se tairait,
+      et l'écran mentirait mieux. Le repli est la seule réponse qui garde les
+      deux — titre entier au-dessus, action dessous — et il ne coûte une rangée
+      que là où les deux ne tenaient de toute façon pas.
+
+      `min-w-48` (192 px) est le déclencheur du repli, pas une largeur voulue :
+      sans plancher, `flex-wrap` ne se déclenche JAMAIS, puisque la colonne
+      accepte de descendre à zéro plutôt que de passer à la ligne. C'est la même
+      leçon que la file du jour, où le texte s'était réduit à dix caractères
+      sous un `flex-wrap` qui n'avait donc jamais eu à s'exercer.
+
+      `gap-y-2` : l'écart vertical du repli, plus court que l'horizontal — deux
+      lignes d'un même en-tête sont plus proches que deux colonnes.
+    */
+    <div
+      className={cn('mb-4 flex flex-wrap items-start justify-between gap-x-4 gap-y-2', className)}
+    >
+      <div className="min-w-48 flex-1">
+        {/* `break-words` pour la même raison que l'intitulé d'un indicateur, et
+            la porte l'a exigé au même endroit du raisonnement : la gélule a
+            élargi le bouton d'action de 2 px, la colonne du titre s'est
+            resserrée d'autant, et « QUITTANCES » — un seul mot, en capitales
+            interlettrées — a dépassé sa boîte de 3 px à 320. Aucun repli ne
+            coupe un mot unique ; il faut l'autoriser explicitement. Le surtitre
+            n'a pas de plafond de lignes : il est court par nature, et le rogner
+            comme un intitulé de carte n'aurait servi aucun cas réel. */}
+        {eyebrow && (
+          <div className="eyebrow mb-1.5 hyphens-auto break-words text-muted">{eyebrow}</div>
+        )}
         <Heading className="title-m text-balance">{title}</Heading>
         {description && <p className="mt-1 text-body text-muted">{description}</p>}
       </div>
-      {action && <div className="shrink-0">{action}</div>}
+      {/* `ml-auto` : REPLIÉE, l'action garde sa colonne.
+
+          Sans lui elle tombe à gauche sur sa propre ligne — `justify-between`
+          ne distribue rien quand il n'y a qu'un élément sur la ligne. Le
+          `flex-1` du titre la pousse déjà à droite tant que tout tient : cette
+          marge n'agit donc QUE dans l'état replié. */}
+      {action && <div className="ml-auto shrink-0">{action}</div>}
     </div>
   )
 }

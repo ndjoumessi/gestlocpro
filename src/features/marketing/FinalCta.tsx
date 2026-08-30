@@ -48,7 +48,32 @@ export function FinalCta() {
         conséquence. Aucune des deux ne porte l'axe de l'autre, et rien ne
         dépasse : la contrainte du bloc d'accroche ne s'applique pas.
       */}
-      <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1.4fr_1fr] lg:items-center lg:gap-16">
+      {/*
+        ═══ LA DERNIÈRE CHOSE DE LA PAGE EST UN OBJET, PAS UN CHAMP DE COULEUR ═══
+
+        Le bloc de clôture et le pied partagent la même encre, sans rien entre
+        eux : le titre, ses deux boutons, puis deux cents pixels de sombre, puis
+        le pied. Rien ne disait où finit l'appel et où commence l'ourlet du site,
+        et le lecteur arrivait au bout de la page devant une masse indistincte.
+
+        Le panneau le borne. `bg-ink-2` le lève d'un cran sur `bg-ink`, la
+        bordure le referme, et le vide qui suit cesse d'être un vide : il devient
+        l'écart entre deux objets. C'est le même geste que les cartes de rôles,
+        trois sections plus haut — la page se ferme sur le vocabulaire qu'elle a
+        employé partout ailleurs, au lieu d'inventer une forme pour sa fin.
+
+        `data-panneau-final` : la garde vérifie que l'appel est BORNÉ, pas qu'il
+        porte telle classe. Un panneau redessiné reste un panneau ; un appel
+        reposé à même le fond ne l'est plus.
+      */}
+      <div
+        data-panneau-final=""
+        className={cn(
+          'mx-auto max-w-7xl rounded-lg border border-on-dark-border bg-ink-2',
+          'px-7 py-10 sm:px-10 sm:py-12',
+          'grid gap-8 lg:grid-cols-[1.4fr_1fr] lg:items-center lg:gap-16',
+        )}
+      >
         <div className="min-w-0">
           {/* `display-m` ET NON `display-l` : c'était la SEULE occurrence de
               `display-l` de la page, et elle rendait 36,8 px à 360 px — une
@@ -65,7 +90,7 @@ export function FinalCta() {
         {/* `lg:justify-end` seulement : en dessous les boutons s'empilent et
             prennent la largeur, ce qui reste juste sur un téléphone. */}
         <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
-          <Button size="lg" variant="gold" to="/inscription" iconAfter="arrowRight">
+          <Button size="lg" variant="primary" to="/inscription" iconAfter="arrowRight">
             {t('marketing.finalCta.cta')}
           </Button>
           <Button size="lg" variant="onDark" to="/demo">

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useLocation, useParams } from 'react-router-dom'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { lien, useBase } from '@/lib/base'
@@ -16,7 +17,28 @@ import {
   type Occupation,
 } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
+import { useRole } from '@/components/layout/AppShell'
+import { StatCard } from '@/components/primitives/Charts'
+import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDebordement'
+import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
+import { ReceiptModal } from './ReceiptModal'
+import { OpenWorkModal } from './OpenWorkModal'
+import { InspectionModal } from './InspectionModal'
 import { workTitle } from '@/data/workTitle'
+
+/**
+ * LA GRILLE DES DEUX COLONNES, nommée pour que l'attente ne s'en écarte pas.
+ *
+ * Elle s'écrivait DEUX fois dans ce fichier : une fois sur la rangée chargée,
+ * une fois sur le squelette qui l'annonce. Deux chaînes que rien ne tenait
+ * ensemble, dans le seul morceau du produit qu'aucune porte ne rend jamais —
+ * la démonstration n'attend pas, la vitrine n'a pas de squelette d'écran, et la
+ * mesure au navigateur mesure la page chargée. C'est ainsi que l'espace
+ * locataire s'est retrouvé à attendre sous quatre cartes pour en charger trois.
+ *
+ * Voir `squelettesFideles.test.ts`, qui tient désormais la règle.
+ */
+const GRILLE_DEUX_COLONNES = 'grid gap-4 lg:grid-cols-2'
 
 /**
  * Le dossier d'un logement.
@@ -39,6 +61,11 @@ export function UnitFile() {
   const d = useDates()
   const base = useBase()
   const location = useLocation()
+  const { role } = useRole()
+  const isTenant = role === 'tenant'
+  const [quittanceOuverte, setQuittanceOuverte] = useState(false)
+  const [chantierOuvert, setChantierOuvert] = useState(false)
+  const [etatOuvert, setEtatOuvert] = useState(false)
   const { money } = useCurrency()
   const {
     unitById,
@@ -104,19 +131,127 @@ export function UnitFile() {
   const sortie = inspectionForUnit(unitId, 'exit')
   const releve = readingForUnit(unitId)
 
+  /*
+    LES TROIS CHIFFRES QUE CET ÉCRAN CALCULAIT DÉJÀ, SANS LES DIRE.
+
+    Le reste dû se calcule ligne à ligne dans la carte des périodes — « reste
+    5 058 FCFA » — et n'était jamais totalisé. Le montant des travaux se calcule
+    ligne à ligne et n'était jamais sommé. La caution vivait en petit, dans une
+    liste de pièces. Rien n'est ajouté au modèle : ce sont les mêmes fonctions,
+    appliquées à toute la collection au lieu d'une seule entrée.
+
+    Le reste dû SUR TOUTES LES PÉRIODES SERVIES, et non sur les six affichées :
+    la carte en montre six parce qu'une liste doit s'arrêter, mais une dette ne
+    s'arrête pas à ce qu'on montre. C'est le même arbitrage que le solde cumulé
+    de la grille des paiements, qui porte sur l'historique entier.
+  */
+  const resteDu = periodes.reduce((somme, p) => somme + Math.max(0, receiptDue(p) - p.paidMinor), 0)
+  const travauxEngages = travaux.reduce((somme, w) => somme + (montantEngage(w).montant ?? 0), 0)
+
   return (
     <>
       <PageHeader
         title={immeuble ? `${immeuble.name} — ${unit.label}` : unit.label}
-        description={`${t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')} · ${unit.surface} m² · ${money(unit.rent, { round: true })}`}
+        description={`${t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')} · ${unit.surface} m² · ${money(unit.rent, { compact: true })}`}
         actions={
-          <Button variant="secondary" icon="chevronLeft" to={retour}>
-            {t('app.unitFile.back')}
-          </Button>
+          <>
+            <Button variant="secondary" icon="chevronLeft" to={retour}>
+              {t('app.unitFile.back')}
+            </Button>
+            {/*
+              LE DOSSIER CESSE D'ÊTRE UNE IMPASSE EN LECTURE SEULE.
+
+              Quatre cartes décrivant tout ce qu'on peut vouloir faire d'un
+              logement, et un seul bouton : « Retour au parc ». Ce n'était pas
+              une fatalité de données — `ReceiptModal` prend un `unitId` depuis
+              toujours, `OpenWorkModal` et `InspectionModal` prennent une liste
+              de logements dont elles présélectionnent le premier. Il n'y avait
+              rien à construire, seulement à appeler.
+
+              LA QUITTANCE EST LE GESTE PRIMAIRE : c'est ce qu'on vient chercher
+              dans un dossier. Elle porte la période COURANTE — la plus récente
+              des périodes servies, celle que la carte affiche en tête.
+            */}
+            {!isTenant && periodes[0] && (
+              <Button icon="download" onClick={() => setQuittanceOuverte(true)}>
+                {t('app.receipts.issue')}
+              </Button>
+            )}
+          </>
+        }
+        debordement={
+          !isTenant ? (
+            <MenuDeDebordement libelle={t('common.moreActions')}>
+              <MenuElement icone="wrench" onClick={() => setChantierOuvert(true)}>
+                {t('app.works.openCta')}
+              </MenuElement>
+              <MenuElement icone="clipboard" onClick={() => setEtatOuvert(true)}>
+                {t('app.inspections.record')}
+              </MenuElement>
+            </MenuDeDebordement>
+          ) : undefined
         }
       />
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      {/* `mb-6` comme les six autres écrans à rangée d'indicateurs : la rangée
+          se lit avant les cartes, pas avec elles. */}
+      <div className={`${GRILLE_TROIS_INDICATEURS} mb-6`}>
+        <StatCard
+          icone="clock"
+          label={t('app.unitFile.kpiBalance')}
+          value={money(resteDu, { compact: true })}
+          etat={resteDu > 0 ? { ton: 'danger' } : undefined}
+          note={t('app.unitFile.kpiBalanceNote', { count: periodes.length })}
+        />
+        <StatCard
+          icone="shield"
+          label={t('app.unitFile.kpiDeposit')}
+          value={money(caution?.held ?? 0, { compact: true })}
+          note={
+            caution
+              ? t('app.unitFile.kpiDepositNote')
+              : t('app.unitFile.kpiDepositNone')
+          }
+        />
+        <StatCard
+          icone="wrench"
+          label={t('app.unitFile.kpiWorks')}
+          value={money(travauxEngages, { compact: true })}
+          note={t('app.unitFile.kpiWorksNote', { count: travaux.length })}
+        />
+      </div>
+
+      {quittanceOuverte && periodes[0] && (
+        <ReceiptModal
+          open
+          onClose={() => setQuittanceOuverte(false)}
+          unitId={unitId}
+          /* Le mois COURANT, comme la grille des paiements l'écrit à
+             l'identique : une quittance s'émet sur la période en cours, et non
+             sur la dernière que la carte affiche — celle-ci pourrait être plus
+             ancienne sur un bail qui vient de reprendre. */
+          periodStart={`${new Date().toISOString().slice(0, 7)}-01`}
+        />
+      )}
+      {chantierOuvert && (
+        <OpenWorkModal
+          open
+          onClose={() => setChantierOuvert(false)}
+          unitIds={[unit]}
+        />
+      )}
+      {etatOuvert && (
+        <InspectionModal open onClose={() => setEtatOuvert(false)} unitIds={[unit]} />
+      )}
+
+      {/* `items-start` : les deux cellules d'une rangée n'ont RIEN de commun —
+          à gauche les baux d'un logement, à droite ses périodes facturées — et
+          l'étirement faisait payer à la plus courte la hauteur de l'autre.
+          Mesuré au navigateur, à 1440 px : 217 px de blanc imposé sous
+          « Occupation », 149 sous « Travaux du logement », contre 21 px de
+          rembourrage normal chez leurs voisines. Une carte finit où son contenu
+          finit — c'est le même arbitrage que la rangée du tableau de bord. */}
+      <div className={`${GRILLE_DEUX_COLONNES} items-start`}>
         <Card>
           <CardHeader
             title={t('app.unitFile.occupancy')}
@@ -202,13 +337,13 @@ export function UnitFile() {
                       )}
                     </span>
                     <span className="numeric text-body">
-                      {money(du, { round: true })}
+                      {money(du, { compact: true })}
                       {/* Le reste dû, et lui seul, appelle un geste : une
                           période soldée n'a pas à porter un « reste 0 ». */}
                       {reste > 0 && (
                         <span className="text-warn">
                           {' · '}
-                          {t('app.tenant.remaining', { amount: money(reste, { round: true }) })}
+                          {t('app.tenant.remaining', { amount: money(reste, { compact: true }) })}
                         </span>
                       )}
                     </span>
@@ -251,7 +386,7 @@ export function UnitFile() {
                         un sous-objet `status`. */}
                     {t(`app.works.${work.status}` as 'app.works.reported')}
                     {montantEngage(work).montant !== null &&
-                      ` · ${money(montantEngage(work).montant!, { round: true })}`}
+                      ` · ${money(montantEngage(work).montant!, { compact: true })}`}
                   </span>
                 </li>
               ))}
@@ -280,7 +415,7 @@ export function UnitFile() {
           >
             <LignePiece
               label={t('app.deposits.title')}
-              valeur={caution ? money(caution.held, { round: true }) : null}
+              valeur={caution ? money(caution.held, { compact: true }) : null}
               absence={t('app.unitFile.noDeposit')}
             />
             <LignePiece
@@ -340,7 +475,7 @@ function LigneOccupation({ bail }: { bail: Occupation }) {
             : t('app.unitFile.since', { date: d.fullDate(bail.startsOn) })}
         </p>
       </div>
-      <span className="numeric text-body text-muted">{money(bail.rentMinor, { round: true })}</span>
+      <span className="numeric text-body text-muted">{money(bail.rentMinor, { compact: true })}</span>
     </li>
   )
 }
@@ -377,7 +512,7 @@ function DossierSkeleton() {
         description={<Skeleton line="body" className="w-full max-w-xs" />}
       />
       <SkeletonRegion>
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className={GRILLE_DEUX_COLONNES}>
           {[0, 1, 2, 3].map((i) => (
             <Skeleton key={i} radius="lg" className="h-48" />
           ))}

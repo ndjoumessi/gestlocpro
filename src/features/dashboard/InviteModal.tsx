@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Modal } from '@/components/primitives/Modal'
-import { Icon } from '@/components/primitives/Icon'
+import { Notice } from '@/components/primitives/Notice'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
 import { Select } from '@/components/primitives/Input'
@@ -211,22 +211,14 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
               dit ce qui va être émis — c'est le même geste que sur les devis et
               les cautions, où l'absence de bouton est expliquée plutôt que
               subie. */}
-          {role === 'manager' && (
-            <p className="flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body text-gold-ink">
-              <Icon name="info" size={15} className="mt-0.5 shrink-0" />
-              {t('app.invite.managerNotice')}
-            </p>
-          )}
+          {role === 'manager' && <Notice>{t('app.invite.managerNotice')}</Notice>}
 
           {/* Au PROPRIÉTAIRE d'un parc en gestion seule, la note dit autre chose
               que celle du gestionnaire : ce n'est pas un droit qui lui manque,
               c'est un réglage qu'il détient. Elle nomme donc l'écran où il se
               change plutôt que de le laisser deviner. */}
           {role === 'owner' && gereSeul && (
-            <p className="flex items-start gap-2 rounded-md border border-gold-border bg-gold-tint px-3.5 py-3 text-body text-gold-ink">
-              <Icon name="info" size={15} className="mt-0.5 shrink-0" />
-              {t('app.onboarding.delegationOffNotice')}
-            </p>
+            <Notice>{t('app.onboarding.delegationOffNotice')}</Notice>
           )}
 
           {/* Ni `required` ni `optional` sur le logement.

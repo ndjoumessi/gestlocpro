@@ -5,7 +5,13 @@ import { prisma } from '../db.js'
 import { creerCode, expirationInvitation, normaliserCode } from './invitations.js'
 import { empreinteJeton } from '../auth/token.js'
 import { laMessagerie } from '../messagerie/messagerie.js'
-import { exigerAppartenance, exigerCompte, exigerRole, unitesVisibles } from '../auth/guards.js'
+import {
+  etatsDesLieuxVisibles,
+  exigerAppartenance,
+  exigerCompte,
+  exigerRole,
+  unitesVisibles,
+} from '../auth/guards.js'
 import { leStockage } from '../stockage/stockage.js'
 import { PLAFOND_PAR_OBJET_OCTETS } from '../stockage/contrat.js'
 import { stockageLocalRouter } from '../stockage/routes.js'
@@ -530,22 +536,13 @@ parksRouter.get(
           ...(filtreUnite ? { unitId: filtreUnite } : {}),
           /**
            * Le locataire ne lit QUE les états des lieux de son bail — ou ceux
-           * qui n'en portent aucun.
-           *
-           * `unitesVisibles` retient son logement même après son départ, et le
-           * détail que cette route se met à rendre n'est pas anodin : les
-           * réserves de SORTIE du prédécesseur portent une description et un
-           * coût imputé, celles d'ENTRÉE du successeur décrivent l'état d'un
-           * logement qu'il n'occupe plus. Ni les unes ni les autres ne le
-           * regardent.
-           *
-           * `leaseId: null` reste visible : une entrée précède souvent la
-           * signature — « on constate avant de remettre les clés », dit la
-           * route de création — et sur SON logement c'est la sienne.
+           * qui n'en portent aucun. La règle et son POURQUOI vivent dans
+           * `etatsDesLieuxVisibles` ; elle est écrite là parce que la lecture
+           * d'une PHOTO l'exige mot pour mot, et deux rédactions de la même
+           * frontière finiraient par diverger — la seconde n'étant découverte
+           * que le jour où l'une des deux laisse passer.
            */
-          ...(role === 'tenant'
-            ? { OR: [{ lease: { tenant: { userId: req.compteId! } } }, { leaseId: null }] }
-            : {}),
+          ...etatsDesLieuxVisibles(req.compteId!, role),
         },
         orderBy: { performedOn: 'asc' },
         select: {
@@ -582,6 +579,28 @@ parksRouter.get(
               description: true,
               severity: true,
               costMinor: true,
+              /**
+               * LES PHOTOS, et seulement celles que le serveur a CONSTATÉES.
+               *
+               * `confirmedAt: null` désigne une réservation dont les octets ne
+               * sont jamais arrivés, ou dont personne n'a regardé la nature. La
+               * route de lecture les refuse déjà une par une ; les annoncer ici
+               * poserait dans l'écran une vignette qui ne se chargerait jamais,
+               * et le locataire lirait « preuve manquante » là où il n'y a
+               * jamais eu de preuve.
+               *
+               * NI LA CLÉ, NI L'ADRESSE. La clé de stockage ne sort d'aucune
+               * réponse — c'est la règle de `champsPhoto`. Et l'adresse de
+               * lecture est signée et périssable : la sceller dans le
+               * portefeuille, qui se lit une fois puis vit en mémoire des
+               * heures, la rendrait morte avant d'être cliquée. Le client
+               * demande l'adresse photo par photo, au moment d'afficher.
+               */
+              photos: {
+                where: { confirmedAt: { not: null } },
+                orderBy: { createdAt: 'asc' },
+                select: { id: true, contentType: true, confirmedAt: true },
+              },
             },
           },
         },
@@ -1062,6 +1081,18 @@ parksRouter.get(
           description: r.description,
           severity: r.severity,
           costMinor: r.costMinor,
+          /**
+           * De quoi AFFICHER, pas de quoi lire : l'identifiant sert à demander
+           * l'adresse signée, `confirmedAt` est la date que le serveur a
+           * lui-même constatée — la seule chose qui donne à cette photo sa
+           * valeur en litige, et la seule qu'on puisse opposer à un appareil
+           * dont on règle l'horloge.
+           */
+          photos: r.photos.map((p) => ({
+            id: p.id,
+            contentType: p.contentType,
+            confirmedAt: p.confirmedAt,
+          })),
         })),
         signedAt: i.signedAt,
       })),
@@ -1469,6 +1500,19 @@ parksRouter.post(
         },
         select: { id: true, amountMinor: true, method: true, paidOn: true },
       })
+    })
+
+    /* LA CRÉATION SE TRACE COMME LE RETRAIT. Le registre montrait des
+       suppressions sans leurs créations — voir `registreDesDecisions`. */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'payment.record',
+        entity: 'Payment',
+        entityId: paiement.id,
+        payload: { amountMinor: paiement.amountMinor, method: paiement.method, unitId: corps.unitId },
+      },
     })
 
     res.status(201).json({ payment: paiement })
@@ -2247,6 +2291,25 @@ parksRouter.patch(
       select: { id: true, name: true, countryCode: true, currency: true, delegation: true },
     })
 
+    /* CHANGER LA DEVISE D'UN PARC change la lecture de tout son historique, et
+       la délégation change qui peut engager une dépense. Deux décisions plus
+       lourdes que la plupart de celles déjà tracées, et aucune ne l'était. */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'park.update',
+        entity: 'Park',
+        entityId: parc.id,
+        payload: {
+          name: parc.name,
+          currency: parc.currency,
+          countryCode: parc.countryCode,
+          delegation: parc.delegation,
+        },
+      },
+    })
+
     res.json({ park: parc })
   },
 )
@@ -2345,6 +2408,24 @@ parksRouter.post(
         select: { id: true, utility: true, unitPriceMinor: true, effectiveFrom: true },
       })
 
+      /* LE TARIF PRODUIT LES MONTANTS DES QUITTANCES, qui sont tracées. Le
+         registre suivait donc l'effet sans sa cause : une refacturation d'eau
+         qui double se lisait dans les quittances, jamais dans la décision. */
+      await prisma.auditEvent.create({
+        data: {
+          parkId,
+          actorId: req.compteId!,
+          action: 'tariff.set',
+          entity: 'UtilityTariff',
+          entityId: tarif.id,
+          payload: {
+            utility: tarif.utility,
+            unitPriceMinor: tarif.unitPriceMinor,
+            effectiveFrom: tarif.effectiveFrom.toISOString().slice(0, 10),
+          },
+        },
+      })
+
       res.status(201).json({
         tariff: {
           id: tarif.id,
@@ -2369,6 +2450,82 @@ parksRouter.post(
       }
       throw err
     }
+  },
+)
+
+/**
+ * ─── LE REGISTRE DES DÉCISIONS ───────────────────────────────────────────────
+ *
+ * CE QUI EXISTAIT, ET QUI NE SERVAIT À PERSONNE. `AuditEvent` est écrit à seize
+ * endroits de ce fichier depuis plusieurs lots, et LU nulle part — sauf par les
+ * tests. Le produit tenait une piste d'audit qu'il n'ouvrait jamais : un
+ * propriétaire ne pouvait pas savoir qui avait arbitré une caution, validé un
+ * devis, ou retiré un versement de son registre.
+ *
+ * LE PROPRIÉTAIRE SEUL. C'est lui qui délègue, et ce registre existe pour qu'il
+ * contrôle ce qu'il a délégué. Le gestionnaire n'y trouverait que ses propres
+ * actes ; le locataire n'a rien à voir dans le journal d'un parc entier — les
+ * décisions qui le concernent lui sont notifiées.
+ *
+ * PAGINÉ PAR CURSEUR, ET NON PAR NUMÉRO DE PAGE. Un registre s'allonge par le
+ * haut : entre deux pages lues, une décision écrite décale toutes les suivantes
+ * et une pagination par décalage rejouerait ou sauterait une ligne. Le curseur
+ * est la date de la dernière ligne rendue, ce que l'index `[parkId, createdAt]`
+ * sert déjà sans travail supplémentaire.
+ *
+ * L'ACTEUR PEUT ÊTRE NUL, et ce n'est pas un défaut : `actorId` est en
+ * `SetNull`, pour que le registre survive à la suppression d'un compte. Une
+ * décision dont l'auteur a fermé son compte reste une décision prise — la
+ * masquer effacerait l'histoire pour protéger un nom qui n'existe plus.
+ */
+parksRouter.get(
+  '/:parkId/decisions',
+  exigerAppartenance,
+  exigerRole('owner'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const curseur = z.string().datetime().optional().parse(req.query.avant)
+
+    /* CENT PAR PAGE, et le client demande la suite s'il la veut. Un registre
+       d'un an sur un parc actif se compte en milliers de lignes : les rendre
+       toutes ferait payer à chaque ouverture d'écran une lecture que personne
+       ne fait défiler. */
+    const TAILLE = 100
+
+    const evenements = await prisma.auditEvent.findMany({
+      where: { parkId, ...(curseur ? { createdAt: { lt: new Date(curseur) } } : {}) },
+      orderBy: { createdAt: 'desc' },
+      take: TAILLE + 1,
+      select: {
+        id: true,
+        action: true,
+        entity: true,
+        entityId: true,
+        payload: true,
+        createdAt: true,
+        actor: { select: { fullName: true } },
+      },
+    })
+
+    /* UNE LIGNE DE PLUS EST DEMANDÉE, PAS RENDUE : c'est elle qui dit s'il y a
+       une suite, sans un second appel de comptage sur une table qui s'allonge. */
+    const suite = evenements.length > TAILLE
+    const page = suite ? evenements.slice(0, TAILLE) : evenements
+
+    res.json({
+      decisions: page.map((e) => ({
+        id: e.id,
+        action: e.action,
+        entity: e.entity,
+        entityId: e.entityId,
+        payload: e.payload,
+        at: e.createdAt.toISOString(),
+        actor: e.actor?.fullName ?? null,
+      })),
+      /* La borne de la page suivante, `null` quand il n'y en a pas. Le client
+         n'a donc rien à calculer, et ne peut pas se tromper de curseur. */
+      suivant: suite ? page[page.length - 1]!.createdAt.toISOString() : null,
+    })
   },
 )
 
@@ -2552,6 +2709,21 @@ parksRouter.patch(
       return
     }
 
+    /* REPRENDRE UN ACCÈS EST UNE DÉCISION, et elle ne laissait aucune trace.
+       Le registre des ACCÈS dit qui a le droit aujourd'hui ; il ne dit pas qui
+       l'avait hier ni qui le lui a repris. C'est au registre des décisions de
+       le porter. */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'access.revoke',
+        entity: 'Invitation',
+        entityId: invitation.id,
+        payload: { role: invitation.role },
+      },
+    })
+
     res.status(204).end()
   },
 )
@@ -2685,6 +2857,28 @@ parksRouter.post(
 
         return bail
       })
+
+      /* LA CRÉATION D'UNE FICHE SE TRACE COMME SON RETRAIT. `tenant.delete`
+         existait seul : le registre pouvait dire « cette fiche a été
+         supprimée » sans dire qui l'avait ouverte, ni quand le bail avait
+         commencé. Hors transaction, et c'est voulu : le journal ne doit pas
+         pouvoir faire échouer l'écriture qu'il décrit. */
+      await prisma.auditEvent.create({
+        data: {
+          parkId,
+          actorId: req.compteId!,
+          action: 'tenant.create',
+          entity: 'Lease',
+          entityId: bail.id,
+          payload: {
+            unitId: corps.unitId,
+            fullName: corps.fullName,
+            rentMinor: corps.rentMinor,
+            startsOn: corps.startsOn,
+          },
+        },
+      })
+
       res.status(201).json({ lease: bail })
     } catch {
       /**
@@ -3890,7 +4084,20 @@ parksRouter.post(
         performedOn: true,
         rooms: true,
         signedAt: true,
-        findings: { select: { id: true, room: true, severity: true, costMinor: true } },
+        /**
+         * `description` EST RENDUE, et c'est le client des photos qui l'exige.
+         *
+         * Les réserves n'ont d'identifiant qu'une fois créées ; l'écran, lui,
+         * tient des photos attachées à des LIGNES DE FORMULAIRE. Il doit donc
+         * apparier chaque ligne au `findingId` que cette réponse rend, et sans
+         * `description` il ne lui reste que la pièce, la gravité et le coût —
+         * trois champs que deux réserves d'une même pièce partagent
+         * couramment. L'appariement se ferait alors sur l'ordre du tableau,
+         * c'est-à-dire sur une garantie que Prisma ne donne pas.
+         */
+        findings: {
+          select: { id: true, room: true, description: true, severity: true, costMinor: true },
+        },
       },
     })
 
@@ -3931,11 +4138,16 @@ parksRouter.post(
  * TOUTES derrière `exigerAppartenance`, qui rend 404 et non 403 : un 403
  * confirmerait l'existence d'un identifiant qu'on pourrait alors énumérer.
  *
- * Et toutes réservées au propriétaire et au gestionnaire. Le locataire est
- * membre du parc : `exigerAppartenance` seule le laisserait lire les photos
- * des états des lieux de TOUS ses voisins. Lui ouvrir les siennes demande la
- * règle de `unitesVisibles`, donc un écran pour l'employer — c'est le lot du
- * navigateur. Le silence ici est délibéré, et il est fermé, pas ouvert.
+ * TROIS sur quatre réservées au propriétaire et au gestionnaire — réserver,
+ * confirmer, supprimer. Ce sont les trois qui ÉCRIVENT, et un locataire qui
+ * écrirait pourrait fabriquer la pièce qu'on lui oppose, ou effacer celle qui
+ * l'accuse.
+ *
+ * La quatrième — LIRE — lui est ouverte, et bornée à son BAIL par
+ * `etatsDesLieuxVisibles`. `exigerAppartenance` seule ne suffirait pas : le
+ * locataire est membre du parc, et le parc contient les états des lieux de tous
+ * ses voisins comme ceux de son propre prédécesseur. C'est la portée qui
+ * tranche, pas l'appartenance.
  */
 
 const schemaReservationPhoto = z.object({
@@ -3967,17 +4179,34 @@ const champsPhoto = {
 } as const
 
 /**
- * Retrouve une photo DANS le parc, ou rien.
+ * Retrouve une photo DANS le parc et DANS la portée du demandeur, ou rien.
  *
  * Le cloisonnement est une clause de requête et non un filtre appliqué après
  * coup : la jointure `finding → inspection → unit → building → parkId` fait
  * qu'une photo d'un autre parc n'est jamais ramenée. Filtrer en mémoire
  * supposerait de l'avoir d'abord lue, et il suffirait d'un oubli sur un chemin
  * pour la laisser sortir.
+ *
+ * `portee` est la MÊME clause que celle du portefeuille — voir
+ * `etatsDesLieuxVisibles`. Sans elle, la seule frontière serait le parc, et le
+ * parc est ce que TOUS les membres partagent : un locataire lirait alors les
+ * photos de l'état des lieux de son prédécesseur sur son propre logement, et
+ * celles de ses voisins.
+ *
+ * Rien ne sort quand la portée exclut : la fonction rend `null`, l'appelant
+ * rend 404. « Cette photo ne vous regarde pas » et « cette photo n'existe pas »
+ * se ressemblent vu de l'extérieur, faute de quoi l'énumération cartographie.
  */
-async function photoDuParc(photoId: string, parkId: string) {
+async function photoDuParc(
+  photoId: string,
+  parkId: string,
+  portee: Prisma.InspectionWhereInput,
+) {
   return prisma.inspectionPhoto.findFirst({
-    where: { id: photoId, finding: { inspection: { unit: { building: { parkId } } } } },
+    where: {
+      id: photoId,
+      finding: { inspection: { unit: { building: { parkId } }, ...portee } },
+    },
     select: { ...champsPhoto, storageKey: true },
   })
 }
@@ -4079,7 +4308,10 @@ parksRouter.post(
     const { parkId } = req.adhesion!
     const photoId = z.string().uuid().parse(req.params.photoId)
 
-    const photo = await photoDuParc(photoId, parkId)
+    // Aucune portée : la route est déjà réservée aux deux rôles de gestion, qui
+    // lisent tout le parc. Passer une clause vide le DIT, là où un paramètre
+    // omis laisserait croire à un oubli.
+    const photo = await photoDuParc(photoId, parkId, {})
     if (!photo) {
       res.status(404).json({ error: 'not_found' })
       return
@@ -4151,16 +4383,33 @@ parksRouter.post(
  * Une photo non confirmée n'a pas d'adresse. Ses octets n'ont jamais été
  * regardés par le serveur : les servir reviendrait à publier ce que le client
  * a bien voulu déposer, sous un type qu'il a bien voulu déclarer.
+ *
+ * ─── LA SEULE ROUTE PHOTO OUVERTE AU LOCATAIRE, ET C'EST UNE LECTURE ──────
+ *
+ * `exigerRole('owner', 'manager')` a été RETIRÉ D'ICI, et de nulle part
+ * ailleurs. Le commentaire d'en-tête de cette section disait le silence
+ * « délibéré, fermé et non ouvert », faute d'un écran pour employer la règle de
+ * portée ; l'écran existe, la règle est écrite, le silence n'a plus lieu
+ * d'être. La personne dont on arbitre la caution est précisément celle à qui
+ * l'on oppose ces photographies : les lui fermer était l'inverse de ce que ce
+ * produit dit faire.
+ *
+ * IL REGARDE, IL NE DÉPOSE PAS. Réserver, confirmer et supprimer gardent leur
+ * `exigerRole` — un locataire qui pourrait déposer pourrait fabriquer la pièce
+ * qu'on lui oppose, et un locataire qui pourrait supprimer effacerait celle qui
+ * l'accuse.
  */
 parksRouter.get(
   '/:parkId/photos/:photoId',
   exigerAppartenance,
-  exigerRole('owner', 'manager'),
   async (req: Request, res: Response) => {
-    const { parkId } = req.adhesion!
+    const { parkId, role } = req.adhesion!
     const photoId = z.string().uuid().parse(req.params.photoId)
 
-    const photo = await photoDuParc(photoId, parkId)
+    // La portée du LOCATAIRE : son bail, et les états des lieux qui n'en
+    // portent aucun. Hors de là, `photoDuParc` ne ramène rien et la réponse est
+    // un 404 — le même que pour une photo inexistante.
+    const photo = await photoDuParc(photoId, parkId, etatsDesLieuxVisibles(req.compteId!, role))
     if (!photo || !photo.confirmedAt) {
       res.status(404).json({ error: 'not_found' })
       return
@@ -4197,7 +4446,9 @@ parksRouter.delete(
     const { parkId } = req.adhesion!
     const photoId = z.string().uuid().parse(req.params.photoId)
 
-    const photo = await photoDuParc(photoId, parkId)
+    // Aucune portée, même raison qu'à la confirmation : la route ne répond
+    // qu'aux deux rôles de gestion.
+    const photo = await photoDuParc(photoId, parkId, {})
     if (!photo) {
       res.status(404).json({ error: 'not_found' })
       return
@@ -4205,6 +4456,22 @@ parksRouter.delete(
 
     await leStockage().supprimer(photo.storageKey)
     await prisma.inspectionPhoto.delete({ where: { id: photo.id } })
+
+    /* SUPPRIMER UNE PREUVE EST LE GESTE À TRACER, pas l'ajouter. L'ajout était
+       journalisé et le retrait non — l'inverse exact de ce qu'il faut : une
+       photo ajoutée se voit dans le dossier, une photo retirée ne se voit
+       nulle part. L'identifiant est celui de la RÉSERVE, la photo n'existant
+       plus : un `entityId` qui ne désigne rien ne se rattache à aucun écran. */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'inspection.photo_delete',
+        entity: 'InspectionFinding',
+        entityId: photo.findingId,
+        payload: { photoId: photo.id },
+      },
+    })
 
     res.status(204).end()
   },

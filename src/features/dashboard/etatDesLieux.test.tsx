@@ -284,3 +284,66 @@ describe('état des lieux — ce qui part au serveur', () => {
     expect(within(dialogue()).getByLabelText(/^pièce$/i)).toHaveValue('Séjour')
   })
 })
+
+/**
+ * UNE RÉSERVE EST UNE BOÎTE, ET SON RANG SE VOIT.
+ *
+ * ═══ CE QUE LE FORMULAIRE MONTRAIT ═══
+ *
+ * Une rangée qui se replie : pièce, constat, gravité, la croix de retrait, puis
+ * la bande des photos rejetée à la ligne suivante. Trois réserves saisies, et
+ * rien ne disait où l'une finissait et où l'autre commençait — sinon l'ordre des
+ * champs, qui change de forme selon la largeur puisque la rangée se replie.
+ *
+ * ═══ LE RANG EXISTAIT POUR L'OREILLE, PAS POUR L'ŒIL ═══
+ *
+ * « Retirer la réserve n° 2 » est le nom accessible de la croix, et le
+ * commentaire qui l'accompagne dit pourquoi : sans le rang, la liste des
+ * contrôles annonce trois fois la même commande. C'est juste — et cela ne
+ * laissait à l'œil aucun repère équivalent. Le seul rang VISIBLE était celui
+ * qu'affichait, par accident, le bouton d'ajout de photo.
+ *
+ * ═══ CE QUE CE CAS TIENT ═══
+ *
+ * Une LISTE ORDONNÉE, un élément par réserve. Le rang se voit, le regroupement
+ * se voit, et le lecteur d'écran annonce « liste, 3 éléments » là où il ne
+ * trouvait que des champs à la file. Et le rang SUIT : retirer la première
+ * renumérote la suivante, sans quoi le formulaire porterait un « n° 2 » seul.
+ */
+describe('les réserves du formulaire', () => {
+  const reserves = () => within(dialogue()).getAllByRole('listitem')
+
+  it('se voient comme des blocs numérotés', async () => {
+    await ouvrir()
+
+    expect(reserves(), 'le formulaire n’ouvre pas sur une réserve').toHaveLength(1)
+    expect(reserves()[0], 'le rang n’est pas écrit dans le bloc').toHaveTextContent(/n°\s*1/)
+  })
+
+  it('numérotent celle qu’on ajoute', async () => {
+    const user = await ouvrir()
+
+    await user.click(within(dialogue()).getByRole('button', { name: /ajouter une réserve/i }))
+
+    expect(reserves()).toHaveLength(2)
+    expect(reserves()[1], 'la réserve ajoutée ne porte pas son rang').toHaveTextContent(/n°\s*2/)
+  })
+
+  /**
+   * ET LE RANG SUIT LE RETRAIT.
+   *
+   * C'est la moitié qu'on oublie : un numéro posé à la création resterait le
+   * même après suppression de son prédécesseur, et le formulaire afficherait
+   * une réserve « n° 2 » unique. Le commentaire du bouton de retrait porte déjà
+   * cette inquiétude pour le nom accessible ; elle vaut pour ce qui se lit.
+   */
+  it('renumérotent ce qui reste après un retrait', async () => {
+    const user = await ouvrir()
+
+    await user.click(within(dialogue()).getByRole('button', { name: /ajouter une réserve/i }))
+    await user.click(within(dialogue()).getByRole('button', { name: /retirer la réserve n° 1/i }))
+
+    expect(reserves()).toHaveLength(1)
+    expect(reserves()[0], 'la réserve restante garde l’ancien rang').toHaveTextContent(/n°\s*1/)
+  })
+})

@@ -1,6 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRole } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { StatCard } from '@/components/primitives/Charts'
+import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
+import { cn } from '@/lib/cn'
 import { Button } from '@/components/primitives/Button'
 import { InspectionModal } from './InspectionModal'
 import { Card } from '@/components/primitives/Card'
@@ -13,9 +16,23 @@ import { TenantScopeNote } from './TenantDashboard'
 import { useT } from '@/i18n/I18nProvider'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useDates } from '@/lib/useDates'
-import type { Finding, Inspection } from '@/data/portfolio'
+import type { Finding, Inspection, Photo } from '@/data/portfolio'
 
 import { usePortfolio } from '@/data/PortfolioProvider'
+
+/**
+ * LA GRILLE DES DEUX COLONNES, nommée pour que l'attente ne s'en écarte pas.
+ *
+ * Elle s'écrivait DEUX fois dans ce fichier : une fois sur la rangée chargée,
+ * une fois sur le squelette qui l'annonce. Deux chaînes que rien ne tenait
+ * ensemble, dans le seul morceau du produit qu'aucune porte ne rend jamais —
+ * la démonstration n'attend pas, la vitrine n'a pas de squelette d'écran, et la
+ * mesure au navigateur mesure la page chargée. C'est ainsi que l'espace
+ * locataire s'est retrouvé à attendre sous quatre cartes pour en charger trois.
+ *
+ * Voir `squelettesFideles.test.ts`, qui tient désormais la règle.
+ */
+const GRILLE_DEUX_COLONNES = 'grid gap-4 lg:grid-cols-2'
 
 export function Inspections() {
   const t = useT()
@@ -38,6 +55,17 @@ export function Inspections() {
     ;(acc[inspection.unitId] ??= []).push(inspection)
     return acc
   }, {})
+
+  /* Les trois populations de la rangée d'indicateurs, tirées du MÊME
+     regroupement que les dossiers affichés : elles ne peuvent donc pas
+     contredire la liste qu'elles surplombent. Exhaustives et disjointes — leur
+     somme est le parc. */
+  const aLesDeux = (id: string) =>
+    (byUnit[id] ?? []).some((i) => i.kind === 'entry') &&
+    (byUnit[id] ?? []).some((i) => i.kind === 'exit')
+  const complets = logements.filter((u) => aLesDeux(u.id))
+  const entreeSeule = logements.filter((u) => !aLesDeux(u.id) && (byUnit[u.id] ?? []).length > 0)
+  const sansDossier = logements.filter((u) => (byUnit[u.id] ?? []).length === 0)
 
   /**
    * Un état des lieux est une pièce contradictoire : il porte des réserves
@@ -73,7 +101,46 @@ export function Inspections() {
         }
       />
 
-      {isTenant && <TenantScopeNote />}
+      {isTenant && <TenantScopeNote className="mb-4" />}
+
+      {/*
+        TROIS ÉTATS D'UN MÊME PARC, ET AUCUN N'ÉTAIT ÉCRIT.
+
+        L'écran alignait des dossiers sans jamais dire combien de logements
+        avaient une pièce contradictoire complète — la seule chose qui décide
+        s'il reste du travail avant une restitution de caution. On le comptait à
+        l'œil, dossier par dossier.
+
+        Les trois populations sont exhaustives et disjointes : un logement a les
+        deux états, l'entrée seule, ou rien. Leur somme est le parc, ce qui rend
+        la rangée vérifiable d'un coup d'œil.
+
+        PAS AU LOCATAIRE : il n'a qu'un logement, et « 1 sur 1 » n'apprend rien
+        à qui vient lire ses propres réserves.
+      */}
+      {!isTenant && logements.length > 0 && (
+        <div className={cn(GRILLE_TROIS_INDICATEURS, 'mb-6')}>
+          <StatCard
+            icone="checkCircle"
+            label={t('app.inspections.kpiComplete')}
+            value={String(complets.length)}
+            note={t('app.inspections.kpiCompleteNote')}
+          />
+          <StatCard
+            icone="clipboard"
+            label={t('app.inspections.kpiPartial')}
+            value={String(entreeSeule.length)}
+            note={t('app.inspections.kpiPartialNote')}
+          />
+          <StatCard
+            icone="alert"
+            label={t('app.inspections.kpiNone')}
+            value={String(sansDossier.length)}
+            etat={sansDossier.length > 0 ? { ton: 'warn' } : undefined}
+            note={t('app.inspections.kpiNoneNote')}
+          />
+        </div>
+      )}
 
       {!isTenant && logements[0] && (
         <InspectionModal
@@ -131,7 +198,7 @@ export function Inspections() {
       <div
         role="list"
         aria-label={t('app.inspections.byUnit')}
-        className="grid gap-4 lg:grid-cols-2"
+        className={GRILLE_DEUX_COLONNES}
       >
         {Object.entries(byUnit).map(([unitId, inspections]) => {
           const unit = unitById(unitId)
@@ -195,20 +262,56 @@ export function Inspections() {
                   D'autant que la consigne était redondante : le tableau qui suit
                   porte déjà « Comparaison entrée / sortie » en titre.
                 */}
-                {hasBoth && <Badge tone="gold">{t('app.inspections.compare')}</Badge>}
+                {hasBoth && <Badge tone="accent">{t('app.inspections.compare')}</Badge>}
               </div>
 
               <div className="flex flex-col gap-2.5">
-                {chronological.map((inspection) => (
+                {chronological.map((inspection) => {
+                  /* Les réserves qui portent une preuve, et elles seules : une
+                     rubrique « Preuves » ouverte au-dessus d'un vide annoncerait
+                     des photographies qui n'existent pas — exactement ce que
+                     l'écran des documents refuse déjà de faire. */
+                  const avecPreuves = (inspection.findings ?? []).filter(
+                    (r) => (r.photos ?? []).length > 0,
+                  )
+                  return (
                   <div
                     key={`${inspection.kind}-${inspection.date.year}-${inspection.date.month}`}
-                    className="flex items-center gap-3 rounded-md border border-divider bg-surface-sunken px-3.5 py-3"
+                    className="rounded-md border border-divider bg-surface-sunken"
                   >
+                  {/*
+                    LA RANGÉE SE REPLIE, ET LE CONSTAT GARDE SON JETON.
+
+                    La pastille — « 2 réserves », 97 px, `shrink-0` — et l'icône
+                    de 36 px ne laissaient que 59 px à la colonne du milieu sur
+                    les 216 utiles à 320 px. Or « 15/06/2024 » est INSÉCABLE et
+                    en réclame 73 : la date sortait de sa boîte et se peignait
+                    sous la pastille. Mesuré, pas supposé : +70 px pour la ligne
+                    de date, +38 px pour « Entrée ».
+
+                    Aucune règle ne le voyait — la page ne défile pas pour
+                    autant. C'est `MESURER_DEBORD_LOCAL` qui l'a nommé, et c'est
+                    le troisième et dernier des défauts VISIBLES qu'elle a
+                    découverts en naissant.
+
+                    `basis-20` — 5 rem, 80 px — ET NON `basis-48` COMME AILLEURS.
+                    Les deux autres cartes réparées portent des TITRES, qui ont
+                    besoin de deux ou trois mots par ligne ; ici la colonne ne
+                    porte que « Entrée » (43 px) et une date. Le plancher n'est
+                    donc pas une largeur de lecture, c'est la largeur du plus
+                    long JETON INSÉCABLE — 73 px —, et 80 est la première marche
+                    au-dessus. Recopier 192 px aurait fait replier la rangée
+                    jusqu'à 420 px de fenêtre, là où elle tient très bien.
+
+                    La ligne de date, elle, veut 141 px pour tenir d'un trait ;
+                    une fois la pastille descendue, la colonne en reçoit 168.
+                  */}
+                  <div className="flex flex-wrap items-center gap-3 px-3.5 py-3">
                     <span
                       className={`flex size-9 shrink-0 items-center justify-center rounded-md ${
                         inspection.kind === 'entry'
                           ? 'bg-ok-tint text-ok'
-                          : 'bg-gold-tint text-gold-ink'
+                          : 'bg-accent-tint text-accent-ink'
                       }`}
                     >
                       <Icon
@@ -217,7 +320,7 @@ export function Inspections() {
                       />
                     </span>
 
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 flex-1 basis-20">
                       <p className="text-body font-medium">
                         {t(`app.inspections.${inspection.kind}` as 'app.inspections.entry')}
                       </p>
@@ -227,7 +330,9 @@ export function Inspections() {
                       </p>
                     </div>
 
-                    <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    {/* `ml-auto` : descendue d'une ligne, elle reste rangée à
+                        droite plutôt que de se coller sous l'icône. */}
+                    <div className="ml-auto flex shrink-0 flex-col items-end gap-1.5">
                       <StatusPill
                         tone={inspection.issues === 0 ? 'ok' : inspection.issues > 3 ? 'danger' : 'warn'}
                         size="sm"
@@ -243,7 +348,10 @@ export function Inspections() {
                       )}
                     </div>
                   </div>
-                ))}
+                  {avecPreuves.length > 0 && <Preuves reserves={avecPreuves} />}
+                  </div>
+                  )
+                })}
               </div>
 
               {/*
@@ -288,12 +396,9 @@ function InspectionsSkeleton() {
     <>
       <PageHeader title={t('app.inspections.title')} description={t('app.inspections.subtitle')} />
 
-      <SkeletonRegion className="grid gap-4 lg:grid-cols-2">
+      <SkeletonRegion className={GRILLE_DEUX_COLONNES}>
         {[0, 1].map((carte) => (
-          <div
-            key={carte}
-            className="min-w-0 rounded-lg border border-divider bg-surface p-4 shadow-e1 sm:p-5"
-          >
+          <Card key={carte}>
             <div className="mb-4">
               <Skeleton line="title" className="w-40" />
               <Skeleton line="eyebrow" className="mt-1 w-32" />
@@ -313,10 +418,188 @@ function InspectionsSkeleton() {
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
         ))}
       </SkeletonRegion>
     </>
+  )
+}
+
+/**
+ * ─── LES PREUVES D'UN ÉTAT DES LIEUX ────────────────────────────────────────
+ *
+ * LE LOCATAIRE LES VOIT, et c'est la raison d'être de ce bloc.
+ *
+ * La photo d'une réserve est la pièce qui sert à RETENIR sur une caution. Elle
+ * existait depuis le lot du dépôt, déposée par le bailleur, servie au seul
+ * bailleur : la personne dont on arbitre la caution ne pouvait pas regarder ce
+ * qu'on lui opposait. Le serveur borne désormais la lecture au BAIL — pas au
+ * logement : une unité a une histoire, et les photographies de l'occupant
+ * d'avant ne regardent pas celui d'aujourd'hui.
+ *
+ * SOUS LE CONSTAT, ET NON DANS LE TABLEAU DE COMPARAISON. Le tableau ne se
+ * dresse que si l'entrée ET la sortie existent ; un locataire en cours de bail
+ * n'a que son entrée, et c'est précisément lui qui a besoin de voir dans quel
+ * état on a constaté son logement. Les preuves suivent donc le CONSTAT, qui,
+ * lui, existe toujours.
+ *
+ * IL REGARDE, IL NE FAIT RIEN D'AUTRE. Aucune vignette n'est un bouton : pas de
+ * plein écran, pas de zoom, pas de suppression. AUCUNE cible tactile n'entre
+ * ici, et cette absence est gardée DEUX FOIS — par un cas d'écran qui exige
+ * zéro commande dans ce bloc, et par `mesure-ui`.
+ *
+ * ─── CE QUE LA MESURE A COÛTÉ, ET CE QU'ELLE A DIT ────────────────────────
+ *
+ * Au premier jet, `mesure-ui` ÉTAIT AVEUGLE ICI, et c'est une mutation qui l'a
+ * dit : un bouton de 32 px posé dans ce bloc laissait la porte VERTE —
+ * « 10 482 cibles sondées, aucune sous 44 px ». La sonde balaie `/demo`, jamais
+ * `/app` ; et le jeu de démonstration ne portait AUCUNE photo, faute de dépôt
+ * d'objets. Le bloc n'existait donc sur aucun des 506 points mesurés : ni son
+ * contraste, ni ses cibles, ni ses noms accessibles n'étaient audités.
+ *
+ * Une preuve a été versée dans le jeu de démonstration pour refermer ce trou —
+ * une photographie en domaine public, recadrée et INLINÉE (voir
+ * `data/fixtures/PROVENANCE.md`). La même mutation rejouée ensuite fait ROUGIR
+ * la porte, et le rapport nomme la cible, l'écran et la langue :
+ *
+ *   ✗ mesure-ui : 3 forme(s) de cible sous 44 px, sur 10 506 sondées.
+ *      cible 32x33  <button> « Photo 1 of 1 — Peinture écaillée d »
+ *         vu à /demo/etats-des-lieux 320px en-US
+ *
+ * C'EST LA LEÇON GÉNÉRALE, et elle dépasse ce bloc : un écran conditionné à une
+ * donnée que la démonstration ne porte pas naît HORS de la porte, et son vert
+ * ne veut rien dire. Le trou des GESTES avait été comblé par
+ * `SURFACES_INTERACTIVES` ; celui-ci est le même trou, côté DONNÉE.
+ *
+ * ─── CE QUI RESTE NON GARDÉ : LE REPLI LUI-MÊME ───────────────────────────
+ *
+ * La rangée porte trois preuves dans la démonstration, précisément pour que son
+ * repli soit RENDU — à 320 px elle montre deux vignettes puis une. Rendu, donc
+ * audité en contraste, en cibles et en noms accessibles.
+ *
+ * MAIS RETIRER `flex-wrap` NE FAIT PAS ROUGIR LA PORTE, et c'est mesuré.
+ * `mesure-ui` ne tient pour débordement que ce qui fait DÉFILER LA PAGE — il
+ * tente `window.scrollTo(400, 0)` et regarde `scrollX`. Sans repli, la rangée
+ * dépasse de 40 px (256 contre 216), la grille de 8, et le rembourrage de
+ * `main` absorbe le reste : la page ne défile pas, la porte reste verte, et la
+ * troisième vignette sort pourtant de la carte. Le défaut se VOIT sur une
+ * capture ; aucune garde ne le dit. C'est nommé ici plutôt que laissé pour vrai.
+ */
+function Preuves({ reserves }: { reserves: Finding[] }) {
+  const t = useT()
+
+  return (
+    <div className="border-t border-divider px-3.5 py-3">
+      <p className="eyebrow mb-2 text-muted">{t('app.inspections.proofs')}</p>
+      <ul className="flex flex-col gap-3">
+        {reserves.map((reserve) => {
+          const photos = reserve.photos ?? []
+          return (
+            <li key={reserve.id}>
+              {/* LA RÉSERVE EST NOMMÉE AU-DESSUS DE SES PHOTOS.
+                  Une vignette seule ne dit pas de quoi elle est la preuve, et
+                  c'est la seule chose qui compte quand on conteste : « pièce,
+                  constat » puis l'image qui l'atteste. Le tableau de
+                  comparaison porte déjà ces mots, mais il ne se dresse pas
+                  toujours — voir l'en-tête de ce bloc. */}
+              <p className="text-caps text-muted">
+                {reserve.room} · {reserve.description}
+              </p>
+              <ul className="mt-1.5 flex flex-wrap gap-2">
+                {photos.map((photo, index) => (
+                  /* `shrink-0` VA SUR L'ÉLÉMENT DE LISTE, pas sur l'image, et
+                     c'est une mesure qui l'a dit : posé sur l'`<img>` il ne
+                     changeait RIEN — l'élément flexible est le `<li>`, et le
+                     `max-width: 100%` que le reset pose sur toute image la
+                     ramène ensuite à la largeur du `<li>` écrasé.
+
+                     Pourquoi il faut y être : un élément flexible rétrécit sous
+                     sa largeur AVANT que la ligne ne se replie. Sans lui, une
+                     preuve de trop ne débordait pas — elle écrasait ses voisines
+                     de 80 à 66,7 px, mesuré à 320 px. Un débordement se voit et
+                     se garde ; un écrasement se subit en silence. */
+                  <li key={photo.id} className="shrink-0">
+                    <Preuve
+                      photo={photo}
+                      legende={t('app.inspections.proofAlt', {
+                        index: index + 1,
+                        total: photos.length,
+                        finding: reserve.description,
+                      })}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
+/**
+ * Une preuve, et l'adresse qu'il faut demander pour la voir.
+ *
+ * LE SEAU N'EST JAMAIS PUBLIC : il n'existe pas d'adresse stable vers une
+ * photo. Celle-ci est signée, périme en quelques minutes, et se demande donc au
+ * MONTAGE plutôt que d'être scellée dans le portefeuille — qui, lui, vit en
+ * mémoire des heures et rendrait l'adresse morte avant d'être affichée.
+ *
+ * TROIS ÉTATS, et le troisième est le seul qui mérite d'être écrit. Tant que
+ * l'adresse est en vol, un squelette de la taille exacte de la vignette : sans
+ * lui, la rangée se remplirait par à-coups et pousserait le texte sous le
+ * doigt. Quand l'adresse ne vient pas — refus du serveur, jeu de démonstration
+ * sans dépôt, octets disparus —, on le DIT. Une case vide se lirait comme une
+ * photo qu'on a oublié d'afficher, là où l'écran doit être le plus clair.
+ *
+ * `onError` compte autant que le refus : l'adresse peut être délivrée et les
+ * octets manquer quand même — c'est exactement ce que fait le dépôt local quand
+ * l'objet a été effacé sous une ligne survivante.
+ */
+function Preuve({ photo, legende }: { photo: Photo; legende: string }) {
+  const t = useT()
+  const { lirePhoto } = usePortfolio()
+  const [url, setUrl] = useState<string | null>(null)
+  const [manquante, setManquante] = useState(false)
+
+  useEffect(() => {
+    // Le drapeau de vie : un composant démonté pendant que l'adresse est en vol
+    // poserait un état sur un arbre qui n'existe plus.
+    let vivant = true
+    setUrl(null)
+    setManquante(false)
+    void lirePhoto(photo.id).then((adresse) => {
+      if (!vivant) return
+      if (adresse) setUrl(adresse)
+      else setManquante(true)
+    })
+    return () => {
+      vivant = false
+    }
+  }, [lirePhoto, photo.id])
+
+  if (manquante) {
+    return (
+      <span className="flex size-20 items-center justify-center rounded-md border border-dashed border-border px-1 text-center text-caps text-muted">
+        {t('app.inspections.proofMissing')}
+      </span>
+    )
+  }
+
+  if (!url) return <Skeleton radius="md" className="size-20" />
+
+  return (
+    <img
+      src={url}
+      alt={legende}
+      /* La rangée s'affiche entière : ne charger que ce qui entre dans la
+         fenêtre évite de payer les octets d'une preuve que personne ne
+         déroulera. */
+      loading="lazy"
+      onError={() => setManquante(true)}
+      className="size-20 rounded-md border border-divider object-cover"
+    />
   )
 }
 
@@ -390,7 +673,7 @@ function Comparaison({ inspections }: { inspections: Inspection[] }) {
                   <CelluleReserves reserves={apres} />
                   <td className="numeric py-2.5 pl-3 text-right text-body">
                     {cout > 0 ? (
-                      <span className="font-medium text-danger">{money(cout, { round: true })}</span>
+                      <span className="font-medium text-danger">{money(cout, { compact: true })}</span>
                     ) : (
                       /* Rien à retenir se DIT : une cellule vide se lirait comme
                          un montant qu'on a oublié de porter. */
@@ -407,7 +690,7 @@ function Comparaison({ inspections }: { inspections: Inspection[] }) {
       {retenue > 0 && (
         <p className="mt-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <span className="text-body text-muted">{t('app.inspections.proposed')}</span>
-          <span className="numeric text-body font-medium">{money(retenue, { round: true })}</span>
+          <span className="numeric text-body font-medium">{money(retenue, { compact: true })}</span>
         </p>
       )}
     </div>

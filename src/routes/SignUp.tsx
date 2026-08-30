@@ -12,7 +12,7 @@ import {
 } from "@/components/primitives/Input";
 import { Combobox } from "@/components/primitives/Combobox";
 import { Checkbox, RadioCards } from "@/components/primitives/Choice";
-import { Icon } from "@/components/primitives/Icon";
+import { Notice } from "@/components/primitives/Notice";
 import { Card } from "@/components/primitives/Card";
 import { useI18n, useT, type MessageKey } from "@/i18n/I18nProvider";
 import { ApiError, NetworkError } from "@/api/client";
@@ -37,6 +37,7 @@ import { INDICATIFS, nomDuPays } from "@/lib/indicatifs";
 import {
   formatInviteCode,
   validateEmail,
+  LONGUEUR_MINIMALE_DU_MOT_DE_PASSE,
   validateInviteCode,
   validateCountry,
   validateName,
@@ -102,7 +103,12 @@ export function SignUp() {
   /** Erreurs de l'étape courante. */
   function validateStep(current: StepKey): Record<string, FieldError> {
     if (current === "role") {
-      return {};
+      /* LE RÔLE EST UN CHAMP COMME LES AUTRES. Cette étape rendait un objet
+         VIDE et le bouton était éteint à la place : un primaire pâle qui ne
+         prend pas le focus et n'énonce rien. La machinerie de refus de
+         `goNext` — amener le champ fautif à l'écran, lui donner le focus —
+         existait déjà et sautait celle-ci. */
+      return { role: state.role ? null : "auth.signup.roleRequired" };
     }
 
     if (current === "identity") {
@@ -242,8 +248,6 @@ export function SignUp() {
   };
 
   const goNext = () => {
-    if (step === "role" && !state.role) return;
-
     const next = validateStep(step);
     setErrors(next);
     setTouched((s) => ({
@@ -306,8 +310,23 @@ export function SignUp() {
     window.scrollTo({ top: 0 });
   };
 
+  /*
+    LE SEUIL EST FOURNI À TOUTES LES ERREURS, et c'est délibéré.
+
+    `auth.errors.passwordShort` interpole désormais `{n}` — le nombre vit dans
+    `LONGUEUR_MINIMALE_DU_MOT_DE_PASSE` et non plus en double dans le validateur
+    et dans les deux traductions. Ce rendu-ci est GÉNÉRIQUE : il ne sait pas
+    quelle clé il traduit. Lui apprendre quel champ réclame quel paramètre
+    ferait remonter la grammaire des messages dans le composant.
+
+    Le passer partout est sans effet ailleurs : l'interpolation ne remplace que
+    les marqueurs présents, et `{n}` n'apparaît dans aucun autre message de ce
+    parcours.
+  */
   const errorFor = (key: string) =>
-    touched[key] && errors[key] ? t(errors[key]!) : undefined;
+    touched[key] && errors[key]
+      ? t(errors[key]!, { n: LONGUEUR_MINIMALE_DU_MOT_DE_PASSE })
+      : undefined;
 
   const blur = (key: string, error: FieldError) => () => {
     setTouched((s) => ({ ...s, [key]: true }));
@@ -351,7 +370,7 @@ export function SignUp() {
           <Link
             to="/connexion"
             data-cible="dans-une-phrase"
-            className="font-semibold text-gold-ink hover:text-gold-ink-hover"
+            className="font-semibold text-accent-ink hover:text-accent-ink-hover"
           >
             {t("auth.signIn")}
           </Link>
@@ -370,6 +389,9 @@ export function SignUp() {
           <RadioCards
             legend={t("auth.signup.roleTitle")}
             hideLegend
+            error={
+              touched.role && errors.role ? t(errors.role) : undefined
+            }
             name="role"
             value={state.role}
             onChange={(role: Role) => patch({ role })}
@@ -448,10 +470,20 @@ export function SignUp() {
                       départagent par l'ordre du CSS généré, pas par l'ordre des
                       classes. Le champ tombait à 68px pour 52px de rembourrage,
                       et « +237 » n'avait plus la place de s'afficher. */}
-                  {/* Élargi de 112 à 176px : l'étiquette porte désormais le
-                      pays avant l'indicatif, et « Cameroun · +237 » ne tient
-                      pas dans la largeur d'un nombre à quatre caractères. */}
-                  <div className="w-44 shrink-0">
+                  {/*
+                    RESSERRÉ DE 176 À 104 px, ET C'EST LE CONTRAIRE D'UN RECUL.
+
+                    Le champ avait été élargi pour loger « Cameroun · +237 ». La
+                    course était perdue d'avance : le libellé va jusqu'à
+                    « Canada, États-Unis, Anguilla… · +1 », et « Congo-Brazzaville
+                    · +242 » rognait déjà le +242 — la seule partie qui sert.
+
+                    Fermé, le contrôle montre l'INDICATIF seul : cinq caractères
+                    au plus, quel que soit le pays. Le nom du pays vit dans la
+                    liste, là où l'on choisit et où la place existe. Les 72 px
+                    rendus vont au NUMÉRO, qui en manquait.
+                  */}
+                  <div className="w-26 shrink-0">
                     <Combobox
                       aria-label={t("common.dialCode")}
                       autoComplete="tel-country-code"
@@ -464,6 +496,9 @@ export function SignUp() {
                         ({ dial, label, zone }) => ({
                           value: dial,
                           label,
+                          // Voir `OptionCombobox.resume` : le champ fermé porte
+                          // l'indicatif, la liste porte les pays.
+                          resume: dial,
                           groupe: t(
                             zone === "cfa"
                               ? "common.dialZoneCfa"
@@ -537,8 +572,12 @@ export function SignUp() {
               )}
             </Field>
 
+            {/* LA RÈGLE SE DIT AVANT L'ÉCHEC — voir `ResetPassword`, qui porte
+                le même champ et la même aide. La jauge de force ne rend rien
+                tant que le champ est vide, et ne dit jamais le seuil. */}
             <Field
               label={t("common.password")}
+              hint={t("common.passwordHint", { n: LONGUEUR_MINIMALE_DU_MOT_DE_PASSE })}
               required
               error={errorFor("password")}
               className="sm:col-span-2"
@@ -629,13 +668,9 @@ export function SignUp() {
             utilisateur de lecteur d'écran entend la fin du chargement du bouton
             et rien d'autre — l'assistant semble n'avoir rien fait. */}
         {echec && (
-          <p
-            role="alert"
-            className="flex items-start gap-2 rounded-md border border-danger-border bg-danger-tint px-3.5 py-3 text-body text-danger"
-          >
-            <Icon name="alert" size={15} className="mt-0.5 shrink-0" />
+          <Notice tone="danger" role="alert">
             {t(echec)}
-          </p>
+          </Notice>
         )}
 
         <div className="flex flex-col-reverse gap-3 border-t border-border pt-6 sm:flex-row sm:justify-between">
@@ -657,7 +692,6 @@ export function SignUp() {
             size="lg"
             iconAfter={step === "review" ? undefined : "arrowRight"}
             loading={submitting}
-            disabled={step === "role" && !state.role}
           >
             {step === "review" ? t("auth.signup.submit") : t("common.next")}
           </Button>
@@ -767,9 +801,12 @@ function ContextStep({
               value={state.currency}
               onChange={(e) => onCurrencyChange(e.target.value as CurrencyCode)}
             >
+              {/* Le NOM, pas le code : c'est une liste, et les listes de
+                  devises parlent toutes le même vocabulaire depuis qu'il vit
+                  au dictionnaire. Voir `common.currencyNames`. */}
               {CURRENCIES.map((code) => (
                 <option key={code} value={code}>
-                  {CURRENCY_DEFS[code].label}
+                  {t(`common.currencyNames.${code}` as 'common.currencyNames.CFA')}
                 </option>
               ))}
             </Select>
@@ -917,10 +954,7 @@ function ContextStep({
 
       {state.role === "tenant" && (
         <div className="flex flex-col gap-5 border-t border-border pt-6">
-          <p className="flex items-start gap-2.5 rounded-md border border-gold-border bg-gold-tint px-4 py-3 text-body text-gold-ink">
-            <Icon name="info" size={16} className="mt-0.5 shrink-0" />
-            {t("auth.signup.tenantNotice")}
-          </p>
+          <Notice>{t("auth.signup.tenantNotice")}</Notice>
 
           <Field
             label={t("auth.signup.inviteCode")}
@@ -933,7 +967,7 @@ function ContextStep({
                 {...props}
                 name="inviteCode"
                 icon="key"
-                placeholder="LOC-4A7B-92CD"
+                placeholder={t('auth.signup.inviteCodePlaceholder')}
                 autoCapitalize="characters"
                 spellCheck={false}
                 value={state.inviteCode}
@@ -1086,7 +1120,7 @@ function ReviewStep({
                   aria-label={t("auth.signup.editSection", {
                     section: groupe.titre,
                   })}
-                  className="-my-2.5 -mr-2 inline-flex min-h-11 shrink-0 cursor-pointer items-center rounded-sm px-2 text-label font-semibold text-gold-ink hover:text-gold-ink-hover"
+                  className="-my-2.5 -mr-2 inline-flex min-h-11 shrink-0 cursor-pointer items-center rounded-sm px-2 text-label font-semibold text-accent-ink hover:text-accent-ink-hover"
                 >
                   {t("common.edit")}
                 </button>
@@ -1155,14 +1189,13 @@ function SignupSuccess({ role }: { role: Role | null }) {
   return (
     <AuthLayout title={t("auth.signup.successTitle")}>
       <div className="flex flex-col gap-6">
-        <p className="flex items-start gap-3 rounded-lg border border-ok-border bg-ok-tint px-4 py-3.5 text-body text-ok">
-          <Icon name="checkCircle" size={18} className="mt-0.5 shrink-0" />
+        <Notice tone="ok" forte>
           {t("auth.signup.successBody", {
             role: t(
               `roles.${role ?? "owner"}.name` as "roles.owner.name",
             ).toLowerCase(),
           })}
-        </p>
+        </Notice>
 
         <Button size="lg" fullWidth to="/app" iconAfter="arrowRight">
           {t("auth.signup.goToDashboard")}

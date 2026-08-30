@@ -25,7 +25,10 @@ describe('connexion', () => {
     const alertes = screen.getAllByRole('alert')
     expect(alertes).toHaveLength(2)
     expect(alertes[0]).toHaveTextContent('Indiquez votre adresse e-mail.')
-    expect(alertes[1]).toHaveTextContent('Choisissez un mot de passe.')
+    /* « Saisissez », et non « Choisissez » : on se connecte avec le mot de passe
+       qu'on a. Le message était unique pour les trois écrans, donc juste sur les
+       deux où l'on en crée un et faux sur celui-ci — voir `validatePassword`. */
+    expect(alertes[1]).toHaveTextContent('Saisissez votre mot de passe.')
   })
 
   it('place le focus sur le premier champ fautif', async () => {
@@ -126,9 +129,26 @@ describe('mot de passe oublié', () => {
 })
 
 describe('inscription', () => {
+  /**
+   * L'EXIGENCE RESTE, LA FAÇON DE LA DIRE A CHANGÉ.
+   *
+   * Le bouton était ÉTEINT tant qu'aucun rôle n'était choisi : une porte fermée
+   * sans écriteau, qui ne prend pas le focus et n'énonce rien. Il reste
+   * cliquable, et le refus s'écrit au groupe de rôles — voir
+   * `routes/refusLisible.test.tsx`, qui tient les deux moitiés.
+   *
+   * Ce cas garde la moitié qui compte ici : on ne passe pas sans rôle.
+   */
   it('exige un rôle avant de continuer', async () => {
+    const user = userEvent.setup()
     await renderApp('/inscription')
-    expect(screen.getByRole('button', { name: /continuer/i })).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: /continuer/i }))
+
+    expect(
+      screen.getByRole('heading', { level: 1 }),
+      'la première étape a été franchie sans rôle',
+    ).toHaveTextContent(/Qui êtes-vous/)
   })
 
   it('saute le choix de rôle quand l’URL le porte déjà', async () => {
@@ -199,9 +219,15 @@ describe('inscription', () => {
     await user.type(pays, 'France')
     await user.click(screen.getByRole('option', { name: 'France' }))
 
-    // La France emporte l'euro : le pré-remplissage doit se voir CHANGER, sinon
-    // le test se contenterait de la valeur par défaut du Cameroun.
-    expect(screen.getByLabelText(/devise/i)).toHaveValue('EUR')
+    /* La France emporte l'euro : le pré-remplissage doit se voir CHANGER, sinon
+       le test se contenterait de la valeur par défaut du Cameroun.
+
+       `/^devise/i` ANCRÉ AU DÉBUT, comme `/^pays/i` deux lignes plus haut. Le
+       motif libre attrapait aussi le déclencheur des réglages, dont le nom
+       accessible est « Réglages : langue, devise et thème » — deux choses qui
+       portent le mot sur le même écran, et qui n'ont rien à voir : celle-ci est
+       la devise du PARC qu'on crée, celle-là celle dans laquelle on LIT. */
+    expect(screen.getByLabelText(/^devise/i)).toHaveValue('EUR')
 
     await user.click(pays)
     await user.type(pays, 'Sénég')
@@ -209,7 +235,7 @@ describe('inscription', () => {
 
     // Le Sénégal relevait du XOF et le Cameroun du XAF ; les deux zones franc
     // sont désormais regroupées sous une seule devise.
-    expect(screen.getByLabelText(/devise/i)).toHaveValue('CFA')
+    expect(screen.getByLabelText(/^devise/i)).toHaveValue('CFA')
   })
 
   /**
@@ -243,7 +269,7 @@ describe('inscription', () => {
     // Le pays a suivi l'indicatif, et avec lui la devise du pays servi.
     const pays = await screen.findByLabelText(/^pays/i)
     expect(pays).toHaveValue('France')
-    expect(screen.getByLabelText(/devise/i)).toHaveValue('EUR')
+    expect(screen.getByLabelText(/^devise/i)).toHaveValue('EUR')
   })
 
   /**
@@ -274,7 +300,7 @@ describe('inscription', () => {
     expect(pays).toHaveValue('Zimbabwe')
     // Le Cameroun par défaut tient : deviner une devise pour le Zimbabwe serait
     // une invention, et une invention fausse coûte plus qu'un champ à régler.
-    expect(screen.getByLabelText(/devise/i)).toHaveValue('CFA')
+    expect(screen.getByLabelText(/^devise/i)).toHaveValue('CFA')
   })
 
   /**
@@ -336,7 +362,7 @@ describe('inscription', () => {
     // Un pays hors du marché servi ne porte ni devise ni langue : le choix
     // précédent tient, et l'utilisateur tranche lui-même. Deviner « dollar »
     // pour le Zimbabwe serait une invention, pas un pré-remplissage.
-    expect(screen.getByLabelText(/devise/i)).toHaveValue('CFA')
+    expect(screen.getByLabelText(/^devise/i)).toHaveValue('CFA')
   })
 
   it('garde le jeton de remplissage automatique sur le pays', async () => {
@@ -486,17 +512,33 @@ describe('retour à l’accueil depuis l’authentification', () => {
    * n'apprenait donc jamais que le mot de passe qu'on tape est refusable, alors
    * que c'est la seule information du composant.
    *
-   * Ce cas vérifie la RÉGION vivante, pas le mot : citer « faible » reviendrait
-   * à recopier le barème qu'on prétend surveiller.
+   * Ce cas vérifie la RÉGION vivante, pas le mot.
+   *
+   * Sa première rédaction promettait déjà cela et faisait l'inverse : elle
+   * cherchait `/faible|correct|bon|fort/i`, c'est-à-dire le barème qu'elle
+   * prétendait ne pas recopier. Deux conséquences, et les deux se sont
+   * produites. Le barème a dérivé sans qu'elle bronche — les libellés disent
+   * « Moyen » et « Robuste », jamais « correct » ni « fort », si bien qu'elle ne
+   * tenait plus que par « faible ». Puis renommer ce seul niveau en « Trop
+   * court » l'a fait tomber, alors que RIEN de ce qu'elle garde n'avait bougé.
+   *
+   * On vise donc l'apparition de la région : rien d'annoncé tant qu'on n'a pas
+   * tapé, une région polie et non vide dès qu'on tape. Le vocabulaire des
+   * niveaux reste libre ; c'est `jaugeEtRefus.test.ts` qui tient leur SENS.
    */
   it('annonce le niveau du mot de passe au fil de la frappe', async () => {
     const user = userEvent.setup()
     await renderApp('/inscription/proprietaire')
 
+    const parlantes = () =>
+      Array.from(document.querySelectorAll('[aria-live]')).filter((r) => r.textContent?.trim())
+
+    expect(parlantes(), 'une région parle avant toute frappe').toHaveLength(0)
+
     await user.type(screen.getByLabelText(/^Mot de passe/), 'abc')
 
-    const jauge = screen.getByText(/faible|correct|bon|fort/i).closest('[aria-live]')
-    expect(jauge).not.toBeNull()
-    expect(jauge).toHaveAttribute('aria-live', 'polite')
+    const jauge = parlantes()
+    expect(jauge, 'rien n’est annoncé après la frappe').toHaveLength(1)
+    expect(jauge[0]).toHaveAttribute('aria-live', 'polite')
   })
 })

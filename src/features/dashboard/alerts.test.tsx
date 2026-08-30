@@ -30,10 +30,26 @@ describe('les notifications s’annoncent comme une liste', () => {
       escamoter une notification la laissait verte. Le compte n'a de sens que
       rapporté à ce que le parc contient.
 
-      Vu du propriétaire, aucune notification n'est filtrée : l'écran les montre
-      toutes, et c'est précisément ce qu'on vérifie ici.
+      Vu du propriétaire, aucune notification n'est FILTRÉE — mais les relances
+      d'un même bail sont désormais REPLIÉES en une carte. Les deux mots ne
+      disent pas la même chose, et la différence est tout l'objet du repli :
+      filtrer retire, replier range. Ce que le compte doit tenir est donc « rien
+      n'a disparu », et la formule le dit maintenant explicitement plutôt que de
+      compter des lignes qui se trouvaient coïncider avec la donnée.
+
+      Mesuré avant le repli : cinq entrées visibles, dont QUATRE portaient la
+      même dette — la détection plus trois relances. Le devis qui attend une
+      décision arrivait cinquième, enterré sous 80 % de répétition.
     */
-    expect(directs).toHaveLength(ALERTS.length)
+    const relances = ALERTS.filter((a) => a.message === 'rentReminder')
+    const bauxRelances = new Set(relances.map((a) => a.unitId))
+    const attendu = ALERTS.length - relances.length + bauxRelances.size
+    expect(directs).toHaveLength(attendu)
+
+    /* GARDE DE LA GARDE : si le repli cessait d'opérer, `attendu` vaudrait
+       `ALERTS.length` et le cas passerait au vert sur l'écran d'avant. On exige
+       donc qu'il y ait bien quelque chose à replier dans le jeu. */
+    expect(relances.length).toBeGreaterThan(bauxRelances.size)
   })
 })
 
@@ -82,9 +98,22 @@ describe('messages d’alerte', () => {
 
   it('formate les montants dans la devise choisie', async () => {
     await renderApp('/app/signalements', { locale: 'en', currency: 'USD' })
-    // Le montant était « 45 000 » en clair dans la chaîne : ni symbole, ni
-    // groupement anglais, et insensible au changement de devise.
-    expect(screen.getByText(/\$\s?45,000 proposed by the manager/)).toBeInTheDocument()
+    /*
+      Le montant était « 45 000 » en clair dans la chaîne : ni symbole, ni
+      groupement anglais, et insensible au changement de devise.
+
+      LES CHIFFRES SUIVENT LA CONVERSION, pas le message. Le jeu de
+      démonstration compte en francs CFA ; 45 000 francs valent 68,60 € au taux
+      légal, soit 82,32 $ au cours figé du faux serveur. Ce que le cas garde —
+      le symbole, sa position, la ponctuation décimale de l'anglais — est
+      intact ; le groupement des milliers, lui, est tenu par `currencies.test`.
+
+      LES CENTS SONT RÉ-ANCRÉS. Le cas assertait « $ 82 » : la forme compacte
+      tronquait, et un devis de 82,32 $ s'annonçait 82 $ à celui qui doit
+      l'accepter. Trente-deux cents sur un devis, c'est peu ; la même règle
+      s'appliquait au solde d'une caution posé à côté de ses deux termes.
+    */
+    expect(screen.getByText(/\$\s?82\.32 proposed by the manager/)).toBeInTheDocument()
   })
 
   it('énumère les unités avec la conjonction de la langue', async () => {
@@ -137,11 +166,14 @@ describe('messages d’alerte', () => {
   /**
    * L'ÉTAT « NON LUE » SE DIT, au lieu de n'être qu'une couleur.
    *
-   * Il n'existait que dans un liseré — et un liseré à 2,87:1, que la feuille de
-   * jetons condamne elle-même pour cet usage. Un lecteur d'écran parcourait
-   * donc douze notifications rigoureusement identiques, sans jamais savoir
-   * lesquelles restaient à traiter : la seule question qu'on se pose sur cet
-   * écran, et celle dont la barre latérale annonce le compte juste à côté.
+   * Il n'existait que dans un liseré — et un liseré qui, du temps où l'accent
+   * de marque était l'or, ne tenait que 2,87:1, ce que la feuille de jetons
+   * condamnait elle-même pour cet usage. Le bleu qui a remplacé l'or a relevé
+   * ce liseré sans rien changer à ce cas-ci : une couleur, si franche
+   * soit-elle, ne se prononce pas. Un lecteur d'écran parcourait donc douze
+   * notifications rigoureusement identiques, sans jamais savoir lesquelles
+   * restaient à traiter : la seule question qu'on se pose sur cet écran, et
+   * celle dont la barre latérale annonce le compte juste à côté.
    */
   it('dit lesquelles restent à lire, et pas seulement en couleur', async () => {
     await renderApp('/demo/signalements')
