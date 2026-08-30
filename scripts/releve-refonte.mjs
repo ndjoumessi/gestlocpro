@@ -36,6 +36,7 @@ import { writeFileSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
 import { argv, exit } from 'node:process'
 import { inventaireDesRoutes, exigerUnInventairePlein, RACINE } from './inventaire/routes.mjs'
+import { imposerLaPoliceLarge } from './police-large.mjs'
 
 const PORT = Number(process.env.PORT_RELEVE || 4220)
 const BASE = `http://127.0.0.1:${PORT}`
@@ -220,6 +221,7 @@ try {
       locale,
       colorScheme: 'light',
     })
+    await imposerLaPoliceLarge(contexte)
     const page = await contexte.newPage()
     await page.addInitScript((l) => {
       try {
@@ -246,6 +248,7 @@ try {
   /* ── Octets et requêtes À FROID, un contexte neuf par écran ───────────── */
   for (const adresse of ADRESSES) {
     const contexte = await navigateur.newContext({ viewport: { width: 360, height: 900 }, locale: 'fr-FR' })
+    await imposerLaPoliceLarge(contexte)
     const page = await contexte.newPage()
     let octets = 0
     let requetes = 0
@@ -272,6 +275,7 @@ try {
       locale: 'fr-FR',
       colorScheme: theme,
     })
+    await imposerLaPoliceLarge(contexte)
     const page = await contexte.newPage()
     for (const adresse of ADRESSES) {
       await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })

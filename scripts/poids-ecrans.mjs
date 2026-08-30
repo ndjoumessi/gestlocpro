@@ -78,6 +78,7 @@ import { lirePNG } from './lire-png.mjs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { argv, exit } from 'node:process'
+import { imposerLaPoliceLarge } from './police-large.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
 const PLAFONDS = join(RACINE, 'scripts/plafonds-ecrans.json')
@@ -273,6 +274,7 @@ try {
       locale: 'fr-FR',
       colorScheme: 'light',
     })
+    await imposerLaPoliceLarge(contexte)
     const page = await contexte.newPage()
     for (const adresse of ECRANS) {
       const actifs = []

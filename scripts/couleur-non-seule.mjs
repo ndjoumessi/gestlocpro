@@ -71,6 +71,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { exit } from 'node:process'
 import { lirePNG } from './lire-png.mjs'
+import { imposerLaPoliceLarge } from './police-large.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
 const PORT = 4188
@@ -327,6 +328,7 @@ try {
       colorScheme: point.theme,
       deviceScaleFactor: 2,
     })
+    await imposerLaPoliceLarge(contexte)
     const page = await contexte.newPage()
     await page.goto(BASE + point.adresse, { waitUntil: 'domcontentloaded' })
     await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {})

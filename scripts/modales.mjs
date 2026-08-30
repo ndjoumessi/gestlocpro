@@ -70,6 +70,7 @@ import { spawn } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { exit } from 'node:process'
+import { imposerLaPoliceLarge } from './police-large.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
 const PORT = 4192
@@ -457,6 +458,7 @@ try {
           locale: langue === 'fr' ? 'fr-FR' : 'en-US',
           colorScheme: 'light',
         })
+        await imposerLaPoliceLarge(contexte)
         const page = await contexte.newPage()
         await page.addInitScript((l) => {
           try {

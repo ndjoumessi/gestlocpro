@@ -83,6 +83,7 @@ import { chromium } from 'playwright'
   mensonge exacte que ce lot ferme.
 */
 import { EXEMPTIONS_DE_RENDU, MAXIMUM_D_EXEMPTIONS } from './exemptions-de-rendu.mjs'
+import { imposerLaPoliceLarge } from './police-large.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -1013,68 +1014,6 @@ const SURFACES_ATTENDUES = 22
  * transitions plutôt que d'attendre qu'elles finissent — attendre serait un
  * délai, et un délai est un pari.
  */
-/**
- * REPRODUIRE LA POLICE D'UNE AUTRE MACHINE, ICI, SANS Y ALLER.
- *
- * ═══ LE PROBLÈME QUE CE COMMUTATEUR RÉSOUT ═══
- *
- * `--font-sans` commence par `system-ui`, et ce mot désigne un DESSIN DIFFÉRENT
- * sur chaque système. Mesuré le 2026-08-30, « Créer mon espace » à 16 px :
- *
- *   132,61 px   la police système de macOS
- *   146,14 px   DejaVu Sans, que l'exécuteur Ubuntu met derrière `system-ui`
- *
- * Onze pour cent. C'est assez pour que cette porte soit VERTE ici et ROUGE
- * là-bas, sur cinq signatures de débordement local — et c'est arrivé.
- *
- * Sans ce commutateur, réparer ces cinq défauts demanderait un aller-retour
- * d'intégration continue par essai. Avec lui, la boucle revient sur la machine
- * de développement.
- *
- * ═══ POURQUOI VERDANA, ET LA MESURE QUI L'A CHOISIE ═══
- *
- * Ce Mac n'a pas DejaVu — demandée, elle retombe sur le repli, à 114,61 px, ce
- * qui ne reproduirait rien. Quinze familles présentes ont donc été mesurées sur
- * la même chaîne : Verdana rend 145,86 px contre 146,14, soit **0,28 px
- * d'écart, deux dixièmes de pour cent**. La suivante, Lucida Grande, est à
- * 6,23 px. Ce n'est pas « une police large », c'est celle qui coïncide.
- *
- * ═══ CE QUE ÇA N'EST PAS ═══
- *
- * Ce n'est pas une seconde vérité : la porte, sans commutateur, mesure ce que
- * cette machine rend, et c'est ce qui compte pour un relevé reproductible. Ce
- * commutateur sert à ÉPROUVER une réparation contre une police plus large avant
- * de la pousser — pas à remplacer la mesure.
- *
- * Et il ne dit rien d'Android, qui est le marché : là-bas `system-ui` vaut
- * Roboto, ni l'une ni l'autre. Verdana et DejaVu sont un PIRE CAS plausible,
- * pas le cas réel.
- *
- *   MESURER_EN_POLICE_LARGE=1 npm run mesure
- */
-const POLICE_LARGE = process.env.MESURER_EN_POLICE_LARGE === '1'
-const IMPOSER_LA_POLICE_LARGE = `:root { --font-sans: Verdana, sans-serif !important }`
-
-/**
- * Pose l'imposition sur TOUT document du contexte, avant le premier rendu.
- *
- * `addStyleTag` par page arriverait après la peinture initiale et laisserait
- * une mesure prise entre les deux ; `addInitScript` s'exécute avant tout script
- * de la page, et l'observateur rattache la règle dès que `<head>` existe.
- */
-async function imposerLaPoliceLarge(contexte) {
-  if (!POLICE_LARGE) return
-  await contexte.addInitScript((css) => {
-    const poser = () => {
-      const style = document.createElement('style')
-      style.textContent = css
-      document.head.append(style)
-    }
-    if (document.head) poser()
-    else document.addEventListener('DOMContentLoaded', poser, { once: true })
-  }, IMPOSER_LA_POLICE_LARGE)
-}
-
 const FIGER_LES_ANIMATIONS = `
   *, *::before, *::after {
     transition: none !important;

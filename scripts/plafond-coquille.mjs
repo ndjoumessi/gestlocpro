@@ -47,6 +47,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { exit } from 'node:process'
 import { inventaireDesRoutes, exigerUnInventairePlein } from './inventaire/routes.mjs'
+import { imposerLaPoliceLarge } from './police-large.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
 const PORT = 4191
@@ -190,6 +191,7 @@ try {
       locale: 'fr-FR',
       colorScheme: 'light',
     })
+    await imposerLaPoliceLarge(contexte)
     const page = await contexte.newPage()
     for (const adresse of ADRESSES) {
       await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
