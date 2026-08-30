@@ -323,7 +323,36 @@
      plus lourd que les quatre indicateurs qu'il surplombe, alors que c'est la
      donnée qu'on vient lire. Même famille, même resserrement — un cran plus
      bas, et la hiérarchie se remet à l'endroit. */
-  --text-display-app: clamp(1.875rem, 1.4rem + 1.8vw, 2.5rem); /* 30 -> 40 */
+  /*
+    LE PLANCHER ÉTAIT RÉGLÉ POUR LE BUREAU, ET JAMAIS MESURÉ SUR UN TÉLÉPHONE.
+
+    `clamp(1.875rem, 1.4rem + 1.8vw, 2.5rem)` tenait 30 px du plus étroit
+    jusqu'à 422 px de large : le terme central ne dépassait le plancher qu'à
+    partir de là. Personne n'avait confronté ces 30 px aux VRAIES CHAÎNES de
+    l'application.
+
+    Mesuré le 2026-08-30 à 360 px, sur 320 px utiles :
+
+      « Vue consolidée du parc »        deux lignes, 66 px
+      « Travaux et signalements »       deux lignes, 66 px
+
+    L'en-tête de page pesait alors 208 px — dont 96 pour deux boutons qui ne
+    peuvent pas partager une ligne, 176 et 218 px de large pour 320 offerts. Le
+    titre en payait l'autre moitié pour rien.
+
+    À 26,8 px les deux tiennent sur UNE ligne, et l'en-tête tombe à 171 px sur le
+    tableau de bord, 141 px sur les travaux. Les titres plus longs — « Paiements
+    et encaissements » — se replient encore, et c'est normal : on baisse un
+    plancher, on n'impose pas une ligne.
+
+    LE BUREAU NE BOUGE PAS. Le plafond reste 40 px et il est atteint vers 990 px
+    au lieu de 978 — mesuré, 40 px à 1280 dans les deux formules. Ce lot ne
+    touche que la bande où le plancher régnait.
+
+    `display-app` ne sert qu'ici et dans `AuthLayout` : la vitrine a ses propres
+    jetons `display-l`, `display-m`, `display-xl`, que rien de ceci n'atteint.
+  */
+  --text-display-app: clamp(1.625rem, 1.2rem + 2.1vw, 2.5rem); /* 26 -> 40 */
   --text-display-app--line-height: 1.1;
   --text-display-app--letter-spacing: -0.015em;
   --text-display-m: clamp(1.875rem, 1.3rem + 3vw, 3.25rem); /* 30 -> 52 */
