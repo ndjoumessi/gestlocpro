@@ -146,7 +146,16 @@ describe('messages d’alerte', () => {
        On vise l'entrée « Reports » et non le texte « 3 » dans toute la barre :
        « Paiements » porte lui aussi une pastille à 3, et l'ancienne assertion ne
        tenait que parce que les deux nombres différaient. */
-    const entree = () => within(nav).getByRole('link', { name: /Reports/ })
+    /* LE TRAIT D'UNION CONDITIONNEL ENTRE DANS LE NOM ACCESSIBLE, et ce cas
+       l'a decouvert en cassant : « Reports » porte desormais un `\u00AD` entre
+       « Re » et « ports », pose pour que la barre basse coupe au bon endroit
+       sous une police large. `getByRole` compare le texte calcule, ou le
+       caractere est present — invisible a l'oeil, decisif pour une regex.
+
+       On le rend donc FACULTATIF plutot que de l'ecrire en dur : ce cas parle
+       d'une pastille de compteur, pas d'un point de cesure, et il ne doit pas
+       redevenir rouge le jour ou le mot se coupe ailleurs. */
+    const entree = () => within(nav).getByRole('link', { name: /Re\u00AD?ports/ })
     expect(entree()).toHaveTextContent('3')
 
     await userEvent.click(screen.getByRole('button', { name: /Mark all as read/i }))

@@ -120,7 +120,30 @@ function classes({
       texte a besoin de plus d'air qu'entre deux coins droits. Voir `SIZES`.
     */
     'inline-flex items-center justify-center rounded-full font-semibold no-underline',
-    'cursor-pointer select-none whitespace-nowrap',
+    /*
+      L'ÉTIQUETTE PEUT SE REPLIER, ET `whitespace-nowrap` L'EN EMPÊCHAIT.
+
+      LE DÉFAUT, MESURÉ SUR UNE AUTRE MACHINE. `--font-sans` commence par
+      `system-ui`, qui désigne un dessin différent par système : « Créer mon
+      espace » rend 132,61 px ici et 146,14 px sur un exécuteur Ubuntu, où
+      `system-ui` vaut DejaVu Sans. Onze pour cent. Avec `nowrap`, un bouton
+      devient un ATOME INSÉCABLE : dès que son étiquette dépasse la place
+      disponible, il ne se replie pas, il DÉBORDE de son conteneur.
+
+      Quatre des cinq débordements que l'intégration continue a trouvés venaient
+      de cette seule ligne — la rangée d'appel de la vitrine, le panneau final,
+      la fiche d'un tableau à 320 px, la rangée d'actions d'un en-tête.
+
+      CE QU'ON PERD, ET C'EST PEU : un bouton dont l'étiquette est longue peut
+      désormais tenir sur deux lignes là où il n'y a pas la place pour une. Un
+      bouton sur deux lignes reste lisible et cliquable ; un bouton qui sort de
+      sa carte ne l'est pas. `min-h-11` tient la cible tactile dans les deux cas.
+
+      CE QU'ON NE FAIT PAS : couper à l'intérieur d'un mot. Le repli se fait
+      entre les mots, et une étiquette d'un seul mot n'offre rien à couper —
+      c'est le même raisonnement que la barre basse, et il vaut ici aussi.
+    */
+    'cursor-pointer select-none',
     'transition-[background-color,border-color,transform,box-shadow] duration-150 ease-out',
     VARIANTS[variant],
     SIZES[size],

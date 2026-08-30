@@ -76,7 +76,7 @@ export function Hero() {
               {t('marketing.hero.subtitle')}
             </p>
 
-            <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <Button size="lg" to="/inscription" iconAfter="arrowRight">
                 {t('marketing.hero.ctaPrimary')}
               </Button>

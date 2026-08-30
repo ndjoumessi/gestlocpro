@@ -152,6 +152,13 @@ export const en: Dictionary = {
      * ENDROIT se choisit. `mesure-ui` refuse désormais un orphelin de moins de
      * trois caractères, et c'est cette règle qui a nommé les deux mots.
      *
+     * DEUX MOTS DE PLUS, ET C'EST UNE POLICE QUI LES A NOMMES. « Portfolio » et
+     * « Reports » tenaient sur leur ligne avec la police systeme de macOS ; sous
+     * une police 11 % plus large — DejaVu Sans, que met un Ubuntu derriere
+     * `system-ui` — ils coupent, et sur un orphelin d'UNE lettre : « Portfoli /
+     * o », « Report / s ». Le point de cesure est desormais ecrit pour eux
+     * aussi. Le francais n'en a pas besoin : ce Chromium a son dictionnaire.
+     *
      * SEULS LES DEUX MOTS QUI CASSENT le portent. « Reports » (44 px) et
      * « Portfolio » (48) tiennent dans la cellule ; leur en poser un serait une
      * décoration invisible que le lecteur suivant croirait nécessaire.
@@ -162,7 +169,7 @@ export const en: Dictionary = {
      * coupe jamais — le caractère y reste invisible.
      */
     dashboard: 'Dash\u00ADboard',
-    portfolio: 'Portfolio',
+    portfolio: 'Port\u00ADfolio',
     payments: 'Pay\u00ADments',
     meters: 'Meter readings',
     inspections: 'Inspections',
@@ -171,7 +178,7 @@ export const en: Dictionary = {
     access: 'Portfolio access',
     tenants: 'Tenants',
     report: 'Report',
-    alerts: 'Reports',
+    alerts: 'Re\u00ADports',
     onboarding: 'Onboarding and rights',
     system: 'System states',
     tenantPortal: 'Tenant portal (web)',

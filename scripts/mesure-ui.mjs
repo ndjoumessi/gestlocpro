@@ -1013,6 +1013,68 @@ const SURFACES_ATTENDUES = 22
  * transitions plutôt que d'attendre qu'elles finissent — attendre serait un
  * délai, et un délai est un pari.
  */
+/**
+ * REPRODUIRE LA POLICE D'UNE AUTRE MACHINE, ICI, SANS Y ALLER.
+ *
+ * ═══ LE PROBLÈME QUE CE COMMUTATEUR RÉSOUT ═══
+ *
+ * `--font-sans` commence par `system-ui`, et ce mot désigne un DESSIN DIFFÉRENT
+ * sur chaque système. Mesuré le 2026-08-30, « Créer mon espace » à 16 px :
+ *
+ *   132,61 px   la police système de macOS
+ *   146,14 px   DejaVu Sans, que l'exécuteur Ubuntu met derrière `system-ui`
+ *
+ * Onze pour cent. C'est assez pour que cette porte soit VERTE ici et ROUGE
+ * là-bas, sur cinq signatures de débordement local — et c'est arrivé.
+ *
+ * Sans ce commutateur, réparer ces cinq défauts demanderait un aller-retour
+ * d'intégration continue par essai. Avec lui, la boucle revient sur la machine
+ * de développement.
+ *
+ * ═══ POURQUOI VERDANA, ET LA MESURE QUI L'A CHOISIE ═══
+ *
+ * Ce Mac n'a pas DejaVu — demandée, elle retombe sur le repli, à 114,61 px, ce
+ * qui ne reproduirait rien. Quinze familles présentes ont donc été mesurées sur
+ * la même chaîne : Verdana rend 145,86 px contre 146,14, soit **0,28 px
+ * d'écart, deux dixièmes de pour cent**. La suivante, Lucida Grande, est à
+ * 6,23 px. Ce n'est pas « une police large », c'est celle qui coïncide.
+ *
+ * ═══ CE QUE ÇA N'EST PAS ═══
+ *
+ * Ce n'est pas une seconde vérité : la porte, sans commutateur, mesure ce que
+ * cette machine rend, et c'est ce qui compte pour un relevé reproductible. Ce
+ * commutateur sert à ÉPROUVER une réparation contre une police plus large avant
+ * de la pousser — pas à remplacer la mesure.
+ *
+ * Et il ne dit rien d'Android, qui est le marché : là-bas `system-ui` vaut
+ * Roboto, ni l'une ni l'autre. Verdana et DejaVu sont un PIRE CAS plausible,
+ * pas le cas réel.
+ *
+ *   MESURER_EN_POLICE_LARGE=1 npm run mesure
+ */
+const POLICE_LARGE = process.env.MESURER_EN_POLICE_LARGE === '1'
+const IMPOSER_LA_POLICE_LARGE = `:root { --font-sans: Verdana, sans-serif !important }`
+
+/**
+ * Pose l'imposition sur TOUT document du contexte, avant le premier rendu.
+ *
+ * `addStyleTag` par page arriverait après la peinture initiale et laisserait
+ * une mesure prise entre les deux ; `addInitScript` s'exécute avant tout script
+ * de la page, et l'observateur rattache la règle dès que `<head>` existe.
+ */
+async function imposerLaPoliceLarge(contexte) {
+  if (!POLICE_LARGE) return
+  await contexte.addInitScript((css) => {
+    const poser = () => {
+      const style = document.createElement('style')
+      style.textContent = css
+      document.head.append(style)
+    }
+    if (document.head) poser()
+    else document.addEventListener('DOMContentLoaded', poser, { once: true })
+  }, IMPOSER_LA_POLICE_LARGE)
+}
+
 const FIGER_LES_ANIMATIONS = `
   *, *::before, *::after {
     transition: none !important;
@@ -1219,18 +1281,24 @@ const BLANCS_IMPOSES_TOLERES = {
     },
 }
 
-const DEBORDS_LOCAUX_TOLERES = {
-  'p.mt-2 flex items-baseline gap-1.5': {
-    plafond: 7,
-    motif:
-      'Montant d’une tuile de KPI (`StatCard`). RESTE d’un défaut réparé : il franchissait la ' +
-      'bordure de sa carte de 9 px à 700 px sur les cautions et les paiements, où ' +
-      '`sm:grid-cols-3` posait trois colonnes dès 640 px pour un montant insécable de 189 px ' +
-      'dans 159. Les trois grilles attendent maintenant `lg`. Ce qui subsiste — 7 px sur 8 ' +
-      'occurrences au lieu de 30 sur 28 — est un dépassement de la BOÎTE seule, sur le tableau ' +
-      'de bord à 1280 px, avec 14 à 89 px de marge avant la bordure. Mesuré, et regardé.',
-  },
+/*
+  DEUX TOLERANCES DE PLUS SONT PARTIES, ET C'EST LA GARDE DU GARDE QUI L'A DIT.
 
+  « 2 tolerance(s) locale(s) ne couvrent plus aucun debordement » — le montant
+  d'une tuile de KPI, et la rangee de commandes de l'accroche. Elles ne sont pas
+  devenues inutiles toutes seules : le lot qui a repare cinq debordements sous
+  une police 11 % plus large a ferme leurs deux causes du meme geste.
+
+  Le montant : les grilles d'indicateurs sont passees d'un cran — `lg` a `xl`
+  pour trois colonnes, `xl` a `2xl` pour quatre — parce que la colonne calibree
+  sur la police la plus etroite cessait de porter « 1 397 000 FCFA ». La rangee
+  de l'accroche : `Button` ne porte plus `whitespace-nowrap`, donc une etiquette
+  trop longue se replie au lieu de sortir de sa rangee.
+
+  Une tolerance qui survit a la reparation de sa cause devient un blanc-seing.
+  Celles-ci partent le jour meme.
+*/
+const DEBORDS_LOCAUX_TOLERES = {
   /*
     ── ET LES HUIT AUTRES, QUI RESTENT DANS LEUR CARTE ────────────────────
 
@@ -1277,14 +1345,6 @@ const DEBORDS_LOCAUX_TOLERES = {
      l'alignement des champs — « un défaut d'alignement, pas de débordement »,
      disait le motif. Le lien a rejoint la rangée d'étiquette de son champ et a
      perdu sa marge négative : il n'y a plus rien à tolérer. */
-  'div.mt-10 flex flex-col gap-3 sm:flex-row sm:items-center': {
-    plafond: 27,
-    motif:
-      'Les deux commandes de l’accroche, vitrine à 1024 px — la largeur où la rangée vient de ' +
-      'passer en ligne. Le second bouton sort de sa RANGÉE de 34 px et entre dans la ' +
-      'gouttière ; la carte d’illustration commence 30 px plus loin. Mesuré parce qu’une ' +
-      'capture donnait à croire le contraire.',
-  },
 }
 
 /*
@@ -4007,6 +4067,7 @@ try {
       locale: langue,
       colorScheme: THEME_DE_GEOMETRIE,
     })
+    await imposerLaPoliceLarge(contexte)
     const page = await contexte.newPage()
     // Relevées pour ÉCLAIRER un refus, jamais pour en déclencher un : les 484
     // points sains en portent tous (voir l'en-tête de `MESURER_RENDU`).
@@ -4466,6 +4527,7 @@ try {
       viewport: { width: LARGEURS_CONTRASTE[0], height: 900 },
       locale: langue,
     })
+    await imposerLaPoliceLarge(contexte)
     const page = await contexte.newPage()
     for (const adresse of adresses) {
       const depart = Date.now()
@@ -4547,6 +4609,7 @@ try {
         locale: LANGUES[1],
         colorScheme: theme,
       })
+      await imposerLaPoliceLarge(contexte)
       const page = await contexte.newPage()
       await chrono('surfaces · navigation et attente', async () => {
         await page.goto(BASE + surface.adresse, { waitUntil: 'domcontentloaded' })
@@ -4684,6 +4747,8 @@ try {
       locale: LANGUES[1],
       colorScheme: THEME_DE_GEOMETRIE,
     })
+
+    await imposerLaPoliceLarge(contexte)
     const page = await contexte.newPage()
     let bloquees = 0
     await page.route('**/*', (route) => {

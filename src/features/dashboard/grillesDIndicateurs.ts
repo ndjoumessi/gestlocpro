@@ -36,7 +36,26 @@
  *
  * Employée par les relevés, les encaissements et les cautions.
  */
-export const GRILLE_TROIS_INDICATEURS = 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3'
+/*
+  ET LE MEME ARBITRAGE, REFAIT SUR UNE AUTRE POLICE — `lg` devient `xl`.
+
+  Tout ce qui precede a ete mesure sur la police systeme de macOS. `--font-sans`
+  commence par `system-ui`, qui designe un dessin DIFFERENT par systeme : sur un
+  executeur Ubuntu, ou il vaut DejaVu Sans, « Creer mon espace » rend 146,14 px
+  contre 132,61 ici — onze pour cent de plus. Le montant grandit d'autant, et la
+  colonne calibree sur la police la plus etroite cesse de le porter.
+
+  Mesure le 2026-08-30, `/demo/paiements@1024/en-US`, police large : le montant
+  « 1 397 000 FCFA » franchit de nouveau la bordure. Les trois colonnes passent
+  donc a `xl`.
+
+  CE QUE CA COUTE, ET IL FAUT LE DIRE : entre 1024 et 1279 px, la rangee montre
+  DEUX cartes au lieu de trois. C'est une perte de densite sur un ordinateur
+  portable, consentie pour qu'un montant ne sorte pas de sa carte chez qui n'a
+  pas les polices d'Apple — c'est-a-dire, sur le marche vise, presque tout le
+  monde.
+*/
+export const GRILLE_TROIS_INDICATEURS = 'grid gap-4 sm:grid-cols-2 xl:grid-cols-3'
 
 /**
  * QUATRE COLONNES SEULEMENT À `xl`, pour la raison ci-dessus portée d'un cran :
@@ -45,4 +64,12 @@ export const GRILLE_TROIS_INDICATEURS = 'grid gap-4 sm:grid-cols-2 lg:grid-cols-
  *
  * Employée par le tableau de bord et le parc.
  */
-export const GRILLE_QUATRE_INDICATEURS = 'grid gap-4 sm:grid-cols-2 xl:grid-cols-4'
+/*
+  PORTE D'UN CRAN LUI AUSSI, POUR LA RAISON ECRITE AU-DESSUS.
+
+  Mesure a 1280 px en police large : la carte offre 186 px de contenu et
+  « 1 397 000 FCFA » en demande 199 — treize pixels dehors, huit fois sur le
+  tableau de bord et les encaissements. A 1536, la meme carte offre environ
+  223 px. Les quatre colonnes attendent donc `2xl`.
+*/
+export const GRILLE_QUATRE_INDICATEURS = 'grid gap-4 sm:grid-cols-2 2xl:grid-cols-4'
