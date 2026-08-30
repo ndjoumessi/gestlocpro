@@ -2,6 +2,7 @@
   "name": "GestLocPro",
   "short_name": "GestLocPro",
   "description": "Suivi des loyers, de l'eau et de l'électricité, relances, quittances et états des lieux.",
+  "id": "/",
   "lang": "fr",
   "dir": "ltr",
   "start_url": "/",

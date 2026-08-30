@@ -165,8 +165,35 @@ describe('l’icône d’accueil', () => {
 describe('le manifeste', () => {
   const manifeste = JSON.parse(
     readFileSync(join(RACINE, 'public', 'manifest.webmanifest'), 'utf8'),
-  ) as { background_color: string; theme_color: string; icons: { src: string; sizes: string }[] }
+  ) as {
+    id: string
+    background_color: string
+    theme_color: string
+    icons: { src: string; sizes: string }[]
+  }
   const page = readFileSync(join(RACINE, 'index.html'), 'utf8')
+
+  /**
+   * L'IDENTITÉ DE L'APPLICATION INSTALLÉE, ET POURQUOI CE CAS EST UN VERROU.
+   *
+   * `id` est ce qui, pour Android, DÉSIGNE cette application. Sans lui,
+   * l'identité se déduit de `start_url` : changer `/` un jour ferait de toutes
+   * les installations existantes une AUTRE application — l'icône sur l'écran
+   * d'accueil cesserait de recevoir les mises à jour, et une seconde icône
+   * apparaîtrait à côté. Personne ne verrait rien du côté du dépôt.
+   *
+   * Ce cas ne vérifie donc pas que `id` existe : il le FIGE. La valeur est
+   * écrite ici en toutes lettres, et la changer demande de changer ce test —
+   * donc de lire cette phrase. C'est le seul champ du manifeste dont la
+   * modification casse quelque chose chez quelqu'un d'autre, silencieusement.
+   */
+  it('porte une identité, et c’est la même qu’hier', () => {
+    expect(
+      manifeste.id,
+      'le manifeste a perdu son `id` : les installations existantes deviendraient ' +
+        'une autre application au premier changement de `start_url`',
+    ).toBe('/')
+  })
 
   it('peint le fond de la zone principale, dans les deux thèmes', () => {
     /* `jeton()` lit le bloc clair — le premier du fichier. Le sombre est la
