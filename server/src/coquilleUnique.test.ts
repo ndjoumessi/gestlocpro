@@ -1,8 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import request from 'supertest'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { rendreLEnvironnementIntact } from './test/environnementRendu.js'
 
 /**
  * TOUTE ADRESSE REND LA MÊME COQUILLE — et l'agent de service en dépend.
@@ -45,32 +46,10 @@ try {
   // Pas de `.env` : la plateforme fournit la configuration.
 }
 
-/*
-  LA PHOTOGRAPHIE DE L'ENVIRONNEMENT SE PREND PAR CAS, ET NON AU CHARGEMENT.
-
-  `vitest.config.ts` pose `fileParallelism: false` : les fichiers tournent l'un
-  après l'autre DANS LE MÊME PROCESSUS. Un fichier qui photographie
-  `process.env` à son import capture donc l'état laissé par ce qui l'a précédé —
-  et s'il restaure cet état-là, il propage la pollution au lieu de la nettoyer.
-  Quatre fichiers de cette suite montent l'application en mode production ; leur
-  `CLIENT_DIST` pointe chacun sur un répertoire temporaire qu'ils effacent
-  ensuite.
-
-  La photographie prise dans `beforeEach` ne dépend d'aucun ordre : chaque cas
-  restaure ce qu'IL a trouvé. Ce n'est pas une prudence non mesurée — c'est un
-  couplage réel, dont un passage rouge non reproduit a montré la possibilité
-  sans que j'aie pu le nommer.
-*/
-let originaux: NodeJS.ProcessEnv = { ...process.env }
-
-beforeEach(() => {
-  originaux = { ...process.env }
-})
-
-afterEach(() => {
-  process.env = { ...originaux }
-  vi.resetModules()
-})
+/* Voir `test/environnementRendu.ts` : la photographie se prend par CAS, et non
+   au chargement du fichier, sans quoi elle capture l'état laissé par celui qui
+   précède — les fichiers de cette suite tournent dans le même processus. */
+rendreLEnvironnementIntact()
 
 /** Même geste que `compression.test.ts`, et pour la même raison. */
 async function appEnProduction(clientDist: string) {

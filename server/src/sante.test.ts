@@ -1,8 +1,9 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import request from 'supertest'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { rendreLEnvironnementIntact } from './test/environnementRendu.js'
 
 /**
  * Le contrôle de santé doit couvrir TOUT ce que le déploiement promet.
@@ -26,12 +27,10 @@ try {
   // Pas de `.env` : la plateforme fournit la configuration.
 }
 
-const originaux = { ...process.env }
-
-afterEach(() => {
-  process.env = { ...originaux }
-  vi.resetModules()
-})
+/* Voir `test/environnementRendu.ts` : la photographie se prend par CAS, et non
+   au chargement du fichier, sans quoi elle capture l'état laissé par celui qui
+   précède — les fichiers de cette suite tournent dans le même processus. */
+rendreLEnvironnementIntact()
 
 /**
  * Monte l'application en mode production, avec un client désigné.
