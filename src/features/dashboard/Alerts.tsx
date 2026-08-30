@@ -232,8 +232,30 @@ export function Alerts() {
           La région est rendue en permanence — un `aria-live` monté en même
           temps que son contenu n'annonce rien, puisqu'il n'y a pas eu de
           changement à observer depuis. */}
+      {/*
+        LA RÉGION RESTE MONTÉE, SON TEXTE NON — et la distinction est la clé.
+
+        Ce paragraphe existe pour ANNONCER : « tout marquer comme lu » fait
+        disparaître le compteur et son bouton, et un lecteur d'écran ne
+        l'apprendrait jamais autrement. Il est donc rendu en permanence, un
+        `aria-live` monté avec son contenu n'annonçant rien.
+
+        Mais quand il n'y a AUCUNE notification, il n'y a jamais rien à
+        annoncer, et son texte devient un doublon : « Toutes les notifications
+        sont lues. » se lisait au-dessus de « Rien à signaler sur le parc. » —
+        deux fois la même chose, dont une hors de la boîte. Vu sur une capture
+        de production, jamais par une porte : la démonstration remplit toujours
+        cet écran.
+
+        On garde donc le NŒUD, qui est ce dont l'annonce a besoin, et on lui
+        retire son TEXTE dans le seul cas où il n'a rien à dire.
+      */}
       <p className="mb-4 text-caps text-muted" aria-live="polite">
-        {unread > 0 ? t('app.alerts.unread', { count: unread }) : t('app.alerts.allRead')}
+        {alerts.length === 0
+          ? ''
+          : unread > 0
+            ? t('app.alerts.unread', { count: unread })
+            : t('app.alerts.allRead')}
       </p>
 
       {/* LE COMPTE LE PLUS UTILE DE LA PAGE VIVAIT EN PROSE. Il reste dans le
