@@ -443,12 +443,34 @@ if (!existsSync(PLAFONDS)) {
     si.
   */
   baseDuPoids = courseDuPlafond ?? null
-  /* Un plafond relevé porte son motif : on le REDIT à chaque passage vert.
-     Un relèvement qu'on oublie est un relèvement qui devient la norme. */
+  /*
+    Un plafond relevé porte son motif : on le REDIT à chaque passage vert. Un
+    relèvement qu'on oublie est un relèvement qui devient la norme.
+
+    MAIS LA PHRASE DISAIT LE CONTRAIRE DE CE QUI S'ÉTAIT PASSÉ. Elle imprimait
+    « plafond relevé de ${releve.de} à ${octets} » — or `de` est la valeur
+    d'AVANT le relèvement, et `octets` le plafond d'AUJOURD'HUI. Le motif
+    survivant à une réinscription qui DESCEND, les deux nombres finissaient par
+    se croiser : on lisait « plafond relevé de 8026 à 3404 », c'est-à-dire une
+    hausse vers une valeur plus basse. Observé sur quatre des huit points après
+    le lot du retrait des commentaires.
+
+    On distingue donc les deux cas. Le relèvement reste dit — c'est tout
+    l'intérêt du cliquet — mais quand il a été REMBOURSÉ depuis, on le dit
+    aussi : c'est une information de plus, et non un nombre à cacher.
+  */
   for (const [cle, p] of Object.entries(plafond)) {
-    if (p.releve) {
+    if (!p.releve) continue
+    if (p.octets > p.releve.de) {
       console.log(
         `  · ${cle} : plafond relevé de ${p.releve.de} à ${p.octets} o — « ${p.releve.motif} » ` +
+          `(course ${p.releve.course}).`,
+      )
+    } else {
+      console.log(
+        `  · ${cle} : plafond relevé depuis ${p.releve.de} o, PUIS REDESCENDU à ${p.octets} o — ` +
+          `${p.releve.de - p.octets} o sous sa valeur d'avant le relèvement, qui est donc remboursé. ` +
+          `Le motif reste dit tant qu'il explique un plafond : « ${p.releve.motif} » ` +
           `(course ${p.releve.course}).`,
       )
     }
