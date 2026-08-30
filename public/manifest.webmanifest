@@ -1,0 +1,17 @@
+{
+  "name": "GestLocPro",
+  "short_name": "GestLocPro",
+  "description": "Suivi des loyers, de l'eau et de l'électricité, relances, quittances et états des lieux.",
+  "lang": "fr",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f8fb",
+  "theme_color": "#f6f8fb",
+  "icons": [
+    { "src": "/icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icone-1024.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" }
+  ]
+}
