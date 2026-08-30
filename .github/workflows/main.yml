@@ -85,7 +85,12 @@ jobs:
       - run: npm run check:rapide
 
   serveur:
-    name: serveur — 425 cas, sur un vrai Postgres
+    # PAS DE NOMBRE DE CAS DANS CE NOM. Il disait « 425 cas » et la suite en
+    # comptait 436 — un nombre recopié dans une prose se périme en silence, et
+    # celui-ci n'apprenait rien à qui lit le journal, où vitest écrit le compte
+    # vrai à chaque exécution. C'est ce que la suite a de PARTICULIER qui mérite
+    # d'être nommé : elle tourne sur un vrai Postgres, et non sur une doublure.
+    name: serveur — sur un vrai Postgres
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -195,8 +200,22 @@ jobs:
       # deux étapes-là sont donc ici — les mêmes que dans le travail `serveur`,
       # et pour la même raison.
       - run: npm --prefix server ci
+      # `DATABASE_URL` EST EXIGÉ POUR GÉNÉRER, PAS POUR SE CONNECTER.
+      #
+      # `prisma.config` le résout à la lecture du fichier de configuration :
+      # sans lui, `generate` s'arrête sur « Cannot resolve environment
+      # variable » avant d'avoir écrit une ligne. Le travail `serveur` le pose
+      # déjà, pour une VRAIE base ; ici il n'en faut aucune — ce travail ne
+      # requête rien, il construit un client et ouvre des écrans rendus côté
+      # client. L'adresse est donc syntaxiquement valide et jamais jointe, comme
+      # celle que `scripts/politique-de-securite.mjs` passe à son serveur.
+      #
+      # CE DÉFAUT A ÉTÉ PAYÉ : la machine de développement porte `server/.env`,
+      # qui fournit la variable, et aucun essai local ne pouvait donc le voir.
       - run: npx prisma generate
         working-directory: server
+        env:
+          DATABASE_URL: postgresql://porte:porte@127.0.0.1:1/porte_qui_ne_se_joint_pas
       # `mesure-ui` construit `dist/` lui-même, en premier — les portes
       # suivantes servent ce paquet-là. Rien à construire avant.
       #
