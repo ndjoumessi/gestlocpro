@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "lint:i18n": "node scripts/check-i18n.mjs",
     "check:rapide": "tsc -b && oxlint && node scripts/check-i18n.mjs && node scripts/check-orphelins.mjs && node scripts/check-montants.mjs && vitest run",
-    "check:navigateur": "node scripts/mesure-ui.mjs && node scripts/couleur-non-seule.mjs && node scripts/stabilite-au-pointage.mjs && node scripts/plafond-coquille.mjs && node scripts/modales.mjs && node scripts/plafond-vitrine.mjs && node scripts/series-lisibles.mjs && node scripts/photo-transcodage.mjs && node scripts/chasses-helvetica.mjs && node scripts/decisions-nommees.mjs && node scripts/poids-ecrans.mjs",
+    "check:navigateur": "node scripts/mesure-ui.mjs && node scripts/couleur-non-seule.mjs && node scripts/stabilite-au-pointage.mjs && node scripts/plafond-coquille.mjs && node scripts/modales.mjs && node scripts/plafond-vitrine.mjs && node scripts/series-lisibles.mjs && node scripts/photo-transcodage.mjs && node scripts/chasses-helvetica.mjs && node scripts/decisions-nommees.mjs && node scripts/poids-ecrans.mjs && node scripts/politique-de-securite.mjs",
     "check": "npm run check:rapide && npm run check:navigateur",
     "check:server": "npm --prefix server run check",
     "check:all": "npm run check && npm run check:server",
@@ -31,7 +31,8 @@
     "vitrine": "node scripts/plafond-vitrine.mjs",
     "series": "node scripts/series-lisibles.mjs",
     "chasses": "node scripts/chasses-helvetica.mjs",
-    "decisions": "node scripts/decisions-nommees.mjs"
+    "decisions": "node scripts/decisions-nommees.mjs",
+    "securite": "node scripts/politique-de-securite.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

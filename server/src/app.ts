@@ -1,10 +1,16 @@
-import express, { type ErrorRequestHandler, type Request, type Response } from 'express'
+import express, {
+  type ErrorRequestHandler,
+  type NextFunction,
+  type Request,
+  type Response,
+} from 'express'
 import compression from 'compression'
 import cookieParser from 'cookie-parser'
 import { ZodError } from 'zod'
 import { join } from 'node:path'
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { politiqueDeSecurite } from './politiqueDeSecurite.js'
 import { env } from './env.js'
 import { authRouter } from './auth/routes.js'
 import { parksRouter, rejoindreRouter } from './parks/routes.js'
@@ -158,6 +164,56 @@ export function createApp(options: { taux?: SourceDeTaux } = {}) {
    * premier actif incompressible.
    */
   app.use(compression())
+
+  /*
+    LES EN-TÊTES DE SÉCURITÉ, POSÉS AVANT TOUTES LES ROUTES.
+
+    DÉFAUT PAYÉ EN L'ÉCRIVANT : ils étaient d'abord posés dans la branche qui
+    sert le CLIENT, donc après l'API. Les réponses de `/api/` partaient sans
+    eux — et `nosniff` compte là PLUS qu'ailleurs : un JSON qu'un navigateur
+    décide de lire comme du HTML est une page qu'on n'a pas écrite. Le cas
+    « le client manque » de `politiqueDeSecurite.test.ts` l'a dit, en
+    n'obtenant aucun en-tête sur un 404 d'API.
+
+    EN PRODUCTION SEULEMENT, et pas par timidité : le serveur de Vite injecte
+    ses propres scripts en ligne pour le rechargement à chaud, dont les
+    empreintes changent à chaque édition. Une politique en développement
+    casserait le rechargement sans rien garder de plus.
+
+    La politique est calculée UNE FOIS, au montage, sur le document qu'on va
+    servir — voir `politiqueDeSecurite.ts`, qui dit pourquoi elle se calcule au
+    lieu de s'écrire. La relire à chaque requête paierait une lecture de fichier
+    par écran pour un résultat qui ne change pas entre deux déploiements.
+
+    LE DOCUMENT PEUT MANQUER, ET LE SERVEUR NE DOIT PAS TOMBER POUR AUTANT.
+    `sante.test.ts` monte délibérément l'application avec un client ABSENT —
+    son cas « MALADE quand le client manque, même si l'API répond » — et la
+    première rédaction, qui lisait sans filet, a cessé de démarrer au lieu de se
+    déclarer malade. En production, cela change un état dégradé mais
+    diagnosticable en redémarrages en boucle, où le contrôle de santé ne répond
+    plus du tout.
+
+    Sans document, on pose quand même une politique, et elle est PLUS SÉVÈRE :
+    faute de script en ligne à connaître, elle ne porte aucune empreinte. On ne
+    relâche jamais la sécurité pour un fichier manquant — on la resserre, et
+    c'est le contrôle de santé qui dit que cet état ne doit pas durer.
+  */
+  if (env.NODE_ENV === 'production') {
+    const document = existsSync(join(CLIENT_DIST, 'index.html'))
+      ? readFileSync(join(CLIENT_DIST, 'index.html'), 'utf8')
+      : ''
+    const politique = politiqueDeSecurite(document)
+    app.use((_req: Request, res: Response, suite: NextFunction) => {
+      res.setHeader('Content-Security-Policy', politique)
+      /* Deux en-têtes que la politique ne couvre pas et qui tiennent en une
+         ligne : le premier empêche un navigateur de DEVINER le type d'une
+         réponse — un JSON pris pour du HTML devient une page —, le second
+         retient l'adresse complète à l'intérieur du site. */
+      res.setHeader('X-Content-Type-Options', 'nosniff')
+      res.setHeader('Referrer-Policy', 'same-origin')
+      suite()
+    })
+  }
 
   app.use(express.json({ limit: '256kb' }))
   app.use(cookieParser(env.SESSION_SECRET))

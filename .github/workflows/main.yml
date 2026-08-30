@@ -182,6 +182,21 @@ jobs:
       # l'image d'exécution ne porte pas. Sans elles, le navigateur se lance et
       # meurt sur une erreur de lien dynamique.
       - run: npx playwright install --with-deps chromium
+      # LES DÉPENDANCES DU SERVEUR, ET ELLES SONT NOUVELLES ICI.
+      #
+      # `politique-de-securite` est la seule porte au navigateur qui monte le
+      # VRAI serveur — `app.ts` en mode production, avec ses en-têtes — plutôt
+      # que `vite preview`, qui n'en pose aucun. Une politique de sécurité
+      # n'existe que dans la réponse du serveur ; la mesurer derrière un serveur
+      # qui ne la pose pas ne mesurerait rien.
+      #
+      # Elle construit `server/dist` elle-même, mais ne peut pas inventer les
+      # dépendances ni le client Prisma, qui est GÉNÉRÉ et non versionné. Ces
+      # deux étapes-là sont donc ici — les mêmes que dans le travail `serveur`,
+      # et pour la même raison.
+      - run: npm --prefix server ci
+      - run: npx prisma generate
+        working-directory: server
       # `mesure-ui` construit `dist/` lui-même, en premier — les portes
       # suivantes servent ce paquet-là. Rien à construire avant.
       #
