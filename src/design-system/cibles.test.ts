@@ -171,7 +171,12 @@ const EXEMPTIONS: Exemption[] = [
       'rien dire. Au focus, il porte son propre rembourrage.',
   },
   {
-    fichier: 'components/primitives/Charts.tsx',
+    /* Ce composant a quitté `Charts.tsx` — voir l'en-tête de son fichier, qui
+       dit les 62 ms que ça rend au prospect. L'exemption suit le code : elle
+       est repérée par CHEMIN, et une exemption qui a perdu son objet est
+       refusée par le cas « devenue sans objet » plus bas. C'est ce cas qui a
+       signalé le déplacement, avant que quiconque y pense. */
+    fichier: 'components/primitives/MiniBarChart.tsx',
     marqueur: 'key={bar.key ?? bar.label}',
     raison:
       'La barre de `MiniBarChart`. Sa HAUTEUR est la donnée : lui imposer un plancher ' +

@@ -7,11 +7,11 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "7b8cf0d3",
+ "course": "4b6a3465",
  "mesures": {
   "/@360": {
-   "octets": 529491,
-   "octetsFil": 185513,
+   "octets": 516542,
+   "octetsFil": 182397,
    "requetes": 6,
    "releve": {
     "de": 506708,
@@ -21,14 +21,14 @@
    }
   },
   "/demo@360": {
-   "octets": 230609,
-   "octetsFil": 62541,
+   "octets": 243409,
+   "octetsFil": 66358,
    "requetes": 4,
    "releve": {
-    "de": 202619,
+    "de": 230609,
     "requetesDe": 4,
-    "motif": "RÉINSCRIPTION, ET CETTE FOIS L’ÉCART EST ATTRIBUÉ POSTE PAR POSTE. La réinscription précédente (88cc882c) finissait sur une promesse : « le prochain écart, lui, sera imputable à un geste ». Quatre-vingt-neuf commits plus tard l’écart est là, et la promesse est tenue autrement que prévu — pas par commit, mais par MORCEAU, ce qui suffit à décider. Méthode : construction du paquet à d60b32d (le commit qui a inscrit la base courante) dans un arbre séparé, puis comparaison octet à octet avec le paquet de 981a47b. Rien n’est estimé. JS de la vitrine 404074 -> 426674 (+22600). Feuille de style partagée 67336 -> 71435 (+4099). index.html 6318 -> 6977 (+659). JS de l’espace applicatif 194593 -> 227189 (+32596). La somme des trois premiers vaut EXACTEMENT le +27358 rapporté sur « / » ; le quatrième plus l’index vaut +33255 sur « /demo », contre +33214 rapportés — 41 octets d’écart entre deux constructions du même arbre, que je ne sais pas expliquer et que je ne masque pas. CE QUE CES OCTETS ACHÈTENT : quatre-vingt-neuf lots de la refonte, dont l’axe et la ligne d’objectif du graphe, les modales de tarifs et de correction du parc devenues atteignables, le registre des décisions, les quittances en PDF, les quatre devises converties, et la garde du formulaire du locataire posée au lot précédent. CE QUE JE NE TRANCHE PAS, et qui est la vraie question que cette attribution fait apparaître : les 22600 octets de la vitrine sont payés par un PROSPECT, avant la première phrase de vente, sur le réseau le plus lent du marché visé — +452 ms à 400 kb/s. Or « Hero.tsx » importe « MiniBarChart » de « components/primitives/Charts », donc du code de graphique voyage dans le morceau impatient. Le rendre paresseux est un lot à lui seul ; il est nommé ici, il n’est pas fait. Les deux autres postes ne se discutent pas de la même façon : la feuille de style est partagée par tous les écrans, et l’espace applicatif n’est jamais téléchargé par qui ne se connecte pas.",
-    "course": "a7e9cd1f"
+    "motif": "TRANSFERT ET NON SUPPRESSION, et le compte des deux côtés. `Hero.tsx` importait `MiniBarChart` d'un module de 114 ko dont Rollup n'élaguait presque rien ; le composant est parti dans son propre fichier. Mesuré sur trois constructions du même arbre : morceau de la vitrine 427226 -> 414259 o bruts, 142526 -> 139401 gzip. Le composant lui-même ne pèse que 2261 octets — le reste était du voisinage. CE QUE ÇA DÉPLACE : `Charts.tsx` voyageait dans le morceau d'ENTRÉE, donc TOUT LE MONDE le téléchargeait, prospect compris. Il est maintenant dans le morceau applicatif. Sur « / » : -12949 o bruts, -3116 sur le fil, -62 ms à 400 kb/s. Sur « /demo » : +12800 o bruts, +3817 sur le fil, +76 ms. Au total 701 octets gzippés de PLUS pour qui va jusqu'à la démonstration, le même code se comprimant moins bien dans son nouveau voisinage — je ne sais pas expliquer ces 701 octets et je ne les masque pas. POURQUOI CE PLAFOND MONTE QUAND MÊME : le prospect qui rebondit gagne 62 ms sur son PREMIER rendu, sur le réseau le plus lent du marché visé, à un moment où il n'a aucune raison de patienter. Celui qui entre dans « /demo » perd 14 ms au total et les repaie à un instant où il a déjà choisi de regarder. Le coût quitte le moment où l'on n'a aucun capital d'attention. C'est l'arbitrage, il n'est pas gratuit, et le motif gravé du lot d'attribution demandait ce geste sans le chiffrer. CE QUE JE N'AI PAS FAIT : `React.lazy`, qui rendrait les 2261 octets restants. Mesuré plutôt que supposé : le graphique est à 810 px pour une vue de 640 sur le téléphone du marché — hors du premier écran — mais à 555 px pour une vue de 900 à 1280 px, où il apparaîtrait sous les yeux. Il coûterait un remplissage à hauteur exacte et une page qui arrive en deux vagues, donc des portes qui mesurent selon le moment. Le rapport me paraît mauvais ; c'est un jugement, pas une mesure.",
+    "course": "4b6a3465"
    }
   },
   "/demo/paiements@360": {
@@ -54,8 +54,8 @@
    }
   },
   "/@1280": {
-   "octets": 529491,
-   "octetsFil": 185513,
+   "octets": 516542,
+   "octetsFil": 182397,
    "requetes": 6,
    "releve": {
     "de": 506708,
@@ -65,14 +65,14 @@
    }
   },
   "/demo@1280": {
-   "octets": 230609,
-   "octetsFil": 62541,
+   "octets": 243409,
+   "octetsFil": 66358,
    "requetes": 4,
    "releve": {
-    "de": 202619,
+    "de": 230609,
     "requetesDe": 4,
-    "motif": "RÉINSCRIPTION, ET CETTE FOIS L’ÉCART EST ATTRIBUÉ POSTE PAR POSTE. La réinscription précédente (88cc882c) finissait sur une promesse : « le prochain écart, lui, sera imputable à un geste ». Quatre-vingt-neuf commits plus tard l’écart est là, et la promesse est tenue autrement que prévu — pas par commit, mais par MORCEAU, ce qui suffit à décider. Méthode : construction du paquet à d60b32d (le commit qui a inscrit la base courante) dans un arbre séparé, puis comparaison octet à octet avec le paquet de 981a47b. Rien n’est estimé. JS de la vitrine 404074 -> 426674 (+22600). Feuille de style partagée 67336 -> 71435 (+4099). index.html 6318 -> 6977 (+659). JS de l’espace applicatif 194593 -> 227189 (+32596). La somme des trois premiers vaut EXACTEMENT le +27358 rapporté sur « / » ; le quatrième plus l’index vaut +33255 sur « /demo », contre +33214 rapportés — 41 octets d’écart entre deux constructions du même arbre, que je ne sais pas expliquer et que je ne masque pas. CE QUE CES OCTETS ACHÈTENT : quatre-vingt-neuf lots de la refonte, dont l’axe et la ligne d’objectif du graphe, les modales de tarifs et de correction du parc devenues atteignables, le registre des décisions, les quittances en PDF, les quatre devises converties, et la garde du formulaire du locataire posée au lot précédent. CE QUE JE NE TRANCHE PAS, et qui est la vraie question que cette attribution fait apparaître : les 22600 octets de la vitrine sont payés par un PROSPECT, avant la première phrase de vente, sur le réseau le plus lent du marché visé — +452 ms à 400 kb/s. Or « Hero.tsx » importe « MiniBarChart » de « components/primitives/Charts », donc du code de graphique voyage dans le morceau impatient. Le rendre paresseux est un lot à lui seul ; il est nommé ici, il n’est pas fait. Les deux autres postes ne se discutent pas de la même façon : la feuille de style est partagée par tous les écrans, et l’espace applicatif n’est jamais téléchargé par qui ne se connecte pas.",
-    "course": "a7e9cd1f"
+    "motif": "TRANSFERT ET NON SUPPRESSION, et le compte des deux côtés. `Hero.tsx` importait `MiniBarChart` d'un module de 114 ko dont Rollup n'élaguait presque rien ; le composant est parti dans son propre fichier. Mesuré sur trois constructions du même arbre : morceau de la vitrine 427226 -> 414259 o bruts, 142526 -> 139401 gzip. Le composant lui-même ne pèse que 2261 octets — le reste était du voisinage. CE QUE ÇA DÉPLACE : `Charts.tsx` voyageait dans le morceau d'ENTRÉE, donc TOUT LE MONDE le téléchargeait, prospect compris. Il est maintenant dans le morceau applicatif. Sur « / » : -12949 o bruts, -3116 sur le fil, -62 ms à 400 kb/s. Sur « /demo » : +12800 o bruts, +3817 sur le fil, +76 ms. Au total 701 octets gzippés de PLUS pour qui va jusqu'à la démonstration, le même code se comprimant moins bien dans son nouveau voisinage — je ne sais pas expliquer ces 701 octets et je ne les masque pas. POURQUOI CE PLAFOND MONTE QUAND MÊME : le prospect qui rebondit gagne 62 ms sur son PREMIER rendu, sur le réseau le plus lent du marché visé, à un moment où il n'a aucune raison de patienter. Celui qui entre dans « /demo » perd 14 ms au total et les repaie à un instant où il a déjà choisi de regarder. Le coût quitte le moment où l'on n'a aucun capital d'attention. C'est l'arbitrage, il n'est pas gratuit, et le motif gravé du lot d'attribution demandait ce geste sans le chiffrer. CE QUE JE N'AI PAS FAIT : `React.lazy`, qui rendrait les 2261 octets restants. Mesuré plutôt que supposé : le graphique est à 810 px pour une vue de 640 sur le téléphone du marché — hors du premier écran — mais à 555 px pour une vue de 900 à 1280 px, où il apparaîtrait sous les yeux. Il coûterait un remplissage à hauteur exacte et une page qui arrive en deux vagues, donc des portes qui mesurent selon le moment. Le rapport me paraît mauvais ; c'est un jugement, pas une mesure.",
+    "course": "4b6a3465"
    }
   },
   "/demo/paiements@1280": {

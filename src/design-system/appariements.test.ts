@@ -249,9 +249,26 @@ describe('pastilles de la lecture du graphe', () => {
 describe('séries de l’histogramme', () => {
   const CSS = readFileSync(join(SRC, 'design-system', 'tokens.css'), 'utf8')
   const NU = CSS.replace(/\/\*[\s\S]*?\*\//g, '')
-  const CODE = sansCommentaires(
-    readFileSync(join(SRC, 'components', 'primitives', 'Charts.tsx'), 'utf8'),
-  )
+  /*
+    LES DEUX FICHIERS, parce que l'histogramme s'est SÉPARÉ EN DEUX.
+
+    `MiniBarChart` a quitté `Charts.tsx` pour sortir 12 949 octets du morceau
+    impatient de la vitrine — voir l'en-tête de son fichier. Ce bloc mesure des
+    choses des deux côtés : `SERIES_COLORS` et les marques de `StackedBarChart`
+    sont restées, la peinture d'une période SANS RELEVÉ est partie. Lire un seul
+    des deux rendait `ABSENTE` introuvable, et c'est cette garde qui l'a dit —
+    la troisième d'affilée, après `cibles` et `accentDonnee`, à signaler le
+    déplacement d'elle-même.
+
+    On concatène plutôt que de choisir : ce qu'on cherche est peint par
+    l'histogramme, et l'histogramme est maintenant à deux endroits.
+  */
+  const CODE = [
+    join(SRC, 'components', 'primitives', 'Charts.tsx'),
+    join(SRC, 'components', 'primitives', 'MiniBarChart.tsx'),
+  ]
+    .map((chemin) => sansCommentaires(readFileSync(chemin, 'utf8')))
+    .join('\n')
 
   function corps(entete: string): string {
     const debut = NU.indexOf(entete)

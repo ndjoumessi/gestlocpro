@@ -29,6 +29,11 @@ const RACINE = join(ICI, '..')
 
 const CSS = readFileSync(join(ICI, 'tokens.css'), 'utf8')
 const CHARTS = readFileSync(join(RACINE, 'components/primitives/Charts.tsx'), 'utf8')
+/* `MiniBarChart` a quitté `Charts.tsx` pour sortir 12 949 octets du morceau
+   impatient de la vitrine. La barre du mois courant, citée dans `SITES`, est
+   dans CE fichier : sans cette ligne, son jeton devenait introuvable et la
+   garde rougissait — ce qu'elle a fait, et c'est ainsi qu'on l'a su. */
+const MINI = readFileSync(join(RACINE, 'components/primitives/MiniBarChart.tsx'), 'utf8')
 const PORTAIL = readFileSync(join(RACINE, 'features/dashboard/TenantPortal.tsx'), 'utf8')
 
 /** Retire les commentaires : ils citent l'or précisément pour dire de l'éviter. */
@@ -36,7 +41,8 @@ function sansCommentaires(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 }
 
-const CODE = sansCommentaires(CHARTS) + '\n' + sansCommentaires(PORTAIL)
+const CODE =
+  sansCommentaires(CHARTS) + '\n' + sansCommentaires(MINI) + '\n' + sansCommentaires(PORTAIL)
 
 /* --- Contrastes, calculés et non recopiés depuis un commentaire ----------- */
 
