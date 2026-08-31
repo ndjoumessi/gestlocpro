@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, SESSION_ANONYME } from '@/test/render'
+import { renderApp, screen, within, SESSION_ANONYME } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 import type { Role } from '@/features/auth/signupState'
@@ -69,6 +69,42 @@ describe('les trois écrans du locataire', () => {
       ).toBeNull()
     },
   )
+
+  /**
+   * « INTROUVABLE » ÉTAIT FAUX, ET SE LISAIT COMME UNE PANNE.
+   *
+   * L'adresse EXISTE. Elle n'est simplement pas la sienne. Lui rendre « Écran
+   * introuvable · Adresse demandée /app/mon-espace » lui apprend qu'un écran du
+   * produit a disparu — ce qui est le message d'un défaut, pas d'un droit.
+   *
+   * Capturé sur la production, et par le geste le plus ordinaire qui soit :
+   * changer de compte dans le même onglet. Le locataire se déconnecte depuis
+   * son espace, le propriétaire se connecte, l'adresse est restée. Le renvoi de
+   * la CONNEXION est déjà corrigé — voir `adressesParRole` — mais il ne couvre
+   * pas l'onglet resté ouvert, ni le signet, ni le retour arrière.
+   *
+   * `TenantRestricted` ne convient pas davantage : c'est le refus servi au
+   * LOCATAIRE qui tente un écran de gestion, et il finit par « revenir à mon
+   * espace ». Le rendre ici enverrait un propriétaire vers un espace qu'il n'a
+   * pas. Il fallait donc le troisième écran, celui qui dit la vérité : cette
+   * adresse appartient à l'autre.
+   */
+  it('dit au propriétaire que l’écran n’est pas le sien, sans crier à la panne', async () => {
+    installer()
+    await renderApp('/app/mon-espace', { session: session('owner') })
+
+    expect(
+      screen.queryByRole('heading', { name: /introuvable/i }),
+      'l’adresse existe : la dire introuvable annonce un défaut du produit',
+    ).toBeNull()
+    expect(await screen.findByRole('heading', { name: /celui du locataire/i })).toBeInTheDocument()
+    /* Et une sortie qui lui convient : son tableau de bord, jamais « mon
+       espace », qu'il n'a pas. Bornée à `main` — la barre latérale porte la
+       même destination, et la trouver ne dirait rien de cet écran. */
+    expect(
+      within(screen.getByRole('main')).getByRole('link', { name: /tableau de bord/i }),
+    ).toHaveAttribute('href', '/app')
+  })
 
   it('n’existent pas non plus pour le GESTIONNAIRE', async () => {
     /* Le gestionnaire opère le parc pour le compte du propriétaire : il n'a pas

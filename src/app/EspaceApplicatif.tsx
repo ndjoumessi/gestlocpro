@@ -3,6 +3,9 @@ import { Route, Routes } from 'react-router-dom'
 import { ROLES_PAR_ADRESSE } from '@/app/adressesParRole'
 import { Demo } from '@/routes/Demo'
 import { NotFoundInApp } from '@/routes/NotFoundInApp'
+import { PageHeader } from '@/components/layout/PageHeader'
+import { Button } from '@/components/primitives/Button'
+import { useT } from '@/i18n/I18nProvider'
 import { AppShell, RoleGuard } from '@/components/layout/AppShell'
 import { RequireAuth } from '@/api/RequireAuth'
 import { PortfolioProvider } from '@/data/PortfolioProvider'
@@ -92,9 +95,54 @@ function Locataire({ adresse, children }: { adresse: string; children: ReactNode
   const { estDemo } = useSession()
   if (estDemo) return <>{children}</>
   return (
-    <RoleGuard allow={ROLES_PAR_ADRESSE[adresse] ?? []} fallback={<NotFoundInApp />}>
+    <RoleGuard allow={ROLES_PAR_ADRESSE[adresse] ?? []} fallback={<EspaceDeLAutre />}>
       {children}
     </RoleGuard>
+  )
+}
+
+/**
+ * L'ADRESSE EXISTE, ELLE N'EST PAS LA VÔTRE — et « introuvable » était faux.
+ *
+ * ═══ CE QUE LE 404 DISAIT DE TRAVERS ═══
+ *
+ * Ce fichier a longtemps rendu `NotFoundInApp` ici, par symétrie avec les
+ * écrans de vitrine : « sous un vrai compte, ces adresses n'existent pas, et
+ * c'est ce qu'un 404 dit ». Le raisonnement tient pour la vitrine — ces écrans
+ * ne sont montés que sous `/demo`. Il ne tient PAS ici : `mon-espace` existe
+ * sous `/app`, il est monté, il est servi. Il appartient à quelqu'un d'autre.
+ *
+ * Un propriétaire lisait donc « Écran introuvable · Adresse demandée
+ * /app/mon-espace » — le message d'un produit cassé, pour un droit qui
+ * fonctionne. Capturé sur la production par le geste le plus ordinaire :
+ * changer de compte dans le même onglet. Le locataire se déconnecte depuis son
+ * espace, le propriétaire se connecte, l'adresse est restée.
+ *
+ * `adressesParRole` a corrigé le renvoi de la CONNEXION ; il ne couvre ni
+ * l'onglet resté ouvert, ni le signet, ni le retour arrière. C'est le même
+ * défaut, en aval, et il fallait le traiter là où l'écran se rend.
+ *
+ * ═══ NI `TenantRestricted` ═══
+ *
+ * Celui-là est le refus servi au LOCATAIRE qui tente un écran de gestion, et il
+ * finit par « revenir à mon espace ». Le rendre ici enverrait un propriétaire
+ * vers un espace qu'il n'a pas — la raison même pour laquelle le 404 avait été
+ * choisi. La sortie est donc son TABLEAU DE BORD, qui est chez lui.
+ */
+function EspaceDeLAutre() {
+  const t = useT()
+  return (
+    <>
+      <PageHeader
+        title={t('app.otherSpace.title')}
+        description={t('app.otherSpace.body')}
+        actions={
+          <Button to="/app" iconAfter="arrowRight">
+            {t('app.otherSpace.action')}
+          </Button>
+        }
+      />
+    </>
   )
 }
 
