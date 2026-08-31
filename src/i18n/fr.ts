@@ -1612,6 +1612,11 @@ export const fr = {
       role: 'Rôle invité',
       roleTenant: 'Locataire',
       roleManager: 'Gestionnaire délégué',
+      /* CE QU'ON DÉLÈGUE, dit avant le clic. Le champ du logement disparaît
+         sur ce rôle et rien ne disait pourquoi : le propriétaire croyait
+         confier UN logement, il confie tout son parc. */
+      managerScope:
+        'Un gestionnaire délégué opère TOUT le parc : chaque immeuble, chaque bail, chaque locataire. Le périmètre ne peut pas être limité à un logement. Il ne peut ni approuver un devis, ni arbitrer une caution, ni recruter un autre gestionnaire — ces trois décisions restent les vôtres.',
       /* UN SEUL CODE VIVANT PAR LOGEMENT, et on le dit au lieu de faire
          disparaître une ligne du menu sans explication. */
       unitTakenNotice:

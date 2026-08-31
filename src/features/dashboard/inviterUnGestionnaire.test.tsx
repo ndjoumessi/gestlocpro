@@ -94,6 +94,53 @@ describe('qui recrute un gestionnaire', () => {
     expect(screen.queryByText(/Seul le propriétaire recrute un gestionnaire/)).not.toBeInTheDocument()
   })
 
+  /**
+   * ═══ CE QU'ON DÉLÈGUE, ET QUE LA MODALE NE DISAIT PAS ═══
+   *
+   * Le champ « Logement concerné » DISPARAÎT quand on choisit « Gestionnaire
+   * délégué », et le code le justifie : « un gestionnaire opère tout le parc,
+   * et lui en attacher une laisserait croire à un périmètre qui n'existe pas ».
+   * Le raisonnement est juste et le silence le trahit : à l'écran, un champ de
+   * logement qui s'efface se lit comme « le logement n'est pas demandé ici »,
+   * pas comme « il n'y en a pas ».
+   *
+   * Signalé sur la production, mot pour mot : « je peux générer le code pour le
+   * gestionnaire, comme je lui confie LE LOGEMENT… qu'en est-il du workflow
+   * pour lui confier le logement ? ». Le propriétaire croyait déléguer un
+   * logement ; il délègue TOUT SON PARC — les douze écrans de gestion, tous les
+   * baux, tous les locataires. L'écart entre ce qu'il croit signer et ce qu'il
+   * signe est la chose la plus grave que cette modale puisse laisser passer, et
+   * elle le laissait passer en silence.
+   *
+   * On ne peut pas donner ce qu'il attendait : le périmètre par logement
+   * n'existe pas dans le modèle — `Membership` porte un rôle et un parc, rien
+   * d'autre. Ce qu'on peut, et qu'on doit, c'est le DIRE avant le clic.
+   */
+  it('dit que le gestionnaire opère TOUT le parc, et non un logement', async () => {
+    await ouvrirLInvitation('owner')
+
+    const utilisateur = userEvent.setup()
+    await utilisateur.selectOptions(
+      screen.getByRole('combobox', { name: /Rôle invité/ }),
+      'manager',
+    )
+
+    const dialogue = screen.getByRole('dialog')
+    expect(
+      within(dialogue).getByText(/tout le parc/i),
+      'rien ne dit au propriétaire l’étendue de ce qu’il délègue',
+    ).toBeInTheDocument()
+  })
+
+  it('ne le dit pas pour un code de locataire, qui porte un logement', async () => {
+    // La moitié sans laquelle une note posée sans condition satisferait le cas
+    // précédent : le locataire, lui, EST rattaché à un logement.
+    await ouvrirLInvitation('owner')
+
+    const dialogue = screen.getByRole('dialog')
+    expect(within(dialogue).queryByText(/tout le parc/i)).not.toBeInTheDocument()
+  })
+
   it('émet bien un code de locataire quand c’est le gestionnaire qui invite', async () => {
     const serveur = await ouvrirLInvitation('manager')
 

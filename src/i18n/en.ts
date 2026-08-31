@@ -1240,6 +1240,8 @@ export const en: Dictionary = {
       role: 'Invited role',
       roleTenant: 'Tenant',
       roleManager: 'Delegated manager',
+      managerScope:
+        'A delegated manager operates the WHOLE park: every building, every lease, every tenant. The scope cannot be limited to one home. They cannot approve a quote, settle a deposit, or recruit another manager — those three decisions stay yours.',
       unitTakenNotice:
         'A code is already pending for {units}: a home carries only one at a time. Revoke it before issuing another.',
       unitTakenAction: 'See pending codes',
