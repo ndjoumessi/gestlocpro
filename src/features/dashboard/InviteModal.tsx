@@ -7,6 +7,7 @@ import { Select } from '@/components/primitives/Input'
 import { useToast } from '@/components/primitives/Toast'
 import { useT } from '@/i18n/I18nProvider'
 import { usePortfolio } from '@/data/PortfolioProvider'
+import { ACCES_DEMO } from '@/data/portfolio'
 import { useSession } from '@/api/SessionProvider'
 import { useRole } from '@/components/layout/AppShell'
 import { lien, useBase } from '@/lib/base'
@@ -30,11 +31,32 @@ import { api } from '@/api/client'
  * apprendre ni pourquoi ni que c'était définitif. On ne propose pas un geste
  * qu'on refusera : le champ disparaît, et une note dit qui recrute.
  */
+/** Une invitation du registre, réduite à ce que ce menu en lit. */
+interface InvitationDuMenu {
+  unitId: string | null
+  unitLabel: string | null
+}
+
+/**
+ * Les logements déjà pris par un code VIVANT.
+ *
+ * Le registre ne rend que les codes utilisables — `acceptedAt`, `revokedAt`
+ * nuls et non expirés, c'est son propre en-tête qui le dit : « les invitations
+ * rendues sont exactement celles que `/api/join` accepterait ». Il n'y a donc
+ * rien à filtrer sur la validité ici, seulement à retenir celles qui portent un
+ * logement — un code de gestionnaire n'en porte aucun.
+ */
+function logementsDesCodes(invitations: InvitationDuMenu[]): { id: string; label: string }[] {
+  return invitations
+    .filter((i): i is { unitId: string; unitLabel: string | null } => Boolean(i.unitId))
+    .map((i) => ({ id: i.unitId, label: i.unitLabel ?? i.unitId }))
+}
+
 export function InviteModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useT()
   const { notify } = useToast()
   const { units } = usePortfolio()
-  const { adhesionActive } = useSession()
+  const { adhesionActive, estDemo } = useSession()
   const { role } = useRole()
   const base = useBase()
   const parkId = adhesionActive?.parkId ?? null
@@ -52,6 +74,46 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
   // supposer `solo` retirerait le recrutement à des parcs qui l'ont.
   const gereSeul = (adhesionActive?.delegation ?? 'delegate') === 'solo'
   const peutRecruter = role === 'owner' && !gereSeul
+
+  /**
+   * LES LOGEMENTS QUI PORTENT DÉJÀ UN CODE VIVANT.
+   *
+   * `bail_unique_par_unite` pose un index unique partiel sur `Invitation.unitId`
+   * là où `acceptedAt` et `revokedAt` sont nuls : UN SEUL code vivant par
+   * logement. La règle est bonne — deux codes valides pour un seul accès, on ne
+   * saurait plus lequel reprendre — et le serveur la traduit en 409.
+   *
+   * Ce menu, lui, listait tout le parc. Un propriétaire dont le code pour A1
+   * attend encore le voyait, le choisissait, et récoltait un refus. Signalé sur
+   * la production : « je vois encore A1, donc je peux encore générer le code,
+   * alors que le premier est toujours là — ce n'est pas logique. »
+   *
+   * ON NE PROPOSE PAS UN GESTE QU'ON REFUSERA : la règle que cette modale
+   * applique déjà au champ de rôle, quelques lignes plus bas.
+   */
+  const [prisParUnCode, setPrisParUnCode] = useState<{ id: string; label: string }[]>([])
+
+  useEffect(() => {
+    if (estDemo) {
+      setPrisParUnCode(logementsDesCodes(ACCES_DEMO.invitations))
+      return
+    }
+    if (!parkId) return
+    let vivant = true
+    void api
+      .access<{ invitations: InvitationDuMenu[] }>(parkId)
+      .then((registre) => {
+        if (vivant) setPrisParUnCode(logementsDesCodes(registre.invitations))
+      })
+      /* SILENCIEUX, et la dégradation est la bonne : sans cette lecture le menu
+         redevient ce qu'il était, et le serveur refuse toujours. On perd un
+         avertissement, jamais une garde. Poser une erreur ici empêcherait
+         d'émettre un code parce qu'on n'a pas pu lire les codes existants. */
+      .catch(() => {})
+    return () => {
+      vivant = false
+    }
+  }, [parkId, estDemo])
 
   /**
    * TOUS LES LOGEMENTS DU PARC, ET NON LES SEULS VACANTS.
@@ -74,7 +136,11 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
    * avant d'émettre un code qui n'est lisible qu'une seule fois. Le nom est ce
    * qui distingue le bon choix du mauvais.
    */
-  const logements = units
+  const pris = new Set(prisParUnCode.map((u) => u.id))
+  const logements = units.filter((u) => !pris.has(u.id))
+  /* Nommés pour la note : un logement qui disparaît sans un mot se lit comme
+     une panne — le défaut même que ce fichier a retiré du champ de rôle. */
+  const retires = prisParUnCode.filter((p) => units.some((u) => u.id === p.id))
 
   // `roleInvite` est le rôle du FUTUR membre, à ne pas confondre avec `role`,
   // celui de la personne qui invite. Sa valeur initiale — locataire — est aussi
@@ -82,6 +148,17 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
   // moyen de la changer, et l'appel part avec le seul rôle qu'on lui accorde.
   const [roleInvite, setRoleInvite] = useState<'tenant' | 'manager'>('tenant')
   const [unitId, setUnitId] = useState(logements[0]?.id ?? '')
+  /**
+   * LE CHOIX RETIRÉ RETOMBE SUR « AUCUN », JAMAIS SUR LE LOGEMENT SUIVANT.
+   *
+   * Le registre arrive APRÈS le premier rendu : la modale s'ouvre sur « A1 —
+   * BEKONO LANDRY », puis A1 disparaît du menu. Basculer alors sur le logement
+   * suivant changerait la valeur sous les yeux de quelqu'un qui a déjà lu le
+   * champ — et un code émis pour le mauvais logement rattache un locataire au
+   * bail d'un autre. « Aucun logement » est licite, et c'est le seul repli qui
+   * ne décide rien à sa place.
+   */
+  const choix = unitId === '' || logements.some((u) => u.id === unitId) ? unitId : ''
   const [code, setCode] = useState<string | null>(null)
   const codeRef = useRef<HTMLDivElement>(null)
 
@@ -112,7 +189,7 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
         // L'unité n'accompagne qu'une invitation de LOCATAIRE : un gestionnaire
         // opère tout le parc, et lui en attacher une laisserait croire à un
         // périmètre qui n'existe pas.
-        ...(roleInvite === 'tenant' && unitId ? { unitId } : {}),
+        ...(roleInvite === 'tenant' && choix ? { unitId: choix } : {}),
       })
       .then(({ code: emis, envoye: parti }) => {
         setCode(emis)
@@ -236,6 +313,27 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
               subie. */}
           {role === 'manager' && <Notice>{t('app.invite.managerNotice')}</Notice>}
 
+          {/* CE QU'ON DÉLÈGUE, ET QUE LA MODALE NE DISAIT PAS.
+
+              Le champ « Logement concerné » disparaît sur ce rôle, et le code
+              le justifie plus haut : « un gestionnaire opère tout le parc ».
+              Le raisonnement est juste, le SILENCE le trahit — un champ de
+              logement qui s'efface se lit comme « pas demandé ici », pas comme
+              « il n'y en a pas ».
+
+              Signalé sur la production : « je peux générer le code pour le
+              gestionnaire, comme je lui confie LE LOGEMENT ». Le propriétaire
+              croyait déléguer un logement ; il délègue les douze écrans de
+              gestion, tous les baux, tous les locataires. L'écart entre ce
+              qu'il croit signer et ce qu'il signe est le pire que cette modale
+              puisse laisser passer, et elle le laissait passer sans un mot.
+
+              ON NE PEUT PAS LUI DONNER CE QU'IL ATTENDAIT : `Membership` porte
+              un rôle et un parc, rien d'autre — le périmètre par logement
+              n'existe pas dans le modèle. Ce qu'on peut, c'est le dire AVANT
+              le clic, et dire aussi ce que ce rôle ne peut pas faire. */}
+          {roleInvite === 'manager' && <Notice>{t('app.invite.managerScope')}</Notice>}
+
           {/* Au PROPRIÉTAIRE d'un parc en gestion seule, la note dit autre chose
               que celle du gestionnaire : ce n'est pas un droit qui lui manque,
               c'est un réglage qu'il détient. Elle nomme donc l'écran où il se
@@ -268,13 +366,30 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
               marquer requis serait faux — on peut légitimement inviter d'abord
               et rattacher ensuite. L'aide porte la conséquence, ce qu'aucune
               étiquette ne sait dire. */}
+          {/* LES LOGEMENTS RETIRÉS SE NOMMENT. Un logement qui disparaît sans
+              un mot se lit comme une panne, et le propriétaire chercherait le
+              défaut au lieu de reprendre le code qui bloque. La note dit
+              lesquels et où les reprendre. */}
+          {roleInvite === 'tenant' && retires.length > 0 && (
+            <Notice>
+              {t('app.invite.unitTakenNotice', {
+                units: retires.map((u) => u.label).join(', '),
+              })}
+              <span className="mt-2 block">
+                <Button to={lien(base, 'acces')} variant="secondary" size="sm" iconAfter="arrowRight">
+                  {t('app.invite.unitTakenAction')}
+                </Button>
+              </span>
+            </Notice>
+          )}
+
           {roleInvite === 'tenant' && logements.length > 0 && (
             <Field label={t('app.invite.unit')} hint={t('app.invite.unitHint')}>
               {(props) => (
                 <Select
                   {...props}
                   name="unitId"
-                  value={unitId}
+                  value={choix}
                   onChange={(e) => setUnitId(e.target.value)}
                 >
                   {/* L'AIDE DU CHAMP PROMET CE CHOIX — « sans logement, il rejoint

@@ -1612,6 +1612,11 @@ export const fr = {
       role: 'Rôle invité',
       roleTenant: 'Locataire',
       roleManager: 'Gestionnaire délégué',
+      /* UN SEUL CODE VIVANT PAR LOGEMENT, et on le dit au lieu de faire
+         disparaître une ligne du menu sans explication. */
+      unitTakenNotice:
+        'Un code attend déjà pour {units} : un logement n’en porte qu’un à la fois. Reprenez-le avant d’en émettre un autre.',
+      unitTakenAction: 'Voir les codes en attente',
       managerNotice:
         'Seul le propriétaire recrute un gestionnaire. Vous invitez des locataires.',
       unitNone: 'Aucun logement pour l’instant',

@@ -1240,6 +1240,9 @@ export const en: Dictionary = {
       role: 'Invited role',
       roleTenant: 'Tenant',
       roleManager: 'Delegated manager',
+      unitTakenNotice:
+        'A code is already pending for {units}: a home carries only one at a time. Revoke it before issuing another.',
+      unitTakenAction: 'See pending codes',
       managerNotice: 'Only the owner recruits a manager. You invite tenants.',
       unitNone: 'No unit for now',
       unitVacant: 'vacant',
