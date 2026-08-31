@@ -3910,7 +3910,11 @@ parksRouter.post(
           ? { leases: { some: { tenant: { userId: req.compteId! } } } }
           : {}),
       },
-      select: { id: true },
+      /* `label` : l'avis qui remonte le signalement compose « Signalement
+         {reference} · {unit} », et `{unit}` se résout depuis le LIBELLÉ — la
+         convention que les autres avis suivent déjà, où l'on lit « A3 » et
+         jamais un `uuid`. */
+      select: { id: true, label: true },
     })
     if (!unite) {
       // 404 et non 403 : un 403 confirmerait l'existence du logement voisin.
@@ -4019,6 +4023,11 @@ parksRouter.post(
             reference: travail.reference,
             text: travail.title,
             trade: corps.trade,
+            /* LE LIBELLÉ, PAS L'IDENTIFIANT. Posé d'abord dans la seule COLONNE
+               `unitId` de la notification, il ne servait à rien : la carte lit
+               `params.unitId`, et affichait « Signalement SIG-2026-002 ·
+               {unit} » — accolades comprises, capturé sur la production. */
+            unitId: unite.label,
           },
           /* L'URGENCE DÉCLARÉE devient la sévérité de l'avis. « Le logement
              n'est pas utilisable en l'état » ne se range pas à côté d'un joint

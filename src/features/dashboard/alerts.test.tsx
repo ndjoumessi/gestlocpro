@@ -12,6 +12,53 @@ import { ALERTS } from '@/data/portfolio'
  * « n non lues », et l'écran doit pouvoir dire combien il en montre autrement
  * qu'en faisant compter des titres à l'oreille.
  */
+/**
+ * « PAS ENCORE PARTI » NE SE DIT QUE DE CE QUI DEVAIT PARTIR.
+ *
+ * La ligne d'expédition — « Pas encore parti · visible ici seulement » — existe
+ * pour la RELANCE : le fournisseur de messagerie ne dépose rien aujourd'hui,
+ * et le bailleur doit le savoir avant de croire son locataire prévenu. Son
+ * propre commentaire pose la borne : « Rien ne s'affiche sur ce qui n'est pas
+ * une relance ».
+ *
+ * Elle s'affichait pourtant sur TOUT avis portant un canal — et le serveur pose
+ * `channel: 'in_app'` sur le signalement d'un locataire, sur l'annonce et sur la
+ * réponse du gestionnaire. Capturé sur la production : sous « Signalement
+ * SIG-2026-002 · Manque de courant », la mention « Pas encore parti · visible
+ * ici seulement ». Rien n'était censé partir : un signalement se lit dans le
+ * produit, il ne s'expédie nulle part. La phrase promettait un envoi absent, ce
+ * qui est exactement le défaut qu'elle avait été écrite pour corriger ailleurs.
+ *
+ * `in_app` EST le canal « visible ici seulement ». Le dire est un pléonasme
+ * quand c'est le seul canal prévu, et un mensonge quand ça laisse croire qu'un
+ * SMS a échoué.
+ */
+describe('la ligne d’expédition', () => {
+  it('ne paraît pas sur un avis qui ne s’expédie pas', async () => {
+    await renderApp('/demo/signalements')
+    await attendreLeChargement()
+
+    const carte = screen.getByText(/Manque de courant|Fuite sous l’évier de la cuisine/i)
+    const dansLApp = ALERTS.find((a) => a.channel === 'in_app')
+    expect(dansLApp, 'le jeu ne porte aucun avis `in_app` : le cas ne garde rien').toBeDefined()
+
+    const ligne = carte.closest('li') ?? carte.closest('div')
+    expect(ligne).not.toBeNull()
+    expect(ligne!.textContent ?? '').not.toMatch(/visible ici seulement/i)
+  })
+
+  it('paraît encore sur une relance, qui elle devait partir', async () => {
+    // La moitié sans laquelle tout masquer satisferait le cas précédent.
+    await renderApp('/demo/signalements')
+    await attendreLeChargement()
+
+    /* La série de relances est REPLIÉE en une carte, et son résumé
+       d'expédition porte sa propre formule — « la dernière le … · … en
+       attente ». C'est elle qu'on cherche : le canal `sms` reste montré. */
+    expect(screen.getByRole('main').textContent).toMatch(/en attente|encore partie|Parti par/i)
+  })
+})
+
 describe('les notifications s’annoncent comme une liste', () => {
   it('se comptent et se nomment', async () => {
     await renderApp('/demo/signalements')

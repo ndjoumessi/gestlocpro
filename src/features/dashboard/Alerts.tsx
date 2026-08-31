@@ -458,8 +458,23 @@ export function Alerts() {
 
                   Rien ne s'affiche sur ce qui n'est pas une relance : une
                   notification de relevé manquant n'est envoyée à personne.
+
+                  ═══ `in_app` EST EXCLU, ET C'EST LE MÊME RAISONNEMENT ═══
+
+                  La borne portait sur la PRÉSENCE d'un canal, pas sur sa
+                  nature. Or le serveur pose `channel: 'in_app'` sur le
+                  signalement d'un locataire, sur l'annonce et sur la réponse du
+                  gestionnaire : la ligne s'affichait donc sur trois avis que
+                  personne n'a jamais eu l'intention d'expédier. Capturé sur la
+                  production, sous « Signalement SIG-2026-002 · Manque de
+                  courant » : « Pas encore parti · visible ici seulement ».
+
+                  `in_app` EST le canal « visible ici seulement ». Le dire est
+                  un pléonasme quand c'est le seul canal prévu, et un mensonge
+                  quand ça laisse croire qu'un SMS a échoué — exactement le
+                  défaut que cette ligne avait été écrite pour corriger.
                 */}
-                {alert.channel && (
+                {alert.channel && alert.channel !== 'in_app' && (
                   <p className="mt-1 text-caps text-muted">
                     {/*
                       ═══ LE RÉSUMÉ D'EXPÉDITION DE TOUTE LA SÉRIE ═══

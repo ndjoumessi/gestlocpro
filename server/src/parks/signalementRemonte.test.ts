@@ -192,6 +192,17 @@ describe('un signalement de locataire', () => {
 
     /* Sans `workId`, la carte parle d'un signalement qu'on ne peut pas ouvrir —
        c'est la leçon déjà écrite pour `workReply`. */
+    /**
+     * LE LOGEMENT, PAR SON LIBELLÉ ET NON PAR SON IDENTIFIANT.
+     *
+     * La carte compose « Signalement {reference} · {unit} », et `{unit}` se
+     * résout depuis `params.unitId` — c'est la convention que les autres avis
+     * du serveur suivent déjà, où l'on trouve « A3 » et non un `uuid`. Le
+     * premier jet ne posait le logement que dans la COLONNE de la
+     * notification : capturé sur la production, la carte affichait
+     * « Signalement SIG-2026-002 · {unit} », accolades comprises.
+     */
+    expect(notif.params.unitId, 'la carte affichera « {unit} » en toutes lettres').toBe('A1')
     expect(notif.params.workId).toBe(cree.body.work.id)
     expect(notif.params.reference).toBe(cree.body.work.reference)
     expect(notif.unitId, 'la carte ne dit pas de quel logement il s’agit').toBe(unitId)
