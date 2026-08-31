@@ -713,6 +713,7 @@ export type WorkTitleKey =
   | 'livingRoomPaint'
   | 'safetyValve'
   | 'fullRefurbishment'
+  | 'frontDoorLock'
 
 export interface WorkOrder {
   id: string
@@ -830,6 +831,12 @@ export const WORKS: WorkOrder[] = [
   { id: 'SIG-2026-042', unitId: 'A3', titleKey: 'sinkLeak', trade: 'plumbing', status: 'quoted', quotedAmount: 45000, approvedAmount: null, reportedAt: { year: 2026, month: 7, day: 12 }, urgent: true, origin: 'tenantReport', reportedBy: 'Serge Mbarga' },
   { id: 'SIG-2026-041', unitId: 'B2', titleKey: 'waterHeaterBreaker', trade: 'power', status: 'approved', quotedAmount: 78000, approvedAmount: 78000, reportedAt: { year: 2026, month: 7, day: 9 }, urgent: true, origin: 'tenantReport', reportedBy: 'Nadia Belinga' },
   { id: 'SIG-2026-039', unitId: 'C1', titleKey: 'livingRoomPaint', trade: 'painting', status: 'reported', quotedAmount: null, approvedAmount: null, reportedAt: { year: 2026, month: 7, day: 5 }, urgent: false, origin: 'tenantReport', reportedBy: 'Cabinet Njoya' },
+  /* UN SIGNALEMENT ENCORE OUVERT, chez le locataire de la démonstration.
+     A1 n'en portait qu'un, CLOS et répondu : l'état « pas encore de réponse »
+     n'existait donc nulle part, et la ligne qui distingue « on ne m'a pas
+     répondu » de « la réponse ne s'affiche pas » n'était mesurée par personne.
+     Deux signalements, deux états, c'est aussi ce que vit un vrai locataire. */
+  { id: 'SIG-2026-045', unitId: 'A1', titleKey: 'frontDoorLock', trade: 'lock', status: 'reported', quotedAmount: null, approvedAmount: null, reportedAt: { year: 2026, month: 7, day: 26 }, urgent: false, origin: 'tenantReport', reportedBy: 'Charles Ngassa' },
   { id: 'SIG-2026-036', unitId: 'A1', titleKey: 'safetyValve', trade: 'plumbing', status: 'done', quotedAmount: 32000, approvedAmount: 32000, reportedAt: { year: 2026, month: 6, day: 28 }, urgent: false, origin: 'tenantReport', reportedBy: 'Charles Ngassa' },
   { id: 'SIG-2026-034', unitId: 'B4', titleKey: 'fullRefurbishment', trade: 'multi', status: 'approved', quotedAmount: 340000, approvedAmount: 340000, reportedAt: { year: 2026, month: 6, day: 22 }, urgent: false, origin: 'ownerInitiative', reportedBy: 'Arsène Nkolo' },
 ]
@@ -1249,6 +1256,11 @@ export const ALERTS: Alert[] = [
      famille entière — un titre du produit au-dessus d'une phrase écrite par
      quelqu'un, de longueur non bornée — n'était mesurée nulle part. Voir
      `notes-conditionnelles` pour la leçon générale. */
+  /* LA RÉPONSE DU GESTIONNAIRE À SON LOCATAIRE. `workReply` existait côté
+     serveur depuis longtemps et n'était rendue nulle part — ni dans le jeu, ni
+     à l'écran. Elle porte le `workId` de SIG-2026-036, le signalement du
+     locataire de la démonstration, sur son logement A1. */
+  { id: 'n9', kind: 'work', message: 'workReply', data: { workId: 'SIG-2026-036', reference: 'SIG-2026-036', unitId: 'A1', text: 'Vanne remplacée ce matin par le plombier. Dites-nous si la pression est revenue.' }, at: { value: -3, unit: 'day' }, severity: 'low', read: true, unitId: 'A1' },
   { id: 'n8', kind: 'work', message: 'tenantReport', data: { workId: 'SIG-2026-044', reference: 'SIG-2026-044', unitId: 'B3', text: 'Fuite sous l’évier de la cuisine, ça goutte depuis hier soir.' }, at: { value: -40, unit: 'minute' }, severity: 'medium', read: false, unitId: 'B3' },
   { id: 'n2', kind: 'work', message: 'quotePending', data: { workId: 'SIG-2026-042', unitId: 'A3', amount: 45000 }, at: { value: -5, unit: 'hour' }, severity: 'high', read: false, unitId: 'A3' },
   { id: 'n3', kind: 'meter', message: 'metersMissing', data: { count: 2, period: { year: 2026, month: 7 }, units: ['A5', 'C2'] }, at: { value: -1, unit: 'day' }, severity: 'medium', read: true },

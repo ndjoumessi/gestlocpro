@@ -56,7 +56,7 @@ export function Signaler() {
   const d = useDates()
   const { role } = useRole()
   const { notify } = useToast()
-  const { works, units, isMine, addWork, loading } = usePortfolio()
+  const { works, units, isMine, addWork, alerts, loading } = usePortfolio()
 
   const [titre, setTitre] = useState('')
   const [erreur, setErreur] = useState(false)
@@ -83,6 +83,25 @@ export function Signaler() {
   */
   const mesUnites = loading ? [] : units.filter((u) => isMine(u.id))
   const miens = works.filter((w) => isMine(w.unitId))
+  /**
+   * LES RÉPONSES, RANGÉES PAR SIGNALEMENT.
+   *
+   * `workId` est ce qui les rattache — c'est la raison d'être du champ, écrite
+   * dans la route qui les émet. Sans ce regroupement, elles vivraient dans
+   * « Signalements » à côté d'impayés qui ne concernent pas le locataire, et
+   * l'écran où il a DÉCLARÉ resterait muet.
+   *
+   * DE LA PLUS ANCIENNE À LA PLUS RÉCENTE : un échange se lit dans l'ordre où
+   * il s'est tenu. `alerts` arrive du plus récent au plus ancien — l'ordre
+   * d'une boîte de réception, qui n'est pas celui d'une conversation.
+   */
+  const reponses = new Map<string, typeof alerts>()
+  for (const a of alerts) {
+    if (a.message !== 'workReply') continue
+    const cible = a.data.workId
+    if (!cible) continue
+    reponses.set(cible, [a, ...(reponses.get(cible) ?? [])])
+  }
   /* Le geste appartient au locataire : le bailleur ne signale pas un problème
      chez quelqu'un d'autre, il le reçoit. */
   const peutDeclarer = role === 'tenant' && mesUnites[0]
@@ -347,6 +366,41 @@ export function Signaler() {
                   </div>
                   <p className="text-body font-medium">{workTitle(work, t)}</p>
                   <p className="text-caps text-muted">{d.dayMonth(work.reportedAt)}</p>
+                  {/*
+                    LE FIL, et il n'existait nulle part.
+
+                    `workReply` est écrite par le serveur depuis longtemps :
+                    quand le gestionnaire répond, une notification part vers le
+                    compte du locataire, avec le texte et le `workId` qui la
+                    rattache — son propre commentaire le dit, « sans lui, les
+                    réponses s'empileraient sans dire de quoi elles parlent ».
+                    Cette liste ne la lisait PAS. Le locataire déclarait, lisait
+                    « Signalé », et n'avait plus aucune nouvelle.
+
+                    C'est le défaut du lot précédent dans l'autre sens : là, ce
+                    qui montait n'arrivait pas ; ici, ce qui descend n'était pas
+                    montré.
+
+                    LE TEXTE EST RENDU TEL QUEL — il vient d'un humain, comme
+                    l'annonce. Il ne se traduit pas et n'est pas borné : c'est
+                    `text-pretty` qui le tient, jamais une coupe.
+                  */}
+                  {(reponses.get(work.id) ?? []).map((r) => (
+                    <div key={r.id} className="mt-1 border-l-2 border-divider pl-3">
+                      <p className="text-caps text-muted">
+                        {t('app.report.replyFrom')} · {d.relative(r.at)}
+                      </p>
+                      <p className="text-body text-pretty">{r.data.text}</p>
+                    </div>
+                  ))}
+                  {/* L'ABSENCE DE RÉPONSE SE DIT AUSSI, et seulement tant qu'on
+                      en attend une : un chantier clos n'attend plus rien. Sans
+                      cette ligne, « on ne m'a pas répondu » et « la réponse ne
+                      s'affiche pas » se ressemblent, et le locataire n'a aucun
+                      moyen de faire la différence. */}
+                  {(reponses.get(work.id) ?? []).length === 0 && work.status !== 'done' && (
+                    <p className="text-caps text-muted">{t('app.report.noReply')}</p>
+                  )}
                 </li>
               ))}
             </ul>

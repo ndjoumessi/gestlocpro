@@ -581,9 +581,15 @@ export function TenantDashboard() {
                 terme={t('app.tenant.leaseRent')}
                 valeur={money(unit.rent, { compact: true })}
               />
+              {/* UN TIRET NE DIT PAS SI C'EST UN OUBLI DE SAISIE OU L'ABSENCE
+                  DE CAUTION, et `leaseDepositNone` — « Aucune caution
+                  enregistrée à votre nom » — existait dans les deux
+                  dictionnaires sans être appelée nulle part. Une phrase écrite,
+                  traduite, relue, et jamais rendue. */}
               <LigneBail
                 terme={t('app.tenant.leaseDeposit')}
-                valeur={deposit ? money(deposit.held, { compact: true }) : '—'}
+                valeur={deposit ? money(deposit.held, { compact: true }) : undefined}
+                absence={deposit ? undefined : t('app.tenant.leaseDepositNone')}
               />
               {/* L'état des lieux EXISTE comme fiche, pas comme fichier : aucun
                   dépôt ne le crée, et ce produit ne fabrique pas de PDF
@@ -846,22 +852,42 @@ function LigneBail({
   valeur,
   href,
   action,
+  absence,
 }: {
   terme: string
   valeur?: string
   href?: string
   action?: string
+  /**
+   * CE QUE L'ABSENCE EST, en toutes lettres.
+   *
+   * Elle se rendait « — », et un tiret ne distingue pas un oubli de saisie
+   * d'une caution qui n'existe pas. Le locataire n'a aucun moyen de trancher :
+   * c'est le seul écran du produit où il ne connaît que son bail.
+   *
+   * NI `numeric` NI GRAS, contrairement à la valeur : ce n'est pas un montant,
+   * et lui donner la graisse d'un chiffre ferait lire une phrase comme une
+   * donnée. Le texte se replie — `text-pretty` — là où un montant ne le
+   * pourrait pas.
+   */
+  absence?: string
 }) {
   return (
     <div className="flex min-h-11 items-center justify-between gap-3 border-b border-divider py-2 last:border-b-0">
       <dt className="text-body text-muted">{terme}</dt>
-      <dd className="numeric text-body font-medium">
+      <dd
+        className={
+          absence !== undefined && !href
+            ? 'text-pretty text-right text-caps text-muted'
+            : 'numeric text-body font-medium'
+        }
+      >
         {href ? (
           <Button variant="ghost" size="sm" to={href} className="-mr-3.5">
             {action}
           </Button>
         ) : (
-          valeur
+          (absence ?? valeur)
         )}
       </dd>
     </div>

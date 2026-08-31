@@ -124,6 +124,7 @@ describe('les messages d’alerte ont tous leur gabarit', () => {
     /* Le signalement qui MONTE. `workReply` descend et n'est pas encore dans
        le jeu de démonstration ; celui-ci y est, donc le témoin le tient. */
     'tenantReport',
+    'workReply',
   ]
 
   it('recense bien tout le type, sans en oublier', () => {

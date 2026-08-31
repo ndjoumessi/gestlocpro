@@ -188,10 +188,11 @@ export function TenantDocuments() {
                 TEXTE d'un bail : le produire reviendrait à fabriquer, sous une
                 mise en page qui lui donnerait l'apparence d'une pièce, un
                 document que rien n'atteste. */}
-            <LignePiece label={t('app.documents.lease')} />
+            <LignePiece label={t('app.documents.lease')} absence={t('app.documents.leaseNever')} />
 
             <LignePiece
               label={t('app.documents.entryInspection')}
+              absence={t('app.documents.inspectionPending')}
               detail={entree ? d.fullDate(entree.date) : undefined}
               to={entree ? lien(base, 'etats-des-lieux') : undefined}
               action={t('app.documents.view')}
@@ -207,6 +208,7 @@ export function TenantDocuments() {
 
             <LignePiece
               label={t('app.documents.depositReceipt')}
+              absence={t('app.tenant.leaseDepositNone')}
               detail={deposit ? money(deposit.held, { compact: true }) : undefined}
               to={deposit ? lien(base, 'cautions') : undefined}
               action={t('app.documents.view')}
@@ -481,6 +483,7 @@ function LignePiece({
   to,
   action,
   telecharger,
+  absence,
 }: {
   label: string
   detail?: string
@@ -499,6 +502,17 @@ function LignePiece({
    * rangée à chacune des trois lignes de la carte.
    */
   telecharger?: { nom: string; faire: () => void }
+  /**
+   * CE QUE L'ABSENCE EST, quand la pièce n'est pas là.
+   *
+   * « Aucun document déposé » servait pour trois absences de natures opposées :
+   * une pièce qui ne sera JAMAIS déposée — le produit n'enregistre pas le texte
+   * d'un bail —, une pièce qui viendra quand elle aura été établie, et une
+   * caution qui n'existe peut-être pas. Le locataire ne pouvait ni les
+   * distinguer ni savoir laquelle appelle un geste, sur le seul écran du
+   * produit où il n'a AUCUN moyen de recouper.
+   */
+  absence?: string
 }) {
   const t = useT()
   return (
@@ -522,6 +536,13 @@ function LignePiece({
             mieux que les faire disparaître. */}
         <span className="block text-body">{label}</span>
         {detail && <span className="numeric block text-caps text-muted">{detail}</span>}
+        {/* SOUS LE LIBELLÉ, jamais dans la colonne de droite : celle-ci est
+            `shrink-0` et se bat déjà avec le nom de la pièce à 320 px — une
+            phrase y écraserait « Contrat de bail signé » à deux lettres, dans
+            l'état précisément où l'écran doit être le plus clair. */}
+        {!to && absence && (
+          <span className="block text-caps text-pretty text-muted">{absence}</span>
+        )}
       </span>
       {/* `ml-auto` : QUAND LA LIGNE SE REPLIE, l'action reste à droite.
 

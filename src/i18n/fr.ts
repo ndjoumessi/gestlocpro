@@ -578,6 +578,16 @@ export const fr = {
        * le bouton prétend restituer — le défaut que le portail a déjà payé.
        */
       none: 'Aucun document déposé',
+      /* TROIS ABSENCES DE NATURES OPPOSÉES portaient la même formule creuse.
+         Celle-ci ne viendra JAMAIS — le produit n'enregistre pas le texte d'un
+         bail, et le fabriquer donnerait à une invention l'apparence d'une
+         pièce. On dit donc ce qui existe à la place, dix centimètres plus bas
+         sur le même écran. */
+      leaseNever:
+        'Le bail signé ne se dépose pas ici. Demandez un duplicata ci-dessous : votre gestionnaire vous répond dans cet espace.',
+      /* Celui-là VIENDRA, et c'est toute la différence avec le précédent. */
+      inspectionPending:
+        'Il n’a pas encore été établi. Il apparaîtra ici dès la visite d’entrée.',
       pdfExitInspection: 'État des lieux de sortie',
       pdfIssuedOn: 'Émis le {date}',
       pdfBreakdown: 'Détail de la période',
@@ -1400,6 +1410,11 @@ export const fr = {
         livingRoomPaint: 'Peinture du séjour à reprendre',
         safetyValve: 'Remplacement du groupe de sécurité',
         fullRefurbishment: 'Réfection complète avant relocation',
+        /* Le SECOND signalement du locataire de la démonstration, encore ouvert.
+           Un titre à lui : réutiliser celui d'un autre logement ferait paraître
+           chez lui la déclaration d'un voisin, et c'est ce que la garde
+           d'isolement de cet écran surveille — elle a rougi pour le dire. */
+        frontDoorLock: 'Serrure de la porte d’entrée qui accroche',
       },
     },
 
@@ -2042,6 +2057,10 @@ export const fr = {
       send: 'Envoyer le signalement',
       sent: 'Signalement envoyé · votre gestionnaire est prévenu',
       mine: 'Mes signalements',
+      /* LE FIL. Le texte de la réponse vient d'un humain et n'est pas traduit ;
+         ces deux clés ne portent que l'habillage. */
+      replyFrom: 'Réponse de votre gestionnaire',
+      noReply: 'Pas encore de réponse',
       emptyTitle: 'Aucun signalement',
       emptyBody: 'Déclarez un problème et suivez son traitement ici : reçu, chiffré, validé, puis terminé.',
       cta: 'Signaler un problème',

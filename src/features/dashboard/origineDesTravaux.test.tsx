@@ -2,6 +2,17 @@ import { describe, expect, it } from 'vitest'
 import { renderApp, screen, switchRole, attendreLeChargement, userEvent, within } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
+import { WORKS } from '@/data/portfolio'
+
+/* LES COMPTES SE DÉRIVENT DU JEU, ils ne s'écrivent plus à la main.
+   Ils valaient « 5 », « 4 » et « 1 » — justes le jour où on les a tapés, faux
+   au premier signalement ajouté au jeu, et ces deux cas ne parlent NI du
+   contenu du jeu NI de son volume : l'un dit qu'une liste s'annonce comme une
+   liste, l'autre que les deux origines se comptent SÉPARÉMENT.
+   La borne du second empêche l'accord avec soi-même : un jeu vidé rendrait
+   0 = 0 et se déclarerait vert. */
+const SIGNALEES = WORKS.filter((w) => w.origin === 'tenantReport').length
+const INITIATIVE = WORKS.filter((w) => w.origin === 'ownerInitiative').length
 
 /**
  * L'ORIGINE d'une intervention, et ce que son montant représente.
@@ -54,21 +65,28 @@ describe('les interventions s’annoncent comme une liste', () => {
     const directs = within(liste)
       .getAllByRole('listitem')
       .filter((el) => el.parentElement === liste)
-    expect(directs).toHaveLength(5)
+    expect(directs).toHaveLength(WORKS.length)
 
     /*
       ÉNUMÉRÉES, et non comptées.
 
-      « 5 » est un nombre nu que la prochaine intervention ajoutée fera tomber
-      sans rien apprendre à personne. Les nommer documente le parc de
-      démonstration au passage — et attrape le cas où la liste rendrait bien
-      cinq éléments, mais pas ceux-là.
+      Un nombre nu tombe à la prochaine intervention ajoutée sans rien apprendre
+      à personne. Les nommer documente le parc de démonstration au passage — et
+      attrape le cas où la liste rendrait bien le bon COMPTE, mais pas ceux-là.
+
+      CELLE-CI S'ÉCRIT À LA MAIN, et c'est voulu : le compte au-dessus se dérive
+      du jeu, cette liste-ci le DÉCRIT. La dériver aussi la rendrait d'accord
+      avec elle-même, et il n'y aurait plus de témoin du tout.
     */
     const titres = directs.map((el) => el.querySelector('h2')?.textContent ?? '')
     expect(titres).toEqual([
       expect.stringContaining('évier de la cuisine'),
       expect.stringContaining('Disjoncteur'),
       expect.stringContaining('Peinture du séjour'),
+      /* Le SECOND signalement du locataire de la démonstration, encore ouvert.
+         A1 n'en portait qu'un, clos et répondu : l'état « pas encore de
+         réponse » n'existait nulle part et n'était mesuré par personne. */
+      expect.stringContaining('Serrure de la porte'),
       expect.stringContaining('groupe de sécurité'),
       expect.stringContaining('Réfection complète'),
     ])
@@ -317,12 +335,15 @@ describe('travaux — tri par origine et total engagé', () => {
 
   it('compte les deux origines séparément', async () => {
     await ouvrir()
-    // Cinq interventions au jeu : quatre signalées, une à l'initiative du
-    // bailleur — la réfection de B4, qui l'était depuis toujours sans pouvoir
-    // le dire.
-    expect(segment(/^Toutes/)).toHaveTextContent('5')
-    expect(segment(/^Signalées/)).toHaveTextContent('4')
-    expect(segment(/^À mon initiative/)).toHaveTextContent('1')
+    /* LES DEUX ORIGINES SONT PEUPLÉES, sans quoi « séparément » ne veut rien
+       dire : un jeu qui n'en porterait qu'une passerait ce cas sans que la
+       distinction soit éprouvée. */
+    expect(SIGNALEES, 'aucune intervention signalée au jeu').toBeGreaterThan(0)
+    expect(INITIATIVE, 'aucune intervention à l’initiative du bailleur').toBeGreaterThan(0)
+
+    expect(segment(/^Toutes/)).toHaveTextContent(String(WORKS.length))
+    expect(segment(/^Signalées/)).toHaveTextContent(String(SIGNALEES))
+    expect(segment(/^À mon initiative/)).toHaveTextContent(String(INITIATIVE))
   })
 
   it('ne montre que l’origine demandée', async () => {

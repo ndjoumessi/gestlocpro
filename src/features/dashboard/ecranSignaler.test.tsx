@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, switchRole, attendreLeChargement, userEvent } from '@/test/render'
+import { renderApp, screen, switchRole, attendreLeChargement, userEvent, within } from '@/test/render'
 
 /**
  * L'écran « Signaler », que la maquette du portail décrit.
@@ -9,6 +9,61 @@ import { renderApp, screen, switchRole, attendreLeChargement, userEvent } from '
  * « Mes signalements ». Un locataire qui déclare veut d'abord savoir si le
  * précédent a été traité — sans cette liste, il redéclare ce qui est en cours.
  */
+/**
+ * LE SIGNALEMENT A UN FIL, et il n'en avait aucun.
+ *
+ * ═══ LE MÊME DÉFAUT QUE CELUI DU MATIN, DANS L'AUTRE SENS ═══
+ *
+ * Le lot précédent a fait remonter le signalement jusqu'au bailleur : l'écran
+ * le promettait — « votre gestionnaire et votre bailleur le reçoivent
+ * immédiatement » — et personne ne recevait rien.
+ *
+ * Le retour souffrait de la moitié symétrique. `workReply` EXISTE côté serveur
+ * depuis longtemps : quand le gestionnaire répond, une notification part vers
+ * le compte du locataire, avec le texte et le `workId` qui la rattache au
+ * signalement. Son propre commentaire dit pourquoi : « sans lui, les réponses
+ * s'empileraient dans une liste sans dire de quoi elles parlent ».
+ *
+ * Cette liste-là ne les affichait NULLE PART. Le locataire déclarait, lisait
+ * « Signalé », et n'avait plus aucune nouvelle — la réponse écrite pour lui
+ * restait dans une donnée que son écran ne lisait pas.
+ *
+ * ═══ ET L'ABSENCE DE RÉPONSE SE DIT AUSSI ═══
+ *
+ * Un signalement muet et un signalement sans réponse se ressemblaient. « Pas
+ * encore de réponse » n'est pas une politesse : c'est ce qui distingue « on ne
+ * m'a pas répondu » de « la réponse ne s'affiche pas », et le locataire n'a
+ * aucun autre moyen de faire cette différence.
+ */
+describe('le fil d’un signalement', () => {
+  it('montre au locataire la réponse de son gestionnaire', async () => {
+    await renderApp('/demo/signaler')
+    await switchRole('tenant')
+    await attendreLeChargement()
+
+    const mienne = screen.getByText(/Groupe de sécurité/i).closest('li')!
+    expect(
+      within(mienne).getByText(/vanne remplacée/i),
+      'la réponse écrite pour le locataire ne lui est montrée nulle part',
+    ).toBeInTheDocument()
+  })
+
+  it('dit quand il n’y a pas encore de réponse', async () => {
+    await renderApp('/demo/signaler')
+    await switchRole('tenant')
+    await attendreLeChargement()
+
+    /* La moitié sans laquelle n'afficher que les réponses laisserait le
+       locataire incapable de distinguer « on ne m'a pas répondu » de « la
+       réponse ne s'affiche pas ». */
+    const sansReponse = screen
+      .getAllByRole('listitem')
+      .find((li) => !/vanne remplacée/i.test(li.textContent ?? ''))
+    expect(sansReponse).toBeDefined()
+    expect(within(sansReponse!).getByText(/pas encore de réponse/i)).toBeInTheDocument()
+  })
+})
+
 describe('écran Signaler', () => {
   it('est proposé au locataire, et liste SES signalements', async () => {
     await renderApp('/demo/signaler')
