@@ -1659,6 +1659,12 @@ export const fr = {
       kpiRequests: 'Pièces demandées',
       kpiRequestsNote: 'en attente de votre réponse',
       addTenant: 'Créer une fiche locataire',
+      /* L'ÉTAT QUE DEUX ÉCRANS SE CACHAIENT L'UN À L'AUTRE. Le statut du bail
+         ne dit rien de l'accès : à jour et sans espace où le lire. */
+      noAccount: 'Sans compte',
+      noAccountNotice:
+        '{count, plural, one {# locataire n’a pas de compte} other {# locataires n’ont pas de compte}} : {count, plural, one {il ne voit} other {ils ne voient}} ni bail, ni quittance, ni relevé, et {count, plural, one {ne reçoit} other {ne reçoivent}} aucune annonce. Reliez {count, plural, one {sa fiche} other {leurs fiches}} depuis le registre des accès.',
+      noAccountAction: 'Relier depuis « Accès au parc »',
       /* LE CHAMP QUI EMPÊCHE L'ORPHELIN. Il ne paraît que s'il y a quelqu'un à
          relier — un menu vide sur chaque création serait un champ qui ne mène
          nulle part, sur la modale la plus utilisée de l'écran. */

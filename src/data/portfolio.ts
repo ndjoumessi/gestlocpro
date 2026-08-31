@@ -115,6 +115,22 @@ export interface Unit {
    * retrait porte sur la personne, pas sur son étiquette.
    */
   tenantId?: string
+  /**
+   * `false` quand la fiche du locataire n'est reliée à AUCUN compte.
+   *
+   * Deux écrans se contredisaient en silence sur la production : « Locataires
+   * et baux » montrait un bail actif et « À jour » ; l'espace du locataire
+   * disait « aucun logement rattaché à votre compte ». Les deux étaient vrais —
+   * la fiche porte le bail et n'a pas de compte — et l'anomalie n'était lisible
+   * que sur « Accès au parc », là où l'on va quand on soupçonne déjà quelque
+   * chose. Le bailleur n'avait aucune raison d'y aller.
+   *
+   * FACULTATIF, ET ABSENT VAUT « RELIÉE ». Un serveur antérieur à ce champ ne
+   * le rend pas ; supposer l'inverse peindrait TOUS les locataires d'un
+   * avertissement sur l'écran le plus fréquenté, ce qui est la pire des fausses
+   * alertes — celle qu'on apprend à ignorer.
+   */
+  tenantHasAccount?: boolean
 }
 
 /**

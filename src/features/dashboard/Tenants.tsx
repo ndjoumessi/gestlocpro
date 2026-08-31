@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRole } from '@/components/layout/AppShell'
+import { lien, useBase } from '@/lib/base'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { InviteModal } from './InviteModal'
 import { AnnounceModal } from './AnnounceModal'
@@ -7,7 +8,7 @@ import { Notice } from '@/components/primitives/Notice'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { DataTable } from '@/components/primitives/DataTable'
 import { Skeleton, SkeletonRegion, SkeletonTable } from '@/components/primitives/Skeleton'
-import { PaymentStatusPill } from '@/components/primitives/StatusPill'
+import { PaymentStatusPill, StatusPill } from '@/components/primitives/StatusPill'
 import { Button } from '@/components/primitives/Button'
 import { Modal } from '@/components/primitives/Modal'
 import { Field } from '@/components/primitives/Field'
@@ -45,6 +46,7 @@ export function Tenants() {
     usePortfolio()
   const [aRetirer, setARetirer] = useState<Unit | null>(null)
   const { role } = useRole()
+  const base = useBase()
   const { notify } = useToast()
 
   const leases = units.filter((unit) => unit.tenant !== null)
@@ -53,6 +55,9 @@ export function Tenants() {
      qui est celui que la réponse concerne. */
   const demandesEnAttente = documentRequests.filter((d) => d.status === 'pending')
   const vacant = units.filter((unit) => unit.tenant === null)
+  /* Les fiches en place dont AUCUN compte ne porte le nom. `=== false` et non
+     `!`: absent vaut « reliée », un serveur antérieur au champ ne le rend pas. */
+  const sansCompte = units.filter((unit) => unit.tenant !== null && unit.tenantHasAccount === false)
 
   /**
    * Le fichier des personnes.
@@ -128,6 +133,29 @@ export function Tenants() {
         L'ÉTAT SUR LES DEMANDES, et sur elles seules : une pièce demandée attend
         une réponse de l'utilisateur. Zéro demande rend la carte neutre.
       */}
+      {/* LA CONSÉQUENCE, QUE LA PASTILLE SEULE NE DIT PAS.
+
+          Une pastille nomme un état ; elle ne dit pas ce qu'il coûte. Ce qu'il
+          coûte est précis : ce locataire n'a AUCUN espace où lire son bail, ses
+          quittances ni ses relevés, il ne recevra aucune annonce, et le geste
+          qui répare vit sur un autre écran. Le produit tient déjà ce langage
+          sur l'annonce — « un locataire sans compte ne recevra rien, il n'a pas
+          d'espace où lire » —, il manquait ici.
+
+          UNIQUEMENT AU BAILLEUR : le locataire lit ce tableau borné à son
+          propre bail, et lui annoncer qu'il n'a pas de compte, dans son espace,
+          n'aurait aucun sens. */}
+      {role !== 'tenant' && sansCompte.length > 0 && (
+        <Notice className="mb-6">
+          {t('app.tenants.noAccountNotice', { count: sansCompte.length })}
+          <span className="mt-2 block">
+            <Button to={lien(base, 'acces')} variant="secondary" size="sm" iconAfter="arrowRight">
+              {t('app.tenants.noAccountAction')}
+            </Button>
+          </span>
+        </Notice>
+      )}
+
       <div className={`${GRILLE_TROIS_INDICATEURS} mb-6`}>
         <StatCard
           icone="users"
@@ -270,6 +298,19 @@ export function Tenants() {
                 <span data-donnee className="min-w-0 truncate font-medium">
                   {unit.tenant}
                 </span>
+                {/* SANS COMPTE : l'état que deux écrans se cachaient l'un à
+                    l'autre. Le statut du BAIL — « À jour » — ne dit rien de
+                    l'ACCÈS, et le bailleur concluait de l'un sur l'autre : un
+                    locataire en place, à jour, dans un logement, et pas la
+                    moindre raison d'aller vérifier ailleurs. Pendant ce temps
+                    l'intéressé lisait « aucun logement rattaché à votre
+                    compte ». `StatusPill` porte déjà un mot à côté de sa
+                    teinte, ce que `couleur-non-seule` exige. */}
+                {unit.tenantHasAccount === false && (
+                  <StatusPill tone="warn" size="sm">
+                    {t('app.tenants.noAccount')}
+                  </StatusPill>
+                )}
               </div>
             ),
           },

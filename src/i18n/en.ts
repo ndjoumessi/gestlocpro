@@ -1272,6 +1272,10 @@ export const en: Dictionary = {
       kpiRequests: 'Documents requested',
       kpiRequestsNote: 'awaiting your reply',
       addTenant: 'Create a tenant record',
+      noAccount: 'No account',
+      noAccountNotice:
+        '{count, plural, one {# tenant has no account} other {# tenants have no account}}: {count, plural, one {they see} other {they see}} no lease, no receipt, no meter reading, and receive no announcements. Link {count, plural, one {their record} other {their records}} from the access registry.',
+      noAccountAction: 'Link from “Park access”',
       account: 'Tenant account',
       accountHint: 'If they already joined the park with a code, link their record now: their space opens right away, with no further step.',
       accountNone: 'None — they have no account yet',

@@ -46,7 +46,13 @@ interface PortefeuilleApi {
       type: UnitTypeKey
       surfaceSqm: number
       rentMinor: number
-      tenant: { id: string; fullName: string; phoneE164: string | null } | null
+      tenant: {
+        id: string
+        fullName: string
+        phoneE164: string | null
+        /** Facultatif : un serveur antérieur à ce champ ne le rend pas. */
+        hasAccount?: boolean
+      } | null
       status: string
       leaseId: string | null
       /** ISO, ou `null` : bail vacant, ou serveur antérieur à ce champ. */
@@ -275,6 +281,9 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
         leaseStart: u.leaseStartsOn ? enParties(u.leaseStartsOn) : null,
         ...(u.leaseId !== null ? { leaseId: u.leaseId } : {}),
         ...(u.tenant ? { tenantId: u.tenant.id } : {}),
+        /* `!== false` ET NON `=== true` : absent vaut « reliée ». Un serveur
+           antérieur au champ peindrait sinon tout le parc d'un avertissement. */
+        ...(u.tenant ? { tenantHasAccount: u.tenant.hasAccount !== false } : {}),
         ...(u.overdueDays !== null ? { overdueDays: u.overdueDays } : {}),
       })
     }

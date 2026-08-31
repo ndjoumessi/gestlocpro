@@ -413,7 +413,7 @@ parksRouter.get(
                 id: true,
                 rentMinor: true,
                 startsOn: true,
-                tenant: { select: { id: true, fullName: true, phoneE164: true } },
+                tenant: { select: { id: true, fullName: true, phoneE164: true, userId: true } },
                 deposit: {
                   select: { heldMinor: true, withheldMinor: true, status: true },
                 },
@@ -454,7 +454,32 @@ parksRouter.get(
           rentMinor: bail?.rentMinor ?? u.baseRentMinor,
           // `null` et non une chaîne : l'unité n'a pas de locataire, elle n'en
           // a pas un qui s'appellerait « vacant ».
-          tenant: bail?.tenant ? { id: bail.tenant.id, fullName: bail.tenant.fullName, phoneE164: bail.tenant.phoneE164 } : null,
+          tenant: bail?.tenant
+            ? {
+                id: bail.tenant.id,
+                fullName: bail.tenant.fullName,
+                phoneE164: bail.tenant.phoneE164,
+                /**
+                 * SI la fiche est reliée à un compte — jamais À QUI.
+                 *
+                 * Deux écrans se contredisaient sur la production sans que rien
+                 * ne le dise : « Locataires et baux » montrait BEKONO LANDRY sur
+                 * A1, bail actif, « À jour » ; son espace à lui disait « aucun
+                 * logement rattaché à votre compte ». Les deux étaient vrais —
+                 * la fiche porte le bail et n'a pas de compte — et l'anomalie
+                 * n'était visible que sur « Accès au parc », c'est-à-dire là où
+                 * l'on va quand on soupçonne déjà quelque chose.
+                 *
+                 * Le booléen et non `userId` : cette projection est lue AUSSI
+                 * par le locataire, et le registre des accès est le seul écran
+                 * qui nomme les comptes — réservé aux deux rôles de gestion. Un
+                 * identifiant qui voyage ici serait une fuite qui ne sert
+                 * personne. La route d'annonce fait déjà cette distinction et
+                 * son en-tête la justifie : « ce qui n'est pas parti se dit ».
+                 */
+                hasAccount: Boolean(bail.tenant.userId),
+              }
+            : null,
           leaseId: bail?.id ?? null,
           // Le bail portait sa date de début depuis toujours ; la réponse ne la
           // transmettait pas. Le client l'affiche — « bail en cours depuis
