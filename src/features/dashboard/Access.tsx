@@ -35,6 +35,40 @@ import { cn } from '@/lib/cn'
  * écrits à chaque émission depuis l'origine du produit, et n'avaient jamais été
  * relus : ils existaient pour cette liste, qui n'était pas construite.
  */
+/**
+ * Deux noms désignent-ils la même personne ?
+ *
+ * ═══ CE QU'ELLE COMPARE, ET CE QU'ELLE NE PRÉTEND PAS ═══
+ *
+ * Casse, accents, ponctuation et ORDRE des mots sont neutralisés : « BEKONO
+ * LANDRY », « Bekono Landry » et « Landry Bekono » sont la même personne, et
+ * l'état civil du marché visé écrit couramment le nom de famille en premier.
+ *
+ * Elle ne fait AUCUN rapprochement approximatif. Pas de distance d'édition, pas
+ * de correspondance partielle : « Djoumessi Martial » et « Djoumessi Nelson »
+ * partagent un mot sur deux et ne sont pas la même personne. Une garde qui
+ * devine se trompe dans les deux sens, et c'est le sens permissif qui coûte
+ * cher ici.
+ *
+ * ELLE NE REFUSE RIEN — voir ses deux appelants. Deux noms peuvent légitimement
+ * différer : un nom d'épouse, une société qui loue pour un salarié, un
+ * diminutif. Un refus se contournerait par un renommage ; une QUESTION posée au
+ * bon moment coûte trois secondes et arrête la faute.
+ */
+function memePersonne(a: string | null | undefined, b: string | null | undefined): boolean {
+  if (!a || !b) return true
+  const cle = (n: string) =>
+    n
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter(Boolean)
+      .sort()
+      .join(' ')
+  return cle(a) === cle(b)
+}
+
 export function Access() {
   const t = useT()
   const d = useDates()
@@ -273,6 +307,23 @@ export function Access() {
                         fiche: m.tenantName,
                         unit: m.tenantUnitLabel ?? '—',
                       })}
+                    </span>
+                  )}
+                  {/* LE PRODUIT SAVAIT, ET NE LE DISAIT PAS.
+
+                      Le registre porte les deux noms côte à côte depuis le lot
+                      précédent : « Eloundou Charles » détenant « Bekono
+                      Landry ». L'anomalie tient dans une comparaison, et il
+                      existait même un second membre portant exactement ce
+                      nom-là, sans fiche. Tout était là ; rien ne rapprochait
+                      les deux chaînes.
+
+                      UNE QUESTION, PAS UN VERDICT : voir `memePersonne`. */}
+                  {m.tenantName && !memePersonne(m.fullName, m.tenantName) && (
+                    <span className="mt-1 flex">
+                      <StatusPill tone="warn" size="sm">
+                        {t('app.access.nameMismatch')}
+                      </StatusPill>
                     </span>
                   )}
                 </div>
@@ -586,22 +637,51 @@ export function Access() {
             </>
           }
         >
-          <Field label={t('app.access.linkField')} hint={t('app.access.linkHint')}>
-            {(props) => (
-              <Select
-                {...props}
-                name="tenantId"
-                value={ficheChoisie || fichesLibres[0]?.id || ''}
-                onChange={(e) => setFicheChoisie(e.target.value)}
-              >
-                {fichesLibres.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.unitLabel ? `${f.fullName} — ${f.unitLabel}` : f.fullName}
-                  </option>
-                ))}
-              </Select>
-            )}
-          </Field>
+          <div className="flex flex-col gap-4">
+            <Field label={t('app.access.linkField')} hint={t('app.access.linkHint')}>
+              {(props) => (
+                <Select
+                  {...props}
+                  name="tenantId"
+                  value={ficheChoisie || fichesLibres[0]?.id || ''}
+                  onChange={(e) => setFicheChoisie(e.target.value)}
+                >
+                  {fichesLibres.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.unitLabel ? `${f.fullName} — ${f.unitLabel}` : f.fullName}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
+
+            {/* LE PIÈGE SE REFERMAIT UNE SECONDE FOIS, ET SANS UN MOT.
+
+                Une fiche captive n'apparaît pas dans les libres : quand celle
+                du bon logement est prise, ce menu ne propose que celle d'un
+                AUTRE locataire — et il l'a présélectionnée. Le propriétaire qui
+                cherchait à réparer était à un clic de refaire exactement la
+                faute qu'il réparait. Relevé sur la production, deux fois de
+                suite sur le même parc.
+
+                APRÈS LE CHAMP, jamais avant : la note porte sur ce qui vient
+                d'être choisi, et une note posée au-dessus d'un menu qu'on n'a
+                pas encore ouvert parle d'un choix qui n'existe pas. */}
+            {(() => {
+              const choisie = fichesLibres.find(
+                (f) => f.id === (ficheChoisie || fichesLibres[0]?.id),
+              )
+              if (!choisie || memePersonne(aRelier.fullName, choisie.fullName)) return null
+              return (
+                <Notice tone="warn">
+                  {t('app.access.linkMismatch', {
+                    compte: aRelier.fullName,
+                    fiche: choisie.fullName,
+                  })}
+                </Notice>
+              )
+            })()}
+          </div>
         </Modal>
       )}
 

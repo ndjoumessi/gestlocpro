@@ -1565,6 +1565,11 @@ export const fr = {
          sur la mauvaise personne — relevé sur la production. */
       holdsRecord: 'Détient la fiche {fiche} · {unit}',
       unlinkTenant: 'Délier la fiche',
+      /* LES NOMS QUI DIVERGENT. Une QUESTION, jamais un verdict : un nom
+         d'épouse, une société qui loue pour un salarié, un diminutif. */
+      nameMismatch: 'Le nom ne correspond pas',
+      linkMismatch:
+        'Le compte de {compte} et la fiche de {fiche} ne portent pas le même nom. Vérifiez qu’il s’agit bien de la même personne : ce compte verra ce bail, ses quittances et ses relevés.',
       unlinkTitle: 'Délier la fiche de {name} ?',
       unlinkBody: 'Ce compte perdra aussitôt l’accès au bail, aux quittances et aux relevés qu’il consultait. La fiche redevient libre : vous pourrez la relier au bon compte.',
       unlinkBodyNamed: 'Ce compte détient la fiche {fiche} · {unit}. Il perdra aussitôt l’accès à ce bail, à ses quittances et à ses relevés. La fiche redevient libre : vous pourrez la relier au bon compte.',

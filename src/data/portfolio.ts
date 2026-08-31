@@ -338,6 +338,25 @@ export const ACCES_DEMO = {
       email: 'charles@example.com',
       since: '2024-06-15',
     },
+    {
+      /* UN LOCATAIRE ENTRÉ SANS FICHE, et c'est le parcours que le produit
+         RECOMMANDE : « sans logement, il rejoint le parc sans bail, vous l'y
+         rattacherez ensuite ». La démonstration montrait le produit une étape
+         trop tard — le geste « relier à une fiche » n'y était atteignable par
+         personne, donc mesuré par personne.
+
+         SON NOM DIFFÈRE DE LA SEULE FICHE LIBRE, celle d'Éric Ndongo. Ce n'est
+         pas une coquetterie : c'est l'état exact relevé sur la production, où
+         un compte s'est vu relier la fiche d'un autre locataire. La note qui
+         pose la question est ainsi rendue, donc mesurée. */
+      id: 'demo-membre-4',
+      role: 'tenant' as const,
+      userId: 'demo-compte-4',
+      tenantId: null,
+      fullName: 'Pauline Atangana',
+      email: 'pauline@example.com',
+      since: '2026-08-20',
+    },
   ],
   /* LA MÊME FICHE QUE CELLE DU PORTEFEUILLE, et les deux écrans doivent
      s'accorder : `/demo/locataires` annonce un locataire sans compte, ce

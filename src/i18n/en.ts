@@ -1187,6 +1187,9 @@ export const en: Dictionary = {
       role_tenant: 'Tenant',
       holdsRecord: 'Holds the record {fiche} · {unit}',
       unlinkTenant: 'Unlink record',
+      nameMismatch: 'Name does not match',
+      linkMismatch:
+        '{compte}’s account and {fiche}’s record do not carry the same name. Check that this is the same person: this account will see that lease, its receipts and its meter readings.',
       unlinkTitle: 'Unlink {name}’s record?',
       unlinkBody: 'This account immediately loses access to the lease, receipts and meter readings it could see. The record becomes free: you can link it to the right account.',
       unlinkBodyNamed: 'This account holds the record {fiche} · {unit}. It immediately loses access to that lease, its receipts and its meter readings. The record becomes free: you can link it to the right account.',

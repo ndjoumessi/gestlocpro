@@ -96,6 +96,12 @@ async function ouvrirLInvitation(page) {
   await page.waitForTimeout(350)
 }
 
+/** « Relier à une fiche » vit sur la rangée d'un membre sans fiche. */
+async function ouvrirLaLiaison(page) {
+  await page.getByRole('button', { name: /^Relier à une fiche$/ }).first().click()
+  await page.waitForTimeout(350)
+}
+
 async function ouvrirLInvitationEnRecrutant(page) {
   await ouvrirLInvitation(page)
   await page.getByRole('combobox', { name: /Rôle invité/ }).selectOption('manager')
@@ -126,6 +132,9 @@ const REGISTRE = {
     geste: ouvrirLInvitation,
   },
   'app.access.managerNotice': { adresse: '/demo/acces', profil: /Gestionnaire/ },
+  /* LA NOTE DE SÛRETÉ du rapprochement des noms. Mesurable depuis que la
+     démonstration porte un locataire entré sans fiche — voir `ACCES_DEMO`. */
+  'app.access.linkMismatch': { adresse: '/demo/acces', geste: ouvrirLaLiaison },
   'app.deposits.managerNotice': { adresse: '/demo/cautions', profil: /Gestionnaire/ },
   'app.works.managerNotice': { adresse: '/demo/travaux', profil: /Gestionnaire/ },
   'app.system.offlineTitle': { adresse: '/demo/systeme' },
