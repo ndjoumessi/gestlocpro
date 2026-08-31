@@ -5244,6 +5244,45 @@ rejoindreRouter.post('/', async (req: Request, res: Response) => {
           })
         : null
 
+    /**
+     * POURQUOI LE RATTACHEMENT N'A PAS EU LIEU — et le dire vaut mieux que de
+     * tout ranger sous « déjà membre ».
+     *
+     * CAPTURÉ SUR LA PRODUCTION : le locataire saisit le code émis pour SON
+     * logement et lit « demandez à votre propriétaire un code émis pour votre
+     * logement ». Il en tenait un. La phrase l'envoyait réclamer ce qu'il avait
+     * déjà, et le vrai remède — délier la fiche — n'était nommé nulle part.
+     *
+     * `rattacherLaFicheLocataire` cherche un bail dont la fiche N'A PAS de
+     * compte. Une fiche tenue par quelqu'un d'autre le fait donc rendre `null`,
+     * exactement comme un code sans logement — deux causes, un seul refus.
+     *
+     * ON NE NOMME PAS L'AUTRE COMPTE. Le locataire apprend que SON logement est
+     * pris, ce qui le concerne au premier chef ; par qui ne le regarde pas, et
+     * le registre des accès — réservé aux deux rôles de gestion — est le seul
+     * endroit qui le dise.
+     */
+    if (!rattachee && invitation.role === 'tenant') {
+      const priseParUnAutre = await prisma.invitation.findUnique({
+        where: { id: invitation.id },
+        select: {
+          unit: {
+            select: {
+              leases: {
+                where: { status: { in: ['active', 'pending'] }, tenant: { userId: { not: null } } },
+                take: 1,
+                select: { id: true },
+              },
+            },
+          },
+        },
+      })
+      if (priseParUnAutre?.unit?.leases.length) {
+        res.status(409).json({ error: 'unit_record_taken' })
+        return
+      }
+    }
+
     if (rattachee) {
       /* 200 et non 201 : aucune adhésion n'est créée, celle-ci existait déjà.
          `linked` dit à l'écran ce qui vient de se passer — « vous avez rejoint

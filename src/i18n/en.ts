@@ -513,6 +513,8 @@ export const en: Dictionary = {
       linkBody: 'Enter it here: your lease, receipts and meter readings will appear in this space right away.',
       linkAction: 'Link my home',
       linked: 'Home linked · your space is up to date',
+      linkTaken:
+        'This home is already linked to another account. Ask your landlord to unlink the record, then try this code again.',
       linkRefused: 'This code links no home to your account. Ask your landlord for a code issued for your home.',
       myReceipts: 'My receipts',
       myReceiptsHint: 'Issued by the server: the amounts are those of the ledger, not of the screen.',

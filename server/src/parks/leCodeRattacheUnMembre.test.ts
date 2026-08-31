@@ -181,6 +181,63 @@ describe('rejoindre quand on est déjà membre', () => {
     expect(rep.body.error).toBe('already_member')
   })
 
+  /**
+   * LE REFUS DIT CE QUI BLOQUE, ET IL NE DISAIT PAS LA VÉRITÉ.
+   *
+   * ═══ CAPTURÉ SUR LA PRODUCTION, TROISIÈME PREUVE DU MÊME DÉFAUT ═══
+   *
+   * Le locataire saisit le code émis POUR SON LOGEMENT et lit « Ce code ne
+   * rattache aucun logement à votre compte. Demandez à votre propriétaire un
+   * code émis pour votre logement. » Il en tenait un. La phrase l'envoyait
+   * réclamer ce qu'il avait déjà.
+   *
+   * La vraie cause est ailleurs : `rattacherLaFicheLocataire` cherche un bail
+   * dont la fiche n'a PAS de compte — `tenant: { userId: null }`. La fiche de
+   * A1 étant tenue par un autre compte, il ne trouve rien et rend `null`, que
+   * la route traduisait en `already_member`. Un seul code pour trois causes
+   * distinctes, dont celle-ci, qui a un remède précis : délier la fiche.
+   *
+   * ON NE NOMME PAS L'AUTRE COMPTE. Le locataire apprend que SON logement est
+   * pris, ce qui le concerne au premier chef ; par qui ne le regarde pas, et le
+   * registre des accès — réservé aux deux rôles de gestion — est le seul endroit
+   * qui le dise.
+   */
+  it('dit que le logement est pris quand sa fiche appartient à un autre compte', async () => {
+    const { cookie, parkId, cookieLocataire, code } = await membreSansFicheEtUnCodePourSonLogement()
+
+    // Un TROISIÈME compte entre dans le parc et reçoit la fiche de A1 — le
+    // geste fautif relevé sur la production.
+    const autre = await request(serveur)
+      .post(`/api/parks/${parkId}/invitations`)
+      .set('Cookie', cookie)
+      .send({ role: 'tenant' })
+    const charles = await request(serveur).post('/api/auth/signup').send({
+      email: 'charles@example.com',
+      password: MDP,
+      fullName: 'Eloundou Charles',
+      acceptTerms: true,
+      invitationCode: autre.body.code,
+    })
+    const acces = await request(serveur).get(`/api/parks/${parkId}/access`).set('Cookie', cookie)
+    const fiche = acces.body.unlinkedTenants.find(
+      (f: { unitLabel: string }) => f.unitLabel === 'A1',
+    )
+    await request(serveur)
+      .post(`/api/parks/${parkId}/tenants/${fiche.id}/compte`)
+      .set('Cookie', cookie)
+      .send({ userId: charles.body.user.id })
+
+    const rep = await request(serveur)
+      .post('/api/join')
+      .set('Cookie', cookieLocataire)
+      .send({ invitationCode: code })
+    expect(rep.status).toBe(409)
+    expect(
+      rep.body.error,
+      'le refus dit « déjà membre » alors que le blocage est la fiche déjà prise',
+    ).toBe('unit_record_taken')
+  })
+
   it('ne donne pas de fiche au propriétaire de son propre parc', async () => {
     const { cookie, parkId, immeubleId } = await membreSansFicheEtUnCodePourSonLogement()
 

@@ -96,4 +96,47 @@ describe('locataire sans logement', () => {
       ).toBe(true),
     )
   })
+
+  /**
+   * LE REFUS DIT CE QUI BLOQUE, ET IL DISAIT LE CONTRAIRE.
+   *
+   * Capturé sur la production : le locataire saisit le code émis POUR SON
+   * logement et lit « demandez à votre propriétaire un code émis pour votre
+   * logement ». Il en tenait un. La phrase l'envoyait réclamer ce qu'il avait
+   * déjà, pendant que le vrai blocage — la fiche du logement est tenue par un
+   * AUTRE compte — n'était nommé nulle part, non plus que son remède.
+   *
+   * On ne nomme pas l'autre compte : le locataire apprend que SON logement est
+   * pris, ce qui le concerne au premier chef ; par qui ne le regarde pas.
+   */
+  it('dit que le logement est pris, et le geste qui débloque', async () => {
+    const serveur = installerFauxServeur({ authentifie: true })
+    serveur.quand('GET', `/parks/${PARC}/portfolio`, {
+      status: 200,
+      body: {
+        collections: [],
+        buildings: [],
+        works: [],
+        deposits: [],
+        readings: [],
+        inspections: [],
+        notifications: [],
+      },
+    })
+    serveur.quand('POST', '/join', { status: 409, body: { error: 'unit_record_taken' } })
+
+    await renderApp('/app', { session: SESSION })
+    await screen.findByText(/aucun logement rattaché/i)
+
+    const utilisateur = userEvent.setup()
+    await utilisateur.type(screen.getByLabelText(/code d’invitation/i), 'LOC-M8CQ-Q55P')
+    await utilisateur.click(screen.getByRole('button', { name: /rattacher mon logement/i }))
+
+    expect(
+      await screen.findByText(/déjà rattaché à un autre compte/i),
+      'le refus envoie encore réclamer un code que le locataire tient déjà',
+    ).toBeInTheDocument()
+    // Le remède est nommé, et il est du ressort du bailleur.
+    expect(screen.getByText(/délier la fiche/i)).toBeInTheDocument()
+  })
 })

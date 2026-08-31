@@ -12,7 +12,7 @@ import { Field } from '@/components/primitives/Field'
 import { Input } from '@/components/primitives/Input'
 import { useToast } from '@/components/primitives/Toast'
 import { useSession } from '@/api/SessionProvider'
-import { api } from '@/api/client'
+import { ApiError, api } from '@/api/client'
 import { formatInviteCode, validateInviteCode } from '@/features/auth/validation'
 import { usePortfolio } from '@/data/PortfolioProvider'
 
@@ -218,14 +218,29 @@ export function RejoindreUnParc({ variante = 'parc' }: { variante?: 'parc' | 'lo
                 tone: 'ok',
               })
               setCode('')
-            } catch {
-              /* LE REFUS NOMME LE GESTE QU'ON VIENT DE TENTER. « Ce code ne
-                 peut pas être utilisé » est juste pour qui rejoint un parc ;
-                 pour qui est DÉJÀ dedans, le serveur refuse aussi un code
-                 valable mais sans logement — et la phrase générique enverrait
-                 chercher une faute de frappe là où il n'y en a pas. */
+            } catch (erreur) {
+              /**
+               * LE REFUS NOMME LE GESTE, ET MAINTENANT AUSSI SA CAUSE.
+               *
+               * « Ce code ne peut pas être utilisé » est juste pour qui rejoint
+               * un parc ; pour qui est DÉJÀ dedans, le serveur refuse aussi un
+               * code valable mais sans logement, et la phrase générique
+               * enverrait chercher une faute de frappe là où il n'y en a pas.
+               *
+               * UN CAS DE PLUS, RELEVÉ SUR LA PRODUCTION : le logement du code
+               * existe, mais sa fiche est tenue par un AUTRE compte. Le message
+               * disait alors « demandez un code émis pour votre logement » — à
+               * quelqu'un qui en tenait un. Il réclamait ce qu'il avait déjà,
+               * pendant que le seul remède, délier la fiche, n'était nommé
+               * nulle part.
+               */
+              const pris = erreur instanceof ApiError && erreur.code === 'unit_record_taken'
               setErreur(
-                surUnLogement ? t('app.tenant.linkRefused') : t('app.onboarding.joinRefused'),
+                pris
+                  ? t('app.tenant.linkTaken')
+                  : surUnLogement
+                    ? t('app.tenant.linkRefused')
+                    : t('app.onboarding.joinRefused'),
               )
             } finally {
               setEnvoi(false)

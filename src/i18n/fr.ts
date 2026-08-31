@@ -664,6 +664,11 @@ export const fr = {
       linkBody: 'Saisissez-le ici : votre bail, vos quittances et vos relevés apparaîtront aussitôt dans cet espace.',
       linkAction: 'Rattacher mon logement',
       linked: 'Logement rattaché · votre espace est à jour',
+      /* LE LOGEMENT EXISTE, SA FICHE EST PRISE. On ne nomme pas l'autre compte :
+         le locataire apprend que SON logement est pris, ce qui le concerne au
+         premier chef ; par qui ne le regarde pas. */
+      linkTaken:
+        'Ce logement est déjà rattaché à un autre compte. Demandez à votre propriétaire de délier la fiche, puis réessayez ce code.',
       linkRefused: 'Ce code ne rattache aucun logement à votre compte. Demandez à votre propriétaire un code émis pour votre logement.',
       myReceipts: 'Mes quittances',
       myReceiptsHint: 'Émises par le serveur : les montants sont ceux du registre, pas ceux de l’écran.',
