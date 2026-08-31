@@ -1831,7 +1831,12 @@ function BottomLink({ item }: { item: NavItem }) {
 
 function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
   const t = useT()
-  const { parc } = useIdentite()
+  const { parc, demo } = useIdentite()
+  const { role } = useRole()
+  /* Le nom du rôle vient du dictionnaire des rôles, celui-là même que la
+     vitrine et le sélecteur de profil emploient. Une seconde formulation
+     divergerait au premier renommage — « Gestionnaire délégué » y est déjà. */
+  const titreDeRole = t(`roles.${role}.name` as 'roles.owner.name')
 
   /* Le calcul du fil d'Ariane est parti avec lui, et avec lui trois lectures
      de contexte — l'adresse courante, la base, le rôle. Il déduisait de la
@@ -1889,7 +1894,27 @@ function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
         par ses boutons de 44 px, pas par lui — mesuré à 65 px avant comme
         après. Ce qu'il rend est de la largeur, et une redite en moins.
       */}
-      {parc && <span className="hidden eyebrow text-muted sm:inline">{parc}</span>}
+      {/* LE PARC, PUIS LE TITRE AUQUEL ON Y EST.
+          Le propriétaire et le gestionnaire partagent la même coquille, la même
+          barre latérale et presque les mêmes écrans : deux entrées les séparent,
+          et elles sont en bas de liste. On ne savait donc pas sous quel compte
+          on se trouvait — et les deux rôles n'ont pas les mêmes droits, si bien
+          que se tromper fait chercher un bouton qui n'existe pas.
+
+          ICI plutôt que dans le menu du compte : c'est le seul fil présent sur
+          TOUS les écrans, et il porte déjà l'autre moitié de la réponse — quel
+          parc. « Quel parc, à quel titre » se lit d'un bloc. Derrière un clic,
+          l'information arriverait au moment où l'on se pose la question, pas
+          avant.
+
+          PAS EN DÉMONSTRATION : elle a son propre sélecteur de profil, qui
+          montre les trois rôles et leurs droits. Y figer un rôle dirait le
+          contraire de ce que ce sélecteur propose. */}
+      {parc && (
+        <span className="hidden eyebrow text-muted sm:inline">
+          {demo ? parc : titreDeRole ? `${parc} · ${titreDeRole}` : parc}
+        </span>
+      )}
 
       {/* UNE SEULE LIGNE, ET C'EST LA MESURE QUI L'EXIGE. `flex-nowrap` remplace
           `flex-wrap` : avec trois segmentés dépliés, la barre se repliait sur
