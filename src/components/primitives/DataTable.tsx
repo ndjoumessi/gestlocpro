@@ -714,7 +714,30 @@ export function EmptyState({
 }) {
   const Titre = `h${level}` as 'h2' | 'h3' | 'h4'
   return (
-    <div className="flex flex-col items-center rounded-lg border border-dashed border-border-strong bg-surface px-6 py-14 text-center">
+    <div
+      /* `data-etat-vide` dit CE QUE CETTE BOÎTE EST, comme `data-indicateur` sur
+         la carte de chiffre — et pour la même raison : un état doit être
+         INTERROGEABLE autrement que par sa peinture. Une porte qui reconnaîtrait
+         un état vide à sa bordure pointillée rougirait au premier renommage
+         d'utilitaire, et passerait au vert le jour où une autre boîte l'emprunte.
+
+         Il existe pour une règle précise, écrite dans `espace-connecte` : un état
+         vide REMPLACE les indicateurs, il ne s'y ajoute pas. `Dashboard.tsx`
+         énonce ce principe depuis des lots et l'applique ; rien ne le gardait,
+         et l'écran des paiements le violait. */
+      /* IL PORTE SON NIVEAU, et ce n'est pas un détail : `level={2}` est déjà la
+         convention qui dit « ce titre suit directement celui de la PAGE », donc
+         « cet état vide parle pour tout l'écran ». Les états vides SECTIONNELS —
+         « aucun code en attente » sous les invitations, « pas de données » sous
+         un graphique — restent au niveau par défaut.
+
+         La distinction est apparue en mesurant : la règle, écrite sans elle,
+         refusait « Personnes avec un accès : 1 » au-dessus de « Aucun code en
+         attente ». L'indicateur était juste, l'état vide ne parlait que d'une
+         section, et la plainte était fausse. */
+      data-etat-vide={String(level)}
+      className="flex flex-col items-center rounded-lg border border-dashed border-border-strong bg-surface px-6 py-14 text-center"
+    >
       <span className="flex size-12 items-center justify-center rounded-full bg-surface-sunken text-muted">
         <Icon name={icon} size={22} />
       </span>

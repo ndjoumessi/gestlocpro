@@ -80,6 +80,26 @@ export function Payments() {
     [role, units, isMine],
   )
   const kpis = computeKpis(leases, readings)
+  /**
+   * AUCUN BAIL — donc rien à chiffrer, ni à filtrer.
+   *
+   * `Dashboard.tsx` énonce la règle depuis des lots : « l'état vide REMPLACE les
+   * indicateurs, il ne s'y ajoute pas ; quatre cartes à zéro donnent
+   * l'impression d'un produit cassé plutôt que d'un parc neuf ». Il l'applique
+   * chez lui, et cet écran-ci ne l'appliquait pas.
+   *
+   * MESURÉ par `espace-connecte` sur son parc vide, à 320 px : « En retard
+   * 0 FCFA · Payé 0 FCFA · Loyers attendus 0 FCFA » sur 300 px, puis quatre
+   * onglets portant chacun un 0 sur 96, au-dessus d'une boîte annonçant « Aucun
+   * paiement sur cette période ». Quatre cents pixels de zéros pour dire qu'il
+   * n'y a rien — sur un téléphone, tout ce que voit un client le jour où il
+   * ouvre son compte.
+   *
+   * C'est `leases` et non `units` : un parc de logements tous VACANTS n'a pas
+   * davantage d'échéance à montrer qu'un parc sans logement, et les zéros y
+   * seraient tout aussi muets.
+   */
+  const rienAEncaisser = leases.length === 0
   /* La variation du mois sur le mois précédent — la même règle que le tableau de
      bord, appelée au même endroit pour qu'elles ne puissent pas diverger. */
   const variation = variationDesEncaissements(kpis.collected, collections)
@@ -262,7 +282,7 @@ export function Payments() {
 
       {isTenant ? (
         <TenantScopeNote className="mb-4" />
-      ) : (
+      ) : rienAEncaisser ? null : (
         <div className={GRILLE_TROIS_INDICATEURS}>
           {/*
             MÊME HIÉRARCHIE QUE LE TABLEAU DE BORD, et le décideur change parce
@@ -322,6 +342,11 @@ export function Payments() {
         </div>
       )}
 
+      {/* LES ONGLETS PARTENT AVEC LES CHIFFRES, et pour la même raison :
+          « Tous 0 · À jour 0 · Partiel 0 · En retard 0 » est une rangée de
+          commandes dont aucune ne mène nulle part. Filtrer un vide en quatre
+          façons n'est pas une fonction, c'est quatre-vingt-seize pixels. */}
+      {rienAEncaisser ? null : (
       <GroupeDeFiltres
         libelle={t('app.portfolio.status')}
         valeur={filter}
@@ -335,6 +360,7 @@ export function Payments() {
             value === 'all' ? leases.length : leases.filter((u) => u.status === value).length,
         }))}
       />
+      )}
 
       {/*
         LA LÉGENDE, et elle n'est pas décorative.

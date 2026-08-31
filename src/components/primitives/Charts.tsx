@@ -2017,7 +2017,20 @@ export function StatCard({
         {action}
       </div>
       <p className="mt-2 flex items-baseline gap-1.5">
-        <span className="numeric text-kpi font-medium whitespace-nowrap">{value}</span>
+        {/* `data-valeur` : le CHIFFRE, isolé de son intitulé et de sa note.
+
+            Il existe pour une règle d'`espace-connecte` — un état vide de page
+            ne doit pas être précédé d'indicateurs qui ne disent RIEN. « Ne dit
+            rien » se juge sur la valeur seule : « 0 FCFA » est muet, « 4 » ne
+            l'est pas, et le texte de la carte entière les confondrait, puisqu'il
+            porte aussi « Sans état des lieux » et « aucune pièce contradictoire ».
+
+            Mesuré en écrivant la règle : sans cette distinction, elle refusait
+            « 0 · 0 · 4 » au-dessus de « Aucun état des lieux enregistré », où le
+            4 est précisément l'information qui manque au bailleur. */}
+        <span data-valeur="" className="numeric text-kpi font-medium whitespace-nowrap">
+          {value}
+        </span>
         {unit && <span className="text-body text-muted">{unit}</span>}
       </p>
       {(delta || note) && (

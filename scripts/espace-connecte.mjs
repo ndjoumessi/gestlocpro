@@ -143,6 +143,9 @@ if (!NOM_BASE.endsWith('_porte')) {
 }
 
 const MDP = 'un-mot-de-passe-de-sonde-assez-long'
+/* Les trois rôles du produit. Les PROFILS balayés, plus bas, en comptent un de
+   plus : le quatrième est un propriétaire, comme le premier, mais son parc est
+   vide — le rôle ne suffit donc plus à désigner ce qu'on mesure. */
 const ROLES = ['owner', 'manager', 'tenant']
 
 /** Trois largeurs : la poche, la tablette, le bureau. */
@@ -436,6 +439,148 @@ async function monterLeParc() {
   }
 }
 
+/**
+ * UN PARC VIDE — et c'est l'écran que TOUT client voit en premier.
+ *
+ * ═══ L'ANGLE MORT QUE CE PARC FERME ═══
+ *
+ * La démonstration remplit TOUJOURS tout : cinq immeubles, quinze logements,
+ * douze mois d'encaissements, des travaux, des cautions, des relances. Aucun des
+ * six cents points de `mesure-ui` n'a jamais ouvert un écran VIDE, et le parc de
+ * sonde du dessus reproduit fidèlement ce biais — il est riche, donc facile.
+ *
+ * CINQ CAPTURES DE LA PRODUCTION ONT TROUVÉ CINQ DÉFAUTS que l'instrumentation
+ * ne pouvait pas voir, tous sur des écrans sans données : une file du jour vide
+ * de 273 px qui poussait les quatre indicateurs sous le pli à 360×640, une
+ * rangée de quatre cartes en trois colonnes laissant une orpheline, un bouton
+ * rendu DEUX FOIS sur un écran de travaux vide, « toutes les notifications sont
+ * lues » posé au-dessus de « rien à signaler », et trois montants à zéro
+ * au-dessus d'une boîte disant « aucune caution ».
+ *
+ * ═══ POURQUOI UN SECOND PARC, ET NON UN DRAPEAU ═══
+ *
+ * Vider le parc du dessus rendrait invisibles les écrans qui ont besoin de
+ * données — c'est l'échange perdant que `notes-conditionnelles` refuse déjà
+ * pour `noVacantNotice`. Deux parcs coûtent une inscription et douze
+ * chargements ; ils gardent les deux états.
+ *
+ * ET IL EST MONTÉ PAR LE GESTE RÉEL : `/api/auth/signup` avec un nom de parc,
+ * point final. C'est exactement ce qu'un client fait, et l'état qu'il obtient —
+ * pas une base tronquée à la main, qui pourrait produire un vide que le produit
+ * ne sait pas fabriquer.
+ */
+async function monterUnParcVide() {
+  const proprio = await appeler('/api/auth/signup', {
+    corps: {
+      email: 'parc-vide@porte.test',
+      password: MDP,
+      fullName: 'Ondoa Pierre',
+      acceptTerms: true,
+      parkName: 'Parc sans rien',
+      countryCode: 'CM',
+    },
+  })
+  const moi = await appeler('/api/auth/me', { methode: 'GET', cookie: proprio.cookie })
+  return { parkId: moi.corps.memberships[0].parkId, compte: 'parc-vide@porte.test' }
+}
+
+/**
+ * UN ÉTAT VIDE REMPLACE LES INDICATEURS, IL NE S'Y AJOUTE PAS.
+ *
+ * ═══ LE PRINCIPE EXISTAIT, RIEN NE LE GARDAIT ═══
+ *
+ * `Dashboard.tsx` l'énonce à sa ligne depuis des lots — « l'état vide REMPLACE
+ * les indicateurs, il ne s'y ajoute pas ; quatre cartes à zéro, un graphique
+ * plat et un échéancier vide donnent l'impression d'un produit cassé plutôt que
+ * d'un parc neuf » — et il l'applique chez lui. Aucune porte ne le tenait
+ * ailleurs, et l'écran des paiements le violait.
+ *
+ * MESURÉ sur le parc vide de cette porte, à 320 px : « En retard 0 FCFA · Payé
+ * 0 FCFA · Loyers attendus 0 FCFA » sur 332 px, puis quatre onglets de filtre
+ * portant chacun un 0 sur 96 px, puis 358 px d'une boîte annonçant « Aucun
+ * paiement sur cette période ». Quatre cent vingt-huit pixels de zéros au-dessus
+ * d'un message disant qu'il n'y a rien.
+ *
+ * C'est le défaut que cinq captures de production avaient trouvé sur les
+ * cautions — « trois montants à zéro au-dessus d'une boîte disant aucune
+ * caution ». Il a été réparé là-bas et il vivait ici, sur un écran que personne
+ * n'avait ouvert vide.
+ *
+ * ═══ CE QU'ELLE MESURE, ET CE QU'ELLE NE JUGE PAS ═══
+ *
+ * La POSITION, pas l'esthétique : un `[data-indicateur]` dont le haut précède
+ * celui d'un `[data-etat-vide]` de la même page. Elle ne dit pas qu'un écran est
+ * beau, ni qu'un chiffre à zéro est faux — un zéro peut être une information
+ * quand quelque chose existe à côté. Elle dit qu'on ne chiffre pas le néant
+ * au-dessus de la phrase qui l'annonce.
+ *
+ * DEUX MARQUEURS, JAMAIS UNE CLASSE. `data-indicateur` existait déjà, et son
+ * commentaire dit pourquoi : « un état doit être INTERROGEABLE autrement que par
+ * sa peinture ». `data-etat-vide` est né avec cette règle, pour la même raison.
+ */
+const MESURER_ZEROS_AU_DESSUS_DU_VIDE = () => {
+  /*
+    ELLE REND TOUJOURS UN ÉTAT, jamais `null` sur les cas sains.
+
+    Quatre chemins la font sortir sans plainte — pas de `<main>`, pas d'état
+    vide de page, aucun indicateur au-dessus, au moins un chiffre parlant. Rendue
+    en `null`, ces quatre-là étaient indistinguables d'une sonde CASSÉE : une
+    faute de sélecteur aurait rendu la porte verte sur tout le balayage, et
+    « aucune plainte » se serait lu « aucun défaut ».
+
+    `vu` compte donc les écrans où un état vide de PAGE a réellement été trouvé,
+    et le total est confronté plus bas à un plancher écrit à la main.
+  */
+  const principal = document.querySelector('main')
+  if (!principal) return { vu: false, plainte: null }
+  /* NIVEAU 2 SEULEMENT : l'état vide qui parle pour la PAGE. Un état vide de
+     section — « aucun code en attente » sous les invitations — cohabite
+     légitimement avec des indicateurs qui, eux, portent sur tout l'écran. */
+  const vide = principal.querySelector('[data-etat-vide="2"]')
+  if (!vide) return { vu: false, plainte: null }
+  const hautDuVide = vide.getBoundingClientRect().top
+  const dessus = [...principal.querySelectorAll('[data-indicateur]')].filter(
+    (e) => e.getBoundingClientRect().top < hautDuVide,
+  )
+  if (dessus.length === 0) return { vu: true, plainte: null }
+
+  /*
+    « NE DIT RIEN » SE JUGE SUR LA VALEUR, pas sur la présence de la carte.
+
+    Un indicateur est MUET quand son chiffre ne porte que des zéros : « 0 FCFA »,
+    « 0 % », « 0 ». Il ne l'est pas dès qu'un chiffre non nul y figure — et c'est
+    la distinction qui a sauvé l'écran des états des lieux, où « Sans état des
+    lieux : 4 » est précisément l'information qui manque au bailleur, posée à
+    côté de deux zéros et au-dessus de « aucun état des lieux enregistré ».
+
+    LA PLAINTE N'ARRIVE QUE SI TOUS SONT MUETS. Un seul chiffre parlant suffit à
+    justifier la rangée : on ne refuse pas des indicateurs, on refuse une rangée
+    qui ne dit rien.
+
+    Les chiffres sont ASCII dans les deux langues du produit — `Intl.NumberFormat`
+    ne rend d'autres systèmes que pour des locales que ce produit n'a pas.
+  */
+  const muet = (carte) => {
+    const valeur = carte.querySelector('[data-valeur]')
+    const texte = (valeur?.textContent ?? '').trim()
+    return /[0-9]/.test(texte) && !/[1-9]/.test(texte)
+  }
+  if (!dessus.every(muet)) return { vu: true, plainte: null }
+  return {
+    vu: true,
+    plainte: {
+    combien: dessus.length,
+    hauteur: Math.round(
+      dessus.reduce((total, e) => total + e.getBoundingClientRect().height, 0),
+    ),
+    // Le texte des coupables : c'est lui qui rend le refus lisible sans ouvrir
+    // le code — « En retard 0 FCFA » se comprend tout seul.
+    textes: dessus.map((e) => (e.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 40)),
+    annonce: (vide.querySelector('h2, h3, h4')?.textContent ?? '').trim().slice(0, 60),
+    },
+  }
+}
+
 /* ══════════════════════════ LE BALAYAGE ══════════════════════════ */
 
 const ECRANS = ecransDeLEspaceConnecte()
@@ -486,6 +631,8 @@ async function ouvrir(page, adresse) {
 
 let pointsMesures = 0
 let pointsFermesMesures = 0
+/* Combien de points portaient un état vide de PAGE — voir la sonde. */
+let etatsVidesInspectes = 0
 
 const parc = await (async () => {
   console.log('  préparation de la base…')
@@ -505,8 +652,10 @@ const parc = await (async () => {
 
 const serveur = await servir()
 let parcDeSonde
+let parcVide
 try {
   parcDeSonde = await monterLeParc()
+  parcVide = await monterUnParcVide()
 } catch (erreur) {
   console.error('\n✗ ' + String(erreur.message ?? erreur) + '\n')
   serveur.kill()
@@ -528,6 +677,27 @@ if (portefeuille !== 401) {
   )
 }
 
+/**
+ * LES PROFILS BALAYÉS — un rôle, un compte, et le parc où il atterrit.
+ *
+ * La boucle parcourait `ROLES`, ce qui supposait un compte par rôle et un seul
+ * parc. Le quatrième profil casse cette équivalence : c'est un PROPRIÉTAIRE,
+ * comme le premier, mais son parc est vide. Le rôle ne suffit donc plus à
+ * désigner ce qu'on mesure, et le nom du profil s'écrit à côté.
+ *
+ * `dossier` : le dossier d'un logement ne se visite que là où un logement
+ * existe. Sur le parc vide il n'y en a aucun, et sur celui du locataire le
+ * dossier appartient à la gestion.
+ */
+const PROFILS = [
+  { cle: 'owner', role: 'owner', compte: () => parcDeSonde.comptes.owner, dossier: true },
+  { cle: 'manager', role: 'manager', compte: () => parcDeSonde.comptes.manager, dossier: true },
+  { cle: 'tenant', role: 'tenant', compte: () => parcDeSonde.comptes.tenant, dossier: false },
+  /* LE PARC VIDE, sous les yeux d'un propriétaire — le premier écran de tout
+     client, et celui qu'aucune mesure n'avait jamais ouvert. */
+  { cle: 'owner·vide', role: 'owner', compte: () => parcVide.compte, dossier: false },
+]
+
 const navigateur = await chromium.launch()
 const rapport = []
 
@@ -536,17 +706,18 @@ const titreAutorise = new Map()
 
 try {
   for (const langue of LANGUES) {
-    for (const role of ROLES) {
+    for (const profil of PROFILS) {
+      const { cle, role } = profil
       const contexte = await navigateur.newContext({
         ...SANS_AGENT_DE_SERVICE,
         viewport: { width: LARGEURS.at(-1), height: 900 },
         locale: langue,
       })
       const connexion = await contexte.request.post(`${BASE}/api/auth/login`, {
-        data: { email: parcDeSonde.comptes[role], password: MDP },
+        data: { email: profil.compte(), password: MDP },
       })
       if (!connexion.ok()) {
-        plaintes.push(`${role} : la connexion a rendu ${connexion.status()} — rien n'a pu être mesuré.`)
+        plaintes.push(`${cle} : la connexion a rendu ${connexion.status()} — rien n'a pu être mesuré.`)
         await contexte.close()
         continue
       }
@@ -554,7 +725,7 @@ try {
 
       const ouvertes = [
         ...ouvertesA(role),
-        ...(role === 'tenant' ? [] : [DOSSIER(parcDeSonde.unitId)]),
+        ...(profil.dossier ? [DOSSIER(parcDeSonde.unitId)] : []),
       ]
 
       for (const ecran of ouvertes) {
@@ -568,7 +739,7 @@ try {
               })
               .catch(() => {})
           }
-          const ou = `${ecran.adresse} · ${role} · ${largeur}px · ${langue}`
+          const ou = `${ecran.adresse} · ${cle} · ${largeur}px · ${langue}`
 
           const rendu = await page.evaluate(MESURER_RENDU_MINIMAL)
           if (rendu.racineVide || rendu.titres === 0 || rendu.interactifs === 0) {
@@ -593,6 +764,20 @@ try {
             )
           }
 
+          const zeros = await page.evaluate(MESURER_ZEROS_AU_DESSUS_DU_VIDE)
+          if (zeros.vu) etatsVidesInspectes += 1
+          if (zeros.plainte) {
+            const z = zeros.plainte
+            plaintes.push(
+              `${ou} : ${z.combien} indicateur(s) chiffré(s) sur ${z.hauteur} px AU-DESSUS ` +
+                `de « ${z.annonce} ».\n      ` +
+                z.textes.join('\n      ') +
+                "\n   Un état vide REMPLACE les indicateurs, il ne s'y ajoute pas : des chiffres à " +
+                "zéro au-dessus d'un message disant qu'il n'y a rien donnent l'impression d'un " +
+                'produit cassé plutôt que d’un parc neuf.',
+            )
+          }
+
           const defilement = await page.evaluate(MESURER_DEFILEMENT_LATERAL)
           if (defilement) {
             const coupables = defilement.coupables
@@ -609,7 +794,7 @@ try {
           }
           pointsMesures++
         }
-        rapport.push(`   ${role.padEnd(8)} ${ecran.adresse.padEnd(26)} ✓`)
+        rapport.push(`   ${cle.padEnd(11)} ${ecran.adresse.padEnd(26)} ✓`)
       }
 
       /* ─── LE REFUS, APPRIS PLUTÔT QUE RECOPIÉ ─── */
@@ -623,12 +808,12 @@ try {
         const reference = titreAutorise.get(ecran.adresse)
         if (langue === LANGUES[0] && reference !== undefined && rendu.titre === reference) {
           plaintes.push(
-            `${ecran.adresse} · ${role} : l'écran est OUVERT à qui n'y a pas droit — il rend ` +
+            `${ecran.adresse} · ${cle} : l'écran est OUVERT à qui n'y a pas droit — il rend ` +
               `« ${rendu.titre} », exactement ce que voit le rôle autorisé.`,
           )
         }
         if (rendu.racineVide) {
-          plaintes.push(`${ecran.adresse} · ${role} · ${langue} : le refus lui-même ne rend rien.`)
+          plaintes.push(`${ecran.adresse} · ${cle} · ${langue} : le refus lui-même ne rend rien.`)
         }
       }
 
@@ -639,7 +824,7 @@ try {
         const titre = titreAutorise.get(ecran.adresse)
         if (titre !== undefined && titresDeRefus.has(titre)) {
           plaintes.push(
-            `${ecran.adresse} · ${role} : l'écran est OUVERT à ce rôle et rend pourtant un REFUS ` +
+            `${ecran.adresse} · ${cle} : l'écran est OUVERT à ce rôle et rend pourtant un REFUS ` +
               `— « ${titre} », le même titre que les adresses qu'il n'a pas.`,
           )
         }
@@ -665,7 +850,7 @@ console.log(rapport.slice(0, ECRANS.length + 2).join('\n'))
 const ATTENDUS =
   LANGUES.length *
   LARGEURS.length *
-  ROLES.reduce((total, role) => total + ouvertesA(role).length + (role === 'tenant' ? 0 : 1), 0)
+  PROFILS.reduce((total, p) => total + ouvertesA(p.role).length + (p.dossier ? 1 : 0), 0)
 
 if (pointsMesures !== ATTENDUS) {
   plaintes.push(
@@ -674,11 +859,33 @@ if (pointsMesures !== ATTENDUS) {
   )
 }
 
-const FERMES_ATTENDUS = LANGUES.length * ROLES.reduce((t, role) => t + fermeesA(role).length, 0)
+const FERMES_ATTENDUS = LANGUES.length * PROFILS.reduce((t, p) => t + fermeesA(p.role).length, 0)
 if (pointsFermesMesures !== FERMES_ATTENDUS) {
   plaintes.push(
     `${pointsFermesMesures} refus vérifiés pour ${FERMES_ATTENDUS} attendus — la règle du refus ` +
       "n'a pas couvert ce qu'elle annonce.",
+  )
+}
+
+/**
+ * GARDE DU GARDE — la règle des zéros a-t-elle regardé quelque chose ?
+ *
+ * Elle sort sans plainte par quatre chemins, et une faute de sélecteur les
+ * emprunterait tous : la porte rendrait « aucun défaut » en n'ayant rien
+ * inspecté. Le plancher est écrit À LA MAIN et bas — il ne mesure pas la santé
+ * du produit, il prouve que la sonde TROUVE encore des états vides de page.
+ *
+ * Relevé au moment de l'écrire : 60 points en portent un — les écrans sans
+ * données du parc vide, plus ceux du parc riche qui n'ont rien à montrer. Le
+ * plancher est fixé à 30, largement dessous : un écran qui se remplit ne doit
+ * pas faire rougir cette garde, une sonde qui casse doit.
+ */
+const ETATS_VIDES_ATTENDUS = 30
+if (etatsVidesInspectes < ETATS_VIDES_ATTENDUS) {
+  plaintes.push(
+    `la règle des zéros n'a trouvé que ${etatsVidesInspectes} état(s) vide(s) de page pour ` +
+      `${ETATS_VIDES_ATTENDUS} attendus au moins. Ce n'est pas « aucun défaut », c'est une sonde ` +
+      'qui ne voit plus rien.',
   )
 }
 
@@ -690,8 +897,10 @@ if (plaintes.length > 0) {
 
 console.log(
   `\n✓ espace-connecte : ${ATTENDUS} points mesurés derrière une VRAIE session — ` +
-    `${ECRANS.length} écrans, ${ROLES.length} rôles, ${LARGEURS.length} largeurs, ` +
+    `${ECRANS.length} écrans, ${PROFILS.length} profils dont un PARC VIDE, ` +
+    `${LARGEURS.length} largeurs, ` +
     `${LANGUES.length} langues.\n` +
     `  ${FERMES_ATTENDUS} refus vérifiés dans les deux directions.\n` +
+    `  ${etatsVidesInspectes} état(s) vide(s) de page passé(s) sous la règle des zéros.\n` +
     "  Cette porte ne dit RIEN du contraste, des cibles ni des modales — voir son en-tête.",
 )

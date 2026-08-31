@@ -382,3 +382,93 @@ describe('les cautions, quand il n’y en a aucune', () => {
     ).not.toBeNull()
   })
 })
+/**
+ * UN PARC ENTIÈREMENT VIDE — le premier écran de tout client.
+ *
+ * `parcSansRien` porte un immeuble et un logement loué : c'est « le compte qui
+ * vient de déclarer son premier immeuble ». Il y a un cran AVANT, et personne
+ * ne l'avait jamais ouvert : le compte qui vient d'être créé, dont le parc ne
+ * porte rien du tout.
+ *
+ * TROUVÉ PAR LA MESURE, pas par une capture. `espace-connecte` monte depuis ce
+ * lot un second parc, VIDE, par le geste réel — `signup` avec un nom de parc,
+ * point final — et le balaie comme les autres. Ce qu'il y a relevé à 320 px :
+ *
+ *   /app/paiements  « En retard 0 FCFA · Payé 0 FCFA · Loyers attendus 0 FCFA »
+ *                   sur 300 px, puis quatre onglets portant chacun un 0 sur 96,
+ *                   au-dessus de « Aucun paiement sur cette période » ;
+ *   /app/parc       « Taux d'occupation 0 % · 0/0 occupées » sur 140 px,
+ *                   au-dessus de « Aucun logement pour l'instant ».
+ *
+ * C'est le défaut que cinq captures de production avaient trouvé sur les
+ * cautions — « trois montants à zéro au-dessus d'une boîte disant aucune
+ * caution ». Il avait été réparé là-bas, et il vivait ici.
+ *
+ * CE QUE CES CAS GARDENT, ET CE QU'ILS NE PEUVENT PAS. jsdom ne met rien en
+ * page : ils gardent le CHOIX — ne pas peindre une rangée de zéros — et pas un
+ * seul pixel. Les 300 et les 140 sont tenus par `espace-connecte`, qui ouvre un
+ * vrai navigateur sur un vrai serveur.
+ */
+function parcEntierementVide() {
+  const serveur = installerFauxServeur()
+  serveur.quand('GET', `/parks/${PARC}/portfolio`, {
+    status: 200,
+    body: {
+      collections: [],
+      buildings: [],
+      works: [],
+      deposits: [],
+      readings: [],
+      inspections: [],
+      notifications: [],
+    },
+  })
+  return serveur
+}
+
+describe('un parc qui ne porte rien du tout', () => {
+  it('ne chiffre pas les paiements d’un parc sans bail', async () => {
+    parcEntierementVide()
+    await renderApp('/app/paiements', { session: SESSION_PROPRIETAIRE })
+
+    expect(
+      await screen.findByText(/Aucun paiement sur cette période/),
+      'le montage du cas est faux : l’écran ne rend pas son état vide',
+    ).toBeInTheDocument()
+    /* « En retard », « Payé », « Loyers attendus » : trois cartes à zéro qui
+       disent trois fois ce que la boîte du dessous dit une fois. */
+    expect(screen.queryByText('Loyers attendus')).toBeNull()
+    expect(screen.queryByText('En retard')).toBeNull()
+  })
+
+  it('n’offre pas quatre façons de filtrer un vide', async () => {
+    parcEntierementVide()
+    await renderApp('/app/paiements', { session: SESSION_PROPRIETAIRE })
+    await screen.findByText(/Aucun paiement sur cette période/)
+
+    expect(
+      screen.queryByRole('button', { name: /À jour/ }),
+      'filtrer un vide en quatre façons n’est pas une fonction',
+    ).toBeNull()
+  })
+
+  it('ne chiffre pas l’occupation d’un parc sans logement', async () => {
+    parcEntierementVide()
+    await renderApp('/app/parc', { session: SESSION_PROPRIETAIRE })
+
+    expect(await screen.findByText(/Aucun logement pour l’instant/)).toBeInTheDocument()
+    /* « 0/0 occupées » est exact et ne dit rien. La division était déjà gardée
+       — « un parc vide donne 0 % et non NaN » — et ce lot va d'un cran plus
+       loin : sur un parc vide, la carte elle-même n'a pas lieu d'être. */
+    expect(screen.queryByText(/Taux d’occupation/)).toBeNull()
+  })
+
+  it('garde la rangée dès qu’un logement existe', async () => {
+    /* La moitié qui empêche de tout masquer : un parc d'un seul logement a un
+       taux d'occupation, et c'est une information. */
+    parcSansRien()
+    await renderApp('/app/parc', { session: SESSION_PROPRIETAIRE })
+
+    expect(await screen.findByText(/Taux d’occupation/)).toBeInTheDocument()
+  })
+})

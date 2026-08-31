@@ -232,6 +232,18 @@ export function Portfolio() {
       )}
       {logementOuvert && <AddUnitModal open onClose={() => setLogementOuvert(false)} />}
 
+      {/* PAS D'INDICATEUR SUR UN PARC SANS LOGEMENT.
+
+          « Taux d'occupation 0 % · 0/0 occupées » au-dessus de « Aucun logement
+          pour l'instant » : le chiffre est exact, il ne dit rien, et il occupe
+          140 px avant le message qui, lui, dit tout. Mesuré par
+          `espace-connecte` sur son parc vide, aux trois largeurs et dans les
+          deux langues.
+
+          La division était déjà gardée ici — « un parc vide donne 0 % et non
+          NaN ». Ce lot va d'un cran plus loin : sur un parc vide, la carte
+          elle-même n'a pas lieu d'être. */}
+      {BUILDINGS.length === 0 ? null : (
       <div className={GRILLE_QUATRE_INDICATEURS}>
         {BUILDINGS.map((b) => {
           const { occupied: occ, total } = occupancyOf(b.id)
@@ -272,6 +284,19 @@ export function Portfolio() {
             />
           )
         })}
+        {/* LE TAUX D'OCCUPATION PART SEUL, et la nuance a été payée.
+
+            Le premier jet masquait la rangée ENTIÈRE quand `units` était vide.
+            Un parc d'un immeuble SANS logement perdait alors sa carte — et avec
+            elle le seul bouton qui permette de retirer un immeuble créé par
+            faute de frappe, dont l'existence est justifiée à sa route : « toute
+            faute de frappe était définitive ». `gestures.test.tsx` l'a refusé,
+            et il avait raison.
+
+            La rangée suit donc les IMMEUBLES, et cette carte-ci les LOGEMENTS :
+            « 0 % · 0/0 occupées » ne dit rien, une carte d'immeuble dit son nom
+            et porte son issue. */}
+        {units.length === 0 ? null : (
         <StatCard
           icone="gauge"
           label={t('app.dashboard.occupancy')}
@@ -283,7 +308,9 @@ export function Portfolio() {
           unit="%"
           note={t('app.portfolio.occupancy', { occupied, total: units.length })}
         />
+        )}
       </div>
+      )}
 
       <div className="mt-6 mb-4 flex flex-wrap items-center gap-3">
         <div className="w-full max-w-xs">
