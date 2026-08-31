@@ -68,6 +68,18 @@ npm run lint:i18n  # chaînes utilisateur écrites en dur uniquement
 `npm run check` enchaîne `tsc`, `oxlint` et le garde-fou i18n. À brancher en
 intégration continue : le garde-fou sort en 1 quand il trouve quelque chose.
 
+`npm run check` DEMANDE MAINTENANT LA BASE DE DÉVELOPPEMENT. Deux portes au
+navigateur montent le vrai serveur — `politique-de-securite` pour lire ses
+en-têtes, `espace-connecte` pour ouvrir les quinze écrans de `/app` derrière
+trois vraies sessions — et la seconde a besoin de PostgreSQL :
+
+```bash
+npm run db:up      # le conteneur gestlocpro-db, une fois
+```
+
+Elle crée sa propre base, `gestlocpro_porte`, détruite et remontée à chaque
+passage : elle ne touche ni celle du développement ni celle des tests.
+
 ## Documentation
 
 - [docs/PLAN.md](docs/PLAN.md) — décisions de conception, jetons, défauts trouvés,

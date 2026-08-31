@@ -85,6 +85,9 @@ import { chromium } from 'playwright'
 import { EXEMPTIONS_DE_RENDU, MAXIMUM_D_EXEMPTIONS } from './exemptions-de-rendu.mjs'
 import { imposerLaPoliceLarge } from './police-large.mjs'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
+/* La sonde des gabarits est PARTAGÉE avec `espace-connecte` : une seule
+   expression régulière pour la démonstration et pour l'espace connecté. */
+import { MESURER_GABARITS } from './sondes-de-rendu.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -2376,47 +2379,18 @@ const MESURER_REPLI = () => {
  * SEUL LE PLUS PROFOND EST NOMMÉ. Un parent déborde parce que son enfant
  * déborde : nommer la chaîne noierait le coupable sous ses quatre ancêtres.
  */
-/**
- * AUCUN GABARIT NE SURVIT AU RENDU.
- *
- * ═══ TROIS FOIS EN UNE JOURNÉE, ET AUCUNE PORTE POUR LE VOIR ═══
- *
- * 2026-08-31, sur la production, coup sur coup :
- *
- *  · « {count, plural, one {# locataire…} } » affiché TEL QUEL sur l'écran des
- *    locataires — un message écrit en ICU imbriqué, que `t()` ne sait pas lire.
- *    Le cas jsdom cherchait une sous-chaîne, laquelle existe aussi dans le
- *    message cassé : il était vert.
- *  · « Signalement SIG-2026-002 · {unit} » sur la carte d'un signalement — le
- *    paramètre posé dans la colonne de la notification, que la carte ne lit pas.
- *  · le même défaut guettait `{reference}` et `{text}`, jamais rencontré.
- *
- * `notes-conditionnelles` refuse déjà les jetons survivants, mais seulement
- * dans les `<Notice>` DÉCLARÉES : une carte d'alerte, un titre de page, une
- * cellule de tableau y échappaient tous. Le défaut n'est pas propre aux notes,
- * il est propre à l'INTERPOLATION.
- *
- * ═══ CE QU'ELLE CHERCHE, ET CE QU'ELLE NE PEUT PAS CONFONDRE ═══
- *
- * `{` suivi d'une lettre, puis d'identifiant, puis `}` — la forme exacte d'un
- * `{count}`, `{unit}`, `{reference}` non résolu. Pas `{` seul, pas `{ }`, pas
- * une accolade dans du code : le produit n'affiche aucune expression, et un
- * texte français ne pose pas d'accolade collée à un mot.
- *
- * ELLE LIT LE TEXTE VISIBLE, jamais la source : `innerText` ignore ce que le
- * CSS masque, et une chaîne cachée n'est un défaut pour personne.
- *
- * ═══ CE QU'ELLE NE VOIT PAS ═══
- *
- * Les modales, qui ne sont pas ouvertes par ce balayage — `modales` les tient
- * en géométrie, pas en interpolation. Et tout ce que la démonstration ne produit
- * pas, ce qui est la limite de cette porte entière.
- */
-const MESURER_GABARITS = () => {
-  const texte = document.body.innerText ?? ''
-  const jetons = [...texte.matchAll(/\{[A-Za-z][\w.]*\}/g)].map((m) => m[0])
-  return { jetons: [...new Set(jetons)] }
-}
+/*
+  `MESURER_GABARITS` A DÉMÉNAGÉ, et ce n'est pas un rangement.
+
+  `espace-connecte.mjs` exécute la MÊME sonde derrière une vraie session :
+  cette porte-ci balaie la démonstration, l'autre balaie l'espace connecté, et
+  ce sont les deux moitiés d'une seule règle. La recopier aurait laissé deux
+  expressions régulières à faire vieillir ensemble.
+
+  Son commentaire — les trois défauts de production qui l'ont fait naître, ce
+  qu'elle ne peut pas confondre, ce qu'elle ne voit pas — est parti avec elle,
+  dans `scripts/sondes-de-rendu.mjs`.
+*/
 
 const MESURER_DEBORD_LOCAL = () => {
   // Chronométré DANS la page, pour séparer ce que coûte le PARCOURS de ce que
