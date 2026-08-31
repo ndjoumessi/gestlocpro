@@ -1484,6 +1484,7 @@ export const fr = {
       actions: {
         access: {
           link: 'Fiche locataire reliée à un compte',
+          unlink: 'Fiche locataire déliée de son compte',
           revoke: 'Accès repris',
         },
         deposit: {
@@ -1554,6 +1555,15 @@ export const fr = {
       role_owner: 'Propriétaire',
       role_manager: 'Gestionnaire',
       role_tenant: 'Locataire',
+      /* CE QUE CE COMPTE DÉTIENT, nommé sur sa rangée. L'écart entre le nom du
+         compte et celui de la fiche est le SEUL signe visible d'un lien posé
+         sur la mauvaise personne — relevé sur la production. */
+      holdsRecord: 'Détient la fiche {fiche} · {unit}',
+      unlinkTenant: 'Délier la fiche',
+      unlinkTitle: 'Délier la fiche de {name} ?',
+      unlinkBody: 'Ce compte perdra aussitôt l’accès au bail, aux quittances et aux relevés qu’il consultait. La fiche redevient libre : vous pourrez la relier au bon compte.',
+      unlinkBodyNamed: 'Ce compte détient la fiche {fiche} · {unit}. Il perdra aussitôt l’accès à ce bail, à ses quittances et à ses relevés. La fiche redevient libre : vous pourrez la relier au bon compte.',
+      unlinked: 'Fiche déliée · elle peut être reliée au bon compte',
       linkTenant: 'Relier à une fiche',
       linkTitle: 'Relier {name} à sa fiche locataire',
       linkBody: 'Ce compte accède au parc sans être rattaché à un bail : son espace reste vide. Choisissez la fiche qui lui correspond.',

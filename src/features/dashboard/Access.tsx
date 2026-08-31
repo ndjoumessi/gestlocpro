@@ -80,6 +80,15 @@ export function Access() {
   /** La fiche choisie dans la modale ; la première par défaut. */
   const [ficheChoisie, setFicheChoisie] = useState('')
   /**
+   * LE MEMBRE DONT ON S'APPRÊTE À DÉFAIRE LE LIEN.
+   *
+   * Irréversible dans son effet immédiat — l'intéressé perd son espace à la
+   * seconde —, donc il passe par la même question que le retrait d'un accès et
+   * la reprise d'un code. Ce qu'il n'est pas : définitif. Relier de nouveau
+   * reste possible, et c'est tout l'objet de ce geste.
+   */
+  const [aDelier, setADelier] = useState<MembreApi | null>(null)
+  /**
    * L'ÉMISSION D'UN CODE, ENFIN SUR L'ÉCRAN QUI PARLE DES CODES.
    *
    * « Inviter par code » n'existait que sur le fichier des locataires. Le choix
@@ -247,6 +256,25 @@ export function Access() {
                 <div className="flex flex-col">
                   <span className="font-medium">{m.fullName}</span>
                   <span className="text-body text-muted">{m.email}</span>
+                  {/* LA FICHE QUE CE COMPTE DÉTIENT, NOMMÉE.
+
+                      Le registre disait « relié » par une ABSENCE de bouton. Il
+                      ne disait pas à QUOI, et c'est l'écart entre les deux noms
+                      qui révèle une erreur : relevé sur la production, un compte
+                      tenait la fiche d'un autre locataire — donc son bail, ses
+                      quittances et ses relevés — et le seul symptôme visible
+                      était que la bonne personne, elle, n'avait rien.
+
+                      On ne corrige pas ce qu'on ne voit pas. La ligne le dit
+                      donc à voix haute, sur la rangée de la personne. */}
+                  {m.tenantName && (
+                    <span className="text-body text-muted">
+                      {t('app.access.holdsRecord', {
+                        fiche: m.tenantName,
+                        unit: m.tenantUnitLabel ?? '—',
+                      })}
+                    </span>
+                  )}
                 </div>
               ),
             },
@@ -335,6 +363,34 @@ export function Access() {
                         onClick={() => setARelier(m)}
                       >
                         {t('app.access.linkTenant')}
+                      </Button>
+                    )}
+                    {/* DÉFAIRE UN LIEN, et il n'existait pas.
+
+                        Relevé sur la production : un compte détenait la fiche
+                        d'un AUTRE locataire — son bail, ses quittances, ses
+                        relevés — pendant que l'intéressé ouvrait un espace
+                        vide. `Tenant.userId` s'écrivait une fois pour toutes,
+                        et relier la bonne personne rendait 409 pour toujours.
+
+                        SANS `estProprietaire` ICI, ET C'EST LA MUTATION QUI L'A
+                        DIT. La condition y était d'abord, par symétrie avec le
+                        propos du geste — une décision, pas une opération. Elle
+                        était MORTE : le rendu de cette cellule sort en `null`
+                        vingt lignes plus haut pour quiconque n'est pas
+                        propriétaire, donc la retirer ne changeait aucun verdict.
+                        Une condition qui ne décide rien fait croire qu'elle
+                        garde quelque chose ; c'est le partage de l'écran entier
+                        qui garde, et lui seul. */}
+                    {m.role === 'tenant' && m.tenantId && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon="users"
+                        loading={enCours === m.id}
+                        onClick={() => setADelier(m)}
+                      >
+                        {t('app.access.unlinkTenant')}
                       </Button>
                     )}
                     <Button
@@ -440,6 +496,57 @@ export function Access() {
           à droite. Deux motifs de confirmation feraient de la question posée
           avant un geste irréversible une affaire de goût, et le second finirait
           par s'en passer. */}
+      {/* DÉFAIRE UN LIEN EST UNE ALERTE, et pas pour la même raison que le
+          retrait d'un accès. Celui-ci n'est pas définitif — on relie de
+          nouveau, c'est tout l'objet du geste — mais son effet est IMMÉDIAT sur
+          quelqu'un d'autre : à la seconde, l'intéressé perd son bail, ses
+          quittances et ses relevés. Un effet qui frappe un tiers se confirme,
+          même quand il se répare. */}
+      {aDelier && (
+        <Modal
+          open
+          onClose={() => setADelier(null)}
+          size="sm"
+          role="alertdialog"
+          title={t('app.access.unlinkTitle', { name: aDelier.fullName })}
+          description={
+            aDelier.tenantName
+              ? t('app.access.unlinkBodyNamed', {
+                  fiche: aDelier.tenantName,
+                  unit: aDelier.tenantUnitLabel ?? '—',
+                })
+              : t('app.access.unlinkBody')
+          }
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setADelier(null)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  const membre = aDelier
+                  setADelier(null)
+                  if (!membre.tenantId || !parkId) return
+                  void agir(
+                    membre.id,
+                    () => api.unlinkTenantAccount(parkId, membre.tenantId!),
+                    t('app.access.unlinked'),
+                  )
+                }}
+              >
+                {t('app.access.unlinkTenant')}
+              </Button>
+            </>
+          }
+        >
+          {/* Le corps est VIDE : tout est déjà dit par le titre et la
+              description, comme sur la confirmation de retrait juste dessous.
+              Répéter la question dans le corps la ferait lire deux fois. */}
+          <></>
+        </Modal>
+      )}
+
       {/* RELIER N'EST PAS UNE ALERTE. Le retrait d'un accès est irréversible et
           porte `role="alertdialog"` ; celui-ci DONNE un accès et se défait —
           il suffit de retirer l'adhésion. Une modale ordinaire, donc, et un
@@ -588,6 +695,11 @@ interface MembreApi {
   userId: string
   /** Sa fiche locataire DANS CE PARC, ou `null` — voir `FicheOrphelineApi`. */
   tenantId: string | null
+  /* Le NOM de la fiche détenue, distinct de celui du compte — et c'est leur
+     ÉCART qui révèle une erreur de lien. Facultatifs : un serveur antérieur à
+     ce lot ne les rend pas, et l'écran se tait alors plutôt que de tomber. */
+  tenantName?: string | null
+  tenantUnitLabel?: string | null
   fullName: string
   email: string
   since: string

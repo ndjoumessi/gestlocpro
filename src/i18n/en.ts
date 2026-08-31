@@ -1114,6 +1114,7 @@ export const en: Dictionary = {
       },
       actions: {
         access: {
+          unlink: 'Tenant record unlinked from its account',
           link: 'Tenant record linked to an account',
           revoke: 'Access revoked',
         },
@@ -1182,6 +1183,12 @@ export const en: Dictionary = {
       role_owner: 'Owner',
       role_manager: 'Manager',
       role_tenant: 'Tenant',
+      holdsRecord: 'Holds the record {fiche} · {unit}',
+      unlinkTenant: 'Unlink record',
+      unlinkTitle: 'Unlink {name}’s record?',
+      unlinkBody: 'This account immediately loses access to the lease, receipts and meter readings it could see. The record becomes free: you can link it to the right account.',
+      unlinkBodyNamed: 'This account holds the record {fiche} · {unit}. It immediately loses access to that lease, its receipts and its meter readings. The record becomes free: you can link it to the right account.',
+      unlinked: 'Record unlinked · it can be linked to the right account',
       linkTenant: 'Link to a record',
       linkTitle: 'Link {name} to their tenant record',
       linkBody: 'This account reaches the portfolio without being attached to a lease, so its space stays empty. Pick the matching record.',

@@ -559,6 +559,17 @@ export const api = {
       body: JSON.stringify({ userId }),
     }),
 
+  /**
+   * Défait le lien entre une fiche et son compte.
+   *
+   * `POST /compte` le créait et rien ne le supprimait : `Tenant.userId`
+   * s'écrivait une fois pour toutes, et un lien posé sur la mauvaise personne
+   * — relevé sur la production — ne pouvait plus être défait. Relier le bon
+   * locataire rendait alors 409 `already_linked`, pour toujours.
+   */
+  unlinkTenantAccount: (parkId: string, tenantId: string) =>
+    requete<void>(`/parks/${parkId}/tenants/${tenantId}/compte`, { method: 'DELETE' }),
+
   revokeMembership: (parkId: string, membershipId: string) =>
     requete<void>(`/parks/${parkId}/memberships/${membershipId}/revoke`, { method: 'PATCH' }),
 

@@ -2633,7 +2633,26 @@ parksRouter.get(
             select: {
               fullName: true,
               email: true,
-              tenantProfile: { select: { id: true, parkId: true } },
+              /* LE NOM DE LA FICHE DÉTENUE, et le logement qu'elle porte.
+                 Le registre disait « relié » par une ABSENCE de bouton ; il ne
+                 disait pas à QUOI. Relevé sur la production : un compte tenait
+                 la fiche d'un autre locataire — donc son bail, ses quittances
+                 et ses relevés — et le seul symptôme visible était que la bonne
+                 personne, elle, n'avait rien. On ne peut pas corriger ce qu'on
+                 ne voit pas. */
+              tenantProfile: {
+                select: {
+                  id: true,
+                  parkId: true,
+                  fullName: true,
+                  leases: {
+                    where: { status: { in: ['active', 'pending'] } },
+                    orderBy: { startsOn: 'desc' },
+                    take: 1,
+                    select: { unit: { select: { label: true } } },
+                  },
+                },
+              },
             },
           },
         },
@@ -2687,6 +2706,18 @@ parksRouter.get(
         tenantId:
           m.user.tenantProfile && m.user.tenantProfile.parkId === parkId
             ? m.user.tenantProfile.id
+            : null,
+        /* LE NOM DE LA FICHE, distinct de celui du COMPTE — et c'est justement
+           leur écart qui révèle une erreur de lien. Les afficher côte à côte est
+           le seul moyen de voir qu'un compte détient la fiche de quelqu'un
+           d'autre : tant qu'on ne montrait que « relié », l'erreur était muette. */
+        tenantName:
+          m.user.tenantProfile && m.user.tenantProfile.parkId === parkId
+            ? m.user.tenantProfile.fullName
+            : null,
+        tenantUnitLabel:
+          m.user.tenantProfile && m.user.tenantProfile.parkId === parkId
+            ? (m.user.tenantProfile.leases[0]?.unit.label ?? null)
             : null,
         since: m.createdAt.toISOString(),
       })),
@@ -2867,6 +2898,94 @@ parksRouter.post(
         entity: 'Tenant',
         entityId: fiche.id,
         payload: { userId },
+      },
+    })
+
+    res.status(204).end()
+  },
+)
+
+/**
+ * DÉLIER UNE FICHE DE SON COMPTE — le geste qui manquait, et son absence était
+ * une impasse définitive.
+ *
+ * ═══ L'INCIDENT ═══
+ *
+ * Relevé sur la production le 2026-08-31 en croisant deux écrans : un compte de
+ * locataire détenait la fiche d'un AUTRE locataire — donc son bail, ses
+ * quittances, ses relevés et sa caution —, pendant que l'intéressé ouvrait un
+ * espace vide. Un lien posé sur la mauvaise ligne, et rien pour le défaire.
+ *
+ * `Tenant.userId` s'écrivait une fois pour toutes. Relier le bon locataire
+ * rendait alors 409 `already_linked`, POUR TOUJOURS.
+ *
+ * ═══ ET LA SORTIE APPARENTE ÉTAIT UN PIÈGE ═══
+ *
+ * « Retirer l'accès » ne touche que `Membership.status` — voir la route de
+ * révocation, corrigée dans le même lot. La fiche restait tenue par un compte
+ * qui ne peut plus entrer : invisible à son détenteur ET inaccessible au
+ * locataire légitime. Le seul bouton que l'écran offrait pour corriger scellait
+ * le défaut.
+ *
+ * ═══ CE QU'ELLE FAIT, ET CE QU'ELLE NE FAIT PAS ═══
+ *
+ * Elle libère la fiche. Elle ne retire NI l'adhésion — le compte reste membre
+ * du parc, et c'est le bon état pour quelqu'un qu'on va relier ailleurs — NI le
+ * bail, qui appartient à la fiche et non au compte. Un lien est un ACCÈS, pas
+ * une donnée du bail ; le défaire ne doit rien effacer d'autre.
+ *
+ * `DELETE` et non un `POST /delier` : c'est la suppression de la ressource que
+ * `POST /compte` a créée, à la même adresse. Le registre des décisions, lui,
+ * porte le geste sous `access.unlink` — l'inverse exact de `access.link`.
+ */
+parksRouter.delete(
+  '/:parkId/tenants/:tenantId/compte',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const brut = req.params.tenantId
+    const tenantId = typeof brut === 'string' ? brut : ''
+
+    /* `parkId` DANS le filtre : un identifiant deviné délierait sinon la fiche
+       d'un parc voisin, et le 404 dit la même chose qu'une fiche absente. */
+    const fiche = await prisma.tenant.findFirst({
+      where: { id: tenantId, parkId },
+      select: { id: true, userId: true },
+    })
+    if (!fiche) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+    if (!fiche.userId) {
+      res.status(409).json({ error: 'not_linked' })
+      return
+    }
+
+    /* `userId` NON NUL dans le filtre d'écriture : entre la lecture et ici, un
+       second écran a pu délier la même fiche. Le compteur à zéro rend alors le
+       même 409 qu'une fiche déjà libre, sans lever. */
+    const { count } = await prisma.tenant.updateMany({
+      where: { id: fiche.id, userId: { not: null } },
+      data: { userId: null },
+    })
+    if (count === 0) {
+      res.status(409).json({ error: 'not_linked' })
+      return
+    }
+
+    /* RETIRER UN ACCÈS À DES DONNÉES EST UNE DÉCISION, au même titre que le
+       donner. Le compte délié est nommé : sans lui, le registre dirait qu'un
+       accès a été repris sans dire à qui, et c'est précisément la question
+       qu'on se pose en relisant après un incident. */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'access.unlink',
+        entity: 'Tenant',
+        entityId: fiche.id,
+        payload: { userId: fiche.userId },
       },
     })
 
@@ -3062,6 +3181,26 @@ parksRouter.patch(
      * lèverait, et deux écrans ouverts sur le même registre suffiraient à
      * produire une erreur là où il n'y a qu'un état déjà atteint.
      */
+    /**
+     * LA FICHE EST LIBÉRÉE AVEC L'ACCÈS.
+     *
+     * Cette route ne touchait que `Membership.status`. Un locataire retiré du
+     * parc gardait donc `Tenant.userId` : la fiche restait tenue par un compte
+     * qui ne peut plus entrer — invisible à son détenteur, et INACCESSIBLE au
+     * locataire suivant, puisque relier rend 409 `already_linked`.
+     *
+     * Le piège se refermait sur le geste le plus naturel : un propriétaire qui
+     * découvrait un lien posé sur la mauvaise personne cliquait « retirer
+     * l'accès », le seul bouton que l'écran lui offrait, et scellait l'impasse.
+     *
+     * `updateMany` : la fiche peut ne pas exister, et l'absence n'est pas une
+     * erreur — un gestionnaire retiré n'en a jamais eu.
+     */
+    await prisma.tenant.updateMany({
+      where: { parkId, userId: adhesion.userId },
+      data: { userId: null },
+    })
+
     await prisma.membership.update({
       where: { id: adhesion.id },
       data: { status: 'revoked' },
