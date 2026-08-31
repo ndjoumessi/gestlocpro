@@ -139,13 +139,16 @@ describe('messages d’alerte', () => {
     await renderApp('/app/signalements', { locale: 'en' })
     const nav = screen.getAllByRole('navigation')[0]
 
-    /* TROIS et non deux : le jeu porte désormais un rappel de loyer non lu, en
-       plus de l'impayé et du devis en attente. C'est un compte de JEU et non un
-       invariant — il doit bouger avec lui, ce que le lot des relances n'avait
-       pas prévu.
-       On vise l'entrée « Reports » et non le texte « 3 » dans toute la barre :
-       « Paiements » porte lui aussi une pastille à 3, et l'ancienne assertion ne
+    /* LE COMPTE SE DÉRIVE DU JEU, il ne s'écrit plus à la main.
+       Il a été « deux », puis « trois », puis faux : ajouter un signalement de
+       locataire au jeu l'a fait passer à quatre et rougir ce cas, qui ne parle
+       pourtant pas du contenu du jeu mais de l'EXTINCTION de la pastille. Le
+       fichier prêche lui-même, vingt lignes plus haut, d'ancrer « sur la
+       DONNÉE, et non sur le rendu » — ce cas-ci ne le faisait pas.
+       On vise l'entrée « Reports » et non le nombre dans toute la barre :
+       « Paiements » porte lui aussi une pastille, et l'ancienne assertion ne
        tenait que parce que les deux nombres différaient. */
+    const nonLues = String(ALERTS.filter((a) => !a.read).length)
     /* LE TRAIT D'UNION CONDITIONNEL ENTRE DANS LE NOM ACCESSIBLE, et ce cas
        l'a decouvert en cassant : « Reports » porte desormais un `\u00AD` entre
        « Re » et « ports », pose pour que la barre basse coupe au bon endroit
@@ -156,11 +159,11 @@ describe('messages d’alerte', () => {
        d'une pastille de compteur, pas d'un point de cesure, et il ne doit pas
        redevenir rouge le jour ou le mot se coupe ailleurs. */
     const entree = () => within(nav).getByRole('link', { name: /Re\u00AD?ports/ })
-    expect(entree()).toHaveTextContent('3')
+    expect(entree()).toHaveTextContent(nonLues)
 
     await userEvent.click(screen.getByRole('button', { name: /Mark all as read/i }))
 
-    expect(entree()).not.toHaveTextContent('3')
+    expect(entree()).not.toHaveTextContent(nonLues)
     expect(screen.getByText('All notifications are read.')).toBeInTheDocument()
   })
 

@@ -1352,6 +1352,10 @@ export const en: Dictionary = {
         lease: 'Lease',
       },
       msg: {
+        tenantReport: {
+          title: 'Report {reference} · {unit}',
+          detail: '{text}',
+        },
         rentOverdue: {
           title: 'Rent {unit} overdue by {count} days',
           title_one: 'Rent {unit} overdue by {count} day',

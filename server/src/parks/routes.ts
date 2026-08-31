@@ -3970,6 +3970,69 @@ parksRouter.post(
       })
     })
 
+    /**
+     * LE SIGNALEMENT REMONTE, et l'écran le PROMETTAIT déjà.
+     *
+     * « Signaler un problème » affirme en toutes lettres, sous son titre :
+     * « Votre gestionnaire et votre bailleur le reçoivent immédiatement. » Ils
+     * ne recevaient rien. Cette route écrivait un `WorkOrder` et rien d'autre,
+     * quand « Signalements et notifications » lit les NOTIFICATIONS : le
+     * bailleur voyait « Rien à signaler sur le parc » pendant que le locataire
+     * lisait « SIG-2026-001 · Signalé » dans son propre espace. Capturé sur la
+     * production, les deux écrans côte à côte.
+     *
+     * Le chantier existait, rangé dans « Travaux ». Mais un signalement qu'il
+     * faut aller CHERCHER n'est pas reçu — et le locataire, lui, croit avoir
+     * alerté quelqu'un. C'est la pire moitié du défaut : il ne relance pas.
+     *
+     * LE CHEMIN INVERSE EXISTAIT DÉJÀ — `workReply` prévient le locataire quand
+     * le gestionnaire répond. Seul le sens montant manquait, et son absence ne
+     * se voyait pas puisque la donnée était écrite quelque part.
+     *
+     * ═══ QUI LE REÇOIT ═══
+     *
+     * Les deux rôles de gestion, actifs. Pas le locataire qui vient de
+     * l'écrire : son espace le lui montre déjà sous « Mes signalements », et
+     * une notification de sa propre déclaration ferait de sa liste un écho —
+     * de quoi l'habituer à ignorer ce qui s'y pose.
+     *
+     * HORS TRANSACTION, comme le journal des décisions et pour la même raison :
+     * l'avis ne doit pas pouvoir faire échouer le signalement qu'il annonce. Un
+     * chantier ouvert sans son avis se rattrape ; un locataire à qui l'on rend
+     * une erreur alors que sa fuite coule, non.
+     */
+    if (origine === 'tenantReport') {
+      const gestion = await prisma.membership.findMany({
+        where: { parkId, status: 'active', role: { in: ['owner', 'manager'] } },
+        select: { userId: true },
+      })
+      await prisma.notification.create({
+        data: {
+          parkId,
+          kind: 'work',
+          messageKey: 'tenantReport',
+          /* `workId` VOYAGE AVEC LE TEXTE, comme sur la réponse : c'est lui qui
+             rattache la carte au chantier. Sans lui, elle parle d'un
+             signalement qu'on ne peut pas ouvrir. */
+          params: {
+            workId: travail.id,
+            reference: travail.reference,
+            text: travail.title,
+            trade: corps.trade,
+          },
+          /* L'URGENCE DÉCLARÉE devient la sévérité de l'avis. « Le logement
+             n'est pas utilisable en l'état » ne se range pas à côté d'un joint
+             à refaire, et c'est le locataire qui sait lequel des deux il vit. */
+          severity: corps.urgency === 'blocking' ? 'high' : corps.urgency === 'low' ? 'low' : 'medium',
+          unitId: unite.id,
+          channel: 'in_app',
+          ...(gestion.length > 0
+            ? { recipients: { create: gestion.map((m) => ({ userId: m.userId })) } }
+            : {}),
+        },
+      })
+    }
+
     res.status(201).json({ work: travail })
   },
 )

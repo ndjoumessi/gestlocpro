@@ -1114,6 +1114,15 @@ export type AlertMessage =
    */
   | 'announcement'
   | 'workReply'
+  /**
+   * LE SIGNALEMENT QUI MONTE, et il manquait tandis que `workReply` descendait.
+   *
+   * L'écran du locataire promet que « votre gestionnaire et votre bailleur le
+   * reçoivent immédiatement » ; la route n'écrivait qu'un chantier, et le
+   * bailleur lisait « Rien à signaler ». Son `text` est le titre écrit par le
+   * locataire — il ne se traduit pas, comme l'annonce et la réponse.
+   */
+  | 'tenantReport'
   | 'rentOverdue'
   | 'quotePending'
   | 'metersMissing'
@@ -1235,6 +1244,12 @@ export const ALERTS: Alert[] = [
   { id: 'r3', kind: 'payment', message: 'rentReminder', data: { tenant: 'Serge Mbarga', count: 24, amount: 115000 }, at: { value: -6, unit: 'hour' }, severity: 'high', read: false, unitId: 'A3', rank: 3, channel: 'sms', sentAt: null },
   { id: 'r2', kind: 'payment', message: 'rentReminder', data: { tenant: 'Serge Mbarga', count: 17, amount: 115000 }, at: { value: -7, unit: 'day' }, severity: 'high', read: true, unitId: 'A3', rank: 2, channel: 'sms', sentAt: null },
   { id: 'r1', kind: 'payment', message: 'rentReminder', data: { tenant: 'Serge Mbarga', count: 11, amount: 115000 }, at: { value: -13, unit: 'day' }, severity: 'medium', read: true, unitId: 'A3', rank: 1, channel: 'sms', sentAt: { year: 2026, month: 7, day: 4 } },
+  /* LE SIGNALEMENT D'UN LOCATAIRE, et c'est la PREMIÈRE carte à texte humain que
+     la démonstration porte : ni l'annonce ni la réponse n'y figuraient, donc la
+     famille entière — un titre du produit au-dessus d'une phrase écrite par
+     quelqu'un, de longueur non bornée — n'était mesurée nulle part. Voir
+     `notes-conditionnelles` pour la leçon générale. */
+  { id: 'n8', kind: 'work', message: 'tenantReport', data: { workId: 'SIG-2026-044', reference: 'SIG-2026-044', unitId: 'B3', text: 'Fuite sous l’évier de la cuisine, ça goutte depuis hier soir.' }, at: { value: -40, unit: 'minute' }, severity: 'medium', read: false, unitId: 'B3' },
   { id: 'n2', kind: 'work', message: 'quotePending', data: { workId: 'SIG-2026-042', unitId: 'A3', amount: 45000 }, at: { value: -5, unit: 'hour' }, severity: 'high', read: false, unitId: 'A3' },
   { id: 'n3', kind: 'meter', message: 'metersMissing', data: { count: 2, period: { year: 2026, month: 7 }, units: ['A5', 'C2'] }, at: { value: -1, unit: 'day' }, severity: 'medium', read: true },
   { id: 'n4', kind: 'lease', message: 'leaseRenewal', data: { unitId: 'B1', tenant: 'Jean-Paul Eboa', count: 45, dueOn: { year: 2026, month: 8, day: 30 } }, at: { value: -2, unit: 'day' }, severity: 'low', read: true, unitId: 'B1' },

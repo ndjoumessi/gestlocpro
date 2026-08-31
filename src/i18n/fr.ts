@@ -1789,6 +1789,21 @@ export const fr = {
         lease: 'Bail',
       },
       msg: {
+        /**
+         * LE SIGNALEMENT D'UN LOCATAIRE, et il n'arrivait nulle part.
+         *
+         * `workReply` descend — la réponse du gestionnaire au locataire. Le
+         * sens MONTANT manquait : l'écran « Signaler » promet que le bailleur
+         * reçoit immédiatement, et le bailleur lisait « Rien à signaler ».
+         *
+         * Le titre porte la RÉFÉRENCE, parce que c'est ce qu'on cite au
+         * téléphone et ce que le locataire voit de son côté. Le texte est le
+         * sien : il ne se traduit pas.
+         */
+        tenantReport: {
+          title: 'Signalement {reference} · {unit}',
+          detail: '{text}',
+        },
         rentOverdue: {
           title: 'Loyer {unit} en retard de {count} jours',
           title_one: 'Loyer {unit} en retard de {count} jour',
