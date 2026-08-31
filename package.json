@@ -9,7 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "lint:i18n": "node scripts/check-i18n.mjs",
-    "check:rapide": "tsc -b && oxlint && node scripts/check-i18n.mjs && node scripts/check-orphelins.mjs && node scripts/check-montants.mjs && vitest run",
+    "check:rapide": "tsc -b && oxlint && node scripts/check-i18n.mjs && node scripts/check-orphelins.mjs && node scripts/check-montants.mjs && node scripts/inventaire/lecture-sources.mjs > /dev/null && node scripts/inventaire/jetons-i18n.mjs > /dev/null && vitest run",
     "check:navigateur": "node scripts/mesure-ui.mjs && node scripts/couleur-non-seule.mjs && node scripts/stabilite-au-pointage.mjs && node scripts/plafond-coquille.mjs && node scripts/modales.mjs && node scripts/plafond-vitrine.mjs && node scripts/series-lisibles.mjs && node scripts/photo-transcodage.mjs && node scripts/chasses-helvetica.mjs && node scripts/decisions-nommees.mjs && node scripts/notes-conditionnelles.mjs && node scripts/poids-ecrans.mjs && node scripts/politique-de-securite.mjs && node scripts/espace-connecte.mjs",
     "check": "npm run check:rapide && npm run check:navigateur",
     "check:server": "npm --prefix server run check",
@@ -34,7 +34,8 @@
     "decisions": "node scripts/decisions-nommees.mjs",
     "notes": "node scripts/notes-conditionnelles.mjs",
     "securite": "node scripts/politique-de-securite.mjs",
-    "espace": "node scripts/espace-connecte.mjs"
+    "espace": "node scripts/espace-connecte.mjs",
+    "inventaire:lectures": "node scripts/inventaire/lecture-sources.mjs && node scripts/inventaire/jetons-i18n.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

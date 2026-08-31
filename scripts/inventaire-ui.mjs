@@ -74,13 +74,30 @@ import { inventaireDesRoutes, exigerUnInventairePlein, nommerRoles, RACINE } fro
  * lequel on glisse le défaut suivant.
  */
 const NON_MESURABLES = {
-  '/app': {
-    motif:
-      "l'espace connecté, derrière `RequireAuth`. Servi en statique, l'appel de session n'aboutit " +
-      "pas et l'écran reste sur son état de chargement — quatre éléments, sans redirection ni " +
-      "message d'erreur. Ce qu'on mesurerait ici est un squelette, pas un écran.",
-    elementsAttendusAuPlus: 20,
-  },
+  /*
+    ═══ L'EXEMPTION DE `/app` EST RETIRÉE, ET C'EST SA PROPRE GARDE QUI L'A EXIGÉ ═══
+
+    Elle disait : « servi en statique, l'appel de session n'aboutit pas et
+    l'écran reste sur son état de chargement — quatre éléments, SANS REDIRECTION
+    ni message d'erreur. Ce qu'on mesurerait ici est un squelette, pas un écran. »
+
+    Ce n'est plus vrai. Depuis que `RequireAuth` renvoie à la connexion — « un
+    visiteur non connecté est renvoyé à la connexion, comme partout sous /app »,
+    dit `espaceReserveAuLocataire.test.tsx` —, l'adresse rend un ÉCRAN : celui
+    que reçoit vraiment quelqu'un qui ouvre `/app` sans session. Il est mesurable,
+    et il vaut la peine de l'être.
+
+    L'exemption portait son propre garde : « si l'adresse se met à rendre,
+    l'exemption ne couvre plus rien et doit être RETIRÉE. Une exemption qui
+    survit à son motif est le tapis sous lequel on glisse le défaut suivant. »
+    Il a rougi de lui-même, sans qu'on le lui demande, le jour où la table est
+    devenue fausse. C'est exactement ce qu'on attend d'une exemption motivée.
+
+    LA TABLE RESTE, VIDE. La retirer emporterait avec elle les trois gardes qui
+    la lisent — le refus inattendu, l'exemption qui ne couvre plus rien, le
+    compte d'éléments — et le prochain écran non mesurable rentrerait sans
+    motif. Un vide DÉCLARÉ vaut mieux qu'une porte démontée.
+  */
 }
 
 const RELEVES = [
@@ -673,5 +690,19 @@ if (sortie) {
   console.log(`\n· carte complète → ${sortie}`)
 }
 
-console.log('\n✓ inventaire plein : 23 routes lues, 3 relevés non muets, 1 adresse non mesurable déclarée.')
-console.log('  Ce script ne corrige rien et n\'entre pas dans `npm run check`.\n')
+/* LES TROIS NOMBRES SONT LUS, PLUS ÉCRITS. Ils étaient en dur dans la phrase
+   finale — « 23 routes, 3 relevés, 1 adresse non mesurable » — et le dernier est
+   devenu FAUX à la seconde où l'exemption de `/app` a été retirée : le script
+   annonçait une exemption déclarée alors que la table était vide. Une phrase de
+   conclusion qui affirme un chiffre qu'elle ne compte pas est la forme la plus
+   discrète du mensonge — celle qu'on relit sans la vérifier. */
+console.log(
+  `\n✓ inventaire plein : ${routes.length} routes lues, ${RELEVES.length} relevés non muets, ` +
+    `${Object.keys(NON_MESURABLES).length} adresse(s) non mesurable(s) déclarée(s).`,
+)
+console.log(
+  "  Ce RAPPORT n'entre pas dans `npm run check` : ses trois minutes mesurent le produit,\n" +
+  "  ce que quinze autres portes font déjà. Ses LECTURES, elles, y sont depuis le lot qui\n" +
+  "  a réparé celle de l'anneau de focus — elles coûtent 1,5 s, et ce sont elles qui\n" +
+  "  pourrissent : deux fois en deux semaines, faute que rien ne les exécute.\n",
+)

@@ -440,18 +440,27 @@ function resoudreChemin(rel, spec) {
  */
 function importsDuFichier(rel, code) {
   const table = new Map()
+  const sources = new Map()
   for (const m of code.matchAll(/import\s+([^;]*?)\s+from\s+['"]([^'"]+)['"]/g)) {
     const cible = resoudreChemin(rel, m[2])
     const clause = m[1]
     for (const n of clause.matchAll(/([A-Za-z_$][\w$]*)(?:\s+as\s+([A-Za-z_$][\w$]*))?/g)) {
       const nom = n[2] ?? n[1]
       if (/^[A-Z]/.test(nom)) table.set(nom, cible)
+      /* LA SOURCE, retenue à côté de la cible. `cible` vaut `null` pour tout ce
+         qui vient du dehors, et confond alors « react-router-dom » avec
+         n'importe quel paquet inconnu. La distinction est nécessaire à un seul
+         endroit — l'anneau de focus, plus bas — et elle est ÉCRITE là-bas, pas
+         devinée ici. */
+      if (/^[A-Z]/.test(nom)) sources.set(nom, m[2])
     }
   }
   // `const X = lazy(() => import('…'))` : la frontière paresseuse d'`App.tsx`.
   for (const m of code.matchAll(/const\s+([A-Z]\w*)\s*=\s*lazy\([\s\S]{0,120}?import\(['"]([^'"]+)['"]\)/g)) {
     table.set(m[1], resoudreChemin(rel, m[2]))
+    sources.set(m[1], m[2])
   }
+  table.sources = sources
   return table
 }
 
@@ -464,6 +473,40 @@ function importsDuFichier(rel, code) {
   balaie `scripts/`, et une classe écrite d'un tenant ici existerait pour de bon
   dans la feuille livrée — y compris celle que le dépôt s'interdit.
 */
+/**
+ * CE QUE LE DEHORS REND, quand on le sait et qu'on peut le dire.
+ *
+ * ═══ POURQUOI CETTE TABLE EXISTE, ET POURQUOI ELLE EST SI ÉTROITE ═══
+ *
+ * Le relevé refusait — à juste titre — de compter un site porté par un composant
+ * qu'il ne sait pas lire : « tant qu'on ne sait pas ce qu'il rend, on ne peut ni
+ * le compter ni l'écarter, et l'écarter en silence est la façon dont un chiffre
+ * devient faux par le bas ». Il refusait donc, et le refus a duré.
+ *
+ * Ce qu'il refusait est UN site : `<Link role="menuitem" to="/" onClick>` dans le
+ * menu de compte d'`AppShell`. Le commentaire de la garde l'avait anticipé au
+ * mot près — « `<Link>` de react-router rendrait un `<a href>` focalisable, mais
+ * aucun site du dépôt ne lui pose de geste, donc rien ne justifie de l'écrire en
+ * dur ici ». Un site lui en pose un depuis ; la prémisse a cessé d'être vraie, et
+ * le refus est devenu du bruit permanent sur un relevé que personne ne peut plus
+ * lire.
+ *
+ * ═══ CE QUI EST ÉCRIT, ET CE QUI NE L'EST PAS ═══
+ *
+ * La SOURCE, pas le nom. Un composant maison nommé `Link` ne serait pas couvert :
+ * c'est le module qui fait foi, et `react-router-dom` documente que `Link` et
+ * `NavLink` rendent un `<a href>` — donc un élément NATIVEMENT focalisable, que
+ * la règle universelle `*:focus-visible` de `tokens.css` couvre comme les autres.
+ *
+ * Rien d'autre n'y figure, et c'est le point : toute autre origine continue de
+ * faire REFUSER le relevé. Cette table n'est pas une porte de sortie, c'est une
+ * connaissance nommée — et si react-router changeait ce que `Link` rend, la ligne
+ * serait fausse, ce qui est exactement le genre d'erreur qu'on veut pouvoir lire.
+ */
+const RENDUS_NATIFS_DU_DEHORS = {
+  'react-router-dom': new Set(['Link', 'NavLink']),
+}
+
 const VARIANTE_FOCUS = 'focus' + '-visible'
 const NEUTRALISATION_ANNEAU = new RegExp(`outline-${'none'}|outline:\\s*none`)
 const ANNEAU_AU_SITE = new RegExp(`${VARIANTE_FOCUS}:|has-\\[:${VARIANTE_FOCUS}\\]`)
@@ -785,6 +828,7 @@ export function releverLesSources() {
       'cible de focus PROGRAMMATIQUE (`tabIndex={-1}`), sans geste ni rôle': 0,
       'option d’un motif `aria-activedescendant` : le focus reste au champ': 0,
       'conteneur qui DÉLÈGUE le clavier à des descendants focalisables': 0,
+      'composant du DEHORS dont on sait qu’il rend un natif focalisable': 0,
     },
     neutralisations: [],
     anneauxDeclaresAuSite: 0,
@@ -825,12 +869,14 @@ export function releverLesSources() {
         const cible = resoudre(f.rel, b.nom)
         if (cible) {
           focus.fauxPositifs['composant du dépôt : l’anneau appartient à sa primitive, scannée à part']++
+        } else if (RENDUS_NATIFS_DU_DEHORS[f.imports.sources?.get(b.nom)]?.has(b.nom)) {
+          /* Du dehors, mais SU : voir `RENDUS_NATIFS_DU_DEHORS`. Le module fait
+             foi, jamais le nom — un `Link` maison retomberait dans le refus. */
+          focus.fauxPositifs['composant du DEHORS dont on sait qu’il rend un natif focalisable']++
         } else {
-          // Le TROU du raisonnement, et il est vide au 2026-08-22 : un composant
-          // venu du dehors qu'on ne sait pas lire. Il n'est pas écarté — il est
-          // listé, et la garde plus bas le fait rougir. `<Link>` de react-router
-          // rendrait un `<a href>` focalisable, mais aucun site du dépôt ne lui
-          // pose de geste, donc rien ne justifie de l'écrire en dur ici.
+          // Le TROU du raisonnement : un composant venu du dehors qu'on ne sait
+          // pas lire ET dont on n'a rien écrit. Il n'est pas écarté — il est
+          // listé, et la garde plus bas le fait rougir.
           focus.chaineNonRemontee.push({ fichier: f.rel, ligne: f.ligneDe(b.debut), composant: b.nom })
         }
         continue
