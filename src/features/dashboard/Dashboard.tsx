@@ -155,6 +155,9 @@ export function Dashboard() {
   )
   const cautionsEnAttente = cautionsAArbitrer.reduce((somme, c) => somme + c.held, 0)
   const devisEnAttente = devis.reduce((somme, w) => somme + (w.quotedAmount ?? 0), 0)
+  /* `reported` : personne n'y a encore touché. Un `quoted` attend un arbitrage,
+     et c'est une autre entrée de la file. */
+  const aChiffrer = works.filter((w) => w.status === 'reported')
 
   const file: EntreeDeFile[] = [
     doivent.length > 0 && {
@@ -180,6 +183,32 @@ export function Dashboard() {
           .join(', '),
       }),
       action: { libelle: t('app.dashboard.queueDepositsAction'), to: lien(base, 'cautions') },
+    },
+    /* LE SIGNALEMENT QUI ATTEND UN CHIFFRAGE, et il n'atteignait pas cet écran.
+
+       Le bailleur arrive ICI en se connectant. La file portait les impayés, les
+       cautions, les devis et les relevés — pas les signalements. Une fuite
+       déclarée le matin ne paraissait donc nulle part sur l'écran d'arrivée, et
+       il fallait aller la chercher dans un onglet qu'on n'ouvre que si l'on a
+       déjà un doute. Relevé par le propriétaire, mot pour mot : « je n'ai pas
+       eu de notification sur le dernier signalement ».
+
+       ENCORE À CHIFFRER, et pas davantage : un chantier déjà chiffré attend un
+       arbitrage, et l'entrée juste dessous le porte. L'y compter deux fois
+       ferait lire deux dettes pour une. L'écran des travaux tient déjà ce
+       compte sous « encore à chiffrer » ; il ne remontait pas d'un cran.
+
+       AVANT LES DEVIS : un problème que personne n'a regardé passe avant un
+       devis qui attend une signature — l'un coule, l'autre patiente. */
+    aChiffrer.length > 0 && {
+      cle: 'signalements',
+      urgence: 'warn' as const,
+      icone: 'bell' as const,
+      titre: t('app.dashboard.queueReportsTitle', { count: aChiffrer.length }),
+      detail: t('app.dashboard.queueReportsDetail', {
+        units: aChiffrer.map((w) => unitById(w.unitId)?.label ?? w.unitId).join(', '),
+      }),
+      action: { libelle: t('app.dashboard.queueReportsAction'), to: lien(base, 'travaux') },
     },
     devis.length > 0 && {
       cle: 'devis',

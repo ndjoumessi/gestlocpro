@@ -581,6 +581,10 @@ export const en: Dictionary = {
       queueDepositsTitle_one: '{count} deposit awaits your arbitration',
       queueDepositsDetail: '{amount} held · {units}',
       queueDepositsAction: 'Arbitrate',
+      queueReportsTitle: '{count} reports are waiting for a quote',
+      queueReportsTitle_one: '{count} report is waiting for a quote',
+      queueReportsDetail: 'Reported by your tenants · {units}',
+      queueReportsAction: 'Quote',
       queueQuotesTitle: '{count} quotes await your approval',
       queueQuotesTitle_one: '{count} quote awaits your approval',
       queueQuotesDetail: '{amount} committed if you approve · {units}',
@@ -1411,6 +1415,11 @@ export const en: Dictionary = {
       },
     },
 
+    otherSpace: {
+      title: 'This screen belongs to the tenant',
+      body: 'This address exists, but it belongs to the tenant space. Your dashboard gathers what concerns you.',
+      action: 'Back to the dashboard',
+    },
     noPark: {
       title: 'No portfolio linked to your account',
       subtitle: 'Your account exists, but it does not manage any property yet.',

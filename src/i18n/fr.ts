@@ -767,6 +767,12 @@ export const fr = {
       queueDepositsTitle_one: '{count} caution attend votre arbitrage',
       queueDepositsDetail: '{amount} retenus · {units}',
       queueDepositsAction: 'Arbitrer',
+      /* LE SIGNALEMENT QUI ATTEND UN CHIFFRAGE. Il n'atteignait pas l'écran
+         d'arrivée du bailleur, qui ne le voyait donc jamais en se connectant. */
+      queueReportsTitle: '{count} signalements attendent un chiffrage',
+      queueReportsTitle_one: '{count} signalement attend un chiffrage',
+      queueReportsDetail: 'Déclarés par vos locataires · {units}',
+      queueReportsAction: 'Chiffrer',
       queueQuotesTitle: '{count} devis attendent votre accord',
       queueQuotesTitle_one: '{count} devis attend votre accord',
       queueQuotesDetail: '{amount} engagés si vous validez · {units}',
@@ -1896,6 +1902,13 @@ export const fr = {
       },
     },
 
+    /* L'ADRESSE EXISTE, ELLE N'EST PAS LA VÔTRE. « Introuvable » annonçait un
+       défaut du produit pour un droit qui fonctionne. */
+    otherSpace: {
+      title: 'Cet écran est celui du locataire',
+      body: 'Cette adresse existe, mais elle appartient à l’espace du locataire. Votre tableau de bord réunit ce qui vous concerne.',
+      action: 'Revenir au tableau de bord',
+    },
     noPark: {
       title: 'Aucun parc rattaché à votre compte',
       subtitle: 'Votre compte existe, mais il n’administre encore aucun bien.',
