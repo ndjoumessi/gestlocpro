@@ -61,6 +61,32 @@ function Restricted({ allow, children }: { allow: Role[]; children: ReactNode })
 }
 
 /**
+ * Un écran qui n'existe QUE pour le locataire — voir les routes plus bas.
+ *
+ * LA DÉMONSTRATION EN EST EXEMPTÉE, et c'est une régression payée dans ce lot
+ * même. Le premier jet gardait les trois adresses sans distinction : sous
+ * `/demo`, le rôle par défaut est celui du propriétaire, et l'espace locataire
+ * de la démonstration est devenu inatteignable. `mesure-ui` l'a dit par sa
+ * garde du garde — « 2 tolérances locales ne couvrent plus aucun débordement »,
+ * toutes deux relevées sur `/demo/mon-espace`. Un écran qu'on ferme emporte
+ * avec lui les tolérances qui le décrivaient : c'est ainsi qu'une disparition
+ * se signale.
+ *
+ * Sous `/demo`, le SÉLECTEUR DE PROFIL est le mécanisme : il existe pour qu'un
+ * visiteur voie les trois rôles, et cet espace est ce que le locataire voit.
+ * `Vitrine`, juste dessous, fait la même distinction dans l'autre sens.
+ */
+function Locataire({ children }: { children: ReactNode }) {
+  const { estDemo } = useSession()
+  if (estDemo) return <>{children}</>
+  return (
+    <RoleGuard allow={['tenant']} fallback={<NotFoundInApp />}>
+      {children}
+    </RoleGuard>
+  )
+}
+
+/**
  * Un écran de VITRINE : il montre le produit au lieu de le rendre.
  *
  * Le garde double celui de la navigation, et pour la raison que ce fichier
@@ -96,11 +122,25 @@ function ecransDeLApplication() {
       {/* Les trois écrans du LOCATAIRE, aux adresses que porte sa navigation.
           « Mon espace » est une VRAIE route et non l'index : l'index sert trois
           rôles, et le locataire doit pouvoir mettre son espace en favori,
-          revenir en arrière et partager l'adresse comme n'importe quel écran. */}
-      <Route path="mon-espace" element={<TenantDashboard />} />
-      <Route path="documents" element={<TenantDocuments />} />
+          revenir en arrière et partager l'adresse comme n'importe quel écran.
+
+          ELLES SONT DÉSORMAIS GARDÉES, et elles étaient les SEULES à ne pas
+          l'être. Douze adresses de gestion portaient `Restricted` ; ces trois-là
+          ouvraient à tout compte connecté. Un propriétaire qui ouvrait
+          `/app/mon-espace` obtenait « Mon espace locataire », sa barre latérale
+          complète autour, et l'écran lui expliquait qu'aucun bail ne porte son
+          nom — signalé sur la production.
+
+          `NotFoundInApp` ET NON `TenantRestricted` : ce dernier est le refus
+          servi au locataire qui tente un écran de gestion, et il finit par
+          « revenir à mon espace ». Le rendre ici enverrait un propriétaire vers
+          un espace qu'il n'a pas. Ce fichier a déjà tranché le cas symétrique
+          pour la vitrine — « sous un vrai compte, ces adresses n'existent pas,
+          et c'est ce qu'un 404 dit ». La phrase vaut dans les deux sens. */}
+      <Route path="mon-espace" element={<Locataire><TenantDashboard /></Locataire>} />
+      <Route path="documents" element={<Locataire><TenantDocuments /></Locataire>} />
       {/* Il déclare, et suit ses propres déclarations. */}
-      <Route path="signaler" element={<Signaler />} />
+      <Route path="signaler" element={<Locataire><Signaler /></Locataire>} />
 
       {/* Écrans de gestion : la même liste de rôles que dans la barre
           latérale, pour que navigation et accès ne divergent pas. */}
