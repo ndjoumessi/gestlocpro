@@ -2376,6 +2376,48 @@ const MESURER_REPLI = () => {
  * SEUL LE PLUS PROFOND EST NOMMÉ. Un parent déborde parce que son enfant
  * déborde : nommer la chaîne noierait le coupable sous ses quatre ancêtres.
  */
+/**
+ * AUCUN GABARIT NE SURVIT AU RENDU.
+ *
+ * ═══ TROIS FOIS EN UNE JOURNÉE, ET AUCUNE PORTE POUR LE VOIR ═══
+ *
+ * 2026-08-31, sur la production, coup sur coup :
+ *
+ *  · « {count, plural, one {# locataire…} } » affiché TEL QUEL sur l'écran des
+ *    locataires — un message écrit en ICU imbriqué, que `t()` ne sait pas lire.
+ *    Le cas jsdom cherchait une sous-chaîne, laquelle existe aussi dans le
+ *    message cassé : il était vert.
+ *  · « Signalement SIG-2026-002 · {unit} » sur la carte d'un signalement — le
+ *    paramètre posé dans la colonne de la notification, que la carte ne lit pas.
+ *  · le même défaut guettait `{reference}` et `{text}`, jamais rencontré.
+ *
+ * `notes-conditionnelles` refuse déjà les jetons survivants, mais seulement
+ * dans les `<Notice>` DÉCLARÉES : une carte d'alerte, un titre de page, une
+ * cellule de tableau y échappaient tous. Le défaut n'est pas propre aux notes,
+ * il est propre à l'INTERPOLATION.
+ *
+ * ═══ CE QU'ELLE CHERCHE, ET CE QU'ELLE NE PEUT PAS CONFONDRE ═══
+ *
+ * `{` suivi d'une lettre, puis d'identifiant, puis `}` — la forme exacte d'un
+ * `{count}`, `{unit}`, `{reference}` non résolu. Pas `{` seul, pas `{ }`, pas
+ * une accolade dans du code : le produit n'affiche aucune expression, et un
+ * texte français ne pose pas d'accolade collée à un mot.
+ *
+ * ELLE LIT LE TEXTE VISIBLE, jamais la source : `innerText` ignore ce que le
+ * CSS masque, et une chaîne cachée n'est un défaut pour personne.
+ *
+ * ═══ CE QU'ELLE NE VOIT PAS ═══
+ *
+ * Les modales, qui ne sont pas ouvertes par ce balayage — `modales` les tient
+ * en géométrie, pas en interpolation. Et tout ce que la démonstration ne produit
+ * pas, ce qui est la limite de cette porte entière.
+ */
+const MESURER_GABARITS = () => {
+  const texte = document.body.innerText ?? ''
+  const jetons = [...texte.matchAll(/\{[A-Za-z][\w.]*\}/g)].map((m) => m[0])
+  return { jetons: [...new Set(jetons)] }
+}
+
 const MESURER_DEBORD_LOCAL = () => {
   // Chronométré DANS la page, pour séparer ce que coûte le PARCOURS de ce que
   // coûte l'aller-retour avec le navigateur. Les deux se paient, mais on ne les
@@ -3962,6 +4004,16 @@ let feuillesMesurees = 0
  * n'exécute, donc un chiffre que personne ne vérifie.
  */
 const maximaLocaux = new Map()
+/**
+ * LES GABARITS QUI ONT SURVÉCU AU RENDU, et le compte des écrans relus.
+ *
+ * Le compteur est là pour la GARDE DU GARDE : une sonde qui ne tourne plus rend
+ * une liste vide, exactement comme un produit sans défaut. Sans le nombre
+ * d'écrans effectivement relus, « aucun gabarit survivant » et « la sonde n'a
+ * jamais été appelée » s'écrivent de la même façon.
+ */
+const gabaritsSurvivants = []
+let ecransRelusPourGabarits = 0
 let elementsSondes = 0
 /**
  * CE QUE LA SONDE COÛTE, relevé plutôt que supposé.
@@ -4183,6 +4235,14 @@ try {
           déjà stabilisée. Une seconde boucle aurait payé 506 navigations pour
           regarder ce qui est sous les yeux.
         */
+        /* DANS LA MÊME VISITE, pour la raison écrite juste au-dessus : la page
+           est chargée, la sonde ne coûte qu'un aller-retour. */
+        const gabarits = await chrono('sonde · gabarits', () => page.evaluate(MESURER_GABARITS))
+        ecransRelusPourGabarits += 1
+        for (const jeton of gabarits.jetons) {
+          gabaritsSurvivants.push({ jeton, ou: `${adresse} ${largeur}px/${langue}` })
+        }
+
         const avantSonde = performance.now()
         const local = await chrono('sonde · débordement local', () =>
           page.evaluate(MESURER_DEBORD_LOCAL),
@@ -6362,6 +6422,33 @@ if (echecs.length > 0) {
     }
   }
   console.error('')
+  process.exit(1)
+}
+
+/**
+ * AUCUN GABARIT NE SURVIT AU RENDU — voir `MESURER_GABARITS` pour le récit.
+ *
+ * DEUX REFUS, et le second est la garde du garde. Un jeton à l'écran est un
+ * défaut ; une sonde qui n'a relu AUCUN écran rend une liste vide, exactement
+ * comme un produit sans défaut, et ce silence-là doit rougir aussi.
+ */
+const RELECTURES_ATTENDUES = adresses.length * LARGEURS.length * LANGUES.length
+if (gabaritsSurvivants.length > 0) {
+  console.error('\n✗ mesure-ui : un gabarit non interprété est à l’écran.\n')
+  console.error('  `{count}`, `{unit}`, `{reference}` — le message s’affiche tel quel,')
+  console.error('  accolades comprises. Vérifiez la convention d’accord du dépôt — `x` et')
+  console.error('  `x_one`, l’ICU n’est pas lu — et que le serveur pose bien le paramètre')
+  console.error('  dans `params`, que la carte lit, et non dans la seule colonne.\n')
+  for (const g of gabaritsSurvivants) console.error(`   ${g.ou}  →  ${g.jeton}`)
+  console.error('')
+  process.exit(1)
+}
+if (ecransRelusPourGabarits !== RELECTURES_ATTENDUES) {
+  console.error(
+    `\n✗ mesure-ui : ${ecransRelusPourGabarits} relecture(s) de gabarit pour ${RELECTURES_ATTENDUES} attendue(s).\n` +
+      '   La sonde n’a pas vu tous les écrans : « aucun gabarit survivant » ne\n' +
+      '   voudrait alors rien dire.\n',
+  )
   process.exit(1)
 }
 
