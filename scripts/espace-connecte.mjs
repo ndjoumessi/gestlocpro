@@ -151,6 +151,19 @@ const ROLES = ['owner', 'manager', 'tenant']
 /** Trois largeurs : la poche, la tablette, le bureau. */
 const LARGEURS = [320, 768, 1280]
 
+/**
+ * L'APPAREIL DE RÉFÉRENCE, ET SON PLI.
+ *
+ * 360 × 640 n'est pas un choix de confort : c'est le téléphone sur lequel les
+ * défauts de mise en page de ce produit ont été relevés, et `plafond-coquille`
+ * le nomme déjà « l'appareil de référence ». Le PLI est sa hauteur — la ligne
+ * sous laquelle il faut défiler pour voir.
+ *
+ * Le balayage ordinaire mesure à 900 px de haut, ce qui ne dit rien du pli : à
+ * cette hauteur, tout tient. La règle du pli demande donc SA propre taille.
+ */
+const APPAREIL_DE_REFERENCE = { width: 360, height: 640 }
+
 /** Les deux langues — le défaut fondateur de `mesure-ui` n'existait qu'en anglais. */
 const LANGUES = ['fr-FR', 'en-US']
 
@@ -611,6 +624,69 @@ const MESURER_ZEROS_AU_DESSUS_DU_VIDE = () => {
   }
 }
 
+/**
+ * LE PREMIER CHIFFRE RESTE AU-DESSUS DU PLI.
+ *
+ * ═══ CE QUE CE DÉPÔT NE SAIT PAS MESURER ═══
+ *
+ * Il mesure admirablement ce qui DÉBORDE — deux règles, page et local, une
+ * quinzaine de signatures tolérées, chacune avec son plafond au pixel. Il ne
+ * mesure rien de ce qui OCCUPE TROP. Aucune garde ne refuse qu'un bloc prenne
+ * tout l'écran, qu'une rangée laisse une orpheline, ou qu'un titre pousse
+ * l'information sous le pli.
+ *
+ * ═══ LE DÉFAUT QUI L'A FAIT ÉCRIRE, ET IL EST DATÉ ═══
+ *
+ * 2026-08-30, relevé sur une capture de production : la file du jour VIDE
+ * occupait 273 px pour dire qu'il n'y avait rien à faire, et poussait les quatre
+ * indicateurs du tableau de bord ENTIÈREMENT sous le pli — le premier à 786 px
+ * dans une fenêtre de 640. Un bailleur ouvrant son produit sur son téléphone ne
+ * voyait pas un seul chiffre. Réparé le jour même : 604 px.
+ *
+ * Rien ne déborde dans ce défaut. Rien ne défile de travers. Aucune des huit
+ * règles de `mesure-ui` ne peut le voir, et c'est pourquoi il a fallu une
+ * capture d'écran pour le trouver.
+ *
+ * ═══ ELLE NAÎT VERTE, ET JE LE DIS ═══
+ *
+ * Relevé à l'écriture, sur les cinq profils : le plus bas premier chiffre est à
+ * 521 px (`/app` du propriétaire), puis 495 (`/app/locataires`). Cent dix-neuf
+ * pixels de marge sur le pire. Le défaut de 786 est réparé depuis un lot.
+ *
+ * C'est donc une garde PRÉVENTIVE, ce que ce dépôt n'aime pas — et elle
+ * l'assume pour une raison : son mode de défaillance est SILENCIEUX. Un bloc
+ * grandit, les chiffres glissent sous le pli, et rien ne se casse. Il a fallu
+ * une capture la première fois ; il en faudrait une la seconde.
+ *
+ * ═══ LE PLAFOND N'EST PAS UN RÉGLAGE ═══
+ *
+ * C'est la hauteur de la fenêtre. « Au-dessus du pli » n'a qu'une définition, et
+ * elle ne se négocie pas — il n'y a donc aucun nombre à faire monter le jour où
+ * la garde gêne, ce qui est la façon habituelle dont un plafond meurt.
+ */
+const MESURER_LE_PLI = (pli) => {
+  const principal = document.querySelector('main')
+  if (!principal) return { vu: false, plainte: null }
+  const premier = principal.querySelector('[data-indicateur]')
+  if (!premier) return { vu: false, plainte: null }
+
+  const boite = premier.getBoundingClientRect()
+  const haut = Math.round(boite.top + window.scrollY)
+  if (haut < pli) return { vu: true, plainte: null }
+
+  /* CE QUI OCCUPE LA PLACE, nommé — un nombre nu ne se corrige pas. On rend les
+     blocs de premier niveau qui précèdent le chiffre, avec leur hauteur : c'est
+     la liste de ce qu'il faudrait raccourcir, dans l'ordre. */
+  const avant = [...principal.children]
+    .map((e) => ({ e, r: e.getBoundingClientRect() }))
+    .filter((x) => x.r.top + window.scrollY < haut && x.r.height > 24)
+    .map((x) => ({
+      hauteur: Math.round(x.r.height),
+      texte: (x.e.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 44),
+    }))
+  return { vu: true, plainte: { haut, avant } }
+}
+
 /* ══════════════════════════ LE BALAYAGE ══════════════════════════ */
 
 const ECRANS = ecransDeLEspaceConnecte()
@@ -663,6 +739,8 @@ let pointsMesures = 0
 let pointsFermesMesures = 0
 /* Combien de points portaient un état vide de PAGE — voir la sonde. */
 let etatsVidesInspectes = 0
+/* Combien d'écrans portaient un chiffre dont le pli a pu être jugé. */
+let plisInspectes = 0
 
 const parc = await (async () => {
   console.log('  préparation de la base…')
@@ -769,6 +847,28 @@ try {
 
       for (const ecran of ouvertes) {
         await ouvrir(page, ecran.adresse)
+
+        /* LE PLI SE MESURE AVANT LES TROIS LARGEURS, et la page est déjà
+           chargée : c'est un redimensionnement, pas une navigation — 7 ms
+           contre 1 072, chiffré par `mesure-ui`. La boucle qui suit repose sa
+           propre largeur au premier tour. */
+        await page.setViewportSize(APPAREIL_DE_REFERENCE)
+        await page
+          .waitForFunction(() => document.querySelectorAll('[aria-busy="true"]').length === 0, null, {
+            timeout: 5000,
+          })
+          .catch(() => {})
+        const pli = await page.evaluate(MESURER_LE_PLI, APPAREIL_DE_REFERENCE.height)
+        if (pli.vu) plisInspectes += 1
+        if (pli.plainte) {
+          plaintes.push(
+            `${ecran.adresse} · ${cle} · ${APPAREIL_DE_REFERENCE.width}×${APPAREIL_DE_REFERENCE.height} · ${langue} : ` +
+              `le premier chiffre est à ${pli.plainte.haut} px, SOUS le pli.\n      ` +
+              pli.plainte.avant.map((b) => `${String(b.hauteur).padStart(4)} px  ${b.texte}`).join('\n      ') +
+              "\n   Rien ne déborde et rien ne défile de travers : c'est de la place PRISE. " +
+              'Sur ce téléphone, le lecteur ouvre son parc et ne voit pas un seul chiffre.',
+          )
+        }
         for (const largeur of LARGEURS) {
           if (largeur !== LARGEURS.at(-1)) {
             await page.setViewportSize({ width: largeur, height: 900 })
@@ -920,6 +1020,26 @@ if (pointsFermesMesures !== FERMES_ATTENDUS) {
  * plancher est fixé à 30, largement dessous : un écran qui se remplit ne doit
  * pas faire rougir cette garde, une sonde qui casse doit.
  */
+/**
+ * GARDE DU GARDE — la règle du pli a-t-elle jugé quelque chose ?
+ *
+ * Elle sort sans plainte par trois chemins : pas de `<main>`, aucun indicateur,
+ * ou un chiffre au-dessus du pli. Les deux premiers sont indistinguables d'un
+ * sélecteur cassé, et la règle NAÎT VERTE — elle n'a donc aucun rouge pour
+ * prouver qu'elle regarde. Le compte est la seule chose qui l'atteste.
+ *
+ * Relevé à l'écriture : 62 écrans portent un chiffre — sur 336 points, la plupart
+ * des écrans n'en portent aucun. Plancher à 40.
+ */
+const PLIS_ATTENDUS = 40
+if (plisInspectes < PLIS_ATTENDUS) {
+  plaintes.push(
+    `la règle du pli n'a jugé que ${plisInspectes} écran(s) portant un chiffre pour ` +
+      `${PLIS_ATTENDUS} attendus au moins. Une garde née verte qui cesse de regarder rend le ` +
+      'même vert : ce compte, et lui seul, les sépare.',
+  )
+}
+
 const ETATS_VIDES_ATTENDUS = 30
 if (etatsVidesInspectes < ETATS_VIDES_ATTENDUS) {
   plaintes.push(
@@ -942,5 +1062,6 @@ console.log(
     `${LANGUES.length} langues.\n` +
     `  ${FERMES_ATTENDUS} refus vérifiés dans les deux directions.\n` +
     `  ${etatsVidesInspectes} état(s) vide(s) de page passé(s) sous la règle des zéros.\n` +
+    `  ${plisInspectes} écran(s) portant un chiffre jugé(s) au pli de 360×640.\n` +
     "  Cette porte ne dit RIEN du contraste, des cibles ni des modales — voir son en-tête.",
 )
