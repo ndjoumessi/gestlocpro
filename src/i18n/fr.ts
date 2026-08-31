@@ -717,6 +717,11 @@ export const fr = {
     },
 
     dashboard: {
+      /* SA VUE EST BORNÉE. Le FAIT, jamais son étendue : ni « 2 sur 3 », ni le
+         nom de ce qui est caché — le périmètre strict a été décidé ainsi. La
+         phrase dit ce qu'il faut pour ne pas lire ces chiffres comme ceux du
+         parc entier, et rien de plus. */
+      scopedNotice: 'Vous ne gérez qu’une partie de ce parc. Les chiffres de cet écran ne portent que sur les immeubles qui vous ont été confiés.',
       titleOwner: 'Vue consolidée du parc',
       titleManager: 'Ma journée de gestion',
       titleTenant: 'Mon espace locataire',

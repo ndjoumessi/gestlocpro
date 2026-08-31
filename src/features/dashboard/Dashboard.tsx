@@ -4,6 +4,7 @@ import { cn } from '@/lib/cn'
 import { Link, Navigate } from 'react-router-dom'
 import { useRole } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { Notice } from '@/components/primitives/Notice'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
 import { StatusPill } from '@/components/primitives/StatusPill'
@@ -38,6 +39,7 @@ export function Dashboard() {
     buildings: BUILDINGS,
     readings,
     collections: COLLECTIONS,
+    scoped,
     loading,
   } = usePortfolio()
   const [payOpen, setPayOpen] = useState(false)
@@ -284,6 +286,31 @@ export function Dashboard() {
           )
         }
       />
+
+      {/*
+        SA VUE EST BORNÉE, ET IL DOIT LE LIRE ICI — pas ailleurs.
+
+        Le périmètre par immeuble est STRICT : un gestionnaire à qui l'on a
+        confié deux immeubles sur trois ne voit ni le troisième ni ses chiffres.
+        Il lit donc un tableau de bord entièrement COHÉRENT — encaissé, impayés,
+        taux d'occupation, douze mois de graphique — qui ne porte que sur sa
+        part, sans que rien ne l'en avertisse.
+
+        Le risque n'est pas qu'il voie trop, c'est qu'il MÉSINTERPRÈTE ce qu'il
+        voit : « le parc a encaissé 1,2 million ce mois-ci » dit à un
+        propriétaire qui en attend le double. Un chiffre juste sur un périmètre
+        inconnu est plus dangereux qu'un chiffre absent.
+
+        SUR CET ÉCRAN-LÀ et pas sur les autres : c'est ici que vivent les
+        chiffres CONSOLIDÉS, donc ici que la mélecture coûte. Une liste de
+        logements bornée se lit sans danger — on y voit ce qu'on gère.
+
+        LE FAIT, JAMAIS SON ÉTENDUE. Ni « 2 sur 3 », ni le nom du troisième :
+        le périmètre strict a été décidé ainsi, et un compte suffirait à dire
+        qu'un troisième existe. Ce qui ne doit pas rester caché est qu'il y a
+        un périmètre, pas quelle est sa taille.
+      */}
+      {scoped && <Notice tone="neutral">{t('app.dashboard.scopedNotice')}</Notice>}
 
       {/*
         L'état vide REMPLACE les indicateurs, il ne s'y ajoute pas.

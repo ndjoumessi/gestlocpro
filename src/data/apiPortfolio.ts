@@ -200,6 +200,13 @@ interface PortefeuilleApi {
     /** Ce que les réserves de sortie justifieraient de retenir. */
     billableMinor: number
   }[]
+  /**
+   * LA VUE EST-ELLE BORNÉE ? — le FAIT, jamais son étendue.
+   *
+   * Facultatif : un serveur antérieur à ce lot ne le rend pas, et l'écran se
+   * tait alors plutôt que d'affirmer un périmètre qu'il ignore.
+   */
+  scoped?: boolean
 }
 
 export interface Immeuble {
@@ -209,6 +216,14 @@ export interface Immeuble {
 }
 
 export interface ParcCharge {
+  /**
+   * Ce parc n'est qu'une PART du parc réel — voir la route qui le rend.
+   *
+   * Le fait, jamais son étendue : ni compte ni nom de ce qui est caché. Il
+   * existe pour que le gestionnaire borné ne lise pas ses propres indicateurs
+   * comme ceux du parc entier.
+   */
+  scoped: boolean
   buildings: Immeuble[]
   units: Unit[]
   works: WorkOrder[]
@@ -292,6 +307,11 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
   }
 
   return {
+    /* `=== true` ET NON `!== false` : ici l'absence doit valoir « non borné ».
+       Un serveur qui ne rend pas le champ peindrait sinon tout le monde d'un
+       avertissement de restriction — l'inverse exact du repli de
+       `tenantHasAccount`, où l'absence vaut « reliée ». */
+    scoped: data.scoped === true,
     buildings,
     units,
     works: data.works.map((w) => ({

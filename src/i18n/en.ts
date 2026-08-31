@@ -556,6 +556,7 @@ export const en: Dictionary = {
     },
 
     dashboard: {
+      scopedNotice: 'You manage part of this portfolio. The figures on this screen cover only the buildings assigned to you.',
       titleOwner: 'Consolidated portfolio view',
       titleManager: 'My management day',
       titleTenant: 'My tenant space',

@@ -456,6 +456,18 @@ interface PortfolioContextValue {
   /** `true` quand les données viennent du serveur et non du jeu local. */
   fromApi: boolean
   /**
+   * CE PARC N'EST QU'UNE PART DU PARC RÉEL.
+   *
+   * `true` pour un gestionnaire à qui l'on n'a confié qu'une partie des
+   * immeubles. Les listes ET les indicateurs de tous les écrans ne portent alors
+   * que sur sa part — cohérents, justes, et incomplets sans que rien ne le dise.
+   *
+   * Le FAIT, jamais son étendue : ni compte, ni nom de ce qui est caché. Le
+   * périmètre est strict, et il le reste ; ce qui ne doit pas rester caché est
+   * qu'il y en a un.
+   */
+  scoped: boolean
+  /**
    * `true` tant que le parc du SERVEUR est en vol.
    *
    * Il manquait, et son absence ne se lisait pas comme un manque : les écrans
@@ -572,6 +584,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   const [deposits, setDeposits] = useState<Deposit[]>(initial.deposits)
   const [stored, setStored] = useState(hasStoredState)
   const [fromApi, setFromApi] = useState(false)
+  /* Faux tant qu'on n'a pas lu : la démonstration n'a pas de périmètre, et un
+     `true` par défaut peindrait un avertissement sur un parc entier. */
+  const [scoped, setScoped] = useState(false)
   const [echecDuParc, setEchecDuParc] = useState<EchecDuParc | null>(null)
   /**
    * Incrémenté par une reprise, et LU par l'effet de chargement.
@@ -766,6 +781,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       )
       setDocumentRequests(parc.documentRequests)
       setLeases(parc.leases)
+      setScoped(parc.scoped)
       setFromApi(true)
       setEchecDuParc(null)
       // Posé APRÈS l'écriture, et seulement en cas de succès : un échec laisse
@@ -1670,6 +1686,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       reset,
       hasChanges: stored,
       fromApi,
+      scoped,
       loading,
       echecDuParc,
       reprendreLeParc,
@@ -1724,6 +1741,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       alerts,
       collections,
       fromApi,
+      scoped,
       loading,
       echecDuParc,
       reprendreLeParc,

@@ -962,6 +962,25 @@ parksRouter.get(
     }
 
     res.json({
+      /**
+       * SA VUE EST-ELLE BORNÉE ? — le FAIT, jamais son étendue.
+       *
+       * Le périmètre est strict : un gestionnaire à qui l'on a confié deux
+       * immeubles sur trois ne voit ni le troisième ni ses chiffres. Il lit donc
+       * un tableau de bord entièrement COHÉRENT — encaissé, impayés, taux
+       * d'occupation — qui ne porte que sur sa part, sans que rien ne l'en
+       * avertisse. Le risque n'est pas qu'il voie trop : c'est qu'il annonce
+       * « le parc a encaissé 1,2 million » à un propriétaire qui en attend le
+       * double. Un chiffre juste sur un périmètre inconnu est plus dangereux
+       * qu'un chiffre absent.
+       *
+       * UN BOOLÉEN, ET RIEN D'AUTRE. Pas de compte — « 2 sur 3 » dirait qu'un
+       * troisième immeuble existe —, pas de nom, pas de chiffre de ce qui lui
+       * est caché. C'est la ligne exacte que le périmètre strict autorise :
+       * cacher la DONNÉE sans cacher le FAIT, parce que le fait est ce qui
+       * l'empêche de lire ses propres chiffres de travers.
+       */
+      scoped: req.adhesion!.immeubles !== null,
       collections: [...parPeriode.values()].sort(
         (a, b) => a.year - b.year || a.month - b.month,
       ),

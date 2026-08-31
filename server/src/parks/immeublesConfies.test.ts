@@ -283,6 +283,74 @@ describe('le geste de confier', () => {
   })
 })
 
+describe('le gestionnaire borné SAIT qu’il l’est', () => {
+  /**
+   * ═══ POURQUOI LE PRODUIT DOIT LE DIRE ═══
+   *
+   * Le périmètre est STRICT : il ne voit ni les immeubles qu'on ne lui a pas
+   * confiés, ni leurs chiffres. Il lit donc un tableau de bord entièrement
+   * cohérent — encaissé, impayés, taux d'occupation — qui ne porte que sur SA
+   * part, sans que rien ne l'en avertisse.
+   *
+   * Le risque n'est pas qu'il voie trop, c'est qu'il MÉSINTERPRÈTE ce qu'il
+   * voit : « le parc a encaissé 1,2 million ce mois-ci » dit à un propriétaire
+   * qui en attend le double. Un chiffre juste sur un périmètre inconnu est
+   * plus dangereux qu'un chiffre absent.
+   *
+   * ═══ CE QU'IL APPREND, ET CE QU'IL N'APPREND PAS ═══
+   *
+   * Le FAIT de la restriction, jamais son ÉTENDUE. Pas de compte — « 2 sur 3 »
+   * dirait qu'un troisième immeuble existe —, pas de nom, pas de chiffre de ce
+   * qui lui est caché. Un booléen, et rien d'autre.
+   *
+   * C'est la ligne exacte que le périmètre strict autorise : cacher la DONNÉE
+   * sans cacher le FAIT, parce que le fait est ce qui l'empêche de lire ses
+   * propres chiffres de travers.
+   */
+  it('lit dans son portefeuille que sa vue est bornée', async () => {
+    const { cookie, cookieGestion, parkId, confie, membershipId } = await parcADeuxImmeubles()
+    await confier(parkId, membershipId, cookie, [confie])
+
+    const vu = await portefeuille(parkId, cookieGestion)
+    expect(
+      vu.body.scoped,
+      'un chiffre juste sur un périmètre inconnu est pire qu’un chiffre absent',
+    ).toBe(true)
+  })
+
+  it('n’apprend NI le compte NI le nom de ce qu’on lui cache', async () => {
+    const { cookie, cookieGestion, parkId, confie, membershipId } = await parcADeuxImmeubles()
+    await confier(parkId, membershipId, cookie, [confie])
+
+    const vu = await portefeuille(parkId, cookieGestion)
+    const texte = JSON.stringify(vu.body)
+    expect(texte, 'le nom de l’immeuble gardé n’a rien à faire dans sa réponse').not.toContain(
+      'Résidence Gardée',
+    )
+    /* Le périmètre strict, tel qu'il a été décidé : « il ne sait pas que le 3e
+       immeuble existe ». Un compte le dirait. */
+    expect(Object.keys(vu.body)).not.toContain('parkBuildingCount')
+  })
+
+  it('ne le lit PAS quand rien ne le borne', async () => {
+    const { parkId, cookieGestion } = await parcADeuxImmeubles()
+
+    const vu = await portefeuille(parkId, cookieGestion)
+    expect(
+      vu.body.scoped,
+      'l’annoncer à qui gère tout le parc ferait chercher une restriction inexistante',
+    ).toBe(false)
+  })
+
+  it('ne le lit jamais chez le propriétaire', async () => {
+    const { cookie, parkId, confie, membershipId } = await parcADeuxImmeubles()
+    await confier(parkId, membershipId, cookie, [confie])
+
+    const vu = await portefeuille(parkId, cookie)
+    expect(vu.body.scoped).toBe(false)
+  })
+})
+
 describe('le propriétaire, lui, n’est jamais borné', () => {
   it('voit les deux immeubles quoi qu’il ait confié À UN AUTRE', async () => {
     const { cookie, parkId, confie, membershipId } = await parcADeuxImmeubles()

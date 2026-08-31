@@ -159,6 +159,21 @@ const REGISTRE = {
   'auth.reset.invalidBody': { adresse: '/reinitialiser' },
 
   /* ── Les aveux, et leur motif ── */
+  'app.dashboard.scopedNotice': {
+    nonMesurable:
+      'Elle ne paraît qu’à un gestionnaire dont l’adhésion porte un PÉRIMÈTRE ' +
+      'd’immeubles, lu sur le portefeuille du serveur. La démonstration n’a ni ' +
+      'adhésion ni serveur — `scoped` y vaut faux par construction, et le forcer ' +
+      'à vrai peindrait un avertissement de restriction sur un parc entier, ce ' +
+      'qui est l’exact contraire de ce que la note dit. ' +
+      'ELLE N’EST PAS POUR AUTANT NON PEINTE : `espace-connecte` monte un vrai ' +
+      'serveur et confie UN immeuble sur deux à son gestionnaire de sonde. MESURÉ ' +
+      'sur ce lot, sonde temporaire dans son balayage : la note est peinte sur ' +
+      '`/app` pour le GESTIONNAIRE dans les deux langues, et pour lui seul — le ' +
+      'propriétaire et le locataire rendent faux. Ses règles de rendu et de ' +
+      'gabarit la tiennent donc. C’est ce script-ci qui ne peut pas l’atteindre, ' +
+      'pas la porte au navigateur.',
+  },
   'app.onboarding.delegationOffNotice': {
     nonMesurable:
       'Elle ne paraît qu’à un propriétaire dont le parc porte `delegation: solo`, ' +
