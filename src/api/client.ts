@@ -537,6 +537,19 @@ export const api = {
     requete<void>(`/parks/${parkId}/invitations/${invitationId}/revoke`, { method: 'PATCH' }),
 
   /** Retire son accès à un membre. Réservé au propriétaire, et jamais le sien. */
+  /**
+   * Relie une fiche locataire à un compte déjà membre du parc.
+   *
+   * Le serveur porte les quatre refus — compte non membre, membre non
+   * locataire, fiche déjà reliée, compte déjà relié — et l'écran ne les redit
+   * pas : il ne propose que ce qui est reliable. Voir `relierLaFiche.test.ts`.
+   */
+  linkTenantAccount: (parkId: string, tenantId: string, userId: string) =>
+    requete<void>(`/parks/${parkId}/tenants/${tenantId}/compte`, {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    }),
+
   revokeMembership: (parkId: string, membershipId: string) =>
     requete<void>(`/parks/${parkId}/memberships/${membershipId}/revoke`, { method: 'PATCH' }),
 

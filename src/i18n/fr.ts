@@ -1474,6 +1474,7 @@ export const fr = {
       },
       actions: {
         access: {
+          link: 'Fiche locataire reliée à un compte',
           revoke: 'Accès repris',
         },
         deposit: {
@@ -1544,6 +1545,12 @@ export const fr = {
       role_owner: 'Propriétaire',
       role_manager: 'Gestionnaire',
       role_tenant: 'Locataire',
+      linkTenant: 'Relier à une fiche',
+      linkTitle: 'Relier {name} à sa fiche locataire',
+      linkBody: 'Ce compte accède au parc sans être rattaché à un bail : son espace reste vide. Choisissez la fiche qui lui correspond.',
+      linkField: 'Fiche locataire',
+      linkHint: 'Le logement est rappelé après le nom : c’est lui qui distingue deux fiches homonymes.',
+      linked: 'Fiche reliée · le locataire voit désormais son logement',
       revokeMember: 'Retirer l’accès',
       memberRevoked: 'Accès retiré',
       invitesTitle: 'Codes en attente',

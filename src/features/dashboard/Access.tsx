@@ -7,6 +7,8 @@ import { Button } from '@/components/primitives/Button'
 import { Icon } from '@/components/primitives/Icon'
 import { Notice } from '@/components/primitives/Notice'
 import { StatCard } from '@/components/primitives/Charts'
+import { Field } from '@/components/primitives/Field'
+import { Select } from '@/components/primitives/Input'
 import { Modal } from '@/components/primitives/Modal'
 import { StatusPill } from '@/components/primitives/StatusPill'
 import { SkeletonRegion, SkeletonTable } from '@/components/primitives/Skeleton'
@@ -65,6 +67,17 @@ export function Access() {
    * avant le geste, et de la même façon partout.
    */
   const [aRetirer, setARetirer] = useState<ARetirer | null>(null)
+  /**
+   * LE MEMBRE QU'ON S'APPRÊTE À RELIER À UNE FICHE.
+   *
+   * L'espace du locataire sans fiche lui dit de « demander à son propriétaire
+   * de relier sa fiche à ce compte » — un geste qui n'existait nulle part.
+   * Cet écran est le seul d'où l'anomalie se VOIT : il dit qui accède, et le
+   * défaut est qu'une personne accède sans être reliée.
+   */
+  const [aRelier, setARelier] = useState<MembreApi | null>(null)
+  /** La fiche choisie dans la modale ; la première par défaut. */
+  const [ficheChoisie, setFicheChoisie] = useState('')
 
   const charger = useCallback(async () => {
     /**
@@ -136,6 +149,10 @@ export function Access() {
 
   const estProprietaire = role === 'owner'
   const membres = registre?.members ?? []
+  /* Les fiches sans compte, telles que le serveur les rend. `?? []` : un
+     serveur antérieur à ce lot ne rend pas le champ, et l'écran se contente
+     alors de ne rien proposer plutôt que de tomber. */
+  const fichesLibres = registre?.unlinkedTenants ?? []
   const invitations = registre?.invitations ?? []
 
   if (chargement) return <RegistreEnChargement />
@@ -268,15 +285,35 @@ export function Access() {
                     refuse partout ailleurs — et peindrait en danger une colonne
                     entière qu'on ne fait que lire, la plupart du temps.
                   */
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon="close"
-                    loading={enCours === m.id}
-                    onClick={() => setARetirer({ genre: 'membre', membre: m })}
-                  >
-                    {t('app.access.revokeMember')}
-                  </Button>
+                  <div className="flex items-center justify-end gap-1">
+                    {/* LE GESTE DE RÉPARATION VIENT EN PREMIER, et il est
+                        SECONDAIRE de ton : il rend un accès plutôt que de le
+                        reprendre, et il ne s'affiche que sur la seule rangée
+                        où il a un objet — un locataire membre dont aucune fiche
+                        ne porte le compte. Sur les autres, l'offrir
+                        proposerait de réécrire un lien existant, ce que le
+                        serveur refuse en 409. */}
+                    {m.role === 'tenant' && !m.tenantId && fichesLibres.length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon="users"
+                        loading={enCours === m.id}
+                        onClick={() => setARelier(m)}
+                      >
+                        {t('app.access.linkTenant')}
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon="close"
+                      loading={enCours === m.id}
+                      onClick={() => setARetirer({ genre: 'membre', membre: m })}
+                    >
+                      {t('app.access.revokeMember')}
+                    </Button>
+                  </div>
                 )
               },
             },
@@ -370,6 +407,64 @@ export function Access() {
           à droite. Deux motifs de confirmation feraient de la question posée
           avant un geste irréversible une affaire de goût, et le second finirait
           par s'en passer. */}
+      {/* RELIER N'EST PAS UNE ALERTE. Le retrait d'un accès est irréversible et
+          porte `role="alertdialog"` ; celui-ci DONNE un accès et se défait —
+          il suffit de retirer l'adhésion. Une modale ordinaire, donc, et un
+          bouton primaire plutôt que rouge. */}
+      {aRelier && (
+        <Modal
+          open
+          onClose={() => setARelier(null)}
+          size="sm"
+          title={t('app.access.linkTitle', { name: aRelier.fullName })}
+          description={t('app.access.linkBody')}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setARelier(null)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                onClick={() => {
+                  const membre = aRelier
+                  const ficheId = ficheChoisie || fichesLibres[0]?.id
+                  setARelier(null)
+                  if (!ficheId) return
+                  /* Même geste que les autres : `agir` relit le registre après
+                     coup, plutôt que de retoucher la liste en mémoire. Le lien
+                     change DEUX lignes — la fiche disparaît des libres, le
+                     membre cesse d'être orphelin — et les recalculer à la main
+                     divergerait au premier écran ouvert en double. */
+                  void agir(
+                    membre.id,
+                    () => api.linkTenantAccount(parkId!, ficheId, membre.userId),
+                    t('app.access.linked'),
+                  )
+                }}
+              >
+                {t('app.access.linkTenant')}
+              </Button>
+            </>
+          }
+        >
+          <Field label={t('app.access.linkField')} hint={t('app.access.linkHint')}>
+            {(props) => (
+              <Select
+                {...props}
+                name="tenantId"
+                value={ficheChoisie || fichesLibres[0]?.id || ''}
+                onChange={(e) => setFicheChoisie(e.target.value)}
+              >
+                {fichesLibres.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.unitLabel ? `${f.fullName} — ${f.unitLabel}` : f.fullName}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+        </Modal>
+      )}
+
       {aRetirer && (
         <Modal
           open
@@ -456,9 +551,30 @@ function enParties(iso: string) {
 interface MembreApi {
   id: string
   role: 'owner' | 'manager' | 'tenant'
+  /** Le COMPTE, distinct de l'adhésion : c'est lui qu'on relie à une fiche. */
+  userId: string
+  /** Sa fiche locataire DANS CE PARC, ou `null` — voir `FicheOrphelineApi`. */
+  tenantId: string | null
   fullName: string
   email: string
   since: string
+}
+
+/**
+ * Une fiche locataire QUE PERSONNE N'HABITE — au sens du compte.
+ *
+ * Elle porte un bail, des quittances, des relevés, et aucun compte ne les voit.
+ * L'espace du locataire concerné affiche « aucun logement rattaché à votre
+ * compte » et lui dit de demander au propriétaire de relier sa fiche : ce geste
+ * n'existait nulle part avant ce lot.
+ *
+ * `unitLabel` est indispensable au choix, et non décoratif : deux locataires
+ * peuvent porter le même nom, jamais le même bail actif.
+ */
+interface FicheOrphelineApi {
+  id: string
+  fullName: string
+  unitLabel: string | null
 }
 
 interface InvitationApi {
@@ -474,6 +590,9 @@ interface InvitationApi {
 interface RegistreApi {
   members: MembreApi[]
   invitations: InvitationApi[]
+  /** Facultatif : un serveur antérieur à ce lot ne le rend pas, et l'écran se
+      contente alors de ne rien proposer plutôt que de tomber. */
+  unlinkedTenants?: FicheOrphelineApi[]
 }
 
 function RegistreEnChargement() {

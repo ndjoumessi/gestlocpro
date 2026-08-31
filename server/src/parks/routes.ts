@@ -2560,7 +2560,7 @@ parksRouter.get(
     const { parkId } = req.adhesion!
     const maintenant = new Date()
 
-    const [membres, invitations] = await Promise.all([
+    const [membres, invitations, fichesOrphelines] = await Promise.all([
       prisma.membership.findMany({
         where: { parkId, status: 'active' },
         // `ParkRole` est déclaré `owner, manager, tenant` : PostgreSQL trie ses
@@ -2572,7 +2572,19 @@ parksRouter.get(
           id: true,
           role: true,
           createdAt: true,
-          user: { select: { fullName: true, email: true } },
+          userId: true,
+          /* LA FICHE DE CE COMPTE DANS CE PARC, s'il en a une.
+             Le registre disait qui accède ; il ne disait pas qui est RELIÉ. Un
+             locataire membre sans fiche voit un espace vide, et l'écran qui
+             administre les accès était le seul endroit d'où l'on pouvait s'en
+             apercevoir — il ne le montrait pas. */
+          user: {
+            select: {
+              fullName: true,
+              email: true,
+              tenantProfile: { select: { id: true, parkId: true } },
+            },
+          },
         },
       }),
       prisma.invitation.findMany({
@@ -2587,15 +2599,50 @@ parksRouter.get(
           unit: { select: { id: true, label: true } },
         },
       }),
+      /**
+       * LES FICHES SANS COMPTE, avec le logement qui les situe.
+       *
+       * Sans cette liste, l'écran des accès n'a rien à proposer : il verrait un
+       * membre non relié et ne saurait pas à QUOI le relier. Le logement est
+       * indispensable au choix — deux locataires peuvent porter le même nom de
+       * famille, jamais le même bail actif.
+       */
+      prisma.tenant.findMany({
+        where: { parkId, userId: null },
+        orderBy: { fullName: 'asc' },
+        select: {
+          id: true,
+          fullName: true,
+          leases: {
+            where: { status: { in: ['active', 'pending'] } },
+            orderBy: { startsOn: 'desc' },
+            take: 1,
+            select: { unit: { select: { label: true } } },
+          },
+        },
+      }),
     ])
 
     res.json({
       members: membres.map((m) => ({
         id: m.id,
         role: m.role,
+        userId: m.userId,
         fullName: m.user.fullName,
         email: m.user.email,
+        /* `null` quand le compte n'a pas de fiche DANS CE PARC : `Tenant.userId`
+           est unique sur toute la base, donc une fiche d'un autre parc ne
+           compterait pas ici — et la montrer laisserait croire à un lien. */
+        tenantId:
+          m.user.tenantProfile && m.user.tenantProfile.parkId === parkId
+            ? m.user.tenantProfile.id
+            : null,
         since: m.createdAt.toISOString(),
+      })),
+      unlinkedTenants: fichesOrphelines.map((f) => ({
+        id: f.id,
+        fullName: f.fullName,
+        unitLabel: f.leases[0]?.unit.label ?? null,
       })),
       /**
        * `codeHint` et JAMAIS le code : seule son empreinte est en base, et
@@ -2613,6 +2660,126 @@ parksRouter.get(
         unitLabel: i.unit?.label ?? null,
       })),
     })
+  },
+)
+
+/**
+ * RELIER UNE FICHE LOCATAIRE À UN COMPTE DÉJÀ MEMBRE.
+ *
+ * ═══ UNE PROMESSE QUI N'AVAIT AUCUN MÉCANISME ═══
+ *
+ * L'espace du locataire sans fiche affiche, mot pour mot : « Demandez à votre
+ * propriétaire ou à votre gestionnaire de relier votre fiche locataire à ce
+ * compte. » Ce geste n'existait nulle part — ni route, ni écran. Le produit
+ * envoyait le locataire réclamer une action introuvable, ce qui est pire que de
+ * se taire : il fait douter celui qui cherche.
+ *
+ * Le cas se produit dès qu'un compte rejoint le parc AVANT que sa fiche existe
+ * — invitation sans logement, puis création de la fiche, exactement le parcours
+ * que l'aide du champ d'invitation recommande — et pour tous ceux entrés avant
+ * que la consommation d'un code ne rattache quoi que ce soit.
+ *
+ * ═══ QUATRE REFUS, ET AUCUN N'EST DÉCORATIF ═══
+ *
+ * Relier donne la vue d'un bail, de ses quittances et de ses relevés. Un lien
+ * posé sur la mauvaise personne ouvre les données d'un locataire à un autre,
+ * en silence. C'est la faute la plus grave que cet écran puisse commettre.
+ *
+ *  1. LE COMPTE DOIT ÊTRE MEMBRE ACTIF DE CE PARC. Sans quoi un identifiant
+ *     deviné ouvrirait un bail à n'importe quel compte du produit. 404 : hors
+ *     du parc, ce compte n'existe pas pour cet appelant.
+ *  2. IL DOIT ÊTRE LOCATAIRE. Un propriétaire relié à une fiche deviendrait le
+ *     locataire de son propre parc — `unitesVisibles` le bornerait à ce seul
+ *     logement, et il perdrait la vue d'ensemble sans comprendre pourquoi.
+ *  3. LA FICHE DOIT ÊTRE LIBRE. Réécrire un lien retirerait son espace à la
+ *     personne qui l'avait, sans que rien ne le lui dise.
+ *  4. LE COMPTE NE DOIT PAS DÉJÀ AVOIR UNE FICHE. `Tenant.userId` est unique
+ *     sur toute la base : sans ce contrôle, Prisma lèverait un P2002 rendu en
+ *     500 nu sur un geste ordinaire.
+ *
+ * `exigerRole('owner', 'manager')` ferme le cinquième, qui est le pire : se
+ * relier soi-même à la fiche de son choix.
+ *
+ * ═══ POURQUOI CE N'EST PAS UN `PATCH /tenants/:id` ═══
+ *
+ * `PATCH` sur la fiche dirait « on corrige un champ ». Ce n'est pas un champ,
+ * c'est un ACCÈS accordé : la même nature que l'émission d'un code, et le
+ * registre des décisions le porte comme tel.
+ */
+parksRouter.post(
+  '/:parkId/tenants/:tenantId/compte',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const brut = req.params.tenantId
+    const tenantId = typeof brut === 'string' ? brut : ''
+    const { userId } = z.object({ userId: z.string().uuid() }).parse(req.body)
+
+    /* `parkId` DANS le filtre : un identifiant deviné relierait sinon la fiche
+       d'un parc voisin, et le 404 dit la même chose qu'une fiche absente. */
+    const fiche = await prisma.tenant.findFirst({
+      where: { id: tenantId, parkId },
+      select: { id: true, userId: true },
+    })
+    if (!fiche) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const adhesion = await prisma.membership.findFirst({
+      where: { userId, parkId, status: 'active' },
+      select: { role: true },
+    })
+    if (!adhesion) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+    if (adhesion.role !== 'tenant') {
+      res.status(409).json({ error: 'not_a_tenant' })
+      return
+    }
+
+    if (fiche.userId) {
+      res.status(409).json({ error: 'already_linked' })
+      return
+    }
+
+    const dejaLocataire = await prisma.tenant.findFirst({
+      where: { userId },
+      select: { id: true },
+    })
+    if (dejaLocataire) {
+      res.status(409).json({ error: 'account_already_linked' })
+      return
+    }
+
+    /* `userId: null` DANS l'écriture, et non seulement dans la lecture qui
+       précède : entre les deux, un autre écran peut avoir relié la même fiche.
+       Le compteur à zéro rend alors le même 409 qu'une fiche déjà reliée. */
+    const { count } = await prisma.tenant.updateMany({
+      where: { id: fiche.id, userId: null },
+      data: { userId },
+    })
+    if (count === 0) {
+      res.status(409).json({ error: 'already_linked' })
+      return
+    }
+
+    /* DONNER UN ACCÈS EST UNE DÉCISION, au même titre que le reprendre — voir
+       `access.revoke`, qui porte le geste inverse dans le même registre. */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'access.link',
+        entity: 'Tenant',
+        entityId: fiche.id,
+        payload: { userId },
+      },
+    })
+
+    res.status(204).end()
   },
 )
 

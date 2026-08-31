@@ -1109,6 +1109,7 @@ export const en: Dictionary = {
       },
       actions: {
         access: {
+          link: 'Tenant record linked to an account',
           revoke: 'Access revoked',
         },
         deposit: {
@@ -1176,6 +1177,12 @@ export const en: Dictionary = {
       role_owner: 'Owner',
       role_manager: 'Manager',
       role_tenant: 'Tenant',
+      linkTenant: 'Link to a record',
+      linkTitle: 'Link {name} to their tenant record',
+      linkBody: 'This account reaches the portfolio without being attached to a lease, so its space stays empty. Pick the matching record.',
+      linkField: 'Tenant record',
+      linkHint: 'The unit follows the name: that is what tells two identical names apart.',
+      linked: 'Record linked · the tenant now sees their unit',
       revokeMember: 'Remove access',
       memberRevoked: 'Access removed',
       invitesTitle: 'Pending codes',

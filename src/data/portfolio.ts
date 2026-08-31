@@ -284,6 +284,8 @@ export const ACCES_DEMO = {
     {
       id: 'demo-membre-1',
       role: 'owner' as const,
+      userId: 'demo-compte-1',
+      tenantId: null,
       fullName: 'Arsène Nkolo',
       email: 'arsene@example.com',
       since: '2024-03-04',
@@ -291,18 +293,27 @@ export const ACCES_DEMO = {
     {
       id: 'demo-membre-2',
       role: 'manager' as const,
+      userId: 'demo-compte-2',
+      tenantId: null,
       fullName: 'Diane Fotso',
       email: 'diane@example.com',
       since: '2025-01-15',
     },
     {
+      /* LE LOCATAIRE DE LA DÉMONSTRATION EST RELIÉ à sa fiche, et c'est le cas
+         nominal : la démonstration montre un produit qui fonctionne, pas une
+         anomalie à réparer. Le geste « relier à une fiche » n'y apparaît donc
+         pas — il n'y a rien à relier, `unlinkedTenants` est vide. */
       id: 'demo-membre-3',
       role: 'tenant' as const,
+      userId: 'demo-compte-3',
+      tenantId: 'loc-A1',
       fullName: 'Charles Ngassa',
       email: 'charles@example.com',
       since: '2024-06-15',
     },
   ],
+  unlinkedTenants: [],
   invitations: [
     {
       id: 'demo-invitation-1',
