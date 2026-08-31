@@ -8,6 +8,7 @@ import { Icon } from '@/components/primitives/Icon'
 import { Notice } from '@/components/primitives/Notice'
 import { StatCard } from '@/components/primitives/Charts'
 import { Field } from '@/components/primitives/Field'
+import { Checkbox } from '@/components/primitives/Choice'
 import { Select } from '@/components/primitives/Input'
 import { Modal } from '@/components/primitives/Modal'
 import { StatusPill } from '@/components/primitives/StatusPill'
@@ -123,6 +124,15 @@ export function Access() {
    */
   const [aDelier, setADelier] = useState<MembreApi | null>(null)
   /**
+   * LE PÉRIMÈTRE EN COURS D'ÉDITION, et la sélection qui l'accompagne.
+   *
+   * La sélection est un `Set` recopié à l'ouverture plutôt que dérivé du membre
+   * à chaque rendu : on édite un brouillon, et `Annuler` doit vraiment annuler.
+   * Dérivée, une case cochée aurait écrit dans le registre avant tout envoi.
+   */
+  const [aConfier, setAConfier] = useState<MembreApi | null>(null)
+  const [choixImmeubles, setChoixImmeubles] = useState<Set<string>>(new Set())
+  /**
    * L'ÉMISSION D'UN CODE, ENFIN SUR L'ÉCRAN QUI PARLE DES CODES.
    *
    * « Inviter par code » n'existait que sur le fichier des locataires. Le choix
@@ -215,6 +225,10 @@ export function Access() {
      alors de ne rien proposer plutôt que de tomber. */
   const fichesLibres = registre?.unlinkedTenants ?? []
   const invitations = registre?.invitations ?? []
+  /* Les immeubles du parc, tels que le registre les rend. `?? []` pour la même
+     raison que les fiches libres : un serveur d'avant ce lot n'en rend aucun, et
+     l'écran ne propose alors pas un geste qu'il ne saurait pas remplir. */
+  const immeublesDuParc = registre?.buildings ?? []
 
   if (chargement) return <RegistreEnChargement />
   // L'ordre compte : sans parc, aucune lecture n'a eu lieu, donc aucun échec à
@@ -319,6 +333,30 @@ export function Access() {
                       les deux chaînes.
 
                       UNE QUESTION, PAS UN VERDICT : voir `memePersonne`. */}
+                  {/* SUR QUOI IL A LA MAIN — et le registre ne le disait pas.
+
+                      Il disait qui accède, et depuis le lot précédent à quelle
+                      fiche il est relié. Sur QUOI, jamais : un gestionnaire
+                      borné à un immeuble sur trois y figurait exactement comme
+                      celui qui les gère tous.
+
+                      La ligne n'apparaît que pour le gestionnaire : le
+                      propriétaire n'est jamais borné, et écrire « tout le parc »
+                      sur sa rangée affirmerait un réglage là où il n'y a
+                      qu'une évidence. Le locataire, lui, est borné par son
+                      bail — une autre règle, qui ne se dit pas en immeubles. */}
+                  {m.role === 'manager' && (
+                    <span className="text-body text-muted">
+                      {(m.buildingIds ?? []).length === 0
+                        ? t('app.access.scopeAll')
+                        : t('app.access.scopeSome', {
+                            names: immeublesDuParc
+                              .filter((i) => (m.buildingIds ?? []).includes(i.id))
+                              .map((i) => i.name)
+                              .join(', '),
+                          })}
+                    </span>
+                  )}
                   {m.tenantName && !memePersonne(m.fullName, m.tenantName) && (
                     <span className="mt-1 flex">
                       <StatusPill tone="warn" size="sm">
@@ -405,6 +443,30 @@ export function Access() {
                         ne porte le compte. Sur les autres, l'offrir
                         proposerait de réécrire un lien existant, ce que le
                         serveur refuse en 409. */}
+                    {/* CONFIER, et ce geste n'existait nulle part.
+
+                        `Park.delegation` valait `solo` ou `delegate` : tout ou
+                        rien sur le parc entier. Confier le premier immeuble à un
+                        cabinet lui ouvrait les trois — baux, loyers, impayés et
+                        cautions de logements dont il n'a jamais entendu parler.
+
+                        Il ne s'affiche que s'il y a de quoi choisir : un parc
+                        d'un seul immeuble n'a rien à répartir, et proposer le
+                        geste y ferait promettre une finesse qui n'existe pas. */}
+                    {m.role === 'manager' && immeublesDuParc.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon="building"
+                        loading={enCours === m.id}
+                        onClick={() => {
+                          setAConfier(m)
+                          setChoixImmeubles(new Set(m.buildingIds ?? []))
+                        }}
+                      >
+                        {t('app.access.scopeAction')}
+                      </Button>
+                    )}
                     {m.role === 'tenant' && !m.tenantId && fichesLibres.length > 0 && (
                       <Button
                         variant="ghost"
@@ -602,6 +664,70 @@ export function Access() {
           porte `role="alertdialog"` ; celui-ci DONNE un accès et se défait —
           il suffit de retirer l'adhésion. Une modale ordinaire, donc, et un
           bouton primaire plutôt que rouge. */}
+      {/*
+        CONFIER DES IMMEUBLES — des cases, et non un choix unique.
+
+        Un gestionnaire peut en tenir deux sur trois : un `Select` ne saurait
+        pas l'exprimer, et une liste de cases dit exactement ce que le serveur
+        attend — la liste ENTIÈRE, jamais un ajout.
+
+        AUCUNE CASE COCHÉE EST UNE VALEUR, pas un formulaire vide : c'est ainsi
+        qu'on rend le parc entier. La note le dit à voix haute, parce que c'est
+        le seul endroit du produit où « rien de sélectionné » veut dire « tout »,
+        et que le deviner à l'envers retirerait un accès en croyant l'élargir.
+      */}
+      {aConfier && (
+        <Modal
+          open
+          onClose={() => setAConfier(null)}
+          size="sm"
+          title={t('app.access.scopeTitle', { name: aConfier.fullName })}
+          description={t('app.access.scopeBody')}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setAConfier(null)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                onClick={() => {
+                  const membre = aConfier
+                  const choisis = [...choixImmeubles]
+                  setAConfier(null)
+                  /* `agir` relit le registre après coup plutôt que de retoucher
+                     la liste en mémoire : le même geste que le lien, et pour la
+                     même raison — deux écrans ouverts divergeraient. */
+                  void agir(
+                    membre.id,
+                    () => api.setManagerBuildings(parkId!, membre.id, choisis),
+                    t('app.access.scopeSaved'),
+                  )
+                }}
+              >
+                {t('app.access.scopeSave')}
+              </Button>
+            </>
+          }
+        >
+          <div className="flex flex-col gap-3">
+            <Notice tone="neutral">{t('app.access.scopeEmptyMeansAll')}</Notice>
+            {immeublesDuParc.map((immeuble) => (
+              <Checkbox
+                key={immeuble.id}
+                label={immeuble.name}
+                hint={immeuble.district}
+                checked={choixImmeubles.has(immeuble.id)}
+                onChange={(e) => {
+                  const suivant = new Set(choixImmeubles)
+                  if (e.target.checked) suivant.add(immeuble.id)
+                  else suivant.delete(immeuble.id)
+                  setChoixImmeubles(suivant)
+                }}
+              />
+            ))}
+          </div>
+        </Modal>
+      )}
+
       {aRelier && (
         <Modal
           open
@@ -782,6 +908,16 @@ interface MembreApi {
   tenantUnitLabel?: string | null
   fullName: string
   email: string
+  /**
+   * LES IMMEUBLES CONFIÉS, ou une liste VIDE qui vaut « tout le parc ».
+   *
+   * Le sens du vide vient du modèle et non de l'écran : le lire à l'envers ici
+   * afficherait « aucun immeuble » à un gestionnaire qui les gère tous.
+   *
+   * Facultatif : un serveur antérieur à ce lot ne le rend pas, et l'écran se
+   * tait alors plutôt que d'affirmer un périmètre qu'il ignore.
+   */
+  buildingIds?: string[]
   since: string
 }
 
@@ -812,8 +948,17 @@ interface InvitationApi {
   unitLabel: string | null
 }
 
+/** Un immeuble du parc, tel que le registre le rend — pour CONFIER. */
+interface ImmeubleApi {
+  id: string
+  name: string
+  district: string
+}
+
 interface RegistreApi {
   members: MembreApi[]
+  /** Facultatif, même raison que `unlinkedTenants` : un serveur d'avant ce lot. */
+  buildings?: ImmeubleApi[]
   invitations: InvitationApi[]
   /** Facultatif : un serveur antérieur à ce lot ne le rend pas, et l'écran se
       contente alors de ne rien proposer plutôt que de tomber. */

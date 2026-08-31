@@ -262,6 +262,15 @@ const MODALES = [
     defilLarge: { 360: 0, 1280: 0 },
     avant: { 360: 0, 1280: 0 },
   },
+  /*
+    CONFIER DES IMMEUBLES — une liste de CASES, dont la hauteur suit le parc.
+
+    C'est la seule modale du produit dont le contenu grandit avec la donnée :
+    trois immeubles dans la démonstration, mais un parc réel en porte dix. Le
+    plafond de défilement ne dit donc pas qu'elle tiendra toujours ; il dit
+    qu'elle tient POUR CE PARC-LÀ, et c'est déjà ce que ce script promet.
+  */
+  { nom: 'ConfierImmeubles', adresse: '/demo/acces', bouton: /^Confier des immeubles$|^Assign buildings$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'Announce', adresse: '/demo/locataires', bouton: /^Prévenir les locataires$|^Notify tenants$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'Reply', adresse: '/demo/travaux', bouton: /^Répondre$|^Reply$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /* Le seul écran de la démonstration où le rôle change ce qui est rendu : la
@@ -465,10 +474,14 @@ const LANGUES = ['fr', 'en']
   72 → 76 (2026-08-31) : `InviteGestionnaire`, le SECOND état de la modale
   d'invitation. Ce n'est pas une modale de plus, c'est un état de plus dans une
   modale déjà tenue — le premier que ce script mesure grâce au geste `apres`.
+
+  76 → 80 (2026-08-31) : `ConfierImmeubles`, née avec la délégation par
+  immeuble. Elle vient à quatre états comme toute modale ordinaire — deux
+  largeurs, deux chasses.
   Une modale n'a pas un état, elle en a autant que ses champs, et le compte le
   dit maintenant.
 */
-const ATTENDUS = 76
+const ATTENDUS = 80
 const NON_OUVRABLES_ATTENDUES = 0
 
 /**

@@ -553,6 +553,20 @@ export const api = {
    * locataire, fiche déjà reliée, compte déjà relié — et l'écran ne les redit
    * pas : il ne propose que ce qui est reliable. Voir `relierLaFiche.test.ts`.
    */
+  /**
+   * LES IMMEUBLES CONFIÉS À UN GESTIONNAIRE — la liste ENTIÈRE, jamais un delta.
+   *
+   * Vide n'est pas une saisie incomplète : c'est ainsi qu'on DÉFAIT une
+   * délégation, et le serveur rend alors le parc entier. Le contrat est écrit
+   * là-bas, sur la route ; il est rappelé ici parce que l'appelant qui envoie
+   * `[]` doit savoir qu'il élargit et non qu'il ferme.
+   */
+  setManagerBuildings: (parkId: string, membershipId: string, buildingIds: string[]) =>
+    requete<{ buildingIds: string[] }>(`/parks/${parkId}/memberships/${membershipId}/immeubles`, {
+      method: 'PATCH',
+      body: JSON.stringify({ buildingIds }),
+    }),
+
   linkTenantAccount: (parkId: string, tenantId: string, userId: string) =>
     requete<void>(`/parks/${parkId}/tenants/${tenantId}/compte`, {
       method: 'POST',

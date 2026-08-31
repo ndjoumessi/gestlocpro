@@ -300,6 +300,19 @@ async function monterLeParc() {
   })
   const immeubleId = immeuble.corps.building.id
 
+  /* UN SECOND IMMEUBLE, et il n'est pas décoratif : le geste « confier des
+     immeubles » ne s'affiche qu'à partir de deux — un parc d'un seul n'a rien à
+     répartir. Sans lui, l'écran des accès ne rendrait jamais la moitié de ce
+     que ce lot y a posé. */
+  const second = await appeler(`/api/parks/${parkId}/buildings`, {
+    cookie,
+    corps: { name: 'Immeuble Akwa Nord', district: 'Akwa' },
+  })
+  await appeler(`/api/parks/${parkId}/buildings/${second.corps.building.id}/units`, {
+    cookie,
+    corps: { label: 'N1', type: 'T1', surfaceSqm: 34, baseRentMinor: 90000 },
+  })
+
   const creerLogement = async (label, loyer) =>
     (
       await appeler(`/api/parks/${parkId}/buildings/${immeubleId}/units`, {
@@ -389,6 +402,26 @@ async function monterLeParc() {
       urgency: 'normal',
       description: 'L’eau coule dès qu’on ouvre le robinet, une bassine par jour.',
     },
+  })
+
+  /**
+   * LE GESTIONNAIRE EST BORNÉ, et c'est l'état que ce balayage doit voir.
+   *
+   * Un gestionnaire à qui l'on a confié un immeuble sur deux lit des listes
+   * PARTIELLES sur chacun de ses écrans — et c'est exactement là qu'un écran
+   * casse : une liste vide, un indicateur qui divise par zéro, une carte dont
+   * la donnée n'est plus là. Le laisser sans périmètre mesurerait le cas le
+   * plus facile, celui que la démonstration montre déjà.
+   */
+  const adhesionDeGestion = await appeler(`/api/parks/${parkId}/access`, {
+    methode: 'GET',
+    cookie,
+  })
+  const sienne = adhesionDeGestion.corps.members.find((m) => m.role === 'manager')
+  await appeler(`/api/parks/${parkId}/memberships/${sienne.id}/immeubles`, {
+    methode: 'PATCH',
+    cookie,
+    corps: { buildingIds: [immeubleId] },
   })
 
   return {

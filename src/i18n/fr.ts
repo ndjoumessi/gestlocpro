@@ -1516,6 +1516,12 @@ export const fr = {
           link: 'Fiche locataire reliée à un compte',
           unlink: 'Fiche locataire déliée de son compte',
           revoke: 'Accès repris',
+          /* CONFIER OU REPRENDRE DES IMMEUBLES. Un seul libellé pour les deux
+             sens : le registre porte la LISTE dans sa charge utile, et écrire
+             « périmètre élargi » ou « restreint » demanderait de comparer avec
+             l'état d'avant, que le journal ne conserve pas. Le fait consigné
+             est le périmètre POSÉ, pas son écart avec le précédent. */
+          scope: 'Périmètre d’immeubles confié',
         },
         deposit: {
           settle: 'Caution arbitrée',
@@ -1593,6 +1599,17 @@ export const fr = {
       /* LES NOMS QUI DIVERGENT. Une QUESTION, jamais un verdict : un nom
          d'épouse, une société qui loue pour un salarié, un diminutif. */
       nameMismatch: 'Le nom ne correspond pas',
+      /* CONFIER UN IMMEUBLE. « Tout le parc » est l'état par défaut d'un
+         gestionnaire, et non une alerte : le libellé le CONSTATE, il ne le
+         reproche pas. C'est le propriétaire qui décide de restreindre. */
+      scopeAll: 'Gère tout le parc',
+      scopeSome: 'Gère : {names}',
+      scopeAction: 'Confier des immeubles',
+      scopeTitle: 'Immeubles confiés à {name}',
+      scopeBody: 'Ce gestionnaire ne verra que les immeubles cochés : leurs baux, leurs loyers et leurs cautions.',
+      scopeEmptyMeansAll: 'Aucune case cochée lui rend le parc entier. C’est ainsi qu’on défait une délégation.',
+      scopeSave: 'Confier',
+      scopeSaved: 'Périmètre enregistré',
       linkMismatch:
         'Le compte de {compte} et la fiche de {fiche} ne portent pas le même nom. Vérifiez qu’il s’agit bien de la même personne : ce compte verra ce bail, ses quittances et ses relevés.',
       unlinkTitle: 'Délier la fiche de {name} ?',

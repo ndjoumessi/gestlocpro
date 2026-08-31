@@ -16,6 +16,7 @@ import {
   exigerCompte,
   exigerRole,
   unitesVisibles,
+  porteeDesImmeubles,
 } from '../auth/guards.js'
 import { leStockage } from '../stockage/stockage.js'
 import { PLAFOND_PAR_OBJET_OCTETS } from '../stockage/contrat.js'
@@ -387,11 +388,15 @@ parksRouter.get(
   exigerAppartenance,
   async (req: Request, res: Response) => {
     const { parkId, role } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête et jamais après lecture :
+       un gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
+       pouvoir RAMENER les deux autres, fût-ce pour les filtrer ensuite. */
+    const perimetre = porteeDesImmeubles(req.adhesion!)
     const visibles = await unitesVisibles(parkId, req.compteId!, role)
     const aujourdhui = new Date()
 
     const immeubles = await prisma.building.findMany({
-      where: { parkId },
+      where: { parkId, ...perimetre },
       orderBy: { name: 'asc' },
       select: {
         id: true,
@@ -517,7 +522,7 @@ parksRouter.get(
       tarifs,
     ] = await Promise.all([
       prisma.workOrder.findMany({
-        where: { unit: { building: { parkId } }, ...(filtreUnite ? { unitId: filtreUnite } : {}) },
+        where: { unit: { building: { parkId, ...perimetre } }, ...(filtreUnite ? { unitId: filtreUnite } : {}) },
         orderBy: { reportedAt: 'desc' },
         select: {
           id: true,
@@ -547,7 +552,7 @@ parksRouter.get(
       }),
       prisma.deposit.findMany({
         where: {
-          lease: { unit: { building: { parkId } }, ...(filtreUnite ? { unitId: filtreUnite } : {}) },
+          lease: { unit: { building: { parkId, ...perimetre } }, ...(filtreUnite ? { unitId: filtreUnite } : {}) },
         },
         select: {
           id: true,
@@ -582,13 +587,13 @@ parksRouter.get(
         },
       }),
       prisma.meterReading.findMany({
-        where: { unit: { building: { parkId } }, ...(filtreUnite ? { unitId: filtreUnite } : {}) },
+        where: { unit: { building: { parkId, ...perimetre } }, ...(filtreUnite ? { unitId: filtreUnite } : {}) },
         orderBy: [{ unitId: 'asc' }, { utility: 'asc' }, { periodStart: 'desc' }],
         select: { id: true, unitId: true, utility: true, periodStart: true, indexValue: true, readAt: true },
       }),
       prisma.inspection.findMany({
         where: {
-          unit: { building: { parkId } },
+          unit: { building: { parkId, ...perimetre } },
           ...(filtreUnite ? { unitId: filtreUnite } : {}),
           /**
            * Le locataire ne lit QUE les états des lieux de son bail — ou ceux
@@ -736,7 +741,7 @@ parksRouter.get(
       prisma.rentCharge.findMany({
         where: {
           lease: {
-            unit: { building: { parkId } },
+            unit: { building: { parkId, ...perimetre } },
             ...(filtreUnite ? { unitId: filtreUnite } : {}),
             /**
              * Le cloisonnement du locataire porte sur le BAIL, et non sur
@@ -798,7 +803,7 @@ parksRouter.get(
       prisma.documentRequest.findMany({
         where: {
           lease: {
-            unit: { building: { parkId } },
+            unit: { building: { parkId, ...perimetre } },
             ...(filtreUnite ? { unitId: filtreUnite } : {}),
             ...(role === 'tenant' ? { tenant: { userId: req.compteId! } } : {}),
           },
@@ -836,7 +841,7 @@ parksRouter.get(
        */
       prisma.lease.findMany({
         where: {
-          unit: { building: { parkId } },
+          unit: { building: { parkId, ...perimetre } },
           ...(filtreUnite ? { unitId: filtreUnite } : {}),
           ...(role === 'tenant' ? { tenant: { userId: req.compteId! } } : {}),
         },
@@ -1229,10 +1234,14 @@ parksRouter.patch(
   exigerRole('owner'),
   async (req: Request, res: Response) => {
     const { parkId } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête et jamais après lecture :
+       un gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
+       pouvoir RAMENER les deux autres, fût-ce pour les filtrer ensuite. */
+    const perimetre = porteeDesImmeubles(req.adhesion!)
     const workId = typeof req.params.workId === 'string' ? req.params.workId : ''
 
     const travail = await prisma.workOrder.findFirst({
-      where: { id: workId, unit: { building: { parkId } } },
+      where: { id: workId, unit: { building: { parkId, ...perimetre } } },
       select: { id: true, quotedAmountMinor: true, status: true },
     })
     if (!travail) {
@@ -1281,11 +1290,15 @@ parksRouter.patch(
   exigerRole('owner'),
   async (req: Request, res: Response) => {
     const { parkId } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête et jamais après lecture :
+       un gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
+       pouvoir RAMENER les deux autres, fût-ce pour les filtrer ensuite. */
+    const perimetre = porteeDesImmeubles(req.adhesion!)
     const depositId = typeof req.params.depositId === 'string' ? req.params.depositId : ''
     const corps = schemaArbitrage.parse(req.body)
 
     const caution = await prisma.deposit.findFirst({
-      where: { id: depositId, lease: { unit: { building: { parkId } } } },
+      where: { id: depositId, lease: { unit: { building: { parkId, ...perimetre } } } },
       select: { id: true, heldMinor: true },
     })
     if (!caution) {
@@ -1383,13 +1396,17 @@ parksRouter.delete(
   exigerRole('owner', 'manager'),
   async (req: Request, res: Response) => {
     const { parkId } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête et jamais après lecture :
+       un gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
+       pouvoir RAMENER les deux autres, fût-ce pour les filtrer ensuite. */
+    const perimetre = porteeDesImmeubles(req.adhesion!)
     const buildingId = z.string().uuid().parse(req.params.buildingId)
 
     // Cherché AVEC le `parkId` : sans cela un identifiant deviné permettrait de
     // supprimer l'immeuble d'un autre. Absent, on rend 404 et non 403 — un 403
     // confirmerait son existence.
     const immeuble = await prisma.building.findFirst({
-      where: { id: buildingId, parkId },
+      where: { id: buildingId, parkId, ...perimetre },
       select: { id: true, _count: { select: { units: true } } },
     })
     if (!immeuble) {
@@ -1420,13 +1437,17 @@ parksRouter.post(
   exigerRole('owner', 'manager'),
   async (req: Request, res: Response) => {
     const { parkId } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête et jamais après lecture :
+       un gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
+       pouvoir RAMENER les deux autres, fût-ce pour les filtrer ensuite. */
+    const perimetre = porteeDesImmeubles(req.adhesion!)
     const corps = schemaLogement.parse(req.body)
     // Le paramètre d'adresse est typé « string | string[] » : on le contraint
     // avant de l'utiliser en filtre, plutôt que de le forcer par une assertion.
     const buildingId = z.string().uuid().parse(req.params.buildingId)
 
     const immeuble = await prisma.building.findFirst({
-      where: { id: buildingId, parkId },
+      where: { id: buildingId, parkId, ...perimetre },
       select: { id: true },
     })
     if (!immeuble) {
@@ -1479,10 +1500,14 @@ parksRouter.post(
   exigerRole('owner', 'manager'),
   async (req: Request, res: Response) => {
     const { parkId } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête et jamais après lecture :
+       un gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
+       pouvoir RAMENER les deux autres, fût-ce pour les filtrer ensuite. */
+    const perimetre = porteeDesImmeubles(req.adhesion!)
     const corps = schemaEncaissement.parse(req.body)
 
     const bail = await prisma.lease.findFirst({
-      where: { unitId: corps.unitId, unit: { building: { parkId } }, status: { not: 'ended' } },
+      where: { unitId: corps.unitId, unit: { building: { parkId, ...perimetre } }, status: { not: 'ended' } },
       select: { id: true, rentMinor: true },
       orderBy: { startsOn: 'desc' },
     })
@@ -1597,13 +1622,17 @@ parksRouter.post(
   exigerRole('owner', 'manager'),
   async (req: Request, res: Response) => {
     const { parkId } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête et jamais après lecture :
+       un gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
+       pouvoir RAMENER les deux autres, fût-ce pour les filtrer ensuite. */
+    const perimetre = porteeDesImmeubles(req.adhesion!)
     const corps = schemaQuittance.parse(req.body)
     const debut = new Date(`${corps.periodStart}T00:00:00Z`)
 
     const echeance = await prisma.rentCharge.findFirst({
       where: {
         periodStart: debut,
-        lease: { unitId: corps.unitId, unit: { building: { parkId } } },
+        lease: { unitId: corps.unitId, unit: { building: { parkId, ...perimetre } } },
       },
       include: {
         payments: {
@@ -1746,6 +1775,10 @@ parksRouter.post(
   exigerRole('owner', 'manager'),
   async (req: Request, res: Response) => {
     const { parkId, role } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête et jamais après lecture :
+       un gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
+       pouvoir RAMENER les deux autres, fût-ce pour les filtrer ensuite. */
+    const perimetre = porteeDesImmeubles(req.adhesion!)
     const corps = schemaInvitation.parse(req.body)
 
     /**
@@ -1806,7 +1839,7 @@ parksRouter.post(
       // L'unité doit appartenir au parc : sans cette vérification, un
       // identifiant deviné rattacherait un locataire au logement d'un autre.
       const unite = await prisma.unit.findFirst({
-        where: { id: corps.unitId, building: { parkId } },
+        where: { id: corps.unitId, building: { parkId, ...perimetre } },
         select: { id: true },
       })
       if (!unite) {
@@ -1940,6 +1973,16 @@ const schemaMessageGroupe = z.object({
   message: z.string().trim().min(3, 'Au moins 3 caractères').max(1000),
 })
 
+/**
+ * Le périmètre confié à un gestionnaire : la liste ENTIÈRE, jamais un delta.
+ *
+ * Vide est une valeur légitime — elle rend le parc entier — et non une saisie
+ * incomplète : c'est ainsi qu'on DÉFAIT une délégation.
+ */
+const schemaPerimetre = z.object({
+  buildingIds: z.array(z.string().uuid()).max(200),
+})
+
 const schemaReponse = z.object({
   message: z.string().trim().min(3, 'Au moins 3 caractères').max(1000),
 })
@@ -1985,6 +2028,10 @@ parksRouter.post(
   exigerRole('owner', 'manager', 'tenant'),
   async (req: Request, res: Response) => {
     const { parkId, role } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête et jamais après lecture :
+       un gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
+       pouvoir RAMENER les deux autres, fût-ce pour les filtrer ensuite. */
+    const perimetre = porteeDesImmeubles(req.adhesion!)
     const monte = role === 'tenant'
     const brut = req.params.workId
     const workId = typeof brut === 'string' ? brut : ''
@@ -1993,7 +2040,7 @@ parksRouter.post(
     const travail = await prisma.workOrder.findFirst({
       where: {
         id: workId,
-        unit: { building: { parkId } },
+        unit: { building: { parkId, ...perimetre } },
         /**
          * LE LOCATAIRE NE RÉPOND QUE SUR CE QU'IL A DÉCLARÉ.
          *
@@ -2698,7 +2745,7 @@ parksRouter.get(
     const { parkId } = req.adhesion!
     const maintenant = new Date()
 
-    const [membres, invitations, fichesOrphelines] = await Promise.all([
+    const [membres, invitations, fichesOrphelines, immeublesDuParc] = await Promise.all([
       prisma.membership.findMany({
         where: { parkId, status: 'active' },
         // `ParkRole` est déclaré `owner, manager, tenant` : PostgreSQL trie ses
@@ -2711,6 +2758,11 @@ parksRouter.get(
           role: true,
           createdAt: true,
           userId: true,
+          /* LES IMMEUBLES CONFIÉS. Le registre dit qui accède et à quoi il est
+             relié ; il ne disait pas SUR QUOI. Un gestionnaire borné à un
+             immeuble sur trois y figurait exactement comme celui qui les gère
+             tous — et le propriétaire n'avait aucun écran pour s'en apercevoir. */
+          buildings: { select: { buildingId: true } },
           /* LA FICHE DE CE COMPTE DANS CE PARC, s'il en a une.
              Le registre disait qui accède ; il ne disait pas qui est RELIÉ. Un
              locataire membre sans fiche voit un espace vide, et l'écran qui
@@ -2778,9 +2830,19 @@ parksRouter.get(
           },
         },
       }),
+      prisma.building.findMany({
+        where: { parkId },
+        orderBy: { name: 'asc' },
+        select: { id: true, name: true, district: true },
+      }),
     ])
 
     res.json({
+      /* LES IMMEUBLES DU PARC, pour que l'écran des accès puisse CONFIER sans
+         charger tout le portefeuille. Ce sont ceux du parc entier et non ceux
+         du demandeur : la route est ouverte au propriétaire, qui n'est jamais
+         borné, et confier suppose de voir ce qu'on confie. */
+      buildings: immeublesDuParc.map((i) => ({ id: i.id, name: i.name, district: i.district })),
       members: membres.map((m) => ({
         id: m.id,
         role: m.role,
@@ -2806,6 +2868,10 @@ parksRouter.get(
           m.user.tenantProfile && m.user.tenantProfile.parkId === parkId
             ? (m.user.tenantProfile.leases[0]?.unit.label ?? null)
             : null,
+        /* Liste VIDE et non `null` : c'est la forme que la route de délégation
+           accepte en retour, et l'écran n'a pas à traduire entre les deux. Son
+           sens — « tout le parc » — est celui du modèle, et il est écrit là-bas. */
+        buildingIds: m.buildings.map((b) => b.buildingId),
         since: m.createdAt.toISOString(),
       })),
       unlinkedTenants: fichesOrphelines.map((f) => ({
@@ -3217,6 +3283,104 @@ parksRouter.patch(
  * ACCÈS, pas une personne ni ce qu'elle a vécu dans le parc. Effacer le second
  * en retirant le premier ferait disparaître des dettes et des cautions.
  */
+/**
+ * ON CONFIE UN IMMEUBLE, PAS UN PARC.
+ *
+ * `Park.delegation` vaut `solo` ou `delegate` : tout ou rien, à l'échelle du
+ * parc entier. Un propriétaire de trois immeubles qui confiait le premier à un
+ * cabinet lui ouvrait les trois — les baux, les loyers, les impayés et les
+ * cautions de logements dont ce cabinet n'a jamais entendu parler. La demande
+ * revient depuis trois lots ; le modèle ne portait rien pour la tenir.
+ *
+ * REMPLACE, ne complète pas. Le corps porte la liste ENTIÈRE des immeubles
+ * confiés, et non un ajout ou un retrait. C'est le seul contrat où deux écrans
+ * ouverts sur le même registre ne peuvent pas se contredire : avec un ajout,
+ * celui qui retire pendant que l'autre ajoute laisse un périmètre que personne
+ * n'a voulu. Ici, le dernier geste dit tout l'état, et il est daté au registre.
+ *
+ * VIDE REND LE PARC ENTIER, et ce n'est pas une commodité : c'est le seul sens
+ * qui rende la migration sûre — voir l'en-tête de `MembershipBuilding`. Le
+ * défaire est donc un geste qui existe, avec la même route.
+ *
+ * PROPRIÉTAIRE SEUL. Un gestionnaire qui élargirait son propre périmètre ne
+ * serait pas borné du tout, et la garde deviendrait décorative.
+ */
+parksRouter.patch(
+  '/:parkId/memberships/:membershipId/immeubles',
+  exigerAppartenance,
+  exigerRole('owner'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const brut = req.params.membershipId
+    const membershipId = typeof brut === 'string' ? brut : ''
+    const corps = schemaPerimetre.parse(req.body)
+
+    // `parkId` DANS le filtre : sans lui, un identifiant deviné bornerait — ou
+    // libérerait — quelqu'un dans un parc dont on n'est pas membre.
+    const adhesion = await prisma.membership.findFirst({
+      where: { id: membershipId, parkId },
+      select: { id: true, userId: true, role: true },
+    })
+    if (!adhesion) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    /**
+     * LES IMMEUBLES SONT VÉRIFIÉS, UN PAR UN, CONTRE CE PARC.
+     *
+     * Sans ce comptage, un identifiant deviné poserait une ligne vers
+     * l'immeuble d'un autre parc. Elle ne donnerait accès à rien — chaque
+     * lecture croise le périmètre AVEC le `parkId` — mais elle laisserait dans
+     * la base un rattachement que personne ne peut expliquer, et le registre
+     * des décisions consignerait un fait faux.
+     *
+     * 404 pour la même raison que partout ailleurs sur ce routeur : un 403
+     * confirmerait qu'un immeuble porte cet identifiant.
+     */
+    if (corps.buildingIds.length > 0) {
+      const connus = await prisma.building.count({
+        where: { parkId, id: { in: corps.buildingIds } },
+      })
+      if (connus !== corps.buildingIds.length) {
+        res.status(404).json({ error: 'not_found' })
+        return
+      }
+    }
+
+    /* Remplacement ATOMIQUE : entre le retrait et la pose, un périmètre vide
+       vaudrait « tout le parc » — l'inverse exact de ce qu'on est en train de
+       faire. Une requête concurrente y lirait un accès total d'une fraction de
+       seconde. */
+    await prisma.$transaction([
+      prisma.membershipBuilding.deleteMany({ where: { membershipId: adhesion.id } }),
+      prisma.membershipBuilding.createMany({
+        data: corps.buildingIds.map((buildingId) => ({ membershipId: adhesion.id, buildingId })),
+      }),
+    ])
+
+    /**
+     * AU REGISTRE, parce que c'est un pouvoir donné.
+     *
+     * Confier un immeuble donne la main sur des loyers et des cautions ; le
+     * reprendre la retire. Les deux sont des décisions, et le registre existe
+     * pour le jour où quelqu'un demande qui a ouvert quoi, et quand.
+     */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'access.scope',
+        entity: 'Membership',
+        entityId: adhesion.id,
+        payload: { buildingIds: corps.buildingIds, role: adhesion.role },
+      },
+    })
+
+    res.status(200).json({ buildingIds: corps.buildingIds })
+  },
+)
+
 parksRouter.patch(
   '/:parkId/memberships/:membershipId/revoke',
   exigerAppartenance,
@@ -3304,10 +3468,14 @@ parksRouter.post(
   exigerRole('owner', 'manager'),
   async (req: Request, res: Response) => {
     const { parkId } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête et jamais après lecture :
+       un gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
+       pouvoir RAMENER les deux autres, fût-ce pour les filtrer ensuite. */
+    const perimetre = porteeDesImmeubles(req.adhesion!)
     const corps = schemaLocataire.parse(req.body)
 
     const unite = await prisma.unit.findFirst({
-      where: { id: corps.unitId, building: { parkId } },
+      where: { id: corps.unitId, building: { parkId, ...perimetre } },
       select: { id: true, baseRentMinor: true },
     })
     if (!unite) {
@@ -3615,6 +3783,10 @@ parksRouter.post(
   exigerRole('owner', 'manager'),
   async (req: Request, res: Response) => {
     const { parkId } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête et jamais après lecture :
+       un gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
+       pouvoir RAMENER les deux autres, fût-ce pour les filtrer ensuite. */
+    const perimetre = porteeDesImmeubles(req.adhesion!)
     const corps = schemaRelance.parse(req.body)
 
     const maintenant = new Date()
@@ -3624,7 +3796,7 @@ parksRouter.post(
       // Le `parkId` est dans le WHERE, pas vérifié après lecture : le bail
       // d'un autre parc ne doit pas même être chargé.
       where: {
-        unit: { building: { parkId } },
+        unit: { building: { parkId, ...perimetre } },
         // Liste absente : tout le parc. Le filtrage sur ce qui est réellement
         // dû se fait plus bas, comme pour une liste explicite.
         ...(corps.leaseIds ? { id: { in: corps.leaseIds } } : { status: { in: ['active', 'pending'] } }),
@@ -3844,12 +4016,16 @@ parksRouter.post(
   exigerRole('owner'),
   async (req: Request, res: Response) => {
     const { parkId } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête et jamais après lecture :
+       un gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
+       pouvoir RAMENER les deux autres, fût-ce pour les filtrer ensuite. */
+    const perimetre = porteeDesImmeubles(req.adhesion!)
     const leaseId = z.string().uuid().parse(req.params.leaseId)
     const corps = schemaMiseEnDemeure.parse(req.body)
 
     const maintenant = new Date()
     const bail = await prisma.lease.findFirst({
-      where: { id: leaseId, unit: { building: { parkId } } },
+      where: { id: leaseId, unit: { building: { parkId, ...perimetre } } },
       select: {
         id: true,
         unitId: true,
@@ -3965,6 +4141,10 @@ parksRouter.post(
   exigerRole('owner', 'manager', 'tenant'),
   async (req: Request, res: Response) => {
     const { parkId, role } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête et jamais après lecture :
+       un gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
+       pouvoir RAMENER les deux autres, fût-ce pour les filtrer ensuite. */
+    const perimetre = porteeDesImmeubles(req.adhesion!)
     const unitId = z.string().uuid().parse(req.params.unitId)
     const corps = schemaIntervention.parse(req.body)
 
@@ -3979,7 +4159,7 @@ parksRouter.post(
     const unite = await prisma.unit.findFirst({
       where: {
         id: unitId,
-        building: { parkId },
+        building: { parkId, ...perimetre },
         /**
          * La contrainte porte sur le BAIL, et non sur une liste d'identifiants.
          *
@@ -4154,6 +4334,10 @@ parksRouter.post(
   exigerRole('tenant'),
   async (req: Request, res: Response) => {
     const { parkId } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête et jamais après lecture :
+       un gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
+       pouvoir RAMENER les deux autres, fût-ce pour les filtrer ensuite. */
+    const perimetre = porteeDesImmeubles(req.adhesion!)
     const unitId = z.string().uuid().parse(req.params.unitId)
     const corps = schemaDemandeDocument.parse(req.body)
 
@@ -4168,7 +4352,7 @@ parksRouter.post(
     const bail = await prisma.lease.findFirst({
       where: {
         unitId,
-        unit: { building: { parkId } },
+        unit: { building: { parkId, ...perimetre } },
         status: { in: ['active', 'pending'] },
         tenant: { userId: req.compteId! },
       },
@@ -4231,11 +4415,15 @@ parksRouter.patch(
   exigerRole('owner', 'manager'),
   async (req: Request, res: Response) => {
     const { parkId } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête et jamais après lecture :
+       un gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
+       pouvoir RAMENER les deux autres, fût-ce pour les filtrer ensuite. */
+    const perimetre = porteeDesImmeubles(req.adhesion!)
     const requestId = z.string().uuid().parse(req.params.requestId)
     const corps = schemaReponseDocument.parse(req.body)
 
     const demande = await prisma.documentRequest.findFirst({
-      where: { id: requestId, lease: { unit: { building: { parkId } } } },
+      where: { id: requestId, lease: { unit: { building: { parkId, ...perimetre } } } },
       select: { id: true, status: true },
     })
     if (!demande) {
@@ -4289,11 +4477,15 @@ parksRouter.patch(
   exigerRole('owner', 'manager'),
   async (req: Request, res: Response) => {
     const { parkId } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête et jamais après lecture :
+       un gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
+       pouvoir RAMENER les deux autres, fût-ce pour les filtrer ensuite. */
+    const perimetre = porteeDesImmeubles(req.adhesion!)
     const workId = z.string().uuid().parse(req.params.workId)
     const corps = schemaDevis.parse(req.body)
 
     const travail = await prisma.workOrder.findFirst({
-      where: { id: workId, unit: { building: { parkId } } },
+      where: { id: workId, unit: { building: { parkId, ...perimetre } } },
       select: { id: true, status: true },
     })
     if (!travail) {
@@ -4348,11 +4540,15 @@ parksRouter.patch(
   exigerRole('owner', 'manager'),
   async (req: Request, res: Response) => {
     const { parkId } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête et jamais après lecture :
+       un gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
+       pouvoir RAMENER les deux autres, fût-ce pour les filtrer ensuite. */
+    const perimetre = porteeDesImmeubles(req.adhesion!)
     const workId = z.string().uuid().parse(req.params.workId)
     const corps = schemaAchevement.parse(req.body)
 
     const travail = await prisma.workOrder.findFirst({
-      where: { id: workId, unit: { building: { parkId } } },
+      where: { id: workId, unit: { building: { parkId, ...perimetre } } },
       select: { id: true, status: true },
     })
     if (!travail) {
@@ -4417,10 +4613,14 @@ parksRouter.patch(
   exigerRole('owner', 'manager'),
   async (req: Request, res: Response) => {
     const { parkId } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête et jamais après lecture :
+       un gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
+       pouvoir RAMENER les deux autres, fût-ce pour les filtrer ensuite. */
+    const perimetre = porteeDesImmeubles(req.adhesion!)
     const workId = z.string().uuid().parse(req.params.workId)
 
     const travail = await prisma.workOrder.findFirst({
-      where: { id: workId, unit: { building: { parkId } } },
+      where: { id: workId, unit: { building: { parkId, ...perimetre } } },
       select: { id: true, status: true, approvedAt: true },
     })
     if (!travail) {
@@ -4476,10 +4676,14 @@ parksRouter.patch(
   exigerRole('owner'),
   async (req: Request, res: Response) => {
     const { parkId } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête et jamais après lecture :
+       un gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
+       pouvoir RAMENER les deux autres, fût-ce pour les filtrer ensuite. */
+    const perimetre = porteeDesImmeubles(req.adhesion!)
     const workId = z.string().uuid().parse(req.params.workId)
 
     const travail = await prisma.workOrder.findFirst({
-      where: { id: workId, unit: { building: { parkId } } },
+      where: { id: workId, unit: { building: { parkId, ...perimetre } } },
       select: { id: true, status: true },
     })
     if (!travail) {
@@ -4541,10 +4745,14 @@ parksRouter.patch(
   exigerRole('owner'),
   async (req: Request, res: Response) => {
     const { parkId } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête et jamais après lecture :
+       un gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
+       pouvoir RAMENER les deux autres, fût-ce pour les filtrer ensuite. */
+    const perimetre = porteeDesImmeubles(req.adhesion!)
     const depositId = z.string().uuid().parse(req.params.depositId)
 
     const caution = await prisma.deposit.findFirst({
-      where: { id: depositId, lease: { unit: { building: { parkId } } } },
+      where: { id: depositId, lease: { unit: { building: { parkId, ...perimetre } } } },
       select: { id: true, status: true, withheldMinor: true, withheldReason: true },
     })
     if (!caution) {
@@ -4608,11 +4816,15 @@ parksRouter.post(
   exigerRole('owner', 'manager'),
   async (req: Request, res: Response) => {
     const { parkId } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête et jamais après lecture :
+       un gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
+       pouvoir RAMENER les deux autres, fût-ce pour les filtrer ensuite. */
+    const perimetre = porteeDesImmeubles(req.adhesion!)
     const unitId = z.string().uuid().parse(req.params.unitId)
     const corps = schemaEtatDesLieux.parse(req.body)
 
     const unite = await prisma.unit.findFirst({
-      where: { id: unitId, building: { parkId } },
+      where: { id: unitId, building: { parkId, ...perimetre } },
       select: {
         id: true,
         leases: {
@@ -4815,11 +5027,14 @@ async function photoDuParc(
   photoId: string,
   parkId: string,
   portee: Prisma.InspectionWhereInput,
+  /* Le périmètre d'immeubles du demandeur : une photo d'un immeuble qu'on ne
+     lui a pas confié ne le regarde pas plus que celle d'un autre parc. */
+  perimetre: Prisma.BuildingWhereInput,
 ) {
   return prisma.inspectionPhoto.findFirst({
     where: {
       id: photoId,
-      finding: { inspection: { unit: { building: { parkId } }, ...portee } },
+      finding: { inspection: { unit: { building: { parkId, ...perimetre } }, ...portee } },
     },
     select: { ...champsPhoto, storageKey: true },
   })
@@ -4856,13 +5071,17 @@ parksRouter.post(
   exigerRole('owner', 'manager'),
   async (req: Request, res: Response) => {
     const { parkId } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête et jamais après lecture :
+       un gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
+       pouvoir RAMENER les deux autres, fût-ce pour les filtrer ensuite. */
+    const perimetre = porteeDesImmeubles(req.adhesion!)
     const findingId = z.string().uuid().parse(req.params.findingId)
     const corps = schemaReservationPhoto.parse(req.body)
 
     // Cherchée AVEC le `parkId` : sans cela, une réserve devinée permettrait
     // d'accrocher une photo à l'état des lieux d'un autre.
     const reserve = await prisma.inspectionFinding.findFirst({
-      where: { id: findingId, inspection: { unit: { building: { parkId } } } },
+      where: { id: findingId, inspection: { unit: { building: { parkId, ...perimetre } } } },
       select: { id: true },
     })
     if (!reserve) {
@@ -4925,7 +5144,7 @@ parksRouter.post(
     // Aucune portée : la route est déjà réservée aux deux rôles de gestion, qui
     // lisent tout le parc. Passer une clause vide le DIT, là où un paramètre
     // omis laisserait croire à un oubli.
-    const photo = await photoDuParc(photoId, parkId, {})
+    const photo = await photoDuParc(photoId, parkId, {}, porteeDesImmeubles(req.adhesion!))
     if (!photo) {
       res.status(404).json({ error: 'not_found' })
       return
@@ -5023,7 +5242,7 @@ parksRouter.get(
     // La portée du LOCATAIRE : son bail, et les états des lieux qui n'en
     // portent aucun. Hors de là, `photoDuParc` ne ramène rien et la réponse est
     // un 404 — le même que pour une photo inexistante.
-    const photo = await photoDuParc(photoId, parkId, etatsDesLieuxVisibles(req.compteId!, role))
+    const photo = await photoDuParc(photoId, parkId, etatsDesLieuxVisibles(req.compteId!, role), porteeDesImmeubles(req.adhesion!))
     if (!photo || !photo.confirmedAt) {
       res.status(404).json({ error: 'not_found' })
       return
@@ -5062,7 +5281,7 @@ parksRouter.delete(
 
     // Aucune portée, même raison qu'à la confirmation : la route ne répond
     // qu'aux deux rôles de gestion.
-    const photo = await photoDuParc(photoId, parkId, {})
+    const photo = await photoDuParc(photoId, parkId, {}, porteeDesImmeubles(req.adhesion!))
     if (!photo) {
       res.status(404).json({ error: 'not_found' })
       return
@@ -5113,12 +5332,16 @@ parksRouter.post(
   exigerRole('owner', 'manager'),
   async (req: Request, res: Response) => {
     const { parkId } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête et jamais après lecture :
+       un gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
+       pouvoir RAMENER les deux autres, fût-ce pour les filtrer ensuite. */
+    const perimetre = porteeDesImmeubles(req.adhesion!)
     const corps = schemaQuittance.omit({ unitId: true }).parse(req.body)
     const debut = new Date(`${corps.periodStart}T00:00:00Z`)
 
     const baux = await prisma.lease.findMany({
       where: {
-        unit: { building: { parkId } },
+        unit: { building: { parkId, ...perimetre } },
         status: { in: ['active', 'pending'] },
         // Un bail qui commence APRÈS la période ne doit rien pour elle.
         startsOn: { lte: debut },
@@ -5189,10 +5412,14 @@ parksRouter.delete(
   exigerRole('owner'),
   async (req: Request, res: Response) => {
     const { parkId } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête et jamais après lecture :
+       un gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
+       pouvoir RAMENER les deux autres, fût-ce pour les filtrer ensuite. */
+    const perimetre = porteeDesImmeubles(req.adhesion!)
     const paymentId = z.string().uuid().parse(req.params.paymentId)
 
     const versement = await prisma.payment.findFirst({
-      where: { id: paymentId, charge: { lease: { unit: { building: { parkId } } } } },
+      where: { id: paymentId, charge: { lease: { unit: { building: { parkId, ...perimetre } } } } },
       select: { id: true, amountMinor: true, method: true, paidOn: true, chargeId: true },
     })
     if (!versement) {

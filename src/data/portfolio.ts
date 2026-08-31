@@ -306,6 +306,11 @@ export const TARIFS_DEMO = { water: 520, power: 99 }
  * inviter un locataire sur un logement déjà occupé n'aurait aucun sens.
  */
 export const ACCES_DEMO = {
+  /* LES IMMEUBLES DU PARC, tels que la route des accès les rend — c'est d'eux
+     que l'écran tire les cases à cocher pour CONFIER. Recopiés de `BUILDINGS`
+     plutôt qu'importés d'une autre forme : la démonstration doit montrer la
+     RÉPONSE du serveur, dont ce registre est la doublure. */
+  buildings: BUILDINGS.map((b) => ({ id: b.id, name: b.name, district: b.district })),
   members: [
     {
       id: 'demo-membre-1',
@@ -323,6 +328,11 @@ export const ACCES_DEMO = {
       tenantId: null,
       fullName: 'Diane Fotso',
       email: 'diane@example.com',
+      /* ELLE NE GÈRE PAS TOUT, et c'est le cas que la démonstration doit
+         montrer : « on confie un immeuble, pas un parc ». Un périmètre vide
+         rendrait la ligne « gère tout le parc » — vrai, mais c'est l'état par
+         défaut, celui qu'on voit déjà partout ailleurs. */
+      buildingIds: ['bon', 'akw'],
       since: '2025-01-15',
     },
     {

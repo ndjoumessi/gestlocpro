@@ -246,6 +246,9 @@ model Membership {
   status  MembershipStatus @default(active)
   /// Raison sociale du gestionnaire, collectée à l'inscription.
   company String?
+  /// Les immeubles CONFIÉS à cette personne. Vide = tout le parc. Voir
+  /// `MembershipBuilding`, dont l'en-tête porte le raisonnement.
+  buildings MembershipBuilding[]
   createdAt DateTime @default(now())
 
   /// Une personne n'a qu'un rôle par parc : être à la fois propriétaire et
@@ -253,6 +256,39 @@ model Membership {
   /// ambiguë au lieu de la cumuler.
   @@unique([userId, parkId])
   @@index([parkId, role])
+}
+
+/// LE PÉRIMÈTRE D'UN GESTIONNAIRE — les immeubles qu'on lui a confiés.
+///
+/// `Park.delegation` valait `solo` ou `delegate` : tout ou rien, à l'échelle du
+/// parc. Un propriétaire de trois immeubles qui confie le premier à un cabinet
+/// lui ouvrait les trois — baux, loyers, impayés et cautions de logements dont
+/// ce cabinet n'a jamais entendu parler.
+///
+/// VIDE VEUT DIRE « TOUT LE PARC », et le sens inverse serait plus intuitif.
+/// Il est INAPPLICABLE : cette migration ne confie rien à personne, et « aucun
+/// immeuble confié = rien à voir » aveuglerait, à la seconde du déploiement,
+/// tous les gestionnaires déjà en place. L'absence de restriction est donc
+/// l'état par défaut, comme `delegation: delegate` l'est déjà.
+///
+/// UNE TABLE NOMMÉE plutôt qu'une relation implicite : elle porte sa date, elle
+/// se lit dans une sauvegarde, et le registre des décisions peut la citer.
+/// Confier un immeuble donne la main sur des loyers et des cautions ; c'est un
+/// fait à consigner, pas un réglage d'affichage.
+///
+/// LE RÔLE N'EST PAS DANS LA CLÉ, et c'est voulu : un propriétaire n'est jamais
+/// borné, quoi qu'il y ait ici. La lecture du périmètre l'ignore explicitement,
+/// plutôt que de compter sur le fait que personne n'écrira jamais de ligne pour
+/// lui — une garde qui repose sur ce que personne ne fera n'en est pas une.
+model MembershipBuilding {
+  membershipId String @db.Uuid
+  membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  buildingId   String @db.Uuid
+  building     Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+
+  @@id([membershipId, buildingId])
+  @@index([buildingId])
 }
 
 /// Invitation à rejoindre un parc — locataire ou gestionnaire.
@@ -303,6 +339,8 @@ model Building {
   updatedAt DateTime @updatedAt
 
   units Unit[]
+  /// Les gestionnaires à qui CET immeuble est confié. Voir `MembershipBuilding`.
+  gestionnaires MembershipBuilding[]
 
   @@index([parkId])
 }

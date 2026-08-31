@@ -24,7 +24,20 @@ declare module 'express-serve-static-core' {
     /** Renseigné par `exigerCompte`. */
     compteId?: string
     /** Renseigné par `exigerAppartenance`. */
-    adhesion?: { parkId: string; role: ParkRole }
+    adhesion?: {
+      parkId: string
+      role: ParkRole
+      /**
+       * Les immeubles CONFIÉS, ou `null` quand rien ne borne.
+       *
+       * `null` et non un tableau vide, parce que les deux états ne veulent PAS
+       * dire la même chose et qu'un tableau vide les confondrait : « aucun
+       * immeuble » se lirait comme « rien à voir » alors qu'il signifie « tout
+       * le parc ». Le type porte la distinction pour qu'aucun appelant n'ait à
+       * s'en souvenir.
+       */
+      immeubles: string[] | null
+    }
   }
 }
 
@@ -60,7 +73,14 @@ export async function exigerAppartenance(req: Request, res: Response, next: Next
 
   const adhesion = await prisma.membership.findFirst({
     where: { userId: req.compteId, parkId, status: 'active' },
-    select: { parkId: true, role: true },
+    select: {
+      parkId: true,
+      role: true,
+      /* Lu ICI plutôt qu'à chaque route : le périmètre est une propriété de
+         l'adhésion, au même titre que le rôle, et le chercher route par route
+         suffirait à ce qu'un chemin l'oublie. */
+      buildings: { select: { buildingId: true } },
+    },
   })
 
   if (!adhesion) {
@@ -68,8 +88,60 @@ export async function exigerAppartenance(req: Request, res: Response, next: Next
     return
   }
 
-  req.adhesion = adhesion
+  /**
+   * SEUL LE GESTIONNAIRE SE BORNE, et le propriétaire jamais.
+   *
+   * Le rôle n'est pas dans la clé de `MembershipBuilding` : une ligne posée
+   * pour un propriétaire y est possible. On l'ignore explicitement plutôt que
+   * de compter sur le fait que personne n'en écrira — une garde qui repose sur
+   * ce que personne ne fera n'en est pas une.
+   *
+   * Le locataire, lui, est déjà borné plus finement par `unitesVisibles` : le
+   * borner en plus par immeuble ne retirerait rien et ajouterait une clause à
+   * tenir d'accord avec l'autre.
+   */
+  const confies = adhesion.buildings.map((b) => b.buildingId)
+  req.adhesion = {
+    parkId: adhesion.parkId,
+    role: adhesion.role,
+    immeubles: adhesion.role === 'manager' && confies.length > 0 ? confies : null,
+  }
   next()
+}
+
+/**
+ * LE PÉRIMÈTRE, EN CLAUSE DE REQUÊTE — pour `Building`.
+ *
+ * Rendue en fragment de `where` et jamais appliquée après lecture, pour la
+ * raison que `unitesVisibles` donne déjà : « filtrer en mémoire suppose d'avoir
+ * d'abord tout lu, et il suffit d'un oubli sur un seul chemin pour que les
+ * données des voisins sortent ».
+ *
+ * Le dépôt écrit `building: { parkId }` à huit endroits du portefeuille et sur
+ * la plupart des routes d'écriture. Cette fonction se glisse au même endroit,
+ * ce qui rend l'application MÉCANIQUE et relisable : `{ parkId, ...portee }`.
+ */
+export function porteeDesImmeubles(adhesion: {
+  immeubles: string[] | null
+}): Prisma.BuildingWhereInput {
+  /**
+   * SOUS `AND`, ET NON SOUS `id` — le piège que ce dépôt a déjà payé une fois.
+   *
+   * La route d'ouverture d'une intervention le raconte à sa ligne : un
+   * `...spread` y écrasait la clé `id`, « la requête cherchait donc n'importe
+   * lequel de mes logements au lieu du logement demandé ; un locataire visant
+   * celui du voisin recevait 201, et le signalement était créé sur le sien ».
+   *
+   * Ce périmètre se compose avec des clauses qui portent DÉJÀ un `id` —
+   * `{ id: buildingId, parkId, ...portee }` sur la création d'un logement. Rendu
+   * sous `id`, il l'écrasait exactement de la même façon : le gestionnaire visait
+   * l'immeuble qu'on lui cache et créait le logement dans celui qu'on lui a
+   * confié. Ni refus, ni erreur, ni trace — et la garde de ce lot l'a pris.
+   *
+   * `AND` ne peut rien écraser : il s'ajoute aux conditions au lieu de s'y
+   * substituer, et c'est la seule forme de ce fragment qui soit sûre partout.
+   */
+  return adhesion.immeubles ? { AND: [{ id: { in: adhesion.immeubles } }] } : {}
 }
 
 /**

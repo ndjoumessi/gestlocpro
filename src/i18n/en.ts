@@ -1129,6 +1129,7 @@ export const en: Dictionary = {
           unlink: 'Tenant record unlinked from its account',
           link: 'Tenant record linked to an account',
           revoke: 'Access revoked',
+          scope: 'Building scope assigned',
         },
         deposit: {
           settle: 'Deposit settled',
@@ -1198,6 +1199,14 @@ export const en: Dictionary = {
       holdsRecord: 'Holds the record {fiche} · {unit}',
       unlinkTenant: 'Unlink record',
       nameMismatch: 'Name does not match',
+      scopeAll: 'Manages the whole portfolio',
+      scopeSome: 'Manages: {names}',
+      scopeAction: 'Assign buildings',
+      scopeTitle: 'Buildings assigned to {name}',
+      scopeBody: 'This manager will only see the buildings you tick: their leases, rents and deposits.',
+      scopeEmptyMeansAll: 'Ticking nothing gives them the whole portfolio. That is how you undo an assignment.',
+      scopeSave: 'Assign',
+      scopeSaved: 'Scope saved',
       linkMismatch:
         '{compte}’s account and {fiche}’s record do not carry the same name. Check that this is the same person: this account will see that lease, its receipts and its meter readings.',
       unlinkTitle: 'Unlink {name}’s record?',

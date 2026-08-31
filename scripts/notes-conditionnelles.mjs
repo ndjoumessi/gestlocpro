@@ -102,6 +102,11 @@ async function ouvrirLaLiaison(page) {
   await page.waitForTimeout(350)
 }
 
+async function ouvrirLeParitageDImmeubles(page) {
+  await page.getByRole('button', { name: /^Confier des immeubles$/ }).first().click()
+  await page.waitForTimeout(350)
+}
+
 async function ouvrirLInvitationEnRecrutant(page) {
   await ouvrirLInvitation(page)
   await page.getByRole('combobox', { name: /Rôle invité/ }).selectOption('manager')
@@ -135,6 +140,13 @@ const REGISTRE = {
   /* LA NOTE DE SÛRETÉ du rapprochement des noms. Mesurable depuis que la
      démonstration porte un locataire entré sans fiche — voir `ACCES_DEMO`. */
   'app.access.linkMismatch': { adresse: '/demo/acces', geste: ouvrirLaLiaison },
+  /* MESURABLE parce que la démonstration porte un gestionnaire BORNÉ — Diane
+     Fotso, deux immeubles sur trois. Sans elle, le geste ne s'afficherait sur
+     aucune rangée et cette note serait un aveu de plus. */
+  'app.access.scopeEmptyMeansAll': {
+    adresse: '/demo/acces',
+    geste: ouvrirLeParitageDImmeubles,
+  },
   'app.deposits.managerNotice': { adresse: '/demo/cautions', profil: /Gestionnaire/ },
   'app.works.managerNotice': { adresse: '/demo/travaux', profil: /Gestionnaire/ },
   'app.system.offlineTitle': { adresse: '/demo/systeme' },
