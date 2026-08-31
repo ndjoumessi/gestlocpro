@@ -56,7 +56,7 @@ export function Signaler() {
   const d = useDates()
   const { role } = useRole()
   const { notify } = useToast()
-  const { works, units, isMine, addWork, alerts, loading } = usePortfolio()
+  const { works, units, isMine, addWork, alerts, loading, replyToWork } = usePortfolio()
 
   const [titre, setTitre] = useState('')
   const [erreur, setErreur] = useState(false)
@@ -66,6 +66,40 @@ export function Signaler() {
   /* Le vol en cours : le bouton s'éteint, sans quoi une attente devenue visible
      ferait naître deux fiches d'intervention de la même fuite. */
   const [envoi, setEnvoi] = useState(false)
+
+  /**
+   * LA RÉPONSE EN COURS, ET SUR QUEL SIGNALEMENT.
+   *
+   * Un seul état pour toute la liste, indexé par l'identifiant du chantier : le
+   * locataire répond à UNE conversation à la fois, et un état par ligne ferait
+   * autant de champs vivants que de signalements ouverts. C'est aussi ce qui
+   * permet de rouvrir le champ là où il était après un envoi refusé, sans
+   * perdre ce qui venait d'être écrit — le défaut que le formulaire du dessus a
+   * déjà payé une fois.
+   */
+  const [repond, setRepond] = useState<string | null>(null)
+  const [reponse, setReponse] = useState('')
+  const [reponseErreur, setReponseErreur] = useState(false)
+  const [reponseEnvoi, setReponseEnvoi] = useState(false)
+
+  async function envoyerLaReponse(work: WorkOrder) {
+    // La même borne que le serveur : le refus arrive avant l'aller-retour.
+    if (reponse.trim().length < 3) {
+      setReponseErreur(true)
+      return
+    }
+    setReponseEnvoi(true)
+    const parti = await replyToWork(work.id, work.unitId, reponse.trim())
+    setReponseEnvoi(false)
+    /* Le champ ne se vide QUE si la phrase est partie. Vidé d'avance, un refus
+       laisserait le locataire sans même de quoi recommencer — c'est mot pour
+       mot ce que le formulaire de signalement a corrigé chez lui. */
+    if (!parti) return
+    setReponse('')
+    setReponseErreur(false)
+    setRepond(null)
+    notify(t('app.report.replySent'), { tone: 'ok' })
+  }
 
   /*
     L'ATTENTE PASSE AVANT LE FORMULAIRE, et pas seulement avant la liste.
@@ -97,7 +131,10 @@ export function Signaler() {
    */
   const reponses = new Map<string, typeof alerts>()
   for (const a of alerts) {
-    if (a.message !== 'workReply') continue
+    /* LES DEUX SENS, et c'est ce qui fait un fil plutôt qu'une boîte aux
+       lettres. `workReply` descend, `tenantReply` remonte ; les ranger dans la
+       même liste par `workId` est exactement ce que `workId` sert à faire. */
+    if (a.message !== 'workReply' && a.message !== 'tenantReply') continue
     const cible = a.data.workId
     if (!cible) continue
     reponses.set(cible, [a, ...(reponses.get(cible) ?? [])])
@@ -401,8 +438,16 @@ export function Signaler() {
                   */}
                   {(reponses.get(work.id) ?? []).map((r) => (
                     <div key={r.id} className="mt-1 border-l-2 border-divider pl-3">
+                      {/* QUI A PARLÉ, et la carte le dit maintenant. Le fil ne
+                          portait qu'un sens : toute ligne y était « Réponse de
+                          votre gestionnaire ». Depuis que le locataire peut
+                          répondre, la même étiquette sur sa propre phrase
+                          ferait d'un échange un monologue. */}
                       <p className="text-caps text-muted">
-                        {t('app.report.replyFrom')} · {d.relative(r.at)}
+                        {r.message === 'tenantReply'
+                          ? t('app.report.replyMine')
+                          : t('app.report.replyFrom')}{' '}
+                        · {d.relative(r.at)}
                       </p>
                       <p className="text-body text-pretty">{r.data.text}</p>
                     </div>
@@ -415,6 +460,64 @@ export function Signaler() {
                   {(reponses.get(work.id) ?? []).length === 0 && work.status !== 'done' && (
                     <p className="text-caps text-muted">{t('app.report.noReply')}</p>
                   )}
+                  {/*
+                    À TOUT STATUT, `done` COMPRIS — et le premier jet ne le
+                    faisait pas.
+
+                    Il calquait la condition sur la ligne « pas encore de
+                    réponse » juste au-dessus, qui est bornée aux chantiers
+                    ouverts pour une raison juste : un chantier clos n'ATTEND
+                    plus rien. Mais répondre n'est pas attendre. L'écran des
+                    travaux ouvre déjà la réponse du gestionnaire à tout statut,
+                    et dit pourquoi : « c'est réparé, l'artisan est passé jeudi »
+                    est précisément la réponse qui manque le plus.
+                    Symétriquement, « non, ça fuit encore » est celle qu'il faut
+                    pouvoir lui rendre — et la refuser rouvrait l'impasse que ce
+                    lot ferme, un cran plus loin.
+                  */}
+                  {role === 'tenant' &&
+                    (repond === work.id ? (
+                      <div className="mt-2 grid gap-2">
+                        <Field
+                          label={t('app.report.replyLabel')}
+                          hint={t('app.report.replyHint')}
+                          {...(reponseErreur ? { error: t('app.report.replyError') } : {})}
+                        >
+                          {(champ) => (
+                            <Textarea
+                              {...champ}
+                              rows={3}
+                              value={reponse}
+                              onChange={(e) => {
+                                setReponse(e.target.value)
+                                setReponseErreur(false)
+                              }}
+                            />
+                          )}
+                        </Field>
+                        <div>
+                          <Button
+                            onClick={() => void envoyerLaReponse(work)}
+                            disabled={reponseEnvoi}
+                          >
+                            {t('app.report.replySend')}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-1">
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            setRepond(work.id)
+                            setReponse('')
+                            setReponseErreur(false)
+                          }}
+                        >
+                          {t('app.report.replyLabel')}
+                        </Button>
+                      </div>
+                    ))}
                 </li>
               ))}
             </ul>

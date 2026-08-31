@@ -250,6 +250,20 @@ interface PortfolioContextValue {
     unitId: string,
     signalement: { title: string; trade: TradeKey; urgency: UrgencyKey; description?: string },
   ) => Promise<boolean>
+  /**
+   * LA RÉPONSE DU LOCATAIRE, qui remonte le fil.
+   *
+   * La route existait, ouverte à la gestion seule : le gestionnaire demandait
+   * « serez-vous là jeudi ? » et le locataire n'avait aucun moyen de répondre.
+   *
+   * Elle POSE L'ALERTE LOCALEMENT en cas de succès, et ce n'est pas du confort :
+   * le fil qu'il vient d'alimenter se lit dans `alerts`, et sans cette écriture
+   * sa propre phrase n'apparaîtrait qu'au prochain chargement complet. Il
+   * croirait avoir écrit dans le vide et récrirait.
+   *
+   * `Promise<boolean>` comme `addWork` : l'appelant ne félicite qu'après.
+   */
+  replyToWork: (workId: string, unitId: string, message: string) => Promise<boolean>
   /** Défait un arbitrage de caution : elle redevient retenue, sans retenue. */
   unsettleDeposit: (unitId: string) => void
   /** Le propriétaire arbitre une caution : retenue et restitution du solde. */
@@ -1042,6 +1056,51 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [parkId, signalerEchec],
   )
 
+  /**
+   * La réponse du locataire sur son propre signalement.
+   *
+   * L'alerte locale porte `tenantReply` — la clé du sens MONTANT. La poser en
+   * `workReply` afficherait « Réponse à votre signalement » sous sa propre
+   * phrase, ce qui est le monologue que deux clés distinctes existent pour
+   * éviter.
+   *
+   * Sans parc serveur — démonstration — elle ne vit qu'en mémoire, comme le
+   * signalement et la demande de document : l'identifiant est local et le dit.
+   */
+  const replyToWork = useCallback(
+    (workId: string, unitId: string, message: string): Promise<boolean> => {
+      const local = (id: string): Alert => ({
+        id,
+        kind: 'work',
+        message: 'tenantReply',
+        data: { text: message, workId, unitId },
+        /* `0 second` et non une date : `RelativeStamp` est relatif par
+           construction, et « à l'instant » est exactement ce que le fil doit
+           dire de la phrase qu'on vient d'écrire. */
+        at: { value: 0, unit: 'second' },
+        severity: 'medium',
+        read: true,
+        channel: 'in_app',
+        unitId,
+      })
+      if (!parkId) {
+        setAlerts((liste) => [local(`LOCAL-${liste.length + 1}`), ...liste])
+        return Promise.resolve(true)
+      }
+      return api
+        .replyToWork<{ delivered: boolean }>(parkId, workId, message)
+        .then(() => {
+          setAlerts((liste) => [local(`LOCAL-${liste.length + 1}`), ...liste])
+          return true
+        })
+        .catch((cause: unknown) => {
+          signalerEchec(cause)
+          return false
+        })
+    },
+    [parkId, signalerEchec],
+  )
+
   /** La réponse du gestionnaire. Le serveur refuse la seconde. */
   const resolveDocumentRequest = useCallback(
     (id: string, status: 'fulfilled' | 'declined') => {
@@ -1625,6 +1684,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       leasesForUnit: (unitId) => leases.filter((b) => b.unitId === unitId),
       requestDocument,
       resolveDocumentRequest,
+      replyToWork,
       readingForUnit: (unitId) => readings.find((r) => r.unitId === unitId),
       consumptionForUnit: (unitId) => consumption[unitId] ?? [],
       inspectionForUnit: (unitId, kind) =>
@@ -1672,6 +1732,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       leases,
       requestDocument,
       resolveDocumentRequest,
+      replyToWork,
       approveWork,
       quoteWork,
       completeWork,

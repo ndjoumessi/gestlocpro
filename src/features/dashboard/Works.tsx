@@ -64,8 +64,31 @@ export function Works() {
     reopenWork,
     unitById,
     isMine,
+    alerts,
     loading,
   } = usePortfolio()
+  /**
+   * LE FIL, RANGÉ PAR CHANTIER — et il ne se lisait que d'un côté.
+   *
+   * Le locataire voit l'échange sous son signalement depuis un lot ; le
+   * gestionnaire, lui, n'avait que la carte d'avis dans « Signalements », à
+   * côté d'impayés qui ne parlent pas du même logement. Il répondait donc sans
+   * relire ce qu'il avait déjà écrit, ni ce que le locataire avait répondu.
+   *
+   * C'est la même liste, le même `workId`, le même regroupement que dans
+   * `Signaler` — et c'est voulu : un échange n'a pas deux histoires selon qui
+   * l'ouvre. DE LA PLUS ANCIENNE À LA PLUS RÉCENTE, parce qu'une conversation
+   * se lit dans l'ordre où elle s'est tenue ; `alerts` arrive dans l'ordre
+   * d'une boîte de réception, qui est l'inverse.
+   */
+  const fils = new Map<string, typeof alerts>()
+  for (const a of alerts) {
+    if (a.message !== 'workReply' && a.message !== 'tenantReply') continue
+    const cible = a.data.workId
+    if (!cible) continue
+    fils.set(cible, [a, ...(fils.get(cible) ?? [])])
+  }
+
   const [signalementOuvert, setSignalementOuvert] = useState(false)
   const { money, parseAmount } = useCurrency()
   const [chantierOuvert, setChantierOuvert] = useState(false)
@@ -535,6 +558,30 @@ export function Works() {
                         )}
                   </p>
                 )}
+
+                {/*
+                  L'ÉCHANGE, sous le chantier dont il parle.
+
+                  Le TEXTE est rendu tel quel : il vient d'un humain, comme
+                  l'annonce, et personne ne traduit ce qu'un locataire a écrit.
+                  Aucune coupe non plus — `text-pretty` le tient —, parce que
+                  c'est justement la fin qu'on relit avant de rappeler.
+
+                  Rendu à TOUS, locataire compris : c'est sa propre conversation,
+                  et la règle qui lui cache le coût des travaux ne porte que sur
+                  le montant, qu'aucune de ces lignes ne montre.
+                */}
+                {(fils.get(work.id) ?? []).map((r) => (
+                  <div key={r.id} className="mt-1 border-l-2 border-divider pl-3">
+                    <p className="text-caps text-muted">
+                      {r.message === 'tenantReply'
+                        ? t('app.works.replyFromTenant')
+                        : t('app.works.replyFromManager')}{' '}
+                      · {d.relative(r.at)}
+                    </p>
+                    <p className="text-body text-pretty">{r.data.text}</p>
+                  </div>
+                ))}
               </div>
 
               {/* `flex-wrap` SANS `shrink-0`, comme `PageHeader` : la paire

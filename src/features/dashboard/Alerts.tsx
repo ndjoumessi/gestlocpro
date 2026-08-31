@@ -122,7 +122,33 @@ export function Alerts() {
    */
   const { readAlertIds, markAlertsRead, isMine, alerts: ALERTS, loading } = usePortfolio()
 
-  const toutes = (isTenant ? ALERTS.filter((a) => a.unitId && isMine(a.unitId)) : ALERTS).map(
+  /**
+   * CETTE LISTE EST UNE BOÎTE AUX LETTRES, PAS UNE CONVERSATION.
+   *
+   * Les deux clés du fil ont chacune UN sens et UN destinataire : `workReply`
+   * descend vers le locataire, `tenantReply` remonte vers la gestion. Rien ne
+   * les filtrait, et chacun lisait donc SA PROPRE phrase revenir sous un titre
+   * qui la présentait comme reçue — « Réponse à votre signalement », affiché au
+   * gestionnaire, à propos de ce qu'il venait d'écrire.
+   *
+   * Ce n'était pas visible tant que le fil ne tournait que dans un sens : le
+   * gestionnaire était le seul à s'auto-adresser, et personne ne l'avait relevé.
+   * Ouvrir l'autre sens l'aurait donné au locataire aussi, en double.
+   *
+   * Le serveur le sait déjà — il nomme les destinataires — mais le portefeuille
+   * rend aussi ce qui porte simplement l'unité, et c'est ce qui suffit à faire
+   * revenir sa propre voix. On tranche donc ici, sur le RÔLE, ce que la donnée
+   * ne dit pas.
+   *
+   * LE FIL, LUI, MONTRE TOUT : `Signaler` et `Travaux` rangent les deux clés
+   * sous le chantier dont elles parlent, en nommant qui a parlé. C'est la
+   * différence entre lire ce qui NOUS est adressé et relire un échange.
+   */
+  const MA_VOIX = isTenant ? 'tenantReply' : 'workReply'
+
+  const toutes = (isTenant ? ALERTS.filter((a) => a.unitId && isMine(a.unitId)) : ALERTS)
+    .filter((a) => a.message !== MA_VOIX)
+    .map(
     (alert) => ({
       ...alert,
       read: alert.read || readAlertIds.includes(alert.id),

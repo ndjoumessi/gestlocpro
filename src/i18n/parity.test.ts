@@ -125,6 +125,9 @@ describe('les messages d’alerte ont tous leur gabarit', () => {
        le jeu de démonstration ; celui-ci y est, donc le témoin le tient. */
     'tenantReport',
     'workReply',
+    /* Le sens MONTANT de la conversation. Dans le jeu de démonstration depuis le
+       lot qui l'ouvre, donc tenu par le témoin juste en dessous. */
+    'tenantReply',
   ]
 
   it('recense bien tout le type, sans en oublier', () => {

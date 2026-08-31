@@ -1375,6 +1375,10 @@ export const fr = {
       listLabel: 'Interventions',
       quote: 'Chiffrer',
       reply: 'Répondre',
+      /* QUI A PARLÉ, dans le fil du chantier. Le texte vient d'un humain et ne
+         se traduit pas ; ces deux clés ne portent que l'habillage. */
+      replyFromManager: 'Réponse de la gestion',
+      replyFromTenant: 'Réponse du locataire',
       replyTitle: 'Répondre au locataire',
       replyBody: 'Votre réponse arrive dans ses notifications, rattachée au signalement {reference}.',
       replyTo: 'Destinataire : {name}',
@@ -1825,6 +1829,22 @@ export const fr = {
           title: 'Signalement {reference} · {unit}',
           detail: '{text}',
         },
+        /**
+         * LA RÉPONSE DU LOCATAIRE, qui remonte le même fil.
+         *
+         * Elle NE PEUT PAS partager le libellé de `workReply` : celui-ci dit
+         * « Réponse à VOTRE signalement », ce qui est juste pour le locataire
+         * qui la reçoit et faux pour le gestionnaire, à qui l'on annoncerait sa
+         * propre réponse comme une nouvelle. Le titre nomme donc QUI a parlé.
+         *
+         * `{tenant}` et non le logement seul : le gestionnaire d'un immeuble
+         * lit dix cartes d'affilée, et « A1 » ne lui dit pas qui l'attend
+         * vendredi matin.
+         */
+        tenantReply: {
+          title: 'Réponse de {tenant} · {unit}',
+          detail: '{reference} · {text}',
+        },
         rentOverdue: {
           title: 'Loyer {unit} en retard de {count} jours',
           title_one: 'Loyer {unit} en retard de {count} jour',
@@ -2073,6 +2093,15 @@ export const fr = {
       /* LE FIL. Le texte de la réponse vient d'un humain et n'est pas traduit ;
          ces deux clés ne portent que l'habillage. */
       replyFrom: 'Réponse de votre gestionnaire',
+      /* LE SENS MONTANT. « Vous » et non le nom : c'est SA phrase, relue dans
+         son propre espace, et se voir nommer à la troisième personne dans sa
+         propre conversation sonne comme un dossier, pas comme un échange. */
+      replyMine: 'Votre réponse',
+      replyLabel: 'Répondre',
+      replyHint: 'Le gestionnaire et le bailleur la reçoivent.',
+      replySend: 'Envoyer la réponse',
+      replySent: 'Réponse envoyée',
+      replyError: 'Au moins 3 caractères.',
       noReply: 'Pas encore de réponse',
       emptyTitle: 'Aucun signalement',
       emptyBody: 'Déclarez un problème et suivez son traitement ici : reçu, chiffré, validé, puis terminé.',

@@ -49,8 +49,19 @@ const NOTIFICATIONS = [
   {
     id: 'n-autre',
     kind: 'work',
-    messageKey: 'workReply',
-    params: { text: 'Le plombier passe jeudi.', workId: 'w-1', reference: 'SIG-2026-042' },
+    /* `tenantReply` ET NON `workReply` : la seconde descend vers le locataire,
+       et la boîte aux lettres du bailleur ne la porte plus — il relit ce qu'il a
+       écrit dans le fil, sous le chantier. Ce cas compte des NON LUES sur
+       l'écran du bailleur ; il lui faut donc une notification qui lui soit
+       vraiment adressée, sans quoi il compterait un vide. */
+    messageKey: 'tenantReply',
+    params: {
+      text: 'La fuite a empiré depuis hier.',
+      workId: 'w-1',
+      reference: 'SIG-2026-042',
+      tenant: 'Serge Mbarga',
+      unitId: 'A3',
+    },
     severity: 'medium',
     unitId: A3,
     createdAt: '2026-08-19T10:00:00.000Z',

@@ -90,8 +90,24 @@ describe('les notifications s’annoncent comme une liste', () => {
     */
     const relances = ALERTS.filter((a) => a.message === 'rentReminder')
     const bauxRelances = new Set(relances.map((a) => a.unitId))
-    const attendu = ALERTS.length - relances.length + bauxRelances.size
+    /*
+      ET UNE CHOSE EST BIEN FILTRÉE, DEPUIS QUE LE FIL TOURNE DANS LES DEUX SENS.
+
+      `workReply` descend vers le locataire : l'afficher au bailleur lui montrait
+      « Réponse à VOTRE signalement » à propos de ce qu'il venait d'écrire. La
+      boîte aux lettres ne porte plus que ce qui lui est ADRESSÉ ; ce qu'il a
+      écrit se relit dans le fil, sous le chantier.
+
+      Retranché ici plutôt que passé sous silence : la phrase du dessus dit
+      « rien n'a disparu », et ce serait devenu faux sans que le compte le dise.
+    */
+    const maVoix = ALERTS.filter((a) => a.message === 'workReply')
+    const attendu = ALERTS.length - relances.length + bauxRelances.size - maVoix.length
     expect(directs).toHaveLength(attendu)
+
+    /* GARDE DE LA GARDE, seconde moitié : sans réponse descendante dans le jeu,
+       la soustraction ci-dessus vaudrait zéro et ne garderait rien. */
+    expect(maVoix.length).toBeGreaterThan(0)
 
     /* GARDE DE LA GARDE : si le repli cessait d'opérer, `attendu` vaudrait
        `ALERTS.length` et le cas passerait au vert sur l'écran d'avant. On exige

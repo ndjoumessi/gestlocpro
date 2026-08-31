@@ -1140,6 +1140,17 @@ export type AlertMessage =
    * locataire — il ne se traduit pas, comme l'annonce et la réponse.
    */
   | 'tenantReport'
+  /**
+   * LA RÉPONSE QUI REMONTE, et le fil ne tournait que dans un sens.
+   *
+   * Le gestionnaire demandait « serez-vous là jeudi ? » et le locataire n'avait
+   * aucun moyen de répondre : la question était posée dans le produit, la
+   * réponse se donnait au téléphone. Une clé DISTINCTE de `workReply` parce que
+   * l'écran doit dire QUI a parlé — une carte qui ne le dit pas transforme un
+   * échange en monologue, et le gestionnaire relirait sa propre réponse comme
+   * une nouvelle reçue.
+   */
+  | 'tenantReply'
   | 'rentOverdue'
   | 'quotePending'
   | 'metersMissing'
@@ -1271,6 +1282,10 @@ export const ALERTS: Alert[] = [
      à l'écran. Elle porte le `workId` de SIG-2026-036, le signalement du
      locataire de la démonstration, sur son logement A1. */
   { id: 'n9', kind: 'work', message: 'workReply', data: { workId: 'SIG-2026-036', reference: 'SIG-2026-036', unitId: 'A1', text: 'Vanne remplacée ce matin par le plombier. Dites-nous si la pression est revenue.' }, at: { value: -3, unit: 'day' }, severity: 'low', read: true, unitId: 'A1' },
+  /* LA RÉPONSE QUI REMONTE, deux jours après celle du dessus : c'est la seule
+     alerte du jeu qui fasse une CONVERSATION plutôt qu'un avis isolé, et elle
+     est là pour ça — le fil se lit à deux voix ou il ne se lit pas. */
+  { id: 'n10', kind: 'work', message: 'tenantReply', data: { workId: 'SIG-2026-036', reference: 'SIG-2026-036', unitId: 'A1', tenant: 'Charles Ngassa', text: 'La pression est revenue, merci. Il reste un léger suintement au raccord.' }, at: { value: -1, unit: 'day' }, severity: 'medium', read: false, channel: 'in_app', unitId: 'A1' },
   { id: 'n8', kind: 'work', message: 'tenantReport', data: { workId: 'SIG-2026-044', reference: 'SIG-2026-044', unitId: 'B3', text: 'Fuite sous l’évier de la cuisine, ça goutte depuis hier soir.' }, at: { value: -40, unit: 'minute' }, severity: 'medium', read: false, unitId: 'B3', channel: 'in_app' },
   { id: 'n2', kind: 'work', message: 'quotePending', data: { workId: 'SIG-2026-042', unitId: 'A3', amount: 45000 }, at: { value: -5, unit: 'hour' }, severity: 'high', read: false, unitId: 'A3' },
   { id: 'n3', kind: 'meter', message: 'metersMissing', data: { count: 2, period: { year: 2026, month: 7 }, units: ['A5', 'C2'] }, at: { value: -1, unit: 'day' }, severity: 'medium', read: true },

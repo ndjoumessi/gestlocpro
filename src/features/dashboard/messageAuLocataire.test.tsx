@@ -310,7 +310,22 @@ describe('prévenir les locataires', () => {
   })
 })
 
-describe('ce que le locataire lit', () => {
+/**
+ * CE QUE CHACUN LIT — et la session de ces cas est celle du BAILLEUR.
+ *
+ * Le titre du groupe disait « le locataire » et `session()` rend une adhésion de
+ * propriétaire : ces cas ont toujours éprouvé ce que le BAILLEUR voit. Le nom
+ * est corrigé plutôt que la session, parce que c'est bien de son écran qu'il
+ * s'agit — celui où les libellés manquants s'affichaient en toutes lettres.
+ *
+ * LA RÉPONSE QU'IL LIT A CHANGÉ DE SENS, et c'est le sujet du lot. `workReply`
+ * descend vers le locataire ; l'afficher au bailleur lui montrait « Réponse à
+ * VOTRE signalement » à propos de ce qu'il venait lui-même d'écrire. C'est
+ * `tenantReply` qui lui est adressée, et c'est elle qui est éprouvée ici.
+ * Ce qu'il a écrit, lui, se relit dans le FIL, sous le chantier — jamais dans
+ * sa boîte aux lettres.
+ */
+describe('ce que le bailleur lit', () => {
   const ANNONCE = {
     id: 'n-annonce',
     kind: 'announcement',
@@ -325,8 +340,14 @@ describe('ce que le locataire lit', () => {
   const REPONSE = {
     id: 'n-reponse',
     kind: 'work',
-    messageKey: 'workReply',
-    params: { text: 'Le plombier passe jeudi matin.', workId: 'w-fuite', reference: 'SIG-2026-042' },
+    messageKey: 'tenantReply',
+    params: {
+      text: 'Le plombier passe jeudi matin.',
+      workId: 'w-fuite',
+      reference: 'SIG-2026-042',
+      tenant: 'Serge Mbarga',
+      unitId: 'A3',
+    },
     severity: 'medium',
     unitId: A3,
     createdAt: '2026-08-19T10:00:00.000Z',
@@ -345,7 +366,7 @@ describe('ce que le locataire lit', () => {
     await screen.findByText(/Coupure d’eau jeudi de 8 h à 12 h/)
 
     expect(screen.getByText('Message de votre bailleur')).toBeInTheDocument()
-    expect(screen.getByText('Réponse à votre signalement')).toBeInTheDocument()
+    expect(screen.getByText('Réponse de Serge Mbarga · A3')).toBeInTheDocument()
     // La référence rattache la réponse au signalement : sans elle, les réponses
     // s'empilent dans une liste sans dire de quoi elles parlent.
     expect(screen.getByText(/SIG-2026-042 · Le plombier passe jeudi matin/)).toBeInTheDocument()
@@ -367,7 +388,7 @@ describe('ce que le locataire lit', () => {
 
     // La moitié qui empêche de tout masquer : une réponse à un signalement
     // renvoie bien aux travaux.
-    const reponse = screen.getByText('Réponse à votre signalement').closest<HTMLElement>('[role="listitem"]')!
+    const reponse = screen.getByText('Réponse de Serge Mbarga · A3').closest<HTMLElement>('[role="listitem"]')!
     await waitFor(() => expect(reponse.textContent).toContain('Ouvrir'))
   })
 })

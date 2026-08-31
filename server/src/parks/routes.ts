@@ -1965,19 +1965,59 @@ const schemaReponse = z.object({
 parksRouter.post(
   '/:parkId/works/:workId/reply',
   exigerAppartenance,
-  exigerRole('owner', 'manager'),
+  /**
+   * LE LOCATAIRE Y A DROIT AUSSI, et c'est le point de ce correctif.
+   *
+   * Le gestionnaire écrit « le plombier passe jeudi entre 8 h et 12 h, serez-vous
+   * là ? » — et le locataire n'avait AUCUN moyen de répondre. La question était
+   * posée dans le produit, la réponse se donnait au téléphone, et la décision qui
+   * en sortait ne figurait nulle part dans le dossier de l'intervention.
+   *
+   * C'est le raisonnement que cette route porte déjà pour l'autre sens, mot pour
+   * mot : « les échanges qui décident d'une dépense se perdaient hors du
+   * dossier ». Il valait dans les deux directions ; il n'était appliqué qu'à une.
+   *
+   * UNE SEULE ROUTE, et non deux. Deux chemins pour un même geste, ce sont deux
+   * jeux de gardes à tenir d'accord — et la borne du texte, le rattachement au
+   * chantier et la trace sont les mêmes dans les deux sens. Ce qui diffère se
+   * dérive du RÔLE, plus bas, jamais du corps de la requête.
+   */
+  exigerRole('owner', 'manager', 'tenant'),
   async (req: Request, res: Response) => {
-    const { parkId } = req.adhesion!
+    const { parkId, role } = req.adhesion!
+    const monte = role === 'tenant'
     const brut = req.params.workId
     const workId = typeof brut === 'string' ? brut : ''
     const corps = schemaReponse.parse(req.body)
 
     const travail = await prisma.workOrder.findFirst({
-      where: { id: workId, unit: { building: { parkId } } },
+      where: {
+        id: workId,
+        unit: { building: { parkId } },
+        /**
+         * LE LOCATAIRE NE RÉPOND QUE SUR CE QU'IL A DÉCLARÉ.
+         *
+         * Exprimé par la RELATION et non par un contrôle après coup : c'est le
+         * piège que la route d'ouverture d'une intervention a payé une fois —
+         * un `...spread` y écrasait la clé `id`, et « le voisin visant celui
+         * d'à côté recevait 201 ». Une condition posée ici ne peut pas être
+         * écrasée par une autre, et le 404 en sort tout seul.
+         *
+         * 404 et non 403 : un 403 confirmerait au voisin qu'une intervention
+         * est en cours dans le logement d'à côté.
+         */
+        ...(monte ? { reportedByTenant: { userId: req.compteId! } } : {}),
+      },
       select: {
         id: true,
         reference: true,
         unitId: true,
+        /* `label` : la carte qui remonte compose « Réponse de {tenant} · {unit} »,
+           et `{unit}` se résout depuis le LIBELLÉ — la convention que les autres
+           avis suivent, où l'on lit « A1 » et jamais un `uuid`. Le sens
+           descendant n'en avait pas besoin ; l'omettre ici afficherait le jeton
+           tel quel, ce qui est arrivé une fois et a coûté une porte. */
+        unit: { select: { label: true } },
         reportedByTenant: { select: { id: true, fullName: true, userId: true } },
       },
     })
@@ -2015,21 +2055,65 @@ parksRouter.post(
      */
     const destinataire = travail.reportedByTenant.userId
 
+    /**
+     * QUI REÇOIT, ET QUI L'A DIT — les deux se dérivent du sens.
+     *
+     * En DESCENDANT : le déclarant, et lui seul. C'est une réponse qui lui est
+     * adressée, pas une annonce au parc.
+     *
+     * En MONTANT : toute la gestion, exactement comme le signalement lui-même.
+     * L'adresser au seul propriétaire manquerait celui qui fait passer
+     * l'artisan — et c'est le gestionnaire qui avait posé la question.
+     *
+     * Elle NE REVIENT PAS à son auteur. Il sait ce qu'il a écrit, son propre fil
+     * le lui montre ; un écho l'habituerait à ignorer ce qui se pose dans sa
+     * liste. Même arbitrage que pour le signalement qu'il vient de déclarer.
+     */
+    const gestion = monte
+      ? await prisma.membership.findMany({
+          where: { parkId, status: 'active', role: { in: ['owner', 'manager'] } },
+          select: { userId: true },
+        })
+      : []
+    const recipients = monte
+      ? gestion.map((m) => ({ userId: m.userId }))
+      : destinataire
+        ? [{ userId: destinataire }]
+        : []
+
     await prisma.notification.create({
       data: {
         parkId,
         kind: 'work',
-        messageKey: 'workReply',
+        /**
+         * DEUX CLÉS, ET NON UNE AVEC UN DRAPEAU.
+         *
+         * L'écran doit dire QUI a parlé : une carte qui ne le dit pas transforme
+         * un échange en monologue, et le gestionnaire relirait sa propre réponse
+         * comme une nouvelle reçue. La clé porte le sens, comme `tenantReport`
+         * le porte déjà pour la déclaration.
+         */
+        messageKey: monte ? 'tenantReply' : 'workReply',
         /**
          * `workId` voyage avec le texte : c'est lui qui rattache la réponse au
          * signalement dans l'espace du locataire. Sans lui, les réponses
          * s'empileraient dans une liste sans dire de quoi elles parlent.
          */
-        params: { text: corps.message, workId: travail.id, reference: travail.reference },
+        params: {
+          text: corps.message,
+          workId: travail.id,
+          reference: travail.reference,
+          /* Le NOM et le LOGEMENT ne voyagent qu'en montant : c'est le titre de
+             la carte du gestionnaire qui les réclame. Le locataire, lui, sait
+             déjà chez qui il habite. */
+          ...(monte
+            ? { tenant: travail.reportedByTenant.fullName, unitId: travail.unit.label }
+            : {}),
+        },
         severity: 'medium',
         unitId: travail.unitId,
         channel: 'in_app',
-        ...(destinataire ? { recipients: { create: [{ userId: destinataire }] } } : {}),
+        ...(recipients.length > 0 ? { recipients: { create: recipients } } : {}),
       },
     })
 
@@ -2041,8 +2125,11 @@ parksRouter.post(
      * dossier de l'intervention — mais le gestionnaire doit savoir qu'il lui
      * reste un appel à passer.
      */
+    /* En MONTANT, la question ne se pose pas : la gestion a forcément un compte,
+       c'est par lui qu'elle est entrée dans le parc. `delivered` vaut donc le
+       nombre de destinataires réels dans les deux sens, sans cas particulier. */
     res.status(201).json({
-      delivered: Boolean(destinataire),
+      delivered: recipients.length > 0,
       reporter: { fullName: travail.reportedByTenant.fullName },
     })
   },
