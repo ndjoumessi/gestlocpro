@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Route, Routes } from 'react-router-dom'
-import type { Role } from '@/features/auth/signupState'
+import { ROLES_PAR_ADRESSE } from '@/app/adressesParRole'
 import { Demo } from '@/routes/Demo'
 import { NotFoundInApp } from '@/routes/NotFoundInApp'
 import { AppShell, RoleGuard } from '@/components/layout/AppShell'
@@ -51,10 +51,22 @@ import { TenantDocuments } from '@/features/dashboard/TenantDocuments'
  * de la vitrine ne télécharge de toute façon jamais.
  */
 
-/** Raccourci : un écran réservé, avec le même écran de refus partout. */
-function Restricted({ allow, children }: { allow: Role[]; children: ReactNode }) {
+/**
+ * Raccourci : un écran réservé, avec le même écran de refus partout.
+ *
+ * IL NE PORTE PLUS SA LISTE DE RÔLES, IL LA LIT. Chaque route écrivait la
+ * sienne ici, et la connexion a désormais besoin de la même — pour savoir si
+ * l'adresse qu'elle a retenue est atteignable avant d'y renvoyer. Deux listes
+ * finiraient par diverger, et la divergence se paierait exactement là où ce lot
+ * corrige : une adresse ajoutée d'un côté déposerait quelqu'un sur un mur.
+ *
+ * La route donne donc son ADRESSE, et `adressesParRole` répond. Un écran absent
+ * de la table n'ouvre à personne — un oubli s'y voit au premier essai, alors
+ * qu'un défaut permissif ne se voit jamais.
+ */
+function Restricted({ adresse, children }: { adresse: string; children: ReactNode }) {
   return (
-    <RoleGuard allow={allow} fallback={<TenantRestricted />}>
+    <RoleGuard allow={ROLES_PAR_ADRESSE[adresse] ?? []} fallback={<TenantRestricted />}>
       {children}
     </RoleGuard>
   )
@@ -76,11 +88,11 @@ function Restricted({ allow, children }: { allow: Role[]; children: ReactNode })
  * visiteur voie les trois rôles, et cet espace est ce que le locataire voit.
  * `Vitrine`, juste dessous, fait la même distinction dans l'autre sens.
  */
-function Locataire({ children }: { children: ReactNode }) {
+function Locataire({ adresse, children }: { adresse: string; children: ReactNode }) {
   const { estDemo } = useSession()
   if (estDemo) return <>{children}</>
   return (
-    <RoleGuard allow={['tenant']} fallback={<NotFoundInApp />}>
+    <RoleGuard allow={ROLES_PAR_ADRESSE[adresse] ?? []} fallback={<NotFoundInApp />}>
       {children}
     </RoleGuard>
   )
@@ -137,21 +149,21 @@ function ecransDeLApplication() {
           un espace qu'il n'a pas. Ce fichier a déjà tranché le cas symétrique
           pour la vitrine — « sous un vrai compte, ces adresses n'existent pas,
           et c'est ce qu'un 404 dit ». La phrase vaut dans les deux sens. */}
-      <Route path="mon-espace" element={<Locataire><TenantDashboard /></Locataire>} />
-      <Route path="documents" element={<Locataire><TenantDocuments /></Locataire>} />
+      <Route path="mon-espace" element={<Locataire adresse="mon-espace"><TenantDashboard /></Locataire>} />
+      <Route path="documents" element={<Locataire adresse="documents"><TenantDocuments /></Locataire>} />
       {/* Il déclare, et suit ses propres déclarations. */}
-      <Route path="signaler" element={<Locataire><Signaler /></Locataire>} />
+      <Route path="signaler" element={<Locataire adresse="signaler"><Signaler /></Locataire>} />
 
       {/* Écrans de gestion : la même liste de rôles que dans la barre
           latérale, pour que navigation et accès ne divergent pas. */}
-      <Route path="parc" element={<Restricted allow={['owner', 'manager']}><Portfolio /></Restricted>} />
+      <Route path="parc" element={<Restricted adresse="parc"><Portfolio /></Restricted>} />
       {/* Le dossier d'UN logement. Même garde que la liste dont il vient : une
           adresse forgée ne doit pas ouvrir à un locataire le dossier du voisin,
           et le serveur borne déjà ce qu'il rend. */}
       <Route
         path="parc/:unitId"
         element={
-          <Restricted allow={['owner', 'manager']}>
+          <Restricted adresse="parc">
             <UnitFile />
           </Restricted>
         }
@@ -160,19 +172,19 @@ function ecransDeLApplication() {
           portefeuille les borne déjà à son unité côté serveur. */}
       <Route path="releves" element={<Meters />} />
       <Route path="cautions" element={<Deposits />} />
-      <Route path="locataires" element={<Restricted allow={['owner', 'manager']}><Tenants /></Restricted>} />
+      <Route path="locataires" element={<Restricted adresse="locataires"><Tenants /></Restricted>} />
       {/* Le registre des accès : ouvert aux deux rôles de gestion, parce que le
           gestionnaire émet des codes de locataire au quotidien et qu'un code
           qu'on ne peut pas retrouver est un code qu'on réémet en double. Ce
           qu'il ne peut pas faire — retirer un accès, reprendre un code de
           gestionnaire — l'écran ne le lui propose pas. */}
-      <Route path="acces" element={<Restricted allow={['owner', 'manager']}><Access /></Restricted>} />
+      <Route path="acces" element={<Restricted adresse="acces"><Access /></Restricted>} />
       {/* LE PROPRIÉTAIRE SEUL. Le registre existe pour qu'il contrôle ce qu'il
           délègue ; le gestionnaire n'y trouverait que ses propres actes
           rassemblés pour son employeur, et le serveur le lui refuse déjà par un
           403 — un écran qui l'offrirait promettrait ce que la porte refuse. */}
-      <Route path="decisions" element={<Restricted allow={['owner']}><Decisions /></Restricted>} />
-      <Route path="prise-en-main" element={<Restricted allow={['owner']}><Onboarding /></Restricted>} />
+      <Route path="decisions" element={<Restricted adresse="decisions"><Decisions /></Restricted>} />
+      <Route path="prise-en-main" element={<Restricted adresse="prise-en-main"><Onboarding /></Restricted>} />
 
       {/* Vitrines : le même garde que dans la barre latérale, où elles portent
           `vitrine: true`. */}

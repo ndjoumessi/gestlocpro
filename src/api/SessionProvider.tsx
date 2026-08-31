@@ -10,6 +10,7 @@ import {
 } from 'react'
 import { effacerStockage, ecrireStockage, lireStockage } from '@/lib/stockage'
 import { ApiError, NetworkError, api, type AdhesionApi, type CompteApi, type DemandeInscription } from './client'
+import type { Role } from '@/features/auth/signupState'
 
 /**
  * Session du compte connecté.
@@ -113,11 +114,21 @@ interface SessionContextValue {
   echecDeSession: EchecDeSession | null
   /** Relance la première lecture. Déclenchée par l'utilisateur, jamais en boucle. */
   reprendreLaSession: () => void
-  /** `persistante` : « rester connecté sur cet appareil », tel que l'écran l'a demandé. */
-  connecter: (email: string, motDePasse: string, persistante: boolean) => Promise<void>
+  /**
+   * `persistante` : « rester connecté sur cet appareil », tel que l'écran l'a demandé.
+   *
+   * ELLE REND LE RÔLE DU COMPTE, et l'écran de connexion en a besoin sur-le-champ.
+   * Il doit décider où renvoyer — l'adresse retenue par la barrière d'accès, ou
+   * le tableau de bord si ce rôle ne l'atteint pas — et l'état du fournisseur
+   * n'est pas encore relu dans la closure qui vient d'appeler. Sans cette
+   * valeur, `Login` déciderait sur les adhésions d'AVANT la connexion,
+   * c'est-à-dire sur aucune.
+   */
+  connecter: (email: string, motDePasse: string, persistante: boolean) => Promise<Role>
   inscrire: (donnees: DemandeInscription) => Promise<void>
   deconnecter: () => Promise<void>
-  rafraichir: () => Promise<void>
+  /** Relit `/auth/me`. Rend les adhésions lues, pour qui doit décider aussitôt. */
+  rafraichir: () => Promise<AdhesionApi[]>
   /** Ouvre l'application sur le jeu de démonstration, sans compte. */
   entrerEnDemo: () => void
   /** `true` quand l'écran affiché est une démonstration et non un vrai parc. */
@@ -205,7 +216,7 @@ export function SessionProvider({
    */
   const [resolue, setResolue] = useState(false)
 
-  const rafraichir = useCallback(async () => {
+  const rafraichir = useCallback(async (): Promise<AdhesionApi[]> => {
     try {
       const { user, memberships } = await api.me()
       // Un vrai compte l'emporte toujours sur une visite de démonstration : la
@@ -215,6 +226,7 @@ export function SessionProvider({
       setEtat({ statut: 'connecte', compte: user, adhesions: memberships })
       setResolue(true)
       setHorsLigne(false)
+      return memberships
     } catch (err) {
       if (err instanceof NetworkError) {
         /**
@@ -225,7 +237,7 @@ export function SessionProvider({
          * ressaisir son mot de passe sans raison.
          */
         setHorsLigne(true)
-        return
+        return []
       }
       if (err instanceof ApiError && err.status === 401) {
         /**
@@ -237,7 +249,7 @@ export function SessionProvider({
         const enDemo = lireStockage('session', CLE_DEMO) === '1'
         setEtat(enDemo ? { statut: 'demo' } : { statut: 'anonyme' })
         setHorsLigne(false)
-        return
+        return []
       }
       throw err
     }
@@ -295,7 +307,18 @@ export function SessionProvider({
       await api.login(email, motDePasse, persistante)
       // On relit la session plutôt que de se fier au corps de la réponse : les
       // adhésions n'y sont pas, et deux chemins d'hydratation divergeraient.
-      await rafraichir()
+      const adhesions = await rafraichir()
+      /* LE MÊME DÉFAUT QUE LA COQUILLE, à la ligne près : `adhesions[0]` et
+         `?? 'owner'`. Un compte sans adhésion n'a pas de rôle — il verra
+         « aucun parc rattaché » quoi qu'il arrive —, et le supposer locataire
+         l'enverrait sur un espace qui n'existe pas.
+
+         LE PARC CHOISI N'EST PAS RELU ICI, et c'est une approximation assumée :
+         un compte multi-parcs dont le second parc porte un AUTRE rôle serait
+         jugé sur le premier. Le cas est étroit et sa conséquence est un renvoi
+         au tableau de bord, jamais un accès indu — le garde de la route, lui,
+         lit bien `adhesionActive`. */
+      return adhesions[0]?.role ?? 'owner'
     },
     [rafraichir],
   )

@@ -12,6 +12,7 @@ import { ApiError, NetworkError } from '@/api/client'
 import { useSession } from '@/api/SessionProvider'
 import { validateEmail, validatePassword, type FieldError } from '@/features/auth/validation'
 import { ecrireStockage, effacerStockage, lireStockage } from '@/lib/stockage'
+import { adresseOuverteAuRole } from '@/app/adressesParRole'
 
 /**
  * La mémoire du choix, sur CETTE machine.
@@ -130,7 +131,7 @@ export function Login() {
     setSubmitting(true)
     setEchec(null)
     try {
-      await connecter(email, password, persistante)
+      const role = await connecter(email, password, persistante)
       /* ON RETIENT APRÈS COUP, JAMAIS À LA FRAPPE. Une adresse rangée avant
          d'être éprouvée serait une faute de frappe conservée pour toujours,
          resservie à chaque visite — et l'écran reprocherait alors un
@@ -148,7 +149,22 @@ export function Login() {
        * « retour » du navigateur y ramènerait sinon un utilisateur désormais
        * authentifié, devant un formulaire qui n'a plus lieu d'être.
        */
-      navigate(destination, { replace: true })
+      /**
+       * ET SEULEMENT SI CE RÔLE PEUT L'ATTEINDRE.
+       *
+       * L'adresse est retenue par la barrière AVANT que le rôle soit connu : un
+       * poste partagé où le locataire s'est connecté la veille, un lien vers
+       * `/app/mon-espace` transmis à la mauvaise personne, un onglet resté
+       * ouvert. Le propriétaire se connectait, la barrière le renvoyait
+       * fidèlement où il « allait », et le garde de rôle — juste, lui — lui
+       * rendait « Écran introuvable ». Capturé en production : sa première
+       * seconde dans le produit était un mur, sous une barre latérale complète.
+       *
+       * On ne desserre AUCUN garde pour autant. L'adresse tapée à la main rend
+       * toujours son 404, qui est la vérité ; ce qu'on cesse d'infliger, c'est
+       * un mur à quelqu'un qui n'a rien demandé d'autre que d'entrer.
+       */
+      navigate(adresseOuverteAuRole(destination, role) ? destination : '/app', { replace: true })
     } catch (err) {
       /**
        * L'échec porte sur le FORMULAIRE, pas sur un champ.
