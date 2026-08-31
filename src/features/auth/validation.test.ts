@@ -88,13 +88,19 @@ describe('téléphone et nom', () => {
   })
 
   it('compte l’indicatif dans la limite, puisqu’ils voyagent ensemble', () => {
+    /* LES INDICATIFS SONT CEUX DONT ON N'A PAS LE PLAN, et c'est nécessaire.
+       Ce cas illustrait la borne E.164 avec `+237` et `+1` — deux pays dont
+       `LONGUEUR_NATIONALE` connaît désormais la longueur exacte. La règle de
+       pays répondait donc avant la somme, et le cas mesurait l'autre. La
+       propriété gardée ici n'a pas changé : c'est le total qui compte. On la
+       montre sur `+973` et `+7`, absents de la table. */
     // 12 chiffres nationaux + 3 d'indicatif = 15, la borne exacte.
-    expect(validatePhone('677889900123', '+237')).toBeNull()
+    expect(validatePhone('677889900123', '+973')).toBeNull()
     // Un de plus, et l'E.164 devient impossible.
-    expect(validatePhone('6778899001234', '+237')).toBe('auth.errors.phoneTooLong')
+    expect(validatePhone('6778899001234', '+973')).toBe('auth.errors.phoneTooLong')
     // Le même national passe avec un indicatif plus court : c'est bien la somme
     // qui compte, pas la longueur du numéro seul.
-    expect(validatePhone('6778899001234', '+1')).toBeNull()
+    expect(validatePhone('6778899001234', '+7')).toBeNull()
   })
 
   it('refuse un nom d’une seule lettre', () => {

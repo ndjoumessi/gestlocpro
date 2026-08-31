@@ -315,7 +315,11 @@ describe('inscription', () => {
 
     await user.type(screen.getByLabelText(/nom complet/i), 'Arsène Nkomo')
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'arsene@example.com')
-    await user.type(screen.getByLabelText(/^téléphone/i), '677889900')
+    /* DIX CHIFFRES, parce que ce cas finit sur `+1`. L'Amérique du Nord tient
+       en dix, et `validatePhone` le sait depuis que le plan des pays connus est
+       gardé : neuf chiffres bloqueraient « Continuer », et l'étape suivante —
+       la seule que ce cas regarde — ne s'ouvrirait jamais. */
+    await user.type(screen.getByLabelText(/^téléphone/i), '6778899001')
     await user.type(screen.getByLabelText(/^Mot de passe/), 'Bonamoussadi2026!')
 
     const indicatif = screen.getByLabelText(/indicatif/i)

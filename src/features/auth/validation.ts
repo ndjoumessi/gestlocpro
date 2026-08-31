@@ -140,13 +140,54 @@ const E164_MAX = 15
  * une borne trop serrée refuserait un numéro valide dans un pays dont on n'a
  * pas la règle, ce qui coûte plus qu'un numéro trop long refusé par le serveur.
  */
+/**
+ * LONGUEUR NATIONALE EXACTE, PAR INDICATIF — LÀ OÙ NOUS LA CONNAISSONS.
+ *
+ * ═══ POURQUOI CETTE TABLE EXISTE MALGRÉ L'ARGUMENT CI-DESSUS ═══
+ *
+ * L'argument tient POUR LES PAYS DONT ON N'A PAS LA RÈGLE, et il est conservé
+ * tel quel : hors de cette table, rien ne change. Il ne tient pas pour ceux dont
+ * on l'a. « 60000001 », huit chiffres, n'est pas un numéro camerounais ; il
+ * partait, et se retrouvait dans la colonne « Contact » sous la forme
+ * `+23760000001`, qu'aucun téléphone n'appellera jamais.
+ *
+ * ═══ SEPT ENTRÉES, ET PAS UNE DE PLUS ═══
+ *
+ * Seuls les plans à longueur FIXE et stable y figurent. L'Allemagne en est
+ * absente — sa longueur varie de dix à onze chiffres selon le préfixe — et
+ * beaucoup d'autres avec elle. Une entrée manquante ne coûte rien : le pays
+ * garde l'ancienne permissivité. Une entrée FAUSSE, en revanche, refuserait un
+ * numéro valide et fermerait le produit à ce pays — c'est le risque exact que
+ * l'en-tête précédent refusait de prendre, et il est pris ici pour sept pays
+ * seulement, affirmés de mémoire et non mesurés.
+ *
+ * Par INDICATIF et non par code ISO : c'est l'indicatif que le formulaire tient
+ * dans son champ voisin, et `+1` couvre les États-Unis comme le Canada, qui
+ * partagent le même plan à dix chiffres.
+ */
+const LONGUEUR_NATIONALE: Record<string, number> = {
+  '+237': 9, // Cameroun
+  '+225': 10, // Côte d'Ivoire
+  '+221': 9, // Sénégal
+  '+212': 9, // Maroc
+  '+33': 9, // France
+  '+1': 10, // Amérique du Nord
+  '+32': 9, // Belgique
+}
+
 export function validatePhone(value: string, dial = ''): FieldError {
   const digits = value.replace(/\D/g, '')
   if (!digits) return 'auth.errors.phoneRequired'
   if (digits.length < 6) return 'auth.errors.phoneInvalid'
 
   const chiffresIndicatif = dial.replace(/\D/g, '').length
-  return digits.length + chiffresIndicatif > E164_MAX ? 'auth.errors.phoneTooLong' : null
+  if (digits.length + chiffresIndicatif > E164_MAX) return 'auth.errors.phoneTooLong'
+
+  /* Le plan du pays passe APRÈS les deux bornes universelles : elles nomment
+     « vide » et « manifestement trop court », qui sont des messages plus utiles
+     que « pas au format du pays » pour un champ à peine commencé. */
+  const attendue = LONGUEUR_NATIONALE[dial.trim()]
+  return attendue !== undefined && digits.length !== attendue ? 'auth.errors.phoneCountry' : null
 }
 
 export function validateParkName(value: string): FieldError {

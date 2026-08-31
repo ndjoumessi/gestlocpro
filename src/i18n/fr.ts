@@ -471,6 +471,7 @@ export const fr = {
       // Le message dit la CAUSE et la limite : « invalide » laisserait
       // l'utilisateur retaper le même numéro sans savoir ce qui cloche.
       phoneTooLong: 'Ce numéro est trop long, indicatif compris.',
+      phoneCountry: 'Ce numéro ne correspond pas au format du pays choisi.',
       parkNameRequired: 'Donnez un nom à votre parc.',
       inviteRequired: 'Saisissez votre code d’invitation.',
       inviteInvalid: 'Code non reconnu. Format attendu : LOC-XXXX-XXXX pour un locataire, GES-XXXX-XXXX pour un gestionnaire.',

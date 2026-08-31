@@ -23,6 +23,8 @@ import { useI18n, useT } from '@/i18n/I18nProvider'
 import { useNumbers } from '@/lib/numbers'
 import { useDates } from '@/lib/useDates'
 import { dialOptions } from '@/lib/countries'
+import { INDICATIFS } from '@/lib/indicatifs'
+import { useSession } from '@/api/SessionProvider'
 import { DOCUMENT_KIND_LABELS, buildingById, type Unit } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { validateName, validatePhone, type FieldError } from '@/features/auth/validation'
@@ -474,13 +476,35 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
   const { notify } = useToast()
   const { parseAmount } = useCurrency()
   const { addTenant } = usePortfolio()
+  const { adhesionActive } = useSession()
 
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
-  // Le champ était un `tel` nu, sans indicatif, alors que l'inscription en
-  // pose un : un bailleur hors zone CFA créait une fiche dont le numéro ne
-  // permettait pas d'envoyer le code promis par le libellé d'aide.
-  const [dial, setDial] = useState('+237')
+  /**
+   * L'INDICATIF PROPOSÉ EST CELUI DU PARC.
+   *
+   * Le champ était d'abord un `tel` nu, sans indicatif, alors que l'inscription
+   * en pose un : un bailleur hors zone CFA créait une fiche dont le numéro ne
+   * permettait pas d'envoyer le code promis par le libellé d'aide. L'indicatif
+   * est arrivé — et il est arrivé ÉCRIT EN DUR, `'+237'`, ce qui déplaçait le
+   * défaut au lieu de le fermer : un parc ivoirien, sénégalais ou français
+   * proposait toujours le Cameroun, et le numéro composé à partir de là
+   * n'appelle personne.
+   *
+   * Le pays du parc voyage DÉJÀ sur l'adhésion, avec son propre cas. Rien
+   * n'était à transporter : seulement à lire.
+   *
+   * LE REPLI RESTE `+237`, et ce n'est pas de la paresse. `countryCode` est
+   * facultatif — un serveur antérieur au champ ne le rend pas —, et ouvrir sur
+   * un champ VIDE obligerait alors à choisir un pays à chaque fiche, dans celui
+   * où le produit est effectivement utilisé.
+   *
+   * Il reste MODIFIABLE : un bailleur camerounais peut avoir un locataire
+   * joignable sur un numéro français. Le champ propose, il n'impose pas.
+   */
+  const [dial, setDial] = useState(
+    () => INDICATIFS[adhesionActive?.countryCode ?? ''] ?? '+237',
+  )
   const [debut, setDebut] = useState('')
   const [loyer, setLoyer] = useState('')
   const [caution, setCaution] = useState('')

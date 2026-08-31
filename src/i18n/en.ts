@@ -365,6 +365,7 @@ export const en: Dictionary = {
       phoneRequired: 'Enter a phone number.',
       phoneInvalid: 'That number looks incomplete.',
       phoneTooLong: 'That number is too long, dial code included.',
+      phoneCountry: 'That number does not match the selected country’s format.',
       parkNameRequired: 'Give your portfolio a name.',
       inviteRequired: 'Enter your invitation code.',
       inviteInvalid: 'Code not recognised. Expected format: LOC-XXXX-XXXX for a tenant, GES-XXXX-XXXX for a manager.',
