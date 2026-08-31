@@ -1,5 +1,7 @@
 import { Outlet } from 'react-router-dom'
 import { usePortfolio } from '@/data/PortfolioProvider'
+import { useSession } from '@/api/SessionProvider'
+import { SansParc } from '@/features/dashboard/SansParc'
 import { useT } from '@/i18n/I18nProvider'
 import { Button } from '@/components/primitives/Button'
 import { EcranSysteme } from './EcranSysteme'
@@ -36,7 +38,32 @@ import { EcranSysteme } from './EcranSysteme'
  */
 export function CadreDuParc() {
   const { echecDuParc, reprendreLeParc } = usePortfolio()
+  const { etat, estDemo, sessionResolue } = useSession()
   const t = useT()
+
+  /**
+   * AUCUN PARC : on ne rend AUCUN écran de gestion, et c'est la seule réponse
+   * honnête.
+   *
+   * Ce cadre existe pour distinguer « la coquille va bien » de « les données
+   * manquent ». Ici les données ne manquent pas : elles n'existent pas, et le
+   * fournisseur laissait à leur place son jeu de démonstration — voir
+   * `SansParc`, qui porte le récit complet.
+   *
+   * Le contrôle est ici plutôt que dans chaque écran : un compte sans parc n'a
+   * pas UN écran vide, il n'en a aucun, et le dire vingt fois finirait par
+   * diverger. `estDemo` protège la démonstration, qui n'a jamais de `parkId` et
+   * dont le jeu est précisément le propos.
+   */
+  if (
+    !estDemo &&
+    /* Reçu du SERVEUR, et non posé par défaut : voir `sessionResolue`. Une
+       liste d'adhésions vide qu'on n'a pas demandée ne dit rien. */
+    sessionResolue &&
+    etat.statut === 'connecte' &&
+    etat.adhesions.length === 0
+  )
+    return <SansParc />
 
   if (!echecDuParc) return <Outlet />
 

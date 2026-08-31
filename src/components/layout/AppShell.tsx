@@ -47,6 +47,25 @@ export function useRole() {
 }
 
 /**
+ * Ce compte n'appartient à AUCUN parc — voir `SansParc` pour le récit.
+ *
+ * Un crochet et non une prop passée de proche en proche : trois composants
+ * distincts en dépendent — la barre latérale, la barre basse et le cadre du
+ * parc — et aucun n'est enfant des deux autres.
+ *
+ * `estDemo` protège la démonstration, qui n'a jamais d'adhésion et dont c'est
+ * tout le propos.
+ */
+export function useSansParc(): boolean {
+  const { etat, estDemo, sessionResolue } = useSession()
+  /* `sessionResolue` : on n'affirme une ABSENCE que sur un état reçu du
+     SERVEUR. Tant que `/auth/me` n'a pas répondu, une liste d'adhésions vide ne
+     dit rien — c'est l'état initial, pas un fait. Conclure d'un silence est le
+     raisonnement que ce dépôt a déjà payé deux fois. */
+  return !estDemo && sessionResolue && etat.statut === 'connecte' && etat.adhesions.length === 0
+}
+
+/**
  * Monte de VRAIS écrans du locataire dans une fenêtre de démonstration.
  *
  * La prévisualisation entretenait sa propre copie des trois vues — cartes de
@@ -194,8 +213,20 @@ const SECTIONS_LOCATAIRE: { headingKey: string; items: NavItem[] }[] = [
   },
 ]
 
-/** La navigation tient au rôle, et non à un filtre posé sur celle d'un autre. */
-function sectionsPour(role: Role) {
+/**
+ * La navigation tient au rôle, et non à un filtre posé sur celle d'un autre.
+ *
+ * SANS PARC, ELLE EST VIDE. Douze entrées menant toutes au même écran « aucun
+ * parc » ne sont pas une navigation, et leurs PASTILLES mentaient : la capture
+ * du signalement montre « Paiements 3 » et « Signalements 3 », comptés sur le
+ * jeu de démonstration que le fournisseur laissait monté. Vider le cadre sans
+ * vider la barre aurait laissé le mensonge à l'endroit le plus visible.
+ *
+ * L'en-tête, lui, reste : c'est là que vivent le menu du compte et la
+ * déconnexion, dont on a justement besoin ici.
+ */
+function sectionsPour(role: Role, sansParc = false) {
+  if (sansParc) return []
   return role === 'tenant' ? SECTIONS_LOCATAIRE : SECTIONS
 }
 
@@ -931,6 +962,7 @@ function Sidebar({
   dialogLabel?: string
   innerRef?: Ref<HTMLElement>
 }) {
+  const sansParc = useSansParc()
   const t = useT()
   const wide = !railed
   const base = useBase()
@@ -1138,7 +1170,7 @@ function Sidebar({
         destinations principales, celle-ci les regroupe par section.
       */}
       <nav aria-label={t('nav.sectionsNav')} className="flex flex-col gap-3">
-        {sectionsPour(role).map((section) => {
+        {sectionsPour(role, sansParc).map((section) => {
           const items = entreesVisibles(section.items, role, demo)
           if (!items.length) return null
 
@@ -1623,9 +1655,13 @@ function SidebarLink({ item, wide }: { item: NavItem; wide: boolean }) {
 function BarreBasse({ role, onOpenDrawer }: { role: Role; onOpenDrawer: () => void }) {
   const t = useT()
   const { demo } = useIdentite()
+  const sansParc = useSansParc()
 
-  // Filtrer PUIS couper, et non l'inverse : couper d'abord laisserait un trou à
-  // la place de l'entrée qu'un rôle ne voit pas.
+  /* Sans parc, la barre basse n'a AUCUNE destination : ses quatre places sont
+     choisies dans `BOTTOM_ORDER`, qui ne passe pas par `sectionsPour` — la
+     vider là-haut ne l'aurait donc pas touchée, et la capture du signalement
+     montre justement ses pastilles. Rendre une barre vide laisserait ses 64 px
+     de haut sous chaque écran ; on ne la monte pas. */
   const tous = toutesLesEntrees(role)
   // Le locataire n'a que trois entrées, toutes essentielles : l'ordre de
   // priorité ne sert qu'à choisir parmi une douzaine, et aucune des siennes n'y
@@ -1637,11 +1673,12 @@ function BarreBasse({ role, onOpenDrawer }: { role: Role; onOpenDrawer: () => vo
   // destination du produit. `BOTTOM_ORDER` ne les avait jamais laissées entrer.
   const candidats =
     role === 'tenant'
-      ? sectionsPour(role).flatMap((s) => s.items)
+      ? sectionsPour(role, sansParc).flatMap((s) => s.items)
       : BOTTOM_ORDER.map((to) => tous.find((item) => item.to === to)).filter(
           (item): item is NavItem => !!item,
         )
   const items = entreesVisibles(candidats, role, demo).slice(0, BOTTOM_MAX)
+  if (sansParc) return null
 
   return (
     <nav

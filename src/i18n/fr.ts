@@ -1801,6 +1801,12 @@ export const fr = {
       },
     },
 
+    noPark: {
+      title: 'Aucun parc rattaché à votre compte',
+      subtitle: 'Votre compte existe, mais il n’administre encore aucun bien.',
+      body: 'Il n’y a rien à afficher pour l’instant',
+      hint: 'Les chiffres, les logements et les échéances apparaîtront dès que votre compte sera rattaché à un parc. Tant qu’il ne l’est pas, cet espace reste vide — il ne montre jamais les données d’un autre.',
+    },
     onboarding: {
       changeInSettings: 'Modifier dans les réglages du parc',
       delegationOffNotice: 'Ce parc est en gestion seule : aucun code de gestionnaire n’est émis. Changez la politique de délégation pour en recruter un.',

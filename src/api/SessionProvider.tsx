@@ -123,6 +123,13 @@ interface SessionContextValue {
   /** `true` quand l'écran affiché est une démonstration et non un vrai parc. */
   estDemo: boolean
   /**
+   * `true` une fois que `/auth/me` a répondu.
+   *
+   * On n'affirme jamais une ABSENCE — « aucun parc » — sur un état qu'on n'a
+   * pas reçu du serveur. Voir le commentaire de `resolue` dans le fournisseur.
+   */
+  sessionResolue: boolean
+  /**
    * Le parc REGARDÉ, quand le compte en détient plusieurs.
    *
    * Sept endroits lisaient `adhesions[0]` en dur : la coquille, le fournisseur
@@ -181,6 +188,23 @@ export function SessionProvider({
     setEtat({ statut: 'demo' })
   }, [])
 
+  /**
+   * LA SESSION VIENT-ELLE DU SERVEUR ?
+   *
+   * `false` tant que `/auth/me` n'a pas répondu — c'est-à-dire au premier
+   * rendu, et pendant toute la durée d'un cas de test qui INJECTE un état
+   * initial plutôt que de le faire résoudre.
+   *
+   * Ce drapeau existe pour une règle qui vaut aussi en production : on
+   * n'affirme jamais une ABSENCE sur un état qu'on n'a pas reçu. Dire « vous
+   * n'appartenez à aucun parc » à partir d'un état posé par défaut serait
+   * conclure d'un silence — et le produit a déjà payé ce raisonnement, sur
+   * l'écran des cautions comme sur celui des accès.
+   *
+   * Sa conséquence visible est `useSansParc`, dans la coquille.
+   */
+  const [resolue, setResolue] = useState(false)
+
   const rafraichir = useCallback(async () => {
     try {
       const { user, memberships } = await api.me()
@@ -189,6 +213,7 @@ export function SessionProvider({
       // au-dessus des vraies données du propriétaire.
       effacerStockage('session', CLE_DEMO)
       setEtat({ statut: 'connecte', compte: user, adhesions: memberships })
+      setResolue(true)
       setHorsLigne(false)
     } catch (err) {
       if (err instanceof NetworkError) {
@@ -326,6 +351,7 @@ export function SessionProvider({
       rafraichir,
       entrerEnDemo,
       estDemo: etat.statut === 'demo',
+      sessionResolue: resolue,
       adhesionActive,
       choisirParc,
     }),
@@ -334,6 +360,7 @@ export function SessionProvider({
     // prochain rendu déclenché par autre chose.
     [
       etat,
+      resolue,
       horsLigne,
       echec,
       reprendreLaSession,

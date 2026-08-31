@@ -1,6 +1,46 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, userEvent } from '@/test/render'
+import { renderApp, screen, userEvent, SESSION_ANONYME, attendreLeChargement, waitFor } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur } from '@/test/api'
+import { chargerEspaceApplicatif } from '@/App'
+
+/** Un parc minimal : le tableau de bord rend sa vue consolidée, pas son accueil. */
+const PORTEFEUILLE = {
+  collections: [],
+  buildings: [
+    {
+      id: 'imm-1',
+      name: 'Résidence de test',
+      district: 'Bastos',
+      units: [
+        {
+          id: 'unite-1',
+          label: 'A1',
+          type: 'T2',
+          surfaceSqm: 52,
+          rentMinor: 90000,
+          /* UN LOGEMENT LOUÉ, et non vacant : sur un parc sans aucun bail, le
+             tableau de bord rend son état d'accueil — « le parc est neuf » —
+             qui REMPLACE la vue consolidée. Ces cas portent sur la navigation,
+             pas sur cet état-là. */
+          tenant: { id: 'loc-1', fullName: 'Charles Ngassa', phoneE164: null },
+          status: 'paid',
+          leaseId: 'bail-1',
+          leaseStartsOn: '2025-03-01T00:00:00.000Z',
+          paidMinor: 90000,
+          overdueDays: null,
+        },
+      ],
+    },
+  ],
+  works: [],
+  deposits: [],
+  readings: [],
+  inspections: [],
+  notifications: [],
+  leaseCharges: [],
+}
+
+const PARC_CONNEXION = '99999999-1111-4222-8333-444444444444'
 
 /**
  * Raccordement des écrans d'authentification à l'API.
@@ -38,14 +78,43 @@ async function remplirIdentite(user: ReturnType<typeof userEvent.setup>) {
 
 describe('connexion', () => {
   it('appelle le serveur et ouvre le tableau de bord', async () => {
-    const serveur = installerFauxServeur()
+    /* NON AUTHENTIFIÉ au départ : c'est l'état de qui se connecte, et il fait
+       jouer la résolution de session pour de bon. */
+    const serveur = installerFauxServeur({ authentifie: false })
     serveur.quand('POST', '/auth/login', { status: 200, body: { user: COMPTE_FICTIF } })
-    serveur.quand('GET', '/auth/me', { status: 200, body: { user: COMPTE_FICTIF, memberships: [] } })
+    /* LE PORTEFEUILLE EST STUBÉ AVANT LE RENDU, et l'ordre n'est pas
+       cosmétique : posé après le montage, le faux serveur ne le sert pas — la
+       page reste sur « Chargement… », mesuré. */
+    serveur.quand('GET', `/parks/${PARC_CONNEXION}/portfolio`, { status: 200, body: PORTEFEUILLE })
+    /* LE COMPTE A UN PARC, et c'est ce lot qui l'exige. Un compte connecté SANS
+       adhésion voit désormais « aucun parc rattaché » au lieu du jeu de
+       démonstration — voir `SansParc`. Ces cas-ci portent sur la NAVIGATION
+       après connexion : leur donner un parc les remet sur leur sujet, au lieu
+       de mesurer un écran d'absence. */
+    serveur.quand('GET', '/auth/me', {
+      status: 200,
+      body: {
+        user: COMPTE_FICTIF,
+        memberships: [
+          { parkId: PARC_CONNEXION, role: 'owner', parkName: 'Parc de test', currency: 'XAF' },
+        ],
+      },
+    })
 
     const user = userEvent.setup()
-    await renderApp('/connexion')
+    /* DEPUIS L'ÉTAT ANONYME, et non depuis la session par défaut du harnais :
+       c'est ce que fait quelqu'un qui se connecte, et c'est le seul état d'où
+       la résolution de session est réellement jouée. */
+    await renderApp('/connexion', { session: SESSION_ANONYME })
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'sarah@example.com')
     await user.type(screen.getByLabelText(/^Mot de passe/), 'un-mot-de-passe-assez-long')
+    /* LE MODULE DE `/app` EST PRÉCHARGÉ AVANT LE CLIC, et ce n'est pas une
+       attente déguisée : `renderApp` fait exactement cela pour les routes qui
+       commencent sous `/app`. Partant de `/connexion`, la frontière paresseuse
+       ne se résout qu'À LA NAVIGATION — la sonde l'a montré, aucune requête de
+       portefeuille ne partait et la page restait sur « Chargement… ». On
+       résout la frontière, on n'allonge aucun budget d'horloge. */
+    await chargerEspaceApplicatif()
     await user.click(screen.getByRole('button', { name: /^se connecter$/i }))
 
     const appel = serveur.appels.find((a) => a.chemin === '/auth/login')
@@ -60,7 +129,15 @@ describe('connexion', () => {
       persistent: true,
     })
 
-    expect(await screen.findByRole('heading', { level: 1, name: /vue consolidée/i })).toBeInTheDocument()
+    /* `attendreLeChargement` — l'aide du harnais, celle que la moitié de la
+       suite emploie — et non un budget d'horloge allongé. La connexion enchaîne
+       désormais UNE requête de plus : `/auth/me` rend un parc, donc le
+       portefeuille se charge avant que le tableau de bord ne s'écrive. On
+       attend la fin des régions occupées, pas une durée. */
+    await attendreLeChargement()
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1, name: /vue consolidée/i })).toBeInTheDocument(),
+    )
   })
 
   it('rend un seul message pour un identifiant refusé, sur le formulaire', async () => {
@@ -72,9 +149,19 @@ describe('connexion', () => {
     serveur.quand('POST', '/auth/login', { status: 401, body: { error: 'invalid_credentials' } })
 
     const user = userEvent.setup()
-    await renderApp('/connexion')
+    /* DEPUIS L'ÉTAT ANONYME, et non depuis la session par défaut du harnais :
+       c'est ce que fait quelqu'un qui se connecte, et c'est le seul état d'où
+       la résolution de session est réellement jouée. */
+    await renderApp('/connexion', { session: SESSION_ANONYME })
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'sarah@example.com')
     await user.type(screen.getByLabelText(/^Mot de passe/), 'ce-n-est-pas-le-bon')
+    /* LE MODULE DE `/app` EST PRÉCHARGÉ AVANT LE CLIC, et ce n'est pas une
+       attente déguisée : `renderApp` fait exactement cela pour les routes qui
+       commencent sous `/app`. Partant de `/connexion`, la frontière paresseuse
+       ne se résout qu'À LA NAVIGATION — la sonde l'a montré, aucune requête de
+       portefeuille ne partait et la page restait sur « Chargement… ». On
+       résout la frontière, on n'allonge aucun budget d'horloge. */
+    await chargerEspaceApplicatif()
     await user.click(screen.getByRole('button', { name: /^se connecter$/i }))
 
     const alerte = await screen.findByRole('alert')
@@ -97,9 +184,19 @@ describe('connexion', () => {
     )
 
     const user = userEvent.setup()
-    await renderApp('/connexion')
+    /* DEPUIS L'ÉTAT ANONYME, et non depuis la session par défaut du harnais :
+       c'est ce que fait quelqu'un qui se connecte, et c'est le seul état d'où
+       la résolution de session est réellement jouée. */
+    await renderApp('/connexion', { session: SESSION_ANONYME })
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'sarah@example.com')
     await user.type(screen.getByLabelText(/^Mot de passe/), 'un-mot-de-passe-assez-long')
+    /* LE MODULE DE `/app` EST PRÉCHARGÉ AVANT LE CLIC, et ce n'est pas une
+       attente déguisée : `renderApp` fait exactement cela pour les routes qui
+       commencent sous `/app`. Partant de `/connexion`, la frontière paresseuse
+       ne se résout qu'À LA NAVIGATION — la sonde l'a montré, aucune requête de
+       portefeuille ne partait et la page restait sur « Chargement… ». On
+       résout la frontière, on n'allonge aucun budget d'horloge. */
+    await chargerEspaceApplicatif()
     await user.click(screen.getByRole('button', { name: /^se connecter$/i }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/injoignable/i)
@@ -132,7 +229,20 @@ describe('inscription', () => {
   it('transmet au serveur les champs que l’assistant collectait puis jetait', async () => {
     const serveur = installerFauxServeur()
     serveur.quand('POST', '/auth/signup', { status: 201, body: { user: COMPTE_FICTIF } })
-    serveur.quand('GET', '/auth/me', { status: 200, body: { user: COMPTE_FICTIF, memberships: [] } })
+    /* LE COMPTE A UN PARC, et c'est ce lot qui l'exige. Un compte connecté SANS
+       adhésion voit désormais « aucun parc rattaché » au lieu du jeu de
+       démonstration — voir `SansParc`. Ces cas-ci portent sur la NAVIGATION
+       après connexion : leur donner un parc les remet sur leur sujet, au lieu
+       de mesurer un écran d'absence. */
+    serveur.quand('GET', '/auth/me', {
+      status: 200,
+      body: {
+        user: COMPTE_FICTIF,
+        memberships: [
+          { parkId: PARC_CONNEXION, role: 'owner', parkName: 'Parc de test', currency: 'XAF' },
+        ],
+      },
+    })
 
     const user = userEvent.setup()
     await renderApp('/inscription/proprietaire')
@@ -182,7 +292,20 @@ describe('inscription', () => {
      */
     const serveur = installerFauxServeur()
     serveur.quand('POST', '/auth/signup', { status: 201, body: { user: COMPTE_FICTIF } })
-    serveur.quand('GET', '/auth/me', { status: 200, body: { user: COMPTE_FICTIF, memberships: [] } })
+    /* LE COMPTE A UN PARC, et c'est ce lot qui l'exige. Un compte connecté SANS
+       adhésion voit désormais « aucun parc rattaché » au lieu du jeu de
+       démonstration — voir `SansParc`. Ces cas-ci portent sur la NAVIGATION
+       après connexion : leur donner un parc les remet sur leur sujet, au lieu
+       de mesurer un écran d'absence. */
+    serveur.quand('GET', '/auth/me', {
+      status: 200,
+      body: {
+        user: COMPTE_FICTIF,
+        memberships: [
+          { parkId: PARC_CONNEXION, role: 'owner', parkName: 'Parc de test', currency: 'XAF' },
+        ],
+      },
+    })
 
     const user = userEvent.setup()
     await renderApp('/inscription/proprietaire')
@@ -229,7 +352,20 @@ describe('inscription', () => {
      */
     const serveur = installerFauxServeur()
     serveur.quand('POST', '/auth/signup', { status: 201, body: { user: COMPTE_FICTIF } })
-    serveur.quand('GET', '/auth/me', { status: 200, body: { user: COMPTE_FICTIF, memberships: [] } })
+    /* LE COMPTE A UN PARC, et c'est ce lot qui l'exige. Un compte connecté SANS
+       adhésion voit désormais « aucun parc rattaché » au lieu du jeu de
+       démonstration — voir `SansParc`. Ces cas-ci portent sur la NAVIGATION
+       après connexion : leur donner un parc les remet sur leur sujet, au lieu
+       de mesurer un écran d'absence. */
+    serveur.quand('GET', '/auth/me', {
+      status: 200,
+      body: {
+        user: COMPTE_FICTIF,
+        memberships: [
+          { parkId: PARC_CONNEXION, role: 'owner', parkName: 'Parc de test', currency: 'XAF' },
+        ],
+      },
+    })
 
     const user = userEvent.setup()
     await renderApp('/inscription/gestionnaire')
@@ -388,7 +524,20 @@ describe('écran de succès', () => {
     // relit dans la foulée. Sans ce stub, la réponse arrivait après la fin du
     // cas et retombait dans le suivant — la suite entière devenait instable,
     // avec un échec différent à chaque exécution.
-    serveur.quand('GET', '/auth/me', { status: 200, body: { user: COMPTE_FICTIF, memberships: [] } })
+    /* LE COMPTE A UN PARC, et c'est ce lot qui l'exige. Un compte connecté SANS
+       adhésion voit désormais « aucun parc rattaché » au lieu du jeu de
+       démonstration — voir `SansParc`. Ces cas-ci portent sur la NAVIGATION
+       après connexion : leur donner un parc les remet sur leur sujet, au lieu
+       de mesurer un écran d'absence. */
+    serveur.quand('GET', '/auth/me', {
+      status: 200,
+      body: {
+        user: COMPTE_FICTIF,
+        memberships: [
+          { parkId: PARC_CONNEXION, role: 'owner', parkName: 'Parc de test', currency: 'XAF' },
+        ],
+      },
+    })
 
     const user = userEvent.setup()
     await renderApp('/inscription/proprietaire')

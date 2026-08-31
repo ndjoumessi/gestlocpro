@@ -1365,6 +1365,12 @@ export const en: Dictionary = {
       },
     },
 
+    noPark: {
+      title: 'No portfolio linked to your account',
+      subtitle: 'Your account exists, but it does not manage any property yet.',
+      body: 'Nothing to show for now',
+      hint: 'Figures, units and due dates appear as soon as your account is linked to a portfolio. Until then this space stays empty — it never shows someone else’s data.',
+    },
     onboarding: {
       changeInSettings: 'Change it in the portfolio settings',
       delegationOffNotice: 'This portfolio is in solo management: no manager code is issued. Change the delegation policy to recruit one.',

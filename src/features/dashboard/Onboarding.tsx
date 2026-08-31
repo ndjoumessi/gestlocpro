@@ -89,7 +89,7 @@ const ROLES: Role[] = ['owner', 'manager', 'tenant']
  * Posé ici, sur « Prise en main et droits », parce que c'est l'écran qu'on
  * ouvre quand on ne comprend pas où l'on est.
  */
-function RejoindreUnParc() {
+export function RejoindreUnParc() {
   const t = useT()
   const { notify } = useToast()
   const { etat, rafraichir } = useSession()
