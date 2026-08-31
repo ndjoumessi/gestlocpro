@@ -19,6 +19,7 @@ import { useSession } from '@/api/SessionProvider'
 import { ACCES_DEMO } from '@/data/portfolio'
 import { api } from '@/api/client'
 import { GRILLE_DEUX_INDICATEURS } from './grillesDIndicateurs'
+import { InviteModal } from './InviteModal'
 import { cn } from '@/lib/cn'
 
 /**
@@ -78,6 +79,23 @@ export function Access() {
   const [aRelier, setARelier] = useState<MembreApi | null>(null)
   /** La fiche choisie dans la modale ; la première par défaut. */
   const [ficheChoisie, setFicheChoisie] = useState('')
+  /**
+   * L'ÉMISSION D'UN CODE, ENFIN SUR L'ÉCRAN QUI PARLE DES CODES.
+   *
+   * « Inviter par code » n'existait que sur le fichier des locataires. Le choix
+   * se défend pour un code de LOCATAIRE — on écrit à des gens, et c'est là
+   * qu'on lit qui ils sont. Il ne se défend pas pour le second usage du même
+   * bouton, RECRUTER UN GESTIONNAIRE : celui qui cherche à déléguer son parc
+   * ouvre « Accès au parc », dont le sous-titre promet « quels codes attendent
+   * encore d'être utilisés » — et cet écran listait des codes en attente sans
+   * offrir d'en émettre un. Signalé sur la production comme une fonctionnalité
+   * absente ; elle existait, trois écrans plus loin.
+   *
+   * LA MÊME MODALE, et non une copie : elle porte déjà tous les refus — qui
+   * peut émettre quel rôle, ce qu'un parc en gestion seule interdit, le code
+   * lisible une seule fois. En réécrire une seconde les ferait diverger.
+   */
+  const [inviteOuverte, setInviteOuverte] = useState(false)
 
   const charger = useCallback(async () => {
     /**
@@ -165,7 +183,22 @@ export function Access() {
 
   return (
     <>
-      <PageHeader title={t('app.access.title')} description={t('app.access.subtitle')} />
+      <PageHeader
+        title={t('app.access.title')}
+        description={t('app.access.subtitle')}
+        /* SANS PARC, RIEN À ÉMETTRE : la modale a besoin d'un `parkId` et son
+           bouton partirait dans le vide. La démonstration, elle, garde la
+           commande — c'est ce qu'elle est là pour montrer. */
+        actions={
+          parkId || estDemo ? (
+            <Button variant="secondary" icon="users" onClick={() => setInviteOuverte(true)}>
+              {t('app.invite.button')}
+            </Button>
+          ) : undefined
+        }
+      />
+
+      {inviteOuverte && <InviteModal open onClose={() => setInviteOuverte(false)} />}
 
       {/* Le gestionnaire voit le registre mais n'en retire personne. Comme sur
           les devis et les cautions, on lui dit pourquoi le bouton lui manque

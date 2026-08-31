@@ -9,6 +9,7 @@ import { useT } from '@/i18n/I18nProvider'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { useSession } from '@/api/SessionProvider'
 import { useRole } from '@/components/layout/AppShell'
+import { lien, useBase } from '@/lib/base'
 import { api } from '@/api/client'
 
 /**
@@ -35,6 +36,7 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
   const { units } = usePortfolio()
   const { adhesionActive } = useSession()
   const { role } = useRole()
+  const base = useBase()
   const parkId = adhesionActive?.parkId ?? null
 
   // Même partage que les devis et les cautions : le gestionnaire OPÈRE, le
@@ -239,7 +241,25 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
               c'est un réglage qu'il détient. Elle nomme donc l'écran où il se
               change plutôt que de le laisser deviner. */}
           {role === 'owner' && gereSeul && (
-            <Notice>{t('app.onboarding.delegationOffNotice')}</Notice>
+            <Notice>
+              {t('app.onboarding.delegationOffNotice')}
+              {/* ET LE CHEMIN, QUE LA NOTE NE DONNAIT PAS.
+
+                  « Changez la politique de délégation pour en recruter un »
+                  dit quoi faire sans dire où : le réglage vit derrière les
+                  TROIS POINTS de l'écran du parc, ce que personne ne devine.
+                  Signalé sur la production comme une fonctionnalité absente —
+                  la délégation existait, à trois écrans et un menu replié.
+
+                  Un LIEN et non un bouton d'action : rien n'est décidé ici, on
+                  se déplace. Même partition que sur « prise en main », qui
+                  porte déjà ce renvoi et ce libellé. */}
+              <span className="mt-2 block">
+                <Button to={lien(base, 'parc')} variant="secondary" size="sm" iconAfter="arrowRight">
+                  {t('app.onboarding.changeInSettings')}
+                </Button>
+              </span>
+            </Notice>
           )}
 
           {/* Ni `required` ni `optional` sur le logement.
