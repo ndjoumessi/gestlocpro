@@ -35,7 +35,7 @@ import { VERSION_STOCKAGE, signatureDeLaForme } from './persistence'
  * pas celle du code qui les lit.
  */
 const SIGNATURE_ARRETEE = {
-  version: 8,
+  version: 9,
   forme: {
     deposits: ['held', 'status', 'tenant', 'unitId', 'withheld'],
     units: [
@@ -50,6 +50,9 @@ const SIGNATURE_ARRETEE = {
       'status',
       'surface',
       'tenant',
+      /* Version 9 : la fiche du locataire est-elle reliée à un compte. Voir
+         l'historique de `persistence.ts` pour ce que son absence changerait. */
+      'tenantHasAccount',
       'tenantId',
       'type',
     ],

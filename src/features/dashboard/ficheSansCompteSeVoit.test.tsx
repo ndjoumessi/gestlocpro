@@ -133,6 +133,13 @@ describe('une fiche sans compte, sur l’écran des locataires', () => {
        est précis : ce locataire n'a AUCUN espace où lire son bail, ses
        quittances ni ses relevés, et le geste qui répare vit sur un autre écran. */
     const note = screen.getByText(/ni bail, ni quittance/i).closest('div')!
+    /* LE GABARIT DOIT ÊTRE INTERPRÉTÉ, et ce cas l'a laissé passer une fois.
+       Le message était écrit en ICU imbriqué — que `t()` ne sait pas lire — et
+       s'affichait TEL QUEL, accolades comprises ; la sous-chaîne cherchée
+       ci-dessus existe aussi dans le message cassé. Vu au navigateur, jamais
+       ici. On exige donc le NOMBRE rendu et l'absence de toute accolade. */
+    expect(note.textContent).toMatch(/\b1 locataire\b/)
+    expect(note.textContent).not.toContain('{')
     /* Borné à la NOTE : la barre latérale porte elle aussi un lien « Accès au
        parc », et le trouver ne dirait rien de ce que ce cas mesure. */
     const vers = within(note).getByRole('link', { name: /accès au parc|relier/i })

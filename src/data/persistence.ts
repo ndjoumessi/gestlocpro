@@ -72,8 +72,21 @@ import { DEPOSITS, UNITS, WORKS, type Deposit, type Unit, type WorkOrder } from 
  * faire ». Une donnée absente qu'on n'affiche pas se tait ; une donnée absente
  * qui retire une COMMANDE ne se tait pas, elle ampute — et personne ne peut
  * deviner qu'un bouton manque.
+ *
+ * Version 9 : l'unité occupée dit si la fiche de son locataire est reliée à un
+ * COMPTE. Un enregistrement antérieur ne porte pas le champ, et l'écran lit
+ * alors « absent vaut reliée » — le repli est délibéré, il évite de peindre
+ * tout un parc d'un avertissement sur la foi d'un silence.
+ *
+ * L'INCRÉMENT RESTE OBLIGATOIRE, et c'est la version 7 qui donne la règle : une
+ * donnée absente qu'on n'affiche pas se tait, une donnée absente qui change ce
+ * qu'on montre ne se tait pas. Ici, un état d'avant ce lot ferait disparaître
+ * la pastille « Sans compte » et la note qui dit ce qu'elle coûte — le bailleur
+ * conclurait que tous ses locataires ont un espace, alors que le serveur dit le
+ * contraire. C'est un écran FAUX, pas un écran incomplet, et c'est exactement
+ * le seuil que cet historique retient depuis la version 7.
  */
-const VERSION = 8
+const VERSION = 9
 const CLE = 'gestlocpro.portfolio'
 
 export interface EtatPersiste {

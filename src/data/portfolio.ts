@@ -163,7 +163,17 @@ export const UNITS: Unit[] = [
 
   { id: 'B1', buildingId: 'akw', label: 'B1', type: 'T3', surface: 82, rent: 160000, tenant: 'Jean-Paul Eboa', tenantId: 'loc-B1', phone: '+237 6 78 45 11 90', leaseStart: { year: 2023, month: 7, day: 1 }, paid: 160000, status: 'paid' },
   { id: 'B2', buildingId: 'akw', label: 'B2', type: 'T3', surface: 80, rent: 155000, tenant: 'Nadia Belinga', tenantId: 'loc-B2', phone: '+237 6 51 60 73 24', leaseStart: { year: 2024, month: 10, day: 1 }, paid: 0, status: 'overdue', overdueDays: 9 },
-  { id: 'B3', buildingId: 'akw', label: 'B3', type: 'T2', surface: 58, rent: 120000, tenant: 'Éric Ndongo', tenantId: 'loc-B3', phone: '+237 6 96 82 30 57', leaseStart: { year: 2025, month: 5, day: 1 }, paid: 120000, status: 'paid' },
+  /* UNE FICHE SANS COMPTE, et c'est le cas le plus COURANT du marché visé, pas
+     une anomalie : un bailleur qui reprend son parc en main déclare ses
+     locataires déjà en place, et aucun d'eux n'a de compte le premier jour. Les
+     montrer tous connectés était la version irréelle.
+
+     ELLE EST ICI POUR ÊTRE MESURÉE. La pastille « Sans compte » et la note qui
+     dit ce qu'elle coûte n'existaient sur AUCUN écran de la démonstration :
+     ni `mesure-ui` en géométrie, ni `couleur-non-seule` en contraste ne les
+     voyaient — les deux ne visitent que `/demo`. Voir `notes-conditionnelles`,
+     qui compte désormais ces états au lieu de les laisser disparaître. */
+  { id: 'B3', buildingId: 'akw', label: 'B3', type: 'T2', surface: 58, rent: 120000, tenant: 'Éric Ndongo', tenantId: 'loc-B3', tenantHasAccount: false, phone: '+237 6 96 82 30 57', leaseStart: { year: 2025, month: 5, day: 1 }, paid: 120000, status: 'paid' },
   { id: 'B4', buildingId: 'akw', label: 'B4', type: 'T2', surface: 57, rent: 118000, tenant: null, phone: null, leaseStart: null, paid: 0, status: 'vacant' },
 
   { id: 'C1', buildingId: 'des', label: 'C1', type: 'T4', surface: 104, rent: 195000, tenant: 'Cabinet Njoya', tenantId: 'loc-C1', phone: '+237 6 73 55 41 86', leaseStart: { year: 2022, month: 3, day: 1 }, paid: 195000, status: 'paid' },
@@ -329,7 +339,16 @@ export const ACCES_DEMO = {
       since: '2024-06-15',
     },
   ],
-  unlinkedTenants: [],
+  /* LA MÊME FICHE QUE CELLE DU PORTEFEUILLE, et les deux écrans doivent
+     s'accorder : `/demo/locataires` annonce un locataire sans compte, ce
+     registre-ci dirait « aucune fiche orpheline ». Deux vérités contraires dans
+     une même démonstration valent moins que pas de démonstration du tout.
+
+     Rien n'apparaît de plus à l'écran : `unlinkedTenants` n'est lue que par la
+     modale « relier à une fiche », et celle-ci s'ouvre depuis un MEMBRE sans
+     fiche — il n'y en a pas ici. C'est une cohérence de donnée, pas un état de
+     plus à mesurer. */
+  unlinkedTenants: [{ id: 'loc-B3', fullName: 'Éric Ndongo', unitLabel: 'B3' }],
   invitations: [
     {
       id: 'demo-invitation-1',

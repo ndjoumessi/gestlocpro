@@ -1274,7 +1274,9 @@ export const en: Dictionary = {
       addTenant: 'Create a tenant record',
       noAccount: 'No account',
       noAccountNotice:
-        '{count, plural, one {# tenant has no account} other {# tenants have no account}}: {count, plural, one {they see} other {they see}} no lease, no receipt, no meter reading, and receive no announcements. Link {count, plural, one {their record} other {their records}} from the access registry.',
+        '{count} tenants have no account: they see no lease, no receipt, no meter reading, and receive no announcements. Link their records from the access registry.',
+      noAccountNotice_one:
+        '{count} tenant has no account: they see no lease, no receipt, no meter reading, and receive no announcements. Link their record from the access registry.',
       noAccountAction: 'Link from “Park access”',
       account: 'Tenant account',
       accountHint: 'If they already joined the park with a code, link their record now: their space opens right away, with no further step.',

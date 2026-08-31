@@ -1662,8 +1662,15 @@ export const fr = {
       /* L'ÉTAT QUE DEUX ÉCRANS SE CACHAIENT L'UN À L'AUTRE. Le statut du bail
          ne dit rien de l'accès : à jour et sans espace où le lire. */
       noAccount: 'Sans compte',
+      /* L'ACCORD SUIT LA CONVENTION DU DÉPÔT — `x` et `x_one`, `Intl.PluralRules`
+         choisissant la variante — et NON l'ICU imbriqué, que `t()` ne sait pas
+         lire. Écrit en ICU, ce message s'affichait TEL QUEL sur l'écran des
+         locataires, accolades comprises. Vu au navigateur ; le cas jsdom, lui,
+         cherchait une sous-chaîne qui existe aussi dans le message cassé. */
       noAccountNotice:
-        '{count, plural, one {# locataire n’a pas de compte} other {# locataires n’ont pas de compte}} : {count, plural, one {il ne voit} other {ils ne voient}} ni bail, ni quittance, ni relevé, et {count, plural, one {ne reçoit} other {ne reçoivent}} aucune annonce. Reliez {count, plural, one {sa fiche} other {leurs fiches}} depuis le registre des accès.',
+        '{count} locataires n’ont pas de compte : ils ne voient ni bail, ni quittance, ni relevé, et ne reçoivent aucune annonce. Reliez leurs fiches depuis le registre des accès.',
+      noAccountNotice_one:
+        '{count} locataire n’a pas de compte : il ne voit ni bail, ni quittance, ni relevé, et ne reçoit aucune annonce. Reliez sa fiche depuis le registre des accès.',
       noAccountAction: 'Relier depuis « Accès au parc »',
       /* LE CHAMP QUI EMPÊCHE L'ORPHELIN. Il ne paraît que s'il y a quelqu'un à
          relier — un menu vide sur chaque création serait un champ qui ne mène

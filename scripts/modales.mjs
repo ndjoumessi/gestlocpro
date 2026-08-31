@@ -244,6 +244,24 @@ const MODALES = [
   */
   { nom: 'Inspection', adresse: '/demo/etats-des-lieux', bouton: /^Établir un état des lieux$|^Record an inspection$/, defil: { 360: 345, 1280: 60 }, defilLarge: { 360: 425, 1280: 54 }, avant: { 360: 237, 1280: 0 } },
   { nom: 'Invite', adresse: '/demo/locataires', bouton: /^Inviter par code$|^Invite by code$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  /*
+    LE SECOND ÉTAT DE LA MÊME MODALE, et il en change la hauteur.
+
+    Choisir « Gestionnaire délégué » retire le menu des logements et la note du
+    code déjà pris, et pose à leur place une explication de quatre lignes — ce
+    qu'on délègue vraiment. C'est un autre contenu dans la même boîte, donc un
+    autre défilement, et il n'était mesuré nulle part.
+  */
+  {
+    nom: 'InviteGestionnaire',
+    adresse: '/demo/locataires',
+    bouton: /^Inviter par code$|^Invite by code$/,
+    apres: (page) =>
+      page.getByRole('combobox', { name: /Rôle invité|Invited role/ }).selectOption('manager'),
+    defil: { 360: 0, 1280: 0 },
+    defilLarge: { 360: 0, 1280: 0 },
+    avant: { 360: 0, 1280: 0 },
+  },
   { nom: 'Announce', adresse: '/demo/locataires', bouton: /^Prévenir les locataires$|^Notify tenants$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'Reply', adresse: '/demo/travaux', bouton: /^Répondre$|^Reply$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /* Le seul écran de la démonstration où le rôle change ce qui est rendu : la
@@ -443,8 +461,14 @@ const LANGUES = ['fr', 'en']
   Les deux nombres ont bougé ENSEMBLE, deux fois de suite : `ParkSettings` puis
   `Tariffs` sont passées de la seconde ligne à la première. C'est exactement ce
   que ce compte écrit à la main sert à rendre visible dans un diff.
+
+  72 → 76 (2026-08-31) : `InviteGestionnaire`, le SECOND état de la modale
+  d'invitation. Ce n'est pas une modale de plus, c'est un état de plus dans une
+  modale déjà tenue — le premier que ce script mesure grâce au geste `apres`.
+  Une modale n'a pas un état, elle en a autant que ses champs, et le compte le
+  dit maintenant.
 */
-const ATTENDUS = 72
+const ATTENDUS = 76
 const NON_OUVRABLES_ATTENDUES = 0
 
 /**
@@ -618,6 +642,33 @@ try {
         }
         await bouton.click().catch(() => {})
         await page.waitForTimeout(350)
+
+        /*
+          LE GESTE FAIT DANS LA MODALE, une fois qu'elle est ouverte.
+
+          `prealable` amène la modale à l'écran ; il n'y avait rien pour agir
+          DEDANS. Or une modale n'a pas un état, elle en a autant que ses
+          champs : le choix « Gestionnaire délégué » remplace le menu des
+          logements par une note de quatre lignes, et ce second état n'était
+          mesuré par personne — c'est l'angle mort que `notes-conditionnelles`
+          a nommé le 2026-08-31.
+
+          On mesure donc l'état DEMANDÉ, pas seulement celui d'ouverture.
+        */
+        if (modale.apres) {
+          try {
+            await modale.apres(page)
+            await page.waitForTimeout(250)
+          } catch (erreur) {
+            plaintes.push(
+              `${nom} : le geste dans la modale a échoué — ${String(erreur).split('\n')[0]}\n` +
+                "   L'état demandé n'a pas été atteint, donc c'est un AUTRE état qui aurait\n" +
+                '   été mesuré — et « pas mesuré » ne doit jamais s’écrire comme « sans défaut ».',
+            )
+            await contexte.close()
+            continue
+          }
+        }
 
         const m = await page.evaluate(async () => {
           const d = document.querySelector('[role="dialog"],[role="alertdialog"]')
