@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRole } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { InviteModal } from './InviteModal'
@@ -25,7 +25,8 @@ import { useDates } from '@/lib/useDates'
 import { dialOptions } from '@/lib/countries'
 import { INDICATIFS } from '@/lib/indicatifs'
 import { useSession } from '@/api/SessionProvider'
-import { DOCUMENT_KIND_LABELS, buildingById, type Unit } from '@/data/portfolio'
+import { api } from '@/api/client'
+import { ACCES_DEMO, DOCUMENT_KIND_LABELS, buildingById, type Unit } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { validateName, validatePhone, type FieldError } from '@/features/auth/validation'
 
@@ -470,16 +471,89 @@ function TenantsSkeleton() {
  * emprunte désormais les validateurs de l'inscription — mêmes règles, mêmes
  * messages, une seule définition de ce qu'est un nom ou un téléphone valide.
  */
+/** Un membre du registre des accès, réduit à ce que ce champ en lit. */
+interface MembreReliable {
+  role: string
+  userId: string
+  tenantId: string | null
+  fullName: string
+  email: string
+}
+
+/**
+ * Les membres qu'on peut relier, et eux seuls — le MÊME tri que les refus du
+ * serveur, pour ne jamais proposer un geste qui reviendra refusé.
+ *
+ * `role === 'tenant'` : un gestionnaire opère tout le parc et n'a pas de fiche
+ * (`not_a_tenant`). `!tenantId` : un compte déjà relié en porte une, et
+ * `Tenant.userId` est unique sur toute la base (`account_already_linked`).
+ */
+function membresReliables(membres: MembreReliable[]): MembreReliable[] {
+  return membres.filter((m) => m.role === 'tenant' && !m.tenantId)
+}
+
 function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => void }) {
   const t = useT()
   const { locale } = useI18n()
   const { notify } = useToast()
   const { parseAmount } = useCurrency()
   const { addTenant } = usePortfolio()
-  const { adhesionActive } = useSession()
+  const { adhesionActive, estDemo } = useSession()
+  const parkId = adhesionActive?.parkId ?? null
 
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
+  /**
+   * LE COMPTE À QUI CETTE FICHE APPARTIENT — le champ qui empêche l'orphelin.
+   *
+   * ═══ CE QUE SON ABSENCE FABRIQUAIT ═══
+   *
+   * L'ordre qui produit une fiche sans compte est celui que le produit
+   * RECOMMANDE : l'aide du champ d'invitation dit « sans logement, il rejoint
+   * le parc sans bail, vous l'y rattacherez ensuite ». On invite d'abord, le
+   * compte entre, on crée la fiche — et cette modale ne demandait jamais qui
+   * était déjà là. Le locataire, membre du parc, un bail à son nom, lisait
+   * « aucun logement rattaché à votre compte ». Deux lots ont livré des gestes
+   * de RÉPARATION ; celui-ci retire la faute d'origine.
+   *
+   * ═══ IL NE PARAÎT QUE S'IL Y A QUELQU'UN À RELIER ═══
+   *
+   * Un menu vide à chaque création — le cas courant de tout parc qu'on reprend
+   * en main, où personne n'a encore de compte — serait un champ qui ne mène
+   * nulle part, sur la modale la plus utilisée de l'écran.
+   *
+   * Et il ne propose QUE des membres SANS fiche : proposer quelqu'un de déjà
+   * relié offrirait un geste que le serveur refuse par `account_already_linked`.
+   * On ne propose pas ce qu'on refusera — la règle que cet écran applique déjà
+   * au code de gestionnaire.
+   */
+  const [compte, setCompte] = useState('')
+  const [reliables, setReliables] = useState<MembreReliable[]>([])
+
+  useEffect(() => {
+    /* La démonstration sert son propre registre, comme l'écran des accès. Son
+       locataire y est DÉJÀ relié — c'est le cas nominal qu'elle montre —, donc
+       la liste y est vide et le champ ne paraît pas. Rien à mesurer de plus. */
+    if (estDemo) {
+      setReliables(membresReliables(ACCES_DEMO.members))
+      return
+    }
+    if (!parkId) return
+    let vivant = true
+    void api
+      .access<{ members: MembreReliable[] }>(parkId)
+      .then((registre) => {
+        if (vivant) setReliables(membresReliables(registre.members))
+      })
+      /* SILENCIEUX, ET C'EST LA BONNE DÉGRADATION. Ce champ est un RACCOURCI :
+         le geste existe aussi sur « Accès au parc », qui dit lui-même quand son
+         registre est illisible. Poser une erreur ici interromprait la création
+         d'une fiche pour une commodité qu'on ne peut pas offrir. */
+      .catch(() => {})
+    return () => {
+      vivant = false
+    }
+  }, [parkId, estDemo])
   /**
    * L'INDICATIF PROPOSÉ EST CELUI DU PARC.
    *
@@ -579,6 +653,9 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
      */
     setEnvoi(true)
     const creee = await addTenant(unitId, name.trim(), `${dial} ${phone.trim()}`, {
+      // Sans ce relais, la fiche naîtrait orpheline malgré le choix fait à
+      // l'écran — exactement le défaut que ce champ existe pour supprimer.
+      ...(compte ? { userId: compte } : {}),
       ...(debut ? { startsOn: debut } : {}),
       ...(loyerLu !== null ? { rentMinor: loyerLu } : {}),
       ...(cautionLue !== null && cautionLue > 0
@@ -681,6 +758,31 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
             </div>
           )}
         </Field>
+
+        {reliables.length > 0 && (
+          <Field label={t('app.tenants.account')} hint={t('app.tenants.accountHint')} optional>
+            {(props) => (
+              <Select
+                {...props}
+                name="userId"
+                value={compte}
+                onChange={(e) => setCompte(e.target.value)}
+              >
+                {/* L'ABSENCE EST LE DÉFAUT, et elle est nommée. Un menu qui
+                    s'ouvre sur le premier compte relierait la fiche à
+                    quelqu'un qu'on n'a pas choisi — sur ce champ-ci, c'est
+                    donner le bail, les quittances et les relevés d'un
+                    locataire à un autre. */}
+                <option value="">{t('app.tenants.accountNone')}</option>
+                {reliables.map((m) => (
+                  <option key={m.userId} value={m.userId}>
+                    {`${m.fullName} — ${m.email}`}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+        )}
 
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label={t('app.tenants.leaseStart')} hint={t('app.tenants.leaseStartHint')} optional>

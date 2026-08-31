@@ -277,6 +277,32 @@ const schemaEtatDesLieux = z.object({
 const schemaLocataire = z.object({
   unitId: z.string().uuid(),
   fullName: z.string().trim().min(2).max(120),
+  /**
+   * LE COMPTE À QUI CETTE FICHE APPARTIENT, quand il existe déjà.
+   *
+   * ═══ CE QUE SON ABSENCE FABRIQUAIT ═══
+   *
+   * L'ordre qui produit une fiche orpheline est celui que le produit
+   * RECOMMANDE : l'aide du champ d'invitation dit « sans logement, il rejoint
+   * le parc sans bail, vous l'y rattacherez ensuite ». On invite donc d'abord,
+   * on crée la fiche ensuite — et cette création ne regardait pas qui est déjà
+   * là. Le locataire, membre du parc, un bail à son nom, lisait « aucun
+   * logement rattaché à votre compte », et il fallait un TROISIÈME geste pour
+   * recoudre. Deux lots ont payé les conséquences de ce défaut ; celui-ci
+   * s'attaque à sa cause.
+   *
+   * ═══ EXPLICITE, ET JAMAIS DEVINÉ ═══
+   *
+   * Un `userId` CHOISI, pas une correspondance de nom ni de téléphone. Deux
+   * frères au même patronyme, un numéro de famille partagé — et le mauvais
+   * compte reçoit le bail, les quittances et les relevés d'un autre. C'est la
+   * faute la plus grave que ce produit puisse commettre, et elle serait
+   * silencieuse. Une devinette n'a pas sa place ici.
+   *
+   * FACULTATIF, et il doit le rester : déclarer un locataire qui n'a pas encore
+   * de compte est le cas courant de tout parc qu'on reprend en main.
+   */
+  userId: z.string().uuid().optional(),
   phoneE164: z
     .string()
     .trim()
@@ -2664,6 +2690,60 @@ parksRouter.get(
 )
 
 /**
+ * Ce compte peut-il recevoir une fiche de locataire de ce parc ?
+ *
+ * ═══ UNE SEULE LISTE DE REFUS, POUR DEUX GESTES ═══
+ *
+ * Relier se fait désormais de deux endroits : en RÉPARATION, depuis le registre
+ * des accès, sur une fiche déjà orpheline ; et à la CRÉATION de la fiche, pour
+ * ne plus en fabriquer. La décision est la même dans les deux cas — « ce compte
+ * a-t-il le droit de recevoir ce bail » —, et deux jeux de contrôles pour une
+ * seule décision divergent toujours du côté permissif.
+ *
+ * Trois refus, chacun pour une raison distincte :
+ *
+ *  · PAS MEMBRE — relier ouvrirait le bail, les quittances et les relevés à
+ *    quelqu'un qui n'appartient pas au parc. `not_found` et non `forbidden` :
+ *    distinguer « ce compte existe mais n'est pas des vôtres » de « ce compte
+ *    n'existe pas » ferait de cette route un oracle d'existence de comptes.
+ *  · PAS LOCATAIRE — un gestionnaire opère tout le parc et n'a pas de fiche ;
+ *    lui en attacher une lui donnerait par-dessus le périmètre d'un locataire.
+ *    Et le propriétaire de son propre parc s'y donnerait un bail à lui-même.
+ *  · DÉJÀ UNE FICHE — `Tenant.userId` est unique sur TOUTE la base, donc un
+ *    compte n'est locataire que d'un seul logement. C'est une limite du schéma,
+ *    pas un choix : sans ce contrôle, Prisma lèverait un P2002 que le `catch`
+ *    de la création traduirait en « logement déjà loué », ce qui est faux et
+ *    envoie chercher le défaut au mauvais endroit.
+ *
+ * `tx` en paramètre : la création l'appelle DANS sa transaction, pour que le
+ * contrôle et l'écriture ne soient pas séparés par une fenêtre où un second
+ * écran relierait le même compte.
+ */
+type RefusDeLien = 'not_found' | 'not_a_tenant' | 'account_already_linked'
+
+async function compteReliable(
+  tx: Prisma.TransactionClient,
+  { parkId, userId }: { parkId: string; userId: string },
+): Promise<RefusDeLien | null> {
+  const adhesion = await tx.membership.findFirst({
+    where: { userId, parkId, status: 'active' },
+    select: { role: true },
+  })
+  if (!adhesion) return 'not_found'
+  if (adhesion.role !== 'tenant') return 'not_a_tenant'
+
+  const dejaLocataire = await tx.tenant.findFirst({ where: { userId }, select: { id: true } })
+  if (dejaLocataire) return 'account_already_linked'
+
+  return null
+}
+
+/** Le code HTTP d'un refus de lien. Un seul endroit décide, les deux routes suivent. */
+function statutDuRefus(refus: RefusDeLien): number {
+  return refus === 'not_found' ? 404 : 409
+}
+
+/**
  * RELIER UNE FICHE LOCATAIRE À UN COMPTE DÉJÀ MEMBRE.
  *
  * ═══ UNE PROMESSE QUI N'AVAIT AUCUN MÉCANISME ═══
@@ -2727,30 +2807,16 @@ parksRouter.post(
       return
     }
 
-    const adhesion = await prisma.membership.findFirst({
-      where: { userId, parkId, status: 'active' },
-      select: { role: true },
-    })
-    if (!adhesion) {
-      res.status(404).json({ error: 'not_found' })
-      return
-    }
-    if (adhesion.role !== 'tenant') {
-      res.status(409).json({ error: 'not_a_tenant' })
-      return
-    }
-
+    /* `fiche.userId` D'ABORD, et il n'appartient qu'à ce geste-ci : la création
+       pose une fiche neuve, qui n'a par construction aucun compte. */
     if (fiche.userId) {
       res.status(409).json({ error: 'already_linked' })
       return
     }
 
-    const dejaLocataire = await prisma.tenant.findFirst({
-      where: { userId },
-      select: { id: true },
-    })
-    if (dejaLocataire) {
-      res.status(409).json({ error: 'account_already_linked' })
+    const refus = await compteReliable(prisma, { parkId, userId })
+    if (refus) {
+      res.status(statutDuRefus(refus)).json({ error: refus })
       return
     }
 
@@ -2998,10 +3064,36 @@ parksRouter.post(
       return
     }
 
+    /**
+     * LE REFUS DE LIEN SORT AVANT TOUTE ÉCRITURE.
+     *
+     * Contrôlé après la création, il laisserait derrière lui exactement ce que
+     * ce lot supprime : une fiche et un bail sans le compte qu'on voulait leur
+     * donner, à réparer à la main. `refusDuLien` est donc levé DANS la
+     * transaction, qui n'écrit alors rien du tout.
+     */
+    let refusDuLien: RefusDeLien | null = null
+
     try {
       const bail = await prisma.$transaction(async (tx) => {
+        if (corps.userId) {
+          refusDuLien = await compteReliable(tx, { parkId, userId: corps.userId })
+          /* Lever plutôt que rendre : c'est le seul moyen d'annuler la
+             transaction. Le `catch` en aval lit `refusDuLien` pour distinguer
+             ce cas de l'index unique du bail — sans quoi un compte refusé
+             ressortirait en « logement déjà loué », ce qui est faux. */
+          if (refusDuLien) throw new Error('lien_refuse')
+        }
         const locataire = await tx.tenant.create({
-          data: { parkId, fullName: corps.fullName, phoneE164: corps.phoneE164 ?? null },
+          data: {
+            parkId,
+            fullName: corps.fullName,
+            phoneE164: corps.phoneE164 ?? null,
+            /* LA FICHE NAÎT RELIÉE. Le contrôle ci-dessus vit dans la même
+               transaction que cette écriture : aucune fenêtre où un second
+               écran relierait le même compte entre les deux. */
+            ...(corps.userId ? { userId: corps.userId } : {}),
+          },
         })
         const bail = await tx.lease.create({
           data: {
@@ -3016,7 +3108,10 @@ parksRouter.post(
             // qu'il n'a pas payé fausserait les indicateurs d'encaissement.
             status: 'pending',
           },
-          select: { id: true, unitId: true, status: true },
+          /* `tenantId` RENDU : le journal du lien en a besoin pour nommer la
+             fiche, et le relire après coup ferait une requête pour une valeur
+             que la transaction tenait déjà. */
+          select: { id: true, unitId: true, status: true, tenantId: true },
         })
 
         if (corps.depositMinor !== undefined) {
@@ -3051,8 +3146,32 @@ parksRouter.post(
         },
       })
 
+      /* DONNER UN ACCÈS EST UNE DÉCISION, et elle se trace du même mot qu'elle
+         vienne d'une réparation ou d'une création — `access.link`, comme la
+         route du registre des accès. Un propriétaire qui relit son registre
+         doit y voir tous les accès donnés, pas seulement ceux qu'il a réparés
+         à la main. DEUX ÉVÉNEMENTS ET NON UN : ouvrir un bail et donner un
+         accès sont deux décisions, et le jour où l'on retire l'accès sans
+         retirer le bail, le registre doit pouvoir le dire. */
+      if (corps.userId) {
+        await prisma.auditEvent.create({
+          data: {
+            parkId,
+            actorId: req.compteId!,
+            action: 'access.link',
+            entity: 'Tenant',
+            entityId: bail.tenantId,
+            payload: { userId: corps.userId },
+          },
+        })
+      }
+
       res.status(201).json({ lease: bail })
     } catch {
+      if (refusDuLien) {
+        res.status(statutDuRefus(refusDuLien)).json({ error: refusDuLien })
+        return
+      }
       /**
        * L'index unique partiel a parlé : l'unité a déjà un bail en cours.
        *

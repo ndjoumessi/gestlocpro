@@ -1649,6 +1649,12 @@ export const fr = {
       kpiRequests: 'Pièces demandées',
       kpiRequestsNote: 'en attente de votre réponse',
       addTenant: 'Créer une fiche locataire',
+      /* LE CHAMP QUI EMPÊCHE L'ORPHELIN. Il ne paraît que s'il y a quelqu'un à
+         relier — un menu vide sur chaque création serait un champ qui ne mène
+         nulle part, sur la modale la plus utilisée de l'écran. */
+      account: 'Compte du locataire',
+      accountHint: 'S’il est déjà entré dans le parc par un code, reliez sa fiche maintenant : son espace s’ouvrira aussitôt, sans autre geste.',
+      accountNone: 'Aucun — il n’a pas encore de compte',
       leaseStart: 'Début du bail',
       leaseStartHint: 'Laissez vide pour aujourd’hui. Renseignez la vraie date pour un locataire déjà en place.',
       deposit: 'Caution encaissée',

@@ -273,7 +273,8 @@ interface PortfolioContextValue {
     unitId: string,
     name: string,
     phone: string,
-    bail?: { startsOn?: string; rentMinor?: number; depositMinor?: number },
+    /** `userId` : le compte DÉJÀ membre à qui cette fiche appartient, s'il existe. */
+    bail?: { startsOn?: string; rentMinor?: number; depositMinor?: number; userId?: string },
   ) => Promise<boolean>
   /** Crée un immeuble dans le parc. Sans parc serveur, il reste local. */
   addBuilding: (name: string, district: string) => void
@@ -1481,7 +1482,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     unitId: string,
     name: string,
     phone: string,
-    bail?: { startsOn?: string; rentMinor?: number; depositMinor?: number },
+    bail?: { startsOn?: string; rentMinor?: number; depositMinor?: number; userId?: string },
   ): Promise<boolean> => {
     if (!parkId) {
       setUnits((list) =>
@@ -1505,6 +1506,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         // Sans ce relais, le champ de la modale se saisissait et se perdait :
         // le parc n'aurait toujours porté aucune caution.
         ...(bail?.depositMinor !== undefined ? { depositMinor: bail.depositMinor } : {}),
+        /* LA FICHE NAÎT RELIÉE quand le compte est déjà là. Sans ce relais, le
+           choix fait à l'écran se perdait ici et l'orphelin revenait. */
+        ...(bail?.userId ? { userId: bail.userId } : {}),
       })
       // On relit le parc plutôt que de deviner l'état résultant : le serveur
       // décide du statut du bail, et deux calculs de la même chose finissent

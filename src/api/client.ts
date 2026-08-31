@@ -405,6 +405,15 @@ export const api = {
       rentMinor?: number
       /** Caution encaissée à l'entrée. Sans elle, le parc n'en porte aucune. */
       depositMinor?: number
+      /**
+       * Le compte à qui cette fiche appartient, quand il est DÉJÀ membre du parc.
+       *
+       * Sans lui, la fiche naît orpheline et il faut un troisième geste pour la
+       * recoudre — c'est ce que le produit imposait à tout locataire entré par
+       * un code sans logement. Explicite et jamais deviné : une correspondance
+       * de nom ou de téléphone donnerait le bail d'un locataire à un autre.
+       */
+      userId?: string
     },
   ) => requete<T>(`/parks/${parkId}/tenants`, { method: 'POST', body: JSON.stringify(corps) }),
 
