@@ -364,6 +364,35 @@ async function monterLeParc() {
     corps: { unitId: a2.id, fullName: 'Ondoa Pierre', phoneE164: '+237677000002' },
   })
 
+  /**
+   * UN LOCATAIRE MEMBRE, ET SANS AUCUN LOGEMENT — l'état capturé en production.
+   *
+   * C'est le chemin que l'aide du champ d'invitation RECOMMANDE elle-même :
+   * « sans logement, il rejoint le parc sans bail, vous l'y rattacherez
+   * ensuite ». Entre les deux gestes — et cela peut durer des jours — son
+   * espace n'a rien à lui montrer. Aucune mesure n'avait jamais ouvert cet
+   * état-là : le locataire de sonde du dessus est relié dès sa création, comme
+   * celui de la démonstration.
+   *
+   * Ce n'est pas une hypothèse. BEKONO LANDRY a vécu exactement ceci sur la
+   * production, et deux lots ont été consacrés à en sortir : la fiche tenue par
+   * le mauvais compte, puis le code qui ne rattachait plus un membre déjà entré.
+   * L'ÉCRAN qu'il voyait pendant ce temps, lui, n'a jamais été mesuré.
+   */
+  const invitationOrpheline = await appeler(`/api/parks/${parkId}/invitations`, {
+    cookie,
+    corps: { role: 'tenant' },
+  })
+  await appeler('/api/auth/signup', {
+    corps: {
+      email: 'sans-logement@porte.test',
+      password: MDP,
+      fullName: 'Ondoa Pierre',
+      acceptTerms: true,
+      invitationCode: invitationOrpheline.corps.code,
+    },
+  })
+
   const invitationGestion = await appeler(`/api/parks/${parkId}/invitations`, {
     cookie,
     corps: { role: 'manager' },
@@ -434,6 +463,7 @@ async function monterLeParc() {
       owner: 'proprietaire@porte.test',
       manager: 'gestionnaire@porte.test',
       tenant: 'locataire@porte.test',
+      tenantSansLogement: 'sans-logement@porte.test',
     },
     gestionnaireId: gestionnaire.corps.user.id,
   }
@@ -696,6 +726,15 @@ const PROFILS = [
   /* LE PARC VIDE, sous les yeux d'un propriétaire — le premier écran de tout
      client, et celui qu'aucune mesure n'avait jamais ouvert. */
   { cle: 'owner·vide', role: 'owner', compte: () => parcVide.compte, dossier: false },
+  /* LE LOCATAIRE SANS LOGEMENT — membre du parc, aucun bail. L'état que le
+     produit RECOMMANDE de traverser, et celui qu'un incident de production a
+     fait durer. Ses dix écrans n'ont rien à lui montrer. */
+  {
+    cle: 'tenant·sans',
+    role: 'tenant',
+    compte: () => parcDeSonde.comptes.tenantSansLogement,
+    dossier: false,
+  },
 ]
 
 const navigateur = await chromium.launch()
@@ -875,8 +914,9 @@ if (pointsFermesMesures !== FERMES_ATTENDUS) {
  * inspecté. Le plancher est écrit À LA MAIN et bas — il ne mesure pas la santé
  * du produit, il prouve que la sonde TROUVE encore des états vides de page.
  *
- * Relevé au moment de l'écrire : 60 points en portent un — les écrans sans
- * données du parc vide, plus ceux du parc riche qui n'ont rien à montrer. Le
+ * Relevé : 114 points en portent un — les écrans sans données du parc vide, ceux
+ * du locataire sans logement, plus ceux du parc riche qui n'ont rien à montrer.
+ * (60 avant l'entrée du cinquième profil, au lot précédent.) Le
  * plancher est fixé à 30, largement dessous : un écran qui se remplit ne doit
  * pas faire rougir cette garde, une sonde qui casse doit.
  */
@@ -897,7 +937,7 @@ if (plaintes.length > 0) {
 
 console.log(
   `\n✓ espace-connecte : ${ATTENDUS} points mesurés derrière une VRAIE session — ` +
-    `${ECRANS.length} écrans, ${PROFILS.length} profils dont un PARC VIDE, ` +
+    `${ECRANS.length} écrans, ${PROFILS.length} profils — dont un PARC VIDE et un LOCATAIRE SANS LOGEMENT —, ` +
     `${LARGEURS.length} largeurs, ` +
     `${LANGUES.length} langues.\n` +
     `  ${FERMES_ATTENDUS} refus vérifiés dans les deux directions.\n` +
