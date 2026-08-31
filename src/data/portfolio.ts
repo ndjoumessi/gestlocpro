@@ -735,6 +735,16 @@ export interface WorkOrder {
    */
   titleKey?: WorkTitleKey
   /**
+   * CE QUE LE DÉCLARANT A ÉCRIT SOUS SON TITRE.
+   *
+   * Le champ voyage jusqu'au serveur, qui le range et le relit dans son
+   * portefeuille — seule la projection du client le laissait tomber. Le
+   * locataire écrivait trois lignes, les envoyait, et son écran ne lui en
+   * rendait rien : ni vérifier ce qu'il a transmis, ni s'y référer au
+   * téléphone, ni voir qu'il a oublié l'essentiel.
+   */
+  description?: string
+  /**
    * Intitulé libre, tel que saisi.
    *
    * Les deux champs coexistent parce que les deux natures coexistent, et c'est
@@ -836,7 +846,7 @@ export const WORKS: WorkOrder[] = [
      n'existait donc nulle part, et la ligne qui distingue « on ne m'a pas
      répondu » de « la réponse ne s'affiche pas » n'était mesurée par personne.
      Deux signalements, deux états, c'est aussi ce que vit un vrai locataire. */
-  { id: 'SIG-2026-045', unitId: 'A1', titleKey: 'frontDoorLock', trade: 'lock', status: 'reported', quotedAmount: null, approvedAmount: null, reportedAt: { year: 2026, month: 7, day: 26 }, urgent: false, origin: 'tenantReport', reportedBy: 'Charles Ngassa' },
+  { id: 'SIG-2026-045', unitId: 'A1', titleKey: 'frontDoorLock', trade: 'lock', description: 'Ça coince depuis mardi, il faut forcer la clé. J’ai essayé un peu d’huile, sans effet.', status: 'reported', quotedAmount: null, approvedAmount: null, reportedAt: { year: 2026, month: 7, day: 26 }, urgent: false, origin: 'tenantReport', reportedBy: 'Charles Ngassa' },
   { id: 'SIG-2026-036', unitId: 'A1', titleKey: 'safetyValve', trade: 'plumbing', status: 'done', quotedAmount: 32000, approvedAmount: 32000, reportedAt: { year: 2026, month: 6, day: 28 }, urgent: false, origin: 'tenantReport', reportedBy: 'Charles Ngassa' },
   { id: 'SIG-2026-034', unitId: 'B4', titleKey: 'fullRefurbishment', trade: 'multi', status: 'approved', quotedAmount: 340000, approvedAmount: 340000, reportedAt: { year: 2026, month: 6, day: 22 }, urgent: false, origin: 'ownerInitiative', reportedBy: 'Arsène Nkolo' },
 ]
@@ -1261,7 +1271,7 @@ export const ALERTS: Alert[] = [
      à l'écran. Elle porte le `workId` de SIG-2026-036, le signalement du
      locataire de la démonstration, sur son logement A1. */
   { id: 'n9', kind: 'work', message: 'workReply', data: { workId: 'SIG-2026-036', reference: 'SIG-2026-036', unitId: 'A1', text: 'Vanne remplacée ce matin par le plombier. Dites-nous si la pression est revenue.' }, at: { value: -3, unit: 'day' }, severity: 'low', read: true, unitId: 'A1' },
-  { id: 'n8', kind: 'work', message: 'tenantReport', data: { workId: 'SIG-2026-044', reference: 'SIG-2026-044', unitId: 'B3', text: 'Fuite sous l’évier de la cuisine, ça goutte depuis hier soir.' }, at: { value: -40, unit: 'minute' }, severity: 'medium', read: false, unitId: 'B3' },
+  { id: 'n8', kind: 'work', message: 'tenantReport', data: { workId: 'SIG-2026-044', reference: 'SIG-2026-044', unitId: 'B3', text: 'Fuite sous l’évier de la cuisine, ça goutte depuis hier soir.' }, at: { value: -40, unit: 'minute' }, severity: 'medium', read: false, unitId: 'B3', channel: 'in_app' },
   { id: 'n2', kind: 'work', message: 'quotePending', data: { workId: 'SIG-2026-042', unitId: 'A3', amount: 45000 }, at: { value: -5, unit: 'hour' }, severity: 'high', read: false, unitId: 'A3' },
   { id: 'n3', kind: 'meter', message: 'metersMissing', data: { count: 2, period: { year: 2026, month: 7 }, units: ['A5', 'C2'] }, at: { value: -1, unit: 'day' }, severity: 'medium', read: true },
   { id: 'n4', kind: 'lease', message: 'leaseRenewal', data: { unitId: 'B1', tenant: 'Jean-Paul Eboa', count: 45, dueOn: { year: 2026, month: 8, day: 30 } }, at: { value: -2, unit: 'day' }, severity: 'low', read: true, unitId: 'B1' },

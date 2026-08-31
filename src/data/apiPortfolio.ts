@@ -66,6 +66,8 @@ interface PortefeuilleApi {
     reference: string
     unitId: string
     title: string
+    /** Ce que le déclarant a écrit sous son titre. Facultatif : il peut n'avoir rien ajouté. */
+    description?: string | null
     trade: TradeKey
     status: WorkOrder['status']
     urgency: 'blocking' | 'normal' | 'low'
@@ -299,6 +301,10 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
       // Un intitulé libre, écrit par qui signale : pas de clé de traduction ici
       // — traduire la saisie de quelqu'un est toujours faux.
       title: w.title,
+      /* LES DÉTAILS SAISIS, qui n'arrivaient pas jusqu'ici. Le serveur les
+         range et les relit ; cette projection les laissait tomber, et le
+         locataire ne pouvait pas relire ce qu'il avait transmis. */
+      ...(w.description ? { description: w.description } : {}),
       trade: w.trade,
       status: w.status,
       /* Les DEUX montants, séparés. Le `??` d'avant perdait le devis d'origine

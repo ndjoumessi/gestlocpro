@@ -365,6 +365,20 @@ export function Signaler() {
                     )}
                   </div>
                   <p className="text-body font-medium">{workTitle(work, t)}</p>
+                  {/* CE QU'IL A ÉCRIT, et son écran ne le lui rendait pas.
+
+                      Il saisit trois lignes sous « depuis quand, à quel moment,
+                      ce que vous avez déjà tenté », les envoie, et la liste ne
+                      portait que le titre : ni vérifier ce qu'il a transmis, ni
+                      s'y référer au téléphone, ni voir qu'il a oublié
+                      l'essentiel.
+
+                      `text-pretty` et aucune coupe : c'est sa phrase, de
+                      longueur non bornée, et la tronquer rendrait le rappel
+                      inutile — c'est justement la fin qu'on relit. */}
+                  {work.description && (
+                    <p className="text-body text-pretty text-muted">{work.description}</p>
+                  )}
                   <p className="text-caps text-muted">{d.dayMonth(work.reportedAt)}</p>
                   {/*
                     LE FIL, et il n'existait nulle part.

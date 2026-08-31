@@ -85,8 +85,18 @@ import { DEPOSITS, UNITS, WORKS, type Deposit, type Unit, type WorkOrder } from 
  * conclurait que tous ses locataires ont un espace, alors que le serveur dit le
  * contraire. C'est un écran FAUX, pas un écran incomplet, et c'est exactement
  * le seuil que cet historique retient depuis la version 7.
+ *
+ * Version 10 : l'intervention porte les DÉTAILS écrits par son déclarant. Un
+ * enregistrement antérieur ne les a pas, et la liste du locataire n'affiche
+ * alors rien sous le titre.
+ *
+ * LE CAS EST PLUS PROCHE DE « SE TAIRE » QUE LES DEUX PRÉCÉDENTS, et il faut le
+ * dire : aucune commande ne disparaît, aucun chiffre ne se contredit. Ce qui
+ * penche quand même vers l'incrément est le point de vue du DÉCLARANT — pour
+ * lui, une ligne vide sous son titre se lit « je n'ai rien écrit », ce qui est
+ * faux s'il a écrit. C'est un jugement sur la lecture, pas une mesure.
  */
-const VERSION = 9
+const VERSION = 10
 const CLE = 'gestlocpro.portfolio'
 
 export interface EtatPersiste {

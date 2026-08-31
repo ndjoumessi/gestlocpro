@@ -48,6 +48,30 @@ describe('le fil d’un signalement', () => {
     ).toBeInTheDocument()
   })
 
+  /**
+   * IL VOIT CE QU'IL A ÉCRIT.
+   *
+   * La liste ne portait que le TITRE — « Manque de courant » — et jamais les
+   * détails saisis sous « Depuis quand, à quel moment, ce que vous avez déjà
+   * tenté ». Le locataire écrit trois lignes, les envoie, et son écran ne lui
+   * en rend rien : il ne peut ni vérifier ce qu'il a transmis, ni s'y référer
+   * au téléphone, ni savoir s'il a oublié l'essentiel.
+   *
+   * Le champ voyageait pourtant jusqu'au serveur, qui le RANGE et le RELIT dans
+   * son portefeuille. Seule la projection du client le laissait tomber.
+   */
+  it('lui rend les détails qu’il a saisis', async () => {
+    await renderApp('/demo/signaler')
+    await switchRole('tenant')
+    await attendreLeChargement()
+
+    const mienne = screen.getByText(/Serrure de la porte/i).closest('li')!
+    expect(
+      within(mienne).getByText(/depuis mardi/i),
+      'il ne peut pas relire ce qu’il a transmis',
+    ).toBeInTheDocument()
+  })
+
   it('dit quand il n’y a pas encore de réponse', async () => {
     await renderApp('/demo/signaler')
     await switchRole('tenant')
