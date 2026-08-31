@@ -656,6 +656,15 @@ export const fr = {
       consumedPower: '{n} kWh',
       noUnitTitle: 'Aucun logement rattaché à votre compte',
       noUnitBody: 'Votre compte appartient bien à ce parc, mais aucun bail n’y porte encore votre nom. Demandez à votre propriétaire ou à votre gestionnaire de relier votre fiche locataire à ce compte.',
+      /* LA MOITIÉ DU PARCOURS QUI MANQUAIT. `noUnitBody` renvoie vers le
+         bailleur, et c'est juste quand le locataire n'a rien en main. Quand le
+         bailleur a fait ce que le produit lui montre — émettre un code portant
+         le logement —, le locataire n'avait nulle part où le saisir. */
+      linkTitle: 'Vous avez reçu un code pour votre logement ?',
+      linkBody: 'Saisissez-le ici : votre bail, vos quittances et vos relevés apparaîtront aussitôt dans cet espace.',
+      linkAction: 'Rattacher mon logement',
+      linked: 'Logement rattaché · votre espace est à jour',
+      linkRefused: 'Ce code ne rattache aucun logement à votre compte. Demandez à votre propriétaire un code émis pour votre logement.',
       myReceipts: 'Mes quittances',
       myReceiptsHint: 'Émises par le serveur : les montants sont ceux du registre, pas ceux de l’écran.',
       leaseRent: 'Mon loyer mensuel',

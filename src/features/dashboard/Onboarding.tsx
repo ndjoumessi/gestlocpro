@@ -14,6 +14,7 @@ import { useToast } from '@/components/primitives/Toast'
 import { useSession } from '@/api/SessionProvider'
 import { api } from '@/api/client'
 import { formatInviteCode, validateInviteCode } from '@/features/auth/validation'
+import { usePortfolio } from '@/data/PortfolioProvider'
 
 /** Droits par rôle. `false` = action refusée. */
 /**
@@ -89,23 +90,39 @@ const ROLES: Role[] = ['owner', 'manager', 'tenant']
  * Posé ici, sur « Prise en main et droits », parce que c'est l'écran qu'on
  * ouvre quand on ne comprend pas où l'on est.
  */
-export function RejoindreUnParc() {
+export function RejoindreUnParc({ variante = 'parc' }: { variante?: 'parc' | 'logement' } = {}) {
   const t = useT()
   const { notify } = useToast()
   const { etat, rafraichir } = useSession()
+  /* Le parc se RELIT après un rattachement : `parkId` n'a pas changé, donc
+     l'effet de chargement n'a aucune raison de repartir seul, et le locataire
+     resterait devant « aucun logement rattaché » après avoir été rattaché. */
+  const { reprendreLeParc } = usePortfolio()
   const [code, setCode] = useState('')
   const [erreur, setErreur] = useState<string | null>(null)
   const [envoi, setEnvoi] = useState(false)
 
   /**
-   * Rien à rejoindre quand on appartient DÉJÀ à un parc.
+   * DEUX SITUATIONS, UN SEUL CHAMP.
    *
-   * Posée sans condition, la carte s'affichait chez le propriétaire — qui a
-   * fondé son parc et n'a aucun code à saisir. Elle lui proposait un geste sans
-   * objet sur l'écran censé lui expliquer ses droits, ce qui est le contraire de
-   * son propos.
+   * `parc` — le compte n'appartient à AUCUN parc. Posée sans condition, la
+   * carte s'affichait chez le propriétaire, qui a fondé son parc et n'a aucun
+   * code à saisir : un geste sans objet sur l'écran censé expliquer ses droits.
+   *
+   * `logement` — le compte appartient bien au parc, mais aucun bail ne porte
+   * son nom, et son bailleur vient de lui remettre un code portant le logement.
+   * C'est le cas que le produit PRESCRIVAIT sans l'outiller : la carte se
+   * retirait dès qu'on appartenait à un parc, donc exactement là où ce
+   * second code devait servir. Le geste du bailleur — « relier à une fiche » —
+   * répare l'autre moitié, celle où le locataire n'a pas de code.
+   *
+   * Le champ, l'appel et les refus sont les MÊMES : c'est un seul mécanisme, et
+   * en écrire deux les ferait diverger au premier changement du serveur.
    */
-  if (etat.statut !== 'connecte' || etat.adhesions.length > 0) return null
+  if (etat.statut !== 'connecte') return null
+  if (variante === 'parc' && etat.adhesions.length > 0) return null
+
+  const surUnLogement = variante === 'logement'
 
   return (
     <Card className="mt-6 flex flex-col gap-4">
@@ -122,8 +139,8 @@ export function RejoindreUnParc() {
         l'autre orthographe de l'utilitaire.
       */}
       <CardHeader
-        title={t('app.onboarding.joinTitle')}
-        description={t('app.onboarding.joinBody')}
+        title={surUnLogement ? t('app.tenant.linkTitle') : t('app.onboarding.joinTitle')}
+        description={surUnLogement ? t('app.tenant.linkBody') : t('app.onboarding.joinBody')}
         className="mb-0"
       />
       <Field
@@ -194,16 +211,28 @@ export function RejoindreUnParc() {
               // resterait sur celles d'avant et le parc rejoint n'apparaîtrait
               // qu'au prochain rechargement.
               await rafraichir()
-              notify(t('app.onboarding.joined'), { tone: 'ok' })
+              /* Et le PARC, qui ne se relit pas de lui-même quand l'adhésion
+                 existait déjà : c'est tout le cas du rattachement. */
+              reprendreLeParc()
+              notify(surUnLogement ? t('app.tenant.linked') : t('app.onboarding.joined'), {
+                tone: 'ok',
+              })
               setCode('')
             } catch {
-              setErreur(t('app.onboarding.joinRefused'))
+              /* LE REFUS NOMME LE GESTE QU'ON VIENT DE TENTER. « Ce code ne
+                 peut pas être utilisé » est juste pour qui rejoint un parc ;
+                 pour qui est DÉJÀ dedans, le serveur refuse aussi un code
+                 valable mais sans logement — et la phrase générique enverrait
+                 chercher une faute de frappe là où il n'y en a pas. */
+              setErreur(
+                surUnLogement ? t('app.tenant.linkRefused') : t('app.onboarding.joinRefused'),
+              )
             } finally {
               setEnvoi(false)
             }
           }}
         >
-          {t('app.onboarding.join')}
+          {surUnLogement ? t('app.tenant.linkAction') : t('app.onboarding.join')}
         </Button>
       </div>
     </Card>

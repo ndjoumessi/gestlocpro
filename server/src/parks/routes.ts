@@ -4912,9 +4912,63 @@ rejoindreRouter.post('/', async (req: Request, res: Response) => {
 
   const deja = await prisma.membership.findFirst({
     where: { userId: req.compteId!, parkId: invitation.parkId },
-    select: { id: true },
+    select: { id: true, role: true },
   })
   if (deja) {
+    /**
+     * DÉJÀ MEMBRE NE VEUT PLUS DIRE « RIEN À FAIRE ».
+     *
+     * ═══ L'IMPASSE, CAPTURÉE EN PRODUCTION ═══
+     *
+     * Le locataire entre par un code SANS logement — le chemin que l'aide du
+     * champ d'invitation recommande elle-même : « sans logement, il rejoint le
+     * parc sans bail, vous l'y rattacherez ensuite ». Sa fiche reste orpheline
+     * et son espace lui dit « aucun logement rattaché à votre compte ».
+     *
+     * Le propriétaire fait alors exactement ce que le produit lui montre : il
+     * émet un SECOND code, portant le logement cette fois. Et cette route
+     * répondait 409 à celui qui le saisissait. Le code restait en attente dans
+     * le registre des accès, valable et inutilisable, à côté d'un locataire
+     * toujours sans logement. Les deux moitiés du parcours existaient sans se
+     * rejoindre.
+     *
+     * ═══ CE QU'ON REFUSE ENCORE, ET POURQUOI ═══
+     *
+     * Le membre doit être LOCATAIRE de ce parc. `rattacherLaFicheLocataire` ne
+     * vérifie que la fiche et l'invitation, jamais qui appelle : donner une
+     * fiche au propriétaire de son propre parc lui collerait le périmètre d'un
+     * locataire par-dessus le sien, et il suffisait pour cela qu'il saisisse un
+     * code qu'il vient d'émettre.
+     *
+     * LE CODE N'EST BRÛLÉ QUE S'IL A SERVI. Un code de gestionnaire, un code
+     * sans logement, une fiche déjà reliée : `rattacherLaFicheLocataire` rend
+     * `null`, la transaction n'écrit rien et le 409 d'avant tient. Le consommer
+     * dans ces cas-là le perdrait pour celui à qui on l'avait transmis.
+     */
+    const rattachee =
+      deja.role === 'tenant' && invitation.role === 'tenant'
+        ? await prisma.$transaction(async (tx) => {
+            const fiche = await rattacherLaFicheLocataire(tx, {
+              invitationId: invitation.id,
+              userId: req.compteId!,
+            })
+            if (!fiche) return null
+            await tx.invitation.update({
+              where: { id: invitation.id, acceptedAt: null },
+              data: { acceptedAt: maintenant },
+            })
+            return fiche
+          })
+        : null
+
+    if (rattachee) {
+      /* 200 et non 201 : aucune adhésion n'est créée, celle-ci existait déjà.
+         `linked` dit à l'écran ce qui vient de se passer — « vous avez rejoint
+         un parc » serait faux pour quelqu'un qui y était depuis un mois. */
+      res.status(200).json({ parkId: invitation.parkId, role: invitation.role, linked: true })
+      return
+    }
+
     // Le code resterait consommable pour quelqu'un d'autre : on ne le brûle pas.
     res.status(409).json({ error: 'already_member' })
     return

@@ -8,6 +8,7 @@ import { ProgressBar, StatCard } from '@/components/primitives/Charts'
 import { MiniBarChart } from '@/components/primitives/MiniBarChart'
 import { PAYMENT_TONES } from '@/components/primitives/StatusPill'
 import { EmptyState } from '@/components/primitives/DataTable'
+import { RejoindreUnParc } from './Onboarding'
 import { Skeleton, SkeletonRegion, SkeletonStatRow } from '@/components/primitives/Skeleton'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
@@ -197,6 +198,20 @@ export function TenantDashboard() {
           title={t('app.tenant.noUnitTitle')}
           body={t('app.tenant.noUnitBody')}
         />
+        {/* ET DE QUOI AGIR, au lieu d'attendre que quelqu'un agisse pour lui.
+
+            L'état ci-dessus renvoie le locataire vers son bailleur, ce qui est
+            juste quand il n'a rien en main. Mais le bailleur, lui, fait ce que
+            le produit lui montre : il émet un code portant le logement et le
+            transmet — et ce code n'avait NULLE PART où être saisi. La carte
+            « rejoindre un parc » se retire dès qu'on appartient à un parc,
+            c'est-à-dire exactement ici. Capturé en production, avec le code
+            correspondant en attente dans le registre des accès.
+
+            LE MÊME COMPOSANT que sur « prise en main », dans sa variante
+            « logement » : un second champ de code aurait divergé du premier au
+            premier changement du serveur. */}
+        <RejoindreUnParc variante="logement" />
       </>
     )
 
