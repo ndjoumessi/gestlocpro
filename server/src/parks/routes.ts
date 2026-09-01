@@ -2115,7 +2115,23 @@ parksRouter.post(
            descendant n'en avait pas besoin ; l'omettre ici afficherait le jeton
            tel quel, ce qui est arrivé une fois et a coûté une porte. */
         unit: { select: { label: true } },
-        reportedByTenant: { select: { id: true, fullName: true, userId: true } },
+        /* `email` : la copie du fil part vers le DÉCLARANT quand la gestion
+           répond. Une fiche locataire peut n'en porter aucune — celles qu'on
+           saisit sans compte —, et `envoyerLaCopieDuFil` le sait. */
+        /* DEUX ADRESSES, et l'ordre compte. Celle du COMPTE d'abord : c'est
+           celle par laquelle il est entré, et la seule qui existe toujours quand
+           la fiche est reliée. Celle de la FICHE ensuite, pour le locataire qu'on
+           a saisi sans compte — il n'a pas d'espace où lire l'avis, et le
+           courriel est alors le seul chemin qui lui reste. */
+        reportedByTenant: {
+          select: {
+            id: true,
+            fullName: true,
+            userId: true,
+            email: true,
+            user: { select: { email: true } },
+          },
+        },
       },
     })
     if (!travail) {
@@ -2172,7 +2188,8 @@ parksRouter.post(
     const gestion = monte
       ? await prisma.membership.findMany({
           where: { parkId, status: 'active', role: { in: ['owner', 'manager'] } },
-          select: { userId: true },
+          /* L'adresse vient du COMPTE : un gestionnaire n'a pas de fiche. */
+          select: { userId: true, user: { select: { email: true } } },
         })
       : []
     const recipients = monte
@@ -2216,6 +2233,21 @@ parksRouter.post(
         ...(recipients.length > 0 ? { recipients: { create: recipients } } : {}),
       },
     })
+
+    /* LA COPIE PART APRÈS L'ÉCRITURE, et son échec ne la défait pas : la
+       notification est le fait, le courriel en est une copie. */
+    await envoyerLaCopieDuFil(
+      monte
+        ? gestion.map((m) => m.user.email)
+        : [travail.reportedByTenant.user?.email ?? travail.reportedByTenant.email],
+      gabaritDuFilEmail({
+        sens: monte ? 'reponseLocataire' : 'reponseGestion',
+        reference: travail.reference,
+        unite: travail.unit.label,
+        auteur: travail.reportedByTenant.fullName,
+        texte: corps.message,
+      }),
+    )
 
     /**
      * On dit si elle sera LUE, pas seulement si elle est écrite.
@@ -3783,6 +3815,80 @@ function formaterMontant(minor: number, devise: string): string {
   return `${nombre} ${devise}`
 }
 
+/**
+ * LE COURRIEL DU FIL — une COPIE, jamais le canal de livraison.
+ *
+ * Trois messages font vivre le fil d'un signalement : la déclaration qui
+ * monte, la réponse du gestionnaire qui descend, la réponse du locataire qui
+ * remonte. Les trois étaient `in_app` et rien d'autre — alors que l'écran du
+ * locataire promet en toutes lettres que « votre gestionnaire et votre bailleur
+ * le reçoivent IMMÉDIATEMENT ». Ils le recevaient au prochain passage : une
+ * fuite déclarée un vendredi soir attendait le lundi matin.
+ *
+ * LA NOTIFICATION RESTE `in_app`. C'est là qu'elle vit, là qu'on la marque lue,
+ * c'est elle que le portefeuille rend. Le courriel en est une copie de
+ * courtoisie. Passer `channel` à `email` sur une notification dont un
+ * destinataire sur deux n'a pas d'adresse affirmerait un envoi qui n'a pas eu
+ * lieu — et `channel` sert précisément à l'écran des alertes pour dire « pas
+ * encore parti · visible ici seulement ».
+ *
+ * LE SUJET PORTE LA RÉFÉRENCE, le corps porte le logement et le texte. Sans
+ * eux il faut ouvrir le produit pour savoir de quoi il s'agit, ce qui est
+ * exactement ce que ce courriel existe pour éviter.
+ */
+function gabaritDuFilEmail(entree: {
+  sens: 'signalement' | 'reponseGestion' | 'reponseLocataire'
+  reference: string
+  unite: string
+  auteur: string
+  texte: string
+}): { sujet: string; texte: string; html: string } {
+  const titre =
+    entree.sens === 'signalement'
+      ? `Nouveau signalement · ${entree.unite}`
+      : entree.sens === 'reponseGestion'
+        ? `Réponse à votre signalement · ${entree.unite}`
+        : `Réponse de ${entree.auteur} · ${entree.unite}`
+  const sujet = `GestLocPro — ${entree.reference} · ${titre}`
+  const texte =
+    `${titre}\n\n` +
+    `Logement : ${entree.unite}\n` +
+    `Référence : ${entree.reference}\n` +
+    `De : ${entree.auteur}\n\n` +
+    `${entree.texte}\n\n` +
+    'Répondez depuis GestLocPro : le fil de ce signalement y garde tout l’échange.'
+  const html =
+    `<p><strong>${echapperHtml(titre)}</strong></p>` +
+    `<p>Logement : ${echapperHtml(entree.unite)}<br>Référence : ${echapperHtml(entree.reference)}` +
+    `<br>De : ${echapperHtml(entree.auteur)}</p>` +
+    `<p>${echapperHtml(entree.texte)}</p>` +
+    '<p>Répondez depuis GestLocPro : le fil de ce signalement y garde tout l’échange.</p>'
+  return { sujet, texte, html }
+}
+
+/**
+ * ENVOIE LA COPIE À CHAQUE ADRESSE, ET N'INTERROMPT JAMAIS LE GESTE.
+ *
+ * La messagerie de journal rend `false` quand aucun fournisseur n'est
+ * configuré — « l'appelant sait que rien n'est parti ». Un signalement dont le
+ * courriel échoue reste un signalement : ce `false` ne doit jamais devenir un
+ * 500. On additionne donc les succès et on les rend, sans rien lever.
+ *
+ * SANS ADRESSE, RIEN. Une fiche locataire peut ne porter aucun courriel, et un
+ * compte en porte toujours un : c'est l'appelant qui décide où il les prend.
+ */
+async function envoyerLaCopieDuFil(
+  adresses: (string | null | undefined)[],
+  gabarit: { sujet: string; texte: string; html: string },
+): Promise<number> {
+  let partis = 0
+  for (const adresse of adresses) {
+    if (!adresse) continue
+    if (await laMessagerie().envoyerEmail(adresse, gabarit.sujet, gabarit)) partis++
+  }
+  return partis
+}
+
 /** Gabarit du courriel de relance automatique — sujet, texte, HTML. */
 function gabaritRelanceEmail(
   nomLocataire: string,
@@ -4295,7 +4401,10 @@ parksRouter.post(
       role === 'tenant'
         ? await prisma.tenant.findFirst({
             where: { parkId, userId: req.compteId!, leases: { some: { unitId: unite.id } } },
-            select: { id: true },
+            /* `fullName` : la copie du fil nomme QUI a signalé. « Nouveau
+               signalement · A1 » sans nom oblige le gestionnaire à ouvrir le
+               produit pour savoir qui rappeler — ce que le courriel évite. */
+            select: { id: true, fullName: true },
           })
         : null
 
@@ -4371,7 +4480,9 @@ parksRouter.post(
     if (origine === 'tenantReport') {
       const gestion = await prisma.membership.findMany({
         where: { parkId, status: 'active', role: { in: ['owner', 'manager'] } },
-        select: { userId: true },
+        /* L'ADRESSE VIENT DU COMPTE, jamais de la fiche : un gestionnaire n'a
+           pas de fiche locataire, et c'est par son compte qu'il est entré. */
+        select: { userId: true, user: { select: { email: true } } },
       })
       await prisma.notification.create({
         data: {
@@ -4403,6 +4514,21 @@ parksRouter.post(
             : {}),
         },
       })
+
+      /* LA COPIE PART VERS LA GESTION, et son échec ne défait rien : le
+         signalement est enregistré, le courriel en est une copie. L'écran du
+         locataire promet qu'ils le reçoivent IMMÉDIATEMENT — c'est cette ligne
+         qui tient la promesse. */
+      await envoyerLaCopieDuFil(
+        gestion.map((m) => m.user.email),
+        gabaritDuFilEmail({
+          sens: 'signalement',
+          reference: travail.reference,
+          unite: unite.label,
+          auteur: declarant?.fullName ?? '—',
+          texte: corps.description ?? corps.title,
+        }),
+      )
     }
 
     res.status(201).json({ work: travail })
