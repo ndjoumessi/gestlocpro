@@ -2115,9 +2115,12 @@ parksRouter.post(
      * survivant au retrait du destinataire.
      *
      * On le pose parce qu'il porte `readAt`, le seul endroit où l'état de
-     * lecture peut vivre. Aucune route ne le marque encore ; le jour où l'une
-     * le fera, elle n'aura rien à rattraper. L'omettre aujourd'hui coûterait
-     * une migration de données ce jour-là.
+     * lecture peut vivre — et `PATCH /notifications/read` l'écrit depuis le lot
+     * qui a fermé cette dette. Ce commentaire disait encore « aucune route ne le
+     * marque encore » : il avait raison le jour où il a été écrit, et il a
+     * survécu au fait qu'il décrivait. Un commentaire qui affirme un MANQUE est
+     * périssable par nature, puisqu'on le comble ; celui-ci a failli faire
+     * rouvrir un chantier déjà fait.
      */
     const destinataire = travail.reportedByTenant.userId
 

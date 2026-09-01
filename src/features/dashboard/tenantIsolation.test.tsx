@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { renderApp, screen, switchRole, attendreLeChargement } from '@/test/render'
-import { DEMO_TENANT_UNIT, UNITS } from '@/data/portfolio'
+import { ALERTS, DEMO_TENANT_UNIT, UNITS } from '@/data/portfolio'
 
 /**
  * Cloisonnement du rôle locataire.
@@ -21,6 +21,28 @@ import { DEMO_TENANT_UNIT, UNITS } from '@/data/portfolio'
 const AUTRES_LOCATAIRES = UNITS.filter(
   (unit) => unit.tenant !== null && unit.id !== DEMO_TENANT_UNIT,
 ).map((unit) => unit.tenant as string)
+
+/**
+ * LES PHRASES ÉCRITES CHEZ LES AUTRES — une surface que le NOM ne couvre pas.
+ *
+ * Cette suite garde depuis toujours qu'aucun nom d'autre locataire ne
+ * s'affiche. Depuis que le fil d'un signalement porte des messages écrits par
+ * des humains — la réponse du gestionnaire, celle du locataire —, le nom n'est
+ * plus la seule chose qui fuit. Un TEXTE est plus bavard qu'un nom : « je serai
+ * absent toute la semaine » dit quand un logement sera vide.
+ *
+ * DÉRIVÉE, jamais recopiée. La liste se déduit des avis du jeu de démonstration
+ * dont l'unité n'est pas celle du locataire connecté ; ajouter un message chez
+ * un voisin le fait entrer ici le jour même. Une liste écrite à la main aurait
+ * pris du retard au premier ajout, et ce silence-là se lit « aucun défaut ».
+ */
+const TEXTES_D_AUTRUI = ALERTS.filter(
+  (a) =>
+    (a.message === 'workReply' || a.message === 'tenantReply') &&
+    a.unitId !== undefined &&
+    a.unitId !== DEMO_TENANT_UNIT &&
+    typeof a.data.text === 'string',
+).map((a) => a.data.text as string)
 
 /**
  * Les écrans sont montés sous `/demo`, et c'est ce qu'ils ont toujours été.
@@ -76,6 +98,13 @@ describe('cloisonnement du locataire', () => {
     expect(AUTRES_LOCATAIRES.length).toBeGreaterThan(3)
   })
 
+  it('connaît des phrases écrites chez les autres', () => {
+    /* Le même garde-fou, pour la seconde surface : sans un seul message de fil
+       posé chez un voisin, l'invariante ci-dessous ne compare rien et rend vert
+       sur un produit qui fuirait. */
+    expect(TEXTES_D_AUTRUI.length).toBeGreaterThan(1)
+  })
+
   describe.each(ECRANS_AUTORISES)('écran %s', (route) => {
     it('ne cite aucun autre locataire', async () => {
       await renderApp(route)
@@ -85,6 +114,22 @@ describe('cloisonnement du locataire', () => {
       const main = screen.getByRole('main')
       for (const nom of AUTRES_LOCATAIRES) {
         expect(main).not.toHaveTextContent(nom)
+      }
+    })
+
+    it('ne rapporte aucune phrase écrite chez un autre', async () => {
+      await renderApp(route)
+      await switchRole('tenant')
+      await attendreLeChargement()
+
+      const main = screen.getByRole('main')
+      for (const texte of TEXTES_D_AUTRUI) {
+        /* `textContent` et non `toHaveTextContent` : ce dernier normalise les
+           espaces du DOM ET du motif, mais les apostrophes typographiques et
+           les insécables des montants voyagent telles quelles. On compare donc
+           la chaîne EXACTE que la donnée porte, qui est celle que le produit
+           rendrait s'il fuyait. */
+        expect(main.textContent ?? '').not.toContain(texte)
       }
     })
   })

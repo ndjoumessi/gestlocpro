@@ -59,6 +59,33 @@ export function Payments() {
     collections,
   } = usePortfolio()
   const { notify } = useToast()
+
+  /**
+   * LA PÉRIODE QU'ON PEUT VRAIMENT ATTESTER, pour ce logement.
+   *
+   * La plus RÉCENTE que porte son historique — donc le dernier mois facturé.
+   * Repli sur le mois courant quand il n'en porte aucune : c'est alors au
+   * serveur de refuser, ce qu'il fait en 404, et l'écran ne prétend pas savoir
+   * mieux que lui.
+   *
+   * `receiptsForUnit` rend des mois indexés à zéro — la convention de
+   * `lib/dates` —, et le contrat de la route veut « AAAA-MM-01 ». Le `+ 1` est
+   * la frontière entre les deux, et il est ICI plutôt que dans la modale, qui
+   * reçoit déjà une chaîne du serveur sur l'autre chemin.
+   */
+  const periodeAQuittancer = (unitId: string) => {
+    const historique = receiptsForUnit(unitId)
+    const derniere = historique.reduce<(typeof historique)[number] | null>(
+      (plusRecente, r) =>
+        !plusRecente || r.year > plusRecente.year || (r.year === plusRecente.year && r.month > plusRecente.month)
+          ? r
+          : plusRecente,
+      null,
+    )
+    if (!derniere) return `${new Date().toISOString().slice(0, 7)}-01`
+    return `${derniere.year}-${String(derniere.month + 1).padStart(2, '0')}-01`
+  }
+
   const isTenant = role === 'tenant'
   const [filter, setFilter] = useState<PaymentStatus | 'all'>('all')
   const [payOpen, setPayOpen] = useState(false)
@@ -660,14 +687,37 @@ export function Payments() {
         ]}
       />
 
-      {/* La période est le mois courant : c'est celle qu'on quittance dans la
-          quasi-totalité des cas. Le serveur en accepte d'autres, et l'écran
-          saura les offrir le jour où le besoin se posera. */}
+      {/*
+        ON NE QUITTANCE PAS UN MOIS QU'ON N'A PAS FACTURÉ.
+
+        Cette ligne disait « la période est le mois courant : c'est celle qu'on
+        quittance dans la quasi-totalité des cas », et prenait `new Date()`.
+        C'était vrai le 20 du mois, faux le 1er : la période courante n'a pas
+        encore d'échéance, et une quittance atteste d'un versement qui n'existe
+        pas.
+
+        LE SERVEUR LE DIT DÉJÀ, et bien : « Aucune échéance pour cette période :
+        il n'y a rien à attester. On ne fabrique pas un document vide, qui
+        laisserait croire à un mois traité. » Il rend 404. La démonstration, elle,
+        n'a pas de serveur : la modale s'ouvrait sur un document VIDE.
+
+        MESURÉ, et par accident : le 1er septembre 2026 à 00 h 00, quatorze cas
+        de `check:rapide` sont devenus rouges sans qu'une ligne de code ait
+        bougé. Les quittances du jeu de démonstration s'arrêtent en août, et
+        l'écran demandait septembre. La donnée figée dans le temps a rencontré
+        une horloge qui, elle, avance.
+
+        LA PÉRIODE EST DONC LA PLUS RÉCENTE QUE CE LOGEMENT PORTE. C'est juste
+        dans les deux mondes : sur un parc réel, c'est le dernier mois facturé —
+        celui qu'on quittance en pratique —, et le repli sur le mois courant ne
+        sert qu'au logement sans aucune échéance, où le serveur refusera comme
+        il doit.
+      */}
       {quittanceDe && (
         <ReceiptModal
           open
           unitId={quittanceDe}
-          periodStart={`${new Date().toISOString().slice(0, 7)}-01`}
+          periodStart={periodeAQuittancer(quittanceDe)}
           onClose={() => setQuittanceDe(null)}
         />
       )}

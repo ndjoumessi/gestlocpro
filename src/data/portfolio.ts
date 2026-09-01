@@ -194,19 +194,63 @@ export interface MonthlyCollection {
   power: number
 }
 
+/**
+ * LA DÉMONSTRATION SUIT L'HORLOGE, ET NE S'ANCRE PLUS À AOÛT 2026.
+ *
+ * ═══ CE QUI S'EST PASSÉ LE 1er SEPTEMBRE 2026, À MINUIT ═══
+ *
+ * Quatorze cas de `check:rapide` sont devenus rouges sans qu'une ligne de code
+ * ait bougé. Les quittances du jeu s'arrêtaient au mois d'août ; le produit,
+ * lui, lit `new Date()`. « Mon espace » titrait « Loyer pour septembre 2026 » et
+ * ne trouvait aucun versement à nommer ; la modale de quittance s'ouvrait sur un
+ * document vide.
+ *
+ * Ce n'est pas une panne de tests : c'est la DÉMONSTRATION qui s'était périmée,
+ * et elle se serait périmée un peu plus chaque mois. Un visiteur de `/demo`
+ * l'aurait vue avant nous si personne n'avait lancé la porte ce jour-là.
+ *
+ * ═══ CE QUE FAIT CE DÉCALAGE ═══
+ *
+ * Les séries datées ne portent plus des mois ABSOLUS mais des RANGS : « le mois
+ * courant », « celui d'avant ». Les montants, les jours et les écarts entre les
+ * lignes ne bougent pas d'un pouce — seule l'ancre se déplace.
+ *
+ * POURQUOI `UTC`. `getMonth()` répond selon le fuseau de la machine ; le
+ * premier du mois, à Douala, il rendrait déjà le mois suivant de ce que Londres
+ * voit. Tout ce fichier compte en parties UTC, comme `lib/dates` l'exige.
+ *
+ * CE QUE CE DÉCALAGE NE COUVRE PAS, et il faut le dire : les dates FIXES du
+ * jeu — un bail commencé le 15/06/2024, un état des lieux d'entrée — restent
+ * absolues, et c'est juste : ce sont des faits passés, pas une fenêtre
+ * glissante. Elles vieilliront, et c'est ce qu'un bail fait.
+ */
+const MAINTENANT = new Date()
+const ANCRE = { year: MAINTENANT.getUTCFullYear(), month: MAINTENANT.getUTCMonth() }
+
+/** Le mois situé `recul` crans avant le mois courant. `0` = ce mois-ci. */
+function moisAvant(recul: number): { year: number; month: number } {
+  const total = ANCRE.year * 12 + ANCRE.month - recul
+  return { year: Math.floor(total / 12), month: ((total % 12) + 12) % 12 }
+}
+
+/** Le même mois, avec un jour — pour une échéance ou un versement. */
+function jourDuMois(recul: number, day: number) {
+  return { ...moisAvant(recul), day }
+}
+
 export const COLLECTIONS: MonthlyCollection[] = [
-  { year: 2025, month: 8, rent: 1010000, water: 62000, power: 48000 },
-  { year: 2025, month: 9, rent: 1085000, water: 58000, power: 51000 },
-  { year: 2025, month: 10, rent: 1040000, water: 61000, power: 46000 },
-  { year: 2025, month: 11, rent: 1120000, water: 66000, power: 58000 },
-  { year: 2026, month: 0, rent: 1150000, water: 71000, power: 62000 },
-  { year: 2026, month: 1, rent: 1095000, water: 64000, power: 54000 },
-  { year: 2026, month: 2, rent: 1180000, water: 69000, power: 57000 },
-  { year: 2026, month: 3, rent: 1240000, water: 74000, power: 61000 },
-  { year: 2026, month: 4, rent: 1205000, water: 70000, power: 59000 },
-  { year: 2026, month: 5, rent: 1290000, water: 78000, power: 66000 },
-  { year: 2026, month: 6, rent: 1250000, water: 72000, power: 63000 },
-  { year: 2026, month: 7, rent: 1040000, water: 68000, power: 55000 },
+  { ...moisAvant(11), rent: 1010000, water: 62000, power: 48000 },
+  { ...moisAvant(10), rent: 1085000, water: 58000, power: 51000 },
+  { ...moisAvant(9), rent: 1040000, water: 61000, power: 46000 },
+  { ...moisAvant(8), rent: 1120000, water: 66000, power: 58000 },
+  { ...moisAvant(7), rent: 1150000, water: 71000, power: 62000 },
+  { ...moisAvant(6), rent: 1095000, water: 64000, power: 54000 },
+  { ...moisAvant(5), rent: 1180000, water: 69000, power: 57000 },
+  { ...moisAvant(4), rent: 1240000, water: 74000, power: 61000 },
+  { ...moisAvant(3), rent: 1205000, water: 70000, power: 59000 },
+  { ...moisAvant(2), rent: 1290000, water: 78000, power: 66000 },
+  { ...moisAvant(1), rent: 1250000, water: 72000, power: 63000 },
+  { ...moisAvant(0), rent: 1040000, water: 68000, power: 55000 },
 ]
 
 export const KPIS = {
@@ -1296,6 +1340,18 @@ export const ALERTS: Alert[] = [
      alerte du jeu qui fasse une CONVERSATION plutôt qu'un avis isolé, et elle
      est là pour ça — le fil se lit à deux voix ou il ne se lit pas. */
   { id: 'n10', kind: 'work', message: 'tenantReply', data: { workId: 'SIG-2026-036', reference: 'SIG-2026-036', unitId: 'A1', tenant: 'Charles Ngassa', text: 'La pression est revenue, merci. Il reste un léger suintement au raccord.' }, at: { value: -1, unit: 'day' }, severity: 'medium', read: false, channel: 'in_app', unitId: 'A1' },
+  /* LE FIL DU VOISIN — sur A3, le logement de Serge Mbarga, et JAMAIS celui du
+     locataire de démonstration. Il existe pour une garde et une seule :
+     `tenantIsolation` vérifiait qu'aucun NOM d'autre locataire ne s'affiche, et
+     depuis que le fil porte des phrases écrites par des humains, le nom n'est
+     plus la seule chose qui fuit. Un texte est plus bavard qu'un nom : il dit ce
+     qui est cassé chez quelqu'un, et quand il sera absent de chez lui.
+
+     Deux messages et non un : le sens DESCENDANT et le sens MONTANT passent par
+     des écrans différents — la liste d'avis pour l'un, le fil du chantier pour
+     l'autre — et une garde qui n'en tiendrait qu'un laisserait l'autre ouvert. */
+  { id: 'n11', kind: 'work', message: 'workReply', data: { workId: 'SIG-2026-042', reference: 'SIG-2026-042', unitId: 'A3', text: 'Le plombier passe mardi entre 14 h et 16 h, laissez la clé chez la gardienne.' }, at: { value: -2, unit: 'day' }, severity: 'low', read: true, channel: 'in_app', unitId: 'A3' },
+  { id: 'n12', kind: 'work', message: 'tenantReply', data: { workId: 'SIG-2026-042', reference: 'SIG-2026-042', unitId: 'A3', tenant: 'Serge Mbarga', text: 'Je serai absent toute la semaine, ma sœur ouvrira l’appartement.' }, at: { value: -1, unit: 'day' }, severity: 'medium', read: false, channel: 'in_app', unitId: 'A3' },
   { id: 'n8', kind: 'work', message: 'tenantReport', data: { workId: 'SIG-2026-044', reference: 'SIG-2026-044', unitId: 'B3', text: 'Fuite sous l’évier de la cuisine, ça goutte depuis hier soir.' }, at: { value: -40, unit: 'minute' }, severity: 'medium', read: false, unitId: 'B3', channel: 'in_app' },
   { id: 'n2', kind: 'work', message: 'quotePending', data: { workId: 'SIG-2026-042', unitId: 'A3', amount: 45000 }, at: { value: -5, unit: 'hour' }, severity: 'high', read: false, unitId: 'A3' },
   { id: 'n3', kind: 'meter', message: 'metersMissing', data: { count: 2, period: { year: 2026, month: 7 }, units: ['A5', 'C2'] }, at: { value: -1, unit: 'day' }, severity: 'medium', read: true },
@@ -1532,13 +1588,24 @@ export function receiptStatus(receipt: Receipt, aujourdhui: Date): PaymentStatus
  * tableau affiche « reste … », et la seule raison pour laquelle l'imputation
  * poste par poste existe.
  */
+/**
+ * SIX MOIS DE QUITTANCES, ancrés au mois COURANT.
+ *
+ * La plus récente est CELLE DU MOIS EN COURS, et c'est ce qui compte : « Mon
+ * espace » titre le mois courant et cherche son versement, la modale de
+ * quittance atteste la dernière période facturée. Figées en août, ces six
+ * lignes ont laissé les deux écrans vides le 1er septembre.
+ *
+ * Les montants, les jours d'échéance et de versement, les moyens de paiement et
+ * les références ne bougent pas : seule l'ancre glisse.
+ */
 export const TENANT_RECEIPTS: Receipt[] = [
-  { year: 2026, month: 7, rentMinor: 145000, waterMinor: 8320, powerMinor: 17622, dueOn: { year: 2026, month: 7, day: 5 }, paidMinor: 170942, payments: [{ amountMinor: 170942, method: 'mobile', paidOn: { year: 2026, month: 7, day: 3 } , reference: 'MM-4471' }] },
-  { year: 2026, month: 6, rentMinor: 145000, waterMinor: 7800, powerMinor: 16137, dueOn: { year: 2026, month: 6, day: 5 }, paidMinor: 168937, payments: [{ amountMinor: 168937, method: 'mobile', paidOn: { year: 2026, month: 6, day: 2 } , reference: 'MM-4318' }] },
-  { year: 2026, month: 5, rentMinor: 145000, waterMinor: 7280, powerMinor: 16929, dueOn: { year: 2026, month: 5, day: 5 }, paidMinor: 169209, payments: [{ amountMinor: 169209, method: 'transfer', paidOn: { year: 2026, month: 5, day: 5 } , reference: 'VIR-20260504' }] },
-  { year: 2026, month: 4, rentMinor: 145000, waterMinor: 6760, powerMinor: 14058, dueOn: { year: 2026, month: 4, day: 5 }, paidMinor: 160760, payments: [{ amountMinor: 160760, method: 'mobile', paidOn: { year: 2026, month: 4, day: 4 } , reference: 'MM-4102' }] },
-  { year: 2026, month: 3, rentMinor: 145000, waterMinor: 6240, powerMinor: 15345, dueOn: { year: 2026, month: 3, day: 5 }, paidMinor: 166585, payments: [{ amountMinor: 166585, method: 'cash', paidOn: { year: 2026, month: 3, day: 2 } , reference: null }] },
-  { year: 2026, month: 2, rentMinor: 145000, waterMinor: 8840, powerMinor: 16632, dueOn: { year: 2026, month: 2, day: 5 }, paidMinor: 170472, payments: [{ amountMinor: 170472, method: 'mobile', paidOn: { year: 2026, month: 2, day: 6 } , reference: 'MM-3877' }] },
+  { ...moisAvant(0), rentMinor: 145000, waterMinor: 8320, powerMinor: 17622, dueOn: jourDuMois(0, 5), paidMinor: 170942, payments: [{ amountMinor: 170942, method: 'mobile', paidOn: jourDuMois(0, 3), reference: 'MM-4471' }] },
+  { ...moisAvant(1), rentMinor: 145000, waterMinor: 7800, powerMinor: 16137, dueOn: jourDuMois(1, 5), paidMinor: 168937, payments: [{ amountMinor: 168937, method: 'mobile', paidOn: jourDuMois(1, 2), reference: 'MM-4318' }] },
+  { ...moisAvant(2), rentMinor: 145000, waterMinor: 7280, powerMinor: 16929, dueOn: jourDuMois(2, 5), paidMinor: 169209, payments: [{ amountMinor: 169209, method: 'transfer', paidOn: jourDuMois(2, 5), reference: 'VIR-20260504' }] },
+  { ...moisAvant(3), rentMinor: 145000, waterMinor: 6760, powerMinor: 14058, dueOn: jourDuMois(3, 5), paidMinor: 160760, payments: [{ amountMinor: 160760, method: 'mobile', paidOn: jourDuMois(3, 4), reference: 'MM-4102' }] },
+  { ...moisAvant(4), rentMinor: 145000, waterMinor: 6240, powerMinor: 15345, dueOn: jourDuMois(4, 5), paidMinor: 166585, payments: [{ amountMinor: 166585, method: 'cash', paidOn: jourDuMois(4, 2), reference: null }] },
+  { ...moisAvant(5), rentMinor: 145000, waterMinor: 8840, powerMinor: 16632, dueOn: jourDuMois(5, 5), paidMinor: 170472, payments: [{ amountMinor: 170472, method: 'mobile', paidOn: jourDuMois(5, 6), reference: 'MM-3877' }] },
 ]
 
 /**

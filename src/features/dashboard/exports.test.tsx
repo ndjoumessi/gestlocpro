@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { renderApp, screen, switchRole, attendreLeChargement, userEvent, cliquerAction } from '@/test/render'
 import { captureDownloads } from '@/test/downloads'
 import { UTF8_BOM } from '@/lib/csv'
-import { DEMO_TENANT_UNIT, UNITS } from '@/data/portfolio'
+import { DEMO_TENANT_UNIT, UNITS, TENANT_RECEIPTS } from '@/data/portfolio'
 
 /**
  * Les contrôles d'export produisent réellement un fichier.
@@ -237,6 +237,30 @@ describe('export du tableau de bord', () => {
  * fichier commence bien par la signature du format.
  */
 describe('quittances du locataire', () => {
+  /**
+   * LES DEUX PÉRIODES ATTENDUES, DÉRIVÉES DU JEU ET NON ÉCRITES.
+   *
+   * Elles l'étaient — `2026-08`, `2026-07` — et elles sont devenues fausses le
+   * 1er septembre 2026, quand le jeu de démonstration a cessé de s'ancrer à
+   * août pour suivre l'horloge. Le sujet de ces cas n'a pas bougé : le fichier
+   * porte le mois de la PÉRIODE, jamais le jour du téléchargement. C'est
+   * exactement ce qu'un attendu dérivé garde, et qu'un attendu écrit perdait au
+   * premier changement de mois.
+   */
+  const periodes = [...TENANT_RECEIPTS]
+    .sort((a, b) => b.year * 12 + b.month - (a.year * 12 + a.month))
+    .map((r) => `${r.year}-${String(r.month + 1).padStart(2, '0')}`)
+  const nomDuFichier = (rang: number) => `gestlocpro-quittance-a1-${periodes[rang]}.pdf`
+  const moisEnToutesLettres = (rang: number) => {
+    const r = [...TENANT_RECEIPTS].sort(
+      (a, b) => b.year * 12 + b.month - (a.year * 12 + a.month),
+    )[rang]!
+    const nom = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(
+      new Date(Date.UTC(r.year, r.month, 1)),
+    )
+    return nom.charAt(0).toUpperCase() + nom.slice(1)
+  }
+
   /** Le fichier en latin-1 : un octet, un caractère, comme dans le PDF. */
   const enLatin1 = (octets: Uint8Array) =>
     Array.from(octets, (o) => String.fromCharCode(o)).join('')
@@ -254,13 +278,17 @@ describe('quittances du locataire', () => {
 
     // Le mois de la quittance, pas le jour du téléchargement : c'est la période
     // qui identifie le document.
-    expect(file.name).toBe('gestlocpro-quittance-a1-2026-08.pdf')
+    expect(file.name).toBe(nomDuFichier(0))
     expect(file.type).toBe('application/pdf')
 
     const document = enLatin1(file.bytes)
     expect(document.startsWith('%PDF'), 'ce n’est pas un PDF').toBe(true)
     expect(document).toContain('(Quittance de loyer)')
-    expect(document).toContain('(Ao\xFBt 2026)')
+    /* Le mois en toutes lettres, dans l'encodage du PDF : les accents y sont en
+       latin-1, d'où la conversion plutôt qu'une chaîne littérale. */
+    expect(document).toContain(
+      '(' + moisEnToutesLettres(0).replace(/[À-ÿ]/g, (c) => String.fromCharCode(c.charCodeAt(0))) + ')',
+    )
     expect(document).toContain('(Charles Ngassa)')
     /* Sans les parenthèses du format : l'immeuble partage sa ligne avec le
        numéro du logement — « A1 · Résidence Bonamoussadi » —, et exiger la
@@ -348,10 +376,7 @@ describe('quittances du locataire', () => {
     await user.click(boutons[1])
     const files = await capture.settle()
 
-    expect(files.map((f) => f.name)).toEqual([
-      'gestlocpro-quittance-a1-2026-08.pdf',
-      'gestlocpro-quittance-a1-2026-07.pdf',
-    ])
+    expect(files.map((f) => f.name)).toEqual([nomDuFichier(0), nomDuFichier(1)])
   })
 
   /**

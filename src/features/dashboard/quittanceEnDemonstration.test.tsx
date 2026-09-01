@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { renderApp, screen, attendreLeChargement, userEvent, within } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur } from '@/test/api'
+import { TENANT_RECEIPTS } from '@/data/portfolio'
 import type { EtatSession } from '@/api/SessionProvider'
 
 const PARC = '00000000-0000-4000-8000-0000000000aa'
@@ -121,8 +122,17 @@ describe('la quittance en démonstration', () => {
    * `mois - 1`. L'écran et la pièce téléchargée du MÊME document ne nommaient
    * donc pas le même mois, ce qui est pire que si les deux s'étaient trompés.
    *
-   * Le mois est calculé, jamais écrit : la modale quittance le mois COURANT, et
-   * un attendu en dur se périmerait au premier jour du suivant.
+   * ═══ CE QUE CE CAS A ARRÊTÉ DE SUPPOSER ═══
+   *
+   * Il comparait au mois COURANT, « calculé et jamais écrit » pour ne pas se
+   * périmer. Il s'est périmé quand même, autrement : la modale ne quittance plus
+   * le mois courant mais le DERNIER MOIS FACTURÉ — on n'atteste pas un versement
+   * qu'on n'a pas encore appelé, et le serveur rend 404 sur cette période-là.
+   *
+   * Le sujet du cas, lui, n'a pas bougé d'un pouce : c'est le DÉCALAGE D'UN
+   * CRAN entre un mois ISO compté à partir de un et `monthYear` compté à partir
+   * de zéro. Il se garde donc contre la période DEMANDÉE, quelle qu'elle soit,
+   * et non contre l'horloge.
    */
   it('nomme le mois du document, et non le suivant', async () => {
     installerFauxServeur()
@@ -131,11 +141,18 @@ describe('la quittance en démonstration', () => {
 
     const modale = await ouvrirLaQuittance()
 
-    const maintenant = new Date()
-    const mois = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' })
-      .format(new Date(Date.UTC(maintenant.getUTCFullYear(), maintenant.getUTCMonth(), 1)))
-    const suivant = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' })
-      .format(new Date(Date.UTC(maintenant.getUTCFullYear(), maintenant.getUTCMonth() + 1, 1)))
+    /* LA PÉRIODE DEMANDÉE, dérivée du jeu comme l'écran la dérive : la plus
+       récente que l'historique porte. Un attendu en dur se périmerait, et
+       l'horloge n'est plus ce qui décide. */
+    const derniere = TENANT_RECEIPTS.reduce((plus, r) =>
+      r.year > plus.year || (r.year === plus.year && r.month > plus.month) ? r : plus,
+    )
+    const nommer = (an: number, moisZero: number) =>
+      new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(
+        new Date(Date.UTC(an, moisZero, 1)),
+      )
+    const mois = nommer(derniere.year, derniere.month)
+    const suivant = nommer(derniere.year, derniere.month + 1)
 
     const texte = (modale.textContent ?? '').toLowerCase()
     expect(texte, `le document devrait porter ${mois}`).toContain(mois.toLowerCase())

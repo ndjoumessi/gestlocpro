@@ -701,8 +701,8 @@ console.log(
     `${Object.keys(NON_MESURABLES).length} adresse(s) non mesurable(s) déclarée(s).`,
 )
 console.log(
-  "  Ce RAPPORT n'entre pas dans `npm run check` : ses trois minutes mesurent le produit,\n" +
-  "  ce que quinze autres portes font déjà. Ses LECTURES, elles, y sont depuis le lot qui\n" +
-  "  a réparé celle de l'anneau de focus — elles coûtent 1,5 s, et ce sont elles qui\n" +
-  "  pourrissent : deux fois en deux semaines, faute que rien ne les exécute.\n",
+  "  Ce rapport est DANS `check:navigateur` depuis le lot qui l'y a mis : ses trois minutes\n" +
+  "  refont un balayage que quinze portes font déjà, et c'est le prix pour que sa CARTE — la\n" +
+  "  concentration des défauts par écran et par site — ne se périme pas en silence. Ses\n" +
+  "  lectures, elles, sont dans `check:rapide` et coûtent 1,5 s.\n",
 )
