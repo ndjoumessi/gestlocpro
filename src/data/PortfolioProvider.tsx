@@ -264,6 +264,18 @@ interface PortfolioContextValue {
    * `Promise<boolean>` comme `addWork` : l'appelant ne félicite qu'après.
    */
   replyToWork: (workId: string, unitId: string, message: string) => Promise<boolean>
+  /**
+   * POSE une réponse de GESTION dans le fil, sans rien envoyer.
+   *
+   * `ReplyModal` appelle la route elle-même — elle a ses propres retours à
+   * traiter, dont un 409 `no_reporter` qui a son message. Elle n'avait aucun
+   * moyen de faire paraître la phrase qu'elle venait d'envoyer : la modale
+   * disait « envoyée » et le fil restait muet jusqu'au rechargement, alors que
+   * le chemin du LOCATAIRE écrit son alerte locale depuis toujours.
+   *
+   * Elle ne ment pas : on ne l'appelle qu'après un 201.
+   */
+  poserLaReponseDeGestion: (workId: string, unitId: string, message: string) => void
   /** Défait un arbitrage de caution : elle redevient retenue, sans retenue. */
   unsettleDeposit: (unitId: string) => void
   /** Le propriétaire arbitre une caution : retenue et restitution du solde. */
@@ -1124,6 +1136,29 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
    * Sans parc serveur — démonstration — elle ne vit qu'en mémoire, comme le
    * signalement et la demande de document : l'identifiant est local et le dit.
    */
+  /* Même forme d'alerte que `replyToWork`, à un mot près — `workReply` et non
+     `tenantReply` : c'est ce mot qui décide de l'étiquette du fil, et l'inverser
+     ferait d'une réponse du bailleur la phrase du locataire. */
+  const poserLaReponseDeGestion = useCallback(
+    (workId: string, unitId: string, message: string) => {
+      setAlerts((liste) => [
+        {
+          id: `LOCAL-${liste.length + 1}`,
+          kind: 'work',
+          message: 'workReply',
+          data: { text: message, workId, unitId },
+          at: { value: 0, unit: 'second' },
+          severity: 'medium',
+          read: true,
+          channel: 'in_app',
+          unitId,
+        } as Alert,
+        ...liste,
+      ])
+    },
+    [],
+  )
+
   const replyToWork = useCallback(
     (workId: string, unitId: string, message: string): Promise<boolean> => {
       const local = (id: string): Alert => ({
@@ -1744,6 +1779,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       requestDocument,
       resolveDocumentRequest,
       replyToWork,
+      poserLaReponseDeGestion,
       readingForUnit: (unitId) => readings.find((r) => r.unitId === unitId),
       consumptionForUnit: (unitId) => consumption[unitId] ?? [],
       inspectionForUnit: (unitId, kind) =>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { usePortfolio } from '@/data/PortfolioProvider'
 import { Modal } from '@/components/primitives/Modal'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
@@ -35,6 +36,7 @@ export function ReplyModal({
   onClose: () => void
 }) {
   const t = useT()
+  const { poserLaReponseDeGestion } = usePortfolio()
   const { notify } = useToast()
   const { adhesionActive } = useSession()
   const parkId = adhesionActive?.parkId ?? null
@@ -94,7 +96,13 @@ export function ReplyModal({
     setEnvoi(true)
     void api
       .replyToWork<{ delivered: boolean; reporter: { fullName: string } }>(parkId, work.id, message)
-      .then(({ delivered, reporter }) => setIssue({ delivered, fullName: reporter.fullName }))
+      .then(({ delivered, reporter }) => {
+        setIssue({ delivered, fullName: reporter.fullName })
+        /* La phrase paraît DANS le fil, à l'instant — la modale disait
+           « envoyée » et rien ne bougeait jusqu'au rechargement. Après le
+           201, donc jamais avant que le serveur ait accepté. */
+        poserLaReponseDeGestion(work.id, work.unitId, message)
+      })
       .catch((cause: unknown) => {
         /**
          * 409 `no_reporter` a son propre message.

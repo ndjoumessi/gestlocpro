@@ -158,3 +158,47 @@ describe('le dossier d’un logement', () => {
     expect(within(main).getByText(/Réponse du locataire/)).toBeInTheDocument()
   })
 })
+
+describe('la réponse de la gestion, une fois envoyée', () => {
+  /**
+   * ═══ « ENVOYÉE » ET RIEN NE BOUGE ═══
+   *
+   * Le lot qui a posé la réponse depuis le dossier le nommait en dette : « la
+   * modale dit “réponse envoyée” et le fil ne se rafraîchit qu'au
+   * rechargement ». Le chemin du LOCATAIRE, lui, écrit une alerte locale
+   * depuis toujours — `replyToWork` dans le provider — et sa phrase paraît à
+   * l'instant. Deux chemins pour le même geste, dont un seul tenait sa
+   * promesse.
+   *
+   * L'ALERTE LOCALE N'EST PAS UN MENSONGE : le serveur a répondu 201 avant
+   * qu'on la pose. Elle porte ce qui vient d'être écrit, à l'endroit où le
+   * serveur le rendra au prochain chargement.
+   */
+  it('fait paraître la phrase sous le chantier, sans recharger', async () => {
+    serveur.quand('POST', `/parks/${PARC}/works/${CHANTIER}/reply`, {
+      status: 201,
+      body: { delivered: true, reporter: { fullName: 'Charles Ngassa' } },
+    })
+    await renderApp(`/app/parc/${A1}`, { session })
+    await attendreLeChargement()
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Répondre' }))
+    const modale = within(await screen.findByRole('dialog'))
+    await user.type(modale.getByRole('textbox'), 'Le plombier repasse mardi.')
+    await user.click(modale.getByRole('button', { name: /Envoyer/ }))
+
+    await waitFor(() => {
+      const phrase = screen.getByText('Le plombier repasse mardi.')
+      expect(
+        phrase,
+        'la modale disait « envoyée » et le fil restait muet jusqu’au rechargement',
+      ).toBeInTheDocument()
+      /* ET SOUS LA BONNE ÉTIQUETTE. `workReply` et non `tenantReply` : c'est ce
+         mot qui décide de la phrase d'en-tête, et l'inverser ferait d'une
+         réponse du bailleur celle du locataire. Un premier témoin a refusé de
+         rougir sur ce point — la garde ne regardait que le texte. */
+      expect(phrase.parentElement?.textContent).toContain('Réponse de la gestion')
+    })
+  })
+})
