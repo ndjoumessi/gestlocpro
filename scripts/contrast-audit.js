@@ -163,7 +163,22 @@
   const seen = new Set()
 
   let examines = 0
-  document.querySelectorAll('*').forEach((el) => {
+  /*
+    LA RACINE EST OPTIONNELLE, et l'usage console ne change pas.
+
+    `modales` audite le CONTENU d'une boîte de dialogue : lu sur `document`,
+    l'audit verrait la page derrière — que `mesure-ui` et `espace-connecte`
+    tiennent déjà — et ferait rougir une modale innocente pour un texte de son
+    fond. La porte pose donc `window.__AUDIT_RACINE__` avant d'évaluer ; collé
+    dans une console, rien n'est posé et tout le document est audité, comme
+    toujours. Même geste que la racine de `MESURER_GABARITS`.
+  */
+  const racine =
+    (typeof window !== 'undefined' &&
+      window.__AUDIT_RACINE__ &&
+      document.querySelector(window.__AUDIT_RACINE__)) ||
+    document
+  racine.querySelectorAll('*').forEach((el) => {
     if (!el.offsetParent && getComputedStyle(el).position !== 'fixed') return
 
     // Seuls les éléments portant directement du texte : sinon on compte

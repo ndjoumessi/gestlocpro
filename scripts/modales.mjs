@@ -73,9 +73,23 @@ import { exit } from 'node:process'
 import { POLICE_LARGE, imposerLaPoliceLarge } from './police-large.mjs'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
 /* La MÊME sonde que `mesure-ui` et `espace-connecte`, bornée au dialogue. */
-import { MESURER_GABARITS } from './sondes-de-rendu.mjs'
+import {
+  MESURER_CIBLES,
+  MESURER_GABARITS,
+  PLANCHER_CIBLE,
+  RAYON_SONDAGE,
+} from './sondes-de-rendu.mjs'
+import { readFileSync } from 'node:fs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
+
+/**
+ * L'AUDIT DE CONTRASTE, LU ET NON RECOPIÉ — le même fichier que la console,
+ * `mesure-ui` et `espace-connecte`. Sa racine est posée sur le dialogue par
+ * `__AUDIT_RACINE__` avant l'évaluation : lu sur le document, il verrait la page
+ * derrière — que les deux autres portes tiennent déjà.
+ */
+const AUDIT_CONTRASTE = readFileSync(join(RACINE, 'scripts/contrast-audit.js'), 'utf8')
 const PORT = 4192
 const BASE = `http://127.0.0.1:${PORT}`
 
@@ -596,6 +610,9 @@ const serveur = await servir()
 const plaintes = []
 /* Combien de modales la sonde des gabarits a lues — voir sa garde du garde. */
 let gabaritsInspectes = 0
+/* Ce que les deux audits de modale ont réellement examiné — leurs gardes. */
+let textesDeModaleAudites = 0
+let ciblesDeModaleSondees = 0
 const releve = []
 let inspectees = 0
 
@@ -890,6 +907,67 @@ try {
          * innocente pour le jeton de son fond.
          */
         const gabarits = await page.evaluate(MESURER_GABARITS, '[role="dialog"],[role="alertdialog"]')
+
+        /**
+         * CONTRASTE ET CIBLES, DANS LA BOÎTE OUVERTE — la dette que
+         * `mesure-ui` déclarait à chaque passage : « les DIX modales du
+         * produit n'en sont pas ; leur contraste et leurs cibles restent NON
+         * audités ». Vingt modales aujourd'hui, quatre-vingts états, et tous
+         * les gestes qu'on ne défait pas — arbitrer une caution, délier une
+         * fiche, reprendre un accès — vivent précisément ici.
+         *
+         * LA SONDE DES CIBLES SE BORNE D'ELLE-MÊME : « une modale ouverte
+         * borne le balayage à elle-même », écrit dans son propre en-tête,
+         * pour la raison qu'`elementFromPoint` rend la couche derrière elle.
+         * L'audit de contraste, lui, reçoit sa racine par
+         * `__AUDIT_RACINE__` — même geste que `MESURER_GABARITS`.
+         *
+         * LES DEUX THÈMES, parce que la moitié des jetons ne vit qu'en
+         * sombre — `warn` y vaut #e0b877 sur #54421f, aucun des deux
+         * n'existant en clair. La bascule se fait à chaud sur la boîte déjà
+         * ouverte, animations gelées : sans le gel, `mesure-ui` a mesuré
+         * que 13 points sur 24 rendaient un relevé different — la page est
+         * MIXTE pendant les 150 ms de transition, et l'audit invente des
+         * fautes. Les cibles, elles, ne dépendent pas du thème : une fois.
+         */
+        await page
+          .addStyleTag({ content: '*, *::before, *::after { transition: none !important; animation: none !important; }' })
+          .catch(() => {})
+        await page.evaluate(() => {
+          window.__AUDIT_RACINE__ = '[role="dialog"],[role="alertdialog"]'
+        })
+        for (const theme of ['light', 'dark']) {
+          await page.emulateMedia({ colorScheme: theme })
+          const contraste = await page.evaluate(AUDIT_CONTRASTE)
+          if (!contraste || typeof contraste.examines !== 'number') {
+            plaintes.push(
+              nom + ' : `contrast-audit.js` n\'a pas rendu `{ failures, items, examines }`.',
+            )
+          } else {
+            textesDeModaleAudites += contraste.examines
+            for (const item of contraste.items) {
+              plaintes.push(
+                `${nom} · ${largeur}px · ${langue} · ${theme} : contraste ${item.ratio} sous le seuil ` +
+                  `WCAG AA dans la modale — ${(item.text ?? '').slice(0, 44)} (${item.color} sur ${item.bg})`,
+              )
+            }
+          }
+        }
+        await page.emulateMedia({ colorScheme: 'light' })
+
+        const cibles = await page.evaluate(MESURER_CIBLES, {
+          plancher: PLANCHER_CIBLE,
+          rayon: RAYON_SONDAGE,
+        })
+        ciblesDeModaleSondees += cibles.sondees
+        for (const defaut of cibles.defauts) {
+          plaintes.push(
+            `${nom} · ${largeur}px · ${langue} : cible touchable ${defaut.cible} px ` +
+              `(boîte ${defaut.boite}) dans la modale, sous le plancher de ${PLANCHER_CIBLE} — ` +
+              `<${defaut.balise}> ${defaut.texte || defaut.classes}`,
+          )
+        }
+
         await contexte.close()
 
         if (gabarits.vu) {
@@ -1020,6 +1098,32 @@ if (NON_OUVRABLES.length !== NON_OUVRABLES_ATTENDUES) {
  * compte est la seule chose qui les sépare, et il suit `ATTENDUS` sans le
  * doubler : ce sont les mêmes ouvertures.
  */
+/**
+ * GARDES DU GARDE des deux audits de modale — nés VERTS, donc sans rouge pour
+ * prouver qu'ils regardent. Seuls ces comptes séparent « aucune faute » de
+ * « rien d'examiné » : une racine qui ne résout plus, un sélecteur changé, et
+ * les deux rendraient le même silence.
+ *
+ * Planchers très en dessous du relevé — ils prouvent que les audits trouvent
+ * encore leurs éléments, jamais la richesse des boîtes.
+ */
+const TEXTES_DE_MODALE_ATTENDUS = 400
+if (textesDeModaleAudites < TEXTES_DE_MODALE_ATTENDUS) {
+  plaintes.push(
+    `contraste des modales : ${textesDeModaleAudites} texte(s) examiné(s) pour ` +
+      `${TEXTES_DE_MODALE_ATTENDUS} attendus au moins. Une racine qui ne résout plus rend le ` +
+      'même vert que des boîtes saines.',
+  )
+}
+
+const CIBLES_DE_MODALE_ATTENDUES = 150
+if (ciblesDeModaleSondees < CIBLES_DE_MODALE_ATTENDUES) {
+  plaintes.push(
+    `cibles des modales : ${ciblesDeModaleSondees} sondée(s) pour ` +
+      `${CIBLES_DE_MODALE_ATTENDUES} attendues au moins.`,
+  )
+}
+
 if (gabaritsInspectes !== ATTENDUS) {
   plaintes.push(
     `la sonde des gabarits a lu ${gabaritsInspectes} modale(s) pour ${ATTENDUS} ouverture(s). ` +
@@ -1086,6 +1190,8 @@ const horsClavier = MODALES.filter((m) => !COUVERTS.some((c) => m.bouton.test(c)
 
 console.log(
   `\n✓ modales : ${inspectees}/${ATTENDUS} états ouverts et mesurés sur ${MODALES.length} modales,\n` +
+    `  ${textesDeModaleAudites} textes confrontés au seuil WCAG AA dans les boîtes, deux thèmes ;\n` +
+    `  ${ciblesDeModaleSondees} cibles de modale sondées au doigt, plancher ${PLANCHER_CIBLE} px.\n` +
     (NON_OUVRABLES.length === 0
       ? '  et AUCUNE que la démonstration ne rende pas — la liste est vide et gardée vide.\n'
       : `  plus ${NON_OUVRABLES.length} que la démonstration ne rend pas : ${NON_OUVRABLES.join(', ')}.\n`) +

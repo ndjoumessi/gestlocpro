@@ -545,13 +545,13 @@ const LIGNE_SANS_NOM =
  * elles sont la démonstration que la garde voit désormais ce qu'elle ne voyait
  * pas. Les quatre autres sont les surfaces que l'utilisateur rencontre le plus.
  *
- * NOMMÉ ET LAISSÉ, pour que le trou restant ne se confonde pas avec un oubli :
- * les DIX MODALES du produit, dont `modales.mjs` mesure déjà la géométrie mais
- * dont personne n'audite ni le contraste ni les cibles. Les ouvrir ici coûterait
- * dix ouvertures de plus par thème ; les auditer là-bas exigerait d'en extraire
- * les deux sondes, donc un module partagé de plus. L'une des deux voies devra
- * être prise — ce lot dit laquelle manque, il ne la prend pas. Une seule modale
- * est auditée ici, et par nécessité : le calendrier vit dedans.
+ * LE TROU DES MODALES EST FERMÉ, et par la voie que cet en-tête annonçait :
+ * « les auditer là-bas exigerait d'en extraire les deux sondes, donc un module
+ * partagé de plus ». Le module existe — `sondes-de-rendu.mjs` — et
+ * `modales.mjs` audite depuis le contraste (deux thèmes, racine posée sur le
+ * dialogue) et les cibles de chacune de ses ouvertures. Une seule modale reste
+ * auditée ICI, et par nécessité : le calendrier vit dedans, et cette surface-là
+ * l'ouvre au fil d'un parcours que `modales.mjs` ne rejoue pas.
  *
  * ── Les règles que ce périmètre s'impose ──────────────────────────────────
  *
@@ -6353,8 +6353,8 @@ console.log(
     `  ${surfacesOuvertes} surfaces interactives OUVERTES puis auditées (${THEMES.join(' + ')}) : ` +
     `${textesDeSurface} textes, ${ciblesDeSurface} cibles et ${nomsDeSurface} commandes ` +
     `qu'aucun premier rendu ne montre.\n` +
-    '  Les DIX modales du produit n’en sont pas : leur géométrie est tenue ailleurs, leur\n' +
-    '  contraste et leurs cibles restent NON audités — dette nommée dans la table des surfaces.\n' +
+    '  Les modales ne sont pas des surfaces : `modales.mjs` tient leur géométrie, leur\n' +
+    '  contraste et leurs cibles depuis qu’il porte les deux sondes partagées.\n' +
     `  ${nomsExamines} commandes examinées pour leur NOM ACCESSIBLE sur ${pointsDeNom} points ` +
     `plus les surfaces, aucune anonyme (WCAG 4.1.2) ;\n` +
     `  accord avec accname de Playwright vérifié en ${accordsAccname.length} points, ` +
