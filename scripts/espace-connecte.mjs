@@ -65,15 +65,23 @@
  *
  * ═══ CE QU'ELLE NE DIT PAS ═══
  *
- * Que les écrans sont BEAUX, ni que les cibles se touchent, ni que le contraste
- * passe : `mesure-ui` tient ces règles-là sur `/demo`, où les mêmes composants
- * rendent. Les rejouer ici doublerait la porte pour redire la même chose.
+ * Que les écrans sont BEAUX, ni que les CIBLES se touchent : `mesure-ui` tient
+ * cette règle-là sur `/demo`, et sa sonde ne vit pas encore dans un module
+ * partagé — c'est le dernier morceau de ce trou, et il est nommé plutôt que
+ * comblé.
  *
- * Ni ce que produisent les MODALES, qu'aucune de ces quatre règles n'ouvre.
+ * Ni ce que produisent les MODALES, qu'aucune de ces règles n'ouvre.
  *
- * Ni le SOMBRE : les deux thèmes ont été relevés sur 69 points par `mesure-ui`,
- * qui n'y a trouvé aucune différence de géométrie. Le mesurer ici doublerait le
- * coût pour un écart mesuré à zéro.
+ * LE CONTRASTE ET LES NOMS, EUX, Y SONT — et le SOMBRE avec eux. C'était le
+ * trou principal de cette porte : sous `/demo` il n'existe ni garde de rôle, ni
+ * parc vide, ni locataire sans logement, ni gestionnaire borné, et la coquille
+ * du locataire s'y atteint par un sélecteur de profil plutôt que par une
+ * adhésion. Les deux audits sont LUS depuis les fichiers que la console emploie
+ * déjà, jamais recopiés.
+ *
+ * MESURÉ : 101 s avant, 106 après. La bascule de thème se fait à chaud, sur une
+ * page déjà chargée — le levier que `mesure-ui` a tiré pour passer sa propre
+ * passe de contraste de 78,4 s à 38,8.
  *
  * ═══ CE QUE LA RÈGLE 4 NE PEUT PAS VOIR, ET IL FAUT LE DIRE ═══
  *
@@ -104,6 +112,7 @@
  * `dist/` construit — `mesure-ui`, qui tourne avant dans `check:navigateur`,
  * s'en charge. Les deux absences sont DITES, jamais contournées.
  */
+import { readFileSync } from 'node:fs'
 import { chromium } from 'playwright'
 import { execFileSync, spawn, spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
@@ -119,6 +128,62 @@ import {
 import { ecransDeLEspaceConnecte } from './inventaire/routes.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
+
+/**
+ * LES DEUX AUDITS SONT LUS, JAMAIS RECOPIÉS.
+ *
+ * `mesure-ui` les évalue déjà sur la démonstration, et son commentaire dit
+ * pourquoi il les lit plutôt que de les réécrire : « une copie dériverait en
+ * silence de l'outil que la console emploie encore, et les deux se
+ * contrediraient sans que personne l'apprenne ». Le même fichier, le même
+ * contrat de retour, deux surfaces.
+ *
+ * CE QUE CETTE SURFACE-CI AJOUTE — et c'est tout le sujet de ce lot. Sous
+ * `/demo`, il n'existe ni garde de rôle, ni parc vide, ni locataire sans
+ * logement, ni gestionnaire borné. La coquille du LOCATAIRE y est atteinte par
+ * un sélecteur de profil, jamais par une adhésion. Quatre règles de
+ * `mesure-ui` — contraste, cibles, noms, thème sombre — n'avaient donc jamais
+ * été passées sur ces états-là.
+ */
+const AUDIT_CONTRASTE = readFileSync(join(RACINE, 'scripts/contrast-audit.js'), 'utf8')
+const AUDIT_NOMS = readFileSync(join(RACINE, 'scripts/noms-accessibles.js'), 'utf8')
+
+/**
+ * LE GEL DES ANIMATIONS EST LA CONDITION DU CHANGEMENT DE THÈME À CHAUD.
+ *
+ * `mesure-ui` l'a payé : sans lui, « 13 points sur 24 rendaient un relevé
+ * différent — les couleurs se transitionnent en 150 ms, et juste après la
+ * bascule la page est dans un état MIXTE, fond déjà changé, texte pas encore.
+ * L'audit inventait des dizaines de fautes ». Une passe deux fois plus rapide
+ * qui ment est le pire échange possible.
+ */
+const FIGER_LES_ANIMATIONS = `
+  *, *::before, *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+`
+
+/**
+ * LES DEUX THÈMES, et la moitié des jetons ne vit que dans le second.
+ *
+ * `mesure-ui` le dit à sa ligne : « `warn` y vaut #e0b877 sur #54421f, aucun de
+ * ces deux-là n'existant en clair. Ne mesurer qu'un thème, c'est ne mesurer
+ * qu'une palette sur deux. » Le thème du produit étant du CSS pur —
+ * `ThemeProvider` laisse `prefers-color-scheme` décider en mode auto —, il
+ * s'emule à chaud, sans recharger.
+ */
+const THEMES = ['light', 'dark']
+
+/**
+ * DEUX LARGEURS POUR LE CONTRASTE, ET PAS TROIS.
+ *
+ * Le contraste ne dépend pas de la géométrie ; ce qui en dépend, c'est QUELLES
+ * commandes sont rendues. À 320 la barre basse existe et le tiroir est replié ;
+ * à 1280 c'est la barre latérale. Entre les deux, rien de neuf — et une
+ * troisième largeur paierait un tiers de passe pour redire la même chose.
+ */
+const LARGEURS_D_AUDIT = [320, 1280]
 const PORT = 4197
 const BASE = `http://127.0.0.1:${PORT}`
 
@@ -741,6 +806,9 @@ let pointsFermesMesures = 0
 let etatsVidesInspectes = 0
 /* Combien d'écrans portaient un chiffre dont le pli a pu être jugé. */
 let plisInspectes = 0
+/* Ce que les deux audits ont réellement examiné — voir leur garde du garde. */
+let textesAudites = 0
+let nomsExamines = 0
 
 const parc = await (async () => {
   console.log('  préparation de la base…')
@@ -848,7 +916,66 @@ try {
       for (const ecran of ouvertes) {
         await ouvrir(page, ecran.adresse)
 
-        /* LE PLI SE MESURE AVANT LES TROIS LARGEURS, et la page est déjà
+        /*
+          CONTRASTE, NOMS ET THÈME SOMBRE — la passe que `/demo` ne peut pas faire.
+
+          Elle ne coûte AUCUN chargement : la page est là, dans la bonne langue,
+          sous la bonne session. Deux largeurs, deux thèmes, et `emulateMedia`
+          bascule la palette à chaud — c'est le levier que `mesure-ui` a tiré
+          pour passer sa propre passe de 78,4 s à 38,8.
+        */
+        await page.addStyleTag({ content: FIGER_LES_ANIMATIONS }).catch(() => {})
+        for (const largeur of LARGEURS_D_AUDIT) {
+          await page.setViewportSize({ width: largeur, height: 900 })
+          for (const theme of THEMES) {
+            await page.emulateMedia({ colorScheme: theme })
+            await page
+              .waitForFunction(() => document.querySelectorAll('[aria-busy="true"]').length === 0, null, {
+                timeout: 5000,
+              })
+              .catch(() => {})
+            const ou = `${ecran.adresse} · ${cle} · ${largeur}px · ${langue} · ${theme}`
+
+            const contraste = await page.evaluate(AUDIT_CONTRASTE)
+            if (!contraste || typeof contraste.examines !== 'number') {
+              plaintes.push(
+                `${ou} : \`contrast-audit.js\` n'a pas rendu \`{ failures, items, examines }\`. ` +
+                  "Son expression doit rester une IIFE qui s'évalue en cet objet.",
+              )
+            } else {
+              textesAudites += contraste.examines
+              for (const item of contraste.items) {
+                plaintes.push(
+                  `${ou} : contraste ${item.ratio} sous le seuil WCAG AA — ` +
+                    `${(item.text ?? '').slice(0, 44)} — ${item.color} sur ${item.bg}, seuil ${item.required}`,
+                )
+              }
+            }
+
+            /* LES NOMS NE DÉPENDENT PAS DU THÈME — repeindre un bouton ne le
+               renomme pas —, et on ne les audite donc qu'une fois par largeur.
+               Ils dépendent de la LANGUE, qui vient des dictionnaires, et de la
+               largeur, qui décide quelles commandes existent. */
+            if (theme === THEMES[0]) {
+              const noms = await page.evaluate(AUDIT_NOMS)
+              if (!noms || typeof noms.examinees !== 'number') {
+                plaintes.push(
+                  `${ou} : \`noms-accessibles.js\` n'a pas rendu \`{ anonymes, items, examinees }\`.`,
+                )
+              } else {
+                nomsExamines += noms.examinees
+                for (const item of noms.items) {
+                  plaintes.push(
+                    `${ou} : commande SANS NOM ACCESSIBLE — ${item.html ?? item.balise}`,
+                  )
+                }
+              }
+            }
+          }
+        }
+        await page.emulateMedia({ colorScheme: 'light' })
+
+        /* LE PLI SE MESURE APRÈS L'AUDIT, et la page est déjà
            chargée : c'est un redimensionnement, pas une navigation — 7 ms
            contre 1 072, chiffré par `mesure-ui`. La boucle qui suit repose sa
            propre largeur au premier tour. */
@@ -1031,6 +1158,35 @@ if (pointsFermesMesures !== FERMES_ATTENDUS) {
  * Relevé à l'écriture : 62 écrans portent un chiffre — sur 336 points, la plupart
  * des écrans n'en portent aucun. Plancher à 40.
  */
+/**
+ * GARDE DU GARDE — les deux audits ont-ils examiné quelque chose ?
+ *
+ * Ils sont nés VERTS : aucun texte sous le seuil, aucune commande anonyme, sur
+ * les deux thèmes. Un vert d'audit est indistinguable d'un audit qui ne trouve
+ * plus ses éléments — un sélecteur cassé, une IIFE qui rend `null`, une page qui
+ * n'a pas fini de peindre. Seuls ces deux comptes les séparent.
+ *
+ * Relevé à l'écriture : 13 862 textes et 3 136 commandes, sur les cinq profils,
+ * les deux thèmes et les deux langues. Les planchers sont très en dessous : ils
+ * ne mesurent pas la richesse du produit, ils prouvent que les deux audits
+ * trouvent encore leurs éléments.
+ */
+const TEXTES_ATTENDUS = 2000
+if (textesAudites < TEXTES_ATTENDUS) {
+  plaintes.push(
+    `l'audit de contraste n'a examiné que ${textesAudites} texte(s) pour ${TEXTES_ATTENDUS} ` +
+      "attendus au moins. Ce n'est pas « aucun texte illisible », c'est un audit qui ne voit rien.",
+  )
+}
+
+const NOMS_ATTENDUS = 1000
+if (nomsExamines < NOMS_ATTENDUS) {
+  plaintes.push(
+    `l'audit des noms n'a examiné que ${nomsExamines} commande(s) pour ${NOMS_ATTENDUS} ` +
+      "attendues au moins. Une commande anonyme ne se voit que si on la regarde.",
+  )
+}
+
 const PLIS_ATTENDUS = 40
 if (plisInspectes < PLIS_ATTENDUS) {
   plaintes.push(
@@ -1063,5 +1219,7 @@ console.log(
     `  ${FERMES_ATTENDUS} refus vérifiés dans les deux directions.\n` +
     `  ${etatsVidesInspectes} état(s) vide(s) de page passé(s) sous la règle des zéros.\n` +
     `  ${plisInspectes} écran(s) portant un chiffre jugé(s) au pli de 360×640.\n` +
-    "  Cette porte ne dit RIEN du contraste, des cibles ni des modales — voir son en-tête.",
+    `  ${textesAudites} textes confrontés au seuil WCAG AA, dans les DEUX thèmes ; ` +
+    `${nomsExamines} commandes cherchées sans nom.\n` +
+    "  Elle ne dit RIEN des cibles de 44 px ni des modales — voir son en-tête.",
 )
