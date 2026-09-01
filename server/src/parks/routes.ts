@@ -2342,13 +2342,13 @@ parksRouter.post(
       monte
         ? gestion.map((m) => m.user.email)
         : [travail.reportedByTenant.user?.email ?? travail.reportedByTenant.email],
-      gabaritDuFilEmail({
-        sens: monte ? 'reponseLocataire' : 'reponseGestion',
+      {
+        sens: monte ? ('reponseLocataire' as const) : ('reponseGestion' as const),
         reference: travail.reference,
         unite: travail.unit.label,
         auteur: travail.reportedByTenant.fullName,
         texte: corps.message,
-      }),
+      },
     )
 
     /**
@@ -3984,6 +3984,23 @@ function formaterMontant(minor: number, devise: string): string {
  * DANS LES DEUX CORPS : le texte brut et le HTML sont deux messages, et un
  * client qui n'affiche que le premier ne doit pas perdre le pied.
  */
+const PIED_DE_DESABONNEMENT_TEXTE_EN =
+  'You are receiving this because email copies are on for your account. To stop ' +
+  'receiving them without losing anything in the product, open « Email copies » in ' +
+  'your account menu: ' +
+  env.CLIENT_ORIGIN +
+  '/app'
+
+const PIED_DE_DESABONNEMENT_HTML_EN =
+  '<p style="color:#6b6b6b;font-size:12px">You are receiving this because email ' +
+  'copies are on for your account. To stop receiving them without losing anything ' +
+  'in the product, open “Email copies” in your account menu: ' +
+  '<a href="' +
+  env.CLIENT_ORIGIN +
+  '/app">' +
+  env.CLIENT_ORIGIN +
+  '/app</a>.</p>'
+
 const PIED_DE_DESABONNEMENT_TEXTE =
   'Vous recevez ce message parce que les copies par e-mail sont actives sur votre compte. ' +
   'Pour ne plus les recevoir sans rien perdre du produit : ouvrez `Copies par e-mail` ' +
@@ -4007,7 +4024,20 @@ function gabaritDuFilEmail(entree: {
   unite: string
   auteur: string
   texte: string
+  /**
+   * La langue du DESTINATAIRE, et non celle de l'auteur.
+   *
+   * `UserAccount.locale` existe depuis l'origine et pilote toute l'interface ;
+   * ces gabarits étaient en français pour tout le monde. Un locataire
+   * anglophone lisait son espace en anglais et recevait ses courriels en
+   * français — le seul trou de ce canal qui atteigne des gens hors de l'équipe.
+   *
+   * Défaut français : une fiche locataire ne porte pas de langue, et le défaut
+   * du produit est le français.
+   */
+  langue?: string | undefined
 }): { sujet: string; texte: string; html: string } {
+  if (entree.langue === 'en') return gabaritAnglais(entree)
   const titre =
     entree.sens === 'signalement'
       ? `Nouveau signalement · ${entree.unite}`
@@ -4034,6 +4064,49 @@ function gabaritDuFilEmail(entree: {
 }
 
 /**
+ * LE MÊME GABARIT EN ANGLAIS — une fonction sœur, et non un dictionnaire.
+ *
+ * Deux langues, deux fonctions courtes qui rendent la même forme. Un
+ * dictionnaire de fragments obligerait à recomposer les phrases par morceaux,
+ * et c'est exactement ce que le reste du produit ÉVITE : ses libellés sont des
+ * phrases entières, jamais des mots collés. La règle vaut ici aussi.
+ *
+ * Le jour où une troisième langue arrive, c'est ce choix qu'il faudra rouvrir —
+ * trois sœurs sont encore lisibles, six ne le seraient plus.
+ */
+function gabaritAnglais(entree: {
+  sens: 'signalement' | 'reponseGestion' | 'reponseLocataire'
+  reference: string
+  unite: string
+  auteur: string
+  texte: string
+}): { sujet: string; texte: string; html: string } {
+  const titre =
+    entree.sens === 'signalement'
+      ? `New report · ${entree.unite}`
+      : entree.sens === 'reponseGestion'
+        ? `Reply to your report · ${entree.unite}`
+        : `Reply from ${entree.auteur} · ${entree.unite}`
+  const sujet = `GestLocPro — ${entree.reference} · ${titre}`
+  const texte =
+    `${titre}\n\n` +
+    `Unit: ${entree.unite}\n` +
+    `Reference: ${entree.reference}\n` +
+    `From: ${entree.auteur}\n\n` +
+    `${entree.texte}\n\n` +
+    'Reply from GestLocPro: the thread of this report keeps the whole exchange.\n\n' +
+    PIED_DE_DESABONNEMENT_TEXTE_EN
+  const html =
+    `<p><strong>${echapperHtml(titre)}</strong></p>` +
+    `<p>Unit: ${echapperHtml(entree.unite)}<br>Reference: ${echapperHtml(entree.reference)}` +
+    `<br>From: ${echapperHtml(entree.auteur)}</p>` +
+    `<p>${echapperHtml(entree.texte)}</p>` +
+    '<p>Reply from GestLocPro: the thread of this report keeps the whole exchange.</p>' +
+    PIED_DE_DESABONNEMENT_HTML_EN
+  return { sujet, texte, html }
+}
+
+/**
  * ENVOIE LA COPIE À CHAQUE ADRESSE, ET N'INTERROMPT JAMAIS LE GESTE.
  *
  * La messagerie de journal rend `false` quand aucun fournisseur n'est
@@ -4047,7 +4120,21 @@ function gabaritDuFilEmail(entree: {
 async function envoyerLaCopieDuFil(
   workId: string,
   adresses: (string | null | undefined)[],
-  gabarit: { sujet: string; texte: string; html: string },
+  /**
+   * L'ENTRÉE DU GABARIT, ET NON LE GABARIT — parce qu'il se compose une fois
+   * PAR DESTINATAIRE, dans SA langue.
+   *
+   * Un signalement part vers un bailleur francophone ET son gestionnaire
+   * anglophone : c'est la même phrase, dans deux langues. Recevoir un gabarit
+   * déjà composé imposerait la langue du premier à tous.
+   */
+  entree: {
+    sens: 'signalement' | 'reponseGestion' | 'reponseLocataire'
+    reference: string
+    unite: string
+    auteur: string
+    texte: string
+  },
 ): Promise<number> {
   let partis = 0
   /*
@@ -4061,16 +4148,31 @@ async function envoyerLaCopieDuFil(
     tout le monde serait une décision prise à la place des autres.
   */
   const nettes = adresses.filter((a): a is string => Boolean(a))
-  const abonnes = new Set(
-    (
-      await prisma.userAccount.findMany({
-        where: { email: { in: nettes }, threadEmailOptIn: true },
-        select: { email: true },
-      })
-    ).map((u) => u.email),
+  /*
+    ON EXCLUT CE QUI A DIT NON — on ne garde PAS ce qui a dit oui.
+
+    La différence n'est pas de style, elle a coupé quelqu'un. Ce filtre
+    gardait les seules adresses trouvées dans `UserAccount` au drapeau vrai ;
+    or la route de réponse vise `reportedByTenant.user?.email ??
+    reportedByTenant.email`, et la seconde branche est le courriel de la
+    FICHE — un locataire SANS compte. Aucune de ces adresses n'étant dans un
+    compte, toutes tombaient : le locataire sans compte ne recevait plus la
+    réponse de son bailleur, en silence.
+
+    Seul un COMPTE peut porter une préférence. Une adresse qui n'en a pas
+    n'a rien refusé — la présumer désabonnée, c'est décider à sa place.
+  */
+  const comptes = await prisma.userAccount.findMany({
+    where: { email: { in: nettes } },
+    select: { email: true, threadEmailOptIn: true, locale: true },
+  })
+  const desabonnes = new Set(
+    comptes.filter((c) => !c.threadEmailOptIn).map((c) => c.email),
   )
+  const langues = new Map(comptes.map((c) => [c.email, c.locale]))
   for (const adresse of nettes) {
-    if (!abonnes.has(adresse)) continue
+    if (desabonnes.has(adresse)) continue
+    const gabarit = gabaritDuFilEmail({ ...entree, langue: langues.get(adresse) })
     /*
       LA TENTATIVE D'ABORD, LA LIVRAISON ENSUITE — l'ordre de
       `RentReminderEmail`, et pour la même raison : `deliveredAt` ne se pose
@@ -4729,13 +4831,13 @@ parksRouter.post(
       await envoyerLaCopieDuFil(
         travail.id,
         gestion.map((m) => m.user.email),
-        gabaritDuFilEmail({
-          sens: 'signalement',
+        {
+          sens: 'signalement' as const,
           reference: travail.reference,
           unite: unite.label,
           auteur: declarant?.fullName ?? '—',
           texte: corps.description ?? corps.title,
-        }),
+        },
       )
     }
 

@@ -267,3 +267,147 @@ describe('le courriel lui-même', () => {
     )
   })
 })
+
+describe('une adresse sans compte', () => {
+  /**
+   * ═══ UNE RÉGRESSION QUE J'AI INTRODUITE, ET CE QU'ELLE COÛTAIT ═══
+   *
+   * Le filtre des abonnés a été écrit à l'envers : il ne GARDAIT que les
+   * adresses trouvées dans `UserAccount` avec le drapeau à vrai. Or la route de
+   * réponse vise `reportedByTenant.user?.email ?? reportedByTenant.email` — la
+   * seconde branche est le courriel de la FICHE, celui d'un locataire qui n'a
+   * pas de compte. Ces adresses n'étant dans aucun compte, elles tombaient
+   * toutes : le locataire sans compte ne recevait plus la réponse de son
+   * bailleur, silencieusement, depuis ce lot-là.
+   *
+   * ═══ LA RÈGLE JUSTE : ON EXCLUT LES DÉSABONNÉS, ON NE GARDE PAS LES ABONNÉS ═══
+   *
+   * Seul un COMPTE peut porter une préférence. Une adresse qui n'en a pas n'a
+   * rien refusé — elle n'est donc pas désabonnée. Le filtre doit retrancher ce
+   * qui a dit non, jamais présumer un non de ce qui n'a rien dit.
+   */
+  it('reçoit encore, faute de compte pour avoir dit non', async () => {
+    const { cookie, parkId, unitId } = await parcAvecUnLocataire()
+    /* Une fiche SANS `userId` : elle porte un courriel et aucun compte. */
+    const fiche = await request(serveur)
+      .post(`/api/parks/${parkId}/units/${unitId}/works`)
+      .set('Cookie', cookie)
+      .send({ title: 'Volet bloqué', trade: 'other', urgency: 'low' })
+    await prisma.tenant.updateMany({
+      where: { parkId },
+      data: { userId: null, email: 'sans-compte@example.com' },
+    })
+    await prisma.workOrder.update({
+      where: { id: fiche.body.work.id },
+      data: { reportedByTenantId: (await prisma.tenant.findFirstOrThrow({ where: { parkId } })).id },
+    })
+
+    visees = []
+    await request(serveur)
+      .post(`/api/parks/${parkId}/works/${fiche.body.work.id}/reply`)
+      .set('Cookie', cookie)
+      .send({ message: 'Le menuisier passe jeudi.' })
+
+    expect(
+      visees,
+      'une adresse sans compte n’a rien refusé — la présumer désabonnée la coupe',
+    ).toEqual(['sans-compte@example.com'])
+  })
+})
+
+describe('la langue du courriel', () => {
+  /**
+   * ═══ CHACUN DANS LA SIENNE, ET LE PRODUIT LA CONNAISSAIT ═══
+   *
+   * `UserAccount.locale` existe depuis l'origine et pilote toute l'interface.
+   * Les gabarits, eux, étaient en français pour tout le monde : un locataire
+   * anglophone lisait son espace en anglais et recevait ses courriels en
+   * français. Le seul trou de ce canal qui atteigne des gens hors de l'équipe.
+   *
+   * ═══ PAR DESTINATAIRE, ET NON PAR MESSAGE ═══
+   *
+   * Un signalement part vers un bailleur francophone ET son gestionnaire
+   * anglophone : c'est la même phrase, dans deux langues. Le gabarit se compose
+   * donc une fois PAR ADRESSE, après la lecture de sa langue — un gabarit unique
+   * calculé d'avance imposerait la langue du premier à tous.
+   *
+   * SANS COMPTE, LE FRANÇAIS. Une fiche locataire ne porte pas de langue, et le
+   * défaut du produit est le français.
+   */
+  it('écrit à chacun dans la sienne, dans le même envoi', async () => {
+    const { cookie, parkId, unitId, cookieLocataire } = await parcAvecUnLocataire()
+    const inv = await request(serveur)
+      .post(`/api/parks/${parkId}/invitations`)
+      .set('Cookie', cookie)
+      .send({ role: 'manager' })
+    await request(serveur).post('/api/auth/signup').send({
+      email: 'cabinet@example.com',
+      password: MDP,
+      fullName: 'Cabinet Njoya',
+      acceptTerms: true,
+      invitationCode: inv.body.code,
+    })
+    await prisma.userAccount.update({
+      where: { email: 'cabinet@example.com' },
+      data: { locale: 'en' },
+    })
+
+    const corps: { adresse: string; sujet: string }[] = []
+    const capture: Messagerie = {
+      async envoyerSms() {
+        return false
+      },
+      async envoyerEmail(adresse, sujet) {
+        corps.push({ adresse, sujet })
+        return true
+      },
+    }
+    const rendre2 = remplacerMessagerie(capture)
+    await signaler(parkId, unitId, cookieLocataire)
+    rendre2()
+
+    const fr = corps.find((c) => c.adresse === 'proprio@example.com')
+    const en = corps.find((c) => c.adresse === 'cabinet@example.com')
+    expect(fr?.sujet, 'le francophone garde sa langue').toContain('Nouveau signalement')
+    expect(en?.sujet, 'un gabarit unique imposerait la langue du premier à tous').toContain(
+      'New report',
+    )
+  })
+
+  it('retombe sur le français pour une adresse sans compte', async () => {
+    /* Une fiche locataire ne porte pas de langue, et le défaut du produit est le
+       français. */
+    const { cookie, parkId, unitId } = await parcAvecUnLocataire()
+    const w = await request(serveur)
+      .post(`/api/parks/${parkId}/units/${unitId}/works`)
+      .set('Cookie', cookie)
+      .send({ title: 'Volet bloqué', trade: 'other', urgency: 'low' })
+    await prisma.tenant.updateMany({
+      where: { parkId },
+      data: { userId: null, email: 'sans-compte@example.com' },
+    })
+    await prisma.workOrder.update({
+      where: { id: w.body.work.id },
+      data: { reportedByTenantId: (await prisma.tenant.findFirstOrThrow({ where: { parkId } })).id },
+    })
+
+    const sujets: string[] = []
+    const capture: Messagerie = {
+      async envoyerSms() {
+        return false
+      },
+      async envoyerEmail(_a, sujet) {
+        sujets.push(sujet)
+        return true
+      },
+    }
+    const rendre2 = remplacerMessagerie(capture)
+    await request(serveur)
+      .post(`/api/parks/${parkId}/works/${w.body.work.id}/reply`)
+      .set('Cookie', cookie)
+      .send({ message: 'Le menuisier passe jeudi.' })
+    rendre2()
+
+    expect(sujets[0]).toContain('Réponse à votre signalement')
+  })
+})
