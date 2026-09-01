@@ -385,6 +385,19 @@ export const ACCES_DEMO = {
          défaut, celui qu'on voit déjà partout ailleurs. */
       buildingIds: ['bon', 'akw'],
       unitIds: [],
+      /* ET QUATRE LOGEMENTS RETRANCHÉS — deux choses que la démonstration ne
+         montrait pas.
+
+         L'EXCLUSION elle-même : « tout l'immeuble sauf ceux-là » existe dans le
+         produit et n'apparaissait nulle part, donc aucune porte au navigateur ne
+         l'ouvrait jamais.
+
+         Et le REPLI du résumé : au-delà de trois noms la ligne se replie en
+         « et N autres », règle décidée sans qu'aucune mesure ne la voie —
+         personne n'avait vérifié qu'un nom long ne déborde pas à trois
+         exemplaires sur un téléphone étroit. Quatre exclusions, donc : trois
+         nommées et une repliée, exactement le cas limite. */
+      excludedUnitIds: ['A2', 'A3', 'A4', 'A5'],
       since: '2025-01-15',
     },
     {
