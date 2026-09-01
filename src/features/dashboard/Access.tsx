@@ -372,6 +372,37 @@ export function Access() {
                               ),
                             ].join(', '),
                           })}
+                      {/*
+                        ET CE QU'ON A RETRANCHÉ — la seule phrase FAUSSE que
+                        cet écran ait portée.
+
+                        « Gère : Résidence Bonamoussadi » se lit « tout
+                        l'immeuble », et le périmètre effectif en retranchait
+                        un logement. Les autres manques du produit sont des
+                        absences ; celui-ci était une AFFIRMATION incorrecte,
+                        sur l'écran qu'on relit précisément pour vérifier ce
+                        qu'on a confié. Le registre rendait déjà
+                        `excludedUnitIds` : le serveur savait, le résumé
+                        n'en tenait aucun compte.
+
+                        RIEN QUAND RIEN N’EST RETRANCHÉ : « sauf — » ferait
+                        chercher une exception qui n'existe pas.
+
+                        Et le logement porte le nom de son immeuble, comme
+                        dans la liste des confiés juste au-dessus : « S2 » ne
+                        dit rien sur un parc où trois résidences en ont un.
+                      */}
+                      {(m.excludedUnitIds ?? []).length > 0 &&
+                        ' ' +
+                          t('app.access.scopeExcept', {
+                            names: immeublesDuParc
+                              .flatMap((i) =>
+                                (i.units ?? [])
+                                  .filter((u) => (m.excludedUnitIds ?? []).includes(u.id))
+                                  .map((u) => `${i.name} · ${u.label}`),
+                              )
+                              .join(', '),
+                          })}
                     </span>
                   )}
                   {m.tenantName && !memePersonne(m.fullName, m.tenantName) && (

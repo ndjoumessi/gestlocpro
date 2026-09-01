@@ -1620,6 +1620,7 @@ export const fr = {
          gestionnaire, et non une alerte : le libellé le CONSTATE, il ne le
          reproche pas. C'est le propriétaire qui décide de restreindre. */
       scopeAll: 'Gère tout le parc',
+      scopeExcept: '— sauf {names}',
       scopeSome: 'Gère : {names}',
       scopeAction: 'Confier des immeubles',
       scopeTitle: 'Immeubles confiés à {name}',

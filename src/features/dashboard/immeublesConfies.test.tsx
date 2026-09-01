@@ -161,8 +161,34 @@ beforeEach(() => {
   })
 })
 
-async function ouvrirLesAcces(role: Role = 'owner') {
-  await renderApp('/app/acces', { session: sessionDuRole(role) })
+/**
+ * Ouvre l'écran des accès, éventuellement avec un PÉRIMÈTRE posé sur le membre
+ * borné du registre.
+ *
+ * L'argument reste optionnel et le rôle garde sa place : les onze cas écrits
+ * avant ce lot appellent toujours `ouvirLesAcces()` ou `ouvrirLesAcces("manager")`
+ * sans rien savoir des exclusions.
+ */
+async function ouvrirLesAcces(
+  role: Role | { membreBorne: { buildingIds: string[]; unitIds: string[]; excludedUnitIds: string[] } } = 'owner',
+) {
+  const roleReel = typeof role === 'string' ? role : 'owner'
+  if (typeof role !== 'string') {
+    serveur.quand(
+      'GET',
+      `/parks/${PARC}/access`,
+      {
+        status: 200,
+        body: {
+          ...REGISTRE,
+          members: REGISTRE.members.map((m) =>
+            m.id === 'm-bornee' ? { ...m, ...role.membreBorne } : m,
+          ),
+        },
+      },
+    )
+  }
+  await renderApp('/app/acces', { session: sessionDuRole(roleReel) })
   await attendreLeChargement()
 }
 
@@ -349,5 +375,47 @@ describe('confier des immeubles', () => {
        refusera. */
     await ouvrirLesAcces('manager')
     expect(screen.queryByRole('button', { name: 'Confier des immeubles' })).toBeNull()
+  })
+})
+
+describe('le résumé du registre, quand des logements sont retranchés', () => {
+  /**
+   * ═══ LA SEULE PHRASE FAUSSE DE L'ÉCRAN ═══
+   *
+   * « Gère : Résidence Bonamoussadi » se lit « tout l'immeuble », et le
+   * périmètre effectif en retranche un logement. Les autres manques du produit
+   * sont des absences ; celui-ci est une AFFIRMATION incorrecte, sur l'écran des
+   * permissions — celui qu'on relit précisément pour vérifier ce qu'on a confié.
+   *
+   * Le registre rendait déjà `excludedUnitIds` : le serveur savait, et le
+   * résumé n'en tenait aucun compte.
+   */
+  it('dit l’exclusion au lieu de la taire', async () => {
+    await ouvrirLesAcces({
+      membreBorne: { buildingIds: [BON], unitIds: [], excludedUnitIds: [S2] },
+    })
+    const rangee = rangeeDe('Diane Fotso')
+    expect(
+      rangee.textContent,
+      'un propriétaire qui relit son registre croyait avoir confié l’immeuble entier',
+    ).toContain('sauf Résidence Bonamoussadi · S2')
+  })
+
+  it('nomme le logement par son immeuble, comme la liste des confiés', async () => {
+    /* « S2 » ne dit rien sur un parc de cinq résidences : trois d'entre elles
+       ont un S2. La règle vaut des deux côtés de la phrase. */
+    await ouvrirLesAcces({
+      membreBorne: { buildingIds: [BON], unitIds: [], excludedUnitIds: [S2] },
+    })
+    expect(rangeeDe('Diane Fotso').textContent).not.toMatch(/sauf S2/)
+  })
+
+  it('ne dit RIEN de plus quand rien n’est retranché', async () => {
+    /* « sauf — » sur un périmètre entier ferait chercher une exception qui
+       n'existe pas. */
+    await ouvrirLesAcces({
+      membreBorne: { buildingIds: [BON], unitIds: [], excludedUnitIds: [] },
+    })
+    expect(rangeeDe('Diane Fotso').textContent).not.toContain('sauf')
   })
 })
