@@ -40,7 +40,30 @@ import {
  * Le second cas n'existe nulle part aujourd'hui. Il est gardé quand même : il
  * s'écrit `{titre}` au milieu d'une liste d'entrées, c'est la faute la plus
  * facile à commettre, et c'est la seule que la première règle laisserait passer.
+ *
+ * ═══ TROIS RÔLES D'ENTRÉE, ET NON UN SEUL (2026-09-01) ═══
+ *
+ * Cette garde n'admettait que `menuitem`, et ARIA en admet trois : une entrée
+ * peut porter un ÉTAT (`menuitemcheckbox`) ou appartenir à un choix exclusif
+ * (`menuitemradio`). L'écart n'était pas une décision — le produit n'avait
+ * jamais eu d'entrée à état, et la liste avait été écrite sur ce qui existait.
+ *
+ * Le motif d'origine n'est pas entamé : ce que la règle chasse, ce sont les
+ * éléments qui ne sont PAS des entrées — un `div` d'identité, un filet, un
+ * `<Button>` — parce qu'un lecteur d'écran les efface sans avertir. Et le
+ * décompte « 2 sur 3 » vient du navigateur, qui compte les trois rôles :
+ * l'élargir ne le désaccorde pas.
  */
+
+/**
+ * Les rôles qu'un `menu` admet comme ENTRÉES, au sens d'ARIA.
+ *
+ * Écrits ici et non en ligne parce que la liste sert DEUX fois — pour reconnaître
+ * une entrée, et pour reconnaître ce qui vit DEDANS : l'icône d'une entrée à
+ * état est un `<svg>` sans rôle, et sans la seconde lecture elle serait comptée
+ * comme un intrus posé dans le menu.
+ */
+const ENTREES_LICITES = ['menuitem', 'menuitemcheckbox', 'menuitemradio']
 
 /**
  * Les écrans qui portent un menu, et ce qu'il faut pour les atteindre.
@@ -67,9 +90,9 @@ function intrus(menu: HTMLElement): string[] {
   const fautes: string[] = []
 
   for (const el of Array.from(menu.querySelectorAll('*'))) {
-    if (el.closest('[role="menuitem"]')) continue
+    if (el.closest(ENTREES_LICITES.map((r) => `[role="${r}"]`).join(','))) continue
     const role = el.getAttribute('role')
-    if (role === 'menuitem' || role === 'separator') continue
+    if (ENTREES_LICITES.includes(role ?? '') || role === 'separator') continue
     fautes.push(`<${el.tagName.toLowerCase()} role=${role ?? '—'}> « ${(el.textContent ?? '').trim().slice(0, 40)} »`)
   }
 

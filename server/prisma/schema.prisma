@@ -114,6 +114,13 @@ model UserAccount {
   /// l'inscription et n'était enregistrée nulle part.
   termsAcceptedAt DateTime
   newsletterOptIn Boolean  @default(false)
+  /// Les COPIES e-mail du fil d'un signalement. Vrai par défaut : un défaut à
+  /// faux couperait tout le monde à la seconde du déploiement, alors que ces
+  /// copies partent déjà. Se désabonner retire la COPIE, jamais la
+  /// notification — l'avis reste dans le produit, on renonce à un doublon et
+  /// pas à l'information. Sur le COMPTE et non sur le parc : le choix
+  /// appartient à qui reçoit, et vaut partout où il est membre.
+  threadEmailOptIn Boolean @default(true)
   /// On désactive, on ne supprime pas : cette personne est citée par des baux,
   /// des paiements et des décisions d'arbitrage.
   disabledAt      DateTime?

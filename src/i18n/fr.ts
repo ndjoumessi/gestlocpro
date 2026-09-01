@@ -270,6 +270,7 @@ export const fr = {
       défaut que le fil d'Ariane a coûté une fois ici. « Le site » nomme ce
       qu'on quitte l'application pour retrouver : la vitrine publique.
     */
+    threadEmailCopies: 'Copies par e-mail',
     backToSite: 'Retour au site',
     searchPlaceholder: 'Rechercher un logement, un locataire…',
     /* Le GABARIT, plus court que le nom accessible : voir `Portfolio`. */
@@ -1390,6 +1391,13 @@ export const fr = {
       replyFromTenant: 'Réponse du locataire',
       replyTitle: 'Répondre au locataire',
       replyBody: 'Votre réponse arrive dans ses notifications, rattachée au signalement {reference}.',
+      /* Pluriels par clés SŒURS — `x` / `x_one` via Intl.PluralRules. L'ICU
+         imbriqué n'est pas lu par ce dépôt, et une clé qui en porterait
+         afficherait ses accolades telles quelles. */
+      copiesDelivered: '{count} copies e-mail remises · {date}',
+      copiesDelivered_one: '1 copie e-mail remise · {date}',
+      copiesPartial: '{count} copies e-mail remises sur {total} tentées · {date}',
+      copiesPartial_one: '1 copie e-mail remise sur {total} tentées · {date}',
       replyTo: 'Destinataire : {name}',
       replyLabel: 'Votre message',
       replyHint: 'Ce que vous écrivez est lu tel quel. Dites quand, et par qui.',

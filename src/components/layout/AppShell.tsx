@@ -25,6 +25,7 @@ import type { CurrencyCode } from '@/currency/currencies'
 import { useT } from '@/i18n/I18nProvider'
 import type { Role } from '@/features/auth/signupState'
 import { usePortfolio } from '@/data/PortfolioProvider'
+import { api } from '@/api/client'
 import { useSession } from '@/api/SessionProvider'
 import { lien, useBase } from '@/lib/base'
 import { CadreDuParc } from '@/components/feedback/CadreDuParc'
@@ -1416,6 +1417,27 @@ function RetourAuSite() {
 function MenuCompte() {
   const t = useT()
   const { etat, deconnecter } = useSession()
+  const compte = etat.statut === 'connecte' ? etat.compte : null
+  /*
+    LE BASCULEMENT EST OPTIMISTE — la case suit le doigt, puis le serveur
+    confirme. Un aller-retour avant de bouger ferait cliquer deux fois sur
+    un menu qui ne répond pas.
+
+    En cas d'échec, on RESTAURE : une case restée basculée sur un serveur
+    qui a refusé ferait croire au désabonnement le plus dangereux qui soit —
+    celui quon croit avoir demandé.
+  */
+  const [copiesLocales, setCopiesLocales] = useState<boolean | null>(null)
+  const copiesActives = copiesLocales ?? compte?.threadEmailOptIn !== false
+  const basculerLesCopies = async () => {
+    const vise = !copiesActives
+    setCopiesLocales(vise)
+    try {
+      await api.updatePreferences({ threadEmailOptIn: vise })
+    } catch {
+      setCopiesLocales(!vise)
+    }
+  }
   const [ouvert, setOuvert] = useState(false)
   const boite = useRef<HTMLDivElement>(null)
 
@@ -1550,6 +1572,38 @@ function MenuCompte() {
                   `menu` — et son trait n'était visible que des voyants. Déclaré,
                   il devient la seule forme de coupure qu'un `menu` accepte, et
                   l'annonce se fait des deux côtés. */}
+              {/*
+                LES COPIES E-MAIL, AU-DESSUS DU FILET.
+
+                Le canal du fil a été ouvert sans réglage, et les copies
+                partent réellement : un gestionnaire qui suit trente
+                logements les recevait toutes, sans pouvoir dire « par le
+                produit seulement ».
+
+                AU-DESSUS DU FILET parce qu'il sépare « on navigue » de « on
+                met fin à la session », et basculer une case appartient au
+                premier — c'est un geste qui se défait.
+
+                `menuitemcheckbox` et non `menuitem` : la ligne porte un
+                ÉTAT, et l'annoncer par le seul libellé obligerait un
+                lecteur d’écran à deviner si « copies par e-mail » décrit ce
+                qui est ou ce qui sera.
+              */}
+              <button
+                type="button"
+                role="menuitemcheckbox"
+                aria-checked={copiesActives}
+                onClick={() => {
+                  void basculerLesCopies()
+                }}
+                className="flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-sm px-2 text-left text-label text-ink hover:bg-surface-sunken"
+              >
+                <Icon
+                  name={copiesActives ? 'check' : 'close'}
+                  size={16}
+                />
+                {t('nav.threadEmailCopies')}
+              </button>
               <div role="separator" className="my-1 h-px bg-border" />
               <button
                 type="button"

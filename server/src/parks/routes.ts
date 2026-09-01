@@ -398,6 +398,37 @@ parksRouter.get(
     const visibles = await unitesVisibles(parkId, req.compteId!, role)
 
     /**
+     * LES COPIES, AGRÉGÉES PAR CHANTIER — une requête, pas une par travail.
+     *
+     * Le locataire ne les lit pas : on ne les charge donc pas pour lui. Un
+     * `groupBy` rendrait le compte mais pas la dernière date sans un second
+     * agrégat ; les lignes brutes sont peu nombreuses — une par destinataire
+     * et par message — et se replient ici en une passe.
+     */
+    const copiesParChantier = new Map<
+      string,
+      { sent: number; delivered: number; lastAttemptAt: string | null }
+    >()
+    if (role !== 'tenant') {
+      const lignes = await prisma.workThreadEmail.findMany({
+        where: { work: { unit: { building: { parkId }, ...perimetreUnite } } },
+        select: { workId: true, deliveredAt: true, createdAt: true },
+      })
+      for (const ligne of lignes) {
+        const compte = copiesParChantier.get(ligne.workId) ?? {
+          sent: 0,
+          delivered: 0,
+          lastAttemptAt: null,
+        }
+        compte.sent++
+        if (ligne.deliveredAt) compte.delivered++
+        const quand = ligne.createdAt.toISOString()
+        if (!compte.lastAttemptAt || quand > compte.lastAttemptAt) compte.lastAttemptAt = quand
+        copiesParChantier.set(ligne.workId, compte)
+      }
+    }
+
+    /**
      * LA FIN D'ACCÈS S'ANNONCE, ELLE NE TOMBE PAS.
      *
      * La fenêtre après le bail coupe l'accès du locataire parti — et le lot
@@ -1267,6 +1298,25 @@ parksRouter.get(
       works: travaux.map(({ reportedByTenant, reportedBy, ...reste }) => ({
         ...reste,
         reportedBy: reportedByTenant?.fullName ?? reportedBy?.fullName ?? null,
+        /**
+         * LES COPIES E-MAIL DE CE FIL — des COMPTES, jamais des adresses.
+         *
+         * `WorkThreadEmail` répondait « le courriel du 3 septembre est-il
+         * parti ? » en base, et rien ne la relisait : la réponse existait et
+         * ne se consultait quen requêtant Postgres à la main.
+         *
+         * Les ADRESSES restent dehors. Elles najoutent rien à « a-t-il été
+         * prévenu ? » — le compte et la date y répondent — et sortiraient de
+         * l'espace de qui les lit. Divulgation minimale qui répond à la
+         * question, et rien de plus.
+         *
+         * ABSENT POUR LE LOCATAIRE : un journal d'envoi est une question de
+         * GESTION. « Mon gestionnaire a-t-il reçu mon signalement ? » se
+         * répond par la réponse elle-même, pas par un journal.
+         */
+        ...(role === 'tenant'
+          ? {}
+          : { emailCopies: copiesParChantier.get(reste.id) ?? { sent: 0, delivered: 0, lastAttemptAt: null } }),
       })),
       deposits: cautions.map((d) => ({
         id: d.id,
@@ -3964,8 +4014,27 @@ async function envoyerLaCopieDuFil(
   gabarit: { sujet: string; texte: string; html: string },
 ): Promise<number> {
   let partis = 0
-  for (const adresse of adresses) {
-    if (!adresse) continue
+  /*
+    LES DÉSABONNÉS SORTENT AVANT TOUTE TENTATIVE, et pas après.
+
+    La trace dit ce qui a été TENTÉ : consigner une copie qu'on a choisi de ne
+    pas envoyer ferait mentir le compteur du fil dans l'autre sens — « 3
+    tentées, 1 remise » se lirait comme deux échecs.
+
+    Un par un, jamais par équipe : un désabonnement qui éteindrait le canal pour
+    tout le monde serait une décision prise à la place des autres.
+  */
+  const nettes = adresses.filter((a): a is string => Boolean(a))
+  const abonnes = new Set(
+    (
+      await prisma.userAccount.findMany({
+        where: { email: { in: nettes }, threadEmailOptIn: true },
+        select: { email: true },
+      })
+    ).map((u) => u.email),
+  )
+  for (const adresse of nettes) {
+    if (!abonnes.has(adresse)) continue
     /*
       LA TENTATIVE D'ABORD, LA LIVRAISON ENSUITE — l'ordre de
       `RentReminderEmail`, et pour la même raison : `deliveredAt` ne se pose

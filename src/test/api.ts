@@ -25,6 +25,7 @@ export const COMPTE_FICTIF = {
   locale: 'fr' as const,
   countryCode: 'CM',
   phoneE164: '+237677214408',
+  threadEmailOptIn: true,
 }
 
 export interface FauxServeur {

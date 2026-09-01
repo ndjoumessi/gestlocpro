@@ -126,6 +126,12 @@ export interface CompteApi {
   locale: 'fr' | 'en'
   countryCode: string | null
   phoneE164: string | null
+  /**
+   * Les COPIES e-mail du fil. Vrai quand le serveur ne le rend pas — un serveur
+   * d'avant ce lot les envoie, et poser faux ferait afficher un désabonnement
+   * que personne n'a demandé.
+   */
+  threadEmailOptIn?: boolean
 }
 
 /** Devises que le serveur STOCKE. `CFA` n'en est pas une : voir `DeviseDuParc`. */
@@ -219,6 +225,19 @@ export const api = {
     requete<{ user: CompteApi }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password, persistent }),
+    }),
+
+  /**
+   * Les préférences de la personne — les copies e-mail, et rien d'autre.
+   *
+   * Ni le nom, ni l'adresse, ni le mot de passe : chacun de ces trois a ses
+   * propres conséquences, et les mêler ferait d'un basculement de case le
+   * voisin d'un changement d'identité.
+   */
+  updatePreferences: (preferences: { threadEmailOptIn: boolean }) =>
+    requete<{ user: CompteApi }>('/auth/me', {
+      method: 'PATCH',
+      body: JSON.stringify(preferences),
     }),
 
   logout: () => requete<void>('/auth/logout', { method: 'POST' }),

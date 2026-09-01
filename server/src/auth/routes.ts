@@ -140,6 +140,7 @@ function vueCompte(u: {
   locale: string
   countryCode: string | null
   phoneE164: string | null
+  threadEmailOptIn?: boolean
 }) {
   return {
     id: u.id,
@@ -148,6 +149,10 @@ function vueCompte(u: {
     locale: u.locale,
     countryCode: u.countryCode,
     phoneE164: u.phoneE164,
+    /* Le réglage voyage avec le compte : l'écran qui le bascule doit d'abord
+       pouvoir l'afficher, et une case posée à faux par défaut d'information
+       ferait croire à un désabonnement que personne n'a demandé. */
+    threadEmailOptIn: u.threadEmailOptIn ?? true,
   }
 }
 
@@ -450,6 +455,46 @@ authRouter.get('/me', async (req: Request, res: Response) => {
       delegation: m.park.delegation,
     })),
   })
+})
+
+/**
+ * LE RÉGLAGE DES COPIES E-MAIL, et rien d'autre pour l'instant.
+ *
+ * Une route de préférences par personne. Elle ne touche ni au nom, ni à
+ * l'adresse, ni au mot de passe : chacun de ces trois a ses propres
+ * conséquences — une adresse change l'identifiant de connexion, un mot de passe
+ * exige l'ancien — et les mêler ici ferait d'un basculement de case le voisin
+ * d'un changement d'identité.
+ */
+const schemaPreferences = z.object({
+  threadEmailOptIn: z.boolean(),
+})
+
+authRouter.patch('/me', async (req: Request, res: Response) => {
+  const session = await lireSession(req)
+  if (!session) {
+    res.status(401).json({ error: 'unauthenticated' })
+    return
+  }
+  const analyse = schemaPreferences.safeParse(req.body)
+  if (!analyse.success) {
+    res.status(400).json({ error: 'invalid_body' })
+    return
+  }
+  const compte = await prisma.userAccount.update({
+    where: { id: session.userId },
+    data: { threadEmailOptIn: analyse.data.threadEmailOptIn },
+    select: {
+      id: true,
+      email: true,
+      fullName: true,
+      locale: true,
+      countryCode: true,
+      phoneE164: true,
+      threadEmailOptIn: true,
+    },
+  })
+  res.json({ user: vueCompte(compte) })
 })
 
 /**
