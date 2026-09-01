@@ -81,7 +81,16 @@ export function GroupeDeFiltres<T extends string>({
                 `accent-on-ink` suit le fond qu'il nomme : 6,26 sur l'encre du
                 thème clair, 5,56 sur celle du thème sombre.
               */
-              <span className={cn('numeric text-caps', actif ? 'text-accent-on-ink' : 'text-muted')}>
+              <span
+                /* `data-valeur` : ce compteur EST un chiffre, et une porte le
+                   juge comme tel. `espace-connecte` refuse une rangée de chiffres
+                   MUETS au-dessus d'un état vide de page — « Tous 0 · À jour 0 ·
+                   Partiel 0 · En retard 0 » au-dessus de « aucun paiement ». Le
+                   marqueur est celui que porte déjà la valeur d'une carte
+                   d'indicateur : une même question, un même attribut. */
+                data-valeur=""
+                className={cn('numeric text-caps', actif ? 'text-accent-on-ink' : 'text-muted')}
+              >
                 {option.compte}
               </span>
             )}

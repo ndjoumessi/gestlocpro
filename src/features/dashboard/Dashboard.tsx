@@ -4,7 +4,7 @@ import { cn } from '@/lib/cn'
 import { Link, Navigate } from 'react-router-dom'
 import { useRole } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { Notice } from '@/components/primitives/Notice'
+import { NoteDePerimetre } from './NoteDePerimetre'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
 import { StatusPill } from '@/components/primitives/StatusPill'
@@ -39,7 +39,6 @@ export function Dashboard() {
     buildings: BUILDINGS,
     readings,
     collections: COLLECTIONS,
-    scoped,
     loading,
   } = usePortfolio()
   const [payOpen, setPayOpen] = useState(false)
@@ -310,7 +309,7 @@ export function Dashboard() {
         qu'un troisième existe. Ce qui ne doit pas rester caché est qu'il y a
         un périmètre, pas quelle est sa taille.
       */}
-      {scoped && <Notice tone="neutral">{t('app.dashboard.scopedNotice')}</Notice>}
+      <NoteDePerimetre />
 
       {/*
         L'état vide REMPLACE les indicateurs, il ne s'y ajoute pas.

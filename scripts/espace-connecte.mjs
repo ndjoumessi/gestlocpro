@@ -647,7 +647,28 @@ const MESURER_ZEROS_AU_DESSUS_DU_VIDE = () => {
   const vide = principal.querySelector('[data-etat-vide="2"]')
   if (!vide) return { vu: false, plainte: null }
   const hautDuVide = vide.getBoundingClientRect().top
-  const dessus = [...principal.querySelectorAll('[data-indicateur]')].filter(
+  /*
+    TOUT CE QUI PORTE UN CHIFFRE, et non les seules CARTES.
+
+    La règle ne regardait que les `[data-indicateur]`. Sur l'écran des paiements
+    d'un parc vide, elle a bien pris les trois cartes à zéro — et laissé passer
+    les quatre onglets de filtre qui portaient chacun un 0 sur quatre-vingt-seize
+    pixels, juste au-dessus du même message. Ils sont partis parce que je les ai
+    VUS dans la mesure, pas parce qu'une règle les refusait : c'est écrit tel quel
+    dans le lot qui les a retirés.
+
+    `data-valeur` est le marqueur du CHIFFRE, qu'il vive dans une carte ou dans
+    une pastille de filtre. C'est la même question posée au même endroit — « ce
+    nombre dit-il quelque chose ? » — et un seul attribut y répond.
+
+    On remonte de la valeur à sa BOÎTE quand elle en a une : le refus doit nommer
+    « En retard · 0 FCFA », pas « 0 ». `closest('[data-indicateur]')` rend la carte
+    quand il y en a une, l'élément lui-même sinon.
+  */
+  const porteurs = [...principal.querySelectorAll('[data-valeur]')].map(
+    (v) => v.closest('[data-indicateur]') ?? v,
+  )
+  const dessus = [...new Set(porteurs)].filter(
     (e) => e.getBoundingClientRect().top < hautDuVide,
   )
   if (dessus.length === 0) return { vu: true, plainte: null }
@@ -668,8 +689,9 @@ const MESURER_ZEROS_AU_DESSUS_DU_VIDE = () => {
     Les chiffres sont ASCII dans les deux langues du produit — `Intl.NumberFormat`
     ne rend d'autres systèmes que pour des locales que ce produit n'a pas.
   */
-  const muet = (carte) => {
-    const valeur = carte.querySelector('[data-valeur]')
+  const muet = (porteur) => {
+    /* La valeur est le porteur lui-même quand il n'y a pas de carte autour. */
+    const valeur = porteur.matches('[data-valeur]') ? porteur : porteur.querySelector('[data-valeur]')
     const texte = (valeur?.textContent ?? '').trim()
     return /[0-9]/.test(texte) && !/[1-9]/.test(texte)
   }
@@ -752,6 +774,86 @@ const MESURER_LE_PLI = (pli) => {
   return { vu: true, plainte: { haut, avant } }
 }
 
+/**
+ * AUCUNE RANGÉE DE CARTES NE LAISSE UNE ORPHELINE.
+ *
+ * ═══ LE DÉFAUT, RELEVÉ SUR UNE CAPTURE DE PRODUCTION ═══
+ *
+ * 2026-08-30 : « rangée de QUATRE indicateurs en `xl:grid-cols-3` : la quatrième
+ * seule sur sa ligne de 1280 à 1535 px. Quatre cartes ne se rangent jamais en
+ * trois colonnes. »
+ *
+ * Rien ne déborde, rien ne défile, le premier chiffre est au-dessus du pli.
+ * Aucune des règles de cette porte ne pouvait le voir — et la règle du pli, née
+ * au lot précédent, le dit elle-même : « elle ne juge que le PREMIER chiffre ;
+ * une rangée dont la quatrième carte passe sous le pli reste invisible ».
+ *
+ * ═══ CE QU'ELLE MESURE ═══
+ *
+ * Les cartes se groupent par LIGNE — même bord supérieur, à deux pixels près,
+ * ce qui absorbe l'arrondi d'une grille sans confondre deux rangées. Une ligne
+ * qui n'en porte qu'UNE, alors que la rangée en compte trois ou plus, est une
+ * orpheline.
+ *
+ * DEUX AU MINIMUM SUR LA DERNIÈRE LIGNE, donc — et jamais « toutes les lignes
+ * pleines », qui interdirait cinq cartes en trois colonnes. Ce qui se voit, ce
+ * qui déséquilibre, c'est UNE carte seule ; deux forment encore un groupe.
+ *
+ * ═══ CE QU'ELLE NE JUGE PAS ═══
+ *
+ * Les rangées de DEUX cartes, qui se replient à une par ligne en mobile et ont
+ * raison de le faire : à 320 px, une colonne est la seule mise en page possible,
+ * et toute rangée y serait « orpheline » à chaque ligne. Le seuil de trois écarte
+ * ce faux positif sans avoir à connaître la largeur.
+ */
+const MESURER_ORPHELINE = () => {
+  const principal = document.querySelector('main')
+  if (!principal) return { vu: false, plainte: null }
+  const cartes = [...principal.querySelectorAll('[data-indicateur]')].filter(
+    (e) => e.getBoundingClientRect().height > 0,
+  )
+  if (cartes.length < 3) return { vu: false, plainte: null }
+
+  const lignes = new Map()
+  for (const carte of cartes) {
+    const haut = Math.round(carte.getBoundingClientRect().top / 2) * 2
+    lignes.set(haut, [...(lignes.get(haut) ?? []), carte])
+  }
+  if (lignes.size < 2) return { vu: true, plainte: null }
+
+  /*
+    LE NOMBRE DE COLONNES SE DÉDUIT, il ne se suppose pas : c'est la ligne la
+    plus fournie. Deux exclusions en découlent, et les deux ont été mesurées
+    avant d'être écrites — la première rédaction de cette règle a rendu CENT SIX
+    plaintes, dont aucune n'était un défaut.
+
+    UNE SEULE COLONNE : à 320 px tout s'empile, et c'est la seule mise en page
+    possible. Chaque rangée y serait « orpheline » à chaque ligne.
+
+    DEUX COLONNES : trois cartes y donnent 2 + 1, et c'est le repli NORMAL d'une
+    grille de trois sur une tablette. L'interdire reviendrait à interdire les
+    rangées de trois, que ce produit emploie partout.
+
+    Ce qui reste est le défaut capturé : QUATRE cartes en TROIS colonnes, la
+    quatrième seule de 1280 à 1535 px.
+  */
+  const colonnes = Math.max(...[...lignes.values()].map((c) => c.length))
+  if (colonnes < 3) return { vu: true, plainte: null }
+
+  const derniere = [...lignes.entries()].sort((a, b) => a[0] - b[0]).at(-1)
+  if (!derniere || derniere[1].length !== 1) return { vu: true, plainte: null }
+  const seules = [derniere]
+
+  return {
+    vu: true,
+    plainte: {
+      total: cartes.length,
+      lignes: [...lignes.values()].map((c) => c.length),
+      texte: (seules[0][1][0].textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 44),
+    },
+  }
+}
+
 /* ══════════════════════════ LE BALAYAGE ══════════════════════════ */
 
 const ECRANS = ecransDeLEspaceConnecte()
@@ -806,6 +908,8 @@ let pointsFermesMesures = 0
 let etatsVidesInspectes = 0
 /* Combien d'écrans portaient un chiffre dont le pli a pu être jugé. */
 let plisInspectes = 0
+/* Combien d'écrans portaient une rangée de trois cartes ou plus. */
+let rangeesInspectees = 0
 /* Ce que les deux audits ont réellement examiné — voir leur garde du garde. */
 let textesAudites = 0
 let nomsExamines = 0
@@ -999,14 +1103,36 @@ try {
           )
         }
         for (const largeur of LARGEURS) {
-          if (largeur !== LARGEURS.at(-1)) {
-            await page.setViewportSize({ width: largeur, height: 900 })
-            await page
-              .waitForFunction(() => document.querySelectorAll('[aria-busy="true"]').length === 0, null, {
-                timeout: 5000,
-              })
-              .catch(() => {})
-          }
+          /*
+            LA LARGEUR EST POSÉE À CHAQUE TOUR, ET ELLE NE L'ÉTAIT PAS.
+
+            Cette boucle sautait le redimensionnement sur la DERNIÈRE largeur,
+            au motif que le contexte naissait déjà à 1280 : une navigation ne
+            change pas la fenêtre, et l'économie était juste — tant que rien ne
+            la redimensionnait avant.
+
+            Les passes ajoutées depuis le font toutes : le PLI mesure à 360×640,
+            l'audit de contraste à 320 puis 1280. La page arrivait donc dans
+            cette boucle à 360 de large, et le tour « 1280 » mesurait 360 sans
+            que rien ne le dise. Toutes les mesures annoncées à 1280 depuis le
+            lot du pli étaient prises à 360 — trois règles sur cinq, deux
+            langues, cinq profils.
+
+            TROUVÉ PAR UN TÉMOIN QUI REFUSAIT DE ROUGIR : une quatrième carte
+            posée dans une grille de trois colonnes ne produisait aucune
+            orpheline, parce qu'à 360 il n'y a qu'une colonne. Le témoin ne
+            prouvait pas la règle, il a prouvé la boucle.
+
+            Le redimensionnement inconditionnel coûte 7 ms — chiffré par
+            `mesure-ui` — contre 1 072 pour un chargement. L'économie ne valait
+            pas ce qu'elle a caché.
+          */
+          await page.setViewportSize({ width: largeur, height: 900 })
+          await page
+            .waitForFunction(() => document.querySelectorAll('[aria-busy="true"]').length === 0, null, {
+              timeout: 5000,
+            })
+            .catch(() => {})
           const ou = `${ecran.adresse} · ${cle} · ${largeur}px · ${langue}`
 
           const rendu = await page.evaluate(MESURER_RENDU_MINIMAL)
@@ -1060,6 +1186,18 @@ try {
                 `${PLANCHER_CIBLE} — <${d.balise}> ${d.texte || d.classes}` +
                 "\n   Ce n'est pas une boîte qu'on mesure, c'est ce que le doigt touche : " +
                 'rembourrages et recouvrements compris.',
+            )
+          }
+
+          const orpheline = await page.evaluate(MESURER_ORPHELINE)
+          if (orpheline.vu) rangeesInspectees += 1
+          if (orpheline.plainte) {
+            const o = orpheline.plainte
+            plaintes.push(
+              `${ou} : rangée de ${o.total} cartes rangée en ${o.lignes.join(' + ')} — une ORPHELINE.\n      ` +
+                `seule sur sa ligne : ${o.texte}\n` +
+                "   Rien ne déborde et rien ne défile : c'est un déséquilibre, et il se voit. " +
+                'Quatre cartes ne se rangent jamais en trois colonnes.',
             )
           }
 
@@ -1243,6 +1381,27 @@ if (nomsExamines < NOMS_ATTENDUS) {
   )
 }
 
+/**
+ * GARDE DU GARDE — la règle de l'orpheline a-t-elle vu une rangée ?
+ *
+ * Elle sort sans plainte par cinq chemins : pas de `<main>`, moins de trois
+ * cartes, une seule ligne, moins de trois colonnes, dernière ligne pleine. Née
+ * VERTE, elle n'a aucun rouge pour prouver qu'elle regarde — et sa PREMIÈRE
+ * rédaction a rendu cent six plaintes dont aucune n'était un défaut, ce qui dit
+ * assez qu'une règle de mise en page se trompe dans les deux sens.
+ *
+ * Relevé à l'écriture : 114 rangées de trois cartes ou plus. Plancher à 100 —
+ * serré, parce que ces rangées sont le motif principal des écrans de gestion et
+ * qu'en perdre un quart voudrait dire qu'un balayage s'est arrêté.
+ */
+const RANGEES_ATTENDUES = 100
+if (rangeesInspectees < RANGEES_ATTENDUES) {
+  plaintes.push(
+    `la règle de l'orpheline n'a vu que ${rangeesInspectees} rangée(s) pour ${RANGEES_ATTENDUES} ` +
+      "attendues au moins. Une carte seule ne se voit que si on compte les lignes.",
+  )
+}
+
 const PLIS_ATTENDUS = 40
 if (plisInspectes < PLIS_ATTENDUS) {
   plaintes.push(
@@ -1275,6 +1434,7 @@ console.log(
     `  ${FERMES_ATTENDUS} refus vérifiés dans les deux directions.\n` +
     `  ${etatsVidesInspectes} état(s) vide(s) de page passé(s) sous la règle des zéros.\n` +
     `  ${plisInspectes} écran(s) portant un chiffre jugé(s) au pli de 360×640.\n` +
+    `  ${rangeesInspectees} rangée(s) de trois cartes ou plus, comptées ligne à ligne.\n` +
     `  ${textesAudites} textes confrontés au seuil WCAG AA, dans les DEUX thèmes ; ` +
     `${nomsExamines} commandes cherchées sans nom.\n` +
     `  ${ciblesSondees} cibles sondées au doigt, sous le plancher de ${PLANCHER_CIBLE} px.\n` +

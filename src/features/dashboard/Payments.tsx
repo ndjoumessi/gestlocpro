@@ -15,6 +15,7 @@ import {
   SkeletonTable,
 } from '@/components/primitives/Skeleton'
 import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
+import { NoteDePerimetre } from './NoteDePerimetre'
 import { Button } from '@/components/primitives/Button'
 import { Modal } from '@/components/primitives/Modal'
 import { Field } from '@/components/primitives/Field'
@@ -306,6 +307,13 @@ export function Payments() {
           </MenuDeDebordement>
         }
       />
+
+      {/* LA NOTE DE PÉRIMÈTRE PRÉCÈDE LA RANGÉE : on lit le contexte avant les
+          chiffres, jamais après. Hors du ternaire, parce qu'elle ne dépend ni du
+          rôle ni de la présence de baux — un gestionnaire borné dont le
+          périmètre est vide de loyers a d'autant plus besoin de savoir
+          pourquoi. */}
+      <NoteDePerimetre className="mb-4" />
 
       {isTenant ? (
         <TenantScopeNote className="mb-4" />

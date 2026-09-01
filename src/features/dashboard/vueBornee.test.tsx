@@ -115,6 +115,38 @@ describe('le gestionnaire dont la vue est bornée', () => {
   })
 })
 
+describe('la note suit les CHIFFRES, et non un écran', () => {
+  /**
+   * Le premier lot ne la posait que sur le tableau de bord, et le motif tenait :
+   * « c'est là que vivent les chiffres consolidés, donc là que la mélecture
+   * coûte ». Il était incomplet. Les cautions additionnent des dépôts, les
+   * paiements des loyers, les relevés des refacturations — trois totaux de plus,
+   * plus étroits mais additionnés eux aussi, et chacun se cite dans un compte
+   * rendu au propriétaire.
+   */
+  it.each([
+    ['/app/paiements'],
+    ['/app/cautions'],
+    ['/app/releves'],
+  ])('la porte partout où un chiffre AGRÈGE — %s', async (route) => {
+    serveur.quand('GET', `/parks/${PARC}/portfolio`, { status: 200, body: portefeuille(true) })
+    await renderApp(route, { session: session('manager') })
+    await attendreLeChargement()
+
+    expect(screen.getByText(AVERTISSEMENT)).toBeInTheDocument()
+  })
+
+  it('ne la porte PAS sur une liste, où rien ne prétend au total', async () => {
+    /* On y voit ce qu'on gère, ligne par ligne. Un bandeau sur chaque écran
+       ferait du contexte un décor, et un décor ne se lit plus. */
+    serveur.quand('GET', `/parks/${PARC}/portfolio`, { status: 200, body: portefeuille(true) })
+    await renderApp('/app/travaux', { session: session('manager') })
+    await attendreLeChargement()
+
+    expect(screen.queryByText(AVERTISSEMENT)).toBeNull()
+  })
+})
+
 describe('celui que rien ne borne', () => {
   it('ne lit aucun avertissement', async () => {
     await ouvrir('manager', false)

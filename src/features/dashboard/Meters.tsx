@@ -11,6 +11,7 @@ import {
   SkeletonTable,
 } from '@/components/primitives/Skeleton'
 import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
+import { NoteDePerimetre } from './NoteDePerimetre'
 import { StatusPill } from '@/components/primitives/StatusPill'
 import { Notice } from '@/components/primitives/Notice'
 import { Button } from '@/components/primitives/Button'
@@ -221,6 +222,7 @@ export function Meters() {
 
       {tarifsOuverts && <TariffsModal open onClose={() => setTarifsOuverts(false)} />}
 
+      <NoteDePerimetre className="mb-4" />
       <div className={GRILLE_TROIS_INDICATEURS}>
         {/*
           Le total n'est un total QUE s'il y a un prix.

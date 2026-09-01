@@ -10,6 +10,7 @@ import {
   SkeletonTable,
 } from '@/components/primitives/Skeleton'
 import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
+import { NoteDePerimetre } from './NoteDePerimetre'
 import { StatusPill, type StatusTone } from '@/components/primitives/StatusPill'
 import { Button } from '@/components/primitives/Button'
 import { useDepositsStatementPdf } from './documentsPdf'
@@ -253,6 +254,8 @@ export function Deposits() {
         montant, et un montant sans son échelle ne se lit pas. C'est le zéro
         qu'on retire, pas la mesure.
       */}
+      <NoteDePerimetre className="mb-4" />
+
       {deposits.length > 0 && (
       <div className={GRILLE_TROIS_INDICATEURS}>
         {/* Le BOUCLIER pour ce qui est consigné — le même que porte « caution à
