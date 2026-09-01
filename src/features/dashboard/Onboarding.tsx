@@ -451,7 +451,29 @@ export function Onboarding() {
                       scope="col"
                       className={cn(
                         'eyebrow px-4 py-3 text-center font-normal whitespace-nowrap',
-                        inactive ? 'text-muted/60' : 'text-muted',
+                        /*
+                          L'INACTIF SE DIT, IL NE S'EFFACE PAS.
+
+                          Cette colonne portait `text-muted/60` — l'encre douce, à
+                          soixante pour cent. MESURÉ par la porte de l'espace
+                          connecté, sur un parc réglé en gestion seule : 2,46
+                          en thème clair et 3,56 en sombre, pour un seuil de 4,5.
+                          « Gestionnaire délégué » et « non activé » étaient sous
+                          le seuil WCAG AA dans les DEUX thèmes.
+
+                          L'opacité est le moyen le plus courant de dire « éteint »
+                          et le plus mauvais : elle mélange l'encre au fond, donc
+                          elle détruit le rapport que le jeton garantissait.
+                          `text-muted` est déjà l'encre secondaire du produit, et
+                          elle passe le seuil — c'est ELLE qui dit « secondaire »,
+                          pas une transparence posée par-dessus.
+
+                          CE QUI DIT L'INACTIF RESTE : le sous-titre « non activé »
+                          l'écrit en toutes lettres. Le texte porte l'état, la
+                          couleur ne fait que l'accompagner — la règle que
+                          `couleur-non-seule` tient partout ailleurs.
+                        */
+                        'text-muted',
                       )}
                     >
                       {t(`roles.${role}.name` as 'roles.owner.name')}

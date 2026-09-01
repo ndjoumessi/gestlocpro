@@ -73,6 +73,7 @@ export function UnitFile() {
     leasesForUnit,
     receiptsForUnit,
     worksForUnit,
+    alerts,
     depositForUnit,
     inspectionForUnit,
     readingForUnit,
@@ -126,6 +127,28 @@ export function UnitFile() {
   const occupations = leasesForUnit(unitId)
   const periodes = receiptsForUnit(unitId)
   const travaux = worksForUnit(unitId)
+
+  /**
+   * LE FIL, RANGÉ PAR CHANTIER — et le dossier du logement était le dernier
+   * écran à ne pas le porter.
+   *
+   * Il liste les travaux de ce logement depuis toujours, avec leur statut et
+   * leur montant engagé. Ce qui s'est DIT autour, non : « le plombier passe
+   * jeudi », « je serai absent toute la semaine ». Ces deux phrases sont
+   * précisément ce qu'on cherche en ouvrant un dossier avant d'appeler
+   * quelqu'un, et il fallait aller les lire ailleurs.
+   *
+   * C'est le même regroupement que dans `Signaler` et `Travaux` — même `workId`,
+   * même ordre, du plus ancien au plus récent — et c'est voulu : un échange n'a
+   * pas trois histoires selon l'écran qui l'ouvre.
+   */
+  const fils = new Map<string, typeof alerts>()
+  for (const a of alerts) {
+    if (a.message !== 'workReply' && a.message !== 'tenantReply') continue
+    const cible = a.data.workId
+    if (!cible) continue
+    fils.set(cible, [a, ...(fils.get(cible) ?? [])])
+  }
   const caution = depositForUnit(unitId)
   const entree = inspectionForUnit(unitId, 'entry')
   const sortie = inspectionForUnit(unitId, 'exit')
@@ -388,6 +411,27 @@ export function UnitFile() {
                     {montantEngage(work).montant !== null &&
                       ` · ${money(montantEngage(work).montant!, { compact: true })}`}
                   </span>
+                  {/* L'ÉCHANGE, sous le chantier dont il parle. Le texte vient
+                      d'un humain : il est rendu tel quel, sans coupe — c'est
+                      justement la fin qu'on relit avant d'appeler.
+
+                      `basis-full` : la rangée est un `flex-wrap` où le titre et
+                      le statut se partagent une ligne. Sans lui, le fil se
+                      glisserait entre les deux au lieu de passer dessous. */}
+                  {(fils.get(work.id) ?? []).map((r) => (
+                    <div
+                      key={r.id}
+                      className="basis-full border-l-2 border-divider pl-3"
+                    >
+                      <p className="text-caps text-muted">
+                        {r.message === 'tenantReply'
+                          ? t('app.works.replyFromTenant')
+                          : t('app.works.replyFromManager')}{' '}
+                        · {d.relative(r.at)}
+                      </p>
+                      <p className="text-body text-pretty">{r.data.text}</p>
+                    </div>
+                  ))}
                 </li>
               ))}
             </ul>

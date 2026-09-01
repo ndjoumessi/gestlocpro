@@ -126,6 +126,10 @@ import {
   MESURER_RENDU_MINIMAL,
 } from './sondes-de-rendu.mjs'
 import { ecransDeLEspaceConnecte } from './inventaire/routes.mjs'
+/* Le MÊME aplatissement que `check-i18n` et ' + B + 'notes-conditionnelles' + B + '. Une note
+   se cherche par sa CLÉ, jamais par une phrase recopiée : une phrase recopiée
+   se périme au premier remaniement du dictionnaire, en silence. */
+import { dictionnaireAPlat } from './check-i18n.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -145,6 +149,46 @@ const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
  * `mesure-ui` — contraste, cibles, noms, thème sombre — n'avaient donc jamais
  * été passées sur ces états-là.
  */
+const FR = dictionnaireAPlat(readFileSync(join(RACINE, 'src/i18n/fr.ts'), 'utf8'))
+
+/**
+ * LES NOTES CONDITIONNELLES QUE SEUL L'ESPACE CONNECTÉ PEUT PEINDRE.
+ *
+ * ' + B + 'notes-conditionnelles' + B + ' tient le registre de toutes les `<Notice>` du produit
+ * et refuse celles qu'on ne sait pas atteindre. Huit y sont AVOUÉES — une phrase
+ * dit pourquoi la démonstration ne peut pas les rendre — et trois de ces aveux
+ * disaient la même chose : « il faudrait une adhésion, un serveur, un parc dans
+ * un certain état ».
+ *
+ * Cette porte a exactement cela. Elle monte un vrai serveur, trois parcs, six
+ * profils : les états que ces notes réclament, elle les FABRIQUE déjà pour
+ * d'autres raisons. Il ne restait qu'à regarder.
+ *
+ * CE N'EST PAS UN DOUBLON DE L'AUTRE PORTE. Celle-là balaie `/demo` et tient
+ * quinze notes ; celle-ci en tient trois, sur `/app`, que l'autre ne peut pas
+ * ouvrir. Les aveux correspondants cessent de dire « personne ne la voit » pour
+ * dire « ce script-ci ne peut pas l'atteindre » — ce qui n'est pas la même
+ * chose, et c'est la seule des deux qui soit vraie.
+ *
+ * LA CLÉ, JAMAIS LA PHRASE. Le texte est résolu depuis ' + B + 'fr.ts' + B + ' : une phrase
+ * recopiée ici se périmerait au premier remaniement du dictionnaire, sans que
+ * rien ne le dise — la forme de silence que ce dépôt traque partout.
+ */
+const NOTES_SOUS_APP = [
+  {
+    cle: 'app.dashboard.scopedNotice',
+    profil: 'manager',
+    adresse: '/app',
+    pourquoi: 'le gestionnaire de sonde est borné à un immeuble sur deux',
+  },
+  {
+    cle: 'app.tenants.noVacantNotice',
+    profil: 'owner·vide',
+    adresse: '/app/locataires',
+    pourquoi: 'un parc sans logement n’en a aucun de vacant',
+  },
+]
+
 const AUDIT_CONTRASTE = readFileSync(join(RACINE, 'scripts/contrast-audit.js'), 'utf8')
 const AUDIT_NOMS = readFileSync(join(RACINE, 'scripts/noms-accessibles.js'), 'utf8')
 
@@ -589,7 +633,28 @@ async function monterUnParcVide() {
     },
   })
   const moi = await appeler('/api/auth/me', { methode: 'GET', cookie: proprio.cookie })
-  return { parkId: moi.corps.memberships[0].parkId, compte: 'parc-vide@porte.test' }
+  const parkId = moi.corps.memberships[0].parkId
+
+  /**
+   * IL SE GÈRE SEUL, et ce n'est pas un détail de montage.
+   *
+   * `delegation: solo` est l'autre moitié du réglage de délégation — celle qui
+   * refuse tout gestionnaire. Elle commande une note d'avertissement sur l'écran
+   * de prise en main, que `notes-conditionnelles` AVOUAIT ne pas savoir
+   * atteindre : « il faudrait une adhésion fictive dans la session de
+   * démonstration ».
+   *
+   * Ici il n'y a rien de fictif : un vrai parc, une vraie adhésion, un vrai
+   * réglage. Le parc VIDE est celui qui peut le porter — il n'a aucun
+   * gestionnaire, et la route refuse `solo` tant qu'il en reste un.
+   */
+  await appeler(`/api/parks/${parkId}`, {
+    methode: 'PATCH',
+    cookie: proprio.cookie,
+    corps: { delegation: 'solo' },
+  })
+
+  return { parkId, compte: 'parc-vide@porte.test' }
 }
 
 /**
@@ -910,6 +975,8 @@ let etatsVidesInspectes = 0
 let plisInspectes = 0
 /* Combien d'écrans portaient une rangée de trois cartes ou plus. */
 let rangeesInspectees = 0
+/* Combien de notes conditionnelles ont été cherchées — voir leur garde. */
+let notesCherchees = 0
 /* Ce que les deux audits ont réellement examiné — voir leur garde du garde. */
 let textesAudites = 0
 let nomsExamines = 0
@@ -1189,6 +1256,38 @@ try {
             )
           }
 
+          /* LES NOTES SE CHERCHENT UNE FOIS, en français et à la largeur de
+             bureau : une note est un TEXTE, et sa présence ne dépend ni de la
+             largeur ni de la langue — seulement de l'état du parc. */
+          if (langue === LANGUES[0] && largeur === LARGEURS.at(-1)) {
+            for (const note of NOTES_SOUS_APP) {
+              if (note.profil !== cle || note.adresse !== ecran.adresse) continue
+              /* `dictionnaireAPlat` rend une `Map`, jamais un objet nu — et c'est
+                 la première chose que ce lot a apprise en la lisant à l'indice. */
+              const attendu = FR.get(note.cle)
+              if (!attendu) {
+                plaintes.push(
+                  `${note.cle} : introuvable dans \`fr.ts\`. La note a été renommée ou ` +
+                    'retirée, et cette table la cherche encore.',
+                )
+                continue
+              }
+              notesCherchees += 1
+              const vue = await page.evaluate(
+                (texte) => (document.body.innerText ?? '').includes(texte),
+                attendu.slice(0, 60),
+              )
+              if (!vue) {
+                plaintes.push(
+                  `${note.cle} · ${cle} · ${ecran.adresse} : la note n'est PAS peinte.\n` +
+                    `   Elle devrait l'être — ${note.pourquoi}. Soit l'état du parc de sonde a ` +
+                    "changé, soit la note a cessé de paraître : dans les deux cas, l'aveu de " +
+                    'notes-conditionnelles qui renvoie ici est devenu faux.',
+                )
+              }
+            }
+          }
+
           const orpheline = await page.evaluate(MESURER_ORPHELINE)
           if (orpheline.vu) rangeesInspectees += 1
           if (orpheline.plainte) {
@@ -1394,6 +1493,21 @@ if (nomsExamines < NOMS_ATTENDUS) {
  * serré, parce que ces rangées sont le motif principal des écrans de gestion et
  * qu'en perdre un quart voudrait dire qu'un balayage s'est arrêté.
  */
+/**
+ * GARDE DU GARDE — les trois notes ont-elles été cherchées ?
+ *
+ * Le compte est ÉGAL, pas un plancher : la table en déclare trois, et trois
+ * exactement doivent avoir été confrontées à l'écran. Un profil renommé, une
+ * adresse déplacée, et la boucle ne trouverait plus la paire — sans qu'aucune
+ * plainte ne sorte, puisque la condition ne serait jamais vraie.
+ */
+if (notesCherchees !== NOTES_SOUS_APP.length) {
+  plaintes.push(
+    `${notesCherchees} note(s) conditionnelle(s) cherchée(s) pour ${NOTES_SOUS_APP.length} ` +
+      "déclarée(s). Une paire profil/adresse ne se rencontre plus : la table pointe à côté.",
+  )
+}
+
 const RANGEES_ATTENDUES = 100
 if (rangeesInspectees < RANGEES_ATTENDUES) {
   plaintes.push(
@@ -1435,6 +1549,7 @@ console.log(
     `  ${etatsVidesInspectes} état(s) vide(s) de page passé(s) sous la règle des zéros.\n` +
     `  ${plisInspectes} écran(s) portant un chiffre jugé(s) au pli de 360×640.\n` +
     `  ${rangeesInspectees} rangée(s) de trois cartes ou plus, comptées ligne à ligne.\n` +
+    `  ${notesCherchees} note(s) conditionnelle(s) que seul l'espace connecté peut peindre.\n` +
     `  ${textesAudites} textes confrontés au seuil WCAG AA, dans les DEUX thèmes ; ` +
     `${nomsExamines} commandes cherchées sans nom.\n` +
     `  ${ciblesSondees} cibles sondées au doigt, sous le plancher de ${PLANCHER_CIBLE} px.\n` +

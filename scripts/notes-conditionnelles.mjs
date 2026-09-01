@@ -166,29 +166,36 @@ const REGISTRE = {
       'adhésion ni serveur — `scoped` y vaut faux par construction, et le forcer ' +
       'à vrai peindrait un avertissement de restriction sur un parc entier, ce ' +
       'qui est l’exact contraire de ce que la note dit. ' +
-      'ELLE N’EST PAS POUR AUTANT NON PEINTE : `espace-connecte` monte un vrai ' +
-      'serveur et confie UN immeuble sur deux à son gestionnaire de sonde. MESURÉ ' +
-      'sur ce lot, sonde temporaire dans son balayage : la note est peinte sur ' +
-      '`/app` pour le GESTIONNAIRE dans les deux langues, et pour lui seul — le ' +
-      'propriétaire et le locataire rendent faux. Ses règles de rendu et de ' +
-      'gabarit la tiennent donc. C’est ce script-ci qui ne peut pas l’atteindre, ' +
-      'pas la porte au navigateur.',
+      'ELLE EST GARDÉE AILLEURS, ET NOMMÉMENT : `espace-connecte` la déclare dans ' +
+      'sa table `NOTES_SOUS_APP` et REFUSE si elle n’est pas peinte sur `/app` pour ' +
+      'le gestionnaire borné. Ce n’est donc plus un aveu d’absence, c’est un ' +
+      'renvoi : ce script-ci ne peut pas l’atteindre, une autre porte le fait.',
   },
   'app.onboarding.delegationOffNotice': {
     nonMesurable:
-      'Elle ne paraît qu’à un propriétaire dont le parc porte `delegation: solo`, ' +
-      'lu sur `adhesionActive`. La démonstration n’a AUCUNE adhésion — le repli ' +
-      '`?? "delegate"` s’applique —, et la bascule de « prise en main » n’écrit ' +
-      'qu’un état d’écran que la modale ne lit pas. La rendre mesurable ' +
-      'demanderait une adhésion fictive dans la session de démonstration : c’est ' +
-      'un lot, et il touche à la session, pas à cette note.',
+      'DEUX CONDITIONS À LA FOIS, et l’aveu précédent n’en nommait qu’une. Elle ' +
+      'demande un parc réglé sur `delegation: solo` — que la démonstration ne peut ' +
+      'pas porter, faute d’adhésion — ET l’ouverture de la modale d’invitation, ' +
+      'car malgré son nom elle vit dans `InviteModal`, pas sur l’écran de prise ' +
+      'en main. ' +
+      'MESURÉ en tentant de la garder : `espace-connecte` a été réglé sur `solo` ' +
+      'et a cherché la note sur `/app/prise-en-main` — elle n’y était pas, et ne ' +
+      'pouvait pas y être. Aucune des deux portes ne peut donc l’atteindre : ' +
+      'celle-ci n’a pas d’adhésion, celle des modales balaie `/demo`, et celle de ' +
+      'l’espace connecté n’ouvre aucune modale. ' +
+      'LA TENTATIVE N’A PAS ÉTÉ PERDUE : le parc de sonde est resté en `solo`, et ' +
+      'cet état-là a révélé un contraste de 2,46 sur « Gestionnaire délégué · non ' +
+      'activé », sous le seuil dans les deux thèmes.',
   },
   'app.tenants.noVacantNotice': {
     nonMesurable:
       'Elle paraît quand le parc n’a PLUS AUCUN logement vacant. La démonstration ' +
       'en garde deux — B4 et C3 —, et ils sont ce qui rend mesurables la création ' +
       'de fiche et l’ajout de logement. Vider le parc pour voir cette note-ci en ' +
-      'rendrait deux autres invisibles : l’échange est perdant.',
+      'rendrait deux autres invisibles : l’échange est perdant. ' +
+      'ELLE EST GARDÉE AILLEURS : `espace-connecte` monte un parc VIDE, qui n’a ' +
+      'aucun logement donc aucun vacant, et refuse si la note n’y paraît pas. Le ' +
+      'parc vide y existe pour d’autres raisons — il ne coûte rien de plus ici.',
   },
   'app.decisions.failed': {
     nonMesurable:
