@@ -215,3 +215,55 @@ describe('l’abonné voisin', () => {
     expect(visees, 'seul le désabonné se retire').toEqual(['cabinet@example.com'])
   })
 })
+
+describe('le courriel lui-même', () => {
+  /**
+   * ═══ LE PIED DE MESSAGE, QUE TOUT EXPÉDITEUR PORTE ═══
+   *
+   * Le lot qui a posé le réglage le nommait en dette : « rien dans le COURRIEL
+   * ne dit comment se désabonner — il faut ouvrir le produit et trouver le
+   * menu ». Or c'est dans la boîte aux lettres qu'on décide de ne plus recevoir,
+   * pas dans un produit qu'on n'a peut-être pas ouvert depuis un mois.
+   *
+   * UN LIEN VERS LE PRODUIT, PAS UN LIEN QUI DÉSABONNE. Une URL qui coupe le
+   * canal d'un simple clic est une URL qu'un aperçu de messagerie déclenche en
+   * la préchargeant, et le désabonnement le plus dangereux est celui que
+   * personne n'a demandé. Le lien ouvre l'espace ; le geste reste un geste.
+   */
+  const gabarits: { sujet: string; texte: string; html: string }[] = []
+
+  it('porte le pied dans ses DEUX corps', async () => {
+    /* Le texte brut et le HTML sont deux messages, et un client qui n'affiche
+       que le premier ne doit pas perdre le pied. */
+    const { parkId, unitId, cookieLocataire } = await parcAvecUnLocataire()
+    const capture: Messagerie = {
+      async envoyerSms() {
+        return false
+      },
+      async envoyerEmail(_adresse, _sujet, corps) {
+        gabarits.push(corps as { sujet: string; texte: string; html: string })
+        return true
+      },
+    }
+    const rendre2 = remplacerMessagerie(capture)
+    await signaler(parkId, unitId, cookieLocataire)
+    rendre2()
+
+    const envoye = gabarits[0]
+    expect(envoye, 'aucune copie capturée').toBeDefined()
+    expect(envoye!.texte, 'on décide de ne plus recevoir dans sa boîte, pas ailleurs').toMatch(
+      /copies par e-mail/i,
+    )
+    expect(envoye!.html).toMatch(/copies par e-mail/i)
+  })
+
+  it('mène au produit, et ne désabonne pas d’un clic', async () => {
+    /* Une URL qui coupe le canal est une URL qu'un aperçu de messagerie
+       déclenche en la préchargeant. */
+    const envoye = gabarits[0]
+    expect(envoye!.html).toContain('http')
+    expect(envoye!.html, 'un lien qui agit tout seul n’est pas un lien').not.toMatch(
+      /unsubscribe|desabonner/i,
+    )
+  })
+})

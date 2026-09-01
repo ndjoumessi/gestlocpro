@@ -10,6 +10,7 @@ import {
 } from './invitations.js'
 import { empreinteJeton } from '../auth/token.js'
 import { laMessagerie } from '../messagerie/messagerie.js'
+import { env } from '../env.js'
 import {
   etatsDesLieuxVisibles,
   exigerAppartenance,
@@ -3967,6 +3968,39 @@ function formaterMontant(minor: number, devise: string): string {
  * eux il faut ouvrir le produit pour savoir de quoi il s'agit, ce qui est
  * exactement ce que ce courriel existe pour éviter.
  */
+/**
+ * LE PIED DE MESSAGE — le geste que tout expéditeur met en pied, et que ce
+ * produit n'avait pas.
+ *
+ * On décide de ne plus recevoir DANS SA BOÎTE, pas dans un produit qu'on n'a
+ * peut-être pas ouvert depuis un mois. Sans ce pied, le réglage existait et
+ * personne ne pouvait le trouver depuis là où la gêne se ressent.
+ *
+ * UN LIEN VERS LE PRODUIT, PAS UN LIEN QUI DÉSABONNE. Une URL qui coupe le
+ * canal d'un clic est une URL qu'un aperçu de messagerie déclenche en la
+ * PRÉCHARGEANT — et le désabonnement le plus dangereux est celui que personne
+ * n'a demandé. Le lien ouvre l'espace ; le geste reste un geste.
+ *
+ * DANS LES DEUX CORPS : le texte brut et le HTML sont deux messages, et un
+ * client qui n'affiche que le premier ne doit pas perdre le pied.
+ */
+const PIED_DE_DESABONNEMENT_TEXTE =
+  'Vous recevez ce message parce que les copies par e-mail sont actives sur votre compte. ' +
+  'Pour ne plus les recevoir sans rien perdre du produit : ouvrez `Copies par e-mail` ' +
+  ' dans le menu de votre compte — ' +
+  env.CLIENT_ORIGIN +
+  '/app'
+
+const PIED_DE_DESABONNEMENT_HTML =
+  '<p style="color:#6b6b6b;font-size:12px">Vous recevez ce message parce que les copies ' +
+  'par e-mail sont actives sur votre compte. Pour ne plus les recevoir sans rien perdre du ' +
+  'produit, ouvrez « Copies par e-mail » dans le menu de votre compte : ' +
+  '<a href="' +
+  env.CLIENT_ORIGIN +
+  '/app">' +
+  env.CLIENT_ORIGIN +
+  '/app</a>.</p>'
+
 function gabaritDuFilEmail(entree: {
   sens: 'signalement' | 'reponseGestion' | 'reponseLocataire'
   reference: string
@@ -3987,13 +4021,15 @@ function gabaritDuFilEmail(entree: {
     `Référence : ${entree.reference}\n` +
     `De : ${entree.auteur}\n\n` +
     `${entree.texte}\n\n` +
-    'Répondez depuis GestLocPro : le fil de ce signalement y garde tout l’échange.'
+    'Répondez depuis GestLocPro : le fil de ce signalement y garde tout l’échange.\n\n' +
+    PIED_DE_DESABONNEMENT_TEXTE
   const html =
     `<p><strong>${echapperHtml(titre)}</strong></p>` +
     `<p>Logement : ${echapperHtml(entree.unite)}<br>Référence : ${echapperHtml(entree.reference)}` +
     `<br>De : ${echapperHtml(entree.auteur)}</p>` +
     `<p>${echapperHtml(entree.texte)}</p>` +
-    '<p>Répondez depuis GestLocPro : le fil de ce signalement y garde tout l’échange.</p>'
+    '<p>Répondez depuis GestLocPro : le fil de ce signalement y garde tout l’échange.</p>' +
+    PIED_DE_DESABONNEMENT_HTML
   return { sujet, texte, html }
 }
 
