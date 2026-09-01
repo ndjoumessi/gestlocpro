@@ -162,12 +162,15 @@ const REGISTRE = {
   'app.tenant.accessEnds': {
     nonMesurable:
       'Elle ne paraît qu’à un locataire dont TOUS les baux sont terminés, dans la ' +
-      'fenêtre d’accès du parc — un état que ni la démonstration (pas de bail ' +
-      'terminé dans le jeu) ni `espace-connecte` (ses locataires de sonde sont en ' +
-      'place ou sans bail, jamais partis) ne produisent. Le produire demanderait ' +
-      'un septième profil avec un bail daté au passé : c’est un lot, et la note ' +
-      'est tenue en jsdom par `finDAcces.test.tsx`, qui vérifie le texte, la date ' +
-      'et l’absence tant qu’un bail court.',
+      'fenêtre d’accès du parc — un état que la démonstration ne produit pas, ' +
+      'faute de bail terminé dans le jeu. ' +
+      'CE N’EST PLUS UN AVEU, C’EST UN RENVOI : le septième profil annoncé ici a ' +
+      'été écrit. `espace-connecte` monte un locataire dont le bail est daté à ' +
+      'trente jours dans le passé — la date se pose EN BASE, aucune route ne ' +
+      'terminant un bail au passé —, déclare la note dans sa table ' +
+      '`NOTES_SOUS_APP`, et REFUSE si elle n’est pas peinte sur `/app/mon-espace`. ' +
+      '`finDAcces.test.tsx` la tient toujours en jsdom pour la date et pour ' +
+      'l’absence tant qu’un bail court.',
   },
   'app.dashboard.scopedNotice': {
     nonMesurable:

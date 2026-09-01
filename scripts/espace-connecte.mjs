@@ -186,6 +186,12 @@ const NOTES_SOUS_APP = [
     pourquoi: 'le gestionnaire de sonde est borné à un immeuble sur deux',
   },
   {
+    cle: 'app.tenant.accessEnds',
+    profil: 'tenant·parti',
+    adresse: '/app/mon-espace',
+    pourquoi: 'son bail s’est terminé il y a trente jours, dans la fenêtre du parc',
+  },
+  {
     cle: 'app.tenants.noVacantNotice',
     profil: 'owner·vide',
     adresse: '/app/locataires',
@@ -288,6 +294,30 @@ function psql(sql) {
   return execFileSync(
     'docker',
     ['exec', 'gestlocpro-db', 'psql', '-U', 'gestlocpro', '-d', 'gestlocpro', '-tAc', sql],
+    { encoding: 'utf8' },
+  ).trim()
+}
+
+/**
+ * UNE REQUÊTE DANS LA BASE DE SONDE — et non dans celle du développeur.
+ *
+ * `psql` ci-dessus vise `gestlocpro`, la base de travail : c'est ce qu'il faut
+ * pour CRÉER et DÉTRUIRE `gestlocpro_porte`, puisqu'on ne peut pas supprimer la
+ * base où l'on est connecté. Écrire des données de sonde par cette voie-là ne
+ * fait rien du tout — l'identifiant visé n'existe pas dans la base de travail —
+ * et c'est exactement ce qui est arrivé au premier essai : zéro ligne touchée,
+ * et une plainte incompréhensible sur une note non peinte.
+ *
+ * Le garde-fou du nom vaut ici aussi : on n'écrit QUE dans une base dont le nom
+ * finit par `_porte`.
+ */
+function psqlSonde(sql) {
+  if (!NOM_BASE.endsWith('_porte')) {
+    throw new Error(`refus d'écrire hors d'une base de sonde : ${NOM_BASE}`)
+  }
+  return execFileSync(
+    'docker',
+    ['exec', 'gestlocpro-db', 'psql', '-U', 'gestlocpro', '-d', NOM_BASE, '-tAc', sql],
     { encoding: 'utf8' },
   ).trim()
 }
@@ -452,9 +482,11 @@ async function monterLeParc() {
 
   const a1 = await creerLogement('A1', 180000)
   const a2 = await creerLogement('A2', 150000)
-  /* A3 reste VACANT : les écrans qui comptent l'occupation ont besoin des deux
-     côtés, et un parc plein rend le taux d'occupation ininteressant à mesurer. */
-  await creerLogement('A3', 120000)
+  /* A3 porte le locataire PARTI — son bail est daté au passé plus bas. Il n'est
+     donc ni vacant ni occupé au sens du produit, ce qui est justement un
+     troisième état que les écrans de comptage doivent savoir rendre. La vacance
+     reste tenue par le parc VIDE, qui n'a que cela. */
+  const a3 = await creerLogement('A3', 120000)
 
   /* Le locataire entre par un code SANS logement — le chemin que l'aide du
      champ d'invitation recommande, et celui qui a produit l'impasse réparée
@@ -482,6 +514,48 @@ async function monterLeParc() {
       depositMinor: 360000,
     },
   })
+
+  /**
+   * UN LOCATAIRE PARTI, dans la fenêtre des trois mois.
+   *
+   * L'état qu'aucune mesure n'avait jamais ouvert, et que
+   * `notes-conditionnelles` avouait ne pas pouvoir produire : « ses locataires
+   * de sonde sont en place ou sans bail, jamais partis ». Or son espace a une
+   * FORME PROPRE — il garde ses quittances, il porte une échéance de fermeture,
+   * et rien d'autre du logement ne le regarde plus.
+   *
+   * LA DATE SE POSE EN BASE, faute de route. Aucune API ne termine un bail à une
+   * date passée — c'est un fait qu'on constate, pas un geste qu'on offre — et
+   * l'inventer par une route serait ajouter du produit pour mesurer. Trente
+   * jours : dedans la fenêtre par défaut de trois mois, donc l'accès tient et
+   * l'échéance s'annonce.
+   */
+  const invitationPartie = await appeler(`/api/parks/${parkId}/invitations`, {
+    cookie,
+    corps: { role: 'tenant' },
+  })
+  const partie = await appeler('/api/auth/signup', {
+    corps: {
+      email: 'partie@porte.test',
+      password: MDP,
+      fullName: 'Nkolo Arsene',
+      acceptTerms: true,
+      invitationCode: invitationPartie.corps.code,
+    },
+  })
+  await appeler(`/api/parks/${parkId}/tenants`, {
+    cookie,
+    corps: {
+      unitId: a3.id,
+      fullName: 'Nkolo Arsene',
+      phoneE164: '+237677000003',
+      userId: partie.corps.user.id,
+    },
+  })
+  psqlSonde(
+    `UPDATE "Lease" SET "endsOn" = NOW() - INTERVAL '30 days', status = 'ended' ` +
+      `WHERE "unitId" = '${a3.id}'`,
+  )
 
   /* La seconde fiche n'a PAS de compte : c'est l'état le plus courant d'un parc
      réel, et l'écran des accès a une colonne entière pour le dire. */
@@ -590,6 +664,7 @@ async function monterLeParc() {
       manager: 'gestionnaire@porte.test',
       tenant: 'locataire@porte.test',
       tenantSansLogement: 'sans-logement@porte.test',
+      tenantParti: 'partie@porte.test',
     },
     gestionnaireId: gestionnaire.corps.user.id,
   }
@@ -1122,6 +1197,16 @@ const PROFILS = [
     compte: () => parcDeSonde.comptes.tenantSansLogement,
     dossier: false,
   },
+  /* LE LOCATAIRE PARTI — son bail s'est terminé il y a trente jours, dans la
+     fenêtre des trois mois. Son espace garde ses quittances ET porte l'échéance
+     de fermeture, une note qu'aucune porte au navigateur n'avait jamais
+     peinte. */
+  {
+    cle: 'tenant·parti',
+    role: 'tenant',
+    compte: () => parcDeSonde.comptes.tenantParti,
+    dossier: false,
+  },
   /* LE GESTIONNAIRE D'UN PARC VIDE — le premier écran d'un cabinet qui vient
      d'accepter un mandat, avant toute saisie. Il cumule les deux états durs :
      aucune donnée, ET les gardes du rôle de gestion. */
@@ -1353,9 +1438,35 @@ try {
                 continue
               }
               notesCherchees += 1
+              /*
+                ON COMPARE CE QUI EST RENDU, DONC PAS LES JETONS.
+
+                Cette règle prenait les SOIXANTE PREMIERS CARACTÈRES BRUTS du
+                libellé. Aucune note n'avait de `{jeton}` si tôt, et la règle
+                marchait par chance : la première qui en a porté un — « … reste
+                ouvert jusqu'au {date} », au cinquante-huitième — a fait rougir
+                une note pourtant PEINTE, avec un message qui accusait le parc de
+                sonde. J'ai cherché le défaut dans les données, puis dans le
+                serveur, avant de le trouver ici.
+
+                On coupe donc AU PREMIER jeton. Et l'on refuse quand ce qui reste
+                est trop court pour identifier la note : un préfixe de six
+                caractères se retrouverait dans n'importe quelle phrase, et cette
+                règle rendrait un vert qui ne veut rien dire.
+              */
+              const avantLeJeton = attendu.split('{')[0].trim()
+              if (avantLeJeton.length < 20) {
+                plaintes.push(
+                  `${note.cle} : son libellé porte un \`{jeton}\` trop tôt — ` +
+                    `« ${avantLeJeton} » ne suffit pas à l'identifier dans une page. ` +
+                    'Cette table ne peut pas la vérifier par son texte ; il lui faut ' +
+                    'un marqueur, ou un libellé qui commence par des mots.',
+                )
+                continue
+              }
               const vue = await page.evaluate(
                 (texte) => (document.body.innerText ?? '').includes(texte),
-                attendu.slice(0, 60),
+                avantLeJeton.slice(0, 60),
               )
               if (!vue) {
                 plaintes.push(
@@ -1450,6 +1561,133 @@ try {
     }
   }
 } finally {
+  /* ══════════════════ LE PREMIER GESTE D'UN CABINET ══════════════════ */
+
+  /**
+   * UN PARC VIDE NE SE LIT PAS, IL SE REMPLIT — et rien ne mesurait ce geste-là.
+   *
+   * Le sixième profil ouvre les quinze écrans d'un gestionnaire dont le parc est
+   * vide, et c'est déjà ce que personne n'avait vu. Mais il ne fait que LIRE : le
+   * premier geste réel d'un cabinet qui vient d'accepter un mandat — déclarer
+   * l'immeuble qu'on lui décrit au téléphone — n'était rejoué par rien. Or c'est
+   * le geste dont dépend tout le reste : un parc qui ne se remplit pas ne sert à
+   * personne.
+   *
+   * APRÈS LE BALAYAGE, ET C'EST OBLIGATOIRE : ce geste rend le parc NON vide, et
+   * les deux profils qui vivent de sa vacuité — `owner·vide` et `manager·vide` —
+   * mesureraient alors autre chose que ce qu'ils déclarent. L'ordre n'est pas un
+   * détail de mise en page, c'est une condition de validité.
+   *
+   * PAR L'INTERFACE, et non par la route : la route a ses propres gardes au
+   * serveur, et 538 cas les tiennent. Ce qui n'était tenu par personne, c'est
+   * qu'un gestionnaire PUISSE atteindre le geste — que le bouton existe sur un
+   * parc vide, que la modale s'ouvre, que le champ accepte, et que la page rende
+   * ensuite ce qu'on vient d'y mettre.
+   */
+  {
+    const contexte = await navigateur.newContext({
+      ...SANS_AGENT_DE_SERVICE,
+      viewport: { width: LARGEURS.at(-1), height: 900 },
+      locale: 'fr-FR',
+    })
+    const connexion = await contexte.request.post(`${BASE}/api/auth/login`, {
+      data: { email: parcVideGere.compte, password: MDP },
+    })
+    if (!connexion.ok()) {
+      plaintes.push(
+        `premier geste : la connexion du gestionnaire a rendu ${connexion.status()}.`,
+      )
+    } else {
+      const page = await contexte.newPage()
+      await page.goto(`${BASE}/app/parc`, { waitUntil: 'networkidle' })
+
+      const declarer = page.getByRole('button', { name: /Ajouter un immeuble/ }).first()
+      if ((await declarer.count()) === 0) {
+        plaintes.push(
+          "premier geste : aucun bouton pour déclarer un immeuble sur un parc VIDE. " +
+            "C'est le seul geste qui puisse en sortir, et il doit être atteignable " +
+            "sans en connaître le chemin.",
+        )
+      } else {
+        await declarer.click()
+        const boite = page.getByRole('dialog').first()
+        await boite.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
+        await boite.getByLabel(/Nom de l’immeuble/).fill('Résidence du Mandat')
+        await boite.getByLabel(/Quartier/).fill('Bonapriso')
+        await boite.getByRole('button', { name: /^Enregistrer$/ }).first().click()
+
+        /* On attend que la PAGE le rende, et non que la requête parte : « le
+           serveur a dit oui » et « l'utilisateur le voit » sont deux faits, et
+           c'est le second que cette porte mesure. */
+        const parue = await page
+          .getByText('Résidence du Mandat')
+          .first()
+          .waitFor({ state: 'visible', timeout: 8000 })
+          .then(() => true)
+          .catch(() => false)
+        if (!parue) {
+          plaintes.push(
+            "premier geste : l'immeuble déclaré n'apparaît pas sur `/app/parc`. " +
+              'Le serveur a peut-être accepté ; le cabinet, lui, ne voit rien.',
+          )
+        }
+
+        /*
+          ET LE PREMIER LOGEMENT, car le geste ne s'arrête pas à l'immeuble.
+
+          Le premier essai déclarait l'immeuble puis exigeait que l'état vide
+          disparaisse — et il a rougi à juste titre : cet état dit « aucun
+          LOGEMENT », et un immeuble sans logement n'en met aucun. Ce n'était pas
+          la règle qui était fausse, c'était le geste qui était incomplet. Un
+          cabinet qui prend un mandat déclare l'immeuble ET ce qu'il contient ;
+          la séquence entière est ce qui fait sortir un parc de sa vacuité.
+        */
+        await page.getByRole('button', { name: /Ajouter un logement/ }).first().click()
+        const boiteLogement = page.getByRole('dialog').first()
+        await boiteLogement.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
+        await boiteLogement.getByLabel(/Numéro du logement/).fill('R1')
+        await boiteLogement.getByLabel(/Surface/).fill('64')
+        await boiteLogement.getByLabel(/Loyer mensuel/).fill('120000')
+        await boiteLogement.getByRole('button', { name: /^Enregistrer$/ }).first().click()
+        const logementParu = await page
+          .getByText('R1', { exact: true })
+          .first()
+          .waitFor({ state: 'visible', timeout: 8000 })
+          .then(() => true)
+          .catch(() => false)
+        if (!logementParu) {
+          plaintes.push(
+            "premier geste : le logement déclaré n'apparaît pas sur `/app/parc`.",
+          )
+        }
+
+        /*
+          ET L'ÉTAT VIDE DE LA PAGE DOIT AVOIR DISPARU. Un écran qui garderait
+          « aucun immeuble » à côté de l'immeuble qu'on vient d'y mettre dirait
+          deux choses contraires en même temps.
+
+          DE LA PAGE, et non n'importe lequel : le premier essai comptait TOUS
+          les `[data-etat-vide]` et a rougi sur un état parfaitement juste —
+          celui de l'immeuble NEUF, qui n'a encore aucun logement. « Le parc est
+          vide » et « cet immeuble est vide » sont deux phrases différentes, et
+          seule la première devait disparaître. Le niveau 2 est celui qui vide
+          une page entière, comme la règle des zéros plus haut le lit déjà.
+        */
+        const videEncore = await page.evaluate(() => {
+          const principal = document.querySelector('main') ?? document.body
+          return principal.querySelectorAll('[data-etat-vide="2"]').length
+        })
+        if (videEncore > 0) {
+          plaintes.push(
+            "premier geste : l'état vide de la PAGE subsiste alors que le parc ne l'est plus.",
+          )
+        }
+      }
+      await page.close()
+    }
+    await contexte.close()
+  }
+
   await navigateur.close()
   serveur.kill()
 }
@@ -1614,6 +1852,7 @@ if (etatsVidesInspectes < ETATS_VIDES_ATTENDUS) {
   )
 }
 
+
 if (plaintes.length > 0) {
   console.error(`\n✗ espace-connecte : ${plaintes.length} plainte(s).\n`)
   for (const p of plaintes) console.error('  ▸ ' + p + '\n')
@@ -1633,5 +1872,7 @@ console.log(
     `  ${textesAudites} textes confrontés au seuil WCAG AA, dans les DEUX thèmes ; ` +
     `${nomsExamines} commandes cherchées sans nom.\n` +
     `  ${ciblesSondees} cibles sondées au doigt, sous le plancher de ${PLANCHER_CIBLE} px.\n` +
+    '  Le PREMIER GESTE d’un cabinet est rejoué en entier : un immeuble et son logement\n' +
+    '  déclarés À L’ÉCRAN, sur un parc qui n’en avait aucun.\n' +
     "  Elle ne dit RIEN des MODALES, qu'aucune de ses règles n'ouvre — voir son en-tête.",
 )
