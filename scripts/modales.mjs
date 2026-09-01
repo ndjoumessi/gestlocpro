@@ -184,6 +184,39 @@ const MODALES = [
   */
   { nom: 'Tariffs', adresse: '/demo/releves', bouton: /^Prix de refacturation$|^Rebilling prices$/, defil: { 360: 11, 1280: 0 }, defilLarge: { 360: 76, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'ParkSettings', adresse: '/demo/parc', bouton: /^Corriger le parc$|^Correct the park$/, defil: { 360: 48, 1280: 0 }, defilLarge: { 360: 48, 1280: 0 }, avant: { 360: 35, 1280: 0 } },
+  /*
+    LA MÊME MODALE, DEVISE CHANGÉE — un second état, et une note que personne
+    n'atteignait.
+
+    `notes-conditionnelles` avouait `app.parkSettings.currencyWarning` en
+    désignant ce script : « le geste existe et il est mesurable ; il appartient
+    à `modales`, qui tient déjà `ParkSettings` ». Il ne restait qu'à le faire.
+
+    L'avertissement est purement CLIENT — `devise !== origine.currency` — donc
+    la démonstration l'atteint sans serveur. Il change aussi le bouton de
+    validation en `danger` : c'est un autre contenu ET une autre hauteur dans la
+    même boîte.
+
+    `note` est ce qui distingue cette entrée de la précédente : elle EXIGE que
+    la note paraisse. Sans elle, un geste qui cesserait de changer la devise
+    mesurerait l'état d'ouverture une seconde fois, en silence.
+  */
+  {
+    nom: 'ParkSettings·devise',
+    adresse: '/demo/parc',
+    bouton: /^Corriger le parc$|^Correct the park$/,
+    apres: (page) =>
+      page.locator('select[name="currency"]').selectOption('EUR'),
+    note: /ne seront pas convertis|will not be converted/,
+    /* 48 → 203 px à 360 en français, 138 en anglais : la note fait quatre lignes
+       dans une langue et trois dans l'autre. C'est le prix d'un avertissement
+       qu'on ne veut PAS raccourcir — il dit qu'aucun montant ne sera converti,
+       et l'abréger sur un téléphone serait le rendre inoffensif là où il compte
+       le plus. À 1280 il reste nul : la boîte a la place. */
+    defil: { 360: 205, 1280: 0 },
+    defilLarge: { 360: 205, 1280: 0 },
+    avant: { 360: 35, 1280: 0 },
+  },
   { nom: 'AddBuilding', adresse: '/demo/parc', bouton: /^Ajouter un immeuble$|^Add a building$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'AddUnit', adresse: '/demo/parc', bouton: /^Ajouter un logement$|^Add a unit$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'OpenWork', adresse: '/demo/travaux', bouton: /^Ouvrir un chantier$|^Open a job$/, defil: { 360: 130, 1280: 0 }, defilLarge: { 360: 138, 1280: 0 }, avant: { 360: 1056, 1280: 913 } },
@@ -507,8 +540,14 @@ const LANGUES = ['fr', 'en']
   largeurs, deux chasses.
   Une modale n'a pas un état, elle en a autant que ses champs, et le compte le
   dit maintenant.
+
+  80 → 84 (2026-09-02) : `ParkSettings·devise`, le second état de la modale de
+  correction du parc. Comme `InviteGestionnaire`, ce n'est pas une modale de
+  plus mais un ÉTAT de plus — et c'est lui qui éteint l'aveu que
+  `notes-conditionnelles` portait sur `app.parkSettings.currencyWarning`, en
+  désignant ce script comme son propriétaire légitime.
 */
-const ATTENDUS = 80
+const ATTENDUS = 84
 const NON_OUVRABLES_ATTENDUES = 0
 
 /**
@@ -781,6 +820,29 @@ try {
           try {
             await modale.apres(page)
             await page.waitForTimeout(250)
+            /*
+              LA NOTE EXIGÉE, quand l'entrée en déclare une.
+
+              Un geste qui cesserait d'atteindre l'état demandé — un sélecteur
+              renommé, une option disparue — mesurerait l'état d'OUVERTURE une
+              seconde fois, en silence, et ce script rendrait vert sur une
+              modale qu'il n'a pas ouverte comme il le croit. La note est la
+              preuve que le geste a porté.
+            */
+            if (modale.note) {
+              const boite = page.getByRole('dialog').first()
+              const texte = (await boite.innerText().catch(() => '')) || ''
+              if (!modale.note.test(texte)) {
+                plaintes.push(
+                  `${nom} : le geste est passé mais l'état demandé n'est PAS là — ` +
+                    `la note ${modale.note} ne paraît pas dans la boîte.\n` +
+                    "   C'est donc l'état d'ouverture qui allait être mesuré une " +
+                    'seconde fois.',
+                )
+                await contexte.close()
+                continue
+              }
+            }
           } catch (erreur) {
             plaintes.push(
               `${nom} : le geste dans la modale a échoué — ${String(erreur).split('\n')[0]}\n` +
