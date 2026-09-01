@@ -356,6 +356,21 @@ async function servir() {
     cwd: RACINE,
     stdio: 'ignore',
   })
+  /*
+    L'ORPHELIN S'EMPÊCHE ICI, il ne se détecte plus seulement. Le contrôle de
+    pré-vol ci-dessus a été écrit APRÈS avoir trouvé quatre prévisualisations
+    orphelines — la plus ancienne depuis deux jours et dix-huit heures — nées
+    de portes interrompues avant leur `kill` : un Ctrl-C tue le script et
+    laisse le serveur. Ces deux lignes attrapent l'interruption et emportent
+    le fils avec elles ; le pré-vol reste, pour les morts qu'aucun signal
+    n'annonce — un SIGKILL, une machine éteinte.
+  */
+  const emporter = () => {
+    fils.kill()
+    process.exit(130)
+  }
+  process.once('SIGINT', emporter)
+  process.once('SIGTERM', emporter)
   for (let i = 0; i < 100; i++) {
     try {
       if ((await fetch(BASE + '/')).ok) return fils
