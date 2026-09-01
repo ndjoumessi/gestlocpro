@@ -37,6 +37,15 @@ declare module 'express-serve-static-core' {
        * s'en souvenir.
        */
       immeubles: string[] | null
+      /**
+       * Les LOGEMENTS confiés, quand la maille de l'immeuble est trop large.
+       *
+       * `null` a le même sens que pour les immeubles : rien ne borne. Le
+       * périmètre est l'UNION des deux listes, et les deux valent `null`
+       * ensemble ou aucune — un gestionnaire à qui l'on a confié un logement est
+       * borné, y compris sur les immeubles.
+       */
+      unites: string[] | null
     }
   }
 }
@@ -80,6 +89,7 @@ export async function exigerAppartenance(req: Request, res: Response, next: Next
          l'adhésion, au même titre que le rôle, et le chercher route par route
          suffirait à ce qu'un chemin l'oublie. */
       buildings: { select: { buildingId: true } },
+      units: { select: { unitId: true } },
     },
   })
 
@@ -100,11 +110,18 @@ export async function exigerAppartenance(req: Request, res: Response, next: Next
    * borner en plus par immeuble ne retirerait rien et ajouterait une clause à
    * tenir d'accord avec l'autre.
    */
-  const confies = adhesion.buildings.map((b) => b.buildingId)
+  const confiesImmeubles = adhesion.buildings.map((b) => b.buildingId)
+  const confiesUnites = adhesion.units.map((u) => u.unitId)
+  /* BORNÉ DÈS QU'UNE DES DEUX LISTES PORTE QUELQUE CHOSE, et les deux passent à
+     `null` ensemble. Les traiter séparément ferait d'un gestionnaire à qui l'on
+     a confié UN LOGEMENT quelqu'un de non borné côté immeubles — donc de non
+     borné du tout, puisque le portefeuille part des immeubles. */
+  const borne = adhesion.role === 'manager' && (confiesImmeubles.length > 0 || confiesUnites.length > 0)
   req.adhesion = {
     parkId: adhesion.parkId,
     role: adhesion.role,
-    immeubles: adhesion.role === 'manager' && confies.length > 0 ? confies : null,
+    immeubles: borne ? confiesImmeubles : null,
+    unites: borne ? confiesUnites : null,
   }
   next()
 }
@@ -123,6 +140,7 @@ export async function exigerAppartenance(req: Request, res: Response, next: Next
  */
 export function porteeDesImmeubles(adhesion: {
   immeubles: string[] | null
+  unites: string[] | null
 }): Prisma.BuildingWhereInput {
   /**
    * SOUS `AND`, ET NON SOUS `id` — le piège que ce dépôt a déjà payé une fois.
@@ -141,7 +159,83 @@ export function porteeDesImmeubles(adhesion: {
    * `AND` ne peut rien écraser : il s'ajoute aux conditions au lieu de s'y
    * substituer, et c'est la seule forme de ce fragment qui soit sûre partout.
    */
+  if (!adhesion.immeubles) return {}
+  /**
+   * L'IMMEUBLE QUI PORTE UN LOGEMENT CONFIÉ APPARAÎT, VIDE.
+   *
+   * Un logement sans son immeuble n'a ni nom ni quartier : l'écran du parc le
+   * rendrait orphelin, et le dossier d'un logement ne saurait pas où il est. Le
+   * contenant entre donc dans le périmètre dès qu'il porte un contenu confié.
+   *
+   * VOIR LE CONTENANT N'EST PAS VOIR LE CONTENU : c'est `porteeDesUnites`,
+   * appliquée à la liste des logements de cet immeuble, qui vide ce qu'on ne lui
+   * a pas confié. Sans elle, cette clause-ci ouvrirait tout l'immeuble — et ce
+   * serait exactement le défaut que ce lot existe pour éviter.
+   */
+  return {
+    AND: [
+      {
+        OR: [
+          { id: { in: adhesion.immeubles } },
+          { units: { some: { id: { in: adhesion.unites ?? [] } } } },
+        ],
+      },
+    ],
+  }
+}
+
+/**
+ * LE PÉRIMÈTRE, EN CLAUSE DE REQUÊTE — pour `Unit`.
+ *
+ * C'est celle qui porte le vrai travail depuis que la maille descend au
+ * logement : vingt-neuf lectures du routeur partent d'une unité ou d'un bail,
+ * et c'est là que le périmètre se pose. La clause des immeubles ne sert plus
+ * qu'aux trois lectures qui partent d'un immeuble.
+ *
+ * UNE UNITÉ EST DANS LE PÉRIMÈTRE si son immeuble est confié, OU si elle l'est
+ * elle-même. L'union, jamais l'intersection : les deux mailles s'ajoutent.
+ *
+ * SOUS `AND`, ET NON À PLAT — le piège que ce dépôt a payé deux fois. Ce
+ * fragment se compose avec des clauses qui portent déjà un `id` ou un `OR` :
+ * `{ id: unitId, building: { parkId }, ...portee }` écraserait l'un ou l'autre.
+ * `AND` s'ajoute au lieu de se substituer.
+ */
+/**
+ * LES IMMEUBLES QU'ON TIENT VRAIMENT — plus stricte que la précédente.
+ *
+ * `porteeDesImmeubles` fait apparaître un immeuble dès qu'il PORTE un logement
+ * confié : sans quoi le logement serait orphelin, sans nom ni quartier. C'est
+ * juste pour LIRE, et faux pour ÉCRIRE.
+ *
+ * Ajouter un logement dans cet immeuble, ou le supprimer, suppose qu'on le
+ * TIENNE — pas qu'on en gère deux studios. Ajouter au parc de quelqu'un
+ * d'autre n'est pas gérer le sien, et supprimer un immeuble dont on ne tient
+ * qu'une part est encore moins défendable.
+ *
+ * DEUX CLAUSES POUR DEUX QUESTIONS, donc, et le nom les distingue : « ce que je
+ * vois » et « ce que je tiens ».
+ */
+export function porteeDesImmeublesTenus(adhesion: {
+  immeubles: string[] | null
+}): Prisma.BuildingWhereInput {
   return adhesion.immeubles ? { AND: [{ id: { in: adhesion.immeubles } }] } : {}
+}
+
+export function porteeDesUnites(adhesion: {
+  immeubles: string[] | null
+  unites: string[] | null
+}): Prisma.UnitWhereInput {
+  if (!adhesion.immeubles) return {}
+  return {
+    AND: [
+      {
+        OR: [
+          { buildingId: { in: adhesion.immeubles } },
+          { id: { in: adhesion.unites ?? [] } },
+        ],
+      },
+    ],
+  }
 }
 
 /**

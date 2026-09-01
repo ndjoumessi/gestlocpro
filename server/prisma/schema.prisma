@@ -246,9 +246,11 @@ model Membership {
   status  MembershipStatus @default(active)
   /// Raison sociale du gestionnaire, collectée à l'inscription.
   company String?
-  /// Les immeubles CONFIÉS à cette personne. Vide = tout le parc. Voir
-  /// `MembershipBuilding`, dont l'en-tête porte le raisonnement.
+  /// Les immeubles CONFIÉS à cette personne. Voir `MembershipBuilding`.
   buildings MembershipBuilding[]
+  /// Les LOGEMENTS confiés, quand la maille de l'immeuble est trop large. Le
+  /// périmètre est l'UNION des deux ; vide des deux côtés = tout le parc.
+  units MembershipUnit[]
   createdAt DateTime @default(now())
 
   /// Une personne n'a qu'un rôle par parc : être à la fois propriétaire et
@@ -289,6 +291,33 @@ model MembershipBuilding {
 
   @@id([membershipId, buildingId])
   @@index([buildingId])
+}
+
+/// UN LOGEMENT CONFIÉ, quand l'immeuble est une maille trop large.
+///
+/// `MembershipBuilding` a posé le périmètre à l'immeuble, et l'a motivé : « on
+/// confie un immeuble à un gestionnaire, pas trois appartements sur huit ».
+/// C'est la maille du métier dans le cas général, et elle laisse dehors le cas
+/// qui existe vraiment : un propriétaire qui confie DEUX studios d'une résidence
+/// dont il garde le reste.
+///
+/// LES DEUX MAILLES SE CUMULENT, elles ne se remplacent pas. Le périmètre d'un
+/// gestionnaire est l'UNION de ses immeubles et de ses logements ; l'une ne
+/// borne jamais l'autre, et vide des deux côtés vaut toujours « tout le parc ».
+///
+/// CE QU'UN LOGEMENT CONFIÉ NE DONNE PAS : l'immeuble qui le porte APPARAÎT —
+/// un logement sans son immeuble n'a ni nom ni quartier — mais vide de ses
+/// autres logements. Voir le contenant n'est pas voir le contenu. Et créer un
+/// logement dans cet immeuble reste refusé : on ne le tient pas.
+model MembershipUnit {
+  membershipId String @db.Uuid
+  membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  unitId       String @db.Uuid
+  unit         Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+
+  @@id([membershipId, unitId])
+  @@index([unitId])
 }
 
 /// Invitation à rejoindre un parc — locataire ou gestionnaire.
@@ -369,6 +398,8 @@ model Unit {
 
   @@unique([buildingId, label])
   @@index([buildingId])
+  /// Les gestionnaires à qui CE logement est confié. Voir `MembershipUnit`.
+  gestionnaires MembershipUnit[]
 }
 
 // ─── Locataires et baux ──────────────────────────────────────────────────────

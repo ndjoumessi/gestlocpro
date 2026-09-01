@@ -265,14 +265,21 @@ const MODALES = [
     avant: { 360: 0, 1280: 0 },
   },
   /*
-    CONFIER DES IMMEUBLES — une liste de CASES, dont la hauteur suit le parc.
+    CONFIER DES IMMEUBLES ET DES LOGEMENTS — une liste de CASES à deux niveaux.
 
     C'est la seule modale du produit dont le contenu grandit avec la donnée :
     trois immeubles dans la démonstration, mais un parc réel en porte dix. Le
     plafond de défilement ne dit donc pas qu'elle tiendra toujours ; il dit
     qu'elle tient POUR CE PARC-LÀ, et c'est déjà ce que ce script promet.
+
+    0 → 57 px à 360 (2026-09-01) : la maille est descendue au LOGEMENT, et la
+    modale liste désormais les logements sous chaque immeuble non coché. Quinze
+    cases au lieu de trois. Le défilement est légitime ici — c'est une LISTE, et
+    la refuser reviendrait à interdire au produit d'avoir plus de trois
+    immeubles. À 1280 il reste nul, et en grande chasse aussi : les cases sont
+    étroites, c'est la hauteur seule qui bouge.
   */
-  { nom: 'ConfierImmeubles', adresse: '/demo/acces', bouton: /^Confier des immeubles$|^Assign buildings$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'ConfierImmeubles', adresse: '/demo/acces', bouton: /^Confier des immeubles$|^Assign buildings$/, defil: { 360: 57, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'Announce', adresse: '/demo/locataires', bouton: /^Prévenir les locataires$|^Notify tenants$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'Reply', adresse: '/demo/travaux', bouton: /^Répondre$|^Reply$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /* Le seul écran de la démonstration où le rôle change ce qui est rendu : la

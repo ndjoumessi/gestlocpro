@@ -35,6 +35,8 @@ const PARC = '11111111-2222-4333-8444-555555555555'
 const BON = 'bbbbbbbb-1111-4000-8111-111111111111'
 const AKW = 'aaaaaaaa-2222-4000-8222-222222222222'
 const DES = 'dddddddd-3333-4000-8333-333333333333'
+const S1 = '11111111-4444-4000-8444-444444444444'
+const S2 = '22222222-5555-4000-8555-555555555555'
 
 function sessionDuRole(role: Role): EtatSession {
   return {
@@ -47,9 +49,17 @@ function sessionDuRole(role: Role): EtatSession {
 /** Un parc à trois immeubles, un gestionnaire borné à deux, un autre libre. */
 const REGISTRE = {
   buildings: [
-    { id: BON, name: 'Résidence Bonamoussadi', district: 'Bonamoussadi' },
-    { id: AKW, name: 'Immeuble Akwa Nord', district: 'Akwa' },
-    { id: DES, name: 'Villa Deïdo', district: 'Deïdo' },
+    {
+      id: BON,
+      name: 'Résidence Bonamoussadi',
+      district: 'Bonamoussadi',
+      units: [
+        { id: S1, label: 'S1' },
+        { id: S2, label: 'S2' },
+      ],
+    },
+    { id: AKW, name: 'Immeuble Akwa Nord', district: 'Akwa', units: [] },
+    { id: DES, name: 'Villa Deïdo', district: 'Deïdo', units: [] },
   ],
   members: [
     {
@@ -74,6 +84,7 @@ const REGISTRE = {
       fullName: 'Diane Fotso',
       email: 'diane@example.com',
       buildingIds: [BON, AKW],
+      unitIds: [],
       since: '2025-01-15T09:00:00.000Z',
     },
     {
@@ -87,6 +98,20 @@ const REGISTRE = {
       email: 'cabinet@example.com',
       buildingIds: [],
       since: '2025-06-01T09:00:00.000Z',
+    },
+    {
+      id: 'm-studio',
+      role: 'manager',
+      userId: 'u-studio',
+      tenantId: null,
+      tenantName: null,
+      tenantUnitLabel: null,
+      fullName: 'Agence Deïdo',
+      email: 'agence@example.com',
+      buildingIds: [],
+      /* BORNÉE À UN SEUL STUDIO — la maille que ce lot ajoute. */
+      unitIds: [S1],
+      since: '2025-09-01T09:00:00.000Z',
     },
     {
       id: 'm-locataire',
@@ -128,7 +153,11 @@ beforeEach(() => {
   })
   serveur.quand('PATCH', `/parks/${PARC}/memberships/m-libre/immeubles`, {
     status: 200,
-    body: { buildingIds: [] },
+    body: { buildingIds: [], unitIds: [] },
+  })
+  serveur.quand('PATCH', `/parks/${PARC}/memberships/m-studio/immeubles`, {
+    status: 200,
+    body: { buildingIds: [], unitIds: [] },
   })
 })
 
@@ -172,6 +201,71 @@ describe('la rangée dit sur quoi il a la main', () => {
     await ouvrirLesAcces()
     expect(within(rangeeDe(COMPTE_FICTIF.fullName)).queryByText(/tout le parc/i)).toBeNull()
     expect(within(rangeeDe('Charles Ngassa')).queryByText(/tout le parc/i)).toBeNull()
+  })
+})
+
+describe('confier des LOGEMENTS', () => {
+  /**
+   * LA MAILLE FINE, et ce que la rangée en dit.
+   *
+   * Le lot de la délégation a posé le périmètre à l'immeuble, en le motivant :
+   * « on confie un immeuble à un gestionnaire, pas trois appartements sur
+   * huit ». C'est la maille du métier dans le cas général, et elle laisse dehors
+   * le cas qui existe : un propriétaire qui confie DEUX studios d'une résidence
+   * dont il garde le reste.
+   */
+  it('nomme le logement AVEC son immeuble, jamais seul', async () => {
+    await ouvrirLesAcces()
+
+    /* « S1 » ne dit rien sur un parc de cinq résidences : trois d'entre elles
+       ont un S1. Le nom de l'immeuble est ce qui le situe. */
+    expect(
+      within(rangeeDe('Agence Deïdo')).getByText(/Résidence Bonamoussadi · S1/),
+    ).toBeInTheDocument()
+  })
+
+  it('envoie les DEUX listes, et le logement coché avec', async () => {
+    await ouvrirLesAcces()
+    const user = userEvent.setup()
+
+    await user.click(
+      within(rangeeDe('Cabinet Njoya')).getByRole('button', { name: 'Confier des immeubles' }),
+    )
+    const modale = within(screen.getByRole('dialog'))
+    await user.click(modale.getByRole('checkbox', { name: 'S2' }))
+    await user.click(modale.getByRole('button', { name: 'Confier' }))
+
+    await waitFor(() => expect(envoi()).toBeDefined())
+    const corps = envoi()?.corps as { buildingIds: string[]; unitIds: string[] }
+    expect(corps.unitIds, 'le logement coché n’est pas parti').toEqual([S2])
+    expect(corps.buildingIds).toEqual([])
+  })
+
+  it('efface les logements d’un immeuble qu’on coche en entier', async () => {
+    /* Le périmètre est leur UNION : cocher l'immeuble rend chaque logement
+       redondant. Les laisser inviterait à les décocher en croyant retirer
+       quelque chose — et les garder en mémoire les ferait réapparaître au
+       décochage de l'immeuble. */
+    await ouvrirLesAcces()
+    const user = userEvent.setup()
+
+    await user.click(
+      within(rangeeDe('Agence Deïdo')).getByRole('button', { name: 'Confier des immeubles' }),
+    )
+    const modale = within(screen.getByRole('dialog'))
+    expect((modale.getByRole('checkbox', { name: 'S1' }) as HTMLInputElement).checked).toBe(true)
+
+    await user.click(modale.getByRole('checkbox', { name: /Bonamoussadi/ }))
+    expect(
+      modale.queryByRole('checkbox', { name: 'S1' }),
+      'les cases des logements restent visibles sous un immeuble coché',
+    ).toBeNull()
+
+    await user.click(modale.getByRole('button', { name: 'Confier' }))
+    await waitFor(() => expect(envoi()).toBeDefined())
+    const corps = envoi()?.corps as { buildingIds: string[]; unitIds: string[] }
+    expect(corps.buildingIds).toEqual([BON])
+    expect(corps.unitIds, 'le studio est resté dans la liste sous son propre immeuble').toEqual([])
   })
 })
 

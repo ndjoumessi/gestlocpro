@@ -132,6 +132,10 @@ export function Access() {
    */
   const [aConfier, setAConfier] = useState<MembreApi | null>(null)
   const [choixImmeubles, setChoixImmeubles] = useState<Set<string>>(new Set())
+  /* Le second brouillon, à la maille du logement. Deux ensembles et non un :
+     confier un immeuble et confier ses logements un à un ne veulent pas dire la
+     même chose — le premier suit l'immeuble quand il grandit, le second non. */
+  const [choixLogements, setChoixLogements] = useState<Set<string>>(new Set())
   /**
    * L'ÉMISSION D'UN CODE, ENFIN SUR L'ÉCRAN QUI PARLE DES CODES.
    *
@@ -347,13 +351,22 @@ export function Access() {
                       bail — une autre règle, qui ne se dit pas en immeubles. */}
                   {m.role === 'manager' && (
                     <span className="text-body text-muted">
-                      {(m.buildingIds ?? []).length === 0
+                      {(m.buildingIds ?? []).length === 0 && (m.unitIds ?? []).length === 0
                         ? t('app.access.scopeAll')
                         : t('app.access.scopeSome', {
-                            names: immeublesDuParc
-                              .filter((i) => (m.buildingIds ?? []).includes(i.id))
-                              .map((i) => i.name)
-                              .join(', '),
+                            names: [
+                              ...immeublesDuParc
+                                .filter((i) => (m.buildingIds ?? []).includes(i.id))
+                                .map((i) => i.name),
+                              /* LES LOGEMENTS PORTENT LE NOM DE LEUR IMMEUBLE.
+                                 « S1 » ne dit rien sur un parc de cinq
+                                 résidences : trois d'entre elles ont un S1. */
+                              ...immeublesDuParc.flatMap((i) =>
+                                (i.units ?? [])
+                                  .filter((u) => (m.unitIds ?? []).includes(u.id))
+                                  .map((u) => `${i.name} · ${u.label}`),
+                              ),
+                            ].join(', '),
                           })}
                     </span>
                   )}
@@ -453,7 +466,9 @@ export function Access() {
                         Il ne s'affiche que s'il y a de quoi choisir : un parc
                         d'un seul immeuble n'a rien à répartir, et proposer le
                         geste y ferait promettre une finesse qui n'existe pas. */}
-                    {m.role === 'manager' && immeublesDuParc.length > 1 && (
+                    {m.role === 'manager' &&
+                      (immeublesDuParc.length > 1 ||
+                        immeublesDuParc.reduce((n, i) => n + (i.units ?? []).length, 0) > 1) && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -462,6 +477,7 @@ export function Access() {
                         onClick={() => {
                           setAConfier(m)
                           setChoixImmeubles(new Set(m.buildingIds ?? []))
+                          setChoixLogements(new Set(m.unitIds ?? []))
                         }}
                       >
                         {t('app.access.scopeAction')}
@@ -692,13 +708,18 @@ export function Access() {
                 onClick={() => {
                   const membre = aConfier
                   const choisis = [...choixImmeubles]
+                  const logements = [...choixLogements]
                   setAConfier(null)
                   /* `agir` relit le registre après coup plutôt que de retoucher
                      la liste en mémoire : le même geste que le lien, et pour la
                      même raison — deux écrans ouverts divergeraient. */
                   void agir(
                     membre.id,
-                    () => api.setManagerBuildings(parkId!, membre.id, choisis),
+                    () =>
+                      api.setManagerBuildings(parkId!, membre.id, {
+                        buildingIds: choisis,
+                        unitIds: logements,
+                      }),
                     t('app.access.scopeSaved'),
                   )
                 }}
@@ -711,18 +732,55 @@ export function Access() {
           <div className="flex flex-col gap-3">
             <Notice tone="neutral">{t('app.access.scopeEmptyMeansAll')}</Notice>
             {immeublesDuParc.map((immeuble) => (
-              <Checkbox
-                key={immeuble.id}
-                label={immeuble.name}
-                hint={immeuble.district}
-                checked={choixImmeubles.has(immeuble.id)}
-                onChange={(e) => {
-                  const suivant = new Set(choixImmeubles)
-                  if (e.target.checked) suivant.add(immeuble.id)
-                  else suivant.delete(immeuble.id)
-                  setChoixImmeubles(suivant)
-                }}
-              />
+              <div key={immeuble.id} className="flex flex-col gap-2">
+                <Checkbox
+                  label={immeuble.name}
+                  hint={immeuble.district}
+                  checked={choixImmeubles.has(immeuble.id)}
+                  onChange={(e) => {
+                    const suivant = new Set(choixImmeubles)
+                    if (e.target.checked) suivant.add(immeuble.id)
+                    else suivant.delete(immeuble.id)
+                    setChoixImmeubles(suivant)
+                    /* COCHER L'IMMEUBLE VIDE SES LOGEMENTS du brouillon. Le
+                       périmètre est leur union : les garder ferait réapparaître,
+                       au décochage de l'immeuble, une sélection que personne
+                       n'a refaite. */
+                    if (e.target.checked) {
+                      const sansLesSiens = new Set(choixLogements)
+                      for (const u of immeuble.units ?? []) sansLesSiens.delete(u.id)
+                      setChoixLogements(sansLesSiens)
+                    }
+                  }}
+                />
+                {/*
+                  LES LOGEMENTS S'EFFACENT QUAND L'IMMEUBLE EST COCHÉ.
+
+                  Le périmètre est leur UNION : cocher l'immeuble rend chaque
+                  logement redondant, et laisser les cases visibles inviterait à
+                  les décocher en croyant retirer quelque chose. Elles
+                  disparaissent donc, et le brouillon des logements est
+                  VIDÉ — sans quoi décocher l'immeuble plus tard ferait
+                  réapparaître une sélection que personne n'a refaite.
+                */}
+                {!choixImmeubles.has(immeuble.id) && (immeuble.units ?? []).length > 0 && (
+                  <div className="ml-6 flex flex-col gap-1.5">
+                    {(immeuble.units ?? []).map((logement) => (
+                      <Checkbox
+                        key={logement.id}
+                        label={logement.label}
+                        checked={choixLogements.has(logement.id)}
+                        onChange={(e) => {
+                          const suivant = new Set(choixLogements)
+                          if (e.target.checked) suivant.add(logement.id)
+                          else suivant.delete(logement.id)
+                          setChoixLogements(suivant)
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         </Modal>
@@ -918,6 +976,14 @@ interface MembreApi {
    * tait alors plutôt que d'affirmer un périmètre qu'il ignore.
    */
   buildingIds?: string[]
+  /**
+   * Les LOGEMENTS confiés, l'autre moitié du périmètre.
+   *
+   * Le registre disait « il gère ces immeubles » et taisait « et ces deux
+   * studios ». Facultatif, comme son voisin : un serveur d'avant ce lot ne le
+   * rend pas, et l'écran se tait alors plutôt que d'affirmer un périmètre.
+   */
+  unitIds?: string[]
   since: string
 }
 
@@ -953,6 +1019,8 @@ interface ImmeubleApi {
   id: string
   name: string
   district: string
+  /** Ses logements, pour confier à la maille fine. Absent d'un serveur d'avant. */
+  units?: { id: string; label: string }[]
 }
 
 interface RegistreApi {

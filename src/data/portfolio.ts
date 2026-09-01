@@ -354,7 +354,14 @@ export const ACCES_DEMO = {
      que l'écran tire les cases à cocher pour CONFIER. Recopiés de `BUILDINGS`
      plutôt qu'importés d'une autre forme : la démonstration doit montrer la
      RÉPONSE du serveur, dont ce registre est la doublure. */
-  buildings: BUILDINGS.map((b) => ({ id: b.id, name: b.name, district: b.district })),
+  buildings: BUILDINGS.map((b) => ({
+    id: b.id,
+    name: b.name,
+    district: b.district,
+    /* LES LOGEMENTS, sous leur immeuble : c'est la seule forme où « deux studios
+       de la Résidence » se coche sans savoir lequel appartient à quoi. */
+    units: UNITS.filter((u) => u.buildingId === b.id).map((u) => ({ id: u.id, label: u.label })),
+  })),
   members: [
     {
       id: 'demo-membre-1',
@@ -377,6 +384,7 @@ export const ACCES_DEMO = {
          rendrait la ligne « gère tout le parc » — vrai, mais c'est l'état par
          défaut, celui qu'on voit déjà partout ailleurs. */
       buildingIds: ['bon', 'akw'],
+      unitIds: [],
       since: '2025-01-15',
     },
     {

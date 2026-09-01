@@ -561,11 +561,15 @@ export const api = {
    * là-bas, sur la route ; il est rappelé ici parce que l'appelant qui envoie
    * `[]` doit savoir qu'il élargit et non qu'il ferme.
    */
-  setManagerBuildings: (parkId: string, membershipId: string, buildingIds: string[]) =>
-    requete<{ buildingIds: string[] }>(`/parks/${parkId}/memberships/${membershipId}/immeubles`, {
-      method: 'PATCH',
-      body: JSON.stringify({ buildingIds }),
-    }),
+  setManagerBuildings: (
+    parkId: string,
+    membershipId: string,
+    portee: { buildingIds: string[]; unitIds: string[] },
+  ) =>
+    requete<{ buildingIds: string[]; unitIds: string[] }>(
+      `/parks/${parkId}/memberships/${membershipId}/immeubles`,
+      { method: 'PATCH', body: JSON.stringify(portee) },
+    ),
 
   linkTenantAccount: (parkId: string, tenantId: string, userId: string) =>
     requete<void>(`/parks/${parkId}/tenants/${tenantId}/compte`, {
