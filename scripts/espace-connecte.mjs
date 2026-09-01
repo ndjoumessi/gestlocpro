@@ -65,12 +65,9 @@
  *
  * ═══ CE QU'ELLE NE DIT PAS ═══
  *
- * Que les écrans sont BEAUX, ni que les CIBLES se touchent : `mesure-ui` tient
- * cette règle-là sur `/demo`, et sa sonde ne vit pas encore dans un module
- * partagé — c'est le dernier morceau de ce trou, et il est nommé plutôt que
- * comblé.
- *
- * Ni ce que produisent les MODALES, qu'aucune de ces règles n'ouvre.
+ * Que les écrans sont BEAUX. Et rien de ce que produisent les MODALES, qu'aucune
+ * de ces règles n'ouvre : `modales` les tient en géométrie, pas en contraste, ni
+ * en cibles, ni en interpolation.
  *
  * LE CONTRASTE ET LES NOMS, EUX, Y SONT — et le SOMBRE avec eux. C'était le
  * trou principal de cette porte : sous `/demo` il n'existe ni garde de rôle, ni
@@ -121,6 +118,9 @@ import { fileURLToPath } from 'node:url'
 import { exit } from 'node:process'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
 import {
+  MESURER_CIBLES,
+  PLANCHER_CIBLE,
+  RAYON_SONDAGE,
   MESURER_DEFILEMENT_LATERAL,
   MESURER_GABARITS,
   MESURER_RENDU_MINIMAL,
@@ -809,6 +809,8 @@ let plisInspectes = 0
 /* Ce que les deux audits ont réellement examiné — voir leur garde du garde. */
 let textesAudites = 0
 let nomsExamines = 0
+/* Combien de cibles ont été réellement sondées — voir leur garde du garde. */
+let ciblesSondees = 0
 
 const parc = await (async () => {
   console.log('  préparation de la base…')
@@ -1030,6 +1032,37 @@ try {
             )
           }
 
+          /*
+            LES CIBLES DE 44 px — le dernier morceau du trou de cette porte.
+
+            `mesure-ui` tient cette règle sur `/demo` depuis des lots, et son
+            en-tête dit ce qu'elle a trouvé en naissant : « un lien de 18 × 17 px
+            qui était la seule entrée vers l'écran d'un logement ». Ce qu'elle ne
+            peut pas atteindre, c'est ce que `/demo` ne rend pas — la coquille du
+            locataire sous une adhésion, le parc vide, le gestionnaire borné.
+
+            AUCUNE TOLÉRANCE ICI, et pour la même raison que le défilement
+            latéral : `mesure-ui` en tient une liste, mesurée sur SA surface. Une
+            dispense se mérite sur les pixels qu'elle couvre. Les exemptions
+            déclarées AU SITE, elles, voyagent avec le produit — c'est leur
+            intérêt, et la sonde les rend dans `raisonsVues`.
+
+            Elle ne coûte aucun chargement : la page est là, à la bonne largeur.
+          */
+          const cibles = await page.evaluate(MESURER_CIBLES, {
+            plancher: PLANCHER_CIBLE,
+            rayon: RAYON_SONDAGE,
+          })
+          ciblesSondees += cibles.sondees
+          for (const d of cibles.defauts) {
+            plaintes.push(
+              `${ou} : cible touchable ${d.cible} px (boîte ${d.boite}), sous le plancher de ` +
+                `${PLANCHER_CIBLE} — <${d.balise}> ${d.texte || d.classes}` +
+                "\n   Ce n'est pas une boîte qu'on mesure, c'est ce que le doigt touche : " +
+                'rembourrages et recouvrements compris.',
+            )
+          }
+
           const zeros = await page.evaluate(MESURER_ZEROS_AU_DESSUS_DU_VIDE)
           if (zeros.vu) etatsVidesInspectes += 1
           if (zeros.plainte) {
@@ -1171,6 +1204,29 @@ if (pointsFermesMesures !== FERMES_ATTENDUS) {
  * ne mesurent pas la richesse du produit, ils prouvent que les deux audits
  * trouvent encore leurs éléments.
  */
+/**
+ * GARDE DU GARDE — la sonde des cibles a-t-elle touché quelque chose ?
+ *
+ * Née VERTE : aucune cible sous 44 px sur les 336 points. `mesure-ui` a payé
+ * exactement ce piège sur sa propre passe — « le `if (!resultat) continue`
+ * sautait la fin de l'itération, donc aurait sauté les cibles sur 484 points sur
+ * 506 », et c'est le compte qui l'a dit, pas le vert.
+ *
+ * Relevé à l'écriture : 3 504 cibles sondées. Plancher à 2 000.
+ *
+ * LE PREMIER PLANCHER ÉTAIT À 5 000, ÉCRIT SANS AVOIR MESURÉ — et la garde l'a
+ * refusé au premier passage. C'est exactement ce à quoi elle sert : un chiffre
+ * qu'on croit connaître n'est pas un chiffre relevé, et celui-ci était plus de
+ * cinq fois trop haut.
+ */
+const CIBLES_ATTENDUES = 2000
+if (ciblesSondees < CIBLES_ATTENDUES) {
+  plaintes.push(
+    `la sonde des cibles n'en a touché que ${ciblesSondees} pour ${CIBLES_ATTENDUES} attendues ` +
+      "au moins. Une cible trop petite ne se voit que si on la sonde.",
+  )
+}
+
 const TEXTES_ATTENDUS = 2000
 if (textesAudites < TEXTES_ATTENDUS) {
   plaintes.push(
@@ -1221,5 +1277,6 @@ console.log(
     `  ${plisInspectes} écran(s) portant un chiffre jugé(s) au pli de 360×640.\n` +
     `  ${textesAudites} textes confrontés au seuil WCAG AA, dans les DEUX thèmes ; ` +
     `${nomsExamines} commandes cherchées sans nom.\n` +
-    "  Elle ne dit RIEN des cibles de 44 px ni des modales — voir son en-tête.",
+    `  ${ciblesSondees} cibles sondées au doigt, sous le plancher de ${PLANCHER_CIBLE} px.\n` +
+    "  Elle ne dit RIEN des MODALES, qu'aucune de ses règles n'ouvre — voir son en-tête.",
 )
