@@ -15,9 +15,11 @@ import {
   montantEngage,
   receiptDue,
   type Occupation,
+  type WorkOrder,
 } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { useRole } from '@/components/layout/AppShell'
+import { ReplyModal } from './ReplyModal'
 import { StatCard } from '@/components/primitives/Charts'
 import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDebordement'
 import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
@@ -59,6 +61,10 @@ export function UnitFile() {
   const { unitId = '' } = useParams()
   const t = useT()
   const d = useDates()
+  /* La modale de réponse, la même que celle des travaux. AVANT tout retour
+     anticipé : un hook posé après le retour « logement introuvable » a fait
+     lever React au premier rendu — les hooks se déclarent sans condition. */
+  const [aRepondre, setARepondre] = useState<WorkOrder | null>(null)
   const base = useBase()
   const location = useLocation()
   const { role } = useRole()
@@ -403,6 +409,34 @@ export function UnitFile() {
                       démonstration, un texte libre dès que le locataire
                       l'écrit. `workTitle` est le point de passage. */}
                   <span className="min-w-0 text-body">{workTitle(work, t)}</span>
+                  {/*
+                    RÉPONDRE, DEPUIS L'ENDROIT OÙ L'ON RELIT.
+
+                    Le fil est entré dans ce dossier au lot précédent, en
+                    LECTURE seule : « on le lit, on n'y écrit pas — le geste
+                    reste sur Travaux ». C'était couper le geste de son
+                    contexte : on relit « je serai absent toute la semaine »
+                    ICI, puis il fallait changer d'écran, retrouver la ligne,
+                    et répondre là-bas.
+
+                    Même modale que les travaux — `ReplyModal` —, mêmes
+                    conditions : une intervention QUE LE LOCATAIRE A OUVERTE,
+                    et elle seule. Celle que le bailleur s'est ouverte n'a
+                    personne à qui répondre, et le serveur la refuse en 409 :
+                    on ne propose pas un geste qu'on refusera. Cet écran est
+                    réservé à la gestion par sa route — pas de garde de rôle
+                    à recopier ici.
+                  */}
+                  {work.origin === 'tenantReport' && work.reportedBy && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon="bell"
+                      onClick={() => setARepondre(work)}
+                    >
+                      {t('app.works.reply')}
+                    </Button>
+                  )}
                   <span className="text-caps text-muted">
                     {/* Les statuts vivent à plat dans `app.works` —
                         `reported`, `quoted`, `approved`, `done` — et non sous
@@ -488,6 +522,7 @@ export function UnitFile() {
           </ul>
         </Card>
       </div>
+      {aRepondre && <ReplyModal work={aRepondre} onClose={() => setARepondre(null)} />}
     </>
   )
 }

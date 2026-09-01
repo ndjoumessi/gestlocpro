@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { attendreLeChargement, renderApp, screen, within } from '@/test/render'
-import { COMPTE_FICTIF, installerFauxServeur } from '@/test/api'
+import { attendreLeChargement, renderApp, screen, userEvent, waitFor, within } from '@/test/render'
+import { COMPTE_FICTIF, installerFauxServeur, type FauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 
 /**
@@ -51,8 +51,10 @@ const avis = (id: string, cle: 'workReply' | 'tenantReply', texte: string) => ({
   read: true,
 })
 
+let serveur: FauxServeur
+
 beforeEach(() => {
-  const serveur = installerFauxServeur()
+  serveur = installerFauxServeur()
   serveur.quand('GET', `/parks/${PARC}/portfolio`, {
     status: 200,
     body: {
@@ -116,6 +118,33 @@ describe('le dossier d’un logement', () => {
       'il fallait aller lire l’échange sur un autre écran avant d’appeler',
     ).toBeInTheDocument()
     expect(within(main).getByText(/Je serai absent toute la semaine/)).toBeInTheDocument()
+  })
+
+  it('permet de RÉPONDRE depuis le dossier, par la même modale que les travaux', async () => {
+    /* Le fil est entré ici en lecture seule au lot précédent — « on le lit, on
+       n'y écrit pas ». C'était couper le geste de son contexte : on relit
+       « je serai absent » ICI, puis il fallait changer d'écran pour répondre. */
+    serveur.quand('POST', `/parks/${PARC}/works/${CHANTIER}/reply`, {
+      status: 201,
+      body: { delivered: true, reporter: { fullName: 'Charles Ngassa' } },
+    })
+    await renderApp(`/app/parc/${A1}`, { session })
+    await attendreLeChargement()
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Répondre' }))
+    const modale = within(await screen.findByRole('dialog'))
+    await user.type(modale.getByRole('textbox'), 'Le plombier repasse mardi.')
+    await user.click(modale.getByRole('button', { name: /Envoyer/ }))
+
+    await waitFor(() => {
+      const appel = serveur.appels.find(
+        (x) => x.methode === 'POST' && x.chemin.endsWith('/reply'),
+      )
+      expect(appel?.corps, 'le geste doit partir vers la MÊME route que les travaux').toEqual({
+        message: 'Le plombier repasse mardi.',
+      })
+    })
   })
 
   it('dit qui a parlé, comme les deux autres écrans', async () => {
