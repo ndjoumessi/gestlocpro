@@ -468,6 +468,14 @@ interface PortfolioContextValue {
    */
   scoped: boolean
   /**
+   * Le jour où l'accès d'un locataire PARTI se ferme, ou `null`.
+   *
+   * La fenêtre après le bail coupait l'accès SANS PRÉVENIR — « un jour ses
+   * quittances sont là, le lendemain son espace dit “aucun logement
+   * rattaché” ». La date vient du serveur, qui seul connaît la fenêtre du parc.
+   */
+  accessUntil: string | null
+  /**
    * `true` tant que le parc du SERVEUR est en vol.
    *
    * Il manquait, et son absence ne se lisait pas comme un manque : les écrans
@@ -587,6 +595,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   /* Faux tant qu'on n'a pas lu : la démonstration n'a pas de périmètre, et un
      `true` par défaut peindrait un avertissement sur un parc entier. */
   const [scoped, setScoped] = useState(false)
+  const [accessUntil, setAccessUntil] = useState<string | null>(null)
   const [echecDuParc, setEchecDuParc] = useState<EchecDuParc | null>(null)
   /**
    * Incrémenté par une reprise, et LU par l'effet de chargement.
@@ -782,6 +791,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       setDocumentRequests(parc.documentRequests)
       setLeases(parc.leases)
       setScoped(parc.scoped)
+      setAccessUntil(parc.accessUntil)
       setFromApi(true)
       setEchecDuParc(null)
       // Posé APRÈS l'écriture, et seulement en cas de succès : un échec laisse
@@ -1718,6 +1728,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       hasChanges: stored,
       fromApi,
       scoped,
+      accessUntil,
       loading,
       echecDuParc,
       reprendreLeParc,
@@ -1773,6 +1784,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       collections,
       fromApi,
       scoped,
+      accessUntil,
       loading,
       echecDuParc,
       reprendreLeParc,

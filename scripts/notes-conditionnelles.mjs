@@ -159,6 +159,16 @@ const REGISTRE = {
   'auth.reset.invalidBody': { adresse: '/reinitialiser' },
 
   /* ── Les aveux, et leur motif ── */
+  'app.tenant.accessEnds': {
+    nonMesurable:
+      'Elle ne paraît qu’à un locataire dont TOUS les baux sont terminés, dans la ' +
+      'fenêtre d’accès du parc — un état que ni la démonstration (pas de bail ' +
+      'terminé dans le jeu) ni `espace-connecte` (ses locataires de sonde sont en ' +
+      'place ou sans bail, jamais partis) ne produisent. Le produire demanderait ' +
+      'un septième profil avec un bail daté au passé : c’est un lot, et la note ' +
+      'est tenue en jsdom par `finDAcces.test.tsx`, qui vérifie le texte, la date ' +
+      'et l’absence tant qu’un bail court.',
+  },
   'app.dashboard.scopedNotice': {
     nonMesurable:
       'Elle ne paraît qu’à un gestionnaire dont l’adhésion porte un PÉRIMÈTRE ' +
@@ -387,6 +397,21 @@ async function servir() {
     cwd: RACINE,
     stdio: 'ignore',
   })
+  /*
+    L'ORPHELIN S'EMPÊCHE ICI, il ne se détecte plus seulement. Le contrôle de
+    pré-vol ci-dessus a été écrit APRÈS avoir trouvé quatre prévisualisations
+    orphelines — la plus ancienne depuis deux jours et dix-huit heures — nées
+    de portes interrompues avant leur `kill` : un Ctrl-C tue le script et
+    laisse le serveur. Ces deux lignes attrapent l'interruption et emportent
+    le fils avec elles ; le pré-vol reste, pour les morts qu'aucun signal
+    n'annonce — un SIGKILL, une machine éteinte.
+  */
+  const emporter = () => {
+    fils.kill()
+    process.exit(130)
+  }
+  process.once('SIGINT', emporter)
+  process.once('SIGTERM', emporter)
   for (let i = 0; i < 100; i++) {
     try {
       if ((await fetch(BASE + '/')).ok) return fils

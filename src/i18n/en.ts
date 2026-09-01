@@ -547,6 +547,7 @@ export const en: Dictionary = {
         'The move-in inspection is carried out when the keys are handed over, the move-out one when they are returned. Your manager files them here so you can compare the two.',
       manager: 'Your manager',
       managerName: 'Diane F.',
+      accessEnds: 'Your lease has ended: this space stays open until {date}. Download your receipts before then — afterwards, request them from your landlord.',
       privacyNote:
         'You only see data for your own home. Other tenants in the portfolio are not visible to you.',
       restrictedTitle: 'Restricted access',

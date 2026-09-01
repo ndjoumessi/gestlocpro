@@ -207,6 +207,9 @@ interface PortefeuilleApi {
    * tait alors plutôt que d'affirmer un périmètre qu'il ignore.
    */
   scoped?: boolean
+  /** Le jour où l'accès du locataire PARTI se ferme — jamais posé tant qu'un
+      bail court. Absent d'un serveur d'avant ce lot. */
+  accessUntil?: string | null
 }
 
 export interface Immeuble {
@@ -224,6 +227,8 @@ export interface ParcCharge {
    * comme ceux du parc entier.
    */
   scoped: boolean
+  /** Voir la route : le jour de fin d'accès du locataire parti, ou `null`. */
+  accessUntil: string | null
   buildings: Immeuble[]
   units: Unit[]
   works: WorkOrder[]
@@ -312,6 +317,7 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
        avertissement de restriction — l'inverse exact du repli de
        `tenantHasAccount`, où l'absence vaut « reliée ». */
     scoped: data.scoped === true,
+    accessUntil: data.accessUntil ?? null,
     buildings,
     units,
     works: data.works.map((w) => ({

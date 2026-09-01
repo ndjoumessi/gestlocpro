@@ -283,3 +283,116 @@ describe('le geste de confier des logements', () => {
     expect(charge?.buildingIds).toEqual([])
   })
 })
+
+describe('l’exclusion — tout l’immeuble SAUF ces logements', () => {
+  /**
+   * ═══ CE QUE LA LISTE SEULE NE SAVAIT PAS DIRE ═══
+   *
+   * « Tout l'immeuble sauf le rez-de-chaussée » se disait en listant les autres
+   * logements un à un — et cette liste ne SUIT PAS l'immeuble : le logement
+   * ajouté le mois suivant n'y figure pas, et le gestionnaire qui devait tout
+   * gérer sauf un ne voit pas le nouveau. Le lot qui a posé la maille du
+   * logement l'avait nommé en dette, mot pour mot.
+   *
+   * L'exclusion inverse le sens : on confie l'IMMEUBLE — qui suit sa propre
+   * croissance — et l'on en retranche des logements nommés. Le nouveau logement
+   * entre tout seul ; l'exclu reste exclu.
+   */
+  it('cache le logement exclu d’un immeuble pourtant confié', async () => {
+    const { cookie, cookieGestion, parkId, buildingId, confie, garde } =
+      await parcAUnImmeubleDeTrois()
+    const regle = await request(serveur)
+      .patch(`/api/parks/${parkId}/memberships/${(await prisma.membership.findFirstOrThrow({ where: { parkId, role: 'manager' }, select: { id: true } })).id}/immeubles`)
+      .set('Cookie', cookie)
+      .send({ buildingIds: [buildingId], unitIds: [], excludedUnitIds: [garde] })
+    expect(regle.status).toBe(200)
+
+    const vu = await portefeuille(parkId, cookieGestion)
+    const unites = unitesVues(vu.body)
+    expect(unites, 'l’immeuble entier moins UN : c’est le contrat').toContain(confie)
+    expect(unites, 'l’exclu doit rester dehors').not.toContain(garde)
+    expect(unites).toHaveLength(2)
+  })
+
+  it('refuse d’écrire sur le logement exclu', async () => {
+    const { cookie, cookieGestion, parkId, buildingId, garde } = await parcAUnImmeubleDeTrois()
+    const adhesion = await prisma.membership.findFirstOrThrow({
+      where: { parkId, role: 'manager' },
+      select: { id: true },
+    })
+    await request(serveur)
+      .patch(`/api/parks/${parkId}/memberships/${adhesion.id}/immeubles`)
+      .set('Cookie', cookie)
+      .send({ buildingIds: [buildingId], unitIds: [], excludedUnitIds: [garde] })
+
+    const refuse = await request(serveur)
+      .post(`/api/parks/${parkId}/payments`)
+      .set('Cookie', cookieGestion)
+      .send({ unitId: garde, periodStart: '2026-08-01', amountMinor: 100000, method: 'cash' })
+    expect(refuse.status, 'exclu en lecture, exclu en écriture').toBe(404)
+  })
+
+  it('un logement AJOUTÉ à l’immeuble entre tout seul, l’exclu reste exclu', async () => {
+    /* Tout le point de l'exclusion : la liste inversée SUIT l'immeuble. */
+    const { cookie, cookieGestion, parkId, buildingId, garde } = await parcAUnImmeubleDeTrois()
+    const adhesion = await prisma.membership.findFirstOrThrow({
+      where: { parkId, role: 'manager' },
+      select: { id: true },
+    })
+    await request(serveur)
+      .patch(`/api/parks/${parkId}/memberships/${adhesion.id}/immeubles`)
+      .set('Cookie', cookie)
+      .send({ buildingIds: [buildingId], unitIds: [], excludedUnitIds: [garde] })
+
+    const neuf = await request(serveur)
+      .post(`/api/parks/${parkId}/buildings/${buildingId}/units`)
+      .set('Cookie', cookie)
+      .send({ label: 'S4', type: 'T1', surfaceSqm: 30, baseRentMinor: 60000 })
+
+    const vu = await portefeuille(parkId, cookieGestion)
+    const unites = unitesVues(vu.body)
+    expect(unites, 'le logement du mois suivant doit entrer sans geste').toContain(
+      neuf.body.unit.id,
+    )
+    expect(unites).not.toContain(garde)
+  })
+
+  it('refuse une exclusion hors des immeubles confiés', async () => {
+    /* Exclure un logement d'un immeuble qu'on ne confie pas ne retranche rien :
+       la ligne serait un fait faux au registre, et un état que personne ne peut
+       expliquer. Même refus que l'immeuble d'un autre parc. */
+    const { cookie, parkId, confie } = await parcAUnImmeubleDeTrois()
+    const adhesion = await prisma.membership.findFirstOrThrow({
+      where: { parkId, role: 'manager' },
+      select: { id: true },
+    })
+    const refuse = await request(serveur)
+      .patch(`/api/parks/${parkId}/memberships/${adhesion.id}/immeubles`)
+      .set('Cookie', cookie)
+      .send({ buildingIds: [], unitIds: [], excludedUnitIds: [confie] })
+    expect(refuse.status).toBe(400)
+    expect(refuse.body.error).toBe('exclusion_outside_scope')
+  })
+
+  it('consigne les TROIS listes au registre', async () => {
+    const { cookie, parkId, buildingId, garde } = await parcAUnImmeubleDeTrois()
+    const adhesion = await prisma.membership.findFirstOrThrow({
+      where: { parkId, role: 'manager' },
+      select: { id: true },
+    })
+    await request(serveur)
+      .patch(`/api/parks/${parkId}/memberships/${adhesion.id}/immeubles`)
+      .set('Cookie', cookie)
+      .send({ buildingIds: [buildingId], unitIds: [], excludedUnitIds: [garde] })
+
+    const trace = await prisma.auditEvent.findFirst({
+      where: { parkId, action: 'access.scope' },
+      select: { payload: true },
+    })
+    const charge = trace?.payload as { excludedUnitIds?: string[] }
+    expect(
+      charge?.excludedUnitIds,
+      'un retranchement non consigné est un pouvoir repris sans trace',
+    ).toEqual([garde])
+  })
+})

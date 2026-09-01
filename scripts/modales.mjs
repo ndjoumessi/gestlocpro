@@ -287,13 +287,17 @@ const MODALES = [
     qu'elle tient POUR CE PARC-LÀ, et c'est déjà ce que ce script promet.
 
     0 → 57 px à 360 (2026-09-01) : la maille est descendue au LOGEMENT, et la
-    modale liste désormais les logements sous chaque immeuble non coché. Quinze
-    cases au lieu de trois. Le défilement est légitime ici — c'est une LISTE, et
-    la refuser reviendrait à interdire au produit d'avoir plus de trois
-    immeubles. À 1280 il reste nul, et en grande chasse aussi : les cases sont
-    étroites, c'est la hauteur seule qui bouge.
+    modale liste les logements sous chaque immeuble non coché.
+
+    57 → 511 à 360, 0 → 331 à 1280 (2026-09-01, plus tard) : les EXCLUSIONS.
+    Les cases restent visibles sous un immeuble coché — les décocher retranche —
+    donc les douze logements de la démonstration paraissent tous, quel que soit
+    l'état des coches. Le défilement est celui d'une LISTE qui dit tout le parc,
+    et le refuser reviendrait à interdire les parcs de plus de trois logements.
+    La grande chasse ne bouge pas : les cases sont étroites, la hauteur seule
+    grandit — et c'est déjà ce que la première ligne de cette note disait.
   */
-  { nom: 'ConfierImmeubles', adresse: '/demo/acces', bouton: /^Confier des immeubles$|^Assign buildings$/, defil: { 360: 57, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'ConfierImmeubles', adresse: '/demo/acces', bouton: /^Confier des immeubles$|^Assign buildings$/, defil: { 360: 511, 1280: 331 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'Announce', adresse: '/demo/locataires', bouton: /^Prévenir les locataires$|^Notify tenants$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'Reply', adresse: '/demo/travaux', bouton: /^Répondre$|^Reply$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /* Le seul écran de la démonstration où le rôle change ce qui est rendu : la
@@ -594,6 +598,21 @@ async function servir() {
     cwd: RACINE,
     stdio: 'ignore',
   })
+  /*
+    L'ORPHELIN S'EMPÊCHE ICI, il ne se détecte plus seulement. Le contrôle de
+    pré-vol ci-dessus a été écrit APRÈS avoir trouvé quatre prévisualisations
+    orphelines — la plus ancienne depuis deux jours et dix-huit heures — nées
+    de portes interrompues avant leur `kill` : un Ctrl-C tue le script et
+    laisse le serveur. Ces deux lignes attrapent l'interruption et emportent
+    le fils avec elles ; le pré-vol reste, pour les morts qu'aucun signal
+    n'annonce — un SIGKILL, une machine éteinte.
+  */
+  const emporter = () => {
+    fils.kill()
+    process.exit(130)
+  }
+  process.once('SIGINT', emporter)
+  process.once('SIGTERM', emporter)
   for (let i = 0; i < 100; i++) {
     try {
       if ((await fetch(BASE + '/')).ok) return fils

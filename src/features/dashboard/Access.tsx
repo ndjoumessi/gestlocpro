@@ -136,6 +136,10 @@ export function Access() {
      confier un immeuble et confier ses logements un à un ne veulent pas dire la
      même chose — le premier suit l'immeuble quand il grandit, le second non. */
   const [choixLogements, setChoixLogements] = useState<Set<string>>(new Set())
+  /* Le TROISIÈME brouillon : les logements retranchés des immeubles cochés.
+     Distinct des deux autres parce qu'il se lit à l'envers — coché veut dire
+     « il le voit », et c'est l'ABSENCE de coche qui écrit une ligne. */
+  const [exclusLogements, setExclusLogements] = useState<Set<string>>(new Set())
   /**
    * L'ÉMISSION D'UN CODE, ENFIN SUR L'ÉCRAN QUI PARLE DES CODES.
    *
@@ -478,6 +482,7 @@ export function Access() {
                           setAConfier(m)
                           setChoixImmeubles(new Set(m.buildingIds ?? []))
                           setChoixLogements(new Set(m.unitIds ?? []))
+                          setExclusLogements(new Set(m.excludedUnitIds ?? []))
                         }}
                       >
                         {t('app.access.scopeAction')}
@@ -708,7 +713,22 @@ export function Access() {
                 onClick={() => {
                   const membre = aConfier
                   const choisis = [...choixImmeubles]
-                  const logements = [...choixLogements]
+                  /* Les logements d'un immeuble COCHÉ ne partent pas en double :
+                     l'immeuble les couvre déjà, et le registre les afficherait
+                     comme confiés un à un — un périmètre juste, dit de travers. */
+                  const couverts = new Set(
+                    immeublesDuParc
+                      .filter((i) => choixImmeubles.has(i.id))
+                      .flatMap((i) => (i.units ?? []).map((u) => u.id)),
+                  )
+                  const logements = [...choixLogements].filter((u) => !couverts.has(u))
+                  /* Seules comptent les exclusions DANS un immeuble encore
+                     coché : décocher l'immeuble emporte ses retranchements, qui
+                     ne retranchaient que de lui. */
+                  const exclus = immeublesDuParc
+                    .filter((i) => choixImmeubles.has(i.id))
+                    .flatMap((i) => (i.units ?? []).filter((u) => exclusLogements.has(u.id)))
+                    .map((u) => u.id)
                   setAConfier(null)
                   /* `agir` relit le registre après coup plutôt que de retoucher
                      la liste en mémoire : le même geste que le lien, et pour la
@@ -719,6 +739,7 @@ export function Access() {
                       api.setManagerBuildings(parkId!, membre.id, {
                         buildingIds: choisis,
                         unitIds: logements,
+                        excludedUnitIds: exclus,
                       }),
                     t('app.access.scopeSaved'),
                   )
@@ -742,42 +763,56 @@ export function Access() {
                     if (e.target.checked) suivant.add(immeuble.id)
                     else suivant.delete(immeuble.id)
                     setChoixImmeubles(suivant)
-                    /* COCHER L'IMMEUBLE VIDE SES LOGEMENTS du brouillon. Le
-                       périmètre est leur union : les garder ferait réapparaître,
-                       au décochage de l'immeuble, une sélection que personne
-                       n'a refaite. */
-                    if (e.target.checked) {
-                      const sansLesSiens = new Set(choixLogements)
-                      for (const u of immeuble.units ?? []) sansLesSiens.delete(u.id)
-                      setChoixLogements(sansLesSiens)
-                    }
+                    /* Cocher l'immeuble change la LECTURE des cases de ses
+                       logements — de « confiés un à un » à « tous sauf les
+                       décochés » — sans toucher aux brouillons : décocher
+                       l'immeuble rend leur premier sens aux mêmes cases. */
                   }}
                 />
                 {/*
-                  LES LOGEMENTS S'EFFACENT QUAND L'IMMEUBLE EST COCHÉ.
+                  SOUS UN IMMEUBLE COCHÉ, LES CASES RESTENT — cochées, et
+                  décochables : en décocher une écrit une EXCLUSION.
 
-                  Le périmètre est leur UNION : cocher l'immeuble rend chaque
-                  logement redondant, et laisser les cases visibles inviterait à
-                  les décocher en croyant retirer quelque chose. Elles
-                  disparaissent donc, et le brouillon des logements est
-                  VIDÉ — sans quoi décocher l'immeuble plus tard ferait
-                  réapparaître une sélection que personne n'a refaite.
+                  Le lot précédent les faisait DISPARAÎTRE, au motif que le
+                  périmètre est une union et qu'une case redondante invite à
+                  décocher en croyant retirer. C'était juste — et c'est
+                  exactement le geste qui manquait : « tout l'immeuble sauf
+                  le rez-de-chaussée » ne se disait qu'en listant les autres,
+                  liste qui ne SUIT pas l'immeuble quand il grandit.
+
+                  Décocher retire donc VRAIMENT, désormais — l'intuition
+                  qu'on refusait est devenue le contrat. Sous un immeuble NON
+                  coché, les cases gardent leur premier sens : cocher confie
+                  le logement seul.
                 */}
-                {!choixImmeubles.has(immeuble.id) && (immeuble.units ?? []).length > 0 && (
+                {(immeuble.units ?? []).length > 0 && (
                   <div className="ml-6 flex flex-col gap-1.5">
-                    {(immeuble.units ?? []).map((logement) => (
-                      <Checkbox
-                        key={logement.id}
-                        label={logement.label}
-                        checked={choixLogements.has(logement.id)}
-                        onChange={(e) => {
-                          const suivant = new Set(choixLogements)
-                          if (e.target.checked) suivant.add(logement.id)
-                          else suivant.delete(logement.id)
-                          setChoixLogements(suivant)
-                        }}
-                      />
-                    ))}
+                    {(immeuble.units ?? []).map((logement) => {
+                      const immeubleCoche = choixImmeubles.has(immeuble.id)
+                      const coche = immeubleCoche
+                        ? !exclusLogements.has(logement.id)
+                        : choixLogements.has(logement.id)
+                      return (
+                        <Checkbox
+                          key={logement.id}
+                          label={logement.label}
+                          checked={coche}
+                          onChange={(e) => {
+                            if (immeubleCoche) {
+                              const suivant = new Set(exclusLogements)
+                              if (e.target.checked) suivant.delete(logement.id)
+                              else suivant.add(logement.id)
+                              setExclusLogements(suivant)
+                            } else {
+                              const suivant = new Set(choixLogements)
+                              if (e.target.checked) suivant.add(logement.id)
+                              else suivant.delete(logement.id)
+                              setChoixLogements(suivant)
+                            }
+                          }}
+                        />
+                      )
+                    })}
                   </div>
                 )}
               </div>
@@ -984,6 +1019,8 @@ interface MembreApi {
    * rend pas, et l'écran se tait alors plutôt que d'affirmer un périmètre.
    */
   unitIds?: string[]
+  /** Les logements EXCLUS des immeubles confiés — « tout sauf ceux-là ». */
+  excludedUnitIds?: string[]
   since: string
 }
 

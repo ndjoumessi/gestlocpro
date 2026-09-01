@@ -215,6 +215,12 @@ model Park {
   /// l'écran d'onboarding, alors qu'elle commande deux droits réels — valider
   /// un devis, arbitrer une caution. Le serveur s'en sert pour autoriser.
   delegation DelegationMode @default(delegate)
+  /// Combien de MOIS un locataire parti garde ses quittances. Trois par
+  /// défaut — le temps de récupérer ses pièces, de contester une retenue de
+  /// caution, de fournir une attestation. Réglable PAR PARC parce qu'une
+  /// législation locale peut exiger davantage, et que ce nombre est une règle
+  /// de gestion, pas une constante d'implémentation.
+  leaseAccessMonths Int @default(3)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -315,6 +321,13 @@ model MembershipUnit {
   unitId       String @db.Uuid
   unit         Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
   createdAt    DateTime @default(now())
+  /// EXCLU plutôt que confié. « Tout l'immeuble sauf le rez-de-chaussée » ne
+  /// se disait qu'en listant les autres logements — et cette liste ne SUIT pas
+  /// l'immeuble : le logement ajouté le mois suivant n'y figure pas.
+  /// L'exclusion inverse le sens : l'immeuble confié suit sa croissance, le
+  /// retranché reste retranché. Une colonne et non une table : les deux sens
+  /// sont le même rattachement, lu à l'endroit ou à l'envers.
+  exclue Boolean @default(false)
 
   @@id([membershipId, unitId])
   @@index([unitId])
@@ -732,6 +745,8 @@ model WorkOrder {
   /// La liste se filtre par origine, et le tableau de bord compte les
   /// initiatives du bailleur séparément des signalements.
   @@index([unitId, origin])
+  /// Les courriels du fil tentés pour ce chantier. Voir `WorkThreadEmail`.
+  threadEmails WorkThreadEmail[]
 }
 
 /// Alloue les références lisibles par parc et par année, sans balayer la table.
@@ -854,6 +869,27 @@ model NotificationRecipient {
 /// l'INSERT perdant lève une violation de contrainte (P2002), que l'appelant
 /// interprète comme « déjà pris en charge aujourd'hui » plutôt que comme une
 /// erreur.
+/// La TRACE d'un courriel du fil — signalement, réponse, réponse du locataire.
+///
+/// « Le courriel du 3 septembre est-il parti ? » ne se répondait qu'en lisant
+/// les journaux, qui tournent. Même règle que `RentReminderEmail` :
+/// `deliveredAt` reste nul tant que la messagerie n'a pas rendu vrai — une date
+/// posée par avance ferait mentir le dossier le jour où quelqu'un contestera
+/// avoir été prévenu. La tentative se consigne toujours.
+model WorkThreadEmail {
+  id        String    @id @default(uuid()) @db.Uuid
+  workId    String    @db.Uuid
+  work      WorkOrder @relation(fields: [workId], references: [id], onDelete: Cascade)
+  /// L'adresse visée. Elle vit déjà ailleurs en base (compte ou fiche) ; la
+  /// figer ici dit à QUI la tentative s'adressait ce jour-là, même si
+  /// l'adresse du compte change ensuite.
+  recipient String
+  deliveredAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([workId])
+}
+
 model RentReminderEmail {
   id        String   @id @default(uuid()) @db.Uuid
   leaseId   String   @db.Uuid

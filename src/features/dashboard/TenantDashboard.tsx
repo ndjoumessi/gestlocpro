@@ -13,6 +13,7 @@ import { Skeleton, SkeletonRegion, SkeletonStatRow } from '@/components/primitiv
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
+import { partiesDeDateISO } from '@/lib/dates'
 import { useNumbers } from '@/lib/numbers'
 import { cn } from '@/lib/cn'
 import { AU_DELA_SM, useAuDela } from '@/lib/useAuDela'
@@ -680,6 +681,7 @@ export function TenantDashboard() {
       )}
 
       <TenantScopeNote className="mt-4" />
+      <FinDAccesNote className="mt-4" />
     </>
   )
 }
@@ -1042,6 +1044,7 @@ function TenantDashboardSkeleton() {
       </SkeletonRegion>
 
       <TenantScopeNote className="mt-4" />
+      <FinDAccesNote className="mt-4" />
     </>
   )
 }
@@ -1108,6 +1111,32 @@ export function TenantRestricted() {
  * `mb-0` c'est l'ordre d'émission de la feuille qui trancherait. Six appelants,
  * six marges écrites : le prix est visible, le piège n'existe pas.
  */
+/**
+ * LA FIN D'ACCÈS S'ANNONCE, ELLE NE TOMBE PAS.
+ *
+ * La fenêtre après le bail coupait l'accès du locataire parti SANS PRÉVENIR :
+ * « un jour ses quittances sont là, le lendemain son espace dit “aucun
+ * logement rattaché” ». La date vient du serveur — lui seul connaît la
+ * fenêtre du parc — et ne se pose JAMAIS tant qu'un bail court.
+ *
+ * Le ton est `warn` et non `danger` : rien n'est cassé, une échéance approche.
+ * Et la phrase dit QUOI FAIRE — télécharger ses quittances — parce qu'une
+ * date sans geste laisse le lecteur compter les jours au lieu d'agir.
+ */
+function FinDAccesNote({ className }: { className?: string }) {
+  const t = useT()
+  const d = useDates()
+  const { accessUntil } = usePortfolio()
+  if (!accessUntil) return null
+  /* `partiesDeDateISO` et non un découpage à la main : la conversion ISO ne
+     s'écrit qu'une fois dans ce dépôt, et une garde le compte. */
+  return (
+    <Notice tone="warn" icon="clock" className={className}>
+      {t('app.tenant.accessEnds', { date: d.fullDate(partiesDeDateISO(accessUntil)) })}
+    </Notice>
+  )
+}
+
 export function TenantScopeNote({ className }: { className?: string }) {
   const t = useT()
   // Le périmètre vient du provider, qui le tient du serveur. Les identifiants

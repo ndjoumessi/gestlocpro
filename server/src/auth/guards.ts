@@ -46,6 +46,11 @@ declare module 'express-serve-static-core' {
        * borné, y compris sur les immeubles.
        */
       unites: string[] | null
+      /**
+       * Les logements EXCLUS des immeubles confiés. `null` avec les deux autres :
+       * un retranchement sans périmètre ne retranche rien.
+       */
+      exclues: string[] | null
     }
   }
 }
@@ -89,7 +94,7 @@ export async function exigerAppartenance(req: Request, res: Response, next: Next
          l'adhésion, au même titre que le rôle, et le chercher route par route
          suffirait à ce qu'un chemin l'oublie. */
       buildings: { select: { buildingId: true } },
-      units: { select: { unitId: true } },
+      units: { select: { unitId: true, exclue: true } },
     },
   })
 
@@ -111,7 +116,8 @@ export async function exigerAppartenance(req: Request, res: Response, next: Next
    * tenir d'accord avec l'autre.
    */
   const confiesImmeubles = adhesion.buildings.map((b) => b.buildingId)
-  const confiesUnites = adhesion.units.map((u) => u.unitId)
+  const confiesUnites = adhesion.units.filter((u) => !u.exclue).map((u) => u.unitId)
+  const exclues = adhesion.units.filter((u) => u.exclue).map((u) => u.unitId)
   /* BORNÉ DÈS QU'UNE DES DEUX LISTES PORTE QUELQUE CHOSE, et les deux passent à
      `null` ensemble. Les traiter séparément ferait d'un gestionnaire à qui l'on
      a confié UN LOGEMENT quelqu'un de non borné côté immeubles — donc de non
@@ -122,6 +128,7 @@ export async function exigerAppartenance(req: Request, res: Response, next: Next
     role: adhesion.role,
     immeubles: borne ? confiesImmeubles : null,
     unites: borne ? confiesUnites : null,
+    exclues: borne ? exclues : null,
   }
   next()
 }
@@ -224,15 +231,23 @@ export function porteeDesImmeublesTenus(adhesion: {
 export function porteeDesUnites(adhesion: {
   immeubles: string[] | null
   unites: string[] | null
+  exclues?: string[] | null
 }): Prisma.UnitWhereInput {
   if (!adhesion.immeubles) return {}
+  /*
+    L'EXCLUSION NE RETRANCHE QUE DU CÔTÉ DE L'IMMEUBLE, et c'est voulu : un
+    logement nommément CONFIÉ l'emporte sur tout — le confier puis l'exclure
+    serait un ordre contradictoire que la route refuse d'écrire. Le `notIn`
+    vit donc DANS la branche de l'immeuble, jamais au-dessus du `OR`.
+  */
+  const horsExclusions =
+    adhesion.exclues && adhesion.exclues.length > 0
+      ? { buildingId: { in: adhesion.immeubles }, id: { notIn: adhesion.exclues } }
+      : { buildingId: { in: adhesion.immeubles } }
   return {
     AND: [
       {
-        OR: [
-          { buildingId: { in: adhesion.immeubles } },
-          { id: { in: adhesion.unites ?? [] } },
-        ],
+        OR: [horsExclusions, { id: { in: adhesion.unites ?? [] } }],
       },
     ],
   }
@@ -273,11 +288,13 @@ export function exigerRole(...roles: ParkRole[]) {
  * accéder à ses quittances.
  */
 /**
- * COMBIEN DE TEMPS UN LOCATAIRE PARTI GARDE SES PIÈCES.
+ * COMBIEN DE TEMPS UN LOCATAIRE PARTI GARDE SES PIÈCES — par défaut.
  *
- * Trois mois, décidés pour ce produit. Le nombre vit ici, seul et nommé, plutôt
- * qu'au milieu d'une requête : c'est une règle de gestion, elle se relit et se
- * discute, et une constante enfouie dans un `where` ne se relit jamais.
+ * Trois mois, décidés pour ce produit. La valeur RÉELLE vit désormais sur le
+ * parc (`Park.leaseAccessMonths`) : une législation locale peut exiger
+ * davantage, et c'est une règle de gestion, pas une constante
+ * d'implémentation. Celle-ci reste le défaut du schéma et le repli d'un parc
+ * introuvable.
  */
 export const MOIS_APRES_LE_BAIL = 3
 
@@ -311,8 +328,18 @@ export async function unitesVisibles(
    * `endsOn: null` NE SE PÉRIME PAS — c'est le bail en cours, et c'est
    * l'écrasante majorité. La borne ne concerne que ceux dont le terme est écrit.
    */
+  /* La fenêtre du PARC, pas celle du code : le réglage vit sur `Park`, et le
+     repli sur la constante ne sert qu'à un parc devenu introuvable entre
+     l'appartenance et cette lecture — une fenêtre de course où refuser corse
+     plus que servir le défaut. */
+  const parc = await prisma.park.findUnique({
+    where: { id: parkId },
+    select: { leaseAccessMonths: true },
+  })
   const termeDeLaFenetre = new Date()
-  termeDeLaFenetre.setUTCMonth(termeDeLaFenetre.getUTCMonth() - MOIS_APRES_LE_BAIL)
+  termeDeLaFenetre.setUTCMonth(
+    termeDeLaFenetre.getUTCMonth() - (parc?.leaseAccessMonths ?? MOIS_APRES_LE_BAIL),
+  )
 
   return prisma.unit.findMany({
     where: {

@@ -708,6 +708,10 @@ export const fr = {
         'L’état des lieux d’entrée est établi à la remise des clés, celui de sortie à leur restitution. Votre gestionnaire les dépose ici pour que vous puissiez comparer les deux.',
       manager: 'Votre gestionnaire',
       managerName: 'Diane F.',
+      /* LA FIN D'ACCÈS. « Warn », pas « danger » : une échéance, pas une panne.
+         La phrase dit le geste — télécharger — parce qu'une date sans geste
+         laisse compter les jours au lieu d'agir. */
+      accessEnds: 'Votre bail est terminé : cet espace reste ouvert jusqu’au {date}. Téléchargez vos quittances avant cette date — ensuite, demandez-les à votre bailleur.',
       privacyNote:
         'Vous ne voyez que les données de votre logement. Les autres locataires du parc ne vous sont pas visibles.',
       restrictedTitle: 'Accès restreint',

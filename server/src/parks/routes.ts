@@ -396,6 +396,40 @@ parksRouter.get(
     const perimetreUnite = porteeDesUnites(req.adhesion!)
     const perimetre = porteeDesImmeubles(req.adhesion!)
     const visibles = await unitesVisibles(parkId, req.compteId!, role)
+
+    /**
+     * LA FIN D'ACCÈS S'ANNONCE, ELLE NE TOMBE PAS.
+     *
+     * La fenêtre après le bail coupe l'accès du locataire parti — et le lot
+     * qui l'a posée l'avouait : « un jour ses quittances sont là, le
+     * lendemain son espace dit “aucun logement rattaché” », sans qu'aucun
+     * écran ne l'ait averti. La date est donc CALCULÉE ici et rendue au
+     * portefeuille : dernier terme de bail + fenêtre du parc, seulement
+     * quand PLUS AUCUN bail n'est en cours — tant qu'un bail court, il n'y a
+     * rien à annoncer, et une date sur l'espace d'un locataire en place
+     * sèmerait la panique pour rien.
+     */
+    let accessUntil = null
+    if (role === 'tenant') {
+      const bails = await prisma.lease.findMany({
+        where: { tenant: { userId: req.compteId!, parkId } },
+        select: { endsOn: true },
+      })
+      const tousTermines = bails.length > 0 && bails.every((b) => b.endsOn !== null)
+      if (tousTermines) {
+        const parc = await prisma.park.findUnique({
+          where: { id: parkId },
+          select: { leaseAccessMonths: true },
+        })
+        const dernier = bails.reduce(
+          (plus, b) => (b.endsOn! > plus ? b.endsOn! : plus),
+          bails[0]!.endsOn!,
+        )
+        const terme = new Date(dernier)
+        terme.setUTCMonth(terme.getUTCMonth() + (parc?.leaseAccessMonths ?? 3))
+        accessUntil = terme
+      }
+    }
     const aujourdhui = new Date()
 
     const immeubles = await prisma.building.findMany({
@@ -999,6 +1033,8 @@ parksRouter.get(
        * l'empêche de lire ses propres chiffres de travers.
        */
       scoped: req.adhesion!.immeubles !== null,
+      /* La date seule, sans heure : c'est un jour de fin, pas un instant. */
+      accessUntil: accessUntil ? accessUntil.toISOString().slice(0, 10) : null,
       collections: [...parPeriode.values()].sort(
         (a, b) => a.year - b.year || a.month - b.month,
       ),
@@ -1987,13 +2023,21 @@ const schemaCorrectionDuParc = z
      * choisissait entre deux modes qui n'existaient que le temps du rendu.
      */
     delegation: z.enum(['solo', 'delegate']).optional(),
+    /**
+     * La fenêtre après le bail, en mois. Bornée à [1, 24] : zéro couperait
+     * l'accès le jour du départ — avant même de télécharger la dernière
+     * quittance — et au-delà de deux ans, ce n'est plus une fenêtre de
+     * courtoisie, c'est un accès permanent qui ne dit pas son nom.
+     */
+    leaseAccessMonths: z.number().int().min(1).max(24).optional(),
   })
   .refine(
     (v) =>
       v.name !== undefined ||
       v.countryCode !== undefined ||
       v.currency !== undefined ||
-      v.delegation !== undefined,
+      v.delegation !== undefined ||
+      v.leaseAccessMonths !== undefined,
     { message: 'Rien à corriger' },
   )
 
@@ -2031,6 +2075,12 @@ const schemaPerimetre = z.object({
    * reste tant qu'aucune exclusion n'existe.
    */
   unitIds: z.array(z.string().uuid()).max(2000).optional(),
+  /**
+   * « Tout l'immeuble SAUF ceux-là. » Chaque exclu doit appartenir à un immeuble
+   * de `buildingIds` — exclure hors du périmètre ne retranche rien, et la ligne
+   * serait un fait faux au registre.
+   */
+  excludedUnitIds: z.array(z.string().uuid()).max(2000).optional(),
 })
 
 const schemaReponse = z.object({
@@ -2237,6 +2287,7 @@ parksRouter.post(
     /* LA COPIE PART APRÈS L'ÉCRITURE, et son échec ne la défait pas : la
        notification est le fait, le courriel en est une copie. */
     await envoyerLaCopieDuFil(
+      travail.id,
       monte
         ? gestion.map((m) => m.user.email)
         : [travail.reportedByTenant.user?.email ?? travail.reportedByTenant.email],
@@ -2562,6 +2613,9 @@ parksRouter.patch(
         ...(corps.countryCode !== undefined ? { countryCode: corps.countryCode } : {}),
         ...(corps.currency !== undefined ? { currency: corps.currency } : {}),
         ...(corps.delegation !== undefined ? { delegation: corps.delegation } : {}),
+        ...(corps.leaseAccessMonths !== undefined
+          ? { leaseAccessMonths: corps.leaseAccessMonths }
+          : {}),
       },
       select: { id: true, name: true, countryCode: true, currency: true, delegation: true },
     })
@@ -2848,9 +2902,10 @@ parksRouter.get(
              immeuble sur trois y figurait exactement comme celui qui les gère
              tous — et le propriétaire n'avait aucun écran pour s'en apercevoir. */
           buildings: { select: { buildingId: true } },
-          /* LES LOGEMENTS CONFIÉS, l'autre moitié du périmètre. Le registre
-             disait « il gère ces immeubles » et taisait « et ces deux studios ». */
-          units: { select: { unitId: true } },
+          /* LES LOGEMENTS CONFIÉS ET LES EXCLUS, dans la même relation : les
+             deux sens du même rattachement, que l'écran doit précocher et
+             prédécocher fidèlement. */
+          units: { select: { unitId: true, exclue: true } },
           /* LA FICHE DE CE COMPTE DANS CE PARC, s'il en a une.
              Le registre disait qui accède ; il ne disait pas qui est RELIÉ. Un
              locataire membre sans fiche voit un espace vide, et l'écran qui
@@ -2974,7 +3029,8 @@ parksRouter.get(
            accepte en retour, et l'écran n'a pas à traduire entre les deux. Son
            sens — « tout le parc » — est celui du modèle, et il est écrit là-bas. */
         buildingIds: m.buildings.map((b) => b.buildingId),
-        unitIds: m.units.map((u) => u.unitId),
+        unitIds: m.units.filter((u) => !u.exclue).map((u) => u.unitId),
+        excludedUnitIds: m.units.filter((u) => u.exclue).map((u) => u.unitId),
         since: m.createdAt.toISOString(),
       })),
       unlinkedTenants: fichesOrphelines.map((f) => ({
@@ -3442,6 +3498,7 @@ parksRouter.patch(
      * confirmerait qu'un immeuble porte cet identifiant.
      */
     const unitIds = corps.unitIds ?? []
+    const excludedUnitIds = corps.excludedUnitIds ?? []
 
     if (corps.buildingIds.length > 0) {
       const connus = await prisma.building.count({
@@ -3468,6 +3525,20 @@ parksRouter.patch(
       }
     }
 
+    /* L'EXCLUSION N'A DE SENS QUE DANS UN IMMEUBLE CONFIÉ. Hors de là elle ne
+       retranche rien, et consigner un retranchement sans objet ferait mentir le
+       registre. 400 et non 404 : les identifiants peuvent être parfaitement
+       réels — c'est la DEMANDE qui est contradictoire. */
+    if (excludedUnitIds.length > 0) {
+      const dansLePerimetre = await prisma.unit.count({
+        where: { id: { in: excludedUnitIds }, buildingId: { in: corps.buildingIds } },
+      })
+      if (dansLePerimetre !== excludedUnitIds.length) {
+        res.status(400).json({ error: 'exclusion_outside_scope' })
+        return
+      }
+    }
+
     /* Remplacement ATOMIQUE : entre le retrait et la pose, un périmètre vide
        vaudrait « tout le parc » — l'inverse exact de ce qu'on est en train de
        faire. Une requête concurrente y lirait un accès total d'une fraction de
@@ -3479,7 +3550,17 @@ parksRouter.patch(
         data: corps.buildingIds.map((buildingId) => ({ membershipId: adhesion.id, buildingId })),
       }),
       prisma.membershipUnit.createMany({
-        data: unitIds.map((unitId) => ({ membershipId: adhesion.id, unitId })),
+        /* Les deux sens dans la même table : confié à l'endroit, exclu à
+           l'envers. Un logement ne peut pas porter les deux — la clé primaire
+           (membershipId, unitId) l'interdit d'elle-même. */
+        data: [
+          ...unitIds.map((unitId) => ({ membershipId: adhesion.id, unitId })),
+          ...excludedUnitIds.map((unitId) => ({
+            membershipId: adhesion.id,
+            unitId,
+            exclue: true,
+          })),
+        ],
       }),
     ])
 
@@ -3500,11 +3581,11 @@ parksRouter.patch(
         /* LES DEUX LISTES, parce que le périmètre est leur UNION : n'en
            consigner qu'une ferait lire au registre un pouvoir plus étroit que
            celui qui a été donné. */
-        payload: { buildingIds: corps.buildingIds, unitIds, role: adhesion.role },
+        payload: { buildingIds: corps.buildingIds, unitIds, excludedUnitIds, role: adhesion.role },
       },
     })
 
-    res.status(200).json({ buildingIds: corps.buildingIds, unitIds })
+    res.status(200).json({ buildingIds: corps.buildingIds, unitIds, excludedUnitIds })
   },
 )
 
@@ -3878,13 +3959,34 @@ function gabaritDuFilEmail(entree: {
  * compte en porte toujours un : c'est l'appelant qui décide où il les prend.
  */
 async function envoyerLaCopieDuFil(
+  workId: string,
   adresses: (string | null | undefined)[],
   gabarit: { sujet: string; texte: string; html: string },
 ): Promise<number> {
   let partis = 0
   for (const adresse of adresses) {
     if (!adresse) continue
-    if (await laMessagerie().envoyerEmail(adresse, gabarit.sujet, gabarit)) partis++
+    /*
+      LA TENTATIVE D'ABORD, LA LIVRAISON ENSUITE — l'ordre de
+      `RentReminderEmail`, et pour la même raison : `deliveredAt` ne se pose
+      qu'après un `true` de la messagerie. « Le courriel du 3 septembre
+      est-il parti ? » se répond désormais dans la base, pas dans des
+      journaux qui tournent.
+
+      Et rien ici ne peut interrompre le geste : la trace comme la copie
+      sont des suites du signalement, jamais ses conditions.
+    */
+    const trace = await prisma.workThreadEmail.create({
+      data: { workId, recipient: adresse },
+      select: { id: true },
+    })
+    if (await laMessagerie().envoyerEmail(adresse, gabarit.sujet, gabarit)) {
+      partis++
+      await prisma.workThreadEmail.update({
+        where: { id: trace.id },
+        data: { deliveredAt: new Date() },
+      })
+    }
   }
   return partis
 }
@@ -4520,6 +4622,7 @@ parksRouter.post(
          locataire promet qu'ils le reçoivent IMMÉDIATEMENT — c'est cette ligne
          qui tient la promesse. */
       await envoyerLaCopieDuFil(
+        travail.id,
         gestion.map((m) => m.user.email),
         gabaritDuFilEmail({
           sens: 'signalement',

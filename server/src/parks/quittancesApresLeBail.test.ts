@@ -115,6 +115,35 @@ afterAll(async () => {
   await new Promise((resoudre) => serveur.close(resoudre))
 })
 
+describe('la fenêtre se règle par parc', () => {
+  it('un parc réglé à douze mois garde le parti plus longtemps', async () => {
+    /* Trois mois est le DÉFAUT, plus la règle : une législation locale peut
+       exiger davantage, et le réglage vit sur le parc. Quatre mois après le
+       départ, ce parc-ci montre encore les quittances que le défaut aurait
+       fermées — c'est le cas exact qui rougissait au défaut. */
+    const { cookie, parkId, unitId, cookieLocataire } = await parcAvecUnLocataire()
+    const regle = await request(serveur)
+      .patch(`/api/parks/${parkId}`)
+      .set('Cookie', cookie)
+      .send({ leaseAccessMonths: 12 })
+    expect(regle.status).toBe(200)
+    await terminerLeBail(unitId, 120)
+
+    const vu = await sonParc(parkId, cookieLocataire)
+    const unites = (vu.body.buildings as { units: { id: string }[] }[]).flatMap((b) => b.units)
+    expect(unites.map((u) => u.id)).toEqual([unitId])
+  })
+
+  it('refuse zéro : couper le jour du départ n’est pas une fenêtre', async () => {
+    const { cookie, parkId } = await parcAvecUnLocataire()
+    const refuse = await request(serveur)
+      .patch(`/api/parks/${parkId}`)
+      .set('Cookie', cookie)
+      .send({ leaseAccessMonths: 0 })
+    expect(refuse.status).toBe(400)
+  })
+})
+
 describe('le locataire dont le bail court', () => {
   it('voit son logement, et rien de cette règle ne le gêne', async () => {
     const { parkId, unitId, cookieLocataire } = await parcAvecUnLocataire()
@@ -165,6 +194,23 @@ describe('le locataire parti', () => {
       unites,
       'un locataire sorti il y a quatre mois lisait encore le logement de son successeur',
     ).toEqual([])
+  })
+
+  it('lit la DATE de fin d’accès pendant la fenêtre, et jamais avant', async () => {
+    /* La coupure ne doit plus surprendre : « un jour ses quittances sont là, le
+       lendemain son espace dit “aucun logement rattaché” ». La date s'annonce
+       dès le départ — et JAMAIS tant qu'un bail court, où elle sèmerait la
+       panique pour rien. */
+    const { parkId, unitId, cookieLocataire } = await parcAvecUnLocataire()
+
+    const avant = await sonParc(parkId, cookieLocataire)
+    expect(avant.body.accessUntil, 'un bail en cours n’a rien à annoncer').toBeNull()
+
+    await terminerLeBail(unitId, 30)
+    const apres = await sonParc(parkId, cookieLocataire)
+    expect(apres.body.accessUntil, 'le parti doit savoir QUAND ça ferme').toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    /* Fin du bail il y a 30 jours + 3 mois : la date est DEVANT nous. */
+    expect(new Date(apres.body.accessUntil).getTime()).toBeGreaterThan(Date.now())
   })
 
   it('ne peut plus marquer comme lue une notification de ce logement', async () => {

@@ -564,9 +564,9 @@ export const api = {
   setManagerBuildings: (
     parkId: string,
     membershipId: string,
-    portee: { buildingIds: string[]; unitIds: string[] },
+    portee: { buildingIds: string[]; unitIds: string[]; excludedUnitIds: string[] },
   ) =>
-    requete<{ buildingIds: string[]; unitIds: string[] }>(
+    requete<{ buildingIds: string[]; unitIds: string[]; excludedUnitIds: string[] }>(
       `/parks/${parkId}/memberships/${membershipId}/immeubles`,
       { method: 'PATCH', body: JSON.stringify(portee) },
     ),

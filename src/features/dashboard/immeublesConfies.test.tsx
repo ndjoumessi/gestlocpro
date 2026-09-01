@@ -241,32 +241,38 @@ describe('confier des LOGEMENTS', () => {
     expect(corps.buildingIds).toEqual([])
   })
 
-  it('efface les logements d’un immeuble qu’on coche en entier', async () => {
-    /* Le périmètre est leur UNION : cocher l'immeuble rend chaque logement
-       redondant. Les laisser inviterait à les décocher en croyant retirer
-       quelque chose — et les garder en mémoire les ferait réapparaître au
-       décochage de l'immeuble. */
+  it('décocher un logement sous un immeuble coché écrit une EXCLUSION', async () => {
+    /* Le lot précédent faisait DISPARAÎTRE ces cases, « pour ne pas inviter à
+       décocher en croyant retirer ». Décocher retire VRAIMENT, désormais :
+       « tout l'immeuble sauf celui-là », la liste inversée qui SUIT l'immeuble
+       quand il grandit. */
     await ouvrirLesAcces()
     const user = userEvent.setup()
 
     await user.click(
-      within(rangeeDe('Agence Deïdo')).getByRole('button', { name: 'Confier des immeubles' }),
+      within(rangeeDe('Cabinet Njoya')).getByRole('button', { name: 'Confier des immeubles' }),
     )
     const modale = within(screen.getByRole('dialog'))
+    await user.click(modale.getByRole('checkbox', { name: /Bonamoussadi/ }))
+    /* Sous l'immeuble coché, les cases restent — COCHÉES : il voit tout. */
     expect((modale.getByRole('checkbox', { name: 'S1' }) as HTMLInputElement).checked).toBe(true)
 
-    await user.click(modale.getByRole('checkbox', { name: /Bonamoussadi/ }))
-    expect(
-      modale.queryByRole('checkbox', { name: 'S1' }),
-      'les cases des logements restent visibles sous un immeuble coché',
-    ).toBeNull()
-
+    await user.click(modale.getByRole('checkbox', { name: 'S2' }))
     await user.click(modale.getByRole('button', { name: 'Confier' }))
+
     await waitFor(() => expect(envoi()).toBeDefined())
-    const corps = envoi()?.corps as { buildingIds: string[]; unitIds: string[] }
+    const corps = envoi()?.corps as {
+      buildingIds: string[]
+      unitIds: string[]
+      excludedUnitIds: string[]
+    }
     expect(corps.buildingIds).toEqual([BON])
-    expect(corps.unitIds, 'le studio est resté dans la liste sous son propre immeuble').toEqual([])
-  })
+    expect(corps.excludedUnitIds, 'la case décochée doit retrancher').toEqual([S2])
+    expect(
+      corps.unitIds,
+      'les logements couverts par l’immeuble ne partent pas en double',
+    ).toEqual([])
+    })
 })
 
 describe('confier des immeubles', () => {
