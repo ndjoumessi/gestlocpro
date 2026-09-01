@@ -150,6 +150,10 @@ const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
  * été passées sur ces états-là.
  */
 const FR = dictionnaireAPlat(readFileSync(join(RACINE, 'src/i18n/fr.ts'), 'utf8'))
+/* L'ANGLAIS AUSSI : la passe des notes ne cherchait qu'en français, et une note
+   dont la traduction cesse de paraître serait passée — le défaut fondateur de
+   `mesure-ui` n'existait qu'en anglais, et la leçon vaut pour les notes. */
+const EN = dictionnaireAPlat(readFileSync(join(RACINE, 'src/i18n/en.ts'), 'utf8'))
 
 /**
  * LES NOTES CONDITIONNELLES QUE SEUL L'ESPACE CONNECTÉ PEUT PEINDRE.
@@ -658,6 +662,48 @@ async function monterUnParcVide() {
 }
 
 /**
+ * UN PARC VIDE QUI A UN GESTIONNAIRE — le profil que les deux autres parcs ne
+ * peuvent pas produire.
+ *
+ * Le parc vide du dessus est en `delegation: solo` — il l'est pour la note du
+ * recrutement, et la route refuse d'y émettre un code de gestionnaire. Le parc
+ * riche a un gestionnaire, mais rien n'y est vide. Or le PREMIER écran d'un
+ * cabinet qui vient d'accepter un mandat est exactement celui-ci : un parc
+ * qu'on lui confie AVANT d'y saisir quoi que ce soit. Personne ne l'avait
+ * jamais ouvert.
+ */
+async function monterUnParcVideGere() {
+  const proprio = await appeler('/api/auth/signup', {
+    corps: {
+      email: 'parc-vide-gere@porte.test',
+      password: MDP,
+      fullName: 'Essomba Rose',
+      acceptTerms: true,
+      parkName: 'Parc confié sans rien',
+      countryCode: 'CM',
+    },
+  })
+  const moi = await appeler('/api/auth/me', { methode: 'GET', cookie: proprio.cookie })
+  const parkId = moi.corps.memberships[0].parkId
+
+  const invitation = await appeler(`/api/parks/${parkId}/invitations`, {
+    cookie: proprio.cookie,
+    corps: { role: 'manager' },
+  })
+  await appeler('/api/auth/signup', {
+    corps: {
+      email: 'gestion-vide@porte.test',
+      password: MDP,
+      fullName: 'Cabinet Essono',
+      acceptTerms: true,
+      invitationCode: invitation.corps.code,
+    },
+  })
+
+  return { parkId, compte: 'gestion-vide@porte.test' }
+}
+
+/**
  * UN ÉTAT VIDE REMPLACE LES INDICATEURS, IL NE S'Y AJOUTE PAS.
  *
  * ═══ LE PRINCIPE EXISTAIT, RIEN NE LE GARDAIT ═══
@@ -686,6 +732,14 @@ async function monterUnParcVide() {
  * beau, ni qu'un chiffre à zéro est faux — un zéro peut être une information
  * quand quelque chose existe à côté. Elle dit qu'on ne chiffre pas le néant
  * au-dessus de la phrase qui l'annonce.
+ *
+ * ET LES CHIFFRES ÉCRITS DANS UN TITRE ? Vérifié avant de les marquer : les
+ * seuls titres comptés du produit sont ceux de la file du jour — « {count}
+ * loyers ne sont pas soldés » — et chacun est gardé par `.length > 0` à sa
+ * ligne : « une ligne n'entre que si elle nomme un TRAVAIL qu'une personne peut
+ * finir ». Un titre compté ne peut donc jamais porter zéro, par construction.
+ * Rien à marquer — et si un titre compté sans garde apparaît un jour, c'est SA
+ * garde qui manquera, pas un attribut ici.
  *
  * DEUX MARQUEURS, JAMAIS UNE CLASSE. `data-indicateur` existait déjà, et son
  * commentaire dit pourquoi : « un état doit être INTERROGEABLE autrement que par
@@ -809,6 +863,18 @@ const MESURER_ZEROS_AU_DESSUS_DU_VIDE = () => {
  * l'assume pour une raison : son mode de défaillance est SILENCIEUX. Un bloc
  * grandit, les chiffres glissent sous le pli, et rien ne se casse. Il a fallu
  * une capture la première fois ; il en faudrait une la seconde.
+ *
+ * ═══ POURQUOI LE PREMIER CHIFFRE, ET PAS LE DERNIER ═══
+ *
+ * Le lot qui a écrit cette règle notait en dette : « elle ne juge que le
+ * PREMIER chiffre ; une rangée dont la quatrième carte passe sous le pli reste
+ * invisible ». C'est un choix désormais, pas un trou. À 360 px les cartes
+ * s'empilent, et la quatrième SOUS le pli est le fonctionnement normal d'un
+ * téléphone — on défile. Ce qui était un défaut sur la capture d'origine, c'est
+ * qu'AUCUN chiffre n'était visible : le premier à 786 px dans 640. Juger le
+ * premier attrape exactement cela ; juger le dernier interdirait le défilement.
+ * La carte seule sur sa ligne aux largeurs à colonnes, elle, est prise par la
+ * règle de l'ORPHELINE, qui compte les lignes.
  *
  * ═══ LE PLAFOND N'EST PAS UN RÉGLAGE ═══
  *
@@ -1002,9 +1068,11 @@ const parc = await (async () => {
 const serveur = await servir()
 let parcDeSonde
 let parcVide
+let parcVideGere
 try {
   parcDeSonde = await monterLeParc()
   parcVide = await monterUnParcVide()
+  parcVideGere = await monterUnParcVideGere()
 } catch (erreur) {
   console.error('\n✗ ' + String(erreur.message ?? erreur) + '\n')
   serveur.kill()
@@ -1052,6 +1120,15 @@ const PROFILS = [
     cle: 'tenant·sans',
     role: 'tenant',
     compte: () => parcDeSonde.comptes.tenantSansLogement,
+    dossier: false,
+  },
+  /* LE GESTIONNAIRE D'UN PARC VIDE — le premier écran d'un cabinet qui vient
+     d'accepter un mandat, avant toute saisie. Il cumule les deux états durs :
+     aucune donnée, ET les gardes du rôle de gestion. */
+  {
+    cle: 'manager·vide',
+    role: 'manager',
+    compte: () => parcVideGere.compte,
     dossier: false,
   },
 ]
@@ -1259,12 +1336,15 @@ try {
           /* LES NOTES SE CHERCHENT UNE FOIS, en français et à la largeur de
              bureau : une note est un TEXTE, et sa présence ne dépend ni de la
              largeur ni de la langue — seulement de l'état du parc. */
-          if (langue === LANGUES[0] && largeur === LARGEURS.at(-1)) {
+          /* DANS CHAQUE LANGUE, à la largeur de bureau : la page de ce tour est
+             déjà dans la bonne langue, et le texte attendu vient du dictionnaire
+             correspondant. */
+          if (largeur === LARGEURS.at(-1)) {
             for (const note of NOTES_SOUS_APP) {
               if (note.profil !== cle || note.adresse !== ecran.adresse) continue
               /* `dictionnaireAPlat` rend une `Map`, jamais un objet nu — et c'est
                  la première chose que ce lot a apprise en la lisant à l'indice. */
-              const attendu = FR.get(note.cle)
+              const attendu = (langue === 'fr-FR' ? FR : EN).get(note.cle)
               if (!attendu) {
                 plaintes.push(
                   `${note.cle} : introuvable dans \`fr.ts\`. La note a été renommée ou ` +
@@ -1501,9 +1581,9 @@ if (nomsExamines < NOMS_ATTENDUS) {
  * adresse déplacée, et la boucle ne trouverait plus la paire — sans qu'aucune
  * plainte ne sorte, puisque la condition ne serait jamais vraie.
  */
-if (notesCherchees !== NOTES_SOUS_APP.length) {
+if (notesCherchees !== NOTES_SOUS_APP.length * LANGUES.length) {
   plaintes.push(
-    `${notesCherchees} note(s) conditionnelle(s) cherchée(s) pour ${NOTES_SOUS_APP.length} ` +
+    `${notesCherchees} note(s) conditionnelle(s) cherchée(s) pour ${NOTES_SOUS_APP.length * LANGUES.length} ` +
       "déclarée(s). Une paire profil/adresse ne se rencontre plus : la table pointe à côté.",
   )
 }
@@ -1542,7 +1622,7 @@ if (plaintes.length > 0) {
 
 console.log(
   `\n✓ espace-connecte : ${ATTENDUS} points mesurés derrière une VRAIE session — ` +
-    `${ECRANS.length} écrans, ${PROFILS.length} profils — dont un PARC VIDE et un LOCATAIRE SANS LOGEMENT —, ` +
+    `${ECRANS.length} écrans, ${PROFILS.length} profils — parc vide, locataire sans logement, gestionnaire sans parc à gérer —, ` +
     `${LARGEURS.length} largeurs, ` +
     `${LANGUES.length} langues.\n` +
     `  ${FERMES_ATTENDUS} refus vérifiés dans les deux directions.\n` +
