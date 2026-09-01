@@ -125,12 +125,12 @@ describe('les copies du fil', () => {
     /* Le cas normal d'un chantier ouvert par le bailleur : personne à prévenir.
        Afficher « 0 remise » ferait lire un échec dans un silence. */
     await ouvrirLeDossier({ sent: 0, delivered: 0, lastAttemptAt: null })
-    expect(screen.queryByText(/copie e-mail/)).toBeNull()
+    expect(screen.queryByText(/copies? e-mail/)).toBeNull()
   })
 
   it('ne dit rien non plus quand le serveur ne rend pas le champ', async () => {
     await ouvrirLeDossier(undefined)
-    expect(screen.queryByText(/copie e-mail/)).toBeNull()
+    expect(screen.queryByText(/copies? e-mail/)).toBeNull()
   })
 })
 
@@ -167,6 +167,48 @@ describe('la même ligne sur l’écran des travaux', () => {
 
   it('ne dit rien quand aucune copie n’a été tentée', async () => {
     await ouvrirLesTravaux({ sent: 0, delivered: 0, lastAttemptAt: null })
-    expect(screen.queryByText(/copie e-mail/)).toBeNull()
+    expect(screen.queryByText(/copies? e-mail/)).toBeNull()
+  })
+})
+
+describe('l’écran du locataire', () => {
+  /**
+   * ═══ L'ABSENCE NE TENAIT QUE PAR LE SERVEUR ═══
+   *
+   * `Signaler` porte le même fil et ne montre pas la trace : c'est voulu — un
+   * journal d'envoi est une question de GESTION, et le serveur ne rend pas le
+   * champ à un locataire. Mais rien ne gardait cette absence côté écran : le
+   * jour où un autre lot ferait remonter `emailCopies` au locataire, ou où
+   * quelqu'un monterait `CopiesDuFil` ici par symétrie, personne ne le verrait.
+   *
+   * Ce cas force le champ DANS la réponse, ce que le serveur ne fait pas, et
+   * vérifie que l'écran ne l'affiche pas pour autant. Une règle tenue des deux
+   * côtés plutôt que d'un seul.
+   */
+  it('ne montre RIEN, même si le champ arrivait', async () => {
+    const sessionLocataire: EtatSession = {
+      statut: 'connecte',
+      compte: COMPTE_FICTIF,
+      adhesions: [{ parkId: PARC, role: 'tenant', parkName: 'Parc Bastos', currency: 'XAF' }],
+    }
+    /* LE LOGEMENT DOIT ÊTRE LE SIEN, sans quoi `miens` est vide et l'écran ne
+       rend aucun fil : la garde passerait À VIDE, en ne prouvant rien. C'est le
+       témoin qui l'a dit — il refusait de rougir. Le rattachement se fait par le
+       NOM, comme partout ailleurs dans ces fixtures. */
+    const sien = portefeuille({ sent: 3, delivered: 3, lastAttemptAt: '2026-08-20T09:00:00.000Z' })
+    sien.buildings[0]!.units[0]!.tenant = {
+      id: 'loc-A1',
+      fullName: COMPTE_FICTIF.fullName,
+      phoneE164: null,
+    }
+    sien.works[0]!.reportedBy = COMPTE_FICTIF.fullName
+    serveur.quand('GET', `/parks/${PARC}/portfolio`, { status: 200, body: sien })
+    await renderApp('/app/signaler', { session: sessionLocataire })
+    await attendreLeChargement()
+
+    expect(
+      screen.queryByText(/copies? e-mail/),
+      'un journal d’envoi est une question de gestion, pas la sienne',
+    ).toBeNull()
   })
 })
