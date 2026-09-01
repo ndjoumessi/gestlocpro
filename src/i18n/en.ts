@@ -1207,6 +1207,8 @@ export const en: Dictionary = {
       unlinkTenant: 'Unlink record',
       nameMismatch: 'Name does not match',
       scopeAll: 'Manages the whole portfolio',
+      scopeMore: 'and {count} others',
+      scopeMore_one: 'and 1 other',
       scopeExcept: '— except {names}',
       scopeSome: 'Manages: {names}',
       scopeAction: 'Assign buildings',

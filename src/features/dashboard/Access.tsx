@@ -70,6 +70,37 @@ function memePersonne(a: string | null | undefined, b: string | null | undefined
   return cle(a) === cle(b)
 }
 
+/**
+ * TROIS NOMS, PUIS UN COMPTE — le résumé d'un périmètre, replié.
+ *
+ * Un cabinet qui tient huit résidences les voyait toutes énumérées, et un
+ * immeuble de trente logements moins douze donnait une phrase de douze noms :
+ * juste, illisible. Trois noms suffisent à RECONNAÎTRE un périmètre — on lit
+ * « Bonamoussadi, Akwa, Deïdo… » et l'on sait de quel cabinet il s'agit.
+ * Au-delà, ce n'est plus de la lecture, c'est du dénombrement, et le compte le
+ * fait mieux.
+ *
+ * LE RESTE N'EST PAS PERDU : la modale de délégation porte la liste entière,
+ * cochée, à un clic. Elle répond à « lesquels, exactement ? » ; le résumé
+ * répond à « à peu près quoi ? ».
+ *
+ * Une seule fonction pour les DEUX côtés de la phrase — les confiés et les
+ * retranchés souffrent du même mal, et deux replis séparés divergeraient sur
+ * le seuil.
+ */
+const PLAFOND_DE_NOMS = 3
+
+function replier(noms: string[], t: ReturnType<typeof useT>) {
+  if (noms.length <= PLAFOND_DE_NOMS) return noms.join(', ')
+  /* Le compte est celui du RESTE, pas du total : « et 5 autres » se lit sans
+     soustraction, là où « sur 8 » demande d'en faire une. */
+  return (
+    noms.slice(0, PLAFOND_DE_NOMS).join(', ') +
+    ' ' +
+    t('app.access.scopeMore', { count: noms.length - PLAFOND_DE_NOMS })
+  )
+}
+
 export function Access() {
   const t = useT()
   const d = useDates()
@@ -358,7 +389,7 @@ export function Access() {
                       {(m.buildingIds ?? []).length === 0 && (m.unitIds ?? []).length === 0
                         ? t('app.access.scopeAll')
                         : t('app.access.scopeSome', {
-                            names: [
+                            names: replier([
                               ...immeublesDuParc
                                 .filter((i) => (m.buildingIds ?? []).includes(i.id))
                                 .map((i) => i.name),
@@ -370,7 +401,9 @@ export function Access() {
                                   .filter((u) => (m.unitIds ?? []).includes(u.id))
                                   .map((u) => `${i.name} · ${u.label}`),
                               ),
-                            ].join(', '),
+                            ],
+                              t,
+                            ),
                           })}
                       {/*
                         ET CE QU'ON A RETRANCHÉ — la seule phrase FAUSSE que
@@ -395,13 +428,14 @@ export function Access() {
                       {(m.excludedUnitIds ?? []).length > 0 &&
                         ' ' +
                           t('app.access.scopeExcept', {
-                            names: immeublesDuParc
-                              .flatMap((i) =>
+                            names: replier(
+                              immeublesDuParc.flatMap((i) =>
                                 (i.units ?? [])
                                   .filter((u) => (m.excludedUnitIds ?? []).includes(u.id))
                                   .map((u) => `${i.name} · ${u.label}`),
-                              )
-                              .join(', '),
+                              ),
+                              t,
+                            ),
                           })}
                     </span>
                   )}

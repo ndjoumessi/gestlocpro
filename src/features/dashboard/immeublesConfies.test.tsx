@@ -37,6 +37,29 @@ const AKW = 'aaaaaaaa-2222-4000-8222-222222222222'
 const DES = 'dddddddd-3333-4000-8333-333333333333'
 const S1 = '11111111-4444-4000-8444-444444444444'
 const S2 = '22222222-5555-4000-8555-555555555555'
+/* Un quatrième immeuble et deux logements de plus, POSÉS PAR L’ÉCRASEMENT et
+   non dans le registre partagé : les quatorze cas écrits avant le repli
+   comptent sur un parc de trois immeubles, et grossir la fixture commune les
+   ferait tous mentir sur ce qu’ils mesurent. */
+const QUATRE = '44444444-6666-4000-8666-666666666666'
+const S3 = '33333333-7777-4000-8777-777777777777'
+const S4 = '44444444-8888-4000-8888-888888888888'
+const PARC_ELARGI = [
+  {
+    id: BON,
+    name: 'Résidence Bonamoussadi',
+    district: 'Bonamoussadi',
+    units: [
+      { id: S1, label: 'S1' },
+      { id: S2, label: 'S2' },
+      { id: S3, label: 'S3' },
+      { id: S4, label: 'S4' },
+    ],
+  },
+  { id: AKW, name: 'Immeuble Akwa Nord', district: 'Akwa', units: [] },
+  { id: DES, name: 'Villa Deïdo', district: 'Deïdo', units: [] },
+  { id: QUATRE, name: 'Résidence Bali', district: 'Bali', units: [] },
+]
 
 function sessionDuRole(role: Role): EtatSession {
   return {
@@ -170,7 +193,13 @@ beforeEach(() => {
  * sans rien savoir des exclusions.
  */
 async function ouvrirLesAcces(
-  role: Role | { membreBorne: { buildingIds: string[]; unitIds: string[]; excludedUnitIds: string[] } } = 'owner',
+  role:
+    | Role
+    | {
+        membreBorne: { buildingIds: string[]; unitIds: string[]; excludedUnitIds: string[] }
+        /** Un parc plus large que celui du registre partagé, quand le cas l'exige. */
+        parc?: typeof PARC_ELARGI
+      } = 'owner',
 ) {
   const roleReel = typeof role === 'string' ? role : 'owner'
   if (typeof role !== 'string') {
@@ -181,6 +210,7 @@ async function ouvrirLesAcces(
         status: 200,
         body: {
           ...REGISTRE,
+          ...(role.parc ? { buildings: role.parc } : {}),
           members: REGISTRE.members.map((m) =>
             m.id === 'm-bornee' ? { ...m, ...role.membreBorne } : m,
           ),
@@ -417,5 +447,61 @@ describe('le résumé du registre, quand des logements sont retranchés', () => 
       membreBorne: { buildingIds: [BON], unitIds: [], excludedUnitIds: [] },
     })
     expect(rangeeDe('Diane Fotso').textContent).not.toContain('sauf')
+  })
+})
+
+describe('un résumé qui ne tient pas sur une ligne', () => {
+  /**
+   * ═══ JUSTE, ET ILLISIBLE ═══
+   *
+   * Le lot des exclusions le nommait en dette : « un gestionnaire à qui l'on
+   * confie un immeuble de trente logements moins douze lira une phrase de douze
+   * noms — juste, illisible ». La même chose vaut du côté des CONFIÉS : un
+   * cabinet qui tient huit résidences les voit toutes énumérées.
+   *
+   * ═══ TROIS, PUIS UN COMPTE ═══
+   *
+   * Trois noms suffisent à reconnaître un périmètre — on lit « Bonamoussadi,
+   * Akwa, Deïdo… » et l'on sait de quel cabinet il s'agit. Au-delà, ce n'est
+   * plus de la lecture, c'est du dénombrement, et le compte le fait mieux.
+   *
+   * LE RESTE N'EST PAS PERDU : la modale de délégation porte la liste entière,
+   * cochée, et elle est à un clic. Elle répond à « lesquels, exactement ? » ; le
+   * résumé répond à « à peu près quoi ? ».
+   */
+  it('replie au-delà de trois immeubles, sans mentir sur le total', async () => {
+    await ouvrirLesAcces({
+      membreBorne: { buildingIds: [BON, AKW, DES, QUATRE], unitIds: [], excludedUnitIds: [] },
+      parc: PARC_ELARGI,
+    })
+    const texte = rangeeDe('Diane Fotso').textContent ?? ''
+    expect(texte, 'trois noms suffisent à reconnaître un périmètre').toContain(
+      'Résidence Bonamoussadi',
+    )
+    expect(texte, 'le quatrième ne s’énumère plus').not.toContain('Résidence Bali')
+    expect(texte, 'et le compte doit dire combien il en reste').toMatch(/1 autre/)
+  })
+
+  it('n’ajoute rien quand trois suffisent', async () => {
+    /* « et 0 autres » serait pire que le silence. */
+    await ouvrirLesAcces({
+      membreBorne: { buildingIds: [BON, AKW, DES], unitIds: [], excludedUnitIds: [] },
+      parc: PARC_ELARGI,
+    })
+    expect(rangeeDe('Diane Fotso').textContent).not.toMatch(/autre/)
+  })
+
+  it('replie aussi les exclusions, qui souffrent du même mal', async () => {
+    await ouvrirLesAcces({
+      membreBorne: {
+        buildingIds: [BON],
+        unitIds: [],
+        excludedUnitIds: [S1, S2, S3, S4],
+      },
+      parc: PARC_ELARGI,
+    })
+    const texte = rangeeDe('Diane Fotso').textContent ?? ''
+    expect(texte).toContain('sauf')
+    expect(texte, 'la même règle des deux côtés de la phrase').toMatch(/1 autre/)
   })
 })
