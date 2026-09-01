@@ -4198,14 +4198,43 @@ async function envoyerLaCopieDuFil(
   return partis
 }
 
-/** Gabarit du courriel de relance automatique — sujet, texte, HTML. */
+/**
+ * Gabarit du courriel de relance automatique — sujet, texte, HTML, DANS SA LANGUE.
+ *
+ * Le fil d'un signalement est bilingue depuis un lot ; la relance ne l'était
+ * pas, et c'est le message qui compte le PLUS pour un locataire : il réclame de
+ * l'argent. Un anglophone recevait une mise en demeure douce dans une langue
+ * qu'il ne lit pas.
+ *
+ * SA LANGUE VIENT DE SON COMPTE, pas de sa fiche : `Tenant` n'en porte pas,
+ * `UserAccount` en porte une depuis l'origine. Sans compte, le français — le
+ * défaut du produit, comme pour le fil.
+ *
+ * Fonction sœur et non dictionnaire, même raison qu'ailleurs : les libellés de
+ * ce produit sont des phrases entières, jamais des mots collés.
+ */
 function gabaritRelanceEmail(
   nomLocataire: string,
   jours: number,
   dûMinor: number,
   devise: string,
+  langue?: string | undefined,
 ): { sujet: string; texte: string; html: string } {
   const montant = formaterMontant(dûMinor, devise)
+  if (langue === 'en') {
+    const sujet = `GestLocPro — rent is ${jours} days overdue`
+    return {
+      sujet,
+      texte:
+        `Hello ${nomLocataire},\n\n` +
+        `Your rent is ${jours} days overdue. Amount due: ${montant}.\n\n` +
+        `Please settle it as soon as you can.`,
+      html:
+        `<p>Hello ${echapperHtml(nomLocataire)},</p>` +
+        `<p>Your rent is ${jours} days overdue. Amount due: ${echapperHtml(montant)}.</p>` +
+        `<p>Please settle it as soon as you can.</p>`,
+    }
+  }
   const sujet = `GestLocPro — loyer en retard de ${jours} jours`
   const texte =
     `Bonjour ${nomLocataire},\n\n` +
@@ -4236,7 +4265,11 @@ function gabaritRelanceEmail(
  * défaut que ce lot doit ne pas reproduire, pas seulement ne pas aggraver.
  */
 export async function tenterRelanceEmailMilestone(
-  bail: { id: string; tenant: { fullName: string; email: string | null } },
+  bail: {
+    id: string
+    /** `userId` porte la LANGUE : `Tenant` n'en a pas, `UserAccount` si. */
+    tenant: { fullName: string; email: string | null; userId?: string | null }
+  },
   jours: number,
   dûMinor: number,
   devise: string,
@@ -4255,7 +4288,22 @@ export async function tenterRelanceEmailMilestone(
     throw err
   }
 
-  const gabarit = gabaritRelanceEmail(bail.tenant.fullName, jours, dûMinor, devise)
+  /* La langue du destinataire, lue sur son compte quand il en a un. Une
+     requête de plus par relance, et elle ne part qu'une fois par jalon et par
+     bail — la garde d'idempotence ci-dessus l'a déjà tranché. */
+  const compte = bail.tenant.userId
+    ? await prisma.userAccount.findUnique({
+        where: { id: bail.tenant.userId },
+        select: { locale: true },
+      })
+    : null
+  const gabarit = gabaritRelanceEmail(
+    bail.tenant.fullName,
+    jours,
+    dûMinor,
+    devise,
+    compte?.locale,
+  )
   const parti = await laMessagerie().envoyerEmail(bail.tenant.email, gabarit.sujet, gabarit)
   if (!parti) return 'not_delivered'
 

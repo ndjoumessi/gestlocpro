@@ -1,4 +1,5 @@
 import type { Messagerie } from './messagerie.js'
+import { env } from '../env.js'
 
 /**
  * Envoi de courriels par Resend.
@@ -45,6 +46,23 @@ export class MessagerieResend implements Messagerie {
           // a cassé le parcours en production.
           html: corps.html,
           text: corps.texte,
+          /*
+            `List-Unsubscribe`, ET SURTOUT PAS `List-Unsubscribe-Post`.
+
+            C'est le second en-tête qui déclare le « un clic » et autorise un
+            client à POSTer sans montrer la page. Sans lui, le client OUVRE
+            le lien — et l'on retombe sur ce que le pied de message a déjà
+            choisi : le lien mène au produit, le geste reste un geste. Le
+            désabonnement le plus dangereux est celui que personne n'a
+            demandé, et un aperçu de messagerie qui précharge une URL
+            agissante le provoquerait.
+
+            Le bouton natif du client apparaît quand même : c'est le geste le
+            plus visible, et il ouvre le réglage au lieu de le basculer.
+          */
+          headers: {
+            'List-Unsubscribe': `<${env.CLIENT_ORIGIN}/app>`,
+          },
         }),
       })
 

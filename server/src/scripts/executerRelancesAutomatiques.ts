@@ -35,7 +35,9 @@ export async function executerRelancesAutomatiques(): Promise<{
       where: { unit: { building: { parkId: parc.id } }, status: { in: ['active', 'pending'] } },
       select: {
         id: true,
-        tenant: { select: { fullName: true, email: true } },
+        /* `userId` : la LANGUE du destinataire vit sur son compte, et sans lui
+           la relance repartait en français pour tout le monde. */
+        tenant: { select: { fullName: true, email: true, userId: true } },
         charges: {
           where: { dueOn: { lt: maintenant } },
           select: { dueOn: true, rentMinor: true, payments: { select: { amountMinor: true } } },
