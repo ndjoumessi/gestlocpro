@@ -178,6 +178,15 @@ export function exigerRole(...roles: ParkRole[]) {
  * unique : un locataire peut en louer deux, et un locataire parti doit encore
  * accéder à ses quittances.
  */
+/**
+ * COMBIEN DE TEMPS UN LOCATAIRE PARTI GARDE SES PIÈCES.
+ *
+ * Trois mois, décidés pour ce produit. Le nombre vit ici, seul et nommé, plutôt
+ * qu'au milieu d'une requête : c'est une règle de gestion, elle se relit et se
+ * discute, et une constante enfouie dans un `where` ne se relit jamais.
+ */
+export const MOIS_APRES_LE_BAIL = 3
+
 export async function unitesVisibles(
   parkId: string,
   compteId: string,
@@ -187,10 +196,39 @@ export async function unitesVisibles(
   // gestionnaire voient tout le parc.
   if (role !== 'tenant') return null
 
+  /**
+   * TROIS MOIS APRÈS SON DÉPART, ET PAS UN DE PLUS.
+   *
+   * Le commentaire ci-dessus justifiait l'absence de borne — « un locataire
+   * parti doit encore accéder à ses quittances » — et il avait raison sur le
+   * principe et tort sur la durée : c'était SANS FIN. Un locataire sorti en 2024
+   * gardait en 2027 la lecture de son ancien logement, donc les relevés d'eau de
+   * qui l'habite depuis, les états des lieux qui ne sont pas les siens, et les
+   * notifications portant sur cette unité. Le cloisonnement de ce produit est
+   * bâti sur l'UNITÉ ; passé le départ, l'unité n'est plus la sienne.
+   *
+   * La fenêtre est le temps de récupérer ses pièces, de contester une retenue de
+   * caution, de fournir une attestation à un nouveau bailleur.
+   *
+   * ELLE COURT DEPUIS `endsOn` ET NON DEPUIS UN STATUT. Un bail peut être marqué
+   * `ended` le jour où l'on signe le suivant, alors que la sortie a eu lieu deux
+   * mois plus tôt : la date est un fait, le statut est une saisie.
+   *
+   * `endsOn: null` NE SE PÉRIME PAS — c'est le bail en cours, et c'est
+   * l'écrasante majorité. La borne ne concerne que ceux dont le terme est écrit.
+   */
+  const termeDeLaFenetre = new Date()
+  termeDeLaFenetre.setUTCMonth(termeDeLaFenetre.getUTCMonth() - MOIS_APRES_LE_BAIL)
+
   return prisma.unit.findMany({
     where: {
       building: { parkId },
-      leases: { some: { tenant: { userId: compteId } } },
+      leases: {
+        some: {
+          tenant: { userId: compteId },
+          OR: [{ endsOn: null }, { endsOn: { gte: termeDeLaFenetre } }],
+        },
+      },
     },
     select: { id: true },
   })
