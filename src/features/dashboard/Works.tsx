@@ -26,6 +26,7 @@ import { workTitle } from '@/data/workTitle'
 import { ReportModal } from './ReportModal'
 import { OpenWorkModal } from './OpenWorkModal'
 import { ReplyModal } from './ReplyModal'
+import { CopiesDuFil } from './CopiesDuFil'
 import { Modal } from '@/components/primitives/Modal'
 import { Field } from '@/components/primitives/Field'
 import { Input } from '@/components/primitives/Input'
@@ -582,6 +583,11 @@ export function Works() {
                     <p className="text-body text-pretty">{r.data.text}</p>
                   </div>
                 ))}
+                {/* La trace d'envoi du fil — l'écran où l'on relance un
+                    artisan est justement celui où « l'a-t-il reçu ? » se
+                    pose. Même composant que le dossier du logement : un
+                    échange n'a pas deux histoires selon l'écran. */}
+                <CopiesDuFil copies={work.emailCopies} className="mt-1 block text-caption text-muted" />
               </div>
 
               {/* `flex-wrap` SANS `shrink-0`, comme `PageHeader` : la paire

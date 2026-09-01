@@ -9,7 +9,6 @@ import { Skeleton, SkeletonRegion } from '@/components/primitives/Skeleton'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
-import { partiesDeDateISO } from '@/lib/dates'
 import {
   dernierVersement,
   imputation,
@@ -21,6 +20,7 @@ import {
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { useRole } from '@/components/layout/AppShell'
 import { ReplyModal } from './ReplyModal'
+import { CopiesDuFil } from './CopiesDuFil'
 import { StatCard } from '@/components/primitives/Charts'
 import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDebordement'
 import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
@@ -441,24 +441,7 @@ export function UnitFile() {
                     première avec un chiffre en plus — elle dit un ÉCART, et
                     c'est ce que le lecteur doit voir sans compter.
                   */}
-                  {work.emailCopies && work.emailCopies.sent > 0 && (
-                    <span className="basis-full text-caption text-muted">
-                      {work.emailCopies.delivered === work.emailCopies.sent
-                        ? t('app.works.copiesDelivered', {
-                            count: work.emailCopies.delivered,
-                            date: work.emailCopies.lastAttemptAt
-                              ? d.fullDate(partiesDeDateISO(work.emailCopies.lastAttemptAt))
-                              : '',
-                          })
-                        : t('app.works.copiesPartial', {
-                            count: work.emailCopies.delivered,
-                            total: work.emailCopies.sent,
-                            date: work.emailCopies.lastAttemptAt
-                              ? d.fullDate(partiesDeDateISO(work.emailCopies.lastAttemptAt))
-                              : '',
-                          })}
-                    </span>
-                  )}
+                  <CopiesDuFil copies={work.emailCopies} className="basis-full text-caption text-muted" />
                   {work.origin === 'tenantReport' && work.reportedBy && (
                     <Button
                       variant="ghost"

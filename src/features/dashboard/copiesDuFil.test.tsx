@@ -133,3 +133,40 @@ describe('les copies du fil', () => {
     expect(screen.queryByText(/copie e-mail/)).toBeNull()
   })
 })
+
+describe('la même ligne sur l’écran des travaux', () => {
+  /**
+   * ═══ POURQUOI LES DEUX ÉCRANS, ET PAS UN SEUL ═══
+   *
+   * Le lot qui a posé cette ligne ne l'a mise que dans le dossier du logement,
+   * et le nommait en dette à sa dernière section : « `Travaux` porte le même
+   * fil et ne la montre pas — l'écran où l'on relance un artisan est justement
+   * celui où “l'a-t-il reçu ?” se pose. »
+   *
+   * Les deux écrans portent le MÊME fil, avec le même regroupement et le même
+   * ordre : un échange n'a pas deux histoires selon l'écran qui l'ouvre, et sa
+   * trace d'envoi non plus.
+   */
+  async function ouvrirLesTravaux(emailCopies: unknown) {
+    serveur.quand('GET', `/parks/${PARC}/portfolio`, {
+      status: 200,
+      body: portefeuille(emailCopies),
+    })
+    await renderApp('/app/travaux', { session })
+    await attendreLeChargement()
+  }
+
+  it('dit combien sont parties, et quand', async () => {
+    await ouvrirLesTravaux({
+      sent: 2,
+      delivered: 2,
+      lastAttemptAt: '2026-08-20T09:00:00.000Z',
+    })
+    expect(screen.getByText(/2 copies e-mail remises/)).toBeInTheDocument()
+  })
+
+  it('ne dit rien quand aucune copie n’a été tentée', async () => {
+    await ouvrirLesTravaux({ sent: 0, delivered: 0, lastAttemptAt: null })
+    expect(screen.queryByText(/copie e-mail/)).toBeNull()
+  })
+})
