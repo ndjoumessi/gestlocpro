@@ -1,0 +1,63 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": null,
+  "redirects": [
+    {
+      "source": "/app/:chemin*",
+      "destination": "https://gestlocpro-app-production.up.railway.app/app/:chemin*",
+      "permanent": false
+    },
+    {
+      "source": "/connexion",
+      "destination": "https://gestlocpro-app-production.up.railway.app/connexion",
+      "permanent": false
+    },
+    {
+      "source": "/inscription/:chemin*",
+      "destination": "https://gestlocpro-app-production.up.railway.app/inscription/:chemin*",
+      "permanent": false
+    },
+    {
+      "source": "/inscription",
+      "destination": "https://gestlocpro-app-production.up.railway.app/inscription",
+      "permanent": false
+    },
+    {
+      "source": "/mot-de-passe-oublie",
+      "destination": "https://gestlocpro-app-production.up.railway.app/mot-de-passe-oublie",
+      "permanent": false
+    },
+    {
+      "source": "/reinitialiser",
+      "destination": "https://gestlocpro-app-production.up.railway.app/reinitialiser",
+      "permanent": false
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/((?!assets/|api/).*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'sha256-++5ZC4kYqr+Mfz4clHlb3xAAtAagqUr64KPQUvRQvII='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "same-origin"
+        }
+      ]
+    }
+  ]
+}
