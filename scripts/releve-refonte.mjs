@@ -61,7 +61,69 @@ exigerUnInventairePlein(routes)
 const ADRESSES = routes.map((r) => r.adresse)
 
 async function servir() {
-  const fils = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--host', '127.0.0.1'], {
+  /*
+    LE PORT DOIT ÊTRE LIBRE AVANT QU'ON LANCE QUOI QUE CE SOIT.
+
+    `--strictPort` fait échouer Vite au lieu de le déplacer, et cela ne suffit
+    PAS — un témoin l'a montré : port occupé par un intrus, Vite meurt, et la
+    boucle d'attente reçoit un 200 de l'intrus AVANT que la mort du fils ne
+    remonte. La porte mesurait un serveur qu'elle n'avait pas lancé, et rendait
+    vert.
+
+    Surveiller la sortie du fils ne corrige pas cette course : `npx` est le fils,
+    Vite le petit-fils, et la réponse de l'intrus arrive la première. Le seul
+    contrôle qui ne court pas est celui qui précède : si quelque chose répond
+    déjà sur ce port, on refuse.
+
+    CE N'EST PAS UNE HYPOTHÈSE. Relevé le 2026-09-01 : quatre prévisualisations
+    orphelines tournaient encore — 4183, 4188, 4193, 4199 —, la plus ancienne
+    depuis deux jours et dix-huit heures. Elles survivent à toute porte
+    interrompue avant son `kill`.
+
+    Le dégât est resté théorique ici : `vite preview` sert `dist/` au fil des
+    requêtes, et l'orphelin rendait les mêmes octets. Il cesse de l'être dès
+    qu'un orphelin vient d'un AUTRE dossier de travail — une seconde copie du
+    dépôt, une branche comparée — et la porte rendrait alors un vert sur un
+    paquet que personne n'a construit.
+  */
+  try {
+    await fetch(BASE + '/', { signal: AbortSignal.timeout(1500) })
+    throw new Error(
+      `releve-refonte : quelque chose répond déjà sur ${BASE}.\n` +
+        `  Cette porte lance son propre serveur et refuse d'en mesurer un autre.\n` +
+        `  Souvent une prévisualisation orpheline d'un passage interrompu :\n` +
+        `    lsof -nP -iTCP:${PORT} -sTCP:LISTEN`,
+    )
+  } catch (erreur) {
+    /* L'ABSENCE DE RÉPONSE EST CE QU'ON VEUT : `fetch` lève, et l'on continue.
+       Seule notre propre plainte est relancée — la reconnaître par son message
+       plutôt que par son type évite d'inventer une classe d'erreur pour une
+       ligne. */
+    if (erreur instanceof Error && erreur.message.includes('répond déjà')) throw erreur
+  }
+  /*
+    `--strictPort` : UNE PORTE NE MESURE PAS UN SERVEUR QU'ELLE N'A PAS LANCÉ.
+
+    Sans lui, `vite preview` trouve le port occupé et se déplace SANS BRUIT sur
+    le suivant. La porte, elle, continue d'interroger le port qu'elle a demandé
+    — et mesure donc ce qui s'y trouvait déjà.
+
+    CE N'EST PAS UNE HYPOTHÈSE. Relevé le 2026-09-01 : QUATRE serveurs de
+    prévisualisation orphelins tournaient encore, sur 4183, 4188, 4193 et 4199,
+    le plus ancien depuis deux jours et dix-huit heures. Ils survivent quand une
+    porte est interrompue avant son `kill` — un Ctrl-C, un délai dépassé, une
+    session fermée.
+
+    Ici le dégât est resté théorique : `vite preview` sert `dist/` au fil des
+    requêtes, et l'orphelin rendait donc les mêmes octets que son successeur.
+    Il cesse de l'être dès qu'un orphelin vient d'un AUTRE dossier de travail —
+    une seconde copie du dépôt, une branche en cours de comparaison — et la
+    porte rendrait alors un vert sur un paquet que personne n'a construit.
+
+    Le drapeau fait échouer le démarrage au lieu de le déplacer. Une porte qui
+    ne peut pas s'exécuter doit le DIRE, pas se rabattre sur autre chose.
+  */
+  const fils = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], {
     cwd: RACINE,
     stdio: 'ignore',
   })
