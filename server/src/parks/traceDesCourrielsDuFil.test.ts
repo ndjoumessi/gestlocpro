@@ -154,3 +154,81 @@ describe('le courriel qui ne part pas', () => {
     expect(trace!.deliveredAt).toBeNull()
   })
 })
+
+describe('la trace se LIT, et pas seulement s’écrit', () => {
+  /**
+   * ═══ UNE TABLE ÉCRITE QUE PERSONNE NE RELIT NE RÉPOND À RIEN ═══
+   *
+   * Le lot qui a posé `WorkThreadEmail` s'arrêtait à l'écriture. « Le courriel
+   * du 3 septembre est-il parti ? » avait dès lors sa réponse en base, et aucun
+   * moyen de la consulter autrement qu'en requêtant Postgres à la main — un
+   * demi-lot livré comme un lot entier.
+   *
+   * ═══ DES COMPTES, JAMAIS DES ADRESSES ═══
+   *
+   * Le portefeuille rend `emailCopies` par chantier : combien de copies
+   * tentées, combien remises, et QUAND la dernière tentative a eu lieu. Pas les
+   * adresses : elles n'ajoutent rien à « a-t-il été prévenu ? » et sortiraient
+   * de l'espace de qui les lit. La divulgation minimale qui répond à la
+   * question, et rien de plus.
+   *
+   * ═══ ET JAMAIS AU LOCATAIRE ═══
+   *
+   * C'est une question de GESTION — « mon gestionnaire a-t-il reçu mon
+   * signalement ? » se répond par la réponse elle-même, pas par un journal
+   * d'envoi. Le locataire ne reçoit pas ce champ.
+   */
+  it('rend les compteurs de copies au propriétaire', async () => {
+    const { cookie, parkId, unitId, cookieLocataire } = await parcAvecUnLocataire()
+    await signaler(parkId, unitId, cookieLocataire)
+
+    const vu = await request(serveur)
+      .get(`/api/parks/${parkId}/portfolio`)
+      .set('Cookie', cookie)
+    const travail = (vu.body.works as { emailCopies?: unknown }[])[0]
+    expect(
+      travail?.emailCopies,
+      'la trace existait en base et rien ne la lisait',
+    ).toEqual({ sent: 1, delivered: 1, lastAttemptAt: expect.any(String) })
+  })
+
+  it('compte la tentative NON remise sans la confondre avec une réussite', async () => {
+    rendre = false
+    const { cookie, parkId, unitId, cookieLocataire } = await parcAvecUnLocataire()
+    await signaler(parkId, unitId, cookieLocataire)
+
+    const vu = await request(serveur)
+      .get(`/api/parks/${parkId}/portfolio`)
+      .set('Cookie', cookie)
+    const travail = (vu.body.works as { emailCopies?: { sent: number; delivered: number } }[])[0]
+    expect(travail?.emailCopies?.sent, 'la tentative a eu lieu').toBe(1)
+    expect(travail?.emailCopies?.delivered, 'et rien n’est parti').toBe(0)
+  })
+
+  it('ne dit RIEN au locataire', async () => {
+    const { parkId, unitId, cookieLocataire } = await parcAvecUnLocataire()
+    await signaler(parkId, unitId, cookieLocataire)
+
+    const vu = await request(serveur)
+      .get(`/api/parks/${parkId}/portfolio`)
+      .set('Cookie', cookieLocataire)
+    const travail = (vu.body.works as { emailCopies?: unknown }[])[0]
+    expect(
+      travail?.emailCopies,
+      'un journal d’envoi est une question de gestion, pas la sienne',
+    ).toBeUndefined()
+  })
+
+  it('n’expose AUCUNE adresse', async () => {
+    const { cookie, parkId, unitId, cookieLocataire } = await parcAvecUnLocataire()
+    await signaler(parkId, unitId, cookieLocataire)
+
+    const vu = await request(serveur)
+      .get(`/api/parks/${parkId}/portfolio`)
+      .set('Cookie', cookie)
+    expect(
+      JSON.stringify(vu.body.works),
+      'les adresses n’ajoutent rien à « a-t-il été prévenu ? »',
+    ).not.toContain('proprio@example.com')
+  })
+})

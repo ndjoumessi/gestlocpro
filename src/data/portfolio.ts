@@ -863,6 +863,18 @@ export interface WorkOrder {
    * l'avait vu, donc sans pouvoir rappeler ni faire ouvrir la porte.
    */
   reportedBy?: string | null
+  /**
+   * LES COPIES E-MAIL DE CE FIL — des comptes, jamais des adresses.
+   *
+   * Absent pour un locataire, et absent d'une démonstration qui n'envoie
+   * rien : un journal d'envoi est une question de GESTION, et le jeu fictif
+   * ne prétend pas avoir écrit à qui que ce soit.
+   *
+   * Les adresses restent dehors — le compte et la date répondent à « a-t-il
+   * été prévenu ? », l'adresse n'y ajoute rien et sortirait de l'espace de
+   * qui la lit.
+   */
+  emailCopies?: { sent: number; delivered: number; lastAttemptAt: string | null }
 }
 
 /**

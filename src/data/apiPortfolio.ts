@@ -77,6 +77,8 @@ interface PortefeuilleApi {
     /** Optionnels : un serveur antérieur à ces champs ne les rend pas. */
     origin?: 'tenantReport' | 'ownerInitiative'
     reportedBy?: string | null
+    /** Voir `WorkOrder.emailCopies` : des comptes, jamais des adresses. */
+    emailCopies?: { sent: number; delivered: number; lastAttemptAt: string | null }
   }[]
   collections: { year: number; month: number; rent: number; water: number; power: number }[]
   /**
@@ -342,6 +344,10 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
       urgent: w.urgency === 'blocking',
       ...(w.origin ? { origin: w.origin } : {}),
       reportedBy: w.reportedBy ?? null,
+      /* Laissé ABSENT quand le serveur ne le rend pas — pour un locataire, ou
+         un serveur d’avant ce lot. Un zéro inventé dirait « rien n’est parti »,
+         ce qui est une affirmation, pas une absence. */
+      ...(w.emailCopies ? { emailCopies: w.emailCopies } : {}),
     })),
     deposits: data.deposits.map((d) => ({
       id: d.id,

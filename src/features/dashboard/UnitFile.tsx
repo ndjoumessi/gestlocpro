@@ -9,6 +9,7 @@ import { Skeleton, SkeletonRegion } from '@/components/primitives/Skeleton'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
+import { partiesDeDateISO } from '@/lib/dates'
 import {
   dernierVersement,
   imputation,
@@ -427,6 +428,37 @@ export function UnitFile() {
                     réservé à la gestion par sa route — pas de garde de rôle
                     à recopier ici.
                   */}
+                  {/*
+                    LES COPIES E-MAIL — la réponse à « est-il parti ? », qui
+                    vivait en base et nulle part ailleurs.
+
+                    RIEN QUAND RIEN N'A ÉTÉ TENTÉ : c'est le cas normal d'un
+                    chantier ouvert par le bailleur — personne à prévenir —
+                    et « 0 remise » ferait lire un échec dans un silence.
+
+                    Deux phrases et non une : « 2 remises » quand tout est
+                    parti, « 1 sur 3 tentées » sinon. La seconde n'est pas la
+                    première avec un chiffre en plus — elle dit un ÉCART, et
+                    c'est ce que le lecteur doit voir sans compter.
+                  */}
+                  {work.emailCopies && work.emailCopies.sent > 0 && (
+                    <span className="basis-full text-caption text-muted">
+                      {work.emailCopies.delivered === work.emailCopies.sent
+                        ? t('app.works.copiesDelivered', {
+                            count: work.emailCopies.delivered,
+                            date: work.emailCopies.lastAttemptAt
+                              ? d.fullDate(partiesDeDateISO(work.emailCopies.lastAttemptAt))
+                              : '',
+                          })
+                        : t('app.works.copiesPartial', {
+                            count: work.emailCopies.delivered,
+                            total: work.emailCopies.sent,
+                            date: work.emailCopies.lastAttemptAt
+                              ? d.fullDate(partiesDeDateISO(work.emailCopies.lastAttemptAt))
+                              : '',
+                          })}
+                    </span>
+                  )}
                   {work.origin === 'tenantReport' && work.reportedBy && (
                     <Button
                       variant="ghost"
