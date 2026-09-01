@@ -95,8 +95,29 @@ import { DEPOSITS, UNITS, WORKS, type Deposit, type Unit, type WorkOrder } from 
  * penche quand même vers l'incrément est le point de vue du DÉCLARANT — pour
  * lui, une ligne vide sous son titre se lit « je n'ai rien écrit », ce qui est
  * faux s'il a écrit. C'est un jugement sur la lecture, pas une mesure.
+ *
+ * Version 11 : LA FORME N'A PAS CHANGÉ, et c'est le seul incrément de cet
+ * historique dont ce soit vrai. Il purge.
+ *
+ * `PortfolioProvider` écrivait ici le parc RÉEL — sa boucle d'enregistrement ne
+ * regardait que le changement de référence, et la réponse du serveur en change
+ * une. Ces trois collections portent des noms et un téléphone ; `/demo` sème
+ * son état initial en relisant cette clé, et rien ne l'écrase ensuite. La
+ * démonstration montrait donc les locataires, les propriétaires et les
+ * gestionnaires du parc de qui l'ouvrait.
+ *
+ * L'écriture est fermée là-bas, ce qui suffit pour demain. Cet incrément est
+ * pour HIER : tout navigateur ayant déjà ouvert un espace réel porte cet
+ * enregistrement à cette heure, et rien d'autre ne l'en délogerait — la clé est
+ * réécrite, jamais relue comme suspecte. Un numéro qui ne correspond plus la
+ * fait supprimer à la première lecture, sur chaque appareil, sans que personne
+ * ait à vider quoi que ce soit à la main.
+ *
+ * LE PRIX EST CONNU ET ACCEPTÉ : un parcours de démonstration en cours est
+ * effacé au prochain chargement. C'est un jeu fictif qu'un clic reconstitue,
+ * contre des données personnelles qui restent sinon sur l'appareil.
  */
-const VERSION = 10
+const VERSION = 11
 const CLE = 'gestlocpro.portfolio'
 
 export interface EtatPersiste {

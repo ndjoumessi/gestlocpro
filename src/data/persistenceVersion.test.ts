@@ -29,13 +29,19 @@ import { VERSION_STOCKAGE, signatureDeLaForme } from './persistence'
  * tient l'historique, et il vaut de l'or le jour d'un doute — puis reporter la
  * nouvelle signature ici.
  *
+ * L'INVERSE EXISTE AUSSI, et la version 11 en est le cas : `VERSION` a été
+ * incrémentée sans que la forme bouge, pour PURGER les enregistrements déjà
+ * écrits — ils portaient un parc réel. Ce test ne l'interdit pas et n'a pas à
+ * le faire : il garde que la forme ne change jamais EN SILENCE, pas que la
+ * version ne bouge que pour elle.
+ *
  * Un changement qui n'affecte que le TYPE TypeScript n'a pas à passer par là :
  * `UnitTypeKey` a resserré `string` sans toucher aux valeurs enregistrées, et
  * les clés sont restées les mêmes. C'est bien la forme des données qui compte,
  * pas celle du code qui les lit.
  */
 const SIGNATURE_ARRETEE = {
-  version: 10,
+  version: 11,
   forme: {
     deposits: ['held', 'status', 'tenant', 'unitId', 'withheld'],
     units: [

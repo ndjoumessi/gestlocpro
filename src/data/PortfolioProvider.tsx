@@ -856,6 +856,37 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
    */
   const intact = useRef(initial)
   useEffect(() => {
+    /**
+     * UN PARC RÉEL NE S'ENREGISTRE PAS ICI, et c'était une fuite de données
+     * personnelles.
+     *
+     * Cette clé de `localStorage` existe pour la DÉMONSTRATION — son fichier le
+     * dit dès sa première ligne : « un enregistrement local du parcours en
+     * cours ». L'effet, lui, ne regardait que le changement de référence. Or
+     * `setUnits(parc.units)` en change une : dès que la réponse du serveur
+     * arrivait, le parc réel partait au même endroit que le jeu fictif.
+     *
+     * CE QUE CES TROIS COLLECTIONS PORTENT EST NOMINATIF : le nom du locataire
+     * et son TÉLÉPHONE sur l'unité, le nom de qui a ouvert une intervention sur
+     * le travail, le nom du locataire sur la caution. Locataires, propriétaires
+     * et gestionnaires — les trois rôles y passent, chacun par le champ que le
+     * serveur remplit pour lui.
+     *
+     * Et `/demo` relit cette clé au premier rendu : `loadState()` sème l'état
+     * initial, puis rien ne l'écrase, puisque la démonstration n'appelle aucun
+     * serveur. Qui ouvrait son espace puis visitait la démonstration y trouvait
+     * donc les personnes de son propre parc — sur une adresse PUBLIQUE, dont la
+     * raison d'être est précisément de ne montrer personne. Mesuré : le tableau
+     * du parc rendait le locataire réel sous les immeubles de la démonstration,
+     * un hybride que rien à l'écran ne signalait.
+     *
+     * `parkId` et non `enDemonstration` : un compte réel SANS parc voit le jeu
+     * de démonstration sous `/app` et peut le faire vivre — ses mutations
+     * retombent toutes sur la branche locale. Son parcours a le droit de
+     * survivre à un rafraîchissement, comme celui d'un visiteur. Ce qui ne doit
+     * pas s'écrire, c'est ce qui vient du SERVEUR.
+     */
+    if (parkId) return
     if (
       units === intact.current.units &&
       works === intact.current.works &&
@@ -865,7 +896,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     }
     saveState({ units, works, deposits })
     setStored(true)
-  }, [units, works, deposits])
+  }, [parkId, units, works, deposits])
 
   /**
    * Les mutations écrivent d'abord au serveur, puis rejouent la réponse.
