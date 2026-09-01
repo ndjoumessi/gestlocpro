@@ -54,10 +54,19 @@
  * ferme : les mêmes écrans, derrière une vraie session, sur un parc écrit par
  * les routes du serveur.
  */
-export const MESURER_GABARITS = () => {
-  const texte = document.body.innerText ?? ''
+export const MESURER_GABARITS = (racine) => {
+  /* `racine` BORNE LA LECTURE, et n'existe que pour les modales.
+
+     Sans elle, la sonde lit `body` — donc la page DERRIÈRE la boîte de dialogue,
+     que `mesure-ui` et `espace-connecte` balaient déjà. Un jeton du fond
+     rougirait alors deux fois, sous deux portes, et le refus de `modales`
+     nommerait une modale innocente. Bornée au dialogue, elle ne voit que ce qui
+     s'est ouvert. */
+  const dans = racine ? document.querySelector(racine) : document.body
+  if (!dans) return { jetons: [], vu: false }
+  const texte = dans.innerText ?? ''
   const jetons = [...texte.matchAll(/\{[A-Za-z][\w.]*\}/g)].map((m) => m[0])
-  return { jetons: [...new Set(jetons)] }
+  return { jetons: [...new Set(jetons)], vu: true }
 }
 
 /**

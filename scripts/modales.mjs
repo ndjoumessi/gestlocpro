@@ -72,6 +72,8 @@ import { fileURLToPath } from 'node:url'
 import { exit } from 'node:process'
 import { POLICE_LARGE, imposerLaPoliceLarge } from './police-large.mjs'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
+/* La MÊME sonde que `mesure-ui` et `espace-connecte`, bornée au dialogue. */
+import { MESURER_GABARITS } from './sondes-de-rendu.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
 const PORT = 4192
@@ -523,6 +525,8 @@ async function servir() {
 
 const serveur = await servir()
 const plaintes = []
+/* Combien de modales la sonde des gabarits a lues — voir sa garde du garde. */
+let gabaritsInspectes = 0
 const releve = []
 let inspectees = 0
 
@@ -799,7 +803,37 @@ try {
             voilesEnBas,
           }
         })
+        /**
+         * AUCUN GABARIT NE SURVIT DANS UNE MODALE NON PLUS.
+         *
+         * Les deux portes qui cherchent les `{jeton}` non résolus balaient des
+         * PAGES : `mesure-ui` sur la démonstration, `espace-connecte` derrière une
+         * session. Ni l'une ni l'autre n'ouvre une boîte de dialogue, et l'en-tête
+         * de la sonde le dit depuis le jour où elle est née — « les modales, qui
+         * ne sont pas ouvertes par les balayages qui l'emploient ».
+         *
+         * Vingt modales, quatre-vingts états, et pas un seul regardé sous cet
+         * angle. Ce script les ouvre déjà toutes : la sonde ne coûte qu'un
+         * `evaluate` de plus dans une boîte qui est là.
+         *
+         * BORNÉE AU DIALOGUE. Lue sur `body`, elle verrait la page derrière — que
+         * les deux autres portes tiennent déjà — et ferait rougir une modale
+         * innocente pour le jeton de son fond.
+         */
+        const gabarits = await page.evaluate(MESURER_GABARITS, '[role="dialog"],[role="alertdialog"]')
         await contexte.close()
+
+        if (gabarits.vu) {
+          gabaritsInspectes++
+          if (gabarits.jetons.length > 0) {
+            plaintes.push(
+              `${nom} · ${largeur}px · ${langue} : gabarit NON RÉSOLU dans la modale — ` +
+                `${gabarits.jetons.join(", ")}` +
+                "\n   Le paramètre n'atteint pas t(), ou le message est écrit en ICU " +
+                "imbriqué, que le fournisseur ne lit pas.",
+            )
+          }
+        }
 
         if (!m) {
           plaintes.push(`${nom} : le bouton a été cliqué et aucune boîte de dialogue n'est apparue.`)
@@ -908,6 +942,22 @@ if (NON_OUVRABLES.length !== NON_OUVRABLES_ATTENDUES) {
       '   doit rejoindre la mesure, une nouvelle inatteignable doit être nommée.',
   )
 }
+/**
+ * GARDE DU GARDE — la sonde des gabarits a-t-elle lu une seule modale ?
+ *
+ * Elle est née VERTE : aucun jeton non résolu dans les quatre-vingts états. Un
+ * vert de ce genre est indistinguable d'une sonde qui ne trouve plus son
+ * dialogue — un sélecteur changé, une modale montée ailleurs qu'en portail. Le
+ * compte est la seule chose qui les sépare, et il suit `ATTENDUS` sans le
+ * doubler : ce sont les mêmes ouvertures.
+ */
+if (gabaritsInspectes !== ATTENDUS) {
+  plaintes.push(
+    `la sonde des gabarits a lu ${gabaritsInspectes} modale(s) pour ${ATTENDUS} ouverture(s). ` +
+      "Ce n'est pas « aucun jeton », c'est une sonde qui ne trouve plus son dialogue.",
+  )
+}
+
 if (inspectees !== ATTENDUS) {
   plaintes.push(
     `${inspectees} état(s) inspecté(s) pour ${ATTENDUS} attendu(s).\n` +
