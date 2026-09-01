@@ -37,3 +37,5 @@ server/src/generated
 server/.stockage-local
 .carte-des-paquets.json
 captures/
+.vercel
+.env*

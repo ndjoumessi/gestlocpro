@@ -186,11 +186,13 @@ const REGISTRE = {
   },
   'app.onboarding.delegationOffNotice': {
     nonMesurable:
-      'DEUX CONDITIONS À LA FOIS, et l’aveu précédent n’en nommait qu’une. Elle ' +
-      'demande un parc réglé sur `delegation: solo` — que la démonstration ne peut ' +
-      'pas porter, faute d’adhésion — ET l’ouverture de la modale d’invitation, ' +
-      'car malgré son nom elle vit dans `InviteModal`, pas sur l’écran de prise ' +
-      'en main. ' +
+      'DEUX CONDITIONS À LA FOIS : un parc réglé sur `delegation: solo` — que la ' +
+      'démonstration ne peut pas porter, faute d’adhésion — ET l’ouverture de la ' +
+      'modale d’invitation, car malgré son nom elle vit dans `InviteModal`. ' +
+      'CE N’EST PLUS UN AVEU, C’EST UN RENVOI : `espace-connecte` ouvre désormais ' +
+      'des modales, et son parc VIDE est déjà en `solo`. Il y ouvre l’invitation ' +
+      'et REFUSE si la note n’y paraît pas — témoin : le parc repassé en ' +
+      '`delegate` la fait rougir. ' +
       'MESURÉ en tentant de la garder : `espace-connecte` a été réglé sur `solo` ' +
       'et a cherché la note sur `/app/prise-en-main` — elle n’y était pas, et ne ' +
       'pouvait pas y être. Aucune des deux portes ne peut donc l’atteindre : ' +
@@ -213,10 +215,13 @@ const REGISTRE = {
   'app.decisions.failed': {
     nonMesurable:
       'C’est un état d’ÉCHEC de lecture : il demande que le serveur refuse le ' +
-      'registre des décisions. La démonstration sert le sien depuis le client et ' +
-      'n’appelle personne. `SystemStates` porte la famille des états de panne, et ' +
-      'c’est là qu’une note d’échec devrait être exposée le jour où on les ' +
-      'rassemble.',
+      'registre. La démonstration sert le sien depuis le client et n’appelle ' +
+      'personne. ' +
+      'CE N’EST PLUS UN AVEU, C’EST UN RENVOI : `espace-connecte` parle à un VRAI ' +
+      'serveur et peut donc lui faire dire non. Il INTERCEPTE la seule adresse du ' +
+      'registre — 500, pas 404 : un registre absent et un registre illisible ne ' +
+      'sont pas la même chose — et refuse si l’écran ne le dit pas. Casser le ' +
+      'serveur pour de bon rendrait tous les autres écrans faux en même temps.',
   },
   'app.announce.delivered': {
     nonMesurable:
@@ -228,24 +233,38 @@ const REGISTRE = {
   'app.parkSettings.currencyWarning': {
     nonMesurable:
       'Elle ne paraît qu’après avoir CHANGÉ la devise dans la modale de correction ' +
-      'du parc, c’est-à-dire sur une valeur différente de l’enregistrée. Le geste ' +
-      'existe et il est mesurable ; il appartient à `modales`, qui tient déjà ' +
-      '`ParkSettings` et ses plafonds de défilement. Le poser ici mesurerait deux ' +
-      'fois la même modale par deux scripts.',
+      'du parc. ' +
+      'CE N’EST PLUS UN AVEU, C’EST UN RENVOI : le geste appartenait à `modales`, ' +
+      'et il y a été écrit. `ParkSettings·devise` est un ÉTAT de plus de la même ' +
+      'boîte — l’avertissement est purement client, donc la démonstration ' +
+      'l’atteint — et ce script EXIGE désormais que la note paraisse après le ' +
+      'geste : sans quoi c’est l’état d’ouverture qui serait mesuré deux fois, en ' +
+      'silence. Le défilement passe de 48 à 205 px à 360, prix d’un avertissement ' +
+      'qu’on ne veut pas raccourcir.',
   },
   'auth.forgot.sentBody': {
     nonMesurable:
       'Elle suit un ENVOI accepté par le serveur, et ce script tourne sur le ' +
-      'paquet construit, sans serveur d’API : le formulaire n’a personne à qui ' +
-      'parler. C’est la même limite que la réinitialisation réussie, juste ' +
-      'dessous, et elle tombera du même geste le jour où ces gardes ouvriront ' +
-      'un serveur — `politique-de-securite` le fait déjà pour douze écrans.',
+      'paquet construit, sans serveur d’API. ' +
+      'L’AVEU PRÉCÉDENT DÉSIGNAIT LE MAUVAIS HÔTE : il renvoyait à ' +
+      '`politique-de-securite`, dont le serveur part sur un `DATABASE_URL` ' +
+      'volontairement injoignable — il mesure des en-têtes, pas des parcours. ' +
+      'C’EST UN RENVOI VERS `espace-connecte`, le seul à tenir un serveur ET une ' +
+      'base : il demande le lien sur un compte dont le balayage est terminé et ' +
+      'refuse si la note ne paraît pas.',
   },
   'auth.reset.successBody': {
     nonMesurable:
-      'Elle suit une réinitialisation RÉUSSIE, donc un jeton valide émis par le ' +
-      'serveur. Ce script tourne sur le paquet construit, sans serveur d’API : ' +
-      'il n’existe aucun jeton à présenter.',
+      'Elle suit une réinitialisation RÉUSSIE, donc un jeton valide. ' +
+      'LE JETON EST INATTEIGNABLE PAR CONCEPTION, et c’est la vraie raison — ' +
+      'mesurée en essayant, pas supposée. `PasswordReset` ne stocke que ' +
+      '`tokenHash`, jamais le jeton, même règle que les sessions ; et ' +
+      '`MessagerieJournal` n’imprime ni le corps ni le lien, « les journaux étant ' +
+      'plus nombreux que ceux qui lisent la base ». Le jeton ne vit donc que dans ' +
+      'un courriel qui n’est pas envoyé. L’atteindre demanderait d’injecter une ' +
+      'messagerie de sonde DANS le serveur lancé — `espace-connecte` le lance ' +
+      'dans un autre processus — ou d’affaiblir le journal. Ni l’un ni l’autre ne ' +
+      'vaut cette note.',
   },
 }
 

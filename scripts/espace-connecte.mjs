@@ -1688,6 +1688,189 @@ try {
     await contexte.close()
   }
 
+  /* ══════════════ LE REGISTRE QUI NE SE LIT PAS ══════════════ */
+
+  /**
+   * `app.decisions.failed` — UN ÉTAT D'ÉCHEC, QUI DEMANDE UN ÉCHEC.
+   *
+   * L'aveu disait : « il demande que le serveur refuse le registre des
+   * décisions ; la démonstration sert le sien depuis le client et n'appelle
+   * personne ». Vrai — et ce script-ci parle à un VRAI serveur, donc il peut
+   * lui faire dire non.
+   *
+   * ON INTERCEPTE LA ROUTE, on ne casse pas le serveur. Provoquer une vraie
+   * panne — couper la base, tuer le processus — rendrait tous les autres
+   * écrans faux en même temps, et l'on ne saurait plus ce qu'on mesure.
+   * L'interception ne touche qu'UNE adresse, dans UN contexte, et le serveur
+   * continue de servir tout le reste normalement : c'est la panne telle que le
+   * navigateur la voit, ce qui est exactement ce que l'écran doit rendre.
+   *
+   * 500 ET NON 404 : un registre absent et un registre illisible ne sont pas la
+   * même chose, et c'est le second que cette note nomme.
+   */
+  {
+    const contexte = await navigateur.newContext({
+      ...SANS_AGENT_DE_SERVICE,
+      viewport: { width: LARGEURS.at(-1), height: 900 },
+      locale: 'fr-FR',
+    })
+    const connexion = await contexte.request.post(`${BASE}/api/auth/login`, {
+      data: { email: parcDeSonde.comptes.owner, password: MDP },
+    })
+    if (!connexion.ok()) {
+      plaintes.push(`registre illisible : la connexion a rendu ${connexion.status()}.`)
+    } else {
+      const page = await contexte.newPage()
+      await page.route('**/api/parks/*/decisions*', (route) =>
+        route.fulfill({ status: 500, contentType: 'application/json', body: '{}' }),
+      )
+      await page.goto(`${BASE}/app/decisions`, { waitUntil: 'networkidle' })
+      const vue = await page
+        .getByText(/Le registre n’a pas pu être lu/)
+        .first()
+        .waitFor({ state: 'visible', timeout: 8000 })
+        .then(() => true)
+        .catch(() => false)
+      if (!vue) {
+        plaintes.push(
+          "app.decisions.failed : le registre refuse de se lire et l'écran ne le DIT " +
+            'pas. Une page vide sur un refus se lit « aucune décision » — le contraire ' +
+            'de ce qui se passe.',
+        )
+      }
+      await page.close()
+    }
+    await contexte.close()
+  }
+
+  /* ══════════════ LA NOTE DE LA GESTION SEULE ══════════════ */
+
+  /**
+   * `app.onboarding.delegationOffNotice` — DEUX CONDITIONS, ET UNE SEULE PORTE
+   * PEUT LES TENIR.
+   *
+   * L'aveu était juste et complet : il faut un parc en `delegation: solo` — que
+   * la démonstration ne peut pas porter, faute d'adhésion — ET l'ouverture de la
+   * modale d'invitation, car malgré son nom la note vit dans `InviteModal`.
+   * `modales` balaie `/demo` ; ce script-ci n'ouvrait aucune modale.
+   *
+   * Il en ouvre depuis le premier geste d'un cabinet. Le parc vide est déjà en
+   * `solo` — il l'est pour la note du recrutement, pas pour celle-ci — et son
+   * propriétaire est le seul compte qui réunisse les deux conditions.
+   */
+  {
+    const contexte = await navigateur.newContext({
+      ...SANS_AGENT_DE_SERVICE,
+      viewport: { width: LARGEURS.at(-1), height: 900 },
+      locale: 'fr-FR',
+    })
+    const connexion = await contexte.request.post(`${BASE}/api/auth/login`, {
+      data: { email: parcVide.compte, password: MDP },
+    })
+    if (!connexion.ok()) {
+      plaintes.push(`gestion seule : la connexion a rendu ${connexion.status()}.`)
+    } else {
+      const page = await contexte.newPage()
+      await page.goto(`${BASE}/app/locataires`, { waitUntil: 'networkidle' })
+      const inviter = page.getByRole('button', { name: /Inviter par code/ }).first()
+      if ((await inviter.count()) === 0) {
+        plaintes.push(
+          "gestion seule : aucun bouton « Inviter par code » sur le parc en `solo`. " +
+            "Un parc qui ne délègue pas invite quand même ses LOCATAIRES ; sans ce " +
+            'bouton, la note qui explique le refus des codes de gestion est ' +
+            'inatteignable.',
+        )
+      } else {
+        await inviter.click()
+        const boite = page.getByRole('dialog').first()
+        await boite.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
+        const vue = await boite
+          .getByText(/Ce parc est en gestion seule/)
+          .first()
+          .waitFor({ state: 'visible', timeout: 5000 })
+          .then(() => true)
+          .catch(() => false)
+        if (!vue) {
+          plaintes.push(
+            "app.onboarding.delegationOffNotice : la note n'est PAS peinte dans la " +
+              "modale d'invitation d'un parc en `solo`. C'est la seule chose qui " +
+              'explique pourquoi aucun code de gestionnaire ne sort.',
+          )
+        }
+      }
+      await page.close()
+    }
+    await contexte.close()
+  }
+
+  /* ══════════════ LES DEUX NOTES D'AUTHENTIFICATION ══════════════ */
+
+  /**
+   * DEUX AVEUX QUI DÉSIGNAIENT LE MAUVAIS HÔTE.
+   *
+   * `notes-conditionnelles` les avouait ainsi : « elle tombera du même geste le
+   * jour où ces gardes ouvriront un serveur — `politique-de-securite` le fait
+   * déjà pour douze écrans ». Vérifié : ce serveur-là part sur un
+   * `DATABASE_URL` volontairement injoignable — il mesure des en-têtes, pas des
+   * parcours. Un mot de passe oublié s'écrit en base, et une réinitialisation
+   * exige un JETON que seul un vrai serveur émet.
+   *
+   * C'est donc ici qu'elles vivent : ce script est le seul à tenir les deux.
+   *
+   * SUR UN COMPTE DONT PLUS PERSONNE NE SE SERT — celui du parc vide, dont le
+   * balayage est terminé. Réinitialiser un mot de passe FERME toutes les
+   * sessions du compte, la note le dit elle-même ; le faire sur un compte
+   * qu'un profil ouvrirait ensuite casserait un balayage sans rapport.
+   */
+  {
+    const contexte = await navigateur.newContext({
+      ...SANS_AGENT_DE_SERVICE,
+      viewport: { width: LARGEURS.at(-1), height: 900 },
+      locale: 'fr-FR',
+    })
+    const page = await contexte.newPage()
+    const compte = parcVide.compte
+
+    await page.goto(`${BASE}/mot-de-passe-oublie`, { waitUntil: 'networkidle' })
+    await page.getByLabel(/Adresse e-mail/).fill(compte)
+    await page.getByRole('button', { name: /^Envoyer le lien$/ }).click()
+
+    const envoye = await page
+      .getByText(/un lien de réinitialisation vient d’y être envoyé/)
+      .first()
+      .waitFor({ state: 'visible', timeout: 8000 })
+      .then(() => true)
+      .catch(() => false)
+    if (!envoye) {
+      plaintes.push(
+        "auth.forgot.sentBody : la note de confirmation n'est PAS peinte après une " +
+          'demande de lien. Le serveur répond toujours 200 — pour ne pas révéler ' +
+          "quels comptes existent — donc l'écran ne dépend que de lui-même.",
+      )
+    }
+
+    /*
+      ET LA RÉINITIALISATION RÉUSSIE RESTE HORS D'ATTEINTE — mesuré, pas supposé.
+
+      J'ai essayé de lire le jeton pour ouvrir l'écran suivant. Il n'est nulle
+      part :
+
+        · `PasswordReset` ne stocke que `tokenHash`, jamais le jeton — la même
+          règle que les sessions, et pour la même raison ;
+        · `MessagerieJournal` n'imprime ni le corps ni le lien : elle masque le
+          destinataire et ne garde que le sujet, parce que « les journaux sont
+          plus nombreux que ceux qui lisent la base ».
+
+      Le jeton ne vit donc que dans un courriel qui n'est pas envoyé. L'atteindre
+      demanderait d'injecter une messagerie de sonde DANS le serveur lancé — ce
+      script le lance dans un autre processus —, ou d'affaiblir le journal. Ni
+      l'un ni l'autre ne vaut cette note ; l'aveu de `notes-conditionnelles` le
+      dit maintenant avec cette raison-là, qui est la vraie.
+    */
+    await page.close()
+    await contexte.close()
+  }
+
   await navigateur.close()
   serveur.kill()
 }
