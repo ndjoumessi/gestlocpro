@@ -1,109 +1,70 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { politiqueDeSecurite } from './politiqueDeSecurite.js'
 
 /**
- * LA VITRINE VERCEL PORTE LA MÊME POLITIQUE QUE LE SERVEUR.
+ * UNE SEULE ADRESSE : `gestlocpro.vercel.app` RELAIE TOUT VERS RAILWAY.
  *
- * ═══ POURQUOI CE FICHIER EXISTE ═══
+ * ═══ POURQUOI LE RELAIS EST TOTAL, ET NON PARTIEL ═══
  *
- * `gestlocpro.vercel.app` sert le paquet client SANS serveur : personne n'y
- * pose d'en-tête. Or c'est une page PUBLIQUE, et la laisser sans politique de
- * sécurité rendrait vrai ce que `politique-de-securite` interdit ailleurs. Elle
- * est donc écrite à la main dans `vercel.json`.
+ * La forme précédente était hybride : Vercel servait la vitrine et la
+ * démonstration, et renvoyait le reste. Elle ne pouvait pas tenir, et c'est une
+ * MESURE qui l'a dit — les deux hôtes rendaient des paquets d'empreintes
+ * différentes (`index-BcyMtQDt.js` contre `index-CuVnKUgX.js`). Or un HTML
+ * relayé depuis Railway réclame SES fichiers : servis par Vercel, ils
+ * n'existent pas. La page casse.
  *
- * ═══ ET UNE POLITIQUE ÉCRITE À LA MAIN SE PÉRIME ═══
+ * Deux hôtes qui construisent séparément ne se déploient jamais à la même
+ * seconde. Le relais total supprime la question : tout vient de Railway, y
+ * compris le document et ses fichiers, et rien ne peut diverger.
  *
- * `script-src` contient l'EMPREINTE du script en ligne de `index.html` — le
- * bascule de thème. Elle se recalcule à chaque fois que ce script change d'un
- * caractère. Figée dans un fichier que rien ne relit, elle finirait par bloquer
- * le script qu'elle est censée autoriser : la vitrine s'afficherait SANS THÈME,
- * ou blanche, sans qu'aucune porte ne le dise.
+ * ═══ CE QUE VERCEL NE FAIT PLUS ═══
  *
- * Ce cas recalcule la politique depuis le `index.html` construit, exactement
- * comme le serveur le fait, et refuse si les deux ont divergé. Le message dit
- * quoi recopier.
+ * Il ne CONSTRUIT plus rien — un paquet que personne ne sert est du gâchis
+ * silencieux — et il ne pose plus d'en-têtes : la politique de sécurité vient
+ * de Railway avec chaque réponse, et en poser une seconde ferait appliquer
+ * l'INTERSECTION des deux, donc une politique que personne n'a écrite.
  *
- * ═══ CE QU'IL NE FAIT PAS ═══
+ * ═══ CE QUE CE FICHIER GARDE ═══
  *
- * Il ne vérifie pas que Vercel APPLIQUE l'en-tête — c'est le déploiement qui en
- * décide, et aucune porte du dépôt n'interroge un hôte tiers. Il vérifie que ce
- * qu'on lui demande d'appliquer est juste.
+ * La seule chose qui reste à vérifier localement : que la configuration dit
+ * bien « tout, vers cet hôte-là ». Le reste appartient au déploiement, et
+ * aucune porte de ce dépôt n'interroge un hôte tiers.
  */
 const RACINE = join(import.meta.dirname, '../..')
 
-describe('la politique de la vitrine', () => {
-  it('est celle que le serveur calculerait pour le même document', () => {
-    const html = readFileSync(join(RACINE, 'dist/index.html'), 'utf8')
-    const attendue = politiqueDeSecurite(html)
+function config() {
+  return JSON.parse(readFileSync(join(RACINE, 'vercel.json'), 'utf8')) as {
+    rewrites: { source: string; destination: string }[]
+    headers?: unknown
+    redirects?: unknown
+  }
+}
 
-    const config = JSON.parse(readFileSync(join(RACINE, 'vercel.json'), 'utf8')) as {
-      headers: { headers: { key: string; value: string }[] }[]
-    }
-    const posee = config.headers
-      .flatMap((h) => h.headers)
-      .find((h) => h.key === 'Content-Security-Policy')?.value
-
-    expect(
-      posee,
-      `la politique de \`vercel.json\` a divergé de celle du serveur.\n` +
-        `Recopiez celle-ci :\n\n${attendue}\n`,
-    ).toBe(attendue)
-  })
-
-  it('porte aussi les deux en-têtes que la politique ne couvre pas', () => {
-    /* `nosniff` et `Referrer-Policy` sont posés par le serveur à côté de la
-       politique, pour des raisons écrites à sa ligne. Une vitrine qui n'aurait
-       que la politique serait plus faible que le produit sur deux points que
-       personne ne remarquerait. */
-    const config = JSON.parse(readFileSync(join(RACINE, 'vercel.json'), 'utf8')) as {
-      headers: { headers: { key: string; value: string }[] }[]
-    }
-    const poses = new Map(config.headers.flatMap((h) => h.headers).map((h) => [h.key, h.value]))
-    expect(poses.get('X-Content-Type-Options')).toBe('nosniff')
-    expect(poses.get('Referrer-Policy')).toBe('same-origin')
-  })
-
-  it('déclare le MÊME hôte pour la construction et pour les redirections', () => {
-    /*
-      DEUX MOITIÉS DU MÊME RENVOI, ET ELLES DOIVENT S'ACCORDER.
-
-      Les redirections attrapent une vraie requête — une adresse tapée, un
-      rafraîchissement. `VITE_HOTE_APPLICATIF` attrape la navigation CLIENT, que
-      React Router fait sans jamais toucher le bord : sans elle, cliquer « Se
-      connecter » sur la vitrine rendait le formulaire, sur un hôte sans API.
-
-      Si les deux désignaient des hôtes différents, un visiteur irait à un
-      endroit en cliquant et à un autre en rafraîchissant — le pire des deux
-      mondes, et rien ne le dirait.
-    */
-    const config = JSON.parse(readFileSync(join(RACINE, 'vercel.json'), 'utf8')) as {
-      build: { env: Record<string, string> }
-      redirects: { destination: string }[]
-    }
-    const hote = config.build.env.VITE_HOTE_APPLICATIF
-    expect(hote, 'sans lui, la navigation client rend des écrans morts').toMatch(/^https:\/\//)
-    for (const r of config.redirects) {
-      expect(
-        r.destination.startsWith(hote!),
-        `la redirection vers ${r.destination} ne vise pas l’hôte déclaré à la construction`,
-      ).toBe(true)
+describe('le relais de la vitrine', () => {
+  it('attrape TOUTES les adresses, sans exception', () => {
+    /* Une exception — `/assets/`, `/api/` — ferait revivre la divergence des
+       empreintes que ce relais existe pour supprimer. */
+    const regles = config().rewrites
+    expect(regles).toHaveLength(1)
+    const motif = new RegExp('^' + regles[0]!.source + '$')
+    for (const chemin of ['/', '/connexion', '/demo/parc', '/api/auth/me', '/assets/index-a.js']) {
+      expect(motif.test(chemin), `${chemin} doit être relayé`).toBe(true)
     }
   })
 
-  it('n’envoie ni l’API ni les assets dans la réécriture du SPA', () => {
-    /* La réécriture renvoie tout vers `index.html` pour que React Router tienne
-       ses routes. Deux exceptions, et elles sont mesurées : un `/api/…` réécrit
-       rendrait du HTML en 200 là où le client attend du JSON — bien pire qu'un
-       404, que la vitrine encaisse déjà sans rien afficher de faux. */
-    const config = JSON.parse(readFileSync(join(RACINE, 'vercel.json'), 'utf8')) as {
-      rewrites: { source: string }[]
-    }
-    const source = config.rewrites[0]!.source
-    const motif = new RegExp('^' + source.replace(/^\//, '/') + '$')
-    expect(motif.test('/demo/parc'), 'une route du SPA doit être réécrite').toBe(true)
-    expect(motif.test('/api/auth/me'), 'l’API ne doit jamais rendre du HTML').toBe(false)
-    expect(motif.test('/assets/index-abc.js'), 'un asset se sert tel quel').toBe(false)
+  it('conserve le chemin demandé', () => {
+    /* `$1` et non une adresse fixe : un relais qui perdrait le chemin
+       renverrait tout le monde à l'accueil. */
+    expect(config().rewrites[0]!.destination).toMatch(/\/\$1$/)
+  })
+
+  it('ne pose NI en-tête NI redirection', () => {
+    /* Deux politiques de sécurité sur la même réponse s'appliquent en
+       INTERSECTION : le résultat n'est écrit nulle part, et personne ne l'a
+       voulu. Railway pose la sienne, Vercel se tait. */
+    const c = config()
+    expect(c.headers, 'la politique vient de Railway').toBeUndefined()
+    expect(c.redirects, 'un relais ne redirige pas — c’est tout son objet').toBeUndefined()
   })
 })

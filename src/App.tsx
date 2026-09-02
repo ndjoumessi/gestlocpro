@@ -1,8 +1,4 @@
-import { lazy, Suspense, type ReactNode } from 'react'
-import {
-  hoteApplicatif,
-  RenvoiVersLApplication,
-} from './routes/RenvoiVersLApplication'
+import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import { Landing } from './routes/Landing'
 import { Login } from './routes/Login'
@@ -100,20 +96,6 @@ function ChargementEspaceApplicatif() {
   )
 }
 
-/**
- * CE QUI EXIGE UN SERVEUR NE S'AFFICHE PAS SUR UNE VITRINE QUI N'EN A PAS.
- *
- * `hoteApplicatif()` est vide partout sauf sur la vitrine — voir
- * `RenvoiVersLApplication` pour le récit complet, et pourquoi les redirections
- * du bord ne suffisaient pas. Ici, une seule ligne : ou l'écran, ou le renvoi.
- *
- * La DÉMONSTRATION et la page d'accueil ne passent pas par là : elles ne
- * parlent à aucun serveur, et ce sont elles que la vitrine existe pour montrer.
- */
-function horsVitrine(ecran: ReactNode): ReactNode {
-  return hoteApplicatif() ? <RenvoiVersLApplication /> : ecran
-}
-
 export function App() {
   /*
     LA FRONTIÈRE ENVELOPPE LES ROUTES, et rien de plus haut.
@@ -135,10 +117,10 @@ export function App() {
         <Route path="/inscription" element={<SignUp />} />
         {/* Entrée directe dans un parcours depuis la landing : l'étape de choix
             de rôle est alors sautée, mais reste atteignable par « Retour ». */}
-        <Route path="/inscription/:role" element={horsVitrine(<SignUp />)} />
-        <Route path="/connexion" element={horsVitrine(<Login />)} />
-        <Route path="/mot-de-passe-oublie" element={horsVitrine(<ForgotPassword />)} />
-        <Route path="/reinitialiser" element={horsVitrine(<ResetPassword />)} />
+        <Route path="/inscription/:role" element={<SignUp />} />
+        <Route path="/connexion" element={<Login />} />
+        <Route path="/mot-de-passe-oublie" element={<ForgotPassword />} />
+        <Route path="/reinitialiser" element={<ResetPassword />} />
 
         {/*
           `/*` sur les deux : ce sont désormais des ROUTES DESCENDANTES.
@@ -148,11 +130,11 @@ export function App() {
         */}
         <Route
           path="/app/*"
-          element={horsVitrine(
+          element={
             <Suspense fallback={<ChargementEspaceApplicatif />}>
               <EspaceApplicatif mode="app" />
-            </Suspense>,
-          )}
+            </Suspense>
+          }
         />
         <Route
           path="/demo/*"
