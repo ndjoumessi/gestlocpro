@@ -459,6 +459,8 @@ authRouter.get('/me', async (req: Request, res: Response) => {
              active : sans eux, elle proposerait des défauts inventés. */
           autoReminders: true,
           reminderMilestoneDays: true,
+          reminderHour: true,
+          reminderTimeZone: true,
         },
       },
     },
@@ -485,6 +487,8 @@ authRouter.get('/me', async (req: Request, res: Response) => {
       delegation: m.park.delegation,
       autoReminders: m.park.autoReminders,
       reminderMilestoneDays: m.park.reminderMilestoneDays,
+      reminderHour: m.park.reminderHour,
+      reminderTimeZone: m.park.reminderTimeZone,
     })),
   })
 })

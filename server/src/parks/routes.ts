@@ -2107,6 +2107,23 @@ parksRouter.post(
  * silencieusement, et l'écran annoncerait « enregistré » sans qu'aucune
  * écriture ait eu lieu — le mensonge le plus discret de la famille.
  */
+/**
+ * CE FUSEAU EXISTE-T-IL ? On le demande à `Intl`, et non à une liste écrite ici.
+ *
+ * Une liste recopiée vieillit — les fuseaux naissent et meurent par décision
+ * politique — et elle divergerait de l'autorité qui s'en sert vraiment au
+ * moment d'envoyer. Un fuseau accepté ici doit être un fuseau que le lanceur
+ * saura lire ; le seul moyen de le garantir est de poser la même question.
+ */
+function estUnFuseauConnu(valeur: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en-GB', { timeZone: valeur })
+    return true
+  } catch {
+    return false
+  }
+}
+
 const schemaCorrectionDuParc = z
   .object({
     name: z.string().trim().min(2, 'Au moins 2 caractères').max(120).optional(),
@@ -2132,6 +2149,16 @@ const schemaCorrectionDuParc = z
         une relance, c'est un constat. */
     autoReminders: z.boolean().optional(),
     reminderMilestoneDays: z.number().int().min(1).max(90).optional(),
+    /** L'HEURE, et le FUSEAU dans lequel elle se lit. Bornée à [0, 23] — zéro
+        est une heure valide, minuit, et l'exclure priverait un parc d'un envoi
+        de nuit qu'il pourrait vouloir. Le fuseau est éprouvé auprès d'`Intl`
+        plutôt que comparé à une liste : c'est la même autorité que celle qui
+        s'en servira au moment d'envoyer. */
+    reminderHour: z.number().int().min(0).max(23).optional(),
+    reminderTimeZone: z
+      .string()
+      .refine(estUnFuseauConnu, { message: 'Fuseau horaire inconnu' })
+      .optional(),
   })
   .refine(
     (v) =>
@@ -2141,7 +2168,9 @@ const schemaCorrectionDuParc = z
       v.delegation !== undefined ||
       v.leaseAccessMonths !== undefined ||
       v.autoReminders !== undefined ||
-      v.reminderMilestoneDays !== undefined,
+      v.reminderMilestoneDays !== undefined ||
+      v.reminderHour !== undefined ||
+      v.reminderTimeZone !== undefined,
     { message: 'Rien à corriger' },
   )
 
@@ -2724,6 +2753,10 @@ parksRouter.patch(
         ...(corps.autoReminders !== undefined ? { autoReminders: corps.autoReminders } : {}),
         ...(corps.reminderMilestoneDays !== undefined
           ? { reminderMilestoneDays: corps.reminderMilestoneDays }
+          : {}),
+        ...(corps.reminderHour !== undefined ? { reminderHour: corps.reminderHour } : {}),
+        ...(corps.reminderTimeZone !== undefined
+          ? { reminderTimeZone: corps.reminderTimeZone }
           : {}),
       },
       select: { id: true, name: true, countryCode: true, currency: true, delegation: true },

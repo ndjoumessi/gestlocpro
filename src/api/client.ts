@@ -181,6 +181,11 @@ export interface AdhesionApi {
       serveur antérieur : `true` et `7` sont alors les défauts du schéma. */
   autoReminders?: boolean
   reminderMilestoneDays?: number
+  /** L'HEURE de départ et le FUSEAU dans lequel elle se lit. Absents d'un
+      serveur antérieur : `6` et `UTC` sont alors les défauts du schéma, et
+      c'est exactement l'ancien cron quotidien. */
+  reminderHour?: number
+  reminderTimeZone?: string
 }
 
 export interface SessionApi {

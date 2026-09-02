@@ -55,7 +55,20 @@ async function parcAvecRetard(jours: number, reglages: Record<string, unknown> =
     Date.UTC(maintenant.getUTCFullYear(), maintenant.getUTCMonth(), maintenant.getUTCDate()),
   )
   const parc = await prisma.park.create({
-    data: { name: 'Parc de sonde', countryCode: 'CM', currency: 'XAF', ...reglages },
+    data: {
+      name: 'Parc de sonde',
+      countryCode: 'CM',
+      currency: 'XAF',
+      /* L'HEURE COURANTE, et c'est le seul réglage d'heure de ce fichier.
+         Le lanceur ne relance un parc qu'à SON heure ; ces cas-ci portent sur
+         le JALON et l'INTERRUPTEUR, pas sur l'horaire, et un parc laissé à son
+         défaut (6 h UTC) ne partirait qu'entre 6 h et 7 h du matin — la suite
+         serait verte la nuit et rouge le jour. Voir `heureDeRelance.test.ts`,
+         qui éprouve l'heure elle-même. */
+      reminderHour: new Date().getUTCHours(),
+      reminderTimeZone: 'UTC',
+      ...reglages,
+    },
   })
   const immeuble = await prisma.building.create({
     data: { parkId: parc.id, name: 'Résidence', district: 'Bastos' },

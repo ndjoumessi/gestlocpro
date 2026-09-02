@@ -30,7 +30,17 @@ describe('executerRelancesAutomatiques — le futur cron', () => {
 
   async function parcAvecBailAJours(joursDeRetard: number, options: { email?: string } = {}) {
     const parc = await prisma.park.create({
-      data: { name: 'Parc', countryCode: 'CM', currency: 'XAF' },
+      data: {
+        name: 'Parc',
+        countryCode: 'CM',
+        currency: 'XAF',
+        /* L'HEURE COURANTE. Le lanceur ne relance un parc qu'à SON heure ; ces
+           cas-ci portent sur le PARCOURS et le mode à blanc, pas sur l'horaire.
+           Laissé à son défaut (6 h UTC), ce parc ne partirait qu'entre 6 h et
+           7 h du matin, et la suite serait verte la nuit et rouge le jour. */
+        reminderHour: new Date().getUTCHours(),
+        reminderTimeZone: 'UTC',
+      },
     })
     const immeuble = await prisma.building.create({
       data: { parkId: parc.id, name: 'Résidence', district: 'Bastos' },

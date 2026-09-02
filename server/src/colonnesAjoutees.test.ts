@@ -84,6 +84,15 @@ const AFFIRMATIONS: Record<string, string> = {
     'Sept jours pour tout parc antérieur : c’est la valeur que la constante ' +
     '`JALON_EMAIL_AUTOMATIQUE` imposait à tous. Aucun parc ne change de ' +
     'comportement ; le nombre cesse seulement d’être hors de portée.',
+  'Park.reminderHour':
+    'Six heures pour tout parc antérieur — l’heure UTC exacte à laquelle le cron ' +
+    'quotidien partait jusqu’ici (`0 6 * * *`). Le passage devient horaire au ' +
+    'même moment : sans ce défaut, tout parc aurait changé d’heure d’envoi sans ' +
+    'que personne l’ait demandé.',
+  'Park.reminderTimeZone':
+    'UTC pour tout parc antérieur, et c’est le fuseau dans lequel les six heures ' +
+    'ci-dessus se lisaient déjà. Le couple reproduit donc EXACTEMENT l’ancien ' +
+    'comportement ; il cesse seulement d’être hors de portée.',
   'Park.leaseAccessMonths':
     'Trois mois pour tout parc antérieur : c’est la valeur que la constante du ' +
     'code imposait à tous avant d’être réglable. Aucun parc ne change de ' +
@@ -169,6 +178,6 @@ describe('les colonnes ajoutées', () => {
     expect(
       colonnesAjoutees().length,
       'la lecture des migrations ne trouve plus les `ADD COLUMN`',
-    ).toBe(15)
+    ).toBe(17)
   })
 })

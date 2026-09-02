@@ -1132,6 +1132,10 @@ export const fr = {
       autoRemindersOn: 'Relancer automatiquement',
       reminderDay: 'Au bout de combien de jours',
       reminderDayHint: 'Sept par défaut : ni le délai serré d’un jour, ni la sévérité de quinze.',
+      reminderHour: 'À quelle heure',
+      reminderHourHint: 'De 0 à 23, dans le fuseau choisi ci-dessous.',
+      reminderZone: 'Fuseau horaire',
+      reminderZoneHint: 'Celui de vos locataires, qui n’est pas forcément le vôtre.',
       currencyWarning:
         'Les montants déjà saisis ne seront pas convertis : 180 000 se relira 180 000 dans la nouvelle devise. À ne faire que sur un parc dont les montants seront resaisis.',
       unchanged: 'Rien n’a changé.',

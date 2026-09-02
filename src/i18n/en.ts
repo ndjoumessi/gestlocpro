@@ -866,6 +866,10 @@ export const en: Dictionary = {
       autoRemindersOn: 'Send reminders automatically',
       reminderDay: 'After how many days',
       reminderDayHint: 'Seven by default: neither the tight one-day delay, nor the severity of fifteen.',
+      reminderHour: 'At what time',
+      reminderHourHint: 'From 0 to 23, in the time zone chosen below.',
+      reminderZone: 'Time zone',
+      reminderZoneHint: 'Your tenants’, which is not necessarily your own.',
       currencyWarning:
         'Amounts already entered will not be converted: 180,000 will read as 180,000 in the new currency. Only do this on a park whose amounts will be re-entered.',
       unchanged: 'Nothing changed.',

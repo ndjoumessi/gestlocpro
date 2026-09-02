@@ -93,6 +93,11 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
          proposerait de « rallumer » une relance qui n'a jamais cessé. */
       autoReminders: adhesionActive?.autoReminders ?? true,
       reminderMilestoneDays: adhesionActive?.reminderMilestoneDays ?? 7,
+      /* `6` et `UTC` : le couple exact de l'ancien cron quotidien. Un serveur
+         antérieur aux champs ne les rend pas, et supposer autre chose ferait
+         proposer un changement d'heure que personne n'a demandé. */
+      reminderHour: adhesionActive?.reminderHour ?? 6,
+      reminderTimeZone: adhesionActive?.reminderTimeZone ?? 'UTC',
       currency: (adhesionActive?.currency ?? (estDemo ? deviseDeDemo : '')) as DeviseDuParc | '',
       /* `?? 'delegate'` : un serveur antérieur au champ ne le rend pas, et le
          supposer `solo` proposerait de « rétablir » une délégation que le parc
@@ -104,6 +109,12 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
       adhesionActive?.countryCode,
       adhesionActive?.currency,
       adhesionActive?.delegation,
+      /* Les quatre réglages de relance : sans eux, la modale rouverte après une
+         correction reproposerait l'état du PREMIER rendu. */
+      adhesionActive?.autoReminders,
+      adhesionActive?.reminderMilestoneDays,
+      adhesionActive?.reminderHour,
+      adhesionActive?.reminderTimeZone,
       // Les trois de la démonstration : sans elles, le repli se figerait sur la
       // langue et la devise du premier rendu, et changer l'une des deux dans
       // l'en-tête laisserait la modale sur l'ancienne.
@@ -130,6 +141,22 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
   const [erreurNom, setErreurNom] = useState<string | undefined>(undefined)
   const [relances, setRelances] = useState(origine.autoReminders)
   const [jalon, setJalon] = useState(String(origine.reminderMilestoneDays))
+  const [heure, setHeure] = useState(String(origine.reminderHour))
+  const [fuseau, setFuseau] = useState(origine.reminderTimeZone)
+
+  /**
+   * LES FUSEAUX VIENNENT D'`Intl`, jamais d'une liste écrite ici.
+   *
+   * Une liste recopiée vieillit — les fuseaux naissent et meurent par décision
+   * politique — et elle divergerait de l'autorité que le serveur interroge pour
+   * accepter la valeur. `UTC` est ajouté en tête parce que tous les moteurs ne
+   * le rendent pas, et que c'est le défaut de tout parc existant : il doit
+   * pouvoir se relire.
+   */
+  const optionsDeFuseau = useMemo(
+    () => ['UTC', ...Intl.supportedValuesOf('timeZone')].map((z) => ({ value: z, label: z })),
+    [],
+  )
 
   const optionsDePays = useMemo(() => countryOptions(locale), [locale])
 
@@ -139,6 +166,8 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
   const correction: {
     autoReminders?: boolean
     reminderMilestoneDays?: number
+    reminderHour?: number
+    reminderTimeZone?: string
     name?: string
     countryCode?: string
     currency?: DeviseDuParc
@@ -160,6 +189,20 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
   ) {
     correction.reminderMilestoneDays = jalonLu
   }
+  /* MÊME PRUDENCE POUR L'HEURE, avec une borne qui commence à ZÉRO : minuit est
+     une heure d'envoi valide, et l'exclure priverait un parc d'un choix qu'il
+     pourrait vouloir. Un champ vidé en cours de frappe ne part pas. */
+  const heureLue = Number(heure)
+  if (
+    heure.trim() !== '' &&
+    Number.isInteger(heureLue) &&
+    heureLue >= 0 &&
+    heureLue <= 23 &&
+    heureLue !== origine.reminderHour
+  ) {
+    correction.reminderHour = heureLue
+  }
+  if (fuseau && fuseau !== origine.reminderTimeZone) correction.reminderTimeZone = fuseau
 
   const enregistrer = (event: FormEvent) => {
     event.preventDefault()
@@ -434,6 +477,57 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
                 max={90}
                 value={jalon}
                 onChange={(e) => setJalon(e.target.value)}
+              />
+            )}
+          </Field>
+        )}
+
+        {/*
+          L'HEURE, ET SON FUSEAU — INSÉPARABLES.
+
+          Le cron passe désormais toutes les heures et ne fait rien pour un parc
+          dont ce n'est pas l'heure : la planification ne sait plus QUAND
+          envoyer, seulement quand REGARDER. C'est ce qui permet à ce champ
+          d'exister.
+
+          « 7 h » ne veut rien dire sans le fuseau, et le PAYS ne le donne pas :
+          ce produit a en production un parc qui porte `FR` et loue à Yaoundé.
+          C'est l'heure de qui REÇOIT qui compte, jamais celle de qui administre.
+        */}
+        {relances && (
+          <Field
+            label={t('app.parkSettings.reminderHour')}
+            hint={t('app.parkSettings.reminderHourHint')}
+          >
+            {(props) => (
+              <Input
+                id={props.id}
+                aria-describedby={props['aria-describedby']}
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={23}
+                value={heure}
+                onChange={(e) => setHeure(e.target.value)}
+              />
+            )}
+          </Field>
+        )}
+
+        {relances && (
+          <Field
+            label={t('app.parkSettings.reminderZone')}
+            hint={t('app.parkSettings.reminderZoneHint')}
+          >
+            {(props) => (
+              <Combobox
+                id={props.id}
+                aria-describedby={props['aria-describedby']}
+                name="reminderTimeZone"
+                placeholder={t('app.parkSettings.notSet')}
+                options={optionsDeFuseau}
+                value={fuseau}
+                onChange={setFuseau}
               />
             )}
           </Field>

@@ -249,6 +249,23 @@ model Park {
   /// J+15 ». Il cesse seulement d'être une fatalité — un bailleur qui relance
   /// à trois jours n'a pas tort, il a un autre parc.
   reminderMilestoneDays Int @default(7)
+  /// À quelle HEURE le passage quotidien relance ce parc, et dans quel fuseau
+  /// cette heure se lit.
+  ///
+  /// Le cron passe désormais toutes les heures et ne fait rien pour les parcs
+  /// dont ce n'est pas l'heure. C'est ce qui rend l'heure réglable depuis le
+  /// produit : la planification ne sait plus QUAND envoyer, seulement quand
+  /// REGARDER.
+  ///
+  /// `6` et `UTC` par défaut, et ce couple n'est pas neutre : c'est exactement
+  /// l'heure à laquelle le cron partait jusqu'ici. Aucun parc ne change d'heure
+  /// au moment où le réglage apparaît.
+  ///
+  /// LE FUSEAU EST INSÉPARABLE DE L'HEURE. « 7 h » ne veut rien dire sans lui,
+  /// et il ne se déduit pas du pays : ce parc-ci porte `FR` et loue à Yaoundé.
+  /// C'est le fuseau de qui REÇOIT qui compte, jamais celui de qui administre.
+  reminderHour Int @default(6)
+  reminderTimeZone String @default("UTC")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -3,14 +3,17 @@ import { calculerRetard, tenterRelanceEmailMilestone } from '../parks/routes.js'
 import { envoyerLesResumesDuFil } from '../parks/resumeDuFil.js'
 
 /**
- * LE POINT D'ENTRÉE DU FUTUR CRON — pas encore branché à rien.
+ * LE POINT D'ENTRÉE DU CRON — branché depuis le 2026-09-02.
  *
- * Ce fichier ne modifie ni `railway.json`, ni le `Dockerfile`, ni aucun
- * réglage de déploiement : le choix du déclencheur (un service cron Railway
- * distinct) reste une décision d'infrastructure, arbitrée séparément. Ce qui
- * est livré ici est le CODE que ce service exécutera — `node
- * dist/scripts/executerRelancesAutomatiques.js` une fois construit — pour
- * qu'un futur branchement n'ait à écrire aucune logique nouvelle.
+ * Un service Railway distinct l'exécute TOUTES LES HEURES. Il passait
+ * auparavant une fois par jour à 6 h UTC ; l'heure vit désormais dans le parc,
+ * et la planification ne sait plus QUAND envoyer, seulement quand REGARDER.
+ *
+ * C'est ce qui rend l'heure réglable depuis le produit. Le prix est explicite :
+ * vingt-trois passages sur vingt-quatre ne font qu'une lecture pour un parc
+ * donné, et s'arrêtent. Une lecture par heure vaut mieux qu'un propriétaire
+ * obligé d'ouvrir un tableau de bord d'hébergeur pour décaler un envoi d'une
+ * heure.
  *
  * `executerRelancesAutomatiques()` boucle sur TOUS les parcs et appelle, pour
  * chaque bail à J+7, EXACTEMENT les fonctions que la route manuelle
@@ -20,6 +23,36 @@ import { envoyerLesResumesDuFil } from '../parks/resumeDuFil.js'
  * diverger sur CE QUI compte comme un envoi valide ; ils ne diffèrent que sur
  * QUI déclenche et QUAND — exactement la portion que ce lot ne construit pas.
  */
+/**
+ * L'HEURE QU'IL EST DANS LE FUSEAU D'UN PARC, de 0 à 23.
+ *
+ * `hourCycle: 'h23'` et non `hour12: false` : ce dernier rend « 24 » à minuit
+ * dans certaines versions d'ICU, et un parc réglé sur 0 ne serait jamais
+ * relancé — un défaut qui ne se verrait qu'une heure par jour.
+ */
+export function heureDansLeFuseau(quand: Date, fuseau: string): number {
+  return Number(
+    new Intl.DateTimeFormat('en-GB', {
+      timeZone: fuseau,
+      hour: '2-digit',
+      hourCycle: 'h23',
+    }).format(quand),
+  )
+}
+
+/**
+ * L'HEURE DU RÉSUMÉ DU FIL, en UTC, et pourquoi elle N'EST PAS réglable.
+ *
+ * Le résumé appartient au COMPTE qui le reçoit, pas au parc : un gestionnaire
+ * de trois parcs n'en reçoit qu'un seul, et trois réglages ne sauraient pas
+ * lequel choisir. Il garde donc l'heure historique du cron quotidien.
+ *
+ * SANS CETTE BORNE, le passage horaire enverrait vingt-quatre résumés par jour
+ * à chacun. C'est le piège exact que le passage à l'heure introduit, et il ne
+ * se serait vu qu'en production, sur de vraies boîtes aux lettres.
+ */
+export const HEURE_DU_RESUME_UTC = 6
+
 export async function executerRelancesAutomatiques(
   /**
    * À BLANC : le même parcours, la même décision, et RIEN qui parte.
@@ -50,7 +83,14 @@ export async function executerRelancesAutomatiques(
      propriétaire à ouvrir un tableau de bord d'hébergeur pour changer d'avis sur
      ses propres locataires. */
   const parcs = await prisma.park.findMany({
-    select: { id: true, currency: true, autoReminders: true, reminderMilestoneDays: true },
+    select: {
+      id: true,
+      currency: true,
+      autoReminders: true,
+      reminderMilestoneDays: true,
+      reminderHour: true,
+      reminderTimeZone: true,
+    },
   })
 
   let envoyes = 0
@@ -61,6 +101,19 @@ export async function executerRelancesAutomatiques(
        envoi qu'un réglage interdit ferait mentir la seule lecture qui précède la
        décision. */
     if (!parc.autoReminders) continue
+
+    /*
+      CE N'EST PAS SON HEURE : on passe, et c'est tout ce que fait le cron pour
+      ce parc vingt-trois fois sur vingt-quatre.
+
+      LE BLANC, LUI, L'IGNORE. Il répond à « qu'enverrait ce parc À SON HEURE »,
+      et non à « qu'enverrait-il maintenant » — sans quoi la seule lecture qui
+      précède la décision rendrait zéro pour la seule raison qu'on l'a lancée à
+      21 h. La ligne qu'il imprime le dit mot pour mot.
+    */
+    if (!options.aBlanc && heureDansLeFuseau(maintenant, parc.reminderTimeZone) !== parc.reminderHour)
+      continue
+
     const baux = await prisma.lease.findMany({
       where: { unit: { building: { parkId: parc.id } }, status: { in: ['active', 'pending'] } },
       select: {
@@ -104,7 +157,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const resultat = await executerRelancesAutomatiques({ aBlanc })
   console.log(
     aBlanc
-      ? `À BLANC — ${resultat.parcsTraites} parc(s) parcouru(s), ${resultat.partiraient} relance(s) PARTIRAIENT. Rien n'a été envoyé, aucune trace posée.`
+      ? `À BLANC — ${resultat.parcsTraites} parc(s) parcouru(s), ${resultat.partiraient} relance(s) PARTIRAIENT À L'HEURE DE LEUR PARC. Rien n'a été envoyé, aucune trace posée.`
       : `Relance automatique — ${resultat.parcsTraites} parc(s), ${resultat.envoyes} courriel(s) parti(s), ${resultat.ignores} ignoré(s).`,
   )
 
@@ -120,7 +173,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     échéance qui court, un résumé est une commodité. Si le passage est
     interrompu, c'est la commodité qu'on perd.
   */
-  const resumes = await envoyerLesResumesDuFil({ aBlanc })
+  /* Le passage est HORAIRE ; le résumé, lui, reste quotidien. Voir
+     `HEURE_DU_RESUME_UTC`. À blanc on compte toujours : une lecture muette
+     serait la faute qu'on vient de corriger. */
+  const heureDuResume = aBlanc || new Date().getUTCHours() === HEURE_DU_RESUME_UTC
+  const resumes = heureDuResume ? await envoyerLesResumesDuFil({ aBlanc }) : 0
   console.log(
     aBlanc
       ? `À BLANC — ${resumes} résumé(s) du fil PARTIRAIENT.`

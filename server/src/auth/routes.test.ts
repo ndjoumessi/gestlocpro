@@ -268,6 +268,11 @@ describe('session', () => {
            au lieu de l'état réel. */
         autoReminders: true,
         reminderMilestoneDays: 7,
+        /* L'HEURE et son FUSEAU, pour la même raison : la modale les propose,
+           et un défaut inventé côté client ferait reposer « 6 h UTC » à un parc
+           qui avait choisi 7 h à Douala. */
+        reminderHour: 6,
+        reminderTimeZone: 'UTC',
       },
     ])
   })
