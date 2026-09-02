@@ -201,6 +201,26 @@ try {
 await contexte.close()
 await navigateur.close()
 
+/*
+  LE PLAFOND DES ENVOIS, ET POURQUOI CE CONTRÔLE N'EXISTE PAS.
+
+  J'avais nommé « les envois de documents traversent un relais qui plafonne la
+  taille des requêtes » comme le risque le plus concret du relais. MESURÉ le
+  2026-09-02, sur les deux hôtes, à sept tailles de 1 Mo à 12 Mo : ils répondent
+  IDENTIQUEMENT, et le refus au-delà de 2 Mio porte le corps du produit —
+  `{"error":"taille"}`, celui d'`express.raw`. Le relais a laissé passer 5 Mo
+  jusqu'à l'origine ; il n'ajoute aucune contrainte que le produit n'impose déjà.
+
+  ET LE RISQUE ÉTAIT PLUS PETIT ENCORE : le produit n'a qu'UNE entrée de fichier,
+  dans `PhotosDeReserve`, en `accept="image/*"`, et les deux seuls appelants
+  transcodent avant d'envoyer — huit photos transcodées pèsent moins qu'une
+  brute. Il n'existe aucun envoi de document non transcodé. L'inquiétude portait
+  sur un chemin qui n'existe pas.
+
+  Rien à contrôler ici, donc. Ce commentaire tient lieu de mesure : sans lui,
+  quelqu'un rouvrirait la question dans six mois avec les mêmes suppositions.
+*/
+
 /**
  * GARDE DU GARDE — le compte est écrit à la main.
  *
