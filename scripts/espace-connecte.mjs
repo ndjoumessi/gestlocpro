@@ -1662,6 +1662,83 @@ try {
         }
 
         /*
+          ET LE LOCATAIRE, car un logement vide n'est pas un mandat commencé.
+
+          Le geste s'arrêtait au logement, et c'était nommé en dette : « rattacher
+          un locataire — la suite immédiate, et le geste qui a produit une impasse
+          en production — reste hors du balayage ». Un cabinet qui prend un mandat
+          déclare l'immeuble, son logement, ET qui l'habite ; c'est la séquence
+          entière qui sort un parc de sa vacuité.
+
+          On lit les libellés de la fiche plutôt que de les supposer : le
+          formulaire est celui du produit, et s'il change, la plainte le dira.
+        */
+        await page.goto(`${BASE}/app/locataires`, { waitUntil: 'networkidle' })
+        const creerFiche = page
+          .getByRole('button', { name: /Créer une fiche locataire/ })
+          .first()
+        if ((await creerFiche.count()) === 0) {
+          plaintes.push(
+            "premier geste : aucun bouton pour créer une fiche locataire sur un parc " +
+              "qui vient d'avoir son premier logement.",
+          )
+        } else {
+          await creerFiche.click()
+          await page.waitForTimeout(500)
+          await page.getByLabel(/Nom complet/).fill('Ekani Solange')
+          await page.getByLabel(/Téléphone/).fill('677001122')
+          /* L'option porte le logement ET son immeuble — « Résidence du Mandat ·
+             R1 » —, pas le seul libellé. On la choisit sur son CONTENU plutôt que
+             sur une égalité, qui supposerait la forme du composé. */
+          const optionDuLogement = await page.evaluate(() => {
+            const select = document.querySelector('select[name="unitId"]')
+            const o = [...(select?.options ?? [])].find((x) => x.textContent?.includes('R1'))
+            return o?.value ?? null
+          })
+          if (!optionDuLogement) {
+            plaintes.push(
+              "premier geste : le logement qu'on vient de créer n'est pas proposé " +
+                'à la fiche locataire. Il existe et on ne peut le rattacher à personne.',
+            )
+          } else {
+            await page.getByLabel(/Unité/).selectOption(optionDuLogement)
+          }
+          await page
+            .getByRole('button', { name: /Créer la fiche|^Enregistrer$/ })
+            .first()
+            .click()
+
+          /* LA FICHE PARAÎT, ET LE LOGEMENT CESSE D'ÊTRE VACANT. Deux faits, et
+             le second est celui qui compte : une fiche créée qui laisserait le
+             logement libre serait une fiche rattachée à rien. */
+          const ficheParue = await page
+            .getByText('Ekani Solange')
+            .first()
+            .waitFor({ state: 'visible', timeout: 8000 })
+            .then(() => true)
+            .catch(() => false)
+          if (!ficheParue) {
+            plaintes.push(
+              "premier geste : la fiche locataire créée n'apparaît pas sur " +
+                '`/app/locataires`. Le serveur a peut-être accepté ; le cabinet ne ' +
+                'voit rien.',
+            )
+          }
+
+          await page.goto(`${BASE}/app/parc`, { waitUntil: 'networkidle' })
+          const texteParc = await page.evaluate(
+            () => document.querySelector('main')?.innerText ?? '',
+          )
+          if (!texteParc.includes('Ekani Solange')) {
+            plaintes.push(
+              "premier geste : le parc ne nomme pas le locataire qu'on vient d'y " +
+                "rattacher. La fiche existe et le logement se lit encore comme vide — " +
+                "c'est l'impasse capturée en production.",
+            )
+          }
+        }
+
+        /*
           ET L'ÉTAT VIDE DE LA PAGE DOIT AVOIR DISPARU. Un écran qui garderait
           « aucun immeuble » à côté de l'immeuble qu'on vient d'y mettre dirait
           deux choses contraires en même temps.
@@ -2056,6 +2133,6 @@ console.log(
     `${nomsExamines} commandes cherchées sans nom.\n` +
     `  ${ciblesSondees} cibles sondées au doigt, sous le plancher de ${PLANCHER_CIBLE} px.\n` +
     '  Le PREMIER GESTE d’un cabinet est rejoué en entier : un immeuble et son logement\n' +
-    '  déclarés À L’ÉCRAN, sur un parc qui n’en avait aucun.\n' +
+    '  et son premier LOCATAIRE, déclarés À L’ÉCRAN sur un parc qui n’avait rien.\n' +
     "  Elle ne dit RIEN des MODALES, qu'aucune de ses règles n'ouvre — voir son en-tête.",
 )
