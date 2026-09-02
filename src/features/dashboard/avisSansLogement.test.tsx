@@ -140,3 +140,64 @@ describe('un avis écrit après le correctif', () => {
     expect(carte.textContent).not.toMatch(/\{[a-z]+\}/i)
   })
 })
+
+describe('toutes les familles d’avis, sur une charge vide', () => {
+  /**
+   * ═══ LE SECOURS NE VALAIT QUE POUR `{unit}` ═══
+   *
+   * Le lot précédent a réparé la seule variable qu'un avis de production avait
+   * montrée. Les douze autres familles restaient exposées : un avis ancien
+   * auquel manquerait `{tenant}`, `{amount}` ou `{reference}` afficherait
+   * encore ses accolades, et rien ne le dirait.
+   *
+   * Ce cas les prend TOUTES, avec une charge VIDE — le pire qu'une ligne
+   * ancienne puisse porter. Aucune ne doit rendre une accolade.
+   */
+  const FAMILLES = [
+    'tenantReport',
+    'tenantReply',
+    'rentOverdue',
+    'rentReminder',
+    'formalNotice',
+    'quotePending',
+    'metersMissing',
+    'leaseRenewal',
+    'partialPayment',
+    'announcement',
+    'workReply',
+    'workDone',
+    'receiptAvailable',
+  ] as const
+
+  it.each(FAMILLES)('« %s » ne montre aucune accolade', async (famille) => {
+    serveur.quand('GET', `/parks/${PARC}/portfolio`, {
+      status: 200,
+      body: {
+        ...portefeuille({}),
+        notifications: [
+          {
+            id: `avis-${famille}`,
+            kind: 'work',
+            messageKey: famille,
+            /* VIDE : ce qu'une ligne écrite avant un champ peut porter de pire. */
+            params: {},
+            unitId: null,
+            createdAt: '2026-08-01T09:00:00.000Z',
+            severity: 'medium',
+            read: false,
+            channel: 'in_app',
+          },
+        ],
+      },
+    })
+    await renderApp('/app/signalements', { session })
+    await attendreLeChargement()
+
+    const texte = document.querySelector('main')?.textContent ?? ''
+    const jetons = [...texte.matchAll(/\{[A-Za-z]\w*\}/g)].map((m) => m[0])
+    expect(
+      jetons,
+      `« ${famille} » affiche ${jetons.join(', ')} à l’utilisateur`,
+    ).toEqual([])
+  })
+})

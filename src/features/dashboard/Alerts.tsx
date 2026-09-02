@@ -112,10 +112,38 @@ function useAlertMessage() {
     if (data.text) vars.text = data.text
     if (data.reference) vars.reference = data.reference
 
-    return t(
+    const rendu = t(
       `app.alerts.msg.${alert.message}.${part}` as 'app.alerts.msg.rentOverdue.title',
       vars,
     )
+
+    /*
+      CE QU'UNE LIGNE ANCIENNE NE PORTE PAS DEVIENT UN TIRET.
+
+      Une notification est une LIGNE ÉCRITE : corriger celui qui l'écrit ne
+      répare pas ce qui l'a été avant. Un avis d'août montrait « Signalement
+      SIG-2026-002 · {unit} » sur un parc de production, accolades comprises,
+      parce que le serveur ne posait pas encore ce champ la veille du
+      correctif. Le secours d'alors ne valait que pour `{unit}` ; les douze
+      autres familles restaient exposées à la même chose sur `{tenant}`,
+      `{amount}` ou `{reference}`.
+
+      `—` est le signe d'absence que le produit emploie déjà — les cartes d'eau
+      et d'électricité sans relevé le portent. Il dit « on ne sait pas », ce qui
+      est exactement vrai d'une ligne écrite avant le champ.
+
+      ═══ ET CELA MASQUERAIT UNE FAUTE DE CODE, SI RIEN D'AUTRE NE LA TENAIT ═══
+
+      Une variable renommée deviendrait un tiret sur TOUTES les données, sans
+      que rien ne rougisse. C'est pourquoi `variablesDAvis.test.ts` existe : il
+      confronte les libellés au bâtisseur et refuse si l'un réclame ce que
+      l'autre ne pose jamais. La donnée périmée est absorbée ici, la faute de
+      code est attrapée là-bas.
+
+      `interpolate` n'est PAS touché : un jeton qui survit ailleurs reste
+      l'alarme que `MESURER_GABARITS` cherche sur chaque écran.
+    */
+    return rendu.replace(/\{[A-Za-z]\w*\}/g, '—')
   }
 }
 
