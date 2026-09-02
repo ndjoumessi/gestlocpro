@@ -1,0 +1,20 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Rien ici — et c'est voulu</title>
+<p>
+  Ce fichier est la SORTIE que Vercel exige, et personne ne le lira jamais :
+  toute adresse de <code>gestlocpro.vercel.app</code> est relayée vers Railway
+  par la règle unique de <code>vercel.json</code>.
+</p>
+<p>
+  Il existe parce que Vercel REFUSE un dossier de sortie vide — mesuré, pas
+  supposé : « Error: The Output Directory ".vercel-vide" is empty », build en
+  erreur au bout de trois secondes, l'ancien déploiement restant en place
+  pendant ce temps.
+</p>
+<p>
+  Le contenu de la commande de construction a d'abord porté cette explication.
+  Vercel refuse aussi une commande de plus de 256 caractères — seconde mesure,
+  seconde erreur — d'où ce fichier : la contrainte est réelle, le motif doit
+  survivre quelque part, et c'est ici.
+</p>
