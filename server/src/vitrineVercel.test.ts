@@ -41,6 +41,53 @@ function config() {
   }
 }
 
+describe('la sortie de construction', () => {
+  it('ne pose AUCUN fichier à la racine — ils passeraient devant le relais', () => {
+    /*
+      DÉFAUT MESURÉ EN PRODUCTION, ET PAR L'UTILISATEUR AVANT MOI.
+
+      Vercel sert les fichiers STATIQUES avant d'appliquer les réécritures. La
+      sortie contenait `index.html` — le fichier de remplissage qu'il exige pour
+      ne pas refuser un dossier vide — et il est devenu la PAGE D'ACCUEIL :
+      trois paragraphes expliquant pourquoi personne ne le lirait jamais,
+      servis à tous les visiteurs.
+
+      J'avais vérifié que `/` rendait 200. Il le rendait. « 200 » et « la bonne
+      page » sont deux faits différents, et je n'avais mesuré que le premier.
+
+      Le fichier vit donc sous `_relais/`, un chemin qu'aucune route du produit
+      ne porte : il ne masque plus que lui-même.
+    */
+    const cmd = (
+      JSON.parse(readFileSync(join(RACINE, 'vercel.json'), 'utf8')) as { buildCommand: string }
+    ).buildCommand
+    /* Les FICHIERS seulement : `mkdir -p .vercel-vide/_relais` nomme un
+       dossier, et un dossier ne se sert pas. On les reconnaît à leur
+       extension, ce qui est aussi la règle que Vercel applique pour décider
+       quoi servir. */
+    const cibles = [...cmd.matchAll(/\.vercel-vide\/(\S+)/g)]
+      .map((m) => m[1]!)
+      .filter((c) => /\.[a-z0-9]+$/i.test(c))
+    expect(cibles.length, 'la sortie doit poser au moins un fichier').toBeGreaterThan(0)
+    for (const cible of cibles) {
+      expect(
+        cible.includes('/'),
+        `\`${cible}\` est à la RACINE de la sortie : Vercel le servirait avant le relais`,
+      ).toBe(true)
+    }
+  })
+
+  it('tient dans les 256 caractères que Vercel accepte', () => {
+    /* Second refus mesuré du même lot : « buildCommand should NOT be longer
+       than 256 characters ». Il ne s'est vu qu'en déployant à la main — le
+       journal du déploiement échoué était vide. */
+    const cmd = (
+      JSON.parse(readFileSync(join(RACINE, 'vercel.json'), 'utf8')) as { buildCommand: string }
+    ).buildCommand
+    expect(cmd.length).toBeLessThanOrEqual(256)
+  })
+})
+
 describe('le relais de la vitrine', () => {
   it('attrape TOUTES les adresses, sans exception', () => {
     /* Une exception — `/assets/`, `/api/` — ferait revivre la divergence des

@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "buildCommand": "mkdir -p .vercel-vide && cp outils/vercel-sortie-vide.html .vercel-vide/index.html",
+  "buildCommand": "mkdir -p .vercel-vide/_relais && cp outils/vercel-sortie-relais.html .vercel-vide/_relais/pourquoi.html",
   "outputDirectory": ".vercel-vide",
   "rewrites": [
     {
