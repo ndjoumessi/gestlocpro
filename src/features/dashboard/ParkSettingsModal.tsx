@@ -3,6 +3,7 @@ import { Modal } from '@/components/primitives/Modal'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
 import { Input, Select } from '@/components/primitives/Input'
+import { Checkbox } from '@/components/primitives/Choice'
 import { Combobox } from '@/components/primitives/Combobox'
 import { Notice } from '@/components/primitives/Notice'
 import { useToast } from '@/components/primitives/Toast'
@@ -88,6 +89,10 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
     () => ({
       name: adhesionActive?.parkName ?? (estDemo ? t('common.demoPark') : ''),
       countryCode: adhesionActive?.countryCode ?? '',
+      /* Un serveur antérieur au champ ne le rend pas : le supposer ÉTEINT
+         proposerait de « rallumer » une relance qui n'a jamais cessé. */
+      autoReminders: adhesionActive?.autoReminders ?? true,
+      reminderMilestoneDays: adhesionActive?.reminderMilestoneDays ?? 7,
       currency: (adhesionActive?.currency ?? (estDemo ? deviseDeDemo : '')) as DeviseDuParc | '',
       /* `?? 'delegate'` : un serveur antérieur au champ ne le rend pas, et le
          supposer `solo` proposerait de « rétablir » une délégation que le parc
@@ -123,6 +128,8 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
    * pourtant `required`, comme les autres modales de saisie du dossier.
    */
   const [erreurNom, setErreurNom] = useState<string | undefined>(undefined)
+  const [relances, setRelances] = useState(origine.autoReminders)
+  const [jalon, setJalon] = useState(String(origine.reminderMilestoneDays))
 
   const optionsDePays = useMemo(() => countryOptions(locale), [locale])
 
@@ -130,6 +137,8 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
 
   /** Ce qui a changé, et rien d'autre. Vide quand la saisie est celle d'origine. */
   const correction: {
+    autoReminders?: boolean
+    reminderMilestoneDays?: number
     name?: string
     countryCode?: string
     currency?: DeviseDuParc
@@ -139,6 +148,18 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
   if (pays && pays !== origine.countryCode) correction.countryCode = pays
   if (deviseChange) correction.currency = devise as DeviseDuParc
   if (delegation !== origine.delegation) correction.delegation = delegation
+  if (relances !== origine.autoReminders) correction.autoReminders = relances
+  /* Le jalon ne part QUE s'il est un nombre dans les bornes : un champ vidé en
+     cours de frappe ne doit pas écrire zéro. */
+  const jalonLu = Number(jalon)
+  if (
+    Number.isInteger(jalonLu) &&
+    jalonLu >= 1 &&
+    jalonLu <= 90 &&
+    jalonLu !== origine.reminderMilestoneDays
+  ) {
+    correction.reminderMilestoneDays = jalonLu
+  }
 
   const enregistrer = (event: FormEvent) => {
     event.preventDefault()
@@ -374,6 +395,49 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
             </Select>
           )}
         </Field>
+
+        {/*
+          LES RELANCES AUTOMATIQUES, ET POURQUOI ELLES SE RÈGLENT ICI.
+
+          Le CRON est bête : il passe tous les jours à heure fixe. La POLITIQUE
+          vit dans le produit — faut-il relancer, et au bout de combien de jours.
+          Laisser le jalon dans la planification obligerait un propriétaire à
+          ouvrir un tableau de bord d'hébergeur pour changer d'avis sur ses
+          propres locataires.
+
+          L'INTERRUPTEUR VIENT EN PREMIER : cette relance n'avait jamais tourné,
+          faute de lanceur. Elle se met à partir pour de bon, et le premier geste
+          qu'on doit pouvoir faire est de l'ARRÊTER — avant d'avoir à comprendre
+          le reste.
+        */}
+        {/* Une case ne passe PAS par `Field` : elle porte son propre libellé, et
+            l'imbriquer donnerait deux étiquettes pour une commande. */}
+        <Checkbox
+          label={t('app.parkSettings.autoRemindersOn')}
+          hint={t('app.parkSettings.autoRemindersHint')}
+          checked={relances}
+          onChange={(e) => setRelances(e.target.checked)}
+        />
+
+        {relances && (
+          <Field
+            label={t('app.parkSettings.reminderDay')}
+            hint={t('app.parkSettings.reminderDayHint')}
+          >
+            {(props) => (
+              <Input
+                id={props.id}
+                aria-describedby={props['aria-describedby']}
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={90}
+                value={jalon}
+                onChange={(e) => setJalon(e.target.value)}
+              />
+            )}
+          </Field>
+        )}
 
         {/**
          * L'AVERTISSEMENT, et il ne paraît que si la devise change.

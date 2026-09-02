@@ -239,6 +239,16 @@ model Park {
   /// législation locale peut exiger davantage, et que ce nombre est une règle
   /// de gestion, pas une constante d'implémentation.
   leaseAccessMonths Int @default(3)
+  /// La relance automatique de loyer, allumée ou éteinte POUR CE PARC.
+  /// Allumée par défaut : elle existait déjà en code, et un défaut à faux
+  /// l'aurait éteinte pour tout le monde au moment où elle se met enfin à
+  /// tourner.
+  autoReminders Boolean @default(true)
+  /// Au bout de combien de JOURS de retard elle part. Sept par défaut, et le
+  /// motif reste celui du code : « ni le délai serré de J+1, ni la sévérité de
+  /// J+15 ». Il cesse seulement d'être une fatalité — un bailleur qui relance
+  /// à trois jours n'a pas tort, il a un autre parc.
+  reminderMilestoneDays Int @default(7)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

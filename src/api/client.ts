@@ -177,6 +177,10 @@ export interface AdhesionApi {
    * retirerait le recrutement d'un gestionnaire à des parcs qui l'ont.
    */
   delegation?: 'solo' | 'delegate'
+  /** La relance automatique de ce parc, et le jour où elle part. Absents d'un
+      serveur antérieur : `true` et `7` sont alors les défauts du schéma. */
+  autoReminders?: boolean
+  reminderMilestoneDays?: number
 }
 
 export interface SessionApi {

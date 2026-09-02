@@ -449,7 +449,18 @@ authRouter.get('/me', async (req: Request, res: Response) => {
       /* `delegation` voyage avec l'adhésion, et non seulement dans `/parks` :
          c'est elle qui décide si l'écran propose de recruter un gestionnaire, et
          cet écran est monté bien avant qu'on ait listé les parcs. */
-      park: { select: { name: true, currency: true, countryCode: true, delegation: true } },
+      park: {
+        select: {
+          name: true,
+          currency: true,
+          countryCode: true,
+          delegation: true,
+          /* Les relances se règlent dans la modale du parc, qui lit l'adhésion
+             active : sans eux, elle proposerait des défauts inventés. */
+          autoReminders: true,
+          reminderMilestoneDays: true,
+        },
+      },
     },
   })
 
@@ -472,6 +483,8 @@ authRouter.get('/me', async (req: Request, res: Response) => {
        */
       countryCode: m.park.countryCode,
       delegation: m.park.delegation,
+      autoReminders: m.park.autoReminders,
+      reminderMilestoneDays: m.park.reminderMilestoneDays,
     })),
   })
 })

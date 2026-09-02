@@ -263,6 +263,11 @@ describe('session', () => {
         // décide si l'écran propose de recruter un gestionnaire, et cet écran
         // est monté bien avant qu'on ait listé les parcs.
         delegation: 'delegate',
+        /* Les relances se règlent dans la modale du parc, qui lit l'adhésion
+           active : sans ces deux champs, elle proposerait des défauts inventés
+           au lieu de l'état réel. */
+        autoReminders: true,
+        reminderMilestoneDays: 7,
       },
     ])
   })

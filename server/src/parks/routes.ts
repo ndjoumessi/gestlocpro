@@ -191,6 +191,18 @@ export const JALONS_RELANCE = [1, 7, 15] as const
  * absence d'ambiguïté : ni le délai serré de J+1, ni la sévérité de J+15, qui
  * chevauche le registre de la mise en demeure.
  */
+/*
+  IL N'EST PLUS LE JALON DU LANCEUR — il en est le DÉFAUT.
+
+  `Park.reminderMilestoneDays` porte désormais la valeur, parc par parc, et le
+  schéma la fait naître à sept. Le motif écrit ci-dessus reste celui du défaut :
+  « ni le délai serré de J+1, ni la sévérité de J+15 ». Il cesse seulement d'être
+  une fatalité.
+
+  Cette constante survit parce que l'écran des relances MANUELLES la lit encore
+  pour distinguer le jalon qui envoie un courriel des deux qui ne font qu'un SMS
+  simulé. Le jour où ces deux-là rejoindront le courriel, elle disparaîtra.
+*/
 export const JALON_EMAIL_AUTOMATIQUE = 7
 
 /**
@@ -2115,6 +2127,11 @@ const schemaCorrectionDuParc = z
      * courtoisie, c'est un accès permanent qui ne dit pas son nom.
      */
     leaseAccessMonths: z.number().int().min(1).max(24).optional(),
+    /** La relance automatique, et le jour où elle part. Bornée à [1, 90] : zéro
+        relancerait le jour de l'échéance, et au-delà de trois mois ce n'est plus
+        une relance, c'est un constat. */
+    autoReminders: z.boolean().optional(),
+    reminderMilestoneDays: z.number().int().min(1).max(90).optional(),
   })
   .refine(
     (v) =>
@@ -2122,7 +2139,9 @@ const schemaCorrectionDuParc = z
       v.countryCode !== undefined ||
       v.currency !== undefined ||
       v.delegation !== undefined ||
-      v.leaseAccessMonths !== undefined,
+      v.leaseAccessMonths !== undefined ||
+      v.autoReminders !== undefined ||
+      v.reminderMilestoneDays !== undefined,
     { message: 'Rien à corriger' },
   )
 
@@ -2701,6 +2720,10 @@ parksRouter.patch(
         ...(corps.delegation !== undefined ? { delegation: corps.delegation } : {}),
         ...(corps.leaseAccessMonths !== undefined
           ? { leaseAccessMonths: corps.leaseAccessMonths }
+          : {}),
+        ...(corps.autoReminders !== undefined ? { autoReminders: corps.autoReminders } : {}),
+        ...(corps.reminderMilestoneDays !== undefined
+          ? { reminderMilestoneDays: corps.reminderMilestoneDays }
           : {}),
       },
       select: { id: true, name: true, countryCode: true, currency: true, delegation: true },

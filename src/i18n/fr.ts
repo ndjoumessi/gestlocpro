@@ -1127,6 +1127,11 @@ export const fr = {
        * que c'est précisément le geste dont l'effet se lit mal.
        */
       confirmCurrency: 'Changer la devise',
+      autoReminders: 'Relances automatiques',
+      autoRemindersHint: 'Un courriel au locataire dont le loyer est en retard. Le message part une fois, au jour choisi.',
+      autoRemindersOn: 'Relancer automatiquement',
+      reminderDay: 'Au bout de combien de jours',
+      reminderDayHint: 'Sept par défaut : ni le délai serré d’un jour, ni la sévérité de quinze.',
       currencyWarning:
         'Les montants déjà saisis ne seront pas convertis : 180 000 se relira 180 000 dans la nouvelle devise. À ne faire que sur un parc dont les montants seront resaisis.',
       unchanged: 'Rien n’a changé.',

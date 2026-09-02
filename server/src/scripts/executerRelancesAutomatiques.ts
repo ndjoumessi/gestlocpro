@@ -1,5 +1,5 @@
 import { prisma } from '../db.js'
-import { calculerRetard, JALON_EMAIL_AUTOMATIQUE, tenterRelanceEmailMilestone } from '../parks/routes.js'
+import { calculerRetard, tenterRelanceEmailMilestone } from '../parks/routes.js'
 import { envoyerLesResumesDuFil } from '../parks/resumeDuFil.js'
 
 /**
@@ -45,12 +45,22 @@ export async function executerRelancesAutomatiques(
 }> {
   let partiraient = 0
   const maintenant = new Date()
-  const parcs = await prisma.park.findMany({ select: { id: true, currency: true } })
+  /* LA POLITIQUE VIENT DU PARC, pas de la planification. Le cron est bête : il
+     passe tous les jours. Mettre le jalon dans son expression obligerait un
+     propriétaire à ouvrir un tableau de bord d'hébergeur pour changer d'avis sur
+     ses propres locataires. */
+  const parcs = await prisma.park.findMany({
+    select: { id: true, currency: true, autoReminders: true, reminderMilestoneDays: true },
+  })
 
   let envoyes = 0
   let ignores = 0
 
   for (const parc of parcs) {
+    /* ÉTEINTE POUR CE PARC : on ne compte rien, pas même à blanc. Annoncer un
+       envoi qu'un réglage interdit ferait mentir la seule lecture qui précède la
+       décision. */
+    if (!parc.autoReminders) continue
     const baux = await prisma.lease.findMany({
       where: { unit: { building: { parkId: parc.id } }, status: { in: ['active', 'pending'] } },
       select: {
@@ -68,7 +78,7 @@ export async function executerRelancesAutomatiques(
 
     for (const bail of baux) {
       const { dûMinor, jours } = calculerRetard(bail, maintenant)
-      if (dûMinor <= 0 || jours !== JALON_EMAIL_AUTOMATIQUE) continue
+      if (dûMinor <= 0 || jours !== parc.reminderMilestoneDays) continue
 
       partiraient += 1
       if (options.aBlanc) continue

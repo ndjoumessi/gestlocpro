@@ -183,7 +183,18 @@ const MODALES = [
     celle d'un parc — aucune porte de ce dépôt ne visite un parc réel.
   */
   { nom: 'Tariffs', adresse: '/demo/releves', bouton: /^Prix de refacturation$|^Rebilling prices$/, defil: { 360: 11, 1280: 0 }, defilLarge: { 360: 76, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
-  { nom: 'ParkSettings', adresse: '/demo/parc', bouton: /^Corriger le parc$|^Correct the park$/, defil: { 360: 48, 1280: 0 }, defilLarge: { 360: 48, 1280: 0 }, avant: { 360: 35, 1280: 0 } },
+  /*
+    48 → 325 px à 360, 0 → 70 à 1280 (2026-09-02) : LES RELANCES AUTOMATIQUES.
+
+    Une case et un champ de jour entrent dans cette boîte, et le champ ne paraît
+    que si la case est cochée — deux hauteurs de plus, dont une conditionnelle.
+
+    Le défilement est celui d'un FORMULAIRE, pas d'un débordement : cette modale
+    porte désormais le nom du parc, son pays, sa devise, sa politique de
+    délégation et ses relances. Les refuser au motif qu'elles allongent
+    reviendrait à interdire au parc d'avoir des réglages.
+  */
+  { nom: 'ParkSettings', adresse: '/demo/parc', bouton: /^Corriger le parc$|^Correct the park$/, defil: { 360: 325, 1280: 70 }, defilLarge: { 360: 325, 1280: 70 }, avant: { 360: 35, 1280: 0 } },
   /*
     LA MÊME MODALE, DEVISE CHANGÉE — un second état, et une note que personne
     n'atteignait.
@@ -213,8 +224,10 @@ const MODALES = [
        qu'on ne veut PAS raccourcir — il dit qu'aucun montant ne sera converti,
        et l'abréger sur un téléphone serait le rendre inoffensif là où il compte
        le plus. À 1280 il reste nul : la boîte a la place. */
-    defil: { 360: 205, 1280: 0 },
-    defilLarge: { 360: 205, 1280: 0 },
+    /* L'avertissement de devise s'ajoute aux relances : 480 px à 360, 178 à
+       1280 — quatre lignes de plus dans une boîte qui en portait déjà six. */
+    defil: { 360: 480, 1280: 178 },
+    defilLarge: { 360: 480, 1280: 178 },
     avant: { 360: 35, 1280: 0 },
   },
   { nom: 'AddBuilding', adresse: '/demo/parc', bouton: /^Ajouter un immeuble$|^Add a building$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },

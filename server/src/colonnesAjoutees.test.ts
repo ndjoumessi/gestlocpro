@@ -31,7 +31,7 @@ import { describe, expect, it } from 'vitest'
  *
  * ═══ CE QU'IL A TROUVÉ EN NAISSANT ═══
  *
- * Sur treize colonnes ajoutées, dix portent un défaut et trois laissent un `NULL`.
+ * Sur quinze colonnes ajoutées, douze portent un défaut et trois laissent un `NULL`.
  * Sept des huit défauts étaient justifiés dans leur propre migration — ce dépôt
  * le faisait déjà. `waterMinor` et `powerMinor` ne l'étaient PAS : leur
  * migration explique la ventilation et ne dit rien des lignes existantes. Elle a
@@ -75,6 +75,15 @@ const AFFIRMATIONS: Record<string, string> = {
     'Tout parc antérieur stocke des unités mineures. La migration porte une ' +
     'section entière sur les lignes existantes et ne convertit que les devises à ' +
     'décimales ; `XAF` et `XOF` n’en ont pas, et leurs lignes ne bougent pas.',
+  'Park.autoReminders':
+    'Tout parc antérieur RELANCE, et c’est ce qui lui était promis : la relance ' +
+    'automatique existait déjà en code. Un défaut à faux l’aurait éteinte pour ' +
+    'tout le monde au moment même où elle se met enfin à tourner — aucun cron ne ' +
+    'la lançait jusque-là.',
+  'Park.reminderMilestoneDays':
+    'Sept jours pour tout parc antérieur : c’est la valeur que la constante ' +
+    '`JALON_EMAIL_AUTOMATIQUE` imposait à tous. Aucun parc ne change de ' +
+    'comportement ; le nombre cesse seulement d’être hors de portée.',
   'Park.leaseAccessMonths':
     'Trois mois pour tout parc antérieur : c’est la valeur que la constante du ' +
     'code imposait à tous avant d’être réglable. Aucun parc ne change de ' +
@@ -153,13 +162,13 @@ describe('les colonnes ajoutées', () => {
     ).toEqual([])
   })
 
-  it('sont TREIZE, et le compte est écrit à la main', () => {
+  it('sont QUINZE, et le compte est écrit à la main', () => {
     /* GARDE DU GARDE. Si la lecture des migrations cassait, les deux règles
        ci-dessus compareraient des listes vides et se déclareraient vertes sur un
        schéma dont personne n’aurait relu les affirmations. */
     expect(
       colonnesAjoutees().length,
       'la lecture des migrations ne trouve plus les `ADD COLUMN`',
-    ).toBe(13)
+    ).toBe(15)
   })
 })

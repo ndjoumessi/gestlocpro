@@ -861,6 +861,11 @@ export const en: Dictionary = {
       currencyXOF: 'CFA franc — West Africa (WAEMU)',
       submit: 'Save',
       confirmCurrency: 'Change the currency',
+      autoReminders: 'Automatic reminders',
+      autoRemindersHint: 'One email to the tenant whose rent is late. It goes once, on the chosen day.',
+      autoRemindersOn: 'Send reminders automatically',
+      reminderDay: 'After how many days',
+      reminderDayHint: 'Seven by default: neither the tight one-day delay, nor the severity of fifteen.',
       currencyWarning:
         'Amounts already entered will not be converted: 180,000 will read as 180,000 in the new currency. Only do this on a park whose amounts will be re-entered.',
       unchanged: 'Nothing changed.',
