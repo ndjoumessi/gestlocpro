@@ -132,6 +132,8 @@ export interface CompteApi {
    * que personne n'a demandé.
    */
   threadEmailOptIn?: boolean
+  /** Grouper ces copies en un résumé. Faux quand le serveur ne le rend pas. */
+  threadEmailDigest?: boolean
 }
 
 /** Devises que le serveur STOCKE. `CFA` n'en est pas une : voir `DeviseDuParc`. */
@@ -234,7 +236,10 @@ export const api = {
    * propres conséquences, et les mêler ferait d'un basculement de case le
    * voisin d'un changement d'identité.
    */
-  updatePreferences: (preferences: { threadEmailOptIn: boolean }) =>
+  updatePreferences: (preferences: {
+    threadEmailOptIn?: boolean
+    threadEmailDigest?: boolean
+  }) =>
     requete<{ user: CompteApi }>('/auth/me', {
       method: 'PATCH',
       body: JSON.stringify(preferences),

@@ -1428,7 +1428,22 @@ function MenuCompte() {
     celui quon croit avoir demandé.
   */
   const [copiesLocales, setCopiesLocales] = useState<boolean | null>(null)
+  const [resumeLocal, setResumeLocal] = useState<boolean | null>(null)
   const copiesActives = copiesLocales ?? compte?.threadEmailOptIn !== false
+  const resumeActif = resumeLocal ?? compte?.threadEmailDigest === true
+  /* Même bascule optimiste que les copies, et même restauration : une case
+     restée basculée sur un serveur qui a refusé ferait croire à un réglage
+     qu'on n'a pas obtenu. */
+  const basculerLeResume = async () => {
+    const vise = !resumeActif
+    setResumeLocal(vise)
+    try {
+      await api.updatePreferences({ threadEmailDigest: vise })
+    } catch {
+      setResumeLocal(!vise)
+    }
+  }
+
   const basculerLesCopies = async () => {
     const vise = !copiesActives
     setCopiesLocales(vise)
@@ -1604,6 +1619,29 @@ function MenuCompte() {
                 />
                 {t('nav.threadEmailCopies')}
               </button>
+              {/*
+                LE RÉSUMÉ NE PARAÎT QUE SI LES COPIES SONT ACTIVES.
+
+                « Grouper les copies » n'a aucun sens pour qui n'en reçoit
+                aucune : le proposer quand même ferait un réglage dont l'effet
+                dépend d'un autre, sans que rien ne le dise. Il disparaît, plutôt
+                que d'être grisé — une commande désactivée demande au lecteur de
+                deviner pourquoi.
+              */}
+              {copiesActives && (
+                <button
+                  type="button"
+                  role="menuitemcheckbox"
+                  aria-checked={resumeActif}
+                  onClick={() => {
+                    void basculerLeResume()
+                  }}
+                  className="flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-sm px-2 text-left text-label text-ink hover:bg-surface-sunken"
+                >
+                  <Icon name={resumeActif ? 'check' : 'close'} size={16} />
+                  {t('nav.threadEmailDigest')}
+                </button>
+              )}
               <div role="separator" className="my-1 h-px bg-border" />
               <button
                 type="button"

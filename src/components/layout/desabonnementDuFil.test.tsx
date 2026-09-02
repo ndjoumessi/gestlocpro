@@ -71,3 +71,38 @@ describe('la préférence des copies', () => {
     ).toHaveAttribute('aria-checked', 'false')
   })
 })
+
+describe('le résumé du fil', () => {
+  it('se bascule depuis le même menu', async () => {
+    serveur.quand('PATCH', '/auth/me', {
+      status: 200,
+      body: { user: { ...COMPTE_FICTIF, threadEmailDigest: true } },
+    })
+    const user = await ouvrirLeMenu()
+
+    await user.click(screen.getByRole('menuitemcheckbox', { name: /résumé/i }))
+
+    await waitFor(() => {
+      const appel = serveur.appels.find(
+        (a) => a.methode === 'PATCH' && a.chemin.endsWith('/auth/me'),
+      )
+      expect(appel?.corps).toEqual({ threadEmailDigest: true })
+    })
+  })
+
+  it('DISPARAÎT quand les copies sont coupées', async () => {
+    /* « Grouper les copies » n'a aucun sens pour qui n'en reçoit aucune. Le
+       proposer quand même ferait un réglage dont l'effet dépend d'un autre,
+       sans que rien ne le dise. */
+    await ouvrirLeMenu({ ...COMPTE_FICTIF, threadEmailOptIn: false })
+    expect(screen.queryByRole('menuitemcheckbox', { name: /résumé/i })).toBeNull()
+  })
+
+  it('montre l’état COURANT', async () => {
+    await ouvrirLeMenu({ ...COMPTE_FICTIF, threadEmailDigest: true })
+    expect(screen.getByRole('menuitemcheckbox', { name: /résumé/i })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+  })
+})

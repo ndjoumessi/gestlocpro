@@ -4207,14 +4207,27 @@ async function envoyerLaCopieDuFil(
   */
   const comptes = await prisma.userAccount.findMany({
     where: { email: { in: nettes } },
-    select: { email: true, threadEmailOptIn: true, locale: true },
+    select: { email: true, threadEmailOptIn: true, threadEmailDigest: true, locale: true },
   })
   const desabonnes = new Set(
     comptes.filter((c) => !c.threadEmailOptIn).map((c) => c.email),
   )
+  /*
+    CEUX QUI ONT CHOISI LE RÉSUMÉ NE REÇOIVENT RIEN MAINTENANT.
+
+    Et rien n'est mis en file : le résumé se DÉRIVE des avis déjà écrits, datés
+    et rattachés à leur destinataire. Une file serait un second endroit où la
+    vérité vit, et elle divergerait du premier.
+
+    Aucune trace non plus — la trace dit ce qui a été TENTÉ, et rien ne l'est
+    ici. Elle s'écrira quand le résumé partira.
+  */
+  const enResume = new Set(
+    comptes.filter((c) => c.threadEmailOptIn && c.threadEmailDigest).map((c) => c.email),
+  )
   const langues = new Map(comptes.map((c) => [c.email, c.locale]))
   for (const adresse of nettes) {
-    if (desabonnes.has(adresse)) continue
+    if (desabonnes.has(adresse) || enResume.has(adresse)) continue
     const gabarit = gabaritDuFilEmail({ ...entree, langue: langues.get(adresse) })
     /*
       LA TENTATIVE D'ABORD, LA LIVRAISON ENSUITE — l'ordre de

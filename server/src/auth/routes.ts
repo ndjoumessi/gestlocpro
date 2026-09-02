@@ -141,6 +141,7 @@ function vueCompte(u: {
   countryCode: string | null
   phoneE164: string | null
   threadEmailOptIn?: boolean
+  threadEmailDigest?: boolean
 }) {
   return {
     id: u.id,
@@ -153,6 +154,7 @@ function vueCompte(u: {
        pouvoir l'afficher, et une case posée à faux par défaut d'information
        ferait croire à un désabonnement que personne n'a demandé. */
     threadEmailOptIn: u.threadEmailOptIn ?? true,
+    threadEmailDigest: u.threadEmailDigest ?? false,
   }
 }
 
@@ -466,9 +468,15 @@ authRouter.get('/me', async (req: Request, res: Response) => {
  * exige l'ancien — et les mêler ici ferait d'un basculement de case le voisin
  * d'un changement d'identité.
  */
-const schemaPreferences = z.object({
-  threadEmailOptIn: z.boolean(),
-})
+const schemaPreferences = z
+  .object({
+    threadEmailOptIn: z.boolean().optional(),
+    /** Grouper les copies en un résumé. Voir `threadEmailDigest` au schéma. */
+    threadEmailDigest: z.boolean().optional(),
+  })
+  .refine((v) => v.threadEmailOptIn !== undefined || v.threadEmailDigest !== undefined, {
+    message: 'Rien à régler',
+  })
 
 authRouter.patch('/me', async (req: Request, res: Response) => {
   const session = await lireSession(req)
@@ -483,7 +491,14 @@ authRouter.patch('/me', async (req: Request, res: Response) => {
   }
   const compte = await prisma.userAccount.update({
     where: { id: session.userId },
-    data: { threadEmailOptIn: analyse.data.threadEmailOptIn },
+    data: {
+      ...(analyse.data.threadEmailOptIn !== undefined
+        ? { threadEmailOptIn: analyse.data.threadEmailOptIn }
+        : {}),
+      ...(analyse.data.threadEmailDigest !== undefined
+        ? { threadEmailDigest: analyse.data.threadEmailDigest }
+        : {}),
+    },
     select: {
       id: true,
       email: true,
@@ -492,6 +507,7 @@ authRouter.patch('/me', async (req: Request, res: Response) => {
       countryCode: true,
       phoneE164: true,
       threadEmailOptIn: true,
+      threadEmailDigest: true,
     },
   })
   res.json({ user: vueCompte(compte) })

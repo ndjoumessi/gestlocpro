@@ -1,5 +1,6 @@
 import { prisma } from '../db.js'
 import { calculerRetard, JALON_EMAIL_AUTOMATIQUE, tenterRelanceEmailMilestone } from '../parks/routes.js'
+import { envoyerLesResumesDuFil } from '../parks/resumeDuFil.js'
 
 /**
  * LE POINT D'ENTRÉE DU FUTUR CRON — pas encore branché à rien.
@@ -70,4 +71,19 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   console.log(
     `Relance automatique — ${resultat.parcsTraites} parc(s), ${resultat.envoyes} courriel(s) parti(s), ${resultat.ignores} ignoré(s).`,
   )
+
+  /*
+    LES RÉSUMÉS DU FIL PARTENT AU MÊME PASSAGE, et non dans un second lanceur.
+
+    Un expéditeur que rien n'appelle est une fonctionnalité qui n'existe pas —
+    ce dépôt a déjà payé exactement cela avec une table de traces écrite et
+    jamais relue. Ce passage-ci est déjà périodique et déjà branché à la
+    messagerie ; y accrocher les résumés ne demande rien de neuf à personne.
+
+    APRÈS LES RELANCES, et l'ordre a une raison : une relance de loyer est une
+    échéance qui court, un résumé est une commodité. Si le passage est
+    interrompu, c'est la commodité qu'on perd.
+  */
+  const resumes = await envoyerLesResumesDuFil()
+  console.log(`Résumés du fil — ${resumes} envoyé(s).`)
 }

@@ -63,15 +63,17 @@ describe('les adresses de retour', () => {
     ).toEqual([])
   })
 
-  it('sont bien HUIT, et le compte est écrit à la main', () => {
+  it('sont bien ONZE, et le compte est écrit à la main', () => {
     /*
       GARDE DU GARDE. « Aucune adresse en dur » et « plus aucun lien de retour »
       s'écrivent pareil dans un journal : si quelqu'un retirait le pied de
       désabonnement, la règle ci-dessus resterait verte sur un produit qui ne
       ramène plus personne. Le compte est donc écrit, et un diff le montre.
 
-      8, et la ventilation compte : 1 pour le lien de réinitialisation, 1 pour
-      l'en-tête `List-Unsubscribe`, et 6 pour les pieds de désabonnement. SIX et
+      11, et la ventilation compte : 1 pour le lien de réinitialisation, 1 pour
+      l'en-tête `List-Unsubscribe`, 6 pour les pieds de désabonnement, et 3 pour
+      le RÉSUMÉ du fil — son pied dit lui aussi où changer le réglage, en texte
+      (1) et en HTML (2 : le `href` et le texte visible). SIX et
       non quatre — chaque pied HTML cite l'adresse DEUX fois, dans le `href` et
       dans le texte visible, parce qu'un lien dont on ne lit pas la destination
       ne se vérifie pas avant de cliquer. Deux langues : (1 texte + 2 HTML) × 2.
@@ -86,6 +88,6 @@ describe('les adresses de retour', () => {
       if (fichier.endsWith('app.ts')) continue
       usages += [...contenu.matchAll(/env\.CLIENT_ORIGIN/g)].length
     }
-    expect(usages, 'un chemin de retour a disparu, ou un autre est apparu').toBe(8)
+    expect(usages, 'un chemin de retour a disparu, ou un autre est apparu').toBe(11)
   })
 })

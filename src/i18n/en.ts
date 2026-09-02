@@ -206,6 +206,7 @@ export const en: Dictionary = {
     openNav: 'Open navigation',
     closeNav: 'Close navigation',
     threadEmailCopies: 'Email copies',
+    threadEmailDigest: 'Group them into a summary',
     backToSite: 'Back to the website',
     searchPlaceholder: 'Search a unit, a tenant…',
     searchShort: 'Unit, tenant…',

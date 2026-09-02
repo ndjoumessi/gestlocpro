@@ -121,6 +121,17 @@ model UserAccount {
   /// pas à l'information. Sur le COMPTE et non sur le parc : le choix
   /// appartient à qui reçoit, et vaut partout où il est membre.
   threadEmailOptIn Boolean @default(true)
+  /// GROUPER les copies plutôt que de les recevoir une à une. Faux par
+  /// défaut : l'écran du locataire promet que son signalement est reçu
+  /// IMMÉDIATEMENT, et un résumé imposé rendrait cette phrase fausse pour
+  /// tout le monde. C'est un choix de celui qui reçoit, jamais un réglage du
+  /// parc — et il ne touche que la COPIE : l'avis dans le produit reste
+  /// immédiat.
+  threadEmailDigest Boolean @default(false)
+  /// Jusqu'où le dernier résumé est allé. Nul tant qu'aucun n'est parti — le
+  /// premier prend alors tout ce que le compte a reçu. Sans cette borne,
+  /// chaque passage renverrait l'historique entier.
+  lastThreadDigestAt DateTime?
   /// On désactive, on ne supprime pas : cette personne est citée par des baux,
   /// des paiements et des décisions d'arbitrage.
   disabledAt      DateTime?

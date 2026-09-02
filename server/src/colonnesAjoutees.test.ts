@@ -31,7 +31,7 @@ import { describe, expect, it } from 'vitest'
  *
  * ═══ CE QU'IL A TROUVÉ EN NAISSANT ═══
  *
- * Sur dix colonnes ajoutées, huit portent un défaut et deux laissent un `NULL`.
+ * Sur douze colonnes ajoutées, neuf portent un défaut et trois laissent un `NULL`.
  * Sept des huit défauts étaient justifiés dans leur propre migration — ce dépôt
  * le faisait déjà. `waterMinor` et `powerMinor` ne l'étaient PAS : leur
  * migration explique la ventilation et ne dit rien des lignes existantes. Elle a
@@ -85,6 +85,16 @@ const AFFIRMATIONS: Record<string, string> = {
   'MembershipUnit.exclue':
     'Toute ligne antérieure est un logement CONFIÉ, jamais exclu — l’exclusion ' +
     'n’existait pas. Aucun périmètre en place ne change de sens.',
+  'UserAccount.threadEmailDigest':
+    'Aucun compte antérieur ne groupe ses copies — et c’est ce qu’ils vivaient : ' +
+    'ils les recevaient une à une. Un défaut à vrai aurait imposé un résumé à ' +
+    'tout le monde, alors que l’écran du locataire promet que son signalement ' +
+    'est reçu IMMÉDIATEMENT.',
+  'UserAccount.lastThreadDigestAt':
+    'NULL affirme qu’aucun résumé n’est jamais parti, ce qui est VRAI : la ' +
+    'fonctionnalité n’existait pas. Le premier résumé d’un compte prendra donc ' +
+    'tout ce qu’il a reçu — borne assumée, et sans surprise puisqu’il faut avoir ' +
+    'coché le réglage pour en recevoir un.',
   'WorkThreadEmail.notificationId':
     'NULL, et son sens est DOUBLE : « le signalement, qui EST le fil » et ' +
     '« écrit avant cette colonne ». Assumé et écrit dans la migration : le ' +
@@ -137,13 +147,13 @@ describe('les colonnes ajoutées', () => {
     ).toEqual([])
   })
 
-  it('sont DIX, et le compte est écrit à la main', () => {
+  it('sont DOUZE, et le compte est écrit à la main', () => {
     /* GARDE DU GARDE. Si la lecture des migrations cassait, les deux règles
        ci-dessus compareraient des listes vides et se déclareraient vertes sur un
        schéma dont personne n’aurait relu les affirmations. */
     expect(
       colonnesAjoutees().length,
       'la lecture des migrations ne trouve plus les `ADD COLUMN`',
-    ).toBe(10)
+    ).toBe(12)
   })
 })

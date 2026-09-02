@@ -271,6 +271,7 @@ export const fr = {
       qu'on quitte l'application pour retrouver : la vitrine publique.
     */
     threadEmailCopies: 'Copies par e-mail',
+    threadEmailDigest: 'Les grouper en un résumé',
     backToSite: 'Retour au site',
     searchPlaceholder: 'Rechercher un logement, un locataire…',
     /* Le GABARIT, plus court que le nom accessible : voir `Portfolio`. */
