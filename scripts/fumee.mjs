@@ -324,6 +324,42 @@ await contexte.close()
 await navigateur.close()
 
 /*
+  CE QUE LE RELAIS COÛTE EN TEMPS, ET POURQUOI CE N'EST PAS UN CONTRÔLE.
+
+  Mesuré le 2026-09-02, douze passages alternés sur les deux hôtes pour ne pas
+  laisser la dérive du réseau biaiser la comparaison, avec un corps de 805 001
+  octets — le poids exact d'une photo transcodée que `photo-transcodage` relève.
+
+                          médiane    min     max
+    PUT 805 ko · vercel     938 ms   793    1574
+    PUT 805 ko · railway    839 ms   778    1674
+    GET version · vercel    190 ms   174     338
+    GET version · railway   161 ms   157     277
+
+  LE RELAIS COÛTE ENVIRON 30 ms PAR REQUÊTE, et environ 100 ms sur un envoi de
+  805 ko — donc une trentaine de millisecondes fixes plus une soixantaine liées
+  au transport du corps. Un état des lieux complet en porte huit
+  (`PHOTOS_PAR_RESERVE`) : moins d'une seconde de plus, sur un geste qui en
+  prend déjà sept.
+
+  ET IL FAUT LIRE LES BORNES AUTANT QUE LES MÉDIANES : les minimums sont
+  indiscernables (793 contre 778), et les maximums se croisent — Railway a rendu
+  le passage le plus lent des vingt-quatre. L'écart est réel et il est PLUS
+  PETIT que la variance d'une connexion ordinaire.
+
+  Aucun contrôle n'en sort. Un seuil de latence dans un outil qui interroge un
+  hôte distant rougirait sur un train, un wifi d'hôtel, un fournisseur qui
+  éternue — et l'on apprendrait à ignorer ses plaintes, ce qui est la seule
+  façon de perdre un outil pour de bon. La mesure est consignée ; c'est ce
+  qu'elle vaut.
+
+  MESURÉ D'UN SEUL ENDROIT, à un seul moment, depuis une seule machine. Le bord
+  de Vercel répond depuis iad1 ; la région de Railway n'a pas été relevée. Un
+  utilisateur à Douala verra d'autres chiffres, et le rapport entre les deux
+  colonnes n'est pas garanti d'être le même.
+*/
+
+/*
   LE PLAFOND DES ENVOIS, ET POURQUOI CE CONTRÔLE N'EXISTE PAS.
 
   J'avais nommé « les envois de documents traversent un relais qui plafonne la
