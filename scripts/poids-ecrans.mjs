@@ -80,6 +80,7 @@ import { fileURLToPath } from 'node:url'
 import { argv, exit } from 'node:process'
 import { imposerLaPoliceLarge } from './police-large.mjs'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
+import { neutraliserLApiLocale } from './api-locale-neutralisee.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
 const PLAFONDS = join(RACINE, 'scripts/plafonds-ecrans.json')
@@ -354,6 +355,7 @@ try {
       colorScheme: 'light',
     })
     await imposerLaPoliceLarge(contexte)
+    await neutraliserLApiLocale(contexte)
     const page = await contexte.newPage()
     for (const adresse of ECRANS) {
       const actifs = []

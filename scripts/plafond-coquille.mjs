@@ -50,6 +50,7 @@ import { exit } from 'node:process'
 import { inventaireDesRoutes, exigerUnInventairePlein } from './inventaire/routes.mjs'
 import { POLICE_LARGE, imposerLaPoliceLarge } from './police-large.mjs'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
+import { neutraliserLApiLocale } from './api-locale-neutralisee.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -266,8 +267,19 @@ const LARGEURS = [320, 360, 1280]
 /**
  * Les adresses qui ne rendent PAS d'écran, et pourquoi.
  *
- * `/app` redirige vers le tableau de bord du rôle : il n'a ni contenu ni
- * `<main>`, et lui demander une hauteur de coquille n'aurait pas de sens.
+ * `/app` NE REND RIEN À CETTE PORTE, et le motif n'est pas celui qu'on
+ * croyait. Cette prose a longtemps dit « il redirige vers le tableau de bord du
+ * rôle » : c'est le comportement d'un compte CONNECTÉ, et la porte n'en a
+ * jamais eu. Elle visite en visiteur. `RequireAuth` lui rend donc l'état
+ * terminal de la session — serveur injoignable —, un `<div>` hors coquille,
+ * sans `<main>`.
+ *
+ * CE QUI REND CELA VRAI PARTOUT est `neutraliserLApiLocale`. Sans elle, une
+ * machine où le serveur d'API tourne rend un 401, la session bascule en
+ * « anonyme », et `/app` renvoie vers `/connexion` — qui, lui, porte un
+ * `<main>`. La porte a rougi exactement ainsi le 2026-09-02, sans qu'une ligne
+ * du produit ait bougé.
+ *
  * Écrite ici plutôt que devinée par l'absence de `<main>` — sans quoi un écran
  * réel qui perdrait son `<main>` par accident se sauterait tout seul.
  */
@@ -410,6 +422,7 @@ try {
       colorScheme: 'light',
     })
     await imposerLaPoliceLarge(contexte)
+    await neutraliserLApiLocale(contexte)
     const page = await contexte.newPage()
     for (const adresse of ADRESSES) {
       await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
@@ -463,9 +476,10 @@ try {
       /*
         LES ROUTES SANS ÉCRAN, DÉCLARÉES ET COMPTÉES À PART.
 
-        `/app` ne rend pas un écran : il redirige vers le tableau de bord selon
-        le rôle. Il n'a donc pas de `<main>`, et exiger une hauteur de coquille
-        d'une redirection n'a pas de sens. La liste est ÉCRITE et son compte
+        `/app` ne rend pas un écran À CETTE PORTE : elle visite sans session,
+        et reçoit l'état terminal de `RequireAuth`, sans `<main>`. Exiger une
+        hauteur de coquille de cet écran-là n'aurait pas de sens. Voir
+        `SANS_ECRAN` : la stabilité de ce fait tient à `neutraliserLApiLocale`. La liste est ÉCRITE et son compte
         entre dans `ATTENDUS` : une route qui perdrait son `<main>` sans être
         ici fait toujours rougir, et une route qui redeviendrait un écran ferait
         chuter le compte des sautées.

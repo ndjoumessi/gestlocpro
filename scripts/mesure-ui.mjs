@@ -85,6 +85,7 @@ import { chromium } from 'playwright'
 import { EXEMPTIONS_DE_RENDU, MAXIMUM_D_EXEMPTIONS } from './exemptions-de-rendu.mjs'
 import { imposerLaPoliceLarge } from './police-large.mjs'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
+import { neutraliserLApiLocale } from './api-locale-neutralisee.mjs'
 /* La sonde des gabarits est PARTAGÉE avec `espace-connecte` : une seule
    expression régulière pour la démonstration et pour l'espace connecté. */
 import {
@@ -3973,6 +3974,7 @@ try {
       colorScheme: THEME_DE_GEOMETRIE,
     })
     await imposerLaPoliceLarge(contexte)
+    await neutraliserLApiLocale(contexte)
     const page = await contexte.newPage()
     // Relevées pour ÉCLAIRER un refus, jamais pour en déclencher un : les 484
     // points sains en portent tous (voir l'en-tête de `MESURER_RENDU`).
@@ -4442,6 +4444,7 @@ try {
       locale: langue,
     })
     await imposerLaPoliceLarge(contexte)
+    await neutraliserLApiLocale(contexte)
     const page = await contexte.newPage()
     for (const adresse of adresses) {
       const depart = Date.now()
@@ -4525,6 +4528,7 @@ try {
         colorScheme: theme,
       })
       await imposerLaPoliceLarge(contexte)
+      await neutraliserLApiLocale(contexte)
       const page = await contexte.newPage()
       await chrono('surfaces · navigation et attente', async () => {
         await page.goto(BASE + surface.adresse, { waitUntil: 'domcontentloaded' })
@@ -4665,6 +4669,7 @@ try {
     })
 
     await imposerLaPoliceLarge(contexte)
+    await neutraliserLApiLocale(contexte)
     const page = await contexte.newPage()
     let bloquees = 0
     await page.route('**/*', (route) => {
