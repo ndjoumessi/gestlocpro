@@ -66,6 +66,23 @@ import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
  */
 const HOTE = argv[2] ?? 'https://gestlocpro.vercel.app'
 
+/**
+ * LE COMPTE DE SONDE, ET POURQUOI IL VIT DANS L'ENVIRONNEMENT.
+ *
+ * Les sept contrôles publics s'arrêtent à la porte d'entrée, et le gros du
+ * produit est derrière : un dossier de logement, un paiement encaissé, un
+ * arbitrage de caution. Rien de tout cela n'était vu sur l'hôte vivant.
+ *
+ * Le mot de passe n'est ni écrit ici, ni demandé, ni lu par qui que ce soit
+ * d'autre que ce processus : il vient de l'environnement, posé par la personne
+ * qui lance la commande. Il n'entre dans aucun fichier du dépôt.
+ *
+ * ABSENTES, LA PASSE NE TOURNE PAS — et le verdict le DIT. Un contrôle qui se
+ * tait quand il ne s'exécute pas rend un vert qui ment sur sa portée.
+ */
+const COMPTE = process.env.FUMEE_COMPTE
+const MDP = process.env.FUMEE_MDP
+
 /** Ce qu'aucune page du produit ne doit jamais porter. */
 const REMPLISSAGE = /SORTIE que Vercel exige|Output Directory|vercel-vide/i
 
@@ -198,6 +215,111 @@ try {
   plaintes.push(`/ : en-têtes illisibles — ${String(erreur).split('\n')[0]}`)
 }
 
+/* ══════════════════ DERRIÈRE L'AUTHENTIFICATION ══════════════════ */
+
+/**
+ * CE QUE VOIT UN COMPTE RÉEL, sur l'hôte vivant.
+ *
+ * ═══ LES ÉCRANS NE SONT PAS ÉNUMÉRÉS ICI ═══
+ *
+ * On lit la NAVIGATION que le produit rend à ce compte, et on visite ce qu'elle
+ * propose. Une liste écrite ici supposerait un rôle — un propriétaire voit le
+ * parc, un locataire voit « Signaler » — et vieillirait à chaque écran ajouté.
+ * Lire la navigation mesure exactement ce que CETTE personne peut atteindre,
+ * quel que soit son rôle, et le jour où un écran s'ajoute il est balayé sans
+ * qu'on y pense.
+ *
+ * ═══ CE QUI EST JUGÉ SUR CHACUN ═══
+ *
+ * Qu'il PEINTE quelque chose — un écran vide de texte est un écran cassé — et
+ * qu'aucun jeton `{…}` n'y survive, ce qui est la marque d'un libellé qui n'a
+ * pas trouvé sa traduction. Les seize portes tiennent déjà cela en local ; ici
+ * on le vérifie sur ce que l'hôte sert vraiment.
+ */
+let ecransConnectes = 0
+if (COMPTE && MDP) {
+  controles++
+  /*
+    UN CONTEXTE NEUF, et ce n'est pas une précaution de style.
+
+    La passe publique a visité l'accueil, un lien profond et l'écran de
+    connexion ; réutiliser son contexte fait hériter la passe connectée d'un
+    état qu'elle n'a pas choisi. Mesuré : la session ne prenait pas, la
+    navigation retombait sur `/connexion`, et le cookie était pourtant dans le
+    bocal. Un contexte neuf mesure ce que vit quelqu'un qui ARRIVE et se
+    connecte — c'est aussi ce que fait `espace-connecte` pour chacun de ses
+    sept profils.
+  */
+  const contexteConnecte = await navigateur.newContext({
+    ...SANS_AGENT_DE_SERVICE,
+    viewport: { width: 1280, height: 900 },
+    locale: 'fr-FR',
+  })
+  const pageConnectee = await contexteConnecte.newPage()
+  const connexion = await contexteConnecte.request.post(`${HOTE}/api/auth/login`, {
+    data: { email: COMPTE, password: MDP },
+  })
+  if (!connexion.ok()) {
+    plaintes.push(
+      `connexion du compte de sonde : ${connexion.status()}.\n` +
+        `   Sans elle, tout ce qui suit l'authentification reste non mesuré.`,
+    )
+  } else {
+    await pageConnectee.goto(`${HOTE}/app`, { waitUntil: 'networkidle' })
+
+    /* Les adresses que la coquille propose À CE COMPTE, dédoublonnées et
+       gardées dans l'ordre où elle les offre. */
+    const adresses = await pageConnectee.evaluate(() => {
+      const liens = [...document.querySelectorAll('a[href^="/app"]')]
+      return [...new Set(liens.map((a) => a.getAttribute('href')))].filter(
+        (h) => h && !h.includes('#'),
+      )
+    })
+
+    if (adresses.length === 0) {
+      plaintes.push(
+        "connecté : la coquille n'offre AUCUNE adresse. Le compte n'a peut-être " +
+          'aucune adhésion, ou la navigation ne se rend pas.',
+      )
+    }
+
+    for (const adresse of adresses) {
+      controles++
+      ecransConnectes++
+      try {
+        const reponse = await pageConnectee.goto(`${HOTE}${adresse}`, {
+          waitUntil: 'networkidle',
+        })
+        const statut = reponse?.status() ?? 0
+        if (statut >= 400) {
+          plaintes.push(`${adresse} : ${statut} pour un compte qui y a droit.`)
+          continue
+        }
+        const texte = await pageConnectee.evaluate(
+          () => document.querySelector('main')?.innerText ?? '',
+        )
+        if (texte.trim().length < 20) {
+          plaintes.push(
+            `${adresse} : peint moins de vingt caractères. La coquille l'offre et ` +
+              `il ne montre rien — c'est un écran cassé, pas un écran vide.`,
+          )
+          continue
+        }
+        const jetons = [...texte.matchAll(/\{[A-Za-z][\w.]*\}/g)].map((m) => m[0])
+        if (jetons.length > 0) {
+          plaintes.push(
+            `${adresse} : ${jetons.length} jeton(s) survivant(s) — ${[...new Set(jetons)].join(', ')}.\n` +
+              `   Un libellé n'a pas trouvé sa traduction, et l'utilisateur lit des accolades.`,
+          )
+        }
+      } catch (erreur) {
+        plaintes.push(`${adresse} : ${String(erreur).split('\n')[0]}`)
+      }
+    }
+  }
+  await contexteConnecte.close()
+}
+
 await contexte.close()
 await navigateur.close()
 
@@ -221,6 +343,7 @@ await navigateur.close()
   quelqu'un rouvrirait la question dans six mois avec les mêmes suppositions.
 */
 
+
 /**
  * GARDE DU GARDE — le compte est écrit à la main.
  *
@@ -229,11 +352,19 @@ await navigateur.close()
  * reproduire : une erreur avalée, une boucle qui ne tourne pas, et il rendrait
  * vert sur un hôte mort.
  */
-const CONTROLES_ATTENDUS = 7
-if (controles !== CONTROLES_ATTENDUS) {
+const CONTROLES_PUBLICS = 7
+const attendus = COMPTE && MDP ? CONTROLES_PUBLICS + 1 + ecransConnectes : CONTROLES_PUBLICS
+if (controles !== attendus) {
   plaintes.push(
-    `${controles} contrôle(s) exécuté(s) pour ${CONTROLES_ATTENDUS} attendus. ` +
+    `${controles} contrôle(s) exécuté(s) pour ${attendus} attendus. ` +
       `« Aucune plainte » et « rien de contrôlé » s'écrivent pareil.`,
+  )
+}
+/* Et la passe connectée doit avoir trouvé des écrans : « zéro écran balayé » et
+   « aucun défaut » se ressemblent trop. */
+if (COMPTE && MDP && ecransConnectes === 0 && plaintes.length === 0) {
+  plaintes.push(
+    'la passe connectée n’a balayé AUCUN écran, et ne s’en est pas plainte.',
   )
 }
 
@@ -247,5 +378,10 @@ console.log(
   `✓ fumée : ${controles} contrôles sur l'hôte VIVANT, dans un vrai navigateur —\n` +
     `  la vitrine, un lien profond et l'écran de connexion PEINTS, aucun fichier\n` +
     `  réclamé et non servi, les deux réponses de l'API, une seule politique.\n` +
-    `  Du contenu rendu, jamais un code ni un titre statique.\n`,
+    `  Du contenu rendu, jamais un code ni un titre statique.\n` +
+    (COMPTE && MDP
+      ? `  Et ${ecransConnectes} écran(s) DERRIÈRE l'authentification, lus dans la\n` +
+        `  navigation que le produit offre à ce compte.\n`
+      : `  RIEN derrière l'authentification : FUMEE_COMPTE et FUMEE_MDP absentes.\n` +
+        `  Le gros du produit n'est donc PAS mesuré par ce passage.\n`),
 )
