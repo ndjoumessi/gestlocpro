@@ -6299,8 +6299,52 @@ rejoindreRouter.post('/', async (req: Request, res: Response) => {
 
   const deja = await prisma.membership.findFirst({
     where: { userId: req.compteId!, parkId: invitation.parkId },
-    select: { id: true, role: true },
+    select: { id: true, role: true, status: true },
   })
+
+  /**
+   * UNE ADHÉSION RÉVOQUÉE N'EST PAS UNE ADHÉSION.
+   *
+   * `revoke` ne supprime pas la ligne : il pose `status: 'revoked'`. Cette
+   * route cherchait un membre sans regarder son statut, trouvait la ligne
+   * morte, et refusait. Le propriétaire qui se ravisait émettait alors un code
+   * parfaitement valide que personne ne pouvait consommer — mesuré :
+   * « 2nd chemin POST /api/join : 409 already_member ». RETIRER L'ACCÈS ÉTAIT
+   * UNE PORTE À SENS UNIQUE, et rien ne le disait.
+   *
+   * IL REVIENT À ZÉRO, et c'est le point délicat. Réactiver la ligne telle
+   * quelle lui rendrait le périmètre d'AVANT le retrait, en silence, par la
+   * seule saisie d'un code. Un propriétaire qui retire un accès puis rouvre
+   * une porte plus étroite retrouverait la porte d'avant. Les rattachements
+   * partent donc avec, et la portée redevient `declared` : « un gestionnaire
+   * qui arrive ne voit RIEN tant qu'on ne lui a rien confié » vaut aussi pour
+   * celui qui revient.
+   *
+   * LE RÔLE VIENT DE L'INVITATION, comme partout ailleurs sur ce chemin : c'est
+   * le propriétaire qui émet le code qui décide, jamais la ligne d'hier.
+   */
+  if (deja?.status === 'revoked') {
+    await prisma.$transaction(async (tx) => {
+      await tx.membership.update({
+        where: { id: deja.id },
+        data: { role: invitation.role, status: 'active', scope: 'declared' },
+      })
+      await tx.membershipBuilding.deleteMany({ where: { membershipId: deja.id } })
+      await tx.membershipUnit.deleteMany({ where: { membershipId: deja.id } })
+      await tx.invitation.update({
+        where: { id: invitation.id, acceptedAt: null },
+        data: { acceptedAt: maintenant },
+      })
+      /* Le retrait a libéré la fiche — `Tenant.userId` remis à nul. Un
+         locataire qui revient par un code portant son logement doit la
+         retrouver, sans quoi son espace serait vide pour la même raison que
+         le défaut d'à côté. */
+      await rattacherLaFicheLocataire(tx, { invitationId: invitation.id, userId: req.compteId! })
+    })
+    res.status(201).json({ parkId: invitation.parkId, role: invitation.role })
+    return
+  }
+
   if (deja) {
     /**
      * DÉJÀ MEMBRE NE VEUT PLUS DIRE « RIEN À FAIRE ».
@@ -6404,7 +6448,20 @@ rejoindreRouter.post('/', async (req: Request, res: Response) => {
     await tx.membership.create({
       // Le rôle vient de l'INVITATION, jamais de la saisie — la même règle qu'à
       // l'inscription, et pour la même raison.
-      data: { userId: req.compteId!, parkId: invitation.parkId, role: invitation.role },
+      /*
+        `scope: 'declared'` ÉTAIT ABSENT, et le défaut du schéma est
+        `wholePark`. Ce chemin sert le compte qui existait AVANT de recevoir son
+        code : il obtenait donc le parc ENTIER, là où le même code passé à
+        l'inscription donne une adhésion bornée. Le commentaire du schéma
+        promettait pourtant qu'« une adhésion créée par invitation naît
+        `declared` » — c'était vrai d'un seul des deux chemins.
+      */
+      data: {
+        userId: req.compteId!,
+        parkId: invitation.parkId,
+        role: invitation.role,
+        scope: 'declared',
+      },
     })
     await tx.invitation.update({
       where: { id: invitation.id, acceptedAt: null },
