@@ -193,8 +193,22 @@ const MODALES = [
     porte désormais le nom du parc, son pays, sa devise, sa politique de
     délégation et ses relances. Les refuser au motif qu'elles allongent
     reviendrait à interdire au parc d'avoir des réglages.
+
+    325 → 581 px à 360, 70 → 294 à 1280 (2026-09-02, le même soir) : L'HEURE
+    D'ENVOI ET SON FUSEAU. Deux champs de plus, conditionnés au même
+    interrupteur que le jour. Le cron passe désormais toutes les heures et ne
+    fait rien pour un parc dont ce n'est pas l'heure — c'est ce qui autorise
+    l'heure à vivre ici plutôt que dans un tableau de bord d'hébergeur.
+
+    CES QUATRE NOMBRES N'ONT PAS ÉTÉ RELEVÉS PAR CE SCRIPT. Un blocage
+    d'autorisation du système de fichiers l'empêchait de servir `dist/` ; ils
+    viennent d'une reproduction de sa méthode dans un navigateur — mêmes
+    fenêtres 360×780 et 1280×900, langue posée en `localStorage`, et Verdana
+    imposée comme le fait `police-large.mjs`. Les deux langues et les deux
+    polices rendent la même valeur. La première exécution de CE script fait foi
+    sur la mienne.
   */
-  { nom: 'ParkSettings', adresse: '/demo/parc', bouton: /^Corriger le parc$|^Correct the park$/, defil: { 360: 325, 1280: 70 }, defilLarge: { 360: 325, 1280: 70 }, avant: { 360: 35, 1280: 0 } },
+  { nom: 'ParkSettings', adresse: '/demo/parc', bouton: /^Corriger le parc$|^Correct the park$/, defil: { 360: 581, 1280: 294 }, defilLarge: { 360: 581, 1280: 294 }, avant: { 360: 35, 1280: 0 } },
   /*
     LA MÊME MODALE, DEVISE CHANGÉE — un second état, et une note que personne
     n'atteignait.
@@ -226,8 +240,16 @@ const MODALES = [
        le plus. À 1280 il reste nul : la boîte a la place. */
     /* L'avertissement de devise s'ajoute aux relances : 480 px à 360, 178 à
        1280 — quatre lignes de plus dans une boîte qui en portait déjà six. */
-    defil: { 360: 480, 1280: 178 },
-    defilLarge: { 360: 480, 1280: 178 },
+    /* 480 → 736 px à 360, 178 → 405 à 1280 (2026-09-02, le même soir) :
+       l'heure et son fuseau s'ajoutent à leur tour. L'écart avec l'entrée
+       précédente reste celui de l'avertissement seul — 155 px à 360, 111 à
+       1280 —, ce qui dit que les deux champs ont coûté la même hauteur dans
+       les deux états, et non qu'ils interagissent avec la note.
+
+       Mêmes réserves de provenance que ci-dessus : reproduction au navigateur,
+       et non relevé par ce script. */
+    defil: { 360: 736, 1280: 405 },
+    defilLarge: { 360: 736, 1280: 405 },
     avant: { 360: 35, 1280: 0 },
   },
   { nom: 'AddBuilding', adresse: '/demo/parc', bouton: /^Ajouter un immeuble$|^Add a building$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
