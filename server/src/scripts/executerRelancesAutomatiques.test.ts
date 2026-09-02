@@ -90,4 +90,55 @@ describe('executerRelancesAutomatiques — le futur cron', () => {
       rendre()
     }
   })
+
+  describe('le mode À BLANC', () => {
+      /**
+     * ═══ POURQUOI IL EXISTE ═══
+     *
+     * Ce passage n'a JAMAIS tourné en production : aucun cron ne le lançait, ce
+     * que la configuration Railway a confirmé. Le brancher enverra donc de vrais
+     * courriels à de vrais locataires, au premier tour, sans que personne ait pu
+     * voir ce qui partirait.
+     *
+     * « À blanc » rend le même parcours et la même décision, et n'envoie RIEN. Le
+     * lire avant d'allumer, c'est la différence entre décider et espérer.
+     *
+     * IL NE POSE AUCUNE TRACE non plus. `RentReminderEmail` est la garde
+     * d'idempotence quotidienne : en écrire une à blanc ferait manquer le vrai
+     * envoi du même jour, et le blanc aurait consommé le tour qu'il devait
+     * seulement décrire.
+     */
+    it('ne pose ni courriel ni trace, et dit ce qui partirait', async () => {
+      await parcAvecBailAJours(7, { email: 'paul@example.com' })
+
+      const blanc = await executerRelancesAutomatiques({ aBlanc: true })
+      expect(blanc.envoyes, 'à blanc, rien ne part').toBe(0)
+      expect(blanc.partiraient, 'mais il dit combien partiraient').toBe(1)
+      expect(
+      await prisma.rentReminderEmail.count(),
+      'une trace à blanc ferait manquer le vrai envoi du jour',
+    ).toBe(0)
+    })
+
+    it('laisse le vrai passage faire son travail ensuite', async () => {
+      /* Le blanc ne doit rien consommer : le tour d'après, en vrai, part. */
+      await parcAvecBailAJours(7, { email: 'paul@example.com' })
+      /* Le blanc tourne SANS messagerie de sonde : il n'en a pas besoin, et
+         c'est déjà une preuve — il ne parle à personne. */
+      await executerRelancesAutomatiques({ aBlanc: true })
+
+      const rendre = remplacerMessagerie({
+        async envoyerSms() {
+          return false
+        },
+        async envoyerEmail() {
+          return true
+        },
+      })
+      const vrai = await executerRelancesAutomatiques()
+      rendre()
+      expect(vrai.envoyes, 'le blanc ne doit rien avoir consommé').toBe(1)
+    })
+  })
+
 })

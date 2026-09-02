@@ -20,11 +20,30 @@ import { envoyerLesResumesDuFil } from '../parks/resumeDuFil.js'
  * diverger sur CE QUI compte comme un envoi valide ; ils ne diffèrent que sur
  * QUI déclenche et QUAND — exactement la portion que ce lot ne construit pas.
  */
-export async function executerRelancesAutomatiques(): Promise<{
+export async function executerRelancesAutomatiques(
+  /**
+   * À BLANC : le même parcours, la même décision, et RIEN qui parte.
+   *
+   * Ce passage n'a jamais tourné en production — aucun cron ne le lançait, la
+   * configuration Railway l'a confirmé. Le brancher enverrait de vrais
+   * courriels à de vrais locataires au premier tour, sans que personne ait pu
+   * voir ce qui partirait. Le lire d'abord, c'est la différence entre décider
+   * et espérer.
+   *
+   * IL NE POSE AUCUNE TRACE non plus. `RentReminderEmail` est la garde
+   * d'idempotence quotidienne : en écrire une à blanc ferait manquer le VRAI
+   * envoi du même jour, et le blanc aurait consommé le tour qu'il devait
+   * seulement décrire.
+   */
+  options: { aBlanc?: boolean } = {},
+): Promise<{
   parcsTraites: number
   envoyes: number
   ignores: number
+  /** Ce qui SERAIT parti. Égal à `envoyes` hors du mode à blanc. */
+  partiraient: number
 }> {
+  let partiraient = 0
   const maintenant = new Date()
   const parcs = await prisma.park.findMany({ select: { id: true, currency: true } })
 
@@ -51,13 +70,16 @@ export async function executerRelancesAutomatiques(): Promise<{
       const { dûMinor, jours } = calculerRetard(bail, maintenant)
       if (dûMinor <= 0 || jours !== JALON_EMAIL_AUTOMATIQUE) continue
 
+      partiraient += 1
+      if (options.aBlanc) continue
+
       const issue = await tenterRelanceEmailMilestone(bail, jours, dûMinor, parc.currency)
       if (issue === 'sent') envoyes += 1
       else ignores += 1
     }
   }
 
-  return { parcsTraites: parcs.length, envoyes, ignores }
+  return { parcsTraites: parcs.length, envoyes, ignores, partiraient }
 }
 
 /**
@@ -67,9 +89,13 @@ export async function executerRelancesAutomatiques(): Promise<{
  * principe que la garde de `check-i18n.mjs`.
  */
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const resultat = await executerRelancesAutomatiques()
+  /* `--a-blanc` : le même parcours, et rien qui parte. `npm run relances:blanc`. */
+  const aBlanc = process.argv.includes('--a-blanc')
+  const resultat = await executerRelancesAutomatiques({ aBlanc })
   console.log(
-    `Relance automatique — ${resultat.parcsTraites} parc(s), ${resultat.envoyes} courriel(s) parti(s), ${resultat.ignores} ignoré(s).`,
+    aBlanc
+      ? `À BLANC — ${resultat.parcsTraites} parc(s) parcouru(s), ${resultat.partiraient} relance(s) PARTIRAIENT. Rien n'a été envoyé, aucune trace posée.`
+      : `Relance automatique — ${resultat.parcsTraites} parc(s), ${resultat.envoyes} courriel(s) parti(s), ${resultat.ignores} ignoré(s).`,
   )
 
   /*
@@ -84,6 +110,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     échéance qui court, un résumé est une commodité. Si le passage est
     interrompu, c'est la commodité qu'on perd.
   */
-  const resumes = await envoyerLesResumesDuFil()
-  console.log(`Résumés du fil — ${resumes} envoyé(s).`)
+  if (!aBlanc) {
+    const resumes = await envoyerLesResumesDuFil()
+    console.log(`Résumés du fil — ${resumes} envoyé(s).`)
+  }
 }
