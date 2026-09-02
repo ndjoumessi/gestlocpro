@@ -64,6 +64,8 @@ const SEVERITY_TONE: Record<Alert['severity'], StatusTone> = {
  */
 function useAlertMessage() {
   const t = useT()
+  /* Pour résoudre le logement d'un avis ancien en LIBELLÉ — voir plus bas. */
+  const { unitById } = usePortfolio()
   const d = useDates()
   const n = useNumbers()
   const { money } = useCurrency()
@@ -73,7 +75,26 @@ function useAlertMessage() {
     const vars: TranslateVars = {}
 
     if (data.tenant) vars.tenant = data.tenant
+    /*
+      LE LOGEMENT, AVEC UN SECOURS — et le secours existe pour les avis ÉCRITS
+      AVANT que le serveur ne pose ce champ.
+
+      Une notification est une LIGNE : corriger celui qui l'écrit ne répare pas
+      ce qui l'a été avant. Capturé sur un parc de production, sur un avis de la
+      veille du correctif — « Signalement SIG-2026-002 · {unit} », accolades
+      comprises.
+
+      La donnée était pourtant là : l'avis porte `unitId` à SON niveau, la
+      colonne que le serveur a toujours écrite. Elle tient un IDENTIFIANT, donc
+      on le résout en libellé — c'est ce que le lecteur attend, pas un uuid.
+
+      ON NE RÉPARE PAS `interpolate` POUR AUTANT : un jeton qui survit est
+      exactement ce que `MESURER_GABARITS` cherche sur chaque écran, et c'est ce
+      qui a rendu ce défaut visible. Le faire disparaître à la substitution
+      éteindrait l'alarme pour toutes les variables renommées à venir.
+    */
     if (data.unitId) vars.unit = data.unitId
+    else if (alert.unitId) vars.unit = unitById(alert.unitId)?.label ?? alert.unitId
     if (data.workId) vars.workId = data.workId
     // `count` porte l'accord en nombre, d'où son nom : voir la convention
     // `_one` / `_other` de `I18nProvider`.
