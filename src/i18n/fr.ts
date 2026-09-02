@@ -510,6 +510,7 @@ export const fr = {
      */
     files: {
       payments: 'paiements',
+      portfolio: 'parc-immobilier',
       collections: 'encaissements',
       meters: 'releves-compteurs',
       receipt: 'quittance',
@@ -932,6 +933,7 @@ export const fr = {
       tenant: 'Locataire',
       status: 'Statut',
       noTenant: 'Aucun locataire',
+      exportPark: 'Exporter le parc',
       occupancy: '{occupied}/{total} occupées',
       filterAll: 'Toutes',
       resetFilters: 'Réinitialiser les filtres',

@@ -7,6 +7,7 @@ import { DataTable, EmptyState } from '@/components/primitives/DataTable'
 import { PaymentStatusPill } from '@/components/primitives/StatusPill'
 import { StatCard } from '@/components/primitives/Charts'
 import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDebordement'
+import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
 import {
   Skeleton,
   SkeletonRegion,
@@ -75,6 +76,8 @@ export function Portfolio() {
    */
   const peutCorrigerLeParc = role === 'owner' && (adhesionActive !== null || estDemo)
   const t = useT()
+  const exportCsv = useCsvExport()
+  const csvMoney = useCsvMoney()
   const { money } = useCurrency()
   const { units, buildings: BUILDINGS, buildingById, loading, removeBuilding } = usePortfolio()
   const { notify } = useToast()
@@ -131,6 +134,46 @@ export function Portfolio() {
     })
   }, [query, building, units, t])
 
+  /**
+   * SORTIR L'ÉTAT DU PARC, une ligne par logement.
+   *
+   * DÉJÀ BORNÉ, SANS QU'ON LE BORNE. `usePortfolio` ne rend au gestionnaire que
+   * ce qui lui est confié : le fichier suit son périmètre sans une ligne de
+   * plus. Recopier ici un filtre de rôle aurait créé un second cloisonnement,
+   * à faire vieillir avec le premier — et c'est le premier qui protège.
+   *
+   * IL SUIT LE FILTRE D'IMMEUBLE ET LA RECHERCHE, comme l'export des paiements
+   * suit le sien : on exporte ce qu'on regarde. Le nom du fichier ne le dit pas
+   * encore, faute d'un libellé court pour une recherche libre — deux exports
+   * successifs peuvent donc se recouvrir, et c'est un manque assumé.
+   */
+  const exporterLeParc = () =>
+    exportCsv({
+      name: t('app.files.portfolio'),
+      headers: [
+        t('app.portfolio.building'),
+        t('app.portfolio.district'),
+        t('app.portfolio.unit'),
+        t('app.portfolio.type'),
+        t('app.portfolio.surface'),
+        t('app.portfolio.tenant'),
+        csvMoney.header(t('app.portfolio.rent')),
+        t('app.portfolio.status'),
+      ],
+      rows: rows.map((unit) => [
+        buildingById(unit.buildingId)?.name ?? '',
+        buildingById(unit.buildingId)?.district ?? '',
+        // Le libellé, jamais l'identifiant : un fichier qui listerait des uuid
+        // serait inexploitable. Même règle que l'export des paiements.
+        unit.label,
+        t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1'),
+        unit.surface,
+        unit.tenant ?? t('app.portfolio.noTenant'),
+        csvMoney.amount(unit.rent),
+        t(`status.${unit.status}` as 'status.paid'),
+      ]),
+    })
+
   const occupied = units.filter((u) => u.status !== 'vacant').length
 
   /**
@@ -185,13 +228,21 @@ export function Portfolio() {
           </>
         }
         debordement={
-          peutCorrigerLeParc ? (
-            <MenuDeDebordement libelle={t('common.moreActions')}>
+          /* LE MENU NE DÉPEND PLUS DU RÔLE, mais de ce qu'il contient. Il
+             n'avait qu'une entrée, réservée au propriétaire : un gestionnaire
+             n'avait donc AUCUN menu sur cet écran, seul cas du produit. La
+             correction du parc reste la sienne — elle règle la devise, donc
+             l'unité de tous les montants —, l'export est de tout le monde. */
+          <MenuDeDebordement libelle={t('common.moreActions')}>
+            {peutCorrigerLeParc && (
               <MenuElement icone="globe" onClick={() => setCorrectionOuverte(true)}>
                 {t('app.parkSettings.open')}
               </MenuElement>
-            </MenuDeDebordement>
-          ) : undefined
+            )}
+            <MenuElement icone="download" onClick={exporterLeParc}>
+              {t('app.portfolio.exportPark')}
+            </MenuElement>
+          </MenuDeDebordement>
         }
       />
 

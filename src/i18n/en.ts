@@ -390,6 +390,7 @@ export const en: Dictionary = {
 
     files: {
       payments: 'payments',
+      portfolio: 'portfolio',
       collections: 'collections',
       meters: 'meter-readings',
       receipt: 'receipt',
@@ -705,6 +706,7 @@ export const en: Dictionary = {
       tenant: 'Tenant',
       status: 'Status',
       noTenant: 'No tenant',
+      exportPark: 'Export portfolio',
       occupancy: '{occupied}/{total} occupied',
       filterAll: 'All',
       resetFilters: 'Clear filters',
