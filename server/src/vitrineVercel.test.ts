@@ -65,6 +65,33 @@ describe('la politique de la vitrine', () => {
     expect(poses.get('Referrer-Policy')).toBe('same-origin')
   })
 
+  it('déclare le MÊME hôte pour la construction et pour les redirections', () => {
+    /*
+      DEUX MOITIÉS DU MÊME RENVOI, ET ELLES DOIVENT S'ACCORDER.
+
+      Les redirections attrapent une vraie requête — une adresse tapée, un
+      rafraîchissement. `VITE_HOTE_APPLICATIF` attrape la navigation CLIENT, que
+      React Router fait sans jamais toucher le bord : sans elle, cliquer « Se
+      connecter » sur la vitrine rendait le formulaire, sur un hôte sans API.
+
+      Si les deux désignaient des hôtes différents, un visiteur irait à un
+      endroit en cliquant et à un autre en rafraîchissant — le pire des deux
+      mondes, et rien ne le dirait.
+    */
+    const config = JSON.parse(readFileSync(join(RACINE, 'vercel.json'), 'utf8')) as {
+      build: { env: Record<string, string> }
+      redirects: { destination: string }[]
+    }
+    const hote = config.build.env.VITE_HOTE_APPLICATIF
+    expect(hote, 'sans lui, la navigation client rend des écrans morts').toMatch(/^https:\/\//)
+    for (const r of config.redirects) {
+      expect(
+        r.destination.startsWith(hote!),
+        `la redirection vers ${r.destination} ne vise pas l’hôte déclaré à la construction`,
+      ).toBe(true)
+    }
+  })
+
   it('n’envoie ni l’API ni les assets dans la réécriture du SPA', () => {
     /* La réécriture renvoie tout vers `index.html` pour que React Router tienne
        ses routes. Deux exceptions, et elles sont mesurées : un `/api/…` réécrit

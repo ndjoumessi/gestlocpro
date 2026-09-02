@@ -3,6 +3,11 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": null,
+  "build": {
+    "env": {
+      "VITE_HOTE_APPLICATIF": "https://gestlocpro-app-production.up.railway.app"
+    }
+  },
   "redirects": [
     {
       "source": "/app/:chemin*",
