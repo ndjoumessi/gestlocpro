@@ -209,3 +209,45 @@ describe('le désabonné', () => {
     expect(visees).toEqual([])
   })
 })
+
+describe('le premier résumé d’un compte', () => {
+  /**
+   * ═══ IL PRENAIT TOUT L'HISTORIQUE ═══
+   *
+   * `lastThreadDigestAt` nul voulait dire « aucune borne », donc « tout ce que
+   * ce compte a jamais reçu ». C'était écrit et assumé — et c'est déplaisant :
+   * quelqu'un qui coche le réglage un mardi reçoit six mois d'échanges le
+   * lendemain, dont il a déjà lu chaque ligne dans le produit.
+   *
+   * LE CHOIX POSE LA BORNE. Cocher « les grouper » veut dire « résume-moi ce
+   * qui viendra », pas « raconte-moi ce qui fut. »
+   */
+  it('ne remonte pas avant le moment où le réglage a été coché', async () => {
+    const { cookie, parkId, unitId, cookieLocataire } = await parcAvecUnLocataire()
+    /* Un échange AVANT le choix : il a déjà été reçu, en copie immédiate. */
+    await signaler(parkId, unitId, cookieLocataire, 'Fuite sous l’évier')
+
+    await request(serveur)
+      .patch('/api/auth/me')
+      .set('Cookie', cookie)
+      .send({ threadEmailDigest: true })
+
+    visees = []
+    expect(
+      await envoyerLesResumesDuFil(),
+      'le premier résumé ne doit pas raconter ce qui précède le choix',
+    ).toBe(0)
+  })
+
+  it('prend ce qui arrive APRÈS le choix', async () => {
+    const { cookie, parkId, unitId, cookieLocataire } = await parcAvecUnLocataire()
+    await request(serveur)
+      .patch('/api/auth/me')
+      .set('Cookie', cookie)
+      .send({ threadEmailDigest: true })
+    await signaler(parkId, unitId, cookieLocataire, 'Volet bloqué')
+
+    visees = []
+    expect(await envoyerLesResumesDuFil()).toBe(1)
+  })
+})

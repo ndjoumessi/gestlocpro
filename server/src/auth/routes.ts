@@ -513,7 +513,26 @@ authRouter.patch('/me', async (req: Request, res: Response) => {
         ? { threadEmailOptIn: analyse.data.threadEmailOptIn }
         : {}),
       ...(analyse.data.threadEmailDigest !== undefined
-        ? { threadEmailDigest: analyse.data.threadEmailDigest }
+        ? {
+            threadEmailDigest: analyse.data.threadEmailDigest,
+            /*
+              LE CHOIX POSE LA BORNE.
+
+              `lastThreadDigestAt` nul voulait dire « aucune borne », donc « tout
+              ce que ce compte a jamais reçu ». Quelqu'un qui coche le réglage un
+              mardi recevait six mois d'échanges le lendemain — dont il avait déjà
+              lu chaque ligne dans le produit, puisqu'il les recevait en copie
+              immédiate jusque-là.
+
+              Cocher veut dire « résume-moi ce qui VIENDRA », pas « raconte-moi ce
+              qui fut ». On stampe donc l'instant du choix.
+
+              À CHAQUE BASCULE, y compris quand on décoche : rallumer six mois
+              plus tard ne doit pas déterrer l'intervalle qu'on a passé sans
+              résumé — on n'en voulait pas.
+            */
+            lastThreadDigestAt: new Date(),
+          }
         : {}),
     },
     select: {

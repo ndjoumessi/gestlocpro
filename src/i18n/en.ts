@@ -205,7 +205,7 @@ export const en: Dictionary = {
     toggleNav: 'Collapse or expand navigation',
     openNav: 'Open navigation',
     closeNav: 'Close navigation',
-    threadEmailCopies: 'Email copies',
+    threadEmailCopies: 'Report copies',
     threadEmailDigest: 'Group them into a summary',
     backToSite: 'Back to the website',
     searchPlaceholder: 'Search a unit, a tenant…',
@@ -1283,7 +1283,7 @@ export const en: Dictionary = {
       roleTenant: 'Tenant',
       roleManager: 'Delegated manager',
       managerScope:
-        'A delegated manager operates the WHOLE park: every building, every lease, every tenant. The scope cannot be limited to one home. They cannot approve a quote, settle a deposit, or recruit another manager — those three decisions stay yours.',
+        'They will see nothing until you confer something: buildings, homes, or the whole park — set in « Park access » once they have joined. They cannot approve a quote, settle a deposit, or recruit another manager — those three decisions stay yours.',
       unitTakenNotice:
         'A code is already pending for {units}: a home carries only one at a time. Revoke it before issuing another.',
       unitTakenAction: 'See pending codes',

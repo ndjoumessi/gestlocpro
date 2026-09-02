@@ -51,7 +51,7 @@ describe('la préférence des copies', () => {
     })
     const user = await ouvrirLeMenu()
 
-    await user.click(screen.getByRole('menuitemcheckbox', { name: /copies par e-mail/i }))
+    await user.click(screen.getByRole('menuitemcheckbox', { name: /copies des signalements/i }))
 
     await waitFor(() => {
       const appel = serveur.appels.find((a) => a.methode === 'PATCH' && a.chemin.endsWith('/auth/me'))
@@ -67,7 +67,7 @@ describe('la préférence des copies', () => {
        qui était déjà éteint. */
     await ouvrirLeMenu({ ...COMPTE_FICTIF, threadEmailOptIn: false })
     expect(
-      screen.getByRole('menuitemcheckbox', { name: /copies par e-mail/i }),
+      screen.getByRole('menuitemcheckbox', { name: /copies des signalements/i }),
     ).toHaveAttribute('aria-checked', 'false')
   })
 })

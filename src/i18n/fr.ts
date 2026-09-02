@@ -270,7 +270,7 @@ export const fr = {
       défaut que le fil d'Ariane a coûté une fois ici. « Le site » nomme ce
       qu'on quitte l'application pour retrouver : la vitrine publique.
     */
-    threadEmailCopies: 'Copies par e-mail',
+    threadEmailCopies: 'Copies des signalements',
     threadEmailDigest: 'Les grouper en un résumé',
     backToSite: 'Retour au site',
     searchPlaceholder: 'Rechercher un logement, un locataire…',
@@ -1701,7 +1701,7 @@ export const fr = {
          sur ce rôle et rien ne disait pourquoi : le propriétaire croyait
          confier UN logement, il confie tout son parc. */
       managerScope:
-        'Un gestionnaire délégué opère TOUT le parc : chaque immeuble, chaque bail, chaque locataire. Le périmètre ne peut pas être limité à un logement. Il ne peut ni approuver un devis, ni arbitrer une caution, ni recruter un autre gestionnaire — ces trois décisions restent les vôtres.',
+        'Il ne verra rien tant que vous ne lui aurez rien confié : des immeubles, des logements, ou tout le parc — cela se règle dans « Accès au parc », après son arrivée. Il ne peut ni approuver un devis, ni arbitrer une caution, ni recruter un autre gestionnaire — ces trois décisions restent les vôtres.',
       /* UN SEUL CODE VIVANT PAR LOGEMENT, et on le dit au lieu de faire
          disparaître une ligne du menu sans explication. */
       unitTakenNotice:
