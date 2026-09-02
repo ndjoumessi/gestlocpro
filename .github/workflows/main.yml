@@ -237,3 +237,46 @@ jobs:
           path: captures/
           retention-days: 7
           if-no-files-found: ignore
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # LA FUMÉE — SUR L'HÔTE VIVANT, ET ELLE NE FAIT PAS ÉCHOUER UN COMMIT
+  # ══════════════════════════════════════════════════════════════════════════
+  #
+  # Les quatre travaux au-dessus sont des PORTES : hermétiques, exigées avant
+  # de pousser, dignes de confiance parce qu'elles ne dépendent de rien
+  # d'extérieur. Celui-ci est d'une autre nature — il interroge une adresse
+  # publique, donc le réseau, le déploiement et un tiers.
+  #
+  # `continue-on-error` EST LE POINT, pas une commodité. Une porte qui rougit
+  # sur un DNS qui hoquette apprend à être ignorée, et c'est la seule façon de
+  # perdre un outil pour de bon. Ce travail RAPPORTE ce que voit un visiteur ;
+  # il ne juge pas le commit.
+  #
+  # SUR `main` SEULEMENT, et après un délai : Vercel et Railway déploient tous
+  # deux sur la poussée, et interroger l'hôte avant qu'ils n'aient basculé
+  # mesurerait le déploiement PRÉCÉDENT — exactement l'erreur qui a laissé un
+  # fichier de remplissage servir la page d'accueil pendant qu'un build échouait
+  # en silence.
+  #
+  # SANS IDENTIFIANTS : la passe connectée reste à lancer à la main. Poser un
+  # mot de passe de production dans les secrets d'un dépôt pour qu'un robot le
+  # tape à chaque poussée est un prix qu'on ne paie pas pour de la mesure.
+  fumee:
+    name: fumée — l'hôte vivant (rapport, pas verdict)
+    if: github.ref == 'refs/heads/main'
+    needs: [rapide, serveur, complet]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # Le temps que les deux hôtes basculent. Trois minutes est mesuré large :
+      # les déploiements observés tenaient entre 19 et 58 secondes.
+      - run: sleep 180
+      - run: npm run fumee
