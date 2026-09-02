@@ -479,6 +479,10 @@ export function UnitFile() {
                         · {d.relative(r.at)}
                       </p>
                       <p className="text-body text-pretty">{r.data.text}</p>
+                    {/* LA COPIE DE CE MESSAGE. Le compteur du chantier reste
+                        au-dessus : il porte le fil entier, dont le signalement
+                        initial qui n'est rattaché à aucun message. */}
+                    <CopiesDuFil copies={r.emailCopies} className="mt-1 block text-caption text-muted" />
                     </div>
                   ))}
                 </li>

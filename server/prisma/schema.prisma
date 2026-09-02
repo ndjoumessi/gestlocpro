@@ -846,6 +846,8 @@ model Notification {
   recipients NotificationRecipient[]
 
   @@index([parkId, createdAt])
+  /// Les copies e-mail de CE message. Voir `WorkThreadEmail`.
+  threadEmails WorkThreadEmail[]
 }
 
 /// L'état « lu » appartient à un couple destinataire × notification.
@@ -891,6 +893,12 @@ model WorkThreadEmail {
   /// figer ici dit à QUI la tentative s'adressait ce jour-là, même si
   /// l'adresse du compte change ensuite.
   recipient String
+  /// LE MESSAGE que cette copie accompagne, quand il y en a un. Nul pour le
+  /// SIGNALEMENT lui-même : il EST le fil, et son avis s'écrit après la copie.
+  /// Sans ce lien, « 3 copies remises » ne disait pas lesquelles, et la date
+  /// rendue était la dernière tentative tous messages confondus.
+  notificationId String? @db.Uuid
+  notification   Notification? @relation(fields: [notificationId], references: [id], onDelete: SetNull)
   deliveredAt DateTime?
   createdAt DateTime  @default(now())
 

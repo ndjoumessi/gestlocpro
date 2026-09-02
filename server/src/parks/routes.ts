@@ -410,10 +410,15 @@ parksRouter.get(
       string,
       { sent: number; delivered: number; lastAttemptAt: string | null }
     >()
+    /* Le même compte, mais rattaché au MESSAGE plutôt qu'au fil entier. */
+    const copiesParMessage = new Map<
+      string,
+      { sent: number; delivered: number; lastAttemptAt: string | null }
+    >()
     if (role !== 'tenant') {
       const lignes = await prisma.workThreadEmail.findMany({
         where: { work: { unit: { building: { parkId }, ...perimetreUnite } } },
-        select: { workId: true, deliveredAt: true, createdAt: true },
+        select: { workId: true, notificationId: true, deliveredAt: true, createdAt: true },
       })
       for (const ligne of lignes) {
         const compte = copiesParChantier.get(ligne.workId) ?? {
@@ -426,6 +431,31 @@ parksRouter.get(
         const quand = ligne.createdAt.toISOString()
         if (!compte.lastAttemptAt || quand > compte.lastAttemptAt) compte.lastAttemptAt = quand
         copiesParChantier.set(ligne.workId, compte)
+
+        /*
+          ET LE COMPTE PAR MESSAGE, quand la copie en nomme un.
+
+          « 3 copies remises · 20/08 » ne disait pas LESQUELLES : la date était
+          la dernière tentative du fil, tous messages confondus.
+
+          Les copies SANS message gardent le compte du chantier et rien d'autre —
+          le signalement initial, qui est le fil lui-même, et toutes les lignes
+          écrites avant que cette colonne n'existe. Une charge ancienne ne se
+          répare pas ; le fil garde donc son compte global, qui reste juste.
+        */
+        if (ligne.notificationId) {
+          const parMessage = copiesParMessage.get(ligne.notificationId) ?? {
+            sent: 0,
+            delivered: 0,
+            lastAttemptAt: null,
+          }
+          parMessage.sent++
+          if (ligne.deliveredAt) parMessage.delivered++
+          if (!parMessage.lastAttemptAt || quand > parMessage.lastAttemptAt) {
+            parMessage.lastAttemptAt = quand
+          }
+          copiesParMessage.set(ligne.notificationId, parMessage)
+        }
       }
     }
 
@@ -1282,6 +1312,10 @@ parksRouter.get(
         // client le tenait dans un `Set` de session, invisible de la barre
         // latérale — la pastille annonçait « 2 » même après tout avoir lu.
         read: n.recipients[0]?.readAt !== null && n.recipients[0]?.readAt !== undefined,
+        /* La copie de CE message, quand elle existe. Absente pour un locataire —
+           un journal d'envoi est une question de gestion — et absente pour les
+           avis écrits avant cette colonne. */
+        ...(copiesParMessage.has(n.id) ? { emailCopies: copiesParMessage.get(n.id) } : {}),
       })),
       /**
        * Le déclarant est APLATI en un nom, quelle que soit sa nature.
@@ -2299,7 +2333,7 @@ parksRouter.post(
         ? [{ userId: destinataire }]
         : []
 
-    await prisma.notification.create({
+    const avis = await prisma.notification.create({
       data: {
         parkId,
         kind: 'work',
@@ -2349,6 +2383,7 @@ parksRouter.post(
         auteur: travail.reportedByTenant.fullName,
         texte: corps.message,
       },
+      avis.id,
     )
 
     /**
@@ -4135,6 +4170,14 @@ async function envoyerLaCopieDuFil(
     auteur: string
     texte: string
   },
+  /**
+   * LE MESSAGE que ces copies accompagnent, quand il y en a un.
+   *
+   * Absent pour le SIGNALEMENT : il est le fil lui-même, et son avis s'écrit
+   * après la copie — le lier demanderait d'inverser deux écritures pour un
+   * rattachement qui n'apprendrait rien.
+   */
+  notificationId?: string,
 ): Promise<number> {
   let partis = 0
   /*
@@ -4184,7 +4227,7 @@ async function envoyerLaCopieDuFil(
       sont des suites du signalement, jamais ses conditions.
     */
     const trace = await prisma.workThreadEmail.create({
-      data: { workId, recipient: adresse },
+      data: { workId, recipient: adresse, ...(notificationId ? { notificationId } : {}) },
       select: { id: true },
     })
     if (await laMessagerie().envoyerEmail(adresse, gabarit.sujet, gabarit)) {

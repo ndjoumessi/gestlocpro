@@ -232,3 +232,62 @@ describe('la trace se LIT, et pas seulement s’écrit', () => {
     ).not.toContain('proprio@example.com')
   })
 })
+
+describe('la trace distingue les MESSAGES d’un fil', () => {
+  /**
+   * ═══ « TOUS MESSAGES CONFONDUS » ═══
+   *
+   * Le compteur du fil répondait « 3 copies remises · 20/08 » pour un échange
+   * de cinq messages. La date était la dernière tentative, toutes confondues :
+   * on ne pouvait pas savoir quand la troisième copie était partie, ni laquelle
+   * des cinq n'avait pas trouvé son destinataire.
+   *
+   * Chaque trace porte désormais le MESSAGE qu'elle accompagne — la
+   * notification qui le transporte. Le signalement initial n'en a pas : il EST
+   * le fil, et son avis est écrit après la copie.
+   */
+  it('rattache chaque copie à son message', async () => {
+    const { cookie, parkId, unitId, cookieLocataire } = await parcAvecUnLocataire()
+    const w = await signaler(parkId, unitId, cookieLocataire)
+
+    await request(serveur)
+      .post(`/api/parks/${parkId}/works/${w.body.work.id}/reply`)
+      .set('Cookie', cookie)
+      .send({ message: 'Le plombier passe jeudi.' })
+
+    const traces = await prisma.workThreadEmail.findMany({
+      where: { workId: w.body.work.id },
+      select: { notificationId: true },
+      orderBy: { createdAt: 'asc' },
+    })
+    expect(traces.length, 'deux envois : le signalement, puis la réponse').toBe(2)
+    expect(
+      traces[0]!.notificationId,
+      'le signalement EST le fil : son avis est écrit après la copie',
+    ).toBeNull()
+    expect(
+      traces[1]!.notificationId,
+      'sans lui, « 3 remises » ne dit pas lesquelles',
+    ).not.toBeNull()
+  })
+
+  it('rend le compte PAR message au portefeuille', async () => {
+    const { cookie, parkId, unitId, cookieLocataire } = await parcAvecUnLocataire()
+    const w = await signaler(parkId, unitId, cookieLocataire)
+    await request(serveur)
+      .post(`/api/parks/${parkId}/works/${w.body.work.id}/reply`)
+      .set('Cookie', cookie)
+      .send({ message: 'Le plombier passe jeudi.' })
+
+    const vu = await request(serveur)
+      .get(`/api/parks/${parkId}/portfolio`)
+      .set('Cookie', cookie)
+    const avis = (vu.body.notifications as { id: string; emailCopies?: unknown }[]).find(
+      (n) => n.emailCopies,
+    )
+    expect(
+      avis?.emailCopies,
+      'la carte d’un message doit pouvoir dire SA copie, pas celle du fil',
+    ).toEqual({ sent: 1, delivered: 1, lastAttemptAt: expect.any(String) })
+  })
+})

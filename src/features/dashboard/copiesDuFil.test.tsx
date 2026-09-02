@@ -212,3 +212,44 @@ describe('l’écran du locataire', () => {
     ).toBeNull()
   })
 })
+
+describe('la copie d’un MESSAGE, sous le message', () => {
+  /**
+   * ═══ « TOUS MESSAGES CONFONDUS » ═══
+   *
+   * Le compteur du fil disait « 3 copies remises · 20/08 » pour un échange de
+   * cinq messages : la date était la dernière tentative, toutes confondues. On
+   * ne savait pas laquelle des cinq n'avait pas trouvé son destinataire.
+   *
+   * Chaque avis du fil porte désormais SA copie, et la ligne se rend sous lui.
+   * Celle du chantier reste : le signalement initial n'est rattaché à aucun
+   * message — il EST le fil — et les copies écrites avant cette colonne non
+   * plus.
+   */
+  it('rend la copie sous la réponse, et non seulement sous le chantier', async () => {
+    const avecFil = portefeuille({ sent: 1, delivered: 1, lastAttemptAt: '2026-08-20T09:00:00.000Z' })
+    avecFil.notifications = [
+      {
+        id: 'avis-reponse',
+        kind: 'work',
+        messageKey: 'workReply',
+        params: { workId: CHANTIER, text: 'Le plombier passe jeudi.', reference: 'SIG-1' },
+        unitId: A1,
+        createdAt: '2026-08-21T09:00:00.000Z',
+        severity: 'medium',
+        read: true,
+        channel: 'in_app',
+        /* LA COPIE DE CE MESSAGE — le compte que le serveur rattache à l'avis. */
+        emailCopies: { sent: 2, delivered: 1, lastAttemptAt: '2026-08-21T09:00:00.000Z' },
+      },
+    ] as never
+    serveur.quand('GET', `/parks/${PARC}/portfolio`, { status: 200, body: avecFil })
+    await renderApp(`/app/parc/${A1}`, { session })
+    await attendreLeChargement()
+
+    expect(
+      screen.getByText(/1 copie e-mail remise sur 2 tentées/),
+      'la carte d’un message doit dire SA copie, pas celle du fil',
+    ).toBeInTheDocument()
+  })
+})

@@ -160,6 +160,7 @@ interface PortefeuilleApi {
     params: AlertData
     severity: Alert['severity']
     unitId: string | null
+    emailCopies?: { sent: number; delivered: number; lastAttemptAt: string | null }
     createdAt: string
     read: boolean
     /** Optionnels : un serveur antérieur à ces champs ne les rend pas. */
@@ -432,6 +433,7 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
       severity: n.severity,
       read: n.read,
       ...(n.unitId ? { unitId: n.unitId } : {}),
+      ...(n.emailCopies ? { emailCopies: n.emailCopies } : {}),
       ...(n.rank != null ? { rank: n.rank } : {}),
       ...(n.channel ? { channel: n.channel } : {}),
       /* `jourCalendaire` et non `new Date()` : la date d'envoi est ce qu'on

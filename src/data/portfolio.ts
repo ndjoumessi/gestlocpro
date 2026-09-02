@@ -1325,6 +1325,14 @@ export interface Alert {
   sentAt?: DateParts | null
   /** Unité concernée. Sert au filtrage par rôle. */
   unitId?: string
+  /**
+   * LES COPIES E-MAIL DE CE MESSAGE — des comptes, jamais des adresses.
+   *
+   * Le fil portait un compte global : « 3 copies remises » ne disait pas
+   * lesquelles. Absent pour le signalement initial, qui EST le fil, et pour les
+   * avis écrits avant que le serveur ne rattache la copie à son message.
+   */
+  emailCopies?: { sent: number; delivered: number; lastAttemptAt: string | null }
 }
 
 /**
