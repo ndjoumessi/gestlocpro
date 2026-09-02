@@ -82,6 +82,15 @@ function registre(intitule, entrees) {
 const CHAMPS_EXEMPTS = registre('colonne', [
   ['updatedAt', 'tenu par Prisma via @updatedAt ; le nommer serait l’écrire à la main'],
   [
+    'inspectionId',
+    'clé étrangère écrite par sa RELATION et jamais par son nom : les réserves ' +
+      'naissent en `findings: { create: [...] }` sous leur état des lieux, et ' +
+      'Prisma pose la colonne lui-même. La nommer serait défaire l’imbrication ' +
+      'qui garantit qu’une réserve ne peut pas exister sans son constat. ' +
+      'Découverte le 2026-09-02, quand cette règle a cessé de lire les tests : ' +
+      'elle n’était nommée que par eux',
+  ],
+  [
     'amountsAreMinor',
     'garde de migration lue en SQL, jamais par le produit : la conversion des ' +
       'montants en unités mineures multiplie par cent, et l’appliquer deux fois ' +
@@ -197,10 +206,23 @@ const plaintes = []
 // ─── 1. Une colonne que personne ne nomme ────────────────────────────────────
 {
   const schema = await readFile(join(RACINE, 'server/prisma/schema.prisma'), 'utf8')
+  /*
+    LES TESTS SONT EXCLUS, comme pour les trois règles du dessous.
+
+    Cette règle-ci les lisait, et c'était une incohérence : une colonne nommée
+    SEULEMENT par un test passait pour branchée. Le défaut est resté invisible
+    tant qu'aucun test ne nommait une colonne exemptée — puis
+    `colonnesAjoutees.test.ts` a nommé `amountsAreMinor`, et l'exemption qui la
+    couvrait s'est déclarée périmée alors que le produit ne la lit toujours pas.
+
+    Un test qui nomme une colonne la DÉCRIT ; il ne l'emploie pas. La doctrine
+    est déjà écrite plus bas pour les méthodes : « un appel qui n'existe que
+    sous test décrit une intention, pas un chemin du produit ».
+  */
   const code = await concatener([
     ...(await fichiers(join(RACINE, 'src'), ['.ts', '.tsx'])),
     ...(await fichiers(join(RACINE, 'server/src'), ['.ts'])),
-  ])
+  ].filter((c) => !/\.test\.tsx?$/.test(c)))
   const mots = new Set(code.match(/\w+/g) ?? [])
 
   for (const { modele, nom } of champsDeDonnee(schema)) {
