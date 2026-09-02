@@ -237,6 +237,8 @@ try {
  * on le vérifie sur ce que l'hôte sert vraiment.
  */
 let ecransConnectes = 0
+/* Les adresses que les écrans de premier niveau OUVRENT — dossiers, fiches. */
+const auSecondNiveau = new Set()
 if (COMPTE && MDP) {
   controles++
   /*
@@ -310,6 +312,64 @@ if (COMPTE && MDP) {
           plaintes.push(
             `${adresse} : ${jetons.length} jeton(s) survivant(s) — ${[...new Set(jetons)].join(', ')}.\n` +
               `   Un libellé n'a pas trouvé sa traduction, et l'utilisateur lit des accolades.`,
+          )
+        }
+        /* LES LIENS QUE CET ÉCRAN OUVRE, retenus pour le second niveau. */
+        for (const profond of await pageConnectee.evaluate(() =>
+          [...document.querySelectorAll('a[href^="/app/"]')]
+            .map((a) => a.getAttribute('href'))
+            .filter((h) => h && h.split('/').length > 3),
+        )) {
+          if (profond) auSecondNiveau.add(profond)
+        }
+      } catch (erreur) {
+        plaintes.push(`${adresse} : ${String(erreur).split('\n')[0]}`)
+      }
+    }
+
+    /*
+      LE SECOND NIVEAU — ce qu'un clic ouvre, et que la navigation ne propose pas.
+
+      Le dossier d'un logement, la fiche d'un bail : ces écrans portent le
+      DÉTAIL, c'est-à-dire la plus grande part du produit. La passe s'arrêtait à
+      la barre latérale, et c'est moi qui suis allé dans les dossiers d'un parc
+      réel — à la main, une fois. Ce qu'une personne fait une fois, un outil doit
+      le refaire à chaque passage.
+
+      UN SEUL NIVEAU, et c'est une borne assumée : suivre les liens sans fin
+      ferait de cette passe un explorateur dont la durée dépend de la taille du
+      parc, sur un hôte de production. Un niveau attrape les dossiers, qui sont
+      le cas.
+
+      MÊMES RÈGLES QU'AU PREMIER : peindre quelque chose, et ne montrer aucune
+      accolade.
+    */
+    for (const adresse of [...auSecondNiveau]) {
+      controles++
+      ecransConnectes++
+      try {
+        const reponse = await pageConnectee.goto(`${HOTE}${adresse}`, {
+          waitUntil: 'networkidle',
+        })
+        const statut = reponse?.status() ?? 0
+        if (statut >= 400) {
+          plaintes.push(`${adresse} : ${statut} — un lien que le produit affiche.`)
+          continue
+        }
+        const texte = await pageConnectee.evaluate(
+          () => document.querySelector('main')?.innerText ?? '',
+        )
+        if (texte.trim().length < 20) {
+          plaintes.push(
+            `${adresse} : peint moins de vingt caractères. Un écran que le produit ` +
+              `lie et qui ne montre rien.`,
+          )
+          continue
+        }
+        const jetons = [...texte.matchAll(/\{[A-Za-z][\w.]*\}/g)].map((m) => m[0])
+        if (jetons.length > 0) {
+          plaintes.push(
+            `${adresse} : ${jetons.length} jeton(s) survivant(s) — ${[...new Set(jetons)].join(', ')}.`,
           )
         }
       } catch (erreur) {
@@ -416,8 +476,9 @@ console.log(
     `  réclamé et non servi, les deux réponses de l'API, une seule politique.\n` +
     `  Du contenu rendu, jamais un code ni un titre statique.\n` +
     (COMPTE && MDP
-      ? `  Et ${ecransConnectes} écran(s) DERRIÈRE l'authentification, lus dans la\n` +
-        `  navigation que le produit offre à ce compte.\n`
+      ? `  Et ${ecransConnectes} écran(s) DERRIÈRE l'authentification : ceux que la\n` +
+        `  navigation offre à ce compte, PLUS ce que leurs liens ouvrent — dossiers\n` +
+        `  et fiches, où vit le détail.\n`
       : `  RIEN derrière l'authentification : FUMEE_COMPTE et FUMEE_MDP absentes.\n` +
         `  Le gros du produit n'est donc PAS mesuré par ce passage.\n`),
 )
