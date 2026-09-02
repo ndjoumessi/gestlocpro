@@ -141,14 +141,39 @@ afterAll(async () => {
 })
 
 describe('un gestionnaire sans périmètre', () => {
-  it('voit tout le parc, parce que le vide n’aveugle personne', async () => {
-    /* La migration ne confie rien à qui que ce soit : si le vide voulait dire
-       « aucun immeuble », tous les gestionnaires en place perdraient leur parc
-       à la seconde du déploiement. */
+  it('ne voit RIEN, parce qu’on ne lui a rien confié', async () => {
+    /*
+      LA RÈGLE A CHANGÉ DE SENS, ET CE CAS DISAIT L'ANCIENNE.
+
+      Il affirmait « le vide n'aveugle personne », et sa raison était juste : à
+      la seconde du déploiement, aucun gestionnaire en place n'avait de
+      périmètre, et le sens inverse les aurait tous privés de leur parc.
+
+      C'était vrai POUR EUX. Un gestionnaire créé quatre jours plus tard
+      héritait de la même règle et voyait deux immeubles, trois logements, leurs
+      locataires et leurs adresses sans qu'on lui ait rien donné — capturé sur
+      un parc réel, et signalé par son propriétaire.
+
+      Une adhésion qui NAÎT est désormais `declared` : vide y veut dire vide.
+      Celles d'avant gardent `wholePark`, et le cas suivant le garde.
+    */
     const { parkId, cookieGestion } = await parcADeuxImmeubles()
 
     const vu = await portefeuille(parkId, cookieGestion)
     expect(vu.status).toBe(200)
+    expect((vu.body.buildings as unknown[]).length).toBe(0)
+  })
+
+  it('voit tout le parc quand son adhésion est d’AVANT la règle', async () => {
+    /* Le refus d'aveugler les gestionnaires en place reste entier : c'est la
+       seule chose que la bascule ne devait pas défaire. */
+    const { parkId, cookieGestion } = await parcADeuxImmeubles()
+    await prisma.membership.updateMany({
+      where: { parkId, role: 'manager' },
+      data: { scope: 'wholePark' },
+    })
+
+    const vu = await portefeuille(parkId, cookieGestion)
     expect((vu.body.buildings as unknown[]).length).toBe(2)
   })
 })
@@ -333,7 +358,15 @@ describe('le gestionnaire borné SAIT qu’il l’est', () => {
   })
 
   it('ne le lit PAS quand rien ne le borne', async () => {
+    /* « Rien ne le borne » veut dire `wholePark`, et non plus « liste vide » :
+       une adhésion qui naît est bornée dès sa première minute, et l'annonce lui
+       est due — sans elle, un parc vide se lirait « ce parc n'a rien » au lieu
+       de « on ne vous a rien confié ». */
     const { parkId, cookieGestion } = await parcADeuxImmeubles()
+    await prisma.membership.updateMany({
+      where: { parkId, role: 'manager' },
+      data: { scope: 'wholePark' },
+    })
 
     const vu = await portefeuille(parkId, cookieGestion)
     expect(

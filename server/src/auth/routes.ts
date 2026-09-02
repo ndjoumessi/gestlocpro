@@ -289,7 +289,24 @@ authRouter.post('/signup', async (req: Request, res: Response) => {
        */
       if (invitation) {
         await tx.membership.create({
-          data: { userId: cree.id, parkId: invitation.parkId, role: invitation.role },
+          data: {
+            userId: cree.id,
+            parkId: invitation.parkId,
+            role: invitation.role,
+            /*
+              CELLE-CI NAÎT DÉCLARÉE, et c'est tout le lot.
+
+              Un gestionnaire qui arrive ne voit RIEN tant qu'on ne lui a rien
+              confié. Le sens inverse — vide vaut tout le parc — n'était juste
+              que pour les adhésions antérieures à la fonctionnalité, qu'il
+              aurait fallu aveugler pour l'appliquer. Elles gardent
+              `wholePark` ; celles-ci commencent à zéro.
+
+              Le rôle ne change rien pour un locataire ou un propriétaire : leur
+              périmètre ne se lit pas là.
+            */
+            scope: 'declared',
+          },
         })
 
         /**

@@ -31,7 +31,7 @@ import { describe, expect, it } from 'vitest'
  *
  * ═══ CE QU'IL A TROUVÉ EN NAISSANT ═══
  *
- * Sur douze colonnes ajoutées, neuf portent un défaut et trois laissent un `NULL`.
+ * Sur treize colonnes ajoutées, dix portent un défaut et trois laissent un `NULL`.
  * Sept des huit défauts étaient justifiés dans leur propre migration — ce dépôt
  * le faisait déjà. `waterMinor` et `powerMinor` ne l'étaient PAS : leur
  * migration explique la ventilation et ne dit rien des lignes existantes. Elle a
@@ -95,6 +95,12 @@ const AFFIRMATIONS: Record<string, string> = {
     'fonctionnalité n’existait pas. Le premier résumé d’un compte prendra donc ' +
     'tout ce qu’il a reçu — borne assumée, et sans surprise puisqu’il faut avoir ' +
     'coché le réglage pour en recevoir un.',
+  'Membership.scope':
+    'Toute adhésion antérieure gère TOUT LE PARC, et c’est exactement ce qu’elle ' +
+    'vivait : « vide vaut tout le parc » était la règle, écrite au schéma. Aucune ' +
+    'ne change de vue — aveugler les gestionnaires en place était précisément ce ' +
+    'que la règle d’origine refusait, et ce refus reste juste. Les adhésions qui ' +
+    'NAISSENT sont `declared`, où une liste vide veut dire vide.',
   'WorkThreadEmail.notificationId':
     'NULL, et son sens est DOUBLE : « le signalement, qui EST le fil » et ' +
     '« écrit avant cette colonne ». Assumé et écrit dans la migration : le ' +
@@ -147,13 +153,13 @@ describe('les colonnes ajoutées', () => {
     ).toEqual([])
   })
 
-  it('sont DOUZE, et le compte est écrit à la main', () => {
+  it('sont TREIZE, et le compte est écrit à la main', () => {
     /* GARDE DU GARDE. Si la lecture des migrations cassait, les deux règles
        ci-dessus compareraient des listes vides et se déclareraient vertes sur un
        schéma dont personne n’aurait relu les affirmations. */
     expect(
       colonnesAjoutees().length,
       'la lecture des migrations ne trouve plus les `ADD COLUMN`',
-    ).toBe(12)
+    ).toBe(13)
   })
 })

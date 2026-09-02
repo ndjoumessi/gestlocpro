@@ -265,6 +265,9 @@ model Membership {
   parkId  String @db.Uuid
   park    Park   @relation(fields: [parkId], references: [id], onDelete: Cascade)
   role    ParkRole
+  /// Voir `ScopeMode`. `wholePark` par défaut, pour les adhésions d'avant ;
+  /// une adhésion créée par invitation naît `declared`.
+  scope  ScopeMode @default(wholePark)
   /// `requested` porte la « demande d'accès » du gestionnaire sans code : c'est
   /// une décision en attente chez le propriétaire, pas un booléen de formulaire.
   status  MembershipStatus @default(active)
@@ -986,6 +989,22 @@ enum MembershipStatus {
   active
   requested
   revoked
+}
+
+/// Ce qu'une adhésion de gestion COUVRE, et il fallait un troisième état.
+///
+/// Le modèle ne savait dire que « borné » ou « pas borné » : une liste vide
+/// VOULAIT dire « pas de restriction ». « Ce cabinet arrive, je ne lui ai encore
+/// rien donné » ne pouvait donc pas s'écrire — alors que c'est l'état de tout
+/// gestionnaire à sa première minute.
+///
+/// `wholePark` est le défaut des adhésions D'AVANT : les aveugler à la seconde
+/// du déploiement était ce que la règle d'origine refusait, et ce refus reste
+/// juste. `declared` est celui des adhésions qui NAISSENT, et une liste vide y
+/// veut dire vide.
+enum ScopeMode {
+  wholePark
+  declared
 }
 
 enum DelegationMode {

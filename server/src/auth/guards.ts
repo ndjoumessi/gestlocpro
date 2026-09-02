@@ -95,6 +95,7 @@ export async function exigerAppartenance(req: Request, res: Response, next: Next
          suffirait à ce qu'un chemin l'oublie. */
       buildings: { select: { buildingId: true } },
       units: { select: { unitId: true, exclue: true } },
+      scope: true,
     },
   })
 
@@ -122,7 +123,19 @@ export async function exigerAppartenance(req: Request, res: Response, next: Next
      `null` ensemble. Les traiter séparément ferait d'un gestionnaire à qui l'on
      a confié UN LOGEMENT quelqu'un de non borné côté immeubles — donc de non
      borné du tout, puisque le portefeuille part des immeubles. */
-  const borne = adhesion.role === 'manager' && (confiesImmeubles.length > 0 || confiesUnites.length > 0)
+  /*
+    TROIS ÉTATS, ET NON DEUX.
+
+    Une liste vide ne veut plus dire « pas de restriction » : elle le voulait
+    tant que le modèle n'avait que deux états, et un gestionnaire créé APRÈS la
+    fonctionnalité héritait alors d'une règle écrite pour ceux d'avant — il
+    voyait le parc entier sans qu'on lui ait rien confié. Capturé sur un parc
+    réel.
+
+    `scope` le dit désormais : `wholePark` pour les adhésions d'avant,
+    `declared` pour celles qui naissent, où vide veut dire vide.
+  */
+  const borne = adhesion.role === 'manager' && adhesion.scope === 'declared'
   req.adhesion = {
     parkId: adhesion.parkId,
     role: adhesion.role,

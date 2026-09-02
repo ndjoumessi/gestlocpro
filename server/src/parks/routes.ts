@@ -3630,6 +3630,30 @@ parksRouter.patch(
        faire. Une requête concurrente y lirait un accès total d'une fraction de
        seconde. */
     await prisma.$transaction([
+      /*
+        CONFIER UNE LISTE DÉCLARE ; LA VIDER REND TOUT LE PARC.
+
+        Une adhésion d'avant qui reçoit sa première liste cesse d'être « tout le
+        parc » — sans quoi la liste serait écrite et sans effet.
+
+        ET LE GESTE INVERSE DOIT EXISTER. L'écran exprime le périmètre par des
+        CASES : les décocher toutes veut dire « aucune restriction », et son
+        résumé l'écrit — « Gère tout le parc ». Si vider la liste laissait
+        l'adhésion déclarée, ce même écran dirait le contraire de ce qu'il fait,
+        et plus rien ne rendrait ses droits à un gestionnaire qu'on a borné par
+        erreur.
+
+        L'état « déclaré et vide » reste donc atteignable par un seul chemin :
+        la NAISSANCE. Un gestionnaire qui arrive n'a rien, et c'est le cas que ce
+        lot existe pour dire.
+      */
+      prisma.membership.update({
+        where: { id: adhesion.id },
+        data: {
+          scope:
+            corps.buildingIds.length === 0 && unitIds.length === 0 ? 'wholePark' : 'declared',
+        },
+      }),
       prisma.membershipBuilding.deleteMany({ where: { membershipId: adhesion.id } }),
       prisma.membershipUnit.deleteMany({ where: { membershipId: adhesion.id } }),
       prisma.membershipBuilding.createMany({
