@@ -251,3 +251,45 @@ describe('le premier résumé d’un compte', () => {
     expect(await envoyerLesResumesDuFil()).toBe(1)
   })
 })
+
+describe('le mode à blanc', () => {
+  /*
+    LE BLANC EST LA SEULE LECTURE QUI PRÉCÈDE LA DÉCISION D'ALLUMER.
+
+    Il annonçait « 0 relance PARTIRAIENT » et se taisait sur les RÉSUMÉS, qui
+    partent au même passage. Un compte-rendu qui ne couvre qu'une famille de
+    courriels se lit comme s'il les couvrait toutes : c'est ainsi qu'on allume
+    un envoi sur une mesure partielle en croyant l'avoir mesuré.
+  */
+  it('compte le résumé qui PARTIRAIT, sans rien envoyer', async () => {
+    /* LES DEUX ASSERTIONS TIENNENT ENSEMBLE, et c'est délibéré : le compte
+       seul s'accorderait pour la mauvaise raison — un envoi RÉEL rend 1 lui
+       aussi. C'est le silence de la messagerie qui distingue le blanc. */
+    const { cookie, parkId, unitId, cookieLocataire } = await parcAvecUnLocataire()
+    await request(serveur)
+      .patch('/api/auth/me')
+      .set('Cookie', cookie)
+      .send({ threadEmailDigest: true })
+    await signaler(parkId, unitId, cookieLocataire, 'Fuite sous l’évier')
+    visees = []
+
+    expect(await envoyerLesResumesDuFil({ aBlanc: true }), 'un résumé attend').toBe(1)
+    expect(visees, 'à blanc ne veut pas dire « presque »').toEqual([])
+  })
+
+  it('n’avance pas la borne : le vrai passage trouve encore de quoi dire', async () => {
+    /* Une borne avancée à blanc ferait DISPARAÎTRE le résumé qu'on venait
+       d'annoncer — la lecture aurait consommé ce qu'elle décrivait. */
+    const { cookie, parkId, unitId, cookieLocataire } = await parcAvecUnLocataire()
+    await request(serveur)
+      .patch('/api/auth/me')
+      .set('Cookie', cookie)
+      .send({ threadEmailDigest: true })
+    await signaler(parkId, unitId, cookieLocataire, 'Fuite sous l’évier')
+    visees = []
+
+    await envoyerLesResumesDuFil({ aBlanc: true })
+    expect(await envoyerLesResumesDuFil(), 'le blanc n’a rien consommé').toBe(1)
+    expect(visees).toHaveLength(1)
+  })
+})

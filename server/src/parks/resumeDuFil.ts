@@ -24,9 +24,14 @@ import { laMessagerie } from '../messagerie/messagerie.js'
  * vérité vit, et elle divergerait du premier au premier incident — c'est le
  * genre de duplication que ce dépôt paie cher ailleurs.
  *
- * `lastThreadDigestAt` borne la fenêtre. Nul, le premier résumé prend tout ce
- * que le compte a reçu : borne assumée, et sans surprise puisqu'il faut avoir
- * coché le réglage pour en recevoir un.
+ * `lastThreadDigestAt` borne la fenêtre, et le CHOIX la pose : cocher le réglage
+ * écrit la date du jour. Cocher veut dire « résume-moi ce qui VIENDRA », pas
+ * « raconte-moi ce qui fut » — sans quoi le premier résumé déterrerait des mois
+ * d'échanges déjà lus en copie immédiate.
+ *
+ * Le `null` subsiste donc pour un compte qui n'a JAMAIS coché — et celui-là ne
+ * reçoit rien, faute de `threadEmailDigest`. La branche qui l'ignore ci-dessous
+ * n'est plus une borne assumée : c'est un cas mort tenu par prudence.
  *
  * ═══ CE QU'IL N'ENVOIE PAS ═══
  *
@@ -91,8 +96,15 @@ function gabaritDuResume(
 /**
  * Envoie un résumé à chaque compte qui en a choisi un et qui a reçu quelque
  * chose. Rend le nombre de résumés PARTIS.
+ *
+ * `aBlanc` parcourt tout et n'envoie rien : il rend ce qui PARTIRAIT. Le blanc
+ * est la seule lecture qui précède la décision d'allumer le passage périodique,
+ * et un compte-rendu muet sur une famille de courriels se lit comme s'il les
+ * couvrait toutes.
  */
-export async function envoyerLesResumesDuFil(): Promise<number> {
+export async function envoyerLesResumesDuFil(
+  options: { aBlanc?: boolean } = {},
+): Promise<number> {
   const comptes = await prisma.userAccount.findMany({
     where: { threadEmailDigest: true, threadEmailOptIn: true, disabledAt: null },
     select: { id: true, email: true, locale: true, lastThreadDigestAt: true },
@@ -146,6 +158,13 @@ export async function envoyerLesResumesDuFil(): Promise<number> {
       chaque passage, et grossissant. Perdre un résumé est réparable en le
       lisant dans le produit ; inonder ne l'est pas.
     */
+    /* À BLANC, LA BORNE NE BOUGE PAS. L'avancer ferait DISPARAÎTRE le résumé
+       qu'on vient d'annoncer : la lecture aurait consommé ce qu'elle décrit. */
+    if (options.aBlanc) {
+      partis++
+      continue
+    }
+
     await prisma.userAccount.update({
       where: { id: compte.id },
       data: { lastThreadDigestAt: new Date() },

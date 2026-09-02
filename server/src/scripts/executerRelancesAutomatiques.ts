@@ -120,8 +120,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     échéance qui court, un résumé est une commodité. Si le passage est
     interrompu, c'est la commodité qu'on perd.
   */
-  if (!aBlanc) {
-    const resumes = await envoyerLesResumesDuFil()
-    console.log(`Résumés du fil — ${resumes} envoyé(s).`)
-  }
+  const resumes = await envoyerLesResumesDuFil({ aBlanc })
+  console.log(
+    aBlanc
+      ? `À BLANC — ${resumes} résumé(s) du fil PARTIRAIENT.`
+      : `Résumés du fil — ${resumes} envoyé(s).`,
+  )
 }
