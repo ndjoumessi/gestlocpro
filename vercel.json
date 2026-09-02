@@ -1,9 +1,12 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "buildCommand": "mkdir -p .vercel-vide",
+  "buildCommand": "mkdir -p .vercel-vide && echo \"Rien de ce dossier n'est servi : toute adresse est relayee vers Railway. Vercel REFUSE un dossier de sortie vide - mesure : The Output Directory is empty, build en erreur - et ce fichier n'existe que pour cela.\" > .vercel-vide/index.html",
   "outputDirectory": ".vercel-vide",
   "rewrites": [
-    { "source": "/(.*)", "destination": "https://gestlocpro-app-production.up.railway.app/$1" }
+    {
+      "source": "/(.*)",
+      "destination": "https://gestlocpro-app-production.up.railway.app/$1"
+    }
   ]
 }

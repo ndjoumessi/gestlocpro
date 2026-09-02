@@ -39,3 +39,4 @@ server/.stockage-local
 captures/
 .vercel
 .env*
+.vercel-vide
