@@ -29,8 +29,11 @@ import { join } from 'node:path'
  */
 const RACINE = join(import.meta.dirname, '..')
 
-/** Les hôtes qu'on APPELLE, par opposition à ceux vers lesquels on renvoie. */
-const FOURNISSEURS = /api\.resend\.com|api\.frankfurter\.dev|fonts\.(googleapis|gstatic)\.com|www\.w3\.org|openapi\.vercel\.sh/
+/** Les hôtes qu'on APPELLE, par opposition à ceux vers lesquels on renvoie.
+    `api.twilio.com` y entre avec le canal SMS : un appel sortant de plus,
+    dont l'hôte est précisément ce qu'on ne veut PAS rendre configurable. */
+const FOURNISSEURS =
+  /api\.resend\.com|api\.twilio\.com|api\.frankfurter\.dev|fonts\.(googleapis|gstatic)\.com|www\.w3\.org|openapi\.vercel\.sh/
 
 function sources(dossier: string): string[] {
   const trouves: string[] = []

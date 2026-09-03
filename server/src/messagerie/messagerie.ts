@@ -1,5 +1,6 @@
 import { env } from '../env.js'
 import { MessagerieResend } from './resend.js'
+import { MessagerieTwilio } from './twilio.js'
 
 /**
  * Envoi de messages courts, derrière une couture.
@@ -102,15 +103,48 @@ export class MessagerieDeJournal implements Messagerie {
 }
 
 /**
+ * DEUX FOURNISSEURS, UN AIGUILLAGE.
+ *
+ * Resend envoie des courriels et pas de SMS ; Twilio l'inverse. Une seule
+ * instance ne pouvait donc plus servir les deux, et le choix ne pouvait plus
+ * être un ternaire sur une clé — c'est ce que ce composeur remplace.
+ *
+ * Il ne fait RIEN d'autre qu'aiguiller. Pas de repli automatique d'un canal sur
+ * l'autre : un SMS qui échoue ne devient pas un courriel. Le destinataire d'un
+ * SMS est un NUMÉRO, celui d'un courriel une ADRESSE ; les substituer
+ * n'enverrait rien, et le `true` rendu serait le mensonge qu'on traque.
+ */
+export function composerLaMessagerie(sms: Messagerie, courriel: Messagerie): Messagerie {
+  return {
+    envoyerSms: (destinataire, texte) => sms.envoyerSms(destinataire, texte),
+    envoyerEmail: (destinataire, sujet, corps) =>
+      courriel.envoyerEmail(destinataire, sujet, corps),
+  }
+}
+
+/**
  * La messagerie du serveur.
  *
- * Une seule instance, choisie ici. Le jour où un fournisseur est branché, cette
- * ligne change et rien d'autre — c'est la seule promesse que fait une couture,
- * et elle ne vaut que si personne ne contourne cette fonction.
+ * Une seule instance, composée ici. Chaque canal tombe INDÉPENDAMMENT sur le
+ * journal quand sa configuration manque : un serveur qui sait envoyer des
+ * courriels et pas de SMS est l'état normal tant qu'aucun compte Twilio n'est
+ * ouvert, et il ne doit pas perdre ses courriels pour autant.
+ *
+ * LES TROIS VARIABLES DE TWILIO SONT EXIGÉES ENSEMBLE. Deux sur trois donnent
+ * un adaptateur qui rend 401 ou 400 à chaque envoi — un fournisseur qui a l'air
+ * branché et n'envoie rien, ce qui est pire que pas de fournisseur du tout : le
+ * journal du repli, lui, DIT qu'il n'envoie pas.
  */
-let messagerie: Messagerie = env.RESEND_API_KEY
+const parCourriel: Messagerie = env.RESEND_API_KEY
   ? new MessagerieResend(env.RESEND_API_KEY, env.EMAIL_FROM)
   : new MessagerieDeJournal()
+
+const parSms: Messagerie =
+  env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_SMS_FROM
+    ? new MessagerieTwilio(env.TWILIO_ACCOUNT_SID, env.TWILIO_AUTH_TOKEN, env.TWILIO_SMS_FROM)
+    : new MessagerieDeJournal()
+
+let messagerie: Messagerie = composerLaMessagerie(parSms, parCourriel)
 
 export function laMessagerie(): Messagerie {
   return messagerie

@@ -57,6 +57,28 @@ const schema = z.object({
    */
   EMAIL_FROM: z.string().min(3).default('GestLocPro <onboarding@resend.dev>'),
   /**
+   * TWILIO — le canal SMS, et les TROIS vont ensemble.
+   *
+   * Le produit appelle `envoyerSms` pour le code d'invitation et pour la
+   * relance du locataire en retard. Sans ces variables, les deux retombent sur
+   * le journal, qui DIT que rien n'est parti — l'état d'avant ce lot, et un
+   * état honnête.
+   *
+   * FACULTATIVES, ET POUR LA MÊME RAISON QUE `RESEND_API_KEY` : un dépôt
+   * fraîchement cloné doit démarrer sans compte chez personne. Deux sur trois
+   * ne donnent PAS un demi-fournisseur : `messagerie.ts` les exige ensemble, et
+   * retombe sur le journal sinon. Un adaptateur à moitié configuré rendrait 401
+   * à chaque envoi — un fournisseur qui a l'air branché et n'envoie rien, ce
+   * qui est pire que pas de fournisseur.
+   *
+   * `TWILIO_SMS_FROM` est un numéro au format E.164, celui que Twilio a
+   * attribué au compte. Un numéro non vérifié fait rendre le code 21608, que le
+   * journal reporte sans le corps du message.
+   */
+  TWILIO_ACCOUNT_SID: z.string().min(1).optional(),
+  TWILIO_AUTH_TOKEN: z.string().min(1).optional(),
+  TWILIO_SMS_FROM: z.string().min(1).optional(),
+  /**
    * Où le stockage des pièces pose ses octets. FACULTATIVE ICI, EXIGÉE PLUS BAS
    * EN PRODUCTION.
    *
