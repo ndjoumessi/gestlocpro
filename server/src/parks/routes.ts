@@ -3724,14 +3724,21 @@ parksRouter.patch(
     const unitIds = corps.unitIds ?? []
     const excludedUnitIds = corps.excludedUnitIds ?? []
 
-    if (corps.buildingIds.length > 0) {
-      const connus = await prisma.building.count({
-        where: { parkId, id: { in: corps.buildingIds } },
-      })
-      if (connus !== corps.buildingIds.length) {
-        res.status(404).json({ error: 'not_found' })
-        return
-      }
+    /* `findMany` ET NON `count` : la vérification est la MÊME — on compare les
+       longueurs — et elle rend en plus les NOMS, sans une requête de plus. Le
+       registre écrivait « Périmètre d'immeubles confié » sans dire lequel ; il
+       portait les identifiants, que l'écran ne peut pas montrer. */
+    const immeublesConfies =
+      corps.buildingIds.length > 0
+        ? await prisma.building.findMany({
+            where: { parkId, id: { in: corps.buildingIds } },
+            select: { name: true },
+            orderBy: { name: 'asc' },
+          })
+        : []
+    if (immeublesConfies.length !== corps.buildingIds.length) {
+      res.status(404).json({ error: 'not_found' })
+      return
     }
 
     /* LES LOGEMENTS SONT VÉRIFIÉS CONTRE CE PARC, un par un, pour la même raison
@@ -3739,14 +3746,17 @@ parksRouter.patch(
        logement d'un autre parc. Elle ne donnerait accès à rien — chaque lecture
        croise le périmètre AVEC le `parkId` — mais le registre des décisions
        consignerait un fait faux. */
-    if (unitIds.length > 0) {
-      const connus = await prisma.unit.count({
-        where: { building: { parkId }, id: { in: unitIds } },
-      })
-      if (connus !== unitIds.length) {
-        res.status(404).json({ error: 'not_found' })
-        return
-      }
+    const logementsConfies =
+      unitIds.length > 0
+        ? await prisma.unit.findMany({
+            where: { building: { parkId }, id: { in: unitIds } },
+            select: { label: true },
+            orderBy: { label: 'asc' },
+          })
+        : []
+    if (logementsConfies.length !== unitIds.length) {
+      res.status(404).json({ error: 'not_found' })
+      return
     }
 
     /* L'EXCLUSION N'A DE SENS QUE DANS UN IMMEUBLE CONFIÉ. Hors de là elle ne
@@ -3829,7 +3839,20 @@ parksRouter.patch(
         /* LES DEUX LISTES, parce que le périmètre est leur UNION : n'en
            consigner qu'une ferait lire au registre un pouvoir plus étroit que
            celui qui a été donné. */
-        payload: { buildingIds: corps.buildingIds, unitIds, excludedUnitIds, role: adhesion.role },
+        /* LES NOMS À CÔTÉ DES IDENTIFIANTS, et non à leur place. L'identifiant
+           IDENTIFIE — il survit à un renommage et permet de retrouver la ligne ;
+           le nom DÉCRIT, et c'est lui qu'un propriétaire relit. Écrits À
+           L'INSTANT DE LA DÉCISION, comme `payment.delete` écrit le montant
+           d'un versement qu'il supprime : le journal dit ce qui était vrai
+           alors, et un immeuble renommé — ou supprimé — ne le rend pas muet. */
+        payload: {
+          buildingIds: corps.buildingIds,
+          unitIds,
+          excludedUnitIds,
+          role: adhesion.role,
+          buildingNames: immeublesConfies.map((i) => i.name),
+          unitLabels: logementsConfies.map((l) => l.label),
+        },
       },
     })
 

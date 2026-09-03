@@ -161,6 +161,59 @@ describe('le registre des décisions', () => {
    * LES IDENTIFIANTS NE SE MONTRENT PAS, leur NOMBRE si. Un UUID à l'écran est
    * du bruit qui a l'air d'une information ; « 2 immeubles · 1 logement » se lit.
    */
+  it('dit QUELS immeubles, et se borne à trois', async () => {
+    /* « 12 immeubles » dit l'ampleur, pas lesquels. Le serveur écrit désormais
+       les noms à côté des identifiants ; l'écran en montre TROIS puis compte le
+       reste — un gestionnaire à qui l'on confie quinze immeubles produirait
+       sinon une ligne plus longue que l'écran. */
+    const faux = installerFauxServeur()
+    faux.quand('GET', `/parks/${PARC}/decisions`, {
+      status: 200,
+      body: {
+        decisions: [
+          {
+            id: 'd-noms',
+            action: 'access.scope',
+            entity: 'Membership',
+            entityId: '00000000-0000-4000-8000-0000000000ef',
+            payload: {
+              buildingIds: ['a', 'b', 'c', 'd', 'e'],
+              buildingNames: ['Résidence Akwa', 'Villa Bastos', 'Le Clos', 'Les Manguiers', 'Yansoki'],
+              unitIds: [],
+              unitLabels: [],
+              excludedUnitIds: [],
+              role: 'manager',
+            },
+            at: '2026-08-28T14:05:00.000Z',
+            actor: 'Arsène Nkolo',
+          },
+        ],
+        suivant: null,
+      },
+    })
+    faux.quand('GET', `/parks/${PARC}/portfolio`, {
+      status: 200,
+      body: {
+        collections: [],
+        buildings: [],
+        works: [],
+        deposits: [],
+        readings: [],
+        inspections: [],
+        notifications: [],
+      },
+    })
+
+    await renderApp('/app/decisions', { session: session('owner') })
+    await attendreLeChargement()
+
+    const texte = (screen.getByRole('main').textContent ?? '').replace(/[\s ]/g, ' ')
+    expect(texte, 'les trois premiers noms manquent').toMatch(/Résidence Akwa, Villa Bastos, Le Clos/)
+    expect(texte, 'le reste doit se compter, pas s’écrire').toMatch(/\+2/)
+    expect(texte, 'un quatrième nom est à l’écran').not.toMatch(/Manguiers|Yansoki/)
+    expect(texte, 'le total doit rester lisible à côté des noms').toMatch(/5 immeubles/)
+  })
+
   it('dit l’étendue d’un périmètre confié, et à quel rôle', async () => {
     const faux = installerFauxServeur()
     faux.quand('GET', `/parks/${PARC}/decisions`, {

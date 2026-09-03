@@ -83,6 +83,11 @@ type Nature =
   | 'role'
   /* L'état d'un chantier rouvert — la seule donnée que `work.reopen` porte. */
   | 'etatChantier'
+  /* Une LISTE DE NOMS. « 2 immeubles » ne disait pas LESQUELS : le registre
+     portait les identifiants, que l'écran ne peut pas montrer — un UUID est du
+     bruit qui a l'air d'une information. Le serveur écrit désormais les noms à
+     côté des identifiants, et cette nature les rend. */
+  | 'liste'
 
 /**
  * UN NOMBRE NU NE DIT RIEN. « Relance envoyée · 4 » : quatre quoi ?
@@ -111,9 +116,16 @@ const DETAIL: Record<string, Champ[]> = {
      pourtant une donnée lisible sans aller la chercher ailleurs. Restent dehors
      `access.link` et `access.unlink`, dont la charge utile n'est qu'un
      identifiant de compte : le montrer brut serait pire que de se taire. */
+  /* LE COMPTE PUIS LES NOMS, et les deux servent. « 12 immeubles » dit
+     l'ampleur, « Résidence A, Villa B, Le Clos +9 » dit lesquels. Les lignes
+     écrites AVANT le 2026-09-03 ne portent pas de noms : elles gardent leur
+     décompte, et n'affichent rien de plus — une recette qui ne trouve pas son
+     champ se tait. */
   'access.scope': [
     { champ: 'buildingIds', decompte: 'buildings' },
+    { champ: 'buildingNames', nature: 'liste' },
     { champ: 'unitIds', decompte: 'homes' },
+    { champ: 'unitLabels', nature: 'liste' },
     { champ: 'excludedUnitIds', decompte: 'exclusions' },
     { champ: 'role', nature: 'role' },
   ],
@@ -333,6 +345,16 @@ export function Decisions() {
           return typeof valeur === 'string' ? d.fullDate(partiesDeDateISO(valeur)) : ''
         case 'mois':
           return typeof valeur === 'string' ? d.monthYear(partiesDeDateISO(valeur)) : ''
+        case 'liste': {
+          /* BORNÉE À TROIS, puis un décompte. Un gestionnaire à qui l'on confie
+             quinze immeubles produirait une ligne de registre plus longue que
+             l'écran ; trois noms situent la décision, le reste se compte. Le
+             décompte du champ d'identifiants, juste à côté, donne le total. */
+          const noms = Array.isArray(valeur) ? valeur.filter((n) => typeof n === 'string') : []
+          if (noms.length === 0) return ''
+          const montres = noms.slice(0, 3).join(', ')
+          return noms.length > 3 ? `${montres} +${noms.length - 3}` : montres
+        }
         case 'role':
           /* La liste est ÉCRITE, et non `roles.${valeur}.name` sans garde : le
              payload vient du serveur, et une valeur inattendue rendrait la clé

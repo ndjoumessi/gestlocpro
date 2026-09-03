@@ -306,6 +306,41 @@ describe('le geste de confier', () => {
     expect(trace, 'un pouvoir donné sans trace ne se reprend pas').toBeDefined()
     expect((trace?.payload as { buildingIds?: string[] })?.buildingIds).toEqual([confie])
   })
+
+  it('y écrit le NOM, et pas seulement l’identifiant', async () => {
+    /* « 2 immeubles » ne dit pas LESQUELS. Le registre portait les identifiants,
+       que l'écran ne peut pas montrer — un UUID est du bruit qui a l'air d'une
+       information. Le nom est écrit À L'INSTANT DE LA DÉCISION, comme
+       `payment.delete` écrit le montant du versement qu'il supprime : un
+       immeuble renommé plus tard, ou supprimé, ne rend pas la ligne muette. */
+    const { cookie, parkId, confie, membershipId } = await parcADeuxImmeubles()
+    await confier(parkId, membershipId, cookie, [confie])
+
+    const trace = await prisma.auditEvent.findFirst({
+      where: { parkId, action: 'access.scope' },
+      select: { payload: true },
+    })
+    const charge = trace?.payload as { buildingNames?: string[]; unitLabels?: string[] }
+    expect(charge?.buildingNames, 'le registre ne dit pas QUEL immeuble a été confié').toEqual([
+      'Résidence Confiée',
+    ])
+    expect(charge?.unitLabels, 'aucun logement n’a été confié : la liste est vide').toEqual([])
+  })
+
+  it('n’invente pas de nom pour un immeuble qui n’est pas du parc', async () => {
+    /* Non-régression du contrôle : la lecture qui rend les noms est la MÊME que
+       celle qui vérifie l'appartenance au parc — on compare les longueurs. La
+       remplacer ne doit pas avoir ouvert la porte. */
+    const { cookie, parkId, membershipId } = await parcADeuxImmeubles()
+    const res = await confier(parkId, membershipId, cookie, [
+      '00000000-0000-4000-8000-0000000000aa',
+    ])
+    expect(res.status).toBe(404)
+    expect(
+      await prisma.auditEvent.count({ where: { parkId, action: 'access.scope' } }),
+      'une décision refusée ne se consigne pas',
+    ).toBe(0)
+  })
 })
 
 describe('le gestionnaire borné SAIT qu’il l’est', () => {
