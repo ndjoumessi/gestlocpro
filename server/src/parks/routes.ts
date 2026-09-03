@@ -3686,10 +3686,20 @@ parksRouter.patch(
     const membershipId = typeof brut === 'string' ? brut : ''
     const corps = schemaPerimetre.parse(req.body)
 
-    // `parkId` DANS le filtre : sans lui, un identifiant deviné bornerait — ou
-    // libérerait — quelqu'un dans un parc dont on n'est pas membre.
+    /* `parkId` DANS le filtre : sans lui, un identifiant deviné bornerait — ou
+       libérerait — quelqu'un dans un parc dont on n'est pas membre.
+
+       `active` AUSSI, et c'est venu après. Sans lui, cette route posait un
+       périmètre sur une DEMANDE en attente ou sur une adhésion morte — la même
+       lecture sans statut qui a piégé `/api/join` trois fois de suite.
+
+       Le cas de la demande est le plus vicieux : la route de décision fait
+       passer la ligne à `active` sans nettoyer AUCUN rattachement, n'ayant
+       jamais eu à le faire. Un périmètre posé pendant l'attente serait donc là
+       au réveil, et le registre qui promet « rien ne lui est encore confié » à
+       un gestionnaire qui arrive dirait faux. */
     const adhesion = await prisma.membership.findFirst({
-      where: { id: membershipId, parkId },
+      where: { id: membershipId, parkId, status: 'active' },
       select: { id: true, userId: true, role: true },
     })
     if (!adhesion) {
@@ -3911,10 +3921,24 @@ parksRouter.patch(
     const brut = req.params.membershipId
     const membershipId = typeof brut === 'string' ? brut : ''
 
-    // `parkId` DANS le filtre : sans lui, un identifiant deviné retirerait
-    // quelqu'un d'un parc dont on n'est pas membre.
+    /* `parkId` DANS le filtre : sans lui, un identifiant deviné retirerait
+       quelqu'un d'un parc dont on n'est pas membre.
+
+       ET `requested` EXCLU — mais RIEN d'autre, et l'asymétrie avec le
+       périmètre est délibérée. Retirer une demande la faisait passer `revoked`,
+       ce que « refuser » produit exactement, en consignant `access.revoke` :
+       le registre disait « Accès repris » de quelqu'un qui n'en avait jamais
+       eu. Un journal qui fait autorité ne peut pas nommer un geste par un
+       autre.
+
+       On ne va PAS jusqu'à exiger `active` : le commentaire de l'écriture,
+       plus bas, l'interdit explicitement — « deux écrans ouverts sur le même
+       registre suffiraient à produire une erreur là où il n'y a qu'un état
+       déjà atteint ». Re-révoquer réaffirme un état atteint ; poser un
+       périmètre écrit une donnée neuve. L'idempotence protège la première et
+       n'a rien à dire de la seconde. */
     const adhesion = await prisma.membership.findFirst({
-      where: { id: membershipId, parkId },
+      where: { id: membershipId, parkId, status: { not: 'requested' } },
       select: { id: true, userId: true },
     })
     if (!adhesion) {
