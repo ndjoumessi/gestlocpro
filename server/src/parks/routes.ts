@@ -1534,6 +1534,40 @@ parksRouter.post(
       select: { id: true, name: true, district: true },
     })
 
+    /*
+      L'IMMEUBLE RESTE À QUI LE DÉCLARE, quand celui-là est BORNÉ.
+
+      Cette route est ouverte aux deux rôles qui constituent un parc, et elle ne
+      touchait pas au périmètre. Un gestionnaire `declared` déclarait donc son
+      immeuble, le voyait apparaître par l'état optimiste du client, et le
+      PERDAIT au premier rechargement — son portefeuille ne rend que ce qui lui
+      est confié. Le geste suivant, poser un logement, portait alors sur un
+      immeuble qu'il ne voyait plus, et échouait sans un mot.
+
+      Mesuré dans la base de la porte `espace-connecte` : « immeuble Résidence
+      du Mandat · logements: — · adhésion manager · immeubles confiés: 0 ».
+      Deux gestes réussis à l'écran, un demi-résultat en base.
+
+      SEULEMENT LUI, ET SEULEMENT L'IMMEUBLE CRÉÉ. Créer ne devient pas
+      s'attribuer le parc. Le propriétaire voit ce rattachement au registre des
+      accès, et peut le retirer.
+
+      RIEN POUR QUI N'EST PAS BORNÉ. `immeubles === null` couvre le
+      propriétaire et les adhésions `wholePark` d'avant la portée : leur poser
+      une ligne les BORNERAIT à ce seul immeuble, ce qui serait pire que le mal.
+    */
+    if (req.adhesion!.immeubles !== null) {
+      const adhesion = await prisma.membership.findFirst({
+        where: { userId: req.compteId!, parkId, status: 'active' },
+        select: { id: true },
+      })
+      if (adhesion) {
+        await prisma.membershipBuilding.create({
+          data: { membershipId: adhesion.id, buildingId: immeuble.id },
+        })
+      }
+    }
+
     res.status(201).json({ building: immeuble })
   },
 )
