@@ -1571,6 +1571,11 @@ export const fr = {
              si la porte s'est ouverte ou fermée. */
           grant: 'Demande d’accès accordée',
           refuse: 'Demande d’accès refusée',
+          /* DISTINCT de `grant` : un bouton pressé dans le registre et un code
+             consommé sont deux gestes. Les confondre empêcherait de répondre à
+             « comment est-il entré ? », qui est la question qu'un journal
+             d'accès existe pour trancher. */
+          join: 'Entrée par code d’invitation',
         },
         deposit: {
           settle: 'Caution arbitrée',

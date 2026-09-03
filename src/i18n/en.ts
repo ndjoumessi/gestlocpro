@@ -1154,6 +1154,7 @@ export const en: Dictionary = {
           scope: 'Building scope assigned',
           grant: 'Access request granted',
           refuse: 'Access request refused',
+          join: 'Joined via invitation code',
         },
         deposit: {
           settle: 'Deposit settled',

@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from 'express'
 import { z } from 'zod'
 import { Prisma } from '../generated/prisma/client.js'
+import type { ParkRole } from '../generated/prisma/client.js'
 import { prisma } from '../db.js'
 import {
   creerCode,
@@ -6573,6 +6574,44 @@ demandesDAccesRouter.post('/', async (req: Request, res: Response) => {
 })
 
 export const rejoindreRouter = Router()
+/**
+ * ENTRER DANS UN PARC PAR UN CODE EST UNE DÉCISION D'ACCÈS.
+ *
+ * Deux lots du 2026-09-03 ont laissé une asymétrie : le premier a rendu le code
+ * capable d'honorer une demande en attente, le second a fait écrire au registre
+ * ce que le BOUTON décide. Le code, lui, n'écrivait rien — deux chemins pour la
+ * même décision, un seul tracé, et un registre qui disait « rien n'a été
+ * accordé » d'un parc où quelqu'un venait d'entrer.
+ *
+ * L'ACTEUR EST L'ÉMETTEUR. `Invitation.issuedById` porte la décision : écrire
+ * celui qui saisit ferait dire au registre que le gestionnaire s'est accordé
+ * l'accès à lui-même. C'est la règle de la route de décision, où l'acteur est
+ * le propriétaire qui tranche.
+ *
+ * `access.join` ET NON `access.grant` : un bouton pressé et un code consommé
+ * sont deux gestes, et un journal qui les confondrait ne saurait plus répondre
+ * à « comment est-il entré ? ».
+ *
+ * UN SEUL ENDROIT POUR TROIS BRANCHES — création, réveil d'une révocation,
+ * réveil d'une demande. N'en tracer qu'une reproduirait le défaut que cette
+ * route a déjà porté quatre fois : corrigé un cas à la fois, jamais la forme.
+ */
+async function consignerLEntreeParCode(
+  invitation: { parkId: string; role: ParkRole; issuedById: string },
+  membershipId: string,
+): Promise<void> {
+  await prisma.auditEvent.create({
+    data: {
+      parkId: invitation.parkId,
+      actorId: invitation.issuedById,
+      action: 'access.join',
+      entity: 'Membership',
+      entityId: membershipId,
+      payload: { role: invitation.role },
+    },
+  })
+}
+
 rejoindreRouter.use(exigerCompte)
 
 rejoindreRouter.post('/', async (req: Request, res: Response) => {
@@ -6580,7 +6619,17 @@ rejoindreRouter.post('/', async (req: Request, res: Response) => {
 
   const invitation = await prisma.invitation.findUnique({
     where: { codeHash: empreinteJeton(normaliserCode(corps.invitationCode)) },
-    select: { id: true, parkId: true, role: true, expiresAt: true, acceptedAt: true, revokedAt: true },
+    /* `issuedById` : l'acteur de l'entrée est celui qui a ÉMIS le code, jamais
+       celui qui le saisit — voir `consignerLEntreeParCode`. */
+    select: {
+      id: true,
+      parkId: true,
+      role: true,
+      expiresAt: true,
+      acceptedAt: true,
+      revokedAt: true,
+      issuedById: true,
+    },
   })
 
   const maintenant = new Date()
@@ -6657,6 +6706,7 @@ rejoindreRouter.post('/', async (req: Request, res: Response) => {
          le défaut d'à côté. */
       await rattacherLaFicheLocataire(tx, { invitationId: invitation.id, userId: req.compteId! })
     })
+    await consignerLEntreeParCode(invitation, deja.id)
     res.status(201).json({ parkId: invitation.parkId, role: invitation.role })
     return
   }
@@ -6760,8 +6810,8 @@ rejoindreRouter.post('/', async (req: Request, res: Response) => {
     return
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.membership.create({
+  const creee = await prisma.$transaction(async (tx) => {
+    const adhesion = await tx.membership.create({
       // Le rôle vient de l'INVITATION, jamais de la saisie — la même règle qu'à
       // l'inscription, et pour la même raison.
       /*
@@ -6778,6 +6828,7 @@ rejoindreRouter.post('/', async (req: Request, res: Response) => {
         role: invitation.role,
         scope: 'declared',
       },
+      select: { id: true },
     })
     await tx.invitation.update({
       where: { id: invitation.id, acceptedAt: null },
@@ -6789,7 +6840,9 @@ rejoindreRouter.post('/', async (req: Request, res: Response) => {
        la moitié des locataires devant un espace vide, avec un symptôme
        rigoureusement identique et aucune raison apparente de différer. */
     await rattacherLaFicheLocataire(tx, { invitationId: invitation.id, userId: req.compteId! })
+    return adhesion
   })
 
+  await consignerLEntreeParCode(invitation, creee.id)
   res.status(201).json({ parkId: invitation.parkId, role: invitation.role })
 })
