@@ -4925,31 +4925,39 @@ parksRouter.post(
       return
     }
 
-    await prisma.$transaction([
-      prisma.auditEvent.create({
-        data: {
-          parkId,
-          actorId: req.compteId!,
-          action: 'lease.formal_notice',
-          entity: 'Lease',
-          entityId: bail.id,
-          payload: { reason: corps.reason, dueMinor: dûMinor },
-        },
-      }),
-      prisma.notification.create({
-        data: {
-          parkId,
-          kind: 'lease',
-          messageKey: CLE_MISE_EN_DEMEURE,
-          // `amount` et non `dueMinor` : voir la relance ci-dessus, même raison.
-          params: { tenant: bail.tenant.fullName, amount: dûMinor },
-          severity: 'high',
-          unitId: bail.unitId,
-          channel: 'in_app',
-          ...(bail.tenant.userId ? { recipients: { create: [{ userId: bail.tenant.userId }] } } : {}),
-        },
-      }),
-    ])
+    /* L'AVIS D'ABORD, LA TRACE ENSUITE, et l'ordre est le sujet.
+
+       Ici l'ACTE EST L'AVIS : aucune autre mutation ne constitue la mise en
+       demeure. Les deux écritures vivaient dans un `$transaction([…])`, donc
+       atomiques — et le registre pouvait donc empêcher la mise en demeure de
+       partir. La politique du dépôt refuse ce pouvoir au journal : « il ne doit
+       pas pouvoir faire échouer l'écriture qu'il décrit ». L'avis part, la
+       trace suit ; une panne entre les deux laisse une mise en demeure notifiée
+       sans sa ligne de registre, et c'est le prix retenu. */
+    await prisma.notification.create({
+      data: {
+        parkId,
+        kind: 'lease',
+        messageKey: CLE_MISE_EN_DEMEURE,
+        // `amount` et non `dueMinor` : voir la relance ci-dessus, même raison.
+        params: { tenant: bail.tenant.fullName, amount: dûMinor },
+        severity: 'high',
+        unitId: bail.unitId,
+        channel: 'in_app',
+        ...(bail.tenant.userId ? { recipients: { create: [{ userId: bail.tenant.userId }] } } : {}),
+      },
+    })
+
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'lease.formal_notice',
+        entity: 'Lease',
+        entityId: bail.id,
+        payload: { reason: corps.reason, dueMinor: dûMinor },
+      },
+    })
 
     res.status(201).json({ formalNotice: { leaseId: bail.id, dueMinor: dûMinor } })
   },
@@ -6319,30 +6327,37 @@ parksRouter.delete(
       return
     }
 
-    await prisma.$transaction([
-      prisma.payment.delete({ where: { id: versement.id } }),
-      prisma.auditEvent.create({
-        data: {
-          parkId,
-          actorId: req.compteId!,
-          action: 'payment.delete',
-          entity: 'RentCharge',
-          entityId: versement.chargeId,
-          /**
-           * Le versement disparaît ; sa trace reste, montant compris.
-           *
-           * C'est ce qui distingue une correction d'un effacement : le jour où
-           * un locataire produira un reçu pour une somme absente du registre, ce
-           * journal dira quand elle en a été retirée et par qui.
-           */
-          payload: {
-            amountMinor: versement.amountMinor,
-            method: versement.method,
-            paidOn: versement.paidOn.toISOString().slice(0, 10),
-          },
+    await prisma.payment.delete({ where: { id: versement.id } })
+
+    /**
+     * Le versement disparaît ; sa trace reste, montant compris.
+     *
+     * C'est ce qui distingue une correction d'un effacement : le jour où un
+     * locataire produira un reçu pour une somme absente du registre, ce journal
+     * dira quand elle en a été retirée et par qui.
+     *
+     * APRÈS LA SUPPRESSION, ET NON DANS SA TRANSACTION. Les deux vivaient dans
+     * un `$transaction([…])`, donc atomiques. C'est ici que le prix de la
+     * politique du dépôt — « le journal ne doit pas pouvoir faire échouer
+     * l'écriture qu'il décrit » — est le plus élevé : une panne entre les deux
+     * laisse un versement supprimé SANS trace, exactement ce que le paragraphe
+     * ci-dessus existe pour empêcher. Le choix est fait en connaissance, et il
+     * est le même partout : l'acte passe, la trace suit.
+     */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'payment.delete',
+        entity: 'RentCharge',
+        entityId: versement.chargeId,
+        payload: {
+          amountMinor: versement.amountMinor,
+          method: versement.method,
+          paidOn: versement.paidOn.toISOString().slice(0, 10),
         },
-      }),
-    ])
+      },
+    })
 
     res.status(204).end()
   },
@@ -6420,18 +6435,26 @@ parksRouter.delete(
       await tx.inspection.deleteMany({ where: { leaseId: { in: baux } } })
       await tx.lease.deleteMany({ where: { id: { in: baux } } })
       await tx.tenant.delete({ where: { id: locataire.id } })
-      await tx.auditEvent.create({
-        data: {
-          parkId,
-          actorId: req.compteId!,
-          action: 'tenant.delete',
-          entity: 'Tenant',
-          entityId: locataire.id,
-          // Le nom reste au journal : la fiche part, la trace de son retrait
-          // dit qui a été retiré et par qui.
-          payload: { fullName: locataire.fullName, leases: baux.length },
-        },
-      })
+    })
+
+    /* APRÈS LA TRANSACTION, ET NON DEDANS. Le nom reste au journal : la fiche
+       part, la trace de son retrait dit qui a été retiré et par qui.
+
+       Cette écriture vivait DANS la transaction — la seule du fichier à
+       employer `tx.auditEvent`. La politique du dépôt veut l'inverse : « le
+       journal ne doit pas pouvoir faire échouer l'écriture qu'il décrit ». Le
+       prix, ici, est qu'une panne entre les deux laisse une fiche supprimée
+       sans trace. Sur une SUPPRESSION c'est le plus cher qu'on paie ; c'est
+       assumé, et uniforme avec les vingt-sept autres écritures. */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'tenant.delete',
+        entity: 'Tenant',
+        entityId: locataire.id,
+        payload: { fullName: locataire.fullName, leases: locataire.leases.length },
+      },
     })
 
     res.status(204).end()
