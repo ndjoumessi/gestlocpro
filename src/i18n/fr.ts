@@ -1576,9 +1576,14 @@ export const fr = {
           settle: 'Caution arbitrée',
           unsettle: 'Arbitrage de caution repris',
         },
+        /* `declined` ET NON `refused` : le serveur compose son action depuis
+           `DocumentRequestStatus`, dont la valeur est `declined`. Le mot avait
+           été traduit une fois de trop — on écrivait `declined` en base et on
+           l'avait nommé `refused` ici, si bien que TOUTE demande de pièce
+           refusée s'inscrivait au registre sous « Action inconnue ». */
         document: {
           fulfilled: 'Pièce remise',
-          refused: 'Demande de pièce refusée',
+          declined: 'Demande de pièce refusée',
         },
         inspection: {
           record: 'État des lieux établi',

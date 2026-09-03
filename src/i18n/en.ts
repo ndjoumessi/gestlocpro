@@ -1161,7 +1161,7 @@ export const en: Dictionary = {
         },
         document: {
           fulfilled: 'Document provided',
-          refused: 'Document request refused',
+          declined: 'Document request refused',
         },
         inspection: {
           record: 'Inspection recorded',

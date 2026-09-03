@@ -155,14 +155,26 @@ function payloadsDuServeur(source) {
     const appel = objetEquilibre(source, i)
     if (!appel) continue
 
-    const action =
-      /action:\s*'([^']+)'/.exec(appel.texte)?.[1] ??
-      /action:\s*`([^$`]*)\$\{/.exec(appel.texte)?.[1].concat('*')
-    if (!action) continue
+    /* TOUS les littéraux de la ligne `action:`, et pas le premier.
+       La rédaction d'origine prenait `/action:\s*'…'/`, ce qui exige un
+       guillemet JUSTE APRÈS les deux-points — et manquait donc la forme
+       TERNAIRE, `action: corps.accorder ? 'access.grant' : 'access.refuse'`.
+       Cette forme vit dans le dépôt depuis le 2026-09-03 : les deux actions
+       qu'elle écrit n'étaient vérifiées par RIEN. */
+    const ligne = /action:([^\n]*)/.exec(appel.texte)?.[1] ?? ''
+    /* BORNÉE À LA VALEUR : `action: 'a.juste', entity: 'X'` tient sur une ligne
+       dans ce dépôt, et prendre la ligne entière relevait `X` comme une action.
+       On s'arrête au premier `, mot:`, qui ouvre le champ suivant — jamais au
+       deux-points d'un ternaire, qui n'est pas précédé d'une virgule. */
+    const valeur = /^(.*?)(?:,\s*\w+\s*:|$)/.exec(ligne)?.[1] ?? ''
+    const actions = [...valeur.matchAll(/'([^']+)'/g)].map((m) => m[1])
+    const composee = /`([^$`]*)\$\{/.exec(valeur)?.[1]
+    if (composee) actions.push(composee.concat('*'))
+    if (!actions.length) continue
 
     const iPayload = appel.texte.indexOf('payload:')
     const payload = iPayload === -1 ? null : objetEquilibre(appel.texte, iPayload)
-    par.set(action, payload ? clesDePremierNiveau(payload.texte) : [])
+    for (const action of actions) par.set(action, payload ? clesDePremierNiveau(payload.texte) : [])
   }
   return par
 }
@@ -195,13 +207,22 @@ function actionsDuDictionnaire(source) {
   return connues
 }
 
-/** Une action composée du serveur — `document.*` — couvre-t-elle cette clé ? */
-const couverte = (action, connues) =>
-  action.endsWith('*')
-    ? [...connues].some((c) => c.startsWith(action.slice(0, -1)))
-    : connues.has(action)
+/**
+ * Les familles COMPOSÉES, et le schéma `zod` qui borne leur partie variable.
+ *
+ * ÉCRITE À LA MAIN : le script ne peut pas deviner que `${corps.status}` est
+ * borné par `schemaReponseDocument`. Une famille composée absente de cette
+ * table devient une PLAINTE — elle ne passe plus en silence.
+ */
+const COMPOSEES = { document: 'schemaReponseDocument' }
 
-function plaintesDe(serveur, client, dictionnaire) {
+/** Les valeurs que ce schéma autorise, lues dans la source du serveur. */
+function valeursDuSchema(serveur, schema) {
+  const trouve = new RegExp(`const ${schema}[^]*?z\\.enum\\(\\[([^\\]]*)\\]\\)`).exec(serveur)
+  return trouve ? [...trouve[1].matchAll(/'([^']+)'/g)].map((m) => m[1]) : null
+}
+
+function plaintesDe(serveur, client, dictionnaire, composees = COMPOSEES) {
   const ecrits = payloadsDuServeur(serveur)
   const recettes = recettesDuClient(client)
   const nommees = actionsDuDictionnaire(dictionnaire)
@@ -227,11 +248,47 @@ function plaintesDe(serveur, client, dictionnaire) {
   }
 
   for (const action of ecrits.keys()) {
-    if (!couverte(action, nommees))
+    if (!action.endsWith('*')) {
+      if (!nommees.has(action))
+        plaintes.push(
+          `action sans libellé · ${action} · le dictionnaire ne la nomme pas.\n` +
+            '   L’écran rendrait « Décision enregistrée », ce qui est vrai et sans valeur.',
+        )
+      continue
+    }
+
+    /* UNE FAMILLE COMPOSÉE SE JUGE VALEUR PAR VALEUR.
+       Ce script acceptait un PRÉFIXE : `document.*` passait dès qu'une seule
+       clé commençait par `document.`. C'était un silence assumé — son témoin
+       le disait, « une action composée que le dictionnaire couvre par son
+       préfixe ». Il a coûté `document.declined` : le serveur écrit `declined`,
+       le dictionnaire disait `refused`, et toute demande de pièce refusée
+       s'inscrivait au registre sous « Action inconnue ». Une valeur nommée
+       blanchissait toute la famille. */
+    const famille = action.slice(0, -2)
+    const schema = composees[famille]
+    if (!schema) {
       plaintes.push(
-        `action sans libellé · ${action} · le dictionnaire ne la nomme pas.\n` +
-          '   L’écran rendrait « Décision enregistrée », ce qui est vrai et sans valeur.',
+        `famille composée non déclarée · ${action} · rien ne dit quelles valeurs elle prend.\n` +
+          '   Inscrivez-la dans `COMPOSEES` avec le schéma `zod` qui la borne.',
       )
+      continue
+    }
+    const valeurs = valeursDuSchema(serveur, schema)
+    if (!valeurs) {
+      plaintes.push(
+        `schéma introuvable · ${schema} · déclaré pour « ${famille} », absent de la source.\n` +
+          '   Sans lui, la famille ne serait vérifiée sur RIEN.',
+      )
+      continue
+    }
+    for (const valeur of valeurs) {
+      if (!nommees.has(`${famille}.${valeur}`))
+        plaintes.push(
+          `action sans libellé · ${famille}.${valeur} · le dictionnaire ne la nomme pas.\n` +
+            '   L’écran rendrait « Décision enregistrée », ce qui est vrai et sans valeur.',
+        )
+    }
   }
 
   return plaintes
@@ -264,6 +321,11 @@ const SERVEUR_TEMOIN = `
     data: { parkId, action: \`d.\${corps.statut}\`, entity: 'X', entityId: x.id,
       payload: { sorte: 'x' } },
   })
+  await prisma.auditEvent.create({
+    data: { parkId, action: corps.oui ? 'e.oui' : 'e.non', entity: 'X', entityId: x.id,
+      payload: {} },
+  })
+  const schemaTemoin = z.object({ statut: z.enum(['fait', 'defait']) })
 `
 const CLIENT_TEMOIN = `
 const DETAIL: Record<string, Champ[]> = {
@@ -287,16 +349,29 @@ const DICTIONNAIRE_TEMOIN = `
         d: {
           fait: 'D',
         },
+        e: {
+          oui: 'E oui',
+        },
         unknown: 'Décision enregistrée',
       },
 `
+/* `d.defait` : la famille composée est jugée VALEUR PAR VALEUR — `d.fait`
+   existe, et ne blanchit plus sa sœur. C'est le défaut qui a coûté
+   `document.declined`.
+   `e.non` : la forme TERNAIRE est vue. Le collecteur d'origine ne la relevait
+   pas du tout, et `e.oui` reste muet pour montrer qu'on ne prend pas le
+   premier littéral mais TOUS. */
 const TEMOIN_ATTENDU = [
   'champ absent · b.renomme.ancienNom',
   'recette orpheline · z.disparue',
   'action sans libellé · c.sansLibelle',
+  'action sans libellé · d.defait',
+  'action sans libellé · e.non',
 ]
 
-const obtenu = plaintesDe(SERVEUR_TEMOIN, CLIENT_TEMOIN, DICTIONNAIRE_TEMOIN).map((p) =>
+const obtenu = plaintesDe(SERVEUR_TEMOIN, CLIENT_TEMOIN, DICTIONNAIRE_TEMOIN, {
+  d: 'schemaTemoin',
+}).map((p) =>
   p.split(' · ').slice(0, 2).join(' · '),
 )
 if (JSON.stringify(obtenu.sort()) !== JSON.stringify([...TEMOIN_ATTENDU].sort())) {
