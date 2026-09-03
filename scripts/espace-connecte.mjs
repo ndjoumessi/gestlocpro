@@ -117,6 +117,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { exit } from 'node:process'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
+import { exigerUnPortLibre } from './port-libre.mjs'
 import {
   MESURER_CIBLES,
   PLANCHER_CIBLE,
@@ -373,7 +374,25 @@ function construireLeServeur() {
   }
 }
 
-function servir() {
+async function servir() {
+  /*
+    LE PORT DOIT ÊTRE LIBRE AVANT QU'ON LANCE QUOI QUE CE SOIT.
+
+    Cette porte était la SEULE du dépôt à ne pas avoir ce contrôle, et c'est
+    elle qui l'a payé. Son fils meurt en silence sur `EADDRINUSE` — `stdio:
+    'ignore'` — pendant que la boucle d'attente reçoit un 200 de l'intrus : la
+    porte mesurait alors un serveur qu'elle n'avait pas lancé, et rendait VERT.
+
+    Relevé le 2026-09-03 : un orphelin de 3 h 43 tenait le 4197. Toutes les
+    exécutions de cette porte, ce matin-là, ont été vertes à tort — et le
+    premier passage contre un serveur frais a immédiatement trouvé un défaut de
+    produit que ces verts cachaient.
+
+    ET L'ORPHELIN NAÎT DE L'ÉCHEC : un passage qui lève avant son `kill` laisse
+    son serveur derrière lui, qui empoisonne le suivant. Le refus casse cette
+    chaîne au lieu de la propager.
+  */
+  await exigerUnPortLibre('espace-connecte', BASE, PORT)
   return new Promise((resoudre, rejeter) => {
     const fils = spawn(
       'node',
