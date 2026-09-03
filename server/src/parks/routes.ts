@@ -3039,6 +3039,12 @@ parksRouter.get(
           role: true,
           createdAt: true,
           userId: true,
+          /* LA PORTÉE, sans laquelle les listes ci-dessous sont ambiguës : une
+             liste vide vaut « tout le parc » sous `wholePark` et « rien du
+             tout » sous `declared`. L'écran affichait « Gère tout le parc »
+             dans les deux cas — donc l'inverse de la vérité pour tout
+             gestionnaire fraîchement invité. */
+          scope: true,
           /* LES IMMEUBLES CONFIÉS. Le registre dit qui accède et à quoi il est
              relié ; il ne disait pas SUR QUOI. Un gestionnaire borné à un
              immeuble sur trois y figurait exactement comme celui qui les gère
@@ -3167,9 +3173,14 @@ parksRouter.get(
           m.user.tenantProfile && m.user.tenantProfile.parkId === parkId
             ? (m.user.tenantProfile.leases[0]?.unit.label ?? null)
             : null,
+        /* LA PORTÉE VOYAGE AVEC LES LISTES, et elle seule les désambiguïse.
+           Ce commentaire disait que le sens du vide « est celui du modèle » —
+           c'était vrai quand un seul état produisait des listes vides. Depuis
+           que l'adhésion naît `declared`, le vide a deux sens opposés, et
+           l'écran ne pouvait pas les distinguer. */
+        scope: m.scope,
         /* Liste VIDE et non `null` : c'est la forme que la route de délégation
-           accepte en retour, et l'écran n'a pas à traduire entre les deux. Son
-           sens — « tout le parc » — est celui du modèle, et il est écrit là-bas. */
+           accepte en retour, et l'écran n'a pas à traduire entre les deux. */
         buildingIds: m.buildings.map((b) => b.buildingId),
         unitIds: m.units.filter((u) => !u.exclue).map((u) => u.unitId),
         excludedUnitIds: m.units.filter((u) => u.exclue).map((u) => u.unitId),

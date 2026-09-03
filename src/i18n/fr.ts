@@ -1628,10 +1628,17 @@ export const fr = {
       /* LES NOMS QUI DIVERGENT. Une QUESTION, jamais un verdict : un nom
          d'épouse, une société qui loue pour un salarié, un diminutif. */
       nameMismatch: 'Le nom ne correspond pas',
-      /* CONFIER UN IMMEUBLE. « Tout le parc » est l'état par défaut d'un
-         gestionnaire, et non une alerte : le libellé le CONSTATE, il ne le
-         reproche pas. C'est le propriétaire qui décide de restreindre. */
+      /* CONFIER UN IMMEUBLE. Le libellé CONSTATE, il ne reproche pas : c'est
+         le propriétaire qui décide de restreindre.
+         CE COMMENTAIRE DISAIT « l'état par défaut d'un gestionnaire », ET C'EST
+         DEVENU FAUX : depuis que l'adhésion naît `declared`, le défaut est de
+         ne RIEN voir. « Tout le parc » ne vaut plus que pour les adhésions
+         d'avant. Voir `scopeNothing`, sa jumelle. */
       scopeAll: 'Gère tout le parc',
+      /* L'ÉTAT DE NAISSANCE, et le plus fréquent des deux. Il se dit, parce que
+         le registre est le seul écran d'où le propriétaire peut s'apercevoir
+         qu'il n'a encore rien confié — et qu'il y lisait jusqu'ici l'inverse. */
+      scopeNothing: 'Rien ne lui est encore confié',
       /* Le compte du RESTE, et par clés sœurs : « et 1 autre » ne se dit pas
          « et 1 autres ». */
       scopeMore: 'et {count} autres',

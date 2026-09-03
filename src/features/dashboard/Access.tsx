@@ -387,7 +387,15 @@ export function Access() {
                   {m.role === 'manager' && (
                     <span className="text-body text-muted">
                       {(m.buildingIds ?? []).length === 0 && (m.unitIds ?? []).length === 0
-                        ? t('app.access.scopeAll')
+                        ? /* DEUX VIDES, ET ILS DISENT LE CONTRAIRE L'UN DE
+                             L'AUTRE. `declared` sans rien de confié ne voit
+                             RIEN ; c'est l'état de naissance, et l'écran
+                             annonçait « tout le parc » dessus. Le silence du
+                             serveur, lui, garde l'ancien libellé : il ne dit
+                             pas `declared`, il ne dit rien. */
+                          m.scope === 'declared'
+                          ? t('app.access.scopeNothing')
+                          : t('app.access.scopeAll')
                         : t('app.access.scopeSome', {
                             names: replier([
                               ...immeublesDuParc
@@ -1086,6 +1094,18 @@ interface MembreApi {
   unitIds?: string[]
   /** Les logements EXCLUS des immeubles confiés — « tout sauf ceux-là ». */
   excludedUnitIds?: string[]
+  /**
+   * CE QUE LE VIDE VEUT DIRE, et sans quoi les listes ci-dessus sont ambiguës.
+   *
+   * `wholePark` : listes vides = gère tout le parc — les adhésions d'avant.
+   * `declared`  : listes vides = ne voit RIEN — l'état de naissance depuis le
+   *               lot de la portée, donc le cas le plus fréquent.
+   *
+   * Facultatif, et son ABSENCE N'EST PAS `declared` : un serveur d'avant ce lot
+   * ne le rend pas, et conclure « rien de confié » de son silence inventerait
+   * un bornage sur des gestionnaires qui gèrent tout.
+   */
+  scope?: 'wholePark' | 'declared'
   since: string
 }
 
