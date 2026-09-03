@@ -623,6 +623,21 @@ export const api = {
 
   revokeMembership: (parkId: string, membershipId: string) =>
     requete<void>(`/parks/${parkId}/memberships/${membershipId}/revoke`, { method: 'PATCH' }),
+  /**
+   * DEMANDER L'ACCÈS À UN PARC, sans code, en désignant son propriétaire.
+   *
+   * Le serveur répond 202 que l'adresse existe ou non : cette promesse est la
+   * sienne, et l'écran ne doit surtout pas la contredire en annonçant un envoi
+   * conditionnel. Il dit « demande transmise », toujours.
+   */
+  requestAccess: (ownerEmail: string) =>
+    requete<void>('/access-requests', { method: 'POST', body: JSON.stringify({ ownerEmail }) }),
+  /** Accorder ou refuser une demande. Propriétaire seul. */
+  decideRequest: (parkId: string, membershipId: string, accorder: boolean) =>
+    requete<void>(`/parks/${parkId}/memberships/${membershipId}/decision`, {
+      method: 'PATCH',
+      body: JSON.stringify({ accorder }),
+    }),
 
   issueInvitation: <T>(
     parkId: string,

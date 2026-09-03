@@ -1,7 +1,7 @@
 import { PageHeader } from '@/components/layout/PageHeader'
 import { EmptyState } from '@/components/primitives/DataTable'
 import { useT } from '@/i18n/I18nProvider'
-import { RejoindreUnParc } from './Onboarding'
+import { DemanderLAcces, RejoindreUnParc } from './Onboarding'
 
 /**
  * UN COMPTE QUI N'APPARTIENT À AUCUN PARC.
@@ -37,6 +37,11 @@ export function SansParc() {
       {/* `level={2}` : le titre de page tient déjà le premier niveau. */}
       <EmptyState icon="info" level={2} title={t('app.noPark.body')} body={t('app.noPark.hint')} />
       <RejoindreUnParc />
+      {/* ET LA SORTIE DE CEUX QUI N'ONT PAS DE CODE. La carte du dessus
+          suppose qu'on vous en ait remis un ; ce compte-ci est peut-être
+          arrivé avant, ou son propriétaire ne sait pas qu'il doit en
+          émettre un. Sans elle, l'écran restait une impasse pour lui. */}
+      <DemanderLAcces />
     </>
   )
 }

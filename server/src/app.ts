@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url'
 import { politiqueDeSecurite } from './politiqueDeSecurite.js'
 import { env } from './env.js'
 import { authRouter } from './auth/routes.js'
-import { parksRouter, rejoindreRouter } from './parks/routes.js'
+import { demandesDAccesRouter, parksRouter, rejoindreRouter } from './parks/routes.js'
 import { SourceBCE, creerServiceDeTaux, type SourceDeTaux } from './taux/taux.js'
 
 /**
@@ -354,6 +354,10 @@ export function createApp(options: { taux?: SourceDeTaux } = {}) {
   // Hors de `/api/parks/:parkId` : on ne peut pas exiger l'appartenance à un
   // parc pour demander à le rejoindre.
   app.use('/api/join', rejoindreRouter)
+  /* Demander l'accès SANS code, en désignant le parc par son propriétaire.
+     Voisine de `/api/join` et distincte d'elle : l'une consomme un droit
+     déjà accordé, l'autre en réclame un qui ne l'est pas. */
+  app.use('/api/access-requests', demandesDAccesRouter)
   app.use('/api/parks', parksRouter)
 
   // 404 en JSON pour l'API : le client parse toutes ses réponses, et une page

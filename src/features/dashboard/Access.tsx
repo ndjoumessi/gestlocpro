@@ -264,6 +264,7 @@ export function Access() {
      alors de ne rien proposer plutôt que de tomber. */
   const fichesLibres = registre?.unlinkedTenants ?? []
   const invitations = registre?.invitations ?? []
+  const demandes = registre?.requests ?? []
   /* Les immeubles du parc, tels que le registre les rend. `?? []` pour la même
      raison que les fiches libres : un serveur d'avant ce lot n'en rend aucun, et
      l'écran ne propose alors pas un geste qu'il ne saurait pas remplir. */
@@ -323,6 +324,79 @@ export function Access() {
           note={t('app.access.kpiInvitationsNote')}
         />
       </div>
+
+      {/*
+        LES DEMANDES PASSENT DEVANT LES MEMBRES, et seulement quand il y en a.
+
+        C'est la seule partie de cet écran qui attend une DÉCISION ; le reste
+        constate. La reléguer sous deux tableaux ferait attendre quelqu'un
+        derrière une porte que personne ne regarde.
+
+        PROPRIÉTAIRE SEUL, comme la route qui les tranche : un gestionnaire qui
+        les verrait sans pouvoir agir lirait une file qui ne le concerne pas.
+      */}
+      {estProprietaire && demandes.length > 0 && (
+        <Card flush>
+          <CardHeader
+            title={t('app.access.requestsTitle')}
+            description={t('app.access.requestsBody')}
+          />
+          <DataTable<DemandeApi>
+            caption={t('app.access.requestsTitle')}
+            rows={demandes}
+            rowKey={(d) => d.id}
+            fiches
+            columns={[
+              {
+                key: 'nom',
+                role: 'identite',
+                header: t('app.access.member'),
+                render: (d) => (
+                  <>
+                    <div className="text-body font-medium">{d.fullName}</div>
+                    <div className="text-caption text-muted">{d.email}</div>
+                  </>
+                ),
+              },
+              {
+                key: 'decision',
+                header: t('app.access.action'),
+                render: (d) => (
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      loading={enCours === d.id}
+                      onClick={() =>
+                        agir(
+                          d.id,
+                          () => api.decideRequest(parkId!, d.id, true),
+                          t('app.access.granted'),
+                        )
+                      }
+                    >
+                      {t('app.access.grant')}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      loading={enCours === d.id}
+                      onClick={() =>
+                        agir(
+                          d.id,
+                          () => api.decideRequest(parkId!, d.id, false),
+                          t('app.access.refused'),
+                        )
+                      }
+                    >
+                      {t('app.access.refuse')}
+                    </Button>
+                  </div>
+                ),
+              },
+            ]}
+          />
+        </Card>
+      )}
 
       <Card flush>
         <CardHeader
@@ -1145,8 +1219,26 @@ interface ImmeubleApi {
   units?: { id: string; label: string }[]
 }
 
+/**
+ * UNE DEMANDE D'ACCÈS EN ATTENTE — ni membre, ni invitation.
+ *
+ * Elle ne porte ni périmètre ni fiche : il n'y a rien à confier à quelqu'un qui
+ * n'est pas entré. Le compte et la date, et c'est tout ce qu'une décision
+ * demande.
+ */
+interface DemandeApi {
+  id: string
+  userId: string
+  fullName: string
+  email: string
+  since: string
+}
+
 interface RegistreApi {
   members: MembreApi[]
+  /** Facultatif : un serveur d'avant ce lot n'en rend aucune, et l'écran ne
+      propose alors pas un arbitrage qu'il ne saurait pas transmettre. */
+  requests?: DemandeApi[]
   /** Facultatif, même raison que `unlinkedTenants` : un serveur d'avant ce lot. */
   buildings?: ImmeubleApi[]
   invitations: InvitationApi[]

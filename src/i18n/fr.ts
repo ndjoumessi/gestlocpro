@@ -1659,6 +1659,14 @@ export const fr = {
       scopeExcept: '— sauf {names}',
       scopeSome: 'Gère : {names}',
       scopeAction: 'Confier des immeubles',
+      /* LES DEMANDES, À PART DES MEMBRES : rangée parmi eux, une demande se
+         lirait comme un accès déjà accordé, sur l'écran qui sert à décider. */
+      requestsTitle: 'Demandes d’accès',
+      requestsBody: 'Ces comptes demandent à gérer ce parc. Accorder ouvre l’accès sans rien confier : vous choisirez ensuite les immeubles.',
+      grant: 'Accorder',
+      refuse: 'Refuser',
+      granted: 'Accès accordé · rien ne lui est encore confié',
+      refused: 'Demande refusée',
       scopeTitle: 'Immeubles confiés à {name}',
       scopeBody: 'Ce gestionnaire ne verra que les immeubles cochés : leurs baux, leurs loyers et leurs cautions.',
       scopeEmptyMeansAll: 'Aucune case cochée lui rend le parc entier. C’est ainsi qu’on défait une délégation.',
@@ -2014,6 +2022,15 @@ export const fr = {
       join: 'Rejoindre',
       joined: 'Parc rejoint · votre espace est à jour',
       joinRefused: 'Ce code ne peut pas être utilisé. Vérifiez-le, ou demandez-en un nouveau.',
+      /* DEMANDER SANS CODE. Le serveur répond PAREIL que l'adresse existe ou
+         non — sinon la route deviendrait un détecteur de clientèle. L'écran
+         ne doit donc jamais promettre plus : « transmise », jamais « reçue ». */
+      requestTitle: 'Demander l’accès à un parc',
+      requestBody: 'Vous n’avez pas de code ? Indiquez l’adresse e-mail du propriétaire. Votre demande apparaîtra dans son registre des accès, et c’est lui qui décidera.',
+      requestEmail: 'Adresse e-mail du propriétaire',
+      request: 'Envoyer la demande',
+      requested: 'Demande transmise · le propriétaire décidera',
+      requestFailed: 'La demande n’a pas pu être transmise. Réessayez.',
       title: 'Prise en main et délégation des droits',
       // La seconde proposition promettait d'inviter depuis cet écran, qui n'en
       // porte ni bouton ni lien.

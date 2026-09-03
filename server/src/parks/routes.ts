@@ -3026,7 +3026,17 @@ parksRouter.get(
     const { parkId } = req.adhesion!
     const maintenant = new Date()
 
-    const [membres, invitations, fichesOrphelines, immeublesDuParc] = await Promise.all([
+    const [demandes, membres, invitations, fichesOrphelines, immeublesDuParc] = await Promise.all([
+      prisma.membership.findMany({
+        where: { parkId, status: 'requested' },
+        orderBy: { createdAt: 'asc' },
+        select: {
+          id: true,
+          userId: true,
+          createdAt: true,
+          user: { select: { fullName: true, email: true } },
+        },
+      }),
       prisma.membership.findMany({
         where: { parkId, status: 'active' },
         // `ParkRole` est déclaré `owner, manager, tenant` : PostgreSQL trie ses
@@ -3147,6 +3157,21 @@ parksRouter.get(
         name: i.name,
         district: i.district,
         units: i.units.map((u) => ({ id: u.id, label: u.label })),
+      })),
+      /*
+        LES DEMANDES, À PART DES MEMBRES.
+
+        Rangée parmi eux, une demande se lirait comme un accès déjà accordé —
+        sur le seul écran qui sert à en décider. Elles portent le même compte et
+        la même date que les membres, et rien d'autre : ce qui reste à trancher
+        n'a ni périmètre ni fiche.
+      */
+      requests: demandes.map((d) => ({
+        id: d.id,
+        userId: d.userId,
+        fullName: d.user.fullName,
+        email: d.user.email,
+        since: d.createdAt.toISOString(),
       })),
       members: membres.map((m) => ({
         id: m.id,
@@ -3763,6 +3788,59 @@ parksRouter.patch(
     })
 
     res.status(200).json({ buildingIds: corps.buildingIds, unitIds, excludedUnitIds })
+  },
+)
+
+/**
+ * ACCORDER OU REFUSER UNE DEMANDE D'ACCÈS.
+ *
+ * PROPRIÉTAIRE SEUL, comme le périmètre : un gestionnaire qui arbitrerait les
+ * demandes s'accorderait la sienne, et la porte n'en serait plus une.
+ *
+ * ELLE NE TOUCHE QUE LES DEMANDES. `status: 'requested'` dans le filtre, et
+ * c'est délibéré : sans lui, cette route accorderait — ou révoquerait — une
+ * adhésion ACTIVE, en doublon silencieux de `revoke` et sans sa garde
+ * d'auto-retrait.
+ *
+ * ACCORDÉE, ELLE NAÎT `declared` — elle l'était déjà à la demande, et on le
+ * repose ici pour que la ligne dise ce qu'elle fait. Le propriétaire a dit
+ * « entrez », pas « voyez tout » : le registre lui dira ensuite « rien ne lui
+ * est encore confié ».
+ *
+ * REFUSÉE, elle passe `revoked` plutôt que d'être effacée. Une ligne effacée
+ * laisserait le demandeur redemander en boucle sans que rien ne garde trace du
+ * refus ; et `revoked` a déjà un sens dans ce produit — la porte fermée, que
+ * seul un code peut rouvrir.
+ */
+parksRouter.patch(
+  '/:parkId/memberships/:membershipId/decision',
+  exigerAppartenance,
+  exigerRole('owner'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const corps = z.object({ accorder: z.boolean() }).parse(req.body)
+    const brut = req.params.membershipId
+    const membershipId = typeof brut === 'string' ? brut : ''
+
+    // `parkId` ET `requested` dans le filtre : sans le premier, un identifiant
+    // deviné trancherait dans un parc dont on n'est pas membre ; sans le
+    // second, on toucherait une adhésion active.
+    const demande = await prisma.membership.findFirst({
+      where: { id: membershipId, parkId, status: 'requested' },
+      select: { id: true },
+    })
+    if (!demande) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    await prisma.membership.update({
+      where: { id: demande.id },
+      data: corps.accorder
+        ? { status: 'active', scope: 'declared' }
+        : { status: 'revoked' },
+    })
+    res.status(204).end()
   },
 )
 
@@ -6286,6 +6364,87 @@ parksRouter.delete(
  * Hors de `parksRouter` : on ne peut pas exiger l'appartenance à un parc pour
  * demander à le rejoindre. Seul le compte est requis.
  */
+/**
+ * DEMANDER L'ACCÈS À UN PARC, SANS CODE.
+ *
+ * ═══ UNE CASE SANS ROUTE, RETIRÉE POUR ÇA ═══
+ *
+ * L'assistant d'inscription portait « Je n'ai pas de code — envoyer une demande
+ * d'accès », et rien ne la recevait : la cocher produisait un compte rattaché à
+ * aucun parc. Elle a été retirée. Le modèle, lui, attendait depuis le début —
+ * `MembershipStatus.requested` était déclaré, documenté, et AUCUNE LIGNE NE
+ * L'ÉCRIVAIT. Un état de schéma sans producteur est une fonctionnalité qui
+ * n'existe pas.
+ *
+ * ═══ LE PARC SE DÉSIGNE PAR SON PROPRIÉTAIRE ═══
+ *
+ * Un gestionnaire qui arrive ne connaît aucun identifiant de parc. Il connaît
+ * son client. La demande atterrit donc dans le registre des accès de ce
+ * propriétaire — et s'il en tient plusieurs, dans chacun : c'est lui qui sait
+ * lequel, pas nous, et le lui demander supposerait qu'il ait déjà nommé ses
+ * parcs à quelqu'un qui n'y est pas entré.
+ *
+ * ═══ LA RÉPONSE NE VARIE JAMAIS ═══
+ *
+ * 202 que l'adresse existe ou non, qu'une demande soit posée ou non. C'est la
+ * règle des codes d'invitation — « les distinguer dirait à qui essaie des codes
+ * au hasard lesquels ont existé » — et elle vaut plus encore ici : une réponse
+ * qui varie ferait de cette route un DÉTECTEUR DE CLIENTÈLE, où l'on essaie des
+ * adresses pour savoir qui gère du locatif.
+ *
+ * ═══ CE QU'ELLE N'OUVRE PAS ═══
+ *
+ * Rien. `requested` n'est pas `active` : `exigerAppartenance` et `/auth/me`
+ * filtrent tous deux sur `active`, et une demande ne donne donc aucun accès
+ * tant que le propriétaire n'a pas tranché.
+ */
+export const demandesDAccesRouter = Router()
+demandesDAccesRouter.use(exigerCompte)
+
+demandesDAccesRouter.post('/', async (req: Request, res: Response) => {
+  const corps = z
+    .object({ ownerEmail: z.string().trim().toLowerCase().email().max(320) })
+    .parse(req.body)
+
+  const proprietaire = await prisma.userAccount.findUnique({
+    where: { email: corps.ownerEmail },
+    select: {
+      memberships: {
+        where: { role: 'owner', status: 'active' },
+        select: { parkId: true },
+      },
+    },
+  })
+
+  for (const { parkId } of proprietaire?.memberships ?? []) {
+    /* DÉJÀ MEMBRE — à quelque titre et quel que soit le statut — on ne touche à
+       rien. Poser une demande par-dessus une adhésion active collerait un
+       second rôle au même compte dans le même parc ; par-dessus une demande,
+       on la dédoublerait ; par-dessus une révocation, on contournerait le
+       retrait sans que le propriétaire l'ait rouvert. */
+    const deja = await prisma.membership.findFirst({
+      where: { userId: req.compteId!, parkId },
+      select: { id: true },
+    })
+    if (deja) continue
+
+    await prisma.membership.create({
+      data: {
+        userId: req.compteId!,
+        parkId,
+        role: 'manager',
+        status: 'requested',
+        /* `declared` DÈS LA DEMANDE. Accordée, elle ne doit pas ouvrir le parc
+           entier par le défaut du schéma — le propriétaire dit « entrez », pas
+           « voyez tout ». */
+        scope: 'declared',
+      },
+    })
+  }
+
+  res.status(202).end()
+})
+
 export const rejoindreRouter = Router()
 rejoindreRouter.use(exigerCompte)
 

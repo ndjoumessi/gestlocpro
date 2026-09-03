@@ -254,6 +254,88 @@ export function RejoindreUnParc({ variante = 'parc' }: { variante?: 'parc' | 'lo
   )
 }
 
+/**
+ * DEMANDER L'ACCÈS SANS CODE, en désignant le parc par son propriétaire.
+ *
+ * ═══ LA JUMELLE DE `RejoindreUnParc` ═══
+ *
+ * Celle-là consomme un droit déjà accordé ; celle-ci en réclame un qui ne l'est
+ * pas. L'assistant d'inscription portait autrefois « Je n'ai pas de code —
+ * envoyer une demande d'accès » SANS aucune route derrière : la cocher
+ * produisait un compte rattaché à rien, et elle a été retirée pour ça. Elle
+ * revient ici, avec son récepteur.
+ *
+ * ═══ LE MESSAGE NE PROMET JAMAIS PLUS QUE LE SERVEUR ═══
+ *
+ * Celui-ci répond 202 que l'adresse existe ou non — sinon la route deviendrait
+ * un détecteur de clientèle, où l'on essaie des adresses pour savoir qui gère
+ * du locatif. L'écran dit donc « transmise », jamais « reçue » : annoncer une
+ * réception conditionnelle trahirait exactement ce que le serveur protège.
+ */
+export function DemanderLAcces() {
+  const t = useT()
+  const { notify } = useToast()
+  const { etat } = useSession()
+  const [adresse, setAdresse] = useState('')
+  const [envoi, setEnvoi] = useState(false)
+  const [erreur, setErreur] = useState<string | null>(null)
+
+  /* Le même garde que sa jumelle : un compte qui appartient déjà à un parc n'a
+     rien à demander depuis cet écran. */
+  if (etat.statut !== 'connecte' || etat.adhesions.length > 0) return null
+
+  return (
+    <Card className="mt-6 flex flex-col gap-4">
+      <CardHeader
+        title={t('app.onboarding.requestTitle')}
+        description={t('app.onboarding.requestBody')}
+        className="mb-0"
+      />
+      <Field label={t('app.onboarding.requestEmail')} {...(erreur ? { error: erreur } : {})}>
+        {(props) => (
+          <Input
+            {...props}
+            name="ownerEmail"
+            type="email"
+            autoComplete="email"
+            value={adresse}
+            invalid={Boolean(erreur)}
+            onChange={(e) => {
+              setAdresse(e.target.value)
+              setErreur(null)
+            }}
+          />
+        )}
+      </Field>
+      <div className="flex justify-end">
+        <Button
+          loading={envoi}
+          disabled={adresse.trim().length === 0}
+          onClick={async () => {
+            setEnvoi(true)
+            try {
+              await api.requestAccess(adresse.trim())
+              /* TOUJOURS LE MÊME MESSAGE, parce que le serveur rend toujours la
+                 même chose. Un « nous avons prévenu Untel » ne serait ni vrai
+                 ni sûr. */
+              notify(t('app.onboarding.requested'), { tone: 'ok' })
+              setAdresse('')
+            } catch {
+              /* Seul un échec de TRANSPORT peut arriver ici : le serveur ne
+                 refuse pas cette route sur le fond. */
+              setErreur(t('app.onboarding.requestFailed'))
+            } finally {
+              setEnvoi(false)
+            }
+          }}
+        >
+          {t('app.onboarding.request')}
+        </Button>
+      </div>
+    </Card>
+  )
+}
+
 export function Onboarding() {
   const t = useT()
   const base = useBase()
