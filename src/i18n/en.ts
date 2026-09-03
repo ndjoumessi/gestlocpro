@@ -561,6 +561,7 @@ export const en: Dictionary = {
 
     dashboard: {
       scopedNotice: 'You manage part of this portfolio. The figures on this screen cover only the buildings assigned to you.',
+      scopedNoticeNothing: 'Nothing in this portfolio has been assigned to you yet. These screens stay empty until a building is assigned to you.',
       titleOwner: 'Consolidated portfolio view',
       titleManager: 'My management day',
       titleTenant: 'My tenant space',
@@ -698,6 +699,8 @@ export const en: Dictionary = {
       deleteBuildingDone: 'Building deleted',
       emptyTitle: 'No units yet',
       emptyBody: 'Declare a building, then add its units.',
+      emptyScopedTitle: 'Nothing assigned to you yet',
+      emptyScopedBody: 'This portfolio will show units once a building has been assigned to you.',
       unit: 'Unit',
       building: 'Building',
       type: 'Type',

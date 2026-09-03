@@ -49,8 +49,36 @@ import { usePortfolio } from '@/data/PortfolioProvider'
  */
 export function NoteDePerimetre({ className }: { className?: string }) {
   const t = useT()
-  const { scoped } = usePortfolio()
+  const { scoped, buildings } = usePortfolio()
   if (!scoped) return null
+  /*
+    ZÉRO N'EST PAS « UNE PARTIE ».
+
+    `scoped` dit qu'on est borné, jamais à quoi : un gestionnaire dont rien
+    n'est confié le porte comme celui qui tient deux immeubles sur trois. La
+    phrase d'origine lui affirmait donc qu'il gère « une partie de ce parc »
+    dans l'état de NAISSANCE de toute adhésion — celui où il ne gère rien.
+
+    LA RÈGLE DU FAIT SANS L'ÉTENDUE TIENT. Dire « rien ne vous a été confié »
+    ne révèle pas un immeuble de plus : c'est un fait sur SON périmètre, qu'il
+    constate déjà en regardant des écrans vides. « 2 sur 3 », lui, dirait qu'un
+    troisième existe — et reste refusé.
+  */
+  /*
+    DEUX RETOURS ET NON UN TERNAIRE DANS L'APPEL, et ce n'est pas du style.
+    `notes-conditionnelles.mjs` lit ces clés STATIQUEMENT sur le `<Notice>` qui
+    les porte. Écrit `t(cond ? 'a' : 'b')`, il ne voyait plus aucune des deux et
+    a refusé — « DÉCLARATION PÉRIMÉE : n'est portée par aucun <Notice> ». La
+    porte avait raison : une clé qu'elle ne voit plus est une note qu'elle ne
+    garde plus.
+  */
+  if (buildings.length === 0) {
+    return (
+      <Notice tone="neutral" icon="shield" className={className}>
+        {t('app.dashboard.scopedNoticeNothing')}
+      </Notice>
+    )
+  }
   return (
     <Notice tone="neutral" icon="shield" className={className}>
       {t('app.dashboard.scopedNotice')}

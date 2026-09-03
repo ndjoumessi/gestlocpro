@@ -79,7 +79,8 @@ export function Portfolio() {
   const exportCsv = useCsvExport()
   const csvMoney = useCsvMoney()
   const { money } = useCurrency()
-  const { units, buildings: BUILDINGS, buildingById, loading, removeBuilding } = usePortfolio()
+  const { units, buildings: BUILDINGS, buildingById, loading, removeBuilding, scoped } =
+    usePortfolio()
   const { notify } = useToast()
   /** L'immeuble dont la suppression attend confirmation. */
   const [aSupprimer, setASupprimer] = useState<Immeuble | null>(null)
@@ -426,8 +427,18 @@ export function Portfolio() {
             <EmptyState
               icon="building"
               level={2}
-              title={t('app.portfolio.emptyTitle')}
-              body={t('app.portfolio.emptyBody')}
+              /*
+                DEUX VIDES, ET UN SEUL APPELLE UN GESTE.
+
+                Le parc du propriétaire est vraiment vide, et le remplir est
+                vraiment son geste. Le gestionnaire borné, lui, regarde un parc
+                qui compte peut-être trois immeubles — on a seulement omis de
+                lui en confier un. Le texte générique lui prescrivait de
+                DÉCLARER un immeuble, bouton à l'appui : le produit l'invitait
+                à dédoubler le parc de son client.
+              */
+              title={t(scoped ? 'app.portfolio.emptyScopedTitle' : 'app.portfolio.emptyTitle')}
+              body={t(scoped ? 'app.portfolio.emptyScopedBody' : 'app.portfolio.emptyBody')}
             />
           ) : (
           <EmptyState

@@ -184,6 +184,20 @@ const REGISTRE = {
       'le gestionnaire borné. Ce n’est donc plus un aveu d’absence, c’est un ' +
       'renvoi : ce script-ci ne peut pas l’atteindre, une autre porte le fait.',
   },
+  'app.dashboard.scopedNoticeNothing': {
+    nonMesurable:
+      'La jumelle de `scopedNotice`, et elle est MOINS couverte qu’elle — ce qui ' +
+      'se dit plutôt que de se ranger sous le même motif. Elle ne paraît qu’à un ' +
+      'gestionnaire borné À QUI RIEN N’EST CONFIÉ. La démonstration n’a ni ' +
+      'adhésion ni serveur, donc pas plus qu’à sa voisine. ' +
+      'ET `espace-connecte` NE LA PEINT PAS NON PLUS : son gestionnaire de sonde ' +
+      'est borné à un immeuble sur deux, ce qui est précisément l’AUTRE branche. ' +
+      'Lui donner un quatrième profil — un gestionnaire sans rien — est un lot à ' +
+      'part, nommé ici et non fait. ' +
+      'CE QUI LA GARDE AUJOURD’HUI : `rienNeLuiEstConfie.test.tsx`, sous jsdom, ' +
+      'sur les deux branches et leurs non-régressions. C’est une garde de rendu, ' +
+      'pas une mesure au navigateur, et l’écart est réel.',
+  },
   'app.onboarding.delegationOffNotice': {
     nonMesurable:
       'DEUX CONDITIONS À LA FOIS : un parc réglé sur `delegation: solo` — que la ' +

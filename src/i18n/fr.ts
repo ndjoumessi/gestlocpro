@@ -729,6 +729,13 @@ export const fr = {
          phrase dit ce qu'il faut pour ne pas lire ces chiffres comme ceux du
          parc entier, et rien de plus. */
       scopedNotice: 'Vous ne gérez qu’une partie de ce parc. Les chiffres de cet écran ne portent que sur les immeubles qui vous ont été confiés.',
+      /* RIEN, ET NON « UNE PARTIE ». Zéro immeuble confié n'est pas une
+         partie : la phrase d'à côté devenait fausse sur l'état de NAISSANCE
+         de tout gestionnaire. Elle énonce, elle ne prescrit pas — « demandez
+         au propriétaire » serait une consigne, et aucun écran ne porte ce
+         geste. Elle ne dit rien du parc non plus : c'est un fait sur SON
+         périmètre, qu'il constate déjà en regardant des écrans vides. */
+      scopedNoticeNothing: 'Rien ne vous a encore été confié dans ce parc. Ces écrans resteront vides tant qu’aucun immeuble ne vous sera confié.',
       titleOwner: 'Vue consolidée du parc',
       titleManager: 'Ma journée de gestion',
       titleTenant: 'Mon espace locataire',
@@ -925,6 +932,12 @@ export const fr = {
       deleteBuildingDone: 'Immeuble supprimé',
       emptyTitle: 'Aucun logement pour l’instant',
       emptyBody: 'Déclarez un immeuble, puis ajoutez-y vos logements.',
+      /* L'ÉTAT VIDE D'UN GESTIONNAIRE NON SERVI. Le générique lui disait de
+         DÉCLARER un immeuble — sur un parc qui en compte trois, et avec le
+         bouton à portée : le produit l'invitait à dédoubler le parc de son
+         client. */
+      emptyScopedTitle: 'Rien ne vous a encore été confié',
+      emptyScopedBody: 'Ce parc ne vous montrera des logements qu’une fois qu’un immeuble vous aura été confié.',
       unit: 'Unité',
       building: 'Immeuble',
       type: 'Type',
