@@ -623,6 +623,59 @@ const HORS_REPOS = /Modal$/
 // LE RELEVÉ
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * LES PLANCHERS DE LECTURE, ET ILS SONT EXPORTÉS POUR ÊTRE TENUS.
+ *
+ * ═══ CE QU'ILS SONT ═══
+ *
+ * Un motif de lecture qui cesse de trouver ne doit pas se taire : « zéro champ »
+ * et « je ne sais plus lire un champ » s'écrivent pareil dans un rapport.
+ * Asymétriques par construction — dépasser ne dérange personne, tomber dessous
+ * arrête tout.
+ *
+ * ═══ CE QU'ILS ÉTAIENT DEVENUS, MESURÉ LE 2026-09-03 ═══
+ *
+ * Leur commentaire promettait qu'ils « collent au réel plutôt que de flotter
+ * loin dessous ». Ils flottaient de 29 % à 68 % dessous :
+ *
+ *     titres composés            435 réels pour 140  →  68 % perdables
+ *     fichiers de test écartés   168 réels pour  60  →  64 %
+ *     sites interactifs          273 réels pour 120  →  56 %
+ *     composants indexés         318 réels pour 200  →  37 %
+ *     balises JSX lues          2563 réels pour 1800 →  30 %
+ *     fichiers scannés           100 réels pour  70  →  30 %
+ *     champs de formulaire       126 réels pour  90  →  29 %
+ *
+ * Le relevé des titres pouvait donc perdre LES DEUX TIERS de ce qu'il lit sans
+ * qu'une plainte sorte. Ce n'était plus un plancher, c'était une formalité.
+ *
+ * ═══ POURQUOI PERSONNE NE POUVAIT LE SAVOIR ═══
+ *
+ * Ces contrôles ne parlent QUE lorsqu'on passe dessous. Au-dessus, silence — et
+ * un plancher qu'on n'a pas à monter n'est jamais monté. Rien n'imprimait
+ * jamais l'écart. C'est le même défaut que `ROUTES_ATTENDUES` portait, réparé le
+ * même jour, à ceci près qu'il ne flottait que d'un cran.
+ *
+ * ═══ D'OÙ L'EXPORT ═══
+ *
+ * `planchersDeLecture.test.ts` compare ces valeurs au relevé RÉEL et refuse un
+ * écart de plus de 20 %. L'asymétrie d'exécution reste entière : ajouter des
+ * fichiers ne fait toujours pas rougir une porte au navigateur. C'est la suite
+ * serveur qui réclame la mise à jour, et elle dit quel nombre écrire.
+ *
+ * Posés à ~90 % du réel du 2026-09-03 : il faut environ 12 % de croissance pour
+ * que la garde réclame un tour de clé.
+ */
+export const PLANCHERS_DE_LECTURE = {
+  'fichiers scannés': 90,
+  'balises JSX lues': 2300,
+  'composants indexés': 285,
+  'sites interactifs': 245,
+  'champs de formulaire': 113,
+  'titres composés': 390,
+  'fichiers de test écartés': 151,
+}
+
 export function releverLesSources() {
   const routes = exigerUnInventairePlein(inventaireDesRoutes())
 
@@ -1357,13 +1410,13 @@ export function releverLesSources() {
    * confusion que ce lot existe pour rendre impossible.
    */
   const PLANCHERS = [
-    ['fichiers scannés', perimetre.fichiersScannes, 70],
-    ['balises JSX lues', perimetre.balisesLues, 1800],
-    ['composants indexés', perimetre.composantsIndexes, 200],
-    ['sites interactifs', focus.sitesInteractifs, 120],
-    ['champs de formulaire', libelles.champsTrouves, 90],
-    ['titres composés', titres.titresTrouves, 140],
-    ['fichiers de test écartés', perimetre.testsEcartes, 60],
+    ['fichiers scannés', perimetre.fichiersScannes, PLANCHERS_DE_LECTURE['fichiers scannés']],
+    ['balises JSX lues', perimetre.balisesLues, PLANCHERS_DE_LECTURE['balises JSX lues']],
+    ['composants indexés', perimetre.composantsIndexes, PLANCHERS_DE_LECTURE['composants indexés']],
+    ['sites interactifs', focus.sitesInteractifs, PLANCHERS_DE_LECTURE['sites interactifs']],
+    ['champs de formulaire', libelles.champsTrouves, PLANCHERS_DE_LECTURE['champs de formulaire']],
+    ['titres composés', titres.titresTrouves, PLANCHERS_DE_LECTURE['titres composés']],
+    ['fichiers de test écartés', perimetre.testsEcartes, PLANCHERS_DE_LECTURE['fichiers de test écartés']],
   ]
   for (const [quoi, combien, plancher] of PLANCHERS) {
     if (combien === 0) {
