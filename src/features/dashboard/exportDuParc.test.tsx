@@ -75,7 +75,11 @@ async function ouvrirLeParc(role: 'owner' | 'manager') {
               type: 'T2',
               surfaceSqm: 52,
               rentMinor: 90000,
-              tenant: 'Charlie Ngassa',
+              /* La forme que le serveur rend vraiment : un OBJET, pas un nom.
+                 La première rédaction posait la chaîne, et l'export écrivait
+                 « Aucun locataire » sans que le cas s'en aperçoive — il
+                 n'aurait rien gardé du tout. */
+              tenant: { id: 'loc-1', fullName: 'Charlie Ngassa', phoneE164: null },
               status: 'paid',
               leaseId: 'bail-1',
               paidMinor: 90000,
