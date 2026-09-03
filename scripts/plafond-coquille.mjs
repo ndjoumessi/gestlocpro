@@ -51,6 +51,7 @@ import { inventaireDesRoutes, exigerUnInventairePlein } from './inventaire/route
 import { POLICE_LARGE, imposerLaPoliceLarge } from './police-large.mjs'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
 import { neutraliserLApiLocale } from './api-locale-neutralisee.mjs'
+import { exigerUnPortLibre } from './port-libre.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -331,21 +332,7 @@ async function servir() {
     dépôt, une branche comparée — et la porte rendrait alors un vert sur un
     paquet que personne n'a construit.
   */
-  try {
-    await fetch(BASE + '/', { signal: AbortSignal.timeout(1500) })
-    throw new Error(
-      `plafond-coquille : quelque chose répond déjà sur ${BASE}.\n` +
-        `  Cette porte lance son propre serveur et refuse d'en mesurer un autre.\n` +
-        `  Souvent une prévisualisation orpheline d'un passage interrompu :\n` +
-        `    lsof -nP -iTCP:${PORT} -sTCP:LISTEN`,
-    )
-  } catch (erreur) {
-    /* L'ABSENCE DE RÉPONSE EST CE QU'ON VEUT : `fetch` lève, et l'on continue.
-       Seule notre propre plainte est relancée — la reconnaître par son message
-       plutôt que par son type évite d'inventer une classe d'erreur pour une
-       ligne. */
-    if (erreur instanceof Error && erreur.message.includes('répond déjà')) throw erreur
-  }
+  await exigerUnPortLibre('plafond-coquille', BASE, PORT)
   /*
     `--strictPort` : UNE PORTE NE MESURE PAS UN SERVEUR QU'ELLE N'A PAS LANCÉ.
 

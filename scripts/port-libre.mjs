@@ -23,15 +23,21 @@
  *
  * ═══ CE QU'IL RESTE À FAIRE, ET QUI N'EST PAS FAIT ICI ═══
  *
- * DIX scripts portent ce contrôle en copie — `couleur-non-seule`, `mesure-ui`,
- * `modales`, `notes-conditionnelles`, `plafond-coquille`, `plafond-vitrine`,
+ * C'EST FAIT. Les dix scripts qui portaient ce contrôle en copie l'appellent
+ * désormais : `couleur-non-seule`, `mesure-ui`, `modales`,
+ * `notes-conditionnelles`, `plafond-coquille`, `plafond-vitrine`,
  * `poids-ecrans`, `releve-refonte`, `series-lisibles`, `stabilite-au-pointage`.
- * Le compte a été RELEVÉ, pas estimé : la première rédaction de cet en-tête en
- * annonçait sept, de mémoire, et se trompait de trois.
+ * Avec `espace-connecte`, qui ne l'avait pas du tout, ils sont onze.
  *
- * Ce module ne sert pour l'instant qu'`espace-connecte`, celui qui ne l'avait
- * pas du tout. Les convertir est un lot mécanique, nommé ici et non fait — et
- * tant qu'il ne l'est pas, la prose vit à onze endroits.
+ * Le compte de dix avait été RELEVÉ, pas estimé : la première rédaction de cet
+ * en-tête en annonçait sept, de mémoire, et se trompait de trois. Les dix blocs
+ * étaient rigoureusement identiques au nom près — vérifié avant de les toucher,
+ * une seule forme distincte pour dix fichiers.
+ *
+ * CE QUE LA CONVERSION A CHANGÉ AU PASSAGE : les copies reconnaissaient leur
+ * propre plainte par son MESSAGE pour la relancer depuis un `catch`. Ce module
+ * n'en a pas besoin — il retient un booléen et lève après. Une ficelle en
+ * moins, et dix fois.
  */
 
 /**
