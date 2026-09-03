@@ -188,8 +188,15 @@ const ADRESSE_404 = '/adresse-qui-n-existe-pas'
  * dérange personne ; en retirer une le fait tomber et arrête tout. C'est la
  * seule direction où l'on veuille une alarme, parce qu'un écran sorti du champ
  * de la mesure se lit « aucun défaut » alors qu'il veut dire « pas regardé ».
+ *
+ * PASSÉ DE 23 À 24 LE 2026-09-03. Le produit avait gagné un écran depuis le
+ * 2026-08-22 et ce plancher ne l'avait pas suivi : il flottait donc À UN ÉCRAN
+ * SOUS LE RÉEL, ce que son premier paragraphe interdit. Un écran pouvait sortir
+ * du champ sans que rien ne tombe. Trouvé en cherchant pourquoi `releve-refonte`
+ * refusait son propre relevé, et non par une alarme — c'est le défaut d'un
+ * plancher : il ne dit jamais qu'il a vieilli.
  */
-export const ROUTES_ATTENDUES = 23
+export const ROUTES_ATTENDUES = 24
 
 /**
  * @returns {{adresse: string, roles: string[], origine: string, vitrine: boolean}[]}

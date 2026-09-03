@@ -368,13 +368,27 @@ try {
 }
 
 /* ─── LA GARDE DU RELEVÉ ──────────────────────────────────────────────────
-   Un relevé vide s'écrit exactement comme un produit sans défaut. Le compte
-   attendu est ÉCRIT et non dérivé du relevé : le dériver ferait passer un
-   balayage à zéro écran pour un balayage complet. Même piège que celui qu'une
-   mutation a trouvé deux lots de suite. */
-const ATTENDUS_MISE_EN_PAGE = 23 * 11 * 2 // 506
-const ATTENDUS_COULEUR = 23 * 2 * 2 // 92
-const ATTENDUS = ATTENDUS_MISE_EN_PAGE + ATTENDUS_COULEUR // 598
+   Un relevé vide s'écrit exactement comme un produit sans défaut.
+
+   L'ATTENTE SE DÉRIVE DE L'ENTRÉE, JAMAIS DU RELEVÉ. La distinction est tout :
+   dériver du RÉSULTAT ferait passer un balayage à zéro écran pour un balayage
+   complet — c'est le piège que la rédaction d'origine nommait, et il tient.
+   Dériver des LISTES QU'ON SE DONNE À PARCOURIR est l'inverse : on compare ce
+   qu'on a mesuré à ce qu'on s'était promis de mesurer, et un écran sauté, un
+   `continue` de trop ou une page qui lève font tomber le compte.
+
+   POURQUOI ÇA NE PEUT PAS S'EFFONDRER À ZÉRO : `exigerUnInventairePlein` refuse
+   un inventaire vide, et refuse même de descendre sous `ROUTES_ATTENDUES`. La
+   liste d'adresses ne peut donc pas maigrir en silence sous nos pieds.
+
+   CE QUE LA CONSTANTE ÉCRITE COÛTAIT. Elle valait `23 * 11 * 2`, fixée le
+   2026-08-22. Le produit a gagné un écran depuis, et ce script — qui n'est dans
+   AUCUNE chaîne, on le lance à la main par `npm run releve` — refusait son
+   propre relevé : « 624 mesurés pour 598 attendus ». Une garde qui rougit sur
+   sa propre péremption n'apprend rien à personne. */
+const ATTENDUS_MISE_EN_PAGE = ADRESSES.length * LARGEURS.length * LANGUES.length
+const ATTENDUS_COULEUR = ADRESSES.length * LARGEURS_COULEUR.length * THEMES.length
+const ATTENDUS = ATTENDUS_MISE_EN_PAGE + ATTENDUS_COULEUR
 if (etatsMesures !== ATTENDUS) {
   console.error(
     `✗ relevé : ${etatsMesures} état(s) mesuré(s) pour ${ATTENDUS} attendu(s).\n` +
