@@ -3,7 +3,11 @@ import { z } from 'zod'
 import { creerJeton, empreinteJeton } from './token.js'
 import { env } from '../env.js'
 import { laMessagerie } from '../messagerie/messagerie.js'
-import { normaliserCode, rattacherLaFicheLocataire } from '../parks/invitations.js'
+import {
+  consignerLeRattachement,
+  normaliserCode,
+  rattacherLaFicheLocataire,
+} from '../parks/invitations.js'
 import { Prisma } from '../generated/prisma/client.js'
 import type { ParkRole } from '../generated/prisma/client.js'
 import { prisma } from '../db.js'
@@ -216,12 +220,22 @@ authRouter.post('/signup', async (req: Request, res: Response) => {
     id: string
     parkId: string
     role: ParkRole
+    // L'ACTEUR d'un rattachement consigné : voir `consignerLeRattachement`.
+    issuedById: string
   } | null = null
 
   if (donnees.invitationCode) {
     const trouvee = await prisma.invitation.findUnique({
       where: { codeHash: empreinteJeton(normaliserCode(donnees.invitationCode)) },
-      select: { id: true, parkId: true, role: true, expiresAt: true, acceptedAt: true, revokedAt: true },
+      select: {
+        id: true,
+        parkId: true,
+        role: true,
+        expiresAt: true,
+        acceptedAt: true,
+        revokedAt: true,
+        issuedById: true,
+      },
     })
 
     /**
@@ -235,7 +249,12 @@ authRouter.post('/signup', async (req: Request, res: Response) => {
       return
     }
 
-    invitation = { id: trouvee.id, parkId: trouvee.parkId, role: trouvee.role }
+    invitation = {
+      id: trouvee.id,
+      parkId: trouvee.parkId,
+      role: trouvee.role,
+      issuedById: trouvee.issuedById,
+    }
   }
 
   // Le hachage AVANT la transaction, et délibérément : il est lent par
@@ -381,6 +400,35 @@ authRouter.post('/signup', async (req: Request, res: Response) => {
     return
   }
 
+
+  /**
+   * LE RATTACHEMENT DE FICHE SE CONSIGNE, comme sur les trois chemins de
+   * `/api/join` — voir `consignerLeRattachement`.
+   *
+   * RELU PLUTÔT QUE RENDU PAR LA TRANSACTION, et c'est un choix de prudence
+   * assumé : la valeur de retour de ce `$transaction` porte DEUX sentinelles
+   * d'erreur — `compte === null` pour l'adresse prise, `CodeDejaConsomme` pour
+   * le code brûlé — que les deux gardes ci-dessus interrogent. En changer la
+   * forme pour y glisser un identifiant de fiche toucherait le chemin de
+   * création de compte pour un besoin de journal. Une lecture de plus le coûte
+   * moins cher.
+   *
+   * LE COMPTE VIENT DE NAÎTRE : une fiche portant son identifiant ne peut avoir
+   * été reliée que par l'appel qui précède.
+   */
+  if (invitation) {
+    const fiche = await prisma.tenant.findFirst({
+      where: { userId: compte.id },
+      select: { id: true },
+    })
+    if (fiche)
+      await consignerLeRattachement({
+        parkId: invitation.parkId,
+        actorId: invitation.issuedById,
+        tenantId: fiche.id,
+        userId: compte.id,
+      })
+  }
 
   await ouvrirSession(res, compte.id, contexte(req))
   res.status(201).json({ user: vueCompte(compte) })

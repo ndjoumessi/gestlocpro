@@ -1,5 +1,6 @@
 import { randomInt } from 'node:crypto'
 import type { Prisma } from '../generated/prisma/client.js'
+import { prisma } from '../db.js'
 import { empreinteJeton } from '../auth/token.js'
 
 /**
@@ -145,4 +146,55 @@ export async function rattacherLaFicheLocataire(
     data: { userId },
   })
   return count === 1 ? bail.tenantId : null
+}
+
+/**
+ * CONSIGNER UN RATTACHEMENT DE FICHE — le geste que quatre chemins accomplissaient
+ * sans rien en dire.
+ *
+ * `access.link` existait, écrit par la seule route où un propriétaire répare un
+ * rattachement À LA MAIN. Le chemin NORMAL — un code saisi à l'inscription ou à
+ * `/api/join` — n'écrivait rien. Le registre montrait donc les accès réparés et
+ * pas ceux que le produit avait donnés tout seul.
+ *
+ * MÊME MOT QUE LA ROUTE DU REGISTRE, et c'est délibéré : « un propriétaire qui
+ * relit son registre doit y voir tous les accès donnés, pas seulement ceux qu'il
+ * a réparés » — les mots sont déjà dans `routes.ts`, ils valent ici.
+ *
+ * L'ACTEUR EST L'ÉMETTEUR DU CODE, jamais celui qui le saisit : écrire le second
+ * ferait dire au registre que le locataire s'est relié lui-même à une fiche
+ * qu'il n'a pas choisie.
+ *
+ * HORS TRANSACTION, et le `prisma` global plutôt qu'un `tx` le dit : « le
+ * journal ne doit pas pouvoir faire échouer l'écriture qu'il décrit ». Le prix
+ * est celui de tout le fichier de routes — une panne entre l'acte et la trace
+ * laisse une fiche reliée sans sa ligne.
+ */
+export async function consignerLeRattachement({
+  parkId,
+  actorId,
+  tenantId,
+  userId,
+}: {
+  parkId: string
+  actorId: string
+  tenantId: string
+  userId: string
+}): Promise<void> {
+  await prisma.auditEvent.create({
+    data: {
+      parkId,
+      actorId,
+      action: 'access.link',
+      entity: 'Tenant',
+      entityId: tenantId,
+      /* `userId` COMME LA ROUTE DU REGISTRE, qui écrit la même action. Une
+         première rédaction ne portait que `parCode`, et deux formes pour une
+         seule action obligeraient quiconque relit le journal à savoir laquelle
+         il regarde. `parCode` s'ajoute, il ne remplace pas : c'est ce qui
+         distingue l'accès DONNÉ par le produit de celui qu'un propriétaire a
+         réparé à la main. */
+      payload: { userId, parCode: true },
+    },
+  })
 }

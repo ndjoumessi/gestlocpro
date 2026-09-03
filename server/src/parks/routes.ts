@@ -7,6 +7,7 @@ import {
   creerCode,
   expirationInvitation,
   normaliserCode,
+  consignerLeRattachement,
   rattacherLaFicheLocataire,
 } from './invitations.js'
 import { empreinteJeton } from '../auth/token.js'
@@ -6712,7 +6713,7 @@ rejoindreRouter.post('/', async (req: Request, res: Response) => {
    * l'invariant « on entre sans périmètre » de l'état d'où l'on vient.
    */
   if (deja?.status === 'revoked' || deja?.status === 'requested') {
-    await prisma.$transaction(async (tx) => {
+    const fiche = await prisma.$transaction(async (tx) => {
       await tx.membership.update({
         where: { id: deja.id },
         data: { role: invitation.role, status: 'active', scope: 'declared' },
@@ -6727,9 +6728,19 @@ rejoindreRouter.post('/', async (req: Request, res: Response) => {
          locataire qui revient par un code portant son logement doit la
          retrouver, sans quoi son espace serait vide pour la même raison que
          le défaut d'à côté. */
-      await rattacherLaFicheLocataire(tx, { invitationId: invitation.id, userId: req.compteId! })
+      return rattacherLaFicheLocataire(tx, {
+        invitationId: invitation.id,
+        userId: req.compteId!,
+      })
     })
     await consignerLEntreeParCode(invitation, deja.id)
+    if (fiche)
+      await consignerLeRattachement({
+        parkId: invitation.parkId,
+        actorId: invitation.issuedById,
+        tenantId: fiche,
+        userId: req.compteId!,
+      })
     res.status(201).json({ parkId: invitation.parkId, role: invitation.role })
     return
   }
@@ -6821,6 +6832,12 @@ rejoindreRouter.post('/', async (req: Request, res: Response) => {
     }
 
     if (rattachee) {
+      await consignerLeRattachement({
+        parkId: invitation.parkId,
+        actorId: invitation.issuedById,
+        tenantId: rattachee,
+        userId: req.compteId!,
+      })
       /* 200 et non 201 : aucune adhésion n'est créée, celle-ci existait déjà.
          `linked` dit à l'écran ce qui vient de se passer — « vous avez rejoint
          un parc » serait faux pour quelqu'un qui y était depuis un mois. */
@@ -6862,10 +6879,20 @@ rejoindreRouter.post('/', async (req: Request, res: Response) => {
        inscrit avant de recevoir son code. Ne corriger que l'autre laisserait
        la moitié des locataires devant un espace vide, avec un symptôme
        rigoureusement identique et aucune raison apparente de différer. */
-    await rattacherLaFicheLocataire(tx, { invitationId: invitation.id, userId: req.compteId! })
-    return adhesion
+    const fiche = await rattacherLaFicheLocataire(tx, {
+      invitationId: invitation.id,
+      userId: req.compteId!,
+    })
+    return { adhesion, fiche }
   })
 
-  await consignerLEntreeParCode(invitation, creee.id)
+  await consignerLEntreeParCode(invitation, creee.adhesion.id)
+  if (creee.fiche)
+    await consignerLeRattachement({
+      parkId: invitation.parkId,
+      actorId: invitation.issuedById,
+      tenantId: creee.fiche,
+      userId: req.compteId!,
+    })
   res.status(201).json({ parkId: invitation.parkId, role: invitation.role })
 })

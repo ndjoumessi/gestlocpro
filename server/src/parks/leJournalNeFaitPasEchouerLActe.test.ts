@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -44,7 +44,33 @@ import { describe, expect, it } from 'vitest'
  */
 const RACINE = join(import.meta.dirname, '../..')
 
-const source = () => readFileSync(join(RACINE, 'src/parks/routes.ts'), 'utf8')
+/** Les sources du serveur, tests et code généré exclus. */
+function fichiers(dossier: string): string[] {
+  const trouves: string[] = []
+  for (const entree of readdirSync(dossier, { withFileTypes: true })) {
+    const chemin = join(dossier, entree.name)
+    if (entree.isDirectory()) {
+      if (entree.name === 'generated' || entree.name === 'node_modules') continue
+      trouves.push(...fichiers(chemin))
+    } else if (entree.name.endsWith('.ts') && !entree.name.endsWith('.test.ts')) {
+      trouves.push(chemin)
+    }
+  }
+  return trouves
+}
+
+/**
+ * TOUT LE SERVEUR, et non le seul fichier de routes.
+ *
+ * La première rédaction ne lisait que `parks/routes.ts`, où vivaient alors les
+ * vingt-huit écritures — relevé, pas supposé. Le lot suivant en a posé une dans
+ * `parks/invitations.ts`, et la garde ne l'aurait pas vue. Un périmètre qui se
+ * justifie par une concentration cesse de valoir dès qu'elle se disperse.
+ */
+const source = () =>
+  fichiers(join(RACINE, 'src'))
+    .map((f) => readFileSync(f, 'utf8'))
+    .join('\n')
 
 /** Le bloc équilibré qui commence à `depart`, pour `{}` comme pour `[]`. */
 function blocEquilibre(source: string, depart: number, ouvre: string, ferme: string): string {
