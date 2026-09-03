@@ -68,7 +68,21 @@ import { api } from '@/api/client'
  * photo, l'identifiant d'une réserve, le statut interne d'un chantier. Elles
  * sont exactes et n'apprennent rien à qui relit son parc.
  */
-type Nature = 'argent' | 'date' | 'mois' | 'texte' | 'moyen' | 'devise' | 'piece' | 'service'
+type Nature =
+  | 'argent'
+  | 'date'
+  | 'mois'
+  | 'texte'
+  | 'moyen'
+  | 'devise'
+  | 'piece'
+  | 'service'
+  /* Le RÔLE d'une adhésion. « Accès repris » ne disait pas de qui : d'un
+     gestionnaire, d'un locataire ? Le journal l'écrivait depuis toujours dans
+     sa charge utile, et l'écran n'en montrait rien. */
+  | 'role'
+  /* L'état d'un chantier rouvert — la seule donnée que `work.reopen` porte. */
+  | 'etatChantier'
 
 /**
  * UN NOMBRE NU NE DIT RIEN. « Relance envoyée · 4 » : quatre quoi ?
@@ -78,11 +92,36 @@ type Nature = 'argent' | 'date' | 'mois' | 'texte' | 'moyen' | 'devise' | 'piece
  * Un décompte porte donc SA clé — accordée en nombre par le dictionnaire, comme
  * partout ailleurs dans ce produit.
  */
-type Decompte = 'reminders' | 'findings' | 'charges'
+type Decompte =
+  | 'reminders'
+  | 'findings'
+  | 'charges'
+  /* Le périmètre confié se compte : « 3 immeubles · 2 logements ». Les
+     identifiants eux-mêmes ne se montrent pas — un UUID à l'écran est du bruit
+     qui a l'air d'une information. */
+  | 'buildings'
+  | 'homes'
+  | 'exclusions'
 
 type Champ = { champ: string; nature: Nature } | { champ: string; decompte: Decompte }
 
 const DETAIL: Record<string, Champ[]> = {
+  /* LES DÉCISIONS D'ACCÈS DISAIENT « quelque chose a changé » SANS DIRE QUOI.
+     Onze actions du serveur n'avaient aucune recette ; celles-ci portaient
+     pourtant une donnée lisible sans aller la chercher ailleurs. Restent dehors
+     `access.link` et `access.unlink`, dont la charge utile n'est qu'un
+     identifiant de compte : le montrer brut serait pire que de se taire. */
+  'access.scope': [
+    { champ: 'buildingIds', decompte: 'buildings' },
+    { champ: 'unitIds', decompte: 'homes' },
+    { champ: 'excludedUnitIds', decompte: 'exclusions' },
+    { champ: 'role', nature: 'role' },
+  ],
+  'access.grant': [{ champ: 'role', nature: 'role' }],
+  'access.refuse': [{ champ: 'role', nature: 'role' }],
+  'access.join': [{ champ: 'role', nature: 'role' }],
+  'access.revoke': [{ champ: 'role', nature: 'role' }],
+  'work.reopen': [{ champ: 'status', nature: 'etatChantier' }],
   'payment.record': [
     { champ: 'amountMinor', nature: 'argent' },
     { champ: 'method', nature: 'moyen' },
@@ -260,12 +299,23 @@ export function Decisions() {
 
       /* Un DÉCOMPTE porte son unité, accordée en nombre : « 4 relances »,
          « 1 constat ». Le dictionnaire fait l'accord, comme partout. */
-      if ('decompte' in regle)
-        return typeof valeur === 'number'
+      if ('decompte' in regle) {
+        /* UN NOMBRE OU UNE LISTE. `access.scope` écrit les identifiants confiés,
+           pas leur compte : sans ce `length`, la seule décision qui dise
+           l'étendue d'un pouvoir donné restait muette.
+
+           UNE LISTE VIDE NE S'ÉCRIT PAS. « 0 exclusions » figurerait sur presque
+           chaque ligne de périmètre, et un décompte nul ne dit rien que
+           l'absence ne dise déjà. On ne touche PAS au cas du nombre nul : c'est
+           le comportement d'avant, et rien ne l'a mis en cause. */
+        if (Array.isArray(valeur) && valeur.length === 0) return ''
+        const nombre = Array.isArray(valeur) ? valeur.length : valeur
+        return typeof nombre === 'number'
           ? t(`app.decisions.units.${regle.decompte}` as 'app.decisions.units.reminders', {
-              count: valeur,
+              count: nombre,
             })
           : ''
+      }
 
       switch (regle.nature) {
         case 'argent':
@@ -283,6 +333,20 @@ export function Decisions() {
           return typeof valeur === 'string' ? d.fullDate(partiesDeDateISO(valeur)) : ''
         case 'mois':
           return typeof valeur === 'string' ? d.monthYear(partiesDeDateISO(valeur)) : ''
+        case 'role':
+          /* La liste est ÉCRITE, et non `roles.${valeur}.name` sans garde : le
+             payload vient du serveur, et une valeur inattendue rendrait la clé
+             en toutes lettres — le défaut que `announcement` a déjà coûté. */
+          return valeur === 'owner' || valeur === 'manager' || valeur === 'tenant'
+            ? t(`roles.${valeur}.name` as 'roles.owner.name')
+            : ''
+        case 'etatChantier':
+          return valeur === 'reported' ||
+            valeur === 'quoted' ||
+            valeur === 'approved' ||
+            valeur === 'done'
+            ? t(`app.works.${valeur}` as 'app.works.reported')
+            : ''
         case 'moyen': {
           const cle = PAYMENT_METHOD_LABELS[valeur as PaymentMethodKey]
           return cle ? t(cle as 'app.payments.methodCash') : ''

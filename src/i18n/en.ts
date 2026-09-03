@@ -1135,6 +1135,12 @@ export const en: Dictionary = {
         serveur devient le chemin du dictionnaire sans conversion.
       */
       units: {
+        buildings: '{count} buildings',
+        buildings_one: '{count} building',
+        homes: '{count} homes',
+        homes_one: '{count} home',
+        exclusions: '{count} exclusions',
+        exclusions_one: '{count} exclusion',
         reminders: '{count} reminders',
         reminders_one: '{count} reminder',
         findings: '{count} findings',

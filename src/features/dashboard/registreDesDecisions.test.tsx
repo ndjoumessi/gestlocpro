@@ -150,6 +150,71 @@ describe('le registre des décisions', () => {
   })
 
   /**
+   * LE PÉRIMÈTRE CONFIÉ SE LIT, et c'est la décision qui en avait le plus besoin.
+   *
+   * `access.scope` écrit `{ buildingIds, unitIds, excludedUnitIds, role }` — soit
+   * exactement l'étendue du pouvoir donné — et l'écran n'en montrait RIEN. La
+   * ligne disait « Périmètre d'immeubles confié » sans dire lequel, ni à qui,
+   * dans un journal dont le commentaire promet de répondre « qui a ouvert quoi,
+   * et quand ».
+   *
+   * LES IDENTIFIANTS NE SE MONTRENT PAS, leur NOMBRE si. Un UUID à l'écran est
+   * du bruit qui a l'air d'une information ; « 2 immeubles · 1 logement » se lit.
+   */
+  it('dit l’étendue d’un périmètre confié, et à quel rôle', async () => {
+    const faux = installerFauxServeur()
+    faux.quand('GET', `/parks/${PARC}/decisions`, {
+      status: 200,
+      body: {
+        decisions: [
+          {
+            id: 'd-scope',
+            action: 'access.scope',
+            entity: 'Membership',
+            entityId: '00000000-0000-4000-8000-0000000000ee',
+            payload: {
+              buildingIds: [
+                '00000000-0000-4000-8000-000000000001',
+                '00000000-0000-4000-8000-000000000002',
+              ],
+              unitIds: ['00000000-0000-4000-8000-000000000003'],
+              excludedUnitIds: [],
+              role: 'manager',
+            },
+            at: '2026-08-28T14:05:00.000Z',
+            actor: 'Arsène Nkolo',
+          },
+        ],
+        suivant: null,
+      },
+    })
+    faux.quand('GET', `/parks/${PARC}/portfolio`, {
+      status: 200,
+      body: {
+        collections: [],
+        buildings: [],
+        works: [],
+        deposits: [],
+        readings: [],
+        inspections: [],
+        notifications: [],
+      },
+    })
+
+    await renderApp('/app/decisions', { session: session('owner') })
+    await attendreLeChargement()
+
+    const texte = (screen.getByRole('main').textContent ?? '').replace(/[\s ]/g, ' ')
+    expect(texte, 'le nombre d’immeubles confiés manque').toMatch(/2 immeubles/)
+    expect(texte, 'l’accord au singulier manque').toMatch(/1 logement(?!s)/)
+    expect(texte, 'le rôle à qui l’on a confié manque').toMatch(/Gestionnaire/i)
+    /* ZÉRO EXCLUSION NE S'ÉCRIT PAS. `0 exclusions` sur toutes les lignes
+       serait du bruit ; l'absence dit la même chose. */
+    expect(texte, 'un décompte nul s’affiche là où il ne dit rien').not.toMatch(/0 exclusion/)
+    expect(texte, 'un identifiant brut est à l’écran').not.toMatch(/00000000-0000/)
+  })
+
+  /**
    * ET LE DÉTAIL NE DÉBORDE PAS EN JSON.
    *
    * `payload` est un `Json` dont la forme varie selon l'action : un rendu

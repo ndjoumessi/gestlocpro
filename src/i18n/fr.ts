@@ -1542,6 +1542,12 @@ export const fr = {
         serveur devient le chemin du dictionnaire sans conversion.
       */
       units: {
+        buildings: '{count} immeubles',
+        buildings_one: '{count} immeuble',
+        homes: '{count} logements',
+        homes_one: '{count} logement',
+        exclusions: '{count} exclusions',
+        exclusions_one: '{count} exclusion',
         reminders: '{count} relances',
         reminders_one: '{count} relance',
         findings: '{count} constats',
