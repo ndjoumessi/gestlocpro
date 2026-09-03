@@ -1152,6 +1152,8 @@ export const en: Dictionary = {
           link: 'Tenant record linked to an account',
           revoke: 'Access revoked',
           scope: 'Building scope assigned',
+          grant: 'Access request granted',
+          refuse: 'Access request refused',
         },
         deposit: {
           settle: 'Deposit settled',

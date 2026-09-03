@@ -3861,7 +3861,8 @@ parksRouter.patch(
     // second, on toucherait une adhésion active.
     const demande = await prisma.membership.findFirst({
       where: { id: membershipId, parkId, status: 'requested' },
-      select: { id: true },
+      // `role` pour le registre : la décision doit dire ce qu'elle a ouvert.
+      select: { id: true, role: true },
     })
     if (!demande) {
       res.status(404).json({ error: 'not_found' })
@@ -3874,6 +3875,29 @@ parksRouter.patch(
         ? { status: 'active', scope: 'declared' }
         : { status: 'revoked' },
     })
+
+    /* AU REGISTRE, parce que c'est la porte elle-même.
+       Les quatre autres gestes d'accès y sont déjà — relier, délier, reprendre,
+       confier — et celui-ci est le plus lourd des cinq : il fait entrer
+       quelqu'un dans un parc, ou lui en ferme la porte. Le refus a plus besoin
+       de trace encore que l'accord : il ne laisse RIEN de visible, la ligne
+       passe `revoked` et disparaît de la file des demandes.
+
+       DEUX ACTIONS et non un drapeau : le sens d'une décision ne se déduit
+       d'aucune donnée, et l'écran n'affiche que le libellé d'une action sans
+       recette de détail. Le cacher dans la charge utile le rendrait illisible
+       là où on le lit. */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: corps.accorder ? 'access.grant' : 'access.refuse',
+        entity: 'Membership',
+        entityId: demande.id,
+        payload: { role: demande.role },
+      },
+    })
+
     res.status(204).end()
   },
 )

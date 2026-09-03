@@ -1564,6 +1564,13 @@ export const fr = {
              l'état d'avant, que le journal ne conserve pas. Le fait consigné
              est le périmètre POSÉ, pas son écart avec le précédent. */
           scope: 'Périmètre d’immeubles confié',
+          /* DEUX LIBELLÉS pour les deux sens, contrairement à `scope` juste
+             au-dessus : le sens d'une décision ne se lit dans aucune charge
+             utile, et une action sans recette de détail n'affiche que son
+             libellé. Un seul libellé rendrait le registre incapable de dire
+             si la porte s'est ouverte ou fermée. */
+          grant: 'Demande d’accès accordée',
+          refuse: 'Demande d’accès refusée',
         },
         deposit: {
           settle: 'Caution arbitrée',
