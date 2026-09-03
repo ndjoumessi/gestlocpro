@@ -135,6 +135,10 @@ describe('relier une fiche par un code', () => {
     expect(reste, 'un rattachement, une ligne').toHaveLength(0)
     expect(trace!.entity).toBe('Tenant')
     expect(trace!.actorId, 'l’acteur est l’ÉMETTEUR du code, pas qui le saisit').toBe(emetteurId)
+    expect(
+      (trace!.payload as { tenantName?: string }).tenantName,
+      'le registre ne dit pas QUELLE fiche a été reliée — un `userId` seul est un UUID',
+    ).toBe('Bekono Landry')
   })
 
   it('se CONSIGNE quand /api/join crée l’adhésion', async () => {

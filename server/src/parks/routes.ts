@@ -3382,7 +3382,10 @@ parksRouter.post(
        d'un parc voisin, et le 404 dit la même chose qu'une fiche absente. */
     const fiche = await prisma.tenant.findFirst({
       where: { id: tenantId, parkId },
-      select: { id: true, userId: true },
+      /* `fullName` pour le REGISTRE, dans la même requête : la ligne « fiche
+         reliée à un compte » ne portait qu'un identifiant, que l'écran ne peut
+         pas montrer. Le nom est le sujet de la phrase. */
+      select: { id: true, userId: true, fullName: true },
     })
     if (!fiche) {
       res.status(404).json({ error: 'not_found' })
@@ -3423,7 +3426,7 @@ parksRouter.post(
         action: 'access.link',
         entity: 'Tenant',
         entityId: fiche.id,
-        payload: { userId },
+        payload: { userId, tenantName: fiche.fullName },
       },
     })
 
@@ -3477,7 +3480,10 @@ parksRouter.delete(
        d'un parc voisin, et le 404 dit la même chose qu'une fiche absente. */
     const fiche = await prisma.tenant.findFirst({
       where: { id: tenantId, parkId },
-      select: { id: true, userId: true },
+      /* `fullName` pour le REGISTRE, dans la même requête : la ligne « fiche
+         reliée à un compte » ne portait qu'un identifiant, que l'écran ne peut
+         pas montrer. Le nom est le sujet de la phrase. */
+      select: { id: true, userId: true, fullName: true },
     })
     if (!fiche) {
       res.status(404).json({ error: 'not_found' })
@@ -3511,7 +3517,7 @@ parksRouter.delete(
         action: 'access.unlink',
         entity: 'Tenant',
         entityId: fiche.id,
-        payload: { userId: fiche.userId },
+        payload: { userId: fiche.userId, tenantName: fiche.fullName },
       },
     })
 
@@ -4150,7 +4156,7 @@ parksRouter.post(
             action: 'access.link',
             entity: 'Tenant',
             entityId: bail.tenantId,
-            payload: { userId: corps.userId },
+            payload: { userId: corps.userId, tenantName: corps.fullName },
           },
         })
       }

@@ -190,6 +190,24 @@ describe('défaire un lien', () => {
     ).toContain('access.unlink')
   })
 
+  it('y écrit le NOM de la fiche, et pas seulement un identifiant de compte', async () => {
+    /* `payload: { userId }` seul est un UUID — du bruit qui a l'air d'une
+       information, et que l'écran refuse d'afficher brut. Le sujet de la phrase
+       « fiche déliée de son compte » est la FICHE ; `entityId` porte déjà son
+       identifiant, le payload porte désormais son nom. */
+    const { cookie, parkId, ficheId } = await ficheReliieAuMauvaisCompte()
+    await request(serveur).delete(`/api/parks/${parkId}/tenants/${ficheId}/compte`).set('Cookie', cookie)
+
+    const trace = await prisma.auditEvent.findFirst({
+      where: { parkId, action: 'access.unlink' },
+      select: { payload: true },
+    })
+    expect(
+      (trace?.payload as { tenantName?: string })?.tenantName,
+      'le registre ne dit pas QUELLE fiche a été déliée',
+    ).toBe('Bekono Landry')
+  })
+
   it('refuse une fiche qui n’a pas de compte', async () => {
     const { cookie, parkId, ficheId } = await ficheReliieAuMauvaisCompte()
     await request(serveur).delete(`/api/parks/${parkId}/tenants/${ficheId}/compte`).set('Cookie', cookie)

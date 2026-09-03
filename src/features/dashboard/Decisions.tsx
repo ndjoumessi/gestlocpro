@@ -129,6 +129,13 @@ const DETAIL: Record<string, Champ[]> = {
     { champ: 'excludedUnitIds', decompte: 'exclusions' },
     { champ: 'role', nature: 'role' },
   ],
+  /* LA FICHE RELIÉE, PAR SON NOM. Ces deux-là ne portaient qu'un `userId` — un
+     identifiant de compte, exactement ce que ce registre refuse d'afficher brut.
+     Le serveur écrit désormais le nom de la FICHE à côté : c'est elle le sujet
+     de la phrase, et `entityId` porte déjà son identifiant. Les lignes d'avant
+     le 2026-09-03 n'en ont pas et se taisent. */
+  'access.link': [{ champ: 'tenantName', nature: 'texte' }],
+  'access.unlink': [{ champ: 'tenantName', nature: 'texte' }],
   'access.grant': [{ champ: 'role', nature: 'role' }],
   'access.refuse': [{ champ: 'role', nature: 'role' }],
   'access.join': [{ champ: 'role', nature: 'role' }],

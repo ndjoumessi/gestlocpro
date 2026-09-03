@@ -181,6 +181,16 @@ export async function consignerLeRattachement({
   tenantId: string
   userId: string
 }): Promise<void> {
+  /* LE NOM DE LA FICHE, pour que la ligne dise QUI a été relié. Une lecture de
+     plus, et c'est le seul des quatre sites qui la paie : les trois autres
+     tiennent déjà leur fiche en main. Elle vit HORS transaction comme l'écriture
+     qu'elle sert — si elle échoue, c'est le journal qui perd un mot, jamais
+     l'acte qui échoue. */
+  const fiche = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: { fullName: true },
+  })
+
   await prisma.auditEvent.create({
     data: {
       parkId,
@@ -194,7 +204,7 @@ export async function consignerLeRattachement({
          il regarde. `parCode` s'ajoute, il ne remplace pas : c'est ce qui
          distingue l'accès DONNÉ par le produit de celui qu'un propriétaire a
          réparé à la main. */
-      payload: { userId, parCode: true },
+      payload: { userId, parCode: true, tenantName: fiche?.fullName ?? null },
     },
   })
 }
