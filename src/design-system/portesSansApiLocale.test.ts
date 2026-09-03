@@ -68,8 +68,21 @@ const SCRIPTS = join(RACINE, 'scripts')
  * requête qui apparaît. Rien ne dit qu'il n'existe pas un troisième symptôme
  * dans une porte que la chaîne n'a pas encore refusée. Cette liste est donc
  * un CONSTAT, pas une preuve d'exhaustivité.
+ *
+ * ═══ ET ELLE S'EST RACCOURCIE, CE QUI COMPTE AUTANT ═══
+ *
+ * `poids-ecrans.mjs` y a figuré, puis en est SORTI — pas parce que son défaut
+ * n'existait pas, mais parce que le remède était pire. `contexte.route()`
+ * DÉSACTIVE LE CACHE HTTP du contexte, et cette porte-là mesure des incréments
+ * mis en cache : `/demo/paiements` est passé de 3 404 à 785 951 octets bruts,
+ * le paquet entier rechargé à chaque navigation. La coupure ne faussait pas
+ * son verdict d'un cheveu, elle changeait ce qu'elle mesure.
+ *
+ * Elle écarte donc `/api/` À LA LECTURE, dans son compteur de réponses — même
+ * fin, aucun effet de bord. L'instrument partagé n'est pas universel, et c'est
+ * une mesure qui l'a dit.
  */
-const PORTES_ANONYMES = ['plafond-coquille.mjs', 'mesure-ui.mjs', 'poids-ecrans.mjs']
+const PORTES_ANONYMES = ['plafond-coquille.mjs', 'mesure-ui.mjs']
 
 /** Celles qui doivent joindre l'API, et pourquoi. */
 const EXEMPTES = new Map([

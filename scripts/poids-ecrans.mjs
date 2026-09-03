@@ -80,7 +80,6 @@ import { fileURLToPath } from 'node:url'
 import { argv, exit } from 'node:process'
 import { imposerLaPoliceLarge } from './police-large.mjs'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
-import { neutraliserLApiLocale } from './api-locale-neutralisee.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
 const PLAFONDS = join(RACINE, 'scripts/plafonds-ecrans.json')
@@ -355,13 +354,37 @@ try {
       colorScheme: 'light',
     })
     await imposerLaPoliceLarge(contexte)
-    await neutraliserLApiLocale(contexte)
     const page = await contexte.newPage()
     for (const adresse of ECRANS) {
       const actifs = []
       page.removeAllListeners('response')
       page.on('response', async (r) => {
         try {
+          /*
+            L'API EST ÉCARTÉE ICI, ET NON COUPÉE EN AMONT.
+
+            Cette porte a d'abord employé `neutraliserLApiLocale`, comme ses
+            deux voisines. Le motif était le bon — le 401 de `/auth/me` comptait
+            pour une requête, et son plafond avait été inscrit API éteinte —
+            mais l'instrument était faux : `contexte.route()` DÉSACTIVE LE CACHE
+            HTTP du contexte entier. Or cette porte mesure des INCRÉMENTS mis en
+            cache : chaque écran suivant ne paie que son morceau paresseux.
+
+            Mesuré, et c'est sans appel : `/demo/paiements` est passé de 3 404 à
+            785 951 octets bruts — le paquet entier rechargé à chaque
+            navigation, sur les six points. La coupure ne faussait pas le
+            verdict d'un cheveu, elle changeait ce que la porte mesure.
+
+            L'exclusion par URL n'a pas cet effet : rien n'est intercepté, on
+            refuse seulement de COMPTER ce qui n'est pas un actif d'écran. Et
+            elle est plus juste sur le fond — un aller-retour de session n'est
+            pas le poids d'un écran.
+
+            CE QU'ELLE NE COMPTE DONC PAS, et qu'un vrai visiteur paie quand
+            même : cet aller-retour, sur « / », avant la première phrase de
+            vente. Le chiffrer reste un lot à part, nommé et non fait.
+          */
+          if (new URL(r.url()).pathname.startsWith('/api/')) return
           const corps = await r.body()
           actifs.push({
             octets: corps.length,
