@@ -37,7 +37,7 @@
  * même chose : « ✓ ». C'est la convention de `check-montants`, reprise telle
  * quelle.
  */
-import { readFile } from 'node:fs/promises'
+import { readFile, readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { exit } from 'node:process'
 
@@ -380,8 +380,36 @@ if (JSON.stringify(obtenu.sort()) !== JSON.stringify([...TEMOIN_ATTENDU].sort())
   exit(1)
 }
 
+/**
+ * TOUT LE SERVEUR, et non le seul fichier de routes.
+ *
+ * Ce script ne lisait que `parks/routes.ts`, où vivaient les vingt-huit
+ * écritures de registre du dépôt. Le lot du
+ * 2026-09-03 en a posé une dans `parks/invitations.ts`, et ce script ne l'aurait
+ * pas vue : une action neuve écrite depuis un autre module aurait atterri à
+ * l'écran sous « Action inconnue » sans qu'aucune porte ne bronche.
+ *
+ * C'est le trou EXACT qu'il avait déjà eu deux fois — le joker de préfixe et la
+ * forme ternaire, tous deux fermés le même jour. La troisième forme était le
+ * PÉRIMÈTRE : un fichier unique, choisi quand tout y était concentré, et qui
+ * cesse de valoir dès que ça se disperse.
+ */
+async function sourcesDuServeur(dossier) {
+  const textes = []
+  for (const entree of await readdir(dossier, { withFileTypes: true })) {
+    const chemin = join(dossier, entree.name)
+    if (entree.isDirectory()) {
+      if (entree.name === 'generated' || entree.name === 'node_modules') continue
+      textes.push(...(await sourcesDuServeur(chemin)))
+    } else if (entree.name.endsWith('.ts') && !entree.name.endsWith('.test.ts')) {
+      textes.push(await readFile(chemin, 'utf8'))
+    }
+  }
+  return textes
+}
+
 const plaintes = plaintesDe(
-  await readFile(join(RACINE, 'server/src/parks/routes.ts'), 'utf8'),
+  (await sourcesDuServeur(join(RACINE, 'server/src'))).join('\n'),
   await readFile(join(RACINE, 'src/features/dashboard/Decisions.tsx'), 'utf8'),
   await readFile(join(RACINE, 'src/i18n/fr.ts'), 'utf8'),
 )
