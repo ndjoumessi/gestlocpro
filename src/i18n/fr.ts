@@ -1891,8 +1891,27 @@ export const fr = {
         work: 'Travaux',
         meter: 'Relevé',
         lease: 'Bail',
+        /* CES DEUX-LÀ MANQUAIENT, et l'écran affichait leur CLÉ en toutes
+           lettres — `app.alerts.kind.announcement`. Les journaux de test le
+           disaient depuis longtemps, en avertissement que rien ne lisait. */
+        announcement: 'Annonce',
+        access: 'Accès',
       },
       msg: {
+        /**
+         * UNE DEMANDE D'ACCÈS QUI ATTEND UNE DÉCISION.
+         *
+         * Les autres avis racontent un fait ; celui-ci RÉCLAME. Le détail
+         * nomme donc l'écran où l'on tranche — sans quoi le propriétaire sait
+         * qu'on lui demande quelque chose et pas où répondre.
+         *
+         * LE NOM SEUL, jamais l'adresse : elle est déjà dans le registre, et
+         * une liste d'avis se lit par-dessus l'épaule.
+         */
+        accessRequested: {
+          title: 'Demande d’accès · {name}',
+          detail: 'Ce compte demande à gérer votre parc. Accordez ou refusez depuis le registre des accès.',
+        },
         /**
          * LE SIGNALEMENT D'UN LOCATAIRE, et il n'arrivait nulle part.
          *

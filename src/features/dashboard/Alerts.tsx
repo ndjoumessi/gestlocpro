@@ -38,6 +38,14 @@ const ECRAN_PAR_NATURE: Record<Alert['kind'], string> = {
    * aux travaux ferait chercher une action qui n'existe pas.
    */
   announcement: '',
+  /**
+   * LA DEMANDE D'ACCÈS RENVOIE AU REGISTRE, où l'on tranche.
+   *
+   * C'est la seule nature qui appelle une DÉCISION, et non un traitement. Sans
+   * destination, le propriétaire apprendrait qu'on lui demande quelque chose
+   * sans savoir où répondre — l'avis serait une impasse de plus.
+   */
+  access: 'acces',
 }
 
 const KIND_ICON: Record<Alert['kind'], IconName> = {
@@ -46,6 +54,8 @@ const KIND_ICON: Record<Alert['kind'], IconName> = {
   meter: 'gauge',
   lease: 'file',
   announcement: 'phone',
+  /* Le même glyphe que le registre des accès, où l'avis renvoie. */
+  access: 'key',
 }
 
 const SEVERITY_TONE: Record<Alert['severity'], StatusTone> = {
@@ -111,6 +121,9 @@ function useAlertMessage() {
     // traduit : c'est la seule variable d'alerte qui porte une phrase humaine.
     if (data.text) vars.text = data.text
     if (data.reference) vars.reference = data.reference
+    /* Le nom de qui DEMANDE, et non de qui occupe : `tenant` désigne un
+       occupant, celui-ci n'est encore rien dans le parc. */
+    if (data.name) vars.name = data.name
 
     const rendu = t(
       `app.alerts.msg.${alert.message}.${part}` as 'app.alerts.msg.rentOverdue.title',

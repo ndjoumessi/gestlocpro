@@ -1160,6 +1160,13 @@ enum NotificationKind {
   /// passage prévu. Distinct des quatre autres, qui sont des faits du produit :
   /// son texte est écrit par un humain et ne se traduit pas.
   announcement
+  /// UNE DÉCISION QUI ATTEND QUELQU'UN, et non un fait déjà survenu.
+  ///
+  /// Les cinq autres RACONTENT : un loyer en retard, un relevé pris, un bail qui
+  /// finit. Celui-ci RÉCLAME — une demande d'accès dort jusqu'à ce qu'un
+  /// propriétaire tranche, et le circuit construit pour elle avait une dernière
+  /// marche muette : la demande arrivait dans un écran que personne ne visite.
+  access
 }
 
 enum NotificationSeverity {

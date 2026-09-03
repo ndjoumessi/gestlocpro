@@ -136,6 +136,52 @@ describe('la demande d’accès', () => {
   })
 })
 
+describe('l’avis qui prévient le propriétaire', () => {
+  /**
+   * LE CIRCUIT S'ARRÊTAIT SUR UNE MARCHE MUETTE.
+   *
+   * La demande atterrissait dans le registre des accès — un écran qu'un
+   * propriétaire ne visite pas tous les jours — et pouvait y dormir pendant que
+   * le demandeur croyait avoir demandé. Construire un circuit et taire son
+   * dernier pas est la forme de silence que ce dépôt traque partout ailleurs.
+   */
+  it('est posé, et NOMMÉMENT au propriétaire', async () => {
+    const { cookieInconnu, parkId } = await unProprioEtUnInconnu()
+    await demander(cookieInconnu, 'proprio@example.com')
+
+    const avis = await prisma.notification.findFirstOrThrow({
+      where: { parkId, kind: 'access' },
+      select: { messageKey: true, params: true, severity: true, recipients: true },
+    })
+    expect(avis.messageKey).toBe('accessRequested')
+    expect((avis.params as { name?: string }).name, 'un avis anonyme n’aide personne à décider').toBe(
+      'Gestion Aire',
+    )
+    /* Le propriétaire est NOMMÉ : `NotificationRecipient` n'existe que pour dire
+       à qui l'on parle, et c'est lui qui tranche. */
+    const proprio = await prisma.membership.findFirstOrThrow({ where: { parkId, role: 'owner' } })
+    expect(avis.recipients.map((r) => r.userId)).toEqual([proprio.userId])
+  })
+
+  it('ne porte PAS l’adresse du demandeur', async () => {
+    /* Elle est déjà dans le registre, là où l'on décide. Une liste d'avis se lit
+       par-dessus l'épaule, et sur un téléphone posé sur une table. */
+    const { cookieInconnu, parkId } = await unProprioEtUnInconnu()
+    await demander(cookieInconnu, 'proprio@example.com')
+    const avis = await prisma.notification.findFirstOrThrow({ where: { parkId, kind: 'access' } })
+    expect(JSON.stringify(avis.params)).not.toContain('gestion@example.com')
+  })
+
+  it('n’est pas posé quand rien n’est demandé', async () => {
+    /* Une adresse qui ne correspond à personne ne doit pas créer d'avis — ni
+       ici, ni ailleurs : ce serait le même détecteur de clientèle, par un autre
+       chemin. */
+    const { cookieInconnu } = await unProprioEtUnInconnu()
+    await demander(cookieInconnu, 'personne@example.com')
+    expect(await prisma.notification.count({ where: { kind: 'access' } })).toBe(0)
+  })
+})
+
 describe('l’arbitrage du propriétaire', () => {
   async function unParcAvecUneDemande() {
     const socle = await unProprioEtUnInconnu()

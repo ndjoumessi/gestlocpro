@@ -91,7 +91,7 @@ describe('les variables des avis', () => {
        d'indentation suffirait —, la règle ci-dessus comparerait une liste vide
        à une autre et se déclarerait verte. */
     const libelles = variablesDesLibelles()
-    expect(libelles.size, 'la lecture de `fr.ts` ne trouve plus les familles').toBe(13)
+    expect(libelles.size, 'la lecture de `fr.ts` ne trouve plus les familles').toBe(14)
     expect(
       [...libelles.values()].flat().length,
       'aucune variable lue : le bloc `msg` a changé de forme',

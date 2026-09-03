@@ -4119,6 +4119,8 @@ export function calculerRetard(
  * écrit les bonnes clés, et toute la suite du gestionnaire tourne dessus.
  */
 const CLE_RELANCE = 'rentReminder'
+/** L'avis qui dit qu'une demande d'accès attend une décision. */
+const CLE_DEMANDE_ACCES = 'accessRequested'
 /** Clé de message d'une mise en demeure. Même règle. */
 const CLE_MISE_EN_DEMEURE = 'formalNotice'
 
@@ -6406,6 +6408,13 @@ demandesDAccesRouter.post('/', async (req: Request, res: Response) => {
     .object({ ownerEmail: z.string().trim().toLowerCase().email().max(320) })
     .parse(req.body)
 
+  /* Le nom du demandeur, pour que l'avis dise QUI demande. Une notification
+     « quelqu'un demande l'accès » n'aiderait personne à décider. */
+  const demandeur = await prisma.userAccount.findUnique({
+    where: { id: req.compteId! },
+    select: { fullName: true },
+  })
+
   const proprietaire = await prisma.userAccount.findUnique({
     where: { email: corps.ownerEmail },
     select: {
@@ -6440,6 +6449,42 @@ demandesDAccesRouter.post('/', async (req: Request, res: Response) => {
         scope: 'declared',
       },
     })
+
+    /*
+      ET ON PRÉVIENT, sans quoi le circuit s'arrête sur une marche muette.
+
+      La demande atterrissait dans le registre des accès — un écran qu'un
+      propriétaire ne visite pas tous les jours. Elle pouvait y dormir
+      indéfiniment pendant que le demandeur croyait avoir demandé. Construire le
+      circuit et taire son dernier pas, c'est la forme de silence que ce dépôt
+      traque partout ailleurs.
+
+      NOMMÉMENT AUX PROPRIÉTAIRES. `NotificationRecipient` n'existe que pour dire
+      à qui l'on parle, et la décision leur appartient : `exigerRole('owner')`
+      garde la route qui tranche. Un gestionnaire à qui l'on montrerait une
+      demande qu'il ne peut pas arbitrer lirait une file qui ne le concerne pas.
+
+      `severity: 'medium'` : quelqu'un attend, mais rien ne brûle — un loyer en
+      retard, lui, court.
+    */
+    const proprietaires = await prisma.membership.findMany({
+      where: { parkId, role: 'owner', status: 'active' },
+      select: { userId: true },
+    })
+    if (proprietaires.length > 0) {
+      await prisma.notification.create({
+        data: {
+          parkId,
+          kind: 'access',
+          messageKey: CLE_DEMANDE_ACCES,
+          /* Le NOM, jamais l'adresse : elle est déjà dans le registre, où l'on
+             décide, et une liste d'avis se lit par-dessus l'épaule. */
+          params: { name: demandeur?.fullName ?? '' },
+          severity: 'medium',
+          recipients: { create: proprietaires.map((p) => ({ userId: p.userId })) },
+        },
+      })
+    }
   }
 
   res.status(202).end()

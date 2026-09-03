@@ -1401,8 +1401,14 @@ export const en: Dictionary = {
         work: 'Works',
         meter: 'Meter reading',
         lease: 'Lease',
+        announcement: 'Announcement',
+        access: 'Access',
       },
       msg: {
+        accessRequested: {
+          title: 'Access request · {name}',
+          detail: 'This account is asking to manage your portfolio. Grant or decline it from the access registry.',
+        },
         tenantReport: {
           title: 'Report {reference} · {unit}',
           detail: '{text}',

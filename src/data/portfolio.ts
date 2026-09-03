@@ -1238,6 +1238,18 @@ export type AlertMessage =
    * une nouvelle reçue.
    */
   | 'tenantReply'
+  /**
+   * UNE DEMANDE D'ACCÈS QUI ATTEND UNE DÉCISION.
+   *
+   * Les autres avis RACONTENT un fait ; celui-ci RÉCLAME. Le circuit de la
+   * demande d'accès arrivait dans le registre des accès, un écran qu'un
+   * propriétaire ne visite pas tous les jours : elle pouvait y dormir pendant
+   * que le demandeur croyait avoir demandé.
+   *
+   * Il ne porte que le NOM du demandeur. Son adresse est déjà dans le registre,
+   * là où l'on décide — une liste d'avis se lit par-dessus l'épaule.
+   */
+  | 'accessRequested'
   | 'rentOverdue'
   | 'quotePending'
   | 'metersMissing'
@@ -1289,11 +1301,18 @@ export interface AlertData {
   text?: string
   /** La référence du chantier auquel une réponse se rattache — « SIG-2026-042 ». */
   reference?: string
+  /**
+   * LE NOM D'UNE PERSONNE, pour l'avis qui réclame une décision à son sujet.
+   *
+   * Distinct de `tenant`, qui désigne l'occupant d'un logement : celui-ci
+   * n'est encore rien dans le parc — il demande à y entrer.
+   */
+  name?: string
 }
 
 export interface Alert {
   id: string
-  kind: 'payment' | 'work' | 'meter' | 'lease' | 'announcement'
+  kind: 'payment' | 'work' | 'meter' | 'lease' | 'announcement' | 'access'
   message: AlertMessage
   data: AlertData
   at: RelativeStamp
