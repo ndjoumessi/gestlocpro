@@ -166,12 +166,12 @@ export function Meters() {
                 headers: [
                   t('app.portfolio.unit'),
                   t('app.portfolio.tenant'),
-                  `${t('app.meters.water')} · ${t('app.meters.previous')}`,
-                  `${t('app.meters.water')} · ${t('app.meters.current')}`,
-                  `${t('app.meters.water')} · ${t('app.meters.consumption')} (m³)`,
-                  `${t('app.meters.power')} · ${t('app.meters.previous')}`,
-                  `${t('app.meters.power')} · ${t('app.meters.current')}`,
-                  `${t('app.meters.power')} · ${t('app.meters.consumption')} (kWh)`,
+                  `${t('app.meters.utility.water')} · ${t('app.meters.previous')}`,
+                  `${t('app.meters.utility.water')} · ${t('app.meters.current')}`,
+                  `${t('app.meters.utility.water')} · ${t('app.meters.consumption')} (m³)`,
+                  `${t('app.meters.utility.power')} · ${t('app.meters.previous')}`,
+                  `${t('app.meters.utility.power')} · ${t('app.meters.current')}`,
+                  `${t('app.meters.utility.power')} · ${t('app.meters.consumption')} (kWh)`,
                   csvMoney.header(t('app.meters.rebilled')),
                   t('app.meters.readAt'),
                 ],
@@ -269,7 +269,7 @@ export function Meters() {
         {prixCourant('waterPrice') !== null && (
           <StatCard
             icone="droplet"
-            label={t('app.meters.water')}
+            label={t('app.meters.utility.water')}
             value={money(prixCourant('waterPrice')!, { compact: true })}
             unit="/ m³"
           />
@@ -277,7 +277,7 @@ export function Meters() {
         {prixCourant('powerPrice') !== null && (
           <StatCard
             icone="bolt"
-            label={t('app.meters.power')}
+            label={t('app.meters.utility.power')}
             value={money(prixCourant('powerPrice')!, { compact: true })}
             unit="/ kWh"
           />
@@ -335,7 +335,7 @@ export function Meters() {
           },
           {
             key: 'water',
-            header: `${t('app.meters.water')} (m³)`,
+            header: `${t('app.meters.utility.water')} (m³)`,
             numeric: true,
             // Le garde porte sur `r.waterCurrent` et non sur la consommation
             // dérivée : les deux sont nuls ensemble, mais seul celui-ci permet
@@ -370,7 +370,7 @@ export function Meters() {
           },
           {
             key: 'power',
-            header: `${t('app.meters.power')} (kWh)`,
+            header: `${t('app.meters.utility.power')} (kWh)`,
             numeric: true,
             render: (r) =>
               r.powerCurrent === null ? (

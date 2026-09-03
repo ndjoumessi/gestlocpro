@@ -884,8 +884,11 @@ export const en: Dictionary = {
       title: 'Meter readings',
       subtitle:
         'Indexes captured on site. Consumption is re-billed pro rata on the monthly receipt.',
-      water: 'Water',
-      power: 'Electricity',
+      /* Voir `works.status`. Ces deux-là viennent de `Utility`. */
+      utility: {
+        water: 'Water',
+        power: 'Electricity',
+      },
       previous: 'Previous index',
       current: 'This month',
       consumption: 'Consumption',
@@ -949,8 +952,18 @@ export const en: Dictionary = {
       kpiPartialNote: 'the move-out is still due',
       kpiNone: 'No inspection',
       kpiNoneNote: 'no contradictory record',
-      entry: 'Move-in',
-      exit: 'Move-out',
+      /* Voir `works.status`. Ces deux-là viennent de `InspectionKind`.
+
+         `kinds` AU PLURIEL, et ce n'est pas une coquetterie : `kind` existait
+         déjà dans cette famille — c'est le libellé « Nature » du champ de
+         formulaire. Le sous-bloc l'aurait ÉCRASÉ. Attrapé par `tsc`, qui refuse
+         deux propriétés du même nom ; sans lui, la collision aurait été
+         silencieuse, et c'est exactement le défaut que ce remaniement existe
+         pour rendre impossible. */
+      kinds: {
+        entry: 'Move-in',
+        exit: 'Move-out',
+      },
       rooms: '{count} rooms',
       rooms_one: '{count} room',
       issues: '{count} issues',
@@ -978,10 +991,17 @@ export const en: Dictionary = {
     works: {
       title: 'Works and reports',
       subtitle: 'The tenant reports, the manager quotes, the owner decides.',
-      reported: 'Reported',
-      quoted: 'Quoted',
-      approved: 'Approved',
-      done: 'Done',
+      /* LES STATUTS DANS LEUR PROPRE BLOC. Ils viennent de `WorkStatus`, en base,
+         et l'écran compose leur clé. Mêlés aux quatre-vingts libellés de cet
+         écran, une valeur d'énumération qui porterait le nom d'un libellé
+         existant — un statut `title` — s'afficherait SILENCIEUSEMENT à sa place :
+         bon emplacement, mauvais texte, aucune rougeur. Isolés, ils se gardent. */
+      status: {
+        reported: 'Reported',
+        quoted: 'Quoted',
+        approved: 'Approved',
+        done: 'Done',
+      },
       urgent: 'Urgent',
       noQuote: 'Not yet quoted',
       reportedBy: 'Reported by the tenant',
@@ -1075,9 +1095,13 @@ export const en: Dictionary = {
       title: 'Deposits',
       subtitle: 'Amount held, deductions justified, balance returned.',
       formerTenant: 'Former tenant',
-      held: 'Held',
-      settling: 'Being settled',
-      returned: 'Returned',
+      /* Voir `works.status` : une famille dédiée se garde, une famille partagée ne
+         se garde pas. Ces trois-là viennent de `DepositStatus`. */
+      status: {
+        held: 'Held',
+        settling: 'Being settled',
+        returned: 'Returned',
+      },
       amountHeld: 'Held',
       withheld: 'Withheld',
       balance: 'To return',

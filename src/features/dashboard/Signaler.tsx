@@ -395,7 +395,7 @@ export function Signaler() {
                       SA demande.
                     */}
                     <StatusPill tone={TONE[work.status]} size="sm">
-                      {t(`app.works.${work.status}` as 'app.works.reported')}
+                      {t(`app.works.status.${work.status}` as 'app.works.status.reported')}
                     </StatusPill>
                     {work.reference && (
                       <span className="numeric text-caps text-muted">{work.reference}</span>

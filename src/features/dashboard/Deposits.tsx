@@ -207,7 +207,7 @@ export function Deposits() {
                        le défaut qu'on vient de corriger, dans le format où il
                        coûte le plus cher. */
                     caution.status === 'returned' ? '' : csvMoney.amount(soldeDeCaution(caution)),
-                    t(`app.deposits.${caution.status}` as 'app.deposits.held'),
+                    t(`app.deposits.status.${caution.status}` as 'app.deposits.status.held'),
                   ]),
                 })
               }
@@ -381,7 +381,7 @@ export function Deposits() {
               render: (d) => (
                 <div className="flex items-center justify-between gap-3">
                   <StatusPill tone={TONE[d.status]} size="sm">
-                    {t(`app.deposits.${d.status}` as 'app.deposits.held')}
+                    {t(`app.deposits.status.${d.status}` as 'app.deposits.status.held')}
                   </StatusPill>
                   {d.status === 'settling' && canSettle && (
                     <Button size="sm" onClick={() => setSettling(d)}>

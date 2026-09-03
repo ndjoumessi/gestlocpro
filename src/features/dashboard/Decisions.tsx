@@ -374,7 +374,7 @@ export function Decisions() {
             valeur === 'quoted' ||
             valeur === 'approved' ||
             valeur === 'done'
-            ? t(`app.works.${valeur}` as 'app.works.reported')
+            ? t(`app.works.status.${valeur}` as 'app.works.status.reported')
             : ''
         case 'moyen': {
           const cle = PAYMENT_METHOD_LABELS[valeur as PaymentMethodKey]

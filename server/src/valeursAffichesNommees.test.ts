@@ -42,18 +42,22 @@ import { describe, expect, it } from 'vitest'
  *     traduit par des TABLES de correspondance, pas par composition directe. Je
  *     ne les ai pas tracées ; elles ne sont ni couvertes ni déclarées saines.
  *
- * ═══ QUATRE FAMILLES SUR SEPT SONT PARTAGÉES, ET C'EST UN DANGER À PART ═══
+ * ═══ LES SEPT FAMILLES SONT DÉDIÉES, ET C'EST RÉCENT ═══
  *
- * `app.works` porte 84 clés pour 4 valeurs de `WorkStatus` ; `app.inspections`,
- * 59 pour 2. Le statut composé atterrit dans le dictionnaire d'un ÉCRAN ENTIER,
- * à côté des titres et des boutons.
+ * Quatre ne l'étaient pas : `app.works` portait ses quatre statuts au milieu de
+ * QUATRE-VINGTS libellés d'écran, `app.inspections` ses deux genres au milieu de
+ * cinquante-neuf. Une valeur d'énumération qui aurait porté le nom d'une clé
+ * existante — un statut `title` — se serait affichée SILENCIEUSEMENT à sa place :
+ * bon emplacement, mauvais texte, aucune rougeur.
  *
- * Une valeur d'énumération qui porterait le nom d'une clé existante — un statut
- * `title`, un genre `subtitle` — s'afficherait donc SILENCIEUSEMENT comme le
- * libellé de cette clé. Pas de clé nue, pas de repli, pas de rougeur : le bon
- * emplacement, le mauvais texte. Aucune garde ne voit ça, celle-ci comprise, et
- * je ne sais pas l'écrire sans savoir quelles clés sont des libellés de statut
- * et lesquelles n'en sont pas — ce que seul le nommage distingue aujourd'hui.
+ * Le danger n'était pas théorique. En isolant `app.inspections`, le sous-bloc
+ * `kind` a heurté une clé `kind` qui existait déjà — le libellé « Nature » d'un
+ * champ de formulaire. `tsc` l'a refusé, parce qu'un objet littéral ne peut pas
+ * porter deux fois le même nom ; c'est ce qui l'a rendu visible. Dans l'autre
+ * sens — une VALEUR qui heurte un libellé — rien ne l'aurait dit.
+ *
+ * Les statuts vivent donc désormais dans leur propre bloc, et la recherche
+ * d'orphelins porte sur les SEPT familles au lieu de trois.
  */
 const RACINE = join(import.meta.dirname, '../..')
 
@@ -64,13 +68,13 @@ const RACINE = join(import.meta.dirname, '../..')
  * elle-même et passerait sur zéro famille comme sur sept.
  */
 const FAMILLES = [
-  { chemin: 'app.works', enumeration: 'WorkStatus', compose: 'src/features/dashboard/Works.tsx', dedie: false },
-  { chemin: 'app.deposits', enumeration: 'DepositStatus', compose: 'src/features/dashboard/Deposits.tsx', dedie: false },
-  { chemin: 'app.documents.reqStatus', enumeration: 'DocumentRequestStatus', compose: 'src/features/dashboard/TenantDocuments.tsx', dedie: true },
-  { chemin: 'app.inspections', enumeration: 'InspectionKind', compose: 'src/features/dashboard/Inspections.tsx', dedie: false },
-  { chemin: 'app.unitTypes', enumeration: 'UnitType', compose: 'src/features/dashboard/Portfolio.tsx', dedie: true },
-  { chemin: 'app.trades', enumeration: 'Trade', compose: 'src/features/dashboard/Works.tsx', dedie: true },
-  { chemin: 'app.meters', enumeration: 'Utility', compose: 'src/features/dashboard/TariffsModal.tsx', dedie: false },
+  { chemin: 'app.works.status', enumeration: 'WorkStatus', compose: 'src/features/dashboard/Works.tsx' },
+  { chemin: 'app.deposits.status', enumeration: 'DepositStatus', compose: 'src/features/dashboard/Deposits.tsx' },
+  { chemin: 'app.documents.reqStatus', enumeration: 'DocumentRequestStatus', compose: 'src/features/dashboard/TenantDocuments.tsx' },
+  { chemin: 'app.inspections.kinds', enumeration: 'InspectionKind', compose: 'src/features/dashboard/Inspections.tsx' },
+  { chemin: 'app.unitTypes', enumeration: 'UnitType', compose: 'src/features/dashboard/Portfolio.tsx' },
+  { chemin: 'app.trades', enumeration: 'Trade', compose: 'src/features/dashboard/Works.tsx' },
+  { chemin: 'app.meters.utility', enumeration: 'Utility', compose: 'src/features/dashboard/TariffsModal.tsx' },
 ] as const
 
 const schema = () => readFileSync(join(RACINE, 'server/prisma/schema.prisma'), 'utf8')
@@ -162,7 +166,7 @@ describe('les valeurs d’énumération affichées', () => {
        cohabitent avec les titres et les boutons. Y chercher des orphelins
        rendrait quatre-vingts faux positifs. */
     const orphelins: string[] = []
-    for (const famille of FAMILLES.filter((f) => f.dedie)) {
+    for (const famille of FAMILLES) {
       const bloc = blocDeLaFamille(langue, famille.chemin)
       if (bloc === null) continue
       const valeurs = new Set(valeursDe(famille.enumeration))

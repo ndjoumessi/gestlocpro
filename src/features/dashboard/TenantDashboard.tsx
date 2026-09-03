@@ -626,7 +626,7 @@ export function TenantDashboard() {
                     <div className="min-w-0">
                       <p className="text-body font-medium">{workTitle(work, t)}</p>
                       <p className="mt-0.5 text-caps text-muted">
-                        {t(`app.works.${work.status}` as 'app.works.reported')}
+                        {t(`app.works.status.${work.status}` as 'app.works.status.reported')}
                       </p>
                     </div>
                   </li>

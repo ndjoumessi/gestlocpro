@@ -322,7 +322,7 @@ export function Inspections() {
 
                     <div className="min-w-0 flex-1 basis-20">
                       <p className="text-body font-medium">
-                        {t(`app.inspections.${inspection.kind}` as 'app.inspections.entry')}
+                        {t(`app.inspections.kinds.${inspection.kind}` as 'app.inspections.kinds.entry')}
                       </p>
                       <p className="text-caps text-muted">
                         {d.fullDate(inspection.date)}{' · '}
@@ -649,10 +649,10 @@ function Comparaison({ inspections }: { inspections: Inspection[] }) {
                 {t('app.inspections.colRoom')}
               </th>
               <th scope="col" className="py-2 text-left text-caps text-muted">
-                {t('app.inspections.entry')}
+                {t('app.inspections.kinds.entry')}
               </th>
               <th scope="col" className="py-2 text-left text-caps text-muted">
-                {t('app.inspections.exit')}
+                {t('app.inspections.kinds.exit')}
               </th>
               <th scope="col" className="py-2 text-right text-caps text-muted">
                 {t('app.inspections.colWithheld')}

@@ -456,7 +456,7 @@ export function UnitFile() {
                     {/* Les statuts vivent à plat dans `app.works` —
                         `reported`, `quoted`, `approved`, `done` — et non sous
                         un sous-objet `status`. */}
-                    {t(`app.works.${work.status}` as 'app.works.reported')}
+                    {t(`app.works.status.${work.status}` as 'app.works.status.reported')}
                     {montantEngage(work).montant !== null &&
                       ` · ${money(montantEngage(work).montant!, { compact: true })}`}
                   </span>
@@ -521,7 +521,7 @@ export function UnitFile() {
               absence={t('app.unitFile.noInspection')}
             />
             <LignePiece
-              label={t('app.inspections.exit')}
+              label={t('app.inspections.kinds.exit')}
               valeur={sortie ? d.fullDate(sortie.date) : null}
               absence={t('app.unitFile.noInspection')}
             />

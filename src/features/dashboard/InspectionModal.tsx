@@ -528,8 +528,8 @@ export function InspectionModal({
           value={nature}
           onChange={setNature}
           options={[
-            { value: 'entry', label: t('app.inspections.entry') },
-            { value: 'exit', label: t('app.inspections.exit') },
+            { value: 'entry', label: t('app.inspections.kinds.entry') },
+            { value: 'exit', label: t('app.inspections.kinds.exit') },
           ]}
         />
 

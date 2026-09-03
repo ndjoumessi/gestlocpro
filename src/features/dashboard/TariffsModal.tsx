@@ -218,8 +218,8 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
               value={utility}
               onChange={(e) => setUtility(e.target.value as 'water' | 'power')}
             >
-              <option value="water">{t('app.meters.water')}</option>
-              <option value="power">{t('app.meters.power')}</option>
+              <option value="water">{t('app.meters.utility.water')}</option>
+              <option value="power">{t('app.meters.utility.power')}</option>
             </Select>
           )}
         </Field>
@@ -301,7 +301,7 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
             {tarifs.map((tarif) => (
               <li key={tarif.id} className="flex items-baseline justify-between gap-3 text-body">
                 <span>
-                  {t(`app.meters.${tarif.utility}` as 'app.meters.water')}
+                  {t(`app.meters.utility.${tarif.utility}` as 'app.meters.utility.water')}
                   {' · '}
                   {/* La date brute du serveur, « 2026-08-01 », ne se lit ni en
                       français ni en anglais : chaque autre écran de ce

@@ -745,7 +745,7 @@ export function useDepositPdf() {
       })
 
       page.paire(t('app.portfolio.tenant'), deposit.tenant ?? t('app.deposits.formerTenant'))
-      page.paire(t('app.portfolio.status'), t(`app.deposits.${deposit.status}` as 'app.deposits.held'))
+      page.paire(t('app.portfolio.status'), t(`app.deposits.status.${deposit.status}` as 'app.deposits.status.held'))
 
       page.section(t('app.deposits.totalHeld'))
       page.paire(t('app.deposits.amountHeld'), argent(deposit.held), { gras: true })

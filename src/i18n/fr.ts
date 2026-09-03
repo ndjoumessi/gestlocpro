@@ -1160,8 +1160,11 @@ export const fr = {
       title: 'Relevé des compteurs',
       subtitle:
         'Index relevés sur place. La consommation est refacturée au prorata sur la quittance du mois.',
-      water: 'Eau',
-      power: 'Électricité',
+      /* Voir `works.status`. Ces deux-là viennent de `Utility`. */
+      utility: {
+        water: 'Eau',
+        power: 'Électricité',
+      },
       previous: 'Index précédent',
       current: 'Index du mois',
       consumption: 'Consommation',
@@ -1249,8 +1252,18 @@ export const fr = {
       kpiPartialNote: 'la sortie reste à faire',
       kpiNone: 'Sans état des lieux',
       kpiNoneNote: 'aucune pièce contradictoire',
-      entry: 'Entrée',
-      exit: 'Sortie',
+      /* Voir `works.status`. Ces deux-là viennent de `InspectionKind`.
+
+         `kinds` AU PLURIEL, et ce n'est pas une coquetterie : `kind` existait
+         déjà dans cette famille — c'est le libellé « Nature » du champ de
+         formulaire. Le sous-bloc l'aurait ÉCRASÉ. Attrapé par `tsc`, qui refuse
+         deux propriétés du même nom ; sans lui, la collision aurait été
+         silencieuse, et c'est exactement le défaut que ce remaniement existe
+         pour rendre impossible. */
+      kinds: {
+        entry: 'Entrée',
+        exit: 'Sortie',
+      },
       rooms: '{count} pièces',
       rooms_one: '{count} pièce',
       issues: '{count} réserves',
@@ -1304,10 +1317,17 @@ export const fr = {
     works: {
       title: 'Travaux et signalements',
       subtitle: 'Le locataire signale, le gestionnaire chiffre, le propriétaire arbitre.',
-      reported: 'Signalé',
-      quoted: 'Devis proposé',
-      approved: 'Validé',
-      done: 'Terminé',
+      /* LES STATUTS DANS LEUR PROPRE BLOC. Ils viennent de `WorkStatus`, en base,
+         et l'écran compose leur clé. Mêlés aux quatre-vingts libellés de cet
+         écran, une valeur d'énumération qui porterait le nom d'un libellé
+         existant — un statut `title` — s'afficherait SILENCIEUSEMENT à sa place :
+         bon emplacement, mauvais texte, aucune rougeur. Isolés, ils se gardent. */
+      status: {
+        reported: 'Signalé',
+        quoted: 'Devis proposé',
+        approved: 'Validé',
+        done: 'Terminé',
+      },
       urgent: 'Urgent',
       noQuote: 'Pas encore chiffré',
       /**
@@ -1475,9 +1495,13 @@ export const fr = {
       subtitle: 'Montant consigné, retenues justifiées, solde restitué.',
       // Affiché quand la caution n'est plus rattachée à personne.
       formerTenant: 'Ancien locataire',
-      held: 'Consignée',
-      settling: 'En cours d’arbitrage',
-      returned: 'Restituée',
+      /* Voir `works.status` : une famille dédiée se garde, une famille partagée ne
+         se garde pas. Ces trois-là viennent de `DepositStatus`. */
+      status: {
+        held: 'Consignée',
+        settling: 'En cours d’arbitrage',
+        returned: 'Restituée',
+      },
       amountHeld: 'Consigné',
       withheld: 'Retenu',
       balance: 'À restituer',

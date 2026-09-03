@@ -636,7 +636,7 @@ export function Works() {
                 {!isTenant && <Montant work={work} />}
 
                 <StatusPill tone={STATUS_TONE[work.status]} size="sm">
-                  {t(`app.works.${work.status}` as 'app.works.reported')}
+                  {t(`app.works.status.${work.status}` as 'app.works.status.reported')}
                 </StatusPill>
 
                 {/*
