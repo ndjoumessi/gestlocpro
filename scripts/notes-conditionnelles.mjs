@@ -5,11 +5,27 @@
  *
  * ═══ L'ANGLE MORT, ET IL A COÛTÉ TROIS LOTS D'AFFILÉE ═══
  *
- * `mesure-ui`, `couleur-non-seule`, `plafond-coquille` et `modales` ne visitent
- * QUE `/demo`. Ce qu'ils mesurent est donc exactement ce que la démonstration
- * PRODUIT — et une explication qui n'apparaît que sous une condition que la
- * démonstration ne remplit jamais n'est vue par personne. Ni sa géométrie, ni
- * son contraste, ni son débordement.
+ * `mesure-ui`, `couleur-non-seule`, `plafond-coquille` et `modales` ne mesurent
+ * RIEN DERRIÈRE UNE SESSION. Ce qu'ils voient est donc exactement ce que la
+ * démonstration PRODUIT — et une explication qui n'apparaît que sous une
+ * condition que la démonstration ne remplit jamais n'est vue par personne. Ni
+ * sa géométrie, ni son contraste, ni son débordement.
+ *
+ * CETTE PHRASE DISAIT « ne visitent QUE /demo », ET C'ÉTAIT FAUX — relevé le
+ * 2026-09-03. `couleur-non-seule` et `modales` s'en tiennent bien à `/demo`,
+ * mais `mesure-ui` ouvre aussi `/connexion` et `/inscription`, et
+ * `plafond-coquille` DEMANDE les vingt-quatre routes de l'inventaire, `/app`
+ * comprise.
+ *
+ * Ce qui ne change rien au raisonnement, et le rend même plus net : sans
+ * session, une requête vers `/app` est redirigée vers `/connexion`, et c'est
+ * l'écran de connexion qui se fait mesurer. La porte croyait voir l'espace
+ * connecté ; elle voyait la porte d'entrée. Ce défaut-là a été réparé le même
+ * jour dans `plafond-coquille` en coupant `/api/**`.
+ *
+ * `espace-connecte`, lui, ouvre bien `/app` derrière une VRAIE session. L'angle
+ * mort qui subsiste est donc plus étroit qu'écrit ici : une explication que ni
+ * la démonstration ni AUCUN des parcs de sonde ne produit.
  *
  * Ce n'est pas une hypothèse. Sur la journée du 2026-08-31, trois `<Notice>`
  * ont été ajoutées coup sur coup — le périmètre du gestionnaire, le logement
