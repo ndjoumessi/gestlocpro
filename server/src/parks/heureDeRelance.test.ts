@@ -189,9 +189,18 @@ describe('le résumé du fil', () => {
       source.includes('HEURE_DU_RESUME_UTC'),
       'la borne horaire du résumé a disparu du lanceur',
     ).toBe(true)
+    /*
+      LA FORME EXACTE N'EST PLUS EXIGÉE ICI. Ce cas cherchait
+      `heureDuResume ? await envoyerLesResumesDuFil` — un MOTIF, qui a cassé au
+      premier remaniement du compte rendu sans que le comportement bouge d'un
+      cheveu. La borne est désormais une fonction pure, `estLHeureDuResume`, et
+      c'est `compteRenduDuPassage.test.ts` qui l'ÉPROUVE au lieu de la lire.
+      Il reste ici la seule chose qu'une lecture de source sache dire : que le
+      lanceur consulte l'heure AVANT d'appeler l'expéditeur.
+    */
     expect(
-      source,
+      source.indexOf('estLHeureDuResume('),
       'l’appel au résumé n’est plus conditionné à son heure',
-    ).toMatch(/heureDuResume\s*\?\s*await envoyerLesResumesDuFil/)
+    ).toBeLessThan(source.indexOf('envoyerLesResumesDuFil('))
   })
 })
