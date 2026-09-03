@@ -6571,8 +6571,27 @@ rejoindreRouter.post('/', async (req: Request, res: Response) => {
    *
    * LE RÔLE VIENT DE L'INVITATION, comme partout ailleurs sur ce chemin : c'est
    * le propriétaire qui émet le code qui décide, jamais la ligne d'hier.
+   *
+   * ═══ ET LA DEMANDE EN ATTENTE, POUR LA MÊME RAISON ═══
+   *
+   * `requested` est arrivé APRÈS ce correctif, et ce `findFirst` sans statut
+   * l'a ramassé comme il ramassait `revoked` : le demandeur s'entendait
+   * répondre qu'il était DÉJÀ MEMBRE alors qu'il avait seulement demandé à
+   * l'être. C'est le troisième état que ce filtre confond avec une adhésion
+   * vivante — après le locataire, après le révoqué.
+   *
+   * Émettre un code de gestionnaire EST la décision que la demande attendait.
+   * Le propriétaire ne fabrique pas ce code par accident ; refuser de
+   * l'honorer parce qu'une demande dort à côté ferait du produit le gardien
+   * d'une distinction que personne ne voit à l'écran.
+   *
+   * Les deux états partagent le même traitement parce qu'ils partagent la même
+   * vérité : la ligne existe, elle n'ouvre rien. Le nettoyage des
+   * rattachements ne trouve rien à faire sur une demande — elle n'en a jamais
+   * eu —, et on le lui applique quand même plutôt que de faire dépendre
+   * l'invariant « on entre sans périmètre » de l'état d'où l'on vient.
    */
-  if (deja?.status === 'revoked') {
+  if (deja?.status === 'revoked' || deja?.status === 'requested') {
     await prisma.$transaction(async (tx) => {
       await tx.membership.update({
         where: { id: deja.id },
