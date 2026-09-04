@@ -3571,8 +3571,34 @@ const RESSOURCES_EXTERNES_PESEES = {
  *
  * Le budget reste donc à 156 000. Le prochain rouge n'aura plus à mesurer —
  * ni le prix, ni l'obstacle.
+ *
+ * ═══ LE PROCHAIN ROUGE A EU LIEU : 2026-09-05, À HUIT OCTETS ═══
+ *
+ *     ✗ premier chargement de la vitrine à 156 008 o, au-delà du budget de 156 000
+ *
+ * Le lot qui l'a déclenché — corriger une fiche locataire — ajoute dix-huit clés
+ * dans les deux dictionnaires. REMESURÉ plutôt que supposé, en construisant deux
+ * fois et en comparant les mêmes deux fichiers : 156 805 o sans le lot,
+ * 156 949 o avec, soit +144 o. (Les absolus diffèrent de ceux du rapport — `gzip`
+ * en ligne de commande ne compresse pas comme `zlib` ici — mais l'ÉCART, lui,
+ * est mesuré par une seule et même méthode.)
+ *
+ * 144 OCTETS, SOUS LA MOYENNE DE 156 o PAR LOT relevée plus haut. Ce lot n'est
+ * donc pas gourmand : la marge de 6 929 o est simplement DÉPENSÉE, et il n'en
+ * restait que 136 avant lui. C'est exactement ce que ce nombre existe pour dire.
+ *
+ * LE NOUVEAU NOMBRE : 160 000, soit 3 992 o de marge sur le mesuré, environ
+ * vingt-cinq lots au rythme documenté. Ce qu'il COÛTE, chiffré à la vitesse de
+ * référence de `poids-ecrans` : 4 000 o de plus à 400 kb/s font 80 ms sur un
+ * premier chargement qui en prend déjà 3 120. C'est le prix qu'on paie, et il
+ * est dit plutôt que caché derrière un nombre relevé en silence.
+ *
+ * CE QUI RESTE LE VRAI CORRECTIF est écrit vingt lignes plus haut et n'a pas
+ * bougé : sortir de `app.` les vingt clés qu'un module IMPATIENT emprunte, puis
+ * scinder le dictionnaire. Relever le budget ne fait que reculer l'échéance —
+ * une quatrième fois n'aura plus d'argument.
  */
-const BUDGET_PREMIER_CHARGEMENT = 156_000
+const BUDGET_PREMIER_CHARGEMENT = 160_000
 
 /*
   GARDE DU GARDE : un budget hors de toute plage plausible ne défend rien.
