@@ -53,7 +53,7 @@
  * ── POURQUOI `scripts/` EST HORS DU BALAYAGE ─────────────────────────────
  *
  * Les gardes du dépôt écrivent des hex et des noms de jetons en clair : c'est
- * leur métier de les comparer. `theme.test.ts` en cite neuf, `orDonnee.test.ts`
+ * leur métier de les comparer. `theme.test.ts` en cite neuf, `accentDonnee.test.ts`
  * huit. Un relevé qui les compterait se dénoncerait lui-même et dénoncerait ses
  * voisins, et le chiffre ne voudrait plus rien dire.
  *

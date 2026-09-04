@@ -17,7 +17,7 @@ import type { EtatSession } from '@/api/SessionProvider'
  *
  * Cette phrase a cessé d'être vraie. `retenir` tient une réponse ouverte aussi
  * longtemps qu'on veut — le harnais l'a écrit pour observer une fenêtre de
- * chargement, et `promessesTenues.test.ts` s'en sert déjà. L'attente est donc
+ * chargement, et `promessesTenues.test.tsx` s'en sert déjà. L'attente est donc
  * un état RENDU comme un autre : on peut la compter.
  *
  * ═══ CE QUE LA GARDE DE SOURCE NE POUVAIT PAS VOIR ═══

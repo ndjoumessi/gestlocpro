@@ -72,6 +72,7 @@
     "src/design-system/zonesSures.test.ts",
     "src/design-system/portesSansApiLocale.test.ts",
     "src/design-system/testsQuiLisentLeDisque.test.ts",
+    "src/design-system/renvoisMorts.test.ts",
     "src/design-system/appelantsDuPortLibre.test.ts",
     "src/test/attentesObservees.test.ts",
     "src/test/budgetsDHorloge.test.ts"

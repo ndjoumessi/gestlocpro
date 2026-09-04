@@ -61,7 +61,7 @@ import { hachureOuverte } from './hachure'
  * même famille, mais bien plus contrasté : depuis qu'il vaut #1d4ed8, il est
  * certifié 6,30 sur `--paper`, 5,77 sur `--canvas` et 6,12 sur `--accent-tint`,
  * là où le #8a6218 de l'ancienne palette n'était relevé que sur le papier.
- * `orDonnee.test.ts` relit ce fichier et refuse le retour de `--color-accent`
+ * `accentDonnee.test.ts` relit ce fichier et refuse le retour de `--color-accent`
  * nu — le nom du garde-fou est resté doré, la couleur qu'il garde ne l'est
  * plus.
  */
