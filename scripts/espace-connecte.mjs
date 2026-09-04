@@ -105,9 +105,10 @@
  * la porte rougit, le parc qui l'a fait rougir est encore là, interrogeable.
  * Le passage suivant la détruit de toute façon avant de rien mesurer.
  *
- * PRÉREQUIS : `npm run db:up` à la racine (le conteneur `gestlocpro-db`), et
- * `dist/` construit — `mesure-ui`, qui tourne avant dans `check:navigateur`,
- * s'en charge. Les deux absences sont DITES, jamais contournées.
+ * PRÉREQUIS : un Postgres joignable — `npm run db:up` à la racine en
+ * développement, `PORTE_BASE` ailleurs — et `dist/` construit, dont `mesure-ui`
+ * se charge en tournant avant dans `check:navigateur`. Les deux absences sont
+ * DITES, jamais contournées.
  */
 import { readFileSync } from 'node:fs'
 import { chromium } from 'playwright'
@@ -255,7 +256,38 @@ const BASE = `http://127.0.0.1:${PORT}`
  * exige `_test` avant de laisser passer une migration.
  */
 const NOM_BASE = 'gestlocpro_porte'
-const URL_BASE = `postgresql://gestlocpro:gestlocpro@127.0.0.1:5433/${NOM_BASE}?schema=public`
+
+/**
+ * L'HÔTE DE LA BASE, RÉGLABLE — ET IL NE L'ÉTAIT PAS.
+ *
+ * Cette porte adressait Postgres par `docker exec gestlocpro-db psql`, c'est-à-dire
+ * par le NOM D'UN CONTENEUR de la machine de développement. Sur l'exécuteur
+ * public, ce conteneur n'existe pas :
+ *
+ *     ✗ espace-connecte : le conteneur « gestlocpro-db » ne répond pas.
+ *
+ * Elle est entrée dans `check:navigateur` le 2026-08-31 (`5ceb7eb`) et n'a jamais
+ * pu y tourner. Le rouge est resté caché quatre jours derrière `modales`, qui
+ * s'arrêtait avant elle dans la chaîne.
+ *
+ * `PORTE_BASE` porte l'ORIGINE, sans nom de base : la porte en dérive celle
+ * qu'elle sème et celle d'administration. Le défaut vise le conteneur de
+ * développement, pour que rien ne change ici.
+ */
+const ORIGINE_BASE =
+  process.env.PORTE_BASE ?? 'postgresql://gestlocpro:gestlocpro@127.0.0.1:5433'
+const URL_BASE = `${ORIGINE_BASE}/${NOM_BASE}?schema=public`
+
+/**
+ * LA BASE D'ADMINISTRATION, et pourquoi `postgres` et non `gestlocpro`.
+ *
+ * On ne supprime pas la base à laquelle on est connecté : il en faut une autre
+ * pour porter le `DROP` et le `CREATE`. L'ancienne version visait `gestlocpro`,
+ * la base de travail du développeur — qui n'existe pas sur l'exécuteur, où le
+ * service en crée une nommée `gestlocpro_test`. `postgres` est la seule que
+ * TOUTE installation porte, par construction.
+ */
+const URL_ADMIN = `${ORIGINE_BASE}/postgres`
 
 if (!NOM_BASE.endsWith('_porte')) {
   console.error('\n✗ espace-connecte : la base de la porte doit finir par `_porte`.\n')
@@ -291,12 +323,33 @@ const plaintes = []
 
 /* ══════════════════════════ LA BASE ══════════════════════════ */
 
-function psql(sql) {
-  return execFileSync(
-    'docker',
-    ['exec', 'gestlocpro-db', 'psql', '-U', 'gestlocpro', '-d', 'gestlocpro', '-tAc', sql],
-    { encoding: 'utf8' },
-  ).trim()
+/**
+ * UNE COMMANDE SQL, PAR LE CLIENT QUE LE DÉPÔT A DÉJÀ.
+ *
+ * `prisma db execute` lit son adresse dans `DATABASE_URL` — Prisma 7 a retiré
+ * `--url` — et n'est donc lié à aucun conteneur. Il ne RAPPORTE rien : sa propre
+ * aide le dit, « not meant for returning data, but only to report success or
+ * failure ». C'est exactement ce qu'il faut ici, où aucun des trois appels ne
+ * lisait la sortie de `psql`. VÉRIFIÉ avant de convertir, sur une base jetable :
+ * `CREATE DATABASE` et `DROP DATABASE … WITH (FORCE)` passent tous deux, donc
+ * la commande n'est pas enveloppée dans une transaction.
+ */
+function sql(url, script) {
+  const r = spawnSync('npx', ['prisma', 'db', 'execute', '--stdin'], {
+    cwd: join(RACINE, 'server'),
+    input: script,
+    stdio: ['pipe', 'pipe', 'pipe'],
+    encoding: 'utf8',
+    env: { ...process.env, DATABASE_URL: url },
+  })
+  if (r.status !== 0) {
+    throw new Error((r.stdout || '') + (r.stderr || '') || `sortie ${r.status}`)
+  }
+  return r
+}
+
+function psql(script) {
+  return sql(URL_ADMIN, script)
 }
 
 /**
@@ -312,15 +365,11 @@ function psql(sql) {
  * Le garde-fou du nom vaut ici aussi : on n'écrit QUE dans une base dont le nom
  * finit par `_porte`.
  */
-function psqlSonde(sql) {
+function psqlSonde(script) {
   if (!NOM_BASE.endsWith('_porte')) {
     throw new Error(`refus d'écrire hors d'une base de sonde : ${NOM_BASE}`)
   }
-  return execFileSync(
-    'docker',
-    ['exec', 'gestlocpro-db', 'psql', '-U', 'gestlocpro', '-d', NOM_BASE, '-tAc', sql],
-    { encoding: 'utf8' },
-  ).trim()
+  return sql(URL_BASE, script)
 }
 
 function preparerLaBase() {
@@ -332,8 +381,9 @@ function preparerLaBase() {
     psql(`CREATE DATABASE "${NOM_BASE}"`)
   } catch (erreur) {
     console.error(
-      "\n✗ espace-connecte : le conteneur « gestlocpro-db » ne répond pas.\n" +
-        '  Démarrez-le depuis la racine :  npm run db:up\n\n' +
+      `\n✗ espace-connecte : aucune base joignable à ${ORIGINE_BASE}.\n` +
+        '  En développement, démarrez-la depuis la racine :  npm run db:up\n' +
+        '  Ailleurs, posez `PORTE_BASE` sur l’origine d’un Postgres accessible.\n\n' +
         String(erreur.message ?? erreur) +
         '\n',
     )

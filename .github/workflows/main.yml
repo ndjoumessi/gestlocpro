@@ -176,6 +176,31 @@ jobs:
     needs: [rapide, serveur]
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    # UNE VRAIE BASE, ET ELLE MANQUAIT DEPUIS LE 2026-08-31.
+    #
+    # `espace-connecte` est entrée dans la chaîne ce jour-là (`5ceb7eb`) : elle
+    # monte SEPT vraies sessions derrière un vrai serveur, donc elle sème un vrai
+    # parc. Ce travail n'en avait aucune, et adressait de toute façon Postgres par
+    # le nom d'un conteneur de la machine de développement. Le rouge est resté
+    # caché quatre jours derrière `modales`, qui s'arrêtait avant elle.
+    #
+    # La même image et les mêmes identifiants que le travail `serveur` : éprouver
+    # sur une autre version que celle qu'on lance chez soi ferait de l'intégration
+    # continue un second environnement à déboguer.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: gestlocpro
+          POSTGRES_PASSWORD: gestlocpro
+          POSTGRES_DB: gestlocpro_test
+        options: >-
+          --health-cmd "pg_isready -U gestlocpro -d gestlocpro_test"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+        ports:
+          - 5432:5432
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -204,11 +229,16 @@ jobs:
       #
       # `prisma.config` le résout à la lecture du fichier de configuration :
       # sans lui, `generate` s'arrête sur « Cannot resolve environment
-      # variable » avant d'avoir écrit une ligne. Le travail `serveur` le pose
-      # déjà, pour une VRAIE base ; ici il n'en faut aucune — ce travail ne
-      # requête rien, il construit un client et ouvre des écrans rendus côté
-      # client. L'adresse est donc syntaxiquement valide et jamais jointe, comme
-      # celle que `scripts/politique-de-securite.mjs` passe à son serveur.
+      # variable » avant d'avoir écrit une ligne. L'adresse est syntaxiquement
+      # valide et jamais jointe, comme celle que
+      # `scripts/politique-de-securite.mjs` passe à son serveur.
+      #
+      # CE COMMENTAIRE DISAIT « ici il n'en faut aucune — CE TRAVAIL NE REQUÊTE
+      # RIEN, il construit un client et ouvre des écrans rendus côté client ».
+      # C'était vrai jusqu'au 2026-08-31 : `espace-connecte` sème depuis ce
+      # jour-là un vrai parc dans une vraie base. Le service ci-dessus la
+      # fournit, et `PORTE_BASE` dit à la porte où la trouver. L'adresse
+      # injoignable reste juste POUR `generate`, qui ne se connecte pas.
       #
       # CE DÉFAUT A ÉTÉ PAYÉ : la machine de développement porte `server/.env`,
       # qui fournit la variable, et aucun essai local ne pouvait donc le voir.
@@ -242,6 +272,9 @@ jobs:
       - run: npm run check:navigateur
         env:
           MESURER_EN_POLICE_LARGE: '1'
+          # L'ORIGINE, SANS NOM DE BASE : `espace-connecte` en dérive celle
+          # qu'elle sème (`gestlocpro_porte`) et `postgres` pour la créer.
+          PORTE_BASE: postgresql://gestlocpro:gestlocpro@localhost:5432
       # Les captures que `poids-ecrans` régénère : c'est la seule sortie
       # regardable d'un échec de mise en page, et elle disparaît avec la machine.
       - if: always()
