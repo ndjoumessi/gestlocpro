@@ -122,9 +122,34 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
      * gestion : le gestionnaire repart en croyant l'argent tracé, et l'impayé
      * réapparaît le mois suivant sans qu'on puisse dire si le locataire a payé.
      *
-     * La période est le mois COURANT, premier jour. C'est le cas de loin le
-     * plus fréquent ; imputer sur un autre mois — un versement d'août qui
-     * couvre juillet — reste à offrir, et le serveur le sait déjà faire.
+     * La période est CELLE QUE LE CHAMP PORTE, premier jour du mois. Le mois
+     * courant n'en est que le pré-remplissage — le cas de loin le plus
+     * fréquent —, jamais ce qui part.
+     *
+     * CE PARAGRAPHE DISAIT « la période est le mois COURANT […] imputer sur un
+     * autre mois — un versement d'août qui couvre juillet — RESTE À OFFRIR, et
+     * le serveur le sait déjà faire ». C'était vrai le temps d'un commit :
+     * écrit par `944047d` le 2026-08-16, démenti le MÊME JOUR par `53361de`,
+     * dont le titre est « Choisir le mois que règle un encaissement ». La
+     * phrase a survécu dix-neuf jours au geste qu'elle déclarait absent, à
+     * quatre-vingt-dix lignes d'un commentaire qui, lui, dit juste : le champ
+     * est « pré-rempli au mois courant […] mais modifiable ».
+     *
+     * Remesuré le 2026-09-04 en figeant la charge utile sur `moisCourant()`,
+     * c'est-à-dire en écrivant le produit que ce paragraphe décrivait :
+     *
+     *     FAIL src/api/gestures.test.tsx > enregistrer un encaissement
+     *       > impute sur le mois CHOISI, et non sur celui du versement
+     *       > distingue la date du versement du mois qu'il règle
+     *
+     * Deux gardes, dont une qui porte le démenti dans son nom. Le geste n'est
+     * pas seulement offert : il est tenu.
+     *
+     * CE QUI EST UNE REVENDICATION DE MANQUE COÛTE PLUS QU'UNE ERREUR. Une
+     * ligne fausse sur du code se voit en le lisant. Une ligne qui déclare une
+     * fonctionnalité absente ne se vérifie qu'en cherchant ce qui n'est pas
+     * là — et la lecture normale, celle qui croit le fichier sur parole, fait
+     * refaire un travail déjà livré.
      */
     recordPayment(unitId, {
       periodStart: `${periode}-01`,
