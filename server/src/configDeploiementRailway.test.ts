@@ -64,16 +64,35 @@ describe('ce qui construit ce dépôt', () => {
     }
   })
 
-  it('re-regarde la migration en dépôt avant le 2026-12-01', () => {
-    /* UN MOIS DE MARGE. Rien ne casse à l'échéance — le constructeur est
-       détecté, les deux réglages sont chez l'hébergeur. Ce qu'on va vérifier,
-       c'est si `.railway/railway.ts` sait enfin exprimer le constructeur, pour
-       ramener en dépôt ce qui en est sorti. */
+  it('re-regarde la migration en dépôt avant le 2027-03-01', () => {
+    /**
+     * LE RENDEZ-VOUS A EU LIEU, LE 2026-09-04. Voici ce qu'il a rendu.
+     *
+     * La référence du DSL (`docs.railway.com/infrastructure-as-code/reference`)
+     * documente `healthcheck` et `healthcheckTimeout` sur un `service(…)`. Elle
+     * ne documente NI `builder`, NI `dockerfilePath`, NI de politique de
+     * redémarrage : `build` et `start` y sont des COMMANDES, pas un choix de
+     * constructeur. La moitié de ce qui est sorti d'ici sait donc y revenir,
+     * l'autre non.
+     *
+     * ET CE N'EST PAS CE QUI BLOQUE. Adopter `.railway/railway.ts` n'est pas
+     * ajouter un fichier : `railway config apply` RÉCONCILIE l'environnement
+     * entier contre lui — services, variables, domaines, volumes. Déclarer la
+     * moitié du projet et appliquer, c'est demander à l'hébergeur de retirer
+     * l'autre moitié. Le faire contre la production est un geste destructeur, et
+     * il ne se prend pas pour ramener un chemin de healthcheck.
+     *
+     * LA DATE RECULE DONC, et le cas dit pourquoi — c'est ce que sa rédaction
+     * précédente demandait de faire. Rien ne casse le 2026-12-01 : la
+     * dépréciation de Config as Code ne touche que `railway.json` et
+     * `railway.toml`, que ce dépôt n'a plus.
+     */
     expect(
-      new Date() < new Date('2026-11-01T00:00:00Z'),
-      'le DSL de Railway sait-il enfin dire le constructeur ? Si oui, ramener ' +
-        'healthcheck et politique de redémarrage dans `.railway/railway.ts`. ' +
-        'Sinon, repousser cette date en disant pourquoi.',
+      new Date() < new Date('2027-03-01T00:00:00Z'),
+      'le DSL sait-il enfin dire le CONSTRUCTEUR et la politique de redémarrage ? ' +
+        'Au 2026-09-04 il disait `healthcheck` et rien d’autre de ce qui manque. ' +
+        'Si oui, peser la migration COMPLÈTE du projet — une adoption partielle ' +
+        'ferait retirer ce qu’elle ne déclare pas. Sinon, repousser en disant pourquoi.',
     ).toBe(true)
   })
 })
