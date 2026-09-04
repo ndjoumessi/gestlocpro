@@ -118,6 +118,18 @@ function commandes(): HTMLElement[] {
   )
 }
 
+/** Ouvre l'écran, déplie son menu s'il en porte un, et compte ce qu'il contient. */
+async function verifierLeMenu(adresse: string) {
+  await ouvrir(adresse)
+  const declencheur = enTete().querySelector('[aria-haspopup="menu"]') as HTMLElement | null
+  if (!declencheur) return
+  await userEvent.setup().click(declencheur)
+  expect(
+    within(screen.getByRole('menu')).queryAllByRole('menuitem').length,
+    `${adresse} : un déclencheur qui n’ouvre rien`,
+  ).toBeGreaterThan(0)
+}
+
 describe('les actions d’en-tête', () => {
   for (const [nom, adresse] of [
     ['les paiements', '/app/paiements'],
@@ -150,17 +162,42 @@ describe('les actions d’en-tête', () => {
     expect(screen.getByRole('menu')).toBeInTheDocument()
   })
 
-  it('n’ouvre aucun menu là où il n’y a rien à replier', async () => {
+  it('n’ouvre jamais un menu VIDE', async () => {
     /*
-      GARDE DU GARDE. Le tableau de bord tient déjà dans deux actions. Un
-      déclencheur y serait un bouton qui n'ouvre rien — le défaut que la
-      coquille nomme en toutes lettres à propos de sa cloche absente.
+      GARDE DU GARDE — et ce cas disait autre chose jusqu'au 2026-09-05.
+
+      Il exigeait : « le tableau de bord tient déjà dans deux actions », donc
+      `/app` ne doit porter AUCUN déclencheur. C'était un RACCOURCI vers
+      l'intention, écrite trois lignes plus haut : empêcher « un déclencheur
+      vide ». Le raccourci supposait qu'un écran ne se replie que par manque de
+      place en LARGEUR ; il ignorait la HAUTEUR.
+
+      Mesuré depuis, sur la porte au navigateur à 360×640 en police large : les
+      deux boutons du tableau de bord s'EMPILENT — `PageHeader` est `flex-col`
+      sous 640 px — et pesaient 112 px des 171 de l'en-tête. Le premier chiffre
+      tombait à 656 px pour un pli à 640 sur l'exécuteur public : un
+      gestionnaire ouvrant son parc sur un téléphone ne voyait pas un chiffre.
+      L'export replié rend 119 px d'en-tête et 582 px de premier chiffre.
+
+      LE CAS TIENT DONC L'INTENTION PLUTÔT QUE SON RACCOURCI, et il est plus
+      LARGE qu'avant : plus aucun écran ne peut porter un déclencheur qui
+      n'ouvre rien, là où la version d'avant ne regardait que `/app`.
     */
-    await ouvrir('/app')
-    expect(commandes()).toHaveLength(2)
-    expect(
-      enTete().querySelector('[aria-haspopup="menu"]'),
-      'un déclencheur qui n’ouvre rien',
-    ).toBeNull()
+    await verifierLeMenu('/app')
+  })
+
+  /* UN CAS PAR ÉCRAN, et non une boucle dans un seul : `renderApp` monte un
+     arbre de plus sans démonter le précédent, et `enTete()` retombait alors sur
+     le premier écran rendu — le cas passait au vert sur `/app` quatre fois. */
+  it('n’ouvre jamais un menu VIDE sur les paiements', async () => {
+    await verifierLeMenu('/app/paiements')
+  })
+
+  it('n’ouvre jamais un menu VIDE sur les locataires', async () => {
+    await verifierLeMenu('/app/locataires')
+  })
+
+  it('n’ouvre jamais un menu VIDE sur le parc', async () => {
+    await verifierLeMenu('/app/parc')
   })
 })

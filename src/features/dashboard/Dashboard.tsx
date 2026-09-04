@@ -4,6 +4,7 @@ import { cn } from '@/lib/cn'
 import { Link, Navigate } from 'react-router-dom'
 import { useRole } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDebordement'
 import { NoteDePerimetre } from './NoteDePerimetre'
 import { Card, CardHeader } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
@@ -245,15 +246,39 @@ export function Dashboard() {
           units: t('common.unitCount', { count: units.length }),
           currency: definition.label,
         })}
-        actions={
+        /**
+         * UNE SEULE COMMANDE SOUS LES YEUX, ET L'EXPORT À UN GESTE.
+         *
+         * ═══ CE QUE DEUX BOUTONS COÛTAIENT, MESURÉ ═══
+         *
+         * `PageHeader` est `flex-col` sous 640 px : les deux boutons s'EMPILENT.
+         * Sondé sur la porte au navigateur, à 360×640 en police large, l'en-tête
+         * du gestionnaire pesait 171 px — dont 59 de TEXTE (titre 29, marge 8,
+         * description 22) et 112 de rangée de commandes. Les parcs vides, où
+         * `actions` vaut `null`, rendaient 59 px : la preuve par soustraction.
+         *
+         * Le premier chiffre tombait à 656 px pour un pli à 640 sur l'exécuteur
+         * public — un gestionnaire ouvrant son parc sur un téléphone ne voyait
+         * PAS UN SEUL CHIFFRE. J'avais parié sur la description ; elle pèse 22 px
+         * des 171. La sonde a tranché contre moi.
+         *
+         * ═══ POURQUOI L'EXPORT, ET PAS L'AUTRE ═══
+         *
+         * C'est la règle que `PageHeader` écrit lui-même : « ce qu'on fait tous
+         * les jours reste sous les yeux ; ce qu'on fait parfois se demande ».
+         * Enregistrer un paiement est le geste quotidien d'un gestionnaire, et
+         * la seule action que les indicateurs de cet écran mènent à faire.
+         * Exporter douze mois de relevé se fait à la clôture.
+         *
+         * AUCUNE ACTION N'EST RETIRÉE — c'est la hiérarchie qui change, pas
+         * l'inventaire, et le menu porte son propre nom accessible.
+         */
+        debordement={
           parcVide ? null : (
-          <>
-            {/* Le tableau de bord exporte ce que porte son graphique : les
-                douze mois d'encaissements, ventilés comme la légende. */}
-            <Button
-              variant="secondary"
-              icon="download"
-              onClick={() =>
+            <MenuDeDebordement libelle={t('common.moreActions')}>
+              <MenuElement
+                icone="download"
+                onClick={() =>
                 exportCsv({
                   name: t('app.files.collections'),
                   // Les montants sortent en nombres, la devise est nommée une
@@ -273,15 +298,19 @@ export function Dashboard() {
                     csvMoney.amount(month.power),
                     csvMoney.amount(month.rent + month.water + month.power),
                   ]),
-                })
-              }
-            >
-              {t('app.exportStatement')}
-            </Button>
+                  })
+                }
+              >
+                {t('app.exportStatement')}
+              </MenuElement>
+            </MenuDeDebordement>
+          )
+        }
+        actions={
+          parcVide ? null : (
             <Button icon="plus" onClick={() => setPayOpen(true)}>
               {t('app.recordPayment')}
             </Button>
-          </>
           )
         }
       />
