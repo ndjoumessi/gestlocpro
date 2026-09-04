@@ -273,6 +273,11 @@ export const fr = {
     threadEmailCopies: 'Copies des signalements',
     threadEmailDigest: 'Les grouper en un résumé',
     backToSite: 'Retour au site',
+    /* LE CHEMIN DU RETOUR, et il n'existait pas. « Retour au site » emmène du
+       produit vers la vitrine ; rien ne ramenait. L'en-tête public servait ses
+       deux boutons d'entrée à quelqu'un déjà entré — voir
+       `sessionVivanteSurLeSitePublic.test.tsx`. */
+    backToApp: 'Reprendre mon espace',
     searchPlaceholder: 'Rechercher un logement, un locataire…',
     /* Le GABARIT, plus court que le nom accessible : voir `Portfolio`. */
     searchShort: 'Logement, locataire…',

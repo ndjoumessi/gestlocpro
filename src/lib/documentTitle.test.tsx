@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, userEvent } from '@/test/render'
+import { SESSION_ANONYME, renderApp, screen, userEvent } from '@/test/render'
 
 /**
  * Titre du document.
@@ -16,7 +16,7 @@ import { renderApp, screen, userEvent } from '@/test/render'
  */
 describe('titre du document', () => {
   it('nomme chaque écran, avec le produit en suffixe', async () => {
-    await renderApp('/connexion')
+    await renderApp('/connexion', { session: SESSION_ANONYME })
     expect(document.title).toBe('Content de vous revoir · GestLocPro')
   })
 
@@ -33,7 +33,7 @@ describe('titre du document', () => {
 
   it('suit la langue', async () => {
     const user = userEvent.setup()
-    await renderApp('/connexion')
+    await renderApp('/connexion', { session: SESSION_ANONYME })
 
     /* LE PANNEAU S'OUVRE D'ABORD. Les trois réglages des écrans
        d'authentification vivent derrière un déclencheur depuis que leur rangée

@@ -6,6 +6,7 @@ import { Logo } from '@/components/primitives/Logo'
 import { Button, IconButton } from '@/components/primitives/Button'
 import { ListeDeReglages } from '@/components/controls/ListeDeReglages'
 import { useT } from '@/i18n/I18nProvider'
+import { useSession } from '@/api/SessionProvider'
 import { AU_DELA_LG, AU_DELA_SM, useAuDela } from '@/lib/useAuDela'
 
 const SECTIONS = [
@@ -17,6 +18,10 @@ const SECTIONS = [
 
 export function PublicHeader() {
   const t = useT()
+  /* La session, LUE ICI ET NULLE PART AILLEURS dans ce fichier : c'est le seul
+     endroit qui décide ce que la barre propose. */
+  const { etat } = useSession()
+  const connecte = etat.statut === 'connecte'
   const [menuOpen, setMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const coucheRef = useRef<HTMLDivElement>(null)
@@ -366,11 +371,30 @@ export function PublicHeader() {
               et les cacher derrière un menu sur tablette coûterait plus que la
               place qu'ils prennent.
             */}
+            {/*
+              UNE SESSION VIVANTE NE SE VOIT PROPOSER NI L'UNE NI L'AUTRE.
+
+              Cet en-tête n'appelait JAMAIS `useSession` : il servait « Se
+              connecter » et « Essayer gratuitement » à quelqu'un déjà entré. Un
+              locataire revenu ici par « Retour au site » lisait donc un écran
+              qui le traitait en inconnu, et le geste appelé était de retaper un
+              mot de passe. Il n'était pas déconnecté — on le lui disait.
+
+              UN SEUL BOUTON, ET IL RAMÈNE. `/app` renvoie chaque rôle chez lui,
+              le locataire compris : c'est déjà ce que fait le tableau de bord,
+              qui le redirige vers `mon-espace`.
+            */}
             <div className="hidden items-center gap-2 sm:flex">
-              <Button variant="ghost" to="/connexion">
-                {t('auth.signIn')}
-              </Button>
-              <Button to="/inscription">{t('auth.signUpFree')}</Button>
+              {connecte ? (
+                <Button to="/app">{t('nav.backToApp')}</Button>
+              ) : (
+                <>
+                  <Button variant="ghost" to="/connexion">
+                    {t('auth.signIn')}
+                  </Button>
+                  <Button to="/inscription">{t('auth.signUpFree')}</Button>
+                </>
+              )}
             </div>
 
             {/* Le nom suit ce que le bouton OUVRE VRAIMENT, qui n'est plus le
@@ -548,16 +572,21 @@ export function PublicHeader() {
                   ne disaient pas « important », ils disaient « personne n'a
                   regardé ».
                 */}
-                {!barrePorteLesBoutons && (
-                  <>
-                    <Button variant="secondary" size="lg" fullWidth to="/connexion">
-                      {t('auth.signIn')}
+                {!barrePorteLesBoutons &&
+                  (connecte ? (
+                    <Button size="lg" fullWidth to="/app">
+                      {t('nav.backToApp')}
                     </Button>
-                    <Button size="lg" fullWidth to="/inscription">
-                      {t('auth.signUpFree')}
-                    </Button>
-                  </>
-                )}
+                  ) : (
+                    <>
+                      <Button variant="secondary" size="lg" fullWidth to="/connexion">
+                        {t('auth.signIn')}
+                      </Button>
+                      <Button size="lg" fullWidth to="/inscription">
+                        {t('auth.signUpFree')}
+                      </Button>
+                    </>
+                  ))}
               </div>
             </nav>
           </div>

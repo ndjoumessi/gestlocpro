@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen } from '@/test/render'
+import { SESSION_ANONYME, renderApp, screen } from '@/test/render'
 
 /**
  * Le remplissage automatique doit être NOMMÉ, champ par champ.
@@ -39,7 +39,7 @@ describe('remplissage automatique', () => {
      * l'inscription avec un ancien mot de passe, ou refuser d'enregistrer le
      * nouveau.
      */
-    await renderApp('/connexion')
+    await renderApp('/connexion', { session: SESSION_ANONYME })
     await screen.findByRole('heading', { level: 1 })
     expect(screen.getByLabelText(/^Mot de passe/).getAttribute('autocomplete')).toBe(
       'current-password',

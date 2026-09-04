@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, userEvent } from '@/test/render'
+import { SESSION_ANONYME, renderApp, screen, userEvent } from '@/test/render'
 
 /**
  * UN REFUS SE LIT ; UN BOUTON ÉTEINT NE DIT RIEN.
@@ -75,7 +75,7 @@ describe('le refus de la première étape', () => {
  */
 describe('le lien de mot de passe oublié', () => {
   it('vit dans l’étiquette de son champ, pas entre le champ et l’action', async () => {
-    await renderApp('/connexion')
+    await renderApp('/connexion', { session: SESSION_ANONYME })
 
     const lien = await screen.findByRole('link', { name: /Mot de passe oublié/ })
     const champ = await screen.findByLabelText(/Mot de passe/)

@@ -208,6 +208,7 @@ export const en: Dictionary = {
     threadEmailCopies: 'Report copies',
     threadEmailDigest: 'Group them into a summary',
     backToSite: 'Back to the website',
+    backToApp: 'Back to my space',
     searchPlaceholder: 'Search a unit, a tenant…',
     searchShort: 'Unit, tenant…',
     selectPark: 'Park being viewed',

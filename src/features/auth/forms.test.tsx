@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, userEvent } from '@/test/render'
+import { SESSION_ANONYME, renderApp, screen, userEvent } from '@/test/render'
 import { installerFauxServeur } from '@/test/api'
 
 /**
@@ -18,7 +18,7 @@ import { installerFauxServeur } from '@/test/api'
 describe('connexion', () => {
   it('refuse une soumission vide et signale les deux champs', async () => {
     const user = userEvent.setup()
-    await renderApp('/connexion')
+    await renderApp('/connexion', { session: SESSION_ANONYME })
 
     await user.click(screen.getByRole('button', { name: 'Se connecter' }))
 
@@ -33,7 +33,7 @@ describe('connexion', () => {
 
   it('place le focus sur le premier champ fautif', async () => {
     const user = userEvent.setup()
-    await renderApp('/connexion')
+    await renderApp('/connexion', { session: SESSION_ANONYME })
 
     await user.click(screen.getByRole('button', { name: 'Se connecter' }))
 
@@ -78,7 +78,7 @@ describe('connexion', () => {
 
   it('dit comment réparer, et pas seulement que c’est invalide', async () => {
     const user = userEvent.setup()
-    await renderApp('/connexion')
+    await renderApp('/connexion', { session: SESSION_ANONYME })
 
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'sarah@')
     await user.tab()
@@ -89,14 +89,14 @@ describe('connexion', () => {
 
   it('ne valide pas pendant la frappe', async () => {
     const user = userEvent.setup()
-    await renderApp('/connexion')
+    await renderApp('/connexion', { session: SESSION_ANONYME })
 
     await user.type(screen.getByLabelText(/adresse e-mail/i), 'sar')
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('associe chaque champ à un libellé visible', async () => {
-    await renderApp('/connexion')
+    await renderApp('/connexion', { session: SESSION_ANONYME })
     // `getByLabelText` échoue si l'association label/champ est rompue.
     expect(screen.getByLabelText(/adresse e-mail/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/^Mot de passe/)).toBeInTheDocument()
@@ -478,7 +478,11 @@ describe('retour à l’accueil depuis l’authentification', () => {
   it.each(['/connexion', '/inscription', '/mot-de-passe-oublie'])(
     '%s offre un lien vers l’accueil et un logo cliquable',
     async (route) => {
-      await renderApp(route)
+      /* ANONYME, ET IL FAUT LE DIRE : `/connexion` redirige désormais une
+         session ouverte — voir `sessionVivanteSurLeSitePublic.test.tsx`. Le
+         défaut de montage de `renderApp` est « connecté », ce qui n'a jamais
+         décrit un visiteur venu se connecter. */
+      await renderApp(route, { session: SESSION_ANONYME })
 
       const versAccueil = screen
         .getAllByRole('link')

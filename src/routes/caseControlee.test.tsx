@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { render } from '@testing-library/react'
-import { renderApp, screen } from '@/test/render'
+import { SESSION_ANONYME, renderApp, screen } from '@/test/render'
 
 /**
  * UNE CASE À COCHER QUI NE COMMANDE RIEN.
@@ -29,7 +29,7 @@ function proprietesReact(noeud: Element): Record<string, unknown> | null {
 
 describe('connexion — aucune case qui ne commande rien', () => {
   it('n’offre que des cases dont l’état est lu', async () => {
-    await renderApp('/connexion')
+    await renderApp('/connexion', { session: SESSION_ANONYME })
 
     const formulaire = screen.getByRole('button', { name: 'Se connecter' }).closest('form')
     expect(formulaire).not.toBeNull()

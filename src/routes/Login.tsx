@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { AuthLayout } from '@/components/layout/AuthLayout'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
@@ -50,7 +50,7 @@ export function Login() {
   const t = useT()
   const navigate = useNavigate()
   const { notify } = useToast()
-  const { connecter } = useSession()
+  const { connecter, etat } = useSession()
   const location = useLocation()
 
   /**
@@ -65,6 +65,7 @@ export function Login() {
   const demandee = (location.state as { from?: unknown } | null)?.from
   const destination =
     typeof demandee === 'string' && /^\/app(?:[/?]|$)/.test(demandee) ? demandee : '/app'
+
 
   const [email, setEmail] = useState(() => lireStockage('local', CLE_ADRESSE_RETENUE) ?? '')
   const [password, setPassword] = useState('')
@@ -188,6 +189,33 @@ export function Login() {
       setSubmitting(false)
     }
   }
+
+  /**
+   * DÉJÀ CONNECTÉ : ON NE REDEMANDE PAS UN MOT DE PASSE.
+   *
+   * Cet écran rendait son formulaire à une session OUVERTE. Le parcours capturé
+   * en production : un locataire dans son espace clique « Retour au site »,
+   * arrive sur la vitrine, clique « Se connecter » — et lit un champ de mot de
+   * passe vide sous son adresse pré-remplie. Il en conclut ce que n'importe qui
+   * en conclurait, et il a tort : « Retour au site » est un lien, pas une
+   * déconnexion, et son cookie est intact.
+   *
+   * L'ADRESSE PRÉ-REMPLIE RENDAIT LE MENSONGE PLUS CRÉDIBLE : elle vient de
+   * l'e-mail mémorisé, jamais d'une session.
+   *
+   * APRÈS TOUS LES HOOKS, ET C'EST LE LINTER QUI ME L'A APPRIS. Posé en tête
+   * de composant, ce retour rendait SEPT `useState` conditionnels — « React
+   * Hooks must be called in the exact same order in every render ». Mes quatre
+   * cas passaient au vert : ils montent l'écran avec un état déjà fixé, et ne
+   * voient donc jamais l'ordre changer. Une session qui s'ouvre pendant que
+   * l'écran est monté, elle, casse le rendu.
+   *
+   * `destination` PLUTÔT QUE `/app` : une barrière a pu retenir l'adresse
+   * voulue, et elle est déjà validée au-dessus contre la redirection ouverte.
+   * `replace` : cet écran n'est pas une étape du parcours de quelqu'un qui
+   * n'avait rien à y faire.
+   */
+  if (etat.statut === 'connecte') return <Navigate to={destination} replace />
 
   return (
     <AuthLayout
