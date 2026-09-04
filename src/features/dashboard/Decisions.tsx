@@ -186,6 +186,14 @@ const DETAIL: Record<string, Champ[]> = {
     { champ: 'rentMinor', nature: 'argent' },
     { champ: 'startsOn', nature: 'date' },
   ],
+  /* LA CORRECTION MONTRE L'APRÈS, et l'avant vit dans la charge utile. Rendre
+     les deux ferait une ligne de registre qui se lit comme un diff ; ce que le
+     lecteur cherche ici est QUELLE fiche a bougé, et son nom d'aujourd'hui est
+     ce qui la désigne. */
+  'tenant.update': [
+    { champ: 'fullName', nature: 'texte' },
+    { champ: 'phoneE164', nature: 'texte' },
+  ],
   'tenant.delete': [{ champ: 'fullName', nature: 'texte' }],
   'rent.call': [
     { champ: 'periodStart', nature: 'mois' },

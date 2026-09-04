@@ -1225,6 +1225,7 @@ export const en: Dictionary = {
         tenant: {
           create: 'Tenant record opened',
           delete: 'Tenant record removed',
+          update: 'Tenant record corrected',
         },
         work: {
           quote: 'Job quoted',
@@ -1393,6 +1394,15 @@ export const en: Dictionary = {
       phoneHint: 'To call them from their record. Nothing is sent from here.',
       since: 'Tenant since',
       contact: 'Contact',
+      edit: 'Correct',
+      editTitle: 'Correct {name}’s record',
+      editBody: 'Name and phone only. Rent and unit are settled from the lease; the account, from “Park access”.',
+      editName: 'Full name',
+      editPhone: 'Phone',
+      editPhoneHint: 'International format, dialling code included. Leave empty to remove the number.',
+      editSave: 'Save',
+      editSaved: 'Record corrected',
+      editNameInvalid: 'At least two characters',
       remove: 'Remove',
       removeTitle: 'Remove {name}’s record?',
       removeBody: 'The lease and any issued charges go with it; the unit becomes vacant. Refused if a payment was collected or a deposit is held — remove those first.',

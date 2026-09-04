@@ -497,6 +497,17 @@ export const api = {
    */
   deleteTenant: <T>(parkId: string, tenantId: string) =>
     requete<T>(`/parks/${parkId}/tenants/${tenantId}`, { method: 'DELETE' }),
+  /* CORRIGER une fiche : son nom et son numéro. La chaîne vide EFFACE le
+     numéro, `undefined` ne le touche pas — voir `schemaCorrectionDeFiche`. */
+  updateTenant: <T>(
+    parkId: string,
+    tenantId: string,
+    corps: { fullName?: string; phoneE164?: string },
+  ) =>
+    requete<T>(`/parks/${parkId}/tenants/${tenantId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(corps),
+    }),
 
   /**
    * Retire un versement saisi par erreur.

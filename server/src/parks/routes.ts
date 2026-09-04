@@ -6500,6 +6500,153 @@ parksRouter.delete(
 )
 
 /**
+ * CORRIGER UNE FICHE LOCATAIRE : son NOM et son NUMÉRO, rien d'autre.
+ *
+ * ═══ CE QUE SON ABSENCE COÛTAIT ═══
+ *
+ * On savait créer une fiche, la supprimer, lui relier et lui délier un compte.
+ * Pas la modifier. Une faute de frappe n'avait donc qu'un chemin — supprimer
+ * pour recréer —, ce qui emporte le BAIL, l'ancienneté et les échéances. Et ce
+ * chemin se referme au premier versement : la suppression rend alors 409.
+ * Passé le premier loyer encaissé, une coquille était DÉFINITIVE.
+ *
+ * Relevé sur la production, colonne « Contact » : `+23760000001`. C'est le
+ * numéro que `src/features/auth/validation.ts` documente comme impossible —
+ * huit chiffres là où le Cameroun en attend neuf. La garde de saisie existe
+ * désormais ; elle ne pouvait rien pour les fiches déjà écrites.
+ *
+ * ═══ CE QU'ELLE NE TOUCHE PAS ═══
+ *
+ * NI le bail, NI le compte. Le loyer et le logement déplacent de l'argent et
+ * s'arbitrent là où cet argent se lit ; relier un compte est le geste du
+ * registre des accès, qui porte ses propres refus — `compteReliable` en
+ * refuse trois. Cette route corrige une IDENTITÉ.
+ *
+ * `email` en est absent : la colonne existe au schéma, mais aucune création ne
+ * l'écrit. Ouvrir ici un champ que rien d'autre ne remplit inventerait une
+ * donnée à moitié tenue.
+ *
+ * ═══ OUVERTE AU GESTIONNAIRE, contrairement à la suppression ═══
+ *
+ * Retirer une fiche efface une personne du registre, et reste au propriétaire.
+ * Corriger une coquille est STRICTEMENT MOINS PUISSANT que créer la fiche, que
+ * le gestionnaire fait déjà. La lui refuser obligerait à déranger le
+ * propriétaire pour une lettre — et le cabinet qui saisit est précisément celui
+ * qui se trompe.
+ *
+ * Son PÉRIMÈTRE le suit : un gestionnaire à qui l'on a confié un immeuble sur
+ * trois ne corrige que les fiches dont un bail tombe dans sa portée. En clause
+ * de requête, jamais après lecture.
+ */
+const schemaCorrectionDeFiche = z
+  .object({
+    fullName: z.string().trim().min(2).max(120).optional(),
+    /**
+     * LA CHAÎNE VIDE EFFACE, `undefined` NE TOUCHE À RIEN.
+     *
+     * Un numéro FAUX vaut moins que pas de numéro : le produit dit alors « pas
+     * de contact » plutôt que d'en promettre un qui ne sonnera jamais. Effacer
+     * doit donc être possible, et se distinguer d'un champ non transmis — ce
+     * qu'une valeur explicite seule permet.
+     */
+    phoneE164: z
+      .union([
+        z.literal(''),
+        z
+          .string()
+          .trim()
+          .regex(/^\+[1-9]\d{6,14}$/, 'Numéro attendu au format international'),
+      ])
+      .optional(),
+  })
+  /* AU MOINS UN CHAMP : un corps vide n'est pas une correction, et le laisser
+     passer ferait une écriture et une trace pour rien. */
+  .refine((c) => c.fullName !== undefined || c.phoneE164 !== undefined, {
+    message: 'Aucun champ à corriger',
+  })
+
+parksRouter.patch(
+  '/:parkId/tenants/:tenantId',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const perimetreUnite = porteeDesUnites(req.adhesion!)
+    const tenantId = z.string().uuid().parse(req.params.tenantId)
+    const corps = schemaCorrectionDeFiche.parse(req.body)
+
+    const locataire = await prisma.tenant.findFirst({
+      where: {
+        id: tenantId,
+        parkId,
+        /* LE PÉRIMÈTRE, en clause : un propriétaire a `porteeDesUnites` vide et
+           voit tout ; un gestionnaire borné ne trouve que les fiches dont un
+           bail tombe dans sa portée. Une fiche SANS bail reste donc hors de
+           portée d'un gestionnaire borné — elle n'est rattachée à aucun de ses
+           immeubles, et rien ne dit qu'elle le concerne. */
+        ...(Object.keys(perimetreUnite).length > 0
+          ? { leases: { some: { unit: perimetreUnite } } }
+          : {}),
+      },
+      select: { id: true, fullName: true, phoneE164: true },
+    })
+    if (!locataire) {
+      // Un 403 sur un identifiant valide dirait déjà que la fiche existe
+      // ailleurs. On ne distingue pas « absente » de « pas à vous ».
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const nom = corps.fullName ?? locataire.fullName
+    const numero = corps.phoneE164 === undefined ? locataire.phoneE164 : corps.phoneE164 || null
+
+    /* RIEN N'A CHANGÉ : on ne consigne pas un non-geste. Rouvrir la modale et
+       la refermer sans rien toucher n'est pas une décision, et un registre qui
+       les compte noie celles qui comptent. */
+    if (nom === locataire.fullName && numero === locataire.phoneE164) {
+      res.json({ tenant: { id: locataire.id, fullName: nom, phoneE164: numero } })
+      return
+    }
+
+    const apres = await prisma.tenant.update({
+      where: { id: locataire.id },
+      data: { fullName: nom, phoneE164: numero },
+      select: { id: true, fullName: true, phoneE164: true },
+    })
+
+    /**
+     * HORS TRANSACTION, et c'est la règle de ce dépôt : une panne d'écriture du
+     * journal ne doit pas ANNULER l'acte. `leJournalNeFaitPasEchouerLActe` la
+     * tient, et n'excepte que les SUPPRESSIONS déclarées — une suppression sans
+     * trace est indétectable après coup, une correction non tracée se relit sur
+     * la fiche elle-même.
+     *
+     * J'avais écrit l'inverse ; la garde m'a repris.
+     *
+     * L'AVANT ET L'APRÈS, tous deux. Un registre qui ne dit que le nouveau nom
+     * n'apprend rien à qui cherche la fiche dont on parle : « elle s'appelle
+     * maintenant X » ne dit pas laquelle a changé.
+     */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'tenant.update',
+        entity: 'Tenant',
+        entityId: locataire.id,
+        payload: {
+          fullName: apres.fullName,
+          phoneE164: apres.phoneE164,
+          avant: { fullName: locataire.fullName, phoneE164: locataire.phoneE164 },
+        },
+      },
+    })
+
+    res.json({ tenant: apres })
+  },
+)
+
+/**
  * Retire une fiche locataire.
  *
  * Même manque que les immeubles ce matin : on pouvait créer une fiche et jamais

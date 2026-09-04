@@ -1654,6 +1654,7 @@ export const fr = {
         tenant: {
           create: 'Fiche de locataire ouverte',
           delete: 'Fiche de locataire retirée',
+          update: 'Fiche de locataire corrigée',
         },
         work: {
           quote: 'Devis chiffré',
@@ -1885,6 +1886,18 @@ export const fr = {
       phoneHint: 'Pour l’appeler depuis sa fiche. Aucun message ne part d’ici.',
       since: 'Locataire depuis',
       contact: 'Contact',
+      /* CORRIGER une fiche : le geste qui manquait. Une coquille dans un nom ou
+         un numéro n'avait aucun chemin — supprimer pour recréer emporte le bail,
+         et se referme au premier versement encaissé. */
+      edit: 'Corriger',
+      editTitle: 'Corriger la fiche de {name}',
+      editBody: 'Le nom et le numéro seulement. Le loyer et le logement s’arbitrent depuis le bail ; le compte, depuis « Accès au parc ».',
+      editName: 'Nom complet',
+      editPhone: 'Téléphone',
+      editPhoneHint: 'Au format international, indicatif compris. Laissez vide pour retirer le numéro.',
+      editSave: 'Enregistrer',
+      editSaved: 'Fiche corrigée',
+      editNameInvalid: 'Deux caractères au moins',
       remove: 'Retirer',
       removeTitle: 'Retirer la fiche de {name} ?',
       removeBody: 'Le bail et les échéances appelées partent avec elle ; le logement redevient vacant. Refusé si un versement a été encaissé ou une caution détenue — retirez-les d’abord.',

@@ -320,6 +320,11 @@ interface PortfolioContextValue {
    * vacante ; les murs restent.
    */
   removeTenant: (unitId: string, tenantId: string) => Promise<boolean>
+  updateTenant: (
+    unitId: string,
+    tenantId: string,
+    corps: { fullName?: string; phoneE164?: string },
+  ) => Promise<boolean>
   /**
    * Relance les baux désignés, et rend ce qui a RÉELLEMENT eu lieu.
    *
@@ -1480,6 +1485,45 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [parkId, signalerEchec],
   )
 
+  /**
+   * CORRIGER UNE FICHE, et l'écran suit la RÉPONSE du serveur.
+   *
+   * Le nom et le numéro rendus sont ceux qu'il a écrits, jamais ceux qu'on lui
+   * a demandés : il ébarbe les espaces, et refuse ce qui ne tient pas. Recopier
+   * la saisie ferait afficher une valeur que la base ne porte pas.
+   */
+  const updateTenant = useCallback(
+    async (
+      unitId: string,
+      tenantId: string,
+      corps: { fullName?: string; phoneE164?: string },
+    ): Promise<boolean> => {
+      const poser = (nom: string, numero: string | null) =>
+        setUnits((liste) =>
+          liste.map((u) => (u.id === unitId ? { ...u, tenant: nom, phone: numero } : u)),
+        )
+      if (!parkId) {
+        /* HORS SESSION — la démonstration. On applique la saisie telle quelle :
+           il n'y a pas de serveur pour l'ébarber, et refuser le geste ici
+           rendrait la démonstration moins vraie que le produit. */
+        const unite = units.find((u) => u.id === unitId)
+        poser(corps.fullName ?? unite?.tenant ?? '', corps.phoneE164 || null)
+        return true
+      }
+      try {
+        const { tenant } = await api.updateTenant<{
+          tenant: { fullName: string; phoneE164: string | null }
+        }>(parkId, tenantId, corps)
+        poser(tenant.fullName, tenant.phoneE164)
+        return true
+      } catch (erreur) {
+        signalerEchec(erreur)
+        return false
+      }
+    },
+    [parkId, signalerEchec, units],
+  )
+
   const remindRent = useCallback(
     async (leaseIds: string[]): Promise<{ sent: number; skipped: number }> => {
       if (!parkId || leaseIds.length === 0) return { sent: 0, skipped: leaseIds.length }
@@ -1752,6 +1796,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       addBuilding,
       removeBuilding,
       removeTenant,
+      updateTenant,
       remindRent,
       callRent,
       serveFormalNotice,
@@ -1845,6 +1890,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       addBuilding,
       removeBuilding,
       removeTenant,
+      updateTenant,
       remindRent,
       callRent,
       serveFormalNotice,

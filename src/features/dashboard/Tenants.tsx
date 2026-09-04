@@ -44,6 +44,7 @@ export function Tenants() {
   // immobilier et dans le taux d'occupation du tableau de bord.
   const { units, loading, removeTenant, documentRequests, resolveDocumentRequest, unitById } =
     usePortfolio()
+  const [aCorriger, setACorriger] = useState<Unit | null>(null)
   const [aRetirer, setARetirer] = useState<Unit | null>(null)
   const { role } = useRole()
   const base = useBase()
@@ -377,6 +378,31 @@ export function Tenants() {
             render: (unit) => <PaymentStatusPill status={unit.status} size="sm" />,
           },
           {
+            /*
+              CORRIGER une fiche, le geste qui manquait.
+
+              Ouvert au GESTIONNAIRE autant qu'au propriétaire, contrairement au
+              retrait juste à côté : corriger une coquille est strictement moins
+              puissant que créer la fiche, que le gestionnaire fait déjà. Le
+              cabinet qui saisit est celui qui se trompe ; le renvoyer vers le
+              propriétaire pour une lettre coûterait plus que le geste.
+            */
+            key: 'correction',
+            role: 'geste',
+            header: '',
+            render: (unit) =>
+              unit.tenant && unit.tenantId ? (
+                /* `sliders`, LE GLYPHE QUE CE DÉPÔT DONNE DÉJÀ À « CORRIGER » :
+                   c'est celui du bouton « Corriger le parc » de la coquille. Le
+                   vocabulaire d'icônes veut qu'un même concept prenne le même
+                   dessin d'un écran à l'autre ; il n'existe pas de crayon ici, et
+                   en ajouter un ferait deux glyphes pour un seul geste. */
+                <Button variant="ghost" size="sm" icon="sliders" onClick={() => setACorriger(unit)}>
+                  {t('app.tenants.edit')}
+                </Button>
+              ) : null,
+          },
+          {
             key: 'retrait',
             role: 'geste',
             header: '',
@@ -464,6 +490,10 @@ export function Tenants() {
         </p>
       )}
 
+      {aCorriger && (
+        <CorrigerFicheModal unit={aCorriger} onClose={() => setACorriger(null)} />
+      )}
+
       {open && <NewTenantModal vacant={vacant} onClose={() => setOpen(false)} />}
     </>
   )
@@ -531,6 +561,115 @@ interface MembreReliable {
  */
 function membresReliables(membres: MembreReliable[]): MembreReliable[] {
   return membres.filter((m) => m.role === 'tenant' && !m.tenantId)
+}
+
+/**
+ * CORRIGER UNE FICHE : le nom et le numéro, rien d'autre.
+ *
+ * ═══ CE QUE SON ABSENCE COÛTAIT ═══
+ *
+ * Le produit savait ouvrir une fiche et la retirer, jamais la corriger. Une
+ * coquille dans un nom n'avait donc qu'un chemin — supprimer pour recréer —,
+ * qui emporte le BAIL et son ancienneté, et qui se referme au premier versement
+ * encaissé : la suppression rend alors 409. Passé le premier loyer, une faute de
+ * frappe était définitive.
+ *
+ * Relevé sur la production, colonne « Contact » : `+23760000001`, huit chiffres
+ * là où le Cameroun en attend neuf. Le numéro était affiché, cliquable, et
+ * n'appellerait jamais personne.
+ *
+ * ═══ CE QUE LA MODALE N'OFFRE PAS, ET LE DIT ═══
+ *
+ * Ni le loyer, ni le logement, ni le compte. Son corps le nomme plutôt que de
+ * laisser chercher : un écran qui tait ce qu'il ne fait pas envoie l'utilisateur
+ * fouiller les autres.
+ *
+ * ═══ LE NUMÉRO VIDE EFFACE, ET C'EST VOULU ═══
+ *
+ * Un numéro FAUX vaut moins que pas de numéro : le produit dit alors « pas de
+ * contact » au lieu d'en promettre un qui ne sonne pas. L'aide du champ le dit.
+ */
+function CorrigerFicheModal({ unit, onClose }: { unit: Unit; onClose: () => void }) {
+  const t = useT()
+  const { updateTenant } = usePortfolio()
+  const { notify } = useToast()
+  const [nom, setNom] = useState(unit.tenant ?? '')
+  const [numero, setNumero] = useState(unit.phone ?? '')
+  const [erreurNom, setErreurNom] = useState<string | undefined>()
+  const [enCours, setEnCours] = useState(false)
+
+  const enregistrer = async () => {
+    /* LA MÊME BORNE QUE LE SERVEUR, posée ici pour que le refus arrive avant
+       l'aller-retour. Le serveur la tient de toute façon — c'est lui qui
+       décide —, et `signalerEchec` dirait le reste. */
+    if (nom.trim().length < 2) {
+      setErreurNom(t('app.tenants.editNameInvalid'))
+      return
+    }
+    setErreurNom(undefined)
+    setEnCours(true)
+    /* LA CHAÎNE VIDE PART TELLE QUELLE : c'est elle qui EFFACE le numéro côté
+       serveur. L'omettre ne toucherait à rien, et le champ vidé n'aurait aucun
+       effet — un geste sans conséquence, que rien n'expliquerait. */
+    const fait = await updateTenant(unit.id, unit.tenantId!, {
+      fullName: nom.trim(),
+      phoneE164: numero.trim(),
+    })
+    setEnCours(false)
+    if (fait) {
+      onClose()
+      notify(t('app.tenants.editSaved'), { tone: 'ok' })
+    }
+    /* UN ÉCHEC NE FERME PAS LA MODALE : la saisie reste sous les yeux, et
+       `signalerEchec` a déjà dit le refus. La refermer obligerait à tout
+       ressaisir pour corriger un caractère. */
+  }
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      size="sm"
+      title={t('app.tenants.editTitle', { name: unit.tenant ?? '' })}
+      description={t('app.tenants.editBody')}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button onClick={enregistrer} disabled={enCours}>
+            {t('app.tenants.editSave')}
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <Field label={t('app.tenants.editName')} required error={erreurNom}>
+          {(props) => (
+            <Input
+              id={props.id}
+              aria-describedby={props['aria-describedby']}
+              invalid={props['aria-invalid']}
+              value={nom}
+              onChange={(e) => setNom(e.target.value)}
+            />
+          )}
+        </Field>
+        <Field label={t('app.tenants.editPhone')} hint={t('app.tenants.editPhoneHint')}>
+          {(props) => (
+            <Input
+              id={props.id}
+              aria-describedby={props['aria-describedby']}
+              type="tel"
+              inputMode="tel"
+              value={numero}
+              onChange={(e) => setNumero(e.target.value)}
+            />
+          )}
+        </Field>
+      </div>
+    </Modal>
+  )
 }
 
 function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => void }) {
