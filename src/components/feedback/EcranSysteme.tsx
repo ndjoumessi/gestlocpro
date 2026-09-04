@@ -11,9 +11,21 @@ import { Icon } from '@/components/primitives/Icon'
  * injoignable et l'échec de chargement du parc rendaient tous les quatre la même
  * forme — un cercle de 48 px, un `<h1>` en `title-l`, une phrase en `text-muted`,
  * une rangée d'actions — recopiée à quatre endroits. C'est déjà une invitation à
- * la dérive ; ce qui la rend coûteuse, c'est qu'AUCUNE PORTE NE LES REND. Le
- * balayage visite des adresses, et aucune adresse ne plante. Un défaut posé ici
- * se corrige en quatre endroits ou en aucun, et rien ne dit lequel.
+ * la dérive ; ce qui la rendait coûteuse, c'est qu'AUCUNE PORTE AU NAVIGATEUR
+ * NE LES REND. Le balayage visite des adresses, et aucune adresse ne plante. Un
+ * défaut posé ici se corrigeait en quatre endroits ou en aucun, et rien ne
+ * disait lequel.
+ *
+ * CETTE PHRASE DISAIT « AUCUNE PORTE NE LES REND », sans qualification, et le
+ * commit qui l'a écrite — `c909ed6`, le 2026-08-27 — livrait dans le même geste
+ * `ecransSysteme.test.tsx`, qui les rend et les mesure en quatre cas : le titre
+ * principal, le focus sur ce titre, la cible du dépliant, et la fenêtre quand la
+ * coquille reste montée. Une prose de motivation décrit l'état d'AVANT la garde
+ * qu'elle introduit ; au présent, elle devient fausse à l'instant où on la
+ * publie.
+ *
+ * CE QUI RESTE VRAI, et c'est le vrai coût : jsdom ne MET RIEN EN PAGE. Les
+ * quatre écrans sont tenus dans leurs choix, jamais dans leur géométrie.
  *
  * ═══ LE FOCUS PART SUR LE TITRE, ET C'EST MESURÉ ═══
  *

@@ -964,10 +964,16 @@ function TenantDashboardSkeleton() {
             elle cesse d'attendre, et le doigt qui visait la première carte
             tombait ailleurs.
 
-            Le défaut a survécu à toute la refonte parce qu'AUCUNE porte ne rend
-            jamais un état de chargement — ni la vitrine, ni la mesure au
+            Le défaut a survécu à toute la refonte parce qu'AUCUNE porte ne
+            rendait alors un état de chargement — ni la vitrine, ni la mesure au
             navigateur, ni les tests. C'est le refactoring qui l'a montré, en
-            mettant les deux littéraux côte à côte. */}
+            mettant les deux littéraux côte à côte.
+
+            « NI LES TESTS » A CESSÉ D'ÊTRE VRAI LE LENDEMAIN.
+            `attenteFidele.test.tsx` (2026-08-28) rend le squelette et compte ce
+            qu'il annonce contre ce que la page chargée porte. La vitrine et la
+            mesure au navigateur, elles, ne rendent toujours aucun chargement :
+            la démonstration n'attend pas. */}
         {/* L'ENVELOPPE AUSSI, et pas seulement la grille : `@2xl:` et `@4xl:`
             cherchent un ancêtre déclaré conteneur. Sans elle, le squelette
             rendrait UNE colonne à toutes les largeurs pendant que la rangée
