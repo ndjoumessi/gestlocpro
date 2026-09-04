@@ -927,13 +927,42 @@ const MESURER_ZEROS_AU_DESSUS_DU_VIDE = () => {
 /**
  * LE PREMIER CHIFFRE RESTE AU-DESSUS DU PLI.
  *
- * ═══ CE QUE CE DÉPÔT NE SAIT PAS MESURER ═══
+ * ═══ CE QUE CE DÉPÔT NE SAVAIT PAS MESURER — ET CE QUI RESTE ═══
  *
- * Il mesure admirablement ce qui DÉBORDE — deux règles, page et local, une
+ * Il mesure admirablement ce qui DÉBORDE : deux règles, page et local, une
  * quinzaine de signatures tolérées, chacune avec son plafond au pixel. Il ne
- * mesure rien de ce qui OCCUPE TROP. Aucune garde ne refuse qu'un bloc prenne
- * tout l'écran, qu'une rangée laisse une orpheline, ou qu'un titre pousse
- * l'information sous le pli.
+ * mesurait rien de ce qui OCCUPE TROP.
+ *
+ * DEUX DES TROIS MANQUES SONT FERMÉS, et par ce fichier même :
+ *
+ *     un titre qui pousse l'information sous le pli   → `MESURER_LE_PLI`, ci-dessous
+ *     une rangée qui laisse une orpheline             → `MESURER_ORPHELINE`
+ *
+ * CE PARAGRAPHE ÉTAIT ÉCRIT AU PRÉSENT et énumérait comme absentes des règles
+ * qui vivent quarante lignes plus bas. Un audit du 2026-09-04 l'a lu comme un
+ * état actuel et a conclu que le dépôt ne tenait ni l'orpheline ni le pli —
+ * alors qu'il mesure 132 rangées et 74 écrans à chaque passage. La prose de
+ * motivation d'une règle se lit comme un constat sur le présent ; elle doit
+ * donc vieillir avec elle.
+ *
+ * IL RESTAIT : qu'un BLOC prenne tout l'écran, sur un écran qui ne porte aucun
+ * chiffre. MESURÉ le 2026-09-04, par une sonde temporaire posée ici même, et la
+ * mesure a REFUSÉ la règle qu'on allait écrire.
+ *
+ * Le plus haut bloc, sur les écrans sans aucun chiffre : 213 % de la fenêtre
+ * pour le formulaire de signalement, 161 % pour le registre des décisions,
+ * 146 % pour la matrice des droits. Un seuil sur « fraction de la fenêtre »
+ * aurait rougi sur un formulaire, un tableau et une matrice — des blocs qui
+ * DOIVENT être plus hauts qu'un téléphone.
+ *
+ * Recentrée sur le vrai défaut d'origine — un ÉTAT VIDE qui occupe de la place
+ * pour dire qu'il n'y a rien — la sonde rend 36 % à 63 %, soit 230 à 403 px sur
+ * 640. Le défaut historique valait 273 px, et il était un défaut PARCE QU'IL
+ * POUSSAIT quatre indicateurs sous le pli. Sur un écran sans chiffre, un état
+ * vide n'a rien à repousser.
+ *
+ * Conclusion : aucune règle ne se justifie ici. Une garde préventive y ferait
+ * des faux rouges sur des écrans corrects, pour un défaut qui n'existe pas.
  *
  * ═══ LE DÉFAUT QUI L'A FAIT ÉCRIRE, ET IL EST DATÉ ═══
  *
