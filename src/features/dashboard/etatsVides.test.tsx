@@ -268,10 +268,40 @@ describe('les cautions, quand il n’y en a aucune', () => {
    *
    * Il garde le CHOIX : la file vide n'appelle pas `EmptyState`, dont la
    * bordure en pointillés est la signature. Il ne garde PAS la hauteur — jsdom
-   * ne met rien en page, et aucune porte au navigateur ne voit cet écran :
-   * `mesure-ui` ne visite que `/demo`, où la démonstration remplit toujours la
-   * file. C'est l'angle mort connu de ce dépôt, et ce lot y ajoute une pièce
-   * plutôt que de le refermer.
+   * ne met rien en page.
+   *
+   * CE PARAGRAPHE AJOUTAIT « et AUCUNE PORTE AU NAVIGATEUR NE VOIT CET ÉCRAN :
+   * `mesure-ui` ne visite que `/demo` […] C'est l'angle mort connu de ce
+   * dépôt ». Écrit le 2026-08-30 (`294e237`) ; le 2026-09-01, `e72bff1` — « le
+   * parc vide entre sous la mesure » — a fait entrer un parc SANS RIEN dans
+   * `espace-connecte`, sous une vraie session. Son en-tête cite d'ailleurs les
+   * chiffres de CE commentaire parmi les cinq défauts qui l'ont fait écrire.
+   * L'écran est donc vu, et audité : contraste, noms accessibles, cibles au
+   * doigt, défilement latéral, rangées orphelines, règle des zéros.
+   *
+   * ═══ MAIS LA HAUTEUR, ELLE, N'EST TOUJOURS PAS JUGÉE — ET LA MUTATION LE DIT
+   *     MIEUX QUE LA LECTURE ═══
+   *
+   * J'allais écrire « l'angle mort est refermé ». Rejouer le défaut l'a refusé :
+   * `EmptyState` remis en place de la rangée compacte, `espace-connecte` reste
+   * VERTE, 456 points mesurés. Une sonde temporaire au point du pli dit
+   * pourquoi — le premier chiffre, à 360×640, sur `/app` :
+   *
+   *     owner        521 px        owner·vide    AUCUN CHIFFRE
+   *     manager      634 px        manager·vide  AUCUN CHIFFRE
+   *     tenant       390 px        tenant·sans   AUCUN CHIFFRE
+   *     tenant·parti 412 px
+   *
+   * Un parc vide ne rend AUCUN indicateur — la règle des zéros les a retirés —
+   * donc `MESURER_LE_PLI`, qui juge la position du premier chiffre, n'a rien à
+   * juger et passe son tour. Et sur les parcs qui PORTENT des chiffres, la file
+   * n'est jamais vide : la branche mutée ne s'y rend même pas. La mutation était
+   * INERTE, ce que seule la mesure pouvait dire.
+   *
+   * CE QUI RESTE VRAI, DONC, ET PLUS ÉTROIT : l'écran est visité, ses couleurs
+   * et ses cibles sont tenues, sa HAUTEUR ne l'est par rien — non parce qu'aucune
+   * porte n'y va, mais parce que le défaut historique a besoin d'un chiffre à
+   * repousser, et qu'un parc vide n'en a aucun.
    *
    * La primitive reste JUSTE ailleurs : sur travaux, cautions et signalements
    * le vide occupe tout l'écran parce qu'il EST tout l'écran. Les cas
