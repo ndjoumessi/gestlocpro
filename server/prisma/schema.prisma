@@ -566,6 +566,15 @@ model Payment {
   chargeId  String @db.Uuid
   charge    RentCharge @relation(fields: [chargeId], references: [id], onDelete: Cascade)
   amountMinor Int
+  /// Devise dans laquelle CET argent a été reçu.
+  ///
+  /// Redondante avec `Park.currency` tant qu'un parc n'en change pas — et c'est
+  /// exactement le cas qu'elle couvre. Le produit autorise le changement, en
+  /// avertissant que « les montants déjà saisis ne seront pas convertis » ; une
+  /// quittance rééditée après ce geste portait alors une AUTRE monnaie que celle
+  /// déjà remise au locataire, pour le même versement. La devise appartient au
+  /// fait, pas au réglage du jour où on l'imprime.
+  currency  Currency
   method    PaymentMethod
   paidOn    DateTime @db.Date
   reference String?

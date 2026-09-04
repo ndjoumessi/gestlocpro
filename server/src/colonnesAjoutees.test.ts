@@ -71,6 +71,14 @@ const AFFIRMATIONS: Record<string, string> = {
     'Toute session déjà ouverte est retenue. Écrit dans la migration : ' +
     '« additive et rétrocompatible ». Le prix est nommé — une session qu’on ' +
     'avait choisi de ne pas retenir le devient — et il expire avec elle.',
+  'Payment.currency':
+    'Tout versement antérieur a été reçu dans la devise que son parc porte ' +
+    'AUJOURD’HUI — la migration la lit par jointure, sans défaut littéral : un ' +
+    '`DEFAULT \'XAF\'` aurait affirmé que tout l’historique est en francs CFA, ' +
+    'faux dès le premier parc européen. EXACT tant qu’aucun parc n’a changé de ' +
+    'devise ; si l’un l’a fait, ses versements d’avant étaient DÉJÀ mal ' +
+    'étiquetés et rien ne le rattrape. La colonne fige l’état constaté plutôt ' +
+    'que d’en inventer un autre, et empêche que cela recommence.',
   'Park.amountsAreMinor':
     'Tout parc antérieur stocke des unités mineures. La migration porte une ' +
     'section entière sur les lignes existantes et ne convertit que les devises à ' +
@@ -171,13 +179,13 @@ describe('les colonnes ajoutées', () => {
     ).toEqual([])
   })
 
-  it('sont QUINZE, et le compte est écrit à la main', () => {
+  it('sont DIX-HUIT, et le compte est écrit à la main', () => {
     /* GARDE DU GARDE. Si la lecture des migrations cassait, les deux règles
        ci-dessus compareraient des listes vides et se déclareraient vertes sur un
        schéma dont personne n’aurait relu les affirmations. */
     expect(
       colonnesAjoutees().length,
       'la lecture des migrations ne trouve plus les `ADD COLUMN`',
-    ).toBe(17)
+    ).toBe(18)
   })
 })

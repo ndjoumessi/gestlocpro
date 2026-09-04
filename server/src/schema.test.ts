@@ -227,7 +227,7 @@ describe('les montants sont des entiers', () => {
 
     for (const montant of [10, 20]) {
       await prisma.payment.create({
-        data: { chargeId: charge.id, amountMinor: montant, method: 'cash', paidOn: new Date('2026-08-03'), recordedById: compte.id },
+        data: { chargeId: charge.id, amountMinor: montant, currency: 'XAF', method: 'cash', paidOn: new Date('2026-08-03'), recordedById: compte.id },
       })
     }
 

@@ -1751,7 +1751,10 @@ parksRouter.post(
 
     const bail = await prisma.lease.findFirst({
       where: { unitId: corps.unitId, unit: { building: { parkId }, ...perimetreUnite }, status: { not: 'ended' } },
-      select: { id: true, rentMinor: true },
+      /* LA DEVISE DU PARC, LUE ICI ET FIGÉE SUR LE VERSEMENT. Elle voyage avec
+         l'argent reçu, et non avec le réglage du jour où on l'imprimera : voir
+         `Payment.currency`, et le cas de la quittance rééditée. */
+      select: { id: true, rentMinor: true, unit: { select: { building: { select: { park: { select: { currency: true } } } } } } },
       orderBy: { startsOn: 'desc' },
     })
     if (!bail) {
@@ -1814,6 +1817,7 @@ parksRouter.post(
         data: {
           chargeId: echeance.id,
           amountMinor: corps.amountMinor,
+          currency: bail.unit.building.park.currency,
           method: corps.method,
           paidOn: corps.paidOn ? new Date(`${corps.paidOn}T00:00:00Z`) : new Date(),
           ...(corps.reference ? { reference: corps.reference } : {}),
@@ -1881,7 +1885,16 @@ parksRouter.post(
         payments: {
           // `id` : sans lui, l'écran qui LISTE les versements ne peut pas
           // désigner celui qu'on veut retirer.
-          select: { id: true, amountMinor: true, method: true, paidOn: true, reference: true },
+          // `currency` : c'est elle qui donne sa monnaie au document — voir le
+          // calcul de `deviseDuDocument`, plus bas.
+          select: {
+            id: true,
+            amountMinor: true,
+            currency: true,
+            method: true,
+            paidOn: true,
+            reference: true,
+          },
           orderBy: { paidOn: 'asc' },
         },
         lease: {
@@ -1910,6 +1923,23 @@ parksRouter.post(
 
     const du = echeance.rentMinor + echeance.waterMinor + echeance.powerMinor
     const encaisse = echeance.payments.reduce((total, p) => total + p.amountMinor, 0)
+
+    /**
+     * LA DEVISE VIENT DES VERSEMENTS, ET ILS DOIVENT S'ACCORDER.
+     *
+     * Un désaccord ne peut naître que d'un changement de devise du parc EN COURS
+     * de période : deux versements pour un même mois, reçus dans deux monnaies.
+     * Aucune mise en forme ne peut alors dire la vérité — étiqueter le total
+     * dans l'une ou l'autre ment sur la moitié. On refuse plutôt que d'émettre
+     * une preuve fausse, exactement comme on refuse de fabriquer un document
+     * vide au-dessus.
+     */
+    const devises = [...new Set(echeance.payments.map((p) => p.currency))]
+    if (devises.length > 1) {
+      res.status(409).json({ error: 'mixed_currencies' })
+      return
+    }
+    const deviseDuDocument = devises[0] ?? echeance.lease.unit.building.park.currency
     // Le solde peut être négatif — un trop-perçu. On le rend tel quel : le
     // ramener à zéro effacerait une avance que le locataire pourra réclamer.
     const solde = du - encaisse
@@ -1917,18 +1947,28 @@ parksRouter.post(
     const document = {
       kind: solde <= 0 ? ('quittance' as const) : ('recu' as const),
       /**
-       * La DEVISE du document, et non celle de qui l'imprime.
+       * La DEVISE DES FAITS ATTESTÉS, et non celle de qui l'imprime ni celle du
+       * réglage du jour.
        *
        * Ce document ne portait aucune unité : le client le mettait en forme avec
        * la devise d'affichage de sa machine. Le même versement imprimé sur deux
        * postes réglés différemment portait donc deux monnaies — et une quittance
        * est le seul papier que le locataire gardera pour prouver qu'il a payé.
        *
-       * Elle est prise sur le PARC, à l'émission, et figée dans la réponse : une
-       * quittance atteste d'un fait passé, et le parc pourrait changer de devise
-       * demain sans que ce fait change.
+       * CE COMMENTAIRE DISAIT ENSUITE : « elle est prise sur le PARC, à
+       * l'émission, et figée dans la réponse : une quittance atteste d'un fait
+       * passé, et le parc pourrait changer de devise demain sans que ce fait
+       * change ». Vrai le temps d'UNE requête, faux de la seconde — rien n'était
+       * figé en base, et cette route autorise explicitement la réédition. Un
+       * bailleur qui corrigeait la devise de son parc rendait donc une quittance
+       * de 145 000 EUR là où le locataire en détenait une de 145 000 XAF, pour le
+       * même versement.
+       *
+       * Elle vient maintenant des VERSEMENTS, qui portent chacun la devise dans
+       * laquelle l'argent a été reçu. Sans versement, il n'y a pas de fait à
+       * préserver et le parc tranche.
        */
-      currency: echeance.lease.unit.building.park.currency,
+      currency: deviseDuDocument,
       periodStart: corps.periodStart,
       tenant: echeance.lease.tenant.fullName,
       unit: echeance.lease.unit.label,
@@ -1964,7 +2004,15 @@ parksRouter.post(
         action: 'receipt.issued',
         entity: 'RentCharge',
         entityId: echeance.id,
-        payload: { kind: document.kind, periodStart: corps.periodStart, paidMinor: encaisse },
+        /* LA DEVISE Y FIGURE : sans elle, deux quittances rééditées de part et
+           d'autre d'un changement de réglage ne pourraient plus être
+           départagées. La trace disait QUOI et QUAND, jamais EN QUELLE MONNAIE. */
+        payload: {
+          kind: document.kind,
+          periodStart: corps.periodStart,
+          paidMinor: encaisse,
+          currency: deviseDuDocument,
+        },
       },
     })
 

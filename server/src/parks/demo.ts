@@ -299,6 +299,13 @@ export async function semerParcDemonstration(
   { parkId, proprietaireId, periode, aujourdhui }: Semence,
 ): Promise<void> {
   const periodePrecedente = new Date(periode.getFullYear(), periode.getMonth() - 1, 1)
+  /* LA DEVISE DU PARC, LUE UNE SEULE FOIS. Elle est figée sur chaque versement
+     semé — voir `Payment.currency` : la devise appartient à l'argent reçu, pas
+     au réglage du jour où on l'imprime. */
+  const { currency: deviseDuParc } = await tx.park.findUniqueOrThrow({
+    where: { id: parkId },
+    select: { currency: true },
+  })
   const unites = new Map<string, string>()
   const immeubles = new Map<string, string>()
   for (const im of IMMEUBLES) {
@@ -422,6 +429,11 @@ export async function semerParcDemonstration(
           data: {
             chargeId: echeance.id,
             amountMinor: verse,
+            /* La devise voyage avec l'argent reçu — voir `Payment.currency`. Le
+               semis la lit UNE FOIS, hors des deux boucles : une requête par
+               versement semé coûterait des dizaines d'allers-retours pour un
+               nombre qui ne change pas. */
+            currency: deviseDuParc,
             method: 'mobile',
             paidOn: courant ? moins(3, aujourdhui) : new Date(Date.UTC(debut.getUTCFullYear(), debut.getUTCMonth(), 7)),
             recordedById: proprietaireId,

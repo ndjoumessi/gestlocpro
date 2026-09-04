@@ -1822,6 +1822,65 @@ describe('émission des quittances', () => {
     expect(res.body.document.currency).toBe('XAF')
   })
 
+  it('rééditée après un changement de devise, ne contredit pas celle déjà remise', async () => {
+    /**
+     * LE PAPIER EST DÉJÀ CHEZ LE LOCATAIRE, ET IL NE SE RATTRAPE PAS.
+     *
+     * La devise du document était prise sur le PARC, lu à chaque émission. Le
+     * commentaire de la route disait « figée dans la réponse : une quittance
+     * atteste d'un fait passé, et le parc pourrait changer de devise demain sans
+     * que ce fait change » — vrai le temps d'une requête, et faux de la seconde.
+     *
+     * Or la route autorise explicitement la réédition : « un document perdu doit
+     * pouvoir être refait ». Un bailleur qui corrige la devise de son parc rend
+     * donc une quittance de 145 000 EUR là où le locataire en détient une de
+     * 145 000 XAF, pour le même versement. Aucune des deux ne porte de trace de
+     * l'autre : la charge utile de `receipt.issued` ne consignait pas la devise.
+     *
+     * LE VERSEMENT EST LE FAIT. La devise appartient à l'argent reçu, pas au
+     * réglage du jour où on l'imprime.
+     */
+    const { cookie, parkId, unitId } = await parcPaye('devise-changee@example.com', 145000)
+
+    const avant = await request(serveur)
+      .post(`/api/parks/${parkId}/receipts`)
+      .set('Cookie', cookie)
+      .send({ unitId, periodStart: '2026-07-01' })
+    expect(avant.body.document.currency).toBe('XAF')
+
+    await request(serveur)
+      .patch(`/api/parks/${parkId}`)
+      .set('Cookie', cookie)
+      .send({ currency: 'EUR' })
+
+    const apres = await request(serveur)
+      .post(`/api/parks/${parkId}/receipts`)
+      .set('Cookie', cookie)
+      .send({ unitId, periodStart: '2026-07-01' })
+
+    expect(
+      apres.body.document.currency,
+      'la quittance rééditée porte une AUTRE monnaie que celle déjà remise, pour le même versement',
+    ).toBe('XAF')
+  })
+
+  it('consigne la devise dans la trace d’émission', async () => {
+    /* Sans elle, deux quittances contradictoires ne peuvent plus être
+       départagées : la trace disait QUOI et QUAND, jamais EN QUELLE MONNAIE. */
+    const { cookie, parkId, unitId } = await parcPaye('trace-devise@example.com', 145000)
+
+    await request(serveur)
+      .post(`/api/parks/${parkId}/receipts`)
+      .set('Cookie', cookie)
+      .send({ unitId, periodStart: '2026-07-01' })
+
+    const trace = await prisma.auditEvent.findFirst({
+      where: { parkId, action: 'receipt.issued' },
+      orderBy: { createdAt: 'desc' },
+    })
+    expect((trace?.payload as { currency?: string } | null)?.currency).toBe('XAF')
+  })
+
   it('émet une QUITTANCE quand la période est intégralement soldée', async () => {
     const { cookie, parkId, unitId } = await parcPaye('quittance@example.com', 145000)
 
@@ -2332,6 +2391,8 @@ describe('relance des loyers', () => {
       data: {
         chargeId,
         amountMinor: 145000,
+        // La devise voyage avec l’argent reçu — voir `Payment.currency`.
+        currency: 'XAF',
         method: 'cash',
         paidOn: new Date('2026-06-04T00:00:00Z'),
         recordedById: (
@@ -2667,6 +2728,8 @@ describe('relance automatique par e-mail — jalon J+7', () => {
       data: {
         chargeId: charge.id,
         amountMinor: 145000,
+        // La devise voyage avec l’argent reçu — voir `Payment.currency`.
+        currency: 'XAF',
         method: 'cash',
         paidOn: new Date(),
         recordedById: (
