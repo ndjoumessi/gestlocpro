@@ -3,10 +3,20 @@
  * LA COULEUR N'EST JAMAIS SEULE.
  *
  * Un statut porté par la seule teinte est illisible pour une déficience de
- * perception rouge-vert — environ un homme sur douze. Aucune garde existante
- * ne le voit : le contraste de LUMINANCE passe l'AA, les cibles sont
- * conformes, rien ne déborde. La porte reste verte sur un écran qu'une partie
+ * perception rouge-vert — environ un homme sur douze.
+ *
+ * AUCUNE AUTRE GARDE NE LE VOIT, et c'est la raison d'être de ce script : le
+ * contraste de LUMINANCE passe l'AA, les cibles sont conformes, rien ne
+ * déborde. Sans celui-ci, la porte resterait verte sur un écran qu'une partie
  * des lecteurs ne peut pas déchiffrer.
+ *
+ * CE PARAGRAPHE DISAIT « Aucune garde existante ne le voit », AU PRÉSENT, dans
+ * le fichier qui porte cette garde et mesure 12 sites et 36 états à chaque
+ * passage. Un audit du 2026-09-04 a lu la même tournure dans
+ * `espace-connecte.mjs` et en a conclu que le dépôt ne tenait pas deux règles
+ * qu'il tient — le pli et l'orpheline. La prose de MOTIVATION d'une règle se
+ * lit comme un état du présent : elle doit dire ce qui manquerait SANS elle, et
+ * non ce qui manque.
  *
  * CE QUE CE SCRIPT MESURE, ET COMMENT.
  *
