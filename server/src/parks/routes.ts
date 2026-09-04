@@ -1613,7 +1613,16 @@ parksRouter.delete(
     // confirmerait son existence.
     const immeuble = await prisma.building.findFirst({
       where: { id: buildingId, parkId, ...perimetreTenu },
-      select: { id: true, _count: { select: { units: true } } },
+      /* `name` ET `district` pour le REGISTRE, dans la même requête : après coup
+         l'immeuble n'existe plus, son identifiant ne mène nulle part, et seul ce
+         qui est consigné dit ce qui a disparu.
+
+         LE QUARTIER PARCE QUE LE NOM NE SUFFIT PAS. Rien n'impose l'unicité d'un
+         nom d'immeuble dans un parc — l'unicité posée par le schéma porte sur le
+         LOGEMENT dans son immeuble, pas sur l'immeuble dans son parc. Deux
+         « Résidence du Mandat » peuvent coexister, et la ligne du journal ne
+         dirait pas laquelle a disparu. */
+      select: { id: true, name: true, district: true, _count: { select: { units: true } } },
     })
     if (!immeuble) {
       res.status(404).json({ error: 'not_found' })
@@ -1626,6 +1635,25 @@ parksRouter.delete(
     }
 
     await prisma.building.delete({ where: { id: immeuble.id } })
+
+    /* AU REGISTRE, et c'était le seul acte destructeur de ce fichier à n'y rien
+       écrire. La route est ouverte au GESTIONNAIRE autant qu'au propriétaire :
+       un cabinet à qui l'on a confié trois immeubles pouvait en supprimer un
+       sans que le propriétaire sache que ça avait eu lieu, ni par qui.
+
+       APRÈS la suppression, comme les cinq autres traces de ce fichier : le
+       journal ne doit pas pouvoir faire échouer l'acte qu'il décrit. */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'building.delete',
+        entity: 'Building',
+        entityId: immeuble.id,
+        payload: { name: immeuble.name, district: immeuble.district },
+      },
+    })
+
     res.status(204).end()
   },
 )

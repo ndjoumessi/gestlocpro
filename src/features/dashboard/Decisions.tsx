@@ -136,6 +136,7 @@ const DETAIL: Record<string, Champ[]> = {
      le 2026-09-03 n'en ont pas et se taisent. */
   'access.link': [{ champ: 'tenantName', nature: 'texte' }],
   'access.unlink': [{ champ: 'tenantName', nature: 'texte' }],
+  'building.delete': [{ champ: 'name', nature: 'texte' }],
   'access.grant': [{ champ: 'role', nature: 'role' }],
   'access.refuse': [{ champ: 'role', nature: 'role' }],
   'access.join': [{ champ: 'role', nature: 'role' }],

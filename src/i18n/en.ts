@@ -1186,6 +1186,9 @@ export const en: Dictionary = {
           refuse: 'Access request refused',
           join: 'Joined via invitation code',
         },
+        building: {
+          delete: 'Building deleted',
+        },
         deposit: {
           settle: 'Deposit settled',
           unsettle: 'Deposit ruling reversed',

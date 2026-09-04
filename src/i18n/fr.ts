@@ -1607,6 +1607,12 @@ export const fr = {
              d'accès existe pour trancher. */
           join: 'Entrée par code d’invitation',
         },
+        /* SUPPRIMER UN IMMEUBLE. Le nom est dans la charge utile parce
+           qu'après coup il ne reste rien d'autre : l'identifiant ne mène plus
+           nulle part. */
+        building: {
+          delete: 'Immeuble supprimé',
+        },
         deposit: {
           settle: 'Caution arbitrée',
           unsettle: 'Arbitrage de caution repris',
