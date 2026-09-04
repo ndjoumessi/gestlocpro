@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -96,6 +96,60 @@ const CHEMIN = /((?:src\/)?scripts\/[A-Za-z0-9-]+\.(?:mjs|ts))/g
 const manifeste = (chemin: string) =>
   JSON.parse(readFileSync(join(RACINE, chemin), 'utf8')) as { scripts: Record<string, string> }
 
+/**
+ * LES OUTILS QU'ON PREND EN MAIN, QUE RIEN NE LANCE ET QUE RIEN N'IMPORTE.
+ *
+ * Un fichier de `scripts/` qu'aucun `package.json` ne nomme ET qu'aucune source
+ * n'importe est soit un outil qu'on ouvre à la main, soit du code mort. Les deux
+ * se lisent PAREIL — c'est l'angle mort que la première rédaction de cette garde
+ * laissait ouvert, et qu'elle nommait dans son commit.
+ */
+const OUTILS_A_LA_MAIN: { script: string; motif: string }[] = [
+  {
+    script: 'recadrer-fixture.mjs',
+    motif:
+      'Il RECADRE une image de fixture avant qu’elle n’entre au dépôt — la machine n’a pas ' +
+      'd’ImageMagick, et le canevas qu’il emploie retire aussi l’EXIF, donc le GPS. On le ' +
+      'lance une fois, à la main, le jour où l’on verse une photo ; l’inscrire dans un ' +
+      '`package.json` laisserait croire qu’il fait partie d’un passage.',
+  },
+]
+
+/** Les fichiers de `scripts/`. */
+const fichiersDeScripts = (): string[] =>
+  readdirSync(join(RACINE, 'scripts'))
+    .filter((nom) => nom.endsWith('.mjs'))
+    .sort()
+
+/** Tout ce qui pourrait citer un script : sources, scripts, manifestes. */
+function toutesLesSources(): string[] {
+  const trouves: string[] = []
+  const parcourir = (dossier: string) => {
+    for (const entree of readdirSync(join(RACINE, dossier), { withFileTypes: true })) {
+      const chemin = `${dossier}/${entree.name}`
+      if (entree.isDirectory()) {
+        if (['node_modules', 'generated', 'dist', '.git'].includes(entree.name)) continue
+        parcourir(chemin)
+      } else if (/\.(ts|tsx|mjs)$/.test(entree.name)) trouves.push(chemin)
+    }
+  }
+  for (const racine of ['src', 'scripts', 'server/src']) parcourir(racine)
+  return [...trouves, ...MANIFESTES]
+}
+
+/** Les scripts que rien ne lance et que rien n'importe. */
+function scriptsSansAppelant(): string[] {
+  const sources = toutesLesSources().map(
+    (c) => [c, readFileSync(join(RACINE, c), 'utf8')] as const,
+  )
+  return fichiersDeScripts().filter(
+    (nom) =>
+      !sources.some(
+        ([chemin, texte]) => !chemin.endsWith(`scripts/${nom}`) && texte.includes(`/${nom}`),
+      ),
+  )
+}
+
 /** Les scripts qu'un script npm lance directement, dans les deux manifestes. */
 function pointsDEntree(): string[] {
   const tous = MANIFESTES.map((m) => Object.values(manifeste(m).scripts).join(' ')).join(' ')
@@ -143,10 +197,34 @@ describe('les points d’entrée', () => {
     expect(mortes, `ces déclarations ne décrivent plus rien :\n  ${mortes.join('\n  ')}`).toEqual([])
   })
 
+  it('n’abandonnent AUCUN script sans appelant ni déclaration', () => {
+    /* Ni lancé par un manifeste, ni importé par une source : outil qu'on prend
+       en main, ou code mort. Les deux se lisent pareil, et c'est pour ça qu'il
+       faut le dire. */
+    const declares = new Set(OUTILS_A_LA_MAIN.map((o) => o.script))
+    const abandonnes = scriptsSansAppelant().filter((n) => !declares.has(n))
+    expect(
+      abandonnes,
+      'rien ne les lance et rien ne les importe. Inscrivez-les dans ' +
+        `\`OUTILS_A_LA_MAIN\` avec leur usage, ou retirez-les :\n  ${abandonnes.join('\n  ')}`,
+    ).toEqual([])
+  })
+
+  it('ne déclarent AUCUN outil qui aurait retrouvé un appelant', () => {
+    const sans = new Set(scriptsSansAppelant())
+    const mortes = OUTILS_A_LA_MAIN.filter((o) => !sans.has(o.script)).map((o) => o.script)
+    expect(
+      mortes,
+      `ces outils sont désormais lancés ou importés — la déclaration ment :\n  ${mortes.join('\n  ')}`,
+    ).toEqual([])
+  })
+
   it('donnent un MOTIF, et pas un renvoi', () => {
     /* Une dispense sans motif a exactement l'effet d'un oubli, en ayant l'air
        d'une décision. */
-    const creuses = HORS_CHAINE.filter((h) => h.motif.trim().length < 80).map((h) => h.script)
+    const creuses = [...HORS_CHAINE, ...OUTILS_A_LA_MAIN]
+      .filter((h) => h.motif.trim().length < 80)
+      .map((h) => h.script)
     expect(creuses, 's’inscrire est un geste ; le motif est ce qui le rend relisible').toEqual([])
   })
 })
