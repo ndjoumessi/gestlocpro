@@ -15,7 +15,8 @@
     "relances:blanc": "tsx src/scripts/executerRelancesAutomatiques.ts --a-blanc",
     "test": "vitest run",
     "check": "tsc -b && node scripts/verifier-le-chargement-node.mjs && vitest run",
-    "db:test:setup": "prisma generate && node scripts/setup-test-db.mjs"
+    "db:test:setup": "prisma generate && node scripts/setup-test-db.mjs",
+    "immeubles:non-confies": "tsx src/scripts/immeublesNonConfies.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",
