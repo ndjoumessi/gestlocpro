@@ -87,27 +87,67 @@ function blocEquilibre(source: string, depart: number, ouvre: string, ferme: str
 
 const ligneDe = (s: string, index: number) => s.slice(0, index).split('\n').length
 
-/** Les écritures de registre qui participent à une transaction. */
-function ecrituresDansUneTransaction(): string[] {
+/**
+ * LES SUPPRESSIONS QUI DOIVENT ÊTRE ATOMIQUES AVEC LEUR TRACE.
+ *
+ * ÉCRITE À LA MAIN, et courte exprès : chaque entrée est une exception à la
+ * politique générale, et une exception qu'on ajoute sans y penser n'en est plus
+ * une. Le critère pour y entrer : l'entité N'EXISTE PLUS après l'acte, donc une
+ * trace perdue est indétectable — rien ne peut plus dire qu'il y a eu quelque
+ * chose. `access.revoke` et `access.unlink` détruisent aussi, mais leur ligne
+ * survit avec son statut : on y perd « qui et quand », jamais le fait.
+ */
+const DESTRUCTIONS_ATOMIQUES = [
+  'building.delete',
+  'inspection.photo_delete',
+  'payment.delete',
+  'tenant.delete',
+] as const
+
+/** L'action que porte l'écriture de registre commençant à `depart`. */
+function actionDe(s: string, depart: number): string {
+  const bloc = blocEquilibre(s, s.indexOf('{', depart), '{', '}')
+  return (/action: '([a-z_.]+)'/.exec(bloc) ?? [])[1] ?? '?'
+}
+
+/** Les écritures qui participent à une transaction, avec l'action qu'elles portent. */
+function ecrituresDansUneTransaction(): { ligne: number; action: string; comment: string }[] {
   const s = source()
-  const fautives: string[] = []
+  const trouvees: { ligne: number; action: string; comment: string }[] = []
 
   /* Forme À RAPPEL : le client transactionnel s'appelle `tx` par convention
      dans tout ce fichier, et une écriture qui l'emploie participe donc. */
   for (const m of s.matchAll(/tx\.auditEvent\.create/g))
-    fautives.push(`ligne ${ligneDe(s, m.index!)} — \`tx.auditEvent.create\` participe à la transaction`)
+    trouvees.push({
+      ligne: ligneDe(s, m.index!),
+      action: actionDe(s, m.index!),
+      comment: '`tx.auditEvent.create`',
+    })
 
   /* Forme EN TABLEAU : tout élément du tableau est atomique avec les autres.
      C'est la forme qui m'avait échappé au premier relevé — un `$transaction`
      ouvert deux lignes plus haut, que j'avais lu comme « déjà refermé ». */
   for (const m of s.matchAll(/\$transaction\(\[/g)) {
-    const tableau = blocEquilibre(s, s.indexOf('[', m.index!), '[', ']')
-    if (/auditEvent\.create/.test(tableau))
-      fautives.push(
-        `ligne ${ligneDe(s, m.index!)} — le tableau du \`$transaction\` contient une écriture de registre`,
-      )
+    const debut = s.indexOf('[', m.index!)
+    const tableau = blocEquilibre(s, debut, '[', ']')
+    const i = tableau.indexOf('auditEvent.create')
+    if (i >= 0)
+      trouvees.push({
+        ligne: ligneDe(s, m.index!),
+        action: actionDe(s, debut + i),
+        comment: 'le tableau du `$transaction`',
+      })
   }
-  return fautives
+  return trouvees
+}
+
+/** Toutes les écritures de registre, avec l'action qu'elles portent. */
+function toutesLesEcritures(): { ligne: number; action: string }[] {
+  const s = source()
+  return [...s.matchAll(/auditEvent\.create/g)].map((m) => ({
+    ligne: ligneDe(s, m.index!),
+    action: actionDe(s, m.index!),
+  }))
 }
 
 describe('l’écriture du registre des décisions', () => {
@@ -119,12 +159,44 @@ describe('l’écriture du registre des décisions', () => {
     expect([...s.matchAll(/\$transaction\(/g)].length).toBeGreaterThanOrEqual(5)
   })
 
-  it('ne participe JAMAIS à la transaction qu’elle décrit', () => {
+  it('ne participe PAS à la transaction, sauf pour une suppression déclarée', () => {
     const fautives = ecrituresDansUneTransaction()
+      .filter((e) => !(DESTRUCTIONS_ATOMIQUES as readonly string[]).includes(e.action))
+      .map((e) => `ligne ${e.ligne} — ${e.comment} porte \`${e.action}\``)
+
     expect(
       fautives,
       'une panne d’écriture du journal ANNULERAIT l’acte — mise en demeure, ' +
-        'suppression, entrée dans un parc :\n  ' + fautives.join('\n  '),
+        'entrée dans un parc, périmètre confié. Ces actes-là se relisent après ' +
+        'coup ; une trace perdue s’y voit :\n  ' + fautives.join('\n  '),
     ).toEqual([])
+  })
+
+  it('participe TOUJOURS pour les suppressions déclarées', () => {
+    /* L'autre sens, et il compte autant. Une suppression sortie de sa
+       transaction redevient indétectable après une panne, et c'est précisément
+       ce qui a été fait le 2026-09-03 au nom de l'uniformité — puis défait le
+       lendemain, la distinction ayant été trouvée. */
+    const atomiques = new Set(ecrituresDansUneTransaction().map((e) => e.action))
+    const dehors = toutesLesEcritures()
+      .filter((e) => (DESTRUCTIONS_ATOMIQUES as readonly string[]).includes(e.action))
+      .filter((e) => !atomiques.has(e.action))
+      .map((e) => `ligne ${e.ligne} — \`${e.action}\` est hors de sa transaction`)
+
+    expect(
+      dehors,
+      'l’entité n’existera plus : une panne entre l’acte et la trace effacerait ' +
+        'sans que rien ne puisse le dire :\n  ' + dehors.join('\n  '),
+    ).toEqual([])
+  })
+
+  it('déclare des suppressions qui EXISTENT toutes', () => {
+    /* Une déclaration morte décrit un acte disparu et dispenserait en silence
+       une écriture future qui reprendrait son nom. */
+    const connues = new Set(toutesLesEcritures().map((e) => e.action))
+    const mortes = DESTRUCTIONS_ATOMIQUES.filter((a) => !connues.has(a))
+    expect(mortes, `plus aucune écriture ne porte ces actions :\n  ${mortes.join('\n  ')}`).toEqual(
+      [],
+    )
   })
 })

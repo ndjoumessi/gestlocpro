@@ -1634,24 +1634,33 @@ parksRouter.delete(
       return
     }
 
-    await prisma.building.delete({ where: { id: immeuble.id } })
-
     /* AU REGISTRE, et c'était le seul acte destructeur de ce fichier à n'y rien
        écrire. La route est ouverte au GESTIONNAIRE autant qu'au propriétaire :
        un cabinet à qui l'on a confié trois immeubles pouvait en supprimer un
-       sans que le propriétaire sache que ça avait eu lieu, ni par qui.
+       sans que le propriétaire sache que ça avait eu lieu, ni par qui. */
+    /* DANS LA TRANSACTION, et c'est l'exception à la politique du dépôt.
+       « Le journal ne doit pas pouvoir faire échouer l'écriture qu'il décrit »
+       vaut pour tout ce qui peut se relire après coup : une adhésion révoquée
+       garde sa ligne, un périmètre posé se voit au registre des accès. Une
+       SUPPRESSION, non — l'entité n'existe plus, et une trace perdue est
+       indétectable pour toujours.
 
-       APRÈS la suppression, comme les cinq autres traces de ce fichier : le
-       journal ne doit pas pouvoir faire échouer l'acte qu'il décrit. */
-    await prisma.auditEvent.create({
-      data: {
-        parkId,
-        actorId: req.compteId!,
-        action: 'building.delete',
-        entity: 'Building',
-        entityId: immeuble.id,
-        payload: { name: immeuble.name, district: immeuble.district },
-      },
+       Sur ces quatre actes-là, on échange donc le sens du risque : mieux vaut
+       refuser une suppression qu'on ne peut pas consigner que consigner une
+       suppression qu'on ne peut plus retrouver. Voir
+       `leJournalNeFaitPasEchouerLActe`, qui tient les deux règles. */
+    await prisma.$transaction(async (tx) => {
+      await tx.building.delete({ where: { id: immeuble.id } })
+      await tx.auditEvent.create({
+        data: {
+          parkId,
+          actorId: req.compteId!,
+          action: 'building.delete',
+          entity: 'Building',
+          entityId: immeuble.id,
+          payload: { name: immeuble.name, district: immeuble.district },
+        },
+      })
     })
 
     res.status(204).end()
@@ -6246,22 +6255,39 @@ parksRouter.delete(
     }
 
     await leStockage().supprimer(photo.storageKey)
-    await prisma.inspectionPhoto.delete({ where: { id: photo.id } })
-
     /* SUPPRIMER UNE PREUVE EST LE GESTE À TRACER, pas l'ajouter. L'ajout était
        journalisé et le retrait non — l'inverse exact de ce qu'il faut : une
        photo ajoutée se voit dans le dossier, une photo retirée ne se voit
        nulle part. L'identifiant est celui de la RÉSERVE, la photo n'existant
-       plus : un `entityId` qui ne désigne rien ne se rattache à aucun écran. */
-    await prisma.auditEvent.create({
-      data: {
-        parkId,
-        actorId: req.compteId!,
-        action: 'inspection.photo_delete',
-        entity: 'InspectionFinding',
-        entityId: photo.findingId,
-        payload: { photoId: photo.id },
-      },
+       plus : un `entityId` qui ne désigne rien ne se rattache à aucun écran.
+
+       LE FICHIER EST DÉJÀ PARTI quand cette transaction s'ouvre : le stockage
+       n'est pas transactionnel, et rien ne le rendra tel. Ce qu'on garantit ici
+       est plus étroit — jamais de LIGNE supprimée sans sa trace — et il faut le
+       lire comme ça. */
+    /* DANS LA TRANSACTION, et c'est l'exception à la politique du dépôt.
+       « Le journal ne doit pas pouvoir faire échouer l'écriture qu'il décrit »
+       vaut pour tout ce qui peut se relire après coup : une adhésion révoquée
+       garde sa ligne, un périmètre posé se voit au registre des accès. Une
+       SUPPRESSION, non — l'entité n'existe plus, et une trace perdue est
+       indétectable pour toujours.
+
+       Sur ces quatre actes-là, on échange donc le sens du risque : mieux vaut
+       refuser une suppression qu'on ne peut pas consigner que consigner une
+       suppression qu'on ne peut plus retrouver. Voir
+       `leJournalNeFaitPasEchouerLActe`, qui tient les deux règles. */
+    await prisma.$transaction(async (tx) => {
+      await tx.inspectionPhoto.delete({ where: { id: photo.id } })
+      await tx.auditEvent.create({
+        data: {
+          parkId,
+          actorId: req.compteId!,
+          action: 'inspection.photo_delete',
+          entity: 'InspectionFinding',
+          entityId: photo.findingId,
+          payload: { photoId: photo.id },
+        },
+      })
     })
 
     res.status(204).end()
@@ -6385,8 +6411,6 @@ parksRouter.delete(
       return
     }
 
-    await prisma.payment.delete({ where: { id: versement.id } })
-
     /**
      * Le versement disparaît ; sa trace reste, montant compris.
      *
@@ -6394,27 +6418,33 @@ parksRouter.delete(
      * locataire produira un reçu pour une somme absente du registre, ce journal
      * dira quand elle en a été retirée et par qui.
      *
-     * APRÈS LA SUPPRESSION, ET NON DANS SA TRANSACTION. Les deux vivaient dans
-     * un `$transaction([…])`, donc atomiques. C'est ici que le prix de la
-     * politique du dépôt — « le journal ne doit pas pouvoir faire échouer
-     * l'écriture qu'il décrit » — est le plus élevé : une panne entre les deux
-     * laisse un versement supprimé SANS trace, exactement ce que le paragraphe
-     * ci-dessus existe pour empêcher. Le choix est fait en connaissance, et il
-     * est le même partout : l'acte passe, la trace suit.
+     * DANS LA TRANSACTION, et c'est l'exception à la politique du dépôt. « Le
+     * journal ne doit pas pouvoir faire échouer l'écriture qu'il décrit » vaut
+     * pour tout ce qui se relit après coup. Une SUPPRESSION, non : l'entité
+     * n'existe plus, et une trace perdue est indétectable pour toujours. Mieux
+     * vaut refuser une suppression qu'on ne peut pas consigner que consigner
+     * une suppression qu'on ne peut plus retrouver.
+     *
+     * Ces deux écritures vivaient déjà ensemble avant le 2026-09-03 ; un lot les
+     * a séparées au nom de l'uniformité, et le paragraphe ci-dessus dit pourquoi
+     * c'était le mauvais échange ICI.
      */
-    await prisma.auditEvent.create({
-      data: {
-        parkId,
-        actorId: req.compteId!,
-        action: 'payment.delete',
-        entity: 'RentCharge',
-        entityId: versement.chargeId,
-        payload: {
-          amountMinor: versement.amountMinor,
-          method: versement.method,
-          paidOn: versement.paidOn.toISOString().slice(0, 10),
+    await prisma.$transaction(async (tx) => {
+      await tx.payment.delete({ where: { id: versement.id } })
+      await tx.auditEvent.create({
+        data: {
+          parkId,
+          actorId: req.compteId!,
+          action: 'payment.delete',
+          entity: 'RentCharge',
+          entityId: versement.chargeId,
+          payload: {
+            amountMinor: versement.amountMinor,
+            method: versement.method,
+            paidOn: versement.paidOn.toISOString().slice(0, 10),
+          },
         },
-      },
+      })
     })
 
     res.status(204).end()
@@ -6493,26 +6523,29 @@ parksRouter.delete(
       await tx.inspection.deleteMany({ where: { leaseId: { in: baux } } })
       await tx.lease.deleteMany({ where: { id: { in: baux } } })
       await tx.tenant.delete({ where: { id: locataire.id } })
-    })
 
-    /* APRÈS LA TRANSACTION, ET NON DEDANS. Le nom reste au journal : la fiche
-       part, la trace de son retrait dit qui a été retiré et par qui.
+      /* LE NOM RESTE AU JOURNAL : la fiche part, la trace de son retrait dit qui
+         a été retiré et par qui.
 
-       Cette écriture vivait DANS la transaction — la seule du fichier à
-       employer `tx.auditEvent`. La politique du dépôt veut l'inverse : « le
-       journal ne doit pas pouvoir faire échouer l'écriture qu'il décrit ». Le
-       prix, ici, est qu'une panne entre les deux laisse une fiche supprimée
-       sans trace. Sur une SUPPRESSION c'est le plus cher qu'on paie ; c'est
-       assumé, et uniforme avec les vingt-sept autres écritures. */
-    await prisma.auditEvent.create({
-      data: {
-        parkId,
-        actorId: req.compteId!,
-        action: 'tenant.delete',
-        entity: 'Tenant',
-        entityId: locataire.id,
-        payload: { fullName: locataire.fullName, leases: locataire.leases.length },
-      },
+         DANS LA TRANSACTION, et c'est l'exception à la politique du dépôt. « Le
+         journal ne doit pas pouvoir faire échouer l'écriture qu'il décrit » vaut
+         pour tout ce qui se relit après coup. Une SUPPRESSION, non : l'entité
+         n'existe plus, et une trace perdue est indétectable pour toujours. Mieux
+         vaut refuser une suppression qu'on ne peut pas consigner que consigner
+         une suppression qu'on ne peut plus retrouver.
+
+         Cette écriture vivait ici, sortie le 2026-09-03 au nom de l'uniformité,
+         et remise le lendemain avec la distinction qui manquait. */
+      await tx.auditEvent.create({
+        data: {
+          parkId,
+          actorId: req.compteId!,
+          action: 'tenant.delete',
+          entity: 'Tenant',
+          entityId: locataire.id,
+          payload: { fullName: locataire.fullName, leases: locataire.leases.length },
+        },
+      })
     })
 
     res.status(204).end()
