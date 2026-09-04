@@ -222,9 +222,23 @@ jobs:
       # EN POLICE LARGE, ET C'EST TOUT L'INTÉRÊT. `system-ui` vaut DejaVu Sans
       # sur cet exécuteur ; le commutateur impose Verdana, qui y retombe sur
       # DejaVu faute d'être installée — et surtout, il SÉLECTIONNE les plafonds
-      # mesurés sous police large. Les deux machines comparent alors la même
-      # chose au même nombre : ici et sur la machine de développement,
-      # `MESURER_EN_POLICE_LARGE=1 npm run check:navigateur` rend le même verdict.
+      # mesurés sous police large.
+      #
+      # CE COMMENTAIRE DISAIT « les deux machines comparent alors la même chose
+      # au même nombre : ici et sur la machine de développement,
+      # `MESURER_EN_POLICE_LARGE=1 npm run check:navigateur` rend le même
+      # verdict ». MESURÉ LE 2026-09-04, ET C'EST FAUX : la même commande rend
+      # 6 plaintes sur la machine de développement contre 4 ici. Les deux qui
+      # divergent sont `ParkSettings@1280/en` (315 px ici-bas contre 251) et
+      # `ParkSettings·devise@1280/en` (427 contre 362) — la même dissymétrie de
+      # LARGEUR de texte que `releve-polices-machine` a relevée, et qui ne
+      # touche que le défilement.
+      #
+      # LE COMMUTATEUR RAPPROCHE LES DEUX MACHINES, IL NE LES CONFOND PAS.
+      # C'est la porte PUBLIQUE qui fait autorité, et les plafonds sont posés
+      # sur SES relevés : un plafond calé sur la machine la plus large cesserait
+      # de refuser quoi que ce soit ici. Une divergence locale se lit donc comme
+      # telle, et ne se corrige pas en desserrant le plafond.
       - run: npm run check:navigateur
         env:
           MESURER_EN_POLICE_LARGE: '1'

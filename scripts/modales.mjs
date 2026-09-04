@@ -366,7 +366,29 @@ const MODALES = [
     La grande chasse ne bouge pas : les cases sont étroites, la hauteur seule
     grandit — et c'est déjà ce que la première ligne de cette note disait.
   */
-  { nom: 'ConfierImmeubles', adresse: '/demo/acces', bouton: /^Confier des immeubles$|^Assign buildings$/, defil: { 360: 511, 1280: 331 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  /*
+    NÉE AVEC `defilLarge` À ZÉRO, ET LA PORTE PUBLIQUE EN EST RESTÉE ROUGE
+    QUATRE JOURS.
+
+    `plafondDe` refuse une entrée SANS `defilLarge` — son commentaire dit
+    pourquoi : « une modale ajoutée demain qui n'en porterait qu'un passerait au
+    vert en mode police large sans être gardée ». Le cas prévu est l'ABSENCE.
+    Celui-ci portait la clé, remplie de zéros : un gabarit qui se lit comme un
+    relevé, et que rien ne distingue d'une modale qui ne défile vraiment pas —
+    `AddBuilding` et `AddUnit` sont à zéro pour de bon.
+
+    Conséquence : verte sur la machine de développement, qui ne pose pas le
+    commutateur, et ROUGE sur chaque poussée depuis le 2026-08-31. Aucun de mes
+    lots n'a lu ce rouge ; plusieurs ont écrit « check:navigateur à 0 ».
+
+    LES CHIFFRES VIENNENT DE L'EXÉCUTEUR, PAS D'ICI. Relevé en police large —
+    CI : 511 et 490 à 360 px, 331 aux deux langues à 1280. Machine de
+    développement : 511 et 511, puis 379 et 357. On retient les valeurs de la
+    CI, comme `ParkSettings` dont le plafond de 294 est déjà sous les 315 px
+    d'ici : c'est la porte publique qui doit être verte, et un plafond posé sur
+    la machine la plus large cesserait d'y refuser quoi que ce soit.
+  */
+  { nom: 'ConfierImmeubles', adresse: '/demo/acces', bouton: /^Confier des immeubles$|^Assign buildings$/, defil: { 360: 511, 1280: 331 }, defilLarge: { 360: 511, 1280: 331 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'Announce', adresse: '/demo/locataires', bouton: /^Prévenir les locataires$|^Notify tenants$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'Reply', adresse: '/demo/travaux', bouton: /^Répondre$|^Reply$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /* Le seul écran de la démonstration où le rôle change ce qui est rendu : la
