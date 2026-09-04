@@ -33,6 +33,22 @@ import { describe, expect, it } from 'vitest'
  * SANS ENJEU : une ligne de liaison, un jeton, un compteur, une copie. Sa
  * disparition ne retire rien à personne — le rattachement d'un gestionnaire à un
  * immeuble se refait d'un clic, et le registre des accès porte déjà la décision.
+ *
+ * ═══ L'UNITÉ D'ANALYSE EST LE SITE, PAS LA ROUTE ═══
+ *
+ * Première rédaction : découper le fichier en gestionnaires de route, et juger
+ * « atomique » à la présence d'un `tx.auditEvent.create` QUELQUE PART dans le
+ * gestionnaire. Deux approximations, toutes deux nommées dans son commit :
+ *
+ *   un gestionnaire à PLUSIEURS transactions passait — l'écriture pouvait vivre
+ *     dans une transaction et la suppression dans une autre. `/api/join` en a
+ *     trois, et supprime ; il ne détruit rien de vécu, mais la forme existait ;
+ *   une suppression écrite dans un AUXILIAIRE n'appartenait à aucune route et
+ *     échappait entièrement au relevé.
+ *
+ * On part donc de chaque SITE de suppression, et l'on regarde la transaction qui
+ * l'ENTOURE — celle-là précisément, bornes comprises. Un auxiliaire est couvert
+ * comme une route, et deux transactions voisines ne se prêtent plus leur trace.
  */
 const RACINE = join(import.meta.dirname, '../..')
 
@@ -113,42 +129,82 @@ function modelesDuSchema(): string[] {
 /** `payment` → `Payment` : le client Prisma nomme en minuscule initiale. */
 const enModele = (accesseur: string) => accesseur[0]!.toUpperCase() + accesseur.slice(1)
 
-type Route = { chemin: string; modelesSupprimes: string[]; traceAtomique: boolean }
+type Site = {
+  fichier: string
+  ligne: number
+  modele: string
+  nom: string
+  atomique: boolean
+}
 
-/** Chaque gestionnaire de route, ce qu'il supprime, et où sa trace est écrite. */
-function routes(): Route[] {
-  const relevees: Route[] = []
+/** Les bornes du bloc équilibré qui commence à `depart`. */
+function blocEquilibre(source: string, depart: number, ouvre: string, ferme: string): [number, number] | null {
+  let profondeur = 0
+  for (let i = depart; i < source.length; i++) {
+    if (source[i] === ouvre) profondeur++
+    else if (source[i] === ferme) {
+      profondeur--
+      if (profondeur === 0) return [depart, i]
+    }
+  }
+  return null
+}
+
+/** Les bornes de chaque `$transaction(…)` d'une source. */
+function transactions(source: string): [number, number][] {
+  const bornes: [number, number][] = []
+  for (const m of source.matchAll(/\$transaction\(/g)) {
+    const ouvrante = source.indexOf('(', m.index!)
+    const paire = blocEquilibre(source, ouvrante, '(', ')')
+    if (paire) bornes.push(paire)
+  }
+  return bornes
+}
+
+/**
+ * Ce qui NOMME un site : le chemin de route ou la fonction qui le précède.
+ *
+ * Un numéro de ligne se décale au premier commentaire ajouté plus haut, et la
+ * dispense pointerait alors une autre suppression sans que rien ne le dise.
+ */
+function nomDuSite(source: string, index: number): string {
+  const avant = source.slice(0, index)
+  const route = [...avant.matchAll(/Router\.(?:get|post|patch|put|delete)\(\s*'([^']*)'/g)].pop()
+  const fonction = [...avant.matchAll(/(?:export )?(?:async )?function ([a-zA-Z]+)/g)].pop()
+  const iRoute = route?.index ?? -1
+  const iFonction = fonction?.index ?? -1
+  return iRoute > iFonction ? route![1]! : (fonction?.[1] ?? '?')
+}
+
+/** Chaque suppression du serveur, et la transaction qui l'entoure. */
+function sitesDeSuppression(): Site[] {
+  const releves: Site[] = []
   for (const fichier of sources(join(RACINE, 'src'))) {
     const source = readFileSync(fichier, 'utf8')
-    const bornes = [...source.matchAll(/^[a-zA-Z]+Router\.(?:get|post|patch|put|delete)\(/gm)].map(
-      (m) => m.index!,
-    )
-    bornes.push(source.length)
-    for (let i = 0; i < bornes.length - 1; i++) {
-      const bloc = source.slice(bornes[i]!, bornes[i + 1]!)
-      const modelesSupprimes = [
-        ...new Set(
-          [...bloc.matchAll(/(?:prisma|tx)\.([a-zA-Z]+)\.(?:delete|deleteMany)\(/g)].map((m) =>
-            enModele(m[1]!),
-          ),
-        ),
-      ]
-      if (modelesSupprimes.length === 0) continue
-      relevees.push({
-        chemin: (/'([^']*)'/.exec(bloc) ?? [])[1] ?? '?',
-        modelesSupprimes,
-        traceAtomique: /tx\.auditEvent\.create/.test(bloc),
+    const bornes = transactions(source)
+    for (const m of source.matchAll(/(?:prisma|tx)\.([a-zA-Z]+)\.(?:delete|deleteMany)\(/g)) {
+      const enclos = bornes.find(([d, f]) => m.index! > d && m.index! < f)
+      releves.push({
+        fichier: fichier.slice(RACINE.length + 1),
+        ligne: source.slice(0, m.index).split('\n').length,
+        modele: enModele(m[1]!),
+        nom: nomDuSite(source, m.index!),
+        /* LA MÊME transaction, et non « une quelque part dans la fonction » :
+           c'est le bloc qui entoure CETTE suppression qui doit porter la trace. */
+        atomique: enclos
+          ? /tx\.auditEvent\.create/.test(source.slice(enclos[0], enclos[1]))
+          : false,
       })
     }
   }
-  return relevees
+  return releves
 }
 
 describe('les suppressions', () => {
   it('sont bien TROUVÉES — sans quoi cette garde ne garderait rien', () => {
-    /* Une expression rompue rendrait zéro route, et « aucune muette » se lirait
+    /* Une expression rompue rendrait zéro site, et « aucune muette » se lirait
        comme « rien à vérifier ». */
-    expect(routes().length).toBeGreaterThanOrEqual(5)
+    expect(sitesDeSuppression().length).toBeGreaterThanOrEqual(8)
     expect(modelesDuSchema().length).toBeGreaterThanOrEqual(20)
   })
 
@@ -164,28 +220,27 @@ describe('les suppressions', () => {
     ).toEqual(modelesDuSchema())
   })
 
-  it('emportent leur trace dans la même transaction, ou se déclarent', () => {
+  it('emportent leur trace dans LA MÊME transaction, ou se déclarent', () => {
     const declarees = new Set(SANS_TRACE_ATOMIQUE.map((d) => d.route))
     const vecus = new Set<string>(MODELES_VECUS)
-    const muettes = routes()
-      .filter((r) => r.modelesSupprimes.some((m) => vecus.has(m)))
-      .filter((r) => !r.traceAtomique && !declarees.has(r.chemin))
-      .map((r) => `${r.chemin} — supprime ${r.modelesSupprimes.join(', ')}`)
+    const muettes = sitesDeSuppression()
+      .filter((s) => vecus.has(s.modele) && !s.atomique && !declarees.has(s.nom))
+      .map((s) => `${s.fichier}:${s.ligne} — ${s.nom} supprime ${s.modele}`)
 
     expect(
       muettes,
       'une panne entre l’acte et la trace effacerait sans que rien ne puisse le ' +
-        'dire. Écrivez la trace dans la transaction, ou déclarez la route dans ' +
-        `\`SANS_TRACE_ATOMIQUE\` avec son motif :\n  ${muettes.join('\n  ')}`,
+        'dire. Écrivez la trace dans la MÊME transaction que la suppression, ou ' +
+        `déclarez le site dans \`SANS_TRACE_ATOMIQUE\` avec son motif :\n  ${muettes.join('\n  ')}`,
     ).toEqual([])
   })
 
   it('ne laissent AUCUNE déclaration morte', () => {
-    const connues = new Set(routes().map((r) => r.chemin))
-    const mortes = SANS_TRACE_ATOMIQUE.filter((d) => !connues.has(d.route)).map((d) => d.route)
+    const connus = new Set(sitesDeSuppression().map((s) => s.nom))
+    const mortes = SANS_TRACE_ATOMIQUE.filter((d) => !connus.has(d.route)).map((d) => d.route)
     expect(
       mortes,
-      `ces routes ne suppriment plus rien, ou n’existent plus :\n  ${mortes.join('\n  ')}`,
+      `ces sites ne suppriment plus rien, ou n’existent plus :\n  ${mortes.join('\n  ')}`,
     ).toEqual([])
   })
 
