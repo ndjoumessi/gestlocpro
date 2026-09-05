@@ -300,6 +300,31 @@ const MODALES = [
     n'apparaissant qu'après un enregistrement, que la démonstration ne fait pas.
   */
   { nom: 'RecordReading', fichier: 'features/dashboard/RecordReadingModal.tsx', adresse: '/demo/releves', bouton: /^Saisir un relevé$|^Record a reading$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  /*
+    LES QUATRE MODALES QUE LE CLAVIER VIENT DE PRENDRE, et dont la géométrie ne
+    l'était toujours pas. Leurs FICHIERS étaient couverts ici — `Tenants.tsx` par
+    `RemoveTenant`, `Access.tsx` par `RevokeAccess` — ce qui suffisait à la garde
+    de complétude, qui n'exige de ce registre-ci qu'une PRÉSENCE par fichier.
+    Suffisant ne veut pas dire mesuré : ni la hauteur de « Créer une fiche
+    locataire », ni son pied atteignable, ni ses cibles au doigt n'avaient jamais
+    été relevés, sur le formulaire le plus long du produit.
+  */
+  { nom: 'CorrigerFiche', fichier: 'features/dashboard/Tenants.tsx', adresse: '/demo/locataires', bouton: /^Corriger$|^Correct$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  /*
+    LE PLUS LONG FORMULAIRE DU PRODUIT, et il défile de 602 px à 360.
+
+    Huit champs : le nom, l'indicatif, le numéro, le courriel, le compte à
+    relier, le début du bail, le loyer, la caution. Le PIED RESTE TENU aux
+    quatre états — c'est la propriété qui compte, et la seule qui rende un
+    défilement acceptable : on atteint « Enregistrer » sans le chercher.
+
+    Le raccourcir voudrait dire retirer des champs à la création d'une fiche, ou
+    la couper en deux écrans. Ni l'un ni l'autre ne se décide dans un lot dont le
+    sujet est la MESURE — le nombre est posé pour que la prochaine croissance se
+    voie, pas pour la bénir.
+  */
+  { nom: 'CreerFiche', fichier: 'features/dashboard/Tenants.tsx', adresse: '/demo/locataires', bouton: /^Créer une fiche locataire$|^Create a tenant record$/, defil: { 360: 602, 1280: 239 }, defilLarge: { 360: 628, 1280: 261 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'RelierLaFiche', fichier: 'features/dashboard/Access.tsx', adresse: '/demo/acces', bouton: /^Relier à une fiche$|^Link to a record$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'OpenWork', fichier: 'features/dashboard/OpenWorkModal.tsx', adresse: '/demo/travaux', bouton: /^Ouvrir un chantier$|^Open a job$/, defil: { 360: 130, 1280: 0 }, defilLarge: { 360: 138, 1280: 0 }, avant: { 360: 1056, 1280: 913 } },
   { nom: 'RecordPayment', fichier: 'features/dashboard/RecordPaymentModal.tsx', adresse: '/demo/paiements', bouton: /^Enregistrer un paiement$|^Record a payment$/, defil: { 360: 460, 1280: 40 }, defilLarge: { 360: 493, 1280: 47 }, avant: { 360: 522, 1280: 236 } },
   /*
@@ -620,11 +645,17 @@ const LANGUES = ['fr', 'en']
   92 → 96 (2026-09-05) : `RecordReading`, la saisie d'un relevé de compteur —
   le geste qui manquait sous l'écran des relevés, qu'aucune route n'alimentait.
 
+  96 → 108 (2026-09-05) : `CorrigerFiche`, `CreerFiche` et `RelierLaFiche`, les
+  trois modales que le clavier vient de prendre et dont la géométrie n'était
+  mesurée nulle part. « Confier des immeubles » y était déjà, sous le nom
+  `ConfierImmeubles` — le trou n'était donc que de trois sur quatre, ce qu'un
+  registre par fichier ne pouvait pas dire.
+
   LES DEUX TIENNENT SANS DÉFILEMENT AUX QUATRE ÉTATS — 442 px de boîte au plus
   large pour l'immeuble, 708 pour le logement, note du loyer comprise. C'est
   mesuré, pas espéré : le plafond de zéro est le relevé lui-même.
 */
-const ATTENDUS = 96
+const ATTENDUS = 108
 const NON_OUVRABLES_ATTENDUES = 0
 
 /**

@@ -55,6 +55,11 @@ const REGISTRE_CLAVIER = 'src/features/dashboard/clavierDesModales.test.tsx'
  * scripts, et elle vaut ici.
  */
 const HORS_CLAVIER: { fichier: string; quoi: string; motif: string }[] = [
+  /* QUATRE DISPENSES ONT DISPARU D'ICI le lot suivant leur écriture : corriger
+     une fiche, en créer une, confier des immeubles, relier un membre. Elles
+     disaient « une dette que ces cas viennent de rendre visible » — la dette est
+     payée, et les seize cas de clavier qu'elles ont ouverts ont trouvé un vrai
+     défaut : un champ de « Créer une fiche locataire » sans libellé visible. */
   {
     fichier: 'features/dashboard/Portfolio.tsx',
     quoi: 'supprimer un immeuble',
@@ -74,23 +79,6 @@ const HORS_CLAVIER: { fichier: string; quoi: string; motif: string }[] = [
       'elle reste le premier candidat quand ce fichier grandira.',
   },
   {
-    fichier: 'features/dashboard/Tenants.tsx',
-    quoi: 'corriger une fiche locataire',
-    motif:
-      'Geste RÉEL et non couvert : le piège de focus, la sortie par Échap et le retour ' +
-      'du focus au bouton n’ont jamais été mesurés dessus. Ce n’est pas un choix, c’est ' +
-      'une dette que ces cas viennent de rendre visible — et la rendre visible est ' +
-      'exactement ce qu’on leur demande.',
-  },
-  {
-    fichier: 'features/dashboard/Tenants.tsx',
-    quoi: 'ajouter un locataire',
-    motif:
-      'Même dette que la correction de fiche, sur le geste le plus fréquent de cet ' +
-      'écran. Non mesurée au clavier depuis l’origine ; nommée ici pour la première ' +
-      'fois, et elle ne repartira pas dans le silence.',
-  },
-  {
     fichier: 'features/dashboard/Access.tsx',
     quoi: 'délier une fiche de son compte',
     motif:
@@ -98,24 +86,6 @@ const HORS_CLAVIER: { fichier: string; quoi: string; motif: string }[] = [
       'démonstration en porte, donc rien ne l’empêche techniquement : c’est une dette ' +
       'de couverture, pas un empêchement, et je la nomme au lieu de la laisser hors ' +
       'de tout registre.',
-  },
-  {
-    fichier: 'features/dashboard/Access.tsx',
-    quoi: 'confier des immeubles',
-    motif:
-      'Elle est MESURÉE EN GÉOMÉTRIE — `modales.mjs` la tient sous le nom ' +
-      '`ConfierImmeubles`, avec ses plafonds relevés au CI — mais pas au clavier. Le ' +
-      'trou est donc partiel, et c’est précisément ce qu’un registre par fichier permet ' +
-      'de dire au lieu de le moyenner.',
-  },
-  {
-    fichier: 'features/dashboard/Access.tsx',
-    quoi: 'relier un membre à une fiche',
-    motif:
-      'Même cas que « confier des immeubles » : `notes-conditionnelles` ouvre cette ' +
-      'modale pour y peindre `app.access.linkMismatch`, donc un navigateur la rend ' +
-      'vraiment — mais son CLAVIER n’est mesuré nulle part. Une modale vue n’est pas ' +
-      'une modale jouable.',
   },
   {
     fichier: 'features/dashboard/ReceiptModal.tsx',
@@ -197,7 +167,12 @@ describe('les modales du produit', () => {
           joues.filter((f) => f === fichier).length +
           HORS_CLAVIER.filter((h) => h.fichier === fichier).length,
       }))
-      .filter((f) => f.couvertes < f.combien)
+      /* ÉGALITÉ ET NON « AU MOINS ». Une rédaction précédente ne refusait que le
+         DÉFAUT de déclaration ; l'EXCÈS passait en silence — une dispense
+         devenue fausse parce que la modale est désormais jouée restait là,
+         intacte, en prétendant couvrir quelque chose. C'est arrivé au premier
+         lot qui a payé la dette : quatre dispenses ont survécu à leur objet. */
+      .filter((f) => f.couvertes !== f.combien)
       .map((f) => `${f.fichier} — ${f.combien} modale(s), ${f.couvertes} déclarée(s)`)
 
     expect(
