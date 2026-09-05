@@ -379,54 +379,55 @@ export function Tenants() {
           },
           {
             /*
-              CORRIGER une fiche, le geste qui manquait.
+              LES DEUX GESTES DANS UNE SEULE COLONNE, ET C'EST STRUCTUREL.
 
-              Ouvert au GESTIONNAIRE autant qu'au propriétaire, contrairement au
-              retrait juste à côté : corriger une coquille est strictement moins
-              puissant que créer la fiche, que le gestionnaire fait déjà. Le
-              cabinet qui saisit est celui qui se trompe ; le renvoyer vers le
-              propriétaire pour une lettre coûterait plus que le geste.
+              `DataTable` épingle chaque colonne de rôle `geste` avec
+              `sticky right-0`. UNE seule s'y colle sans dommage ; DEUX s'y
+              superposent, et la dernière rendue rogne la précédente — « Corriger »
+              s'affichait « Corı » sur la production, la moitié du mot mangée.
+
+              LES DÉCALER AURAIT DEMANDÉ DE CONNAÎTRE LEUR LARGEUR, qui dépend du
+              libellé traduit — « Retirer » et « Remove » ne font pas la même —, et
+              la figer en dur rouvrirait le défaut dans l'autre langue.
+
+              CORRIGER est ouvert au GESTIONNAIRE, RETIRER au seul propriétaire :
+              deux conditions dans une cellule plutôt que deux colonnes. Retirer
+              efface une personne du registre ; corriger une coquille est
+              strictement moins puissant que créer la fiche, que le gestionnaire
+              fait déjà.
             */
-            key: 'correction',
+            /* `gap-2` ET NON `gap-1` sur la rangée ci-dessous : c'est le standard
+               maison pour deux commandes qui se suivent, et `ecarts.test.ts` le
+               refuse en deçà — deux cibles à 4 px l'une de l'autre se touchent au
+               doigt. Écrit `gap-1` en première rédaction, refusé par la porte. */
+            key: 'gestes',
             role: 'geste',
             header: '',
             render: (unit) =>
               unit.tenant && unit.tenantId ? (
-                /* `sliders`, LE GLYPHE QUE CE DÉPÔT DONNE DÉJÀ À « CORRIGER » :
-                   c'est celui du bouton « Corriger le parc » de la coquille. Le
-                   vocabulaire d'icônes veut qu'un même concept prenne le même
-                   dessin d'un écran à l'autre ; il n'existe pas de crayon ici, et
-                   en ajouter un ferait deux glyphes pour un seul geste. */
-                <Button variant="ghost" size="sm" icon="sliders" onClick={() => setACorriger(unit)}>
-                  {t('app.tenants.edit')}
-                </Button>
-              ) : null,
-          },
-          {
-            key: 'retrait',
-            role: 'geste',
-            header: '',
-            render: (unit) =>
-              /*
-                Le retrait d'une fiche, qui n'existait pas.
-
-                Même manque que les immeubles : on pouvait créer et jamais
-                défaire. Offert au seul PROPRIÉTAIRE — retirer une fiche efface
-                une personne du registre — et seulement quand une fiche existe.
-
-                Le serveur refuse de toute façon tant qu'une somme a circulé ;
-                ce masquage évite d'offrir un geste sur une ligne vacante, il ne
-                remplace pas la règle.
-              */
-              role === 'owner' && unit.tenant && unit.tenantId ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon="close"
-                  onClick={() => setARetirer(unit)}
-                >
-                  {t('app.tenants.remove')}
-                </Button>
+                <div className="flex items-center justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon="sliders"
+                    onClick={() => setACorriger(unit)}
+                  >
+                    {t('app.tenants.edit')}
+                  </Button>
+                  {/* Le serveur refuse de toute façon tant qu'une somme a
+                      circulé ; ce masquage évite d'offrir un geste sur une ligne
+                      qui n'y a pas droit, il ne remplace pas la règle. */}
+                  {role === 'owner' ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon="close"
+                      onClick={() => setARetirer(unit)}
+                    >
+                      {t('app.tenants.remove')}
+                    </Button>
+                  ) : null}
+                </div>
               ) : null,
           },
         ]}
