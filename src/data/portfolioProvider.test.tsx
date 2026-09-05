@@ -145,9 +145,12 @@ describe('création d’une fiche locataire', () => {
     await user.type(screen.getByLabelText(/^téléphone/i), '699445566')
     await user.click(screen.getByRole('button', { name: /^enregistrer$/i }))
 
-    // Le bail démarre « En attente » : le loyer n'est pas encore dû.
+    /* Le bail démarre « À ÉCHOIR » : le loyer est appelé, sa date n'est pas
+       venue. Ce cas attendait « En attente », qui disait la même chose sans dire
+       de quoi — et qui recouvrait AUSSI « aucune échéance appelée », désormais
+       rendu « Non appelé ». Voir `loyerAppeleOuNon.test.ts`. */
     expect(screen.getByRole('main')).toHaveTextContent('Awa Diallo')
-    expect(screen.getByRole('main')).toHaveTextContent('En attente')
+    expect(screen.getByRole('main')).toHaveTextContent('À échoir')
 
     await allerA(/parc immobilier/i)
     expect(screen.getByRole('main')).toHaveTextContent('Awa Diallo')

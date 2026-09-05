@@ -191,7 +191,13 @@ export const fr = {
     partial: 'Partiel',
     overdue: 'En retard',
     vacant: 'Vacant',
-    pending: 'En attente',
+    /* « À ÉCHOIR » ET NON « EN ATTENTE » : le loyer est appelé, sa date n'est
+       pas venue. « En attente » ne disait pas de quoi, sur un écran dont la
+       bannière parle de comptes — et il a été lu « en attente d'un compte ». */
+    pending: 'À échoir',
+    /* Rien n'a été appelé pour ce mois : c'est un geste à faire, pas une
+       attente. Voir `statut()` côté serveur. */
+    uncalled: 'Non appelé',
     done: 'Terminé',
   },
 
@@ -980,6 +986,11 @@ export const fr = {
       tenant: 'Locataire',
       unit: 'Logement',
       due: 'Montant dû',
+      /* LA PIÈCE NE JUGE PAS. Elle disait `status.pending` — devenu « À échoir »,
+         qui parle de gestion et daterait faux sur un mois passé. Son en-tête le
+         posait déjà : « une pièce atteste de ce qui a été reçu, pas de la
+         diligence de qui devait payer ». */
+      unsettled: 'Non réglé',
       paid: 'Montant reçu',
       balance: 'Solde',
       credit: '{amount} d’avance',
@@ -1890,6 +1901,12 @@ export const fr = {
       created: 'Fiche locataire créée',
       phoneHint: 'Pour l’appeler depuis sa fiche. Aucun message ne part d’ici.',
       since: 'Locataire depuis',
+      /* LA COLONNE NOMME SON AXE, et elle ne le faisait pas. « Statut » est un
+         libellé partagé par neuf écrans — cautions et quittances compris. Sur
+         celui-ci, dont la bannière parle de COMPTES et dont une ligne porte un
+         badge « Sans compte », « En attente » a été lu « en attente d'un
+         compte ». Le lecteur n'a pas mal lu : la page ne disait pas de quoi. */
+      rentStatus: 'Loyer du mois',
       contact: 'Contact',
       /* CORRIGER une fiche : le geste qui manquait. Une coquille dans un nom ou
          un numéro n'avait aucun chemin — supprimer pour recréer emporte le bail,

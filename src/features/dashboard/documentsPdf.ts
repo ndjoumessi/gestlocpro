@@ -236,9 +236,16 @@ export function titreDuDocument(solde: number): ContenuDeQuittance['titre'] {
  * geste. Sur la feuille, « reste à régler » dit tout ce que le document a à
  * dire, et il le dit sans juger.
  */
-function statutDeLaPiece(du: number, paye: number): 'status.paid' | 'status.partial' | 'status.pending' {
+function statutDeLaPiece(
+  du: number,
+  paye: number,
+): 'status.paid' | 'status.partial' | 'app.receipts.unsettled' {
   if (paye >= du) return 'status.paid'
-  return paye > 0 ? 'status.partial' : 'status.pending'
+  /* SA PROPRE CLÉ, ET NON `status.pending`. Celle-ci est devenue « À échoir » —
+     un état de GESTION, qui daterait faux sur la pièce d'un mois passé. C'est
+     exactement ce que l'en-tête ci-dessus refuse : la feuille dit « non réglé »
+     et ne juge pas. */
+  return paye > 0 ? 'status.partial' : 'app.receipts.unsettled'
 }
 
 /**

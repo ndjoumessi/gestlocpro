@@ -374,7 +374,7 @@ export function Tenants() {
           {
             key: 'status',
             role: 'etat',
-            header: t('app.portfolio.status'),
+            header: t('app.tenants.rentStatus'),
             render: (unit) => <PaymentStatusPill status={unit.status} size="sm" />,
           },
           {

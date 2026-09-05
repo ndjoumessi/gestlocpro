@@ -378,7 +378,19 @@ function statut(
   echeance: { rentMinor: number; dueOn: Date; payments: { amountMinor: number }[] } | undefined,
   aujourdhui: Date,
 ): { status: string; paidMinor: number; overdueDays: number | null } {
-  if (!echeance) return { status: 'pending', paidMinor: 0, overdueDays: null }
+  /**
+   * AUCUNE ÉCHÉANCE N'EST PAS « EN ATTENTE ».
+   *
+   * Ce cas rendait `pending`, le même mot que « appelée, pas encore due ». Un
+   * bailleur ne pouvait donc pas distinguer « je n'ai rien appelé » — qui appelle
+   * un geste, celui d'appeler les loyers — de « c'est appelé, ça arrive » — qui
+   * appelle d'attendre. Le même mot pour les deux fait rater le geste.
+   *
+   * Relevé sur la production : « pourquoi le statut est-il toujours en attente,
+   * alors qu'il a déjà un compte ? ». Le statut était juste et disait quand même
+   * la mauvaise chose.
+   */
+  if (!echeance) return { status: 'uncalled', paidMinor: 0, overdueDays: null }
 
   const paidMinor = echeance.payments.reduce((somme, p) => somme + p.amountMinor, 0)
   if (paidMinor >= echeance.rentMinor) return { status: 'paid', paidMinor, overdueDays: null }

@@ -86,7 +86,13 @@ export function StatusPill({ tone, children, icon, size = 'md', className }: Sta
 }
 
 /** Statuts de paiement du domaine, traduits et tonalisés au même endroit. */
-export type PaymentStatus = 'paid' | 'partial' | 'overdue' | 'vacant' | 'pending'
+/**
+ * `uncalled` — AUCUNE ÉCHÉANCE APPELÉE, et ce n'est pas « en attente ».
+ *
+ * Les deux se disaient `pending` : « je n'ai rien appelé », qui demande un
+ * geste, et « c'est appelé, ça arrive », qui demande d'attendre.
+ */
+export type PaymentStatus = 'paid' | 'partial' | 'overdue' | 'vacant' | 'pending' | 'uncalled'
 
 /**
  * EXPORTÉE, et pour une raison qui vaut mieux que la commodité.
@@ -104,6 +110,10 @@ export const PAYMENT_TONES: Record<PaymentStatus, StatusTone> = {
   partial: 'warn',
   overdue: 'danger',
   vacant: 'neutral',
+  /* NEUTRE COMME `vacant` : rien n'a été appelé, donc rien n'est en défaut. Le
+     peindre en `info` comme « en attente » suggérerait un compte à rebours qui
+     n'a pas commencé. */
+  uncalled: 'neutral',
   // Bail qui démarre : rien n'est encore dû, donc ni succès ni alerte.
   pending: 'info',
 }
