@@ -18,6 +18,7 @@
     "db:test:setup": "prisma generate && node scripts/setup-test-db.mjs",
     "immeubles:non-confies": "tsx src/scripts/immeublesNonConfies.ts",
     "devise:incoherente": "tsx src/scripts/deviseIncoherente.ts",
+    "montants:a-dater": "tsx src/scripts/montantsADater.ts",
     "photos:balayer": "tsx src/scripts/photosJamaisMontees.ts"
   },
   "dependencies": {

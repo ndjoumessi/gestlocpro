@@ -94,6 +94,16 @@ const HORS_CHAINE: { script: string; motif: string }[] = [
       'que son lecteur prend, sauvegarde faite.',
   },
   {
+    script: 'src/scripts/montantsADater.ts',
+    motif:
+      'Il DATE les montants d’un parc contre la chronologie de devise que le registre ' +
+      'porte, pour distinguer les lignes écrites avant une bascule de celles écrites ' +
+      'après — les secondes sont déjà justes, et une conversion en bloc les casserait. ' +
+      'Il n’écrit rien. Une chaîne ne le lance pas : il lui faut une base réelle ET un ' +
+      'registre `park.update` réel, qu’aucune base de sonde n’a. La reconstruction qu’il ' +
+      'chiffre appartient à qui reconnaît ses loyers.',
+  },
+  {
     script: 'src/scripts/immeublesNonConfies.ts',
     motif:
       'Il RELÈVE l’état d’une base réelle — quels immeubles ne sont confiés à personne — et ' +
