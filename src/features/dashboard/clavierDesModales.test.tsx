@@ -34,6 +34,15 @@ import type { Role } from '@/features/auth/signupState'
 
 interface Modale {
   nom: string
+  /**
+   * Le FICHIER qui rend cette modale, relatif à `src/`.
+   *
+   * Il ne sert pas à ouvrir la modale — `adresse` et `bouton` s'en chargent —
+   * mais à RELIER ce registre au disque. Sans lui, une modale neuve n'entrait
+   * dans aucun des deux registres du dépôt et rien ne rougissait : c'est ce que
+   * les cas de complétude, en bas de ce fichier, ferment.
+   */
+  fichier: string
   adresse: string
   bouton: RegExp
   /**
@@ -65,8 +74,8 @@ interface Modale {
 
 /** Où chaque modale s'ouvre, et par quel bouton. Une ligne par modale. */
 const MODALES: Modale[] = [
-  { nom: 'Ajouter un immeuble', adresse: '/demo/parc', bouton: /^Ajouter un immeuble$/, forme: 'saisie' },
-  { nom: 'Ajouter un logement', adresse: '/demo/parc', bouton: /^Ajouter un logement$/, forme: 'saisie' },
+  { nom: 'Ajouter un immeuble', fichier: 'features/dashboard/AddBuildingModal.tsx', adresse: '/demo/parc', bouton: /^Ajouter un immeuble$/, forme: 'saisie' },
+  { nom: 'Ajouter un logement', fichier: 'features/dashboard/AddUnitModal.tsx', adresse: '/demo/parc', bouton: /^Ajouter un logement$/, forme: 'saisie' },
   /* LES DEUX CORRECTIONS DU PARC, entrées avec le lot qui les crée. Elles ne
      s'inscrivent PAS toutes seules : ce registre est écrit à la main, et rien
      ne rougit quand une modale neuve l'oublie. Deux modales hors clavier
@@ -75,13 +84,13 @@ const MODALES: Modale[] = [
      Le nom du bouton porte sa cible — « Corriger le logement A1 » — parce que le
      geste se répète PAR LIGNE : sans cela il faudrait un `rang`, et viser
      silencieusement le premier d'une liste est ce que ce fichier refuse. */
-  { nom: 'Corriger un immeuble', adresse: '/demo/parc', bouton: /^Corriger l’immeuble Résidence Bonamoussadi$/, forme: 'saisie' },
-  { nom: 'Corriger un logement', adresse: '/demo/parc', bouton: /^Corriger le logement A1$/, forme: 'saisie' },
+  { nom: 'Corriger un immeuble', fichier: 'features/dashboard/EditBuildingModal.tsx', adresse: '/demo/parc', bouton: /^Corriger l’immeuble Résidence Bonamoussadi$/, forme: 'saisie' },
+  { nom: 'Corriger un logement', fichier: 'features/dashboard/EditUnitModal.tsx', adresse: '/demo/parc', bouton: /^Corriger le logement A1$/, forme: 'saisie' },
   /* LA SAISIE D'UN RELEVÉ, entrée avec le lot qui la crée. Ce registre est écrit
      à la main et rien ne rougit quand une modale neuve l'oublie. */
-  { nom: 'Saisir un relevé', adresse: '/demo/releves', bouton: /^Saisir un relevé$/, forme: 'saisie' },
-  { nom: 'Ouvrir un chantier', adresse: '/demo/travaux', bouton: /^Ouvrir un chantier$/, forme: 'saisie' },
-  { nom: 'Enregistrer un paiement', adresse: '/demo/paiements', bouton: /^Enregistrer un paiement$/, forme: 'saisie' },
+  { nom: 'Saisir un relevé', fichier: 'features/dashboard/RecordReadingModal.tsx', adresse: '/demo/releves', bouton: /^Saisir un relevé$/, forme: 'saisie' },
+  { nom: 'Ouvrir un chantier', fichier: 'features/dashboard/OpenWorkModal.tsx', adresse: '/demo/travaux', bouton: /^Ouvrir un chantier$/, forme: 'saisie' },
+  { nom: 'Enregistrer un paiement', fichier: 'features/dashboard/RecordPaymentModal.tsx', adresse: '/demo/paiements', bouton: /^Enregistrer un paiement$/, forme: 'saisie' },
   /*
     CINQUIÈME, ET ELLE ÉTAIT INATTEIGNABLE. Le bouton de « Corriger le parc »
     était gardé par `adhesionActive`, c'est-à-dire par un COMPTE RÉEL : la
@@ -90,10 +99,10 @@ const MODALES: Modale[] = [
     et son clavier n'étaient vérifiés par personne. La garde suit désormais le
     rôle ACTIF, qui est connu en démonstration comme sur un vrai compte.
   */
-  { nom: 'Corriger le parc', adresse: '/demo/parc', bouton: /^Corriger le parc$/, forme: 'saisie' },
+  { nom: 'Corriger le parc', fichier: 'features/dashboard/ParkSettingsModal.tsx', adresse: '/demo/parc', bouton: /^Corriger le parc$/, forme: 'saisie' },
   /* Sixième, et dernière des deux qui étaient inatteignables — même garde, même
      confusion, même remède. Voir l'en-tête de `scripts/modales.mjs`. */
-  { nom: 'Prix de refacturation', adresse: '/demo/releves', bouton: /^Prix de refacturation$/, forme: 'saisie' },
+  { nom: 'Prix de refacturation', fichier: 'features/dashboard/TariffsModal.tsx', adresse: '/demo/releves', bouton: /^Prix de refacturation$/, forme: 'saisie' },
   /*
     ═══ LES SIX DERNIÈRES, ET POURQUOI ELLES ARRIVENT EN DERNIER ═══
 
@@ -114,12 +123,12 @@ const MODALES: Modale[] = [
     La quittance est la seule `lecture` des douze : une pièce qu'on consulte,
     sans un champ à remplir.
   */
-  { nom: 'Quittance', adresse: '/demo/paiements', bouton: /^Quittance$/, rang: 0, forme: 'lecture' },
-  { nom: 'Établir un état des lieux', adresse: '/demo/etats-des-lieux', bouton: /^Établir un état des lieux$/, forme: 'saisie' },
-  { nom: 'Inviter par code', adresse: '/demo/locataires', bouton: /^Inviter par code$/, forme: 'saisie' },
-  { nom: 'Prévenir les locataires', adresse: '/demo/locataires', bouton: /^Prévenir les locataires$/, forme: 'saisie' },
-  { nom: 'Répondre', adresse: '/demo/travaux', bouton: /^Répondre$/, rang: 0, forme: 'saisie' },
-  { nom: 'Signaler un problème', adresse: '/demo/travaux', bouton: /^Signaler un problème$/, profil: 'tenant', forme: 'saisie' },
+  { nom: 'Quittance', fichier: 'features/dashboard/ReceiptModal.tsx', adresse: '/demo/paiements', bouton: /^Quittance$/, rang: 0, forme: 'lecture' },
+  { nom: 'Établir un état des lieux', fichier: 'features/dashboard/InspectionModal.tsx', adresse: '/demo/etats-des-lieux', bouton: /^Établir un état des lieux$/, forme: 'saisie' },
+  { nom: 'Inviter par code', fichier: 'features/dashboard/InviteModal.tsx', adresse: '/demo/locataires', bouton: /^Inviter par code$/, forme: 'saisie' },
+  { nom: 'Prévenir les locataires', fichier: 'features/dashboard/AnnounceModal.tsx', adresse: '/demo/locataires', bouton: /^Prévenir les locataires$/, forme: 'saisie' },
+  { nom: 'Répondre', fichier: 'features/dashboard/ReplyModal.tsx', adresse: '/demo/travaux', bouton: /^Répondre$/, rang: 0, forme: 'saisie' },
+  { nom: 'Signaler un problème', fichier: 'features/dashboard/ReportModal.tsx', adresse: '/demo/travaux', bouton: /^Signaler un problème$/, profil: 'tenant', forme: 'saisie' },
   /*
     ═══ LES CONFIRMATIONS, ET C'ÉTAIT LE PLUS GRAND TROU ═══
 
@@ -139,13 +148,13 @@ const MODALES: Modale[] = [
 
     Elles se répètent PAR LIGNE, comme la quittance : d'où leur `rang`.
   */
-  { nom: 'Arbitrer', adresse: '/demo/cautions', bouton: /^Arbitrer$/, rang: 0, forme: 'saisie' },
-  { nom: 'Retirer une fiche', adresse: '/demo/locataires', bouton: /^Retirer$/, rang: 0, forme: 'lecture' },
-  { nom: 'Retirer un accès', adresse: '/demo/acces', bouton: /^Retirer l’accès$/, rang: 0, forme: 'lecture' },
-  { nom: 'Relancer les retards', adresse: '/demo/paiements', bouton: /^Relancer les retards$/, forme: 'lecture' },
+  { nom: 'Arbitrer', fichier: 'features/dashboard/Deposits.tsx', adresse: '/demo/cautions', bouton: /^Arbitrer$/, rang: 0, forme: 'saisie' },
+  { nom: 'Retirer une fiche', fichier: 'features/dashboard/Tenants.tsx', adresse: '/demo/locataires', bouton: /^Retirer$/, rang: 0, forme: 'lecture' },
+  { nom: 'Retirer un accès', fichier: 'features/dashboard/Access.tsx', adresse: '/demo/acces', bouton: /^Retirer l’accès$/, rang: 0, forme: 'lecture' },
+  { nom: 'Relancer les retards', fichier: 'features/dashboard/Payments.tsx', adresse: '/demo/paiements', bouton: /^Relancer les retards$/, forme: 'lecture' },
   /* La cinquième confirmation, entrée quand la démonstration a cessé de masquer
      le geste. `saisie` : elle porte un motif, qui est tout l'acte. */
-  { nom: 'Mettre en demeure', adresse: '/demo/paiements', bouton: /^Mettre en demeure$/, rang: 0, forme: 'saisie' },
+  { nom: 'Mettre en demeure', fichier: 'features/dashboard/Payments.tsx', adresse: '/demo/paiements', bouton: /^Mettre en demeure$/, rang: 0, forme: 'saisie' },
 ]
 
 /**

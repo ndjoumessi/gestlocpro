@@ -204,7 +204,7 @@ const MODALES = [
 
     À 1280 la boîte a la place : zéro dans les deux polices, inchangé.
   */
-  { nom: 'Tariffs', adresse: '/demo/releves', bouton: /^Prix de refacturation$|^Rebilling prices$/, defil: { 360: 82, 1280: 0 }, defilLarge: { 360: 126, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'Tariffs', fichier: 'features/dashboard/TariffsModal.tsx', adresse: '/demo/releves', bouton: /^Prix de refacturation$|^Rebilling prices$/, defil: { 360: 82, 1280: 0 }, defilLarge: { 360: 126, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /*
     48 → 325 px à 360, 0 → 70 à 1280 (2026-09-02) : LES RELANCES AUTOMATIQUES.
 
@@ -230,7 +230,7 @@ const MODALES = [
     polices rendent la même valeur. La première exécution de CE script fait foi
     sur la mienne.
   */
-  { nom: 'ParkSettings', adresse: '/demo/parc', bouton: /^Corriger le parc$|^Correct the park$/, defil: { 360: 581, 1280: 294 }, defilLarge: { 360: 581, 1280: 294 }, avant: { 360: 35, 1280: 0 } },
+  { nom: 'ParkSettings', fichier: 'features/dashboard/ParkSettingsModal.tsx', adresse: '/demo/parc', bouton: /^Corriger le parc$|^Correct the park$/, defil: { 360: 581, 1280: 294 }, defilLarge: { 360: 581, 1280: 294 }, avant: { 360: 35, 1280: 0 } },
   /*
     LA MÊME MODALE, DEVISE CHANGÉE — un second état, et une note que personne
     n'atteignait.
@@ -249,7 +249,7 @@ const MODALES = [
     mesurerait l'état d'ouverture une seconde fois, en silence.
   */
   {
-    nom: 'ParkSettings·devise',
+    nom: 'ParkSettings·devise', fichier: 'features/dashboard/ParkSettingsModal.tsx',
     adresse: '/demo/parc',
     bouton: /^Corriger le parc$|^Correct the park$/,
     apres: (page) =>
@@ -274,8 +274,8 @@ const MODALES = [
     defilLarge: { 360: 736, 1280: 405 },
     avant: { 360: 35, 1280: 0 },
   },
-  { nom: 'AddBuilding', adresse: '/demo/parc', bouton: /^Ajouter un immeuble$|^Add a building$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
-  { nom: 'AddUnit', adresse: '/demo/parc', bouton: /^Ajouter un logement$|^Add a unit$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'AddBuilding', fichier: 'features/dashboard/AddBuildingModal.tsx', adresse: '/demo/parc', bouton: /^Ajouter un immeuble$|^Add a building$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'AddUnit', fichier: 'features/dashboard/AddUnitModal.tsx', adresse: '/demo/parc', bouton: /^Ajouter un logement$|^Add a unit$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /*
     LES DEUX CORRECTIONS DU PARC, inscrites avec le lot qui les crée.
 
@@ -291,17 +291,17 @@ const MODALES = [
     logement OCCUPÉ, et A1 en est un. Sans elle, un jour où la note cesserait
     d'être rendue, on mesurerait la modale nue en croyant mesurer les deux.
   */
-  { nom: 'EditBuilding', adresse: '/demo/parc', bouton: /^Corriger l’immeuble Résidence Bonamoussadi$|^Edit building Résidence Bonamoussadi$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
-  { nom: 'EditUnit', adresse: '/demo/parc', bouton: /^Corriger le logement A1$|^Edit unit A1$/, note: /ne changent pas|stay unchanged/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'EditBuilding', fichier: 'features/dashboard/EditBuildingModal.tsx', adresse: '/demo/parc', bouton: /^Corriger l’immeuble Résidence Bonamoussadi$|^Edit building Résidence Bonamoussadi$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'EditUnit', fichier: 'features/dashboard/EditUnitModal.tsx', adresse: '/demo/parc', bouton: /^Corriger le logement A1$|^Edit unit A1$/, note: /ne changent pas|stay unchanged/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /*
     LA SAISIE D'UN RELEVÉ, née avec le lot qui rend vrai le mot « Refacturé ».
     Quatre états comme toute modale ordinaire. Les plafonds sont ceux du premier
     relevé de ce script — le geste n'a pas d'`apres`, la note de conséquence
     n'apparaissant qu'après un enregistrement, que la démonstration ne fait pas.
   */
-  { nom: 'RecordReading', adresse: '/demo/releves', bouton: /^Saisir un relevé$|^Record a reading$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
-  { nom: 'OpenWork', adresse: '/demo/travaux', bouton: /^Ouvrir un chantier$|^Open a job$/, defil: { 360: 130, 1280: 0 }, defilLarge: { 360: 138, 1280: 0 }, avant: { 360: 1056, 1280: 913 } },
-  { nom: 'RecordPayment', adresse: '/demo/paiements', bouton: /^Enregistrer un paiement$|^Record a payment$/, defil: { 360: 460, 1280: 40 }, defilLarge: { 360: 493, 1280: 47 }, avant: { 360: 522, 1280: 236 } },
+  { nom: 'RecordReading', fichier: 'features/dashboard/RecordReadingModal.tsx', adresse: '/demo/releves', bouton: /^Saisir un relevé$|^Record a reading$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'OpenWork', fichier: 'features/dashboard/OpenWorkModal.tsx', adresse: '/demo/travaux', bouton: /^Ouvrir un chantier$|^Open a job$/, defil: { 360: 130, 1280: 0 }, defilLarge: { 360: 138, 1280: 0 }, avant: { 360: 1056, 1280: 913 } },
+  { nom: 'RecordPayment', fichier: 'features/dashboard/RecordPaymentModal.tsx', adresse: '/demo/paiements', bouton: /^Enregistrer un paiement$|^Record a payment$/, defil: { 360: 460, 1280: 40 }, defilLarge: { 360: 493, 1280: 47 }, avant: { 360: 522, 1280: 236 } },
   /*
     LE PLAFOND DE 0 ÉTAIT VACUEUX, et ce script vient de le prouver en rougissant.
 
@@ -334,7 +334,7 @@ const MODALES = [
     intitulés français sont plus longs. On ne moyenne pas les deux — le plafond
     est déclaré par langue, comme partout dans ce fichier.
   */
-  { nom: 'Receipt', adresse: '/demo/paiements', bouton: /Quittance|Receipt/, defil: { 360: 91, 1280: 0 }, defilLarge: { 360: 91, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'Receipt', fichier: 'features/dashboard/ReceiptModal.tsx', adresse: '/demo/paiements', bouton: /Quittance|Receipt/, defil: { 360: 91, 1280: 0 }, defilLarge: { 360: 91, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /*
     INSPECTION : LE PLAFOND MONTE, ET VOICI CE QU'IL ACHÈTE.
 
@@ -372,8 +372,8 @@ const MODALES = [
      genre d'arbitrage que ce plafond existe pour faire écrire, et il est fait
      dans ce sens-là.
   */
-  { nom: 'Inspection', adresse: '/demo/etats-des-lieux', bouton: /^Établir un état des lieux$|^Record an inspection$/, defil: { 360: 345, 1280: 60 }, defilLarge: { 360: 425, 1280: 54 }, avant: { 360: 237, 1280: 0 } },
-  { nom: 'Invite', adresse: '/demo/locataires', bouton: /^Inviter par code$|^Invite by code$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'Inspection', fichier: 'features/dashboard/InspectionModal.tsx', adresse: '/demo/etats-des-lieux', bouton: /^Établir un état des lieux$|^Record an inspection$/, defil: { 360: 345, 1280: 60 }, defilLarge: { 360: 425, 1280: 54 }, avant: { 360: 237, 1280: 0 } },
+  { nom: 'Invite', fichier: 'features/dashboard/InviteModal.tsx', adresse: '/demo/locataires', bouton: /^Inviter par code$|^Invite by code$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /*
     LE SECOND ÉTAT DE LA MÊME MODALE, et il en change la hauteur.
 
@@ -383,7 +383,7 @@ const MODALES = [
     autre défilement, et il n'était mesuré nulle part.
   */
   {
-    nom: 'InviteGestionnaire',
+    nom: 'InviteGestionnaire', fichier: 'features/dashboard/InviteModal.tsx',
     adresse: '/demo/locataires',
     bouton: /^Inviter par code$|^Invite by code$/,
     apres: (page) =>
@@ -433,15 +433,15 @@ const MODALES = [
     d'ici : c'est la porte publique qui doit être verte, et un plafond posé sur
     la machine la plus large cesserait d'y refuser quoi que ce soit.
   */
-  { nom: 'ConfierImmeubles', adresse: '/demo/acces', bouton: /^Confier des immeubles$|^Assign buildings$/, defil: { 360: 511, 1280: 331 }, defilLarge: { 360: 511, 1280: 331 }, avant: { 360: 0, 1280: 0 } },
-  { nom: 'Announce', adresse: '/demo/locataires', bouton: /^Prévenir les locataires$|^Notify tenants$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
-  { nom: 'Reply', adresse: '/demo/travaux', bouton: /^Répondre$|^Reply$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'ConfierImmeubles', fichier: 'features/dashboard/Access.tsx', adresse: '/demo/acces', bouton: /^Confier des immeubles$|^Assign buildings$/, defil: { 360: 511, 1280: 331 }, defilLarge: { 360: 511, 1280: 331 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'Announce', fichier: 'features/dashboard/AnnounceModal.tsx', adresse: '/demo/locataires', bouton: /^Prévenir les locataires$|^Notify tenants$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'Reply', fichier: 'features/dashboard/ReplyModal.tsx', adresse: '/demo/travaux', bouton: /^Répondre$|^Reply$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /* Le seul écran de la démonstration où le rôle change ce qui est rendu : la
      modale du locataire n'existe que pour lui. Le radio de profil est `sr-only`,
      donc invisible au sens de Playwright — d'où le clic FORCÉ, qui est ici la
      vérité du geste et non un contournement : à la souris, c'est l'étiquette
      qu'on vise, et elle est bien visible. */
-  { nom: 'Report', adresse: '/demo/travaux', profil: /Locataire|Tenant/, bouton: /^Signaler un problème$|^Report an issue$/, defil: { 360: 620, 1280: 250 }, defilLarge: { 360: 486, 1280: 189 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'Report', fichier: 'features/dashboard/ReportModal.tsx', adresse: '/demo/travaux', profil: /Locataire|Tenant/, bouton: /^Signaler un problème$|^Report an issue$/, defil: { 360: 620, 1280: 250 }, defilLarge: { 360: 486, 1280: 189 }, avant: { 360: 0, 1280: 0 } },
   /*
     LES CONFIRMATIONS ENTRENT, ET C'ÉTAIT LE PLUS GRAND TROU DE CETTE PORTE.
 
@@ -467,9 +467,9 @@ const MODALES = [
     « Retirer l'accès », par le même état. Une entrée suffit donc pour les deux ;
     en ajouter une seconde mesurerait deux fois la même géométrie.
   */
-  { nom: 'SettleDeposit', adresse: '/demo/cautions', bouton: /^Arbitrer$|^Settle$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 10, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
-  { nom: 'RemoveTenant', adresse: '/demo/locataires', bouton: /^Retirer$|^Remove$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
-  { nom: 'RevokeAccess', adresse: '/demo/acces', bouton: /^Retirer l’accès$|^Remove access$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'SettleDeposit', fichier: 'features/dashboard/Deposits.tsx', adresse: '/demo/cautions', bouton: /^Arbitrer$|^Settle$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 10, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'RemoveTenant', fichier: 'features/dashboard/Tenants.tsx', adresse: '/demo/locataires', bouton: /^Retirer$|^Remove$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'RevokeAccess', fichier: 'features/dashboard/Access.tsx', adresse: '/demo/acces', bouton: /^Retirer l’accès$|^Remove access$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /*
     SUPPRIMER UN IMMEUBLE : LA SONDE EN CRÉE UN D'ABORD.
 
@@ -491,7 +491,7 @@ const MODALES = [
     écran, et elle est visible ici plutôt que cachée dans une fixture.
   */
   {
-    nom: 'DeleteBuilding',
+    nom: 'DeleteBuilding', fichier: 'features/dashboard/Portfolio.tsx',
     adresse: '/demo/parc',
     bouton: /^Supprimer l’immeuble |^Delete building /,
     prealable: async (page) => {
@@ -506,7 +506,7 @@ const MODALES = [
     defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 },
     avant: { 360: 0, 1280: 0 },
   },
-  { nom: 'RemindOverdue', adresse: '/demo/paiements', bouton: /^Relancer les retards$|^Chase arrears$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'RemindOverdue', fichier: 'features/dashboard/Payments.tsx', adresse: '/demo/paiements', bouton: /^Relancer les retards$|^Chase arrears$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /*
     LA MISE EN DEMEURE ENTRE, ET C'EST UN LOT QUI L'A OUVERTE.
 
@@ -520,7 +520,7 @@ const MODALES = [
     l'acte est un enregistrement au dossier plus une notification à un compte,
     et elle n'a ni l'un ni l'autre. Elle le dit, au lieu de se taire.
   */
-  { nom: 'FormalNotice', adresse: '/demo/paiements', bouton: /^Mettre en demeure$|^Serve notice$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'FormalNotice', fichier: 'features/dashboard/Payments.tsx', adresse: '/demo/paiements', bouton: /^Mettre en demeure$|^Serve notice$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
 ]
 
 /**
@@ -559,44 +559,6 @@ const MODALES = [
 */
 const NON_OUVRABLES = []
 
-/**
- * Les libellés que `clavierDesModales.test.tsx` joue, recopiés pour que la ligne
- * de succès puisse nommer CE QUI RESTE dehors plutôt que de l'affirmer.
- *
- * Recopiés et non importés : ce script est un module Node, l'autre un fichier de
- * cas sous jsdom, et les relier ferait dépendre une porte du chargement de
- * l'autre. Le prix est cette liste ; le garde-fou est `COUVERTES_AU_CLAVIER`,
- * qui rougirait si les deux comptes cessaient de s'accorder, et la vérification
- * juste dessous, qui refuse un libellé sans modale correspondante ici.
- *
- * ELLE LES PORTE TOUTES LES DOUZE depuis que les six dernières sont entrées
- * dans les cas clavier. Trois d'entre elles demandaient plus qu'un clic : la
- * quittance et la réponse se répètent PAR LIGNE — dix et quatre boutons
- * mesurés — et le signalement n'existe que pour le LOCATAIRE.
- */
-const COUVERTS = [
-  'Ajouter un immeuble',
-  'Ajouter un logement',
-  'Ouvrir un chantier',
-  'Enregistrer un paiement',
-  'Corriger le parc',
-  'Prix de refacturation',
-  'Quittance',
-  'Établir un état des lieux',
-  'Inviter par code',
-  'Prévenir les locataires',
-  'Répondre',
-  'Signaler un problème',
-  /* LES QUATRE CONFIRMATIONS entrées avec elles : arbitrer, retirer une fiche,
-     retirer un accès, relancer. La cinquième — supprimer un immeuble — demande
-     qu'on en CRÉE un d'abord, ce que le fichier de cas ne sait pas faire ; elle
-     reste donc mesurée ici et hors clavier, et la ligne de succès le dit. */
-  'Arbitrer',
-  'Retirer',
-  'Retirer l’accès',
-  'Relancer les retards',
-  'Mettre en demeure',
-]
 /**
  * UN PLAFOND, DEUX POLICES — meme arbitrage que `plafond-coquille`.
  *
@@ -1349,31 +1311,71 @@ if (plaintes.length > 0) {
   les cas clavier, qui sont six. Une porte dont le rapport se périme apprend à
   ne plus lire son rapport.
 
-  `COUVERTES_AU_CLAVIER` est donc écrit ICI, à la main, comme `ATTENDUS` — et
-  pour la même raison : dérivé de l'autre fichier il ne dirait rien, recopié
-  sans compte il se périmerait encore. Le nombre force à toucher cette ligne le
-  jour où la couverture bouge.
+  UNE RÉDACTION PRÉCÉDENTE EN TIRAIT LA MAUVAISE LEÇON. Elle écrivait ici, à la
+  main, `COUVERTES_AU_CLAVIER = 17`, en défendant le choix : « dérivé de l'autre
+  fichier il ne dirait rien, recopié sans compte il se périmerait encore ». La
+  suite lui a donné tort de la façon la plus nette : le nombre s'est périmé
+  quand même, avec la liste recopiée sous ses yeux, et la porte l'a imprimé
+  trois jours durant comme une vérité vérifiée. Voir juste dessous.
 */
-const COUVERTES_AU_CLAVIER = 17
-/*
-  GARDE DU GARDE : le nombre écrit et la liste recopiée doivent s'accorder, et
-  la liste doit désigner des modales qui EXISTENT. Sans cette vérification, un
-  libellé mal recopié sortirait sa modale du compte des couvertes et la ferait
-  passer pour non couverte — un rapport plus faux que celui qu'on vient de
-  corriger, parce qu'il aurait l'air d'avoir été vérifié.
-*/
-const introuvables = COUVERTS.filter((c) => !MODALES.some((m) => m.bouton.test(c)))
-if (COUVERTS.length !== COUVERTES_AU_CLAVIER || introuvables.length > 0) {
+/**
+ * CE QUE LE CLAVIER COUVRE, LU DANS SON REGISTRE — PLUS RECOPIÉ.
+ *
+ * ═══ CE QUE LA RECOPIE A COÛTÉ ═══
+ *
+ * Cette ligne portait `const COUVERTES_AU_CLAVIER = 17`, et son commentaire
+ * défendait ce nombre : « dérivé de l'autre fichier il ne dirait rien ». La
+ * suite lui a donné tort. Le registre du clavier est passé à VINGT le
+ * 2026-09-05 ; ce nombre et la liste recopiée juste au-dessus sont restés à
+ * dix-sept, d'accord ENTRE EUX puisque tous deux écrits ici, et la porte a
+ * continué d'imprimer « sur 17 modales ; TOUTES y sont ». Trois modales n'y
+ * étaient pas.
+ *
+ * Une garde qui AFFIRME est pire qu'une garde absente : elle achète la confiance
+ * qu'elle ne mérite pas, et son rapport se lit comme un fait.
+ *
+ * ═══ LE LIEN SE FAIT PAR LE FICHIER, PAS PAR LE LIBELLÉ ═══
+ *
+ * Les deux registres ne s'adressent pas pareil : ici le bouton porte sa cible
+ * — « Corriger l'immeuble Résidence Bonamoussadi » —, là-bas un nom court. Le
+ * FICHIER qui rend la modale, lui, est le même des deux côtés, et c'est le seul
+ * point d'accroche qui ne dépende d'aucune rédaction.
+ *
+ * Le fichier est LU comme un texte : ce script est un module Node, l'autre un
+ * cas sous jsdom, et les relier par import ferait dépendre une porte du
+ * chargement de l'autre. C'est l'idiome déjà employé par `decisions-nommees`
+ * sur `Decisions.tsx` et par `notes-conditionnelles` sur les sources.
+ */
+const REGISTRE_CLAVIER = 'src/features/dashboard/clavierDesModales.test.tsx'
+/**
+ * BORNÉ AU TABLEAU `MODALES`, ET LA PREMIÈRE RÉDACTION NE L'ÉTAIT PAS.
+ *
+ * Ce fichier porte aussi `HORS_CLAVIER` — les modales DÉCLARÉES non jouées, avec
+ * leur motif — dont les entrées ont le même champ `fichier`. Une lecture qui
+ * balaie tout le fichier compte donc les DISPENSES comme des couvertures : elle
+ * rendait 23 fichiers pour 19 réellement joués, et déclarait « TOUTES y sont »
+ * en s'appuyant sur la liste de celles qui n'y sont pas.
+ *
+ * C'est exactement le défaut que le commentaire du dessus reproche à la
+ * rédaction précédente, reproduit dans son remède au premier essai. Le tableau
+ * se délimite donc, et la garde de lisibilité qui suit tient le compte plancher.
+ */
+const sourceDuClavier = readFileSync(join(RACINE, REGISTRE_CLAVIER), 'utf8')
+const debutDuTableau = sourceDuClavier.indexOf('const MODALES: Modale[] = [')
+const finDuTableau = sourceDuClavier.indexOf('\n]', debutDuTableau)
+const fichiersAuClavier = new Set(
+  [
+    ...sourceDuClavier.slice(debutDuTableau, finDuTableau).matchAll(/fichier: '([^']+)'/g),
+  ].map((m) => m[1]),
+)
+if (debutDuTableau === -1 || finDuTableau === -1 || fichiersAuClavier.size < 15) {
   console.error(
-    `\n✗ modales : la liste des modales couvertes au clavier ne tient pas.\n` +
-      `   ${COUVERTS.length} libellé(s) recopié(s) pour ${COUVERTES_AU_CLAVIER} annoncé(s).\n` +
-      (introuvables.length
-        ? `   Sans modale correspondante ici : ${introuvables.join(', ')}\n`
-        : ''),
+    `\n✗ modales : le registre du clavier est illisible — ${fichiersAuClavier.size} fichier(s) trouvé(s).\n` +
+      `   Un champ renommé rendrait « aucune couverture » là où il y en a vingt.\n`,
   )
   exit(1)
 }
-const horsClavier = MODALES.filter((m) => !COUVERTS.some((c) => m.bouton.test(c)))
+const horsClavier = MODALES.filter((m) => !fichiersAuClavier.has(m.fichier))
 
 console.log(
   `\n✓ modales : ${inspectees}/${ATTENDUS} états ouverts et mesurés sur ${MODALES.length} modales,\n` +
@@ -1383,7 +1385,7 @@ console.log(
       ? '  et AUCUNE que la démonstration ne rende pas — la liste est vide et gardée vide.\n'
       : `  plus ${NON_OUVRABLES.length} que la démonstration ne rend pas : ${NON_OUVRABLES.join(', ')}.\n`) +
     '  Le CLAVIER est mesuré ailleurs — `clavierDesModales.test.tsx` — sur ' +
-    `${COUVERTES_AU_CLAVIER} modales ;\n` +
+    `${fichiersAuClavier.size} fichier(s) de modale ;\n` +
     (horsClavier.length === 0
       ? '  TOUTES y sont — entrée du focus, piège, Échap, retour au bouton.\n'
       : `  ${horsClavier.length === 1 ? "l'autre non" : `les ${horsClavier.length} autres non`} : ` +

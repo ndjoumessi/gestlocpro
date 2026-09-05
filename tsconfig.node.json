@@ -61,6 +61,7 @@
     "src/design-system/testsQuiLisentLeDisque.test.ts",
     "src/design-system/renvoisMorts.test.ts",
     "src/design-system/paquetAJour.test.ts",
+    "src/design-system/registresDesModales.test.ts",
     "src/design-system/variablesMortesRefusees.test.ts",
     "src/design-system/appelantsDuPortLibre.test.ts",
     "src/test/attentesObservees.test.ts",
