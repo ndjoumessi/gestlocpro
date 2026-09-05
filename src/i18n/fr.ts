@@ -1145,6 +1145,20 @@ export const fr = {
       indexInvalid: 'Saisissez un index entier, positif ou nul.',
       indexBackwards: 'Index en recul pour {utility} : un compteur ne redescend pas.',
       alreadyRecorded: 'Un relevé existe déjà pour {utility} sur ce mois.',
+      correctTitle: 'Corriger un relevé',
+      indexAboveNext:
+        'Index trop haut pour {utility} : le relevé du mois suivant lui est inférieur, la consommation d’après deviendrait négative.',
+      corrected: '{count} relevés corrigés',
+      corrected_one: '{count} relevé corrigé',
+      removed: 'Relevé retiré',
+      correctLine: 'Corriger les relevés — {unit}',
+      removeWater: 'Retirer le relevé d’eau',
+      removePower: 'Retirer le relevé d’électricité',
+      confirmRemove: 'Confirmer le retrait',
+      /* ELLE NE PARAÎT QU'EN CORRECTION, et elle dit ce qui surprendrait sinon :
+         un relevé sert DEUX mois, et le corriger en déplace deux. */
+      correctionSpread:
+        'Ce relevé sert de point de départ au mois suivant : le corriger change aussi la consommation de ce mois-là.',
       saved: '{count} relevés saisis',
       saved_one: '{count} relevé saisi',
       chargeNotCalled:
@@ -1739,6 +1753,12 @@ export const fr = {
            été lu, QUAND et par qui — et c'est la seule ligne qui le dise. */
         reading: {
           record: 'Relevé de compteur saisi',
+          /* TROIS LIBELLÉS DISTINCTS. Le sens du geste ne se lit dans aucune
+             charge utile : « relevé modifié » ne dirait pas si l'index a été
+             réparé ou si la ligne a disparu — et c'est la première question
+             qu'on pose au registre quand une refacturation est contestée. */
+          update: 'Relevé de compteur corrigé',
+          delete: 'Relevé de compteur retiré',
         },
         tariff: {
           set: 'Tarif de refacturation posé',

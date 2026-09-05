@@ -101,6 +101,12 @@ const DESTRUCTIONS_ATOMIQUES = [
   'building.delete',
   'inspection.photo_delete',
   'payment.delete',
+  /* LE RELEVÉ RETIRÉ. L'index disparaît avec sa ligne — la table ne porte ni
+     statut ni corbeille —, et cette trace est la SEULE chose qui dira ensuite
+     quel index avait été lu. C'est précisément ce qu'on vient chercher quand un
+     locataire conteste une refacturation, et un retrait sans trace rendrait la
+     question sans réponse pour toujours. */
+  'reading.delete',
   /* LE TARIF RETIRÉ. Sa ligne ne survit pas à son retrait — il n'a ni statut ni
      drapeau, la table ne porte que des prix en vigueur —, et la trace est la
      SEULE chose qui dira ensuite à quel prix une période a été affichée. Un

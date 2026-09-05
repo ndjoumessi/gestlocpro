@@ -308,6 +308,17 @@ export interface MeterReading {
   waterCurrent: number | null
   powerPrevious: number | null
   powerCurrent: number | null
+  /**
+   * L'identifiant du relevé COURANT de chaque énergie, ou `null`.
+   *
+   * Les routes de correction et de retrait s'adressent par identifiant, et la
+   * projection n'en servait aucun : l'écran affichait des index qu'aucun geste
+   * ne pouvait atteindre. La démonstration en porte de faux — elle n'écrit rien
+   * au serveur —, ce qui suffit à faire APPARAÎTRE les gestes sous les gardes
+   * de navigateur, qui ne mesurent que ce que la démonstration rend.
+   */
+  waterReadingId: string | null
+  powerReadingId: string | null
   readAt: DateParts | null
   /**
    * Le prix unitaire APPLICABLE à ce relevé, ou `null` quand il n'y en a aucun.
@@ -588,17 +599,23 @@ export interface DecisionDemo {
  * que ce que le serveur rend, si bien que les deux chemins — démonstration et
  * parc réel — nourrissent le même composant sans qu'il sache lequel le sert.
  */
+/* LES IDENTIFIANTS SONT FACTICES, ET C'EST LEUR RÔLE. La démonstration n'écrit
+   rien au serveur — les gestes de correction y répondent « la démonstration
+   n'enregistre pas ». Ils existent pour que les BOUTONS apparaissent : les
+   gardes de navigateur ne mesurent que ce que la démonstration rend, et une
+   colonne de gestes qui ne paraît jamais échappe à toutes. C'est la leçon de
+   `ficheRetirable`, payée une fois déjà. */
 export const READINGS: MeterReading[] = [
-  { unitId: 'A1', waterPrevious: 342, waterCurrent: 358, powerPrevious: 4120, powerCurrent: 4298, readAt: { year: 2026, month: 7, day: 20 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
-  { unitId: 'A2', waterPrevious: 289, waterCurrent: 301, powerPrevious: 3540, powerCurrent: 3671, readAt: { year: 2026, month: 7, day: 20 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
-  { unitId: 'A3', waterPrevious: 415, waterCurrent: 436, powerPrevious: 5210, powerCurrent: 5402, readAt: { year: 2026, month: 7, day: 20 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
-  { unitId: 'A4', waterPrevious: 502, waterCurrent: 529, powerPrevious: 6180, powerCurrent: 6455, readAt: { year: 2026, month: 7, day: 20 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
-  { unitId: 'A5', waterPrevious: 176, waterCurrent: null, powerPrevious: 2140, powerCurrent: null, readAt: null, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
-  { unitId: 'B1', waterPrevious: 388, waterCurrent: 402, powerPrevious: 4870, powerCurrent: 5033, readAt: { year: 2026, month: 7, day: 19 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
-  { unitId: 'B2', waterPrevious: 356, waterCurrent: 371, powerPrevious: 4405, powerCurrent: 4560, readAt: { year: 2026, month: 7, day: 19 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
-  { unitId: 'B3', waterPrevious: 271, waterCurrent: 284, powerPrevious: 3290, powerCurrent: 3418, readAt: { year: 2026, month: 7, day: 19 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
-  { unitId: 'C1', waterPrevious: 611, waterCurrent: 644, powerPrevious: 7320, powerCurrent: 7640, readAt: { year: 2026, month: 7, day: 18 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
-  { unitId: 'C2', waterPrevious: 334, waterCurrent: null, powerPrevious: 4010, powerCurrent: null, readAt: null, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
+  { unitId: 'A1', waterReadingId: 'demo-A1-water', waterPrevious: 342, waterCurrent: 358, powerReadingId: 'demo-A1-power', powerPrevious: 4120, powerCurrent: 4298, readAt: { year: 2026, month: 7, day: 20 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
+  { unitId: 'A2', waterReadingId: 'demo-A2-water', waterPrevious: 289, waterCurrent: 301, powerReadingId: 'demo-A2-power', powerPrevious: 3540, powerCurrent: 3671, readAt: { year: 2026, month: 7, day: 20 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
+  { unitId: 'A3', waterReadingId: 'demo-A3-water', waterPrevious: 415, waterCurrent: 436, powerReadingId: 'demo-A3-power', powerPrevious: 5210, powerCurrent: 5402, readAt: { year: 2026, month: 7, day: 20 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
+  { unitId: 'A4', waterReadingId: 'demo-A4-water', waterPrevious: 502, waterCurrent: 529, powerReadingId: 'demo-A4-power', powerPrevious: 6180, powerCurrent: 6455, readAt: { year: 2026, month: 7, day: 20 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
+  { unitId: 'A5', waterReadingId: 'demo-A5-water', waterPrevious: 176, waterCurrent: null, powerReadingId: 'demo-A5-power', powerPrevious: 2140, powerCurrent: null, readAt: null, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
+  { unitId: 'B1', waterReadingId: 'demo-B1-water', waterPrevious: 388, waterCurrent: 402, powerReadingId: 'demo-B1-power', powerPrevious: 4870, powerCurrent: 5033, readAt: { year: 2026, month: 7, day: 19 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
+  { unitId: 'B2', waterReadingId: 'demo-B2-water', waterPrevious: 356, waterCurrent: 371, powerReadingId: 'demo-B2-power', powerPrevious: 4405, powerCurrent: 4560, readAt: { year: 2026, month: 7, day: 19 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
+  { unitId: 'B3', waterReadingId: 'demo-B3-water', waterPrevious: 271, waterCurrent: 284, powerReadingId: 'demo-B3-power', powerPrevious: 3290, powerCurrent: 3418, readAt: { year: 2026, month: 7, day: 19 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
+  { unitId: 'C1', waterReadingId: 'demo-C1-water', waterPrevious: 611, waterCurrent: 644, powerReadingId: 'demo-C1-power', powerPrevious: 7320, powerCurrent: 7640, readAt: { year: 2026, month: 7, day: 18 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
+  { unitId: 'C2', waterReadingId: 'demo-C2-water', waterPrevious: 334, waterCurrent: null, powerReadingId: 'demo-C2-power', powerPrevious: 4010, powerCurrent: null, readAt: null, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
 ]
 
 /**

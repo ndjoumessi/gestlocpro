@@ -198,6 +198,20 @@ const DETAIL: Record<string, Champ[]> = {
     { champ: 'indexValue', nature: 'texte' },
     { champ: 'periodStart', nature: 'mois' },
   ],
+  /* LES MÊMES TROIS CHAMPS que la saisie, et dans le même ordre : une correction
+     se lit en comparant à la ligne d'à côté. L'avant vit dans la charge utile,
+     que cette recette ne déplie pas. */
+  'reading.update': [
+    { champ: 'utility', nature: 'service' },
+    { champ: 'indexValue', nature: 'texte' },
+    { champ: 'periodStart', nature: 'mois' },
+  ],
+  /* L'INDEX DISPARU EST DANS LA TRACE, et c'est tout ce qui en reste. */
+  'reading.delete': [
+    { champ: 'utility', nature: 'service' },
+    { champ: 'indexValue', nature: 'texte' },
+    { champ: 'periodStart', nature: 'mois' },
+  ],
   'tariff.set': [
     { champ: 'utility', nature: 'service' },
     { champ: 'unitPriceMinor', nature: 'argent' },

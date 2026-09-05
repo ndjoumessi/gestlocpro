@@ -609,6 +609,41 @@ export const api = {
     }),
 
   /**
+   * Corrige un relevé — son index, sa date de relevé.
+   *
+   * NI l'énergie, NI la période : un compteur d'eau n'est pas un compteur
+   * électrique mal rangé, et déplacer un relevé d'un mois à l'autre toucherait
+   * deux échéances en sens opposés. Le remède du mauvais mois est le retrait
+   * suivi d'une ressaisie.
+   *
+   * La réponse porte `charges` — AU PLURIEL : un relevé est le point d'arrivée
+   * de son mois et le point de DÉPART du suivant, donc le corriger touche deux
+   * consommations. Chaque entrée dit si l'échéance a bougé, et sinon pourquoi.
+   *
+   * 409 dans les deux sens : `index_recule` sous le relevé précédent,
+   * `index_depasse_le_suivant` au-dessus du suivant — qui rendrait la
+   * consommation du mois d'après négative.
+   */
+  updateReading: <T>(
+    parkId: string,
+    readingId: string,
+    corps: { indexValue?: number; readAt?: string },
+  ) =>
+    requete<T>(`/parks/${parkId}/readings/${readingId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(corps),
+    }),
+
+  /**
+   * Retire un relevé. Aucun corps, aucune réponse : le 204 dit tout.
+   *
+   * L'échéance de la période SUIVANTE est recalculée : elle vient de perdre son
+   * point de départ, et garderait sinon un montant que plus rien ne fonde.
+   */
+  deleteReading: <T>(parkId: string, readingId: string) =>
+    requete<T>(`/parks/${parkId}/readings/${readingId}`, { method: 'DELETE' }),
+
+  /**
    * Corrige un prix posé — son montant, sa date de prise d'effet.
    *
    * PAS `utility` : un prix de l'eau n'est pas un prix du courant mal rangé,

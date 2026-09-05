@@ -110,6 +110,8 @@ interface PortefeuilleApi {
   readings: {
     unitId: string
     utility: 'water' | 'power'
+    /** L'identifiant du relevé COURANT — `null` quand la période n'en a pas. */
+    id?: string | null
     indexValue: number | null
     previousIndex: number | null
     readAt: string | null
@@ -377,8 +379,10 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
           unitId: r.unitId,
           /* `null` ET NON 0 : « pas d'index antérieur » n'est pas « index à
              zéro ». Le second fait de l'index courant une consommation. */
+          waterReadingId: null,
           waterPrevious: null,
           waterCurrent: null,
+          powerReadingId: null,
           powerPrevious: null,
           powerCurrent: null,
           readAt: null,
@@ -386,6 +390,7 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
           powerPrice: null,
         }
         if (r.utility === 'water') {
+          ligne.waterReadingId = r.id ?? null
           ligne.waterPrevious = r.previousIndex
           ligne.waterCurrent = r.indexValue
           // `?? null` et non `?? 0` : un prix absent n'est pas un prix nul. Le
@@ -394,6 +399,7 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
           // vérité.
           ligne.waterPrice = r.unitPriceMinor ?? null
         } else {
+          ligne.powerReadingId = r.id ?? null
           ligne.powerPrevious = r.previousIndex
           ligne.powerCurrent = r.indexValue
           ligne.powerPrice = r.unitPriceMinor ?? null

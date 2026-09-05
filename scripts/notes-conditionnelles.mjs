@@ -136,6 +136,19 @@ async function ouvrirLaCorrectionDUnLogementOccupe(page) {
   await page.waitForTimeout(350)
 }
 
+/**
+ * « Corriger » sur la rangée d'un relevé de la démonstration.
+ *
+ * A1 nommément et pas `.first()` : le nom accessible porte le logement, et
+ * l'ordre des rangées dépend du tri. La démonstration porte de FAUX identifiants
+ * de relevé — elle n'écrit rien au serveur — et c'est ce qui fait apparaître le
+ * geste ici, donc ce qui rend cette note atteignable.
+ */
+async function ouvrirLaCorrectionDUnReleve(page) {
+  await page.getByRole('button', { name: /^Corriger les relevés — A1$/ }).first().click()
+  await page.waitForTimeout(350)
+}
+
 async function ouvrirLInvitationEnRecrutant(page) {
   await ouvrirLInvitation(page)
   await page.getByRole('combobox', { name: /Rôle invité/ }).selectOption('manager')
@@ -182,6 +195,13 @@ const REGISTRE = {
   'app.system.offlineNotice': { adresse: '/demo/systeme' },
   'app.system.errorTitle': { adresse: '/demo/systeme' },
   'app.meters.missingCount': { adresse: '/demo/releves' },
+  /* UN RELEVÉ SERT DEUX MOIS. Mesurable parce que la démonstration porte des
+     relevés avec leur identifiant : le geste de correction paraît, et la note
+     avec lui. */
+  'app.readings.correctionSpread': {
+    adresse: '/demo/releves',
+    geste: ouvrirLaCorrectionDUnReleve,
+  },
   /* LE LOYER DE RÉFÉRENCE NE RÉÉCRIT PAS LE PASSÉ. Mesurable parce que la
      démonstration porte des logements OCCUPÉS — A1 en tête —, et la note ne
      paraît que là : sur un logement vacant, il n'y a ni bail ni échéance dont

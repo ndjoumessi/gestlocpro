@@ -117,3 +117,78 @@ describe('un PREMIER relevé', () => {
     }
   })
 })
+
+/**
+ * UN RELEVÉ MAL SAISI SE CORRIGE — LE DÉFAUT QUE LE LOT PRÉCÉDENT AVAIT ROUVERT.
+ *
+ * Son commit le nommait : « un index tapé à côté est définitif ». C'est le même
+ * manque que trois lots d'affilée venaient de fermer — sur un immeuble, un
+ * logement, un prix — et il porte plus lourd ici : un index faux ne s'affiche
+ * pas seulement, il entre dans une échéance et se réclame.
+ */
+describe('corriger un relevé', () => {
+  it('offre le geste sur une ligne qui porte un relevé', async () => {
+    installerFauxServeur()
+    await renderApp('/demo/releves')
+    await attendreLeChargement()
+
+    expect(screen.getAllByRole('button', { name: /^Corriger les relevés — / }).length)
+      .toBeGreaterThan(0)
+  })
+
+  it('ouvre la modale PRÉREMPLIE, et fige le logement', async () => {
+    /* Corriger porte sur les relevés de CETTE ligne : déplacer le logement
+       voudrait dire les retirer d'un compteur pour les poser sur un autre. */
+    installerFauxServeur()
+    await renderApp('/demo/releves')
+    await attendreLeChargement()
+    const utilisateur = userEvent.setup()
+
+    await utilisateur.click(
+      screen.getAllByRole('button', { name: /^Corriger les relevés — / })[0]!,
+    )
+    const modale = await screen.findByRole('dialog')
+
+    expect(within(modale).getByRole('combobox', { name: /Unité/ })).toBeDisabled()
+    /* A1 porte 358 m³ dans le jeu de démonstration. */
+    expect(within(modale).getByDisplayValue('358')).toBeInTheDocument()
+  })
+
+  it('AVERTIT qu’un relevé sert DEUX mois', async () => {
+    /* La surprise qu'on désamorce : un relevé est le point d'arrivée de son mois
+       et le point de départ du suivant. Corriger juin change juillet. */
+    installerFauxServeur()
+    await renderApp('/demo/releves')
+    await attendreLeChargement()
+    const utilisateur = userEvent.setup()
+
+    await utilisateur.click(
+      screen.getAllByRole('button', { name: /^Corriger les relevés — / })[0]!,
+    )
+    const modale = await screen.findByRole('dialog')
+    expect(within(modale).getByText(/point de départ au mois suivant/)).toBeInTheDocument()
+  })
+
+  it('demande une CONFIRMATION avant de retirer, énergie par énergie', async () => {
+    installerFauxServeur()
+    await renderApp('/demo/releves')
+    await attendreLeChargement()
+    const utilisateur = userEvent.setup()
+
+    await utilisateur.click(
+      screen.getAllByRole('button', { name: /^Corriger les relevés — / })[0]!,
+    )
+    const modale = await screen.findByRole('dialog')
+
+    expect(within(modale).queryByRole('button', { name: /Confirmer le retrait/ })).toBeNull()
+    await utilisateur.click(within(modale).getByRole('button', { name: /Retirer le relevé d’eau/ }))
+    expect(
+      within(modale).getByRole('button', { name: /Confirmer le retrait/ }),
+    ).toBeInTheDocument()
+    /* Et l'électricité garde son geste NON armé : les deux retraits sont
+       distincts, et confondre les deux effacerait un relevé qu'on gardait. */
+    expect(
+      within(modale).getByRole('button', { name: /Retirer le relevé d’électricité/ }),
+    ).toBeInTheDocument()
+  })
+})

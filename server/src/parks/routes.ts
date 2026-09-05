@@ -1259,6 +1259,10 @@ parksRouter.get(
           return {
             unitId,
             utility,
+            /* L'IDENTIFIANT DU RELEVÉ COURANT, et il manquait. L'écran affichait
+               des index qu'il ne pouvait ni corriger ni retirer : les deux
+               routes s'adressent par identifiant, et rien n'en servait un. */
+            id: courant?.id ?? null,
             periodStart: periodeCourante,
             indexValue: courant?.indexValue ?? null,
             previousIndex: anterieur?.indexValue ?? null,
@@ -7074,6 +7078,31 @@ parksRouter.post(
  * — et la réponse DIT que l'échéance n'a pas bougé, avec son motif. L'écran a de
  * quoi expliquer plutôt que de laisser croire.
  */
+/**
+ * La FORME SERVIE d'un relevé, en un seul endroit.
+ *
+ * Les deux dates sortent en `AAAA-MM-JJ` et jamais en instant : ce sont des
+ * jours calendaires, et rendre un `Date` complet inviterait le client à les
+ * relire dans son fuseau — le défaut que le dépôt a déjà payé sur les dates de
+ * bail. Extraite quand un troisième site est né : saisie, correction, et la
+ * correction rend deux fois.
+ */
+function enReleveServi(r: {
+  id: string
+  utility: string
+  periodStart: Date
+  indexValue: number
+  readAt: Date
+}) {
+  return {
+    id: r.id,
+    utility: r.utility,
+    periodStart: r.periodStart.toISOString().slice(0, 10),
+    indexValue: r.indexValue,
+    readAt: r.readAt.toISOString().slice(0, 10),
+  }
+}
+
 const schemaReleve = z.object({
   utility: z.enum(['water', 'power']),
   /* Le premier du mois, comme partout ailleurs dans ce fichier : une période de
@@ -7178,45 +7207,278 @@ parksRouter.post(
     })
 
     res.status(201).json({
-      reading: {
-        id: releve.id,
-        utility: releve.utility,
-        periodStart: corps.periodStart,
-        indexValue: releve.indexValue,
-        readAt: corps.readAt,
-      },
+      reading: enReleveServi(releve),
       /* CE QUE LE RELEVÉ A FAIT À L'ARGENT, dit à l'appelant plutôt que deviné
          par lui : l'écran doit pouvoir expliquer pourquoi une échéance n'a pas
          bougé, et il n'a aucun moyen de le savoir autrement. */
-      charge: await rattraperLEcheance(unitId, periode, parkId),
+      /* UNE SEULE période à la création : un relevé neuf n'a par construction
+         aucun relevé POSTÉRIEUR à recalculer — l'unicité l'interdirait, et la
+         saisie refuse un index en recul. */
+      charge: (await rattraperLesEcheances(unitId, [periode], parkId))[0],
     })
   },
 )
 
 /**
- * Recalcule l'échéance d'une période après un relevé, si c'est légitime.
+ * CORRIGE UN RELEVÉ — SON INDEX, SA DATE.
  *
- * Trois issues, et chacune se nomme : l'échéance a bougé ; elle n'existe pas
- * encore — l'appel de loyers la calculera lui-même le moment venu ; un
- * versement est déjà tombé dessus, et on n'y touche plus.
+ * ═══ LE DÉFAUT QUE LE LOT DE LA REFACTURATION A ROUVERT ═══
+ *
+ * Trois lots d'affilée ont fermé la même chose : un immeuble, un logement, un
+ * prix de refacturation. Le lot suivant a créé `MeterReading` SANS correction ni
+ * retrait — l'unicité `(logement, énergie, période)` fermant même le
+ * remplacement. Son commit le nommait : « un index tapé à côté est définitif ».
+ *
+ * Et il porte plus lourd que les précédents : un index faux ne s'affiche pas
+ * seulement, il entre dans une échéance et se réclame.
+ *
+ * ═══ LA MONOTONIE, DANS LES DEUX SENS ═══
+ *
+ * La saisie refuse un index sous le précédent. La correction refuse cela AUSSI,
+ * et l'inverse — un index posé au-dessus du relevé SUIVANT rendrait la
+ * consommation du mois d'après négative, donc un avoir silencieux sur la
+ * quittance. Ce second refus n'existe qu'ici : à la saisie, il n'y a jamais de
+ * relevé postérieur.
+ *
+ * ═══ NI L'ÉNERGIE, NI LA PÉRIODE ═══
+ *
+ * Un compteur d'eau n'est pas un compteur électrique mal rangé. Quant à la
+ * période, la déplacer toucherait DEUX échéances dans deux sens opposés et
+ * buterait sur l'unicité : le remède d'un relevé posé sur le mauvais mois est de
+ * le RETIRER et de le ressaisir, chacun des deux gestes recalculant ce qui le
+ * concerne. C'est pour ce cas-là que le retrait existe.
  */
-async function rattraperLEcheance(
-  unitId: string,
-  periode: Date,
-  parkId: string,
-): Promise<{ updated: boolean; reason?: 'not_called' | 'already_paid' }> {
-  const echeance = await prisma.rentCharge.findFirst({
-    where: { periodStart: periode, lease: { unitId } },
-    select: { id: true, _count: { select: { payments: true } } },
+const schemaCorrectionDeReleve = z
+  .object({
+    indexValue: schemaReleve.shape.indexValue.optional(),
+    readAt: schemaReleve.shape.readAt.optional(),
   })
-  if (!echeance) return { updated: false, reason: 'not_called' }
-  /* DÉJÀ RÉGLÉE, EN TOUT OU EN PARTIE : on ne déplace pas une dette qu'on a
-     commencé à solder. Le reçu déjà remis dirait autre chose que la quittance. */
-  if (echeance._count.payments > 0) return { updated: false, reason: 'already_paid' }
+  /* AU MOINS UN CHAMP, comme les quatre autres corrections du fichier. Les
+     bornes sont EMPRUNTÉES au schéma de saisie plutôt que recopiées : deux
+     rédactions du « entier positif ou nul » vieilliraient séparément. */
+  .refine((c) => c.indexValue !== undefined || c.readAt !== undefined, {
+    message: 'Aucun champ à corriger',
+  })
 
+parksRouter.patch(
+  '/:parkId/readings/:readingId',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête : un gestionnaire borné ne
+       corrige que les relevés des logements qu'on lui a confiés. */
+    const perimetreUnite = porteeDesUnites(req.adhesion!)
+    const readingId = z.string().uuid().parse(req.params.readingId)
+    const corps = schemaCorrectionDeReleve.parse(req.body)
+
+    const releve = await prisma.meterReading.findFirst({
+      where: { id: readingId, unit: { building: { parkId }, ...perimetreUnite } },
+      select: {
+        id: true,
+        unitId: true,
+        utility: true,
+        periodStart: true,
+        indexValue: true,
+        readAt: true,
+      },
+    })
+    if (!releve) {
+      // 404 et non 403 : un 403 dirait déjà que le relevé existe ailleurs.
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const index = corps.indexValue ?? releve.indexValue
+    const quand =
+      corps.readAt === undefined ? releve.readAt : new Date(`${corps.readAt}T00:00:00.000Z`)
+
+    /* LES DEUX VOISINS BORNENT L'INDEX. On ne les cherche que si l'index bouge :
+       une correction de DATE seule n'a pas à les interroger. */
+    if (index !== releve.indexValue) {
+      const [avant, apres] = await Promise.all([
+        prisma.meterReading.findFirst({
+          where: {
+            unitId: releve.unitId,
+            utility: releve.utility,
+            periodStart: { lt: releve.periodStart },
+          },
+          orderBy: { periodStart: 'desc' },
+          select: { indexValue: true },
+        }),
+        prisma.meterReading.findFirst({
+          where: {
+            unitId: releve.unitId,
+            utility: releve.utility,
+            periodStart: { gt: releve.periodStart },
+          },
+          orderBy: { periodStart: 'asc' },
+          select: { indexValue: true },
+        }),
+      ])
+      if (avant && index < avant.indexValue) {
+        res.status(409).json({ error: 'index_recule' })
+        return
+      }
+      if (apres && index > apres.indexValue) {
+        res.status(409).json({ error: 'index_depasse_le_suivant' })
+        return
+      }
+    }
+
+    /* RIEN N'A CHANGÉ : on ne consigne pas un non-geste, et on ne recalcule
+       aucune échéance pour une modale ouverte puis refermée. */
+    if (index === releve.indexValue && quand.getTime() === releve.readAt.getTime()) {
+      res.json({
+        reading: enReleveServi(releve),
+        charges: [],
+      })
+      return
+    }
+
+    /* LES PÉRIODES TOUCHÉES SE CHERCHENT AVANT L'ÉCRITURE, pour que le relevé
+       suivant se lise à l'identique dans les deux gestes — correction et
+       retrait — et que le second n'ait plus rien à déduire. */
+    const periodes = await periodesTouchees(releve.unitId, releve.utility, releve.periodStart)
+
+    const apres = await prisma.meterReading.update({
+      where: { id: releve.id },
+      data: { indexValue: index, readAt: quand },
+      select: {
+        id: true,
+        unitId: true,
+        utility: true,
+        periodStart: true,
+        indexValue: true,
+        readAt: true,
+      },
+    })
+
+    /* HORS TRANSACTION — voir `leJournalNeFaitPasEchouerLActe` : une panne du
+       journal ne doit pas ANNULER l'acte, et une correction se relit sur l'objet
+       lui-même. L'AVANT AVEC L'APRÈS : c'est l'écart qui explique une
+       refacturation contestée, jamais le seul nouvel index. */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'reading.update',
+        entity: 'MeterReading',
+        entityId: releve.id,
+        payload: {
+          utility: apres.utility,
+          indexValue: apres.indexValue,
+          periodStart: releve.periodStart.toISOString().slice(0, 10),
+          avant: {
+            indexValue: releve.indexValue,
+            readAt: releve.readAt.toISOString().slice(0, 10),
+          },
+        },
+      },
+    })
+
+    res.json({
+      reading: enReleveServi(apres),
+      charges: await rattraperLesEcheances(releve.unitId, periodes, parkId),
+    })
+  },
+)
+
+/**
+ * RETIRE UN RELEVÉ.
+ *
+ * La correction ne couvre pas tout : un relevé posé sur le mauvais MOIS n'a
+ * aucun remède sans elle, puisque la période ne se corrige pas et que l'unicité
+ * ferme le remplacement. Retirer puis ressaisir est le chemin, et chacun des
+ * deux gestes recalcule ce qui le concerne.
+ *
+ * L'ÉCHÉANCE SUIVANTE PERD SON POINT DE DÉPART, et c'est le cas qui compte :
+ * sans recalcul, elle garderait un montant que plus rien ne fonde.
+ */
+parksRouter.delete(
+  '/:parkId/readings/:readingId',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const perimetreUnite = porteeDesUnites(req.adhesion!)
+    const readingId = z.string().uuid().parse(req.params.readingId)
+
+    const releve = await prisma.meterReading.findFirst({
+      where: { id: readingId, unit: { building: { parkId }, ...perimetreUnite } },
+      /* L'INDEX ET LA PÉRIODE pour le REGISTRE, dans la même requête : après coup
+         le relevé n'existe plus, son identifiant ne mène nulle part, et seul ce
+         qui est consigné dit quel index a été retiré — c'est exactement ce qu'on
+         vient chercher quand une refacturation est contestée. */
+      select: { id: true, unitId: true, utility: true, periodStart: true, indexValue: true },
+    })
+    if (!releve) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const periodes = await periodesTouchees(releve.unitId, releve.utility, releve.periodStart)
+
+    /* DANS LA TRANSACTION, exception que le dépôt s'accorde sur les
+       suppressions : l'entité n'existe plus ensuite, et une trace perdue est
+       indétectable pour toujours. `touteSuppressionVecueEstAtomique` tient la
+       règle, et `MeterReading` figure dans ses modèles VÉCUS. */
+    await prisma.$transaction(async (tx) => {
+      await tx.meterReading.delete({ where: { id: releve.id } })
+      await tx.auditEvent.create({
+        data: {
+          parkId,
+          actorId: req.compteId!,
+          action: 'reading.delete',
+          entity: 'MeterReading',
+          entityId: releve.id,
+          payload: {
+            utility: releve.utility,
+            indexValue: releve.indexValue,
+            periodStart: releve.periodStart.toISOString().slice(0, 10),
+          },
+        },
+      })
+    })
+
+    /* APRÈS la suppression : le recalcul doit voir la table SANS ce relevé,
+       sinon il refacturerait ce qu'on vient de retirer. */
+    await rattraperLesEcheances(releve.unitId, periodes, parkId)
+
+    res.status(204).end()
+  },
+)
+
+/** Ce qu'un relevé a fait — ou n'a pas pu faire — à l'échéance d'une période. */
+type SuiteSurLEcheance = {
+  periodStart: string
+  updated: boolean
+  reason?: 'not_called' | 'already_paid'
+}
+
+/**
+ * Recalcule les échéances touchées par un relevé, quand c'est légitime.
+ *
+ * Trois issues par période, et chacune se nomme : l'échéance a bougé ; elle
+ * n'existe pas encore — l'appel de loyers la calculera lui-même le moment venu ;
+ * un versement est déjà tombé dessus, et on n'y touche plus.
+ *
+ * PLUSIEURS PÉRIODES, ET CE N'EST PAS UNE GÉNÉRALISATION GRATUITE. Un relevé est
+ * le point d'ARRIVÉE de son mois et le point de DÉPART du suivant : le corriger
+ * ou le retirer change DEUX consommations. Une fonction bornée à une période
+ * laisserait le mois d'après faux, en silence — et c'est de l'argent réclamé.
+ */
+async function rattraperLesEcheances(
+  unitId: string,
+  periodes: Date[],
+  parkId: string,
+): Promise<SuiteSurLEcheance[]> {
+  /* Les tarifs et les relevés se lisent UNE fois pour toutes les périodes : deux
+     requêtes, et non deux par mois touché. */
+  const derniere = periodes.reduce((max, p) => (p > max ? p : max), periodes[0]!)
   const [releves, tarifs] = await Promise.all([
     prisma.meterReading.findMany({
-      where: { unitId, periodStart: { lte: periode } },
+      where: { unitId, periodStart: { lte: derniere } },
       select: { utility: true, periodStart: true, indexValue: true },
     }),
     prisma.utilityTariff.findMany({
@@ -7226,11 +7488,54 @@ async function rattraperLEcheance(
     }),
   ])
 
-  await prisma.rentCharge.update({
-    where: { id: echeance.id },
-    data: montantsDeConsommation(releves, periode, tarifs),
+  const suites: SuiteSurLEcheance[] = []
+  for (const periode of periodes) {
+    const jour = periode.toISOString().slice(0, 10)
+    const echeance = await prisma.rentCharge.findFirst({
+      where: { periodStart: periode, lease: { unitId } },
+      select: { id: true, _count: { select: { payments: true } } },
+    })
+    if (!echeance) {
+      suites.push({ periodStart: jour, updated: false, reason: 'not_called' })
+      continue
+    }
+    /* DÉJÀ RÉGLÉE, EN TOUT OU EN PARTIE : on ne déplace pas une dette qu'on a
+       commencé à solder. Le reçu déjà remis dirait autre chose que la
+       quittance. */
+    if (echeance._count.payments > 0) {
+      suites.push({ periodStart: jour, updated: false, reason: 'already_paid' })
+      continue
+    }
+    await prisma.rentCharge.update({
+      where: { id: echeance.id },
+      data: montantsDeConsommation(releves, periode, tarifs),
+    })
+    suites.push({ periodStart: jour, updated: true })
+  }
+  return suites
+}
+
+/**
+ * Les périodes qu'un relevé touche : la sienne, et celle du relevé SUIVANT.
+ *
+ * Le suivant s'appuie sur lui comme point de départ — c'est ce que
+ * `montantsDeConsommation` fait, en prenant le plus récent des relevés qui
+ * précèdent. Toucher au relevé de juin change donc la consommation de juillet.
+ *
+ * Le suivant est cherché AVANT toute écriture : après un retrait, il ne se
+ * déduirait plus de rien.
+ */
+async function periodesTouchees(
+  unitId: string,
+  utility: string,
+  periode: Date,
+): Promise<Date[]> {
+  const suivant = await prisma.meterReading.findFirst({
+    where: { unitId, utility: utility as 'water' | 'power', periodStart: { gt: periode } },
+    orderBy: { periodStart: 'asc' },
+    select: { periodStart: true },
   })
-  return { updated: true }
+  return suivant ? [periode, suivant.periodStart] : [periode]
 }
 
 /**

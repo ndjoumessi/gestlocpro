@@ -49,6 +49,9 @@ export function Meters() {
      et aucun bouton n'en proposait un. Le tableau ci-dessous n'a jamais eu la
      moindre ligne sur un parc réel. */
   const [saisieOuverte, setSaisieOuverte] = useState(false)
+  /* LA LIGNE QU'ON CORRIGE. La même modale sert les deux gestes — voir son
+     en-tête : saisir et corriger demandent exactement les mêmes champs. */
+  const [ligneACorriger, setLigneACorriger] = useState<MeterReading | null>(null)
 
   /**
    * Poser un prix est un acte de PROPRIÉTAIRE, et il exige un vrai parc.
@@ -273,6 +276,9 @@ export function Meters() {
 
       {tarifsOuverts && <TariffsModal open onClose={() => setTarifsOuverts(false)} />}
       {saisieOuverte && <RecordReadingModal onClose={() => setSaisieOuverte(false)} />}
+      {ligneACorriger && (
+        <RecordReadingModal aCorriger={ligneACorriger} onClose={() => setLigneACorriger(null)} />
+      )}
 
       <NoteDePerimetre className="mb-4" />
       <div className={GRILLE_TROIS_INDICATEURS}>
@@ -479,6 +485,35 @@ export function Meters() {
                 {r.readAt ? d.dayMonth(r.readAt) : '—'}
               </span>
             ),
+          },
+          {
+            key: 'geste',
+            /* UNE SEULE COLONNE DE GESTES : `DataTable` ÉPINGLE toute colonne
+               `role: 'geste'` en `sticky right-0`, et deux se recouvrent —
+               mesuré cette semaine sur l'écran des locataires, où « Corriger »
+               rendait « Corı ». Le retrait vit donc DANS la modale, où il a de
+               la place et où l'index à retirer est sous les yeux. */
+            role: 'geste',
+            header: '',
+            render: (r) =>
+              /* RIEN À CORRIGER SANS RELEVÉ. Une ligne sans aucun index posé
+                 n'offre pas de geste : le bouton mènerait à une modale qui ne
+                 saurait rien corriger. */
+              peutRelever && (r.waterReadingId ?? r.powerReadingId) ? (
+                <div className="flex items-center justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon="sliders"
+                    /* LE LOGEMENT DANS LE NOM ACCESSIBLE : douze boutons
+                       « Corriger » à la suite ne disent pas lequel on active. */
+                    aria-label={t('app.readings.correctLine', { unit: unitLabel(r.unitId) })}
+                    onClick={() => setLigneACorriger(r)}
+                  >
+                    {t('common.edit')}
+                  </Button>
+                </div>
+              ) : null,
           },
         ]}
       />

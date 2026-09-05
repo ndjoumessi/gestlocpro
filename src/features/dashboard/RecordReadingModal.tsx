@@ -8,6 +8,7 @@ import { DatePicker } from '@/components/primitives/DatePicker'
 import { useToast } from '@/components/primitives/Toast'
 import { useT } from '@/i18n/I18nProvider'
 import { usePortfolio } from '@/data/PortfolioProvider'
+import type { MeterReading } from '@/data/portfolio'
 
 /**
  * SAISIR UN RELEVÉ DE COMPTEUR — LE GESTE QUI N'EXISTAIT NULLE PART.
@@ -39,15 +40,47 @@ import { usePortfolio } from '@/data/PortfolioProvider'
  * relevé déjà saisi pour ce mois — et les fondre en un seul message obligerait à
  * deviner lequel des deux a été refusé.
  */
-export function RecordReadingModal({ onClose }: { onClose: () => void }) {
+export function RecordReadingModal({
+  onClose,
+  /**
+   * LA LIGNE À CORRIGER, quand on entre par le geste d'une rangée.
+   *
+   * La même modale sert les deux gestes, et ce n'est pas une économie : SAISIR
+   * et CORRIGER demandent exactement les mêmes champs — un logement, une date,
+   * deux index. Deux boîtes jumelles divergeraient au premier ajustement, et il
+   * y en aurait une de plus à inscrire dans les deux registres écrits à la main.
+   *
+   * Ce qui change est l'ADRESSE de l'écriture : `PATCH` par identifiant de
+   * relevé au lieu d'un `POST` par logement — d'où les deux identifiants portés
+   * par la ligne, un par énergie.
+   */
+  aCorriger,
+}: {
+  onClose: () => void
+  aCorriger?: MeterReading
+}) {
   const t = useT()
-  const { units, recordReading } = usePortfolio()
+  const { units, recordReading, updateReading, deleteReading } = usePortfolio()
   const { notify } = useToast()
 
-  const [unitId, setUnitId] = useState(units[0]?.id ?? '')
-  const [readAt, setReadAt] = useState(() => new Date().toISOString().slice(0, 10))
-  const [eau, setEau] = useState('')
-  const [courant, setCourant] = useState('')
+  const [unitId, setUnitId] = useState(aCorriger?.unitId ?? units[0]?.id ?? '')
+  const [readAt, setReadAt] = useState(() =>
+    aCorriger?.readAt
+      ? `${aCorriger.readAt.year}-${String(aCorriger.readAt.month + 1).padStart(2, '0')}-${String(aCorriger.readAt.day).padStart(2, '0')}`
+      : new Date().toISOString().slice(0, 10),
+  )
+  const [eau, setEau] = useState(
+    aCorriger?.waterCurrent !== null && aCorriger?.waterCurrent !== undefined
+      ? String(aCorriger.waterCurrent)
+      : '',
+  )
+  const [courant, setCourant] = useState(
+    aCorriger?.powerCurrent !== null && aCorriger?.powerCurrent !== undefined
+      ? String(aCorriger.powerCurrent)
+      : '',
+  )
+  /** La ligne dont on a armé le retrait — deux temps, comme sur les tarifs. */
+  const [aRetirer, setARetirer] = useState<'water' | 'power' | null>(null)
   const [erreurs, setErreurs] = useState<Record<string, string | undefined>>({})
   const [enCours, setEnCours] = useState(false)
   /**
@@ -91,11 +124,42 @@ export function RecordReadingModal({ onClose }: { onClose: () => void }) {
     let poses = 0
     let dernierEtat: 'not_called' | 'already_paid' | null = null
 
-    for (const [utility, valeur] of [
-      ['water', eau],
-      ['power', courant],
+    for (const [utility, valeur, identifiant] of [
+      ['water', eau, aCorriger?.waterReadingId],
+      ['power', courant, aCorriger?.powerReadingId],
     ] as const) {
       if (!valeur.trim()) continue
+
+      /* CORRIGER PLUTÔT QUE POSER dès qu'un identifiant existe pour cette
+         énergie. Une énergie SANS identifiant sur une ligne qu'on corrige est le
+         cas courant d'une tournée à moitié faite : l'eau relevée en juillet, le
+         courant oublié. Elle se POSE, dans la même validation. */
+      if (aCorriger && identifiant) {
+        const issue = await updateReading(identifiant, { indexValue: lu(valeur), readAt })
+        if (issue.ok) {
+          poses += 1
+          /* LA PREMIÈRE ÉCHÉANCE QUI N'A PAS BOUGÉ, et son motif. Corriger en
+             touche DEUX — la sienne et la suivante —, et la plus parlante est
+             celle qu'on n'a pas pu écrire. */
+          const bloquee = issue.charges.find((c) => !c.updated && c.reason)
+          if (bloquee?.reason === 'already_paid' || bloquee?.reason === 'not_called')
+            dernierEtat = bloquee.reason
+        } else {
+          notify(
+            t(
+              issue.erreur === 'index_recule'
+                ? 'app.readings.indexBackwards'
+                : issue.erreur === 'index_depasse_le_suivant'
+                  ? 'app.readings.indexAboveNext'
+                  : 'common.actionFailed',
+              { utility: t(`app.meters.utility.${utility}`) },
+            ),
+            { tone: 'danger' },
+          )
+        }
+        continue
+      }
+
       const issue = await recordReading(unitId, {
         utility,
         periodStart,
@@ -133,7 +197,23 @@ export function RecordReadingModal({ onClose }: { onClose: () => void }) {
       return
     }
     onClose()
-    notify(t('app.readings.saved', { count: poses }), { tone: 'ok' })
+    notify(t(aCorriger ? 'app.readings.corrected' : 'app.readings.saved', { count: poses }), {
+      tone: 'ok',
+    })
+  }
+
+  /** Retire le relevé d'une énergie, en deux temps. */
+  const retirer = async (utility: 'water' | 'power') => {
+    const identifiant = utility === 'water' ? aCorriger?.waterReadingId : aCorriger?.powerReadingId
+    if (!identifiant) return
+    setEnCours(true)
+    const fait = await deleteReading(identifiant)
+    setEnCours(false)
+    setARetirer(null)
+    if (fait) {
+      onClose()
+      notify(t('app.readings.removed'), { tone: 'ok' })
+    }
   }
 
   return (
@@ -141,7 +221,7 @@ export function RecordReadingModal({ onClose }: { onClose: () => void }) {
       open
       onClose={onClose}
       size="sm"
-      title={t('app.readings.title')}
+      title={t(aCorriger ? 'app.readings.correctTitle' : 'app.readings.title')}
       description={t('app.readings.description')}
       footer={
         <>
@@ -174,6 +254,10 @@ export function RecordReadingModal({ onClose }: { onClose: () => void }) {
               <Select
                 {...props}
                 name="unitId"
+                /* LE LOGEMENT NE CHANGE PAS EN CORRECTION : les relevés qu'on
+                   corrige sont ceux de CETTE ligne, et les déplacer voudrait
+                   dire les retirer d'un compteur pour les poser sur un autre. */
+                disabled={aCorriger !== undefined}
                 value={unitId}
                 onChange={(e) => setUnitId(e.target.value)}
               >
@@ -234,6 +318,52 @@ export function RecordReadingModal({ onClose }: { onClose: () => void }) {
               )}
             </Field>
           </div>
+
+          {/* LE RETRAIT, UNE ÉNERGIE À LA FOIS ET EN DEUX TEMPS.
+
+              Il n'existe qu'en correction : on ne retire pas un relevé qu'on
+              n'a pas encore posé. C'est le seul remède d'un relevé placé sur le
+              mauvais MOIS — la période ne se corrige pas, et l'unicité ferme le
+              remplacement.
+
+              Deux temps plutôt qu'une confirmation en modale : `Modal` ne
+              s'imbrique pas proprement, et `clavierDesModales` exige d'ouvrir,
+              tenir, fermer et RENDRE le focus à chaque niveau. */}
+          {aCorriger ? (
+            <div className="flex flex-wrap gap-2">
+              {(['water', 'power'] as const).map((utility) => {
+                const identifiant =
+                  utility === 'water' ? aCorriger.waterReadingId : aCorriger.powerReadingId
+                if (!identifiant) return null
+                return aRetirer === utility ? (
+                  <Button
+                    key={utility}
+                    variant="danger"
+                    size="sm"
+                    disabled={enCours}
+                    onClick={() => void retirer(utility)}
+                  >
+                    {t('app.readings.confirmRemove')}
+                  </Button>
+                ) : (
+                  <Button
+                    key={utility}
+                    variant="ghost"
+                    size="sm"
+                    icon="close"
+                    onClick={() => setARetirer(utility)}
+                  >
+                    {t(utility === 'water' ? 'app.readings.removeWater' : 'app.readings.removePower')}
+                  </Button>
+                )
+              })}
+            </div>
+          ) : null}
+
+          {/* UN RELEVÉ SERT DEUX MOIS, et c'est la surprise qu'on désamorce. */}
+          {aCorriger ? (
+            <Notice tone="neutral">{t('app.readings.correctionSpread')}</Notice>
+          ) : null}
 
           {/* CE QUE LE RELEVÉ N'A PAS PU FAIRE À L'ARGENT — voir l'en-tête. La
               note ne paraît qu'APRÈS un enregistrement dont l'échéance n'a pas

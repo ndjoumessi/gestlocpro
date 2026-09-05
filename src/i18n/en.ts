@@ -850,6 +850,18 @@ export const en: Dictionary = {
       indexInvalid: 'Enter a whole index, zero or above.',
       indexBackwards: 'Index went backwards for {utility}: a meter does not run down.',
       alreadyRecorded: 'A reading already exists for {utility} this month.',
+      correctTitle: 'Correct a reading',
+      indexAboveNext:
+        'Index too high for {utility}: next month’s reading is lower, so that month’s consumption would go negative.',
+      corrected: '{count} readings corrected',
+      corrected_one: '{count} reading corrected',
+      removed: 'Reading removed',
+      correctLine: 'Correct readings — {unit}',
+      removeWater: 'Remove the water reading',
+      removePower: 'Remove the electricity reading',
+      confirmRemove: 'Confirm removal',
+      correctionSpread:
+        'This reading is the starting point for the next month: correcting it also changes that month’s consumption.',
       saved: '{count} readings recorded',
       saved_one: '{count} reading recorded',
       chargeNotCalled:
@@ -1265,6 +1277,8 @@ export const en: Dictionary = {
         },
         reading: {
           record: 'Meter reading recorded',
+          update: 'Meter reading corrected',
+          delete: 'Meter reading removed',
         },
         tariff: {
           set: 'Rebilling price set',

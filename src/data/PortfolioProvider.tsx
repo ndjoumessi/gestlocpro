@@ -336,6 +336,21 @@ interface PortfolioContextValue {
    * confondrait, et le troisième cas est celui qu'il faut EXPLIQUER : le relevé
    * est bien saisi, et pourtant rien n'a bougé sur ce qui est dû.
    */
+  /**
+   * Corrige un relevé, et rend ce que ça a fait aux échéances.
+   *
+   * `charges` au PLURIEL, comme le serveur : corriger un relevé touche son mois
+   * ET le suivant, dont il est le point de départ.
+   */
+  updateReading: (
+    readingId: string,
+    corps: { indexValue?: number; readAt?: string },
+  ) => Promise<
+    | { ok: true; charges: { periodStart: string; updated: boolean; reason?: string }[] }
+    | { ok: false; erreur: 'index_recule' | 'index_depasse_le_suivant' | 'autre' }
+  >
+  /** Retire un relevé, et recalcule les échéances qu'il portait. */
+  deleteReading: (readingId: string) => Promise<boolean>
   recordReading: (
     unitId: string,
     corps: {
@@ -1709,6 +1724,57 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [parkId, signalerEchec],
   )
 
+  /**
+   * CORRIGER UN RELEVÉ.
+   *
+   * On relit le parc plutôt que de deviner : la consommation, le montant
+   * refacturé et les DEUX échéances recalculées viennent du serveur.
+   */
+  const updateReading = useCallback(
+    async (readingId: string, corps: { indexValue?: number; readAt?: string }) => {
+      if (!parkId) return { ok: false as const, erreur: 'autre' as const }
+      try {
+        const r = await api.updateReading<{
+          charges: { periodStart: string; updated: boolean; reason?: string }[]
+        }>(parkId, readingId, corps)
+        const parc = await chargerParc(parkId)
+        setReadings(parc.readings)
+        return { ok: true as const, charges: r.charges }
+      } catch (erreur) {
+        /* LES DEUX REFUS DE MONOTONIE ONT CHACUN LEUR REMÈDE : baisser l'index,
+           ou le remonter. Les confondre avec une panne obligerait à deviner. */
+        if (erreur instanceof ApiError && erreur.status === 409) {
+          return {
+            ok: false as const,
+            erreur:
+              erreur.code === 'index_depasse_le_suivant'
+                ? ('index_depasse_le_suivant' as const)
+                : ('index_recule' as const),
+          }
+        }
+        signalerEchec(erreur)
+        return { ok: false as const, erreur: 'autre' as const }
+      }
+    },
+    [parkId, signalerEchec],
+  )
+
+  const deleteReading = useCallback(
+    async (readingId: string): Promise<boolean> => {
+      if (!parkId) return false
+      try {
+        await api.deleteReading(parkId, readingId)
+        const parc = await chargerParc(parkId)
+        setReadings(parc.readings)
+        return true
+      } catch (erreur) {
+        signalerEchec(erreur)
+        return false
+      }
+    },
+    [parkId, signalerEchec],
+  )
+
   const remindRent = useCallback(
     async (leaseIds: string[]): Promise<{ sent: number; skipped: number }> => {
       if (!parkId || leaseIds.length === 0) return { sent: 0, skipped: leaseIds.length }
@@ -1984,6 +2050,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       updateTenant,
       updateBuilding,
       recordReading,
+      updateReading,
+      deleteReading,
       updateUnit,
       remindRent,
       callRent,
@@ -2081,6 +2149,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       updateTenant,
       updateBuilding,
       recordReading,
+      updateReading,
+      deleteReading,
       updateUnit,
       remindRent,
       callRent,
