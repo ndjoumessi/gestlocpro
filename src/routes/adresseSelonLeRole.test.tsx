@@ -91,6 +91,42 @@ async function seConnecterDepuis(demandee: string, role: 'owner' | 'manager' | '
 }
 
 describe('l’adresse retenue et le rôle du compte', () => {
+  it('ne dépose pas non plus un propriétaire DÉJÀ CONNECTÉ sur l’espace du locataire', async () => {
+    /**
+     * LA MÊME RÈGLE, PAR UN AUTRE CHEMIN — et il l'a rouverte.
+     *
+     * Le cas du dessous éprouve la SOUMISSION du formulaire, qui filtre bien :
+     * `adresseOuverteAuRole(destination, role) ? destination : '/app'`.
+     *
+     * Un lot du 2026-09-05 a ajouté un SECOND chemin — une session déjà ouverte
+     * ne doit plus voir le formulaire, elle est redirigée d'emblée — et cette
+     * redirection-là ne filtrait rien. Un propriétaire dont la barrière avait
+     * retenu `/app/mon-espace` y était donc envoyé tout droit, et lisait « cet
+     * écran est celui du locataire ». Capturé en production le jour même.
+     *
+     * DEUX SORTIES POUR UNE MÊME DÉCISION, et une seule portait la règle. C'est
+     * la forme du défaut, plus que le défaut lui-même : la règle vivait dans le
+     * gestionnaire de soumission au lieu de vivre sur le chemin de sortie.
+     */
+    const faux = installerFauxServeur({ authentifie: true })
+    faux.quand('GET', `/parks/${PARC}/portfolio`, { status: 200, body: PORTEFEUILLE })
+    await renderApp('/connexion', {
+      session: {
+        statut: 'connecte',
+        compte: COMPTE_FICTIF,
+        adhesions: [{ parkId: PARC, role: 'owner', parkName: 'Parc de test', currency: 'XAF' }],
+      },
+      state: { from: '/app/mon-espace' },
+    })
+    await chargerEspaceApplicatif()
+    await attendreLeChargement()
+
+    expect(
+      screen.getByRole('heading', { level: 1 }),
+      'la redirection d’une session ouverte ignore le rôle',
+    ).not.toHaveTextContent(/celui du locataire/i)
+  })
+
   it('ne dépose pas le propriétaire sur l’espace du locataire', async () => {
     await seConnecterDepuis('/app/mon-espace', 'owner')
 

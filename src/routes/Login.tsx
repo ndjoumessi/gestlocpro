@@ -50,7 +50,7 @@ export function Login() {
   const t = useT()
   const navigate = useNavigate()
   const { notify } = useToast()
-  const { connecter, etat } = useSession()
+  const { connecter, etat, adhesionActive } = useSession()
   const location = useLocation()
 
   /**
@@ -215,7 +215,29 @@ export function Login() {
    * `replace` : cet écran n'est pas une étape du parcours de quelqu'un qui
    * n'avait rien à y faire.
    */
-  if (etat.statut === 'connecte') return <Navigate to={destination} replace />
+  if (etat.statut === 'connecte') {
+    /**
+     * LE RÔLE FILTRE ICI AUSSI, ET IL NE LE FAISAIT PAS.
+     *
+     * Ce retour a rouvert, par un second chemin, le défaut que
+     * `adresseSelonLeRole.test.tsx` avait fermé : la barrière retient l'adresse
+     * voulue, et `/app/mon-espace` retenu la veille sur un poste partagé envoyait
+     * le PROPRIÉTAIRE sur l'écran du locataire — « cet écran est celui du
+     * locataire », capturé en production le jour même.
+     *
+     * La soumission du formulaire, elle, filtrait déjà. DEUX SORTIES POUR UNE
+     * MÊME DÉCISION, et une seule portait la règle : c'est la forme du défaut
+     * plus que le défaut. La règle est donc appliquée sur CHAQUE sortie.
+     *
+     * `adhesionActive` PLUTÔT QUE `adhesions[0]` : sept endroits lisaient le
+     * premier en dur, et `SessionProvider` porte la leçon. Sans adhésion, il n'y
+     * a pas de rôle à opposer — `/app` tranchera, comme il le fait déjà.
+     */
+    const ouverte = adhesionActive
+      ? adresseOuverteAuRole(destination, adhesionActive.role)
+      : false
+    return <Navigate to={ouverte ? destination : '/app'} replace />
+  }
 
   return (
     <AuthLayout
