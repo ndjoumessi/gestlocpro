@@ -111,6 +111,7 @@
  * DITES, jamais contournées.
  */
 import { readFileSync } from 'node:fs'
+import { exigerUnPaquetAJour } from './paquet-a-jour.mjs'
 import { chromium } from 'playwright'
 import { spawn, spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
@@ -418,6 +419,11 @@ function construireLeServeur() {
     exit(1)
   }
 }
+
+/* LE PAQUET AVANT TOUT LE RESTE : ce script mesure `dist/`, jamais les
+   sources. Un paquet périmé rendrait un verdict sur le code d'AVANT, en
+   silence — voir `paquet-a-jour.mjs`, qui porte les trois cas mesurés. */
+exigerUnPaquetAJour()
 
 async function servir() {
   /*

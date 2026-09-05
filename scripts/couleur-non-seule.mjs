@@ -76,6 +76,7 @@
  * ne connaît les sites que par `data-jauge` et par le rôle ARIA.
  */
 import { chromium } from 'playwright'
+import { exigerUnPaquetAJour } from './paquet-a-jour.mjs'
 import { spawn } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -187,6 +188,11 @@ const SITES = {
 const ATTENDUS = 12
 /** Les trois états que chaque site doit montrer. Un état absent est un état non prouvé. */
 const ETATS = ['paid', 'partial', 'overdue']
+
+/* LE PAQUET AVANT TOUT LE RESTE : ce script mesure `dist/`, jamais les
+   sources. Un paquet périmé rendrait un verdict sur le code d'AVANT, en
+   silence — voir `paquet-a-jour.mjs`, qui porte les trois cas mesurés. */
+exigerUnPaquetAJour()
 
 async function servir() {
   /*

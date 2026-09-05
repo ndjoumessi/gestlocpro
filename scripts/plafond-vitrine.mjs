@@ -38,6 +38,7 @@
  * d'utilitaire n'est écrit ici.
  */
 import { chromium } from 'playwright'
+import { exigerUnPaquetAJour } from './paquet-a-jour.mjs'
 import { spawn } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -289,6 +290,11 @@ function plafondDe(point) {
  * aucun dessin.
  */
 const FAMILLE_ATTENDUE = 'Plus Jakarta Sans'
+
+/* LE PAQUET AVANT TOUT LE RESTE : ce script mesure `dist/`, jamais les
+   sources. Un paquet périmé rendrait un verdict sur le code d'AVANT, en
+   silence — voir `paquet-a-jour.mjs`, qui porte les trois cas mesurés. */
+exigerUnPaquetAJour()
 
 async function servir() {
   /*

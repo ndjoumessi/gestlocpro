@@ -62,6 +62,7 @@
  * écrit en entier — il n'en a aucun besoin, il ne lit que des octets.
  */
 import { chromium } from 'playwright'
+import { exigerUnPaquetAJour } from './paquet-a-jour.mjs'
 import { spawn } from 'node:child_process'
 import {
   readFileSync,
@@ -197,6 +198,11 @@ function identifiantDeCourse() {
   for (const c of actifs) h = (h * 31 + c.charCodeAt(0)) >>> 0
   return h.toString(16).padStart(8, '0')
 }
+
+/* LE PAQUET AVANT TOUT LE RESTE : ce script mesure `dist/`, jamais les
+   sources. Un paquet périmé rendrait un verdict sur le code d'AVANT, en
+   silence — voir `paquet-a-jour.mjs`, qui porte les trois cas mesurés. */
+exigerUnPaquetAJour()
 
 async function servir() {
   /*

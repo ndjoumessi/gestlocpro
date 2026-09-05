@@ -31,6 +31,7 @@
  *   node scripts/releve-refonte.mjs --sortie <fichier.json>
  */
 import { chromium } from 'playwright'
+import { exigerUnPaquetAJour } from './paquet-a-jour.mjs'
 import { spawn } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
@@ -60,6 +61,11 @@ if (!sortie || sortie.startsWith('--')) {
 const routes = inventaireDesRoutes()
 exigerUnInventairePlein(routes)
 const ADRESSES = routes.map((r) => r.adresse)
+
+/* LE PAQUET AVANT TOUT LE RESTE : ce script mesure `dist/`, jamais les
+   sources. Un paquet périmé rendrait un verdict sur le code d'AVANT, en
+   silence — voir `paquet-a-jour.mjs`, qui porte les trois cas mesurés. */
+exigerUnPaquetAJour()
 
 async function servir() {
   /*

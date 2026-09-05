@@ -79,6 +79,7 @@
  * d'utilitaire n'est écrit ici.
  */
 import { chromium } from 'playwright'
+import { exigerUnPaquetAJour } from './paquet-a-jour.mjs'
 import { spawn } from 'node:child_process'
 import { readdir, readFile } from 'node:fs/promises'
 import { dirname, join, relative } from 'node:path'
@@ -443,6 +444,11 @@ for (const [cle, entree] of Object.entries(REGISTRE)) {
 }
 
 /* ══════════════════════════ LA MOITIÉ AU NAVIGATEUR ══════════════════════════ */
+
+/* LE PAQUET AVANT TOUT LE RESTE : ce script mesure `dist/`, jamais les
+   sources. Un paquet périmé rendrait un verdict sur le code d'AVANT, en
+   silence — voir `paquet-a-jour.mjs`, qui porte les trois cas mesurés. */
+exigerUnPaquetAJour()
 
 async function servir() {
   /*
