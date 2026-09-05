@@ -73,6 +73,16 @@ const HORS_CHAINE: { script: string; motif: string }[] = [
       'poussée. Ses parties décidables sont éprouvées par `executerRelancesAutomatiques.test.ts`.',
   },
   {
+    script: 'src/scripts/deviseIncoherente.ts',
+    motif:
+      'Il RELÈVE les parcs dont la devise ne suit pas le pays — séquelle du défaut ' +
+      'que `paysDuCompte.test.tsx` documente, où regarder les tarifs en euros ' +
+      'faisait naître un parc français. Il lit une base RÉELLE : aucune chaîne n’en ' +
+      'a une, et lui en donner une de sonde ne mesurerait que des parcs semés ' +
+      'corrects. Il n’écrit rien, et la conversion qu’il chiffre est une décision ' +
+      'que son lecteur prend, sauvegarde faite.',
+  },
+  {
     script: 'src/scripts/immeublesNonConfies.ts',
     motif:
       'Il RELÈVE l’état d’une base réelle — quels immeubles ne sont confiés à personne — et ' +

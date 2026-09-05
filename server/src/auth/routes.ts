@@ -30,7 +30,10 @@ export const authRouter = Router()
 const UEMOA = new Set(['SN', 'CI', 'BJ', 'BF', 'ML', 'NE', 'TG', 'GW'])
 const CEMAC = new Set(['CM', 'GA', 'CG', 'TD', 'CF', 'GQ'])
 
-function deviseDuPays(code: string | undefined): Currency {
+/* EXPORTÉE POUR LE RELEVÉ DES DEVISES INCOHÉRENTES, et non recopiée là-bas :
+   deux tables pays→devise vieilliraient séparément, et c'est exactement le
+   défaut que ce relevé sert à trouver. */
+export function deviseDuPays(code: string | undefined): Currency {
   if (!code) return Currency.XAF
   if (CEMAC.has(code)) return Currency.XAF
   if (UEMOA.has(code)) return Currency.XOF
