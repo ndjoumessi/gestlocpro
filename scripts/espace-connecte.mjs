@@ -112,7 +112,7 @@
  */
 import { readFileSync } from 'node:fs'
 import { chromium } from 'playwright'
-import { execFileSync, spawn, spawnSync } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -295,11 +295,6 @@ if (!NOM_BASE.endsWith('_porte')) {
 }
 
 const MDP = 'un-mot-de-passe-de-sonde-assez-long'
-/* Les trois rôles du produit. Les PROFILS balayés, plus bas, en comptent un de
-   plus : le quatrième est un propriétaire, comme le premier, mais son parc est
-   vide — le rôle ne suffit donc plus à désigner ce qu'on mesure. */
-const ROLES = ['owner', 'manager', 'tenant']
-
 /** Trois largeurs : la poche, la tablette, le bureau. */
 const LARGEURS = [320, 768, 1280]
 
@@ -1222,7 +1217,10 @@ let nomsExamines = 0
 /* Combien de cibles ont été réellement sondées — voir leur garde du garde. */
 let ciblesSondees = 0
 
-const parc = await (async () => {
+/* SANS LIAISON : cette fonction rend `null`, et personne ne la lit. Ce sont ses
+   EFFETS qui comptent — la base préparée, le serveur construit, le paquet
+   vérifié. Nommer un résultat inutilisé laissait croire qu'on s'en servait. */
+await (async () => {
   console.log('  préparation de la base…')
   preparerLaBase()
   console.log('  construction du serveur…')
@@ -1279,6 +1277,13 @@ if (portefeuille !== 401) {
  * existe. Sur le parc vide il n'y en a aucun, et sur celui du locataire le
  * dossier appartient à la gestion.
  */
+/*
+  LE RÔLE NE SUFFIT PLUS À DÉSIGNER CE QU'ON MESURE, et c'est pourquoi ces
+  entrées portent une CLÉ plutôt qu'un rôle. Une liste des trois rôles a vécu
+  plus haut jusqu'au 2026-09-05 ; elle est devenue fausse le jour où un
+  quatrième profil est apparu — un propriétaire comme le premier, mais dont le
+  parc est vide. Deux profils du même rôle mesurent des écrans différents.
+*/
 const PROFILS = [
   { cle: 'owner', role: 'owner', compte: () => parcDeSonde.comptes.owner, dossier: true },
   { cle: 'manager', role: 'manager', compte: () => parcDeSonde.comptes.manager, dossier: true },
