@@ -137,6 +137,24 @@ const DETAIL: Record<string, Champ[]> = {
   'access.link': [{ champ: 'tenantName', nature: 'texte' }],
   'access.unlink': [{ champ: 'tenantName', nature: 'texte' }],
   'building.delete': [{ champ: 'name', nature: 'texte' }],
+  /* LE NOM D'APRÈS, comme pour la fiche locataire : le lecteur cherche QUEL
+     immeuble a bougé, et son nom d'aujourd'hui est ce qui le désigne. Le
+     quartier suit, parce que rien n'impose l'unicité d'un nom dans un parc —
+     deux « Résidence du Mandat » peuvent coexister. L'avant vit dans la charge
+     utile, que cette recette ne déplie pas : une ligne de registre qui se lit
+     comme un diff cesse de se lire. */
+  'building.update': [
+    { champ: 'name', nature: 'texte' },
+    { champ: 'district', nature: 'texte' },
+  ],
+  /* LE NUMÉRO PUIS LE LOYER. Le numéro DÉSIGNE — « A1 » dit lequel, un UUID ne
+     dit rien, et ce registre refuse d'en montrer. Le loyer est le seul champ
+     de cette correction qui porte de l'argent : c'est celui qu'on vient
+     vérifier. La surface et la typologie restent dans la charge utile. */
+  'unit.update': [
+    { champ: 'label', nature: 'texte' },
+    { champ: 'baseRentMinor', nature: 'argent' },
+  ],
   'access.grant': [{ champ: 'role', nature: 'role' }],
   'access.refuse': [{ champ: 'role', nature: 'role' }],
   'access.join': [{ champ: 'role', nature: 'role' }],

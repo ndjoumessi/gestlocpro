@@ -700,6 +700,16 @@ export const en: Dictionary = {
       deleteBuildingTitle: 'Delete {name}?',
       deleteBuildingBody: 'This building holds no units. Deletion is permanent.',
       deleteBuildingDone: 'Building deleted',
+      editBuilding: 'Edit building {name}',
+      editBuildingTitle: 'Edit {name}',
+      editBuildingBody: 'Name and district only. No lease, unit or amount depends on them.',
+      editBuildingDone: 'Building updated',
+      editUnit: 'Edit unit {unit}',
+      editUnitTitle: 'Edit unit {unit}',
+      editUnitBody: 'Number, layout, floor area and reference rent.',
+      editUnitDone: 'Unit updated',
+      editUnitRentNote:
+        'The current lease rent and any charges already issued stay unchanged: this amount applies to future leases.',
       emptyTitle: 'No units yet',
       emptyBody: 'Declare a building, then add its units.',
       emptyScopedTitle: 'Nothing assigned to you yet',
@@ -1193,6 +1203,7 @@ export const en: Dictionary = {
         },
         building: {
           delete: 'Building deleted',
+          update: 'Building corrected',
         },
         deposit: {
           settle: 'Deposit settled',
@@ -1226,6 +1237,9 @@ export const en: Dictionary = {
         },
         tariff: {
           set: 'Rebilling price set',
+        },
+        unit: {
+          update: 'Home corrected',
         },
         tenant: {
           create: 'Tenant record opened',

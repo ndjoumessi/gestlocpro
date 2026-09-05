@@ -1701,6 +1701,102 @@ parksRouter.delete(
 )
 
 /**
+ * UN IMMEUBLE PLEIN SE CORRIGE, ET C'EST TOUTE LA DIFFÉRENCE AVEC LA SUPPRESSION.
+ *
+ * La suppression, seul chemin qui existait pour défaire une saisie, refuse un
+ * immeuble qui porte des logements — et son commentaire dit pourquoi : « un
+ * immeuble qui porte des logements porte aussi des baux, des cautions et des
+ * encaissements ». La conséquence n'était pas écrite : dès le premier logement,
+ * « Residance » restait « Residance » pour la vie du parc.
+ *
+ * Corriger un NOM n'emporte rien. Aucun bail, aucune somme, aucune ligne ne
+ * dépend de l'orthographe d'un immeuble — seule la lecture en dépend, et c'est
+ * précisément ce qu'on répare. La garde du vide n'a donc pas lieu d'être ici.
+ *
+ * Ouverte aux deux rôles qui créent : corriger sa propre saisie n'est pas un
+ * pouvoir nouveau. Le registre dit qui l'a fait.
+ */
+const schemaCorrectionDImmeuble = schemaImmeuble
+  .partial()
+  /* AU MOINS UN CHAMP : un corps vide n'est pas une correction, et le laisser
+     passer ferait une écriture et une trace pour rien. Même forme que la
+     correction de fiche locataire. */
+  .refine((c) => c.name !== undefined || c.district !== undefined, {
+    message: 'Aucun champ à corriger',
+  })
+
+parksRouter.patch(
+  '/:parkId/buildings/:buildingId',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête et jamais après lecture :
+       un gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
+       pouvoir RENOMMER les deux autres, fût-ce après les avoir lus. */
+    const perimetreTenu = porteeDesImmeublesTenus(req.adhesion!)
+    const buildingId = z.string().uuid().parse(req.params.buildingId)
+    const corps = schemaCorrectionDImmeuble.parse(req.body)
+
+    // Cherché AVEC le `parkId` : sans cela un identifiant deviné permettrait de
+    // renommer l'immeuble d'un autre. Absent, on rend 404 et non 403 — un 403
+    // confirmerait son existence.
+    const immeuble = await prisma.building.findFirst({
+      where: { id: buildingId, parkId, ...perimetreTenu },
+      select: { id: true, name: true, district: true },
+    })
+    if (!immeuble) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const nom = corps.name ?? immeuble.name
+    const quartier = corps.district ?? immeuble.district
+
+    /* RIEN N'A CHANGÉ : on ne consigne pas un non-geste. Rouvrir la modale et
+       la refermer sans rien toucher n'est pas une décision, et un registre qui
+       les compte noie celles qui comptent. */
+    if (nom === immeuble.name && quartier === immeuble.district) {
+      res.json({ building: immeuble })
+      return
+    }
+
+    const apres = await prisma.building.update({
+      where: { id: immeuble.id },
+      data: { name: nom, district: quartier },
+      select: { id: true, name: true, district: true },
+    })
+
+    /* HORS TRANSACTION, et c'est la règle de ce dépôt : une panne d'écriture du
+       journal ne doit pas ANNULER l'acte. `leJournalNeFaitPasEchouerLActe` la
+       tient, et n'excepte que les SUPPRESSIONS déclarées — une suppression sans
+       trace est indétectable après coup, une correction se relit sur l'objet.
+
+       L'AVANT AVEC L'APRÈS. Le nom d'un immeuble n'est contraint à aucune
+       unicité — deux « Résidence du Mandat » peuvent coexister —, donc une ligne
+       qui ne dirait que le nouveau nom ne désignerait pas lequel a bougé. C'est
+       le motif déjà écrit pour la trace de suppression, où le quartier est
+       consigné pour la même raison. */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'building.update',
+        entity: 'Building',
+        entityId: immeuble.id,
+        payload: {
+          name: apres.name,
+          district: apres.district,
+          avant: { name: immeuble.name, district: immeuble.district },
+        },
+      },
+    })
+
+    res.json({ building: apres })
+  },
+)
+
+/**
  * Crée un logement dans un immeuble du parc.
  *
  * L'immeuble est cherché AVEC le `parkId` : sans cela, un identifiant deviné
@@ -1755,6 +1851,163 @@ parksRouter.post(
     })
 
     res.status(201).json({ unit: logement })
+  },
+)
+
+/**
+ * CORRIGE UN LOGEMENT — ET NE RÉÉCRIT PAS LE PASSÉ.
+ *
+ * Le logement était le seul objet du parc qu'AUCUNE route ne savait modifier ni
+ * supprimer. Un numéro tapé à côté, une surface fausse, un loyer de référence à
+ * un zéro près : rien. La fiche locataire avait au moins la voie destructrice —
+ * supprimer et recréer, au prix du bail ; le logement n'avait même pas ça.
+ *
+ * ═══ LE LOYER EST UNE RÉFÉRENCE, PAS UNE ÉCHÉANCE ═══
+ *
+ * Cette route touche `Unit.baseRentMinor` et RIEN d'autre. Le bail fige son
+ * loyer à la signature, l'échéance le fige à l'appel, et le schéma le dit déjà :
+ * « changer le loyer ne doit pas réécrire le passé ». Faire descendre la
+ * correction jusqu'aux `RentCharge` refacturerait juillet au tarif d'août —
+ * exactement le défaut que la route d'encaissement nomme et évite.
+ *
+ * Une révision de loyer sur un bail en cours est un AUTRE geste, qui appartient
+ * au bail et se négocie avec le locataire. Le confondre avec une correction de
+ * saisie ferait passer une augmentation pour une faute de frappe.
+ *
+ * ═══ LE NUMÉRO RESTE UNIQUE DANS SON IMMEUBLE ═══
+ *
+ * La création garde cette unicité par un 409 `label_taken`. Sans la même garde
+ * ici, on rentrerait par la fenêtre ce que la porte refuse : deux « A1 » dans
+ * le même immeuble donnent deux lignes indiscernables à l'écran, et le
+ * gestionnaire encaisse sur la mauvaise.
+ *
+ * Le logement ne CHANGE PAS d'immeuble : `buildingId` n'est pas dans le schéma.
+ * Déplacer un logement emporterait ses baux et ses encaissements dans un autre
+ * périmètre de gestion — ce n'est pas une correction de saisie, et un
+ * gestionnaire borné pourrait s'en servir pour se donner ce qu'on ne lui a pas
+ * confié.
+ */
+const schemaCorrectionDeLogement = schemaLogement
+  .partial()
+  /* AU MOINS UN CHAMP, comme les deux autres corrections du fichier. */
+  .refine(
+    (c) =>
+      c.label !== undefined ||
+      c.type !== undefined ||
+      c.surfaceSqm !== undefined ||
+      c.baseRentMinor !== undefined,
+    { message: 'Aucun champ à corriger' },
+  )
+
+parksRouter.patch(
+  '/:parkId/units/:unitId',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête : un gestionnaire borné ne
+       corrige que les logements qu'on lui a confiés. */
+    const perimetreUnite = porteeDesUnites(req.adhesion!)
+    const unitId = z.string().uuid().parse(req.params.unitId)
+    const corps = schemaCorrectionDeLogement.parse(req.body)
+
+    const logement = await prisma.unit.findFirst({
+      where: { id: unitId, building: { parkId }, ...perimetreUnite },
+      select: {
+        id: true,
+        buildingId: true,
+        label: true,
+        type: true,
+        surfaceSqm: true,
+        baseRentMinor: true,
+      },
+    })
+    if (!logement) {
+      // 404 et non 403 : un 403 sur un identifiant valide dirait déjà que le
+      // logement existe ailleurs.
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const numero = corps.label ?? logement.label
+    const typologie = corps.type ?? logement.type
+    const surface = corps.surfaceSqm ?? logement.surfaceSqm
+    const loyer = corps.baseRentMinor ?? logement.baseRentMinor
+
+    /* L'UNICITÉ SE VÉRIFIE DANS SON IMMEUBLE, et seulement si le numéro bouge :
+       chercher un homonyme quand le numéro ne change pas trouverait le logement
+       lui-même et refuserait toute correction de surface. */
+    if (numero !== logement.label) {
+      const homonyme = await prisma.unit.findFirst({
+        where: { buildingId: logement.buildingId, label: numero },
+        select: { id: true },
+      })
+      if (homonyme) {
+        // 409 et non 400 : la saisie est bien formée, c'est l'état du parc qui
+        // s'y oppose — même distinction qu'à la création.
+        res.status(409).json({ error: 'label_taken' })
+        return
+      }
+    }
+
+    /* RIEN N'A CHANGÉ : on ne consigne pas un non-geste. */
+    if (
+      numero === logement.label &&
+      typologie === logement.type &&
+      surface === logement.surfaceSqm &&
+      loyer === logement.baseRentMinor
+    ) {
+      res.json({ unit: logement })
+      return
+    }
+
+    const apres = await prisma.unit.update({
+      where: { id: logement.id },
+      data: {
+        label: numero,
+        type: typologie,
+        surfaceSqm: surface,
+        baseRentMinor: loyer,
+      },
+      select: {
+        id: true,
+        buildingId: true,
+        label: true,
+        type: true,
+        surfaceSqm: true,
+        baseRentMinor: true,
+      },
+    })
+
+    /* HORS TRANSACTION — voir `leJournalNeFaitPasEchouerLActe`.
+
+       LE NUMÉRO D'ABORD, MÊME QUAND IL N'A PAS BOUGÉ : c'est lui qui DÉSIGNE le
+       logement dans la ligne du registre. Un `entityId` est un UUID, et le
+       registre refuse d'en montrer. Sans le numéro, « loyer porté à 85 000 » ne
+       dit pas de quel logement on parle. */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'unit.update',
+        entity: 'Unit',
+        entityId: logement.id,
+        payload: {
+          label: apres.label,
+          type: apres.type,
+          surfaceSqm: apres.surfaceSqm,
+          baseRentMinor: apres.baseRentMinor,
+          avant: {
+            label: logement.label,
+            type: logement.type,
+            surfaceSqm: logement.surfaceSqm,
+            baseRentMinor: logement.baseRentMinor,
+          },
+        },
+      },
+    })
+
+    res.json({ unit: apres })
   },
 )
 

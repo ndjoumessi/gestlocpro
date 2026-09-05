@@ -255,6 +255,23 @@ const MODALES = [
   },
   { nom: 'AddBuilding', adresse: '/demo/parc', bouton: /^Ajouter un immeuble$|^Add a building$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'AddUnit', adresse: '/demo/parc', bouton: /^Ajouter un logement$|^Add a unit$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  /*
+    LES DEUX CORRECTIONS DU PARC, inscrites avec le lot qui les crée.
+
+    Ce registre est ÉCRIT À LA MAIN et rien ne rougit quand une modale neuve
+    l'oublie : deux boîtes de saisie neuves seraient restées hors de toute
+    mesure de géométrie, de contraste et de cible — l'angle mort que
+    `notes-conditionnelles` décrit pour les notes, ici transposé aux modales.
+
+    Le bouton porte sa CIBLE — « Corriger le logement A1 » — parce que le geste
+    se répète par ligne. Un motif large trouverait douze boutons.
+
+    `note` sur la seconde : la note du loyer de référence ne paraît que sur un
+    logement OCCUPÉ, et A1 en est un. Sans elle, un jour où la note cesserait
+    d'être rendue, on mesurerait la modale nue en croyant mesurer les deux.
+  */
+  { nom: 'EditBuilding', adresse: '/demo/parc', bouton: /^Corriger l’immeuble Résidence Bonamoussadi$|^Edit building Résidence Bonamoussadi$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'EditUnit', adresse: '/demo/parc', bouton: /^Corriger le logement A1$|^Edit unit A1$/, note: /ne changent pas|stay unchanged/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'OpenWork', adresse: '/demo/travaux', bouton: /^Ouvrir un chantier$|^Open a job$/, defil: { 360: 130, 1280: 0 }, defilLarge: { 360: 138, 1280: 0 }, avant: { 360: 1056, 1280: 913 } },
   { nom: 'RecordPayment', adresse: '/demo/paiements', bouton: /^Enregistrer un paiement$|^Record a payment$/, defil: { 360: 460, 1280: 40 }, defilLarge: { 360: 493, 1280: 47 }, avant: { 360: 522, 1280: 236 } },
   /*
@@ -604,8 +621,17 @@ const LANGUES = ['fr', 'en']
   plus mais un ÉTAT de plus — et c'est lui qui éteint l'aveu que
   `notes-conditionnelles` portait sur `app.parkSettings.currencyWarning`, en
   désignant ce script comme son propriétaire légitime.
+
+  84 → 92 (2026-09-05) : `EditBuilding` et `EditUnit`, nées avec la correction
+  du parc — deux modales ordinaires, donc huit états. Elles ferment le dernier
+  trou de cet écran : un immeuble ne se corrigeait pas une fois qu'il portait un
+  logement, et un logement ne se corrigeait pas du tout.
+
+  LES DEUX TIENNENT SANS DÉFILEMENT AUX QUATRE ÉTATS — 442 px de boîte au plus
+  large pour l'immeuble, 708 pour le logement, note du loyer comprise. C'est
+  mesuré, pas espéré : le plafond de zéro est le relevé lui-même.
 */
-const ATTENDUS = 84
+const ATTENDUS = 92
 const NON_OUVRABLES_ATTENDUES = 0
 
 /**

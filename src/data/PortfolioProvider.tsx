@@ -320,6 +320,28 @@ interface PortfolioContextValue {
    * vacante ; les murs restent.
    */
   removeTenant: (unitId: string, tenantId: string) => Promise<boolean>
+  /**
+   * Corrige un immeuble — son nom, son quartier.
+   *
+   * Un immeuble PLEIN se corrige : renommer n'emporte rien. `removeBuilding`,
+   * lui, refuse dès le premier logement — et c'est ce qui rendait une faute de
+   * frappe définitive pour la vie du parc.
+   */
+  updateBuilding: (
+    buildingId: string,
+    corps: { name?: string; district?: string },
+  ) => Promise<boolean>
+  /**
+   * Corrige un logement — numéro, typologie, surface, loyer de RÉFÉRENCE.
+   *
+   * Le loyer corrigé NE REDESCEND PAS dans les baux ni dans les échéances déjà
+   * appelées : le serveur le garde, et l'écran ne doit donc pas laisser croire
+   * qu'une révision de loyer vient d'avoir lieu.
+   */
+  updateUnit: (
+    unitId: string,
+    corps: { label?: string; type?: Unit['type']; surface?: number; rent?: number },
+  ) => Promise<boolean>
   updateTenant: (
     unitId: string,
     tenantId: string,
@@ -1526,6 +1548,91 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [parkId, signalerEchec, units],
   )
 
+  /**
+   * CORRIGER UN IMMEUBLE, et l'écran suit la RÉPONSE du serveur.
+   *
+   * Le nom rendu est celui qu'il a écrit, jamais celui qu'on lui a demandé : il
+   * ébarbe les espaces et refuse ce qui ne tient pas. Recopier la saisie ferait
+   * afficher une valeur que la base ne porte pas — même partition que
+   * `updateTenant`.
+   */
+  const updateBuilding = useCallback(
+    async (buildingId: string, corps: { name?: string; district?: string }): Promise<boolean> => {
+      const poser = (nom: string, quartier: string) =>
+        setBuildings((liste) =>
+          liste.map((b) => (b.id === buildingId ? { ...b, name: nom, district: quartier } : b)),
+        )
+      if (!parkId) {
+        /* HORS SESSION — la démonstration. On applique la saisie telle quelle :
+           il n'y a pas de serveur pour l'ébarber, et refuser le geste ici
+           rendrait la démonstration moins vraie que le produit. */
+        const avant = buildings.find((b) => b.id === buildingId)
+        poser(corps.name ?? avant?.name ?? '', corps.district ?? avant?.district ?? '')
+        return true
+      }
+      try {
+        const { building } = await api.updateBuilding<{
+          building: { name: string; district: string }
+        }>(parkId, buildingId, corps)
+        poser(building.name, building.district)
+        return true
+      } catch (erreur) {
+        signalerEchec(erreur)
+        return false
+      }
+    },
+    [parkId, signalerEchec, buildings],
+  )
+
+  /**
+   * CORRIGER UN LOGEMENT.
+   *
+   * `rent` porte le loyer de RÉFÉRENCE du logement, et l'écran des logements
+   * n'affiche que celui-là. Le bail garde le sien : un logement occupé dont on
+   * corrige le loyer verra sa ligne changer sans que l'échéance du mois bouge,
+   * et c'est exactement ce que le serveur promet.
+   */
+  const updateUnit = useCallback(
+    async (
+      unitId: string,
+      corps: { label?: string; type?: Unit['type']; surface?: number; rent?: number },
+    ): Promise<boolean> => {
+      const poser = (u: { label: string; type: Unit['type']; surface: number; rent: number }) =>
+        setUnits((liste) => liste.map((x) => (x.id === unitId ? { ...x, ...u } : x)))
+      const avant = units.find((u) => u.id === unitId)
+      if (!parkId) {
+        poser({
+          label: corps.label ?? avant?.label ?? '',
+          type: corps.type ?? avant?.type ?? 'T1',
+          surface: corps.surface ?? avant?.surface ?? 0,
+          rent: corps.rent ?? avant?.rent ?? 0,
+        })
+        return true
+      }
+      try {
+        const { unit } = await api.updateUnit<{
+          unit: { label: string; type: Unit['type']; surfaceSqm: number; baseRentMinor: number }
+        }>(parkId, unitId, {
+          label: corps.label,
+          type: corps.type,
+          surfaceSqm: corps.surface,
+          baseRentMinor: corps.rent,
+        })
+        poser({
+          label: unit.label,
+          type: unit.type,
+          surface: unit.surfaceSqm,
+          rent: unit.baseRentMinor,
+        })
+        return true
+      } catch (erreur) {
+        signalerEchec(erreur)
+        return false
+      }
+    },
+    [parkId, signalerEchec, units],
+  )
+
   const remindRent = useCallback(
     async (leaseIds: string[]): Promise<{ sent: number; skipped: number }> => {
       if (!parkId || leaseIds.length === 0) return { sent: 0, skipped: leaseIds.length }
@@ -1799,6 +1906,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       removeBuilding,
       removeTenant,
       updateTenant,
+      updateBuilding,
+      updateUnit,
       remindRent,
       callRent,
       serveFormalNotice,
@@ -1893,6 +2002,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       removeBuilding,
       removeTenant,
       updateTenant,
+      updateBuilding,
+      updateUnit,
       remindRent,
       callRent,
       serveFormalNotice,

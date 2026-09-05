@@ -124,6 +124,18 @@ async function ouvrirLeParitageDImmeubles(page) {
   await page.waitForTimeout(350)
 }
 
+/**
+ * « Corriger » sur la rangée d'un logement OCCUPÉ.
+ *
+ * A1 nommément, et pas `.first()` : la note du loyer de référence ne paraît que
+ * sur un logement qui porte un bail, et la première rangée du tableau dépend du
+ * tri. Charles Ngassa occupe A1 dans le jeu de démonstration.
+ */
+async function ouvrirLaCorrectionDUnLogementOccupe(page) {
+  await page.getByRole('button', { name: /^Corriger le logement A1$/ }).first().click()
+  await page.waitForTimeout(350)
+}
+
 async function ouvrirLInvitationEnRecrutant(page) {
   await ouvrirLInvitation(page)
   await page.getByRole('combobox', { name: /Rôle invité/ }).selectOption('manager')
@@ -170,6 +182,14 @@ const REGISTRE = {
   'app.system.offlineNotice': { adresse: '/demo/systeme' },
   'app.system.errorTitle': { adresse: '/demo/systeme' },
   'app.meters.missingCount': { adresse: '/demo/releves' },
+  /* LE LOYER DE RÉFÉRENCE NE RÉÉCRIT PAS LE PASSÉ. Mesurable parce que la
+     démonstration porte des logements OCCUPÉS — A1 en tête —, et la note ne
+     paraît que là : sur un logement vacant, il n'y a ni bail ni échéance dont
+     parler. */
+  'app.portfolio.editUnitRentNote': {
+    adresse: '/demo/parc',
+    geste: ouvrirLaCorrectionDUnLogementOccupe,
+  },
   'app.tenant.privacyNote': { adresse: '/demo/mon-espace', profil: /Locataire/ },
   /* Sans jeton dans l'adresse : c'est l'état « ce lien ne vaut plus rien », et
      il se rencontre en ouvrant la page nue. */

@@ -454,6 +454,23 @@ export const api = {
     requete<T>(`/parks/${parkId}/buildings`, { method: 'POST', body: JSON.stringify(corps) }),
 
   /**
+   * Corrige le nom ou le quartier d'un immeuble.
+   *
+   * Un immeuble PLEIN se corrige, contrairement à la suppression juste en
+   * dessous : renommer n'emporte ni bail ni somme. C'est ce qui rend la faute
+   * de frappe réparable après le premier logement, où elle devenait acquise.
+   */
+  updateBuilding: <T>(
+    parkId: string,
+    buildingId: string,
+    corps: { name?: string; district?: string },
+  ) =>
+    requete<T>(`/parks/${parkId}/buildings/${buildingId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(corps),
+    }),
+
+  /**
    * Retire un immeuble VIDE. Le serveur refuse s'il porte des logements.
    *
    * Aucun corps, aucune réponse : le 204 dit tout. `requete` sait déjà rendre
@@ -724,6 +741,27 @@ export const api = {
   announce: <T>(parkId: string, corps: { message: string; buildingId?: string }) =>
     requete<T>(`/parks/${parkId}/announcements`, {
       method: 'POST',
+      body: JSON.stringify(corps),
+    }),
+
+  /**
+   * Corrige un logement — numéro, typologie, surface, loyer de RÉFÉRENCE.
+   *
+   * Le loyer corrigé ne redescend NI dans les baux NI dans les échéances déjà
+   * appelées : le serveur le garde, et son commentaire dit pourquoi. Refacturer
+   * juillet au tarif d'août serait une faute qu'aucun écran ne signalerait.
+   *
+   * Pas de `buildingId` : un logement ne change pas d'immeuble. Ce serait
+   * déplacer ses baux dans un autre périmètre de gestion, pas corriger une
+   * saisie.
+   */
+  updateUnit: <T>(
+    parkId: string,
+    unitId: string,
+    corps: { label?: string; type?: string; surfaceSqm?: number; baseRentMinor?: number },
+  ) =>
+    requete<T>(`/parks/${parkId}/units/${unitId}`, {
+      method: 'PATCH',
       body: JSON.stringify(corps),
     }),
 

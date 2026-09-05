@@ -30,6 +30,8 @@ import { useSession } from '@/api/SessionProvider'
 import { AddBuildingModal } from './AddBuildingModal'
 import { ParkSettingsModal } from './ParkSettingsModal'
 import { AddUnitModal } from './AddUnitModal'
+import { EditBuildingModal } from './EditBuildingModal'
+import { EditUnitModal } from './EditUnitModal'
 
 export function Portfolio() {
   const base = useBase()
@@ -48,6 +50,11 @@ export function Portfolio() {
   const [ajoutOuvert, setAjoutOuvert] = useState(false)
   const [logementOuvert, setLogementOuvert] = useState(false)
   const [correctionOuverte, setCorrectionOuverte] = useState(false)
+  /* DEUX CORRECTIONS DE PLUS, et elles ferment le dernier trou du parc :
+     jusqu'ici un immeuble ne se corrigeait pas et un logement ne se touchait
+     pas du tout. Voir `EditBuildingModal` et `EditUnitModal`. */
+  const [immeubleACorriger, setImmeubleACorriger] = useState<Immeuble | null>(null)
+  const [logementACorriger, setLogementACorriger] = useState<Unit | null>(null)
   const { adhesionActive, estDemo } = useSession()
   const { role } = useRole()
   /**
@@ -290,6 +297,16 @@ export function Portfolio() {
       )}
       {logementOuvert && <AddUnitModal open onClose={() => setLogementOuvert(false)} />}
 
+      {immeubleACorriger && (
+        <EditBuildingModal
+          immeuble={immeubleACorriger}
+          onClose={() => setImmeubleACorriger(null)}
+        />
+      )}
+      {logementACorriger && (
+        <EditUnitModal unit={logementACorriger} onClose={() => setLogementACorriger(null)} />
+      )}
+
       {/* PAS D'INDICATEUR SUR UN PARC SANS LOGEMENT.
 
           « Taux d'occupation 0 % · 0/0 occupées » au-dessus de « Aucun logement
@@ -325,19 +342,52 @@ export function Portfolio() {
               value={`${occ}/${total}`}
               note={`${b.district} · ${t('app.portfolio.occupancy', { occupied: occ, total })}`}
               action={
-                /* L'issue n'apparaît que sur un immeuble VIDE — le serveur
-                   refuse les autres, et offrir un geste qu'il refusera revient
-                   à promettre ce qu'on ne tient pas. */
-                total === 0 ? (
+                /* DEUX ISSUES, ET UNE SEULE EST CONDITIONNELLE.
+
+                   La suppression n'apparaît que sur un immeuble VIDE — le
+                   serveur refuse les autres, et offrir un geste qu'il refusera
+                   revient à promettre ce qu'on ne tient pas.
+
+                   LA CORRECTION, ELLE, EST TOUJOURS LÀ. Renommer n'emporte ni
+                   bail ni somme, et c'est précisément sur un immeuble PLEIN
+                   qu'elle sert : jusqu'à ce lot, une faute de frappe devenait
+                   définitive dès le premier logement, la suppression étant le
+                   seul chemin et se refusant à partir de là. */
+                /* `-my-1.5` SEUL, ET PAS `-mr-1.5`.
+
+                   Le retrait vertical empêche une cible de 44 px de grandir la
+                   rangée d'en-tête ; le retrait HORIZONTAL, lui, poussait le
+                   bouton de 6 px hors de sa boîte — mesuré par la règle du
+                   débordement local, 72 occurrences sur `/demo/parc`. Il
+                   existait déjà sur le bouton de suppression, mais aucune carte
+                   de la démonstration n'est VIDE : la règle ne l'avait jamais
+                   rencontré. Le rendre inconditionnel l'a exposé.
+
+                   Ce qu'il achetait : 6 px d'alignement optique du glyphe sur le
+                   bord de la carte. Ce qu'il coûtait : une forme qui sort de son
+                   conteneur, donc une tolérance à inscrire sur la signature d'un
+                   en-tête de carte QUE TOUT LE PRODUIT PARTAGE. On paie
+                   l'alignement, pas le blanc-seing. */
+                <div className="-my-1.5 flex shrink-0 items-center">
                   <button
                     type="button"
-                    aria-label={t('app.portfolio.deleteBuilding', { name: b.name })}
-                    onClick={() => setASupprimer(b)}
-                    className="-my-1.5 -mr-1.5 inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted hover:bg-danger-tint hover:text-danger"
+                    aria-label={t('app.portfolio.editBuilding', { name: b.name })}
+                    onClick={() => setImmeubleACorriger(b)}
+                    className="inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-ink"
                   >
-                    <Icon name="close" size={15} />
+                    <Icon name="sliders" size={15} />
                   </button>
-                ) : undefined
+                  {total === 0 ? (
+                    <button
+                      type="button"
+                      aria-label={t('app.portfolio.deleteBuilding', { name: b.name })}
+                      onClick={() => setASupprimer(b)}
+                      className="inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted hover:bg-danger-tint hover:text-danger"
+                    >
+                      <Icon name="close" size={15} />
+                    </button>
+                  ) : null}
+                </div>
               }
             />
           )
@@ -568,6 +618,32 @@ export function Portfolio() {
             role: 'etat',
             header: t('app.tenants.rentStatus'),
             render: (unit) => <PaymentStatusPill status={unit.status} size="sm" />,
+          },
+          {
+            key: 'geste',
+            /* UNE SEULE COLONNE DE GESTES, et ce n'est pas un choix d'esthétique :
+               `DataTable` ÉPINGLE toute colonne `role: 'geste'` en `sticky
+               right-0`. Deux colonnes de ce rôle se recouvrent — mesuré cette
+               semaine sur l'écran des locataires, où « Corriger » rendait
+               « Corı ». */
+            role: 'geste',
+            header: '',
+            render: (unit) => (
+              <div className="flex items-center justify-end">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon="sliders"
+                  /* LE NUMÉRO DANS LE NOM ACCESSIBLE : douze boutons « Corriger »
+                     à la suite ne disent pas lequel on active, et c'est ce que la
+                     synthèse vocale annonce ligne après ligne. */
+                  aria-label={t('app.portfolio.editUnit', { unit: unit.label })}
+                  onClick={() => setLogementACorriger(unit)}
+                >
+                  {t('app.tenants.edit')}
+                </Button>
+              </div>
+            ),
           },
         ]}
       />

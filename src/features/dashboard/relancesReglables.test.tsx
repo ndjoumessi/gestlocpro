@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { attendreLeChargement, renderApp, screen, userEvent, waitFor } from '@/test/render'
+import { attendreLeChargement, renderApp, screen, userEvent, waitFor, within } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur, type FauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 
@@ -93,7 +93,16 @@ describe('les relances automatiques', () => {
     const user = await ouvrirLesReglages()
 
     await user.click(screen.getByRole('checkbox', { name: /relance/i }))
-    await user.click(screen.getByRole('button', { name: /Enregistrer|Corriger/ }))
+    /* PORTÉE À LA MODALE, et ce n'est pas un contournement.
+
+       `screen` cherche dans la PAGE entière : depuis que l'écran du parc offre
+       « Corriger » sur chaque logement, ce motif large trouvait treize boutons
+       au lieu d'un. Le test cherchait le bouton d'enregistrement des réglages ;
+       il désignait en fait « le seul bouton de la page qui ressemble à ça », ce
+       qui n'a jamais été la même chose. La modale est ce qu'on éprouve — c'est
+       elle qui borne la recherche. */
+    const reglages = await screen.findByRole('dialog')
+    await user.click(within(reglages).getByRole('button', { name: /Enregistrer|Corriger/ }))
 
     await waitFor(() => {
       const appel = serveur.appels.find((a) => a.methode === 'PATCH')
@@ -111,7 +120,8 @@ describe('les relances automatiques', () => {
     const jour = screen.getByRole('spinbutton', { name: /jour/i })
     await user.clear(jour)
     await user.type(jour, '3')
-    await user.click(screen.getByRole('button', { name: /Enregistrer|Corriger/ }))
+    const reglages = await screen.findByRole('dialog')
+    await user.click(within(reglages).getByRole('button', { name: /Enregistrer|Corriger/ }))
 
     await waitFor(() => {
       const appel = serveur.appels.find((a) => a.methode === 'PATCH')

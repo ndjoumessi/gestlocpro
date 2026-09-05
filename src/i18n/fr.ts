@@ -946,6 +946,23 @@ export const fr = {
       deleteBuildingBody:
         'Cet immeuble ne porte aucun logement. La suppression est définitive.',
       deleteBuildingDone: 'Immeuble supprimé',
+      /* CORRIGER, ET NON MODIFIER. Le geste répare une saisie ; « modifier »
+         laisserait croire qu'un immeuble change de nature. */
+      editBuilding: 'Corriger l’immeuble {name}',
+      editBuildingTitle: 'Corriger {name}',
+      editBuildingBody:
+        'Le nom et le quartier seuls. Aucun bail, aucun logement, aucune somme n’en dépend.',
+      editBuildingDone: 'Immeuble corrigé',
+      editUnit: 'Corriger le logement {unit}',
+      editUnitTitle: 'Corriger le logement {unit}',
+      editUnitBody: 'Numéro, typologie, surface et loyer de référence.',
+      editUnitDone: 'Logement corrigé',
+      /* ELLE NE PARAÎT QUE SUR UN LOGEMENT OCCUPÉ — voir `EditUnitModal`. Le
+         serveur ne fait PAS redescendre ce loyer dans le bail ni dans les
+         échéances déjà appelées, et sans cette phrase la correction aurait
+         l'air de n'avoir servi à rien. */
+      editUnitRentNote:
+        'Le loyer du bail en cours et les échéances déjà appelées ne changent pas : ce montant sert aux prochains baux.',
       emptyTitle: 'Aucun logement pour l’instant',
       emptyBody: 'Déclarez un immeuble, puis ajoutez-y vos logements.',
       /* L'ÉTAT VIDE D'UN GESTIONNAIRE NON SERVI. Le générique lui disait de
@@ -1637,6 +1654,11 @@ export const fr = {
            nulle part. */
         building: {
           delete: 'Immeuble supprimé',
+          /* CORRIGÉ, ET NON « MODIFIÉ ». Cette route ne touche qu'au nom et au
+             quartier — rien qui déplace de l'argent. « Modifié » laisserait
+             croire qu'un immeuble peut changer de nature ; « corrigé » dit le
+             geste réel, réparer une saisie. */
+          update: 'Immeuble corrigé',
         },
         deposit: {
           settle: 'Caution arbitrée',
@@ -1675,6 +1697,14 @@ export const fr = {
         },
         tariff: {
           set: 'Tarif de refacturation posé',
+        },
+        /* LE LOGEMENT CORRIGÉ, et le registre montre son NUMÉRO : « B2 » dit
+           lequel, là où l'identifiant ne dirait rien. Le loyer de RÉFÉRENCE
+           suit, parce que c'est le seul champ de cette correction qui porte de
+           l'argent — et parce qu'il n'a justement PAS réécrit les échéances,
+           ce qu'un lecteur doit pouvoir vérifier. */
+        unit: {
+          update: 'Logement corrigé',
         },
         tenant: {
           create: 'Fiche de locataire ouverte',

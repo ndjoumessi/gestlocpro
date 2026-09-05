@@ -67,6 +67,16 @@ interface Modale {
 const MODALES: Modale[] = [
   { nom: 'Ajouter un immeuble', adresse: '/demo/parc', bouton: /^Ajouter un immeuble$/, forme: 'saisie' },
   { nom: 'Ajouter un logement', adresse: '/demo/parc', bouton: /^Ajouter un logement$/, forme: 'saisie' },
+  /* LES DEUX CORRECTIONS DU PARC, entrées avec le lot qui les crée. Elles ne
+     s'inscrivent PAS toutes seules : ce registre est écrit à la main, et rien
+     ne rougit quand une modale neuve l'oublie. Deux modales hors clavier
+     seraient exactement l'angle mort que ce fichier existe pour fermer.
+
+     Le nom du bouton porte sa cible — « Corriger le logement A1 » — parce que le
+     geste se répète PAR LIGNE : sans cela il faudrait un `rang`, et viser
+     silencieusement le premier d'une liste est ce que ce fichier refuse. */
+  { nom: 'Corriger un immeuble', adresse: '/demo/parc', bouton: /^Corriger l’immeuble Résidence Bonamoussadi$/, forme: 'saisie' },
+  { nom: 'Corriger un logement', adresse: '/demo/parc', bouton: /^Corriger le logement A1$/, forme: 'saisie' },
   { nom: 'Ouvrir un chantier', adresse: '/demo/travaux', bouton: /^Ouvrir un chantier$/, forme: 'saisie' },
   { nom: 'Enregistrer un paiement', adresse: '/demo/paiements', bouton: /^Enregistrer un paiement$/, forme: 'saisie' },
   /*
@@ -422,9 +432,9 @@ describe('le clavier des modales', () => {
    * rendrait la garde d'accord avec elle-même, piège trouvé par la même
    * mutation trois lots de suite.
    */
-  it('a bien joué les dix-sept modales déclarées', () => {
-    expect(MODALES.length).toBe(17)
-    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(17)
+  it('a bien joué les dix-neuf modales déclarées', () => {
+    expect(MODALES.length).toBe(19)
+    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(19)
     /* LES `lecture` SONT NOMMÉES, et l'écrire ici les protège : passer une
        modale de saisie en `lecture` pour faire taire un champ mal libellé est
        le contournement le plus facile de ce fichier. Il ferait rougir.
