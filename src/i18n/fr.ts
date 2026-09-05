@@ -1920,6 +1920,9 @@ export const fr = {
       /* CORRIGER une fiche : le geste qui manquait. Une coquille dans un nom ou
          un numéro n'avait aucun chemin — supprimer pour recréer emporte le bail,
          et se referme au premier versement encaissé. */
+      /* FACULTATIF, et l'aide dit ce qu'il DÉBLOQUE plutôt que ce qu'il est. */
+      email: 'Adresse électronique',
+      emailHint: 'Pour lui écrire tant qu’il n’a pas de compte : réponses à ses signalements et annonces du parc.',
       edit: 'Corriger',
       editTitle: 'Corriger la fiche de {name}',
       editBody: 'Le nom et le numéro seulement. Le loyer et le logement s’arbitrent depuis le bail ; le compte, depuis « Accès au parc ».',

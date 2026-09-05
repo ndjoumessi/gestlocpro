@@ -72,6 +72,19 @@ export interface Unit {
    */
   phone: string | null
   /**
+   * L'ADRESSE DE LA FICHE, et non celle du compte.
+   *
+   * Le serveur écrit au locataire SANS compte par ce repli —
+   * `user?.email ?? tenant.email` — qui n'avait jamais servi faute d'écran pour
+   * la collecter.
+   *
+   * FACULTATIVE DANS LE TYPE, et c'est un aveu plutôt qu'une commodité : le jeu
+   * de démonstration n'en porte AUCUNE. La rendre obligatoire aurait demandé
+   * d'en inventer quinze, c'est-à-dire de faire croire à un parc où tout le
+   * monde a laissé son adresse — l'inverse de ce que cet écran mesure.
+   */
+  email?: string | null
+  /**
    * Début du bail EN COURS. `null` quand l'unité est vacante.
    *
    * Le portail annonçait « bail en cours depuis le … » et « depuis mon entrée

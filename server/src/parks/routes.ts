@@ -327,6 +327,23 @@ const schemaLocataire = z.object({
     .regex(/^\+[1-9]\d{6,14}$/, 'Numéro attendu au format international')
     .optional(),
   /**
+   * LE COURRIEL DE LA FICHE, ET LE SERVEUR LE LISAIT DÉJÀ.
+   *
+   * La réponse à un signalement vise
+   * `reportedByTenant.user?.email ?? reportedByTenant.email` : le repli vers
+   * l'adresse de la FICHE est écrit depuis toujours, pour le locataire SANS
+   * compte. Mais aucun écran ne la collectait, donc la colonne restait nulle et
+   * cette seconde branche n'a jamais servi.
+   *
+   * C'est ce que la bannière annonce sans le savoir : « il ne voit ni bail, ni
+   * quittance, ni relevé, ET NE REÇOIT AUCUNE ANNONCE ».
+   *
+   * FACULTATIF, comme `startsOn` et pour la même raison : l'exiger fermerait la
+   * saisie d'un locataire déjà en place dont on n'a que le téléphone — le cas de
+   * tout parc qu'on reprend en main.
+   */
+  email: z.string().trim().email('Adresse électronique attendue').optional(),
+  /**
    * Début du bail, et non « aujourd'hui ».
    *
    * La route posait systématiquement la date du jour. Un propriétaire qui
@@ -558,7 +575,7 @@ parksRouter.get(
                 id: true,
                 rentMinor: true,
                 startsOn: true,
-                tenant: { select: { id: true, fullName: true, phoneE164: true, userId: true } },
+                tenant: { select: { id: true, fullName: true, phoneE164: true, email: true, userId: true } },
                 deposit: {
                   select: { heldMinor: true, withheldMinor: true, status: true },
                 },
@@ -604,6 +621,10 @@ parksRouter.get(
                 id: bail.tenant.id,
                 fullName: bail.tenant.fullName,
                 phoneE164: bail.tenant.phoneE164,
+                /* L'ADRESSE DE LA FICHE remonte à l'écran, sans quoi la modale de
+                   correction ouvrirait sur un champ vide et l'effacerait au
+                   premier enregistrement. */
+                email: bail.tenant.email,
                 /**
                  * SI la fiche est reliée à un compte — jamais À QUI.
                  *
@@ -4206,6 +4227,7 @@ parksRouter.post(
             parkId,
             fullName: corps.fullName,
             phoneE164: corps.phoneE164 ?? null,
+            email: corps.email ?? null,
             /* LA FICHE NAÎT RELIÉE. Le contrôle ci-dessus vit dans la même
                transaction que cette écriture : aucune fenêtre où un second
                écran relierait le même compte entre les deux. */
@@ -6595,12 +6617,17 @@ const schemaCorrectionDeFiche = z
           .regex(/^\+[1-9]\d{6,14}$/, 'Numéro attendu au format international'),
       ])
       .optional(),
+    /* La même forme pour l'adresse : vide EFFACE, absent ne touche à rien. */
+    email: z
+      .union([z.literal(''), z.string().trim().email('Adresse électronique attendue')])
+      .optional(),
   })
   /* AU MOINS UN CHAMP : un corps vide n'est pas une correction, et le laisser
      passer ferait une écriture et une trace pour rien. */
-  .refine((c) => c.fullName !== undefined || c.phoneE164 !== undefined, {
-    message: 'Aucun champ à corriger',
-  })
+  .refine(
+    (c) => c.fullName !== undefined || c.phoneE164 !== undefined || c.email !== undefined,
+    { message: 'Aucun champ à corriger' },
+  )
 
 parksRouter.patch(
   '/:parkId/tenants/:tenantId',
@@ -6625,7 +6652,7 @@ parksRouter.patch(
           ? { leases: { some: { unit: perimetreUnite } } }
           : {}),
       },
-      select: { id: true, fullName: true, phoneE164: true },
+      select: { id: true, fullName: true, phoneE164: true, email: true },
     })
     if (!locataire) {
       // Un 403 sur un identifiant valide dirait déjà que la fiche existe
@@ -6636,19 +6663,27 @@ parksRouter.patch(
 
     const nom = corps.fullName ?? locataire.fullName
     const numero = corps.phoneE164 === undefined ? locataire.phoneE164 : corps.phoneE164 || null
+    /* MÊME FORME QUE LE NUMÉRO : la chaîne vide EFFACE, `undefined` ne touche à
+       rien. Une adresse fausse vaut moins que pas d'adresse — on écrirait dans le
+       vide en croyant prévenir. */
+    const adresse = corps.email === undefined ? locataire.email : corps.email || null
 
     /* RIEN N'A CHANGÉ : on ne consigne pas un non-geste. Rouvrir la modale et
        la refermer sans rien toucher n'est pas une décision, et un registre qui
        les compte noie celles qui comptent. */
-    if (nom === locataire.fullName && numero === locataire.phoneE164) {
-      res.json({ tenant: { id: locataire.id, fullName: nom, phoneE164: numero } })
+    if (
+      nom === locataire.fullName &&
+      numero === locataire.phoneE164 &&
+      adresse === locataire.email
+    ) {
+      res.json({ tenant: { id: locataire.id, fullName: nom, phoneE164: numero, email: adresse } })
       return
     }
 
     const apres = await prisma.tenant.update({
       where: { id: locataire.id },
-      data: { fullName: nom, phoneE164: numero },
-      select: { id: true, fullName: true, phoneE164: true },
+      data: { fullName: nom, phoneE164: numero, email: adresse },
+      select: { id: true, fullName: true, phoneE164: true, email: true },
     })
 
     /**
@@ -6674,7 +6709,12 @@ parksRouter.patch(
         payload: {
           fullName: apres.fullName,
           phoneE164: apres.phoneE164,
-          avant: { fullName: locataire.fullName, phoneE164: locataire.phoneE164 },
+          email: apres.email,
+          avant: {
+            fullName: locataire.fullName,
+            phoneE164: locataire.phoneE164,
+            email: locataire.email,
+          },
         },
       },
     })

@@ -596,6 +596,9 @@ function CorrigerFicheModal({ unit, onClose }: { unit: Unit; onClose: () => void
   const { notify } = useToast()
   const [nom, setNom] = useState(unit.tenant ?? '')
   const [numero, setNumero] = useState(unit.phone ?? '')
+  /* `unit.email` VIENT DU PORTEFEUILLE, comme le téléphone : la fiche porte son
+     adresse, et la modale l'ouvre telle quelle pour la corriger. */
+  const [courriel, setCourriel] = useState(unit.email ?? '')
   const [erreurNom, setErreurNom] = useState<string | undefined>()
   const [enCours, setEnCours] = useState(false)
 
@@ -615,6 +618,10 @@ function CorrigerFicheModal({ unit, onClose }: { unit: Unit; onClose: () => void
     const fait = await updateTenant(unit.id, unit.tenantId!, {
       fullName: nom.trim(),
       phoneE164: numero.trim(),
+      /* LA CHAÎNE VIDE EFFACE, côté serveur comme le numéro : une adresse fausse
+         vaut moins que pas d'adresse — on écrirait dans le vide en croyant
+         prévenir. */
+      email: courriel.trim(),
     })
     setEnCours(false)
     if (fait) {
@@ -656,7 +663,19 @@ function CorrigerFicheModal({ unit, onClose }: { unit: Unit; onClose: () => void
             />
           )}
         </Field>
-        <Field label={t('app.tenants.editPhone')} hint={t('app.tenants.editPhoneHint')}>
+        <Field label={t('app.tenants.email')} hint={t('app.tenants.emailHint')} optional>
+          {(props) => (
+            <Input
+              id={props.id}
+              aria-describedby={props['aria-describedby']}
+              type="email"
+              inputMode="email"
+              value={courriel}
+              onChange={(e) => setCourriel(e.target.value)}
+            />
+          )}
+        </Field>
+                <Field label={t('app.tenants.editPhone')} hint={t('app.tenants.editPhoneHint')}>
           {(props) => (
             <Input
               id={props.id}
@@ -684,6 +703,7 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
 
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
+  const [courriel, setCourriel] = useState('')
   /**
    * LE COMPTE À QUI CETTE FICHE APPARTIENT — le champ qui empêche l'orphelin.
    *
@@ -937,6 +957,32 @@ function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => vo
                 }}
               />
             </div>
+          )}
+        </Field>
+
+        {/*
+          LE COURRIEL, FACULTATIF — et ce qu'il DÉBLOQUE justifie sa place ici.
+
+          Le serveur écrit déjà au locataire SANS compte, par
+          `reportedByTenant.user?.email ?? reportedByTenant.email`. Ce repli n'a
+          jamais servi : rien ne collectait l'adresse de la fiche. C'est ce que la
+          bannière de cet écran annonce — « il ne reçoit aucune annonce ».
+
+          FACULTATIF comme la date de début : l'exiger fermerait la saisie d'un
+          locataire déjà en place dont on n'a que le téléphone.
+        */}
+        <Field label={t('app.tenants.email')} hint={t('app.tenants.emailHint')} optional>
+          {(props) => (
+            <Input
+              id={props.id}
+              aria-describedby={props['aria-describedby']}
+              name="email"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              value={courriel}
+              onChange={(e) => setCourriel(e.target.value)}
+            />
           )}
         </Field>
 

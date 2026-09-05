@@ -323,7 +323,7 @@ interface PortfolioContextValue {
   updateTenant: (
     unitId: string,
     tenantId: string,
-    corps: { fullName?: string; phoneE164?: string },
+    corps: { fullName?: string; phoneE164?: string; email?: string },
   ) => Promise<boolean>
   /**
    * Relance les baux désignés, et rend ce qui a RÉELLEMENT eu lieu.
@@ -1496,25 +1496,27 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     async (
       unitId: string,
       tenantId: string,
-      corps: { fullName?: string; phoneE164?: string },
+      corps: { fullName?: string; phoneE164?: string; email?: string },
     ): Promise<boolean> => {
-      const poser = (nom: string, numero: string | null) =>
+      const poser = (nom: string, numero: string | null, adresse: string | null) =>
         setUnits((liste) =>
-          liste.map((u) => (u.id === unitId ? { ...u, tenant: nom, phone: numero } : u)),
+          liste.map((u) =>
+            u.id === unitId ? { ...u, tenant: nom, phone: numero, email: adresse } : u,
+          ),
         )
       if (!parkId) {
         /* HORS SESSION — la démonstration. On applique la saisie telle quelle :
            il n'y a pas de serveur pour l'ébarber, et refuser le geste ici
            rendrait la démonstration moins vraie que le produit. */
         const unite = units.find((u) => u.id === unitId)
-        poser(corps.fullName ?? unite?.tenant ?? '', corps.phoneE164 || null)
+        poser(corps.fullName ?? unite?.tenant ?? '', corps.phoneE164 || null, corps.email || null)
         return true
       }
       try {
         const { tenant } = await api.updateTenant<{
-          tenant: { fullName: string; phoneE164: string | null }
+          tenant: { fullName: string; phoneE164: string | null; email: string | null }
         }>(parkId, tenantId, corps)
-        poser(tenant.fullName, tenant.phoneE164)
+        poser(tenant.fullName, tenant.phoneE164, tenant.email)
         return true
       } catch (erreur) {
         signalerEchec(erreur)

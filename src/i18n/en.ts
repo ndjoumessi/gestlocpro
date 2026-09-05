@@ -1400,6 +1400,8 @@ export const en: Dictionary = {
       since: 'Tenant since',
       rentStatus: 'Month’s rent',
       contact: 'Contact',
+      email: 'Email address',
+      emailHint: 'To reach them while they have no account: replies to their reports and park announcements.',
       edit: 'Correct',
       editTitle: 'Correct {name}’s record',
       editBody: 'Name and phone only. Rent and unit are settled from the lease; the account, from “Park access”.',

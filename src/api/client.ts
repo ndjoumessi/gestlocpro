@@ -502,7 +502,7 @@ export const api = {
   updateTenant: <T>(
     parkId: string,
     tenantId: string,
-    corps: { fullName?: string; phoneE164?: string },
+    corps: { fullName?: string; phoneE164?: string; email?: string },
   ) =>
     requete<T>(`/parks/${parkId}/tenants/${tenantId}`, {
       method: 'PATCH',

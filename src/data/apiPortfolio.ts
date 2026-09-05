@@ -50,6 +50,7 @@ interface PortefeuilleApi {
         id: string
         fullName: string
         phoneE164: string | null
+    email: string | null
         /** Facultatif : un serveur antérieur à ce champ ne le rend pas. */
         hasAccount?: boolean
       } | null
@@ -299,6 +300,7 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
         rent: u.rentMinor,
         tenant: u.tenant?.fullName ?? null,
         phone: u.tenant?.phoneE164 ?? null,
+        email: u.tenant?.email ?? null,
         // La somme des versements réellement encaissés, calculée par le
         // serveur. Elle remplace la part simulée à 53 % du loyer.
         paid: u.paidMinor,
