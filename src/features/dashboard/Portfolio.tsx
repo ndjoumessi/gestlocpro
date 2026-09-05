@@ -5,7 +5,7 @@ import { useRole } from '@/components/layout/AppShell'
 import { lien, useBase } from '@/lib/base'
 import { DataTable, EmptyState } from '@/components/primitives/DataTable'
 import { PaymentStatusPill } from '@/components/primitives/StatusPill'
-import { StatCard } from '@/components/primitives/Charts'
+import { ProgressBar, StatCard } from '@/components/primitives/Charts'
 import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDebordement'
 import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
 import {
@@ -204,6 +204,20 @@ export function Portfolio() {
   }
 
   /**
+   * LE TAUX, BORNÉ UNE FOIS POUR LES QUATRE TUILES.
+   *
+   * La division vivait à un seul endroit de cet écran — la carte du parc — et
+   * elle y était écrite à la main, sans borne, jusqu'à ce qu'un compte neuf y
+   * lise « NaN % ». Les barres posées par ce lot en demandent trois de plus, une
+   * par immeuble, et un immeuble SANS logement est bien plus courant qu'un parc
+   * vide : c'est l'état de tout immeuble entre sa création et son premier
+   * logement. Quatre divisions recopiées auraient rouvert quatre fois le même
+   * défaut ; celle-ci rend 0 sur un dénominateur nul, comme `computeKpis`.
+   */
+  const tauxDe = (occupees: number, total: number) =>
+    total === 0 ? 0 : Math.round((occupees / total) * 100)
+
+  /**
    * Placé après les crochets — ils doivent tourner à chaque rendu — et avant le
    * moindre affichage de `units`.
    *
@@ -340,7 +354,42 @@ export function Portfolio() {
                  sait que cette coupe-là est assumée. */
               donnee
               value={`${occ}/${total}`}
-              note={`${b.district} · ${t('app.portfolio.occupancy', { occupied: occ, total })}`}
+              /* LA NOTE A RENDU LE RAPPORT À LA BARRE.
+                 Elle valait « Bonamoussadi · 5/5 occupées », quinze pixels sous
+                 un « 5/5 » en gros caractères : le même rapport deux fois dans
+                 une carte de quatre lignes, sur la ligne exacte où la barre
+                 devait aller. Le quartier reste — lui SITUE l'immeuble et ne se
+                 répète nulle part ailleurs sur la carte. Le rapport, lui, est
+                 désormais dit une fois en chiffres et une fois en longueur. */
+              note={b.district}
+              bas={
+                /* LA BARRE, PARCE QUE TROIS RAPPORTS À DÉNOMINATEURS DIFFÉRENTS
+                   NE SE COMPARENT PAS.
+
+                   « 5/5 », « 3/4 », « 2/3 » : trois divisions à poser de tête
+                   pour savoir lequel des trois immeubles est le plus troué, et
+                   l'ordre de la rangée n'est PAS l'ordre de tension — 100, 75,
+                   67. La grille aligne les cartes, donc les barres partagent
+                   origine et longueur : le classement se lit en travers.
+
+                   `hideValue` : la carte porte déjà « 5/5 » en gros. Le
+                   pourcentage à droite de la piste écrirait une troisième fois
+                   ce que la tuile vient de perdre en doublon.
+
+                   AUCUN TON AU SEUIL, et c'est délibéré. `occupationSansVerdict`
+                   a tranché pour la carte du tableau de bord : un ratio
+                   d'occupation n'est ni `ok`, ni `warn`, ni `danger`, sous peine
+                   d'une alerte allumée à perpétuité sur chaque immeuble. Peindre
+                   la barre au seuil rouvrirait ici ce que ce cas ferme là-bas. */
+                <div className="mt-3">
+                  <ProgressBar
+                    value={tauxDe(occ, total)}
+                    label={t('app.portfolio.occupancy', { occupied: occ, total })}
+                    hideLabel
+                    hideValue
+                  />
+                </div>
+              }
               action={
                 /* DEUX ISSUES, ET UNE SEULE EST CONDITIONNELLE.
 
@@ -411,10 +460,28 @@ export function Portfolio() {
           /* `computeKpis` borne déjà cette division — « un parc vide donne 0 %
              et non NaN » — et ce second calcul, écrit à la main ici, ne le
              faisait pas. Un compte neuf lisait « NaN % » dès l'ouverture de cet
-             écran, sur le seul indicateur de la page. */
-          value={`${units.length === 0 ? 0 : Math.round((occupied / units.length) * 100)}`}
+             écran, sur le seul indicateur de la page. La borne vit maintenant
+             dans `tauxDe`, que les trois cartes d'immeuble partagent. */
+          value={`${tauxDe(occupied, units.length)}`}
           unit="%"
+          /* LA NOTE RESTE ICI, à la différence des cartes d'immeuble : « 10/12
+             occupées » n'est pas la répétition de « 83 % », c'est le comptage
+             BRUT sous le pourcentage. Sur douze logements, le pourcentage seul
+             cacherait les deux à relouer. */
           note={t('app.portfolio.occupancy', { occupied, total: units.length })}
+          bas={
+            /* LA MÊME BARRE QUE SES PARTIES, et c'est le point : la carte du
+               parc se lit dans la même rangée que les trois immeubles qui la
+               composent. Une échelle commune, ou aucune comparaison. */
+            <div className="mt-3">
+              <ProgressBar
+                value={tauxDe(occupied, units.length)}
+                label={t('app.portfolio.occupancy', { occupied, total: units.length })}
+                hideLabel
+                hideValue
+              />
+            </div>
+          }
         />
         )}
       </div>

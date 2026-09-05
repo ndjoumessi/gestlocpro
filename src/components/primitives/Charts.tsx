@@ -1669,6 +1669,7 @@ export function ProgressBar({
   label,
   tone = 'accent',
   hideLabel,
+  hideValue,
 }: {
   value: number
   label: string
@@ -1685,6 +1686,21 @@ export function ProgressBar({
    * visuel, pas l'annonce.
    */
   hideLabel?: boolean
+  /**
+   * Masque le POURCENTAGE affiché à droite de la piste — même raison que
+   * `hideLabel`, à l'autre bout de la barre.
+   *
+   * Les tuiles d'occupation du Parc portent déjà leur mesure dans leur valeur,
+   * en gros caractères : « 5/5 » pour un immeuble, « 83 % » pour le parc. Le
+   * pourcentage de la barre y écrirait une troisième fois, à quinze pixels, ce
+   * que la carte dit deux fois — et c'est précisément la répétition que ces
+   * tuiles viennent de perdre en cédant leur note à la barre.
+   *
+   * `aria-valuenow` ne bouge pas : la barre reste annoncée avec sa valeur, ce
+   * qui disparaît est le doublon VISUEL. Les quatre autres appels du produit
+   * n'ont pas de nombre au-dessus d'elles et gardent donc le leur.
+   */
+  hideValue?: boolean
 }) {
   const nombres = useNumbers()
   // Le remplissage EST la valeur : c'est lui, et lui seul, qui dit 62 % contre
@@ -1725,9 +1741,11 @@ export function ProgressBar({
         lieu d'un repli. On corrige donc les deux : la colonne tient trois
         chiffres, et le signe ne peut plus s'en détacher.
       */}
-      <span className="numeric w-12 shrink-0 text-right text-body text-muted">
-        {nombres.percent(value)}
-      </span>
+      {!hideValue && (
+        <span className="numeric w-12 shrink-0 text-right text-body text-muted">
+          {nombres.percent(value)}
+        </span>
+      )}
     </div>
   )
 }
