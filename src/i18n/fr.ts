@@ -1915,7 +1915,14 @@ export const fr = {
          celui-ci, dont la bannière parle de COMPTES et dont une ligne porte un
          badge « Sans compte », « En attente » a été lu « en attente d'un
          compte ». Le lecteur n'a pas mal lu : la page ne disait pas de quoi. */
-      rentStatus: 'Loyer du mois',
+      /* « CE MOIS » ET NON « LOYER DU MOIS » : treize caractères passaient sous la
+         colonne de gestes ÉPINGLÉE et se coupaient — « LOYER DU MC » sur une
+         capture de production. Les en-têtes portent `whitespace-nowrap`, donc ils
+         se rognent au lieu de se replier, et aucune règle de débordement ne le
+         voit : le texte reste dans sa boîte.
+         L'AXE RESTE NOMMÉ. La colonne voisine s'appelle « Loyer » ; « Ce mois »
+         la suit sans la répéter, et c'est ce qui manquait à « Statut ». */
+      rentStatus: 'Ce mois',
       contact: 'Contact',
       /* CORRIGER une fiche : le geste qui manquait. Une coquille dans un nom ou
          un numéro n'avait aucun chemin — supprimer pour recréer emporte le bail,

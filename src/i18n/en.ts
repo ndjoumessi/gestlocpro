@@ -1398,7 +1398,7 @@ export const en: Dictionary = {
       created: 'Tenant record created',
       phoneHint: 'To call them from their record. Nothing is sent from here.',
       since: 'Tenant since',
-      rentStatus: 'Month’s rent',
+      rentStatus: 'This month',
       contact: 'Contact',
       email: 'Email address',
       emailHint: 'To reach them while they have no account: replies to their reports and park announcements.',
