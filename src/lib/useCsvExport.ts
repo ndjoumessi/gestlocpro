@@ -43,10 +43,12 @@ export interface CsvExportRequest {
  * la colonne. C'est aussi ce que fait n'importe quel export comptable.
  */
 export function useCsvMoney() {
-  const { locale, t } = useI18n()
-  const dates = useDates()
-  const { deviseAffichee, deviseSource, definition, enDeviseAffichee, baseDeConversion } =
-    useCurrency()
+  /* `t`, `dates`, `deviseSource` et `baseDeConversion` ONT DISPARU D'ICI en même
+     temps que du tableau de dépendances : ils n'étaient lus nulle part dans ce
+     crochet. Les garder déstructurés après les avoir retirés des dépendances
+     laisserait quatre variables mortes, que la porte refuse depuis cette nuit. */
+  const { locale } = useI18n()
+  const { deviseAffichee, definition, enDeviseAffichee } = useCurrency()
 
   return useMemo(
     () => ({
@@ -87,7 +89,14 @@ export function useCsvMoney() {
        */
       header: (label: string): string => `${label} (${libelleCourt(deviseAffichee)})`,
     }),
-    [baseDeConversion, dates, deviseAffichee, deviseSource, enDeviseAffichee, locale, definition, t],
+    /* QUATRE DÉPENDANCES RETIRÉES — `baseDeConversion`, `dates`, `deviseSource`,
+       `t` —, qu'aucune ligne de ce memo ne lit. Elles ne sont pas remplacées :
+       ce qui les SUIT est déjà là. `enDeviseAffichee` vient du contexte des
+       devises et se referme sur `deviseSource` et le cours, donc son identité
+       change avec eux ; `locale` change avec la langue, ce que `t` seul aurait
+       porté. Retirer une dépendance inutile ne relâche donc rien — elle ne
+       faisait que provoquer un recalcul de plus. */
+    [deviseAffichee, enDeviseAffichee, locale, definition],
   )
 }
 

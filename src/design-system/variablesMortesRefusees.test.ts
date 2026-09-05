@@ -66,6 +66,33 @@ describe('la configuration du linter', () => {
     ).toBe('error')
   })
 
+  it('refuse une dépendance de crochet oubliée ou de trop', () => {
+    /*
+      LA MÊME LEÇON, UNE FAMILLE PLUS LOIN — et celle-ci pouvait cacher un défaut
+      VIVANT. `react-hooks(exhaustive-deps)` portait DOUZE avertissements que rien
+      ne refusait : quatre dépendances MANQUANTES, huit INUTILES.
+
+      Les manquantes périmaient un calcul. L'une d'elles vivait sur la valeur du
+      contexte de `PortfolioProvider` — `tenantUnitIds` — et `isMine(unitId)`
+      répondait donc depuis une liste de baux morte, sur le fournisseur qui
+      alimente tous les écrans.
+
+      Les douze sont résolues, sauf UNE, déclarée sur place avec sa mesure :
+      `DatePicker` réabonnerait trois écouteurs à chaque rendu si on l'écoutait,
+      et ce qu'elle capture ne bouge pas — deux littéraux passés par ses seuls
+      appelants. Un `eslint-disable-next-line` la porte, avec son motif.
+
+      C'EST LE SEUL ÉCHAPPEMENT DE CETTE RÈGLE, et il est nommé. Une garde qui
+      compterait les échappements serait le cran suivant ; elle n'est pas écrite.
+    */
+    const severite = config.rules?.['react-hooks/exhaustive-deps']
+    expect(
+      Array.isArray(severite) ? severite[0] : severite,
+      'ramenée à `warn`, la règle laisse repasser une fermeture périmée — et rien ' +
+        'ne la verra, puisqu’un avertissement ne fait rougir aucune porte.',
+    ).toBe('error')
+  })
+
   it('garde la lecture du fichier, sans quoi le cas du dessus est creux', () => {
     /* GARDE DU GARDE. Si le fichier changeait de nom ou de forme, `config.rules`
        vaudrait `undefined` et le cas ci-dessus rougirait — mais pour la mauvaise

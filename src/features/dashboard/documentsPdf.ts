@@ -728,9 +728,11 @@ export function useDepositPdf() {
   const t = useT()
   const nommerLImmeuble = useNomDeLImmeuble()
   const emisLe = useEmisLe()
-  const d = useDates()
-  const { money, deviseSource } = useCurrency()
-  const mentionner = useMentionDeConversion()
+  /* `d`, `deviseSource` ET `mentionner` DISPARAISSENT en même temps que du
+     tableau de dépendances : ce rappel ne les lisait pas. Les garder appelés
+     laisserait des crochets invoqués pour rien, et des variables mortes que la
+     porte refuse depuis cette nuit. */
+  const { money } = useCurrency()
   const parc = useEmetteur()
   const remettre = useRemise()
 
@@ -775,7 +777,14 @@ export function useDepositPdf() {
         'app.documents.pdfDownloaded',
       )
     },
-    [d, deviseSource, emisLe, mentionner, money, nommerLImmeuble, parc, remettre, t],
+    /* TROIS DÉPENDANCES RETIRÉES — `d`, `deviseSource`, `mentionner` —, que ce
+       rappel ne lit pas.
+
+       ELLES NE SONT PAS REMPLACÉES : ce qui les SUIT est déjà là. `money` vient
+       du contexte des devises et se referme sur la source comme sur le cours,
+       donc son identité change avec eux. Une dépendance inutile ne garde rien —
+       elle refait le rappel sans raison, et masque celles qui comptent. */
+    [emisLe, money, nommerLImmeuble, parc, remettre, t],
   )
 }
 
@@ -953,9 +962,12 @@ export function useInspectionPdf() {
   const t = useT()
   const nommerLImmeuble = useNomDeLImmeuble()
   const emisLe = useEmisLe()
+  /* `d`, `deviseSource` ET `mentionner` DISPARAISSENT en même temps que du
+     tableau de dépendances : ce rappel ne les lisait pas. Les garder appelés
+     laisserait des crochets invoqués pour rien, et des variables mortes que la
+     porte refuse depuis cette nuit. */
   const d = useDates()
-  const { money, deviseSource } = useCurrency()
-  const mentionner = useMentionDeConversion()
+  const { money } = useCurrency()
   const parc = useEmetteur()
   const remettre = useRemise()
 
@@ -1014,7 +1026,10 @@ export function useInspectionPdf() {
         'app.documents.pdfDownloaded',
       )
     },
-    [d, deviseSource, emisLe, mentionner, money, nommerLImmeuble, parc, remettre, t],
+    /* DEUX DÉPENDANCES RETIRÉES — `deviseSource` et `mentionner` —, non lues par
+       ce rappel. `d` l'est, et reste. Voir le rappel des cautions pour le
+       raisonnement entier. */
+    [d, emisLe, money, nommerLImmeuble, parc, remettre, t],
   )
 }
 
