@@ -224,7 +224,9 @@ describe('poser un prix', () => {
     expect(appel?.corps).toMatchObject({ utility: 'water', unitPriceMinor: 610 })
     // La date d'effet part au format jour, jamais un instant : un tarif entre
     // en vigueur un jour, et le lire à travers un fuseau le décalerait.
-    expect((appel?.corps as { effectiveFrom: string }).effectiveFrom).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    /* `!` ET NON `?.` : le `toMatchObject` du dessus a déjà échoué si l'appel
+       manquait. Voir `immeublesConfies.test.tsx` pour le raisonnement entier. */
+    expect((appel!.corps as { effectiveFrom: string }).effectiveFrom).toMatch(/^\d{4}-\d{2}-\d{2}$/)
   })
 
   it('refuse un prix nul avant même d’appeler', async () => {

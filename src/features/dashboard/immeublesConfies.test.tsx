@@ -349,8 +349,14 @@ describe('confier des immeubles', () => {
     await user.click(modale.getByRole('button', { name: 'Confier' }))
 
     await waitFor(() => expect(envoi()).toBeDefined())
+    /* `!` ET NON `?.` : l'attente du dessus vient d'affirmer la présence. Le
+       chaînage optionnel déclarait donc une incertitude que la ligne précédente
+       a levée — et `oxlint` le refusait à juste titre, « unsafe usage » : sur
+       `undefined`, les deux formes lèvent la MÊME TypeError. Ce n'est pas le
+       mode d'échec qui change, c'est la prose : le code cesse de prétendre
+       douter de ce qu'il vient de vérifier. */
     expect(
-      (envoi()?.corps as { buildingIds: string[] }).buildingIds.slice().sort(),
+      (envoi()!.corps as { buildingIds: string[] }).buildingIds.slice().sort(),
       'un envoi partiel laisserait un périmètre que personne n’a voulu',
     ).toEqual([BON, AKW, DES].sort())
   })
@@ -373,7 +379,7 @@ describe('confier des immeubles', () => {
     await user.click(modale.getByRole('button', { name: 'Confier' }))
 
     await waitFor(() => expect(envoi()).toBeDefined())
-    expect((envoi()?.corps as { buildingIds: string[] }).buildingIds).toEqual([])
+    expect((envoi()!.corps as { buildingIds: string[] }).buildingIds).toEqual([])
   })
 
   it('n’écrit rien quand on annule', async () => {
