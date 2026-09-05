@@ -190,6 +190,14 @@ const DETAIL: Record<string, Champ[]> = {
   ],
   /* L'ÉNERGIE D'ABORD : un prix au mètre cube et un prix au kilowattheure ne se
      comparent pas, et le second n'a de sens qu'avec son unité. */
+  /* L'INDEX ET SON ÉNERGIE. La période suit — « Eau · 358 · juillet 2026 » se
+     lit sans aller chercher ailleurs, et c'est la ligne qu'on ouvre quand une
+     refacturation est contestée. */
+  'reading.record': [
+    { champ: 'utility', nature: 'service' },
+    { champ: 'indexValue', nature: 'texte' },
+    { champ: 'periodStart', nature: 'mois' },
+  ],
   'tariff.set': [
     { champ: 'utility', nature: 'service' },
     { champ: 'unitPriceMinor', nature: 'argent' },

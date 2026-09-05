@@ -1130,6 +1130,28 @@ export const fr = {
       lateDays: 'Jours de retard',
     },
 
+    readings: {
+      title: 'Saisir un relevé',
+      description:
+        'Un compteur porte un index, pas une consommation : c’est l’écart avec le relevé précédent qui se refacture.',
+      readAt: 'Relevé le',
+      /* LA PÉRIODE SE DÉDUIT, et l'aide le dit plutôt que de le laisser
+         découvrir : sans cette phrase, un relevé du 2 août passerait pour celui
+         de juillet dans la tête de qui le saisit. */
+      readAtHint: 'La période refacturée est le mois de cette date.',
+      indexHint: 'L’index lu sur le compteur, pas la consommation.',
+      unitRequired: 'Choisissez un logement.',
+      oneRequired: 'Saisissez au moins un des deux index.',
+      indexInvalid: 'Saisissez un index entier, positif ou nul.',
+      indexBackwards: 'Index en recul pour {utility} : un compteur ne redescend pas.',
+      alreadyRecorded: 'Un relevé existe déjà pour {utility} sur ce mois.',
+      saved: '{count} relevés saisis',
+      saved_one: '{count} relevé saisi',
+      chargeNotCalled:
+        'Le loyer de ce mois n’a pas encore été appelé : la consommation entrera dans l’échéance au moment de l’appel.',
+      chargeAlreadyPaid:
+        'Un versement a déjà été reçu sur ce mois : l’échéance ne bouge plus, sans quoi le reçu déjà remis dirait autre chose que la quittance.',
+    },
     tariffs: {
       title: 'Prix de refacturation',
       description:
@@ -1229,6 +1251,7 @@ export const fr = {
       rebilled: 'Refacturé',
       readAt: 'Relevé le',
       missing: 'Relevé manquant',
+      firstReading: 'Premier relevé',
       noPrice: 'Tarif non fixé',
       missingCount: '{count} relevés manquants pour la période',
       missingCount_one: '{count} relevé manquant pour la période',
@@ -1710,6 +1733,12 @@ export const fr = {
         rent: {
           call: 'Appel de loyers émis',
           remind: 'Relance envoyée',
+        },
+        /* LE RELEVÉ AU REGISTRE, et il y a sa place : un index conteste. Le
+           locataire qui trouve sa refacturation trop haute demande QUEL index a
+           été lu, QUAND et par qui — et c'est la seule ligne qui le dise. */
+        reading: {
+          record: 'Relevé de compteur saisi',
         },
         tariff: {
           set: 'Tarif de refacturation posé',

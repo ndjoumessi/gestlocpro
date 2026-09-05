@@ -238,10 +238,17 @@ export function TenantDashboard() {
 
   /* L'eau et l'électricité du mois viennent du RELEVÉ, la seule source que le
      serveur alimente. Elles se lisaient dans la quittance de démonstration. */
+  /* LES DEUX INDEX, OU RIEN. Un premier relevé n'a pas de point de départ : le
+     repli sur 0 faisait lire au locataire l'index ENTIER de son compteur comme
+     sa consommation du mois — et c'est lui qui paie. */
   const eauConso =
-    releve && releve.waterCurrent !== null ? releve.waterCurrent - releve.waterPrevious : null
+    releve && releve.waterCurrent !== null && releve.waterPrevious !== null
+      ? releve.waterCurrent - releve.waterPrevious
+      : null
   const elecConso =
-    releve && releve.powerCurrent !== null ? releve.powerCurrent - releve.powerPrevious : null
+    releve && releve.powerCurrent !== null && releve.powerPrevious !== null
+      ? releve.powerCurrent - releve.powerPrevious
+      : null
 
   /**
    * Le montant refacturé, et le TIRET quand il n'y a pas de prix.

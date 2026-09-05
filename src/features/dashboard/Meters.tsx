@@ -24,6 +24,7 @@ import { type MeterReading } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { useSession } from '@/api/SessionProvider'
 import { TariffsModal } from './TariffsModal'
+import { RecordReadingModal } from './RecordReadingModal'
 
 /**
  * Relevé des compteurs.
@@ -44,6 +45,10 @@ export function Meters() {
   const { unitById, readings: TOUS, isMine, loading } = usePortfolio()
   const { adhesionActive, estDemo } = useSession()
   const [tarifsOuverts, setTarifsOuverts] = useState(false)
+  /* LE GESTE QUI MANQUAIT SOUS TOUT L'ÉCRAN : aucune route n'écrivait de relevé,
+     et aucun bouton n'en proposait un. Le tableau ci-dessous n'a jamais eu la
+     moindre ligne sur un parc réel. */
+  const [saisieOuverte, setSaisieOuverte] = useState(false)
 
   /**
    * Poser un prix est un acte de PROPRIÉTAIRE, et il exige un vrai parc.
@@ -67,6 +72,18 @@ export function Meters() {
    */
   const peutPoserUnPrix = role === 'owner' && (adhesionActive !== null || estDemo)
 
+  /**
+   * RELEVER EST LE GESTE DU TERRAIN, donc il est aussi celui du gestionnaire.
+   *
+   * La lecture des tarifs le dit déjà : « le gestionnaire refacture au
+   * quotidien ». C'est lui qui fait la tournée. Ce qu'il ne fait pas, c'est
+   * FIXER le prix — le partage ne bouge pas, et le serveur le tient.
+   *
+   * Le LOCATAIRE en est exclu : il lit ses relevés, il ne les pose pas. Un index
+   * saisi par celui qui paie n'est pas un relevé, c'est une déclaration.
+   */
+  const peutRelever = role === 'owner' || role === 'manager'
+
   /* Le locataire ne voit que SES relevés : l'écran vient de s'ouvrir à lui,
      puisque l'eau et l'électricité lui sont refacturées. */
   const READINGS = TOUS.filter((r) => role !== 'tenant' || isMine(r.unitId))
@@ -86,9 +103,26 @@ export function Meters() {
    */
   const unitLabel = (unitId: string) => unitById(unitId)?.label ?? ''
 
+  /**
+   * DEUX INDEX FONT UNE CONSOMMATION, UN SEUL N'EN FAIT PAS.
+   *
+   * Le calcul lisait `waterPrevious`, que la projection repliait sur 0 quand
+   * aucun relevé antérieur n'existait : la consommation devenait alors l'INDEX
+   * ENTIER du compteur. Le défaut ne se voit pas ici — la démonstration donne un
+   * antérieur à chacun de ses relevés — et il ne coûtait rien tant que rien
+   * n'était facturé. Le serveur facture désormais, et les deux doivent dire la
+   * même chose : `montantsDeConsommation`, côté serveur, rend 0 sans point de
+   * départ ; l'écran rend `null`, qui s'affiche au lieu de se chiffrer.
+   */
   const consumption = (reading: MeterReading) => ({
-    water: reading.waterCurrent === null ? null : reading.waterCurrent - reading.waterPrevious,
-    power: reading.powerCurrent === null ? null : reading.powerCurrent - reading.powerPrevious,
+    water:
+      reading.waterCurrent === null || reading.waterPrevious === null
+        ? null
+        : reading.waterCurrent - reading.waterPrevious,
+    power:
+      reading.powerCurrent === null || reading.powerPrevious === null
+        ? null
+        : reading.powerCurrent - reading.powerPrevious,
   })
 
   /**
@@ -114,8 +148,18 @@ export function Meters() {
   */
   const rebilled = (
     reading: MeterReading,
-  ): { montant: number } | { manque: 'reading' | 'price' } => {
+  ): { montant: number } | { manque: 'reading' | 'price' | 'depart' } => {
     const c = consumption(reading)
+    /* TROISIÈME CAUSE, ET ELLE N'APPELLE AUCUN GESTE. Un PREMIER relevé porte
+       son index mais pas de point de départ : il n'y a rien à corriger, rien à
+       aller chercher — la consommation naîtra le mois prochain. La confondre
+       avec « relevé manquant » enverrait quelqu'un sur le terrain pour un
+       compteur qu'on vient justement de relever. */
+    if (
+      (reading.waterCurrent !== null && reading.waterPrevious === null) ||
+      (reading.powerCurrent !== null && reading.powerPrevious === null)
+    )
+      return { manque: 'depart' }
     if (c.water === null || c.power === null) return { manque: 'reading' }
     if (reading.waterPrice === null || reading.powerPrice === null) return { manque: 'price' }
     return { montant: c.water * reading.waterPrice + c.power * reading.powerPrice }
@@ -157,6 +201,12 @@ export function Meters() {
         title={t('app.meters.title')}
         description={t('app.meters.subtitle')}
         actions={
+          <>
+            {peutRelever && (
+              <Button icon="plus" onClick={() => setSaisieOuverte(true)}>
+                {t('app.readings.title')}
+              </Button>
+            )}
           <Button
             variant="secondary"
             icon="download"
@@ -202,6 +252,7 @@ export function Meters() {
           >
             {t('app.exportStatement')}
           </Button>
+          </>
         }
         debordement={
           /* LA SECONDE ACTION RENTRE À LA MAISON. Elle vivait sur sa propre
@@ -221,6 +272,7 @@ export function Meters() {
 
 
       {tarifsOuverts && <TariffsModal open onClose={() => setTarifsOuverts(false)} />}
+      {saisieOuverte && <RecordReadingModal onClose={() => setSaisieOuverte(false)} />}
 
       <NoteDePerimetre className="mb-4" />
       <div className={GRILLE_TROIS_INDICATEURS}>
@@ -343,6 +395,10 @@ export function Meters() {
             render: (r) =>
               r.waterCurrent === null ? (
                 <span className="text-muted">—</span>
+              ) : r.waterPrevious === null ? (
+                /* PREMIER RELEVÉ : on montre l'index posé, pas une consommation
+                   qu'on ne sait pas calculer. */
+                <span className="text-caps text-muted">{n.integer(r.waterCurrent)}</span>
               ) : (
                 <span>
                   {n.integer(r.waterCurrent - r.waterPrevious)}{' '}
@@ -375,6 +431,8 @@ export function Meters() {
             render: (r) =>
               r.powerCurrent === null ? (
                 <span className="text-muted">—</span>
+              ) : r.powerPrevious === null ? (
+                <span className="text-caps text-muted">{n.integer(r.powerCurrent)}</span>
               ) : (
                 <span>
                   {n.integer(r.powerCurrent - r.powerPrevious)}{' '}
@@ -403,7 +461,11 @@ export function Meters() {
               // tarif de l'autre.
               return (
                 <StatusPill tone="warn" size="sm">
-                  {r2.manque === 'reading' ? t('app.meters.missing') : t('app.meters.noPrice')}
+                  {r2.manque === 'reading'
+                    ? t('app.meters.missing')
+                    : r2.manque === 'depart'
+                      ? t('app.meters.firstReading')
+                      : t('app.meters.noPrice')}
                 </StatusPill>
               )
             },

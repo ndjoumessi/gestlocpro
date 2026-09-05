@@ -582,6 +582,33 @@ export const api = {
   ) => requete<T>(`/parks/${parkId}/tariffs`, { method: 'POST', body: JSON.stringify(corps) }),
 
   /**
+   * Saisit un relevé de compteur.
+   *
+   * La route qui manquait sous un écran entier : `MeterReading` était lu,
+   * affiché, exporté — et écrit par le seul semis de démonstration. Sur un parc
+   * réel, l'écran des relevés n'a jamais eu une ligne à montrer.
+   *
+   * La réponse porte `charge`, qui dit ce que le relevé a fait à l'ARGENT :
+   * l'échéance a été recalculée, ou elle n'existe pas encore, ou un versement
+   * est déjà tombé dessus et on n'y touche plus. L'écran n'a aucun autre moyen
+   * de le savoir.
+   */
+  recordReading: <T>(
+    parkId: string,
+    unitId: string,
+    corps: {
+      utility: 'water' | 'power'
+      periodStart: string
+      indexValue: number
+      readAt: string
+    },
+  ) =>
+    requete<T>(`/parks/${parkId}/units/${unitId}/readings`, {
+      method: 'POST',
+      body: JSON.stringify(corps),
+    }),
+
+  /**
    * Corrige un prix posé — son montant, sa date de prise d'effet.
    *
    * PAS `utility` : un prix de l'eau n'est pas un prix du courant mal rangé,

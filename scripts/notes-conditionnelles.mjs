@@ -196,6 +196,27 @@ const REGISTRE = {
   'auth.reset.invalidBody': { adresse: '/reinitialiser' },
 
   /* ── Les aveux, et leur motif ── */
+  'app.readings.chargeNotCalled': {
+    nonMesurable:
+      'Elle ne paraît qu’APRÈS un relevé ENREGISTRÉ dont l’échéance du mois n’a pas ' +
+      'encore été appelée. La démonstration n’écrit rien — `recordReading` y rend un ' +
+      'refus, et le lui faire simuler peindrait une conséquence qui n’a pas eu lieu, ' +
+      'ce que `check-i18n` refuse par ailleurs sous le nom d’aveu de simulation. ' +
+      'CE QUI LA RENDRAIT MESURABLE EST NOMMÉ : `espace-connecte` monte déjà un parc ' +
+      'réel avec son immeuble, son logement et son locataire ; poser un relevé par ' +
+      'l’écran et déclarer la note dans sa table `NOTES_SOUS_APP` la peindrait pour de ' +
+      'vrai. C’est le geste suivant, et il appartient au lot d’après.',
+  },
+  'app.readings.chargeAlreadyPaid': {
+    nonMesurable:
+      'Même empêchement que la note voisine, et un cran plus loin : elle demande une ' +
+      'échéance APPELÉE puis un versement REÇU avant le relevé — trois écritures que ' +
+      'seule une vraie session produit. Elle est tenue en jsdom par le cas serveur ' +
+      '`refacturationReelle.test.ts`, qui vérifie que l’échéance ne bouge pas et que la ' +
+      'réponse porte `already_paid` ; ce que personne n’a encore vu, c’est la PHRASE à ' +
+      'l’écran. Même remède que ci-dessus.',
+  },
+
   'app.tenant.accessEnds': {
     nonMesurable:
       'Elle ne paraît qu’à un locataire dont TOUS les baux sont terminés, dans la ' +

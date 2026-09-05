@@ -294,9 +294,19 @@ export interface DateParts {
 /** Relevés de compteurs du mois. */
 export interface MeterReading {
   unitId: string
-  waterPrevious: number
+  /**
+   * L'index ANTÉRIEUR, ou `null` quand il n'y en a pas.
+   *
+   * `number` tout court racontait qu'il y en a toujours un — et la projection
+   * repliait l'absence sur 0, ce qui faisait de l'index ENTIER une
+   * consommation : 4 120 kWh facturés le premier mois d'un compteur qui tourne
+   * depuis des années. Invisible en démonstration, où chaque relevé a son
+   * antérieur ; devenu de l'argent réclamé le jour où la refacturation atteint
+   * une échéance.
+   */
+  waterPrevious: number | null
   waterCurrent: number | null
-  powerPrevious: number
+  powerPrevious: number | null
   powerCurrent: number | null
   readAt: DateParts | null
   /**
@@ -716,7 +726,11 @@ export const READING_HISTORY_DEMO: {
 
   for (const r of READINGS) {
     for (const utility of ['water', 'power'] as const) {
-      const precedent = utility === 'water' ? r.waterPrevious : r.powerPrevious
+      /* LA DÉMONSTRATION DONNE UN ANTÉRIEUR À CHACUN DE SES RELEVÉS, et c'est
+         justement pourquoi le défaut du `?? 0` ne s'y voyait pas. Le repli à 0
+         ici ne fabrique donc rien : il satisfait un type devenu nullable là où
+         la donnée, elle, ne l'est jamais. */
+      const precedent = (utility === 'water' ? r.waterPrevious : r.powerPrevious) ?? 0
       const valeur = utility === 'water' ? r.waterCurrent : r.powerCurrent
 
       lignes.push({ unitId: r.unitId, utility, periodStart: isoDeLaPeriode(precedente), indexValue: precedent })

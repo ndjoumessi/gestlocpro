@@ -292,6 +292,13 @@ const MODALES = [
   */
   { nom: 'EditBuilding', adresse: '/demo/parc', bouton: /^Corriger l’immeuble Résidence Bonamoussadi$|^Edit building Résidence Bonamoussadi$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'EditUnit', adresse: '/demo/parc', bouton: /^Corriger le logement A1$|^Edit unit A1$/, note: /ne changent pas|stay unchanged/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  /*
+    LA SAISIE D'UN RELEVÉ, née avec le lot qui rend vrai le mot « Refacturé ».
+    Quatre états comme toute modale ordinaire. Les plafonds sont ceux du premier
+    relevé de ce script — le geste n'a pas d'`apres`, la note de conséquence
+    n'apparaissant qu'après un enregistrement, que la démonstration ne fait pas.
+  */
+  { nom: 'RecordReading', adresse: '/demo/releves', bouton: /^Saisir un relevé$|^Record a reading$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'OpenWork', adresse: '/demo/travaux', bouton: /^Ouvrir un chantier$|^Open a job$/, defil: { 360: 130, 1280: 0 }, defilLarge: { 360: 138, 1280: 0 }, avant: { 360: 1056, 1280: 913 } },
   { nom: 'RecordPayment', adresse: '/demo/paiements', bouton: /^Enregistrer un paiement$|^Record a payment$/, defil: { 360: 460, 1280: 40 }, defilLarge: { 360: 493, 1280: 47 }, avant: { 360: 522, 1280: 236 } },
   /*
@@ -647,11 +654,14 @@ const LANGUES = ['fr', 'en']
   trou de cet écran : un immeuble ne se corrigeait pas une fois qu'il portait un
   logement, et un logement ne se corrigeait pas du tout.
 
+  92 → 96 (2026-09-05) : `RecordReading`, la saisie d'un relevé de compteur —
+  le geste qui manquait sous l'écran des relevés, qu'aucune route n'alimentait.
+
   LES DEUX TIENNENT SANS DÉFILEMENT AUX QUATRE ÉTATS — 442 px de boîte au plus
   large pour l'immeuble, 708 pour le logement, note du loyer comprise. C'est
   mesuré, pas espéré : le plafond de zéro est le relevé lui-même.
 */
-const ATTENDUS = 92
+const ATTENDUS = 96
 const NON_OUVRABLES_ATTENDUES = 0
 
 /**

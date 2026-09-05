@@ -77,6 +77,9 @@ const MODALES: Modale[] = [
      silencieusement le premier d'une liste est ce que ce fichier refuse. */
   { nom: 'Corriger un immeuble', adresse: '/demo/parc', bouton: /^Corriger l’immeuble Résidence Bonamoussadi$/, forme: 'saisie' },
   { nom: 'Corriger un logement', adresse: '/demo/parc', bouton: /^Corriger le logement A1$/, forme: 'saisie' },
+  /* LA SAISIE D'UN RELEVÉ, entrée avec le lot qui la crée. Ce registre est écrit
+     à la main et rien ne rougit quand une modale neuve l'oublie. */
+  { nom: 'Saisir un relevé', adresse: '/demo/releves', bouton: /^Saisir un relevé$/, forme: 'saisie' },
   { nom: 'Ouvrir un chantier', adresse: '/demo/travaux', bouton: /^Ouvrir un chantier$/, forme: 'saisie' },
   { nom: 'Enregistrer un paiement', adresse: '/demo/paiements', bouton: /^Enregistrer un paiement$/, forme: 'saisie' },
   /*
@@ -432,9 +435,9 @@ describe('le clavier des modales', () => {
    * rendrait la garde d'accord avec elle-même, piège trouvé par la même
    * mutation trois lots de suite.
    */
-  it('a bien joué les dix-neuf modales déclarées', () => {
-    expect(MODALES.length).toBe(19)
-    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(19)
+  it('a bien joué les vingt modales déclarées', () => {
+    expect(MODALES.length).toBe(20)
+    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(20)
     /* LES `lecture` SONT NOMMÉES, et l'écrire ici les protège : passer une
        modale de saisie en `lecture` pour faire taire un champ mal libellé est
        le contournement le plus facile de ce fichier. Il ferait rougir.

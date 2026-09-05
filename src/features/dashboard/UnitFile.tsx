@@ -531,8 +531,13 @@ export function UnitFile() {
                  s'appelait « Relevés » et montrait 16 m³, ce qui se lit comme un
                  compteur à 16. */
               label={t('app.unitFile.waterUse')}
+              /* LES DEUX INDEX, OU L'ABSENCE. Un premier relevé n'a pas de
+                 point de départ, et la différence se calculait sur un antérieur
+                 replié à 0 — le compteur entier passait pour la consommation du
+                 mois. « Aucun relevé » est la phrase juste tant qu'il n'y en a
+                 qu'un. */
               valeur={
-                releve && releve.waterCurrent !== null
+                releve && releve.waterCurrent !== null && releve.waterPrevious !== null
                   ? `${releve.waterCurrent - releve.waterPrevious} m³`
                   : null
               }

@@ -327,6 +327,27 @@ interface PortfolioContextValue {
    * lui, refuse dès le premier logement — et c'est ce qui rendait une faute de
    * frappe définitive pour la vie du parc.
    */
+  /**
+   * Saisit un relevé de compteur, et dit ce qu'il a fait à l'ARGENT.
+   *
+   * Trois issues côté échéance, et l'écran doit pouvoir les distinguer : elle a
+   * été recalculée, elle n'existe pas encore — l'appel de loyers la calculera —,
+   * ou un versement est déjà tombé dessus et on n'y touche plus. Un booléen les
+   * confondrait, et le troisième cas est celui qu'il faut EXPLIQUER : le relevé
+   * est bien saisi, et pourtant rien n'a bougé sur ce qui est dû.
+   */
+  recordReading: (
+    unitId: string,
+    corps: {
+      utility: 'water' | 'power'
+      periodStart: string
+      indexValue: number
+      readAt: string
+    },
+  ) => Promise<
+    | { ok: true; charge: { updated: boolean; reason?: 'not_called' | 'already_paid' } }
+    | { ok: false; erreur: 'reading_exists' | 'index_recule' | 'autre' }
+  >
   updateBuilding: (
     buildingId: string,
     corps: { name?: string; district?: string },
@@ -1633,6 +1654,61 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [parkId, signalerEchec, units],
   )
 
+  /**
+   * SAISIR UN RELEVÉ.
+   *
+   * Rien n'est posé localement : la consommation, le montant refacturé et
+   * l'échéance recalculée se dérivent tous du serveur, et les recopier ici
+   * ferait une seconde vérité qui divergerait au premier arrondi. On recharge
+   * le portefeuille, qui les rend tous les trois d'un coup.
+   */
+  const recordReading = useCallback(
+    async (
+      unitId: string,
+      corps: {
+        utility: 'water' | 'power'
+        periodStart: string
+        indexValue: number
+        readAt: string
+      },
+    ) => {
+      if (!parkId) {
+        /* HORS SESSION — la démonstration n'écrit rien, et le dire vaut mieux
+           qu'un bouton qui s'enfonce sans effet. L'écran traduit `autre`. */
+        return { ok: false as const, erreur: 'autre' as const }
+      }
+      try {
+        const r = await api.recordReading<{
+          charge: { updated: boolean; reason?: 'not_called' | 'already_paid' }
+        }>(parkId, unitId, corps)
+        /* ON RELIT LE PARC plutôt que de deviner l'état résultant : la
+           consommation, le prix applicable et l'échéance recalculée viennent
+           tous du serveur, et deux calculs de la même chose finissent toujours
+           par diverger. C'est le motif déjà écrit pour la création d'une fiche. */
+        const parc = await chargerParc(parkId)
+        setReadings(parc.readings)
+        setUnits(parc.units)
+        return { ok: true as const, charge: r.charge }
+      } catch (erreur) {
+        /* LES DEUX REFUS ONT CHACUN LEUR REMÈDE — corriger l'index, ou choisir
+           un autre mois. Les confondre avec une panne obligerait à deviner, et
+           c'est la règle que la modale des tarifs applique déjà à son 409. */
+        if (erreur instanceof ApiError && erreur.status === 409) {
+          return {
+            ok: false as const,
+            erreur:
+              erreur.code === 'index_recule'
+                ? ('index_recule' as const)
+                : ('reading_exists' as const),
+          }
+        }
+        signalerEchec(erreur)
+        return { ok: false as const, erreur: 'autre' as const }
+      }
+    },
+    [parkId, signalerEchec],
+  )
+
   const remindRent = useCallback(
     async (leaseIds: string[]): Promise<{ sent: number; skipped: number }> => {
       if (!parkId || leaseIds.length === 0) return { sent: 0, skipped: leaseIds.length }
@@ -1907,6 +1983,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       removeTenant,
       updateTenant,
       updateBuilding,
+      recordReading,
       updateUnit,
       remindRent,
       callRent,
@@ -2003,6 +2080,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       removeTenant,
       updateTenant,
       updateBuilding,
+      recordReading,
       updateUnit,
       remindRent,
       callRent,

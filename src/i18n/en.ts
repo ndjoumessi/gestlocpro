@@ -838,6 +838,25 @@ export const en: Dictionary = {
       lateDays: 'Days late',
     },
 
+    readings: {
+      title: 'Record a reading',
+      description:
+        'A meter shows an index, not a consumption: what gets rebilled is the gap with the previous reading.',
+      readAt: 'Read on',
+      readAtHint: 'The rebilled period is the month of this date.',
+      indexHint: 'The index shown on the meter, not the consumption.',
+      unitRequired: 'Pick a unit.',
+      oneRequired: 'Enter at least one of the two indexes.',
+      indexInvalid: 'Enter a whole index, zero or above.',
+      indexBackwards: 'Index went backwards for {utility}: a meter does not run down.',
+      alreadyRecorded: 'A reading already exists for {utility} this month.',
+      saved: '{count} readings recorded',
+      saved_one: '{count} reading recorded',
+      chargeNotCalled:
+        'Rent has not been called for this month yet: the consumption will enter the charge when it is.',
+      chargeAlreadyPaid:
+        'A payment was already received for this month: the charge stays as it is, otherwise the receipt already handed over would disagree with the statement.',
+    },
     tariffs: {
       title: 'Rebilling prices',
       description:
@@ -918,6 +937,7 @@ export const en: Dictionary = {
       rebilled: 'Re-billed',
       readAt: 'Read on',
       missing: 'Reading missing',
+      firstReading: 'First reading',
       noPrice: 'No rate set',
       missingCount: '{count} readings missing for this period',
       missingCount_one: '{count} reading missing for this period',
@@ -1242,6 +1262,9 @@ export const en: Dictionary = {
         rent: {
           call: 'Rent called',
           remind: 'Reminder sent',
+        },
+        reading: {
+          record: 'Meter reading recorded',
         },
         tariff: {
           set: 'Rebilling price set',

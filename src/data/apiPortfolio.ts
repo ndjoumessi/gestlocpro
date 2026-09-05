@@ -375,16 +375,18 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
       for (const r of data.readings) {
         const ligne = parUnite.get(r.unitId) ?? {
           unitId: r.unitId,
-          waterPrevious: 0,
+          /* `null` ET NON 0 : « pas d'index antérieur » n'est pas « index à
+             zéro ». Le second fait de l'index courant une consommation. */
+          waterPrevious: null,
           waterCurrent: null,
-          powerPrevious: 0,
+          powerPrevious: null,
           powerCurrent: null,
           readAt: null,
           waterPrice: null,
           powerPrice: null,
         }
         if (r.utility === 'water') {
-          ligne.waterPrevious = r.previousIndex ?? 0
+          ligne.waterPrevious = r.previousIndex
           ligne.waterCurrent = r.indexValue
           // `?? null` et non `?? 0` : un prix absent n'est pas un prix nul. Le
           // second afficherait « 0 FCFA » sous les yeux du locataire, ce qui
@@ -392,7 +394,7 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
           // vérité.
           ligne.waterPrice = r.unitPriceMinor ?? null
         } else {
-          ligne.powerPrevious = r.previousIndex ?? 0
+          ligne.powerPrevious = r.previousIndex
           ligne.powerCurrent = r.indexValue
           ligne.powerPrice = r.unitPriceMinor ?? null
         }

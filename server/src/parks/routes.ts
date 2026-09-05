@@ -2360,6 +2360,66 @@ function prixApplicable(
 }
 
 /**
+ * CE QU'UNE PÉRIODE DOIT EN EAU ET EN COURANT, POUR UN LOGEMENT.
+ *
+ * ═══ DEUX RELEVÉS FONT UNE CONSOMMATION, UN SEUL N'EN FAIT PAS ═══
+ *
+ * Un compteur porte un INDEX, pas une consommation : la seconde est la
+ * différence entre deux index. Sans antérieur, il n'y a pas de point de départ,
+ * donc RIEN à facturer — et surtout pas l'index lui-même.
+ *
+ * Le client faisait exactement cela : `previousIndex ?? 0`, donc un compteur
+ * électrique à 4 120 kWh facturait 4 120 kWh le premier mois. Le défaut ne se
+ * voyait pas — la démonstration donne un antérieur à chacun de ses relevés — et
+ * ne coûtait rien tant que rien n'était facturé. Il devient de l'argent réclamé
+ * dès que cette fonction sert.
+ *
+ * ═══ ZÉRO ET « PAS DE PRIX » NE SE DISTINGUENT PAS ICI, ET C'EST ASSUMÉ ═══
+ *
+ * `RentCharge.waterMinor` est un `Int` avec défaut 0 : la colonne ne sait pas
+ * dire « on ne sait pas ». Une échéance sans tarif porte donc 0, comme une
+ * échéance sans consommation. La NUANCE vit à l'écran des relevés, qui montre la
+ * quantité sans montant et distingue « relevé manquant » de « tarif non fixé » —
+ * deux manques qui n'appellent pas le même geste, l'un une tournée, l'autre
+ * trente secondes de saisie.
+ */
+function consommationFacturable(courant: number | null, precedent: number | null): number | null {
+  if (courant === null || precedent === null) return null
+  /* UN COMPTEUR NE REDESCEND PAS. La route de saisie refuse déjà un index qui
+     recule ; ici on se protège d'une donnée d'avant cette garde plutôt que de
+     rendre une consommation négative, c'est-à-dire un avoir silencieux. */
+  if (courant < precedent) return null
+  return courant - precedent
+}
+
+/**
+ * Les deux montants d'une période, pour un logement.
+ *
+ * `releves` porte TOUS les relevés du logement jusqu'à la période comprise,
+ * triés du plus récent au plus ancien : le courant est celui de la période, le
+ * précédent le premier qui vient après lui dans cet ordre. On ne suppose pas
+ * que le précédent soit le mois d'avant — une tournée sautée laisse un trou, et
+ * la consommation de deux mois se facture alors en une fois, ce qui est juste.
+ */
+function montantsDeConsommation(
+  releves: { utility: string; periodStart: Date; indexValue: number }[],
+  periode: Date,
+  tarifs: { utility: string; unitPriceMinor: number; effectiveFrom: Date }[],
+): { waterMinor: number; powerMinor: number } {
+  const pour = (utility: 'water' | 'power') => {
+    const siens = releves
+      .filter((r) => r.utility === utility && +r.periodStart <= +periode)
+      .sort((a, b) => +b.periodStart - +a.periodStart)
+    const courant = siens[0] && +siens[0].periodStart === +periode ? siens[0].indexValue : null
+    const precedent = courant === null ? null : (siens[1]?.indexValue ?? null)
+    const conso = consommationFacturable(courant, precedent)
+    const prix = prixApplicable(tarifs, utility, periode)
+    return conso === null || prix === null ? 0 : conso * prix
+  }
+  return { waterMinor: pour('water'), powerMinor: pour('power') }
+}
+
+/**
  * Émet un code d'invitation pour rejoindre le parc.
  *
  * Le modèle décrivait ces codes depuis l'origine et rien ne les écrivait :
@@ -6900,8 +6960,41 @@ parksRouter.post(
         // Un bail qui commence APRÈS la période ne doit rien pour elle.
         startsOn: { lte: debut },
       },
-      select: { id: true, rentMinor: true, dueDayOfMonth: true },
+      /* `unitId` EN PLUS : c'est par le logement que la consommation se
+         rattache — un compteur appartient aux murs, pas au bail. */
+      select: { id: true, unitId: true, rentMinor: true, dueDayOfMonth: true },
     })
+
+    /**
+     * L'EAU ET LE COURANT ENTRENT DANS L'APPEL, et c'est ce qui rend vrai le
+     * mot « Refacturé » de l'écran des relevés.
+     *
+     * `RentCharge.waterMinor` et `powerMinor` existaient au schéma, la quittance
+     * les servait déjà et les additionnait au loyer pour son `dueMinor` : le
+     * tuyau d'aval était posé, et RIEN ne l'alimentait. Aucune route n'écrivait
+     * ces deux colonnes ; seul le semis de démonstration le faisait.
+     *
+     * DEUX REQUÊTES POUR TOUT LE PARC, et non deux par bail : les relevés
+     * jusqu'à la période et les tarifs se lisent en bloc, puis se répartissent
+     * en mémoire. Un parc de cent logements ferait sinon deux cents allers.
+     */
+    const [releves, tarifs] = await Promise.all([
+      prisma.meterReading.findMany({
+        where: { unitId: { in: baux.map((b) => b.unitId) }, periodStart: { lte: debut } },
+        select: { unitId: true, utility: true, periodStart: true, indexValue: true },
+      }),
+      prisma.utilityTariff.findMany({
+        where: { parkId },
+        orderBy: { effectiveFrom: 'desc' },
+        select: { utility: true, unitPriceMinor: true, effectiveFrom: true },
+      }),
+    ])
+    const relevesParLogement = new Map<string, typeof releves>()
+    for (const r of releves) {
+      const liste = relevesParLogement.get(r.unitId) ?? []
+      liste.push(r)
+      relevesParLogement.set(r.unitId, liste)
+    }
 
     /**
      * `skipDuplicates` plutôt qu'une lecture préalable : l'unicité
@@ -6919,6 +7012,11 @@ parksRouter.post(
         // Le loyer du BAIL, figé à l'émission : le revaloriser plus tard ne
         // doit pas réécrire un mois déjà appelé.
         rentMinor: bail.rentMinor,
+        /* FIGÉS À L'ÉMISSION eux aussi, et pour la même raison : corriger un
+           tarif plus tard ne doit pas réécrire un mois déjà appelé. C'est
+           l'exact inverse de ce que l'écran des relevés montre, qui recalcule à
+           chaque lecture — et c'est voulu : l'écran EXPLORE, l'échéance ENGAGE. */
+        ...montantsDeConsommation(relevesParLogement.get(bail.unitId) ?? [], debut, tarifs),
         dueOn: new Date(
           Date.UTC(debut.getUTCFullYear(), debut.getUTCMonth(), bail.dueDayOfMonth),
         ),
@@ -6944,6 +7042,196 @@ parksRouter.post(
     res.status(200).json({ issued: count, leases: baux.length })
   },
 )
+
+/**
+ * SAISIT UN RELEVÉ DE COMPTEUR.
+ *
+ * ═══ LA ROUTE QUI MANQUAIT SOUS UN ÉCRAN ENTIER ═══
+ *
+ * `MeterReading` existait au schéma, la lecture du portefeuille le servait,
+ * l'écran des relevés l'affichait avec ses index, ses consommations, son
+ * « Total refacturé » et son export CSV. AUCUNE ROUTE NE L'ÉCRIVAIT. Seul le
+ * semis de démonstration en posait : sur un parc réel, cet écran n'a jamais eu
+ * la moindre ligne à montrer, et n'en aurait jamais eu.
+ *
+ * ═══ OUVERTE AU GESTIONNAIRE ═══
+ *
+ * La lecture des tarifs dit déjà pourquoi : « le gestionnaire refacture au
+ * quotidien ». Relever un compteur est le geste de terrain par excellence —
+ * c'est lui qui fait la tournée. Ce qu'il ne fait pas, c'est FIXER le prix : ça
+ * reste au propriétaire, et ce partage ne bouge pas.
+ *
+ * ═══ ELLE RATTRAPE L'ÉCHÉANCE, ET ELLE DIT SI ELLE L'A FAIT ═══
+ *
+ * L'appel de loyers n'écrit qu'une fois par période — `skipDuplicates`, et le
+ * motif est bon. Un relevé saisi APRÈS l'appel ne serait donc jamais facturé, et
+ * rien ne le dirait : un piège silencieux dans de l'argent. La route recalcule
+ * donc l'échéance de la période.
+ *
+ * SAUF SI UN VERSEMENT EST DÉJÀ TOMBÉ DESSUS. Déplacer ce qui est dû après un
+ * encaissement ferait dire à un reçu autre chose qu'à la quittance qui le suit.
+ * On écrit quand même le relevé — c'est un fait de terrain, il ne se refuse pas
+ * — et la réponse DIT que l'échéance n'a pas bougé, avec son motif. L'écran a de
+ * quoi expliquer plutôt que de laisser croire.
+ */
+const schemaReleve = z.object({
+  utility: z.enum(['water', 'power']),
+  /* Le premier du mois, comme partout ailleurs dans ce fichier : une période de
+     facturation est un MOIS, et le jour ne s'invente pas. */
+  periodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date attendue au format AAAA-MM-JJ'),
+  /**
+   * L'index du compteur, entier et positif ou nul.
+   *
+   * `nonnegative` et non `positive` : un compteur neuf affiche 0, et le refuser
+   * interdirait de poser le point de départ d'un logement qui vient d'être
+   * raccordé — exactement le relevé dont la période suivante a besoin.
+   */
+  indexValue: z.number().int().nonnegative(),
+  readAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date attendue au format AAAA-MM-JJ'),
+})
+
+parksRouter.post(
+  '/:parkId/units/:unitId/readings',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête : un gestionnaire borné ne
+       relève que les compteurs qu'on lui a confiés. */
+    const perimetreUnite = porteeDesUnites(req.adhesion!)
+    const unitId = z.string().uuid().parse(req.params.unitId)
+    const corps = schemaReleve.parse(req.body)
+    const periode = new Date(`${corps.periodStart}T00:00:00.000Z`)
+
+    const logement = await prisma.unit.findFirst({
+      where: { id: unitId, building: { parkId }, ...perimetreUnite },
+      select: { id: true },
+    })
+    if (!logement) {
+      // 404 et non 403 : un 403 dirait déjà que le logement existe ailleurs.
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    /**
+     * UN COMPTEUR NE REDESCEND PAS.
+     *
+     * Un index inférieur au dernier relevé antérieur est une faute de frappe, et
+     * l'accepter facturerait une consommation NÉGATIVE — un avoir silencieux sur
+     * la quittance du locataire, que personne ne lirait comme tel.
+     *
+     * Le cas légitime existe — un compteur REMPLACÉ repart de zéro — et ce refus
+     * le bloque. On le refuse quand même : personne ne l'a demandé, et un remède
+     * inventé pour un cas jamais rencontré coûte plus qu'il ne rapporte. Le jour
+     * où ça arrivera, il faudra une notion de compteur, pas une exception ici.
+     */
+    const anterieur = await prisma.meterReading.findFirst({
+      where: { unitId, utility: corps.utility, periodStart: { lt: periode } },
+      orderBy: { periodStart: 'desc' },
+      select: { indexValue: true },
+    })
+    if (anterieur && corps.indexValue < anterieur.indexValue) {
+      res.status(409).json({ error: 'index_recule' })
+      return
+    }
+
+    let releve
+    try {
+      releve = await prisma.meterReading.create({
+        data: {
+          unitId,
+          utility: corps.utility,
+          periodStart: periode,
+          indexValue: corps.indexValue,
+          readAt: new Date(`${corps.readAt}T00:00:00.000Z`),
+          /* QUI A RELEVÉ. La colonne existait et personne ne l'écrivait — c'est
+             la seule chose qui permette de retrouver l'auteur d'un index
+             contesté, et une tournée se conteste. */
+          capturedById: req.compteId!,
+        },
+        select: { id: true, utility: true, periodStart: true, indexValue: true, readAt: true },
+      })
+    } catch (err) {
+      /* L'unicité `(logement, énergie, période)` est au schéma : deux index pour
+         le même mois rendraient indéterminable la consommation facturée. La
+         correction d'un relevé n'existe pas encore — voir le lot. */
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        res.status(409).json({ error: 'reading_exists' })
+        return
+      }
+      throw err
+    }
+
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'reading.record',
+        entity: 'MeterReading',
+        entityId: releve.id,
+        payload: {
+          utility: releve.utility,
+          indexValue: releve.indexValue,
+          periodStart: corps.periodStart,
+        },
+      },
+    })
+
+    res.status(201).json({
+      reading: {
+        id: releve.id,
+        utility: releve.utility,
+        periodStart: corps.periodStart,
+        indexValue: releve.indexValue,
+        readAt: corps.readAt,
+      },
+      /* CE QUE LE RELEVÉ A FAIT À L'ARGENT, dit à l'appelant plutôt que deviné
+         par lui : l'écran doit pouvoir expliquer pourquoi une échéance n'a pas
+         bougé, et il n'a aucun moyen de le savoir autrement. */
+      charge: await rattraperLEcheance(unitId, periode, parkId),
+    })
+  },
+)
+
+/**
+ * Recalcule l'échéance d'une période après un relevé, si c'est légitime.
+ *
+ * Trois issues, et chacune se nomme : l'échéance a bougé ; elle n'existe pas
+ * encore — l'appel de loyers la calculera lui-même le moment venu ; un
+ * versement est déjà tombé dessus, et on n'y touche plus.
+ */
+async function rattraperLEcheance(
+  unitId: string,
+  periode: Date,
+  parkId: string,
+): Promise<{ updated: boolean; reason?: 'not_called' | 'already_paid' }> {
+  const echeance = await prisma.rentCharge.findFirst({
+    where: { periodStart: periode, lease: { unitId } },
+    select: { id: true, _count: { select: { payments: true } } },
+  })
+  if (!echeance) return { updated: false, reason: 'not_called' }
+  /* DÉJÀ RÉGLÉE, EN TOUT OU EN PARTIE : on ne déplace pas une dette qu'on a
+     commencé à solder. Le reçu déjà remis dirait autre chose que la quittance. */
+  if (echeance._count.payments > 0) return { updated: false, reason: 'already_paid' }
+
+  const [releves, tarifs] = await Promise.all([
+    prisma.meterReading.findMany({
+      where: { unitId, periodStart: { lte: periode } },
+      select: { utility: true, periodStart: true, indexValue: true },
+    }),
+    prisma.utilityTariff.findMany({
+      where: { parkId },
+      orderBy: { effectiveFrom: 'desc' },
+      select: { utility: true, unitPriceMinor: true, effectiveFrom: true },
+    }),
+  ])
+
+  await prisma.rentCharge.update({
+    where: { id: echeance.id },
+    data: montantsDeConsommation(releves, periode, tarifs),
+  })
+  return { updated: true }
+}
 
 /**
  * Supprime un versement.
