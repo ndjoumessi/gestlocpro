@@ -15,6 +15,7 @@ import {
   SkeletonTable,
 } from '@/components/primitives/Skeleton'
 import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
+import { AU_DELA_LG, useAuDela } from '@/lib/useAuDela'
 import { NoteDePerimetre } from './NoteDePerimetre'
 import { Button } from '@/components/primitives/Button'
 import { Modal } from '@/components/primitives/Modal'
@@ -193,6 +194,11 @@ export function Payments() {
    * énoncés comme des faits coûtent plus cher qu'ailleurs — c'est sur eux qu'on
    * décide d'appeler quelqu'un.
    */
+  /* LE MÊME SEUIL QUE LA BASCULE EN FICHES, et posé AVANT `if (loading)` : un
+     retour anticipé ne se franchit qu'une fois tous les crochets posés. L'écran
+     des locataires l'a payé une heure plus tôt — « Rendered more hooks than
+     during the previous render », cinq cas rouges d'un coup. */
+  const enTableau = useAuDela(AU_DELA_LG)
   if (loading) return <PaymentsSkeleton isTenant={isTenant} />
 
 
@@ -357,7 +363,27 @@ export function Payments() {
           {/* LA MÊME COMPARAISON QUE SUR LE TABLEAU DE BORD, et calculée au même
               endroit : les deux écrans affichent le MÊME nombre — `collected` —
               et une variation calculée deux fois pourrait diverger deux fois.
-              Voir `variationDesEncaissements`. */}
+              Voir `variationDesEncaissements`.
+
+              ET C'EST PRÉCISÉMENT POURQUOI ELLE PART SOUS `lg`. Ce commentaire
+              disait déjà « le MÊME nombre » ; il manquait d'en tirer la
+              conséquence sur un téléphone, où la rangée s'empile au lieu de
+              s'aligner. Relevé le 2026-09-06, à 375 px :
+
+                  /demo             « Encaissé ce mois 950 000 FCFA −24 %
+                                      vs. 1 250 000 FCFA le mois dernier »
+                  /demo/paiements   « Payé             950 000 FCFA −24 %
+                                      vs. 1 250 000 FCFA le mois dernier »
+
+              Mot pour mot, à un onglet de distance dans la barre du bas, pour
+              130 px sur les 940 qui séparaient le haut de l'écran de la première
+              ligne de paiement.
+
+              « En retard », lui, RESTE : 412 000 FCFA, que le tableau de bord
+              n'a pas — il porte « Reste à percevoir 447 000 », qui compte aussi
+              ce qui n'est pas encore échu. Trente-cinq mille francs les
+              séparent, et c'est la question de cet écran. */}
+          {enTableau && (
           <StatCard
             icone="card"
             label={t('app.dashboard.recoveryCollected')}
@@ -369,11 +395,16 @@ export function Payments() {
                 : undefined
             }
           />
+          )}
+          {/* MÊME RAISON : « Loyers attendus 1 397 000 FCFA » est sur le tableau
+              de bord au FRANC PRÈS, avec en plus son compte de baux actifs. */}
+          {enTableau && (
           <StatCard
             icone="layers"
             label={t('app.dashboard.expected')}
             value={money(kpis.expected, { compact: true })}
           />
+          )}
         </div>
       )}
 
