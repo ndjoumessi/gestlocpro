@@ -133,7 +133,13 @@ export function Portfolio() {
         .toLowerCase()
       return haystack.includes(needle)
     })
-  }, [query, building, units, t])
+    /* `buildingById` MANQUAIT, et la recherche s'en sert pour deux champs de sa
+       botte de foin — le nom de l'immeuble et son quartier. Elle venait du
+       contexte, donc son identité suit `buildings` ; sans elle ici, un immeuble
+       renommé ne devenait cherchable qu'au prochain changement de `units`.
+       C'était vrai EN PRATIQUE — le portefeuille est remplacé en entier après
+       une correction — mais tenu par un enchaînement, pas par la dépendance. */
+  }, [query, building, units, t, buildingById])
 
   /**
    * SORTIR L'ÉTAT DU PARC, une ligne par logement.

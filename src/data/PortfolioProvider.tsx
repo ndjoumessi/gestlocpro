@@ -1900,6 +1900,16 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       markAlertsRead,
       reset,
       stored,
+      /* DEUX MÉMOÏSÉES QUI MANQUAIENT, et leur absence PÉRIMAIT le contexte.
+         `tenantUnitIds` est un `useMemo` et `poserLaReponseDeGestion` un
+         `useCallback` : leur identité CHANGE quand leurs propres entrées
+         changent. Absentes d'ici, la valeur du contexte ne se recalculait pas
+         avec elles — et `isMine(unitId)`, qui lit `tenantUnitIds`, répondait
+         depuis une liste morte après une modification des baux.
+         `oxlint` le disait en AVERTISSEMENT depuis toujours ; rien ne le
+         refusait. */
+      tenantUnitIds,
+      poserLaReponseDeGestion,
     ],
   )
 

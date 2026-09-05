@@ -202,6 +202,28 @@ function usePanneauAncre(hauteur: number, largeur: number) {
       window.removeEventListener('scroll', auDefilement, true)
       window.removeEventListener('resize', auDefilement)
     }
+    /*
+      `placer` EST ABSENTE DES DÉPENDANCES, ET L'AJOUTER SERAIT PIRE.
+
+      `oxlint` la réclame — « React Hook useEffect has a missing dependency:
+      placer » — et il a raison sur la forme. Mesuré sur le fond :
+
+      `placer` est une fonction ORDINAIRE, recréée à chaque rendu. L'inscrire ici
+      ferait désabonner puis réabonner les trois écouteurs — `mousedown`,
+      `scroll` en capture, `resize` — À CHAQUE RENDU, sur un composant que le
+      défilement fait rendre. C'est un coût réel pour supprimer un risque qui ne
+      l'est pas.
+
+      CE QU'ELLE CAPTURE NE BOUGE PAS. `placer` ne lit que `declencheur`,
+      `hauteur` et `largeur` : la première est une `ref`, les deux autres sont
+      des PARAMÈTRES du crochet, et les deux seuls appelants passent des
+      littéraux — `usePanneauAncre(430, 360)` et `usePanneauAncre(260, 300)`.
+      Aucune valeur périmée n'est donc atteignable.
+
+      LE VRAI REMÈDE SERAIT `useCallback` sur `placer`, et c'est un autre lot :
+      il touche la géométrie du panneau, que `modales.mjs` mesure.
+    */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ouvert])
 
   return { ouvert, setOuvert, ouvrir, fermer, position, racine, declencheur, panneau }
