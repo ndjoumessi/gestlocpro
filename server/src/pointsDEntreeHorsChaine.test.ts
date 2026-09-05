@@ -73,6 +73,17 @@ const HORS_CHAINE: { script: string; motif: string }[] = [
       'poussée. Ses parties décidables sont éprouvées par `executerRelancesAutomatiques.test.ts`.',
   },
   {
+    script: 'src/scripts/photosJamaisMontees.ts',
+    motif:
+      'Il EFFACE des octets — les réservations de photos que personne n’a ' +
+      'confirmées, seul défaut nommé par la route de réservation qui grossisse ' +
+      'sans qu’on y touche. Une chaîne ne le lance pas : elle balaierait un dépôt ' +
+      'de sonde, ce qui ne mesure rien, et une porte qui SUPPRIME sur une vraie ' +
+      'base est un pouvoir qu’aucun robot ne prend. Sa fonction, elle, est tenue ' +
+      'par cinq cas — voir `photosJamaisMontees.test.ts`. Le brancher au cron des ' +
+      'relances est le geste suivant, et il appartient à qui répond des données.',
+  },
+  {
     script: 'src/scripts/deviseIncoherente.ts',
     motif:
       'Il RELÈVE les parcs dont la devise ne suit pas le pays — séquelle du défaut ' +

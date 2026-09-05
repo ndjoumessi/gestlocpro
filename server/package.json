@@ -17,7 +17,8 @@
     "check": "tsc -b && node scripts/verifier-le-chargement-node.mjs && vitest run",
     "db:test:setup": "prisma generate && node scripts/setup-test-db.mjs",
     "immeubles:non-confies": "tsx src/scripts/immeublesNonConfies.ts",
-    "devise:incoherente": "tsx src/scripts/deviseIncoherente.ts"
+    "devise:incoherente": "tsx src/scripts/deviseIncoherente.ts",
+    "photos:balayer": "tsx src/scripts/photosJamaisMontees.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",

@@ -96,6 +96,16 @@ const MODELES_SANS_ENJEU = [
  */
 const SANS_TRACE_ATOMIQUE: { route: string; motif: string }[] = [
   {
+    route: 'balayerLesReservationsMortes',
+    motif:
+      'Il ne prend QUE des lignes dont `confirmedAt` est nul, et la route de lecture ' +
+      'pose la règle : « rien de non confirmé n’est jamais servi ». Ces photos n’ont ' +
+      'donc figuré sur AUCUN écran — personne ne peut les chercher, et leur retrait ' +
+      'n’efface aucune preuve. C’est le même argument que le rejet ci-dessous, et il ' +
+      'a la même limite : consigner ces retraits remplirait le registre de ' +
+      'non-événements, à raison d’un par onglet fermé pendant une montée.',
+  },
+  {
     route: '/:parkId/photos/:photoId/confirmation',
     motif:
       'Elle ne supprime la photo que sur le chemin de REJET : le stockage a refusé le ' +
