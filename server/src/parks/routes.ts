@@ -1946,6 +1946,31 @@ parksRouter.post(
      * une preuve fausse, exactement comme on refuse de fabriquer un document
      * vide au-dessus.
      */
+    /**
+     * UNE PIÈCE N'ATTESTE QUE DE L'ARGENT REÇU.
+     *
+     * Relevé sur le registre d'un parc réel le 2026-09-05 : quatre lignes
+     * « Reçu de paiement · Septembre 2026 · 0 FCFA ». La route refusait déjà de
+     * fabriquer un document quand aucune ÉCHÉANCE n'existe — « on ne fabrique
+     * pas un document vide » — mais pas quand rien n'a été REÇU.
+     *
+     * Ce papier part chez un locataire et porte la signature du bailleur. Un
+     * reçu de zéro ne prouve rien, ne se conteste pas, et brouille la seule
+     * chose qu'une pièce sait faire : dire ce qui est arrivé.
+     *
+     * CE N'EST PAS UN CHEMIN QU'ON FERME. Réclamer un impayé n'est pas attester
+     * un paiement : c'est la relance et la mise en demeure, `rent.remind` et
+     * `lease.formal_notice`, tous deux au registre. On renvoie au bon geste.
+     *
+     * LA BORNE EST « REÇU », JAMAIS « SOLDÉ ». Un règlement PARTIEL s'atteste —
+     * c'est même le cas où la pièce compte le plus, le locataire ayant payé sans
+     * être quitte.
+     */
+    if (encaisse === 0) {
+      res.status(422).json({ error: 'nothing_received' })
+      return
+    }
+
     const devises = [...new Set(echeance.payments.map((p) => p.currency))]
     if (devises.length > 1) {
       res.status(409).json({ error: 'mixed_currencies' })

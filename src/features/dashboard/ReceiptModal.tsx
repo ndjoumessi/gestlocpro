@@ -330,10 +330,16 @@ export function ReceiptModal({
         if (annule) return
         // 404 : aucune échéance pour cette période. On le dit, plutôt que
         // d'afficher un document vide qui laisserait croire à un mois traité.
+        /* DEUX REFUS, DEUX PHRASES. 404 : aucune échéance pour cette période.
+           422 : l'échéance existe, mais RIEN n'a été reçu — une pièce n'atteste
+           que de l'argent arrivé. Les confondre sous « l'action a échoué » fait
+           chercher une panne là où il y a une règle, et ne dit pas quoi faire. */
         setEchec(
           err instanceof ApiError && err.status === 404
             ? t('app.receipts.noCharge')
-            : t('common.actionFailed'),
+            : err instanceof ApiError && err.status === 422
+              ? t('app.receipts.nothingReceived')
+              : t('common.actionFailed'),
         )
       })
     return () => {
