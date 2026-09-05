@@ -17,6 +17,7 @@ import { Combobox } from '@/components/primitives/Combobox'
 import { StatCard } from '@/components/primitives/Charts'
 import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDebordement'
 import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
+import { AU_DELA_LG, useAuDela } from '@/lib/useAuDela'
 import { DatePicker } from '@/components/primitives/DatePicker'
 import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
@@ -44,6 +45,16 @@ export function Tenants() {
   // immobilier et dans le taux d'occupation du tableau de bord.
   const { units, loading, removeTenant, documentRequests, resolveDocumentRequest, unitById } =
     usePortfolio()
+  /* LE MÊME SEUIL QUE LA BASCULE EN FICHES : au-dessus, un tableau, ses cartes
+     et sa file de demandes ; en dessous, la liste d'abord. Un seul seuil pour
+     toute la page, comme sur l'écran du parc.
+
+     AVEC LES AUTRES CROCHETS, ET AVANT `if (loading)`. Posé plus bas, il ne
+     s'appelait pas au premier rendu — « Rendered more hooks than during the
+     previous render », et cinq cas rouges d'un coup. C'est le même défaut que
+     l'écran de connexion a déjà payé, et il se reprend au même endroit : un
+     retour anticipé ne se franchit qu'une fois tous les crochets posés. */
+  const enTableau = useAuDela(AU_DELA_LG)
   const [aCorriger, setACorriger] = useState<Unit | null>(null)
   const [aRetirer, setARetirer] = useState<Unit | null>(null)
   const { role } = useRole()
@@ -69,6 +80,94 @@ export function Tenants() {
    * fiche. Le geste au bout est un appel à un inconnu.
    */
   if (loading) return <TenantsSkeleton />
+
+  /**
+   * LA CARTE DES DEMANDES, NOMMÉE UNE FOIS ET RENDUE À UN SEUL ENDROIT.
+   *
+   * Elle vivait avant la liste. Mesuré à 375 px : le premier locataire
+   * apparaissait à 1 223 px — UN ÉCRAN ET DEMI de préambule sur l'écran dont le
+   * geste est « trouver quelqu'un » — et cette carte en portait 204.
+   *
+   * Une file de pièces à fournir est la CORVÉE du propriétaire, pas la question
+   * de cet écran. Sur un téléphone elle passe donc DERRIÈRE la liste : elle ne
+   * perd rien, ni son contenu ni ses deux gestes, elle change de rang.
+   *
+   * AU-DESSUS DE `lg` ELLE NE BOUGE PAS : le tableau y tient en deux écrans et
+   * la carte ne coûte qu'une rangée. Déplacer un bloc là où il ne gêne personne,
+   * ce serait déplacer un défaut qui n'existe pas.
+   *
+   * RENDUE À UN SEUL ENDROIT à la fois, jamais montée deux fois puis cachée :
+   * `fichesDuTableau` refuse la donnée en double, « un utilitaire responsif
+   * cache, il ne retire pas — la donnée restait deux fois dans le document,
+   * donc deux fois dans les octets envoyés et deux fois pour un lecteur
+   * d'écran ».
+   */
+  const carteDesDemandes =
+    demandesEnAttente.length > 0 ? (
+      <Card className="mb-4">
+        <CardHeader
+          title={t('app.documents.pending')}
+          description={t('app.documents.pendingHint')}
+          level={2}
+        />
+        <ul
+          aria-label={t('app.documents.pending')}
+          className="flex flex-col divide-y divide-divider"
+        >
+          {demandesEnAttente.map((demande) => (
+            <li
+              key={demande.id}
+              className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 first:pt-0 last:pb-0"
+            >
+              <div className="min-w-0">
+                <p className="text-body font-medium">
+                  {t(DOCUMENT_KIND_LABELS[demande.kind] as 'app.documents.reqResidence')}
+                </p>
+                <p className="mt-0.5 text-caps text-muted">
+                  {/* Le NOM d'abord : c'est à une personne qu'on répond. Le
+                      libellé du logement se relit depuis le parc — afficher
+                      `demande.unitId` montrerait un uuid. */}
+                  {demande.tenant ?? unitById(demande.unitId)?.tenant ?? ''}
+                  {' · '}
+                  {unitById(demande.unitId)?.label ?? ''}
+                  {' · '}
+                  {t('app.documents.requestedOn', { date: d.fullDate(demande.requestedAt) })}
+                </p>
+              </div>
+              <div className="-mr-3.5 flex flex-wrap items-center gap-1">
+                {/*
+                  DEUX réponses, et le refus n'est pas caché derrière la
+                  première. Une pièce qu'on ne peut pas produire — bail non
+                  signé, document inexistant — laisserait sinon la demande en
+                  attente indéfiniment : le locataire guetterait, et cette
+                  ligne ne partirait jamais d'ici.
+                */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    resolveDocumentRequest(demande.id, 'declined')
+                    notify(t('app.documents.resolvedToast'), { tone: 'ok' })
+                  }}
+                >
+                  {t('app.documents.markDeclined')}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    resolveDocumentRequest(demande.id, 'fulfilled')
+                    notify(t('app.documents.resolvedToast'), { tone: 'ok' })
+                  }}
+                >
+                  {t('app.documents.markFulfilled')}
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </Card>
+    ) : null
 
   return (
     <>
@@ -157,6 +256,22 @@ export function Tenants() {
         </Notice>
       )}
 
+      {/* LES TROIS CARTES NE PARAISSENT QU'AU-DESSUS DE `lg`.
+
+          421 px empilés à 375 px, et deux d'entre elles REDISENT le tableau de
+          bord : « Loyers attendus 1 397 000 FCFA · 10 baux actifs » et « Taux
+          d'occupation 83 % · 2 unités vacantes » y sont déjà, relevés le
+          2026-09-06. Les cartes d'ici disent « Baux actifs 10 · 2 logements
+          vacants » et « Loyer mensuel 1 397 000 FCFA » : les mêmes nombres, à un
+          clic.
+
+          La troisième — « Pièces demandées 1 » — chapeaute la carte qui la SUIT
+          et qui liste cette pièce avec son titre, son locataire et sa date. Un
+          compte au-dessus de la liste qu'il compte.
+
+          Au-dessus de `lg`, la grille a trois colonnes : la rangée coûte une
+          hauteur de carte, et les trois se lisent d'un regard. */}
+      {enTableau && (
       <div className={`${GRILLE_TROIS_INDICATEURS} mb-6`}>
         <StatCard
           icone="users"
@@ -181,6 +296,7 @@ export function Tenants() {
           note={t('app.tenants.kpiRequestsNote')}
         />
       </div>
+      )}
 
       {/* Un bouton grisé sans motif laisse deviner. Quand tout est loué, il
           n'y a rien à quoi rattacher un locataire — on le dit. */}
@@ -205,71 +321,7 @@ export function Tenants() {
         « Demandes de documents » vide sur un parc calme occuperait la place
         d'une commande utile en laissant croire qu'il y a quelque chose à voir.
       */}
-      {demandesEnAttente.length > 0 && (
-        <Card className="mb-4">
-          <CardHeader
-            title={t('app.documents.pending')}
-            description={t('app.documents.pendingHint')}
-            level={2}
-          />
-          <ul
-            aria-label={t('app.documents.pending')}
-            className="flex flex-col divide-y divide-divider"
-          >
-            {demandesEnAttente.map((demande) => (
-              <li
-                key={demande.id}
-                className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 first:pt-0 last:pb-0"
-              >
-                <div className="min-w-0">
-                  <p className="text-body font-medium">
-                    {t(DOCUMENT_KIND_LABELS[demande.kind] as 'app.documents.reqResidence')}
-                  </p>
-                  <p className="mt-0.5 text-caps text-muted">
-                    {/* Le NOM d'abord : c'est à une personne qu'on répond. Le
-                        libellé du logement se relit depuis le parc — afficher
-                        `demande.unitId` montrerait un uuid. */}
-                    {demande.tenant ?? unitById(demande.unitId)?.tenant ?? ''}
-                    {' · '}
-                    {unitById(demande.unitId)?.label ?? ''}
-                    {' · '}
-                    {t('app.documents.requestedOn', { date: d.fullDate(demande.requestedAt) })}
-                  </p>
-                </div>
-                <div className="-mr-3.5 flex flex-wrap items-center gap-1">
-                  {/*
-                    DEUX réponses, et le refus n'est pas caché derrière la
-                    première. Une pièce qu'on ne peut pas produire — bail non
-                    signé, document inexistant — laisserait sinon la demande en
-                    attente indéfiniment : le locataire guetterait, et cette
-                    ligne ne partirait jamais d'ici.
-                  */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      resolveDocumentRequest(demande.id, 'declined')
-                      notify(t('app.documents.resolvedToast'), { tone: 'ok' })
-                    }}
-                  >
-                    {t('app.documents.markDeclined')}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => {
-                      resolveDocumentRequest(demande.id, 'fulfilled')
-                      notify(t('app.documents.resolvedToast'), { tone: 'ok' })
-                    }}
-                  >
-                    {t('app.documents.markFulfilled')}
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
+      {enTableau && carteDesDemandes}
 
       <DataTable<Unit>
         caption={t('app.tenants.title')}
@@ -432,6 +484,8 @@ export function Tenants() {
           },
         ]}
       />
+
+      {!enTableau && <div className="mt-6">{carteDesDemandes}</div>}
 
       {/* Le deux-points était concaténé dans le JSX, précédé d'une espace :
           une règle typographique française servie telle quelle en anglais.
