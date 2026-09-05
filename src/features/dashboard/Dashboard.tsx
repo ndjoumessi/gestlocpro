@@ -537,7 +537,7 @@ export function Dashboard() {
       */}
       <div className="mt-4 grid items-start gap-4 xl:grid-cols-[1.6fr_1fr]">
         <Card>
-          <CardHeader title={t('app.dashboard.chartTitle')} level={2} />
+          <CardHeader title={t('app.dashboard.chartTitle', { count: COLLECTIONS.length })} level={2} />
           {/* La légende répétait le titre visible : un lecteur d'écran
               entendait « Collections over 12 months » deux fois de suite. Elle
               porte maintenant ce que le titre ne dit pas — la nature du

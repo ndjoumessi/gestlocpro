@@ -780,7 +780,48 @@ export function StackedBarChart({
         avant et après ce lot : 230 des deux côtés, les barres n'ont pas bougé.
       */}
       <div className="flex h-[14.625rem] flex-col overflow-x-auto pt-2.5 sm:h-[16.625rem]">
-        <div className="flex min-w-max flex-1 flex-col">
+        {/*
+          LA BORNE DES POINTS RARES, ET ELLE VIT SUR CE CONTENEUR.
+
+          Les colonnes se découpent en `flex-1` : juste à douze points, absurde à
+          deux — chaque barre prend alors la moitié de la largeur. Relevé sur la
+          production le 2026-09-05, sur un parc ouvert deux mois plus tôt : une
+          forme de 600 px de large sur 30 de haut, qui ne se lit plus comme une
+          série mensuelle mais comme une barre de progression.
+
+          POURQUOI ICI ET NON SUR CHAQUE COLONNE. Les trois rangées — tracé du
+          haut, tracé du bas, rangée des mois — se découpent dans CE conteneur, et
+          c'est ce qui les aligne : l'en-tête de ce fichier le dit, « une gouttière
+          sur une seule décalerait les mois de leurs barres, le défaut le plus
+          grave qu'un graphe puisse porter, et l'un des plus discrets ». Une borne
+          par rangée rouvrirait exactement ce défaut.
+
+          SIX, PARCE QUE C'EST LÀ QUE LA FORME BASCULE. Au-delà, une colonne reste
+          plus haute que large sur un téléphone ; en deçà, elle s'étale.
+
+          LA GOUTTIÈRE D'AXE S'AJOUTE, ELLE NE SE PARTAGE PAS — et l'oublier a
+          coûté un rouge. `GOUTTIERE_D_AXE` vaut `pl-12`, soit 3 rem prises À
+          L'INTÉRIEUR de ce conteneur pour les étiquettes de l'axe. Une borne de
+          `n × 5,5 rem` laissait donc `5,5 − 3 = 2,5 rem` à une colonne unique :
+          40 px. `espace-connecte` l'a refusée sur les trois largeurs —
+
+              ✗ /app · owner · 320px : cible touchable 40x45 px,
+                sous le plancher de 44 — <button> sept — 180 000 FCFA
+
+          — parce que LES BARRES SONT DES BOUTONS, et qu'une cible de 40 px passe
+          sous le plancher tactile de 44. La borne se lit donc « la gouttière,
+          PLUS la place des colonnes ».
+
+          5,5 rem PAR POINT suit le texte plutôt que les pixels, comme la
+          gouttière elle-même : à 22 px de police racine — le cran « très grand »
+          d'Android — la colonne grandit avec son étiquette. Et 5,5 rem tient le
+          plancher tactile avec de la marge, même à deux points où une gouttière
+          de 10 px se retranche encore.
+        */}
+        <div
+          className="flex min-w-max flex-1 flex-col"
+          style={bars.length < 6 ? { maxWidth: `${3 + bars.length * 5.5}rem` } : undefined}
+        >
         <div
           data-trace="principal"
           data-max={maxAffiche}

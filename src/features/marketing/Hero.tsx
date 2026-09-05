@@ -202,7 +202,12 @@ function HeroPreview({
         <div className="mt-6">
           <MiniBarChart
             bars={bars}
-            caption={t('app.dashboard.chartTitle')}
+            /* LE COMPTE, COMME AILLEURS. Cette clé porte `{count}` depuis que le
+               tableau de bord a cessé de promettre douze mois à un parc qui en a
+               deux ; l'appeler sans paramètre affichait `{count}` EN CLAIR sur la
+               page de vente — attrapé par `mesure-ui` à 320 et 360 px, en anglais.
+               Le hero dessine les mêmes `COLLECTIONS` que sa légende annonce. */
+            caption={t('app.dashboard.chartTitle', { count: bars.length })}
             openPeriodNote={t('app.dashboard.openMonth')}
           />
         </div>

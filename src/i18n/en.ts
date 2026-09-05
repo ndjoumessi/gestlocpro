@@ -609,7 +609,8 @@ export const en: Dictionary = {
       overdueTenants_one: '{count} tenant · up to {days} days',
       vacantUnits: '{count} vacant units',
       vacantUnits_one: '{count} vacant unit',
-      chartTitle: 'Collections over 12 months',
+      chartTitle: 'Collections over {count} months',
+      chartTitle_one: 'Collections this month',
       chartTableCaption: 'Monthly figures behind the chart, split by rent, water and electricity.',
       chartNote:
         'Amounts collected per month, split between rent, water and electricity. The current month is still open.',
@@ -747,6 +748,7 @@ export const en: Dictionary = {
       payments: 'Payments',
       print: 'Print',
       noCharge: 'No charge for this period: there is nothing to certify.',
+      nothingReceived: 'Nothing has been received for this period yet, so there is no payment to attest. Record the payment, or chase the tenant from the payments screen.',
       removePayment: 'Remove this payment',
       paymentRemoved: 'Payment removed · the debt is restored',
       removeTitle: 'Remove this {amount} payment?',

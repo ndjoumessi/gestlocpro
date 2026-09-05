@@ -827,7 +827,12 @@ export const fr = {
       overdueTenants_one: '{count} locataire · jusqu’à {days} jours',
       vacantUnits: '{count} unités vacantes',
       vacantUnits_one: '{count} unité vacante',
-      chartTitle: 'Encaissements sur 12 mois',
+      /* LE COMPTE VIENT DE LA DONNÉE, et il ne le faisait pas. « 12 mois » était
+         écrit en dur au-dessus d'un graphe qui ne rend que les périodes PORTANT
+         une échéance : un parc ouvert en août en montrait deux sous un titre qui
+         en promettait douze. */
+      chartTitle: 'Encaissements sur {count} mois',
+      chartTitle_one: 'Encaissements du mois',
       chartTableCaption:
         'Chiffres mensuels derrière le graphique, ventilés en loyer, eau et électricité.',
       chartNote:
@@ -997,6 +1002,10 @@ export const fr = {
       payments: 'Versements',
       print: 'Imprimer',
       noCharge: 'Aucune échéance pour cette période : il n’y a rien à attester.',
+      /* LE REFUS D'UNE PIÈCE SANS ARGENT, et il dit où aller. Le serveur rend
+         422 `nothing_received` : sans ce texte, l'écran affichait « l'action a
+         échoué », ce qui laisse chercher une panne là où il y a une règle. */
+      nothingReceived: 'Rien n’a encore été reçu pour cette période : il n’y a pas de paiement à attester. Enregistrez le versement, ou relancez le locataire depuis les paiements.',
       removePayment: 'Retirer ce versement',
       paymentRemoved: 'Versement retiré · la dette est rétablie',
       removeTitle: 'Retirer ce versement de {amount} ?',
