@@ -92,6 +92,68 @@ export interface DataTableProps<T> {
    * réponse par défaut.
    */
   fiches?: boolean
+  /**
+   * REGROUPE LES FICHES, et SEULEMENT les fiches.
+   *
+   * ═══ POURQUOI SOUS `fiches` ET NULLE PART AILLEURS ═══
+   *
+   * Un tableau porte déjà ses catégories en COLONNE : l'œil les balaie
+   * verticalement, et grouper y ajouterait des rangées d'en-tête pour redire ce
+   * qu'une colonne dit sans place. Empilées en fiches, ces mêmes colonnes se
+   * répètent une fois PAR FICHE — et c'est là que le groupement paie.
+   *
+   * Mesuré sur `/demo/parc` à 375 px : le nom de l'immeuble était écrit DOUZE
+   * fois pour trois immeubles, 43 px par fiche, sur un écran qui fait déjà six
+   * écrans et demi de haut.
+   *
+   * ═══ LA COLONNE HISSÉE QUITTE LES FICHES ═══
+   *
+   * `colonne` nomme celle qui monte dans l'en-tête. La laisser dans les fiches
+   * annulerait le gain : le nom serait dans l'en-tête ET sur chaque fiche du
+   * groupe, soit une occurrence de PLUS qu'avant.
+   *
+   * ═══ FACULTATIF, ET AUCUN AUTRE ÉCRAN N'EN HÉRITE ═══
+   *
+   * Sept écrans demandent `fiches`. Aucun ne change tant qu'il ne passe pas
+   * cette prop : le groupement est une DEMANDE, jamais un défaut — même
+   * arbitrage que `fiches` lui-même, « demandé écran par écran ».
+   */
+  groupePar?: {
+    /** La clé de la colonne HISSÉE — elle disparaît des fiches du groupe. */
+    colonne: string
+    /** À quel groupe appartient une ligne. Une CLÉ, pas un libellé. */
+    cle: (row: T) => string
+    /**
+     * TOUS les groupes à rendre, dans l'ordre — y compris les VIDES.
+     *
+     * ═══ CE QUE SON ABSENCE A COÛTÉ, MESURÉ ═══
+     *
+     * Sans elle, les groupes se déduisaient des lignes : un immeuble SANS
+     * logement n'en produisait aucune, donc aucun groupe, donc aucun en-tête —
+     * donc plus aucun moyen de le voir, de le corriger ni de le retirer sur un
+     * téléphone. `modales` l'a refusé en une phrase : « DeleteBuilding@360 : le
+     * bouton qui l'ouvre est introuvable ».
+     *
+     * Le dépôt avait déjà payé ce défaut une fois, du côté des cartes : « un
+     * parc d'un immeuble SANS logement perdait alors sa carte — et avec elle le
+     * seul bouton qui permette de retirer un immeuble créé par faute de frappe ».
+     *
+     * Omise, les groupes se déduisent des lignes, comme avant : c'est le
+     * comportement d'une liste dont les groupes n'existent QUE par leur contenu.
+     */
+    ordre?: string[]
+    /**
+     * Le nom LISIBLE du groupe, pour les lecteurs d'écran.
+     *
+     * Distinct de `cle`, et il le faut : deux immeubles peuvent porter le même
+     * nom — le dépôt le dit ailleurs, « deux "Résidence du Mandat" peuvent
+     * coexister » — donc on groupe par IDENTIFIANT et on annonce par NOM.
+     * Grouper par le nom fondrait deux immeubles distincts en un seul bloc.
+     */
+    nom: (cle: string, lignes: T[]) => string
+    /** L'en-tête du groupe. Il DOIT porter `data-groupe`, que les gardes lisent. */
+    enTete: (cle: string, lignes: T[]) => ReactNode
+  }
 }
 
 /**
@@ -234,6 +296,7 @@ export function DataTable<T>({
   rowKey,
   empty,
   fiches,
+  groupePar,
 }: DataTableProps<T>) {
   /*
     LE CHOIX SE FAIT AU RENDU, PAS DANS LA FEUILLE DE STYLE.
@@ -295,7 +358,15 @@ export function DataTable<T>({
 
 
   if (fiches && !enTableau) {
-    return <ListeDeFiches caption={caption} columns={columns} rows={rows} rowKey={rowKey} />
+    return (
+      <ListeDeFiches
+        caption={caption}
+        columns={columns}
+        rows={rows}
+        rowKey={rowKey}
+        groupePar={groupePar}
+      />
+    )
   }
 
   /**
@@ -462,7 +533,72 @@ function ListeDeFiches<T>({
   columns,
   rows,
   rowKey,
+  groupePar,
 }: Omit<DataTableProps<T>, 'empty' | 'fiches'>) {
+  if (groupePar) {
+    /**
+     * LES GROUPES SUIVENT L'ORDRE DES LIGNES, ils ne le refont pas.
+     *
+     * Trier ici écraserait le tri de l'écran — l'ordre d'une liste est une
+     * décision de l'écran, jamais de sa mise en forme. On ouvre donc un groupe à
+     * la première ligne qui porte une clé neuve : deux blocs pour un même
+     * immeuble sont alors possibles, et c'est ce que l'écran a demandé en
+     * triant ainsi.
+     */
+    const groupes = new Map<string, T[]>()
+    /* LES GROUPES DÉCLARÉS D'ABORD, VIDES : sans cela, un groupe sans ligne
+       n'existerait pas — et ce qui n'existe pas ne se corrige ni ne se retire. */
+    for (const cle of groupePar.ordre ?? []) groupes.set(cle, [])
+    for (const row of rows) {
+      const liste = groupes.get(groupePar.cle(row))
+      if (liste) liste.push(row)
+      else groupes.set(groupePar.cle(row), [row])
+    }
+    /* LA COLONNE HISSÉE QUITTE LES FICHES — voir le contrat. */
+    const colonnesDeFiche = columns.filter((c) => c.key !== groupePar.colonne)
+
+    return (
+      /* UNE SECTION ET UNE LISTE PAR GROUPE, et non une liste unique à
+         séparateurs : chaque `<ul>` porte le nom de son groupe, donc un lecteur
+         d'écran annonce « liste, Résidence Bonamoussadi, 5 éléments » au lieu
+         d'une liste de douze où rien ne dit qu'on change d'immeuble. */
+      <div className="flex flex-col gap-6">
+        {[...groupes].map(([cle, lignes]) => (
+          <section key={cle} aria-label={`${caption} — ${groupePar.nom(cle, lignes)}`}>
+            {groupePar.enTete(cle, lignes)}
+            <ul aria-label={groupePar.nom(cle, lignes)} className="mt-2 flex flex-col gap-2">
+              {lignes.map((row) => (
+                <Fiche key={rowKey(row)} row={row} columns={colonnesDeFiche} />
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <ul aria-label={caption} className="flex flex-col gap-2">
+      {rows.map((row) => (
+        <Fiche key={rowKey(row)} row={row} columns={columns} />
+      ))}
+    </ul>
+  )
+}
+
+/**
+ * UNE FICHE — le corps d'une ligne empilée.
+ *
+ * EXTRAIT parce que le GROUPEMENT en a besoin ailleurs : les deux chemins de
+ * `ListeDeFiches` — la liste plate et la liste groupée — rendent exactement la
+ * même carte. Recopier ce corps aurait fait deux fiches à faire vieillir
+ * ensemble, et c'est la première qui aurait divergé.
+ *
+ * Les rôles se relisent PAR FICHE et non une fois pour la liste : c'est ce qui
+ * permet au groupement de retirer une colonne des cartes de son groupe sans
+ * toucher au reste.
+ */
+function Fiche<T>({ row, columns }: { row: T; columns: Column<T>[] }) {
   const identite = columns.find((c) => c.role === 'identite')
   const valeur = columns.find((c) => c.role === 'valeur')
   const etat = columns.filter((c) => c.role === 'etat')
@@ -471,214 +607,213 @@ function ListeDeFiches<T>({
   const contexte = columns.filter((c) => c.role === undefined || c.role === 'contexte')
 
   return (
-    <ul aria-label={caption} className="flex flex-col gap-2">
-      {rows.map((row) => (
-        <li
-          key={rowKey(row)}
-          data-fiche=""
-          className="rounded-lg border border-divider bg-surface p-4 shadow-e1"
-        >
-          {/* L'IDENTITÉ ET LA VALEUR SUR UNE MÊME LIGNE : « A1 · 145 000 FCFA »
-              est ce qu'on cherche d'abord, et le lire d'un bloc épargne un
-              aller-retour de l'œil. `items-baseline` les aligne sur leur trait
-              de base et non sur leurs boîtes, dont les hauteurs diffèrent. */}
-          {(identite || valeur) && (
-            /*
-              LA RANGÉE DE TÊTE PORTE LA ZONE TAPABLE, ET ELLE FAIT 44 px.
+      /* LA CLÉ REMONTE À L'APPELANT : `key` appartient à l'élément que la boucle
+         rend, donc à `<Fiche>`, pas au `<li>` qu'il contient. La poser ici la
+         rendrait muette — React lit la clé sur ce qu'il itère. */
+      <li
+        data-fiche=""
+        className="rounded-lg border border-divider bg-surface p-4 shadow-e1"
+      >
+        {/* L'IDENTITÉ ET LA VALEUR SUR UNE MÊME LIGNE : « A1 · 145 000 FCFA »
+            est ce qu'on cherche d'abord, et le lire d'un bloc épargne un
+            aller-retour de l'œil. `items-baseline` les aligne sur leur trait
+            de base et non sur leurs boîtes, dont les hauteurs diffèrent. */}
+        {(identite || valeur) && (
+          /*
+            LA RANGÉE DE TÊTE PORTE LA ZONE TAPABLE, ET ELLE FAIT 44 px.
 
-              `relative` posé sur la seule identité donnait une cible de 19 × 23 :
-              le pseudo-élément couvrait le texte du lien, pas davantage. Dans le
-              tableau, c'est la CELLULE qui le porte, avec ses `px-4 py-3` — d'où
-              une cible confortable sans que personne ait eu à y penser.
+            `relative` posé sur la seule identité donnait une cible de 19 × 23 :
+            le pseudo-élément couvrait le texte du lien, pas davantage. Dans le
+            tableau, c'est la CELLULE qui le porte, avec ses `px-4 py-3` — d'où
+            une cible confortable sans que personne ait eu à y penser.
 
-              Ici la rangée joue ce rôle : `min-h-11` lui donne le plancher de 44
-              px du produit, et la zone couvre l'identité ET sa valeur. Ce
-              recouvrement est voulu — la ligne de tête EST l'enregistrement, et
-              rien d'autre n'y est interactif.
-            */
-            <div className="relative flex min-h-11 items-start justify-between gap-3">
-              {identite && (
-                /*
-                  `items-start` depuis que la valeur porte son nom : alignés sur
-                  la ligne de base, l'identité se retrouverait à hauteur du
-                  surtitre et non du montant.
-                */
-                /*
-                  `self-stretch` ET CENTRÉ DEDANS : la rangée fait bien 44 px,
-                  mais avec `items-start` l'identité se colle en haut, et la zone
-                  tapable — qui s'étend depuis le CENTRE du lien — butait sur le
-                  bord au bout de 17 px. Mesuré : 32 × 34 pour 44 exigés.
+            Ici la rangée joue ce rôle : `min-h-11` lui donne le plancher de 44
+            px du produit, et la zone couvre l'identité ET sa valeur. Ce
+            recouvrement est voulu — la ligne de tête EST l'enregistrement, et
+            rien d'autre n'y est interactif.
+          */
+          <div className="relative flex min-h-11 items-start justify-between gap-3">
+            {identite && (
+              /*
+                `items-start` depuis que la valeur porte son nom : alignés sur
+                la ligne de base, l'identité se retrouverait à hauteur du
+                surtitre et non du montant.
+              */
+              /*
+                `self-stretch` ET CENTRÉ DEDANS : la rangée fait bien 44 px,
+                mais avec `items-start` l'identité se colle en haut, et la zone
+                tapable — qui s'étend depuis le CENTRE du lien — butait sur le
+                bord au bout de 17 px. Mesuré : 32 × 34 pour 44 exigés.
 
-                  Étirée sur la hauteur de la rangée et centrée dedans, le centre
-                  du lien tombe au milieu des 44 px et la zone les couvre.
+                Étirée sur la hauteur de la rangée et centrée dedans, le centre
+                du lien tombe au milieu des 44 px et la zone les couvre.
 
-                  `min-w-11` PLUTÔT QUE `min-w-0`, pour la même raison sur l'autre
-                  axe : « A1 » mesure 18 px de large, et un plancher de 44 px vaut
-                  dans LES DEUX dimensions — c'est un doigt, pas un curseur.
+                `min-w-11` PLUTÔT QUE `min-w-0`, pour la même raison sur l'autre
+                axe : « A1 » mesure 18 px de large, et un plancher de 44 px vaut
+                dans LES DEUX dimensions — c'est un doigt, pas un curseur.
 
-                  ET `relative` REVIENT ICI, sur la boîte désormais dimensionnée.
+                ET `relative` REVIENT ICI, sur la boîte désormais dimensionnée.
 
-                  `-ml-4 pl-4` EST LA DERNIÈRE PIÈCE, et elle a demandé quatre
-                  mesures. La boîte faisait bien 44 × 44, mais elle s'étendait
-                  vers la DROITE : « A1 » commence au bord gauche de la fiche,
-                  donc le centre du lien n'est qu'à neuf pixels de ce bord, et la
-                  zone tapable butait là — relevé 32 px, bloqueur identifié comme
-                  le `<li>` lui-même, c'est-à-dire le rembourrage de la carte.
+                `-ml-4 pl-4` EST LA DERNIÈRE PIÈCE, et elle a demandé quatre
+                mesures. La boîte faisait bien 44 × 44, mais elle s'étendait
+                vers la DROITE : « A1 » commence au bord gauche de la fiche,
+                donc le centre du lien n'est qu'à neuf pixels de ce bord, et la
+                zone tapable butait là — relevé 32 px, bloqueur identifié comme
+                le `<li>` lui-même, c'est-à-dire le rembourrage de la carte.
 
-                  La boîte déborde donc dans ce rembourrage et se le redonne en
-                  `pl-4` : le TEXTE ne bouge pas d'un pixel, la zone gagne seize
-                  pixels à gauche. C'est ce qu'un doigt attend — le bord de la
-                  fiche est le bord de la cible.
+                La boîte déborde donc dans ce rembourrage et se le redonne en
+                `pl-4` : le TEXTE ne bouge pas d'un pixel, la zone gagne seize
+                pixels à gauche. C'est ce qu'un doigt attend — le bord de la
+                fiche est le bord de la cible.
 
-                  `flex-1` AVEC LE PLANCHER, ET IL FALLAIT LES DEUX. Sans lui, la
-                  boîte se dimensionnait à son CONTENU : sur les locataires, où
-                  l'identité est une pastille d'initiales suivie d'un nom
-                  complet, elle débordait de 7 px à 320 px — quatre fois, trouvé
-                  par la sonde du débordement local. `flex-1` lui donne la place
-                  restante, le nom s'y replie, et le plancher continue de tenir
-                  la cible quand l'identité est courte comme « A1 ».
+                `flex-1` AVEC LE PLANCHER, ET IL FALLAIT LES DEUX. Sans lui, la
+                boîte se dimensionnait à son CONTENU : sur les locataires, où
+                l'identité est une pastille d'initiales suivie d'un nom
+                complet, elle débordait de 7 px à 320 px — quatre fois, trouvé
+                par la sonde du débordement local. `flex-1` lui donne la place
+                restante, le nom s'y replie, et le plancher continue de tenir
+                la cible quand l'identité est courte comme « A1 ».
 
-                  `min-w-12` ET NON `min-w-11`, ET C'EST UN COUSSIN ASSUMÉ. À 44
-                  la mesure rendait exactement 44 dans le serveur de
-                  développement et 41 dans le paquet construit, aux mêmes 320 px
-                  et dans la même langue. Je n'ai pas trouvé la cause de ces
-                  trois pixels, et je préfère l'écrire que d'inventer une
-                  explication : quatre pixels de marge coûtent quatre pixels sur
-                  une carte qui en fait 280, et couvrent un écart que je ne sais
-                  pas encore borner.
-                */
-                <div className="relative -ml-4 flex min-w-12 flex-1 items-center self-stretch pl-4 text-body font-medium">
-                  {/*
-                    UN BLOC `min-w-0` AUTOUR DU RENDU, et il fallait ce troisième
-                    étage.
+                `min-w-12` ET NON `min-w-11`, ET C'EST UN COUSSIN ASSUMÉ. À 44
+                la mesure rendait exactement 44 dans le serveur de
+                développement et 41 dans le paquet construit, aux mêmes 320 px
+                et dans la même langue. Je n'ai pas trouvé la cause de ces
+                trois pixels, et je préfère l'écrire que d'inventer une
+                explication : quatre pixels de marge coûtent quatre pixels sur
+                une carte qui en fait 280, et couvrent un écart que je ne sais
+                pas encore borner.
+              */
+              <div className="relative -ml-4 flex min-w-12 flex-1 items-center self-stretch pl-4 text-body font-medium">
+                {/*
+                  UN BLOC `min-w-0` AUTOUR DU RENDU, et il fallait ce troisième
+                  étage.
 
-                    L'identité d'un locataire est une pastille d'initiales et un
-                    nom, dans un `flex` qui n'a pas de `min-w-0` — un élément
-                    flexible refuse par défaut de descendre sous la largeur
-                    intrinsèque de son contenu. La boîte avait beau prendre la
-                    place restante, ce qu'elle contenait débordait quand même :
-                    7 px à 320 px, quatre fois.
+                  L'identité d'un locataire est une pastille d'initiales et un
+                  nom, dans un `flex` qui n'a pas de `min-w-0` — un élément
+                  flexible refuse par défaut de descendre sous la largeur
+                  intrinsèque de son contenu. La boîte avait beau prendre la
+                  place restante, ce qu'elle contenait débordait quand même :
+                  7 px à 320 px, quatre fois.
 
-                    En l'enveloppant d'un BLOC qui, lui, peut se réduire, la
-                    chaîne se rétablit — le bloc prend la largeur offerte, le
-                    `flex` intérieur la remplit, et le `truncate` du nom
-                    s'applique enfin. Le rendu de la colonne n'a rien à savoir de
-                    tout ça : c'est la fiche qui lui fait de la place.
-                  */}
-                  <div className="min-w-0 flex-1">{identite.render(row)}</div>
+                  En l'enveloppant d'un BLOC qui, lui, peut se réduire, la
+                  chaîne se rétablit — le bloc prend la largeur offerte, le
+                  `flex` intérieur la remplit, et le `truncate` du nom
+                  s'applique enfin. Le rendu de la colonne n'a rien à savoir de
+                  tout ça : c'est la fiche qui lui fait de la place.
+                */}
+                <div className="min-w-0 flex-1">{identite.render(row)}</div>
+              </div>
+            )}
+            {valeur && (
+              /* Le nom AU-DESSUS et non à côté : à côté, il pousserait le
+                 montant vers la gauche et le ferait cogner l'identité sur un
+                 écran de 320 px. Au-dessus, il tient dans la largeur du
+                 nombre, qui est toujours le plus large des deux. */
+              <div className="shrink-0 text-right">
+                <div className="eyebrow text-muted">{valeur.header}</div>
+                <div className="numeric mt-0.5 text-body font-medium whitespace-nowrap">
+                  {valeur.render(row)}
                 </div>
-              )}
-              {valeur && (
-                /* Le nom AU-DESSUS et non à côté : à côté, il pousserait le
-                   montant vers la gauche et le ferait cogner l'identité sur un
-                   écran de 320 px. Au-dessus, il tient dans la largeur du
-                   nombre, qui est toujours le plus large des deux. */
-                <div className="shrink-0 text-right">
-                  <div className="eyebrow text-muted">{valeur.header}</div>
-                  <div className="numeric mt-0.5 text-body font-medium whitespace-nowrap">
-                    {valeur.render(row)}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
+          </div>
+        )}
 
-          {contexte.length > 0 && (
-            /*
-              `<dl>` ET NON DES PARAGRAPHES. Chaque ligne est un COUPLE
-              nom/valeur — « Immeuble : Bonamoussadi » — et c'est exactement ce
-              qu'une liste de définitions décrit. Un lecteur d'écran y annonce le
-              terme avant sa définition ; deux `<p>` empilés le laisseraient
-              deviner par la mise en page, c'est-à-dire pas du tout.
-            */
-            <dl className="mt-3 flex flex-col gap-1.5">
-              {contexte.map((column) => (
-                <div key={column.key} className="flex items-baseline justify-between gap-3">
-                  <dt className="eyebrow shrink-0 text-muted">{column.header}</dt>
-                  <dd
-                    /*
-                      `numeric` SANS `whitespace-nowrap`, et la porte l'a exigé.
-                      Dans un tableau, l'interdiction de couper garde un montant
-                      sur une ligne au milieu d'une cellule large. Dans une
-                      fiche, la colonne de droite est étroite et la valeur est
-                      parfois COMPOSÉE — « 178 · 4 120 → 4 298 » pour un relevé.
-                      Mesuré à 320 px sur les relevés : 19 px hors de la boîte,
-                      seize fois.
+        {contexte.length > 0 && (
+          /*
+            `<dl>` ET NON DES PARAGRAPHES. Chaque ligne est un COUPLE
+            nom/valeur — « Immeuble : Bonamoussadi » — et c'est exactement ce
+            qu'une liste de définitions décrit. Un lecteur d'écran y annonce le
+            terme avant sa définition ; deux `<p>` empilés le laisseraient
+            deviner par la mise en page, c'est-à-dire pas du tout.
+          */
+          <dl className="mt-3 flex flex-col gap-1.5">
+            {contexte.map((column) => (
+              <div key={column.key} className="flex items-baseline justify-between gap-3">
+                <dt className="eyebrow shrink-0 text-muted">{column.header}</dt>
+                <dd
+                  /*
+                    `numeric` SANS `whitespace-nowrap`, et la porte l'a exigé.
+                    Dans un tableau, l'interdiction de couper garde un montant
+                    sur une ligne au milieu d'une cellule large. Dans une
+                    fiche, la colonne de droite est étroite et la valeur est
+                    parfois COMPOSÉE — « 178 · 4 120 → 4 298 » pour un relevé.
+                    Mesuré à 320 px sur les relevés : 19 px hors de la boîte,
+                    seize fois.
 
-                      Retirer l'interdiction ne casse aucun nombre : `Intl` pose
-                      des espaces INSÉCABLES à l'intérieur d'un montant, qui
-                      reste donc entier. Ce qui se coupe est l'espace ENTRE les
-                      parties du composé, c'est-à-dire là où il faut couper.
-                    */
-                    className={cn('min-w-0 text-right text-body', column.numeric && 'numeric')}
-                  >
-                    {column.render(row)}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          )}
-
-          {serie.length > 0 && (
-            /*
-              LA SUITE GARDE SON AXE, en grille plutôt qu'en liste.
-              `grid-flow-col` répartit les colonnes également : les six périodes
-              y occupent la même largeur, ce qui est la condition pour qu'on
-              compare leurs marques d'un coup d'œil.
-
-              LE PLANCHER EST EN `rem`, ET IL REMPLACE UNE TRONCATURE. `auto-cols-fr`
-              laissait les colonnes se resserrer jusqu'à 42 px à 320, et
-              l'en-tête portait `truncate` pour absorber le reste. Mesuré à 22 px
-              de police racine : « mars » manque 19 px, « août » 18, et six mois
-              sur douze s'affichaient rabotés — un axe dont on ne lit plus les
-              graduations. `minmax(2.75rem,1fr)` grandit AVEC la police, puisqu'il
-              est exprimé dans la même unité qu'elle ; c'est la seule façon pour
-              qu'un axe reste lisible quand son lecteur agrandit son texte.
-
-              Et la rangée DÉFILE plutôt que de couper — `overflow-x-auto`, comme
-              le graphe empilé le fait déjà pour ses douze colonnes, et pour la
-              même raison : au-delà d'un certain nombre de graduations, la
-              largeur qui manque se rend en défilement, jamais en points de
-              suspension.
-
-              Pas de `<dl>` ici : ce n'est pas une suite de couples nom/valeur,
-              c'est une SÉRIE dont l'en-tête est un axe. Un `<dl>` annoncerait
-              six définitions indépendantes.
-            */
-            <div className="mt-3 grid auto-cols-[minmax(2.75rem,1fr)] grid-flow-col gap-1 overflow-x-auto border-t border-divider pt-3">
-              {serie.map((column) => (
-                <div key={column.key} className="min-w-0 text-center">
-                  <div className="eyebrow text-muted">{column.header}</div>
-                  <div className="mt-1 flex justify-center">{column.render(row)}</div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {(etat.length > 0 || gestes.length > 0) && (
-            /* L'ÉTAT EN BAS, ET SANS SON EN-TÊTE. Une pastille « En retard »
-               dit ce qu'elle est ; lui écrire « Statut » au-dessus ajouterait un
-               mot par fiche sans ajouter un fait. `flex-wrap` parce que deux
-               états peuvent cohabiter — la grille des paiements en porte un de
-               règlement et un d'ancienneté. */
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              {etat.map((column) => (
-                <div key={column.key}>{column.render(row)}</div>
-              ))}
-              {/* Le geste EN DERNIER, et poussé à droite : l'œil descend la
-                  fiche par les faits et finit sur ce qu'il peut en faire. */}
-              {gestes.map((column) => (
-                <div key={column.key} className="ml-auto">
+                    Retirer l'interdiction ne casse aucun nombre : `Intl` pose
+                    des espaces INSÉCABLES à l'intérieur d'un montant, qui
+                    reste donc entier. Ce qui se coupe est l'espace ENTRE les
+                    parties du composé, c'est-à-dire là où il faut couper.
+                  */
+                  className={cn('min-w-0 text-right text-body', column.numeric && 'numeric')}
+                >
                   {column.render(row)}
-                </div>
-              ))}
-            </div>
-          )}
-        </li>
-      ))}
-    </ul>
+                </dd>
+              </div>
+            ))}
+          </dl>
+        )}
+
+        {serie.length > 0 && (
+          /*
+            LA SUITE GARDE SON AXE, en grille plutôt qu'en liste.
+            `grid-flow-col` répartit les colonnes également : les six périodes
+            y occupent la même largeur, ce qui est la condition pour qu'on
+            compare leurs marques d'un coup d'œil.
+
+            LE PLANCHER EST EN `rem`, ET IL REMPLACE UNE TRONCATURE. `auto-cols-fr`
+            laissait les colonnes se resserrer jusqu'à 42 px à 320, et
+            l'en-tête portait `truncate` pour absorber le reste. Mesuré à 22 px
+            de police racine : « mars » manque 19 px, « août » 18, et six mois
+            sur douze s'affichaient rabotés — un axe dont on ne lit plus les
+            graduations. `minmax(2.75rem,1fr)` grandit AVEC la police, puisqu'il
+            est exprimé dans la même unité qu'elle ; c'est la seule façon pour
+            qu'un axe reste lisible quand son lecteur agrandit son texte.
+
+            Et la rangée DÉFILE plutôt que de couper — `overflow-x-auto`, comme
+            le graphe empilé le fait déjà pour ses douze colonnes, et pour la
+            même raison : au-delà d'un certain nombre de graduations, la
+            largeur qui manque se rend en défilement, jamais en points de
+            suspension.
+
+            Pas de `<dl>` ici : ce n'est pas une suite de couples nom/valeur,
+            c'est une SÉRIE dont l'en-tête est un axe. Un `<dl>` annoncerait
+            six définitions indépendantes.
+          */
+          <div className="mt-3 grid auto-cols-[minmax(2.75rem,1fr)] grid-flow-col gap-1 overflow-x-auto border-t border-divider pt-3">
+            {serie.map((column) => (
+              <div key={column.key} className="min-w-0 text-center">
+                <div className="eyebrow text-muted">{column.header}</div>
+                <div className="mt-1 flex justify-center">{column.render(row)}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {(etat.length > 0 || gestes.length > 0) && (
+          /* L'ÉTAT EN BAS, ET SANS SON EN-TÊTE. Une pastille « En retard »
+             dit ce qu'elle est ; lui écrire « Statut » au-dessus ajouterait un
+             mot par fiche sans ajouter un fait. `flex-wrap` parce que deux
+             états peuvent cohabiter — la grille des paiements en porte un de
+             règlement et un d'ancienneté. */
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {etat.map((column) => (
+              <div key={column.key}>{column.render(row)}</div>
+            ))}
+            {/* Le geste EN DERNIER, et poussé à droite : l'œil descend la
+                fiche par les faits et finit sur ce qu'il peut en faire. */}
+            {gestes.map((column) => (
+              <div key={column.key} className="ml-auto">
+                {column.render(row)}
+              </div>
+            ))}
+          </div>
+        )}
+      </li>
   )
 }
+
 
 /**
  * Ce qu'un écran dit quand il n'a rien à montrer.

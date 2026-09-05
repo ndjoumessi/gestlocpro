@@ -15,6 +15,7 @@ import {
   SkeletonTable,
 } from '@/components/primitives/Skeleton'
 import { GRILLE_QUATRE_INDICATEURS } from './grillesDIndicateurs'
+import { AU_DELA_LG, useAuDela } from '@/lib/useAuDela'
 import { Input } from '@/components/primitives/Input'
 import { Button } from '@/components/primitives/Button'
 import { Modal } from '@/components/primitives/Modal'
@@ -55,6 +56,28 @@ export function Portfolio() {
      pas du tout. Voir `EditBuildingModal` et `EditUnitModal`. */
   const [immeubleACorriger, setImmeubleACorriger] = useState<Immeuble | null>(null)
   const [logementACorriger, setLogementACorriger] = useState<Unit | null>(null)
+  /**
+   * LE MÊME SEUIL QUE LA BASCULE EN FICHES, et c'est ce qui rend la page
+   * cohérente : au-dessus, un TABLEAU et des cartes alignées ; en dessous, des
+   * fiches GROUPÉES dont les en-têtes portent ce que les cartes portaient.
+   *
+   * ═══ POURQUOI LES CARTES PARTENT SOUS CE SEUIL ═══
+   *
+   * Le lot qui a posé les barres d'occupation dit pourquoi elles valent : « la
+   * grille aligne les cartes, donc les barres partagent origine et longueur : le
+   * classement se lit en travers ». C'est vrai là où la grille a deux ou quatre
+   * colonnes.
+   *
+   * En fiches, elle n'en a qu'une : les barres s'empilent, ne partagent plus
+   * d'origine, et le classement ne se lit plus en travers de rien. 641 px
+   * mesurés à 375 px — quinze pour cent de l'écran — pour une comparaison que la
+   * mise en page rend impossible.
+   *
+   * L'ARGUMENT QUI PORTE TOUTE LA PLAGE EST L'AUTRE : le nom de l'immeuble était
+   * écrit DOUZE fois pour trois immeubles. Celui de la comparaison est le plus
+   * net à 360 ; celui de la répétition vaut partout où l'on empile.
+   */
+  const enTableau = useAuDela(AU_DELA_LG)
   const { adhesionActive, estDemo } = useSession()
   const { role } = useRole()
   /**
@@ -341,7 +364,7 @@ export function Portfolio() {
           La division était déjà gardée ici — « un parc vide donne 0 % et non
           NaN ». Ce lot va d'un cran plus loin : sur un parc vide, la carte
           elle-même n'a pas lieu d'être. */}
-      {BUILDINGS.length === 0 ? null : (
+      {BUILDINGS.length === 0 || !enTableau ? null : (
       <div className={GRILLE_QUATRE_INDICATEURS}>
         {BUILDINGS.map((b) => {
           const { occupied: occ, total } = occupancyOf(b.id)
@@ -543,6 +566,117 @@ export function Portfolio() {
         rows={rows}
         rowKey={(unit) => unit.id}
         fiches
+        /**
+         * GROUPÉ PAR IMMEUBLE, ET SEULEMENT EN FICHES.
+         *
+         * Mesuré à 375 px avant ce lot : « Bonamoussadi » écrit DOUZE fois pour
+         * trois immeubles — une grande carte, un bouton de filtre, et une ligne
+         * de 43 px sur chacune des douze fiches. L'en-tête de groupe le dit une
+         * fois, et la ligne quitte les cartes.
+         *
+         * PAR IDENTIFIANT ET NON PAR NOM : deux immeubles peuvent s'appeler
+         * pareil — la route de suppression le dit en toutes lettres, « deux
+         * "Résidence du Mandat" peuvent coexister » — et grouper par le nom les
+         * fondrait en un seul bloc.
+         */
+        groupePar={{
+          colonne: 'building',
+          cle: (unit) => unit.buildingId,
+          /* TOUS LES IMMEUBLES, y compris ceux sans logement : c'est le seul
+             endroit d'où l'on peut encore les corriger ou les retirer une fois
+             les cartes parties. `modales` l'a refusé avant moi. */
+          ordre: BUILDINGS.map((b) => b.id),
+          nom: (id) => buildingById(id)?.name ?? '',
+          enTete: (id) => {
+            const b = buildingById(id)
+            const { occupied: occ, total } = occupancyOf(id)
+            return (
+              /* `data-groupe` : les gardes lisent l'en-tête par cet attribut et
+                 non par `role="group"` — deux groupes portent déjà ce rôle sur
+                 cet écran, dont le FILTRE par immeuble, littéralement nommé
+                 « Immeuble ». Même idiome que `data-indicateur` sur `StatCard`. */
+              <div
+                data-groupe=""
+                className="rounded-lg border border-divider bg-surface-2 px-4 py-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-neutral-tint text-neutral">
+                      <Icon name="building" size={15} />
+                    </span>
+                    <div className="min-w-0">
+                      {/* LE NOM PORTE LE RANG DE TITRE, et c'est ce que la carte
+                          ne pouvait pas faire : un intitulé de `StatCard` est un
+                          `<p>`. Groupée, la liste devient une STRUCTURE, et un
+                          lecteur d'écran doit pouvoir sauter d'immeuble en
+                          immeuble par les titres. */}
+                      {/* AUCUNE COUPE, ET C'EST CE QUI SÉPARE UN EN-TÊTE D'UNE CARTE.
+
+                          Deux jets refusés avant celui-ci. `truncate` coupait
+                          « Résidence Bonamo… » à 375 px — le défaut que la carte
+                          nomme : « on ne distingue plus les deux premières que
+                          par leur longueur ». `line-clamp-2` a fait pire, et la
+                          règle du rognage l'a mesuré : 282 px coupés à 320 px en
+                          police large, sur 70 px offerts.
+
+                          La carte CLAMPE parce qu'une grille doit aligner quatre
+                          tuiles : une qui s'allonge décale les trois autres. Un
+                          en-tête de groupe n'aligne rien — il ouvre une section.
+                          Un nom long y coûte une ligne UNE FOIS pour cinq
+                          logements, là où la même ligne dans les fiches coûtait
+                          cinq fois. Il se replie donc, entier. */}
+                      <h3 className="font-medium text-ink hyphens-auto break-words">
+                        {b?.name}
+                      </h3>
+                      <p className="text-body text-muted">{b?.district}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="numeric font-medium">{`${occ}/${total}`}</span>
+                    {/* LES DEUX MÊMES ISSUES QUE LA CARTE, aux mêmes conditions :
+                        corriger toujours, supprimer seulement sur un immeuble
+                        VIDE. Le geste ne change pas parce que la mise en page
+                        change — c'est la même décision, rendue ailleurs. */}
+                    <div className="-my-1.5 flex shrink-0 items-center">
+                      <button
+                        type="button"
+                        aria-label={t('app.portfolio.editBuilding', { name: b?.name ?? '' })}
+                        onClick={() => b && setImmeubleACorriger(b)}
+                        className="inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted hover:bg-surface hover:text-ink"
+                      >
+                        <Icon name="sliders" size={15} />
+                      </button>
+                      {total === 0 && b ? (
+                        <button
+                          type="button"
+                          aria-label={t('app.portfolio.deleteBuilding', { name: b.name })}
+                          onClick={() => setASupprimer(b)}
+                          className="inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted hover:bg-danger-tint hover:text-danger"
+                        >
+                          <Icon name="close" size={15} />
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+                {/* LA BARRE SUIT LE NOM là où le nom va. Le lot qui l'a posée
+                    l'a fait pour comparer les immeubles EN TRAVERS d'une grille ;
+                    empilée, elle ne compare plus rien, mais elle SITUE l'immeuble
+                    qu'on est en train de lire — et c'est ce qui reste utile sur
+                    un téléphone. `hideValue` pour la même raison qu'en carte :
+                    le rapport est déjà écrit en chiffres à côté. */}
+                <div className="mt-2">
+                  <ProgressBar
+                    value={tauxDe(occ, total)}
+                    label={t('app.portfolio.occupancy', { occupied: occ, total })}
+                    hideLabel
+                    hideValue
+                  />
+                </div>
+              </div>
+            )
+          },
+        }}
         empty={
           /* Deux absences, deux messages. Un parc sans aucun logement n'a pas
              « échoué à trouver » : il n'a rien à trouver. L'écran annonçait

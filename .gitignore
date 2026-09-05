@@ -40,3 +40,12 @@ captures/
 .vercel
 .env*
 .vercel-vide
+
+# Les relevés de REFONTE — `scripts/releve-refonte.mjs --sortie <fichier>`.
+#
+# Deux mégaoctets de JSON par passage, et c'est un outil de COMPARAISON : on en
+# prend un avant une refonte, un après, et on lit l'écart. Il décrit un état de
+# travail sur une machine, pas le produit — son en-tête le dit, « il DÉCRIT
+# l'existant au lieu de le refuser ». Le versionner ferait entrer dans chaque
+# revue un fichier que personne ne lit à la main et qui change à chaque mesure.
+releve-*.json

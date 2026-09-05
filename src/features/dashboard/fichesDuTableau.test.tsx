@@ -76,12 +76,28 @@ describe('les écrans-tableaux sur un téléphone', () => {
    * vert le jour où six colonnes en remplacent six autres, ce qui n'est pas la
    * même chose que de n'en avoir perdu aucune.
    */
-  const ATTENDUS: { nom: string; adresse: string; faits: RegExp[] }[] = [
+  const ATTENDUS: {
+    nom: string
+    adresse: string
+    faits: RegExp[]
+    hissesDansLEnTete?: RegExp[]
+  }[] = [
     {
       nom: 'parc',
       adresse: '/demo/parc',
       // `building` et `type` étaient masqués sous `sm`.
-      faits: [/Immeuble/i, /Type/i, /Loyer/i, /Locataire/i],
+      faits: [/Type/i, /Loyer/i, /Locataire/i],
+      /* L'IMMEUBLE EST HISSÉ, PAS PERDU — et la nuance est tout l'objet de ce
+         fichier. Sa règle n° 1 dit « aucune colonne n'est perdue » et redoute
+         « quelqu'un qui remet `hideOnMobile` en croyant alléger ». Le
+         groupement du parc retire bien la colonne des FICHES, mais il la met
+         dans l'EN-TÊTE DE GROUPE, une fois pour cinq logements au lieu de cinq
+         fois — mesuré : douze occurrences ramenées à trois.
+         Ce champ dit donc ce que la fiche n'a plus à porter PARCE QUE l'en-tête
+         le porte, et le cas VÉRIFIE l'en-tête. Sans lui, retirer le groupement
+         sans rendre la colonne aux fiches ferait disparaître un fait en
+         silence — exactement ce que ce fichier existe pour empêcher. */
+      hissesDansLEnTete: [/Immeuble|Résidence|Villa/i],
     },
     {
       nom: 'relevés',
@@ -95,7 +111,7 @@ describe('les écrans-tableaux sur un téléphone', () => {
     },
   ]
 
-  for (const { nom, adresse, faits } of ATTENDUS) {
+  for (const { nom, adresse, faits, hissesDansLEnTete } of ATTENDUS) {
     it(`${nom} : chaque fiche porte tous ses faits, nommés`, async () => {
       await renderApp(adresse, { largeur: TELEPHONE })
       await attendreLeChargement()
@@ -110,6 +126,18 @@ describe('les écrans-tableaux sur un téléphone', () => {
         expect(
           within(premiere).getAllByText(fait).length,
           `« ${fait.source} » ne figure pas dans la fiche`,
+        ).toBeGreaterThan(0)
+      }
+
+      /* CE QUI A QUITTÉ LA FICHE DOIT ÊTRE DANS L'EN-TÊTE. La règle n'est pas
+         relâchée, elle est déplacée : le fait reste à l'écran, une fois par
+         groupe. */
+      for (const hisse of hissesDansLEnTete ?? []) {
+        const entetes = Array.from(document.querySelectorAll<HTMLElement>('[data-groupe]'))
+        expect(entetes.length, 'un fait hissé sans en-tête de groupe pour le porter').toBeGreaterThan(0)
+        expect(
+          entetes.filter((e) => hisse.test(e.textContent ?? '')).length,
+          `« ${hisse.source} » a quitté la fiche sans entrer dans l'en-tête`,
         ).toBeGreaterThan(0)
       }
     })
