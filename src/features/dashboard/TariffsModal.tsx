@@ -63,7 +63,7 @@ interface TarifApi {
 export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useT()
   const d = useDates()
-  const { money, parseAmount } = useCurrency()
+  const { money, parseAmount, enDeviseAffichee } = useCurrency()
   const { notify } = useToast()
   /*
     LE REFUS LOCAL VIT SOUS SON CHAMP, et non dans un toast.
@@ -91,6 +91,27 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
    */
   const [effet, setEffet] = useState(() => new Date().toISOString().slice(0, 8) + '01')
   const [envoi, setEnvoi] = useState(false)
+  /**
+   * LA CORRECTION SE FAIT DANS LE MÊME FORMULAIRE, sans seconde modale.
+   *
+   * Une modale dans une modale est un piège de focus dans un piège de focus :
+   * `clavierDesModales` exige d'ouvrir, tenir, fermer et RENDRE le focus, et
+   * rien de tout cela ne se compose proprement à deux niveaux. Le formulaire du
+   * haut sait déjà saisir un prix et une date — corriger, c'est le même geste
+   * sur une ligne qui existe.
+   *
+   * `null` : on POSE un prix. Une ligne : on la CORRIGE, et le pied le dit.
+   */
+  const [enCorrection, setEnCorrection] = useState<TarifApi | null>(null)
+  /**
+   * LE RETRAIT SE CONFIRME SUR LA LIGNE, pour la même raison.
+   *
+   * Le geste est destructeur et mérite un deuxième temps ; la confirmation en
+   * modale — le motif habituel du dépôt — demanderait ici la modale imbriquée
+   * qu'on vient d'écarter. Deux temps sur la rangée coûtent le même arrêt et ne
+   * déplacent aucun focus.
+   */
+  const [aRetirer, setARetirer] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -151,17 +172,33 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
     setErreurPrix(undefined)
 
     setEnvoi(true)
-    void api
-      .setTariff<{ tariff: TarifApi }>(parkId, {
-        utility,
-        unitPriceMinor: valeur,
-        effectiveFrom: effet,
-      })
-      .then((r) => {
-        setTarifs((liste) => [r.tariff, ...liste])
-        setPrix('')
-        notify(t('app.tariffs.saved'), { tone: 'ok' })
-      })
+    /* DEUX GESTES, UN SEUL FORMULAIRE. `enCorrection` dit lequel : on remplace
+       la ligne à sa place dans la liste au lieu d'en empiler une nouvelle —
+       l'ordre du serveur est énergie puis date décroissante, et réinsérer en
+       tête ferait mentir cet ordre sur une simple correction de prix. */
+    const geste = enCorrection
+      ? api
+          .updateTariff<{ tariff: TarifApi }>(parkId, enCorrection.id, {
+            unitPriceMinor: valeur,
+            effectiveFrom: effet,
+          })
+          .then((r) => {
+            setTarifs((liste) => liste.map((x) => (x.id === r.tariff.id ? r.tariff : x)))
+            quitterLaCorrection()
+            notify(t('app.tariffs.corrected'), { tone: 'ok' })
+          })
+      : api
+          .setTariff<{ tariff: TarifApi }>(parkId, {
+            utility,
+            unitPriceMinor: valeur,
+            effectiveFrom: effet,
+          })
+          .then((r) => {
+            setTarifs((liste) => [r.tariff, ...liste])
+            setPrix('')
+            notify(t('app.tariffs.saved'), { tone: 'ok' })
+          })
+    void geste
       .catch((err: unknown) => {
         // Le 409 a une cause précise et un remède précis — changer la date ou
         // corriger celle qui existe. Le confondre avec une panne obligerait à
@@ -173,6 +210,47 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
         }
       })
       .finally(() => setEnvoi(false))
+  }
+
+  /** Charge une ligne dans le formulaire du haut. */
+  const corriger = (tarif: TarifApi) => {
+    setEnCorrection(tarif)
+    setUtility(tarif.utility)
+    /* LE PRIX EN DEVISE AFFICHÉE, parce que c'est dans celle-là qu'on le
+       retapera : `parseAmount` reconvertit vers la devise du parc à l'envoi.
+       Poser la valeur BRUTE ferait lire un nombre dans une unité et le relire
+       dans une autre. */
+    setPrix(String(enDeviseAffichee(tarif.unitPriceMinor)))
+    setEffet(tarif.effectiveFrom)
+    setErreurPrix(undefined)
+    setARetirer(null)
+  }
+
+  const quitterLaCorrection = () => {
+    setEnCorrection(null)
+    setPrix('')
+    setErreurPrix(undefined)
+  }
+
+  const retirer = (tariffId: string) => {
+    if (!parkId) {
+      notify(t(estDemo ? 'app.tariffs.demoNoSave' : 'common.actionFailed'), {
+        tone: estDemo ? 'neutral' : 'danger',
+      })
+      setARetirer(null)
+      return
+    }
+    void api
+      .deleteTariff(parkId, tariffId)
+      /* On ne retire de l'écran qu'APRÈS l'accord du serveur : le faire
+         disparaître d'abord montrerait un retrait qui n'a pas eu lieu. */
+      .then(() => {
+        setTarifs((liste) => liste.filter((x) => x.id !== tariffId))
+        if (enCorrection?.id === tariffId) quitterLaCorrection()
+        notify(t('app.tariffs.removed'), { tone: 'ok' })
+      })
+      .catch(() => notify(t('common.actionFailed'), { tone: 'danger' }))
+      .finally(() => setARetirer(null))
   }
 
   return (
@@ -200,11 +278,21 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
       */
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
-            {t('common.close')}
+          {/* SORTIR DE LA CORRECTION SANS FERMER LA MODALE. Sans cette issue,
+              un propriétaire entré dans une correction par erreur devrait
+              fermer la modale entière pour revenir à « poser un prix ». */}
+          <Button
+            variant="secondary"
+            onClick={enCorrection ? quitterLaCorrection : onClose}
+          >
+            {t(enCorrection ? 'common.cancel' : 'common.close')}
           </Button>
+          {/* LE BOUTON DIT LEQUEL DES DEUX GESTES IL FAIT. Un « Enregistrer ce
+              prix » sur un formulaire prérempli laisserait croire qu'on en pose
+              un SECOND — ce que le serveur refuserait par 409 sur la même date,
+              après le clic. */}
           <Button type="submit" form="tarif" loading={envoi}>
-            {t('app.tariffs.submit')}
+            {t(enCorrection ? 'app.tariffs.submitCorrection' : 'app.tariffs.submit')}
           </Button>
         </>
       }
@@ -215,6 +303,12 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
             <Select
               {...props}
               name="utility"
+              /* L'ÉNERGIE NE SE CORRIGE PAS, et le serveur ne l'accepte pas non
+                 plus : un prix de l'eau n'est pas un prix du courant mal rangé,
+                 c'est une autre grandeur — au m³ contre le kWh. La ligne se
+                 retire, et l'on repose. Le champ est donc figé pendant une
+                 correction plutôt que d'offrir un choix sans effet. */
+              disabled={enCorrection !== null}
               value={utility}
               onChange={(e) => setUtility(e.target.value as 'water' | 'power')}
             >
@@ -259,7 +353,23 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
           source : la migration précédente était racontée par trois commentaires
           et vérifiée par aucun.
         */}
-        <Field label={t('app.tariffs.effectiveFrom')} hint={t('app.tariffs.effectiveFromHint')} required>
+        {/* L'AIDE CHANGE EN CORRECTION, ET C'EST UNE DETTE QUE CE LOT PAIE.
+
+            « Un prix ne vaut pas pour le passé : les relevés antérieurs gardent
+            celui qui était en vigueur » est juste quand on POSE un prix — un
+            tarif plus récent laisse les périodes antérieures au précédent. Elle
+            est FAUSSE en correction : rien ne fige un prix, le serveur relit la
+            table à chaque lecture, et corriger réécrit ce que toutes les
+            périodes suivantes affichent. C'est le but du geste, et laisser sous
+            le champ une phrase qui dit l'inverse ferait croire l'ancien montant
+            à l'abri. */}
+        <Field
+          label={t('app.tariffs.effectiveFrom')}
+          hint={t(
+            enCorrection ? 'app.tariffs.effectiveFromHintCorrection' : 'app.tariffs.effectiveFromHint',
+          )}
+          required
+        >
           {(props) => (
             <DatePicker {...props} name="effectiveFrom" value={effet} onChange={setEffet} />
           )}
@@ -321,6 +431,55 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
                   )}
                   <span className="numeric font-medium">
                     {money(tarif.unitPriceMinor, { compact: true })}
+                  </span>
+                  {/* LES DEUX GESTES QUI MANQUAIENT. Jusqu'ici cette liste était
+                      en LECTURE SEULE : un prix tapé de travers y restait pour la
+                      vie du parc, et la route de création le savait — son
+                      rattrapage d'erreur parle d'« un propriétaire qui corrige
+                      une faute de frappe » à qui elle rendait un refus.
+
+                      LE PRIX EST DANS LE NOM ACCESSIBLE. « Corriger » répété sur
+                      quatre lignes ne dit pas laquelle on active ; l'énergie et
+                      la date, elles, désignent la ligne sans ambiguïté. */}
+                  <span className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon="sliders"
+                      aria-label={t('app.tariffs.correctLine', {
+                        utility: t(
+                          `app.meters.utility.${tarif.utility}` as 'app.meters.utility.water',
+                        ),
+                        date: d.fullDate(partiesDeDateISO(tarif.effectiveFrom)),
+                      })}
+                      onClick={() => corriger(tarif)}
+                    />
+                    {/* DEUX TEMPS SUR LA RANGÉE. Le premier clic arme, le second
+                        retire — et le libellé change pour dire lequel on est en
+                        train de faire. Une confirmation en modale demanderait la
+                        modale imbriquée qu'on écarte plus haut. */}
+                    {aRetirer === tarif.id ? (
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => retirer(tarif.id)}
+                      >
+                        {t('app.tariffs.confirmRemove')}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon="close"
+                        aria-label={t('app.tariffs.removeLine', {
+                          utility: t(
+                            `app.meters.utility.${tarif.utility}` as 'app.meters.utility.water',
+                          ),
+                          date: d.fullDate(partiesDeDateISO(tarif.effectiveFrom)),
+                        })}
+                        onClick={() => setARetirer(tarif.id)}
+                      />
+                    )}
                   </span>
                 </span>
               </li>

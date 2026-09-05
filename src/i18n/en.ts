@@ -851,7 +851,15 @@ export const en: Dictionary = {
       effectiveFrom: 'Effective from',
       effectiveFromHint:
         'A price does not apply to the past: earlier readings keep the one that was in force.',
+      effectiveFromHintCorrection:
+        'Correcting this price changes what every later period shows, past ones included: nothing freezes a price once set.',
       submit: 'Save this price',
+      corrected: 'Price corrected',
+      removed: 'Price removed',
+      submitCorrection: 'Correct this price',
+      correctLine: 'Correct price — {utility}, {date}',
+      removeLine: 'Remove price — {utility}, {date}',
+      confirmRemove: 'Confirm removal',
       saved: 'Price saved',
       duplicate: 'A price already exists for this utility on that date. Change the effective date.',
       inForce: 'In force',
@@ -1237,6 +1245,8 @@ export const en: Dictionary = {
         },
         tariff: {
           set: 'Rebilling price set',
+          update: 'Rebilling price corrected',
+          delete: 'Rebilling price removed',
         },
         unit: {
           update: 'Home corrected',

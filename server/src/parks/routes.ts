@@ -3257,15 +3257,35 @@ parksRouter.get(
        * deviner pourquoi un mois ancien a été facturé autrement, et c'est
        * exactement la question qu'un locataire pose quand il conteste.
        */
-      tariffs: tarifs.map((t) => ({
-        id: t.id,
-        utility: t.utility,
-        unitPriceMinor: t.unitPriceMinor,
-        effectiveFrom: t.effectiveFrom.toISOString().slice(0, 10),
-      })),
+      tariffs: tarifs.map(enTarifServi),
     })
   },
 )
+
+/**
+ * La FORME SERVIE d'un tarif, en un seul endroit.
+ *
+ * La date sort en `AAAA-MM-JJ` et jamais en instant : la colonne est un jour
+ * calendaire, et rendre un `Date` complet inviterait le client à le relire dans
+ * son fuseau, donc à le décaler d'un cran pour la moitié de la planète.
+ *
+ * Extraite parce qu'un QUATRIÈME site venait de naître — lecture, création,
+ * correction, et la correction rend deux fois. Quatre découpes à la main du
+ * même objet divergent, et c'est la date qui divergerait la première.
+ */
+function enTarifServi(t: {
+  id: string
+  utility: string
+  unitPriceMinor: number
+  effectiveFrom: Date
+}) {
+  return {
+    id: t.id,
+    utility: t.utility,
+    unitPriceMinor: t.unitPriceMinor,
+    effectiveFrom: t.effectiveFrom.toISOString().slice(0, 10),
+  }
+}
 
 const schemaTarif = z.object({
   utility: z.enum(['water', 'power']),
@@ -3329,14 +3349,7 @@ parksRouter.post(
         },
       })
 
-      res.status(201).json({
-        tariff: {
-          id: tarif.id,
-          utility: tarif.utility,
-          unitPriceMinor: tarif.unitPriceMinor,
-          effectiveFrom: tarif.effectiveFrom.toISOString().slice(0, 10),
-        },
-      })
+      res.status(201).json({ tariff: enTarifServi(tarif) })
     } catch (err) {
       /**
        * UN SEUL prix par énergie et par jour de prise d'effet.
@@ -3353,6 +3366,203 @@ parksRouter.post(
       }
       throw err
     }
+  },
+)
+
+/**
+ * CORRIGE UN PRIX, OU SA DATE DE PRISE D'EFFET.
+ *
+ * La route de création nomme le geste dans son rattrapage d'erreur — « un
+ * propriétaire qui corrige une faute de frappe en réémettant le même jour » —
+ * et lui rend un 409. Elle avait raison de refuser le doublon ; il manquait la
+ * porte par laquelle passer.
+ *
+ * ═══ CORRIGER UN TARIF RÉÉCRIT LE PASSÉ AFFICHÉ, ET C'EST LE BUT ═══
+ *
+ * L'exact contraire du loyer de référence, corrigé ce matin. `Unit.baseRentMinor`
+ * ne touche à rien parce que le bail et l'échéance FIGENT chacun le leur ; un
+ * tarif ne fige rien — `prixApplicable` relit la table à chaque lecture et prend
+ * le plus récent dont la date précède la période.
+ *
+ * Poser un tarif plus RÉCENT ne remplace donc pas une correction : la période
+ * entre la mauvaise date et le rattrapage garderait le mauvais prix, et la ligne
+ * fausse resterait lisible au tableau. Un prix faux est faux pour le passé
+ * aussi, et c'est ce qu'on répare.
+ *
+ * ═══ L'ÉNERGIE NE CHANGE PAS ═══
+ *
+ * `utility` n'est pas dans le schéma de correction. Un prix de l'eau n'est pas
+ * un prix du courant qu'on aurait mal rangé : c'est une autre grandeur, au m³
+ * contre le kWh. Le déplacer d'une énergie à l'autre ne corrigerait pas une
+ * saisie, il en inventerait une. La ligne se retire, et l'on repose.
+ *
+ * Au PROPRIÉTAIRE seul, comme la création : fixer un prix engage l'argent du
+ * locataire, et le partage est celui de la validation d'un devis.
+ */
+const schemaCorrectionDeTarif = z
+  .object({
+    unitPriceMinor: schemaTarif.shape.unitPriceMinor.optional(),
+    effectiveFrom: schemaTarif.shape.effectiveFrom.optional(),
+  })
+  /* AU MOINS UN CHAMP, comme les trois autres corrections du fichier : un corps
+     vide n'est pas une correction, et ferait une écriture et une trace pour
+     rien. Les bornes elles-mêmes sont EMPRUNTÉES à `schemaTarif` plutôt que
+     recopiées — deux rédactions du « strictement positif » vieilliraient
+     séparément, et c'est la porte de création qui fait autorité. */
+  .refine((c) => c.unitPriceMinor !== undefined || c.effectiveFrom !== undefined, {
+    message: 'Aucun champ à corriger',
+  })
+
+parksRouter.patch(
+  '/:parkId/tariffs/:tariffId',
+  exigerAppartenance,
+  exigerRole('owner'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const tariffId = z.string().uuid().parse(req.params.tariffId)
+    const corps = schemaCorrectionDeTarif.parse(req.body)
+
+    // Cherché AVEC le `parkId` : sans cela un identifiant deviné permettrait de
+    // réécrire le prix d'un autre parc. Absent, on rend 404 et non 403 — un 403
+    // confirmerait son existence.
+    const tarif = await prisma.utilityTariff.findFirst({
+      where: { id: tariffId, parkId },
+      select: { id: true, utility: true, unitPriceMinor: true, effectiveFrom: true },
+    })
+    if (!tarif) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const prix = corps.unitPriceMinor ?? tarif.unitPriceMinor
+    /* `T00:00:00Z` explicite, comme à la création : la colonne est de type
+       `date`, et une chaîne sans fuseau serait lue dans celui du serveur. */
+    const priseDEffet =
+      corps.effectiveFrom === undefined
+        ? tarif.effectiveFrom
+        : new Date(`${corps.effectiveFrom}T00:00:00.000Z`)
+
+    /* RIEN N'A CHANGÉ : on ne consigne pas un non-geste. Rouvrir la modale et la
+       refermer sans rien toucher n'est pas une décision, et un registre qui les
+       compte noie celles qui comptent. */
+    if (prix === tarif.unitPriceMinor && priseDEffet.getTime() === tarif.effectiveFrom.getTime()) {
+      res.json({ tariff: enTarifServi(tarif) })
+      return
+    }
+
+    let apres
+    try {
+      apres = await prisma.utilityTariff.update({
+        where: { id: tarif.id },
+        data: { unitPriceMinor: prix, effectiveFrom: priseDEffet },
+        select: { id: true, utility: true, unitPriceMinor: true, effectiveFrom: true },
+      })
+    } catch (err) {
+      /* LA MÊME UNICITÉ QU'À LA CRÉATION, et le même refus. Déplacer un prix sur
+         une date déjà occupée par un autre prix de la même énergie rendrait
+         indéterminable ce qu'on facture — c'est le motif écrit au-dessus, et il
+         vaut dans les deux sens. */
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        res.status(409).json({ error: 'tariff_exists' })
+        return
+      }
+      throw err
+    }
+
+    /* HORS TRANSACTION — voir `leJournalNeFaitPasEchouerLActe` : une panne
+       d'écriture du journal ne doit pas ANNULER l'acte, et une correction se
+       relit sur l'objet lui-même. Seules les SUPPRESSIONS font exception, et la
+       route juste dessous en est une.
+
+       L'AVANT AVEC L'APRÈS. « Le prix de l'eau est à 1 500 » n'apprend rien à
+       qui cherche à comprendre une refacturation : c'est l'écart qui explique. */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'tariff.update',
+        entity: 'UtilityTariff',
+        entityId: tarif.id,
+        payload: {
+          utility: apres.utility,
+          unitPriceMinor: apres.unitPriceMinor,
+          effectiveFrom: apres.effectiveFrom.toISOString().slice(0, 10),
+          avant: {
+            unitPriceMinor: tarif.unitPriceMinor,
+            effectiveFrom: tarif.effectiveFrom.toISOString().slice(0, 10),
+          },
+        },
+      },
+    })
+
+    res.json({ tariff: enTarifServi(apres) })
+  },
+)
+
+/**
+ * RETIRE UN TARIF.
+ *
+ * La correction ne couvre pas tout : parfois la ligne n'aurait jamais dû
+ * exister — une énergie choisie de travers, un prix posé sur le mauvais parc.
+ * `utility` n'étant pas corrigible, le retrait est le seul chemin, et sans lui
+ * la ligne resterait au tableau des tarifs indéfiniment.
+ *
+ * AUCUNE GARDE DE « DÉJÀ SERVI », et c'est mesuré : rien ne référence un
+ * `UtilityTariff`. Aucune clé étrangère n'y pointe, et aucune route n'écrit
+ * `RentCharge.waterMinor` ni `powerMinor` — une consommation refacturée
+ * n'atterrit sur aucune quittance à ce jour. Retirer un tarif ne peut donc
+ * orpheliner aucun montant ; ça change ce que l'écran des relevés AFFICHERAIT,
+ * exactement comme une correction.
+ *
+ * Ce serait à revoir le jour où une échéance portera une consommation : il
+ * faudrait alors décider si un tarif qui a servi se retire encore.
+ */
+parksRouter.delete(
+  '/:parkId/tariffs/:tariffId',
+  exigerAppartenance,
+  exigerRole('owner'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const tariffId = z.string().uuid().parse(req.params.tariffId)
+
+    const tarif = await prisma.utilityTariff.findFirst({
+      where: { id: tariffId, parkId },
+      /* LE PRIX ET LA DATE dans la même requête : après coup le tarif n'existe
+         plus, son identifiant ne mène nulle part, et seul ce qui est consigné
+         dit ce qui a disparu. Même motif que la suppression d'immeuble, où le
+         quartier est consigné pour cette raison. */
+      select: { id: true, utility: true, unitPriceMinor: true, effectiveFrom: true },
+    })
+    if (!tarif) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    /* DANS LA TRANSACTION, et c'est l'exception que le dépôt s'accorde sur les
+       suppressions. « Le journal ne doit pas pouvoir faire échouer l'écriture
+       qu'il décrit » vaut pour ce qui se relit après coup ; une SUPPRESSION,
+       non — l'entité n'existe plus, et une trace perdue est indétectable pour
+       toujours. `touteSuppressionVecueEstAtomique` tient la règle, et
+       `UtilityTariff` figure dans ses modèles VÉCUS. */
+    await prisma.$transaction(async (tx) => {
+      await tx.utilityTariff.delete({ where: { id: tarif.id } })
+      await tx.auditEvent.create({
+        data: {
+          parkId,
+          actorId: req.compteId!,
+          action: 'tariff.delete',
+          entity: 'UtilityTariff',
+          entityId: tarif.id,
+          payload: {
+            utility: tarif.utility,
+            unitPriceMinor: tarif.unitPriceMinor,
+            effectiveFrom: tarif.effectiveFrom.toISOString().slice(0, 10),
+          },
+        },
+      })
+    })
+
+    res.status(204).end()
   },
 )
 

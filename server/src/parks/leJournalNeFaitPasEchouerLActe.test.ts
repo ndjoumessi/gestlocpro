@@ -101,6 +101,12 @@ const DESTRUCTIONS_ATOMIQUES = [
   'building.delete',
   'inspection.photo_delete',
   'payment.delete',
+  /* LE TARIF RETIRÉ. Sa ligne ne survit pas à son retrait — il n'a ni statut ni
+     drapeau, la table ne porte que des prix en vigueur —, et la trace est la
+     SEULE chose qui dira ensuite à quel prix une période a été affichée. Un
+     tarif disparu sans trace rend une refacturation passée inexplicable, ce qui
+     est exactement la question qu'un locataire pose quand il conteste. */
+  'tariff.delete',
   'tenant.delete',
 ] as const
 

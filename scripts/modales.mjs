@@ -183,7 +183,27 @@ const MODALES = [
     le corps défilerait d'autant. Ce plafond garde la forme de la modale, pas
     celle d'un parc — aucune porte de ce dépôt ne visite un parc réel.
   */
-  { nom: 'Tariffs', adresse: '/demo/releves', bouton: /^Prix de refacturation$|^Rebilling prices$/, defil: { 360: 11, 1280: 0 }, defilLarge: { 360: 76, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  /*
+    11 → 82 px à 360, 76 → 126 en police large (2026-09-05) : LES DEUX GESTES DE
+    RANGÉE. L'historique des prix était en LECTURE SEULE, et une faute de frappe
+    y restait pour la vie du parc — la route de création le savait, son
+    rattrapage d'erreur parle d'« un propriétaire qui corrige une faute de
+    frappe » à qui elle rendait un 409.
+
+    LES 71 PX SONT LE PRIX DU PLANCHER DE 44, ET C'EST TOUT. Deux boutons par
+    ligne, chacun tenu à la cible minimale du dépôt, font passer une rangée de
+    texte à une rangée de commandes : ~35 px par tarif. Les rendre plus petits
+    tiendrait dans la boîte et ne se viserait plus au doigt, sur le téléphone
+    d'entrée de gamme qui est le marché de ce produit.
+
+    Refuser le geste au motif qu'il allonge la liste reviendrait à garder
+    l'historique en lecture seule — c'est le même arbitrage que `ParkSettings`
+    quatre entrées plus bas, et il se tranche pareil : le PIED RESTE TENU, donc
+    l'action reste atteignable sans chercher.
+
+    À 1280 la boîte a la place : zéro dans les deux polices, inchangé.
+  */
+  { nom: 'Tariffs', adresse: '/demo/releves', bouton: /^Prix de refacturation$|^Rebilling prices$/, defil: { 360: 82, 1280: 0 }, defilLarge: { 360: 126, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /*
     48 → 325 px à 360, 0 → 70 à 1280 (2026-09-02) : LES RELANCES AUTOMATIQUES.
 

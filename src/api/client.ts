@@ -582,6 +582,38 @@ export const api = {
   ) => requete<T>(`/parks/${parkId}/tariffs`, { method: 'POST', body: JSON.stringify(corps) }),
 
   /**
+   * Corrige un prix posé — son montant, sa date de prise d'effet.
+   *
+   * PAS `utility` : un prix de l'eau n'est pas un prix du courant mal rangé,
+   * c'est une autre grandeur. On retire la ligne et on repose.
+   *
+   * CORRIGER UN TARIF RÉÉCRIT LE PASSÉ AFFICHÉ, contrairement au loyer de
+   * référence d'un logement : rien ne fige un prix, le serveur relit la table à
+   * chaque lecture. C'est le but — un prix faux est faux pour le passé aussi.
+   *
+   * Déplacer un prix sur une date déjà prise par la même énergie rend 409.
+   */
+  updateTariff: <T>(
+    parkId: string,
+    tariffId: string,
+    corps: { unitPriceMinor?: number; effectiveFrom?: string },
+  ) =>
+    requete<T>(`/parks/${parkId}/tariffs/${tariffId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(corps),
+    }),
+
+  /**
+   * Retire un prix posé. Aucun corps, aucune réponse : le 204 dit tout.
+   *
+   * Rien ne référence un tarif — aucune clé étrangère, et aucune quittance ne
+   * porte de consommation refacturée à ce jour —, donc le retrait n'orphelinise
+   * aucun montant.
+   */
+  deleteTariff: <T>(parkId: string, tariffId: string) =>
+    requete<T>(`/parks/${parkId}/tariffs/${tariffId}`, { method: 'DELETE' }),
+
+  /**
    * Corrige le parc — son nom, son pays, sa devise, sa politique de délégation.
    *
    * Le corps ne porte QUE les champs à changer : envoyer les quatre à chaque

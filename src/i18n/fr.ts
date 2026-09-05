@@ -1143,7 +1143,23 @@ export const fr = {
       effectiveFrom: 'À partir du',
       effectiveFromHint:
         'Un prix ne vaut pas pour le passé : les relevés antérieurs gardent celui qui était en vigueur.',
+      effectiveFromHintCorrection:
+        'Corriger ce prix change ce que TOUTES les périodes suivantes affichent, y compris passées : rien ne fige un prix une fois posé.',
       submit: 'Enregistrer ce prix',
+      corrected: 'Prix corrigé',
+      removed: 'Prix retiré',
+      submitCorrection: 'Corriger ce prix',
+      /* LE PRIX N'EST PAS DANS LE NOM ACCESSIBLE, l'énergie et la DATE le sont.
+         C'est la date qui identifie une ligne — deux prix de l'eau peuvent
+         partager un montant, jamais une date d'effet, l'unicité du schéma
+         l'interdit.
+         SANS « à partir du » : `prixEnVigueur` cherche le champ de date par
+         `getByLabelText(/à partir du|effective/i)`, et ces noms-ci le
+         trouvaient aussi — quatre boutons pour un champ. Une date accolée à son
+         énergie se lit sans préposition. */
+      correctLine: 'Corriger le prix — {utility}, {date}',
+      removeLine: 'Retirer le prix — {utility}, {date}',
+      confirmRemove: 'Confirmer le retrait',
       saved: 'Prix enregistré',
       duplicate: 'Un prix existe déjà pour cette énergie à cette date. Changez la date d’effet.',
       inForce: 'En vigueur',
@@ -1697,6 +1713,13 @@ export const fr = {
         },
         tariff: {
           set: 'Tarif de refacturation posé',
+          /* CORRIGÉ ET RETIRÉ, deux libellés et non un. Le sens d'une décision
+             ne se lit dans aucune charge utile — une ligne qui dirait seulement
+             « tarif modifié » laisserait indécidable si le prix a été réparé ou
+             si la ligne a disparu, et c'est justement ce qu'on vient chercher
+             au registre quand une refacturation passée ne s'explique plus. */
+          update: 'Tarif de refacturation corrigé',
+          delete: 'Tarif de refacturation retiré',
         },
         /* LE LOGEMENT CORRIGÉ, et le registre montre son NUMÉRO : « B2 » dit
            lequel, là où l'identifiant ne dirait rien. Le loyer de RÉFÉRENCE

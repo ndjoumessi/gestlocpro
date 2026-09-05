@@ -195,6 +195,23 @@ const DETAIL: Record<string, Champ[]> = {
     { champ: 'unitPriceMinor', nature: 'argent' },
     { champ: 'effectiveFrom', nature: 'date' },
   ],
+  /* LES MÊMES TROIS CHAMPS que la pose, et dans le même ordre : une correction
+     se lit en comparant à la ligne d'à côté, pas en apprenant un autre
+     vocabulaire. L'avant vit dans la charge utile, que cette recette ne déplie
+     pas — le choix déjà fait pour la fiche locataire et pour le logement. */
+  'tariff.update': [
+    { champ: 'utility', nature: 'service' },
+    { champ: 'unitPriceMinor', nature: 'argent' },
+    { champ: 'effectiveFrom', nature: 'date' },
+  ],
+  /* LE PRIX DISPARU EST DANS LA TRACE, et c'est tout ce qui en reste : après le
+     retrait, l'identifiant ne mène nulle part. Même motif que `building.delete`,
+     dont la recette porte le nom pour la même raison. */
+  'tariff.delete': [
+    { champ: 'utility', nature: 'service' },
+    { champ: 'unitPriceMinor', nature: 'argent' },
+    { champ: 'effectiveFrom', nature: 'date' },
+  ],
   'park.update': [
     { champ: 'name', nature: 'texte' },
     { champ: 'currency', nature: 'devise' },
