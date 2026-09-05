@@ -978,6 +978,17 @@ export const fr = {
       rent: 'Loyer',
       tenant: 'Locataire',
       status: 'Statut',
+      /* DEUX COLONNES LÀ OÙ IL N'Y EN AVAIT QU'UNE — voir
+         `etatSepareDeLOccupation`. « Ce mois » comptait ensemble ce qu'un bail a
+         réglé et le fait qu'il n'y ait pas de bail ; l'occupation est une nature
+         d'état à part, et le tiret de `nothingDue` dit qu'un logement vacant n'a
+         rien à devoir plutôt que de le peindre en défaut. */
+      occupation: 'Occupation',
+      occupied: 'Occupé',
+      /* Lu par les seuls lecteurs d'écran : un tiret cadratin s'annonce « tiret »
+         ou ne s'annonce pas du tout, et douze cellules muettes ne diraient pas
+         POURQUOI elles le sont. */
+      nothingDue: 'Rien à percevoir',
       noTenant: 'Aucun locataire',
       exportPark: 'Exporter le parc',
       occupancy: '{occupied}/{total} occupées',

@@ -4,7 +4,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { useRole } from '@/components/layout/AppShell'
 import { lien, useBase } from '@/lib/base'
 import { DataTable, EmptyState } from '@/components/primitives/DataTable'
-import { PaymentStatusPill } from '@/components/primitives/StatusPill'
+import { PaymentStatusPill, StatusPill } from '@/components/primitives/StatusPill'
 import { ProgressBar, StatCard } from '@/components/primitives/Charts'
 import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDebordement'
 import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
@@ -172,6 +172,11 @@ export function Portfolio() {
         t('app.portfolio.surface'),
         t('app.portfolio.tenant'),
         csvMoney.header(t('app.portfolio.rent')),
+        /* LE FICHIER SUIT LA TABLE, deux colonnes et non une. Séparer l'écran
+           sans séparer l'export aurait laissé le mélange exactement là où on va
+           le compter : un tableur qui trie sur « Statut » remettrait « Vacant »
+           dans la même pile que « En retard ». */
+        t('app.portfolio.occupation'),
         t('app.portfolio.status'),
       ],
       rows: rows.map((unit) => [
@@ -184,7 +189,11 @@ export function Portfolio() {
         unit.surface,
         unit.tenant ?? t('app.portfolio.noTenant'),
         csvMoney.amount(unit.rent),
-        t(`status.${unit.status}` as 'status.paid'),
+        unit.status === 'vacant' ? t('status.vacant') : t('app.portfolio.occupied'),
+        /* Vide et non « Vacant » : la colonne de paiement d'un logement sans
+           bail n'a pas de valeur, et une cellule vide se filtre dans un tableur
+           là où un libellé recréerait la catégorie qu'on vient de retirer. */
+        unit.status === 'vacant' ? '' : t(`status.${unit.status}` as 'status.paid'),
       ]),
     })
 
@@ -681,10 +690,65 @@ export function Portfolio() {
             render: (unit) => money(unit.rent, { compact: true }),
           },
           {
+            /**
+             * L'OCCUPATION, SORTIE DE LA COLONNE DE PAIEMENT.
+             *
+             * `PaymentStatus` compte cinq valeurs, et la cinquième n'est pas de
+             * la même nature que les quatre autres : `paid`, `partial`,
+             * `overdue` et `uncalled` disent ce qu'un bail a fait de son
+             * échéance ; `vacant` dit qu'il n'y a pas de bail. Un logement vide
+             * n'est pas en défaut de paiement — il n'a rien à payer — et les
+             * rendre dans la même colonne les faisait compter ensemble.
+             *
+             * CE QUE ÇA COÛTAIT À L'ÉCRAN : le taux d'occupation que la rangée
+             * du haut annonce ne se retrouvait par AUCUN décompte de la table.
+             * Il fallait savoir que « Vacant » ne rentre pas dans le même total
+             * que « Payé » pour compter dix logements loués sur douze lignes.
+             *
+             * PAS DE `hideOnMobile` : l'occupation est ce que cet écran mesure.
+             * Le quartier et la typologie se replient sur un téléphone parce
+             * qu'ils SITUENT ; celle-ci est la mesure elle-même.
+             */
+            key: 'occupation',
+            role: 'etat',
+            header: t('app.portfolio.occupation'),
+            render: (unit) => (
+              /* LE MÊME TON DES DEUX CÔTÉS, et c'est `occupationSansVerdict`
+                 porté à la ligne : un logement loué n'est pas un succès, un
+                 logement vide n'est pas une alerte. `PAYMENT_TONES` associe déjà
+                 `vacant` à `neutral` en toutes lettres — « rien n'a été appelé,
+                 donc rien n'est en défaut ». La pastille distingue donc par son
+                 MOT, jamais par sa teinte, ce qui est aussi ce que
+                 `couleur-non-seule` exige. */
+              <StatusPill tone="neutral" size="sm">
+                {unit.status === 'vacant' ? t('status.vacant') : t('app.portfolio.occupied')}
+              </StatusPill>
+            ),
+          },
+          {
             key: 'status',
             role: 'etat',
             header: t('app.tenants.rentStatus'),
-            render: (unit) => <PaymentStatusPill status={unit.status} size="sm" />,
+            render: (unit) =>
+              unit.status === 'vacant' ? (
+                /* UN TIRET, PAS UNE PASTILLE. Peindre « rien à percevoir » en
+                   pastille rendrait à l'absence le poids d'un état, et remettrait
+                   dans cette colonne ce que la colonne d'à côté vient d'en
+                   sortir. La cellule est muette parce qu'il n'y a rien à dire.
+
+                   `aria-hidden` sur le tiret et le motif en `sr-only` : un tiret
+                   cadratin s'annonce « tiret » ou ne s'annonce pas, et douze
+                   cellules silencieuses à la synthèse vocale ne diraient pas
+                   POURQUOI elles le sont. */
+                <>
+                  <span aria-hidden="true" className="text-muted">
+                    —
+                  </span>
+                  <span className="sr-only">{t('app.portfolio.nothingDue')}</span>
+                </>
+              ) : (
+                <PaymentStatusPill status={unit.status} size="sm" />
+              ),
           },
           {
             key: 'geste',
