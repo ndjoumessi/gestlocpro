@@ -155,6 +155,15 @@ const DETAIL: Record<string, Champ[]> = {
     { champ: 'label', nature: 'texte' },
     { champ: 'baseRentMinor', nature: 'argent' },
   ],
+  /* LE LOGEMENT RETIRÉ. Après le retrait l'identifiant ne mène nulle part, et
+     cette ligne est la seule qui dise ce qui a disparu — même motif que
+     `building.delete` et `tariff.delete`. L'IMMEUBLE accompagne le numéro parce
+     que « A1 » ne désigne rien seul : le schéma ne pose l'unicité que DANS
+     l'immeuble, et un parc qui en compte deux rendrait la ligne ambiguë. */
+  'unit.delete': [
+    { champ: 'label', nature: 'texte' },
+    { champ: 'building', nature: 'texte' },
+  ],
   'access.grant': [{ champ: 'role', nature: 'role' }],
   'access.refuse': [{ champ: 'role', nature: 'role' }],
   'access.join': [{ champ: 'role', nature: 'role' }],

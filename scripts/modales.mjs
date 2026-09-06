@@ -531,6 +531,37 @@ const MODALES = [
     defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 },
     avant: { 360: 0, 1280: 0 },
   },
+  /*
+    LE RETRAIT D'UN LOGEMENT, et son préalable est le même piège que celui de
+    l'immeuble : les douze logements de la démonstration portent tous une
+    histoire, donc leur croix est FERMÉE. Il faut en créer un pour que le geste
+    s'ouvre — exactement comme `DeleteBuilding` crée son immeuble.
+
+    LE MOTIF NE PEUT PAS ÊTRE LARGE. Treize croix portent un nom accessible sur
+    cet écran, et douze disent « Retrait impossible — … ». C'est pourquoi le
+    libellé fermé commence par l'ÉTAT et non par le geste : `^Retirer le
+    logement ` ne trouve alors que celui qui s'ouvre. Le lot précédent s'est
+    déjà fait prendre là-dessus du côté de l'immeuble, et cette garde l'avait
+    signalé — « le bouton a été cliqué et aucune boîte de dialogue n'est
+    apparue », quatre fois.
+  */
+  {
+    nom: 'DeleteUnit', fichier: 'features/dashboard/Portfolio.tsx',
+    adresse: '/demo/parc',
+    bouton: /^Retirer le logement |^Remove unit /,
+    prealable: async (page) => {
+      await page.getByRole('button', { name: /^Ajouter un logement$|^Add a unit$/ }).first().click()
+      await page.waitForTimeout(300)
+      const boite = page.getByRole('dialog')
+      await boite.getByLabel(/Numéro du logement|Unit number/).fill('Z9')
+      await boite.getByLabel(/Surface \(m²\)/).fill('30')
+      await boite.getByLabel(/Loyer mensuel|Monthly rent/).fill('90000')
+      await boite.getByRole('button', { name: /^Enregistrer$|^Save$/ }).click()
+      await page.waitForTimeout(400)
+    },
+    defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 },
+    avant: { 360: 0, 1280: 0 },
+  },
   { nom: 'RemindOverdue', fichier: 'features/dashboard/Payments.tsx', adresse: '/demo/paiements', bouton: /^Relancer les retards$|^Chase arrears$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /*
     LA MISE EN DEMEURE ENTRE, ET C'EST UN LOT QUI L'A OUVERTE.
@@ -654,8 +685,14 @@ const LANGUES = ['fr', 'en']
   LES DEUX TIENNENT SANS DÉFILEMENT AUX QUATRE ÉTATS — 442 px de boîte au plus
   large pour l'immeuble, 708 pour le logement, note du loyer comprise. C'est
   mesuré, pas espéré : le plafond de zéro est le relevé lui-même.
+
+  108 → 112 (2026-09-06) : `DeleteUnit`, le retrait d'un logement — le dernier
+  objet du parc qui n'avait aucune issue. Une modale ordinaire, donc quatre
+  états. Son `prealable` CRÉE le logement qu'elle va retirer : les douze du jeu
+  de démonstration portent tous un bail, un versement ou un relevé, donc leurs
+  douze croix sont fermées et le geste ne s'ouvre sur aucune d'elles.
 */
-const ATTENDUS = 108
+const ATTENDUS = 112
 const NON_OUVRABLES_ATTENDUES = 0
 
 /**

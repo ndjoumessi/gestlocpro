@@ -114,6 +114,12 @@ const DESTRUCTIONS_ATOMIQUES = [
      est exactement la question qu'un locataire pose quand il conteste. */
   'tariff.delete',
   'tenant.delete',
+  /* LE LOGEMENT RETIRÉ. Il ne part que s'il n'a JAMAIS rien porté — aucun bail,
+     aucun relevé, aucun état des lieux, aucun travaux — donc rien d'autre ne
+     survit qui puisse dire qu'il a existé. La ligne du registre est la seule, et
+     elle porte son numéro ET le nom de son immeuble : « A1 » seul ne désigne
+     rien, le schéma ne pose l'unicité que DANS l'immeuble. */
+  'unit.delete',
 ] as const
 
 /** L'action que porte l'écriture de registre commençant à `depart`. */

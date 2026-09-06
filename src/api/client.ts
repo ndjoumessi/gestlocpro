@@ -479,6 +479,11 @@ export const api = {
   deleteBuilding: <T>(parkId: string, buildingId: string) =>
     requete<T>(`/parks/${parkId}/buildings/${buildingId}`, { method: 'DELETE' }),
 
+  /* Le logement se retire par le PARC et non par son immeuble : la route le
+     retrouve par son seul identifiant, comme la correction juste au-dessus. */
+  deleteUnit: <T>(parkId: string, unitId: string) =>
+    requete<T>(`/parks/${parkId}/units/${unitId}`, { method: 'DELETE' }),
+
   /**
    * Appelle les loyers du mois : émet les échéances de tous les baux en cours.
    *

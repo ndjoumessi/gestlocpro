@@ -108,11 +108,13 @@ export function Portfolio() {
   const exportCsv = useCsvExport()
   const csvMoney = useCsvMoney()
   const { money } = useCurrency()
-  const { units, buildings: BUILDINGS, buildingById, loading, removeBuilding, scoped } =
+  const { units, buildings: BUILDINGS, buildingById, loading, removeBuilding, removeUnit, scoped } =
     usePortfolio()
   const { notify } = useToast()
   /** L'immeuble dont la suppression attend confirmation. */
   const [aSupprimer, setASupprimer] = useState<Immeuble | null>(null)
+  /** Le logement dont le retrait attend confirmation. */
+  const [logementASupprimer, setLogementASupprimer] = useState<Unit | null>(null)
   const [query, setQuery] = useState('')
 
   /**
@@ -403,6 +405,41 @@ export function Portfolio() {
           }
         >
           <p className="text-body text-muted">{aSupprimer.district}</p>
+        </Modal>
+      )}
+      {logementASupprimer && (
+        <Modal
+          open
+          onClose={() => setLogementASupprimer(null)}
+          title={t('app.portfolio.deleteUnitTitle', { unit: logementASupprimer.label })}
+          /* LE CORPS DIT CE QUI EST VRAI DE CE LOGEMENT-CI, et pas seulement que
+             l'acte est définitif : « n'a jamais porté de bail, de relevé ni de
+             travaux » est la CONDITION qui a ouvert le geste. Elle rassure celui
+             qui hésite, et elle apprend la règle à celui qui la découvre ici. */
+          description={t('app.portfolio.deleteUnitBody')}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setLogementASupprimer(null)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  removeUnit(logementASupprimer.id)
+                  setLogementASupprimer(null)
+                  notify(t('app.portfolio.deleteUnitDone'), { tone: 'ok' })
+                }}
+              >
+                {t('common.confirm')}
+              </Button>
+            </>
+          }
+        >
+          {/* L'IMMEUBLE, parce que « A1 » ne désigne rien seul — c'est la même
+              raison qui met son nom dans la trace du registre. */}
+          <p className="text-body text-muted">
+            {buildingById(logementASupprimer.buildingId)?.name}
+          </p>
         </Modal>
       )}
       {logementOuvert && <AddUnitModal open onClose={() => setLogementOuvert(false)} />}
@@ -1003,6 +1040,38 @@ export function Portfolio() {
                 >
                   {t('app.tenants.edit')}
                 </Button>
+                {/* LE RETRAIT, ET LE MÊME IDIOME QUE L'IMMEUBLE : le geste fermé
+                    se MONTRE et dit pourquoi, au lieu de disparaître.
+
+                    `unit.deletable` vient du SERVEUR, et l'écran ne peut pas le
+                    deviner : un logement dont le bail est terminé rend `vacant`
+                    et `tenant: null`, exactement comme un logement neuf. Les
+                    distinguer ici demanderait de connaître son histoire, que
+                    cette projection ne porte pas.
+
+                    `!== true` ET NON `=== false` : un serveur antérieur au champ
+                    ne le rend pas, et l'absence doit fermer le geste, pas
+                    l'ouvrir. Une donnée manquante n'autorise rien. */}
+                <button
+                  type="button"
+                  aria-disabled={unit.deletable !== true || undefined}
+                  aria-label={
+                    unit.deletable === true
+                      ? t('app.portfolio.deleteUnit', { unit: unit.label })
+                      : t('app.portfolio.deleteUnitBlocked', { unit: unit.label })
+                  }
+                  onClick={
+                    unit.deletable === true ? () => setLogementASupprimer(unit) : undefined
+                  }
+                  className={cn(
+                    'inline-flex size-11 shrink-0 items-center justify-center rounded-md',
+                    unit.deletable === true
+                      ? 'cursor-pointer text-muted hover:bg-danger-tint hover:text-danger'
+                      : 'cursor-not-allowed text-muted opacity-45',
+                  )}
+                >
+                  <Icon name="close" size={15} />
+                </button>
               </div>
             ),
           },

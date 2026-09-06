@@ -568,6 +568,23 @@ parksRouter.get(
             type: true,
             surfaceSqm: true,
             baseRentMinor: true,
+            /* CE QUI DIT SI LE LOGEMENT PEUT ENCORE ÊTRE RETIRÉ.
+               Compté ici, dans la requête qui sert déjà l'écran, plutôt qu'à
+               l'ouverture d'une modale : sans lui l'écran offrirait un geste que
+               la route refusera, et « offrir un geste qu'il refusera revient à
+               promettre ce qu'on ne tient pas » — la règle que la suppression
+               d'immeuble applique déjà.
+               `leases` COUVRE l'argent : échéances, versements et caution
+               pendent au bail, pas au logement. */
+            _count: {
+              select: {
+                leases: true,
+                readings: true,
+                inspections: true,
+                workOrders: true,
+                invitations: true,
+              },
+            },
             leases: {
               where: { status: { in: ['active', 'pending'] } },
               take: 1,
@@ -656,6 +673,17 @@ parksRouter.get(
           paidMinor,
           overdueDays,
           deposit: bail?.deposit ?? null,
+          /* UN LOGEMENT QUI N'A JAMAIS RIEN PORTÉ, et rien d'autre.
+             `leases` est le compte de TOUS les baux, pas des seuls actifs : un
+             logement dont le bail est terminé garde son histoire, et cette
+             histoire est ce qui interdit de l'effacer. Le retirer réécrirait le
+             passé, ce que ce dépôt refuse partout ailleurs. */
+          deletable:
+            u._count.leases === 0 &&
+            u._count.readings === 0 &&
+            u._count.inspections === 0 &&
+            u._count.workOrders === 0 &&
+            u._count.invitations === 0,
         }
       }),
     }))
@@ -1902,6 +1930,105 @@ const schemaCorrectionDeLogement = schemaLogement
       c.baseRentMinor !== undefined,
     { message: 'Aucun champ à corriger' },
   )
+
+/**
+ * RETIRER UN LOGEMENT — le dernier objet du parc qui n'avait aucune issue.
+ *
+ * `EditUnitModal` le disait déjà en toutes lettres : « L'immeuble se supprimait
+ * tant qu'il était vide ; la fiche locataire se corrige. Le logement, lui,
+ * n'avait RIEN : ni correction, ni suppression. » Un lot a posé la correction et
+ * s'est arrêté là. Un numéro tapé en double, un logement créé par erreur au
+ * moment où l'on saisit son parc, restaient là pour la vie du parc.
+ *
+ * ═══ CE N'EST PAS UNE SORTIE DE PARC, C'EST UNE FAUTE DE FRAPPE ═══
+ *
+ * On ne retire QUE ce qui n'a jamais rien porté : aucun bail — donc aucune
+ * échéance, aucun versement, aucune caution, qui pendent tous au bail —, aucun
+ * relevé, aucun état des lieux, aucun travaux, aucune invitation.
+ *
+ * Un logement qui a VÉCU se corrige, il ne s'efface pas : l'effacer réécrirait
+ * le passé, ce que le schéma refuse déjà en clé étrangère et ce que ce fichier
+ * refuse partout ailleurs — « changer le loyer ne doit pas réécrire le passé ».
+ *
+ * DEUX RELATIONS NE BLOQUENT PAS, et il faut dire pourquoi. `MembershipUnit` —
+ * le périmètre confié à un gestionnaire — part en CASCADE : c'est une ligne de
+ * permission, pas une trace. `Invitation` part en SET NULL, donc la base ne
+ * s'y oppose pas ; on la compte quand même, parce qu'une invitation orpheline
+ * est un code déjà envoyé qui ne mènerait plus nulle part.
+ */
+parksRouter.delete(
+  '/:parkId/units/:unitId',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    /* LE PÉRIMÈTRE EN CLAUSE DE REQUÊTE, jamais après lecture : un gestionnaire
+       borné à deux immeubles ne doit pas pouvoir RAMENER le troisième, fût-ce
+       pour le filtrer ensuite. Même règle qu'à la correction. */
+    const perimetreUnite = porteeDesUnites(req.adhesion!)
+    const unitId = z.string().uuid().parse(req.params.unitId)
+
+    const logement = await prisma.unit.findFirst({
+      where: { id: unitId, building: { parkId }, ...perimetreUnite },
+      /* `label` ET le nom de l'immeuble POUR LE REGISTRE, dans la même requête :
+         après coup le logement n'existe plus, son identifiant ne mène nulle
+         part, et seul ce qui est consigné dit ce qui a disparu. Le numéro seul
+         ne suffirait pas — « A1 » existe dans presque tous les immeubles du
+         monde, et le schéma ne pose l'unicité que DANS l'immeuble. */
+      select: {
+        id: true,
+        label: true,
+        building: { select: { name: true } },
+        _count: {
+          select: {
+            leases: true,
+            readings: true,
+            inspections: true,
+            workOrders: true,
+            invitations: true,
+          },
+        },
+      },
+    })
+    if (!logement) {
+      // 404 et non 403 : un 403 sur un identifiant valide dirait déjà que le
+      // logement existe ailleurs.
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const c = logement._count
+    if (c.leases + c.readings + c.inspections + c.workOrders + c.invitations > 0) {
+      // 409 et non 400 : la demande est bien formée, c'est l'état du parc qui
+      // s'y oppose — même distinction qu'à la création et qu'à la correction.
+      res.status(409).json({ error: 'unit_not_empty' })
+      return
+    }
+
+    /* AU REGISTRE, ET DANS LA TRANSACTION. C'est l'exception que ce fichier
+       assume pour les actes destructeurs : « le journal ne doit pas pouvoir
+       faire échouer l'écriture qu'il décrit » vaut pour tout ce qui se relit
+       après coup, jamais pour une SUPPRESSION — l'entité n'existe plus, et une
+       trace perdue est indétectable pour toujours. Mieux vaut refuser une
+       suppression qu'on ne peut pas consigner que consigner une suppression
+       qu'on ne peut plus retrouver. Voir `leJournalNeFaitPasEchouerLActe`. */
+    await prisma.$transaction(async (tx) => {
+      await tx.unit.delete({ where: { id: logement.id } })
+      await tx.auditEvent.create({
+        data: {
+          parkId,
+          actorId: req.compteId!,
+          action: 'unit.delete',
+          entity: 'Unit',
+          entityId: logement.id,
+          payload: { label: logement.label, building: logement.building.name },
+        },
+      })
+    })
+
+    res.status(204).end()
+  },
+)
 
 parksRouter.patch(
   '/:parkId/units/:unitId',

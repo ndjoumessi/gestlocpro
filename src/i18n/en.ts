@@ -699,6 +699,12 @@ export const en: Dictionary = {
       collapseBuilding: 'Collapse {name}',
       expandBuilding: 'Expand {name}',
       buildingEmpty: 'no units',
+      deleteUnit: 'Remove unit {unit}',
+      deleteUnitBlocked: 'Cannot remove — {unit} has history in the portfolio',
+      deleteUnitTitle: 'Remove {unit}?',
+      deleteUnitBody:
+        'This unit has never held a lease, a reading or any works. Removal is permanent.',
+      deleteUnitDone: 'Unit removed',
       deleteBuilding: 'Delete building {name}',
       deleteBuildingBlocked: 'Cannot delete — {name} holds {count} units',
       deleteBuildingBlocked_one: 'Cannot delete — {name} holds {count} unit',
@@ -1295,6 +1301,7 @@ export const en: Dictionary = {
         },
         unit: {
           update: 'Home corrected',
+          delete: 'Home removed',
         },
         tenant: {
           create: 'Tenant record opened',

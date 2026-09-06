@@ -59,6 +59,7 @@ interface PortefeuilleApi {
       /** ISO, ou `null` : bail vacant, ou serveur antérieur à ce champ. */
       leaseStartsOn?: string | null
       paidMinor: number
+      deletable?: boolean
       overdueDays: number | null
     }[]
   }[]
@@ -307,6 +308,10 @@ export async function chargerParc(parkId: string): Promise<ParcCharge> {
         // serveur. Elle remplace la part simulée à 53 % du loyer.
         paid: u.paidMinor,
         status: u.status as PaymentStatus,
+        /* LE SERVEUR SEUL SAIT SI CE LOGEMENT A UNE HISTOIRE. Un bail terminé
+           rend `vacant` ici, comme un logement neuf : l'écran ne peut pas les
+           distinguer, et l'un s'efface quand l'autre ne le doit pas. */
+        deletable: u.deletable,
         leaseStart: u.leaseStartsOn ? enParties(u.leaseStartsOn) : null,
         ...(u.leaseId !== null ? { leaseId: u.leaseId } : {}),
         ...(u.tenant ? { tenantId: u.tenant.id } : {}),

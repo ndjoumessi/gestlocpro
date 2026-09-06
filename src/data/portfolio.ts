@@ -109,6 +109,23 @@ export interface Unit {
    */
   paid: number
   status: PaymentStatus
+  /**
+   * CE LOGEMENT PEUT-IL ENCORE ÊTRE RETIRÉ — calculé par le serveur.
+   *
+   * Il vaut `true` seulement si le logement n'a JAMAIS rien porté : aucun bail
+   * — donc aucune échéance, aucun versement, aucune caution —, aucun relevé,
+   * aucun état des lieux, aucun travaux, aucune invitation.
+   *
+   * L'écran ne peut pas le déduire de ce qu'il a. Un logement dont le bail est
+   * TERMINÉ rend `vacant` et `tenant: null`, exactement comme un logement neuf :
+   * les deux sont indiscernables ici, et l'un s'efface quand l'autre ne le doit
+   * pas. Sans ce drapeau, l'écran offrirait un geste que la route refuse — « ce
+   * qu'on ne tient pas ».
+   *
+   * FACULTATIF : le jeu de démonstration et un serveur antérieur au champ ne le
+   * rendent pas. Absent, on ne suppose pas `true` — voir son emploi à l'écran.
+   */
+  deletable?: boolean
   /** Jours de retard, si le statut l'est. */
   overdueDays?: number
   /**

@@ -944,6 +944,16 @@ export const fr = {
       collapseBuilding: 'Replier {name}',
       expandBuilding: 'Déplier {name}',
       buildingEmpty: 'aucun logement',
+      deleteUnit: 'Retirer le logement {unit}',
+      /* MÊME FORME QUE POUR L'IMMEUBLE : l'ÉTAT d'abord, le geste ensuite. Un
+         nom accessible qui commence par « Retirer le logement… » sur un bouton
+         fermé porte le même préfixe que le geste ouvert — `modales` sélectionne
+         par ce préfixe, et cliquerait le mauvais. */
+      deleteUnitBlocked: 'Retrait impossible — {unit} a une histoire dans le parc',
+      deleteUnitTitle: 'Retirer {unit} ?',
+      deleteUnitBody:
+        'Ce logement n’a jamais porté de bail, de relevé ni de travaux. Le retrait est définitif.',
+      deleteUnitDone: 'Logement retiré',
       deleteBuilding: 'Supprimer l’immeuble {name}',
       /* POURQUOI LE GESTE EST FERMÉ, et non le geste absent. Le bouton
          n'apparaissait que sur un immeuble VIDE : sur tous les autres il n'y
@@ -1810,6 +1820,7 @@ export const fr = {
            ce qu'un lecteur doit pouvoir vérifier. */
         unit: {
           update: 'Logement corrigé',
+          delete: 'Logement retiré',
         },
         tenant: {
           create: 'Fiche de locataire ouverte',

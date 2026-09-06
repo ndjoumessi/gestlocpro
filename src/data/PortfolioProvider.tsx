@@ -314,6 +314,15 @@ interface PortfolioContextValue {
    */
   removeBuilding: (buildingId: string) => void
   /**
+   * Retire un logement — seulement s'il n'a jamais rien porté.
+   *
+   * Le seuil vit au SERVEUR, qui refuse par 409 ; l'écran ne l'offre que sur un
+   * logement marqué `deletable`. Les deux disent la même chose, et c'est voulu :
+   * le drapeau évite de promettre un geste qui sera refusé, le 409 tient la
+   * règle même si l'écran se trompe.
+   */
+  removeUnit: (unitId: string) => void
+  /**
    * Retire une fiche locataire, son bail et ses échéances appelées.
    *
    * Refusé par le serveur tant qu'une somme a circulé. L'unité redevient
@@ -1511,6 +1520,24 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [parkId, signalerEchec],
   )
 
+  const removeUnit = useCallback(
+    (unitId: string) => {
+      if (!parkId) {
+        // Sans parc serveur — démonstration — le logement ne vit qu'en mémoire.
+        setUnits((liste) => liste.filter((u) => u.id !== unitId))
+        return
+      }
+      void api
+        .deleteUnit(parkId, unitId)
+        /* On ne retire de l'écran qu'APRÈS l'accord du serveur : il refuse un
+           logement qui porte une histoire, et le faire disparaître d'abord
+           montrerait un retrait qui n'a pas eu lieu. Même règle que l'immeuble. */
+        .then(() => setUnits((liste) => liste.filter((u) => u.id !== unitId)))
+        .catch(signalerEchec)
+    },
+    [parkId, signalerEchec],
+  )
+
   /**
    * Relance, et rend le compte de ce qui est parti.
    *
@@ -1902,6 +1929,16 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
             phone: null,
             paid: 0,
             status: 'vacant',
+            /* UN LOGEMENT QUI VIENT DE NAÎTRE N'A PAS D'HISTOIRE — il se retire
+               donc, et c'est le seul cas où la démonstration l'autorise.
+
+               Les douze logements du jeu portent des baux, des versements et des
+               relevés : leur refuser le retrait n'est pas une commodité de
+               démonstration, c'est la règle du serveur, rendue sur des données
+               qui l'illustrent. Et ça garde le geste ATTEIGNABLE — une modale
+               qu'aucune porte ne peut ouvrir est une modale qui dérive, le
+               dépôt se l'est déjà payé deux fois. */
+            deletable: true,
           } as Unit,
         ])
 
@@ -2046,6 +2083,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       addTenant,
       addBuilding,
       removeBuilding,
+      removeUnit,
       removeTenant,
       updateTenant,
       updateBuilding,
@@ -2145,6 +2183,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       addTenant,
       addBuilding,
       removeBuilding,
+      removeUnit,
       removeTenant,
       updateTenant,
       updateBuilding,
