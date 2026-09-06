@@ -947,6 +947,17 @@ export const fr = {
       /* Le nom du DÉCLENCHEUR du menu : trois points ne se prononcent pas, et
          « Actions » seul ne dirait pas de quelle ligne. */
       buildingActions: 'Actions de l’immeuble {name}',
+      /* CE QUE LE NOMBRE VAUT, quand il ne vaut pas ce qu'on croit. Sur un lot
+         vacant, la colonne « Loyer » affichait le même montant que sur un lot
+         loué : il se lisait comme un revenu, alors que c'est un manque à gagner. */
+      rentExpected: 'attendu',
+      /* LA DURÉE DU RETARD, à côté de l'état. « En retard » est vrai à trois
+         jours comme à vingt-quatre, et ce n'est pas la même décision. La donnée
+         était déjà sur la ligne — `overdueDays` — et la pastille la jetait. */
+      overdueFor: '{days} j',
+      /* CE QUE L'IMMEUBLE RAPPORTE, à côté de ce qu'il remplit. Un écran de
+         propriétaire portait l'occupation sans jamais porter l'argent. */
+      buildingRent: '{amount} / mois',
       unitActions: 'Actions du logement {unit}',
       remove: 'Retirer',
       deleteUnit: 'Retirer le logement {unit}',

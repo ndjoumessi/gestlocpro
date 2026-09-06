@@ -266,6 +266,19 @@ export function Portfolio() {
   }
 
   /**
+   * CE QUE L'IMMEUBLE APPELLE CE MOIS-CI — la somme des loyers de ses lots
+   * OCCUPÉS.
+   *
+   * Pas le loyer du parc plein : un lot vide n'appelle rien, et l'additionner
+   * ferait lire un revenu qui n'existe pas. Ce qu'il coûte de ne pas le louer se
+   * lit sur SA ligne, où la colonne Loyer dit « attendu ».
+   */
+  const loyerDe = (buildingId: string) =>
+    units
+      .filter((u) => u.buildingId === buildingId && u.status !== 'vacant')
+      .reduce((somme, u) => somme + u.rent, 0)
+
+  /**
    * LE TAUX, BORNÉ UNE FOIS POUR LES QUATRE TUILES.
    *
    * La division vivait à un seul endroit de cet écran — la carte du parc — et
@@ -712,6 +725,23 @@ export function Portfolio() {
                       !auTableau && 'w-full justify-between',
                     )}
                   >
+                    {/* CE QUE L'IMMEUBLE RAPPORTE, avant ce qu'il remplit.
+
+                        L'en-tête portait l'occupation et la barre — jamais
+                        l'argent — sur l'écran d'un propriétaire. La somme est
+                        celle des loyers des lots OCCUPÉS : c'est ce qui est
+                        appelé ce mois-ci, pas ce que l'immeuble vaudrait plein.
+                        Le manque à gagner des lots vides se lit sur leurs
+                        lignes, où la colonne Loyer dit « attendu ».
+
+                        Masquée sous `sm` : la boîte y fait moins de 320 px et le
+                        montant y prendrait la place du rapport, qui est la
+                        mesure de cet écran. */}
+                    <span className="numeric hidden text-body text-muted sm:inline">
+                      {t('app.portfolio.buildingRent', {
+                        amount: money(loyerDe(id), { compact: true }),
+                      })}
+                    </span>
                     <span className="numeric font-medium">{`${occ}/${total}`}</span>
                     {/* LA BARRE CONTRE SON RAPPORT au tableau — 96 px, la
                         largeur d'une mesure, pas d'un séparateur. Elle SITUE
@@ -936,7 +966,25 @@ export function Portfolio() {
             role: 'valeur',
             header: t('app.portfolio.rent'),
             numeric: true,
-            render: (unit) => money(unit.rent, { compact: true }),
+            /* LE MÊME NOMBRE, REQUALIFIÉ. Sur un lot vacant la cellule affichait
+               « 118 000 FCFA » exactement comme sur un lot loué : rien ne disait
+               que personne ne le verse. Un écran de propriétaire ne doit pas
+               faire lire un manque à gagner comme un revenu.
+
+               Le mot suit le montant sur la MÊME ligne, en gris muet : empilé,
+               il rendrait deux rangées sur douze plus hautes que les autres, et
+               une table se lit par l'égalité de ses lignes. */
+            render: (unit) =>
+              unit.status === 'vacant' ? (
+                <>
+                  {money(unit.rent, { compact: true })}{' '}
+                  <span className="text-body font-normal text-muted">
+                    {t('app.portfolio.rentExpected')}
+                  </span>
+                </>
+              ) : (
+                money(unit.rent, { compact: true })
+              ),
           },
           {
             key: 'status',
@@ -960,7 +1008,25 @@ export function Portfolio() {
                   <span className="sr-only">{t('app.portfolio.nothingDue')}</span>
                 </>
               ) : (
-                <PaymentStatusPill status={unit.status} size="sm" />
+                <span className="flex flex-wrap items-center gap-1.5">
+                  <PaymentStatusPill status={unit.status} size="sm" />
+                  {/* LA DURÉE À CÔTÉ DE L'ÉTAT, et seulement quand elle existe.
+                      « En retard » est vrai à trois jours comme à vingt-quatre,
+                      et les deux n'appellent pas le même geste — relancer ou
+                      mettre en demeure. `overdueDays` était déjà sur la ligne,
+                      la pastille le jetait.
+
+                      Hors de la pastille : `StatusPill` porte un MOT, pas une
+                      phrase — c'est écrit dans sa doctrine, et un statut qui se
+                      coupe en deux lignes n'est plus un statut. `flex-wrap` pour
+                      que les deux se rangent l'un sous l'autre quand la colonne
+                      se resserre. */}
+                  {unit.overdueDays ? (
+                    <span className="numeric text-body text-muted">
+                      {t('app.portfolio.overdueFor', { days: unit.overdueDays })}
+                    </span>
+                  ) : null}
+                </span>
               ),
           },
           {
