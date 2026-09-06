@@ -280,8 +280,8 @@ function enParties(iso: string) {
   return { year: d.getFullYear(), month: d.getMonth(), day: d.getDate() }
 }
 
-export async function chargerParc(parkId: string): Promise<ParcCharge> {
-  const data = await api.portfolio<PortefeuilleApi>(parkId)
+export async function chargerParc(parkId: string, mois?: string): Promise<ParcCharge> {
+  const data = await api.portfolio<PortefeuilleApi>(parkId, mois)
 
   const buildings: Immeuble[] = []
   const units: Unit[] = []

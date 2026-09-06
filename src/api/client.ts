@@ -311,7 +311,33 @@ export const api = {
    * que la dernière revienne. `loadState()` rendait déjà un état cohérent d'un
    * bloc, et c'est ce qu'il faut conserver.
    */
-  portfolio: <T>(parkId: string) => requete<T>(`/parks/${parkId}/portfolio`),
+  /* `mois` au format AAAA-MM, facultatif. Absent, la route rend la dernière
+     échéance de chaque bail — le comportement d'avant le sélecteur, dont les
+     autres appelants dépendent. */
+  portfolio: <T>(parkId: string, mois?: string) => {
+    /* LE CHEMIN RESTE UN LITTÉRAL COLLÉ À L'APPEL, et la requête se concatène
+       après lui.
+
+       `check-orphelins` compose les chemins que le client sait former, pour les
+       confronter aux routes du serveur. Son motif attend un gabarit
+       IMMÉDIATEMENT après la parenthèse ouvrante : un ternaire à cette place —
+       même s'il rend le bon chemin — n'est plus lisible pour elle, et la route
+       passe pour orpheline alors que l'appel existe.
+
+       DEUX FAUTES D'ÉCRITURE ONT ÉTÉ PAYÉES ICI, et elles valent d'être
+       nommées parce qu'aucune ne vient du code :
+
+         · citer le chemin du rapport avec une astérisque suivie d'une barre
+           oblique FERME ce commentaire — vingt erreurs de syntaxe ;
+         · citer le motif de la garde entre accents graves lui donne un faux
+           gabarit à apparier, dont le contenu court jusqu'à l'accent suivant et
+           avale l'appel réel. La garde ne voyait plus rien.
+
+       On écrit donc ces deux choses en toutes lettres, sans accent grave et
+       sans astérisque. */
+    const suffixe = mois ? `?mois=${mois}` : ''
+    return requete<T>(`/parks/${parkId}/portfolio` + suffixe)
+  },
 
   /**
    * Le locataire demande une pièce administrative.

@@ -958,6 +958,13 @@ export const fr = {
       /* CE QUE L'IMMEUBLE RAPPORTE, à côté de ce qu'il remplit. Un écran de
          propriétaire portait l'occupation sans jamais porter l'argent. */
       buildingRent: '{amount} / mois',
+      monthShown: 'Mois affiché',
+      previousMonth: 'Mois précédent',
+      nextMonth: 'Mois suivant',
+      /* LE MOTIF DANS LE NOM, comme pour les deux suppressions du Parc : un
+         geste fermé sans raison se cherche, puis se prend pour une faute. */
+      monthLockedInDemo: 'Changer de mois — la démonstration ne porte qu’un mois',
+      noFutureMonth: 'Mois suivant — rien n’est appelé au-delà du mois en cours',
       unitActions: 'Actions du logement {unit}',
       remove: 'Retirer',
       deleteUnit: 'Retirer le logement {unit}',

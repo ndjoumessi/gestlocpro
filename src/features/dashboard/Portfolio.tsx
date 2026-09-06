@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { useRole } from '@/components/layout/AppShell'
 import { lien, useBase } from '@/lib/base'
@@ -25,14 +25,29 @@ import { useToast } from '@/components/primitives/Toast'
 import type { Immeuble } from '@/data/apiPortfolio'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
+import { useDates } from '@/lib/useDates'
 import { type Unit } from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
+import { chargerParc } from '@/data/apiPortfolio'
 import { useSession } from '@/api/SessionProvider'
 import { AddBuildingModal } from './AddBuildingModal'
 import { ParkSettingsModal } from './ParkSettingsModal'
 import { AddUnitModal } from './AddUnitModal'
 import { EditBuildingModal } from './EditBuildingModal'
 import { EditUnitModal } from './EditUnitModal'
+
+/** « 2026-05 » → les parties que `useDates` attend, mois indexé à zéro. */
+function enPartiesDeMois(mois: string) {
+  const [an, m] = mois.split('-').map(Number) as [number, number]
+  return { year: an, month: m - 1 }
+}
+
+/** Le mois voisin, sans jamais passer par un `Date` local — voir la route. */
+function moisDecale(mois: string, pas: number) {
+  const [an, m] = mois.split('-').map(Number) as [number, number]
+  const d = new Date(Date.UTC(an, m - 1 + pas, 1))
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
+}
 
 export function Portfolio() {
   const base = useBase()
@@ -105,17 +120,99 @@ export function Portfolio() {
    */
   const peutCorrigerLeParc = role === 'owner' && (adhesionActive !== null || estDemo)
   const t = useT()
+  const d = useDates()
   const exportCsv = useCsvExport()
   const csvMoney = useCsvMoney()
   const { money } = useCurrency()
+  /**
+   * LE MOIS AFFICHÉ — la promesse que le sous-titre faisait depuis toujours.
+   *
+   * « Le statut porte sur le mois affiché », dit-il. Aucun mois ne s'affichait,
+   * et aucun ne pouvait se demander : la route rendait la dernière échéance de
+   * chaque bail, point. La page nommait une dimension qu'elle ne donnait pas.
+   *
+   * ═══ DANS L'URL, ET C'EST UN CHOIX RETOURNÉ ═══
+   *
+   * Le filtre d'immeuble en est SORTI au lot du groupement, parce qu'il y était
+   * devenu faux. Le mois, lui, y a sa place pour la raison qui valait pour
+   * l'autre : il désigne une vue stable qu'on partage, qu'on met en favori, et
+   * qui doit survivre à l'aller-retour vers le dossier d'un logement. La
+   * recherche reste locale — une frappe en cours de saisie est éphémère.
+   *
+   * ═══ L'ÉCRAN, PAS LA SESSION ═══
+   *
+   * Le tableau de bord et les paiements lisent le même portefeuille. Faire
+   * glisser leur mois avec celui-ci changerait le sens de trois écrans d'un
+   * seul geste ; le sous-titre ne promet que CELUI-CI. Le parc relit donc pour
+   * son compte, et les autres gardent leur vue d'aujourd'hui.
+   */
+  const [parametres, setParametres] = useSearchParams()
+  const moisCourant = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
+  const moisChoisi = parametres.get('mois') ?? moisCourant
+  const setMois = (valeur: string) => {
+    const suite = new URLSearchParams(parametres)
+    if (valeur === moisCourant) suite.delete('mois')
+    else suite.set('mois', valeur)
+    /* `replace` : changer de mois n'est pas une navigation, et le bouton
+       « retour » doit ramener à l'écran précédent — jamais dérouler à l'envers
+       la liste des mois qu'on a consultés. Même arbitrage que le filtre
+       d'immeuble en son temps. */
+    setParametres(suite, { replace: true })
+  }
+
   const { units, buildings: BUILDINGS, buildingById, loading, removeBuilding, removeUnit, scoped } =
     usePortfolio()
+
+  /**
+   * LE PARC RELU AU MOIS DEMANDÉ — et seulement quand on en demande un autre.
+   *
+   * Au mois courant, on lit ce que le fournisseur porte déjà : une seconde
+   * requête pour la même réponse serait un aller-retour offert au réseau.
+   *
+   * SEUL LE RÈGLEMENT CHANGE d'un mois à l'autre : le serveur ne borne que
+   * l'échéance retenue, jamais l'existence du bail. Un logement vacant
+   * aujourd'hui l'est dans tous les mois de cette vue, donc l'occupation, la
+   * barre et le loyer appelé restent justes — on peut servir ces unités-là
+   * partout dans l'écran sans les distinguer.
+   *
+   * `annule` : deux changements de mois rapides lancent deux lectures, et la
+   * plus lente pourrait écraser la plus récente. Sans ce drapeau, l'écran
+   * afficherait le mois qu'on vient de quitter.
+   */
+  const [unitesDuMois, setUnitesDuMois] = useState<Unit[] | null>(null)
+  const [lectureDuMois, setLectureDuMois] = useState(false)
+  const parkId = adhesionActive?.parkId ?? null
+  useEffect(() => {
+    if (!parkId || moisChoisi === moisCourant) {
+      setUnitesDuMois(null)
+      setLectureDuMois(false)
+      return
+    }
+    let annule = false
+    setLectureDuMois(true)
+    void chargerParc(parkId, moisChoisi)
+      .then((parc) => {
+        if (!annule) setUnitesDuMois(parc.units)
+      })
+      .catch(() => {
+        if (!annule) setUnitesDuMois(null)
+      })
+      .finally(() => {
+        if (!annule) setLectureDuMois(false)
+      })
+    return () => {
+      annule = true
+    }
+  }, [parkId, moisChoisi, moisCourant])
+
+  const unitesAffichees = unitesDuMois ?? units
   const { notify } = useToast()
   /** L'immeuble dont la suppression attend confirmation. */
   const [aSupprimer, setASupprimer] = useState<Immeuble | null>(null)
   /** Le logement dont le retrait attend confirmation. */
   const [logementASupprimer, setLogementASupprimer] = useState<Unit | null>(null)
   const [query, setQuery] = useState('')
+
 
   /**
    * LES IMMEUBLES REPLIÉS — la forme que 21st a apprise au dépôt.
@@ -172,7 +269,7 @@ export function Portfolio() {
   */
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase()
-    return units.filter((unit) => {
+    return unitesAffichees.filter((unit) => {
       /* LE REPLI RETIRE LES LIGNES, ET RIEN D'AUTRE. L'en-tête du groupe reste
          rendu — `ordre` le déclare — donc le rapport, la barre et les gestes de
          l'immeuble replié restent lisibles et atteignables. */
@@ -199,7 +296,7 @@ export function Portfolio() {
        renommé ne devenait cherchable qu'au prochain changement de `units`.
        C'était vrai EN PRATIQUE — le portefeuille est remplacé en entier après
        une correction — mais tenu par un enchaînement, pas par la dépendance. */
-  }, [query, units, t, buildingById, replies])
+  }, [query, unitesAffichees, t, buildingById, replies])
 
   /**
    * SORTIR L'ÉTAT DU PARC, une ligne par logement.
@@ -250,7 +347,7 @@ export function Portfolio() {
       ]),
     })
 
-  const occupied = units.filter((u) => u.status !== 'vacant').length
+  const occupied = unitesAffichees.filter((u) => u.status !== 'vacant').length
 
   /**
    * L'occupation par immeuble se dérive de l'état vivant.
@@ -261,7 +358,7 @@ export function Portfolio() {
    * cartes d'immeuble non. Deux chiffres contradictoires sur la même ligne.
    */
   const occupancyOf = (buildingId: string) => {
-    const inBuilding = units.filter((u) => u.buildingId === buildingId)
+    const inBuilding = unitesAffichees.filter((u) => u.buildingId === buildingId)
     return { occupied: inBuilding.filter((u) => u.status !== 'vacant').length, total: inBuilding.length }
   }
 
@@ -274,7 +371,7 @@ export function Portfolio() {
    * lit sur SA ligne, où la colonne Loyer dit « attendu ».
    */
   const loyerDe = (buildingId: string) =>
-    units
+    unitesAffichees
       .filter((u) => u.buildingId === buildingId && u.status !== 'vacant')
       .reduce((somme, u) => somme + u.rent, 0)
 
@@ -485,7 +582,7 @@ export function Portfolio() {
           PAS D'INDICATEUR SUR UN PARC SANS LOGEMENT : « 0 % · 0/0 occupées »
           au-dessus de « Aucun logement pour l'instant » est exact, ne dit rien,
           et occupe 140 px avant le message qui, lui, dit tout. */}
-      {units.length === 0 || !enTableau ? null : (
+      {unitesAffichees.length === 0 || !enTableau ? null : (
         /* SEUL DANS LE GABARIT DES TROIS, et non étiré sur toute la largeur.
 
            C'est la doctrine que `GRILLE_DEUX_INDICATEURS` a déjà écrite pour ce
@@ -499,16 +596,16 @@ export function Portfolio() {
         <StatCard
           icone="gauge"
           label={t('app.dashboard.occupancy')}
-          value={`${tauxDe(occupied, units.length)}`}
+          value={`${tauxDe(occupied, unitesAffichees.length)}`}
           unit="%"
           /* LE COMPTAGE BRUT SOUS LE POURCENTAGE : sur douze logements, « 83 % »
              seul cacherait les deux à relouer. */
-          note={t('app.portfolio.occupancy', { occupied, total: units.length })}
+          note={t('app.portfolio.occupancy', { occupied, total: unitesAffichees.length })}
           bas={
             <div className="mt-3">
               <ProgressBar
-                value={tauxDe(occupied, units.length)}
-                label={t('app.portfolio.occupancy', { occupied, total: units.length })}
+                value={tauxDe(occupied, unitesAffichees.length)}
+                label={t('app.portfolio.occupancy', { occupied, total: unitesAffichees.length })}
                 hideLabel
                 hideValue
               />
@@ -545,8 +642,96 @@ export function Portfolio() {
           />
         </div>
 
+        {/* LE MOIS AFFICHÉ, ENFIN CHOISISSABLE.
+
+            ═══ FERMÉ EN DÉMONSTRATION, ET IL LE DIT ═══
+
+            Le jeu de démonstration ne porte pas d'historique d'échéances : sa
+            vue est celle d'un seul mois. Deux issues étaient possibles, et la
+            troisième a été prise :
+
+              · le laisser AGIR sans que rien ne change — il mentirait, et sur
+                le nombre le plus sensible de l'écran ;
+              · le CACHER hors d'un vrai parc — mais `mesure-ui`, `modales` et
+                `espace-connecte` ne visitent que `/demo` : sa géométrie, son
+                contraste et ses cibles ne seraient mesurés par personne. Le
+                dépôt s'est déjà payé cet écran-là.
+              · le montrer FERMÉ, avec son motif. C'est l'idiome des deux
+                suppressions du Parc, et il vaut ici pour la même raison : un
+                geste absent ne s'explique pas.
+
+            `aria-disabled` et non `disabled` : la raison reste atteignable au
+            clavier. */}
+        <div
+          /* `gap-2` : le standard maison entre deux commandes — `gap-1` vaut
+             4 px et `ecarts` le refuse dans une rangée de cibles. */
+          className="flex items-center gap-2 rounded-md border border-border bg-surface px-1"
+          role="group"
+          aria-label={t('app.portfolio.monthShown')}
+        >
+          <button
+            type="button"
+            aria-disabled={!parkId || undefined}
+            aria-label={
+              parkId
+                ? t('app.portfolio.previousMonth')
+                : t('app.portfolio.monthLockedInDemo')
+            }
+            onClick={parkId ? () => setMois(moisDecale(moisChoisi, -1)) : undefined}
+            className={cn(
+              'inline-flex size-11 shrink-0 items-center justify-center rounded-md',
+              parkId
+                ? 'cursor-pointer text-muted hover:bg-surface-2 hover:text-ink'
+                : 'cursor-not-allowed text-muted opacity-45',
+            )}
+          >
+            <Icon name="chevronLeft" size={15} />
+          </button>
+          {/* `aria-live` : changer de mois ne déplace pas le focus — il reste
+              sur la flèche — donc rien n'annoncerait le mois atteint. */}
+          <span className="numeric min-w-32 text-center text-body" aria-live="polite">
+            {d.monthYear(enPartiesDeMois(moisChoisi))}
+          </span>
+          <button
+            type="button"
+            /* PAS D'AVANT-DEMAIN. Un mois futur n'a rien d'appelé : la vue y
+               serait « Non appelé » sur toute la colonne, ce qui se lit comme
+               un défaut du parc plutôt que comme un calendrier. */
+            aria-disabled={!parkId || moisChoisi >= moisCourant || undefined}
+            aria-label={
+              !parkId
+                ? t('app.portfolio.monthLockedInDemo')
+                : moisChoisi >= moisCourant
+                  ? t('app.portfolio.noFutureMonth')
+                  : t('app.portfolio.nextMonth')
+            }
+            onClick={
+              parkId && moisChoisi < moisCourant
+                ? () => setMois(moisDecale(moisChoisi, 1))
+                : undefined
+            }
+            className={cn(
+              'inline-flex size-11 shrink-0 items-center justify-center rounded-md',
+              parkId && moisChoisi < moisCourant
+                ? 'cursor-pointer text-muted hover:bg-surface-2 hover:text-ink'
+                : 'cursor-not-allowed text-muted opacity-45',
+            )}
+          >
+            <Icon name="chevronRight" size={15} />
+          </button>
+        </div>
+
       </div>
 
+      {/* `aria-busy` PENDANT LA RELECTURE, et rien d'autre.
+
+          Le temps qu'un autre mois revienne, la table montre encore celui qu'on
+          vient de quitter — ce qui est faux pendant une fraction de seconde. La
+          remplacer par un squelette ferait sauter la page à chaque flèche, sur
+          un écran qu'on parcourt mois par mois ; l'attribut dit l'attente à qui
+          l'écoute sans rien déplacer pour qui la regarde. C'est le compromis, et
+          il est assumé : ce que l'œil voit reste d'un instant en retard. */}
+      <div aria-busy={lectureDuMois || undefined}>
       <DataTable<Unit>
         caption={t('app.portfolio.title')}
         rows={rows}
@@ -828,7 +1013,7 @@ export function Portfolio() {
              pourtant « Aucune unité ne correspond à «  » » — la requête vide
              entre ses guillemets — et proposait de réinitialiser des filtres
              qu'on n'avait pas posés. C'est le premier écran d'un compte neuf. */
-          units.length === 0 ? (
+          unitesAffichees.length === 0 ? (
             /* Sans bouton : « Ajouter un immeuble » est déjà dans l'en-tête,
                à trois centimètres au-dessus. Le répéter donnait deux actions
                principales identiques sur le même écran — un doublon que la
@@ -1086,6 +1271,7 @@ export function Portfolio() {
           },
         ]}
       />
+      </div>
     </>
   )
 }
