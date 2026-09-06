@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cleanup } from '@testing-library/react'
-import { BUILDINGS } from '@/data/portfolio'
-import { attendreLeChargement, renderApp, screen, userEvent, within } from '@/test/render'
+import { attendreLeChargement, renderApp, screen, within } from '@/test/render'
 import { installerFauxServeur } from '@/test/api'
 
 /**
@@ -33,70 +31,50 @@ describe('la liste du parc nomme les immeubles', () => {
     expect(within(table).getAllByText('Akwa').length).toBeGreaterThan(0)
   })
 
-  it('nomme les filtres par ce sur quoi ils filtrent', async () => {
-    installerFauxServeur()
-    await renderApp('/demo/parc')
-    await screen.findByRole('heading', { level: 1 })
-    await attendreLeChargement()
-
-    const filtres = screen.getByRole('group', { name: /Immeuble/i })
-    expect(within(filtres).getByRole('button', { name: 'Immeuble Akwa Nord' })).toBeInTheDocument()
-    expect(within(filtres).getByRole('button', { name: 'Villa Deïdo' })).toBeInTheDocument()
-    // Le quartier seul ne désigne plus aucun bouton : c'est ce qui rendait deux
-    // résidences d'un même quartier indiscernables.
-    expect(within(filtres).queryByRole('button', { name: 'Akwa' })).not.toBeInTheDocument()
-  })
-
-  it('filtre bien sur l’immeuble nommé', async () => {
-    installerFauxServeur()
-    await renderApp('/demo/parc')
-    await screen.findByRole('heading', { level: 1 })
-    await attendreLeChargement()
-
-    const filtres = screen.getByRole('group', { name: /Immeuble/i })
-    await userEvent.setup().click(within(filtres).getByRole('button', { name: 'Villa Deïdo' }))
-
-    // La moitié positive ET la moitié négative : le bouton ne se contente pas
-    // de porter le bon nom, il retient les bonnes lignes.
-    const table = screen.getByRole('table')
-    expect(within(table).getAllByText('Villa Deïdo').length).toBeGreaterThan(0)
-    expect(within(table).queryByText('Immeuble Akwa Nord')).not.toBeInTheDocument()
-  })
-
   /**
-   * LE FILTRE SURVIT À L'ALLER-RETOUR, parce qu'il vit dans l'URL.
+   * LES TROIS ÉNUMÉRATIONS SONT DEVENUES UNE.
    *
-   * Il vivait en mémoire : ouvrir le dossier d'un logement puis revenir rendait
-   * le parc entier, filtre perdu. Sur douze immeubles, c'est un geste à refaire
-   * à chaque aller-retour — et l'aller-retour est précisément ce que cet écran
-   * sert à faire.
+   * Trois cas vivaient ici : les pastilles de filtre portaient le NOM de
+   * l'immeuble et non son quartier, elles retenaient les bonnes lignes, et
+   * `?immeuble=` les pilotait depuis l'adresse.
    *
-   * La recherche, elle, reste locale : ce cas vérifie AUSSI qu'elle n'y va pas,
-   * sans quoi une frappe en cours de saisie écrirait une entrée d'historique
-   * par caractère.
+   * Les pastilles sont parties. Le parc énumérait ses immeubles TROIS fois sur
+   * le même écran — en cartes, en pastilles, et dans une colonne redite à chaque
+   * ligne ; il ne les énumère plus qu'en en-têtes de groupe. Le filtre n'avait
+   * plus d'interface pour se poser, et il était devenu FAUX : `ordre` déclarant
+   * tous les immeubles pour que celui sans logement garde ses gestes, un filtre
+   * actif ne retirait pas les autres blocs, il les VIDAIT — deux en-têtes suivis
+   * de rien au milieu de la liste.
+   *
+   * CE QUI EST PERDU, ET IL FAUT LE DIRE : `/demo/parc?immeuble=…` n'est plus
+   * une adresse partageable. C'est la contrepartie assumée du groupement.
+   *
+   * CE QUE CES CAS GARDENT — et pourquoi ils ne sont pas simplement supprimés :
+   * la distinction NOM / QUARTIER, qui était leur vrai sujet. « Villa Deïdo » est
+   * dans le quartier « Deïdo » mais « Immeuble Akwa Nord » est dans « Akwa » :
+   * les deux libellés diffèrent, ce qui rend lisible lequel s'affiche où.
    */
-  it('laisse l’adresse piloter le filtre d’immeuble', async () => {
-    // Le parc entier d'abord, pour avoir un point de comparaison.
-    await renderApp('/demo/parc')
+  it('nomme l’immeuble par son nom, et le situe par son quartier', async () => {
+    installerFauxServeur()
+    await renderApp('/demo/parc', { largeur: 1280 })
+    await screen.findByRole('heading', { level: 1 })
     await attendreLeChargement()
-    const toutes = screen.getAllByRole('row').length
-    cleanup()
 
-    // La MÊME page, ouverte sur une adresse qui porte le filtre : c'est le
-    // mécanisme qui fait survivre le choix à un aller-retour vers un dossier.
-    await renderApp(`/demo/parc?immeuble=${BUILDINGS[0].id}`)
+    const blocs = Array.from(document.querySelectorAll('[data-groupe]'))
+    const akwa = blocs.find((b) => b.querySelector('h3')?.textContent === 'Immeuble Akwa Nord')
+    expect(akwa, 'le bloc porte le NOM en titre').toBeTruthy()
+    // Et le quartier, en second : il situe sans tenir la place du nom.
+    expect(within(akwa as HTMLElement).getByText('Akwa')).toBeInTheDocument()
+  })
+
+  it('n’écrit plus le nom de l’immeuble une fois par logement', async () => {
+    installerFauxServeur()
+    await renderApp('/demo/parc', { largeur: 1280 })
+    await screen.findByRole('heading', { level: 1 })
     await attendreLeChargement()
-    const filtrees = screen.getAllByRole('row').length
 
-    expect(filtrees).toBeGreaterThan(1)
-    expect(filtrees).toBeLessThan(toutes)
-
-    // Et le filtre actif se voit : la pastille de l'immeuble est enfoncée.
-    const filtres = screen.getByRole('group', { name: /Immeuble/i })
-    const actifs = within(filtres)
-      .getAllByRole('button')
-      .filter((b) => b.getAttribute('aria-pressed') === 'true')
-    expect(actifs).toHaveLength(1)
-    expect(actifs[0]).toHaveTextContent(BUILDINGS[0].name)
+    /* CINQ LOGEMENTS, UN SEUL NOM. C'est le gain que le groupement achète, et
+       ce compte est ce qui rougit le jour où la colonne revient. */
+    expect(screen.getAllByText('Résidence Bonamoussadi')).toHaveLength(1)
   })
 })

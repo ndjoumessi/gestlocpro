@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link, useLocation, useSearchParams } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { useRole } from '@/components/layout/AppShell'
 import { lien, useBase } from '@/lib/base'
@@ -14,15 +14,15 @@ import {
   SkeletonStatRow,
   SkeletonTable,
 } from '@/components/primitives/Skeleton'
-import { GRILLE_QUATRE_INDICATEURS } from './grillesDIndicateurs'
+import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
 import { AU_DELA_LG, useAuDela } from '@/lib/useAuDela'
 import { Input } from '@/components/primitives/Input'
 import { Button } from '@/components/primitives/Button'
 import { Modal } from '@/components/primitives/Modal'
 import { Icon } from '@/components/primitives/Icon'
+import { cn } from '@/lib/cn'
 import { useToast } from '@/components/primitives/Toast'
 import type { Immeuble } from '@/data/apiPortfolio'
-import { GroupeDeFiltres } from '@/components/controls/GroupeDeFiltres'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { type Unit } from '@/data/portfolio'
@@ -77,7 +77,6 @@ export function Portfolio() {
    * écrit DOUZE fois pour trois immeubles. Celui de la comparaison est le plus
    * net à 360 ; celui de la répétition vaut partout où l'on empile.
    */
-  const enTableau = useAuDela(AU_DELA_LG)
   const { adhesionActive, estDemo } = useSession()
   const { role } = useRole()
   /**
@@ -116,37 +115,31 @@ export function Portfolio() {
   const [aSupprimer, setASupprimer] = useState<Immeuble | null>(null)
   const [query, setQuery] = useState('')
 
+
   /*
-    LE FILTRE D'IMMEUBLE VIT DANS L'URL, la recherche non.
+    LE FILTRE D'IMMEUBLE EST PARTI AVEC SES PASTILLES, et l'URL avec lui.
 
-    Il vivait en mémoire : ouvrir le dossier d'un logement puis revenir rendait
-    le parc entier, filtre perdu. Sur un parc de trois immeubles c'est agaçant ;
-    sur douze, c'est un geste à refaire à chaque aller-retour, et l'aller-retour
-    est précisément ce que cet écran sert à faire.
+    Il vivait dans `?immeuble=`, pour survivre à un aller-retour vers le dossier
+    d'un logement. Le groupement le rend sans objet : les trois immeubles sont
+    déjà séparés, chacun sous son en-tête, et il n'y a plus rien à isoler — on
+    déroule au lieu de filtrer.
 
-    La RECHERCHE, elle, reste locale, et ce n'est pas une inconséquence. Un
-    filtre d'immeuble désigne une portion stable du parc — il se partage, se met
-    en favori, se retrouve. Une frappe en cours de saisie est personnelle et
-    éphémère : la pousser dans l'URL écrirait une entrée d'historique par
-    caractère.
+    IL ÉTAIT DEVENU FAUX, en plus d'être inutile. `ordre` déclare TOUS les
+    immeubles pour que celui qui n'a aucun logement garde son en-tête et ses
+    gestes. Un filtre actif ne retirait donc pas les autres immeubles, il les
+    vidait : deux en-têtes suivis de rien, au milieu de la liste.
 
-    `replace` et non `push` : choisir un immeuble n'est pas une navigation, et
-    le bouton « retour » doit ramener à l'écran précédent, jamais dérouler à
-    l'envers la liste des filtres qu'on a essayés.
+    CE QUE ÇA COÛTE : `/demo/parc?immeuble=…` n'est plus une adresse partageable.
+    C'est une perte réelle, assumée — un filtre qui ne peut plus rien retirer
+    n'est pas un filtre, et le mécanisme n'avait plus d'interface pour le poser.
+
+    La RECHERCHE reste, et reste locale : une frappe en cours de saisie est
+    personnelle et éphémère, la pousser dans l'URL écrirait une entrée
+    d'historique par caractère.
   */
-  const [parametres, setParametres] = useSearchParams()
-  const building = parametres.get('immeuble') ?? 'all'
-  const setBuilding = (valeur: string | 'all') => {
-    const suite = new URLSearchParams(parametres)
-    if (valeur === 'all') suite.delete('immeuble')
-    else suite.set('immeuble', valeur)
-    setParametres(suite, { replace: true })
-  }
-
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase()
     return units.filter((unit) => {
-      if (building !== 'all' && unit.buildingId !== building) return false
       if (!needle) return true
       const haystack = [
         // Le libellé et non l'identifiant : c'est « A1 » que l'utilisateur voit
@@ -169,7 +162,7 @@ export function Portfolio() {
        renommé ne devenait cherchable qu'au prochain changement de `units`.
        C'était vrai EN PRATIQUE — le portefeuille est remplacé en entier après
        une correction — mais tenu par un enchaînement, pas par la dépendance. */
-  }, [query, building, units, t, buildingById])
+  }, [query, units, t, buildingById])
 
   /**
    * SORTIR L'ÉTAT DU PARC, une ligne par logement.
@@ -246,8 +239,44 @@ export function Portfolio() {
    * logement. Quatre divisions recopiées auraient rouvert quatre fois le même
    * défaut ; celle-ci rend 0 sur un dénominateur nul, comme `computeKpis`.
    */
+  /* SOUS `lg`, LE BANDEAU SE TAIT — et ce n'est pas une omission.
+
+     `indicateursEnDouble` l'a refusé en une phrase : « /demo/parc — "83", déjà
+     sur le tableau de bord ». Sur un téléphone ces cent pixels redisent un
+     chiffre qui est à un onglet de distance, en tête d'un écran qui fait déjà
+     trois mille pixels de haut. Le lot des fiches avait pris cette décision
+     pour la grille ; le bandeau en hérite, pour la même raison mesurée.
+
+     L'occupation ne disparaît pas pour autant : chaque en-tête de groupe porte
+     celle de son immeuble, qui est ce qu'on lit sur place. */
+  const enTableau = useAuDela(AU_DELA_LG)
+
   const tauxDe = (occupees: number, total: number) =>
     total === 0 ? 0 : Math.round((occupees / total) * 100)
+
+  /**
+   * LES IMMEUBLES SANS LOGEMENT FERMENT LA LISTE.
+   *
+   * Un immeuble à `0/0` n'est pas un immeuble peu occupé : c'est un immeuble
+   * qu'on vient de créer et qu'on n'a pas encore rempli. Rangé à sa place
+   * alphabétique, il coupe la liste en deux avec un en-tête suivi de RIEN — un
+   * trou au milieu de ce qu'on est en train de lire. Un parc qui grandit en
+   * accumule autant qu'il crée d'immeubles d'avance.
+   *
+   * Groupés en fin de liste, ils restent atteignables — leurs gestes de
+   * correction et de retrait vivent dans leur en-tête, et c'est le seul endroit
+   * d'où on les atteint depuis que les cartes sont parties.
+   *
+   * PARTITION STABLE, ET NON UN TRI PAR TAUX. L'ordre des immeubles pleins ne
+   * bouge pas : classer par occupation ferait sauter un immeuble d'un rang à
+   * l'autre au premier bail signé, sur un écran qu'on relit tous les jours. Ce
+   * qu'on demande à cette liste, c'est de ne pas être trouée — pas d'être un
+   * classement.
+   */
+  const ordreDesImmeubles = [
+    ...BUILDINGS.filter((b) => occupancyOf(b.id).total > 0),
+    ...BUILDINGS.filter((b) => occupancyOf(b.id).total === 0),
+  ].map((b) => b.id)
 
   /**
    * Placé après les crochets — ils doivent tourner à chaque rendu — et avant le
@@ -353,158 +382,44 @@ export function Portfolio() {
         <EditUnitModal unit={logementACorriger} onClose={() => setLogementACorriger(null)} />
       )}
 
-      {/* PAS D'INDICATEUR SUR UN PARC SANS LOGEMENT.
+      {/* LE TAUX DU PARC EST UN AGRÉGAT : IL SORT DE LA GRILLE.
 
-          « Taux d'occupation 0 % · 0/0 occupées » au-dessus de « Aucun logement
-          pour l'instant » : le chiffre est exact, il ne dit rien, et il occupe
-          140 px avant le message qui, lui, dit tout. Mesuré par
-          `espace-connecte` sur son parc vide, aux trois largeurs et dans les
-          deux langues.
+          Il y était la QUATRIÈME tuile, dans la même grille que les trois
+          immeubles qui le composent — même fond, même bordure, même graisse.
+          Un tout rangé parmi ses parties se lit comme une partie de plus : sur
+          trois immeubles il passait pour un quatrième, et rien dans la mise en
+          page ne disait qu'il les résumait.
 
-          La division était déjà gardée ici — « un parc vide donne 0 % et non
-          NaN ». Ce lot va d'un cran plus loin : sur un parc vide, la carte
-          elle-même n'a pas lieu d'être. */}
-      {BUILDINGS.length === 0 || !enTableau ? null : (
-      <div className={GRILLE_QUATRE_INDICATEURS}>
-        {BUILDINGS.map((b) => {
-          const { occupied: occ, total } = occupancyOf(b.id)
-          return (
-            <StatCard
-              key={b.id}
-              /* Le seul endroit du produit où une carte désigne un immeuble
-                 RÉEL : le glyphe y est donc l'immeuble. Ailleurs, un chiffre
-                 d'occupation prend le cadran. */
-              icone="building"
-              /* Le NOM et non le quartier : la carte parle d'un immeuble, et
-                 deux immeubles d'un même quartier donnaient deux cartes
-                 intitulées « BASTOS ». Le quartier passe en note, où il situe
-                 sans prétendre nommer. */
-              label={b.name}
-              /* Le seul intitulé de carte du produit qui porte une DONNÉE,
-                 avec celui de la vitrine des états : un nom d'immeuble n'a pas
-                 de longueur maximale, donc il se coupe, et la garde du rognage
-                 sait que cette coupe-là est assumée. */
-              donnee
-              value={`${occ}/${total}`}
-              /* LA NOTE A RENDU LE RAPPORT À LA BARRE.
-                 Elle valait « Bonamoussadi · 5/5 occupées », quinze pixels sous
-                 un « 5/5 » en gros caractères : le même rapport deux fois dans
-                 une carte de quatre lignes, sur la ligne exacte où la barre
-                 devait aller. Le quartier reste — lui SITUE l'immeuble et ne se
-                 répète nulle part ailleurs sur la carte. Le rapport, lui, est
-                 désormais dit une fois en chiffres et une fois en longueur. */
-              note={b.district}
-              bas={
-                /* LA BARRE, PARCE QUE TROIS RAPPORTS À DÉNOMINATEURS DIFFÉRENTS
-                   NE SE COMPARENT PAS.
+          Seul, en bandeau au-dessus de la liste, il redevient ce qu'il est —
+          la mesure de l'écran — et la liste en dessous en devient le détail.
 
-                   « 5/5 », « 3/4 », « 2/3 » : trois divisions à poser de tête
-                   pour savoir lequel des trois immeubles est le plus troué, et
-                   l'ordre de la rangée n'est PAS l'ordre de tension — 100, 75,
-                   67. La grille aligne les cartes, donc les barres partagent
-                   origine et longueur : le classement se lit en travers.
+          IL RESTE UNE `StatCard` et non un bandeau écrit à la main : elle porte
+          `data-indicateur`, `data-valeur`, l'intitulé et la note que six gardes
+          savent lire. Un bandeau maison serait invisible à toutes.
 
-                   `hideValue` : la carte porte déjà « 5/5 » en gros. Le
-                   pourcentage à droite de la piste écrirait une troisième fois
-                   ce que la tuile vient de perdre en doublon.
+          PAS D'INDICATEUR SUR UN PARC SANS LOGEMENT : « 0 % · 0/0 occupées »
+          au-dessus de « Aucun logement pour l'instant » est exact, ne dit rien,
+          et occupe 140 px avant le message qui, lui, dit tout. */}
+      {units.length === 0 || !enTableau ? null : (
+        /* SEUL DANS LE GABARIT DES TROIS, et non étiré sur toute la largeur.
 
-                   AUCUN TON AU SEUIL, et c'est délibéré. `occupationSansVerdict`
-                   a tranché pour la carte du tableau de bord : un ratio
-                   d'occupation n'est ni `ok`, ni `warn`, ni `danger`, sous peine
-                   d'une alerte allumée à perpétuité sur chaque immeuble. Peindre
-                   la barre au seuil rouvrirait ici ce que ce cas ferme là-bas. */
-                <div className="mt-3">
-                  <ProgressBar
-                    value={tauxDe(occ, total)}
-                    label={t('app.portfolio.occupancy', { occupied: occ, total })}
-                    hideLabel
-                    hideValue
-                  />
-                </div>
-              }
-              action={
-                /* DEUX ISSUES, ET UNE SEULE EST CONDITIONNELLE.
-
-                   La suppression n'apparaît que sur un immeuble VIDE — le
-                   serveur refuse les autres, et offrir un geste qu'il refusera
-                   revient à promettre ce qu'on ne tient pas.
-
-                   LA CORRECTION, ELLE, EST TOUJOURS LÀ. Renommer n'emporte ni
-                   bail ni somme, et c'est précisément sur un immeuble PLEIN
-                   qu'elle sert : jusqu'à ce lot, une faute de frappe devenait
-                   définitive dès le premier logement, la suppression étant le
-                   seul chemin et se refusant à partir de là. */
-                /* `-my-1.5` SEUL, ET PAS `-mr-1.5`.
-
-                   Le retrait vertical empêche une cible de 44 px de grandir la
-                   rangée d'en-tête ; le retrait HORIZONTAL, lui, poussait le
-                   bouton de 6 px hors de sa boîte — mesuré par la règle du
-                   débordement local, 72 occurrences sur `/demo/parc`. Il
-                   existait déjà sur le bouton de suppression, mais aucune carte
-                   de la démonstration n'est VIDE : la règle ne l'avait jamais
-                   rencontré. Le rendre inconditionnel l'a exposé.
-
-                   Ce qu'il achetait : 6 px d'alignement optique du glyphe sur le
-                   bord de la carte. Ce qu'il coûtait : une forme qui sort de son
-                   conteneur, donc une tolérance à inscrire sur la signature d'un
-                   en-tête de carte QUE TOUT LE PRODUIT PARTAGE. On paie
-                   l'alignement, pas le blanc-seing. */
-                <div className="-my-1.5 flex shrink-0 items-center">
-                  <button
-                    type="button"
-                    aria-label={t('app.portfolio.editBuilding', { name: b.name })}
-                    onClick={() => setImmeubleACorriger(b)}
-                    className="inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-ink"
-                  >
-                    <Icon name="sliders" size={15} />
-                  </button>
-                  {total === 0 ? (
-                    <button
-                      type="button"
-                      aria-label={t('app.portfolio.deleteBuilding', { name: b.name })}
-                      onClick={() => setASupprimer(b)}
-                      className="inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted hover:bg-danger-tint hover:text-danger"
-                    >
-                      <Icon name="close" size={15} />
-                    </button>
-                  ) : null}
-                </div>
-              }
-            />
-          )
-        })}
-        {/* LE TAUX D'OCCUPATION PART SEUL, et la nuance a été payée.
-
-            Le premier jet masquait la rangée ENTIÈRE quand `units` était vide.
-            Un parc d'un immeuble SANS logement perdait alors sa carte — et avec
-            elle le seul bouton qui permette de retirer un immeuble créé par
-            faute de frappe, dont l'existence est justifiée à sa route : « toute
-            faute de frappe était définitive ». `gestures.test.tsx` l'a refusé,
-            et il avait raison.
-
-            La rangée suit donc les IMMEUBLES, et cette carte-ci les LOGEMENTS :
-            « 0 % · 0/0 occupées » ne dit rien, une carte d'immeuble dit son nom
-            et porte son issue. */}
-        {units.length === 0 ? null : (
+           C'est la doctrine que `GRILLE_DEUX_INDICATEURS` a déjà écrite pour ce
+           cas exact : « une carte a une taille dans ce produit ; elle ne
+           l'emprunte pas à ses voisines ». Étirée, elle porterait deux cents
+           pixels de contenu dans une boîte de mille — le défaut que la règle du
+           BLANC IMPOSÉ de `mesure-ui` mesure, et qu'`Access.tsx` s'est déjà payé
+           à 71 % de vide. La colonne restée libre à sa droite est le prix, et
+           c'est un blanc RÉGULIER. */
+        <div className={GRILLE_TROIS_INDICATEURS}>
         <StatCard
           icone="gauge"
           label={t('app.dashboard.occupancy')}
-          /* `computeKpis` borne déjà cette division — « un parc vide donne 0 %
-             et non NaN » — et ce second calcul, écrit à la main ici, ne le
-             faisait pas. Un compte neuf lisait « NaN % » dès l'ouverture de cet
-             écran, sur le seul indicateur de la page. La borne vit maintenant
-             dans `tauxDe`, que les trois cartes d'immeuble partagent. */
           value={`${tauxDe(occupied, units.length)}`}
           unit="%"
-          /* LA NOTE RESTE ICI, à la différence des cartes d'immeuble : « 10/12
-             occupées » n'est pas la répétition de « 83 % », c'est le comptage
-             BRUT sous le pourcentage. Sur douze logements, le pourcentage seul
-             cacherait les deux à relouer. */
+          /* LE COMPTAGE BRUT SOUS LE POURCENTAGE : sur douze logements, « 83 % »
+             seul cacherait les deux à relouer. */
           note={t('app.portfolio.occupancy', { occupied, total: units.length })}
           bas={
-            /* LA MÊME BARRE QUE SES PARTIES, et c'est le point : la carte du
-               parc se lit dans la même rangée que les trois immeubles qui la
-               composent. Une échelle commune, ou aucune comparaison. */
             <div className="mt-3">
               <ProgressBar
                 value={tauxDe(occupied, units.length)}
@@ -515,8 +430,7 @@ export function Portfolio() {
             </div>
           }
         />
-        )}
-      </div>
+        </div>
       )}
 
       <div className="mt-6 mb-4 flex flex-wrap items-center gap-3">
@@ -546,19 +460,6 @@ export function Portfolio() {
           />
         </div>
 
-        <GroupeDeFiltres
-          libelle={t('app.portfolio.building')}
-          valeur={building}
-          onChange={setBuilding}
-          /* Le bouton porte le NOM de l'immeuble, qui est ce sur quoi il filtre.
-             Il portait le quartier : deux résidences à Bastos auraient donné deux
-             boutons identiques, dont l'un aurait été injoignable — l'utilisateur
-             aurait cliqué le premier en croyant atteindre le second. */
-          options={[{ id: 'all', name: t('app.portfolio.filterAll') }, ...BUILDINGS].map((b) => ({
-            valeur: b.id,
-            libelle: b.name,
-          }))}
-        />
       </div>
 
       <DataTable<Unit>
@@ -585,21 +486,47 @@ export function Portfolio() {
           /* TOUS LES IMMEUBLES, y compris ceux sans logement : c'est le seul
              endroit d'où l'on peut encore les corriger ou les retirer une fois
              les cartes parties. `modales` l'a refusé avant moi. */
-          ordre: BUILDINGS.map((b) => b.id),
+          ordre: ordreDesImmeubles,
           nom: (id) => buildingById(id)?.name ?? '',
-          enTete: (id) => {
+          enTete: (id, _lignes, forme) => {
             const b = buildingById(id)
             const { occupied: occ, total } = occupancyOf(id)
+            const auTableau = forme === 'tableau'
             return (
               /* `data-groupe` : les gardes lisent l'en-tête par cet attribut et
-                 non par `role="group"` — deux groupes portent déjà ce rôle sur
-                 cet écran, dont le FILTRE par immeuble, littéralement nommé
-                 « Immeuble ». Même idiome que `data-indicateur` sur `StatCard`. */
+                 non par `role="group"` — d'autres groupes portent ce rôle sur
+                 cet écran. Même idiome que `data-indicateur` sur `StatCard`. */
               <div
                 data-groupe=""
-                className="rounded-lg border border-divider bg-surface-2 px-4 py-3"
+                className={cn(
+                  'bg-surface-2 px-4 py-3',
+                  /* EN FICHES l'en-tête est une CARTE posée sur le fond de la
+                     page : il lui faut sa bordure et ses coins. AU TABLEAU il
+                     occupe une rangée entre deux filets, dans une boîte qui a
+                     déjà les siens — l'y peindre ferait une carte dans une
+                     carte, avec deux bordures à trois pixels l'une de l'autre. */
+                  !auTableau && 'rounded-lg border border-divider',
+                )}
               >
-                <div className="flex items-start justify-between gap-3">
+                <div
+                  className={cn(
+                    'flex gap-3',
+                    /* UNE SEULE LIGNE AU TABLEAU, EMPILÉ EN FICHES.
+
+                       Premier jet : la même mise en page des deux côtés. À 1280
+                       la rangée de groupe fait 570 px de large, et la barre s'y
+                       étirait sur toute la longueur — un trait bleu plein qui se
+                       lit comme un SÉPARATEUR et non comme une mesure, pendant
+                       que le rapport « 5/5 » partait à l'autre bout de l'écran,
+                       à 400 px du nom qu'il qualifie.
+
+                       Au tableau, tout tient donc sur une ligne et la barre est
+                       BORNÉE, posée contre son rapport. En fiches la boîte fait
+                       moins de 320 px : rien n'y tient sur une ligne, et la
+                       barre pleine largeur y est juste. */
+                    auTableau ? 'items-center' : 'flex-col',
+                  )}
+                >
                   <div className="flex min-w-0 flex-1 items-center gap-2.5">
                     <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-neutral-tint text-neutral">
                       <Icon name="building" size={15} />
@@ -610,29 +537,40 @@ export function Portfolio() {
                           `<p>`. Groupée, la liste devient une STRUCTURE, et un
                           lecteur d'écran doit pouvoir sauter d'immeuble en
                           immeuble par les titres. */}
-                      {/* AUCUNE COUPE, ET C'EST CE QUI SÉPARE UN EN-TÊTE D'UNE CARTE.
-
-                          Deux jets refusés avant celui-ci. `truncate` coupait
-                          « Résidence Bonamo… » à 375 px — le défaut que la carte
-                          nomme : « on ne distingue plus les deux premières que
-                          par leur longueur ». `line-clamp-2` a fait pire, et la
-                          règle du rognage l'a mesuré : 282 px coupés à 320 px en
-                          police large, sur 70 px offerts.
-
-                          La carte CLAMPE parce qu'une grille doit aligner quatre
-                          tuiles : une qui s'allonge décale les trois autres. Un
-                          en-tête de groupe n'aligne rien — il ouvre une section.
-                          Un nom long y coûte une ligne UNE FOIS pour cinq
-                          logements, là où la même ligne dans les fiches coûtait
-                          cinq fois. Il se replie donc, entier. */}
+                      {/* AUCUNE COUPE : `truncate` donnait « Résidence Bonamo… »
+                          à 375 px, `line-clamp-2` a coupé 282 px sur 70 offerts.
+                          La carte clampait parce qu'une grille doit aligner
+                          quatre tuiles ; un en-tête de groupe n'aligne rien. */}
                       <h3 className="font-medium text-ink hyphens-auto break-words">
                         {b?.name}
                       </h3>
                       <p className="text-body text-muted">{b?.district}</p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-2">
+
+                  <div
+                    className={cn(
+                      'flex shrink-0 items-center gap-3',
+                      !auTableau && 'w-full justify-between',
+                    )}
+                  >
                     <span className="numeric font-medium">{`${occ}/${total}`}</span>
+                    {/* LA BARRE CONTRE SON RAPPORT au tableau — 96 px, la
+                        largeur d'une mesure, pas d'un séparateur. Elle SITUE
+                        l'immeuble qu'on lit ; elle ne compare plus rien puisque
+                        les en-têtes ne s'alignent pas comme s'alignait la
+                        grille de cartes. `hideValue` : le rapport est écrit en
+                        chiffres à trois pixels de là. */}
+                    {auTableau ? (
+                      <div className="w-24">
+                        <ProgressBar
+                          value={tauxDe(occ, total)}
+                          label={t('app.portfolio.occupancy', { occupied: occ, total })}
+                          hideLabel
+                          hideValue
+                        />
+                      </div>
+                    ) : null}
                     {/* LES DEUX MÊMES ISSUES QUE LA CARTE, aux mêmes conditions :
                         corriger toujours, supprimer seulement sur un immeuble
                         VIDE. Le geste ne change pas parce que la mise en page
@@ -646,12 +584,51 @@ export function Portfolio() {
                       >
                         <Icon name="sliders" size={15} />
                       </button>
-                      {total === 0 && b ? (
+                      {/* LE GESTE FERMÉ SE MONTRE, ET DIT POURQUOI.
+
+                          Il n'apparaissait que sur un immeuble VIDE. Sur tous
+                          les autres il n'y avait RIEN — ni bouton, ni raison :
+                          deux immeubles voisins offraient des gestes différents
+                          et l'écran n'en donnait pas le motif. On cherche alors
+                          le bouton manquant, puis ce qu'on a mal fait.
+
+                          `aria-disabled` ET NON `disabled` : un bouton désactivé
+                          sort de l'ordre de tabulation, donc sa raison devient
+                          inatteignable au clavier — précisément pour qui en a le
+                          plus besoin. Il reste focalisable, annonce son état, et
+                          son nom accessible PORTE le motif avec le compte qui dit
+                          quoi faire pour l'ouvrir.
+
+                          Il garde ses 44 px : une cible fermée reste une cible,
+                          et la rétrécir la mettrait sous le plancher que
+                          `mesure-ui` tient sur soixante-treize autres commandes. */}
+                      {b ? (
                         <button
                           type="button"
-                          aria-label={t('app.portfolio.deleteBuilding', { name: b.name })}
-                          onClick={() => setASupprimer(b)}
-                          className="inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted hover:bg-danger-tint hover:text-danger"
+                          aria-disabled={total > 0 || undefined}
+                          aria-label={
+                            total === 0
+                              ? t('app.portfolio.deleteBuilding', { name: b.name })
+                              : t('app.portfolio.deleteBuildingBlocked', {
+                                  name: b.name,
+                                  count: total,
+                                })
+                          }
+                          onClick={total === 0 ? () => setASupprimer(b) : undefined}
+                          className={cn(
+                            'inline-flex size-11 shrink-0 items-center justify-center rounded-md',
+                            total === 0
+                              ? 'cursor-pointer text-muted hover:bg-danger-tint hover:text-danger'
+                              : /* `opacity-45` est l'ÉTEINT que `Button` applique à
+                                   toutes ses commandes fermées — repris ici plutôt
+                                   qu'un gris choisi pour l'occasion, pour qu'un geste
+                                   fermé ait la même mine partout. Sans son
+                                   `pointer-events-none` : on veut justement que le
+                                   curseur réponde et dise « fermé ». Le glyphe est
+                                   `aria-hidden`, donc rien de ce qui s'atténue ne
+                                   porte d'information — le nom accessible la porte. */
+                                'cursor-not-allowed text-muted opacity-45',
+                          )}
                         >
                           <Icon name="close" size={15} />
                         </button>
@@ -659,20 +636,19 @@ export function Portfolio() {
                     </div>
                   </div>
                 </div>
-                {/* LA BARRE SUIT LE NOM là où le nom va. Le lot qui l'a posée
-                    l'a fait pour comparer les immeubles EN TRAVERS d'une grille ;
-                    empilée, elle ne compare plus rien, mais elle SITUE l'immeuble
-                    qu'on est en train de lire — et c'est ce qui reste utile sur
-                    un téléphone. `hideValue` pour la même raison qu'en carte :
-                    le rapport est déjà écrit en chiffres à côté. */}
-                <div className="mt-2">
-                  <ProgressBar
-                    value={tauxDe(occ, total)}
-                    label={t('app.portfolio.occupancy', { occupied: occ, total })}
-                    hideLabel
-                    hideValue
-                  />
-                </div>
+                {/* EN FICHES SEULEMENT : la boîte fait moins de 320 px, la barre
+                    y prend toute la largeur sous le nom, où elle situe
+                    l'immeuble qu'on est en train de lire. */}
+                {auTableau ? null : (
+                  <div className="mt-2">
+                    <ProgressBar
+                      value={tauxDe(occ, total)}
+                      label={t('app.portfolio.occupancy', { occupied: occ, total })}
+                      hideLabel
+                      hideValue
+                    />
+                  </div>
+                )}
               </div>
             )
           },
@@ -715,7 +691,7 @@ export function Portfolio() {
             // « Tous » / « All » : le libellé d'un filtre, pas d'une action.
             // Il réinitialise la recherche ET l'immeuble — il le dit.
             action={
-              <Button variant="secondary" onClick={() => { setQuery(''); setBuilding('all') }}>
+              <Button variant="secondary" onClick={() => setQuery('')}>
                 {t('app.portfolio.resetFilters')}
               </Button>
             }
@@ -854,7 +830,22 @@ export function Portfolio() {
                  donc rien n'est en défaut ». La pastille distingue donc par son
                  MOT, jamais par sa teinte, ce qui est aussi ce que
                  `couleur-non-seule` exige. */
-              <StatusPill tone="neutral" size="sm">
+              <StatusPill
+                tone="neutral"
+                /* LE GLYPHE SÉPARE CE QUE LE TON REFUSE DE SÉPARER.
+
+                   Les deux pastilles partagent `neutral` exprès — un logement
+                   loué n'est pas un succès, un logement vide n'est pas une
+                   alerte — mais elles héritaient alors du MÊME glyphe `info`,
+                   et la colonne entière se lisait comme une suite de pastilles
+                   identiques dont seul le mot changeait.
+
+                   `users` : il y a quelqu'un. `key` : on tient les clés, il faut
+                   relouer — le même glyphe que la pastille de paiement d'une
+                   vacance, parce que c'est la même chose qui est dite. */
+                icon={unit.status === 'vacant' ? 'key' : 'users'}
+                size="sm"
+              >
                 {unit.status === 'vacant' ? t('status.vacant') : t('app.portfolio.occupied')}
               </StatusPill>
             ),
@@ -952,7 +943,13 @@ function PortfolioSkeleton() {
         {/* Quatre cartes : le nombre réel vaut « un par immeuble, plus le
             total », donc il dépend du parc qu'on attend. Quatre remplit
             exactement une rangée de la grille sur grand écran. */}
-        <SkeletonStatRow count={4} className={GRILLE_QUATRE_INDICATEURS} />
+        {/* UN, ET NON QUATRE. Le squelette annonçait la grille des trois
+            immeubles plus le taux ; l'écran charge désormais le seul bandeau
+            d'occupation. Un squelette qui promet quatre cartes et en rend une
+            fait sauter la page au chargement — et c'est le défaut exact que
+            `SkeletonStatRow` documente, « attendait sous quatre cartes égales
+            et chargeait trois cartes inégales ». */}
+        <SkeletonStatRow count={1} className={GRILLE_TROIS_INDICATEURS} />
 
         <div className="mt-6 mb-4 flex flex-wrap items-center gap-3">
           <Skeleton radius="md" className="h-11 w-full max-w-xs" />

@@ -157,11 +157,32 @@ describe('le parc sur un téléphone', () => {
 })
 
 /**
- * LE BUREAU NE BOUGE PAS, ET C'EST LA MOITIÉ DU LOT.
+ * LE BUREAU A BOUGÉ À SON TOUR — ET CES CAS DISENT VERS QUOI.
  *
- * Une refonte qui améliore le téléphone en abîmant le bureau n'a rien réglé :
- * elle a déplacé le défaut. Ces cas tiennent l'INVARIANCE — un seul tableau, la
- * colonne « Immeuble », les cartes alignées où leur comparaison fonctionne.
+ * ═══ CE QU'ILS DISAIENT AVANT, ET POURQUOI ILS LE DISAIENT ═══
+ *
+ * Ils tenaient l'INVARIANCE du bureau : quatre cartes, un seul tableau, la
+ * colonne « Immeuble », aucun groupe. C'était une CLÔTURE DE NON-RÉGRESSION,
+ * posée pour prouver que le lot des fiches ne fuyait pas hors du téléphone —
+ * pas un engagement à garder cette forme.
+ *
+ * La clôture a fait son travail. Le bureau change maintenant DÉLIBÉRÉMENT, et
+ * ces cas décrivent la forme neuve au lieu de défendre l'ancienne.
+ *
+ * ═══ CE QUE LE BUREAU EST DEVENU ═══
+ *
+ * Le parc énumérait ses immeubles TROIS fois sur le même écran : en cartes, en
+ * pastilles de filtre, et dans une colonne redite à chaque ligne. Il ne les
+ * énumère plus qu'une : en en-têtes de groupe, qui portent le nom, le rapport,
+ * la barre et les gestes.
+ *
+ * Le groupement d'un tableau était refusé par `DataTable` en ces termes —
+ * « grouper y ajouterait des rangées d'en-tête pour redire ce qu'une colonne dit
+ * sans place ». L'argument tenait tant que la colonne RESTAIT ; la primitive
+ * l'ôte désormais, des deux côtés, et c'est ce que le troisième cas vérifie.
+ *
+ * ET LE TAUX DU PARC EST SORTI DE LA GRILLE : un agrégat rangé parmi ses parties
+ * se lit comme une partie de plus. Il reste UN indicateur au-dessus de la liste.
  */
 describe('le parc sur un écran large', () => {
   const ouvrir = async () => {
@@ -170,19 +191,50 @@ describe('le parc sur un écran large', () => {
     await attendreLeChargement()
   }
 
-  it('garde ses quatre cartes d’indicateur', async () => {
+  it('ne garde qu’UN indicateur : l’agrégat, au-dessus de la liste', async () => {
     await ouvrir()
-    expect(document.querySelectorAll('[data-indicateur]').length).toBe(4)
+    const indicateurs = document.querySelectorAll('[data-indicateur]')
+    expect(indicateurs.length, 'le taux du parc, et lui seul').toBe(1)
+    expect(indicateurs[0]!.textContent).toContain('83')
   })
 
-  it('garde UN SEUL tableau, avec l’immeuble en colonne', async () => {
+  it('groupe son tableau par immeuble, un en-tête par immeuble', async () => {
     await ouvrir()
     expect(screen.getAllByRole('table').length).toBe(1)
-    expect(screen.getByRole('columnheader', { name: /Immeuble/ })).toBeInTheDocument()
+
+    /* TROIS EN-TÊTES POUR TROIS IMMEUBLES — le compte vient du jeu de
+       démonstration, et c'est lui qui rougit si un immeuble perd son bloc. */
+    const enTetes = document.querySelectorAll('[data-groupe]')
+    expect(enTetes.length).toBe(3)
+    expect(Array.from(enTetes).map((e) => e.querySelector('h3')?.textContent)).toEqual([
+      'Résidence Bonamoussadi',
+      'Immeuble Akwa Nord',
+      'Villa Deïdo',
+    ])
   })
 
-  it('ne groupe RIEN — aucun en-tête de groupe', async () => {
+  it('retire la colonne « Immeuble », que l’en-tête porte désormais', async () => {
     await ouvrir()
-    expect(document.querySelectorAll('[data-groupe]').length).toBe(0)
+    /*
+      LA MOITIÉ QUI REND LE GROUPEMENT HONNÊTE. Un tableau groupé QUI GARDE sa
+      colonne redit la catégorie à chaque ligne ET en tête de chaque bloc — une
+      répétition de plus, pas une de moins. C'est l'objection que `DataTable`
+      opposait au groupement, et le seul cas qui vérifie qu'elle est levée.
+    */
+    expect(screen.queryByRole('columnheader', { name: /Immeuble/ })).not.toBeInTheDocument()
+
+    // Le nom n'est plus écrit qu'une fois par immeuble, en en-tête — et non
+    // plus une fois par logement.
+    const dansLaTable = screen.getAllByText('Résidence Bonamoussadi')
+    expect(dansLaTable, 'le nom une seule fois, en tête de son bloc').toHaveLength(1)
+  })
+
+  it('n’énumère plus les immeubles en pastilles de filtre', async () => {
+    await ouvrir()
+    /* La troisième énumération. Elle faisait double emploi avec les en-têtes,
+       et le filtre était devenu FAUX : `ordre` déclarant tous les immeubles, un
+       filtre actif ne les retirait pas, il les vidait — deux en-têtes suivis de
+       rien au milieu de la liste. */
+    expect(screen.queryByRole('group', { name: /Immeuble/i })).not.toBeInTheDocument()
   })
 })

@@ -5,32 +5,32 @@ import { installerFauxServeur } from '@/test/api'
 /**
  * UN RAPPORT ÉCRIT NE SE COMPARE PAS À L'ŒIL.
  *
- * ═══ CE QUE LES TUILES DONNAIENT À LIRE ═══
+ * ═══ CE QUE CE CAS GARDAIT, ET OÙ IL LE GARDE MAINTENANT ═══
  *
- * Quatre tuiles en rangée, et trois d'entre elles portaient un rapport à
- * dénominateur DIFFÉRENT : « 5/5 », « 3/4 », « 2/3 ». Pour savoir lequel des
- * trois immeubles est le plus troué, il fallait poser trois divisions de tête —
- * et l'ordre affiché n'est pas l'ordre de tension : 100, 75, 67. Le classement
- * que la rangée existe pour donner était le seul qu'elle ne donnait pas.
+ * Il visait les CARTES d'immeuble : quatre tuiles en rangée dont trois
+ * portaient un rapport à dénominateur différent — « 5/5 », « 3/4 », « 2/3 » —
+ * qu'il fallait diviser de tête pour classer, l'ordre affiché n'étant pas
+ * l'ordre de tension (100, 75, 67).
  *
- * Une barre le rend sans un calcul : même origine, même longueur d'une tuile à
- * l'autre, donc les trois se lisent en travers.
+ * Les cartes sont parties : elles énuméraient les immeubles une deuxième fois,
+ * à côté des pastilles de filtre et de la colonne « Immeuble ». La barre, elle,
+ * n'est pas partie — elle a suivi le nom dans l'EN-TÊTE DE GROUPE, qui est
+ * désormais le seul endroit où un immeuble est nommé.
+ *
+ * Ce qu'elle y fait a changé de nature, et il faut le dire : alignées dans une
+ * grille, les barres COMPARAIENT ; empilées en en-têtes séparés par leurs
+ * lignes, elles SITUENT l'immeuble qu'on est en train de lire. Le classement
+ * d'un coup d'œil est perdu avec la grille. Ce qui reste — une mesure là où on
+ * la lit — est ce que ce fichier garde.
  *
  * ═══ LA BARRE NE JUGE PAS, ET C'EST LA MOITIÉ DE LA GARDE ═══
  *
- * `occupationSansVerdict` a déjà tranché pour la carte du tableau de bord : un
- * ratio d'occupation n'est ni `ok`, ni `warn`, ni `danger`, sous peine d'une
- * alerte permanente que personne ne lit plus au bout d'une semaine. La barre
- * posée ici est du MÊME ordre — une forme, pas un verdict — et le troisième cas
- * l'exige explicitement, sans quoi le prochain lot qui la peindrait au seuil
- * rouvrirait par la porte des tuiles ce que l'autre garde a fermé.
- *
- * ═══ ET LE CHIFFRE NE S'ÉCRIT PLUS DEUX FOIS ═══
- *
- * La note redisait le rapport que la valeur venait de donner — « 5/5 », puis
- * « Bonamoussadi · 5/5 occupées » quinze pixels plus bas — et elle occupait
- * exactement la ligne où la barre devait aller. Le second cas tient cette
- * ligne : la place a été rendue, elle ne se reprend pas.
+ * `occupationSansVerdict` a tranché pour la carte du tableau de bord : un ratio
+ * d'occupation n'est ni `ok`, ni `warn`, ni `danger`, sous peine d'une alerte
+ * permanente que personne ne lit plus au bout d'une semaine. Le dernier cas
+ * porte cet interdit aux en-têtes du parc, sur un jeu qui contient un immeuble
+ * PLEIN et deux TROUÉS — sans ce couple, l'assertion passerait au vert sur un
+ * code fautif.
  */
 
 /** Les trois immeubles de la démonstration, et leur taux attendu. */
@@ -41,41 +41,40 @@ const IMMEUBLES = [
 ]
 
 /**
- * La carte d'indicateur qui porte cet intitulé, barre comprise.
+ * L'en-tête de groupe qui porte ce nom d'immeuble.
  *
- * PAR `data-intitule` ET NON PAR `getByText` : un nom d'immeuble apparaît trois
- * fois sur cet écran — la tuile, le bouton de filtre, et chaque ligne du
- * tableau. `getByText('Résidence Bonamoussadi')` échoue donc sur « plusieurs
- * éléments », et le premier jet de ce cas rougissait pour cette raison-là, pas
- * pour la sienne.
+ * PAR `data-groupe` ET NON PAR `getByText` : `role="group"` désignait déjà
+ * d'autres choses sur cet écran, et le nom d'un immeuble apparaît aussi dans les
+ * modales de correction. Même idiome que `data-indicateur` sur `StatCard`.
  */
-function tuile(intitule: string) {
-  const carte = Array.from(document.querySelectorAll('[data-indicateur]')).find(
-    (c) => c.querySelector('[data-intitule]')?.textContent?.trim() === intitule,
+function enTete(nom: string) {
+  const bloc = Array.from(document.querySelectorAll('[data-groupe]')).find(
+    (e) => e.querySelector('h3')?.textContent?.trim() === nom,
   )
-  if (!carte) throw new Error(`Aucune carte d'indicateur pour « ${intitule} »`)
-  return carte as HTMLElement
+  if (!bloc) throw new Error(`Aucun en-tête de groupe pour « ${nom} »`)
+  return bloc as HTMLElement
 }
 
-describe('les tuiles d’occupation du parc', () => {
+async function ouvrirLeParc() {
+  installerFauxServeur()
+  await renderApp('/demo/parc', { largeur: 1280 })
+  await screen.findByRole('heading', { level: 1 })
+  await attendreLeChargement()
+}
+
+describe('l’occupation d’un immeuble, en tête de son bloc', () => {
   it('porte une barre dont le remplissage est le taux de l’immeuble', async () => {
-    installerFauxServeur()
-    await renderApp('/demo/parc')
-    await screen.findByRole('heading', { level: 1 })
-    await attendreLeChargement()
+    await ouvrirLeParc()
 
     for (const immeuble of IMMEUBLES) {
-      const carte = tuile(immeuble.nom)
+      const bloc = enTete(immeuble.nom)
 
-      /*
-        GARDE DU GARDE — la tuile doit bien être celle qu'on croit.
+      /* GARDE DU GARDE — le bloc doit bien être celui qu'on croit. Sans cette
+         ligne, un en-tête vide passerait l'assertion suivante pour la seule
+         raison qu'il ne contient rien. */
+      expect(within(bloc).getByText(immeuble.rapport)).toBeInTheDocument()
 
-        Sans cette ligne, une carte vide passerait les deux assertions suivantes
-        pour la seule raison qu'elle ne contient rien du tout.
-      */
-      expect(within(carte).getByText(immeuble.rapport)).toBeInTheDocument()
-
-      const barre = within(carte).getByRole('progressbar')
+      const barre = within(bloc).getByRole('progressbar')
       expect(barre, `barre de ${immeuble.nom}`).toHaveAttribute(
         'aria-valuenow',
         String(immeuble.taux),
@@ -83,69 +82,62 @@ describe('les tuiles d’occupation du parc', () => {
     }
   })
 
-  it('porte la barre sur le taux du parc entier, comme sur ses parties', async () => {
-    installerFauxServeur()
-    await renderApp('/demo/parc')
-    await screen.findByRole('heading', { level: 1 })
-    await attendreLeChargement()
+  it('porte la barre du parc entier dans son bandeau, sur la même échelle', async () => {
+    await ouvrirLeParc()
 
-    // 10 occupées sur 12 : le même nombre que la valeur de la carte, et c'est
-    // le point — la barre lit la donnée, elle ne s'invente pas une échelle.
-    const barre = within(tuile('Taux d’occupation')).getByRole('progressbar')
-    expect(barre).toHaveAttribute('aria-valuenow', '83')
+    /* 10 occupées sur 12. L'agrégat a quitté la grille des immeubles — un tout
+       rangé parmi ses parties se lit comme une partie de plus — mais il garde
+       la MÊME barre qu'eux : une échelle commune, ou aucune lecture commune. */
+    const bandeau = document.querySelector('[data-indicateur]')
+    expect(bandeau, 'le bandeau d’occupation du parc').not.toBeNull()
+    expect(within(bandeau as HTMLElement).getByRole('progressbar')).toHaveAttribute(
+      'aria-valuenow',
+      '83',
+    )
   })
 
   it('ne redit pas le rapport sous le rapport', async () => {
-    installerFauxServeur()
-    await renderApp('/demo/parc')
-    await screen.findByRole('heading', { level: 1 })
-    await attendreLeChargement()
+    await ouvrirLeParc()
 
     for (const immeuble of IMMEUBLES) {
-      const carte = tuile(immeuble.nom)
+      const bloc = enTete(immeuble.nom)
       /*
-        LE COMPTE SE FAIT SUR LE TEXTE DE LA CARTE, et non par `getAllByText`.
+        LE COMPTE SE FAIT SUR LE TEXTE DU BLOC, et non par `getAllByText`.
 
         `getAllByText('5/5')` compare le texte ENTIER d'un élément : il ne
-        trouve pas « 5/5 » dans « Bonamoussadi · 5/5 occupées », donc il rendait
+        trouve pas « 5/5 » dans « Bonamoussadi · 5/5 occupées », donc il rendrait
         1 sur le code fautif comme sur le code corrigé — un cas qui ne peut pas
         rougir. Passer une expression régulière ne sauve rien : elle apparie
-        alors aussi les PARENTS, dont la carte elle-même, et le compte devient
-        fonction de la profondeur du balisage.
+        alors aussi les PARENTS, et le compte devient fonction de la profondeur
+        du balisage.
       */
-      const occurrences = (carte.textContent?.match(new RegExp(immeuble.rapport, 'g')) ?? []).length
-      expect(occurrences, `« ${immeuble.rapport} » écrit une seule fois dans la tuile`).toBe(1)
+      const occurrences = (bloc.textContent?.match(new RegExp(immeuble.rapport, 'g')) ?? []).length
+      expect(occurrences, `« ${immeuble.rapport} » écrit une seule fois`).toBe(1)
 
-      /*
-        LE QUARTIER RESTE — c'est la seconde moitié du correctif, et sans elle
-        « ne redit pas le rapport » serait satisfait par une note SUPPRIMÉE.
-
-        Chaîne exacte et non expression régulière : « Bonamoussadi » est un
-        MORCEAU de « Résidence Bonamoussadi », donc une regex apparie aussi
-        l'intitulé de la carte et le cas échouait sur « plusieurs éléments ».
-        L'appariement exact ne retient que la note, qui porte le quartier seul.
-      */
-      expect(within(carte).getByText(immeuble.quartier)).toBeInTheDocument()
+      /* LE QUARTIER RESTE — sans lui, « ne redit pas le rapport » serait
+         satisfait par un en-tête AMPUTÉ. Chaîne exacte et non regex :
+         « Bonamoussadi » est un morceau de « Résidence Bonamoussadi », donc une
+         regex apparierait aussi le titre. */
+      expect(within(bloc).getByText(immeuble.quartier)).toBeInTheDocument()
     }
   })
 
   it('ne peint aucun verdict sur une occupation', async () => {
-    installerFauxServeur()
-    await renderApp('/demo/parc')
-    await screen.findByRole('heading', { level: 1 })
-    await attendreLeChargement()
+    await ouvrirLeParc()
 
-    /*
-      LE MÊME INTERDIT QUE `occupationSansVerdict`, porté aux tuiles du Parc.
-
-      Un immeuble PLEIN et un immeuble TROUÉ sont dans le jeu : si la barre se
-      peignait au seuil, les deux cartes divergeraient ici. C'est le couple qui
-      fait le cas — sur trois immeubles pleins, l'assertion passerait au vert
-      sur un code fautif.
-    */
+    /* LE MÊME INTERDIT QUE `occupationSansVerdict`, porté aux en-têtes du Parc.
+       Un immeuble PLEIN et deux TROUÉS sont dans le jeu : si la barre se
+       peignait au seuil, les blocs divergeraient ici. C'est le couple qui fait
+       le cas — sur trois immeubles pleins, l'assertion passerait au vert sur un
+       code fautif. */
     for (const immeuble of IMMEUBLES) {
-      const carte = tuile(immeuble.nom)
-      expect(carte.getAttribute('data-etat'), `état de ${immeuble.nom}`).toBeNull()
+      const bloc = enTete(immeuble.nom)
+      const tons = Array.from(bloc.querySelectorAll('[data-ton]')).map((p) =>
+        p.getAttribute('data-ton'),
+      )
+      expect(tons, `verdict dans l’en-tête de ${immeuble.nom}`).not.toContain('ok')
+      expect(tons).not.toContain('warn')
+      expect(tons).not.toContain('danger')
     }
   })
 })

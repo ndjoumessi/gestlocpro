@@ -942,6 +942,22 @@ export const fr = {
       subtitle: '{buildings}, {units}. Le statut porte sur le mois affiché.',
       // Aucun logement du tout : ce n'est pas une recherche infructueuse.
       deleteBuilding: 'Supprimer l’immeuble {name}',
+      /* POURQUOI LE GESTE EST FERMÉ, et non le geste absent. Le bouton
+         n'apparaissait que sur un immeuble VIDE : sur tous les autres il n'y
+         avait rien — ni bouton, ni raison, et deux immeubles côte à côte
+         offraient des gestes différents sans que rien ne le dise. Le libellé
+         porte le COMPTE, parce que c'est lui qui dit quoi faire pour débloquer. */
+      /* L'ÉTAT D'ABORD, ET LE NOM ENSUITE — ce n'est pas une préférence de
+         style. Commencé par « Supprimer l'immeuble … », le geste FERMÉ portait
+         le même début que le geste OUVERT : `modales` sélectionne la commande
+         par ce préfixe, et cliquait un bouton fermé en croyant ouvrir la modale
+         de suppression, qu'elle a cessé d'atteindre — « le bouton a été cliqué
+         et aucune boîte de dialogue n'est apparue », quatre fois.
+         Une synthèse vocale y gagne aussi : elle annonce l'impossibilité avant
+         de promettre l'action. */
+      deleteBuildingBlocked:
+        'Suppression impossible — {name} porte {count} logements',
+      deleteBuildingBlocked_one: 'Suppression impossible — {name} porte {count} logement',
       deleteBuildingTitle: 'Supprimer {name} ?',
       deleteBuildingBody:
         'Cet immeuble ne porte aucun logement. La suppression est définitive.',
@@ -993,7 +1009,10 @@ export const fr = {
       exportPark: 'Exporter le parc',
       occupancy: '{occupied}/{total} occupées',
       filterAll: 'Toutes',
-      resetFilters: 'Réinitialiser les filtres',
+      /* « LA RECHERCHE » ET NON « LES FILTRES » : le filtre par immeuble est
+         parti avec ses pastilles, le groupement le rend sans objet. Le bouton
+         n'efface plus qu'une chose, il le dit. */
+      resetFilters: 'Effacer la recherche',
       searchEmpty: 'Aucune unité ne correspond à « {query} ».',
       searchEmptyHint: 'Essayez un numéro d’unité, un nom de locataire ou un quartier.',
     },

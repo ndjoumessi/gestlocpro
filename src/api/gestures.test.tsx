@@ -852,15 +852,42 @@ describe('retirer un immeuble', () => {
     await waitFor(() => expect(screen.queryAllByText('Residence Djoumessi')).toHaveLength(0))
   })
 
-  it('n’offre pas l’issue sur un immeuble qui porte des logements', async () => {
-    // Le serveur la refuserait : offrir un geste qu'il refusera revient à
-    // promettre ce qu'on ne tient pas.
+  /**
+   * L'ISSUE EST FERMÉE, ELLE N'EST PLUS ABSENTE — et le cas a changé avec elle.
+   *
+   * Il vérifiait que le bouton N'EXISTAIT PAS sur un immeuble plein, au motif
+   * qu'« offrir un geste que le serveur refusera revient à promettre ce qu'on
+   * ne tient pas ». Le motif reste juste ; ce qu'il concluait ne l'était pas.
+   *
+   * Un geste absent ne dit rien. Deux immeubles voisins offraient des commandes
+   * différentes et l'écran n'en donnait pas la raison : on cherche le bouton
+   * manquant, puis ce qu'on a mal fait. Le bouton se montre donc, FERMÉ, et son
+   * nom accessible porte le motif ET le compte qui dit comment l'ouvrir.
+   *
+   * Rien n'est promis pour autant : `aria-disabled` annonce l'état, et le
+   * gestionnaire de clic n'est pas posé — c'est ce que la seconde moitié du cas
+   * vérifie, en cliquant.
+   */
+  it('montre l’issue FERMÉE sur un immeuble qui porte des logements', async () => {
     const serveur = installerFauxServeur()
     serveur.quand('GET', `/parks/${PARK}/portfolio`, { status: 200, body: portefeuille() })
 
     await renderApp('/app/parc', { session: SESSION_AVEC_PARC })
     await screen.findAllByText('Résidence Bonamoussadi')
 
-    expect(screen.queryByRole('button', { name: /supprimer l’immeuble/i })).not.toBeInTheDocument()
+    // Le geste ouvert n'existe pas : son nom accessible est celui de l'issue
+    // possible, et aucun bouton ne le porte.
+    expect(screen.queryByRole('button', { name: /^Supprimer l’immeuble [^—]+$/ })).toBeNull()
+
+    /* Celui qui existe est fermé, et DIT pourquoi. Le motif, pas le COMPTE : ce
+       cas sert son propre portefeuille, dont le nombre de logements n'est pas
+       celui de la démonstration. `parcCorrigeable` tient le compte, sur un jeu
+       où il est fixe. */
+    const ferme = screen.getByRole('button', { name: /Suppression impossible/i })
+    expect(ferme).toHaveAttribute('aria-disabled', 'true')
+
+    // Et il ne promet rien : cliqué, il n'ouvre aucune confirmation.
+    await userEvent.setup().click(ferme)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

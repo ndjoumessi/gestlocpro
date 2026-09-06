@@ -93,14 +93,24 @@ export interface DataTableProps<T> {
    */
   fiches?: boolean
   /**
-   * REGROUPE LES FICHES, et SEULEMENT les fiches.
+   * REGROUPE LES LIGNES — en fiches ET au tableau.
    *
-   * ═══ POURQUOI SOUS `fiches` ET NULLE PART AILLEURS ═══
+   * ═══ CE QUI A CHANGÉ, ET POURQUOI L'ARGUMENT D'AVANT TOMBE ═══
    *
-   * Un tableau porte déjà ses catégories en COLONNE : l'œil les balaie
-   * verticalement, et grouper y ajouterait des rangées d'en-tête pour redire ce
-   * qu'une colonne dit sans place. Empilées en fiches, ces mêmes colonnes se
-   * répètent une fois PAR FICHE — et c'est là que le groupement paie.
+   * Cette prop a d'abord refusé le tableau, en ces termes : « un tableau porte
+   * déjà ses catégories en COLONNE ; grouper y ajouterait des rangées d'en-tête
+   * pour redire ce qu'une colonne dit sans place ». L'argument était juste tant
+   * que la colonne RESTAIT. Il tombe dès qu'elle part.
+   *
+   * La règle est donc la même des deux côtés, et c'est elle qui rend le
+   * groupement honnête : `colonne` QUITTE les lignes pour monter dans l'en-tête.
+   * Personne ne redit rien — la catégorie change de place, elle ne se double
+   * pas. Un appelant qui grouperait en gardant sa colonne retrouverait le
+   * défaut d'origine ; la primitive ne le lui permet pas.
+   *
+   * Et l'en-tête de groupe porte ce qu'aucune colonne ne portait : sur le parc,
+   * le rapport d'occupation de l'immeuble, sa barre et ses gestes. C'est un
+   * gain, pas un doublon.
    *
    * Mesuré sur `/demo/parc` à 375 px : le nom de l'immeuble était écrit DOUZE
    * fois pour trois immeubles, 43 px par fiche, sur un écran qui fait déjà six
@@ -151,8 +161,15 @@ export interface DataTableProps<T> {
      * Grouper par le nom fondrait deux immeubles distincts en un seul bloc.
      */
     nom: (cle: string, lignes: T[]) => string
-    /** L'en-tête du groupe. Il DOIT porter `data-groupe`, que les gardes lisent. */
-    enTete: (cle: string, lignes: T[]) => ReactNode
+    /**
+     * L'en-tête du groupe. Il DOIT porter `data-groupe`, que les gardes lisent.
+     *
+     * `forme` dit OÙ il est rendu, et l'appelant en a besoin : en fiches
+     * l'en-tête est une carte posée sur le fond de la page — bordure, coins
+     * arrondis — quand au tableau il occupe une rangée entre deux filets, où
+     * cette même carte ferait une boîte dans une boîte.
+     */
+    enTete: (cle: string, lignes: T[], forme: 'fiches' | 'tableau') => ReactNode
   }
 }
 
@@ -289,6 +306,30 @@ const COLONNE_COLLANTE = 'sticky right-0 border-l border-divider'
  */
 const ALTITUDE_TENUE = { zIndex: 'var(--z-sticky)' } as const
 
+/**
+ * LES GROUPES, CALCULÉS UNE FOIS pour les deux formes.
+ *
+ * `ordre` amorce la table AVANT les lignes : c'est ce qui fait exister un groupe
+ * VIDE — l'immeuble sans logement, qui ne produit aucune ligne et perdrait
+ * sinon son en-tête, donc ses gestes. Une clé absente de `ordre` est tout de
+ * même rendue, à la suite : une donnée n'est jamais perdue parce que l'appelant
+ * a oublié de l'annoncer.
+ */
+function grouper<T>(
+  rows: T[],
+  groupePar: NonNullable<DataTableProps<T>['groupePar']>,
+): [string, T[]][] {
+  const groupes = new Map<string, T[]>()
+  for (const cle of groupePar.ordre ?? []) groupes.set(cle, [])
+  for (const row of rows) {
+    const cle = groupePar.cle(row)
+    const liste = groupes.get(cle)
+    if (liste) liste.push(row)
+    else groupes.set(cle, [row])
+  }
+  return [...groupes]
+}
+
 export function DataTable<T>({
   caption,
   columns,
@@ -352,7 +393,25 @@ export function DataTable<T>({
   */
   const enTableau = useAuDela(AU_DELA_LG)
 
-  if (rows.length === 0 && empty) {
+  /*
+    L'ÉTAT VIDE NE DOIT PAS AVALER LES GROUPES DÉCLARÉS.
+
+    Sans la troisième condition, un parc d'UN immeuble SANS logement rendait
+    l'état vide : zéro ligne, donc zéro tableau, donc aucun en-tête de groupe —
+    donc plus aucun chemin pour corriger ou retirer cet immeuble. C'est
+    exactement le défaut que `ordre` existe pour empêcher, réintroduit un étage
+    plus haut : `ordre` fait vivre un groupe sans ligne, et ce retour anticipé
+    le supprimait avant qu'il soit rendu.
+
+    Le cas s'est vu parce que les cartes du parc sont parties : tant qu'elles
+    étaient là, elles offraient l'autre chemin. `gestures` l'a refusé — « Unable
+    to find an element with the text: Residence Djoumessi ».
+
+    Un parc réellement vide — aucun immeuble, donc `ordre` vide — rend toujours
+    son état vide.
+  */
+  const groupesDeclares = groupePar?.ordre?.length ?? 0
+  if (rows.length === 0 && empty && groupesDeclares === 0) {
     return <>{empty}</>
   }
 
@@ -396,6 +455,60 @@ export function DataTable<T>({
   )
   const estTenue = (c: Column<T>) => c.role === 'geste' && !colonnesSansGeste.has(c.key)
 
+  /*
+    LA COLONNE HISSÉE QUITTE LE TABLEAU, exactement comme elle quitte les fiches.
+
+    C'est la condition qui rend le groupement d'un tableau légitime — voir la
+    doctrine de `groupePar`. Sans ce filtre, l'en-tête de groupe redirait à
+    chaque bloc ce que la colonne redit à chaque ligne, et on aurait AJOUTÉ une
+    répétition au lieu d'en retirer une.
+  */
+  const colonnes = groupePar ? columns.filter((c) => c.key !== groupePar.colonne) : columns
+  const groupes = groupePar ? grouper(rows, groupePar) : null
+
+  /*
+    UNE RANGÉE, ÉCRITE UNE FOIS pour les deux formes du tableau — groupé ou
+    non. Recopier ce corps aurait fait deux rangées à faire vieillir ensemble,
+    et c'est exactement le motif que ce fichier refuse déjà pour les fiches.
+  */
+  const rangee = (row: T) => (
+    <tr
+      key={rowKey(row)}
+      className="border-b border-divider transition-colors duration-150 last:border-0"
+    >
+              {colonnes.map((column) => (
+        <td
+          key={column.key}
+          data-colonne-tenue={estTenue(column) ? column.role : undefined}
+          style={estTenue(column) ? ALTITUDE_TENUE : undefined}
+          className={cn(
+      /*
+        `relative` : la cellule est le bloc conteneur de ce qu'elle
+        contient. Une cellule qui MÈNE quelque part peut alors
+        offrir toute sa surface au doigt, par un `::after` étendu
+        sur ses bords, sans qu'un seul pixel ne se déplace — c'est
+        ce que fait la colonne « Logement » du parc.
+
+        La note du haut de ce fichier annonçait la manœuvre : « le
+        jour où une ligne devra mener quelque part, la réponse
+        juste sera un vrai lien dans une cellule ». Le lien reste
+        un lien — focalisable, ouvrable dans un nouvel onglet,
+        annoncé par son nom — et c'est sa zone tapable, non sa
+        nature, qui grandit.
+      */
+      'relative px-4 py-3 align-middle',
+      column.numeric && 'numeric text-right whitespace-nowrap',
+      column.hideOnMobile && 'hidden sm:table-cell',
+      estTenue(column) && COLONNE_COLLANTE,
+      estTenue(column) && 'bg-surface',
+          )}
+        >
+          {column.render(row)}
+        </td>
+      ))}
+    </tr>
+  )
+
   return (
       <div
         /* `data-defilant` : la garde `mesure-ui` mesure les gestes contre le
@@ -412,7 +525,7 @@ export function DataTable<T>({
         <caption className="sr-only">{caption}</caption>
         <thead>
           <tr className="border-b border-divider bg-surface-sunken">
-            {columns.map((column) => (
+            {colonnes.map((column) => (
               <th
                 key={column.key}
                 scope="col"
@@ -432,45 +545,31 @@ export function DataTable<T>({
           </tr>
         </thead>
 
-        <tbody>
-          {rows.map((row) => (
-            <tr
-              key={rowKey(row)}
-              className="border-b border-divider transition-colors duration-150 last:border-0"
-            >
-              {columns.map((column) => (
-                <td
-                  key={column.key}
-                  data-colonne-tenue={estTenue(column) ? column.role : undefined}
-                  style={estTenue(column) ? ALTITUDE_TENUE : undefined}
-                  className={cn(
-                    /*
-                      `relative` : la cellule est le bloc conteneur de ce qu'elle
-                      contient. Une cellule qui MÈNE quelque part peut alors
-                      offrir toute sa surface au doigt, par un `::after` étendu
-                      sur ses bords, sans qu'un seul pixel ne se déplace — c'est
-                      ce que fait la colonne « Logement » du parc.
-
-                      La note du haut de ce fichier annonçait la manœuvre : « le
-                      jour où une ligne devra mener quelque part, la réponse
-                      juste sera un vrai lien dans une cellule ». Le lien reste
-                      un lien — focalisable, ouvrable dans un nouvel onglet,
-                      annoncé par son nom — et c'est sa zone tapable, non sa
-                      nature, qui grandit.
-                    */
-                    'relative px-4 py-3 align-middle',
-                    column.numeric && 'numeric text-right whitespace-nowrap',
-                    column.hideOnMobile && 'hidden sm:table-cell',
-                    estTenue(column) && COLONNE_COLLANTE,
-                    estTenue(column) && 'bg-surface',
-                  )}
+        {groupes ? (
+          groupes.map(([cle, lignes]) => (
+            /* UN `<tbody>` PAR GROUPE, et non un seul semé de rangées d'en-tête.
+               C'est ce que `<tbody>` est : un groupe de rangées. Un lecteur
+               d'écran annonce alors le groupe, et `scope="rowgroup"` rattache
+               son intitulé aux lignes qu'il couvre — ce que le `<section
+               aria-label>` fait du côté des fiches. */
+            <tbody key={cle}>
+              <tr>
+                <th
+                  scope="rowgroup"
+                  colSpan={colonnes.length}
+                  /* `p-0` : l'en-tête peint son propre fond et son propre
+                     rembourrage — la cellule ne lui en ajoute pas un second. */
+                  className="border-b border-divider p-0 text-left font-normal"
                 >
-                  {column.render(row)}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
+                  {groupePar!.enTete(cle, lignes, 'tableau')}
+                </th>
+              </tr>
+              {lignes.map(rangee)}
+            </tbody>
+          ))
+        ) : (
+          <tbody>{rows.map(rangee)}</tbody>
+        )}
       </table>
       </div>
   )
@@ -545,15 +644,12 @@ function ListeDeFiches<T>({
      * immeuble sont alors possibles, et c'est ce que l'écran a demandé en
      * triant ainsi.
      */
-    const groupes = new Map<string, T[]>()
-    /* LES GROUPES DÉCLARÉS D'ABORD, VIDES : sans cela, un groupe sans ligne
-       n'existerait pas — et ce qui n'existe pas ne se corrige ni ne se retire. */
-    for (const cle of groupePar.ordre ?? []) groupes.set(cle, [])
-    for (const row of rows) {
-      const liste = groupes.get(groupePar.cle(row))
-      if (liste) liste.push(row)
-      else groupes.set(groupePar.cle(row), [row])
-    }
+    /* LE MÊME CALCUL QUE LE TABLEAU, appelé et non recopié : les deux formes
+       doivent rendre exactement les mêmes groupes, dans le même ordre, y compris
+       les vides. Deux copies auraient divergé au premier lot qui n'en touche
+       qu'une — et le groupe VIDE est précisément le cas qu'une des deux aurait
+       perdu en silence. */
+    const groupes = grouper(rows, groupePar)
     /* LA COLONNE HISSÉE QUITTE LES FICHES — voir le contrat. */
     const colonnesDeFiche = columns.filter((c) => c.key !== groupePar.colonne)
 
@@ -563,9 +659,9 @@ function ListeDeFiches<T>({
          d'écran annonce « liste, Résidence Bonamoussadi, 5 éléments » au lieu
          d'une liste de douze où rien ne dit qu'on change d'immeuble. */
       <div className="flex flex-col gap-6">
-        {[...groupes].map(([cle, lignes]) => (
+        {groupes.map(([cle, lignes]) => (
           <section key={cle} aria-label={`${caption} — ${groupePar.nom(cle, lignes)}`}>
-            {groupePar.enTete(cle, lignes)}
+            {groupePar.enTete(cle, lignes, 'fiches')}
             <ul aria-label={groupePar.nom(cle, lignes)} className="mt-2 flex flex-col gap-2">
               {lignes.map((row) => (
                 <Fiche key={rowKey(row)} row={row} columns={colonnesDeFiche} />

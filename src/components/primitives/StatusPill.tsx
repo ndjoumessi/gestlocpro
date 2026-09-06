@@ -118,6 +118,43 @@ export const PAYMENT_TONES: Record<PaymentStatus, StatusTone> = {
   pending: 'info',
 }
 
+/**
+ * LE GLYPHE DIT LE STATUT, LÀ OÙ LE TON NE SUFFIT PLUS.
+ *
+ * ═══ CE QUI SE CONFONDAIT ═══
+ *
+ * L'icône d'une pastille vient de son TON. Deux tons sur six portent `info` —
+ * `neutral` et `info` — et deux statuts que tout oppose tombaient dessus :
+ *
+ *   Vacant     ton `neutral`  fond #f1f3f8  texte #5b646f  glyphe `info`
+ *   À échoir   ton `info`     fond #eff5ff  texte #1d4ed8  glyphe `info`
+ *
+ * Deux lavis de la même famille froide, le même glyphe, et rien d'autre pour
+ * les séparer que le mot. Chacun passe AA contre SON fond — `accent-ink` est
+ * certifié 6.12 sur `accent-tint` — donc aucune garde ne rougissait : ce qui
+ * manquait n'est pas le contraste texte/fond, c'est celui de l'une contre
+ * l'autre, que rien ne mesure.
+ *
+ * ═══ POURQUOI PAR STATUT ET NON PAR TON ═══
+ *
+ * Changer le glyphe de `neutral` l'aurait changé pour « Non appelé » et pour
+ * les pastilles d'occupation, qui portent le même ton sans rien partager de
+ * plus. Un ton dit la GRAVITÉ, il ne dit pas de quoi on parle : le glyphe
+ * appartient au statut.
+ *
+ * `key` pour une vacance — le logement dont on tient les clés, celui qu'on doit
+ * relouer. `clock` pour une échéance qui vient. Les tons ne bougent pas, donc
+ * aucun contraste certifié n'est remis en cause.
+ *
+ * PARTIEL PORTE DÉJÀ `clock` par son ton `warn`, et les deux coexistent : l'un
+ * est ambre, l'autre bleu, et ils ne se rencontrent jamais sur la même ligne.
+ * C'est le couple Vacant / À échoir que ce lot sépare, pas tous les couples.
+ */
+const PAYMENT_ICONS: Partial<Record<PaymentStatus, IconName>> = {
+  vacant: 'key',
+  pending: 'clock',
+}
+
 export function PaymentStatusPill({
   status,
   size,
@@ -127,7 +164,7 @@ export function PaymentStatusPill({
 }) {
   const t = useT()
   return (
-    <StatusPill tone={PAYMENT_TONES[status]} size={size}>
+    <StatusPill tone={PAYMENT_TONES[status]} icon={PAYMENT_ICONS[status]} size={size}>
       {t(`status.${status}` as 'status.paid')}
     </StatusPill>
   )

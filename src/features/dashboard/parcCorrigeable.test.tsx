@@ -34,15 +34,20 @@ describe('l’écran du parc', () => {
     await renderApp('/demo/parc')
     await attendreLeChargement()
 
-    /* « Bonanjo » porte cinq logements dans le jeu de démonstration : la
-       suppression n'y est pas offerte, et c'est le sens du cas. */
+    /* « Résidence Bonamoussadi » porte cinq logements dans le jeu de
+       démonstration : la correction y est ouverte, la suppression FERMÉE — et
+       fermée se dit désormais à l'écran, au lieu de s'écrire par une absence.
+       Voir `gestures`, qui tient le motif et le refus de clic. */
     expect(
       screen.getByRole('button', { name: /Corriger l’immeuble Résidence Bonamoussadi/ }),
     ).toBeInTheDocument()
+    const suppression = screen.getByRole('button', {
+      name: /Suppression impossible — Résidence Bonamoussadi porte 5 logements/,
+    })
     expect(
-      screen.queryByRole('button', { name: /Supprimer l’immeuble Résidence Bonamoussadi/ }),
-      'la suppression ne doit pas être offerte sur un immeuble qui porte des logements',
-    ).toBeNull()
+      suppression,
+      'la suppression doit se montrer FERMÉE sur un immeuble qui porte des logements',
+    ).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('offre la correction de CHAQUE logement', async () => {

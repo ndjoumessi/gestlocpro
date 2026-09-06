@@ -158,9 +158,13 @@ describe('parc immobilier pendant le chargement', () => {
     // serait satisfaite par une page blanche.
     expect(within(screen.getByRole('main')).getByRole('status')).toBeInTheDocument()
 
-    // Puis le tableau réel : une ligne d'en-tête et deux logements.
+    /* Puis le tableau réel : QUATRE rangées, et le compte a changé avec le
+       groupement — l'en-tête de colonnes, l'en-tête du GROUPE (l'immeuble, qui
+       a quitté les colonnes pour monter en tête de son bloc), et deux
+       logements. Le compte reste écrit en dur exprès : c'est lui qui fait
+       rougir le jour où une rangée apparaît sans que personne l'ait voulue. */
     await screen.findByText('A3')
-    expect(screen.getAllByRole('row')).toHaveLength(3)
+    expect(screen.getAllByRole('row')).toHaveLength(4)
   })
 })
 
