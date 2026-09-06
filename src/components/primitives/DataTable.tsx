@@ -315,6 +315,23 @@ const ALTITUDE_TENUE = { zIndex: 'var(--z-sticky)' } as const
  * même rendue, à la suite : une donnée n'est jamais perdue parce que l'appelant
  * a oublié de l'annoncer.
  */
+/**
+ * L'IDENTIFIANT DU BLOC DE RANGÉES D'UN GROUPE.
+ *
+ * Déterministe, et partagé : le `<tbody>` le porte, et l'en-tête du groupe le
+ * vise par `aria-controls`. Le calculer des deux côtés depuis la même clé évite
+ * de faire descendre un identifiant à travers la prop `enTete` — la primitive
+ * n'a pas à savoir ce que l'appelant en fera, et l'appelant n'a pas à recevoir
+ * une plomberie de plus.
+ *
+ * Ce que ça achète : un lecteur d'écran sait ce que le bouton de repli COMMANDE,
+ * et non seulement qu'il est ouvert ou fermé. `aria-expanded` seul dit un état
+ * sans dire de quoi.
+ */
+export function idDuGroupe(cle: string): string {
+  return `groupe-${cle}`
+}
+
 function grouper<T>(
   rows: T[],
   groupePar: NonNullable<DataTableProps<T>['groupePar']>,
@@ -552,7 +569,7 @@ export function DataTable<T>({
                d'écran annonce alors le groupe, et `scope="rowgroup"` rattache
                son intitulé aux lignes qu'il couvre — ce que le `<section
                aria-label>` fait du côté des fiches. */
-            <tbody key={cle}>
+            <tbody key={cle} id={idDuGroupe(cle)}>
               <tr>
                 <th
                   scope="rowgroup"

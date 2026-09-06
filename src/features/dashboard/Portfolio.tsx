@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { useRole } from '@/components/layout/AppShell'
 import { lien, useBase } from '@/lib/base'
-import { DataTable, EmptyState } from '@/components/primitives/DataTable'
+import { DataTable, EmptyState, idDuGroupe } from '@/components/primitives/DataTable'
 import { PaymentStatusPill, StatusPill } from '@/components/primitives/StatusPill'
 import { ProgressBar, StatCard } from '@/components/primitives/Charts'
 import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDebordement'
@@ -639,6 +639,12 @@ export function Portfolio() {
                       <button
                         type="button"
                         aria-expanded={!replie}
+                        /* CE QUE LE BOUTON COMMANDE, et pas seulement son état.
+                           `aria-expanded` dit « ouvert » ou « fermé » sans dire
+                           de quoi ; `aria-controls` désigne le bloc de rangées
+                           de CE groupe, que la primitive identifie de son côté
+                           depuis la même clé. */
+                        aria-controls={auTableau ? idDuGroupe(id) : undefined}
                         aria-label={
                           replie
                             ? t('app.portfolio.expandBuilding', { name: b?.name ?? '' })

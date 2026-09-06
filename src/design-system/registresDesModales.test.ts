@@ -60,30 +60,15 @@ const HORS_CLAVIER: { fichier: string; quoi: string; motif: string }[] = [
      disaient « une dette que ces cas viennent de rendre visible » — la dette est
      payée, et les seize cas de clavier qu'elles ont ouverts ont trouvé un vrai
      défaut : un champ de « Créer une fiche locataire » sans libellé visible. */
-  {
-    fichier: 'features/dashboard/Portfolio.tsx',
-    quoi: 'supprimer un immeuble',
-    motif:
-      'Elle ne s’ouvre que sur un immeuble VIDE, et le jeu de démonstration n’en porte ' +
-      'aucun : les trois immeubles ont des logements. Il faudrait en CRÉER un d’abord, ' +
-      'ce que ce fichier de cas ne sait pas faire — `modales.mjs` le dit déjà de son ' +
-      'côté et la mesure ailleurs.',
-  },
-  /* LA MÊME DISPENSE, POUR LA MÊME RAISON, sur la modale sœur — et la symétrie
-     est le motif autant que l'excuse : les deux gestes de retrait du Parc ne
-     s'ouvrent que sur une cible que la démonstration ne contient pas. */
-  {
-    fichier: 'features/dashboard/Portfolio.tsx',
-    quoi: 'retirer un logement',
-    motif:
-      'Elle ne s’ouvre que sur un logement qui n’a JAMAIS rien porté, et les douze du jeu ' +
-      'de démonstration portent tous un bail, un versement ou un relevé : leurs douze ' +
-      'croix sont fermées. Il faudrait en CRÉER un d’abord — ce que ce fichier de cas ne ' +
-      'sait pas faire, et ce que `modales.mjs` fait de son côté par un `prealable`, où sa ' +
-      'géométrie, son contraste et ses cibles sont mesurés. Reste non mesuré ICI, et ' +
-      'seulement ici : le piège de focus, la sortie par Échap, le retour du focus — que ' +
-      'la primitive `Modal` porte, et que vingt autres modales jouent sur elle.',
-  },
+  /* LES DEUX DISPENSES DU PARC SONT TOMBÉES (2026-09-06), et c'est ce que ce
+     registre existe pour permettre : elles disaient « il faudrait CRÉER un
+     immeuble vide / un logement sans histoire d'abord, ce que ce fichier de cas
+     ne sait pas faire ». Il sait — `clavierDesModales` porte désormais un
+     `prealable` qui joue les mêmes gestes qu'un utilisateur. Les deux pièges de
+     focus sont mesurés.
+
+     Le commentaire du haut vaut donc pour six dispenses maintenant : une
+     dispense est une DETTE, pas un classement. */
   {
     fichier: 'features/dashboard/Works.tsx',
     quoi: 'chiffrer un devis',

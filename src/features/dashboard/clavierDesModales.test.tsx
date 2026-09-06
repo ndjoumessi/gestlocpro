@@ -55,6 +55,23 @@ interface Modale {
    * par ligne, ce qui est juste et n'a pas à être corrigé.
    */
   rang?: number
+  /**
+   * CE QU'IL FAUT FAIRE POUR QUE LE GESTE S'OUVRE.
+   *
+   * Deux modales du Parc ne s'ouvrent sur AUCUNE donnée de la démonstration :
+   * la suppression d'un immeuble n'apparaît que sur un immeuble vide — les trois
+   * du jeu ont des logements — et le retrait d'un logement que sur un logement
+   * sans histoire — les douze en ont une. Toutes deux étaient donc DISPENSÉES de
+   * ce registre, avec ce motif : « il faudrait en CRÉER un d'abord, ce que ce
+   * fichier de cas ne sait pas faire ».
+   *
+   * Il sait, maintenant. Deux dispenses tombent, et avec elles le dernier
+   * endroit du produit où un piège de focus n'était mesuré par personne. Le
+   * préalable joue les MÊMES gestes qu'un utilisateur — ouvrir la boîte
+   * d'ajout, remplir, enregistrer — donc il ne fabrique pas un état que le
+   * produit ne saurait pas atteindre.
+   */
+  prealable?: (user: ReturnType<typeof userEvent.setup>) => Promise<void>
   /** Le profil sous lequel l'écran rend ce geste. Par défaut, celui du montage. */
   profil?: Role
   /**
@@ -68,6 +85,13 @@ interface Modale {
    * plutôt que sauter la vérification quand la liste est vide : ainsi un
    * formulaire qui perdrait ses champs rougit, au lieu d'être silencieusement
    * traité comme une pièce à lire.
+   */
+  /*
+   * `lecture` couvre AUSSI la confirmation. Une boîte « Retirer Z9 ? » n'a aucun
+   * champ : c'est une pièce qu'on lit avant de trancher, et exiger d'elle un
+   * libellé relié ferait rougir un montage correct. Le déclarer plutôt que
+   * sauter la vérification sur liste vide — ainsi un formulaire qui perdrait ses
+   * champs rougit, au lieu de passer pour une pièce à lire.
    */
   forme: 'saisie' | 'lecture'
 }
@@ -115,6 +139,45 @@ const MODALES: Modale[] = [
      silencieusement le premier d'une liste est ce que ce fichier refuse. */
   { nom: 'Corriger un immeuble', fichier: 'features/dashboard/EditBuildingModal.tsx', adresse: '/demo/parc', bouton: /^Corriger l’immeuble Résidence Bonamoussadi$/, forme: 'saisie' },
   { nom: 'Corriger un logement', fichier: 'features/dashboard/EditUnitModal.tsx', adresse: '/demo/parc', bouton: /^Corriger le logement A1$/, forme: 'saisie' },
+  /* LES DEUX RETRAITS DU PARC, entrés avec le lot qui pose le second. Ils
+     étaient dispensés faute de cible : la démonstration ne porte ni immeuble
+     vide ni logement sans histoire. Leur préalable en crée un, par les mêmes
+     gestes qu'un utilisateur.
+
+     Le bouton porte sa CIBLE — le nom de ce qui vient d'être créé — parce que
+     le geste se répète par ligne : quatorze croix vivent sur cet écran, et les
+     treize autres portent un nom qui commence par l'ÉTAT (« Suppression
+     impossible », « Retrait impossible »), précisément pour qu'un motif
+     d'ouverture ne les attrape pas. */
+  {
+    nom: 'Supprimer un immeuble',
+    fichier: 'features/dashboard/Portfolio.tsx',
+    adresse: '/demo/parc',
+    bouton: /^Supprimer l’immeuble Immeuble sonde$/,
+    forme: 'lecture',
+    prealable: async (user) => {
+      await user.click(screen.getByRole('button', { name: /^Ajouter un immeuble$/ }))
+      const boite = await screen.findByRole('dialog')
+      await user.type(within(boite).getByLabelText(/Nom de l’immeuble/), 'Immeuble sonde')
+      await user.type(within(boite).getByLabelText(/Quartier/), 'Sonde')
+      await user.click(within(boite).getByRole('button', { name: /^Enregistrer$/ }))
+    },
+  },
+  {
+    nom: 'Retirer un logement',
+    fichier: 'features/dashboard/Portfolio.tsx',
+    adresse: '/demo/parc',
+    bouton: /^Retirer le logement Z9$/,
+    forme: 'lecture',
+    prealable: async (user) => {
+      await user.click(screen.getByRole('button', { name: /^Ajouter un logement$/ }))
+      const boite = await screen.findByRole('dialog')
+      await user.type(within(boite).getByLabelText(/Numéro du logement/), 'Z9')
+      await user.type(within(boite).getByLabelText(/Surface/), '30')
+      await user.type(within(boite).getByLabelText(/Loyer mensuel/), '90000')
+      await user.click(within(boite).getByRole('button', { name: /^Enregistrer$/ }))
+    },
+  },
   /* LA SAISIE D'UN RELEVÉ, entrée avec le lot qui la crée. Ce registre est écrit
      à la main et rien ne rougit quand une modale neuve l'oublie. */
   { nom: 'Saisir un relevé', fichier: 'features/dashboard/RecordReadingModal.tsx', adresse: '/demo/releves', bouton: /^Saisir un relevé$/, forme: 'saisie' },
@@ -235,6 +298,13 @@ async function ouvrirLEcran(modale: Modale): Promise<HTMLElement> {
   await attendreLeChargement()
   if (modale.profil) {
     await switchRole(modale.profil)
+    await attendreLeChargement()
+  }
+
+  /* APRÈS le chargement et AVANT la recherche du bouton : le préalable crée la
+     donnée sur laquelle le geste s'ouvre. */
+  if (modale.prealable) {
+    await modale.prealable(userEvent.setup())
     await attendreLeChargement()
   }
 
@@ -513,16 +583,23 @@ describe('le clavier des modales', () => {
     expect(creuses, 's’inscrire est un geste ; le motif est ce qui le rend relisible').toEqual([])
   })
 
-  it('a bien joué les vingt-quatre modales déclarées', () => {
-    expect(MODALES.length).toBe(24)
-    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(24)
+  it('a bien joué les vingt-six modales déclarées', () => {
+    /* 24 → 26 (2026-09-06) : les deux retraits du Parc, qui étaient dispensés
+       faute de cible dans la démonstration. Leur `prealable` la crée. */
+    expect(MODALES.length).toBe(26)
+    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(26)
     /* LES `lecture` SONT NOMMÉES, et l'écrire ici les protège : passer une
        modale de saisie en `lecture` pour faire taire un champ mal libellé est
        le contournement le plus facile de ce fichier. Il ferait rougir.
 
-       Trois des quatre confirmations en sont : une phrase et deux boutons, pas
-       un champ. L'arbitrage n'y est pas — il en porte deux. */
+       Cinq des six confirmations en sont : une phrase et deux boutons, pas un
+       champ. L'arbitrage n'y est pas — il en porte deux.
+
+       LA LISTE EST ORDONNÉE COMME `MODALES`, et les deux retraits du Parc s'y
+       insèrent à leur rang, juste après les corrections du même écran. */
     expect(MODALES.filter((m) => m.forme === 'lecture').map((m) => m.nom)).toEqual([
+      'Supprimer un immeuble',
+      'Retirer un logement',
       'Quittance',
       'Retirer une fiche',
       'Retirer un accès',

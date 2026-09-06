@@ -129,6 +129,14 @@ describe('le repli d’un immeuble', () => {
     const deplier = screen.getByRole('button', { name: 'Déplier Résidence Pleine' })
     expect(deplier).toHaveAttribute('aria-expanded', 'false')
 
+    /* ET IL DÉSIGNE CE QU'IL COMMANDE. `aria-expanded` seul dit un état sans
+       dire de quoi : un lecteur d'écran annonce « réduit » sans savoir ce qui
+       l'est. La cible doit exister dans le document — un `aria-controls` qui
+       pointe vers rien est pire que pas d'attribut, il promet un lien mort. */
+    const vise = deplier.getAttribute('aria-controls')
+    expect(vise, 'le bouton doit désigner le bloc de rangées qu’il replie').toBeTruthy()
+    expect(document.getElementById(vise!), 'la cible d’aria-controls doit exister').not.toBeNull()
+
     await utilisateur.click(deplier)
     expect(screen.getByText('A1'), 'et les rend').toBeInTheDocument()
   })
