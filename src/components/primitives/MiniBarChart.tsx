@@ -217,7 +217,7 @@ export function MiniBarChart({
       <div className="mt-3 flex h-6 items-center justify-between gap-3">
         <span
           aria-hidden="true"
-          className="text-caps text-muted uppercase"
+          className="eyebrow text-muted"
         >
           {bars[0]?.label}
         </span>
@@ -228,7 +228,7 @@ export function MiniBarChart({
         >
           {active !== null && (
             <>
-              <span className="text-caps text-muted uppercase">
+              <span className="eyebrow text-muted">
                 {bars[active].label}
               </span>{' '}
               <span className="numeric">
@@ -240,7 +240,7 @@ export function MiniBarChart({
 
         <span
           aria-hidden="true"
-          className="text-caps text-muted uppercase"
+          className="eyebrow text-muted"
         >
           {bars[bars.length - 1]?.label}
         </span>

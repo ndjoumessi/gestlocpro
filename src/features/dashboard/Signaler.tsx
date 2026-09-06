@@ -398,7 +398,7 @@ export function Signaler() {
                       {t(`app.works.status.${work.status}` as 'app.works.status.reported')}
                     </StatusPill>
                     {work.reference && (
-                      <span className="numeric text-caps text-muted">{work.reference}</span>
+                      <span className="numeric text-label text-muted">{work.reference}</span>
                     )}
                   </div>
                   <p className="text-body font-medium">{workTitle(work, t)}</p>
@@ -416,7 +416,7 @@ export function Signaler() {
                   {work.description && (
                     <p className="text-body text-pretty text-muted">{work.description}</p>
                   )}
-                  <p className="text-caps text-muted">{d.dayMonth(work.reportedAt)}</p>
+                  <p className="text-label text-muted">{d.dayMonth(work.reportedAt)}</p>
                   {/*
                     LE FIL, et il n'existait nulle part.
 
@@ -443,7 +443,7 @@ export function Signaler() {
                           votre gestionnaire ». Depuis que le locataire peut
                           répondre, la même étiquette sur sa propre phrase
                           ferait d'un échange un monologue. */}
-                      <p className="text-caps text-muted">
+                      <p className="text-label text-muted">
                         {r.message === 'tenantReply'
                           ? t('app.report.replyMine')
                           : t('app.report.replyFrom')}{' '}
@@ -458,7 +458,7 @@ export function Signaler() {
                       s'affiche pas » se ressemblent, et le locataire n'a aucun
                       moyen de faire la différence. */}
                   {(reponses.get(work.id) ?? []).length === 0 && work.status !== 'done' && (
-                    <p className="text-caps text-muted">{t('app.report.noReply')}</p>
+                    <p className="text-label text-muted">{t('app.report.noReply')}</p>
                   )}
                   {/*
                     À TOUT STATUT, `done` COMPRIS — et le premier jet ne le

@@ -338,7 +338,7 @@ export function Alerts() {
         On garde donc le NŒUD, qui est ce dont l'annonce a besoin, et on lui
         retire son TEXTE dans le seul cas où il n'a rien à dire.
       */}
-      <p className="mb-4 text-caps text-muted" aria-live="polite">
+      <p className="mb-4 text-label text-muted" aria-live="polite">
         {alerts.length === 0
           ? ''
           : unread > 0
@@ -563,7 +563,7 @@ export function Alerts() {
                   défaut que cette ligne avait été écrite pour corriger.
                 */}
                 {alert.channel && alert.channel !== 'in_app' && (
-                  <p className="mt-1 text-caps text-muted">
+                  <p className="mt-1 text-label text-muted">
                     {/*
                       ═══ LE RÉSUMÉ D'EXPÉDITION DE TOUTE LA SÉRIE ═══
 
@@ -608,7 +608,7 @@ export function Alerts() {
               {/* `ml-auto` : renvoyée à la ligne, elle reste rangée à droite
                   plutôt que de se coller sous l'icône. */}
               <div className="ml-auto flex shrink-0 items-center gap-3">
-                <span className="text-caps text-muted">{d.relative(alert.at)}</span>
+                <span className="text-label text-muted">{d.relative(alert.at)}</span>
                 {/*
                   L'issue vers l'écran où la décision se prend.
 

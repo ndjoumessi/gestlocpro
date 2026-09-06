@@ -210,15 +210,32 @@ export function SkeletonStatRow({ count, className }: { count: number; className
  * dépassement se paierait en défilement fantôme, le manque en saut de mise en
  * page vers le bas, qui est le moins coûteux des deux.
  */
-export function SkeletonTable({ rows = 8 }: { rows?: number }) {
-  return (
-    <div className="overflow-hidden rounded-lg border border-divider bg-surface shadow-e1">
+/*
+  `fiches` : LE SQUELETTE ANNONCE LA FORME QUI VIENT, AU MÊME SEUIL QU'ELLE.
+
+  `DataTable` avec `fiches` rend des cartes jusqu'à `lg` et un tableau au-delà.
+  Ce squelette passait à six colonnes dès `sm` : entre 640 et 1023 px, sept
+  écrans annonçaient un tableau puis chargeaient des fiches — un décalage de
+  mise en page au moment précis où l'œil cherche ses repères. La grille bascule
+  désormais à `lg`, comme `AU_DELA_LG`, et sous `lg` un écran qui attend des
+  fiches en montre trois en creux, de la forme de `Fiche` : identité à gauche,
+  valeur à droite, deux lignes de contexte. `squeletteAuSeuilDesFiches.test.ts`
+  tient le seuil et oblige chaque écran à fiches à le demander ici aussi.
+*/
+export function SkeletonTable({ rows = 8, fiches = false }: { rows?: number; fiches?: boolean }) {
+  const tableau = (
+    <div
+      className={cn(
+        'overflow-hidden rounded-lg border border-divider bg-surface shadow-e1',
+        fiches && 'hidden lg:block',
+      )}
+    >
       <div className={cn(RANGEE, 'border-b border-divider bg-surface-sunken')}>
         {COLONNES.map((colonne, index) => (
           <Skeleton
             key={index}
             line="eyebrow"
-            className={cn('w-full', colonne.mobile ? undefined : 'hidden sm:block')}
+            className={cn('w-full', colonne.mobile ? undefined : 'hidden lg:block')}
           />
         ))}
       </div>
@@ -229,12 +246,30 @@ export function SkeletonTable({ rows = 8 }: { rows?: number }) {
             <Skeleton
               key={index}
               line="body"
-              className={cn('w-full', colonne.mobile ? undefined : 'hidden sm:block')}
+              className={cn('w-full', colonne.mobile ? undefined : 'hidden lg:block')}
             />
           ))}
         </div>
       ))}
     </div>
+  )
+  if (!fiches) return tableau
+  return (
+    <>
+      <ul aria-hidden="true" className="flex flex-col gap-2 lg:hidden">
+        {Array.from({ length: Math.min(rows, 3) }, (_, fiche) => (
+          <li key={fiche} className="rounded-lg border border-divider bg-surface p-4 shadow-e1">
+            <div className="flex items-start justify-between gap-3">
+              <Skeleton line="body" className="w-2/5" />
+              <Skeleton line="body" className="w-1/4" />
+            </div>
+            <Skeleton line="body" className="mt-3 w-3/5" />
+            <Skeleton line="body" className="mt-1.5 w-1/2" />
+          </li>
+        ))}
+      </ul>
+      {tableau}
+    </>
   )
 }
 
@@ -260,13 +295,13 @@ export function SkeletonTable({ rows = 8 }: { rows?: number }) {
  * courtes — et le rembourrage reste celui de `DataTable`, puisque c'est de lui
  * que vient la hauteur.
  *
- * Les gabarits comptent les colonnes VISIBLES : quatre sous `sm`, six au-delà.
+ * Les gabarits comptent les colonnes VISIBLES : quatre sous `lg`, six au-delà.
  * Un élément en `display: none` est retiré de la grille et n'y occupe aucune
  * piste, donc les deux listes doivent correspondre exactement aux `mobile`
  * ci-dessous.
  */
 const RANGEE =
-  'grid grid-cols-[2rem_1.8fr_1.1fr_0.9fr] sm:grid-cols-[2rem_1.6fr_1.3fr_1.8fr_1.1fr_0.9fr] items-center gap-4 px-4 py-3'
+  'grid grid-cols-[2rem_1.8fr_1.1fr_0.9fr] lg:grid-cols-[2rem_1.6fr_1.3fr_1.8fr_1.1fr_0.9fr] items-center gap-4 px-4 py-3'
 
 /**
  * Gabarit de colonnes. `mobile: false` reprend `hideOnMobile` de `DataTable` :

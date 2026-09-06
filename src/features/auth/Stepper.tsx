@@ -73,7 +73,7 @@ export function Stepper({ steps, current }: StepperProps) {
                 aria-current={active ? 'step' : undefined}
                 className={cn(
                   'flex size-7 shrink-0 items-center justify-center rounded-full',
-                  'numeric text-caps font-semibold transition-colors duration-200',
+                  'numeric text-label font-semibold transition-colors duration-200',
                   done && 'bg-ok text-on-dark',
                   active && 'bg-ink text-on-dark',
                   !done && !active && 'border border-border-strong bg-surface text-muted',
@@ -100,13 +100,14 @@ export function Stepper({ steps, current }: StepperProps) {
                 rangées de la même hauteur. On a préféré une prédiction à une
                 mesure, et c'est la mesure qui avait raison.
 
-                `tracking-normal` ANNULE L'INTERLETTRAGE DE `text-caps`, et il a
-                fallu le mesurer pour le voir : « Récapitulatif » débordait sa
-                colonne de 6 px. Treize lettres sans césure possible, et
-                `--text-caps--letter-spacing` vaut 0,07 em — soit 11 px de chasse
-                ajoutée sur ce seul mot. Ce jeton est fait pour des CAPITALES,
-                où l'interlettrage aère ; ces libellés sont en bas de casse, où
-                il ne fait qu'élargir. On garde la taille, on rend la chasse.
+                `text-label` ET NON `text-caps`, et il a fallu le mesurer pour
+                le voir : « Récapitulatif » débordait sa colonne de 6 px. Treize
+                lettres sans césure possible, et l'interlettrage de 0,07 em du
+                jeton de capitales — 11 px de chasse sur ce seul mot. Ce jeton
+                est fait pour des CAPITALES, où l'interlettrage aère ; ces
+                libellés sont en bas de casse, où il ne fait qu'élargir. Longtemps
+                on a gardé le jeton et annulé sa chasse par `tracking-normal` ;
+                `text-label` dit la même taille sans rien à annuler.
 
                 Le débordement était invisible à la garde de page : le mot dépasse
                 DANS sa boîte, `scrollWidth` le sait, `document.scrollWidth` non.
@@ -114,8 +115,8 @@ export function Stepper({ steps, current }: StepperProps) {
               */}
               <span
                 className={cn(
-                  'w-full hyphens-auto text-center text-caps tracking-normal leading-tight',
-                  'sm:w-auto sm:text-left sm:text-label sm:tracking-normal',
+                  'w-full hyphens-auto text-center text-label leading-tight',
+                  'sm:w-auto sm:text-left',
                   active ? 'font-semibold text-ink' : 'text-muted',
                 )}
               >

@@ -343,7 +343,7 @@ function Graduation({ valeur, hauteur, texte }: { valeur: number; hauteur: numbe
       className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-divider"
       style={{ bottom: `${hauteur}%` }}
     >
-      <span className="numeric absolute -top-2.5 left-0 rounded-sm bg-surface px-1.5 py-0.5 text-caps text-muted">
+      <span className="numeric absolute -top-2.5 left-0 rounded-sm bg-surface px-1.5 py-0.5 text-label text-muted">
         {texte}
       </span>
     </div>
@@ -748,7 +748,7 @@ export function StackedBarChart({
                seize pixels étaient précisément ceux qui manquaient : mesuré à
                320 px, la phrase réclame 257 px pour 246 disponibles et passait
                sur deux lignes. Sans le retrait il lui en faut 241. */
-            className="inline-flex items-center gap-1.5 text-caps text-muted"
+            className="inline-flex items-center gap-1.5 text-label text-muted"
           >
             <span
               aria-hidden="true"
@@ -1056,7 +1056,7 @@ export function StackedBarChart({
           <p
             aria-hidden="true"
             data-plafond={maxSecondaireAffiche}
-            className="numeric mt-3 mb-0.5 text-caps text-muted"
+            className="numeric mt-3 mb-0.5 text-label text-muted"
           >
             {abreger(maxSecondaireAffiche)}
           </p>
@@ -1128,7 +1128,7 @@ export function StackedBarChart({
                 // écrasaient l'interlettrage de `text-caps` sans raison écrite,
                 // et une valeur défendue au centième dans la feuille de jetons
                 // ne se corrige pas en passant.
-                'min-w-0 flex-1 text-center text-caps tracking-wide uppercase',
+                'min-w-0 flex-1 text-center eyebrow',
                 /*
                   AU-DELÀ DE `sm`, L'ÉTIQUETTE RÉCLAME SA PROPRE LARGEUR.
 
@@ -1362,7 +1362,7 @@ function LectureFixe({
         nombre magique aurait tenu jusqu'au prochain jeu de données.
       */}
       <p className="flex flex-col gap-y-0.5">
-        <span className="text-caps text-muted uppercase">{title}</span>
+        <span className="eyebrow text-muted">{title}</span>
         <span className="numeric title-m text-ink">{total}</span>
       </p>
 
@@ -1577,7 +1577,7 @@ export function DonutChart({
           <span className="numeric text-title-l font-medium">
             {shown ? nombres.percent(Math.round(shown.fraction * 100)) : centerValue}
           </span>
-          <span className="max-w-[6rem] text-caps text-muted uppercase">
+          <span className="max-w-[6rem] eyebrow text-muted">
             {shown ? shown.slice.label : centerLabel}
           </span>
         </div>

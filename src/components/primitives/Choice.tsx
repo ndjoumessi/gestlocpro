@@ -458,7 +458,7 @@ export function SegmentedControl<T extends string>({
             {option.badge && (
               <span
                 className={cn(
-                  'rounded-full px-1.5 py-0.5 numeric text-caps',
+                  'rounded-full px-1.5 py-0.5 numeric text-label',
                   // La pastille de remise suit l'accent unique. Elle était en
                   // vert de succès, seule tache de couleur restante sur la
                   // landing une fois les autres neutralisées.

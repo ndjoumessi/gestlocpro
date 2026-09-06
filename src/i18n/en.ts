@@ -182,8 +182,11 @@ export const en: Dictionary = {
      * coupe jamais — le caractère y reste invisible.
      */
     dashboard: 'Dash\u00ADboard',
+    dashboardShort: 'Home',
     portfolio: 'Port\u00ADfolio',
+    portfolioShort: 'Estate',
     payments: 'Pay\u00ADments',
+    paymentsShort: 'Rent',
     meters: 'Meter readings',
     inspections: 'Inspections',
     works: 'Works',
@@ -192,6 +195,7 @@ export const en: Dictionary = {
     tenants: 'Tenants',
     report: 'Report',
     alerts: 'Re\u00ADports',
+    alertsShort: 'Reports',
     onboarding: 'Onboarding and rights',
     system: 'System states',
     tenantPortal: 'Tenant portal (web)',

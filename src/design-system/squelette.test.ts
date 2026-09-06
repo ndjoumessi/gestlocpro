@@ -160,7 +160,9 @@ describe('colonnes du tableau en attente', () => {
     gabarit ? gabarit.split('_').length : -1
 
   const mobile = pistes(/(?:^|[\s'"])grid-cols-\[([^\]]+)\]/.exec(NU_TSX)?.[1])
-  const large = pistes(/sm:grid-cols-\[([^\]]+)\]/.exec(NU_TSX)?.[1])
+  // `lg`, comme `AU_DELA_LG` : les sept écrans à fiches ne montrent leur tableau
+  // qu'à partir de là — `squeletteAuSeuilDesFiches.test.ts` tient ce seuil.
+  const large = pistes(/lg:grid-cols-\[([^\]]+)\]/.exec(NU_TSX)?.[1])
 
   const colonnes = [...NU_TSX.matchAll(/\{\s*mobile:\s*(true|false)\s*\}/g)].map(
     ([, v]) => v === 'true',
@@ -180,7 +182,7 @@ describe('colonnes du tableau en attente', () => {
     expect(mobile).toBe(colonnes.filter(Boolean).length)
   })
 
-  it('compte autant de pistes que de colonnes au-delà de sm', () => {
+  it('compte autant de pistes que de colonnes au-delà de lg', () => {
     expect(large).toBe(colonnes.length)
   })
 })

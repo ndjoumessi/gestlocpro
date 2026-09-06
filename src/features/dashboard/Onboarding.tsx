@@ -560,7 +560,7 @@ export function Onboarding() {
                     >
                       {t(`roles.${role}.name` as 'roles.owner.name')}
                       {inactive && (
-                        <span className="mt-0.5 block text-caps normal-case">
+                        <span className="mt-0.5 block text-label">
                           {t('app.onboarding.managerOff')}
                         </span>
                       )}

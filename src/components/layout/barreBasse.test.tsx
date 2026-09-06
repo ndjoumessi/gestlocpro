@@ -84,7 +84,8 @@ describe('barre de navigation basse', () => {
     // Sous `/demo`, où vit le sélecteur de profil : ce cas a besoin de changer
     // de rôle sans remonter, et c'est ce que la démonstration offre.
     await renderApp('/demo', { largeur: TELEPHONE })
-    expect(libelles()).toContain('Parc immobilier')
+    // « Parc », le libellé court propre à cette barre — la latérale garde le long.
+    expect(libelles()).toContain('Parc')
 
     await switchRole('tenant')
     await attendreLeChargement()
@@ -102,7 +103,8 @@ describe('barre de navigation basse', () => {
     await renderApp('/app/paiements', { largeur: TELEPHONE })
 
     const courante = within(barre()).getByRole('link', { current: 'page' })
-    expect(courante).toHaveTextContent('Paiements')
+    // « Loyers », le libellé court de cette barre ; la latérale dit « Paiements ».
+    expect(courante).toHaveTextContent('Loyers')
     // La graisse double l'indication : la couleur seule ne se lit pas en plein
     // soleil ni pour un daltonien.
     expect(courante.className).toMatch(/font-semibold/)
@@ -119,7 +121,7 @@ describe('barre de navigation basse', () => {
     expect(attendu, 'aucun impayé dans le jeu de test : la pastille ne prouve rien').toBeTruthy()
     // Le compteur précède le libellé ici et le suit dans la barre latérale :
     // c'est la valeur qui doit coïncider, pas l'ordre de lecture.
-    expect(within(barre()).getByRole('link', { name: /Paiements/ })).toHaveTextContent(
+    expect(within(barre()).getByRole('link', { name: /Loyers/ })).toHaveTextContent(
       attendu as string,
     )
   })

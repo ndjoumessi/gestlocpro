@@ -133,7 +133,7 @@ export function Logo({
                 // plancher de 12px comme le reste. `text-caps` porte
                 // déjà taille, interligne et interlettrage — le `tracking`
                 // arbitraire qui l'accompagnait faisait double emploi.
-                'truncate text-caps',
+                'truncate text-label',
                 tone === 'dark' ? 'text-on-dark-faint' : 'text-muted',
               )}
             >

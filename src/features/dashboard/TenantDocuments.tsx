@@ -310,7 +310,7 @@ export function TenantDocuments() {
                     écran, avec la primitive qui distingue les deux. */}
                 <span className="min-w-32 flex-1">
                   <span className="block text-body">{d.monthYear(receipt)}</span>
-                  <span className="numeric block text-caps text-muted">
+                  <span className="numeric block text-label text-muted">
                     {money(receiptDue(receipt), { compact: true })}
                   </span>
                 </span>
@@ -535,13 +535,13 @@ function LignePiece({
             libellés tiennent sur deux lignes courtes ; les y laisser vaut
             mieux que les faire disparaître. */}
         <span className="block text-body">{label}</span>
-        {detail && <span className="numeric block text-caps text-muted">{detail}</span>}
+        {detail && <span className="numeric block text-label text-muted">{detail}</span>}
         {/* SOUS LE LIBELLÉ, jamais dans la colonne de droite : celle-ci est
             `shrink-0` et se bat déjà avec le nom de la pièce à 320 px — une
             phrase y écraserait « Contrat de bail signé » à deux lettres, dans
             l'état précisément où l'écran doit être le plus clair. */}
         {!to && absence && (
-          <span className="block text-caps text-pretty text-muted">{absence}</span>
+          <span className="block text-label text-pretty text-muted">{absence}</span>
         )}
       </span>
       {/* `ml-auto` : QUAND LA LIGNE SE REPLIE, l'action reste à droite.
@@ -564,7 +564,7 @@ function LignePiece({
             {action}
           </Button>
         ) : (
-          <span className="text-caps text-muted">{t('app.documents.none')}</span>
+          <span className="text-label text-muted">{t('app.documents.none')}</span>
         )}
         {telecharger && (
           <IconButton icon="download" label={telecharger.nom} onClick={telecharger.faire} />

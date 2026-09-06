@@ -122,7 +122,7 @@ function MentionDeConversion() {
 
   if (coursIndisponibles)
     return (
-      <span className="text-caps text-warn">
+      <span className="text-label text-warn">
         {t('common.currencyUnavailable', { currency: CURRENCY_DEFS[deviseSource].label })}
       </span>
     )
@@ -145,7 +145,7 @@ function MentionDeConversion() {
   if (!base) return null
 
   return (
-    <span className="text-caps text-muted">
+    <span className="text-label text-muted">
       {base.date
         ? t('common.currencyConverted', { date: d.fullDate(partiesDeDateISO(base.date)) })
         : t('common.currencyPegged')}

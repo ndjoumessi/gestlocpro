@@ -71,7 +71,7 @@ export function NotFound() {
 
       <main className={cn('flex flex-1 items-center justify-center py-16', GOUTTIERE_LATERALE)}>
         <div className="w-full max-w-lg">
-          <p className="text-caps text-accent-ink">{t('notFound.code')}</p>
+          <p className="text-label text-accent-ink">{t('notFound.code')}</p>
 
           <h1 className="display-m mt-3 text-balance">{t('notFound.title')}</h1>
           <p className="mt-4 text-body-l text-pretty text-muted">{t('notFound.body')}</p>

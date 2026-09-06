@@ -502,7 +502,7 @@ export function Works() {
                   <h2 className="title-m">{workTitle(work, t)}</h2>
                   {work.urgent && <Badge tone="danger">{t('app.works.urgent')}</Badge>}
                 </div>
-                <p className="mt-1 text-caps text-muted">
+                <p className="mt-1 text-label text-muted">
                   {/* `work.id` est une référence de signalement, pas une unité :
                       il reste tel quel. `work.unitId`, lui, est l'identifiant
                       technique de l'unité — c'est son libellé qui se lit. */}
@@ -574,7 +574,7 @@ export function Works() {
                 */}
                 {(fils.get(work.id) ?? []).map((r) => (
                   <div key={r.id} className="mt-1 border-l-2 border-divider pl-3">
-                    <p className="text-caps text-muted">
+                    <p className="text-label text-muted">
                       {r.message === 'tenantReply'
                         ? t('app.works.replyFromTenant')
                         : t('app.works.replyFromManager')}{' '}
@@ -969,11 +969,11 @@ function Montant({ work }: { work: WorkOrder }) {
   return (
     <span className="flex flex-col items-end">
       <span className="numeric text-title-m font-medium">{money(montant, { compact: true })}</span>
-      <span className="text-caps text-muted">
+      <span className="text-label text-muted">
         {t(nature === 'approved' ? 'app.works.amountApproved' : 'app.works.amountQuoted')}
       </span>
       {revise && (
-        <span className="numeric text-caps text-muted">
+        <span className="numeric text-label text-muted">
           {t('app.works.amountWasQuoted', { amount: money(work.quotedAmount!, { compact: true }) })}
         </span>
       )}

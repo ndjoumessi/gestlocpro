@@ -1174,6 +1174,16 @@ export function Portfolio() {
           {
             key: 'status',
             role: 'etat',
+            /* BORNÉE, parce que c'est elle qui absorbait le mou. Seule `unit`
+               avait une largeur ; le tableau est en disposition automatique, et
+               la cellule « pastille + en retard depuis N j » a le plus grand
+               contenu de la ligne : à 1440–1920 px, c'est elle qui s'étirait —
+               de 109 à 396 px de vide relevés — et la pastille restait seule à
+               gauche d'un champ blanc. Le mou se reporte sur `tenant`, seule
+               colonne sans borne, où un nom a l'usage de la place. Locale, pas
+               globale : contraindre `main` déplaçait le défaut sur les autres
+               écrans (tenté et retiré le 2026-09-06). */
+            width: '12rem',
             header: t('app.tenants.rentStatus'),
             render: (unit) =>
               unit.status === 'vacant' ? (
@@ -1327,7 +1337,7 @@ function PortfolioSkeleton() {
           ))}
         </div>
 
-        <SkeletonTable />
+        <SkeletonTable fiches />
       </SkeletonRegion>
     </>
   )

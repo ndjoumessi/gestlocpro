@@ -353,7 +353,7 @@ export function UnitFile() {
                           chercher une donnée manquante là où il n'y a rien à
                           trouver. */}
                       {versement?.reference && (
-                        <span className="ml-2 text-caps text-muted">
+                        <span className="ml-2 text-label text-muted">
                           {t('app.payments.referenceShort', { reference: versement.reference })}
                         </span>
                       )}
@@ -452,7 +452,7 @@ export function UnitFile() {
                       {t('app.works.reply')}
                     </Button>
                   )}
-                  <span className="text-caps text-muted">
+                  <span className="text-label text-muted">
                     {/* Les statuts vivent à plat dans `app.works` —
                         `reported`, `quoted`, `approved`, `done` — et non sous
                         un sous-objet `status`. */}
@@ -472,7 +472,7 @@ export function UnitFile() {
                       key={r.id}
                       className="basis-full border-l-2 border-divider pl-3"
                     >
-                      <p className="text-caps text-muted">
+                      <p className="text-label text-muted">
                         {r.message === 'tenantReply'
                           ? t('app.works.replyFromTenant')
                           : t('app.works.replyFromManager')}{' '}
@@ -569,7 +569,7 @@ function LigneOccupation({ bail }: { bail: Occupation }) {
         <p className="text-body font-medium">
           {bail.tenant ?? <span className="text-muted italic">{t('app.portfolio.noTenant')}</span>}
         </p>
-        <p className="mt-0.5 text-caps text-muted">
+        <p className="mt-0.5 text-label text-muted">
           {bail.endsOn
             ? t('app.unitFile.between', {
                 start: d.fullDate(bail.startsOn),

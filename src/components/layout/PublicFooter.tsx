@@ -158,7 +158,7 @@ export function PublicFooter() {
         </div>
 
         <div className="mt-12 flex flex-col gap-4 border-t border-on-dark-border pt-6 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-caps text-on-dark-faint">
+          <p className="text-label text-on-dark-faint">
             {t('marketing.footer.rights', { year: new Date().getFullYear() })}
           </p>
         </div>

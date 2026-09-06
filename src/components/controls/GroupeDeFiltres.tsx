@@ -89,7 +89,7 @@ export function GroupeDeFiltres<T extends string>({
                    marqueur est celui que porte déjà la valeur d'une carte
                    d'indicateur : une même question, un même attribut. */
                 data-valeur=""
-                className={cn('numeric text-caps', actif ? 'text-accent-on-ink' : 'text-muted')}
+                className={cn('numeric text-label', actif ? 'text-accent-on-ink' : 'text-muted')}
               >
                 {option.compte}
               </span>

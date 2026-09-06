@@ -144,7 +144,7 @@ export function CurrencySwitcher({ tone = 'light', className }: CurrencySwitcher
                   <span className="flex-1">
                     {t(`common.currencyNames.${code}` as 'common.currencyNames.CFA')}
                   </span>
-                  <span className="text-caps text-muted">{code}</span>
+                  <span className="text-label text-muted">{code}</span>
                 </button>
               </li>
             )

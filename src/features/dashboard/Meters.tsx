@@ -404,7 +404,7 @@ export function Meters() {
               ) : r.waterPrevious === null ? (
                 /* PREMIER RELEVÉ : on montre l'index posé, pas une consommation
                    qu'on ne sait pas calculer. */
-                <span className="text-caps text-muted">{n.integer(r.waterCurrent)}</span>
+                <span className="text-label text-muted">{n.integer(r.waterCurrent)}</span>
               ) : (
                 <span>
                   {n.integer(r.waterCurrent - r.waterPrevious)}{' '}
@@ -424,7 +424,7 @@ export function Meters() {
                     Une même valeur, deux comportements justes, et c'est la
                     colonne qui décide — pas le rendu.
                   */}
-                  <span className="text-caps whitespace-nowrap text-muted">
+                  <span className="text-label whitespace-nowrap text-muted">
                     {n.integer(r.waterPrevious)}→{n.integer(r.waterCurrent)}
                   </span>
                 </span>
@@ -438,7 +438,7 @@ export function Meters() {
               r.powerCurrent === null ? (
                 <span className="text-muted">—</span>
               ) : r.powerPrevious === null ? (
-                <span className="text-caps text-muted">{n.integer(r.powerCurrent)}</span>
+                <span className="text-label text-muted">{n.integer(r.powerCurrent)}</span>
               ) : (
                 <span>
                   {n.integer(r.powerCurrent - r.powerPrevious)}{' '}
@@ -447,7 +447,7 @@ export function Meters() {
                       là où le français écrit « 7 640 » et l'anglais « 7,640 ».
                       L'espace typographique remplace la marge pour la raison
                       dite au-dessus, sur l'eau. */}
-                  <span className="text-caps whitespace-nowrap text-muted">
+                  <span className="text-label whitespace-nowrap text-muted">
                     {n.integer(r.powerPrevious)}→{n.integer(r.powerCurrent)}
                   </span>
                 </span>
@@ -552,7 +552,7 @@ function MetersSkeleton() {
           <Skeleton line="body" className="mt-0.5 w-72 max-w-full" />
         </div>
 
-        <SkeletonTable />
+        <SkeletonTable fiches />
       </SkeletonRegion>
     </>
   )

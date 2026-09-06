@@ -775,7 +775,7 @@ export function Dashboard() {
                       >
                         {building.name}
                       </span>
-                      <span className="text-caps text-muted">{building.district}</span>
+                      <span className="text-label text-muted">{building.district}</span>
                     </span>
                     {/*
                       UN RATIO D'OCCUPATION N'EST PAS UN VERDICT.

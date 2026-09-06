@@ -108,6 +108,13 @@ interface NavItem {
    */
   to: string
   labelKey: string
+  /**
+   * Libellé de la barre basse — UN mot, sept signes au plus, sans césure.
+   * Cinq cases sur 360 px font 68 px chacune : « Tableau de bord » y passait
+   * sur deux lignes, « Signalements » se coupait en « Signa-lements ». La barre
+   * latérale garde le libellé long ; celle-ci prend le sien.
+   */
+  shortLabelKey?: string
   icon: IconName
   /**
    * Compteur dérivé de l'état, désigné par son nom et non par sa valeur.
@@ -140,8 +147,14 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
   {
     headingKey: 'nav.sectionSteering',
     items: [
-      { to: '', labelKey: 'nav.dashboard', icon: 'grid' },
-      { to: 'parc', labelKey: 'nav.portfolio', icon: 'building', roles: ['owner', 'manager'] },
+      { to: '', labelKey: 'nav.dashboard', shortLabelKey: 'nav.dashboardShort', icon: 'grid' },
+      {
+        to: 'parc',
+        labelKey: 'nav.portfolio',
+        shortLabelKey: 'nav.portfolioShort',
+        icon: 'building',
+        roles: ['owner', 'manager'],
+      },
     ],
   },
   {
@@ -150,6 +163,7 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
       {
         to: 'paiements',
         labelKey: 'nav.payments',
+        shortLabelKey: 'nav.paymentsShort',
         icon: 'card',
         badge: { count: 'overdue', tone: 'danger' },
       },
@@ -171,6 +185,7 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
       {
         to: 'signalements',
         labelKey: 'nav.alerts',
+        shortLabelKey: 'nav.alertsShort',
         icon: 'bell',
         badge: { count: 'unreadAlerts', tone: 'accent' },
       },
@@ -1254,7 +1269,7 @@ function Sidebar({
           */}
           <p
             aria-live="polite"
-            className="px-3.5 text-caps leading-relaxed text-muted"
+            className="px-3.5 text-label leading-relaxed text-muted"
           >
             {t(`roles.${role}.rights` as 'roles.owner.rights')}
           </p>
@@ -1650,7 +1665,7 @@ function MenuCompte() {
               <p className="text-label font-semibold text-ink">{nom}</p>
               {/* Une adresse électronique n'a pas de longueur maximale : la
                   couper dans un menu de 256 px est le seul comportement tenable. */}
-              <p data-donnee className="truncate text-caps text-muted">
+              <p data-donnee className="truncate text-label text-muted">
                 {etat.compte.email}
               </p>
             </div>
@@ -1937,7 +1952,7 @@ function BarreBasse({ role, onOpenDrawer }: { role: Role; onOpenDrawer: () => vo
         )}
       >
         <Icon name="menu" size={19} />
-        <span className="text-caps leading-tight tracking-normal">{t('nav.more')}</span>
+        <span className="text-label leading-tight">{t('nav.more')}</span>
       </button>
     </nav>
   )
@@ -1945,7 +1960,7 @@ function BarreBasse({ role, onOpenDrawer }: { role: Role; onOpenDrawer: () => vo
 
 function BottomLink({ item }: { item: NavItem }) {
   const t = useT()
-  const label = t(item.labelKey as 'nav.dashboard')
+  const label = t((item.shortLabelKey ?? item.labelKey) as 'nav.dashboard')
   const count = useNavCount()
   const base = useBase()
   const valeur = item.badge ? count(item.badge.count) : 0
@@ -1994,8 +2009,8 @@ function BottomLink({ item }: { item: NavItem }) {
         que le libellé devait éviter. Descendre la taille était l'autre issue ;
         `plancher.test.ts` la refuse, à raison : ces écrans se lisent dehors.
 
-        `tracking-normal` annule l'interlettrage de `text-caps`, prévu pour des
-        surtitres de trois mots et qui coûte ici une lettre par ligne.
+        `text-label` et non le jeton de capitales : son interlettrage, prévu
+        pour des surtitres, coûtait ici une lettre par ligne.
 
         ── LE REPLI NE SUFFISAIT PAS, ET LA MESURE L'A DIT ──────────────────
 
@@ -2025,7 +2040,11 @@ function BottomLink({ item }: { item: NavItem }) {
            Sans lui, la porte ne saurait pas les distinguer du reste du texte —
            un débordement se voit, une mauvaise coupure non. */
         data-mesure="libelle-barre-basse"
-        className="w-full text-caps leading-tight tracking-normal hyphens-auto text-balance break-words"
+        /* Plus de `hyphens-auto` : les libellés de cette barre sont d'un mot
+           court (`shortLabelKey`, `libellesDeLaBarreBasse.test.tsx`), et une
+           étiquette de navigation ne se coupe pas. `break-words` reste, filet
+           d'une langue qu'on n'aurait pas prévue. */
+        className="w-full text-label leading-tight text-balance break-words"
       >
         {label}
       </span>

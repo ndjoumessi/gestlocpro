@@ -235,8 +235,13 @@ export const fr = {
 
   nav: {
     dashboard: 'Tableau de bord',
+    /* Les libellés courts de la barre basse : un mot, SEPT signes au plus —
+       « Paiements » (neuf) et « Payments » (huit) se coupaient à 320 px, mesuré. */
+    dashboardShort: 'Accueil',
     portfolio: 'Parc immobilier',
+    portfolioShort: 'Parc',
     payments: 'Paiements',
+    paymentsShort: 'Loyers',
     meters: 'Relevés',
     inspections: 'États des lieux',
     works: 'Travaux',
@@ -245,6 +250,7 @@ export const fr = {
     tenants: 'Locataires',
     report: 'Signaler',
     alerts: 'Signalements',
+    alertsShort: 'Alertes',
     onboarding: 'Prise en main et droits',
     system: 'États du système',
     tenantPortal: 'Portail locataire (web)',

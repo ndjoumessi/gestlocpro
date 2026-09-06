@@ -486,7 +486,7 @@ export function Decisions() {
       <>
         <PageHeader title={t('app.decisions.title')} description={t('app.decisions.subtitle')} />
         <SkeletonRegion label={t('app.decisions.title')}>
-          <SkeletonTable rows={6} />
+          <SkeletonTable rows={6} fiches />
         </SkeletonRegion>
       </>
     )

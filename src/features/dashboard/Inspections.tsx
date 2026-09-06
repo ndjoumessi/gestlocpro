@@ -241,7 +241,7 @@ export function Inspections() {
                     {unit?.label ?? unitId} ·{' '}
                     {unit && t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')}
                   </h2>
-                  <p className="text-caps text-muted">
+                  <p className="text-label text-muted">
                     {unit?.tenant ?? t('app.portfolio.noTenant')}
                   </p>
                 </div>
@@ -324,7 +324,7 @@ export function Inspections() {
                       <p className="text-body font-medium">
                         {t(`app.inspections.kinds.${inspection.kind}` as 'app.inspections.kinds.entry')}
                       </p>
-                      <p className="text-caps text-muted">
+                      <p className="text-label text-muted">
                         {d.fullDate(inspection.date)}{' · '}
                         {t('app.inspections.rooms', { count: inspection.rooms })}
                       </p>
@@ -342,7 +342,7 @@ export function Inspections() {
                           : t('app.inspections.issues', { count: inspection.issues })}
                       </StatusPill>
                       {!inspection.signed && (
-                        <span className="text-caps text-warn">
+                        <span className="text-label text-warn">
                           {t('app.inspections.unsigned')}
                         </span>
                       )}
@@ -514,7 +514,7 @@ function Preuves({ reserves }: { reserves: Finding[] }) {
                   constat » puis l'image qui l'atteste. Le tableau de
                   comparaison porte déjà ces mots, mais il ne se dresse pas
                   toujours — voir l'en-tête de ce bloc. */}
-              <p className="text-caps text-muted">
+              <p className="text-label text-muted">
                 {reserve.room} · {reserve.description}
               </p>
               <ul className="mt-1.5 flex flex-wrap gap-2">
@@ -593,7 +593,7 @@ function Preuve({ photo, legende }: { photo: Photo; legende: string }) {
 
   if (manquante) {
     return (
-      <span className="flex size-20 items-center justify-center rounded-md border border-dashed border-border px-1 text-center text-caps text-muted">
+      <span className="flex size-20 items-center justify-center rounded-md border border-dashed border-border px-1 text-center text-label text-muted">
         {t('app.inspections.proofMissing')}
       </span>
     )
@@ -657,16 +657,16 @@ function Comparaison({ inspections }: { inspections: Inspection[] }) {
           <caption className="sr-only">{t('app.inspections.comparison')}</caption>
           <thead>
             <tr className="border-b border-divider">
-              <th scope="col" className="py-2 text-left text-caps text-muted">
+              <th scope="col" className="py-2 text-left eyebrow text-muted">
                 {t('app.inspections.colRoom')}
               </th>
-              <th scope="col" className="py-2 text-left text-caps text-muted">
+              <th scope="col" className="py-2 text-left eyebrow text-muted">
                 {t('app.inspections.kinds.entry')}
               </th>
-              <th scope="col" className="py-2 text-left text-caps text-muted">
+              <th scope="col" className="py-2 text-left eyebrow text-muted">
                 {t('app.inspections.kinds.exit')}
               </th>
-              <th scope="col" className="py-2 text-right text-caps text-muted">
+              <th scope="col" className="py-2 text-right eyebrow text-muted">
                 {t('app.inspections.colWithheld')}
               </th>
             </tr>
@@ -729,7 +729,7 @@ function CelluleReserves({ reserves }: { reserves: Finding[] }) {
             {r.description}
             {/* La gravité est écrite, pas seulement colorée. */}
             {r.severity === 'major' && (
-              <span className="text-caps"> · {t('app.inspections.major')}</span>
+              <span className="text-label"> · {t('app.inspections.major')}</span>
             )}
           </li>
         ))}

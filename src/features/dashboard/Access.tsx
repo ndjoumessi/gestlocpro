@@ -1270,7 +1270,7 @@ function RegistreEnChargement() {
         * tombaient sur cinq cas différents.
         */}
       <SkeletonRegion>
-        <SkeletonTable rows={3} />
+        <SkeletonTable rows={3} fiches />
       </SkeletonRegion>
     </>
   )

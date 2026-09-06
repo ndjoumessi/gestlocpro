@@ -112,7 +112,7 @@ export function TenantPortal() {
               maximale, et la barre en a une. */}
           <span
             data-donnee
-            className="numeric min-w-0 truncate rounded-md bg-surface-sunken px-3 py-1 text-caps text-muted"
+            className="numeric min-w-0 truncate rounded-md bg-surface-sunken px-3 py-1 text-label text-muted"
           >
             {t(URL_PAR_ONGLET[tab])}
           </span>

@@ -123,7 +123,7 @@ export function Tenants() {
                 <p className="text-body font-medium">
                   {t(DOCUMENT_KIND_LABELS[demande.kind] as 'app.documents.reqResidence')}
                 </p>
-                <p className="mt-0.5 text-caps text-muted">
+                <p className="mt-0.5 text-label text-muted">
                   {/* Le NOM d'abord : c'est à une personne qu'on répond. Le
                       libellé du logement se relit depuis le parc — afficher
                       `demande.unitId` montrerait un uuid. */}
@@ -373,7 +373,7 @@ export function Tenants() {
             render: (unit) => (
               <span className="numeric">
                 {unit.label}
-                <span className="ml-2 text-caps text-muted">
+                <span className="ml-2 text-label text-muted">
                   {buildingById(unit.buildingId)?.district}
                 </span>
               </span>
@@ -583,7 +583,7 @@ function TenantsSkeleton() {
       />
 
       <SkeletonRegion>
-        <SkeletonTable />
+        <SkeletonTable fiches />
       </SkeletonRegion>
     </>
   )

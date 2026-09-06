@@ -446,7 +446,7 @@ export function Payments() {
         pastille à expliquer.
       */}
       {periodes.length > 0 && (
-        <p className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-caps text-muted">
+        <p className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-label text-muted">
           <span>{t('app.payments.legendPosts')}</span>
           {(['paid', 'partial', 'overdue'] as const).map((etat) => (
             <span key={etat} className="flex items-center gap-1.5">
@@ -507,7 +507,7 @@ export function Payments() {
                 <p data-donnee className="truncate">
                   {unit.tenant}
                 </p>
-                <p className="numeric mt-0.5 text-caps text-muted">
+                <p className="numeric mt-0.5 text-label text-muted">
                   {money(unit.rent, { compact: true })}
                 </p>
               </div>
@@ -580,7 +580,7 @@ export function Payments() {
                     déjà dans sa propre boîte : la douzaine de pixels que cela
                     coûte ne se paie pas sur la page. */}
                 {unit.overdueDays ? (
-                  <span className="numeric text-caps whitespace-nowrap text-muted">
+                  <span className="numeric text-label whitespace-nowrap text-muted">
                     {t('app.payments.overdueDays', { days: unit.overdueDays })}
                   </span>
                 ) : null}
@@ -608,7 +608,7 @@ export function Payments() {
                   « rien à faire » et que le solde dit le contraire.
                 */}
                 {unit.status === 'paid' && soldeCumule(unit) > 0 ? (
-                  <span className="text-caps whitespace-nowrap text-muted">
+                  <span className="text-label whitespace-nowrap text-muted">
                     {t('app.payments.carried')}
                   </span>
                 ) : null}
@@ -942,7 +942,7 @@ function PaymentsSkeleton({ isTenant }: { isTenant: boolean }) {
           ))}
         </div>
 
-        <SkeletonTable />
+        <SkeletonTable fiches />
       </SkeletonRegion>
     </>
   )

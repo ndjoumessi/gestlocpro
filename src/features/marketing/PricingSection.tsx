@@ -393,7 +393,7 @@ function CartePalier({
 
             {/* La formule est affichée : le prix doit être vérifiable
                 par le prospect, pas seulement constaté. */}
-            <p className="mt-3 flex items-center gap-1.5 text-caps text-accent-ink">
+            <p className="mt-3 flex items-center gap-1.5 text-label text-accent-ink">
               <Icon name="building" size={13} />
               {t('marketing.pricing.perUnitNote', {
                 /* `round: Number.isInteger(...)` visait « 4 € » plutôt que
@@ -620,7 +620,7 @@ function FeatureLine({ featureKey, value }: { featureKey: string; value: Feature
       */}
       <span>
         {label}
-        {detail && <span className="ml-1.5 text-caps text-muted">{detail}</span>}
+        {detail && <span className="ml-1.5 text-label text-muted">{detail}</span>}
       </span>
     </li>
   )

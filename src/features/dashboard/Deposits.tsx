@@ -455,7 +455,7 @@ function DepositsSkeleton({ isManager }: { isManager: boolean }) {
         )}
 
         <div className="mt-6">
-          <SkeletonTable />
+          <SkeletonTable fiches />
         </div>
       </SkeletonRegion>
     </>

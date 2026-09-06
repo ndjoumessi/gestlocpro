@@ -412,7 +412,7 @@ export function TenantDashboard() {
             level={2}
             className="px-4 pt-4 sm:px-5 sm:pt-5"
             action={
-              <span className="flex items-center gap-3 text-caps text-muted">
+              <span className="flex items-center gap-3 text-label text-muted">
                 <Legende tone="bg-ok" label={t('app.tenant.legendSettled')} />
                 <Legende tone="bg-warn" label={t('app.tenant.legendPartial')} />
               </span>
@@ -442,19 +442,19 @@ export function TenantDashboard() {
               <caption className="sr-only">{t('app.tenant.byPeriod')}</caption>
               <thead>
                 <tr className="border-b border-divider">
-                  <th scope="col" className="px-4 py-2.5 text-left text-caps text-muted sm:px-5">
+                  <th scope="col" className="px-4 py-2.5 text-left eyebrow text-muted sm:px-5">
                     {t('app.tenant.colPeriod')}
                   </th>
-                  <th scope="col" className="px-3 py-2.5 text-right text-caps text-muted">
+                  <th scope="col" className="px-3 py-2.5 text-right eyebrow text-muted">
                     {t('app.tenant.colRent')}
                   </th>
-                  <th scope="col" className="px-3 py-2.5 text-right text-caps text-muted">
+                  <th scope="col" className="px-3 py-2.5 text-right eyebrow text-muted">
                     {t('app.tenant.colWater')}
                   </th>
-                  <th scope="col" className="px-3 py-2.5 text-right text-caps text-muted">
+                  <th scope="col" className="px-3 py-2.5 text-right eyebrow text-muted">
                     {t('app.tenant.colPower')}
                   </th>
-                  <th scope="col" className="px-4 py-2.5 text-right text-caps text-muted sm:px-5">
+                  <th scope="col" className="px-4 py-2.5 text-right eyebrow text-muted sm:px-5">
                     {t('app.tenant.colReceipt')}
                   </th>
                 </tr>
@@ -627,12 +627,12 @@ export function TenantDashboard() {
               <ul className="flex flex-col gap-3">
                 {works.map((work) => (
                   <li key={work.id} className="flex items-start gap-3">
-                    <span className="numeric mt-0.5 shrink-0 text-caps text-muted">
+                    <span className="numeric mt-0.5 shrink-0 text-label text-muted">
                       {d.dayMonth(work.reportedAt)}
                     </span>
                     <div className="min-w-0">
                       <p className="text-body font-medium">{workTitle(work, t)}</p>
-                      <p className="mt-0.5 text-caps text-muted">
+                      <p className="mt-0.5 text-label text-muted">
                         {t(`app.works.status.${work.status}` as 'app.works.status.reported')}
                       </p>
                     </div>
@@ -766,7 +766,7 @@ function SerieFluide({
   return (
     <div className="min-w-0">
       <div className="mb-2 flex items-baseline justify-between gap-3">
-        <span className="text-caps text-muted">{libelle}</span>
+        <span className="text-label text-muted">{libelle}</span>
         {moyenne !== null && (
           <span className="numeric text-body text-muted">
             {t('app.tenant.average', { value: lire(moyenne) })}
@@ -845,7 +845,7 @@ function MontantRegle({ du, regle }: { du: number; regle: number }) {
     <>
       {lireMontant(solde ? du : regle)}
       {!solde && (
-        <span className="text-caps">
+        <span className="text-label">
           {' · '}
           {t('app.tenant.remaining', { amount: lireMontant(du - regle) })}
         </span>
@@ -887,7 +887,7 @@ function LigneBail({
       <dd
         className={
           absence !== undefined && !href
-            ? 'text-pretty text-right text-caps text-muted'
+            ? 'text-pretty text-right text-label text-muted'
             : 'numeric text-body font-medium'
         }
       >
