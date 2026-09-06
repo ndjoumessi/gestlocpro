@@ -375,7 +375,11 @@ export function Combobox({
                   }}
                   onMouseEnter={() => setActif(index)}
                   className={cn(
-                    'cursor-pointer px-3 py-2 text-body',
+                    // `min-h-11` : 44 px, le plancher de toute cible du produit.
+                    // `py-2` seul donnait 38 — la seule cible sous le plancher des
+                    // primitives, invisible aux portes parce que la liste n'existe
+                    // qu'ouverte.
+                    'flex min-h-11 cursor-pointer items-center px-3 py-2 text-body',
                     index === actif ? 'bg-surface-sunken text-ink' : 'text-ink',
                   )}
                 >

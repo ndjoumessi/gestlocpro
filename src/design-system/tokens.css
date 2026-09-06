@@ -1054,6 +1054,13 @@
       animation-duration: 0.001ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.001ms !important;
+      /* LES DÉLAIS AUSSI. Une durée à zéro ne supprime pas un `animation-delay` :
+         les colonnes des graphes, échelonnées de 35 ms chacune avec
+         `fill-mode: both`, restaient figées à `scaleY(0.02)` pendant leur délai
+         puis surgissaient une à une — douze apparitions sur 400 ms pour qui a
+         demandé qu'il n'y en ait aucune. `durees.test.ts` tient les deux. */
+      animation-delay: 0s !important;
+      transition-delay: 0s !important;
       scroll-behavior: auto !important;
     }
   }

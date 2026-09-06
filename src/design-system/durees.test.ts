@@ -107,5 +107,16 @@ describe('fourchette de durées', () => {
     expect(bloc).not.toBeNull()
     expect(bloc?.[1]).toContain('animation-duration: 0.001ms !important')
     expect(bloc?.[1]).toContain('transition-duration: 0.001ms !important')
+    /*
+      LES DÉLAIS AUSSI, et c'est ce que le bloc oubliait.
+
+      `Charts.tsx` et `MiniBarChart.tsx` échelonnent leurs colonnes par
+      `animationDelay: index × 35 ms` avec `fill-mode: both`. Une durée ramenée
+      à 0,001 ms ne supprime pas le délai : chaque colonne restait figée à
+      `scaleY(0.02)` PENDANT son délai, puis surgissait — douze apparitions
+      successives sur 385 à 440 ms, pour qui a demandé qu'il n'y en ait aucune.
+    */
+    expect(bloc?.[1]).toContain('animation-delay: 0s !important')
+    expect(bloc?.[1]).toContain('transition-delay: 0s !important')
   })
 })

@@ -1,4 +1,4 @@
-import { useId, useMemo, useState, type ReactNode } from 'react'
+import { useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { cn } from '@/lib/cn'
 import { useNumbers } from '@/lib/numbers'
 import { useCurrency } from '@/currency/CurrencyProvider'
@@ -466,6 +466,26 @@ export function StackedBarChart({
   const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set())
   /** Colonne survolée ou focalisée ; `null` quand rien n'est visé. */
   const [active, setActive] = useState<number | null>(null)
+  /*
+    LA BOÎTE DE TRACÉ S'OUVRE À DROITE, SUR LE MOIS COURANT.
+
+    À 360 px elle mesure 286 px et son contenu 440 : elle défile, et un
+    conteneur défile à gauche par défaut. Les quatre dernières colonnes — dont
+    celle que la lecture fixe choisit (`lu = active ?? bars.length - 1`) —
+    étaient hors écran à la première peinture. La donnée la plus récente, celle
+    qu'on vient chercher, était la seule qu'on ne voyait pas.
+
+    `useLayoutEffect` et non `useEffect` : le placement doit précéder la
+    première peinture, sinon l'œil voit le graphe sauter. Poser `scrollWidth`
+    entier suffit, le navigateur borne ; et quand rien ne dépasse, poser 0 ne
+    change rien. Rejoué à chaque changement du nombre de colonnes seulement :
+    un survol ou une série masquée ne doivent pas ramener la vue à droite.
+  */
+  const defilant = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const boite = defilant.current
+    if (boite) boite.scrollLeft = boite.scrollWidth
+  }, [bars.length])
 
   /**
    * La colonne que la lecture affiche : celle qu'on vise, à défaut la dernière.
@@ -779,7 +799,10 @@ export function StackedBarChart({
         tracé seule vaut 26 px de moins — 198 px ici, 230 px sous `sm`. Mesuré
         avant et après ce lot : 230 des deux côtés, les barres n'ont pas bougé.
       */}
-      <div className="flex h-[14.625rem] flex-col overflow-x-auto pt-2.5 sm:h-[16.625rem]">
+      <div
+        ref={defilant}
+        className="flex h-[14.625rem] flex-col overflow-x-auto pt-2.5 sm:h-[16.625rem]"
+      >
         {/*
           LA BORNE DES POINTS RARES, ET ELLE VIT SUR CE CONTENEUR.
 

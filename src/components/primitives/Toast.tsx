@@ -84,7 +84,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         // paysage l'encoche mord à gauche OU à droite selon le sens de
         // rotation, et le toast passe à droite dès `sm`.
         className={cn(
-          'pointer-events-none fixed inset-x-0 bottom-0 flex flex-col items-center gap-2',
+          // `bottom-[var(--h-barre-basse)]` et non `bottom-0` : sous 64 rem, la
+          // coquille de gestion monte une barre de 4 rem et élève cette variable ;
+          // un toast à `bottom-0` la recouvrait 4,5 s, juste quand on veut changer
+          // d'écran. Même décalage que `BandeauVersion`, pour la même raison.
+          'pointer-events-none fixed inset-x-0 bottom-[var(--h-barre-basse,0px)] flex flex-col items-center gap-2',
           'pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]',
           'pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]',
           'sm:items-end sm:pt-6 sm:pb-[max(1.5rem,env(safe-area-inset-bottom))]',
