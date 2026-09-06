@@ -52,10 +52,39 @@ function readStoredTheme(): Theme {
  * `data-theme="auto"` laissé en place ne serait donc pas neutre — il ne
  * correspondrait à aucun sélecteur, et le système redeviendrait muet.
  */
+/*
+  LA BARRE D'ÉTAT SUIT LE THÈME CHOISI, pas seulement celui du système.
+
+  Les deux métas `theme-color` d'`index.html` — une par requête média — teignent
+  la barre d'état Android et la coquille installée avant toute feuille de
+  style. Elles ne connaissent que le système : sombre choisi sur un téléphone
+  clair, la page se peignait sombre et la barre restait claire — la « bande
+  étrangère » que leur commentaire dit éviter.
+
+  Thème forcé : les deux métas prennent la couleur de celle dont le média porte
+  ce thème, pour que la première qui corresponde — quel que soit le système —
+  dise la bonne. Retour au système : chacune reprend sa valeur d'origine, gardée
+  dans `data-systeme` au premier passage (le script de tête d'`index.html`
+  fait la même chose avant la première peinture, et la garde au même endroit).
+  Aucune couleur n'est écrite ici : elles vivent dans les métas, tenues par
+  `faviconSuitLaMarque.test.ts` contre `--color-paper`.
+*/
+function teindreLaCoquille(theme: Theme): void {
+  const metas = Array.from(
+    document.head.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]'),
+  )
+  for (const meta of metas) meta.dataset.systeme ??= meta.content
+  const source = theme === 'auto' ? null : metas.find((m) => m.media.includes(theme))
+  for (const meta of metas) {
+    meta.content = (source ?? meta).dataset.systeme ?? meta.content
+  }
+}
+
 function appliquerTheme(theme: Theme): void {
   if (typeof document === 'undefined') return
   if (theme === 'auto') document.documentElement.removeAttribute(ATTRIBUTE)
   else document.documentElement.setAttribute(ATTRIBUTE, theme)
+  teindreLaCoquille(theme)
 }
 
 interface ThemeContextValue {

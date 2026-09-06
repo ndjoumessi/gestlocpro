@@ -495,7 +495,14 @@ export function Decisions() {
     <>
       <PageHeader title={t('app.decisions.title')} description={t('app.decisions.subtitle')} />
 
-      {erreur && <Notice tone="danger">{t('app.decisions.failed')}</Notice>}
+      {/* `role="alert"` : la note paraît APRÈS un chargement, et sans lui un
+          lecteur d'écran posé sur le titre n'apprend jamais que le registre
+          n'est pas venu. */}
+      {erreur && (
+        <Notice tone="danger" role="alert">
+          {t('app.decisions.failed')}
+        </Notice>
+      )}
 
       {!erreur && (registre?.length ?? 0) === 0 ? (
         <EmptyState

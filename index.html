@@ -113,8 +113,20 @@
     <script>
       try {
         var glTheme = localStorage.getItem('gestlocpro.theme')
-        if (glTheme === 'light' || glTheme === 'dark')
+        if (glTheme === 'light' || glTheme === 'dark') {
           document.documentElement.setAttribute('data-theme', glTheme)
+          /* La barre d'état aussi, AVANT la première peinture : les métas
+             theme-color ci-dessus ne connaissent que le système. Chacune
+             garde sa valeur d'origine dans data-systeme, pour que
+             ThemeProvider puisse la lui rendre au retour au système. */
+          var glMetas = document.querySelectorAll('meta[name="theme-color"]')
+          var glSource = null
+          for (var i = 0; i < glMetas.length; i++) {
+            glMetas[i].dataset.systeme = glMetas[i].content
+            if (glMetas[i].media.indexOf(glTheme) !== -1) glSource = glMetas[i]
+          }
+          if (glSource) for (var j = 0; j < glMetas.length; j++) glMetas[j].content = glSource.content
+        }
       } catch (e) {
         /* Préférence illisible : le réglage système s'applique, et c'est tout. */
       }

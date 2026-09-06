@@ -338,6 +338,7 @@ export function Access() {
       {estProprietaire && demandes.length > 0 && (
         <Card flush>
           <CardHeader
+            level={2}
             title={t('app.access.requestsTitle')}
             description={t('app.access.requestsBody')}
           />
@@ -400,6 +401,7 @@ export function Access() {
 
       <Card flush>
         <CardHeader
+          level={2}
           title={t('app.access.membersTitle')}
           description={t('app.access.membersHint')}
         />
@@ -694,6 +696,7 @@ export function Access() {
       <div className="mt-8">
         <Card flush>
           <CardHeader
+            level={2}
             title={t('app.access.invitesTitle')}
             description={t('app.access.invitesHint')}
           />

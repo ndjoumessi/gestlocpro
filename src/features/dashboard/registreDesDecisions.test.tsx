@@ -84,6 +84,17 @@ function serveur(role: 'owner' | 'manager' = 'owner') {
 }
 
 describe('le registre des décisions', () => {
+  it('annonce l’échec de sa lecture, au lieu de le poser en silence', async () => {
+    /* La note d'échec paraissait APRÈS un chargement, sans `role="alert"` : un
+       lecteur d'écran posé sur le titre n'apprenait jamais que le registre
+       n'était pas venu. `Login` et la quittance le font ; ici, non. */
+    const { faux, session: etat } = serveur()
+    faux.quand('GET', `/parks/${PARC}/decisions`, { status: 500, body: { error: 'boom' } })
+    await renderApp('/app/decisions', { session: etat })
+    const alerte = await screen.findByRole('alert')
+    expect(alerte).toHaveTextContent(/registre|décisions|impossible/i)
+  })
+
   it('montre ce que le parc a écrit, le plus récent d’abord', async () => {
     const { session: etat } = serveur()
     await renderApp('/app/decisions', { session: etat })

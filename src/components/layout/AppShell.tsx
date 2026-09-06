@@ -9,7 +9,7 @@ import {
   type ReactNode,
   type Ref,
 } from 'react'
-import { Link, NavLink, useLocation } from 'react-router-dom'
+import { Link, NavLink, useLocation, useNavigationType } from 'react-router-dom'
 import { cn } from '@/lib/cn'
 import { GOUTTIERE_LATERALE } from './gouttiere'
 import { LienEvitement } from './LienEvitement'
@@ -388,6 +388,38 @@ export function AppShell() {
   // panneau reste ouvert par-dessus l'écran qu'on vient de demander.
   useEffect(() => setDrawerOpen(false), [location.pathname])
 
+  /*
+    CHANGER D'ÉCRAN, C'EST REPARTIR DU HAUT, ET LE DIRE AU CLAVIER.
+
+    Une application à page unique ne recharge rien : après un appui sur un
+    onglet depuis une page défilée, le nouvel écran s'ouvrait à l'ancien
+    décalage, et le focus restait sur l'onglet quitté — un lecteur d'écran
+    n'apprenait pas qu'il avait changé de page. `EcranSysteme` savait déjà
+    focaliser son `h1`, mais seulement sur les écrans d'erreur.
+
+    Deux gestes à chaque route POUSSÉE : remonter, et poser le focus sur
+    `<main>` — la cible du lien d'évitement —, d'où la lecture reprend au
+    titre. Le retour arrière ne remonte PAS : « retour » promet de revenir là
+    où l'on était. Et rien au premier rendu : la page s'ouvre où le navigateur
+    l'ouvre, focus compris.
+
+    `preventScroll` sur le focus : sans lui, focaliser `<main>` après un retour
+    arrière ferait défiler jusqu'à son haut — exactement ce qu'on vient de
+    refuser. L'anneau de focus reste : un clavier doit voir où il est, et
+    `couches.test.ts` refuse de l'éteindre où que ce soit.
+  */
+  const typeDeNavigation = useNavigationType()
+  const mainRef = useRef<HTMLElement>(null)
+  const premierRendu = useRef(true)
+  useEffect(() => {
+    if (premierRendu.current) {
+      premierRendu.current = false
+      return
+    }
+    if (typeDeNavigation !== 'POP') window.scrollTo(0, 0)
+    mainRef.current?.focus({ preventScroll: true })
+  }, [location.pathname, typeDeNavigation])
+
   // Le tiroir n'existe qu'en deçà de `lg`. Sans cette fermeture, un passage en
   // grand écran laisserait l'état ouvert : l'arrière-plan resterait neutralisé
   // alors que plus rien ne le recouvre.
@@ -502,6 +534,8 @@ export function AppShell() {
           <BandeauHorsLigne />
           <main
             id="main"
+            ref={mainRef}
+            tabIndex={-1}
             className={cn(
               'animate-rise flex-1',
               // Aucune barre basse à réserver — d'où un simple rembourrage de
@@ -586,6 +620,8 @@ export function AppShell() {
           */}
           <main
             id="main"
+            ref={mainRef}
+            tabIndex={-1}
             className={cn(
               'animate-rise flex-1',
               // Le bas réserve EN PLUS la hauteur de la barre basse, qui est

@@ -48,6 +48,12 @@ function parcSansAucunLogement() {
       notifications: [],
     },
   })
+  // L'écran Accès lit son propre registre ; vide, il rend quand même ses
+  // trois cartes — et c'est là que la marche h1 → h3 se cachait.
+  serveur.quand('GET', `/parks/${PARC}/access`, {
+    status: 200,
+    body: { members: [], invitations: [], requests: [], buildings: [], unlinkedTenants: [] },
+  })
   return serveur
 }
 
@@ -73,6 +79,7 @@ const ECRANS_DU_BAILLEUR = [
   '/app/signalements',
   '/app/etats-des-lieux',
   '/app/cautions',
+  '/app/acces',
 ]
 
 const ECRANS_DU_LOCATAIRE = [
