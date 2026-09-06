@@ -493,7 +493,7 @@ export function DataTable<T>({
       key={rowKey(row)}
       className="border-b border-divider transition-colors duration-150 last:border-0"
     >
-              {colonnes.map((column) => (
+      {colonnes.map((column, rang) => (
         <td
           key={column.key}
           data-colonne-tenue={estTenue(column) ? column.role : undefined}
@@ -514,6 +514,22 @@ export function DataTable<T>({
         nature, qui grandit.
       */
       'relative px-4 py-3 align-middle',
+      /* LA LIGNE FILLE EST EN RETRAIT, et c'est de là que vient la hiérarchie —
+         pas d'un aplat sur le parent.
+
+         Le groupement rendait un en-tête teinté suivi de lignes qui commençaient
+         au MÊME x que lui : « A1 » à l'aplomb de « Résidence Bonamoussadi ».
+         L'œil ne trouvait pas où un immeuble commence, et la teinte de l'en-tête
+         est trop proche du fond des lignes pour découper quoi que ce soit.
+
+         Les deux tables du catalogue qui portent des rangées filles — `table-19`
+         (felipemenezes098) et la table HeroUI — n'en teintent AUCUNE : elles
+         indentent l'enfant, et le parent se lit par contraste de position.
+
+         Seule la PREMIÈRE colonne se décale. Décaler toutes les cellules
+         casserait l'alignement vertical des valeurs, qui est ce qu'une table
+         sert à donner. */
+      rang === 0 && groupes ? 'pl-10' : null,
       column.numeric && 'numeric text-right whitespace-nowrap',
       column.hideOnMobile && 'hidden sm:table-cell',
       estTenue(column) && COLONNE_COLLANTE,
@@ -576,7 +592,10 @@ export function DataTable<T>({
                   colSpan={colonnes.length}
                   /* `p-0` : l'en-tête peint son propre fond et son propre
                      rembourrage — la cellule ne lui en ajoute pas un second. */
-                  className="border-b border-divider p-0 text-left font-normal"
+                  /* UN FILET AU-DESSUS AUSSI, qui FERME le bloc précédent avant
+                     d'ouvrir celui-ci. Sans lui l'en-tête flottait entre deux
+                     groupes sans dire auquel il appartenait. */
+                  className="border-y border-divider p-0 text-left font-normal"
                 >
                   {groupePar!.enTete(cle, lignes, 'tableau')}
                 </th>

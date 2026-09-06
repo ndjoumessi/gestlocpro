@@ -1774,6 +1774,7 @@ function BarreBasse({ role, onOpenDrawer }: { role: Role; onOpenDrawer: () => vo
 
   return (
     <nav
+      data-barre-basse=""
       aria-label={t('nav.quickNav')}
       // `grid-flow-col auto-cols-fr` et non `grid-cols-5` : le nombre de
       // colonnes suit le nombre d'entrées survivant au filtrage par rôle, sans
@@ -1797,6 +1798,12 @@ function BarreBasse({ role, onOpenDrawer }: { role: Role; onOpenDrawer: () => vo
         // « Travaux » sans jamais rater le vide. Quatre pixels ramènent chaque
         // cible de 70 à 66 px de large — vingt-deux au-dessus du plancher —
         // et créent une frontière où le doigt peut se tromper sans conséquence.
+        /* `data-barre-basse` : elle RECOUVRE le bas de la fenêtre, et ce qui
+           s'ouvre vers le bas doit pouvoir la mesurer pour ne pas se poser
+           dessous. `MenuDeDebordement` la lit par cet attribut — le trouver par
+           son rôle et son nom accessible coudrait un composant du produit au
+           vocabulaire de la coquille, et le renommer casserait l'autre en
+           silence. Voir `renversementDuMenu`. */
         'fixed inset-x-0 bottom-0 grid grid-flow-col auto-cols-fr items-stretch gap-1 lg:hidden',
         'border-t border-border bg-paper/95 backdrop-blur-md',
         'pt-1 pb-[calc(0.25rem+env(safe-area-inset-bottom))]',

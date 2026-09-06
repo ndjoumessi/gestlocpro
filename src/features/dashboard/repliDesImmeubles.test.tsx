@@ -153,12 +153,16 @@ describe('le repli d’un immeuble', () => {
     const bloc = enTete('Résidence Pleine')
     expect(within(bloc).getByText('2/2'), 'le rapport survit au repli').toBeInTheDocument()
     expect(within(bloc).getByRole('progressbar')).toHaveAttribute('aria-valuenow', '100')
+    /* LE DÉCLENCHEUR EST DANS LE BLOC, les entrées dans le panneau qu'il ouvre —
+       lequel vit hors de l'en-tête. On vérifie donc les deux à leur place. */
+    const trois = within(bloc).getByRole('button', {
+      name: 'Actions de l’immeuble Résidence Pleine',
+    })
+    await userEvent.setup().click(trois)
     expect(
-      within(bloc).getByRole('button', { name: /Corriger l’immeuble Résidence Pleine/ }),
+      screen.getByRole('menuitem', { name: /Corriger l’immeuble Résidence Pleine/ }),
     ).toBeInTheDocument()
-    expect(
-      within(bloc).getByRole('button', { name: /Suppression impossible/ }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /Suppression impossible/ })).toBeInTheDocument()
   })
 
   it('ne met aucun chevron sur un immeuble qui n’a rien à replier', async () => {

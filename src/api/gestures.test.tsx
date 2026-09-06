@@ -378,7 +378,11 @@ describe('saisir un logement', () => {
 
     // Et il apparaît à l'écran, VACANT — aucun bail n'existe encore.
     expect(await screen.findByText('B7')).toBeInTheDocument()
-    expect(screen.getAllByText(/vacant/i).length).toBeGreaterThan(0)
+    /* LA VACANCE SE LIT DANS LA COLONNE LOCATAIRE, où elle se lisait déjà.
+       La colonne « Occupation » et ses pastilles Occupé/Vacant sont parties :
+       elles redisaient ce que « Aucun locataire » dit en toutes lettres, une
+       colonne plus loin. La donnée n'a pas bougé, son doublon est parti. */
+    expect(screen.getAllByText(/aucun locataire/i).length).toBeGreaterThan(0)
   })
 
   it('refuse un numéro déjà pris dans le même immeuble, sans appeler le serveur', async () => {
@@ -835,8 +839,13 @@ describe('retirer un immeuble', () => {
     // celle-ci ne rend plus le quartier.
     await screen.findAllByText('Residence Djoumessi')
 
+    /* LE MENU D'ABORD : les deux issues de l'immeuble se sont repliées derrière
+       trois points, avec celles de ses lignes. */
     await user.click(
-      screen.getByRole('button', { name: /supprimer l’immeuble residence djoumessi/i }),
+      screen.getByRole('button', { name: /^Actions de l’immeuble Residence Djoumessi$/ }),
+    )
+    await user.click(
+      screen.getByRole('menuitem', { name: /supprimer l’immeuble residence djoumessi/i }),
     )
     // Rien n'est parti tant qu'on n'a pas confirmé : c'est le seul geste de cet
     // écran qu'on ne peut pas défaire.
@@ -877,13 +886,16 @@ describe('retirer un immeuble', () => {
 
     // Le geste ouvert n'existe pas : son nom accessible est celui de l'issue
     // possible, et aucun bouton ne le porte.
-    expect(screen.queryByRole('button', { name: /^Supprimer l’immeuble [^—]+$/ })).toBeNull()
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: /^Actions de l’immeuble Résidence Bonamoussadi$/ }))
+    expect(screen.queryByRole('menuitem', { name: /^Supprimer l’immeuble [^—]+$/ })).toBeNull()
 
     /* Celui qui existe est fermé, et DIT pourquoi. Le motif, pas le COMPTE : ce
        cas sert son propre portefeuille, dont le nombre de logements n'est pas
        celui de la démonstration. `parcCorrigeable` tient le compte, sur un jeu
        où il est fixe. */
-    const ferme = screen.getByRole('button', { name: /Suppression impossible/i })
+    const ferme = screen.getByRole('menuitem', { name: /Suppression impossible/i })
     expect(ferme).toHaveAttribute('aria-disabled', 'true')
 
     // Et il ne promet rien : cliqué, il n'ouvre aucune confirmation.

@@ -944,6 +944,11 @@ export const fr = {
       collapseBuilding: 'Replier {name}',
       expandBuilding: 'Déplier {name}',
       buildingEmpty: 'aucun logement',
+      /* Le nom du DÉCLENCHEUR du menu : trois points ne se prononcent pas, et
+         « Actions » seul ne dirait pas de quelle ligne. */
+      buildingActions: 'Actions de l’immeuble {name}',
+      unitActions: 'Actions du logement {unit}',
+      remove: 'Retirer',
       deleteUnit: 'Retirer le logement {unit}',
       /* MÊME FORME QUE POUR L'IMMEUBLE : l'ÉTAT d'abord, le geste ensuite. Un
          nom accessible qui commence par « Retirer le logement… » sur un bouton

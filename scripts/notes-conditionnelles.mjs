@@ -133,7 +133,13 @@ async function ouvrirLeParitageDImmeubles(page) {
  * tri. Charles Ngassa occupe A1 dans le jeu de démonstration.
  */
 async function ouvrirLaCorrectionDUnLogementOccupe(page) {
-  await page.getByRole('button', { name: /^Corriger le logement A1$/ }).first().click()
+  /* LE MENU D'ABORD. Les deux gestes de ligne se sont repliés derrière trois
+     points : à plat, ils allumaient vingt-six commandes en permanence sur cet
+     écran. Le déclencheur porte le NUMÉRO du logement — il se répète par ligne,
+     et un motif large en trouverait douze. */
+  await page.getByRole('button', { name: /^Actions du logement A1$/ }).first().click()
+  await page.waitForTimeout(150)
+  await page.getByRole('menuitem', { name: /^Corriger le logement A1$/ }).first().click()
   await page.waitForTimeout(350)
 }
 

@@ -139,8 +139,16 @@ describe('le parc sur un téléphone', () => {
     const vide = entetes.find((e) => /Villa Ravisée/.test(e.textContent ?? ''))
     expect(vide, 'l’immeuble sans logement a perdu son en-tête').toBeDefined()
     expect(within(vide!).getByText('0/0')).toBeInTheDocument()
+    /* LE DÉCLENCHEUR EST DANS L'EN-TÊTE, l'entrée dans le panneau qu'il ouvre.
+       Les deux issues de l'immeuble se sont repliées derrière trois points, avec
+       celles de ses lignes ; ce qui compte reste que le chemin EXISTE — c'est le
+       seul, une fois les cartes parties. */
+    const trois = within(vide!).getByRole('button', {
+      name: 'Actions de l’immeuble Villa Ravisée',
+    })
+    await utilisateur.click(trois)
     expect(
-      within(vide!).getByRole('button', { name: /Supprimer l’immeuble Villa Ravisée/ }),
+      screen.getByRole('menuitem', { name: /Supprimer l’immeuble Villa Ravisée/ }),
       'le seul chemin pour défaire une faute de frappe',
     ).toBeInTheDocument()
   })

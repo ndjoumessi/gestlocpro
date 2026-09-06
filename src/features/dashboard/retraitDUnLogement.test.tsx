@@ -85,7 +85,8 @@ describe('retirer un logement, depuis le parc', () => {
   it('ouvre le geste sur un logement que le serveur déclare retirable', async () => {
     const serveur = await ouvrir(true)
 
-    const croix = screen.getByRole('button', { name: 'Retirer le logement Z9' })
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Actions du logement Z9' }))
+    const croix = screen.getByRole('menuitem', { name: 'Retirer le logement Z9' })
     expect(croix, 'un geste ouvert ne porte pas d’état fermé').not.toHaveAttribute('aria-disabled')
 
     await userEvent.setup().click(croix)
@@ -118,8 +119,9 @@ describe('retirer un logement, depuis le parc', () => {
        préfixe que le geste ouvert : `modales` sélectionne par ce préfixe et
        cliquerait le mauvais bouton — le lot précédent s'est fait prendre là,
        côté immeuble, et la modale en est devenue inatteignable. */
-    expect(screen.queryByRole('button', { name: 'Retirer le logement Z9' })).toBeNull()
-    const ferme = screen.getByRole('button', { name: /^Retrait impossible — Z9/ })
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Actions du logement Z9' }))
+    expect(screen.queryByRole('menuitem', { name: 'Retirer le logement Z9' })).toBeNull()
+    const ferme = screen.getByRole('menuitem', { name: /^Retrait impossible — Z9/ })
     expect(ferme).toHaveAttribute('aria-disabled', 'true')
 
     // Et il ne promet rien : cliqué, il n'ouvre aucune confirmation.
@@ -137,8 +139,9 @@ describe('retirer un logement, depuis le parc', () => {
       un parc dès la première mise en production — sur des logements dont le
       serveur, lui, refuserait chaque appel par un 409.
     */
-    expect(screen.queryByRole('button', { name: 'Retirer le logement Z9' })).toBeNull()
-    expect(screen.getByRole('button', { name: /^Retrait impossible — Z9/ })).toHaveAttribute(
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Actions du logement Z9' }))
+    expect(screen.queryByRole('menuitem', { name: 'Retirer le logement Z9' })).toBeNull()
+    expect(screen.getByRole('menuitem', { name: /^Retrait impossible — Z9/ })).toHaveAttribute(
       'aria-disabled',
       'true',
     )

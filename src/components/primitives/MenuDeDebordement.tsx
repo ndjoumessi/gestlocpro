@@ -1,4 +1,12 @@
-import { Children, createContext, useContext, useRef, useState, type ReactNode } from 'react'
+import {
+  Children,
+  createContext,
+  useContext,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { cn } from '@/lib/cn'
 import { Icon } from './Icon'
 import { usePiegeDeFocus } from './piegeDeFocus'
@@ -71,6 +79,49 @@ export function MenuDeDebordement({
 }) {
   const [ouvert, setOuvert] = useState(false)
   const boite = useRef<HTMLDivElement>(null)
+  const panneau = useRef<HTMLDivElement>(null)
+  /**
+   * LE PANNEAU SE RENVERSE QUAND IL N'A PAS LA PLACE DE TOMBER.
+   *
+   * ═══ CE QU'IL FAISAIT, MESURÉ ═══
+   *
+   * Il tombait toujours vers le bas. Sur un téléphone, le dernier menu d'une
+   * longue liste s'ouvrait DERRIÈRE la barre de navigation basse, qui est
+   * `fixed inset-x-0 bottom-0` : le panneau était rendu, visible dans le DOM, et
+   * physiquement intouchable — la barre intercepte le doigt.
+   *
+   * Relevé le 2026-09-06 sur `/demo/parc` à 360 px, dix-septième déclencheur de
+   * la page : « subtree intercepts pointer events », la barre basse au-dessus de
+   * l'entrée « Supprimer l'immeuble ». Ce n'est pas un défaut de mesure — un
+   * utilisateur n'y arrive pas non plus.
+   *
+   * ET C'ÉTAIT LE PIRE ENDROIT POSSIBLE. Le parc range les immeubles SANS
+   * LOGEMENT en fin de liste : le dernier menu de la page est celui du seul
+   * immeuble qu'on ait le droit de supprimer.
+   *
+   * ═══ LA MESURE, ET POURQUOI ELLE LIT LA BARRE ═══
+   *
+   * On compare le bas du panneau au bas UTILE de la fenêtre — sa hauteur moins
+   * ce que la barre recouvre. Se contenter de `innerHeight` laisserait passer
+   * exactement le cas trouvé : un panneau qui « tient dans la fenêtre » et se
+   * pose quand même sous la barre.
+   *
+   * `useLayoutEffect` et non `useEffect` : le panneau ne doit jamais être PEINT
+   * du mauvais côté, fût-ce une image. La mesure a lieu après le calcul de mise
+   * en page et avant le rendu.
+   */
+  const [versLeHaut, setVersLeHaut] = useState(false)
+  useLayoutEffect(() => {
+    if (!ouvert) {
+      setVersLeHaut(false)
+      return
+    }
+    const p = panneau.current
+    if (!p) return
+    const barre = document.querySelector('[data-barre-basse]')
+    const recouvert = barre ? barre.getBoundingClientRect().height : 0
+    setVersLeHaut(p.getBoundingClientRect().bottom > window.innerHeight - recouvert)
+  }, [ouvert])
 
   /* `focusInitial: 'premier'` : le panneau ne contient QUE des commandes, la
      première est donc la bonne première étape. C'est le même réglage que le
@@ -122,10 +173,15 @@ export function MenuDeDebordement({
           /* `--z-popover` : le menu s'ouvre au-dessus d'un en-tête qui est
              lui-même collant. Le barreau est celui des panneaux ancrés du
              dépôt, et `altitudes.test.ts` refuse tout niveau écrit à la main. */
+          ref={panneau}
           style={{ zIndex: 'var(--z-popover)' }}
           className={cn(
-            'animate-pop absolute right-0 mt-2 flex w-64 max-w-[calc(100vw-2.5rem)] flex-col gap-1',
+            'animate-pop absolute right-0 flex w-64 max-w-[calc(100vw-2.5rem)] flex-col gap-1',
             'rounded-md border border-border bg-paper p-2 shadow-lg',
+            /* Le renversement ne change QUE l'ancrage vertical : la marge suit
+               le sens, sans quoi le panneau collerait au déclencheur d'un côté
+               et flotterait de l'autre. */
+            versLeHaut ? 'bottom-full mb-2' : 'top-full mt-2',
           )}
         >
           <FermerLeMenu.Provider value={() => setOuvert(false)}>{children}</FermerLeMenu.Provider>
@@ -139,25 +195,59 @@ export function MenuDeDebordement({
 export function MenuElement({
   icone,
   onClick,
+  nomAccessible,
   children,
 }: {
   icone?: Parameters<typeof Icon>[0]['name']
-  onClick: () => void
+  /**
+   * ABSENT, L'ENTRÉE EST FERMÉE — et elle reste LÀ.
+   *
+   * Une entrée retirée du menu ne s'explique pas : on cherche la commande
+   * manquante, puis ce qu'on a mal fait. Présente et fermée, son nom accessible
+   * porte le motif. C'est la règle que le Parc applique déjà à ses deux
+   * suppressions, transposée dans le menu.
+   *
+   * `aria-disabled` et non `disabled` : un élément désactivé sort de l'ordre de
+   * tabulation, donc sa raison devient inatteignable au clavier — pour qui en a
+   * le plus besoin. Il reste atteignable, annonce son état, et n'agit pas.
+   */
+  onClick?: () => void
+  /**
+   * Le nom que la synthèse vocale annonce, quand le libellé VISIBLE ne suffit
+   * pas à désigner la cible.
+   *
+   * « Corriger » se répète par ligne : douze entrées identiques ne disent pas
+   * laquelle on active. Le libellé visible reste court — il vit dans un menu
+   * déjà ouvert sur SA ligne — et le nom accessible porte le numéro.
+   */
+  nomAccessible?: string
   children: ReactNode
 }) {
   const fermer = useContext(FermerLeMenu)
+  const ferme = onClick === undefined
   return (
     <button
       type="button"
       role="menuitem"
-      onClick={() => {
-        fermer()
-        onClick()
-      }}
+      aria-label={nomAccessible}
+      aria-disabled={ferme || undefined}
+      onClick={
+        ferme
+          ? undefined
+          : () => {
+              fermer()
+              onClick()
+            }
+      }
       className={cn(
-        'flex min-h-11 w-full cursor-pointer items-center gap-2.5 rounded-sm px-2.5',
-        'text-left text-body text-ink transition-colors duration-150',
-        'hover:bg-surface-sunken',
+        'flex min-h-11 w-full items-center gap-2.5 rounded-sm px-2.5',
+        'text-left text-body transition-colors duration-150',
+        ferme
+          ? /* `opacity-45` est l'ÉTEINT que `Button` applique à toutes ses
+               commandes fermées — repris ici pour qu'un geste fermé ait la même
+               mine partout dans le produit. */
+            'cursor-not-allowed text-muted opacity-45'
+          : 'cursor-pointer text-ink hover:bg-surface-sunken',
       )}
     >
       {icone && <Icon name={icone} size={16} className="shrink-0 text-muted" />}

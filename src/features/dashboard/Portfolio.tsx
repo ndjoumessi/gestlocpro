@@ -4,7 +4,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { useRole } from '@/components/layout/AppShell'
 import { lien, useBase } from '@/lib/base'
 import { DataTable, EmptyState, idDuGroupe } from '@/components/primitives/DataTable'
-import { PaymentStatusPill, StatusPill } from '@/components/primitives/StatusPill'
+import { PaymentStatusPill } from '@/components/primitives/StatusPill'
 import { ProgressBar, StatCard } from '@/components/primitives/Charts'
 import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDebordement'
 import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
@@ -668,9 +668,19 @@ export function Portfolio() {
                         />
                       </button>
                     )}
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-neutral-tint text-neutral">
-                      <Icon name="building" size={15} />
-                    </span>
+                    {/* LA TUILE D'IMMEUBLE EST PARTIE, et ce n'est pas une
+                        économie de pixels.
+
+                        Elle ne distinguait RIEN : tous les groupes de cette liste
+                        sont des immeubles, et une icône qui ne varie jamais
+                        n'apprend rien à personne. `User List Accordion`
+                        (cnippet.dev) met un avatar en tête de ligne parce que ses
+                        membres diffèrent ; ici l'image était constante.
+
+                        Elle coûtait deux glyphes AVANT le nom — la tuile puis le
+                        chevron — dont un seul commande quelque chose. Le chevron
+                        reste seul, et c'est lui qu'on cherche quand on veut
+                        replier. */}
                     <div className="min-w-0">
                       {/* LE NOM PORTE LE RANG DE TITRE, et c'est ce que la carte
                           ne pouvait pas faire : un intitulé de `StatCard` est un
@@ -719,69 +729,50 @@ export function Portfolio() {
                         />
                       </div>
                     ) : null}
-                    {/* LES DEUX MÊMES ISSUES QUE LA CARTE, aux mêmes conditions :
-                        corriger toujours, supprimer seulement sur un immeuble
-                        VIDE. Le geste ne change pas parce que la mise en page
-                        change — c'est la même décision, rendue ailleurs. */}
-                    <div className="-my-1.5 flex shrink-0 items-center">
-                      <button
-                        type="button"
-                        aria-label={t('app.portfolio.editBuilding', { name: b?.name ?? '' })}
+                    {/* LES DEUX ISSUES DE L'IMMEUBLE, SOUS LES MÊMES TROIS POINTS
+                        QUE CELLES DE SES LIGNES.
+
+                        Elles étaient deux icônes à plat quand les lignes venaient
+                        de passer au menu : deux idiomes d'action dans la même
+                        bande verticale, à quelques pixels l'un de l'autre. La
+                        différence de forme n'encodait rien — ni l'objet visé, ni
+                        la gravité — elle disait seulement que l'écran avait été
+                        fini en deux fois.
+
+                        Six commandes de moins allumées en permanence, et une
+                        seule grammaire : trois points, on ouvre, on choisit.
+
+                        LES CONDITIONS NE CHANGENT PAS. Corriger reste toujours
+                        offert — renommer n'emporte ni bail ni somme, et c'est
+                        précisément sur un immeuble PLEIN que ça sert. Supprimer
+                        reste FERMÉ tant qu'il porte des logements, et son entrée
+                        dit le motif avec le compte : un geste absent du menu ne
+                        s'explique pas. */}
+                    <MenuDeDebordement
+                      libelle={t('app.portfolio.buildingActions', { name: b?.name ?? '' })}
+                    >
+                      <MenuElement
+                        icone="sliders"
                         onClick={() => b && setImmeubleACorriger(b)}
-                        className="inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted hover:bg-surface hover:text-ink"
+                        nomAccessible={t('app.portfolio.editBuilding', { name: b?.name ?? '' })}
                       >
-                        <Icon name="sliders" size={15} />
-                      </button>
-                      {/* LE GESTE FERMÉ SE MONTRE, ET DIT POURQUOI.
-
-                          Il n'apparaissait que sur un immeuble VIDE. Sur tous
-                          les autres il n'y avait RIEN — ni bouton, ni raison :
-                          deux immeubles voisins offraient des gestes différents
-                          et l'écran n'en donnait pas le motif. On cherche alors
-                          le bouton manquant, puis ce qu'on a mal fait.
-
-                          `aria-disabled` ET NON `disabled` : un bouton désactivé
-                          sort de l'ordre de tabulation, donc sa raison devient
-                          inatteignable au clavier — précisément pour qui en a le
-                          plus besoin. Il reste focalisable, annonce son état, et
-                          son nom accessible PORTE le motif avec le compte qui dit
-                          quoi faire pour l'ouvrir.
-
-                          Il garde ses 44 px : une cible fermée reste une cible,
-                          et la rétrécir la mettrait sous le plancher que
-                          `mesure-ui` tient sur soixante-treize autres commandes. */}
-                      {b ? (
-                        <button
-                          type="button"
-                          aria-disabled={total > 0 || undefined}
-                          aria-label={
-                            total === 0
-                              ? t('app.portfolio.deleteBuilding', { name: b.name })
-                              : t('app.portfolio.deleteBuildingBlocked', {
-                                  name: b.name,
-                                  count: total,
-                                })
-                          }
-                          onClick={total === 0 ? () => setASupprimer(b) : undefined}
-                          className={cn(
-                            'inline-flex size-11 shrink-0 items-center justify-center rounded-md',
-                            total === 0
-                              ? 'cursor-pointer text-muted hover:bg-danger-tint hover:text-danger'
-                              : /* `opacity-45` est l'ÉTEINT que `Button` applique à
-                                   toutes ses commandes fermées — repris ici plutôt
-                                   qu'un gris choisi pour l'occasion, pour qu'un geste
-                                   fermé ait la même mine partout. Sans son
-                                   `pointer-events-none` : on veut justement que le
-                                   curseur réponde et dise « fermé ». Le glyphe est
-                                   `aria-hidden`, donc rien de ce qui s'atténue ne
-                                   porte d'information — le nom accessible la porte. */
-                                'cursor-not-allowed text-muted opacity-45',
-                          )}
-                        >
-                          <Icon name="close" size={15} />
-                        </button>
-                      ) : null}
-                    </div>
+                        {t('app.tenants.edit')}
+                      </MenuElement>
+                      <MenuElement
+                        icone="close"
+                        onClick={total === 0 && b ? () => setASupprimer(b) : undefined}
+                        nomAccessible={
+                          total === 0
+                            ? t('app.portfolio.deleteBuilding', { name: b?.name ?? '' })
+                            : t('app.portfolio.deleteBuildingBlocked', {
+                                name: b?.name ?? '',
+                                count: total,
+                              })
+                        }
+                      >
+                        {t('app.portfolio.remove')}
+                      </MenuElement>
+                    </MenuDeDebordement>
                   </div>
                 </div>
                 {/* EN FICHES SEULEMENT : la boîte fait moins de 320 px, la barre
@@ -948,57 +939,6 @@ export function Portfolio() {
             render: (unit) => money(unit.rent, { compact: true }),
           },
           {
-            /**
-             * L'OCCUPATION, SORTIE DE LA COLONNE DE PAIEMENT.
-             *
-             * `PaymentStatus` compte cinq valeurs, et la cinquième n'est pas de
-             * la même nature que les quatre autres : `paid`, `partial`,
-             * `overdue` et `uncalled` disent ce qu'un bail a fait de son
-             * échéance ; `vacant` dit qu'il n'y a pas de bail. Un logement vide
-             * n'est pas en défaut de paiement — il n'a rien à payer — et les
-             * rendre dans la même colonne les faisait compter ensemble.
-             *
-             * CE QUE ÇA COÛTAIT À L'ÉCRAN : le taux d'occupation que la rangée
-             * du haut annonce ne se retrouvait par AUCUN décompte de la table.
-             * Il fallait savoir que « Vacant » ne rentre pas dans le même total
-             * que « Payé » pour compter dix logements loués sur douze lignes.
-             *
-             * PAS DE `hideOnMobile` : l'occupation est ce que cet écran mesure.
-             * Le quartier et la typologie se replient sur un téléphone parce
-             * qu'ils SITUENT ; celle-ci est la mesure elle-même.
-             */
-            key: 'occupation',
-            role: 'etat',
-            header: t('app.portfolio.occupation'),
-            render: (unit) => (
-              /* LE MÊME TON DES DEUX CÔTÉS, et c'est `occupationSansVerdict`
-                 porté à la ligne : un logement loué n'est pas un succès, un
-                 logement vide n'est pas une alerte. `PAYMENT_TONES` associe déjà
-                 `vacant` à `neutral` en toutes lettres — « rien n'a été appelé,
-                 donc rien n'est en défaut ». La pastille distingue donc par son
-                 MOT, jamais par sa teinte, ce qui est aussi ce que
-                 `couleur-non-seule` exige. */
-              <StatusPill
-                tone="neutral"
-                /* LE GLYPHE SÉPARE CE QUE LE TON REFUSE DE SÉPARER.
-
-                   Les deux pastilles partagent `neutral` exprès — un logement
-                   loué n'est pas un succès, un logement vide n'est pas une
-                   alerte — mais elles héritaient alors du MÊME glyphe `info`,
-                   et la colonne entière se lisait comme une suite de pastilles
-                   identiques dont seul le mot changeait.
-
-                   `users` : il y a quelqu'un. `key` : on tient les clés, il faut
-                   relouer — le même glyphe que la pastille de paiement d'une
-                   vacance, parce que c'est la même chose qui est dite. */
-                icon={unit.status === 'vacant' ? 'key' : 'users'}
-                size="sm"
-              >
-                {unit.status === 'vacant' ? t('status.vacant') : t('app.portfolio.occupied')}
-              </StatusPill>
-            ),
-          },
-          {
             key: 'status',
             role: 'etat',
             header: t('app.tenants.rentStatus'),
@@ -1033,51 +973,48 @@ export function Portfolio() {
             role: 'geste',
             header: '',
             render: (unit) => (
+              /* LES DEUX GESTES SE REPLIENT DERRIÈRE TROIS POINTS.
+
+                 Ils étaient posés à plat sur chaque ligne : « Corriger » et une
+                 croix, douze fois, plus deux par en-tête d'immeuble — vingt-six
+                 commandes allumées en permanence, qui rivalisaient d'attention
+                 avec la donnée qu'on vient lire. C'est le motif que la toute
+                 première planche de références citait déjà, chez shadcnstore :
+                 un menu `Actions` par ligne, plutôt qu'une colonne de boutons.
+
+                 LE NOM ACCESSIBLE DE CHAQUE ENTRÉE PORTE SA CIBLE — « Corriger
+                 le logement A1 » — parce que le geste se répète : douze entrées
+                 « Corriger » ne diraient pas laquelle on active, et c'est ce
+                 qu'une synthèse vocale annonce ligne après ligne. C'est aussi ce
+                 par quoi `modales` et `clavierDesModales` les retrouvent, dans
+                 le menu, qu'ils savent tous deux ouvrir.
+
+                 LE RETRAIT FERMÉ RESTE VISIBLE, et dit toujours pourquoi : un
+                 geste absent du menu ne s'explique pas, et c'est la règle que ce
+                 lot a posée sur les deux autres suppressions du Parc. */
               <div className="flex items-center justify-end">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon="sliders"
-                  /* LE NUMÉRO DANS LE NOM ACCESSIBLE : douze boutons « Corriger »
-                     à la suite ne disent pas lequel on active, et c'est ce que la
-                     synthèse vocale annonce ligne après ligne. */
-                  aria-label={t('app.portfolio.editUnit', { unit: unit.label })}
-                  onClick={() => setLogementACorriger(unit)}
-                >
-                  {t('app.tenants.edit')}
-                </Button>
-                {/* LE RETRAIT, ET LE MÊME IDIOME QUE L'IMMEUBLE : le geste fermé
-                    se MONTRE et dit pourquoi, au lieu de disparaître.
-
-                    `unit.deletable` vient du SERVEUR, et l'écran ne peut pas le
-                    deviner : un logement dont le bail est terminé rend `vacant`
-                    et `tenant: null`, exactement comme un logement neuf. Les
-                    distinguer ici demanderait de connaître son histoire, que
-                    cette projection ne porte pas.
-
-                    `!== true` ET NON `=== false` : un serveur antérieur au champ
-                    ne le rend pas, et l'absence doit fermer le geste, pas
-                    l'ouvrir. Une donnée manquante n'autorise rien. */}
-                <button
-                  type="button"
-                  aria-disabled={unit.deletable !== true || undefined}
-                  aria-label={
-                    unit.deletable === true
-                      ? t('app.portfolio.deleteUnit', { unit: unit.label })
-                      : t('app.portfolio.deleteUnitBlocked', { unit: unit.label })
-                  }
-                  onClick={
-                    unit.deletable === true ? () => setLogementASupprimer(unit) : undefined
-                  }
-                  className={cn(
-                    'inline-flex size-11 shrink-0 items-center justify-center rounded-md',
-                    unit.deletable === true
-                      ? 'cursor-pointer text-muted hover:bg-danger-tint hover:text-danger'
-                      : 'cursor-not-allowed text-muted opacity-45',
-                  )}
-                >
-                  <Icon name="close" size={15} />
-                </button>
+                <MenuDeDebordement libelle={t('app.portfolio.unitActions', { unit: unit.label })}>
+                  <MenuElement
+                    icone="sliders"
+                    onClick={() => setLogementACorriger(unit)}
+                    nomAccessible={t('app.portfolio.editUnit', { unit: unit.label })}
+                  >
+                    {t('app.tenants.edit')}
+                  </MenuElement>
+                  <MenuElement
+                    icone="close"
+                    onClick={
+                      unit.deletable === true ? () => setLogementASupprimer(unit) : undefined
+                    }
+                    nomAccessible={
+                      unit.deletable === true
+                        ? t('app.portfolio.deleteUnit', { unit: unit.label })
+                        : t('app.portfolio.deleteUnitBlocked', { unit: unit.label })
+                    }
+                  >
+                    {t('app.portfolio.remove')}
+                  </MenuElement>
+                </MenuDeDebordement>
               </div>
             ),
           },

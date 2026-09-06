@@ -28,6 +28,34 @@ import { installerFauxServeur } from '@/test/api'
  * refuse. Une correction qui ne s'offrirait que sur un immeuble vide
  * n'ajouterait rien à ce qui existait.
  */
+/**
+ * Ouvre le menu de gestes d'une ligne, et rend son entrée « Corriger ».
+ *
+ * Les deux gestes de ligne se sont repliés derrière trois points : à plat, ils
+ * allumaient vingt-six commandes en permanence sur cet écran. Le déclencheur
+ * porte le NUMÉRO du logement — « Actions du logement A1 » — parce qu'il se
+ * répète par ligne, et l'entrée le porte aussi : douze « Corriger » identiques
+ * ne diraient pas lequel on active.
+ */
+/**
+ * Ouvre le menu de gestes d'un immeuble, sur son en-tête de groupe.
+ *
+ * Les deux issues de l'immeuble se sont repliées derrière trois points, comme
+ * celles de ses lignes : deux idiomes d'action dans la même bande verticale ne
+ * disaient rien de plus qu'un écran fini en deux fois. Le déclencheur porte le
+ * NOM de l'immeuble — il se répète par groupe.
+ */
+async function ouvrirLeMenuDeLImmeuble(nom: string) {
+  await userEvent.setup().click(screen.getByRole('button', { name: `Actions de l’immeuble ${nom}` }))
+}
+
+async function ouvrirLeMenu(unite: string) {
+  await userEvent.setup().click(
+    screen.getByRole('button', { name: `Actions du logement ${unite}` }),
+  )
+  return screen.getByRole('menuitem', { name: new RegExp(`Corriger le logement ${unite}`) })
+}
+
 describe('l’écran du parc', () => {
   it('offre la correction d’un immeuble PLEIN — là où la suppression se refuse', async () => {
     installerFauxServeur()
@@ -38,10 +66,11 @@ describe('l’écran du parc', () => {
        démonstration : la correction y est ouverte, la suppression FERMÉE — et
        fermée se dit désormais à l'écran, au lieu de s'écrire par une absence.
        Voir `gestures`, qui tient le motif et le refus de clic. */
+    await ouvrirLeMenuDeLImmeuble('Résidence Bonamoussadi')
     expect(
-      screen.getByRole('button', { name: /Corriger l’immeuble Résidence Bonamoussadi/ }),
+      screen.getByRole('menuitem', { name: /Corriger l’immeuble Résidence Bonamoussadi/ }),
     ).toBeInTheDocument()
-    const suppression = screen.getByRole('button', {
+    const suppression = screen.getByRole('menuitem', {
       name: /Suppression impossible — Résidence Bonamoussadi porte 5 logements/,
     })
     expect(
@@ -57,10 +86,13 @@ describe('l’écran du parc', () => {
 
     const ligne = screen.getAllByRole('row').find((r) => /Charles Ngassa/.test(r.textContent ?? ''))
     expect(ligne, 'la ligne de A1 est introuvable').toBeDefined()
+    /* LE DÉCLENCHEUR EST SUR LA LIGNE, l'entrée dans le panneau qu'il ouvre —
+       lequel vit hors du `<tr>`. On vérifie donc les deux à leur place. */
     expect(
-      within(ligne!).getByRole('button', { name: /Corriger le logement A1/ }),
+      within(ligne!).getByRole('button', { name: 'Actions du logement A1' }),
       'la démonstration ne rend pas la colonne de geste du parc',
     ).toBeInTheDocument()
+    expect(await ouvrirLeMenu('A1')).toBeInTheDocument()
   })
 
   /**
@@ -76,7 +108,7 @@ describe('l’écran du parc', () => {
     await attendreLeChargement()
     const utilisateur = userEvent.setup()
 
-    await utilisateur.click(screen.getByRole('button', { name: /Corriger le logement A1/ }))
+    await utilisateur.click(await ouvrirLeMenu('A1'))
     const modale = await screen.findByRole('dialog')
     const numero = within(modale).getByLabelText(/Numéro|Logement/)
     await utilisateur.clear(numero)
@@ -84,7 +116,7 @@ describe('l’écran du parc', () => {
     await utilisateur.click(within(modale).getByRole('button', { name: /Enregistrer/ }))
 
     expect(
-      await screen.findByRole('button', { name: /Corriger le logement A9/ }),
+      await ouvrirLeMenu('A9'),
     ).toBeInTheDocument()
   })
 
@@ -103,13 +135,13 @@ describe('l’écran du parc', () => {
     await attendreLeChargement()
     const utilisateur = userEvent.setup()
 
-    await utilisateur.click(screen.getByRole('button', { name: /Corriger le logement A1/ }))
+    await utilisateur.click(await ouvrirLeMenu('A1'))
     const occupe = await screen.findByRole('dialog')
     expect(within(occupe).getByText(/ne changent pas/)).toBeInTheDocument()
     await utilisateur.keyboard('{Escape}')
 
     /* B4 est vacant dans le jeu de démonstration. */
-    await utilisateur.click(await screen.findByRole('button', { name: /Corriger le logement B4/ }))
+    await utilisateur.click(await ouvrirLeMenu('B4'))
     const vacant = await screen.findByRole('dialog')
     expect(within(vacant).queryByText(/ne changent pas/)).toBeNull()
   })
