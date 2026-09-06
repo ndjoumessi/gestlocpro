@@ -941,6 +941,9 @@ export const fr = {
        */
       subtitle: '{buildings}, {units}. Le statut porte sur le mois affiché.',
       // Aucun logement du tout : ce n'est pas une recherche infructueuse.
+      collapseBuilding: 'Replier {name}',
+      expandBuilding: 'Déplier {name}',
+      buildingEmpty: 'aucun logement',
       deleteBuilding: 'Supprimer l’immeuble {name}',
       /* POURQUOI LE GESTE EST FERMÉ, et non le geste absent. Le bouton
          n'apparaissait que sur un immeuble VIDE : sur tous les autres il n'y

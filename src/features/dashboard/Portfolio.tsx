@@ -115,6 +115,37 @@ export function Portfolio() {
   const [aSupprimer, setASupprimer] = useState<Immeuble | null>(null)
   const [query, setQuery] = useState('')
 
+  /**
+   * LES IMMEUBLES REPLIÉS — la forme que 21st a apprise au dépôt.
+   *
+   * Reprise du CHEVRON AVANT LE LIBELLÉ (`accordion-07`, felipemenezes098) :
+   * l'affordance de repli précède le nom au lieu de le suivre à l'autre bout de
+   * la rangée. Sur une liste de blocs, l'œil descend une COLONNE de chevrons et
+   * lit les plis avant de lire les noms ; posé à droite, chaque chevron est à
+   * une distance différente du nom qu'il commande, et la colonne n'existe plus.
+   *
+   * ═══ LE REPLI NE PASSE PAS PAR `DataTable` ═══
+   *
+   * Un immeuble replié retire ses LIGNES, pas son groupe : `ordre` déclare tous
+   * les immeubles, donc l'en-tête reste rendu avec son rapport, sa barre et ses
+   * gestes. Il suffit que `rows` n'en porte plus les logements. La primitive n'a
+   * rien à apprendre du repli, et les six autres écrans qui l'emploient ne
+   * changent pas d'une ligne.
+   *
+   * ═══ OUVERTS PAR DÉFAUT ═══
+   *
+   * Un parc s'ouvre sur ce qu'il contient. Replier d'entrée demanderait un geste
+   * pour voir la donnée qu'on vient chercher — et le repli sert à RANGER ce
+   * qu'on a fini de lire, pas à cacher ce qu'on n'a pas encore lu. L'état ne
+   * survit pas au rechargement, et c'est assumé : voir la note de fin de lot.
+   */
+  const [replies, setReplies] = useState<ReadonlySet<string>>(new Set())
+  const basculerLeRepli = (id: string) =>
+    setReplies((avant) => {
+      const suite = new Set(avant)
+      if (!suite.delete(id)) suite.add(id)
+      return suite
+    })
 
   /*
     LE FILTRE D'IMMEUBLE EST PARTI AVEC SES PASTILLES, et l'URL avec lui.
@@ -140,6 +171,10 @@ export function Portfolio() {
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase()
     return units.filter((unit) => {
+      /* LE REPLI RETIRE LES LIGNES, ET RIEN D'AUTRE. L'en-tête du groupe reste
+         rendu — `ordre` le déclare — donc le rapport, la barre et les gestes de
+         l'immeuble replié restent lisibles et atteignables. */
+      if (replies.has(unit.buildingId)) return false
       if (!needle) return true
       const haystack = [
         // Le libellé et non l'identifiant : c'est « A1 » que l'utilisateur voit
@@ -162,7 +197,7 @@ export function Portfolio() {
        renommé ne devenait cherchable qu'au prochain changement de `units`.
        C'était vrai EN PRATIQUE — le portefeuille est remplacé en entier après
        une correction — mais tenu par un enchaînement, pas par la dépendance. */
-  }, [query, units, t, buildingById])
+  }, [query, units, t, buildingById, replies])
 
   /**
    * SORTIR L'ÉTAT DU PARC, une ligne par logement.
@@ -492,6 +527,8 @@ export function Portfolio() {
             const b = buildingById(id)
             const { occupied: occ, total } = occupancyOf(id)
             const auTableau = forme === 'tableau'
+            const vide = total === 0
+            const replie = replies.has(id)
             return (
               /* `data-groupe` : les gardes lisent l'en-tête par cet attribut et
                  non par `role="group"` — d'autres groupes portent ce rôle sur
@@ -499,7 +536,25 @@ export function Portfolio() {
               <div
                 data-groupe=""
                 className={cn(
-                  'bg-surface-2 px-4 py-3',
+                  'px-4 py-3',
+                  /* LA BANDE DE PIED DES IMMEUBLES SANS LOGEMENT — reprise du
+                     tableau `inline-analytics-table` (ruixen.ui), dont la rangée
+                     « Total » clôt la liste sur un fond sourd au lieu de s'y
+                     fondre.
+
+                     Ils sont déjà rangés en fin de liste ; la teinte dit qu'ils
+                     ferment la liste plutôt qu'ils ne la continuent. C'est ce
+                     qu'aucun état vide de 21st ne savait faire : les quatorze
+                     que le catalogue propose sont des blocs centrés pleine page,
+                     avec icône, titre et bouton — une manière de dire « il n'y a
+                     rien ICI », quand ce qu'il faut dire est « la liste s'arrête
+                     là, et voilà ce qui reste à remplir ».
+
+                     Pas de `text-muted` sur le bloc entier : le nom de
+                     l'immeuble et ses gestes restent au contraste plein. C'est
+                     un immeuble qu'on doit encore pouvoir corriger et retirer,
+                     pas une note de bas de page. */
+                  vide ? 'bg-surface-sunken' : 'bg-surface-2',
                   /* EN FICHES l'en-tête est une CARTE posée sur le fond de la
                      page : il lui faut sa bordure et ses coins. AU TABLEAU il
                      occupe une rangée entre deux filets, dans une boîte qui a
@@ -527,7 +582,49 @@ export function Portfolio() {
                     auTableau ? 'items-center' : 'flex-col',
                   )}
                 >
-                  <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                  <div className="flex min-w-0 flex-1 items-center gap-1">
+                    {/* LE CHEVRON AVANT LE LIBELLÉ, et une COLONNE de chevrons.
+
+                        Un immeuble VIDE n'en porte pas : il n'a aucune ligne à
+                        replier, et un chevron qui ne plie rien est une promesse
+                        fausse. Sa place est tenue par un vide de même largeur,
+                        pour que les noms des immeubles pleins et vides restent
+                        sur le même axe — la colonne survit à l'absence.
+
+                        Le TITRE est le déclencheur, pas une zone à côté de lui :
+                        c'est le motif d'accordéon accessible, `<h3><button
+                        aria-expanded>`. Les gestes de correction et de retrait
+                        restent HORS de ce bouton — un bouton dans un bouton
+                        n'est pas du HTML valide, et ils ne replient rien. */}
+                    {vide ? (
+                      <span aria-hidden="true" className="size-11 shrink-0" />
+                    ) : (
+                      <button
+                        type="button"
+                        aria-expanded={!replie}
+                        aria-label={
+                          replie
+                            ? t('app.portfolio.expandBuilding', { name: b?.name ?? '' })
+                            : t('app.portfolio.collapseBuilding', { name: b?.name ?? '' })
+                        }
+                        onClick={() => basculerLeRepli(id)}
+                        className="inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted hover:bg-surface hover:text-ink"
+                      >
+                        <Icon
+                          name="chevronRight"
+                          size={15}
+                          /* LE MÊME GLYPHE QUI TOURNE, et non deux glyphes.
+                             Un chevron qui pivote garde son identité d'un état à
+                             l'autre — deux dessins différents se lisent comme
+                             deux commandes différentes. `motion-safe` : la
+                             rotation ne s'anime que si le lecteur l'accepte. */
+                          className={cn(
+                            'motion-safe:transition-transform motion-safe:duration-150',
+                            !replie && 'rotate-90',
+                          )}
+                        />
+                      </button>
+                    )}
                     <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-neutral-tint text-neutral">
                       <Icon name="building" size={15} />
                     </span>
@@ -544,7 +641,15 @@ export function Portfolio() {
                       <h3 className="font-medium text-ink hyphens-auto break-words">
                         {b?.name}
                       </h3>
-                      <p className="text-body text-muted">{b?.district}</p>
+                      <p className="text-body text-muted">
+                        {b?.district}
+                        {/* CE QUE LE « 0/0 » NE DIT PAS. Le rapport est exact et
+                            muet : il faut savoir le lire pour comprendre qu'il
+                            n'y a pas encore de logement, là où la phrase le dit.
+                            C'est la seule chose que la bande de pied ajoute au
+                            texte — le reste, elle le dit en teinte. */}
+                        {vide ? ` · ${t('app.portfolio.buildingEmpty')}` : ''}
+                      </p>
                     </div>
                   </div>
 
