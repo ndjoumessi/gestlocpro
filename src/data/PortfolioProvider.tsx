@@ -302,8 +302,14 @@ interface PortfolioContextValue {
     /** `userId` : le compte DÉJÀ membre à qui cette fiche appartient, s'il existe. */
     bail?: { startsOn?: string; rentMinor?: number; depositMinor?: number; userId?: string },
   ) => Promise<boolean>
-  /** Crée un immeuble dans le parc. Sans parc serveur, il reste local. */
-  addBuilding: (name: string, district: string) => void
+  /**
+   * Crée un immeuble dans le parc. Sans parc serveur, il reste local.
+   *
+   * Rend `true` quand l'immeuble existe, `false` quand le serveur a refusé :
+   * la modale attend ce verdict pour se fermer. Elle se fermait AVANT, dans le
+   * même tour que l'envoi, et un refus arrivait sur un formulaire déjà vidé.
+   */
+  addBuilding: (name: string, district: string) => Promise<boolean>
   /**
    * Retire un immeuble VIDE.
    *
@@ -419,6 +425,11 @@ interface PortfolioContextValue {
    *
    * La modale affichait « Paiement enregistré · quittance envoyée » sans rien
    * écrire nulle part — le mensonge le plus coûteux d'un logiciel de gestion.
+   *
+   * Et elle l'affichait ENCORE trop tôt une fois l'écriture branchée : dans le
+   * tour même de l'envoi, avant la réponse. Le verdict rendu ici — `true`
+   * enregistré, `false` refusé — est ce que la modale attend désormais pour se
+   * fermer et annoncer la quittance. Un refus laisse la saisie sous les yeux.
    */
   recordPayment: (
     unitId: string,
@@ -430,12 +441,15 @@ interface PortfolioContextValue {
       reference?: string
       note?: string
     },
-  ) => void
-  /** Crée un logement dans un immeuble. Vacant : aucun bail n'existe encore. */
+  ) => Promise<boolean>
+  /**
+   * Crée un logement dans un immeuble. Vacant : aucun bail n'existe encore.
+   * Même verdict que `addBuilding` : `true` créé, `false` refusé.
+   */
   addUnit: (
     buildingId: string,
     logement: { label: string; type: Unit['type']; surface: number; rent: number },
-  ) => void
+  ) => Promise<boolean>
   /**
    * Alertes marquées comme lues pendant la session.
    *
@@ -1481,23 +1495,26 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   )
 
   const addBuilding = useCallback(
-    (name: string, district: string) => {
+    async (name: string, district: string): Promise<boolean> => {
       if (!parkId) {
         // Sans parc serveur — démonstration — l'immeuble reste local, comme
         // tout le reste du jeu de données.
         setBuildings((liste) => [...liste, { id: `local-${liste.length + 1}`, name, district }])
-        return
+        return true
       }
-      void api
-        .addBuilding<{ building: { id: string; name: string; district: string } }>(parkId, {
-          name,
-          district,
-        })
+      try {
+        const { building } = await api.addBuilding<{
+          building: { id: string; name: string; district: string }
+        }>(parkId, { name, district })
         // On rejoue la réponse du SERVEUR et non la saisie : c'est lui qui
         // décide de l'identifiant, et c'est par cet identifiant que les
         // logements s'y rattacheront.
-        .then(({ building }) => setBuildings((liste) => [...liste, building]))
-        .catch(signalerEchec)
+        setBuildings((liste) => [...liste, building])
+        return true
+      } catch (erreur) {
+        signalerEchec(erreur)
+        return false
+      }
     },
     [parkId, signalerEchec],
   )
@@ -1869,7 +1886,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   )
 
   const recordPayment = useCallback(
-    (
+    async (
       unitId: string,
       versement: {
         periodStart: string
@@ -1879,7 +1896,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         reference?: string
         note?: string
       },
-    ) => {
+    ): Promise<boolean> => {
       const local = () =>
         setUnits((liste) =>
           liste.map((u) => {
@@ -1898,21 +1915,28 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
 
       if (!parkId) {
         local()
-        return
+        return true
       }
-      void api
-        .recordPayment(parkId, { unitId, ...versement })
-        .then(local)
-        .catch(signalerEchec)
+      // L'écran ne bouge qu'APRÈS l'accord du serveur, et la modale n'apprend
+      // le verdict qu'ici : c'est ce qui l'empêche d'annoncer une quittance
+      // pour un versement que le serveur a refusé.
+      try {
+        await api.recordPayment(parkId, { unitId, ...versement })
+        local()
+        return true
+      } catch (erreur) {
+        signalerEchec(erreur)
+        return false
+      }
     },
     [parkId, signalerEchec],
   )
 
   const addUnit = useCallback(
-    (
+    async (
       buildingId: string,
       logement: { label: string; type: Unit['type']; surface: number; rent: number },
-    ) => {
+    ): Promise<boolean> => {
       const local = (id: string) =>
         setUnits((liste) => [
           ...liste,
@@ -1944,10 +1968,10 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
 
       if (!parkId) {
         local(`local-${logement.label}-${buildingId}`)
-        return
+        return true
       }
-      void api
-        .addUnit<{ unit: { id: string } }>(parkId, buildingId, {
+      try {
+        const { unit } = await api.addUnit<{ unit: { id: string } }>(parkId, buildingId, {
           label: logement.label,
           type: logement.type,
           surfaceSqm: logement.surface,
@@ -1955,8 +1979,12 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         })
         // L'identifiant vient du SERVEUR : c'est par lui que le bail, les
         // relevés et les charges s'y rattacheront.
-        .then(({ unit }) => local(unit.id))
-        .catch(signalerEchec)
+        local(unit.id)
+        return true
+      } catch (erreur) {
+        signalerEchec(erreur)
+        return false
+      }
     },
     [parkId, signalerEchec],
   )

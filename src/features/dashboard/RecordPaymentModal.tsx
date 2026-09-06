@@ -65,6 +65,15 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
     motif correct, un objet dont chaque clé est un champ.
   */
   const [erreurs, setErreurs] = useState<{ amount?: string; paidOn?: string }>({})
+  /* L'ATTENTE SE VOIT, ET LA MODALE NE SE FERME QU'APRÈS LA RÉPONSE.
+
+     Elle se fermait dans le tour même de l'envoi et annonçait « quittance
+     envoyée » avant que le serveur ait dit oui. Sur un réseau qui s'enlise,
+     c'était un succès lu à l'écran pendant que la requête était encore en vol ;
+     sur un refus, un second toast contredisait le premier et la saisie était
+     déjà perdue. Le bouton porte maintenant l'attente (spinner, `aria-busy`),
+     le second clic ne repart pas, et un refus laisse le formulaire tel quel. */
+  const [envoi, setEnvoi] = useState(false)
 
   /**
    * REMISE À ZÉRO À L'OUVERTURE, et non au montage.
@@ -94,7 +103,8 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
 
   const unit = units.find((u) => u.id === unitId)
 
-  const submit = () => {
+  const submit = async () => {
+    if (envoi) return
     const parsed = parseAmount(amount)
     if (parsed === null || parsed <= 0) {
       setErreurs({ amount: t('app.payments.amountInvalid') })
@@ -151,7 +161,8 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
      * là — et la lecture normale, celle qui croit le fichier sur parole, fait
      * refaire un travail déjà livré.
      */
-    recordPayment(unitId, {
+    setEnvoi(true)
+    const fait = await recordPayment(unitId, {
       periodStart: `${periode}-01`,
       amountMinor: parsed,
       method,
@@ -159,6 +170,9 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
       ...(reference.trim() ? { reference: reference.trim() } : {}),
       ...(note.trim() ? { note: note.trim() } : {}),
     })
+    setEnvoi(false)
+    // Un refus a déjà été dit par le fournisseur ; ici, on garde la saisie.
+    if (!fait) return
 
     onClose()
     notify(t('app.paymentSaved'), { tone: 'ok' })
@@ -178,7 +192,9 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
           <Button variant="secondary" onClick={onClose}>
             {t('common.cancel')}
           </Button>
-          <Button type="submit" form="encaissement">{t('common.save')}</Button>
+          <Button type="submit" form="encaissement" loading={envoi}>
+            {t('common.save')}
+          </Button>
         </>
       }
     >
@@ -203,7 +219,7 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
         id="encaissement"
         onSubmit={(e) => {
           e.preventDefault()
-          submit()
+          void submit()
         }}
         noValidate
         className="flex flex-col gap-5"

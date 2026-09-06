@@ -83,7 +83,10 @@ export function EditBuildingModal({
           <Button variant="secondary" onClick={onClose}>
             {t('common.cancel')}
           </Button>
-          <Button type="submit" form="correction-immeuble" disabled={enCours}>
+          {/* `loading`, pas `disabled` : un bouton grisé se lit comme interdit,
+              un bouton occupé dit qu'il travaille — et `aria-busy` le dit aussi
+              au lecteur d'écran. */}
+          <Button type="submit" form="correction-immeuble" loading={enCours}>
             {t('common.save')}
           </Button>
         </>

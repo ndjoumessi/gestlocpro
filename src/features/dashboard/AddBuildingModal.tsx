@@ -28,6 +28,10 @@ export function AddBuildingModal({ open, onClose }: { open: boolean; onClose: ()
   const [errors, setErrors] = useState<{ name?: string; district?: string }>({})
   // Portée à la recherche du champ fautif après un refus — voir `submit`.
   const formRef = useRef<HTMLFormElement>(null)
+  /* La modale attend le verdict du serveur avant de se fermer : elle se
+     fermait dans le tour même de l'envoi, et un refus arrivait sur un
+     formulaire déjà vidé. Voir `RecordPaymentModal`, même raison. */
+  const [envoi, setEnvoi] = useState(false)
 
   const fermer = () => {
     setName('')
@@ -36,7 +40,8 @@ export function AddBuildingModal({ open, onClose }: { open: boolean; onClose: ()
     onClose()
   }
 
-  const submit = () => {
+  const submit = async () => {
+    if (envoi) return
     // Les mêmes bornes que le serveur, pour que le refus se lise avant l'appel
     // plutôt qu'après. Le serveur revérifie : c'est lui qui fait autorité, et
     // une requête peut ne pas venir de cet écran.
@@ -61,8 +66,10 @@ export function AddBuildingModal({ open, onClose }: { open: boolean; onClose: ()
       return
     }
 
-    addBuilding(name.trim(), district.trim())
-    fermer()
+    setEnvoi(true)
+    const fait = await addBuilding(name.trim(), district.trim())
+    setEnvoi(false)
+    if (fait) fermer()
   }
 
   return (
@@ -76,7 +83,9 @@ export function AddBuildingModal({ open, onClose }: { open: boolean; onClose: ()
           <Button variant="secondary" onClick={fermer}>
             {t('common.cancel')}
           </Button>
-          <Button type="submit" form="ajout-immeuble">{t('common.save')}</Button>
+          <Button type="submit" form="ajout-immeuble" loading={envoi}>
+            {t('common.save')}
+          </Button>
         </>
       }
     >
@@ -104,7 +113,7 @@ export function AddBuildingModal({ open, onClose }: { open: boolean; onClose: ()
           // recharge la page — l'envoi se fait par `api`, jamais par le
           // navigateur.
           e.preventDefault()
-          submit()
+          void submit()
         }} noValidate className="flex flex-col gap-5">
         <Field label={t('app.portfolio.buildingName')} required error={errors.name}>
           {(props) => (

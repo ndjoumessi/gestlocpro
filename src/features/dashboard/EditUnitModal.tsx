@@ -94,7 +94,8 @@ export function EditUnitModal({ unit, onClose }: { unit: Unit; onClose: () => vo
           <Button variant="secondary" onClick={onClose}>
             {t('common.cancel')}
           </Button>
-          <Button type="submit" form="correction-logement" disabled={enCours}>
+          {/* `loading`, pas `disabled` : voir `EditBuildingModal`. */}
+          <Button type="submit" form="correction-logement" loading={enCours}>
             {t('common.save')}
           </Button>
         </>

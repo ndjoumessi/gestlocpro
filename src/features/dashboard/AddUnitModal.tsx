@@ -35,6 +35,8 @@ export function AddUnitModal({ open, onClose }: { open: boolean; onClose: () => 
   const [errors, setErrors] = useState<Record<string, string | undefined>>({})
   // Portée à la recherche du champ fautif après un refus — voir `submit`.
   const formRef = useRef<HTMLFormElement>(null)
+  /* Même attente que `AddBuildingModal` : la fermeture suit la réponse. */
+  const [envoi, setEnvoi] = useState(false)
 
   const fermer = () => {
     setLabel('')
@@ -44,7 +46,8 @@ export function AddUnitModal({ open, onClose }: { open: boolean; onClose: () => 
     onClose()
   }
 
-  const submit = () => {
+  const submit = async () => {
+    if (envoi) return
     const surfaceLue = Number(surface.replace(/\s/g, ''))
     const loyerLu = parseAmount(rent)
 
@@ -86,8 +89,15 @@ export function AddUnitModal({ open, onClose }: { open: boolean; onClose: () => 
       return
     }
 
-    addUnit(buildingId, { label: label.trim(), type, surface: surfaceLue, rent: loyerLu! })
-    fermer()
+    setEnvoi(true)
+    const fait = await addUnit(buildingId, {
+      label: label.trim(),
+      type,
+      surface: surfaceLue,
+      rent: loyerLu!,
+    })
+    setEnvoi(false)
+    if (fait) fermer()
   }
 
   return (
@@ -101,7 +111,12 @@ export function AddUnitModal({ open, onClose }: { open: boolean; onClose: () => 
           <Button variant="secondary" onClick={fermer}>
             {t('common.cancel')}
           </Button>
-          <Button type="submit" form="ajout-unite" disabled={buildings.length === 0}>
+          <Button
+            type="submit"
+            form="ajout-unite"
+            loading={envoi}
+            disabled={buildings.length === 0}
+          >
             {t('common.save')}
           </Button>
         </>
@@ -135,7 +150,7 @@ export function AddUnitModal({ open, onClose }: { open: boolean; onClose: () => 
           id="ajout-unite"
           onSubmit={(e) => {
             e.preventDefault()
-            submit()
+            void submit()
           }}
           noValidate
           className="flex flex-col gap-5"

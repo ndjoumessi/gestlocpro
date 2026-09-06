@@ -228,7 +228,12 @@ export function RecordReadingModal({
           <Button variant="secondary" onClick={onClose}>
             {t('common.close')}
           </Button>
-          <Button type="submit" form="releve" disabled={enCours || units.length === 0}>
+          <Button
+            type="submit"
+            form="releve"
+            loading={enCours}
+            disabled={units.length === 0}
+          >
             {t('common.save')}
           </Button>
         </>
