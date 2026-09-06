@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@/lib/cn'
 import { usePiegeDeFocus } from './piegeDeFocus'
@@ -47,6 +47,8 @@ export function Modal({
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const t = useT()
+  // Avant le retour anticipé de `!open` : un crochet ne se saute pas.
+  const id = useId()
 
   /*
     RESTE-T-IL QUELQUE CHOSE AU-DESSUS, EN DESSOUS ?
@@ -154,8 +156,12 @@ export function Modal({
     de l'arbre React : le contexte, les gestionnaires et la propagation des
     événements la suivent.
   */
-  const titleId = 'modal-title'
-  const descId = 'modal-desc'
+  /* `useId` et non `'modal-title'` : la quittance ouvre une confirmation
+     par-dessus elle, et deux titres portant le même identifiant faisaient
+     résoudre `aria-labelledby` de la seconde sur le titre de la première —
+     un `alertdialog` « Retirer ? » nommé « Quittance de septembre ». */
+  const titleId = `${id}-titre`
+  const descId = `${id}-description`
 
   return createPortal(
     <div

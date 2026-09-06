@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { controlClasses } from './Field'
 import { Icon } from './Icon'
@@ -301,6 +301,13 @@ export function DatePicker({
   required,
 }: DatePickerProps) {
   const t = useT()
+  /* Un identifiant même sans `id` reçu : le panneau, porté sur `document.body`,
+     désigne son déclencheur par `data-portail-de` pour que le piège de focus de
+     la modale le compte comme dedans (`piegeDeFocus.ts`). Et la valeur visible
+     reçoit le sien, pour servir de description au bouton. */
+  const idInterne = useId()
+  const idDuDeclencheur = id ?? idInterne
+  const idDeLaValeur = `${idDuDeclencheur}-valeur`
   const d = useDates()
 
   const choisi = enJour(value)
@@ -443,11 +450,11 @@ export function DatePicker({
 
       <button
         ref={declencheur}
-        id={id}
+        id={idDuDeclencheur}
         type="button"
         aria-haspopup="dialog"
         aria-expanded={ouvert}
-        aria-describedby={ariaDescribedBy}
+        aria-describedby={[idDeLaValeur, ariaDescribedBy].filter(Boolean).join(' ')}
         aria-label={ariaLabel}
         aria-required={required || undefined}
         onClick={() => {
@@ -468,7 +475,11 @@ export function DatePicker({
       >
         {/* Le gris du gabarit et non l'encre : une date absente ne doit pas se
             lire avec le poids d'une date choisie. */}
-        <span className={cn(!choisi && 'text-muted')}>
+        {/* La valeur visible est aussi la DESCRIPTION du bouton : nommé par le
+            `<label>` du Field, un bouton n'annonce pas son contenu, et le
+            lecteur d'écran entendait « Date du versement, bouton » sans savoir
+            si une date était choisie. */}
+        <span id={idDeLaValeur} className={cn(!choisi && 'text-muted')}>
           {choisi ? d.fullDate(enParts(choisi)) : t('common.datePlaceholder')}
         </span>
         <Icon name="calendar" size={16} className="shrink-0 text-muted" />
@@ -478,6 +489,7 @@ export function DatePicker({
         position &&
         createPortal(
           <div
+            data-portail-de={idDuDeclencheur}
             role="dialog"
             aria-label={t('common.dateCalendar')}
             ref={panneau}
@@ -711,6 +723,13 @@ export function MonthPicker({
   required,
 }: DatePickerProps) {
   const t = useT()
+  /* Un identifiant même sans `id` reçu : le panneau, porté sur `document.body`,
+     désigne son déclencheur par `data-portail-de` pour que le piège de focus de
+     la modale le compte comme dedans (`piegeDeFocus.ts`). Et la valeur visible
+     reçoit le sien, pour servir de description au bouton. */
+  const idInterne = useId()
+  const idDuDeclencheur = id ?? idInterne
+  const idDeLaValeur = `${idDuDeclencheur}-valeur`
   const d = useDates()
 
   const { ouvert, ouvrir, fermer, position, racine, declencheur, panneau } =
@@ -769,11 +788,11 @@ export function MonthPicker({
 
       <button
         ref={declencheur}
-        id={id}
+        id={idDuDeclencheur}
         type="button"
         aria-haspopup="dialog"
         aria-expanded={ouvert}
-        aria-describedby={ariaDescribedBy}
+        aria-describedby={[idDeLaValeur, ariaDescribedBy].filter(Boolean).join(' ')}
         aria-label={ariaLabel}
         aria-required={required || undefined}
         onClick={() => {
@@ -787,7 +806,7 @@ export function MonthPicker({
           'flex cursor-pointer items-center justify-between text-left',
         )}
       >
-        <span className={cn(!choisi && 'text-muted')}>
+        <span id={idDeLaValeur} className={cn(!choisi && 'text-muted')}>
           {choisi ? d.monthYear(enParts({ ...choisi, jour: 1 })) : t('common.monthPlaceholder')}
         </span>
         <Icon name="calendar" size={16} className="shrink-0 text-muted" />
@@ -797,6 +816,7 @@ export function MonthPicker({
         position &&
         createPortal(
           <div
+            data-portail-de={idDuDeclencheur}
             role="dialog"
             aria-label={t('common.monthCalendar')}
             ref={panneau}

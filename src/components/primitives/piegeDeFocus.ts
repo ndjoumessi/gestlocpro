@@ -87,6 +87,39 @@ function focalisables(racine: HTMLElement | null): HTMLElement[] {
   ).filter((el) => !el.hasAttribute('disabled') && !invisible(el))
 }
 
+/*
+  LA PILE DES PIÈGES OUVERTS, et seul celui du dessus parle au clavier.
+
+  Chaque piège écoute `document`. Deux modales l'une sur l'autre — la quittance
+  et sa confirmation — faisaient donc DEUX écouteurs frères : `stopPropagation`
+  n'arrête pas un frère, Échap dans la confirmation fermait aussi la quittance ;
+  et à chaque Tab, le piège du dessous tirait le focus vers son premier champ
+  avant que celui du dessus ne le ramène — le focus « restait dedans » et
+  n'avançait jamais. Un piège ne réagit désormais que s'il est le dernier
+  ouvert ; les autres attendent leur tour, qui revient quand il se ferme.
+*/
+const pile: symbol[] = []
+const auSommet = (jeton: symbol) => pile[pile.length - 1] === jeton
+
+/*
+  UN PORTAIL DONT LE PROPRIÉTAIRE VIT DANS LE CONTENEUR COMPTE COMME DEDANS.
+
+  Le calendrier d'une modale se peint sur `document.body`, hors du conteneur
+  de la modale. Le piège lisait « le focus est dehors » et le ramenait au
+  premier champ : depuis une cellule de jour, Tab n'atteignait jamais « mois
+  précédent », « Aujourd'hui » ni « Effacer ». Le panneau porte
+  `data-portail-de="<id de son déclencheur>"` ; si ce déclencheur est dans le
+  conteneur, le panneau en fait partie, et c'est DANS le panneau que le cycle
+  de Tab se referme — sinon, arrivé à son dernier bouton, le focus quitterait
+  la page par le bas.
+*/
+function zoneDuFocus(conteneur: HTMLElement | null, actif: Element | null): HTMLElement | null {
+  const portail = actif?.closest<HTMLElement>('[data-portail-de]')
+  if (!portail || !conteneur) return conteneur
+  const proprietaire = document.getElementById(portail.dataset.portailDe ?? '')
+  return proprietaire && conteneur.contains(proprietaire) ? portail : conteneur
+}
+
 export function usePiegeDeFocus(
   ouvert: boolean,
   conteneur: RefObject<HTMLElement | null>,
@@ -107,6 +140,9 @@ export function usePiegeDeFocus(
   useEffect(() => {
     if (!ouvert) return
 
+    const jeton = Symbol('piège')
+    pile.push(jeton)
+
     /* Celui qui ouvrait, pour lui rendre le focus. Lu AVANT toute chose : dès
        que le panneau se peint, `activeElement` peut avoir changé. */
     const ouvreur = document.activeElement as HTMLElement | null
@@ -124,6 +160,7 @@ export function usePiegeDeFocus(
     }, 0)
 
     const auClavier = (e: KeyboardEvent) => {
+      if (!auSommet(jeton)) return
       if (e.key === 'Escape') {
         /* Arrêtée MÊME si l'appelant ne ferme pas : sinon elle remonterait et
            fermerait ce qui entoure au lieu de ce qu'on regarde. */
@@ -132,7 +169,8 @@ export function usePiegeDeFocus(
         return
       }
       if (e.key !== 'Tab') return
-      const liste = noeuds()
+      const zone = zoneDuFocus(conteneur.current, document.activeElement)
+      const liste = zone === conteneur.current ? noeuds() : focalisables(zone)
       if (liste.length === 0) return
       const premier = liste[0]
       const dernier = liste[liste.length - 1]
@@ -142,7 +180,7 @@ export function usePiegeDeFocus(
       } else if (!e.shiftKey && document.activeElement === dernier) {
         e.preventDefault()
         premier.focus()
-      } else if (!conteneur.current?.contains(document.activeElement)) {
+      } else if (!zone?.contains(document.activeElement)) {
         e.preventDefault()
         premier.focus()
       }
@@ -153,12 +191,14 @@ export function usePiegeDeFocus(
        de toutes un rembourrage contre l'encoche. Un écouteur de document
        n'ajoute rien à l'arbre d'accessibilité et ne se pose sur aucun bord. */
     const auClic = (e: MouseEvent) => {
+      if (!auSommet(jeton)) return
       if (!conteneur.current?.contains(e.target as Node)) fermetureRef.current()
     }
 
     document.addEventListener('keydown', auClavier)
     if (fermerAuClicExterieur) document.addEventListener('mousedown', auClic)
     return () => {
+      pile.splice(pile.indexOf(jeton), 1)
       window.clearTimeout(minuteur)
       document.removeEventListener('keydown', auClavier)
       if (fermerAuClicExterieur) document.removeEventListener('mousedown', auClic)
