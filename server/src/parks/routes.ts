@@ -537,6 +537,56 @@ parksRouter.get(
     }
     const aujourdhui = new Date()
 
+    /**
+     * LE MOIS AFFICHÉ, ET IL VIENT DE L'APPELANT.
+     *
+     * ═══ LA PROMESSE QUI N'ÉTAIT PAS TENUE ═══
+     *
+     * L'écran du parc annonce, en sous-titre : « Le statut porte sur le mois
+     * affiché ». Il n'existait aucun moyen d'en changer — cette route rendait
+     * TOUJOURS la dernière échéance de chaque bail, `orderBy periodStart desc,
+     * take 1`. La page nommait une dimension qu'elle ne donnait pas.
+     *
+     * ═══ CE QUI VARIE, ET CE QUI NE VARIE PAS ═══
+     *
+     * SEUL le statut de règlement. L'occupation reste celle d'AUJOURD'HUI — un
+     * logement est vacant s'il n'a pas de bail en cours, et rien dans ce modèle
+     * ne dit qui l'habitait en mai. Faire varier l'occupation demanderait de
+     * rejouer l'historique des baux, ce que la promesse du sous-titre ne
+     * couvre pas et que ce lot ne prétend pas faire.
+     *
+     * ═══ LE RETARD SE COMPTE DEPUIS AUJOURD'HUI, PAS DEPUIS LE MOIS ═══
+     *
+     * `aujourdhui` ne bouge pas. Une échéance de mai impayée est en retard de
+     * cent vingt jours en septembre, et c'est la vérité qu'on vient chercher :
+     * la dette est réelle MAINTENANT. La compter depuis la fin du mois consulté
+     * rendrait un retard figé, qui cesserait de grandir — le défaut exact que
+     * `statut` évite déjà en refusant de STOCKER le retard.
+     *
+     * ═══ ABSENT, RIEN NE CHANGE ═══
+     *
+     * Sans `mois`, la route rend la dernière échéance, comme avant. Aucun autre
+     * appelant de cette projection — l'espace du locataire, le tableau de bord —
+     * n'a à connaître ce paramètre.
+     */
+    const mois = z
+      .string()
+      .regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Mois attendu au format AAAA-MM')
+      .optional()
+      .parse(req.query.mois)
+    const bornesDuMois = mois
+      ? (() => {
+          const [an, m] = mois.split('-').map(Number) as [number, number]
+          /* En UTC des deux côtés : `periodStart` est stocké en UTC, et passer
+             par le fuseau du serveur ferait glisser la borne d'un jour selon
+             l'endroit où il tourne. */
+          return {
+            gte: new Date(Date.UTC(an, m - 1, 1)),
+            lt: new Date(Date.UTC(an, m, 1)),
+          }
+        })()
+      : undefined
+
     const immeubles = await prisma.building.findMany({
       where: { parkId, ...perimetre },
       orderBy: { name: 'asc' },
@@ -597,6 +647,13 @@ parksRouter.get(
                   select: { heldMinor: true, withheldMinor: true, status: true },
                 },
                 charges: {
+                  /* LE MOIS DEMANDÉ, ou la dernière échéance à défaut. C'est ici
+                     et nulle part ailleurs que le sous-titre « le statut porte
+                     sur le mois affiché » devient vrai. */
+                  /* Répandu et non `where: undefined` : `exactOptionalPropertyTypes`
+                     distingue « absent » de « présent et indéfini », et c'est
+                     l'idiome que ce fichier emploie déjà pour le périmètre. */
+                  ...(bornesDuMois ? { where: { periodStart: bornesDuMois } } : {}),
                   orderBy: { periodStart: 'desc' },
                   take: 1,
                   select: {
