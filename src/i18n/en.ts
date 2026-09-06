@@ -49,6 +49,10 @@ export const en: Dictionary = {
     newVersionReload: 'Reload',
     actionRefused: 'The server refused this action. Nothing was saved.',
     actionFailed: 'This action failed for now. Nothing was saved.',
+    actionTimedOut:
+      'The server did not answer in time. Check whether the operation appears before entering it again.',
+    actionOffline: 'You are offline. Nothing was sent; your entry is kept.',
+    offlineBanner: 'Offline. You can browse, but nothing will be sent until the connection is back.',
     amountUnreadable:
       'Amount unreadable. Re-enter it in positive digits, without letters or symbols.',
     demoNoticeShort: 'Buildings, tenants and amounts are fictional.',

@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -498,6 +499,7 @@ export function AppShell() {
           <LienEvitement />
           <BarreLocataire setRole={setRole} />
           <BandeauDemo />
+          <BandeauHorsLigne />
           <main
             id="main"
             className={cn(
@@ -566,6 +568,7 @@ export function AppShell() {
         <div ref={contentRef} className="flex min-w-0 flex-1 flex-col bg-paper">
           <Topbar onOpenDrawer={() => setDrawerOpen(true)} />
           <BandeauDemo />
+          <BandeauHorsLigne />
           {/*
             Le contenu coule, il n'est ni collant ni fixe — mais avec
             `viewport-fit=cover` le bas du document EST le bas physique de
@@ -861,6 +864,71 @@ function SelecteurProfilCompact({
  * sa place et ne se ferme pas — la visite entière est une démonstration, pas
  * une notification.
  */
+/**
+ * CE QUE L'APPAREIL SAIT DU RÉSEAU, et rien de plus.
+ *
+ * `navigator.onLine` faux est fiable : aucune interface active. Vrai ne prouve
+ * rien — un point d'accès sans Internet dit « en ligne » —, et ce crochet ne
+ * prétend pas le contraire : il ne dit « hors ligne » que quand c'est certain.
+ * Les événements `online` / `offline` arrivent sur `window`, jamais sur
+ * `navigator`, et le premier rendu lit l'état courant plutôt que d'attendre un
+ * événement qui ne viendra pas si la page s'ouvre déjà coupée.
+ */
+function useHorsLigne(): boolean {
+  const [horsLigne, setHorsLigne] = useState(
+    () => typeof navigator !== 'undefined' && navigator.onLine === false,
+  )
+  useEffect(() => {
+    const lire = () => setHorsLigne(navigator.onLine === false)
+    window.addEventListener('online', lire)
+    window.addEventListener('offline', lire)
+    return () => {
+      window.removeEventListener('online', lire)
+      window.removeEventListener('offline', lire)
+    }
+  }, [])
+  return horsLigne
+}
+
+/**
+ * LE BANDEAU HORS LIGNE, à la place et dans la forme du bandeau de démonstration.
+ *
+ * Rien dans le produit n'écoutait le réseau : hors ligne, on l'apprenait au
+ * chargement de la session, ou après avoir cliqué et attendu l'échec. Sur le
+ * marché visé, perdre le réseau dans une cage d'escalier est une journée
+ * normale, et la première chose qu'un outil doit dire, c'est s'il peut
+ * envoyer. Le client refuse déjà de partir hors ligne (`HorsLigne`) ; ce
+ * bandeau le dit AVANT le clic.
+ *
+ * Il garde le ton `warn` et le globe de la maquette « Mode hors ligne » de
+ * `SystemStates`, qui décrivait cet état depuis des lots sans que personne ne
+ * le rende. `role="status"` et un nom : une région d'état sans nom n'est rien
+ * pour un lecteur d'écran. Aucune porte au navigateur ne coupe le réseau ;
+ * `bandeauHorsLigne.test.tsx` le rend en jsdom, dans les deux sens.
+ */
+function BandeauHorsLigne() {
+  const horsLigne = useHorsLigne()
+  const t = useT()
+  const id = useId()
+  if (!horsLigne) return null
+  return (
+    <div
+      role="status"
+      aria-labelledby={id}
+      data-bandeau-hors-ligne=""
+      className={cn(
+        'flex items-center gap-x-3 border-b border-warn-border bg-warn-tint py-2 text-body text-warn',
+        GOUTTIERE_LATERALE,
+      )}
+    >
+      <Icon name="globe" size={16} className="shrink-0" />
+      <span id={id} className="min-w-0 flex-1">
+        {t('common.offlineBanner')}
+      </span>
+    </div>
+  )
+}
+
 function BandeauDemo() {
   const { estDemo } = useSession()
   const t = useT()

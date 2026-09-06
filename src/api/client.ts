@@ -44,6 +44,52 @@ export class NetworkError extends Error {
   }
 }
 
+/**
+ * LE SERVEUR N'A PAS RÉPONDU À TEMPS — ce qui n'est PAS « rien n'a été fait ».
+ *
+ * Une panne réseau ordinaire dit « le serveur est injoignable » et l'écran en
+ * conclut, à raison, que rien n'a été enregistré. Un délai dépassé ne permet
+ * pas cette conclusion : la requête est peut-être arrivée, et le serveur a
+ * peut-être écrit avant que sa réponse ne se perde. Le message à l'écran doit
+ * donc dire « vérifiez avant de ressaisir », et c'est cette classe qui le lui
+ * permet. Elle reste une `NetworkError` pour tout ce qui ne fait pas la
+ * différence — l'écran de session, par exemple, la traite comme une coupure.
+ */
+export class DelaiDeReponse extends NetworkError {
+  constructor() {
+    super(undefined)
+    this.name = 'DelaiDeReponse'
+  }
+}
+
+/**
+ * L'APPAREIL SAIT QU'IL EST HORS LIGNE, et la requête ne part pas.
+ *
+ * `navigator.onLine` faux est fiable : le navigateur n'a aucune interface
+ * réseau active. Attendre vingt secondes pour apprendre ce que l'appareil
+ * savait déjà serait absurde ; l'échec est immédiat, la saisie reste sous les
+ * yeux, et la coquille montre son bandeau. (Vrai ne prouve rien — un point
+ * d'accès sans Internet dit « en ligne » —, et on ne s'y fie pas dans ce sens.)
+ */
+export class HorsLigne extends NetworkError {
+  constructor() {
+    super(undefined)
+    this.name = 'HorsLigne'
+  }
+}
+
+/**
+ * VINGT SECONDES, ET C'EST UNE PRUDENCE NON MESURÉE.
+ *
+ * Aucune mutation n'avait de délai : sur un lien qui s'enlise, le bouton
+ * tournait sans fin. La lecture de session court contre trente secondes
+ * (`SessionProvider`) ; l'audit du 2026-09-06 proposait quinze. Vingt est
+ * entre les deux, sans relevé de latence réelle sur le marché visé pour le
+ * justifier — le jour où l'on en aura un, c'est ce nombre qu'il faudra
+ * regarder en premier.
+ */
+const DELAI_DE_REQUETE_MS = 20_000
+
 interface ReponseErreur {
   error?: string
   fields?: { path: string; message: string }[]
@@ -81,23 +127,46 @@ async function requete<T>(
   ).toString()
   const adresse = `/api${chemin}${parametres ? `?${parametres}` : ''}`
 
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new HorsLigne()
+
+  /*
+    LE DÉLAI EST UNE COURSE, ET L'ABANDON EN EST LA SUITE, pas l'inverse.
+
+    Un `AbortSignal` seul ne suffit pas : c'est `fetch` qui décide de l'honorer,
+    et un `fetch` remplacé — par un test, par un agent de service — peut
+    l'ignorer et pendre. La course rend la main à coup sûr passé le délai ; le
+    contrôleur, lui, libère la connexion réelle quand il y en a une.
+  */
+  const controleur = new AbortController()
+  let minuterie: ReturnType<typeof setTimeout> | undefined
   let reponse: Response
   try {
-    reponse = await fetch(adresse, {
-      ...reste,
-      /**
-       * Sans cela, le navigateur n'envoie ni ne reçoit le cookie de session, et
-       * chaque requête repart anonyme. Le défaut est silencieux : on obtient un
-       * 401 parfaitement valide, et on cherche le bogue côté serveur.
-       */
-      credentials: 'same-origin',
-      headers: {
-        ...(reste.body ? { 'Content-Type': 'application/json' } : {}),
-        ...reste.headers,
-      },
-    })
+    reponse = await Promise.race([
+      fetch(adresse, {
+        ...reste,
+        signal: controleur.signal,
+        /**
+         * Sans cela, le navigateur n'envoie ni ne reçoit le cookie de session, et
+         * chaque requête repart anonyme. Le défaut est silencieux : on obtient un
+         * 401 parfaitement valide, et on cherche le bogue côté serveur.
+         */
+        credentials: 'same-origin',
+        headers: {
+          ...(reste.body ? { 'Content-Type': 'application/json' } : {}),
+          ...reste.headers,
+        },
+      }),
+      new Promise<never>((_, rejeter) => {
+        minuterie = setTimeout(() => {
+          controleur.abort()
+          rejeter(new DelaiDeReponse())
+        }, DELAI_DE_REQUETE_MS)
+      }),
+    ])
   } catch (cause) {
-    throw new NetworkError(cause)
+    throw cause instanceof NetworkError ? cause : new NetworkError(cause)
+  } finally {
+    clearTimeout(minuterie)
   }
 
   if (reponse.status === 204) return undefined as T

@@ -60,7 +60,7 @@ import {
   type MonthlyCollection,
   type Receipt,
 } from './portfolio'
-import { ApiError, api, deposerLesOctets } from '@/api/client'
+import { ApiError, DelaiDeReponse, HorsLigne, api, deposerLesOctets } from '@/api/client'
 import type { PhotoLocale } from '@/features/dashboard/PhotosDeReserve'
 
 /** Les deux façons dont le CHARGEMENT du parc peut échouer, et leurs gestes. */
@@ -650,9 +650,18 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
    */
   const signalerEchec = useCallback(
     (err: unknown) => {
-      notify(t(err instanceof ApiError ? 'common.actionRefused' : 'common.actionFailed'), {
-        tone: 'danger',
-      })
+      // Quatre causes, quatre phrases — et l'ordre compte : un délai dépassé
+      // est une `NetworkError`, mais il ne peut PAS dire « rien n'a été
+      // enregistré », le serveur a peut-être écrit avant de se taire.
+      const cle =
+        err instanceof DelaiDeReponse
+          ? 'common.actionTimedOut'
+          : err instanceof HorsLigne
+            ? 'common.actionOffline'
+            : err instanceof ApiError
+              ? 'common.actionRefused'
+              : 'common.actionFailed'
+      notify(t(cle), { tone: 'danger' })
     },
     [notify, t],
   )

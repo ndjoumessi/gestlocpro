@@ -9,7 +9,15 @@ import {
   type ReactNode,
 } from 'react'
 import { effacerStockage, ecrireStockage, lireStockage } from '@/lib/stockage'
-import { ApiError, NetworkError, api, type AdhesionApi, type CompteApi, type DemandeInscription } from './client'
+import {
+  ApiError,
+  DelaiDeReponse,
+  NetworkError,
+  api,
+  type AdhesionApi,
+  type CompteApi,
+  type DemandeInscription,
+} from './client'
 import type { Role } from '@/features/auth/signupState'
 
 /**
@@ -228,6 +236,11 @@ export function SessionProvider({
       setHorsLigne(false)
       return memberships
     } catch (err) {
+      // Un délai dépassé n'est pas une coupure : il remonte à `chargerLaSession`,
+      // qui le range dans l'état « délai » — celui qu'elle tenait déjà pour sa
+      // propre course de trente secondes, et que le client atteint désormais
+      // le premier, à vingt.
+      if (err instanceof DelaiDeReponse) throw err
       if (err instanceof NetworkError) {
         /**
          * Serveur injoignable : on ne bascule PAS en « anonyme ».
@@ -285,7 +298,7 @@ export function SessionProvider({
       // Une tentative dépassée par une reprise n'écrit plus rien : sa réponse
       // tardive ne doit pas ressusciter un écran que l'utilisateur a quitté.
       if (mienne !== tentative.current) return
-      setEchec(err instanceof DelaiDepasse ? 'delai' : 'technique')
+      setEchec(err instanceof DelaiDepasse || err instanceof DelaiDeReponse ? 'delai' : 'technique')
     } finally {
       clearTimeout(minuterie)
     }

@@ -82,6 +82,14 @@ export const fr = {
     newVersionReload: 'Recharger',
     actionRefused: 'Le serveur a refusé cette action. Rien n’a été enregistré.',
     actionFailed: 'Action impossible pour l’instant. Rien n’a été enregistré.',
+    /* Un délai dépassé ne dit PAS « rien n'a été enregistré » : le serveur a
+       peut-être écrit avant que sa réponse ne se perde. On demande de vérifier
+       avant de ressaisir, pas de recommencer. */
+    actionTimedOut:
+      'Le serveur n’a pas répondu à temps. Vérifiez si l’opération apparaît avant de la ressaisir.',
+    actionOffline: 'Vous êtes hors ligne. Rien n’a été envoyé ; votre saisie est conservée.',
+    offlineBanner:
+      'Hors ligne. Vous pouvez consulter, mais rien ne partira tant que la connexion n’est pas revenue.',
     /**
      * UN SEUL message pour tous les écrans qui refusent un montant.
      *
