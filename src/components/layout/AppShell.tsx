@@ -836,7 +836,7 @@ function SelecteurProfilCompact({
       <select
         value={role}
         onChange={(e) => setRole(e.target.value as Role)}
-        className="min-h-11 cursor-pointer rounded-md border border-border bg-surface px-2.5 text-label text-ink"
+        className="min-h-11 cursor-pointer rounded-md border border-border-control bg-surface px-2.5 text-label text-ink"
       >
         {(['owner', 'manager', 'tenant'] as const).map((value) => (
           <option key={value} value={value} className="text-ink">
@@ -1244,7 +1244,10 @@ function SelecteurParc() {
       <select
         value={adhesionActive?.parkId ?? ''}
         onChange={(e) => choisirParc(e.target.value)}
-        className="min-h-11 cursor-pointer rounded-md border border-border bg-paper px-2.5 text-label text-ink"
+        // `border-control` et non `border` : ce sélecteur vit hors de `controlClasses`,
+        // et l'audit des liserés l'a trouvé à 1,32:1 — le premier défaut que la
+        // règle a vu que la garde statique ne voyait pas.
+        className="min-h-11 cursor-pointer rounded-md border border-border-control bg-paper px-2.5 text-label text-ink"
       >
         {etat.adhesions.map((a) => (
           // La LISTE DÉROULÉE est peinte par le système, pas par la barre : sans

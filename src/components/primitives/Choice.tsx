@@ -42,7 +42,9 @@ export function Checkbox({ label, hint, error, className, ...props }: CheckboxPr
               'peer size-5 cursor-pointer appearance-none rounded-sm border bg-surface',
               'transition-colors duration-150',
               'checked:border-ink checked:bg-ink',
-              error ? 'border-danger' : 'border-border-strong',
+              // Le liseré de contrôle, à 3:1 : sans lui la case est un carré
+              // blanc sur du blanc — `-strong` ne tenait que 1,85:1.
+              error ? 'border-danger' : 'border-border-control',
             )}
             {...props}
           />
@@ -289,7 +291,7 @@ export function RadioCards<T extends string>({
                   aria-hidden="true"
                   className={cn(
                     'flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors duration-150',
-                    checked ? 'border-ink bg-ink text-on-dark' : 'border-border-strong',
+                    checked ? 'border-ink bg-ink text-on-dark' : 'border-border-control',
                   )}
                 >
                   {checked && <Icon name="check" size={11} strokeWidth={3} />}

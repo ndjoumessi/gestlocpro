@@ -37,6 +37,21 @@
   --color-surface-sunken: #f1f3f8; /* zones creusées, en-têtes de table */
   --color-border: #dbe0e9;
   --color-border-strong: #b6bfcf;
+  /* LISERÉ DES CONTRÔLES DE SAISIE — et non `--color-border` ni `-strong`.
+
+     Un champ vide est un rectangle blanc sur une carte blanche : sa frontière
+     est la SEULE chose qui dit où taper. Peinte avec `--color-border`, elle
+     tenait 1,32:1 sur la surface (1,27 en sombre) ; avec `-strong`, la case à
+     cocher tenait 1,85. WCAG 1.4.11 demande 3:1 à ce qui identifie un
+     composant — et l'audit au navigateur ne mesurait que du texte, donc ne
+     l'a jamais vu. Il mesure désormais les liserés (`contrast-audit.js`).
+
+     UN JETON À PART, parce que les deux rôles tirent en sens inverse : le filet
+     des cartes DOIT rester discret (`separateurs.test.ts` le borne entre 8 et
+     16 points de clarté) et la frontière d'un champ DOIT être vue. Assombrir
+     `--color-border` aurait fait rougir l'une pour verdir l'autre.
+     Relevés : 3,50 sur --surface, 3,29 sur --paper (`lisereDesControles.test.ts`). */
+  --color-border-control: #7f8a9a;
   --color-divider: #dee3ec;
 
   /* Crête du balayage de squelette, sur `--color-surface-sunken`.
@@ -646,6 +661,7 @@
     --color-surface-sunken: #0d1116; /* zones creusées, en-têtes de table */
     --color-border: #2c333c;
     --color-border-strong: #4b5563;
+    --color-border-control: #6b7583; /* 3,47 sur --surface, 3,99 sur --paper */
     /* SÉPARATEUR RELEVÉ — #252b34 le laissait à ΔL* 4,8 de --color-surface.
 
        LE DÉFAUT, ET IL EST PROPRE AU SOMBRE. En clair, le séparateur est plus
@@ -800,6 +816,7 @@
   --color-surface-sunken: #0d1116;
   --color-border: #2c333c;
   --color-border-strong: #4b5563;
+  --color-border-control: #6b7583;
   /* Voir la note du bloc `prefers-color-scheme: dark` : ΔL* 4,8 sur la carte. */
   --color-divider: #2f3740;
   --color-skeleton-sweep: #2e3540;

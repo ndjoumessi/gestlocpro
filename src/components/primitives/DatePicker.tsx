@@ -274,7 +274,7 @@ function GrilleAnnees({
               'numeric min-h-11 cursor-pointer rounded-md px-2 text-body transition-colors duration-150',
               !estChoisie && 'hover:bg-surface-sunken',
               estChoisie && 'bg-ink font-medium text-on-dark',
-              estCourante && !estChoisie && 'ring-1 ring-accent-border',
+              estCourante && !estChoisie && 'ring-1 ring-accent-ink',
             )}
           >
             {annee}
@@ -644,7 +644,7 @@ export function DatePicker({
                           // seule couleur : le jour choisi porte déjà un fond
                           // plein, et deux aplats voisins ne se distingueraient
                           // pas en niveaux de gris.
-                          estAujourdHui && !estChoisi && 'ring-1 ring-accent-border',
+                          estAujourdHui && !estChoisi && 'ring-1 ring-accent-ink',
                         )}
                       >
                         {j.jour}
@@ -879,7 +879,7 @@ export function MonthPicker({
                       // Le mois courant se cerne, il ne se colore pas : le mois
                       // choisi porte déjà un fond plein, et deux aplats voisins
                       // ne se distingueraient pas en niveaux de gris.
-                      estCourant && !estChoisi && 'ring-1 ring-accent-border',
+                      estCourant && !estChoisi && 'ring-1 ring-accent-ink',
                     )}
                   >
                     {nom}

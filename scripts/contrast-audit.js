@@ -221,6 +221,55 @@
     }
   })
 
+  /*
+    LE LISERÉ D'UN CHAMP EST AUDITÉ COMME DU TEXTE, et c'est neuf.
+
+    Cet audit ne regardait que ce qui porte des lettres. Or un champ vide n'en
+    porte aucune : sa frontière est la SEULE chose qui dit où taper, et elle
+    était peinte à 1,32:1 sur la carte — invisible pour une personne
+    malvoyante, quinze portes durant. WCAG 1.4.11 demande 3:1 à tout ce qui
+    identifie un composant. La case à cocher `appearance-none` est dans le même
+    cas : sans sa bordure, c'est un carré blanc sur du blanc.
+
+    ON MESURE LA BORDURE CONTRE CE QUI ENTOURE LE CHAMP, pas contre son propre
+    fond : la frontière sépare le dedans du dehors, et c'est du dehors qu'on la
+    cherche. Le champ éteint est hors périmètre — WCAG l'exempte — et un champ
+    `aria-invalid` porte déjà le rouge d'alerte, mesuré ailleurs.
+
+    Le curseur de prix (`type=range`) et les boutons sont exclus : un bouton se
+    reconnaît à son texte, un curseur à son pouce. Ici, seuls les contrôles où
+    l'on ÉCRIT ou que l'on COCHE.
+  */
+  const SAISIE =
+    'input:not([type=range]):not([type=radio]):not([type=hidden]):not([type=file]), select, textarea'
+  racine.querySelectorAll(SAISIE).forEach((el) => {
+    if (!el.offsetParent || el.disabled) return
+    const cs = getComputedStyle(el)
+    if (cs.visibility === 'hidden' || cs.opacity === '0') return
+    if (el.classList.contains('sr-only')) return
+    if (parseFloat(cs.borderTopWidth) === 0) return
+
+    const dehors = effectiveBackground(el.parentElement || el)
+    const liseré = over(toRgba(cs.borderTopColor), dehors)
+    const ratio = contrast(liseré, dehors)
+    examines++
+    if (ratio < 3) {
+      const nom = el.getAttribute('name') || el.getAttribute('aria-label') || el.id || el.type
+      const key = `liseré|${nom}|${cs.borderTopColor}`
+      if (seen.has(key)) return
+      seen.add(key)
+      failures.push({
+        text: `liseré ${el.tagName.toLowerCase()} ${nom}`,
+        ratio: Math.round(ratio * 100) / 100,
+        required: 3,
+        fontSize: parseFloat(cs.fontSize),
+        weight: parseInt(cs.fontWeight, 10) || 400,
+        color: cs.borderTopColor,
+        bg: `rgb(${dehors.map((v) => Math.round(v)).slice(0, 3).join(', ')})`,
+      })
+    }
+  })
+
   failures.sort((a, b) => a.ratio - b.ratio)
   /*
     ON REND AUSSI LE NOMBRE D'ÉLÉMENTS REGARDÉS, et pas seulement les fautifs.

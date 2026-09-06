@@ -161,8 +161,11 @@ export const controlClasses = (invalid?: boolean, className?: string) =>
     // Il ne restait qu'un changement de bordure de 1px, à 1,33:1 sur le fond du
     // champ. Le même piège est documenté vingt lignes plus bas dans `tokens.css`
     // pour la bascule `.on-dark` — la leçon y avait été tirée, pas ici.
-    'hover:border-border-strong focus:border-ink',
-    invalid ? 'border-danger bg-danger-tint/40' : 'border-border',
+    // Au repos, le liseré de CONTRÔLE (3,5:1), pas le filet des cartes (1,3:1) :
+    // un champ vide n'a que sa frontière pour dire où taper. Le survol monte
+    // d'une marche visible ; le focus est porté par l'anneau global.
+    'hover:border-ink focus:border-ink',
+    invalid ? 'border-danger bg-danger-tint/40' : 'border-border-control',
     'disabled:cursor-not-allowed disabled:opacity-45',
     'read-only:bg-surface-sunken read-only:text-muted',
     className,
