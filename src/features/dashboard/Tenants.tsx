@@ -746,7 +746,7 @@ function CorrigerFicheModal({ unit, onClose }: { unit: Unit; onClose: () => void
   )
 }
 
-function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => void }) {
+export function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: () => void }) {
   const t = useT()
   const { locale } = useI18n()
   const { notify } = useToast()

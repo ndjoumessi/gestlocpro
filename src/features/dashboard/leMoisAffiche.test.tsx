@@ -89,7 +89,8 @@ describe('le mois affiché du parc', () => {
     await renderApp('/app/parc', { session: SESSION, largeur: 1280 })
     await attendreLeChargement()
 
-    const table = () => screen.getByRole('table')
+    // La fiche du logement porte l'état ; le parc n'a plus de tableau sur bureau.
+    const table = () => screen.getByRole('main')
     expect(within(table()).getByText('À jour'), 'ce mois-ci, le loyer est réglé').toBeInTheDocument()
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'Mois précédent' }))

@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { within } from '@testing-library/react'
 import { renderApp, screen, attendreLeChargement, userEvent } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
@@ -171,9 +170,7 @@ describe('le parc mène au dossier', () => {
     await renderApp('/app/parc', { session: sessionProprietaire() })
     await attendreLeChargement()
 
-    const lien = within(screen.getByRole('table')).getByRole('link', {
-      name: 'Ouvrir le dossier du logement B7',
-    })
+    const lien = screen.getByRole('link', { name: 'Ouvrir le dossier du logement B7' })
     await user.click(lien)
     await attendreLeChargement()
 

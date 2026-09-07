@@ -36,20 +36,14 @@ import { installerFauxServeur } from '@/test/api'
  */
 
 /** Le rang de chaque colonne, lu sur les en-têtes plutôt que compté à la main. */
-function colonnes() {
-  const enTetes = within(screen.getByRole('table')).getAllByRole('columnheader')
-  const rang = (libelle: string) => {
-    const index = enTetes.findIndex((e) => e.textContent?.trim() === libelle)
-    if (index < 0) throw new Error(`Aucun en-tête « ${libelle} »`)
-    return index
-  }
-  return { locataire: rang('Locataire'), ceMois: rang('Ce mois') }
-}
 
 /** La rangée du logement portant ce libellé. */
 function rangee(unite: string) {
-  const ligne = within(screen.getByRole('table'))
-    .getAllByRole('row')
+  // Le parc sur bureau est une fiche par logement (`parcEnFiches.test.tsx`),
+  // plus une rangée de tableau : la fiche est celle qui porte le lien du logement.
+  const ligne = screen
+    .getAllByRole('listitem')
+    .filter((li) => li.hasAttribute('data-fiche-logement'))
     .find((r) => within(r).queryByRole('link', { name: new RegExp(`\\b${unite}\\b`) }))
   if (!ligne) throw new Error(`Aucune rangée pour le logement ${unite}`)
   return ligne
@@ -65,11 +59,10 @@ async function ouvrirLeParc() {
 describe('la colonne de paiement du parc', () => {
   it('reste MUETTE sur un logement qui n’a pas de bail', async () => {
     await ouvrirLeParc()
-    const rang = colonnes()
 
     // B4 et C3 sont les deux logements vacants de la démonstration.
     for (const unite of ['B4', 'C3']) {
-      const cellules = within(rangee(unite)).getAllByRole('cell')
+      const fiche = rangee(unite)
 
       /*
         AUCUNE PASTILLE — et l'assertion porte sur `data-ton`, non sur un texte
@@ -78,32 +71,30 @@ describe('la colonne de paiement du parc', () => {
         c'est qu'un logement sans bail porte un ÉTAT DE PAIEMENT, quel qu'il soit.
       */
       expect(
-        cellules[rang.ceMois]!.querySelectorAll('[data-ton]'),
+        fiche.querySelectorAll('[data-ton]'),
         `pastille de paiement sur ${unite}, qui n'a pas de bail`,
       ).toHaveLength(0)
 
       /* ET LA CELLULE DIT POURQUOI ELLE SE TAIT. Le tiret est `aria-hidden` ; le
          motif vit en `sr-only`, dans la même cellule. */
-      expect(within(cellules[rang.ceMois]!).getByText(/Rien à percevoir/)).toBeInTheDocument()
+      expect(within(fiche).getByText(/Rien à percevoir/)).toBeInTheDocument()
     }
   })
 
   it('dit la vacance là où elle se lisait déjà : la colonne Locataire', async () => {
     await ouvrirLeParc()
-    const rang = colonnes()
 
     /* GARDE DU GARDE — sans cette moitié, « aucune pastille de paiement »
        serait satisfait par une ligne qui ne dirait NULLE PART que le logement
        est vide. La donnée doit rester lisible, c'est son doublon qui est parti. */
     for (const unite of ['B4', 'C3']) {
-      const cellules = within(rangee(unite)).getAllByRole('cell')
-      expect(within(cellules[rang.locataire]!).getByText(/Aucun locataire/)).toBeInTheDocument()
+      const fiche = rangee(unite)
+      expect(within(fiche).getByText(/Aucun locataire/)).toBeInTheDocument()
     }
   })
 
   it('garde l’état de paiement sur les logements qui en ont un', async () => {
     await ouvrirLeParc()
-    const rang = colonnes()
 
     /* A1 est soldé, C2 est en retard : rien n'a été retiré aux lignes qui ont un
        bail. Les libellés sont ceux du dictionnaire — `status.paid` dit « À jour ». */
@@ -111,10 +102,10 @@ describe('la colonne de paiement du parc', () => {
       ['A1', 'À jour'],
       ['C2', 'En retard'],
     ]) {
-      const cellules = within(rangee(unite!)).getAllByRole('cell')
-      expect(within(cellules[rang.ceMois]!).getByText(etat!)).toBeInTheDocument()
+      const fiche = rangee(unite!)
+      expect(within(fiche).getByText(etat!)).toBeInTheDocument()
       // Et leur locataire est nommé, ce qui est l'autre moitié de la lecture.
-      expect(cellules[rang.locataire]!.textContent).not.toMatch(/Aucun locataire/)
+      expect(fiche.textContent).not.toMatch(/Aucun locataire/)
     }
   })
 

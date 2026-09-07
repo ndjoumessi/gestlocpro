@@ -61,7 +61,9 @@ describe('les écrans-tableaux sur un téléphone', () => {
   })
 
   it('rendent un tableau au-delà du seuil, et pas de fiches', async () => {
-    await renderApp('/demo/parc', { largeur: BUREAU })
+    // Paiements et non le parc : le parc a sa propre forme de bureau, une
+    // grille de fiches par immeuble (`parcEnFiches.test.tsx`), sans tableau.
+    await renderApp('/demo/paiements', { largeur: BUREAU })
     await attendreLeChargement()
 
     expect(screen.getAllByRole('columnheader').length).toBeGreaterThan(0)

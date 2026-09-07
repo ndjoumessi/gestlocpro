@@ -41,6 +41,17 @@ export interface DatePickerProps {
   'aria-describedby'?: string
   invalid?: boolean
   required?: boolean
+  /**
+   * Dernier mois proposé, `AAAA-MM` — `MonthPicker` seulement. Le parc n'a
+   * rien à dire d'un mois qui n'est pas arrivé : au-delà, les mois sont
+   * fermés, pas cachés, pour que l'on voie où s'arrête ce qu'on peut lire.
+   */
+  max?: string
+  /** Premier mois proposé, `AAAA-MM` — `MonthPicker` seulement. Même règle
+      que `max` : en deçà, fermé et non caché. La démonstration, qui ne porte
+      qu'un mois, pose `min` et `max` sur ce mois : le sélecteur s'ouvre, et
+      tout ce qui n'est pas ce mois se voit fermé. */
+  min?: string
   /** Décrit le champ quand aucune étiquette visible ne le fait. */
   'aria-label'?: string
 }
@@ -721,6 +732,8 @@ export function MonthPicker({
   'aria-label': ariaLabel,
   invalid,
   required,
+  max,
+  min,
 }: DatePickerProps) {
   const t = useT()
   /* Un identifiant même sans `id` reçu : le panneau, porté sur `document.body`,
@@ -885,16 +898,20 @@ export function MonthPicker({
               {nomsMois.map((nom, index) => {
                 const estChoisi = choisi?.annee === annee && choisi.mois === index
                 const estCourant = courant.annee === annee && courant.mois === index
+                const cle = `${annee}-${String(index + 1).padStart(2, '0')}`
+                const ferme = (max !== undefined && cle > max) || (min !== undefined && cle < min)
                 return (
                   <button
                     key={nom}
                     type="button"
                     aria-current={estCourant ? 'date' : undefined}
                     aria-pressed={estChoisi}
+                    disabled={ferme}
                     onClick={() => choisir(index)}
                     className={cn(
-                      'min-h-11 cursor-pointer rounded-md px-2 text-body transition-colors duration-150',
-                      !estChoisi && 'hover:bg-surface-sunken',
+                      'min-h-11 rounded-md px-2 text-body transition-colors duration-150',
+                      ferme ? 'cursor-not-allowed text-muted opacity-45' : 'cursor-pointer',
+                      !estChoisi && !ferme && 'hover:bg-surface-sunken',
                       estChoisi && 'bg-ink font-medium text-on-dark',
                       // Le mois courant se cerne, il ne se colore pas : le mois
                       // choisi porte déjà un fond plein, et deux aplats voisins

@@ -24,6 +24,17 @@ export function formatMonthYear(year: number, month: number, tag: string): strin
 }
 
 /**
+ * Le même mois, DANS une phrase : « depuis juin 2024 ». La capitale de
+ * `formatMonthYear` est faite pour une tête de ligne ; au milieu d'une phrase
+ * française elle est une faute, et l'anglais garde la sienne de lui-même.
+ */
+export function formatMonthYearInline(year: number, month: number, tag: string): string {
+  return new Intl.DateTimeFormat(tag, { month: 'long', year: 'numeric' }).format(
+    new Date(year, month, 1),
+  )
+}
+
+/**
  * Jour et mois seuls, le mois en toutes lettres abrégées.
  *
  * Le format était numérique — « 03/08 ». Il suivait bien la convention du pays,

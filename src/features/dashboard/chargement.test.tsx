@@ -164,7 +164,10 @@ describe('parc immobilier pendant le chargement', () => {
        logements. Le compte reste écrit en dur exprès : c'est lui qui fait
        rougir le jour où une rangée apparaît sans que personne l'ait voulue. */
     await screen.findByText('A3')
-    expect(screen.getAllByRole('row')).toHaveLength(4)
+    // Sur bureau, le parc est une fiche par logement, jamais une rangée : deux
+    // logements, deux fiches, et toujours aucune rangée, vraie ou fausse.
+    expect(screen.queryAllByRole('row')).toHaveLength(0)
+    expect(document.querySelectorAll('[data-fiche-logement]')).toHaveLength(2)
   })
 })
 

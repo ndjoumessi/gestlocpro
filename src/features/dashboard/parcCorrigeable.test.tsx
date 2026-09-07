@@ -84,7 +84,9 @@ describe('l’écran du parc', () => {
     await renderApp('/demo/parc')
     await attendreLeChargement()
 
-    const ligne = screen.getAllByRole('row').find((r) => /Charles Ngassa/.test(r.textContent ?? ''))
+    const ligne = screen
+      .getAllByRole('listitem')
+      .find((r) => r.hasAttribute('data-fiche-logement') && /Charles Ngassa/.test(r.textContent ?? ''))
     expect(ligne, 'la ligne de A1 est introuvable').toBeDefined()
     /* LE DÉCLENCHEUR EST SUR LA LIGNE, l'entrée dans le panneau qu'il ouvre —
        lequel vit hors du `<tr>`. On vérifie donc les deux à leur place. */

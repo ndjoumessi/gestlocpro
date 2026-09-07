@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/cn'
+import { Icon, type IconName } from './Icon'
 
 export type BadgeTone = 'neutral' | 'accent' | 'ok' | 'danger' | 'dark'
 
@@ -23,21 +24,30 @@ const TONES: Record<BadgeTone, string> = {
 
 export interface BadgeProps {
   tone?: BadgeTone
+  /**
+   * L'icône de l'ÉCRAN où ce fait se traite — la clé à molette des Travaux,
+   * le bouclier des Cautions —, jamais une illustration : une puce « 2
+   * chantiers en cours » se lit d'un coup d'œil quand elle porte le même signe
+   * que l'entrée de navigation qui y mène. Décorative pour le lecteur d'écran,
+   * le texte dit tout.
+   */
+  icon?: IconName
   children: ReactNode
   className?: string
 }
 
 /** Étiquette compacte : compteurs de navigation, deltas, marqueurs. */
-export function Badge({ tone = 'neutral', children, className }: BadgeProps) {
+export function Badge({ tone = 'neutral', icon, children, className }: BadgeProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-2 py-0.5',
+        'inline-flex items-center gap-1 rounded-full px-2 py-0.5',
         'numeric text-label font-medium whitespace-nowrap',
         TONES[tone],
         className,
       )}
     >
+      {icon && <Icon name={icon} size={12} className="shrink-0" />}
       {children}
     </span>
   )

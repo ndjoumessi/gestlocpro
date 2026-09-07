@@ -206,9 +206,9 @@ describe('le parc sur un écran large', () => {
     expect(indicateurs[0]!.textContent).toContain('83')
   })
 
-  it('groupe son tableau par immeuble, un en-tête par immeuble', async () => {
+  it('groupe ses fiches par immeuble, un en-tête par immeuble', async () => {
     await ouvrir()
-    expect(screen.getAllByRole('table').length).toBe(1)
+    expect(screen.queryByRole('table'), 'plus de tableau : une carte par immeuble').toBeNull()
 
     /* TROIS EN-TÊTES POUR TROIS IMMEUBLES — le compte vient du jeu de
        démonstration, et c'est lui qui rougit si un immeuble perd son bloc. */

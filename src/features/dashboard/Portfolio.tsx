@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { useRole } from '@/components/layout/AppShell'
@@ -35,12 +35,26 @@ import { ParkSettingsModal } from './ParkSettingsModal'
 import { AddUnitModal } from './AddUnitModal'
 import { EditBuildingModal } from './EditBuildingModal'
 import { EditUnitModal } from './EditUnitModal'
+import { NewTenantModal } from './Tenants'
+import { MonthPicker } from '@/components/primitives/DatePicker'
+import { Card } from '@/components/primitives/Card'
+import { Badge } from '@/components/primitives/Badge'
 
-/** « 2026-05 » → les parties que `useDates` attend, mois indexé à zéro. */
-function enPartiesDeMois(mois: string) {
-  const [an, m] = mois.split('-').map(Number) as [number, number]
-  return { year: an, month: m - 1 }
-}
+/* La grille des fiches d'un immeuble, NOMMÉE : le squelette l'annonce et
+   l'écran chargé la rend, et `squelettesFideles.test.ts` refuse qu'elle soit
+   écrite deux fois.
+
+   FLUIDE, ET NON PAR POINTS DE RUPTURE. `grid-cols-2 xl:grid-cols-3` disait
+   « deux colonnes » à toute largeur où cette grille est rendue — y compris
+   à 320 px, où `espace-connecte` l'a vue déborder de 71 px : la porte
+   redimensionne la page sans la recharger, et le rendu de bureau y survit le
+   temps d'une mesure. Une colonne de 18 rem au moins, autant qu'il en tient,
+   jamais plus large que sa boîte (`min(100%, 18rem)`) : deux à 1024 px, trois
+   à 1440, cinq à 1920, une seule si la boîte est étroite — et rien ne
+   déborde, quelle que soit la largeur où elle se peint. Seize rem donnaient
+   quatre colonnes de 259 px à 1440, mesuré : trop peu pour un nom entier. */
+const GRILLE_DES_FICHES =
+  'grid grid-cols-[repeat(auto-fill,minmax(min(100%,18rem),1fr))] gap-3 border-t border-divider p-4'
 
 /** Le mois voisin, sans jamais passer par un `Date` local — voir la route. */
 function moisDecale(mois: string, pas: number) {
@@ -71,6 +85,10 @@ export function Portfolio() {
      pas du tout. Voir `EditBuildingModal` et `EditUnitModal`. */
   const [immeubleACorriger, setImmeubleACorriger] = useState<Immeuble | null>(null)
   const [logementACorriger, setLogementACorriger] = useState<Unit | null>(null)
+  /* Le logement VACANT qu'on remplit depuis sa fiche : la modale des Locataires,
+     ouverte sur ce logement seul. */
+  const [aAttribuer, setAAttribuer] = useState<Unit | null>(null)
+  const idDuVerrouDemo = useId()
   /**
    * LE MÊME SEUIL QUE LA BASCULE EN FICHES, et c'est ce qui rend la page
    * cohérente : au-dessus, un TABLEAU et des cartes alignées ; en dessous, des
@@ -162,6 +180,8 @@ export function Portfolio() {
 
   const { units, buildings: BUILDINGS, buildingById, loading, removeBuilding, removeUnit, scoped } =
     usePortfolio()
+  // Les travaux et les cautions sont déjà chargés avec le parc : la fiche les dit.
+  const { works, deposits } = usePortfolio()
 
   /**
    * LE PARC RELU AU MOIS DEMANDÉ — et seulement quand on en demande un autre.
@@ -214,37 +234,6 @@ export function Portfolio() {
   const [query, setQuery] = useState('')
 
 
-  /**
-   * LES IMMEUBLES REPLIÉS — la forme que 21st a apprise au dépôt.
-   *
-   * Reprise du CHEVRON AVANT LE LIBELLÉ (`accordion-07`, felipemenezes098) :
-   * l'affordance de repli précède le nom au lieu de le suivre à l'autre bout de
-   * la rangée. Sur une liste de blocs, l'œil descend une COLONNE de chevrons et
-   * lit les plis avant de lire les noms ; posé à droite, chaque chevron est à
-   * une distance différente du nom qu'il commande, et la colonne n'existe plus.
-   *
-   * ═══ LE REPLI NE PASSE PAS PAR `DataTable` ═══
-   *
-   * Un immeuble replié retire ses LIGNES, pas son groupe : `ordre` déclare tous
-   * les immeubles, donc l'en-tête reste rendu avec son rapport, sa barre et ses
-   * gestes. Il suffit que `rows` n'en porte plus les logements. La primitive n'a
-   * rien à apprendre du repli, et les six autres écrans qui l'emploient ne
-   * changent pas d'une ligne.
-   *
-   * ═══ OUVERTS PAR DÉFAUT ═══
-   *
-   * Un parc s'ouvre sur ce qu'il contient. Replier d'entrée demanderait un geste
-   * pour voir la donnée qu'on vient chercher — et le repli sert à RANGER ce
-   * qu'on a fini de lire, pas à cacher ce qu'on n'a pas encore lu. L'état ne
-   * survit pas au rechargement, et c'est assumé : voir la note de fin de lot.
-   */
-  const [replies, setReplies] = useState<ReadonlySet<string>>(new Set())
-  const basculerLeRepli = (id: string) =>
-    setReplies((avant) => {
-      const suite = new Set(avant)
-      if (!suite.delete(id)) suite.add(id)
-      return suite
-    })
 
   /*
     LE FILTRE D'IMMEUBLE EST PARTI AVEC SES PASTILLES, et l'URL avec lui.
@@ -270,10 +259,6 @@ export function Portfolio() {
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase()
     return unitesAffichees.filter((unit) => {
-      /* LE REPLI RETIRE LES LIGNES, ET RIEN D'AUTRE. L'en-tête du groupe reste
-         rendu — `ordre` le déclare — donc le rapport, la barre et les gestes de
-         l'immeuble replié restent lisibles et atteignables. */
-      if (replies.has(unit.buildingId)) return false
       if (!needle) return true
       const haystack = [
         // Le libellé et non l'identifiant : c'est « A1 » que l'utilisateur voit
@@ -296,7 +281,7 @@ export function Portfolio() {
        renommé ne devenait cherchable qu'au prochain changement de `units`.
        C'était vrai EN PRATIQUE — le portefeuille est remplacé en entier après
        une correction — mais tenu par un enchaînement, pas par la dépendance. */
-  }, [query, unitesAffichees, t, buildingById, replies])
+  }, [query, unitesAffichees, t, buildingById])
 
   /**
    * SORTIR L'ÉTAT DU PARC, une ligne par logement.
@@ -435,6 +420,413 @@ export function Portfolio() {
    * locataires pendant l'attente obtient « Aucun résultat » sur un parc qui
    * n'est pas le sien.
    */
+  /*
+    L'EN-TÊTE D'IMMEUBLE, UNE SEULE FOIS POUR DEUX FORMES.
+
+    Sous `lg`, `DataTable` le rend au-dessus des fiches de chaque groupe ; sur
+    bureau, la carte d'immeuble le rend au-dessus de sa grille. Deux copies
+    auraient dérivé — c'est le même nom, la même occupation, le même menu.
+  */
+  const enTeteDImmeuble = (id: string, forme: 'fiches' | 'tableau') => {
+            const b = buildingById(id)
+            const { occupied: occ, total } = occupancyOf(id)
+            const auTableau = forme === 'tableau'
+            const vide = total === 0
+            return (
+              /* `data-groupe` : les gardes lisent l'en-tête par cet attribut et
+                 non par `role="group"` — d'autres groupes portent ce rôle sur
+                 cet écran. Même idiome que `data-indicateur` sur `StatCard`. */
+              <div
+                data-groupe=""
+                className={cn(
+                  'px-4 py-3',
+                  /* LA BANDE DE PIED DES IMMEUBLES SANS LOGEMENT — reprise du
+                     tableau `inline-analytics-table` (ruixen.ui), dont la rangée
+                     « Total » clôt la liste sur un fond sourd au lieu de s'y
+                     fondre.
+
+                     Ils sont déjà rangés en fin de liste ; la teinte dit qu'ils
+                     ferment la liste plutôt qu'ils ne la continuent. C'est ce
+                     qu'aucun état vide de 21st ne savait faire : les quatorze
+                     que le catalogue propose sont des blocs centrés pleine page,
+                     avec icône, titre et bouton — une manière de dire « il n'y a
+                     rien ICI », quand ce qu'il faut dire est « la liste s'arrête
+                     là, et voilà ce qui reste à remplir ».
+
+                     Pas de `text-muted` sur le bloc entier : le nom de
+                     l'immeuble et ses gestes restent au contraste plein. C'est
+                     un immeuble qu'on doit encore pouvoir corriger et retirer,
+                     pas une note de bas de page. */
+                  vide ? 'bg-surface-sunken' : 'bg-surface-2',
+                  /* EN FICHES l'en-tête est une CARTE posée sur le fond de la
+                     page : il lui faut sa bordure et ses coins. AU TABLEAU il
+                     occupe une rangée entre deux filets, dans une boîte qui a
+                     déjà les siens — l'y peindre ferait une carte dans une
+                     carte, avec deux bordures à trois pixels l'une de l'autre. */
+                  !auTableau && 'rounded-lg border border-divider',
+                )}
+              >
+                <div
+                  className={cn(
+                    'flex gap-3',
+                    /* UNE SEULE LIGNE AU TABLEAU, EMPILÉ EN FICHES.
+
+                       Premier jet : la même mise en page des deux côtés. À 1280
+                       la rangée de groupe fait 570 px de large, et la barre s'y
+                       étirait sur toute la longueur — un trait bleu plein qui se
+                       lit comme un SÉPARATEUR et non comme une mesure, pendant
+                       que le rapport « 5/5 » partait à l'autre bout de l'écran,
+                       à 400 px du nom qu'il qualifie.
+
+                       Au tableau, tout tient donc sur une ligne et la barre est
+                       BORNÉE, posée contre son rapport. En fiches la boîte fait
+                       moins de 320 px : rien n'y tient sur une ligne, et la
+                       barre pleine largeur y est juste. */
+                    auTableau ? 'items-center' : 'flex-col',
+                  )}
+                >
+                  <div className="flex min-w-0 flex-1 items-center gap-1">
+                    {/* Plus de chevron : l'immeuble ne se replie plus. Nelson l'a demandé le
+                        2026-09-07 — sur bureau chaque immeuble est une carte, et replier
+                        cachait la seule chose qu'on vient lire. */}
+                    {/* LA TUILE D'IMMEUBLE EST PARTIE, et ce n'est pas une
+                        économie de pixels.
+
+                        Elle ne distinguait RIEN : tous les groupes de cette liste
+                        sont des immeubles, et une icône qui ne varie jamais
+                        n'apprend rien à personne. `User List Accordion`
+                        (cnippet.dev) met un avatar en tête de ligne parce que ses
+                        membres diffèrent ; ici l'image était constante.
+
+                        Elle coûtait deux glyphes AVANT le nom — la tuile puis le
+                        chevron — dont un seul commande quelque chose. Le chevron
+                        reste seul, et c'est lui qu'on cherche quand on veut
+                        replier. */}
+                    {/* La tuile d'immeuble : le même signe que l'entrée « Parc » de la
+                        navigation, pour que l'œil trouve l'immeuble avant de le lire. */}
+                    <span
+                      aria-hidden="true"
+                      className="flex size-9 shrink-0 items-center justify-center rounded-md bg-surface-sunken text-muted"
+                    >
+                      <Icon name="building" size={16} />
+                    </span>
+                    <div className="min-w-0">
+                      {/* LE NOM PORTE LE RANG DE TITRE, et c'est ce que la carte
+                          ne pouvait pas faire : un intitulé de `StatCard` est un
+                          `<p>`. Groupée, la liste devient une STRUCTURE, et un
+                          lecteur d'écran doit pouvoir sauter d'immeuble en
+                          immeuble par les titres. */}
+                      {/* AUCUNE COUPE : `truncate` donnait « Résidence Bonamo… »
+                          à 375 px, `line-clamp-2` a coupé 282 px sur 70 offerts.
+                          La carte clampait parce qu'une grille doit aligner
+                          quatre tuiles ; un en-tête de groupe n'aligne rien. */}
+                      <h3 id={`immeuble-${id}`} className="font-medium text-ink hyphens-auto break-words">
+                        {b?.name}
+                      </h3>
+                      <p className="text-body text-muted">
+                        {b?.district}
+                        {/* CE QUE LE « 0/0 » NE DIT PAS. Le rapport est exact et
+                            muet : il faut savoir le lire pour comprendre qu'il
+                            n'y a pas encore de logement, là où la phrase le dit.
+                            C'est la seule chose que la bande de pied ajoute au
+                            texte — le reste, elle le dit en teinte. */}
+                        {vide ? ` · ${t('app.portfolio.buildingEmpty')}` : ''}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div
+                    className={cn(
+                      'flex shrink-0 items-center gap-3',
+                      !auTableau && 'w-full justify-between',
+                    )}
+                  >
+                    {/* CE QUE L'IMMEUBLE RAPPORTE, avant ce qu'il remplit.
+
+                        L'en-tête portait l'occupation et la barre — jamais
+                        l'argent — sur l'écran d'un propriétaire. La somme est
+                        celle des loyers des lots OCCUPÉS : c'est ce qui est
+                        appelé ce mois-ci, pas ce que l'immeuble vaudrait plein.
+                        Le manque à gagner des lots vides se lit sur leurs
+                        lignes, où la colonne Loyer dit « attendu ».
+
+                        Masquée sous `sm` : la boîte y fait moins de 320 px et le
+                        montant y prendrait la place du rapport, qui est la
+                        mesure de cet écran. */}
+                    <span className="numeric hidden text-body text-muted sm:inline">
+                      {t('app.portfolio.buildingRent', {
+                        amount: money(loyerDe(id), { compact: true }),
+                      })}
+                    </span>
+                    <span className="numeric font-medium">{`${occ}/${total}`}</span>
+                    {/* LA BARRE CONTRE SON RAPPORT au tableau — 96 px, la
+                        largeur d'une mesure, pas d'un séparateur. Elle SITUE
+                        l'immeuble qu'on lit ; elle ne compare plus rien puisque
+                        les en-têtes ne s'alignent pas comme s'alignait la
+                        grille de cartes. `hideValue` : le rapport est écrit en
+                        chiffres à trois pixels de là. */}
+                    {auTableau ? (
+                      <div className="w-24">
+                        <ProgressBar
+                          value={tauxDe(occ, total)}
+                          label={t('app.portfolio.occupancy', { occupied: occ, total })}
+                          hideLabel
+                          hideValue
+                        />
+                      </div>
+                    ) : null}
+                    {/* LES DEUX ISSUES DE L'IMMEUBLE, SOUS LES MÊMES TROIS POINTS
+                        QUE CELLES DE SES LIGNES.
+
+                        Elles étaient deux icônes à plat quand les lignes venaient
+                        de passer au menu : deux idiomes d'action dans la même
+                        bande verticale, à quelques pixels l'un de l'autre. La
+                        différence de forme n'encodait rien — ni l'objet visé, ni
+                        la gravité — elle disait seulement que l'écran avait été
+                        fini en deux fois.
+
+                        Six commandes de moins allumées en permanence, et une
+                        seule grammaire : trois points, on ouvre, on choisit.
+
+                        LES CONDITIONS NE CHANGENT PAS. Corriger reste toujours
+                        offert — renommer n'emporte ni bail ni somme, et c'est
+                        précisément sur un immeuble PLEIN que ça sert. Supprimer
+                        reste FERMÉ tant qu'il porte des logements, et son entrée
+                        dit le motif avec le compte : un geste absent du menu ne
+                        s'explique pas. */}
+                    <MenuDeDebordement
+                      libelle={t('app.portfolio.buildingActions', { name: b?.name ?? '' })}
+                    >
+                      <MenuElement
+                        icone="sliders"
+                        onClick={() => b && setImmeubleACorriger(b)}
+                        nomAccessible={t('app.portfolio.editBuilding', { name: b?.name ?? '' })}
+                      >
+                        {t('app.tenants.edit')}
+                      </MenuElement>
+                      <MenuElement
+                        icone="close"
+                        onClick={total === 0 && b ? () => setASupprimer(b) : undefined}
+                        nomAccessible={
+                          total === 0
+                            ? t('app.portfolio.deleteBuilding', { name: b?.name ?? '' })
+                            : t('app.portfolio.deleteBuildingBlocked', {
+                                name: b?.name ?? '',
+                                count: total,
+                              })
+                        }
+                      >
+                        {t('app.portfolio.remove')}
+                      </MenuElement>
+                    </MenuDeDebordement>
+                  </div>
+                </div>
+                {/* EN FICHES SEULEMENT : la boîte fait moins de 320 px, la barre
+                    y prend toute la largeur sous le nom, où elle situe
+                    l'immeuble qu'on est en train de lire. */}
+                {auTableau ? null : (
+                  <div className="mt-2">
+                    <ProgressBar
+                      value={tauxDe(occ, total)}
+                      label={t('app.portfolio.occupancy', { occupied: occ, total })}
+                      hideLabel
+                      hideValue
+                    />
+                  </div>
+                )}
+              </div>
+            )
+  }
+
+  /*
+    LE PARC SUR BUREAU : UNE CARTE PAR IMMEUBLE, UNE FICHE PAR LOGEMENT.
+
+    Le tableau groupé portait le vide — une colonne absorbait jusqu'à 396 px de
+    blanc — et une ligne par logement où l'état se cherchait parmi des cellules
+    de même poids. La forme vient d'une référence que Nelson a montrée le
+    2026-09-07 : l'immeuble en carte, occupation et loyer mensuel en tête ; ses
+    logements en grille de fiches — numéro et état en haut, locataire, type ·
+    surface, loyer —, et sur un logement vacant, le geste qui le remplit.
+    Sous `lg`, rien ne change : `DataTable` rend déjà des fiches.
+
+    Deux par rangée à `lg`, trois à `xl`, quatre à `2xl` : une fiche garde au
+    moins 280 px, assez pour un nom de locataire entier sans le couper.
+  */
+  const parcEnCartes = (
+    <div className="flex flex-col gap-4">
+      {ordreDesImmeubles.map((id) => {
+        const lignes = rows.filter((u) => u.buildingId === id)
+        // Une recherche qui ne touche pas cet immeuble ne le montre pas.
+        if (query && lignes.length === 0) return null
+        const b = buildingById(id)
+        return (
+          /* PAS d'`overflow-hidden` sur la carte : le menu de l'immeuble est un
+             panneau `absolute` DANS la carte, et sur le dernier immeuble il
+             s'ouvre vers le haut, hors d'elle. Rogné, il restait invisible et le
+             clic tombait sur la carte du dessus — `modales.mjs` l'a mesuré :
+             « le bouton a été cliqué et aucune boîte n'est apparue ». */
+          <Card key={id} as="section" flush aria-labelledby={`immeuble-${id}`}>
+            {enTeteDImmeuble(id, 'tableau')}
+            {lignes.length > 0 && (
+              <ul
+                id={idDuGroupe(id)}
+                aria-label={b?.name}
+                className={GRILLE_DES_FICHES}
+              >
+                {lignes.map((unit) => (
+                  <li
+                    key={unit.id}
+                    data-fiche-logement=""
+                    className="flex flex-col gap-2 rounded-lg border border-divider bg-surface p-4"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      {/* Le lien EST sa boîte de 48 × 44 — pas un `after:inset-0`
+                          étendu sur une zone : la sonde des cibles part du centre
+                          du lien et s'écarte des deux côtés, et une zone qui ne
+                          s'étend qu'à droite comptait pour 34 px. Mesuré. */}
+                      <Link
+                        to={lien(base, `parc/${unit.id}`)}
+                        state={{ from: `${location.pathname}${location.search}` }}
+                        aria-label={t('app.unitFile.open', { unit: unit.label })}
+                        className="numeric title-m inline-flex min-h-11 min-w-12 items-center text-ink underline-offset-4 hover:underline"
+                      >
+                        {unit.label}
+                      </Link>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        {unit.status === 'vacant' ? (
+                          <span className="sr-only">{t('app.portfolio.nothingDue')}</span>
+                        ) : (
+                          <PaymentStatusPill status={unit.status} size="sm" />
+                        )}
+                        <MenuDeDebordement
+                          libelle={t('app.portfolio.unitActions', { unit: unit.label })}
+                        >
+                          <MenuElement
+                            icone="sliders"
+                            onClick={() => setLogementACorriger(unit)}
+                            nomAccessible={t('app.portfolio.editUnit', { unit: unit.label })}
+                          >
+                            {t('app.tenants.edit')}
+                          </MenuElement>
+                          <MenuElement
+                            icone="close"
+                            onClick={
+                              unit.deletable === true ? () => setLogementASupprimer(unit) : undefined
+                            }
+                            nomAccessible={
+                              unit.deletable === true
+                                ? t('app.portfolio.deleteUnit', { unit: unit.label })
+                                : t('app.portfolio.deleteUnitBlocked', { unit: unit.label })
+                            }
+                          >
+                            {t('app.portfolio.remove')}
+                          </MenuElement>
+                        </MenuDeDebordement>
+                      </div>
+                    </div>
+                    <p
+                      data-donnee
+                      className={cn(
+                        'truncate text-body',
+                        unit.tenant ? 'font-medium text-ink' : 'text-muted italic',
+                      )}
+                      title={unit.tenant ?? undefined}
+                    >
+                      {unit.tenant ?? t('app.portfolio.noTenant')}
+                    </p>
+                    {/* Depuis quand : un bail de six ans et un bail de deux mois ne se
+                        lisent pas pareil, et la date vit déjà dans le logement. */}
+                    {unit.tenant && unit.leaseStart && (
+                      <p className="text-label text-muted">
+                        {t('app.portfolio.sinceLease', { date: d.monthYearInline(unit.leaseStart) })}
+                      </p>
+                    )}
+                    <p className="text-body text-muted">
+                      {t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')} · {unit.surface} m²
+                    </p>
+                    {/* Le loyer, et ce qu'il en est ce mois : un partiel montre le
+                        reçu sur l'attendu — c'est le chiffre qu'on vient chercher. */}
+                    <p className="numeric text-body">
+                      {unit.status === 'partial' ? (
+                        <>
+                          {money(unit.paid, { compact: true })}
+                          <span className="text-muted"> / {money(unit.rent, { compact: true })}</span>
+                        </>
+                      ) : (
+                        money(unit.rent, { compact: true })
+                      )}
+                      {unit.status === 'vacant' && (
+                        <span className="ml-1 text-muted">{t('app.portfolio.rentExpected')}</span>
+                      )}
+                      {unit.overdueDays ? (
+                        <span className="numeric ml-2 text-label text-danger">
+                          {t('app.portfolio.overdueFor', { days: unit.overdueDays })}
+                        </span>
+                      ) : null}
+                    </p>
+                    {/* La part reçue, en barre : « 40 000 / 75 000 » se calcule, une
+                        barre à moitié se voit. Seulement sur un partiel — un
+                        « À jour » à 100 % n'apprendrait rien. */}
+                    {unit.status === 'partial' && unit.rent > 0 && (
+                      <ProgressBar
+                        value={Math.round((unit.paid / unit.rent) * 100)}
+                        label={t('app.portfolio.paidOfRent', {
+                          paid: money(unit.paid, { compact: true }),
+                          rent: money(unit.rent, { compact: true }),
+                        })}
+                        hideLabel
+                        hideValue
+                      />
+                    )}
+                    {(() => {
+                      const chantiers = works.filter(
+                        (w) => w.unitId === unit.id && w.status !== 'done',
+                      ).length
+                      const caution = deposits.find(
+                        (c) => c.unitId === unit.id && c.status === 'held',
+                      )
+                      if (chantiers === 0 && !caution) return null
+                      return (
+                        /* Deux faits au plus, et seulement quand ils existent : un
+                           chantier ouvert change ce qu'on fera du logement, une
+                           caution tenue dit ce qu'on doit au locataire. */
+                        <div className="mt-1 flex flex-wrap gap-1.5">
+                          {chantiers > 0 && (
+                            <Badge icon="wrench">
+                              {t('app.portfolio.openWorks', { count: chantiers })}
+                            </Badge>
+                          )}
+                          {caution && (
+                            <Badge icon="shield">
+                              {t('app.portfolio.depositHeld', {
+                                amount: money(caution.held, { compact: true }),
+                              })}
+                            </Badge>
+                          )}
+                        </div>
+                      )
+                    })()}
+                    {unit.status === 'vacant' && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        icon="users"
+                        onClick={() => setAAttribuer(unit)}
+                        className="mt-1 self-start"
+                      >
+                        {t('app.portfolio.assignTenant')}
+                      </Button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        )
+      })}
+    </div>
+  )
+
   if (loading) return <PortfolioSkeleton />
 
   return (
@@ -563,6 +955,7 @@ export function Portfolio() {
       {logementACorriger && (
         <EditUnitModal unit={logementACorriger} onClose={() => setLogementACorriger(null)} />
       )}
+      {aAttribuer && <NewTenantModal vacant={[aAttribuer]} onClose={() => setAAttribuer(null)} />}
 
       {/* LE TAUX DU PARC EST UN AGRÉGAT : IL SORT DE LA GRILLE.
 
@@ -665,7 +1058,7 @@ export function Portfolio() {
         <div
           /* `gap-2` : le standard maison entre deux commandes — `gap-1` vaut
              4 px et `ecarts` le refuse dans une rangée de cibles. */
-          className="flex items-center gap-2 rounded-md border border-border bg-surface px-1"
+          className="flex w-full items-center gap-2 rounded-md border border-border bg-surface px-1 sm:w-auto"
           role="group"
           aria-label={t('app.portfolio.monthShown')}
         >
@@ -689,9 +1082,38 @@ export function Portfolio() {
           </button>
           {/* `aria-live` : changer de mois ne déplace pas le focus — il reste
               sur la flèche — donc rien n'annoncerait le mois atteint. */}
-          <span className="numeric min-w-32 text-center text-body" aria-live="polite">
-            {d.monthYear(enPartiesDeMois(moisChoisi))}
-          </span>
+          {/* UN SÉLECTEUR, PAS SEULEMENT DEUX FLÈCHES. Remonter de dix mois à
+              coups de flèche, c'est dix rechargements du parc ; le sélecteur
+              saute où l'on veut. `max` ferme les mois à venir — le parc n'a
+              rien à dire d'un mois qui n'est pas arrivé.
+
+              EN DÉMONSTRATION AUSSI. Elle ne porte qu'un mois, et la première
+              forme lui laissait un libellé passif : Nelson l'a pris pour un
+              sélecteur en panne, et il avait raison de le prendre pour un
+              sélecteur. Il s'ouvre donc partout ; en démo, `min` et `max` sont
+              le mois courant, et tout autre mois se voit FERMÉ — la même
+              honnêteté que les deux flèches, dans le même panneau. */}
+          {/* SOUS `sm`, LE GROUPE PREND TOUTE LA RANGÉE et le sélecteur s'étire
+              entre ses deux flèches : à 320 px il débordait de 10 px avec une
+              largeur fixe, puis tenait à un pixel près avec sa largeur naturelle
+              (164 px en corps de 16) — trop peu pour la police large que la porte
+              impose. Étiré, il ne peut plus déborder, quelle que soit la police. */}
+          <div className="min-w-0 flex-1 sm:min-w-36 sm:flex-none">
+            <MonthPicker
+              aria-label={t('app.portfolio.monthShown')}
+              aria-describedby={parkId ? undefined : idDuVerrouDemo}
+              name="mois"
+              value={moisChoisi}
+              onChange={setMois}
+              max={moisCourant}
+              min={parkId ? undefined : moisCourant}
+            />
+            {!parkId && (
+              <span id={idDuVerrouDemo} className="sr-only">
+                {t('app.portfolio.monthLockedInDemo')}
+              </span>
+            )}
+          </div>
           <button
             type="button"
             /* PAS D'AVANT-DEMAIN. Un mois futur n'a rien d'appelé : la vue y
@@ -732,6 +1154,9 @@ export function Portfolio() {
           l'écoute sans rien déplacer pour qui la regarde. C'est le compromis, et
           il est assumé : ce que l'œil voit reste d'un instant en retard. */}
       <div aria-busy={lectureDuMois || undefined}>
+      {enTableau && unitesAffichees.length > 0 && rows.length > 0 ? (
+        parcEnCartes
+      ) : (
       <DataTable<Unit>
         caption={t('app.portfolio.title')}
         rows={rows}
@@ -758,254 +1183,7 @@ export function Portfolio() {
              les cartes parties. `modales` l'a refusé avant moi. */
           ordre: ordreDesImmeubles,
           nom: (id) => buildingById(id)?.name ?? '',
-          enTete: (id, _lignes, forme) => {
-            const b = buildingById(id)
-            const { occupied: occ, total } = occupancyOf(id)
-            const auTableau = forme === 'tableau'
-            const vide = total === 0
-            const replie = replies.has(id)
-            return (
-              /* `data-groupe` : les gardes lisent l'en-tête par cet attribut et
-                 non par `role="group"` — d'autres groupes portent ce rôle sur
-                 cet écran. Même idiome que `data-indicateur` sur `StatCard`. */
-              <div
-                data-groupe=""
-                className={cn(
-                  'px-4 py-3',
-                  /* LA BANDE DE PIED DES IMMEUBLES SANS LOGEMENT — reprise du
-                     tableau `inline-analytics-table` (ruixen.ui), dont la rangée
-                     « Total » clôt la liste sur un fond sourd au lieu de s'y
-                     fondre.
-
-                     Ils sont déjà rangés en fin de liste ; la teinte dit qu'ils
-                     ferment la liste plutôt qu'ils ne la continuent. C'est ce
-                     qu'aucun état vide de 21st ne savait faire : les quatorze
-                     que le catalogue propose sont des blocs centrés pleine page,
-                     avec icône, titre et bouton — une manière de dire « il n'y a
-                     rien ICI », quand ce qu'il faut dire est « la liste s'arrête
-                     là, et voilà ce qui reste à remplir ».
-
-                     Pas de `text-muted` sur le bloc entier : le nom de
-                     l'immeuble et ses gestes restent au contraste plein. C'est
-                     un immeuble qu'on doit encore pouvoir corriger et retirer,
-                     pas une note de bas de page. */
-                  vide ? 'bg-surface-sunken' : 'bg-surface-2',
-                  /* EN FICHES l'en-tête est une CARTE posée sur le fond de la
-                     page : il lui faut sa bordure et ses coins. AU TABLEAU il
-                     occupe une rangée entre deux filets, dans une boîte qui a
-                     déjà les siens — l'y peindre ferait une carte dans une
-                     carte, avec deux bordures à trois pixels l'une de l'autre. */
-                  !auTableau && 'rounded-lg border border-divider',
-                )}
-              >
-                <div
-                  className={cn(
-                    'flex gap-3',
-                    /* UNE SEULE LIGNE AU TABLEAU, EMPILÉ EN FICHES.
-
-                       Premier jet : la même mise en page des deux côtés. À 1280
-                       la rangée de groupe fait 570 px de large, et la barre s'y
-                       étirait sur toute la longueur — un trait bleu plein qui se
-                       lit comme un SÉPARATEUR et non comme une mesure, pendant
-                       que le rapport « 5/5 » partait à l'autre bout de l'écran,
-                       à 400 px du nom qu'il qualifie.
-
-                       Au tableau, tout tient donc sur une ligne et la barre est
-                       BORNÉE, posée contre son rapport. En fiches la boîte fait
-                       moins de 320 px : rien n'y tient sur une ligne, et la
-                       barre pleine largeur y est juste. */
-                    auTableau ? 'items-center' : 'flex-col',
-                  )}
-                >
-                  <div className="flex min-w-0 flex-1 items-center gap-1">
-                    {/* LE CHEVRON AVANT LE LIBELLÉ, et une COLONNE de chevrons.
-
-                        Un immeuble VIDE n'en porte pas : il n'a aucune ligne à
-                        replier, et un chevron qui ne plie rien est une promesse
-                        fausse. Sa place est tenue par un vide de même largeur,
-                        pour que les noms des immeubles pleins et vides restent
-                        sur le même axe — la colonne survit à l'absence.
-
-                        Le TITRE est le déclencheur, pas une zone à côté de lui :
-                        c'est le motif d'accordéon accessible, `<h3><button
-                        aria-expanded>`. Les gestes de correction et de retrait
-                        restent HORS de ce bouton — un bouton dans un bouton
-                        n'est pas du HTML valide, et ils ne replient rien. */}
-                    {vide ? (
-                      <span aria-hidden="true" className="size-11 shrink-0" />
-                    ) : (
-                      <button
-                        type="button"
-                        aria-expanded={!replie}
-                        /* CE QUE LE BOUTON COMMANDE, et pas seulement son état.
-                           `aria-expanded` dit « ouvert » ou « fermé » sans dire
-                           de quoi ; `aria-controls` désigne le bloc de rangées
-                           de CE groupe, que la primitive identifie de son côté
-                           depuis la même clé. */
-                        aria-controls={auTableau ? idDuGroupe(id) : undefined}
-                        aria-label={
-                          replie
-                            ? t('app.portfolio.expandBuilding', { name: b?.name ?? '' })
-                            : t('app.portfolio.collapseBuilding', { name: b?.name ?? '' })
-                        }
-                        onClick={() => basculerLeRepli(id)}
-                        className="inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted hover:bg-surface hover:text-ink"
-                      >
-                        <Icon
-                          name="chevronRight"
-                          size={15}
-                          /* LE MÊME GLYPHE QUI TOURNE, et non deux glyphes.
-                             Un chevron qui pivote garde son identité d'un état à
-                             l'autre — deux dessins différents se lisent comme
-                             deux commandes différentes. `motion-safe` : la
-                             rotation ne s'anime que si le lecteur l'accepte. */
-                          className={cn(
-                            'motion-safe:transition-transform motion-safe:duration-150',
-                            !replie && 'rotate-90',
-                          )}
-                        />
-                      </button>
-                    )}
-                    {/* LA TUILE D'IMMEUBLE EST PARTIE, et ce n'est pas une
-                        économie de pixels.
-
-                        Elle ne distinguait RIEN : tous les groupes de cette liste
-                        sont des immeubles, et une icône qui ne varie jamais
-                        n'apprend rien à personne. `User List Accordion`
-                        (cnippet.dev) met un avatar en tête de ligne parce que ses
-                        membres diffèrent ; ici l'image était constante.
-
-                        Elle coûtait deux glyphes AVANT le nom — la tuile puis le
-                        chevron — dont un seul commande quelque chose. Le chevron
-                        reste seul, et c'est lui qu'on cherche quand on veut
-                        replier. */}
-                    <div className="min-w-0">
-                      {/* LE NOM PORTE LE RANG DE TITRE, et c'est ce que la carte
-                          ne pouvait pas faire : un intitulé de `StatCard` est un
-                          `<p>`. Groupée, la liste devient une STRUCTURE, et un
-                          lecteur d'écran doit pouvoir sauter d'immeuble en
-                          immeuble par les titres. */}
-                      {/* AUCUNE COUPE : `truncate` donnait « Résidence Bonamo… »
-                          à 375 px, `line-clamp-2` a coupé 282 px sur 70 offerts.
-                          La carte clampait parce qu'une grille doit aligner
-                          quatre tuiles ; un en-tête de groupe n'aligne rien. */}
-                      <h3 className="font-medium text-ink hyphens-auto break-words">
-                        {b?.name}
-                      </h3>
-                      <p className="text-body text-muted">
-                        {b?.district}
-                        {/* CE QUE LE « 0/0 » NE DIT PAS. Le rapport est exact et
-                            muet : il faut savoir le lire pour comprendre qu'il
-                            n'y a pas encore de logement, là où la phrase le dit.
-                            C'est la seule chose que la bande de pied ajoute au
-                            texte — le reste, elle le dit en teinte. */}
-                        {vide ? ` · ${t('app.portfolio.buildingEmpty')}` : ''}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div
-                    className={cn(
-                      'flex shrink-0 items-center gap-3',
-                      !auTableau && 'w-full justify-between',
-                    )}
-                  >
-                    {/* CE QUE L'IMMEUBLE RAPPORTE, avant ce qu'il remplit.
-
-                        L'en-tête portait l'occupation et la barre — jamais
-                        l'argent — sur l'écran d'un propriétaire. La somme est
-                        celle des loyers des lots OCCUPÉS : c'est ce qui est
-                        appelé ce mois-ci, pas ce que l'immeuble vaudrait plein.
-                        Le manque à gagner des lots vides se lit sur leurs
-                        lignes, où la colonne Loyer dit « attendu ».
-
-                        Masquée sous `sm` : la boîte y fait moins de 320 px et le
-                        montant y prendrait la place du rapport, qui est la
-                        mesure de cet écran. */}
-                    <span className="numeric hidden text-body text-muted sm:inline">
-                      {t('app.portfolio.buildingRent', {
-                        amount: money(loyerDe(id), { compact: true }),
-                      })}
-                    </span>
-                    <span className="numeric font-medium">{`${occ}/${total}`}</span>
-                    {/* LA BARRE CONTRE SON RAPPORT au tableau — 96 px, la
-                        largeur d'une mesure, pas d'un séparateur. Elle SITUE
-                        l'immeuble qu'on lit ; elle ne compare plus rien puisque
-                        les en-têtes ne s'alignent pas comme s'alignait la
-                        grille de cartes. `hideValue` : le rapport est écrit en
-                        chiffres à trois pixels de là. */}
-                    {auTableau ? (
-                      <div className="w-24">
-                        <ProgressBar
-                          value={tauxDe(occ, total)}
-                          label={t('app.portfolio.occupancy', { occupied: occ, total })}
-                          hideLabel
-                          hideValue
-                        />
-                      </div>
-                    ) : null}
-                    {/* LES DEUX ISSUES DE L'IMMEUBLE, SOUS LES MÊMES TROIS POINTS
-                        QUE CELLES DE SES LIGNES.
-
-                        Elles étaient deux icônes à plat quand les lignes venaient
-                        de passer au menu : deux idiomes d'action dans la même
-                        bande verticale, à quelques pixels l'un de l'autre. La
-                        différence de forme n'encodait rien — ni l'objet visé, ni
-                        la gravité — elle disait seulement que l'écran avait été
-                        fini en deux fois.
-
-                        Six commandes de moins allumées en permanence, et une
-                        seule grammaire : trois points, on ouvre, on choisit.
-
-                        LES CONDITIONS NE CHANGENT PAS. Corriger reste toujours
-                        offert — renommer n'emporte ni bail ni somme, et c'est
-                        précisément sur un immeuble PLEIN que ça sert. Supprimer
-                        reste FERMÉ tant qu'il porte des logements, et son entrée
-                        dit le motif avec le compte : un geste absent du menu ne
-                        s'explique pas. */}
-                    <MenuDeDebordement
-                      libelle={t('app.portfolio.buildingActions', { name: b?.name ?? '' })}
-                    >
-                      <MenuElement
-                        icone="sliders"
-                        onClick={() => b && setImmeubleACorriger(b)}
-                        nomAccessible={t('app.portfolio.editBuilding', { name: b?.name ?? '' })}
-                      >
-                        {t('app.tenants.edit')}
-                      </MenuElement>
-                      <MenuElement
-                        icone="close"
-                        onClick={total === 0 && b ? () => setASupprimer(b) : undefined}
-                        nomAccessible={
-                          total === 0
-                            ? t('app.portfolio.deleteBuilding', { name: b?.name ?? '' })
-                            : t('app.portfolio.deleteBuildingBlocked', {
-                                name: b?.name ?? '',
-                                count: total,
-                              })
-                        }
-                      >
-                        {t('app.portfolio.remove')}
-                      </MenuElement>
-                    </MenuDeDebordement>
-                  </div>
-                </div>
-                {/* EN FICHES SEULEMENT : la boîte fait moins de 320 px, la barre
-                    y prend toute la largeur sous le nom, où elle situe
-                    l'immeuble qu'on est en train de lire. */}
-                {auTableau ? null : (
-                  <div className="mt-2">
-                    <ProgressBar
-                      value={tauxDe(occ, total)}
-                      label={t('app.portfolio.occupancy', { occupied: occ, total })}
-                      hideLabel
-                      hideValue
-                    />
-                  </div>
-                )}
-              </div>
-            )
-          },
+          enTete: (id, _lignes, forme) => enTeteDImmeuble(id, forme),
         }}
         empty={
           /* Deux absences, deux messages. Un parc sans aucun logement n'a pas
@@ -1281,6 +1459,7 @@ export function Portfolio() {
           },
         ]}
       />
+      )}
       </div>
     </>
   )
@@ -1337,7 +1516,35 @@ function PortfolioSkeleton() {
           ))}
         </div>
 
-        <SkeletonTable fiches />
+        {/* Deux formes, comme l'écran chargé : des fiches sous `lg` (celles de
+            `SkeletonTable`), une carte d'immeuble et sa grille de fiches au-delà.
+            Un squelette de tableau annoncerait une forme qui ne vient plus. */}
+        <div className="lg:hidden">
+          <SkeletonTable fiches />
+        </div>
+        <div aria-hidden="true" className="hidden flex-col gap-4 lg:flex">
+          {[0, 1].map((immeuble) => (
+            <Card key={immeuble} flush>
+              <div className="flex items-center justify-between gap-4 px-4 py-3">
+                <Skeleton line="body" className="w-56" />
+                <Skeleton line="body" className="w-40" />
+              </div>
+              <div className={GRILLE_DES_FICHES}>
+                {[0, 1, 2].map((fiche) => (
+                  <div key={fiche} className="rounded-lg border border-divider p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <Skeleton line="body" className="w-10" />
+                      <Skeleton line="body" className="w-16" />
+                    </div>
+                    <Skeleton line="body" className="mt-3 w-3/5" />
+                    <Skeleton line="body" className="mt-1.5 w-1/2" />
+                    <Skeleton line="body" className="mt-1.5 w-2/5" />
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ))}
+        </div>
       </SkeletonRegion>
     </>
   )

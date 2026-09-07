@@ -24,7 +24,8 @@ describe('la liste du parc nomme les immeubles', () => {
     await screen.findByRole('heading', { level: 1 })
     await attendreLeChargement()
 
-    const table = screen.getByRole('table')
+    // Le nom vit en tête de la carte d'immeuble, plus dans une colonne.
+    const table = screen.getByRole('main')
     // Le NOM, sous un en-tête qui dit « Immeuble ».
     expect(within(table).getAllByText('Immeuble Akwa Nord').length).toBeGreaterThan(0)
     // Et le quartier reste, en second : il situe sans tenir la place du nom.

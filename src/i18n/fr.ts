@@ -955,8 +955,6 @@ export const fr = {
        */
       subtitle: '{buildings}, {units}. Le statut porte sur le mois affiché.',
       // Aucun logement du tout : ce n'est pas une recherche infructueuse.
-      collapseBuilding: 'Replier {name}',
-      expandBuilding: 'Déplier {name}',
       buildingEmpty: 'aucun logement',
       /* Le nom du DÉCLENCHEUR du menu : trois points ne se prononcent pas, et
          « Actions » seul ne dirait pas de quelle ligne. */
@@ -1056,6 +1054,15 @@ export const fr = {
          POURQUOI elles le sont. */
       nothingDue: 'Rien à percevoir',
       noTenant: 'Aucun locataire',
+      /* Le geste d'une fiche VACANTE, sur la carte même : la modale est celle
+         des Locataires, ouverte sur ce logement seul. */
+      assignTenant: 'Attribuer un locataire',
+      /* Ce que la fiche dit en plus, seulement quand c'est vrai. */
+      sinceLease: 'depuis {date}',
+      openWorks: '{count} chantiers en cours',
+      openWorks_one: '{count} chantier en cours',
+      depositHeld: 'Caution {amount}',
+      paidOfRent: '{paid} reçus sur {rent}',
       exportPark: 'Exporter le parc',
       occupancy: '{occupied}/{total} occupées',
       filterAll: 'Toutes',

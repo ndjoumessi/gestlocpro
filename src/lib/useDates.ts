@@ -5,6 +5,7 @@ import {
   formatFullDate,
   formatMonthShort,
   formatMonthYear,
+  formatMonthYearInline,
   formatRelative,
 } from './dates'
 import type { DateParts, RelativeStamp } from '@/data/portfolio'
@@ -25,6 +26,8 @@ export function useDates() {
       tag: dateLocale,
       monthYear: (d: Pick<DateParts, 'year' | 'month'>) =>
         formatMonthYear(d.year, d.month, dateLocale),
+      monthYearInline: (d: Pick<DateParts, 'year' | 'month'>) =>
+        formatMonthYearInline(d.year, d.month, dateLocale),
       dayMonth: (d: DateParts) => formatDayMonth(d.year, d.month, d.day, dateLocale),
       fullDate: (d: DateParts) => formatFullDate(d.year, d.month, d.day, dateLocale),
       monthShort: (d: Pick<DateParts, 'year' | 'month'>) =>

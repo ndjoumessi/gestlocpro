@@ -41,8 +41,11 @@ function enTete(nom: string) {
 
 /** La rangée du logement portant ce libellé. */
 function rangee(unite: string) {
-  const ligne = within(screen.getByRole('table'))
-    .getAllByRole('row')
+  // Le parc sur bureau est une fiche par logement (`parcEnFiches.test.tsx`),
+  // plus une rangée de tableau : la fiche est celle qui porte le lien du logement.
+  const ligne = screen
+    .getAllByRole('listitem')
+    .filter((li) => li.hasAttribute('data-fiche-logement'))
     .find((r) => within(r).queryByRole('link', { name: new RegExp(`\\b${unite}\\b`) }))
   if (!ligne) throw new Error(`Aucune rangée pour le logement ${unite}`)
   return ligne
