@@ -481,8 +481,36 @@ export function Deposits() {
               header: '',
               render: (d) => (
                 <div className="flex items-center justify-end gap-2">
+                  {/*
+                    SECONDAIRE, ET LA RÈGLE VIENT DE `Works.tsx`, MESURÉE.
+
+                    « Ce bouton était le seul du produit à porter la variante
+                    PRIMAIRE à l'intérieur d'une liste » — relevé le
+                    2026-08-30 en comptant les fonds pleins de la marque, et
+                    corrigé là-bas. Ce registre en portait DEUX, un par caution
+                    en arbitrage, et mon lot du matin les a déplacés dans une
+                    colonne ÉPINGLÉE au bord droit : plus sonores, pas moins.
+                    Le compte grandit avec la donnée — un parc réel a autant de
+                    cautions à arbitrer que de baux qui se terminent.
+
+                    CE QUI SIGNALE DÉJÀ CETTE RANGÉE n'est pas le bouton :
+                    c'est la pastille ambre « En cours d'arbitrage », faite
+                    pour ça, et qui reste. Le bleu ajoutait un second signal au
+                    même endroit, ce qui n'en fait pas un plus fort.
+
+                    ET LA GRAVITÉ EST PORTÉE PLUS LOIN : arbitrer ouvre une
+                    modale de confirmation, et le message qui suit offre de
+                    défaire — l'annulation « n'expire pas », dit ce fichier
+                    quelques lignes plus haut. C'est l'irréversible qui mérite
+                    du bleu, et il n'y en a pas ici.
+                  */}
                   {d.status === 'settling' && canSettle && (
-                    <Button size="sm" icon="clipboard" onClick={() => setSettling(d)}>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon="clipboard"
+                      onClick={() => setSettling(d)}
+                    >
                       {t('app.deposits.settle')}
                     </Button>
                   )}

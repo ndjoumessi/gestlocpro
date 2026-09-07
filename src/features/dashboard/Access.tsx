@@ -95,7 +95,17 @@ function memePersonne(a: string | null | undefined, b: string | null | undefined
 const PLAFOND_DE_NOMS = 3
 
 const GRILLE_DES_FICHES_DE_MEMBRE =
-  'grid grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] gap-3 px-4 pb-4'
+  /* `items-start` : SANS LUI, la grille étire chaque fiche d'une rangée à la
+     hauteur de la plus haute. Mesuré à 1660 px : 111 px de blanc entre
+     l'adresse d'Arsène et sa ligne « Membre depuis », contre 12 px chez Diane,
+     dont la phrase de périmètre fait trois lignes. L'alignement que cela
+     achetait ne vaut rien ici — ces fiches n'ont pas la même STRUCTURE, seul
+     un gestionnaire porte un périmètre, donc il n'y a aucune colonne de faits
+     à aligner d'une fiche à l'autre. C'est ce qui les distingue des fiches de
+     locataire, où quatre faits occupent les mêmes cases. Un bord bas irrégulier
+     coûte moins qu'une fiche au tiers vide, qui se lit comme une fiche à qui il
+     manque quelque chose. */
+  'grid grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] items-start gap-3 px-4 pb-4'
 
 function replier(noms: string[], t: ReturnType<typeof useT>) {
   if (noms.length <= PLAFOND_DE_NOMS) return noms.join(', ')
@@ -603,11 +613,9 @@ export function Access() {
               </span>
             )}
 
-            {/* `mt-auto` COLLE LA DATE AU BAS DE LA TUILE, et les gestes sous
-                elle : sans cela, une fiche sans périmètre remonterait ses
-                boutons de trois lignes et la rangée cesserait de s'aligner —
-                le défaut même qu'on vient de retirer au tableau. */}
-            <p className="eyebrow mt-auto text-muted">
+            {/* La date suit le contenu, elle ne descend plus le chercher : voir
+                `items-start` sur la grille, et les 111 px que `mt-auto` creusait. */}
+            <p className="eyebrow text-muted">
               {t('app.access.since')} · {d.fullDate(enParties(m.since))}
             </p>
             {gestes}
