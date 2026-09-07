@@ -414,7 +414,28 @@ interface PortfolioContextValue {
    * et c'est voulu — on relance l'appel après avoir ajouté un locataire en
    * cours de mois.
    */
-  callRent: (periodStart: string) => Promise<number>
+  /**
+   * TROIS ISSUES ET NON UN NOMBRE, et c'est un correctif, pas un raffinement.
+   *
+   * `callRent` rendait un `number`, et TROIS chemins y écrivaient zéro : le
+   * serveur qui n'a rien à appeler, l'absence de parc — aucune requête —, et
+   * l'ÉCHEC. L'écran lisait `> 0` et racontait les trois comme un succès
+   * tranquille : « Les loyers de ce mois ont déjà été appelés ».
+   *
+   * Trouvé en production le 2026-09-07 : un clic, ce message, et aucune requête
+   * `POST` dans les journaux de l'hébergeur ni dans ceux de l'application.
+   *
+   * Le troisième cas est celui qui coûte. Un bailleur qui perd le réseau au
+   * mauvais moment est informé que sa facturation est faite ; il ne recliquera
+   * pas ; le mois suivant aucun locataire n'a d'échéance, donc aucun n'est en
+   * retard — et toute la dette du produit repose là-dessus.
+   *
+   * La forme est celle de `serveFormalNotice`, juste en dessous : ce produit
+   * sait déjà distinguer « fait », « rien à faire ici » et « raté ».
+   */
+  callRent: (
+    periodStart: string,
+  ) => Promise<{ issue: 'appele'; emises: number } | { issue: 'demonstration' } | { issue: 'echec' }>
   /** Met en demeure. Droit du seul propriétaire, motif obligatoire. */
   serveFormalNotice: (
     leaseId: string,
@@ -1848,14 +1869,22 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   )
 
   const callRent = useCallback(
-    async (periodStart: string): Promise<number> => {
-      if (!parkId) return 0
+    async (
+      periodStart: string,
+    ): Promise<{ issue: 'appele'; emises: number } | { issue: 'demonstration' } | { issue: 'echec' }> => {
+      /* SANS PARC, AUCUNE REQUÊTE NE PART — et c'est ce que l'appelant doit
+         pouvoir dire. Rendre zéro le faisait parler d'un mois « déjà appelé »
+         qu'aucun serveur n'avait jamais vu. */
+      if (!parkId) return { issue: 'demonstration' }
       try {
         const { issued } = await api.callRent<{ issued: number }>(parkId, periodStart)
-        return issued
+        return { issue: 'appele', emises: issued }
       } catch (erreur) {
+        /* `signalerEchec` a déjà annoncé la panne : l'appelant se tait plutôt
+           que d'ajouter une seconde phrase par-dessus. Ce qu'il ne doit SURTOUT
+           pas faire, c'est annoncer un succès. */
         signalerEchec(erreur)
-        return 0
+        return { issue: 'echec' }
       }
     },
     [parkId, signalerEchec],

@@ -1194,6 +1194,10 @@ export const fr = {
       rentCalled: '{count} échéances émises pour ce mois',
       rentCalled_one: '1 échéance émise pour ce mois',
       rentAlreadyCalled: 'Les loyers de ce mois ont déjà été appelés',
+      /* DIRE CE QU'ON NE FAIT PAS, comme `noticeDemo` : « déjà appelés » y
+         serait faux — la démonstration n'appelle rien et n'a rien à appeler. */
+      rentCallDemo:
+        'La démonstration n’appelle aucun loyer : il faut un parc réel pour émettre des échéances.',
       remind: 'Relancer les retards',
       remindTitle: 'Relancer {count} locataires en retard ?',
       remindTitle_one: 'Relancer 1 locataire en retard ?',

@@ -280,12 +280,25 @@ export function Payments() {
   const appelerLesLoyers = async () => {
     const maintenant = new Date()
     const mois = `${maintenant.getFullYear()}-${String(maintenant.getMonth() + 1).padStart(2, '0')}-01`
-    const emises = await callRent(mois)
+    const resultat = await callRent(mois)
+
+    /* LA PHRASE SUIT CE QUI A EU LIEU — la règle que la mise en demeure écrit
+       déjà quelques centaines de lignes plus bas.
+
+       L'ÉCHEC SE TAIT ICI : `signalerEchec` a déjà annoncé la panne, et
+       ajouter « déjà appelés » par-dessus dirait à un bailleur que sa
+       facturation est faite alors qu'elle a raté. C'était le défaut, relevé en
+       production le 2026-09-07 sur un clic dont aucune requête n'est partie. */
+    if (resultat.issue === 'echec') return
+    if (resultat.issue === 'demonstration') {
+      notify(t('app.payments.rentCallDemo'), { tone: 'neutral' })
+      return
+    }
     notify(
-      emises > 0
-        ? t('app.payments.rentCalled', { count: emises })
+      resultat.emises > 0
+        ? t('app.payments.rentCalled', { count: resultat.emises })
         : t('app.payments.rentAlreadyCalled'),
-      { tone: emises > 0 ? 'ok' : 'neutral' },
+      { tone: resultat.emises > 0 ? 'ok' : 'neutral' },
     )
   }
 

@@ -850,6 +850,7 @@ export const en: Dictionary = {
       rentCalled: '{count} charges issued for this month',
       rentCalled_one: '1 charge issued for this month',
       rentAlreadyCalled: 'This month’s rent has already been issued',
+      rentCallDemo: 'The demo issues no rent: real charges need a real portfolio.',
       remind: 'Chase arrears',
       remindTitle: 'Chase {count} tenants in arrears?',
       remindTitle_one: 'Chase 1 tenant in arrears?',
