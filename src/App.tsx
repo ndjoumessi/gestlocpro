@@ -1,11 +1,11 @@
 import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import { Landing } from './routes/Landing'
+import { KitchenSink } from './routes/KitchenSink'
+import { SignUp } from './routes/SignUp'
 import { Login } from './routes/Login'
 import { ForgotPassword } from './routes/ForgotPassword'
 import { ResetPassword } from './routes/ResetPassword'
-import { SignUp } from './routes/SignUp'
-import { KitchenSink } from './routes/KitchenSink'
 import { NotFound } from './routes/NotFound'
 import { useT } from './i18n/I18nProvider'
 import { FrontiereDErreur } from './components/feedback/FrontiereDErreur'
@@ -61,6 +61,7 @@ export function chargerEspaceApplicatif() {
 }
 
 const EspaceApplicatif = lazy(chargerEspaceApplicatif)
+
 
 /**
  * Le repli du temps de téléchargement, PAS un squelette de données.
@@ -145,7 +146,27 @@ export function App() {
           }
         />
 
-        <Route path="/kitchen-sink" element={<KitchenSink />} />
+        {/*
+          LE KITCHEN-SINK NE PART PAS EN PRODUCTION, et le dépôt le disait déjà
+          deux fois avant ce lot : `mesure-ui` l'exclut de son balayage —
+          « personne ne l'ouvre », « elle déborde à toutes les largeurs, ce qui
+          n'apprend rien », six minutes de balayage sur huit pour garder ce que
+          nul n'utilise — et l'inventaire des routes ne le compte pas.
+
+          Il coûtait pourtant 12 793 octets à CHAQUE visiteur, analysés avant
+          que la vitrine réponde : c'est une planche de référence des
+          composants, elle importe donc presque tous, et elle les tirait dans
+          le paquet d'entrée que la page d'accueil charge.
+
+          `import.meta.env.DEV` et non un morceau paresseux : détaché, il
+          restait DEUX consommateurs dynamiques des mêmes primitives, et Rollup
+          en extrayait un morceau partagé de trois kilo-octets que `/demo`
+          devait alors demander — un aller-retour de 300 à 800 ms pour 3 Ko,
+          exactement ce que `poids-ecrans` refuse. Mesuré, refusé, et voici
+          l'autre voie : la page reste entière en développement, où on la
+          consulte, et n'existe pas là où personne ne l'ouvre.
+        */}
+        {import.meta.env.DEV && <Route path="/kitchen-sink" element={<KitchenSink />} />}
         {/* Rendait la landing : une adresse fautive passait alors pour la page
             d'accueil, sans que rien ne signale l'erreur. */}
           <Route path="*" element={<NotFound />} />
