@@ -3899,7 +3899,41 @@ parksRouter.get(
   exigerRole('owner'),
   async (req: Request, res: Response) => {
     const { parkId } = req.adhesion!
-    const curseur = z.string().datetime().optional().parse(req.query.avant)
+    /**
+     * ═══ LE CURSEUR PORTE DEUX CHAMPS, ET IL A FALLU EN PERDRE UNE LIGNE ═══
+     *
+     * Il ne portait que `createdAt`, la page suivante demandait
+     * `createdAt < curseur`, et l'ordre est `createdAt desc`. Deux événements
+     * qui partagent la MÊME milliseconde se retrouvaient donc à cheval sur la
+     * frontière : le premier fermait la page, le second était écarté par le
+     * `<` strict. Il n'apparaissait sur AUCUNE page — et le registre se
+     * terminait proprement, avec une ligne de moins.
+     *
+     * MESURÉ : cent un événements dont les deux plus anciens sont ex æquo, la
+     * pagination en rend CENT. Sur l'écran qu'on ouvre pour savoir qui a fait
+     * quoi, une ligne qui s'évapore sans trace est le pire défaut possible.
+     *
+     * `id` DÉPARTAGE, parce qu'il est unique et que l'ordre s'y appuie aussi.
+     * La comparaison devient lexicographique sur le couple : soit la date est
+     * strictement antérieure, soit elle est égale ET l'identifiant est plus
+     * petit. C'est la pagination par curseur telle qu'elle se fait, et le `<=`
+     * naïf ne l'aurait pas remplacée — il aurait rendu toutes les lignes puis
+     * REPRIS la même page indéfiniment.
+     *
+     * L'ANCIEN FORMAT RESTE ACCEPTÉ : une page ouverte pendant un déploiement
+     * tient un curseur sans `|`, et le refuser lui rendrait une erreur au
+     * milieu d'un défilement. Elle retombe alors sur l'ancien comportement pour
+     * ce clic-là — la tolérance est bornée à ça, et le client, qui ne fait que
+     * renvoyer ce qu'il a reçu, passe au format complet dès la page suivante.
+     */
+    const brut = z.string().max(120).optional().parse(req.query.avant)
+    const curseur = (() => {
+      if (!brut) return null
+      const [date, id] = brut.split('|')
+      const quand = new Date(date!)
+      if (Number.isNaN(+quand)) return null
+      return { quand, id: id ?? null }
+    })()
 
     /* CENT PAR PAGE, et le client demande la suite s'il la veut. Un registre
        d'un an sur un parc actif se compte en milliers de lignes : les rendre
@@ -3908,8 +3942,25 @@ parksRouter.get(
     const TAILLE = 100
 
     const evenements = await prisma.auditEvent.findMany({
-      where: { parkId, ...(curseur ? { createdAt: { lt: new Date(curseur) } } : {}) },
-      orderBy: { createdAt: 'desc' },
+      where: {
+        parkId,
+        ...(curseur
+          ? curseur.id
+            ? {
+                OR: [
+                  { createdAt: { lt: curseur.quand } },
+                  { createdAt: curseur.quand, id: { lt: curseur.id } },
+                ],
+              }
+            : { createdAt: { lt: curseur.quand } }
+          : {}),
+      },
+      /* L'ORDRE SECONDAIRE N'EST PAS DÉCORATIF : sans lui, deux ex æquo
+         sortiraient dans un ordre que rien ne fixe, et le curseur composé
+         désignerait une frontière que la requête suivante ne retrouverait
+         pas. Le tri et le curseur doivent porter sur les MÊMES champs, dans
+         le même sens. */
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: TAILLE + 1,
       select: {
         id: true,
@@ -3939,7 +3990,9 @@ parksRouter.get(
       })),
       /* La borne de la page suivante, `null` quand il n'y en a pas. Le client
          n'a donc rien à calculer, et ne peut pas se tromper de curseur. */
-      suivant: suite ? page[page.length - 1]!.createdAt.toISOString() : null,
+      suivant: suite
+        ? `${page[page.length - 1]!.createdAt.toISOString()}|${page[page.length - 1]!.id}`
+        : null,
     })
   },
 )
