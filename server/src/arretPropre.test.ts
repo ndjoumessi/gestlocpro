@@ -2,7 +2,9 @@ import { spawn } from 'node:child_process'
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { createServer } from 'node:http'
 import { describe, expect, it } from 'vitest'
+import { installerArretPropre } from './arretPropre.js'
 
 /**
  * L'ARRÊT PROPRE N'A JAMAIS EU LIEU EN PRODUCTION.
@@ -116,4 +118,93 @@ describe('l’arrêt propre du serveur', () => {
        sorti de lui-même. C'est ce code que Railway affiche en « CRASHED ». */
     expect(code, 'une relève ne doit pas s’inscrire comme un crash').toBe(0)
   }, 30_000)
+})
+
+/**
+ * ET LA REQUÊTE EN VOL, MESURÉE PLUTÔT QUE DÉDUITE.
+ *
+ * Le lot précédent a prouvé que le signal ATTEINT Node — journaux de
+ * production à l'appui, un conteneur qui sort sans une ligne d'erreur. Il a
+ * laissé l'autre moitié en réserve, écrite telle quelle : « je n'ai pas mesuré
+ * qu'une requête EN COURS survive effectivement à la relève ; que les dix
+ * secondes de grâce servent réellement reste déduit du code, pas observé ».
+ *
+ * ═══ DEUX MOITIÉS, DEUX INSTRUMENTS ═══
+ *
+ * La LIVRAISON du signal par le système d'exploitation se mesure en lançant la
+ * vraie chaîne — c'est le cas du haut de ce fichier, et la production l'a
+ * confirmé. Ce que le signal DÉCLENCHE une fois arrivé se mesure ici, en
+ * l'émettant nous-mêmes : `process.emit` ne prouve pas la livraison, et ce
+ * n'est pas ce qu'on lui demande. Chaque instrument à sa moitié ; les
+ * confondre donnerait un cas qui ne prouve ni l'une ni l'autre.
+ *
+ * ═══ LE SERVEUR EST UNE DOUBLURE, LE CODE D'ARRÊT EST LE VRAI ═══
+ *
+ * `installerArretPropre` est la fonction de production, appelée telle quelle.
+ * Ce qu'on remplace, c'est ce dont elle a besoin pour être observable : un
+ * serveur dont on choisit la lenteur — l'API réelle n'a aucune route qui dure
+ * assez pour qu'on glisse un signal dedans — et une sortie qu'on note au lieu
+ * de tuer le processus de test.
+ */
+describe('une requête en vol survit à la relève', () => {
+  it('rend sa réponse ENTIÈRE, et ne ferme qu’après elle', async () => {
+    const journal: string[] = []
+    const sorties: number[] = []
+
+    /* Trois cents millisecondes : assez long pour envoyer le signal AU MILIEU,
+       assez court pour que le cas ne pèse rien. */
+    const serveur = createServer((_, reponse) => {
+      journal.push('requête reçue')
+      setTimeout(() => {
+        reponse.writeHead(200, { 'content-type': 'text/plain' })
+        reponse.end('REPONSE_ENTIERE')
+        journal.push('réponse rendue')
+      }, 300)
+    })
+    await new Promise<void>((pret) => serveur.listen(0, pret))
+    const port = (serveur.address() as { port: number }).port
+
+    installerArretPropre(serveur, {
+      sortir: (code) => {
+        journal.push(`fermeture (code ${code})`)
+        sorties.push(code)
+      },
+      delaiDeGraceMs: 5_000,
+    })
+
+    const enVol = fetch(`http://127.0.0.1:${port}/`).then((r) => r.text())
+    /* On attend que le serveur ait REÇU la requête avant de signaler : signaler
+       avant la rendrait le cas trivial — il n'y aurait rien en vol à sauver. */
+    await new Promise<void>((atteint) => {
+      const guet = setInterval(() => {
+        if (journal.includes('requête reçue')) {
+          clearInterval(guet)
+          atteint()
+        }
+      }, 10)
+    })
+
+    process.emit('SIGTERM')
+
+    const corps = await enVol
+    expect(corps, 'la réponse a été coupée par la relève').toBe('REPONSE_ENTIERE')
+
+    /* L'ORDRE EST LA PREUVE, plus que le contenu : `close` ne rend la main
+       qu'après le dernier échange. Une fermeture qui précéderait la réponse
+       voudrait dire qu'on a coupé — et une transaction d'écriture s'y serait
+       coupée aussi. */
+    await new Promise<void>((ferme) => {
+      const guet = setInterval(() => {
+        if (sorties.length > 0) {
+          clearInterval(guet)
+          ferme()
+        }
+      }, 10)
+    })
+    expect(journal).toEqual(['requête reçue', 'réponse rendue', 'fermeture (code 0)'])
+    expect(sorties, 'une fermeture après attente sort par ZÉRO, pas par le repli').toEqual([0])
+
+    process.removeAllListeners('SIGTERM')
+    process.removeAllListeners('SIGINT')
+  }, 15_000)
 })
