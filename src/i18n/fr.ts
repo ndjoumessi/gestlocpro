@@ -1063,6 +1063,8 @@ export const fr = {
       openWorks_one: '{count} chantier en cours',
       depositHeld: 'Caution {amount}',
       paidOfRent: '{paid} reçus sur {rent}',
+      legendPosts: 'Sur chaque fiche : loyer · eau · électricité',
+      posts: 'Postes du mois',
       exportPark: 'Exporter le parc',
       occupancy: '{occupied}/{total} occupées',
       filterAll: 'Toutes',

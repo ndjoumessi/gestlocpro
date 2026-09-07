@@ -759,6 +759,8 @@ export const en: Dictionary = {
       openWorks_one: '{count} open work',
       depositHeld: 'Deposit {amount}',
       paidOfRent: '{paid} received of {rent}',
+      legendPosts: 'On each card: rent · water · electricity',
+      posts: 'Month’s items',
       exportPark: 'Export portfolio',
       occupancy: '{occupied}/{total} occupied',
       filterAll: 'All',

@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { useRole } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { DataTable, EmptyState } from '@/components/primitives/DataTable'
-import { JaugeDePoste, PaymentStatusPill, type PaymentStatus } from '@/components/primitives/StatusPill'
+import { PaymentStatusPill, type PaymentStatus } from '@/components/primitives/StatusPill'
+import { JaugesDePeriode, LegendeDesPostes } from './JaugesDePeriode'
 import { GroupeDeFiltres } from '@/components/controls/GroupeDeFiltres'
 import { StatCard } from '@/components/primitives/Charts'
 import { DeltaBadge } from '@/components/primitives/Badge'
@@ -28,7 +29,6 @@ import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
 import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
 import {
-  imputation,
   receiptDue,
   type Receipt,
   type Unit,
@@ -446,19 +446,11 @@ export function Payments() {
         pastille à expliquer.
       */}
       {periodes.length > 0 && (
-        <p className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-label text-muted">
-          <span>{t('app.payments.legendPosts')}</span>
-          {(['paid', 'partial', 'overdue'] as const).map((etat) => (
-            <span key={etat} className="flex items-center gap-1.5">
-              <JaugeDePoste etat={etat} />
-              {t(`app.payments.state.${etat}` as 'app.payments.state.paid')}
-            </span>
-          ))}
-          <span className="flex items-center gap-1.5">
-            <span aria-hidden="true">—</span>
-            {t('app.payments.outOfLease')}
-          </span>
-        </p>
+        <LegendeDesPostes
+          intitule={t('app.payments.legendPosts')}
+          suite={t('app.payments.outOfLease')}
+          className="mb-3"
+        />
       )}
 
       <DataTable<Unit>
@@ -949,32 +941,9 @@ function PaymentsSkeleton({ isTenant }: { isTenant: boolean }) {
 }
 
 /**
- * L'état d'une période, poste par poste.
- *
- * Trois pastilles — loyer, eau, électricité — et non un seul statut : c'est
- * précisément la distinction que l'écran ne savait pas faire. Un locataire qui
- * règle son loyer et laisse courir l'électricité n'est pas « en retard » au même
- * titre que celui qui n'a rien versé, et la démarche à engager n'est pas la
- * même.
- *
- * La couleur ne porte pas l'information toute seule : chaque cellule a un nom
- * accessible qui énonce les trois états en toutes lettres. Une grille de
- * pastilles vertes et rouges est illisible pour qui ne distingue pas les deux,
- * et c'est la règle que le dépôt applique déjà à l'entrée de navigation
- * courante.
- *
- * Ce nom tient au `role="img"` porté par chacune des deux cellules, et non au
- * seul `aria-label`. ARIA 1.2 INTERDIT de nommer le rôle `generic` — celui
- * qu'une balise sans rôle, ici un `<span>`, porte implicitement : un navigateur
- * conforme jette l'étiquette, et la cellule se lit vide puisque ses pastilles
- * sont `aria-hidden`. L'intention était juste, le mécanisme ne délivrait rien
- * et toute l'information restait dans la couleur. `img` est le rôle qui
- * convient : il accepte d'être nommé, et il rend son contenu présentationnel —
- * ce que ces glyphes sont déjà.
- *
- * La garde interroge donc `getByRole`, jamais `getByLabelText` : celui-ci lit
- * l'attribut sans passer par le calcul du nom accessible, et réussissait sur
- * une cellule que le navigateur laissait muette.
+ * La cellule d'une période : « hors bail » quand la période n'existe pas pour
+ * ce bail, et sinon les trois jauges partagées avec le parc — voir
+ * `JaugesDePeriode`, qui porte la doctrine du composant et de son nom.
  */
 function CellulePeriode({ receipt, periode }: { receipt?: Receipt; periode: string }) {
   const t = useT()
@@ -993,42 +962,5 @@ function CellulePeriode({ receipt, periode }: { receipt?: Receipt; periode: stri
     )
   }
 
-  const regle = imputation(receipt)
-  /**
-   * Les postes nommés EN TOUTES LETTRES.
-   *
-   * Première rédaction : les intitulés de colonne du tableau du locataire, où
-   * l'électricité s'abrège en « Élec. » faute de largeur. Ici il ne s'agit pas
-   * d'une en-tête mais d'un nom accessible — la seule chose qu'un lecteur
-   * d'écran prononce de cette cellule. Une abréviation y est un mot de moins,
-   * pas une colonne de gagnée.
-   */
-  const postes = [
-    { cle: 'app.tenant.colRent', du: receipt.rentMinor, paye: regle.rent },
-    { cle: 'app.tenant.water', du: receipt.waterMinor, paye: regle.water },
-    { cle: 'app.tenant.power', du: receipt.powerMinor, paye: regle.power },
-  ] as const
-
-  const etat = (du: number, paye: number) =>
-    du === 0 || paye >= du ? 'paid' : paye > 0 ? 'partial' : 'overdue'
-
-
-  return (
-    <span
-      role="img"
-      className="flex items-center gap-1"
-      aria-label={`${periode} · ${postes
-        .map(
-          (p) =>
-            `${t(p.cle as 'app.tenant.colRent')} ${t(
-              `app.payments.state.${etat(p.du, p.paye)}` as 'app.payments.state.paid',
-            )}`,
-        )
-        .join(', ')}`}
-    >
-      {postes.map((p) => (
-        <JaugeDePoste key={p.cle} etat={etat(p.du, p.paye)} />
-      ))}
-    </span>
-  )
+  return <JaugesDePeriode receipt={receipt} periode={periode} />
 }

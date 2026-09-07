@@ -38,6 +38,7 @@ import { EditUnitModal } from './EditUnitModal'
 import { NewTenantModal } from './Tenants'
 import { MonthPicker } from '@/components/primitives/DatePicker'
 import { Card } from '@/components/primitives/Card'
+import { JaugesDePeriode, LegendeDesPostes } from './JaugesDePeriode'
 import { Badge } from '@/components/primitives/Badge'
 
 /* La grille des fiches d'un immeuble, NOMMÉE : le squelette l'annonce et
@@ -180,8 +181,28 @@ export function Portfolio() {
 
   const { units, buildings: BUILDINGS, buildingById, loading, removeBuilding, removeUnit, scoped } =
     usePortfolio()
-  // Les travaux et les cautions sont déjà chargés avec le parc : la fiche les dit.
-  const { works, deposits } = usePortfolio()
+  // Les travaux, les cautions et les échéances sont déjà chargés avec le parc :
+  // la fiche les dit.
+  const { works, deposits, receiptsForUnit } = usePortfolio()
+
+  /**
+   * L'ÉCHÉANCE DU MOIS AFFICHÉ, par logement.
+   *
+   * Le parc lot avait laissé les trois jauges en reste, « parce que le parc
+   * ne charge pas les échéances ». Il les chargeait : `chargerParc` est le
+   * même appel que Paiements, et `receiptsForUnit` tient l'historique entier
+   * du bail — le serveur ne borne au mois que le STATUT, pas l'historique. Un
+   * autre mois se lit donc sans nouvel appel, dans ce que le fournisseur
+   * porte déjà.
+   */
+  const periodeAffichee = useMemo(() => {
+    const [year, mois] = moisChoisi.split('-').map(Number)
+    return { year, month: mois - 1 }
+  }, [moisChoisi])
+  const echeanceDuMois = (unit: Unit) =>
+    receiptsForUnit(unit.id).find(
+      (r) => r.year === periodeAffichee.year && r.month === periodeAffichee.month,
+    )
 
   /**
    * LE PARC RELU AU MOIS DEMANDÉ — et seulement quand on en demande un autre.
@@ -778,6 +799,18 @@ export function Portfolio() {
                         hideValue
                       />
                     )}
+                    {/* LES TROIS POSTES DU MOIS AFFICHÉ — loyer · eau · électricité —
+                        par le composant de la grille des paiements, donc de la même
+                        forme que sa légende. Un partiel de loyer et une eau impayée
+                        n'appellent pas le même geste, et la pastille d'état ne sait
+                        pas le dire. Rien sans échéance : la pastille porte déjà
+                        « non appelé » ou « vacant ». */}
+                    {(() => {
+                      const echeance = echeanceDuMois(unit)
+                      return echeance ? (
+                        <JaugesDePeriode receipt={echeance} periode={d.monthYear(periodeAffichee)} />
+                      ) : null
+                    })()}
                     {(() => {
                       const chantiers = works.filter(
                         (w) => w.unitId === unit.id && w.status !== 'done',
@@ -1145,6 +1178,13 @@ export function Portfolio() {
 
       </div>
 
+      {/* LA LÉGENDE DES JAUGES, une fois, et seulement quand une fiche en porte :
+          sans échéance ce mois-ci, il n'y a pas de pastille à expliquer. Même
+          composant que la légende de Paiements — voir `JaugesDePeriode`. */}
+      {rows.some(echeanceDuMois) && (
+        <LegendeDesPostes intitule={t('app.portfolio.legendPosts')} className="mb-3" />
+      )}
+
       {/* `aria-busy` PENDANT LA RELECTURE, et rien d'autre.
 
           Le temps qu'un autre mois revienne, la table montre encore celui qu'on
@@ -1401,6 +1441,35 @@ export function Portfolio() {
                   ) : null}
                 </span>
               ),
+          },
+          {
+            /* SOUS `lg`, LES MÊMES JAUGES DANS LES FICHES. `serie` est le rôle
+               que `DataTable` rend en grille dans une fiche — celui des six
+               périodes de Paiements ; ici une seule colonne. Sans échéance,
+               un tiret nommé : « vacant » ou « non appelé », jamais un impayé. */
+            key: 'postes',
+            role: 'serie',
+            header: t('app.portfolio.posts'),
+            hideOnMobile: true,
+            render: (unit) => {
+              const echeance = echeanceDuMois(unit)
+              if (echeance) {
+                return <JaugesDePeriode receipt={echeance} periode={d.monthYear(periodeAffichee)} />
+              }
+              return (
+                <span
+                  role="img"
+                  className="text-muted"
+                  aria-label={`${d.monthYear(periodeAffichee)} · ${
+                    unit.status === 'vacant'
+                      ? t('app.portfolio.nothingDue')
+                      : t(`status.${unit.status}` as 'status.paid')
+                  }`}
+                >
+                  —
+                </span>
+              )
+            },
           },
           {
             key: 'geste',
