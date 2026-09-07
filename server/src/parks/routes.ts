@@ -26,6 +26,13 @@ import {
 import { leStockage } from '../stockage/stockage.js'
 import { PLAFOND_PAR_OBJET_OCTETS } from '../stockage/contrat.js'
 import { stockageLocalRouter } from '../stockage/routes.js'
+import {
+  ORDRE_DE_PAGE,
+  TAILLE_DE_PAGE,
+  bornesDuCurseur,
+  decouperLaPage,
+  lireCurseur,
+} from './curseurDePage.js'
 
 export const parksRouter = Router()
 
@@ -3900,68 +3907,25 @@ parksRouter.get(
   async (req: Request, res: Response) => {
     const { parkId } = req.adhesion!
     /**
-     * ═══ LE CURSEUR PORTE DEUX CHAMPS, ET IL A FALLU EN PERDRE UNE LIGNE ═══
+     * ═══ LE CURSEUR VIT DANS `curseurDePage`, ET C'EST LE POINT ═══
      *
-     * Il ne portait que `createdAt`, la page suivante demandait
-     * `createdAt < curseur`, et l'ordre est `createdAt desc`. Deux événements
-     * qui partagent la MÊME milliseconde se retrouvaient donc à cheval sur la
-     * frontière : le premier fermait la page, le second était écarté par le
-     * `<` strict. Il n'apparaissait sur AUCUNE page — et le registre se
-     * terminait proprement, avec une ligne de moins.
+     * Il ne portait ici que `createdAt`, et deux événements de la même
+     * milliseconde se retrouvaient à cheval sur la frontière : le premier
+     * fermait la page, le second était écarté par le `<` strict et
+     * n'apparaissait sur AUCUNE page. Mesuré : cent un événements, cent
+     * rendus, sur l'écran qu'on ouvre précisément pour savoir qui a fait quoi.
      *
-     * MESURÉ : cent un événements dont les deux plus anciens sont ex æquo, la
-     * pagination en rend CENT. Sur l'écran qu'on ouvre pour savoir qui a fait
-     * quoi, une ligne qui s'évapore sans trace est le pire défaut possible.
-     *
-     * `id` DÉPARTAGE, parce qu'il est unique et que l'ordre s'y appuie aussi.
-     * La comparaison devient lexicographique sur le couple : soit la date est
-     * strictement antérieure, soit elle est égale ET l'identifiant est plus
-     * petit. C'est la pagination par curseur telle qu'elle se fait, et le `<=`
-     * naïf ne l'aurait pas remplacée — il aurait rendu toutes les lignes puis
-     * REPRIS la même page indéfiniment.
-     *
-     * L'ANCIEN FORMAT RESTE ACCEPTÉ : une page ouverte pendant un déploiement
-     * tient un curseur sans `|`, et le refuser lui rendrait une erreur au
-     * milieu d'un défilement. Elle retombe alors sur l'ancien comportement pour
-     * ce clic-là — la tolérance est bornée à ça, et le client, qui ne fait que
-     * renvoyer ce qu'il a reçu, passe au format complet dès la page suivante.
+     * Le raisonnement ne vit plus ici. Il est écrit une fois, à côté, et
+     * `paginationParCurseur.test.ts` refuse toute pagination qui ne passerait
+     * pas par lui — parce que la prochaine liste qu'on paginera sera écrite par
+     * quelqu'un qui n'aura pas lu ce commentaire.
      */
-    const brut = z.string().max(120).optional().parse(req.query.avant)
-    const curseur = (() => {
-      if (!brut) return null
-      const [date, id] = brut.split('|')
-      const quand = new Date(date!)
-      if (Number.isNaN(+quand)) return null
-      return { quand, id: id ?? null }
-    })()
-
-    /* CENT PAR PAGE, et le client demande la suite s'il la veut. Un registre
-       d'un an sur un parc actif se compte en milliers de lignes : les rendre
-       toutes ferait payer à chaque ouverture d'écran une lecture que personne
-       ne fait défiler. */
-    const TAILLE = 100
+    const curseur = lireCurseur(z.string().max(120).optional().parse(req.query.avant))
 
     const evenements = await prisma.auditEvent.findMany({
-      where: {
-        parkId,
-        ...(curseur
-          ? curseur.id
-            ? {
-                OR: [
-                  { createdAt: { lt: curseur.quand } },
-                  { createdAt: curseur.quand, id: { lt: curseur.id } },
-                ],
-              }
-            : { createdAt: { lt: curseur.quand } }
-          : {}),
-      },
-      /* L'ORDRE SECONDAIRE N'EST PAS DÉCORATIF : sans lui, deux ex æquo
-         sortiraient dans un ordre que rien ne fixe, et le curseur composé
-         désignerait une frontière que la requête suivante ne retrouverait
-         pas. Le tri et le curseur doivent porter sur les MÊMES champs, dans
-         le même sens. */
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      take: TAILLE + 1,
+      where: { parkId, ...bornesDuCurseur(curseur) },
+      orderBy: ORDRE_DE_PAGE,
+      take: TAILLE_DE_PAGE + 1,
       select: {
         id: true,
         action: true,
@@ -3973,10 +3937,7 @@ parksRouter.get(
       },
     })
 
-    /* UNE LIGNE DE PLUS EST DEMANDÉE, PAS RENDUE : c'est elle qui dit s'il y a
-       une suite, sans un second appel de comptage sur une table qui s'allonge. */
-    const suite = evenements.length > TAILLE
-    const page = suite ? evenements.slice(0, TAILLE) : evenements
+    const { page, suivant } = decouperLaPage(evenements)
 
     res.json({
       decisions: page.map((e) => ({
@@ -3988,11 +3949,7 @@ parksRouter.get(
         at: e.createdAt.toISOString(),
         actor: e.actor?.fullName ?? null,
       })),
-      /* La borne de la page suivante, `null` quand il n'y en a pas. Le client
-         n'a donc rien à calculer, et ne peut pas se tromper de curseur. */
-      suivant: suite
-        ? `${page[page.length - 1]!.createdAt.toISOString()}|${page[page.length - 1]!.id}`
-        : null,
+      suivant,
     })
   },
 )
