@@ -14,6 +14,8 @@ import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
 import { NoteDePerimetre } from './NoteDePerimetre'
 import { StatusPill } from '@/components/primitives/StatusPill'
 import { Notice } from '@/components/primitives/Notice'
+import { GroupeDeFiltres } from '@/components/controls/GroupeDeFiltres'
+import { useTriDansLAdresse } from '@/lib/useTriDansLAdresse'
 import { Button } from '@/components/primitives/Button'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
@@ -189,6 +191,41 @@ export function Meters() {
   const missing = READINGS.filter((r) => r.waterCurrent === null || r.powerCurrent === null)
   const total = READINGS.reduce((sum, r) => sum + (montantRefacture(r) ?? 0), 0)
 
+  /*
+    LA TOURNÉE, COMME UNE LISTE ET NON COMME UNE PHRASE.
+
+    La note ambre annonce « 2 relevés manquants pour la période — A5 et C2 »
+    depuis un lot antérieur, et c'est le chiffre le plus actionnable de
+    l'écran : il ne demande pas une décision, il déclenche un DÉPLACEMENT.
+    Quelqu'un prend la route. Sur dix logements on lit les deux noms dans la
+    phrase et on les cherche à l'œil ; sur soixante, la liste des unités à
+    visiter EST ce qu'on vient chercher, et l'écran la calculait — `missing` —
+    sans jamais l'offrir comme une liste.
+
+    DEUX ÉTATS SEULEMENT, et c'est assez : un relevé est saisi ou il ne l'est
+    pas. Les options se dérivent de ce qui EXISTE, comme sur les sept autres
+    tris du produit — un parc entièrement relevé ne montre pas une pastille
+    « Relevé manquant 0 », qui promettrait une tournée vide.
+
+    ET DANS L'ADRESSE, pour la même raison que les autres : une tournée se
+    partage. « Voici ce qu'il reste à relever » est un lien qu'on envoie à qui
+    ira sur le terrain.
+  */
+  const etatsPresents = ([] as ('manquant' | 'saisi')[]).concat(
+    missing.length > 0 ? ['manquant'] : [],
+    READINGS.length - missing.length > 0 ? ['saisi'] : [],
+  )
+  const [triDesReleves, setTriDesReleves] = useTriDansLAdresse<'all' | 'manquant' | 'saisi'>(
+    'etat',
+    'all',
+    etatsPresents,
+  )
+  const estManquant = (r: MeterReading) => r.waterCurrent === null || r.powerCurrent === null
+  const relevesVisibles =
+    triDesReleves === 'all'
+      ? READINGS
+      : READINGS.filter((r) => (triDesReleves === 'manquant' ? estManquant(r) : !estManquant(r)))
+
   /**
    * L'écran affirmait « 2 relevés manquants — A3, B1 » sur des unités
    * inconnues du gestionnaire, et le nommait en jaune, ton d'une consigne. Un
@@ -362,9 +399,35 @@ export function Meters() {
         )}
       </Notice>
 
+      {/* SOUS LA NOTE, ET C'EST DÉLIBÉRÉ. La note dit le fait — « 2 relevés
+          manquants, A5 et C2 » — et la pastille en fait un geste. Placée
+          au-dessus, elle offrirait un tri avant d'avoir dit pourquoi on trie.
+          La barre ne paraît qu'à DEUX états présents : sur un parc entièrement
+          relevé, « Tous » seul à côté de « Relevé saisi » n'offre aucun choix. */}
+      {etatsPresents.length > 1 && (
+        <GroupeDeFiltres
+          libelle={t('app.meters.filterLabel')}
+          valeur={triDesReleves}
+          onChange={setTriDesReleves}
+          className="mb-4"
+          options={[
+            {
+              valeur: 'all' as 'all' | 'manquant' | 'saisi',
+              libelle: t('app.meters.filterAll'),
+              compte: READINGS.length,
+            },
+            ...etatsPresents.map((etat) => ({
+              valeur: etat as 'all' | 'manquant' | 'saisi',
+              libelle: etat === 'manquant' ? t('app.meters.missing') : t('app.meters.filterDone'),
+              compte: etat === 'manquant' ? missing.length : READINGS.length - missing.length,
+            })),
+          ]}
+        />
+      )}
+
       <DataTable<MeterReading>
         caption={t('app.meters.title')}
-        rows={READINGS}
+        rows={relevesVisibles}
         rowKey={(reading) => reading.unitId}
         fiches
         columns={[

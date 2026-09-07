@@ -1354,6 +1354,12 @@ export const fr = {
       rebilled: 'Refacturé',
       readAt: 'Relevé le',
       missing: 'Relevé manquant',
+      /* « TRIER PAR RELEVÉ » et non « par état » : sur cet écran l'état d'une
+         ligne EST son relevé — saisi ou pas —, et « état » se dispute déjà avec
+         les états des lieux, voisins dans la barre latérale. */
+      filterLabel: 'Trier par relevé',
+      filterAll: 'Tous',
+      filterDone: 'Relevé saisi',
       firstReading: 'Premier relevé',
       noPrice: 'Tarif non fixé',
       missingCount: '{count} relevés manquants pour la période',
