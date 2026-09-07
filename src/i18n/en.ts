@@ -1116,6 +1116,8 @@ export const en: Dictionary = {
       openedToast: 'Job opened · awaiting its quote',
       filterOrigin: 'Filter by origin',
       filterAll: 'All',
+      filterAllStatuses: 'All statuses',
+      filterStatus: 'Filter by status',
       filterReported: 'Reported',
       filterOpened: 'My initiative',
       totalCommitted: 'Total committed',

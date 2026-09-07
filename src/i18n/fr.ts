@@ -1572,6 +1572,15 @@ export const fr = {
        */
       filterOrigin: 'Trier par origine',
       filterAll: 'Toutes',
+      /* « TOUS LES ÉTATS » ET NON « TOUTES ». Cet écran porte DEUX tris côte
+         à côte depuis le lot du second axe, et le mot « Toutes » figurait
+         déjà sur la barre voisine : deux pastilles au libellé identique, à
+         quinze centimètres l'une de l'autre, dont l'une ne rend pas ce que
+         l'autre rend. L'`aria-label` du groupe les sépare pour un lecteur
+         d'écran ; rien ne les séparait pour l'œil. Le libellé dit donc
+         quel axe il relâche. */
+      filterAllStatuses: 'Tous les états',
+      filterStatus: 'Trier par état',
       filterReported: 'Signalées',
       filterOpened: 'À mon initiative',
       /* ENGAGÉ et non devisé : un devis proposé n'est pas une dépense, et

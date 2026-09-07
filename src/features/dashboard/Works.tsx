@@ -101,6 +101,12 @@ export function Works() {
    * une moitié est toujours vide.
    */
   const [origine, setOrigine] = useState<'all' | 'tenantReport' | 'ownerInitiative'>('all')
+  /* LE SECOND AXE, et c'est celui qu'on vient chercher. « Devis à arbitrer 1 »
+     est l'indicateur le plus actionnable de l'écran, et rien ne menait à ce
+     chantier-là ; l'origine dit d'où vient une demande, l'état dit ce qu'elle
+     attend de vous. Deux axes distincts, donc deux groupes nommés, jamais un
+     seul qui les mêlerait. */
+  const [etat, setEtat] = useState<WorkOrder['status'] | 'all'>('all')
   const [aChiffrer, setAChiffrer] = useState<WorkOrder | null>(null)
   const [aRepondre, setARepondre] = useState<WorkOrder | null>(null)
   const [montant, setMontant] = useState('')
@@ -129,8 +135,16 @@ export function Works() {
    * des interventions qu'il n'a pas le droit de lire.
    */
   const duPerimetre = isTenant ? works.filter((w) => isMine(w.unitId)) : works
-  const visible =
-    origine === 'all' ? duPerimetre : duPerimetre.filter((w) => w.origin === origine)
+  /* LES DEUX FILTRES SE COMPOSENT, et chaque compteur se lit SUR L'AUTRE AXE :
+     le compte d'une pastille d'état est celui des chantiers de l'origine
+     retenue, et réciproquement. Sans cela, une pastille annoncerait un nombre
+     que le clic ne rendrait pas — le défaut exact que les autres écrans de ce
+     produit évitent en dérivant leurs comptes de ce qu'ils vont afficher. */
+  const parOrigine = (liste: WorkOrder[]) =>
+    origine === 'all' ? liste : liste.filter((w) => w.origin === origine)
+  const parEtat = (liste: WorkOrder[]) =>
+    etat === 'all' ? liste : liste.filter((w) => w.status === etat)
+  const visible = parEtat(parOrigine(duPerimetre))
 
   /**
    * CE QUE LE PARC A ENGAGÉ, et non ce qu'on lui a proposé.
@@ -308,7 +322,7 @@ export function Works() {
         engagé ne le regarde pas, c'est la règle des maquettes.
       */}
       {!isTenant && duPerimetre.length > 0 && (
-        <div className="mt-6 mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="mt-6 mb-4 flex flex-wrap items-center gap-x-6 gap-y-3">
           <GroupeDeFiltres
             libelle={t('app.works.filterOrigin')}
             valeur={origine}
@@ -324,11 +338,37 @@ export function Works() {
               ),
               compte:
                 valeur === 'all'
-                  ? duPerimetre.length
-                  : duPerimetre.filter((w) => w.origin === valeur).length,
+                  ? parEtat(duPerimetre).length
+                  : parEtat(duPerimetre).filter((w) => w.origin === valeur).length,
             }))}
           />
 
+          {/*
+            L'ÉTAT, DANS SON PROPRE GROUPE. Les options se dérivent des états
+            PRÉSENTS, comme partout ailleurs dans ce produit : pas de pastille
+            « Terminé » sur un parc qui n'a rien terminé. L'ordre va de ce qui
+            attend une décision à ce qui n'en attend plus — devis proposé,
+            signalé, validé, terminé.
+          */}
+          <GroupeDeFiltres
+            libelle={t('app.works.filterStatus')}
+            valeur={etat}
+            onChange={setEtat}
+            options={[
+              {
+                valeur: 'all' as WorkOrder['status'] | 'all',
+                libelle: t('app.works.filterAllStatuses'),
+                compte: parOrigine(duPerimetre).length,
+              },
+              ...(['quoted', 'reported', 'approved', 'done'] as const)
+                .map((valeur) => ({
+                  valeur: valeur as WorkOrder['status'] | 'all',
+                  libelle: t(`app.works.status.${valeur}` as 'app.works.status.reported'),
+                  compte: parOrigine(duPerimetre).filter((w) => w.status === valeur).length,
+                }))
+                .filter((option) => option.compte > 0),
+            ]}
+          />
         </div>
       )}
 
@@ -669,6 +709,7 @@ export function Works() {
                   <Button
                     variant="secondary"
                     size="sm"
+                    icon="card"
                     onClick={() => {
                       setAChiffrer(work)
                       setMontant('')
@@ -718,6 +759,7 @@ export function Works() {
                   <Button
                     variant="secondary"
                     size="sm"
+                    icon="checkCircle"
                     onClick={() => approve(work.id)}
                   >
                     {t('app.works.approve')}
@@ -743,7 +785,12 @@ export function Works() {
                 */}
                 {(work.status === 'approved' || work.status === 'reported') &&
                   role !== 'tenant' && (
-                    <Button variant="secondary" size="sm" onClick={() => complete(work.id)}>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon="clipboard"
+                      onClick={() => complete(work.id)}
+                    >
                       {t('app.works.complete')}
                     </Button>
                   )}

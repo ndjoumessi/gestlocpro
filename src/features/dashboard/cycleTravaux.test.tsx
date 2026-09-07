@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, userEvent, attendreLeChargement } from '@/test/render'
+import { renderApp, screen, userEvent, within, attendreLeChargement } from '@/test/render'
 
 /**
  * Clôture d'une intervention, vue de l'écran.
@@ -15,16 +15,32 @@ import { renderApp, screen, userEvent, attendreLeChargement } from '@/test/rende
  * est offert et sur qui il ne l'est pas.
  */
 
+/**
+ * LES PASTILLES SE COMPTENT DANS LA LISTE, PAS DANS LA PAGE.
+ *
+ * Ces cas cherchaient « Validé » ou « Devis proposé » à la racine du document.
+ * Cela voulait dire « une intervention porte cet état » tant que ces mots
+ * n'existaient qu'une fois ; depuis que l'écran offre un tri PAR ÉTAT, ils
+ * figurent aussi sur les pastilles du filtre, et la même requête compte
+ * désormais deux choses de natures différentes — ce qu'une intervention EST,
+ * et ce qu'on peut demander à voir.
+ *
+ * La liste porte un `role="list"` nommé depuis le lot qui l'a nommée : on
+ * compte dedans. Le cas dit alors ce qu'il voulait dire, et il le dira encore
+ * quand un troisième axe de tri arrivera.
+ */
+const interventions = () => within(screen.getByRole('list', { name: 'Interventions' }))
+
 describe('clôture d’une intervention', () => {
   it('offre le geste sur un devis validé, jamais sur un devis en attente', async () => {
     await renderApp('/demo/travaux')
     await attendreLeChargement()
 
-    const validees = screen.getAllByText('Validé')
+    const validees = interventions().getAllByText('Validé')
     expect(validees.length, 'le jeu de démonstration ne porte plus de devis validé').toBeGreaterThan(0)
 
     // Autant de boutons que d'interventions closables — validées et déclarées.
-    const closables = validees.length + screen.getAllByText('Signalé').length
+    const closables = validees.length + interventions().getAllByText('Signalé').length
     expect(screen.getAllByRole('button', { name: /marquer terminé/i })).toHaveLength(closables)
   })
 
@@ -41,7 +57,7 @@ describe('clôture d’une intervention', () => {
      * Compté plutôt que cherché : un `queryBy` global passerait dès qu'un seul
      * bouton existe ailleurs sur la page.
      */
-    const enAttente = screen.getAllByText('Devis proposé')
+    const enAttente = interventions().getAllByText('Devis proposé')
     expect(enAttente.length).toBeGreaterThan(0)
     for (const pastille of enAttente) {
       const carte = pastille.closest('article, div[class*="rounded"]')!
@@ -54,10 +70,10 @@ describe('clôture d’une intervention', () => {
     await renderApp('/demo/travaux')
     await attendreLeChargement()
 
-    const avant = screen.getAllByText('Terminé').length
+    const avant = interventions().getAllByText('Terminé').length
     await user.click(screen.getAllByRole('button', { name: /marquer terminé/i })[0]!)
 
-    expect(screen.getAllByText('Terminé')).toHaveLength(avant + 1)
+    expect(interventions().getAllByText('Terminé')).toHaveLength(avant + 1)
     expect(await screen.findByText(/intervention close/i)).toBeInTheDocument()
   })
 
@@ -66,9 +82,9 @@ describe('clôture d’une intervention', () => {
     await renderApp('/demo/travaux')
     await attendreLeChargement()
 
-    const avant = screen.getAllByText('Terminé').length
+    const avant = interventions().getAllByText('Terminé').length
     await user.click(screen.getAllByRole('button', { name: /marquer terminé/i })[0]!)
-    expect(screen.getAllByText('Terminé')).toHaveLength(avant + 1)
+    expect(interventions().getAllByText('Terminé')).toHaveLength(avant + 1)
 
     /**
      * L'annulation REND l'état, elle ne se contente pas de fermer le message.
@@ -77,7 +93,7 @@ describe('clôture d’une intervention', () => {
      * il fait croire que le geste est défait, et l'on referme la page.
      */
     await user.click(screen.getByRole('button', { name: /annuler l’action/i }))
-    expect(screen.getAllByText('Terminé')).toHaveLength(avant)
+    expect(interventions().getAllByText('Terminé')).toHaveLength(avant)
   })
 
   it('rend le devis à l’arbitrage quand on défait sa validation', async () => {
@@ -89,11 +105,11 @@ describe('clôture d’une intervention', () => {
     // devis en attente, donc le compte tombe à zéro — et `getAllBy` lève au
     // lieu de rendre une liste vide, ce qui ferait échouer le cas sur sa
     // mécanique plutôt que sur son objet.
-    const avant = screen.queryAllByText('Devis proposé').length
+    const avant = interventions().queryAllByText('Devis proposé').length
     expect(avant, 'le jeu de démonstration ne porte plus de devis en attente').toBeGreaterThan(0)
 
     await user.click(screen.getAllByRole('button', { name: /^valider le devis$/i })[0]!)
-    expect(screen.queryAllByText('Devis proposé')).toHaveLength(avant - 1)
+    expect(interventions().queryAllByText('Devis proposé')).toHaveLength(avant - 1)
 
     /**
      * Le devis REVIENT, il ne disparaît pas.
@@ -103,7 +119,7 @@ describe('clôture d’une intervention', () => {
      * travail à l'état déclaré serait donc pire qu'aucun.
      */
     await user.click(screen.getByRole('button', { name: /annuler l’action/i }))
-    expect(screen.queryAllByText('Devis proposé')).toHaveLength(avant)
+    expect(interventions().queryAllByText('Devis proposé')).toHaveLength(avant)
   })
 
   /**

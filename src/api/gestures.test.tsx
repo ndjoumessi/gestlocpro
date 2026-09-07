@@ -154,7 +154,13 @@ describe('valider un devis', () => {
 
     // Le bouton disparaît parce que le STATUT a changé, pas parce qu'on l'a
     // masqué : c'est la même règle qui le fait apparaître.
-    expect(await screen.findByText('Validé')).toBeInTheDocument()
+    /* DANS LA LISTE, et non dans la page : depuis que l'écran trie par état,
+       « Validé » figure aussi sur une pastille de filtre. Chercher le mot à la
+       racine reviendrait à confondre ce qu'une intervention EST avec ce qu'on
+       peut demander à voir. */
+    expect(
+      await within(screen.getByRole('list', { name: 'Interventions' })).findByText('Validé'),
+    ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /valider le devis/i })).not.toBeInTheDocument()
   })
 
@@ -189,9 +195,10 @@ describe('valider un devis', () => {
     expect(await screen.findByText(/le serveur a refusé cette action/i)).toBeInTheDocument()
 
     // Le devis reste à arbitrer, et le bouton reste offert.
-    expect(await screen.findByText('Devis proposé')).toBeInTheDocument()
+    const liste = within(screen.getByRole('list', { name: 'Interventions' }))
+    expect(await liste.findByText('Devis proposé')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /valider le devis/i })).toBeInTheDocument()
-    expect(screen.queryByText('Validé')).not.toBeInTheDocument()
+    expect(liste.queryByText('Validé')).not.toBeInTheDocument()
   })
 })
 
