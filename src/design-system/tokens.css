@@ -40,48 +40,106 @@
 }
 
 /* LE REPLI AJUSTÉ, pour que le texte ne saute pas quand la vraie police arrive.
-   `size-adjust` est MESURÉ au canvas, le 2026-09-07, sur une accroche de
-   soixante-douze signes en 700 : Plus Jakarta Sans est 1,7 % plus large
-   qu'Arial et que Helvetica Neue. Remesuré le même jour sur trois accroches :
-   le ratio dépend de la graisse — 101,2 % en 600, 103,6 % en 800 — et cette
-   face garde son nombre unique, à moins de deux points de chaque bout. */
+
+   ═══ IL NOMMAIT LA MAUVAISE GRAISSE, ET LE MOT « BOLD » VAUT SEPT POUR CENT ═══
+
+   `local('Helvetica Neue')` NOMME UNE FAMILLE, et le navigateur en prend la
+   face par défaut : la REGULAR. La face déclarant couvrir 600–800, il ne
+   synthétise rien — il rend donc les titres en contours maigres, étirés par un
+   `size-adjust` calibré, lui, sur des métriques GRASSES. Mesuré au DOM le
+   2026-09-07 : le repli rendait 823,3 px là où Plus Jakarta Sans en fait 880,2
+   sur la même accroche — sept pour cent trop étroit, et d'une graisse trop
+   légère. Le défaut vivait là depuis que la police est hébergée.
+
+   `local('Helvetica Neue Bold'), local('Arial Bold')` : les deux se résolvent,
+   vérifié. Et si aucune ne se résolvait, la face entière deviendrait
+   inutilisable et la pile passerait à `system-ui` — vérifié aussi, avec un nom
+   inventé : une correction qui ne peut pas être juste ne s'applique pas.
+
+   ═══ DEUX FACES, UNE PAR PLAGE DE GRAISSE ═══
+
+   Plus Jakarta Sans s'ÉLARGIT avec la graisse — 880,2 px en 600, 901,0 en 800
+   sur la même accroche — là où Arial Bold et Helvetica Neue Bold ne bougent pas
+   d'un pixel : elles n'ont qu'UNE grasse, servie de 600 à 800. Le rapport passe
+   donc de 101,0 % à 103,4 %, et le nombre unique de 101,7 % posé le matin du
+   2026-09-07 ne pouvait être juste qu'à un seul bout.
+
+   MESURÉ au DOM dans Chromium, sur trois accroches de 45 à 84 signes en
+   français et en anglais, contre le woff2 servi :
+
+     600 : Helvetica Neue Bold 100,97 % · Arial Bold 101,37 %  → 101 %
+     800 : Helvetica Neue Bold 103,36 % · Arial Bold 103,77 %  → 103,4 %
+
+   Les nombres suivent Helvetica Neue, PREMIÈRE source et celle des appareils
+   Apple : l'écart y tombe à 0,2 px sur 880. Arial garde 0,4 % de correction en
+   trop — trois pixels sur quarante signes — contre sept pour cent avant.
+
+   Les bornes sont celles du repli d'Android, et pour la même raison : `title-*`
+   compose en 600, `display-*` en 800, rien entre les deux. Un titre en 700
+   prendrait la face haute ; aucun n'existe aujourd'hui. */
 @font-face {
   font-family: 'Plus Jakarta Sans Repli';
-  src: local('Helvetica Neue'), local('Arial');
-  size-adjust: 101.7%;
+  font-weight: 600 699;
+  src: local('Helvetica Neue Bold'), local('Arial Bold');
+  size-adjust: 101%;
+}
+@font-face {
+  font-family: 'Plus Jakarta Sans Repli';
+  font-weight: 700 800;
+  src: local('Helvetica Neue Bold'), local('Arial Bold');
+  size-adjust: 103.4%;
 }
 
 /* LE REPLI D'ANDROID — le marché —, où ni Helvetica Neue ni Arial n'existent :
-   la face ci-dessus ne trouve rien, la pile passait à `system-ui`, c'est-à-dire
-   Roboto SANS ajustement, et Roboto est bien plus étroite que Plus Jakarta Sans
-   qu'Arial ne l'est. MESURÉ le 2026-09-07 au DOM dans Chromium, Roboto v51
-   latin de Google (variable, axe de graisse appliqué, vérifié par un témoin en
-   400) contre le woff2 servi, sur trois accroches de 45 à 84 signes en
-   français et en anglais :
+   la face ci-dessus ne trouve rien, la pile passerait à `system-ui`, c'est-à-dire
+   Roboto SANS ajustement, et Plus Jakarta Sans est de sept à onze pour cent plus
+   large qu'elle.
 
-     600 : 107,1 · 108,4 · 107,1 %  → 107,5 %
-     800 : 108,8 · 110,1 · 109,0 %  → 109,3 %
+   LA MÊME LEÇON QUE CI-DESSUS, AU DIXIÈME DE L'AMPLEUR. `local('Roboto')` nomme
+   une famille, et ce que le système sert dépend de sa version : depuis
+   Android 12 Roboto est VARIABLE, donc instanciée à la graisse demandée ;
+   avant, c'est une statique Regular. Mesuré le 2026-09-07 sur trois accroches,
+   contre le fichier variable de Google (v51, sous-ensemble latin) :
 
-   DEUX FACES D'UNE MÊME FAMILLE, chacune bornée à la plage de graisse qu'elle
-   sert — `title-*` compose en 600, `display-*` en 800, rien entre les deux —,
-   parce qu'un nombre unique se serait trompé de 1,5 % aux deux bouts, soit un
-   saut visible sur un titre de trente signes.
+     titres en 600 · Roboto variable à 600 : 107,51 %  ·  Regular : 108,89 %
+     titres en 800 · Roboto variable à 800 : 109,31 %  ·  Regular : 111,54 %
 
-   Prudence non mesurée, dite : la Roboto SYSTÈME d'un Android n'est pas ce
-   fichier. Depuis Android 12 c'est la même variable ; avant, une Bold statique,
-   un peu plus large, que ce ratio surcorrigerait d'un point ou deux. Aucun
-   appareil ancien n'a été mesuré. */
+   Les nombres posés le matin — 107,5 et 109,3 — visaient la variable : justes
+   sur Android récent, faux de 1,3 à 2 % sur l'ancien. Roboto ne varie que de
+   deux pour cent en chasse d'une graisse à l'autre, là où Arial en varie de
+   huit : le même défaut, dix fois plus petit.
+
+   NOMMER LA GRAISSE FAIT CONVERGER LES DEUX HYPOTHÈSES. `Roboto Medium` (500)
+   et `Roboto Bold` (700) existent sur toutes les versions, en statique ou en
+   instance nommée de la variable ; leurs chasses valent 107,92 % et 109,73 %,
+   à quatre dixièmes de point de la variable. Une seule valeur couvre donc les
+   deux mondes :
+
+     600–699 : Medium 107,92 % · variable 107,51 %  → 107,7 %  (0,22 pt au pire)
+     700–800 : Bold   109,73 % · variable 109,31 %  → 109,5 %  (0,23 pt au pire)
+
+   `local('Roboto')` RESTE en dernière source, contrairement au repli
+   Helvetica/Arial où la famille nue a été retirée. La raison est la mesure : là
+   -bas elle donnait des contours maigres à sept pour cent, une correction qui
+   ne pouvait pas être juste ; ici elle plafonne à 1,3 %, et c'est mieux que de
+   laisser la pile tomber sur `system-ui` — Roboto sans le moindre ajustement,
+   donc huit pour cent d'écart.
+
+   PRUDENCE NON MESURÉE, et elle est étroite : aucun appareil Android n'a servi
+   à ces relevés. Ils comparent le woff2 servi au fichier Roboto de Google, dont
+   les métriques sont celles du système ; ce qu'aucune mesure ne dit, c'est quel
+   nom de face un navigateur Android résout réellement. */
 @font-face {
   font-family: 'Plus Jakarta Sans Repli Android';
   font-weight: 600 699;
-  src: local('Roboto');
-  size-adjust: 107.5%;
+  src: local('Roboto Medium'), local('Roboto');
+  size-adjust: 107.7%;
 }
 @font-face {
   font-family: 'Plus Jakarta Sans Repli Android';
   font-weight: 700 800;
-  src: local('Roboto');
-  size-adjust: 109.3%;
+  src: local('Roboto Bold'), local('Roboto');
+  size-adjust: 109.5%;
 }
 
 @theme {

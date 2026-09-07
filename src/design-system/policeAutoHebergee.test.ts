@@ -77,6 +77,34 @@ describe('la police des titres', () => {
     expect(CSS).toMatch(/--font-display:\s*\n?\s*'Plus Jakarta Sans',\s*'Plus Jakarta Sans Repli'/)
   })
 
+  it('ajuste son repli par PLAGE DE GRAISSE, et non d’un nombre unique', () => {
+    /* Un `size-adjust` unique se trompe aux deux bouts. Mesuré le 2026-09-07 au
+       DOM, sur trois accroches en deux langues : Plus Jakarta Sans s'élargit
+       avec la graisse (880 → 901 px sur la même phrase) là où Arial et
+       Helvetica Neue ne bougent PAS — elles n'ont qu'une grasse, servie de 600
+       à 800. Le rapport passe donc de 101,1 % à 103,6 %, et le nombre unique de
+       101,7 % se trompait de 1,9 point sur les titres d'affichage.
+
+       Les titres n'emploient que DEUX graisses : `title-*` en 600, `display-*`
+       en 800. Une face par plage, comme le repli d'Android. */
+    const faces = [
+      ...CSS.matchAll(/@font-face\s*\{[^}]*font-family:\s*'Plus Jakarta Sans Repli'[^}]*\}/g),
+    ].map((m) => m[0])
+    expect(faces, 'deux faces de repli, une par plage de graisse').toHaveLength(2)
+    for (const face of faces) {
+      expect(face).toMatch(/font-weight:\s*\d{3} \d{3}/)
+      expect(face).toMatch(/size-adjust:\s*\d+(\.\d+)?%/)
+      /* LA GRASSE, NOMMÉE. `local('Helvetica Neue')` nomme une FAMILLE et le
+         navigateur en prend la regular ; la face couvrant 600–800, il ne
+         synthétise pas, et les titres tombaient sur des contours maigres
+         étirés par un ratio calibré sur des métriques grasses — 823,3 px
+         contre 880,2, sept pour cent d'écart, mesuré. */
+      expect(face).toMatch(/local\('[^']*Bold'\)/)
+    }
+    const ratios = faces.map((f) => /size-adjust:\s*([\d.]+)%/.exec(f)![1])
+    expect(new Set(ratios).size, 'deux plages, deux ratios').toBe(2)
+  })
+
   it('a un second repli ajusté pour Android, où Roboto remplace Arial', () => {
     /* La première face de repli ne nomme qu'Arial et Helvetica Neue : sur un
        Android — le marché — aucune des deux n'existe, la pile tombait sur
@@ -84,10 +112,21 @@ describe('la police des titres', () => {
        police. Une face de plus, `local('Roboto')`, avec SON ratio mesuré,
        juste après la première dans la pile — avant `system-ui`, qui sur
        Android est Roboto sans ajustement. */
-    const android = /@font-face\s*\{[^}]*font-family:\s*'Plus Jakarta Sans Repli Android'[^}]*\}/.exec(CSS)?.[0] ?? ''
-    expect(android, 'la face de repli Android').not.toBe('')
-    expect(android).toMatch(/local\('Roboto'\)/)
-    expect(android).toMatch(/size-adjust:\s*\d+(\.\d+)?%/)
+    const androids = [
+      ...CSS.matchAll(/@font-face\s*\{[^}]*font-family:\s*'Plus Jakarta Sans Repli Android'[^}]*\}/g),
+    ].map((m) => m[0])
+    expect(androids, 'deux faces Android, une par plage de graisse').toHaveLength(2)
+    for (const face of androids) {
+      expect(face).toMatch(/font-weight:\s*\d{3} \d{3}/)
+      expect(face).toMatch(/size-adjust:\s*\d+(\.\d+)?%/)
+      /* LA GRAISSE NOMMÉE D'ABORD, la famille nue en dernier recours : le nom
+         de face fait converger les deux Android — variable depuis la 12,
+         statique Regular avant — à quatre dixièmes de point, contre deux
+         points si l'on s'en remet à la famille seule. */
+      expect(face).toMatch(/local\('Roboto (Medium|Bold)'\),\s*local\('Roboto'\)/)
+    }
+    const ratiosAndroid = androids.map((f) => /size-adjust:\s*([\d.]+)%/.exec(f)![1])
+    expect(new Set(ratiosAndroid).size, 'deux plages, deux ratios').toBe(2)
     expect(CSS).toMatch(
       /--font-display:\s*\n?\s*'Plus Jakarta Sans',\s*'Plus Jakarta Sans Repli',\s*'Plus Jakarta Sans Repli Android',\s*system-ui/,
     )
