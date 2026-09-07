@@ -42,14 +42,46 @@
 /* LE REPLI AJUSTÉ, pour que le texte ne saute pas quand la vraie police arrive.
    `size-adjust` est MESURÉ au canvas, le 2026-09-07, sur une accroche de
    soixante-douze signes en 700 : Plus Jakarta Sans est 1,7 % plus large
-   qu'Arial et que Helvetica Neue. Roboto — le repli d'Android, le vrai marché —
-   n'était pas installée sur la machine de mesure : elle reste dans la pile
-   système, sans ajustement, et c'est une prudence non mesurée à lever le jour
-   où l'on mesure sur un Android. */
+   qu'Arial et que Helvetica Neue. Remesuré le même jour sur trois accroches :
+   le ratio dépend de la graisse — 101,2 % en 600, 103,6 % en 800 — et cette
+   face garde son nombre unique, à moins de deux points de chaque bout. */
 @font-face {
   font-family: 'Plus Jakarta Sans Repli';
   src: local('Helvetica Neue'), local('Arial');
   size-adjust: 101.7%;
+}
+
+/* LE REPLI D'ANDROID — le marché —, où ni Helvetica Neue ni Arial n'existent :
+   la face ci-dessus ne trouve rien, la pile passait à `system-ui`, c'est-à-dire
+   Roboto SANS ajustement, et Roboto est bien plus étroite que Plus Jakarta Sans
+   qu'Arial ne l'est. MESURÉ le 2026-09-07 au DOM dans Chromium, Roboto v51
+   latin de Google (variable, axe de graisse appliqué, vérifié par un témoin en
+   400) contre le woff2 servi, sur trois accroches de 45 à 84 signes en
+   français et en anglais :
+
+     600 : 107,1 · 108,4 · 107,1 %  → 107,5 %
+     800 : 108,8 · 110,1 · 109,0 %  → 109,3 %
+
+   DEUX FACES D'UNE MÊME FAMILLE, chacune bornée à la plage de graisse qu'elle
+   sert — `title-*` compose en 600, `display-*` en 800, rien entre les deux —,
+   parce qu'un nombre unique se serait trompé de 1,5 % aux deux bouts, soit un
+   saut visible sur un titre de trente signes.
+
+   Prudence non mesurée, dite : la Roboto SYSTÈME d'un Android n'est pas ce
+   fichier. Depuis Android 12 c'est la même variable ; avant, une Bold statique,
+   un peu plus large, que ce ratio surcorrigerait d'un point ou deux. Aucun
+   appareil ancien n'a été mesuré. */
+@font-face {
+  font-family: 'Plus Jakarta Sans Repli Android';
+  font-weight: 600 699;
+  src: local('Roboto');
+  size-adjust: 107.5%;
+}
+@font-face {
+  font-family: 'Plus Jakarta Sans Repli Android';
+  font-weight: 700 800;
+  src: local('Roboto');
+  size-adjust: 109.3%;
 }
 
 @theme {
@@ -285,8 +317,8 @@
    * page composée d'une seule famille, ce qui reste une page cohérente.
    */
   --font-display:
-    'Plus Jakarta Sans', 'Plus Jakarta Sans Repli', system-ui, -apple-system, 'Segoe UI',
-    Roboto, 'Helvetica Neue', Arial, sans-serif;
+    'Plus Jakarta Sans', 'Plus Jakarta Sans Repli', 'Plus Jakarta Sans Repli Android',
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   /**
    * Corps de texte : pile SYSTÈME, plus aucune famille téléchargée.
    *

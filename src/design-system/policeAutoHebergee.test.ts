@@ -77,6 +77,22 @@ describe('la police des titres', () => {
     expect(CSS).toMatch(/--font-display:\s*\n?\s*'Plus Jakarta Sans',\s*'Plus Jakarta Sans Repli'/)
   })
 
+  it('a un second repli ajusté pour Android, où Roboto remplace Arial', () => {
+    /* La première face de repli ne nomme qu'Arial et Helvetica Neue : sur un
+       Android — le marché — aucune des deux n'existe, la pile tombait sur
+       Roboto SANS ajustement, et le texte sautait à l'arrivée de la vraie
+       police. Une face de plus, `local('Roboto')`, avec SON ratio mesuré,
+       juste après la première dans la pile — avant `system-ui`, qui sur
+       Android est Roboto sans ajustement. */
+    const android = /@font-face\s*\{[^}]*font-family:\s*'Plus Jakarta Sans Repli Android'[^}]*\}/.exec(CSS)?.[0] ?? ''
+    expect(android, 'la face de repli Android').not.toBe('')
+    expect(android).toMatch(/local\('Roboto'\)/)
+    expect(android).toMatch(/size-adjust:\s*\d+(\.\d+)?%/)
+    expect(CSS).toMatch(
+      /--font-display:\s*\n?\s*'Plus Jakarta Sans',\s*'Plus Jakarta Sans Repli',\s*'Plus Jakarta Sans Repli Android',\s*system-ui/,
+    )
+  })
+
   it('est rangée par l’agent de service, comme un actif', () => {
     expect(AGENT).toMatch(/\/polices\//)
   })
