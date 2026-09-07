@@ -1910,6 +1910,10 @@ export const fr = {
       kpiInvitations: 'Codes en attente',
       kpiInvitationsNote: 'pas encore utilisés',
       member: 'Personne',
+      /* LE TRI DU REGISTRE. « Tous » au masculin : un MEMBRE, et non une
+         personne — le mot que l'écran emploie partout. */
+      filterRole: 'Trier par rôle',
+      filterAll: 'Tous',
       memberRole: 'Rôle',
       since: 'Membre depuis',
       action: 'Action',

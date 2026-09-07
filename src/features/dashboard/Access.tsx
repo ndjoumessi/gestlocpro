@@ -22,6 +22,9 @@ import { api } from '@/api/client'
 import { GRILLE_DEUX_INDICATEURS } from './grillesDIndicateurs'
 import { InviteModal } from './InviteModal'
 import { cn } from '@/lib/cn'
+import { AU_DELA_LG, useAuDela } from '@/lib/useAuDela'
+import { GroupeDeFiltres } from '@/components/controls/GroupeDeFiltres'
+import { initiales } from './initiales'
 
 /**
  * QUI PEUT ENTRER DANS CE PARC.
@@ -89,6 +92,9 @@ function memePersonne(a: string | null | undefined, b: string | null | undefined
  * le seuil.
  */
 const PLAFOND_DE_NOMS = 3
+
+const GRILLE_DES_FICHES_DE_MEMBRE =
+  'grid grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] gap-3 px-4 pb-4'
 
 function replier(noms: string[], t: ReturnType<typeof useT>) {
   if (noms.length <= PLAFOND_DE_NOMS) return noms.join(', ')
@@ -270,6 +276,256 @@ export function Access() {
      l'écran ne propose alors pas un geste qu'il ne saurait pas remplir. */
   const immeublesDuParc = registre?.buildings ?? []
 
+  /*
+    LE REGISTRE DEVIENT UNE FICHE PAR PERSONNE, au-dessus de `lg`.
+
+    MESURÉ, et c'est la mesure qui décide : à 1440 px la colonne « Personne »
+    prend 532 px des 1101 du tableau — 37 % pour une seule colonne — et les
+    rangées font 69, 133, 69, 69. Celle de Diane est deux fois plus haute que
+    ses voisines parce que son périmètre est une PHRASE : « Gère : Résidence
+    Bonamoussadi, Immeuble Akwa Nord — sauf Résidence Bonamoussadi · A2, … »,
+    153 caractères sur trois lignes.
+
+    Un tableau aligne pour qu'on COMPARE colonne par colonne ; des rangées du
+    simple au double ne s'alignent plus, et il ne reste que la grille. Et la
+    phrase ne peut pas être coupée : un lot antérieur l'a écrite exprès —
+    « le registre disait qui accède, jamais SUR QUOI » —, et la rogner
+    rendrait « sauf Résidence Bonamoussadi · A2, … » illisible sur l'écran
+    qu'on relit précisément pour vérifier ce qu'on a confié.
+
+    C'est aussi le même argument que les locataires, et les deux écrans sont
+    les deux écrans de PERSONNES du produit : des faits hétérogènes — une
+    identité, un rôle, une fiche détenue, un périmètre en prose, une date, des
+    gestes — que rien n'invite à comparer verticalement. Deux écrans de
+    personnes sous deux formes, c'était l'incohérence.
+
+    Sous `lg`, rien ne change : `DataTable` rend déjà ses propres fiches.
+  */
+  const enFiches = useAuDela(AU_DELA_LG)
+
+  /*
+    ET LE REGISTRE SE TRIE PAR RÔLE. Quatre membres se lisent à l'œil ; un
+    parc confié à un cabinet en porte autant que de logements loués, et les
+    trois questions qu'on lui pose sont « qui gère ? », « qui habite ? »,
+    « qui possède ? ». Les options se dérivent des rôles PRÉSENTS, et la barre
+    ne paraît qu'à partir de DEUX rôles distincts : sur un parc dont tous les
+    comptes sont des locataires, une pastille unique à côté de « Tous » ne
+    trierait rien.
+  */
+  const [roleFiltre, setRoleFiltre] = useState<MembreApi['role'] | 'all'>('all')
+  const membresVisibles =
+    roleFiltre === 'all' ? membres : membres.filter((m) => m.role === roleFiltre)
+  const rolesPresents = (['owner', 'manager', 'tenant'] as const).filter((r) =>
+    membres.some((m) => m.role === r),
+  )
+
+  /*
+    LES TROIS MORCEAUX QUE LES DEUX FORMES PARTAGENT.
+
+    La fiche et le tableau disent la MÊME chose de la même personne ; ce qui
+    change est la mise en page. Extraits plutôt que recopiés — une phrase de
+    périmètre écrite deux fois se corrige une fois sur deux, et c'est
+    précisément la phrase dont un lot antérieur a dû retirer une AFFIRMATION
+    FAUSSE.
+  */
+  /*
+    LA RANGÉE DE GESTES, PARTAGÉE ELLE AUSSI. Elle vivait dans la colonne du
+    tableau ; la fiche la porte au même titre, et un geste offert dans une
+    forme et pas dans l'autre est le défaut que ce produit a déjà payé trois
+    fois — un locataire ne pouvait être relancé qu'à 1280 px.
+  */
+  const gestesDuMembre = (m: MembreApi) => {
+                /**
+                 * SA PROPRE LIGNE ne porte pas de bouton.
+                 *
+                 * Le serveur refuse l'auto-retrait — un parc dont le dernier
+                 * propriétaire est parti n'est plus atteignable par personne —
+                 * et l'écran ne propose pas un geste qu'on refusera. La
+                 * comparaison porte sur l'adresse, qui est unique en base ; le
+                 * registre ne rend pas l'identifiant du compte, seulement celui
+                 * de l'adhésion.
+                 */
+                const soiMeme = monAdresse === m.email
+                if (!estProprietaire || soiMeme) return null
+                return (
+                  /*
+                    LE GLYPHE FAIT LIRE LA COMMANDE COMME UNE COMMANDE.
+
+                    Ce bouton était fantôme et NU : de l'encre pleine, sans
+                    bord, sans fond, sans signe. Dans une colonne de tableau, à
+                    côté d'un nom et d'une date, cela se lit comme une donnée de
+                    plus — et le survol est le premier moment où l'on apprend
+                    que c'en est une. Trois fois de suite sur la même colonne.
+
+                    Les deux autres colonnes de geste du produit — retirer une
+                    fiche locataire, mettre en demeure — sont le MÊME bouton
+                    fantôme AVEC une icône. Celles du registre étaient les
+                    seules sans, et ce sont les seules qui retirent un accès.
+
+                    PAS DE ROUGE ICI : le rouge du produit est celui de la
+                    CONFIRMATION, dans la modale qui suit. L'avancer d'un cran
+                    ferait de la couleur le signal, ce que `couleur-non-seule`
+                    refuse partout ailleurs — et peindrait en danger une colonne
+                    entière qu'on ne fait que lire, la plupart du temps.
+                  */
+                  /* `flex-wrap` : DANS UNE FICHE DE 349 PX, la rangée de
+                     Diane demande 315 px pour ses deux boutons — exactement
+                     la place disponible. Sans repli, flex ne déborde pas, il
+                     COMPRIME : « Confier des immeubles » se casse en deux
+                     lignes À L’INTÉRIEUR du bouton, et aucune garde ne le
+                     voit puisque rien ne dépasse. Les boutons descendent
+                     plutôt que de se serrer. C’est le même remède que la
+                     rangée de gestes des fiches de locataire, trouvé là-bas
+                     par 65 px de débord local. */
+                  <div className="flex flex-wrap items-center justify-end gap-1">
+                    {/* LE GESTE DE RÉPARATION VIENT EN PREMIER, et il est
+                        SECONDAIRE de ton : il rend un accès plutôt que de le
+                        reprendre, et il ne s'affiche que sur la seule rangée
+                        où il a un objet — un locataire membre dont aucune fiche
+                        ne porte le compte. Sur les autres, l'offrir
+                        proposerait de réécrire un lien existant, ce que le
+                        serveur refuse en 409. */}
+                    {/* CONFIER, et ce geste n'existait nulle part.
+
+                        `Park.delegation` valait `solo` ou `delegate` : tout ou
+                        rien sur le parc entier. Confier le premier immeuble à un
+                        cabinet lui ouvrait les trois — baux, loyers, impayés et
+                        cautions de logements dont il n'a jamais entendu parler.
+
+                        Il ne s'affiche que s'il y a de quoi choisir : un parc
+                        d'un seul immeuble n'a rien à répartir, et proposer le
+                        geste y ferait promettre une finesse qui n'existe pas. */}
+                    {m.role === 'manager' &&
+                      (immeublesDuParc.length > 1 ||
+                        immeublesDuParc.reduce((n, i) => n + (i.units ?? []).length, 0) > 1) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon="building"
+                        loading={enCours === m.id}
+                        onClick={() => {
+                          setAConfier(m)
+                          setChoixImmeubles(new Set(m.buildingIds ?? []))
+                          setChoixLogements(new Set(m.unitIds ?? []))
+                          setExclusLogements(new Set(m.excludedUnitIds ?? []))
+                        }}
+                      >
+                        {t('app.access.scopeAction')}
+                      </Button>
+                    )}
+                    {m.role === 'tenant' && !m.tenantId && fichesLibres.length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon="users"
+                        loading={enCours === m.id}
+                        onClick={() => setARelier(m)}
+                      >
+                        {t('app.access.linkTenant')}
+                      </Button>
+                    )}
+                    {/* DÉFAIRE UN LIEN, et il n'existait pas.
+
+                        Relevé sur la production : un compte détenait la fiche
+                        d'un AUTRE locataire — son bail, ses quittances, ses
+                        relevés — pendant que l'intéressé ouvrait un espace
+                        vide. `Tenant.userId` s'écrivait une fois pour toutes,
+                        et relier la bonne personne rendait 409 pour toujours.
+
+                        SANS `estProprietaire` ICI, ET C'EST LA MUTATION QUI L'A
+                        DIT. La condition y était d'abord, par symétrie avec le
+                        propos du geste — une décision, pas une opération. Elle
+                        était MORTE : le rendu de cette cellule sort en `null`
+                        vingt lignes plus haut pour quiconque n'est pas
+                        propriétaire, donc la retirer ne changeait aucun verdict.
+                        Une condition qui ne décide rien fait croire qu'elle
+                        garde quelque chose ; c'est le partage de l'écran entier
+                        qui garde, et lui seul. */}
+                    {m.role === 'tenant' && m.tenantId && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon="users"
+                        loading={enCours === m.id}
+                        onClick={() => setADelier(m)}
+                      >
+                        {t('app.access.unlinkTenant')}
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon="close"
+                      loading={enCours === m.id}
+                      onClick={() => setARetirer({ genre: 'membre', membre: m })}
+                    >
+                      {t('app.access.revokeMember')}
+                    </Button>
+                  </div>
+                )
+  }
+
+  const detientLaFiche = (m: MembreApi): string | null =>
+    m.tenantName
+      ? t('app.access.holdsRecord', {
+          fiche: m.tenantName,
+          unit: m.tenantUnitLabel ?? '—',
+        })
+      : null
+
+  const resumeDuPerimetre = (m: MembreApi): string | null => {
+    if (m.role !== 'manager') return null
+    /* DEUX VIDES, ET ILS DISENT LE CONTRAIRE L'UN DE L'AUTRE. `declared` sans
+       rien de confié ne voit RIEN ; c'est l'état de naissance, et l'écran
+       annonçait « tout le parc » dessus. Le silence du serveur, lui, garde
+       l'ancien libellé : il ne dit pas `declared`, il ne dit rien. */
+    const rien = (m.buildingIds ?? []).length === 0 && (m.unitIds ?? []).length === 0
+    if (rien) {
+      return m.scope === 'declared' ? t('app.access.scopeNothing') : t('app.access.scopeAll')
+    }
+    const confies = t('app.access.scopeSome', {
+      names: replier(
+        [
+          ...immeublesDuParc
+            .filter((i) => (m.buildingIds ?? []).includes(i.id))
+            .map((i) => i.name),
+          /* LES LOGEMENTS PORTENT LE NOM DE LEUR IMMEUBLE. « S1 » ne dit rien
+             sur un parc de cinq résidences : trois d'entre elles ont un S1. */
+          ...immeublesDuParc.flatMap((i) =>
+            (i.units ?? [])
+              .filter((u) => (m.unitIds ?? []).includes(u.id))
+              .map((u) => `${i.name} · ${u.label}`),
+          ),
+        ],
+        t,
+      ),
+    })
+    /*
+      ET CE QU'ON A RETRANCHÉ — la seule phrase FAUSSE que cet écran ait
+      portée. « Gère : Résidence Bonamoussadi » se lit « tout l'immeuble », et
+      le périmètre effectif en retranchait un logement. Les autres manques du
+      produit sont des absences ; celui-ci était une AFFIRMATION incorrecte.
+
+      RIEN QUAND RIEN N'EST RETRANCHÉ : « sauf — » ferait chercher une
+      exception qui n'existe pas.
+    */
+    if ((m.excludedUnitIds ?? []).length === 0) return confies
+    return (
+      confies +
+      ' ' +
+      t('app.access.scopeExcept', {
+        names: replier(
+          immeublesDuParc.flatMap((i) =>
+            (i.units ?? [])
+              .filter((u) => (m.excludedUnitIds ?? []).includes(u.id))
+              .map((u) => `${i.name} · ${u.label}`),
+          ),
+          t,
+        ),
+      })
+    )
+  }
+
   if (chargement) return <RegistreEnChargement />
   // L'ordre compte : sans parc, aucune lecture n'a eu lieu, donc aucun échec à
   // dire. On nomme d'abord ce qui manque le plus en amont.
@@ -277,6 +533,82 @@ export function Access() {
      qui reste juste pour un compte réel dont le parc n'existe pas encore. */
   if (!parkId && !estDemo) return <RegistreSansParc />
   if (erreur) return <RegistreIllisible onReessayer={() => void charger()} />
+
+  /*
+    LA GRILLE DE FICHES — même tuile que les fiches mobiles de `DataTable`,
+    même bord, même ombre, même chair. Ce n'est pas une coïncidence : les deux
+    formes disent la même chose de la même personne, et un membre qui change
+    d'apparence en franchissant 1024 px donnerait à croire qu'il a changé.
+
+    `min(100%,20rem)` et non `18rem` comme les locataires : la phrase de
+    périmètre est ce qui décide de la largeur ici, et deux rem de plus lui
+    épargnent une ligne. Elle n'est jamais rognée — un texte coupé dans sa
+    boîte ne déborde d'aucune garde, et le DOM porte quand même la chaîne
+    entière : personne ne verrait le défaut.
+  */
+  const fichesDesMembres = (
+    <ul aria-label={t('app.access.membersTitle')} className={GRILLE_DES_FICHES_DE_MEMBRE}>
+      {membresVisibles.map((m) => {
+        const detient = detientLaFiche(m)
+        const perimetre = resumeDuPerimetre(m)
+        const gestes = gestesDuMembre(m)
+        return (
+          <li
+            key={m.id}
+            data-fiche-membre=""
+            className="flex flex-col gap-3 rounded-lg border border-divider bg-surface p-4 shadow-e1"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-3">
+                <span
+                  aria-hidden="true"
+                  className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-label font-semibold text-muted"
+                >
+                  {initiales(m.fullName)}
+                </span>
+                {/* `break-words` ET NON `truncate` : l'adresse est ce qui
+                    IDENTIFIE un compte — c'est sur elle que le retrait de son
+                    propre accès se refuse — et une adresse coupée à
+                    « charles@exam… » ne l'identifie plus. */}
+                <div className="min-w-0">
+                  <p className="font-medium break-words">{m.fullName}</p>
+                  <p className="text-body break-words text-muted">{m.email}</p>
+                </div>
+              </div>
+              <StatusPill tone={m.role === 'owner' ? 'info' : 'neutral'} size="sm">
+                {t(`app.access.role_${m.role}` as 'app.access.role_owner')}
+              </StatusPill>
+            </div>
+
+            {(detient || perimetre) && (
+              <div className="flex flex-col gap-1">
+                {detient && <p className="text-body text-muted">{detient}</p>}
+                {perimetre && <p className="text-body text-muted">{perimetre}</p>}
+              </div>
+            )}
+
+            {m.tenantName && !memePersonne(m.fullName, m.tenantName) && (
+              <span className="flex">
+                <StatusPill tone="warn" size="sm">
+                  {t('app.access.nameMismatch')}
+                </StatusPill>
+              </span>
+            )}
+
+            {/* `mt-auto` COLLE LA DATE AU BAS DE LA TUILE, et les gestes sous
+                elle : sans cela, une fiche sans périmètre remonterait ses
+                boutons de trois lignes et la rangée cesserait de s'aligner —
+                le défaut même qu'on vient de retirer au tableau. */}
+            <p className="eyebrow mt-auto text-muted">
+              {t('app.access.since')} · {d.fullDate(enParties(m.since))}
+            </p>
+            {gestes}
+          </li>
+        )
+      })}
+    </ul>
+  )
+
 
   return (
     <>
@@ -405,9 +737,35 @@ export function Access() {
           title={t('app.access.membersTitle')}
           description={t('app.access.membersHint')}
         />
+        {/* LA BARRE NE PARAÎT QU'À PARTIR DE DEUX RÔLES : sur un parc dont
+            tous les comptes sont des locataires, une pastille unique à côté
+            de « Tous » n'offrirait aucun choix. */}
+        {rolesPresents.length > 1 && (
+          <GroupeDeFiltres
+            libelle={t('app.access.filterRole')}
+            valeur={roleFiltre}
+            onChange={setRoleFiltre}
+            className="mb-4 px-4"
+            options={[
+              {
+                valeur: 'all' as MembreApi['role'] | 'all',
+                libelle: t('app.access.filterAll'),
+                compte: membres.length,
+              },
+              ...rolesPresents.map((r) => ({
+                valeur: r as MembreApi['role'] | 'all',
+                libelle: t(`app.access.role_${r}` as 'app.access.role_owner'),
+                compte: membres.filter((m) => m.role === r).length,
+              })),
+            ]}
+          />
+        )}
+        {enFiches && membresVisibles.length > 0 ? (
+          fichesDesMembres
+        ) : (
         <DataTable<MembreApi>
           caption={t('app.access.membersTitle')}
-          rows={membres}
+          rows={membresVisibles}
           rowKey={(m) => m.id}
           fiches
           columns={[
@@ -415,123 +773,39 @@ export function Access() {
               key: 'nom',
               role: 'identite',
               header: t('app.access.member'),
-              render: (m) => (
-                <div className="flex flex-col">
-                  <span className="font-medium">{m.fullName}</span>
-                  <span className="text-body text-muted">{m.email}</span>
-                  {/* LA FICHE QUE CE COMPTE DÉTIENT, NOMMÉE.
+              /*
+                LES QUATRE LIGNES DE CETTE CELLULE SONT MAINTENANT ÉCRITES
+                AILLEURS. `detientLaFiche` et `resumeDuPerimetre` les rendent,
+                et la fiche les rend aussi : une phrase de périmètre écrite
+                deux fois se corrige une fois sur deux.
 
-                      Le registre disait « relié » par une ABSENCE de bouton. Il
-                      ne disait pas à QUOI, et c'est l'écart entre les deux noms
-                      qui révèle une erreur : relevé sur la production, un compte
-                      tenait la fiche d'un autre locataire — donc son bail, ses
-                      quittances et ses relevés — et le seul symptôme visible
-                      était que la bonne personne, elle, n'avait rien.
-
-                      On ne corrige pas ce qu'on ne voit pas. La ligne le dit
-                      donc à voix haute, sur la rangée de la personne. */}
-                  {m.tenantName && (
-                    <span className="text-body text-muted">
-                      {t('app.access.holdsRecord', {
-                        fiche: m.tenantName,
-                        unit: m.tenantUnitLabel ?? '—',
-                      })}
-                    </span>
-                  )}
-                  {/* LE PRODUIT SAVAIT, ET NE LE DISAIT PAS.
-
-                      Le registre porte les deux noms côte à côte depuis le lot
-                      précédent : « Eloundou Charles » détenant « Bekono
-                      Landry ». L'anomalie tient dans une comparaison, et il
-                      existait même un second membre portant exactement ce
-                      nom-là, sans fiche. Tout était là ; rien ne rapprochait
-                      les deux chaînes.
-
-                      UNE QUESTION, PAS UN VERDICT : voir `memePersonne`. */}
-                  {/* SUR QUOI IL A LA MAIN — et le registre ne le disait pas.
-
-                      Il disait qui accède, et depuis le lot précédent à quelle
-                      fiche il est relié. Sur QUOI, jamais : un gestionnaire
-                      borné à un immeuble sur trois y figurait exactement comme
-                      celui qui les gère tous.
-
-                      La ligne n'apparaît que pour le gestionnaire : le
-                      propriétaire n'est jamais borné, et écrire « tout le parc »
-                      sur sa rangée affirmerait un réglage là où il n'y a
-                      qu'une évidence. Le locataire, lui, est borné par son
-                      bail — une autre règle, qui ne se dit pas en immeubles. */}
-                  {m.role === 'manager' && (
-                    <span className="text-body text-muted">
-                      {(m.buildingIds ?? []).length === 0 && (m.unitIds ?? []).length === 0
-                        ? /* DEUX VIDES, ET ILS DISENT LE CONTRAIRE L'UN DE
-                             L'AUTRE. `declared` sans rien de confié ne voit
-                             RIEN ; c'est l'état de naissance, et l'écran
-                             annonçait « tout le parc » dessus. Le silence du
-                             serveur, lui, garde l'ancien libellé : il ne dit
-                             pas `declared`, il ne dit rien. */
-                          m.scope === 'declared'
-                          ? t('app.access.scopeNothing')
-                          : t('app.access.scopeAll')
-                        : t('app.access.scopeSome', {
-                            names: replier([
-                              ...immeublesDuParc
-                                .filter((i) => (m.buildingIds ?? []).includes(i.id))
-                                .map((i) => i.name),
-                              /* LES LOGEMENTS PORTENT LE NOM DE LEUR IMMEUBLE.
-                                 « S1 » ne dit rien sur un parc de cinq
-                                 résidences : trois d'entre elles ont un S1. */
-                              ...immeublesDuParc.flatMap((i) =>
-                                (i.units ?? [])
-                                  .filter((u) => (m.unitIds ?? []).includes(u.id))
-                                  .map((u) => `${i.name} · ${u.label}`),
-                              ),
-                            ],
-                              t,
-                            ),
-                          })}
-                      {/*
-                        ET CE QU'ON A RETRANCHÉ — la seule phrase FAUSSE que
-                        cet écran ait portée.
-
-                        « Gère : Résidence Bonamoussadi » se lit « tout
-                        l'immeuble », et le périmètre effectif en retranchait
-                        un logement. Les autres manques du produit sont des
-                        absences ; celui-ci était une AFFIRMATION incorrecte,
-                        sur l'écran qu'on relit précisément pour vérifier ce
-                        qu'on a confié. Le registre rendait déjà
-                        `excludedUnitIds` : le serveur savait, le résumé
-                        n'en tenait aucun compte.
-
-                        RIEN QUAND RIEN N’EST RETRANCHÉ : « sauf — » ferait
-                        chercher une exception qui n'existe pas.
-
-                        Et le logement porte le nom de son immeuble, comme
-                        dans la liste des confiés juste au-dessus : « S2 » ne
-                        dit rien sur un parc où trois résidences en ont un.
-                      */}
-                      {(m.excludedUnitIds ?? []).length > 0 &&
-                        ' ' +
-                          t('app.access.scopeExcept', {
-                            names: replier(
-                              immeublesDuParc.flatMap((i) =>
-                                (i.units ?? [])
-                                  .filter((u) => (m.excludedUnitIds ?? []).includes(u.id))
-                                  .map((u) => `${i.name} · ${u.label}`),
-                              ),
-                              t,
-                            ),
-                          })}
-                    </span>
-                  )}
-                  {m.tenantName && !memePersonne(m.fullName, m.tenantName) && (
-                    <span className="mt-1 flex">
-                      <StatusPill tone="warn" size="sm">
-                        {t('app.access.nameMismatch')}
-                      </StatusPill>
-                    </span>
-                  )}
-                </div>
-              ),
+                Le nom de la fiche détenue reste dit à VOIX HAUTE, pour la
+                raison qu'un lot antérieur a relevée en production : un compte
+                tenait la fiche d'un AUTRE locataire — son bail, ses
+                quittances, ses relevés — et le seul symptôme était que la
+                bonne personne n'avait rien. C'est l'écart entre les deux noms
+                qui révèle l'erreur, et `memePersonne` en fait une question et
+                non un verdict.
+              */
+              render: (m) => {
+                const detient = detientLaFiche(m)
+                const perimetre = resumeDuPerimetre(m)
+                return (
+                  <div className="flex flex-col">
+                    <span className="font-medium">{m.fullName}</span>
+                    <span className="text-body text-muted">{m.email}</span>
+                    {detient && <span className="text-body text-muted">{detient}</span>}
+                    {perimetre && <span className="text-body text-muted">{perimetre}</span>}
+                    {m.tenantName && !memePersonne(m.fullName, m.tenantName) && (
+                      <span className="mt-1 flex">
+                        <StatusPill tone="warn" size="sm">
+                          {t('app.access.nameMismatch')}
+                        </StatusPill>
+                      </span>
+                    )}
+                  </div>
+                )
+              },
             },
             {
               key: 'role',
@@ -567,130 +841,11 @@ export function Access() {
               key: 'geste',
               role: 'geste',
               header: t('app.access.action'),
-              render: (m) => {
-                /**
-                 * SA PROPRE LIGNE ne porte pas de bouton.
-                 *
-                 * Le serveur refuse l'auto-retrait — un parc dont le dernier
-                 * propriétaire est parti n'est plus atteignable par personne —
-                 * et l'écran ne propose pas un geste qu'on refusera. La
-                 * comparaison porte sur l'adresse, qui est unique en base ; le
-                 * registre ne rend pas l'identifiant du compte, seulement celui
-                 * de l'adhésion.
-                 */
-                const soiMeme = monAdresse === m.email
-                if (!estProprietaire || soiMeme) return null
-                return (
-                  /*
-                    LE GLYPHE FAIT LIRE LA COMMANDE COMME UNE COMMANDE.
-
-                    Ce bouton était fantôme et NU : de l'encre pleine, sans
-                    bord, sans fond, sans signe. Dans une colonne de tableau, à
-                    côté d'un nom et d'une date, cela se lit comme une donnée de
-                    plus — et le survol est le premier moment où l'on apprend
-                    que c'en est une. Trois fois de suite sur la même colonne.
-
-                    Les deux autres colonnes de geste du produit — retirer une
-                    fiche locataire, mettre en demeure — sont le MÊME bouton
-                    fantôme AVEC une icône. Celles du registre étaient les
-                    seules sans, et ce sont les seules qui retirent un accès.
-
-                    PAS DE ROUGE ICI : le rouge du produit est celui de la
-                    CONFIRMATION, dans la modale qui suit. L'avancer d'un cran
-                    ferait de la couleur le signal, ce que `couleur-non-seule`
-                    refuse partout ailleurs — et peindrait en danger une colonne
-                    entière qu'on ne fait que lire, la plupart du temps.
-                  */
-                  <div className="flex items-center justify-end gap-1">
-                    {/* LE GESTE DE RÉPARATION VIENT EN PREMIER, et il est
-                        SECONDAIRE de ton : il rend un accès plutôt que de le
-                        reprendre, et il ne s'affiche que sur la seule rangée
-                        où il a un objet — un locataire membre dont aucune fiche
-                        ne porte le compte. Sur les autres, l'offrir
-                        proposerait de réécrire un lien existant, ce que le
-                        serveur refuse en 409. */}
-                    {/* CONFIER, et ce geste n'existait nulle part.
-
-                        `Park.delegation` valait `solo` ou `delegate` : tout ou
-                        rien sur le parc entier. Confier le premier immeuble à un
-                        cabinet lui ouvrait les trois — baux, loyers, impayés et
-                        cautions de logements dont il n'a jamais entendu parler.
-
-                        Il ne s'affiche que s'il y a de quoi choisir : un parc
-                        d'un seul immeuble n'a rien à répartir, et proposer le
-                        geste y ferait promettre une finesse qui n'existe pas. */}
-                    {m.role === 'manager' &&
-                      (immeublesDuParc.length > 1 ||
-                        immeublesDuParc.reduce((n, i) => n + (i.units ?? []).length, 0) > 1) && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        icon="building"
-                        loading={enCours === m.id}
-                        onClick={() => {
-                          setAConfier(m)
-                          setChoixImmeubles(new Set(m.buildingIds ?? []))
-                          setChoixLogements(new Set(m.unitIds ?? []))
-                          setExclusLogements(new Set(m.excludedUnitIds ?? []))
-                        }}
-                      >
-                        {t('app.access.scopeAction')}
-                      </Button>
-                    )}
-                    {m.role === 'tenant' && !m.tenantId && fichesLibres.length > 0 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        icon="users"
-                        loading={enCours === m.id}
-                        onClick={() => setARelier(m)}
-                      >
-                        {t('app.access.linkTenant')}
-                      </Button>
-                    )}
-                    {/* DÉFAIRE UN LIEN, et il n'existait pas.
-
-                        Relevé sur la production : un compte détenait la fiche
-                        d'un AUTRE locataire — son bail, ses quittances, ses
-                        relevés — pendant que l'intéressé ouvrait un espace
-                        vide. `Tenant.userId` s'écrivait une fois pour toutes,
-                        et relier la bonne personne rendait 409 pour toujours.
-
-                        SANS `estProprietaire` ICI, ET C'EST LA MUTATION QUI L'A
-                        DIT. La condition y était d'abord, par symétrie avec le
-                        propos du geste — une décision, pas une opération. Elle
-                        était MORTE : le rendu de cette cellule sort en `null`
-                        vingt lignes plus haut pour quiconque n'est pas
-                        propriétaire, donc la retirer ne changeait aucun verdict.
-                        Une condition qui ne décide rien fait croire qu'elle
-                        garde quelque chose ; c'est le partage de l'écran entier
-                        qui garde, et lui seul. */}
-                    {m.role === 'tenant' && m.tenantId && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        icon="users"
-                        loading={enCours === m.id}
-                        onClick={() => setADelier(m)}
-                      >
-                        {t('app.access.unlinkTenant')}
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      icon="close"
-                      loading={enCours === m.id}
-                      onClick={() => setARetirer({ genre: 'membre', membre: m })}
-                    >
-                      {t('app.access.revokeMember')}
-                    </Button>
-                  </div>
-                )
-              },
+              render: gestesDuMembre,
             },
           ]}
         />
+        )}
       </Card>
 
       <div className="mt-8">

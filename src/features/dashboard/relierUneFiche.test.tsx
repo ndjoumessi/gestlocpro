@@ -101,8 +101,18 @@ async function ouvrirLeRegistre(role: 'owner' | 'manager' | 'tenant' = 'owner') 
   return utilisateur
 }
 
-const rangee = (nom: RegExp) =>
-  screen.getByRole('row', { name: nom }) as HTMLElement
+/*
+   LA TUILE OU LA RANGÉE, selon la largeur. Le registre des membres est passé
+   en fiches au-dessus de `lg` — le harnais rend à 1280 px par défaut — parce
+   que la phrase de périmètre faisait des rangées du simple au double. Ce que
+   ces cas veulent n'a jamais été « la ligne du tableau » : c'est CE QUE CET
+   ÉCRAN DIT DE CETTE PERSONNE, et les deux formes le disent.
+*/
+const rangee = (nom: RegExp) => {
+  const cible = screen.getByText(nom).closest('[data-fiche-membre], tr')
+  expect(cible, `aucune fiche ni rangée pour ${nom}`).not.toBeNull()
+  return cible as HTMLElement
+}
 
 describe('un membre locataire sans fiche', () => {
   it('porte le geste qui le répare', async () => {

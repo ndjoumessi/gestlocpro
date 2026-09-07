@@ -200,7 +200,14 @@ describe('le registre des accès', () => {
     expect(screen.getByText('Diane Mballa')).toBeInTheDocument()
     expect(screen.getByText('diane@example.com')).toBeInTheDocument()
     expect(screen.getAllByText('Gestionnaire').length).toBeGreaterThan(0)
-    expect(screen.getByText('Propriétaire')).toBeInTheDocument()
+    /* DANS LA FICHE, et non dans la page : le tri par rôle porte « Propriétaire »
+       sur une pastille de filtre depuis le lot des fiches, et chercher le mot à
+       la racine confondrait ce qu'une personne EST avec ce qu'on demande à voir. */
+    expect(
+      within(
+        screen.getByText(COMPTE_FICTIF.email).closest('[data-fiche-membre], tr')! as HTMLElement,
+      ).getByText('Propriétaire'),
+    ).toBeInTheDocument()
   })
 
   it('montre les codes par leur indice, jamais en clair', async () => {
@@ -224,10 +231,10 @@ describe('le registre des accès', () => {
     // est parti n'est plus atteignable. L'écran ne propose pas ce qu'on
     // refusera. Les DEUX moitiés : pas de bouton sur sa ligne, un bouton sur
     // celle du gestionnaire.
-    const sienne = screen.getByText(COMPTE_FICTIF.email).closest('tr')!
+    const sienne = screen.getByText(COMPTE_FICTIF.email).closest('[data-fiche-membre], tr')! as HTMLElement
     expect(within(sienne).queryByRole('button', { name: /Retirer l’accès/ })).not.toBeInTheDocument()
 
-    const celle = screen.getByText('diane@example.com').closest('tr')!
+    const celle = screen.getByText('diane@example.com').closest('[data-fiche-membre], tr')! as HTMLElement
     expect(within(celle).getByRole('button', { name: /Retirer l’accès/ })).toBeInTheDocument()
   })
 
@@ -239,7 +246,7 @@ describe('le registre des accès', () => {
       body: { ...REGISTRE, members: [REGISTRE.members[0]] },
     })
 
-    const celle = screen.getByText('diane@example.com').closest('tr')!
+    const celle = screen.getByText('diane@example.com').closest('[data-fiche-membre], tr')! as HTMLElement
     const utilisateur = userEvent.setup()
     await utilisateur.click(within(celle).getByRole('button', { name: /Retirer l’accès/ }))
 
@@ -405,7 +412,7 @@ describe('ce que le registre n’affirme pas', () => {
     await ouvrir('owner')
     serveur.quand('PATCH', `/parks/${PARC}/memberships/${AUTRE}/revoke`, { status: 204 })
 
-    const celle = screen.getByText('diane@example.com').closest('tr')!
+    const celle = screen.getByText('diane@example.com').closest('[data-fiche-membre], tr')! as HTMLElement
     const utilisateur = userEvent.setup()
     await utilisateur.click(within(celle).getByRole('button', { name: /Retirer l’accès/ }))
 

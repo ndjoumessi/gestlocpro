@@ -23,6 +23,7 @@ import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDe
 import { GroupeDeFiltres } from '@/components/controls/GroupeDeFiltres'
 import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
 import { AU_DELA_LG, useAuDela } from '@/lib/useAuDela'
+import { initiales } from './initiales'
 import { DatePicker } from '@/components/primitives/DatePicker'
 import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
@@ -72,15 +73,6 @@ const ETATS_DU_FILTRE: PaymentStatus[] = ['overdue', 'partial', 'uncalled', 'pen
 
 const GRILLE_DES_FICHES_DE_LOCATAIRE =
   'grid grid-cols-[repeat(auto-fill,minmax(min(100%,18rem),1fr))] gap-3'
-
-/** Les deux premières initiales d'un nom — la pastille d'identité de la fiche. */
-function initiales(nom: string | null): string {
-  return (nom ?? '')
-    .split(' ')
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join('')
-}
 
 /**
  * UN COUPLE NOM/VALEUR de la fiche, et il est un vrai couple.

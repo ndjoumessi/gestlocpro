@@ -1360,6 +1360,8 @@ export const en: Dictionary = {
       kpiInvitations: 'Codes pending',
       kpiInvitationsNote: 'not used yet',
       member: 'Person',
+      filterRole: 'Filter by role',
+      filterAll: 'All',
       memberRole: 'Role',
       since: 'Member since',
       action: 'Action',

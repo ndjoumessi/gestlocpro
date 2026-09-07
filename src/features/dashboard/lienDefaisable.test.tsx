@@ -114,10 +114,20 @@ async function ouvrirLesAcces(role: Role = 'owner') {
 }
 
 /** La rangée du membre qui porte ce nom. */
+/*
+   LA TUILE OU LA RANGÉE, selon la largeur. Le registre des membres est passé
+   en fiches au-dessus de `lg` — le harnais rend à 1280 px par défaut — parce
+   que la phrase de périmètre faisait des rangées du simple au double. Ce que
+   ces cas veulent n'a jamais été « la ligne du tableau » : c'est CE QUE CET
+   ÉCRAN DIT DE CETTE PERSONNE, et les deux formes le disent.
+*/
 function rangeeDe(nom: string) {
-  const ligne = screen.getByText(nom).closest('tr')
+  const ligne = screen.getByText(nom).closest('[data-fiche-membre], tr')
   expect(ligne, `aucune rangée pour ${nom}`).not.toBeNull()
-  return ligne!
+  /* `closest` sur un sélecteur composé rend `Element` et non
+     `HTMLTableRowElement` : la forme n'est plus connue à la compilation, ce
+     qui est exactement le point de ce lot. */
+  return ligne! as HTMLElement
 }
 
 describe('voir à qui une fiche est reliée', () => {
