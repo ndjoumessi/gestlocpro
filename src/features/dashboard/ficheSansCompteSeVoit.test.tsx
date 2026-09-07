@@ -102,12 +102,19 @@ beforeEach(() => {
   })
 })
 
-/** La ligne du tableau qui porte ce nom. */
-function ligneDe(nom: string) {
+/**
+ * La FICHE qui porte ce nom — une rangée de tableau jusqu'au 2026-09-07.
+ *
+ * L'écran des locataires rend une fiche par personne au-delà de 1024 px ; sous
+ * ce seuil, `DataTable` rend ses propres fiches. Ni l'une ni l'autre n'est un
+ * `<tr>`, et ce qu'on cherche ici — la pastille à côté du bon nom — vaut pour
+ * les deux formes : on remonte au conteneur qui porte le nom, quel qu'il soit.
+ */
+function ficheDe(nom: string) {
   const cellule = screen.getByText(new RegExp(nom, 'i'))
-  const ligne = cellule.closest('tr')
-  expect(ligne, `aucune ligne pour ${nom}`).not.toBeNull()
-  return ligne!
+  const fiche = cellule.closest('[data-fiche-locataire], tr, li')
+  expect(fiche, `aucune fiche pour ${nom}`).not.toBeNull()
+  return fiche as HTMLElement
 }
 
 describe('une fiche sans compte, sur l’écran des locataires', () => {
@@ -118,14 +125,14 @@ describe('une fiche sans compte, sur l’écran des locataires', () => {
 
   it('marque celle qui n’a pas de compte', async () => {
     expect(
-      within(ligneDe('Bekono Landry')).getByText(/sans compte/i),
+      within(ficheDe('Bekono Landry')).getByText(/sans compte/i),
       'la fiche orpheline se présente comme les autres : le bailleur ne verra rien',
     ).toBeInTheDocument()
   })
 
   it('ne marque pas celle qui en a un', async () => {
     // La moitié sans laquelle marquer tout le monde satisferait le cas précédent.
-    expect(within(ligneDe('Djoumessi Martial')).queryByText(/sans compte/i)).not.toBeInTheDocument()
+    expect(within(ficheDe('Djoumessi Martial')).queryByText(/sans compte/i)).not.toBeInTheDocument()
   })
 
   it('dit la conséquence, et où la réparer', async () => {

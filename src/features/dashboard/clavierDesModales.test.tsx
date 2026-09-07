@@ -241,7 +241,7 @@ const MODALES: Modale[] = [
     Elles se répètent PAR LIGNE, comme la quittance : d'où leur `rang`.
   */
   { nom: 'Arbitrer', fichier: 'features/dashboard/Deposits.tsx', adresse: '/demo/cautions', bouton: /^Arbitrer$/, rang: 0, forme: 'saisie' },
-  { nom: 'Retirer une fiche', fichier: 'features/dashboard/Tenants.tsx', adresse: '/demo/locataires', bouton: /^Retirer$/, rang: 0, forme: 'lecture' },
+  { nom: 'Retirer une fiche', fichier: 'features/dashboard/Tenants.tsx', adresse: '/demo/locataires', bouton: /^Retirer la fiche de /, rang: 0, forme: 'lecture' },
   /* LES QUATRE DETTES QUE LA GARDE DE COMPLÉTUDE A RENDUES VISIBLES.
 
      Elles étaient déclarées `HORS_CLAVIER` le temps d'un lot — « une dette que
@@ -249,18 +249,22 @@ const MODALES: Modale[] = [
      gestes ORDINAIRES du produit : corriger une fiche, en créer une, confier
      des immeubles, relier un membre à sa fiche.
 
-     `rang: 0` sur « Corriger » parce que le geste se répète PAR LIGNE et que son
-     nom accessible ne porte pas sa cible — contrairement à celui du parc, où
-     « Corriger le logement A1 » désigne sa rangée. C'est une faiblesse réelle de
-     cet écran-ci, nommée et non corrigée : elle appartient au sujet des NOMS
-     ACCESSIBLES, pas à celui du clavier. */
-  { nom: 'Corriger une fiche', fichier: 'features/dashboard/Tenants.tsx', adresse: '/demo/locataires', bouton: /^Corriger$/, rang: 0, forme: 'saisie' },
+     LA FAIBLESSE QUE CE COMMENTAIRE NOMMAIT EST PAYÉE. Il disait : « le nom
+     accessible ne porte pas sa cible — contrairement à celui du parc, où
+     Corriger le logement A1 désigne sa rangée ». Depuis la refonte de l'écran
+     en fiches, le 2026-09-07, il la porte : « Corriger la fiche de Charles
+     Ngassa ». `rang: 0` reste, le geste se répétant par fiche. */
+  { nom: 'Corriger une fiche', fichier: 'features/dashboard/Tenants.tsx', adresse: '/demo/locataires', bouton: /^Corriger la fiche de /, rang: 0, forme: 'saisie' },
   { nom: 'Créer une fiche locataire', fichier: 'features/dashboard/Tenants.tsx', adresse: '/demo/locataires', bouton: /^Créer une fiche locataire$/, forme: 'saisie' },
   { nom: 'Confier des immeubles', fichier: 'features/dashboard/Access.tsx', adresse: '/demo/acces', bouton: /^Confier des immeubles$/, rang: 0, forme: 'saisie' },
   { nom: 'Relier à une fiche', fichier: 'features/dashboard/Access.tsx', adresse: '/demo/acces', bouton: /^Relier à une fiche$/, rang: 0, forme: 'saisie' },
 
   { nom: 'Retirer un accès', fichier: 'features/dashboard/Access.tsx', adresse: '/demo/acces', bouton: /^Retirer l’accès$/, rang: 0, forme: 'lecture' },
   { nom: 'Relancer les retards', fichier: 'features/dashboard/Payments.tsx', adresse: '/demo/paiements', bouton: /^Relancer les retards$/, forme: 'lecture' },
+  /* LA RELANCE D'UN SEUL, née avec les fiches de locataire : même modale que la
+     relance groupée, au singulier, et sur la fiche de qui la reçoit. `rang: 0`
+     — quatre fiches sur dix la portent, celles des impayés et du partiel. */
+  { nom: 'Relancer un locataire', fichier: 'features/dashboard/Tenants.tsx', adresse: '/demo/locataires', bouton: /^Relancer ./, rang: 0, forme: 'lecture' },
   /* La cinquième confirmation, entrée quand la démonstration a cessé de masquer
      le geste. `saisie` : elle porte un motif, qui est tout l'acte. */
   { nom: 'Mettre en demeure', fichier: 'features/dashboard/Payments.tsx', adresse: '/demo/paiements', bouton: /^Mettre en demeure$/, rang: 0, forme: 'saisie' },
@@ -583,11 +587,13 @@ describe('le clavier des modales', () => {
     expect(creuses, 's’inscrire est un geste ; le motif est ce qui le rend relisible').toEqual([])
   })
 
-  it('a bien joué les vingt-six modales déclarées', () => {
+  it('a bien joué les vingt-sept modales déclarées', () => {
     /* 24 → 26 (2026-09-06) : les deux retraits du Parc, qui étaient dispensés
-       faute de cible dans la démonstration. Leur `prealable` la crée. */
-    expect(MODALES.length).toBe(26)
-    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(26)
+       faute de cible dans la démonstration. Leur `prealable` la crée.
+       26 → 27 (2026-09-07) : la relance d'un seul locataire, née avec les
+       fiches de l'écran des locataires. */
+    expect(MODALES.length).toBe(27)
+    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(27)
     /* LES `lecture` SONT NOMMÉES, et l'écrire ici les protège : passer une
        modale de saisie en `lecture` pour faire taire un champ mal libellé est
        le contournement le plus facile de ce fichier. Il ferait rougir.
@@ -604,6 +610,7 @@ describe('le clavier des modales', () => {
       'Retirer une fiche',
       'Retirer un accès',
       'Relancer les retards',
+      'Relancer un locataire',
     ])
   })
 })

@@ -149,8 +149,17 @@ describe('retrait d’une fiche locataire', () => {
     await renderApp('/app/locataires', { session: session('manager') })
     await screen.findByText('Paul Kamga')
 
-    // Retirer une fiche efface une personne du registre.
-    expect(screen.queryByRole('button', { name: /^retirer$/i })).not.toBeInTheDocument()
+    /* Retirer une fiche efface une personne du registre.
+
+       L'ENTRÉE EXISTE MAIS ELLE EST FERMÉE, et c'est ce qu'on mesure depuis la
+       refonte en fiches : `MenuElement` sans `onClick` reste dans l'ordre de
+       tabulation avec son motif, plutôt que de disparaître — un geste absent
+       laisse chercher, un geste fermé dit pourquoi. Chercher un bouton
+       « Retirer » passerait désormais au vert sur n'importe quel écran. */
+    await userEvent.setup().click(screen.getAllByRole('button', { name: /Actions pour/ })[0]!)
+    expect(screen.queryByRole('menuitem', { name: /Retirer la fiche de/ })).not.toBeInTheDocument()
+    const ferme = screen.getByRole('menuitem', { name: /Seul le propriétaire/ })
+    expect(ferme).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('demande confirmation, puis appelle le serveur', async () => {
@@ -164,7 +173,7 @@ describe('retrait d’une fiche locataire', () => {
     await renderApp('/app/locataires', { session: session('owner') })
     await screen.findByText('Paul Kamga')
 
-    await user.click(screen.getAllByRole('button', { name: /^retirer$/i })[0]!)
+    await cliquerAction(/Retirer la fiche de Paul Kamga/)
     // La confirmation NOMME la personne : le geste est irréversible et porte sur
     // quelqu'un, pas sur une ligne.
     const dialogue = screen.getByRole('alertdialog')
@@ -201,7 +210,7 @@ describe('retrait refusé', () => {
     await renderApp('/app/locataires', { session: session('owner') })
     await screen.findByText('Paul Kamga')
 
-    await user.click(screen.getAllByRole('button', { name: /^retirer$/i })[0]!)
+    await cliquerAction(/Retirer la fiche de Paul Kamga/)
     await user.click(
       within(screen.getByRole('alertdialog')).getByRole('button', { name: /confirmer/i }),
     )

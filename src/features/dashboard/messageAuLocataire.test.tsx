@@ -238,7 +238,11 @@ describe('prévenir les locataires', () => {
     await renderApp('/app/locataires', { session: session() })
     // Le libellé du logement : le tableau des baux n'existe qu'une fois le parc
     // chargé, et l'en-tête est rendu par le squelette autant que par l'écran.
-    await screen.findByText('A3')
+    /* LE LOGEMENT NE TIENT PLUS SA PROPRE CELLULE. L'écran rend une fiche par
+       locataire depuis le 2026-09-07, et le numéro y vit dans une phrase —
+       « A3 · depuis mars 2025 ». Ce que cette ligne attend n'a pas changé : que
+       le parc soit arrivé avant qu'on ouvre l'annonce. */
+    await screen.findByText(/^A3( ·|$)/)
     const clavier = userEvent.setup()
     await cliquerAction(/Prévenir les locataires/)
     return { faux, clavier }

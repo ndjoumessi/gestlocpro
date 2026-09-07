@@ -309,7 +309,11 @@ const MODALES = [
     locataire », ni son pied atteignable, ni ses cibles au doigt n'avaient jamais
     été relevés, sur le formulaire le plus long du produit.
   */
-  { nom: 'CorrigerFiche', fichier: 'features/dashboard/Tenants.tsx', adresse: '/demo/locataires', bouton: /^Corriger$|^Correct$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  /* Le nom accessible porte sa CIBLE depuis la refonte en fiches du
+     2026-09-07 — « Corriger la fiche de Charles Ngassa » —, parce que dix
+     entrées « Corriger » ne disent pas laquelle on active. Le script ouvre
+     déjà les menus de débordement ; c'est le libellé qu'il fallait suivre. */
+  { nom: 'CorrigerFiche', fichier: 'features/dashboard/Tenants.tsx', adresse: '/demo/locataires', bouton: /^Corriger la fiche de |’s record$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /*
     LE PLUS LONG FORMULAIRE DU PRODUIT, et il défile de 602 px à 360.
 
@@ -493,7 +497,7 @@ const MODALES = [
     en ajouter une seconde mesurerait deux fois la même géométrie.
   */
   { nom: 'SettleDeposit', fichier: 'features/dashboard/Deposits.tsx', adresse: '/demo/cautions', bouton: /^Arbitrer$|^Settle$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 10, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
-  { nom: 'RemoveTenant', fichier: 'features/dashboard/Tenants.tsx', adresse: '/demo/locataires', bouton: /^Retirer$|^Remove$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'RemoveTenant', fichier: 'features/dashboard/Tenants.tsx', adresse: '/demo/locataires', bouton: /^Retirer la fiche de |^Remove .+’s record$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'RevokeAccess', fichier: 'features/dashboard/Access.tsx', adresse: '/demo/acces', bouton: /^Retirer l’accès$|^Remove access$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /*
     SUPPRIMER UN IMMEUBLE : LA SONDE EN CRÉE UN D'ABORD.
@@ -562,6 +566,12 @@ const MODALES = [
     defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 },
     avant: { 360: 0, 1280: 0 },
   },
+  /* LA RELANCE D'UN SEUL, née avec les fiches de locataire. Elle vit des deux
+     côtés du seuil — sur la fiche de bureau et dans la colonne de geste des
+     fiches mobiles —, sans quoi cette garde ne l'ouvrirait qu'à une largeur
+     sur deux. Le geste ne paraît que sur un impayé ou un partiel ; la
+     démonstration en porte quatre, donc le bouton existe aux deux largeurs. */
+  { nom: 'RelancerLocataire', fichier: 'features/dashboard/Tenants.tsx', adresse: '/demo/locataires', bouton: /^Relancer .|^Send a reminder to /, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'RemindOverdue', fichier: 'features/dashboard/Payments.tsx', adresse: '/demo/paiements', bouton: /^Relancer les retards$|^Chase arrears$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /*
     LA MISE EN DEMEURE ENTRE, ET C'EST UN LOT QUI L'A OUVERTE.
@@ -691,8 +701,19 @@ const LANGUES = ['fr', 'en']
   états. Son `prealable` CRÉE le logement qu'elle va retirer : les douze du jeu
   de démonstration portent tous un bail, un versement ou un relevé, donc leurs
   douze croix sont fermées et le geste ne s'ouvre sur aucune d'elles.
+
+  112 → 116 (2026-09-07) : `RelancerLocataire`, née avec la refonte de l'écran
+  des locataires en fiches. Une modale ordinaire, donc quatre états. Elle
+  confirme un envoi vers UNE personne, là où la relance des paiements en groupe
+  plusieurs — mêmes mots, au singulier.
+
+  LE MÊME LOT A DÉPLACÉ DEUX LIBELLÉS, et cette garde l'a dit avant tout le
+  monde : « Corriger » et « Retirer » se sont repliés derrière trois points, et
+  leurs noms accessibles portent désormais leur cible. Le script ouvrait déjà
+  les menus ; il cherchait les anciens noms, et refusait plutôt que d'écrire
+  « sans défaut » sur ce qu'il n'avait pas ouvert.
 */
-const ATTENDUS = 112
+const ATTENDUS = 116
 const NON_OUVRABLES_ATTENDUES = 0
 
 /**

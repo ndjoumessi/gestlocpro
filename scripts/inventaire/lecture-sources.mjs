@@ -670,8 +670,14 @@ export const PLANCHERS_DE_LECTURE = {
   'fichiers scannés': 90,
   'balises JSX lues': 2300,
   'composants indexés': 285,
-  'sites interactifs': 245,
-  'champs de formulaire': 113,
+  /* 245 → 281 et 113 → 127, le 2026-09-07 : l'écran des locataires est passé du
+     tableau aux fiches, et une fiche porte plus de sites qu'une rangée — un
+     menu, deux boutons, un lien d'appel par personne —, plus la recherche et
+     les pastilles de filtre. Le réel monte à 313 et 142, et
+     `planchersDeLecture` refuse plus de 20 % d'écart : il a demandé ces deux
+     nombres. */
+  'sites interactifs': 281,
+  'champs de formulaire': 127,
   'titres composés': 390,
   // 176 et non 151, le 2026-09-07 : quatorze gardes ajoutées en neuf lots (audit
   // UI/UX puis parc en fiches) ont porté le réel à 196, et `planchersDeLecture`

@@ -82,11 +82,25 @@ const PORTEFEUILLE = {
   leaseCharges: [],
 }
 
+/*
+  ═══ LE TÉMOIN A CHANGÉ D'ÉCRAN, ET IL LE FALLAIT ═══
+
+  Ces deux cas s'ouvraient sur les LOCATAIRES, écran où le défaut était né.
+  Depuis sa refonte en fiches le 2026-09-07, il ne rend plus de tableau à
+  aucune largeur : une fiche par personne au-delà de 1024 px, les fiches de
+  `DataTable` en dessous. La garde y comptait donc zéro colonne épinglée sur
+  zéro tableau, et se serait déclarée verte sur du vide — précisément ce que sa
+  propre garde du garde interdit.
+
+  Le SUJET n'a pas bougé : c'est `DataTable` qui épingle, et la règle vaut pour
+  tout écran qui l'emploie. Les PAIEMENTS le font, avec une colonne de geste,
+  et c'est le même portefeuille qui les nourrit.
+*/
 describe('les colonnes épinglées d’un tableau', () => {
-  it('n’en colle qu’UNE au bord droit, sur l’écran des locataires', async () => {
+  it('n’en colle qu’UNE au bord droit, sur l’écran des paiements', async () => {
     const faux = installerFauxServeur({ authentifie: true })
     faux.quand('GET', `/parks/${PARC}/portfolio`, { status: 200, body: PORTEFEUILLE })
-    await renderApp('/app/locataires', { session: sessionProprietaire() })
+    await renderApp('/app/paiements', { session: sessionProprietaire() })
     await attendreLeChargement()
 
     const tableaux = screen.getAllByRole('table')
@@ -107,7 +121,7 @@ describe('les colonnes épinglées d’un tableau', () => {
        rien — c'est-à-dire sur un autre défaut. */
     const faux = installerFauxServeur({ authentifie: true })
     faux.quand('GET', `/parks/${PARC}/portfolio`, { status: 200, body: PORTEFEUILLE })
-    await renderApp('/app/locataires', { session: sessionProprietaire() })
+    await renderApp('/app/paiements', { session: sessionProprietaire() })
     await attendreLeChargement()
 
     expect(document.querySelectorAll('[data-colonne-tenue]').length).toBeGreaterThan(0)

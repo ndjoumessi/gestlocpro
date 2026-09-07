@@ -6,9 +6,13 @@ import { InviteModal } from './InviteModal'
 import { AnnounceModal } from './AnnounceModal'
 import { Notice } from '@/components/primitives/Notice'
 import { Card, CardHeader } from '@/components/primitives/Card'
-import { DataTable } from '@/components/primitives/DataTable'
+import { DataTable, EmptyState } from '@/components/primitives/DataTable'
 import { Skeleton, SkeletonRegion, SkeletonTable } from '@/components/primitives/Skeleton'
-import { PaymentStatusPill, StatusPill } from '@/components/primitives/StatusPill'
+import {
+  PaymentStatusPill,
+  StatusPill,
+  type PaymentStatus,
+} from '@/components/primitives/StatusPill'
 import { Button } from '@/components/primitives/Button'
 import { Modal } from '@/components/primitives/Modal'
 import { Field } from '@/components/primitives/Field'
@@ -16,6 +20,7 @@ import { Input, Select } from '@/components/primitives/Input'
 import { Combobox } from '@/components/primitives/Combobox'
 import { StatCard } from '@/components/primitives/Charts'
 import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDebordement'
+import { GroupeDeFiltres } from '@/components/controls/GroupeDeFiltres'
 import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
 import { AU_DELA_LG, useAuDela } from '@/lib/useAuDela'
 import { DatePicker } from '@/components/primitives/DatePicker'
@@ -28,9 +33,76 @@ import { dialOptions } from '@/lib/countries'
 import { INDICATIFS } from '@/lib/indicatifs'
 import { useSession } from '@/api/SessionProvider'
 import { api } from '@/api/client'
-import { ACCES_DEMO, DOCUMENT_KIND_LABELS, buildingById, type Unit } from '@/data/portfolio'
+import {
+  ACCES_DEMO,
+  DOCUMENT_KIND_LABELS,
+  buildingById,
+  receiptDue,
+  type Unit,
+} from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { validateName, validatePhone, type FieldError } from '@/features/auth/validation'
+
+/*
+  LA GRILLE DES FICHES DE LOCATAIRE — fluide, jamais plus large que sa boîte.
+
+  Autant de colonnes de 18 rem qu'il en tient. Mesuré à 1280 px : vingt rem ne
+  donnaient que DEUX colonnes dans les 950 px du contenu, là où dix-huit en
+  donnent trois de 308 px — assez pour les deux colonnes de couples nom/valeur
+  que la fiche porte, « 1 397 000 FCFA » compris. À 320 px, une colonne pleine
+  largeur.
+
+  Nommée, et non écrite deux fois : le squelette rend la MÊME grille, faute de
+  quoi la page se réorganise à l'arrivée des données.
+*/
+/*
+  L'ORDRE DES ÉTATS DANS LE FILTRE, ET IL N'EST PAS ALPHABÉTIQUE.
+
+  Du plus urgent au plus calme : en retard, partiel, non appelé, en attente, à
+  jour. Un bailleur ouvre cet écran pour ce qui cloche ; la première pastille
+  après « Tous » doit être celle qu'il vient chercher.
+
+  LES OPTIONS SE DÉRIVENT DES ÉTATS PRÉSENTS, jamais d'une liste figée. Une
+  liste figée offre des filtres qui ne rendent rien — et, plus grave, elle en
+  OMET : un locataire dont l'état n'est dans aucune option resterait
+  inatteignable dès qu'on filtre. Ici, tout état porté par au moins un bail a
+  sa pastille, et aucune pastille ne mène au vide.
+*/
+const ETATS_DU_FILTRE: PaymentStatus[] = ['overdue', 'partial', 'uncalled', 'pending', 'paid']
+
+const GRILLE_DES_FICHES_DE_LOCATAIRE =
+  'grid grid-cols-[repeat(auto-fill,minmax(min(100%,18rem),1fr))] gap-3'
+
+/** Les deux premières initiales d'un nom — la pastille d'identité de la fiche. */
+function initiales(nom: string | null): string {
+  return (nom ?? '')
+    .split(' ')
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join('')
+}
+
+/**
+ * UN COUPLE NOM/VALEUR de la fiche, et il est un vrai couple.
+ *
+ * `<dt>`/`<dd>` et non deux paragraphes : un lecteur d'écran annonce le terme
+ * avant sa définition, là où une mise en page le laisserait deviner. C'est la
+ * règle que `DataTable` applique déjà dans ses fiches mobiles.
+ */
+function FaitDeLaFiche({
+  libelle,
+  children,
+}: {
+  libelle: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="min-w-0">
+      <dt className="eyebrow text-muted">{libelle}</dt>
+      <dd className="numeric mt-0.5 truncate text-body">{children}</dd>
+    </div>
+  )
+}
 
 export function Tenants() {
   const t = useT()
@@ -45,6 +117,11 @@ export function Tenants() {
   // immobilier et dans le taux d'occupation du tableau de bord.
   const { units, loading, removeTenant, documentRequests, resolveDocumentRequest, unitById } =
     usePortfolio()
+  /* TOUT CECI EST DÉJÀ CHARGÉ AVEC LE PARC, et la fiche le dit sans une requête
+     de plus : la caution consignée, les travaux ouverts du logement, et les
+     échéances du bail dont se déduit le solde cumulé. Le tableau les taisait —
+     six colonnes, et le bailleur allait les chercher sur trois autres écrans. */
+  const { deposits, worksForUnit, receiptsForUnit, remindRent } = usePortfolio()
   /* LE MÊME SEUIL QUE LA BASCULE EN FICHES : au-dessus, un tableau, ses cartes
      et sa file de demandes ; en dessous, la liste d'abord. Un seul seuil pour
      toute la page, comme sur l'écran du parc.
@@ -57,11 +134,48 @@ export function Tenants() {
   const enTableau = useAuDela(AU_DELA_LG)
   const [aCorriger, setACorriger] = useState<Unit | null>(null)
   const [aRetirer, setARetirer] = useState<Unit | null>(null)
+  /* Le locataire qu'on relance depuis SA fiche. La relance part vers une
+     personne : elle se confirme, comme celle des paiements. */
+  const [aRelancer, setARelancer] = useState<Unit | null>(null)
+  const [relanceEnCours, setRelanceEnCours] = useState(false)
   const { role } = useRole()
   const base = useBase()
   const { notify } = useToast()
 
   const leases = units.filter((unit) => unit.tenant !== null)
+
+  /*
+    CHERCHER ET FILTRER, sur un écran qui ne le permettait pas.
+
+    Dix fiches tiennent à l'œil ; cinquante non, et un parc réel en porte
+    cinquante. L'écran offrait alors de faire défiler, et rien d'autre — pas
+    même le geste que le parc immobilier a depuis toujours. Nelson l'a demandé
+    le 2026-09-07.
+
+    LA RECHERCHE PORTE SUR CE QU'ON RETIENT D'UNE PERSONNE : son nom, son
+    logement, son numéro. Le numéro compte autant que le nom sur ce marché —
+    c'est par lui qu'on retrouve quelqu'un dont on ne sait plus l'orthographe.
+
+    LES DEUX SE COMBINENT, et c'est le point : « en retard » puis « Akwa »
+    répond à la question qu'on se pose vraiment.
+  */
+  const [recherche, setRecherche] = useState('')
+  const [filtreDEtat, setFiltreDEtat] = useState<PaymentStatus | 'all'>('all')
+  const aiguille = recherche.trim().toLowerCase()
+  const visibles = leases.filter((unit) => {
+    if (filtreDEtat !== 'all' && unit.status !== filtreDEtat) return false
+    if (!aiguille) return true
+    /* Le libellé du logement et non son identifiant : c'est « A1 » qu'on lit à
+       l'écran et qu'on retape, pas l'uuid que servira l'API. */
+    return [unit.tenant ?? '', unit.label, unit.phone ?? '']
+      .join(' ')
+      .toLowerCase()
+      .includes(aiguille)
+  })
+  const effacerLesFiltres = () => {
+    setRecherche('')
+    setFiltreDEtat('all')
+  }
   /* Celles qui appellent un geste. Une demande déjà traitée n'a plus rien à
      faire dans une liste de travail — elle reste lisible chez le locataire,
      qui est celui que la réponse concerne. */
@@ -168,6 +282,211 @@ export function Tenants() {
         </ul>
       </Card>
     ) : null
+
+  /*
+    LES LOCATAIRES EN FICHES, SUR BUREAU — une par personne.
+
+    Le tableau portait six colonnes de même poids et une identité noyée dedans :
+    pour savoir ce qu'un locataire doit, ce qu'on tient de lui et ce qui traîne
+    sur son logement, il fallait ouvrir Paiements, Cautions et Travaux. Nelson a
+    montré une référence le 2026-09-07 — une fiche par locataire, l'état en
+    tête, quatre faits en grille, les gestes en bas — et la forme la suit.
+
+    Sous `lg`, rien ne change : `DataTable` rend déjà des fiches.
+
+    CE QUE LA RÉFÉRENCE MONTRE ET QUE LE PRODUIT NE SAIT PAS DIRE, laissé vide
+    plutôt qu'inventé : le bail signé en PDF (aucun document de bail n'existe),
+    l'historique par personne (le dossier du logement en tient lieu), et la fin
+    de bail — `endsOn` vit au schéma, le portefeuille ne l'envoie pas, donc
+    aucun « part le 10/08 » ne peut être vrai ici.
+  */
+  const fichesDesLocataires = (
+    <ul aria-label={t('app.tenants.title')} className={GRILLE_DES_FICHES_DE_LOCATAIRE}>
+      {visibles.map((unit) => {
+        const caution = deposits.find((c) => c.unitId === unit.id && c.status === 'held')
+        const chantiers = worksForUnit(unit.id).filter((w) => w.status !== 'done').length
+        /* LE SOLDE CUMULÉ, comme sur Paiements et par le même calcul : ce qui
+           reste dû sur TOUTES les périodes du bail, et non l'écart du mois.
+           « Paul doit 258 000 » ne dit pas la même démarche que « Paul doit le
+           mois de septembre ». Sans historique — un parc dont aucune échéance
+           n'est enregistrée — on retombe sur l'écart du mois, seule chose qu'on
+           sache alors. Négatif quand il a payé d'avance. */
+        const recus = receiptsForUnit(unit.id)
+        const solde =
+          recus.length > 0
+            ? recus.reduce((somme, r) => somme + receiptDue(r) - r.paidMinor, 0)
+            : unit.rent - unit.paid
+        const enRetard = unit.status === 'overdue' || unit.status === 'partial'
+        return (
+          <li key={unit.id} data-fiche-locataire="">
+            <Card as="article" className="flex h-full flex-col gap-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span
+                    aria-hidden="true"
+                    className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-label font-semibold text-muted"
+                  >
+                    {initiales(unit.tenant)}
+                  </span>
+                  {/* `data-donnee` : un nom saisi n'a pas de longueur bornée,
+                      la fiche si — la coupe est assumée, avec le nom entier au
+                      survol. Voir `MESURER_TRONCATURES`. */}
+                  <p
+                    data-donnee
+                    className="min-w-0 truncate font-medium"
+                    title={unit.tenant ?? undefined}
+                  >
+                    {unit.tenant}
+                  </p>
+                </div>
+                <PaymentStatusPill status={unit.status} size="sm" />
+              </div>
+
+              {/* LE LOGEMENT ET LA DATE D'ENTRÉE, SUR SA PROPRE LIGNE.
+
+                  Deux mesures l'ont posée là. Le QUARTIER est parti : en
+                  anglais à 1280 px, « A1 · Bonamoussadi · since August 2023 »
+                  se coupait sur les dix fiches, et le quartier situe un
+                  IMMEUBLE — il ne dit rien d'une personne, et vit déjà sur
+                  l'écran du parc. Puis « A2 · depuis octobre 2023 » se coupait
+                  ENCORE, à côté de l'avatar et sous la pastille : il restait
+                  159 px des 307 de la fiche. Sur sa ligne, elle en a 227, et
+                  rien ne se coupe dans les deux langues. `pl-12` la garde
+                  alignée sous le nom, à l'aplomb que l'avatar impose. */}
+              <p className="numeric truncate pl-12 text-label text-muted">
+                {unit.label}
+                {unit.leaseStart
+                  ? ` · ${t('app.portfolio.sinceLease', { date: d.monthYearInline(unit.leaseStart) })}`
+                  : ''}
+              </p>
+
+              {/* LE NUMÉRO, PARCE QUE C'EST PAR LÀ QUE ÇA SE RÈGLE.
+
+                  La première rédaction de cette fiche l'avait perdu : la
+                  référence ne le montre pas, et le tableau le portait dans une
+                  colonne « Contact ». Sur le marché visé, appeler EST la
+                  démarche — avant la relance écrite, après elle, et pour tout
+                  ce qui n'est pas un impayé. `screens.test.tsx` l'a dit en
+                  cherchant une colonne qui n'existait plus.
+
+                  `min-h-11` : un lien qu'un pouce vise est une cible, et le
+                  produit tient 44 px partout. */}
+              {unit.phone ? (
+                <a
+                  href={`tel:${unit.phone.replace(/\s/g, '')}`}
+                  className="numeric -my-2 inline-flex min-h-11 items-center pl-12 text-label text-muted no-underline hover:text-ink hover:underline"
+                >
+                  {unit.phone}
+                </a>
+              ) : null}
+
+              {/* SANS COMPTE reste à l'identité et non dans la grille : c'est un
+                  état de la PERSONNE, pas un de ses quatre chiffres, et il
+                  n'existe que quand il est vrai. */}
+              {unit.tenantHasAccount === false && (
+                <div>
+                  <StatusPill tone="warn" size="sm">
+                    {t('app.tenants.noAccount')}
+                  </StatusPill>
+                </div>
+              )}
+
+              {/* QUATRE FAITS, TOUJOURS LES MÊMES ET TOUJOURS LÀ. Une grille dont
+                  les cases changent d'une fiche à l'autre ne se compare plus
+                  d'un coup d'œil ; une case sans valeur porte un tiret. */}
+              <dl className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-divider pt-3">
+                <FaitDeLaFiche libelle={t('app.portfolio.rent')}>
+                  {money(unit.rent, { compact: true })}
+                </FaitDeLaFiche>
+                <FaitDeLaFiche libelle={t('app.tenants.cardDeposit')}>
+                  {caution ? (
+                    money(caution.held, { compact: true })
+                  ) : (
+                    <span className="text-muted">—</span>
+                  )}
+                </FaitDeLaFiche>
+                <FaitDeLaFiche libelle={t('app.payments.balanceTotal')}>
+                  {solde === 0 ? (
+                    <span className="text-muted">{money(0, { compact: true })}</span>
+                  ) : (
+                    /* Une AVANCE n'est pas une dette : elle se lit en clair,
+                       avec son signe, et jamais en rouge. Même règle que la
+                       colonne de solde des paiements. */
+                    <span className={solde > 0 ? 'font-medium text-danger' : 'text-ok'}>
+                      {solde > 0 ? '−' : '+'}
+                      {money(Math.abs(solde), { compact: true })}
+                    </span>
+                  )}
+                </FaitDeLaFiche>
+                <FaitDeLaFiche libelle={t('app.tenants.cardWorks')}>
+                  {chantiers > 0 ? (
+                    String(chantiers)
+                  ) : (
+                    <span className="text-muted">—</span>
+                  )}
+                </FaitDeLaFiche>
+              </dl>
+
+              {/* `mt-auto` : les gestes se posent au BAS de la fiche, quelle que
+                  soit la hauteur du nom au-dessus. Sans lui, une rangée de
+                  fiches montre ses boutons à quatre hauteurs différentes. */}
+              <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-divider pt-3">
+                {/* LE GESTE QUE L'ÉTAT APPELLE, et lui seul. Relancer n'a de sens
+                    que sur un impayé ou un partiel ; l'offrir partout ferait
+                    dix boutons dont huit n'ont rien à envoyer. */}
+                {enRetard && (
+                  <Button
+                    size="sm"
+                    icon="bell"
+                    aria-label={t('app.tenants.remindFor', { name: unit.tenant ?? '' })}
+                    onClick={() => setARelancer(unit)}
+                  >
+                    {t('app.tenants.remindOne')}
+                  </Button>
+                )}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon="file"
+                  to={lien(base, `parc/${unit.id}`)}
+                >
+                  {t('app.tenants.fileLink')}
+                </Button>
+                {unit.tenant && unit.tenantId ? (
+                  <div className="ml-auto">
+                    <MenuDeDebordement libelle={t('app.tenants.actionsFor', { name: unit.tenant })}>
+                      <MenuElement
+                        icone="sliders"
+                        onClick={() => setACorriger(unit)}
+                        nomAccessible={t('app.tenants.editFor', { name: unit.tenant })}
+                      >
+                        {t('app.tenants.edit')}
+                      </MenuElement>
+                      {/* Le serveur refuse de toute façon tant qu'une somme a
+                          circulé ; ce masquage évite d'offrir un geste à qui n'y
+                          a pas droit, il ne remplace pas la règle. */}
+                      <MenuElement
+                        icone="close"
+                        onClick={role === 'owner' ? () => setARetirer(unit) : undefined}
+                        nomAccessible={
+                          role === 'owner'
+                            ? t('app.tenants.removeFor', { name: unit.tenant })
+                            : t('app.tenants.removeBlocked')
+                        }
+                      >
+                        {t('app.tenants.remove')}
+                      </MenuElement>
+                    </MenuDeDebordement>
+                  </div>
+                ) : null}
+              </div>
+            </Card>
+          </li>
+        )
+      })}
+    </ul>
+  )
+
 
   return (
     <>
@@ -323,9 +642,70 @@ export function Tenants() {
       */}
       {enTableau && carteDesDemandes}
 
+      {/* LA BARRE NE PARAÎT QUE S'IL Y A QUELQUE CHOSE À TRIER. Sur un parc
+          sans bail, une recherche et cinq pastilles à zéro occuperaient la
+          place du seul geste utile — créer une fiche —, et laisseraient croire
+          qu'il y a quelque chose à trouver. */}
+      {leases.length > 0 && (
+        <div className="mt-6 mb-4 flex flex-wrap items-center gap-3">
+          <div className="w-full max-w-xs">
+            {/* Le nom accessible garde la phrase entière, le gabarit
+                raccourcit : à 320 px le champ n'offre que 228 px, et un
+                gabarit tronqué ne déborde de rien. Même arbitrage que la
+                recherche du parc, et pour la même mesure. */}
+            <Input
+              icon="search"
+              type="search"
+              aria-label={t('app.tenants.searchLabel')}
+              placeholder={t('app.tenants.searchShort')}
+              value={recherche}
+              onChange={(e) => setRecherche(e.target.value)}
+            />
+          </div>
+          <GroupeDeFiltres
+            libelle={t('app.tenants.rentStatus')}
+            valeur={filtreDEtat}
+            onChange={setFiltreDEtat}
+            options={[
+              {
+                valeur: 'all' as PaymentStatus | 'all',
+                libelle: t('app.payments.filterAll'),
+                compte: leases.length,
+              },
+              ...ETATS_DU_FILTRE.filter((etat) =>
+                leases.some((unit) => unit.status === etat),
+              ).map((etat) => ({
+                valeur: etat as PaymentStatus | 'all',
+                libelle: t(`status.${etat}` as 'status.paid'),
+                compte: leases.filter((unit) => unit.status === etat).length,
+              })),
+            ]}
+          />
+        </div>
+      )}
+
+      {/* CE QUE LE FILTRE NE REND PAS, ET LE GESTE POUR EN SORTIR. Une grille
+          vide sans un mot laisse croire que le parc l'est ; le bouton efface
+          les deux filtres à la fois, puisque c'est leur combinaison qui a pu
+          tout écarter. */}
+      {leases.length > 0 && visibles.length === 0 ? (
+        <EmptyState
+          level={2}
+          icon="users"
+          title={t('app.tenants.searchEmpty')}
+          body={t('app.tenants.searchEmptyHint')}
+          action={
+            <Button variant="secondary" onClick={effacerLesFiltres}>
+              {t('app.tenants.resetFilters')}
+            </Button>
+          }
+        />
+      ) : enTableau && visibles.length > 0 ? (
+        fichesDesLocataires
+      ) : (
       <DataTable<Unit>
         caption={t('app.tenants.title')}
-        rows={leases}
+        rows={visibles}
         rowKey={(unit) => unit.id}
         fiches
         columns={[
@@ -457,11 +837,40 @@ export function Tenants() {
             header: '',
             render: (unit) =>
               unit.tenant && unit.tenantId ? (
-                <div className="flex items-center justify-end gap-2">
+                /* `flex-wrap` : TROIS gestes ne tiennent pas sur une ligne de
+                   320 px. Mesuré par `mesure-ui` à l'anglais — « Send reminder ·
+                   Correct · Remove » sortait de sa boîte de 65 px, sur 24
+                   occurrences, sans faire défiler la page ni rougir aucune autre
+                   règle. La rangée se replie comme celle qui la contient. */
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {/* LA RELANCE EXISTE DES DEUX CÔTÉS DU SEUIL. Elle est née sur
+                      la fiche de bureau ; l'oublier ici aurait donné un geste
+                      qui disparaît en tournant le téléphone — et une modale que
+                      `modales.mjs` ne peut ouvrir qu'à une largeur sur deux,
+                      c'est-à-dire à moitié mesurée. */}
+                  {/* LE MÊME NOM ACCESSIBLE DES DEUX CÔTÉS DU SEUIL, et c'est
+                      `modales.mjs` qui l'a exigé : le menu de la fiche de bureau
+                      dit « Corriger la fiche de Charles Ngassa », le bouton
+                      mobile disait « Corriger ». Deux noms pour un geste, donc
+                      une garde qui ne peut viser qu'une des deux formes — et,
+                      pour qui écoute, dix boutons « Corriger » qui ne disent pas
+                      lequel on active. */}
+                  {(unit.status === 'overdue' || unit.status === 'partial') && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon="bell"
+                      aria-label={t('app.tenants.remindFor', { name: unit.tenant })}
+                      onClick={() => setARelancer(unit)}
+                    >
+                      {t('app.tenants.remindOne')}
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"
                     icon="sliders"
+                    aria-label={t('app.tenants.editFor', { name: unit.tenant })}
                     onClick={() => setACorriger(unit)}
                   >
                     {t('app.tenants.edit')}
@@ -474,6 +883,7 @@ export function Tenants() {
                       variant="ghost"
                       size="sm"
                       icon="close"
+                      aria-label={t('app.tenants.removeFor', { name: unit.tenant })}
                       onClick={() => setARetirer(unit)}
                     >
                       {t('app.tenants.remove')}
@@ -484,12 +894,62 @@ export function Tenants() {
           },
         ]}
       />
+      )}
 
       {!enTableau && <div className="mt-6">{carteDesDemandes}</div>}
 
       {/* Le deux-points était concaténé dans le JSX, précédé d'une espace :
           une règle typographique française servie telle quelle en anglais.
           Il vit maintenant dans la clé, avec la conjonction de la liste. */}
+      {/*
+        LA RELANCE SE CONFIRME, parce qu'elle SORT — un message part vers une
+        personne, et rien ne le rappelle. Mêmes mots que la relance groupée des
+        paiements, au singulier : la trace datée, et le locataire déjà relancé
+        aujourd'hui qui sera ignoré.
+      */}
+      {aRelancer && (
+        <Modal
+          open
+          onClose={() => setARelancer(null)}
+          size="sm"
+          title={t('app.payments.remindTitle', { count: 1 })}
+          description={t('app.payments.remindBody')}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setARelancer(null)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                loading={relanceEnCours}
+                onClick={async () => {
+                  if (relanceEnCours) return
+                  setRelanceEnCours(true)
+                  /* `leaseId` quand il existe, `id` en démonstration : c'est le
+                     fournisseur qui court-circuite là-bas, faute de parc
+                     serveur. Même lecture que la relance groupée. */
+                  const bilan = await remindRent([aRelancer.leaseId ?? aRelancer.id])
+                  setRelanceEnCours(false)
+                  setARelancer(null)
+                  /* Le message dit ce qui A EU LIEU, pas ce qui a été demandé :
+                     un bail relancé le matin même est ignoré par le serveur. */
+                  notify(
+                    bilan.sent > 0
+                      ? t('app.payments.remindDone', { count: bilan.sent })
+                      : t('app.payments.remindSkipped', { count: bilan.skipped }),
+                    /* `neutral` et non un ton d'alerte : « déjà relancé aujourd'hui »
+                       n'est pas un échec, c'est la règle du serveur. */
+                    { tone: bilan.sent > 0 ? 'ok' : 'neutral' },
+                  )
+                }}
+              >
+                {t('app.tenants.remindOne')}
+              </Button>
+            </>
+          }
+        >
+          <p className="text-body text-muted">{aRelancer.tenant}</p>
+        </Modal>
+      )}
       {aRetirer && (
         <Modal
           open
@@ -583,7 +1043,36 @@ function TenantsSkeleton() {
       />
 
       <SkeletonRegion>
-        <SkeletonTable fiches />
+        {/* Deux formes, comme l'écran chargé : les fiches de `SkeletonTable`
+            sous `lg`, la grille de fiches de locataire au-delà. Un squelette de
+            tableau annoncerait une forme qui ne vient plus. */}
+        <div className="lg:hidden">
+          <SkeletonTable fiches />
+        </div>
+        <div aria-hidden="true" className={`hidden lg:grid ${GRILLE_DES_FICHES_DE_LOCATAIRE}`}>
+          {[0, 1, 2, 3, 4, 5].map((fiche) => (
+            <Card key={fiche} className="flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <Skeleton radius="full" className="size-9" />
+                <div className="min-w-0 flex-1">
+                  <Skeleton line="body" className="w-3/5" />
+                  <Skeleton line="eyebrow" className="mt-1 w-4/5" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-divider pt-3">
+                {[0, 1, 2, 3].map((fait) => (
+                  <div key={fait}>
+                    <Skeleton line="eyebrow" className="w-16" />
+                    <Skeleton line="body" className="mt-0.5 w-20" />
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-divider pt-3">
+                <Skeleton radius="md" className="h-9 w-28" />
+              </div>
+            </Card>
+          ))}
+        </div>
       </SkeletonRegion>
     </>
   )

@@ -2057,6 +2057,23 @@ export const fr = {
       /* L'ÉTAT QUE DEUX ÉCRANS SE CACHAIENT L'UN À L'AUTRE. Le statut du bail
          ne dit rien de l'accès : à jour et sans espace où le lire. */
       noAccount: 'Sans compte',
+      /* LES LIBELLÉS DE LA FICHE DE LOCATAIRE. Quatre faits, deux gestes, et
+         les noms accessibles du menu : douze entrées « Corriger » ne disent pas
+         laquelle on active. */
+      cardDeposit: 'Caution',
+      cardWorks: 'Travaux',
+      remindOne: 'Relancer',
+      remindFor: 'Relancer {name}',
+      fileLink: 'Dossier',
+      actionsFor: 'Actions pour {name}',
+      editFor: 'Corriger la fiche de {name}',
+      removeFor: 'Retirer la fiche de {name}',
+      removeBlocked: 'Seul le propriétaire peut retirer une fiche',
+      searchLabel: 'Rechercher un locataire, un logement ou un numéro',
+      searchShort: 'Nom, logement…',
+      searchEmpty: 'Aucun locataire ne correspond.',
+      searchEmptyHint: 'Essayez un nom, un numéro de logement ou un téléphone — ou revenez à « Tous ».',
+      resetFilters: 'Effacer les filtres',
       /* L'ACCORD SUIT LA CONVENTION DU DÉPÔT — `x` et `x_one`, `Intl.PluralRules`
          choisissant la variante — et NON l'ICU imbriqué, que `t()` ne sait pas
          lire. Écrit en ICU, ce message s'affichait TEL QUEL sur l'écran des

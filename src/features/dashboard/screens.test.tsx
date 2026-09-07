@@ -115,8 +115,12 @@ describe('locataires', () => {
 
   it('affiche le contact, dont les clés existaient sans appelant', async () => {
     await renderApp('/app/locataires', { locale: 'en' })
-    expect(screen.getByRole('columnheader', { name: 'Contact' })).toBeInTheDocument()
-    expect(screen.getByText('+237 6 77 21 44 08')).toBeInTheDocument()
+    /* LE NUMÉRO, ET NON PLUS UNE COLONNE « Contact » : l'écran rend une fiche
+       par locataire depuis le 2026-09-07, et le numéro y est un lien d'appel.
+       Ce que ce cas garde n'a pas changé — le téléphone du jeu arrive bien à
+       l'écran —, seule la forme qui le porte a bougé. */
+    const appel = screen.getByRole('link', { name: '+237 6 77 21 44 08' })
+    expect(appel).toHaveAttribute('href', 'tel:+23767721 44 08'.replace(/\s/g, ''))
   })
 })
 

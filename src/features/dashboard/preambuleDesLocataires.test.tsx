@@ -101,14 +101,18 @@ describe('les locataires sur un écran large', () => {
     expect(document.querySelectorAll('[data-indicateur]').length).toBe(3)
   })
 
-  it('garde la file des demandes AVANT le tableau', async () => {
-    /* La grille a trois colonnes et le tableau tient en deux écrans : l'ordre
-       d'origine n'y coûte rien, et le changer serait déplacer un défaut qui
-       n'existe pas là. */
+  it('garde la file des demandes AVANT les fiches', async () => {
+    /* La grille d'indicateurs a trois colonnes et les fiches tiennent en deux
+       écrans : l'ordre d'origine n'y coûte rien, et le changer serait déplacer
+       un défaut qui n'existe pas là.
+
+       LES FICHES ET NON LE TABLEAU : l'écran rend une fiche par locataire
+       au-delà de 1024 px depuis le 2026-09-07. Ce que ce cas garde est
+       l'ORDRE, pas la forme de ce qui suit. */
     await ouvrir()
-    const tableau = document.querySelector('table')
+    const premiereFiche = document.querySelector('[data-fiche-locataire]')
     const demandes = screen.getByRole('heading', { name: /Demandes de documents/ })
-    expect(tableau).not.toBeNull()
-    expect(avant(demandes, tableau!)).toBe(true)
+    expect(premiereFiche).not.toBeNull()
+    expect(avant(demandes, premiereFiche as HTMLElement)).toBe(true)
   })
 })

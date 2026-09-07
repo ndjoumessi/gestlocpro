@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, attendreLeChargement, userEvent, within } from '@/test/render'
+import {
+  attendreLeChargement,
+  cliquerAction,
+  renderApp,
+  screen,
+  userEvent,
+  within,
+} from '@/test/render'
 import { installerFauxServeur } from '@/test/api'
 
 /**
@@ -32,11 +39,21 @@ describe('la fiche locataire de démonstration', () => {
     await renderApp('/demo/locataires')
     await attendreLeChargement()
 
-    const ligne = screen.getAllByRole('row').find((r) => /Charles Ngassa/.test(r.textContent ?? ''))
-    expect(ligne, 'la ligne de A1 est introuvable').toBeDefined()
+    /* UNE FICHE, ET PLUS UNE RANGÉE : l'écran rend une fiche par locataire
+       depuis le 2026-09-07, et le geste s'est replié derrière trois points. Ce
+       que ce cas garde n'a pas bougé — la démonstration porte de quoi retirer
+       une fiche —, seul le chemin pour y arriver a changé. */
+    /* `[data-fiche-locataire]` et non `listitem` : la file des demandes de
+       pièces est aussi une liste, et sa première ligne NOMME le locataire —
+       « Charles Ngassa · A1 · Demandée le … ». Un `listitem` cherché par son
+       texte tombait dessus, et le cas rougissait sur la mauvaise boîte. */
+    const fiche = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-fiche-locataire]'),
+    ).find((f) => /Charles Ngassa/.test(f.textContent ?? ''))
+    expect(fiche, 'la fiche de A1 est introuvable').toBeDefined()
     expect(
-      within(ligne!).getByRole('button', { name: /Retirer/ }),
-      'la démonstration ne rend pas la colonne de geste des locataires',
+      within(fiche!).getByRole('button', { name: /Actions pour Charles Ngassa/ }),
+      'la démonstration ne rend pas le menu de geste des locataires',
     ).toBeInTheDocument()
   })
 
@@ -54,8 +71,7 @@ describe('la fiche locataire de démonstration', () => {
     await attendreLeChargement()
     const utilisateur = userEvent.setup()
 
-    const ligne = screen.getAllByRole('row').find((r) => /Charles Ngassa/.test(r.textContent ?? ''))
-    await utilisateur.click(within(ligne!).getByRole('button', { name: /Retirer/ }))
+    await cliquerAction(/Retirer la fiche de Charles Ngassa/)
 
     const confirmation = await screen.findByRole('alertdialog')
     await utilisateur.click(within(confirmation).getByRole('button', { name: /Retirer|Confirmer/ }))
