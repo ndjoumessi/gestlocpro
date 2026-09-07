@@ -55,6 +55,36 @@ export default defineConfig({
     toujours ; celui-ci partait tel quel, faute qu'une garde le pèse à part.
   */
   plugins: [react(), tailwindcss(), carteDesPaquets(), retirerLesCommentairesHtml() as Plugin],
+  /*
+    REACT-ROUTER SE RÉSOUT SUR `dist/development`, ET ON LE LAISSE — MESURÉ.
+
+    La carte des sources du paquet d'entrée attribue 39 417 octets à
+    `react-router/dist/development/chunk-62JRHF6Z.mjs`, et le mot
+    « development » dans un paquet de production appelle l'alarme. Mesuré le
+    2026-09-07, elle est fausse : ces 39 Ko sont le ROUTEUR, pas sa version de
+    débogage. Le paquet publie bien `dist/development` ET `dist/production`,
+    mais son champ `exports` ne nomme JAMAIS `production` — aucune condition de
+    résolution ne peut donc l'atteindre, ni `resolve.conditions`, ni le
+    `NODE_ENV` de la construction.
+
+    ET LES DEUX SONT LE MÊME FICHIER À UNE LIGNE PRÈS : 371 987 contre 371 988
+    octets, et le `diff` ne rend que `var ENABLE_DEV_WARNINGS = true` contre
+    `false`. Ce drapeau garde quatre `warning()` destinés au développeur —
+    « You rendered descendant <Routes> », « No routes matched location » — qui
+    partiraient dans la console de l'utilisateur sans rien lui apprendre.
+
+    CE QUE LE FORCER RAPPORTERAIT, mesuré par une construction complète avec
+    deux alias exacts vers `dist/production` : 403 762 → 402 459 octets bruts,
+    127 368 → 126 873 gzippés. Mille trois cents octets, quatre cent
+    quatre-vingt-quinze sur le fil — dix millisecondes à 400 kb/s.
+
+    CE QU'IL COÛTERAIT : deux alias qui visent des chemins INTERNES d'une
+    dépendance, en contournant sa carte d'exports. Le jour où react-router
+    renomme son `dist/`, la construction casse. Dix millisecondes ne valent pas
+    qu'on entre par la fenêtre chez le voisin. La ligne est écrite ici plutôt
+    que refaite : la prochaine lecture de la carte des sources retombera sur ce
+    « development » et posera la même question.
+  */
   resolve: {
     alias: { '@': path.resolve(__dirname, 'src') },
   },
