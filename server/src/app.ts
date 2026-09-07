@@ -7,7 +7,7 @@ import express, {
 import compression from 'compression'
 import cookieParser from 'cookie-parser'
 import { ZodError } from 'zod'
-import { join } from 'node:path'
+import { join, relative, sep } from 'node:path'
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { politiqueDeSecurite } from './politiqueDeSecurite.js'
@@ -378,7 +378,25 @@ export function createApp(options: { taux?: SourceDeTaux } = {}) {
    * annonçait cette disposition ; la voici.
    */
   if (env.NODE_ENV === 'production') {
-    app.use(express.static(CLIENT_DIST, { maxAge: '1h', index: false }))
+    app.use(
+      express.static(CLIENT_DIST, {
+        maxAge: '1h',
+        index: false,
+        /* UNE POLICE NE SE REVALIDE PAS. `/polices/` porte des fichiers nommés
+           avec leur version : un contenu neuf a un nom neuf, donc une adresse
+           neuve, et l'ancienne ne peut plus changer. Relevé en production le
+           2026-09-07 : elle partait avec l'heure de tout `dist/`, et un
+           navigateur sans agent de service la redemandait chaque heure pour un
+           304 — un aller-retour entier vers l'origine, pour rien. Un an et
+           `immutable` : le navigateur ne revalide plus, même au rechargement.
+           Le nom versionné est gardé côté client, sur le fichier réel. */
+        setHeaders: (res, chemin) => {
+          if (relative(CLIENT_DIST, chemin).startsWith(`polices${sep}`)) {
+            res.set('Cache-Control', 'public, max-age=31536000, immutable')
+          }
+        },
+      }),
+    )
 
     // Toute autre adresse rend `index.html` : le routage est côté client, et un
     // rechargement sur `/app/cautions` doit ouvrir l'application, pas un 404.

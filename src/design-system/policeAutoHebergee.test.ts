@@ -53,6 +53,14 @@ describe('la police des titres', () => {
     expect(readFileSync(chemin).subarray(0, 4).toString('latin1')).toBe('wOF2')
   })
 
+  it('porte sa version dans son nom, parce que le serveur la déclare immuable', () => {
+    /* `server/src/app.ts` sert `/polices/` avec `immutable` et un an de cache :
+       le navigateur ne redemande JAMAIS un nom qu'il a déjà. Un fichier
+       resubdivisé sous le même nom resterait périmé un an chez qui l'a vu.
+       Née verte — le nom portait déjà `v12` — ; elle attrape le renommage. */
+    expect(FICHIER).toMatch(/-v\d+-/)
+  })
+
   it('est déclarée dans tokens.css sur ce même fichier, avec swap et sa plage de graisses', () => {
     const face = /@font-face\s*\{[^}]*font-family:\s*'Plus Jakarta Sans'[^}]*\}/.exec(CSS)?.[0] ?? ''
     expect(face, '@font-face de Plus Jakarta Sans').not.toBe('')
