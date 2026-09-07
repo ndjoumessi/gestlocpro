@@ -22,12 +22,20 @@ import { rendreLEnvironnementIntact } from './test/environnementRendu.js'
  * ne tient que si le nom bouge avec le contenu — c'est ce que garde
  * `policeAutoHebergee.test.ts` côté client, sur le fichier réel.
  *
+ * `/assets/` suit, pour la même raison : Vite y range le code et la feuille de
+ * style sous un nom haché d'après leur contenu (`index-RA4dXI1m.js`), et
+ * `index.html` — lui revalidé — pointe toujours vers le nom du jour. Un
+ * déploiement produit des noms neufs ; les anciens ne changent jamais.
+ *
  * ═══ CE QU'ON NE GARDE PAS ═══
  *
- * `index.html` reste revalidable : c'est le seul fichier dont le nom ne change
- * jamais et dont le contenu change à chaque déploiement. Le rendre immuable
- * figerait un client périmé pour un an. Le cas ci-dessous tient cette limite
- * pour qu'un élargissement de la règle ne passe pas sans être vu.
+ * Tout ce qui vit à la RACINE de `dist/` reste revalidable : `index.html`, le
+ * seul fichier dont le nom ne change jamais et dont le contenu change à chaque
+ * déploiement ; `sw.js`, l'agent de service, dont un exemplaire figé un an
+ * servirait d'anciens actifs à jamais ; le manifeste et les icônes, sans
+ * hachage. Rendre `index.html` immuable figerait un client périmé pour un an.
+ * Les cas ci-dessous tiennent cette limite pour qu'un élargissement de la
+ * règle ne passe pas sans être vu.
  */
 
 try {
@@ -51,8 +59,11 @@ async function appEnProduction(clientDist: string) {
 function clientDeTest() {
   const dir = mkdtempSync(join(tmpdir(), 'gestlocpro-cache-'))
   writeFileSync(join(dir, 'index.html'), '<!doctype html><title>ok</title>')
+  writeFileSync(join(dir, 'sw.js'), 'self.addEventListener("fetch", () => {})')
   mkdirSync(join(dir, 'polices'))
   writeFileSync(join(dir, 'polices', 'titres-v12-latin.woff2'), 'wOF2 pas vraiment une police')
+  mkdirSync(join(dir, 'assets'))
+  writeFileSync(join(dir, 'assets', 'index-RA4dXI1m.js'), 'export const paquet = 1')
   return dir
 }
 
@@ -63,6 +74,28 @@ describe('le cache des actifs servis en production', () => {
       const reponse = await request(await appEnProduction(dir)).get('/polices/titres-v12-latin.woff2')
       expect(reponse.status).toBe(200)
       expect(reponse.headers['cache-control']).toBe('public, max-age=31536000, immutable')
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('rend un actif haché par Vite immuable pour un an', async () => {
+    const dir = clientDeTest()
+    try {
+      const reponse = await request(await appEnProduction(dir)).get('/assets/index-RA4dXI1m.js')
+      expect(reponse.status).toBe(200)
+      expect(reponse.headers['cache-control']).toBe('public, max-age=31536000, immutable')
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('laisse l’agent de service revalidable', async () => {
+    const dir = clientDeTest()
+    try {
+      const reponse = await request(await appEnProduction(dir)).get('/sw.js')
+      expect(reponse.status).toBe(200)
+      expect(reponse.headers['cache-control']).not.toContain('immutable')
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }

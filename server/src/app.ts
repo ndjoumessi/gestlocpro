@@ -382,16 +382,24 @@ export function createApp(options: { taux?: SourceDeTaux } = {}) {
       express.static(CLIENT_DIST, {
         maxAge: '1h',
         index: false,
-        /* UNE POLICE NE SE REVALIDE PAS. `/polices/` porte des fichiers nommés
-           avec leur version : un contenu neuf a un nom neuf, donc une adresse
-           neuve, et l'ancienne ne peut plus changer. Relevé en production le
-           2026-09-07 : elle partait avec l'heure de tout `dist/`, et un
-           navigateur sans agent de service la redemandait chaque heure pour un
-           304 — un aller-retour entier vers l'origine, pour rien. Un an et
-           `immutable` : le navigateur ne revalide plus, même au rechargement.
-           Le nom versionné est gardé côté client, sur le fichier réel. */
+        /* UN NOM QUI CHANGE AVEC SON CONTENU NE SE REVALIDE PAS. Deux dossiers
+           le garantissent : `/polices/`, nommées avec leur version, et
+           `/assets/`, où Vite hache chaque fichier d'après son contenu. Un
+           déploiement produit des noms neufs ; les anciens ne peuvent plus
+           changer. Relevé en production le 2026-09-07 : tout partait avec
+           l'heure de `dist/`, et un navigateur sans agent de service
+           redemandait chaque heure, pour un 304, des octets qui ne pouvaient
+           pas avoir bougé — un aller-retour vers l'origine pour rien. Un an et
+           `immutable` : plus de revalidation, même au rechargement.
+
+           La RACINE de `dist/` garde son heure : `index.html`, seul nom fixe au
+           contenu mouvant, qui pointe vers les noms du jour ; `sw.js`, qu'un
+           exemplaire figé condamnerait à servir d'anciens actifs ; manifeste et
+           icônes, sans hachage. Le nom versionné de la police est gardé côté
+           client, sur le fichier réel. */
         setHeaders: (res, chemin) => {
-          if (relative(CLIENT_DIST, chemin).startsWith(`polices${sep}`)) {
+          const relatif = relative(CLIENT_DIST, chemin)
+          if (relatif.startsWith(`polices${sep}`) || relatif.startsWith(`assets${sep}`)) {
             res.set('Cache-Control', 'public, max-age=31536000, immutable')
           }
         },
