@@ -1541,6 +1541,8 @@ export const en: Dictionary = {
       subtitle: 'What the product detected or received, newest first.',
       markRead: 'Mark all as read',
       kpiUnread: 'Unread',
+      filterAll: 'All',
+      filterPriority: 'Priority',
       kpiUnreadNote: 'of {count} notifications',
       kpiUnreadNote_one: 'of {count} notification',
       kpiRead: 'Already read',

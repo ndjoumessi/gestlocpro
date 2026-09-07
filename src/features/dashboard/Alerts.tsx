@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useRole } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { lien, useBase } from '@/lib/base'
@@ -5,7 +6,7 @@ import { usePortfolio } from '@/data/PortfolioProvider'
 import { Card } from '@/components/primitives/Card'
 import { StatusPill, type StatusTone } from '@/components/primitives/StatusPill'
 import { Button } from '@/components/primitives/Button'
-import { StatCard } from '@/components/primitives/Charts'
+import { GroupeDeFiltres } from '@/components/controls/GroupeDeFiltres'
 import { Icon, type IconName } from '@/components/primitives/Icon'
 import { EmptyState } from '@/components/primitives/DataTable'
 import { Skeleton, SkeletonRegion } from '@/components/primitives/Skeleton'
@@ -183,6 +184,10 @@ export function Alerts() {
    * doit compter les mêmes alertes que cet écran.
    */
   const { readAlertIds, markAlertsRead, isMine, alerts: ALERTS, loading } = usePortfolio()
+  /* AVEC LES AUTRES CROCHETS, ET AVANT `if (loading)` : posé plus bas il ne
+     s'appellerait pas au premier rendu — « Rendered more hooks than during the
+     previous render ». Le dépôt a déjà payé ce défaut sur deux écrans. */
+  const [tri, setTri] = useState<'toutes' | 'nonLues' | 'prioritaires'>('toutes')
 
   /**
    * CETTE LISTE EST UNE BOÎTE AUX LETTRES, PAS UNE CONVERSATION.
@@ -275,6 +280,29 @@ export function Alerts() {
 
   const unread = alerts.filter((alert) => !alert.read).length
 
+  /*
+    UN ÉCRAN DE TRI PORTE SON OUTIL DE TRI.
+
+    Onze notifications rangées par date, six non lues, trois prioritaires — et
+    aucun moyen de n'en voir qu'une part. Deux cartes d'indicateur donnaient
+    les comptes sans rien en faire, dont une, « Déjà lues · rien à faire
+    dessus », occupait la moitié de la largeur pour annoncer qu'il n'y avait
+    rien à faire. Les pastilles disent les MÊMES comptes et agissent : un seul
+    mécanisme au lieu de deux, celui que Paiements et Locataires emploient
+    déjà.
+
+    LES OPTIONS SE DÉRIVENT DE CE QUI EXISTE : pas de « Non lues » quand tout
+    est lu, pas de « Prioritaires » sans priorité. Une pastille qui ne rend
+    rien n'est pas un filtre, c'est un piège — même règle que le filtre d'état
+    des locataires.
+  */
+  const prioritaires = alerts.filter((alert) => alert.severity === 'high').length
+  const visibles = alerts.filter((alert) => {
+    if (tri === 'nonLues') return !alert.read
+    if (tri === 'prioritaires') return alert.severity === 'high'
+    return true
+  })
+
   /**
    * Les NON LUES seulement, et non toute la liste.
    *
@@ -284,8 +312,12 @@ export function Alerts() {
    * Et le corps de la requête dit maintenant ce que le geste fait : marquer ce
    * qui ne l'est pas.
    */
-  const markAllRead = () =>
+  const markAllRead = () => {
     markAlertsRead(alerts.filter((alert) => !alert.read).map((alert) => alert.id))
+    /* LE FILTRE SUIT LE GESTE. Marquer tout comme lu depuis « Non lues »
+       laisserait une liste vide sous une pastille qui n'existe plus. */
+    setTri('toutes')
+  }
 
   /**
    * Une notification est une affirmation datée : « Loyer A3 en retard de 24
@@ -352,21 +384,27 @@ export function Alerts() {
           l'annoncerait pas. Les deux cartes, elles, donnent l'échelle : non lues
           SUR combien, et ce qui est déjà traité. */}
       {alerts.length > 0 && (
-        <div className="mb-6 grid gap-4 sm:grid-cols-2">
-          <StatCard
-            icone="bell"
-            label={t('app.alerts.kpiUnread')}
-            value={String(unread)}
-            etat={unread > 0 ? { ton: 'warn' } : undefined}
-            note={t('app.alerts.kpiUnreadNote', { count: alerts.length })}
-          />
-          <StatCard
-            icone="checkCircle"
-            label={t('app.alerts.kpiRead')}
-            value={String(alerts.length - unread)}
-            note={t('app.alerts.kpiReadNote')}
-          />
-        </div>
+        <GroupeDeFiltres
+          libelle={t('app.alerts.title')}
+          valeur={tri}
+          onChange={setTri}
+          className="mb-6"
+          options={[
+            { valeur: 'toutes' as const, libelle: t('app.alerts.filterAll'), compte: alerts.length },
+            ...(unread > 0
+              ? [{ valeur: 'nonLues' as const, libelle: t('app.alerts.kpiUnread'), compte: unread }]
+              : []),
+            ...(prioritaires > 0
+              ? [
+                  {
+                    valeur: 'prioritaires' as const,
+                    libelle: t('app.alerts.filterPriority'),
+                    compte: prioritaires,
+                  },
+                ]
+              : []),
+          ]}
+        />
       )}
 
       {isTenant && <TenantScopeNote className="mb-4" />}
@@ -405,7 +443,7 @@ export function Alerts() {
            a reçu — et « Notifications » seul n'en annonçait qu'une. Une seule
            chaîne pour les deux : elle ne peut pas dériver du titre. */
         <div role="list" aria-label={t('app.alerts.title')} className="flex flex-col gap-3">
-          {alerts.map((alert) => (
+          {visibles.map((alert) => (
             <Card
               key={alert.id}
               role="listitem"

@@ -2167,6 +2167,8 @@ export const fr = {
          Le compte le plus utile de la page vivait en prose, sous l'en-tête,
          quand ses six voisins ouvrent sur une rangée de cartes. */
       kpiUnread: 'Non lues',
+      filterAll: 'Toutes',
+      filterPriority: 'Prioritaires',
       kpiUnreadNote: 'sur {count} notifications',
       kpiUnreadNote_one: 'sur {count} notification',
       kpiRead: 'Déjà lues',
