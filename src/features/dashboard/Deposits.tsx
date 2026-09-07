@@ -3,6 +3,7 @@ import { useRole } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { DataTable, EmptyState } from '@/components/primitives/DataTable'
 import { StatCard } from '@/components/primitives/Charts'
+import { GroupeDeFiltres } from '@/components/controls/GroupeDeFiltres'
 import {
   Skeleton,
   SkeletonRegion,
@@ -114,6 +115,25 @@ export function Deposits() {
      être calculés sur deux populations différentes. */
   const enArbitrage = deposits.filter((d) => d.status === 'settling').length
   const restituees = deposits.filter((d) => d.status === 'returned').length
+  const consignees = deposits.filter((d) => d.status === 'held').length
+
+  /*
+    LE TRI PAR ÉTAT, sur un écran qui comptait déjà sans permettre d'aller voir.
+
+    « 2 en cours d'arbitrage » vivait dans la note d'une carte : le chiffre le
+    plus actionnable de l'écran, et rien pour n'afficher que ces deux-là. Cinq
+    cautions se lisent à l'œil ; un parc réel en porte autant que de baux
+    passés, et c'est la population « en arbitrage » qu'on vient traiter.
+
+    LES OPTIONS SE DÉRIVENT DES ÉTATS PRÉSENTS, comme sur les locataires et les
+    signalements : pas de pastille pour un état qu'aucune caution ne porte. Une
+    pastille qui ne rend rien n'est pas un filtre, c'est un piège.
+
+    L'ORDRE VA DU PLUS URGENT AU PLUS CALME : ce qui attend un arbitrage
+    d'abord, ce qui dort ensuite, ce qui est clos en dernier.
+  */
+  const [tri, setTri] = useState<Deposit['status'] | 'all'>('all')
+  const visibles = tri === 'all' ? deposits : deposits.filter((d) => d.status === tri)
 
   const settle = (unitId: string, withheld: number, reason?: string) => {
     // La justification traverse jusqu'au serveur, qui l'exige dès qu'il y a une
@@ -298,10 +318,42 @@ export function Deposits() {
         <Notice className="mt-6">{t('app.deposits.managerNotice')}</Notice>
       )}
 
+      {/* LA BARRE NE PARAÎT QUE S'IL Y A QUELQUE CHOSE À TRIER : sur un parc
+          sans caution, des pastilles à zéro occuperaient la place du message
+          qui explique le vide. */}
+      {deposits.length > 0 && (
+        <GroupeDeFiltres
+          libelle={t('app.portfolio.status')}
+          valeur={tri}
+          onChange={setTri}
+          className="mt-6"
+          options={[
+            {
+              valeur: 'all' as Deposit['status'] | 'all',
+              libelle: t('app.deposits.filterAll'),
+              compte: deposits.length,
+            },
+            ...(
+              [
+                ['settling', enArbitrage],
+                ['held', consignees],
+                ['returned', restituees],
+              ] as const
+            )
+              .filter(([, compte]) => compte > 0)
+              .map(([etat, compte]) => ({
+                valeur: etat as Deposit['status'] | 'all',
+                libelle: t(`app.deposits.status.${etat}` as 'app.deposits.status.held'),
+                compte,
+              })),
+          ]}
+        />
+      )}
+
       <div className="mt-6">
         <DataTable<Deposit>
           caption={t('app.deposits.title')}
-          rows={deposits}
+          rows={visibles}
           rowKey={(d) => d.unitId}
           fiches
           /* Sans cela, l'écran servait des en-têtes de colonnes au-dessus du
@@ -378,13 +430,48 @@ export function Deposits() {
               key: 'status',
               role: 'etat',
               header: t('app.portfolio.status'),
+              /* DOUZE REM, ET LE MOU S'EN VA AILLEURS. Mesuré à 1440 px : cette
+                 colonne faisait 355 px quand les cinq autres en font 160, parce
+                 qu'elle était la dernière ET qu'elle portait DEUX choses — la
+                 pastille et le geste. Le geste est parti dans sa propre colonne
+                 (ci-dessous) ; la largeur empêche celle-ci de reprendre le mou,
+                 qui se reporte sur « Locataire », seule colonne sans borne, où
+                 un nom long en fait quelque chose. Même correctif que la
+                 colonne « Ce mois » du parc, et pour la même mesure. */
+              width: '12rem',
               render: (d) => (
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
                   <StatusPill tone={TONE[d.status]} size="sm">
                     {t(`app.deposits.status.${d.status}` as 'app.deposits.status.held')}
                   </StatusPill>
+
+                  {/*
+                    Défaire l'arbitrage : UN BOUTON, et pas seulement l'action
+                    d'un message qui s'efface au bout de quatre secondes et
+                    demie. C'est le geste le plus lourd du produit après la mise
+                    en demeure — il retient l'argent de quelqu'un — et une
+                    retenue portée sur la mauvaise ligne se découvre en relisant
+                    sa liste, pas dans les secondes qui suivent le clic.
+                  */}
+                </div>
+              ),
+            },
+            {
+              /*
+                LE GESTE DANS SA PROPRE COLONNE, et `DataTable` l'épingle au bord
+                droit. Il vivait DANS la cellule d'état, à côté de la pastille :
+                deux natures dans une case — ce que la ligne EST, et ce qu'on
+                peut en faire —, et une colonne qui gonflait pour les loger
+                toutes deux. Une seule colonne épinglée par tableau, ce que
+                `unSeulGesteColle` garde.
+              */
+              key: 'geste',
+              role: 'geste',
+              header: '',
+              render: (d) => (
+                <div className="flex items-center justify-end gap-2">
                   {d.status === 'settling' && canSettle && (
-                    <Button size="sm" onClick={() => setSettling(d)}>
+                    <Button size="sm" icon="clipboard" onClick={() => setSettling(d)}>
                       {t('app.deposits.settle')}
                     </Button>
                   )}
@@ -400,6 +487,7 @@ export function Deposits() {
                     <Button
                       variant="ghost"
                       size="sm"
+                      icon="clock"
                       onClick={() => {
                         unsettleDeposit(d.unitId)
                         notify(t('app.deposits.unsettled_toast'), { tone: 'ok' })

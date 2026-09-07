@@ -1686,6 +1686,9 @@ export const fr = {
         settling: 'En cours d’arbitrage',
         returned: 'Restituée',
       },
+      /* « Toutes » et non le « Tous » des paiements : une caution est
+         féminine, et reprendre la clé d'un autre écran importait son genre. */
+      filterAll: 'Toutes',
       amountHeld: 'Consigné',
       withheld: 'Retenu',
       balance: 'À restituer',

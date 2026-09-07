@@ -1196,6 +1196,9 @@ export const en: Dictionary = {
         settling: 'Being settled',
         returned: 'Returned',
       },
+      /* « Toutes » et non le « Tous » des paiements : une caution est
+         féminine, et reprendre la clé d'un autre écran importait son genre. */
+      filterAll: 'All',
       amountHeld: 'Held',
       withheld: 'Withheld',
       balance: 'To return',
