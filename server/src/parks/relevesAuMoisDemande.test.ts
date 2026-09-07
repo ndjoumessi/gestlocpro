@@ -99,6 +99,13 @@ async function parcAvecTroisMois() {
   return { cookie, parkId }
 }
 
+interface LigneDHistorique {
+  unitId: string
+  utility: string
+  periodStart: string
+  indexValue: number
+}
+
 interface LigneDeReleve {
   utility: string
   indexValue: number | null
@@ -177,5 +184,69 @@ describe('les relevés suivent le mois demandé', () => {
        consommation entière si la garde du `?? 0` venait à retomber. */
     const eaux = (res.body.readings as LigneDeReleve[]).filter((r) => r.utility === 'water')
     expect(eaux).toHaveLength(0)
+  })
+})
+
+/**
+ * LA SÉRIE N'EST PAS LE TABLEAU, ET `?mois=` NE PARLE QU'AU TABLEAU.
+ *
+ * Le lot qui a borné les relevés a borné `readingHistory` avec eux — les deux
+ * projections lisent le même tableau. Or ce champ porte une promesse ÉCRITE :
+ * « toutes les périodes relevées, pour la série des douze mois ». Elle est
+ * devenue conditionnellement fausse.
+ *
+ * PERSONNE N'EN SOUFFRAIT ENCORE, et il faut le dire : l'espace du locataire,
+ * seul à dessiner cette série, n'envoie jamais `?mois=`, et l'écran des relevés
+ * jette l'historique de sa relecture. Le défaut était LATENT — c'est-à-dire
+ * qu'il attendait le prochain appelant, qui n'aurait eu aucune raison de se
+ * méfier d'un champ dont le nom et le commentaire promettent tout.
+ *
+ * `?mois=` DÉSIGNE UNE VUE, PAS UN DROIT. Ce qui protège reste le rôle et le
+ * périmètre, appliqués EN AMONT des deux projections — c'est le cloisonnement
+ * que `routes.test.ts` garde sur les fenêtres de bail, et que ce découplage ne
+ * touche pas. Découpler la série du mois ne rend donc visible aucune période
+ * qu'une réponse sans paramètre ne rendait déjà.
+ */
+describe('la série des douze mois ne suit pas le mois demandé', () => {
+  it('garde les périodes POSTÉRIEURES au mois, que le tableau écarte', async () => {
+    const { cookie, parkId } = await parcAvecTroisMois()
+    const res = await request(serveur)
+      .get(`/api/parks/${parkId}/portfolio?mois=2026-07`)
+      .set('Cookie', cookie)
+    expect(res.status).toBe(200)
+
+    /* Le tableau s'arrête à juillet — c'est le lot précédent, et il tient. */
+    expect(eauDe(res.body).indexValue, 'le tableau reste borné au mois demandé').toBe(120)
+
+    /* La série, elle, porte les trois mois : c'est une HISTOIRE, et une
+       histoire tronquée par le mois qu'un autre écran regarde n'est plus une
+       histoire. Août est le témoin — il est postérieur au mois demandé. */
+    const serie = (res.body.readingHistory as LigneDHistorique[]).filter(
+      (l) => l.utility === 'water',
+    )
+    const periodes = serie.map((l) => l.periodStart.slice(0, 7)).sort()
+    expect(periodes, 'les trois périodes relevées, dont celle d’après').toEqual([
+      '2026-06',
+      '2026-07',
+      '2026-08',
+    ])
+  })
+
+  it('rend la MÊME série avec et sans `mois`', async () => {
+    /* La propriété la plus simple, et celle qui survivra aux réécritures :
+       ce champ ne connaît pas ce paramètre. */
+    const { cookie, parkId } = await parcAvecTroisMois()
+    const avec = await request(serveur)
+      .get(`/api/parks/${parkId}/portfolio?mois=2026-06`)
+      .set('Cookie', cookie)
+    const sans = await request(serveur)
+      .get(`/api/parks/${parkId}/portfolio`)
+      .set('Cookie', cookie)
+
+    const cles = (corps: { readingHistory: LigneDHistorique[] }) =>
+      corps.readingHistory
+        .map((l) => `${l.unitId}|${l.utility}|${l.periodStart}|${l.indexValue}`)
+        .sort()
+    expect(cles(avec.body)).toEqual(cles(sans.body))
   })
 })

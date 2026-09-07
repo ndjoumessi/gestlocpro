@@ -1165,7 +1165,20 @@ parksRouter.get(
      * ici sont donc les siennes et rien d'autre. Pour un bailleur la liste est
      * vide, et la garde rend `releves` inchangé — il voit tout son parc.
      */
-    const relevesVisibles = (() => {
+    /**
+     * ═══ LE CLOISONNEMENT, EN AMONT DES DEUX VUES ═══
+     *
+     * Ce qui PROTÈGE est ici, et seulement ici : le rôle et les fenêtres de
+     * bail. `readings` et `readingHistory` en descendent tous les deux, si bien
+     * qu'aucune des deux ne peut rendre ce que l'autre refuse — c'est la règle
+     * que `routes.test.ts` garde, avec son motif : « borner la série et laisser
+     * la période courante rendre l'index du successeur ferait fuir par la porte
+     * à côté ».
+     *
+     * LA BORNE DU MOIS, ELLE, N'EST PAS UNE PROTECTION : c'est une VUE. Elle
+     * s'applique donc plus bas, sur la seule projection qui la demande.
+     */
+    const relevesDuPerimetre = (() => {
       /**
        * ═══ `?mois=` BORNE AUSSI LES RELEVÉS ═══
        *
@@ -1187,21 +1200,38 @@ parksRouter.get(
        * les autres appelants de cette projection ne connaissent pas ce
        * paramètre.
        */
-      const jusquAuMois = bornesDuMois
-        ? releves.filter((r) => r.periodStart < bornesDuMois.lt)
-        : releves
-      if (role !== 'tenant') return jusquAuMois
+      if (role !== 'tenant') return releves
       const fenetres = baux.map((b) => ({
         unitId: b.unitId,
         debut: +b.startsOn,
         fin: b.endsOn ? +b.endsOn : Number.POSITIVE_INFINITY,
       }))
-      return jusquAuMois.filter((r) =>
+      return releves.filter((r) =>
         fenetres.some(
           (f) => f.unitId === r.unitId && +r.periodStart >= f.debut && +r.periodStart <= f.fin,
         ),
       )
     })()
+
+    /**
+     * LA VUE TABLEAU, BORNÉE AU MOIS DEMANDÉ — et elle seule.
+     *
+     * `lt` ET NON LA FENÊTRE DU MOIS : borner à l'intérieur du seul mois
+     * emporterait l'ANTÉRIEUR, et l'antérieur n'est pas décoratif — c'est la
+     * soustraction des deux index qui fait la consommation, donc le montant
+     * refacturé. On garde donc tout ce qui PRÉCÈDE la fin du mois demandé, et
+     * `periodeCourante` retombe sur le dernier relevé de ce mois-là.
+     *
+     * LA SÉRIE N'EN EST PAS, et c'est le point de ce découplage. Son champ
+     * promet « toutes les périodes relevées, pour la série des douze mois » :
+     * la borner au mois qu'un AUTRE écran regarde rendrait cette phrase
+     * conditionnellement fausse, et le prochain appelant n'aurait aucune raison
+     * de s'en méfier. Une histoire tronquée par la vue d'à côté n'est plus une
+     * histoire.
+     */
+    const relevesVisibles = bornesDuMois
+      ? relevesDuPerimetre.filter((r) => r.periodStart < bornesDuMois.lt)
+      : relevesDuPerimetre
 
     /**
      * Le mois porte ce qui a été ENCAISSÉ, non ce qui était dû.
@@ -1412,7 +1442,7 @@ parksRouter.get(
        * borner la série et laisser `readings` rendre l'index du successeur
        * ferait fuir par la porte à côté.
        */
-      readingHistory: relevesVisibles.map((r) => ({
+      readingHistory: relevesDuPerimetre.map((r) => ({
         unitId: r.unitId,
         utility: r.utility,
         periodStart: r.periodStart,
