@@ -3446,14 +3446,14 @@ function mesurerPremierChargement() {
  * dès que l'ADRESSE change. On ne peut pas oublier de remesurer sans que le
  * diff le dise.
  *
- * CE QU'IL RESTE À TRANCHER, et ce lot ne le tranche pas : héberger cette police
- * dans `dist/` la ferait entrer dans le budget, supprimerait les deux origines
- * et la feuille bloquante. C'est un choix de dessin et d'infrastructure, pas une
- * garde ; il se pose, il ne se décide pas dans un fichier de mesure.
+ * TRANCHÉ LE 2026-09-07, par Nelson : la police est hébergée dans le produit
+ * (`public/polices/`, un sous-ensemble latin de 27 Ko, préchargé, rangé par
+ * l'agent de service). Les deux origines et la feuille bloquante sont parties,
+ * et ces octets entrent désormais dans les plafonds de `poids-ecrans` — relevés
+ * avec ce motif. La table est VIDE, et la garde ci-dessous reste : le jour où
+ * une ressource tierce reviendrait, elle arriverait « servie, jamais pesée ».
  */
-const RESSOURCES_EXTERNES_PESEES = {
-  'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600..800&display=swap': 28_980,
-}
+const RESSOURCES_EXTERNES_PESEES = {}
 
 /**
  * Le plafond — un seuil de DÉRIVE, plus un seuil d'ACCIDENT.
@@ -6371,9 +6371,8 @@ console.log(
       .join('') +
     `  ${fuite.reserves.length} modules réservés à l'application, aucun dans un paquet impatient.\n` +
     `  Premier chargement de la vitrine : ${premierChargement.octets} o compressés, sous le budget de ${BUDGET_PREMIER_CHARGEMENT} o.\n` +
-    `  EXCLUS de ce budget, et pesés à part : ${Object.values(RESSOURCES_EXTERNES_PESEES).reduce((a, b) => a + b, 0)} o servis par ` +
-    `${premierChargement.externes.length} origine(s) tierce(s) — la police d'affichage. Relevé du 2026-08-30, voir\n` +
-    `  \`RESSOURCES_EXTERNES_PESEES\`. Ce budget ne les compte pas ; il ne les tait plus.\n` +
+    `  Ressources tierces servies au premier chargement : ${premierChargement.externes.length} — la police vit dans le produit depuis le 2026-09-07,\n` +
+    `  voir \`RESSOURCES_EXTERNES_PESEES\` (vide, et gardée : une origine qui reviendrait rougirait).\n` +
     `  ${rangeesMesurees} mesures de la barre de la vitrine, toutes au-dessus de ${JEU_MINIMAL} px de jeu ; réglages atteints au clavier à 1440 px dans les deux langues.\n` +
     `  Panneau ouvert à 1440 px dans ${panneauxMesures} langues face à une barre de ${barreLaPlusGarnie} commandes, aucune rejouée.\n` +
     `  Bloc d'accroche : ${accroches.length} mesures, un seul écart titre–lecture (${accroches[0]?.ecart} px) des deux côtés du point de rupture.\n` +

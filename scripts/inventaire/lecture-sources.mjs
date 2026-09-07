@@ -673,7 +673,10 @@ export const PLANCHERS_DE_LECTURE = {
   'sites interactifs': 245,
   'champs de formulaire': 113,
   'titres composés': 390,
-  'fichiers de test écartés': 151,
+  // 176 et non 151, le 2026-09-07 : quatorze gardes ajoutées en neuf lots (audit
+  // UI/UX puis parc en fiches) ont porté le réel à 196, et `planchersDeLecture`
+  // refuse plus de 20 % d'écart — il a demandé ce nombre.
+  'fichiers de test écartés': 176,
 }
 
 export function releverLesSources() {

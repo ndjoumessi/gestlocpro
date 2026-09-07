@@ -132,8 +132,6 @@
       }
     </script>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!--
       UNE seule famille téléchargée, et c'est un choix de performance autant que
       de dessin.
@@ -168,16 +166,34 @@
       gagne en présence sans perdre ses contreformes. Demander une plage bornée
       allège quand même le fichier.
 
-      `display=swap` : le texte s'affiche dans la police de repli plutôt que de
-      rester invisible pendant le chargement. Le repli est désormais la PILE
-      SYSTÈME et non Georgia — un repli doit être de la même nature que la
-      police attendue, et substituer un serif à une sans faisait sauter la page
-      entière. Le pire cas de `swap` est maintenant une page composée d'une
-      seule famille, ce qui reste une page cohérente.
+      `font-display: swap` (dans `tokens.css`) : le texte s'affiche dans la
+      police de repli plutôt que de rester invisible pendant le chargement. Le
+      repli est désormais la PILE SYSTÈME et non Georgia — un repli doit être de
+      la même nature que la police attendue, et substituer un serif à une sans
+      faisait sauter la page entière. Le pire cas de `swap` est maintenant une
+      page composée d'une seule famille, ce qui reste une page cohérente.
+
+      LA POLICE VIENT DU PRODUIT, depuis le 2026-09-07. Elle venait d'une
+      feuille de style de `fonts.googleapis.com` : DNS, TLS et CSS d'une autre
+      origine AVANT de savoir quel fichier demander, puis un second
+      aller-retour vers `fonts.gstatic.com` — sur le réseau visé, c'est ce
+      délai-là qui se voit, pas les vingt-sept kilo-octets. Le fichier vit
+      dans `public/polices/`, un seul sous-ensemble (latin : les accents du
+      français y sont), préchargé ICI pour partir avec la feuille de style, et
+      déclaré dans `tokens.css` avec une face de repli ajustée, pour que le
+      texte ne saute pas quand il arrive. L'agent de service le range comme un
+      actif. Nelson a accepté que `poids-ecrans` compte ces octets : ils
+      étaient payés depuis Google, seulement pas comptés.
+
+      `crossorigin` même en première partie : sans lui, le préchargement et la
+      requête de la police n'ont pas le même mode, et le fichier part deux fois.
     -->
     <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600..800&display=swap"
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      crossorigin
+      href="/polices/plus-jakarta-sans-v12-600-800-latin.woff2"
     />
 
     <title>GestLocPro — La gestion locative, tenue comme un patrimoine</title>

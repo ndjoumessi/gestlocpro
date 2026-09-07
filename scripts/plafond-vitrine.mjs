@@ -485,8 +485,8 @@ try {
           `   Les titres ont été rendus dans le repli, et les ${m.hDoc} px relevés sont ceux de\n` +
           '   CETTE page-là, pas de la vitrine. Ne les lisez ni comme un plafond tenu ni comme\n' +
           '   un dépassement : ils ne disent rien, dans aucun des deux sens.\n' +
-          '   Cause la plus probable : pas de sortie vers fonts.googleapis.com — intégration\n' +
-          "   continue, pare-feu, hors ligne. Rétablissez l'accès et remesurez ; ne réinscrivez\n" +
+          '   Cause la plus probable : le fichier de `public/polices/` n\'a pas été servi — paquet\n' +
+          "   construit sans lui, ou chemin changé. Rétablissez-le et remesurez ; ne réinscrivez\n" +
           '   JAMAIS un plafond depuis une exécution sans police.',
       )
       continue

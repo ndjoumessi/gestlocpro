@@ -255,7 +255,7 @@ export function PublicHeader() {
         className={cn(
           'sticky top-0 border-b transition-colors duration-200',
           'pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3',
-          scrolled ? 'border-border bg-paper/92 backdrop-blur-md' : 'border-transparent bg-transparent',
+          scrolled ? 'border-border bg-paper' : 'border-transparent bg-transparent',
         )}
         style={{ zIndex: 'var(--z-sticky)' }}
       >

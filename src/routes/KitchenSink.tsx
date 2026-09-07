@@ -44,7 +44,7 @@ export function KitchenSink() {
         // change pas le nombre, il dit qu'il n'est pas le sien.
         style={{ zIndex: 'var(--z-sticky)' }}
         className={cn(
-          'sticky top-0 border-b border-border bg-paper/90 backdrop-blur-md',
+          'sticky top-0 border-b border-border bg-paper',
           'pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3',
         )}
       >

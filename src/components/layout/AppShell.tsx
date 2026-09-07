@@ -598,7 +598,7 @@ export function AppShell() {
               type="button"
               aria-label={t('common.close')}
               onClick={() => setDrawerOpen(false)}
-              className="fixed inset-0 cursor-default bg-scrim backdrop-blur-[2px] lg:hidden"
+              className="fixed inset-0 cursor-default bg-scrim lg:hidden"
               style={{ zIndex: 'var(--z-overlay)' }}
             />
             <Sidebar
@@ -1927,7 +1927,7 @@ function BarreBasse({ role, onOpenDrawer }: { role: Role; onOpenDrawer: () => vo
            vocabulaire de la coquille, et le renommer casserait l'autre en
            silence. Voir `renversementDuMenu`. */
         'fixed inset-x-0 bottom-0 grid grid-flow-col auto-cols-fr items-stretch gap-1 lg:hidden',
-        'border-t border-border bg-paper/95 backdrop-blur-md',
+        'border-t border-border bg-paper',
         'pt-1 pb-[calc(0.25rem+env(safe-area-inset-bottom))]',
         'pl-[max(0.25rem,env(safe-area-inset-left))] pr-[max(0.25rem,env(safe-area-inset-right))]',
       )}
@@ -2083,7 +2083,7 @@ function Topbar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
       // donc cet en-tête y occupe bien toute la largeur, encoche comprise.
       className={cn(
         'sticky top-0 flex flex-wrap items-center gap-3 border-b border-border',
-        'bg-paper/88 backdrop-blur-md',
+        'bg-paper',
         'pt-[calc(0.625rem+env(safe-area-inset-top))] pb-2.5',
         'pl-[max(1.25rem,env(safe-area-inset-left))] pr-[max(1.25rem,env(safe-area-inset-right))]',
         'sm:pl-[max(2rem,env(safe-area-inset-left))] sm:pr-[max(2rem,env(safe-area-inset-right))]',

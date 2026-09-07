@@ -99,6 +99,10 @@ function strategiePour(requete, origine) {
 
   if (requete.mode === 'navigate') return 'reseau-d-abord'
   if (url.pathname.startsWith('/assets/')) return 'cache-d-abord'
+  // La police des titres vit sous `/polices/`, nommée avec sa version (`v12`) :
+  // un fichier neuf porte un autre nom, donc une autre entrée — la même règle
+  // que les actifs hachés, pour la même raison.
+  if (url.pathname.startsWith('/polices/')) return 'cache-d-abord'
   return 'ignorer'
 }
 

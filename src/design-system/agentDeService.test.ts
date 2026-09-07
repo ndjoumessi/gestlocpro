@@ -84,6 +84,10 @@ describe('le routage de l’agent de service', () => {
        désignera jamais deux paquets différents. */
     expect(decide(requete(`${ORIGINE}/assets/index-BWrRwvP9.js`))).toBe('cache-d-abord')
     expect(decide(requete(`${ORIGINE}/assets/index-DBZtOzaE.css`))).toBe('cache-d-abord')
+    // La police des titres, hébergée sous /polices/ avec sa version dans le nom.
+    expect(decide(requete(`${ORIGINE}/polices/plus-jakarta-sans-v12-600-800-latin.woff2`))).toBe(
+      'cache-d-abord',
+    )
   })
 
   it('IGNORE l’API, toujours', () => {

@@ -191,7 +191,7 @@ export function Modal({
         // l'arrière-plan est écarté, ce qui est vrai dans les deux cas. Seul son
         // geste disparaît.
         disabled={!dismissible}
-        className="absolute inset-0 cursor-default bg-scrim backdrop-blur-[3px]"
+        className="absolute inset-0 cursor-default bg-scrim"
       />
 
       <div

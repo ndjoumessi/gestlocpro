@@ -29,6 +29,29 @@
    fond clair (2.87 sur blanc) : fond, bordure, icône, ou texte sur --ink.
    ========================================================================= */
 
+/* LA POLICE DES TITRES, HÉBERGÉE ICI — voir le commentaire d'`index.html`.
+   Une seule face à axe de graisse continu, 600 à 800, sous-ensemble latin. */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 600 800;
+  font-display: swap;
+  src: url('/polices/plus-jakarta-sans-v12-600-800-latin.woff2') format('woff2');
+}
+
+/* LE REPLI AJUSTÉ, pour que le texte ne saute pas quand la vraie police arrive.
+   `size-adjust` est MESURÉ au canvas, le 2026-09-07, sur une accroche de
+   soixante-douze signes en 700 : Plus Jakarta Sans est 1,7 % plus large
+   qu'Arial et que Helvetica Neue. Roboto — le repli d'Android, le vrai marché —
+   n'était pas installée sur la machine de mesure : elle reste dans la pile
+   système, sans ajustement, et c'est une prudence non mesurée à lever le jour
+   où l'on mesure sur un Android. */
+@font-face {
+  font-family: 'Plus Jakarta Sans Repli';
+  src: local('Helvetica Neue'), local('Arial');
+  size-adjust: 101.7%;
+}
+
 @theme {
   /* ---- Surfaces claires ------------------------------------------------ */
   --color-canvas: #eceef3; /* fond application */
@@ -262,8 +285,8 @@
    * page composée d'une seule famille, ce qui reste une page cohérente.
    */
   --font-display:
-    'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
-    Arial, sans-serif;
+    'Plus Jakarta Sans', 'Plus Jakarta Sans Repli', system-ui, -apple-system, 'Segoe UI',
+    Roboto, 'Helvetica Neue', Arial, sans-serif;
   /**
    * Corps de texte : pile SYSTÈME, plus aucune famille téléchargée.
    *

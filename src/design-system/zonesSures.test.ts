@@ -156,8 +156,10 @@ const traite = (classes: string, bord: 'left' | 'right') =>
  */
 const TOLEREES = [
   // Le voile du tiroir : aucun contenu à protéger, et il DOIT couvrir l'écran
-  // entier, encoche comprise — c'est tout son office.
-  'bg-scrim backdrop-blur-[2px]',
+  // entier, encoche comprise — c'est tout son office. Sans flou depuis le
+  // 2026-09-07 : le filtre d'arrière-plan saccadait le défilement des Android
+  // d'entrée de gamme, et la signature suit.
+  'fixed inset-0 cursor-default bg-scrim lg:hidden',
   // Barre latérale en tiroir : ce `className` COMPLÈTE celui que `Sidebar` pose
   // sur elle-même, et les insets vivent là-bas, sur la base commune aux deux
   // variantes (tiroir mobile et rail de bureau).

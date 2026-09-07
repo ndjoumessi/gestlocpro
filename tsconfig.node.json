@@ -64,6 +64,8 @@
     "src/design-system/registresDesModales.test.ts",
     "src/design-system/variablesMortesRefusees.test.ts",
     "src/design-system/lisereDesControles.test.ts",
+    "src/design-system/policeAutoHebergee.test.ts",
+    "src/design-system/sansFlouDArrierePlan.test.ts",
     "src/design-system/petitesCapitalesReservees.test.ts",
     "src/design-system/squeletteAuSeuilDesFiches.test.ts",
     "src/design-system/appelantsDuPortLibre.test.ts",
