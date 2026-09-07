@@ -2,6 +2,30 @@ import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import { Landing } from './routes/Landing'
 import { KitchenSink } from './routes/KitchenSink'
+/*
+  L'INSCRIPTION RESTE DANS LE PAQUET D'ENTRÉE, ET C'EST UNE DÉCISION MESURÉE.
+
+  Elle y pèse 12 726 octets, et la détacher en `lazy()` en rendrait 17 170 —
+  4 660 sur le fil, 93 ms à 400 kb/s sur CHAQUE première visite. La carte des
+  sources la désigne donc comme une cible évidente, et elle ne l'est pas.
+
+  `Combobox` a exactement TROIS consommateurs : `Tenants` et `ParkSettingsModal`
+  dans l'espace applicatif, et cet écran. Tant qu'il est ici, `/demo` reçoit
+  `Combobox` avec le paquet d'entrée ; détaché, il ne reste que deux morceaux
+  DYNAMIQUES qui le partagent, Rollup en extrait un morceau de 3 340 octets, et
+  `/demo` doit le demander. Mesuré le 2026-09-07 : `poids-ecrans` refuse,
+  « 1 → 2 REQUÊTES », un aller-retour de 300 à 800 ms pour trois kilo-octets.
+
+  Un préchargement au survol des six appels qui mènent ici — `Hero`,
+  `FinalCta`, `PricingSection`, deux dans `PublicHeader`, `Login` — réparerait
+  le chemin de conversion, mais pas cela : le coût tombe sur `/demo`, pas sur
+  `/inscription`. Nelson a tranché le 2026-09-07 : 93 ms pour tous ne valent
+  pas 300 à 800 ms pour ceux qui ouvrent la démonstration.
+
+  Ce qui DÉBLOQUERAIT : un consommateur de `Combobox` dans le paquet d'entrée,
+  ou le renoncer dans cet écran — il y sert le choix d'indicatif parmi deux
+  cents pays, qu'un `Select` rendrait moins bien.
+*/
 import { SignUp } from './routes/SignUp'
 import { Login } from './routes/Login'
 import { ForgotPassword } from './routes/ForgotPassword'
