@@ -157,7 +157,19 @@ export const TARIFS_DEMO = { water: 520, power: 99 }
    gardes de navigateur ne mesurent que ce que la démonstration rend, et une
    colonne de gestes qui ne paraît jamais échappe à toutes. C'est la leçon de
    `ficheRetirable`, payée une fois déjà. */
-export const READINGS: MeterReading[] = [
+/**
+ * LA PÉRIODE QUE LA DÉMONSTRATION RELÈVE — août 2026, en index de mois.
+ *
+ * Elle vivait dans `portfolio.ts`, qui construit l'historique ; elle descend
+ * ici parce que c'est ce fichier qui porte les relevés eux-mêmes, et parce que
+ * le sélecteur de période a besoin de la nommer sans traverser le module lourd.
+ */
+export const PERIODE_DEMO = { year: 2026, month: 7 }
+
+/* Les dix relevés d'août, SANS leur période : elle est la même pour tous, et
+   la répéter dix fois inviterait la divergence. Elle est estampillée juste en
+   dessous, en un seul endroit. */
+const RELEVES_DE_LA_PERIODE: Omit<MeterReading, 'periodStart'>[] = [
   { unitId: 'A1', waterReadingId: 'demo-A1-water', waterPrevious: 342, waterCurrent: 358, powerReadingId: 'demo-A1-power', powerPrevious: 4120, powerCurrent: 4298, readAt: { year: 2026, month: 7, day: 20 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
   { unitId: 'A2', waterReadingId: 'demo-A2-water', waterPrevious: 289, waterCurrent: 301, powerReadingId: 'demo-A2-power', powerPrevious: 3540, powerCurrent: 3671, readAt: { year: 2026, month: 7, day: 20 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
   { unitId: 'A3', waterReadingId: 'demo-A3-water', waterPrevious: 415, waterCurrent: 436, powerReadingId: 'demo-A3-power', powerPrevious: 5210, powerCurrent: 5402, readAt: { year: 2026, month: 7, day: 20 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
@@ -169,3 +181,8 @@ export const READINGS: MeterReading[] = [
   { unitId: 'C1', waterReadingId: 'demo-C1-water', waterPrevious: 611, waterCurrent: 644, powerReadingId: 'demo-C1-power', powerPrevious: 7320, powerCurrent: 7640, readAt: { year: 2026, month: 7, day: 18 }, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
   { unitId: 'C2', waterReadingId: 'demo-C2-water', waterPrevious: 334, waterCurrent: null, powerReadingId: 'demo-C2-power', powerPrevious: 4010, powerCurrent: null, readAt: null, waterPrice: TARIFS_DEMO.water, powerPrice: TARIFS_DEMO.power },
 ]
+
+export const READINGS: MeterReading[] = RELEVES_DE_LA_PERIODE.map((r) => ({
+  ...r,
+  periodStart: { ...PERIODE_DEMO, day: 1 },
+}))

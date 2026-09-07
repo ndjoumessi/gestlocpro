@@ -20,8 +20,8 @@ import peintureEcaillee3 from './fixtures/peinture-ecaillee-3.jpg?inline'
 /* LE JEU LÉGER VIT À CÔTÉ — voir `parcDeDemonstration.ts` : les trois
    constantes que la vitrine dessine, sans ce fichier ni ses photos. Réexportées
    ici pour que tout autre lecteur garde son point d'entrée. */
-import { jourDuMois, moisAvant, READINGS, TARIFS_DEMO, UNITS } from './parcDeDemonstration'
-export { COLLECTIONS, READINGS, TARIFS_DEMO, UNITS } from './parcDeDemonstration'
+import { jourDuMois, moisAvant, PERIODE_DEMO, READINGS, TARIFS_DEMO, UNITS } from './parcDeDemonstration'
+export { COLLECTIONS, PERIODE_DEMO, READINGS, TARIFS_DEMO, UNITS } from './parcDeDemonstration'
 
 /**
  * Jeu de démonstration : 3 immeubles, 12 unités, 12 mois d'historique.
@@ -250,6 +250,20 @@ export interface MeterReading {
    */
   waterPrice: number | null
   powerPrice: number | null
+  /**
+   * LA PÉRIODE QUE CETTE LIGNE REPRÉSENTE.
+   *
+   * Le serveur la projetait déjà — `periodStart: periodeCourante` — et le
+   * client la JETAIT au passage. L'écran affichait donc « les relevés » sans
+   * savoir lesquels : son sous-titre promet « la quittance du mois » et sa note
+   * dit « pour la période », deux dimensions qu'aucune donnée ne portait.
+   *
+   * Elle est la même sur toutes les lignes d'une réponse — c'est la période
+   * COURANTE, celle que le serveur a retenue — mais elle vit sur la ligne
+   * plutôt qu'à côté : la démonstration et l'API construisent ce tableau par
+   * deux chemins, et un champ posé à côté se serait perdu sur l'un des deux.
+   */
+  periodStart: DateParts | null
 }
 
 /**
@@ -566,7 +580,6 @@ const SAISON_DEMO = {
 } as const
 
 /** La période de tête du jeu de démonstration. 7 = août. */
-const PERIODE_DEMO = { year: 2026, month: 7 }
 const PROFONDEUR_DEMO = 12
 
 /**
@@ -647,6 +660,94 @@ export const READING_HISTORY_DEMO: {
   }
   return lignes
 })()
+
+/**
+ * LES RELEVÉS D'UNE PÉRIODE, DÉRIVÉS DE L'HISTORIQUE — jamais recopiés.
+ *
+ * `READING_HISTORY_DEMO` porte DÉJÀ tous les index de tous les mois : c'est la
+ * série que l'espace du locataire dessine. Écrire un second tableau pour
+ * juillet aurait créé une source concurrente, et le jour où les deux divergent,
+ * le tableau et la courbe du même écran se contrediraient. C'est exactement la
+ * règle que le serveur s'impose : « `readings` n'est PAS une seconde source,
+ * les deux vues projettent le MÊME tableau ».
+ *
+ * Le sélecteur de période des relevés fonctionne donc EN DÉMONSTRATION, là où
+ * celui du parc reste verrouillé — et la différence n'est pas un caprice : le
+ * mois du parc exige une relecture du serveur (`chargerParc`), qu'une
+ * démonstration sans compte ne peut pas faire, tandis que les index, eux, sont
+ * tous déjà là. Ce qui se calcule sans réseau se propose sans réseau.
+ */
+function isoDuMois(mois: string): string {
+  const [an, m] = mois.split('-').map(Number) as [number, number]
+  return isoDeLaPeriode({ year: an, month: m - 1 })
+}
+
+/** Le mois précédent, au format `AAAA-MM`. */
+function moisPrecedent(mois: string): string {
+  const [an, m] = mois.split('-').map(Number) as [number, number]
+  return m === 1
+    ? `${an - 1}-12`
+    : `${an}-${String(m - 1).padStart(2, '0')}`
+}
+
+/** `AAAA-MM` de la période que la démonstration relève. */
+export const MOIS_DEMO = `${PERIODE_DEMO.year}-${String(PERIODE_DEMO.month + 1).padStart(2, '0')}`
+
+/**
+ * LES PÉRIODES QU'ON PEUT DEMANDER, de la plus ancienne à la plus récente.
+ *
+ * Bornes du sélecteur, et rien de plus : entre les deux, un mois sans aucun
+ * index rendra dix lignes « Relevé manquant », ce qui est la VÉRITÉ de ce
+ * mois-là et non un défaut à masquer.
+ */
+export const MOIS_RELEVES_DEMO: string[] = (() => {
+  const vus = new Set(READING_HISTORY_DEMO.map((l) => l.periodStart.slice(0, 7)))
+  return [...vus].sort()
+})()
+
+/**
+ * Les relevés de la démonstration pour un mois donné.
+ *
+ * `previous` vient du mois d'AVANT, comme chez le serveur : c'est la
+ * soustraction des deux index qui fait la consommation, et un antérieur absent
+ * rend `null` plutôt que zéro — « pas d'index antérieur » n'est pas « index à
+ * zéro », et le second ferait de l'index entier une consommation facturée.
+ */
+export function relevesDuMois(mois: string): MeterReading[] {
+  if (mois === MOIS_DEMO) return READINGS
+  const index = new Map(
+    READING_HISTORY_DEMO.map((l) => [`${l.unitId}|${l.utility}|${l.periodStart}`, l.indexValue]),
+  )
+  const isoCourant = isoDuMois(mois)
+  const isoAnterieur = isoDuMois(moisPrecedent(mois))
+  const jourDeReleve = (modele: MeterReading) => modele.readAt?.day ?? 20
+  const [an, m] = mois.split('-').map(Number) as [number, number]
+
+  return READINGS.map((modele) => {
+    const lu = (utility: 'water' | 'power', iso: string) =>
+      index.get(`${modele.unitId}|${utility}|${iso}`) ?? null
+    const eau = lu('water', isoCourant)
+    const elec = lu('power', isoCourant)
+    /* LE JOUR DU RELEVÉ EST REPRIS DE CELUI D'AOÛT, et c'est de la donnée de
+       démonstration assumée : ce fichier rétro-génère déjà douze mois d'index
+       par la même logique. Une date absente sur un index PRÉSENT se lirait
+       « relevé sans qu'on sache quand », ce qui n'existe pas en base. */
+    const releve = eau !== null || elec !== null
+    return {
+      unitId: modele.unitId,
+      waterReadingId: eau !== null ? `demo-${modele.unitId}-water-${mois}` : null,
+      waterPrevious: lu('water', isoAnterieur),
+      waterCurrent: eau,
+      powerReadingId: elec !== null ? `demo-${modele.unitId}-power-${mois}` : null,
+      powerPrevious: lu('power', isoAnterieur),
+      powerCurrent: elec,
+      readAt: releve ? { year: an, month: m - 1, day: jourDeReleve(modele) } : null,
+      waterPrice: TARIFS_DEMO.water,
+      powerPrice: TARIFS_DEMO.power,
+      periodStart: { year: an, month: m - 1, day: 1 },
+    }
+  })
+}
 
 /**
  * Corps de métier proposés AU DÉCLARANT, dans l'ordre où ils lui sont montrés.

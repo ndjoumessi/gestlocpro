@@ -1166,13 +1166,37 @@ parksRouter.get(
      * vide, et la garde rend `releves` inchangé — il voit tout son parc.
      */
     const relevesVisibles = (() => {
-      if (role !== 'tenant') return releves
+      /**
+       * ═══ `?mois=` BORNE AUSSI LES RELEVÉS ═══
+       *
+       * Il ne bornait que les ÉCHÉANCES. `periodeCourante`, plus bas, se
+       * déduisait donc de « la dernière période relevée du parc » quel que soit
+       * le mois demandé : l'écran des relevés promettait « la quittance du
+       * mois » et « pour la période » sans qu'aucune donnée ne porte de période
+       * choisissable.
+       *
+       * `lt` ET NON LA FENÊTRE DU MOIS. Borner à l'intérieur du seul mois
+       * demandé emporterait l'ANTÉRIEUR, et l'antérieur n'est pas décoratif :
+       * c'est lui qui fait la consommation. Une fenêtre stricte rendrait donc
+       * `previousIndex: null` sur toutes les lignes, donc aucune consommation,
+       * donc aucun montant refacturé — l'écran entier. On garde tout ce qui
+       * PRÉCÈDE la fin du mois demandé, et `periodeCourante` retombe
+       * naturellement sur le dernier relevé de ce mois-là.
+       *
+       * SANS `mois`, RIEN NE CHANGE : `releves` passe entier, comme avant, et
+       * les autres appelants de cette projection ne connaissent pas ce
+       * paramètre.
+       */
+      const jusquAuMois = bornesDuMois
+        ? releves.filter((r) => r.periodStart < bornesDuMois.lt)
+        : releves
+      if (role !== 'tenant') return jusquAuMois
       const fenetres = baux.map((b) => ({
         unitId: b.unitId,
         debut: +b.startsOn,
         fin: b.endsOn ? +b.endsOn : Number.POSITIVE_INFINITY,
       }))
-      return releves.filter((r) =>
+      return jusquAuMois.filter((r) =>
         fenetres.some(
           (f) => f.unitId === r.unitId && +r.periodStart >= f.debut && +r.periodStart <= f.fin,
         ),

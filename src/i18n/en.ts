@@ -988,6 +988,7 @@ export const en: Dictionary = {
       rebilled: 'Re-billed',
       readAt: 'Read on',
       missing: 'Reading missing',
+      periodShown: 'Reading period',
       filterLabel: 'Filter by reading',
       filterAll: 'All',
       filterDone: 'Reading captured',

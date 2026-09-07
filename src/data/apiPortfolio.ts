@@ -113,6 +113,16 @@ interface PortefeuilleApi {
     utility: 'water' | 'power'
     /** L'identifiant du relevé COURANT — `null` quand la période n'en a pas. */
     id?: string | null
+    /**
+     * LA PÉRIODE RETENUE, en ISO. Le serveur la rend depuis toujours ; ce type
+     * ne la déclarait pas, donc le client la jetait — et l'écran promettait
+     * « la quittance du mois » sans savoir duquel.
+     *
+     * Facultative : un serveur qui ne la rendrait pas laisse l'écran sans
+     * libellé de période, ce qui est le repli honnête. Inventer « le mois
+     * courant » afficherait une période que la donnée ne porte pas.
+     */
+    periodStart?: string | null
     indexValue: number | null
     previousIndex: number | null
     readAt: string | null
@@ -393,6 +403,10 @@ export async function chargerParc(parkId: string, mois?: string): Promise<ParcCh
           readAt: null,
           waterPrice: null,
           powerPrice: null,
+          /* La période retenue par le serveur, qui la calcule — « la dernière
+             relevée », ou celle que `?mois=` borne. Le client ne la devine
+             pas : il la lisait dans la réponse et la jetait. */
+          periodStart: r.periodStart ? enParties(r.periodStart) : null,
         }
         if (r.utility === 'water') {
           ligne.waterReadingId = r.id ?? null

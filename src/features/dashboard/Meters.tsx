@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useRole } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { DataTable } from '@/components/primitives/DataTable'
@@ -15,6 +16,9 @@ import { NoteDePerimetre } from './NoteDePerimetre'
 import { StatusPill } from '@/components/primitives/StatusPill'
 import { Notice } from '@/components/primitives/Notice'
 import { GroupeDeFiltres } from '@/components/controls/GroupeDeFiltres'
+import { MonthPicker } from '@/components/primitives/DatePicker'
+import { chargerParc } from '@/data/apiPortfolio'
+import { MOIS_RELEVES_DEMO, relevesDuMois } from '@/data/portfolio'
 import { useTriDansLAdresse } from '@/lib/useTriDansLAdresse'
 import { Button } from '@/components/primitives/Button'
 import { useCurrency } from '@/currency/CurrencyProvider'
@@ -91,7 +95,98 @@ export function Meters() {
 
   /* Le locataire ne voit que SES relevés : l'écran vient de s'ouvrir à lui,
      puisque l'eau et l'électricité lui sont refacturées. */
-  const READINGS = TOUS.filter((r) => role !== 'tenant' || isMine(r.unitId))
+  /**
+   * ═══ LA PÉRIODE AFFICHÉE, ENFIN NOMMÉE ET ENFIN CHOISIE ═══
+   *
+   * Le sous-titre promet « la quittance du mois » et la note dit « pour la
+   * période ». Aucune des deux ne pouvait être vraie : le serveur retenait « la
+   * dernière période relevée » sans qu'on la lui demande, et le client jetait
+   * `periodStart` au passage. L'écran nommait donc DEUX dimensions qu'il ne
+   * portait pas — c'est le défaut que le parc a corrigé avant lui, avec les
+   * mêmes mots.
+   *
+   * LE DÉFAUT EST LA PÉRIODE DU FOURNISSEUR, jamais le mois d'aujourd'hui. Une
+   * tournée peut avoir un mois de retard : afficher « septembre » au-dessus des
+   * relevés d'août serait un mensonge plus coûteux que l'absence de libellé.
+   *
+   * ET IL FONCTIONNE EN DÉMONSTRATION, là où celui du parc reste verrouillé. La
+   * différence n'est pas un caprice : changer le mois du parc exige une
+   * relecture du serveur, qu'une démonstration sans compte ne peut pas faire,
+   * tandis que les index de toutes les périodes sont DÉJÀ côté client — c'est
+   * la série que l'espace du locataire dessine. Ce qui se calcule sans réseau
+   * se propose sans réseau.
+   */
+  const parkId = adhesionActive?.parkId ?? null
+  const [parametres, setParametres] = useSearchParams()
+  const periodeDuFournisseur = TOUS.find((r) => r.periodStart !== null)?.periodStart ?? null
+  const moisDuFournisseur = periodeDuFournisseur
+    ? `${periodeDuFournisseur.year}-${String(periodeDuFournisseur.month + 1).padStart(2, '0')}`
+    : null
+  /*
+    UNE PÉRIODE INADMISE RETOMBE SUR CELLE DU FOURNISSEUR — même règle que les
+    sept tris de ce produit, et pour la même raison : une adresse partagée
+    vieillit. `?mois=2030-01` rendrait dix lignes « Relevé manquant », ce qui se
+    lit comme un parc en panne plutôt que comme un mois qui n'existe pas.
+
+    EN DÉMONSTRATION on borne aux périodes RELEVÉES, qu'on connaît. Sur un parc
+    réel on se contente de la FORME : le serveur seul sait jusqu'où remonte son
+    historique, et lui demander un mois vide est une réponse honnête, pas une
+    panne.
+  */
+  const moisDemande = parametres.get('mois')
+  const moisAdmis =
+    moisDemande !== null &&
+    /^\d{4}-(0[1-9]|1[0-2])$/.test(moisDemande) &&
+    (parkId !== null || MOIS_RELEVES_DEMO.includes(moisDemande))
+  const moisChoisi = moisAdmis ? moisDemande : moisDuFournisseur
+  const setMois = (valeur: string) => {
+    const suite = new URLSearchParams(parametres)
+    /* Le défaut ne s'écrit pas — même règle que les sept tris de ce produit :
+       une adresse partagée dit ce qu'on a choisi, pas ce qu'on n'a pas choisi. */
+    if (valeur === moisDuFournisseur) suite.delete('mois')
+    else suite.set('mois', valeur)
+    /* `replace` : changer de période n'est pas une navigation, et le bouton
+       « retour » doit quitter l'écran plutôt que dérouler les mois visités. */
+    setParametres(suite, { replace: true })
+  }
+
+  /*
+    DEUX CHEMINS POUR UNE MÊME QUESTION, et un seul réseau.
+
+    En démonstration, `relevesDuMois` dérive la période de l'historique déjà
+    chargé : aucune requête, et le sélecteur est donc réellement exercé par les
+    quinze portes, qui ne mesurent que `/demo`. Sur un parc réel, le serveur
+    seul sait quel TARIF s'appliquait à cette période — « le calcul vit ici et
+    non à l'écran », dit sa projection — donc on le relit.
+
+    `annule` : deux changements rapides lancent deux lectures, et la plus lente
+    pourrait écraser la plus récente. Même garde que le mois du parc.
+  */
+  const [relevesDUnAutreMois, setRelevesDUnAutreMois] = useState<MeterReading[] | null>(null)
+  useEffect(() => {
+    if (!moisChoisi || moisChoisi === moisDuFournisseur) {
+      setRelevesDUnAutreMois(null)
+      return
+    }
+    if (!parkId) {
+      setRelevesDUnAutreMois(relevesDuMois(moisChoisi))
+      return
+    }
+    let annule = false
+    void chargerParc(parkId, moisChoisi)
+      .then((parc) => {
+        if (!annule) setRelevesDUnAutreMois(parc.readings)
+      })
+      .catch(() => {
+        if (!annule) setRelevesDUnAutreMois(null)
+      })
+    return () => {
+      annule = true
+    }
+  }, [parkId, moisChoisi, moisDuFournisseur])
+
+  const RELEVES_AFFICHES = relevesDUnAutreMois ?? TOUS
+  const READINGS = RELEVES_AFFICHES.filter((r) => role !== 'tenant' || isMine(r.unitId))
 
   /**
    * Libellé affichable d'une unité.
@@ -398,6 +493,33 @@ export function Meters() {
           </>
         )}
       </Notice>
+
+      {/*
+        LE SÉLECTEUR DE PÉRIODE, AU-DESSUS DE LA NOTE.
+
+        La note dit « 2 relevés manquants POUR LA PÉRIODE » : elle ne peut pas
+        précéder ce qui nomme cette période, sans quoi elle parle d'un mois que
+        rien n'a encore dit. C'est l'inverse du tri, qui la suit — le tri est un
+        geste sur ce qu'elle annonce, la période est ce dont elle parle.
+
+        `min` et `max` viennent des périodes RELEVÉES, jamais du calendrier : un
+        mois qu'aucun compteur n'a vu n'a rien à montrer, et l'ouvrir rendrait
+        dix lignes vides qui se liraient comme une panne.
+      */}
+      {moisChoisi && (
+        <div className="mt-6 flex items-center gap-2">
+          <div className="min-w-0 flex-1 sm:min-w-36 sm:flex-none">
+            <MonthPicker
+              aria-label={t('app.meters.periodShown')}
+              name="mois"
+              value={moisChoisi}
+              onChange={setMois}
+              min={parkId ? undefined : MOIS_RELEVES_DEMO[0]}
+              max={parkId ? undefined : moisDuFournisseur ?? undefined}
+            />
+          </div>
+        </div>
+      )}
 
       {/* SOUS LA NOTE, ET C'EST DÉLIBÉRÉ. La note dit le fait — « 2 relevés
           manquants, A5 et C2 » — et la pastille en fait un geste. Placée
