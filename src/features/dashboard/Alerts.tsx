@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useRole } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { lien, useBase } from '@/lib/base'
@@ -7,6 +6,7 @@ import { Card } from '@/components/primitives/Card'
 import { StatusPill, type StatusTone } from '@/components/primitives/StatusPill'
 import { Button } from '@/components/primitives/Button'
 import { GroupeDeFiltres } from '@/components/controls/GroupeDeFiltres'
+import { useTriDansLAdresse } from '@/lib/useTriDansLAdresse'
 import { Icon, type IconName } from '@/components/primitives/Icon'
 import { EmptyState } from '@/components/primitives/DataTable'
 import { Skeleton, SkeletonRegion } from '@/components/primitives/Skeleton'
@@ -186,8 +186,19 @@ export function Alerts() {
   const { readAlertIds, markAlertsRead, isMine, alerts: ALERTS, loading } = usePortfolio()
   /* AVEC LES AUTRES CROCHETS, ET AVANT `if (loading)` : posé plus bas il ne
      s'appellerait pas au premier rendu — « Rendered more hooks than during the
-     previous render ». Le dépôt a déjà payé ce défaut sur deux écrans. */
-  const [tri, setTri] = useState<'toutes' | 'nonLues' | 'prioritaires'>('toutes')
+     previous render ». Le dépôt a déjà payé ce défaut sur deux écrans.
+
+     ET C'EST POURQUOI CE CROCHET-CI ADMET LES DEUX VUES SANS CONDITION, là où
+     les quatre autres écrans dérivent leurs valeurs admises de la donnée : ici
+     la donnée — `alerts`, cent lignes plus bas — n'est pas encore lue. La
+     présence se vérifie donc EN AVAL, sur `tri` lui-même, à l'endroit où les
+     pastilles se comptent. Deux temps au lieu d'un, imposés par l'ordre des
+     crochets, et dits plutôt que subis. */
+  const [triDemande, setTri] = useTriDansLAdresse<'toutes' | 'nonLues' | 'prioritaires'>(
+    'tri',
+    'toutes',
+    ['nonLues', 'prioritaires'],
+  )
 
   /**
    * CETTE LISTE EST UNE BOÎTE AUX LETTRES, PAS UNE CONVERSATION.
@@ -297,6 +308,17 @@ export function Alerts() {
     des locataires.
   */
   const prioritaires = alerts.filter((alert) => alert.severity === 'high').length
+  /* LA SECONDE MOITIÉ DE LA RÈGLE. Une adresse partagée vieillit : `?tri=nonLues`
+     envoyé le matin arrive l'après-midi sur une file entièrement lue, où la
+     pastille n'existe plus — les options se dérivent de ce qui EXISTE. Le tri
+     retombe alors sur « Toutes », faux mais lisible, plutôt que sur une liste
+     vide sous aucune pastille pressée. */
+  const nonLues = alerts.filter((alert) => !alert.read).length
+  const tri =
+    (triDemande === 'nonLues' && nonLues === 0) ||
+    (triDemande === 'prioritaires' && prioritaires === 0)
+      ? 'toutes'
+      : triDemande
   const visibles = alerts.filter((alert) => {
     if (tri === 'nonLues') return !alert.read
     if (tri === 'prioritaires') return alert.severity === 'high'

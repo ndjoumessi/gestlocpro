@@ -8,6 +8,7 @@ import { Badge } from '@/components/primitives/Badge'
 import { Button } from '@/components/primitives/Button'
 import { Icon } from '@/components/primitives/Icon'
 import { GroupeDeFiltres } from '@/components/controls/GroupeDeFiltres'
+import { useTriDansLAdresse } from '@/lib/useTriDansLAdresse'
 import { Notice } from '@/components/primitives/Notice'
 import { useToast } from '@/components/primitives/Toast'
 import { EmptyState } from '@/components/primitives/DataTable'
@@ -100,13 +101,6 @@ export function Works() {
    * signalé » de « ce que le bailleur a décidé » lui proposerait un tri dont
    * une moitié est toujours vide.
    */
-  const [origine, setOrigine] = useState<'all' | 'tenantReport' | 'ownerInitiative'>('all')
-  /* LE SECOND AXE, et c'est celui qu'on vient chercher. « Devis à arbitrer 1 »
-     est l'indicateur le plus actionnable de l'écran, et rien ne menait à ce
-     chantier-là ; l'origine dit d'où vient une demande, l'état dit ce qu'elle
-     attend de vous. Deux axes distincts, donc deux groupes nommés, jamais un
-     seul qui les mêlerait. */
-  const [etat, setEtat] = useState<WorkOrder['status'] | 'all'>('all')
   const [aChiffrer, setAChiffrer] = useState<WorkOrder | null>(null)
   const [aRepondre, setARepondre] = useState<WorkOrder | null>(null)
   const [montant, setMontant] = useState('')
@@ -140,6 +134,35 @@ export function Works() {
      retenue, et réciproquement. Sans cela, une pastille annoncerait un nombre
      que le clic ne rendrait pas — le défaut exact que les autres écrans de ce
      produit évitent en dérivant leurs comptes de ce qu'ils vont afficher. */
+  /*
+    LES DEUX AXES VIVENT DANS L'ADRESSE, et ils y descendent APRÈS
+    `duPerimetre` parce que c'est lui qui dit ce qu'elle admet.
+
+    RIEN N'EST ADMIS AU LOCATAIRE, et ce n'est pas une restriction de plus :
+    les deux barres de tri sont derrière `!isTenant` — une moitié de l'axe
+    d'origine lui serait toujours vide —, donc un tri appliqué depuis l'adresse
+    lui filtrerait sa liste SANS lui donner la pastille pour en sortir. Une
+    liste de trois signalements réduite à un, sans rien à cliquer, se lit comme
+    une perte de données.
+
+    L'origine dit D'OÙ VIENT une demande, l'état dit CE QU'ELLE ATTEND. Deux
+    axes distincts, deux clés distinctes, jamais une seule qui les mêlerait.
+  */
+  const [origine, setOrigine] = useTriDansLAdresse<'all' | 'tenantReport' | 'ownerInitiative'>(
+    'origine',
+    'all',
+    isTenant ? [] : ['tenantReport', 'ownerInitiative'],
+  )
+  const [etat, setEtat] = useTriDansLAdresse<WorkOrder['status'] | 'all'>(
+    'etat',
+    'all',
+    isTenant
+      ? []
+      : (['quoted', 'reported', 'approved', 'done'] as const).filter((valeur) =>
+          duPerimetre.some((w) => w.status === valeur),
+        ),
+  )
+
   const parOrigine = (liste: WorkOrder[]) =>
     origine === 'all' ? liste : liste.filter((w) => w.origin === origine)
   const parEtat = (liste: WorkOrder[]) =>

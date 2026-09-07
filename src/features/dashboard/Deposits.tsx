@@ -4,6 +4,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { DataTable, EmptyState } from '@/components/primitives/DataTable'
 import { StatCard } from '@/components/primitives/Charts'
 import { GroupeDeFiltres } from '@/components/controls/GroupeDeFiltres'
+import { useTriDansLAdresse } from '@/lib/useTriDansLAdresse'
 import {
   Skeleton,
   SkeletonRegion,
@@ -132,7 +133,17 @@ export function Deposits() {
     L'ORDRE VA DU PLUS URGENT AU PLUS CALME : ce qui attend un arbitrage
     d'abord, ce qui dort ensuite, ce qui est clos en dernier.
   */
-  const [tri, setTri] = useState<Deposit['status'] | 'all'>('all')
+  /* DANS L'ADRESSE, et `etatsPresents` est ce qu'elle admet : une adresse
+     partagée vieillit, et un état que le parc ne porte plus n'a plus de
+     pastille — voir `useTriDansLAdresse`. */
+  const etatsPresents = (['settling', 'held', 'returned'] as const).filter((etat) =>
+    deposits.some((d) => d.status === etat),
+  )
+  const [tri, setTri] = useTriDansLAdresse<Deposit['status'] | 'all'>(
+    'etat',
+    'all',
+    etatsPresents,
+  )
   const visibles = tri === 'all' ? deposits : deposits.filter((d) => d.status === tri)
 
   const settle = (unitId: string, withheld: number, reason?: string) => {

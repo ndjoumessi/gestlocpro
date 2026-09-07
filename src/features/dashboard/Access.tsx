@@ -25,6 +25,7 @@ import { cn } from '@/lib/cn'
 import { AU_DELA_LG, useAuDela } from '@/lib/useAuDela'
 import { GroupeDeFiltres } from '@/components/controls/GroupeDeFiltres'
 import { initiales } from './initiales'
+import { useTriDansLAdresse } from '@/lib/useTriDansLAdresse'
 
 /**
  * QUI PEUT ENTRER DANS CE PARC.
@@ -312,12 +313,19 @@ export function Access() {
     comptes sont des locataires, une pastille unique à côté de « Tous » ne
     trierait rien.
   */
-  const [roleFiltre, setRoleFiltre] = useState<MembreApi['role'] | 'all'>('all')
-  const membresVisibles =
-    roleFiltre === 'all' ? membres : membres.filter((m) => m.role === roleFiltre)
   const rolesPresents = (['owner', 'manager', 'tenant'] as const).filter((r) =>
     membres.some((m) => m.role === r),
   )
+  /* DANS L'ADRESSE : « qui gère mon parc ? » est une vue qu'on envoie à
+     quelqu'un. `rolesPresents` est ce qu'elle admet — un rôle qu'aucun compte
+     ne porte n'a plus de pastille pour en sortir. */
+  const [roleFiltre, setRoleFiltre] = useTriDansLAdresse<MembreApi['role'] | 'all'>(
+    'role',
+    'all',
+    rolesPresents,
+  )
+  const membresVisibles =
+    roleFiltre === 'all' ? membres : membres.filter((m) => m.role === roleFiltre)
 
   /*
     LES TROIS MORCEAUX QUE LES DEUX FORMES PARTAGENT.

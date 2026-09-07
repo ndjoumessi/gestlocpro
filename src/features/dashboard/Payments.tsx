@@ -5,6 +5,7 @@ import { DataTable, EmptyState } from '@/components/primitives/DataTable'
 import { PaymentStatusPill, type PaymentStatus } from '@/components/primitives/StatusPill'
 import { JaugesDePeriode, LegendeDesPostes } from './JaugesDePeriode'
 import { GroupeDeFiltres } from '@/components/controls/GroupeDeFiltres'
+import { useTriDansLAdresse } from '@/lib/useTriDansLAdresse'
 import { StatCard } from '@/components/primitives/Charts'
 import { DeltaBadge } from '@/components/primitives/Badge'
 import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDebordement'
@@ -89,7 +90,6 @@ export function Payments() {
   }
 
   const isTenant = role === 'tenant'
-  const [filter, setFilter] = useState<PaymentStatus | 'all'>('all')
   const [payOpen, setPayOpen] = useState(false)
   const [relanceOuverte, setRelanceOuverte] = useState(false)
   const [enDemeure, setEnDemeure] = useState<Unit | null>(null)
@@ -128,6 +128,25 @@ export function Payments() {
    * davantage d'échéance à montrer qu'un parc sans logement, et les zéros y
    * seraient tout aussi muets.
    */
+  /*
+    DANS L'ADRESSE, comme les cinq autres tris — et sans dérivation de
+    présence, contrairement à eux. Ce groupe-ci rend `FILTERS` EN ENTIER, y
+    compris les états qu'aucun bail ne porte : « Partiel 0 » s'affiche et se
+    clique. Un tri venu de l'adresse sur un état vide donne donc une grille
+    vide MAIS une pastille pressée et trois voisines pour en sortir — l'état
+    est faux, il n'est pas piégeant, et c'est ce que la règle 2 de
+    `useTriDansLAdresse` protège ailleurs.
+
+    `admis` s'annule quand il n'y a rien à encaisser : la barre disparaît alors
+    entière — « filtrer un vide en quatre façons n'est pas une fonction » — et
+    un tri sans barre n'aurait rien à cliquer.
+  */
+  const [filter, setFilter] = useTriDansLAdresse<PaymentStatus | 'all'>(
+    'etat',
+    'all',
+    leases.length === 0 ? [] : (FILTERS.filter((v) => v !== 'all') as PaymentStatus[]),
+  )
+
   const rienAEncaisser = leases.length === 0
   /* La variation du mois sur le mois précédent — la même règle que le tableau de
      bord, appelée au même endroit pour qu'elles ne puissent pas diverger. */

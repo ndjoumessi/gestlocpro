@@ -24,6 +24,7 @@ import { GroupeDeFiltres } from '@/components/controls/GroupeDeFiltres'
 import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
 import { AU_DELA_LG, useAuDela } from '@/lib/useAuDela'
 import { initiales } from './initiales'
+import { useTriDansLAdresse } from '@/lib/useTriDansLAdresse'
 import { DatePicker } from '@/components/primitives/DatePicker'
 import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
@@ -151,8 +152,17 @@ export function Tenants() {
     LES DEUX SE COMBINENT, et c'est le point : « en retard » puis « Akwa »
     répond à la question qu'on se pose vraiment.
   */
+  /* LA RECHERCHE RESTE LOCALE, et c'est une décision, pas un oubli : « une
+     frappe en cours de saisie est éphémère », dit le mois du parc, et une
+     adresse réécrite à chaque caractère n'est pas une vue partageable. L'ÉTAT,
+     lui, désigne une vue stable — « regarde les trois en retard » — donc il va
+     dans l'adresse. */
   const [recherche, setRecherche] = useState('')
-  const [filtreDEtat, setFiltreDEtat] = useState<PaymentStatus | 'all'>('all')
+  const [filtreDEtat, setFiltreDEtat] = useTriDansLAdresse<PaymentStatus | 'all'>(
+    'etat',
+    'all',
+    ETATS_DU_FILTRE.filter((etat) => leases.some((unit) => unit.status === etat)),
+  )
   const aiguille = recherche.trim().toLowerCase()
   const visibles = leases.filter((unit) => {
     if (filtreDEtat !== 'all' && unit.status !== filtreDEtat) return false
