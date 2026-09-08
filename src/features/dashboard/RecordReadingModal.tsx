@@ -290,6 +290,7 @@ export function RecordReadingModal({
                 /* Dans une modale : la liste ne se déplie pas parce que le
                    dialogue vient de donner le focus. Voir `ouvrirAuFocus`. */
                 ouvrirAuFocus={false}
+                autoComplete="off"
                 options={units.map((u) => ({
                   value: u.id,
                   label: u.tenant ? `${u.label} · ${u.tenant}` : u.label,

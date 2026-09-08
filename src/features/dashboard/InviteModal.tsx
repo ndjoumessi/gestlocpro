@@ -412,6 +412,7 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
                      n'ai pas choisi » et « je choisis de ne pas rattacher ».
                      Elle se filtre comme les autres — on revient à elle en
                      vidant le champ. */
+                  autoComplete="off"
                   options={[
                     { value: '', label: t('app.invite.unitNone') },
                     ...logements.map((u) => ({

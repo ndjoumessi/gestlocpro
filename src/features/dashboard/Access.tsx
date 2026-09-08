@@ -1193,6 +1193,7 @@ export function Access() {
                   /* Dans une modale : la liste ne se déplie pas parce que le
                      dialogue vient de donner le focus. Voir `ouvrirAuFocus`. */
                   ouvrirAuFocus={false}
+                  autoComplete="off"
                   options={fichesLibres.map((f) => ({
                     value: f.id,
                     label: f.unitLabel ? `${f.fullName} — ${f.unitLabel}` : f.fullName,

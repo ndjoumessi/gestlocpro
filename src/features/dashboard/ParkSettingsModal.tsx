@@ -525,6 +525,7 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
                 aria-describedby={props['aria-describedby']}
                 name="reminderTimeZone"
                 placeholder={t('app.parkSettings.notSet')}
+                autoComplete="off"
                 options={optionsDeFuseau}
                 value={fuseau}
                 onChange={setFuseau}

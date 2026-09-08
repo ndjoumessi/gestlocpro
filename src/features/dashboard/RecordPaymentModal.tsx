@@ -252,6 +252,7 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
               /* Dans une modale : la liste ne se déplie pas parce que le
                  dialogue vient de donner le focus. Voir `ouvrirAuFocus`. */
               ouvrirAuFocus={false}
+              autoComplete="off"
               options={payable.map((u) => ({
                 value: u.id,
                 label: u.tenant ? `${u.label} — ${u.tenant}` : u.label,

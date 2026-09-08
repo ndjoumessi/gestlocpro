@@ -1551,6 +1551,7 @@ export function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: (
                 aria-describedby={props['aria-describedby']}
                 invalid={props['aria-invalid']}
                 name="userId"
+                autoComplete="off"
                 value={compte}
                 onChange={setCompte}
                 /* Dans une modale : la liste ne se déplie pas parce que le
@@ -1559,6 +1560,19 @@ export function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: (
                 /* LES COMPTES AUSSI GRANDISSENT AVEC LE PARC, et le libellé
                    porte le courriel : c'est par lui qu'on distingue deux
                    homonymes, donc c'est par lui qu'on doit pouvoir chercher.
+
+                   ET C'EST POURQUOI CE CHAMP REFUSE LE REMPLISSAGE. Un menu
+                   déroulant ne se mémorise pas ; ce champ-ci est une zone de
+                   saisie, dont la valeur VISIBLE porte « Nom Complet
+                   — courriel ». (La balise ne s'écrit pas ici : la garde
+                   `saisieNumeriqueParLaPrimitive` balaye la SOURCE et ne
+                   distingue pas un commentaire d'un rendu — elle a rougi sur
+                   cette prose.) Sans
+                   jeton, l'historique de formulaire ou un gestionnaire tiers
+                   peut la retenir et la proposer à la personne suivante sur un
+                   poste partagé de cabinet — le marché de ce produit. Voir
+                   `scripts/check-remplissage.mjs`, qui l'exige des treize
+                   champs cherchables.
 
                    L'ABSENCE EST LE DÉFAUT, et elle est nommée. Un menu qui
                    s'ouvre sur le premier compte relierait la fiche à quelqu'un
@@ -1641,6 +1655,7 @@ export function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: (
               /* Dans une modale : la liste ne se déplie pas parce que le
                  dialogue vient de donner le focus. Voir `ouvrirAuFocus`. */
               ouvrirAuFocus={false}
+              autoComplete="off"
               options={vacant.map((unit) => {
                 const type = t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')
                 /* LE QUARTIER PEUT MANQUER, et `.trim()` ne l'aurait pas vu :
