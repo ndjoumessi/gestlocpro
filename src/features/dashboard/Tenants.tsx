@@ -933,14 +933,26 @@ export function Tenants() {
                   setRelanceEnCours(false)
                   setARelancer(null)
                   /* Le message dit ce qui A EU LIEU, pas ce qui a été demandé :
-                     un bail relancé le matin même est ignoré par le serveur. */
+                     un bail relancé le matin même est ignoré par le serveur.
+
+                     ET « IGNORÉ » N'EST PAS « RATÉ ». Ce second appelant portait
+                     le même défaut que la relance groupée, et c'est le TYPE qui
+                     l'a trouvé : sur une panne réseau il annonçait « déjà
+                     relancé aujourd'hui » — la règle du serveur, invoquée sans
+                     que le serveur ait répondu. */
+                  if (bilan.issue === 'echec') return
+                  if (bilan.issue === 'demonstration') {
+                    notify(t('app.payments.remindDemo'), { tone: 'neutral' })
+                    return
+                  }
                   notify(
-                    bilan.sent > 0
-                      ? t('app.payments.remindDone', { count: bilan.sent })
-                      : t('app.payments.remindSkipped', { count: bilan.skipped }),
+                    bilan.envoyees > 0
+                      ? t('app.payments.remindDone', { count: bilan.envoyees })
+                      : t('app.payments.remindSkipped', { count: bilan.ecartees }),
                     /* `neutral` et non un ton d'alerte : « déjà relancé aujourd'hui »
-                       n'est pas un échec, c'est la règle du serveur. */
-                    { tone: bilan.sent > 0 ? 'ok' : 'neutral' },
+                       n'est pas un échec, c'est la règle du serveur — et
+                       maintenant c'est bien lui qui l'a dite. */
+                    { tone: bilan.envoyees > 0 ? 'ok' : 'neutral' },
                   )
                 }}
               >

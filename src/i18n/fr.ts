@@ -1208,6 +1208,10 @@ export const fr = {
       remindSkipped: '{count} déjà relancés aujourd’hui',
       remindSkipped_one: '1 déjà relancé aujourd’hui',
       remindNothing: 'Aucune relance : tous ont déjà été relancés aujourd’hui',
+      /* DIRE CE QU'ON NE FAIT PAS. « Déjà relancés aujourd'hui » serait une
+         raison inventée : la démonstration n'a personne à qui écrire. */
+      remindDemo:
+        'La démonstration n’envoie aucune relance : il faut un parc réel pour écrire aux locataires.',
       notice: 'Mettre en demeure',
       noticeTitle: 'Mettre en demeure {tenant} ?',
       noticeBody:

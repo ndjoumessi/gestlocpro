@@ -861,6 +861,7 @@ export const en: Dictionary = {
       remindSkipped: '{count} already chased today',
       remindSkipped_one: '1 already chased today',
       remindNothing: 'Nothing sent: all of them were already chased today',
+      remindDemo: 'The demo sends no reminders: writing to tenants needs a real portfolio.',
       /* « Serve notice » ET NON « Serve formal notice » : mesuré à 320 px, le
          libellé long débordait de 28 px de sa rangée d'actions, sur les six
          lignes en retard — le français, plus court, tenait. La formule

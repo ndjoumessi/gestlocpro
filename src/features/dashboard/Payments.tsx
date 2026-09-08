@@ -822,14 +822,23 @@ export function Payments() {
                  * annoncer « 3 relances » quand une seule est partie serait
                  * exactement le défaut que ce chantier corrige.
                  */
-                if (bilan.sent === 0) {
+                /* LA PHRASE SUIT CE QUI A EU LIEU — et « tous ont déjà été
+                   relancés aujourd'hui » est une RAISON, pas un état. La dire
+                   sans que le serveur l'ait fournie, c'est l'inventer : après
+                   une panne réseau, elle faisait taire les relances du mois. */
+                if (bilan.issue === 'echec') return
+                if (bilan.issue === 'demonstration') {
+                  notify(t('app.payments.remindDemo'), { tone: 'neutral' })
+                  return
+                }
+                if (bilan.envoyees === 0) {
                   notify(t('app.payments.remindNothing'), { tone: 'neutral' })
                   return
                 }
-                const parti = t('app.payments.remindDone', { count: bilan.sent })
+                const parti = t('app.payments.remindDone', { count: bilan.envoyees })
                 notify(
-                  bilan.skipped > 0
-                    ? `${parti} · ${t('app.payments.remindSkipped', { count: bilan.skipped })}`
+                  bilan.ecartees > 0
+                    ? `${parti} · ${t('app.payments.remindSkipped', { count: bilan.ecartees })}`
                     : parti,
                   { tone: 'ok' },
                 )

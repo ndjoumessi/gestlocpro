@@ -406,7 +406,24 @@ interface PortfolioContextValue {
    * 1 déjà relancé aujourd'hui » plutôt qu'annoncer trois envois : c'est le
    * défaut que ce chantier corrige, pas un défaut à reproduire.
    */
-  remindRent: (leaseIds: string[]) => Promise<{ sent: number; skipped: number }>
+  /**
+   * TROIS ISSUES, pour la même raison que `callRent` — et le défaut était pire
+   * ici. Le fournisseur rendait `{ sent: 0 }` sans parc ET après un échec, et
+   * l'écran en tirait « Aucune relance : tous ont déjà été relancés
+   * AUJOURD'HUI ». Il n'annonçait pas seulement un état : il en donnait la
+   * RAISON, une raison qu'aucun serveur n'avait fournie.
+   *
+   * L'enjeu est du courrier réel. Un bailleur qui lit cette phrase après une
+   * panne réseau ne recliquera pas, et ses locataires en retard n'entendront
+   * rien de tout le mois.
+   */
+  remindRent: (
+    leaseIds: string[],
+  ) => Promise<
+    | { issue: 'relance'; envoyees: number; ecartees: number }
+    | { issue: 'demonstration' }
+    | { issue: 'echec' }
+  >
   /**
    * Appelle les loyers d'une période. Rend le nombre d'échéances ÉMISES.
    *
@@ -1850,19 +1867,37 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   )
 
   const remindRent = useCallback(
-    async (leaseIds: string[]): Promise<{ sent: number; skipped: number }> => {
-      if (!parkId || leaseIds.length === 0) return { sent: 0, skipped: leaseIds.length }
+    async (
+      leaseIds: string[],
+    ): Promise<
+      | { issue: 'relance'; envoyees: number; ecartees: number }
+    | { issue: 'demonstration' }
+    | { issue: 'echec' }
+    > => {
+      /* SANS PARC, RIEN NE PART — et l'écran doit pouvoir le dire. La première
+         rédaction rendait ici le même zéro que l'échec, et l'appelant inventait
+         « tous ont déjà été relancés aujourd'hui » par-dessus. */
+      if (!parkId) return { issue: 'demonstration' }
+      /* Aucun bail demandé : c'est une relance VIDE, pas un échec ni une
+         démonstration. Le serveur aurait répondu la même chose. */
+      if (leaseIds.length === 0) return { issue: 'relance', envoyees: 0, ecartees: 0 }
       try {
         const reponse = await api.remindRent<{
           sent: string[]
           skipped: { leaseId: string; reason: string }[]
         }>(parkId, leaseIds)
-        return { sent: reponse.sent.length, skipped: reponse.skipped.length }
+        return {
+          issue: 'relance',
+          envoyees: reponse.sent.length,
+          ecartees: reponse.skipped.length,
+        }
       } catch (erreur) {
+        /* Le fournisseur voyait déjà la moitié du problème — il refusait
+           d'annoncer un envoi après une panne. Mais rendre zéro laissait
+           l'appelant en inventer la cause : c'est l'issue elle-même qui doit
+           porter l'échec. */
         signalerEchec(erreur)
-        // Zéro, et non le nombre demandé : annoncer un envoi après un échec
-        // réseau est précisément le mensonge qu'on retire du produit.
-        return { sent: 0, skipped: leaseIds.length }
+        return { issue: 'echec' }
       }
     },
     [parkId, signalerEchec],
