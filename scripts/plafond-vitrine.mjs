@@ -54,10 +54,27 @@ const BASE = `http://127.0.0.1:${PORT}`
 /**
  * LES PLAFONDS, ET CE QU'ILS CONCÈDENT.
  *
- * `avant` est la mesure d'avant ce lot ; `origine` celle d'avant toute la
- * refonte. Les deux sont gardées parce qu'elles racontent deux choses : la
- * seconde dit d'où l'on part, la première dit ce que le dernier geste a coûté
- * ou rendu. Un plafond seul n'est qu'un nombre.
+ * `avant` et `origine` sont deux JALONS DATÉS, et ils racontent d'où la page
+ * vient : un plafond seul n'est qu'un nombre.
+ *
+ * ILS PORTENT LEUR DATE DEPUIS LE 2026-09-09, ET C'EST UNE CORRECTION. `avant`
+ * s'annonçait comme « la mesure d'avant CE lot » — une phrase vraie le jour où
+ * on l'écrit et fausse dès le lendemain. Elle n'avait pas bougé depuis le 28 et
+ * le 29 août, quinze commits plus tôt : entre-temps, le lot de la police des
+ * titres a poussé `fr@1280` de 7092 à 7169 sans que personne récrive la ligne.
+ * Le nombre était juste ; c'est ce qu'il PRÉTENDAIT être qui avait vieilli.
+ *
+ * Datés, ils cessent de vieillir : « 7092 le 2026-08-29 » restera vrai quel que
+ * soit le nombre de lots qui passent.
+ *
+ * LEUR PROVENANCE, ÉTABLIE PAR L'HISTORIQUE : machine de DÉVELOPPEMENT, police
+ * NORMALE. Le fichier est né le 2026-08-23 et `plafondLarge` n'existe que
+ * depuis le 2026-08-30 — ces jalons lui sont antérieurs, ils ne peuvent donc
+ * venir que de la colonne normale.
+ *
+ * ILS NE REFUSENT RIEN, et c'est pourquoi aucune garde ne les tient : ils
+ * n'apparaissent que dans deux chaînes imprimées. Une garde sur un champ qui
+ * ne juge rien serait une décoration.
  *
  * Le plafond est le MESURÉ, sans marge : le faire monter demande de récrire ces
  * lignes, donc de dire pourquoi dans le diff.
@@ -112,8 +129,8 @@ const PLAFONDS = [
     après, de plus loin. La divergence locale se lit comme telle ; elle ne se
     corrige pas en desserrant.
   */
-  { largeur: 360, langue: 'fr', plafond: 10197, plafondLarge: 10197, avant: 9979, origine: 11419 },
-  { largeur: 360, langue: 'en', plafond: 10058, plafondLarge: 9950, avant: 9862, origine: 11149 },
+  { largeur: 360, langue: 'fr', plafond: 10197, plafondLarge: 10197, avant: 9979, avantLe: '2026-08-28', origine: 11419, origineLe: '2026-08-23' },
+  { largeur: 360, langue: 'en', plafond: 10058, plafondLarge: 9950, avant: 9862, avantLe: '2026-08-28', origine: 11149, origineLe: '2026-08-23' },
   /*
     +73 px AU BUREAU, ET C'EST LE PRIX D'UNE GRILLE COMPARABLE.
 
@@ -152,8 +169,8 @@ const PLAFONDS = [
     cette table — 7247 et non 7250. La porte publique fait autorité ; aucune
     mesure locale n'entre ici.
   */
-  { largeur: 1280, langue: 'fr', plafond: 7169, plafondLarge: 7247, avant: 7092, origine: 7110 },
-  { largeur: 1280, langue: 'en', plafond: 7244, plafondLarge: 7222, avant: 7166, origine: 7106 },
+  { largeur: 1280, langue: 'fr', plafond: 7169, plafondLarge: 7247, avant: 7092, avantLe: '2026-08-29', origine: 7110, origineLe: '2026-08-23' },
+  { largeur: 1280, langue: 'en', plafond: 7244, plafondLarge: 7222, avant: 7166, avantLe: '2026-08-29', origine: 7106, origineLe: '2026-08-23' },
 ]
 /*
   ═══ CE QUE CE RESSERREMENT DIT, ET CE QU'IL NE DIT PAS ═══
@@ -698,7 +715,7 @@ try {
     if (m.hDoc > plafond) {
       plaintes.push(
         `${nom} : ${m.hDoc} px de document pour un plafond de ${plafond}.\n` +
-          `   Avant ce lot : ${point.avant}. Avant la refonte : ${point.origine}.\n` +
+          `   ${point.avant} le ${point.avantLe}. ${point.origine} le ${point.origineLe}, avant la refonte.\n` +
           "   C'est le seul écran que voit un visiteur sans compte, et celui qui décide\n" +
           "   s'il en ouvre un.",
       )
@@ -763,7 +780,7 @@ for (const r of releve) {
   }
   console.log(
     `  ${r.nom.padEnd(10)} ${String(r.hDoc).padStart(6)} px  (plafond ${String(plafondDe(r)).padStart(6)} · ` +
-      `avant ce lot ${String(r.avant).padStart(6)} · avant la refonte ${String(r.origine).padStart(6)})  ` +
+      `${String(r.avant).padStart(6)} le ${r.avantLe} · ${String(r.origine).padStart(6)} le ${r.origineLe})  ` +
       `${r.sections} sections · action à ${r.actionY} px`,
   )
 }
