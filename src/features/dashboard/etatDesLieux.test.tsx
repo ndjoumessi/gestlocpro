@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, userEvent, waitFor, within, attendreLeChargement } from '@/test/render'
+import { renderApp, screen, userEvent, waitFor, within, attendreLeChargement, choisirDansUneListe } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 
@@ -234,7 +234,13 @@ describe('état des lieux — ce qui part au serveur', () => {
    */
   it('adresse le constat au logement choisi', async () => {
     const { user, faux } = await ouvrirSurLeParc()
-    await user.selectOptions(within(dialogue()).getByRole('combobox', { name: /logement/i }), U2)
+    /* On TAPE le libellé — « B8 », celui de `U2` dans cette fixture — au lieu
+       de poser l'identifiant : la liste des logements se filtre depuis qu'elle
+       peut compter des centaines d'entrées. */
+    await choisirDansUneListe(
+      within(dialogue()).getByRole('combobox', { name: /logement/i }),
+      'B8',
+    )
     await saisirUneReserve(user)
     await user.click(within(dialogue()).getByRole('button', { name: /^enregistrer$/i }))
 

@@ -16,7 +16,7 @@ import {
 import { Button } from '@/components/primitives/Button'
 import { Modal } from '@/components/primitives/Modal'
 import { Field } from '@/components/primitives/Field'
-import { Input, Select } from '@/components/primitives/Input'
+import { Input } from '@/components/primitives/Input'
 import { Combobox } from '@/components/primitives/Combobox'
 import { StatCard } from '@/components/primitives/Charts'
 import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDebordement'
@@ -1546,24 +1546,34 @@ export function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: (
         {reliables.length > 0 && (
           <Field label={t('app.tenants.account')} hint={t('app.tenants.accountHint')} optional>
             {(props) => (
-              <Select
-                {...props}
+              <Combobox
+                id={props.id}
+                aria-describedby={props['aria-describedby']}
+                invalid={props['aria-invalid']}
                 name="userId"
                 value={compte}
-                onChange={(e) => setCompte(e.target.value)}
-              >
-                {/* L'ABSENCE EST LE DÉFAUT, et elle est nommée. Un menu qui
-                    s'ouvre sur le premier compte relierait la fiche à
-                    quelqu'un qu'on n'a pas choisi — sur ce champ-ci, c'est
-                    donner le bail, les quittances et les relevés d'un
-                    locataire à un autre. */}
-                <option value="">{t('app.tenants.accountNone')}</option>
-                {reliables.map((m) => (
-                  <option key={m.userId} value={m.userId}>
-                    {`${m.fullName} — ${m.email}`}
-                  </option>
-                ))}
-              </Select>
+                onChange={setCompte}
+                /* Dans une modale : la liste ne se déplie pas parce que le
+                   dialogue vient de donner le focus. Voir `ouvrirAuFocus`. */
+                ouvrirAuFocus={false}
+                /* LES COMPTES AUSSI GRANDISSENT AVEC LE PARC, et le libellé
+                   porte le courriel : c'est par lui qu'on distingue deux
+                   homonymes, donc c'est par lui qu'on doit pouvoir chercher.
+
+                   L'ABSENCE EST LE DÉFAUT, et elle est nommée. Un menu qui
+                   s'ouvre sur le premier compte relierait la fiche à quelqu'un
+                   qu'on n'a pas choisi — sur ce champ-ci, c'est donner le bail,
+                   les quittances et les relevés d'un locataire à un autre. Elle
+                   reste donc une entrée à part entière, en tête, plutôt qu'un
+                   champ vide qu'on lirait comme « pas encore répondu ». */
+                options={[
+                  { value: '', label: t('app.tenants.accountNone') },
+                  ...reliables.map((m) => ({
+                    value: m.userId,
+                    label: `${m.fullName} — ${m.email}`,
+                  })),
+                ]}
+              />
             )}
           </Field>
         )}
@@ -1616,23 +1626,34 @@ export function NewTenantModal({ vacant, onClose }: { vacant: Unit[]; onClose: (
           </Field>
         </div>
 
+        {/* Une liste qui grandit avec le parc se FILTRE — motif détaillé dans
+            `RecordPaymentModal`. La VALEUR reste l'identifiant technique, c'est
+            elle qui part à `addTenant` ; seul le texte lu est le libellé. */}
         <Field label={t('app.payments.selectUnit')} required>
           {(props) => (
-            <Select
-              {...props}
+            <Combobox
+              id={props.id}
+              aria-describedby={props['aria-describedby']}
+              invalid={props['aria-invalid']}
               name="unitId"
               value={unitId}
-              onChange={(e) => setUnitId(e.target.value)}
-            >
-              {vacant.map((unit) => (
-                // La valeur reste l'identifiant technique — c'est elle qui part
-                // à `addTenant` puis au serveur ; seul le texte lu est le libellé.
-                <option key={unit.id} value={unit.id}>
-                  {unit.label} — {t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')} ·{' '}
-                  {buildingById(unit.buildingId)?.district}
-                </option>
-              ))}
-            </Select>
+              onChange={setUnitId}
+              /* Dans une modale : la liste ne se déplie pas parce que le
+                 dialogue vient de donner le focus. Voir `ouvrirAuFocus`. */
+              ouvrirAuFocus={false}
+              options={vacant.map((unit) => {
+                const type = t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')
+                /* LE QUARTIER PEUT MANQUER, et `.trim()` ne l'aurait pas vu :
+                   il retire l'espace, pas le « · » resté seul derrière lui. On
+                   assemble donc les morceaux PRÉSENTS plutôt que de recoudre
+                   une chaîne trouée. */
+                const quartier = buildingById(unit.buildingId)?.district
+                return {
+                  value: unit.id,
+                  label: [`${unit.label} — ${type}`, quartier].filter(Boolean).join(' · '),
+                }
+              })}
+            />
           )}
         </Field>
       </div>

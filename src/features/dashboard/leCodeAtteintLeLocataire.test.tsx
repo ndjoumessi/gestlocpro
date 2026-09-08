@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, userEvent, within } from '@/test/render'
+import { ouvrirLaListe, renderApp, screen, userEvent, within } from '@/test/render'
 
 /**
  * ON ÉMET UN CODE POUR LE LOGEMENT OÙ LE LOCATAIRE VIT DÉJÀ.
@@ -39,7 +39,9 @@ describe('la modale d’invitation', () => {
     const modale = await screen.findByRole('dialog')
     const choix = within(modale).getByRole('combobox', { name: /logement concerné/i })
 
-    const proposes = within(choix)
+    /* La liste d'un champ qu'on filtre est son FRÈRE, et elle n'existe qu'une
+       fois ouverte — voir `ouvrirLaListe`. */
+    const proposes = within(await ouvrirLaListe(choix))
       .getAllByRole('option')
       .map((o) => o.textContent?.trim() ?? '')
 
@@ -65,7 +67,7 @@ describe('la modale d’invitation', () => {
     const modale = await screen.findByRole('dialog')
     const choix = within(modale).getByRole('combobox', { name: /logement concerné/i })
 
-    const occupe = within(choix)
+    const occupe = within(await ouvrirLaListe(choix))
       .getAllByRole('option')
       .find((o) => (o.textContent ?? '').startsWith('A1'))
     expect(occupe?.textContent, 'l’option ne nomme pas son occupant').toMatch(/A1\s*—\s*\S/)

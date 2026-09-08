@@ -76,6 +76,8 @@ export function Combobox({
   invalid,
   name,
   autoComplete,
+  ouvrirAuFocus = true,
+  disabled,
 }: {
   options: OptionCombobox[]
   value: string
@@ -86,6 +88,34 @@ export function Combobox({
   'aria-describedby'?: string
   invalid?: boolean
   name?: string
+  /**
+   * LA LISTE SE DÉPLIE-T-ELLE EN RECEVANT LE FOCUS ?
+   *
+   * `true` par défaut, et c'est un choix documenté par le cas de ce composant :
+   * « arriver au clavier sur un champ cherchable et ne rien voir obligerait à
+   * une frappe pour rien ». Il vaut pour un champ posé dans une page.
+   *
+   * DANS UNE MODALE, IL SE RETOURNE. Le dialogue donne le focus à son premier
+   * champ en s'ouvrant : la liste se dépliait donc SEULE, par-dessus le
+   * formulaire. `mesure-ui` l'a dit sans détour — le calendrier de la modale
+   * d'encaissement est devenu inatteignable, la liste le recouvrant. Les cinq
+   * champs de modale passent donc `false` : on y ouvre au clic, à la frappe ou
+   * à la flèche, jamais parce que le dialogue vient de naître.
+   */
+  ouvrirAuFocus?: boolean
+  /**
+   * CHAMP INERTE, comme un `<select disabled>`.
+   *
+   * `controlClasses` porte déjà `disabled:cursor-not-allowed` et l'opacité :
+   * l'apparence suit le natif sans une règle de plus. Le champ CACHÉ, lui,
+   * reste actif — il ne sert qu'au remplissage automatique et aucun formulaire
+   * de ce produit n'est soumis nativement, `FormData` n'y apparaît nulle part.
+   *
+   * Réclamé par la correction d'un relevé : on y change les index, jamais le
+   * logement — « les déplacer voudrait dire les retirer d'un compteur pour les
+   * poser sur un autre ».
+   */
+  disabled?: boolean
   /**
    * Jeton de remplissage automatique.
    *
@@ -104,6 +134,21 @@ export function Combobox({
 
   const [ouvert, setOuvert] = useState(false)
   const [saisie, setSaisie] = useState('')
+  /**
+   * LA LISTE S'EST-ELLE OUVERTE TOUTE SEULE ?
+   *
+   * Le focus l'ouvre — c'est un choix documenté : « arriver au clavier sur un
+   * champ cherchable et ne rien voir obligerait à une frappe pour rien ». Mais
+   * DANS UNE MODALE, cela retournait Échap contre l'usager : tabuler jusqu'au
+   * champ dépliait la liste, et la touche refermait alors la liste au lieu de
+   * la modale. Il en fallait deux, et `clavierDesModales` l'a dit sur trois
+   * modales à la fois.
+   *
+   * Échap annule ce que l'on a DÉLIBÉRÉMENT ouvert — un clic, une frappe, une
+   * flèche. Une liste que le focus a dépliée en passant n'est le geste de
+   * personne : la touche la traverse et va à ce qui retient vraiment.
+   */
+  const ouvertParFocus = useRef(false)
   const [actif, setActif] = useState(0)
   const conteneur = useRef<HTMLDivElement>(null)
   const listeRef = useRef<HTMLUListElement>(null)
@@ -210,8 +255,10 @@ export function Combobox({
       e.preventDefault()
       if (!ouvert) {
         setOuvert(true)
+        ouvertParFocus.current = false
         return
       }
+      ouvertParFocus.current = false
       const pas = e.key === 'ArrowDown' ? 1 : -1
       // Bornage plutôt que bouclage : arriver au bout d'une liste de deux cent
       // cinquante entrées et se retrouver au début désoriente plus que cela
@@ -240,7 +287,7 @@ export function Combobox({
       }
       return
     }
-    if (e.key === 'Escape' && ouvert) {
+    if (e.key === 'Escape' && ouvert && !ouvertParFocus.current) {
       e.preventDefault()
       // Échap appartient à ce qui retient, et la liste ouverte retient — c'est
       // la règle que `Toast` écrit pour justifier de ne PAS l'écouter. Encore
@@ -295,6 +342,7 @@ export function Combobox({
           }
           aria-invalid={invalid ? true : undefined}
           autoComplete={autoComplete}
+          disabled={disabled}
           className={controlClasses(invalid, 'pr-9')}
           // Le libellé du choix courant s'affiche tant qu'on ne cherche pas :
           // un champ vide ferait croire qu'aucun choix n'est fait.
@@ -303,9 +351,20 @@ export function Combobox({
           onChange={(e) => {
             setSaisie(e.target.value)
             setOuvert(true)
+            ouvertParFocus.current = false
           }}
-          onFocus={() => setOuvert(true)}
-          onClick={() => setOuvert(true)}
+          onFocus={() => {
+            if (!ouvrirAuFocus) return
+            setOuvert(true)
+            /* OUVERTE PAR LE FOCUS, ET NON PAR UN GESTE — voir `ouvertParFocus`
+               plus haut : c'est ce qui décide si Échap appartient à cette liste
+               ou à la modale qui la contient. */
+            ouvertParFocus.current = true
+          }}
+          onClick={() => {
+            setOuvert(true)
+            ouvertParFocus.current = false
+          }}
           // Le focus ne suffit pas : après un choix, la liste se referme mais
           // le champ garde le focus. Un second clic ne déclenchait alors aucun
           // `focus` et ne rouvrait rien — le champ paraissait mort dès qu'on

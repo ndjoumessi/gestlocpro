@@ -9,7 +9,7 @@ import { Notice } from '@/components/primitives/Notice'
 import { StatCard } from '@/components/primitives/Charts'
 import { Field } from '@/components/primitives/Field'
 import { Checkbox } from '@/components/primitives/Choice'
-import { Select } from '@/components/primitives/Input'
+import { Combobox } from '@/components/primitives/Combobox'
 import { Modal } from '@/components/primitives/Modal'
 import { StatusPill } from '@/components/primitives/StatusPill'
 import { SkeletonRegion, SkeletonTable } from '@/components/primitives/Skeleton'
@@ -1178,20 +1178,26 @@ export function Access() {
           }
         >
           <div className="flex flex-col gap-4">
+            {/* Les fiches libres grandissent avec le parc — un cabinet en a
+                autant que de locataires jamais reliés. Voir le motif détaillé
+                dans `RecordPaymentModal`. */}
             <Field label={t('app.access.linkField')} hint={t('app.access.linkHint')}>
               {(props) => (
-                <Select
-                  {...props}
+                <Combobox
+                  id={props.id}
+                  aria-describedby={props['aria-describedby']}
+                  invalid={props['aria-invalid']}
                   name="tenantId"
                   value={ficheChoisie || fichesLibres[0]?.id || ''}
-                  onChange={(e) => setFicheChoisie(e.target.value)}
-                >
-                  {fichesLibres.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.unitLabel ? `${f.fullName} — ${f.unitLabel}` : f.fullName}
-                    </option>
-                  ))}
-                </Select>
+                  onChange={setFicheChoisie}
+                  /* Dans une modale : la liste ne se déplie pas parce que le
+                     dialogue vient de donner le focus. Voir `ouvrirAuFocus`. */
+                  ouvrirAuFocus={false}
+                  options={fichesLibres.map((f) => ({
+                    value: f.id,
+                    label: f.unitLabel ? `${f.fullName} — ${f.unitLabel}` : f.fullName,
+                  }))}
+                />
               )}
             </Field>
 

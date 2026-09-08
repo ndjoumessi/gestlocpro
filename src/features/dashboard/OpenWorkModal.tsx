@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Modal } from '@/components/primitives/Modal'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
-import { Input, Select, Textarea } from '@/components/primitives/Input'
+import { Input, Textarea } from '@/components/primitives/Input'
+import { Combobox } from '@/components/primitives/Combobox'
 import { RadioCards, type RadioCardOption } from '@/components/primitives/Choice'
 import { useToast } from '@/components/primitives/Toast'
 import { useT } from '@/i18n/I18nProvider'
@@ -147,15 +148,22 @@ export function OpenWorkModal({
         noValidate
         className="flex flex-col gap-5"
       >
+        {/* Une liste qui grandit avec le parc se FILTRE — voir le motif
+            détaillé dans `RecordPaymentModal`. Les listes fixées par le
+            produit gardent leur `<select>` natif. */}
         <Field label={t('app.works.openUnit')} required>
           {(champ) => (
-            <Select {...champ} value={unite} onChange={(e) => setUnite(e.target.value)}>
-              {unitIds.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.label}
-                </option>
-              ))}
-            </Select>
+            <Combobox
+              id={champ.id}
+              aria-describedby={champ['aria-describedby']}
+              invalid={champ['aria-invalid']}
+              value={unite}
+              onChange={setUnite}
+              /* Dans une modale : la liste ne se déplie pas parce que le
+                 dialogue vient de donner le focus. Voir `ouvrirAuFocus`. */
+              ouvrirAuFocus={false}
+              options={unitIds.map((u) => ({ value: u.id, label: u.label }))}
+            />
           )}
         </Field>
 

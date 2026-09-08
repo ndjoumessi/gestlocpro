@@ -2,7 +2,8 @@ import { useRef, useState } from 'react'
 import { Modal } from '@/components/primitives/Modal'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
-import { Input, Select } from '@/components/primitives/Input'
+import { Input } from '@/components/primitives/Input'
+import { Combobox } from '@/components/primitives/Combobox'
 import { Notice } from '@/components/primitives/Notice'
 import { DatePicker } from '@/components/primitives/DatePicker'
 import { useToast } from '@/components/primitives/Toast'
@@ -114,7 +115,23 @@ export function RecordReadingModal({
     setErreurs(suivant)
     if (Object.values(suivant).some(Boolean)) {
       const premier = (['unitId', 'water', 'power'] as const).find((c) => suivant[c])
-      if (premier) formRef.current?.querySelector<HTMLElement>(`[name="${premier}"]`)?.focus()
+      /*
+        `data-champ` D'ABORD, ET LE NOM ENSUITE — sans quoi ce focus redevient
+        un no-op silencieux sur le logement.
+
+        Un `Combobox` porte son `name` sur un champ CACHÉ, parce qu'un
+        gestionnaire de mots de passe ne lit pas l'état React ; le champ qu'on
+        voit porte `data-champ`. Chercher le seul `[name=]` trouvait donc
+        l'entrée cachée, qui ne se focalise pas. C'est la panne que `SignUp`
+        avait déjà rencontrée sur l'indicatif — « le refus le plus fréquent de
+        l'inscription » — et sa parade est reprise telle quelle.
+      */
+      if (premier)
+        formRef.current
+          ?.querySelector<HTMLElement>(
+            `[data-champ="${premier}"], [name="${premier}"]:not([type="hidden"])`,
+          )
+          ?.focus()
       return
     }
 
@@ -254,25 +271,30 @@ export function RecordReadingModal({
           noValidate
           className="flex flex-col gap-5"
         >
+          {/* Une liste qui grandit avec le parc se FILTRE — motif détaillé dans
+              `RecordPaymentModal`. Celle-ci porte TOUS les logements du parc,
+              pas les seuls vacants : c'est la plus longue des cinq. */}
           <Field label={t('app.portfolio.unit')} required error={erreurs.unitId}>
             {(props) => (
-              <Select
-                {...props}
+              <Combobox
+                id={props.id}
+                aria-describedby={props['aria-describedby']}
+                invalid={props['aria-invalid']}
                 name="unitId"
                 /* LE LOGEMENT NE CHANGE PAS EN CORRECTION : les relevés qu'on
                    corrige sont ceux de CETTE ligne, et les déplacer voudrait
                    dire les retirer d'un compteur pour les poser sur un autre. */
                 disabled={aCorriger !== undefined}
                 value={unitId}
-                onChange={(e) => setUnitId(e.target.value)}
-              >
-                {units.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.label}
-                    {u.tenant ? ` · ${u.tenant}` : ''}
-                  </option>
-                ))}
-              </Select>
+                onChange={setUnitId}
+                /* Dans une modale : la liste ne se déplie pas parce que le
+                   dialogue vient de donner le focus. Voir `ouvrirAuFocus`. */
+                ouvrirAuFocus={false}
+                options={units.map((u) => ({
+                  value: u.id,
+                  label: u.tenant ? `${u.label} · ${u.tenant}` : u.label,
+                }))}
+              />
             )}
           </Field>
 

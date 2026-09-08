@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { attendreLeChargement, renderApp, screen, userEvent, waitFor, within } from '@/test/render'
+import { attendreLeChargement, renderApp, screen, userEvent, waitFor, within, ouvrirLaListe } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur, type FauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 
@@ -148,8 +148,10 @@ describe('le rattachement lui-même', () => {
 
     const modale = within(await screen.findByRole('dialog'))
     const choix = modale.getByRole('combobox')
+    /* Ouverte : la liste d'un champ qu'on filtre n'existe pas au repos. */
+    const liste = within(await ouvrirLaListe(choix))
     expect(
-      within(choix).getByRole('option', { name: /Bekono Landry/ }).textContent,
+      liste.getByRole('option', { name: /Bekono Landry/ }).textContent,
       'la fiche proposée ne dit pas de quel logement il s’agit',
     ).toMatch(/A1/)
 

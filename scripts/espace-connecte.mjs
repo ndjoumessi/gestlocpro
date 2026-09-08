@@ -1799,18 +1799,31 @@ try {
           /* L'option porte le logement ET son immeuble — « Résidence du Mandat ·
              R1 » —, pas le seul libellé. On la choisit sur son CONTENU plutôt que
              sur une égalité, qui supposerait la forme du composé. */
-          const optionDuLogement = await page.evaluate(() => {
-            const select = document.querySelector('select[name="unitId"]')
-            const o = [...(select?.options ?? [])].find((x) => x.textContent?.includes('R1'))
-            return o?.value ?? null
-          })
-          if (!optionDuLogement) {
+          /*
+            LA LISTE DES LOGEMENTS SE FILTRE — elle grandit avec le parc, et un
+            cabinet en gère des centaines. On TAPE le libellé au lieu de poser
+            une valeur, comme la personne le fait.
+
+            Cette porte cherchait `select[name="unitId"]` et ses `.options` :
+            une forme, pas un comportement. Elle a rougi le jour de la
+            conversion en disant « le logement n'est pas proposé », alors qu'il
+            l'était — dans un champ d'une autre nature. Ce qu'on garde reste le
+            même : le logement qu'on vient de créer doit être ATTEIGNABLE.
+          */
+          const champDuLogement = page.getByLabel(/Unité/)
+          await champDuLogement.click()
+          await champDuLogement.fill('R1')
+          const optionDuLogement = page
+            .locator('[role="listbox"] [role="option"]')
+            .filter({ hasText: 'R1' })
+            .first()
+          if ((await optionDuLogement.count()) === 0) {
             plaintes.push(
               "premier geste : le logement qu'on vient de créer n'est pas proposé " +
                 'à la fiche locataire. Il existe et on ne peut le rattacher à personne.',
             )
           } else {
-            await page.getByLabel(/Unité/).selectOption(optionDuLogement)
+            await optionDuLogement.click()
           }
           await page
             .getByRole('button', { name: /Créer la fiche|^Enregistrer$/ })

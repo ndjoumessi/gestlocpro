@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { attendreLeChargement, renderApp, screen, userEvent, within } from '@/test/render'
+import { attendreLeChargement, renderApp, screen, userEvent, within, ouvrirLaListe } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 
@@ -217,9 +217,12 @@ describe('le parc sur bureau', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: /Attribuer un locataire/ }))
     const modale = await screen.findByRole('dialog')
     // Le logement est déjà choisi : c'est celui de la fiche, et lui seul.
+    /* La liste se FILTRE désormais, donc elle n'a d'options qu'ouverte : un
+       `<select>` les portait en enfants, un `Combobox` les rend à côté. */
     const choix = within(modale).getByRole('combobox', { name: /Unité/ })
-    expect(within(choix).getAllByRole('option')).toHaveLength(1)
-    expect(within(choix).getByRole('option', { name: /A3/ })).toBeInTheDocument()
+    const liste = within(await ouvrirLaListe(choix))
+    expect(liste.getAllByRole('option')).toHaveLength(1)
+    expect(liste.getByRole('option', { name: /A3/ })).toBeInTheDocument()
   })
 })
 

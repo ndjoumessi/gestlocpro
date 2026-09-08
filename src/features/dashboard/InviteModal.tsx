@@ -4,6 +4,7 @@ import { Notice } from '@/components/primitives/Notice'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
 import { Select } from '@/components/primitives/Input'
+import { Combobox } from '@/components/primitives/Combobox'
 import { useToast } from '@/components/primitives/Toast'
 import { useT } from '@/i18n/I18nProvider'
 import { usePortfolio } from '@/data/PortfolioProvider'
@@ -386,26 +387,41 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
           {roleInvite === 'tenant' && logements.length > 0 && (
             <Field label={t('app.invite.unit')} hint={t('app.invite.unitHint')}>
               {(props) => (
-                <Select
-                  {...props}
+                <Combobox
+                  id={props.id}
+                  aria-describedby={props['aria-describedby']}
+                  invalid={props['aria-invalid']}
                   name="unitId"
                   value={choix}
-                  onChange={(e) => setUnitId(e.target.value)}
-                >
-                  {/* L'AIDE DU CHAMP PROMET CE CHOIX — « sans logement, il rejoint
-                      le parc sans bail, vous l'y rattacherez ensuite » — et il
-                      n'était atteignable que par accident : quand AUCUN logement
-                      n'était vacant, le champ disparaissait et l'invitation
-                      partait sans unité. Ouvrir la liste à tout le parc aurait
-                      donc supprimé un parcours que le produit décrit, en
-                      réparant l'autre. */}
-                  <option value="">{t('app.invite.unitNone')}</option>
-                  {logements.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.tenant ? `${u.label} — ${u.tenant}` : `${u.label} — ${t('app.invite.unitVacant')}`}
-                    </option>
-                  ))}
-                </Select>
+                  onChange={setUnitId}
+                  /* Dans une modale : la liste ne se déplie pas parce que le
+                     dialogue vient de donner le focus. Voir `ouvrirAuFocus`. */
+                  ouvrirAuFocus={false}
+                  /* L'ABSENCE RESTE UNE ENTRÉE DE LA LISTE, et en tête.
+                     L'AIDE DU CHAMP PROMET CE CHOIX — « sans logement, il
+                     rejoint le parc sans bail, vous l'y rattacherez ensuite » —
+                     et il n'était atteignable que par accident : quand AUCUN
+                     logement n'était vacant, le champ disparaissait et
+                     l'invitation partait sans unité. Ouvrir la liste à tout le
+                     parc aurait donc supprimé un parcours que le produit
+                     décrit, en réparant l'autre.
+
+                     Elle porte `value: ''`, que `Combobox` retrouve comme
+                     n'importe quelle autre : le champ affiche son libellé au
+                     lieu de paraître vide, ce qui est la différence entre « je
+                     n'ai pas choisi » et « je choisis de ne pas rattacher ».
+                     Elle se filtre comme les autres — on revient à elle en
+                     vidant le champ. */
+                  options={[
+                    { value: '', label: t('app.invite.unitNone') },
+                    ...logements.map((u) => ({
+                      value: u.id,
+                      label: u.tenant
+                        ? `${u.label} — ${u.tenant}`
+                        : `${u.label} — ${t('app.invite.unitVacant')}`,
+                    })),
+                  ]}
+                />
               )}
             </Field>
           )}

@@ -4,6 +4,7 @@ import { Button } from '@/components/primitives/Button'
 import { ChampsApparies, Field } from '@/components/primitives/Field'
 import { DatePicker, MonthPicker } from '@/components/primitives/DatePicker'
 import { Input, Select, Textarea } from '@/components/primitives/Input'
+import { Combobox } from '@/components/primitives/Combobox'
 import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
@@ -224,25 +225,38 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
         noValidate
         className="flex flex-col gap-5"
       >
+        {/*
+          UN CHAMP QU'ON FILTRE, ET NON UN MENU QU'ON PARCOURT.
+
+          C'est la seule dimension de ce produit dont la longueur suive le
+          parc : douze logements en démonstration, des centaines chez un
+          cabinet. Les listes FIXES — méthode de paiement, type, rôle, devise —
+          gardent leur `<select>` natif, qui ouvre le sélecteur du système : sur
+          un Android d'entrée de gamme, il bat le clavier logiciel tant que la
+          liste est courte. C'est la longueur qui tranche, pas le goût.
+
+          LE LIBELLÉ PORTE AUSSI LE LOCATAIRE, et pas seulement le logement :
+          c'est par le nom qu'on cherche autant que par « A3 ». La liste a un
+          temps montré « 5d2665cd-eda5-… — BEKONO LANDRY », et `noTechnicalIds`
+          ne l'a pas vu — il inspecte les écrans AU REPOS, et celle-ci ne se
+          peuple qu'une fois la modale ouverte.
+        */}
         <Field label={t('app.payments.selectUnit')} required>
           {(props) => (
-            <Select {...props} value={unitId} onChange={(e) => setUnitId(e.target.value)}>
-              {payable.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {/*
-                    Le LIBELLÉ, pas l'identifiant.
-
-                    Cette liste affichait « 5d2665cd-eda5-4d9d-… — BEKONO
-                    LANDRY ». Le garde `noTechnicalIds` existe précisément pour
-                    ça — son en-tête dit que le produit « a un temps montré
-                    l'uuid d'une unité au lieu de son libellé » — et il ne l'a
-                    pas vu : il inspecte les écrans AU REPOS, et cette liste ne
-                    se peuple qu'une fois la modale ouverte.
-                  */}
-                  {u.label} — {u.tenant}
-                </option>
-              ))}
-            </Select>
+            <Combobox
+              id={props.id}
+              aria-describedby={props['aria-describedby']}
+              invalid={props['aria-invalid']}
+              value={unitId}
+              onChange={setUnitId}
+              /* Dans une modale : la liste ne se déplie pas parce que le
+                 dialogue vient de donner le focus. Voir `ouvrirAuFocus`. */
+              ouvrirAuFocus={false}
+              options={payable.map((u) => ({
+                value: u.id,
+                label: u.tenant ? `${u.label} — ${u.tenant}` : u.label,
+              }))}
+            />
           )}
         </Field>
 

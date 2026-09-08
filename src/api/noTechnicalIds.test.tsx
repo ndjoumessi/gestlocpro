@@ -199,10 +199,31 @@ describe('aucun identifiant technique à l’écran', () => {
     await user.click(screen.getByRole('button', { name: /enregistrer un paiement/i }))
     const dialogue = await screen.findByRole('dialog')
 
-    const trouves = (dialogue.textContent ?? '').match(new RegExp(UUID, 'gi')) ?? []
+    /*
+      CE QUE LA PERSONNE LIT, et cela ne se réduit plus au texte rendu.
+
+      La liste des logements est passée du menu déroulant au champ qu'on filtre :
+      le choix courant vit désormais dans la VALEUR d'un champ, que
+      `textContent` ne voit pas. On regarde donc les deux — le texte de la
+      modale et la valeur de ses champs visibles.
+
+      Le champ CACHÉ du `Combobox` porte bien l'identifiant technique, et c'est
+      son rôle : un formulaire soumis nativement ou un gestionnaire de mots de
+      passe ne lit pas l'état React. Il n'est lu par personne, donc il ne
+      compte pas ici — et `[type=hidden]` l'exclut nommément plutôt que par
+      omission.
+    */
+    const champsVisibles = Array.from(
+      dialogue.querySelectorAll<HTMLInputElement>('input:not([type="hidden"])'),
+    )
+      .map((c) => c.value)
+      .join(' ')
+    const lu = `${dialogue.textContent ?? ''} ${champsVisibles}`
+
+    const trouves = lu.match(new RegExp(UUID, 'gi')) ?? []
     expect(trouves, 'identifiant technique visible dans la modale').toEqual([])
     // Le pendant positif : la liste montre bien quelque chose.
-    expect(dialogue.textContent).toMatch(/A1/)
+    expect(lu).toMatch(/A1/)
   })
 
   it('affiche bien le libellé et la référence, et non leurs clés', async () => {

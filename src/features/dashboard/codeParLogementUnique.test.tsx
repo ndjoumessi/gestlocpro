@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { attendreLeChargement, renderApp, screen, userEvent, within } from '@/test/render'
+import {
+  attendreLeChargement,
+  ouvrirLaListe,
+  renderApp,
+  screen,
+  userEvent,
+  within,
+} from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur, type FauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 
@@ -152,11 +159,26 @@ describe('un seul code vivant par logement', () => {
   it('retire du menu le logement dont le code attend encore', async () => {
     await ouvrirLInvitation()
 
+    /*
+      IL FAUT OUVRIR LA LISTE, et ce n'est pas une formalité de harnais.
+
+      Ce cas est NÉGATIF : il exige qu'A1 ne soit pas proposé. Quand la liste
+      des logements est passée du menu déroulant au champ qu'on filtre, il a
+      continué de passer — au vert À VIDE. Un champ fermé n'a aucune option,
+      donc `queryByRole('option')` ne trouvait plus RIEN, A1 compris : le cas
+      aurait laissé revenir le 409 qu'il existe pour empêcher. C'est son jumeau
+      positif, vingt lignes plus bas, qui a rougi et l'a dénoncé.
+    */
     const menu = await screen.findByRole('combobox', { name: /Logement/ })
+    const liste = within(await ouvrirLaListe(menu))
     expect(
-      within(menu).queryByRole('option', { name: /A1/ }),
+      liste.queryByRole('option', { name: /A1/ }),
       'A1 est proposé alors que son code attend : le serveur rendra 409',
     ).not.toBeInTheDocument()
+    expect(
+      liste.getAllByRole('option').length,
+      'la liste est vide : le cas négatif ne mesurerait plus rien',
+    ).toBeGreaterThan(0)
   })
 
   it('laisse les autres logements, code ou pas', async () => {
@@ -164,8 +186,9 @@ describe('un seul code vivant par logement', () => {
 
     // La moitié sans laquelle tout retirer satisferait le cas précédent.
     const menu = await screen.findByRole('combobox', { name: /Logement/ })
-    expect(within(menu).getByRole('option', { name: /B1/ })).toBeInTheDocument()
-    expect(within(menu).getByRole('option', { name: /B2/ })).toBeInTheDocument()
+    const liste = within(await ouvrirLaListe(menu))
+    expect(liste.getByRole('option', { name: /B1/ })).toBeInTheDocument()
+    expect(liste.getByRole('option', { name: /B2/ })).toBeInTheDocument()
   })
 
   it('dit lesquels ont été retirés, et où reprendre leur code', async () => {

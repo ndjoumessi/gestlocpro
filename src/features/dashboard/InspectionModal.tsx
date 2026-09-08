@@ -3,7 +3,8 @@ import { Modal } from '@/components/primitives/Modal'
 import { Button, IconButton } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
 import { Icon } from '@/components/primitives/Icon'
-import { Input, Select } from '@/components/primitives/Input'
+import { Input } from '@/components/primitives/Input'
+import { Combobox } from '@/components/primitives/Combobox'
 import { DatePicker } from '@/components/primitives/DatePicker'
 import { SegmentedControl } from '@/components/primitives/Choice'
 import { useToast } from '@/components/primitives/Toast'
@@ -539,15 +540,22 @@ export function InspectionModal({
       >
         {/* Le logement d'abord : c'est lui qui décide de qui répondra des
             réserves relevées en dessous. */}
+        {/* Une liste qui grandit avec le parc se FILTRE — voir le motif
+            détaillé dans `RecordPaymentModal`. Les listes fixées par le
+            produit gardent leur `<select>` natif. */}
         <Field label={t('app.inspections.unit')} required>
           {(champ) => (
-            <Select {...champ} value={unite} onChange={(e) => setUnite(e.target.value)}>
-              {unitIds.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.label}
-                </option>
-              ))}
-            </Select>
+            <Combobox
+              id={champ.id}
+              aria-describedby={champ['aria-describedby']}
+              invalid={champ['aria-invalid']}
+              value={unite}
+              onChange={setUnite}
+              /* Dans une modale : la liste ne se déplie pas parce que le
+                 dialogue vient de donner le focus. Voir `ouvrirAuFocus`. */
+              ouvrirAuFocus={false}
+              options={unitIds.map((u) => ({ value: u.id, label: u.label }))}
+            />
           )}
         </Field>
 

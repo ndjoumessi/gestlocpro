@@ -428,6 +428,60 @@ export async function cliquerAction(nom: RegExp | string): Promise<void> {
 }
 
 /**
+ * Ouvre la liste d'un champ qu'on filtre, et la rend.
+ *
+ * Un `<select>` porte ses options en enfants : `within(champ)` suffisait. Un
+ * `Combobox` n'en a aucune tant qu'il est fermé, et sa liste est un FRÈRE —
+ * les cas qui vérifient ce qui est OFFERT doivent donc l'ouvrir d'abord.
+ */
+export async function ouvrirLaListe(champ: HTMLElement): Promise<HTMLElement> {
+  await userEvent.setup().click(champ)
+  const liste = champ.closest('div')?.parentElement?.querySelector('[role="listbox"]')
+  if (!liste) throw new Error('le champ n’a pas ouvert de liste')
+  return liste as HTMLElement
+}
+
+/**
+ * CHOISIT DANS UN CHAMP QU'ON FILTRE, là où l'on posait une valeur.
+ *
+ * Les listes qui grandissent avec le parc — les logements, les fiches libres —
+ * sont passées du menu déroulant au `Combobox` : on ne peut plus poser une
+ * valeur, on TAPE puis on prend l'entrée offerte. C'est aussi ce que fait la
+ * personne, et c'est pourquoi cet aide vit ici plutôt qu'en trois copies : la
+ * prochaine liste convertie n'aura rien à réécrire.
+ *
+ * `aTaper` est ce qu'on frappe — « A3 », un nom — et non l'identifiant : celui-ci
+ * ne s'affiche nulle part, c'est tout l'objet de `noTechnicalIds`.
+ */
+export async function choisirDansUneListe(
+  champ: HTMLElement,
+  aTaper: string,
+): Promise<void> {
+  const clavier = userEvent.setup()
+  await clavier.click(champ)
+  /* VIDER D'ABORD, et ce n'est pas une précaution : fermé, le champ affiche le
+     libellé du choix courant, et taper par-dessus l'ALLONGE au lieu de le
+     remplacer — « A3 » devenait « A1 — Charles NgassaA3 », que rien ne filtre.
+     `clear` déclenche le `onChange` qui ouvre la liste et vide la recherche. */
+  await clavier.clear(champ)
+  await clavier.type(champ, aTaper)
+  /* La liste est le frère du champ dans le conteneur du `Combobox` : la
+     chercher globalement prendrait celle d'un autre champ de la même modale. */
+  const liste = champ.closest('div')?.parentElement?.querySelector('[role="listbox"]')
+  if (!liste) throw new Error(`aucune liste ouverte pour « ${aTaper} »`)
+  const premiere = liste.querySelector('[role="option"]')
+  if (!premiere) {
+    const offertes = Array.from(liste.querySelectorAll('li'))
+      .map((l) => l.textContent)
+      .join(' | ')
+    throw new Error(
+      `« ${aTaper} » ne laisse aucune entrée — champ « ${(champ as HTMLInputElement).value} », liste : ${offertes || '(vide)'}`,
+    )
+  }
+  await clavier.click(premiere as HTMLElement)
+}
+
+/**
  * Bascule le profil actif via le sélecteur de la barre latérale, comme le
  * ferait l'utilisateur. Passer par l'interface plutôt que par le contexte
  * garantit que le test échouerait aussi si le sélecteur cessait de fonctionner.

@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   attendreLeChargement,
+  choisirDansUneListe,
+  ouvrirLaListe,
   renderApp,
   screen,
   userEvent,
@@ -133,12 +135,18 @@ describe('créer une fiche pour un compte déjà membre', () => {
   it('propose les membres sans fiche, et eux seuls', async () => {
     await ouvrirLaCreation()
 
+    /* La liste d'un champ qu'on filtre est son FRÈRE, et elle n'existe qu'une
+       fois ouverte. Les DEUX exclusions ci-dessous en dépendent : sur un champ
+       fermé elles passeraient à vide, faute d'une seule option à trouver — ce
+       qui est arrivé au cas jumeau de `codeParLogementUnique`. La présence de
+       Bekono Landry, mesurée d'abord, est ce qui interdit ce vert-là. */
     const menu = await screen.findByRole('combobox', { name: /compte/i })
-    expect(within(menu).getByRole('option', { name: /Bekono Landry/ })).toBeInTheDocument()
+    const liste = within(await ouvrirLaListe(menu))
+    expect(liste.getByRole('option', { name: /Bekono Landry/ })).toBeInTheDocument()
     // Déjà relié — le serveur rendrait `account_already_linked`.
-    expect(within(menu).queryByRole('option', { name: /Eloundou Charles/ })).not.toBeInTheDocument()
+    expect(liste.queryByRole('option', { name: /Eloundou Charles/ })).not.toBeInTheDocument()
     // Le propriétaire n'a pas de fiche — `not_a_tenant`.
-    expect(within(menu).queryByRole('option', { name: new RegExp(COMPTE_FICTIF.fullName) })).not.toBeInTheDocument()
+    expect(liste.queryByRole('option', { name: new RegExp(COMPTE_FICTIF.fullName) })).not.toBeInTheDocument()
   })
 
   it('envoie le compte choisi avec la fiche', async () => {
@@ -148,8 +156,11 @@ describe('créer une fiche pour un compte déjà membre', () => {
     // Le téléphone est REQUIS : sans lui, `submit` sort avant l'appel, et le
     // cas mesurerait la validation au lieu du compte.
     await utilisateur.type(screen.getByLabelText(/téléphone/i), '677000001')
+    /* On TAPE le nom, comme la personne : l'identifiant `u-landry` ne s'affiche
+       nulle part, et c'est tout l'objet de `noTechnicalIds`. Ce que le cas
+       vérifie plus bas — que `u-landry` parte au serveur — n'en change pas. */
     const menu = screen.getByRole('combobox', { name: /compte/i })
-    await utilisateur.selectOptions(menu, 'u-landry')
+    await choisirDansUneListe(menu, 'Bekono Landry')
     await utilisateur.click(screen.getByRole('button', { name: /enregistrer/i }))
 
     await waitFor(() => {
