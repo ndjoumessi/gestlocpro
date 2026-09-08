@@ -1199,48 +1199,57 @@ const fermeesA = (role) => ECRANS.filter((e) => !e.roles.includes(role))
 const DOSSIER = (unitId) => ({ adresse: `/app/parc/${unitId}`, roles: ['owner', 'manager'] })
 
 /**
- * L'ARBRE EST-IL POSÉ ? — prédicat d'attente, évalué DANS la page.
+ * L'ARBRE A-T-IL SUIVI LE REDIMENSIONNEMENT ?
  *
- * « Posé » veut dire : rien d'occupé, et la population de `[data-indicateur]`
- * inchangée depuis `delai` millisecondes. Ce n'est pas circulaire — on n'attend
- * pas un nombre de cartes, on attend que le nombre CESSE DE BOUGER, quel qu'il
- * soit. Un écran qui n'en porte aucune se pose à zéro et part aussitôt.
+ * `page.setViewportSize()` rend la main avant que React ait rejoué le rendu
+ * conditionné par la largeur : les sondes qui suivent lisent l'arbre PRÉCÉDENT.
+ * Mesuré le 2026-09-08 sur cette porte comme sur `mesure-ui`.
  *
- * L'échantillon est remis à zéro par l'appelant AVANT chaque attente : sans
- * cela, l'état d'une largeur précédente ferait passer l'attente immédiatement.
+ * ═══ POURQUOI DES TRAMES, ET NON LES 150 ms DE LA PREMIÈRE RÉDACTION ═══
+ *
+ * La version d'hier attendait 150 ms de calme sur la population de
+ * `[data-indicateur]`. Deux défauts, mesurés depuis :
+ *
+ *   — SON EMPREINTE ÉTAIT AVEUGLE sur la plupart des écrans. Un écran sans
+ *     indicateur se pose à zéro instantanément, donc l'attente ne faisait RIEN
+ *     là où l'audit de contraste en avait besoin — et c'est le même défaut qui
+ *     avait fait échouer ma toute première tentative.
+ *   — SON SEUIL VENAIT D'UNE MESURE À 100 ms DE PAS. Sur `mesure-ui`, mesuré à
+ *     la TRAME sur 916 points : 905 posés immédiatement, 11 après deux trames,
+ *     ZÉRO à 50, 100 ou 300 ms. Une trame suit la vitesse de la machine ; un
+ *     timer calibré sur celle-ci ne dit rien de la suivante.
+ *
+ * On exige donc deux empreintes IDENTIQUES à deux trames d'écart. Ce n'est pas
+ * circulaire : on n'attend aucune valeur, seulement qu'elle cesse de bouger. Un
+ * écran qui ne change pas part au bout de quatre trames.
+ *
+ * Bornée à vingt tours, et le dépassement ROUGIT — un point mesuré sur un arbre
+ * en mouvement rend un verdict qui ne vaut pas ce qu'il annonce.
  */
-const REPOSEE = (delai) => {
-  if (document.querySelectorAll('[aria-busy="true"]').length > 0) return false
-  const principal = document.querySelector('main')
-  const n = principal ? principal.querySelectorAll('[data-indicateur]').length : -1
-  const etat = (window.__reposEchantillon ??= { n: null, depuis: 0 })
-  const t = performance.now()
-  if (etat.n !== n) {
-    etat.n = n
-    etat.depuis = t
-    return false
-  }
-  return t - etat.depuis >= delai
+const POSER_L_ARBRE = () =>
+  new Promise((resolve) => {
+    const empreinte = () => {
+      const m = document.querySelector('main') ?? document.body
+      return `${m.querySelectorAll('*').length}/${Math.round(m.scrollHeight)}`
+    }
+    let restant = 20
+    let precedent = null
+    const tour = () => {
+      const vue = empreinte()
+      if (vue === precedent) return resolve(true)
+      if (restant-- <= 0) return resolve(false)
+      precedent = vue
+      requestAnimationFrame(() => requestAnimationFrame(tour))
+    }
+    requestAnimationFrame(() => requestAnimationFrame(tour))
+  })
+
+/** Les points sondés alors que l'arbre bougeait encore — voir leur garde. */
+const arbresEnMouvement = []
+
+async function poserLArbre(page, ou) {
+  if (!(await page.evaluate(POSER_L_ARBRE))) arbresEnMouvement.push(ou)
 }
-
-/**
- * Durée de repos exigée, en millisecondes.
- *
- * 150 et non 80 : l'échantillonnage qui a révélé le décalage avait un pas de
- * 100 ms, et montrait l'arbre déjà posé au second point. On ne connaît donc la
- * transition qu'à 100 ms près, et un repos plus court que la marge d'erreur de
- * la mesure serait une superstition. 150 la couvre sans deviner.
- */
-const REPOS_MS = 150
-
-/**
- * Les points où l'arbre n'était toujours pas posé — voir leur garde plus bas.
- *
- * Un tableau et non un compteur : savoir COMBIEN ne dit pas quoi relancer, et
- * c'est faute de nommer les écrans que ce défaut a demandé une instrumentation
- * à la main avant de se laisser voir.
- */
-const reposNonAboutis = []
 
 async function ouvrir(page, adresse) {
   await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
@@ -1421,6 +1430,13 @@ try {
         await page.addStyleTag({ content: FIGER_LES_ANIMATIONS }).catch(() => {})
         for (const largeur of LARGEURS_D_AUDIT) {
           await page.setViewportSize({ width: largeur, height: 900 })
+          /* MANQUÉ AU LOT PRÉCÉDENT, et il comptait : `textesAudites` variait de
+             17546 à 17629 d'un passage à l'autre — quatre-vingt-trois textes
+             d'écart sur le MÊME code, parce que l'audit lisait par moments
+             l'arbre de la largeur d'avant. J'avais déclaré cette porte
+             déterministe en ne vérifiant QUE le compteur que je venais de
+             corriger. */
+          await poserLArbre(page, `contraste · ${ecran.adresse} · ${cle} · ${largeur}px · ${langue}`)
           for (const theme of THEMES) {
             await page.emulateMedia({ colorScheme: theme })
             await page
@@ -1479,6 +1495,10 @@ try {
             timeout: 5000,
           })
           .catch(() => {})
+        /* SECOND SITE MANQUÉ, et celui-ci passe de 1280 à 360 px — le plus grand
+           saut de toute la porte. `plisInspectes` variait de 64 à 67 selon le
+           passage ; son plancher de 40 avait la marge pour ne pas le trahir. */
+        await poserLArbre(page, `pli · ${ecran.adresse} · ${cle} · ${langue}`)
         const pli = await page.evaluate(MESURER_LE_PLI, APPAREIL_DE_REFERENCE.height)
         if (pli.vu) plisInspectes += 1
         if (pli.plainte) {
@@ -1536,23 +1556,9 @@ try {
             varier la règle de l'orpheline entre 99 et 118 d'un passage à
             l'autre, et rougir la porte au hasard.
 
-            ON ATTEND DONC LE REPOS, et non un délai fixe : la population de
-            cartes doit être inchangée pendant `REPOS_MS`. L'état périmé et
-            l'état posé DIFFÈRENT — c'est ce qui rend l'attente correcte plutôt
-            que superstitieuse : elle ne peut pas se satisfaire du périmé sans
-            que celui-ci survive au repos, ce que la mesure ci-dessus exclut.
-
-            `aria-busy` reste dans le prédicat : une région encore occupée n'est
-            pas posée, quoi que dise le compte.
+            ON ATTEND DONC QUE L'ARBRE SE POSE — voir `POSER_L_ARBRE`.
           */
-          await page.evaluate(() => {
-            delete window.__reposEchantillon
-          })
-          try {
-            await page.waitForFunction(REPOSEE, REPOS_MS, { timeout: 5000 })
-          } catch {
-            reposNonAboutis.push(`${ecran.adresse} · ${cle} · ${largeur}px · ${langue}`)
-          }
+          await poserLArbre(page, `${ecran.adresse} · ${cle} · ${largeur}px · ${langue}`)
           const ou = `${ecran.adresse} · ${cle} · ${largeur}px · ${langue}`
 
           const rendu = await page.evaluate(MESURER_RENDU_MINIMAL)
@@ -2290,8 +2296,15 @@ if (nomsExamines < NOMS_ATTENDUS) {
  * SURTOUT, LE COMPTE NE TENAIT PAS EN PLACE : 99, 107, 108, 110, 111, 118 selon
  * le passage, et une porte entière rouge au hasard. La cause n'était pas ici —
  * la boucle des largeurs sondait l'arbre AVANT que React l'ait rejoué, donc
- * mesurait la largeur précédente. Corrigé par `REPOSEE`, le compte vaut 102 et
- * ne bouge plus d'un passage à l'autre.
+ * mesurait la largeur précédente. Corrigé par `POSER_L_ARBRE`, le compte vaut
+ * 102 et ne bouge plus d'un passage à l'autre.
+ *
+ * ET J'AI CRU LA PORTE STABILISÉE SUR CE SEUL COMPTEUR. Elle ne l'était pas :
+ * l'audit de contraste et la mesure du pli redimensionnent EUX AUSSI, et je ne
+ * les avais pas corrigés. Leurs relevés variaient — 17546 à 17629 textes
+ * confrontés, 64 à 67 écrans jugés au pli — pendant que celui-ci ne bougeait
+ * plus. Vérifier une porte, c'est comparer TOUS ses compteurs entre deux
+ * passages, pas celui qu'on vient de réparer.
  *
  * LE PLANCHER RESTE À 100, ET LA MARGE EST DE DEUX. C'est délibéré : la mesure
  * étant devenue déterministe, elle ne peut plus tomber par hasard — seul un
@@ -2324,11 +2337,11 @@ if (notesCherchees !== NOTES_SOUS_APP.length * LANGUES.length) {
   taire reproduirait le défaut qui a motivé cette attente : une mesure qui passe
   la plupart du temps et rougit au hasard.
 */
-if (reposNonAboutis.length) {
+if (arbresEnMouvement.length) {
   plaintes.push(
-    `${reposNonAboutis.length} point(s) mesuré(s) sur un arbre encore en mouvement — ` +
-      `il n'était toujours pas posé après 5 s, ${REPOS_MS} ms de repos exigés :\n     ` +
-      reposNonAboutis.slice(0, 10).join('\n     '),
+    `${arbresEnMouvement.length} point(s) mesuré(s) sur un arbre encore en mouvement — ` +
+      "vingt tours de deux trames n'ont pas suffi à le voir se poser :\n     " +
+      arbresEnMouvement.slice(0, 10).join('\n     '),
   )
 }
 

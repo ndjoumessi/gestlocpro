@@ -293,6 +293,46 @@ function marquerLenteur(ou, quoi) {
   lenteurs.set(cle, (lenteurs.get(cle) ?? 0) + 1)
 }
 
+/**
+ * L'ARBRE A-T-IL SUIVI LE REDIMENSIONNEMENT ?
+ *
+ * Même défaut, même forme et même correctif que dans `mesure-ui.mjs` :
+ * `setViewportSize` rend la main avant que React ait rejoué le rendu, et la
+ * sonde qui suit lit l'arbre de la largeur PRÉCÉDENTE. Ici c'est la sonde de
+ * GÉOMÉTRIE — cibles au doigt, écarts entre paires, barre — relancée à chacune
+ * des onze largeurs.
+ *
+ * Trouvé par `check-redimensionnement.mjs`, qui descend dans les sous-dossiers
+ * là où mon relevé à la main s'était arrêté à `scripts/*.mjs`.
+ *
+ * Deux empreintes identiques à deux trames d'écart, bornées à vingt tours. On
+ * n'attend aucune valeur : seulement qu'elle cesse de bouger.
+ */
+const POSER_L_ARBRE = () =>
+  new Promise((resolve) => {
+    const empreinte = () => {
+      const m = document.querySelector('main') ?? document.body
+      return `${m.querySelectorAll('*').length}/${Math.round(m.scrollHeight)}`
+    }
+    let restant = 20
+    let precedent = null
+    const tour = () => {
+      const vue = empreinte()
+      if (vue === precedent) return resolve(true)
+      if (restant-- <= 0) return resolve(false)
+      precedent = vue
+      requestAnimationFrame(() => requestAnimationFrame(tour))
+    }
+    requestAnimationFrame(() => requestAnimationFrame(tour))
+  })
+
+/** Les points sondés alors que l'arbre bougeait encore. */
+const arbresEnMouvement = []
+
+async function poserLArbre(page, ou) {
+  if (!(await page.evaluate(POSER_L_ARBRE))) arbresEnMouvement.push(ou)
+}
+
 async function attendre(page, ou) {
   await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => marquerLenteur(ou, 'réseau'))
   await page
@@ -1264,6 +1304,7 @@ export async function releverAuNavigateur(options = {}) {
         for (const largeur of LARGEURS) {
           await page.setViewportSize({ width: largeur, height: HAUTEUR })
           await attendre(page, adresse)
+          await poserLArbre(page, `${adresse} · ${langue} · ${largeur}px`)
           const g = await page.evaluate(SONDE_GEOMETRIE, {
             rayon: RAYON_SONDAGE,
             seuilSondage: SEUIL_SONDAGE,
@@ -1399,6 +1440,17 @@ export async function releverAuNavigateur(options = {}) {
      Chacune de ces conditions distingue les deux, et chacune fait refuser. */
   if (compteurs.etatsGeometrie === 0) {
     releve.refus.push({ genre: 'aucun-etat', detail: 'Zéro état de géométrie mesuré.' })
+  }
+  /* UN ARBRE ENCORE EN MOUVEMENT SOUS LA SONDE, et le relevé le REFUSE plutôt
+     que de le compter en silence : une géométrie mesurée sur l'arbre d'une autre
+     largeur n'est pas une mesure, c'est un chiffre. */
+  if (arbresEnMouvement.length) {
+    releve.refus.push({
+      genre: 'arbre-en-mouvement',
+      detail:
+        `${arbresEnMouvement.length} point(s) sondé(s) avant que l'arbre se pose : ` +
+        arbresEnMouvement.slice(0, 8).join(', '),
+    })
   }
   if (compteurs.ciblesSondees === 0) {
     releve.refus.push({
