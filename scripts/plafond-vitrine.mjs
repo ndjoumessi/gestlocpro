@@ -61,6 +61,27 @@ const BASE = `http://127.0.0.1:${PORT}`
  *
  * Le plafond est le MESURÉ, sans marge : le faire monter demande de récrire ces
  * lignes, donc de dire pourquoi dans le diff.
+ *
+ * ═══ CHAQUE COLONNE APPARTIENT À UNE MACHINE, ET IL FAUT LE DIRE ═══
+ *
+ * `plafond` est mesuré sur la machine de DÉVELOPPEMENT, où `system-ui` vaut SF
+ * Pro. `plafondLarge` est mesuré sur la porte PUBLIQUE, où le commutateur
+ * impose Verdana — qui y retombe sur DejaVu. Aucun nombre ne vaut sur les deux :
+ * c'est tout l'objet du commutateur que de leur donner une référence commune.
+ *
+ * CE SILENCE A COÛTÉ UNE JOURNÉE. Rien ne disait d'où venait chaque colonne, et
+ * trois `plafondLarge` sur quatre avaient été posés depuis la machine de
+ * développement — à quatre ou six pixels des mesures locales, donc jusqu'à
+ * 327 px au-dessus de ce que la porte publique mesure vraiment.
+ *
+ * CONSÉQUENCE ASSUMÉE : `plafond` n'est vérifié QUE localement. Le CI ne lance
+ * que la passe large — le travail `polices` du workflow est un relevé, pas une
+ * porte. Y ajouter une passe normale demanderait une TROISIÈME colonne, celle
+ * d'Ubuntu sans commutateur, pour ne rien garder de plus : une croissance de
+ * CONTENU se voit dans les deux passes — le lot de la police des titres a
+ * poussé `fr@1280` de 7092 à 7169 en normal ET de 7213 à 7247 en large. Ce que
+ * la passe normale garde en propre, c'est la vue du développeur avant qu'il
+ * pousse, et cela ne vaut que sur sa machine.
  */
 const PLAFONDS = [
   /*
@@ -91,8 +112,8 @@ const PLAFONDS = [
     après, de plus loin. La divergence locale se lit comme telle ; elle ne se
     corrige pas en desserrant.
   */
-  { largeur: 360, langue: 'fr', plafond: 10209, plafondLarge: 10197, avant: 9979, origine: 11419 },
-  { largeur: 360, langue: 'en', plafond: 10070, plafondLarge: 9950, avant: 9862, origine: 11149 },
+  { largeur: 360, langue: 'fr', plafond: 10197, plafondLarge: 10197, avant: 9979, origine: 11419 },
+  { largeur: 360, langue: 'en', plafond: 10058, plafondLarge: 9950, avant: 9862, origine: 11149 },
   /*
     +73 px AU BUREAU, ET C'EST LE PRIX D'UNE GRILLE COMPARABLE.
 
@@ -131,8 +152,8 @@ const PLAFONDS = [
     cette table — 7247 et non 7250. La porte publique fait autorité ; aucune
     mesure locale n'entre ici.
   */
-  { largeur: 1280, langue: 'fr', plafond: 7170, plafondLarge: 7247, avant: 7092, origine: 7110 },
-  { largeur: 1280, langue: 'en', plafond: 7245, plafondLarge: 7222, avant: 7166, origine: 7106 },
+  { largeur: 1280, langue: 'fr', plafond: 7169, plafondLarge: 7247, avant: 7092, origine: 7110 },
+  { largeur: 1280, langue: 'en', plafond: 7244, plafondLarge: 7222, avant: 7166, origine: 7106 },
 ]
 /*
   ═══ CE QUE CE RESSERREMENT DIT, ET CE QU'IL NE DIT PAS ═══
@@ -254,6 +275,18 @@ const SECTIONS_ATTENDUES = 8
 
 /** Le plafond effectif, selon la police imposee — et une entree sans son second
  *  plafond ne passe pas en silence. */
+/**
+ * LA MACHINE QUI TOURNE POSSÈDE-T-ELLE LA COLONNE EN VIGUEUR ?
+ *
+ * Sans commutateur, le plafond en force est `plafond`, mesuré ici : la machine
+ * de développement le possède. Avec le commutateur ET sous `CI`, c'est
+ * `plafondLarge`, que la porte publique possède. Le troisième cas — le
+ * commutateur lancé à la main sur une machine de développement — est un
+ * DIAGNOSTIC : les nombres y sont ceux d'une autre machine, et rien de ce qu'on
+ * y lit ne juge un plafond.
+ */
+const COLONNE_A_NOUS = !POLICE_LARGE || Boolean(process.env.CI)
+
 function plafondDe(point) {
   if (!POLICE_LARGE) return point.plafond
   if (typeof point.plafondLarge !== 'number') {
@@ -635,6 +668,33 @@ try {
     }
 
     const plafond = plafondDe(point)
+    /*
+      UN PLAFOND AU-DESSUS DE SA MESURE ROUGIT AUSSI, et cette moitié manquait.
+      « Le plafond est le MESURÉ, sans marge » était écrit en prose et appliqué
+      NULLE PART : le script refusait le dépassement, jamais le mou.
+
+      C'est ce silence qui a laissé trois `plafondLarge` sur quatre calibrés sur
+      la mauvaise machine — jusqu'à 327 px que la page mobile pouvait reprendre
+      sans un mot. Un plafond trop haut ne rougit pas, il garde moins bien, et
+      il ne se voit que si on le cherche.
+
+      MARGE ZÉRO, et c'est mesuré, non choisi : les deux colonnes sont
+      reproductibles au pixel sur la machine qui les possède — deux passes
+      normales identiques ici, deux passes larges identiques sur la porte
+      publique. Toute tolérance serait un nombre qu'aucune mesure ne justifie.
+
+      LE PRIX EST DIT : une page qui RÉTRÉCIT fait désormais rougir cette porte,
+      et il faut récrire la ligne. C'est voulu — les 327 px sont entrés par là,
+      un lot à la fois, sans que personne ait à rien récrire.
+    */
+    if (COLONNE_A_NOUS && plafond > m.hDoc) {
+      plaintes.push(
+        `${nom} : ${plafond - m.hDoc} px de MOU — le plafond (${plafond}) est au-dessus\n` +
+          `   de la mesure (${m.hDoc}). Il ne refuse donc plus ce qu'il prétend refuser.\n` +
+          '   Récrivez la ligne avec la mesure, et dites dans le diff ce qui a raccourci\n' +
+          '   la page. Le plafond est le MESURÉ, sans marge.',
+      )
+    }
     if (m.hDoc > plafond) {
       plaintes.push(
         `${nom} : ${m.hDoc} px de document pour un plafond de ${plafond}.\n` +
