@@ -1008,6 +1008,8 @@ export const en: Dictionary = {
       record: 'Record an inspection',
       recordBody: 'Move-in or move-out, room by room. Move-in findings carry no cost: they record what is already damaged, so the tenant is not answerable for it.',
       recorded: 'Inspection recorded',
+      photosDemo:
+        'Inspection recorded. The demo does not keep photos: attaching them to issues needs a real portfolio.',
       unit: 'Home',
       kind: 'Type',
       performedOn: 'Date of inspection',

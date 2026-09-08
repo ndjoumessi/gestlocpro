@@ -392,6 +392,28 @@ export function InspectionModal({
       return
     }
 
+    /*
+      SANS SERVEUR, CE N'EST PAS UN ÉCHEC — c'est une absence, et il faut la
+      dire au lieu de la maquiller en panne.
+
+      `addInspection` rend un tableau VIDE en démonstration, et son commentaire
+      dit pourquoi : « en fabriquer un ferait croire à l'écran qu'il peut
+      envoyer des photos ». Les photos tombaient donc dans `nonApparies`, un
+      compteur d'ÉCHECS, et le visiteur lisait « l'envoi a échoué, réessayez » —
+      puis, à la reprise, « État des lieux enregistré » du ton du succès, ses
+      photos perdues sans un mot.
+
+      Ce que la démonstration ne peut pas faire, elle le DIT — la règle que
+      `recordReading` porte déjà : « le dire vaut mieux qu'un bouton qui
+      s'enfonce sans effet ». L'état des lieux, lui, EST enregistré : on ferme
+      donc normalement, avec la phrase qui manquait.
+    */
+    if (creees.length === 0 && retenues.length > 0) {
+      setEnvoi(false)
+      terminer(t('app.inspections.photosDemo'))
+      return
+    }
+
     const resultat = await envoyerPhotos(envois, avancerPhoto)
     const echecs = resultat.echecs + nonApparies
     const { nonConfirmees } = resultat
@@ -414,8 +436,14 @@ export function InspectionModal({
     })
   }
 
-  /** La sortie normale : on ferme, on vide, on félicite. */
-  function terminer() {
+  /**
+   * La sortie normale : on ferme, on vide, on félicite.
+   *
+   * `message` PARAMÉTRABLE parce que la démonstration a autre chose à dire :
+   * l'état des lieux y est bien enregistré, mais ses photos ne sont conservées
+   * nulle part, et la phrase du succès ordinaire tairait cette moitié.
+   */
+  function terminer(message?: string) {
     onClose()
     for (const url of urlsVivantes.current) URL.revokeObjectURL(url)
     urlsVivantes.current.clear()
@@ -423,7 +451,7 @@ export function InspectionModal({
     setSignataire('')
     setReprise(null)
     setRefusPhoto({})
-    notify(t('app.inspections.recorded'), { tone: 'ok' })
+    notify(message ?? t('app.inspections.recorded'), { tone: message ? 'neutral' : 'ok' })
   }
 
   /** Reprend l'envoi, et LUI SEUL : l'état des lieux est déjà enregistré. */

@@ -1386,6 +1386,12 @@ export const fr = {
       record: 'Établir un état des lieux',
       recordBody: 'Entrée ou sortie, pièce par pièce. Les réserves d’entrée ne se chiffrent pas : elles constatent ce qui est déjà abîmé, pour que le locataire n’en réponde pas.',
       recorded: 'État des lieux enregistré',
+      /* L'ÉTAT DES LIEUX EST BIEN ENREGISTRÉ — c'est la seconde moitié qui
+         manquait. Les photos d'une réserve sont les pièces qu'on oppose pour
+         retenir une somme sur une caution : les perdre en silence enseignerait
+         le produit à l'envers. */
+      photosDemo:
+        'État des lieux enregistré. La démonstration ne conserve pas les photos : il faut un parc réel pour les attacher aux réserves.',
       unit: 'Logement',
       kind: 'Nature',
       performedOn: 'Date du constat',
