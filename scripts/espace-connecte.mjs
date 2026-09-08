@@ -1113,11 +1113,15 @@ const MESURER_LE_PLI = (pli) => {
  */
 const MESURER_ORPHELINE = () => {
   const principal = document.querySelector('main')
-  if (!principal) return { vu: false, plainte: null }
+  if (!principal) return { vu: false, plainte: null, cartes: -1 }
   const cartes = [...principal.querySelectorAll('[data-indicateur]')].filter(
     (e) => e.getBoundingClientRect().height > 0,
   )
-  if (cartes.length < 3) return { vu: false, plainte: null }
+  /* LE COMPTE REMONTE MÊME QUAND LA RÈGLE NE JUGE PAS. Sans lui, la garde du
+     plancher ne savait dire que son total : « 99 pour 100 attendues » n'apprend
+     rien sur ce qui a manqué, et il a fallu instrumenter cette porte à la main
+     pour découvrir que deux écrans sur quinze basculaient. */
+  if (cartes.length < 3) return { vu: false, plainte: null, cartes: cartes.length }
 
   const lignes = new Map()
   for (const carte of cartes) {
@@ -1194,6 +1198,50 @@ const fermeesA = (role) => ECRANS.filter((e) => !e.roles.includes(role))
  */
 const DOSSIER = (unitId) => ({ adresse: `/app/parc/${unitId}`, roles: ['owner', 'manager'] })
 
+/**
+ * L'ARBRE EST-IL POSÉ ? — prédicat d'attente, évalué DANS la page.
+ *
+ * « Posé » veut dire : rien d'occupé, et la population de `[data-indicateur]`
+ * inchangée depuis `delai` millisecondes. Ce n'est pas circulaire — on n'attend
+ * pas un nombre de cartes, on attend que le nombre CESSE DE BOUGER, quel qu'il
+ * soit. Un écran qui n'en porte aucune se pose à zéro et part aussitôt.
+ *
+ * L'échantillon est remis à zéro par l'appelant AVANT chaque attente : sans
+ * cela, l'état d'une largeur précédente ferait passer l'attente immédiatement.
+ */
+const REPOSEE = (delai) => {
+  if (document.querySelectorAll('[aria-busy="true"]').length > 0) return false
+  const principal = document.querySelector('main')
+  const n = principal ? principal.querySelectorAll('[data-indicateur]').length : -1
+  const etat = (window.__reposEchantillon ??= { n: null, depuis: 0 })
+  const t = performance.now()
+  if (etat.n !== n) {
+    etat.n = n
+    etat.depuis = t
+    return false
+  }
+  return t - etat.depuis >= delai
+}
+
+/**
+ * Durée de repos exigée, en millisecondes.
+ *
+ * 150 et non 80 : l'échantillonnage qui a révélé le décalage avait un pas de
+ * 100 ms, et montrait l'arbre déjà posé au second point. On ne connaît donc la
+ * transition qu'à 100 ms près, et un repos plus court que la marge d'erreur de
+ * la mesure serait une superstition. 150 la couvre sans deviner.
+ */
+const REPOS_MS = 150
+
+/**
+ * Les points où l'arbre n'était toujours pas posé — voir leur garde plus bas.
+ *
+ * Un tableau et non un compteur : savoir COMBIEN ne dit pas quoi relancer, et
+ * c'est faute de nommer les écrans que ce défaut a demandé une instrumentation
+ * à la main avant de se laisser voir.
+ */
+const reposNonAboutis = []
+
 async function ouvrir(page, adresse) {
   await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
   await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {})
@@ -1215,6 +1263,8 @@ let etatsVidesInspectes = 0
 let plisInspectes = 0
 /* Combien d'écrans portaient une rangée de trois cartes ou plus. */
 let rangeesInspectees = 0
+/* Ceux qui en portaient une ou deux : au bord du seuil, donc informatifs. */
+const quasiManques = []
 /* Combien de notes conditionnelles ont été cherchées — voir leur garde. */
 let notesCherchees = 0
 /* Ce que les deux audits ont réellement examiné — voir leur garde du garde. */
@@ -1466,11 +1516,43 @@ try {
             pas ce qu'elle a caché.
           */
           await page.setViewportSize({ width: largeur, height: 900 })
-          await page
-            .waitForFunction(() => document.querySelectorAll('[aria-busy="true"]').length === 0, null, {
-              timeout: 5000,
-            })
-            .catch(() => {})
+          /*
+            LA FENÊTRE EST REDIMENSIONNÉE ; L'ARBRE NE L'EST PAS ENCORE.
+
+            `setViewportSize` rend la main avant que React ait rejoué le rendu
+            pour la nouvelle largeur. La sonde lisait donc l'arbre de la largeur
+            PRÉCÉDENTE, et cela concerne TOUTES les règles mesurées ici, pas la
+            seule orpheline — contraste, gabarits, cibles au doigt.
+
+            MESURÉ le 2026-09-08, en échantillonnant toutes les 100 ms :
+
+              /app/paiements · owner · 320px    3 1 1 1 1 …   (3 = le DOM de 1280)
+              /app/paiements · owner · 1280px   1 3 3 3 3 …   (1 = le DOM de 768)
+              /app/locataires · owner · 1280px  0 3 3 3 3 …
+
+            Le premier échantillon est toujours celui d'avant. Les valeurs
+            réelles, elles, sont stables : paiements 1/1/3 et locataires 0/0/3
+            selon la largeur. C'est ce décalage d'un échantillon qui faisait
+            varier la règle de l'orpheline entre 99 et 118 d'un passage à
+            l'autre, et rougir la porte au hasard.
+
+            ON ATTEND DONC LE REPOS, et non un délai fixe : la population de
+            cartes doit être inchangée pendant `REPOS_MS`. L'état périmé et
+            l'état posé DIFFÈRENT — c'est ce qui rend l'attente correcte plutôt
+            que superstitieuse : elle ne peut pas se satisfaire du périmé sans
+            que celui-ci survive au repos, ce que la mesure ci-dessus exclut.
+
+            `aria-busy` reste dans le prédicat : une région encore occupée n'est
+            pas posée, quoi que dise le compte.
+          */
+          await page.evaluate(() => {
+            delete window.__reposEchantillon
+          })
+          try {
+            await page.waitForFunction(REPOSEE, REPOS_MS, { timeout: 5000 })
+          } catch {
+            reposNonAboutis.push(`${ecran.adresse} · ${cle} · ${largeur}px · ${langue}`)
+          }
           const ou = `${ecran.adresse} · ${cle} · ${largeur}px · ${langue}`
 
           const rendu = await page.evaluate(MESURER_RENDU_MINIMAL)
@@ -1590,6 +1672,10 @@ try {
 
           const orpheline = await page.evaluate(MESURER_ORPHELINE)
           if (orpheline.vu) rangeesInspectees += 1
+          /* UNE OU DEUX CARTES, C'EST AU BORD DU SEUIL. Un écran à zéro n'en
+             porte pas ; un écran à deux en portait peut-être trois hier. Ce
+             sont ceux-là qu'il faut nommer si le plancher tombe. */
+          else if (orpheline.cartes > 0) quasiManques.push(`${ou} · ${orpheline.cartes} carte(s)`)
           if (orpheline.plainte) {
             const o = orpheline.plainte
             plaintes.push(
@@ -2192,6 +2278,28 @@ if (nomsExamines < NOMS_ATTENDUS) {
  * Relevé à l'écriture : 114 rangées de trois cartes ou plus. Plancher à 100 —
  * serré, parce que ces rangées sont le motif principal des écrans de gestion et
  * qu'en perdre un quart voudrait dire qu'un balayage s'est arrêté.
+ *
+ * ═══ RELEVÉ DE NOUVEAU LE 2026-09-08 : 102, TROIS FOIS SUR TROIS ═══
+ *
+ * Le 114 d'origine n'est plus vrai, et il ne l'était plus depuis un moment : le
+ * produit a légitimement retiré des indicateurs — « le parc sur un écran large
+ * ne garde qu'UN indicateur : l'agrégat ». Le chiffre est resté là en rendant
+ * cette prose fausse : un relevé écrit au présent vieillit seul, et rien ne le
+ * relit tant qu'une plainte ne renvoie pas ici.
+ *
+ * SURTOUT, LE COMPTE NE TENAIT PAS EN PLACE : 99, 107, 108, 110, 111, 118 selon
+ * le passage, et une porte entière rouge au hasard. La cause n'était pas ici —
+ * la boucle des largeurs sondait l'arbre AVANT que React l'ait rejoué, donc
+ * mesurait la largeur précédente. Corrigé par `REPOSEE`, le compte vaut 102 et
+ * ne bouge plus d'un passage à l'autre.
+ *
+ * LE PLANCHER RESTE À 100, ET LA MARGE EST DE DEUX. C'est délibéré : la mesure
+ * étant devenue déterministe, elle ne peut plus tomber par hasard — seul un
+ * changement du produit la ferait bouger, et c'est précisément ce qu'un
+ * plancher de couverture doit faire remarquer. Qui retire un indicateur devra
+ * donc revenir ici, remesurer et réécrire ce chiffre AVEC sa mesure. Baisser le
+ * plancher « pour avoir de la marge » rendrait la garde muette sur le seul
+ * événement qu'elle sait voir.
  */
 /**
  * GARDE DU GARDE — les trois notes ont-elles été cherchées ?
@@ -2208,11 +2316,29 @@ if (notesCherchees !== NOTES_SOUS_APP.length * LANGUES.length) {
   )
 }
 
+/*
+  GARDE DU GARDE — l'arbre s'est-il posé partout ?
+
+  Un point mesuré sur un arbre encore en mouvement rend un verdict qui ne vaut
+  pas ce qu'il annonce, et TOUTES les règles de ce balayage le partagent. Le
+  taire reproduirait le défaut qui a motivé cette attente : une mesure qui passe
+  la plupart du temps et rougit au hasard.
+*/
+if (reposNonAboutis.length) {
+  plaintes.push(
+    `${reposNonAboutis.length} point(s) mesuré(s) sur un arbre encore en mouvement — ` +
+      `il n'était toujours pas posé après 5 s, ${REPOS_MS} ms de repos exigés :\n     ` +
+      reposNonAboutis.slice(0, 10).join('\n     '),
+  )
+}
+
 const RANGEES_ATTENDUES = 100
 if (rangeesInspectees < RANGEES_ATTENDUES) {
   plaintes.push(
     `la règle de l'orpheline n'a vu que ${rangeesInspectees} rangée(s) pour ${RANGEES_ATTENDUES} ` +
-      "attendues au moins. Une carte seule ne se voit que si on compte les lignes.",
+      'attendues au moins. Une carte seule ne se voit que si on compte les lignes.\n' +
+      `   ${quasiManques.length} écran(s) à une ou deux cartes, donc au bord du seuil` +
+      (quasiManques.length ? ` :\n     ${quasiManques.slice(0, 12).join('\n     ')}` : '.'),
   )
 }
 
