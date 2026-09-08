@@ -87,6 +87,22 @@ describe('combobox', () => {
     const champ = screen.getByRole('combobox', { name: 'Indicatif' })
 
     champ.focus()
+    /* LA LISTE EST BIEN LÀ, et ce n'est pas une formalité : ce cas survivait à
+       une liste qui ne se rendait PAS. `visibles` et `actif` vivent dans l'état
+       React, donc Entrée choisissait le Sénégal même sans un seul `<li>` monté.
+       Il mesurait la logique de choix, pas le champ pilotable — alors que son
+       en-tête promet qu'« un champ obligatoire » ne devient pas « infranchissable
+       sans souris ». Sans rien voir, il l'est.
+
+       `findAllByRole` ET NON `getAllByRole` : `champ.focus()` est un focus DOM
+       brut, hors `act()`, donc l'ouverture n'est pas encore peinte à la ligne
+       suivante. On ATTEND le rendu plutôt que de remplacer le geste par un
+       clic — c'est une arrivée AU CLAVIER que ce cas décrit, et la remplacer
+       par une souris lui ferait mesurer autre chose. */
+    expect(
+      (await screen.findAllByRole('option')).length,
+      'la liste doit être ouverte',
+    ).toBeGreaterThan(0)
     // Le focus ouvre déjà la liste : la première flèche DÉPLACE, elle n'ouvre
     // pas. C'est le comportement attendu — arriver au clavier sur un champ
     // cherchable et ne rien voir obligerait à une frappe pour rien.
@@ -105,7 +121,32 @@ describe('combobox', () => {
     champ.focus()
     await user.keyboard('{ArrowDown}')
     expect(champ.getAttribute('aria-expanded')).toBe('true')
-    expect(champ.getAttribute('aria-activedescendant')).toBeTruthy()
+
+    /*
+      IL NE SUFFIT PAS QU'IL SOIT RENSEIGNÉ : IL DOIT DÉSIGNER UN NŒUD.
+
+      Un identifiant qui ne résout pas est SILENCIEUX pour un lecteur d'écran :
+      le champ annonce « développé » et ne dit plus jamais où l'on est. C'est
+      exactement ce que ce cas existe pour empêcher, et `toBeTruthy()` seul
+      acceptait un identifiant pointant dans le vide.
+
+      LA PROPRIÉTÉ N'ÉTAIT PAS ORPHELINE POUR AUTANT, et il faut le dire :
+      « borne la navigation au clavier » la tient déjà, plus bas, par un
+      `document.getElementById(actif!)`. Mais elle la tient sur la liste de
+      DEUX CENT QUATRE entrées, celle qui se fenêtre — pas sur les quatre
+      options d'ici, où rien ne la vérifiait. Et surtout : ce cas-ci, dont
+      l'annonce est TOUT le sujet, passait alors même que la liste ne se
+      rendait pas du tout. Il ne mesurait rien de ce qu'il promet.
+    */
+    const designe = champ.getAttribute('aria-activedescendant')
+    expect(designe, 'aucune option active annoncée').toBeTruthy()
+    const optionActive = document.getElementById(designe!)
+    expect(
+      optionActive,
+      `aria-activedescendant désigne « ${designe} », absent du DOM : muet pour un lecteur d’écran`,
+    ).not.toBeNull()
+    expect(optionActive!.getAttribute('role'), 'le nœud désigné doit être une option').toBe('option')
+    expect(optionActive!.textContent, 'l’option annoncée doit porter un libellé').toBeTruthy()
   })
 
   it('referme sur Échap sans rien changer', async () => {
@@ -115,6 +156,11 @@ describe('combobox', () => {
 
     champ.focus()
     await user.type(champ, 'cam')
+    /* LA LISTE ÉTAIT OUVERTE — sans cette ligne, le cas passe sur un champ qui
+       ne s'ouvre JAMAIS : « rien n'est ouvert » après Échap serait déjà vrai
+       avant. Il ne mesurait pas la fermeture, il mesurait le vide. */
+    expect(screen.getByRole('listbox'), 'la liste doit être ouverte avant Échap').toBeInTheDocument()
+
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
     // Le choix d'origine est intact : chercher n'est pas choisir.
@@ -316,6 +362,9 @@ describe('combobox · fenêtre de rendu', () => {
     const champ = screen.getByRole('combobox', { name: 'Indicatif' })
 
     await user.click(champ)
+    /* LES QUATRE OPTIONS SONT LÀ. Une liste fermée ne porte aucune mention de
+       troncature non plus : sans cette ligne, le cas se taisait avec elle. */
+    expect(screen.getAllByRole('option'), 'les quatre options doivent être montées').toHaveLength(4)
     expect(screen.queryByText(/affinez votre recherche/i)).not.toBeInTheDocument()
     expect(champ.getAttribute('aria-describedby')).toBeNull()
   })
