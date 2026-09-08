@@ -63,8 +63,36 @@ const BASE = `http://127.0.0.1:${PORT}`
  * lignes, donc de dire pourquoi dans le diff.
  */
 const PLAFONDS = [
-  { largeur: 360, langue: 'fr', plafond: 10209, plafondLarge: 10524, avant: 9979, origine: 11419 },
-  { largeur: 360, langue: 'en', plafond: 10070, plafondLarge: 10285, avant: 9862, origine: 11149 },
+  /*
+    LES PLAFONDS LARGES ÉTAIENT CALIBRÉS SUR LA MAUVAISE MACHINE.
+
+    Relevé le 2026-09-08, sur le premier CI vert depuis deux jours — les quatre
+    mesures de la porte publique, en regard des plafonds qu'elles étaient
+    censées avoir posés :
+
+        fr@360    mesure 10197   plafond 10524   327 px de mou
+        en@360    mesure  9950   plafond 10285   335 px de mou
+        fr@1280   mesure  7247   plafond  7247   exact
+        en@1280   mesure  7222   plafond  7291    69 px de mou
+
+    Le motif se lit d'un coup : 10524 est à SIX pixels de la mesure LOCALE
+    (10530), 10285 à six de la locale (10291), 7291 à quatre de la locale
+    (7295). Ces trois plafonds ont été posés depuis une machine de
+    développement, quand l'en-tête de ce fichier et le commentaire du workflow
+    disent tous deux que la porte publique fait autorité.
+
+    UN PLAFOND TROP HAUT NE ROUGIT PAS, IL GARDE MOINS BIEN : 327 px sur la page
+    mobile, c'est trois pour cent qu'elle pouvait reprendre sans un mot, sur le
+    seul écran que voit un visiteur sans compte.
+
+    LE RESSERRAGE N'AJOUTE AUCUN FAUX ROUGE EN LOCAL. `MESURER_EN_POLICE_LARGE=1`
+    y rougissait déjà sur ces trois points — 10530, 10291 et 7295 dépassaient
+    les anciens plafonds de 6, 6 et 4 px. Ce sont les MÊMES trois qui rougissent
+    après, de plus loin. La divergence locale se lit comme telle ; elle ne se
+    corrige pas en desserrant.
+  */
+  { largeur: 360, langue: 'fr', plafond: 10209, plafondLarge: 10197, avant: 9979, origine: 11419 },
+  { largeur: 360, langue: 'en', plafond: 10070, plafondLarge: 9950, avant: 9862, origine: 11149 },
   /*
     +73 px AU BUREAU, ET C'EST LE PRIX D'UNE GRILLE COMPARABLE.
 
@@ -104,7 +132,7 @@ const PLAFONDS = [
     mesure locale n'entre ici.
   */
   { largeur: 1280, langue: 'fr', plafond: 7170, plafondLarge: 7247, avant: 7092, origine: 7110 },
-  { largeur: 1280, langue: 'en', plafond: 7245, plafondLarge: 7291, avant: 7166, origine: 7106 },
+  { largeur: 1280, langue: 'en', plafond: 7245, plafondLarge: 7222, avant: 7166, origine: 7106 },
 ]
 /*
   ═══ CE QUE CE RESSERREMENT DIT, ET CE QU'IL NE DIT PAS ═══
