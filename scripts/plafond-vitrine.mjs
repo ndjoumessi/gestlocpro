@@ -85,7 +85,25 @@ const PLAFONDS = [
 
     Le mobile ne bouge pas : empilées, les cartes n'ont pas de rangées communes.
   */
-  { largeur: 1280, langue: 'fr', plafond: 7170, plafondLarge: 7213, avant: 7092, origine: 7110 },
+  /*
+    +34 px EN POLICE LARGE, ET SEUL LE CI POUVAIT LES VOIR.
+
+    `plafondLarge` valait 7213 ; la porte publique mesure 7247 depuis le
+    2026-09-07, commit `5c9ca32` — « la police des titres vient du produit ».
+    Ce lot-là a remesuré les plafonds NORMAUX, qu'une machine de développement
+    voit : fr@1280 y rend 7169 pour un plafond de 7170, exact au pixel. Il n'a
+    pas remesuré les plafonds LARGES, que seule la porte publique produit.
+
+    TRENTE-SIX EXÉCUTIONS ROUGES, deux jours durant, avec la MÊME plainte au
+    pixel près — 7247 pour 7213, du premier échec au dernier. Ce n'est pas une
+    mesure instable : c'est une hauteur nouvelle et constante, celle d'un
+    changement de police délibéré, dont le plafond n'avait pas suivi.
+
+    LE NOUVEAU PLAFOND EST LE MESURÉ, SANS MARGE, comme le dit l'en-tête de
+    cette table — 7247 et non 7250. La porte publique fait autorité ; aucune
+    mesure locale n'entre ici.
+  */
+  { largeur: 1280, langue: 'fr', plafond: 7170, plafondLarge: 7247, avant: 7092, origine: 7110 },
   { largeur: 1280, langue: 'en', plafond: 7245, plafondLarge: 7291, avant: 7166, origine: 7106 },
 ]
 /*
@@ -380,6 +398,8 @@ const serveur = await servir()
 const plaintes = []
 const releve = []
 let inspectes = 0
+/* Combien de points ont vu leurs portes d'entrée comptées — voir leur garde. */
+let portesMesurees = 0
 
 try {
   const navigateur = await chromium.launch()
@@ -518,6 +538,55 @@ try {
         () => [...document.querySelectorAll('#faq details')].filter((d) => d.open).length,
       )
     }
+    /*
+      LES DEUX PORTES DU PRODUIT SONT-ELLES ATTEIGNABLES ?
+
+      « Se connecter » et « Créer un compte » sont les seules entrées, et cet
+      écran est celui qui décide si le visiteur en ouvre une. Les compter EN
+      NAVIGATEUR, jamais en cas : la barre les cache par du CSS —
+      `hidden … sm:flex` — que jsdom n'applique pas. Sous jsdom les deux boutons
+      de la barre sont TOUJOURS dans le DOM, à toute largeur, et aucun cas ne
+      peut donc distinguer un téléphone d'un bureau.
+
+      DEUX CHEMINS, UN SEUL EXIGÉ. Au-dessus de `sm` la barre les porte ; en
+      deçà, elle les cache et c'est le PANNEAU qui les reprend. On ouvre donc le
+      panneau quand rien n'est visible, et l'on n'exige qu'une chose : qu'après
+      ce geste, un visiteur puisse cliquer.
+
+      MESURÉ le 2026-09-08. En forçant `barrePorteLesBoutons` à vrai — la barre
+      croit les porter, le panneau ne les reprend plus, le CSS les cache quand
+      même :
+
+          320 px   0 visible barre fermée · 0 visible PANNEAU OUVERT
+          375 px   0 visible barre fermée · 0 visible PANNEAU OUVERT
+          700 px   2 visibles
+         1280 px   2 visibles
+
+      Sur un téléphone, les deux portes disparaissaient. Les 2000 cas et les
+      quinze portes navigateur restaient VERTS.
+    */
+    const portes = await (async () => {
+      const compter = () =>
+        page.evaluate(() => {
+          const entete = document.querySelector('header')?.parentElement ?? document.body
+          const liens = [...entete.querySelectorAll('a[href="/connexion"], a[href="/inscription"]')]
+          return liens.filter((a) => {
+            if (a.closest('main') || a.closest('footer')) return false
+            const r = a.getBoundingClientRect()
+            return r.width > 0 && r.height > 0 && getComputedStyle(a).visibility !== 'hidden'
+          }).length
+        })
+      const barre = await compter()
+      if (barre > 0) return { visibles: barre, geste: 'barre' }
+      /* Rien dans la barre : c'est le repli attendu sous `sm`, et le panneau
+         doit alors les porter. On l'ouvre comme un visiteur le ferait. */
+      const declencheur = page.locator('header button[aria-expanded]').first()
+      if ((await declencheur.count()) === 0) return { visibles: 0, geste: 'aucun panneau' }
+      await declencheur.click().catch(() => {})
+      await page.waitForTimeout(300)
+      return { visibles: await compter(), geste: 'panneau' }
+    })()
+
     await contexte.close()
 
     const nom = `${point.langue}@${point.largeur}`
@@ -555,6 +624,16 @@ try {
     if (m.actionY === null) {
       plaintes.push(`${nom} : aucune action principale trouvée dans le contenu.`)
     }
+    if (portes.visibles === 0) {
+      plaintes.push(
+        `${nom} : AUCUNE porte d'entrée atteignable dans l'en-tête — ` +
+          `« Se connecter » ni « Créer un compte » (${portes.geste}).\n` +
+          "   Ce sont les deux seules entrées du produit, sur le seul écran que voit un\n" +
+          "   visiteur sans compte. La barre les cache par CSS sous `sm` ; si le panneau\n" +
+          '   ne les reprend pas, elles ne sont NULLE PART.',
+      )
+    }
+    portesMesurees += 1
     for (const d of m.desalignees) {
       plaintes.push(
         `${nom} : la ligne ${d.rang} des paliers — « ${d.libelle} » — est décalée de ${d.ecart} px\n` +
@@ -575,6 +654,13 @@ if (inspectes === 0) {
 }
 if (inspectes !== ATTENDUS) {
   plaintes.push(`${inspectes} état(s) inspecté(s) pour ${ATTENDUS} attendu(s).`)
+}
+/* GARDE DU GARDE — les portes ont-elles été comptées partout ? Une règle qui
+   n'exige QUE « pas zéro visible » se tait aussi quand elle n'a rien regardé. */
+if (portesMesurees !== ATTENDUS) {
+  plaintes.push(
+    `${portesMesurees} point(s) ont vu leurs portes d'entrée comptées pour ${ATTENDUS} attendu(s).`,
+  )
 }
 
 for (const r of releve) {
