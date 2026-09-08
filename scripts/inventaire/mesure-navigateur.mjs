@@ -182,6 +182,30 @@ import { chromium } from 'playwright'
 
 import { RACINE, exigerUnInventairePlein, inventaireDesRoutes, nommerRoles } from './routes.mjs'
 import { SANS_AGENT_DE_SERVICE } from '../mesure-sans-agent.mjs'
+import { exigerUnPaquetAJour } from '../paquet-a-jour.mjs'
+
+/*
+  LE PAQUET AVANT TOUT LE RESTE — ce relevé sert `dist/` par `vite preview`, il
+  ne lit jamais les sources.
+
+  IL NE L'EXIGEAIT PAS, et c'était le dernier trou de la chaîne. Onze portes
+  appellent cette garde ; celle-ci ne l'appelait pas, et ne construit pas non
+  plus le paquet comme le fait `mesure-ui`. Elle mesurait donc ce qui traînait
+  dans `dist/`.
+
+  TÉMOIN, le 2026-09-08 : source touchée à 15:46:46, paquet construit à
+  15:43:04 — trois minutes quarante-deux d'écart —, et le relevé a mesuré huit
+  écrans sans une plainte avant qu'on l'interrompe. Ce n'est pas un risque
+  théorique : c'est un inventaire du code d'AVANT, publié comme s'il était
+  celui d'aujourd'hui.
+
+  TROUVÉ DE BIAIS, et cela mérite d'être dit : je cherchais si une porte
+  navigateur tenait un repli de la barre publique. Ma mutation ne compilait pas,
+  la construction a échoué, et j'ai cru lire un faux vert de `mesure-ui` — qui,
+  elle, construit son propre paquet et n'avait rien à se reprocher. Le trou
+  était chez sa voisine.
+*/
+exigerUnPaquetAJour()
 
 /**
  * Assemble un motif de classe utilitaire par FRAGMENTS.
