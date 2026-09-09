@@ -21,13 +21,29 @@
  * le fils n'est même pas le serveur. Le seul contrôle qui ne court pas est
  * celui qui PRÉCÈDE : si quelque chose répond déjà, on refuse.
  *
+ * ═══ UN PORT LIBRE PEUT RESTER INJOIGNABLE : LA LISTE DES PORTS INTERDITS ═══
+ *
+ * Ce module dit si quelque chose ÉCOUTE. Il ne dit pas si l'on pourra parler à
+ * ce qui écoute — et les deux se séparent sur une liste que personne n'a en
+ * tête. Mesuré le 2026-09-09 en écrivant `plafond-hauteurs` : sur le port 4190,
+ * `vite preview` écoute, `curl` répond 200, et la boucle d'attente de la porte
+ * échoue vingt-cinq secondes durant. La cause est `fetch` : le standard réserve
+ * une liste de PORTS INTERDITS dont 4190 (ManageSieve) fait partie, et undici
+ * refuse la requête sans l'émettre. Le message, « bad port », n'apparaît que
+ * dans `e.cause`.
+ *
+ * Les douze portes emploient 4183 et 4187 à 4198, sauf 4190. Ce trou-là n'était
+ * pas un choix ; il l'est maintenant.
+ *
  * ═══ CE QU'IL RESTE À FAIRE, ET QUI N'EST PAS FAIT ICI ═══
  *
  * C'EST FAIT. Les dix scripts qui portaient ce contrôle en copie l'appellent
  * désormais : `couleur-non-seule`, `mesure-ui`, `modales`,
  * `notes-conditionnelles`, `plafond-coquille`, `plafond-vitrine`,
  * `poids-ecrans`, `releve-refonte`, `series-lisibles`, `stabilite-au-pointage`.
- * Avec `espace-connecte`, qui ne l'avait pas du tout, ils sont onze.
+ * Avec `espace-connecte`, qui ne l'avait pas du tout, ils sont onze. Douzième
+ * depuis le 2026-09-09 : `plafond-hauteurs`, née avec l'appel plutôt qu'avec
+ * une copie.
  *
  * Le compte de dix avait été RELEVÉ, pas estimé : la première rédaction de cet
  * en-tête en annonçait sept, de mémoire, et se trompait de trois. Les dix blocs

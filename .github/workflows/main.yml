@@ -165,6 +165,24 @@ jobs:
       # sur cinq débordements que la machine de développement ne voit pas, et
       # seule la largeur du texte peut expliquer une dissymétrie pareille.
       - run: node scripts/releve-polices-machine.mjs
+      # LE SECOND RELEVÉ : LES HAUTEURS QUE CETTE MACHINE SEULE PEUT MESURER.
+      #
+      # `plafond-hauteurs` porte deux colonnes de plafonds, et la seconde
+      # appartient à CET exécuteur : sous police large, la même page d'accueil
+      # rend 10530 px sur la machine de développement et 10197 ici. Une colonne
+      # large inscrite depuis un relevé local serait fausse de plusieurs
+      # centaines de pixels — mesuré le 2026-09-09, pas supposé.
+      #
+      # `--relever` NE REFUSE RIEN : il imprime la table à recopier. C'est un
+      # relevé, comme celui du dessus, et c'est pourquoi il vit dans ce travail
+      # à la demande plutôt que dans une porte.
+      #
+      # La construction est ici parce que ce script mesure `dist/` et refuse un
+      # paquet périmé ; ce travail, lui, ne construisait rien.
+      - run: npm run build
+      - run: node scripts/plafond-hauteurs.mjs --relever
+        env:
+          MESURER_EN_POLICE_LARGE: '1'
 
   complet:
     name: complet — les portes au navigateur
