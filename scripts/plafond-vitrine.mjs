@@ -16,6 +16,17 @@
  * avait rompus. C'est elle qui retirait 159 à 232 px par écran applicatif
  * pendant que la vitrine grandissait.
  *
+ * CES 159 À 232 PX SONT SOURCÉS, et je ne l'avais pas écrit : ils viennent du
+ * relevé de `381570f` lui-même — « Après : 122 px à 360 comme à 1280. Hauteur
+ * de document : −159 à −232 px par écran applicatif. » La coquille passait de
+ * 325 px avant le premier pixel de contenu à 122.
+ *
+ * ET LEUR CAUSE EST GARDÉE AUJOURD'HUI : `plafond-coquille.mjs` refuse que
+ * cette coquille remonte, écran par écran et largeur par largeur. Ce qui n'est
+ * gardé nulle part, c'est le nombre DÉRIVÉ — la hauteur de document des
+ * vingt-trois écrans applicatifs. Aucune porte ne la mesure ; la retrouver
+ * demanderait de reconstruire l'arbre d'avant le 2026-08-22.
+ *
  * `origine` est donc la hauteur de la vitrine AVANT le 2026-08-22. Elle a été
  * posée le lendemain, par `30896d3`, en même temps que cette porte.
  *
