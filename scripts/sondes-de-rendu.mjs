@@ -192,8 +192,16 @@ export const RELEVER_LES_CLOTURES_PERMEABLES = () => {
   const permeables = []
   for (const n of document.querySelectorAll('body *')) {
     const style = getComputedStyle(n)
-    /* POSITIONNÉE = ELLE BORNE DÉJÀ SES ABSOLUS : rien ne peut lui échapper par
-       le bloc conteneur, et c'est exactement le correctif qu'on demande. */
+    /*
+      POSITIONNÉE = ELLE BORNE DÉJÀ SES ABSOLUS : rien ne peut lui échapper par
+      le bloc conteneur, et c'est exactement le correctif qu'on demande.
+
+      CE RACCOURCI EST REDONDANT, et le témoin 6 l'a montré : il a fallu DEUX
+      mutations pour le faire rougir — retirer cette ligne ne suffit pas, car le
+      test du bloc conteneur, plus bas, innocente déjà tout absolu d'une clôture
+      positionnée. La ligne reste parce qu'elle évite de parcourir les
+      descendants pour rien, pas parce qu'elle décide quoi que ce soit.
+    */
     if (style.position !== 'static') continue
     const boite = n.getBoundingClientRect()
     const coupeEnHauteur =
@@ -205,10 +213,21 @@ export const RELEVER_LES_CLOTURES_PERMEABLES = () => {
     const evades = []
     for (const d of n.querySelectorAll('*')) {
       const sd = getComputedStyle(d)
-      if (sd.position !== 'absolute' && sd.position !== 'fixed') continue
+      /*
+        `absolute` SEUL, ET `fixed` EN EST SORTI — corrigé le 2026-09-09 en
+        écrivant le témoin 6, qui a demandé pourquoi un `fixed` compterait.
+
+        La réponse est qu'il ne le peut pas : un élément fixe ne participe à
+        AUCUN débordement défilant, ni celui d'une clôture, ni celui de la
+        racine. Il ne peut donc pas causer le défaut que cette sonde poursuit.
+        Le compter aurait dénoncé une clôture pour une raison fausse — et
+        prescrit un correctif qui n'aurait rien fait, `position: relative` ne
+        retenant pas davantage un `fixed`. Une plainte fausse dont le remède est
+        faux est le pire état d'une garde.
+      */
+      if (sd.position !== 'absolute') continue
       /* `offsetParent` EST LE BLOC CONTENEUR RÉEL. S'il est dans la clôture, le
-         découpage s'applique et l'élément ne sort pas. Un `fixed` n'en a aucun,
-         et aucun débordement ne le retient : il compte toujours. */
+         découpage s'applique et l'élément ne sort pas. */
       const borne = d.offsetParent
       if (borne && n.contains(borne)) continue
       const r = d.getBoundingClientRect()
