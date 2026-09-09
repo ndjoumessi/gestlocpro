@@ -38,11 +38,26 @@
  *   6. la même, positionnée                 → innocentée (elle borne)
  *   7. la même, sans rien qui s'échappe     → innocentée
  *   8. un élément FIXE dans une clôture      → innocenté (il ne défile de rien)
+ *   9-10.  l'écran a-t-il rendu — un écran monté, une racine vide
+ *   11-13. les gabarits — un jeton, une accolade qui n'en est pas un, la racine
+ *   14-15. le déroulement — un absolu qui dépasse, une page ordinaire
+ *   16-19. les cibles au doigt — 20 px, 60 px, une étiquette qui sauve, un sr-only
  *
- * LES SEPT PREMIERS NAISSENT ROUGES : chaque témoin a été confronté à une
- * mutation de la sonde qu'il éprouve, et chacun a désigné SA cible. Le sixième
- * en a demandé DEUX — le raccourci sur les clôtures positionnées est redondant
- * avec le test du bloc conteneur, et c'est le témoin qui l'a établi.
+ * LES DIX-NEUF NAISSENT ROUGES : chacun a été confronté à une mutation de la
+ * sonde qu'il éprouve, et chacun a désigné SA cible — huit le 2026-09-09, onze
+ * le 2026-09-10. Un témoin vert sur une sonde juste ne prouve rien ; il faut
+ * l'avoir vu refuser.
+ *
+ * DEUX D'ENTRE EUX ONT DEMANDÉ PLUS QU'UNE LIGNE, et les deux fois c'était un
+ * résultat : le sixième a exigé DEUX mutations, parce que le raccourci sur les
+ * clôtures positionnées est redondant avec le test du bloc conteneur ; le
+ * dix-septième n'a rougi que sous une mutation qui vide la sonde, parce qu'une
+ * boîte de 60 px passe par sa seule taille, sans sondage au point.
+ *
+ * CERTAINES MUTATIONS EN FONT ROUGIR PLUSIEURS, et c'est attendu : la même
+ * expression régulière sert aux témoins 11 et 13, et vider la boucle des cibles
+ * éteint 16, 17 et 19 d'un coup. Ce qu'on exige n'est pas qu'un témoin soit
+ * seul à rougir, c'est qu'aucun ne reste vert quand SA branche est cassée.
  *
  * ═══ CE QU'IL NE PROUVE PAS ═══
  *
@@ -62,7 +77,13 @@ import { chromium } from 'playwright'
 import { exit } from 'node:process'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
 import {
+  MESURER_CIBLES,
   MESURER_DEFILEMENT_LATERAL,
+  MESURER_DEROULEMENT,
+  MESURER_GABARITS,
+  MESURER_RENDU_MINIMAL,
+  PLANCHER_CIBLE,
+  RAYON_SONDAGE,
   RELEVER_LES_CLOTURES_PERMEABLES,
 } from './sondes-de-rendu.mjs'
 
@@ -76,16 +97,16 @@ let temoinsJoues = 0
   LE COMPTE EST ÉCRIT, JAMAIS DÉRIVÉ. Une boucle vide se déclarerait verte, et
   c'est le piège que ce dépôt a trouvé quatre fois — voir `plafond-coquille`.
 */
-const TEMOINS_ATTENDUS = 8
+const TEMOINS_ATTENDUS = 19
 
 /** Un cas : une page, une sonde, une attente écrite en toutes lettres. */
-async function temoin(page, { nom, page: html, sonde, attendu }) {
+async function temoin(page, { nom, page: html, sonde, argument, attendu }) {
   await page.setContent(`<!doctype html><html><body style="margin:0">${html}</body></html>`)
   /* Deux trames : le style vient d'être posé, la disposition pas encore faite. */
   await page.evaluate(
     () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
   )
-  const vu = await page.evaluate(sonde)
+  const vu = await page.evaluate(sonde, argument)
   temoinsJoues += 1
   const verdict = attendu(vu)
   if (verdict !== true) {
@@ -230,6 +251,145 @@ try {
         ? true
         : "attendu AUCUNE : un `fixed` ne participe à aucun débordement défilant, " +
           "donc il ne peut pas causer le défaut — et `relative` ne le retiendrait pas.",
+  })
+
+  /* ══════════ L'ÉCRAN A-T-IL RENDU ══════════ */
+
+  await temoin(page, {
+    nom: '9. un écran monté est compté : titres, interactifs, racine pleine',
+    page: '<div id="root"><h1>Parc</h1><h2>Immeubles</h2><button>Ajouter</button></div>',
+    sonde: MESURER_RENDU_MINIMAL,
+    attendu: (vu) =>
+      vu.titres === 2 && vu.interactifs === 1 && vu.racineVide === false && vu.titre === 'Parc'
+        ? true
+        : 'attendu 2 titres, 1 interactif, racine pleine, titre « Parc ».',
+  })
+
+  await temoin(page, {
+    nom: '10. une racine VIDE est vue comme telle — le défaut ordinaire sous /app',
+    page: '<div id="root"></div>',
+    sonde: MESURER_RENDU_MINIMAL,
+    attendu: (vu) =>
+      vu.racineVide === true && vu.titres === 0 && vu.interactifs === 0
+        ? true
+        : "attendu une racine vide et rien de compté : c'est l'écran qui n'a pas monté.",
+  })
+
+  /* ══════════ LES GABARITS NON RÉSOLUS ══════════ */
+
+  await temoin(page, {
+    nom: '11. un jeton non résolu est TROUVÉ dans le texte rendu',
+    page: '<p>Bonjour, {count} locataires vous attendent.</p>',
+    sonde: MESURER_GABARITS,
+    attendu: (vu) =>
+      vu.vu === true && vu.jetons.length === 1 && vu.jetons[0] === '{count}'
+        ? true
+        : "attendu le seul jeton « {count} ».",
+  })
+
+  await temoin(page, {
+    nom: '12. une accolade qui n’est PAS un jeton ne réveille rien',
+    page: '<p>un { seul, une { } vide, et { 3 } avec un chiffre.</p>',
+    sonde: MESURER_GABARITS,
+    attendu: (vu) =>
+      vu.jetons.length === 0
+        ? true
+        : `attendu AUCUN jeton : un « { » n'en est un que suivi d'une lettre. ` +
+          `Rendus : ${vu.jetons.join(', ')}.`,
+  })
+
+  await temoin(page, {
+    nom: '13. la RACINE borne la lecture : le fond derrière une modale n’est pas lu',
+    page:
+      '<p>fond avec {fond} dedans</p>' +
+      '<div role="dialog" aria-modal="true"><p>modale avec {dedans}</p></div>',
+    sonde: MESURER_GABARITS,
+    argument: '[role="dialog"]',
+    attendu: (vu) =>
+      vu.jetons.length === 1 && vu.jetons[0] === '{dedans}'
+        ? true
+        : `attendu le seul jeton de la modale. Rendus : ${vu.jetons.join(', ') || 'aucun'}. ` +
+          "Lire le fond ferait accuser une modale innocente d'un défaut de la page.",
+  })
+
+  /* ══════════ CE QUI SE DÉROULE CONTRE CE QUI EST PEINT ══════════ */
+
+  await temoin(page, {
+    nom: '15. une page ordinaire déroule exactement ce qu’elle peint',
+    page: '<div style="height:100vh;background:#f5f5f5">contenu</div>',
+    sonde: MESURER_DEROULEMENT,
+    attendu: (vu) =>
+      vu.hDoc === vu.corps
+        ? true
+        : `attendu deux nombres ÉGAUX ; rendus ${vu.hDoc} et ${vu.corps}.`,
+  })
+
+  await temoin(page, {
+    nom: '14. un absolu qui dépasse le corps allonge le document, et cela se voit',
+    page:
+      '<div style="height:100vh;background:#f5f5f5">contenu</div>' +
+      '<span style="position:absolute;top:600px;left:0">évadé</span>',
+    sonde: MESURER_DEROULEMENT,
+    attendu: (vu) =>
+      vu.hDoc > vu.corps
+        ? true
+        : `attendu un document PLUS LONG que son corps ; rendus ${vu.hDoc} et ${vu.corps}.`,
+  })
+
+  /* ══════════ LES CIBLES AU DOIGT ══════════ */
+
+  const CONFIG_CIBLES = { plancher: PLANCHER_CIBLE, rayon: RAYON_SONDAGE }
+
+  await temoin(page, {
+    nom: '16. une commande de 20 px est DÉNONCÉE sous le plancher de 44',
+    page: '<button style="width:20px;height:20px;padding:0;border:0">x</button>',
+    sonde: MESURER_CIBLES,
+    argument: CONFIG_CIBLES,
+    attendu: (vu) =>
+      vu.sondees === 1 && vu.defauts.length === 1
+        ? true
+        : `attendu UNE cible sondée et UN défaut ; ${vu.sondees} sondée(s), ` +
+          `${vu.defauts.length} défaut(s).`,
+  })
+
+  await temoin(page, {
+    nom: '17. une commande de 60 px passe sans même être sondée au point',
+    page: '<button style="width:60px;height:60px">ok</button>',
+    sonde: MESURER_CIBLES,
+    argument: CONFIG_CIBLES,
+    attendu: (vu) =>
+      vu.sondees === 1 && vu.defauts.length === 0
+        ? true
+        : `attendu UNE sondée et AUCUN défaut ; ${vu.defauts.length} défaut(s).`,
+  })
+
+  await temoin(page, {
+    nom: '18. une case de 20 px dans une ÉTIQUETTE de 44 est innocentée',
+    page:
+      '<label style="display:flex;align-items:center;height:44px;width:200px">' +
+      '<input type="checkbox" style="width:20px;height:20px;margin:0">' +
+      '<span style="margin-left:8px">rester connecté</span></label>',
+    sonde: MESURER_CIBLES,
+    argument: CONFIG_CIBLES,
+    attendu: (vu) =>
+      vu.defauts.length === 0
+        ? true
+        : "attendu AUCUN défaut : l'étiquette qui enveloppe la case EST sa cible, et " +
+          `elle fait 44 px. Rendu : ${JSON.stringify(vu.defauts[0])}.`,
+  })
+
+  await temoin(page, {
+    nom: '19. un `sr-only` n’est même pas sondé — il n’est pas une cible',
+    page:
+      '<button class="sr-only" style="position:absolute;width:1px;height:1px">caché</button>' +
+      '<button style="width:60px;height:60px">visible</button>',
+    sonde: MESURER_CIBLES,
+    argument: CONFIG_CIBLES,
+    attendu: (vu) =>
+      vu.sondees === 1 && vu.defauts.length === 0
+        ? true
+        : `attendu UNE seule cible sondée — la visible ; ${vu.sondees} sondée(s), ` +
+          `${vu.defauts.length} défaut(s).`,
   })
 
   await contexte.close()
