@@ -132,6 +132,65 @@ export const RELEVER_LES_EVADES = () => {
   return evades.sort((a, b) => b.bas - a.bas).slice(0, 5)
 }
 
+/**
+ * UNE CLÔTURE QUI DÉCOUPE DOIT BORNER SES ABSOLUS.
+ *
+ * ═══ LA CAUSE, LÀ OÙ `MESURER_DEROULEMENT` GARDE LE SYMPTÔME ═══
+ *
+ * Le défilement fantôme demande DEUX conditions : un conteneur qui découpe
+ * verticalement, et un descendant absolu dont le bloc conteneur est en dehors.
+ * La sonde du dessus voit le résultat — un document plus long que son corps.
+ * Celle-ci voit la condition qui le rend possible, et elle la voit même quand
+ * aucun descendant ne s'échappe encore.
+ *
+ * ═══ POURQUOI CE PRÉDICAT-CI, ET PAS UN PLUS LARGE ═══
+ *
+ * Deux règles plus larges ont été MESURÉES le 2026-09-09 sur les 44 points de
+ * `plafond-hauteurs`, puis écartées :
+ *
+ *   — « tout conteneur qui découpe et n'est pas positionné » : des dizaines de
+ *     sortes, dont des `<svg>`, des barres de progression de 6 px de haut et
+ *     tous les textes tronqués ;
+ *   — « … et dont le style borne la hauteur » : 27 sortes encore, pour la même
+ *     raison — une hauteur explicite n'est pas un découpage.
+ *
+ * Exiger un bloc conteneur sur tout cela serait un diff que personne ne peut
+ * défendre, et une garde qu'on apprend à contourner. Le prédicat retenu est
+ * celui qui décrit le DÉFAUT : le contenu déborde réellement en hauteur, donc
+ * la boîte découpe pour de bon, et rien ne retient ce qui voudrait sortir.
+ *
+ * Il a un prix, et il est écrit : il dépend du CONTENU du jour. Une clôture qui
+ * tient tout juste son contenu aujourd'hui ne sera pas vue, et le sera le jour
+ * où une ligne de plus la fera déborder. C'est la même dépendance que toutes
+ * les mesures de ce dépôt, qui lisent une démonstration et un parc semés.
+ *
+ * ═══ CE QU'ELLE A TROUVÉ EN NAISSANT ═══
+ *
+ * UNE SEULE clôture dans tout le produit : le panneau du portail locataire,
+ * borné à 70 % de la fenêtre. Les onze autres clôtures qui débordent sont déjà
+ * positionnées. C'est par celle-là que les `sr-only` de `MiniBarChart` sont
+ * sortis, et c'est elle — pas eux — qui rendait l'évasion possible.
+ */
+export const RELEVER_LES_CLOTURES_OUVERTES = () => {
+  const ouvertes = []
+  for (const n of document.querySelectorAll('body *')) {
+    const style = getComputedStyle(n)
+    if (style.overflowY === 'visible') continue
+    if (style.position !== 'static') continue
+    const boite = Math.ceil(n.getBoundingClientRect().height)
+    /* ELLE DÉCOUPE POUR DE BON : son contenu dépasse sa boîte. Un pixel de
+       tolérance pour les arrondis d'une hauteur fractionnaire. */
+    if (n.scrollHeight <= boite + 1) continue
+    ouvertes.push({
+      balise: n.tagName.toLowerCase(),
+      classes: (n.className || '').toString().slice(0, 60),
+      boite,
+      contenu: n.scrollHeight,
+    })
+  }
+  return ouvertes
+}
+
 export const MESURER_GABARITS = (racine) => {
   /* `racine` BORNE LA LECTURE, et n'existe que pour les modales.
 

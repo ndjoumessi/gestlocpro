@@ -183,7 +183,11 @@ import { exigerUnPortLibre } from './port-libre.mjs'
    défilement fantôme est ÉCRITE UNE FOIS. Recopiée, elle vieillirait des deux
    côtés à des vitesses différentes — la facture que `sondes-de-rendu.mjs` a été
    créé pour ne plus payer. */
-import { MESURER_DEROULEMENT, RELEVER_LES_EVADES } from './sondes-de-rendu.mjs'
+import {
+  MESURER_DEROULEMENT,
+  RELEVER_LES_CLOTURES_OUVERTES,
+  RELEVER_LES_EVADES,
+} from './sondes-de-rendu.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
 /*
@@ -420,12 +424,16 @@ const plaintes = []
 const releve = []
 let inspectes = 0
 let horsPortee = 0
+/** Combien de points ont été confrontés aux clôtures — voir leur garde. */
+let cloturesSondees = 0
 /** Les points lus alors que l'arbre bougeait encore. */
 const arbresEnMouvement = []
 /** Les écrans qui n'ont JAMAIS annoncé d'attente — voir leur garde plus bas. */
 const sansAttenteAnnoncee = []
 /** Les écrans qui se déroulent plus loin qu'ils ne peignent — voir leur garde. */
 const fantomes = []
+/** Les clôtures qui découpent sans borner leurs absolus — voir leur garde. */
+const cloturesOuvertes = []
 
 try {
   const navigateur = await chromium.launch()
@@ -534,6 +542,16 @@ try {
         un descendant échapper au bornage de son conteneur défilant rougirait
         ici, y compris ceux qui n'existent pas encore.
       */
+      /*
+        LA CAUSE, ET NON LE SEUL SYMPTÔME. Le fantôme demande deux conditions ;
+        celle-ci est la seule qu'on puisse voir AVANT qu'un descendant ne
+        s'échappe. Elle est relevée à chaque point, comme la hauteur.
+      */
+      for (const c of await page.evaluate(RELEVER_LES_CLOTURES_OUVERTES)) {
+        cloturesOuvertes.push({ nom, ...c })
+      }
+      cloturesSondees += 1
+
       if (corps > 0 && hDoc > corps) {
         /* LE DOSSIER, et seulement sur refus : il ne coûte rien tant que la
            porte est verte. C'est cette énumération qui a rendu le coupable en
@@ -588,6 +606,24 @@ if (horsPortee !== HORS_PORTEE_ATTENDUS) {
       "   La liste des adresses hors portée est périmée dans un sens ou dans l'autre.",
   )
 }
+for (const c of cloturesOuvertes) {
+  plaintes.push(
+    `${c.nom} : une CLÔTURE NON BORNANTE — <${c.balise}> ${c.classes}\n` +
+      `   découpe ${c.contenu - c.boite} px de contenu (boîte ${c.boite}, contenu ${c.contenu}) sans\n` +
+      "   établir de bloc conteneur. Tout descendant absolu dont aucun ancêtre positionné\n" +
+      "   ne borne le bloc conteneur sortira de ce découpage et allongera la racine.\n" +
+      '   `position: relative` suffit : sans décalage ni `z-index`, rien ne bouge à l’œil\n' +
+      '   et rien ne crée de contexte d’empilement.',
+  )
+}
+
+if (cloturesSondees !== inspectes) {
+  plaintes.push(
+    `${cloturesSondees} point(s) confronté(s) aux clôtures pour ${inspectes} inspecté(s).\n` +
+      "   La sonde a été sautée quelque part, et son silence se lit alors « aucune clôture ».",
+  )
+}
+
 for (const { nom, hDoc, corps, evades } of fantomes) {
   plaintes.push(
     `${nom} : ${hDoc - corps} px de DÉFILEMENT FANTÔME — le document se déroule jusqu'à\n` +

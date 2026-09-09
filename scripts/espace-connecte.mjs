@@ -128,6 +128,7 @@ import {
   MESURER_DEROULEMENT,
   MESURER_GABARITS,
   MESURER_RENDU_MINIMAL,
+  RELEVER_LES_CLOTURES_OUVERTES,
   RELEVER_LES_EVADES,
 } from './sondes-de-rendu.mjs'
 import { ecransDeLEspaceConnecte } from './inventaire/routes.mjs'
@@ -1285,6 +1286,8 @@ let nomsExamines = 0
 let ciblesSondees = 0
 /* Combien de points ont été confrontés au défilement fantôme — même garde. */
 let deroulementsSondes = 0
+/* Combien l'ont été aux clôtures qui découpent sans borner — même garde. */
+let cloturesSondees = 0
 
 /* SANS LIAISON : cette fonction rend `null`, et personne ne la lit. Ce sont ses
    EFFETS qui comptent — la base préparée, le serveur construit, le paquet
@@ -1624,6 +1627,24 @@ try {
             écran de gestion se bornera comme le portail, cette garde le dira, et
             le dossier nommera lequel.
           */
+          /*
+            LA CAUSE, RELEVÉE AVEC LE SYMPTÔME. Le fantôme demande une clôture
+            qui découpe ET un absolu qui s'en échappe. La règle du dessous voit
+            le résultat ; celle-ci voit la condition, et elle la voit même quand
+            rien ne s'échappe encore — c'est-à-dire aujourd'hui, sur ces quinze
+            écrans où aucun conteneur ne borne son contenu.
+          */
+          for (const c of await page.evaluate(RELEVER_LES_CLOTURES_OUVERTES)) {
+            plaintes.push(
+              `${ou} : une CLÔTURE NON BORNANTE — <${c.balise}> ${c.classes}\n` +
+                `   découpe ${c.contenu - c.boite} px de contenu (boîte ${c.boite}, contenu ${c.contenu})\n` +
+                "   sans établir de bloc conteneur. Tout descendant absolu dont aucun ancêtre\n" +
+                '   positionné ne borne le bloc conteneur sortira de ce découpage et allongera la\n' +
+                '   racine. `position: relative` suffit, et ne déplace rien à l’œil.',
+            )
+          }
+          cloturesSondees += 1
+
           const deroulement = await page.evaluate(MESURER_DEROULEMENT)
           deroulementsSondes += 1
           if (deroulement.corps > 0 && deroulement.hDoc > deroulement.corps) {
@@ -2342,6 +2363,12 @@ if (ciblesSondees < CIBLES_ATTENDUES) {
   écran malade, donc son silence ressemble au silence d'une sonde absente.
   Relevé le 2026-09-09 : 456 points, autant que la porte en mesure.
 */
+if (cloturesSondees !== pointsMesures) {
+  plaintes.push(
+    `${cloturesSondees} point(s) confronté(s) aux clôtures pour ${pointsMesures} point(s) ` +
+      "mesuré(s). La sonde a été sautée, et son silence se lit alors « aucune clôture ».",
+  )
+}
 if (deroulementsSondes !== pointsMesures) {
   plaintes.push(
     `${deroulementsSondes} point(s) confronté(s) au défilement fantôme pour ` +
@@ -2487,7 +2514,8 @@ console.log(
     `  ${textesAudites} textes confrontés au seuil WCAG AA, dans les DEUX thèmes ; ` +
     `${nomsExamines} commandes cherchées sans nom.\n` +
     `  ${ciblesSondees} cibles sondées au doigt, sous le plancher de ${PLANCHER_CIBLE} px.\n` +
-    `  ${deroulementsSondes} point(s) confronté(s) au défilement fantôme : on ne déroule pas plus\n` +
+    `  ${deroulementsSondes} point(s) confronté(s) au défilement fantôme et ${cloturesSondees} aux\n` +
+    '  clôtures qui découpent sans borner : on ne déroule pas plus\n' +
     '  qu’on ne peint, et la règle ne demande aucun plafond pour le dire.\n' +
     '  Le PREMIER GESTE d’un cabinet est rejoué en entier : un immeuble et son logement\n' +
     '  et son premier LOCATAIRE, déclarés À L’ÉCRAN sur un parc qui n’avait rien.\n' +

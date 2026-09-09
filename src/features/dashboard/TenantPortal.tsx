@@ -242,7 +242,26 @@ export function TenantPortal() {
             // de haut : sans borne, le cadre perdait son bord inférieur bien
             // avant la fin, et une fenêtre sans bas n'est plus une fenêtre.
             // C'est d'ailleurs ce que fait un vrai navigateur.
-            className="max-h-[70vh] overflow-y-auto p-5"
+            // `relative` BORNE CE QUE CETTE BOÎTE DÉCOUPE, et ce n'est pas
+            // décoratif. Un panneau qui découpe sans établir de bloc conteneur
+            // ne retient pas ses descendants ABSOLUS : leur bloc conteneur est
+            // alors un ancêtre situé au-dessus de lui, le découpage ne
+            // s'applique pas, et ils allongent la hauteur défilante de la
+            // RACINE jusqu'à leur position statique.
+            //
+            // MESURÉ ICI le 2026-09-09 : 2 198 px de fond vide sous la page à
+            // 360 px de large, tirés par les descriptions `sr-only` des deux
+            // graphes de consommation. Corriger la figure de `MiniBarChart` a
+            // fermé ce cas-là ; six autres textes réservés au lecteur d'écran
+            // sortaient encore de ce panneau, sans conséquence tant qu'ils
+            // restaient au-dessus du bas de page. C'est la CLÔTURE qui est
+            // réparée ici, pas les évadés un par un.
+            //
+            // Rien n'est découpé qui ne l'était déjà : mesuré aux trois onglets
+            // et aux deux largeurs, aucun élément VISIBLE ne sortait de cette
+            // boîte. Et `position: relative` sans `z-index` ne crée aucun
+            // contexte d'empilement. `plafond-hauteurs` garde la règle.
+            className="relative max-h-[70vh] overflow-y-auto p-5"
           >
             {/*
               LES VRAIS ÉCRANS, et non une copie.
