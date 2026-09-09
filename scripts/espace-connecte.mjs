@@ -125,8 +125,10 @@ import {
   PLANCHER_CIBLE,
   RAYON_SONDAGE,
   MESURER_DEFILEMENT_LATERAL,
+  MESURER_DEROULEMENT,
   MESURER_GABARITS,
   MESURER_RENDU_MINIMAL,
+  RELEVER_LES_EVADES,
 } from './sondes-de-rendu.mjs'
 import { ecransDeLEspaceConnecte } from './inventaire/routes.mjs'
 /* Le MÊME aplatissement que `check-i18n` et ' + B + 'notes-conditionnelles' + B + '. Une note
@@ -1281,6 +1283,8 @@ let textesAudites = 0
 let nomsExamines = 0
 /* Combien de cibles ont été réellement sondées — voir leur garde du garde. */
 let ciblesSondees = 0
+/* Combien de points ont été confrontés au défilement fantôme — même garde. */
+let deroulementsSondes = 0
 
 /* SANS LIAISON : cette fonction rend `null`, et personne ne la lit. Ce sont ses
    EFFETS qui comptent — la base préparée, le serveur construit, le paquet
@@ -1572,6 +1576,74 @@ try {
                     : 'aucun élément interactif') +
                 "\n   Sous `/app`, c'est le défaut ordinaire : la session n'aboutit pas, et l'écran " +
                 'reste sur son état de chargement.',
+            )
+          }
+
+          /*
+            LE DÉFILEMENT FANTÔME, SOUS SESSION.
+
+            La règle est tenue sur la démonstration par `plafond-hauteurs`
+            depuis le 2026-09-09, et elle y est née rouge : `/demo/portail`
+            peignait 1 163 px et se déroulait jusqu'à 3 361. Le correctif — la
+            figure de `MiniBarChart` porte son propre bloc conteneur — vaut pour
+            tous les écrans qui montrent ce graphe, `/app/mon-espace` compris.
+            Il n'était gardé que sur la moitié qu'une porte sans session peut
+            atteindre.
+
+            ELLE NE COÛTE NI CHARGEMENT NI PLAFOND. La page est là, à la bonne
+            largeur, et la règle ne compare que deux nombres de la même page :
+            aucune colonne par machine, aucun relevé à tenir à jour. C'est ce
+            qui la rend transportable ici, là où un plafond en pixels aurait
+            demandé une valeur par écran, par profil, par langue et par largeur
+            — quatre cent cinquante-six nombres, et neuf cent douze avec la
+            colonne de l'intégration continue. Ce plafond-là n'est PAS étendu à
+            l'espace connecté, et c'est une décision : personne ne tient à jour
+            neuf cents nombres, et un plafond qu'on relève sans le lire est un
+            plafond menteur.
+
+            ═══ ELLE EST VERTE ICI, ET IL A FALLU LA FAIRE ROUGIR ═══
+
+            Quatre cent cinquante-six points, zéro plainte au premier passage.
+            Une garde née verte ne prouve rien, et la mutation qui rougit sur
+            `/demo/portail` — retirer le bloc conteneur de `MiniBarChart` — n'a
+            RIEN rendu ici : aucun des quinze écrans sous session ne borne son
+            contenu par un conteneur défilant, donc rien n'a de quoi s'échapper.
+
+            LE TÉMOIN A DONC DÛ CRÉER LA CONDITION : la coquille applicative
+            bornée à 70 % de la fenêtre, comme le portail le fait. Vingt-deux
+            plaintes, sur `/app` et `/app/parc`, et le dossier a nommé trois
+            évadés — le `figcaption` « Montants derrière le graphique », le
+            « Chiffres mensuels derrière le graphique », et un « Rien à
+            percevoir ». Tous des textes réservés au lecteur d'écran, tous
+            absolus, tous bornés par le corps de la page faute d'ancêtre
+            positionné.
+
+            CES TROIS-LÀ NE SONT PAS CORRIGÉS, ET C'EST DÉLIBÉRÉ. Aucun ne nuit
+            aujourd'hui : rien ne les borne, donc rien ne s'échappe. Les corriger
+            à l'aveugle serait de la prudence déguisée en résultat. Le jour où un
+            écran de gestion se bornera comme le portail, cette garde le dira, et
+            le dossier nommera lequel.
+          */
+          const deroulement = await page.evaluate(MESURER_DEROULEMENT)
+          deroulementsSondes += 1
+          if (deroulement.corps > 0 && deroulement.hDoc > deroulement.corps) {
+            const evades = await page.evaluate(RELEVER_LES_EVADES)
+            plaintes.push(
+              `${ou} : ${deroulement.hDoc - deroulement.corps} px de DÉFILEMENT FANTÔME — le document\n` +
+                `   se déroule jusqu'à ${deroulement.hDoc} px alors que le corps n'en peint que ` +
+                `${deroulement.corps}.\n` +
+                '   Sous la dernière ligne, ce sont autant de pixels de fond vide qu\'on peut faire\n' +
+                '   défiler pour rien. Les éléments positionnés qui passent sous le corps :\n' +
+                evades
+                  .map(
+                    (e) =>
+                      `      bas ${String(e.bas).padStart(5)} px  ${e.position.padEnd(8)} ` +
+                      `borné par ${e.borne}  <${e.balise}> ${e.texte || e.classes}`,
+                  )
+                  .join('\n') +
+                "\n   Un élément absolu dont aucun ancêtre positionné ne borne le bloc conteneur\n" +
+                "   sort du découpage de son conteneur défilant et tire la racine jusqu'à sa\n" +
+                '   position statique.',
             )
           }
 
@@ -2256,6 +2328,28 @@ if (ciblesSondees < CIBLES_ATTENDUES) {
   )
 }
 
+/*
+  GARDE DU GARDE — la règle du fantôme a-t-elle vu TOUS les points ?
+
+  Le compte est ÉGAL, et il est adossé à un compteur qu'il n'incrémente pas :
+  `pointsMesures` avance à la fin du même tour de boucle. Les deux ne peuvent
+  diverger que si la sonde a été sautée — un `continue` ajouté au-dessus, une
+  exception avalée —, et c'est exactement le défaut que cette porte a déjà payé
+  ailleurs : « le `if (!resultat) continue` sautait la fin de l'itération, donc
+  aurait sauté les cibles sur 484 points sur 506 ».
+
+  Un plancher ne suffirait pas ici : la règle ne rend une plainte que sur un
+  écran malade, donc son silence ressemble au silence d'une sonde absente.
+  Relevé le 2026-09-09 : 456 points, autant que la porte en mesure.
+*/
+if (deroulementsSondes !== pointsMesures) {
+  plaintes.push(
+    `${deroulementsSondes} point(s) confronté(s) au défilement fantôme pour ` +
+      `${pointsMesures} point(s) mesuré(s). La règle a été sautée quelque part, et son ` +
+      "silence se lit alors comme « aucun défaut ».",
+  )
+}
+
 const TEXTES_ATTENDUS = 2000
 if (textesAudites < TEXTES_ATTENDUS) {
   plaintes.push(
@@ -2393,6 +2487,8 @@ console.log(
     `  ${textesAudites} textes confrontés au seuil WCAG AA, dans les DEUX thèmes ; ` +
     `${nomsExamines} commandes cherchées sans nom.\n` +
     `  ${ciblesSondees} cibles sondées au doigt, sous le plancher de ${PLANCHER_CIBLE} px.\n` +
+    `  ${deroulementsSondes} point(s) confronté(s) au défilement fantôme : on ne déroule pas plus\n` +
+    '  qu’on ne peint, et la règle ne demande aucun plafond pour le dire.\n' +
     '  Le PREMIER GESTE d’un cabinet est rejoué en entier : un immeuble et son logement\n' +
     '  et son premier LOCATAIRE, déclarés À L’ÉCRAN sur un parc qui n’avait rien.\n' +
     "  Elle ne dit RIEN des MODALES, qu'aucune de ses règles n'ouvre — voir son en-tête.",

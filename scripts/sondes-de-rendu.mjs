@@ -54,6 +54,84 @@
  * ferme : les mêmes écrans, derrière une vraie session, sur un parc écrit par
  * les routes du serveur.
  */
+/**
+ * ON NE DÉROULE PAS PLUS QU'ON NE PEINT.
+ *
+ * Deux nombres pris au même instant : ce que le document déroule, et ce que le
+ * corps peint. Sur un écran sain ils sont ÉGAUX au pixel — le corps s'étire
+ * avec son contenu et la racine se déroule d'autant. Un écart ne peut donc
+ * venir que d'un contenu qui échappe à ce qui devait le borner.
+ *
+ * ═══ CE QU'ELLE A TROUVÉ EN NAISSANT ═══
+ *
+ * `/demo/portail`, le 2026-09-09 : 1 163 px peints, 3 361 px déroulés. Deux
+ * mille cent quatre-vingt-dix-huit pixels de fond vide sous la dernière ligne,
+ * à 360 px de large. La description accessible de `MiniBarChart` est un
+ * `sr-only`, donc un élément absolu, et aucun ancêtre positionné ne se trouvait
+ * entre lui et `<main>` : le panneau du portail, borné à 70 % de la fenêtre, ne
+ * pouvait pas le découper, et il tirait la racine jusqu'à sa position statique.
+ *
+ * ═══ POURQUOI ELLE VIT ICI ═══
+ *
+ * Parce qu'elle ne dépend de RIEN. Ni de la machine, ni de la police, ni des
+ * données : elle compare deux nombres de la même page au même instant. C'est ce
+ * qui la rend transportable d'une porte à l'autre — la démonstration pour
+ * `plafond-hauteurs`, une vraie session pour `espace-connecte` —, là où un
+ * plafond en pixels demande une colonne par machine.
+ *
+ * ═══ CE QU'ELLE NE VOIT PAS ═══
+ *
+ * Le débordement LATÉRAL, que `MESURER_DEFILEMENT_LATERAL` tient déjà ; et ce
+ * qui s'échappe SANS allonger le document — un élément absolu remonté au-dessus
+ * du pli, par exemple, ne fait grandir aucun des deux nombres.
+ */
+export const MESURER_DEROULEMENT = () => ({
+  hDoc: document.documentElement.scrollHeight,
+  corps: Math.round(document.body.getBoundingClientRect().height),
+})
+
+/**
+ * LE DOSSIER D'UN DÉFILEMENT FANTÔME — appelé SEULEMENT sur refus.
+ *
+ * Ce que la sonde ci-dessus dit est « il y a un écart ». Ce qu'on veut lire
+ * dans un journal, sur une machine qui n'existera plus, c'est QUI le crée.
+ *
+ * La recherche a une forme précise, et c'est elle qui a rendu le coupable en
+ * une ligne le 2026-09-09 après que trois mutations du CONTENEUR n'eurent rien
+ * déplacé : énumérer les éléments POSITIONNÉS dont le bas passe sous le corps,
+ * et lire leur `offsetParent` — c'est-à-dire l'ancêtre qui les borne vraiment.
+ * Un `offsetParent` situé bien au-dessus du conteneur défilant est la signature
+ * de l'évasion.
+ *
+ * Elle ne coûte rien tant que la porte est verte : elle n'est jamais exécutée.
+ */
+export const RELEVER_LES_EVADES = () => {
+  const corps = Math.round(document.body.getBoundingClientRect().height)
+  const evades = []
+  for (const n of document.querySelectorAll('body *')) {
+    const style = getComputedStyle(n)
+    /* HORS DU FLUX SEULEMENT. Un élément `relative` reste dans le flux : son
+       conteneur défilant le découpe comme les autres, et il ne peut pas
+       allonger la racine. Les inclure noyait le coupable sous des voisins
+       innocents — mesuré le 2026-09-09, six lignes de bruit pour trois vraies. */
+    if (style.position !== 'absolute' && style.position !== 'fixed') continue
+    const bas = Math.round(n.getBoundingClientRect().bottom + window.scrollY)
+    if (bas <= corps + 1) continue
+    const parent = n.offsetParent
+    evades.push({
+      bas,
+      position: style.position,
+      balise: n.tagName.toLowerCase(),
+      classes: (n.className || '').toString().slice(0, 50),
+      texte: (n.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 40),
+      borne: parent
+        ? parent.tagName.toLowerCase() + '.' + (parent.className || '').toString().slice(0, 30)
+        : 'AUCUN — la page elle-même',
+    })
+  }
+  return evades.sort((a, b) => b.bas - a.bas).slice(0, 5)
+}
+
 export const MESURER_GABARITS = (racine) => {
   /* `racine` BORNE LA LECTURE, et n'existe que pour les modales.
 

@@ -179,6 +179,11 @@ import { POLICE_LARGE, imposerLaPoliceLarge } from './police-large.mjs'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
 import { neutraliserLApiLocale } from './api-locale-neutralisee.mjs'
 import { exigerUnPortLibre } from './port-libre.mjs'
+/* LA MÊME SONDE QUE `espace-connecte`, ET C'EST TOUT L'INTÉRÊT : la règle du
+   défilement fantôme est ÉCRITE UNE FOIS. Recopiée, elle vieillirait des deux
+   côtés à des vitesses différentes — la facture que `sondes-de-rendu.mjs` a été
+   créé pour ne plus payer. */
+import { MESURER_DEROULEMENT, RELEVER_LES_EVADES } from './sondes-de-rendu.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
 /*
@@ -510,10 +515,7 @@ try {
         s'étire avec son contenu, et la racine se déroule d'autant. L'écart ne
         peut donc venir que d'un contenu qui échappe à ce qui devait le borner.
       */
-      const { hDoc, corps } = await page.evaluate(() => ({
-        hDoc: document.documentElement.scrollHeight,
-        corps: Math.round(document.body.getBoundingClientRect().height),
-      }))
+      const { hDoc, corps } = await page.evaluate(MESURER_DEROULEMENT)
       const p = PLAFONDS.find((x) => x.adresse === adresse && x.largeur === largeur)
       if (!p) {
         plaintes.push(
@@ -533,7 +535,11 @@ try {
         ici, y compris ceux qui n'existent pas encore.
       */
       if (corps > 0 && hDoc > corps) {
-        fantomes.push({ nom, hDoc, corps })
+        /* LE DOSSIER, et seulement sur refus : il ne coûte rien tant que la
+           porte est verte. C'est cette énumération qui a rendu le coupable en
+           une ligne le 2026-09-09, après que trois mutations du CONTENEUR
+           n'eurent rien déplacé. */
+        fantomes.push({ nom, hDoc, corps, evades: await page.evaluate(RELEVER_LES_EVADES) })
       }
       /*
         EN MODE RELEVÉ, ON NE COMPARE À RIEN — et surtout pas au plafond de la
@@ -582,14 +588,22 @@ if (horsPortee !== HORS_PORTEE_ATTENDUS) {
       "   La liste des adresses hors portée est périmée dans un sens ou dans l'autre.",
   )
 }
-for (const { nom, hDoc, corps } of fantomes) {
+for (const { nom, hDoc, corps, evades } of fantomes) {
   plaintes.push(
     `${nom} : ${hDoc - corps} px de DÉFILEMENT FANTÔME — le document se déroule jusqu'à\n` +
       `   ${hDoc} px alors que le corps n'en peint que ${corps}. Sous la dernière ligne, ce\n` +
       "   sont autant de pixels de fond vide qu'on peut faire défiler pour rien.\n" +
-      '   Cherchez un descendant qui échappe au bornage de son conteneur défilant : un\n' +
-      '   élément absolu dont aucun ancêtre positionné ne borne le bloc conteneur sort du\n' +
-      "   découpage et tire la racine jusqu'à sa position statique.",
+      '   Les éléments hors du flux qui passent sous le corps :\n' +
+      evades
+        .map(
+          (e) =>
+            `      bas ${String(e.bas).padStart(5)} px  ${e.position.padEnd(8)} ` +
+            `borné par ${e.borne}  <${e.balise}> ${e.texte || e.classes}`,
+        )
+        .join('\n') +
+      "\n   Un élément absolu dont aucun ancêtre positionné ne borne le bloc conteneur sort\n" +
+      "   du découpage de son conteneur défilant et tire la racine jusqu'à sa position\n" +
+      '   statique.',
   )
 }
 
