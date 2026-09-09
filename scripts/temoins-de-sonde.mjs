@@ -48,11 +48,15 @@
  * le 2026-09-10. Un témoin vert sur une sonde juste ne prouve rien ; il faut
  * l'avoir vu refuser.
  *
- * DEUX D'ENTRE EUX ONT DEMANDÉ PLUS QU'UNE LIGNE, et les deux fois c'était un
- * résultat : le sixième a exigé DEUX mutations, parce que le raccourci sur les
- * clôtures positionnées est redondant avec le test du bloc conteneur ; le
- * dix-septième n'a rougi que sous une mutation qui vide la sonde, parce qu'une
- * boîte de 60 px passe par sa seule taille, sans sondage au point.
+ * DEUX D'ENTRE EUX N'ONT PAS PU NAÎTRE ROUGES SOUS UNE MUTATION D'UNE LIGNE, et
+ * les deux fois c'était un résultat, pas un échec. Ils sont DÉCLARÉS
+ * `nature: 'controle'` — le champ est exigé de chaque cas, et leur nombre est
+ * gardé, pour qu'un témoin ne soit jamais rangé là par commodité. Le motif de
+ * chacun est écrit À CÔTÉ DU CAS, avec la mutation qui l'a établi.
+ *
+ * Un contrôle garde contre une sonde devenue TROP ZÉLÉE — qui dénoncerait là où
+ * il n'y a rien. Il ne garde pas contre une sonde muette, et c'est pourquoi le
+ * rapport dit les deux nombres séparément : dix-sept branches, deux contrôles.
  *
  * CERTAINES MUTATIONS EN FONT ROUGIR PLUSIEURS, et c'est attendu : la même
  * expression régulière sert aux témoins 11 et 13, et vider la boucle des cibles
@@ -92,15 +96,40 @@ const VUE = { width: 400, height: 300 }
 
 const plaintes = []
 let temoinsJoues = 0
+/** Combien de témoins ne sont que des contrôles — voir `temoin`. */
+let controles = 0
 
 /*
   LE COMPTE EST ÉCRIT, JAMAIS DÉRIVÉ. Une boucle vide se déclarerait verte, et
   c'est le piège que ce dépôt a trouvé quatre fois — voir `plafond-coquille`.
 */
 const TEMOINS_ATTENDUS = 19
+/*
+  DEUX CONTRÔLES SUR DIX-NEUF, et ce nombre est écrit plutôt qu'imprimé. Un
+  témoin qu'on rangerait en contrôle « parce qu'il ne rougit pas » deviendrait
+  une dispense : le compte oblige à venir le déclarer ici, et le diff le montre.
+*/
+const CONTROLES_ATTENDUS = 2
 
 /** Un cas : une page, une sonde, une attente écrite en toutes lettres. */
-async function temoin(page, { nom, page: html, sonde, argument, attendu }) {
+async function temoin(page, { nom, nature, page: html, sonde, argument, attendu }) {
+  /*
+    LA NATURE EST EXIGÉE, et ce n'est pas une décoration.
+
+    Un témoin de BRANCHE éprouve une décision de la sonde : casser cette
+    décision le fait rougir, et c'est ce qui lui donne sa valeur. Un témoin de
+    CONTRÔLE éprouve une propriété qui découle du document lui-même — aucune
+    mutation d'une seule ligne ne peut le faire rougir, parce qu'il n'y a pas de
+    ligne à casser. Il garde tout de même quelque chose : qu'une sonde devenue
+    trop zélée ne se mette pas à dénoncer là où il n'y a rien.
+
+    Les confondre serait surestimer ce que ce banc prouve. Le compte des deux
+    est donc rendu à la fin, et gardé.
+  */
+  if (nature !== 'branche' && nature !== 'controle') {
+    throw new Error(`temoins-de-sonde : « ${nom} » n'a pas déclaré sa nature.`)
+  }
+  if (nature === 'controle') controles += 1
   await page.setContent(`<!doctype html><html><body style="margin:0">${html}</body></html>`)
   /* Deux trames : le style vient d'être posé, la disposition pas encore faite. */
   await page.evaluate(
@@ -131,6 +160,7 @@ try {
 
   await temoin(page, {
     nom: '1. une page qui tient dans la vue ne rend AUCUN verdict',
+    nature: 'branche',
     page: '<p>rien de large ici</p>',
     sonde: MESURER_DEFILEMENT_LATERAL,
     attendu: (vu) => (vu === null ? true : 'attendu `null`, la page ne déborde pas.'),
@@ -138,6 +168,7 @@ try {
 
   await temoin(page, {
     nom: '2. un bloc plus large que la vue est DÉNONCÉ',
+    nature: 'branche',
     page: BLOC_LARGE,
     sonde: MESURER_DEFILEMENT_LATERAL,
     attendu: (vu) =>
@@ -150,6 +181,7 @@ try {
 
   await temoin(page, {
     nom: '3. le même bloc DANS un conteneur qui défile est INNOCENTÉ',
+    nature: 'branche',
     page:
       BLOC_LARGE +
       '<div style="overflow-x:auto;width:200px">' +
@@ -174,6 +206,7 @@ try {
   */
   await temoin(page, {
     nom: '4. un ABSOLU qui ÉCHAPPE au conteneur défilant est DÉNONCÉ',
+    nature: 'branche',
     page:
       '<div style="overflow-x:auto;width:200px;height:60px">' +
       '<div style="width:300px;height:20px"></div>' +
@@ -192,6 +225,7 @@ try {
 
   await temoin(page, {
     nom: '5. une clôture qui laisse sortir un absolu est DÉNONCÉE',
+    nature: 'branche',
     page:
       '<div id="clot" style="overflow-y:auto;height:50px;width:200px">' +
       '<div style="height:400px"></div>' +
@@ -203,6 +237,20 @@ try {
 
   await temoin(page, {
     nom: '6. la même clôture, POSITIONNÉE, est innocentée : elle borne ses absolus',
+    /*
+      CONTRÔLE, ET NON TEST DE BRANCHE — établi par la mutation, le 2026-09-09.
+
+      Le faire rougir a demandé DEUX mutations : retirer le raccourci qui épargne
+      les clôtures positionnées ne suffit pas, car le test du bloc conteneur
+      innocente déjà tout absolu d'une clôture positionnée. La propriété qu'il
+      éprouve découle du document — un absolu d'une boîte positionnée A pour bloc
+      conteneur cette boîte —, pas d'une décision de la sonde.
+
+      Il reste parce qu'une sonde devenue trop zélée dénoncerait ici, et qu'on
+      veut le savoir. Il ne prouve simplement pas ce qu'un témoin de branche
+      prouve.
+    */
+    nature: 'controle',
     page:
       '<div style="position:relative;overflow-y:auto;height:50px;width:200px">' +
       '<div style="height:400px"></div>' +
@@ -216,6 +264,7 @@ try {
 
   await temoin(page, {
     nom: '7. une clôture sans rien qui s’échappe est innocentée',
+    nature: 'branche',
     page:
       '<div style="overflow-y:auto;height:50px;width:200px">' +
       '<div style="height:400px">contenu en flux seulement</div></div>',
@@ -241,6 +290,7 @@ try {
   */
   await temoin(page, {
     nom: '8. un élément FIXE dans une clôture ne la rend PAS perméable',
+    nature: 'branche',
     page:
       '<div style="overflow-y:auto;height:50px;width:200px">' +
       '<div style="height:400px"></div>' +
@@ -257,6 +307,7 @@ try {
 
   await temoin(page, {
     nom: '9. un écran monté est compté : titres, interactifs, racine pleine',
+    nature: 'branche',
     page: '<div id="root"><h1>Parc</h1><h2>Immeubles</h2><button>Ajouter</button></div>',
     sonde: MESURER_RENDU_MINIMAL,
     attendu: (vu) =>
@@ -267,6 +318,7 @@ try {
 
   await temoin(page, {
     nom: '10. une racine VIDE est vue comme telle — le défaut ordinaire sous /app',
+    nature: 'branche',
     page: '<div id="root"></div>',
     sonde: MESURER_RENDU_MINIMAL,
     attendu: (vu) =>
@@ -279,6 +331,7 @@ try {
 
   await temoin(page, {
     nom: '11. un jeton non résolu est TROUVÉ dans le texte rendu',
+    nature: 'branche',
     page: '<p>Bonjour, {count} locataires vous attendent.</p>',
     sonde: MESURER_GABARITS,
     attendu: (vu) =>
@@ -289,6 +342,7 @@ try {
 
   await temoin(page, {
     nom: '12. une accolade qui n’est PAS un jeton ne réveille rien',
+    nature: 'branche',
     page: '<p>un { seul, une { } vide, et { 3 } avec un chiffre.</p>',
     sonde: MESURER_GABARITS,
     attendu: (vu) =>
@@ -300,6 +354,7 @@ try {
 
   await temoin(page, {
     nom: '13. la RACINE borne la lecture : le fond derrière une modale n’est pas lu',
+    nature: 'branche',
     page:
       '<p>fond avec {fond} dedans</p>' +
       '<div role="dialog" aria-modal="true"><p>modale avec {dedans}</p></div>',
@@ -316,6 +371,7 @@ try {
 
   await temoin(page, {
     nom: '15. une page ordinaire déroule exactement ce qu’elle peint',
+    nature: 'branche',
     page: '<div style="height:100vh;background:#f5f5f5">contenu</div>',
     sonde: MESURER_DEROULEMENT,
     attendu: (vu) =>
@@ -326,6 +382,7 @@ try {
 
   await temoin(page, {
     nom: '14. un absolu qui dépasse le corps allonge le document, et cela se voit',
+    nature: 'branche',
     page:
       '<div style="height:100vh;background:#f5f5f5">contenu</div>' +
       '<span style="position:absolute;top:600px;left:0">évadé</span>',
@@ -342,6 +399,7 @@ try {
 
   await temoin(page, {
     nom: '16. une commande de 20 px est DÉNONCÉE sous le plancher de 44',
+    nature: 'branche',
     page: '<button style="width:20px;height:20px;padding:0;border:0">x</button>',
     sonde: MESURER_CIBLES,
     argument: CONFIG_CIBLES,
@@ -354,6 +412,20 @@ try {
 
   await temoin(page, {
     nom: '17. une commande de 60 px passe sans même être sondée au point',
+    /*
+      CONTRÔLE, ET NON TEST DE BRANCHE — établi par la mutation, le 2026-09-10.
+
+      Il n'a rougi que sous une mutation qui VIDE la boucle des cibles, laquelle
+      éteint aussi les témoins 16 et 19. C'est qu'une boîte de 60 px passe par sa
+      SEULE taille, avant tout sondage au point : « une cible ne peut que
+      GRANDIR en s'écartant du centre, jamais rétrécir. » Il n'y a donc pas de
+      décision propre à casser.
+
+      Il garde tout de même qu'une commande large ne soit pas dénoncée, et que
+      la sonde la COMPTE — un balayage qui n'aurait rien sondé se lirait comme un
+      écran sans défaut.
+    */
+    nature: 'controle',
     page: '<button style="width:60px;height:60px">ok</button>',
     sonde: MESURER_CIBLES,
     argument: CONFIG_CIBLES,
@@ -365,6 +437,7 @@ try {
 
   await temoin(page, {
     nom: '18. une case de 20 px dans une ÉTIQUETTE de 44 est innocentée',
+    nature: 'branche',
     page:
       '<label style="display:flex;align-items:center;height:44px;width:200px">' +
       '<input type="checkbox" style="width:20px;height:20px;margin:0">' +
@@ -380,6 +453,7 @@ try {
 
   await temoin(page, {
     nom: '19. un `sr-only` n’est même pas sondé — il n’est pas une cible',
+    nature: 'branche',
     page:
       '<button class="sr-only" style="position:absolute;width:1px;height:1px">caché</button>' +
       '<button style="width:60px;height:60px">visible</button>',
@@ -397,6 +471,13 @@ try {
   await navigateur.close()
 }
 
+if (controles !== CONTROLES_ATTENDUS) {
+  plaintes.push(
+    `${controles} témoin(s) de contrôle pour ${CONTROLES_ATTENDUS} déclaré(s).\n` +
+      "   Un témoin rangé en contrôle est un témoin dont on n'exige plus qu'il rougisse :\n" +
+      '   ce nombre ne monte qu’avec une mutation à l’appui, écrite à côté du cas.',
+  )
+}
 if (temoinsJoues !== TEMOINS_ATTENDUS) {
   plaintes.push(
     `${temoinsJoues} témoin(s) joué(s) pour ${TEMOINS_ATTENDUS} attendu(s).\n` +
@@ -417,6 +498,9 @@ if (plaintes.length > 0) {
 console.log(
   `\n✓ temoins-de-sonde : ${temoinsJoues}/${TEMOINS_ATTENDUS} témoins, sur des pages où la\n` +
     '  réponse est connue par construction — les deux directions à chaque fois.\n' +
+    `  ${temoinsJoues - controles} éprouvent une BRANCHE de la sonde et sont nés rouges sous une mutation ;\n` +
+    `  ${controles} sont des CONTRÔLES, qu'aucune mutation d'une ligne ne peut faire rougir —\n` +
+    '  ils gardent contre une sonde trop zélée, pas contre une sonde muette.\n' +
     '  Il ne dit RIEN de ce que les sondes rendent du PRODUIT : c’est le travail des\n' +
     '  quinze portes qui suivent.',
 )
