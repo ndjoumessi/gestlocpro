@@ -652,7 +652,14 @@ function Comparaison({ inspections }: { inspections: Inspection[] }) {
   return (
     <div className="mt-4 border-t border-divider pt-4">
       <p className="eyebrow mb-2 text-muted">{t('app.inspections.comparison')}</p>
-      <div className="overflow-x-auto">
+      {/* `relative` BORNE CE QUE CETTE BOÎTE DÉCOUPE. Elle défile en largeur —
+          9 px à 360 px de large, mesuré — et sa légende `sr-only` est un
+          élément ABSOLU : sans bloc conteneur ici, le découpage ne l'atteint
+          pas et elle sort de la boîte. Sans dommage aujourd'hui, une légende de
+          1 × 1 px n'allongeant rien ; c'est la porte ouverte qu'on ferme, la
+          même que celle par où 2 198 px de vide sont entrés dans le portail le
+          2026-09-09. `plafond-hauteurs` garde la règle. */}
+      <div className="relative overflow-x-auto">
         <table className="w-full border-collapse">
           <caption className="sr-only">{t('app.inspections.comparison')}</caption>
           <thead>

@@ -133,62 +133,106 @@ export const RELEVER_LES_EVADES = () => {
 }
 
 /**
- * UNE CLÔTURE QUI DÉCOUPE DOIT BORNER SES ABSOLUS.
+ * UNE CLÔTURE PERMÉABLE : ELLE DÉCOUPE, ET QUELQUE CHOSE PASSE QUAND MÊME.
  *
  * ═══ LA CAUSE, LÀ OÙ `MESURER_DEROULEMENT` GARDE LE SYMPTÔME ═══
  *
- * Le défilement fantôme demande DEUX conditions : un conteneur qui découpe
- * verticalement, et un descendant absolu dont le bloc conteneur est en dehors.
- * La sonde du dessus voit le résultat — un document plus long que son corps.
- * Celle-ci voit la condition qui le rend possible, et elle la voit même quand
- * aucun descendant ne s'échappe encore.
+ * Le défilement fantôme demande DEUX conditions : un conteneur qui découpe, et
+ * un descendant absolu dont le bloc conteneur est en dehors — donc que le
+ * découpage n'atteint pas. La sonde du dessus voit le résultat, un document
+ * plus long que son corps. Celle-ci voit la CAUSE, et sur les deux axes.
  *
- * ═══ POURQUOI CE PRÉDICAT-CI, ET PAS UN PLUS LARGE ═══
+ * ═══ CE QUE CE PRÉDICAT A REMPLACÉ, ET POURQUOI ═══
  *
- * Deux règles plus larges ont été MESURÉES le 2026-09-09 sur les 44 points de
- * `plafond-hauteurs`, puis écartées :
+ * Sa première rédaction, le 2026-09-09, refusait toute clôture non positionnée
+ * qui découpe — sans regarder si quoi que ce soit s'en échappait. Sur l'axe
+ * VERTICAL cela suffisait : une seule clôture dans tout le produit, et la
+ * prophylaxie ne coûtait rien.
  *
- *   — « tout conteneur qui découpe et n'est pas positionné » : des dizaines de
- *     sortes, dont des `<svg>`, des barres de progression de 6 px de haut et
- *     tous les textes tronqués ;
- *   — « … et dont le style borne la hauteur » : 27 sortes encore, pour la même
- *     raison — une hauteur explicite n'est pas un découpage.
+ * Sur l'axe HORIZONTAL, le même prédicat en désignait quatre, dont un texte
+ * tronqué. Exiger un bloc conteneur sur un `truncate` n'a aucun sens : rien ne
+ * peut sortir d'un texte. La règle demandait donc un geste que personne ne
+ * saurait défendre, et une garde indéfendable finit contournée.
  *
- * Exiger un bloc conteneur sur tout cela serait un diff que personne ne peut
- * défendre, et une garde qu'on apprend à contourner. Le prédicat retenu est
- * celui qui décrit le DÉFAUT : le contenu déborde réellement en hauteur, donc
- * la boîte découpe pour de bon, et rien ne retient ce qui voudrait sortir.
+ * ELLE EXIGE MAINTENANT UN ÉVADÉ RÉEL, et elle ne perd rien : le panneau du
+ * portail, qui a motivé toute cette famille, en laissait sortir QUATRE à SIX
+ * selon l'onglet — mesuré avant son correctif. Le prédicat serré l'aurait
+ * attrapé aussi, et sans réclamer trois gestes inutiles à côté.
  *
- * Il a un prix, et il est écrit : il dépend du CONTENU du jour. Une clôture qui
- * tient tout juste son contenu aujourd'hui ne sera pas vue, et le sera le jour
- * où une ligne de plus la fera déborder. C'est la même dépendance que toutes
- * les mesures de ce dépôt, qui lisent une démonstration et un parc semés.
+ * ═══ CE QU'ELLE A TROUVÉ SUR L'AXE HORIZONTAL ═══
  *
- * ═══ CE QU'ELLE A TROUVÉ EN NAISSANT ═══
+ * UNE clôture perméable sur les 44 points : le `overflow-x-auto` qui enveloppe
+ * le tableau de comparaison des états des lieux, dont la légende `sr-only`
+ * s'échappe. Sans dommage aujourd'hui — une légende de 1 × 1 px n'allonge
+ * rien —, mais la porte ouverte est la même que celle du portail.
  *
- * UNE SEULE clôture dans tout le produit : le panneau du portail locataire,
- * borné à 70 % de la fenêtre. Les onze autres clôtures qui débordent sont déjà
- * positionnées. C'est par celle-là que les `sr-only` de `MiniBarChart` sont
- * sortis, et c'est elle — pas eux — qui rendait l'évasion possible.
+ * ═══ CE QUE LE PRÉDICAT SERRÉ COÛTE, ET IL A ÉTÉ MESURÉ ═══
+ *
+ * Il dépend de ce que l'écran rend à l'instant. Témoin du 2026-09-09 : en
+ * retirant le bloc conteneur du panneau du portail, la règle le retrouve — mais
+ * à UNE largeur sur deux, et par un seul évadé, la légende `sr-only` du tableau
+ * des paiements. Avant le correctif de `MiniBarChart`, le même panneau en
+ * laissait sortir quatre à six.
+ *
+ * Autrement dit : la version large aurait désigné la clôture quoi qu'elle
+ * contienne ; celle-ci ne la désigne que si quelque chose s'en échappe VRAIMENT.
+ * C'est le prix de ne pas réclamer un geste inutile sur les textes tronqués, et
+ * il est acceptable parce que les `sr-only` sont partout dans ce produit — une
+ * vingtaine de sortes : un panneau réel qui n'en contiendrait aucun serait
+ * l'exception, pas la règle.
+ *
+ * ═══ CE QU'ELLE NE VOIT PAS ═══
+ *
+ * Une clôture qui ne découpe RIEN aujourd'hui. Le prédicat compare le contenu à
+ * la boîte, donc il dépend des données du jour : une boîte qui tient tout juste
+ * son contenu n'est pas vue, et le sera le jour où une ligne de plus la fera
+ * déborder. C'est la même dépendance que toutes les mesures de ce dépôt.
  */
-export const RELEVER_LES_CLOTURES_OUVERTES = () => {
-  const ouvertes = []
+export const RELEVER_LES_CLOTURES_PERMEABLES = () => {
+  const permeables = []
   for (const n of document.querySelectorAll('body *')) {
     const style = getComputedStyle(n)
-    if (style.overflowY === 'visible') continue
+    /* POSITIONNÉE = ELLE BORNE DÉJÀ SES ABSOLUS : rien ne peut lui échapper par
+       le bloc conteneur, et c'est exactement le correctif qu'on demande. */
     if (style.position !== 'static') continue
-    const boite = Math.ceil(n.getBoundingClientRect().height)
-    /* ELLE DÉCOUPE POUR DE BON : son contenu dépasse sa boîte. Un pixel de
-       tolérance pour les arrondis d'une hauteur fractionnaire. */
-    if (n.scrollHeight <= boite + 1) continue
-    ouvertes.push({
+    const boite = n.getBoundingClientRect()
+    const coupeEnHauteur =
+      style.overflowY !== 'visible' && n.scrollHeight > Math.ceil(boite.height) + 1
+    const coupeEnLargeur =
+      style.overflowX !== 'visible' && n.scrollWidth > Math.ceil(boite.width) + 1
+    if (!coupeEnHauteur && !coupeEnLargeur) continue
+
+    const evades = []
+    for (const d of n.querySelectorAll('*')) {
+      const sd = getComputedStyle(d)
+      if (sd.position !== 'absolute' && sd.position !== 'fixed') continue
+      /* `offsetParent` EST LE BLOC CONTENEUR RÉEL. S'il est dans la clôture, le
+         découpage s'applique et l'élément ne sort pas. Un `fixed` n'en a aucun,
+         et aucun débordement ne le retient : il compte toujours. */
+      const borne = d.offsetParent
+      if (borne && n.contains(borne)) continue
+      const r = d.getBoundingClientRect()
+      evades.push({
+        balise: d.tagName.toLowerCase(),
+        classes: (d.className || '').toString().slice(0, 34),
+        texte: (d.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 34),
+        taille: `${Math.round(r.width)}×${Math.round(r.height)}`,
+      })
+    }
+    if (evades.length === 0) continue
+
+    permeables.push({
       balise: n.tagName.toLowerCase(),
-      classes: (n.className || '').toString().slice(0, 60),
-      boite,
-      contenu: n.scrollHeight,
+      classes: (n.className || '').toString().slice(0, 56),
+      axe: coupeEnHauteur && coupeEnLargeur ? 'les deux axes' : coupeEnHauteur ? 'la hauteur' : 'la largeur',
+      decoupe: coupeEnHauteur
+        ? n.scrollHeight - Math.ceil(boite.height)
+        : n.scrollWidth - Math.ceil(boite.width),
+      evades: evades.slice(0, 3),
+      combien: evades.length,
     })
   }
-  return ouvertes
+  return permeables
 }
 
 export const MESURER_GABARITS = (racine) => {
@@ -260,12 +304,23 @@ export const MESURER_DEFILEMENT_LATERAL = () => {
 
     // Un élément large À L'INTÉRIEUR d'un conteneur qui défile n'est pas un
     // coupable : c'est le motif normal des tableaux du dépôt.
+    //
+    // SAUF S'IL LUI ÉCHAPPE, et cette exception manquait. Un descendant absolu
+    // dont le bloc conteneur est HORS du conteneur défilant n'est pas contenu
+    // par lui : le découpage ne l'atteint pas, il pousse le document, et cette
+    // boucle l'innocentait pourtant — le vrai coupable disparaissait du
+    // rapport, laissant un décalage sans cause nommée. Trouvé le 2026-09-09 en
+    // écrivant la garde de cause de l'axe horizontal.
+    const style = getComputedStyle(el)
+    const horsDuFlux = style.position === 'absolute' || style.position === 'fixed'
+    const borne = horsDuFlux ? el.offsetParent : null
     let ancetre = el.parentElement
     let contenu = false
     while (ancetre) {
-      const style = getComputedStyle(ancetre)
-      if (style.overflowX === 'auto' || style.overflowX === 'scroll') {
-        contenu = true
+      const styleAncetre = getComputedStyle(ancetre)
+      if (styleAncetre.overflowX === 'auto' || styleAncetre.overflowX === 'scroll') {
+        /* Il n'est contenu que si son bloc conteneur est DEDANS. */
+        contenu = !horsDuFlux || Boolean(borne && ancetre.contains(borne))
         break
       }
       ancetre = ancetre.parentElement

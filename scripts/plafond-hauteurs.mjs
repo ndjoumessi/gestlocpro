@@ -185,7 +185,7 @@ import { exigerUnPortLibre } from './port-libre.mjs'
    créé pour ne plus payer. */
 import {
   MESURER_DEROULEMENT,
-  RELEVER_LES_CLOTURES_OUVERTES,
+  RELEVER_LES_CLOTURES_PERMEABLES,
   RELEVER_LES_EVADES,
 } from './sondes-de-rendu.mjs'
 
@@ -432,8 +432,8 @@ const arbresEnMouvement = []
 const sansAttenteAnnoncee = []
 /** Les écrans qui se déroulent plus loin qu'ils ne peignent — voir leur garde. */
 const fantomes = []
-/** Les clôtures qui découpent sans borner leurs absolus — voir leur garde. */
-const cloturesOuvertes = []
+/** Les clôtures qui découpent et laissent sortir un absolu — voir leur garde. */
+const cloturesPermeables = []
 
 try {
   const navigateur = await chromium.launch()
@@ -547,8 +547,8 @@ try {
         celle-ci est la seule qu'on puisse voir AVANT qu'un descendant ne
         s'échappe. Elle est relevée à chaque point, comme la hauteur.
       */
-      for (const c of await page.evaluate(RELEVER_LES_CLOTURES_OUVERTES)) {
-        cloturesOuvertes.push({ nom, ...c })
+      for (const c of await page.evaluate(RELEVER_LES_CLOTURES_PERMEABLES)) {
+        cloturesPermeables.push({ nom, ...c })
       }
       cloturesSondees += 1
 
@@ -606,14 +606,16 @@ if (horsPortee !== HORS_PORTEE_ATTENDUS) {
       "   La liste des adresses hors portée est périmée dans un sens ou dans l'autre.",
   )
 }
-for (const c of cloturesOuvertes) {
+for (const c of cloturesPermeables) {
   plaintes.push(
-    `${c.nom} : une CLÔTURE NON BORNANTE — <${c.balise}> ${c.classes}\n` +
-      `   découpe ${c.contenu - c.boite} px de contenu (boîte ${c.boite}, contenu ${c.contenu}) sans\n` +
-      "   établir de bloc conteneur. Tout descendant absolu dont aucun ancêtre positionné\n" +
-      "   ne borne le bloc conteneur sortira de ce découpage et allongera la racine.\n" +
-      '   `position: relative` suffit : sans décalage ni `z-index`, rien ne bouge à l’œil\n' +
-      '   et rien ne crée de contexte d’empilement.',
+    `${c.nom} : une CLÔTURE PERMÉABLE — <${c.balise}> ${c.classes}\n` +
+      `   découpe ${c.decoupe} px sur ${c.axe}, et ${c.combien} descendant(s) absolu(s) lui\n` +
+      '   échappent — leur bloc conteneur est en dehors, donc le découpage ne les atteint pas :\n' +
+      c.evades
+        .map((e) => `      <${e.balise}> ${e.classes} ${e.taille}  « ${e.texte} »`)
+        .join('\n') +
+      '\n   `position: relative` suffit : sans décalage ni `z-index`, rien ne bouge à l’œil,\n' +
+      '   rien ne crée de contexte d’empilement, et plus rien ne sort.',
   )
 }
 

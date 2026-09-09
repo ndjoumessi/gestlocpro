@@ -128,7 +128,7 @@ import {
   MESURER_DEROULEMENT,
   MESURER_GABARITS,
   MESURER_RENDU_MINIMAL,
-  RELEVER_LES_CLOTURES_OUVERTES,
+  RELEVER_LES_CLOTURES_PERMEABLES,
   RELEVER_LES_EVADES,
 } from './sondes-de-rendu.mjs'
 import { ecransDeLEspaceConnecte } from './inventaire/routes.mjs'
@@ -1634,13 +1634,15 @@ try {
             rien ne s'échappe encore — c'est-à-dire aujourd'hui, sur ces quinze
             écrans où aucun conteneur ne borne son contenu.
           */
-          for (const c of await page.evaluate(RELEVER_LES_CLOTURES_OUVERTES)) {
+          for (const c of await page.evaluate(RELEVER_LES_CLOTURES_PERMEABLES)) {
             plaintes.push(
-              `${ou} : une CLÔTURE NON BORNANTE — <${c.balise}> ${c.classes}\n` +
-                `   découpe ${c.contenu - c.boite} px de contenu (boîte ${c.boite}, contenu ${c.contenu})\n` +
-                "   sans établir de bloc conteneur. Tout descendant absolu dont aucun ancêtre\n" +
-                '   positionné ne borne le bloc conteneur sortira de ce découpage et allongera la\n' +
-                '   racine. `position: relative` suffit, et ne déplace rien à l’œil.',
+              `${ou} : une CLÔTURE PERMÉABLE — <${c.balise}> ${c.classes}\n` +
+                `   découpe ${c.decoupe} px sur ${c.axe}, et ${c.combien} descendant(s) absolu(s)\n` +
+                '   lui échappent, leur bloc conteneur étant en dehors :\n' +
+                c.evades
+                  .map((e) => `      <${e.balise}> ${e.classes} ${e.taille}  « ${e.texte} »`)
+                  .join('\n') +
+                '\n   `position: relative` suffit, et ne déplace rien à l’œil.',
             )
           }
           cloturesSondees += 1
