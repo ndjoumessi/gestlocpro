@@ -3,11 +3,35 @@
  * LA PAGE PUBLIQUE NE REGROSSIT PAS.
  *
  * LE DÉFAUT, ET IL EST PASSÉ SOUS TOUS LES RADARS. Pendant que la refonte
- * retirait 159 à 232 px à chaque écran applicatif, la vitrine a GRANDI de 53 px
- * en français et de 170 px en anglais : le repli du bas de l'échelle
- * typographique — 13 px vers 14 — l'a payée, et rien ne mesurait sa hauteur.
- * Aucune garde ne surveillait le seul écran que voit un visiteur qui n'a pas de
- * compte, et c'est celui qui décide s'il en ouvre un.
+ * retirait 159 à 232 px à chaque écran applicatif, la vitrine a GRANDI : le
+ * repli du bas de l'échelle typographique — 13 px vers 14 — l'a payée, et rien
+ * ne mesurait sa hauteur. Aucune garde ne surveillait le seul écran que voit un
+ * visiteur qui n'a pas de compte, et c'est celui qui décide s'il en ouvre un.
+ *
+ * ═══ QUELLE REFONTE — nommée le 2026-09-09, elle ne l'était pas ═══
+ *
+ * Celle de la DENSITÉ, le 2026-08-22 : `2c30c52` fait passer le bas de
+ * l'échelle typographique de cinq paliers à trois, `381570f` rend 203 px de
+ * contenu sur les vingt-trois écrans, et `d41da71` répare les sept cas qu'elle
+ * avait rompus. C'est elle qui retirait 159 à 232 px par écran applicatif
+ * pendant que la vitrine grandissait.
+ *
+ * `origine` est donc la hauteur de la vitrine AVANT le 2026-08-22. Elle a été
+ * posée le lendemain, par `30896d3`, en même temps que cette porte.
+ *
+ * ═══ UN CHIFFRE DE CET EN-TÊTE NE SE RECOUPE PAS ═══
+ *
+ * Il disait « la vitrine a grandi de 53 px en français et de 170 px en
+ * anglais ». Sa propre table dit autre chose : de `origine` à la mesure d'avant
+ * la porte, +78 et +194 à 360 px, +60 et +48 à 1280. Aucun couple ne rend
+ * 53/170 — les deux relevés ne décrivent pas le même instant, et rien dans le
+ * dépôt ne dit lequel. Les nombres invérifiables sont retirés de cette phrase
+ * plutôt que gardés pour leur allure ; ceux de la table, eux, portent leur date.
+ *
+ * NON REMESURÉ : je n'ai pas reconstruit un arbre d'avant le 2026-08-22 pour
+ * vérifier que 11419 a été MESURÉ et non recopié. Cela demanderait une
+ * installation et une construction complètes d'un dépôt vieux de trois semaines,
+ * pour une colonne qui ne refuse rien.
  *
  * CE QUE CE SCRIPT MESURE. La hauteur de document de la vitrine, aux deux
  * largeurs de référence et dans LES DEUX LANGUES — parce que l'anglais y est
