@@ -23,6 +23,11 @@
  * porte ne garde de cette façon, à DEUX largeurs : 360, l'appareil de
  * référence, et 1280, le poste de bureau. Quarante-quatre points.
  *
+ * ET CE QUE LE CORPS PEINT, au même instant, sur les mêmes points : un document
+ * qui se déroule plus loin que son corps est du défilement sur du vide. Voir
+ * plus bas — c'est cette seconde mesure qui a trouvé un défaut que la première
+ * ne pouvait qu'entériner.
+ *
  * LA COQUILLE EST DEDANS, ET C'EST VOULU. Ce que `plafond-coquille` garde est
  * le premier terme d'une somme ; celle-ci garde la somme. Les deux se
  * recoupent : une coquille stable sous un document qui grossit désigne le
@@ -93,11 +98,16 @@
  * Cette porte naît VERTE — ses plafonds sont ses propres mesures. Une garde
  * née verte ne vaut rien tant qu'on ne l'a pas vue refuser, donc :
  *
- * 1. +160 px de rembourrage sur la coquille applicative : 32 plaintes sur les
- *    34 points de démonstration. Les deux qui restent sont `/demo/portail`,
- *    aux deux largeurs — et ce n'est pas un trou de la porte, c'est un fait de
- *    cet écran-là : sa hauteur de document n'est pas fixée par la boîte de
- *    `<main>`. Voir la section suivante.
+ * 1. +160 px de rembourrage sur la coquille applicative : 33 plaintes sur les
+ *    34 points de démonstration. Le seul muet est `/demo/signaler@1280`, dont
+ *    le contenu reste sous la fenêtre même grossi de 160 px — c'est le plancher
+ *    décrit plus haut, et il fait exactement ce qui est écrit de lui.
+ *
+ *    LA MÊME MUTATION EN RENDAIT 32 AVANT LE CORRECTIF DU PORTAIL : ses deux
+ *    points ne bougeaient pas d'un pixel, parce que sa hauteur de document
+ *    n'était pas fixée par la boîte de `<main>` mais par un élément qui s'en
+ *    échappait. Ce n'était pas un trou de la porte ; c'était le défaut que la
+ *    section suivante raconte.
  * 2. L'attente de la région occupée retirée : 26 plaintes de MOU, entre 1 686
  *    et 2 400 px. La porte refuse donc de mesurer un squelette, et c'est la
  *    règle du mou qui l'attrape — le sens qu'on ajoute d'habitude « au cas où »
@@ -109,21 +119,31 @@
  * sur ces 26 points : pendant les 900 ms de retenue, il ne bouge pas du tout.
  * « Posé » et « fini » sont deux choses, et il faut les deux attentes.
  *
- * ═══ CE QUE CE PLAFOND ENTÉRINE SANS LE BÉNIR : /demo/portail ═══
+ * ═══ LA SECONDE MESURE : ON NE DÉROULE PAS PLUS QU'ON NE PEINT ═══
  *
- * Mesuré le 2026-09-09, à 360 px : le CORPS de cette page fait 1 163 px, et le
- * document se déroule jusqu'à 3 361. Deux mille cent quatre-vingt-dix-huit
- * pixels de défilement sur du vide, sous la dernière ligne visible. À 1280 px :
- * 1 029 px de corps pour 1 504 px de document, soit 475 px de vide.
+ * Cette porte relève DEUX nombres par point : ce que le document déroule, et ce
+ * que le corps peint. Sur un écran sain ils sont égaux au pixel — le corps
+ * s'étire avec son contenu, la racine se déroule d'autant. Un écart ne peut
+ * donc venir que d'un contenu qui échappe à ce qui devait le borner.
  *
- * L'écran borne pourtant son panneau à 70 % de la fenêtre — 630 px de boîte
- * pour 3 099 px de contenu, qui défile à l'intérieur, comme le ferait un vrai
- * navigateur. PAR QUEL CHEMIN ce contenu borné rend malgré tout la RACINE
- * défilante, je ne l'ai pas établi : ni la marge ni le rembourrage de `<main>`
- * ne déplacent le nombre, et les trois mutations essayées l'ont laissé intact.
+ * CETTE GARDE EST NÉE ROUGE, le 2026-09-09, sur deux points et deux seulement :
+ * `/demo/portail` peignait 1 163 px et se déroulait jusqu'à 3 361 à 360 px de
+ * large — 2 198 px de fond vide sous la dernière ligne —, et 1 029 pour 1 504 à
+ * 1280 px. Les quarante-deux autres points étaient sains.
  *
- * Le plafond inscrit ici est donc la mesure du défaut, pas son approbation. Il
- * empêche seulement qu'il grandisse.
+ * LA CAUSE, trouvée en cherchant les éléments positionnés sous le corps : la
+ * description accessible de `MiniBarChart` est un `sr-only`, donc un élément
+ * absolu, et aucun ancêtre positionné ne se trouvait entre lui et `<main>`. Le
+ * panneau du portail se borne pourtant à 70 % de la fenêtre : son découpage ne
+ * s'appliquait pas à un élément dont le bloc conteneur était ailleurs, et
+ * l'élément tirait la racine jusqu'à sa position statique, deux graphes plus
+ * bas. Le correctif tient en un mot — la figure porte son propre bloc conteneur
+ * — et les deux machines rendent ensuite le MÊME nombre, à la même baisse près.
+ *
+ * ELLE GARDE UNE CLASSE, PAS UN CAS. Elle ne connaît pas `/demo/portail` : elle
+ * connaît la règle. N'importe quel écran qui laisserait un descendant échapper
+ * au bornage de son conteneur défilant rougira ici, y compris ceux qui
+ * n'existent pas encore.
  *
  * ═══ DEUX COLONNES, ET CHACUNE APPARTIENT À UNE MACHINE ═══
  *
@@ -231,7 +251,7 @@ const PLAFONDS = [
   { adresse: '/demo/decisions', largeur: 360, plafond: 1591, plafondLarge: 1569 },
   { adresse: '/demo/prise-en-main', largeur: 360, plafond: 1633, plafondLarge: 1611 },
   { adresse: '/demo/systeme', largeur: 360, plafond: 2078, plafondLarge: 2078 },
-  { adresse: '/demo/portail', largeur: 360, plafond: 3361, plafondLarge: 3361 },
+  { adresse: '/demo/portail', largeur: 360, plafond: 1163, plafondLarge: 1163 },
   { adresse: '/adresse-qui-n-existe-pas', largeur: 360, plafond: 900, plafondLarge: 900 },
   /* 1280 px — 22 écrans */
   { adresse: '/inscription', largeur: 1280, plafond: 900, plafondLarge: 900 },
@@ -254,7 +274,7 @@ const PLAFONDS = [
   { adresse: '/demo/decisions', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo/prise-en-main', largeur: 1280, plafond: 1358, plafondLarge: 1358 },
   { adresse: '/demo/systeme', largeur: 1280, plafond: 1199, plafondLarge: 1220 },
-  { adresse: '/demo/portail', largeur: 1280, plafond: 1504, plafondLarge: 1504 },
+  { adresse: '/demo/portail', largeur: 1280, plafond: 1029, plafondLarge: 1029 },
   { adresse: '/adresse-qui-n-existe-pas', largeur: 1280, plafond: 900, plafondLarge: 900 },
 ]
 
@@ -399,6 +419,8 @@ let horsPortee = 0
 const arbresEnMouvement = []
 /** Les écrans qui n'ont JAMAIS annoncé d'attente — voir leur garde plus bas. */
 const sansAttenteAnnoncee = []
+/** Les écrans qui se déroulent plus loin qu'ils ne peignent — voir leur garde. */
+const fantomes = []
 
 try {
   const navigateur = await chromium.launch()
@@ -475,7 +497,23 @@ try {
       */
       if (!(await page.evaluate(() => window.__attenteVue === true))) sansAttenteAnnoncee.push(nom)
 
-      const hDoc = await page.evaluate(() => document.documentElement.scrollHeight)
+      /*
+        DEUX NOMBRES ET NON UN : CE QUI SE DÉROULE, ET CE QUI EST PEINT.
+
+        Le second n'était pas mesuré, et son absence a laissé passer un défaut
+        que la porte AVAIT SOUS LES YEUX : `/demo/portail` peint 1 163 px et se
+        déroule jusqu'à 3 361. Deux mille cent quatre-vingt-dix-huit pixels de
+        fond vide sous la dernière ligne, à 360 px de large, mesurés le
+        2026-09-09 — le plafond les entérinait sans pouvoir les nommer.
+
+        Sur un écran sain les deux nombres sont ÉGAUX au pixel : le corps
+        s'étire avec son contenu, et la racine se déroule d'autant. L'écart ne
+        peut donc venir que d'un contenu qui échappe à ce qui devait le borner.
+      */
+      const { hDoc, corps } = await page.evaluate(() => ({
+        hDoc: document.documentElement.scrollHeight,
+        corps: Math.round(document.body.getBoundingClientRect().height),
+      }))
       const p = PLAFONDS.find((x) => x.adresse === adresse && x.largeur === largeur)
       if (!p) {
         plaintes.push(
@@ -486,6 +524,17 @@ try {
         continue
       }
       inspectes++
+      /*
+        LE DÉFILEMENT FANTÔME — une garde de CLASSE, pas un cas particulier.
+
+        Elle ne connaît pas `/demo/portail` : elle connaît la règle « on ne
+        déroule pas plus qu'on ne peint ». N'importe quel écran qui laisserait
+        un descendant échapper au bornage de son conteneur défilant rougirait
+        ici, y compris ceux qui n'existent pas encore.
+      */
+      if (corps > 0 && hDoc > corps) {
+        fantomes.push({ nom, hDoc, corps })
+      }
       /*
         EN MODE RELEVÉ, ON NE COMPARE À RIEN — et surtout pas au plafond de la
         colonne qu'on est justement en train de mesurer. `plafondDe` LÈVE quand
@@ -533,6 +582,17 @@ if (horsPortee !== HORS_PORTEE_ATTENDUS) {
       "   La liste des adresses hors portée est périmée dans un sens ou dans l'autre.",
   )
 }
+for (const { nom, hDoc, corps } of fantomes) {
+  plaintes.push(
+    `${nom} : ${hDoc - corps} px de DÉFILEMENT FANTÔME — le document se déroule jusqu'à\n` +
+      `   ${hDoc} px alors que le corps n'en peint que ${corps}. Sous la dernière ligne, ce\n` +
+      "   sont autant de pixels de fond vide qu'on peut faire défiler pour rien.\n" +
+      '   Cherchez un descendant qui échappe au bornage de son conteneur défilant : un\n' +
+      '   élément absolu dont aucun ancêtre positionné ne borne le bloc conteneur sort du\n' +
+      "   découpage et tire la racine jusqu'à sa position statique.",
+  )
+}
+
 const muetsNonDeclares = sansAttenteAnnoncee.filter(
   (nom) => !SANS_ATTENTE_DECLARES.has(nom.split('@')[0]),
 )

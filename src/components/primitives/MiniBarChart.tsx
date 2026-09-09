@@ -93,8 +93,27 @@ export function MiniBarChart({
   // doit ni écraser ni gonfler les autres.
   const max = Math.max(...bars.map((b) => b.value ?? 0), 1) * 1.04
 
+  /*
+    `relative` N'EST PAS DÉCORATIF : IL EMPÊCHE LA TABLE CACHÉE DE S'ÉVADER.
+
+    La description accessible de ce graphe est un `sr-only`, donc un élément
+    ABSOLU. Sans ancêtre positionné, son bloc conteneur est celui de la page :
+    le découpage d'un conteneur défilant intermédiaire ne s'applique pas à
+    lui, et il tire la hauteur défilante de la RACINE jusqu'à sa position
+    statique — là où le graphe se trouve dans le contenu, pas là où le
+    conteneur s'arrête.
+
+    MESURÉ le 2026-09-09 sur `/demo/portail`, dont le panneau se borne à 70 %
+    de la fenêtre : le corps peignait 1 163 px et le document se déroulait
+    jusqu'à 3 361. Deux mille cent quatre-vingt-dix-huit pixels de fond vide,
+    pour deux graphes de consommation cachés dans un panneau.
+
+    Cette figure porte donc son propre bloc conteneur. Rien ne bouge à l'œil —
+    le `sr-only` n'a ni décalage ni pourcentage —, et il redevient découpable
+    par ce qui le contient. `plafond-hauteurs.mjs` garde la règle.
+  */
   return (
-    <figure className="m-0" aria-labelledby={titleId}>
+    <figure className="relative m-0" aria-labelledby={titleId}>
       {/*
         LE GRAPHE DÉFILE PLUTÔT QUE DE RENDRE UN MOIS INATTEIGNABLE.
 
