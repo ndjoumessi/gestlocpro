@@ -42,11 +42,14 @@
  *   11-13. les gabarits — un jeton, une accolade qui n'en est pas un, la racine
  *   14-15. le déroulement — un absolu qui dépasse, une page ordinaire
  *   16-19. les cibles au doigt — 20 px, 60 px, une étiquette qui sauve, un sr-only
+ *   20-27. et ses branches restées muettes — le périmètre d'une modale, le masqué,
+ *          l'`inert`, la boîte nulle, `data-cible`, le rayon, le pli, le retour
+ *          du défilement à zéro
  *
- * LES DIX-NEUF NAISSENT ROUGES : chacun a été confronté à une mutation de la
- * sonde qu'il éprouve, et chacun a désigné SA cible — huit le 2026-09-09, onze
- * le 2026-09-10. Un témoin vert sur une sonde juste ne prouve rien ; il faut
- * l'avoir vu refuser.
+ * LES VINGT-CINQ TÉMOINS DE BRANCHE NAISSENT ROUGES : chacun a été confronté à
+ * une mutation de la sonde qu'il éprouve, et chacun a désigné SA cible — huit le
+ * 2026-09-09, dix-neuf le 2026-09-10. Un témoin vert sur une sonde juste ne
+ * prouve rien ; il faut l'avoir vu refuser.
  *
  * DEUX D'ENTRE EUX N'ONT PAS PU NAÎTRE ROUGES SOUS UNE MUTATION D'UNE LIGNE, et
  * les deux fois c'était un résultat, pas un échec. Ils sont DÉCLARÉS
@@ -103,7 +106,7 @@ let controles = 0
   LE COMPTE EST ÉCRIT, JAMAIS DÉRIVÉ. Une boucle vide se déclarerait verte, et
   c'est le piège que ce dépôt a trouvé quatre fois — voir `plafond-coquille`.
 */
-const TEMOINS_ATTENDUS = 19
+const TEMOINS_ATTENDUS = 27
 /*
   DEUX CONTRÔLES SUR DIX-NEUF, et ce nombre est écrit plutôt qu'imprimé. Un
   témoin qu'on rangerait en contrôle « parce qu'il ne rougit pas » deviendrait
@@ -112,7 +115,7 @@ const TEMOINS_ATTENDUS = 19
 const CONTROLES_ATTENDUS = 2
 
 /** Un cas : une page, une sonde, une attente écrite en toutes lettres. */
-async function temoin(page, { nom, nature, page: html, sonde, argument, attendu }) {
+async function temoin(page, { nom, nature, page: html, sonde, argument, apres, attendu }) {
   /*
     LA NATURE EST EXIGÉE, et ce n'est pas une décoration.
 
@@ -136,8 +139,12 @@ async function temoin(page, { nom, nature, page: html, sonde, argument, attendu 
     () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
   )
   const vu = await page.evaluate(sonde, argument)
+  /* CE QUE LA SONDE LAISSE DERRIÈRE ELLE, et qui n'est pas dans ce qu'elle rend :
+     un défilement déplacé, par exemple. Sans cette seconde lecture, un effet de
+     bord ne peut être éprouvé par aucun témoin. */
+  const trace = apres ? await page.evaluate(apres) : undefined
   temoinsJoues += 1
-  const verdict = attendu(vu)
+  const verdict = attendu(vu, trace)
   if (verdict !== true) {
     plaintes.push(`${nom}\n   ${verdict}\n   la sonde a rendu : ${JSON.stringify(vu)}`)
   }
@@ -464,6 +471,131 @@ try {
         ? true
         : `attendu UNE seule cible sondée — la visible ; ${vu.sondees} sondée(s), ` +
           `${vu.defauts.length} défaut(s).`,
+  })
+
+  /* ══════════ LES CIBLES : LES BRANCHES QUE `a194d27` LAISSAIT MUETTES ══════════ */
+
+  await temoin(page, {
+    nom: '20. une MODALE ouverte borne le balayage à elle-même',
+    nature: 'branche',
+    page:
+      '<button style="width:20px;height:20px;padding:0;border:0">fond</button>' +
+      '<div role="dialog" aria-modal="true">' +
+      '<button style="width:60px;height:60px">dans la modale</button></div>',
+    sonde: MESURER_CIBLES,
+    argument: CONFIG_CIBLES,
+    attendu: (vu) =>
+      vu.sondees === 1 && vu.defauts.length === 0
+        ? true
+        : `attendu la SEULE commande de la modale ; ${vu.sondees} sondée(s), ` +
+          `${vu.defauts.length} défaut(s). Derrière une modale, « cette cible est-elle ` +
+          "atteignable au doigt » n'a pas de sens : la couche la recouvre exprès.",
+  })
+
+  await temoin(page, {
+    nom: '21. une commande MASQUÉE n’est pas sondée',
+    nature: 'branche',
+    page:
+      '<button style="visibility:hidden;width:20px;height:20px;padding:0;border:0">v</button>' +
+      '<button style="display:none">d</button>',
+    sonde: MESURER_CIBLES,
+    argument: CONFIG_CIBLES,
+    attendu: (vu) =>
+      vu.sondees === 0 && vu.defauts.length === 0
+        ? true
+        : `attendu AUCUNE sondée : ce qu'on ne voit pas ne se touche pas. ` +
+          `${vu.sondees} sondée(s).`,
+  })
+
+  await temoin(page, {
+    nom: '22. une commande dans un sous-arbre `inert` n’est pas sondée',
+    nature: 'branche',
+    page: '<div inert><button style="width:20px;height:20px;padding:0;border:0">i</button></div>',
+    sonde: MESURER_CIBLES,
+    argument: CONFIG_CIBLES,
+    attendu: (vu) =>
+      vu.sondees === 0
+        ? true
+        : "attendu AUCUNE sondée : `inert` retire l'élément de toute interaction. " +
+          `${vu.sondees} sondée(s).`,
+  })
+
+  await temoin(page, {
+    nom: '23. une boîte NULLE n’est pas sondée — il n’y a rien à toucher',
+    nature: 'branche',
+    page: '<a href="#" style="display:block;width:0;height:0;overflow:hidden">rien</a>',
+    sonde: MESURER_CIBLES,
+    argument: CONFIG_CIBLES,
+    attendu: (vu) =>
+      vu.sondees === 0 && vu.defauts.length === 0
+        ? true
+        : `attendu AUCUNE sondée ; ${vu.sondees} sondée(s), ${vu.defauts.length} défaut(s). ` +
+          "Sonder un point dans une boîte sans surface rend « 0x0 » et accuse un innocent.",
+  })
+
+  await temoin(page, {
+    nom: '24. une dispense déclarée au site est RELEVÉE, pas avalée',
+    nature: 'branche',
+    page:
+      '<button data-cible="la rangée entière est cliquable" ' +
+      'style="width:60px;height:60px">A1</button>',
+    sonde: MESURER_CIBLES,
+    argument: CONFIG_CIBLES,
+    attendu: (vu) =>
+      vu.raisonsVues.length === 1 && vu.raisonsVues[0] === 'la rangée entière est cliquable'
+        ? true
+        : `attendu la dispense rendue telle quelle ; ${JSON.stringify(vu.raisonsVues)}. ` +
+          'Une dispense qui ne remonte pas est une dispense que personne ne relit.',
+  })
+
+  await temoin(page, {
+    nom: '25. la cible est mesurée AU-DELÀ de la boîte, jusqu’au rayon',
+    nature: 'branche',
+    page:
+      '<style>#etendu{position:relative}#etendu::after{content:"";position:absolute;inset:-20px}</style>' +
+      '<div style="padding:30px">' +
+      '<button id="etendu" style="width:20px;height:20px;padding:0;border:0">A1</button></div>',
+    sonde: MESURER_CIBLES,
+    argument: CONFIG_CIBLES,
+    attendu: (vu) =>
+      vu.sondees === 1 && vu.defauts.length === 0
+        ? true
+        : "attendu AUCUN défaut : la boîte fait 20 px, mais un `::after` étendu porte la " +
+          `cible à 45. Rendu : ${JSON.stringify(vu.defauts[0] ?? null)}. « Une boîte n'est ` +
+          'pas une cible » — c’est le premier angle mort que cette sonde ait payé.',
+  })
+
+  await temoin(page, {
+    nom: '26. une commande SOUS LE PLI est vraiment sondée, pas rendue « 0x0 »',
+    nature: 'branche',
+    page:
+      '<div style="height:2000px"></div>' +
+      '<button style="width:20px;height:20px;padding:0;border:0">bas</button>',
+    sonde: MESURER_CIBLES,
+    argument: CONFIG_CIBLES,
+    attendu: (vu) =>
+      vu.defauts.length === 1 && vu.defauts[0].cible !== '0x0'
+        ? true
+        : `attendu un défaut MESURÉ, pas « 0x0 » : ${JSON.stringify(vu.defauts[0] ?? null)}. ` +
+          "Sans amener l'élément à l'écran, le point sondé tombe hors de la fenêtre et la " +
+          'sonde conclut « rien », ce qui accuse à tort et sans chiffre lisible.',
+  })
+
+  await temoin(page, {
+    nom: '27. le défilement est RENDU À ZÉRO après le balayage',
+    nature: 'branche',
+    page:
+      '<div style="height:2000px"></div>' +
+      '<button style="width:20px;height:20px;padding:0;border:0">bas</button>',
+    sonde: MESURER_CIBLES,
+    argument: CONFIG_CIBLES,
+    apres: () => ({ defilement: Math.round(window.scrollY) }),
+    attendu: (vu, trace) =>
+      trace.defilement === 0
+        ? true
+        : `attendu la page rendue en haut ; elle est à ${trace.defilement} px. La mesure ` +
+          "suivante hériterait d'une page à mi-hauteur — et l'en-tête collant y a déjà " +
+          'changé de fond.',
   })
 
   await contexte.close()
