@@ -110,7 +110,7 @@ let controles = 0
   LE COMPTE EST ÉCRIT, JAMAIS DÉRIVÉ. Une boucle vide se déclarerait verte, et
   c'est le piège que ce dépôt a trouvé quatre fois — voir `plafond-coquille`.
 */
-const TEMOINS_ATTENDUS = 30
+const TEMOINS_ATTENDUS = 32
 /*
   DEUX CONTRÔLES SUR DIX-NEUF, et ce nombre est écrit plutôt qu'imprimé. Un
   témoin qu'on rangerait en contrôle « parce qu'il ne rougit pas » deviendrait
@@ -723,6 +723,53 @@ try {
           "Créditer le champ de la surface du libellé déclarerait touchable d'un seul geste " +
           'une région que le doigt n’atteint pas.'
     },
+  })
+
+  await temoin(page, {
+    nom: '31. la RACINE borne aussi les clôtures — le fond n’est pas relu',
+    nature: 'branche',
+    page:
+      '<div style="overflow-y:auto;height:50px;width:200px">' +
+      '<div style="height:400px"></div>' +
+      '<span style="position:absolute;top:300px;left:0">fond</span></div>' +
+      '<div role="dialog" aria-modal="true">' +
+      '<div style="overflow-y:auto;height:50px;width:200px">' +
+      '<div style="height:400px"></div>' +
+      '<span style="position:absolute;top:300px;left:0">modale</span></div></div>',
+    sonde: RELEVER_LES_CLOTURES_PERMEABLES,
+    argument: '[role="dialog"]',
+    attendu: (vu) =>
+      vu.length === 1 && vu[0].evades[0].texte === 'modale'
+        ? true
+        : `attendu la SEULE clôture de la modale ; ${vu.length} rendue(s). Relire le fond ` +
+          "ferait rougir deux portes pour un même défaut, et nommerait une modale innocente.",
+  })
+
+  /*
+    UNE ICÔNE SVG N'EST PAS UNE ÉVADÉE, et il a fallu un dossier pour le voir.
+
+    `offsetParent` est défini sur `HTMLElement`, pas sur `SVGElement` : la
+    lecture rend `undefined`, et une sonde qui prend `undefined` pour « rien ne
+    le borne » dénonce TOUTE icône absolue. Trente-quatre plaintes le
+    2026-09-10, dont une bonne moitié pour la coche de `Choice` et le chevron
+    des champs, dont les conteneurs sont pourtant `relative`.
+  */
+  await temoin(page, {
+    nom: '32. une icône SVG absolue dans un conteneur POSITIONNÉ ne s’échappe pas',
+    nature: 'branche',
+    page:
+      '<div style="overflow-y:auto;height:50px;width:200px">' +
+      '<div style="height:400px"></div>' +
+      '<span style="position:relative;display:inline-block;width:20px;height:20px">' +
+      '<svg style="position:absolute" width="13" height="13"><rect width="13" height="13"/></svg>' +
+      '</span></div>',
+    sonde: RELEVER_LES_CLOTURES_PERMEABLES,
+    attendu: (vu) =>
+      vu.length === 0
+        ? true
+        : "attendu AUCUNE clôture perméable : le `<span>` positionné borne l'icône. " +
+          `Rendu : ${JSON.stringify(vu[0].evades)}. Lire \`offsetParent\` sur un ` +
+          '`<svg>` rend `undefined`, ce qui ressemble trait pour trait à « rien ne le borne ».',
   })
 
   await contexte.close()

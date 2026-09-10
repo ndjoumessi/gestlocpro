@@ -281,7 +281,25 @@ export function Modal({
             data-suite-au-dessus={suite.haut ? '' : undefined}
             data-suite-en-dessous={suite.bas ? '' : undefined}
             className={cn(
-              'min-h-0 flex-1 overflow-y-auto px-5 pt-5',
+              /*
+                `relative` BORNE CE QUE CE CORPS DÉCOUPE.
+
+                Il défile — c'est sa raison d'être, pour que le pied reste sous
+                les yeux — et il ne bornait pas ses descendants ABSOLUS : leur
+                bloc conteneur était la colonne juste au-dessus, hors de la
+                boîte qui découpe. Un `sr-only` posé dans un champ en sortait
+                donc, et allongeait la surface défilante de ce qui le borne.
+
+                MESURÉ le 2026-09-10 : trente plaintes sur neuf modales, les
+                mêmes `(obligatoire)` à chaque fois. C'est la MÊME construction
+                que le panneau du portail, par où 2 198 px de vide sont entrés
+                la veille — un corps borné qui n'établit pas de bloc conteneur.
+
+                Rien ne bouge à l'œil : un `sr-only` n'a ni décalage ni
+                pourcentage, et `position: relative` sans `z-index` ne crée
+                aucun contexte d'empilement. `modales.mjs` garde la règle.
+              */
+              'relative min-h-0 flex-1 overflow-y-auto px-5 pt-5',
               footer ? 'pb-5' : 'pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-5',
             )}
           >

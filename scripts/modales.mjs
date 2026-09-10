@@ -79,6 +79,7 @@ import {
   MESURER_GABARITS,
   PLANCHER_CIBLE,
   RAYON_SONDAGE,
+  RELEVER_LES_CLOTURES_PERMEABLES,
 } from './sondes-de-rendu.mjs'
 import { readFileSync } from 'node:fs'
 import { exigerUnPortLibre } from './port-libre.mjs'
@@ -828,6 +829,8 @@ let gabaritsInspectes = 0
 /* Ce que les deux audits de modale ont réellement examiné — leurs gardes. */
 let textesDeModaleAudites = 0
 let ciblesDeModaleSondees = 0
+/* Combien d'états ont été confrontés aux clôtures perméables — voir leur garde. */
+let cloturesDeModaleSondees = 0
 const releve = []
 let inspectees = 0
 
@@ -1193,6 +1196,53 @@ try {
         }
         await page.emulateMedia({ colorScheme: 'light' })
 
+        /**
+         * LES CLÔTURES PERMÉABLES, DANS LA BOÎTE OUVERTE.
+         *
+         * LA DERNIÈRE DETTE DE CETTE FAMILLE, écrite dans les trois lots qui
+         * l'ont précédée : « les MODALES restent hors de portée des deux
+         * portes ». `plafond-hauteurs` et `espace-connecte` tiennent la règle
+         * sur des pages ; aucune des deux n'ouvre une boîte de dialogue.
+         *
+         * ET LA FORME EST PRÉCISÉMENT CELLE DU DÉFAUT D'ORIGINE. Une modale
+         * borne son corps — `max-h-…` puis `overflow-y-auto` — pour que son
+         * pied reste sous les yeux : c'est la MÊME construction que le panneau
+         * du portail, par où 2 198 px de vide sont entrés le 2026-09-09. Il y
+         * manquait juste quelqu'un pour regarder.
+         *
+         * BORNÉE AU DIALOGUE, comme `MESURER_GABARITS` juste au-dessus et pour
+         * le même motif : lue sur `body`, elle rendrait les clôtures de la page
+         * derrière — que `plafond-hauteurs` tient déjà — et le refus nommerait
+         * une modale innocente.
+         *
+         * CE QU'ON N'APPLIQUE PAS ICI, ET POURQUOI : la règle du défilement
+         * fantôme. Elle compare la hauteur DÉROULÉE du document à celle du
+         * corps ; une modale est `fixed`, donc elle ne participe à aucun des
+         * deux nombres. Appliquée la boîte ouverte, elle mesurerait la page
+         * derrière — déjà mesurée, sans la modale, par `plafond-hauteurs`.
+         */
+        const clotures = await page.evaluate(
+          RELEVER_LES_CLOTURES_PERMEABLES,
+          '[role="dialog"],[role="alertdialog"]',
+        )
+        cloturesDeModaleSondees++
+        for (const c of clotures) {
+          plaintes.push(
+            `${nom} · ${largeur}px · ${langue} : une CLÔTURE PERMÉABLE dans la modale — ` +
+              `<${c.balise}> ${c.classes}\n` +
+              `   découpe ${c.decoupe} px sur ${c.axe}, et ${c.combien} descendant(s) absolu(s) ` +
+              'lui échappent :\n' +
+              c.evades
+                .map(
+                  (e) =>
+                    `      <${e.balise}> ${e.classes} ${e.taille}  « ${e.texte} »\n` +
+                    `         borné par ${e.borne}`,
+                )
+                .join('\n') +
+              '\n   `position: relative` suffit, et ne déplace rien à l’œil.',
+          )
+        }
+
         const cibles = await page.evaluate(MESURER_CIBLES, {
           plancher: PLANCHER_CIBLE,
           rayon: RAYON_SONDAGE,
@@ -1362,6 +1412,20 @@ if (ciblesDeModaleSondees < CIBLES_DE_MODALE_ATTENDUES) {
   )
 }
 
+/*
+  GARDE DU GARDE — la règle des clôtures a-t-elle vu TOUS les états ?
+
+  Le compte est ÉGAL, et adossé à `ATTENDUS`, que ce fichier tient déjà. La
+  règle ne rend une plainte que sur une modale malade : son silence ressemble
+  donc trait pour trait au silence d'une sonde qu'on aurait sautée.
+*/
+if (cloturesDeModaleSondees !== ATTENDUS) {
+  plaintes.push(
+    `clôtures des modales : ${cloturesDeModaleSondees} état(s) confronté(s) pour ` +
+      `${ATTENDUS} attendu(s). La sonde a été sautée quelque part.`,
+  )
+}
+
 if (gabaritsInspectes !== ATTENDUS) {
   plaintes.push(
     `la sonde des gabarits a lu ${gabaritsInspectes} modale(s) pour ${ATTENDUS} ouverture(s). ` +
@@ -1470,6 +1534,8 @@ console.log(
   `\n✓ modales : ${inspectees}/${ATTENDUS} états ouverts et mesurés sur ${MODALES.length} modales,\n` +
     `  ${textesDeModaleAudites} textes confrontés au seuil WCAG AA dans les boîtes, deux thèmes ;\n` +
     `  ${ciblesDeModaleSondees} cibles de modale sondées au doigt, plancher ${PLANCHER_CIBLE} px.\n` +
+    `  ${cloturesDeModaleSondees} état(s) confronté(s) aux clôtures perméables : une boîte qui borne\n` +
+    '  son corps ne doit pas laisser sortir ses absolus.\n' +
     (NON_OUVRABLES.length === 0
       ? '  et AUCUNE que la démonstration ne rende pas — la liste est vide et gardée vide.\n'
       : `  plus ${NON_OUVRABLES.length} que la démonstration ne rend pas : ${NON_OUVRABLES.join(', ')}.\n`) +

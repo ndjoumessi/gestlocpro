@@ -106,6 +106,26 @@ export const MESURER_DEROULEMENT = () => ({
  * Elle ne coûte rien tant que la porte est verte : elle n'est jamais exécutée.
  */
 export const RELEVER_LES_EVADES = () => {
+  /* LE BLOC CONTENEUR, REMONTÉ À LA MAIN — voir l'explication au-dessus de
+     `RELEVER_LES_CLOTURES_PERMEABLES`. Recopié plutôt que partagé : ces
+     fonctions sont sérialisées vers la page et ne peuvent fermer sur RIEN de
+     Node, comme l'en-tête de ce fichier le dit. */
+  const blocConteneurDe = (element) => {
+    for (let p = element.parentElement; p; p = p.parentElement) {
+      const st = getComputedStyle(p)
+      if (
+        st.position !== 'static' ||
+        st.transform !== 'none' ||
+        st.filter !== 'none' ||
+        st.perspective !== 'none' ||
+        /transform|filter|perspective/.test(st.willChange)
+      ) {
+        return p
+      }
+    }
+    return null
+  }
+
   const corps = Math.round(document.body.getBoundingClientRect().height)
   const evades = []
   for (const n of document.querySelectorAll('body *')) {
@@ -117,12 +137,16 @@ export const RELEVER_LES_EVADES = () => {
     if (style.position !== 'absolute' && style.position !== 'fixed') continue
     const bas = Math.round(n.getBoundingClientRect().bottom + window.scrollY)
     if (bas <= corps + 1) continue
-    const parent = n.offsetParent
+    const parent = blocConteneurDe(n)
     evades.push({
       bas,
       position: style.position,
       balise: n.tagName.toLowerCase(),
-      classes: (n.className || '').toString().slice(0, 50),
+      /* `getAttribute` ET NON `className` : sur un `<svg>`, `className` est un
+         `SVGAnimatedString`, qui s'imprime « [object SVGAnimatedString] ». Le
+         dossier devenait illisible exactement là où il fallait lire — mesuré le
+         2026-09-10, sur les icônes qui s'échappent du corps des modales. */
+      classes: (n.getAttribute('class') ?? '').slice(0, 50),
       texte: (n.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 40),
       borne: parent
         ? parent.tagName.toLowerCase() + '.' + (parent.className || '').toString().slice(0, 30)
@@ -188,9 +212,66 @@ export const RELEVER_LES_EVADES = () => {
  * son contenu n'est pas vue, et le sera le jour où une ligne de plus la fera
  * déborder. C'est la même dépendance que toutes les mesures de ce dépôt.
  */
-export const RELEVER_LES_CLOTURES_PERMEABLES = () => {
+/**
+ * LE BLOC CONTENEUR D'UN ÉLÉMENT ABSOLU — remonté à la main, et pas par
+ * `offsetParent`.
+ *
+ * ═══ DEUX RAISONS, LES DEUX MESURÉES ═══
+ *
+ * 1. `offsetParent` N'EXISTE PAS SUR UN `<svg>`. Il est défini sur
+ *    `HTMLElement`, pas sur `SVGElement` : la lecture rend `undefined`, et une
+ *    sonde qui prend `undefined` pour « rien ne le borne » dénonce TOUTE icône
+ *    absolue. Mesuré le 2026-09-10 : la coche de `Choice` et le chevron des
+ *    champs remontaient « borné par AUCUN — la page elle-même » alors que leurs
+ *    conteneurs sont `relative`. Trois primitives ont été soupçonnées à tort
+ *    avant que le dossier ne nomme ce qui borne.
+ *
+ * 2. UNE TRANSFORMATION FAIT AUSSI BLOC CONTENEUR, et `offsetParent` ne la voit
+ *    pas — il rend le premier ancêtre POSITIONNÉ. Ce dépôt a déjà payé cette
+ *    règle en plein : « `<main>` porte `animate-rise`, et une animation de
+ *    `transform` laisse au repos une matrice IDENTITÉ — qui est une
+ *    transformation. Un ancêtre transformé devient le bloc conteneur de ses
+ *    descendants `position: fixed`. » Le pied des modales était coupé.
+ *
+ * On remonte donc les ancêtres et l'on s'arrête au premier qui établit un bloc
+ * conteneur : positionné, transformé, filtré, en perspective, ou qui l'annonce
+ * par `will-change`.
+ *
+ * CE QU'ELLE NE COUVRE PAS : `contain`, `content-visibility` et les autres
+ * propriétés qui établissent aussi un bloc conteneur. Le dépôt n'en emploie
+ * aucune — vérifié le 2026-09-10 — et les ajouter sans un cas à mesurer serait
+ * écrire une règle qu'aucun rouge ne viendrait jamais éprouver.
+ */
+export const RELEVER_LES_CLOTURES_PERMEABLES = (racine) => {
+  /* LE BLOC CONTENEUR, REMONTÉ À LA MAIN — voir l'explication au-dessus de
+     `RELEVER_LES_CLOTURES_PERMEABLES`. Recopié plutôt que partagé : ces
+     fonctions sont sérialisées vers la page et ne peuvent fermer sur RIEN de
+     Node, comme l'en-tête de ce fichier le dit. */
+  const blocConteneurDe = (element) => {
+    for (let p = element.parentElement; p; p = p.parentElement) {
+      const st = getComputedStyle(p)
+      if (
+        st.position !== 'static' ||
+        st.transform !== 'none' ||
+        st.filter !== 'none' ||
+        st.perspective !== 'none' ||
+        /transform|filter|perspective/.test(st.willChange)
+      ) {
+        return p
+      }
+    }
+    return null
+  }
+
+  /* `racine` BORNE LA LECTURE, et n'existe que pour les modales — même geste et
+     même motif que `MESURER_GABARITS`. Lue sur `body` avec une boîte ouverte,
+     elle rendrait les clôtures de la PAGE derrière, que `plafond-hauteurs` tient
+     déjà : la même clôture rougirait sous deux portes, et le refus de `modales`
+     nommerait une modale innocente. */
+  const dans = racine ? document.querySelector(racine) : document.body
+  if (!dans) return []
   const permeables = []
-  for (const n of document.querySelectorAll('body *')) {
+  for (const n of dans.querySelectorAll('*')) {
     const style = getComputedStyle(n)
     /*
       POSITIONNÉE = ELLE BORNE DÉJÀ SES ABSOLUS : rien ne peut lui échapper par
@@ -226,23 +307,30 @@ export const RELEVER_LES_CLOTURES_PERMEABLES = () => {
         faux est le pire état d'une garde.
       */
       if (sd.position !== 'absolute') continue
-      /* `offsetParent` EST LE BLOC CONTENEUR RÉEL. S'il est dans la clôture, le
-         découpage s'applique et l'élément ne sort pas. */
-      const borne = d.offsetParent
+      /* SI SON BLOC CONTENEUR EST DANS LA CLÔTURE, le découpage s'applique et
+         l'élément ne sort pas. */
+      const borne = blocConteneurDe(d)
       if (borne && n.contains(borne)) continue
       const r = d.getBoundingClientRect()
       evades.push({
         balise: d.tagName.toLowerCase(),
-        classes: (d.className || '').toString().slice(0, 34),
-        texte: (d.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 34),
+        classes: (d.getAttribute('class') ?? '').slice(0, 46),
+        texte: (d.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 30),
         taille: `${Math.round(r.width)}×${Math.round(r.height)}`,
+        /* CE QUI LE BORNE VRAIMENT, et c'est l'information qui manquait pour
+           réparer : sans elle, on cherche l'évadé dans les composants au lieu de
+           le suivre jusqu'à l'ancêtre positionné qui l'a capté. Mesuré le
+           2026-09-10 : trois primitives soupçonnées à tort avant de l'ajouter. */
+        borne: borne
+          ? borne.tagName.toLowerCase() + '.' + (borne.getAttribute('class') ?? '').slice(0, 40)
+          : 'AUCUN — la page elle-même',
       })
     }
     if (evades.length === 0) continue
 
     permeables.push({
       balise: n.tagName.toLowerCase(),
-      classes: (n.className || '').toString().slice(0, 56),
+      classes: (n.getAttribute('class') ?? '').slice(0, 56),
       axe: coupeEnHauteur && coupeEnLargeur ? 'les deux axes' : coupeEnHauteur ? 'la hauteur' : 'la largeur',
       decoupe: coupeEnHauteur
         ? n.scrollHeight - Math.ceil(boite.height)
@@ -308,6 +396,26 @@ export const MESURER_RENDU_MINIMAL = () => ({
  * qui les justifie : une dispense se mérite sur la surface qu'elle couvre.
  */
 export const MESURER_DEFILEMENT_LATERAL = () => {
+  /* LE BLOC CONTENEUR, REMONTÉ À LA MAIN — voir l'explication au-dessus de
+     `RELEVER_LES_CLOTURES_PERMEABLES`. Recopié plutôt que partagé : ces
+     fonctions sont sérialisées vers la page et ne peuvent fermer sur RIEN de
+     Node, comme l'en-tête de ce fichier le dit. */
+  const blocConteneurDe = (element) => {
+    for (let p = element.parentElement; p; p = p.parentElement) {
+      const st = getComputedStyle(p)
+      if (
+        st.position !== 'static' ||
+        st.transform !== 'none' ||
+        st.filter !== 'none' ||
+        st.perspective !== 'none' ||
+        /transform|filter|perspective/.test(st.willChange)
+      ) {
+        return p
+      }
+    }
+    return null
+  }
+
   const avant = window.scrollX
   window.scrollTo(400, 0)
   const decalage = window.scrollX
@@ -332,7 +440,7 @@ export const MESURER_DEFILEMENT_LATERAL = () => {
     // écrivant la garde de cause de l'axe horizontal.
     const style = getComputedStyle(el)
     const horsDuFlux = style.position === 'absolute' || style.position === 'fixed'
-    const borne = horsDuFlux ? el.offsetParent : null
+    const borne = horsDuFlux ? blocConteneurDe(el) : null
     let ancetre = el.parentElement
     let contenu = false
     while (ancetre) {
