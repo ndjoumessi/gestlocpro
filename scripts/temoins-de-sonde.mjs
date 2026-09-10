@@ -47,10 +47,12 @@
  *          du défilement à zéro
  *   28-29. son SÉLECTEUR — les treize sortes qu'elle tient pour des commandes,
  *          et ce qui n'en est pas une
+ *   30.    et l'étiquette qui NE sauve PAS : celle qui cite son champ sans le
+ *          contenir occupe une autre région de l'écran
  *
- * LES VINGT-SEPT TÉMOINS DE BRANCHE NAISSENT ROUGES : chacun a été confronté à
+ * LES VINGT-HUIT TÉMOINS DE BRANCHE NAISSENT ROUGES : chacun a été confronté à
  * une mutation de la sonde qu'il éprouve, et chacun a désigné SA cible — huit le
- * 2026-09-09, vingt et un le 2026-09-10. Un témoin vert sur une sonde juste ne
+ * 2026-09-09, vingt-deux le 2026-09-10. Un témoin vert sur une sonde juste ne
  * prouve rien ; il faut l'avoir vu refuser.
  *
  * DEUX D'ENTRE EUX N'ONT PAS PU NAÎTRE ROUGES SOUS UNE MUTATION D'UNE LIGNE, et
@@ -108,7 +110,7 @@ let controles = 0
   LE COMPTE EST ÉCRIT, JAMAIS DÉRIVÉ. Une boucle vide se déclarerait verte, et
   c'est le piège que ce dépôt a trouvé quatre fois — voir `plafond-coquille`.
 */
-const TEMOINS_ATTENDUS = 29
+const TEMOINS_ATTENDUS = 30
 /*
   DEUX CONTRÔLES SUR DIX-NEUF, et ce nombre est écrit plutôt qu'imprimé. Un
   témoin qu'on rangerait en contrôle « parce qu'il ne rougit pas » deviendrait
@@ -684,6 +686,43 @@ try {
         : `attendu AUCUNE sondée ; ${vu.sondees} sondée(s) : ${vu.raisonsVues.join(', ')}. ` +
           "Un sélecteur trop large fait mesurer des textes comme s'ils étaient des " +
           'commandes, et le plancher de 44 px devient du bruit.',
+  })
+
+  /*
+    L'AUTRE SENS DE `etiquetteDe`, ET IL MANQUAIT DEPUIS QUATRE LOTS.
+
+    Le témoin 18 montre qu'une étiquette ENVELOPPANTE sauve son champ : la case
+    de 20 px est touchable par les 44 px de son libellé, et c'est vrai. Rien ne
+    montrait le REFUS symétrique, que les commentaires de la sonde défendent
+    pourtant longuement : « Une étiquette qui cite son champ par `for` sans le
+    contenir — la forme de `Field`, au-dessus des champs de saisie — occupe une
+    AUTRE région de l'écran. Créditer un champ de la taille d'un libellé posé
+    ailleurs déclarerait touchable une surface qui ne l'est pas d'un seul
+    geste. »
+
+    Une règle qui ne sait que pardonner ne garde rien. Celle-ci doit donc
+    REFUSER ici, et le refus doit porter la taille du champ seul.
+  */
+  await temoin(page, {
+    nom: '30. une étiquette qui cite son champ SANS le contenir ne le sauve pas',
+    nature: 'branche',
+    page:
+      '<label for="courriel" style="display:block;height:44px;width:200px">Adresse</label>' +
+      '<input id="courriel" type="text" style="width:20px;height:20px;padding:0;border:0">',
+    sonde: MESURER_CIBLES,
+    argument: CONFIG_CIBLES,
+    attendu: (vu) => {
+      if (vu.defauts.length !== 1) {
+        return `attendu UN défaut — le champ de 20 px n'est pas sauvé par un libellé posé ` +
+          `AILLEURS ; ${vu.defauts.length} rendu(s).`
+      }
+      const [l, h] = vu.defauts[0].cible.split('x').map(Number)
+      return l < CONFIG_CIBLES.plancher && h < CONFIG_CIBLES.plancher
+        ? true
+        : `attendu la taille du CHAMP SEUL, sous le plancher ; rendu ${vu.defauts[0].cible}. ` +
+          "Créditer le champ de la surface du libellé déclarerait touchable d'un seul geste " +
+          'une région que le doigt n’atteint pas.'
+    },
   })
 
   await contexte.close()
