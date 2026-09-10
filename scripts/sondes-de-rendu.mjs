@@ -106,19 +106,25 @@ export const MESURER_DEROULEMENT = () => ({
  * Elle ne coûte rien tant que la porte est verte : elle n'est jamais exécutée.
  */
 export const RELEVER_LES_EVADES = () => {
-  /* LE BLOC CONTENEUR, REMONTÉ À LA MAIN — voir l'explication au-dessus de
+  /* LE BLOC CONTENEUR — voir l'explication au-dessus de
      `RELEVER_LES_CLOTURES_PERMEABLES`. Recopié plutôt que partagé : ces
      fonctions sont sérialisées vers la page et ne peuvent fermer sur RIEN de
      Node, comme l'en-tête de ce fichier le dit. */
   const blocConteneurDe = (element) => {
+    /* SUR UN ÉLÉMENT HTML, LE NAVIGATEUR SAIT DÉJÀ. */
+    if (element.offsetParent !== undefined) return element.offsetParent
+    /* SUR UN `<svg>`, IL N'Y A PAS D'`offsetParent` : on remonte à la main. */
     for (let p = element.parentElement; p; p = p.parentElement) {
       const st = getComputedStyle(p)
       if (
         st.position !== 'static' ||
         st.transform !== 'none' ||
         st.filter !== 'none' ||
+        st.backdropFilter !== 'none' ||
         st.perspective !== 'none' ||
-        /transform|filter|perspective/.test(st.willChange)
+        /transform|filter|perspective/.test(st.willChange) ||
+        /layout|paint|strict|content/.test(st.contain) ||
+        (st.contentVisibility && st.contentVisibility !== 'visible')
       ) {
         return p
       }
@@ -213,49 +219,62 @@ export const RELEVER_LES_EVADES = () => {
  * déborder. C'est la même dépendance que toutes les mesures de ce dépôt.
  */
 /**
- * LE BLOC CONTENEUR D'UN ÉLÉMENT ABSOLU — remonté à la main, et pas par
- * `offsetParent`.
+ * LE BLOC CONTENEUR D'UN ÉLÉMENT ABSOLU — `offsetParent` d'abord, la marche
+ * ensuite.
  *
- * ═══ DEUX RAISONS, LES DEUX MESURÉES ═══
+ * ═══ CE QUE LA PREMIÈRE RÉDACTION AFFIRMAIT, ET QUI EST FAUX ═══
  *
- * 1. `offsetParent` N'EXISTE PAS SUR UN `<svg>`. Il est défini sur
- *    `HTMLElement`, pas sur `SVGElement` : la lecture rend `undefined`, et une
- *    sonde qui prend `undefined` pour « rien ne le borne » dénonce TOUTE icône
- *    absolue. Mesuré le 2026-09-10 : la coche de `Choice` et le chevron des
- *    champs remontaient « borné par AUCUN — la page elle-même » alors que leurs
- *    conteneurs sont `relative`. Trois primitives ont été soupçonnées à tort
- *    avant que le dossier ne nomme ce qui borne.
+ * Elle disait : « `offsetParent` rend le premier ancêtre POSITIONNÉ ; une
+ * transformation en établit un aussi, et il ne la voit pas. » MESURÉ le
+ * 2026-09-10, quinze cas dans Chromium : `offsetParent` rend bien le conteneur
+ * sur `transform`, `filter`, `backdrop-filter`, `perspective`,
+ * `will-change: transform`, `contain: layout|paint|strict|content` et
+ * `content-visibility: auto|hidden`. Il ne rate RIEN de ce que la marche
+ * cherchait — et la marche, elle, ratait `contain` et `content-visibility`.
  *
- * 2. UNE TRANSFORMATION FAIT AUSSI BLOC CONTENEUR, et `offsetParent` ne la voit
- *    pas — il rend le premier ancêtre POSITIONNÉ. Ce dépôt a déjà payé cette
- *    règle en plein : « `<main>` porte `animate-rise`, et une animation de
- *    `transform` laisse au repos une matrice IDENTITÉ — qui est une
- *    transformation. Un ancêtre transformé devient le bloc conteneur de ses
- *    descendants `position: fixed`. » Le pied des modales était coupé.
+ * Une aide écrite pour corriger l'API était donc moins juste qu'elle. On lit
+ * l'API quand elle existe, et l'on ne remonte à la main que là où elle n'existe
+ * pas.
  *
- * On remonte donc les ancêtres et l'on s'arrête au premier qui établit un bloc
- * conteneur : positionné, transformé, filtré, en perspective, ou qui l'annonce
- * par `will-change`.
+ * ═══ LA SEULE RAISON QUI TIENT : `<svg>` ═══
  *
- * CE QU'ELLE NE COUVRE PAS : `contain`, `content-visibility` et les autres
- * propriétés qui établissent aussi un bloc conteneur. Le dépôt n'en emploie
- * aucune — vérifié le 2026-09-10 — et les ajouter sans un cas à mesurer serait
- * écrire une règle qu'aucun rouge ne viendrait jamais éprouver.
+ * `offsetParent` est défini sur `HTMLElement`, pas sur `SVGElement` : la lecture
+ * rend `undefined`, et une sonde qui prend `undefined` pour « rien ne le borne »
+ * dénonce TOUTE icône absolue. Mesuré le 2026-09-10 : la coche de `Choice` et le
+ * chevron des champs remontaient « borné par AUCUN — la page elle-même » alors
+ * que leurs conteneurs sont `relative`. Trois primitives ont été soupçonnées à
+ * tort avant que le dossier ne nomme ce qui borne.
+ *
+ * La marche couvre donc, pour ce seul cas, tout ce que la mesure a relevé.
+ *
+ * ═══ CE QUI NE BORNE PAS, ET C'EST MESURÉ AUSSI ═══
+ *
+ * `container-type: inline-size` et `container-type: size` n'établissent AUCUN
+ * bloc conteneur dans Chromium : l'enfant absolu se cale sur la page. Ce dépôt
+ * en emploie — `@container` dans le tableau de bord du locataire —, donc les
+ * ajouter par symétrie aurait fabriqué de vraies fausses plaintes. Le témoin 36
+ * tient cette ligne dans l'autre sens.
  */
 export const RELEVER_LES_CLOTURES_PERMEABLES = (racine) => {
-  /* LE BLOC CONTENEUR, REMONTÉ À LA MAIN — voir l'explication au-dessus de
+  /* LE BLOC CONTENEUR — voir l'explication au-dessus de
      `RELEVER_LES_CLOTURES_PERMEABLES`. Recopié plutôt que partagé : ces
      fonctions sont sérialisées vers la page et ne peuvent fermer sur RIEN de
      Node, comme l'en-tête de ce fichier le dit. */
   const blocConteneurDe = (element) => {
+    /* SUR UN ÉLÉMENT HTML, LE NAVIGATEUR SAIT DÉJÀ. */
+    if (element.offsetParent !== undefined) return element.offsetParent
+    /* SUR UN `<svg>`, IL N'Y A PAS D'`offsetParent` : on remonte à la main. */
     for (let p = element.parentElement; p; p = p.parentElement) {
       const st = getComputedStyle(p)
       if (
         st.position !== 'static' ||
         st.transform !== 'none' ||
         st.filter !== 'none' ||
+        st.backdropFilter !== 'none' ||
         st.perspective !== 'none' ||
-        /transform|filter|perspective/.test(st.willChange)
+        /transform|filter|perspective/.test(st.willChange) ||
+        /layout|paint|strict|content/.test(st.contain) ||
+        (st.contentVisibility && st.contentVisibility !== 'visible')
       ) {
         return p
       }
@@ -396,19 +415,25 @@ export const MESURER_RENDU_MINIMAL = () => ({
  * qui les justifie : une dispense se mérite sur la surface qu'elle couvre.
  */
 export const MESURER_DEFILEMENT_LATERAL = () => {
-  /* LE BLOC CONTENEUR, REMONTÉ À LA MAIN — voir l'explication au-dessus de
+  /* LE BLOC CONTENEUR — voir l'explication au-dessus de
      `RELEVER_LES_CLOTURES_PERMEABLES`. Recopié plutôt que partagé : ces
      fonctions sont sérialisées vers la page et ne peuvent fermer sur RIEN de
      Node, comme l'en-tête de ce fichier le dit. */
   const blocConteneurDe = (element) => {
+    /* SUR UN ÉLÉMENT HTML, LE NAVIGATEUR SAIT DÉJÀ. */
+    if (element.offsetParent !== undefined) return element.offsetParent
+    /* SUR UN `<svg>`, IL N'Y A PAS D'`offsetParent` : on remonte à la main. */
     for (let p = element.parentElement; p; p = p.parentElement) {
       const st = getComputedStyle(p)
       if (
         st.position !== 'static' ||
         st.transform !== 'none' ||
         st.filter !== 'none' ||
+        st.backdropFilter !== 'none' ||
         st.perspective !== 'none' ||
-        /transform|filter|perspective/.test(st.willChange)
+        /transform|filter|perspective/.test(st.willChange) ||
+        /layout|paint|strict|content/.test(st.contain) ||
+        (st.contentVisibility && st.contentVisibility !== 'visible')
       ) {
         return p
       }

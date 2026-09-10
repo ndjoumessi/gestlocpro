@@ -110,7 +110,7 @@ let controles = 0
   LE COMPTE EST ÉCRIT, JAMAIS DÉRIVÉ. Une boucle vide se déclarerait verte, et
   c'est le piège que ce dépôt a trouvé quatre fois — voir `plafond-coquille`.
 */
-const TEMOINS_ATTENDUS = 32
+const TEMOINS_ATTENDUS = 36
 /*
   DEUX CONTRÔLES SUR DIX-NEUF, et ce nombre est écrit plutôt qu'imprimé. Un
   témoin qu'on rangerait en contrôle « parce qu'il ne rougit pas » deviendrait
@@ -770,6 +770,74 @@ try {
         : "attendu AUCUNE clôture perméable : le `<span>` positionné borne l'icône. " +
           `Rendu : ${JSON.stringify(vu[0].evades)}. Lire \`offsetParent\` sur un ` +
           '`<svg>` rend `undefined`, ce qui ressemble trait pour trait à « rien ne le borne ».',
+  })
+
+  /*
+    LES PROPRIÉTÉS QUI BORNENT SANS ÊTRE `position` — et celle qui n'y arrive pas.
+
+    Quinze cas mesurés dans Chromium le 2026-09-10, un enfant absolu posé à
+    `top:0;left:0` : on regarde s'il se cale sur son conteneur ou sur la page.
+    `contain` et `content-visibility` BORNENT ; `container-type` non.
+
+    Les trois premiers naissent rouges sur la marche à la main, qui les
+    ignorait ; le quatrième naîtrait rouge sur toute rédaction qui ajouterait
+    `container-type` par symétrie — et ce dépôt en emploie, dans le tableau de
+    bord du locataire.
+  */
+  await temoin(page, {
+    nom: '33. `contain: layout` borne ses absolus — ce n’est pas une évasion',
+    nature: 'branche',
+    page: '<div style="overflow-y:auto;height:50px;width:200px">' +
+      '<div style="height:400px"></div>' +
+      '<div style="contain:layout"><span style=\"position:absolute;top:0;left:0\">a</span></div></div>',
+    sonde: RELEVER_LES_CLOTURES_PERMEABLES,
+    attendu: (vu) =>
+      vu.length === 0
+        ? true
+        : 'attendu AUCUNE : `contain: layout` établit un bloc conteneur — mesuré. ' +
+          `Rendu : ${JSON.stringify(vu[0].evades)}.`,
+  })
+
+  await temoin(page, {
+    nom: '34. `content-visibility: auto` borne aussi',
+    nature: 'branche',
+    page: '<div style="overflow-y:auto;height:50px;width:200px">' +
+      '<div style="height:400px"></div>' +
+      '<div style="content-visibility:auto"><span style=\"position:absolute;top:0;left:0\">a</span></div></div>',
+    sonde: RELEVER_LES_CLOTURES_PERMEABLES,
+    attendu: (vu) =>
+      vu.length === 0
+        ? true
+        : 'attendu AUCUNE : `content-visibility` implique la containment de mise en page.',
+  })
+
+  await temoin(page, {
+    nom: '35. une icône SVG sous `contain: layout` est bornée elle aussi',
+    nature: 'branche',
+    page: '<div style="overflow-y:auto;height:50px;width:200px">' +
+      '<div style="height:400px"></div>' +
+      '<div style="contain:layout"><svg style=\"position:absolute;top:0;left:0\" width=\"13\" height=\"13\"><rect width=\"13\" height=\"13\"/></svg></div></div>',
+    sonde: RELEVER_LES_CLOTURES_PERMEABLES,
+    attendu: (vu) =>
+      vu.length === 0
+        ? true
+        : "attendu AUCUNE : c'est la marche à la main qui répond ici — un `<svg>` n'a pas " +
+          "d'`offsetParent` — et elle doit connaître `contain` comme le navigateur.",
+  })
+
+  await temoin(page, {
+    nom: '36. `container-type` ne borne PAS — et le produit en emploie',
+    nature: 'branche',
+    page: '<div style="overflow-y:auto;height:50px;width:200px">' +
+      '<div style="height:400px"></div>' +
+      '<div style="container-type:inline-size"><span style=\"position:absolute;top:0;left:0\">a</span></div></div>',
+    sonde: RELEVER_LES_CLOTURES_PERMEABLES,
+    attendu: (vu) =>
+      vu.length === 1
+        ? true
+        : "attendu UNE clôture perméable : mesuré, `container-type` n'établit aucun bloc " +
+          "conteneur dans Chromium — l'enfant se cale sur la page. L'ajouter par symétrie " +
+          'ferait taire la sonde sur le tableau de bord du locataire, qui porte `@container`.',
   })
 
   await contexte.close()
