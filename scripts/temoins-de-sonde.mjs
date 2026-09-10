@@ -45,10 +45,12 @@
  *   20-27. et ses branches restées muettes — le périmètre d'une modale, le masqué,
  *          l'`inert`, la boîte nulle, `data-cible`, le rayon, le pli, le retour
  *          du défilement à zéro
+ *   28-29. son SÉLECTEUR — les treize sortes qu'elle tient pour des commandes,
+ *          et ce qui n'en est pas une
  *
- * LES VINGT-CINQ TÉMOINS DE BRANCHE NAISSENT ROUGES : chacun a été confronté à
+ * LES VINGT-SEPT TÉMOINS DE BRANCHE NAISSENT ROUGES : chacun a été confronté à
  * une mutation de la sonde qu'il éprouve, et chacun a désigné SA cible — huit le
- * 2026-09-09, dix-neuf le 2026-09-10. Un témoin vert sur une sonde juste ne
+ * 2026-09-09, vingt et un le 2026-09-10. Un témoin vert sur une sonde juste ne
  * prouve rien ; il faut l'avoir vu refuser.
  *
  * DEUX D'ENTRE EUX N'ONT PAS PU NAÎTRE ROUGES SOUS UNE MUTATION D'UNE LIGNE, et
@@ -106,7 +108,7 @@ let controles = 0
   LE COMPTE EST ÉCRIT, JAMAIS DÉRIVÉ. Une boucle vide se déclarerait verte, et
   c'est le piège que ce dépôt a trouvé quatre fois — voir `plafond-coquille`.
 */
-const TEMOINS_ATTENDUS = 27
+const TEMOINS_ATTENDUS = 29
 /*
   DEUX CONTRÔLES SUR DIX-NEUF, et ce nombre est écrit plutôt qu'imprimé. Un
   témoin qu'on rangerait en contrôle « parce qu'il ne rougit pas » deviendrait
@@ -596,6 +598,92 @@ try {
         : `attendu la page rendue en haut ; elle est à ${trace.defilement} px. La mesure ` +
           "suivante hériterait d'une page à mi-hauteur — et l'en-tête collant y a déjà " +
           'changé de fond.',
+  })
+
+  /* ══════════ LE SÉLECTEUR : CE QUI EST UNE COMMANDE, ET CE QUI N'EN EST PAS ══════════ */
+
+  /*
+    TREIZE SORTES, ET LE REFUS DOIT NOMMER CELLE QUI MANQUE.
+
+    Un témoin qui ne compterait que le total dirait « douze au lieu de treize »
+    sans dire laquelle est tombée — et la liste est en dur dans la sonde, donc
+    c'est exactement l'accident à craindre : une ligne retirée d'un tableau qu'on
+    réordonne.
+
+    On se sert donc de `raisonsVues`, qui remonte le `data-cible` de chaque
+    élément SONDÉ : chaque sorte porte son propre marqueur, et le refus rend la
+    différence des deux ensembles.
+
+    CHAQUE ÉLÉMENT NE DOIT CORRESPONDRE QU'À UNE SEULE ENTRÉE du sélecteur —
+    `querySelectorAll` rend les éléments une fois, donc un `<div role="button"
+    tabindex="0">` survivrait au retrait de l'une des deux lignes et masquerait
+    la perte. D'où l'absence de `tabindex` sur les éléments à rôle, et de rôle
+    sur celui qui porte `tabindex`.
+  */
+  const SORTES = [
+    ['lien', '<a href="#" data-cible="lien" style="display:block;width:60px;height:60px">a</a>'],
+    ['bouton', '<button data-cible="bouton" style="width:60px;height:60px">b</button>'],
+    ['saisie', '<input type="text" data-cible="saisie" style="width:60px;height:60px">'],
+    ['liste', '<select data-cible="liste" style="width:60px;height:60px"><option>x</option></select>'],
+    ['zone', '<textarea data-cible="zone" style="width:60px;height:60px"></textarea>'],
+    ['role-bouton', '<div role="button" data-cible="role-bouton" style="width:60px;height:60px">c</div>'],
+    ['role-lien', '<div role="link" data-cible="role-lien" style="width:60px;height:60px">d</div>'],
+    ['role-radio', '<div role="radio" data-cible="role-radio" style="width:60px;height:60px">e</div>'],
+    ['role-case', '<div role="checkbox" data-cible="role-case" style="width:60px;height:60px">f</div>'],
+    ['role-onglet', '<div role="tab" data-cible="role-onglet" style="width:60px;height:60px">g</div>'],
+    ['role-bascule', '<div role="switch" data-cible="role-bascule" style="width:60px;height:60px">h</div>'],
+    ['role-menu', '<div role="menuitem" data-cible="role-menu" style="width:60px;height:60px">i</div>'],
+    ['tabulable', '<div tabindex="0" data-cible="tabulable" style="width:60px;height:60px">j</div>'],
+  ]
+
+  await temoin(page, {
+    nom: '28. les TREIZE sortes de commandes du sélecteur sont toutes sondées',
+    nature: 'branche',
+    page: SORTES.map(([, html]) => html).join(''),
+    sonde: MESURER_CIBLES,
+    argument: CONFIG_CIBLES,
+    attendu: (vu) => {
+      const attendues = SORTES.map(([nom]) => nom)
+      const manquantes = attendues.filter((nom) => !vu.raisonsVues.includes(nom))
+      if (manquantes.length === 0 && vu.sondees === attendues.length) return true
+      return manquantes.length > 0
+        ? `sorte(s) NON sondée(s) : ${manquantes.join(', ')} — une entrée du sélecteur ` +
+          "est tombée, et ce qu'elle désignait cesse d'être mesuré sans un mot."
+        : `${vu.sondees} sondée(s) pour ${attendues.length} sortes : un élément a été ` +
+          'compté deux fois, ou un intrus est entré.'
+    },
+  })
+
+  await temoin(page, {
+    nom: '29. ce qui n’est PAS une commande n’est pas sondé',
+    /*
+      DEUX MUTATIONS ESSAYÉES, UNE SEULE MORD — et l'autre est un résultat.
+
+      `[tabindex]:not([tabindex="-1"])` élargi à `[tabindex]` fait rougir ce
+      témoin : un élément retiré de la tabulation redeviendrait une cible.
+
+      `input:not([type=hidden])` élargi à `input` ne fait RIEN rougir. Une
+      saisie cachée porte `display: none` de la feuille de l'agent, donc une
+      boîte nulle : les deux exemptions suivantes l'écartent déjà. Cette part du
+      sélecteur ne décide de rien — elle DIT, ce qui a sa valeur, mais elle ne
+      garde pas. C'est le même constat que le raccourci des clôtures
+      positionnées, trouvé de la même façon : en cherchant la mutation.
+    */
+    nature: 'branche',
+    page:
+      '<div data-cible="div-nu" style="width:60px;height:60px">texte</div>' +
+      '<a data-cible="lien-sans-href" style="display:block;width:60px;height:60px">sans href</a>' +
+      '<input type="hidden" data-cible="saisie-cachee">' +
+      '<div tabindex="-1" data-cible="hors-tabulation" style="width:60px;height:60px">k</div>' +
+      '<span data-cible="span" style="display:block;width:60px;height:60px">l</span>',
+    sonde: MESURER_CIBLES,
+    argument: CONFIG_CIBLES,
+    attendu: (vu) =>
+      vu.sondees === 0 && vu.raisonsVues.length === 0
+        ? true
+        : `attendu AUCUNE sondée ; ${vu.sondees} sondée(s) : ${vu.raisonsVues.join(', ')}. ` +
+          "Un sélecteur trop large fait mesurer des textes comme s'ils étaient des " +
+          'commandes, et le plancher de 44 px devient du bruit.',
   })
 
   await contexte.close()
