@@ -106,6 +106,11 @@ export const MESURER_DEROULEMENT = () => ({
  * Elle ne coûte rien tant que la porte est verte : elle n'est jamais exécutée.
  */
 export const RELEVER_LES_EVADES = () => {
+  /* ═══ COPIE SURVEILLÉE : blocConteneurDe ═══ Les trois copies de ce bloc
+     doivent rester IDENTIQUES au caractère près — `check-sondes-recopiees.mjs`
+     le refuse sinon. Elles sont recopiées parce que `page.evaluate` ne
+     sérialise que la fonction qu'on lui passe : aucune ne peut fermer sur une
+     aide de Node, et l'en-tête de ce fichier le dit depuis sa naissance. */
   /* LE BLOC CONTENEUR — voir l'explication au-dessus de
      `RELEVER_LES_CLOTURES_PERMEABLES`. Recopié plutôt que partagé : ces
      fonctions sont sérialisées vers la page et ne peuvent fermer sur RIEN de
@@ -131,6 +136,7 @@ export const RELEVER_LES_EVADES = () => {
     }
     return null
   }
+  /* ═══ FIN DE LA COPIE SURVEILLÉE ═══ */
 
   const corps = Math.round(document.body.getBoundingClientRect().height)
   const evades = []
@@ -256,6 +262,11 @@ export const RELEVER_LES_EVADES = () => {
  * tient cette ligne dans l'autre sens.
  */
 export const RELEVER_LES_CLOTURES_PERMEABLES = (racine) => {
+  /* ═══ COPIE SURVEILLÉE : blocConteneurDe ═══ Les trois copies de ce bloc
+     doivent rester IDENTIQUES au caractère près — `check-sondes-recopiees.mjs`
+     le refuse sinon. Elles sont recopiées parce que `page.evaluate` ne
+     sérialise que la fonction qu'on lui passe : aucune ne peut fermer sur une
+     aide de Node, et l'en-tête de ce fichier le dit depuis sa naissance. */
   /* LE BLOC CONTENEUR — voir l'explication au-dessus de
      `RELEVER_LES_CLOTURES_PERMEABLES`. Recopié plutôt que partagé : ces
      fonctions sont sérialisées vers la page et ne peuvent fermer sur RIEN de
@@ -281,6 +292,7 @@ export const RELEVER_LES_CLOTURES_PERMEABLES = (racine) => {
     }
     return null
   }
+  /* ═══ FIN DE LA COPIE SURVEILLÉE ═══ */
 
   /* `racine` BORNE LA LECTURE, et n'existe que pour les modales — même geste et
      même motif que `MESURER_GABARITS`. Lue sur `body` avec une boîte ouverte,
@@ -415,6 +427,11 @@ export const MESURER_RENDU_MINIMAL = () => ({
  * qui les justifie : une dispense se mérite sur la surface qu'elle couvre.
  */
 export const MESURER_DEFILEMENT_LATERAL = () => {
+  /* ═══ COPIE SURVEILLÉE : blocConteneurDe ═══ Les trois copies de ce bloc
+     doivent rester IDENTIQUES au caractère près — `check-sondes-recopiees.mjs`
+     le refuse sinon. Elles sont recopiées parce que `page.evaluate` ne
+     sérialise que la fonction qu'on lui passe : aucune ne peut fermer sur une
+     aide de Node, et l'en-tête de ce fichier le dit depuis sa naissance. */
   /* LE BLOC CONTENEUR — voir l'explication au-dessus de
      `RELEVER_LES_CLOTURES_PERMEABLES`. Recopié plutôt que partagé : ces
      fonctions sont sérialisées vers la page et ne peuvent fermer sur RIEN de
@@ -440,6 +457,7 @@ export const MESURER_DEFILEMENT_LATERAL = () => {
     }
     return null
   }
+  /* ═══ FIN DE LA COPIE SURVEILLÉE ═══ */
 
   const avant = window.scrollX
   window.scrollTo(400, 0)
