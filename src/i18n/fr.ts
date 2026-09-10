@@ -1777,6 +1777,8 @@ export const fr = {
       colWhat: 'Décision',
       colWho: 'Par qui',
       unknownActor: 'Compte supprimé',
+      singleActor: 'Toutes les décisions affichées ont été écrites par {name}.',
+      singleActorUnknown: 'Toutes les décisions affichées ont été écrites par un compte supprimé.',
       more: 'Voir les décisions plus anciennes',
       /*
         LE DICTIONNAIRE ÉPOUSE L'ESPACE DE NOMS DES ACTIONS, et ce n'est pas

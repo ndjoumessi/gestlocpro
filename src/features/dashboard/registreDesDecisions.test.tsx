@@ -83,7 +83,67 @@ function serveur(role: 'owner' | 'manager' = 'owner') {
   return { faux, session: session(role) }
 }
 
+/** Le même registre, écrit par UNE seule personne — le cas d'un parc tenu par son propriétaire. */
+function registreDUnSeulAuteur(auteur: string | null) {
+  return {
+    ...DECISIONS,
+    decisions: DECISIONS.decisions.map((decision) => ({ ...decision, actor: auteur })),
+  }
+}
+
 describe('le registre des décisions', () => {
+  /**
+   * LA COLONNE « PAR QUI » NE PARAÎT QU'À PARTIR DE DEUX AUTEURS.
+   *
+   * La démonstration porte deux auteurs, donc aucune porte au navigateur ne rend
+   * jamais le cas d'un seul — qui est pourtant celui d'un parc réel tenu par son
+   * propriétaire, relevé en production : le même nom sur chaque ligne. Ces trois
+   * cas sont le SEUL endroit du dépôt où ce comportement est mesuré.
+   */
+  it('dit une fois l’auteur unique, au lieu de le répéter sur chaque ligne', async () => {
+    const { faux, session: etat } = serveur()
+    faux.quand('GET', `/parks/${PARC}/decisions`, {
+      status: 200,
+      body: registreDUnSeulAuteur('Arsène Nkolo'),
+    })
+    await renderApp('/app/decisions', { session: etat })
+    await attendreLeChargement()
+
+    const texte = screen.getByRole('main').textContent ?? ''
+    /* LE REGISTRE EST BIEN LÀ — sans quoi l'absence de la colonne ci-dessous
+       serait vraie sur un écran vide. */
+    expect(texte).toContain('Caution arbitrée')
+    expect(texte).toContain('Encaissement saisi')
+    expect(texte).toContain('Toutes les décisions affichées ont été écrites par Arsène Nkolo.')
+    expect(texte, 'la colonne répète un nom qui ne varie pas').not.toContain('Par qui')
+  })
+
+  it('dit aussi l’auteur unique quand c’est un compte supprimé', async () => {
+    const { faux, session: etat } = serveur()
+    faux.quand('GET', `/parks/${PARC}/decisions`, { status: 200, body: registreDUnSeulAuteur(null) })
+    await renderApp('/app/decisions', { session: etat })
+    await attendreLeChargement()
+
+    const texte = screen.getByRole('main').textContent ?? ''
+    expect(texte).toContain('Caution arbitrée')
+    expect(texte).toContain('écrites par un compte supprimé')
+    expect(texte).not.toContain('Par qui')
+  })
+
+  it('garde la colonne dès que deux auteurs ont écrit', async () => {
+    const { session: etat } = serveur()
+    await renderApp('/app/decisions', { session: etat })
+    await attendreLeChargement()
+
+    const texte = screen.getByRole('main').textContent ?? ''
+    expect(texte).toContain('Par qui')
+    expect(texte).toContain('Arsène Nkolo')
+    expect(texte).toContain('Diane Fotso')
+    expect(texte, 'la phrase de l’auteur unique ment dès qu’ils sont deux').not.toContain(
+      'Toutes les décisions affichées',
+    )
+  })
+
   it('annonce l’échec de sa lecture, au lieu de le poser en silence', async () => {
     /* La note d'échec paraissait APRÈS un chargement, sans `role="alert"` : un
        lecteur d'écran posé sur le titre n'apprenait jamais que le registre

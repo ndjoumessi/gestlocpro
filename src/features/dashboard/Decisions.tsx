@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { DataTable, EmptyState } from '@/components/primitives/DataTable'
+import { DataTable, EmptyState, type Column } from '@/components/primitives/DataTable'
 import { Button } from '@/components/primitives/Button'
 import { Notice } from '@/components/primitives/Notice'
 import { SkeletonRegion, SkeletonTable } from '@/components/primitives/Skeleton'
@@ -491,6 +491,77 @@ export function Decisions() {
       </>
     )
 
+  /*
+    LA COLONNE « PAR QUI » NE PARAÎT QU'À PARTIR DE DEUX AUTEURS.
+
+    Relevé sur un parc réel, tenu par son propriétaire : la colonne répétait LE
+    MÊME NOM sur chaque ligne du registre. Un quart de la largeur, occupé pour
+    ne rien apprendre — une colonne qui ne varie pas n'est pas une donnée, c'est
+    une phrase recopiée autant de fois qu'il y a de lignes.
+
+    La règle n'est pas neuve dans ce dépôt, elle est RECOPIÉE D'`Access` : « LA
+    BARRE NE PARAÎT QU'À PARTIR DE DEUX RÔLES : sur un parc dont tous les comptes
+    sont des locataires, une pastille unique à côté de « Tous » n'offrirait aucun
+    choix. » Même raisonnement, même seuil.
+
+    L'AUTEUR UNIQUE N'EST PAS PERDU : il est dit UNE fois, au-dessus du tableau.
+    Et un compte supprimé compte pour un auteur à part entière — `null` est une
+    valeur de l'ensemble —, sans quoi un registre écrit par un seul vivant et un
+    disparu cacherait justement la ligne qu'on ouvre le registre pour trouver.
+
+    CE QUE LA PHRASE AFFIRME EST BORNÉ À CE QUI EST AFFICHÉ. Le registre se
+    charge par pages ; un second auteur peut apparaître à « Voir plus », et la
+    colonne revient alors. D'où « les décisions affichées » et non « toutes ».
+  */
+  const auteurs = new Set((registre ?? []).map((decision) => decision.actor))
+  const auteurUnique = auteurs.size === 1 ? { nom: [...auteurs][0] } : null
+  const toutesLesColonnes: Column<DecisionApi>[] = [
+    {
+      key: 'when',
+      header: t('app.decisions.colWhen'),
+      /* LA DATE EN PREMIER, parce qu'un registre se lit comme une
+         chronologie : c'est la colonne qui donne le rythme, et la
+         déplacer à droite obligerait à balayer chaque ligne. */
+      render: (decision) => (
+        <span className="text-muted">{d.fullDate(partiesDeDateISO(decision.at))}</span>
+      ),
+    },
+    {
+      key: 'what',
+      header: t('app.decisions.colWhat'),
+      /* LE DÉTAIL SOUS L'ACTION, et non dans une quatrième colonne :
+         il n'existe pas pour toutes les décisions, et une colonne à
+         moitié vide se lit comme une donnée manquante. Sous le
+         libellé, son absence ne se voit pas — c'est le motif des
+         lignes d'alerte du tableau de bord. */
+      render: (decision) => {
+        const quoi = detail(decision)
+        return (
+          <div className="flex flex-col gap-0.5">
+            <span className="font-medium">{libelle(decision.action)}</span>
+            {quoi && <span className="text-caption text-muted">{quoi}</span>}
+          </div>
+        )
+      },
+    },
+    {
+      key: 'who',
+      header: t('app.decisions.colWho'),
+      /* UN ACTEUR NUL SE DIT. `actorId` est en `SetNull` pour que le
+         registre survive à la suppression d'un compte : une décision
+         dont l'auteur est parti reste une décision prise, et la
+         masquer effacerait l'histoire pour protéger un nom qui
+         n'existe plus. */
+      render: (decision) =>
+        decision.actor ?? (
+          <span className="text-muted">{t('app.decisions.unknownActor')}</span>
+        ),
+    },
+  ]
+  const colonnes = auteurUnique
+    ? toutesLesColonnes.filter((colonne) => colonne.key !== 'who')
+    : toutesLesColonnes
+
   return (
     <>
       <PageHeader title={t('app.decisions.title')} description={t('app.decisions.subtitle')} />
@@ -512,54 +583,19 @@ export function Decisions() {
         />
       ) : (
         <>
+          {auteurUnique && (
+            <p className="mb-3 text-body text-muted">
+              {auteurUnique.nom
+                ? t('app.decisions.singleActor', { name: auteurUnique.nom })
+                : t('app.decisions.singleActorUnknown')}
+            </p>
+          )}
           <DataTable<DecisionApi>
             caption={t('app.decisions.title')}
             fiches
             rows={registre ?? []}
             rowKey={(decision) => decision.id}
-            columns={[
-              {
-                key: 'when',
-                header: t('app.decisions.colWhen'),
-                /* LA DATE EN PREMIER, parce qu'un registre se lit comme une
-                   chronologie : c'est la colonne qui donne le rythme, et la
-                   déplacer à droite obligerait à balayer chaque ligne. */
-                render: (decision) => (
-                  <span className="text-muted">{d.fullDate(partiesDeDateISO(decision.at))}</span>
-                ),
-              },
-              {
-                key: 'what',
-                header: t('app.decisions.colWhat'),
-                /* LE DÉTAIL SOUS L'ACTION, et non dans une quatrième colonne :
-                   il n'existe pas pour toutes les décisions, et une colonne à
-                   moitié vide se lit comme une donnée manquante. Sous le
-                   libellé, son absence ne se voit pas — c'est le motif des
-                   lignes d'alerte du tableau de bord. */
-                render: (decision) => {
-                  const quoi = detail(decision)
-                  return (
-                    <div className="flex flex-col gap-0.5">
-                      <span className="font-medium">{libelle(decision.action)}</span>
-                      {quoi && <span className="text-caption text-muted">{quoi}</span>}
-                    </div>
-                  )
-                },
-              },
-              {
-                key: 'who',
-                header: t('app.decisions.colWho'),
-                /* UN ACTEUR NUL SE DIT. `actorId` est en `SetNull` pour que le
-                   registre survive à la suppression d'un compte : une décision
-                   dont l'auteur est parti reste une décision prise, et la
-                   masquer effacerait l'histoire pour protéger un nom qui
-                   n'existe plus. */
-                render: (decision) =>
-                  decision.actor ?? (
-                    <span className="text-muted">{t('app.decisions.unknownActor')}</span>
-                  ),
-              },
-            ]}
+            columns={colonnes}
           />
 
           {suivant && (

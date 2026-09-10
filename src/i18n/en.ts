@@ -1257,6 +1257,8 @@ export const en: Dictionary = {
       colWhat: 'Decision',
       colWho: 'By',
       unknownActor: 'Deleted account',
+      singleActor: 'Every decision shown was written by {name}.',
+      singleActorUnknown: 'Every decision shown was written by a deleted account.',
       more: 'Show older decisions',
       /*
         LE DICTIONNAIRE ÉPOUSE L'ESPACE DE NOMS DES ACTIONS, et ce n'est pas
