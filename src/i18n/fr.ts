@@ -926,6 +926,7 @@ export const fr = {
     portfolio: {
       unitType: 'Typologie',
       addUnitTitle: 'Ajouter un logement',
+      addUnitTo: 'Ajouter un logement à {name}',
       addUnitDescription:
         'Le logement est créé vacant : vous y rattacherez un locataire ensuite, depuis l’écran Locataires.',
       unitBuilding: 'Immeuble',

@@ -22,12 +22,28 @@ const TYPES: Unit['type'][] = ['T1', 'T2', 'T3', 'T4']
  * entières — `parseAmount` porte déjà les conventions de chaque devise, et
  * refaire cette lecture ici produirait deux façons de lire « 145 000 ».
  */
-export function AddUnitModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function AddUnitModal({
+  open,
+  onClose,
+  immeuble,
+}: {
+  open: boolean
+  onClose: () => void
+  /**
+   * L'immeuble à pré-choisir, quand on ouvre la modale DEPUIS lui.
+   *
+   * Sans lui, la liste s'ouvrait toujours sur le PREMIER immeuble du parc : le
+   * geste lancé depuis un immeuble vide obligeait à refaire un choix qu'on
+   * venait de faire en cliquant. Absent, rien ne change — le bouton de page
+   * n'a pas d'immeuble à proposer.
+   */
+  immeuble?: string
+}) {
   const t = useT()
   const { parseAmount } = useCurrency()
   const { buildings, units, addUnit } = usePortfolio()
 
-  const [buildingId, setBuildingId] = useState(buildings[0]?.id ?? '')
+  const [buildingId, setBuildingId] = useState(immeuble ?? buildings[0]?.id ?? '')
   const [label, setLabel] = useState('')
   const [type, setType] = useState<Unit['type']>('T2')
   const [surface, setSurface] = useState('')

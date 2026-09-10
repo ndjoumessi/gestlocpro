@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { attendreLeChargement, renderApp, screen, within } from '@/test/render'
+import { attendreLeChargement, renderApp, screen, userEvent, within } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 
@@ -105,3 +105,81 @@ describe('l’ordre des immeubles', () => {
     expect(within(enTete('Résidence Neuve')).getByText(/aucun logement/)).toBeInTheDocument()
   })
 })
+
+/**
+ * L'IMMEUBLE VIDE PORTE LE GESTE QUI LE REMPLIT.
+ *
+ * Relevé en production : quatre résidences sans logement, chacune sur une rangée
+ * pleine, disant trois fois la même absence — « aucun logement », un loyer de
+ * zéro, un rapport de zéro sur zéro — et n'offrant aucun moyen d'y remédier. Le
+ * seul chemin rouvrait la liste des immeubles sur le PREMIER du parc.
+ *
+ * La démonstration n'a que trois immeubles, tous peuplés : aucune porte au
+ * navigateur ne rend ce cas. Ce fichier est le seul endroit qui le mesure.
+ */
+describe('l’immeuble vide', () => {
+  it('offre d’y ajouter un logement, et le plein ne l’offre pas', async () => {
+    await ouvrir()
+
+    /* LE NOM ACCESSIBLE PORTE L'IMMEUBLE : quatre immeubles vides, c'est quatre
+       boutons au même texte visible, qu'un lecteur d'écran doit distinguer. */
+    const geste = within(enTete('Résidence Neuve')).getByRole('button', {
+      name: 'Ajouter un logement à Résidence Neuve',
+    })
+    expect(geste).toBeInTheDocument()
+    expect(
+      within(enTete('Résidence Pleine')).queryByRole('button', { name: /Ajouter un logement à/ }),
+      'un immeuble peuplé n’a pas à se faire remplir',
+    ).toBeNull()
+
+    /* « 0/0 » ÉTAIT EXACT ET MUET, et il part avec le loyer de zéro. Le plein,
+       lui, garde son rapport — c'est la mesure de cet écran. */
+    expect(within(enTete('Résidence Neuve')).queryByText('0/0')).toBeNull()
+    expect(within(enTete('Résidence Pleine')).getByText('2/2')).toBeInTheDocument()
+  })
+
+  it('ouvre la modale SUR cet immeuble, et non sur le premier du parc', async () => {
+    /*
+      L'IMMEUBLE VIDE EST DÉCLARÉ EN SECOND ICI, ET C'EST TOUT LE CAS.
+
+      La fixture du fichier le déclare en PREMIER, pour éprouver l'ordre. Avec
+      elle, la modale le pré-choisissait de toute façon — c'est le premier du
+      parc —, et ce cas passait SANS le correctif. Il a été écrit ainsi, puis
+      relu : un cas qui ne peut pas échouer ne garde rien.
+
+      Déclaré second, seul l'immeuble transmis peut le faire choisir.
+    */
+    const serveur = installerFauxServeur()
+    serveur.quand('GET', `/parks/${PARC}/portfolio`, {
+      status: 200,
+      body: {
+        collections: [],
+        buildings: [
+          {
+            id: 'b-plein',
+            name: 'Résidence Pleine',
+            district: 'Bastos',
+            units: [loue('u-1', 'A1'), loue('u-2', 'A2')],
+          },
+          { id: 'b-vide', name: 'Résidence Neuve', district: 'Akwa', units: [] },
+        ],
+        works: [],
+        deposits: [],
+        readings: [],
+        inspections: [],
+        notifications: [],
+      },
+    })
+    await renderApp('/app/parc', { session: SESSION_PROPRIETAIRE, largeur: 1280 })
+    await attendreLeChargement()
+    await screen.findByText('Résidence Pleine')
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Ajouter un logement à Résidence Neuve' }))
+
+    const modale = await screen.findByRole('dialog')
+    const immeuble = within(modale).getByRole('combobox', { name: /Immeuble/ }) as HTMLSelectElement
+    expect(immeuble.value, 'la modale s’ouvre sur le premier immeuble du parc').toBe('b-vide')
+  })
+})
+

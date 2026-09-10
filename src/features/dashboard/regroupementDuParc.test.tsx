@@ -138,7 +138,15 @@ describe('le parc sur un téléphone', () => {
     const entetes = Array.from(document.querySelectorAll<HTMLElement>('[data-groupe]'))
     const vide = entetes.find((e) => /Villa Ravisée/.test(e.textContent ?? ''))
     expect(vide, 'l’immeuble sans logement a perdu son en-tête').toBeDefined()
-    expect(within(vide!).getByText('0/0')).toBeInTheDocument()
+    /* « 0/0 » EST PARTI LE 2026-09-11, et ce cas l'attendait. Il était exact et
+       muet — l'en-tête disait déjà « aucun logement » —, et il cède la place au
+       geste qui remplit l'immeuble : voir `repliDesImmeubles.test.tsx`. Ce cas
+       y gagne plutôt qu'il n'y perd : l'immeuble vide garde son en-tête, garde
+       ses deux issues derrière les trois points, et en offre une de plus. */
+    expect(within(vide!).queryByText('0/0')).toBeNull()
+    expect(
+      within(vide!).getByRole('button', { name: 'Ajouter un logement à Villa Ravisée' }),
+    ).toBeInTheDocument()
     /* LE DÉCLENCHEUR EST DANS L'EN-TÊTE, l'entrée dans le panneau qu'il ouvre.
        Les deux issues de l'immeuble se sont repliées derrière trois points, avec
        celles de ses lignes ; ce qui compte reste que le chemin EXISTE — c'est le

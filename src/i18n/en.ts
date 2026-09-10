@@ -682,6 +682,7 @@ export const en: Dictionary = {
     portfolio: {
       unitType: 'Layout',
       addUnitTitle: 'Add a unit',
+      addUnitTo: 'Add a unit to {name}',
       addUnitDescription:
         'The unit is created vacant: you will attach a tenant afterwards, from the Tenants screen.',
       unitBuilding: 'Building',

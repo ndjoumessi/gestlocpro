@@ -88,6 +88,8 @@ export function Portfolio() {
   const [logementACorriger, setLogementACorriger] = useState<Unit | null>(null)
   /* Le logement VACANT qu'on remplit depuis sa fiche : la modale des Locataires,
      ouverte sur ce logement seul. */
+  /* L'immeuble VIDE depuis lequel on ajoute un logement — voir son en-tête. */
+  const [logementPour, setLogementPour] = useState<string | null>(null)
   const [aAttribuer, setAAttribuer] = useState<Unit | null>(null)
   const idDuVerrouDemo = useId()
   /**
@@ -574,19 +576,52 @@ export function Portfolio() {
                         Masquée sous `sm` : la boîte y fait moins de 320 px et le
                         montant y prendrait la place du rapport, qui est la
                         mesure de cet écran. */}
-                    <span className="numeric hidden text-body text-muted sm:inline">
-                      {t('app.portfolio.buildingRent', {
-                        amount: money(loyerDe(id), { compact: true }),
-                      })}
-                    </span>
-                    <span className="numeric font-medium">{`${occ}/${total}`}</span>
+                    {/*
+                      L'IMMEUBLE VIDE PORTE SON GESTE, AU LIEU DE « 0 FCFA / MOIS · 0/0 ».
+
+                      Relevé en production : quatre résidences sans logement,
+                      chacune sur une rangée pleine, disant trois fois la même
+                      absence — la mention « aucun logement », un loyer de zéro,
+                      un rapport de zéro sur zéro — et n'offrant AUCUN moyen d'y
+                      remédier. Le seul chemin était le bouton de page, qui
+                      rouvrait la liste sur le PREMIER immeuble du parc.
+
+                      C'est le lot des logements vacants, à l'étage au-dessus :
+                      une chose vide porte le geste qui la remplit. Le montant, le
+                      rapport et la barre partent ; ils étaient exacts et muets.
+
+                      LE NOM ACCESSIBLE PORTE L'IMMEUBLE. Quatre immeubles vides,
+                      c'est quatre boutons dont le texte visible est le même : un
+                      lecteur d'écran qui les liste doit pouvoir les distinguer.
+                      Même idiome que les entrées du menu, juste à côté.
+                    */}
+                    {vide ? (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        icon="plus"
+                        onClick={() => setLogementPour(id)}
+                        aria-label={t('app.portfolio.addUnitTo', { name: b?.name ?? '' })}
+                      >
+                        {t('app.portfolio.addUnitTitle')}
+                      </Button>
+                    ) : (
+                      <>
+                        <span className="numeric hidden text-body text-muted sm:inline">
+                          {t('app.portfolio.buildingRent', {
+                            amount: money(loyerDe(id), { compact: true }),
+                          })}
+                        </span>
+                        <span className="numeric font-medium">{`${occ}/${total}`}</span>
+                      </>
+                    )}
                     {/* LA BARRE CONTRE SON RAPPORT au tableau — 96 px, la
                         largeur d'une mesure, pas d'un séparateur. Elle SITUE
                         l'immeuble qu'on lit ; elle ne compare plus rien puisque
                         les en-têtes ne s'alignent pas comme s'alignait la
                         grille de cartes. `hideValue` : le rapport est écrit en
                         chiffres à trois pixels de là. */}
-                    {auTableau ? (
+                    {auTableau && !vide ? (
                       <div className="w-24">
                         <ProgressBar
                           value={tauxDe(occ, total)}
@@ -645,7 +680,7 @@ export function Portfolio() {
                 {/* EN FICHES SEULEMENT : la boîte fait moins de 320 px, la barre
                     y prend toute la largeur sous le nom, où elle situe
                     l'immeuble qu'on est en train de lire. */}
-                {auTableau ? null : (
+                {auTableau || vide ? null : (
                   <div className="mt-2">
                     <ProgressBar
                       value={tauxDe(occ, total)}
@@ -977,7 +1012,16 @@ export function Portfolio() {
           </p>
         </Modal>
       )}
-      {logementOuvert && <AddUnitModal open onClose={() => setLogementOuvert(false)} />}
+      {(logementOuvert || logementPour) && (
+        <AddUnitModal
+          open
+          immeuble={logementPour ?? undefined}
+          onClose={() => {
+            setLogementOuvert(false)
+            setLogementPour(null)
+          }}
+        />
+      )}
 
       {immeubleACorriger && (
         <EditBuildingModal
