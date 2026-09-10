@@ -915,8 +915,39 @@ export function Access() {
                 key: 'expire',
                 role: 'contexte',
                 header: t('app.access.expires'),
-                hideOnMobile: true,
-                render: (i) => d.fullDate(enParties(i.expiresAt)),
+                /*
+                  LE TEMPS QUI RESTE, PUIS LA DATE — et sur téléphone aussi.
+
+                  « Valable jusqu'au 14/09/2026 » obligeait à soustraire de tête
+                  une date à un jour que la page ne montre pas. Or c'est la seule
+                  question qu'on pose à cette colonne : ce code est-il sur le
+                  point de ne plus rien ouvrir ? Un code transmis il y a douze
+                  jours à un locataire qui ne l'a pas encore saisi, c'est un code
+                  à réémettre avant après-demain.
+
+                  `hideOnMobile` EST RETIRÉ, et c'était le pire des deux défauts :
+                  sur un téléphone — le marché visé —, la colonne n'existait pas.
+                  Rien ne disait qu'un code allait expirer, à personne.
+
+                  `numeric: 'auto'` rend « demain » et « après-demain » plutôt que
+                  « dans 1 jour » : ce sont les mots de l'urgence, et ils la portent
+                  sans couleur. La date reste dessous, pour qui veut la noter.
+                */
+                render: (i) => {
+                  const jours = joursAvantExpiration(i.expiresAt)
+                  return (
+                    <div className="flex flex-col">
+                      <span className="font-medium">
+                        {jours < 0
+                          ? t('app.access.expired')
+                          : d.relative({ value: jours, unit: 'day' })}
+                      </span>
+                      <span className="text-body text-muted">
+                        {d.fullDate(enParties(i.expiresAt))}
+                      </span>
+                    </div>
+                  )
+                },
               },
               {
                 key: 'geste',
@@ -1310,6 +1341,25 @@ export function Access() {
  * `expiresAt` sont des INSTANTS : un code qui expire à minuit à Douala expire
  * à 23 h à Londres, et c'est bien l'heure de son lecteur qui l'intéresse.
  */
+/**
+ * Combien de JOURS CALENDAIRES séparent aujourd'hui de l'expiration, dans le
+ * fuseau de qui regarde — pour la même raison que `enParties`, juste dessous.
+ *
+ * Des jours et non des heures : « demain » doit vouloir dire le jour suivant sur
+ * le calendrier du lecteur, même si l'instant tombe à 1 h du matin. Un code qui
+ * expire à 0 h 30 n'est pas « dans 0 jour » la veille au soir, il est « demain ».
+ *
+ * NÉGATIF quand l'instant est passé. La liste des codes en attente n'en contient
+ * pas — le serveur les écarte —, mais une page ouverte depuis la veille, ou une
+ * horloge décalée, peut en montrer un : il se dit alors « périmé », jamais
+ * « il y a 2 jours » sous un titre qui promet ce qui ouvre encore.
+ */
+function joursAvantExpiration(iso: string, maintenant: Date = new Date()): number {
+  const expire = new Date(iso)
+  const jour = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+  return Math.round((jour(expire) - jour(maintenant)) / 86_400_000)
+}
+
 function enParties(iso: string) {
   const date = new Date(iso)
   return { year: date.getFullYear(), month: date.getMonth(), day: date.getDate() }

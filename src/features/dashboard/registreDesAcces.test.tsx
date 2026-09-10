@@ -36,6 +36,16 @@ function sessionDuRole(role: Role): EtatSession {
 }
 
 /** Le registre tel que le serveur le rend, avec ses deux membres et ses deux codes. */
+/**
+ * Un instant à N jours d'ici. Les codes du registre étaient datés du 2 septembre
+ * en dur : ils étaient périmés depuis neuf jours quand l'écran s'est mis à dire
+ * le temps RESTANT. Datés depuis maintenant, ils restent des codes en attente —
+ * sans fausser l'horloge, que rien dans cette suite ne fausse.
+ */
+function dansNJours(n: number): string {
+  return new Date(Date.now() + n * 86_400_000).toISOString()
+}
+
 const REGISTRE = {
   members: [
     {
@@ -59,8 +69,8 @@ const REGISTRE = {
       id: CODE_LOC,
       role: 'tenant',
       codeHint: 'ANEW',
-      expiresAt: '2026-09-02T10:00:00.000Z',
-      issuedAt: '2026-08-19T10:00:00.000Z',
+      expiresAt: dansNJours(9),
+      issuedAt: dansNJours(-5),
       unitId: 'u-a1',
       unitLabel: 'A1',
     },
@@ -68,8 +78,8 @@ const REGISTRE = {
       id: CODE_GES,
       role: 'manager',
       codeHint: 'KBPA',
-      expiresAt: '2026-09-02T10:00:00.000Z',
-      issuedAt: '2026-08-19T10:00:00.000Z',
+      expiresAt: dansNJours(9),
+      issuedAt: dansNJours(-5),
       unitId: null,
       unitLabel: null,
     },
@@ -463,3 +473,47 @@ describe('les gestes du registre', () => {
     }
   })
 })
+
+/**
+ * CE QUI RESTE À UN CODE, ET NON LA DATE OÙ IL S'ARRÊTE.
+ *
+ * « Valable jusqu'au 14/09/2026 » obligeait à soustraire de tête une date à un
+ * jour que la page ne montre pas — et la colonne n'existait même pas sur un
+ * téléphone. Ces trois cas tiennent les trois issues de l'écriture.
+ */
+describe('l’expiration d’un code', () => {
+  function registreAvecUnCode(expiresAt: string) {
+    serveur.quand('GET', `/parks/${PARC}/access`, {
+      status: 200,
+      body: { ...REGISTRE, invitations: [{ ...REGISTRE.invitations[0], expiresAt }] },
+    })
+  }
+
+  it('dit le temps qui reste, et garde la date dessous', async () => {
+    await ouvrir('owner')
+    const texte = screen.getByRole('main').textContent ?? ''
+    expect(texte).toContain('dans 9 jours')
+    /* LA DATE RESTE, pour qui veut la noter : le relatif s'AJOUTE, il ne
+       remplace rien. Cherchée EXACTE — l'écran porte d'autres dates au même
+       format (« membre depuis … »), et un motif générique passerait sans elle. */
+    const echeance = new Date(Date.now() + 9 * 86_400_000).toLocaleDateString('fr-FR')
+    expect(texte).toContain(echeance)
+  })
+
+  it('dit « demain », le mot de l’urgence, plutôt que « dans 1 jour »', async () => {
+    registreAvecUnCode(dansNJours(1))
+    await ouvrir('owner')
+    const texte = screen.getByRole('main').textContent ?? ''
+    expect(texte).toContain('demain')
+    expect(texte).not.toContain('dans 1 jour')
+  })
+
+  it('dit « périmé », jamais « il y a », sous un titre qui promet ce qui ouvre encore', async () => {
+    registreAvecUnCode(dansNJours(-2))
+    await ouvrir('owner')
+    const texte = screen.getByRole('main').textContent ?? ''
+    expect(texte).toContain('Périmé')
+    expect(texte).not.toMatch(/il y a/)
+  })
+})
+

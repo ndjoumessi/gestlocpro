@@ -1418,7 +1418,8 @@ export const en: Dictionary = {
       invitesHint:
         'A code lasts fourteen days and works once. Take back the one you sent by mistake.',
       code: 'Code',
-      expires: 'Valid until',
+      expires: 'Expires',
+      expired: 'Expired',
       noUnit: 'No unit attached',
       revokeInvite: 'Take back',
       inviteRevoked: 'Code taken back — it no longer opens anything',

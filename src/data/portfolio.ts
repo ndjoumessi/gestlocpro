@@ -398,8 +398,22 @@ export const ACCES_DEMO = {
       /* Les quatre derniers caractères seulement : c'est ce que le serveur rend
          d'un code, et l'écran ne doit jamais pouvoir en réafficher un entier. */
       codeHint: '7Q4M',
-      issuedAt: '2026-08-19',
-      expiresAt: '2026-09-02',
+      /*
+        DATÉ DEPUIS LE JOUR DE LA LECTURE, ET NON EN DUR — relevé le 2026-09-11.
+
+        Ce code expirait le 2 septembre. Neuf jours plus tard, il s'affichait
+        toujours sous « Codes en attente », dans une liste qui promet de ne
+        montrer « que ce qui ouvre encore » : une date écrite en clair vieillit
+        seule, et la démonstration disait le contraire de sa propre note.
+
+        Émis il y a cinq jours, il en vaut quatorze : il en reste NEUF, et il en
+        restera neuf chaque jour où l'on ouvrira la démonstration. C'est aussi ce
+        qui garde les portes déterministes maintenant que l'écran dit le temps
+        RESTANT — un texte qui changerait chaque matin ferait rougir sans défaut.
+        Même idiome que `decisionsDemo(aujourdhui)`, plus bas.
+      */
+      issuedAt: new Date(Date.now() - 5 * 86_400_000).toISOString(),
+      expiresAt: new Date(Date.now() + 9 * 86_400_000).toISOString(),
       unitId: 'A5',
       unitLabel: 'A5',
     },

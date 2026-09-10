@@ -2004,7 +2004,8 @@ export const fr = {
       invitesHint:
         'Un code vaut quatorze jours et ne sert qu’une fois. Reprenez celui que vous avez transmis par erreur.',
       code: 'Code',
-      expires: 'Valable jusqu’au',
+      expires: 'Expire',
+      expired: 'Périmé',
       noUnit: 'Sans logement rattaché',
       revokeInvite: 'Reprendre',
       inviteRevoked: 'Code repris — il n’ouvre plus rien',

@@ -242,6 +242,14 @@ const HORS_PORTEE = {
  * ni contraste, ni cible sous le plancher, ni octet de plus. La hauteur est le
  * seul prix, et il est écrit ici.
  *
+ * ═══ ET CE QUE `/demo/acces@360` A ACHETÉ, LE 2026-09-11 ═══
+ *
+ * +22 px, 2226 → 2248 : L'EXPIRATION D'UN CODE, VISIBLE SUR TÉLÉPHONE. La
+ * colonne était `hideOnMobile` — sur le marché visé, rien ne disait qu'un code
+ * allait cesser d'ouvrir quoi que ce soit. Elle dit désormais le temps RESTANT
+ * (« dans 9 jours », « demain »), la date dessous. À 1280 elle existait déjà et
+ * tient dans la hauteur de sa rangée : rien n'y bouge.
+ *
  * `plafond` : machine de développement, macOS, police du système, 2026-09-09.
  * `plafondLarge` : exécuteur Ubuntu de l'intégration continue, sous
  * `MESURER_EN_POLICE_LARGE`, relevé le 2026-09-09 par le travail `polices`
@@ -269,7 +277,7 @@ const PLAFONDS = [
   { adresse: '/demo/releves', largeur: 360, plafond: 3724, plafondLarge: 3724 },
   { adresse: '/demo/cautions', largeur: 360, plafond: 2121, plafondLarge: 2121 },
   { adresse: '/demo/locataires', largeur: 360, plafond: 4364, plafondLarge: 4364 },
-  { adresse: '/demo/acces', largeur: 360, plafond: 2226, plafondLarge: 2187 },
+  { adresse: '/demo/acces', largeur: 360, plafond: 2248, plafondLarge: 2209 },
   { adresse: '/demo/decisions', largeur: 360, plafond: 1591, plafondLarge: 1569 },
   { adresse: '/demo/prise-en-main', largeur: 360, plafond: 1633, plafondLarge: 1611 },
   { adresse: '/demo/systeme', largeur: 360, plafond: 2078, plafondLarge: 2078 },
