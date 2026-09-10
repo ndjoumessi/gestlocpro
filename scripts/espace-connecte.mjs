@@ -128,8 +128,10 @@ import {
   MESURER_DEROULEMENT,
   MESURER_GABARITS,
   MESURER_RENDU_MINIMAL,
+  POSER_L_ARBRE,
   RELEVER_LES_CLOTURES_PERMEABLES,
   RELEVER_LES_EVADES,
+  SELECTEUR_DE_COMMANDE,
 } from './sondes-de-rendu.mjs'
 import { ecransDeLEspaceConnecte } from './inventaire/routes.mjs'
 /* Le MÊME aplatissement que `check-i18n` et ' + B + 'notes-conditionnelles' + B + '. Une note
@@ -1201,51 +1203,6 @@ const fermeesA = (role) => ECRANS.filter((e) => !e.roles.includes(role))
  */
 const DOSSIER = (unitId) => ({ adresse: `/app/parc/${unitId}`, roles: ['owner', 'manager'] })
 
-/**
- * L'ARBRE A-T-IL SUIVI LE REDIMENSIONNEMENT ?
- *
- * `page.setViewportSize()` rend la main avant que React ait rejoué le rendu
- * conditionné par la largeur : les sondes qui suivent lisent l'arbre PRÉCÉDENT.
- * Mesuré le 2026-09-08 sur cette porte comme sur `mesure-ui`.
- *
- * ═══ POURQUOI DES TRAMES, ET NON LES 150 ms DE LA PREMIÈRE RÉDACTION ═══
- *
- * La version d'hier attendait 150 ms de calme sur la population de
- * `[data-indicateur]`. Deux défauts, mesurés depuis :
- *
- *   — SON EMPREINTE ÉTAIT AVEUGLE sur la plupart des écrans. Un écran sans
- *     indicateur se pose à zéro instantanément, donc l'attente ne faisait RIEN
- *     là où l'audit de contraste en avait besoin — et c'est le même défaut qui
- *     avait fait échouer ma toute première tentative.
- *   — SON SEUIL VENAIT D'UNE MESURE À 100 ms DE PAS. Sur `mesure-ui`, mesuré à
- *     la TRAME sur 916 points : 905 posés immédiatement, 11 après deux trames,
- *     ZÉRO à 50, 100 ou 300 ms. Une trame suit la vitesse de la machine ; un
- *     timer calibré sur celle-ci ne dit rien de la suivante.
- *
- * On exige donc deux empreintes IDENTIQUES à deux trames d'écart. Ce n'est pas
- * circulaire : on n'attend aucune valeur, seulement qu'elle cesse de bouger. Un
- * écran qui ne change pas part au bout de quatre trames.
- *
- * Bornée à vingt tours, et le dépassement ROUGIT — un point mesuré sur un arbre
- * en mouvement rend un verdict qui ne vaut pas ce qu'il annonce.
- */
-const POSER_L_ARBRE = () =>
-  new Promise((resolve) => {
-    const empreinte = () => {
-      const m = document.querySelector('main') ?? document.body
-      return `${m.querySelectorAll('*').length}/${Math.round(m.scrollHeight)}`
-    }
-    let restant = 20
-    let precedent = null
-    const tour = () => {
-      const vue = empreinte()
-      if (vue === precedent) return resolve(true)
-      if (restant-- <= 0) return resolve(false)
-      precedent = vue
-      requestAnimationFrame(() => requestAnimationFrame(tour))
-    }
-    requestAnimationFrame(() => requestAnimationFrame(tour))
-  })
 
 /** Les points sondés alors que l'arbre bougeait encore — voir leur garde. */
 const arbresEnMouvement = []
@@ -1699,6 +1656,7 @@ try {
           const cibles = await page.evaluate(MESURER_CIBLES, {
             plancher: PLANCHER_CIBLE,
             rayon: RAYON_SONDAGE,
+            selecteur: SELECTEUR_DE_COMMANDE,
           })
           ciblesSondees += cibles.sondees
           for (const d of cibles.defauts) {

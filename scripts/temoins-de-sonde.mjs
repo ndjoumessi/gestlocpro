@@ -96,6 +96,7 @@ import {
   PLANCHER_CIBLE,
   RAYON_SONDAGE,
   RELEVER_LES_CLOTURES_PERMEABLES,
+  SELECTEUR_DE_COMMANDE,
 } from './sondes-de-rendu.mjs'
 
 /** La fenêtre des témoins : étroite, pour qu'un débordement tienne en peu de px. */
@@ -110,7 +111,7 @@ let controles = 0
   LE COMPTE EST ÉCRIT, JAMAIS DÉRIVÉ. Une boucle vide se déclarerait verte, et
   c'est le piège que ce dépôt a trouvé quatre fois — voir `plafond-coquille`.
 */
-const TEMOINS_ATTENDUS = 36
+const TEMOINS_ATTENDUS = 37
 /*
   DEUX CONTRÔLES SUR DIX-NEUF, et ce nombre est écrit plutôt qu'imprimé. Un
   témoin qu'on rangerait en contrôle « parce qu'il ne rougit pas » deviendrait
@@ -119,7 +120,7 @@ const TEMOINS_ATTENDUS = 36
 const CONTROLES_ATTENDUS = 2
 
 /** Un cas : une page, une sonde, une attente écrite en toutes lettres. */
-async function temoin(page, { nom, nature, page: html, sonde, argument, apres, attendu }) {
+async function temoin(page, { nom, nature, page: html, sonde, argument, avant, apres, attendu }) {
   /*
     LA NATURE EST EXIGÉE, et ce n'est pas une décoration.
 
@@ -142,6 +143,10 @@ async function temoin(page, { nom, nature, page: html, sonde, argument, apres, a
   await page.evaluate(
     () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
   )
+  /* `avant` POSE UNE SONDE DANS LA PAGE avant de l'exercer — le seul moyen
+     d'éprouver ce qu'elle fait quand elle LÈVE : `page.evaluate` rend la levée
+     sous forme d'erreur Playwright, et l'on veut la lire, pas la subir. */
+  if (avant) await page.evaluate((source) => { window.__MESURER_CIBLES__ = eval(`(${source})`) }, avant.toString())
   const vu = await page.evaluate(sonde, argument)
   /* CE QUE LA SONDE LAISSE DERRIÈRE ELLE, et qui n'est pas dans ce qu'elle rend :
      un défilement déplacé, par exemple. Sans cette seconde lecture, un effet de
@@ -406,7 +411,11 @@ try {
 
   /* ══════════ LES CIBLES AU DOIGT ══════════ */
 
-  const CONFIG_CIBLES = { plancher: PLANCHER_CIBLE, rayon: RAYON_SONDAGE }
+  const CONFIG_CIBLES = {
+    plancher: PLANCHER_CIBLE,
+    rayon: RAYON_SONDAGE,
+    selecteur: SELECTEUR_DE_COMMANDE,
+  }
 
   await temoin(page, {
     nom: '16. une commande de 20 px est DÉNONCÉE sous le plancher de 44',
@@ -838,6 +847,36 @@ try {
         : "attendu UNE clôture perméable : mesuré, `container-type` n'établit aucun bloc " +
           "conteneur dans Chromium — l'enfant se cale sur la page. L'ajouter par symétrie " +
           'ferait taire la sonde sur le tableau de bord du locataire, qui porte `@container`.',
+  })
+
+  /*
+    LA SONDE REFUSE CE QU'ELLE NE SAIT PAS MESURER.
+
+    La liste des commandes voyage désormais dans la configuration, pour n'être
+    écrite qu'une fois. Un appelant qui l'oublierait ferait rendre
+    `querySelectorAll(undefined)` — la chaîne « undefined », qui ne correspond à
+    rien : zéro cible sondée, zéro défaut, et un vert qui ressemble à un examen.
+  */
+  await temoin(page, {
+    nom: '37. sans sélecteur, la sonde des cibles REFUSE au lieu de rendre zéro',
+    nature: 'branche',
+    page: '<button style="width:20px;height:20px;padding:0;border:0">x</button>',
+    sonde: (config) => {
+      try {
+        /* La sonde est appelée ici sans passer par `page.evaluate` : c'est la
+           MÊME fonction, et l'on veut voir sa levée plutôt que la subir. */
+        return { leve: false, resultat: window.__MESURER_CIBLES__(config) }
+      } catch (e) {
+        return { leve: true, message: String(e.message ?? e).slice(0, 90) }
+      }
+    },
+    argument: { plancher: 44, rayon: 22 },
+    avant: MESURER_CIBLES,
+    attendu: (vu) =>
+      vu.leve === true && /sélecteur/.test(vu.message)
+        ? true
+        : `attendu une levée nommant le sélecteur ; rendu ${JSON.stringify(vu)}. Une sonde ` +
+          'qui rend zéro cible pour une configuration incomplète se lit « aucun défaut ».',
   })
 
   await contexte.close()

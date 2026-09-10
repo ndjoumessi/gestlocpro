@@ -183,6 +183,9 @@ import { chromium } from 'playwright'
 import { RACINE, exigerUnInventairePlein, inventaireDesRoutes, nommerRoles } from './routes.mjs'
 import { SANS_AGENT_DE_SERVICE } from '../mesure-sans-agent.mjs'
 import { exigerUnPaquetAJour } from '../paquet-a-jour.mjs'
+/* L'ATTENTE DE L'ARBRE EST PARTAGÉE : une seule rédaction pour les quatre
+   balayages qui redimensionnent — voir `sondes-de-rendu.mjs`. */
+import { POSER_L_ARBRE, SELECTEUR_DE_COMMANDE } from '../sondes-de-rendu.mjs'
 
 /*
   LE PAQUET AVANT TOUT LE RESTE — ce relevé sert `dist/` par `vite preview`, il
@@ -317,38 +320,6 @@ function marquerLenteur(ou, quoi) {
   lenteurs.set(cle, (lenteurs.get(cle) ?? 0) + 1)
 }
 
-/**
- * L'ARBRE A-T-IL SUIVI LE REDIMENSIONNEMENT ?
- *
- * Même défaut, même forme et même correctif que dans `mesure-ui.mjs` :
- * `setViewportSize` rend la main avant que React ait rejoué le rendu, et la
- * sonde qui suit lit l'arbre de la largeur PRÉCÉDENTE. Ici c'est la sonde de
- * GÉOMÉTRIE — cibles au doigt, écarts entre paires, barre — relancée à chacune
- * des onze largeurs.
- *
- * Trouvé par `check-redimensionnement.mjs`, qui descend dans les sous-dossiers
- * là où mon relevé à la main s'était arrêté à `scripts/*.mjs`.
- *
- * Deux empreintes identiques à deux trames d'écart, bornées à vingt tours. On
- * n'attend aucune valeur : seulement qu'elle cesse de bouger.
- */
-const POSER_L_ARBRE = () =>
-  new Promise((resolve) => {
-    const empreinte = () => {
-      const m = document.querySelector('main') ?? document.body
-      return `${m.querySelectorAll('*').length}/${Math.round(m.scrollHeight)}`
-    }
-    let restant = 20
-    let precedent = null
-    const tour = () => {
-      const vue = empreinte()
-      if (vue === precedent) return resolve(true)
-      if (restant-- <= 0) return resolve(false)
-      precedent = vue
-      requestAnimationFrame(() => requestAnimationFrame(tour))
-    }
-    requestAnimationFrame(() => requestAnimationFrame(tour))
-  })
 
 /** Les points sondés alors que l'arbre bougeait encore. */
 const arbresEnMouvement = []
@@ -505,21 +476,11 @@ const SONDE_GEOMETRIE = (config) => {
      ARIA qui en tiennent lieu, et tout ce qui est tabulable. Il exclut ce qui
      n'est pas visé : masqué, hors flux, neutralisé, ou réservé aux lecteurs
      d'écran. (Recopie du sélecteur de `MESURER_CIBLES`.) */
-  const SELECTEUR = [
-    'a[href]',
-    'button',
-    'input:not([type=hidden])',
-    'select',
-    'textarea',
-    '[role="button"]',
-    '[role="link"]',
-    '[role="radio"]',
-    '[role="checkbox"]',
-    '[role="tab"]',
-    '[role="switch"]',
-    '[role="menuitem"]',
-    '[tabindex]:not([tabindex="-1"])',
-  ].join(', ')
+  /* LA LISTE DES COMMANDES ARRIVE PAR LA CONFIGURATION — elle était RECOPIÉE
+     ici, quinze lignes au caractère près de celle de `sondes-de-rendu.mjs`.
+     Deux listes de ce qui compte pour une commande, c'est deux inventaires qui
+     divergeront le jour où l'une gagne un rôle. */
+  const SELECTEUR = config.selecteur
 
   const nommer = (el) => {
     const texte = (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 40)
@@ -1331,6 +1292,7 @@ export async function releverAuNavigateur(options = {}) {
           await poserLArbre(page, `${adresse} · ${langue} · ${largeur}px`)
           const g = await page.evaluate(SONDE_GEOMETRIE, {
             rayon: RAYON_SONDAGE,
+            selecteur: SELECTEUR_DE_COMMANDE,
             seuilSondage: SEUIL_SONDAGE,
             classeLecteurEcran: CLASSE_LECTEUR_D_ECRAN,
             ecartDeReference: ECART_DE_REFERENCE,

@@ -93,7 +93,9 @@ import {
   MESURER_CIBLES,
   MESURER_GABARITS,
   PLANCHER_CIBLE,
+  POSER_L_ARBRE,
   RAYON_SONDAGE,
+  SELECTEUR_DE_COMMANDE,
 } from './sondes-de-rendu.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -1323,66 +1325,6 @@ const attendre = async (page, ou) => {
     .catch(() => marquer(ou, 'polices'))
 }
 
-/**
- * L'ARBRE A-T-IL SUIVI LE REDIMENSIONNEMENT ?
- *
- * ═══ LE DÉFAUT, MESURÉ LE 2026-09-08 ═══
- *
- * `page.setViewportSize()` rend la main avant que React ait rejoué le rendu
- * conditionné par la largeur. Les sondes qui suivent lisaient donc l'arbre de la
- * largeur PRÉCÉDENTE. Relevé sur 916 points de cette porte, empreinte prise
- * juste après `attendre` puis quatre fois à 100 ms :
- *
- *   mise en page · /demo/parc      · en-US · 1024px   559 éléments → 416
- *   contraste    · /demo/paiements · fr-FR · 1280px   773 éléments → 602
- *
- * Vingt points sur 916 mesuraient le mauvais arbre. Et ce n'est qu'un PLANCHER :
- * le décalage existe à toutes les largeurs, il ne se VOIT qu'à celles où le
- * rendu diffère réellement de la précédente. La largeur de `main`, elle, était
- * déjà juste au premier échantillon — c'est le contenu qui retardait.
- *
- * ═══ POURQUOI DES TRAMES, ET NON DES MILLISECONDES ═══
- *
- * Seconde mesure, sur les mêmes 916 points, notant le PREMIER instant où
- * l'arbre vaut déjà sa valeur posée :
- *
- *   immédiatement ................ 905
- *   après deux trames ............  11
- *   à 50, 100 ou 300 ms ..........   0
- *
- * Aucun point n'a demandé plus de deux trames. La porte sœur `espace-connecte`
- * attend 150 ms, mais sa mesure avait un pas de 100 ms : elle ne pouvait pas
- * viser plus fin. Reconduire ici son chiffre aurait coûté 137 s pour une
- * transition qui tient en deux trames — et surtout, une trame suit la vitesse de
- * la MACHINE quand un timer ne suit rien.
- *
- * ═══ CE QUE CETTE ATTENTE FAIT, EXACTEMENT ═══
- *
- * Elle exige deux empreintes IDENTIQUES à deux trames d'écart. Ce n'est pas
- * circulaire : on n'attend aucune valeur particulière, seulement qu'elle cesse
- * de bouger. Un écran qui ne change pas du tout part au bout de quatre trames.
- *
- * Bornée à vingt tours : au-delà, l'écran bouge encore, et cela se DIT plutôt
- * que de s'avaler — un point mesuré sur un arbre en mouvement rend un verdict
- * qui ne vaut pas ce qu'il annonce.
- */
-const POSER_L_ARBRE = () =>
-  new Promise((resolve) => {
-    const empreinte = () => {
-      const m = document.querySelector('main') ?? document.body
-      return `${m.querySelectorAll('*').length}/${Math.round(m.scrollHeight)}`
-    }
-    let restant = 20
-    let precedent = null
-    const tour = () => {
-      const vue = empreinte()
-      if (vue === precedent) return resolve(true)
-      if (restant-- <= 0) return resolve(false)
-      precedent = vue
-      requestAnimationFrame(() => requestAnimationFrame(tour))
-    }
-    requestAnimationFrame(() => requestAnimationFrame(tour))
-  })
 
 /** Les points sondés alors que l'arbre bougeait encore — voir leur garde. */
 const arbresEnMouvement = []
@@ -4385,7 +4327,11 @@ try {
         }
 
         const releve = await chrono('audit · cibles', () =>
-          page.evaluate(MESURER_CIBLES, { plancher: PLANCHER_CIBLE, rayon: RAYON_SONDAGE }),
+          page.evaluate(MESURER_CIBLES, {
+            plancher: PLANCHER_CIBLE,
+            rayon: RAYON_SONDAGE,
+            selecteur: SELECTEUR_DE_COMMANDE,
+          }),
         )
         ciblesSondees += releve.sondees
         pointsDeCible++
@@ -4668,7 +4614,11 @@ try {
         }
 
         const releve = await chrono('audit · cibles', () =>
-          page.evaluate(MESURER_CIBLES, { plancher: PLANCHER_CIBLE, rayon: RAYON_SONDAGE }),
+          page.evaluate(MESURER_CIBLES, {
+            plancher: PLANCHER_CIBLE,
+            rayon: RAYON_SONDAGE,
+            selecteur: SELECTEUR_DE_COMMANDE,
+          }),
         )
         ciblesSondees += releve.sondees
         ciblesDeSurface += releve.sondees

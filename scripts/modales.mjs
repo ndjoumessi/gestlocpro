@@ -80,6 +80,7 @@ import {
   PLANCHER_CIBLE,
   RAYON_SONDAGE,
   RELEVER_LES_CLOTURES_PERMEABLES,
+  SELECTEUR_DE_COMMANDE,
 } from './sondes-de-rendu.mjs'
 import { readFileSync } from 'node:fs'
 import { exigerUnPortLibre } from './port-libre.mjs'
@@ -1246,6 +1247,7 @@ try {
         const cibles = await page.evaluate(MESURER_CIBLES, {
           plancher: PLANCHER_CIBLE,
           rayon: RAYON_SONDAGE,
+          selecteur: SELECTEUR_DE_COMMANDE,
         })
         ciblesDeModaleSondees += cibles.sondees
         for (const defaut of cibles.defauts) {

@@ -185,6 +185,7 @@ import { exigerUnPortLibre } from './port-libre.mjs'
    créé pour ne plus payer. */
 import {
   MESURER_DEROULEMENT,
+  POSER_L_ARBRE,
   RELEVER_LES_CLOTURES_PERMEABLES,
   RELEVER_LES_EVADES,
 } from './sondes-de-rendu.mjs'
@@ -304,35 +305,6 @@ function plafondDe(p) {
   return p.plafondLarge
 }
 
-/**
- * L'ARBRE S'EST-IL POSÉ ?
- *
- * Deux empreintes identiques à deux trames d'écart. On n'attend AUCUNE valeur —
- * seulement qu'elle cesse de bouger —, donc l'attente n'est pas circulaire et
- * ne peut pas fabriquer le nombre qu'elle mesure. Vingt tours au plus ; le
- * dépassement fait rougir, parce qu'un point lu sur un arbre en mouvement rend
- * un verdict qui ne vaut pas ce qu'il annonce.
- *
- * La même forme que dans `espace-connecte`, `mesure-ui` et `mesure-navigateur`.
- * Elle y sert après un redimensionnement ; ici, après une arrivée de données.
- */
-const POSER_L_ARBRE = () =>
-  new Promise((resolve) => {
-    const empreinte = () => {
-      const m = document.querySelector('main') ?? document.body
-      return `${m.querySelectorAll('*').length}/${Math.round(m.scrollHeight)}`
-    }
-    let restant = 20
-    let precedent = null
-    const tour = () => {
-      const vue = empreinte()
-      if (vue === precedent) return resolve(true)
-      if (restant-- <= 0) return resolve(false)
-      precedent = vue
-      requestAnimationFrame(() => requestAnimationFrame(tour))
-    }
-    requestAnimationFrame(() => requestAnimationFrame(tour))
-  })
 
 /* LE PAQUET AVANT TOUT LE RESTE : ce script mesure `dist/`, jamais les sources.
    Un paquet périmé rendrait un verdict sur le code d'AVANT, en silence. */

@@ -373,6 +373,62 @@ export const RELEVER_LES_CLOTURES_PERMEABLES = (racine) => {
   return permeables
 }
 
+/**
+ * L'ARBRE S'EST-IL POSÉ ?
+ *
+ * Deux empreintes IDENTIQUES à deux trames d'écart. On n'attend AUCUNE valeur —
+ * seulement qu'elle cesse de bouger —, donc l'attente n'est pas circulaire et ne
+ * peut pas fabriquer le nombre qu'elle mesure. Vingt tours au plus ; le
+ * dépassement doit faire ROUGIR la porte qui l'emploie, parce qu'un point lu sur
+ * un arbre en mouvement rend un verdict qui ne vaut pas ce qu'il annonce.
+ *
+ * ═══ POURQUOI DES TRAMES, ET NON UN DÉLAI ═══
+ *
+ * La première rédaction attendait 150 ms de calme sur la population de
+ * `[data-indicateur]`. Deux défauts, mesurés :
+ *
+ *   — SON EMPREINTE ÉTAIT AVEUGLE sur la plupart des écrans : un écran sans
+ *     indicateur se pose à zéro instantanément, donc l'attente ne faisait RIEN
+ *     là où l'audit de contraste en avait besoin.
+ *   — SON SEUIL VENAIT D'UNE MESURE À 100 ms DE PAS. Sur `mesure-ui`, mesuré à
+ *     la TRAME sur 916 points : 905 posés immédiatement, 11 après deux trames,
+ *     ZÉRO à 50, 100 ou 300 ms. Une trame suit la vitesse de la machine ; un
+ *     minuteur calibré sur celle-ci ne dit rien de la suivante.
+ *
+ * ═══ CE QU'ELLE NE FAIT PAS, ET C'EST MESURÉ ═══
+ *
+ * ELLE N'ATTEND PAS UNE DONNÉE QUI N'EST PAS ENCORE DEMANDÉE. Pendant les 900 ms
+ * de retenue de la démonstration — `ATTENTE_DEMO_MS` —, l'arbre ne bouge pas du
+ * tout : elle est parfaitement satisfaite d'un SQUELETTE. Témoin du 2026-09-09,
+ * l'attente de la région occupée retirée : 26 plaintes de mou sur
+ * `plafond-hauteurs`. « Posé » et « fini » sont deux choses.
+ *
+ * ═══ POURQUOI ELLE VIT ICI DEPUIS LE 2026-09-10 ═══
+ *
+ * Elle était écrite QUATRE FOIS, à l'identique — `espace-connecte`, `mesure-ui`,
+ * `mesure-navigateur`, `plafond-hauteurs` —, et rien n'obligeait les quatre à
+ * s'accorder. Contrairement à `blocConteneurDe`, rien n'imposait cette
+ * duplication : cette fonction est passée ENTIÈRE à `page.evaluate`, donc elle
+ * s'importe comme les autres sondes de ce fichier.
+ */
+export const POSER_L_ARBRE = () =>
+  new Promise((resolve) => {
+    const empreinte = () => {
+      const m = document.querySelector('main') ?? document.body
+      return `${m.querySelectorAll('*').length}/${Math.round(m.scrollHeight)}`
+    }
+    let restant = 20
+    let precedent = null
+    const tour = () => {
+      const vue = empreinte()
+      if (vue === precedent) return resolve(true)
+      if (restant-- <= 0) return resolve(false)
+      precedent = vue
+      requestAnimationFrame(() => requestAnimationFrame(tour))
+    }
+    requestAnimationFrame(() => requestAnimationFrame(tour))
+  })
+
 export const MESURER_GABARITS = (racine) => {
   /* `racine` BORNE LA LECTURE, et n'existe que pour les modales.
 
@@ -530,23 +586,59 @@ export const RAYON_SONDAGE = 22
  * qui n'est pas visé — masqué, hors flux, neutralisé par `inert`, ou réservé
  * aux lecteurs d'écran.
  */
+/**
+ * CE QUI COMPTE POUR UNE COMMANDE — la liste, écrite UNE fois.
+ *
+ * Treize sortes d'éléments qu'un doigt peut atteindre. Elle sert à `MESURER_CIBLES`
+ * ici et à la sonde de géométrie de `mesure-navigateur` là-bas, où elle était
+ * RECOPIÉE à l'identique — mesuré le 2026-09-10 : quinze lignes, au caractère
+ * près, dans deux fichiers.
+ *
+ * ELLE VOYAGE MAINTENANT COMME UNE DONNÉE, dans la configuration que ces sondes
+ * reçoivent déjà. C'est la seule façon de la partager : elles s'exécutent dans la
+ * page, où aucune variable de Node n'existe — la même contrainte que
+ * `blocConteneurDe`, mais celle-ci se contourne, parce qu'une liste est une
+ * VALEUR et qu'une valeur se passe en argument.
+ *
+ * Le témoin 28 de `temoins-de-sonde.mjs` la garde sorte par sorte, et le refus
+ * nomme celle qui tombe.
+ */
+export const SELECTEUR_DE_COMMANDE = [
+  'a[href]',
+  'button',
+  'input:not([type=hidden])',
+  'select',
+  'textarea',
+  '[role="button"]',
+  '[role="link"]',
+  '[role="radio"]',
+  '[role="checkbox"]',
+  '[role="tab"]',
+  '[role="switch"]',
+  '[role="menuitem"]',
+  '[tabindex]:not([tabindex="-1"])',
+].join(', ')
+
 export const MESURER_CIBLES = (config) => {
   const { plancher, rayon } = config
-  const SELECTEUR = [
-    'a[href]',
-    'button',
-    'input:not([type=hidden])',
-    'select',
-    'textarea',
-    '[role="button"]',
-    '[role="link"]',
-    '[role="radio"]',
-    '[role="checkbox"]',
-    '[role="tab"]',
-    '[role="switch"]',
-    '[role="menuitem"]',
-    '[tabindex]:not([tabindex="-1"])',
-  ].join(', ')
+  /*
+    LA LISTE ARRIVE PAR LA CONFIGURATION, ET SON ABSENCE ARRÊTE TOUT.
+
+    Sans ce refus, un appelant qui l'oublie ferait rendre `querySelectorAll(undefined)`
+    — c'est-à-dire la chaîne « undefined », qui ne correspond à aucun élément. La
+    sonde rendrait alors zéro cible sondée et zéro défaut : « aucun défaut »,
+    exactement, alors qu'elle n'a rien regardé. Une garde du garde compte bien les
+    cibles ailleurs, mais elle vit dans la porte, pas ici — et une sonde doit
+    refuser ce qu'elle ne sait pas mesurer plutôt que le rendre vert.
+  */
+  if (typeof config.selecteur !== 'string' || config.selecteur.length === 0) {
+    throw new Error(
+      'MESURER_CIBLES : aucun sélecteur de commande dans la configuration. ' +
+        'Passez `selecteur: SELECTEUR_DE_COMMANDE`, exporté par le même fichier.',
+    )
+  }
+  const SELECTEUR = config.selecteur
+
 
   const defauts = []
   const raisonsVues = []
