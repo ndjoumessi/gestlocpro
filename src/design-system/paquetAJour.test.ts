@@ -49,8 +49,20 @@ import { describe, expect, it } from 'vitest'
  */
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '../..')
 
-/** Il construit ce qu'il sert : la fraîcheur est acquise, pas à vérifier. */
-const CONSTRUIT_LUI_MEME = ['mesure-ui.mjs']
+/**
+ * Il construit ce qu'il sert : la fraîcheur est acquise, pas à vérifier.
+ *
+ * VIDE DEPUIS LE 2026-09-10, et c'est un gain. `mesure-ui` y figurait parce
+ * qu'elle lançait elle-même `vite preview` après avoir construit. Le lancement
+ * a quitté les onze portes pour `serveur-de-previsualisation.mjs`, qui exige le
+ * paquet à jour au point UNIQUE où l'on sert — et `mesure-ui` construit cent
+ * quarante lignes avant de l'appeler, donc le contrôle passe pour elle sans
+ * dispense.
+ *
+ * La liste reste, et le cas plus bas avec elle : une dispense future se
+ * périmerait de la même façon, et c'est ce qu'il refuse.
+ */
+const CONSTRUIT_LUI_MEME: string[] = []
 
 /** Un script sert le paquet s'il lance `vite preview` ou s'il pose `CLIENT_DIST`. */
 function sertLePaquet(code: string): boolean {
@@ -67,8 +79,14 @@ function scriptsQuiServentLePaquet(): string[] {
 describe('un script qui sert le paquet', () => {
   it('est bien TROUVÉ — sans quoi cette garde ne garderait rien', () => {
     /* Un motif rompu rendrait une liste vide, et « aucun oubli » se lirait comme
-       « rien à couvrir ». Onze au jour de l'écriture. */
-    expect(scriptsQuiServentLePaquet().length).toBeGreaterThanOrEqual(10)
+       « rien à couvrir ».
+
+       ONZE À L'ÉCRITURE, TROIS DEPUIS LE 2026-09-10 — et le plancher a baissé
+       avec eux. Le lancement de `vite preview` a quitté les onze portes qui le
+       recopiaient pour un module ; restent ce module et les DEUX portes qui
+       montent un vrai serveur, reconnues par `CLIENT_DIST`. Exiger dix
+       reviendrait à exiger le retour des dix copies. */
+    expect(scriptsQuiServentLePaquet().length).toBeGreaterThanOrEqual(3)
   })
 
   it('refuse d’abord un paquet PÉRIMÉ', () => {

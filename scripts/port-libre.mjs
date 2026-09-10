@@ -25,7 +25,8 @@
  *
  * Ce module dit si quelque chose ÉCOUTE. Il ne dit pas si l'on pourra parler à
  * ce qui écoute — et les deux se séparent sur une liste que personne n'a en
- * tête. Mesuré le 2026-09-09 en écrivant `plafond-hauteurs` : sur le port 4190,
+ * tête. Mesuré le 2026-09-09 en écrivant la porte des hauteurs de document :
+ * sur le port 4190,
  * `vite preview` écoute, `curl` répond 200, et la boucle d'attente de la porte
  * échoue vingt-cinq secondes durant. La cause est `fetch` : le standard réserve
  * une liste de PORTS INTERDITS dont 4190 (ManageSieve) fait partie, et undici
@@ -35,15 +36,21 @@
  * Les douze portes emploient 4183 et 4187 à 4198, sauf 4190. Ce trou-là n'était
  * pas un choix ; il l'est maintenant.
  *
- * ═══ CE QU'IL RESTE À FAIRE, ET QUI N'EST PAS FAIT ICI ═══
+ * ═══ QUI L'APPELLE, ET POURQUOI ILS NE SONT PLUS DOUZE ═══
  *
- * C'EST FAIT. Les dix scripts qui portaient ce contrôle en copie l'appellent
- * désormais : `couleur-non-seule`, `mesure-ui`, `modales`,
- * `notes-conditionnelles`, `plafond-coquille`, `plafond-vitrine`,
- * `poids-ecrans`, `releve-refonte`, `series-lisibles`, `stabilite-au-pointage`.
- * Avec `espace-connecte`, qui ne l'avait pas du tout, ils sont onze. Douzième
- * depuis le 2026-09-09 : `plafond-hauteurs`, née avec l'appel plutôt qu'avec
- * une copie.
+ * DEUX APPELANTS, depuis le 2026-09-10 : `serveur-de-previsualisation` et
+ * `espace-connecte`.
+ *
+ * Ils étaient DOUZE la veille, et ce n'est pas une perte de couverture — c'est
+ * l'inverse. Onze portes portaient chacune sa copie du lancement de
+ * `vite preview`, contrôle de pré-vol compris ; ce lancement vit maintenant
+ * dans `serveur-de-previsualisation.mjs`, qui appelle ce module UNE fois pour
+ * les onze. `espace-connecte` garde le sien : elle ne lance pas une
+ * prévisualisation mais le VRAI serveur, et son `spawn` n'a rien à partager.
+ *
+ * UNE PORTE MONTE UN VRAI SERVEUR SANS PRÉ-VOL, et son propre en-tête le dit :
+ * ce fichier-ci ne peut pas la nommer, la garde de sa liste lisant tout nom cité
+ * comme un appelant déclaré.
  *
  * Le compte de dix avait été RELEVÉ, pas estimé : la première rédaction de cet
  * en-tête en annonçait sept, de mémoire, et se trompait de trois. Les dix blocs

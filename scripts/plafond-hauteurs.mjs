@@ -170,15 +170,12 @@
  */
 import { chromium } from 'playwright'
 import { exigerUnPaquetAJour } from './paquet-a-jour.mjs'
-import { spawn } from 'node:child_process'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { argv, exit } from 'node:process'
 import { inventaireDesRoutes, exigerUnInventairePlein } from './inventaire/routes.mjs'
 import { POLICE_LARGE, imposerLaPoliceLarge } from './police-large.mjs'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
 import { neutraliserLApiLocale } from './api-locale-neutralisee.mjs'
-import { exigerUnPortLibre } from './port-libre.mjs'
+import { servirLaPrevisualisation } from './serveur-de-previsualisation.mjs'
 /* LA MÊME SONDE QUE `espace-connecte`, ET C'EST TOUT L'INTÉRÊT : la règle du
    défilement fantôme est ÉCRITE UNE FOIS. Recopiée, elle vieillirait des deux
    côtés à des vitesses différentes — la facture que `sondes-de-rendu.mjs` a été
@@ -190,7 +187,6 @@ import {
   RELEVER_LES_EVADES,
 } from './sondes-de-rendu.mjs'
 
-const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
 /*
   4198, ET SURTOUT PAS 4190 — LE PORT SUIVANT DANS LA SÉRIE.
 
@@ -310,30 +306,6 @@ function plafondDe(p) {
    Un paquet périmé rendrait un verdict sur le code d'AVANT, en silence. */
 exigerUnPaquetAJour()
 
-async function servir() {
-  await exigerUnPortLibre('plafond-hauteurs', BASE, PORT)
-  const fils = spawn(
-    'npx',
-    ['vite', 'preview', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'],
-    { cwd: RACINE, stdio: 'ignore' },
-  )
-  const emporter = () => {
-    fils.kill()
-    process.exit(130)
-  }
-  process.once('SIGINT', emporter)
-  process.once('SIGTERM', emporter)
-  for (let i = 0; i < 100; i++) {
-    try {
-      if ((await fetch(BASE + '/')).ok) return fils
-    } catch {
-      /* pas encore en écoute */
-    }
-    await new Promise((r) => setTimeout(r, 250))
-  }
-  fils.kill()
-  throw new Error('plafond-hauteurs : le serveur de prévisualisation n’a pas répondu.')
-}
 
 const routes = inventaireDesRoutes()
 exigerUnInventairePlein(routes)
@@ -391,7 +363,7 @@ const SANS_ATTENTE_DECLARES = new Set([
   '/demo/prise-en-main',
 ])
 
-const serveur = await servir()
+const serveur = await servirLaPrevisualisation('plafond-hauteurs', PORT)
 const plaintes = []
 const releve = []
 let inspectes = 0

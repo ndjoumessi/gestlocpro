@@ -32,14 +32,13 @@
  */
 import { chromium } from 'playwright'
 import { exigerUnPaquetAJour } from './paquet-a-jour.mjs'
-import { spawn } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
 import { argv, exit } from 'node:process'
 import { inventaireDesRoutes, exigerUnInventairePlein, RACINE } from './inventaire/routes.mjs'
 import { imposerLaPoliceLarge } from './police-large.mjs'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
-import { exigerUnPortLibre } from './port-libre.mjs'
+import { servirLaPrevisualisation } from './serveur-de-previsualisation.mjs'
 
 const PORT = Number(process.env.PORT_RELEVE || 4220)
 const BASE = `http://127.0.0.1:${PORT}`
@@ -67,85 +66,6 @@ const ADRESSES = routes.map((r) => r.adresse)
    silence — voir `paquet-a-jour.mjs`, qui porte les trois cas mesurés. */
 exigerUnPaquetAJour()
 
-async function servir() {
-  /*
-    LE PORT DOIT ÊTRE LIBRE AVANT QU'ON LANCE QUOI QUE CE SOIT.
-
-    `--strictPort` fait échouer Vite au lieu de le déplacer, et cela ne suffit
-    PAS — un témoin l'a montré : port occupé par un intrus, Vite meurt, et la
-    boucle d'attente reçoit un 200 de l'intrus AVANT que la mort du fils ne
-    remonte. La porte mesurait un serveur qu'elle n'avait pas lancé, et rendait
-    vert.
-
-    Surveiller la sortie du fils ne corrige pas cette course : `npx` est le fils,
-    Vite le petit-fils, et la réponse de l'intrus arrive la première. Le seul
-    contrôle qui ne court pas est celui qui précède : si quelque chose répond
-    déjà sur ce port, on refuse.
-
-    CE N'EST PAS UNE HYPOTHÈSE. Relevé le 2026-09-01 : quatre prévisualisations
-    orphelines tournaient encore — 4183, 4188, 4193, 4199 —, la plus ancienne
-    depuis deux jours et dix-huit heures. Elles survivent à toute porte
-    interrompue avant son `kill`.
-
-    Le dégât est resté théorique ici : `vite preview` sert `dist/` au fil des
-    requêtes, et l'orphelin rendait les mêmes octets. Il cesse de l'être dès
-    qu'un orphelin vient d'un AUTRE dossier de travail — une seconde copie du
-    dépôt, une branche comparée — et la porte rendrait alors un vert sur un
-    paquet que personne n'a construit.
-  */
-  await exigerUnPortLibre('releve-refonte', BASE, PORT)
-  /*
-    `--strictPort` : UNE PORTE NE MESURE PAS UN SERVEUR QU'ELLE N'A PAS LANCÉ.
-
-    Sans lui, `vite preview` trouve le port occupé et se déplace SANS BRUIT sur
-    le suivant. La porte, elle, continue d'interroger le port qu'elle a demandé
-    — et mesure donc ce qui s'y trouvait déjà.
-
-    CE N'EST PAS UNE HYPOTHÈSE. Relevé le 2026-09-01 : QUATRE serveurs de
-    prévisualisation orphelins tournaient encore, sur 4183, 4188, 4193 et 4199,
-    le plus ancien depuis deux jours et dix-huit heures. Ils survivent quand une
-    porte est interrompue avant son `kill` — un Ctrl-C, un délai dépassé, une
-    session fermée.
-
-    Ici le dégât est resté théorique : `vite preview` sert `dist/` au fil des
-    requêtes, et l'orphelin rendait donc les mêmes octets que son successeur.
-    Il cesse de l'être dès qu'un orphelin vient d'un AUTRE dossier de travail —
-    une seconde copie du dépôt, une branche en cours de comparaison — et la
-    porte rendrait alors un vert sur un paquet que personne n'a construit.
-
-    Le drapeau fait échouer le démarrage au lieu de le déplacer. Une porte qui
-    ne peut pas s'exécuter doit le DIRE, pas se rabattre sur autre chose.
-  */
-  const fils = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], {
-    cwd: RACINE,
-    stdio: 'ignore',
-  })
-  /*
-    L'ORPHELIN S'EMPÊCHE ICI, il ne se détecte plus seulement. Le contrôle de
-    pré-vol ci-dessus a été écrit APRÈS avoir trouvé quatre prévisualisations
-    orphelines — la plus ancienne depuis deux jours et dix-huit heures — nées
-    de portes interrompues avant leur `kill` : un Ctrl-C tue le script et
-    laisse le serveur. Ces deux lignes attrapent l'interruption et emportent
-    le fils avec elles ; le pré-vol reste, pour les morts qu'aucun signal
-    n'annonce — un SIGKILL, une machine éteinte.
-  */
-  const emporter = () => {
-    fils.kill()
-    process.exit(130)
-  }
-  process.once('SIGINT', emporter)
-  process.once('SIGTERM', emporter)
-  for (let i = 0; i < 100; i++) {
-    try {
-      if ((await fetch(BASE + '/')).ok) return fils
-    } catch {
-      /* pas encore en écoute */
-    }
-    await new Promise((r) => setTimeout(r, 250))
-  }
-  fils.kill()
-  throw new Error('relevé : le serveur de prévisualisation n’a pas répondu.')
-}
 
 /* ─── CE QUI EST MESURÉ DANS LA PAGE ──────────────────────────────────────
    Tout ce bloc s'exécute dans le navigateur. Il est écrit en une seule
@@ -278,7 +198,7 @@ const DANS_LA_PAGE = () => {
   }
 }
 
-const serveur = await servir()
+const serveur = await servirLaPrevisualisation('releve-refonte', PORT)
 const releve = { adresses: ADRESSES, largeurs: LARGEURS, mesures: {}, froid: {} }
 let etatsMesures = 0
 

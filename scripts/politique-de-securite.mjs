@@ -34,6 +34,19 @@
  * démonstration ne demande pas de compte, l'espace réel oui. Les violations
  * y seraient les mêmes — mêmes composants, mêmes origines — mais ce n'est pas
  * mesuré, et c'est écrit ici plutôt que tu.
+ *
+ * ═══ CETTE PORTE N'A PAS DE CONTRÔLE DE PRÉ-VOL, ET C'EST ÉCRIT ═══
+ *
+ * `port-libre.mjs` refuse de démarrer quand quelque chose répond déjà sur le
+ * port visé — sans quoi la porte mesure un serveur qu'elle n'a pas lancé et
+ * rend VERT. Onze portes l'appellent par `serveur-de-previsualisation`, et
+ * `espace-connecte` directement.
+ *
+ * Celle-ci, non : elle monte le vrai serveur par son propre `spawn` et n'a
+ * jamais porté ce contrôle. Un orphelin sur son port lui ferait donc mesurer
+ * les en-têtes de quelqu'un d'autre. Relevé le 2026-09-10 en extrayant le
+ * lancement partagé ; non corrigé ici, pour ne pas mêler deux sujets dans un
+ * lot — mais dit à l'endroit où on le lira.
  */
 import { chromium } from 'playwright'
 import { exigerUnPaquetAJour } from './paquet-a-jour.mjs'
@@ -42,6 +55,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { exit } from 'node:process'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
+import { attendreUneReponse } from './serveur-de-previsualisation.mjs'
 
 /* LE PAQUET AVANT TOUT LE RESTE : ce script mesure `dist/`, jamais les
    sources. Un paquet périmé rendrait un verdict sur le code d'AVANT, en
@@ -88,15 +102,13 @@ function servir() {
        `createApp().listen(${PORT});`],
       { cwd: RACINE, stdio: 'ignore' },
     )
+    /* LA MÊME ATTENTE QUE LES DIX PORTES DE PRÉVISUALISATION — le LANCEMENT
+       diffère (ici un vrai serveur, là `vite preview`), l'attente non. Voir
+       `serveur-de-previsualisation.mjs`. Le budget reste propre à ce serveur :
+       il construit et se connecte à une base, ce que `vite preview` ne fait
+       pas. */
     ;(async () => {
-      for (let i = 0; i < 120; i++) {
-        try {
-          if ((await fetch(BASE + '/')).ok) return resoudre(fils)
-        } catch {
-          /* pas encore en écoute */
-        }
-        await new Promise((r) => setTimeout(r, 250))
-      }
+      if (await attendreUneReponse(BASE, 120)) return resoudre(fils)
       fils.kill()
       rejeter(new Error('le serveur de production n’a pas démarré'))
     })()

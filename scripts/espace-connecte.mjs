@@ -120,6 +120,7 @@ import { fileURLToPath } from 'node:url'
 import { exit } from 'node:process'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
 import { exigerUnPortLibre } from './port-libre.mjs'
+import { attendreUneReponse } from './serveur-de-previsualisation.mjs'
 import {
   MESURER_CIBLES,
   PLANCHER_CIBLE,
@@ -465,15 +466,13 @@ async function servir() {
       ],
       { cwd: RACINE, stdio: 'ignore' },
     )
+    /* LA MÊME ATTENTE QUE LES DIX PORTES DE PRÉVISUALISATION — le LANCEMENT
+       diffère (ici un vrai serveur, là `vite preview`), l'attente non. Voir
+       `serveur-de-previsualisation.mjs`. Le budget reste propre à ce serveur :
+       il construit et se connecte à une base, ce que `vite preview` ne fait
+       pas. */
     ;(async () => {
-      for (let i = 0; i < 160; i++) {
-        try {
-          if ((await fetch(BASE + '/')).ok) return resoudre(fils)
-        } catch {
-          /* pas encore en écoute */
-        }
-        await new Promise((r) => setTimeout(r, 250))
-      }
+      if (await attendreUneReponse(BASE, 160)) return resoudre(fils)
       fils.kill()
       rejeter(new Error('le serveur de production n’a pas démarré'))
     })()

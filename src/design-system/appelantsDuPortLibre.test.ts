@@ -63,9 +63,19 @@ function appelantsCites(): string[] {
 describe('l’en-tête de `port-libre.mjs`', () => {
   it('trouve bien des appelants — sans quoi cette garde ne garderait rien', () => {
     /* Un renommage du module rendrait DEUX listes vides, et les deux cas
-       suivants passeraient au vert en ne comparant rien. */
-    expect(appelantsReels().length).toBeGreaterThanOrEqual(10)
-    expect(appelantsCites().length).toBeGreaterThanOrEqual(10)
+       suivants passeraient au vert en ne comparant rien.
+
+       LE PLANCHER EST TOMBÉ DE DIX À DEUX le 2026-09-10, et c'est un GAIN : le
+       lancement de `vite preview` — pré-vol compris — a quitté les onze portes
+       qui le recopiaient pour `serveur-de-previsualisation.mjs`, qui appelle ce
+       module une fois pour toutes. Un plancher de dix exigerait désormais de
+       remettre la copie dans dix fichiers.
+
+       DEUX RESTE UN PLANCHER UTILE : il ne peut pas tomber à zéro sans qu'un
+       renommage du module l'ait vidé, ce qui est exactement ce que ce cas
+       existe pour empêcher. */
+    expect(appelantsReels().length).toBeGreaterThanOrEqual(2)
+    expect(appelantsCites().length).toBeGreaterThanOrEqual(2)
   })
 
   it('nomme TOUS les scripts qui appellent le module', () => {
