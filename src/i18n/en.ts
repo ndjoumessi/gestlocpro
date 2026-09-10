@@ -1546,8 +1546,9 @@ export const en: Dictionary = {
       removeBody: 'The lease and any issued charges go with it; the unit becomes vacant. Refused if a payment was collected or a deposit is held — remove those first.',
       removeUnit: 'Unit {unit}',
       removed: 'Record removed · the unit is vacant',
-      vacantList: '{count} vacant units: {units}',
-      vacantList_one: '{count} vacant unit: {units}',
+      vacantTitle: '{count} vacant units',
+      vacantTitle_one: '{count} vacant unit',
+      vacantHint: 'No rent is called on these until a tenant is attached.',
       noVacantNotice: 'Every unit is let. A tenant record needs a vacant unit to attach to.',
     },
 

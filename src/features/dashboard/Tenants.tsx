@@ -29,7 +29,6 @@ import { DatePicker } from '@/components/primitives/DatePicker'
 import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useI18n, useT } from '@/i18n/I18nProvider'
-import { useNumbers } from '@/lib/numbers'
 import { useDates } from '@/lib/useDates'
 import { dialOptions } from '@/lib/countries'
 import { INDICATIFS } from '@/lib/indicatifs'
@@ -99,7 +98,6 @@ function FaitDeLaFiche({
 
 export function Tenants() {
   const t = useT()
-  const n = useNumbers()
   const d = useDates()
   const { money } = useCurrency()
   const [open, setOpen] = useState(false)
@@ -126,6 +124,9 @@ export function Tenants() {
      retour anticipé ne se franchit qu'une fois tous les crochets posés. */
   const enTableau = useAuDela(AU_DELA_LG)
   const [aCorriger, setACorriger] = useState<Unit | null>(null)
+  /* Le logement vacant qu'on vient d'ouvrir à l'attribution — même état que
+     sur l'écran du parc, et la même modale au bout. */
+  const [aAttribuer, setAAttribuer] = useState<Unit | null>(null)
   const [aRetirer, setARetirer] = useState<Unit | null>(null)
   /* Le locataire qu'on relance depuis SA fiche. La relance part vers une
      personne : elle se confirme, comme celle des paiements. */
@@ -1010,13 +1011,64 @@ export function Tenants() {
         </Modal>
       )}
 
+      {/*
+        LES LOGEMENTS VACANTS PORTENT LEUR GESTE, ET C'EST TOUT LE LOT.
+
+        CE QU'IL Y AVAIT AVANT : « 3 unités vacantes : A3, B2 et A1 » — une
+        phrase grise, en bas de page, sous le vide laissé par deux fiches dans
+        une grille qui en tient six. Ces trois logements sont pourtant ce que
+        l'écran a de plus coûteux : aucun loyer n'y est appelé, et le seul
+        endroit du produit où l'on pouvait y remédier était l'écran du PARC.
+
+        La phrase nommait le problème et n'offrait rien. Elle devient des fiches,
+        dans la MÊME grille que les locataires en place, avec le MÊME geste
+        qu'au parc — `app.portfolio.assignTenant`, la clé elle-même, pour que le
+        nom accessible soit identique des deux côtés. C'est la règle que ce
+        dépôt a payée : un geste vit sous un seul nom, où qu'il se trouve.
+
+        LA MODALE EST DÉJÀ LÀ. `NewTenantModal` est montée par cet écran depuis
+        toujours, et le parc l'ouvre déjà pré-remplie sur une unité. Rien de
+        neuf n'est inventé : un chemin manquait.
+      */}
       {vacant.length > 0 && (
-        <p className="mt-4 text-body text-muted">
-          {t('app.tenants.vacantList', {
-            count: vacant.length,
-            units: n.list(vacant.map((unit) => unit.label)),
-          })}
-        </p>
+        <Card flush className="mt-6">
+          <CardHeader
+            level={2}
+            title={t('app.tenants.vacantTitle', { count: vacant.length })}
+            description={t('app.tenants.vacantHint')}
+          />
+          <ul aria-label={t('app.tenants.vacantTitle', { count: vacant.length })} className={`${GRILLE_DES_FICHES_DE_LOCATAIRE} px-4 pb-4`}>
+            {vacant.map((unit) => (
+              <li key={unit.id}>
+                <Card className="flex h-full flex-col gap-2">
+                  <p className="numeric font-medium">{unit.label}</p>
+                  <p className="text-label text-muted">
+                    {t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')} · {unit.surface} m²
+                  </p>
+                  {/* LE LOYER ATTENDU, et non un tiret : c'est le montant que ce
+                      logement vide ne rapporte pas. Même formulation qu'au parc. */}
+                  <p className="numeric text-body">
+                    {money(unit.rent, { compact: true })}
+                    <span className="ml-1 text-muted">{t('app.portfolio.rentExpected')}</span>
+                  </p>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    icon="users"
+                    onClick={() => setAAttribuer(unit)}
+                    className="mt-auto self-start"
+                  >
+                    {t('app.portfolio.assignTenant')}
+                  </Button>
+                </Card>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
+      {aAttribuer && (
+        <NewTenantModal vacant={[aAttribuer]} onClose={() => setAAttribuer(null)} />
       )}
 
       {aCorriger && (

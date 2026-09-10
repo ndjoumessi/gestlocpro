@@ -226,6 +226,22 @@ const HORS_PORTEE = {
  * mou ne les rende visibles. Faire monter un nombre d'ici demande donc d'écrire
  * à côté ce qu'il achète, comme `poids-ecrans` l'exige pour ses octets.
  *
+ * ═══ CE QUE LES PLAFONDS DE `/demo/locataires` ONT ACHETÉ, LE 2026-09-11 ═══
+ *
+ * +433 px à 360, +241 px à 1280 : 3931 → 4364 et 2245 → 2486.
+ *
+ * Ils paient les fiches des LOGEMENTS VACANTS. Avant, l'écran finissait sur
+ * « 3 unités vacantes : A3, B2 et A1 » — une phrase grise, sous le vide laissé
+ * par deux fiches dans une grille qui en tient six. Ces logements sont ce que
+ * l'écran a de plus coûteux : aucun loyer n'y est appelé, et le seul endroit du
+ * produit où l'on pouvait y remédier était l'écran du parc.
+ *
+ * Chaque logement vacant porte donc sa fiche et son geste — `assignTenant`, la
+ * clé du parc elle-même, pour que le nom accessible soit identique des deux
+ * côtés. Les quatre autres portes n'ont pas bougé d'un pixel : ni débordement,
+ * ni contraste, ni cible sous le plancher, ni octet de plus. La hauteur est le
+ * seul prix, et il est écrit ici.
+ *
  * `plafond` : machine de développement, macOS, police du système, 2026-09-09.
  * `plafondLarge` : exécuteur Ubuntu de l'intégration continue, sous
  * `MESURER_EN_POLICE_LARGE`, relevé le 2026-09-09 par le travail `polices`
@@ -252,7 +268,7 @@ const PLAFONDS = [
   { adresse: '/demo/parc', largeur: 360, plafond: 4232, plafondLarge: 4232 },
   { adresse: '/demo/releves', largeur: 360, plafond: 3724, plafondLarge: 3724 },
   { adresse: '/demo/cautions', largeur: 360, plafond: 2121, plafondLarge: 2121 },
-  { adresse: '/demo/locataires', largeur: 360, plafond: 3931, plafondLarge: 3931 },
+  { adresse: '/demo/locataires', largeur: 360, plafond: 4364, plafondLarge: 4364 },
   { adresse: '/demo/acces', largeur: 360, plafond: 2226, plafondLarge: 2187 },
   { adresse: '/demo/decisions', largeur: 360, plafond: 1591, plafondLarge: 1569 },
   { adresse: '/demo/prise-en-main', largeur: 360, plafond: 1633, plafondLarge: 1611 },
@@ -275,7 +291,7 @@ const PLAFONDS = [
   { adresse: '/demo/parc', largeur: 1280, plafond: 2166, plafondLarge: 2166 },
   { adresse: '/demo/releves', largeur: 1280, plafond: 1402, plafondLarge: 1402 },
   { adresse: '/demo/cautions', largeur: 1280, plafond: 900, plafondLarge: 900 },
-  { adresse: '/demo/locataires', largeur: 1280, plafond: 2245, plafondLarge: 2223 },
+  { adresse: '/demo/locataires', largeur: 1280, plafond: 2486, plafondLarge: 2465 },
   { adresse: '/demo/acces', largeur: 1280, plafond: 1213, plafondLarge: 1213 },
   { adresse: '/demo/decisions', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo/prise-en-main', largeur: 1280, plafond: 1358, plafondLarge: 1358 },

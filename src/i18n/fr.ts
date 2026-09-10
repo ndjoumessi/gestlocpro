@@ -2193,8 +2193,9 @@ export const fr = {
       removeBody: 'Le bail et les échéances appelées partent avec elle ; le logement redevient vacant. Refusé si un versement a été encaissé ou une caution détenue — retirez-les d’abord.',
       removeUnit: 'Logement {unit}',
       removed: 'Fiche retirée · le logement est vacant',
-      vacantList: '{count} unités vacantes : {units}',
-      vacantList_one: '{count} unité vacante : {units}',
+      vacantTitle: '{count} logements vacants',
+      vacantTitle_one: '{count} logement vacant',
+      vacantHint: 'Aucun loyer n’y est appelé tant qu’aucun locataire n’y est rattaché.',
       noVacantNotice:
         'Tout le parc est loué. Une fiche locataire a besoin d’une unité vacante à laquelle se rattacher.',
     },
