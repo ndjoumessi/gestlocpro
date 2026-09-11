@@ -30,6 +30,7 @@ function unite(
   status: string,
   tenant: string,
   paidMinor: number,
+  sansCompte = false,
 ) {
   return {
     id,
@@ -42,7 +43,12 @@ function unite(
     leaseId: `bail-${id}`,
     leaseStartsOn: '2025-01-01T00:00:00.000Z',
     overdueDays: status === 'overdue' ? 24 : null,
-    tenant: { id: `t-${id}`, fullName: tenant, phoneE164: '+237677000000' },
+    tenant: {
+      id: `t-${id}`,
+      fullName: tenant,
+      phoneE164: '+237677000000',
+      ...(sansCompte ? { hasAccount: false } : {}),
+    },
   }
 }
 
@@ -76,7 +82,7 @@ function parc() {
           district: 'Essos',
           units: [
             unite('u-a1', 'A1', 'paid', 'Charles Ngassa', 110000),
-            unite('u-a2', 'A2', 'overdue', 'Serge Mbarga', 0),
+            unite('u-a2', 'A2', 'overdue', 'Serge Mbarga', 0, true),
           ],
         },
       ],
@@ -213,4 +219,62 @@ describe('les locataires sur bureau', () => {
     expect(within(modale).getByText('Serge Mbarga')).toBeInTheDocument()
     expect(within(modale).getByText(/déjà relancé aujourd’hui/)).toBeInTheDocument()
   })
+
+  /**
+   * L'IDENTITÉ D'ABORD, L'ÉTAT ENSUITE — ET LES DEUX ÉTATS ENSEMBLE.
+   *
+   * La pastille de paiement partageait la rangée du nom : sur une fiche de
+   * 320 px, relevé sur un parc réel le 2026-09-11, le nom se coupait
+   * (« DJOUMESSI MAR… ») et « En retard » se pliait sur deux lignes — chacun
+   * cédait à l'autre. Elle rejoint « Sans compte » sous l'identité : le nom a
+   * toute la largeur, et les deux états de la personne se lisent d'un regard.
+   *
+   * L'ORDRE DE LECTURE est ce que ce cas éprouve, parce que c'est ce qu'un
+   * lecteur d'écran entend : qui, où, comment le joindre, puis ce qui ne va pas.
+   */
+  it('dit qui, où et comment le joindre avant son état, et range ses deux états ensemble', async () => {
+    parc()
+    await renderApp('/app/locataires', { session: SESSION, largeur: 1280 })
+    await attendreLeChargement()
+    const serge = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-fiche-locataire]'),
+    )[1]!
+    const texte = serge.textContent ?? ''
+    const numero = texte.indexOf('+237')
+    expect(numero, 'prémisse : le numéro est dans la fiche').toBeGreaterThan(-1)
+    expect(texte.indexOf('En retard'), 'l’état se lit avant le numéro').toBeGreaterThan(numero)
+
+    const retard = within(serge).getByText(/En retard/).closest('[data-ton]')
+    const sansCompte = within(serge).getByText(/Sans compte/).closest('[data-ton]')
+    expect(retard, 'prémisse : la pastille de paiement').not.toBeNull()
+    expect(sansCompte, 'prémisse : la pastille sans compte').not.toBeNull()
+    expect(retard!.parentElement, 'les deux états vivent sur deux rangées').toBe(
+      sansCompte!.parentElement,
+    )
+  })
+
+  /**
+   * LE NUMÉRO SE LIT GROUPÉ, S'APPELLE EXACT, ET SE CHERCHE COMME IL SE LIT.
+   *
+   * Sous 1024 px c'est `DataTable` qui rend les fiches : même numéro, même
+   * forme — deux formes d'un même écran ne l'écrivent pas de deux façons.
+   */
+  for (const largeur of [1280, 375]) {
+    it(`écrit le numéro groupé et appelle le numéro exact, à ${largeur} px`, async () => {
+      parc()
+      await renderApp('/app/locataires', { session: SESSION, largeur })
+      await attendreLeChargement()
+      const main = screen.getByRole('main')
+
+      const liens = within(main).getAllByRole('link', { name: '+237 6 77 00 00 00' })
+      expect(liens).toHaveLength(2)
+      for (const lien of liens) expect(lien).toHaveAttribute('href', 'tel:+237677000000')
+
+      /* Taper ce qu'on LIT doit trouver : la recherche portait sur le brut, et
+         « 77 00 00 » recopié de l'écran n'aurait rien rendu. */
+      await userEvent.setup().type(within(main).getByRole('searchbox'), '77 00 00')
+      expect(within(main).queryByText(/Aucun locataire ne correspond/)).toBeNull()
+      expect(within(main).getAllByRole('link', { name: '+237 6 77 00 00 00' })).toHaveLength(2)
+    })
+  }
 })

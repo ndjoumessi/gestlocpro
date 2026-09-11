@@ -242,6 +242,17 @@ const HORS_PORTEE = {
  * ni contraste, ni cible sous le plancher, ni octet de plus. La hauteur est le
  * seul prix, et il est écrit ici.
  *
+ * ═══ ET CE QUE LES FICHES DE LOCATAIRE ONT RENDU, LE MÊME JOUR ═══
+ *
+ * −36 px à 1280 dans les DEUX colonnes : 2486 → 2450 ici, 2465 → 2429 sous la
+ * police large (exécution 34581776324, les 43 autres points identiques au
+ * relevé précédent). La pastille de paiement a quitté la rangée du nom
+ * pour rejoindre « Sans compte » sous l'identité, et les quatre sections de
+ * chaque fiche s'alignent sur celles de ses voisines par `subgrid`. Le gain
+ * vient des fiches qui portaient une rangée « Sans compte » à elles seules : la
+ * rangée d'états existe désormais partout, et la ligne de fiches ne paie plus
+ * que la plus haute. À 360, `DataTable` rend ses propres fiches : rien n'y bouge.
+ *
  * ═══ ET CE QUE `/demo/acces@360` A ACHETÉ, LE 2026-09-11 ═══
  *
  * +22 px, 2226 → 2248 : L'EXPIRATION D'UN CODE, VISIBLE SUR TÉLÉPHONE. La
@@ -299,7 +310,7 @@ const PLAFONDS = [
   { adresse: '/demo/parc', largeur: 1280, plafond: 2166, plafondLarge: 2166 },
   { adresse: '/demo/releves', largeur: 1280, plafond: 1402, plafondLarge: 1402 },
   { adresse: '/demo/cautions', largeur: 1280, plafond: 900, plafondLarge: 900 },
-  { adresse: '/demo/locataires', largeur: 1280, plafond: 2486, plafondLarge: 2465 },
+  { adresse: '/demo/locataires', largeur: 1280, plafond: 2450, plafondLarge: 2429 },
   { adresse: '/demo/acces', largeur: 1280, plafond: 1213, plafondLarge: 1213 },
   { adresse: '/demo/decisions', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo/prise-en-main', largeur: 1280, plafond: 1358, plafondLarge: 1358 },

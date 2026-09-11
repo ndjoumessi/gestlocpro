@@ -32,6 +32,7 @@ import { useI18n, useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
 import { dialOptions } from '@/lib/countries'
 import { INDICATIFS } from '@/lib/indicatifs'
+import { telephoneLisible } from '@/lib/telephone'
 import { useSession } from '@/api/SessionProvider'
 import { api } from '@/api/client'
 import {
@@ -73,6 +74,22 @@ const ETATS_DU_FILTRE: PaymentStatus[] = ['overdue', 'partial', 'uncalled', 'pen
 
 const GRILLE_DES_FICHES_DE_LOCATAIRE =
   'grid grid-cols-[repeat(auto-fill,minmax(min(100%,18rem),1fr))] gap-3'
+
+/**
+ * LES QUATRE SECTIONS D'UNE FICHE S'ALIGNENT SUR CELLES DE SES VOISINES.
+ *
+ * Chaque fiche occupe quatre rangées de la grille — identité, états, faits,
+ * gestes — et les partage par `subgrid` avec les fiches de la même ligne.
+ * « Loyer » tombe donc à la même hauteur partout. Sans cela, relevé le
+ * 2026-09-11 : les fiches qui portent « Sans compte » descendaient leur grille
+ * de 38 px sous celle de leurs voisines, et la comparaison « d'un coup d'œil »
+ * que promet la grille des faits ne se faisait plus. Un nom sur deux lignes
+ * aurait produit le même décalage.
+ *
+ * Posé sur l'élément de liste ET sur la carte : la carte est l'enfant de
+ * l'élément, et une rangée ne se transmet qu'à travers chaque niveau.
+ */
+const SECTIONS_DE_FICHE = 'row-span-4 grid grid-rows-subgrid'
 
 /**
  * UN COUPLE NOM/VALEUR de la fiche, et il est un vrai couple.
@@ -170,7 +187,14 @@ export function Tenants() {
     if (!aiguille) return true
     /* Le libellé du logement et non son identifiant : c'est « A1 » qu'on lit à
        l'écran et qu'on retape, pas l'uuid que servira l'API. */
-    return [unit.tenant ?? '', unit.label, unit.phone ?? '']
+    /* Le numéro BRUT et le numéro LU : on tape ce qu'on voit à l'écran
+       (« 77 00 00 »), ou ce qu'on a dans son répertoire (« 677000000 »). */
+    return [
+      unit.tenant ?? '',
+      unit.label,
+      unit.phone ?? '',
+      unit.phone ? telephoneLisible(unit.phone) : '',
+    ]
       .join(' ')
       .toLowerCase()
       .includes(aiguille)
@@ -321,78 +345,74 @@ export function Tenants() {
             : unit.rent - unit.paid
         const enRetard = unit.status === 'overdue' || unit.status === 'partial'
         return (
-          <li key={unit.id} data-fiche-locataire="">
-            <Card as="article" className="flex h-full flex-col gap-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-3">
-                  <span
-                    aria-hidden="true"
-                    className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-label font-semibold text-muted"
-                  >
-                    {initiales(unit.tenant)}
-                  </span>
-                  {/* `data-donnee` : un nom saisi n'a pas de longueur bornée,
-                      la fiche si — la coupe est assumée, avec le nom entier au
-                      survol. Voir `MESURER_TRONCATURES`. */}
-                  <p
-                    data-donnee
-                    className="min-w-0 truncate font-medium"
-                    title={unit.tenant ?? undefined}
-                  >
-                    {unit.tenant}
+          <li key={unit.id} data-fiche-locataire="" className={SECTIONS_DE_FICHE}>
+            <Card as="article" className={SECTIONS_DE_FICHE}>
+              {/* L'IDENTITÉ, EN UN SEUL BLOC : le nom, le logement, le numéro.
+
+                  Trois lignes d'une même personne se lisaient comme trois
+                  sections, séparées par l'écart des blocs. Elles forment
+                  désormais une colonne serrée à droite de l'avatar — la même
+                  largeur que leur ancien `pl-12`, qui leur avait été donné
+                  quand la pastille partageait encore leur rangée.
+
+                  LE NOM N'EST PLUS COUPÉ. Il se coupait « au survol » à côté de
+                  la pastille : relevé sur un parc réel, « DJOUMESSI MAR… ».
+                  Sur une fiche de personne, c'est la dernière chose à rogner,
+                  et le survol n'est pas une manière de lire. Il se replie. */}
+              <div className="flex min-w-0 items-start gap-3">
+                <span
+                  aria-hidden="true"
+                  className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-label font-semibold text-muted"
+                >
+                  {initiales(unit.tenant)}
+                </span>
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <p className="font-medium break-words">{unit.tenant}</p>
+                  {/* LE LOGEMENT ET LA DATE D'ENTRÉE. Le QUARTIER est parti
+                      d'ici : en anglais à 1280 px, « A1 · Bonamoussadi · since
+                      August 2023 » se coupait sur les dix fiches, et le
+                      quartier situe un IMMEUBLE — il ne dit rien d'une
+                      personne, et vit déjà sur l'écran du parc. */}
+                  <p className="numeric truncate text-label text-muted">
+                    {unit.label}
+                    {unit.leaseStart
+                      ? ` · ${t('app.portfolio.sinceLease', { date: d.monthYearInline(unit.leaseStart) })}`
+                      : ''}
                   </p>
+                  {/* LE NUMÉRO, PARCE QUE C'EST PAR LÀ QUE ÇA SE RÈGLE. Sur le
+                      marché visé, appeler EST la démarche — avant la relance
+                      écrite, après elle, et pour tout ce qui n'est pas un
+                      impayé. `min-h-11` : un lien qu'un pouce vise est une
+                      cible, et le produit tient 44 px partout ; `-my-2` rend
+                      à la colonne l'interligne que la cible déborde. */}
+                  {unit.phone ? (
+                    <a
+                      href={`tel:${unit.phone.replace(/\s/g, '')}`}
+                      className="numeric -my-2 inline-flex min-h-11 items-center self-start text-label text-muted no-underline hover:text-ink hover:underline"
+                    >
+                      {telephoneLisible(unit.phone)}
+                    </a>
+                  ) : null}
                 </div>
-                <PaymentStatusPill status={unit.status} size="sm" />
               </div>
 
-              {/* LE LOGEMENT ET LA DATE D'ENTRÉE, SUR SA PROPRE LIGNE.
+              {/* LES ÉTATS DE LA PERSONNE, ENSEMBLE ET SOUS SON NOM.
 
-                  Deux mesures l'ont posée là. Le QUARTIER est parti : en
-                  anglais à 1280 px, « A1 · Bonamoussadi · since August 2023 »
-                  se coupait sur les dix fiches, et le quartier situe un
-                  IMMEUBLE — il ne dit rien d'une personne, et vit déjà sur
-                  l'écran du parc. Puis « A2 · depuis octobre 2023 » se coupait
-                  ENCORE, à côté de l'avatar et sous la pastille : il restait
-                  159 px des 307 de la fiche. Sur sa ligne, elle en a 227, et
-                  rien ne se coupe dans les deux langues. `pl-12` la garde
-                  alignée sous le nom, à l'aplomb que l'avatar impose. */}
-              <p className="numeric truncate pl-12 text-label text-muted">
-                {unit.label}
-                {unit.leaseStart
-                  ? ` · ${t('app.portfolio.sinceLease', { date: d.monthYearInline(unit.leaseStart) })}`
-                  : ''}
-              </p>
-
-              {/* LE NUMÉRO, PARCE QUE C'EST PAR LÀ QUE ÇA SE RÈGLE.
-
-                  La première rédaction de cette fiche l'avait perdu : la
-                  référence ne le montre pas, et le tableau le portait dans une
-                  colonne « Contact ». Sur le marché visé, appeler EST la
-                  démarche — avant la relance écrite, après elle, et pour tout
-                  ce qui n'est pas un impayé. `screens.test.tsx` l'a dit en
-                  cherchant une colonne qui n'existait plus.
-
-                  `min-h-11` : un lien qu'un pouce vise est une cible, et le
-                  produit tient 44 px partout. */}
-              {unit.phone ? (
-                <a
-                  href={`tel:${unit.phone.replace(/\s/g, '')}`}
-                  className="numeric -my-2 inline-flex min-h-11 items-center pl-12 text-label text-muted no-underline hover:text-ink hover:underline"
-                >
-                  {unit.phone}
-                </a>
-              ) : null}
-
-              {/* SANS COMPTE reste à l'identité et non dans la grille : c'est un
-                  état de la PERSONNE, pas un de ses quatre chiffres, et il
-                  n'existe que quand il est vrai. */}
-              {unit.tenantHasAccount === false && (
-                <div>
+                  La pastille de paiement partageait la rangée du nom, et
+                  chacun cédait à l'autre : le nom se coupait, « En retard » se
+                  pliait sur deux lignes. Elle rejoint « Sans compte », qui
+                  vivait déjà là — un état de la PERSONNE, pas un de ses quatre
+                  chiffres. La rangée existe sur TOUTES les fiches, puisque
+                  l'état de paiement y est toujours : c'est ce qui la rend
+                  alignable. */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <PaymentStatusPill status={unit.status} size="sm" />
+                {unit.tenantHasAccount === false && (
                   <StatusPill tone="warn" size="sm">
                     {t('app.tenants.noAccount')}
                   </StatusPill>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* QUATRE FAITS, TOUJOURS LES MÊMES ET TOUJOURS LÀ. Une grille dont
                   les cases changent d'une fiche à l'autre ne se compare plus
@@ -430,10 +450,12 @@ export function Tenants() {
                 </FaitDeLaFiche>
               </dl>
 
-              {/* `mt-auto` : les gestes se posent au BAS de la fiche, quelle que
-                  soit la hauteur du nom au-dessus. Sans lui, une rangée de
-                  fiches montre ses boutons à quatre hauteurs différentes. */}
-              <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-divider pt-3">
+              {/* `self-end` : les gestes se posent au BAS de leur rangée,
+                  qu'une voisine plus chargée peut avoir agrandie. Sans lui, une
+                  rangée de fiches montrerait ses boutons à des hauteurs
+                  différentes — c'était le rôle de `mt-auto` quand la fiche
+                  était une colonne. */}
+              <div className="flex flex-wrap items-center gap-2 self-end border-t border-divider pt-3">
                 {/* LE GESTE QUE L'ÉTAT APPELLE, et lui seul. Relancer n'a de sens
                     que sur un impayé ou un partiel ; l'offrir partout ferait
                     dix boutons dont huit n'ont rien à envoyer. */}
@@ -793,7 +815,9 @@ export function Tenants() {
                   href={`tel:${unit.phone.replace(/\s/g, '')}`}
                   className="numeric inline-flex min-h-11 items-center text-muted no-underline hover:text-ink hover:underline"
                 >
-                  {unit.phone}
+                  {/* Groupé comme sur la fiche de bureau : deux formes d'un
+                      même écran n'écrivent pas un numéro de deux façons. */}
+                  {telephoneLisible(unit.phone)}
                 </a>
               ) : (
                 <span className="text-muted">—</span>
