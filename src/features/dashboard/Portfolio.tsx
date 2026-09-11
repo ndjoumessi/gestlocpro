@@ -56,9 +56,9 @@ import { Badge } from '@/components/primitives/Badge'
    quatre colonnes de 259 px à 1440, mesuré : trop peu pour un nom entier.
 
    AUCUN ÉCART VERTICAL, ET C'EST CE QUI PERMET D'ALIGNER. Les fiches partagent
-   leurs huit rangées par `subgrid` (voir `SECTIONS_DE_FICHE_LOGEMENT`), et une
-   section absente — la date d'entrée d'un logement vide, les jauges d'un
-   logement sans échéance — garde sa rangée, vide. Un écart de grille
+   leurs sept rangées par `subgrid` (voir `SECTIONS_DE_FICHE_LOGEMENT`), et une
+   section absente — les jauges d'un logement sans échéance, le geste d'un
+   logement occupé — garde sa rangée, vide. Un écart de grille
    s'ajouterait autour de chaque rangée vide : mesuré dans Chromium, 12 px de
    blanc pour une barre qu'aucune fiche de la rangée ne porte, même avec un
    écart nul déclaré sur la fiche. L'espacement vit donc DANS les sections, et
@@ -68,8 +68,8 @@ const GRILLE_DES_FICHES =
   'grid grid-cols-[repeat(auto-fill,minmax(min(100%,18rem),1fr))] gap-x-3 border-t border-divider px-4 pt-4 pb-1'
 
 /**
- * HUIT SECTIONS, TOUJOURS LES MÊMES ET TOUJOURS À LEUR PLACE — en-tête, occupant,
- * date d'entrée, type, loyer, jauges, faits, geste.
+ * SEPT SECTIONS, TOUJOURS LES MÊMES ET TOUJOURS À LEUR PLACE — en-tête, occupant,
+ * type, loyer, jauges, faits, geste.
  *
  * Relevé le 2026-09-11 par `MESURER_SECTIONS_ALIGNEES` avant ce lot : à côté d'un
  * logement vide, le type et le loyer des fiches occupées commençaient 25 px plus
@@ -77,10 +77,11 @@ const GRILLE_DES_FICHES =
  * du mois 14 px plus haut — il leur manquait la barre. Une grille de fiches se
  * compare par ses lignes : « 145 000 FCFA » en face de « 110 000 FCFA ».
  *
- * LA BARRE N'A PLUS DE RANGÉE : une rangée qu'une seule fiche occupe, toutes ses
- * voisines la réservent. Elle vit sur la ligne des jauges — voir la fiche.
+ * NI LA BARRE NI LA DATE D'ENTRÉE N'ONT DE RANGÉE : une rangée qu'une seule fiche
+ * occupe, toutes ses voisines la réservent. La barre vit sur la ligne des jauges,
+ * la date sur celle du type — voir la fiche.
  */
-const SECTIONS_DE_FICHE_LOGEMENT = 'mb-3 row-span-8 grid grid-rows-subgrid'
+const SECTIONS_DE_FICHE_LOGEMENT = 'mb-3 row-span-7 grid grid-rows-subgrid'
 
 /** Le mois voisin, sans jamais passer par un `Date` local — voir la route. */
 function moisDecale(mois: string, pas: number) {
@@ -820,20 +821,29 @@ export function Portfolio() {
                     >
                       {unit.tenant ?? t('app.portfolio.noTenant')}
                     </p>
-                    {/* Depuis quand : un bail de six ans et un bail de deux mois ne se
-                        lisent pas pareil, et la date vit déjà dans le logement. */}
-                    {/* Chaque section conditionnelle garde sa rangée, VIDE quand
-                        elle n'a rien à dire : c'est ce qui aligne la suivante sur
-                        celle des voisines. L'écart d'avant vit dans le contenu. */}
-                    <div data-section="depuis">
-                      {unit.tenant && unit.leaseStart && (
-                        <p className="pt-2 text-label text-muted">
-                          {t('app.portfolio.sinceLease', { date: d.monthYearInline(unit.leaseStart) })}
-                        </p>
-                      )}
-                    </div>
+                    {/* LE TYPE, LA SURFACE, ET DEPUIS QUAND — d'un trait, sur la
+                        ligne que TOUTES les fiches portent, vides comprises.
+
+                        La date avait sa rangée, sous l'occupant : une fiche vide
+                        n'en a pas, et ses voisines la réservaient. Un bail de six
+                        ans et un bail de deux mois ne se lisent pas pareil, et
+                        cette date vit déjà dans le dossier du logement — elle est
+                        ici un repère, pas une colonne.
+
+                        PAS SUR LA LIGNE DE L'OCCUPANT, où elle aurait sa place de
+                        sens : un nom saisi n'a pas de longueur bornée, cette
+                        ligne-là se coupe (`data-donnee`), et la date serait partie
+                        avec la fin du nom.
+
+                        Une section conditionnelle qui reste — les jauges, les
+                        faits, le geste — garde sa rangée, VIDE quand elle n'a rien
+                        à dire : c'est ce qui aligne la suivante sur celle des
+                        voisines. L'écart d'avant vit dans le contenu. */}
                     <p data-section="type" className="pt-2 text-body text-muted">
                       {t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')} · {unit.surface} m²
+                      {unit.tenant && unit.leaseStart
+                        ? ` · ${t('app.portfolio.sinceLease', { date: d.monthYearInline(unit.leaseStart) })}`
+                        : ''}
                     </p>
                     {/* Le loyer, et ce qu'il en est ce mois : un partiel montre le
                         reçu sur l'attendu — c'est le chiffre qu'on vient chercher. */}

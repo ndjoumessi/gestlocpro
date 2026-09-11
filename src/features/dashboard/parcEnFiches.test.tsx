@@ -200,6 +200,39 @@ describe('le parc sur bureau', () => {
   })
 
   /**
+   * LA DATE D'ENTRÉE REJOINT LE TYPE ET LA SURFACE, ET NE RÉSERVE RIEN.
+   *
+   * Elle avait sa rangée, sous l'occupant. Les fiches partageant leurs rangées
+   * (766b038), une fiche de logement VIDE — qui n'a pas de date d'entrée — la
+   * faisait réserver par toutes ses voisines. La ligne du type et de la surface,
+   * elle, existe sur toutes les fiches : « T3 · 78 m² · depuis juin 2024 ».
+   *
+   * PAS SUR LA LIGNE DE L'OCCUPANT, où elle aurait pourtant sa place de sens :
+   * un nom saisi n'a pas de longueur bornée, cette ligne se coupe (`data-donnee`),
+   * et la date aurait disparu avec la fin du nom.
+   */
+  it('écrit la date d’entrée sur la ligne du type, sans rangée à elle', async () => {
+    parc()
+    await renderApp('/app/parc', { session: SESSION, largeur: 1280 })
+    await attendreLeChargement()
+    const essos = within(screen.getByRole('main')).getByRole('region', { name: /Résidence Essos/ })
+    const fiches = within(essos).getAllByRole('listitem')
+
+    /* La fiche occupée dit les trois d'un trait ; la vide dit les deux qu'elle a.
+       Le texte de la LIGNE, et non un nœud : l'interpolation la découpe en trois. */
+    const ligneDuType = (fiche: HTMLElement) =>
+      fiche.querySelector('[data-section="type"]')?.textContent?.replace(/\s+/g, ' ').trim()
+    expect(ligneDuType(fiches[0])).toMatch(/^T\d · \d+ m² · depuis \w+ 2025$/)
+    expect(ligneDuType(fiches[2])).toMatch(/^T\d · \d+ m²$/)
+    for (const fiche of fiches) {
+      expect(
+        fiche.querySelector('[data-section="depuis"]'),
+        'une rangée « depuis » réserve un blanc à côté d’un logement vide',
+      ).toBeNull()
+    }
+  })
+
+  /**
    * LA BARRE D'UN PARTIEL VIT À CÔTÉ DE SES JAUGES, ET NE RÉSERVE RIEN.
    *
    * Elle avait sa rangée à elle, sous le loyer. Depuis que les fiches partagent

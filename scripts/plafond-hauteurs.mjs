@@ -292,6 +292,14 @@ const HORS_PORTEE = {
  * partiel avait sa rangée ; ses voisines la réservaient toutes. Elle vit
  * désormais sur la ligne des jauges, à droite des pastilles, sans la grandir.
  * Même gain sous la police large (exécution 34649470982), 2222 → 2208.
+ *
+ * −99 px ENCORE, 2208 → 2109 : LA DATE D'ENTRÉE SUR LA LIGNE DU TYPE. Elle avait
+ * sa rangée, qu'une fiche de logement VIDE — qui n'en a pas — faisait réserver
+ * par toutes ses voisines. « T3 · 78 m² · depuis juin 2024 » tient sur une ligne
+ * aux quatre largeurs où ces fiches existent, dans les deux langues, mesuré. La
+ * page du parc est donc plus courte qu'AVANT l'alignement (2166) : douze rangées
+ * de moins, et aucune réservée. Même gain sous la police large (exécution
+ * 34655076952), 2208 → 2109.
  * Reste la réserve de la date d'entrée, à côté d'un logement vide : c'est une
  * ligne de texte, que la fiche vide n'a pas.
  *
@@ -349,7 +357,7 @@ const PLAFONDS = [
   { adresse: '/demo/mon-espace', largeur: 1280, plafond: 1409, plafondLarge: 1409 },
   { adresse: '/demo/documents', largeur: 1280, plafond: 1187, plafondLarge: 1165 },
   { adresse: '/demo/signaler', largeur: 1280, plafond: 900, plafondLarge: 900 },
-  { adresse: '/demo/parc', largeur: 1280, plafond: 2208, plafondLarge: 2208 },
+  { adresse: '/demo/parc', largeur: 1280, plafond: 2109, plafondLarge: 2109 },
   { adresse: '/demo/releves', largeur: 1280, plafond: 1402, plafondLarge: 1402 },
   { adresse: '/demo/cautions', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo/locataires', largeur: 1280, plafond: 2450, plafondLarge: 2429 },
