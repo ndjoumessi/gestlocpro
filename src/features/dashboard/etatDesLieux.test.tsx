@@ -35,6 +35,29 @@ describe('état des lieux, formulaire', () => {
    * ne le disait. Motif de « Dynamic Field Array » (21st.dev) : une liste de lignes
    * commence sans ligne.
    */
+  /**
+   * UN EXEMPLE DANS CHAQUE CHAMP DE LA RÉSERVE — et c'est la PROPRIÉTÉ qu'on
+   * éprouve, pas une chaîne : « Séjour » peut devenir « Cuisine » sans que ce cas
+   * ait à le savoir. Ce qui compte est qu'il y ait un exemple, et qu'il ne soit
+   * pas le libellé recopié — un « Pièce » en grisé dans un champ nommé « Pièce »
+   * n'apprend rien.
+   */
+  it('met un exemple dans la pièce et le constat, et jamais leur libellé', async () => {
+    const user = await ouvrir()
+    await user.click(within(dialogue()).getByRole('button', { name: /ajouter une réserve/i }))
+
+    for (const [libelle, motif] of [
+      ['Pièce', /^pièce$/i],
+      ['Constat', /^constat$/i],
+    ] as const) {
+      const champ = within(dialogue()).getByLabelText(motif) as HTMLInputElement
+      expect(champ.placeholder.trim(), `« ${libelle} » n’a pas d’exemple`).not.toBe('')
+      expect(champ.placeholder.toLowerCase(), `« ${libelle} » recopie son libellé`).not.toBe(
+        libelle.toLowerCase(),
+      )
+    }
+  })
+
   it('s’ouvre sans réserve, dit que rien n’est constaté, et l’enregistre ainsi', async () => {
     const user = await ouvrir()
     const modale = dialogue()

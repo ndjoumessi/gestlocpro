@@ -719,6 +719,12 @@ export function InspectionModal({
                 {(champ) => (
                   <Input
                     {...champ}
+                    /* UN EXEMPLE, PAS UNE CONSIGNE — l'idiome du dépôt (« Résidence
+                       Makepe », « Ravalement de la façade côté cour »), rappelé par
+                       les références que Nelson a transmises le 2026-09-11. Un champ
+                       vide sans exemple fait hésiter sur ce qu'on attend : une
+                       pièce ? un numéro ? Le libellé reste le nom accessible. */
+                    placeholder={t('app.inspections.roomPlaceholder')}
                     value={reserve.room}
                     invalid={manque(index, 'room')}
                     onChange={(e) => majReserve(index, 'room', e.target.value)}
@@ -735,6 +741,7 @@ export function InspectionModal({
                 {(champ) => (
                   <Input
                     {...champ}
+                    placeholder={t('app.inspections.findingPlaceholder')}
                     value={reserve.description}
                     invalid={manque(index, 'description')}
                     onChange={(e) => majReserve(index, 'description', e.target.value)}

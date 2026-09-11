@@ -1449,6 +1449,8 @@ export const fr = {
       photoRetry: 'Reprendre l’envoi des photos',
       addFinding: 'Ajouter une réserve',
       noFindings: 'Aucune réserve : l’état des lieux sera enregistré sans dégât constaté.',
+      roomPlaceholder: 'Séjour',
+      findingPlaceholder: 'Fissure au-dessus de la fenêtre',
       findingRank: 'Réserve n° {rank}',
       removeFinding: 'Retirer la réserve n° {rank}',
       title: 'États des lieux',

@@ -1046,6 +1046,8 @@ export const en: Dictionary = {
       photoRetry: 'Retry photo upload',
       addFinding: 'Add a finding',
       noFindings: 'No findings: the inspection will be saved with no damage recorded.',
+      roomPlaceholder: 'Living room',
+      findingPlaceholder: 'Crack above the window',
       findingRank: 'Finding no. {rank}',
       removeFinding: 'Remove finding {rank}',
       title: 'Inspections',
