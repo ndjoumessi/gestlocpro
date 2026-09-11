@@ -288,6 +288,13 @@ const HORS_PORTEE = {
  * bouge. Même prix sous la police large (exécution 34643605816), 2166 → 2222 ;
  * les 43 autres points identiques.
  *
+ * −14 px LE MÊME JOUR, 2222 → 2208 : LE BLANC SOUS LE LOYER, RENDU. La barre d'un
+ * partiel avait sa rangée ; ses voisines la réservaient toutes. Elle vit
+ * désormais sur la ligne des jauges, à droite des pastilles, sans la grandir.
+ * Même gain sous la police large (exécution 34649470982), 2222 → 2208.
+ * Reste la réserve de la date d'entrée, à côté d'un logement vide : c'est une
+ * ligne de texte, que la fiche vide n'a pas.
+ *
  * ═══ ET CE QUE `/demo/acces@360` A ACHETÉ, LE 2026-09-11 ═══
  *
  * +22 px, 2226 → 2248 : L'EXPIRATION D'UN CODE, VISIBLE SUR TÉLÉPHONE. La
@@ -342,7 +349,7 @@ const PLAFONDS = [
   { adresse: '/demo/mon-espace', largeur: 1280, plafond: 1409, plafondLarge: 1409 },
   { adresse: '/demo/documents', largeur: 1280, plafond: 1187, plafondLarge: 1165 },
   { adresse: '/demo/signaler', largeur: 1280, plafond: 900, plafondLarge: 900 },
-  { adresse: '/demo/parc', largeur: 1280, plafond: 2222, plafondLarge: 2222 },
+  { adresse: '/demo/parc', largeur: 1280, plafond: 2208, plafondLarge: 2208 },
   { adresse: '/demo/releves', largeur: 1280, plafond: 1402, plafondLarge: 1402 },
   { adresse: '/demo/cautions', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo/locataires', largeur: 1280, plafond: 2450, plafondLarge: 2429 },

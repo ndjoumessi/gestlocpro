@@ -56,9 +56,9 @@ import { Badge } from '@/components/primitives/Badge'
    quatre colonnes de 259 px à 1440, mesuré : trop peu pour un nom entier.
 
    AUCUN ÉCART VERTICAL, ET C'EST CE QUI PERMET D'ALIGNER. Les fiches partagent
-   leurs neuf rangées par `subgrid` (voir `SECTIONS_DE_FICHE_LOGEMENT`), et une
-   section absente — la barre d'un logement qui n'est pas en partiel, la date
-   d'entrée d'un logement vide — garde sa rangée, vide. Un écart de grille
+   leurs huit rangées par `subgrid` (voir `SECTIONS_DE_FICHE_LOGEMENT`), et une
+   section absente — la date d'entrée d'un logement vide, les jauges d'un
+   logement sans échéance — garde sa rangée, vide. Un écart de grille
    s'ajouterait autour de chaque rangée vide : mesuré dans Chromium, 12 px de
    blanc pour une barre qu'aucune fiche de la rangée ne porte, même avec un
    écart nul déclaré sur la fiche. L'espacement vit donc DANS les sections, et
@@ -68,16 +68,19 @@ const GRILLE_DES_FICHES =
   'grid grid-cols-[repeat(auto-fill,minmax(min(100%,18rem),1fr))] gap-x-3 border-t border-divider px-4 pt-4 pb-1'
 
 /**
- * NEUF SECTIONS, TOUJOURS LES MÊMES ET TOUJOURS À LEUR PLACE — en-tête, occupant,
- * date d'entrée, type, loyer, barre, jauges, faits, geste.
+ * HUIT SECTIONS, TOUJOURS LES MÊMES ET TOUJOURS À LEUR PLACE — en-tête, occupant,
+ * date d'entrée, type, loyer, jauges, faits, geste.
  *
  * Relevé le 2026-09-11 par `MESURER_SECTIONS_ALIGNEES` avant ce lot : à côté d'un
  * logement vide, le type et le loyer des fiches occupées commençaient 25 px plus
  * bas — il leur manquait la ligne « depuis » ; à côté d'un partiel, les jauges
  * du mois 14 px plus haut — il leur manquait la barre. Une grille de fiches se
  * compare par ses lignes : « 145 000 FCFA » en face de « 110 000 FCFA ».
+ *
+ * LA BARRE N'A PLUS DE RANGÉE : une rangée qu'une seule fiche occupe, toutes ses
+ * voisines la réservent. Elle vit sur la ligne des jauges — voir la fiche.
  */
-const SECTIONS_DE_FICHE_LOGEMENT = 'mb-3 row-span-9 grid grid-rows-subgrid'
+const SECTIONS_DE_FICHE_LOGEMENT = 'mb-3 row-span-8 grid grid-rows-subgrid'
 
 /** Le mois voisin, sans jamais passer par un `Date` local — voir la route. */
 function moisDecale(mois: string, pas: number) {
@@ -852,36 +855,47 @@ export function Portfolio() {
                         </span>
                       ) : null}
                     </p>
-                    {/* La part reçue, en barre : « 40 000 / 75 000 » se calcule, une
-                        barre à moitié se voit. Seulement sur un partiel — un
-                        « À jour » à 100 % n'apprendrait rien. */}
-                    <div data-section="barre">
-                    {unit.status === 'partial' && unit.rent > 0 && (
-                      <div className="pt-2"><ProgressBar
-                        value={Math.round((unit.paid / unit.rent) * 100)}
-                        label={t('app.portfolio.paidOfRent', {
-                          paid: money(unit.paid, { compact: true }),
-                          rent: money(unit.rent, { compact: true }),
-                        })}
-                        hideLabel
-                        hideValue
-                      /></div>
-                    )}
-                    </div>
                     {/* LES TROIS POSTES DU MOIS AFFICHÉ — loyer · eau · électricité —
                         par le composant de la grille des paiements, donc de la même
                         forme que sa légende. Un partiel de loyer et une eau impayée
                         n'appellent pas le même geste, et la pastille d'état ne sait
                         pas le dire. Rien sans échéance : la pastille porte déjà
-                        « non appelé » ou « vacant ». */}
+                        « non appelé » ou « vacant ».
+
+                        ET LA PART REÇUE D'UN PARTIEL, EN BARRE, SUR LA MÊME LIGNE.
+                        « 40 000 / 75 000 » se calcule, une barre à moitié se voit —
+                        seulement sur un partiel, un « À jour » à 100 % n'apprendrait
+                        rien. Elle avait sa rangée, sous le loyer ; depuis que les
+                        fiches partagent leurs rangées, toutes les voisines d'un
+                        partiel la RÉSERVAIENT, 14 px de blanc sous leur loyer. Elle
+                        dit la part du loyer, le premier des trois postes : elle se
+                        pose à droite de leurs pastilles, qui laissent la place, et
+                        ne grandit pas la ligne — 6 px de barre pour 12 de pastille. */}
                     <div data-section="jauges">
                       {(() => {
                         const echeance = echeanceDuMois(unit)
-                        return echeance ? (
-                          <div className="pt-2">
-                            <JaugesDePeriode receipt={echeance} periode={d.monthYear(periodeAffichee)} />
+                        const partiel = unit.status === 'partial' && unit.rent > 0
+                        if (!echeance && !partiel) return null
+                        return (
+                          <div className="flex items-center gap-3 pt-2">
+                            {echeance && (
+                              <JaugesDePeriode receipt={echeance} periode={d.monthYear(periodeAffichee)} />
+                            )}
+                            {partiel && (
+                              <div className="min-w-0 flex-1">
+                                <ProgressBar
+                                  value={Math.round((unit.paid / unit.rent) * 100)}
+                                  label={t('app.portfolio.paidOfRent', {
+                                    paid: money(unit.paid, { compact: true }),
+                                    rent: money(unit.rent, { compact: true }),
+                                  })}
+                                  hideLabel
+                                  hideValue
+                                />
+                              </div>
+                            )}
                           </div>
-                        ) : null
+                        )
                       })()}
                     </div>
                     <div data-section="faits">

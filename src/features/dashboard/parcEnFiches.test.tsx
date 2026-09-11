@@ -199,6 +199,36 @@ describe('le parc sur bureau', () => {
     expect(within(main).getByText(/Sur chaque fiche/)).toBeInTheDocument()
   })
 
+  /**
+   * LA BARRE D'UN PARTIEL VIT À CÔTÉ DE SES JAUGES, ET NE RÉSERVE RIEN.
+   *
+   * Elle avait sa rangée à elle, sous le loyer. Depuis que les fiches partagent
+   * leurs rangées (766b038), une rangée qu'une seule fiche occupe est RÉSERVÉE
+   * par toutes ses voisines : une fiche à jour, à côté d'un partiel, portait un
+   * blanc de 14 px sous son loyer. La barre dit la part reçue du LOYER — le
+   * premier des trois postes que les jauges montrent ; elle se pose sur leur
+   * ligne, à droite des pastilles, qui laissent la place.
+   */
+  it('pose la barre d’un partiel sur la ligne de ses jauges, sans rangée à elle', async () => {
+    parc()
+    await renderApp('/app/parc', { session: SESSION, largeur: 1280 })
+    await attendreLeChargement()
+    const essos = within(screen.getByRole('main')).getByRole('region', { name: /Résidence Essos/ })
+    const fiches = within(essos).getAllByRole('listitem')
+
+    const barre = within(fiches[3]).getByRole('progressbar')
+    const jauges = within(fiches[3]).getByRole('img', { name: /Loyer partiel/ })
+    expect(barre.closest('[data-section]'), 'la barre ne partage pas la rangée des jauges').toBe(
+      jauges.closest('[data-section]'),
+    )
+    for (const fiche of fiches) {
+      expect(
+        fiche.querySelector('[data-section="barre"]'),
+        'une rangée « barre » réserve un blanc à toutes les fiches voisines',
+      ).toBeNull()
+    }
+  })
+
   it('porte les mêmes jauges dans les fiches sous le seuil des cartes', async () => {
     parc()
     await renderApp('/app/parc', { session: SESSION, largeur: 360 })
