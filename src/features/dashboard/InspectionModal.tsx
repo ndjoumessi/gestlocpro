@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Modal } from '@/components/primitives/Modal'
+import { Badge } from '@/components/primitives/Badge'
 import { Button, IconButton } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
 import { Icon } from '@/components/primitives/Icon'
@@ -35,6 +36,20 @@ interface Reserve {
   severity: 'minor' | 'major'
   cout: string
   photos: PhotoLocale[]
+  /**
+   * REPLIÉE EN CARTE, à la demande de qui saisit — un état d'écran, qui ne
+   * part jamais au serveur.
+   *
+   * Trois réserves ouvertes font trois formulaires empilés, chacun avec sa
+   * gravité et sa rangée de photos : la troisième se saisit sous deux blocs
+   * qu'on a finis et qu'on doit pourtant faire défiler. « Terminer » replie la
+   * ligne en un résumé, « Modifier » la rouvre.
+   *
+   * RIEN NE SE REPLIE TOUT SEUL. Replier au changement de focus, ou à l'ajout
+   * de la suivante, ferait disparaître un champ sous le doigt de qui revenait
+   * le corriger ; un repli qu'on a demandé ne surprend personne.
+   */
+  terminee: boolean
 }
 
 /**
@@ -69,7 +84,83 @@ const reserveVide = (): Reserve => ({
   severity: 'minor',
   cout: '',
   photos: [],
+  terminee: false,
 })
+
+/** Ce que dit la règle d'une ligne : écartée, incomplète, illisible, ou prête. */
+type Examen =
+  | { genre: 'vide' }
+  | { genre: 'lacune'; champ: 'room' | 'description' }
+  | { genre: 'cout' }
+  | { genre: 'retenue'; retenue: Retenue }
+
+/**
+ * LA RÈGLE D'UNE LIGNE, EN UN SEUL ENDROIT.
+ *
+ * Elle vivait dans la boucle de l'envoi. « Terminer » doit refuser exactement
+ * ce que l'envoi refuse : deux copies de la même règle finiraient par diverger,
+ * et une carte repliée sur une ligne que l'envoi rejette montrerait comme
+ * acquise une réserve qui ne partira pas.
+ *
+ * VIDE on écarte, COMMENCÉE on refuse. Une ligne ajoutée puis laissée
+ * intacte ne doit pas obliger à la retirer : un logement sans réserve est le cas
+ * normal. Une ligne À MOITIÉ saisie, elle, partait au même panier : la pièce
+ * relevée sans le constat, ou le constat sans la pièce, disparaissait entre le
+ * clic et le toast « état des lieux enregistré ». Le propriétaire repartait
+ * convaincu d'avoir relevé la rayure que le document ne portait pas, et la
+ * retenue s'arbitrait ensuite sur ce qui restait — l'exact silence que ce
+ * document existe pour empêcher.
+ *
+ * Refuser, ici, n'est pas une rigueur de plus : c'est la seule façon de
+ * distinguer « je n'avais rien à signaler » de « je n'ai pas fini ».
+ */
+function examiner(
+  r: Reserve,
+  nature: 'entry' | 'exit',
+  lireMontant: (saisie: string) => number | null,
+): Examen {
+  const piece = r.room.trim()
+  const constat = r.description.trim()
+
+  // Une ligne est vide quand RIEN n'y a été saisi. La gravité n'entre pas
+  // dans le compte : elle vaut « léger » d'office et n'est le fait de
+  // personne, si bien que la tenir pour une saisie rendrait toute ligne
+  // intouchée obligatoire.
+  if (!piece && !constat && !r.cout.trim()) return { genre: 'vide' }
+  if (!piece) return { genre: 'lacune', champ: 'room' }
+  // Trois caractères : la même borne que le serveur, pour que le refus
+  // arrive avant l'aller-retour plutôt qu'en 422.
+  if (constat.length < 3) return { genre: 'lacune', champ: 'description' }
+
+  /**
+   * LE COÛT PASSE PAR `parseAmount`, comme le loyer et la caution.
+   *
+   * Il se lisait par `Number(r.cout)`. Le propriétaire qui recopie le
+   * montant tel qu'il s'affiche colle « 35 000 » avec l'espace insécable
+   * étroite que `formatMoney` pose entre les milliers, ou « 35,50 » en
+   * euros : `Number` rend `NaN` des deux fois, `NaN > 0` est faux, et la
+   * réserve partait SANS son montant pendant que le toast annonçait
+   * « état des lieux enregistré ». La caution s'arbitrait ensuite sur un
+   * chiffre qui n'avait jamais été relevé.
+   *
+   * Un coût VIDE reste licite et vaut zéro : toute réserve n'est pas
+   * chiffrée, et le champ n'apparaît même pas sur une entrée. Seul
+   * l'ILLISIBLE arrête — sans ce refus, corriger la lecture n'aurait fait
+   * que déplacer le silence d'un cran.
+   */
+  const cout = nature === 'exit' && r.cout.trim() ? lireMontant(r.cout) : 0
+  if (cout === null || cout < 0) return { genre: 'cout' }
+
+  return {
+    genre: 'retenue',
+    retenue: {
+      room: piece,
+      description: constat,
+      severity: r.severity,
+      ...(cout > 0 ? { costMinor: Math.round(cout) } : {}),
+    },
+  }
+}
 
 export function InspectionModal({
   open,
@@ -95,7 +186,7 @@ export function InspectionModal({
 }) {
   const t = useT()
   const { notify } = useToast()
-  const { parseAmount } = useCurrency()
+  const { parseAmount, money } = useCurrency()
   const { addInspection, envoyerPhotos } = usePortfolio()
 
   const [unite, setUnite] = useState(unitIds[0]?.id ?? '')
@@ -150,7 +241,11 @@ export function InspectionModal({
   const manque = (index: number, champ: 'room' | 'description') =>
     lacune?.index === index && lacune.champ === champ
 
-  function majReserve(index: number, champ: keyof Reserve, valeur: string) {
+  function majReserve(
+    index: number,
+    champ: 'room' | 'description' | 'severity' | 'cout',
+    valeur: string,
+  ) {
     // Toute retouche éteint le refus : un message qui survit à la correction
     // qu'il a provoquée dit faux.
     setCoutFautif(null)
@@ -158,6 +253,68 @@ export function InspectionModal({
     setReserves((liste) =>
       liste.map((r, i) => (i === index ? { ...r, [champ]: valeur } : r)),
     )
+  }
+
+  /**
+   * OÙ VA LE FOCUS quand le bloc qui le portait disparaît.
+   *
+   * « Terminer » et « Modifier » sont tous deux effacés par leur propre geste :
+   * sans reprise, le focus tomberait sur le corps du document, et le clavier
+   * repartirait du haut de la page, hors de la modale. Il va donc là où le
+   * geste suivant se fait — « Modifier » sur la carte qu'on vient de replier, la
+   * pièce sur la ligne qu'on vient de rouvrir.
+   */
+  const prefixe = useId()
+  const idDeLigne = (index: number) => `${prefixe}-reserve-${index}`
+  const focusApres = useRef<{ index: number; cible: 'modifier' | 'champ' } | null>(null)
+  useEffect(() => {
+    const demande = focusApres.current
+    if (!demande) return
+    focusApres.current = null
+    const ligne = document.getElementById(idDeLigne(demande.index))
+    const selecteur = demande.cible === 'modifier' ? '[data-geste="modifier"]' : 'input'
+    ligne?.querySelector<HTMLElement>(selecteur)?.focus()
+  })
+
+  /** Replie la ligne en carte — seulement si l'envoi l'accepterait telle quelle. */
+  function terminerLaReserve(index: number) {
+    const examen = examiner(reserves[index], nature, parseAmount)
+    if (examen.genre === 'retenue') {
+      setLacune(null)
+      setCoutFautif(null)
+      // Un refus de photo parle du dernier choix de fichier ; la carte ne le
+      // montre pas, et le rouvrir plus tard le ferait parler hors de propos.
+      setRefusPhoto((r) => ({ ...r, [index]: null }))
+      setReserves((liste) => liste.map((r, i) => (i === index ? { ...r, terminee: true } : r)))
+      focusApres.current = { index, cible: 'modifier' }
+      return
+    }
+    // Une ligne VIDE qu'on demande à terminer n'est pas écartée comme à
+    // l'envoi : on a demandé une carte, et une carte sans pièce ne résume
+    // rien. Le refus se pose là où il faut commencer.
+    if (examen.genre === 'cout') setCoutFautif(index)
+    else setLacune({ index, champ: examen.genre === 'lacune' ? examen.champ : 'room' })
+  }
+
+  function rouvrirLaReserve(index: number) {
+    setReserves((liste) => liste.map((r, i) => (i === index ? { ...r, terminee: false } : r)))
+    focusApres.current = { index, cible: 'champ' }
+  }
+
+  /** Le même retrait depuis la ligne ouverte et depuis la carte : un seul nom, un seul geste. */
+  function retirerLaReserve(index: number) {
+    // Retirer une ligne renumérote celles qui suivent : garder le repère du
+    // refus l'aurait fait désigner une voisine innocente.
+    setCoutFautif(null)
+    setLacune(null)
+    // Les aperçus de la ligne qui part sont libérés ici : sans cela, leurs
+    // blobs resteraient vivants jusqu'à la fermeture de la modale, invisibles
+    // et payés en mémoire.
+    for (const photo of reserves[index]?.photos ?? []) {
+      URL.revokeObjectURL(photo.apercu)
+      urlsVivantes.current.delete(photo.apercu)
+    }
+    setReserves((l) => l.filter((_, i) => i !== index))
   }
 
   /**
@@ -281,75 +438,32 @@ export function InspectionModal({
       setErreur(true)
       return
     }
-    /**
-     * VIDE on écarte, COMMENCÉE on refuse.
-     *
-     * La modale ouvre sur une ligne pour montrer ce qu'on attend ; un logement
-     * sans réserve est le cas normal et ne doit pas obliger à effacer la ligne
-     * d'exemple. Une ligne À MOITIÉ saisie, elle, partait au même panier : la
-     * pièce relevée sans le constat, ou le constat sans la pièce, disparaissait
-     * entre le clic et le toast « état des lieux enregistré ». Le propriétaire
-     * repartait convaincu d'avoir relevé la rayure que le document ne portait
-     * pas, et la retenue s'arbitrait ensuite sur ce qui restait — l'exact
-     * silence que ce document existe pour empêcher.
-     *
-     * Refuser, ici, n'est pas une rigueur de plus : c'est la seule façon de
-     * distinguer « je n'avais rien à signaler » de « je n'ai pas fini ».
-     */
     const retenues: Retenue[] = []
     // Les lignes VIDES sont écartées : le rang d'une retenue n'est donc pas
     // celui de sa ligne, et les photos, elles, sont attachées à la LIGNE.
     const ligneDeLaRetenue: number[] = []
     for (let index = 0; index < reserves.length; index++) {
-      const r = reserves[index]
-      const piece = r.room.trim()
-      const constat = r.description.trim()
-
-      // Une ligne est vide quand RIEN n'y a été saisi. La gravité n'entre pas
-      // dans le compte : elle vaut « léger » d'office et n'est le fait de
-      // personne, si bien que la tenir pour une saisie rendrait toute ligne
-      // intouchée obligatoire.
-      if (!piece && !constat && !r.cout.trim()) continue
-      if (!piece) {
-        setLacune({ index, champ: 'room' })
-        return
+      const examen = examiner(reserves[index], nature, parseAmount)
+      if (examen.genre === 'vide') continue
+      if (examen.genre === 'retenue') {
+        retenues.push(examen.retenue)
+        ligneDeLaRetenue.push(index)
+        continue
       }
-      // Trois caractères : la même borne que le serveur, pour que le refus
-      // arrive avant l'aller-retour plutôt qu'en 422.
-      if (constat.length < 3) {
-        setLacune({ index, champ: 'description' })
-        return
-      }
+      /*
+        UNE CARTE PEUT REDEVENIR FAUTIVE, et le refus doit alors se voir.
 
-      /**
-       * LE COÛT PASSE PAR `parseAmount`, comme le loyer et la caution.
-       *
-       * Il se lisait par `Number(r.cout)`. Le propriétaire qui recopie le
-       * montant tel qu'il s'affiche colle « 35 000 » avec l'espace insécable
-       * étroite que `formatMoney` pose entre les milliers, ou « 35,50 » en
-       * euros : `Number` rend `NaN` des deux fois, `NaN > 0` est faux, et la
-       * réserve partait SANS son montant pendant que le toast annonçait
-       * « état des lieux enregistré ». La caution s'arbitrait ensuite sur un
-       * chiffre qui n'avait jamais été relevé.
-       *
-       * Un coût VIDE reste licite et vaut zéro : toute réserve n'est pas
-       * chiffrée, et le champ n'apparaît même pas sur une entrée. Seul
-       * l'ILLISIBLE arrête — sans ce refus, corriger la lecture n'aurait fait
-       * que déplacer le silence d'un cran.
-       */
-      const cout = nature === 'exit' && r.cout.trim() ? parseAmount(r.cout) : 0
-      if (cout === null || cout < 0) {
-        setCoutFautif(index)
-        return
-      }
-
-      retenues.push({
-        room: piece,
-        description: constat,
-        severity: r.severity,
-        ...(cout > 0 ? { costMinor: Math.round(cout) } : {}),
-      })
-      ligneDeLaRetenue.push(index)
+        Ses champs sont figés, pas la nature du document. Un coût refusé —
+        négatif, par exemple — saisi sur une sortie reste dans la ligne quand on passe à l'entrée — le
+        champ disparaît, la règle l'ignore, et « Terminer » accepte. Revenir à
+        la sortie le rend de nouveau lisible pour la règle, et fautif : le
+        message se poserait sous un champ que la carte ne montre pas, et le
+        bouton d'envoi semblerait ne rien faire. La ligne se rouvre donc.
+      */
+      setReserves((liste) => liste.map((r, i) => (i === index ? { ...r, terminee: false } : r)))
+      if (examen.genre === 'lacune') setLacune({ index, champ: examen.champ })
+      else setCoutFautif(index)
+      return
     }
 
     // Même règle que l'ouverture d'un chantier (`OpenWorkModal`) : l'état des
@@ -677,9 +791,82 @@ export function InspectionModal({
             <p className="text-body text-muted">{t('app.inspections.noFindings')}</p>
           )}
           <ol className="flex flex-col gap-3">
-          {reserves.map((reserve, index) => (
+          {reserves.map((reserve, index) =>
+            reserve.terminee ? (
+            /*
+              LA CARTE RÉSUMÉE — la ligne repliée par « Terminer ».
+
+              Elle dit ce qui partira, et rien d'autre : la pièce, la gravité, le
+              constat, le montant sur une sortie, le nombre de photos. Même bord
+              et même rang que la ligne ouverte, pour qu'on reconnaisse la même
+              réserve sous ses deux formes.
+
+              LE CONSTAT N'EST PAS COUPÉ. Une coupe à deux lignes aurait gardé la
+              carte basse, mais un texte rogné dans sa boîte ne déborde de rien
+              et aucune garde ne le voit ; ici, c'est la phrase même qu'on
+              opposera au locataire, et elle doit se relire entière avant
+              l'envoi.
+
+              « Retirer » porte le MÊME nom qu'en ligne ouverte : c'est le même
+              geste, et un lecteur d'écran ne doit pas apprendre deux noms pour
+              lui.
+            */
             <li
               key={index}
+              id={idDeLigne(index)}
+              className="flex flex-col gap-1 border-l-2 border-border-strong pl-3"
+            >
+              <div className="-mx-1 flex items-center justify-between gap-2">
+                <span className="eyebrow text-muted">
+                  {t('app.inspections.findingRank', { rank: index + 1 })}
+                </span>
+                <span className="flex items-center">
+                  <IconButton
+                    icon="pencil"
+                    label={t('app.inspections.editFinding', { rank: index + 1 })}
+                    variant="ghost"
+                    data-geste="modifier"
+                    onClick={() => rouvrirLaReserve(index)}
+                  />
+                  <IconButton
+                    icon="close"
+                    label={t('app.inspections.removeFinding', { rank: index + 1 })}
+                    variant="ghost"
+                    onClick={() => retirerLaReserve(index)}
+                  />
+                </span>
+              </div>
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="text-body font-semibold break-words text-ink">
+                  {reserve.room.trim()}
+                </span>
+                <Badge tone={reserve.severity === 'major' ? 'danger' : 'neutral'}>
+                  {reserve.severity === 'major'
+                    ? t('app.inspections.severityMajor')
+                    : t('app.inspections.severityMinor')}
+                </Badge>
+              </p>
+              <p className="text-body break-words text-muted">{reserve.description.trim()}</p>
+              {(() => {
+                const montant =
+                  nature === 'exit' && reserve.cout.trim() ? parseAmount(reserve.cout) : null
+                const mentions = [
+                  ...(montant !== null && montant > 0
+                    ? [t('app.inspections.costOf', { amount: money(montant) })]
+                    : []),
+                  ...(reserve.photos.length > 0
+                    ? [t('app.inspections.photoTotal', { count: reserve.photos.length })]
+                    : []),
+                ]
+                return mentions.length > 0 ? (
+                  <p className="numeric text-label text-muted">{mentions.join(' · ')}</p>
+                ) : null
+              })()}
+            </li>
+            ) : (
+            <li
+              key={index}
+              id={idDeLigne(index)}
               className="flex flex-wrap items-end gap-x-2 gap-y-1.5 border-l-2 border-border-strong pl-3"
             >
               {/* L'en-tête du bloc : le rang à gauche, le retrait à droite. Sur
@@ -694,21 +881,7 @@ export function InspectionModal({
                   icon="close"
                   label={t('app.inspections.removeFinding', { rank: index + 1 })}
                   variant="ghost"
-                  onClick={() => {
-                    // Retirer une ligne renumérote celles qui suivent : garder
-                    // le repère du refus l'aurait fait désigner une voisine
-                    // innocente.
-                    setCoutFautif(null)
-                    setLacune(null)
-                    // Les aperçus de la ligne qui part sont libérés ici : sans
-                    // cela, leurs blobs resteraient vivants jusqu'à la fermeture
-                    // de la modale, invisibles et payés en mémoire.
-                    for (const photo of reserve.photos) {
-                      URL.revokeObjectURL(photo.apercu)
-                      urlsVivantes.current.delete(photo.apercu)
-                    }
-                    setReserves((l) => l.filter((_, i) => i !== index))
-                  }}
+                  onClick={() => retirerLaReserve(index)}
                 />
               </div>
               <Field
@@ -815,8 +988,19 @@ export function InspectionModal({
                 onChoisir={(fichiers) => void choisirPhotos(index, fichiers)}
                 onRetirer={(cle) => retirerPhoto(index, cle)}
               />
+              <div className="flex basis-full justify-end">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon="check"
+                  onClick={() => terminerLaReserve(index)}
+                >
+                  {t('app.inspections.finishFinding', { rank: index + 1 })}
+                </Button>
+              </div>
             </li>
-          ))}
+            ),
+          )}
           </ol>
           <Button
             variant="secondary"

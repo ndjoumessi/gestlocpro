@@ -148,6 +148,27 @@ describe('les photos d’une réserve', () => {
     expect(urlsCreees[0]).not.toBe(FICHIER_ORIGINAL)
   })
 
+  /**
+   * REPLIER N'EST PAS RETIRER.
+   *
+   * La carte ne montre plus les vignettes, mais les photos partent encore à
+   * l'enregistrement : leur blob doit rester vivant, et la carte doit dire
+   * qu'elles sont là — sans quoi on rouvrirait pour vérifier ce que le repli
+   * a tu.
+   */
+  it('garde les photos d’une réserve repliée, et les compte sur la carte', async () => {
+    const { user } = await ouvrirLaModale()
+    await choisir(user)
+    await waitFor(() => expect(urlsCreees.length).toBe(1))
+    await user.type(within(dialogue()).getByLabelText(/^pièce$/i), 'Séjour')
+    await user.type(within(dialogue()).getByLabelText(/^constat$/i), 'Mur défoncé.')
+
+    await user.click(within(dialogue()).getByRole('button', { name: 'Terminer la réserve n° 1' }))
+
+    expect(within(dialogue()).getAllByRole('listitem')[0]).toHaveTextContent(/\b1 photo\b/)
+    expect(urlsRevoquees, 'le repli a libéré un blob qui doit encore partir').toEqual([])
+  })
+
   /** Retirer une photo LIBÈRE son URL : sans cela le blob reste vivant. */
   it('libère l’URL d’objet quand la photo est retirée', async () => {
     const { user } = await ouvrirLaModale()

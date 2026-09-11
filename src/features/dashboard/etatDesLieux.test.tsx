@@ -356,6 +356,143 @@ describe('état des lieux — ce qui part au serveur', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(within(dialogue()).getByLabelText(/^pièce$/i)).toHaveValue('Séjour')
   })
+
+  /**
+   * LA RÉSERVE REPLIÉE EN CARTE.
+   *
+   * Trois réserves ouvertes font trois formulaires empilés ; « Terminer » replie
+   * celle qu'on a finie en un résumé, « Modifier » la rouvre. Ces cas tiennent
+   * les trois promesses du repli : il ne cache rien de ce qui partira, il refuse
+   * ce que l'envoi refuserait, et il ne rend jamais un refus invisible.
+   */
+  describe('repliée en carte', () => {
+    const terminer = (rang = 1) =>
+      within(dialogue()).getByRole('button', { name: `Terminer la réserve n° ${rang}` })
+    const ligne = (rang = 1) => within(dialogue()).getAllByRole('listitem')[rang - 1]
+
+    it('résume ce qui partira, et c’est bien cela qui part', async () => {
+      const { user, faux } = await ouvrirSurLeParc()
+      await saisirUneReserve(user)
+      await user.click(within(dialogue()).getByRole('button', { name: /^dégradé$/i }))
+      await user.click(terminer())
+
+      expect(
+        within(dialogue()).queryByLabelText(/^pièce$/i),
+        'la ligne terminée est restée un formulaire',
+      ).toBeNull()
+      expect(ligne()).toHaveTextContent('Séjour')
+      expect(ligne()).toHaveTextContent('Mur défoncé sur un mètre.')
+      expect(ligne(), 'la gravité choisie ne se lit pas sur la carte').toHaveTextContent('Dégradé')
+      /* LE FOCUS NE TOMBE PAS HORS DE LA MODALE : le bouton qui le portait vient
+         de disparaître avec la ligne. */
+      expect(document.activeElement).toBe(
+        within(dialogue()).getByRole('button', { name: 'Modifier la réserve n° 1' }),
+      )
+
+      /* UNE CARTE ET UNE LIGNE OUVERTE PARTENT ENSEMBLE : terminer n'est pas
+         une condition de l'envoi. */
+      await user.click(within(dialogue()).getByRole('button', { name: /ajouter une réserve/i }))
+      await user.type(within(dialogue()).getByLabelText(/^pièce$/i), 'Cuisine')
+      await user.type(within(dialogue()).getByLabelText(/^constat$/i), 'Robinet qui fuit.')
+      await user.click(within(dialogue()).getByRole('button', { name: /^enregistrer$/i }))
+
+      await waitFor(() => expect(envoi(faux)).toBeDefined())
+      const corps = envoi(faux)!.corps as { findings: { room: string; severity: string }[] }
+      expect(corps.findings.map((f) => [f.room, f.severity])).toEqual([
+        ['Séjour', 'major'],
+        ['Cuisine', 'minor'],
+      ])
+    })
+
+    it('refuse de replier une réserve commencée, et dit ce qui manque', async () => {
+      const { user } = await ouvrirSurLeParc()
+      await user.click(within(dialogue()).getByRole('button', { name: /ajouter une réserve/i }))
+      await user.type(within(dialogue()).getByLabelText(/^pièce$/i), 'Séjour')
+      await user.click(terminer())
+
+      expect(within(dialogue()).getByLabelText(/^pièce$/i)).toHaveValue('Séjour')
+      expect(dialogue()).toHaveTextContent('Décrivez le constat, ou retirez la ligne')
+      expect(
+        within(dialogue()).queryByRole('button', { name: /modifier la réserve/i }),
+      ).toBeNull()
+    })
+
+    /* UNE LIGNE VIDE, À L'ENVOI, S'ÉCARTE ; ICI ON A DEMANDÉ UNE CARTE, et une
+       carte sans pièce ne résume rien. */
+    it('refuse de replier une réserve vide, et dit par où commencer', async () => {
+      const { user } = await ouvrirSurLeParc()
+      await user.click(within(dialogue()).getByRole('button', { name: /ajouter une réserve/i }))
+      await user.click(terminer())
+
+      expect(within(dialogue()).getByLabelText(/^pièce$/i)).toBeInTheDocument()
+      expect(dialogue()).toHaveTextContent('Nommez la pièce, ou retirez la ligne')
+    })
+
+    it('se rouvre avec sa saisie, le focus sur la pièce', async () => {
+      const { user } = await ouvrirSurLeParc()
+      await saisirUneReserve(user)
+      await user.click(terminer())
+      await user.click(within(dialogue()).getByRole('button', { name: 'Modifier la réserve n° 1' }))
+
+      const piece = within(dialogue()).getByLabelText(/^pièce$/i)
+      expect(piece).toHaveValue('Séjour')
+      expect(within(dialogue()).getByLabelText(/^constat$/i)).toHaveValue(
+        'Mur défoncé sur un mètre.',
+      )
+      expect(document.activeElement).toBe(piece)
+    })
+
+    it('se retire sous le même nom qu’ouverte', async () => {
+      const { user } = await ouvrirSurLeParc()
+      await saisirUneReserve(user)
+      await user.click(terminer())
+      await user.click(within(dialogue()).getByRole('button', { name: 'Retirer la réserve n° 1' }))
+
+      expect(within(dialogue()).queryAllByRole('listitem')).toHaveLength(0)
+      expect(dialogue()).toHaveTextContent(/Aucune réserve/)
+    })
+
+    it('porte le montant sur une sortie', async () => {
+      const { user } = await ouvrirSurLeParc()
+      await user.click(within(dialogue()).getByRole('button', { name: /^Sortie$/ }))
+      await saisirUneReserve(user)
+      await user.type(within(dialogue()).getByLabelText(/imputation/i), '35000')
+      await user.click(terminer())
+
+      expect(ligne()).toHaveTextContent(/Imputation\s*:\s*35\s000/)
+
+      /* ET NE LE PORTE PLUS SUR UNE ENTRÉE, qui ne le transmet pas : la carte
+         dit ce qui partira, pas ce qui a été tapé. */
+      await user.click(within(dialogue()).getByRole('button', { name: /^Entrée$/ }))
+      expect(ligne()).not.toHaveTextContent(/Imputation/)
+      expect(ligne(), 'prémisse : la carte est toujours là').toHaveTextContent('Séjour')
+    })
+
+    /**
+     * UNE CARTE PEUT REDEVENIR FAUTIVE : ses champs sont figés, pas la nature du
+     * document. Un coût refusé saisi sur une sortie survit au passage à
+     * l'entrée, qui l'ignore ; la carte se replie ; le retour à la sortie le
+     * rend fautif. `-500` et non des lettres : le champ numérique refuse la
+     * frappe d'une lettre, et le coût serait resté vide — un cas vert à vide. Sans réouverture, le refus se poserait sous un champ que la
+     * carte ne montre pas, et « Enregistrer » semblerait ne rien faire.
+     */
+    it('se rouvre quand l’envoi la refuse, pour que le refus se voie', async () => {
+      const { user, faux } = await ouvrirSurLeParc()
+      await user.click(within(dialogue()).getByRole('button', { name: /^Sortie$/ }))
+      await saisirUneReserve(user)
+      await user.type(within(dialogue()).getByLabelText(/imputation/i), '-500')
+      await user.click(within(dialogue()).getByRole('button', { name: /^Entrée$/ }))
+      await user.click(terminer())
+      expect(within(dialogue()).queryByLabelText(/^pièce$/i), 'prémisse : la carte').toBeNull()
+
+      await user.click(within(dialogue()).getByRole('button', { name: /^Sortie$/ }))
+      await user.click(within(dialogue()).getByRole('button', { name: /^enregistrer$/i }))
+
+      expect(within(dialogue()).getByLabelText(/imputation/i)).toHaveValue('-500')
+      expect(within(dialogue()).getByLabelText(/imputation/i)).toHaveAttribute('aria-invalid', 'true')
+      expect(envoi(faux), 'une réserve illisible est partie').toBeUndefined()
+    })
+  })
 })
 
 /**

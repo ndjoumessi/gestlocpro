@@ -176,6 +176,7 @@ const PATHS = {
   ),
   download: <path d="M12 3.5v12M7 11l5 5 5-5M4 20.5h16" />,
   plus: <path d="M12 5v14M5 12h14" />,
+  pencil: <path d="M15.6 4.6l3.8 3.8M4.5 19.5l1-4.6L15 5.4a1.9 1.9 0 012.7 0l.9.9a1.9 1.9 0 010 2.7l-9.5 9.5z" />,
   sparkle: <path d="M12 3l2.2 5.9L20 11l-5.8 2.1L12 19l-2.2-5.9L4 11l5.8-2.1z" />,
   trendUp: <path d="M3.5 16.5l6-6 4 4 7-7.5M15 7h5.5v5.5" />,
   /**

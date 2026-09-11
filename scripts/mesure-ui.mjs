@@ -818,6 +818,49 @@ const SURFACES_INTERACTIVES = [
   },
   {
     /*
+      LA RÉSERVE REPLIÉE EN CARTE, qu'aucun premier rendu ne montre.
+
+      Elle n'existe qu'après une suite de gestes — ajouter, nommer la pièce,
+      décrire, « Terminer ». Sa pastille « Dégradé » est le seul aplat `danger`
+      de la modale, et sa ligne « Imputation · 1 photo » la seule mention en
+      `text-label` sur `muted` : sans cette surface, ni l'une ni l'autre n'était
+      regardée par une seule règle.
+
+      SORTIE, DÉGRADÉ, UN MONTANT ET UNE PHOTO : la carte la plus chargée, donc
+      celle dont les rangées se replient le plus. 360 px pour la même raison que
+      la surface précédente.
+    */
+    nom: 'reserve-repliee',
+    adresse: '/demo/etats-des-lieux',
+    largeur: 360,
+    temoin: '[role="dialog"] li [data-geste="modifier"]',
+    ouvrir: async (page) => {
+      await page
+        .getByRole('button', { name: /^Record an inspection$|^Établir un état des lieux$/ })
+        .first()
+        .click()
+      const modale = page.locator('[role="dialog"]').first()
+      await modale.waitFor({ state: 'visible' })
+      await modale.getByRole('button', { name: /^Move-out$|^Sortie$/ }).click()
+      await modale.getByRole('button', { name: /^Add a finding$|^Ajouter une réserve$/ }).click()
+      await modale.getByLabel(/^Room$|^Pièce$/).fill('Séjour')
+      await modale
+        .getByLabel(/^Finding$|^Constat$/)
+        .fill('Mur défoncé sur un mètre, à hauteur de la prise')
+      await modale.getByLabel(/^Charge$|^Imputation$/).fill('35000')
+      await modale.getByRole('button', { name: /^Damaged$|^Dégradé$/ }).click()
+      await modale
+        .locator('input[type="file"]')
+        .first()
+        .setInputFiles(join(RACINE, 'server/src/stockage/fixtures/compteur-index.jpg'))
+      await modale.locator('li img').first().waitFor({ state: 'visible' })
+      await modale
+        .getByRole('button', { name: /^Finish finding 1$|^Terminer la réserve n° 1$/ })
+        .click()
+    },
+  },
+  {
+    /*
       LA COQUILLE DU LOCATAIRE, QUE RIEN N'AVAIT JAMAIS REGARDÉE.
 
       Ce n'est pas une barre BASSE : le locataire n'en a pas. Il a une barre
@@ -1029,9 +1072,9 @@ const DECLENCHEURS_ATTENDUS = 7
   elle-même : vider la table, et l'on comparerait 0 à 0 avant de se déclarer
   vert. Le nombre est donc écrit, et l'ajout d'une surface oblige à le toucher.
 
-  22 = 11 surfaces × 2 thèmes.
+  24 = 12 surfaces × 2 thèmes.
 */
-const SURFACES_ATTENDUES = 22
+const SURFACES_ATTENDUES = 24
 
 /**
  * Neutralise ce qui bouge, AVANT de mesurer.

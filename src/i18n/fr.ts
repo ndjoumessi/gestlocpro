@@ -1453,6 +1453,18 @@ export const fr = {
       findingPlaceholder: 'Fissure au-dessus de la fenêtre',
       findingRank: 'Réserve n° {rank}',
       removeFinding: 'Retirer la réserve n° {rank}',
+      /**
+       * LA RÉSERVE REPLIÉE EN CARTE, à la demande et jamais d'office.
+       *
+       * Le rang est dans le libellé VISIBLE, comme sur « Ajouter une photo à la
+       * réserve n° 1 » : trois boutons « Terminer » dans un même formulaire ne
+       * se distingueraient ni à l'œil ni à l'oreille.
+       */
+      finishFinding: 'Terminer la réserve n° {rank}',
+      editFinding: 'Modifier la réserve n° {rank}',
+      costOf: 'Imputation : {amount}',
+      photoTotal: '{count} photos',
+      photoTotal_one: '{count} photo',
       title: 'États des lieux',
       subtitle: 'Entrée et sortie comparées pièce par pièce, réserves chiffrées et imputées sur la caution.',
       /* Ni indicateur ni compte : l'écran alignait des dossiers sans dire
