@@ -115,6 +115,12 @@ async function ouvrirLaModale() {
 }
 
 async function choisir(user: ReturnType<typeof userEvent.setup>, fichier = FICHIER_ORIGINAL) {
+  /* UNE PHOTO APPARTIENT À UNE RÉSERVE, et la liste part vide depuis le
+     2026-09-11 : la première s'ajoute avant qu'on puisse y joindre quoi que ce
+     soit. Les suivantes réemploient la ligne déjà là. */
+  if (!dialogue().querySelector('input[type="file"]')) {
+    await user.click(within(dialogue()).getByRole('button', { name: /ajouter une réserve/i }))
+  }
   const entree = dialogue().querySelector('input[type="file"]') as HTMLInputElement
   await user.upload(entree, fichier)
 }
@@ -187,6 +193,9 @@ describe('les photos d’une réserve', () => {
    */
   it('dit l’échec de la confirmation, et garde la modale ouverte', async () => {
     const { user, faux } = await ouvrirLaModale()
+    /* LA PRÉMISSE DE CE CAS — une réserve présente — est désormais un geste :
+       la liste part vide depuis le 2026-09-11. */
+    await user.click(within(dialogue()).getByRole('button', { name: /ajouter une réserve/i }))
 
     faux.quand('POST', `/parks/${PARC}/units/${U1}/inspections`, {
       status: 201,

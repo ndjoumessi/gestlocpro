@@ -1045,6 +1045,7 @@ export const en: Dictionary = {
         'One photo uploaded but was not confirmed: it is not attached to the finding yet. Try again without closing this window — closing would lose it.',
       photoRetry: 'Retry photo upload',
       addFinding: 'Add a finding',
+      noFindings: 'No findings: the inspection will be saved with no damage recorded.',
       findingRank: 'Finding no. {rank}',
       removeFinding: 'Remove finding {rank}',
       title: 'Inspections',

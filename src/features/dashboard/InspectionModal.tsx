@@ -103,7 +103,24 @@ export function InspectionModal({
   const [date, setDate] = useState('')
   const [pieces, setPieces] = useState('3')
   const [signataire, setSignataire] = useState('')
-  const [reserves, setReserves] = useState<Reserve[]>([reserveVide()])
+  /*
+    LA LISTE PART VIDE, et c'est un renversement, écrit comme tel.
+
+    Elle s'ouvrait sur une « Réserve n° 1 » déjà créée et vide, suivie de
+    « Ajouter une photo à la réserve n° 1 · 0/8 ». Relevé sur un parc réel : sur
+    une ENTRÉE sans dégât — le cas ordinaire —, cette ligne se lisait comme un
+    champ à remplir. Elle était écartée à l'envoi, mais rien ne le disait ; il
+    fallait la supprimer pour en être sûr, ou l'ignorer en espérant.
+
+    La liste part donc vide, et dit ce que vide VEUT DIRE. C'est le motif de
+    « Dynamic Field Array » (21st.dev), cherché à la demande de Nelson : une liste
+    de lignes commence sans ligne, et « Ajouter » en pose une.
+
+    CE QUE ÇA COÛTE, et c'est réel : un clic sur une SORTIE, où les dégâts sont
+    presque toujours là. On l'accepte, parce qu'un clic de trop se voit et se
+    comprend, et qu'une ligne vide prise pour une obligation ne se voit pas.
+  */
+  const [reserves, setReserves] = useState<Reserve[]>([])
   const [erreur, setErreur] = useState(false)
   /**
    * Distingue « en train d'envoyer » de « prêt à envoyer » : le bouton
@@ -653,6 +670,12 @@ export function InspectionModal({
             alors portés par la structure. Un lecteur d'écran annonce « liste,
             3 éléments » là où il ne trouvait que des champs à la file.
           */}
+          {/* CE QUE VIDE VEUT DIRE, dit en clair : l'état des lieux s'enregistre
+              sans dégât constaté. Sans cette ligne, la liste vide ressemblerait
+              à une section qu'on a oublié de remplir. */}
+          {reserves.length === 0 && (
+            <p className="text-body text-muted">{t('app.inspections.noFindings')}</p>
+          )}
           <ol className="flex flex-col gap-3">
           {reserves.map((reserve, index) => (
             <li
@@ -770,7 +793,8 @@ export function InspectionModal({
                 il se voit désormais aussi. Et sur la DERNIÈRE ligne il ne
                 retirait rien : il la vidait, sous un libellé qui promettait un
                 retrait. La ligne s'en va pour de bon ; « Ajouter une réserve »
-                la rappelle, et l'ouverture suivante en repose une.
+                la rappelle — et depuis le 2026-09-11, l'ouverture n'en pose
+                plus aucune : voir l'état initial de `reserves`.
 
                 Ce qui change ici est sa PLACE : il flottait entre la gravité et
                 les photos, sur une rangée qui se replie — donc à un endroit qui

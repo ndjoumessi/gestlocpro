@@ -26,6 +26,34 @@ async function ouvrir() {
 }
 
 describe('état des lieux, formulaire', () => {
+  /**
+   * LA LISTE DES RÉSERVES PART VIDE, ET DIT CE QUE VIDE VEUT DIRE.
+   *
+   * Elle s'ouvrait sur une « Réserve n° 1 » vide, suivie de « Ajouter une photo
+   * à la réserve n° 1 · 0/8 ». Sur une entrée sans dégât — le cas ordinaire —,
+   * cette ligne se lisait comme un champ à remplir : écartée à l'envoi, mais rien
+   * ne le disait. Motif de « Dynamic Field Array » (21st.dev) : une liste de lignes
+   * commence sans ligne.
+   */
+  it('s’ouvre sans réserve, dit que rien n’est constaté, et l’enregistre ainsi', async () => {
+    const user = await ouvrir()
+    const modale = dialogue()
+
+    expect(modale).toHaveTextContent(/Aucune réserve/)
+    expect(
+      within(modale).queryByLabelText(/^pièce$/i),
+      'une ligne vide pré-créée se lit comme un champ à remplir',
+    ).toBeNull()
+    /* LE GESTE RESTE : partir vide n'ôte pas le moyen d'ajouter. */
+    expect(within(modale).getByRole('button', { name: /ajouter une réserve/i })).toBeInTheDocument()
+
+    /* ET L'ÉTAT « SANS DÉGÂT » S'ENREGISTRE TEL QUEL — la phrase le promet, le
+       formulaire doit le tenir. */
+    await user.type(within(modale).getByLabelText(/nombre de pièces/i), '3')
+    await user.click(within(modale).getByRole('button', { name: /^enregistrer$/i }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  })
+
   it('n’offre PAS de chiffrer une réserve d’entrée', async () => {
     await ouvrir()
 
@@ -40,6 +68,9 @@ describe('état des lieux, formulaire', () => {
 
   it('l’offre sur une sortie', async () => {
     const user = await ouvrir()
+    /* LA PRÉMISSE DE CE CAS — une réserve présente — est désormais un geste :
+       la liste part vide depuis le 2026-09-11. */
+    await user.click(within(dialogue()).getByRole('button', { name: /ajouter une réserve/i }))
     await user.click(within(dialogue()).getByRole('button', { name: /^Sortie$/ }))
 
     // Le pendant positif : sans lui, un formulaire qui ne montrerait JAMAIS le
@@ -60,6 +91,9 @@ describe('état des lieux, formulaire', () => {
 
   it('enregistre le constat et l’ajoute à la liste', async () => {
     const user = await ouvrir()
+    /* LA PRÉMISSE DE CE CAS — une réserve présente — est désormais un geste :
+       la liste part vide depuis le 2026-09-11. */
+    await user.click(within(dialogue()).getByRole('button', { name: /ajouter une réserve/i }))
     await user.type(within(dialogue()).getByLabelText(/^pièce$/i), 'Cuisine')
     await user.type(
       within(dialogue()).getByLabelText(/^constat$/i),
@@ -85,6 +119,9 @@ describe('état des lieux, formulaire', () => {
    */
   it('refuse une réserve commencée, plutôt que de la jeter', async () => {
     const user = await ouvrir()
+    /* LA PRÉMISSE DE CE CAS — une réserve présente — est désormais un geste :
+       la liste part vide depuis le 2026-09-11. */
+    await user.click(within(dialogue()).getByRole('button', { name: /ajouter une réserve/i }))
     await user.type(within(dialogue()).getByLabelText(/^pièce$/i), 'Cuisine')
     await user.click(within(dialogue()).getByRole('button', { name: /^enregistrer$/i }))
 
@@ -105,6 +142,9 @@ describe('état des lieux, formulaire', () => {
    */
   it('nomme chaque retrait par son rang, et retire pour de bon', async () => {
     const user = await ouvrir()
+    /* LA PRÉMISSE DE CE CAS — une réserve présente — est désormais un geste :
+       la liste part vide depuis le 2026-09-11. */
+    await user.click(within(dialogue()).getByRole('button', { name: /ajouter une réserve/i }))
     await user.click(within(dialogue()).getByRole('button', { name: /ajouter une réserve/i }))
 
     expect(within(dialogue()).getByRole('button', { name: /retirer la réserve n° 1/i })).toBeInTheDocument()
@@ -201,6 +241,10 @@ describe('état des lieux — ce qui part au serveur', () => {
     faux.appels.find((a) => a.methode === 'POST' && a.chemin.endsWith('/inspections'))
 
   async function saisirUneReserve(user: ReturnType<typeof userEvent.setup>) {
+    /* LA RÉSERVE S'AJOUTE D'ABORD : la liste part vide depuis le 2026-09-11.
+       Cette aide supposait la ligne pré-créée — c'était sa prémisse, elle est
+       désormais un geste. */
+    await user.click(within(dialogue()).getByRole('button', { name: /ajouter une réserve/i }))
     await user.type(within(dialogue()).getByLabelText(/^pièce$/i), 'Séjour')
     await user.type(within(dialogue()).getByLabelText(/^constat$/i), 'Mur défoncé sur un mètre.')
   }
@@ -321,6 +365,9 @@ describe('les réserves du formulaire', () => {
 
   it('se voient comme des blocs numérotés', async () => {
     await ouvrir()
+    /* LA PRÉMISSE DE CE CAS — une réserve présente — est désormais un geste :
+       la liste part vide depuis le 2026-09-11. */
+    await userEvent.setup().click(within(dialogue()).getByRole('button', { name: /ajouter une réserve/i }))
 
     expect(reserves(), 'le formulaire n’ouvre pas sur une réserve').toHaveLength(1)
     expect(reserves()[0], 'le rang n’est pas écrit dans le bloc').toHaveTextContent(/n°\s*1/)
@@ -328,6 +375,9 @@ describe('les réserves du formulaire', () => {
 
   it('numérotent celle qu’on ajoute', async () => {
     const user = await ouvrir()
+    /* LA PRÉMISSE DE CE CAS — une réserve présente — est désormais un geste :
+       la liste part vide depuis le 2026-09-11. */
+    await user.click(within(dialogue()).getByRole('button', { name: /ajouter une réserve/i }))
 
     await user.click(within(dialogue()).getByRole('button', { name: /ajouter une réserve/i }))
 
@@ -345,6 +395,9 @@ describe('les réserves du formulaire', () => {
    */
   it('renumérotent ce qui reste après un retrait', async () => {
     const user = await ouvrir()
+    /* LA PRÉMISSE DE CE CAS — une réserve présente — est désormais un geste :
+       la liste part vide depuis le 2026-09-11. */
+    await user.click(within(dialogue()).getByRole('button', { name: /ajouter une réserve/i }))
 
     await user.click(within(dialogue()).getByRole('button', { name: /ajouter une réserve/i }))
     await user.click(within(dialogue()).getByRole('button', { name: /retirer la réserve n° 1/i }))

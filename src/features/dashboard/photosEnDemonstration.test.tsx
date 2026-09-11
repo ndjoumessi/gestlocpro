@@ -87,6 +87,8 @@ async function ouvrirEtatDesLieuxAvecPhoto() {
   await user.click(screen.getByRole('button', { name: /établir un état des lieux/i }))
 
   const modale = screen.getByRole('dialog')
+  /* LA RÉSERVE S'AJOUTE D'ABORD : la liste part vide depuis le 2026-09-11. */
+  await user.click(within(modale).getByRole('button', { name: /ajouter une réserve/i }))
   await user.type(within(modale).getByLabelText(/^pièce$/i), 'Séjour')
   await user.type(within(modale).getByLabelText(/^constat$/i), 'Mur défoncé sur un mètre.')
   const entree = modale.querySelector('input[type="file"]') as HTMLInputElement

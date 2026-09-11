@@ -801,6 +801,14 @@ const SURFACES_INTERACTIVES = [
         .first()
         .click()
       await page.locator('[role="dialog"]').first().waitFor({ state: 'visible' })
+      /* UNE PHOTO APPARTIENT À UNE RÉSERVE, et la liste des réserves part vide
+         depuis le 2026-09-11 : il n'y a plus de champ de fichier à l'ouverture.
+         Cette surface l'a appris en ne s'ouvrant plus — son témoin
+         « li img » ne trouvait aucun `li`. */
+      await page
+        .locator('[role="dialog"]')
+        .getByRole('button', { name: /^Add a finding$|^Ajouter une réserve$/ })
+        .click()
       await page
         .locator('[role="dialog"] input[type="file"]')
         .first()
