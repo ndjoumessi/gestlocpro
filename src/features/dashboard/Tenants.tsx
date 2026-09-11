@@ -1100,17 +1100,26 @@ export function Tenants() {
             title={t('app.tenants.vacantTitle', { count: vacant.length })}
             description={t('app.tenants.vacantHint')}
           />
-          <ul aria-label={t('app.tenants.vacantTitle', { count: vacant.length })} className={`${GRILLE_DES_FICHES_DE_LOCATAIRE} px-4 pb-4`}>
+          <ul
+            aria-label={t('app.tenants.vacantTitle', { count: vacant.length })}
+            /* LA MÊME GRILLE que les locataires en place, et les mêmes rangées
+               partagées : quatre sections — logement, type, loyer, geste. Écart
+               vertical de 8 px, celui des lignes d'une fiche vacante ; la marge
+               basse `mb-1` de chaque fiche porte les rangées de fiches à 12, et
+               `pb-3` rend à la dernière les 16 px d'avant. */
+            className={`${GRILLE_DES_FICHES_DE_LOCATAIRE} gap-y-2 px-4 pb-3`}
+            data-mesure="sections-alignees"
+          >
             {vacant.map((unit) => (
-              <li key={unit.id}>
-                <Card className="flex h-full flex-col gap-2">
-                  <p className="numeric font-medium">{unit.label}</p>
-                  <p className="text-label text-muted">
+              <li key={unit.id} className="mb-1 row-span-4 grid grid-rows-subgrid">
+                <Card className="row-span-4 grid grid-rows-subgrid">
+                  <p data-section="logement" className="numeric font-medium">{unit.label}</p>
+                  <p data-section="type" className="text-label text-muted">
                     {t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')} · {unit.surface} m²
                   </p>
                   {/* LE LOYER ATTENDU, et non un tiret : c'est le montant que ce
                       logement vide ne rapporte pas. Même formulation qu'au parc. */}
-                  <p className="numeric text-body">
+                  <p data-section="loyer" className="numeric text-body">
                     {money(unit.rent, { compact: true })}
                     <span className="ml-1 text-muted">{t('app.portfolio.rentExpected')}</span>
                   </p>
@@ -1119,7 +1128,8 @@ export function Tenants() {
                     size="sm"
                     icon="users"
                     onClick={() => setAAttribuer(unit)}
-                    className="mt-auto self-start"
+                    className="self-start justify-self-start"
+                    data-section="geste"
                   >
                     {t('app.portfolio.assignTenant')}
                   </Button>

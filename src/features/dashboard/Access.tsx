@@ -104,7 +104,12 @@ const GRILLE_DES_FICHES_DE_MEMBRE =
      à aligner d'une fiche à l'autre. C'est ce qui les distingue des fiches de
      locataire, où quatre faits occupent les mêmes cases. Un bord bas irrégulier
      coûte moins qu'une fiche au tiers vide, qui se lit comme une fiche à qui il
-     manque quelque chose. */
+     manque quelque chose.
+
+     NON DÉCLARÉE À `MESURER_SECTIONS_ALIGNEES`, pour la même raison, et ce n'est
+     pas un oubli : les fiches de locataire, de logement vacant et de logement
+     s'y déclarent parce qu'elles se comparent ligne à ligne. Celles-ci non —
+     la garde exigerait des sections communes qu'elles n'ont pas. */
   'grid grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] items-start gap-3 px-4 pb-4'
 
 function replier(noms: string[], t: ReturnType<typeof useT>) {

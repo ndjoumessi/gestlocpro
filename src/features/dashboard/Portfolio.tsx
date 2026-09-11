@@ -53,9 +53,31 @@ import { Badge } from '@/components/primitives/Badge'
    jamais plus large que sa boîte (`min(100%, 18rem)`) : deux à 1024 px, trois
    à 1440, cinq à 1920, une seule si la boîte est étroite — et rien ne
    déborde, quelle que soit la largeur où elle se peint. Seize rem donnaient
-   quatre colonnes de 259 px à 1440, mesuré : trop peu pour un nom entier. */
+   quatre colonnes de 259 px à 1440, mesuré : trop peu pour un nom entier.
+
+   AUCUN ÉCART VERTICAL, ET C'EST CE QUI PERMET D'ALIGNER. Les fiches partagent
+   leurs neuf rangées par `subgrid` (voir `SECTIONS_DE_FICHE_LOGEMENT`), et une
+   section absente — la barre d'un logement qui n'est pas en partiel, la date
+   d'entrée d'un logement vide — garde sa rangée, vide. Un écart de grille
+   s'ajouterait autour de chaque rangée vide : mesuré dans Chromium, 12 px de
+   blanc pour une barre qu'aucune fiche de la rangée ne porte, même avec un
+   écart nul déclaré sur la fiche. L'espacement vit donc DANS les sections, et
+   les rangées de fiches se séparent par la marge basse de chaque fiche — d'où
+   `pb-1` : 4 px plus les 12 de la dernière rangée font les 16 d'avant. */
 const GRILLE_DES_FICHES =
-  'grid grid-cols-[repeat(auto-fill,minmax(min(100%,18rem),1fr))] gap-3 border-t border-divider p-4'
+  'grid grid-cols-[repeat(auto-fill,minmax(min(100%,18rem),1fr))] gap-x-3 border-t border-divider px-4 pt-4 pb-1'
+
+/**
+ * NEUF SECTIONS, TOUJOURS LES MÊMES ET TOUJOURS À LEUR PLACE — en-tête, occupant,
+ * date d'entrée, type, loyer, barre, jauges, faits, geste.
+ *
+ * Relevé le 2026-09-11 par `MESURER_SECTIONS_ALIGNEES` avant ce lot : à côté d'un
+ * logement vide, le type et le loyer des fiches occupées commençaient 25 px plus
+ * bas — il leur manquait la ligne « depuis » ; à côté d'un partiel, les jauges
+ * du mois 14 px plus haut — il leur manquait la barre. Une grille de fiches se
+ * compare par ses lignes : « 145 000 FCFA » en face de « 110 000 FCFA ».
+ */
+const SECTIONS_DE_FICHE_LOGEMENT = 'mb-3 row-span-9 grid grid-rows-subgrid'
 
 /** Le mois voisin, sans jamais passer par un `Date` local — voir la route. */
 function moisDecale(mois: string, pas: number) {
@@ -728,14 +750,18 @@ export function Portfolio() {
                 id={idDuGroupe(id)}
                 aria-label={b?.name}
                 className={GRILLE_DES_FICHES}
+                data-mesure="sections-alignees"
               >
                 {lignes.map((unit) => (
                   <li
                     key={unit.id}
                     data-fiche-logement=""
-                    className="flex flex-col gap-2 rounded-lg border border-divider bg-surface p-4"
+                    className={cn(
+                      SECTIONS_DE_FICHE_LOGEMENT,
+                      'rounded-lg border border-divider bg-surface p-4',
+                    )}
                   >
-                    <div className="flex items-start justify-between gap-2">
+                    <div data-section="entete" className="flex items-start justify-between gap-2">
                       {/* Le lien EST sa boîte de 48 × 44 — pas un `after:inset-0`
                           étendu sur une zone : la sonde des cibles part du centre
                           du lien et s'écarte des deux côtés, et une zone qui ne
@@ -782,8 +808,9 @@ export function Portfolio() {
                     </div>
                     <p
                       data-donnee
+                      data-section="occupant"
                       className={cn(
-                        'truncate text-body',
+                        'truncate pt-2 text-body',
                         unit.tenant ? 'font-medium text-ink' : 'text-muted italic',
                       )}
                       title={unit.tenant ?? undefined}
@@ -792,17 +819,22 @@ export function Portfolio() {
                     </p>
                     {/* Depuis quand : un bail de six ans et un bail de deux mois ne se
                         lisent pas pareil, et la date vit déjà dans le logement. */}
-                    {unit.tenant && unit.leaseStart && (
-                      <p className="text-label text-muted">
-                        {t('app.portfolio.sinceLease', { date: d.monthYearInline(unit.leaseStart) })}
-                      </p>
-                    )}
-                    <p className="text-body text-muted">
+                    {/* Chaque section conditionnelle garde sa rangée, VIDE quand
+                        elle n'a rien à dire : c'est ce qui aligne la suivante sur
+                        celle des voisines. L'écart d'avant vit dans le contenu. */}
+                    <div data-section="depuis">
+                      {unit.tenant && unit.leaseStart && (
+                        <p className="pt-2 text-label text-muted">
+                          {t('app.portfolio.sinceLease', { date: d.monthYearInline(unit.leaseStart) })}
+                        </p>
+                      )}
+                    </div>
+                    <p data-section="type" className="pt-2 text-body text-muted">
                       {t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')} · {unit.surface} m²
                     </p>
                     {/* Le loyer, et ce qu'il en est ce mois : un partiel montre le
                         reçu sur l'attendu — c'est le chiffre qu'on vient chercher. */}
-                    <p className="numeric text-body">
+                    <p data-section="loyer" className="numeric pt-2 text-body">
                       {unit.status === 'partial' ? (
                         <>
                           {money(unit.paid, { compact: true })}
@@ -823,8 +855,9 @@ export function Portfolio() {
                     {/* La part reçue, en barre : « 40 000 / 75 000 » se calcule, une
                         barre à moitié se voit. Seulement sur un partiel — un
                         « À jour » à 100 % n'apprendrait rien. */}
+                    <div data-section="barre">
                     {unit.status === 'partial' && unit.rent > 0 && (
-                      <ProgressBar
+                      <div className="pt-2"><ProgressBar
                         value={Math.round((unit.paid / unit.rent) * 100)}
                         label={t('app.portfolio.paidOfRent', {
                           paid: money(unit.paid, { compact: true }),
@@ -832,20 +865,26 @@ export function Portfolio() {
                         })}
                         hideLabel
                         hideValue
-                      />
+                      /></div>
                     )}
+                    </div>
                     {/* LES TROIS POSTES DU MOIS AFFICHÉ — loyer · eau · électricité —
                         par le composant de la grille des paiements, donc de la même
                         forme que sa légende. Un partiel de loyer et une eau impayée
                         n'appellent pas le même geste, et la pastille d'état ne sait
                         pas le dire. Rien sans échéance : la pastille porte déjà
                         « non appelé » ou « vacant ». */}
-                    {(() => {
-                      const echeance = echeanceDuMois(unit)
-                      return echeance ? (
-                        <JaugesDePeriode receipt={echeance} periode={d.monthYear(periodeAffichee)} />
-                      ) : null
-                    })()}
+                    <div data-section="jauges">
+                      {(() => {
+                        const echeance = echeanceDuMois(unit)
+                        return echeance ? (
+                          <div className="pt-2">
+                            <JaugesDePeriode receipt={echeance} periode={d.monthYear(periodeAffichee)} />
+                          </div>
+                        ) : null
+                      })()}
+                    </div>
+                    <div data-section="faits">
                     {(() => {
                       const chantiers = works.filter(
                         (w) => w.unitId === unit.id && w.status !== 'done',
@@ -858,7 +897,7 @@ export function Portfolio() {
                         /* Deux faits au plus, et seulement quand ils existent : un
                            chantier ouvert change ce qu'on fera du logement, une
                            caution tenue dit ce qu'on doit au locataire. */
-                        <div className="mt-1 flex flex-wrap gap-1.5">
+                        <div className="flex flex-wrap gap-1.5 pt-3">
                           {chantiers > 0 && (
                             <Badge icon="wrench">
                               {t('app.portfolio.openWorks', { count: chantiers })}
@@ -874,17 +913,21 @@ export function Portfolio() {
                         </div>
                       )
                     })()}
-                    {unit.status === 'vacant' && (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        icon="users"
-                        onClick={() => setAAttribuer(unit)}
-                        className="mt-1 self-start"
-                      >
-                        {t('app.portfolio.assignTenant')}
-                      </Button>
-                    )}
+                    </div>
+                    <div data-section="geste">
+                      {unit.status === 'vacant' && (
+                        <div className="pt-3">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            icon="users"
+                            onClick={() => setAAttribuer(unit)}
+                          >
+                            {t('app.portfolio.assignTenant')}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -1644,7 +1687,7 @@ function PortfolioSkeleton() {
               </div>
               <div className={GRILLE_DES_FICHES}>
                 {[0, 1, 2].map((fiche) => (
-                  <div key={fiche} className="rounded-lg border border-divider p-4">
+                  <div key={fiche} className="mb-3 rounded-lg border border-divider p-4">
                     <div className="flex items-center justify-between gap-3">
                       <Skeleton line="body" className="w-10" />
                       <Skeleton line="body" className="w-16" />

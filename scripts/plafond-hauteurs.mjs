@@ -275,6 +275,19 @@ const HORS_PORTEE = {
  * seuls : +30, −118, +29 — 3425 → 3455, 3215 → 3097, 3724 → 3753. Les 41
  * autres sont identiques au relevé précédent.
  *
+ * ═══ ET CE QUE LES FICHES DU PARC ONT ACHETÉ, LE MÊME JOUR ═══
+ *
+ * +56 px sur `/demo/parc@1280`, 2166 → 2222 : L'ALIGNEMENT DES FICHES VOISINES.
+ * Elles partagent désormais leurs neuf rangées, et une section absente garde sa
+ * place. Le prix est exactement celui de la promesse : dans une rangée qui porte
+ * un partiel, les fiches voisines réservent la hauteur de sa barre ; à côté
+ * d'un logement vide, la sienne réserve celle de la date d'entrée. Avant, le
+ * loyer d'une fiche occupée commençait 25 px plus bas que celui d'un logement
+ * vide voisin — relevé par `MESURER_SECTIONS_ALIGNEES` —, et une grille de
+ * fiches se compare par ses lignes. À 360 px, le parc est un tableau : rien n'y
+ * bouge. Même prix sous la police large (exécution 34643605816), 2166 → 2222 ;
+ * les 43 autres points identiques.
+ *
  * ═══ ET CE QUE `/demo/acces@360` A ACHETÉ, LE 2026-09-11 ═══
  *
  * +22 px, 2226 → 2248 : L'EXPIRATION D'UN CODE, VISIBLE SUR TÉLÉPHONE. La
@@ -329,7 +342,7 @@ const PLAFONDS = [
   { adresse: '/demo/mon-espace', largeur: 1280, plafond: 1409, plafondLarge: 1409 },
   { adresse: '/demo/documents', largeur: 1280, plafond: 1187, plafondLarge: 1165 },
   { adresse: '/demo/signaler', largeur: 1280, plafond: 900, plafondLarge: 900 },
-  { adresse: '/demo/parc', largeur: 1280, plafond: 2166, plafondLarge: 2166 },
+  { adresse: '/demo/parc', largeur: 1280, plafond: 2222, plafondLarge: 2222 },
   { adresse: '/demo/releves', largeur: 1280, plafond: 1402, plafondLarge: 1402 },
   { adresse: '/demo/cautions', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo/locataires', largeur: 1280, plafond: 2450, plafondLarge: 2429 },
