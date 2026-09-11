@@ -54,6 +54,11 @@
  *          sous contrainte (le cas que la démonstration cache), une contrainte
  *          sans effet, une fiche seule, pas de grille, une contrainte rendue,
  *          une section manquante
+ *   46-54. le menu de débordement seul sur sa ligne — dénoncé, innocenté quand il
+ *          tient, seul par construction, derrière son enveloppe, emporté AVEC
+ *          son voisin (le faux positif du premier balayage), dans une colonne,
+ *          invisible, des voisins qui ne sont pas là, une rangée sans repli, et
+ *          un menu posé hors du flux, dans le coin
  *
  * LES VINGT-HUIT TÉMOINS DE BRANCHE NAISSENT ROUGES : chacun a été confronté à
  * une mutation de la sonde qu'il éprouve, et chacun a désigné SA cible — huit le
@@ -98,6 +103,7 @@ import {
   MESURER_DEFILEMENT_LATERAL,
   MESURER_DEROULEMENT,
   MESURER_GABARITS,
+  MESURER_MENUS_ISOLES,
   MESURER_RENDU_MINIMAL,
   MESURER_SECTIONS_ALIGNEES,
   PLANCHER_CIBLE,
@@ -118,7 +124,7 @@ let controles = 0
   LE COMPTE EST ÉCRIT, JAMAIS DÉRIVÉ. Une boucle vide se déclarerait verte, et
   c'est le piège que ce dépôt a trouvé quatre fois — voir `plafond-coquille`.
 */
-const TEMOINS_ATTENDUS = 45
+const TEMOINS_ATTENDUS = 55
 /*
   DEUX CONTRÔLES SUR DIX-NEUF, et ce nombre est écrit plutôt qu'imprimé. Un
   témoin qu'on rangerait en contrôle « parce qu'il ne rougit pas » deviendrait
@@ -1022,6 +1028,159 @@ try {
         ? true
         : 'attendu « etats » présente sur 1 fiche des 2 : la seconde ne la porte pas.'
     },
+  })
+
+  /*
+    ═══ 46-53 · LE MENU DE DÉBORDEMENT SEUL SUR SA LIGNE ═══
+
+    Deux boutons de 150 px et un menu de 44, espacés de 8 : 360 px en tout. Dans
+    une rangée de 340 px qui se replie, le menu part seul à la ligne.
+  */
+  const GESTE = '<button style="width:150px;height:44px;margin:0">geste</button>'
+  const MENU = '<button aria-haspopup="menu" aria-label="Autres actions" style="width:44px;height:44px;margin:0">…</button>'
+  const rangeeQuiSeReplie = (contenu, largeur = 340) =>
+    `<div style="display:flex;flex-wrap:wrap;gap:8px;width:${largeur}px">${contenu}</div>`
+
+  await temoin(page, {
+    nom: '46. un menu que le repli envoie SEUL à la ligne est dénoncé',
+    nature: 'branche',
+    page: rangeeQuiSeReplie(GESTE + GESTE + MENU),
+    sonde: MESURER_MENUS_ISOLES,
+    attendu: (vu) =>
+      vu.examines === 1 && vu.isoles.length === 1 && vu.isoles[0].nom === 'Autres actions'
+        ? true
+        : 'attendu UN menu isolé, nommé « Autres actions » : 360 px de gestes dans 340.',
+  })
+
+  await temoin(page, {
+    nom: '47. le même menu, quand la rangée tient, n’est pas dénoncé',
+    nature: 'branche',
+    page: rangeeQuiSeReplie(GESTE + GESTE + MENU, 380),
+    sonde: MESURER_MENUS_ISOLES,
+    attendu: (vu) =>
+      vu.examines === 1 && vu.isoles.length === 0
+        ? true
+        : 'attendu un menu examiné et AUCUN isolé : 360 px de gestes dans 380.',
+  })
+
+  await temoin(page, {
+    nom: '48. un menu SANS voisin est seul par construction, pas isolé',
+    nature: 'branche',
+    page: rangeeQuiSeReplie(MENU),
+    sonde: MESURER_MENUS_ISOLES,
+    attendu: (vu) =>
+      vu.examines === 1 && vu.isoles.length === 0
+        ? true
+        : 'attendu aucun isolé : la rangée ne porte que lui.',
+  })
+
+  /* L'ENVELOPPE : `MenuDeDebordement` rend son bouton dans un `<div>` qui porte
+     la fenêtre du menu. C'est cette boîte, et non le bouton, qui est l'enfant de
+     la rangée — la sonde doit la traverser. */
+  await temoin(page, {
+    nom: '49. derrière son enveloppe, le menu isolé est encore dénoncé',
+    nature: 'branche',
+    page: rangeeQuiSeReplie(GESTE + GESTE + `<div style="position:relative">${MENU}</div>`),
+    sonde: MESURER_MENUS_ISOLES,
+    attendu: (vu) =>
+      vu.isoles.length === 1
+        ? true
+        : 'attendu UN isolé : l’enveloppe du menu part seule à la ligne.',
+  })
+
+  /* LE FAUX POSITIF DU PREMIER BALAYAGE : le menu et son voisin, liés dans une
+     rangée SANS repli, passent ensemble sous un titre trop large. Le premier
+     conteneur flexible décide — et lui ne se replie pas. */
+  await temoin(page, {
+    nom: '50. un menu emporté AVEC son voisin sous un titre n’est pas isolé',
+    nature: 'branche',
+    page: rangeeQuiSeReplie(
+      '<div style="width:300px;height:30px">titre</div>' +
+        `<div style="display:flex;gap:8px">${GESTE}${MENU}</div>`,
+    ),
+    sonde: MESURER_MENUS_ISOLES,
+    attendu: (vu) =>
+      vu.examines === 1 && vu.isoles.length === 0
+        ? true
+        : 'attendu aucun isolé : le menu partage sa rangée sans repli avec son geste.',
+  })
+
+  await temoin(page, {
+    nom: '51. dans une COLONNE, un menu sur sa propre ligne est la mise en page même',
+    nature: 'branche',
+    page:
+      '<div style="display:flex;flex-direction:column;flex-wrap:wrap;gap:8px;width:340px">' +
+      GESTE + GESTE + MENU + '</div>',
+    sonde: MESURER_MENUS_ISOLES,
+    attendu: (vu) =>
+      vu.examines === 1 && vu.isoles.length === 0
+        ? true
+        : 'attendu aucun isolé : une colonne empile ses enfants par définition.',
+  })
+
+  await temoin(page, {
+    nom: '52. un menu invisible n’est ni examiné ni dénoncé',
+    nature: 'branche',
+    page: rangeeQuiSeReplie(GESTE + GESTE + MENU.replace('style="', 'style="display:none;')),
+    sonde: MESURER_MENUS_ISOLES,
+    attendu: (vu) =>
+      vu.examines === 0 && vu.isoles.length === 0
+        ? true
+        : `attendu 0 examiné : le seul menu est masqué. Examinés : ${vu.examines}.`,
+  })
+
+  await temoin(page, {
+    nom: '53. des voisins MASQUÉS ne comptent pas : le menu est seul par construction',
+    nature: 'branche',
+    page: rangeeQuiSeReplie(
+      GESTE.replace('style="', 'style="display:none;') + GESTE.replace('style="', 'style="display:none;') + MENU,
+    ),
+    sonde: MESURER_MENUS_ISOLES,
+    attendu: (vu) =>
+      vu.examines === 1 && vu.isoles.length === 0
+        ? true
+        : 'attendu aucun isolé : ses deux voisins sont masqués, il n’en a aucun de visible.',
+  })
+
+  /* LA RANGÉE SANS REPLI. Ses enfants partagent leur ligne par construction —
+     mais pas forcément leur HAUTEUR : calés l'un en haut, l'autre en bas d'une
+     rangée haute, ils ne se chevauchent pas. Sans l'exemption, la sonde les
+     croirait sur deux lignes. Ce témoin a été ajouté parce que la mutation qui
+     retirait l'exemption SURVIVAIT aux huit autres : une branche qu'aucun
+     témoin ne fait rougir n'est gardée par personne. */
+  await temoin(page, {
+    nom: '54. une rangée SANS repli n’envoie rien à la ligne, même calée haut et bas',
+    nature: 'branche',
+    page:
+      '<div style="display:flex;height:120px;gap:8px;width:340px">' +
+      '<button style="width:150px;height:20px;margin:0;align-self:flex-start">geste</button>' +
+      MENU.replace('style="', 'style="align-self:flex-end;') +
+      '</div>',
+    sonde: MESURER_MENUS_ISOLES,
+    attendu: (vu) =>
+      vu.examines === 1 && vu.isoles.length === 0
+        ? true
+        : 'attendu aucun isolé : une rangée qui ne se replie pas n’a qu’une ligne.',
+  })
+
+  /* HORS DU FLUX : c'est le correctif lui-même. Sur téléphone, le menu quitte la
+     rangée des gestes pour le coin haut-droit de son en-tête ou de sa carte ; il
+     reste l'enfant de la rangée dans le document, mais n'occupe aucune de ses
+     lignes. Le dénoncer interdirait la seule place où il n'est jamais seul. */
+  await temoin(page, {
+    nom: '55. un menu posé HORS DU FLUX, dans le coin, n’est sur aucune ligne',
+    nature: 'branche',
+    page:
+      '<div style="position:relative;width:340px;padding-top:60px">' +
+      rangeeQuiSeReplie(
+        GESTE + GESTE + `<div style="position:absolute;top:0;right:0">${MENU}</div>`,
+      ) +
+      '</div>',
+    sonde: MESURER_MENUS_ISOLES,
+    attendu: (vu) =>
+      vu.examines === 1 && vu.isoles.length === 0
+        ? true
+        : 'attendu aucun isolé : le menu est posé en absolu, hors des lignes de la rangée.',
   })
 
   await contexte.close()

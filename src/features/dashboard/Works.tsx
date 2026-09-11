@@ -543,8 +543,11 @@ export function Works() {
                 12 rem, et `ml-auto` pousserait la rangée de commandes contre le
                 bord droit. Les trois classes ne valent que dans la branche
                 rangée.
+
+                `relative` : le menu s'y pose en haut à droite sur téléphone —
+                voir plus bas.
               */
-              className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center"
+              className="relative flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center"
             >
               <span
                 className={`flex size-11 shrink-0 items-center justify-center rounded-md ${
@@ -838,8 +841,20 @@ export function Works() {
                   porter : sur une intervention devisée que le bailleur s'est
                   ouverte à lui-même, il n'y a rien derrière les trois points, et
                   il n'y a donc pas de trois points.
+
+                  SUR TÉLÉPHONE, LE MENU MONTE DANS LE COIN, en face de l'icône.
+                  Dernier d'une rangée qui se replie, il partait SEUL à la ligne
+                  sous « Chiffrer » et « Marquer terminé » — relevé à 360, 375 et
+                  414 px par `MESURER_MENUS_ISOLES`. En haut à droite, il est
+                  hors de la rangée et n'y prend aucune place : les gestes gardent
+                  leur ligne, et la carte a enfin quelque chose en face de son
+                  icône. Au-delà de `sm`, la carte est une rangée et il reprend
+                  sa place au bout des gestes.
                 */}
-                <MenuDeDebordement libelle={t('common.moreActions')}>
+                <MenuDeDebordement
+                  libelle={t('common.moreActions')}
+                  className="max-sm:absolute max-sm:top-4 max-sm:right-4"
+                >
                   {work.origin === 'tenantReport' && work.reportedBy && role !== 'tenant' ? (
                     <MenuElement icone="bell" onClick={() => setARepondre(work)}>
                       {t('app.works.reply')}

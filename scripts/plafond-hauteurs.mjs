@@ -253,6 +253,28 @@ const HORS_PORTEE = {
  * rangée d'états existe désormais partout, et la ligne de fiches ne paie plus
  * que la plus haute. À 360, `DataTable` rend ses propres fiches : rien n'y bouge.
  *
+ * ═══ LE MENU DE DÉBORDEMENT DANS LE COIN, LE MÊME JOUR ═══
+ *
+ * Sur téléphone, les trois points quittent la rangée des gestes pour le coin
+ * haut-droit : la ligne du titre dans l'en-tête commun, le coin d'une carte de
+ * chantier. Ils partaient SEULS à la ligne sous les boutons, sur sept écrans —
+ * voir `MESURER_MENUS_ISOLES`.
+ *
+ * −117 px sur `/demo/travaux@360`, 3236 → 3119 : les cartes de chantier dont le
+ * menu passait à la ligne ont rendu cette ligne.
+ *
+ * +29 px sur `/demo@360` et `/demo/releves@360`, 3425 → 3454 et 3724 → 3753 :
+ * c'est le PRIX, et il est choisi. Le titre cède 48 px au menu posé à sa droite ;
+ * « Vue consolidée du parc » et « Relevé des compteurs » passent sur deux lignes.
+ * Un titre replié se lit ; un menu seul sous des boutons ne se rattache à rien,
+ * et coûtait 52 px ailleurs. Le rond se pose au même endroit sur chaque écran,
+ * y compris ceux où il n'était pas encore isolé — c'est ce qui en fait une
+ * place, et non un repli de circonstance.
+ *
+ * Sous la police large (exécution 34636760180), les trois mêmes points et eux
+ * seuls : +30, −118, +29 — 3425 → 3455, 3215 → 3097, 3724 → 3753. Les 41
+ * autres sont identiques au relevé précédent.
+ *
  * ═══ ET CE QUE `/demo/acces@360` A ACHETÉ, LE 2026-09-11 ═══
  *
  * +22 px, 2226 → 2248 : L'EXPIRATION D'UN CODE, VISIBLE SUR TÉLÉPHONE. La
@@ -276,16 +298,16 @@ const PLAFONDS = [
   { adresse: '/connexion', largeur: 360, plafond: 900, plafondLarge: 900 },
   { adresse: '/mot-de-passe-oublie', largeur: 360, plafond: 900, plafondLarge: 900 },
   { adresse: '/reinitialiser', largeur: 360, plafond: 900, plafondLarge: 900 },
-  { adresse: '/demo', largeur: 360, plafond: 3425, plafondLarge: 3425 },
+  { adresse: '/demo', largeur: 360, plafond: 3454, plafondLarge: 3455 },
   { adresse: '/demo/paiements', largeur: 360, plafond: 3343, plafondLarge: 3343 },
   { adresse: '/demo/etats-des-lieux', largeur: 360, plafond: 2746, plafondLarge: 2746 },
-  { adresse: '/demo/travaux', largeur: 360, plafond: 3236, plafondLarge: 3215 },
+  { adresse: '/demo/travaux', largeur: 360, plafond: 3119, plafondLarge: 3097 },
   { adresse: '/demo/signalements', largeur: 360, plafond: 2961, plafondLarge: 2982 },
   { adresse: '/demo/mon-espace', largeur: 360, plafond: 3249, plafondLarge: 3198 },
   { adresse: '/demo/documents', largeur: 360, plafond: 2244, plafondLarge: 2244 },
   { adresse: '/demo/signaler', largeur: 360, plafond: 1227, plafondLarge: 1205 },
   { adresse: '/demo/parc', largeur: 360, plafond: 4232, plafondLarge: 4232 },
-  { adresse: '/demo/releves', largeur: 360, plafond: 3724, plafondLarge: 3724 },
+  { adresse: '/demo/releves', largeur: 360, plafond: 3753, plafondLarge: 3753 },
   { adresse: '/demo/cautions', largeur: 360, plafond: 2121, plafondLarge: 2121 },
   { adresse: '/demo/locataires', largeur: 360, plafond: 4364, plafondLarge: 4364 },
   { adresse: '/demo/acces', largeur: 360, plafond: 2248, plafondLarge: 2209 },

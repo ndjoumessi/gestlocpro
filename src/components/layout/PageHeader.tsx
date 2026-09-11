@@ -1,5 +1,6 @@
 import { createContext, useContext, type ReactNode } from 'react'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
+import { cn } from '@/lib/cn'
 
 /**
  * DÉTACHÉ D'`AppShell.tsx`, et c'est le point du fichier.
@@ -73,10 +74,29 @@ export function PageHeader({
          la coquille, et un saut de parent depuis le titre casse au premier
          niveau intermédiaire. */
       data-en-tete-de-page=""
-      className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
+      /*
+        LES ACTIONS PASSENT SOUS LE TITRE, ENSEMBLE, quand elles ne tiennent plus
+        à côté de lui — `sm:flex-wrap`, et un titre qui ne réclame que 20 rem
+        pour décider du retour à la ligne.
+
+        Avant, le titre cédait sa largeur et les actions se repliaient ENTRE
+        ELLES dans la colonne qui leur restait : le menu, dernier de la file,
+        partait seul à la ligne — relevé à 700, 768, 800, 900 et 1024 px sur
+        quatre écrans par `MESURER_MENUS_ISOLES`. Sous le titre, elles ont toute
+        la largeur, et tiennent sur une ligne.
+
+        `relative` : sur téléphone, le menu monte sur la ligne du titre, en haut à
+        droite — voir plus bas.
+      */
+      className="relative mb-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between"
     >
-      <div className="min-w-0">
-        <Titre className="display-app text-balance">{title}</Titre>
+      <div className="min-w-0 sm:flex-[1_1_20rem]">
+        {/* `max-sm:pr-12` : la place du menu, posé à droite du titre sur
+            téléphone. Seul le TITRE la cède ; la description garde toute la
+            largeur, puisque le rond ne descend pas jusqu'à elle. */}
+        <Titre className={cn('display-app text-balance', debordement && 'max-sm:pr-12')}>
+          {title}
+        </Titre>
         {description && (
           <p className="mt-2 max-w-[62ch] text-body text-pretty text-muted">{description}</p>
         )}
@@ -106,8 +126,17 @@ export function PageHeader({
             doit être : deux commandes sous les yeux, le reste à un geste. Le
             menu se rend `null` tout seul quand on ne lui donne rien — voir
             `MenuDeDebordement`.
+
+            SUR TÉLÉPHONE, IL MONTE SUR LA LIGNE DU TITRE, en haut à droite —
+            la place qu'une barre d'application donne à ses trois points.
+            Dernier d'une rangée qui se repliait, il partait seul à la ligne
+            sous les deux boutons, relevé à 360, 375 et 414 px sur cinq écrans.
+            Posé hors du flux, il ne prend plus de place à la rangée : les
+            boutons gardent leur ligne, et le principal reste en haut.
           */}
-          {debordement}
+          {debordement && (
+            <div className="max-sm:absolute max-sm:top-0 max-sm:right-0">{debordement}</div>
+          )}
         </div>
       )}
     </div>

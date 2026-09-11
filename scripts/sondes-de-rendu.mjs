@@ -888,3 +888,71 @@ export const MESURER_SECTIONS_ALIGNEES = (decalage) => {
   }
   return releves
 }
+
+/**
+ * UN MENU DE DÉBORDEMENT N'EST JAMAIS SEUL SUR SA LIGNE.
+ *
+ * ═══ CE QU'ELLE TIENT ═══
+ *
+ * Les trois points ferment une rangée de gestes : ils disent « et le reste est
+ * ici ». Quand la rangée se replie, le menu — dernier de la file — partait seul
+ * à la ligne suivante, un rond de 44 px sous des boutons qui ne le touchaient
+ * plus, et qu'on ne rattachait plus à rien. Relevé le 2026-09-11 sur huit
+ * écrans, de 360 à 1536 px : l'en-tête commun (`PageHeader`), la carte d'un
+ * chantier, la fiche d'un locataire.
+ *
+ * ═══ LA RÈGLE, ET POURQUOI LE PREMIER CONTENEUR FLEXIBLE DÉCIDE ═══
+ *
+ * On remonte du déclencheur (`aria-haspopup="menu"`) jusqu'au premier ancêtre
+ * flexible. S'il se replie (`flex-wrap: wrap`) et range ses enfants en ligne,
+ * l'enfant qui porte le menu doit partager sa ligne avec au moins un voisin
+ * visible. S'il ne se replie pas, le menu partage sa ligne par construction, et
+ * ce qui se replie PLUS HAUT emporte le menu AVEC ses voisins.
+ *
+ * Le premier balayage remontait jusqu'au premier ancêtre qui se REPLIE : il a
+ * dénoncé la rangée des quittances, où « Tout télécharger » et le menu, liés
+ * dans une rangée sans repli, passaient ENSEMBLE sous leur titre. Le menu n'y
+ * était pas seul ; la règle l'était.
+ *
+ * Un menu SANS voisin visible n'est pas isolé : il est seul par construction.
+ * Un menu posé HORS DU FLUX (`absolute`, `fixed`) non plus : il n'est sur aucune
+ * ligne de la rangée qui le contient. C'est ainsi qu'il gagne le coin haut-droit
+ * d'un en-tête ou d'une carte sur téléphone, en face du titre ou de l'icône.
+ */
+export const MESURER_MENUS_ISOLES = () => {
+  const visible = (el) => {
+    const b = el.getBoundingClientRect()
+    return b.width > 0 && b.height > 0
+  }
+  let examines = 0
+  const isoles = []
+  for (const declencheur of document.querySelectorAll('[aria-haspopup="menu"]')) {
+    if (!visible(declencheur)) continue
+    examines++
+    let porteur = declencheur
+    let rangee = declencheur.parentElement
+    while (rangee && !/flex/.test(getComputedStyle(rangee).display)) {
+      porteur = rangee
+      rangee = rangee.parentElement
+    }
+    if (!rangee) continue
+    if (/absolute|fixed/.test(getComputedStyle(porteur).position)) continue
+    const style = getComputedStyle(rangee)
+    if (style.flexWrap !== 'wrap' || !style.flexDirection.startsWith('row')) continue
+
+    const voisins = [...rangee.children].filter((c) => c !== porteur && visible(c))
+    if (voisins.length === 0) continue
+    const lui = porteur.getBoundingClientRect()
+    const partage = voisins.some((v) => {
+      const b = v.getBoundingClientRect()
+      return b.top < lui.bottom - 1 && b.bottom > lui.top + 1
+    })
+    if (!partage) {
+      isoles.push({
+        nom: (declencheur.getAttribute('aria-label') || '').slice(0, 50),
+        voisins: voisins.length,
+      })
+    }
+  }
+  return { examines, isoles }
+}

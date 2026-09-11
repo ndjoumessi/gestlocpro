@@ -411,13 +411,59 @@ export function Tenants() {
                   chiffres. La rangée existe sur TOUTES les fiches, puisque
                   l'état de paiement y est toujours : c'est ce qui la rend
                   alignable. */}
-              <div data-section="etats" className="flex flex-wrap items-center gap-1.5">
-                <PaymentStatusPill status={unit.status} size="sm" />
-                {unit.tenantHasAccount === false && (
-                  <StatusPill tone="warn" size="sm">
-                    {t('app.tenants.noAccount')}
-                  </StatusPill>
-                )}
+              {/* LE MENU AU BOUT DES ÉTATS — le coin haut-droit de la fiche, sous
+                  l'identité.
+
+                  Il fermait la rangée des gestes, et à 1536 px, où une fiche fait
+                  295 px, « Relancer », « Dossier » et lui n'y tenaient plus : il
+                  partait SEUL à la ligne suivante. Ici, il a la place — deux
+                  pastilles courtes — et la rangée des gestes n'a plus que deux
+                  boutons, qui tiennent dans la fiche la plus étroite.
+
+                  `-my-[11px]` : le rond fait 44 px, la pastille 22,8. Sans marge
+                  négative, la rangée grandirait de 21 px sur TOUTES les fiches
+                  d'une ligne — `subgrid` partage sa hauteur. 11 px et non 10 : à
+                  10, le rond occupait 24 px, un de plus que la pastille, et
+                  `plafond-hauteurs` a compté les 5 px des quatre rangées de
+                  fiches. À 11, il en occupe 22 et la rangée garde sa hauteur ; il
+                  déborde dans les 12 px d'écart qui l'entourent, sans y toucher. */}
+              <div data-section="etats" className="flex items-center justify-between gap-2">
+                <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                  <PaymentStatusPill status={unit.status} size="sm" />
+                  {unit.tenantHasAccount === false && (
+                    <StatusPill tone="warn" size="sm">
+                      {t('app.tenants.noAccount')}
+                    </StatusPill>
+                  )}
+                </div>
+                {unit.tenant && unit.tenantId ? (
+                  <MenuDeDebordement
+                    libelle={t('app.tenants.actionsFor', { name: unit.tenant })}
+                    className="-my-[11px]"
+                  >
+                    <MenuElement
+                      icone="sliders"
+                      onClick={() => setACorriger(unit)}
+                      nomAccessible={t('app.tenants.editFor', { name: unit.tenant })}
+                    >
+                      {t('app.tenants.edit')}
+                    </MenuElement>
+                    {/* Le serveur refuse de toute façon tant qu'une somme a
+                        circulé ; ce masquage évite d'offrir un geste à qui n'y
+                        a pas droit, il ne remplace pas la règle. */}
+                    <MenuElement
+                      icone="close"
+                      onClick={role === 'owner' ? () => setARetirer(unit) : undefined}
+                      nomAccessible={
+                        role === 'owner'
+                          ? t('app.tenants.removeFor', { name: unit.tenant })
+                          : t('app.tenants.removeBlocked')
+                      }
+                    >
+                      {t('app.tenants.remove')}
+                    </MenuElement>
+                  </MenuDeDebordement>
+                ) : null}
               </div>
 
               {/* QUATRE FAITS, TOUJOURS LES MÊMES ET TOUJOURS LÀ. Une grille dont
@@ -465,12 +511,13 @@ export function Tenants() {
                   Ils se posaient au BAS (`self-end`, héritier de `mt-auto`). Tant
                   qu'ils tenaient sur une ligne, c'était pareil. À 1536 px, une
                   fiche fait 295 px : « Relancer », « Dossier » et le menu n'y
-                  tiennent plus, le menu passe à la ligne, et la rangée des gestes
-                  grandit de 52 px. Calés en bas, les gestes des fiches sans
-                  relance faisaient descendre leur filet de 52 px sous celui de
-                  leur voisine — `MESURER_SECTIONS_ALIGNEES` l'a trouvé en naissant.
-                  Calés en haut, le filet reste une ligne, et la PREMIÈRE rangée de
-                  boutons s'aligne d'une fiche à l'autre. */}
+                  tenaient plus, le menu passait à la ligne, et la rangée des
+                  gestes grandissait de 52 px. Calés en bas, les gestes des fiches
+                  sans relance faisaient descendre leur filet de 52 px sous celui
+                  de leur voisine — `MESURER_SECTIONS_ALIGNEES` l'a trouvé en
+                  naissant. Calés en haut, le filet reste une ligne. Le menu, lui,
+                  est parti au bout de la rangée des états : il ne reste ici que
+                  deux boutons, qui tiennent dans la fiche la plus étroite. */}
               <div
                 data-section="gestes"
                 className="flex flex-wrap content-start items-center gap-2 border-t border-divider pt-3"
@@ -496,33 +543,6 @@ export function Tenants() {
                 >
                   {t('app.tenants.fileLink')}
                 </Button>
-                {unit.tenant && unit.tenantId ? (
-                  <div className="ml-auto">
-                    <MenuDeDebordement libelle={t('app.tenants.actionsFor', { name: unit.tenant })}>
-                      <MenuElement
-                        icone="sliders"
-                        onClick={() => setACorriger(unit)}
-                        nomAccessible={t('app.tenants.editFor', { name: unit.tenant })}
-                      >
-                        {t('app.tenants.edit')}
-                      </MenuElement>
-                      {/* Le serveur refuse de toute façon tant qu'une somme a
-                          circulé ; ce masquage évite d'offrir un geste à qui n'y
-                          a pas droit, il ne remplace pas la règle. */}
-                      <MenuElement
-                        icone="close"
-                        onClick={role === 'owner' ? () => setARetirer(unit) : undefined}
-                        nomAccessible={
-                          role === 'owner'
-                            ? t('app.tenants.removeFor', { name: unit.tenant })
-                            : t('app.tenants.removeBlocked')
-                        }
-                      >
-                        {t('app.tenants.remove')}
-                      </MenuElement>
-                    </MenuDeDebordement>
-                  </div>
-                ) : null}
               </div>
             </Card>
           </li>

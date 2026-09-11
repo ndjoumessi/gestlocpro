@@ -93,6 +93,7 @@ import {
   DECALAGE_DE_CONTRAINTE,
   MESURER_CIBLES,
   MESURER_GABARITS,
+  MESURER_MENUS_ISOLES,
   MESURER_SECTIONS_ALIGNEES,
   PLANCHER_CIBLE,
   POSER_L_ARBRE,
@@ -3773,6 +3774,9 @@ const colonnes = []
 const tarifs = []
 /** Les rangées de fiches voisines, partout où une grille se déclare — voir la sonde. */
 const sectionsAlignees = []
+/** Les menus de débordement partis seuls à la ligne, et combien on en a regardé. */
+const menusIsoles = []
+let menusExamines = 0
 /*
   ─── LE PARCOURS D'INSCRIPTION, ACCUMULATEURS SÉPARÉS ────────────────────
 
@@ -4055,6 +4059,12 @@ try {
         if (alignement) {
           for (const r of alignement) sectionsAlignees.push({ adresse, largeur, langue, ...r })
         }
+
+        /* LES MENUS DE DÉBORDEMENT, à chaque point pour la même raison : un
+           repli vit à une largeur précise — 414 ici, 900 là, 1536 sur une fiche. */
+        const menus = await chrono('sonde · menus isolés', () => page.evaluate(MESURER_MENUS_ISOLES))
+        menusExamines += menus.examines
+        for (const m of menus.isoles) menusIsoles.push({ adresse, largeur, langue, ...m })
 
         /*
           POSÉE AVANT LA RÈGLE DU DÉBORDEMENT, et à chaque point.
@@ -6308,6 +6318,32 @@ if (GARDE_SECTIONS) {
 }
 
 /*
+  LE MENU DE DÉBORDEMENT SEUL SUR SA LIGNE. Le plancher d'abord : zéro
+  déclencheur examiné ne peut venir que d'une sonde qui ne trouve plus
+  `aria-haspopup="menu"` — le balayage en voit plusieurs centaines.
+*/
+if (menusExamines === 0) {
+  console.error(
+    '\n✗ mesure-ui : aucun menu de débordement examiné.\n' +
+      '   `MenuDeDebordement` porte-t-il encore `aria-haspopup="menu"` ?\n' +
+      '   Une sonde qui ne trouve rien ne prouve rien.\n',
+  )
+  process.exit(1)
+}
+if (menusIsoles.length > 0) {
+  const lignes = [...new Set(menusIsoles.map((m) => `${m.adresse} à ${m.largeur}px ${m.langue} : « ${m.nom} »`))]
+  console.error(
+    `\n✗ mesure-ui : ${lignes.length} menu(s) de débordement parti(s) SEUL(S) à la ligne :\n` +
+      lignes.slice(0, 16).map((l) => `      ${l}`).join('\n') +
+      (lignes.length > 16 ? `\n      … et ${lignes.length - 16} autre(s)` : '') +
+      '\n   Les trois points ferment une rangée de gestes ; seuls sous elle, ils ne se\n' +
+      '   rattachent plus à rien. Sur téléphone, leur place est le coin haut-droit de\n' +
+      '   leur en-tête ou de leur carte (voir `PageHeader`) ; au-delà, le bout de la rangée.\n',
+  )
+  process.exit(1)
+}
+
+/*
   L'ORDRE DES TROIS RÈGLES VA DU SIGNAL LE PLUS TÔT AU SYMPTÔME LE PLUS TARD :
   jeu trop faible, puis repli, puis débordement.
 
@@ -6486,6 +6522,7 @@ console.log(
     `  Sections de fiches voisines : ${sectionsAlignees.length} rangées comparées ` +
     `(${[...new Set(sectionsAlignees.map((r) => r.largeur))].join('/')} px), alignées au naturel ` +
     `et sous ${DECALAGE_DE_CONTRAINTE} px de contrainte.\n` +
+    `  Menus de débordement : ${menusExamines} déclencheurs examinés, aucun seul sur sa ligne.\n` +
     `  ${textesAudites} textes audités en contraste (${THEMES.join(' + ')}, ${LARGEURS_CONTRASTE.join(' et ')} px), aucun sous le seuil WCAG AA.\n` +
     `  ${surfacesOuvertes} surfaces interactives OUVERTES puis auditées (${THEMES.join(' + ')}) : ` +
     `${textesDeSurface} textes, ${ciblesDeSurface} cibles et ${nomsDeSurface} commandes ` +
