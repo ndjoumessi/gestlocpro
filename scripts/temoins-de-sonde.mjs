@@ -49,6 +49,11 @@
  *          et ce qui n'en est pas une
  *   30.    et l'étiquette qui NE sauve PAS : celle qui cite son champ sans le
  *          contenir occupe une autre région de l'écran
+ *   38-45. l'alignement des sections de fiches voisines — une grille qui partage
+ *          ses rangées, une qui se décale au naturel, une qui ne se décale que
+ *          sous contrainte (le cas que la démonstration cache), une contrainte
+ *          sans effet, une fiche seule, pas de grille, une contrainte rendue,
+ *          une section manquante
  *
  * LES VINGT-HUIT TÉMOINS DE BRANCHE NAISSENT ROUGES : chacun a été confronté à
  * une mutation de la sonde qu'il éprouve, et chacun a désigné SA cible — huit le
@@ -88,11 +93,13 @@ import { chromium } from 'playwright'
 import { exit } from 'node:process'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
 import {
+  DECALAGE_DE_CONTRAINTE,
   MESURER_CIBLES,
   MESURER_DEFILEMENT_LATERAL,
   MESURER_DEROULEMENT,
   MESURER_GABARITS,
   MESURER_RENDU_MINIMAL,
+  MESURER_SECTIONS_ALIGNEES,
   PLANCHER_CIBLE,
   RAYON_SONDAGE,
   RELEVER_LES_CLOTURES_PERMEABLES,
@@ -111,7 +118,7 @@ let controles = 0
   LE COMPTE EST ÉCRIT, JAMAIS DÉRIVÉ. Une boucle vide se déclarerait verte, et
   c'est le piège que ce dépôt a trouvé quatre fois — voir `plafond-coquille`.
 */
-const TEMOINS_ATTENDUS = 37
+const TEMOINS_ATTENDUS = 45
 /*
   DEUX CONTRÔLES SUR DIX-NEUF, et ce nombre est écrit plutôt qu'imprimé. Un
   témoin qu'on rangerait en contrôle « parce qu'il ne rougit pas » deviendrait
@@ -877,6 +884,144 @@ try {
         ? true
         : `attendu une levée nommant le sélecteur ; rendu ${JSON.stringify(vu)}. Une sonde ` +
           'qui rend zéro cible pour une configuration incomplète se lit « aucun défaut ».',
+  })
+
+
+  /*
+    ═══ 38-45 · L'ALIGNEMENT DES SECTIONS DE FICHES VOISINES ═══
+
+    Trois fiches de 120 px côte à côte, trois sections chacune. Ce qui change
+    d'un témoin à l'autre est la façon dont la fiche distribue ses sections :
+    rangées PARTAGÉES (`subgrid`) ou colonne flexible PROPRE à chaque fiche.
+  */
+  const grilleDeFiches = (fiches, colonnes = 3) =>
+    `<div data-mesure="sections-alignees" style="display:grid;` +
+    `grid-template-columns:repeat(${colonnes},120px);gap:8px">${fiches}</div>`
+  const fichePartagee = (a = 20) =>
+    '<div style="grid-row:span 3;display:grid;grid-template-rows:subgrid;row-gap:4px">' +
+    `<div data-section="identite" style="height:${a}px"></div>` +
+    '<div data-section="etats" style="height:10px"></div>' +
+    '<div data-section="faits" style="height:30px"></div></div>'
+  const ficheColonne = (a = 20, sections = ['identite', 'etats', 'faits']) =>
+    '<div style="display:flex;flex-direction:column;gap:4px">' +
+    sections
+      .map((nom) => `<div data-section="${nom}" style="height:${nom === 'identite' ? a : 10}px"></div>`)
+      .join('') +
+    '</div>'
+
+  await temoin(page, {
+    nom: '38. une grille qui PARTAGE ses rangées est alignée, au naturel comme sous contrainte',
+    nature: 'branche',
+    page: grilleDeFiches(fichePartagee() + fichePartagee(50) + fichePartagee()),
+    sonde: MESURER_SECTIONS_ALIGNEES,
+    argument: DECALAGE_DE_CONTRAINTE,
+    attendu: (vu) =>
+      Array.isArray(vu) &&
+      vu.length === 1 &&
+      vu[0].fiches === 3 &&
+      [...vu[0].naturel, ...vu[0].contraint].every((e) => e.ecart === 0 && e.presentes === 3) &&
+      vu[0].deplacement === DECALAGE_DE_CONTRAINTE
+        ? true
+        : `attendu une rangée de 3 fiches, aucun écart, un déplacement de ${DECALAGE_DE_CONTRAINTE} px.`,
+  })
+
+  await temoin(page, {
+    nom: '39. des colonnes PROPRES à chaque fiche se décalent au naturel, et c’est dénoncé',
+    nature: 'branche',
+    page: grilleDeFiches(ficheColonne() + ficheColonne(60) + ficheColonne()),
+    sonde: MESURER_SECTIONS_ALIGNEES,
+    argument: DECALAGE_DE_CONTRAINTE,
+    attendu: (vu) =>
+      vu?.[0]?.naturel.find((e) => e.nom === 'etats')?.ecart === 40
+        ? true
+        : 'attendu 40 px d’écart naturel sur « etats » : une identité de 60 px contre 20.',
+  })
+
+  /* LE CAS QUE LA DÉMONSTRATION CACHE : des colonnes propres, mais de même
+     hauteur — alignées au naturel par coïncidence. Seule la contrainte montre
+     que rien ne les tient ensemble. */
+  await temoin(page, {
+    nom: '40. des colonnes alignées PAR COÏNCIDENCE se décalent sous contrainte, et c’est dénoncé',
+    nature: 'branche',
+    page: grilleDeFiches(ficheColonne() + ficheColonne() + ficheColonne()),
+    sonde: MESURER_SECTIONS_ALIGNEES,
+    argument: DECALAGE_DE_CONTRAINTE,
+    attendu: (vu) =>
+      vu?.[0]?.naturel.every((e) => e.ecart === 0) &&
+      vu[0].contraint.find((e) => e.nom === 'etats')?.ecart === DECALAGE_DE_CONTRAINTE
+        ? true
+        : `attendu 0 px au naturel et ${DECALAGE_DE_CONTRAINTE} sous contrainte sur « etats ».`,
+  })
+
+  await temoin(page, {
+    nom: '41. une contrainte SANS EFFET est rendue comme telle, pas comme un alignement',
+    nature: 'branche',
+    page: grilleDeFiches(
+      ['a', 'b'].map(() =>
+        '<div style="position:relative;height:80px">' +
+        '<div data-section="identite" style="height:20px"></div>' +
+        '<div data-section="etats" style="position:absolute;top:30px;height:10px;width:100%"></div></div>',
+      ).join(''),
+      2,
+    ),
+    sonde: MESURER_SECTIONS_ALIGNEES,
+    argument: DECALAGE_DE_CONTRAINTE,
+    attendu: (vu) =>
+      vu?.[0]?.deplacement === 0
+        ? true
+        : 'attendu un déplacement nul : la section suivante est posée en absolu, la contrainte ne la pousse pas.',
+  })
+
+  await temoin(page, {
+    nom: '42. une fiche SEULE sur sa rangée n’est comparée à personne',
+    nature: 'branche',
+    page: grilleDeFiches(ficheColonne() + ficheColonne(60), 1),
+    sonde: MESURER_SECTIONS_ALIGNEES,
+    argument: DECALAGE_DE_CONTRAINTE,
+    attendu: (vu) =>
+      Array.isArray(vu) && vu.length === 0
+        ? true
+        : 'attendu une liste VIDE : deux fiches, chacune seule sur sa rangée.',
+  })
+
+  await temoin(page, {
+    nom: '43. sans grille déclarée, la sonde ne rend RIEN plutôt qu’un relevé vide',
+    nature: 'branche',
+    page: '<div style="display:grid;grid-template-columns:repeat(2,120px)">' + ficheColonne() + ficheColonne(60) + '</div>',
+    sonde: MESURER_SECTIONS_ALIGNEES,
+    argument: DECALAGE_DE_CONTRAINTE,
+    attendu: (vu) =>
+      vu === null ? true : 'attendu `null` : aucune grille ne s’est déclarée.',
+  })
+
+  await temoin(page, {
+    nom: '44. la contrainte est RENDUE : la section grossie retrouve son style d’origine',
+    nature: 'branche',
+    page: grilleDeFiches(
+      ficheColonne().replace('style="height:20px"', 'style="height:20px;padding-bottom:5px"') + ficheColonne(),
+      2,
+    ),
+    sonde: MESURER_SECTIONS_ALIGNEES,
+    argument: DECALAGE_DE_CONTRAINTE,
+    apres: () => document.querySelector('[data-section="identite"]').style.paddingBottom,
+    attendu: (vu, trace) =>
+      trace === '5px'
+        ? true
+        : `attendu « 5px » après la sonde, lu « ${trace} » : une page laissée contrainte fausse toutes les sondes suivantes.`,
+  })
+
+  await temoin(page, {
+    nom: '45. une section MANQUANTE est comptée, et ne décale pas la comparaison des autres',
+    nature: 'branche',
+    page: grilleDeFiches(ficheColonne() + ficheColonne(20, ['identite', 'faits']), 2),
+    sonde: MESURER_SECTIONS_ALIGNEES,
+    argument: DECALAGE_DE_CONTRAINTE,
+    attendu: (vu) => {
+      const etats = vu?.[0]?.naturel.find((e) => e.nom === 'etats')
+      return etats?.presentes === 1 && vu[0].fiches === 2
+        ? true
+        : 'attendu « etats » présente sur 1 fiche des 2 : la seconde ne la porte pas.'
+    },
   })
 
   await contexte.close()

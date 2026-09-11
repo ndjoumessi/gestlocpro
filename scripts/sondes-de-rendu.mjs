@@ -787,3 +787,104 @@ export const MESURER_CIBLES = (config) => {
   window.scrollTo(0, 0)
   return { defauts, raisonsVues, sondees }
 }
+
+/**
+ * LES SECTIONS DE FICHES VOISINES COMMENCENT À LA MÊME HAUTEUR — Y COMPRIS QUAND
+ * L'UNE D'ELLES GRANDIT.
+ *
+ * ═══ CE QU'ELLE TIENT ═══
+ *
+ * Une grille de fiches se compare par ses LIGNES : « Loyer » d'une fiche en face
+ * du « Loyer » de sa voisine. Les fiches de locataire le promettent depuis le
+ * 2026-09-11 par `subgrid`, et rien ne le tenait : une fiche repassée en colonne
+ * flexible retrouvait ses 38 px de décalage sans que rien ne rougisse.
+ *
+ * Une grille se DÉCLARE : `data-mesure="sections-alignees"` sur elle,
+ * `data-section="<nom>"` sur chaque section de chaque fiche. Les fiches d'une
+ * même rangée — même haut à l'arrondi près — sont comparées section par section,
+ * au nom et non au rang : une fiche à qui manquerait une section ne décale pas
+ * la comparaison des suivantes, elle est COMPTÉE (`presentes`).
+ *
+ * ═══ POURQUOI UNE CONTRAINTE ═══
+ *
+ * Mesurée au naturel, la démonstration ne prouve rien : tous ses noms tiennent
+ * sur une ligne, et ses fiches s'alignaient à 0 px AVEC comme SANS `subgrid` —
+ * relevé le 2026-09-11 à 1024, 1280, 1440 et 1536 px dans les deux langues. La
+ * garde aurait été verte à vide sur la régression même qu'elle existe pour voir.
+ *
+ * Elle grossit donc une première section de chaque rangée — `decalage` px de
+ * rembourrage bas — et remesure. Une grille qui partage ses rangées décale
+ * TOUTES les fiches ; une grille qui ne les partage pas n'en décale qu'une.
+ *
+ * LA PLUS HAUTE DE LA RANGÉE, et le témoin 38 l'a exigé en naissant : grossir
+ * une section plus basse que sa voisine est absorbé par la rangée commune, qui
+ * ne grandit que de l'excédent — 10 px sur 40 dans le témoin. La contrainte
+ * paraissait alors avoir à moitié porté sur une grille parfaitement saine. Le rembourrage et non un bloc ajouté : un bloc posé dans une
+ * section en rangée flexible se met à côté, et ne la grandit pas.
+ *
+ * `deplacement` dit si la contrainte a PORTÉ — de combien la deuxième section de
+ * la fiche grossie est descendue. Une section de hauteur imposée l'absorberait,
+ * et « aligné sous contrainte » serait alors un constat sur rien : c'est à la
+ * porte de le refuser, pas à la sonde de le taire.
+ *
+ * LA CONTRAINTE EST RENDUE avant la mesure suivante, dans la même tâche : aucune
+ * trame n'est peinte entre les deux, et les sondes qui suivent lisent la page
+ * telle que le produit l'a laissée.
+ *
+ * ═══ CE QU'ELLE NE VOIT PAS ═══
+ *
+ * Le BAS des sections : deux sections alignées par le haut peuvent finir à des
+ * hauteurs différentes, et c'est voulu — le contenu d'une section n'a pas à
+ * remplir sa rangée. Et une grille non déclarée, par construction.
+ */
+export const DECALAGE_DE_CONTRAINTE = 40
+
+export const MESURER_SECTIONS_ALIGNEES = (decalage) => {
+  const grilles = [...document.querySelectorAll('[data-mesure="sections-alignees"]')]
+  if (grilles.length === 0) return null
+
+  const haut = (el) => Math.round(el.getBoundingClientRect().top)
+  const ecarts = (rangee, noms) =>
+    noms.map((nom) => {
+      const hauts = rangee
+        .map(({ sections }) => sections.find((s) => s.dataset.section === nom))
+        .filter(Boolean)
+        .map(haut)
+      return { nom, presentes: hauts.length, ecart: Math.max(...hauts) - Math.min(...hauts) }
+    })
+
+  const releves = []
+  for (const grille of grilles) {
+    const rangees = new Map()
+    for (const fiche of grille.children) {
+      const sections = [...fiche.querySelectorAll('[data-section]')]
+      if (sections.length === 0) continue
+      const cle = haut(fiche)
+      if (!rangees.has(cle)) rangees.set(cle, [])
+      rangees.get(cle).push({ fiche, sections })
+    }
+
+    for (const rangee of rangees.values()) {
+      // Une fiche seule sur sa rangée n'a personne à qui s'aligner.
+      if (rangee.length < 2) continue
+      const noms = [...new Set(rangee.flatMap(({ sections }) => sections.map((s) => s.dataset.section)))]
+      const naturel = ecarts(rangee, noms)
+
+      const hauteur = (el) => el.getBoundingClientRect().height
+      const { sections: laPlusHaute } = rangee.reduce((a, b) =>
+        hauteur(b.sections[0]) > hauteur(a.sections[0]) ? b : a,
+      )
+      const [grossie, suivante] = laPlusHaute
+      const avant = suivante ? haut(suivante) : null
+      const ancien = grossie.style.paddingBottom
+      const calcule = parseFloat(getComputedStyle(grossie).paddingBottom) || 0
+      grossie.style.paddingBottom = `${calcule + decalage}px`
+      const contraint = ecarts(rangee, noms)
+      const deplacement = suivante ? haut(suivante) - avant : 0
+      grossie.style.paddingBottom = ancien
+
+      releves.push({ fiches: rangee.length, naturel, contraint, deplacement })
+    }
+  }
+  return releves
+}

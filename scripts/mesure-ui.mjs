@@ -90,8 +90,10 @@ import { servirLaPrevisualisation } from './serveur-de-previsualisation.mjs'
 /* La sonde des gabarits est PARTAGÉE avec `espace-connecte` : une seule
    expression régulière pour la démonstration et pour l'espace connecté. */
 import {
+  DECALAGE_DE_CONTRAINTE,
   MESURER_CIBLES,
   MESURER_GABARITS,
+  MESURER_SECTIONS_ALIGNEES,
   PLANCHER_CIBLE,
   POSER_L_ARBRE,
   RAYON_SONDAGE,
@@ -3769,6 +3771,8 @@ const rythmes = []
 const colonnes = []
 /** La grille de tarifs, relevée au-delà du repli où les cartes sont côte à côte. */
 const tarifs = []
+/** Les rangées de fiches voisines, partout où une grille se déclare — voir la sonde. */
+const sectionsAlignees = []
 /*
   ─── LE PARCOURS D'INSCRIPTION, ACCUMULATEURS SÉPARÉS ────────────────────
 
@@ -4038,6 +4042,18 @@ try {
             const grille = await chrono('sonde · tarifs', () => page.evaluate(MESURER_TARIFS))
             if (grille) tarifs.push({ largeur, langue, ...grille })
           }
+        }
+
+        /* LES SECTIONS DE FICHES VOISINES, à chaque point et sur tout écran : la
+           grille se DÉCLARE, et c'est la sonde qui la trouve. À toutes les
+           largeurs, parce que le décalage vit à une largeur précise — il est né
+           à 1536 px, où trois gestes cessent de tenir sur une ligne, et nulle
+           part ailleurs. */
+        const alignement = await chrono('sonde · sections alignées', () =>
+          page.evaluate(MESURER_SECTIONS_ALIGNEES, DECALAGE_DE_CONTRAINTE),
+        )
+        if (alignement) {
+          for (const r of alignement) sectionsAlignees.push({ adresse, largeur, langue, ...r })
         }
 
         /*
@@ -6230,6 +6246,68 @@ if (GARDE_TARIFS) {
 }
 
 /*
+  LES SECTIONS DE FICHES VOISINES — même famille que la grille de tarifs : rien
+  ne déborde, rien ne se coupe, et pourtant la grille ne se compare plus.
+
+  LA TOLÉRANCE EST DE UN PIXEL, pour la même raison que les tarifs : les hauts
+  sont arrondis, pas approchés. Deux sections voisines commencent ensemble, ou
+  non.
+
+  DEUX GARDES DU GARDE, parce que cette règle peut être verte sur rien. Aucune
+  rangée mesurée : le marqueur a disparu, ou les fiches ne sont plus rendues. Et
+  une contrainte qui n'a pas PORTÉ : « aligné sous contrainte » ne dit rien si la
+  section grossie n'a rien poussé.
+*/
+const GARDE_SECTIONS = (() => {
+  if (sectionsAlignees.length === 0) {
+    return (
+      'aucune rangée de fiches voisines mesurée.\n' +
+      '   Le marqueur `sections-alignees` est-il encore posé sur la grille des fiches de\n' +
+      '   locataire, et ses fiches portent-elles encore leurs `data-section` ?'
+    )
+  }
+  const plaintes = new Set()
+  for (const r of sectionsAlignees) {
+    const ou = `${r.adresse} à ${r.largeur}px ${r.langue}`
+    if (r.deplacement < DECALAGE_DE_CONTRAINTE - 1) {
+      return (
+        `${ou} : la contrainte de ${DECALAGE_DE_CONTRAINTE} px n'a déplacé la section suivante ` +
+        `que de ${r.deplacement} px.\n` +
+        '   « Aligné sous contrainte » ne se conclut pas d’une contrainte qui n’a rien poussé.'
+      )
+    }
+    for (const e of r.naturel) {
+      if (e.presentes < r.fiches) {
+        plaintes.add(`${ou} : « ${e.nom} » manque à ${r.fiches - e.presentes} fiche(s) sur ${r.fiches}`)
+      } else if (e.ecart > 1) {
+        plaintes.add(`${ou} : « ${e.nom} » commence à ${e.ecart} px d'écart entre fiches voisines`)
+      }
+    }
+    for (const e of r.contraint) {
+      if (e.presentes === r.fiches && e.ecart > 1) {
+        plaintes.add(
+          `${ou}, une identité grossie de ${DECALAGE_DE_CONTRAINTE} px : « ${e.nom} » ` +
+            `décalée de ${e.ecart} px — les fiches ne partagent plus leurs rangées`,
+        )
+      }
+    }
+  }
+  if (plaintes.size === 0) return null
+  const liste = [...plaintes]
+  return (
+    `${liste.length} décalage(s) entre sections de fiches voisines :\n` +
+    liste.slice(0, 12).map((p) => `      ${p}`).join('\n') +
+    (liste.length > 12 ? `\n      … et ${liste.length - 12} autre(s)` : '') +
+    '\n   Une grille de fiches se compare par ses lignes : « Loyer » en face de « Loyer ».'
+  )
+})()
+
+if (GARDE_SECTIONS) {
+  console.error(`\n✗ mesure-ui : ${GARDE_SECTIONS}\n`)
+  process.exit(1)
+}
+
+/*
   L'ORDRE DES TROIS RÈGLES VA DU SIGNAL LE PLUS TÔT AU SYMPTÔME LE PLUS TARD :
   jeu trop faible, puis repli, puis débordement.
 
@@ -6405,6 +6483,9 @@ console.log(
     `  Colonnes d'entrée : ${colonnes.length} relevés à ${HAUTEURS_AUTH.join('/')} px, axes partagés à ${ECART_D_AXE} px près.\n` +
     `  Grille de tarifs : ${tarifs[0]?.cartes.length} cartes finissant ensemble, ` +
     `${tarifs[0]?.exclues} lignes exclues, aucune raturée.\n` +
+    `  Sections de fiches voisines : ${sectionsAlignees.length} rangées comparées ` +
+    `(${[...new Set(sectionsAlignees.map((r) => r.largeur))].join('/')} px), alignées au naturel ` +
+    `et sous ${DECALAGE_DE_CONTRAINTE} px de contrainte.\n` +
     `  ${textesAudites} textes audités en contraste (${THEMES.join(' + ')}, ${LARGEURS_CONTRASTE.join(' et ')} px), aucun sous le seuil WCAG AA.\n` +
     `  ${surfacesOuvertes} surfaces interactives OUVERTES puis auditées (${THEMES.join(' + ')}) : ` +
     `${textesDeSurface} textes, ${ciblesDeSurface} cibles et ${nomsDeSurface} commandes ` +

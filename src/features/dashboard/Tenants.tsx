@@ -328,7 +328,13 @@ export function Tenants() {
     aucun « part le 10/08 » ne peut être vrai ici.
   */
   const fichesDesLocataires = (
-    <ul aria-label={t('app.tenants.title')} className={GRILLE_DES_FICHES_DE_LOCATAIRE}>
+    <ul
+      aria-label={t('app.tenants.title')}
+      className={GRILLE_DES_FICHES_DE_LOCATAIRE}
+      /* DÉCLARÉE à `mesure-ui` : ses fiches voisines doivent commencer chaque
+         section à la même hauteur — voir `MESURER_SECTIONS_ALIGNEES`. */
+      data-mesure="sections-alignees"
+    >
       {visibles.map((unit) => {
         const caution = deposits.find((c) => c.unitId === unit.id && c.status === 'held')
         const chantiers = worksForUnit(unit.id).filter((w) => w.status !== 'done').length
@@ -359,7 +365,7 @@ export function Tenants() {
                   la pastille : relevé sur un parc réel, « DJOUMESSI MAR… ».
                   Sur une fiche de personne, c'est la dernière chose à rogner,
                   et le survol n'est pas une manière de lire. Il se replie. */}
-              <div className="flex min-w-0 items-start gap-3">
+              <div data-section="identite" className="flex min-w-0 items-start gap-3">
                 <span
                   aria-hidden="true"
                   className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-label font-semibold text-muted"
@@ -405,7 +411,7 @@ export function Tenants() {
                   chiffres. La rangée existe sur TOUTES les fiches, puisque
                   l'état de paiement y est toujours : c'est ce qui la rend
                   alignable. */}
-              <div className="flex flex-wrap items-center gap-1.5">
+              <div data-section="etats" className="flex flex-wrap items-center gap-1.5">
                 <PaymentStatusPill status={unit.status} size="sm" />
                 {unit.tenantHasAccount === false && (
                   <StatusPill tone="warn" size="sm">
@@ -417,7 +423,10 @@ export function Tenants() {
               {/* QUATRE FAITS, TOUJOURS LES MÊMES ET TOUJOURS LÀ. Une grille dont
                   les cases changent d'une fiche à l'autre ne se compare plus
                   d'un coup d'œil ; une case sans valeur porte un tiret. */}
-              <dl className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-divider pt-3">
+              <dl
+                data-section="faits"
+                className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-divider pt-3"
+              >
                 <FaitDeLaFiche libelle={t('app.portfolio.rent')}>
                   {money(unit.rent, { compact: true })}
                 </FaitDeLaFiche>
@@ -450,12 +459,22 @@ export function Tenants() {
                 </FaitDeLaFiche>
               </dl>
 
-              {/* `self-end` : les gestes se posent au BAS de leur rangée,
-                  qu'une voisine plus chargée peut avoir agrandie. Sans lui, une
-                  rangée de fiches montrerait ses boutons à des hauteurs
-                  différentes — c'était le rôle de `mt-auto` quand la fiche
-                  était une colonne. */}
-              <div className="flex flex-wrap items-center gap-2 self-end border-t border-divider pt-3">
+              {/* LES GESTES COMMENCENT EN HAUT DE LEUR RANGÉE, comme les trois
+                  sections au-dessus, et leur filet avec eux.
+
+                  Ils se posaient au BAS (`self-end`, héritier de `mt-auto`). Tant
+                  qu'ils tenaient sur une ligne, c'était pareil. À 1536 px, une
+                  fiche fait 295 px : « Relancer », « Dossier » et le menu n'y
+                  tiennent plus, le menu passe à la ligne, et la rangée des gestes
+                  grandit de 52 px. Calés en bas, les gestes des fiches sans
+                  relance faisaient descendre leur filet de 52 px sous celui de
+                  leur voisine — `MESURER_SECTIONS_ALIGNEES` l'a trouvé en naissant.
+                  Calés en haut, le filet reste une ligne, et la PREMIÈRE rangée de
+                  boutons s'aligne d'une fiche à l'autre. */}
+              <div
+                data-section="gestes"
+                className="flex flex-wrap content-start items-center gap-2 border-t border-divider pt-3"
+              >
                 {/* LE GESTE QUE L'ÉTAT APPELLE, et lui seul. Relancer n'a de sens
                     que sur un impayé ou un partiel ; l'offrir partout ferait
                     dix boutons dont huit n'ont rien à envoyer. */}
