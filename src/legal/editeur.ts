@@ -13,13 +13,27 @@ import type { DateParts } from '@/data/portfolio'
  * nature d'établissement inscrite au registre français se cite telle qu'elle est
  * inscrite —, et ils changeront ensemble le jour où l'entreprise changera.
  *
- * CE QUE L'ATTESTATION NE DONNE PAS, écrit ici plutôt que deviné. La page 1 du
- * document est une image : son texte n'a rendu que l'en-tête. Le numéro SIREN,
- * que la loi exige d'afficher (LCEN, art. 6-III), y figure sans doute ; il n'a
- * pas été lu, donc il n'est pas écrit. Voir `MENTIONS_A_COMPLETER`.
+ * CE QUE L'ATTESTATION NE DONNAIT PAS, ET D'OÙ ÇA VIENT. La page 1 du document est
+ * une image : son texte n'a rendu que l'en-tête, et « Entreprise DJOUMESSI ».
+ * Le SIREN, la forme juridique et le nom de l'entrepreneur viennent de
+ * l'annuaire public des entreprises (recherche-entreprises.api.gouv.fr), relevé
+ * le 2026-09-12 — UN seul résultat, qui recoupe l'attestation point par point :
+ * 71 rue de Rome à Marseille, activité 62.01Z (programmation informatique),
+ * créée le 09/09/2026, nature juridique 1000 (entrepreneur individuel), et
+ * diffusion publique. L'annuaire écrit « ROMEL DJOUMESSI (NELSON DJOUMESSI) » :
+ * Nelson a choisi le nom inscrit, sans le prénom d'usage.
+ *
+ * POUR UN ENTREPRENEUR INDIVIDUEL, LA DÉNOMINATION EST LE NOM DE LA PERSONNE. La
+ * première version écrivait « DJOUMESSI » seul, faute de mieux : c'était
+ * incomplet, et c'est corrigé. Le directeur de la publication est l'entrepreneur
+ * lui-même.
  */
 export const EDITEUR = {
-  denomination: 'DJOUMESSI',
+  entrepreneur: 'Romel Djoumessi',
+  /** Nature juridique 1000 à l'annuaire des entreprises. */
+  forme: 'Entrepreneur individuel',
+  siren: '109 761 023',
+  directeurDeLaPublication: 'Romel Djoumessi',
   /** « Nature de l'établissement » à l'attestation. */
   nature: 'Libérale non réglementée',
   /** « Activité principale » — sa première proposition, sans la liste des technologies. */
@@ -36,19 +50,35 @@ export const EDITEUR = {
 } as const
 
 /**
- * LES MENTIONS QUE LA LOI EXIGE ET QUE L'ATTESTATION NE PORTE PAS.
+ * L'HÉBERGEUR, TEL QU'IL SE NOMME DANS SON PROPRE CONTRAT.
  *
- * Un éditeur professionnel doit afficher, en plus de ce qui précède, son numéro
- * d'immatriculation, un téléphone et une adresse électronique, le nom du
- * directeur de la publication, et l'identité de son hébergeur (LCEN, art. 6-III).
- * Aucune n'est inventée : la page ne rend que ce qui est établi, et cette liste
- * dit ce qui manque — un cas l'exige à l'identique, pour que la combler oblige à
- * la toucher.
+ * Le service de production tourne chez Railway — vérifié le 2026-09-12 sur le
+ * projet `gestlocpro` : service `gestlocpro`, environnement `production`, domaine
+ * `gestlocpro-app-production.up.railway.app`. Les coordonnées viennent des
+ * conditions générales de Railway (https://railway.com/legal/terms), relevées le
+ * même jour dans le HTML complet — la version servie aux robots n'en est qu'un
+ * résumé, sans une seule coordonnée.
+ *
+ * « Suite 68956 » et non « PMB 68956 » : l'accord de traitement des données de
+ * Railway écrit le second, ses conditions générales le premier, et ce sont elles
+ * qui lient. Le « +1 » est ajouté au numéro, que la source écrit « (415) 707-7675 »
+ * pour un lecteur américain : un visiteur français n'a pas l'indicatif.
  */
-export const MENTIONS_A_COMPLETER = [
-  'siren',
-  'telephone',
-  'courriel',
-  'directeurDeLaPublication',
-  'hebergeur',
-] as const
+export const HEBERGEUR = {
+  raisonSociale: 'Railway Corporation',
+  adresse: ['548 Market St Suite 68956', 'San Francisco, California 94104'],
+  telephone: '+1 (415) 707-7675',
+  courriel: 'team@railway.com',
+} as const
+
+/**
+ * LES MENTIONS QUE LA LOI EXIGE ET QUI NE SONT PAS ENCORE ÉTABLIES.
+ *
+ * Un éditeur professionnel doit afficher un téléphone et une adresse électronique
+ * où le joindre (LCEN, art. 6-III). Ce ne sont pas des faits qu'on relève : ce
+ * sont des CHOIX — quel numéro, quelle adresse rendre publics —, et ils
+ * appartiennent à Nelson. Le 2026-09-12, il a choisi de les laisser manquants
+ * pour l'instant. Rien n'est inventé ; cette liste dit ce qui manque, et un cas
+ * l'exige à l'identique pour que la combler oblige à le toucher.
+ */
+export const MENTIONS_A_COMPLETER = ['telephone', 'courriel'] as const

@@ -312,6 +312,18 @@ const HORS_PORTEE = {
  * Reste la réserve de la date d'entrée, à côté d'un logement vide : c'est une
  * ligne de texte, que la fiche vide n'a pas.
  *
+ * ═══ ET CE QUE LES MENTIONS LÉGALES ONT ACHETÉ, LE 2026-09-12 ═══
+ *
+ * 900 → 1486 px à 360, 900 → 1180 à 1280 : LES MENTIONS QUE LA LOI EXIGE. La page
+ * tenait sous le plancher de la fenêtre avec cinq lignes sur l'éditeur ; elle en
+ * porte huit, plus l'hébergeur — nom, forme juridique, SIREN, directeur de la
+ * publication, et les quatre coordonnées de Railway. Aucune n'est un ornement :
+ * chacune est une obligation de l'article 6-III de la LCEN, et leur absence était
+ * le défaut. Restent le téléphone et l'adresse électronique de l'éditeur, que
+ * Nelson a laissés manquants : les ajouter montera encore ces nombres. Sous la
+ * police large (exécution 34717868028) : 1460 à 360, 1180 à 1280 ; les 44 autres
+ * points identiques.
+ *
  * ═══ ET CE QUE `/demo/acces@360` A ACHETÉ, LE 2026-09-11 ═══
  *
  * +22 px, 2226 → 2248 : L'EXPIRATION D'UN CODE, VISIBLE SUR TÉLÉPHONE. La
@@ -335,7 +347,7 @@ const PLAFONDS = [
   { adresse: '/connexion', largeur: 360, plafond: 900, plafondLarge: 900 },
   { adresse: '/mot-de-passe-oublie', largeur: 360, plafond: 900, plafondLarge: 900 },
   { adresse: '/reinitialiser', largeur: 360, plafond: 900, plafondLarge: 900 },
-  { adresse: '/mentions-legales', largeur: 360, plafond: 900, plafondLarge: 900 },
+  { adresse: '/mentions-legales', largeur: 360, plafond: 1486, plafondLarge: 1460 },
   { adresse: '/demo', largeur: 360, plafond: 3454, plafondLarge: 3455 },
   { adresse: '/demo/paiements', largeur: 360, plafond: 3343, plafondLarge: 3343 },
   { adresse: '/demo/etats-des-lieux', largeur: 360, plafond: 2746, plafondLarge: 2746 },
@@ -359,7 +371,7 @@ const PLAFONDS = [
   { adresse: '/connexion', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/mot-de-passe-oublie', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/reinitialiser', largeur: 1280, plafond: 900, plafondLarge: 900 },
-  { adresse: '/mentions-legales', largeur: 1280, plafond: 900, plafondLarge: 900 },
+  { adresse: '/mentions-legales', largeur: 1280, plafond: 1180, plafondLarge: 1180 },
   { adresse: '/demo', largeur: 1280, plafond: 1864, plafondLarge: 1865 },
   { adresse: '/demo/paiements', largeur: 1280, plafond: 1483, plafondLarge: 1483 },
   { adresse: '/demo/etats-des-lieux', largeur: 1280, plafond: 1552, plafondLarge: 1531 },

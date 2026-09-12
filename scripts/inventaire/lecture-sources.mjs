@@ -668,7 +668,12 @@ const HORS_REPOS = /Modal$/
  */
 export const PLANCHERS_DE_LECTURE = {
   'fichiers scannés': 90,
-  'balises JSX lues': 2300,
+  /* 2300 → 2594 le 2026-09-12 : 2883 balises lues, et `planchersDeLecture` refuse
+     plus de 20 % d'écart. L'écart s'est creusé lot après lot — les fiches du
+     parc, les menus déplacés — et c'est la page des mentions légales, huit
+     lignes d'éditeur et quatre d'hébergeur, qui a franchi le seuil. Le nombre
+     est celui que la suite a demandé. */
+  'balises JSX lues': 2594,
   'composants indexés': 285,
   /* 245 → 281 et 113 → 127, le 2026-09-07 : l'écran des locataires est passé du
      tableau aux fiches, et une fiche porte plus de sites qu'une rangée — un

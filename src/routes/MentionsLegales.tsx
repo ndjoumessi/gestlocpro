@@ -6,7 +6,7 @@ import { PanneauDeReglages } from '@/components/controls/PanneauDeReglages'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
-import { EDITEUR } from '@/legal/editeur'
+import { EDITEUR, HEBERGEUR } from '@/legal/editeur'
 
 /**
  * LES MENTIONS LÉGALES — la première page juridique du produit, et elle ne dit que
@@ -38,7 +38,9 @@ export function MentionsLegales() {
   useDocumentTitle(t('legal.title'))
 
   const faits: { cle: string; libelle: string; valeur: React.ReactNode }[] = [
-    { cle: 'denomination', libelle: t('legal.denomination'), valeur: <span lang="fr">{EDITEUR.denomination}</span> },
+    { cle: 'entrepreneur', libelle: t('legal.name'), valeur: EDITEUR.entrepreneur },
+    { cle: 'forme', libelle: t('legal.legalForm'), valeur: <span lang="fr">{EDITEUR.forme}</span> },
+    { cle: 'siren', libelle: t('legal.siren'), valeur: <span className="numeric">{EDITEUR.siren}</span> },
     { cle: 'nature', libelle: t('legal.nature'), valeur: <span lang="fr">{EDITEUR.nature}</span> },
     { cle: 'activite', libelle: t('legal.activity'), valeur: <span lang="fr">{EDITEUR.activite}</span> },
     {
@@ -64,6 +66,53 @@ export function MentionsLegales() {
             {t('legal.updatedOn', { date: d.fullDate(EDITEUR.miseAJour) })}
           </span>
         </>
+      ),
+    },
+    { cle: 'directeur', libelle: t('legal.director'), valeur: EDITEUR.directeurDeLaPublication },
+  ]
+
+  /* L'HÉBERGEUR EST AMÉRICAIN, ses coordonnées sont écrites en anglais et le
+     déclarent (`lang="en"`) — même règle que les valeurs du registre, dans
+     l'autre sens. */
+  const hebergement: { cle: string; libelle: string; valeur: React.ReactNode }[] = [
+    { cle: 'raison', libelle: t('legal.hostName'), valeur: <span lang="en">{HEBERGEUR.raisonSociale}</span> },
+    {
+      cle: 'adresse',
+      libelle: t('legal.address'),
+      valeur: (
+        <address className="not-italic" lang="en">
+          {HEBERGEUR.adresse.map((ligne) => (
+            <span key={ligne} className="block">
+              {ligne}
+            </span>
+          ))}
+        </address>
+      ),
+    },
+    {
+      cle: 'telephone',
+      libelle: t('legal.phone'),
+      valeur: (
+        /* `min-h-11` et `-my-2`, comme le numéro d'une fiche de locataire : une
+           cible de 44 px, sans agrandir la ligne qui la porte. */
+        <a
+          href={`tel:${HEBERGEUR.telephone.replace(/[^\d+]/g, '')}`}
+          className="numeric -my-2 inline-flex min-h-11 items-center text-accent-ink underline-offset-4 hover:underline"
+        >
+          {HEBERGEUR.telephone}
+        </a>
+      ),
+    },
+    {
+      cle: 'courriel',
+      libelle: t('legal.email'),
+      valeur: (
+        <a
+          href={`mailto:${HEBERGEUR.courriel}`}
+          className="-my-2 inline-flex min-h-11 items-center text-accent-ink underline-offset-4 hover:underline"
+        >
+          {HEBERGEUR.courriel}
+        </a>
       ),
     },
   ]
@@ -95,6 +144,20 @@ export function MentionsLegales() {
                 la règle des fiches du produit. */}
             <dl className="mt-4 divide-y divide-divider border-y border-divider">
               {faits.map((fait) => (
+                <div key={fait.cle} className="grid gap-1 py-3 sm:grid-cols-[12rem_1fr] sm:gap-4">
+                  <dt className="text-label font-semibold text-muted">{fait.libelle}</dt>
+                  <dd className="text-body break-words">{fait.valeur}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+
+          <section aria-labelledby="mentions-hebergement" className="mt-10">
+            <h2 id="mentions-hebergement" className="title-m">
+              {t('legal.hosting')}
+            </h2>
+            <dl className="mt-4 divide-y divide-divider border-y border-divider">
+              {hebergement.map((fait) => (
                 <div key={fait.cle} className="grid gap-1 py-3 sm:grid-cols-[12rem_1fr] sm:gap-4">
                   <dt className="text-label font-semibold text-muted">{fait.libelle}</dt>
                   <dd className="text-body break-words">{fait.valeur}</dd>

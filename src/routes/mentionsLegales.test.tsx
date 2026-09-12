@@ -18,7 +18,12 @@ describe('les mentions légales', () => {
     const valeur = (libelle: string) =>
       within(editeur).getByText(libelle).closest('div')?.querySelector('dd')?.textContent?.replace(/\s+/g, ' ').trim()
 
-    expect(valeur('Dénomination')).toBe('DJOUMESSI')
+    /* Pour un entrepreneur individuel, la dénomination est le nom de la
+       personne : la première version écrivait « DJOUMESSI » seul. */
+    expect(valeur('Nom')).toBe('Romel Djoumessi')
+    expect(valeur('Forme juridique')).toBe('Entrepreneur individuel')
+    expect(valeur('SIREN')).toBe('109 761 023')
+    expect(valeur('Directeur de la publication')).toBe('Romel Djoumessi')
     expect(valeur('Nature de l’établissement')).toBe('Libérale non réglementée')
     expect(valeur('Activité principale')).toBe('Programmation informatique')
     /* L'adresse est trois lignes, qu'on lit une à une : leur texte bout à bout
@@ -33,28 +38,49 @@ describe('les mentions légales', () => {
   })
 
   /**
-   * RIEN DE CE QUE L'ATTESTATION NE PORTE PAS.
-   *
-   * Le numéro SIREN, un téléphone, une adresse électronique, le directeur de la
-   * publication et l'hébergeur manquent au document : la page n'en affiche aucun,
-   * et surtout aucun « à compléter » sous les yeux d'un visiteur. La liste est
-   * ÉCRITE ici plutôt que relue du module : la combler devra toucher ce cas, et le
-   * diff le montrera.
+   * L'HÉBERGEUR, TEL QUE SON CONTRAT LE NOMME — et joignable d'un geste.
    */
-  it('n’affichent rien de ce que l’attestation ne porte pas, et le disent au code', async () => {
-    expect([...MENTIONS_A_COMPLETER]).toEqual([
-      'siren',
-      'telephone',
-      'courriel',
-      'directeurDeLaPublication',
-      'hebergeur',
-    ])
+  it('nomment l’hébergeur, son adresse, son téléphone et son courriel', async () => {
+    await renderApp('/mentions-legales')
+    const hebergement = screen.getByRole('region', { name: 'Hébergement' })
+
+    expect(within(hebergement).getByText('Railway Corporation')).toBeInTheDocument()
+    for (const ligne of ['548 Market St Suite 68956', 'San Francisco, California 94104']) {
+      expect(within(hebergement).getByText(ligne)).toBeInTheDocument()
+    }
+    expect(within(hebergement).getByRole('link', { name: '+1 (415) 707-7675' })).toHaveAttribute(
+      'href',
+      'tel:+14157077675',
+    )
+    expect(within(hebergement).getByRole('link', { name: 'team@railway.com' })).toHaveAttribute(
+      'href',
+      'mailto:team@railway.com',
+    )
+  })
+
+  /**
+   * RIEN DE CE QUI N'A PAS ÉTÉ ÉTABLI.
+   *
+   * Le téléphone et l'adresse électronique de l'ÉDITEUR sont des choix, pas des
+   * faits : Nelson les a laissés manquants le 2026-09-12. La page n'en affiche
+   * aucun, et surtout aucun « à compléter » sous les yeux d'un visiteur. La liste
+   * est ÉCRITE ici plutôt que relue du module : la combler devra toucher ce cas.
+   * L'hébergeur, le SIREN et le directeur de la publication en sont sortis le même
+   * jour, établis par leurs sources.
+   */
+  it('n’affichent rien de ce qui n’a pas été établi, et le disent au code', async () => {
+    expect([...MENTIONS_A_COMPLETER]).toEqual(['telephone', 'courriel'])
 
     await renderApp('/mentions-legales')
     const main = screen.getByRole('main')
-    for (const absent of [/SIREN/i, /SIRET/i, /t[ée]l[ée]phone/i, /directeur/i, /h[ée]berg/i, /compl[ée]ter/i, /@/]) {
-      expect(main.textContent, `la page affiche ${absent}, que l’attestation ne porte pas`).not.toMatch(absent)
+    for (const absent of [/SIRET/i, /compl[ée]ter/i, /à venir/i]) {
+      expect(main.textContent, `la page affiche ${absent}, qui n’a pas été établi`).not.toMatch(absent)
     }
+    /* Le téléphone et le courriel de l'ÉDITEUR : ceux de la page appartiennent
+       tous à l'hébergeur. */
+    const editeur = screen.getByRole('region', { name: 'Éditeur' })
+    expect(within(editeur).queryAllByRole('link')).toHaveLength(0)
+    expect(editeur.textContent).not.toMatch(/@|\+\d/)
   })
 
   /* LES VALEURS DU REGISTRE NE SE TRADUISENT PAS, et le disent au lecteur d'écran. */
