@@ -61,6 +61,9 @@
  *          un menu posé hors du flux, dans le coin
  *   56-57. le blanc RÉSERVÉ — une section qu'une fiche laisse vide pendant qu'une
  *          voisine la remplit, et une section vide partout, qui ne réserve rien
+ *   58-60. la section FACULTATIVE — déclarée comme telle et absente d'une fiche
+ *          sans rien réserver, décalée entre les deux qui la portent, et une
+ *          boîte vide qui ne compte pas dans son écart
  *
  * LES VINGT-HUIT TÉMOINS DE BRANCHE NAISSENT ROUGES : chacun a été confronté à
  * une mutation de la sonde qu'il éprouve, et chacun a désigné SA cible — huit le
@@ -126,7 +129,7 @@ let controles = 0
   LE COMPTE EST ÉCRIT, JAMAIS DÉRIVÉ. Une boucle vide se déclarerait verte, et
   c'est le piège que ce dépôt a trouvé quatre fois — voir `plafond-coquille`.
 */
-const TEMOINS_ATTENDUS = 57
+const TEMOINS_ATTENDUS = 60
 /*
   DEUX CONTRÔLES SUR DIX-NEUF, et ce nombre est écrit plutôt qu'imprimé. Un
   témoin qu'on rangerait en contrôle « parce qu'il ne rougit pas » deviendrait
@@ -1187,10 +1190,15 @@ try {
     page: grilleDeFiches(fichePartagee() + ficheAvecEtatsVides(), 2),
     sonde: MESURER_SECTIONS_ALIGNEES,
     argument: DECALAGE_DE_CONTRAINTE,
-    attendu: (vu) =>
-      vu?.[0]?.naturel.find((e) => e.nom === 'etats')?.vides === 1
+    attendu: (vu) => {
+      const etats = vu?.[0]?.naturel.find((e) => e.nom === 'etats')
+      /* `facultative: false` est la MOITIÉ qui compte : une sonde qui déclarerait
+         tout facultatif dispenserait toutes les sections des règles du manque et
+         du blanc réservé, sans qu'aucun autre témoin ne bouge. */
+      return etats?.vides === 1 && etats.facultative === false
         ? true
-        : 'attendu « etats » vide sur UNE fiche des deux : sa voisine la remplit, et la réserve.',
+        : 'attendu « etats » vide sur UNE fiche des deux, et NON facultative : sa voisine la remplit, et la réserve.'
+    },
   })
 
   await temoin(page, {
@@ -1204,6 +1212,72 @@ try {
       return etats?.vides === 2 && etats.ecart === 0
         ? true
         : 'attendu « etats » vide sur les DEUX fiches, sans écart : rien n’y est réservé.'
+    },
+  })
+
+  /* LA SECTION FACULTATIVE. Elle vit dans une rangée que d'autres contenus
+     partagent — la queue d'une fiche —, n'existe que sur certaines, et ne doit
+     qu'une chose : commencer à la même hauteur chez celles qui la portent. */
+  const ficheAvecQueue = (queue) =>
+    '<div style="display:flex;flex-direction:column;gap:4px">' +
+    `<div data-section="identite" style="height:20px">${contenu}</div>` +
+    queue +
+    '</div>'
+  const jauges = (h = 12) =>
+    `<div data-section="jauges" data-facultative style="height:${h}px">${contenu}</div>`
+
+  await temoin(page, {
+    nom: '58. une section FACULTATIVE absente d’une fiche est déclarée telle, sans rien réserver',
+    nature: 'branche',
+    page: grilleDeFiches(ficheAvecQueue(jauges()) + ficheAvecQueue(''), 2),
+    sonde: MESURER_SECTIONS_ALIGNEES,
+    argument: DECALAGE_DE_CONTRAINTE,
+    attendu: (vu) => {
+      const j = vu?.[0]?.naturel.find((e) => e.nom === 'jauges')
+      return j?.facultative === true && j.presentes === 1 && j.vides === 0 && j.ecart === 0
+        ? true
+        : 'attendu « jauges » facultative, présente sur UNE fiche, sans écart à comparer.'
+    },
+  })
+
+  await temoin(page, {
+    nom: '59. une FACULTATIVE décalée entre les deux fiches qui la portent est mesurée',
+    nature: 'branche',
+    page: grilleDeFiches(
+      ficheAvecQueue(jauges()) +
+        ficheAvecQueue(`<div style="height:20px">${contenu}</div>` + jauges()),
+      2,
+    ),
+    sonde: MESURER_SECTIONS_ALIGNEES,
+    argument: DECALAGE_DE_CONTRAINTE,
+    attendu: (vu) => {
+      const j = vu?.[0]?.naturel.find((e) => e.nom === 'jauges')
+      return j?.facultative === true && j.ecart === 24
+        ? true
+        : `attendu 24 px d'écart (20 de bloc, 4 d'interligne) entre deux « jauges » facultatives.`
+    },
+  })
+
+  /* UNE BOÎTE VIDE N'A PAS DE HAUTEUR À COMPARER. Étirée à la rangée, elle
+     commence là où sa fiche l'a posée — la compter dans l'écart interdirait à une
+     facultative d'être absente autrement qu'en ne se rendant pas du tout. */
+  await temoin(page, {
+    nom: '60. une FACULTATIVE rendue VIDE ne compte pas dans l’écart de ses sœurs',
+    nature: 'branche',
+    page: grilleDeFiches(
+      ficheAvecQueue(jauges()) +
+        ficheAvecQueue(
+          `<div style="height:20px">${contenu}</div><div data-section="jauges" data-facultative></div>`,
+        ),
+      2,
+    ),
+    sonde: MESURER_SECTIONS_ALIGNEES,
+    argument: DECALAGE_DE_CONTRAINTE,
+    attendu: (vu) => {
+      const j = vu?.[0]?.naturel.find((e) => e.nom === 'jauges')
+      return j?.facultative === true && j.vides === 1 && j.ecart === 0
+        ? true
+        : 'attendu AUCUN écart : une seule des deux « jauges » porte quelque chose.'
     },
   })
 

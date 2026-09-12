@@ -843,6 +843,18 @@ export const MESURER_CIBLES = (config) => {
  * CONTENU — ni élément, ni texte. Une section vide PARTOUT ne réserve rien, et
  * ce n'est pas à la sonde d'en juger : elle rend le compte, la porte tranche.
  *
+ * ═══ ET LA SECTION FACULTATIVE, QUI N'EST NI L'UNE NI L'AUTRE ═══
+ *
+ * `data-facultative` déclare une section qui n'existe QUE sur certaines fiches et
+ * ne réserve rien : elle vit dans une rangée que d'autres contenus partagent —
+ * la queue d'une fiche de logement, où les jauges du mois ouvrent ce que la fiche
+ * a de plus à dire. Ce qu'on lui demande n'est pas d'être partout, c'est de
+ * commencer à la MÊME hauteur chez les fiches qui la portent : les jauges d'un
+ * logement se lisent en face de celles de son voisin.
+ *
+ * La sonde le DIT (`facultative`) et mesure son écart entre les fiches qui la
+ * portent ; c'est la porte qui la dispense des règles du manque et du blanc.
+ *
  * ═══ CE QU'ELLE NE VOIT PAS ═══
  *
  * Le BAS des sections : deux sections alignées par le haut peuvent finir à des
@@ -865,12 +877,18 @@ export const MESURER_SECTIONS_ALIGNEES = (decalage) => {
       const presentes = rangee
         .map(({ sections }) => sections.find((s) => s.dataset.section === nom))
         .filter(Boolean)
-      const hauts = presentes.map(haut)
+      const facultative = presentes.every((s) => s.hasAttribute('data-facultative'))
+      /* L'ÉCART D'UNE FACULTATIVE SE MESURE ENTRE CELLES QUI PORTENT QUELQUE
+         CHOSE : une boîte vide n'a pas de hauteur à comparer, et l'exiger
+         reviendrait à lui interdire d'être facultative. */
+      const comparees = facultative ? presentes.filter((s) => !sansContenu(s)) : presentes
+      const hauts = comparees.map(haut)
       return {
         nom,
-        presentes: hauts.length,
+        facultative,
+        presentes: presentes.length,
         vides: presentes.filter(sansContenu).length,
-        ecart: Math.max(...hauts) - Math.min(...hauts),
+        ecart: hauts.length > 1 ? Math.max(...hauts) - Math.min(...hauts) : 0,
       }
     })
 

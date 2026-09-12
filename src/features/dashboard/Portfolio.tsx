@@ -905,7 +905,16 @@ export function Portfolio() {
                         const partiel = unit.status === 'partial' && unit.rent > 0
                         if (!echeance && !partiel) return null
                         return (
-                          <div className="flex items-center gap-3 pt-2">
+                          /* DÉCLARÉE FACULTATIVE : elle n'existe pas sur un
+                             logement vide, et ne réserve donc rien — mais là où
+                             elle est, elle OUVRE la queue, et se lit en face de
+                             celle de la fiche voisine. C'est tout ce que la garde
+                             lui demande, et c'est ce que le code taisait. */
+                          <div
+                            data-section="jauges"
+                            data-facultative
+                            className="flex items-center gap-3 pt-2"
+                          >
                             {echeance && (
                               <JaugesDePeriode receipt={echeance} periode={d.monthYear(periodeAffichee)} />
                             )}

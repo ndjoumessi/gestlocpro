@@ -6287,7 +6287,16 @@ const GARDE_SECTIONS = (() => {
       )
     }
     for (const e of r.naturel) {
-      if (e.presentes < r.fiches) {
+      /* UNE FACULTATIVE NE DOIT NI ÊTRE PARTOUT NI ÊTRE PLEINE — elle doit
+         COMMENCER au même endroit chez celles qui la portent. Elle vit dans une
+         rangée partagée avec d'autres contenus, et ne réserve donc rien. */
+      if (e.facultative) {
+        if (e.ecart > 1) {
+          plaintes.add(
+            `${ou} : « ${e.nom} », facultative, commence à ${e.ecart} px d'écart entre les fiches qui la portent`,
+          )
+        }
+      } else if (e.presentes < r.fiches) {
         plaintes.add(`${ou} : « ${e.nom} » manque à ${r.fiches - e.presentes} fiche(s) sur ${r.fiches}`)
       } else if (e.vides > 0 && e.vides < r.fiches) {
         /* LE BLANC RÉSERVÉ. Une rangée partagée qu'une seule sorte de fiche
@@ -6303,7 +6312,7 @@ const GARDE_SECTIONS = (() => {
       }
     }
     for (const e of r.contraint) {
-      if (e.presentes === r.fiches && e.ecart > 1) {
+      if ((e.facultative || e.presentes === r.fiches) && e.ecart > 1) {
         plaintes.add(
           `${ou}, une identité grossie de ${DECALAGE_DE_CONTRAINTE} px : « ${e.nom} » ` +
             `décalée de ${e.ecart} px — les fiches ne partagent plus leurs rangées`,

@@ -242,7 +242,7 @@ describe('le parc sur bureau', () => {
    * qui reste de place tombe en bas. `MESURER_SECTIONS_ALIGNEES` le garde dans un
    * vrai navigateur ; ce cas-ci le garde à la structure.
    */
-  it('ne déclare que des sections qu’une fiche vide remplit aussi', async () => {
+  it('ne déclare vide aucune section, sauf celles dites facultatives', async () => {
     parc()
     await renderApp('/app/parc', { session: SESSION, largeur: 1280 })
     await attendreLeChargement()
@@ -255,11 +255,43 @@ describe('le parc sur bureau', () => {
       const sections = Array.from(fiche.querySelectorAll('[data-section]'))
       expect(sections.length, 'aucune section déclarée').toBeGreaterThan(2)
       for (const section of sections) {
+        /* VIDE au sens de la sonde : ni élément, ni texte. Les jauges du mois
+           sont trois pastilles sans un mot — les croire vides ferait rougir ce
+           cas sur une fiche parfaitement remplie. */
+        const vide = section.childElementCount === 0 && (section.textContent ?? '').trim() === ''
         expect(
-          section.textContent?.trim(),
+          vide && !section.hasAttribute('data-facultative'),
           `« ${section.getAttribute('data-section')} » est vide sur une fiche, et réservée chez ses voisines`,
-        ).not.toBe('')
+        ).toBe(false)
       }
+    }
+  })
+
+  /**
+   * LES JAUGES OUVRENT LA QUEUE DE LA FICHE, ET C'EST CE QUI LES ALIGNE.
+   *
+   * La queue — jauges, faits, geste — tient dans UNE rangée partagée, sans nom :
+   * ce qui reste de place y tombe en bas plutôt qu'au milieu. Les jauges s'y
+   * alignent d'une fiche à l'autre POUR AUTANT qu'elles l'ouvrent : poser les
+   * pastilles de faits devant elles les décalerait, en silence. Ce cas tient
+   * l'ordre ; `MESURER_SECTIONS_ALIGNEES` tient l'alignement dans un navigateur,
+   * où les jauges se déclarent facultatives.
+   */
+  it('ouvre la queue de la fiche par les jauges, et rien d’autre', async () => {
+    parc()
+    await renderApp('/app/parc', { session: SESSION, largeur: 1280 })
+    await attendreLeChargement()
+    const essos = within(screen.getByRole('main')).getByRole('region', { name: /Résidence Essos/ })
+    const fiches = within(essos).getAllByRole('listitem')
+
+    const avecJauges = fiches.filter((f) => f.querySelector('[data-section="jauges"]'))
+    expect(avecJauges.length, 'prémisse : des fiches portent des jauges').toBeGreaterThan(1)
+    for (const fiche of avecJauges) {
+      const boite = fiche.querySelector('[data-section="jauges"]')!
+      expect(
+        boite.previousElementSibling,
+        'quelque chose passe devant les jauges, et les décale de celles des voisines',
+      ).toBeNull()
     }
   })
 
