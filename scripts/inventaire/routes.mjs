@@ -195,8 +195,12 @@ const ADRESSE_404 = '/adresse-qui-n-existe-pas'
  * du champ sans que rien ne tombe. Trouvé en cherchant pourquoi `releve-refonte`
  * refusait son propre relevé, et non par une alarme — c'est le défaut d'un
  * plancher : il ne dit jamais qu'il a vieilli.
+ *
+ * PASSÉ DE 24 À 25 LE 2026-09-12 : `/mentions-legales`, la première page
+ * juridique du produit. `plancherDesRoutes.test.ts` l'a exigé — c'est lui qui
+ * empêche désormais ce nombre de vieillir en silence.
  */
-export const ROUTES_ATTENDUES = 24
+export const ROUTES_ATTENDUES = 25
 
 /**
  * @returns {{adresse: string, roles: string[], origine: string, vitrine: boolean}[]}

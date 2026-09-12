@@ -1852,6 +1852,21 @@ export const en: Dictionary = {
     },
   },
 
+  legal: {
+    title: 'Legal notice',
+    intro:
+      'The publisher of GestLocPro, as established by its registration certificate from the French National Business Register.',
+    publisher: 'Publisher',
+    denomination: 'Business name',
+    nature: 'Type of establishment',
+    activity: 'Main activity',
+    address: 'Address',
+    registration: 'Registration',
+    updatedOn: 'Entry up to date as of {date}',
+    home: 'Back to home',
+    footerLink: 'Legal notice',
+  },
+
   notFound: {
     code: 'Error 404',
     title: 'This page does not exist',

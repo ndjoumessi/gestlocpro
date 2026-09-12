@@ -31,6 +31,7 @@ import { Login } from './routes/Login'
 import { ForgotPassword } from './routes/ForgotPassword'
 import { ResetPassword } from './routes/ResetPassword'
 import { NotFound } from './routes/NotFound'
+import { MentionsLegales } from './routes/MentionsLegales'
 import { useT } from './i18n/I18nProvider'
 import { FrontiereDErreur } from './components/feedback/FrontiereDErreur'
 
@@ -146,6 +147,8 @@ export function App() {
         <Route path="/connexion" element={<Login />} />
         <Route path="/mot-de-passe-oublie" element={<ForgotPassword />} />
         <Route path="/reinitialiser" element={<ResetPassword />} />
+        {/* La première page juridique du produit — voir `MentionsLegales.tsx`. */}
+        <Route path="/mentions-legales" element={<MentionsLegales />} />
 
         {/*
           `/*` sur les deux : ce sont désormais des ROUTES DESCENDANTES.

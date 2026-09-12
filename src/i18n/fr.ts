@@ -2618,6 +2618,25 @@ export const fr = {
     },
   },
 
+  /**
+   * LES MENTIONS LÉGALES. Les LIBELLÉS seulement : les valeurs sont des faits du
+   * registre, qui ne se traduisent pas — voir `src/legal/editeur.ts`.
+   */
+  legal: {
+    title: 'Mentions légales',
+    intro:
+      'L’éditeur de GestLocPro, tel que l’établit son attestation d’immatriculation au Registre national des entreprises.',
+    publisher: 'Éditeur',
+    denomination: 'Dénomination',
+    nature: 'Nature de l’établissement',
+    activity: 'Activité principale',
+    address: 'Adresse',
+    registration: 'Immatriculation',
+    updatedOn: 'Inscription à jour au {date}',
+    home: 'Retour à l’accueil',
+    footerLink: 'Mentions légales',
+  },
+
   notFound: {
     code: 'Erreur 404',
     title: 'Cette page n’existe pas',

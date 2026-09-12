@@ -157,10 +157,33 @@ export function PublicFooter() {
           ))}
         </div>
 
-        <div className="mt-12 flex flex-col gap-4 border-t border-on-dark-border pt-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-12 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-on-dark-border pt-6">
           <p className="text-label text-on-dark-faint">
             {t('marketing.footer.rights', { year: new Date().getFullYear() })}
           </p>
+          {/* LE PREMIER LIEN JURIDIQUE QUI TIENT SON LIBELLÉ. Les cinq retirés
+              menaient à la FAQ ; celui-ci mène à une page qui existe, et qui ne
+              dit que ce que le registre établit. Dans la rangée du droit
+              d'auteur, où l'on cherche ce genre de lien — pas dans la colonne
+              « Produit ».
+
+              IL NE COÛTE RIEN À LA VITRINE, et c'est mesuré. Posé tel quel, il
+              ajoutait 60 px à 360 — la rangée s'empilait — et 27 à 1280 — sa
+              cible de 44 px grandissait la rangée du « © » ; `plafond-vitrine`
+              l'a refusé. La rangée reste donc sur UNE ligne à toute largeur (243
+              px de contenu dans les 280 de la plus étroite), et `-my-[14px]`
+              ramène la cible à 16 px de hauteur utile, sous les 16,8 du « © » :
+              elle garde ses 44 px au toucher, débordant dans la marge au-dessus
+              et le rembourrage du pied en dessous, où rien d'autre ne se touche.
+              Pas de marge négative sur le CÔTÉ : `-mr-2` alignait le texte sur le
+              bord, et faisait sortir la cible de 8 px de sa rangée —
+              `MESURER_DEBORD_LOCAL` l'a refusé. */}
+          <Link
+            to="/mentions-legales"
+            className="-my-[14px] inline-flex min-h-11 min-w-11 items-center px-2 text-label text-on-dark-muted no-underline transition-colors duration-150 hover:text-on-dark"
+          >
+            {t('legal.footerLink')}
+          </Link>
         </div>
       </div>
     </footer>

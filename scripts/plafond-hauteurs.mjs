@@ -330,11 +330,12 @@ const HORS_PORTEE = {
  * si la colonne large avait été recopiée d'ici.
  */
 const PLAFONDS = [
-  /* 360 px — 22 écrans */
+  /* 360 px — 23 écrans */
   { adresse: '/inscription', largeur: 360, plafond: 1371, plafondLarge: 1371 },
   { adresse: '/connexion', largeur: 360, plafond: 900, plafondLarge: 900 },
   { adresse: '/mot-de-passe-oublie', largeur: 360, plafond: 900, plafondLarge: 900 },
   { adresse: '/reinitialiser', largeur: 360, plafond: 900, plafondLarge: 900 },
+  { adresse: '/mentions-legales', largeur: 360, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo', largeur: 360, plafond: 3454, plafondLarge: 3455 },
   { adresse: '/demo/paiements', largeur: 360, plafond: 3343, plafondLarge: 3343 },
   { adresse: '/demo/etats-des-lieux', largeur: 360, plafond: 2746, plafondLarge: 2746 },
@@ -353,11 +354,12 @@ const PLAFONDS = [
   { adresse: '/demo/systeme', largeur: 360, plafond: 2078, plafondLarge: 2078 },
   { adresse: '/demo/portail', largeur: 360, plafond: 1163, plafondLarge: 1163 },
   { adresse: '/adresse-qui-n-existe-pas', largeur: 360, plafond: 900, plafondLarge: 900 },
-  /* 1280 px — 22 écrans */
+  /* 1280 px — 23 écrans */
   { adresse: '/inscription', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/connexion', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/mot-de-passe-oublie', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/reinitialiser', largeur: 1280, plafond: 900, plafondLarge: 900 },
+  { adresse: '/mentions-legales', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo', largeur: 1280, plafond: 1864, plafondLarge: 1865 },
   { adresse: '/demo/paiements', largeur: 1280, plafond: 1483, plafondLarge: 1483 },
   { adresse: '/demo/etats-des-lieux', largeur: 1280, plafond: 1552, plafondLarge: 1531 },
@@ -412,10 +414,11 @@ const ADRESSES = routes.map((r) => r.adresse)
   vider l'inventaire, et l'inspection comparerait 0 à 0 puis se déclarerait
   verte. La même mutation a trouvé ce piège quatre fois dans ce dépôt.
 
-  44 = (24 adresses du routeur − 2 hors portée) × 2 largeurs.
+  46 = (25 adresses du routeur − 2 hors portée) × 2 largeurs — la 25e est
+       `/mentions-legales`, le 2026-09-12.
    4 = les deux adresses hors portée, à leurs deux largeurs.
 */
-const ATTENDUS = 44
+const ATTENDUS = 46
 const HORS_PORTEE_ATTENDUS = 4
 /*
   LES HUIT ÉCRANS QUI N'ANNONCENT AUCUNE ATTENTE — et la garde est ASYMÉTRIQUE.
@@ -451,6 +454,8 @@ const SANS_ATTENTE_DECLARES = new Set([
   '/connexion',
   '/mot-de-passe-oublie',
   '/reinitialiser',
+  // Une page de faits écrits dans le paquet : elle n'attend aucune donnée.
+  '/mentions-legales',
   '/adresse-qui-n-existe-pas',
   '/demo/acces',
   '/demo/decisions',
