@@ -56,9 +56,8 @@ import { Badge } from '@/components/primitives/Badge'
    quatre colonnes de 259 px à 1440, mesuré : trop peu pour un nom entier.
 
    AUCUN ÉCART VERTICAL, ET C'EST CE QUI PERMET D'ALIGNER. Les fiches partagent
-   leurs sept rangées par `subgrid` (voir `SECTIONS_DE_FICHE_LOGEMENT`), et une
-   section absente — les jauges d'un logement sans échéance, le geste d'un
-   logement occupé — garde sa rangée, vide. Un écart de grille
+   leurs cinq rangées par `subgrid` (voir `SECTIONS_DE_FICHE_LOGEMENT`), dont
+   quatre déclarées et remplies par toute fiche. Un écart de grille
    s'ajouterait autour de chaque rangée vide : mesuré dans Chromium, 12 px de
    blanc pour une barre qu'aucune fiche de la rangée ne porte, même avec un
    écart nul déclaré sur la fiche. L'espacement vit donc DANS les sections, et
@@ -68,8 +67,9 @@ const GRILLE_DES_FICHES =
   'grid grid-cols-[repeat(auto-fill,minmax(min(100%,18rem),1fr))] gap-x-3 border-t border-divider px-4 pt-4 pb-1'
 
 /**
- * SEPT SECTIONS, TOUJOURS LES MÊMES ET TOUJOURS À LEUR PLACE — en-tête, occupant,
- * type, loyer, jauges, faits, geste.
+ * QUATRE SECTIONS DÉCLARÉES, QUE TOUTE FICHE REMPLIT — en-tête, occupant, type,
+ * loyer —, puis une cinquième rangée, la QUEUE, qui porte ce qui varie et ne se
+ * déclare pas.
  *
  * Relevé le 2026-09-11 par `MESURER_SECTIONS_ALIGNEES` avant ce lot : à côté d'un
  * logement vide, le type et le loyer des fiches occupées commençaient 25 px plus
@@ -77,11 +77,12 @@ const GRILLE_DES_FICHES =
  * du mois 14 px plus haut — il leur manquait la barre. Une grille de fiches se
  * compare par ses lignes : « 145 000 FCFA » en face de « 110 000 FCFA ».
  *
- * NI LA BARRE NI LA DATE D'ENTRÉE N'ONT DE RANGÉE : une rangée qu'une seule fiche
- * occupe, toutes ses voisines la réservent. La barre vit sur la ligne des jauges,
- * la date sur celle du type — voir la fiche.
+ * UNE RANGÉE QU'UNE SEULE FICHE OCCUPE, TOUTES SES VOISINES LA RÉSERVENT. La
+ * barre vit donc sur la ligne des jauges, la date sur celle du type, et les
+ * jauges, les faits et le geste tiennent ENSEMBLE dans la queue — voir la fiche.
+ * Ce qui reste de place y tombe en bas, sous le contenu, et non au milieu.
  */
-const SECTIONS_DE_FICHE_LOGEMENT = 'mb-3 row-span-7 grid grid-rows-subgrid'
+const SECTIONS_DE_FICHE_LOGEMENT = 'mb-3 row-span-5 grid grid-rows-subgrid'
 
 /** Le mois voisin, sans jamais passer par un `Date` local — voir la route. */
 function moisDecale(mois: string, pas: number) {
@@ -881,7 +882,24 @@ export function Portfolio() {
                         dit la part du loyer, le premier des trois postes : elle se
                         pose à droite de leurs pastilles, qui laissent la place, et
                         ne grandit pas la ligne — 6 px de barre pour 12 de pastille. */}
-                    <div data-section="jauges">
+                    {/* LA QUEUE DE LA FICHE — ce qu'elle a de plus à dire, et qui
+                        varie : les jauges du mois, les faits, le geste d'un
+                        logement vide. UNE SEULE rangée, et elle n'est pas
+                        déclarée à `MESURER_SECTIONS_ALIGNEES`.
+
+                        Les trois avaient chacune la leur, partagée avec les
+                        voisines : une fiche occupée réservait 56 px pour le
+                        bouton d'un logement vide, 33 pour ses pastilles de faits,
+                        18 pour des jauges qu'il n'a pas — jusqu'à 196 px sur une
+                        rangée, mesuré le 2026-09-12. Ce vide-là tombait au MILIEU
+                        de la fiche, où il se lit comme une donnée manquante.
+
+                        Ensemble et sans nom, ce qui reste de place tombe EN BAS,
+                        sous le contenu, où il se lit comme une fiche qui a moins à
+                        dire. Les fiches d'une rangée gardent la même hauteur de
+                        toute façon : ce lot ne choisit pas s'il y a du blanc, il
+                        choisit où. */}
+                    <div>
                       {(() => {
                         const echeance = echeanceDuMois(unit)
                         const partiel = unit.status === 'partial' && unit.rent > 0
@@ -907,8 +925,7 @@ export function Portfolio() {
                           </div>
                         )
                       })()}
-                    </div>
-                    <div data-section="faits">
+
                     {(() => {
                       const chantiers = works.filter(
                         (w) => w.unitId === unit.id && w.status !== 'done',
@@ -937,8 +954,6 @@ export function Portfolio() {
                         </div>
                       )
                     })()}
-                    </div>
-                    <div data-section="geste">
                       {unit.status === 'vacant' && (
                         <div className="pt-3">
                           <Button

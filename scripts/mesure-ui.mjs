@@ -6289,6 +6289,15 @@ const GARDE_SECTIONS = (() => {
     for (const e of r.naturel) {
       if (e.presentes < r.fiches) {
         plaintes.add(`${ou} : « ${e.nom} » manque à ${r.fiches - e.presentes} fiche(s) sur ${r.fiches}`)
+      } else if (e.vides > 0 && e.vides < r.fiches) {
+        /* LE BLANC RÉSERVÉ. Une rangée partagée qu'une seule sorte de fiche
+           occupe, ses voisines la réservent — et le vide tombe au MILIEU de la
+           fiche, où il se lit comme une donnée manquante. Vide PARTOUT, elle ne
+           réserve rien : c'est une section qui n'a rien à dire ce jour-là. */
+        plaintes.add(
+          `${ou} : « ${e.nom} » est vide sur ${e.vides} fiche(s) de ${r.fiches} — ` +
+            'du blanc réservé au milieu de celles-là',
+        )
       } else if (e.ecart > 1) {
         plaintes.add(`${ou} : « ${e.nom} » commence à ${e.ecart} px d'écart entre fiches voisines`)
       }
@@ -6308,7 +6317,9 @@ const GARDE_SECTIONS = (() => {
     `${liste.length} décalage(s) entre sections de fiches voisines :\n` +
     liste.slice(0, 12).map((p) => `      ${p}`).join('\n') +
     (liste.length > 12 ? `\n      … et ${liste.length - 12} autre(s)` : '') +
-    '\n   Une grille de fiches se compare par ses lignes : « Loyer » en face de « Loyer ».'
+    '\n   Une grille de fiches se compare par ses lignes : « Loyer » en face de « Loyer » ;\n' +
+    '   et une section qu\'une fiche laisse vide pendant qu\'une voisine la remplit creuse\n' +
+    '   un trou au milieu de la première.'
   )
 })()
 

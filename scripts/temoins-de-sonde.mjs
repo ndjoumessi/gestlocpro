@@ -59,6 +59,8 @@
  *          son voisin (le faux positif du premier balayage), dans une colonne,
  *          invisible, des voisins qui ne sont pas là, une rangée sans repli, et
  *          un menu posé hors du flux, dans le coin
+ *   56-57. le blanc RÉSERVÉ — une section qu'une fiche laisse vide pendant qu'une
+ *          voisine la remplit, et une section vide partout, qui ne réserve rien
  *
  * LES VINGT-HUIT TÉMOINS DE BRANCHE NAISSENT ROUGES : chacun a été confronté à
  * une mutation de la sonde qu'il éprouve, et chacun a désigné SA cible — huit le
@@ -124,7 +126,7 @@ let controles = 0
   LE COMPTE EST ÉCRIT, JAMAIS DÉRIVÉ. Une boucle vide se déclarerait verte, et
   c'est le piège que ce dépôt a trouvé quatre fois — voir `plafond-coquille`.
 */
-const TEMOINS_ATTENDUS = 55
+const TEMOINS_ATTENDUS = 57
 /*
   DEUX CONTRÔLES SUR DIX-NEUF, et ce nombre est écrit plutôt qu'imprimé. Un
   témoin qu'on rangerait en contrôle « parce qu'il ne rougit pas » deviendrait
@@ -903,15 +905,23 @@ try {
   const grilleDeFiches = (fiches, colonnes = 3) =>
     `<div data-mesure="sections-alignees" style="display:grid;` +
     `grid-template-columns:repeat(${colonnes},120px);gap:8px">${fiches}</div>`
+  /* CHAQUE SECTION PORTE UN ENFANT, comme celles du produit : la sonde compte
+     VIDES celles qui n'ont ni élément ni texte, et une boîte haute mais creuse en
+     est une. C'est le témoin 56 qui l'a exigé, en trouvant ses trois sections
+     comptées vides. */
+  const contenu = '<i style="display:block;height:100%"></i>'
   const fichePartagee = (a = 20) =>
     '<div style="grid-row:span 3;display:grid;grid-template-rows:subgrid;row-gap:4px">' +
-    `<div data-section="identite" style="height:${a}px"></div>` +
-    '<div data-section="etats" style="height:10px"></div>' +
-    '<div data-section="faits" style="height:30px"></div></div>'
+    `<div data-section="identite" style="height:${a}px">${contenu}</div>` +
+    `<div data-section="etats" style="height:10px">${contenu}</div>` +
+    `<div data-section="faits" style="height:30px">${contenu}</div></div>`
   const ficheColonne = (a = 20, sections = ['identite', 'etats', 'faits']) =>
     '<div style="display:flex;flex-direction:column;gap:4px">' +
     sections
-      .map((nom) => `<div data-section="${nom}" style="height:${nom === 'identite' ? a : 10}px"></div>`)
+      .map(
+        (nom) =>
+          `<div data-section="${nom}" style="height:${nom === 'identite' ? a : 10}px">${contenu}</div>`,
+      )
       .join('') +
     '</div>'
 
@@ -1161,6 +1171,40 @@ try {
       vu.examines === 1 && vu.isoles.length === 0
         ? true
         : 'attendu aucun isolé : une rangée qui ne se replie pas n’a qu’une ligne.',
+  })
+
+  /* LE BLANC RÉSERVÉ. Une section étirée à la hauteur de sa rangée mesure la
+     piste entière : c'est son CONTENU qui dit si elle réserve. */
+  const ficheAvecEtatsVides = () =>
+    '<div style="grid-row:span 3;display:grid;grid-template-rows:subgrid;row-gap:4px">' +
+    `<div data-section="identite" style="height:20px">${contenu}</div>` +
+    '<div data-section="etats"></div>' +
+    `<div data-section="faits" style="height:30px">${contenu}</div></div>`
+
+  await temoin(page, {
+    nom: '56. une section vide chez l’une et remplie chez l’autre est COMPTÉE vide',
+    nature: 'branche',
+    page: grilleDeFiches(fichePartagee() + ficheAvecEtatsVides(), 2),
+    sonde: MESURER_SECTIONS_ALIGNEES,
+    argument: DECALAGE_DE_CONTRAINTE,
+    attendu: (vu) =>
+      vu?.[0]?.naturel.find((e) => e.nom === 'etats')?.vides === 1
+        ? true
+        : 'attendu « etats » vide sur UNE fiche des deux : sa voisine la remplit, et la réserve.',
+  })
+
+  await temoin(page, {
+    nom: '57. une section vide PARTOUT ne réserve rien, et se compte comme telle',
+    nature: 'branche',
+    page: grilleDeFiches(ficheAvecEtatsVides() + ficheAvecEtatsVides(), 2),
+    sonde: MESURER_SECTIONS_ALIGNEES,
+    argument: DECALAGE_DE_CONTRAINTE,
+    attendu: (vu) => {
+      const etats = vu?.[0]?.naturel.find((e) => e.nom === 'etats')
+      return etats?.vides === 2 && etats.ecart === 0
+        ? true
+        : 'attendu « etats » vide sur les DEUX fiches, sans écart : rien n’y est réservé.'
+    },
   })
 
   /* HORS DU FLUX : c'est le correctif lui-même. Sur téléphone, le menu quitte la

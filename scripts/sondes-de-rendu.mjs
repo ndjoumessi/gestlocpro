@@ -831,6 +831,18 @@ export const MESURER_CIBLES = (config) => {
  * trame n'est peinte entre les deux, et les sondes qui suivent lisent la page
  * telle que le produit l'a laissée.
  *
+ * ═══ ET LE BLANC RÉSERVÉ, QUI EST L'AUTRE FACE DE LA MÊME PIÈCE ═══
+ *
+ * Une rangée partagée qu'une SEULE sorte de fiche occupe, toutes ses voisines la
+ * réservent : 56 px de vide sous une fiche occupée pour le bouton d'un logement
+ * vide, 33 pour ses pastilles de faits — mesuré sur `/demo/parc` le 2026-09-12.
+ * Le vide tombe alors au MILIEU de la fiche, là où il se lit comme une donnée
+ * manquante, et non en bas, où il se lit comme une fiche qui a moins à dire.
+ *
+ * `vides` compte, par section et par rangée, les fiches qui la laissent SANS
+ * CONTENU — ni élément, ni texte. Une section vide PARTOUT ne réserve rien, et
+ * ce n'est pas à la sonde d'en juger : elle rend le compte, la porte tranche.
+ *
  * ═══ CE QU'ELLE NE VOIT PAS ═══
  *
  * Le BAS des sections : deux sections alignées par le haut peuvent finir à des
@@ -844,13 +856,22 @@ export const MESURER_SECTIONS_ALIGNEES = (decalage) => {
   if (grilles.length === 0) return null
 
   const haut = (el) => Math.round(el.getBoundingClientRect().top)
+  /* SANS CONTENU : ni élément, ni texte. Une section étirée à la hauteur de sa
+     rangée mesure la piste ENTIÈRE — sa hauteur ne dit donc rien de ce qu'elle
+     porte, et c'est le contenu qu'il faut regarder. */
+  const sansContenu = (el) => el.childElementCount === 0 && (el.textContent ?? '').trim() === ''
   const ecarts = (rangee, noms) =>
     noms.map((nom) => {
-      const hauts = rangee
+      const presentes = rangee
         .map(({ sections }) => sections.find((s) => s.dataset.section === nom))
         .filter(Boolean)
-        .map(haut)
-      return { nom, presentes: hauts.length, ecart: Math.max(...hauts) - Math.min(...hauts) }
+      const hauts = presentes.map(haut)
+      return {
+        nom,
+        presentes: hauts.length,
+        vides: presentes.filter(sansContenu).length,
+        ecart: Math.max(...hauts) - Math.min(...hauts),
+      }
     })
 
   const releves = []

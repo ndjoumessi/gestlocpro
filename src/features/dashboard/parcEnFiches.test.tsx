@@ -233,6 +233,37 @@ describe('le parc sur bureau', () => {
   })
 
   /**
+   * AUCUNE SECTION DÉCLARÉE N'EST VIDE — c'est la condition pour la déclarer.
+   *
+   * Les fiches partagent leurs rangées : une section qu'une fiche laisse vide
+   * pendant qu'une voisine la remplit creuse un blanc au MILIEU de la première,
+   * là où il se lit comme une donnée manquante. Les jauges, les faits et le geste
+   * d'un logement vide tiennent donc ensemble dans une queue NON déclarée, où ce
+   * qui reste de place tombe en bas. `MESURER_SECTIONS_ALIGNEES` le garde dans un
+   * vrai navigateur ; ce cas-ci le garde à la structure.
+   */
+  it('ne déclare que des sections qu’une fiche vide remplit aussi', async () => {
+    parc()
+    await renderApp('/app/parc', { session: SESSION, largeur: 1280 })
+    await attendreLeChargement()
+    const essos = within(screen.getByRole('main')).getByRole('region', { name: /Résidence Essos/ })
+    const fiches = within(essos).getAllByRole('listitem')
+    /* La troisième est vacante : c'est elle qui laissait des sections vides. */
+    expect(within(fiches[2]).getByText('Aucun locataire'), 'prémisse : la fiche vacante').toBeInTheDocument()
+
+    for (const fiche of fiches) {
+      const sections = Array.from(fiche.querySelectorAll('[data-section]'))
+      expect(sections.length, 'aucune section déclarée').toBeGreaterThan(2)
+      for (const section of sections) {
+        expect(
+          section.textContent?.trim(),
+          `« ${section.getAttribute('data-section')} » est vide sur une fiche, et réservée chez ses voisines`,
+        ).not.toBe('')
+      }
+    }
+  })
+
+  /**
    * LA BARRE D'UN PARTIEL VIT À CÔTÉ DE SES JAUGES, ET NE RÉSERVE RIEN.
    *
    * Elle avait sa rangée à elle, sous le loyer. Depuis que les fiches partagent
@@ -251,8 +282,12 @@ describe('le parc sur bureau', () => {
 
     const barre = within(fiches[3]).getByRole('progressbar')
     const jauges = within(fiches[3]).getByRole('img', { name: /Loyer partiel/ })
-    expect(barre.closest('[data-section]'), 'la barre ne partage pas la rangée des jauges').toBe(
-      jauges.closest('[data-section]'),
+    /* LA BOÎTE QUI PORTE LES JAUGES PORTE AUSSI LA BARRE, et c'est ce qui fait
+       d'elles une LIGNE. `closest('[data-section]')` ne le dirait plus : la queue
+       de la fiche n'est pas déclarée, et la comparaison serait vraie entre deux
+       `null` — verte à vide. */
+    expect(jauges.parentElement?.contains(barre), 'la barre n’est pas sur la ligne des jauges').toBe(
+      true,
     )
     for (const fiche of fiches) {
       expect(

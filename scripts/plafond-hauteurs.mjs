@@ -300,6 +300,15 @@ const HORS_PORTEE = {
  * page du parc est donc plus courte qu'AVANT l'alignement (2166) : douze rangées
  * de moins, et aucune réservée. Même gain sous la police large (exécution
  * 34655076952), 2208 → 2109.
+ *
+ * −51 px ENCORE, 2109 → 2058 : LES TROIS DERNIÈRES RANGÉES RÉSERVÉES, FONDUES EN
+ * UNE. Les jauges, les faits et le geste d'un logement vide existent sur une
+ * fiche et pas sur l'autre : chacune avait sa rangée, que les voisines
+ * réservaient — jusqu'à 196 px sur une seule rangée de fiches. Elles tiennent
+ * ensemble dans une queue NON déclarée : ce qui reste de place tombe en bas de la
+ * fiche, sous le contenu, et non en son milieu. Relevé sur la rangée C1-C2-C3 :
+ * 274 px de fiche avant, 223 après. Même gain sous la police large (exécution
+ * 34660193788), 2109 → 2058.
  * Reste la réserve de la date d'entrée, à côté d'un logement vide : c'est une
  * ligne de texte, que la fiche vide n'a pas.
  *
@@ -357,7 +366,7 @@ const PLAFONDS = [
   { adresse: '/demo/mon-espace', largeur: 1280, plafond: 1409, plafondLarge: 1409 },
   { adresse: '/demo/documents', largeur: 1280, plafond: 1187, plafondLarge: 1165 },
   { adresse: '/demo/signaler', largeur: 1280, plafond: 900, plafondLarge: 900 },
-  { adresse: '/demo/parc', largeur: 1280, plafond: 2109, plafondLarge: 2109 },
+  { adresse: '/demo/parc', largeur: 1280, plafond: 2058, plafondLarge: 2058 },
   { adresse: '/demo/releves', largeur: 1280, plafond: 1402, plafondLarge: 1402 },
   { adresse: '/demo/cautions', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo/locataires', largeur: 1280, plafond: 2450, plafondLarge: 2429 },
