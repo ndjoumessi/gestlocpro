@@ -20,7 +20,8 @@ export function Checkbox({ label, hint, error, className, ...props }: CheckboxPr
     `aria-describedby` ne citait que l'aide. Le motif du refus n'était donc
     lié à rien : quiconque revient sur la case après coup — au clavier, ou
     en la relisant — n'entend que son libellé, jamais pourquoi elle bloque.
-    C'est le refus des conditions générales, à l'inscription, qui en dépend.
+    C'est le refus de la case de confidentialité, à l'inscription, qui en
+    dépend.
 
     L'aide persiste ici pour la même raison que dans `Field`, et les deux
     identifiants sont cités ensemble.

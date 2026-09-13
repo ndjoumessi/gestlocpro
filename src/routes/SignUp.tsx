@@ -1166,7 +1166,27 @@ function ReviewStep({
 
       <div className="flex flex-col gap-1">
         <Checkbox
-          label={t("auth.signup.terms")}
+          /* UN LIEN DANS LE LIBELLÉ, et deux choses qu'il doit tenir.
+             Il ouvre un NOUVEL ONGLET : c'est le dernier écran d'un assistant
+             en trois étapes, et naviguer sur place jetterait la saisie. Et il
+             ne coche pas la case : un contenu interactif dans un `<label>` ne
+             l'active pas — mesuré dans Chromium le 2026-09-14 ; jsdom, lui, la
+             coche, d'où un cas qui ne tient que la première moitié. */
+          label={
+            <>
+              {t("auth.signup.termsLead")}{" "}
+              <a
+                href="/confidentialite"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent-ink underline underline-offset-4"
+              >
+                {t("auth.signup.termsLink")}
+                <span className="sr-only"> {t("auth.signup.termsNewTab")}</span>
+              </a>
+              .
+            </>
+          }
           name="terms"
           checked={state.terms}
           onChange={(e) => patch({ terms: e.target.checked })}

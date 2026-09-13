@@ -337,8 +337,10 @@ export const en: Dictionary = {
       tenantNotice:
         'A tenant does not create a space alone: it is attached to an existing lease. Without a code, ask your manager for one.',
 
-      terms: 'I accept the terms of service and the privacy policy.',
-      termsError: 'You must accept the terms to create your account.',
+      termsLead: 'I have read the',
+      termsLink: 'privacy policy',
+      termsNewTab: '(opens in a new tab)',
+      termsError: 'Confirm you have read the privacy policy to create your account.',
       emailTaken: 'An account already exists for this address. Sign in, or use another one.',
       errorOffline: 'The server is unreachable. Your answers are kept: try again.',
       errorUnexpected: 'Account creation failed. Your answers are kept: try again.',
@@ -1893,7 +1895,7 @@ export const en: Dictionary = {
     data: {
       title: 'Data processed',
       account:
-        'Account: name, email address, phone, country, language, password (stored hashed, never in plain text), date the terms were accepted, and newsletter choice.',
+        'Account: name, email address, phone, country, language, password (stored hashed, never in plain text), date this policy was read, and newsletter choice.',
       sessions: 'Sign-ins: date, browser used and IP address.',
       rental:
         'Rental management: tenants’ names, phone numbers and email addresses; leases, rents, payments and security deposits; meter readings; inspections and their photos; repair and document requests; messages and announcements.',

@@ -73,7 +73,7 @@ async function remplirIdentite(user: ReturnType<typeof userEvent.setup>) {
   await screen.findByRole('heading', { name: /tout est correct/i })
   // Sans cette case, l'assistant refuse de soumettre — et c'est le
   // comportement voulu : l'acceptation est exigée avant toute création.
-  await user.click(screen.getByLabelText(/j’accepte les conditions/i))
+  await user.click(screen.getByLabelText(/j’ai lu la politique de confidentialité/i))
 }
 
 describe('connexion', () => {
@@ -323,7 +323,7 @@ describe('inscription', () => {
     await user.type(screen.getByLabelText(/nom de votre parc/i), 'Parc Bonamoussadi')
     await user.click(screen.getByRole('button', { name: /continuer/i }))
     await screen.findByRole('heading', { name: /tout est correct/i })
-    await user.click(screen.getByLabelText(/j’accepte les conditions/i))
+    await user.click(screen.getByLabelText(/j’ai lu la politique de confidentialité/i))
     await user.click(screen.getByRole('button', { name: /créer mon espace/i }))
 
     const corps = serveur.appels.find((a) => a.chemin === '/auth/signup')?.corps as Record<
@@ -389,7 +389,7 @@ describe('inscription', () => {
     await user.click(screen.getByRole('button', { name: /continuer/i }))
 
     await screen.findByRole('heading', { name: /tout est correct/i })
-    await user.click(screen.getByLabelText(/j’accepte les conditions/i))
+    await user.click(screen.getByLabelText(/j’ai lu la politique de confidentialité/i))
     await user.click(screen.getByRole('button', { name: /créer mon espace/i }))
 
     const corps = serveur.appels.find((a) => a.chemin === '/auth/signup')?.corps as Record<
@@ -495,7 +495,7 @@ describe('un refus doit se lire là où l’on vient de cliquer', () => {
     // des deux l'utilisateur regarde.
     const alertes = await screen.findAllByRole('alert')
     expect(alertes.length).toBeGreaterThanOrEqual(2)
-    expect(alertes.every((a) => /accepter les conditions/i.test(a.textContent ?? ''))).toBe(true)
+    expect(alertes.every((a) => /politique de confidentialité/i.test(a.textContent ?? ''))).toBe(true)
 
     // Et rien n'est parti au serveur : le refus est bien un refus.
     expect(serveur.appels.find((a) => a.chemin === '/auth/signup')).toBeUndefined()

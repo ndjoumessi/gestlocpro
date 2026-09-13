@@ -437,8 +437,14 @@ export const fr = {
       tenantNotice:
         'Un locataire ne crée pas son espace seul : il est rattaché à un bail existant. Sans code, demandez-le à votre gestionnaire.',
 
-      terms: 'J’accepte les conditions générales et la politique de confidentialité.',
-      termsError: 'Vous devez accepter les conditions pour créer votre compte.',
+      // « J’ai lu », et non « J’accepte » : une politique de confidentialité
+      // informe, elle ne se signe pas. Les conditions générales reviendront
+      // dans cette case le jour où elles existeront — voir
+      // `caseDeConfidentialite.test.tsx`.
+      termsLead: 'J’ai lu la',
+      termsLink: 'politique de confidentialité',
+      termsNewTab: '(s’ouvre dans un nouvel onglet)',
+      termsError: 'Confirmez avoir lu la politique de confidentialité pour créer votre compte.',
       // Posée sur le champ e-mail, à l'étape « Vos informations » : l'afficher
       // sur le récapitulatif la mettrait là où le champ n'existe pas.
       emailTaken: 'Un compte existe déjà avec cette adresse. Connectez-vous, ou utilisez-en une autre.',
@@ -2664,7 +2670,7 @@ export const fr = {
     data: {
       title: 'Données traitées',
       account:
-        'Compte : nom, adresse électronique, téléphone, pays, langue, mot de passe (conservé haché, jamais en clair), date d’acceptation des conditions et choix de la lettre d’information.',
+        'Compte : nom, adresse électronique, téléphone, pays, langue, mot de passe (conservé haché, jamais en clair), date de lecture de cette politique et choix de la lettre d’information.',
       sessions: 'Connexions : date, navigateur utilisé et adresse IP.',
       rental:
         'Gestion locative : nom, téléphone et adresse électronique des locataires ; baux, loyers, paiements et dépôts de garantie ; relevés de compteurs ; états des lieux et leurs photos ; demandes de travaux et de documents ; messages et annonces.',

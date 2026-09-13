@@ -163,6 +163,16 @@ const EXEMPTIONS: Exemption[] = [
     raison: 'Lien en pleine phrase, même raison que celui de Login.',
   },
   {
+    fichier: 'routes/SignUp.tsx',
+    marqueur: 'href="/confidentialite"',
+    raison:
+      'Lien en pleine phrase — « J’ai lu la politique de confidentialité. » —, et DANS ' +
+      'le libellé d’une case. WCAG 2.5.8 exempte la phrase ; la case ajoute une raison : ' +
+      'le libellé entier fait déjà 44 px et coche la case, et un lien agrandi à 44 px ' +
+      'en couvrirait le haut et le bas, si bien qu’un doigt qui vise la case ouvrirait ' +
+      'la politique. Mesuré le 2026-09-14 : lien de 17 px dans un libellé de 44.',
+  },
+  {
     fichier: 'components/layout/LienEvitement.tsx',
     marqueur: 'href="#main"',
     raison:
