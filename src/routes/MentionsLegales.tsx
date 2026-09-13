@@ -41,6 +41,9 @@ export function MentionsLegales() {
     { cle: 'entrepreneur', libelle: t('legal.name'), valeur: EDITEUR.entrepreneur },
     { cle: 'forme', libelle: t('legal.legalForm'), valeur: <span lang="fr">{EDITEUR.forme}</span> },
     { cle: 'siren', libelle: t('legal.siren'), valeur: <span className="numeric">{EDITEUR.siren}</span> },
+    /* Une citation du code général des impôts : en français dans les deux
+       interfaces, comme les valeurs du registre. */
+    { cle: 'tva', libelle: t('legal.vat'), valeur: <span lang="fr">{EDITEUR.tva}</span> },
     { cle: 'nature', libelle: t('legal.nature'), valeur: <span lang="fr">{EDITEUR.nature}</span> },
     { cle: 'activite', libelle: t('legal.activity'), valeur: <span lang="fr">{EDITEUR.activite}</span> },
     {

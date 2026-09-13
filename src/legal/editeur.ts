@@ -27,12 +27,31 @@ import type { DateParts } from '@/data/portfolio'
  * première version écrivait « DJOUMESSI » seul, faute de mieux : c'était
  * incomplet, et c'est corrigé. Le directeur de la publication est l'entrepreneur
  * lui-même.
+ *
+ * L'attestation a été relue EN IMAGE le 2026-09-13 : sa page 1 porte en toutes
+ * lettres le SIREN, la forme juridique et le code APE que l'annuaire avait donnés.
  */
 export const EDITEUR = {
   entrepreneur: 'Romel Djoumessi',
   /** Nature juridique 1000 à l'annuaire des entreprises. */
   forme: 'Entrepreneur individuel',
   siren: '109 761 023',
+  /**
+   * FRANCHISE EN BASE DE TVA — déclarée par Nelson le 2026-09-13, et c'est la seule
+   * source : ni l'attestation, ni l'annuaire des entreprises ne portent le régime
+   * fiscal, et VIES, interrogé le même jour sur `FR91109761023`, a refusé trois
+   * fois (`MS_MAX_CONCURRENT_REQ`) — une réponse « invalide » n'aurait d'ailleurs
+   * rien prouvé, pour une entreprise de quatre jours.
+   *
+   * La LCEN n'exige le numéro de TVA que de l'éditeur qui y est assujetti ; la
+   * page le dit plutôt que de se taire, dans la formule de l'article 293 B du CGI.
+   *
+   * CE FAIT VIEILLIT. Une entreprise qui dépasse les seuils de la franchise, ou qui
+   * opte pour la TVA, en devient redevable : cette ligne devient fausse, et le
+   * numéro `FR91109761023` (clé calculée du SIREN) doit alors paraître — un cas
+   * l'interdit aujourd'hui, pour que le changement oblige à le toucher.
+   */
+  tva: 'Non applicable, article 293 B du CGI',
   directeurDeLaPublication: 'Romel Djoumessi',
   /** « Nature de l'établissement » à l'attestation. */
   nature: 'Libérale non réglementée',

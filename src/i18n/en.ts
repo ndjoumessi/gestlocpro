@@ -1860,6 +1860,7 @@ export const en: Dictionary = {
     name: 'Name',
     legalForm: 'Legal form',
     siren: 'SIREN number',
+    vat: 'VAT',
     director: 'Publication director',
     nature: 'Type of establishment',
     activity: 'Main activity',

@@ -324,6 +324,14 @@ const HORS_PORTEE = {
  * police large (exécution 34717868028) : 1460 à 360, 1180 à 1280 ; les 44 autres
  * points identiques.
  *
+ * 1486 → 1554 à 360, 1180 → 1227 à 1280, le 2026-09-13 : LA LIGNE DE TVA. Une
+ * entreprise en franchise en base n'a pas de numéro à afficher ; la page le dit
+ * (« Non applicable, article 293 B du CGI ») plutôt que de laisser le visiteur
+ * se demander si on l'a oublié. Une ligne de `<dl>` : deux lignes de texte
+ * empilées sur téléphone, une seule à côté de son terme sur ordinateur. Sous la
+ * police large (exécution 34727561716) : 1528 et 1227, les 44 autres points
+ * identiques.
+ *
  * ═══ ET CE QUE `/demo/acces@360` A ACHETÉ, LE 2026-09-11 ═══
  *
  * +22 px, 2226 → 2248 : L'EXPIRATION D'UN CODE, VISIBLE SUR TÉLÉPHONE. La
@@ -347,7 +355,7 @@ const PLAFONDS = [
   { adresse: '/connexion', largeur: 360, plafond: 900, plafondLarge: 900 },
   { adresse: '/mot-de-passe-oublie', largeur: 360, plafond: 900, plafondLarge: 900 },
   { adresse: '/reinitialiser', largeur: 360, plafond: 900, plafondLarge: 900 },
-  { adresse: '/mentions-legales', largeur: 360, plafond: 1486, plafondLarge: 1460 },
+  { adresse: '/mentions-legales', largeur: 360, plafond: 1554, plafondLarge: 1528 },
   { adresse: '/demo', largeur: 360, plafond: 3454, plafondLarge: 3455 },
   { adresse: '/demo/paiements', largeur: 360, plafond: 3343, plafondLarge: 3343 },
   { adresse: '/demo/etats-des-lieux', largeur: 360, plafond: 2746, plafondLarge: 2746 },
@@ -371,7 +379,7 @@ const PLAFONDS = [
   { adresse: '/connexion', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/mot-de-passe-oublie', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/reinitialiser', largeur: 1280, plafond: 900, plafondLarge: 900 },
-  { adresse: '/mentions-legales', largeur: 1280, plafond: 1180, plafondLarge: 1180 },
+  { adresse: '/mentions-legales', largeur: 1280, plafond: 1227, plafondLarge: 1227 },
   { adresse: '/demo', largeur: 1280, plafond: 1864, plafondLarge: 1865 },
   { adresse: '/demo/paiements', largeur: 1280, plafond: 1483, plafondLarge: 1483 },
   { adresse: '/demo/etats-des-lieux', largeur: 1280, plafond: 1552, plafondLarge: 1531 },

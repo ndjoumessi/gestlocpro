@@ -23,6 +23,9 @@ describe('les mentions légales', () => {
     expect(valeur('Nom')).toBe('Romel Djoumessi')
     expect(valeur('Forme juridique')).toBe('Entrepreneur individuel')
     expect(valeur('SIREN')).toBe('109 761 023')
+    /* Franchise en base, déclarée par Nelson le 2026-09-13 : pas de numéro de TVA
+       à afficher, et la page dit pourquoi plutôt que de se taire. */
+    expect(valeur('TVA')).toBe('Non applicable, article 293 B du CGI')
     expect(valeur('Directeur de la publication')).toBe('Romel Djoumessi')
     expect(valeur('Nature de l’établissement')).toBe('Libérale non réglementée')
     expect(valeur('Activité principale')).toBe('Programmation informatique')
@@ -73,7 +76,9 @@ describe('les mentions légales', () => {
 
     await renderApp('/mentions-legales')
     const main = screen.getByRole('main')
-    for (const absent of [/SIRET/i, /compl[ée]ter/i, /à venir/i]) {
+    /* Un numéro de TVA intracommunautaire — `FR91109761023` se calcule du SIREN —
+       n'a rien à faire sur la page d'une entreprise en franchise en base. */
+    for (const absent of [/SIRET/i, /compl[ée]ter/i, /à venir/i, /FR\s?\d{2}\s?\d{3}\s?\d{3}\s?\d{3}/, /intracommunautaire/i]) {
       expect(main.textContent, `la page affiche ${absent}, qui n’a pas été établi`).not.toMatch(absent)
     }
     /* Le téléphone et le courriel de l'ÉDITEUR : ceux de la page appartiennent
@@ -91,6 +96,8 @@ describe('les mentions légales', () => {
     const editeur = screen.getByRole('region', { name: 'Publisher' })
     const nature = within(editeur).getByText(EDITEUR.nature)
     expect(nature.closest('[lang]')).toHaveAttribute('lang', 'fr')
+    /* Une citation du code général des impôts ne se traduit pas davantage. */
+    expect(within(editeur).getByText(EDITEUR.tva).closest('[lang]')).toHaveAttribute('lang', 'fr')
     /* La date suit la langue de l'interface ; ce cas n'en fige pas le format,
        seulement qu'elle est dite, et en anglais. */
     expect(within(editeur).getByText(/^Entry up to date as of .*2026$/)).toBeInTheDocument()

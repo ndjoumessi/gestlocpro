@@ -2630,6 +2630,7 @@ export const fr = {
     name: 'Nom',
     legalForm: 'Forme juridique',
     siren: 'SIREN',
+    vat: 'TVA',
     director: 'Directeur de la publication',
     nature: 'Nature de l’établissement',
     activity: 'Activité principale',
